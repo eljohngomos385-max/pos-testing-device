@@ -1,0 +1,42 @@
+sku,barcode,name,brand,category,unit,cost,price,stock,reorder_point,aliases,emoji
+PVC-ELB-12,4801234500011,PVC Elbow 1/2",Atlanta,plumbing,pc,7.50,12.00,240,50,"kodo|elbow half|kodo half|1/2 elbow|pvc kodo",🟦
+PVC-ELB-34,4801234500028,PVC Elbow 3/4",Atlanta,plumbing,pc,10.00,16.00,180,40,"kodo 3/4|elbow three fourths",🟦
+PVC-TEE-12,4801234500035,PVC Tee 1/2",Atlanta,plumbing,pc,9.00,14.50,200,50,"tee half|pvc tee",🟦
+PVC-PIPE-12-3M,4801234500042,PVC Pipe 1/2" × 3m,Atlanta,plumbing,pc,105.00,145.00,60,20,"pipe half|tubo|pvc tubo",🟫
+FAUCET-BR-12,4801234500059,Brass Faucet 1/2",Omega,plumbing,pc,130.00,185.00,22,10,"gripo|faucet|tap",🚰
+TEFLON-12,4801234500066,Teflon Tape 1/2",Henkel,plumbing,roll,15.00,25.00,320,80,"teflon|tape teflon",⚪
+WIRE-THHN-12,4801234600015,THHN Wire #12 (per meter),Phelps Dodge,electrical,m,19.00,28.00,850,200,"kawad|wire 12|thhn 12",🟧
+WIRE-THHN-14,4801234600022,THHN Wire #14 (per meter),Phelps Dodge,electrical,m,15.00,22.00,12,200,"wire 14|kawad 14",🟧
+BULB-LED-9W,4801234600039,LED Bulb 9W Daylight,Firefly,electrical,pc,56.00,89.00,78,30,"bulb led|led 9 watts|firefly led",💡
+OUTLET-2G,4801234600046,Duplex Outlet 2-Gang,Royu,electrical,pc,42.00,65.00,44,20,"outlet|saksakan|duplex",🔌
+SWITCH-1G,4801234600053,Switch 1-Gang,Royu,electrical,pc,30.00,48.00,56,20,"switch|one gang",🎚️
+TAPE-EL-BLK,4801234600060,Electrical Tape Black,3M,electrical,roll,19.00,32.00,200,60,"electrical tape|tape black",⚫
+BREAKER-30A,4801234600077,Circuit Breaker 30A,Royu,electrical,pc,240.00,320.00,8,10,"breaker 30|circuit breaker",🔲
+NAIL-CW-2,4801234700019,Common Wire Nail 2",Generic,fasteners,kg,65.00,95.00,38,15,"pako|nail 2 inch|cw nail 2",📍
+NAIL-CW-3,4801234700026,Common Wire Nail 3",Generic,fasteners,kg,62.00,90.00,24,15,"pako 3|nail 3 inch",📍
+SCREW-WD-1,4801234700033,Wood Screw #8 × 1",Generic,fasteners,pc,0.80,1.50,1200,300,"turnilyo|wood screw|screw 1",🔩
+BOLT-M10-100,4801234700040,Hex Bolt M10 × 100mm,Generic,fasteners,pc,11.00,18.00,320,80,"bolt m10|hex bolt",🔩
+WASHER-M10,4801234700057,Flat Washer M10,Generic,fasteners,pc,1.00,2.00,800,200,"washer 10|flat washer",⚪
+HMR-CLAW-16,4801234800013,Claw Hammer 16oz,Stanley,tools,pc,195.00,285.00,14,5,"martilyo|hammer|claw hammer",🔨
+SCRDRV-PH2,4801234800020,Phillips Screwdriver #2,Stanley,tools,pc,95.00,145.00,21,8,"screwdriver|phillips|destornilyador",🪛
+PLIER-CB-8,4801234800037,Combination Pliers 8",Tolsen,tools,pc,150.00,220.00,12,6,"plyer|plyers|pliers",🗜️
+TAPE-MEAS-5M,4801234800044,Tape Measure 5m,Stanley,tools,pc,130.00,195.00,18,8,"tape measure|meter|metro",📏
+SAW-HACK-12,4801234800051,Hacksaw Frame 12",Tolsen,tools,pc,168.00,245.00,9,4,"lagari|hacksaw",🪚
+LVL-ALUM-24,4801234800068,Aluminum Level 24",Tolsen,tools,pc,270.00,385.00,6,3,"level|antay-antayan",📐
+PAINT-LATEX-1L-WHT,4801234900017,Latex Paint White 1L,Boysen,paint,L,198.00,285.00,28,10,"pintura|latex puti|paint white",🪣
+PAINT-ENAMEL-1L-BLK,4801234900024,Quick-Dry Enamel Black 1L,Davies,paint,L,220.00,320.00,16,8,"enamel itim|pintura itim",🪣
+BRUSH-PT-3,4801234900031,Paint Brush 3",Generic,paint,pc,45.00,75.00,42,15,"brocha|brush|paint brush",🖌️
+ROLLER-9,4801234900048,Paint Roller 9",Generic,paint,pc,92.00,145.00,18,8,"roller|paint roller",🖌️
+THINNER-1L,4801234900055,Paint Thinner 1L,Boysen,paint,L,80.00,120.00,30,12,"thinner|tiner",🥛
+CEM-PORT-40,4801235000013,Portland Cement 40kg,Holcim,cement,bag,235.00,285.00,110,30,"cement|semento|holcim",🧱
+SAND-FINE-CUM,4801235000020,Fine Sand (per cu.m),Local,cement,cu.m,1100.00,1450.00,4,2,"buhangin|sand",🏖️
+GRAVEL-3-CUM,4801235000037,Gravel 3/4" (per cu.m),Local,cement,cu.m,1050.00,1380.00,3,2,"graba|gravel",🪨
+CHB-4,4801235000044,Hollow Block 4",Local,cement,pc,9.00,12.50,480,100,"hollow block|chb|block 4",🧱
+GLOVES-WORK,4801235100010,Cotton Work Gloves,Generic,safety,pair,22.00,38.00,90,30,"gloves|guantes",🧤
+GOGGLES-SAFE,4801235100027,Safety Goggles Clear,3M,safety,pc,95.00,145.00,14,8,"goggles|safety glasses",🥽
+MASK-N95,4801235100034,N95 Dust Mask,3M,safety,pc,32.00,55.00,0,20,"mask|n95|dust mask",😷
+HARDHAT-YEL,4801235100041,Hard Hat Yellow,Generic,safety,pc,160.00,240.00,11,5,"hard hat|helmet|casco",⛑️
+EPOXY-MIGHTY,4801235200017,Mighty Bond Epoxy 50g,Pioneer,adhesive,pc,110.00,165.00,26,12,"epoxy|mighty bond|pioneer",🧪
+GLUE-RUGBY,4801235200024,Contact Cement Rugby 250mL,Pioneer,adhesive,pc,95.00,145.00,18,8,"rugby|kola|contact cement",🥫
+GLUE-PVC-200,4801235200031,PVC Solvent Cement 200mL,Atlanta,adhesive,pc,62.00,95.00,22,10,"pvc cement|solvent|pvc kola",🧴
+SILICONE-WHT,4801235200048,Silicone Sealant White,Bostik,adhesive,pc,145.00,215.00,13,6,"silicone|sealant|pampatak",🧴

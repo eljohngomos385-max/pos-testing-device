@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#F7F6F3" />
+  <title>Hardware POS</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+</head>
+<body>
+  <div id="app" class="sidebar-collapsed">
+
+    <!-- ============== SIDEBAR ============== -->
+    <aside class="sidebar">
+      <div class="side-head">
+        <div class="brand-mini">
+          <div class="brand-dot"></div>
+          <span>EJ Hardware</span>
+        </div>
+      </div>
+
+      <nav class="side-nav">
+        <button class="side-link active" data-view="sell">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/>
+          </svg>
+          <span>Sell</span>
+        </button>
+        <button class="side-link" data-view="orders">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="8" y1="13" x2="16" y2="13"/>
+            <line x1="8" y1="17" x2="16" y2="17"/>
+          </svg>
+          <span>Orders</span>
+        </button>
+        <button class="side-link" data-view="inventory">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="5" width="18" height="14" rx="2"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+            <line x1="9" y1="5" x2="9" y2="19"/>
+          </svg>
+          <span>Inventory</span>
+        </button>
+        <button class="side-link" data-view="customers">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="3.5"/>
+            <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
+          </svg>
+          <span>Customers</span>
+        </button>
+        <button class="side-link" data-view="reports">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="20" x2="20" y2="20"/>
+            <line x1="7" y1="20" x2="7" y2="12"/>
+            <line x1="12" y1="20" x2="12" y2="6"/>
+            <line x1="17" y1="20" x2="17" y2="15"/>
+          </svg>
+          <span>Reports</span>
+        </button>
+      </nav>
+
+      <div class="side-footer">
+        <button class="side-foot-row" id="notifBtn" title="Notifications">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16z"/>
+            <path d="M10 21a2 2 0 0 0 4 0"/>
+          </svg>
+          <span>Notifications</span>
+          <span class="side-foot-dot" id="notifDot"></span>
+        </button>
+        <div class="sync-pill side-sync" id="syncPill">
+          <span class="dot dot-ok"></span>
+          <span>Synced</span>
+        </div>
+        <a class="open-bo-link" href="backoffice.html">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="8" height="9" rx="1.5"/>
+            <rect x="13" y="3" width="8" height="5" rx="1.5"/>
+            <rect x="13" y="10" width="8" height="11" rx="1.5"/>
+            <rect x="3" y="14" width="8" height="7" rx="1.5"/>
+          </svg>
+          <span>Back Office</span>
+          <svg class="ext" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 4h6v6"/><path d="M10 14L20 4"/><path d="M20 14v6H4V4h6"/>
+          </svg>
+        </a>
+        <div class="user-row">
+          <div class="user-avatar">EJ</div>
+          <div class="user-meta">
+            <div class="user-name">El John</div>
+            <div class="user-sub">Cashier · Main Store</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============== MAIN ============== -->
+    <div class="main">
+
+      <!-- ============================================
+           SELL VIEW
+           ============================================ -->
+      <section class="view view-sell active" data-view="sell">
+        <div class="content-row">
+          <div class="catalog-wrap">
+            <div class="catalog">
+              <div class="search-row" id="catalogSearchRow">
+                <button class="ghost-icon" id="sidebarToggle" aria-label="Menu" title="Menu">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                    <line x1="4" y1="7" x2="20" y2="7"/>
+                    <line x1="4" y1="12" x2="20" y2="12"/>
+                    <line x1="4" y1="17" x2="20" y2="17"/>
+                  </svg>
+                </button>
+                <button class="folder-dd inline" id="folderDdBtn">
+                  <span id="folderDdLabel">All items</span>
+                  <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+                <div class="folder-dd-menu" id="folderDdMenu" hidden></div>
+                <div class="search-wrap">
+                  <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7"/>
+                    <line x1="20" y1="20" x2="16.5" y2="16.5"/>
+                  </svg>
+                  <input id="searchInput" type="text" autocomplete="off"
+                    placeholder="Search SKU, name, alias, or brand" />
+                  <button class="search-clear" id="searchClear" aria-label="Clear">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+                <button class="ghost-icon" id="scanBtn" title="Scan barcode">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+                    <path d="M7 8v8M11 8v8M15 8v8M19 8v8"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="product-grid" id="productGrid"></div>
+            </div>
+
+            <!-- ============== BOTTOM PAGE BAR ============== -->
+            <div class="bottom-bar">
+              <div class="bb-left">
+                <button class="bb-arrow" id="bbPrevBtn" aria-label="Previous page">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 6 9 12 15 18"/>
+                  </svg>
+                </button>
+                <span class="bb-page" id="bbPageLabel">PAGE 1 / 1</span>
+                <button class="bb-arrow" id="bbNextBtn" aria-label="Next page">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 6 15 12 9 18"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="bb-center">
+                <div class="bb-pagedots" id="bbPageDots"></div>
+                <button class="bb-view-btn" id="bbViewBtn" aria-label="Toggle price">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="bb-right">
+                <a class="bb-settings-link" href="backoffice.html#settings" title="Tile size in Back Office → Settings">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 4.37 16.94l.06-.06A1.65 1.65 0 0 0 4.76 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 4.29l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <aside class="cart">
+            <div class="cart-head">
+              <div>
+                <div class="cart-title">Receipt</div>
+                <div class="cart-sub" id="cartCount">0 items</div>
+              </div>
+              <div class="cart-head-actions">
+                <button class="text-btn" id="saveBtn" disabled>Save</button>
+                <button class="text-btn" id="clearCartBtn">Clear</button>
+              </div>
+            </div>
+
+            <button class="customer-btn" id="customerBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="3.5"/>
+                <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
+              </svg>
+              <span id="customerLabel">Walk-in customer</span>
+              <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                <polyline points="9 6 15 12 9 18"/>
+              </svg>
+            </button>
+
+            <div class="cart-list" id="cartList"></div>
+
+            <div class="cart-foot">
+              <div class="totals">
+                <div class="row"><span>Subtotal</span><span id="subtotal">₱0.00</span></div>
+                <div class="row"><span>Discount</span><span id="discount">₱0.00</span></div>
+                <div class="row total"><span>Total</span><span id="total">₱0.00</span></div>
+              </div>
+              <div class="cart-actions">
+                <button class="charge-btn" id="payBtn" disabled>Check out</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ============================================
+           ORDERS VIEW — completed sales list
+           ============================================ -->
+      <section class="view view-orders" data-view="orders">
+        <header class="view-head">
+          <div class="view-title-wrap">
+            <h1>Orders</h1>
+            <span class="muted" id="ordersCount">No orders yet</span>
+          </div>
+        </header>
+        <div class="orders-layout">
+          <div class="orders-col">
+            <div class="orders-search-wrap">
+              <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7"/>
+                <line x1="20" y1="20" x2="16.5" y2="16.5"/>
+              </svg>
+              <input type="text" id="ordersSearch" placeholder="Search by # or customer" autocomplete="off" />
+            </div>
+            <div class="orders-list" id="ordersList"></div>
+          </div>
+          <div class="order-detail" id="orderDetail">
+            <div class="order-detail-empty">
+              <div class="empty-title">Select an order</div>
+              <div class="empty-sub">Pick one from the list to view items and reprint the receipt</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================
+           INVENTORY VIEW — Shopify-style backend
+           ============================================ -->
+      <section class="view view-inventory" data-view="inventory">
+        <header class="view-head">
+          <div class="view-title-wrap">
+            <h1>Inventory</h1>
+            <span class="muted">Manage products and folders</span>
+          </div>
+          <div class="view-actions">
+            <button class="secondary-btn small" id="newFolderBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              </svg>
+              <span>New folder</span>
+            </button>
+            <button class="primary-btn small" id="newProductBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              <span>Add product</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Inventory tabs -->
+        <div class="page-pad">
+          <div class="inv-tabs">
+            <button class="inv-tab active" data-inv-tab="products">Products</button>
+            <button class="inv-tab" data-inv-tab="folders">Folders</button>
+          </div>
+
+          <!-- Products subview -->
+          <div class="inv-pane active" data-inv-pane="products">
+
+            <div class="inv-controls">
+              <div class="search-wrap inv-search">
+                <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="7"/>
+                  <line x1="20" y1="20" x2="16.5" y2="16.5"/>
+                </svg>
+                <input type="text" id="invSearchInput" placeholder="Search products" autocomplete="off" />
+              </div>
+            </div>
+
+            <div class="folder-strip-wrap inv-folder-strip-wrap">
+              <div class="folder-strip" id="invFolderStrip"></div>
+            </div>
+
+            <div class="bulk-bar" id="bulkBar" hidden>
+              <div class="bulk-meta">
+                <span class="bulk-count" id="bulkCount">0 selected</span>
+                <button class="text-btn" id="bulkClear">Clear</button>
+              </div>
+              <div class="bulk-actions">
+                <div class="dropdown" id="bulkMoveDropdown">
+                  <button class="secondary-btn small" id="bulkMoveBtn">
+                    <span>Move to folder</span>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+                  <div class="dropdown-menu" id="bulkMoveMenu" hidden></div>
+                </div>
+                <button class="secondary-btn small danger" id="bulkDeleteBtn">Delete</button>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="data-table" id="inventoryTable">
+                <thead>
+                  <tr>
+                    <th class="check-col">
+                      <input type="checkbox" id="selectAll" class="row-check" />
+                    </th>
+                    <th>Item</th>
+                    <th>SKU</th>
+                    <th>Brand</th>
+                    <th>Folder</th>
+                    <th class="num">Stock</th>
+                    <th class="num">Cost</th>
+                    <th class="num">Price</th>
+                    <th>Status</th>
+                    <th class="action-col"></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Folders subview -->
+          <div class="inv-pane" data-inv-pane="folders">
+            <div class="folder-cards" id="folderCards"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================
+           CUSTOMERS VIEW
+           ============================================ -->
+      <section class="view view-customers" data-view="customers">
+        <header class="view-head">
+          <div class="view-title-wrap">
+            <h1>Customers</h1>
+            <span class="muted">Credit accounts and balances</span>
+          </div>
+        </header>
+        <div class="page-pad">
+          <div class="card-grid" id="customersGrid"></div>
+        </div>
+      </section>
+
+      <!-- ============================================
+           REPORTS VIEW
+           ============================================ -->
+      <section class="view view-reports" data-view="reports">
+        <header class="view-head">
+          <div class="view-title-wrap">
+            <h1>Reports</h1>
+            <span class="muted">Today at a glance</span>
+          </div>
+        </header>
+        <div class="page-pad">
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-label">Today's Revenue</div>
+              <div class="stat-value" id="statRevenue">₱0.00</div>
+              <div class="stat-meta">vs yesterday +12%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Transactions</div>
+              <div class="stat-value" id="statTxns">0</div>
+              <div class="stat-meta">vs yesterday +4</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Avg Basket</div>
+              <div class="stat-value" id="statAvg">₱0.00</div>
+              <div class="stat-meta">flat</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Low Stock</div>
+              <div class="stat-value" id="statLow">0</div>
+              <div class="stat-meta">needs reorder</div>
+            </div>
+          </div>
+
+          <div class="recent">
+            <div class="recent-head">Recent Sales</div>
+            <div id="recentList" class="recent-list"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============== MODALS ============== -->
+
+    <!-- Customer picker -->
+    <div class="modal-backdrop" id="customerModal" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <h2>Select Customer</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <button class="customer-row-btn" data-customer-id="walk-in">
+            <div class="cust-avatar">W</div>
+            <div class="cust-meta">
+              <div class="cust-name">Walk-in customer</div>
+              <div class="cust-sub">Cash / non-credit</div>
+            </div>
+          </button>
+          <div class="modal-divider"><span>Credit accounts</span></div>
+          <div id="customerList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment -->
+    <div class="modal-backdrop" id="paymentModal" hidden>
+      <div class="modal payment-modal">
+        <div class="modal-head">
+          <h2>Payment</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="pay-total">
+            <div class="pay-total-label">Total due</div>
+            <div class="pay-total-value" id="payTotalValue">₱0.00</div>
+            <div class="pay-customer" id="payCustomerLine">Walk-in customer</div>
+          </div>
+          <div class="seg-control">
+            <button class="seg active" data-method="cash">Cash</button>
+            <button class="seg" data-method="credit">Charge to Account</button>
+            <button class="seg" data-method="split">Split</button>
+          </div>
+          <div class="pay-fields" id="payFields">
+            <label class="pay-label">Amount tendered</label>
+            <input type="text" inputmode="decimal" id="tenderInput" placeholder="0.00" />
+            <div class="quick-cash">
+              <button data-cash="exact">Exact</button>
+              <button data-cash="100">₱100</button>
+              <button data-cash="200">₱200</button>
+              <button data-cash="500">₱500</button>
+              <button data-cash="1000">₱1000</button>
+            </div>
+            <div class="change-row">
+              <span>Change</span>
+              <span id="changeValue">₱0.00</span>
+            </div>
+          </div>
+          <div class="pay-actions">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="completeSaleBtn">Complete & Print</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product editor (add / edit) -->
+    <div class="modal-backdrop" id="productModal" hidden>
+      <div class="modal product-modal">
+        <div class="modal-head">
+          <h2 id="productModalTitle">Add Product</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-row full">
+              <label>Product name</label>
+              <input type="text" id="pf_name" class="text-input" placeholder="e.g. PVC Elbow 1/2&quot;" />
+            </div>
+            <div class="form-row">
+              <label>SKU</label>
+              <input type="text" id="pf_sku" class="text-input" placeholder="PVC-ELB-12" />
+            </div>
+            <div class="form-row">
+              <label>Barcode</label>
+              <input type="text" id="pf_barcode" class="text-input" placeholder="4801234500011" />
+            </div>
+            <div class="form-row">
+              <label>Brand</label>
+              <input type="text" id="pf_brand" class="text-input" placeholder="Atlanta" />
+            </div>
+            <div class="form-row">
+              <label>Folder</label>
+              <select id="pf_folder" class="text-input"></select>
+            </div>
+            <div class="form-row">
+              <label>Unit</label>
+              <input type="text" id="pf_unit" class="text-input" placeholder="pc" />
+            </div>
+            <div class="form-row">
+              <label>Cost (₱)</label>
+              <input type="number" step="0.01" id="pf_cost" class="text-input" placeholder="0.00" />
+            </div>
+            <div class="form-row">
+              <label>Price (₱)</label>
+              <input type="number" step="0.01" id="pf_price" class="text-input" placeholder="0.00" />
+            </div>
+            <div class="form-row">
+              <label>Stock on hand</label>
+              <input type="number" id="pf_stock" class="text-input" placeholder="0" />
+            </div>
+            <div class="form-row">
+              <label>Reorder point</label>
+              <input type="number" id="pf_reorder" class="text-input" placeholder="0" />
+            </div>
+            <div class="form-row full">
+              <label>Aliases <span class="muted">(comma-separated, for fuzzy search)</span></label>
+              <input type="text" id="pf_aliases" class="text-input" placeholder="kodo, elbow half, pvc kodo" />
+            </div>
+          </div>
+
+          <div class="pay-actions" style="margin-top:18px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="saveProductBtn">Save product</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generic confirm modal -->
+    <div class="modal-backdrop" id="confirmModal" hidden>
+      <div class="modal small-modal confirm-modal">
+        <div class="modal-head">
+          <h2 id="confirmTitle">Are you sure?</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="confirm-message" id="confirmMessage"></div>
+          <div class="pay-actions" style="margin-top:18px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn danger" id="confirmOkBtn">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart item edit (tap a row in the receipt to change qty or remove) -->
+    <div class="modal-backdrop" id="cartItemModal" hidden>
+      <div class="modal cart-item-modal">
+        <div class="modal-head">
+          <h2 id="cimTitle">Item</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="cim-sub muted" id="cimSub">SKU · price</div>
+
+          <div class="variant-section-label" style="margin-top:16px">Quantity</div>
+          <div class="variant-qty-row">
+            <button class="vq-btn" data-act="dec" aria-label="Decrease">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <input type="number" id="cimQtyInput" class="vq-input" value="1" min="1" inputmode="numeric" />
+            <button class="vq-btn" data-act="inc" aria-label="Increase">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+
+          <div class="cim-line-total">
+            <span>Line total</span>
+            <span id="cimLineTotal">₱0.00</span>
+          </div>
+
+          <div class="pay-actions" style="margin-top:18px">
+            <button class="secondary-btn cim-remove" id="cimDeleteBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
+              <span>Remove</span>
+            </button>
+            <button class="primary-btn" id="cimSaveBtn">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Variant picker (for items with multiple SKUs / sizes / colors) -->
+    <div class="modal-backdrop variant-backdrop" id="variantModal" hidden>
+      <div class="modal variant-modal">
+        <div class="variant-head">
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+          <div class="variant-title">
+            <span id="variantTitle">Item</span>
+            <span class="variant-base-price" id="variantBasePrice"></span>
+          </div>
+          <button class="variant-add-btn" id="variantAddBtn">ADD</button>
+        </div>
+        <div class="variant-body">
+          <div class="variant-section-label">Variant</div>
+          <div class="variant-grid" id="variantGrid"></div>
+
+          <div class="variant-section-label">Quantity</div>
+          <div class="variant-qty-row">
+            <button class="vq-btn" data-act="dec" aria-label="Decrease">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <input type="number" id="variantQtyInput" class="vq-input" value="1" min="1" inputmode="numeric" />
+            <button class="vq-btn" data-act="inc" aria-label="Increase">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+
+          <div class="variant-section-label">Comment</div>
+          <input type="text" id="variantCommentInput" class="vc-input" placeholder="Enter comment" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Folder add/rename -->
+    <div class="modal-backdrop" id="folderModal" hidden>
+      <div class="modal small-modal">
+        <div class="modal-head">
+          <h2 id="folderModalTitle">New Folder</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <label class="pay-label">Folder name</label>
+          <input type="text" id="folderNameInput" class="text-input" placeholder="e.g. Power Tools" />
+          <div class="pay-actions" style="margin-top:16px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="saveFolderBtn">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
