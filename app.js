@@ -11,6 +11,15 @@ const STORAGE_PRODUCTS = 'hwpos.products.v2';
 const STORAGE_GROUPS = 'hwpos.groups.v1';
 const STORAGE_ORDERS = 'hwpos.orders.v1';
 const STORAGE_ORDER_SEQ = 'hwpos.orderSeq.v1';
+const STORAGE_CUSTOMERS = 'hwpos.customers.v1';
+const STORAGE_SETTINGS = 'hwpos.settings.v1';
+const STORAGE_ROLE = 'hwpos.role.v1';
+
+const DEFAULT_SETTINGS = {
+  vatRate: 0.12,           // PH standard VAT, inclusive
+  vatInclusive: true,
+  defaultFulfilment: 'pickup', // 'pickup' | 'delivery'
+};
 const STORE_INFO = {
   name: 'EJ Hardware',
   address: 'Main Store, Laguna',
@@ -43,8 +52,15 @@ const state = {
   variantModal: { groupId: null, selectedId: null, qty: 1, comment: '' },
   cartItemModal: { id: null },
   cart: [],
+  cartDiscount: null,           // {type:'amount'|'percent', value:number}
+  fulfilment: 'pickup',         // 'pickup' | 'delivery'
+  deliveryAddress: '',
   customer: null,
+  customers: [],                // saved customers (separate from seeded credit accounts)
   paymentMethod: 'cash',
+  vatRate: 0.12,
+  role: 'manager',              // 'cashier' | 'manager'
+  settings: { ...DEFAULT_SETTINGS },
   selectedIds: new Set(),
   folderModal: { mode: 'create', editId: null },
   productModal: { mode: 'create', editId: null },
@@ -163,6 +179,34 @@ function nextOrderNumber() {
   seq += 1;
   try { localStorage.setItem(STORAGE_ORDER_SEQ, String(seq)); } catch (_) {}
   return `${STORE_INFO.registerNo}-${String(seq).padStart(3, '0')}`;
+}
+
+// ---------- Settings / customers / role persistence ----------
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(STORAGE_SETTINGS);
+    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch (_) {}
+  return { ...DEFAULT_SETTINGS };
+}
+function saveSettings() {
+  try { localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(state.settings)); } catch (_) {}
+}
+function loadSavedCustomers() {
+  try {
+    const raw = localStorage.getItem(STORAGE_CUSTOMERS);
+    if (raw) return JSON.parse(raw);
+  } catch (_) {}
+  return [];
+}
+function saveSavedCustomers() {
+  try { localStorage.setItem(STORAGE_CUSTOMERS, JSON.stringify(state.customers)); } catch (_) {}
+}
+function loadRole() {
+  try { return localStorage.getItem(STORAGE_ROLE) || 'manager'; } catch (_) { return 'manager'; }
+}
+function saveRole(role) {
+  try { localStorage.setItem(STORAGE_ROLE, role); } catch (_) {}
 }
 
 // ---------- Fuse rebuild ----------
@@ -320,8 +364,64 @@ function renderAllFolderUis() {
   populateFolderSelect();
 }
 
+// ---------- Roles ----------
+const ROLE_ALLOWED = {
+  cashier: new Set(['sell', 'orders', 'checkout']),
+  manager: new Set(['sell', 'orders', 'inventory', 'customers', 'reports', 'checkout']),
+};
+function canAccess(view) {
+  const allowed = ROLE_ALLOWED[state.role] || ROLE_ALLOWED.manager;
+  return allowed.has(view);
+}
+function applyRoleGating() {
+  $$('.side-link').forEach(t => {
+    t.hidden = !canAccess(t.dataset.view);
+  });
+  // Hide the open-back-office link for cashiers (only managers should see it).
+  const bo = document.querySelector('.open-bo-link');
+  if (bo) bo.style.display = state.role === 'manager' ? '' : 'none';
+  // Cashiers cannot change item prices in the catalog — disable inventory action
+  // buttons that show on the Sell view (we don't have any). Pricing edits live
+  // in the Inventory view, which is already hidden from cashiers above.
+  // If a cashier somehow lands on a manager view, kick them back to Sell.
+  if (!canAccess(state.view)) {
+    state.view = 'sell';
+    $$('.side-link').forEach(t => t.classList.toggle('active', t.dataset.view === 'sell'));
+    $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === 'sell'));
+  }
+}
+function renderRoleSwitcher() {
+  const userMeta = document.querySelector('.user-meta');
+  if (!userMeta) return;
+  const sub = userMeta.querySelector('.user-sub');
+  if (!sub) return;
+  // Show the active role inline. Cashier · Main Store / Manager · Main Store.
+  sub.textContent = `${state.role === 'manager' ? 'Manager' : 'Cashier'} · Main Store`;
+  // Mount a tiny "switch role" link beneath the user row if not already there.
+  if (!document.getElementById('roleSwitchBtn')) {
+    const btn = document.createElement('button');
+    btn.id = 'roleSwitchBtn';
+    btn.className = 'text-btn role-switch';
+    btn.textContent = 'Switch role';
+    btn.addEventListener('click', () => {
+      const next = state.role === 'manager' ? 'cashier' : 'manager';
+      state.role = next;
+      saveRole(next);
+      applyRoleGating();
+      renderRoleSwitcher();
+      showToast(`Signed in as ${next === 'manager' ? 'Manager' : 'Cashier'}`);
+    });
+    const userRow = document.querySelector('.user-row');
+    if (userRow && userRow.parentNode) userRow.parentNode.insertBefore(btn, userRow.nextSibling);
+  }
+}
+
 // ---------- View switching ----------
 function switchView(view) {
+  if (!canAccess(view)) {
+    showToast('You do not have permission for that page');
+    return;
+  }
   state.view = view;
   $$('.side-link').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === view));
@@ -338,6 +438,7 @@ function switchView(view) {
   }
   if (view === 'customers') renderCustomers();
   if (view === 'reports') renderReports();
+  if (view === 'checkout') renderCheckout();
 
   // Close any open folder dropdown when leaving the Sell view.
   if (view !== 'sell') {
@@ -676,6 +777,9 @@ function removeFromCart(id) {
 function clearCart() {
   state.cart = [];
   state.customer = null;
+  state.cartDiscount = null;
+  state.fulfilment = (state.settings && state.settings.defaultFulfilment) || 'pickup';
+  state.deliveryAddress = '';
   renderCart();
   updateCustomerButton();
 }
@@ -688,6 +792,11 @@ function openCartItemModal(id) {
   $('#cimTitle').textContent = item.name;
   $('#cimSub').textContent = `${item.sku} · ${peso(item.price)} / ${item.unit}`;
   $('#cimQtyInput').value = item.qty;
+  // Discount: prefill from existing item.discount
+  const disc = item.discount || { type: 'amount', value: 0 };
+  $$('#cartItemModal [data-cim-disc-type]').forEach(b =>
+    b.classList.toggle('active', b.dataset.cimDiscType === (disc.type || 'amount')));
+  $('#cimDiscInput').value = disc.value ? String(disc.value) : '';
   updateCartItemModalLineTotal();
   $('#cartItemModal').hidden = false;
 }
@@ -698,17 +807,28 @@ function changeCartItemModalQty(delta) {
   input.value = q;
   updateCartItemModalLineTotal();
 }
+function getCartItemModalDiscount() {
+  const typeBtn = document.querySelector('#cartItemModal [data-cim-disc-type].active');
+  const type = typeBtn ? typeBtn.dataset.cimDiscType : 'amount';
+  const value = parseFloat($('#cimDiscInput').value) || 0;
+  return value > 0 ? { type, value } : null;
+}
 function updateCartItemModalLineTotal() {
   const item = state.cart.find(i => i.id === state.cartItemModal.id);
   if (!item) return;
   const q = Math.max(1, parseInt($('#cimQtyInput').value, 10) || 1);
-  $('#cimLineTotal').textContent = peso(item.price * q);
+  const gross = item.price * q;
+  const disc = getCartItemModalDiscount();
+  const { net } = applyDiscount(gross, disc);
+  $('#cimLineTotal').textContent = peso(net);
 }
 function saveCartItemEdit() {
   const item = state.cart.find(i => i.id === state.cartItemModal.id);
   if (!item) return;
   const q = Math.max(1, parseInt($('#cimQtyInput').value, 10) || 1);
   item.qty = q;
+  const disc = getCartItemModalDiscount();
+  if (disc) item.discount = disc; else delete item.discount;
   renderCart();
   $('#cartItemModal').hidden = true;
 }
@@ -720,9 +840,121 @@ function removeCartItemFromModal() {
   $('#cartItemModal').hidden = true;
   showToast('Item removed');
 }
+
+// ---------- Cart-level discount modal ----------
+function openCartDiscountModal() {
+  if (state.cart.length === 0) { showToast('Add items first'); return; }
+  const cd = state.cartDiscount || { type: 'amount', value: 0 };
+  $$('#cartDiscountModal [data-cd-type]').forEach(b =>
+    b.classList.toggle('active', b.dataset.cdType === (cd.type || 'amount')));
+  $('#cdInput').value = cd.value ? String(cd.value) : '';
+  $('#cartDiscountModal').hidden = false;
+  setTimeout(() => $('#cdInput').focus(), 50);
+}
+function applyCartDiscount() {
+  const typeBtn = document.querySelector('#cartDiscountModal [data-cd-type].active');
+  const type = typeBtn ? typeBtn.dataset.cdType : 'amount';
+  const value = parseFloat($('#cdInput').value) || 0;
+  state.cartDiscount = value > 0 ? { type, value } : null;
+  renderCart();
+  $('#cartDiscountModal').hidden = true;
+}
+function clearCartDiscount() {
+  state.cartDiscount = null;
+  renderCart();
+  $('#cartDiscountModal').hidden = true;
+  showToast('Discount removed');
+}
+
+// ---------- Fulfilment (Pickup / Delivery) ----------
+function setFulfilment(mode) {
+  if (mode !== 'pickup' && mode !== 'delivery') return;
+  if (mode === 'delivery') {
+    // Need an address. If the current customer has one already, prefill it.
+    const addr = state.deliveryAddress || (state.customer && state.customer.address) || '';
+    $('#deliveryAddrInput').value = addr;
+    $('#deliveryModal').hidden = false;
+    setTimeout(() => $('#deliveryAddrInput').focus(), 50);
+    return;
+  }
+  state.fulfilment = 'pickup';
+  state.deliveryAddress = '';
+  renderCart();
+}
+function saveDeliveryAddress() {
+  const addr = $('#deliveryAddrInput').value.trim();
+  if (!addr) { showToast('Enter a delivery address'); return; }
+  state.fulfilment = 'delivery';
+  state.deliveryAddress = addr;
+  $('#deliveryModal').hidden = true;
+  renderCart();
+  showToast('Delivery address saved');
+}
+
+// ---------- Saved customer modal ----------
+function openCustomerEditModal() {
+  $('#customerEditTitle').textContent = 'New customer';
+  $('#custName').value = '';
+  $('#custPhone').value = '';
+  $('#custAddress').value = '';
+  $('#customerEditModal').hidden = false;
+  setTimeout(() => $('#custName').focus(), 50);
+}
+function saveSavedCustomerFromModal() {
+  const name = $('#custName').value.trim();
+  const phone = $('#custPhone').value.trim();
+  const address = $('#custAddress').value.trim();
+  if (!name) { showToast('Name is required'); $('#custName').focus(); return; }
+  const c = {
+    id: 'cust_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3),
+    name, phone, address,
+    creditLimit: 0,
+    currentBalance: 0,
+  };
+  state.customers.push(c);
+  saveSavedCustomers();
+  $('#customerEditModal').hidden = true;
+  if (state.view === 'customers') renderCustomers();
+  showToast(`Added “${name}”`);
+}
+// Apply a discount {type:'amount'|'percent', value:number} to a gross amount.
+function applyDiscount(gross, disc) {
+  if (!disc || !disc.value) return { net: gross, off: 0 };
+  if (disc.type === 'percent') {
+    const off = Math.min(gross, gross * (Number(disc.value) / 100));
+    return { net: gross - off, off };
+  }
+  const off = Math.min(gross, Number(disc.value) || 0);
+  return { net: gross - off, off };
+}
+
 function cartTotals() {
-  const subtotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
-  return { subtotal, discount: 0, total: subtotal };
+  let lineGross = 0;
+  let lineDiscount = 0;
+  for (const i of state.cart) {
+    const g = i.price * i.qty;
+    const { off } = applyDiscount(g, i.discount);
+    lineGross += g;
+    lineDiscount += off;
+  }
+  const subtotal = lineGross - lineDiscount;
+  const cartDisc = applyDiscount(subtotal, state.cartDiscount);
+  const grandTotal = cartDisc.net;
+  const totalDiscount = lineDiscount + cartDisc.off;
+  // VAT-inclusive (Philippine 12%): the displayed prices already include VAT.
+  const vatRate = (typeof state.vatRate === 'number') ? state.vatRate : 0.12;
+  const vatAmount = vatRate > 0 ? grandTotal * (vatRate / (1 + vatRate)) : 0;
+  const vatableSales = grandTotal - vatAmount;
+  return {
+    subtotal: lineGross,
+    discount: totalDiscount,
+    cartDiscountOff: cartDisc.off,
+    lineDiscountOff: lineDiscount,
+    total: grandTotal,
+    vatRate,
+    vatAmount,
+    vatableSales,
+  };
 }
 
 function renderCart() {
@@ -744,11 +976,26 @@ function renderCart() {
 
   $('#cartCount').textContent = `${state.cart.reduce((s, i) => s + i.qty, 0)} items`;
   $('#subtotal').textContent = peso(t.subtotal);
-  $('#discount').textContent = peso(t.discount);
+  $('#discount').textContent = '-' + peso(t.discount);
+  const discRow = $('#discountRow'); if (discRow) discRow.style.display = t.discount > 0 ? '' : 'none';
+  const vatEl = $('#vatAmount'); if (vatEl) vatEl.textContent = peso(t.vatAmount);
   $('#total').textContent = peso(t.total);
   const pa = $('#payAmount'); if (pa) pa.textContent = peso(t.total);
   $('#payBtn').disabled = state.cart.length === 0;
   const sb = $('#saveBtn'); if (sb) sb.disabled = state.cart.length === 0;
+
+  // Fulfilment pills + discount label
+  $$('.fulfil-pill').forEach(b => b.classList.toggle('active', b.dataset.fulfil === state.fulfilment));
+  const cdLabel = $('#cartDiscountLabel');
+  if (cdLabel) {
+    if (state.cartDiscount && state.cartDiscount.value) {
+      cdLabel.textContent = state.cartDiscount.type === 'percent'
+        ? `${state.cartDiscount.value}% off`
+        : `${peso(state.cartDiscount.value)} off`;
+    } else {
+      cdLabel.textContent = 'Discount';
+    }
+  }
 }
 
 // ---------- Customer ----------
@@ -763,61 +1010,100 @@ function updateCustomerButton() {
     label.textContent = 'Walk-in customer';
   }
 }
+function allCustomerRecords() {
+  // Saved customers first, then seeded credit accounts (de-duped by id).
+  const seen = new Set();
+  const out = [];
+  for (const c of state.customers || []) { if (!seen.has(c.id)) { seen.add(c.id); out.push(c); } }
+  for (const c of (typeof CUSTOMERS !== 'undefined' ? CUSTOMERS : [])) { if (!seen.has(c.id)) { seen.add(c.id); out.push(c); } }
+  return out;
+}
 function renderCustomerPicker() {
   const list = $('#customerList');
-  list.innerHTML = CUSTOMERS.map(c => `
+  const all = allCustomerRecords();
+  list.innerHTML = all.map(c => `
     <button class="customer-row-btn" data-customer-id="${c.id}">
       <div class="cust-avatar">${escapeHtml(c.name.split(' ').map(w => w[0]).slice(0, 2).join(''))}</div>
       <div class="cust-meta">
         <div class="cust-name">${escapeHtml(c.name)}</div>
-        <div class="cust-sub">${escapeHtml(c.phone)} · Limit ${peso(c.creditLimit)}</div>
+        <div class="cust-sub">${escapeHtml(c.phone || '')}${c.address ? ' · ' + escapeHtml(c.address) : ''}</div>
       </div>
-      <div class="cust-balance ${c.currentBalance > 0 ? 'has' : ''}">${peso(c.currentBalance)}</div>
+      <div class="cust-balance ${c.currentBalance > 0 ? 'has' : ''}">${peso(c.currentBalance || 0)}</div>
     </button>
   `).join('');
 }
 function openCustomerModal() { renderCustomerPicker(); $('#customerModal').hidden = false; }
 function selectCustomer(id) {
-  state.customer = id === 'walk-in' ? null : (CUSTOMERS.find(c => c.id === id) || null);
+  if (id === 'walk-in') {
+    state.customer = null;
+  } else {
+    state.customer = allCustomerRecords().find(c => c.id === id) || null;
+    // If the customer has an address and we're set to delivery, prefill.
+    if (state.customer && state.customer.address && state.fulfilment === 'delivery') {
+      state.deliveryAddress = state.customer.address;
+    }
+  }
   updateCustomerButton();
   $('#customerModal').hidden = true;
+  renderCart();
 }
 
-// ---------- Payment ----------
+// ---------- Payment (full-page Checkout view) ----------
 function openPaymentModal() {
   if (state.cart.length === 0) return;
+  state.prevView = state.view;
+  switchView('checkout');
+  renderCheckout();
+  if (state.paymentMethod === 'cash') setTimeout(() => $('#checkoutTender')?.focus(), 60);
+}
+function renderCheckout() {
   const { total } = cartTotals();
-  $('#payTotalValue').textContent = peso(total);
-  $('#payCustomerLine').textContent = state.customer
-    ? `Charge to ${state.customer.name}`
-    : 'Walk-in customer';
-  state.paymentMethod = state.customer ? 'credit' : 'cash';
-  $$('.seg').forEach(s => s.classList.toggle('active', s.dataset.method === state.paymentMethod));
+  $('#checkoutTotal').textContent = peso(total);
+  state.paymentMethod = state.customer ? 'credit' : (state.paymentMethod || 'cash');
+  $$('[data-co-method]').forEach(s => s.classList.toggle('active', s.dataset.method === state.paymentMethod));
+  $$('.seg[data-method]').forEach(s => s.classList.toggle('active', s.dataset.method === state.paymentMethod));
   syncPayFields();
-  $('#tenderInput').value = '';
-  $('#changeValue').textContent = peso(0);
-  $('#paymentModal').hidden = false;
-  if (state.paymentMethod === 'cash') setTimeout(() => $('#tenderInput').focus(), 60);
+  $('#checkoutTender').value = '';
+  $('#checkoutChange').textContent = peso(0);
+  const sub = $('#checkoutSub');
+  if (sub) sub.textContent = state.customer ? `Charge to ${state.customer.name}` : 'Walk-in customer';
+  const fl = $('#checkoutFulfilLine');
+  if (fl) {
+    if (state.fulfilment === 'delivery') {
+      fl.textContent = state.deliveryAddress ? `Delivery · ${state.deliveryAddress}` : 'Delivery';
+    } else {
+      fl.textContent = 'Pickup';
+    }
+  }
 }
 function syncPayFields() {
-  $('#payFields').style.display = state.paymentMethod === 'credit' ? 'none' : '';
+  const cash = $('#checkoutCashFields');
+  if (cash) cash.style.display = state.paymentMethod === 'credit' ? 'none' : '';
+  // Legacy modal fields (kept for back-compat) — hide block if it exists
+  const payFields = $('#payFields');
+  if (payFields) payFields.style.display = state.paymentMethod === 'credit' ? 'none' : '';
 }
 function updateChange() {
   const { total } = cartTotals();
-  const tender = parseFloat($('#tenderInput').value) || 0;
-  $('#changeValue').textContent = peso(Math.max(0, tender - total));
+  const tender = parseFloat($('#checkoutTender')?.value || $('#tenderInput')?.value || 0) || 0;
+  const out = Math.max(0, tender - total);
+  const co = $('#checkoutChange'); if (co) co.textContent = peso(out);
+  const legacy = $('#changeValue'); if (legacy) legacy.textContent = peso(out);
 }
 function completeSale() {
   const totals = cartTotals();
   const total = totals.total;
   let tendered = total, change = 0;
   if (state.paymentMethod === 'cash') {
-    tendered = parseFloat($('#tenderInput').value) || 0;
+    tendered = parseFloat($('#checkoutTender')?.value || $('#tenderInput')?.value || 0) || 0;
     if (tendered < total) { showToast('Insufficient cash tendered'); return; }
     change = tendered - total;
   }
   if (state.paymentMethod === 'credit' && !state.customer) {
     showToast('Select a credit customer first'); return;
+  }
+  if (state.fulfilment === 'delivery' && !state.deliveryAddress) {
+    showToast('Add a delivery address first'); return;
   }
 
   // Build + persist the order record
@@ -828,13 +1114,21 @@ function completeSale() {
     cashier: STORE_INFO.cashier,
     register: STORE_INFO.registerNo,
     items: state.cart.map(i => ({ ...i })),
-    customer: state.customer ? { id: state.customer.id, name: state.customer.name, phone: state.customer.phone } : null,
+    customer: state.customer
+      ? { id: state.customer.id, name: state.customer.name, phone: state.customer.phone, address: state.customer.address || '' }
+      : null,
     paymentMethod: state.paymentMethod,
     subtotal: totals.subtotal,
     discount: totals.discount,
+    cartDiscount: state.cartDiscount ? { ...state.cartDiscount } : null,
     total,
     tendered,
     change,
+    vatRate: totals.vatRate,
+    vatAmount: totals.vatAmount,
+    vatableSales: totals.vatableSales,
+    fulfilment: state.fulfilment || 'pickup',
+    deliveryAddress: state.fulfilment === 'delivery' ? state.deliveryAddress : '',
   };
   state.orders.unshift(order);
   saveOrders();
@@ -851,7 +1145,9 @@ function completeSale() {
     : `Sale complete · ${order.number} · ${peso(total)}`;
   showToast(msg);
   clearCart();
-  $('#paymentModal').hidden = true;
+  const back = $('#paymentModal'); if (back) back.hidden = true;
+  // Return from the checkout view to wherever we came from (default: Sell).
+  switchView(state.prevView && state.prevView !== 'checkout' ? state.prevView : 'sell');
 
   // Refresh the orders list if it's visible
   if (state.view === 'orders') renderOrders();
@@ -1017,12 +1313,18 @@ function renderOrderDetail() {
     <div class="od-meta-row">
       <div><span class="muted">Customer</span><strong>${escapeHtml(cust)}</strong></div>
       <div><span class="muted">Payment</span><strong>${method}</strong></div>
+      <div><span class="muted">Fulfilment</span><strong>${o.fulfilment === 'delivery' ? 'Delivery' : 'Pickup'}</strong></div>
       <div><span class="muted">Register</span><strong>${escapeHtml(o.register || '1')}</strong></div>
     </div>
+    ${o.fulfilment === 'delivery' && o.deliveryAddress ? `
+      <div class="od-deliver"><span class="muted">Delivery to</span> ${escapeHtml(o.deliveryAddress)}</div>` : ''}
     <div class="od-items">${itemsHtml}</div>
     <div class="od-totals">
       <div class="row"><span>Subtotal</span><span>${peso(o.subtotal)}</span></div>
-      <div class="row"><span>Discount</span><span>${peso(o.discount)}</span></div>
+      ${o.discount > 0 ? `<div class="row"><span>Discount</span><span>-${peso(o.discount)}</span></div>` : ''}
+      ${o.vatAmount ? `
+        <div class="row"><span>VATable sales</span><span>${peso(o.vatableSales || (o.total - o.vatAmount))}</span></div>
+        <div class="row"><span>VAT (${Math.round((o.vatRate || 0.12) * 100)}%)</span><span>${peso(o.vatAmount)}</span></div>` : ''}
       <div class="row total"><span>Total</span><span>${peso(o.total)}</span></div>
       ${o.paymentMethod === 'cash' ? `
         <div class="row"><span>Tendered</span><span>${peso(o.tendered)}</span></div>
@@ -1051,6 +1353,16 @@ function buildReceiptHtml(order) {
   const cust = order.customer
     ? `<div class="r-cust">Customer: ${escapeHtml(order.customer.name)}</div>`
     : '';
+  const fulfil = order.fulfilment === 'delivery'
+    ? `
+      <div class="r-cust"><strong>DELIVERY</strong></div>
+      ${order.deliveryAddress ? `<div class="r-cust">${escapeHtml(order.deliveryAddress)}</div>` : ''}`
+    : `<div class="r-cust"><strong>PICKUP</strong></div>`;
+  const discRow = (order.discount && order.discount > 0)
+    ? `<div class="r-row"><span>Discount</span><span>-${peso(order.discount)}</span></div>` : '';
+  const vatRows = (order.vatAmount && order.vatAmount > 0) ? `
+      <div class="r-row"><span>VATable sales</span><span>${peso(order.vatableSales)}</span></div>
+      <div class="r-row"><span>VAT (${Math.round((order.vatRate || 0.12) * 100)}%)</span><span>${peso(order.vatAmount)}</span></div>` : '';
   const payRows = order.paymentMethod === 'cash'
     ? `
       <div class="r-row"><span>CASH</span><span>${peso(order.tendered)}</span></div>
@@ -1115,6 +1427,7 @@ function buildReceiptHtml(order) {
     <div><span>Register</span><span>${escapeHtml(order.register || '1')}</span></div>
   </div>
   ${cust}
+  ${fulfil}
 
   <div class="r-rule"></div>
 
@@ -1123,7 +1436,8 @@ function buildReceiptHtml(order) {
   <div class="r-rule"></div>
 
   <div class="r-row"><span>Subtotal</span><span>${peso(order.subtotal)}</span></div>
-  <div class="r-row"><span>Discount</span><span>${peso(order.discount)}</span></div>
+  ${discRow}
+  ${vatRows}
   <div class="r-double r-row r-total"><span>TOTAL</span><span>${peso(order.total)}</span></div>
   ${payRows}
 
@@ -1416,8 +1730,11 @@ function renderFolderCards() {
 // ---------- Customers / Reports ----------
 function renderCustomers() {
   const grid = $('#customersGrid');
-  grid.innerHTML = CUSTOMERS.map(c => {
-    const cls = c.currentBalance === 0 ? '' : (c.currentBalance >= c.creditLimit ? 'over' : 'has');
+  const all = allCustomerRecords();
+  grid.innerHTML = all.map(c => {
+    const limit = c.creditLimit || 0;
+    const bal = c.currentBalance || 0;
+    const cls = bal === 0 ? '' : (limit > 0 && bal >= limit ? 'over' : 'has');
     const initials = c.name.split(' ').map(w => w[0]).slice(0, 2).join('');
     return `
       <div class="cust-card">
@@ -1425,16 +1742,16 @@ function renderCustomers() {
           <div class="cust-card-avatar">${escapeHtml(initials)}</div>
           <div>
             <div class="cust-card-name">${escapeHtml(c.name)}</div>
-            <div class="cust-card-phone">${escapeHtml(c.phone)}</div>
+            <div class="cust-card-phone">${escapeHtml(c.phone || '')}</div>
           </div>
         </div>
         <div class="cust-card-meta">
-          <div class="row"><span class="label">Address</span><span>${escapeHtml(c.address)}</span></div>
-          <div class="row"><span class="label">Credit limit</span><span>${peso(c.creditLimit)}</span></div>
+          <div class="row"><span class="label">Address</span><span>${escapeHtml(c.address || '—')}</span></div>
+          <div class="row"><span class="label">Credit limit</span><span>${peso(limit)}</span></div>
         </div>
         <div class="cust-card-balance">
           <span class="cust-card-balance-label">Current Utang</span>
-          <span class="cust-card-balance-value ${cls}">${peso(c.currentBalance)}</span>
+          <span class="cust-card-balance-value ${cls}">${peso(bal)}</span>
         </div>
       </div>`;
   }).join('');
@@ -1472,12 +1789,20 @@ function attachEvents() {
   $('#sidebarToggle')?.addEventListener('click', () => {
     $('#app').classList.toggle('sidebar-collapsed');
   });
+  // Per-view hamburger buttons (one in each view's header)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-act="open-sidebar"]');
+    if (!btn) return;
+    e.stopPropagation();
+    $('#app').classList.toggle('sidebar-collapsed');
+  });
   // Tap anywhere outside the sidebar (backdrop or main content) to close it
   document.addEventListener('click', (e) => {
     const app = $('#app');
     if (app.classList.contains('sidebar-collapsed')) return;
     if (e.target.closest('.sidebar')) return;
     if (e.target.closest('#sidebarToggle')) return;
+    if (e.target.closest('[data-act="open-sidebar"]')) return;
     app.classList.add('sidebar-collapsed');
   });
   // Close the sidebar automatically after picking a nav item
@@ -1503,25 +1828,6 @@ function attachEvents() {
       toggleFolderDdMenu(false);
     }
   });
-
-  // ---- Bell (notifications) — surfaces low-stock / out-of-stock alerts ----
-  $('#notifBtn')?.addEventListener('click', () => {
-    const out = state.products.filter(p => p.stock <= 0).length;
-    const low = state.products.filter(p => p.stock > 0 && p.stock <= p.reorderPoint).length;
-    if (out === 0 && low === 0) { showToast('All stock levels healthy'); return; }
-    const parts = [];
-    if (out) parts.push(`${out} out of stock`);
-    if (low) parts.push(`${low} low stock`);
-    showToast(parts.join(' · '));
-  });
-  // Hide/show the red dot based on whether there's actually anything to alert about.
-  function refreshNotifDot() {
-    const dot = $('#notifDot');
-    if (!dot) return;
-    const hasAlert = state.products.some(p => p.stock <= p.reorderPoint);
-    dot.style.display = hasAlert ? '' : 'none';
-  }
-  refreshNotifDot();
 
   // ---- Bottom bar: pagination ----
   $('#bbPrevBtn')?.addEventListener('click', () => changePage(-1));
@@ -1557,12 +1863,29 @@ function attachEvents() {
   });
   search.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
+      const raw = search.value.trim();
+      if (!raw) return;
+      // 1. Exact barcode match (preferred for scanners)
+      const byBarcode = state.products.find(p => p.barcode && String(p.barcode) === raw);
+      // 2. Exact SKU match (case-insensitive)
+      const bySku = !byBarcode && state.products.find(p => p.sku && p.sku.toLowerCase() === raw.toLowerCase());
+      const hit = byBarcode || bySku;
+      if (hit) {
+        addToCart(hit.id);
+        search.value = ''; state.query = '';
+        clear.classList.remove('visible');
+        renderProducts();
+        search.focus();
+        return;
+      }
+      // 3. Fall back to single fuzzy match
       const products = getFilteredSellProducts();
       if (products.length === 1) {
         addToCart(products[0].id);
         search.value = ''; state.query = '';
         clear.classList.remove('visible');
         renderProducts();
+        search.focus();
       }
     }
   });
@@ -1571,7 +1894,29 @@ function attachEvents() {
     clear.classList.remove('visible');
     renderProducts(); search.focus();
   });
-  $('#scanBtn').addEventListener('click', () => showToast('Camera scanner — connect on device'));
+  // Auto-focus search on Sell view so HID barcode scanners "just work"
+  function focusSellSearchIfActive() {
+    if (state.view === 'sell' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+      search?.focus({ preventScroll: true });
+    }
+  }
+  // Global key-route: if user is on Sell view and starts typing while not focused on an input,
+  // capture into the search input — this lets HID barcode scanners hit anywhere on the page.
+  document.addEventListener('keydown', (e) => {
+    if (state.view !== 'sell') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length !== 1 && e.key !== 'Enter') return;
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    // Don't hijack modal context
+    if (document.querySelector('.modal-backdrop:not([hidden])')) return;
+    if (e.key === 'Enter') return;
+    search.focus({ preventScroll: true });
+  });
+  $('#scanBtn').addEventListener('click', () => {
+    search.focus({ preventScroll: true });
+    showToast('Ready to scan — point scanner at barcode');
+  });
 
   // ---- Product grid (Sell) ----
   $('#productGrid').addEventListener('click', (e) => {
@@ -1649,6 +1994,37 @@ function attachEvents() {
   });
   $('#cimSaveBtn')?.addEventListener('click', saveCartItemEdit);
   $('#cimDeleteBtn')?.addEventListener('click', removeCartItemFromModal);
+  // Cart item modal: discount segment + input
+  $$('#cartItemModal [data-cim-disc-type]').forEach(b => {
+    b.addEventListener('click', () => {
+      $$('#cartItemModal [data-cim-disc-type]').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      updateCartItemModalLineTotal();
+    });
+  });
+  $('#cimDiscInput')?.addEventListener('input', updateCartItemModalLineTotal);
+
+  // Cart-level discount: open + apply + remove
+  $('#cartDiscountBtn')?.addEventListener('click', openCartDiscountModal);
+  $$('#cartDiscountModal [data-cd-type]').forEach(b => {
+    b.addEventListener('click', () => {
+      $$('#cartDiscountModal [data-cd-type]').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+    });
+  });
+  $('#cdApplyBtn')?.addEventListener('click', applyCartDiscount);
+  $('#cdRemoveBtn')?.addEventListener('click', clearCartDiscount);
+
+  // Fulfilment pills
+  $$('.fulfil-pill').forEach(b => {
+    b.addEventListener('click', () => setFulfilment(b.dataset.fulfil));
+  });
+  // Delivery modal save
+  $('#deliverySaveBtn')?.addEventListener('click', saveDeliveryAddress);
+
+  // New customer (Customers view) + saved customer save
+  $('#newCustomerBtn')?.addEventListener('click', openCustomerEditModal);
+  $('#custSaveBtn')?.addEventListener('click', saveSavedCustomerFromModal);
   $('#clearCartBtn').addEventListener('click', () => {
     if (state.cart.length === 0) return;
     showConfirm({
@@ -1684,20 +2060,39 @@ function attachEvents() {
 
   // ---- Pay ----
   $('#payBtn').addEventListener('click', openPaymentModal);
-  $$('.seg').forEach(seg => {
-    seg.addEventListener('click', () => {
-      $$('.seg').forEach(s => s.classList.remove('active'));
-      seg.classList.add('active');
-      state.paymentMethod = seg.dataset.method;
-      syncPayFields();
-      if (state.paymentMethod === 'credit' && !state.customer) {
-        $('#paymentModal').hidden = true;
-        openCustomerModal();
-        showToast('Pick a credit customer');
-      }
+
+  // Payment-method segment (both legacy modal segs and new checkout segs)
+  function selectPayMethod(method) {
+    state.paymentMethod = method;
+    $$('.seg[data-method]').forEach(s =>
+      s.classList.toggle('active', s.dataset.method === method));
+    syncPayFields();
+    if (method === 'credit' && !state.customer) {
+      openCustomerModal();
+      showToast('Pick a credit customer');
+    }
+  }
+  $$('.seg[data-method]').forEach(seg => {
+    seg.addEventListener('click', () => selectPayMethod(seg.dataset.method));
+  });
+
+  // Checkout view: back, tender input, quick-cash, complete
+  document.addEventListener('click', (e) => {
+    const back = e.target.closest('[data-act="checkout-back"]');
+    if (back) { switchView(state.prevView && state.prevView !== 'checkout' ? state.prevView : 'sell'); }
+  });
+  $('#checkoutTender')?.addEventListener('input', updateChange);
+  $$('[data-co-cash]').forEach(b => {
+    b.addEventListener('click', () => {
+      const { total } = cartTotals();
+      $('#checkoutTender').value = b.dataset.coCash === 'exact' ? total.toFixed(2) : b.dataset.coCash;
+      updateChange();
     });
   });
-  $('#tenderInput').addEventListener('input', updateChange);
+  $('#checkoutCompleteBtn')?.addEventListener('click', completeSale);
+
+  // Legacy modal (kept for back-compat if anything still triggers it)
+  $('#tenderInput')?.addEventListener('input', updateChange);
   $$('.quick-cash button').forEach(b => {
     b.addEventListener('click', () => {
       const { total } = cartTotals();
@@ -1705,7 +2100,7 @@ function attachEvents() {
       updateChange();
     });
   });
-  $('#completeSaleBtn').addEventListener('click', completeSale);
+  $('#completeSaleBtn')?.addEventListener('click', completeSale);
 
   // ============================================================
   // INVENTORY
@@ -1829,6 +2224,11 @@ function init() {
   state.products = loadProducts();
   state.groups = loadGroups();
   state.orders = loadOrders();
+  state.settings = loadSettings();
+  state.vatRate = state.settings.vatRate ?? 0.12;
+  state.customers = loadSavedCustomers();
+  state.role = loadRole();
+  state.fulfilment = state.settings.defaultFulfilment || 'pickup';
   // Back-fill groupId on products coming from older localStorage that predates groups.
   if (typeof _GROUP_MEMBERSHIP !== 'undefined') {
     let touched = false;
@@ -1848,6 +2248,8 @@ function init() {
   renderCart();
   updateCustomerButton();
   populateFolderSelect();
+  applyRoleGating();
+  renderRoleSwitcher();
   attachEvents();
 
   // Sync persisted UI state on first paint

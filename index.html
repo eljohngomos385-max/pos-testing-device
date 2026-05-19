@@ -63,14 +63,6 @@
       </nav>
 
       <div class="side-footer">
-        <button class="side-foot-row" id="notifBtn" title="Notifications">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16z"/>
-            <path d="M10 21a2 2 0 0 0 4 0"/>
-          </svg>
-          <span>Notifications</span>
-          <span class="side-foot-dot" id="notifDot"></span>
-        </button>
         <div class="sync-pill side-sync" id="syncPill">
           <span class="dot dot-ok"></span>
           <span>Synced</span>
@@ -212,8 +204,23 @@
             <div class="cart-foot">
               <div class="totals">
                 <div class="row"><span>Subtotal</span><span id="subtotal">₱0.00</span></div>
-                <div class="row"><span>Discount</span><span id="discount">₱0.00</span></div>
+                <div class="row" id="discountRow"><span>Discount</span><span id="discount">₱0.00</span></div>
+                <div class="row vat-row"><span>VAT (12% incl.)</span><span id="vatAmount">₱0.00</span></div>
                 <div class="row total"><span>Total</span><span id="total">₱0.00</span></div>
+              </div>
+              <div class="cart-fulfilment-row">
+                <button class="fulfil-pill active" data-fulfil="pickup">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17l-3-2-3 2-3-2-3 2z"/></svg>
+                  <span>Pickup</span>
+                </button>
+                <button class="fulfil-pill" data-fulfil="delivery">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="2"/><path d="M15 9h4l3 4v4h-7"/><circle cx="6" cy="20" r="2"/><circle cx="18" cy="20" r="2"/></svg>
+                  <span>Delivery</span>
+                </button>
+                <button class="cart-discount-btn" id="cartDiscountBtn" title="Add discount">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+                  <span id="cartDiscountLabel">Discount</span>
+                </button>
               </div>
               <div class="cart-actions">
                 <button class="charge-btn" id="payBtn" disabled>Check out</button>
@@ -228,6 +235,13 @@
            ============================================ -->
       <section class="view view-orders" data-view="orders">
         <header class="view-head">
+          <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <line x1="4" y1="7" x2="20" y2="7"/>
+              <line x1="4" y1="12" x2="20" y2="12"/>
+              <line x1="4" y1="17" x2="20" y2="17"/>
+            </svg>
+          </button>
           <div class="view-title-wrap">
             <h1>Orders</h1>
             <span class="muted" id="ordersCount">No orders yet</span>
@@ -258,6 +272,13 @@
            ============================================ -->
       <section class="view view-inventory" data-view="inventory">
         <header class="view-head">
+          <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <line x1="4" y1="7" x2="20" y2="7"/>
+              <line x1="4" y1="12" x2="20" y2="12"/>
+              <line x1="4" y1="17" x2="20" y2="17"/>
+            </svg>
+          </button>
           <div class="view-title-wrap">
             <h1>Inventory</h1>
             <span class="muted">Manage products and folders</span>
@@ -357,9 +378,25 @@
            ============================================ -->
       <section class="view view-customers" data-view="customers">
         <header class="view-head">
+          <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <line x1="4" y1="7" x2="20" y2="7"/>
+              <line x1="4" y1="12" x2="20" y2="12"/>
+              <line x1="4" y1="17" x2="20" y2="17"/>
+            </svg>
+          </button>
           <div class="view-title-wrap">
             <h1>Customers</h1>
             <span class="muted">Credit accounts and balances</span>
+          </div>
+          <div class="view-actions">
+            <button class="primary-btn small" id="newCustomerBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              <span>Add customer</span>
+            </button>
           </div>
         </header>
         <div class="page-pad">
@@ -368,10 +405,73 @@
       </section>
 
       <!-- ============================================
+           CHECKOUT VIEW — full-page payment
+           ============================================ -->
+      <section class="view view-checkout" data-view="checkout">
+        <header class="view-head checkout-head">
+          <button class="view-hamburger" data-act="checkout-back" aria-label="Back" title="Back">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 6 9 12 15 18"/>
+            </svg>
+          </button>
+          <div class="view-title-wrap">
+            <h1>Checkout</h1>
+            <span class="muted" id="checkoutSub">Walk-in customer</span>
+          </div>
+        </header>
+        <div class="checkout-page">
+          <div class="checkout-inner">
+            <div class="checkout-total">
+              <div class="checkout-total-label">Total due</div>
+              <div class="checkout-total-value" id="checkoutTotal">₱0.00</div>
+              <div class="checkout-total-sub" id="checkoutFulfilLine">Pickup</div>
+            </div>
+
+            <div class="checkout-section">
+              <div class="checkout-section-label">Payment method</div>
+              <div class="seg-control checkout-seg">
+                <button class="seg active" data-method="cash" data-co-method>Cash</button>
+                <button class="seg" data-method="credit" data-co-method>Charge to account</button>
+                <button class="seg" data-method="split" data-co-method>Split</button>
+              </div>
+            </div>
+
+            <div class="checkout-section" id="checkoutCashFields">
+              <div class="checkout-section-label">Amount tendered</div>
+              <input type="text" inputmode="decimal" id="checkoutTender" class="text-input checkout-input" placeholder="0.00" />
+              <div class="quick-cash checkout-quick">
+                <button data-co-cash="exact">Exact</button>
+                <button data-co-cash="100">₱100</button>
+                <button data-co-cash="200">₱200</button>
+                <button data-co-cash="500">₱500</button>
+                <button data-co-cash="1000">₱1000</button>
+              </div>
+              <div class="change-row checkout-change-row">
+                <span>Change</span>
+                <span id="checkoutChange">₱0.00</span>
+              </div>
+            </div>
+
+            <div class="checkout-actions">
+              <button class="secondary-btn" data-act="checkout-back">Cancel</button>
+              <button class="primary-btn" id="checkoutCompleteBtn">Complete &amp; Print</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================
            REPORTS VIEW
            ============================================ -->
       <section class="view view-reports" data-view="reports">
         <header class="view-head">
+          <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <line x1="4" y1="7" x2="20" y2="7"/>
+              <line x1="4" y1="12" x2="20" y2="12"/>
+              <line x1="4" y1="17" x2="20" y2="17"/>
+            </svg>
+          </button>
           <div class="view-title-wrap">
             <h1>Reports</h1>
             <span class="muted">Today at a glance</span>
@@ -573,6 +673,84 @@
       </div>
     </div>
 
+    <!-- Cart-level discount picker -->
+    <div class="modal-backdrop" id="cartDiscountModal" hidden>
+      <div class="modal small-modal confirm-modal">
+        <div class="modal-head">
+          <h2>Receipt discount</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="discount-row">
+            <div class="seg-control small">
+              <button class="seg active" data-cd-type="amount">₱ Amount</button>
+              <button class="seg" data-cd-type="percent">% Percent</button>
+            </div>
+            <input type="number" id="cdInput" class="text-input" placeholder="0" min="0" step="0.01" inputmode="decimal" />
+          </div>
+          <div class="pay-actions" style="margin-top:18px">
+            <button class="secondary-btn" id="cdRemoveBtn">Remove</button>
+            <button class="primary-btn" id="cdApplyBtn">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delivery address capture -->
+    <div class="modal-backdrop" id="deliveryModal" hidden>
+      <div class="modal small-modal confirm-modal">
+        <div class="modal-head">
+          <h2>Delivery address</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <label class="pay-label">Where should this go?</label>
+          <textarea id="deliveryAddrInput" class="text-input" rows="3" placeholder="House #, Street, Barangay, City"></textarea>
+          <div class="pay-actions" style="margin-top:14px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="deliverySaveBtn">Save address</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New customer modal (save name + address) -->
+    <div class="modal-backdrop" id="customerEditModal" hidden>
+      <div class="modal small-modal">
+        <div class="modal-head">
+          <h2 id="customerEditTitle">New customer</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <label class="pay-label">Name</label>
+          <input type="text" id="custName" class="text-input" placeholder="Juan dela Cruz" />
+          <label class="pay-label" style="margin-top:10px">Phone</label>
+          <input type="tel" id="custPhone" class="text-input" placeholder="0917-xxx-xxxx" />
+          <label class="pay-label" style="margin-top:10px">Address</label>
+          <textarea id="custAddress" class="text-input" rows="2" placeholder="House #, Street, Barangay, City"></textarea>
+          <div class="pay-actions" style="margin-top:14px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="custSaveBtn">Save customer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Cart item edit (tap a row in the receipt to change qty or remove) -->
     <div class="modal-backdrop" id="cartItemModal" hidden>
       <div class="modal cart-item-modal">
@@ -597,6 +775,15 @@
             <button class="vq-btn" data-act="inc" aria-label="Increase">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
+          </div>
+
+          <div class="variant-section-label" style="margin-top:16px">Discount</div>
+          <div class="discount-row">
+            <div class="seg-control small">
+              <button class="seg active" data-cim-disc-type="amount">₱ Amount</button>
+              <button class="seg" data-cim-disc-type="percent">% Percent</button>
+            </div>
+            <input type="number" id="cimDiscInput" class="text-input" placeholder="0" min="0" step="0.01" inputmode="decimal" />
           </div>
 
           <div class="cim-line-total">
@@ -678,6 +865,7 @@
     <div class="toast" id="toast" hidden></div>
   </div>
 
+  <script src="data-store.js"></script>
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
