@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#F7F6F3" />
   <title>EJ Hardware — Back Office</title>
+  <link rel="icon" href="data:," />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="bo-body bo-light">
@@ -211,7 +212,7 @@
               <button class="seg-btn" data-range="7d">7 days</button>
               <button class="seg-btn" data-range="30d">30 days</button>
             </div>
-            <button class="secondary-btn small">Export CSV</button>
+            <button class="secondary-btn small" id="salesExportBtn">Export CSV</button>
           </div>
         </header>
 
@@ -248,9 +249,10 @@
             <span class="muted" id="invSummary"></span>
           </div>
           <div class="view-actions">
-            <button class="secondary-btn small">Import CSV</button>
-            <button class="secondary-btn small">Export CSV</button>
+            <button class="secondary-btn small" id="invImportBtn">Import CSV</button>
+            <button class="secondary-btn small" id="invExportBtn">Export CSV</button>
             <a class="primary-btn small" href="index.html#inventory">Open in POS →</a>
+            <input type="file" id="invImportFile" accept=".csv,text/csv" hidden>
           </div>
         </header>
 
@@ -292,7 +294,7 @@
             <span class="muted" id="custSummary"></span>
           </div>
           <div class="view-actions">
-            <button class="primary-btn small">+ New customer</button>
+            <a class="primary-btn small" href="index.html#customers">Open customer tools →</a>
           </div>
         </header>
 
@@ -331,9 +333,7 @@
             <h1>Suppliers</h1>
             <span class="muted">Per-item ranked costs</span>
           </div>
-          <div class="view-actions">
-            <button class="primary-btn small">+ New supplier</button>
-          </div>
+          <div class="view-actions"></div>
         </header>
 
         <div class="panel">
@@ -364,9 +364,7 @@
             <h1>Staff</h1>
             <span class="muted">PIN login on tablets · Email on back office</span>
           </div>
-          <div class="view-actions">
-            <button class="primary-btn small">+ New user</button>
-          </div>
+          <div class="view-actions"></div>
         </header>
 
         <div class="panel">
@@ -402,35 +400,38 @@
         <div class="settings-grid">
           <div class="panel">
             <div class="panel-head"><div class="panel-title">Store</div></div>
-            <div class="setting-row"><label>Store name</label><input class="text-input" value="EJ Hardware"></div>
-            <div class="setting-row"><label>Address</label><input class="text-input" value="Main Store, Laguna"></div>
-            <div class="setting-row"><label>Phone</label><input class="text-input" value="0917-000-0000"></div>
-            <div class="setting-row"><label>Currency</label><input class="text-input" value="PHP (₱)"></div>
+            <div class="setting-row"><label>Store name</label><input class="text-input" id="setStoreName"></div>
+            <div class="setting-row"><label>Address</label><input class="text-input" id="setStoreAddress"></div>
+            <div class="setting-row"><label>Phone</label><input class="text-input" id="setStorePhone"></div>
+            <div class="setting-row"><label>Currency</label><input class="text-input" id="setCurrency"></div>
           </div>
 
           <div class="panel">
             <div class="panel-head"><div class="panel-title">Tax</div></div>
-            <div class="setting-row"><label>VAT registered</label><input type="checkbox" checked></div>
-            <div class="setting-row"><label>VAT rate</label><input class="text-input" value="12%"></div>
-            <div class="setting-row"><label>TIN</label><input class="text-input" value="000-000-000-000"></div>
+            <div class="setting-row"><label>VAT registered</label><input type="checkbox" id="setVatRegistered"></div>
+            <div class="setting-row"><label>VAT rate</label><input class="text-input" id="setVatRate"></div>
+            <div class="setting-row"><label>TIN</label><input class="text-input" id="setTin"></div>
           </div>
 
           <div class="panel">
             <div class="panel-head"><div class="panel-title">Sync</div></div>
-            <div class="setting-row"><label>Backend URL</label><input class="text-input" value="https://api.ejhardware.ph"></div>
-            <div class="setting-row"><label>Sync interval</label><input class="text-input" value="Every 30 seconds"></div>
-            <div class="setting-row"><label>Allow offline sales</label><input type="checkbox" checked></div>
+            <div class="setting-row"><label>Backend URL</label><input class="text-input" id="setBackendUrl" placeholder="Set when backend is ready"></div>
+            <div class="setting-row"><label>Sync interval</label><input class="text-input" id="setSyncInterval"></div>
+            <div class="setting-row"><label>Allow offline sales</label><input type="checkbox" id="setAllowOffline"></div>
           </div>
 
           <div class="panel">
             <div class="panel-head"><div class="panel-title">Printing</div></div>
-            <div class="setting-row"><label>Printer width</label><input class="text-input" value="58mm"></div>
-            <div class="setting-row"><label>Print on sale</label><input type="checkbox" checked></div>
-            <div class="setting-row"><label>Logo on receipt</label><input type="checkbox"></div>
+            <div class="setting-row"><label>Printer width</label><input class="text-input" id="setPrinterWidth"></div>
+            <div class="setting-row"><label>Print on sale</label><input type="checkbox" id="setPrintOnSale"></div>
+            <div class="setting-row"><label>Logo on receipt</label><input type="checkbox" id="setLogoOnReceipt"></div>
           </div>
 
           <div class="panel">
-            <div class="panel-head"><div class="panel-title">Appearance</div></div>
+            <div class="panel-head">
+              <div class="panel-title">Appearance</div>
+              <span class="muted" style="font-size:11px">Managed in POS app</span>
+            </div>
             <div class="setting-row">
               <label>Sell-screen tile size
                 <div class="muted" style="font-size:11px;margin-top:2px">Affects the POS Sell grid (S = 30/page, M = 20/page, L = 12/page)</div>
@@ -444,6 +445,23 @@
             <div class="setting-row">
               <label>Show price on tiles</label>
               <input type="checkbox" id="settingsShowPrice">
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">Backup</div></div>
+            <div class="setting-row">
+              <label>Full local backup
+                <div class="muted" style="font-size:11px;margin-top:2px">Exports products, orders, customers, settings, folders, groups, and POS display preferences.</div>
+              </label>
+              <button class="primary-btn" id="backupExportBtn">Export backup</button>
+            </div>
+            <div class="setting-row">
+              <label>Restore backup
+                <div class="muted" style="font-size:11px;margin-top:2px">Replaces this browser/device data with a Hardware POS backup file.</div>
+              </label>
+              <button class="secondary-btn" id="backupImportBtn">Restore backup</button>
+              <input type="file" id="backupImportFile" accept="application/json,.json" hidden>
             </div>
           </div>
         </div>

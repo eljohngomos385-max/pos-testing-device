@@ -12,6 +12,8 @@ const STORAGE_GROUPS = 'hwpos.groups.v1';
 const STORAGE_ORDERS = 'hwpos.orders.v1';
 const STORAGE_ORDER_SEQ = 'hwpos.orderSeq.v1';
 const STORAGE_CUSTOMERS = 'hwpos.customers.v1';
+const STORAGE_CUSTOMER_LEDGER = 'hwpos.customerLedger.v1';
+const STORAGE_DRAWER_CLOSEOUTS = 'hwpos.drawerCloseouts.v1';
 const STORAGE_SETTINGS = 'hwpos.settings.v1';
 const STORAGE_ROLE = 'hwpos.role.v1';
 
@@ -19,6 +21,25 @@ const DEFAULT_SETTINGS = {
   vatRate: 0.12,           // PH standard VAT, inclusive
   vatInclusive: true,
   defaultFulfilment: 'pickup', // 'pickup' | 'delivery'
+  store: {
+    name: 'EJ Hardware',
+    address: 'Main Store, Laguna',
+    phone: '0917-000-0000',
+    tin: '000-000-000-000',
+    registerNo: '1',
+    cashier: 'El John',
+    currency: 'PHP (₱)',
+  },
+  sync: {
+    backendUrl: '',
+    interval: 'Every 30 seconds',
+    allowOfflineSales: true,
+  },
+  printing: {
+    width: '58mm',
+    printOnSale: true,
+    logoOnReceipt: false,
+  },
 };
 const STORE_INFO = {
   name: 'EJ Hardware',
@@ -29,19 +50,66 @@ const STORE_INFO = {
   cashier: 'El John',
 };
 
-// ---------- State ----------
 const STORAGE_TILE_SIZE = 'hwpos.tileSize';
 const STORAGE_SHOW_PRICE = 'hwpos.showPrice';
+const STORAGE_THEME = 'hwpos.theme';
 
 const ITEMS_PER_PAGE = { sm: 30, md: 20, lg: 12 };
+const ORDER_SCHEMA_VERSION = 1;
+const ORDER_FORMAT_KEY = 'hwpos.order.v1';
+
+function storageGet(key, fallback = null) {
+  try {
+    const value = localStorage.getItem(key);
+    return value == null ? fallback : value;
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function storageSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (err) {
+    console.warn(`Unable to save ${key}`, err);
+    return false;
+  }
+}
+
+function readJsonStorage(key, fallback) {
+  const raw = storageGet(key, null);
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function writeJsonStorage(key, value) {
+  return storageSet(key, JSON.stringify(value));
+}
+
+function toNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function moneyValue(value) {
+  return Math.round(toNumber(value, 0) * 100) / 100;
+}
+
+function orderUid() {
+  return 'ord_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
+}
+
+// ---------- State ----------
 
 const state = {
   view: 'sell',
-  invTab: 'products',
   folderId: 'all',          // active folder on Sell
-  invFolderId: 'all',       // active folder on Inventory
   query: '',
-  invQuery: '',
   folders: [],
   products: [],
   groups: [],
@@ -49,25 +117,50 @@ const state = {
   orders: [],
   selectedOrderId: null,
   ordersQuery: '',
+  customerLedger: [],
+  drawerCloseouts: [],
   variantModal: { groupId: null, selectedId: null, qty: 1, comment: '' },
   cartItemModal: { id: null },
   cart: [],
   cartDiscount: null,           // {type:'amount'|'percent', value:number}
   fulfilment: 'pickup',         // 'pickup' | 'delivery'
   deliveryAddress: '',
+  deliveryLocation: null,
+  deliveryMap: {
+    centerLat: 14.2691,
+    centerLng: 121.4113,
+    zoom: 17,
+    pinLat: null,
+    pinLng: null,
+    drag: null,
+    pinch: null,
+  },
   customer: null,
   customers: [],                // saved customers (separate from seeded credit accounts)
   paymentMethod: 'cash',
   vatRate: 0.12,
   role: 'manager',              // 'cashier' | 'manager'
   settings: { ...DEFAULT_SETTINGS },
-  selectedIds: new Set(),
   folderModal: { mode: 'create', editId: null },
   productModal: { mode: 'create', editId: null },
   fuse: null,
   page: 1,
-  tileSize: (localStorage.getItem(STORAGE_TILE_SIZE) || 'md'),
-  showPrice: localStorage.getItem(STORAGE_SHOW_PRICE) === '1',
+  tileSize: (storageGet(STORAGE_TILE_SIZE, 'md') || 'md'),
+  showPrice: storageGet(STORAGE_SHOW_PRICE, '0') === '1',
+  theme: (storageGet(STORAGE_THEME, 'dark') || 'dark'),
+};
+
+const barcodeScanner = {
+  stream: null,
+  detector: null,
+  zxingReader: null,
+  zxingControls: null,
+  timer: 0,
+  active: false,
+  lastValue: '',
+  lastSeenAt: 0,
+  recent: new Map(),
+  cooldownMs: 1400,
 };
 
 // ---------- Helpers ----------
@@ -76,6 +169,9 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const slug = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const uid = () => 'p_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
+const DELIVERY_MAP_DEFAULT = { lat: 14.2691, lng: 121.4113, zoom: 17 };
+const DELIVERY_MAP_MIN_ZOOM = 12;
+const DELIVERY_MAP_MAX_ZOOM = 20;
 
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
@@ -93,6 +189,91 @@ function showToast(msg) {
     el.classList.remove('show');
     setTimeout(() => { el.hidden = true; }, 220);
   }, 2000);
+}
+
+function flashControl(el) {
+  if (!el) return;
+  el.classList.remove('control-flash');
+  // Force reflow so repeated clicks replay the flash.
+  void el.offsetWidth;
+  el.classList.add('control-flash');
+  clearTimeout(el._flashTimer);
+  el._flashTimer = setTimeout(() => el.classList.remove('control-flash'), 520);
+}
+
+function clamp(n, min, max) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function wrapTileX(x, zoom) {
+  const size = 2 ** zoom;
+  return ((x % size) + size) % size;
+}
+
+function lonToWorldX(lng, zoom) {
+  return ((lng + 180) / 360) * 256 * (2 ** zoom);
+}
+
+function latToWorldY(lat, zoom) {
+  const safeLat = clamp(lat, -85.05112878, 85.05112878);
+  const rad = safeLat * Math.PI / 180;
+  return (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * 256 * (2 ** zoom);
+}
+
+function worldXToLng(x, zoom) {
+  return x / (256 * (2 ** zoom)) * 360 - 180;
+}
+
+function worldYToLat(y, zoom) {
+  const n = Math.PI - 2 * Math.PI * y / (256 * (2 ** zoom));
+  return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+}
+
+function osmTileUrl(x, y, zoom) {
+  return `https://tile.openstreetmap.org/${zoom}/${wrapTileX(x, zoom)}/${y}.png`;
+}
+
+function setAppViewportHeight() {
+  const measuredHeight = Math.floor(
+    window.visualViewport?.height ||
+    window.innerHeight ||
+    document.documentElement.clientHeight ||
+    0
+  );
+  const measuredWidth = Math.floor(
+    window.visualViewport?.width ||
+    window.innerWidth ||
+    document.documentElement.clientWidth ||
+    0
+  );
+  if (measuredHeight <= 0) return;
+
+  const activeTag = document.activeElement?.tagName;
+  const editingText = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
+  const previousWidth = setAppViewportHeight._width || measuredWidth;
+  if (Math.abs(measuredWidth - previousWidth) > 80) {
+    setAppViewportHeight._height = 0;
+  }
+  const stableHeight = setAppViewportHeight._height || measuredHeight;
+  const keyboardShrink = editingText && measuredHeight < stableHeight - 80;
+  const nextHeight = keyboardShrink ? stableHeight : Math.max(stableHeight, measuredHeight);
+
+  setAppViewportHeight._height = nextHeight;
+  setAppViewportHeight._width = measuredWidth;
+  document.documentElement.style.setProperty('--app-height', `${nextHeight}px`);
+}
+
+function setCheckoutError(message = '') {
+  const el = $('#checkoutError');
+  if (!el) return;
+  if (!message) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+  el.textContent = message;
+  el.hidden = false;
+  flashControl(el);
 }
 
 function showConfirm({ title = 'Are you sure?', message = '', okText = 'Confirm', cancelText = 'Cancel', danger = true, onConfirm } = {}) {
@@ -127,34 +308,23 @@ const ALL_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 
 // ---------- Persistence ----------
 function loadFolders() {
-  try {
-    const raw = localStorage.getItem(STORAGE_FOLDERS);
-    if (raw) return JSON.parse(raw);
-  } catch (_) {}
-  return SEED_FOLDERS.map(f => ({ ...f }));
+  return readJsonStorage(STORAGE_FOLDERS, null) || SEED_FOLDERS.map(f => ({ ...f }));
 }
 function loadProducts() {
-  try {
-    const raw = localStorage.getItem(STORAGE_PRODUCTS);
-    if (raw) return JSON.parse(raw);
-  } catch (_) {}
-  return PRODUCTS.map(p => ({ ...p }));
+  return readJsonStorage(STORAGE_PRODUCTS, null) || PRODUCTS.map(p => ({ ...p }));
 }
 function saveFolders() {
-  try { localStorage.setItem(STORAGE_FOLDERS, JSON.stringify(state.folders)); } catch (_) {}
+  return writeJsonStorage(STORAGE_FOLDERS, state.folders);
 }
 function saveProducts() {
-  try { localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(state.products)); } catch (_) {}
+  return writeJsonStorage(STORAGE_PRODUCTS, state.products);
 }
 function loadGroups() {
-  try {
-    const raw = localStorage.getItem(STORAGE_GROUPS);
-    if (raw) return JSON.parse(raw);
-  } catch (_) {}
-  return (typeof SEED_GROUPS !== 'undefined') ? SEED_GROUPS.map(g => ({ ...g })) : [];
+  return readJsonStorage(STORAGE_GROUPS, null)
+    || ((typeof SEED_GROUPS !== 'undefined') ? SEED_GROUPS.map(g => ({ ...g })) : []);
 }
 function saveGroups() {
-  try { localStorage.setItem(STORAGE_GROUPS, JSON.stringify(state.groups)); } catch (_) {}
+  return writeJsonStorage(STORAGE_GROUPS, state.groups);
 }
 function groupById(id) { return state.groups.find(g => g.id === id) || null; }
 function groupMembers(groupId) {
@@ -163,51 +333,261 @@ function groupMembers(groupId) {
 
 // ---------- Orders persistence ----------
 function loadOrders() {
-  try {
-    const raw = localStorage.getItem(STORAGE_ORDERS);
-    if (raw) return JSON.parse(raw);
-  } catch (_) {}
-  return [];
+  const raw = readJsonStorage(STORAGE_ORDERS, []);
+  return Array.isArray(raw) ? raw.map(normalizeOrderRecord).filter(Boolean) : [];
+}
+function saveOrdersList(orders) {
+  return writeJsonStorage(STORAGE_ORDERS, (orders || []).map(normalizeOrderRecord).filter(Boolean));
 }
 function saveOrders() {
-  try { localStorage.setItem(STORAGE_ORDERS, JSON.stringify(state.orders)); } catch (_) {}
+  return saveOrdersList(state.orders);
 }
 function nextOrderNumber() {
   // Format: <register>-<seq3>, e.g. "1-001". Sequence persists across sessions.
-  let seq = 0;
-  try { seq = parseInt(localStorage.getItem(STORAGE_ORDER_SEQ) || '0', 10) || 0; } catch (_) {}
+  const registerNo = currentStoreInfo().registerNo || STORE_INFO.registerNo;
+  const orders = readJsonStorage(STORAGE_ORDERS, []);
+  const orderSeq = Array.isArray(orders)
+    ? orders.reduce((max, o) => {
+        const number = String(o?.number || '');
+        const parts = number.split('-');
+        const reg = parts[0];
+        const seq = parseInt(parts[1] || '', 10);
+        return reg === registerNo && Number.isFinite(seq) ? Math.max(max, seq) : max;
+      }, 0)
+    : 0;
+  let seq = parseInt(storageGet(STORAGE_ORDER_SEQ, '0') || '0', 10) || 0;
+  seq = Math.max(seq, orderSeq);
   seq += 1;
-  try { localStorage.setItem(STORAGE_ORDER_SEQ, String(seq)); } catch (_) {}
-  return `${STORE_INFO.registerNo}-${String(seq).padStart(3, '0')}`;
+  storageSet(STORAGE_ORDER_SEQ, String(seq));
+  return `${registerNo}-${String(seq).padStart(3, '0')}`;
 }
 
 // ---------- Settings / customers / role persistence ----------
 function loadSettings() {
-  try {
-    const raw = localStorage.getItem(STORAGE_SETTINGS);
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-  } catch (_) {}
-  return { ...DEFAULT_SETTINGS };
+  const saved = readJsonStorage(STORAGE_SETTINGS, {}) || {};
+  return {
+    ...DEFAULT_SETTINGS,
+    ...saved,
+    store: { ...DEFAULT_SETTINGS.store, ...(saved.store || {}) },
+    sync: { ...DEFAULT_SETTINGS.sync, ...(saved.sync || {}) },
+    printing: { ...DEFAULT_SETTINGS.printing, ...(saved.printing || {}) },
+  };
 }
 function saveSettings() {
-  try { localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(state.settings)); } catch (_) {}
+  return writeJsonStorage(STORAGE_SETTINGS, state.settings);
 }
 function loadSavedCustomers() {
-  try {
-    const raw = localStorage.getItem(STORAGE_CUSTOMERS);
-    if (raw) return JSON.parse(raw);
-  } catch (_) {}
-  return [];
+  return readJsonStorage(STORAGE_CUSTOMERS, []) || [];
 }
 function saveSavedCustomers() {
-  try { localStorage.setItem(STORAGE_CUSTOMERS, JSON.stringify(state.customers)); } catch (_) {}
+  return writeJsonStorage(STORAGE_CUSTOMERS, state.customers);
+}
+function loadCustomerLedger() {
+  const raw = readJsonStorage(STORAGE_CUSTOMER_LEDGER, []);
+  return Array.isArray(raw) ? raw : [];
+}
+function saveCustomerLedger() {
+  return writeJsonStorage(STORAGE_CUSTOMER_LEDGER, state.customerLedger);
+}
+function loadDrawerCloseouts() {
+  const raw = readJsonStorage(STORAGE_DRAWER_CLOSEOUTS, []);
+  return Array.isArray(raw) ? raw : [];
+}
+function saveDrawerCloseouts() {
+  return writeJsonStorage(STORAGE_DRAWER_CLOSEOUTS, state.drawerCloseouts);
 }
 function loadRole() {
-  try { return localStorage.getItem(STORAGE_ROLE) || 'manager'; } catch (_) { return 'manager'; }
+  return storageGet(STORAGE_ROLE, 'manager') || 'manager';
 }
 function saveRole(role) {
-  try { localStorage.setItem(STORAGE_ROLE, role); } catch (_) {}
+  return storageSet(STORAGE_ROLE, role);
 }
+
+function currentStoreInfo() {
+  return { ...STORE_INFO, ...(state.settings?.store || {}) };
+}
+
+// ---------- Order format layer ----------
+function normalizeOrderItem(item = {}) {
+  const qty = Math.max(1, toNumber(item.qty, 1));
+  const price = moneyValue(item.price);
+  const gross = moneyValue(price * qty);
+  const disc = item.discount && item.discount.value
+    ? { type: item.discount.type === 'percent' ? 'percent' : 'amount', value: toNumber(item.discount.value, 0) }
+    : null;
+  const discounted = applyDiscount(gross, disc);
+  return {
+    id: String(item.id || item.productId || ''),
+    productId: String(item.productId || item.id || ''),
+    sku: String(item.sku || ''),
+    name: String(item.name || 'Item'),
+    unit: String(item.unit || 'pc'),
+    qty,
+    price,
+    discount: disc,
+    lineGross: gross,
+    lineDiscount: moneyValue(discounted.off),
+    lineTotal: moneyValue(discounted.net),
+  };
+}
+
+function normalizePayment(payment = {}) {
+  const method = ['cash', 'credit', 'split', 'other', 'unpaid'].includes(payment.method)
+    ? payment.method
+    : 'other';
+  return {
+    method,
+    label: String(payment.label || method),
+    amount: moneyValue(payment.amount),
+    tendered: moneyValue(payment.tendered ?? payment.amount),
+    change: moneyValue(payment.change),
+    ref: payment.ref ? String(payment.ref) : '',
+  };
+}
+
+function buildOrderPayments({ status, paymentMethod, total, tendered = 0, change = 0 }) {
+  if (status === 'saved' || paymentMethod === 'unpaid') {
+    return [{ method: 'unpaid', label: 'Not completed', amount: 0, tendered: 0, change: 0, ref: '' }];
+  }
+  if (paymentMethod === 'credit') {
+    return [{ method: 'credit', label: 'Charge to account', amount: moneyValue(total), tendered: 0, change: 0, ref: '' }];
+  }
+  if (paymentMethod === 'split') {
+    const cashApplied = Math.min(moneyValue(tendered), moneyValue(total));
+    const balance = moneyValue(total - cashApplied);
+    return [
+      { method: 'cash', label: 'Cash', amount: cashApplied, tendered: moneyValue(tendered), change: moneyValue(change), ref: '' },
+      ...(balance > 0 ? [{ method: 'credit', label: 'Charge balance', amount: balance, tendered: 0, change: 0, ref: '' }] : []),
+    ];
+  }
+  return [{ method: 'cash', label: 'Cash', amount: moneyValue(total), tendered: moneyValue(tendered), change: moneyValue(change), ref: '' }];
+}
+
+function normalizeDeliveryLocation(raw = null) {
+  if (!raw || typeof raw !== 'object') return null;
+  const lat = Number(raw.lat);
+  const lng = Number(raw.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return {
+    lat: clamp(lat, -85.05112878, 85.05112878),
+    lng: clamp(lng, -180, 180),
+    zoom: clamp(Math.round(Number(raw.zoom) || DELIVERY_MAP_DEFAULT.zoom), DELIVERY_MAP_MIN_ZOOM, DELIVERY_MAP_MAX_ZOOM),
+    provider: String(raw.provider || 'openstreetmap'),
+    attribution: String(raw.attribution || '© OpenStreetMap contributors'),
+  };
+}
+
+function normalizeOrderRecord(raw = {}) {
+  if (!raw || typeof raw !== 'object') return null;
+  const items = Array.isArray(raw.items) ? raw.items.map(normalizeOrderItem) : [];
+  const itemGross = moneyValue(items.reduce((sum, item) => sum + item.lineGross, 0));
+  const itemDiscount = moneyValue(items.reduce((sum, item) => sum + item.lineDiscount, 0));
+  const status = ['saved', 'completed', 'voided', 'refunded', 'return'].includes(raw.status) ? raw.status : 'completed';
+  const paymentMethod = ['cash', 'credit', 'split', 'unpaid'].includes(raw.paymentMethod)
+    ? raw.paymentMethod
+    : (status === 'saved' ? 'unpaid' : 'cash');
+  const subtotal = moneyValue(raw.subtotal ?? itemGross);
+  const discount = moneyValue(raw.discount ?? itemDiscount);
+  const total = moneyValue(raw.total ?? Math.max(0, subtotal - discount));
+  const vatRate = toNumber(raw.vatRate, DEFAULT_SETTINGS.vatRate);
+  const vatAmount = moneyValue(raw.vatAmount ?? (vatRate > 0 ? total * (vatRate / (1 + vatRate)) : 0));
+  const vatableSales = moneyValue(raw.vatableSales ?? (total - vatAmount));
+  const payments = Array.isArray(raw.payments) && raw.payments.length
+    ? raw.payments.map(normalizePayment)
+    : buildOrderPayments({
+        status,
+        paymentMethod,
+        total,
+        tendered: toNumber(raw.tendered, paymentMethod === 'cash' ? total : 0),
+        change: toNumber(raw.change, 0),
+      });
+  const firstCash = payments.find(p => p.method === 'cash');
+  const store = currentStoreInfo();
+  const id = String(raw.id || orderUid());
+  const number = String(raw.number || raw.receiptNumber || raw.orderNumber || id);
+  const fulfilment = raw.fulfilment === 'delivery' ? 'delivery' : 'pickup';
+  return {
+    schemaVersion: ORDER_SCHEMA_VERSION,
+    formatKey: ORDER_FORMAT_KEY,
+    id,
+    number,
+    ts: toNumber(raw.ts, Date.now()),
+    status,
+    cashier: String(raw.cashier || store.cashier),
+    register: String(raw.register || store.registerNo),
+    items,
+    customer: raw.customer
+      ? {
+          id: String(raw.customer.id || ''),
+          name: String(raw.customer.name || ''),
+          phone: String(raw.customer.phone || ''),
+          address: String(raw.customer.address || ''),
+        }
+      : null,
+    paymentMethod,
+    payments,
+    subtotal,
+    discount,
+    cartDiscount: raw.cartDiscount ? { ...raw.cartDiscount } : null,
+    originalOrderId: raw.originalOrderId ? String(raw.originalOrderId) : '',
+    reason: raw.reason ? String(raw.reason) : '',
+    voidedAt: raw.voidedAt ? toNumber(raw.voidedAt, 0) : 0,
+    refundedAt: raw.refundedAt ? toNumber(raw.refundedAt, 0) : 0,
+    returnedAt: raw.returnedAt ? toNumber(raw.returnedAt, 0) : 0,
+    total,
+    tendered: moneyValue(raw.tendered ?? firstCash?.tendered ?? (paymentMethod === 'cash' ? total : 0)),
+    change: moneyValue(raw.change ?? firstCash?.change ?? 0),
+    vatRate,
+    vatAmount,
+    vatableSales,
+    fulfilment,
+    deliveryAddress: fulfilment === 'delivery' ? String(raw.deliveryAddress || '') : '',
+    deliveryLocation: fulfilment === 'delivery' ? normalizeDeliveryLocation(raw.deliveryLocation) : null,
+    meta: {
+      source: raw.meta?.source || 'pos-app',
+      replaceableFormat: true,
+    },
+  };
+}
+
+function toReceiptViewModel(order) {
+  const o = normalizeOrderRecord(order);
+  const fulfilmentLabel = o.fulfilment === 'delivery'
+    ? `DELIVERY${o.deliveryAddress ? ' · ' + o.deliveryAddress : ''}`
+    : 'PICKUP';
+  return {
+    store: currentStoreInfo(),
+    number: o.number,
+    ts: o.ts,
+    dateText: fmtReceiptTime(o.ts),
+    cashier: o.cashier,
+    register: o.register,
+    customer: o.customer,
+    deliveryAddress: o.deliveryAddress,
+    deliveryLocation: o.deliveryLocation,
+    fulfilmentLabel,
+    items: o.items,
+    totals: {
+      subtotal: o.subtotal,
+      discount: o.discount,
+      total: o.total,
+      vatRate: o.vatRate,
+      vatAmount: o.vatAmount,
+      vatableSales: o.vatableSales,
+    },
+    status: o.status,
+    paymentMethod: o.paymentMethod,
+    payments: o.payments,
+  };
+}
+
+window.HWPOS_ORDER_FORMAT = {
+  schemaVersion: ORDER_SCHEMA_VERSION,
+  formatKey: ORDER_FORMAT_KEY,
+  normalizeOrder: normalizeOrderRecord,
+  toReceiptViewModel,
+  buildPayments: buildOrderPayments,
+};
 
 // ---------- Fuse rebuild ----------
 function rebuildFuse() {
@@ -215,6 +595,24 @@ function rebuildFuse() {
     ...p,
     searchBlob: [p.name, p.sku, p.barcode, p.brand, ...(p.aliases || [])].join(' ').toLowerCase(),
   }));
+  if (typeof Fuse !== 'function') {
+    state.fuse = {
+      search(query) {
+        const terms = String(query || '').toLowerCase().trim().split(/\s+/).filter(Boolean);
+        if (terms.length === 0) return indexed.map(item => ({ item, score: 0 }));
+        return indexed
+          .map(item => {
+            const hay = item.searchBlob || '';
+            const matches = terms.filter(term => hay.includes(term)).length;
+            const starts = terms.filter(term => hay.startsWith(term) || String(item.sku || '').toLowerCase().startsWith(term)).length;
+            return { item, score: matches === terms.length ? (0 - starts) : 999 };
+          })
+          .filter(r => r.score < 999)
+          .sort((a, b) => a.score - b.score);
+      },
+    };
+    return;
+  }
   state.fuse = new Fuse(indexed, {
     keys: [
       { name: 'name',       weight: 0.45 },
@@ -258,39 +656,8 @@ function renderFolderStrip(containerId, activeId, onClickFolderId) {
 }
 
 function renderSellFolderStrip() {
-  // Top-bar dropdown replaces the inline strip on Sell.
-  renderFolderDdMenu();
-  renderFolderStrip('folderStrip', state.folderId); // safe no-op if removed
+  renderFolderStrip('folderStrip', state.folderId);
 }
-function renderInvFolderStrip() {
-  renderFolderStrip('invFolderStrip', state.invFolderId);
-}
-
-// Top-bar folder dropdown
-function renderFolderDdMenu() {
-  const menu = $('#folderDdMenu');
-  if (!menu) return;
-  menu.innerHTML = state.folders.map(f => {
-    const active = f.id === state.folderId;
-    return `
-      <button class="ddm-item ${active ? 'active' : ''}" data-folder-id="${f.id}">
-        <span>${escapeHtml(f.name)}</span>
-        <span class="count">${folderCount(f.id)}</span>
-      </button>`;
-  }).join('');
-  const label = $('#folderDdLabel');
-  if (label) {
-    const f = state.folders.find(x => x.id === state.folderId);
-    label.textContent = f ? f.name : 'All items';
-  }
-}
-function toggleFolderDdMenu(force) {
-  const menu = $('#folderDdMenu');
-  if (!menu) return;
-  const open = force !== undefined ? force : menu.hidden;
-  menu.hidden = !open;
-}
-
 function selectFolder(id) {
   state.folderId = id;
   state.page = 1;
@@ -299,12 +666,6 @@ function selectFolder(id) {
   renderSellHeader();
   renderProducts();
 }
-function selectInvFolder(id) {
-  state.invFolderId = id;
-  renderInvFolderStrip();
-  renderInventory();
-}
-
 // ---------- Folder modal ----------
 function openFolderModal(mode, editId = null) {
   state.folderModal = { mode, editId };
@@ -349,25 +710,21 @@ function deleteFolder(id) {
   state.products.forEach(p => { if (p.folder === id) p.folder = ''; });
   saveFolders(); saveProducts();
   if (state.folderId === id) state.folderId = 'all';
-  if (state.invFolderId === id) state.invFolderId = 'all';
   renderAllFolderUis();
   showToast('Folder deleted');
 }
 
 function renderAllFolderUis() {
   renderSellFolderStrip();
-  renderInvFolderStrip();
   renderSellHeader();
   renderProducts();
-  renderInventory();
-  renderFolderCards();
   populateFolderSelect();
 }
 
 // ---------- Roles ----------
 const ROLE_ALLOWED = {
-  cashier: new Set(['sell', 'orders', 'checkout']),
-  manager: new Set(['sell', 'orders', 'inventory', 'customers', 'reports', 'checkout']),
+  cashier: new Set(['sell', 'orders', 'settings', 'checkout', 'checkout-success']),
+  manager: new Set(['sell', 'orders', 'customers', 'reports', 'back-office', 'settings', 'checkout', 'checkout-success']),
 };
 function canAccess(view) {
   const allowed = ROLE_ALLOWED[state.role] || ROLE_ALLOWED.manager;
@@ -377,12 +734,6 @@ function applyRoleGating() {
   $$('.side-link').forEach(t => {
     t.hidden = !canAccess(t.dataset.view);
   });
-  // Hide the open-back-office link for cashiers (only managers should see it).
-  const bo = document.querySelector('.open-bo-link');
-  if (bo) bo.style.display = state.role === 'manager' ? '' : 'none';
-  // Cashiers cannot change item prices in the catalog — disable inventory action
-  // buttons that show on the Sell view (we don't have any). Pricing edits live
-  // in the Inventory view, which is already hidden from cashiers above.
   // If a cashier somehow lands on a manager view, kick them back to Sell.
   if (!canAccess(state.view)) {
     state.view = 'sell';
@@ -395,25 +746,7 @@ function renderRoleSwitcher() {
   if (!userMeta) return;
   const sub = userMeta.querySelector('.user-sub');
   if (!sub) return;
-  // Show the active role inline. Cashier · Main Store / Manager · Main Store.
   sub.textContent = `${state.role === 'manager' ? 'Manager' : 'Cashier'} · Main Store`;
-  // Mount a tiny "switch role" link beneath the user row if not already there.
-  if (!document.getElementById('roleSwitchBtn')) {
-    const btn = document.createElement('button');
-    btn.id = 'roleSwitchBtn';
-    btn.className = 'text-btn role-switch';
-    btn.textContent = 'Switch role';
-    btn.addEventListener('click', () => {
-      const next = state.role === 'manager' ? 'cashier' : 'manager';
-      state.role = next;
-      saveRole(next);
-      applyRoleGating();
-      renderRoleSwitcher();
-      showToast(`Signed in as ${next === 'manager' ? 'Manager' : 'Cashier'}`);
-    });
-    const userRow = document.querySelector('.user-row');
-    if (userRow && userRow.parentNode) userRow.parentNode.insertBefore(btn, userRow.nextSibling);
-  }
 }
 
 // ---------- View switching ----------
@@ -425,11 +758,8 @@ function switchView(view) {
   state.view = view;
   $$('.side-link').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === view));
-  if (view === 'inventory') {
-    renderInvFolderStrip();
-    renderInventory();
-    renderFolderCards();
-  }
+  if (view === 'back-office') { window.location.href = 'backoffice.html'; return; }
+  if (view === 'settings') { renderPosSettings(); return; }
   if (view === 'orders') {
     // Always pull the latest from localStorage so a sale made in another tab
     // (or any state drift) shows up immediately.
@@ -439,33 +769,11 @@ function switchView(view) {
   if (view === 'customers') renderCustomers();
   if (view === 'reports') renderReports();
   if (view === 'checkout') renderCheckout();
-
-  // Close any open folder dropdown when leaving the Sell view.
-  if (view !== 'sell') {
-    const m = $('#folderDdMenu'); if (m) m.hidden = true;
-  }
-}
-
-function switchInvTab(tab) {
-  state.invTab = tab;
-  $$('.inv-tab').forEach(t => t.classList.toggle('active', t.dataset.invTab === tab));
-  $$('.inv-pane').forEach(p => p.classList.toggle('active', p.dataset.invPane === tab));
-  if (tab === 'folders') renderFolderCards();
 }
 
 // ---------- Sell view ----------
 function renderSellHeader() {
-  // Title now lives in the top-bar dropdown — keep this fn for back-compat.
   const folder = state.folders.find(f => f.id === state.folderId);
-  const label = $('#folderDdLabel');
-  if (label) {
-    if (state.activeGroupId) {
-      const g = groupById(state.activeGroupId);
-      label.textContent = g ? g.name : (folder ? folder.name : 'All items');
-    } else {
-      label.textContent = folder ? folder.name : 'All items';
-    }
-  }
   const t = $('#sellTitle'); if (t) t.textContent = folder ? folder.name : 'All Items';
   const c = $('#sellCount');
   if (c) {
@@ -532,25 +840,97 @@ function stockMeta(p) {
   return { cls: '', label: `${p.stock} ${p.unit}` };
 }
 
-function totalPages() {
-  const cells = getSellCells();
-  const per = ITEMS_PER_PAGE[state.tileSize] || 20;
-  return Math.max(1, Math.ceil(cells.length / per));
+function getSellGridProfile() {
+  const catalog = $('.catalog');
+  const width = catalog?.clientWidth || window.innerWidth || 1200;
+  const viewport = window.innerWidth || width;
+  const presets = (viewport <= 720 || width <= 520)
+    ? {
+        sm: { columns: 2, rows: 5 },
+        md: { columns: 2, rows: 4 },
+        lg: { columns: 1, rows: 4 },
+      }
+    : width <= 1100
+      ? {
+          sm: { columns: 5, rows: 6 },
+          md: { columns: 4, rows: 5 },
+          lg: { columns: 3, rows: 4 },
+        }
+      : {
+          sm: { columns: 6, rows: 5 },
+          md: { columns: 5, rows: 4 },
+          lg: { columns: 4, rows: 4 },
+        };
+  return presets[state.tileSize] || presets.md;
 }
 
-function clampPage() {
-  const max = totalPages();
+function sellPageSize(profile = getSellGridProfile()) {
+  return Math.max(1, profile.columns * profile.rows);
+}
+
+function totalPages(cells = getSellCells()) {
+  return Math.max(1, Math.ceil(cells.length / sellPageSize()));
+}
+
+function clampPage(cells = getSellCells()) {
+  const max = totalPages(cells);
   if (state.page > max) state.page = max;
   if (state.page < 1) state.page = 1;
+}
+
+function renderSellCellHtml(cell) {
+  if (cell.kind === 'back') {
+    return `
+      <div class="product-card pc-back" data-act="back" title="Back">
+        <div class="pc-back-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 6 9 12 15 18"/>
+          </svg>
+        </div>
+        <div class="pc-name">Back</div>
+      </div>`;
+  }
+  if (cell.kind === 'group') {
+    const g = cell.group;
+    return `
+      <div class="product-card pc-group" data-group-id="${g.id}" title="${escapeHtml(g.name)}">
+        <div class="pc-group-badge">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          </svg>
+          <span>${cell.memberCount}</span>
+        </div>
+        <div class="pc-name">${escapeHtml(g.name)}</div>
+      </div>`;
+  }
+  const p = cell.product;
+  const disabled = p.stock <= 0 ? 'data-disabled="true"' : '';
+  return `
+    <div class="product-card" data-id="${p.id}" ${disabled}>
+      <div class="pc-name">${escapeHtml(p.name)}</div>
+      <div class="pc-price-mini">${peso(p.price)}</div>
+    </div>`;
+}
+
+function updateProductTrackPosition() {
+  const track = $('#productTrack');
+  if (track) {
+    track.style.transform = `translate3d(-${(state.page - 1) * 100}%, 0, 0)`;
+  }
+  renderPager();
+  renderSellHeader();
 }
 
 function renderProducts() {
   const grid = $('#productGrid');
   const cells = getSellCells();
+  const profile = getSellGridProfile();
 
   // Set size + price-display attrs on the grid
   grid.dataset.size = state.tileSize;
   grid.classList.toggle('show-price', state.showPrice);
+  grid.style.setProperty('--grid-cols', profile.columns);
+  grid.style.setProperty('--grid-rows', profile.rows);
 
   if (cells.length === 0) {
     grid.innerHTML = `
@@ -563,51 +943,60 @@ function renderProducts() {
       </div>`;
     renderPager();
     renderSellHeader();
+    requestAnimationFrame(syncSellGridMetrics);
     return;
   }
 
-  // Slice for current page
-  clampPage();
-  const per = ITEMS_PER_PAGE[state.tileSize] || 20;
-  const start = (state.page - 1) * per;
-  const pageCells = cells.slice(start, start + per);
+  clampPage(cells);
+  const pageSize = sellPageSize(profile);
+  const pages = [];
+  for (let i = 0; i < cells.length; i += pageSize) {
+    pages.push(cells.slice(i, i + pageSize));
+  }
 
-  grid.innerHTML = pageCells.map(cell => {
-    if (cell.kind === 'back') {
-      return `
-        <div class="product-card pc-back" data-act="back" title="Back">
-          <div class="pc-back-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="15 6 9 12 15 18"/>
-            </svg>
-          </div>
-          <div class="pc-name">Back</div>
-        </div>`;
-    }
-    if (cell.kind === 'group') {
-      const g = cell.group;
-      return `
-        <div class="product-card pc-group" data-group-id="${g.id}" title="${escapeHtml(g.name)}">
-          <div class="pc-group-badge">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            </svg>
-            <span>${cell.memberCount}</span>
-          </div>
-          <div class="pc-name">${escapeHtml(g.name)}</div>
-        </div>`;
-    }
-    const p = cell.product;
-    const disabled = p.stock <= 0 ? 'data-disabled="true"' : '';
-    return `
-      <div class="product-card" data-id="${p.id}" ${disabled}>
-        <div class="pc-name">${escapeHtml(p.name)}</div>
-        <div class="pc-price-mini">${peso(p.price)}</div>
-      </div>`;
-  }).join('');
+  grid.innerHTML = `
+    <div class="product-page-track" id="productTrack">
+      ${pages.map((pageCells, index) => `
+        <div class="product-page" data-page="${index + 1}">
+          ${pageCells.map(renderSellCellHtml).join('')}
+        </div>`).join('')}
+    </div>`;
 
   renderPager();
   renderSellHeader();
+  requestAnimationFrame(() => {
+    syncSellGridMetrics();
+    updateProductTrackPosition();
+  });
+}
+
+function syncSellGridMetrics() {
+  const catalog = $('.catalog');
+  const grid = $('#productGrid');
+  const search = $('#catalogSearchRow');
+  if (!catalog || !grid || !search || state.view !== 'sell') return;
+
+  const profile = getSellGridProfile();
+  const gap = parseFloat(getComputedStyle(grid).gap) || 6;
+  const styles = getComputedStyle(catalog);
+  const catalogRect = catalog.getBoundingClientRect();
+  const searchRect = search.getBoundingClientRect();
+  const paddingBottom = parseFloat(styles.paddingBottom || 0);
+  const rowGap = parseFloat(styles.gap || 0);
+  const measuredHeight = catalogRect.bottom - paddingBottom - searchRect.bottom - rowGap;
+  const fallbackHeight = catalog.clientHeight - search.offsetHeight - parseFloat(styles.paddingTop || 0) - paddingBottom - rowGap;
+  const available = Math.max(120, Math.floor(measuredHeight || fallbackHeight));
+  const rows = profile.rows;
+  const columns = profile.columns;
+  const tileHeight = Math.max(1, (available - gap * (rows - 1)) / rows);
+  const fullTileWidth = Math.max(1, (grid.clientWidth - gap * (columns - 1)) / columns);
+  const tileWidth = Math.min(fullTileWidth, tileHeight * 1.12);
+  grid.style.setProperty('--grid-cols', profile.columns);
+  grid.style.setProperty('--grid-rows', rows);
+  grid.style.setProperty('--grid-h', `${available}px`);
+  grid.style.setProperty('--tile-h', `${tileHeight.toFixed(2)}px`);
+  grid.style.setProperty('--tile-w', `${tileWidth.toFixed(2)}px`);
+  grid.style.setProperty('--visible-rows', rows);
 }
 
 function openGroup(groupId) {
@@ -728,22 +1117,24 @@ function renderPager() {
 
 function changePage(delta) {
   const t = totalPages();
+  const prev = state.page;
   state.page = Math.min(t, Math.max(1, state.page + delta));
-  renderProducts();
+  if (state.page !== prev) updateProductTrackPosition();
+  else flashControl($('#productGrid'));
 }
 
 function setTileSize(size) {
   if (!ITEMS_PER_PAGE[size]) return;
   state.tileSize = size;
   state.page = 1;
-  try { localStorage.setItem(STORAGE_TILE_SIZE, size); } catch (_) {}
+  storageSet(STORAGE_TILE_SIZE, size);
   $$('.bb-size-btn').forEach(b => b.classList.toggle('active', b.dataset.size === size));
   renderProducts();
 }
 
 function toggleShowPrice() {
   state.showPrice = !state.showPrice;
-  try { localStorage.setItem(STORAGE_SHOW_PRICE, state.showPrice ? '1' : '0'); } catch (_) {}
+  storageSet(STORAGE_SHOW_PRICE, state.showPrice ? '1' : '0');
   $('#bbViewBtn')?.classList.toggle('active', state.showPrice);
   renderProducts();
 }
@@ -763,6 +1154,45 @@ function addToCart(productId) {
   showToast(`Added · ${p.name}`);
 }
 
+function findProductByCode(rawCode) {
+  const code = String(rawCode || '').trim();
+  if (!code) return null;
+  const byBarcode = state.products.find(p => p.barcode && String(p.barcode).trim() === code);
+  if (byBarcode) return byBarcode;
+  const lower = code.toLowerCase();
+  return state.products.find(p => p.sku && String(p.sku).toLowerCase() === lower) || null;
+}
+
+function addProductByCode(rawCode, { source = 'barcode' } = {}) {
+  const code = String(rawCode || '').trim();
+  if (!code) return false;
+  const product = findProductByCode(code);
+  if (!product) {
+    const message = source === 'camera'
+      ? `No item found for ${code}`
+      : 'No item found for that barcode or SKU';
+    showBarcodeStatus(message);
+    showToast(message);
+    return false;
+  }
+  if (product.stock <= 0) {
+    showBarcodeStatus('Item is out of stock');
+    showToast('Item is out of stock');
+    return false;
+  }
+  addToCart(product.id);
+  const search = $('#searchInput');
+  const clear = $('#searchClear');
+  if (search) {
+    search.value = '';
+    state.query = '';
+  }
+  clear?.classList.remove('visible');
+  renderProducts();
+  if (source === 'camera') showBarcodeStatus(`Added ${product.name}`);
+  return true;
+}
+
 function changeQty(id, delta) {
   const i = state.cart.find(x => x.id === id);
   if (!i) return;
@@ -778,10 +1208,287 @@ function clearCart() {
   state.cart = [];
   state.customer = null;
   state.cartDiscount = null;
+  state.paymentMethod = 'cash';
   state.fulfilment = (state.settings && state.settings.defaultFulfilment) || 'pickup';
   state.deliveryAddress = '';
+  state.deliveryLocation = null;
   renderCart();
   updateCustomerButton();
+}
+
+function showBarcodeStatus(message) {
+  const el = $('#barcodeStatus');
+  if (el) el.textContent = message;
+}
+
+function resetBarcodeDuplicateGuard() {
+  barcodeScanner.lastValue = '';
+  barcodeScanner.lastSeenAt = 0;
+  barcodeScanner.recent.clear();
+}
+
+function handleScannedBarcode(rawCode, { source = 'camera', requireVisibleReset = false } = {}) {
+  const code = String(rawCode || '').trim();
+  if (!code) return false;
+
+  const now = Date.now();
+  if (requireVisibleReset && code === barcodeScanner.lastValue) {
+    barcodeScanner.lastSeenAt = now;
+    return false;
+  }
+
+  const previousScanAt = barcodeScanner.recent.get(code) || 0;
+  if (now - previousScanAt < barcodeScanner.cooldownMs) {
+    barcodeScanner.lastValue = code;
+    barcodeScanner.lastSeenAt = now;
+    return false;
+  }
+
+  barcodeScanner.lastValue = code;
+  barcodeScanner.lastSeenAt = now;
+  barcodeScanner.recent.set(code, now);
+  for (const [recentCode, scannedAt] of barcodeScanner.recent) {
+    if (now - scannedAt > barcodeScanner.cooldownMs * 4) {
+      barcodeScanner.recent.delete(recentCode);
+    }
+  }
+
+  const product = findProductByCode(code);
+  const added = addProductByCode(code, { source });
+  if (added && source === 'camera') {
+    showBarcodeStatus(`Added ${product?.name || code}. Scan next item.`);
+  }
+  return added;
+}
+
+function stopBarcodeScanner() {
+  barcodeScanner.active = false;
+  barcodeScanner.detector = null;
+  resetBarcodeDuplicateGuard();
+  clearTimeout(barcodeScanner.timer);
+  barcodeScanner.timer = 0;
+  if (barcodeScanner.zxingControls && typeof barcodeScanner.zxingControls.stop === 'function') {
+    try { barcodeScanner.zxingControls.stop(); } catch (_) {}
+  }
+  barcodeScanner.zxingControls = null;
+  barcodeScanner.zxingReader = null;
+  if (barcodeScanner.stream) {
+    barcodeScanner.stream.getTracks().forEach(track => track.stop());
+    barcodeScanner.stream = null;
+  }
+  const video = $('#barcodeVideo');
+  if (video) video.srcObject = null;
+}
+
+async function createBarcodeDetector() {
+  if (!('BarcodeDetector' in window)) return null;
+  const preferred = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf', 'qr_code'];
+  try {
+    if (typeof window.BarcodeDetector.getSupportedFormats === 'function') {
+      const supported = await window.BarcodeDetector.getSupportedFormats();
+      const formats = preferred.filter(format => supported.includes(format));
+      return new window.BarcodeDetector(formats.length ? { formats } : undefined);
+    }
+    return new window.BarcodeDetector({ formats: preferred });
+  } catch (_) {
+    try { return new window.BarcodeDetector(); }
+    catch (_) { return null; }
+  }
+}
+
+function scheduleBarcodeScan(video) {
+  if (!barcodeScanner.active || !barcodeScanner.detector) return;
+  clearTimeout(barcodeScanner.timer);
+  barcodeScanner.timer = setTimeout(async () => {
+    if (!barcodeScanner.active || !barcodeScanner.detector) return;
+    try {
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        const codes = await barcodeScanner.detector.detect(video);
+        const value = codes && codes[0] && codes[0].rawValue;
+        if (value) {
+          handleScannedBarcode(value, { source: 'camera', requireVisibleReset: true });
+        } else if (barcodeScanner.lastValue && Date.now() - barcodeScanner.lastSeenAt > 450) {
+          barcodeScanner.lastValue = '';
+        }
+      }
+    } catch (err) {
+      console.warn('Barcode scan failed', err);
+      showBarcodeStatus('Camera is open, but barcode decoding failed. Type the code below.');
+    }
+    scheduleBarcodeScan(video);
+  }, 180);
+}
+
+function barcodeValueFromZxingResult(result) {
+  if (!result) return '';
+  if (typeof result.getText === 'function') return String(result.getText() || '').trim();
+  return String(result.text || result.rawValue || result.value || '').trim();
+}
+
+function startZxingBarcodeScan(video) {
+  const ZXing = window.ZXingBrowser;
+  if (!ZXing || typeof ZXing.BrowserMultiFormatReader !== 'function') return false;
+  try {
+    const reader = new ZXing.BrowserMultiFormatReader(undefined, {
+      delayBetweenScanAttempts: 180,
+      delayBetweenScanSuccess: 500,
+    });
+    barcodeScanner.zxingReader = reader;
+    barcodeScanner.active = true;
+    barcodeScanner.zxingControls = reader.scan(video, (result, err, controls) => {
+      if (!barcodeScanner.active) return;
+      const value = barcodeValueFromZxingResult(result);
+      if (value) {
+        handleScannedBarcode(value, { source: 'camera', requireVisibleReset: true });
+      } else if (err && barcodeScanner.lastValue && Date.now() - barcodeScanner.lastSeenAt > 450) {
+        barcodeScanner.lastValue = '';
+      }
+    });
+    showBarcodeStatus('Scanning...');
+    return true;
+  } catch (err) {
+    console.warn('ZXing barcode scan failed to start', err);
+    barcodeScanner.zxingReader = null;
+    barcodeScanner.zxingControls = null;
+    return false;
+  }
+}
+
+async function startBarcodeCamera() {
+  const video = $('#barcodeVideo');
+  if (!video) return;
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    showBarcodeStatus('Camera scanning needs HTTPS. Type the barcode or SKU below.');
+    return;
+  }
+  try {
+    showBarcodeStatus('Allow camera access, then point at the barcode.');
+    const detector = await createBarcodeDetector();
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    });
+    barcodeScanner.stream = stream;
+    barcodeScanner.detector = detector;
+    barcodeScanner.active = true;
+    video.srcObject = stream;
+    await video.play();
+    if (detector) {
+      showBarcodeStatus('Scanning...');
+      scheduleBarcodeScan(video);
+    } else if (startZxingBarcodeScan(video)) {
+      showBarcodeStatus('Scanning...');
+    } else {
+      showBarcodeStatus('Camera is open. Barcode decoder unavailable, so type the barcode below.');
+    }
+  } catch (err) {
+    console.warn('Camera unavailable', err);
+    showBarcodeStatus('Camera was blocked or unavailable. Type the barcode or SKU below.');
+    stopBarcodeScanner();
+  }
+}
+
+function isCapacitorNativeRuntime() {
+  const cap = window.Capacitor;
+  if (!cap) return false;
+  try {
+    if (typeof cap.isNativePlatform === 'function') return cap.isNativePlatform();
+    if (typeof cap.getPlatform === 'function') return ['ios', 'android'].includes(cap.getPlatform());
+  } catch (_) {}
+  return !!cap.Plugins;
+}
+
+function barcodeValueFromNativeResult(result) {
+  if (!result || typeof result !== 'object') return '';
+  if (typeof result.ScanResult === 'string') return result.ScanResult;
+  if (typeof result.scanResult === 'string') return result.scanResult;
+  if (typeof result.content === 'string') return result.content;
+  if (typeof result.value === 'string') return result.value;
+  const first = Array.isArray(result.barcodes) ? result.barcodes[0] : null;
+  return first?.rawValue || first?.displayValue || first?.value || '';
+}
+
+async function scanWithCapacitorBarcodePlugin() {
+  if (!isCapacitorNativeRuntime()) return false;
+  const plugins = window.Capacitor?.Plugins || {};
+  const scanner = plugins.BarcodeScanner || window.BarcodeScanner;
+  if (!scanner) return false;
+
+  try {
+    let result = null;
+    if (typeof scanner.scanBarcode === 'function') {
+      result = await scanner.scanBarcode({
+        hint: 17,
+        scanInstructions: 'Point the camera at the barcode',
+        scanButton: false,
+        scanText: 'Scan',
+        cameraDirection: 1,
+        scanOrientation: 3,
+        android: { scanningLibrary: 'mlkit' },
+        web: { showCameraSelection: false, scannerFPS: 12 },
+      });
+    } else if (typeof scanner.startScan === 'function') {
+      if (typeof scanner.checkPermission === 'function') {
+        const permission = await scanner.checkPermission({ force: true });
+        if (permission?.granted === false) throw new Error('Camera permission was not granted.');
+      }
+      if (typeof scanner.hideBackground === 'function') scanner.hideBackground();
+      try {
+        result = await scanner.startScan();
+      } finally {
+        if (typeof scanner.showBackground === 'function') scanner.showBackground();
+      }
+    } else if (typeof scanner.scan === 'function') {
+      result = await scanner.scan();
+    } else {
+      return false;
+    }
+
+    const value = barcodeValueFromNativeResult(result);
+    if (!value) {
+      showToast('Scan cancelled');
+      return true;
+    }
+    addProductByCode(value, { source: 'camera' });
+    return true;
+  } catch (err) {
+    console.warn('Native barcode scan failed', err);
+    showToast('Barcode scanner unavailable. Use manual entry.');
+    return false;
+  }
+}
+
+async function openBarcodeScanner() {
+  if (await scanWithCapacitorBarcodePlugin()) return;
+  const modal = $('#barcodeModal');
+  const input = $('#barcodeManualInput');
+  if (!modal) return;
+  stopBarcodeScanner();
+  if (input) input.value = '';
+  showBarcodeStatus('Starting camera...');
+  modal.hidden = false;
+  startBarcodeCamera();
+  flashControl($('#scanBtn'));
+}
+
+function submitManualBarcode() {
+  const input = $('#barcodeManualInput');
+  const code = input?.value || '';
+  if (addProductByCode(code, { source: 'manual' })) {
+    const product = findProductByCode(code);
+    showBarcodeStatus(`Added ${product?.name || 'item'}. Scan or type next item.`);
+    if (input) {
+      input.value = '';
+      input.focus({ preventScroll: true });
+    }
+  } else {
+    input?.focus({ preventScroll: true });
+    input?.select();
+  }
 }
 
 // ---------- Cart item edit modal ----------
@@ -843,7 +1550,11 @@ function removeCartItemFromModal() {
 
 // ---------- Cart-level discount modal ----------
 function openCartDiscountModal() {
-  if (state.cart.length === 0) { showToast('Add items first'); return; }
+  if (state.cart.length === 0) {
+    flashControl($('#cartDiscountBtn'));
+    flashControl($('.cart'));
+    return;
+  }
   const cd = state.cartDiscount || { type: 'amount', value: 0 };
   $$('#cartDiscountModal [data-cd-type]').forEach(b =>
     b.classList.toggle('active', b.dataset.cdType === (cd.type || 'amount')));
@@ -863,32 +1574,251 @@ function clearCartDiscount() {
   state.cartDiscount = null;
   renderCart();
   $('#cartDiscountModal').hidden = true;
-  showToast('Discount removed');
+  flashControl($('#cartDiscountBtn'));
 }
 
 // ---------- Fulfilment (Pickup / Delivery) ----------
 function setFulfilment(mode) {
   if (mode !== 'pickup' && mode !== 'delivery') return;
   if (mode === 'delivery') {
-    // Need an address. If the current customer has one already, prefill it.
+    // Address is optional; prefill it when we already know one.
     const addr = state.deliveryAddress || (state.customer && state.customer.address) || '';
     $('#deliveryAddrInput').value = addr;
+    updateDeliveryPinStatus();
     $('#deliveryModal').hidden = false;
-    setTimeout(() => $('#deliveryAddrInput').focus(), 50);
     return;
   }
   state.fulfilment = 'pickup';
   state.deliveryAddress = '';
+  state.deliveryLocation = null;
   renderCart();
 }
 function saveDeliveryAddress() {
   const addr = $('#deliveryAddrInput').value.trim();
-  if (!addr) { showToast('Enter a delivery address'); return; }
   state.fulfilment = 'delivery';
   state.deliveryAddress = addr;
   $('#deliveryModal').hidden = true;
   renderCart();
-  showToast('Delivery address saved');
+  flashControl(document.querySelector('.fulfil-pill[data-fulfil="delivery"]'));
+}
+
+function deliveryPinLabel(location = state.deliveryLocation) {
+  const loc = normalizeDeliveryLocation(location);
+  if (!loc) return 'No pin set';
+  return `Pinned map location (${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})`;
+}
+
+function updateDeliveryPinStatus() {
+  const el = $('#deliveryPinStatus');
+  if (el) el.textContent = deliveryPinLabel();
+}
+
+function setDeliveryMapFromLocation(location = state.deliveryLocation) {
+  const loc = normalizeDeliveryLocation(location);
+  const base = loc || DELIVERY_MAP_DEFAULT;
+  state.deliveryMap.centerLat = base.lat;
+  state.deliveryMap.centerLng = base.lng;
+  state.deliveryMap.zoom = loc?.zoom || DELIVERY_MAP_DEFAULT.zoom;
+  state.deliveryMap.pinLat = loc?.lat ?? null;
+  state.deliveryMap.pinLng = loc?.lng ?? null;
+}
+
+function deliveryMapWorldCenter() {
+  return {
+    x: lonToWorldX(state.deliveryMap.centerLng, state.deliveryMap.zoom),
+    y: latToWorldY(state.deliveryMap.centerLat, state.deliveryMap.zoom),
+  };
+}
+
+function setDeliveryMapCenterFromWorld(x, y) {
+  state.deliveryMap.centerLng = worldXToLng(x, state.deliveryMap.zoom);
+  state.deliveryMap.centerLat = worldYToLat(y, state.deliveryMap.zoom);
+}
+
+function renderDeliveryMap() {
+  const stage = $('#deliveryMapStage');
+  const tiles = $('#deliveryMapTiles');
+  if (!stage || !tiles) return;
+  const rect = stage.getBoundingClientRect();
+  const width = Math.max(320, rect.width || 640);
+  const height = Math.max(260, rect.height || 360);
+  const zoom = state.deliveryMap.zoom;
+  const center = deliveryMapWorldCenter();
+  const minX = Math.floor((center.x - width / 2) / 256) - 1;
+  const maxX = Math.floor((center.x + width / 2) / 256) + 1;
+  const minY = Math.max(0, Math.floor((center.y - height / 2) / 256) - 1);
+  const maxY = Math.min((2 ** zoom) - 1, Math.floor((center.y + height / 2) / 256) + 1);
+  const imgs = [];
+  for (let y = minY; y <= maxY; y += 1) {
+    for (let x = minX; x <= maxX; x += 1) {
+      const left = Math.round(width / 2 + (x * 256 - center.x));
+      const top = Math.round(height / 2 + (y * 256 - center.y));
+      imgs.push(`<img src="${osmTileUrl(x, y, zoom)}" alt="" draggable="false" style="left:${left}px;top:${top}px" />`);
+    }
+  }
+  tiles.innerHTML = imgs.join('');
+  const pin = $('#deliveryMapPin');
+  if (pin) pin.classList.toggle('is-hidden', state.deliveryMap.pinLat == null || state.deliveryMap.pinLng == null);
+  const coords = $('#deliveryMapCoords');
+  if (coords) coords.textContent = state.deliveryMap.pinLat == null
+    ? 'No pin selected'
+    : `Pinned road map location for receipt`;
+}
+
+function deliveryMapPointToLatLng(clientX, clientY) {
+  const stage = $('#deliveryMapStage');
+  if (!stage) return null;
+  const rect = stage.getBoundingClientRect();
+  const center = deliveryMapWorldCenter();
+  const x = center.x + (clientX - rect.left - rect.width / 2);
+  const y = center.y + (clientY - rect.top - rect.height / 2);
+  return {
+    lat: worldYToLat(y, state.deliveryMap.zoom),
+    lng: worldXToLng(x, state.deliveryMap.zoom),
+  };
+}
+
+function openDeliveryMap() {
+  setDeliveryMapFromLocation(state.deliveryLocation);
+  $('#deliveryMapModal').hidden = false;
+  requestAnimationFrame(renderDeliveryMap);
+  if (!state.deliveryLocation) tryUseDeviceDeliveryLocation({ quiet: true });
+}
+
+function setDeliveryMapPinAt(clientX, clientY) {
+  const loc = deliveryMapPointToLatLng(clientX, clientY);
+  if (!loc) return;
+  state.deliveryMap.pinLat = clamp(loc.lat, -85.05112878, 85.05112878);
+  state.deliveryMap.pinLng = clamp(loc.lng, -180, 180);
+  state.deliveryMap.centerLat = state.deliveryMap.pinLat;
+  state.deliveryMap.centerLng = state.deliveryMap.pinLng;
+  renderDeliveryMap();
+}
+
+function zoomDeliveryMap(delta) {
+  state.deliveryMap.zoom = clamp(state.deliveryMap.zoom + delta, DELIVERY_MAP_MIN_ZOOM, DELIVERY_MAP_MAX_ZOOM);
+  renderDeliveryMap();
+}
+
+function zoomDeliveryMapAt(delta, clientX, clientY) {
+  const stage = $('#deliveryMapStage');
+  if (!stage || !delta) return;
+  const before = deliveryMapPointToLatLng(clientX, clientY);
+  if (!before) return;
+  state.deliveryMap.zoom = clamp(state.deliveryMap.zoom + delta, DELIVERY_MAP_MIN_ZOOM, DELIVERY_MAP_MAX_ZOOM);
+  const rect = stage.getBoundingClientRect();
+  const afterX = lonToWorldX(before.lng, state.deliveryMap.zoom);
+  const afterY = latToWorldY(before.lat, state.deliveryMap.zoom);
+  setDeliveryMapCenterFromWorld(
+    afterX - (clientX - rect.left - rect.width / 2),
+    afterY - (clientY - rect.top - rect.height / 2)
+  );
+  renderDeliveryMap();
+}
+
+function deliveryTouchDistance(touches) {
+  if (!touches || touches.length < 2) return 0;
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.hypot(dx, dy);
+}
+
+function deliveryTouchMidpoint(touches) {
+  return {
+    x: (touches[0].clientX + touches[1].clientX) / 2,
+    y: (touches[0].clientY + touches[1].clientY) / 2,
+  };
+}
+
+function beginDeliveryPinch(e) {
+  if (!e.touches || e.touches.length !== 2) return;
+  const mid = deliveryTouchMidpoint(e.touches);
+  const focus = deliveryMapPointToLatLng(mid.x, mid.y);
+  state.deliveryMap.drag = null;
+  state.deliveryMap.pinch = {
+    distance: deliveryTouchDistance(e.touches),
+    zoom: state.deliveryMap.zoom,
+    focusLat: focus?.lat ?? state.deliveryMap.centerLat,
+    focusLng: focus?.lng ?? state.deliveryMap.centerLng,
+    midX: mid.x,
+    midY: mid.y,
+  };
+}
+
+function updateDeliveryPinch(e) {
+  const pinch = state.deliveryMap.pinch;
+  if (!pinch || !e.touches || e.touches.length !== 2) return;
+  e.preventDefault();
+  const ratio = deliveryTouchDistance(e.touches) / Math.max(1, pinch.distance);
+  const steps = Math.round(Math.log2(Math.max(0.25, Math.min(4, ratio))));
+  const nextZoom = clamp(pinch.zoom + steps, DELIVERY_MAP_MIN_ZOOM, DELIVERY_MAP_MAX_ZOOM);
+  if (nextZoom === state.deliveryMap.zoom) return;
+  state.deliveryMap.zoom = nextZoom;
+  const stage = $('#deliveryMapStage');
+  const rect = stage.getBoundingClientRect();
+  const mid = deliveryTouchMidpoint(e.touches);
+  const focusX = lonToWorldX(pinch.focusLng, state.deliveryMap.zoom);
+  const focusY = latToWorldY(pinch.focusLat, state.deliveryMap.zoom);
+  setDeliveryMapCenterFromWorld(
+    focusX - (mid.x - rect.left - rect.width / 2),
+    focusY - (mid.y - rect.top - rect.height / 2)
+  );
+  renderDeliveryMap();
+}
+
+function endDeliveryPinch(e) {
+  if (!state.deliveryMap.pinch) return;
+  if (!e.touches || e.touches.length < 2) state.deliveryMap.pinch = null;
+}
+
+function saveDeliveryMapPin() {
+  if (state.deliveryMap.pinLat == null || state.deliveryMap.pinLng == null) {
+    showToast('Tap the map to set a pin');
+    return;
+  }
+  state.deliveryLocation = normalizeDeliveryLocation({
+    lat: state.deliveryMap.pinLat,
+    lng: state.deliveryMap.pinLng,
+    zoom: state.deliveryMap.zoom,
+    provider: 'openstreetmap',
+    attribution: '© OpenStreetMap contributors',
+  });
+  $('#deliveryMapModal').hidden = true;
+  updateDeliveryPinStatus();
+  renderCart();
+}
+
+function clearDeliveryMapPin() {
+  state.deliveryMap.pinLat = null;
+  state.deliveryMap.pinLng = null;
+  state.deliveryLocation = null;
+  updateDeliveryPinStatus();
+  renderDeliveryMap();
+  renderCart();
+}
+
+function tryUseDeviceDeliveryLocation({ quiet = false } = {}) {
+  if (!navigator.geolocation) {
+    if (!quiet) showToast('Device location is unavailable');
+    return;
+  }
+  if (!quiet) showToast('Getting location...');
+  navigator.geolocation.getCurrentPosition((pos) => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    state.deliveryMap.centerLat = lat;
+    state.deliveryMap.centerLng = lng;
+    state.deliveryMap.pinLat = lat;
+    state.deliveryMap.pinLng = lng;
+    state.deliveryMap.zoom = Math.max(state.deliveryMap.zoom, 18);
+    renderDeliveryMap();
+  }, () => {
+    if (!quiet) showToast('Location permission was blocked');
+  }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+}
+
+function useDeviceDeliveryLocation() {
+  tryUseDeviceDeliveryLocation({ quiet: false });
 }
 
 // ---------- Saved customer modal ----------
@@ -981,11 +1911,18 @@ function renderCart() {
   const vatEl = $('#vatAmount'); if (vatEl) vatEl.textContent = peso(t.vatAmount);
   $('#total').textContent = peso(t.total);
   const pa = $('#payAmount'); if (pa) pa.textContent = peso(t.total);
-  $('#payBtn').disabled = state.cart.length === 0;
+  const payBtn = $('#payBtn');
+  if (payBtn) {
+    payBtn.disabled = state.cart.length === 0;
+    payBtn.textContent = 'Check out';
+  }
   const sb = $('#saveBtn'); if (sb) sb.disabled = state.cart.length === 0;
 
   // Fulfilment pills + discount label
   $$('.fulfil-pill').forEach(b => b.classList.toggle('active', b.dataset.fulfil === state.fulfilment));
+  const deliveryBtn = document.querySelector('.fulfil-pill[data-fulfil="delivery"] span');
+  if (deliveryBtn) deliveryBtn.textContent = 'Delivery';
+  $('#cartDiscountBtn')?.classList.toggle('active', !!(state.cartDiscount && state.cartDiscount.value));
   const cdLabel = $('#cartDiscountLabel');
   if (cdLabel) {
     if (state.cartDiscount && state.cartDiscount.value) {
@@ -1046,6 +1983,7 @@ function selectCustomer(id) {
   updateCustomerButton();
   $('#customerModal').hidden = true;
   renderCart();
+  if (state.view === 'checkout') renderCheckout();
 }
 
 // ---------- Payment (full-page Checkout view) ----------
@@ -1059,14 +1997,23 @@ function openPaymentModal() {
 function renderCheckout() {
   const { total } = cartTotals();
   $('#checkoutTotal').textContent = peso(total);
-  state.paymentMethod = state.customer ? 'credit' : (state.paymentMethod || 'cash');
+  setCheckoutError('');
+  renderQuickCashOptions(total);
+  if (!state.customer && (state.paymentMethod === 'credit' || state.paymentMethod === 'split')) {
+    state.paymentMethod = 'cash';
+  }
+  state.paymentMethod = state.paymentMethod || 'cash';
   $$('[data-co-method]').forEach(s => s.classList.toggle('active', s.dataset.method === state.paymentMethod));
   $$('.seg[data-method]').forEach(s => s.classList.toggle('active', s.dataset.method === state.paymentMethod));
   syncPayFields();
   $('#checkoutTender').value = '';
   $('#checkoutChange').textContent = peso(0);
   const sub = $('#checkoutSub');
-  if (sub) sub.textContent = state.customer ? `Charge to ${state.customer.name}` : 'Walk-in customer';
+  if (sub) {
+    if (state.paymentMethod === 'split' && state.customer) sub.textContent = `Cash + charge to ${state.customer.name}`;
+    else if (state.paymentMethod === 'credit' && state.customer) sub.textContent = `Charge to ${state.customer.name}`;
+    else sub.textContent = 'Walk-in customer';
+  }
   const fl = $('#checkoutFulfilLine');
   if (fl) {
     if (state.fulfilment === 'delivery') {
@@ -1079,6 +2026,10 @@ function renderCheckout() {
 function syncPayFields() {
   const cash = $('#checkoutCashFields');
   if (cash) cash.style.display = state.paymentMethod === 'credit' ? 'none' : '';
+  const tenderLabel = $('#checkoutCashFields .checkout-section-label');
+  if (tenderLabel) tenderLabel.textContent = state.paymentMethod === 'split' ? 'Cash amount' : 'Amount tendered';
+  const changeLabel = $('.checkout-change-row span:first-child');
+  if (changeLabel) changeLabel.textContent = state.paymentMethod === 'split' ? 'Balance' : 'Change';
   // Legacy modal fields (kept for back-compat) — hide block if it exists
   const payFields = $('#payFields');
   if (payFields) payFields.style.display = state.paymentMethod === 'credit' ? 'none' : '';
@@ -1086,52 +2037,480 @@ function syncPayFields() {
 function updateChange() {
   const { total } = cartTotals();
   const tender = parseFloat($('#checkoutTender')?.value || $('#tenderInput')?.value || 0) || 0;
-  const out = Math.max(0, tender - total);
+  const out = state.paymentMethod === 'split'
+    ? Math.max(0, total - tender)
+    : Math.max(0, tender - total);
   const co = $('#checkoutChange'); if (co) co.textContent = peso(out);
   const legacy = $('#changeValue'); if (legacy) legacy.textContent = peso(out);
+  setCheckoutError('');
 }
-function completeSale() {
-  const totals = cartTotals();
-  const total = totals.total;
-  let tendered = total, change = 0;
-  if (state.paymentMethod === 'cash') {
-    tendered = parseFloat($('#checkoutTender')?.value || $('#tenderInput')?.value || 0) || 0;
-    if (tendered < total) { showToast('Insufficient cash tendered'); return; }
-    change = tendered - total;
-  }
-  if (state.paymentMethod === 'credit' && !state.customer) {
-    showToast('Select a credit customer first'); return;
-  }
-  if (state.fulfilment === 'delivery' && !state.deliveryAddress) {
-    showToast('Add a delivery address first'); return;
-  }
 
-  // Build + persist the order record
-  const order = {
-    id: 'ord_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3),
+function roundedTenderOptions(total) {
+  const due = Math.max(0, Number(total) || 0);
+  if (due <= 0) return [];
+  let first;
+  if (due <= 500) first = Math.ceil(due / 50) * 50;
+  else if (due <= 1000) first = Math.ceil(due / 100) * 100;
+  else if (due <= 5000) first = Math.ceil(due / 500) * 500;
+  else first = Math.ceil(due / 1000) * 1000;
+  const bills = [50, 100, 200, 500, 1000, 2000, 5000, 10000].filter(v => v >= due);
+  return Array.from(new Set([first, ...bills])).filter(v => v >= due && v > 0).slice(0, 3);
+}
+
+function renderQuickCashOptions(total) {
+  const wrap = $('.checkout-quick');
+  if (!wrap) return;
+  const options = roundedTenderOptions(total);
+  wrap.innerHTML = [
+    '<button data-co-cash="exact">Exact</button>',
+    ...options.map(v => `<button data-co-cash="${v}">${peso(v)}</button>`),
+  ].join('');
+}
+
+function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentMethod, tendered = 0, change = 0, customerOverride } = {}) {
+  const totals = cartTotals();
+  const store = currentStoreInfo();
+  const customer = customerOverride === undefined ? state.customer : customerOverride;
+  return normalizeOrderRecord({
+    id: orderUid(),
     number: nextOrderNumber(),
     ts: Date.now(),
-    cashier: STORE_INFO.cashier,
-    register: STORE_INFO.registerNo,
+    status,
+    cashier: store.cashier,
+    register: store.registerNo,
     items: state.cart.map(i => ({ ...i })),
-    customer: state.customer
-      ? { id: state.customer.id, name: state.customer.name, phone: state.customer.phone, address: state.customer.address || '' }
+    customer: customer
+      ? { id: customer.id, name: customer.name, phone: customer.phone || '', address: customer.address || '' }
       : null,
-    paymentMethod: state.paymentMethod,
+    paymentMethod,
     subtotal: totals.subtotal,
     discount: totals.discount,
     cartDiscount: state.cartDiscount ? { ...state.cartDiscount } : null,
-    total,
+    total: totals.total,
     tendered,
     change,
+    payments: buildOrderPayments({ status, paymentMethod, total: totals.total, tendered, change }),
     vatRate: totals.vatRate,
     vatAmount: totals.vatAmount,
     vatableSales: totals.vatableSales,
     fulfilment: state.fulfilment || 'pickup',
     deliveryAddress: state.fulfilment === 'delivery' ? state.deliveryAddress : '',
+    deliveryLocation: state.fulfilment === 'delivery' ? state.deliveryLocation : null,
+  });
+}
+
+function persistOrder(order) {
+  let normalized = normalizeOrderRecord(order);
+  const latest = loadOrders();
+  if (latest.some(o => o.number === normalized.number && o.id !== normalized.id)) {
+    normalized = normalizeOrderRecord({ ...normalized, number: nextOrderNumber() });
+  }
+  const nextOrders = [normalized, ...latest.filter(o => o.id !== normalized.id)];
+  if (!saveOrdersList(nextOrders)) {
+    throw new Error('Receipt could not be saved.');
+  }
+  state.orders = nextOrders;
+  state.selectedOrderId = normalized.id;
+  return normalized;
+}
+
+function saveOrderMutation(order) {
+  const normalized = normalizeOrderRecord(order);
+  const latest = loadOrders();
+  const nextOrders = latest.map(o => o.id === normalized.id ? normalized : o);
+  if (!nextOrders.some(o => o.id === normalized.id)) nextOrders.unshift(normalized);
+  if (!saveOrdersList(nextOrders)) throw new Error('Order update could not be saved.');
+  state.orders = nextOrders;
+  return normalized;
+}
+
+function restoreOrderStock(order) {
+  (order.items || []).forEach(item => {
+    const p = state.products.find(product => product.id === item.id || product.id === item.productId);
+    if (p) p.stock = toNumber(p.stock, 0) + toNumber(item.qty, 0);
+  });
+  saveProducts();
+}
+
+function addCustomerLedgerEntry(entry) {
+  const record = {
+    id: entry.id || `led_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+    ts: toNumber(entry.ts, Date.now()),
+    customerId: String(entry.customerId || ''),
+    customerName: String(entry.customerName || ''),
+    type: entry.type === 'payment' ? 'payment' : 'charge',
+    amount: moneyValue(entry.amount),
+    orderId: entry.orderId ? String(entry.orderId) : '',
+    note: entry.note ? String(entry.note) : '',
   };
-  state.orders.unshift(order);
-  saveOrders();
+  if (!record.customerId || record.amount <= 0) return null;
+  state.customerLedger = [record, ...loadCustomerLedger()];
+  saveCustomerLedger();
+  return record;
+}
+
+function showOrderAfterCartClears(order) {
+  clearCart();
+  const back = $('#paymentModal'); if (back) back.hidden = true;
+  state.selectedOrderId = order.id;
+  switchView('orders');
+  renderOrders();
+}
+
+function showCheckoutSuccess(order) {
+  clearCart();
+  const back = $('#paymentModal'); if (back) back.hidden = true;
+  const total = $('#successTotal');
+  const sub = $('#successSub');
+  const preview = $('#successReceiptPreview');
+  if (total) total.textContent = peso(order.total);
+  if (sub) sub.textContent = `Receipt #${order.number} saved`;
+  if (preview) preview.innerHTML = buildReceiptPreview(order);
+  switchView('checkout-success');
+  clearTimeout(showCheckoutSuccess._t);
+  showCheckoutSuccess._orderId = order.id;
+}
+
+function currentSuccessOrder() {
+  const id = showCheckoutSuccess._orderId;
+  if (!id) return null;
+  state.orders = loadOrders();
+  return state.orders.find(order => order.id === id) || null;
+}
+
+function printSuccessReceipt() {
+  const order = currentSuccessOrder();
+  if (!order) {
+    showToast('No receipt to print');
+    return;
+  }
+  openReceipt(order);
+}
+
+function startNewSaleFromSuccess() {
+  clearTimeout(showCheckoutSuccess._t);
+  showCheckoutSuccess._orderId = null;
+  switchView('sell');
+  renderProducts();
+}
+
+function draftReceiptCustomerFromName(name) {
+  const trimmed = String(name || '').trim();
+  if (!trimmed) return null;
+  const existing = allCustomerRecords().find(c => c.name && c.name.toLowerCase() === trimmed.toLowerCase());
+  if (existing) {
+    return {
+      id: existing.id,
+      name: existing.name,
+      phone: existing.phone || '',
+      address: existing.address || '',
+    };
+  }
+  return {
+    id: 'draft_' + Date.now().toString(36),
+    name: trimmed,
+    phone: '',
+    address: '',
+  };
+}
+
+function openSaveReceiptModal() {
+  if (state.cart.length === 0) return;
+  const input = $('#saveReceiptNameInput');
+  if (input) {
+    input.value = state.customer?.name || '';
+  }
+  const modal = $('#saveReceiptModal');
+  if (modal) modal.hidden = false;
+}
+
+function saveReceiptFromModal() {
+  const input = $('#saveReceiptNameInput');
+  const customerOverride = draftReceiptCustomerFromName(input?.value || '');
+  const modal = $('#saveReceiptModal');
+  if (modal) modal.hidden = true;
+  saveCurrentReceipt(customerOverride);
+}
+
+function saveCurrentReceipt(customerOverride = null) {
+  if (state.cart.length === 0) return;
+  try {
+    const order = persistOrder(buildOrderRecord({
+      status: 'saved',
+      paymentMethod: 'unpaid',
+      tendered: 0,
+      change: 0,
+      customerOverride,
+    }));
+    showOrderAfterCartClears(order);
+  } catch (err) {
+    console.error(err);
+    showToast('Receipt was not saved. Check browser storage.');
+    flashControl($('#saveBtn'));
+  }
+}
+
+function applyCreditBalance(order) {
+  const creditAmount = (order.payments || [])
+    .filter(p => p.method === 'credit')
+    .reduce((sum, p) => sum + p.amount, 0);
+  if (creditAmount <= 0 || !order.customer) return;
+  const id = order.customer.id;
+  const all = allCustomerRecords();
+  const existing = state.customers.find(c => c.id === id);
+  const base = existing || all.find(c => c.id === id) || order.customer;
+  const next = {
+    ...base,
+    id,
+    name: base.name || order.customer.name,
+    phone: base.phone || order.customer.phone || '',
+    address: base.address || order.customer.address || '',
+    creditLimit: toNumber(base.creditLimit, 0),
+    currentBalance: moneyValue(toNumber(base.currentBalance, 0) + creditAmount),
+  };
+  const i = state.customers.findIndex(c => c.id === id);
+  if (i >= 0) state.customers[i] = next;
+  else state.customers.push(next);
+  saveSavedCustomers();
+  addCustomerLedgerEntry({
+    customerId: next.id,
+    customerName: next.name,
+    type: 'charge',
+    amount: creditAmount,
+    orderId: order.id,
+    note: `Charge from receipt ${order.number}`,
+  });
+}
+
+function adjustCustomerBalance(customer, delta) {
+  if (!customer || !customer.id || !delta) return null;
+  const all = allCustomerRecords();
+  const existing = state.customers.find(c => c.id === customer.id);
+  const base = existing || all.find(c => c.id === customer.id) || customer;
+  const next = {
+    ...base,
+    id: customer.id,
+    name: base.name || customer.name || 'Customer',
+    phone: base.phone || customer.phone || '',
+    address: base.address || customer.address || '',
+    creditLimit: toNumber(base.creditLimit, 0),
+    currentBalance: Math.max(0, moneyValue(toNumber(base.currentBalance, 0) + delta)),
+  };
+  const i = state.customers.findIndex(c => c.id === next.id);
+  if (i >= 0) state.customers[i] = next;
+  else state.customers.push(next);
+  saveSavedCustomers();
+  return next;
+}
+
+function recordCreditPayment(customerId, amount, note = '') {
+  const customer = allCustomerRecords().find(c => c.id === customerId);
+  const value = moneyValue(amount);
+  if (!customer || value <= 0) return null;
+  const next = adjustCustomerBalance(customer, -value);
+  addCustomerLedgerEntry({
+    customerId,
+    customerName: next.name,
+    type: 'payment',
+    amount: value,
+    note: note || 'Customer payment',
+  });
+  renderCustomers();
+  updateCustomerButton();
+  return next;
+}
+
+function reverseOrderCredit(order, reason) {
+  const creditAmount = (order.payments || [])
+    .filter(p => p.method === 'credit')
+    .reduce((sum, p) => sum + toNumber(p.amount, 0), 0);
+  if (creditAmount <= 0 || !order.customer) return;
+  const next = adjustCustomerBalance(order.customer, -creditAmount);
+  addCustomerLedgerEntry({
+    customerId: next.id,
+    customerName: next.name,
+    type: 'payment',
+    amount: creditAmount,
+    orderId: order.id,
+    note: reason || `Reversal for receipt ${order.number}`,
+  });
+}
+
+function requireManagerAction(actionLabel = 'This action') {
+  if (state.role === 'manager') return true;
+  showToast(`${actionLabel} needs manager role`);
+  return false;
+}
+
+function voidOrder(orderId, reason = 'Voided by manager') {
+  if (!requireManagerAction('Void sale')) return null;
+  const order = loadOrders().find(o => o.id === orderId);
+  if (!order || !isCompletedSale(order)) return null;
+  restoreOrderStock(order);
+  reverseOrderCredit(order, reason);
+  const updated = saveOrderMutation({
+    ...order,
+    status: 'voided',
+    reason,
+    voidedAt: Date.now(),
+  });
+  renderOrders();
+  renderReports();
+  return updated;
+}
+
+function refundOrder(orderId, reason = 'Refunded by manager') {
+  if (!requireManagerAction('Refund sale')) return null;
+  const order = loadOrders().find(o => o.id === orderId);
+  if (!order || !isCompletedSale(order)) return null;
+  restoreOrderStock(order);
+  reverseOrderCredit(order, reason);
+  const updated = saveOrderMutation({
+    ...order,
+    status: 'refunded',
+    reason,
+    refundedAt: Date.now(),
+  });
+  renderOrders();
+  renderReports();
+  return updated;
+}
+
+function recordReturn(orderId, reason = 'Returned items') {
+  if (!requireManagerAction('Return sale')) return null;
+  const order = loadOrders().find(o => o.id === orderId);
+  if (!order || !isCompletedSale(order)) return null;
+  restoreOrderStock(order);
+  reverseOrderCredit(order, reason);
+  const returnOrder = persistOrder({
+    ...order,
+    id: orderUid(),
+    number: nextOrderNumber(),
+    ts: Date.now(),
+    status: 'return',
+    originalOrderId: order.id,
+    reason,
+    returnedAt: Date.now(),
+    paymentMethod: 'cash',
+    payments: [{ method: 'cash', label: 'Return', amount: moneyValue(order.total), tendered: 0, change: 0, ref: order.number }],
+  });
+  renderOrders();
+  renderReports();
+  return returnOrder;
+}
+
+function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange') {
+  if (!requireManagerAction('Exchange sale')) return null;
+  const order = loadOrders().find(o => o.id === orderId);
+  if (!order || !isCompletedSale(order)) return null;
+  const replacements = (replacementItems || [])
+    .map(item => {
+      const product = state.products.find(p => p.id === item.id || p.id === item.productId);
+      const qty = Math.max(1, parseInt(item.qty, 10) || 1);
+      if (!product || product.stock < qty) return null;
+      return {
+        id: product.id,
+        productId: product.id,
+        sku: product.sku,
+        name: product.name,
+        unit: product.unit || 'pc',
+        qty,
+        price: moneyValue(item.price ?? product.price),
+      };
+    })
+    .filter(Boolean);
+  if (!replacements.length) return null;
+
+  restoreOrderStock(order);
+  reverseOrderCredit(order, reason);
+  const original = saveOrderMutation({
+    ...order,
+    status: 'refunded',
+    reason,
+    refundedAt: Date.now(),
+  });
+
+  replacements.forEach(item => {
+    const product = state.products.find(p => p.id === item.id);
+    if (product) product.stock = Math.max(0, toNumber(product.stock, 0) - item.qty);
+  });
+  saveProducts();
+  const subtotal = moneyValue(replacements.reduce((sum, item) => sum + item.price * item.qty, 0));
+  const exchangeSale = persistOrder({
+    id: orderUid(),
+    number: nextOrderNumber(),
+    ts: Date.now(),
+    status: 'completed',
+    cashier: currentStoreInfo().cashier,
+    register: currentStoreInfo().registerNo,
+    items: replacements,
+    customer: order.customer,
+    paymentMethod: 'cash',
+    subtotal,
+    discount: 0,
+    total: subtotal,
+    tendered: subtotal,
+    change: 0,
+    payments: [{ method: 'cash', label: 'Exchange sale', amount: subtotal, tendered: subtotal, change: 0, ref: order.number }],
+    fulfilment: order.fulfilment,
+    deliveryAddress: order.deliveryAddress || '',
+    deliveryLocation: order.deliveryLocation || null,
+    originalOrderId: order.id,
+    reason,
+  });
+  renderOrders();
+  renderReports();
+  return { original, exchangeSale };
+}
+
+function completeSale() {
+  const totals = cartTotals();
+  const total = moneyValue(totals.total);
+  let tendered = total, change = 0;
+  if (state.paymentMethod === 'cash' || state.paymentMethod === 'split') {
+    const tenderRaw = ($('#checkoutTender')?.value || $('#tenderInput')?.value || '').trim();
+    tendered = tenderRaw ? moneyValue(parseFloat(tenderRaw) || 0) : total;
+    if (state.paymentMethod === 'cash' && tendered < total) {
+      setCheckoutError('Tendered amount is below the total.');
+      $('#checkoutTender')?.focus();
+      return;
+    }
+    if (state.paymentMethod === 'split' && (!tenderRaw || tendered <= 0)) {
+      setCheckoutError('Enter the cash amount for the split payment.');
+      $('#checkoutTender')?.focus();
+      return;
+    }
+    if (state.paymentMethod === 'split' && tendered >= total) {
+      setCheckoutError('Use Cash for full payment, or enter a smaller cash amount.');
+      $('#checkoutTender')?.focus();
+      return;
+    }
+    if (state.paymentMethod === 'split' && !state.customer) {
+      setCheckoutError('Select a customer for the remaining account balance.');
+      openCustomerModal();
+      return;
+    }
+    change = state.paymentMethod === 'cash'
+      ? moneyValue(tendered - total)
+      : moneyValue(Math.max(0, tendered - total));
+  }
+  if (state.paymentMethod === 'credit' && !state.customer) {
+    setCheckoutError('Select a customer before charging to account.');
+    return;
+  }
+  let order;
+  try {
+    order = persistOrder(buildOrderRecord({
+      status: 'completed',
+      paymentMethod: state.paymentMethod,
+      tendered,
+      change,
+    }));
+  } catch (err) {
+    console.error(err);
+    setCheckoutError('Receipt could not be saved. Sale was not completed.');
+    return;
+  }
 
   // Decrement stock for sold items (mockup-level)
   order.items.forEach(it => {
@@ -1139,21 +2518,9 @@ function completeSale() {
     if (p) p.stock = Math.max(0, p.stock - it.qty);
   });
   saveProducts();
+  applyCreditBalance(order);
 
-  const msg = state.customer
-    ? `Charged ${peso(total)} to ${state.customer.name} · ${order.number}`
-    : `Sale complete · ${order.number} · ${peso(total)}`;
-  showToast(msg);
-  clearCart();
-  const back = $('#paymentModal'); if (back) back.hidden = true;
-  // Return from the checkout view to wherever we came from (default: Sell).
-  switchView(state.prevView && state.prevView !== 'checkout' ? state.prevView : 'sell');
-
-  // Refresh the orders list if it's visible
-  if (state.view === 'orders') renderOrders();
-
-  // Print the 80mm receipt
-  openReceipt(order);
+  showCheckoutSuccess(order);
 }
 
 // ---------- Orders view ----------
@@ -1178,7 +2545,104 @@ function fmtReceiptTime(ts) {
 }
 
 function orderItemCount(o) {
-  return o.items.reduce((s, i) => s + i.qty, 0);
+  return (o.items || []).reduce((s, i) => s + i.qty, 0);
+}
+
+function isSavedOrder(o) {
+  return (o.status || 'completed') === 'saved';
+}
+function isCompletedSale(o) {
+  return (o.status || 'completed') === 'completed';
+}
+
+function orderStatusLabel(o) {
+  if (isSavedOrder(o)) return 'Not completed';
+  if (o.status === 'voided') return 'Voided';
+  if (o.status === 'refunded') return 'Refunded';
+  if (o.status === 'return') return 'Return';
+  return 'Completed';
+}
+
+function orderPaymentLabel(o) {
+  if (isSavedOrder(o)) return 'Not completed transaction';
+  if (o.status === 'voided') return 'Voided sale';
+  if (o.status === 'refunded') return 'Refunded sale';
+  if (o.status === 'return') return 'Returned items';
+  if (o.paymentMethod === 'credit') return 'Charged to account';
+  if (o.paymentMethod === 'split') return 'Split payment';
+  return 'Cash';
+}
+
+function buildMapThumb(location, className = 'rp-map-thumb') {
+  const loc = normalizeDeliveryLocation(location);
+  if (!loc) return '';
+  const zoom = loc.zoom || DELIVERY_MAP_DEFAULT.zoom;
+  const centerX = lonToWorldX(loc.lng, zoom);
+  const centerY = latToWorldY(loc.lat, zoom);
+  const tileCenterX = Math.floor(centerX / 256);
+  const tileCenterY = Math.floor(centerY / 256);
+  const imgs = [];
+  for (let y = tileCenterY - 1; y <= tileCenterY + 1; y += 1) {
+    if (y < 0 || y >= 2 ** zoom) continue;
+    for (let x = tileCenterX - 1; x <= tileCenterX + 1; x += 1) {
+      const left = Math.round(x * 256 - centerX);
+      const top = Math.round(y * 256 - centerY);
+      imgs.push(`<img src="${osmTileUrl(x, y, zoom)}" alt="" style="left:calc(50% + ${left}px);top:calc(50% + ${top}px)" />`);
+    }
+  }
+  return `
+    <div class="${className}">
+      ${imgs.join('')}
+      <div class="map-pin"></div>
+      <div class="map-attrib">© OSM</div>
+    </div>`;
+}
+
+function buildReceiptPreview(order) {
+  const receipt = toReceiptViewModel(order);
+  const lines = receipt.items.map(i => `
+    <div class="rp-item">
+      <div class="rp-item-name">${escapeHtml(i.name)}</div>
+      <div class="rp-row rp-item-line">
+        <span>${i.qty} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
+        <span>${peso(i.lineTotal ?? (i.price * i.qty))}</span>
+      </div>
+    </div>`).join('');
+  const payRows = receipt.status === 'saved'
+    ? `<div class="rp-status saved">NOT COMPLETED TRANSACTION</div>`
+    : receipt.payments.map(p => {
+        if (p.method === 'cash') {
+          return `
+            <div class="rp-row"><span>CASH</span><span>${peso(p.tendered || p.amount)}</span></div>
+            ${p.change > 0 ? `<div class="rp-row"><span>CHANGE</span><span>${peso(p.change)}</span></div>` : ''}`;
+        }
+        return `<div class="rp-row"><span>${escapeHtml(String(p.label || p.method).toUpperCase())}</span><span>${peso(p.amount)}</span></div>`;
+      }).join('');
+  return `
+    <div class="receipt-preview">
+      <div class="rp-paper">
+        <div class="rp-center rp-store">${escapeHtml(receipt.store.name)}</div>
+        <div class="rp-center rp-small">${escapeHtml(receipt.store.address)}</div>
+        <div class="rp-center rp-small">Tel: ${escapeHtml(receipt.store.phone)}</div>
+        <div class="rp-rule"></div>
+        <div class="rp-row"><span>Receipt #</span><span>${escapeHtml(receipt.number)}</span></div>
+        <div class="rp-row"><span>Date</span><span>${receipt.dateText}</span></div>
+        <div class="rp-row"><span>Cashier</span><span>${escapeHtml(receipt.cashier || '')}</span></div>
+        ${receipt.customer ? `<div class="rp-small">Customer: ${escapeHtml(receipt.customer.name)}</div>` : ''}
+        <div class="rp-small"><strong>${escapeHtml(receipt.fulfilmentLabel)}</strong></div>
+        ${buildMapThumb(receipt.deliveryLocation)}
+        <div class="rp-rule"></div>
+        ${lines}
+        <div class="rp-rule"></div>
+        <div class="rp-row"><span>Subtotal</span><span>${peso(receipt.totals.subtotal)}</span></div>
+        ${receipt.totals.discount > 0 ? `<div class="rp-row"><span>Discount</span><span>-${peso(receipt.totals.discount)}</span></div>` : ''}
+        ${receipt.totals.vatAmount ? `<div class="rp-row rp-small"><span>VAT (${Math.round((receipt.totals.vatRate || 0.12) * 100)}%)</span><span>${peso(receipt.totals.vatAmount)}</span></div>` : ''}
+        <div class="rp-row rp-total"><span>TOTAL</span><span>${peso(receipt.totals.total)}</span></div>
+        ${payRows}
+        <div class="rp-rule"></div>
+        <div class="rp-center rp-thanks">Salamat po!</div>
+      </div>
+    </div>`;
 }
 
 function renderOrders() {
@@ -1199,8 +2663,8 @@ function renderOrders() {
             <polyline points="14 2 14 8 20 8"/>
           </svg>
         </div>
-        <div class="empty-title">No sales yet</div>
-        <div class="empty-sub">Completed sales will appear here</div>
+        <div class="empty-title">No receipts yet</div>
+        <div class="empty-sub">Saved receipts and completed sales will appear here</div>
       </div>`;
     renderOrderDetail();
     return;
@@ -1216,7 +2680,11 @@ function renderOrders() {
   const filtered = q
     ? state.orders.filter(o =>
         o.number.toLowerCase().includes(q) ||
-        (o.customer && o.customer.name.toLowerCase().includes(q)))
+        (o.customer && o.customer.name.toLowerCase().includes(q)) ||
+        (o.items || []).some(i => [i.name, i.sku].some(v => String(v || '').toLowerCase().includes(q))) ||
+        orderPaymentLabel(o).toLowerCase().includes(q) ||
+        orderStatusLabel(o).toLowerCase().includes(q) ||
+        fmtReceiptTime(o.ts).toLowerCase().includes(q))
     : state.orders;
 
   // Auto-select the most recent matching order if nothing's selected yet
@@ -1237,7 +2705,8 @@ function renderOrders() {
   list.innerHTML = filtered.map(o => {
     const active = state.selectedOrderId === o.id ? 'active' : '';
     const cust = o.customer ? o.customer.name : 'Walk-in';
-    const method = o.paymentMethod === 'credit' ? 'Charged' : 'Cash';
+    const method = isSavedOrder(o) ? 'Saved receipt' : orderPaymentLabel(o);
+    const statusCls = isSavedOrder(o) ? 'saved' : (isCompletedSale(o) ? 'done' : 'saved');
     return `
       <div class="order-row ${active}" data-order-id="${o.id}">
         <div class="or-body">
@@ -1252,6 +2721,7 @@ function renderOrders() {
           </div>
           <div class="or-foot">
             <span>${fmtOrderTime(o.ts)}</span>
+            <span class="or-status ${statusCls}">${orderStatusLabel(o)}</span>
             <span>${orderItemCount(o)} item${orderItemCount(o) === 1 ? '' : 's'}</span>
           </div>
         </div>
@@ -1277,61 +2747,20 @@ function renderOrderDetail() {
     detail.innerHTML = `
       <div class="order-detail-empty">
         <div class="empty-title">Select an order</div>
-        <div class="empty-sub">Pick one from the list to view items and reprint the receipt</div>
+        <div class="empty-sub">Pick one from the list to view the receipt</div>
       </div>`;
     return;
   }
 
-  const itemsHtml = o.items.map(i => `
-    <div class="od-item">
-      <div class="od-item-main">
-        <div class="od-item-name">${escapeHtml(i.name)}</div>
-        <div class="od-item-sub">${escapeHtml(i.sku || '')} · ${peso(i.price)} × ${i.qty} ${escapeHtml(i.unit || '')}</div>
-      </div>
-      <div class="od-item-amt">${peso(i.price * i.qty)}</div>
-    </div>`).join('');
-
-  const cust = o.customer ? o.customer.name : 'Walk-in customer';
-  const method = o.paymentMethod === 'credit' ? 'Charged to account' : 'Cash';
-
-  detail.innerHTML = `
-    <div class="od-head">
-      <div>
-        <div class="od-number">Order #${escapeHtml(o.number)}</div>
-        <div class="od-time">${fmtReceiptTime(o.ts)} · ${escapeHtml(o.cashier || '')}</div>
-      </div>
-      <button class="primary-btn small" id="reprintBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 2h9l3 3v17l-3-2-3 2-3-2-3 2z"/>
-          <line x1="8" y1="9" x2="14" y2="9"/>
-          <line x1="8" y1="13" x2="14" y2="13"/>
-          <line x1="8" y1="17" x2="12" y2="17"/>
-        </svg>
-        <span>View receipt</span>
-      </button>
-    </div>
-    <div class="od-meta-row">
-      <div><span class="muted">Customer</span><strong>${escapeHtml(cust)}</strong></div>
-      <div><span class="muted">Payment</span><strong>${method}</strong></div>
-      <div><span class="muted">Fulfilment</span><strong>${o.fulfilment === 'delivery' ? 'Delivery' : 'Pickup'}</strong></div>
-      <div><span class="muted">Register</span><strong>${escapeHtml(o.register || '1')}</strong></div>
-    </div>
-    ${o.fulfilment === 'delivery' && o.deliveryAddress ? `
-      <div class="od-deliver"><span class="muted">Delivery to</span> ${escapeHtml(o.deliveryAddress)}</div>` : ''}
-    <div class="od-items">${itemsHtml}</div>
-    <div class="od-totals">
-      <div class="row"><span>Subtotal</span><span>${peso(o.subtotal)}</span></div>
-      ${o.discount > 0 ? `<div class="row"><span>Discount</span><span>-${peso(o.discount)}</span></div>` : ''}
-      ${o.vatAmount ? `
-        <div class="row"><span>VATable sales</span><span>${peso(o.vatableSales || (o.total - o.vatAmount))}</span></div>
-        <div class="row"><span>VAT (${Math.round((o.vatRate || 0.12) * 100)}%)</span><span>${peso(o.vatAmount)}</span></div>` : ''}
-      <div class="row total"><span>Total</span><span>${peso(o.total)}</span></div>
-      ${o.paymentMethod === 'cash' ? `
-        <div class="row"><span>Tendered</span><span>${peso(o.tendered)}</span></div>
-        <div class="row"><span>Change</span><span>${peso(o.change)}</span></div>` : ''}
-    </div>`;
-
-  $('#reprintBtn')?.addEventListener('click', () => openReceipt(o));
+  const actions = isCompletedSale(o) && state.role === 'manager'
+    ? `<div class="order-ops">
+        <button class="secondary-btn small" data-order-op="void" data-order-id="${o.id}">Void</button>
+        <button class="secondary-btn small" data-order-op="refund" data-order-id="${o.id}">Refund</button>
+        <button class="secondary-btn small" data-order-op="return" data-order-id="${o.id}">Return</button>
+        <button class="secondary-btn small" data-order-op="exchange" data-order-id="${o.id}">Exchange</button>
+      </div>`
+    : '';
+  detail.innerHTML = `${actions}${buildReceiptPreview(o)}`;
 }
 
 function selectOrder(id) {
@@ -1341,39 +2770,47 @@ function selectOrder(id) {
 
 // ---------- 80mm thermal receipt ----------
 function buildReceiptHtml(order) {
-  const lines = order.items.map(i => `
+  const receipt = toReceiptViewModel(order);
+  const lines = receipt.items.map(i => `
     <div class="r-item">
       <div class="r-item-name">${escapeHtml(i.name)}</div>
       <div class="r-item-row">
         <span>${i.qty} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
-        <span>${peso(i.price * i.qty)}</span>
+        <span>${peso(i.lineTotal ?? (i.price * i.qty))}</span>
       </div>
     </div>`).join('');
 
-  const cust = order.customer
-    ? `<div class="r-cust">Customer: ${escapeHtml(order.customer.name)}</div>`
+  const cust = receipt.customer
+    ? `<div class="r-cust">Customer: ${escapeHtml(receipt.customer.name)}</div>`
     : '';
-  const fulfil = order.fulfilment === 'delivery'
+  const fulfilParts = receipt.fulfilmentLabel.split(' · ');
+  const fulfil = fulfilParts[0] === 'DELIVERY'
     ? `
       <div class="r-cust"><strong>DELIVERY</strong></div>
-      ${order.deliveryAddress ? `<div class="r-cust">${escapeHtml(order.deliveryAddress)}</div>` : ''}`
+      ${fulfilParts[1] ? `<div class="r-cust">${escapeHtml(fulfilParts.slice(1).join(' · '))}</div>` : ''}`
     : `<div class="r-cust"><strong>PICKUP</strong></div>`;
-  const discRow = (order.discount && order.discount > 0)
-    ? `<div class="r-row"><span>Discount</span><span>-${peso(order.discount)}</span></div>` : '';
-  const vatRows = (order.vatAmount && order.vatAmount > 0) ? `
-      <div class="r-row"><span>VATable sales</span><span>${peso(order.vatableSales)}</span></div>
-      <div class="r-row"><span>VAT (${Math.round((order.vatRate || 0.12) * 100)}%)</span><span>${peso(order.vatAmount)}</span></div>` : '';
-  const payRows = order.paymentMethod === 'cash'
-    ? `
-      <div class="r-row"><span>CASH</span><span>${peso(order.tendered)}</span></div>
-      <div class="r-row"><span>CHANGE</span><span>${peso(order.change)}</span></div>`
-    : `<div class="r-row"><span>CHARGED TO ACCOUNT</span><span>${peso(order.total)}</span></div>`;
+  const deliveryMap = receipt.deliveryLocation ? buildMapThumb(receipt.deliveryLocation, 'r-map-thumb') : '';
+  const discRow = (receipt.totals.discount && receipt.totals.discount > 0)
+    ? `<div class="r-row"><span>Discount</span><span>-${peso(receipt.totals.discount)}</span></div>` : '';
+  const vatRows = (receipt.totals.vatAmount && receipt.totals.vatAmount > 0) ? `
+      <div class="r-row"><span>VATable sales</span><span>${peso(receipt.totals.vatableSales)}</span></div>
+      <div class="r-row"><span>VAT (${Math.round((receipt.totals.vatRate || 0.12) * 100)}%)</span><span>${peso(receipt.totals.vatAmount)}</span></div>` : '';
+  const payRows = receipt.status === 'saved'
+    ? `<div class="r-row"><span>STATUS</span><span>NOT COMPLETED</span></div>`
+    : receipt.payments.map(p => {
+        if (p.method === 'cash') {
+          return `
+            <div class="r-row"><span>CASH</span><span>${peso(p.tendered || p.amount)}</span></div>
+            ${p.change > 0 ? `<div class="r-row"><span>CHANGE</span><span>${peso(p.change)}</span></div>` : ''}`;
+        }
+        return `<div class="r-row"><span>${escapeHtml(String(p.label || p.method).toUpperCase())}</span><span>${peso(p.amount)}</span></div>`;
+      }).join('');
 
   return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
-<title>Receipt ${escapeHtml(order.number)}</title>
+<title>Receipt ${escapeHtml(receipt.number)}</title>
 <style>
   @page { size: 80mm auto; margin: 0; }
   * { box-sizing: border-box; }
@@ -1399,6 +2836,20 @@ function buildReceiptHtml(order) {
   .r-total { font-size: 14px; font-weight: 700; }
   .r-foot { font-size: 11px; margin-top: 6px; }
   .r-cust { font-size: 11px; margin: 2px 0; }
+  .r-map-thumb {
+    position: relative; height: 82px; overflow: hidden; margin: 5px 0 2px;
+    border: 1px solid #000; background: #f3f3f3; filter: grayscale(1) contrast(1.2);
+  }
+  .r-map-thumb img { position: absolute; width: 256px; height: 256px; max-width: none; }
+  .r-map-thumb .map-pin {
+    position: absolute; left: 50%; top: 50%; width: 14px; height: 14px;
+    transform: translate(-50%, -100%) rotate(-45deg); background: #000;
+    border: 2px solid #fff; border-radius: 50% 50% 50% 0;
+  }
+  .r-map-thumb .map-attrib {
+    position: absolute; right: 3px; bottom: 2px; background: rgba(255,255,255,0.85);
+    color: #000; font-size: 8px; padding: 0 2px;
+  }
   .r-thanks { margin-top: 8px; font-weight: 700; }
   .r-actions { margin-top: 12px; display: flex; gap: 6px; }
   .r-actions button {
@@ -1413,21 +2864,22 @@ function buildReceiptHtml(order) {
 </style>
 </head>
 <body>
-  <div class="r-center r-store">${escapeHtml(STORE_INFO.name)}</div>
-  <div class="r-center r-store-sub">${escapeHtml(STORE_INFO.address)}</div>
-  <div class="r-center r-store-sub">Tel: ${escapeHtml(STORE_INFO.phone)}</div>
-  <div class="r-center r-store-sub">TIN: ${escapeHtml(STORE_INFO.tin)}</div>
+  <div class="r-center r-store">${escapeHtml(receipt.store.name)}</div>
+  <div class="r-center r-store-sub">${escapeHtml(receipt.store.address)}</div>
+  <div class="r-center r-store-sub">Tel: ${escapeHtml(receipt.store.phone)}</div>
+  <div class="r-center r-store-sub">TIN: ${escapeHtml(receipt.store.tin)}</div>
 
   <div class="r-rule"></div>
 
   <div class="r-meta">
-    <div><span>Receipt #</span><span>${escapeHtml(order.number)}</span></div>
-    <div><span>Date</span><span>${fmtReceiptTime(order.ts)}</span></div>
-    <div><span>Cashier</span><span>${escapeHtml(order.cashier || '')}</span></div>
-    <div><span>Register</span><span>${escapeHtml(order.register || '1')}</span></div>
+    <div><span>Receipt #</span><span>${escapeHtml(receipt.number)}</span></div>
+    <div><span>Date</span><span>${receipt.dateText}</span></div>
+    <div><span>Cashier</span><span>${escapeHtml(receipt.cashier || '')}</span></div>
+    <div><span>Register</span><span>${escapeHtml(receipt.register || '1')}</span></div>
   </div>
   ${cust}
   ${fulfil}
+  ${deliveryMap}
 
   <div class="r-rule"></div>
 
@@ -1435,10 +2887,10 @@ function buildReceiptHtml(order) {
 
   <div class="r-rule"></div>
 
-  <div class="r-row"><span>Subtotal</span><span>${peso(order.subtotal)}</span></div>
+  <div class="r-row"><span>Subtotal</span><span>${peso(receipt.totals.subtotal)}</span></div>
   ${discRow}
   ${vatRows}
-  <div class="r-double r-row r-total"><span>TOTAL</span><span>${peso(order.total)}</span></div>
+  <div class="r-double r-row r-total"><span>TOTAL</span><span>${peso(receipt.totals.total)}</span></div>
   ${payRows}
 
   <div class="r-rule"></div>
@@ -1476,142 +2928,11 @@ function openReceipt(order) {
   w.document.close();
 }
 
-// ============================================================
-// INVENTORY BACKEND
-// ============================================================
-
-function getFilteredInvProducts() {
-  let list = state.products;
-  if (state.invQuery.trim()) {
-    list = state.fuse.search(state.invQuery.trim()).map(r => r.item);
-  }
-  if (state.invFolderId !== 'all') {
-    list = list.filter(p => p.folder === state.invFolderId);
-  }
-  return list;
-}
-
-function renderInventory() {
-  const tbody = $('#inventoryTable tbody');
-  const list = getFilteredInvProducts();
-  if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:48px 16px;color:var(--ink-tertiary)">
-      <div style="font-size:13px;font-weight:510;color:var(--ink-secondary);margin-bottom:4px">No products</div>
-      <div style="font-size:12px">Add a product or pick a different folder</div>
-    </td></tr>`;
-  } else {
-    tbody.innerHTML = list.map(p => {
-      const initial = (p.brand?.[0] || p.name?.[0] || '?').toUpperCase();
-      let status = 'ok', label = 'In stock';
-      if (p.stock <= 0) { status = 'out'; label = 'Out of stock'; }
-      else if (p.stock <= p.reorderPoint) { status = 'low'; label = 'Low stock'; }
-      const checked = state.selectedIds.has(p.id) ? 'checked' : '';
-      const selectedCls = state.selectedIds.has(p.id) ? 'selected' : '';
-      return `
-        <tr class="${selectedCls}" data-id="${p.id}">
-          <td class="check-col" data-noedit><input type="checkbox" class="row-check" data-id="${p.id}" ${checked}/></td>
-          <td>
-            <div class="item-cell">
-              <div class="item-glyph">${escapeHtml(initial)}</div>
-              <div>
-                <div class="item-name">${escapeHtml(p.name)}</div>
-                <div class="item-aliases">${escapeHtml((p.aliases || []).slice(0, 3).join(' · '))}</div>
-              </div>
-            </div>
-          </td>
-          <td><span class="code-chip">${escapeHtml(p.sku)}</span></td>
-          <td>${escapeHtml(p.brand)}</td>
-          <td>${escapeHtml(folderName(p.folder))}</td>
-          <td class="num">${p.stock} ${escapeHtml(p.unit || '')}</td>
-          <td class="num">${peso(p.cost)}</td>
-          <td class="num"><strong>${peso(p.price)}</strong></td>
-          <td><span class="status-pill ${status}"><span class="dot"></span>${label}</span></td>
-          <td class="action-col" data-noedit>
-            <div class="row-actions">
-              <button title="Edit" data-act="edit-product" data-id="${p.id}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6L8 22H2v-6z"/></svg>
-              </button>
-              <button class="danger" title="Delete" data-act="delete-product" data-id="${p.id}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
-              </button>
-            </div>
-          </td>
-        </tr>`;
-    }).join('');
-  }
-
-  // Sync select-all checkbox state
-  const all = $('#selectAll');
-  if (all) {
-    const ids = list.map(p => p.id);
-    const selectedInList = ids.filter(id => state.selectedIds.has(id)).length;
-    all.checked = ids.length > 0 && selectedInList === ids.length;
-    all.indeterminate = selectedInList > 0 && selectedInList < ids.length;
-  }
-  renderBulkBar();
-}
-
-function renderBulkBar() {
-  const bar = $('#bulkBar');
-  const n = state.selectedIds.size;
-  if (n === 0) { bar.hidden = true; return; }
-  bar.hidden = false;
-  $('#bulkCount').textContent = `${n} selected`;
-}
-
-function renderBulkMoveMenu() {
-  const menu = $('#bulkMoveMenu');
-  menu.innerHTML = state.folders.filter(f => f.id !== 'all').map(f => `
-    <button class="dropdown-item" data-move-to="${f.id}">
-      <span>${escapeHtml(f.name)}</span>
-      <span class="count">${folderCount(f.id)}</span>
-    </button>
-  `).join('');
-  if (state.folders.filter(f => f.id !== 'all').length === 0) {
-    menu.innerHTML = `<div style="padding:10px;font-size:12px;color:var(--ink-tertiary)">No folders yet. Create one first.</div>`;
-  }
-}
-
-function toggleSelect(id) {
-  if (state.selectedIds.has(id)) state.selectedIds.delete(id);
-  else state.selectedIds.add(id);
-  renderInventory();
-}
-function clearSelection() {
-  state.selectedIds.clear();
-  renderInventory();
-}
-
-function bulkMoveTo(folderId) {
-  const ids = Array.from(state.selectedIds);
-  ids.forEach(id => {
-    const p = state.products.find(x => x.id === id);
-    if (p) p.folder = folderId;
-  });
-  saveProducts();
-  showToast(`Moved ${ids.length} item${ids.length === 1 ? '' : 's'} to ${folderName(folderId)}`);
-  state.selectedIds.clear();
-  renderAllFolderUis();
-}
-
-function bulkDelete() {
-  const n = state.selectedIds.size;
-  if (n === 0) return;
-  if (!confirm(`Delete ${n} product${n === 1 ? '' : 's'}? This cannot be undone.`)) return;
-  state.products = state.products.filter(p => !state.selectedIds.has(p.id));
-  state.selectedIds.clear();
-  saveProducts();
-  rebuildFuse();
-  renderAllFolderUis();
-  showToast(`Deleted ${n} product${n === 1 ? '' : 's'}`);
-}
-
 function deleteProduct(id) {
   const p = state.products.find(x => x.id === id);
   if (!p) return;
   if (!confirm(`Delete “${p.name}”?`)) return;
   state.products = state.products.filter(x => x.id !== id);
-  state.selectedIds.delete(id);
   saveProducts();
   rebuildFuse();
   renderAllFolderUis();
@@ -1637,7 +2958,7 @@ function openProductModal(mode, editId = null) {
 
   const fields = {
     pf_name: '', pf_sku: '', pf_barcode: '', pf_brand: '',
-    pf_folder: state.invFolderId !== 'all' ? state.invFolderId : '',
+    pf_folder: '',
     pf_unit: 'pc', pf_cost: '', pf_price: '', pf_stock: '0', pf_reorder: '0', pf_aliases: ''
   };
   if (mode === 'edit' && editId) {
@@ -1692,41 +3013,6 @@ function saveProduct() {
   $('#productModal').hidden = true;
 }
 
-// ---------- Folder cards (Inventory > Folders) ----------
-function renderFolderCards() {
-  const grid = $('#folderCards');
-  if (!grid) return;
-  const cards = state.folders.filter(f => f.id !== 'all').map(f => {
-    const builtinClass = f.builtin ? '' : '';
-    return `
-      <div class="folder-card" data-folder-id="${f.id}">
-        <div class="fc-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-          </svg>
-        </div>
-        <div class="fc-name">${escapeHtml(f.name)}</div>
-        <div class="fc-count">${folderCount(f.id)} item${folderCount(f.id) === 1 ? '' : 's'}</div>
-        <div class="fc-menu">
-          <button data-act="rename-folder" data-id="${f.id}" title="Rename">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6L8 22H2v-6z"/></svg>
-          </button>
-          <button class="danger" data-act="delete-folder" data-id="${f.id}" title="Delete">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
-          </button>
-        </div>
-      </div>`;
-  }).join('');
-  grid.innerHTML = cards + `
-    <button class="folder-card add-card" id="addFolderCard">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-      <span>New folder</span>
-    </button>`;
-}
-
 // ---------- Customers / Reports ----------
 function renderCustomers() {
   const grid = $('#customersGrid');
@@ -1753,29 +3039,137 @@ function renderCustomers() {
           <span class="cust-card-balance-label">Current Utang</span>
           <span class="cust-card-balance-value ${cls}">${peso(bal)}</span>
         </div>
+        <button class="secondary-btn small cust-pay-btn" data-customer-pay="${escapeHtml(c.id)}" ${bal <= 0 ? 'disabled' : ''}>Record payment</button>
       </div>`;
   }).join('');
 }
 
+function sameLocalDate(a, b) {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate();
+}
+
 function renderReports() {
-  const revenue = RECENT_SALES.reduce((s, x) => s + x.amount, 0);
-  const txns = RECENT_SALES.length;
+  state.orders = loadOrders();
+  const today = new Date();
+  const sales = state.orders
+    .filter(o => isCompletedSale(o) && sameLocalDate(new Date(o.ts), today))
+    .sort((a, b) => b.ts - a.ts);
+  const revenue = sales.reduce((s, x) => s + x.total, 0);
+  const txns = sales.length;
   const avg = txns > 0 ? revenue / txns : 0;
   const low = state.products.filter(p => p.stock <= p.reorderPoint).length;
   $('#statRevenue').textContent = peso(revenue);
   $('#statTxns').textContent = txns;
   $('#statAvg').textContent = peso(avg);
   $('#statLow').textContent = low;
-  $('#recentList').innerHTML = RECENT_SALES.map(s => `
-    <div class="recent-row">
-      <div>
-        <div class="r-id">${escapeHtml(s.id)}${s.customer ? ' · ' + escapeHtml(s.customer) : ''}</div>
-        <div class="r-time">Today, ${escapeHtml(s.time)}</div>
+  $('#recentList').innerHTML = sales.length
+    ? sales.slice(0, 8).map(s => `
+      <div class="recent-row">
+        <div>
+          <div class="r-id">#${escapeHtml(s.number)}${s.customer ? ' · ' + escapeHtml(s.customer.name) : ''}</div>
+          <div class="r-time">${fmtOrderTime(s.ts)}</div>
+        </div>
+        <span class="r-method">${escapeHtml(orderPaymentLabel(s))}</span>
+        <span class="r-amt">${peso(s.total)}</span>
       </div>
-      <span class="r-method">${escapeHtml(s.method)}</span>
-      <span class="r-amt">${peso(s.amount)}</span>
-    </div>
-  `).join('');
+    `).join('')
+    : `<div class="recent-empty">No completed sales yet</div>`;
+  const drawer = buildCashDrawerSummary();
+  const drawerEl = $('#drawerSummary');
+  if (drawerEl) {
+    drawerEl.innerHTML = `
+      <div class="recent-row"><span>Expected cash</span><span class="r-amt">${peso(drawer.expectedCash)}</span></div>
+      <div class="recent-row"><span>Cash sales</span><span>${drawer.cashSales}</span></div>
+      <div class="recent-row"><span>Adjustments</span><span>${drawer.adjustments}</span></div>`;
+  }
+}
+
+function renderPosSettings() {
+  const currentSize = state.tileSize || 'md';
+  $$('#posSizeToggle .bb-size-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.size === currentSize);
+  });
+  const showCb = $('#posShowPrice');
+  if (showCb) showCb.checked = state.showPrice;
+  const currentTheme = state.theme || 'dark';
+  $$('#posThemeToggle .bb-size-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.theme === currentTheme);
+  });
+  const p = state.settings.printing || {};
+  const pw = $('#posPrinterWidth');
+  if (pw) pw.value = p.width || '58mm';
+  const po = $('#posPrintOnSale');
+  if (po) po.checked = !!p.printOnSale;
+}
+
+function applyTheme(theme) {
+  state.theme = theme;
+  storageSet(STORAGE_THEME, theme);
+  document.body.classList.toggle('light-theme', theme === 'light');
+  $$('#posThemeToggle .bb-size-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.theme === theme);
+  });
+}
+
+function persistPosSettings() {
+  state.settings.printing = {
+    ...state.settings.printing,
+    width: ($('#posPrinterWidth')?.value || '58mm').trim(),
+    printOnSale: !!$('#posPrintOnSale')?.checked,
+  };
+  saveSettings();
+}
+
+function buildCashDrawerSummary(date = new Date()) {
+  const orders = loadOrders().filter(o => sameLocalDate(new Date(o.ts), date));
+  let expectedCash = 0;
+  let cashSales = 0;
+  let adjustments = 0;
+  orders.forEach(order => {
+    const cashAmount = (order.payments || [])
+      .filter(p => p.method === 'cash')
+      .reduce((sum, p) => sum + toNumber(p.amount, 0), 0);
+    if (isCompletedSale(order)) {
+      expectedCash += cashAmount;
+      if (cashAmount > 0) cashSales += 1;
+    } else if (order.status === 'voided' || order.status === 'refunded' || order.status === 'return') {
+      adjustments += 1;
+    }
+  });
+  return { date: date.toISOString().slice(0, 10), expectedCash: moneyValue(expectedCash), cashSales, adjustments };
+}
+
+function closeCashDrawer({ countedCash = 0, notes = '' } = {}) {
+  if (!requireManagerAction('Close drawer')) return null;
+  const summary = buildCashDrawerSummary();
+  const closeout = {
+    id: `drawer_${Date.now().toString(36)}`,
+    ts: Date.now(),
+    ...summary,
+    countedCash: moneyValue(countedCash),
+    difference: moneyValue(toNumber(countedCash, 0) - summary.expectedCash),
+    notes: String(notes || ''),
+    cashier: currentStoreInfo().cashier,
+  };
+  state.drawerCloseouts = [closeout, ...loadDrawerCloseouts().filter(x => x.date !== closeout.date)];
+  saveDrawerCloseouts();
+  return closeout;
+}
+
+function buildReorderList() {
+  return state.products
+    .filter(p => toNumber(p.stock, 0) <= toNumber(p.reorderPoint, 0))
+    .map(p => ({
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      stock: toNumber(p.stock, 0),
+      reorderPoint: toNumber(p.reorderPoint, 0),
+      suggestedQty: Math.max(1, toNumber(p.reorderPoint, 0) * 2 - toNumber(p.stock, 0)),
+    }))
+    .sort((a, b) => (a.stock / Math.max(1, a.reorderPoint)) - (b.stock / Math.max(1, b.reorderPoint)));
 }
 
 // ============================================================
@@ -1796,7 +3190,35 @@ function attachEvents() {
     e.stopPropagation();
     $('#app').classList.toggle('sidebar-collapsed');
   });
-  // Tap anywhere outside the sidebar (backdrop or main content) to close it
+
+  // Close the sidebar before the underlying Sell surface sees the press.
+  let swallowSidebarBackdropClick = false;
+  function closeSidebarFromBackdrop(e) {
+    const app = $('#app');
+    if (!app || app.classList.contains('sidebar-collapsed')) return false;
+    if (e.target.closest('.sidebar')) return false;
+    if (e.target.closest('#sidebarToggle')) return false;
+    if (e.target.closest('[data-act="open-sidebar"]')) return false;
+    app.classList.add('sidebar-collapsed');
+    swallowSidebarBackdropClick = true;
+    clearTimeout(closeSidebarFromBackdrop._t);
+    closeSidebarFromBackdrop._t = setTimeout(() => { swallowSidebarBackdropClick = false; }, 350);
+    return true;
+  }
+  document.addEventListener('pointerdown', (e) => {
+    if (!closeSidebarFromBackdrop(e)) return;
+    if (e.cancelable) e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+  document.addEventListener('click', (e) => {
+    if (!swallowSidebarBackdropClick) return;
+    if (e.cancelable) e.preventDefault();
+    e.stopImmediatePropagation();
+    swallowSidebarBackdropClick = false;
+  }, true);
+
+  // Tap anywhere outside the sidebar (backdrop or main content) to close it.
+  // The capture handlers above prevent the same tap from reaching product tiles.
   document.addEventListener('click', (e) => {
     const app = $('#app');
     if (app.classList.contains('sidebar-collapsed')) return;
@@ -1810,25 +3232,6 @@ function attachEvents() {
     $('#app').classList.add('sidebar-collapsed');
   }));
 
-  // ---- Top bar: folder dropdown ----
-  $('#folderDdBtn')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleFolderDdMenu();
-  });
-  $('#folderDdMenu')?.addEventListener('click', (e) => {
-    const item = e.target.closest('.ddm-item');
-    if (!item) return;
-    selectFolder(item.dataset.folderId);
-    toggleFolderDdMenu(false);
-  });
-  document.addEventListener('click', (e) => {
-    const menu = $('#folderDdMenu');
-    if (!menu || menu.hidden) return;
-    if (!e.target.closest('#folderDdMenu') && !e.target.closest('#folderDdBtn')) {
-      toggleFolderDdMenu(false);
-    }
-  });
-
   // ---- Bottom bar: pagination ----
   $('#bbPrevBtn')?.addEventListener('click', () => changePage(-1));
   $('#bbNextBtn')?.addEventListener('click', () => changePage(1));
@@ -1841,10 +3244,14 @@ function attachEvents() {
   // ---- Bottom bar: toggle price display on tiles ----
   $('#bbViewBtn')?.addEventListener('click', toggleShowPrice);
 
-  // ---- Save button on cart (decorative for now) ----
-  $('#saveBtn')?.addEventListener('click', () => {
-    if (state.cart.length === 0) return;
-    showToast('Ticket saved');
+  // ---- Save button on cart: creates a not-completed saved receipt ----
+  $('#saveBtn')?.addEventListener('click', openSaveReceiptModal);
+  $('#saveReceiptConfirmBtn')?.addEventListener('click', saveReceiptFromModal);
+  $('#saveReceiptNameInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveReceiptFromModal();
+    }
   });
 
   // ---- Sell folder strip (legacy, no-op if removed) ----
@@ -1865,13 +3272,7 @@ function attachEvents() {
     if (e.key === 'Enter') {
       const raw = search.value.trim();
       if (!raw) return;
-      // 1. Exact barcode match (preferred for scanners)
-      const byBarcode = state.products.find(p => p.barcode && String(p.barcode) === raw);
-      // 2. Exact SKU match (case-insensitive)
-      const bySku = !byBarcode && state.products.find(p => p.sku && p.sku.toLowerCase() === raw.toLowerCase());
-      const hit = byBarcode || bySku;
-      if (hit) {
-        addToCart(hit.id);
+      if (findProductByCode(raw) && addProductByCode(raw, { source: 'keyboard' })) {
         search.value = ''; state.query = '';
         clear.classList.remove('visible');
         renderProducts();
@@ -1913,13 +3314,47 @@ function attachEvents() {
     if (e.key === 'Enter') return;
     search.focus({ preventScroll: true });
   });
-  $('#scanBtn').addEventListener('click', () => {
-    search.focus({ preventScroll: true });
-    showToast('Ready to scan — point scanner at barcode');
+  $('#scanBtn').addEventListener('click', openBarcodeScanner);
+  $('#barcodeManualBtn')?.addEventListener('click', submitManualBarcode);
+  $('#barcodeManualInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitManualBarcode();
+    }
   });
 
   // ---- Product grid (Sell) ----
-  $('#productGrid').addEventListener('click', (e) => {
+  const productGrid = $('#productGrid');
+  let swipeStart = null;
+  let suppressGridClick = false;
+  productGrid.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    swipeStart = { x: e.clientX, y: e.clientY, id: e.pointerId };
+  });
+  productGrid.addEventListener('pointerup', (e) => {
+    if (!swipeStart || swipeStart.id !== e.pointerId) return;
+    const dx = e.clientX - swipeStart.x;
+    const dy = e.clientY - swipeStart.y;
+    swipeStart = null;
+    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.35) {
+      suppressGridClick = true;
+      changePage(dx < 0 ? 1 : -1);
+      clearTimeout(productGrid._swipeClickTimer);
+      productGrid._swipeClickTimer = setTimeout(() => { suppressGridClick = false; }, 260);
+    }
+  });
+  productGrid.addEventListener('pointercancel', () => { swipeStart = null; });
+  productGrid.addEventListener('wheel', (e) => {
+    if (Math.abs(e.deltaX) <= Math.abs(e.deltaY) || Math.abs(e.deltaX) < 24) return;
+    e.preventDefault();
+    changePage(e.deltaX > 0 ? 1 : -1);
+  }, { passive: false });
+  productGrid.addEventListener('click', (e) => {
+    if (suppressGridClick) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     const card = e.target.closest('.product-card');
     if (!card) return;
     // Back tile inside a group (only when drilled in — left for back-compat)
@@ -1966,6 +3401,18 @@ function attachEvents() {
     const row = e.target.closest('.order-row');
     if (!row) return;
     selectOrder(row.dataset.orderId);
+  });
+  $('#orderDetail')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-order-op]');
+    if (!btn) return;
+    const id = btn.dataset.orderId;
+    if (btn.dataset.orderOp === 'void') voidOrder(id, 'Voided from Orders');
+    if (btn.dataset.orderOp === 'refund') refundOrder(id, 'Refunded from Orders');
+    if (btn.dataset.orderOp === 'return') recordReturn(id, 'Returned from Orders');
+    if (btn.dataset.orderOp === 'exchange') {
+      const replacement = state.products.find(p => p.stock > 0 && p.price > 0);
+      if (replacement) exchangeOrder(id, [{ id: replacement.id, qty: 1 }], 'Exchange from Orders');
+    }
   });
   // Orders search
   $('#ordersSearch')?.addEventListener('input', (e) => {
@@ -2021,9 +3468,67 @@ function attachEvents() {
   });
   // Delivery modal save
   $('#deliverySaveBtn')?.addEventListener('click', saveDeliveryAddress);
+  $('#deliveryPinBtn')?.addEventListener('click', openDeliveryMap);
+  $('#deliveryMapZoomOut')?.addEventListener('click', () => zoomDeliveryMap(-1));
+  $('#deliveryMapZoomIn')?.addEventListener('click', () => zoomDeliveryMap(1));
+  $('#deliveryMapUseGps')?.addEventListener('click', useDeviceDeliveryLocation);
+  $('#deliveryMapSave')?.addEventListener('click', saveDeliveryMapPin);
+  $('#deliveryMapClear')?.addEventListener('click', clearDeliveryMapPin);
+  $('#deliveryMapStage')?.addEventListener('pointerdown', (e) => {
+    if (state.deliveryMap.pinch) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    const center = deliveryMapWorldCenter();
+    state.deliveryMap.drag = {
+      id: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      centerX: center.x,
+      centerY: center.y,
+      moved: false,
+    };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  });
+  $('#deliveryMapStage')?.addEventListener('pointermove', (e) => {
+    if (state.deliveryMap.pinch) return;
+    const drag = state.deliveryMap.drag;
+    if (!drag || drag.id !== e.pointerId) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true;
+    setDeliveryMapCenterFromWorld(drag.centerX - dx, drag.centerY - dy);
+    renderDeliveryMap();
+  });
+  $('#deliveryMapStage')?.addEventListener('pointerup', (e) => {
+    const drag = state.deliveryMap.drag;
+    if (!drag || drag.id !== e.pointerId) return;
+    state.deliveryMap.drag = null;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    if (!drag.moved) setDeliveryMapPinAt(e.clientX, e.clientY);
+  });
+  $('#deliveryMapStage')?.addEventListener('pointercancel', () => { state.deliveryMap.drag = null; });
+  $('#deliveryMapStage')?.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    zoomDeliveryMapAt(e.deltaY < 0 ? 1 : -1, e.clientX, e.clientY);
+  }, { passive: false });
+  $('#deliveryMapStage')?.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      beginDeliveryPinch(e);
+    }
+  }, { passive: false });
+  $('#deliveryMapStage')?.addEventListener('touchmove', updateDeliveryPinch, { passive: false });
+  $('#deliveryMapStage')?.addEventListener('touchend', endDeliveryPinch);
+  $('#deliveryMapStage')?.addEventListener('touchcancel', endDeliveryPinch);
 
   // New customer (Customers view) + saved customer save
   $('#newCustomerBtn')?.addEventListener('click', openCustomerEditModal);
+  $('#customersGrid')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-customer-pay]');
+    if (!btn) return;
+    const amount = parseFloat(prompt('Payment amount') || '0');
+    if (amount > 0) recordCreditPayment(btn.dataset.customerPay, amount);
+  });
   $('#custSaveBtn')?.addEventListener('click', saveSavedCustomerFromModal);
   $('#clearCartBtn').addEventListener('click', () => {
     if (state.cart.length === 0) return;
@@ -2049,13 +3554,23 @@ function attachEvents() {
 
   // ---- Modals ----
   $$('[data-close-modal]').forEach(b => {
-    b.addEventListener('click', () => $$('.modal-backdrop').forEach(m => m.hidden = true));
+    b.addEventListener('click', () => {
+      if (b.closest('#barcodeModal')) stopBarcodeScanner();
+      $$('.modal-backdrop').forEach(m => m.hidden = true);
+    });
   });
   $$('.modal-backdrop').forEach(bd => {
-    bd.addEventListener('click', (e) => { if (e.target === bd) bd.hidden = true; });
+    bd.addEventListener('click', (e) => {
+      if (e.target !== bd) return;
+      if (bd.id === 'barcodeModal') stopBarcodeScanner();
+      bd.hidden = true;
+    });
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') $$('.modal-backdrop').forEach(m => m.hidden = true);
+    if (e.key === 'Escape') {
+      stopBarcodeScanner();
+      $$('.modal-backdrop').forEach(m => m.hidden = true);
+    }
   });
 
   // ---- Pay ----
@@ -2067,9 +3582,9 @@ function attachEvents() {
     $$('.seg[data-method]').forEach(s =>
       s.classList.toggle('active', s.dataset.method === method));
     syncPayFields();
-    if (method === 'credit' && !state.customer) {
+    if ((method === 'credit' || method === 'split') && !state.customer) {
       openCustomerModal();
-      showToast('Pick a credit customer');
+      showToast(method === 'split' ? 'Pick a customer for the balance' : 'Pick a credit customer');
     }
   }
   $$('.seg[data-method]').forEach(seg => {
@@ -2082,14 +3597,16 @@ function attachEvents() {
     if (back) { switchView(state.prevView && state.prevView !== 'checkout' ? state.prevView : 'sell'); }
   });
   $('#checkoutTender')?.addEventListener('input', updateChange);
-  $$('[data-co-cash]').forEach(b => {
-    b.addEventListener('click', () => {
-      const { total } = cartTotals();
-      $('#checkoutTender').value = b.dataset.coCash === 'exact' ? total.toFixed(2) : b.dataset.coCash;
-      updateChange();
-    });
+  $('.checkout-quick')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-co-cash]');
+    if (!b) return;
+    const { total } = cartTotals();
+    $('#checkoutTender').value = b.dataset.coCash === 'exact' ? total.toFixed(2) : b.dataset.coCash;
+    updateChange();
   });
   $('#checkoutCompleteBtn')?.addEventListener('click', completeSale);
+  $('#successPrintBtn')?.addEventListener('click', printSuccessReceipt);
+  $('#successNewSaleBtn')?.addEventListener('click', startNewSaleFromSuccess);
 
   // Legacy modal (kept for back-compat if anything still triggers it)
   $('#tenderInput')?.addEventListener('input', updateChange);
@@ -2102,81 +3619,26 @@ function attachEvents() {
   });
   $('#completeSaleBtn')?.addEventListener('click', completeSale);
 
-  // ============================================================
-  // INVENTORY
-  // ============================================================
-
-  // Tab switching
-  $$('.inv-tab').forEach(t => t.addEventListener('click', () => switchInvTab(t.dataset.invTab)));
-
-  // Inventory folder strip
-  $('#invFolderStrip').addEventListener('click', (e) => {
-    const pill = e.target.closest('.folder-pill');
-    if (pill) selectInvFolder(pill.dataset.folderId);
+  // ---- POS Settings ----
+  $$('#posSizeToggle .bb-size-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      setTileSize(b.dataset.size);
+      renderPosSettings();
+    });
   });
-
-  // Inventory search
-  $('#invSearchInput').addEventListener('input', (e) => {
-    state.invQuery = e.target.value;
-    renderInventory();
+  $('#posShowPrice')?.addEventListener('change', (e) => {
+    state.showPrice = e.target.checked;
+    storageSet(STORAGE_SHOW_PRICE, state.showPrice ? '1' : '0');
+    renderPosSettings();
+    renderProducts();
   });
-
-  // Select all
-  $('#selectAll').addEventListener('change', (e) => {
-    const ids = getFilteredInvProducts().map(p => p.id);
-    if (e.target.checked) ids.forEach(id => state.selectedIds.add(id));
-    else ids.forEach(id => state.selectedIds.delete(id));
-    renderInventory();
+  $$('#posThemeToggle .bb-size-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      applyTheme(b.dataset.theme);
+    });
   });
-
-  // Inventory table — row clicks, checkboxes, action buttons
-  $('#inventoryTable tbody').addEventListener('click', (e) => {
-    // Action button
-    const actBtn = e.target.closest('button[data-act]');
-    if (actBtn) {
-      e.stopPropagation();
-      if (actBtn.dataset.act === 'edit-product') openProductModal('edit', actBtn.dataset.id);
-      if (actBtn.dataset.act === 'delete-product') deleteProduct(actBtn.dataset.id);
-      return;
-    }
-    // Checkbox
-    const check = e.target.closest('input.row-check');
-    if (check) {
-      toggleSelect(check.dataset.id);
-      return;
-    }
-    // Row body click → edit
-    const noedit = e.target.closest('[data-noedit]');
-    if (noedit) return;
-    const row = e.target.closest('tr[data-id]');
-    if (row) openProductModal('edit', row.dataset.id);
-  });
-
-  // Bulk actions
-  $('#bulkClear').addEventListener('click', clearSelection);
-  $('#bulkDeleteBtn').addEventListener('click', bulkDelete);
-  $('#bulkMoveBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    renderBulkMoveMenu();
-    const menu = $('#bulkMoveMenu');
-    menu.hidden = !menu.hidden;
-  });
-  document.addEventListener('click', (e) => {
-    const menu = $('#bulkMoveMenu');
-    if (!menu || menu.hidden) return;
-    if (!e.target.closest('#bulkMoveDropdown')) menu.hidden = true;
-  });
-  $('#bulkMoveMenu').addEventListener('click', (e) => {
-    const item = e.target.closest('[data-move-to]');
-    if (item) {
-      bulkMoveTo(item.dataset.moveTo);
-      $('#bulkMoveMenu').hidden = true;
-    }
-  });
-
-  // Header buttons
-  $('#newProductBtn').addEventListener('click', () => openProductModal('create'));
-  $('#newFolderBtn').addEventListener('click', () => openFolderModal('create'));
+  $('#posPrinterWidth')?.addEventListener('change', persistPosSettings);
+  $('#posPrintOnSale')?.addEventListener('change', persistPosSettings);
 
   // Product modal save
   $('#saveProductBtn').addEventListener('click', saveProduct);
@@ -2187,35 +3649,23 @@ function attachEvents() {
     if (e.key === 'Enter') saveFolder();
   });
 
-  // Folder cards events (delegated on body since rerendered)
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('#addFolderCard')) { openFolderModal('create'); return; }
-    const renameBtn = e.target.closest('[data-act="rename-folder"]');
-    if (renameBtn) { e.stopPropagation(); openFolderModal('edit', renameBtn.dataset.id); return; }
-    const delBtn = e.target.closest('[data-act="delete-folder"]');
-    if (delBtn) { e.stopPropagation(); deleteFolder(delBtn.dataset.id); return; }
-    const card = e.target.closest('.folder-card:not(.add-card)');
-    if (card) {
-      switchInvTab('products');
-      selectInvFolder(card.dataset.folderId);
-    }
-  });
-
-  // Sync flicker
-  let online = true;
-  setInterval(() => {
-    if (Math.random() < 0.03) {
-      online = !online;
-      const pill = $('#syncPill');
-      pill.innerHTML = online
-        ? '<span class="dot dot-ok"></span><span>Synced</span>'
-        : '<span class="dot dot-warn"></span><span>Offline</span>';
-    }
-  }, 4000);
+  const renderSyncStatus = async () => {
+    const el = $('#syncPill');
+    if (!el) return;
+    let online = navigator.onLine !== false;
+    try {
+      const health = await window.HWPOS_STORE?.health?.();
+      if (health && typeof health.online === 'boolean') online = health.online;
+    } catch (_) {}
+  };
+  window.addEventListener('online', renderSyncStatus);
+  window.addEventListener('offline', renderSyncStatus);
+  renderSyncStatus();
 }
 
 // ---------- Init ----------
 function init() {
+  setAppViewportHeight();
   state.folders = loadFolders();
   // Ensure "all" exists
   if (!state.folders.find(f => f.id === 'all')) {
@@ -2227,8 +3677,12 @@ function init() {
   state.settings = loadSettings();
   state.vatRate = state.settings.vatRate ?? 0.12;
   state.customers = loadSavedCustomers();
+  state.customerLedger = loadCustomerLedger();
+  state.drawerCloseouts = loadDrawerCloseouts();
   state.role = loadRole();
   state.fulfilment = state.settings.defaultFulfilment || 'pickup';
+  // Apply saved theme
+  if (state.theme === 'light') document.body.classList.add('light-theme');
   // Back-fill groupId on products coming from older localStorage that predates groups.
   if (typeof _GROUP_MEMBERSHIP !== 'undefined') {
     let touched = false;
@@ -2251,6 +3705,29 @@ function init() {
   applyRoleGating();
   renderRoleSwitcher();
   attachEvents();
+  const openHashView = () => {
+    const hash = (location.hash || '').replace('#', '').trim();
+    const target = hash.split(/[/?&:]/)[0];
+    const valid = ['sell', 'orders', 'inventory', 'customers', 'reports'];
+    if (valid.includes(target) && canAccess(target)) switchView(target);
+  };
+  openHashView();
+  window.addEventListener('hashchange', openHashView);
+  requestAnimationFrame(syncSellGridMetrics);
+  let resizeFrame = 0;
+  const refitSellSurface = ({ resetPage = false } = {}) => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => {
+      setAppViewportHeight();
+      if (state.view === 'sell') {
+        if (resetPage) state.page = 1;
+        renderProducts();
+      }
+    });
+  };
+  window.addEventListener('resize', () => refitSellSurface({ resetPage: true }));
+  window.visualViewport?.addEventListener('resize', () => refitSellSurface());
+  window.visualViewport?.addEventListener('scroll', () => refitSellSurface());
 
   // Sync persisted UI state on first paint
   $$('.bb-size-btn').forEach(b => b.classList.toggle('active', b.dataset.size === state.tileSize));
@@ -2267,6 +3744,10 @@ function init() {
       state.showPrice = e.newValue === '1';
       renderProducts();
     }
+    if (e.key === STORAGE_THEME && e.newValue) {
+      state.theme = e.newValue;
+      document.body.classList.toggle('light-theme', e.newValue === 'light');
+    }
     // Sales made in another tab (e.g. second POS instance) — refresh orders list.
     if (e.key === STORAGE_ORDERS) {
       state.orders = loadOrders();
@@ -2278,16 +3759,24 @@ function init() {
       rebuildFuse();
       if (state.view === 'sell') renderProducts();
     }
+    if (e.key === STORAGE_SETTINGS) {
+      state.settings = loadSettings();
+      state.vatRate = state.settings.vatRate ?? DEFAULT_SETTINGS.vatRate;
+      renderCart();
+      if (state.view === 'checkout') renderCheckout();
+    }
   });
   // Also refresh when the user returns to the POS tab in case they changed it
   // in the back office on another tab.
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) return;
-    const newSize = localStorage.getItem(STORAGE_TILE_SIZE) || 'md';
-    const newShow = localStorage.getItem(STORAGE_SHOW_PRICE) === '1';
+    const newSize = storageGet(STORAGE_TILE_SIZE, 'md') || 'md';
+    const newShow = storageGet(STORAGE_SHOW_PRICE, '0') === '1';
     let changed = false;
     if (newSize !== state.tileSize && ITEMS_PER_PAGE[newSize]) { state.tileSize = newSize; state.page = 1; changed = true; }
     if (newShow !== state.showPrice) { state.showPrice = newShow; changed = true; }
+    state.settings = loadSettings();
+    state.vatRate = state.settings.vatRate ?? DEFAULT_SETTINGS.vatRate;
     if (changed) renderProducts();
     // Always re-pull orders so the list is up to date.
     state.orders = loadOrders();
