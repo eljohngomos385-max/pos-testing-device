@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#F7F6F3" />
   <title>Hardware POS</title>
   <link rel="icon" href="data:," />
-  <link rel="stylesheet" href="styles.css?v=20" />
+  <link rel="stylesheet" href="styles.css?v=36" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -133,7 +133,7 @@
 
           <aside class="cart">
             <div class="cart-head">
-              <div>
+              <div class="cart-title-wrap">
                 <div class="cart-title">Receipt</div>
                 <div class="cart-sub" id="cartCount">0 items</div>
               </div>
@@ -157,11 +157,21 @@
             <div class="cart-list" id="cartList"></div>
 
             <div class="cart-foot">
-              <div class="totals">
-                <div class="row"><span>Subtotal</span><span id="subtotal">₱0.00</span></div>
-                <div class="row" id="discountRow"><span>Discount</span><span id="discount">₱0.00</span></div>
-                <div class="row vat-row"><span>VAT (12% incl.)</span><span id="vatAmount">₱0.00</span></div>
-                <div class="row total"><span>Total</span><span id="total">₱0.00</span></div>
+              <div class="totals" id="totalsBlock">
+                <div class="totals-detail" id="totalsDetail">
+                  <div class="totals-detail-inner">
+                    <div class="row"><span>Subtotal</span><span id="subtotal">₱0.00</span></div>
+                    <div class="row" id="discountRow"><span>Discount</span><span id="discount">₱0.00</span></div>
+                    <div class="row vat-row"><span>VAT (12% incl.)</span><span id="vatAmount">₱0.00</span></div>
+                  </div>
+                </div>
+                <div class="row total totals-toggle" id="totalRow">
+                  <span>Total</span>
+                  <div class="totals-right">
+                    <span id="total">₱0.00</span>
+                    <svg class="totals-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                </div>
               </div>
               <div class="cart-fulfilment-row">
                 <button class="fulfil-pill active" data-fulfil="pickup">
@@ -189,27 +199,23 @@
            ORDERS VIEW — completed sales list
            ============================================ -->
       <section class="view view-orders" data-view="orders">
-        <header class="view-head">
-          <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-              <line x1="4" y1="7" x2="20" y2="7"/>
-              <line x1="4" y1="12" x2="20" y2="12"/>
-              <line x1="4" y1="17" x2="20" y2="17"/>
-            </svg>
-          </button>
-          <div class="view-title-wrap">
-            <h1>Orders</h1>
-            <span class="muted" id="ordersCount">No orders yet</span>
-          </div>
-        </header>
         <div class="orders-layout">
           <div class="orders-col">
-            <div class="orders-search-wrap">
-              <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="7"/>
-                <line x1="20" y1="20" x2="16.5" y2="16.5"/>
-              </svg>
-              <input type="text" id="ordersSearch" placeholder="Search by # or customer" autocomplete="off" />
+            <div class="orders-search-row">
+              <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <line x1="4" y1="7" x2="20" y2="7"/>
+                  <line x1="4" y1="12" x2="20" y2="12"/>
+                  <line x1="4" y1="17" x2="20" y2="17"/>
+                </svg>
+              </button>
+              <div class="orders-search-wrap">
+                <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="7"/>
+                  <line x1="20" y1="20" x2="16.5" y2="16.5"/>
+                </svg>
+                <input type="text" id="ordersSearch" placeholder="Search by # or customer" autocomplete="off" />
+              </div>
             </div>
             <div class="orders-list" id="ordersList"></div>
           </div>
@@ -226,101 +232,179 @@
            CUSTOMERS VIEW
            ============================================ -->
       <section class="view view-customers" data-view="customers">
-        <header class="view-head">
-          <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-              <line x1="4" y1="7" x2="20" y2="7"/>
-              <line x1="4" y1="12" x2="20" y2="12"/>
-              <line x1="4" y1="17" x2="20" y2="17"/>
-            </svg>
-          </button>
-          <div class="view-title-wrap">
-            <h1>Customers</h1>
-            <span class="muted">Credit accounts and balances</span>
+        <div class="orders-layout">
+          <div class="orders-col">
+            <div class="orders-search-row">
+              <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <line x1="4" y1="7" x2="20" y2="7"/>
+                  <line x1="4" y1="12" x2="20" y2="12"/>
+                  <line x1="4" y1="17" x2="20" y2="17"/>
+                </svg>
+              </button>
+              <div class="orders-search-wrap">
+                <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="7"/>
+                  <line x1="20" y1="20" x2="16.5" y2="16.5"/>
+                </svg>
+                <input type="text" id="customersSearch" placeholder="Search by name or customer" autocomplete="off" />
+              </div>
+              <button class="primary-btn small" id="newCustomerBtn" style="flex-shrink:0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                <span>Add</span>
+              </button>
+            </div>
+            <div class="orders-list" id="customersList"></div>
           </div>
-          <div class="view-actions">
-            <button class="primary-btn small" id="newCustomerBtn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              <span>Add customer</span>
-            </button>
+          <div class="order-detail" id="customerDetail">
+            <div class="order-detail-empty">
+              <div class="empty-title">Select a customer</div>
+              <div class="empty-sub">Pick one from the list to view their details</div>
+            </div>
           </div>
-        </header>
-        <div class="page-pad">
-          <div class="card-grid" id="customersGrid"></div>
         </div>
       </section>
 
       <!-- ============================================
-           CHECKOUT VIEW — full-page payment
+           CHECKOUT VIEW — split layout: payment left, receipt right
            ============================================ -->
       <section class="view view-checkout" data-view="checkout">
-        <header class="view-head checkout-head">
-          <button class="view-hamburger" data-act="checkout-back" aria-label="Back" title="Back">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="15 6 9 12 15 18"/>
-            </svg>
-          </button>
-          <div class="view-title-wrap">
-            <h1>Checkout</h1>
-            <span class="muted" id="checkoutSub">Walk-in customer</span>
+        <div class="content-row checkout-content-row">
+          <!-- LEFT: Payment section -->
+          <div class="checkout-payment-col">
+
+            <!-- Header sits top-left, outside the centered inner -->
+            <div class="checkout-header">
+              <button class="co-back-btn" data-act="checkout-back" aria-label="Back">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+              </button>
+              <div>
+                <div class="checkout-view-title">Checkout</div>
+                <span class="muted" id="checkoutSub">Walk-in customer</span>
+              </div>
+            </div>
+
+            <div class="checkout-payment-inner">
+
+              <div class="checkout-total">
+                <div class="checkout-total-label">Total due</div>
+                <div class="checkout-total-value" id="checkoutTotalDue">₱0.00</div>
+                <div class="checkout-total-sub" id="checkoutFulfilLine">Pickup</div>
+              </div>
+
+              <!-- Payment method: 2×2 card grid -->
+              <div class="checkout-section" id="checkoutMethodSection">
+                <div class="checkout-section-label">Payment method</div>
+                <div class="pay-method-grid">
+                  <button class="pay-method-card" data-co-method data-method="cash">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8L2 7"/><circle cx="12" cy="14" r="3"/>
+                    </svg>
+                    <span>Cash</span>
+                  </button>
+                  <button class="pay-method-card" data-co-method data-method="gcash">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="2.4"/>
+                    </svg>
+                    <span>GCash</span>
+                  </button>
+                  <button class="pay-method-card" data-co-method data-method="qr">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+                      <path d="M14 14h2v2h-2v2h2 M18 14h3 M18 18h1v1h1v2 M21 14v2 M14 18v3h2"/>
+                    </svg>
+                    <span>QR</span>
+                  </button>
+                  <button class="pay-method-card" data-co-method data-method="other">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/>
+                    </svg>
+                    <span>Other</span>
+                  </button>
+                </div>
+                <!-- Shown only when Other is selected -->
+                <div class="other-method-row" id="otherMethodRow">
+                  <input type="text" id="otherMethodInput" class="text-input" placeholder="e.g. Maya, bank transfer…" autocomplete="off" />
+                </div>
+              </div>
+
+              <!-- Amount tendered: hidden until method is chosen -->
+              <div class="checkout-section" id="checkoutCashFields" style="display:none">
+                <div class="checkout-section-label">Amount tendered</div>
+                <input type="text" inputmode="decimal" id="checkoutTender" class="text-input checkout-input" placeholder="0.00" />
+                <div class="quick-cash checkout-quick">
+                  <button data-co-cash="exact">Exact</button>
+                  <button data-co-cash="100">₱100</button>
+                  <button data-co-cash="200">₱200</button>
+                  <button data-co-cash="500">₱500</button>
+                  <button data-co-cash="1000">₱1000</button>
+                </div>
+                <div class="change-row checkout-change-row">
+                  <span>Change</span>
+                  <span id="checkoutChange">₱0.00</span>
+                </div>
+                <div class="checkout-error" id="checkoutError" hidden></div>
+              </div>
+
+              <div class="checkout-actions">
+                <button class="secondary-btn" id="checkoutCancelBtn">Cancel</button>
+                <button class="primary-btn" id="checkoutCompleteBtn" disabled>Complete sale</button>
+              </div>
+            </div>
           </div>
-        </header>
-        <div class="checkout-page">
-          <div class="checkout-inner">
-            <div class="checkout-total">
-              <div class="checkout-total-label">Total due</div>
-              <div class="checkout-total-value" id="checkoutTotal">₱0.00</div>
-              <div class="checkout-total-sub" id="checkoutFulfilLine">Pickup</div>
-            </div>
 
-            <div class="checkout-section">
-              <div class="checkout-section-label">Payment method</div>
-              <div class="seg-control checkout-seg">
-                <button class="seg active" data-method="cash" data-co-method>Cash</button>
-                <button class="seg" data-method="credit" data-co-method>Charge to account</button>
-                <button class="seg" data-method="split" data-co-method>Split</button>
+          <!-- RIGHT: Receipt items preview -->
+          <aside class="cart checkout-receipt-aside">
+            <div class="cart-head">
+              <div class="cart-title-wrap">
+                <div class="cart-title">Receipt</div>
+                <div class="cart-sub" id="checkoutCartCount">0 items</div>
               </div>
             </div>
-
-            <div class="checkout-section" id="checkoutCashFields">
-              <div class="checkout-section-label">Amount tendered</div>
-              <input type="text" inputmode="decimal" id="checkoutTender" class="text-input checkout-input" placeholder="0.00" />
-              <div class="quick-cash checkout-quick">
-                <button data-co-cash="exact">Exact</button>
-                <button data-co-cash="100">₱100</button>
-                <button data-co-cash="200">₱200</button>
-                <button data-co-cash="500">₱500</button>
-                <button data-co-cash="1000">₱1000</button>
+            <div class="cart-list" id="checkoutCartList"></div>
+            <div class="cart-foot">
+              <div class="totals" id="checkoutTotalsBlock">
+                <div class="totals-detail" id="checkoutTotalsDetail">
+                  <div class="totals-detail-inner">
+                    <div class="row"><span>Subtotal</span><span id="checkoutSubtotal">₱0.00</span></div>
+                    <div class="row" id="checkoutDiscountRow"><span id="checkoutDiscountLabel">Discount</span><span id="checkoutDiscount">₱0.00</span></div>
+                    <div class="row vat-row"><span>VAT (12% incl.)</span><span id="checkoutVatAmount">₱0.00</span></div>
+                  </div>
+                </div>
+                <div class="row total totals-toggle" id="checkoutTotalRow">
+                  <span>Total</span>
+                  <div class="totals-right">
+                    <span id="checkoutTotal">₱0.00</span>
+                    <svg class="totals-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                </div>
               </div>
-              <div class="change-row checkout-change-row">
-                <span>Change</span>
-                <span id="checkoutChange">₱0.00</span>
-              </div>
-              <div class="checkout-error" id="checkoutError" hidden></div>
             </div>
-
-            <div class="checkout-actions">
-              <button class="secondary-btn" data-act="checkout-back">Cancel</button>
-              <button class="primary-btn" id="checkoutCompleteBtn">Complete sale</button>
-            </div>
-          </div>
+          </aside>
         </div>
       </section>
 
       <section class="view view-checkout-success" data-view="checkout-success">
         <div class="checkout-success-page">
           <div class="checkout-success-card">
-            <div class="success-mark">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-            </div>
             <div class="success-title">Sale complete</div>
-            <div class="success-total" id="successTotal">₱0.00</div>
             <div class="success-sub" id="successSub">Receipt saved</div>
+
+            <div class="success-change-card">
+              <div class="success-change-label">Total paid</div>
+              <div class="success-change" id="successTotal">₱0.00</div>
+            </div>
+
+            <div class="success-paid-row" id="successChangeBlock">
+              <span>Change</span>
+              <span class="success-total" id="successChange">₱0.00</span>
+            </div>
+
             <div class="success-actions">
               <button class="primary-btn" id="successPrintBtn">Print receipt</button>
               <button class="secondary-btn" id="successNewSaleBtn">New sale</button>
@@ -349,40 +433,35 @@
           </button>
           <div class="view-title-wrap">
             <h1>Reports</h1>
-            <span class="muted">Today at a glance</span>
           </div>
         </header>
-        <div class="page-pad">
-          <div class="stat-grid">
-            <div class="stat-card">
-              <div class="stat-label">Today's Revenue</div>
-              <div class="stat-value" id="statRevenue">₱0.00</div>
-              <div class="stat-meta">vs yesterday +12%</div>
+        <div class="page-pad reports-pad">
+          <div class="reports-stats">
+            <div class="report-stat">
+              <div class="report-stat-label">Today's Revenue</div>
+              <div class="report-stat-value" id="statRevenue">₱0.00</div>
             </div>
-            <div class="stat-card">
-              <div class="stat-label">Transactions</div>
-              <div class="stat-value" id="statTxns">0</div>
-              <div class="stat-meta">vs yesterday +4</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Avg Basket</div>
-              <div class="stat-value" id="statAvg">₱0.00</div>
-              <div class="stat-meta">flat</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Low Stock</div>
-              <div class="stat-value" id="statLow">0</div>
-              <div class="stat-meta">needs reorder</div>
+            <div class="report-stat">
+              <div class="report-stat-label">Transactions</div>
+              <div class="report-stat-value" id="statTxns">0</div>
             </div>
           </div>
 
-          <div class="recent">
-            <div class="recent-head">Recent Sales</div>
-            <div id="recentList" class="recent-list"></div>
+          <div class="reports-chart-box">
+            <div class="reports-chart-head">
+              <span>Revenue · last 7 days</span>
+              <span class="muted" id="reportsRangeTotal">₱0.00</span>
+            </div>
+            <div class="reports-chart" id="reportsChart"></div>
+            <div class="reports-legend" id="reportsLegend"></div>
           </div>
-          <div class="recent">
-            <div class="recent-head">Cash Drawer</div>
-            <div id="drawerSummary" class="recent-list"></div>
+
+          <div class="reports-tx-box">
+            <div class="reports-tx-head">
+              <span>Today's transactions</span>
+              <span class="muted" id="reportsTxCount">0 transactions</span>
+            </div>
+            <div class="reports-tx-list" id="reportsTxList"></div>
           </div>
         </div>
       </section>
@@ -420,6 +499,17 @@
                 </div>
               </div>
               <div class="setting-row">
+                <label>Tile text size
+                  <div class="muted" style="font-size:11px;margin-top:2px">Resize the product name on tiles</div>
+                </label>
+                <div class="bb-size-toggle" id="posTextToggle" role="tablist">
+                  <button class="bb-size-btn" data-text="sm">S</button>
+                  <button class="bb-size-btn active" data-text="md">M</button>
+                  <button class="bb-size-btn" data-text="lg">L</button>
+                  <button class="bb-size-btn" data-text="xl">XL</button>
+                </div>
+              </div>
+              <div class="setting-row">
                 <label>Show price on tiles</label>
                 <input type="checkbox" id="posShowPrice">
               </div>
@@ -436,12 +526,93 @@
             <div class="panel">
               <div class="panel-head"><div class="panel-title">Printing</div></div>
               <div class="setting-row">
-                <label>Printer width</label>
-                <input class="text-input" id="posPrinterWidth" value="58mm">
+                <label>Printer
+                  <div class="muted" style="font-size:11px;margin-top:2px">Browser = pop-up print dialog</div>
+                </label>
+                <div class="bb-size-toggle" id="posDriverToggle" role="tablist">
+                  <button class="bb-size-btn active" data-driver="browser">Browser</button>
+                  <button class="bb-size-btn" data-driver="network">Wi-Fi</button>
+                  <button class="bb-size-btn" data-driver="bluetooth">Bluetooth</button>
+                </div>
+              </div>
+              <div class="setting-row" id="posScanRow" hidden>
+                <label>Find printer
+                  <div class="muted" style="font-size:11px;margin-top:2px">Searches your Wi-Fi for Epson printers</div>
+                </label>
+                <button class="secondary-btn small" id="posScanBtn">Scan for printers</button>
+              </div>
+              <div class="setting-row full" id="posPrinterListRow" hidden>
+                <div class="prn-list" id="posPrinterList"></div>
+                <div class="prn-scan-status" id="posScanStatus" hidden></div>
+              </div>
+              <div class="setting-row" id="posNetRow" hidden>
+                <label>Printer IP
+                  <div class="muted" style="font-size:11px;margin-top:2px">Manual entry — print the printer's status sheet to see its IP</div>
+                </label>
+                <input class="text-input" id="posPrinterIp" placeholder="192.168.1.50">
+              </div>
+              <div class="setting-row" id="posBtRow" hidden>
+                <label>Bluetooth printer
+                  <div class="muted" style="font-size:11px;margin-top:2px" id="posBtStatus">Not paired</div>
+                </label>
+                <button class="secondary-btn small" id="posBtPairBtn">Pair</button>
               </div>
               <div class="setting-row">
-                <label>Print on sale</label>
+                <label>Paper width</label>
+                <div class="bb-size-toggle" id="posWidthToggle" role="tablist">
+                  <button class="bb-size-btn" data-width="58mm">58mm</button>
+                  <button class="bb-size-btn active" data-width="80mm">80mm</button>
+                </div>
+              </div>
+              <div class="setting-row">
+                <label>Auto-cut paper</label>
+                <input type="checkbox" id="posPrintCut">
+              </div>
+              <div class="setting-row">
+                <label>Print delivery map
+                  <div class="muted" style="font-size:11px;margin-top:2px">Adds the pinned location to delivery receipts</div>
+                </label>
+                <input type="checkbox" id="posPrintMap">
+              </div>
+              <div class="setting-row">
+                <label>Print on sale
+                  <div class="muted" style="font-size:11px;margin-top:2px">Wi-Fi / Bluetooth printers only</div>
+                </label>
                 <input type="checkbox" id="posPrintOnSale">
+              </div>
+              <div class="setting-row">
+                <label>Test print</label>
+                <button class="secondary-btn small" id="posTestPrintBtn">Print test receipt</button>
+              </div>
+            </div>
+
+            <!-- Pricing Tiers Panel -->
+            <div class="panel">
+              <div class="panel-head"><div class="panel-title">Pricing Tiers</div><div class="panel-sub">Auto-discount by customer type (%)</div></div>
+              <div class="setting-row">
+                <label>Contractor</label>
+                <input class="text-input tier-input" id="posTierContractor" type="number" min="0" max="50" step="0.5" value="5">
+              </div>
+              <div class="setting-row">
+                <label>Wholesale</label>
+                <input class="text-input tier-input" id="posTierWholesale" type="number" min="0" max="50" step="0.5" value="10">
+              </div>
+              <div class="setting-row">
+                <label>Retail</label>
+                <input class="text-input tier-input" id="posTierRetail" type="number" min="0" max="50" step="0.5" value="0">
+              </div>
+              <div class="setting-row">
+                <label>Residential</label>
+                <input class="text-input tier-input" id="posTierResidential" type="number" min="0" max="50" step="0.5" value="0">
+              </div>
+            </div>
+
+            <!-- Customer Alerts Panel -->
+            <div class="panel">
+              <div class="panel-head"><div class="panel-title">Customer Alerts</div></div>
+              <div class="setting-row">
+                <label>Flag inactive after (days)</label>
+                <input class="text-input" id="posChurnDays" type="number" min="1" max="365" value="30">
               </div>
             </div>
           </div>
@@ -472,6 +643,18 @@
             </div>
           </button>
           <div class="modal-divider"><span>Credit accounts</span></div>
+          <button class="customer-row-btn add-customer-row" id="pickerAddCustomerBtn">
+            <div class="cust-avatar add">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </div>
+            <div class="cust-meta">
+              <div class="cust-name">Add new customer</div>
+              <div class="cust-sub">Create a credit account</div>
+            </div>
+          </button>
           <div id="customerList"></div>
         </div>
       </div>
@@ -579,7 +762,7 @@
             </div>
             <div class="form-row full">
               <label>Aliases <span class="muted">(comma-separated, for fuzzy search)</span></label>
-              <input type="text" id="pf_aliases" class="text-input" placeholder="kodo, elbow half, pvc kodo" />
+              <input type="text" id="pf_aliases" class="text-input" placeholder="elbow, half elbow, pvc elbow" />
             </div>
           </div>
 
@@ -678,7 +861,7 @@
         </div>
         <div class="modal-body">
           <label class="pay-label">Where should this go?</label>
-          <textarea id="deliveryAddrInput" class="text-input" rows="4" placeholder="House #, Street, Barangay, City"></textarea>
+          <textarea id="deliveryAddrInput" class="text-input" rows="4" placeholder="House #, Street, District, City"></textarea>
           <div class="delivery-pin-row">
             <button class="secondary-btn" id="deliveryPinBtn" type="button">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -754,11 +937,40 @@
           <label class="pay-label" style="margin-top:10px">Phone</label>
           <input type="tel" id="custPhone" class="text-input" placeholder="0917-xxx-xxxx" />
           <label class="pay-label" style="margin-top:10px">Address</label>
-          <textarea id="custAddress" class="text-input" rows="2" placeholder="House #, Street, Barangay, City"></textarea>
+          <textarea id="custAddress" class="text-input" rows="2" placeholder="House #, Street, District, City"></textarea>
+          <label class="pay-label" style="margin-top:10px">Customer type</label>
+          <select id="custType" class="text-input">
+            <option value="">Unclassified</option>
+            <option value="contractor">Contractor</option>
+            <option value="wholesale">Wholesale</option>
+            <option value="retail">Retail</option>
+            <option value="residential">Residential</option>
+          </select>
           <div class="pay-actions" style="margin-top:14px">
             <button class="secondary-btn" data-close-modal>Cancel</button>
             <button class="primary-btn" id="custSaveBtn">Save customer</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Customer detail modal (purchase history + metrics) -->
+    <div class="modal-backdrop" id="customerDetailModal" hidden>
+      <div class="modal wide-modal">
+        <div class="modal-head">
+          <h2 id="custDetailTitle">Customer</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="cust-detail-kpis" id="custDetailKpis"></div>
+          <div class="cust-detail-aging" id="custDetailAging"></div>
+          <div class="cust-detail-orders-title">Order History</div>
+          <div class="cust-detail-orders" id="custDetailOrders"></div>
         </div>
       </div>
     </div>
@@ -903,12 +1115,32 @@
       </div>
     </div>
 
+    <!-- Order details -->
+    <div class="modal-backdrop" id="orderDetailModal" hidden>
+      <div class="modal order-detail-modal">
+        <div class="modal-head">
+          <div class="odm-title-wrap">
+            <h2 id="odmNumber">Order</h2>
+            <span class="odm-status" id="odmStatus"></span>
+          </div>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body" id="orderDetailModalBody"></div>
+      </div>
+    </div>
+
     <div class="toast" id="toast" hidden></div>
   </div>
 
   <script src="data-store.js"></script>
   <script src="data.js"></script>
   <script src="vendor/zxing-browser.min.js"></script>
-  <script src="app.js"></script>
+  <script src="printer.js?v=34"></script>
+  <script src="app.js?v=37"></script>
 </body>
 </html>

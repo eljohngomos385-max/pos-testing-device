@@ -568,12 +568,12 @@ function renderDashboard() {
           </div>`;
       }).join('');
 
-  // Utang
+  // Outstanding credit
   const debtors = allCustomerRecords().filter(c => (c.currentBalance || 0) > 0)
     .sort((a, b) => b.currentBalance - a.currentBalance);
-  const utangSum = debtors.reduce((a, c) => a + c.currentBalance, 0);
-  $('#utangTotal').textContent = peso(utangSum);
-  $('#utangList').innerHTML = debtors.length === 0
+  const creditSum = debtors.reduce((a, c) => a + c.currentBalance, 0);
+  $('#creditTotal').textContent = peso(creditSum);
+  $('#creditList').innerHTML = debtors.length === 0
     ? `<div class="mini-list-row"><div class="ml-left"><span class="ml-name">No outstanding credit</span></div></div>`
     : debtors.slice(0, 5).map(c => {
         const pctOfLimit = c.creditLimit > 0 ? c.currentBalance / c.creditLimit : 0;
@@ -625,7 +625,7 @@ function renderSales() {
   $('#salesKpis').innerHTML = [
     kpi('Total', pesoShort(total), 'all transactions', 'flat'),
     kpi('Cash', pesoShort(totals.cashTotal), `${cashPct}% of total`, 'flat'),
-    kpi('Credit (utang)', pesoShort(totals.creditTotal), `${creditPct}% of total`, 'flat'),
+    kpi('Credit', pesoShort(totals.creditTotal), `${creditPct}% of total`, 'flat'),
     kpi('Items', totals.items, 'units across receipts', 'flat'),
   ].join('');
 
@@ -710,7 +710,7 @@ function renderCustomers() {
 
   $('#custSummary').textContent = `${list.length} customer${list.length === 1 ? '' : 's'}`;
   $('#custKpis').innerHTML = [
-    kpi('Outstanding utang', pesoShort(totalOutstanding), `${active} active debtors`, 'flat'),
+    kpi('Outstanding credit', pesoShort(totalOutstanding), `${active} active debtors`, 'flat'),
     kpi('Credit limit pool', pesoShort(totalLimit), 'total approved', 'flat'),
     kpi('Utilization', utilization + '%', 'of total pool', 'flat'),
     kpi('Near limit', overLimit, '> 75% utilized', overLimit > 0 ? 'down' : 'flat'),
@@ -778,6 +778,80 @@ function renderStaff() {
       <td><span class="status-pill ${u.status[0]}">${u.status[1]}</span></td>
     </tr>
   `).join('');
+}
+
+// ---------- Global search (topbar) ----------
+function runGlobalSearch(raw) {
+  const box = $('#boSearchResults');
+  if (!box) return;
+  const q = (raw || '').trim().toLowerCase();
+  if (!q) { box.hidden = true; box.innerHTML = ''; return; }
+  const groups = [];
+
+  const prod = (state.products || []).filter(p =>
+    (p.name || '').toLowerCase().includes(q) ||
+    (p.sku || '').toLowerCase().includes(q) ||
+    (p.brand || '').toLowerCase().includes(q) ||
+    (p.folder || '').toLowerCase().includes(q)
+  ).slice(0, 6);
+  if (prod.length) groups.push({ label: 'Products', items: prod.map(p => ({
+    icon: 'P', title: p.name, sub: `${p.sku}${p.folder ? ' · ' + p.folder : ''}`,
+    right: peso(p.price || 0), view: 'inventory', q: p.name,
+  })) });
+
+  const cust = (state.customers || []).filter(c =>
+    (c.name || '').toLowerCase().includes(q) ||
+    (c.phone || '').toLowerCase().includes(q) ||
+    (c.id || '').toLowerCase().includes(q)
+  ).slice(0, 5);
+  if (cust.length) groups.push({ label: 'Customers', items: cust.map(c => ({
+    icon: (c.name || '?').slice(0, 1).toUpperCase(), title: c.name, sub: c.phone || '—',
+    right: peso(c.currentBalance || 0), view: 'customers', q: c.name,
+  })) });
+
+  const sales = enrichedSales('30d').filter(s =>
+    String(s.id).toLowerCase().includes(q) ||
+    (s.customer || '').toLowerCase().includes(q) ||
+    (s.method || '').toLowerCase().includes(q)
+  ).slice(0, 5);
+  if (sales.length) groups.push({ label: 'Sales', items: sales.map(s => ({
+    icon: '#', title: `#${s.id}`, sub: `${s.date} · ${s.customer}`,
+    right: peso(s.amount || 0), view: 'sales', q: '',
+  })) });
+
+  const sup = SUPPLIERS.filter(s =>
+    s.name.toLowerCase().includes(q) || s.contact.toLowerCase().includes(q)
+  ).slice(0, 4);
+  if (sup.length) groups.push({ label: 'Suppliers', items: sup.map(s => ({
+    icon: 'S', title: s.name, sub: s.contact, right: '', view: 'suppliers', q: '',
+  })) });
+
+  const staff = STAFF.filter(u =>
+    u.name.toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || u.role.includes(q)
+  ).slice(0, 4);
+  if (staff.length) groups.push({ label: 'Staff', items: staff.map(u => ({
+    icon: u.name.slice(0, 1).toUpperCase(), title: u.name,
+    sub: u.role.charAt(0).toUpperCase() + u.role.slice(1), right: '', view: 'staff', q: '',
+  })) });
+
+  if (!groups.length) {
+    box.innerHTML = `<div class="bo-sr-empty">No results for &ldquo;${escapeHtml(raw.trim())}&rdquo;</div>`;
+    box.hidden = false;
+    return;
+  }
+  box.innerHTML = groups.map(g => `
+    <div class="bo-sr-group-label">${g.label}</div>
+    ${g.items.map(it => `
+      <button class="bo-sr-item" data-view="${it.view}" data-q="${escapeHtml(it.q || '')}">
+        <span class="bo-sr-ic">${escapeHtml(it.icon)}</span>
+        <span class="bo-sr-main">
+          <span class="bo-sr-title">${escapeHtml(it.title)}</span>
+          <span class="bo-sr-sub">${escapeHtml(it.sub || '')}</span>
+        </span>
+        ${it.right ? `<span class="bo-sr-right">${it.right}</span>` : ''}
+      </button>`).join('')}
+  `).join('');
+  box.hidden = false;
 }
 
 function renderSettingsForm() {
@@ -866,6 +940,45 @@ function wireEvents() {
   $('#custSearch')?.addEventListener('input', (e) => {
     state.custQuery = e.target.value;
     renderCustomers();
+  });
+
+  // Global topbar search
+  const boSearch = $('#boSearch');
+  if (boSearch) {
+    boSearch.addEventListener('input', (e) => runGlobalSearch(e.target.value));
+    boSearch.addEventListener('focus', (e) => { if (e.target.value.trim()) runGlobalSearch(e.target.value); });
+  }
+  $('#boSearchResults')?.addEventListener('click', (e) => {
+    const item = e.target.closest('.bo-sr-item');
+    if (!item) return;
+    const view = item.dataset.view;
+    const q = item.dataset.q || '';
+    setView(view);
+    if (view === 'inventory' && q) {
+      state.invQuery = q;
+      const f = $('#invSearch'); if (f) f.value = q;
+      renderInventory();
+    }
+    if (view === 'customers' && q) {
+      state.custQuery = q;
+      const f = $('#custSearch'); if (f) f.value = q;
+      renderCustomers();
+    }
+    const box = $('#boSearchResults'); if (box) box.hidden = true;
+    if (boSearch) boSearch.value = '';
+  });
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.bo-search')) return;
+    const box = $('#boSearchResults'); if (box) box.hidden = true;
+  });
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      $('#boSearch')?.focus();
+    }
+    if (e.key === 'Escape') {
+      const box = $('#boSearchResults'); if (box) box.hidden = true;
+    }
   });
 
   $('#salesExportBtn')?.addEventListener('click', () => {

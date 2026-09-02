@@ -36,10 +36,23 @@ const DEFAULT_SETTINGS = {
     allowOfflineSales: true,
   },
   printing: {
-    width: '58mm',
+    width: '80mm',
     printOnSale: true,
     logoOnReceipt: false,
+    driver: 'browser',   // browser (pop-up) | network (Epson ePOS over Wi-Fi) | bluetooth (ESC/POS over BLE)
+    netUrl: '',          // printer IP, e.g. 192.168.1.50
+    btName: '',          // remembered Bluetooth printer
+    btId: '',
+    cut: true,
+    mapOnReceipt: true,
   },
+  pricingTiers: {
+    contractor: 0.05,
+    wholesale: 0.10,
+    retail: 0,
+    residential: 0,
+  },
+  churnThresholdDays: 30,
 };
 const STORE_INFO = {
   name: 'EJ Hardware',
@@ -52,6 +65,8 @@ const STORE_INFO = {
 
 const STORAGE_TILE_SIZE = 'hwpos.tileSize';
 const STORAGE_SHOW_PRICE = 'hwpos.showPrice';
+const STORAGE_TILE_TEXT = 'hwpos.tileText';
+const TILE_TEXT_SIZES = ['sm', 'md', 'lg', 'xl'];
 const STORAGE_THEME = 'hwpos.theme';
 
 const ITEMS_PER_PAGE = { sm: 30, md: 20, lg: 12 };
@@ -146,8 +161,13 @@ const state = {
   fuse: null,
   page: 1,
   tileSize: (storageGet(STORAGE_TILE_SIZE, 'md') || 'md'),
+  tileText: (storageGet(STORAGE_TILE_TEXT, 'md') || 'md'),
   showPrice: storageGet(STORAGE_SHOW_PRICE, '0') === '1',
   theme: (storageGet(STORAGE_THEME, 'dark') || 'dark'),
+  custTypeFilter: 'all',
+  tierDiscountDismissed: false,
+  customersQuery: '',
+  selectedCustomerId: null,
 };
 
 const barcodeScanner = {
@@ -371,6 +391,8 @@ function loadSettings() {
     store: { ...DEFAULT_SETTINGS.store, ...(saved.store || {}) },
     sync: { ...DEFAULT_SETTINGS.sync, ...(saved.sync || {}) },
     printing: { ...DEFAULT_SETTINGS.printing, ...(saved.printing || {}) },
+    pricingTiers: { ...DEFAULT_SETTINGS.pricingTiers, ...(saved.pricingTiers || {}) },
+    churnThresholdDays: saved.churnThresholdDays ?? DEFAULT_SETTINGS.churnThresholdDays,
   };
 }
 function saveSettings() {
@@ -483,9 +505,31 @@ function normalizeOrderRecord(raw = {}) {
   const itemGross = moneyValue(items.reduce((sum, item) => sum + item.lineGross, 0));
   const itemDiscount = moneyValue(items.reduce((sum, item) => sum + item.lineDiscount, 0));
   const status = ['saved', 'completed', 'voided', 'refunded', 'return'].includes(raw.status) ? raw.status : 'completed';
-  const paymentMethod = ['cash', 'credit', 'split', 'unpaid'].includes(raw.paymentMethod)
-    ? raw.paymentMethod
+  // The legacy paymentMethod stays coerced to cash/credit/split/unpaid so drawer
+  // math and credit logic keep working. The real tendered method (GCash, QR, or a
+  // custom name like "Maya") is preserved separately in paymentKind/paymentMethodLabel.
+  // The legacy paymentMethod stays coerced to cash/credit/split/unpaid so drawer
+  // math and credit logic keep working. The real tendered method (GCash, QR, or a
+  // custom name like "Maya") is preserved separately in paymentKind/paymentMethodLabel.
+  const rawMethodStr = (typeof raw.paymentMethod === 'string' ? raw.paymentMethod : '').trim();
+  const rawMethodLower = rawMethodStr.toLowerCase();
+  const paymentMethod = ['cash', 'credit', 'split', 'unpaid'].includes(rawMethodLower)
+    ? rawMethodLower
     : (status === 'saved' ? 'unpaid' : 'cash');
+  const KNOWN_METHOD_LABELS = { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Charge to account', split: 'Split payment', unpaid: 'Not completed' };
+  let paymentKind, paymentMethodLabel;
+  if (raw.paymentKind && raw.paymentMethodLabel) {
+    paymentKind = String(raw.paymentKind);
+    paymentMethodLabel = String(raw.paymentMethodLabel);
+  } else if (status === 'saved') {
+    paymentKind = 'unpaid'; paymentMethodLabel = 'Not completed';
+  } else if (['cash', 'gcash', 'qr', 'credit', 'split'].includes(rawMethodLower)) {
+    paymentKind = rawMethodLower; paymentMethodLabel = KNOWN_METHOD_LABELS[rawMethodLower];
+  } else if (rawMethodStr) {
+    paymentKind = 'other'; paymentMethodLabel = rawMethodStr;
+  } else {
+    paymentKind = 'cash'; paymentMethodLabel = 'Cash';
+  }
   const subtotal = moneyValue(raw.subtotal ?? itemGross);
   const discount = moneyValue(raw.discount ?? itemDiscount);
   const total = moneyValue(raw.total ?? Math.max(0, subtotal - discount));
@@ -525,6 +569,8 @@ function normalizeOrderRecord(raw = {}) {
         }
       : null,
     paymentMethod,
+    paymentKind,
+    paymentMethodLabel,
     payments,
     subtotal,
     discount,
@@ -758,7 +804,7 @@ function switchView(view) {
   state.view = view;
   $$('.side-link').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === view));
-  if (view === 'back-office') { window.location.href = 'backoffice.html'; return; }
+  if (view === 'back-office') { window.open('backoffice.html', '_blank', 'noopener'); return; }
   if (view === 'settings') { renderPosSettings(); return; }
   if (view === 'orders') {
     // Always pull the latest from localStorage so a sale made in another tab
@@ -835,7 +881,6 @@ function getSellCells() {
 }
 
 function stockMeta(p) {
-  if (p.stock <= 0) return { cls: 'out', label: 'Out of stock' };
   if (p.stock <= p.reorderPoint) return { cls: 'low', label: `Low · ${p.stock} ${p.unit}` };
   return { cls: '', label: `${p.stock} ${p.unit}` };
 }
@@ -904,9 +949,8 @@ function renderSellCellHtml(cell) {
       </div>`;
   }
   const p = cell.product;
-  const disabled = p.stock <= 0 ? 'data-disabled="true"' : '';
   return `
-    <div class="product-card" data-id="${p.id}" ${disabled}>
+    <div class="product-card" data-id="${p.id}">
       <div class="pc-name">${escapeHtml(p.name)}</div>
       <div class="pc-price-mini">${peso(p.price)}</div>
     </div>`;
@@ -915,7 +959,10 @@ function renderSellCellHtml(cell) {
 function updateProductTrackPosition() {
   const track = $('#productTrack');
   if (track) {
-    track.style.transform = `translate3d(-${(state.page - 1) * 100}%, 0, 0)`;
+    const grid = $('#productGrid');
+    const gap = grid ? (parseFloat(getComputedStyle(track).gap) || 0) : 0;
+    const step = (grid ? grid.clientWidth : 0) + gap;
+    track.style.transform = `translate3d(-${(state.page - 1) * step}px, 0, 0)`;
   }
   renderPager();
   renderSellHeader();
@@ -928,6 +975,7 @@ function renderProducts() {
 
   // Set size + price-display attrs on the grid
   grid.dataset.size = state.tileSize;
+  grid.dataset.text = state.tileText;
   grid.classList.toggle('show-price', state.showPrice);
   grid.style.setProperty('--grid-cols', profile.columns);
   grid.style.setProperty('--grid-rows', profile.rows);
@@ -989,8 +1037,8 @@ function syncSellGridMetrics() {
   const rows = profile.rows;
   const columns = profile.columns;
   const tileHeight = Math.max(1, (available - gap * (rows - 1)) / rows);
-  const fullTileWidth = Math.max(1, (grid.clientWidth - gap * (columns - 1)) / columns);
-  const tileWidth = Math.min(fullTileWidth, tileHeight * 1.12);
+  // Tiles always fill the full column width so they align to the catalog edges
+  const tileWidth = Math.max(1, (grid.clientWidth - gap * (columns - 1)) / columns);
   grid.style.setProperty('--grid-cols', profile.columns);
   grid.style.setProperty('--grid-rows', rows);
   grid.style.setProperty('--grid-h', `${available}px`);
@@ -1045,12 +1093,10 @@ function renderVariantGrid() {
   const members = groupMembers(state.variantModal.groupId);
   grid.innerHTML = members.map(p => {
     const sel = state.variantModal.selectedId === p.id ? 'selected' : '';
-    const out = p.stock <= 0 ? 'out' : '';
-    const priceLabel = p.stock <= 0 ? 'Out of stock' : peso(p.price);
     return `
-      <button class="variant-tile ${sel} ${out}" data-variant-id="${p.id}" ${p.stock <= 0 ? 'data-disabled="true"' : ''}>
+      <button class="variant-tile ${sel}" data-variant-id="${p.id}">
         <span class="vt-name">${escapeHtml(p.name)}</span>
-        <span class="vt-price">${priceLabel}</span>
+        <span class="vt-price">${peso(p.price)}</span>
       </button>`;
   }).join('');
 }
@@ -1076,7 +1122,6 @@ function addVariantToCart() {
   if (!vm.selectedId) { showToast('Pick a variant first'); return; }
   const p = state.products.find(x => x.id === vm.selectedId);
   if (!p) return;
-  if (p.stock <= 0) { showToast('Variant is out of stock'); return; }
 
   const qty = Math.max(1, parseInt($('#variantQtyInput').value, 10) || 1);
   const comment = $('#variantCommentInput').value.trim();
@@ -1132,6 +1177,13 @@ function setTileSize(size) {
   renderProducts();
 }
 
+function setTileText(size) {
+  if (!TILE_TEXT_SIZES.includes(size)) return;
+  state.tileText = size;
+  storageSet(STORAGE_TILE_TEXT, size);
+  renderProducts();
+}
+
 function toggleShowPrice() {
   state.showPrice = !state.showPrice;
   storageSet(STORAGE_SHOW_PRICE, state.showPrice ? '1' : '0');
@@ -1143,7 +1195,6 @@ function toggleShowPrice() {
 function addToCart(productId) {
   const p = state.products.find(x => x.id === productId);
   if (!p) return;
-  if (p.stock <= 0) { showToast('Item is out of stock'); return; }
   const existing = state.cart.find(i => i.id === productId);
   if (existing) existing.qty += 1;
   else state.cart.push({
@@ -1175,11 +1226,6 @@ function addProductByCode(rawCode, { source = 'barcode' } = {}) {
     showToast(message);
     return false;
   }
-  if (product.stock <= 0) {
-    showBarcodeStatus('Item is out of stock');
-    showToast('Item is out of stock');
-    return false;
-  }
   addToCart(product.id);
   const search = $('#searchInput');
   const clear = $('#searchClear');
@@ -1208,6 +1254,7 @@ function clearCart() {
   state.cart = [];
   state.customer = null;
   state.cartDiscount = null;
+  state.tierDiscountDismissed = false;
   state.paymentMethod = 'cash';
   state.fulfilment = (state.settings && state.settings.defaultFulfilment) || 'pickup';
   state.deliveryAddress = '';
@@ -1572,6 +1619,7 @@ function applyCartDiscount() {
 }
 function clearCartDiscount() {
   state.cartDiscount = null;
+  state.tierDiscountDismissed = true;
   renderCart();
   $('#cartDiscountModal').hidden = true;
   flashControl($('#cartDiscountBtn'));
@@ -1827,6 +1875,7 @@ function openCustomerEditModal() {
   $('#custName').value = '';
   $('#custPhone').value = '';
   $('#custAddress').value = '';
+  $('#custType').value = '';
   $('#customerEditModal').hidden = false;
   setTimeout(() => $('#custName').focus(), 50);
 }
@@ -1838,6 +1887,7 @@ function saveSavedCustomerFromModal() {
   const c = {
     id: 'cust_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3),
     name, phone, address,
+    type: $('#custType').value || '',
     creditLimit: 0,
     currentBalance: 0,
   };
@@ -1846,6 +1896,12 @@ function saveSavedCustomerFromModal() {
   $('#customerEditModal').hidden = true;
   if (state.view === 'customers') renderCustomers();
   showToast(`Added “${name}”`);
+  // When created mid-sale from the Sell-page picker, attach the new customer to
+  // the current receipt straight away (selectCustomer closes the picker too).
+  if (state.customerEditFromSale) {
+    state.customerEditFromSale = false;
+    selectCustomer(c.id);
+  }
 }
 // Apply a discount {type:'amount'|'percent', value:number} to a gross amount.
 function applyDiscount(gross, disc) {
@@ -1902,6 +1958,7 @@ function renderCart() {
         <div class="ci-right">${peso(item.price * item.qty)}</div>
       </button>
     `).join('');
+    list.scrollTop = list.scrollHeight;
   }
 
   $('#cartCount').textContent = `${state.cart.reduce((s, i) => s + i.qty, 0)} items`;
@@ -1975,11 +2032,12 @@ function selectCustomer(id) {
     state.customer = null;
   } else {
     state.customer = allCustomerRecords().find(c => c.id === id) || null;
-    // If the customer has an address and we're set to delivery, prefill.
     if (state.customer && state.customer.address && state.fulfilment === 'delivery') {
       state.deliveryAddress = state.customer.address;
     }
   }
+  state.cartDiscount = null;
+  state.tierDiscountDismissed = false;
   updateCustomerButton();
   $('#customerModal').hidden = true;
   renderCart();
@@ -1990,21 +2048,77 @@ function selectCustomer(id) {
 function openPaymentModal() {
   if (state.cart.length === 0) return;
   state.prevView = state.view;
+  state.paymentMethodChosen = false;
+  const tierRate = getTierDiscount(state.customer);
+  if (tierRate > 0 && !state.cartDiscount && !state.tierDiscountDismissed) {
+    state.cartDiscount = { type: 'percent', value: tierRate * 100, tierType: state.customer.type };
+  }
   switchView('checkout');
   renderCheckout();
-  if (state.paymentMethod === 'cash') setTimeout(() => $('#checkoutTender')?.focus(), 60);
 }
 function renderCheckout() {
-  const { total } = cartTotals();
-  $('#checkoutTotal').textContent = peso(total);
+  const t = cartTotals();
+  const total = t.total;
+
+  // Render receipt items (same format as sell view's cart)
+  const cartList = $('#checkoutCartList');
+  const cartCount = $('#checkoutCartCount');
+  if (cartList) {
+    if (state.cart.length === 0) {
+      cartList.innerHTML = '';
+    } else {
+      cartList.innerHTML = state.cart.map(item => `
+        <button class="cart-item" style="cursor:default">
+          <div class="ci-main">
+            <div class="ci-name">${escapeHtml(item.name)}</div>
+            <div class="ci-sub">${escapeHtml(item.sku)} · ${peso(item.price)}${item.qty > 1 ? ` × ${item.qty}` : ''}</div>
+          </div>
+          <div class="ci-right">${peso(item.price * item.qty)}</div>
+        </button>
+      `).join('');
+    }
+  }
+  if (cartCount) cartCount.textContent = `${state.cart.reduce((s, i) => s + i.qty, 0)} items`;
+
+  // Render totals
+  const subEl = $('#checkoutSubtotal');
+  if (subEl) subEl.textContent = peso(t.subtotal);
+  const discEl = $('#checkoutDiscount');
+  if (discEl) discEl.textContent = '-' + peso(t.discount);
+  const discRow = $('#checkoutDiscountRow');
+  if (discRow) discRow.style.display = t.discount > 0 ? '' : 'none';
+  const discLabel = $('#checkoutDiscountLabel');
+  if (discLabel) {
+    if (state.cartDiscount?.tierType) {
+      const tierName = state.customer?.type || state.cartDiscount.tierType || 'Customer';
+      discLabel.textContent = `${tierName.charAt(0).toUpperCase() + tierName.slice(1)} discount (${state.cartDiscount.value}%)`;
+    } else {
+      discLabel.textContent = 'Discount';
+    }
+  }
+  const vatEl = $('#checkoutVatAmount');
+  if (vatEl) vatEl.textContent = peso(t.vatAmount);
+  const totalEl = $('#checkoutTotal');
+  if (totalEl) totalEl.textContent = peso(total);
+
+  // Render payment section
+  const totalDue = $('#checkoutTotalDue');
+  if (totalDue) totalDue.textContent = peso(total);
   setCheckoutError('');
   renderQuickCashOptions(total);
   if (!state.customer && (state.paymentMethod === 'credit' || state.paymentMethod === 'split')) {
     state.paymentMethod = 'cash';
   }
-  state.paymentMethod = state.paymentMethod || 'cash';
-  $$('[data-co-method]').forEach(s => s.classList.toggle('active', s.dataset.method === state.paymentMethod));
-  $$('.seg[data-method]').forEach(s => s.classList.toggle('active', s.dataset.method === state.paymentMethod));
+  if (!state.paymentMethodChosen) {
+    // Step 1: show method grid, hide tender, disable complete
+    state.paymentMethod = 'cash';
+    $$('[data-co-method]').forEach(s => s.classList.remove('active'));
+    const ms = $('#checkoutMethodSection'); if (ms) ms.style.display = '';
+    const cb = $('#checkoutCompleteBtn'); if (cb) cb.disabled = true;
+  } else {
+    $$('[data-co-method]').forEach(s => s.classList.toggle('active', s.dataset.method === state.paymentMethod));
+    const ms = $('#checkoutMethodSection'); if (ms) ms.style.display = 'none';
+  }
   syncPayFields();
   $('#checkoutTender').value = '';
   $('#checkoutChange').textContent = peso(0);
@@ -2024,13 +2138,17 @@ function renderCheckout() {
   }
 }
 function syncPayFields() {
+  const showTender = state.paymentMethodChosen && state.paymentMethod !== 'credit';
   const cash = $('#checkoutCashFields');
-  if (cash) cash.style.display = state.paymentMethod === 'credit' ? 'none' : '';
+  if (cash) cash.style.display = showTender ? '' : 'none';
   const tenderLabel = $('#checkoutCashFields .checkout-section-label');
-  if (tenderLabel) tenderLabel.textContent = state.paymentMethod === 'split' ? 'Cash amount' : 'Amount tendered';
+  if (tenderLabel) tenderLabel.textContent = 'Amount tendered';
   const changeLabel = $('.checkout-change-row span:first-child');
-  if (changeLabel) changeLabel.textContent = state.paymentMethod === 'split' ? 'Balance' : 'Change';
-  // Legacy modal fields (kept for back-compat) — hide block if it exists
+  if (changeLabel) changeLabel.textContent = 'Change';
+  // Show "Other" name input only when other is selected
+  const otherRow = $('#otherMethodRow');
+  if (otherRow) otherRow.classList.toggle('visible', state.paymentMethod === 'other');
+  // Legacy modal fields (kept for back-compat)
   const payFields = $('#payFields');
   if (payFields) payFields.style.display = state.paymentMethod === 'credit' ? 'none' : '';
 }
@@ -2165,6 +2283,12 @@ function showCheckoutSuccess(order) {
   const preview = $('#successReceiptPreview');
   if (total) total.textContent = peso(order.total);
   if (sub) sub.textContent = `Receipt #${order.number} saved`;
+  // Change — show the block only when there's change to hand back
+  const changeBlock = $('#successChangeBlock');
+  const changeEl = $('#successChange');
+  const change = moneyValue(order.change || 0);
+  if (changeEl) changeEl.textContent = peso(change);
+  if (changeBlock) changeBlock.style.display = change > 0 ? '' : 'none';
   if (preview) preview.innerHTML = buildReceiptPreview(order);
   switchView('checkout-success');
   clearTimeout(showCheckoutSuccess._t);
@@ -2184,7 +2308,163 @@ function printSuccessReceipt() {
     showToast('No receipt to print');
     return;
   }
-  openReceipt(order);
+  printOrder(order);
+}
+
+// ---------- Printing ----------
+
+function printerConfig() {
+  return { ...DEFAULT_SETTINGS.printing, ...(state.settings.printing || {}) };
+}
+
+// Subnets worth sweeping: whatever the typed IP or the page's own LAN address implies, then the common defaults.
+function printerScanSubnets() {
+  const out = [];
+  const add = (ip) => {
+    const m = /^(\d+\.\d+\.\d+)\.\d+$/.exec(String(ip || '').trim());
+    if (m && !out.includes(m[1])) out.push(m[1]);
+  };
+  add($('#posPrinterIp')?.value);
+  add(location.hostname);
+  ['192.168.1', '192.168.0'].forEach(n => { if (!out.includes(n)) out.push(n); });
+  return out;
+}
+
+// Printers found by the last scan. A hit can only be identified by IP: the ePOS probe
+// answers with an empty job result (no model name) and the printer's own web page is
+// CORS-blocked, so there is nothing else to read.
+// ponytail: the probe reply also carries a status="" ASB bitfield — decode it here if
+// paper-out / cover-open ever needs to show on the row.
+let printerFound = [];
+
+// The trailing element of a printer row. Every state swaps this one slot, so the
+// feedback lands on the row the finger actually touched.
+function printerRowState(kind, label) {
+  if (kind === 'connected') return '<span class="status-pill ok"><span class="dot"></span>Connected</span>';
+  if (kind === 'offline') return '<span class="status-pill out"><span class="dot"></span>' + escapeHtml(label || 'Offline') + '</span>';
+  if (kind === 'busy') return '<span class="prn-item-action"><span class="prn-spin"></span>' + escapeHtml(label || 'Connecting…') + '</span>';
+  return '<span class="prn-item-action">Connect</span>';
+}
+
+function printerRow(ip) {
+  return [...($('#posPrinterList')?.querySelectorAll('.prn-item') || [])]
+    .find(el => el.dataset.ip === ip) || null;
+}
+
+function setPrinterRowState(ip, kind, label) {
+  const slot = printerRow(ip)?.querySelector('.prn-item-state');
+  if (slot) slot.innerHTML = printerRowState(kind, label);
+}
+
+function renderPrinterList() {
+  const wrap = $('#posPrinterList');
+  if (!wrap) return;
+  const saved = (printerConfig().netUrl || '').trim();
+  const ips = [...new Set([...(saved ? [saved] : []), ...printerFound])];
+  if (!ips.length) {
+    wrap.innerHTML = '<div class="prn-empty">No printer connected. Tap Scan to search your Wi-Fi.</div>';
+    return;
+  }
+  wrap.innerHTML = ips.map(ip => `
+    <button class="prn-item${ip === saved ? ' connected' : ''}" data-ip="${escapeHtml(ip)}">
+      <div>
+        <div class="prn-item-name">Epson ePOS printer</div>
+        <div class="prn-item-ip">${escapeHtml(ip)}</div>
+      </div>
+      <span class="prn-item-state">${printerRowState(ip === saved ? 'connected' : 'idle')}</span>
+    </button>`).join('');
+}
+
+function setScanStatus(text) {
+  const el = $('#posScanStatus');
+  if (!el) return;
+  el.hidden = !text;
+  el.textContent = text || '';
+}
+
+// Connecting is a real round-trip (up to 4s), not just saving a string — the row
+// spins while it waits and only says "Connected" once the printer has answered.
+let printerBusy = false;
+async function connectPrinter(ip) {
+  if (printerBusy) return false;
+  printerBusy = true;
+  const list = $('#posPrinterList');
+  const row = printerRow(ip);
+  list?.classList.add('busy');
+  row?.classList.add('busy-row');
+  setPrinterRowState(ip, 'busy', 'Connecting…');
+  setScanStatus('Connecting to ' + ip + '…');
+  try {
+    if (!await window.HWPOS_PRINTER.probe(ip, 4000)) {
+      setPrinterRowState(ip, 'offline', 'No answer');
+      setScanStatus(ip + ' did not answer. Check it is powered on and on this Wi-Fi.');
+      showToast('Could not reach ' + ip);
+      setTimeout(() => { if (!printerBusy) setPrinterRowState(ip, 'idle'); }, 2500);
+      return false;
+    }
+    const input = $('#posPrinterIp');
+    if (input) input.value = ip;
+    persistPosSettings();
+    if (!printerFound.includes(ip)) printerFound.push(ip);
+    renderPrinterList();
+    setScanStatus('Connected to ' + ip);
+    showToast('Printer connected');
+    return true;
+  } finally {
+    printerBusy = false;
+    list?.classList.remove('busy');
+    row?.classList.remove('busy-row');
+  }
+}
+
+// Re-check the saved printer whenever Settings opens, so a printer that was
+// unplugged since last time shows Offline instead of a stale "Connected".
+async function refreshPrinterStatus() {
+  const cfg = printerConfig();
+  const saved = (cfg.netUrl || '').trim();
+  if (!saved || cfg.driver !== 'network') return;
+  setPrinterRowState(saved, 'busy', 'Checking…');
+  if (await window.HWPOS_PRINTER.probe(saved, 3000)) {
+    setPrinterRowState(saved, 'connected');
+    return;
+  }
+  setPrinterRowState(saved, 'offline', 'Offline');
+  printerRow(saved)?.classList.remove('connected');
+}
+
+function sampleTestOrder() {
+  const store = currentStoreInfo();
+  return {
+    id: 'test', number: 'TEST-0001', ts: Date.now(),
+    cashier: store.cashier, register: store.registerNo,
+    fulfilment: 'pickup', status: 'completed', paymentMethod: 'cash',
+    items: [
+      { id: 't1', name: 'Portland Cement 40kg', qty: 2, unit: 'bag', price: 285, lineTotal: 570 },
+      { id: 't2', name: 'Common Wire Nail 3in', qty: 1, unit: 'kg', price: 95.5, lineTotal: 95.5 },
+    ],
+    subtotal: 665.5, discount: 0, total: 665.5,
+    payments: [{ method: 'cash', amount: 665.5, tendered: 1000, change: 334.5 }],
+  };
+}
+
+// Single entry point for every receipt. Only the 'browser' driver opens the pop-up.
+// ponytail: a hardware driver that fails must say why and stop. It used to fall back to
+// the pop-up, whose auto window.print() reads as "the app printed to the browser instead
+// of the printer" and buries the real error toast under a new tab.
+async function printOrder(order, opts = {}) {
+  const cfg = printerConfig();
+  if (cfg.driver !== 'network' && cfg.driver !== 'bluetooth') {
+    openReceipt(order);
+    return true;
+  }
+  try {
+    await window.HWPOS_PRINTER.print(toReceiptViewModel(order), cfg);
+    if (!opts.silent) showToast('Receipt printed');
+    return true;
+  } catch (e) {
+    showToast(e.message || 'Print failed');
+    return false;
+  }
 }
 
 function startNewSaleFromSuccess() {
@@ -2407,7 +2687,7 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange') {
     .map(item => {
       const product = state.products.find(p => p.id === item.id || p.id === item.productId);
       const qty = Math.max(1, parseInt(item.qty, 10) || 1);
-      if (!product || product.stock < qty) return null;
+      if (!product) return null;
       return {
         id: product.id,
         productId: product.id,
@@ -2432,7 +2712,7 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange') {
 
   replacements.forEach(item => {
     const product = state.products.find(p => p.id === item.id);
-    if (product) product.stock = Math.max(0, toNumber(product.stock, 0) - item.qty);
+    if (product) product.stock = toNumber(product.stock, 0) - item.qty;
   });
   saveProducts();
   const subtotal = moneyValue(replacements.reduce((sum, item) => sum + item.price * item.qty, 0));
@@ -2467,42 +2747,37 @@ function completeSale() {
   const totals = cartTotals();
   const total = moneyValue(totals.total);
   let tendered = total, change = 0;
-  if (state.paymentMethod === 'cash' || state.paymentMethod === 'split') {
+  const cashLike = ['cash', 'gcash', 'qr', 'other', 'split'].includes(state.paymentMethod);
+  if (cashLike) {
     const tenderRaw = ($('#checkoutTender')?.value || $('#tenderInput')?.value || '').trim();
     tendered = tenderRaw ? moneyValue(parseFloat(tenderRaw) || 0) : total;
-    if (state.paymentMethod === 'cash' && tendered < total) {
+    if (tendered < total) {
       setCheckoutError('Tendered amount is below the total.');
       $('#checkoutTender')?.focus();
       return;
     }
-    if (state.paymentMethod === 'split' && (!tenderRaw || tendered <= 0)) {
-      setCheckoutError('Enter the cash amount for the split payment.');
-      $('#checkoutTender')?.focus();
+    change = moneyValue(tendered - total);
+  }
+  if (state.paymentMethod === 'other') {
+    const otherName = $('#otherMethodInput')?.value?.trim();
+    if (!otherName) {
+      setCheckoutError('Please enter the payment method name.');
+      $('#otherMethodInput')?.focus();
       return;
     }
-    if (state.paymentMethod === 'split' && tendered >= total) {
-      setCheckoutError('Use Cash for full payment, or enter a smaller cash amount.');
-      $('#checkoutTender')?.focus();
-      return;
-    }
-    if (state.paymentMethod === 'split' && !state.customer) {
-      setCheckoutError('Select a customer for the remaining account balance.');
-      openCustomerModal();
-      return;
-    }
-    change = state.paymentMethod === 'cash'
-      ? moneyValue(tendered - total)
-      : moneyValue(Math.max(0, tendered - total));
   }
   if (state.paymentMethod === 'credit' && !state.customer) {
     setCheckoutError('Select a customer before charging to account.');
     return;
   }
+  const actualMethod = state.paymentMethod === 'other'
+    ? ($('#otherMethodInput')?.value?.trim() || 'Other')
+    : state.paymentMethod;
   let order;
   try {
     order = persistOrder(buildOrderRecord({
       status: 'completed',
-      paymentMethod: state.paymentMethod,
+      paymentMethod: actualMethod,
       tendered,
       change,
     }));
@@ -2512,15 +2787,20 @@ function completeSale() {
     return;
   }
 
-  // Decrement stock for sold items (mockup-level)
+  // Decrement stock for sold items
   order.items.forEach(it => {
     const p = state.products.find(x => x.id === it.id);
-    if (p) p.stock = Math.max(0, p.stock - it.qty);
+    if (p) p.stock = p.stock - it.qty;
   });
   saveProducts();
   applyCreditBalance(order);
 
   showCheckoutSuccess(order);
+  // ponytail: auto-print only for real printers. The browser driver would fire a pop-up on every sale.
+  const pcfg = printerConfig();
+  if (pcfg.printOnSale && (pcfg.driver === 'network' || pcfg.driver === 'bluetooth')) {
+    printOrder(order, { silent: true });
+  }
 }
 
 // ---------- Orders view ----------
@@ -2568,6 +2848,7 @@ function orderPaymentLabel(o) {
   if (o.status === 'voided') return 'Voided sale';
   if (o.status === 'refunded') return 'Refunded sale';
   if (o.status === 'return') return 'Returned items';
+  if (o.paymentMethodLabel) return o.paymentMethodLabel;
   if (o.paymentMethod === 'credit') return 'Charged to account';
   if (o.paymentMethod === 'split') return 'Split payment';
   return 'Cash';
@@ -2640,7 +2921,7 @@ function buildReceiptPreview(order) {
         <div class="rp-row rp-total"><span>TOTAL</span><span>${peso(receipt.totals.total)}</span></div>
         ${payRows}
         <div class="rp-rule"></div>
-        <div class="rp-center rp-thanks">Salamat po!</div>
+        <div class="rp-center rp-thanks">Thank you!</div>
       </div>
     </div>`;
 }
@@ -2714,15 +2995,9 @@ function renderOrders() {
             <span class="or-number">#${escapeHtml(o.number)}</span>
             <span class="or-total">${peso(o.total)}</span>
           </div>
-          <div class="or-meta">
-            <span class="or-cust">${escapeHtml(cust)}</span>
-            <span class="or-sep">·</span>
-            <span class="or-method">${method}</span>
-          </div>
-          <div class="or-foot">
-            <span>${fmtOrderTime(o.ts)}</span>
+          <div class="or-sub">
+            <span class="or-sub-time">${fmtOrderTime(o.ts)} · ${orderItemCount(o)} item${orderItemCount(o) === 1 ? '' : 's'}</span>
             <span class="or-status ${statusCls}">${orderStatusLabel(o)}</span>
-            <span>${orderItemCount(o)} item${orderItemCount(o) === 1 ? '' : 's'}</span>
           </div>
         </div>
         <button class="or-receipt-btn" data-act="view-receipt" data-order-id="${o.id}" title="View receipt">
@@ -2752,20 +3027,144 @@ function renderOrderDetail() {
     return;
   }
 
-  const actions = isCompletedSale(o) && state.role === 'manager'
-    ? `<div class="order-ops">
-        <button class="secondary-btn small" data-order-op="void" data-order-id="${o.id}">Void</button>
-        <button class="secondary-btn small" data-order-op="refund" data-order-id="${o.id}">Refund</button>
-        <button class="secondary-btn small" data-order-op="return" data-order-id="${o.id}">Return</button>
-        <button class="secondary-btn small" data-order-op="exchange" data-order-id="${o.id}">Exchange</button>
-      </div>`
-    : '';
-  detail.innerHTML = `${actions}${buildReceiptPreview(o)}`;
+  detail.innerHTML = `
+    <div class="od-scroll">
+      <div class="od-inner">
+        ${buildReceiptPreview(o)}
+      </div>
+    </div>
+    <div class="od-foot">
+      <button class="od-details-btn" type="button">View order details</button>
+    </div>`;
 }
 
 function selectOrder(id) {
   state.selectedOrderId = id;
   renderOrders();
+}
+
+function openOrderDetailModal(orderId) {
+  const o = state.orders.find(x => x.id === orderId);
+  if (!o) return;
+  const r = toReceiptViewModel(o);
+  const d = new Date(o.ts);
+  const dateStr = d.toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const timeStr = d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const statusCls = isSavedOrder(o) ? 'saved' : (isCompletedSale(o) ? 'done' : 'voided');
+
+  const numEl = $('#odmNumber');
+  if (numEl) numEl.textContent = `Order #${o.number}`;
+  const statusEl = $('#odmStatus');
+  if (statusEl) {
+    statusEl.textContent = orderStatusLabel(o);
+    statusEl.className = `odm-status ${statusCls}`;
+  }
+
+  const metaRows = [
+    ['Date', dateStr],
+    ['Time', timeStr],
+    ['Staff', o.cashier || '—'],
+    ['Customer', o.customer ? o.customer.name : 'Walk-in'],
+    ['Payment', orderPaymentLabel(o)],
+    ['Fulfilment', o.fulfilment === 'delivery' ? (o.deliveryAddress || 'Delivery') : 'Pickup'],
+  ].map(([k, v]) => `<div class="odm-meta-row"><span>${k}</span><span>${escapeHtml(String(v))}</span></div>`).join('');
+
+  const itemRows = (o.items || []).map(i => `
+    <div class="odm-item">
+      <div class="odm-item-info">
+        <div class="odm-item-name">${escapeHtml(i.name)}</div>
+        <div class="odm-item-sub">${i.qty} ${escapeHtml(i.unit || 'pc')} × ${peso(i.price)}</div>
+      </div>
+      <div class="odm-item-amt">${peso(i.lineTotal ?? i.price * i.qty)}</div>
+    </div>`).join('');
+
+  const t = r.totals;
+  const pay = (o.payments && o.payments[0]) || null;
+  const paidAmt = pay ? (pay.tendered || pay.amount || o.total) : o.total;
+  const change = moneyValue(o.change || (pay ? pay.change : 0) || 0);
+  const subtotalRows = `
+    <div class="odm-total-row"><span>Subtotal</span><span>${peso(t.subtotal)}</span></div>
+    ${t.discount > 0 ? `<div class="odm-total-row"><span>Discount</span><span>-${peso(t.discount)}</span></div>` : ''}
+    ${t.vatAmount ? `<div class="odm-total-row"><span>VAT (${Math.round((t.vatRate || 0.12) * 100)}% incl.)</span><span>${peso(t.vatAmount)}</span></div>` : ''}`;
+  const totalRows = `
+    <div class="odm-subtotals-detail" id="odmSubtotalsDetail">
+      <div class="odm-subtotals-inner">${subtotalRows}</div>
+    </div>
+    <button class="odm-total-row grand odm-total-toggle" id="odmTotalToggle" type="button">
+      <span>Total</span>
+      <div class="odm-total-right">
+        <span>${peso(t.total)}</span>
+        <svg class="odm-total-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </button>
+    <div class="odm-total-row"><span>Paid (${escapeHtml(orderPaymentLabel(o))})</span><span>${peso(paidAmt)}</span></div>
+    ${change > 0 ? `<div class="odm-total-row"><span>Change</span><span>${peso(change)}</span></div>` : ''}`;
+
+  const actions = isCompletedSale(o) && state.role === 'manager' ? `
+    <div class="odm-actions">
+      <button class="secondary-btn danger" data-order-op="void" data-order-id="${o.id}">Void</button>
+      <button class="secondary-btn" data-order-op="refund" data-order-id="${o.id}">Refund</button>
+      <button class="secondary-btn" data-order-op="return" data-order-id="${o.id}">Return</button>
+      <button class="secondary-btn" data-order-op="exchange" data-order-id="${o.id}">Exchange</button>
+    </div>` : '';
+
+  const itemCount = (o.items || []).length;
+  const body = $('#orderDetailModalBody');
+  if (body) {
+    body.innerHTML = `
+      <div class="odm-meta">${metaRows}</div>
+      <button class="odm-items-toggle" id="odmItemsToggle" type="button">
+        <span>Items (${itemCount})</span>
+        <svg class="odm-items-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="odm-items-detail" id="odmItemsDetail">
+        <div class="odm-items-inner">${itemRows}</div>
+      </div>
+      <div class="odm-totals">${totalRows}</div>
+      ${actions}`;
+
+    const toggle = body.querySelector('#odmItemsToggle');
+    const detail = body.querySelector('#odmItemsDetail');
+    const inner = body.querySelector('.odm-items-inner');
+    if (toggle && detail && inner) {
+      toggle.addEventListener('click', () => {
+        const isOpen = toggle.classList.contains('open');
+        if (isOpen) {
+          detail.style.height = detail.getBoundingClientRect().height + 'px';
+          requestAnimationFrame(() => { detail.style.height = '0'; });
+          toggle.classList.remove('open');
+        } else {
+          const h = inner.getBoundingClientRect().height;
+          detail.style.height = h + 'px';
+          const onEnd = () => { detail.style.height = 'auto'; detail.removeEventListener('transitionend', onEnd); };
+          detail.addEventListener('transitionend', onEnd);
+          toggle.classList.add('open');
+        }
+      });
+    }
+
+    const totalToggle = body.querySelector('#odmTotalToggle');
+    const subtotalsDetail = body.querySelector('#odmSubtotalsDetail');
+    const subtotalsInner = body.querySelector('.odm-subtotals-inner');
+    if (totalToggle && subtotalsDetail && subtotalsInner) {
+      totalToggle.addEventListener('click', () => {
+        const isOpen = totalToggle.classList.contains('open');
+        if (isOpen) {
+          subtotalsDetail.style.height = subtotalsDetail.getBoundingClientRect().height + 'px';
+          requestAnimationFrame(() => { subtotalsDetail.style.height = '0'; });
+          totalToggle.classList.remove('open');
+        } else {
+          const h = subtotalsInner.getBoundingClientRect().height;
+          subtotalsDetail.style.height = h + 'px';
+          const onEnd = () => { subtotalsDetail.style.height = 'auto'; subtotalsDetail.removeEventListener('transitionend', onEnd); };
+          subtotalsDetail.addEventListener('transitionend', onEnd);
+          totalToggle.classList.add('open');
+        }
+      });
+    }
+  }
+  const modal = $('#orderDetailModal');
+  if (modal) modal.hidden = false;
 }
 
 // ---------- 80mm thermal receipt ----------
@@ -2819,8 +3218,29 @@ function buildReceiptHtml(order) {
     font-family: "SF Mono", "Menlo", "Consolas", "Courier New", monospace;
     font-size: 12px;
     line-height: 1.35;
+  }
+  .r-paper {
     width: 80mm;
     padding: 4mm 4mm 6mm;
+    background: #fff;
+  }
+  /* On-screen preview: center the receipt on a neutral surface */
+  @media screen {
+    body {
+      background: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 40px 16px;
+    }
+    .r-paper {
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 4px 12px rgba(0,0,0,0.3);
+      padding: 8mm 6mm 10mm;
+    }
+    .r-actions { width: 80mm; }
   }
   .r-center { text-align: center; }
   .r-store { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
@@ -2851,19 +3271,21 @@ function buildReceiptHtml(order) {
     color: #000; font-size: 8px; padding: 0 2px;
   }
   .r-thanks { margin-top: 8px; font-weight: 700; }
-  .r-actions { margin-top: 12px; display: flex; gap: 6px; }
+  .r-actions { margin-top: 16px; display: flex; gap: 8px; }
   .r-actions button {
-    flex: 1; font-family: inherit; font-size: 12px; padding: 8px;
-    border: 1px solid #000; background: #fff; cursor: pointer;
+    flex: 1; font-family: inherit; font-size: 13px; font-weight: 600; padding: 12px;
+    border: none; border-radius: 10px; background: #333; color: #fff; cursor: pointer;
   }
-  .r-actions button.primary { background: #000; color: #fff; }
+  .r-actions button.primary { background: #fff; color: #121212; }
   @media print {
     .r-actions { display: none; }
-    body { padding: 2mm 4mm 4mm; }
+    body { padding: 0; background: #fff; }
+    .r-paper { padding: 2mm 4mm 4mm; box-shadow: none; border-radius: 0; }
   }
 </style>
 </head>
 <body>
+  <div class="r-paper">
   <div class="r-center r-store">${escapeHtml(receipt.store.name)}</div>
   <div class="r-center r-store-sub">${escapeHtml(receipt.store.address)}</div>
   <div class="r-center r-store-sub">Tel: ${escapeHtml(receipt.store.phone)}</div>
@@ -2895,9 +3317,10 @@ function buildReceiptHtml(order) {
 
   <div class="r-rule"></div>
 
-  <div class="r-center r-thanks">Salamat po!</div>
+  <div class="r-center r-thanks">Thank you!</div>
   <div class="r-center r-foot">This serves as your official receipt.</div>
   <div class="r-center r-foot">Goods sold are not returnable.</div>
+  </div>
 
   <div class="r-actions">
     <button onclick="window.close()">Close</button>
@@ -3014,34 +3437,311 @@ function saveProduct() {
 }
 
 // ---------- Customers / Reports ----------
+function customerOrders(customerId) {
+  return state.orders
+    .filter(o => o.customer && o.customer.id === customerId && isCompletedSale(o))
+    .sort((a, b) => b.ts - a.ts);
+}
+
+function customerMetrics(customerId) {
+  const orders = customerOrders(customerId);
+  if (orders.length === 0) return { lifetimeValue: 0, avgOrderValue: 0, orderCount: 0, lastPurchaseTs: 0, daysSinceLastPurchase: null };
+  const lifetimeValue = moneyValue(orders.reduce((sum, o) => sum + o.total, 0));
+  const avgOrderValue = moneyValue(lifetimeValue / orders.length);
+  const lastPurchaseTs = orders[0].ts;
+  const daysSinceLastPurchase = Math.floor((Date.now() - lastPurchaseTs) / 86400000);
+  return { lifetimeValue, avgOrderValue, orderCount: orders.length, lastPurchaseTs, daysSinceLastPurchase };
+}
+
+function relativeTime(ts) {
+  if (!ts) return 'Never';
+  const days = Math.floor((Date.now() - ts) / 86400000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  if (days < 30) { const w = Math.floor(days / 7); return `${w} week${w > 1 ? 's' : ''} ago`; }
+  if (days < 365) { const m = Math.floor(days / 30); return `${m} month${m > 1 ? 's' : ''} ago`; }
+  const y = Math.floor(days / 365);
+  return `${y} year${y > 1 ? 's' : ''} ago`;
+}
+
+function customerAging(customerId) {
+  const now = Date.now();
+  const entries = state.customerLedger
+    .filter(e => e.customerId === customerId)
+    .sort((a, b) => a.ts - b.ts);
+  const charges = [];
+  for (const e of entries) {
+    if (e.type === 'charge') {
+      charges.push({ ts: e.ts, remaining: e.amount });
+    } else if (e.type === 'payment') {
+      let toApply = e.amount;
+      while (toApply > 0 && charges.length > 0) {
+        const first = charges[0];
+        const applied = Math.min(toApply, first.remaining);
+        first.remaining -= applied;
+        toApply -= applied;
+        if (first.remaining <= 0) charges.shift();
+      }
+    }
+  }
+  const buckets = { '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
+  for (const charge of charges) {
+    if (charge.remaining <= 0) continue;
+    const days = Math.floor((now - charge.ts) / 86400000);
+    const amt = charge.remaining;
+    if (days <= 30) buckets['0-30'] += amt;
+    else if (days <= 60) buckets['31-60'] += amt;
+    else if (days <= 90) buckets['61-90'] += amt;
+    else buckets['90+'] += amt;
+  }
+  const total = moneyValue(Object.values(buckets).reduce((s, v) => s + v, 0));
+  return { buckets, total };
+}
+
+function getTierDiscount(customer) {
+  if (!customer || !customer.type) return 0;
+  const tiers = state.settings.pricingTiers || {};
+  return tiers[customer.type] || 0;
+}
+
+function fmtOrderDate(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function openCustomerDetail(customerId) {
+  const c = allCustomerRecords().find(x => x.id === customerId);
+  if (!c) return;
+  const orders = customerOrders(customerId);
+  const m = customerMetrics(customerId);
+  const aging = customerAging(customerId);
+  $('#custDetailTitle').textContent = c.name;
+
+  const kpisEl = $('#custDetailKpis');
+  kpisEl.innerHTML = `
+    <div class="cust-kpi-box">
+      <div class="cust-kpi-label">Lifetime Value</div>
+      <div class="cust-kpi-value">${peso(m.lifetimeValue)}</div>
+    </div>
+    <div class="cust-kpi-box">
+      <div class="cust-kpi-label">Orders</div>
+      <div class="cust-kpi-value">${m.orderCount}</div>
+    </div>
+    <div class="cust-kpi-box">
+      <div class="cust-kpi-label">Avg Order</div>
+      <div class="cust-kpi-value">${peso(m.avgOrderValue)}</div>
+    </div>
+    <div class="cust-kpi-box">
+      <div class="cust-kpi-label">Last Purchase</div>
+      <div class="cust-kpi-value cust-kpi-value-sm">${relativeTime(m.lastPurchaseTs)}</div>
+    </div>`;
+
+  const agingEl = $('#custDetailAging');
+  if (aging.total > 0) {
+    const b = aging.buckets;
+    agingEl.innerHTML = `
+      <div class="cust-aging-title">Outstanding Balance · ${peso(aging.total)}</div>
+      <div class="cust-aging-buckets">
+        ${b['0-30'] > 0 ? `<div class="cust-aging-bucket"><span class="cust-aging-bucket-label">0–30 days</span><span class="cust-aging-bucket-value">${peso(b['0-30'])}</span></div>` : ''}
+        ${b['31-60'] > 0 ? `<div class="cust-aging-bucket"><span class="cust-aging-bucket-label">31–60 days</span><span class="cust-aging-bucket-value warn">${peso(b['31-60'])}</span></div>` : ''}
+        ${b['61-90'] > 0 ? `<div class="cust-aging-bucket"><span class="cust-aging-bucket-label">61–90 days</span><span class="cust-aging-bucket-value warn">${peso(b['61-90'])}</span></div>` : ''}
+        ${b['90+'] > 0 ? `<div class="cust-aging-bucket"><span class="cust-aging-bucket-label">90+ days</span><span class="cust-aging-bucket-value danger">${peso(b['90+'])}</span></div>` : ''}
+      </div>`;
+    agingEl.style.display = '';
+  } else {
+    agingEl.style.display = 'none';
+  }
+
+  const ordersEl = $('#custDetailOrders');
+  if (orders.length === 0) {
+    ordersEl.innerHTML = `<div class="cust-detail-empty">No completed orders yet</div>`;
+  } else {
+    ordersEl.innerHTML = orders.map(o => {
+      const itemCount = o.items.reduce((s, i) => s + i.qty, 0);
+      const firstItems = o.items.slice(0, 2).map(i => i.name).join(', ');
+      const moreItems = o.items.length > 2 ? ` +${o.items.length - 2} more` : '';
+      return `
+        <button class="cust-order-row" data-order-id="${escapeHtml(o.id)}">
+          <div class="cust-order-date">${fmtOrderDate(o.ts)}</div>
+          <div class="cust-order-items">
+            <div class="cust-order-items-main">#${escapeHtml(o.number)} · ${itemCount} item${itemCount !== 1 ? 's' : ''}</div>
+            <div class="cust-order-items-sub">${escapeHtml(firstItems)}${moreItems}</div>
+          </div>
+          <span class="cust-order-method">
+            <span class="rl-dot" style="background:${reportMethodMeta(reportMethodKind(o)).color}"></span>
+            ${escapeHtml(orderPaymentLabel(o))}
+          </span>
+          <div class="cust-order-total">${peso(o.total)}</div>
+        </button>`;
+    }).join('');
+  }
+  $('#customerDetailModal').hidden = false;
+}
+
 function renderCustomers() {
-  const grid = $('#customersGrid');
+  state.orders = loadOrders();
+  const list = $('#customersList');
   const all = allCustomerRecords();
-  grid.innerHTML = all.map(c => {
-    const limit = c.creditLimit || 0;
-    const bal = c.currentBalance || 0;
-    const cls = bal === 0 ? '' : (limit > 0 && bal >= limit ? 'over' : 'has');
-    const initials = c.name.split(' ').map(w => w[0]).slice(0, 2).join('');
-    return `
-      <div class="cust-card">
-        <div class="cust-card-head">
-          <div class="cust-card-avatar">${escapeHtml(initials)}</div>
-          <div>
-            <div class="cust-card-name">${escapeHtml(c.name)}</div>
-            <div class="cust-card-phone">${escapeHtml(c.phone || '')}</div>
+
+  const metricsCache = new Map();
+  const agingCache = new Map();
+  for (const c of all) {
+    metricsCache.set(c.id, customerMetrics(c.id));
+    agingCache.set(c.id, customerAging(c.id));
+  }
+
+  const q = (state.customersQuery || '').trim().toLowerCase();
+  let filtered = q
+    ? all.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        (c.phone || '').toLowerCase().includes(q) ||
+        (c.type || '').toLowerCase().includes(q))
+    : all;
+
+  if (filtered.length > 0 && !filtered.find(c => c.id === state.selectedCustomerId)) {
+    state.selectedCustomerId = filtered[0].id;
+  }
+
+  if (list) {
+    if (filtered.length === 0) {
+      list.innerHTML = `
+        <div class="orders-empty">
+          <div class="empty-glyph">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <div class="empty-title">${q ? 'No matches' : 'No customers yet'}</div>
+          <div class="empty-sub">${q ? 'Try a different name or phone' : 'Add your first customer to get started'}</div>
+        </div>`;
+    } else {
+      list.innerHTML = filtered.map(c => {
+        const active = state.selectedCustomerId === c.id ? 'active' : '';
+        const m = metricsCache.get(c.id);
+        const aging = agingCache.get(c.id);
+        const bal = c.currentBalance || 0;
+        const balCls = bal > 0 ? 'cust-bal-has' : '';
+        const typeBadge = c.type ? `<span class="cust-type-badge cust-type-${escapeHtml(c.type)}">${escapeHtml(c.type.charAt(0).toUpperCase() + c.type.slice(1))}</span>` : '';
+        const threshold = state.settings.churnThresholdDays || 30;
+        let churnBadge = '';
+        if (m.daysSinceLastPurchase !== null && m.daysSinceLastPurchase >= threshold) {
+          const churnCls = m.daysSinceLastPurchase >= 90 ? 'danger' : 'warn';
+          churnBadge = `<span class="cust-churn-badge churn-${churnCls}">${m.daysSinceLastPurchase}d</span>`;
+        }
+        const lastOrder = m.lastPurchaseTs ? fmtOrderDate(m.lastPurchaseTs) : 'Never';
+        return `
+          <div class="order-row ${active}" data-customer-id="${escapeHtml(c.id)}">
+            <div class="or-body">
+              <div class="or-head">
+                <span class="or-number">${escapeHtml(c.name)}</span>
+                <span class="or-total ${balCls}">${peso(bal)}</span>
+              </div>
+              <div class="or-sub">
+                <span class="or-sub-time">${escapeHtml(c.phone || 'No phone')} · ${m.orderCount} orders · Last ${lastOrder}</span>
+                <span class="or-status cust-badges">${typeBadge}${churnBadge}</span>
+              </div>
+            </div>
+            <button class="or-receipt-btn" data-act="view-customer-detail" data-customer-id="${escapeHtml(c.id)}" title="View details">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>`;
+      }).join('');
+    }
+  }
+
+  renderCustomerDetail(metricsCache, agingCache);
+}
+
+function renderCustomerDetail(metricsCache, agingCache) {
+  const detail = $('#customerDetail');
+  if (!detail) return;
+  const c = allCustomerRecords().find(x => x.id === state.selectedCustomerId);
+  if (!c) {
+    detail.innerHTML = `
+      <div class="order-detail-empty">
+        <div class="empty-title">Select a customer</div>
+        <div class="empty-sub">Pick one from the list to view their details</div>
+      </div>`;
+    return;
+  }
+
+  const m = (metricsCache || new Map()).get(c.id) || customerMetrics(c.id);
+  const aging = (agingCache || new Map()).get(c.id) || customerAging(c.id);
+  const orders = customerOrders(c.id);
+  const bal = c.currentBalance || 0;
+  const limit = c.creditLimit || 0;
+  const balCls = bal === 0 ? '' : (limit > 0 && bal >= limit ? 'over' : 'has');
+
+  const agingParts = [];
+  if (aging.buckets['0-30'] > 0) agingParts.push(`<div class="cd-aging-item"><span class="cd-aging-label">0–30d</span><span class="cd-aging-value">${peso(aging.buckets['0-30'])}</span></div>`);
+  if (aging.buckets['31-60'] > 0) agingParts.push(`<div class="cd-aging-item"><span class="cd-aging-label">31–60d</span><span class="cd-aging-value aging-warn">${peso(aging.buckets['31-60'])}</span></div>`);
+  if (aging.buckets['61-90'] > 0) agingParts.push(`<div class="cd-aging-item"><span class="cd-aging-label">61–90d</span><span class="cd-aging-value aging-warn">${peso(aging.buckets['61-90'])}</span></div>`);
+  if (aging.buckets['90+'] > 0) agingParts.push(`<div class="cd-aging-item"><span class="cd-aging-label">90+d</span><span class="cd-aging-value aging-danger">${peso(aging.buckets['90+'])}</span></div>`);
+
+  const agingHtml = aging.total > 0 ? `
+    <div class="cd-section-label">Outstanding Aging</div>
+    <div class="cd-aging-row">${agingParts.join('')}</div>` : '';
+
+  const orderRows = orders.length
+    ? orders.slice(0, 20).map(o => {
+        const itemCount = o.items.reduce((s, i) => s + i.qty, 0);
+        const firstItems = o.items.slice(0, 2).map(i => i.name).join(', ');
+        const moreItems = o.items.length > 2 ? ` +${o.items.length - 2}` : '';
+        return `
+          <button class="cd-order-row" data-order-id="${escapeHtml(o.id)}">
+            <div class="cd-order-date">${fmtOrderDate(o.ts)}</div>
+            <div class="cd-order-info">
+              <div class="cd-order-name">#${escapeHtml(o.number)} · ${itemCount} item${itemCount !== 1 ? 's' : ''}</div>
+              <div class="cd-order-sub">${escapeHtml(firstItems)}${moreItems}</div>
+            </div>
+            <span class="cd-order-method">
+              <span class="rl-dot" style="background:${reportMethodMeta(reportMethodKind(o)).color}"></span>
+              ${escapeHtml(orderPaymentLabel(o))}
+            </span>
+            <div class="cd-order-total">${peso(o.total)}</div>
+          </button>`;
+      }).join('')
+    : `<div class="cd-empty">No completed orders yet</div>`;
+
+  const moreOrders = orders.length > 20 ? `<div class="cd-more-orders">${orders.length - 20} more orders — open full history for all</div>` : '';
+
+  detail.innerHTML = `
+    <div class="od-scroll">
+      <div class="od-inner cd-inner">
+        <div class="cd-header">
+          <div class="cd-avatar">${escapeHtml(c.name.split(' ').map(w => w[0]).slice(0, 2).join(''))}</div>
+          <div class="cd-header-info">
+            <div class="cd-name">${escapeHtml(c.name)}</div>
+            <div class="cd-phone">${escapeHtml(c.phone || 'No phone')}</div>
           </div>
         </div>
-        <div class="cust-card-meta">
-          <div class="row"><span class="label">Address</span><span>${escapeHtml(c.address || '—')}</span></div>
-          <div class="row"><span class="label">Credit limit</span><span>${peso(limit)}</span></div>
+        <div class="cd-meta">
+          <div class="odm-meta-row"><span>Address</span><span>${escapeHtml(c.address || '—')}</span></div>
+          <div class="odm-meta-row"><span>Type</span><span>${c.type ? escapeHtml(c.type.charAt(0).toUpperCase() + c.type.slice(1)) : 'Unclassified'}</span></div>
+          <div class="odm-meta-row"><span>Credit limit</span><span>${peso(limit)}</span></div>
+          <div class="odm-meta-row"><span>Current balance</span><span class="cust-card-balance-value ${balCls}">${peso(bal)}</span></div>
         </div>
-        <div class="cust-card-balance">
-          <span class="cust-card-balance-label">Current Utang</span>
-          <span class="cust-card-balance-value ${cls}">${peso(bal)}</span>
+        <div class="cd-kpis">
+          <div class="cd-kpi-box"><div class="cd-kpi-label">Lifetime Value</div><div class="cd-kpi-value">${peso(m.lifetimeValue)}</div></div>
+          <div class="cd-kpi-box"><div class="cd-kpi-label">Orders</div><div class="cd-kpi-value">${m.orderCount}</div></div>
+          <div class="cd-kpi-box"><div class="cd-kpi-label">Avg Order</div><div class="cd-kpi-value">${peso(m.avgOrderValue)}</div></div>
+          <div class="cd-kpi-box"><div class="cd-kpi-label">Last Purchase</div><div class="cd-kpi-value cd-kpi-value-sm">${relativeTime(m.lastPurchaseTs)}</div></div>
         </div>
-        <button class="secondary-btn small cust-pay-btn" data-customer-pay="${escapeHtml(c.id)}" ${bal <= 0 ? 'disabled' : ''}>Record payment</button>
-      </div>`;
-  }).join('');
+        ${agingHtml}
+        <div class="cd-section-label">Recent Orders</div>
+        <div class="cd-orders-list">${orderRows}</div>
+        ${moreOrders}
+      </div>
+    </div>
+    <div class="od-foot">
+      <button class="od-details-btn cd-details-btn" type="button" data-customer-detail="${escapeHtml(c.id)}">View full history</button>
+      ${bal > 0 ? `<button class="od-details-btn cd-pay-btn" type="button" data-customer-pay="${escapeHtml(c.id)}">Record payment</button>` : ''}
+    </div>`;
 }
 
 function sameLocalDate(a, b) {
@@ -3050,46 +3750,140 @@ function sameLocalDate(a, b) {
     && a.getDate() === b.getDate();
 }
 
+// Cheap change-detector so the live poll only re-renders when orders actually change.
+function reportsSignature(orders) {
+  let sig = orders.length + '|';
+  for (const o of orders) sig += o.id + ':' + (o.status || '') + ':' + o.total + ':' + o.ts + ';';
+  return sig;
+}
+
+// Payment-method categories for the chart/legend. Categorical colors are a
+// deliberate data-viz exception to the monochrome theme — kept muted.
+const REPORT_METHOD_META = {
+  cash:   { label: 'Cash',   color: '#E6E6E6' },
+  gcash:  { label: 'GCash',  color: '#4C8DFF' },
+  qr:     { label: 'QR',     color: '#3FB6A8' },
+  credit: { label: 'Credit', color: '#FFB74D' },
+  split:  { label: 'Split',  color: '#9B8CFF' },
+  other:  { label: 'Other',  color: '#8A8A8A' },
+};
+const REPORT_METHOD_ORDER = ['cash', 'gcash', 'qr', 'credit', 'split', 'other'];
+function reportMethodMeta(kind) { return REPORT_METHOD_META[kind] || REPORT_METHOD_META.other; }
+function reportMethodKind(o) { return REPORT_METHOD_META[o.paymentKind] ? o.paymentKind : 'other'; }
+
 function renderReports() {
   state.orders = loadOrders();
+  reportsLive._sig = reportsSignature(state.orders);
   const today = new Date();
-  const sales = state.orders
-    .filter(o => isCompletedSale(o) && sameLocalDate(new Date(o.ts), today))
+  const completed = state.orders.filter(o => isCompletedSale(o));
+  const sales = completed
+    .filter(o => sameLocalDate(new Date(o.ts), today))
     .sort((a, b) => b.ts - a.ts);
   const revenue = sales.reduce((s, x) => s + x.total, 0);
   const txns = sales.length;
-  const avg = txns > 0 ? revenue / txns : 0;
-  const low = state.products.filter(p => p.stock <= p.reorderPoint).length;
   $('#statRevenue').textContent = peso(revenue);
   $('#statTxns').textContent = txns;
-  $('#statAvg').textContent = peso(avg);
-  $('#statLow').textContent = low;
-  $('#recentList').innerHTML = sales.length
-    ? sales.slice(0, 8).map(s => `
-      <div class="recent-row">
-        <div>
-          <div class="r-id">#${escapeHtml(s.number)}${s.customer ? ' · ' + escapeHtml(s.customer.name) : ''}</div>
-          <div class="r-time">${fmtOrderTime(s.ts)}</div>
-        </div>
-        <span class="r-method">${escapeHtml(orderPaymentLabel(s))}</span>
-        <span class="r-amt">${peso(s.total)}</span>
-      </div>
-    `).join('')
-    : `<div class="recent-empty">No completed sales yet</div>`;
-  const drawer = buildCashDrawerSummary();
-  const drawerEl = $('#drawerSummary');
-  if (drawerEl) {
-    drawerEl.innerHTML = `
-      <div class="recent-row"><span>Expected cash</span><span class="r-amt">${peso(drawer.expectedCash)}</span></div>
-      <div class="recent-row"><span>Cash sales</span><span>${drawer.cashSales}</span></div>
-      <div class="recent-row"><span>Adjustments</span><span>${drawer.adjustments}</span></div>`;
+
+  // ---- Last-7-days revenue, stacked by payment method (real order data) ----
+  const DAYS = 7;
+  const series = [];
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    series.push({ date: d, label: d.toLocaleDateString('en-PH', { weekday: 'short' }), byKind: {}, total: 0, count: 0, isToday: i === 0 });
+  }
+  const rangeByKind = {};
+  const rangeCountByKind = {};
+  let rangeTotal = 0;
+  completed.forEach(o => {
+    const slot = series.find(s => sameLocalDate(s.date, new Date(o.ts)));
+    if (!slot) return;
+    const kind = reportMethodKind(o);
+    slot.byKind[kind] = (slot.byKind[kind] || 0) + o.total;
+    slot.total += o.total;
+    slot.count += 1;
+    rangeByKind[kind] = (rangeByKind[kind] || 0) + o.total;
+    rangeCountByKind[kind] = (rangeCountByKind[kind] || 0) + 1;
+    rangeTotal += o.total;
+  });
+  const maxDay = Math.max(1, ...series.map(s => s.total));
+  const chartEl = $('#reportsChart');
+  if (chartEl) {
+    chartEl.innerHTML = series.map(s => {
+      const barH = (s.total / maxDay) * 100;
+      const segs = REPORT_METHOD_ORDER
+        .filter(k => s.byKind[k])
+        .map(k => `<div class="rc-seg" style="flex-grow:${s.byKind[k]};background:${reportMethodMeta(k).color}" title="${reportMethodMeta(k).label}: ${peso(s.byKind[k])}"></div>`)
+        .join('');
+      return `
+        <div class="rc-col${s.isToday ? ' today' : ''}">
+          <div class="rc-bar-area">
+            <div class="rc-bar" style="height:${barH}%">${segs}</div>
+          </div>
+          <div class="rc-x">${escapeHtml(s.label)}</div>
+          <div class="rc-count">${s.count}</div>
+        </div>`;
+    }).join('');
+  }
+  const rangeTotalEl = $('#reportsRangeTotal');
+  if (rangeTotalEl) rangeTotalEl.textContent = peso(rangeTotal);
+
+  // ---- Legend: each method's total + transaction count over the range ----
+  const legendEl = $('#reportsLegend');
+  if (legendEl) {
+    const used = REPORT_METHOD_ORDER.filter(k => rangeByKind[k]);
+    legendEl.innerHTML = used.map(k => {
+      const m = reportMethodMeta(k);
+      const c = rangeCountByKind[k] || 0;
+      return `<div class="rl-item">
+        <span class="rl-dot" style="background:${m.color}"></span>
+        <span class="rl-label">${m.label}</span>
+        <span class="rl-amt">${peso(rangeByKind[k])}</span>
+        <span class="rl-count">· ${c} ${c === 1 ? 'transaction' : 'transactions'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ---- Full transaction list — every completed sale today, newest first ----
+  const txCount = $('#reportsTxCount');
+  if (txCount) txCount.textContent = `${txns} ${txns === 1 ? 'transaction' : 'transactions'}`;
+  const txEl = $('#reportsTxList');
+  if (txEl) {
+    txEl.innerHTML = sales.length
+      ? sales.map(s => `
+        <button class="report-tx" data-order-id="${escapeHtml(s.id)}">
+          <div class="report-tx-main">
+            <div class="report-tx-id">#${escapeHtml(s.number)}${s.customer ? ' · ' + escapeHtml(s.customer.name) : ''}</div>
+            <div class="report-tx-sub">${fmtOrderTime(s.ts)} · ${escapeHtml(s.cashier || '—')}</div>
+          </div>
+          <span class="report-tx-method">
+            <span class="rl-dot" style="background:${reportMethodMeta(reportMethodKind(s)).color}"></span>
+            ${escapeHtml(orderPaymentLabel(s))}
+          </span>
+          <div class="report-tx-amt">${peso(s.total)}</div>
+        </button>`).join('')
+      : `<div class="reports-empty">No completed sales yet today</div>`;
   }
 }
+
+// Live updates: re-pull orders and re-render whenever they change while the
+// Reports view is open. Storage events cover other tabs on this device; the poll
+// is the seam a future backend sync can push through for multi-device cashiers.
+function reportsLive() {
+  if (state.view !== 'reports') return;
+  const orders = loadOrders();
+  if (reportsSignature(orders) !== reportsLive._sig) renderReports();
+}
+reportsLive._sig = '';
 
 function renderPosSettings() {
   const currentSize = state.tileSize || 'md';
   $$('#posSizeToggle .bb-size-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.size === currentSize);
+  });
+  const currentText = state.tileText || 'md';
+  $$('#posTextToggle .bb-size-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.text === currentText);
   });
   const showCb = $('#posShowPrice');
   if (showCb) showCb.checked = state.showPrice;
@@ -3097,11 +3891,45 @@ function renderPosSettings() {
   $$('#posThemeToggle .bb-size-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.theme === currentTheme);
   });
-  const p = state.settings.printing || {};
-  const pw = $('#posPrinterWidth');
-  if (pw) pw.value = p.width || '58mm';
+  const p = printerConfig();
+  $$('#posWidthToggle .bb-size-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.width === (p.width || '80mm'));
+  });
   const po = $('#posPrintOnSale');
   if (po) po.checked = !!p.printOnSale;
+  const pc = $('#posPrintCut');
+  if (pc) pc.checked = p.cut !== false;
+  const pm = $('#posPrintMap');
+  if (pm) pm.checked = p.mapOnReceipt !== false;
+  const ip = $('#posPrinterIp');
+  if (ip) ip.value = p.netUrl || '';
+  $$('#posDriverToggle .bb-size-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.driver === (p.driver || 'browser'));
+  });
+  const netRow = $('#posNetRow');
+  if (netRow) netRow.hidden = p.driver !== 'network';
+  const scanRow = $('#posScanRow');
+  if (scanRow) scanRow.hidden = p.driver !== 'network';
+  const listRow = $('#posPrinterListRow');
+  if (listRow) listRow.hidden = p.driver !== 'network';
+  renderPrinterList();
+  setScanStatus('');
+  refreshPrinterStatus();
+  const btRow = $('#posBtRow');
+  if (btRow) btRow.hidden = p.driver !== 'bluetooth';
+  const btStatus = $('#posBtStatus');
+  if (btStatus) btStatus.textContent = p.btName ? 'Paired: ' + p.btName : 'Not paired';
+  const tiers = state.settings.pricingTiers || {};
+  const tierContractor = $('#posTierContractor');
+  if (tierContractor) tierContractor.value = ((tiers.contractor || 0) * 100).toFixed(1);
+  const tierWholesale = $('#posTierWholesale');
+  if (tierWholesale) tierWholesale.value = ((tiers.wholesale || 0) * 100).toFixed(1);
+  const tierRetail = $('#posTierRetail');
+  if (tierRetail) tierRetail.value = ((tiers.retail || 0) * 100).toFixed(1);
+  const tierResidential = $('#posTierResidential');
+  if (tierResidential) tierResidential.value = ((tiers.residential || 0) * 100).toFixed(1);
+  const churnInput = $('#posChurnDays');
+  if (churnInput) churnInput.value = state.settings.churnThresholdDays || 30;
 }
 
 function applyTheme(theme) {
@@ -3115,10 +3943,19 @@ function applyTheme(theme) {
 
 function persistPosSettings() {
   state.settings.printing = {
-    ...state.settings.printing,
-    width: ($('#posPrinterWidth')?.value || '58mm').trim(),
+    ...printerConfig(),
     printOnSale: !!$('#posPrintOnSale')?.checked,
+    cut: !!$('#posPrintCut')?.checked,
+    mapOnReceipt: !!$('#posPrintMap')?.checked,
+    netUrl: ($('#posPrinterIp')?.value || '').trim(),
   };
+  state.settings.pricingTiers = {
+    contractor: Math.max(0, parseFloat($('#posTierContractor')?.value || '0') || 0) / 100,
+    wholesale: Math.max(0, parseFloat($('#posTierWholesale')?.value || '0') || 0) / 100,
+    retail: Math.max(0, parseFloat($('#posTierRetail')?.value || '0') || 0) / 100,
+    residential: Math.max(0, parseFloat($('#posTierResidential')?.value || '0') || 0) / 100,
+  };
+  state.settings.churnThresholdDays = Math.max(1, parseInt($('#posChurnDays')?.value || '30', 10) || 30);
   saveSettings();
 }
 
@@ -3323,27 +4160,93 @@ function attachEvents() {
     }
   });
 
-  // ---- Product grid (Sell) ----
+  // ---- Product grid (Sell) — real swipe gestures ----
   const productGrid = $('#productGrid');
   let swipeStart = null;
   let suppressGridClick = false;
+
   productGrid.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    swipeStart = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    const track = $('#productTrack');
+    if (!track) return;
+    track.classList.add('dragging');
+    swipeStart = {
+      x: e.clientX,
+      y: e.clientY,
+      id: e.pointerId,
+      startX: e.clientX,
+      startT: Date.now(),
+      dragging: false,
+    };
   });
-  productGrid.addEventListener('pointerup', (e) => {
+
+  productGrid.addEventListener('pointermove', (e) => {
     if (!swipeStart || swipeStart.id !== e.pointerId) return;
     const dx = e.clientX - swipeStart.x;
     const dy = e.clientY - swipeStart.y;
-    swipeStart = null;
-    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.35) {
+
+    // Only start dragging if horizontal movement exceeds vertical
+    if (!swipeStart.dragging && Math.abs(dx) > 4 && Math.abs(dx) > Math.abs(dy)) {
+      swipeStart.dragging = true;
+    }
+    if (!swipeStart.dragging) return;
+
+    const track = $('#productTrack');
+    if (!track) return;
+    const gap = parseFloat(getComputedStyle(track).gap) || 0;
+    const step = productGrid.clientWidth + gap;
+    const total = totalPages();
+    const baseOffset = -(state.page - 1) * step;
+    let offset = baseOffset + dx;
+
+    // Rubber-band at boundaries
+    if (offset > 0) {
+      offset = offset * 0.25;
+    } else if (offset < -(total - 1) * step) {
+      const overscroll = offset + (total - 1) * step;
+      offset = -(total - 1) * step + overscroll * 0.25;
+    }
+
+    track.style.transform = `translate3d(${offset}px, 0, 0)`;
+  });
+
+  productGrid.addEventListener('pointerup', (e) => {
+    if (!swipeStart || swipeStart.id !== e.pointerId) return;
+    const track = $('#productTrack');
+    if (track) track.classList.remove('dragging');
+
+    if (swipeStart.dragging) {
+      const dx = e.clientX - swipeStart.startX;
+      const pageWidth = productGrid.clientWidth;
+      const threshold = pageWidth * 0.12;
+      // Flick: a quick short swipe still flips the page
+      const elapsed = Date.now() - swipeStart.startT;
+      const velocity = Math.abs(dx) / Math.max(elapsed, 1); // px per ms
+      const flick = elapsed < 300 && Math.abs(dx) > 30 && velocity > 0.25;
+
+      if ((dx < -threshold || (flick && dx < 0)) && state.page < totalPages()) {
+        changePage(1);
+      } else if ((dx > threshold || (flick && dx > 0)) && state.page > 1) {
+        changePage(-1);
+      } else {
+        updateProductTrackPosition();
+      }
+
       suppressGridClick = true;
-      changePage(dx < 0 ? 1 : -1);
       clearTimeout(productGrid._swipeClickTimer);
       productGrid._swipeClickTimer = setTimeout(() => { suppressGridClick = false; }, 260);
     }
+
+    swipeStart = null;
   });
-  productGrid.addEventListener('pointercancel', () => { swipeStart = null; });
+
+  productGrid.addEventListener('pointercancel', (e) => {
+    const track = $('#productTrack');
+    if (track) track.classList.remove('dragging');
+    if (swipeStart && swipeStart.dragging) updateProductTrackPosition();
+    swipeStart = null;
+  });
+
   productGrid.addEventListener('wheel', (e) => {
     if (Math.abs(e.deltaX) <= Math.abs(e.deltaY) || Math.abs(e.deltaX) < 24) return;
     e.preventDefault();
@@ -3362,7 +4265,6 @@ function attachEvents() {
     // Group parent tile → open the variant picker modal
     if (card.dataset.groupId) { openVariantModal(card.dataset.groupId); return; }
     // Regular product
-    if (card.dataset.disabled === 'true') { showToast('Item is out of stock'); return; }
     addToCart(card.dataset.id);
   });
 
@@ -3370,7 +4272,6 @@ function attachEvents() {
   $('#variantGrid')?.addEventListener('click', (e) => {
     const tile = e.target.closest('.variant-tile');
     if (!tile) return;
-    if (tile.dataset.disabled === 'true') { showToast('Variant is out of stock'); return; }
     selectVariant(tile.dataset.variantId);
   });
   $$('#variantModal .vq-btn').forEach(b => {
@@ -3402,7 +4303,12 @@ function attachEvents() {
     if (!row) return;
     selectOrder(row.dataset.orderId);
   });
+  // Only the "View order details" button opens the full order details modal
   $('#orderDetail')?.addEventListener('click', (e) => {
+    if (!e.target.closest('.od-details-btn')) return;
+    if (state.selectedOrderId) openOrderDetailModal(state.selectedOrderId);
+  });
+  $('#orderDetailModal')?.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-order-op]');
     if (!btn) return;
     const id = btn.dataset.orderId;
@@ -3413,6 +4319,8 @@ function attachEvents() {
       const replacement = state.products.find(p => p.stock > 0 && p.price > 0);
       if (replacement) exchangeOrder(id, [{ id: replacement.id, qty: 1 }], 'Exchange from Orders');
     }
+    $('#orderDetailModal').hidden = true;
+    renderOrders();
   });
   // Orders search
   $('#ordersSearch')?.addEventListener('input', (e) => {
@@ -3522,14 +4430,88 @@ function attachEvents() {
   $('#deliveryMapStage')?.addEventListener('touchcancel', endDeliveryPinch);
 
   // New customer (Customers view) + saved customer save
-  $('#newCustomerBtn')?.addEventListener('click', openCustomerEditModal);
-  $('#customersGrid')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-customer-pay]');
-    if (!btn) return;
-    const amount = parseFloat(prompt('Payment amount') || '0');
-    if (amount > 0) recordCreditPayment(btn.dataset.customerPay, amount);
+  $('#newCustomerBtn')?.addEventListener('click', () => {
+    state.customerEditFromSale = false;
+    openCustomerEditModal();
+  });
+  // "Add new customer" inside the Sell-page customer picker — reuse the same
+  // create form, then auto-select the new customer for the current sale.
+  $('#pickerAddCustomerBtn')?.addEventListener('click', () => {
+    state.customerEditFromSale = true;
+    $('#customerModal').hidden = true;
+    openCustomerEditModal();
+  });
+  $('#customersList')?.addEventListener('click', (e) => {
+    const detailBtn = e.target.closest('[data-act="view-customer-detail"]');
+    if (detailBtn) {
+      e.stopPropagation();
+      openCustomerDetail(detailBtn.dataset.customerId);
+      return;
+    }
+    const row = e.target.closest('[data-customer-id]');
+    if (!row) return;
+    state.selectedCustomerId = row.dataset.customerId;
+    renderCustomers();
+  });
+  $('#customerDetail')?.addEventListener('click', (e) => {
+    const historyBtn = e.target.closest('[data-customer-detail]');
+    if (historyBtn) {
+      openCustomerDetail(historyBtn.dataset.customerDetail);
+      return;
+    }
+    const payBtn = e.target.closest('[data-customer-pay]');
+    if (payBtn) {
+      const amount = parseFloat(prompt('Payment amount') || '0');
+      if (amount > 0) recordCreditPayment(payBtn.dataset.customerPay, amount);
+      return;
+    }
+    const orderRow = e.target.closest('.cd-order-row');
+    if (orderRow?.dataset.orderId) {
+      openOrderDetailModal(orderRow.dataset.orderId);
+    }
+  });
+  $('#customersSearch')?.addEventListener('input', (e) => {
+    state.customersQuery = e.target.value;
+    state.selectedCustomerId = null;
+    renderCustomers();
+  });
+  $('#customerDetailModal')?.addEventListener('click', (e) => {
+    const row = e.target.closest('.cust-order-row');
+    if (row?.dataset.orderId) {
+      $('#customerDetailModal').hidden = true;
+      openOrderDetailModal(row.dataset.orderId);
+    }
   });
   $('#custSaveBtn')?.addEventListener('click', saveSavedCustomerFromModal);
+
+  // Collapsible totals breakdown — animate explicit pixel height for smoothness
+  function toggleTotals(block) {
+    if (!block) return;
+    const detail = block.querySelector('.totals-detail');
+    const inner = block.querySelector('.totals-detail-inner');
+    if (!detail || !inner) return;
+    if (block.classList.contains('open')) {
+      // Close: lock current rendered height, then collapse to 0
+      detail.style.height = detail.getBoundingClientRect().height + 'px';
+      void detail.offsetHeight; // force reflow
+      block.classList.remove('open');
+      detail.style.height = '0px';
+    } else {
+      // Open: expand from current height to content height, then release to auto
+      block.classList.add('open');
+      detail.style.height = inner.offsetHeight + 'px';
+      const onEnd = (e) => {
+        if (e.propertyName !== 'height') return;
+        // Only release to auto if we're still open (guards rapid toggles)
+        if (block.classList.contains('open')) detail.style.height = 'auto';
+        detail.removeEventListener('transitionend', onEnd);
+      };
+      detail.addEventListener('transitionend', onEnd);
+    }
+  }
+  $('#totalRow')?.addEventListener('click', () => toggleTotals($('#totalsBlock')));
+  $('#checkoutTotalRow')?.addEventListener('click', () => toggleTotals($('#checkoutTotalsBlock')));
+
   $('#clearCartBtn').addEventListener('click', () => {
     if (state.cart.length === 0) return;
     showConfirm({
@@ -3576,19 +4558,44 @@ function attachEvents() {
   // ---- Pay ----
   $('#payBtn').addEventListener('click', openPaymentModal);
 
-  // Payment-method segment (both legacy modal segs and new checkout segs)
+  // Payment-method selection (new card grid + legacy modal segs)
   function selectPayMethod(method) {
     state.paymentMethod = method;
-    $$('.seg[data-method]').forEach(s =>
+    state.paymentMethodChosen = true;
+    $$('[data-co-method]').forEach(s =>
       s.classList.toggle('active', s.dataset.method === method));
+    // Step 2: hide method grid, show tender, enable complete
+    $('#checkoutMethodSection').style.display = 'none';
+    const completeBtn = $('#checkoutCompleteBtn');
+    if (completeBtn) completeBtn.disabled = false;
     syncPayFields();
-    if ((method === 'credit' || method === 'split') && !state.customer) {
-      openCustomerModal();
-      showToast(method === 'split' ? 'Pick a customer for the balance' : 'Pick a credit customer');
+    if (method !== 'other') {
+      setTimeout(() => $('#checkoutTender')?.focus(), 60);
+    } else {
+      setTimeout(() => $('#otherMethodInput')?.focus(), 60);
     }
   }
-  $$('.seg[data-method]').forEach(seg => {
-    seg.addEventListener('click', () => selectPayMethod(seg.dataset.method));
+  $$('[data-co-method]').forEach(card => {
+    card.addEventListener('click', () => selectPayMethod(card.dataset.method));
+  });
+
+  // Cancel button: step 2 → back to step 1; step 1 → back to sell
+  $('#checkoutCancelBtn')?.addEventListener('click', () => {
+    if (state.paymentMethodChosen) {
+      // Go back to step 1
+      state.paymentMethodChosen = false;
+      state.paymentMethod = 'cash';
+      $$('[data-co-method]').forEach(s => s.classList.remove('active'));
+      $('#checkoutMethodSection').style.display = '';
+      const completeBtn = $('#checkoutCompleteBtn');
+      if (completeBtn) completeBtn.disabled = true;
+      syncPayFields();
+      $('#checkoutTender').value = '';
+      $('#checkoutChange').textContent = peso(0);
+      setCheckoutError('');
+    } else {
+      switchView(state.prevView && state.prevView !== 'checkout' ? state.prevView : 'sell');
+    }
   });
 
   // Checkout view: back, tender input, quick-cash, complete
@@ -3626,6 +4633,12 @@ function attachEvents() {
       renderPosSettings();
     });
   });
+  $$('#posTextToggle .bb-size-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      setTileText(b.dataset.text);
+      renderPosSettings();
+    });
+  });
   $('#posShowPrice')?.addEventListener('change', (e) => {
     state.showPrice = e.target.checked;
     storageSet(STORAGE_SHOW_PRICE, state.showPrice ? '1' : '0');
@@ -3637,8 +4650,74 @@ function attachEvents() {
       applyTheme(b.dataset.theme);
     });
   });
-  $('#posPrinterWidth')?.addEventListener('change', persistPosSettings);
   $('#posPrintOnSale')?.addEventListener('change', persistPosSettings);
+  $$('#posWidthToggle .bb-size-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      state.settings.printing = { ...printerConfig(), width: b.dataset.width };
+      saveSettings();
+      renderPosSettings();
+    });
+  });
+  $('#posPrintCut')?.addEventListener('change', persistPosSettings);
+  $('#posPrintMap')?.addEventListener('change', persistPosSettings);
+  $('#posPrinterIp')?.addEventListener('change', persistPosSettings);
+  $$('#posDriverToggle .bb-size-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      state.settings.printing = { ...printerConfig(), driver: b.dataset.driver };
+      saveSettings();
+      renderPosSettings();
+    });
+  });
+  $('#posBtPairBtn')?.addEventListener('click', async () => {
+    try {
+      const dev = await window.HWPOS_PRINTER.pairBluetooth();
+      state.settings.printing = { ...printerConfig(), btName: dev.name, btId: dev.id };
+      saveSettings();
+      renderPosSettings();
+      showToast('Paired ' + dev.name);
+    } catch (e) {
+      if (e.name !== 'NotFoundError') showToast(e.message || 'Pairing failed');
+    }
+  });
+  $('#posScanBtn')?.addEventListener('click', async () => {
+    const btn = $('#posScanBtn');
+    const subnets = printerScanSubnets();
+    btn.disabled = true;
+    btn.innerHTML = '<span class="prn-spin"></span>Scanning…';
+    try {
+      const hits = [];
+      for (const net of subnets) {
+        setScanStatus('Scanning ' + net + '.1-254…');
+        const found = await window.HWPOS_PRINTER.scanNetwork(net, (done, total) => {
+          setScanStatus('Scanning ' + net + '.x — ' + done + '/' + total);
+        });
+        hits.push(...found);
+        if (found.length) break;   // first subnet with printers wins; don't sweep the rest
+      }
+      printerFound = [...new Set(hits)];
+      renderPrinterList();
+      if (!printerFound.length) {
+        setScanStatus('No printer found on ' + subnets.join(', ') + '. Check it is on the same Wi-Fi, or enter the IP below.');
+      } else if (printerFound.length === 1 && !(printerConfig().netUrl || '').trim()) {
+        await connectPrinter(printerFound[0]);   // exactly one, nothing connected yet — just connect it
+      } else {
+        setScanStatus('Found ' + printerFound.length + ' printer' + (printerFound.length === 1 ? '' : 's') + '. Tap one to connect.');
+      }
+    } catch (e) {
+      setScanStatus(e.message || 'Scan failed');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Scan for printers';
+    }
+  });
+  $('#posPrinterList')?.addEventListener('click', (e) => {
+    const item = e.target.closest('.prn-item');
+    if (item) connectPrinter(item.dataset.ip);
+  });
+  $('#posTestPrintBtn')?.addEventListener('click', () => {
+    persistPosSettings();
+    printOrder(sampleTestOrder());
+  });
 
   // Product modal save
   $('#saveProductBtn').addEventListener('click', saveProduct);
@@ -3752,6 +4831,12 @@ function init() {
     if (e.key === STORAGE_ORDERS) {
       state.orders = loadOrders();
       if (state.view === 'orders') renderOrders();
+      if (state.view === 'reports') renderReports();
+      if (state.view === 'customers') renderCustomers();
+    }
+    if (e.key === STORAGE_CUSTOMER_LEDGER) {
+      state.customerLedger = loadCustomerLedger();
+      if (state.view === 'customers') renderCustomers();
     }
     // Stock changes from another tab — refresh product tiles.
     if (e.key === STORAGE_PRODUCTS) {
@@ -3780,7 +4865,19 @@ function init() {
     if (changed) renderProducts();
     // Always re-pull orders so the list is up to date.
     state.orders = loadOrders();
+    state.customerLedger = loadCustomerLedger();
     if (state.view === 'orders') renderOrders();
+    if (state.view === 'reports') renderReports();
+    if (state.view === 'customers') renderCustomers();
+  });
+
+  // Live transaction feed for the Reports page (multi-cashier real-time).
+  setInterval(reportsLive, 4000);
+
+  // Tap a transaction row to open its full order details.
+  $('#reportsTxList')?.addEventListener('click', (e) => {
+    const row = e.target.closest('.report-tx');
+    if (row?.dataset.orderId) openOrderDetailModal(row.dataset.orderId);
   });
 }
 document.addEventListener('DOMContentLoaded', init);

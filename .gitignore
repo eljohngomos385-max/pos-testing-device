@@ -13,3 +13,6 @@ desktop.ini
 # Logs / local server output
 *.log
 node_modules/
+
+# Windows redirect artifact
+nul

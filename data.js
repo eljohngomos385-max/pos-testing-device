@@ -19,10 +19,10 @@ const PRODUCTS = [
   // ---- Plumbing ----
   { id: 'p001', sku: 'PVC-ELB-12', barcode: '4801234500011', name: 'PVC Elbow 1/2"', brand: 'Atlanta', folder: 'plumbing', unit: 'pc',
     price: 12.00, cost: 7.50, stock: 240, reorderPoint: 50,
-    aliases: ['kodo', 'elbow half', 'kodo half', '1/2 elbow', 'pvc kodo'] },
+    aliases: ['elbow half', '1/2 elbow', 'half elbow', 'pvc elbow'] },
   { id: 'p002', sku: 'PVC-ELB-34', barcode: '4801234500028', name: 'PVC Elbow 3/4"', brand: 'Atlanta', folder: 'plumbing', unit: 'pc',
     price: 16.00, cost: 10.00, stock: 180, reorderPoint: 40,
-    aliases: ['kodo 3/4', 'elbow three fourths'] },
+    aliases: ['3/4 elbow', 'elbow three fourths'] },
   { id: 'p003', sku: 'PVC-TEE-12', barcode: '4801234500035', name: 'PVC Tee 1/2"', brand: 'Atlanta', folder: 'plumbing', unit: 'pc',
     price: 14.50, cost: 9.00, stock: 200, reorderPoint: 50,
     aliases: ['tee half', 'pvc tee'] },
@@ -157,16 +157,16 @@ const PRODUCTS = [
 ];
 
 const CUSTOMERS = [
-  { id: 'c-001', name: 'Mang Ricardo Construction', phone: '0917-823-4501', address: 'San Pedro, Laguna',
-    isCreditCustomer: true, creditLimit: 30000, currentBalance: 8450.00 },
+  { id: 'c-001', name: 'Ricardo Construction', phone: '0917-823-4501', address: 'San Pedro, Laguna',
+    type: 'contractor', isCreditCustomer: true, creditLimit: 30000, currentBalance: 8450.00 },
   { id: 'c-002', name: 'Rivera Plumbing Services',  phone: '0918-445-7822', address: 'Biñan, Laguna',
-    isCreditCustomer: true, creditLimit: 20000, currentBalance: 0.00 },
-  { id: 'c-003', name: 'Aling Marites Sari-Sari',   phone: '0922-115-3344', address: 'Brgy. Poblacion',
-    isCreditCustomer: true, creditLimit: 5000, currentBalance: 1280.50 },
+    type: 'contractor', isCreditCustomer: true, creditLimit: 20000, currentBalance: 0.00 },
+  { id: 'c-003', name: 'Marie Variety Store',       phone: '0922-115-3344', address: 'Cabuyao, Laguna',
+    type: 'retail', isCreditCustomer: true, creditLimit: 5000, currentBalance: 1280.50 },
   { id: 'c-004', name: 'Engr. Cruz (Residential)',  phone: '0915-770-2298', address: 'Calamba, Laguna',
-    isCreditCustomer: true, creditLimit: 50000, currentBalance: 22450.00 },
+    type: 'residential', isCreditCustomer: true, creditLimit: 50000, currentBalance: 22450.00 },
   { id: 'c-005', name: 'Lopez Hardware (Wholesale)', phone: '0908-661-9001', address: 'Sta. Rosa, Laguna',
-    isCreditCustomer: true, creditLimit: 100000, currentBalance: 0.00 },
+    type: 'wholesale', isCreditCustomer: true, creditLimit: 100000, currentBalance: 0.00 },
 ];
 
 const RECENT_SALES = [
@@ -175,7 +175,7 @@ const RECENT_SALES = [
   { id: 'TX-1040', time: '14:02', method: 'cash',   amount: 245.50 },
   { id: 'TX-1039', time: '13:47', method: 'cash',   amount: 89.00 },
   { id: 'TX-1038', time: '13:21', method: 'cash',   amount: 1820.00 },
-  { id: 'TX-1037', time: '13:08', method: 'credit', amount: 6450.00, customer: 'Mang Ricardo' },
+  { id: 'TX-1037', time: '13:08', method: 'credit', amount: 6450.00, customer: 'Ricardo' },
   { id: 'TX-1036', time: '12:55', method: 'cash',   amount: 320.00 },
 ];
 

@@ -234,6 +234,13 @@
         printOnSale: true,
         logoOnReceipt: false,
       },
+      pricingTiers: {
+        contractor: 0.05,
+        wholesale: 0.10,
+        retail: 0,
+        residential: 0,
+      },
+      churnThresholdDays: 30,
     };
     const saved = readKey(KEYS.settings, {}) || {};
     return {
@@ -242,6 +249,8 @@
       store: { ...fallback.store, ...(saved.store || {}) },
       sync: { ...fallback.sync, ...(saved.sync || {}) },
       printing: { ...fallback.printing, ...(saved.printing || {}) },
+      pricingTiers: { ...fallback.pricingTiers, ...(saved.pricingTiers || {}) },
+      churnThresholdDays: saved.churnThresholdDays ?? fallback.churnThresholdDays,
     };
   }
   function normalizeAiItem(item = {}) {

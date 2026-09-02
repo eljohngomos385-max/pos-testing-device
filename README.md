@@ -118,4 +118,18 @@ On iOS, add `NSCameraUsageDescription` to `Info.plist`. On Android, the official
 
 ## Printing
 
-Receipts open in a pop-up window sized for 80mm thermal paper and trigger `window.print()` automatically. Print to a paired AirPrint / Wi-Fi printer for best results.
+Settings > Printing picks one of three drivers (`hwpos.settings.v1` > `printing.driver`):
+
+- **Browser** (default) — receipt opens in a pop-up sized for 80mm paper and calls `window.print()`.
+- **Wi-Fi** — Epson ePOS-Print. `printer.js` POSTs ePOS-Print XML to `http://<ip>/cgi-bin/epos/service.cgi`. Works with TM-m30III, TM-m30II, TM-T88VI/VII and any Epson with the ePOS-Print service. **Scan** sweeps the /24 for printers; no SDK needed.
+- **Bluetooth** — Web Bluetooth + raw ESC/POS bytes. **Pair** opens the browser's device chooser. BLE only, Chrome/Edge on Windows/Android; iOS Safari has no Web Bluetooth, and Bluetooth Classic (SPP) printers are unreachable from any browser.
+
+Delivery receipts also print the **pinned map** (Settings > Printing > *Print delivery map*): the same OpenStreetMap tiles the on-screen receipt shows, composited and dithered to 1-bit for the thermal head. If the tiles can't be fetched the receipt still prints, just without the map.
+
+`printer.js` is transport-only and standalone: `layout()` turns a receipt view model into one op list, `escpos()` and `eposXml()` encode it. `printOrder()` in `app.js` is the single entry point and falls back to the pop-up if the hardware fails. `printing.printOnSale` auto-prints only on the Wi-Fi/Bluetooth drivers.
+
+The page must be served over `http://` for the Wi-Fi driver — an HTTPS page blocks plain-HTTP requests to the printer. But Web Bluetooth (and the camera scanner) require a *secure context*, which `http://<lan-ip>` is not, so a phone browser gets **either** Wi-Fi printing **or** Bluetooth, not both. Wrapping the app in Capacitor resolves this: set `androidScheme: 'http'` in `capacitor.config` and install `@capacitor-community/bluetooth-le`, then reimplement `pairBluetooth`/`btReady`/`btWriteChar` in `printer.js` against the plugin. The layout and encoders are transport-agnostic and stay as-is.
+
+```bash
+node scripts/printer-check.mjs   # layout wrapping, column math, both encoders, URL building
+```
