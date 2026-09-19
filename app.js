@@ -2228,9 +2228,7 @@ function renderCheckout() {
     state.paymentMethod = 'cash';
   }
   // You can only charge a named account, so the two credit cards appear with the customer.
-  const canCharge = !!state.customer;
-  const credCard = $('#payMethodCredit'); if (credCard) credCard.hidden = !canCharge;
-  const splitCard = $('#payMethodSplit'); if (splitCard) splitCard.hidden = !canCharge;
+  applyPayMethods(!!state.customer);
   if (!state.paymentMethodChosen) {
     // Step 1: show method grid, hide tender, disable complete
     state.paymentMethod = 'cash';
@@ -2256,6 +2254,32 @@ function renderCheckout() {
 }
 // Who this sale is for. Picking a method doesn't re-render the checkout, so both callers
 // need this or the line goes stale the moment the cashier taps Account.
+// Which cards the checkout shows is the back office's call (Manage -> Payments):
+// settings.payments = { hidden: [kind], custom: [name] }. Cash can't be hidden -- the drawer
+// is cash. A custom name records exactly like typing it into Other (paymentKind 'other').
+function applyPayMethods(canCharge) {
+  const grid = $('.pay-method-grid');
+  if (!grid) return;
+  const pay = state.settings.payments || {};
+  const off = new Set(pay.hidden || []);
+  $$('[data-co-method]:not([data-label])', grid).forEach((c) => {
+    const needsAccount = c.dataset.method === 'credit' || c.dataset.method === 'split';
+    c.hidden = c.dataset.method !== 'cash' && (off.has(c.dataset.method) || (needsAccount && !canCharge));
+  });
+  $$('[data-label]', grid).forEach((c) => c.remove());
+  const before = $('#payMethodCredit');
+  (pay.custom || []).forEach((name) => {
+    const b = document.createElement('button');
+    b.className = 'pay-method-card';
+    b.dataset.coMethod = '';
+    b.dataset.method = 'other';
+    b.dataset.label = name;
+    b.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg><span></span>';
+    b.querySelector('span').textContent = name;
+    grid.insertBefore(b, before);
+  });
+}
+
 function renderCheckoutSub() {
   const sub = $('#checkoutSub');
   if (!sub) return;
@@ -2278,7 +2302,7 @@ function syncPayFields() {
   if (changeLabel) changeLabel.textContent = split ? 'On account' : 'Change';
   // Show "Other" name input only when other is selected
   const otherRow = $('#otherMethodRow');
-  if (otherRow) otherRow.classList.toggle('visible', state.paymentMethod === 'other');
+  if (otherRow) otherRow.classList.toggle('visible', state.paymentMethod === 'other' && !state.paymentLabel);
   // Legacy modal fields (kept for back-compat)
   const payFields = $('#payFields');
   if (payFields) payFields.style.display = state.paymentMethod === 'credit' ? 'none' : '';
@@ -4976,26 +5000,31 @@ function attachEvents() {
   $('#payBtn').addEventListener('click', openPaymentModal);
 
   // Payment-method selection (new card grid + legacy modal segs)
-  function selectPayMethod(method) {
+  function selectPayMethod(method, label = '') {
     state.paymentMethod = method;
+    state.paymentLabel = label;
     state.paymentMethodChosen = true;
+    // A custom card fills the Other name itself, so completeSale records it unchanged.
+    if (method === 'other' && $('#otherMethodInput')) $('#otherMethodInput').value = label;
     track('payment_method', { method });
     $$('[data-co-method]').forEach(s =>
-      s.classList.toggle('active', s.dataset.method === method));
+      s.classList.toggle('active', s.dataset.method === method && (s.dataset.label || '') === label));
     // Step 2: hide method grid, show tender, enable complete
     $('#checkoutMethodSection').style.display = 'none';
     const completeBtn = $('#checkoutCompleteBtn');
     if (completeBtn) completeBtn.disabled = false;
     syncPayFields();
     renderCheckoutSub();
-    if (method !== 'other') {
+    if (method !== 'other' || label) {
       setTimeout(() => $('#checkoutTender')?.focus(), 60);
     } else {
       setTimeout(() => $('#otherMethodInput')?.focus(), 60);
     }
   }
-  $$('[data-co-method]').forEach(card => {
-    card.addEventListener('click', () => selectPayMethod(card.dataset.method));
+  // Delegated: custom cards are rebuilt from settings on every checkout render.
+  $('.pay-method-grid')?.addEventListener('click', (e) => {
+    const card = e.target.closest('[data-co-method]');
+    if (card) selectPayMethod(card.dataset.method, card.dataset.label || '');
   });
 
   // Cancel button: step 2 → back to step 1; step 1 → back to sell

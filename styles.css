@@ -4204,6 +4204,7 @@ a.secondary-btn { text-decoration: none; }
   cursor: pointer;
   transition: background .12s, border-color .14s, color .12s;
 }
+.pay-method-card[hidden] { display: none; }
 .pay-method-card:hover {
   background: var(--surface-hover);
   color: var(--ink);
@@ -5567,7 +5568,7 @@ body.light-theme .user-sync { color: var(--ink); }
    Appended last so it supersedes the older Polaris-inspired rules above.
    ============================================================================ */
 body.bo-light {
-  --po-bg: #F1F1F1;
+  --po-bg: #F6F6F6;
   --po-surface: #FFFFFF;
   --po-surface-2: #FAFAFA;
   --po-surface-hover: #F7F7F7;
@@ -5959,6 +5960,7 @@ body.bo-light a.primary-btn {
 body.bo-light .primary-btn:hover,
 body.bo-light a.primary-btn:hover { background: var(--po-primary-hover); }
 body.bo-light .primary-btn.small, body.bo-light a.primary-btn.small { padding: 7px 12px; font-size: 12.5px; }
+body.bo-light .primary-btn:disabled { background: var(--po-line); color: var(--po-ink-tertiary); box-shadow: none; cursor: not-allowed; }
 body.bo-light .secondary-btn,
 body.bo-light a.secondary-btn,
 body.bo-light .text-btn {

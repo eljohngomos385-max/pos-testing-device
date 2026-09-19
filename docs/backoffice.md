@@ -34,7 +34,8 @@ This is the rule that matters most and the one most recently corrected:
 Pull the token, don't type `8px`.
 
 ### Tokens (all in the v21 `body.bo-light` block)
-- Surfaces: `--po-bg #F1F1F1` (canvas) → `--po-sidebar #EBEBEB` → `--po-surface #FFFFFF` (cards).
+- Surfaces: `--po-bg #F6F6F6` (canvas; #F1F1F1 until 2026-09-19, "too dark") → `--po-sidebar #FAFAFA` (v29) → `--po-surface #FFFFFF` (cards).
+  The grey canvas stays: an all-white canvas was tried 2026-09-19 and rejected ("too white").
   Hover is `--po-surface-hover #F7F7F7` for white things, `rgba(0,0,0,0.05)` for grey ones.
 - Lines: `--po-line #E1E1E1` default hairline, `--po-line-strong #D2D2D2` for input/button borders.
 - Ink: `--po-ink #303030` → `--po-ink-secondary #6B6B6B` → `--po-ink-tertiary #8A8A8A`.
@@ -628,6 +629,20 @@ a flex column, and an auto cross-axis margin switches off the stretch, so withou
 shrink-wraps its content instead of its cap. `.pd-formbar` is `grid-column: 1 / -1` — Save closes
 the whole form, not one column of it, and its right edge lands on the shell's. Below 900px the
 grid drops to one column and the rail stacks under the main column.
+
+**Price history is its own page, not an editor card** (2026-09-19, the owner: having to open the
+editor to find it is "not the best"). It is Inventory's `prices` tab with its own sidebar link under
+Stock (`/admin/inventory?tab=prices`): every `priceLog` row, newest first, filtered by the page's
+search and category. The editor's Pricing card only links to it (`?q=<product name>`). Nothing new is
+recorded; `saveProducts` and the POS already diff every save into `priceLog`.
+
+**Payments is a Manage page that drives the POS checkout grid** (2026-09-19; GCash is Philippine-only,
+so a store elsewhere must be able to hide it). It writes `settings.payments = {hidden: [kind], custom:
+[name]}`; the POS `applyPayMethods()` hides those cards and inserts one card per custom name. Cash can't
+be hidden. A custom card sells as kind `other` with the name as `paymentMethodLabel`, so reports need
+no new kind and removing a method never rewrites past sales. Edits sit in a draft until Save (toast
+"Payment methods saved"); reopening the page drops an unsaved draft. Owner-only by default (`ACCESS_VIEWS`).
+Settings aren't in D1 yet, so this reaches other tabs on the same device, not other terminals.
 
 **The family editor stays one full-width column** — its variants table wants every column it can
 have — and the `:has(+ .pd-editor)` guard is what keeps it out of the cap. Its head is now full

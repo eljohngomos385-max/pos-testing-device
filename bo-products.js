@@ -487,6 +487,7 @@
           row('Price', field('price', p.price, money),
             'The authoritative number - margin recomputes it when cost changes'),
           `<div class="pd-margin" id="pdMargin">${marginLine(marginSummary(p.cost, p.price))}</div>`,
+          isNew ? '' : `<a class="link-btn" href="${escapeHtml(Router.href('inventory', '', { tab: 'prices', q: p.name }))}">See price history</a>`,
         ].join(''))}
 
         ${card('Inventory', [
@@ -510,6 +511,7 @@
           <div class="bo-empty">Sold in sizes or colours? Add a variant. Each one is its own
             item with its own SKU, barcode, price, stock and picture.</div>
           <div class="pd-actions"><button class="secondary-btn small" data-act="add-variant">Add variant</button></div>`)}
+
        </div>
 
        <div class="dash-stack pd-rail">

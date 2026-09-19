@@ -124,7 +124,7 @@
 
   /* ---------- Page access ---------- */
   const STORAGE_ACCESS = 'hwpos.access.v1';
-  const ACCESS_VIEWS = ['dashboard', 'sales', 'products', 'inventory', 'customers', 'suppliers', 'staff', 'insights', 'settings'];
+  const ACCESS_VIEWS = ['dashboard', 'sales', 'products', 'inventory', 'customers', 'suppliers', 'staff', 'insights', 'payments', 'settings'];
   const DEFAULT_ACCESS = {
     owner: ACCESS_VIEWS,
     manager: ['dashboard', 'sales', 'products', 'inventory', 'customers', 'suppliers'],

@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=103" />
-  <link rel="stylesheet" href="/bo-products.css?v=86" />
+  <link rel="stylesheet" href="/styles.css?v=106" />
+  <link rel="stylesheet" href="/bo-products.css?v=87" />
   <link rel="stylesheet" href="/bo-inventory.css?v=85" />
   <link rel="stylesheet" href="/bo-sales.css?v=77" />
   <link rel="stylesheet" href="/bo-suppliers.css?v=83" />
@@ -68,6 +68,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle cx="7.5" cy="7.5" r="1.3"/></svg>
             <span>Products</span>
           </button>
+          <button class="side-link" data-view="inventory" data-sub="prices">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 6-6"/></svg>
+            <span>Price history</span>
+          </button>
           <button class="side-link" data-view="inventory">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>
             <span>Inventory</span>
@@ -113,6 +117,10 @@
           <button class="side-link" data-view="staff" data-sub="attendance">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
             <span>Attendance</span>
+          </button>
+          <button class="side-link" data-view="payments">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>
+            <span>Payments</span>
           </button>
           <button class="side-link" data-view="settings">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9"/><path d="M17 7h3"/><circle cx="15" cy="7" r="2"/><path d="M4 17h3"/><path d="M11 17h9"/><circle cx="9" cy="17" r="2"/></svg>
@@ -335,6 +343,8 @@
       <!-- ============================================
            SETTINGS
            ============================================ -->
+      <section class="view" data-view="payments" hidden></section>
+
       <section class="view view-settings" data-view="settings" hidden>
         <header class="view-head">
           <div class="view-title-wrap">
@@ -432,13 +442,13 @@
   <script src="/data.js?v=27"></script>
   <script src="/bo-model.js?v=87"></script>
   <script src="/router.js?v=61"></script>
-  <script src="/backoffice.js?v=95"></script>
-  <script src="/bo-products.js?v=86"></script>
+  <script src="/backoffice.js?v=98"></script>
+  <script src="/bo-products.js?v=87"></script>
   <script src="/bo-insights.js?v=9"></script>
-  <script src="/bo-inventory.js?v=94"></script>
+  <script src="/bo-inventory.js?v=95"></script>
   <script src="/bo-sales.js?v=80"></script>
   <script src="/bo-suppliers.js?v=88"></script>
-  <script src="/bo-staff.js?v=87"></script>
+  <script src="/bo-staff.js?v=88"></script>
   <script>
     // ---- Back office: hamburger + topbar wiring (white mode) ----
     (function () {

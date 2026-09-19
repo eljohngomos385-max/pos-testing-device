@@ -442,6 +442,7 @@ const VIEWS = {
   suppliers: { label: 'Suppliers', render: () => renderSuppliers() },
   staff:     { label: 'Staff',     render: () => renderStaff() },
   insights:  { label: 'Analytics',  render: () => renderInsights() },
+  payments:  { label: 'Payments',  render: () => renderPayments() },
   settings:  { label: 'Settings',  render: () => renderSettingsForm() },
 };
 // A page with sub-pages registers them here ({ param, def, items: [[key, label]] }) and they
@@ -1436,6 +1437,108 @@ function renderSettingsForm() {
   setChecked('setLogoOnReceipt', s.printing.logoOnReceipt);
 }
 
+// ---------- Payments: which cards the POS checkout shows ----------
+// settings.payments = { hidden: [kind], custom: [name] }, read by applyPayMethods() in app.js.
+// A custom name is saved on the order as a typed "Other" would be, so removing one never
+// touches past sales -- they keep their label.
+const PAY_BUILTINS = [
+  ['cash', 'Cash', 'Always on. The cash drawer counts it.'],
+  ['gcash', 'GCash', ''],
+  ['qr', 'QR', 'Any QR wallet'],
+  ['other', 'Other', 'The cashier types the name at checkout'],
+  ['credit', 'Account', 'Charge to a customer. Shows only once a customer is picked.'],
+  ['split', 'Split', 'Part cash, the rest on account. Shows only with a customer.'],
+];
+const payConfig = () => ({ hidden: [], custom: [], ...(state.settings.payments || {}) });
+// Edits go to a draft; nothing reaches the POS until Save. Opening the page drops an unsaved draft.
+let payDraft = null;
+function savePayConfig() {
+  state.settings = { ...state.settings, payments: payDraft };
+  saveSettings();
+  drawPayments();
+  showToast('Payment methods saved');
+}
+
+function renderPayments() {
+  payDraft = payConfig();
+  drawPayments();
+}
+
+function drawPayments() {
+  const root = $('.view[data-view="payments"]');
+  if (!root) return;
+  const pay = payDraft;
+  const dirty = JSON.stringify(pay) !== JSON.stringify(payConfig());
+  const off = new Set(pay.hidden);
+  const builtins = PAY_BUILTINS.map(([k, label, note]) => `
+    <tr>
+      <td><strong>${escapeHtml(label)}</strong></td>
+      <td class="muted">${escapeHtml(note)}</td>
+      <td class="num"><input type="checkbox" data-pay-kind="${k}"${off.has(k) ? '' : ' checked'}${k === 'cash' ? ' disabled' : ''}></td>
+    </tr>`).join('');
+  const custom = pay.custom.map((name, i) => `
+    <tr>
+      <td><strong>${escapeHtml(name)}</strong></td>
+      <td class="muted">Added by you</td>
+      <td class="num"><button class="secondary-btn small" data-pay-del="${i}">Remove</button></td>
+    </tr>`).join('');
+  root.innerHTML = `
+    <header class="view-head">
+      <div class="view-title-wrap"><h1>Payments</h1><span class="muted">What the POS checkout offers</span></div>
+    </header>
+    <section class="bo-card">
+      <div class="bo-card-head"><span class="bo-card-label">Payment methods</span>
+        <span class="bo-card-sub">The POS picks changes up the next time checkout opens</span></div>
+      <div class="bo-card-inset flush"><div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Method</th><th>Notes</th><th class="num">Show at checkout</th></tr></thead>
+        <tbody>${builtins}${custom}</tbody>
+      </table></div></div>
+      <div class="bo-card-inset">
+        <form class="pay-add" data-pay-add style="display:flex;gap:8px;align-items:center">
+          <input class="text-input" name="name" maxlength="24" placeholder="Add a method, e.g. Maya or Card" autocomplete="off" style="max-width:280px">
+          <button class="primary-btn small" type="submit">Add</button>
+          <span class="muted" data-pay-err></span>
+        </form>
+      </div>
+      <div class="bo-card-inset" style="display:flex;gap:12px;align-items:center;justify-content:flex-end">
+        <span class="muted">${dirty ? 'Unsaved changes' : 'All changes saved'}</span>
+        <button class="primary-btn" data-pay-save${dirty ? '' : ' disabled'}>Save</button>
+      </div>
+    </section>`;
+}
+
+function wirePayments() {
+  const root = $('.view[data-view="payments"]');
+  if (!root) return;
+  root.addEventListener('change', (e) => {
+    const k = e.target.dataset.payKind;
+    if (!k || k === 'cash') return;
+    const hidden = new Set(payDraft.hidden);
+    if (e.target.checked) hidden.delete(k); else hidden.add(k);
+    // Keep built-in order so toggling back and forth reads as "no changes".
+    payDraft = { ...payDraft, hidden: PAY_BUILTINS.map(([b]) => b).filter((b) => hidden.has(b)) };
+    drawPayments();
+  });
+  root.addEventListener('click', (e) => {
+    if (e.target.closest('[data-pay-save]')) { savePayConfig(); return; }
+    const del = e.target.closest('[data-pay-del]');
+    if (!del) return;
+    payDraft = { ...payDraft, custom: payDraft.custom.filter((_, i) => i !== Number(del.dataset.payDel)) };
+    drawPayments();
+  });
+  root.addEventListener('submit', (e) => {
+    if (!e.target.matches('[data-pay-add]')) return;
+    e.preventDefault();
+    const name = e.target.elements.name.value.trim();
+    const taken = PAY_BUILTINS.map(([, l]) => l).concat(payDraft.custom).some((n) => n.toLowerCase() === name.toLowerCase());
+    const err = !name ? 'Type a name first.' : taken ? `${name} is already on the list.` : '';
+    if (err) { root.querySelector('[data-pay-err]').textContent = err; return; }
+    payDraft = { ...payDraft, custom: payDraft.custom.concat(name) };
+    drawPayments();
+    root.querySelector('[data-pay-add] input')?.focus();
+  });
+}
+
 function persistSettingsFromForm() {
   const val = id => ($('#' + id)?.value || '').trim();
   const checked = id => !!$('#' + id)?.checked;
@@ -1471,6 +1574,7 @@ function persistSettingsFromForm() {
 
 // ---------- Event wiring ----------
 function wireEvents() {
+  wirePayments();
   // Sidebar navigation
   // Clicking the page you are on folds or unfolds its tree instead of reloading it; the
   // chevron on any other page peeks its tree open (.open) without leaving this one.

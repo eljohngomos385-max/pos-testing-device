@@ -6,7 +6,7 @@
 (function () {
   const VIEW = 'inventory';
   const root = () => document.querySelector(`.view[data-view="${VIEW}"]`);
-  const TABS = { stock: 'On hand', movements: 'Movement history', reorder: 'Needs buying', cost: 'Cost changes' };
+  const TABS = { stock: 'On hand', movements: 'Movement history', reorder: 'Needs buying', cost: 'Cost changes', prices: 'Price history' };
   (globalThis.HWPOS_SUBNAV = globalThis.HWPOS_SUBNAV || {}).inventory = { param: 'tab', def: 'stock', items: Object.entries(TABS) };
 
   /* ================= pure logic (exported for scripts/inventory-check.mjs) ============= */
@@ -786,6 +786,40 @@
 
   /* ================================== rendering ======================================= */
 
+  /* Every price and cost change, newest first. Green = good for margin (price up, cost down). Read-only: saveProducts (back office) and the
+     POS already diff each save into priceLog, so this page records nothing. */
+  const SOURCE_LABEL = { pos: 'POS', backoffice: 'Back office' };
+  function pricesTab(d) {
+    const shown = new Set(visible(d).map((p) => p.id));
+    const all = loadEvents('priceLog').filter((e) => shown.has(e.productId))
+      .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+    const pg = paginate(all, d.params.page);
+    const rows = pg.rows.map((e) => {
+      const p = d.byId.get(e.productId);
+      const pct = e.old ? ((e.new - e.old) / e.old) * 100 : null;
+      return `
+        <tr>
+          <td class="tx-time">${escapeHtml(txTime(e.ts))}</td>
+          <td><a class="link-btn" href="${Router.href('products', e.productId)}"><strong>${escapeHtml(p ? p.name : e.productId)}</strong></a></td>
+          <td>${e.field === 'cost' ? 'Cost' : 'Price'}</td>
+          <td class="num inv-soft">${e.old == null ? '—' : peso(e.old)}</td>
+          <td class="num"><strong>${peso(e.new)}</strong></td>
+          <td class="num">${pct == null ? '—' : `<span class="kpi-delta ${(pct > 0) === (e.field !== 'cost') ? 'up' : 'down'}">${pct > 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%</span>`}</td>
+          <td>${escapeHtml(e.staff || '—')}</td>
+          <td class="inv-soft">${escapeHtml(SOURCE_LABEL[e.source] || e.source || '—')}</td>
+        </tr>`;
+    }).join('') || empty(d.q || d.cat ? 'No price changes match those filters.'
+      : 'No price or cost changes yet. Every change from here on is logged.');
+    return card('Price history', `showing ${pg.rows.length} of ${all.length}`, `
+      <table class="data-table">
+        <thead><tr>
+          <th>When</th><th>Product</th><th>What</th><th class="num">From</th><th class="num">To</th>
+          <th class="num">Change</th><th>Changed by</th><th>Where</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`, '', pagerHtml(pg));
+  }
+
   function render() {
     const r = root();
     if (!r) return;
@@ -805,7 +839,7 @@
     syncControls(d);
     r.querySelector('#invBody').innerHTML =
       d.tab === 'movements' ? movementsTab(d) : d.tab === 'reorder' ? reorderTab(d)
-      : d.tab === 'cost' ? costTab(d) : stockTab(d);
+      : d.tab === 'cost' ? costTab(d) : d.tab === 'prices' ? pricesTab(d) : stockTab(d);
   }
 
   function syncControls(d) {
