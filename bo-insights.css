@@ -1,0 +1,16 @@
+/* Back office — Insights. Plain dense tables; every value from the --po-* tokens. */
+/* Fourteen tabs do not fit one line at narrow widths; .seg does not wrap by default. */
+/* Rows never wrap: the reason is cut to one line, the full text is on hover (title). */
+body.bo-light .view-insights .ins-reason {
+  display: inline-block;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+body.bo-light .view-insights .data-table .text-input.mini {
+  width: 150px;
+  height: calc(var(--po-row-h) - 8px);
+  padding: 0 8px;
+  font-size: var(--po-row-font);
+}

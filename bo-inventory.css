@@ -1,0 +1,92 @@
+/* Back office — Inventory. Only what the shared classes could not already do.
+   Everything here is scoped to .view-inv and built from --po-* tokens. */
+
+/* Five numbers across, not the shared four. */
+body.bo-light .view-inv .kpi-row { grid-template-columns: repeat(5, 1fr); margin-bottom: var(--po-gap); }
+@media (max-width: 1180px) { body.bo-light .view-inv .kpi-row { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 700px)  { body.bo-light .view-inv .kpi-row { grid-template-columns: 1fr; } }
+
+
+/* Signed quantities carry the only colour in the movement row. */
+body.bo-light .view-inv .data-table td.ok { color: var(--po-success); }
+body.bo-light .view-inv .data-table td.danger { color: var(--po-danger); }
+body.bo-light .view-inv .data-table tfoot td {
+  border-bottom: 0;
+  border-top: 1px solid var(--po-line);
+  font-weight: 600;
+  color: var(--po-ink);
+  background: var(--po-surface-2);
+}
+
+/* ---- Adjustment popup: a dialog, not an inline row. Expanding the row pushed every
+       product below it down the page; adding stock is a two-field job and wants a
+       small surface of its own.
+       Not scoped to .view-inv: this is the back office's one small-form dialog, and
+       Staff's cash advance popup is the same shape. ---- */
+body.bo-light .adj-dlg { width: min(620px, calc(100vw - 32px)); }
+body.bo-light .adj-body { padding: 14px; }
+body.bo-light .adj-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+body.bo-light .adj-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+body.bo-light .adj-field > span { font-size: 11.5px; color: var(--po-ink-tertiary); }
+body.bo-light .adj-field input,
+body.bo-light .adj-field select { width: 100%; }
+body.bo-light .adj-note { grid-column: span 2; }
+body.bo-light .adj-foot {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--po-line);
+}
+/* The delta, said back before it is committed. */
+body.bo-light .adj-preview {
+  margin-right: auto; white-space: nowrap;
+  font-family: var(--po-mono); font-size: 12.5px;
+  color: var(--po-ink-secondary); font-variant-numeric: tabular-nums;
+}
+/* Last movement used to be a column on every row; it only matters once you are
+   about to move the stock, so it lives here now. */
+body.bo-light .adj-last {
+  margin-right: auto; white-space: nowrap;
+  font-size: 12px; color: var(--po-ink-tertiary);
+}
+body.bo-light .adj-preview { margin-right: 14px; }
+
+@media (max-width: 900px) {
+  body.bo-light .adj-grid { grid-template-columns: 1fr; }
+  body.bo-light .adj-note { grid-column: span 1; }
+}
+
+/* ---- Needs buying ---- */
+body.bo-light .view-inv .inv-qty {
+  width: 104px; padding: 5px 8px; text-align: right;
+  font-family: var(--po-mono); font-variant-numeric: tabular-nums;
+}
+body.bo-light .view-inv .inv-grand {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 12px 16px;
+  background: var(--po-shell);
+  border: 1px solid var(--po-line);
+  border-radius: var(--po-r-card);
+  font-size: 13px; color: var(--po-ink-secondary);
+}
+body.bo-light .view-inv .inv-grand strong {
+  margin-left: auto;
+  font-family: var(--po-mono); font-size: 15px; font-weight: 700; color: #1A1A1A;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Adjustment document (/admin/inventory/adjust/…) ---- */
+body.bo-light .view-inv .view-title-wrap { flex-wrap: wrap; }
+body.bo-light .view-inv .view-title-wrap .link-btn { flex-basis: 100%; margin-bottom: 2px; }
+body.bo-light .view-inv .doc-pick { width: 100%; min-width: 180px; }
+/* The delta is the column the counter reads back, so it gets the value font. */
+body.bo-light .view-inv .doc-delta {
+  font-family: var(--po-mono); font-size: 12.5px;
+  color: var(--po-ink-secondary); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+body.bo-light .view-inv .inv-grand span { color: var(--po-ink-tertiary); }
+
+

@@ -1,0 +1,282 @@
+/* Back office - Products. Only what .bo-card / .data-table / .setting-row don't
+   already give us. Tokens only, no hardcoded hex or radius. */
+
+body.bo-light .view-products .pd-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+body.bo-light .view-products .pd-filters .q-input { flex: 1; min-width: 220px; }
+
+/* A missing or unusable image URL has to be a neutral square, never a broken
+   <img>, so the thumb is a background - it simply stays grey. */
+body.bo-light .view-products .pd-thumb {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--po-r-inner);
+  border: 1px solid var(--po-line);
+  background: var(--po-bg) center / cover no-repeat;
+  vertical-align: middle;
+}
+body.bo-light .view-products .pd-img-col { width: 44px; }
+
+body.bo-light .view-products .pd-row { cursor: pointer; }
+body.bo-light .view-products .pd-row:hover { background: var(--po-surface-hover); }
+body.bo-light .view-products .pd-arch { opacity: 0.62; }
+body.bo-light .view-products .muted-sub {
+  font-size: 11.5px;
+  color: var(--po-ink-tertiary);
+}
+
+/* Variants: the table IS the form, so every cell is a field. Widths keep the row
+   from collapsing; .table-wrap scrolls it when the screen is too narrow. */
+body.bo-light .view-products .pd-vtable .text-input {
+  width: 100%;
+  min-width: 0;
+}
+body.bo-light .view-products .pd-vtable .num .text-input { text-align: right; }
+body.bo-light .view-products .pd-vrow td { vertical-align: top; }
+body.bo-light .view-products .pd-vname { min-width: 200px; }
+body.bo-light .view-products .pd-vsku { min-width: 116px; }
+/* Wide enough for a seven-figure price: a clipped number is the bug you only
+   notice on the receipt. */
+body.bo-light .view-products .pd-vnum { width: 136px; }
+body.bo-light .view-products .pd-vmargin {
+  font-family: var(--po-mono);
+  font-size: 12px;
+  color: var(--po-ink-secondary);
+  padding-top: 15px;
+}
+body.bo-light .view-products .pd-vstock {
+  display: inline-block;
+  font-family: var(--po-mono);
+  color: var(--po-ink-secondary);
+  padding-top: 8px;
+}
+body.bo-light .view-products .pd-vimg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+body.bo-light .view-products .pd-vimg .pd-thumb {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+body.bo-light .view-products .pd-vimg .link-btn { font-size: 11px; }
+
+/* Upload picker: thumb, Upload/Change, Remove - on one line. */
+body.bo-light .view-products .pd-imgpick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+body.bo-light .view-products .pd-imgpick .link-btn { margin-top: 0; }
+body.bo-light .view-products .pd-control .pd-imgpick .pd-thumb { width: 56px; height: 56px; }
+body.bo-light .view-products .pd-vdel { width: 64px; }
+body.bo-light .view-products .pd-vdel .link-btn { color: var(--po-ink-tertiary); }
+body.bo-light .view-products .pd-vdel .link-btn:hover { color: var(--po-danger); }
+
+/* Editor
+   The list is a table and wants the page; the editor is a form and wants a measure.
+   Left at the view's full width the label sat on one edge of the screen and its box on
+   the other, ~1000px of nothing between them. So: cap the shell, centre it, and put the
+   control right next to its label instead of at the far edge.
+   Two columns: the form people fill top to bottom, and a rail for what files the product
+   rather than prices it. The family editor keeps the full width - its variants table is a
+   table - so only the head that precedes a .pd-editor is capped with it. */
+/* .view is a flex column, and an auto cross-axis margin turns off the stretch - so the
+   width has to be stated, or the box shrink-wraps its content instead of its cap. */
+body.bo-light .view-products .pd-editor-head:has(+ .pd-editor),
+body.bo-light .view-products .pd-editor {
+  width: 100%;
+  max-width: 930px;
+  margin-inline: auto;
+}
+/* Title on the card's left edge, Products button on its right - stated here, not
+   inherited from whichever .view-head block happens to be last in styles.css. */
+body.bo-light .view-products .pd-editor-head:has(+ .pd-editor) {
+  justify-content: space-between;
+  text-align: left;
+}
+body.bo-light .view-products .pd-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: var(--po-gap);
+  align-items: start;
+}
+/* Save closes the whole form, not one column of it. */
+body.bo-light .view-products .pd-editor .pd-formbar { grid-column: 1 / -1; }
+/* 300px has no room for a 200px label track: the label sits over its control. */
+body.bo-light .view-products .pd-rail .setting-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+body.bo-light .view-products .pd-rail .setting-row > label { padding-top: 0; }
+@media (max-width: 900px) {
+  body.bo-light .view-products .pd-editor { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Label column, then the control beside it. Both fixed, so the row reads the same
+   whether the card is 620px (single product) or full width (family editor). */
+body.bo-light .view-products .setting-row {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 380px);
+  align-items: start;
+  /* The shared rule's `space-between` is a valid grid property too, and it shoves the
+     control track back onto the right edge whenever the card is wider than the row
+     (the family editor). The tracks start at the left now. */
+  justify-content: start;
+  gap: 4px 12px;
+  padding: 7px 0;
+}
+body.bo-light .view-products .setting-row > label {
+  flex: none;
+  padding-top: 8px;
+}
+body.bo-light .view-products .pd-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  min-width: 0;
+}
+/* Fill the column, but let a sibling (the err span, "Move stock in Inventory") share
+   the line rather than be pushed onto its own. */
+body.bo-light .view-products .pd-control .text-input,
+body.bo-light .view-products .pd-control .bo-select {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+/* A price, a count or a danger level is never 380px of typing. */
+body.bo-light .view-products .pd-control .text-input[type="number"] { flex: 0 0 132px; }
+body.bo-light .view-products .pd-hint {
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--po-ink-tertiary);
+  margin-top: 2px;
+}
+body.bo-light .view-products .pd-err {
+  font-size: 11.5px;
+  color: var(--po-danger);
+}
+body.bo-light .view-products .pd-err:empty { display: none; }
+/* The computed markup belongs under the box it describes, not under the labels. */
+body.bo-light .view-products .pd-margin {
+  font-family: var(--po-mono);
+  font-size: 12px;
+  color: var(--po-ink-secondary);
+  padding: 6px 0 2px 212px;
+}
+/* The end of the form. Save is where the typing stops; Archive is pushed to the far
+   edge so the destructive verb never sits next to the one people aim for - and it is
+   quiet grey next to Save's black fill, red only on hover, same as .pd-vdel's Remove. */
+body.bo-light .view-products .pd-formbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+body.bo-light .view-products .pd-archive {
+  margin: 0 auto 0 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--po-ink-tertiary);
+}
+body.bo-light .view-products .pd-archive:hover,
+body.bo-light .view-products .pd-archive:focus-visible { color: var(--po-danger); }
+body.bo-light .view-products .pd-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 10px;
+}
+body.bo-light .view-products .pd-self td { background: var(--po-surface-hover); }
+
+/* Import preview */
+body.bo-light .view-products .pd-imp-sum {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--po-ink-secondary);
+}
+body.bo-light .view-products .pd-imp-sum strong {
+  font-family: var(--po-mono);
+  color: #1A1A1A;
+}
+body.bo-light .view-products .pd-fails {
+  margin-top: 10px;
+  max-height: 180px;
+  overflow: auto;
+}
+body.bo-light .view-products .pd-fail {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--po-line);
+}
+body.bo-light .view-products .pd-fail:last-child { border-bottom: none; }
+
+/* ---- Column chooser ----
+   Hiding is CSS only: the cells are always rendered and carry data-col, so a toggle
+   never has to rebuild a row. <details> gives the open/close for free. */
+body.bo-light .view-products .pd-cols { position: relative; }
+body.bo-light .view-products .pd-cols > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: inline-flex; align-items: center;
+}
+body.bo-light .view-products .pd-cols > summary::-webkit-details-marker { display: none; }
+body.bo-light .view-products .pd-cols[open] > summary { background: var(--po-surface-hover); }
+body.bo-light .view-products .pd-cols-menu {
+  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0;
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 156px; padding: 8px;
+  background: var(--po-surface);
+  border: 1px solid var(--po-line);
+  border-radius: var(--po-r-card);
+  box-shadow: var(--po-shadow-pop);
+}
+body.bo-light .view-products .pd-cols-menu .bo-check { padding: 3px 4px; white-space: nowrap; }
+
+body.bo-light .view-products .hide-img [data-col="img"],
+body.bo-light .view-products .hide-sku [data-col="sku"],
+body.bo-light .view-products .hide-cat [data-col="cat"],
+body.bo-light .view-products .hide-supplier [data-col="supplier"],
+body.bo-light .view-products .hide-cost [data-col="cost"],
+body.bo-light .view-products .hide-price [data-col="price"],
+body.bo-light .view-products .hide-margin [data-col="margin"],
+body.bo-light .view-products .hide-stock [data-col="stock"],
+body.bo-light .view-products .hide-status [data-col="status"] { display: none; }
+
+/* ---- Denser rows ----
+   The list is for scanning, so a row is one line. The variant count rides beside the
+   name instead of under it, and nothing in a data cell wraps. */
+body.bo-light .view-products #pdTable td,
+body.bo-light .view-products #pdTable th { white-space: nowrap; }
+body.bo-light .view-products .pd-thumb { width: 22px; height: 22px; }
+body.bo-light .view-products .pd-img-col { width: 36px; }
+body.bo-light .view-products .pd-vcount {
+  margin-left: 6px; font-size: 11px; color: var(--po-ink-tertiary);
+}
+
+/* One column on a phone. The shared rule stacks .setting-row with flex-direction,
+   which a grid ignores - so the editor has to say it in grid terms. */
+@media (max-width: 600px) {
+  body.bo-light .view-products .setting-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  body.bo-light .view-products .setting-row > label { padding-top: 0; }
+  body.bo-light .view-products .pd-margin { padding-left: 0; }
+}
+

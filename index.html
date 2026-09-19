@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#F7F6F3" />
   <title>Hardware POS</title>
   <link rel="icon" href="data:," />
-  <link rel="stylesheet" href="styles.css?v=36" />
+  <link rel="stylesheet" href="styles.css?v=56" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -138,6 +138,7 @@
                 <div class="cart-sub" id="cartCount">0 items</div>
               </div>
               <div class="cart-head-actions">
+                <button class="text-btn" id="lostSaleBtn" title="Customer asked for something we couldn't sell">Lost sale</button>
                 <button class="text-btn" id="saveBtn" disabled>Save receipt</button>
                 <button class="text-btn" id="clearCartBtn">Clear</button>
               </div>
@@ -325,6 +326,19 @@
                       <circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/>
                     </svg>
                     <span>Other</span>
+                  </button>
+                  <!-- Credit only exists for a named account, so these two are hidden for a walk-in. -->
+                  <button class="pay-method-card" data-co-method data-method="credit" id="payMethodCredit" hidden>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/>
+                    </svg>
+                    <span>Account</span>
+                  </button>
+                  <button class="pay-method-card" data-co-method data-method="split" id="payMethodSplit" hidden>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 3v18"/><path d="M4 7h5"/><path d="M4 12h5"/><path d="M15 9h5"/><path d="M15 15h5"/>
+                    </svg>
+                    <span>Split</span>
                   </button>
                 </div>
                 <!-- Shown only when Other is selected -->
@@ -940,10 +954,9 @@
           <textarea id="custAddress" class="text-input" rows="2" placeholder="House #, Street, District, City"></textarea>
           <label class="pay-label" style="margin-top:10px">Customer type</label>
           <select id="custType" class="text-input">
-            <option value="">Unclassified</option>
+            <option value="retail">Retail (walk-in)</option>
             <option value="contractor">Contractor</option>
             <option value="wholesale">Wholesale</option>
-            <option value="retail">Retail</option>
             <option value="residential">Residential</option>
           </select>
           <div class="pay-actions" style="margin-top:14px">
@@ -1024,7 +1037,7 @@
             <button class="vq-btn" data-act="dec" aria-label="Decrease">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
-            <input type="number" id="cimQtyInput" class="vq-input" value="1" min="1" inputmode="numeric" />
+            <input type="number" id="cimQtyInput" class="vq-input" value="1" min="0" step="any" inputmode="decimal" />
             <button class="vq-btn" data-act="inc" aria-label="Increase">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
@@ -1080,7 +1093,7 @@
             <button class="vq-btn" data-act="dec" aria-label="Decrease">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
-            <input type="number" id="variantQtyInput" class="vq-input" value="1" min="1" inputmode="numeric" />
+            <input type="number" id="variantQtyInput" class="vq-input" value="1" min="0" step="any" inputmode="decimal" />
             <button class="vq-btn" data-act="inc" aria-label="Increase">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
@@ -1115,6 +1128,41 @@
       </div>
     </div>
 
+    <!-- Lost sale: the customer asked, we couldn't sell it -->
+    <div class="modal-backdrop" id="lostSaleModal" hidden>
+      <div class="modal small-modal confirm-modal lost-sale-modal">
+        <div class="modal-head">
+          <h2>Lost sale</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <label class="pay-label" for="lsItemInput">Asked for</label>
+          <input type="text" id="lsItemInput" class="text-input" placeholder="Search the catalog or type it" autocomplete="off" />
+          <div class="ls-matches" id="lsMatches"></div>
+          <label class="pay-label" for="lsQtyInput">Qty</label>
+          <input type="number" id="lsQtyInput" class="text-input" min="0" step="any" value="1" inputmode="decimal" />
+          <label class="pay-label">Why</label>
+          <div class="seg-control" id="lsReasons">
+            <button class="seg active" type="button" data-ls-reason="out-of-stock">Out of stock</button>
+            <button class="seg" type="button" data-ls-reason="not-carried">Not carried</button>
+            <button class="seg" type="button" data-ls-reason="too-expensive">Too expensive</button>
+            <button class="seg" type="button" data-ls-reason="other">Other</button>
+          </div>
+          <label class="pay-label" for="lsSubSelect">Bought instead</label>
+          <select id="lsSubSelect" class="text-input"></select>
+          <div class="pay-actions" style="margin-top:18px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="lsSaveBtn">Log lost sale</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Order details -->
     <div class="modal-backdrop" id="orderDetailModal" hidden>
       <div class="modal order-detail-modal">
@@ -1137,10 +1185,11 @@
     <div class="toast" id="toast" hidden></div>
   </div>
 
-  <script src="data-store.js"></script>
-  <script src="data.js"></script>
+  <script src="data-store.js?v=31"></script>
+  <script src="data.js?v=27"></script>
+  <script src="bo-model.js?v=87"></script>
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=34"></script>
-  <script src="app.js?v=37"></script>
+  <script src="app.js?v=54"></script>
 </body>
 </html>

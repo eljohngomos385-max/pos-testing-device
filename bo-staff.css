@@ -1,0 +1,51 @@
+/* Back office — Staff. Only what the shared classes don't already cover. */
+
+/* The date picker sits at the right end of a card head, like a .bo-card-sub does. */
+body.bo-light .bo-card-head .bo-date { margin-left: auto; }
+
+/* Honest note in a card head: wraps, unlike .bo-card-sub which is one short figure. */
+body.bo-light .st-note {
+  margin-left: auto;
+  max-width: 62ch;
+  text-align: right;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--po-ink-tertiary);
+}
+
+/* The salary ÷ working days arithmetic, shown under the field it explains. */
+body.bo-light .st-hint {
+  font-size: 11.5px;
+  color: var(--po-ink-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+body.bo-light .st-hint .link-btn { font-size: 11.5px; margin-left: 4px; }
+body.bo-light .setting-row.st-stack { padding-top: 0; border-bottom: 0; }
+
+/* A select on its own in a row lines up with the text inputs above and below it. */
+body.bo-light .setting-row > .bo-select { width: 230px; }
+
+/* Money field + its working-days select on one line. */
+body.bo-light .st-pair { display: flex; align-items: center; gap: 8px; }
+body.bo-light .st-pair .text-input { width: 130px; }
+
+/* Attendance: name on the left, the five marks on the right. */
+body.bo-light .setting-row .seg { flex: 0 0 auto; }
+body.bo-light .setting-row label .role-pill { margin-left: 6px; }
+
+/* Today's clock times + the in/out button, pushed right next to the marks. */
+body.bo-light .st-clock { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+body.bo-light .st-clock-times {
+  font-size: 12px;
+  color: var(--po-ink-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 760px) {
+  body.bo-light .st-note { text-align: left; margin-left: 0; }
+}
+
+/* Money coming off the pay. Red is the only colour on the payroll table, so the eye
+   lands on what was taken before it reads the total. */
+body.bo-light .view-staff .st-cut { color: var(--po-danger, #b42318); }
+body.bo-light .view-staff .st-void { text-decoration: line-through; color: var(--po-ink-tertiary); }

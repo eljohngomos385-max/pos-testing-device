@@ -16,3 +16,8 @@ node_modules/
 
 # Windows redirect artifact
 nul
+
+# Dev screenshots and Playwright MCP output
+/*.png
+!/test-barcode-*.png
+.playwright-mcp/

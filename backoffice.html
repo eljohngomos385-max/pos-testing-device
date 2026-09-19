@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="bo">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -8,80 +8,127 @@
   <link rel="icon" href="data:," />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=27" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=103" />
+  <link rel="stylesheet" href="/bo-products.css?v=86" />
+  <link rel="stylesheet" href="/bo-inventory.css?v=85" />
+  <link rel="stylesheet" href="/bo-sales.css?v=77" />
+  <link rel="stylesheet" href="/bo-suppliers.css?v=83" />
+  <link rel="stylesheet" href="/bo-staff.css?v=85" />
+  <link rel="stylesheet" href="/bo-insights.css?v=2" />
 </head>
 <body class="bo-body bo-light">
   <div id="app" class="bo-app">
 
     <!-- ============== TOPBAR (black strip) ============== -->
-    <header class="bo-topbar">
-      <div class="bo-topbar-left">
-        <button id="boSidebarToggle" class="bo-hamburger" aria-label="Toggle menu" type="button">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="bo-search" role="search">
-        <svg class="bo-search-ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/>
-        </svg>
-        <input id="boSearch" type="text" placeholder="Search products, customers, orders…" aria-label="Search" autocomplete="off" />
-        <div class="bo-search-results" id="boSearchResults" hidden></div>
-      </div>
-
-      <div class="bo-topbar-right"></div>
-    </header>
+    <!-- ponytail: no topbar. The hamburger only matters below 1024px, where the
+         sidebar overlays; CSS hides it on desktop. -->
+    <button id="boSidebarToggle" class="bo-hamburger" aria-label="Toggle menu" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
 
     <!-- ============== SIDEBAR ============== -->
     <aside class="sidebar bo-sidebar">
-      <div class="side-head">
-        <div class="brand-mini">
-          <div class="brand-dot"></div>
-          <span>EJ Hardware</span>
-        </div>
-        <div class="brand-sub">Back Office</div>
+      <div class="side-resizer" id="sideResizer" title="Drag to resize · double-click to reset"></div>
+      <!-- Location switcher: business on the small line, the location you switch on the big one. -->
+      <div class="side-switch-wrap">
+        <button class="side-switch" id="locBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="ss-mark" id="locMark">EJ</span>
+          <span class="ss-text"><span class="ss-label" id="locBiz">EJ Hardware</span><span class="ss-name" id="locName">Main Store</span></span>
+          <svg class="ss-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+        </button>
+        <div class="side-menu" id="locMenu" role="menu" hidden></div>
       </div>
 
       <nav class="side-nav">
-        <button class="side-link active" data-view="dashboard">
-          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
-          <span>Dashboard</span>
-        </button>
-        <button class="side-link" data-view="sales">
-          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="13" width="4.4" height="8" rx="1.2"/><rect x="9.8" y="8" width="4.4" height="13" rx="1.2"/><rect x="16.6" y="3" width="4.4" height="18" rx="1.2"/></svg>
-          <span>Sales</span>
-        </button>
-        <button class="side-link" data-view="inventory">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.3 3.2 6.4 12 10.5l8.8-4.1zM2.5 8.1v9.3a1 1 0 0 0 .58.9L11 22V11.7zm19 0L13 11.7V22l7.92-3.7a1 1 0 0 0 .58-.9z"/></svg>
-          <span>Inventory</span>
-        </button>
-        <button class="side-link" data-view="customers">
-          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7.5" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>
-          <span>Customers</span>
-        </button>
-        <button class="side-link" data-view="suppliers">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 6.5A1.5 1.5 0 0 1 3.5 5H13a1 1 0 0 1 1 1v8.5H4.6a2.8 2.8 0 0 0-5 0H2z"/><path d="M15 9h2.9a1 1 0 0 1 .82.43l2.1 3a1 1 0 0 1 .18.57v1.5h-1.4a2.8 2.8 0 0 0-4.6 0H15z"/><circle cx="6.5" cy="17.5" r="2.3"/><circle cx="17.5" cy="17.5" r="2.3"/></svg>
-          <span>Suppliers</span>
-        </button>
-        <button class="side-link" data-view="staff">
-          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8.5" cy="8" r="3.6"/><path d="M1.8 20.5a6.7 6.7 0 0 1 13.4 0z"/><circle cx="17.6" cy="9" r="2.8"/><path d="M16.2 20.5a5.6 5.6 0 0 1 6-4.7v4.7z"/></svg>
-          <span>Staff</span>
-        </button>
-        <button class="side-link" data-view="settings">
-          <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M19.5 13a7.6 7.6 0 0 0 .07-1 7.6 7.6 0 0 0-.07-1l2.05-1.55a.5.5 0 0 0 .12-.64l-1.95-3.36a.5.5 0 0 0-.6-.22l-2.4 1a7.3 7.3 0 0 0-1.73-1l-.36-2.55a.5.5 0 0 0-.5-.43h-3.9a.5.5 0 0 0-.5.43l-.36 2.55a7.3 7.3 0 0 0-1.73 1l-2.4-1a.5.5 0 0 0-.6.22L2.28 8.81a.5.5 0 0 0 .12.64L4.45 11a7.6 7.6 0 0 0-.07 1 7.6 7.6 0 0 0 .07 1l-2.05 1.55a.5.5 0 0 0-.12.64l1.95 3.36a.5.5 0 0 0 .6.22l2.4-1a7.3 7.3 0 0 0 1.73 1l.36 2.55a.5.5 0 0 0 .5.43h3.9a.5.5 0 0 0 .5-.43l.36-2.55a7.3 7.3 0 0 0 1.73-1l2.4 1a.5.5 0 0 0 .6-.22l1.95-3.36a.5.5 0 0 0-.12-.64zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>
-          <span>Settings</span>
-        </button>
+        <button class="side-label" type="button" data-fold="main-menu" aria-expanded="true">Main menu<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="side-fold"><div class="side-fold-in">
+          <button class="side-link active" data-view="dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.8"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.8"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.8"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.8"/></svg>
+            <span>Dashboard</span>
+          </button>
+          <button class="side-link" data-view="sales">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M6 17v-5"/><path d="M11 17V7"/><path d="M16 17v-7"/><path d="M21 17V4"/></svg>
+            <span>Sales</span>
+          </button>
+          <button class="side-link" data-view="sales" data-sub="tx">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>
+            <span>Transactions</span>
+          </button>
+          <button class="side-link" data-view="customers">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+            <span>Customers</span>
+          </button>
+        </div></div>
+        <button class="side-label" type="button" data-fold="stock" aria-expanded="true">Stock<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="side-fold"><div class="side-fold-in">
+          <button class="side-link" data-view="products">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle cx="7.5" cy="7.5" r="1.3"/></svg>
+            <span>Products</span>
+          </button>
+          <button class="side-link" data-view="inventory">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>
+            <span>Inventory</span>
+          </button>
+          <button class="side-link" data-view="inventory" data-sub="reorder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.3"/><circle cx="18" cy="20" r="1.3"/><path d="M2 3h3l2.6 12.4a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 2-1.5L21.5 8H6"/></svg>
+            <span>Needs buying</span>
+          </button>
+          <button class="side-link" data-view="suppliers" data-sub="orders">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 11h6"/><path d="M9 15h4"/></svg>
+            <span>Purchase orders</span>
+          </button>
+          <button class="side-link" data-view="suppliers" data-sub="suppliers">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 17V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v11h2"/><path d="M14 9h4l4 4v4h-2"/><path d="M9 17h6"/><circle cx="6.5" cy="17.5" r="2"/><circle cx="17.5" cy="17.5" r="2"/></svg>
+            <span>Suppliers</span>
+          </button>
+        </div></div>
+        <button class="side-label" type="button" data-fold="reports" aria-expanded="true">Reports<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="side-fold"><div class="side-fold-in">
+          <button class="side-link" data-view="insights" data-sub="cash stockouts dead sell lost counts">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+            <span>Stock health</span>
+          </button>
+          <button class="side-link" data-view="insights" data-sub="reorder leads prices">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>
+            <span>Buying</span>
+          </button>
+          <button class="side-link" data-view="insights" data-sub="cycles basket deliveries">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v4h-4"/></svg>
+            <span>Customer habits</span>
+          </button>
+          <button class="side-link" data-view="insights" data-sub="days staff">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg>
+            <span>Days &amp; staff</span>
+          </button>
+        </div></div>
+        <button class="side-label" type="button" data-fold="manage" aria-expanded="true">Manage<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="side-fold"><div class="side-fold-in">
+          <button class="side-link" data-view="staff">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18.5 14.2a6.5 6.5 0 0 1 3 5.8"/></svg>
+            <span>Staff</span>
+          </button>
+          <button class="side-link" data-view="staff" data-sub="attendance">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span>Attendance</span>
+          </button>
+          <button class="side-link" data-view="settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9"/><path d="M17 7h3"/><circle cx="15" cy="7" r="2"/><path d="M4 17h3"/><path d="M11 17h9"/><circle cx="9" cy="17" r="2"/></svg>
+            <span>Settings</span>
+          </button>
+        </div></div>
       </nav>
 
       <div class="side-footer">
-        <div class="user-row">
-          <div class="user-meta">
-            <div class="user-name">El John</div>
-            <div class="user-sub">Owner · Main Store</div>
-          </div>
+        <!-- Account switcher: name + role, no avatar. -->
+        <div class="side-switch-wrap">
+          <button class="side-switch acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+            <span class="ss-text"><span class="ss-name" id="acctName">El John</span><span class="ss-label" id="acctRole">Owner</span></span>
+            <svg class="ss-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+          </button>
+          <div class="side-menu up" id="acctMenu" role="menu" hidden></div>
         </div>
       </div>
     </aside>
@@ -95,261 +142,195 @@
       <section class="view view-dashboard active" data-view="dashboard">
         <header class="view-head">
           <div class="view-title-wrap">
-            <h1>Dashboard</h1>
-            <span class="muted" id="todayLabel">Today</span>
+            <h1 id="dashGreeting">Welcome back</h1>
           </div>
           <div class="view-actions">
-            <div class="seg">
-              <button class="seg-btn active" data-range="today">Today</button>
-              <button class="seg-btn" data-range="7d">7 days</button>
-              <button class="seg-btn" data-range="30d">30 days</button>
+            <!-- One control: the range and the day it ends on -->
+            <div class="range-picker" id="rangePicker">
+              <button class="range-btn" id="rangeBtn" aria-expanded="false" aria-haspopup="true">
+                <span id="rangeBtnLabel">Today</span>
+                <span class="rp-date" id="rangeBtnDate"></span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="rp-menu" id="rangeMenu" hidden>
+                <button class="rp-opt" data-range="today">Today</button>
+                <button class="rp-opt" data-range="7d">Last 7 days</button>
+                <button class="rp-opt" data-range="15d">Last 15 days</button>
+                <button class="rp-opt" data-range="30d">Last 30 days</button>
+                <label class="rp-date-row">Ends on<input type="date" class="bo-date" id="dashDate" /></label>
+              </div>
             </div>
+            <button class="primary-btn small" id="dashExportBtn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4 20h16"/></svg>
+              Export CSV
+            </button>
           </div>
         </header>
 
-        <!-- KPI row -->
-        <div class="kpi-row" id="kpiRow"></div>
-
-        <!-- Dashboard 2-column grid -->
-        <div class="dash-grid">
-          <!-- LEFT column -->
-          <div class="dash-col">
-            <div class="panel">
-              <div class="panel-head">
-                <div class="panel-title">Sales last 7 days</div>
-                <div class="panel-sub muted" id="chartTotal"></div>
+        <div class="dash-stack">
+          <!-- Trend beside the numbers: chart narrower, stats stacked, still two cards -->
+          <div class="dash-top">
+            <!-- Sales trend -->
+            <section class="bo-card">
+              <div class="bo-card-head">
+                <span class="bo-card-label">Sales trend</span>
+                <span class="bo-card-sub" id="trendRangeLabel"></span>
               </div>
-              <div class="chart-wrap" id="salesChart"></div>
-            </div>
-
-            <div class="panel">
-              <div class="panel-head">
-                <div class="panel-title">Recent sales</div>
-                <button class="link-btn" data-jump="sales">View all →</button>
+              <div class="bo-card-inset">
+                <div class="trend-head">
+                  <div class="trend-total">
+                    <span class="trend-total-label">Total revenue</span>
+                    <span class="trend-total-value" id="trendTotal">—</span>
+                  </div>
+                  <div class="trend-legend">
+                    <span class="lg ghost">Gross profit</span>
+                    <span class="lg">Revenue</span>
+                  </div>
+                </div>
+                <div id="salesChart"></div>
               </div>
-              <div class="mini-table" id="recentSales"></div>
-            </div>
+            </section>
+
+            <section class="bo-card">
+              <div class="bo-card-head">
+                <span class="bo-card-label">Overview</span>
+                <span class="bo-card-sub" id="statRangeLabel"></span>
+                <button class="pct-toggle" id="statDeltaToggle" title="Change vs previous period">%</button>
+              </div>
+              <div class="bo-card-inset stat-bar" id="kpiRow"></div>
+            </section>
           </div>
 
-          <!-- RIGHT column -->
-          <div class="dash-col">
-            <div class="panel">
-              <div class="panel-head">
-                <div class="panel-title">Low stock</div>
-                <span class="muted small" id="lowCount"></span>
-              </div>
-              <div class="mini-list" id="lowStockList"></div>
-              <button class="link-btn" data-jump="inventory">Manage inventory →</button>
+          <!-- Recent transactions -->
+          <section class="bo-card">
+            <div class="bo-card-head">
+              <span class="bo-card-label">Recent transactions</span>
+              <input class="search-input small q-input" id="txSearch" placeholder="Search transactions…" autocomplete="off" />
             </div>
+            <div class="bo-card-inset flush">
+              <div class="table-wrap">
+                <table class="data-table" id="txTable">
+                  <thead>
+                    <tr>
+                      <th>Receipt</th>
+                      <th>Time</th>
+                      <th>Customer</th>
+                      <th>Staff</th>
+                      <th>Fulfilment</th>
+                      <th>Payment</th>
+                      <th>Status</th>
+                      <th class="num">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
 
-            <div class="panel">
-              <div class="panel-head">
-                <div class="panel-title">Outstanding credit</div>
-                <span class="muted small" id="creditTotal"></span>
+          <div class="dash-grid-3">
+            <section class="bo-card">
+              <div class="bo-card-head">
+                <span class="bo-card-label">Low stock</span>
+                <span class="bo-card-sub" id="lowCount"></span>
+                <button class="link-btn" data-jump="inventory">Manage inventory →</button>
               </div>
-              <div class="mini-list" id="creditList"></div>
-              <button class="link-btn" data-jump="customers">All credit accounts →</button>
-            </div>
+              <div class="bo-card-inset">
+                <div class="mini-list" id="lowStockList"></div>
+              </div>
+            </section>
 
-            <div class="panel">
-              <div class="panel-head">
-                <div class="panel-title">Top SKUs</div>
-                <span class="muted small">by units sold</span>
+            <section class="bo-card">
+              <div class="bo-card-head">
+                <span class="bo-card-label">Deliveries coming</span>
+                <span class="bo-card-sub" id="deliveryCount"></span>
               </div>
-              <div class="mini-list" id="topSkus"></div>
-            </div>
+              <div class="bo-card-inset">
+                <div class="mini-list" id="deliveryList"></div>
+              </div>
+            </section>
+
+            <section class="bo-card">
+              <div class="bo-card-head">
+                <span class="bo-card-label">Attendance</span>
+                <span class="bo-card-sub" id="attendSummary"></span>
+              </div>
+              <div class="bo-card-inset">
+                <div class="mini-list" id="attendList"></div>
+              </div>
+            </section>
           </div>
+
         </div>
       </section>
 
-      <!-- ============================================
-           SALES
-           ============================================ -->
-      <section class="view view-sales" data-view="sales" hidden>
-        <header class="view-head">
-          <div class="view-title-wrap">
-            <h1>Sales</h1>
-            <span class="muted" id="salesCount">0 transactions</span>
-          </div>
-          <div class="view-actions">
-            <div class="seg" id="salesRange">
-              <button class="seg-btn active" data-range="today">Today</button>
-              <button class="seg-btn" data-range="7d">7 days</button>
-              <button class="seg-btn" data-range="30d">30 days</button>
-            </div>
-            <button class="secondary-btn small" id="salesExportBtn">Export CSV</button>
-          </div>
-        </header>
+      <!-- Sales: markup lives in bo-sales.js -->
+      <section class="view view-sales" data-view="sales" hidden></section>
 
-        <div class="kpi-row" id="salesKpis"></div>
+      <!-- Products: markup lives in bo-products.js -->
+      <section class="view view-products" data-view="products" hidden></section>
 
-        <div class="panel">
-          <div class="table-wrap">
-            <table class="data-table" id="salesTable">
-              <thead>
-                <tr>
-                  <th>Receipt</th>
-                  <th>Date</th>
-                  <th>Cashier</th>
-                  <th>Customer</th>
-                  <th>Payment</th>
-                  <th class="num">Items</th>
-                  <th class="num">Total</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- ============================================
-           INVENTORY (full backend — cost columns visible)
-           ============================================ -->
-      <section class="view view-inv" data-view="inventory" hidden>
-        <header class="view-head">
-          <div class="view-title-wrap">
-            <h1>Inventory</h1>
-            <span class="muted" id="invSummary"></span>
-          </div>
-          <div class="view-actions">
-            <button class="secondary-btn small" id="invImportBtn">Import CSV</button>
-            <button class="secondary-btn small" id="invExportBtn">Export CSV</button>
-            <a class="primary-btn small" href="index.html#inventory">Open in POS →</a>
-            <input type="file" id="invImportFile" accept=".csv,text/csv" hidden>
-          </div>
-        </header>
-
-        <div class="kpi-row" id="invKpis"></div>
-
-        <div class="panel">
-          <div class="panel-head">
-            <div class="panel-title">All products</div>
-            <input class="search-input small" id="invSearch" placeholder="Search products..." />
-          </div>
-          <div class="table-wrap">
-            <table class="data-table" id="invTable">
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Name</th>
-                  <th>Folder</th>
-                  <th class="num">Stock</th>
-                  <th class="num">Cost</th>
-                  <th class="num">Price</th>
-                  <th class="num">Margin</th>
-                  <th class="num">Stock value</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+      <!-- Inventory: markup lives in bo-inventory.js -->
+      <section class="view view-inv" data-view="inventory" hidden></section>
 
       <!-- ============================================
            CUSTOMERS
            ============================================ -->
       <section class="view view-customers" data-view="customers" hidden>
+        <div class="cust-back" id="custBack" hidden></div>
         <header class="view-head">
           <div class="view-title-wrap">
             <h1>Customers</h1>
             <span class="muted" id="custSummary"></span>
           </div>
           <div class="view-actions">
-            <a class="primary-btn small" href="index.html#customers">Open customer tools →</a>
+            <a class="secondary-btn small" href="/index.html#customers">Open in POS →</a>
+            <button class="primary-btn small" id="custAddBtn">Add customer</button>
           </div>
         </header>
 
         <div class="kpi-row" id="custKpis"></div>
 
-        <div class="panel">
-          <div class="panel-head">
-            <div class="panel-title">All accounts</div>
-            <input class="search-input small" id="custSearch" placeholder="Search customers..." />
-          </div>
-          <div class="table-wrap">
-            <table class="data-table" id="custTable">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Phone</th>
-                  <th>Address</th>
-                  <th class="num">Credit limit</th>
-                  <th class="num">Balance</th>
-                  <th class="num">Available</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+        <div id="custList">
+          <section class="bo-card">
+            <div class="bo-card-head">
+              <span class="bo-card-label">All accounts</span>
+              <input class="search-input small q-input" id="custSearch" placeholder="Search customers..." />
+            </div>
+            <div class="bo-card-inset flush">
+              <div class="table-wrap">
+                <table class="data-table cust-table" id="custTable">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Address</th>
+                      <th class="num">Credit limit</th>
+                      <th class="num">Balance</th>
+                      <th class="num">Available</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div id="custPager"></div>
+            </div>
+          </section>
         </div>
+
+        <div id="custDetail" hidden></div>
+        <dialog id="custDlg" class="bo-dialog adj-dlg"></dialog>
       </section>
 
-      <!-- ============================================
-           SUPPLIERS
-           ============================================ -->
-      <section class="view view-suppliers" data-view="suppliers" hidden>
-        <header class="view-head">
-          <div class="view-title-wrap">
-            <h1>Suppliers</h1>
-            <span class="muted">Per-item ranked costs</span>
-          </div>
-          <div class="view-actions"></div>
-        </header>
+      <!-- Suppliers: markup lives in bo-suppliers.js -->
+      <section class="view view-suppliers" data-view="suppliers" hidden></section>
 
-        <div class="panel">
-          <div class="table-wrap">
-            <table class="data-table" id="supTable">
-              <thead>
-                <tr>
-                  <th>Supplier</th>
-                  <th>Contact</th>
-                  <th>Lead time</th>
-                  <th class="num">Items supplied</th>
-                  <th class="num">Last PO</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+      <!-- Staff: markup lives in bo-staff.js -->
+      <section class="view view-staff" data-view="staff" hidden></section>
 
-      <!-- ============================================
-           STAFF
-           ============================================ -->
-      <section class="view view-staff" data-view="staff" hidden>
-        <header class="view-head">
-          <div class="view-title-wrap">
-            <h1>Staff</h1>
-            <span class="muted">PIN login on tablets · Email on back office</span>
-          </div>
-          <div class="view-actions"></div>
-        </header>
-
-        <div class="panel">
-          <div class="table-wrap">
-            <table class="data-table" id="staffTable">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Role</th>
-                  <th>Email</th>
-                  <th>PIN</th>
-                  <th>Last seen</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+      <!-- Insights: markup lives in bo-insights.js -->
+      <section class="view view-insights" data-view="insights" hidden></section>
 
       <!-- ============================================
            SETTINGS
@@ -395,7 +376,16 @@
           <div class="panel">
             <div class="panel-head">
               <div class="panel-title">Appearance</div>
-              <span class="muted" style="font-size:11px">Managed in POS app</span>
+            </div>
+            <div class="setting-row">
+              <label>Back office row size
+                <div class="muted" style="font-size:11px;margin-top:2px">Height and text size of every list on this device. Larger is easier on the eyes.</div>
+              </label>
+              <div class="bb-size-toggle" id="settingsDensityToggle" role="tablist">
+                <button class="bb-size-btn" data-density="sm">S</button>
+                <button class="bb-size-btn active" data-density="md">M</button>
+                <button class="bb-size-btn" data-density="lg">L</button>
+              </div>
             </div>
             <div class="setting-row">
               <label>Sell-screen tile size
@@ -435,11 +425,20 @@
     </div>
   </div>
 
+  <dialog id="orderDlg" class="bo-dialog"></dialog>
   <div id="toast" class="toast" hidden></div>
 
-  <script src="data-store.js?v=27"></script>
-  <script src="data.js?v=27"></script>
-  <script src="backoffice.js?v=27"></script>
+  <script src="/data-store.js?v=31"></script>
+  <script src="/data.js?v=27"></script>
+  <script src="/bo-model.js?v=87"></script>
+  <script src="/router.js?v=61"></script>
+  <script src="/backoffice.js?v=95"></script>
+  <script src="/bo-products.js?v=86"></script>
+  <script src="/bo-insights.js?v=9"></script>
+  <script src="/bo-inventory.js?v=94"></script>
+  <script src="/bo-sales.js?v=80"></script>
+  <script src="/bo-suppliers.js?v=88"></script>
+  <script src="/bo-staff.js?v=87"></script>
   <script>
     // ---- Back office: hamburger + topbar wiring (white mode) ----
     (function () {
@@ -460,7 +459,8 @@
 
       // Close sidebar on mobile when user picks a nav item
       document.querySelectorAll('.side-link').forEach(function (link) {
-        link.addEventListener('click', function () {
+        link.addEventListener('click', function (e) {
+          if (e.target.closest('.side-chev')) return;   // peeking a tree is not picking a page
           if (!window.matchMedia('(min-width: 1024px)').matches) {
             app.classList.add('sidebar-collapsed');
           }
@@ -471,6 +471,38 @@
           }
         });
       });
+
+      // Drag the sidebar's right edge to resize (desktop only); the width is a per-device pref.
+      var grip = document.getElementById('sideResizer');
+      var MIN_W = 168, MAX_W = 320;
+      function setSideW(w) { document.body.style.setProperty('--po-sidebar-w', w + 'px'); }
+      var savedW = +HWPOS_STORE.ui.get('sidebarW');
+      if (savedW >= MIN_W && savedW <= MAX_W) {
+        // Apply with transitions off so the page doesn't slide in from the default width on load.
+        app.classList.add('side-resizing');
+        setSideW(savedW);
+        void app.offsetWidth;
+        app.classList.remove('side-resizing');
+      }
+      if (grip) {
+        grip.addEventListener('pointerdown', function (e) {
+          e.preventDefault();
+          grip.setPointerCapture(e.pointerId);
+          app.classList.add('side-resizing');
+        });
+        grip.addEventListener('pointermove', function (e) {
+          if (!grip.hasPointerCapture(e.pointerId)) return;
+          setSideW(Math.round(Math.min(MAX_W, Math.max(MIN_W, e.clientX))));
+        });
+        grip.addEventListener('lostpointercapture', function () {
+          app.classList.remove('side-resizing');
+          HWPOS_STORE.ui.set('sidebarW', parseInt(document.body.style.getPropertyValue('--po-sidebar-w'), 10) || '');
+        });
+        grip.addEventListener('dblclick', function () {
+          document.body.style.removeProperty('--po-sidebar-w');
+          HWPOS_STORE.ui.set('sidebarW', '');
+        });
+      }
 
       // Tapping the dimmed backdrop on mobile closes the overlay
       document.addEventListener('click', function (e) {

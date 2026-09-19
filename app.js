@@ -119,6 +119,48 @@ function orderUid() {
   return 'ord_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
 }
 
+// ---------- Till event stream (HWPOS_STORE.events; fields in docs/data-dictionary.md) ----------
+// Raw facts only, fire-and-forget: an event can never throw into, or wait on, a sale.
+// cartId rides the store's context so every row says which cart it happened in.
+function track(type, data) {
+  try {
+    const ev = window.HWPOS_STORE && window.HWPOS_STORE.events;
+    if (!ev || !ev.append) return;
+    if (ev.setContext) ev.setContext({ cartId: state.cartId || '' });
+    ev.append(type, data || {});
+  } catch (_) {}
+}
+
+// A cart is born when its first line lands and keeps its id until the sale or the clear.
+function beginCart() {
+  if (state.cart.length) return;
+  state.cartId = newId('cart');
+  state.cartStartedAt = Date.now();
+  track('cart_start');
+}
+
+// One search row per intent, never per keystroke: a pick logs it with the product; clearing the
+// box, a scan over it, or leaving the app logs it unpicked -- "looked for it, didn't take it".
+let searchIntent = null;   // { query, results, picked }
+function endSearch(keep = false) {
+  const s = searchIntent;
+  if (!keep) searchIntent = null;
+  if (!s || s.picked) return;
+  s.picked = true;
+  track('search', { query: s.query, results: s.results || 0, chosenProductId: '' });
+}
+
+// stockOnHand is the shelf at the tap -- the cart does not decrement stock until the sale.
+function trackItemAdd(p, qty, via) {
+  const stockOnHand = Number(p.stock) || 0;
+  if (stockOnHand <= 0) track('oos_tap', { productId: p.id, stockOnHand });
+  track('item_add', { productId: p.id, qty, unitPrice: p.price, stockOnHand, via });
+  if (via !== 'scan' && searchIntent && state.query.trim()) {
+    searchIntent.picked = true;
+    track('search', { query: searchIntent.query, results: searchIntent.results || 0, chosenProductId: p.id });
+  }
+}
+
 // ---------- State ----------
 
 const state = {
@@ -168,6 +210,9 @@ const state = {
   tierDiscountDismissed: false,
   customersQuery: '',
   selectedCustomerId: null,
+  lostSale: { productId: '', reason: 'out-of-stock' },
+  cartId: '',                   // till event stream only; never written to the order
+  cartStartedAt: 0,
 };
 
 const barcodeScanner = {
@@ -356,27 +401,34 @@ function loadOrders() {
   const raw = readJsonStorage(STORAGE_ORDERS, []);
   return Array.isArray(raw) ? raw.map(normalizeOrderRecord).filter(Boolean) : [];
 }
+// Everything that reaches here came out of `loadOrders` or was normalized by its writer, so
+// normalizing the whole history again on every save is a second full pass over every receipt
+// ever rung -- for one appended row. `loadOrders` is the trust boundary; this is not.
 function saveOrdersList(orders) {
-  return writeJsonStorage(STORAGE_ORDERS, (orders || []).map(normalizeOrderRecord).filter(Boolean));
+  return writeJsonStorage(STORAGE_ORDERS, (orders || []).filter(Boolean));
 }
-function saveOrders() {
-  return saveOrdersList(state.orders);
-}
+// Highest receipt sequence found in stored orders. Scanned once per session, not per sale:
+// `hwpos.orderSeq` is the counter, and this scan only exists to recover if that counter is
+// wiped or lags -- which cannot happen halfway through a session. Rescanning per receipt
+// meant parsing the entire order history to hand out one number.
+let scannedOrderSeq = null;
 function nextOrderNumber() {
   // Format: <register>-<seq3>, e.g. "1-001". Sequence persists across sessions.
   const registerNo = currentStoreInfo().registerNo || STORE_INFO.registerNo;
-  const orders = readJsonStorage(STORAGE_ORDERS, []);
-  const orderSeq = Array.isArray(orders)
-    ? orders.reduce((max, o) => {
-        const number = String(o?.number || '');
-        const parts = number.split('-');
-        const reg = parts[0];
-        const seq = parseInt(parts[1] || '', 10);
-        return reg === registerNo && Number.isFinite(seq) ? Math.max(max, seq) : max;
-      }, 0)
-    : 0;
+  if (scannedOrderSeq == null) {
+    const orders = readJsonStorage(STORAGE_ORDERS, []);
+    scannedOrderSeq = Array.isArray(orders)
+      ? orders.reduce((max, o) => {
+          const number = String(o?.number || '');
+          const parts = number.split('-');
+          const reg = parts[0];
+          const seq = parseInt(parts[1] || '', 10);
+          return reg === registerNo && Number.isFinite(seq) ? Math.max(max, seq) : max;
+        }, 0)
+      : 0;
+  }
   let seq = parseInt(storageGet(STORAGE_ORDER_SEQ, '0') || '0', 10) || 0;
-  seq = Math.max(seq, orderSeq);
+  seq = Math.max(seq, scannedOrderSeq);
   seq += 1;
   storageSet(STORAGE_ORDER_SEQ, String(seq));
   return `${registerNo}-${String(seq).padStart(3, '0')}`;
@@ -431,7 +483,9 @@ function currentStoreInfo() {
 
 // ---------- Order format layer ----------
 function normalizeOrderItem(item = {}) {
-  const qty = Math.max(1, toNumber(item.qty, 1));
+  // Floor at 0, not 1: a hardware store sells 2.5 m of wire and 0.75 kg of nails,
+  // and clamping that up to 1 invents both stock and revenue.
+  const qty = Math.max(0, toNumber(item.qty, 1));
   const price = moneyValue(item.price);
   const gross = moneyValue(price * qty);
   const disc = item.discount && item.discount.value
@@ -450,6 +504,9 @@ function normalizeOrderItem(item = {}) {
     lineGross: gross,
     lineDiscount: moneyValue(discounted.off),
     lineTotal: moneyValue(discounted.net),
+    // What this cost US, stamped at the moment of sale. Suppliers re-price; without this,
+    // every past margin in the back office silently rewrites itself the next time cost moves.
+    cost: moneyValue(toNumber(item.cost, state.products.find(p => p.id === (item.productId || item.id))?.cost || 0)),
   };
 }
 
@@ -467,6 +524,8 @@ function normalizePayment(payment = {}) {
   };
 }
 
+const KNOWN_METHOD_LABELS = { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Charge to account', split: 'Split payment', unpaid: 'Not completed' };
+
 function buildOrderPayments({ status, paymentMethod, total, tendered = 0, change = 0 }) {
   if (status === 'saved' || paymentMethod === 'unpaid') {
     return [{ method: 'unpaid', label: 'Not completed', amount: 0, tendered: 0, change: 0, ref: '' }];
@@ -481,6 +540,13 @@ function buildOrderPayments({ status, paymentMethod, total, tendered = 0, change
       { method: 'cash', label: 'Cash', amount: cashApplied, tendered: moneyValue(tendered), change: moneyValue(change), ref: '' },
       ...(balance > 0 ? [{ method: 'credit', label: 'Charge balance', amount: balance, tendered: 0, change: 0, ref: '' }] : []),
     ];
+  }
+  // Only cash lands in the drawer. GCash, QR and custom names ("Maya") arrive here as their own
+  // method string and used to fall through to a cash row -- so every one of them printed CASH on
+  // the receipt and `buildCashDrawerSummary` expected money that never went in the till.
+  if (paymentMethod && paymentMethod !== 'cash') {
+    return [{ method: 'other', label: KNOWN_METHOD_LABELS[paymentMethod] || String(paymentMethod),
+              amount: moneyValue(total), tendered: moneyValue(tendered), change: moneyValue(change), ref: '' }];
   }
   return [{ method: 'cash', label: 'Cash', amount: moneyValue(total), tendered: moneyValue(tendered), change: moneyValue(change), ref: '' }];
 }
@@ -508,15 +574,11 @@ function normalizeOrderRecord(raw = {}) {
   // The legacy paymentMethod stays coerced to cash/credit/split/unpaid so drawer
   // math and credit logic keep working. The real tendered method (GCash, QR, or a
   // custom name like "Maya") is preserved separately in paymentKind/paymentMethodLabel.
-  // The legacy paymentMethod stays coerced to cash/credit/split/unpaid so drawer
-  // math and credit logic keep working. The real tendered method (GCash, QR, or a
-  // custom name like "Maya") is preserved separately in paymentKind/paymentMethodLabel.
   const rawMethodStr = (typeof raw.paymentMethod === 'string' ? raw.paymentMethod : '').trim();
   const rawMethodLower = rawMethodStr.toLowerCase();
   const paymentMethod = ['cash', 'credit', 'split', 'unpaid'].includes(rawMethodLower)
     ? rawMethodLower
     : (status === 'saved' ? 'unpaid' : 'cash');
-  const KNOWN_METHOD_LABELS = { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Charge to account', split: 'Split payment', unpaid: 'Not completed' };
   let paymentKind, paymentMethodLabel;
   if (raw.paymentKind && raw.paymentMethodLabel) {
     paymentKind = String(raw.paymentKind);
@@ -540,7 +602,9 @@ function normalizeOrderRecord(raw = {}) {
     ? raw.payments.map(normalizePayment)
     : buildOrderPayments({
         status,
-        paymentMethod,
+        // The true tender, not the drawer-facing coercion -- `paymentMethod` is already flattened
+        // to cash for GCash/QR/custom, and rebuilding payments from that loses the method.
+        paymentMethod: paymentKind === 'other' ? paymentMethodLabel : paymentKind,
         total,
         tendered: toNumber(raw.tendered, paymentMethod === 'cash' ? total : 0),
         change: toNumber(raw.change, 0),
@@ -636,10 +700,20 @@ window.HWPOS_ORDER_FORMAT = {
 };
 
 // ---------- Fuse rebuild ----------
+// Nobody asks for "one nail". The catalog is written singular and the counter is asked in
+// plural, so both forms go in the index -- searching "nails" for "Common Wire Nail" found
+// nothing at all, and a POS search that returns an empty grid loses the sale.
+function withPlurals(text) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const extra = words.map(w => (/[a-z]s$/.test(w) ? w.slice(0, -1) : (/[a-z]$/.test(w) ? w + 's' : '')));
+  return [...words, ...extra.filter(Boolean)].join(' ');
+}
+
 function rebuildFuse() {
   const indexed = state.products.map(p => ({
     ...p,
-    searchBlob: [p.name, p.sku, p.barcode, p.brand, ...(p.aliases || [])].join(' ').toLowerCase(),
+    searchBlob: withPlurals(
+      [p.name, p.sku, p.barcode, p.brand, ...(p.aliases || [])].join(' ').toLowerCase()),
   }));
   if (typeof Fuse !== 'function') {
     state.fuse = {
@@ -837,6 +911,7 @@ function getFilteredSellProducts() {
   if (state.folderId !== 'all') {
     list = list.filter(p => p.folder === state.folderId);
   }
+  if (searchIntent && state.query.trim()) searchIntent.results = list.length;   // the count the cashier saw
   return list;
 }
 
@@ -988,6 +1063,7 @@ function renderProducts() {
         </svg>
         <div class="nr-title">No items found</div>
         <div class="nr-sub">Try a different keyword or pick another folder</div>
+        ${state.query.trim() ? `<button class="text-btn nr-lost" type="button" data-act="lost-sale">Log “${escapeHtml(state.query.trim())}” as a lost sale</button>` : ''}
       </div>`;
     renderPager();
     renderSellHeader();
@@ -1111,8 +1187,10 @@ function selectVariant(id) {
 
 function changeVariantQty(delta) {
   const input = $('#variantQtyInput');
-  let q = parseInt(input.value, 10) || 1;
-  q = Math.max(1, q + delta);
+  const p = state.products.find(x => x.id === state.variantModal.selectedId);
+  // The buttons still step by a whole unit even for wire -- nobody taps + a hundred times
+  // to buy a metre. The typed field is what carries the fraction.
+  const q = qtyFrom(p, parseFloat(input.value) + delta, stepFor(p));
   input.value = q;
   state.variantModal.qty = q;
 }
@@ -1123,9 +1201,10 @@ function addVariantToCart() {
   const p = state.products.find(x => x.id === vm.selectedId);
   if (!p) return;
 
-  const qty = Math.max(1, parseInt($('#variantQtyInput').value, 10) || 1);
+  const qty = qtyFrom(p, $('#variantQtyInput').value);
   const comment = $('#variantCommentInput').value.trim();
 
+  beginCart();
   const existing = state.cart.find(i => i.id === p.id && (i.comment || '') === comment);
   if (existing) existing.qty += qty;
   else state.cart.push({
@@ -1134,6 +1213,7 @@ function addVariantToCart() {
     comment: comment || undefined,
   });
 
+  trackItemAdd(p, qty, 'variant');
   renderCart();
   showToast(`Added · ${qty} × ${p.name}`);
   $('#variantModal').hidden = true;
@@ -1192,15 +1272,28 @@ function toggleShowPrice() {
 }
 
 // ---------- Cart ----------
-function addToCart(productId) {
+// Every quantity typed anywhere in the POS comes through here. `parseInt` used to live at
+// each of these inputs, which sold 2 metres of the 2.5 the customer asked for; `roundQty`
+// (bo-model.js) is the one definition of what a quantity may be for a given product, so the
+// till and the back office can never disagree about it.
+const productOf = (item) => state.products.find(p => p.id === (item.productId || item.id));
+
+function qtyFrom(product, value, fallback = 1) {
+  const n = roundQty(product, parseFloat(value));
+  return n > 0 ? n : fallback;
+}
+
+function addToCart(productId, via = 'other') {
   const p = state.products.find(x => x.id === productId);
   if (!p) return;
+  beginCart();
   const existing = state.cart.find(i => i.id === productId);
   if (existing) existing.qty += 1;
   else state.cart.push({
     id: p.id, name: p.name, sku: p.sku, brand: p.brand,
     unit: p.unit, price: p.price, qty: 1,
   });
+  trackItemAdd(p, 1, via);
   renderCart();
   showToast(`Added · ${p.name}`);
 }
@@ -1218,6 +1311,7 @@ function addProductByCode(rawCode, { source = 'barcode' } = {}) {
   const code = String(rawCode || '').trim();
   if (!code) return false;
   const product = findProductByCode(code);
+  track('scan', { code, found: !!product, productId: product ? product.id : '' });
   if (!product) {
     const message = source === 'camera'
       ? `No item found for ${code}`
@@ -1226,13 +1320,14 @@ function addProductByCode(rawCode, { source = 'barcode' } = {}) {
     showToast(message);
     return false;
   }
-  addToCart(product.id);
+  addToCart(product.id, 'scan');
   const search = $('#searchInput');
   const clear = $('#searchClear');
   if (search) {
     search.value = '';
     state.query = '';
   }
+  endSearch();
   clear?.classList.remove('visible');
   renderProducts();
   if (source === 'camera') showBarcodeStatus(`Added ${product.name}`);
@@ -1252,6 +1347,8 @@ function removeFromCart(id) {
 }
 function clearCart() {
   state.cart = [];
+  state.cartId = '';
+  state.cartStartedAt = 0;
   state.customer = null;
   state.cartDiscount = null;
   state.tierDiscountDismissed = false;
@@ -1556,8 +1653,8 @@ function openCartItemModal(id) {
 }
 function changeCartItemModalQty(delta) {
   const input = $('#cimQtyInput');
-  let q = parseInt(input.value, 10) || 1;
-  q = Math.max(1, q + delta);
+  const p = productOf(state.cart.find(i => i.id === state.cartItemModal.id) || {});
+  const q = qtyFrom(p, (parseFloat(input.value) || 0) + delta, stepFor(p));
   input.value = q;
   updateCartItemModalLineTotal();
 }
@@ -1570,7 +1667,7 @@ function getCartItemModalDiscount() {
 function updateCartItemModalLineTotal() {
   const item = state.cart.find(i => i.id === state.cartItemModal.id);
   if (!item) return;
-  const q = Math.max(1, parseInt($('#cimQtyInput').value, 10) || 1);
+  const q = qtyFrom(productOf(item), $('#cimQtyInput').value);
   const gross = item.price * q;
   const disc = getCartItemModalDiscount();
   const { net } = applyDiscount(gross, disc);
@@ -1579,9 +1676,14 @@ function updateCartItemModalLineTotal() {
 function saveCartItemEdit() {
   const item = state.cart.find(i => i.id === state.cartItemModal.id);
   if (!item) return;
-  const q = Math.max(1, parseInt($('#cimQtyInput').value, 10) || 1);
+  const q = qtyFrom(productOf(item), $('#cimQtyInput').value);
+  if (q !== item.qty) track('item_qty', { productId: item.id, from: item.qty, to: q });
   item.qty = q;
   const disc = getCartItemModalDiscount();
+  const was = item.discount || null;
+  if (JSON.stringify(disc) !== JSON.stringify(was)) {
+    track('discount', { scope: 'line', kind: (disc || was).type, value: disc ? disc.value : 0, productId: item.id });
+  }
   if (disc) item.discount = disc; else delete item.discount;
   renderCart();
   $('#cartItemModal').hidden = true;
@@ -1589,6 +1691,8 @@ function saveCartItemEdit() {
 function removeCartItemFromModal() {
   const id = state.cartItemModal.id;
   if (!id) return;
+  const gone = state.cart.find(i => i.id === id);
+  if (gone) track('item_remove', { productId: gone.id, qty: gone.qty, unitPrice: gone.price });
   state.cart = state.cart.filter(i => i.id !== id);
   renderCart();
   $('#cartItemModal').hidden = true;
@@ -1614,10 +1718,12 @@ function applyCartDiscount() {
   const type = typeBtn ? typeBtn.dataset.cdType : 'amount';
   const value = parseFloat($('#cdInput').value) || 0;
   state.cartDiscount = value > 0 ? { type, value } : null;
+  track('discount', { scope: 'cart', kind: type, value: value > 0 ? value : 0 });
   renderCart();
   $('#cartDiscountModal').hidden = true;
 }
 function clearCartDiscount() {
+  if (state.cartDiscount) track('discount', { scope: 'cart', kind: state.cartDiscount.type, value: 0 });
   state.cartDiscount = null;
   state.tierDiscountDismissed = true;
   renderCart();
@@ -1875,7 +1981,7 @@ function openCustomerEditModal() {
   $('#custName').value = '';
   $('#custPhone').value = '';
   $('#custAddress').value = '';
-  $('#custType').value = '';
+  $('#custType').value = 'retail';
   $('#customerEditModal').hidden = false;
   setTimeout(() => $('#custName').focus(), 50);
 }
@@ -1887,12 +1993,13 @@ function saveSavedCustomerFromModal() {
   const c = {
     id: 'cust_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3),
     name, phone, address,
-    type: $('#custType').value || '',
+    type: $('#custType').value || 'retail',
     creditLimit: 0,
     currentBalance: 0,
   };
   state.customers.push(c);
   saveSavedCustomers();
+  track('customer_create', { customerId: c.id });
   $('#customerEditModal').hidden = true;
   if (state.view === 'customers') renderCustomers();
   showToast(`Added “${name}”`);
@@ -1923,23 +2030,28 @@ function cartTotals() {
     lineGross += g;
     lineDiscount += off;
   }
-  const subtotal = lineGross - lineDiscount;
-  const cartDisc = applyDiscount(subtotal, state.cartDiscount);
-  const grandTotal = cartDisc.net;
-  const totalDiscount = lineDiscount + cartDisc.off;
-  // VAT-inclusive (Philippine 12%): the displayed prices already include VAT.
+  const cartDisc = applyDiscount(lineGross - lineDiscount, state.cartDiscount);
+  // Round ONCE, here, then derive the rest from the rounded pair. Rounding the subtotal, the
+  // discount and the total independently put a 5% tier at sub 1219.30 - disc 60.97 = 1158.33
+  // against a total of 1158.34, and a receipt whose lines don't add up is a BIR problem, not
+  // a cosmetic one. Same for VAT: vatable + vat must equal the total exactly.
+  const subtotal = moneyValue(lineGross);
+  const total = moneyValue(cartDisc.net);
   const vatRate = (typeof state.vatRate === 'number') ? state.vatRate : 0.12;
-  const vatAmount = vatRate > 0 ? grandTotal * (vatRate / (1 + vatRate)) : 0;
-  const vatableSales = grandTotal - vatAmount;
+  // VAT-inclusive (Philippine 12%): the displayed prices already include VAT.
+  const vatAmount = vatRate > 0 ? moneyValue(total * (vatRate / (1 + vatRate))) : 0;
   return {
-    subtotal: lineGross,
-    discount: totalDiscount,
-    cartDiscountOff: cartDisc.off,
-    lineDiscountOff: lineDiscount,
-    total: grandTotal,
+    subtotal,
+    discount: moneyValue(subtotal - total),
+    // ponytail: the two components still round on their own, so they can each sit a centavo
+    // off the derived total when a line AND a receipt discount are both in play. They are a
+    // breakdown, not the money -- `discount` above is what the receipt and the order carry.
+    cartDiscountOff: moneyValue(cartDisc.off),
+    lineDiscountOff: moneyValue(lineDiscount),
+    total,
     vatRate,
     vatAmount,
-    vatableSales,
+    vatableSales: moneyValue(total - vatAmount),
   };
 }
 
@@ -1953,7 +2065,7 @@ function renderCart() {
       <button class="cart-item" data-id="${item.id}" title="Edit item">
         <div class="ci-main">
           <div class="ci-name">${escapeHtml(item.name)}</div>
-          <div class="ci-sub">${escapeHtml(item.sku)} · ${peso(item.price)}${item.qty > 1 ? ` × ${item.qty}` : ''}</div>
+          <div class="ci-sub">${escapeHtml(item.sku)} · ${peso(item.price)}${item.qty === 1 ? '' : ` × ${item.qty}`}</div>
         </div>
         <div class="ci-right">${peso(item.price * item.qty)}</div>
       </button>
@@ -1961,7 +2073,7 @@ function renderCart() {
     list.scrollTop = list.scrollHeight;
   }
 
-  $('#cartCount').textContent = `${state.cart.reduce((s, i) => s + i.qty, 0)} items`;
+  $('#cartCount').textContent = `${state.cart.length} item${state.cart.length === 1 ? '' : 's'}`;
   $('#subtotal').textContent = peso(t.subtotal);
   $('#discount').textContent = '-' + peso(t.discount);
   const discRow = $('#discountRow'); if (discRow) discRow.style.display = t.discount > 0 ? '' : 'none';
@@ -2028,6 +2140,7 @@ function renderCustomerPicker() {
 }
 function openCustomerModal() { renderCustomerPicker(); $('#customerModal').hidden = false; }
 function selectCustomer(id) {
+  const prev = state.customer;
   if (id === 'walk-in') {
     state.customer = null;
   } else {
@@ -2036,6 +2149,9 @@ function selectCustomer(id) {
       state.deliveryAddress = state.customer.address;
     }
   }
+  const next = state.customer;
+  if (prev && prev.id !== (next && next.id)) track('customer_detach', { customerId: prev.id });
+  if (next && next.id !== (prev && prev.id)) track('customer_attach', { customerId: next.id, tier: next.type || '' });
   state.cartDiscount = null;
   state.tierDiscountDismissed = false;
   updateCustomerButton();
@@ -2052,7 +2168,9 @@ function openPaymentModal() {
   const tierRate = getTierDiscount(state.customer);
   if (tierRate > 0 && !state.cartDiscount && !state.tierDiscountDismissed) {
     state.cartDiscount = { type: 'percent', value: tierRate * 100, tierType: state.customer.type };
+    track('discount', { scope: 'cart', kind: 'percent', value: tierRate * 100, tier: state.customer.type });
   }
+  track('checkout_open', { lines: state.cart.length, subtotal: cartTotals().subtotal });
   switchView('checkout');
   renderCheckout();
 }
@@ -2071,14 +2189,14 @@ function renderCheckout() {
         <button class="cart-item" style="cursor:default">
           <div class="ci-main">
             <div class="ci-name">${escapeHtml(item.name)}</div>
-            <div class="ci-sub">${escapeHtml(item.sku)} · ${peso(item.price)}${item.qty > 1 ? ` × ${item.qty}` : ''}</div>
+            <div class="ci-sub">${escapeHtml(item.sku)} · ${peso(item.price)}${item.qty === 1 ? '' : ` × ${item.qty}`}</div>
           </div>
           <div class="ci-right">${peso(item.price * item.qty)}</div>
         </button>
       `).join('');
     }
   }
-  if (cartCount) cartCount.textContent = `${state.cart.reduce((s, i) => s + i.qty, 0)} items`;
+  if (cartCount) cartCount.textContent = `${state.cart.length} item${state.cart.length === 1 ? '' : 's'}`;
 
   // Render totals
   const subEl = $('#checkoutSubtotal');
@@ -2109,6 +2227,10 @@ function renderCheckout() {
   if (!state.customer && (state.paymentMethod === 'credit' || state.paymentMethod === 'split')) {
     state.paymentMethod = 'cash';
   }
+  // You can only charge a named account, so the two credit cards appear with the customer.
+  const canCharge = !!state.customer;
+  const credCard = $('#payMethodCredit'); if (credCard) credCard.hidden = !canCharge;
+  const splitCard = $('#payMethodSplit'); if (splitCard) splitCard.hidden = !canCharge;
   if (!state.paymentMethodChosen) {
     // Step 1: show method grid, hide tender, disable complete
     state.paymentMethod = 'cash';
@@ -2122,12 +2244,7 @@ function renderCheckout() {
   syncPayFields();
   $('#checkoutTender').value = '';
   $('#checkoutChange').textContent = peso(0);
-  const sub = $('#checkoutSub');
-  if (sub) {
-    if (state.paymentMethod === 'split' && state.customer) sub.textContent = `Cash + charge to ${state.customer.name}`;
-    else if (state.paymentMethod === 'credit' && state.customer) sub.textContent = `Charge to ${state.customer.name}`;
-    else sub.textContent = 'Walk-in customer';
-  }
+  renderCheckoutSub();
   const fl = $('#checkoutFulfilLine');
   if (fl) {
     if (state.fulfilment === 'delivery') {
@@ -2137,14 +2254,28 @@ function renderCheckout() {
     }
   }
 }
+// Who this sale is for. Picking a method doesn't re-render the checkout, so both callers
+// need this or the line goes stale the moment the cashier taps Account.
+function renderCheckoutSub() {
+  const sub = $('#checkoutSub');
+  if (!sub) return;
+  if (state.paymentMethod === 'split' && state.customer) sub.textContent = `Cash + charge to ${state.customer.name}`;
+  else if (state.paymentMethod === 'credit' && state.customer) sub.textContent = `Charge to ${state.customer.name}`;
+  // A named customer stays named before a method is picked -- "Walk-in" over a ₱1,158
+  // account sale is how the wrong person gets charged.
+  else sub.textContent = state.customer ? state.customer.name : 'Walk-in customer';
+}
+
 function syncPayFields() {
   const showTender = state.paymentMethodChosen && state.paymentMethod !== 'credit';
   const cash = $('#checkoutCashFields');
   if (cash) cash.style.display = showTender ? '' : 'none';
+  // On a split the same two fields mean the opposite thing: what they paid, and what is left owing.
+  const split = state.paymentMethod === 'split';
   const tenderLabel = $('#checkoutCashFields .checkout-section-label');
-  if (tenderLabel) tenderLabel.textContent = 'Amount tendered';
+  if (tenderLabel) tenderLabel.textContent = split ? 'Cash amount' : 'Amount tendered';
   const changeLabel = $('.checkout-change-row span:first-child');
-  if (changeLabel) changeLabel.textContent = 'Change';
+  if (changeLabel) changeLabel.textContent = split ? 'On account' : 'Change';
   // Show "Other" name input only when other is selected
   const otherRow = $('#otherMethodRow');
   if (otherRow) otherRow.classList.toggle('visible', state.paymentMethod === 'other');
@@ -2242,12 +2373,32 @@ function saveOrderMutation(order) {
   return normalized;
 }
 
-function restoreOrderStock(order) {
-  (order.items || []).forEach(item => {
-    const p = state.products.find(product => product.id === item.id || product.id === item.productId);
-    if (p) p.stock = toNumber(p.stock, 0) + toNumber(item.qty, 0);
+// Stock is the sum of the movement log, not a number three code paths overwrite. Every
+// sale, void and exchange writes the row that explains it and lets `applyMovement` update
+// the cached `product.stock`, so the shelf, the receipt and Inventory can never disagree.
+// `unitCost` is the cost stamped on the line, not today's, for the same reason margins are.
+function moveStock(items, { reason, refId = '', note = '', sign = -1 }) {
+  const rows = [];
+  (items || []).forEach((item) => {
+    const p = productOf(item);
+    if (!p) return;
+    const qty = sign * toNumber(item.qty, 0);
+    if (!qty) return;
+    const mv = makeMovement({
+      productId: p.id, qty, reason, refId, note,
+      unitCost: item.cost != null ? item.cost : p.cost,
+      staff: currentStoreInfo().cashier,
+    });
+    applyMovement(p, mv);
+    rows.push(mv);
   });
+  if (!rows.length) return;
+  appendMovements(rows);
   saveProducts();
+}
+
+function restoreOrderStock(order, note = '') {
+  moveStock(order.items, { reason: 'return', refId: order.id, note, sign: 1 });
 }
 
 function addCustomerLedgerEntry(entry) {
@@ -2455,13 +2606,16 @@ async function printOrder(order, opts = {}) {
   const cfg = printerConfig();
   if (cfg.driver !== 'network' && cfg.driver !== 'bluetooth') {
     openReceipt(order);
+    track('receipt_print', { orderId: order.id, ok: true });   // browser driver: ok = pop-up opened
     return true;
   }
   try {
     await window.HWPOS_PRINTER.print(toReceiptViewModel(order), cfg);
+    track('receipt_print', { orderId: order.id, ok: true });
     if (!opts.silent) showToast('Receipt printed');
     return true;
   } catch (e) {
+    track('receipt_print', { orderId: order.id, ok: false });
     showToast(e.message || 'Print failed');
     return false;
   }
@@ -2522,12 +2676,44 @@ function saveCurrentReceipt(customerOverride = null) {
       change: 0,
       customerOverride,
     }));
+    track('cart_hold', { lines: order.items.length });
     showOrderAfterCartClears(order);
   } catch (err) {
     console.error(err);
     showToast('Receipt was not saved. Check browser storage.');
     flashControl($('#saveBtn'));
   }
+}
+
+// How far past the customer's limit this sale would push them, in pesos. 0 = fine.
+// `buildOrderPayments` is the definition of what actually goes on account, so this
+// splits the tender the same way it does and can't drift from what gets charged.
+function creditOverLimit(tendered = 0) {
+  const c = state.customer;
+  const limit = toNumber(c && c.creditLimit, 0);
+  if (!c || limit <= 0) return 0;
+  const { total } = cartTotals();
+  const charge = buildOrderPayments({ status: 'completed', paymentMethod: state.paymentMethod, total, tendered })
+    .filter(p => p.method === 'credit')
+    .reduce((sum, p) => sum + p.amount, 0);
+  if (charge <= 0) return 0;
+  return Math.max(0, moneyValue(toNumber(c.currentBalance, 0) + charge - limit));
+}
+
+// What the cart is asking for that the shelf does not have. `sellOutOfStock` was stored on
+// every product, shown in the editor, mapped in the CSV and in schema.sql -- and read by no
+// code path, so a cart could drive Portland Cement to -218 bags and Inventory to a negative
+// value at cost. Checked once here because every way of adding to the cart ends at checkout;
+// a guard per entry point is four guards and three of them go stale.
+// A manager can still override: on a shop floor the count is usually what is wrong, and
+// refusing the sale outright would send a paying customer away over a bookkeeping error.
+function stockShortfall(cart = state.cart) {
+  return (cart || []).map((item) => {
+    const p = productOf(item);
+    if (!p || p.sellOutOfStock) return null;
+    const short = roundQty(p, toNumber(item.qty, 0) - toNumber(p.stock, 0));
+    return short > 0 ? { id: p.id, name: p.name, short, unit: p.unit || 'pc' } : null;
+  }).filter(Boolean);
 }
 
 function applyCreditBalance(order) {
@@ -2626,7 +2812,7 @@ function voidOrder(orderId, reason = 'Voided by manager') {
   if (!requireManagerAction('Void sale')) return null;
   const order = loadOrders().find(o => o.id === orderId);
   if (!order || !isCompletedSale(order)) return null;
-  restoreOrderStock(order);
+  restoreOrderStock(order, reason);
   reverseOrderCredit(order, reason);
   const updated = saveOrderMutation({
     ...order,
@@ -2634,6 +2820,7 @@ function voidOrder(orderId, reason = 'Voided by manager') {
     reason,
     voidedAt: Date.now(),
   });
+  track('void', { orderId, reason });
   renderOrders();
   renderReports();
   return updated;
@@ -2643,7 +2830,7 @@ function refundOrder(orderId, reason = 'Refunded by manager') {
   if (!requireManagerAction('Refund sale')) return null;
   const order = loadOrders().find(o => o.id === orderId);
   if (!order || !isCompletedSale(order)) return null;
-  restoreOrderStock(order);
+  restoreOrderStock(order, reason);
   reverseOrderCredit(order, reason);
   const updated = saveOrderMutation({
     ...order,
@@ -2651,6 +2838,7 @@ function refundOrder(orderId, reason = 'Refunded by manager') {
     reason,
     refundedAt: Date.now(),
   });
+  track('refund', { orderId, amount: order.total, reason });
   renderOrders();
   renderReports();
   return updated;
@@ -2658,9 +2846,18 @@ function refundOrder(orderId, reason = 'Refunded by manager') {
 
 function recordReturn(orderId, reason = 'Returned items') {
   if (!requireManagerAction('Return sale')) return null;
-  const order = loadOrders().find(o => o.id === orderId);
+  const all = loadOrders();
+  const order = all.find(o => o.id === orderId);
   if (!order || !isCompletedSale(order)) return null;
-  restoreOrderStock(order);
+  // Void, refund and exchange flip the original's status, so a second attempt fails the check
+  // above. A return deliberately leaves the original `completed` -- SALE_SIGN.return = -1 on
+  // the separate return row is what cancels it -- so nothing stopped the same receipt being
+  // returned twice: the goods went back on the shelf twice and the money went out twice.
+  if (all.some(o => o.status === 'return' && o.originalOrderId === order.id)) {
+    showToast(`${order.number} has already been returned`);
+    return null;
+  }
+  restoreOrderStock(order, reason);
   reverseOrderCredit(order, reason);
   const returnOrder = persistOrder({
     ...order,
@@ -2671,9 +2868,16 @@ function recordReturn(orderId, reason = 'Returned items') {
     originalOrderId: order.id,
     reason,
     returnedAt: Date.now(),
-    paymentMethod: 'cash',
-    payments: [{ method: 'cash', label: 'Return', amount: moneyValue(order.total), tendered: 0, change: 0, ref: order.number }],
+    // The money goes back the way it came in. Forcing a cash leg here paid ₱185 out of the
+    // drawer for a sale that was charged to an account -- `reverseOrderCredit` above had
+    // already taken it off the account, so a day with one account return closed short by
+    // exactly the returned amount and nothing on the receipt said why.
+    paymentMethod: order.paymentMethod,
+    payments: (order.payments || []).map(p => ({
+      ...p, label: 'Return', tendered: 0, change: 0, ref: order.number,
+    })),
   });
+  track('refund', { orderId, amount: order.total, reason });
   renderOrders();
   renderReports();
   return returnOrder;
@@ -2686,8 +2890,8 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange') {
   const replacements = (replacementItems || [])
     .map(item => {
       const product = state.products.find(p => p.id === item.id || p.id === item.productId);
-      const qty = Math.max(1, parseInt(item.qty, 10) || 1);
       if (!product) return null;
+      const qty = qtyFrom(product, item.qty);
       return {
         id: product.id,
         productId: product.id,
@@ -2701,7 +2905,7 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange') {
     .filter(Boolean);
   if (!replacements.length) return null;
 
-  restoreOrderStock(order);
+  restoreOrderStock(order, reason);
   reverseOrderCredit(order, reason);
   const original = saveOrderMutation({
     ...order,
@@ -2709,12 +2913,8 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange') {
     reason,
     refundedAt: Date.now(),
   });
+  track('refund', { orderId, amount: order.total, reason });
 
-  replacements.forEach(item => {
-    const product = state.products.find(p => p.id === item.id);
-    if (product) product.stock = toNumber(product.stock, 0) - item.qty;
-  });
-  saveProducts();
   const subtotal = moneyValue(replacements.reduce((sum, item) => sum + item.price * item.qty, 0));
   const exchangeSale = persistOrder({
     id: orderUid(),
@@ -2738,6 +2938,13 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange') {
     originalOrderId: order.id,
     reason,
   });
+  // After the sale exists, so the movement can point at the receipt that caused it.
+  moveStock(replacements, { reason: 'sale', refId: exchangeSale.id, note: 'Exchange' });
+  track('sale_complete', {
+    orderId: exchangeSale.id, total: exchangeSale.total, lines: exchangeSale.items.length,
+    fulfilment: exchangeSale.fulfilment, customerId: exchangeSale.customer ? exchangeSale.customer.id : '',
+    msSinceCartStart: null,
+  });
   renderOrders();
   renderReports();
   return { original, exchangeSale };
@@ -2747,16 +2954,24 @@ function completeSale() {
   const totals = cartTotals();
   const total = moneyValue(totals.total);
   let tendered = total, change = 0;
+  const isSplit = state.paymentMethod === 'split';
   const cashLike = ['cash', 'gcash', 'qr', 'other', 'split'].includes(state.paymentMethod);
   if (cashLike) {
     const tenderRaw = ($('#checkoutTender')?.value || $('#tenderInput')?.value || '').trim();
     tendered = tenderRaw ? moneyValue(parseFloat(tenderRaw) || 0) : total;
-    if (tendered < total) {
+    // A short tender is the whole point of a split -- the rest goes on the account.
+    // Demanding the full amount here made "Split" mean "cash", so it never left a balance.
+    if (tendered < total && !isSplit) {
       setCheckoutError('Tendered amount is below the total.');
       $('#checkoutTender')?.focus();
       return;
     }
-    change = moneyValue(tendered - total);
+    change = moneyValue(Math.max(0, tendered - total));
+  }
+  if (isSplit && tendered >= total) {
+    setCheckoutError('A split needs a cash amount below the total. Use Cash for the full amount.');
+    $('#checkoutTender')?.focus();
+    return;
   }
   if (state.paymentMethod === 'other') {
     const otherName = $('#otherMethodInput')?.value?.trim();
@@ -2768,6 +2983,22 @@ function completeSale() {
   }
   if (state.paymentMethod === 'credit' && !state.customer) {
     setCheckoutError('Select a customer before charging to account.');
+    return;
+  }
+  // The limit was stored, shown on the customer card, and enforced nowhere -- a ₱5,000
+  // account would take a ₱50,000 charge. A manager can still override it on the spot.
+  const overBy = creditOverLimit(tendered);
+  if (overBy > 0 && !window.confirm(
+    `${state.customer.name} would go ₱${overBy.toFixed(2)} over their ₱${toNumber(state.customer.creditLimit, 0).toFixed(2)} credit limit.\n\nCharge anyway?`)) {
+    setCheckoutError('Charge would exceed the credit limit.');
+    return;
+  }
+  const short = stockShortfall();
+  if (short.length && !window.confirm(
+    `Not enough stock on hand:\n\n${short.map(s => `${s.name} — short ${s.short} ${s.unit}`).join('\n')}\n\nSell anyway?`)) {
+    setCheckoutError(`Not enough ${short[0].name} in stock.`);
+    // The customer walks out without it -- the exact moment demand used to leave no record.
+    openLostSale({ product: state.products.find(p => p.id === short[0].id), qty: short[0].short });
     return;
   }
   const actualMethod = state.paymentMethod === 'other'
@@ -2787,13 +3018,13 @@ function completeSale() {
     return;
   }
 
-  // Decrement stock for sold items
-  order.items.forEach(it => {
-    const p = state.products.find(x => x.id === it.id);
-    if (p) p.stock = p.stock - it.qty;
-  });
-  saveProducts();
+  moveStock(order.items, { reason: 'sale', refId: order.id });
   applyCreditBalance(order);
+  track('sale_complete', {
+    orderId: order.id, total: order.total, lines: order.items.length, fulfilment: order.fulfilment,
+    customerId: order.customer ? order.customer.id : '',
+    msSinceCartStart: state.cartStartedAt ? Date.now() - state.cartStartedAt : null,
+  });
 
   showCheckoutSuccess(order);
   // ponytail: auto-print only for real printers. The browser driver would fire a pop-up on every sale.
@@ -2824,8 +3055,10 @@ function fmtReceiptTime(ts) {
     + ' ' + d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
+// Lines, not the sum of the quantities: 2.5 m of wire plus a bag of cement is two items,
+// not "3.5 items". Once anything is sold by measure, a qty sum stops being a count.
 function orderItemCount(o) {
-  return (o.items || []).reduce((s, i) => s + i.qty, 0);
+  return (o.items || []).length;
 }
 
 function isSavedOrder(o) {
@@ -2983,6 +3216,7 @@ function renderOrders() {
     return;
   }
 
+  const trips = latestDeliveryEvents(loadEvents('deliveryEvents'));
   list.innerHTML = filtered.map(o => {
     const active = state.selectedOrderId === o.id ? 'active' : '';
     const cust = o.customer ? o.customer.name : 'Walk-in';
@@ -2998,6 +3232,7 @@ function renderOrders() {
           <div class="or-sub">
             <span class="or-sub-time">${fmtOrderTime(o.ts)} · ${orderItemCount(o)} item${orderItemCount(o) === 1 ? '' : 's'}</span>
             <span class="or-status ${statusCls}">${orderStatusLabel(o)}</span>
+            ${o.fulfilment === 'delivery' && !isSavedOrder(o) ? deliveryChip(trips.get(o.id)) : ''}
           </div>
         </div>
         <button class="or-receipt-btn" data-act="view-receipt" data-order-id="${o.id}" title="View receipt">
@@ -3113,6 +3348,7 @@ function openOrderDetailModal(orderId) {
   if (body) {
     body.innerHTML = `
       <div class="odm-meta">${metaRows}</div>
+      ${o.fulfilment === 'delivery' && !isSavedOrder(o) ? deliveryTripHtml(o) : ''}
       <button class="odm-items-toggle" id="odmItemsToggle" type="button">
         <span>Items (${itemCount})</span>
         <svg class="odm-items-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -3165,6 +3401,128 @@ function openOrderDetailModal(orderId) {
   }
   const modal = $('#orderDetailModal');
   if (modal) modal.hidden = false;
+}
+
+// ---------- Delivery trip ----------
+// The order record never changes; its trip is rows in the deliveryEvents log, latest wins.
+const DELIVERY_EVENT_META = {
+  dispatched: { label: 'Dispatched', cls: 'saved' },
+  arrived:    { label: 'Arrived',    cls: 'ok' },
+  returned:   { label: 'Returned',   cls: 'done' },
+  failed:     { label: 'Failed',     cls: 'danger' },
+};
+
+function latestDeliveryEvents(rows) {
+  const latest = new Map();
+  (rows || []).forEach(r => {
+    const cur = latest.get(r.orderId);
+    if (!cur || String(r.ts) >= String(cur.ts)) latest.set(r.orderId, r);
+  });
+  return latest;
+}
+
+function deliveryChip(last, withDetail = false) {
+  if (!last) return '<span class="or-status done">To dispatch</span>';
+  const m = DELIVERY_EVENT_META[last.event] || { label: last.event, cls: 'done' };
+  const detail = withDetail ? ` · ${fmtOrderTime(last.ts)}${last.driver ? ' · ' + last.driver : ''}` : '';
+  return `<span class="or-status ${m.cls}">${escapeHtml(m.label + detail)}</span>`;
+}
+
+function deliveryTripHtml(o) {
+  const events = loadEvents('deliveryEvents');
+  const last = latestDeliveryEvents(events).get(o.id);
+  // ponytail: "remembered driver" is just the newest row's driver -- no extra setting to keep.
+  const driver = last ? last.driver : ((events[events.length - 1] || {}).driver || '');
+  return `
+    <div class="odm-delivery">
+      <div class="odm-delivery-head">
+        <span class="odm-section-label">Delivery</span>
+        ${deliveryChip(last, true)}
+      </div>
+      <input type="text" class="text-input" id="odmDriverInput" placeholder="Driver name" autocomplete="off" value="${escapeHtml(driver)}" />
+      <div class="odm-actions">
+        ${Object.entries(DELIVERY_EVENT_META).map(([ev, m]) =>
+          `<button class="secondary-btn${ev === 'failed' ? ' danger' : ''}" type="button" data-delivery-event="${ev}" data-order-id="${o.id}">${m.label}</button>`).join('')}
+      </div>
+    </div>`;
+}
+
+function recordDeliveryEvent(orderId, event) {
+  const input = $('#odmDriverInput');
+  const driver = (input?.value || '').trim();
+  if (!driver) { showToast('Enter the driver name'); input?.focus(); return; }
+  const store = currentStoreInfo();
+  // ponytail: lat/lng stay null -- the till sits in the store, not with the driver. GPS on the run is Tier 2.
+  const saved = appendEvents('deliveryEvents', [makeEvent({
+    orderId, event, driver, lat: null, lng: null, note: '', terminal: String(store.registerNo || ''),
+  }, store.cashier)]);
+  showToast(saved ? `${DELIVERY_EVENT_META[event].label} · ${driver}` : 'Could not save: storage is full');
+  openOrderDetailModal(orderId);
+  renderOrders();
+}
+
+// ---------- Lost sale (unfilled request + substitution) ----------
+const LOST_DEMAND_REASONS = ['out-of-stock', 'not-carried', 'too-expensive', 'other'];
+
+// One lostDemand row, or null when there is nothing to record. A catalog pick keeps its id and
+// name; free text is kept as typed -- that text IS the "not carried" signal a buyer reads.
+function lostDemandFields({ product = null, text = '', qty = 1, reason = 'other', substituteProductId = '' } = {}) {
+  const name = product ? product.name : String(text || '').trim();
+  const n = product ? roundQty(product, toNumber(qty, 0)) : Math.round(toNumber(qty, 0) * 100) / 100;
+  if (!name || !(n > 0)) return null;
+  return {
+    productId: product ? product.id : '',
+    text: name,
+    qty: n,
+    reason: LOST_DEMAND_REASONS.includes(reason) ? reason : 'other',
+    substituteProductId: substituteProductId || '',
+    terminal: String(currentStoreInfo().registerNo || ''),
+  };
+}
+
+function openLostSale({ product = null, text = '', qty = 1, reason = 'out-of-stock' } = {}) {
+  state.lostSale = { productId: product ? product.id : '', reason };
+  $('#lsItemInput').value = product ? product.name : text;
+  $('#lsQtyInput').value = qty;
+  // ponytail: "bought instead" offers only what is already in the cart -- the cashier suggests B,
+  // rings it up, then logs A. A catalog-wide picker here if substitutes turn out to be rung up later.
+  $('#lsSubSelect').innerHTML = '<option value="">Nothing</option>' + state.cart
+    .filter(i => !product || i.id !== product.id)
+    .map(i => `<option value="${escapeHtml(i.id)}">${escapeHtml(i.name)}</option>`).join('');
+  renderLostSale();
+  $('#lostSaleModal').hidden = false;
+  if (!product && !text) $('#lsItemInput').focus();
+}
+
+function renderLostSale() {
+  $$('[data-ls-reason]').forEach(b => b.classList.toggle('active', b.dataset.lsReason === state.lostSale.reason));
+  const picked = state.products.find(p => p.id === state.lostSale.productId);
+  const q = $('#lsItemInput').value.trim();
+  const matches = !picked && q && state.fuse
+    ? state.fuse.search(q).slice(0, 4).map(r => state.products.find(p => p.id === r.item.id)).filter(Boolean)
+    : [];
+  $('#lsMatches').innerHTML = picked
+    ? `<div class="ls-picked">In catalog · ${picked.stock} ${escapeHtml(picked.unit || '')} on hand</div>`
+    : matches.map(p => `
+      <button type="button" class="ls-match" data-ls-product="${p.id}">
+        <span>${escapeHtml(p.name)}</span><span>${p.stock} ${escapeHtml(p.unit || '')}</span>
+      </button>`).join('');
+}
+
+function saveLostSale() {
+  const fields = lostDemandFields({
+    product: state.products.find(p => p.id === state.lostSale.productId) || null,
+    text: $('#lsItemInput').value,
+    qty: $('#lsQtyInput').value,
+    reason: state.lostSale.reason,
+    substituteProductId: $('#lsSubSelect').value,
+  });
+  if (!fields) { showToast('Enter what they asked for and a qty'); return; }
+  if (!appendEvents('lostDemand', [makeEvent(fields, currentStoreInfo().cashier)])) {
+    showToast('Could not save: storage is full'); return;
+  }
+  $('#lostSaleModal').hidden = true;
+  showToast(`Lost sale logged · ${fields.text}`);
 }
 
 // ---------- 80mm thermal receipt ----------
@@ -3407,6 +3765,10 @@ function saveProduct() {
   if (!name) { showToast('Name is required'); $('#pf_name').focus(); return; }
   if (!sku) { showToast('SKU is required'); $('#pf_sku').focus(); return; }
 
+  // Stock never lands straight on the product (see bo-model.js's header) -- it goes through a
+  // movement below, so it stays out of `data`. parseFloat, not parseInt: a by-measure product
+  // typed as 2.5 must not get truncated to 2; applyMovement rounds to the product's own step.
+  const typedStock = parseFloat($('#pf_stock').value) || 0;
   const data = {
     name,
     sku,
@@ -3416,21 +3778,39 @@ function saveProduct() {
     unit: $('#pf_unit').value.trim() || 'pc',
     cost: parseFloat($('#pf_cost').value) || 0,
     price: parseFloat($('#pf_price').value) || 0,
-    stock: parseInt($('#pf_stock').value, 10) || 0,
     reorderPoint: parseInt($('#pf_reorder').value, 10) || 0,
     aliases: $('#pf_aliases').value.split(',').map(s => s.trim()).filter(Boolean),
   };
 
   const { mode, editId } = state.productModal;
+  const before = state.products.map(p => ({ id: p.id, price: p.price, cost: p.cost }));
+  const movements = [];
   if (mode === 'create') {
-    state.products.push({ id: uid(), ...data });
+    const p = { id: uid(), stock: 0, ...data };
+    state.products.push(p);
+    if (typedStock > 0) {
+      const mv = makeMovement({ productId: p.id, qty: typedStock, reason: 'count', note: 'Opening stock', staff: currentStoreInfo().cashier });
+      applyMovement(p, mv);
+      movements.push(mv);
+    }
     showToast(`Added “${data.name}”`);
   } else if (mode === 'edit' && editId) {
     const p = state.products.find(x => x.id === editId);
-    if (p) Object.assign(p, data);
+    if (p) {
+      const oldStock = Number(p.stock) || 0;
+      Object.assign(p, data);
+      if (typedStock !== oldStock) {
+        const mv = makeMovement({ productId: p.id, qty: typedStock - oldStock, reason: 'count',
+          expected: oldStock, counted: typedStock, staff: currentStoreInfo().cashier });
+        applyMovement(p, mv);
+        movements.push(mv);
+      }
+    }
     showToast('Product updated');
   }
-  saveProducts();
+  // Only the editor logs: saveProducts also runs on every sale, where price and cost never change.
+  if (saveProducts()) appendEvents('priceLog', priceChanges(before, state.products, { source: 'pos', staff: currentStoreInfo().cashier }));
+  appendMovements(movements);
   rebuildFuse();
   renderAllFolderUis();
   $('#productModal').hidden = true;
@@ -3558,7 +3938,7 @@ function openCustomerDetail(customerId) {
     ordersEl.innerHTML = `<div class="cust-detail-empty">No completed orders yet</div>`;
   } else {
     ordersEl.innerHTML = orders.map(o => {
-      const itemCount = o.items.reduce((s, i) => s + i.qty, 0);
+      const itemCount = o.items.length;
       const firstItems = o.items.slice(0, 2).map(i => i.name).join(', ');
       const moreItems = o.items.length > 2 ? ` +${o.items.length - 2} more` : '';
       return `
@@ -3623,7 +4003,7 @@ function renderCustomers() {
         const aging = agingCache.get(c.id);
         const bal = c.currentBalance || 0;
         const balCls = bal > 0 ? 'cust-bal-has' : '';
-        const typeBadge = c.type ? `<span class="cust-type-badge cust-type-${escapeHtml(c.type)}">${escapeHtml(c.type.charAt(0).toUpperCase() + c.type.slice(1))}</span>` : '';
+        const typeBadge = c.type && c.type !== 'retail' ? `<span class="cust-type-badge cust-type-${escapeHtml(c.type)}">${escapeHtml(c.type.charAt(0).toUpperCase() + c.type.slice(1))}</span>` : '';
         const threshold = state.settings.churnThresholdDays || 30;
         let churnBadge = '';
         if (m.daysSinceLastPurchase !== null && m.daysSinceLastPurchase >= threshold) {
@@ -3689,7 +4069,7 @@ function renderCustomerDetail(metricsCache, agingCache) {
 
   const orderRows = orders.length
     ? orders.slice(0, 20).map(o => {
-        const itemCount = o.items.reduce((s, i) => s + i.qty, 0);
+        const itemCount = o.items.length;
         const firstItems = o.items.slice(0, 2).map(i => i.name).join(', ');
         const moreItems = o.items.length > 2 ? ` +${o.items.length - 2}` : '';
         return `
@@ -3722,7 +4102,7 @@ function renderCustomerDetail(metricsCache, agingCache) {
         </div>
         <div class="cd-meta">
           <div class="odm-meta-row"><span>Address</span><span>${escapeHtml(c.address || '—')}</span></div>
-          <div class="odm-meta-row"><span>Type</span><span>${c.type ? escapeHtml(c.type.charAt(0).toUpperCase() + c.type.slice(1)) : 'Unclassified'}</span></div>
+          <div class="odm-meta-row"><span>Type</span><span>${escapeHtml((c.type || 'retail').charAt(0).toUpperCase() + (c.type || 'retail').slice(1))}</span></div>
           <div class="odm-meta-row"><span>Credit limit</span><span>${peso(limit)}</span></div>
           <div class="odm-meta-row"><span>Current balance</span><span class="cust-card-balance-value ${balCls}">${peso(bal)}</span></div>
         </div>
@@ -3751,10 +4131,12 @@ function sameLocalDate(a, b) {
 }
 
 // Cheap change-detector so the live poll only re-renders when orders actually change.
-function reportsSignature(orders) {
-  let sig = orders.length + '|';
-  for (const o of orders) sig += o.id + ':' + (o.status || '') + ':' + o.total + ':' + o.ts + ';';
-  return sig;
+// The stored string IS the signature. The old version parsed and normalized every order ever
+// rung and then built a key by concatenating a field from each of them -- every four seconds,
+// on the one screen a shop owner leaves open all day. That was more work than the render it
+// existed to avoid, and it missed edits to any field it did not list.
+function reportsSignature() {
+  return storageGet(STORAGE_ORDERS, '');
 }
 
 // Payment-method categories for the chart/legend. Categorical colors are a
@@ -3773,7 +4155,7 @@ function reportMethodKind(o) { return REPORT_METHOD_META[o.paymentKind] ? o.paym
 
 function renderReports() {
   state.orders = loadOrders();
-  reportsLive._sig = reportsSignature(state.orders);
+  reportsLive._sig = reportsSignature();
   const today = new Date();
   const completed = state.orders.filter(o => isCompletedSale(o));
   const sales = completed
@@ -3871,8 +4253,7 @@ function renderReports() {
 // is the seam a future backend sync can push through for multi-device cashiers.
 function reportsLive() {
   if (state.view !== 'reports') return;
-  const orders = loadOrders();
-  if (reportsSignature(orders) !== reportsLive._sig) renderReports();
+  if (reportsSignature() !== reportsLive._sig) renderReports();
 }
 reportsLive._sig = '';
 
@@ -3972,6 +4353,11 @@ function buildCashDrawerSummary(date = new Date()) {
       expectedCash += cashAmount;
       if (cashAmount > 0) cashSales += 1;
     } else if (order.status === 'voided' || order.status === 'refunded' || order.status === 'return') {
+      // A return leaves the original `completed` on purpose (the return row is what cancels it,
+      // SALE_SIGN.return = -1), so its cash is still in `expectedCash` above -- and the cash to
+      // hand it back came out of this drawer. Counting it as an adjustment and nothing else left
+      // the till short by every return of the day.
+      if (order.status === 'return') expectedCash -= cashAmount;
       adjustments += 1;
     }
   });
@@ -4101,6 +4487,9 @@ function attachEvents() {
   const search = $('#searchInput'), clear = $('#searchClear');
   search.addEventListener('input', (e) => {
     state.query = e.target.value;
+    const q = state.query.trim();
+    if (!q) endSearch();
+    else if (!searchIntent || searchIntent.query !== q) searchIntent = { query: q, results: 0, picked: false };
     state.page = 1;
     clear.classList.toggle('visible', !!state.query);
     renderProducts();
@@ -4109,7 +4498,9 @@ function attachEvents() {
     if (e.key === 'Enter') {
       const raw = search.value.trim();
       if (!raw) return;
-      if (findProductByCode(raw) && addProductByCode(raw, { source: 'keyboard' })) {
+      if (findProductByCode(raw)) {
+        searchIntent = null;   // the box held a scanned code, not a search -- its scan row records it
+        addProductByCode(raw, { source: 'keyboard' });
         search.value = ''; state.query = '';
         clear.classList.remove('visible');
         renderProducts();
@@ -4119,7 +4510,7 @@ function attachEvents() {
       // 3. Fall back to single fuzzy match
       const products = getFilteredSellProducts();
       if (products.length === 1) {
-        addToCart(products[0].id);
+        addToCart(products[0].id, 'search');
         search.value = ''; state.query = '';
         clear.classList.remove('visible');
         renderProducts();
@@ -4128,6 +4519,7 @@ function attachEvents() {
     }
   });
   clear.addEventListener('click', () => {
+    endSearch();
     search.value = ''; state.query = '';
     clear.classList.remove('visible');
     renderProducts(); search.focus();
@@ -4258,6 +4650,10 @@ function attachEvents() {
       e.stopPropagation();
       return;
     }
+    if (e.target.closest('[data-act="lost-sale"]')) {
+      openLostSale({ text: state.query.trim(), reason: 'not-carried' });
+      return;
+    }
     const card = e.target.closest('.product-card');
     if (!card) return;
     // Back tile inside a group (only when drilled in — left for back-compat)
@@ -4265,7 +4661,7 @@ function attachEvents() {
     // Group parent tile → open the variant picker modal
     if (card.dataset.groupId) { openVariantModal(card.dataset.groupId); return; }
     // Regular product
-    addToCart(card.dataset.id);
+    addToCart(card.dataset.id, 'tile');
   });
 
   // ---- Variant picker modal ----
@@ -4280,12 +4676,11 @@ function attachEvents() {
     });
   });
   $('#variantQtyInput')?.addEventListener('input', (e) => {
-    const q = Math.max(1, parseInt(e.target.value, 10) || 1);
-    state.variantModal.qty = q;
+    // Don't rewrite the field while it is being typed -- "2." and "2.5" are both mid-entry.
+    state.variantModal.qty = qtyFrom(state.products.find(x => x.id === state.variantModal.selectedId), e.target.value);
   });
   $('#variantQtyInput')?.addEventListener('blur', (e) => {
-    const q = Math.max(1, parseInt(e.target.value, 10) || 1);
-    e.target.value = q;
+    e.target.value = qtyFrom(state.products.find(x => x.id === state.variantModal.selectedId), e.target.value);
   });
   $('#variantAddBtn')?.addEventListener('click', addVariantToCart);
 
@@ -4309,6 +4704,8 @@ function attachEvents() {
     if (state.selectedOrderId) openOrderDetailModal(state.selectedOrderId);
   });
   $('#orderDetailModal')?.addEventListener('click', (e) => {
+    const trip = e.target.closest('[data-delivery-event]');
+    if (trip) { recordDeliveryEvent(trip.dataset.orderId, trip.dataset.deliveryEvent); return; }
     const btn = e.target.closest('[data-order-op]');
     if (!btn) return;
     const id = btn.dataset.orderId;
@@ -4521,6 +4918,7 @@ function attachEvents() {
       cancelText: 'Cancel',
       danger: true,
       onConfirm: () => {
+        track('cart_clear', { lines: state.cart.length, subtotal: cartTotals().subtotal });
         clearCart();
         showToast('Cart cleared');
       }
@@ -4533,6 +4931,25 @@ function attachEvents() {
     const row = e.target.closest('[data-customer-id]');
     if (row) selectCustomer(row.dataset.customerId);
   });
+
+  // ---- Lost sale ----
+  $('#lostSaleBtn')?.addEventListener('click', () => openLostSale());
+  $('#lsItemInput')?.addEventListener('input', () => { state.lostSale.productId = ''; renderLostSale(); });
+  $('#lsMatches')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ls-product]');
+    const p = b && state.products.find(x => x.id === b.dataset.lsProduct);
+    if (!p) return;
+    state.lostSale.productId = p.id;
+    $('#lsItemInput').value = p.name;
+    renderLostSale();
+  });
+  $('#lsReasons')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ls-reason]');
+    if (!b) return;
+    state.lostSale.reason = b.dataset.lsReason;
+    renderLostSale();
+  });
+  $('#lsSaveBtn')?.addEventListener('click', saveLostSale);
 
   // ---- Modals ----
   $$('[data-close-modal]').forEach(b => {
@@ -4562,6 +4979,7 @@ function attachEvents() {
   function selectPayMethod(method) {
     state.paymentMethod = method;
     state.paymentMethodChosen = true;
+    track('payment_method', { method });
     $$('[data-co-method]').forEach(s =>
       s.classList.toggle('active', s.dataset.method === method));
     // Step 2: hide method grid, show tender, enable complete
@@ -4569,6 +4987,7 @@ function attachEvents() {
     const completeBtn = $('#checkoutCompleteBtn');
     if (completeBtn) completeBtn.disabled = false;
     syncPayFields();
+    renderCheckoutSub();
     if (method !== 'other') {
       setTimeout(() => $('#checkoutTender')?.focus(), 60);
     } else {
@@ -4594,6 +5013,7 @@ function attachEvents() {
       $('#checkoutChange').textContent = peso(0);
       setCheckoutError('');
     } else {
+      track('checkout_cancel');
       switchView(state.prevView && state.prevView !== 'checkout' ? state.prevView : 'sell');
     }
   });
@@ -4601,7 +5021,7 @@ function attachEvents() {
   // Checkout view: back, tender input, quick-cash, complete
   document.addEventListener('click', (e) => {
     const back = e.target.closest('[data-act="checkout-back"]');
-    if (back) { switchView(state.prevView && state.prevView !== 'checkout' ? state.prevView : 'sell'); }
+    if (back) { track('checkout_cancel'); switchView(state.prevView && state.prevView !== 'checkout' ? state.prevView : 'sell'); }
   });
   $('#checkoutTender')?.addEventListener('input', updateChange);
   $('.checkout-quick')?.addEventListener('click', (e) => {
@@ -4739,6 +5159,8 @@ function attachEvents() {
   };
   window.addEventListener('online', renderSyncStatus);
   window.addEventListener('offline', renderSyncStatus);
+  window.addEventListener('online', () => track('online'));
+  window.addEventListener('offline', () => track('offline'));
   renderSyncStatus();
 }
 
@@ -4784,6 +5206,7 @@ function init() {
   applyRoleGating();
   renderRoleSwitcher();
   attachEvents();
+  track('app_open');
   const openHashView = () => {
     const hash = (location.hash || '').replace('#', '').trim();
     const target = hash.split(/[/?&:]/)[0];
@@ -4845,7 +5268,9 @@ function init() {
       if (state.view === 'sell') renderProducts();
     }
     if (e.key === STORAGE_SETTINGS) {
+      const was = currentStoreInfo().cashier;
       state.settings = loadSettings();
+      if (currentStoreInfo().cashier !== was) track('cashier_switch', { from: was, to: currentStoreInfo().cashier });
       state.vatRate = state.settings.vatRate ?? DEFAULT_SETTINGS.vatRate;
       renderCart();
       if (state.view === 'checkout') renderCheckout();
@@ -4854,13 +5279,16 @@ function init() {
   // Also refresh when the user returns to the POS tab in case they changed it
   // in the back office on another tab.
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) return;
+    if (document.hidden) { endSearch(true); track('app_hidden'); return; }
+    track('app_visible');
     const newSize = storageGet(STORAGE_TILE_SIZE, 'md') || 'md';
     const newShow = storageGet(STORAGE_SHOW_PRICE, '0') === '1';
     let changed = false;
     if (newSize !== state.tileSize && ITEMS_PER_PAGE[newSize]) { state.tileSize = newSize; state.page = 1; changed = true; }
     if (newShow !== state.showPrice) { state.showPrice = newShow; changed = true; }
+    const was = currentStoreInfo().cashier;
     state.settings = loadSettings();
+    if (currentStoreInfo().cashier !== was) track('cashier_switch', { from: was, to: currentStoreInfo().cashier });
     state.vatRate = state.settings.vatRate ?? DEFAULT_SETTINGS.vatRate;
     if (changed) renderProducts();
     // Always re-pull orders so the list is up to date.

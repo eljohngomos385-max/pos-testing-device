@@ -38,6 +38,25 @@
     drawerCloseouts: 'hwpos.drawerCloseouts.v1',
     settings:  'hwpos.settings.v1',
     role:      'hwpos.role.v1',
+    // Back office (bo-model.js / backoffice.js own the writes). Field meanings: docs/data-dictionary.md.
+    stockMovements: 'hwpos.stockMovements.v1',
+    purchaseOrders: 'hwpos.purchaseOrders.v1',
+    suppliers: 'hwpos.suppliers.v1',
+    staff:     'hwpos.staff.v1',
+    attendance: 'hwpos.attendance.v1',
+    advances:  'hwpos.advances.v1',
+    adjustments: 'hwpos.adjustments.v1',
+    days:      'hwpos.days.v1',
+    // Event logs, append-only (bo-model.js EVENT_LOGS).
+    priceLog:  'hwpos.priceLog.v1',
+    lostDemand: 'hwpos.lostDemand.v1',
+    deliveryEvents: 'hwpos.deliveryEvents.v1',
+    clock:     'hwpos.clock.v1',
+    supplierMessages: 'hwpos.supplierMessages.v1',
+    decisions: 'hwpos.decisions.v1',
+    // Till event stream lives in IndexedDB 'hwpos-events'; these two only catch it when IDB can't.
+    tillEventsFallback: 'hwpos.tillEvents.fallback.v1',
+    tillEventsDropped: 'hwpos.tillEvents.dropped.v1',
   };
   function safeGetItem(key, fallback = null) {
     try {
@@ -93,6 +112,261 @@
     };
   }
 
+  // ---- Till event stream (docs/data-dictionary.md, "Till event stream") ----
+  // append() is sync and never throws; rows buffer in memory and land in IndexedDB in one
+  // transaction per flush. If IDB is missing/blocked/full, rows go to a capped localStorage key
+  // and move into IDB on the next flush that succeeds.
+  const EVT_DB = 'hwpos-events';
+  const EVT_STORE = 'tillEvents';
+  const EVT_FALLBACK_CAP = 2000;
+  // The fallback shares the till's ~5MB origin with orders, so it is capped in chars too (~1.2MB UTF-16).
+  const EVT_FALLBACK_CHARS = 600000;
+  const EVT_DATA_CHARS = 8000;   // a bigger `data` is stored as { truncated: <chars> }
+  const EVT_PAGE = 5000;         // rows per readonly transaction when listing
+  const evtUuid = () => {
+    try { if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID(); } catch (_) {}
+    return 'ev_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  };
+  const evtSessionId = evtUuid();
+  const evtContext = {};   // app.js: HWPOS_STORE.events.setContext({ cartId, cashier, terminal })
+  let evtBuffer = [];
+  let evtTimer = null;
+  let evtChain = Promise.resolve();
+  let evtDb = null;
+  let evtWarned = false;
+  let evtAppVersion = '';
+  let evtDroppedPending = 0;   // drops the dropped key itself could not record (origin full)
+  let evtStashQueued = false;
+  let evtPersistAsked = false;
+
+  function evtWarn(e) {
+    if (evtWarned) return;
+    evtWarned = true;
+    try { console.warn('[HWPOS events] IndexedDB unavailable, using localStorage fallback:', e); } catch (_) {}
+  }
+  function evtVersion() {
+    if (evtAppVersion) return evtAppVersion;
+    try {   // data-store.js loads before app.js, so this is read lazily on first append
+      const s = document.querySelector('script[src*="app.js"], script[src*="backoffice.js"]');
+      const src = s && s.getAttribute('src');
+      if (src) evtAppVersion = src.split('/').pop();
+    } catch (_) {}
+    return evtAppVersion;
+  }
+  function evtOpen() {
+    if (!evtDb) evtDb = Promise.race([
+      new Promise((resolve, reject) => {
+        const req = indexedDB.open(EVT_DB, 1);
+        req.onupgradeneeded = () => {
+          const os = req.result.createObjectStore(EVT_STORE, { keyPath: 'id' });
+          ['ts', 'type', 'synced'].forEach((name) => os.createIndex(name, name));
+        };
+        req.onsuccess = () => {
+          const db = req.result;
+          // A later build upgrading the DB in another tab must not stay blocked by this one.
+          db.onversionchange = () => { try { db.close(); } catch (_) {} evtDb = null; };
+          // Ask once, best-effort: a persisted origin survives storage pressure eviction.
+          if (!evtPersistAsked) {
+            evtPersistAsked = true;
+            try { navigator.storage && navigator.storage.persist && navigator.storage.persist().catch(() => {}); } catch (_) {}
+          }
+          resolve(db);
+        };
+        req.onerror = () => reject(req.error);
+        req.onblocked = () => reject(new Error('IndexedDB open blocked'));
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('IndexedDB open timeout')), 5000)),
+    ]).catch((e) => { evtDb = null; throw e; });
+    return evtDb;
+  }
+  function evtTx(mode, fn) {
+    return evtOpen().then((db) => new Promise((resolve, reject) => {
+      const t = db.transaction(EVT_STORE, mode);
+      let result;
+      const fail = (e) => { clearTimeout(timer); try { t.abort(); } catch (_) {} reject(e); };
+      // A transaction that never completes nor errors would stall every later flush and read.
+      const timer = setTimeout(() => { evtDb = null; fail(new Error('IndexedDB transaction timeout')); }, mode === 'readwrite' ? 15000 : 5000);
+      t.oncomplete = () => { clearTimeout(timer); resolve(result); };
+      t.onerror = t.onabort = () => { clearTimeout(timer); reject(t.error || new Error('IndexedDB transaction aborted')); };
+      try { fn(t.objectStore(EVT_STORE), (r) => { result = r; }); } catch (e) { fail(e); }
+    }));
+  }
+  // A corrupt or hand-edited key must not poison later flushes: put() of a row without an id throws.
+  const evtFallbackRows = () => {
+    const rows = readKey(KEYS.tillEventsFallback, []);
+    return Array.isArray(rows) ? rows.filter((r) => r && typeof r.id === 'string' && r.id && typeof r.ts === 'string') : [];
+  };
+  const evtDropped = () => toNumber(safeGetItem(KEYS.tillEventsDropped, 0), 0) + evtDroppedPending;
+  function evtAddDropped(n) {
+    if (!n) return;
+    if (safeSetItem(KEYS.tillEventsDropped, String(evtDropped() + n))) evtDroppedPending = 0;
+    else evtDroppedPending += n;
+  }
+  // Oldest rows go first, past 2000 rows or EVT_FALLBACK_CHARS; if the origin is still full, halve.
+  // lossless (the pagehide stash): write everything or nothing and report which.
+  function evtFallbackWrite(rows, lossless) {
+    const parts = [];
+    let lost = 0;
+    for (const row of evtFallbackRows().concat(rows)) { try { parts.push(JSON.stringify(row)); } catch (_) { lost++; } }
+    let chars = parts.reduce((n, s) => n + s.length + 1, 1);
+    let start = 0;
+    while (start < parts.length && (parts.length - start > EVT_FALLBACK_CAP || chars > EVT_FALLBACK_CHARS)) chars -= parts[start++].length + 1;
+    if (lossless && (lost || start)) return false;
+    for (;;) {
+      const kept = parts.slice(start);
+      if (!kept.length) { try { localStorage.removeItem(KEYS.tillEventsFallback); } catch (_) {} break; }
+      if (safeSetItem(KEYS.tillEventsFallback, '[' + kept.join(',') + ']')) break;
+      if (lossless) return false;
+      start += Math.ceil(kept.length / 2);
+    }
+    evtAddDropped(lost + start);
+    return true;
+  }
+  // Sync: an IndexedDB write started on pagehide never commits once the page is gone; localStorage does.
+  function evtStash() {
+    if (evtBuffer.length && evtFallbackWrite(evtBuffer, true)) evtBuffer = [];
+  }
+  function evtFallbackForget(ids) {   // only the rows this flush moved: a stash may have landed meanwhile
+    const left = evtFallbackRows().filter((r) => !ids.has(r.id));
+    if (left.length) writeKey(KEYS.tillEventsFallback, left);
+    else { try { localStorage.removeItem(KEYS.tillEventsFallback); } catch (_) {} }
+  }
+  async function evtFlushNow() {
+    if (evtTimer) { try { clearTimeout(evtTimer); } catch (_) {} evtTimer = null; }
+    const hadFallback = safeGetItem(KEYS.tillEventsFallback) != null;
+    if (!evtBuffer.length && !hadFallback) return;
+    const rows = evtBuffer;
+    evtBuffer = [];
+    const fallback = hadFallback ? evtFallbackRows() : [];
+    const batch = fallback.concat(rows);
+    try {
+      if (batch.length) await evtTx('readwrite', (os) => { batch.forEach((row) => os.put(row)); });
+      if (hadFallback) evtFallbackForget(new Set(fallback.map((r) => r.id)));
+    } catch (e) {
+      evtWarn(e);
+      if (rows.length) evtFallbackWrite(rows);
+    }
+  }
+  function flushEvents() {
+    evtChain = evtChain.then(evtFlushNow).catch(evtWarn);
+    return evtChain;
+  }
+  const evtCtxStr = (v) => (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? String(v) : '');
+  function appendEvent(type, fields) {
+    try {
+      let data = {};
+      try {
+        if (fields && typeof fields === 'object') {
+          // One JSON round trip: the row is plain data that IDB and localStorage can always store.
+          const raw = JSON.stringify(fields);
+          const parsed = !raw ? null : raw.length > EVT_DATA_CHARS ? { truncated: raw.length } : JSON.parse(raw);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) data = parsed;
+        }
+      } catch (_) {}
+      let store = {};
+      try { store = readSettingsForApi().store || {}; } catch (_) {}
+      const pickCtx = (k, fallback) => evtCtxStr(evtContext[k] != null ? evtContext[k] : fallback);
+      evtBuffer.push({
+        id: evtUuid(),
+        ts: new Date().toISOString(),
+        type: typeof type === 'string' && type ? type.slice(0, 64) : 'unknown',
+        sessionId: evtSessionId,
+        terminal: pickCtx('terminal', store.registerNo),
+        cashier: pickCtx('cashier', store.cashier),
+        cartId: pickCtx('cartId', ''),
+        online: typeof navigator === 'undefined' || navigator.onLine !== false,
+        appVersion: pickCtx('appVersion', evtVersion()),
+        synced: 0,
+        storeId: pickCtx('storeId', ''),
+        data,
+      });
+      let hidden = false;
+      try { hidden = document.visibilityState === 'hidden'; } catch (_) {}
+      if (hidden) {   // app_hidden etc.: stash once this task ends, then flush; no timer may ever fire
+        if (!evtStashQueued) { evtStashQueued = true; Promise.resolve().then(() => { evtStashQueued = false; evtStash(); flushEvents(); }); }
+      } else if (!evtTimer) evtTimer = setTimeout(flushEvents, 2000);
+    } catch (e) { evtWarn(e); evtAddDropped(1); }
+  }
+  // Read side merges IDB with any fallback rows, after flushing, so nothing appended is invisible.
+  async function listEvents(opts = {}) {
+    await flushEvents();
+    const since = opts.since != null ? String(opts.since) : null;
+    const synced = opts.synced != null ? Number(opts.synced) : null;
+    const limit = opts.limit > 0 ? Math.floor(opts.limit) : 0;
+    const keep = (r) => (since == null || r.ts >= since) && (!opts.type || r.type === opts.type) && (synced == null || r.synced === synced);
+    const byId = new Map();
+    const read = (index, query, count) => evtTx('readonly', (os, done) => {
+      const req = os.index(index).getAll(query, count);
+      req.onsuccess = () => done(req.result || []);
+    });
+    try {
+      if (synced != null) {
+        // ponytail: the upload backlog is read in one go; with only `limit`, it is `limit` backlog rows, not the oldest.
+        (await read('synced', synced, since == null && !opts.type && limit ? limit : undefined)).forEach((r) => byId.set(r.id, r));
+      } else {
+        // Keyset pages on the ts index, one short transaction each: a 1M-row export holds no long transaction.
+        // ponytail: `type` still walks every row; add a [type, ts] index if type reads get slow.
+        let from = since, size = EVT_PAGE;
+        for (;;) {
+          const rows = await read('ts', from == null ? undefined : IDBKeyRange.lowerBound(from), size);
+          for (const r of rows) if (keep(r)) byId.set(r.id, r);
+          if (rows.length < size || (limit && byId.size >= limit)) break;
+          const last = rows[rows.length - 1].ts;
+          if (last === from) size *= 2;   // a whole page on one timestamp: widen instead of looping
+          else from = last;               // inclusive: rows sharing `last` are re-read, byId dedupes
+        }
+      }
+    } catch (e) { evtWarn(e); }
+    for (const row of evtFallbackRows()) byId.set(row.id, row);
+    const out = [...byId.values()].filter(keep).sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
+    return limit ? out.slice(0, limit) : out;
+  }
+  async function countEvents() {
+    await flushEvents();
+    let n = 0;
+    try { n = await evtTx('readonly', (os, done) => { const req = os.count(); req.onsuccess = () => done(req.result); }); }
+    catch (e) { evtWarn(e); }
+    return (n || 0) + evtFallbackRows().length;
+  }
+  // Resolves true only when every id is marked where it lives. Runs on the flush chain, so a flush
+  // migrating an unsynced fallback copy cannot land on top of the mark.
+  // Rejects (rather than resolving false) on a transaction or write failure, so a caller's sync
+  // loop retries the mark instead of believing it landed.
+  function markEventsSynced(ids) {
+    const set = new Set((Array.isArray(ids) ? ids : []).filter((id) => typeof id === 'string'));
+    if (!set.size) return Promise.resolve(true);
+    const p = evtChain.then(evtFlushNow).then(async () => {
+      await evtTx('readwrite', (os) => set.forEach((id) => {
+        const req = os.get(id);
+        req.onsuccess = () => { if (req.result) { req.result.synced = 1; os.put(req.result); } };
+      }));
+      const fb = evtFallbackRows();
+      const inFb = fb.filter((r) => set.has(r.id)).length;
+      if (inFb && !writeKey(KEYS.tillEventsFallback, fb.map((r) => (set.has(r.id) ? { ...r, synced: 1 } : r)))) {
+        throw new Error('fallback mark write failed');
+      }
+      return true;
+    });
+    evtChain = p.catch((e) => { evtWarn(e); });   // keep the flush chain alive even if this mark failed
+    return p;
+  }
+  const tillEvents = {
+    append: appendEvent,
+    flush: flushEvents,
+    count: countEvents,
+    list: listEvents,
+    // ponytail: paged reads, but one array in memory; window it (since) if exports outgrow a tablet.
+    exportAll: () => listEvents(),
+    markSynced: markEventsSynced,
+    setContext: (patch) => { try { Object.assign(evtContext, patch); } catch (_) {} },
+    dropped: evtDropped,
+  };
+  try {
+    const evtHide = () => { evtStash(); flushEvents(); };
+    window.addEventListener('pagehide', evtHide);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') evtHide(); });
+  } catch (_) {}
+
   const localStore = {
     products:  makeCollection(KEYS.products,  'products:changed'),
     folders:   makeCollection(KEYS.folders,   'folders:changed'),
@@ -118,7 +392,12 @@
         emit('role:changed', role);
       },
     },
-    events: { on, emit },
+    // Per-device UI prefs (sidebar width). Never synced, so sync on purpose: read before first paint.
+    ui: {
+      get: (key, fallback = null) => safeGetItem(`hwpos.ui.${key}`, fallback),
+      set: (key, value) => safeSetItem(`hwpos.ui.${key}`, String(value)),
+    },
+    events: { on, emit, ...tillEvents },
     health: async () => ({ ok: true, adapter: 'localStorage', online: navigator.onLine }),
   };
 
@@ -187,6 +466,13 @@
   // }
 
   // ---- Read-only AI/data API ----
+  const DICTIONARY_URL = 'docs/data-dictionary.md';
+  // Array collections read straight from storage. attendance is the one object blob.
+  const LIST_COLLECTIONS = ['stockMovements', 'purchaseOrders', 'suppliers', 'staff', 'advances', 'adjustments', 'days',
+    'priceLog', 'lostDemand', 'deliveryEvents', 'clock', 'supplierMessages', 'decisions'];
+  const COLLECTIONS = ['products', 'folders', 'groups', 'orders', 'customers', 'customerLedger', 'drawerCloseouts',
+    'settings', 'attendance', ...LIST_COLLECTIONS];
+  const pick = (snapshot) => Object.fromEntries(COLLECTIONS.map((name) => [name, snapshot[name]]));
   function clone(value) {
     return JSON.parse(JSON.stringify(value == null ? null : value));
   }
@@ -203,6 +489,7 @@
       if (name === 'folders' && typeof SEED_FOLDERS !== 'undefined') return SEED_FOLDERS;
       if (name === 'groups' && typeof SEED_GROUPS !== 'undefined') return SEED_GROUPS;
       if (name === 'customers' && typeof CUSTOMERS !== 'undefined') return CUSTOMERS;
+      if (name === 'staff' && typeof SEED_STAFF !== 'undefined') return SEED_STAFF;
     } catch (_) {}
     return [];
   }
@@ -462,16 +749,8 @@
       apiVersion: 1,
       generatedAt: new Date().toISOString(),
       source: 'localStorage',
-      schema: {
-        products: KEYS.products,
-        folders: KEYS.folders,
-        groups: KEYS.groups,
-        orders: KEYS.orders,
-        customers: KEYS.customers,
-        customerLedger: KEYS.customerLedger,
-        drawerCloseouts: KEYS.drawerCloseouts,
-        settings: KEYS.settings,
-      },
+      dictionaryUrl: DICTIONARY_URL,
+      schema: {},
       products,
       folders,
       groups,
@@ -481,31 +760,46 @@
       drawerCloseouts,
       settings,
     };
+    // Back-office collections and event logs: raw rows, exactly as stored.
+    for (const name of LIST_COLLECTIONS) {
+      const rows = readKey(KEYS[name], null);
+      snapshot[name] = Array.isArray(rows) ? rows : (name === 'staff' ? clone(seedArray('staff')) : []);
+    }
+    // A PIN is a credential, not a data point.
+    snapshot.staff = snapshot.staff.map(({ pin, ...u }) => u);
+    snapshot.attendance = readKey(KEYS.attendance, {}) || {};
+    COLLECTIONS.forEach((name) => { snapshot.schema[name] = KEYS[name]; });
     if (options.includeMetrics !== false) snapshot.metrics = buildMetrics(snapshot, { range: options.range || 'all' });
+    if (options.includeInsights !== false) {
+      try {
+        const insights = window.HWPOS_INSIGHTS;
+        if (insights && typeof insights.buildInsights === 'function') {
+          // Raw orders: normalizeAiOrder drops deliveryLocation and originalOrderId, which insights read.
+          const data = insights.dataFromDump({ ...pick(snapshot), orders: readKey(KEYS.orders, []) || [] });
+          snapshot.insights = insights.buildInsights(data, { now: options.now || Date.now() });
+        }
+      } catch (e) {
+        snapshot.insights = { error: String((e && e.message) || e) };   // never takes the snapshot down
+      }
+    }
     return snapshot;
   }
   const aiApi = {
     version: 1,
     snapshot: getAiSnapshot,
-    metrics: (options = {}) => buildMetrics(getAiSnapshot({ includeMetrics: false }), options),
-    collections: () => {
-      const snapshot = getAiSnapshot({ includeMetrics: false });
-      return {
-        products: snapshot.products,
-        folders: snapshot.folders,
-        groups: snapshot.groups,
-        orders: snapshot.orders,
-        customers: snapshot.customers,
-        customerLedger: snapshot.customerLedger,
-        drawerCloseouts: snapshot.drawerCloseouts,
-        settings: snapshot.settings,
-      };
-    },
+    metrics: (options = {}) => buildMetrics(getAiSnapshot({ includeMetrics: false, includeInsights: false }), options),
+    collections: () => pick(getAiSnapshot({ includeMetrics: false, includeInsights: false })),
     schema: () => clone(KEYS),
+    dictionaryUrl: DICTIONARY_URL,
+    // Till event stream is async (IndexedDB), so it is not in snapshot(); read it here.
+    tillEvents: (opts) => listEvents(opts),
     health: () => ({
       ok: true,
       adapter: 'localStorage',
-      readableCollections: ['products', 'folders', 'groups', 'orders', 'customers', 'customerLedger', 'drawerCloseouts', 'settings'],
+      readableCollections: COLLECTIONS.slice(),
+      tillEvents: { indexedDB: `${EVT_DB}/${EVT_STORE}`, read: 'HWPOS_AI.tillEvents({since, type, limit}) -> Promise<rows>',
+        fallbackKey: KEYS.tillEventsFallback, fallbackRows: evtFallbackRows().length, droppedRows: evtDropped() },
+      dictionaryUrl: DICTIONARY_URL,
       generatedAt: new Date().toISOString(),
     }),
   };

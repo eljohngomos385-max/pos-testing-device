@@ -43,6 +43,38 @@ Check the replaceable order/receipt mapper:
 node scripts/verify-order-format.mjs
 ```
 
+Ring a trading day headless and reconcile it. `scripts/lib/till.mjs` boots the real `app.js`
+in a `node:vm` behind a `localStorage` shim and a fake DOM, so sales, credit, splits, voids,
+refunds, returns and exchanges can be driven from Node without a browser; `till-run.mjs` rings
+a day, then adds the books up a second time from what it knows it rang and compares. Stock
+(cached field vs the movement log vs what was sold), revenue by status, the customer ledger
+against the stored balance, and the cash drawer all have to agree:
+
+```bash
+node scripts/till-run.mjs --verbose
+```
+
+Then a whole trading year through the same till -- 365 days on a moving clock, closed Sundays,
+busier on payday and Saturdays, restocking when the shelf runs low, with reversals scattered
+through. The year's receipts are then fed to the real Back Office aggregator (`bo-sales.js`)
+and every cut -- by item, by category, by employee, by payment type -- has to sum back to the
+summary. Two products are priced to the same shelf price by different margin modes (25% over
+cost, and a flat markup) so only the profit maths can tell them apart:
+
+```bash
+node scripts/till-year.mjs --verbose          # ~5 min; --days=40 for a quick pass
+```
+
+The year ends on the buying half of the loop: whatever the twelve months left below its danger
+level becomes a real purchase order, the delivery arrives short on one line, and the shelf, the
+movement log and the PO status all have to still agree afterwards -- the PO stays `partial` and
+outstanding by exactly the units that never came.
+
+It also prints how long a month takes to ring as the history behind it grows. That curve is
+the localStorage ceiling, measured rather than asserted: every sale re-serialises the whole
+order list, so the cost per receipt climbs with the year. It is the argument for the D1
+migration.
+
 Run a bulk same-day POS stress simulation:
 
 ```bash

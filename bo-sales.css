@@ -1,0 +1,30 @@
+/* Back office — Sales. Only what the shared classes don't already cover. */
+
+body.bo-light .view-sales th[data-act="sort"] { cursor: pointer; user-select: none; white-space: nowrap; }
+body.bo-light .view-sales th[data-act="sort"]:hover { color: var(--po-ink); }
+
+/* Share: the number keeps the column tabular, the bar is the glance */
+body.bo-light .view-sales .share-cell { display: inline-flex; align-items: center; gap: 8px; }
+body.bo-light .view-sales .share-bar {
+  display: block; width: 54px; height: 5px; border-radius: var(--po-r-pill);
+  background: var(--po-line); overflow: hidden;
+}
+body.bo-light .view-sales .share-bar > i { display: block; height: 100%; background: var(--po-ink); }
+/* Payment mix reads as two number columns: share, then money. Both fixed-width and
+   tabular so the percents line up under each other and the amounts under each other. */
+body.bo-light .view-sales .mini-list-row .pay-share {
+  min-width: 54px; text-align: right;
+  font-family: var(--po-mono); font-variant-numeric: tabular-nums;
+  font-size: 12.5px; color: var(--po-ink-secondary);
+}
+body.bo-light .view-sales .mini-list-row .ml-value {
+  min-width: 84px; text-align: right;
+  font-family: var(--po-mono); font-size: 13.5px; font-weight: 650;
+}
+
+body.bo-light .view-sales .sales-note {
+  padding: 9px 12px; background: var(--po-shell);
+  border: 1px solid var(--po-line); border-radius: var(--po-r-card);
+  font-size: 12px; color: var(--po-ink-secondary);
+}
+

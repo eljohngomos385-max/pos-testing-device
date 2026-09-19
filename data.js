@@ -37,10 +37,10 @@ const PRODUCTS = [
     aliases: ['teflon', 'tape teflon'] },
 
   // ---- Electrical ----
-  { id: 'e001', sku: 'WIRE-THHN-12', barcode: '4801234600015', name: 'THHN Wire #12 (per meter)', brand: 'Phelps Dodge', folder: 'electrical', unit: 'm',
+  { id: 'e001', sku: 'WIRE-THHN-12', barcode: '4801234600015', name: 'THHN Wire #12 (per meter)', brand: 'Phelps Dodge', folder: 'electrical', unit: 'm', soldBy: 'measure',
     price: 28.00, cost: 19.00, stock: 850, reorderPoint: 200,
     aliases: ['kawad', 'wire 12', 'thhn 12'] },
-  { id: 'e002', sku: 'WIRE-THHN-14', barcode: '4801234600022', name: 'THHN Wire #14 (per meter)', brand: 'Phelps Dodge', folder: 'electrical', unit: 'm',
+  { id: 'e002', sku: 'WIRE-THHN-14', barcode: '4801234600022', name: 'THHN Wire #14 (per meter)', brand: 'Phelps Dodge', folder: 'electrical', unit: 'm', soldBy: 'measure',
     price: 22.00, cost: 15.00, stock: 12, reorderPoint: 200,
     aliases: ['wire 14', 'kawad 14'] },
   { id: 'e003', sku: 'BULB-LED-9W', barcode: '4801234600039', name: 'LED Bulb 9W Daylight', brand: 'Firefly', folder: 'electrical', unit: 'pc',
@@ -60,10 +60,10 @@ const PRODUCTS = [
     aliases: ['breaker 30', 'circuit breaker'] },
 
   // ---- Fasteners ----
-  { id: 'f001', sku: 'NAIL-CW-2', barcode: '4801234700019', name: 'Common Wire Nail 2"', brand: 'Generic', folder: 'fasteners', unit: 'kg',
+  { id: 'f001', sku: 'NAIL-CW-2', barcode: '4801234700019', name: 'Common Wire Nail 2"', brand: 'Generic', folder: 'fasteners', unit: 'kg', soldBy: 'measure',
     price: 95.00, cost: 65.00, stock: 38, reorderPoint: 15,
     aliases: ['pako', 'nail 2 inch', 'cw nail 2'] },
-  { id: 'f002', sku: 'NAIL-CW-3', barcode: '4801234700026', name: 'Common Wire Nail 3"', brand: 'Generic', folder: 'fasteners', unit: 'kg',
+  { id: 'f002', sku: 'NAIL-CW-3', barcode: '4801234700026', name: 'Common Wire Nail 3"', brand: 'Generic', folder: 'fasteners', unit: 'kg', soldBy: 'measure',
     price: 90.00, cost: 62.00, stock: 24, reorderPoint: 15,
     aliases: ['pako 3', 'nail 3 inch'] },
   { id: 'f003', sku: 'SCREW-WD-1', barcode: '4801234700033', name: 'Wood Screw #8 × 1"', brand: 'Generic', folder: 'fasteners', unit: 'pc',
@@ -117,10 +117,10 @@ const PRODUCTS = [
   { id: 'c001', sku: 'CEM-PORT-40', barcode: '4801235000013', name: 'Portland Cement 40kg', brand: 'Holcim', folder: 'cement', unit: 'bag',
     price: 285.00, cost: 235.00, stock: 110, reorderPoint: 30,
     aliases: ['cement', 'semento', 'holcim'] },
-  { id: 'c002', sku: 'SAND-FINE-CUM', barcode: '4801235000020', name: 'Fine Sand (per cu.m)', brand: 'Local', folder: 'cement', unit: 'cu.m',
+  { id: 'c002', sku: 'SAND-FINE-CUM', barcode: '4801235000020', name: 'Fine Sand (per cu.m)', brand: 'Local', folder: 'cement', unit: 'cu.m', soldBy: 'measure',
     price: 1450.00, cost: 1100.00, stock: 4, reorderPoint: 2,
     aliases: ['buhangin', 'sand'] },
-  { id: 'c003', sku: 'GRAVEL-3-CUM', barcode: '4801235000037', name: 'Gravel 3/4" (per cu.m)', brand: 'Local', folder: 'cement', unit: 'cu.m',
+  { id: 'c003', sku: 'GRAVEL-3-CUM', barcode: '4801235000037', name: 'Gravel 3/4" (per cu.m)', brand: 'Local', folder: 'cement', unit: 'cu.m', soldBy: 'measure',
     price: 1380.00, cost: 1050.00, stock: 3, reorderPoint: 2,
     aliases: ['graba', 'gravel'] },
   { id: 'c004', sku: 'CHB-4', barcode: '4801235000044', name: 'Hollow Block 4"', brand: 'Local', folder: 'cement', unit: 'pc',

@@ -1,0 +1,18 @@
+name = "hwpos-api"
+main = "index.js"
+compatibility_date = "2026-01-01"
+
+# Nightly rollup at 18:00 UTC == 02:00 Manila, safely after every store has closed.
+[triggers]
+crons = ["0 18 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hwpos"
+database_id = "PASTE_AFTER_wrangler_d1_create_hwpos"
+
+[vars]
+DEFAULT_STORE = "main"
+ALLOWED_ORIGIN = "*"   # tighten to the Pages domain once it exists
+
+# Secret, never in this file:  wrangler secret put SUPABASE_JWT_SECRET
