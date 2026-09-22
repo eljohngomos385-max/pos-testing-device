@@ -151,6 +151,8 @@
     return `<span class="status-pill ${tone}">${label}</span>`;
   };
   const dash = (v) => (v ? escapeHtml(v) : '<span class="muted">—</span>');
+  // A card holding a table is a blk-table; the same card with nothing to list is a blk-empty.
+  const tblCard = (has) => (has ? 'bo-card blk-table' : 'bo-card blk-empty');
   const dateText = (iso) => (iso ? new Date(iso + 'T00:00').toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 
 
@@ -183,7 +185,7 @@
       `<button class="secondary-btn small" data-act="exportCsv">Export CSV</button>
        <button class="primary-btn small" data-act="add">Add staff</button>`) + `
       <div class="dash-stack">
-        <section class="bo-card">
+        <section class="${tblCard(body)}">
           <div class="bo-card-head">
             <span class="bo-card-label">People</span>
             <input class="search-input small q-input" data-act="q" placeholder="Search staff…" autocomplete="off" value="${escapeHtml(q)}" />
@@ -253,7 +255,7 @@
           </section>
         </div>
 
-        <section class="bo-card">
+        <section class="bo-card ${recent.length ? 'blk-list' : 'blk-empty'}">
           <div class="bo-card-head">
             <span class="bo-card-label">Attendance</span>
             <span class="bo-card-sub">Last ${recent.length} marked ${recent.length === 1 ? 'day' : 'days'} · mark on the Attendance tab</span>
@@ -342,7 +344,7 @@
 
     return head(TABS.attendance, '', '') + `
       <div class="dash-stack">
-        <section class="bo-card">
+        <section class="bo-card${rows ? '' : ' blk-empty'}">
           <div class="bo-card-head">
             <span class="bo-card-label">Mark attendance</span>
             <input type="date" class="bo-date" data-act="date" value="${escapeHtml(date)}" />
@@ -351,7 +353,7 @@
           <div class="bo-card-inset">${rows || '<div class="bo-empty">No active staff</div>'}</div>
         </section>
 
-        <section class="bo-card">
+        <section class="${tblCard(summary)}">
           <div class="bo-card-head">
             <span class="bo-card-label">${escapeHtml(new Date(date + 'T00:00').toLocaleDateString('en-PH', { month: 'long', year: 'numeric' }))}</span>
             <span class="st-note">Estimate only: daily rate × days worked, a half day counting 0.5. No deductions, overtime or government contributions.</span>
@@ -427,7 +429,7 @@
 
     return head(TABS.payroll, '', '') + `
       <div class="dash-stack">
-        <section class="bo-card">
+        <section class="${tblCard(rows)}">
           <div class="bo-card-head">
             <span class="bo-card-label">Payroll · ${peso(netTotal)} to pay out</span>
             <input type="month" class="bo-date" data-act="month" value="${escapeHtml(month)}" />
@@ -443,7 +445,7 @@
           </div>
         </section>
 
-        <section class="bo-card">
+        <section class="${tblCard(monthRows)}">
           <div class="bo-card-head">
             <span class="bo-card-label">Cash advances</span>
             <span class="bo-card-sub">${peso(drawnTotal)} drawn in ${escapeHtml(monthName(month))}</span>
@@ -511,7 +513,7 @@
 
     return head(TABS.access, '', '') + `
       <div class="dash-stack">
-        <section class="bo-card">
+        <section class="bo-card blk-table">
           <div class="bo-card-head">
             <span class="bo-card-label">Page access</span>
             <span class="st-note">The sidebar hides what a role can't open; the server is what refuses it. Until the Worker is deployed this is cosmetic.</span>
@@ -540,7 +542,7 @@
       const person = isNew ? { ...STAFF_DEFAULTS, id: '' } : staff.find((u) => u.id === state.detailId);
       el.innerHTML = person ? personHtml(person, isNew, readAllAttendance())
         : head('That person no longer exists', '', '<button class="secondary-btn small" data-act="back">All staff</button>')
-          + '<div class="bo-empty">Not found</div>';
+          + '<section class="bo-card blk-empty"><div class="bo-empty">Not found</div></section>';
       if (person) refreshPayHints();
       return;
     }

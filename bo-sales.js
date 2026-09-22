@@ -6,14 +6,11 @@
   const VIEW = 'sales';
   const root = () => document.querySelector(`.view[data-view="${VIEW}"]`);
 
-  const TABS = [
-    ['summary', 'Summary'], ['patterns', 'Patterns'], ['item', 'By item'], ['category', 'By category'],
-    ['employee', 'By employee'], ['payment', 'By payment'], ['tx', 'Transactions'],
-  ];
+  // Patterns, By employee and By payment are cards on the Summary now (owner, 2026-09-22).
+  // Transactions is its own sidebar link (data-sub="tx"), so it stays a tab here but
+  // never shows in Sales' own tree.
+  const TABS = [['summary', 'Summary'], ['item', 'By item'], ['category', 'By category'], ['tx', 'Transactions']];
   (globalThis.HWPOS_SUBNAV = globalThis.HWPOS_SUBNAV || {}).sales = { param: 'by', def: 'summary', items: TABS };
-  // How many of the newest rows the Summary carries. The Transactions tab is still the
-  // ledger -- this is the recents list, and it stops before it becomes one.
-  const RECENT = 25;
 
   // How each status moves money. This is the single easiest thing to get wrong here:
   //   completed → the sale counted.
@@ -155,50 +152,7 @@
       cQty, cRev, cCost, cProfit, cMargin, cShare,
     ],
     category: [{ ...cName, label: 'Category' }, cQty, cRev, cCost, cProfit, cMargin, shareBar],
-    employee: [
-      { ...cName, label: 'Employee' },
-      { key: 'txns', label: 'Transactions', num: 1, cell: r => int(r.txns), csv: r => r.txns },
-      cRev, cProfit,
-      { key: 'avg', label: 'Avg basket', num: 1, cell: r => peso(r.avg), csv: r => money(r.avg) },
-      { key: 'perSale', label: 'Items / sale', num: 1, cell: r => r.perSale.toFixed(1), csv: r => money(r.perSale) },
-      { key: 'voids', label: 'Voids', num: 1, cell: r => (r.voids ? `<span class="status-pill danger">${r.voids}</span>` : '—'), csv: r => r.voids },
-      { key: 'refunds', label: 'Refunds', num: 1, cell: r => (r.refunds ? `<span class="status-pill warn">${r.refunds}</span>` : '—'), csv: r => r.refunds },
-    ],
-    payment: [
-      {
-        ...cName, label: 'Payment type',
-        // Credit is the row that matters here: booked as revenue, not yet in the drawer.
-        cell: r => escapeHtml(r.name) + (r.kind === 'credit' ? ' <span class="status-pill warn">Not yet collected</span>' : ''),
-        csv: r => r.name,
-      },
-      { key: 'txns', label: 'Transactions', num: 1, cell: r => int(r.txns), csv: r => r.txns },
-      cRev, shareBar,
-    ],
   };
-
-  // Highest quantity, not highest revenue: "what do they buy" is a thing, not a receipt.
-  function topSeller(r) {
-    let best = null;
-    r.top.forEach(t => { if (!best || t.qty > best.qty) best = t; });
-    return best ? `${best.name} · ${qtyText(best.qty)}` : '—';
-  }
-
-  const FUL_COLUMNS = [
-    { ...cName, label: 'Fulfilment' },
-    { key: 'txns', label: 'Transactions', num: 1, cell: r => int(r.txns), csv: r => r.txns },
-    cRev, cProfit,
-    { key: 'avg', label: 'Avg basket', num: 1, cell: r => peso(r.avg), csv: r => money(r.avg) },
-    { key: 'top', label: 'Top seller', cell: r => escapeHtml(topSeller(r)), csv: r => topSeller(r) },
-    shareBar,
-  ];
-
-  // What a profile chart exports: the same rows the line is drawn from.
-  const PROFILE_COLUMNS = [
-    { key: 'title', label: 'Slot', cell: r => escapeHtml(r.title), csv: r => r.title },
-    { key: 'txns', label: 'Transactions', num: 1, cell: r => int(r.txns), csv: r => r.txns },
-    cRev, cProfit,
-    { key: 'items', label: 'Items', num: 1, cell: r => qtyText(r.items), csv: r => money(r.items) },
-  ];
 
   const TX_COLUMNS = [
     { key: 'number', label: 'Receipt', cell: o => `#${escapeHtml(o.number)}`, csv: o => '#' + o.number },
@@ -223,10 +177,7 @@
   }
 
   const card = (label, sub, body, flush) =>
-    `<section class="bo-card"><div class="bo-card-head"><span class="bo-card-label">${escapeHtml(label)}</span>${sub ? `<span class="bo-card-sub">${escapeHtml(sub)}</span>` : ''}</div><div class="bo-card-inset${flush ? ' flush' : ''}">${body}</div></section>`;
-
-  const miniRow = (name, sub, value) =>
-    `<div class="mini-list-row"><div class="ml-left"><span class="ml-name">${escapeHtml(name)}</span><span class="ml-sub">${escapeHtml(sub)}</span></div><span class="ml-value">${value}</span></div>`;
+    `<section class="bo-card blk-table"><div class="bo-card-head"><span class="bo-card-label">${escapeHtml(label)}</span>${sub ? `<span class="bo-card-sub">${escapeHtml(sub)}</span>` : ''}</div><div class="bo-card-inset${flush ? ' flush' : ''}">${body}</div></section>`;
 
   // ---------- Profiles: the shell's chart, on this page's rows ----------
   /* backoffice.js already draws revenue against gross profit (renderLineChart) and already
@@ -289,40 +240,41 @@
   }
 
   // A chart is drawn, not stringified: the body builder leaves a placeholder and the
-  // renderer runs once the markup is in the document. Same trend-head, legend and .lc-*
-  // markup the dashboard card uses, so there is no new CSS.
+  // renderer runs once the markup is in the document. Same chart-block markup as the
+  // dashboard card (bo-blocks.css → CHART); renderLineChart fills the key totals.
+  // `head` is the number line; `keys` adds the Revenue / Gross profit switch; `still` drops
+  // the "now" dot, which means nothing on an hour or weekday profile.
   let charts = [];
-  function chartCard(label, sub, data) {
+  function chartCard(label, data, { head, keys, still, cls = '' }) {
     const id = `chart${charts.length}`;
     charts.push([id, data]);
-    const total = data.reduce((n, d) => n + d.revenue, 0);
     return `
-      <section class="bo-card">
-        <div class="bo-card-head">
-          <span class="bo-card-label">${escapeHtml(label)}</span>
-          <span class="bo-card-sub">${escapeHtml(sub)}</span>
-        </div>
-        <div class="bo-card-inset">
-          <div class="trend-head">
-            <div class="trend-total">
-              <span class="trend-total-label">Total revenue</span>
-              <span class="trend-total-value">${pesoShort(total)}</span>
-            </div>
-            <div class="trend-legend">
-              <span class="lg ghost">Gross profit</span>
-              <span class="lg">Revenue</span>
-            </div>
-          </div>
-          <div id="${id}"></div>
-        </div>
+      <section class="bo-card blk-chart ${cls}">
+        <span class="bo-card-label">${escapeHtml(label)}</span>
+        <div class="blk-head">${head}</div>
+        ${keys ? `<div class="blk-keys">
+          <button class="blk-key s0" aria-pressed="true"><i></i>Revenue <b></b></button>
+          <button class="blk-key s1" aria-pressed="true"><i></i>Gross profit <b></b></button>
+        </div>` : ''}
+        <div class="blk-plot" id="${id}"${still ? ' data-still' : ''}></div>
       </section>`;
   }
 
-  // "Busiest at 2 PM" is the whole reason to plot a profile. Say it, rather than leave it
+  // "Busiest at 10 AM" is the whole reason to plot a profile. Say it, rather than leave it
   // to be eyeballed off the line.
-  function peakOf(data, word) {
+  function peakHead(data, short) {
     const top = data.reduce((a, b) => (b.revenue > a.revenue ? b : a), data[0]);
-    return top && top.revenue > 0 ? `${word} ${top.title} · ${pesoShort(top.revenue)}` : 'Nothing sold in this range';
+    return top && top.revenue > 0
+      ? `<div class="blk-head-value kpi-value">${escapeHtml(short(top))}<span class="of"> busiest</span></div><span class="kpi-note">${escapeHtml(pesoShort(top.revenue))}</span>`
+      : '<div class="blk-head-value kpi-value">—</div>';
+  }
+
+  // 24 hours flattens a shop that opens at 7 and shuts at 6: plot the hours that sold, one
+  // either side, and 6 AM to 8 PM when nothing did.
+  function openHours(hours) {
+    const sold = hours.map((h, i) => (h.txns ? i : -1)).filter(i => i >= 0);
+    if (!sold.length) return hours.slice(6, 21);
+    return hours.slice(Math.max(0, sold[0] - 1), Math.min(24, sold[sold.length - 1] + 2));
   }
 
   // ---------- What the URL says ----------
@@ -407,85 +359,121 @@
       </header>`;
   }
 
-  // Stats, then the picture, then the ledger. The six numbers ARE six cards now (v34) and
-  // they lead the page at full width; the chart takes the width they used to take and the
-  // payment mix rides alongside it as a plain list. The table lives on its own tab.
-  function summary(a, prev, v, rows) {
+  // What came off the top before revenue: discounts on sales, and the money returns
+  // handed back. Gross is worked back from revenue so the card always adds up to it.
+  function offTop(rows) {
+    let disc = 0, ret = 0, retN = 0;
+    for (const o of rows) {
+      const sign = saleSign(o);
+      if (sign > 0) disc += o.discount || 0;
+      if (sign < 0) { ret += o.total; retN += 1; }
+    }
+    return { disc, ret, retN };
+  }
+  // More discount or more returns is the bad direction: same chip maths, tone flipped.
+  const worse = (dl) => ({ ...dl, tone: dl.tone === 'up' ? 'down' : dl.tone === 'down' ? 'up' : 'flat' });
+  const cmpCell = (dl) => [escapeHtml(dl.text), dl.tone === 'flat' ? '' : dl.tone];
+
+  const nameBtn = (name) => `<button type="button" class="nm" data-act="staff" data-name="${escapeHtml(name)}">${escapeHtml(name)}</button>`;
+  const listCard = (label, body, foot = '', cls = '') =>
+    `<section class="bo-card blk-kpi ${cls}"><div class="kpi-label">${escapeHtml(label)}</div>${body}${foot && `<div class="sales-foot">${foot}</div>`}</section>`;
+  const emptyRows = '<div class="bo-empty">Nothing sold in this range.</div>';
+
+  // The Shopify-style grid (owner, 2026-09-22): six KPIs across, then three rows of three
+  // blocks -- the trend over two columns beside the breakdown; hour, weekday and payment;
+  // staff, top items and the targets. Every block is the same height, so the grid never
+  // leaves a hole. Patterns, By employee and By payment live here now, as blocks.
+  function summary(a, prev, rows, pRows) {
     const cmp = state.range === 'today' ? 'the day before' : 'prev period';
     const d = (cur, was) => deltaOf(cur, was, cmp);
-    const t = a.totals;
-    // Six cards in one grid, not two striped three-row bars inside a card (v34).
+    const t = a.totals, p = prev.totals;
+
     const stats = `
-      <div class="stat-head">
-        <span class="bo-card-label">Overview</span>
-        <span class="bo-card-sub">${escapeHtml(rangeLabel())}</span>
-      </div>
-      <div class="stat-grid three-up show-delta">
+      <div class="stat-grid show-delta sales-kpis">
         ${[
-          statCell({ label: 'Revenue', value: pesoShort(t.revenue), delta: d(t.revenue, prev.revenue) }),
-          statCell({ label: 'Gross profit', value: pesoShort(t.profit), delta: d(t.profit, prev.profit) }),
-          statCell({ label: 'Margin', value: t.net ? pct(t.margin) : '—', delta: d(t.margin, prev.margin) }),
-          statCell({ label: 'Transactions', value: int(t.txns), delta: d(t.txns, prev.txns) }),
-          statCell({ label: 'Average basket', value: pesoShort(t.avg), delta: d(t.avg, prev.avg) }),
-          statCell({ label: 'Items sold', value: qtyText(t.qty), delta: d(t.qty, prev.qty) }),
+          statCell({ label: 'Revenue', value: pesoShort(t.revenue), delta: d(t.revenue, p.revenue) }),
+          statCell({ label: 'Gross profit', value: pesoShort(t.profit), delta: d(t.profit, p.profit) }),
+          statCell({ label: 'Margin', value: t.net ? pct(t.margin) : '—', delta: d(t.margin, p.margin) }),
+          statCell({ label: 'Transactions', value: int(t.txns), delta: d(t.txns, p.txns) }),
+          statCell({ label: 'Average basket', value: pesoShort(t.avg), delta: d(t.avg, p.avg) }),
+          statCell({ label: 'Items sold', value: qtyText(t.qty), delta: d(t.qty, p.qty) }),
         ].join('')}
       </div>`;
 
-    // A four-column table for "where did the money land" was more furniture than answer.
-    // Name, share, amount -- the dashboard's own mini-list, and the By-payment tab is
-    // one click away for the cost/margin columns. The share is a right-aligned number,
-    // not a bar: two tabular columns compare better than three ragged bar fills, and the
-    // percent is the answer the bar was only approximating.
-    const pays = sortRows(a.pays, 'revenue', 'desc');
-    const payRows = pays.map(p => `
-      <div class="mini-list-row">
-        <div class="ml-left">
-          <span class="ml-name">${escapeHtml(p.name)}</span>
-          <span class="ml-sub">${int(p.txns)} txn${p.txns === 1 ? '' : 's'}</span>
-        </div>
-        <span class="pay-share">${pct(p.share)}</span>
-        <span class="ml-value">${pesoShort(p.revenue)}</span>
-      </div>`).join('');
-    const payMix = `
-      <section class="bo-card">
-        <div class="bo-card-head">
-          <span class="bo-card-label">Payment mix</span>
-          <button class="link-btn" data-act="tab" data-by="payment">See all →</button>
-        </div>
-        <div class="bo-card-inset">
-          ${pays.length ? `<div class="mini-list">${payRows}</div>` : '<div class="bo-empty">Nothing sold in this range.</div>'}
-        </div>
-      </section>`;
+    // Row 1: the trend, and where revenue came from.
+    const rev = d(t.revenue, p.revenue);
+    const trend = chartCard('Sales over time', trendSeries(rows), {
+      keys: true, cls: 'w2',
+      head: `<div class="blk-head-value">${curHtml(pesoShort(t.revenue))}</div><span class="trend ${rev.tone}" title="${escapeHtml(rev.cmp)}">${escapeHtml(rev.text)}</span>`,
+    });
+    const o = offTop(rows), po = offTop(pRows);
+    const gross = t.revenue + o.disc + o.ret, pGross = p.revenue + po.disc + po.ret;
+    const vat = t.revenue - t.net, pVat = p.revenue - p.net;
+    const [revText, revTone] = cmpCell(rev);
+    const breakdown = listCard('Sales breakdown', `<div class="bd-rows">
+      ${bdRow('Gross sales', pesoShort(gross), ...cmpCell(d(gross, pGross)))}
+      ${bdRow('Discounts', pesoShort(-o.disc), ...cmpCell(worse(d(o.disc, po.disc))))}
+      ${bdRow(`Returns${o.retN ? ` (${int(o.retN)})` : ''}`, pesoShort(-o.ret), ...cmpCell(worse(d(o.ret, po.ret))))}
+      ${bdRow('VAT included', pesoShort(vat), ...cmpCell(d(vat, pVat)))}
+      ${bdRow('Before VAT', pesoShort(t.net), ...cmpCell(d(t.net, p.net)))}
+      <div class="bd-row total"><span class="nm">Net sales</span><span class="amt">${pesoShort(t.revenue)}</span><span class="cmp ${revTone}">${revText}</span></div>
+    </div>`, t.voids ? `${int(t.voids)} voided, no revenue` : '');
 
-    const reversals = t.voids || t.refunds
-      ? `<div class="sales-note">${int(t.voids)} voided · ${int(t.refunds)} refunded or returned in this window. Voids add a transaction and no revenue; returns subtract.</div>`
-      : '';
+    // Row 2: when the shop sells, and how it gets paid. Lines, not bars -- there is one
+    // chart in the product (docs/backoffice.md → Sales-trend chart).
+    const hours = openHours(hourSeries(rows)), days = weekdaySeries(rows);
+    const hourCard = chartCard('Sales by hour of day', hours, { still: true, head: peakHead(hours, h => h.title) });
+    const dayCard = chartCard('Sales by day of week', days, { still: true, head: peakHead(days, x => x.label) });
+    const pays = sortRows(a.pays.filter(r => r.sales), 'revenue', 'desc');
+    const payCard = listCard('Payment methods', pays.length ? `<div class="bd-rows">
+      ${pays.slice(0, 6).map(r => bdRow(escapeHtml(r.name) + (r.kind === 'credit' ? ' <span class="status-pill warn">Not yet collected</span>' : ''),
+        pesoShort(r.revenue), pct(r.share))).join('')}
+      <div class="bd-row total"><span class="nm">Total</span><span class="amt">${pesoShort(t.revenue)}</span><span class="cmp">100%</span></div>
+    </div>` : emptyRows);
 
-    // Top items lived here and was cut -- By item is a whole tab of it. What the summary
-    // was missing is the ledger, so the newest RECENT rows come up from the Transactions
-    // tab. That tab keeps the search, the sorting and the paging past 25.
-    const recent = rows.slice(0, RECENT);
-    const recentCard = `
-      <section class="bo-card">
-        <div class="bo-card-head">
-          <span class="bo-card-label">Recent transactions</span>
-          <span class="bo-card-sub">newest ${int(recent.length)} of ${int(rows.length)}</span>
-          <button class="link-btn" data-act="tab" data-by="tx">See all →</button>
+    // Row 3: who sold, what sold, and the goal. A name opens that person's numbers.
+    const staff = sortRows(a.staff.filter(r => r.txns), 'revenue', 'desc');
+    const staffCard = listCard('Sales by staff', staff.length
+      ? `<div class="bd-rows">${staff.slice(0, 6).map(r => bdRow(nameBtn(r.name), pesoShort(r.revenue), pct(r.share))).join('')}</div>` : emptyRows,
+      staff.length ? 'Tap a name for their numbers' : '');
+    const items = sortRows(a.items, 'revenue', 'desc').slice(0, 5);
+    const itemCard = listCard('Top items', items.length
+      ? `<div class="bd-rows">${items.map(r => bdRow(escapeHtml(r.name), pesoShort(r.revenue), pct(r.share))).join('')}</div>` : emptyRows,
+      '<button type="button" class="link-btn" data-act="tab" data-by="item">All items and categories →</button>');
+    // The dashboard's two target widgets, stacked in one block. Calendar, not range: they
+    // ignore the filters on purpose (backoffice.js → dashTargets).
+    const tg = dashTargets();
+    const targetCard = `<section class="bo-card blk-kpi sales-targets">${DASH_WIDGETS.monthly[1](tg)}${tg.month
+      ? `<div class="sales-tgt">${DASH_WIDGETS.daily[1](tg).replace(DOTS, '')}</div>` : ''}</section>`;
+
+    return stats + `<div class="sales-grid">${trend}${breakdown}${hourCard}${dayCard}${payCard}${staffCard}${itemCard}${targetCard}</div>`;
+  }
+
+  // One person's numbers, on the page's own rows: the same agg(), narrowed to them.
+  function openStaff(name) {
+    const { rows } = windowRows(readView());
+    const t = agg(rows.filter(o => (o.cashier || '—') === name));
+    const dlg = document.getElementById('staffDlg');
+    const top = sortRows(t.items, 'revenue', 'desc').slice(0, 5);
+    const n = t.totals;
+    dlg.dataset.name = name;
+    dlg.innerHTML = `
+      <div class="bod-head">
+        <div class="bod-title"><h2>${escapeHtml(name)}</h2></div>
+        <button class="bod-close" value="close" aria-label="Close">&times;</button>
+      </div>
+      <div class="bod-body staff-pop">
+        <div class="bo-card-sub">${escapeHtml(rangeLabel())} · same filters as the page</div>
+        <div class="bd-rows">
+          ${bdRow('Revenue', pesoShort(n.revenue))}${bdRow('Gross profit', pesoShort(n.profit))}
+          ${bdRow('Transactions', int(n.txns))}${bdRow('Average basket', pesoShort(n.avg))}
+          ${bdRow('Voids', int(n.voids))}
         </div>
-        <div class="bo-card-inset flush">
-          ${table(TX_COLUMNS, recent, v.sort, 'No transactions in this range.', false)}
-        </div>
-      </section>`;
-
-    // The page had every number and no picture. Same chart as the dashboard's, except it
-    // obeys the payment and staff filters sitting above it.
-    const trend = chartCard('Sales trend', rangeLabel(), trendSeries(rows));
-
-    // Stats lead full width (v34), then the chart and the payment mix share the row the
-    // stats used to sit in. The six cards inside .sales-top were being re-striped by the
-    // rules written for the bar they replaced, and the head and the grid landed in two
-    // different columns of that grid.
-    return stats + reversals + `<div class="sales-top">${trend}${payMix}</div>` + recentCard;
+        <div class="kpi-label">Top items</div>
+        ${top.length ? `<div class="bd-rows">${top.map(r => bdRow(escapeHtml(r.name), pesoShort(r.revenue), qtyText(r.qty) + ' sold')).join('')}</div>` : emptyRows}
+        <div class="staff-pop-foot"><button type="button" class="secondary-btn small" data-act="staff-tx">View their transactions</button></div>
+      </div>`;
+    dlg.showModal();
   }
 
   function txTab(rows, v) {
@@ -496,7 +484,7 @@
     const pg = paginate(hits, v.page);
     const search = `<input class="search-input small q-input" placeholder="Search receipt, customer or staff…" autocomplete="off" value="${escapeHtml(state.txQuery || '')}" />`;
     return `
-      <section class="bo-card">
+      <section class="bo-card blk-table">
         <div class="bo-card-head"><span class="bo-card-label">Transactions</span>${search}</div>
         <div class="bo-card-inset flush">
           ${table(TX_COLUMNS, pg.rows, v.sort, q ? 'No transactions match that search.' : 'No transactions in this range.')}
@@ -505,18 +493,8 @@
       </section>`;
   }
 
-  // Hour, weekday, and which half of the shop it came from. Three questions the ledger
-  // could always answer and never did.
-  function patternsTab(a, rows) {
-    const hours = hourSeries(rows), days = weekdaySeries(rows);
-    return chartCard('Sales by hour of day', peakOf(hours, 'Busiest hour:'), hours)
-      + chartCard('Sales by day of week', peakOf(days, 'Busiest day:'), days)
-      + card('Walk-in vs delivery', rangeLabel(),
-        table(FUL_COLUMNS, sortRows(a.fuls, 'revenue', 'desc'), {}, 'Nothing sold in this range.', false), true);
-  }
-
-  const CUT_ROWS = { item: a => a.items, category: a => a.cats, employee: a => a.staff, payment: a => a.pays };
-  const CUT_LABEL = { item: 'By item', category: 'By category', employee: 'By employee', payment: 'By payment type' };
+  const CUT_ROWS = { item: a => a.items, category: a => a.cats };
+  const CUT_LABEL = { item: 'By item', category: 'By category' };
 
   function cutTab(a, v) {
     const cols = COLUMNS[v.tab];
@@ -536,8 +514,8 @@
     const caret = focused ? document.activeElement.selectionStart : 0;
 
     charts = [];
-    const body = v.tab === 'summary' ? summary(a, agg(prevRows(v)).totals, v, rows)
-      : v.tab === 'patterns' ? patternsTab(a, rows)
+    const pRows = v.tab === 'summary' ? prevRows(v) : [];
+    const body = v.tab === 'summary' ? summary(a, agg(pRows), rows, pRows)
       : v.tab === 'tx' ? txTab(rows, v)
       : cutTab(a, v);
     el.innerHTML = head(v, payOpts, staffOpts) + `<div class="dash-stack">${body}</div>`;
@@ -563,16 +541,11 @@
       cols = TX_COLUMNS;
       // The CSV is what is on screen, in the order it is on screen.
       data = sortRows(rows, v.sort.key, v.sort.dir, TX_COLUMNS);
-    } else if (v.tab === 'patterns') {
-      // The hour profile is the row-shaped half of that tab; the weekday chart is seven
-      // numbers anyone can read off the screen.
-      cols = PROFILE_COLUMNS;
-      data = hourSeries(rows);
     } else {
       cols = COLUMNS[v.tab];
       data = sortRows(CUT_ROWS[v.tab](a), v.sort.key, v.sort.dir);
     }
-    const cut = v.tab === 'summary' || v.tab === 'tx' ? 'transactions' : v.tab === 'patterns' ? 'by-hour' : 'by-' + v.tab;
+    const cut = v.tab === 'summary' || v.tab === 'tx' ? 'transactions' : 'by-' + v.tab;
     const name = `sales-${cut}-${state.range}-${isoDate(state.anchor)}.csv`;
     downloadCsv(name, [cols.map(c => c.label)].concat(data.map(r => cols.map(c => c.csv(r)))));
     showToast(`Exported ${data.length} row${data.length === 1 ? '' : 's'}`);
@@ -580,6 +553,14 @@
 
   // ---------- Events: one delegated listener per type ----------
   document.addEventListener('click', (e) => {
+    // The staff pop-up sits outside the view: a dialog inside a hidden section never shows.
+    const toTx = e.target.closest && e.target.closest('#staffDlg [data-act="staff-tx"]');
+    if (toTx) {
+      const dlg = toTx.closest('dialog'), { params } = Router.route();
+      dlg.close();
+      Router.go(VIEW, '', { range: params.range, date: params.date, pay: params.pay, by: 'tx', staff: dlg.dataset.name });
+      return;
+    }
     const el = root();
     if (!el || !e.target.closest) return;
     // Close the range menu on any click outside it, including one landing off this view.
@@ -592,6 +573,9 @@
     if (act === 'rp-toggle') { if (menu) menu.hidden = !menu.hidden; return; }
     if (act === 'range') { Router.setParams({ range: hit.dataset.range === 'today' ? '' : hit.dataset.range, page: '' }, { replace: false }); return; }
     if (act === 'export') { exportCsv(); return; }
+    if (act === 'staff') { openStaff(hit.dataset.name); return; }
+    if (act === 'targets') { openTargetDialog(); return; }
+    if (act === 'tab') { goSub(VIEW, hit.dataset.by); return; }
     if (act === 'sort') {
       const key = hit.dataset.key;
       const cur = readView().sort;

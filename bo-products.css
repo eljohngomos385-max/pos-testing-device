@@ -24,12 +24,7 @@ body.bo-light .view-products .pd-thumb {
 body.bo-light .view-products .pd-img-col { width: 44px; }
 
 body.bo-light .view-products .pd-row { cursor: pointer; }
-body.bo-light .view-products .pd-row:hover { background: var(--po-surface-hover); }
 body.bo-light .view-products .pd-arch { opacity: 0.62; }
-body.bo-light .view-products .muted-sub {
-  font-size: 11.5px;
-  color: var(--po-ink-tertiary);
-}
 
 /* Variants: the table IS the form, so every cell is a field. Widths keep the row
    from collapsing; .table-wrap scrolls it when the screen is too narrow. */
@@ -38,7 +33,9 @@ body.bo-light .view-products .pd-vtable .text-input {
   min-width: 0;
 }
 body.bo-light .view-products .pd-vtable .num .text-input { text-align: right; }
-body.bo-light .view-products .pd-vrow td { vertical-align: top; }
+body.bo-light .view-products .pd-vrow td { vertical-align: top; padding-block: 6px; }
+/* Text cells line up with the 28px field beside them. */
+body.bo-light .view-products .pd-vrow td.pd-vmargin { padding-top: 11px; }
 body.bo-light .view-products .pd-vname { min-width: 200px; }
 body.bo-light .view-products .pd-vsku { min-width: 116px; }
 /* Wide enough for a seven-figure price: a clipped number is the bug you only
@@ -48,13 +45,12 @@ body.bo-light .view-products .pd-vmargin {
   font-family: var(--po-mono);
   font-size: 12px;
   color: var(--po-ink-secondary);
-  padding-top: 15px;
 }
 body.bo-light .view-products .pd-vstock {
   display: inline-block;
   font-family: var(--po-mono);
   color: var(--po-ink-secondary);
-  padding-top: 8px;
+  padding-top: 5px;
 }
 body.bo-light .view-products .pd-vimg {
   display: flex;
@@ -67,7 +63,6 @@ body.bo-light .view-products .pd-vimg .pd-thumb {
   height: 22px;
   flex: none;
 }
-body.bo-light .view-products .pd-vimg .link-btn { font-size: 11px; }
 
 /* Upload picker: thumb, Upload/Change, Remove - on one line. */
 body.bo-light .view-products .pd-imgpick {
@@ -198,7 +193,6 @@ body.bo-light .view-products .pd-actions {
   gap: 8px;
   padding-top: 10px;
 }
-body.bo-light .view-products .pd-self td { background: var(--po-surface-hover); }
 
 /* Import preview */
 body.bo-light .view-products .pd-imp-sum {
@@ -210,7 +204,7 @@ body.bo-light .view-products .pd-imp-sum {
 }
 body.bo-light .view-products .pd-imp-sum strong {
   font-family: var(--po-mono);
-  color: #1A1A1A;
+  color: var(--blk-ink);
 }
 body.bo-light .view-products .pd-fails {
   margin-top: 10px;
@@ -236,7 +230,6 @@ body.bo-light .view-products .pd-cols > summary {
   display: inline-flex; align-items: center;
 }
 body.bo-light .view-products .pd-cols > summary::-webkit-details-marker { display: none; }
-body.bo-light .view-products .pd-cols[open] > summary { background: var(--po-surface-hover); }
 body.bo-light .view-products .pd-cols-menu {
   position: absolute; z-index: 30; top: calc(100% + 6px); left: 0;
   display: flex; flex-direction: column; gap: 2px;

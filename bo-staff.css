@@ -8,18 +8,18 @@ body.bo-light .st-note {
   margin-left: auto;
   max-width: 62ch;
   text-align: right;
-  font-size: 11.5px;
+  font-size: var(--blk-t-micro);
   line-height: 1.45;
-  color: var(--po-ink-tertiary);
+  color: var(--blk-ink-3);
 }
 
 /* The salary ÷ working days arithmetic, shown under the field it explains. */
 body.bo-light .st-hint {
-  font-size: 11.5px;
-  color: var(--po-ink-tertiary);
+  font-size: var(--blk-t-micro);
+  color: var(--blk-ink-3);
   font-variant-numeric: tabular-nums;
 }
-body.bo-light .st-hint .link-btn { font-size: 11.5px; margin-left: 4px; }
+body.bo-light .st-hint .link-btn { font-size: var(--blk-t-micro); margin-left: 4px; }
 body.bo-light .setting-row.st-stack { padding-top: 0; border-bottom: 0; }
 
 /* A select on its own in a row lines up with the text inputs above and below it. */
@@ -36,8 +36,8 @@ body.bo-light .setting-row label .role-pill { margin-left: 6px; }
 /* Today's clock times + the in/out button, pushed right next to the marks. */
 body.bo-light .st-clock { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 body.bo-light .st-clock-times {
-  font-size: 12px;
-  color: var(--po-ink-secondary);
+  font-size: var(--blk-t-meta);
+  color: var(--blk-ink-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -47,5 +47,5 @@ body.bo-light .st-clock-times {
 
 /* Money coming off the pay. Red is the only colour on the payroll table, so the eye
    lands on what was taken before it reads the total. */
-body.bo-light .view-staff .st-cut { color: var(--po-danger, #b42318); }
-body.bo-light .view-staff .st-void { text-decoration: line-through; color: var(--po-ink-tertiary); }
+body.bo-light .view[data-view="staff"] .st-cut { color: var(--trend-down); }
+body.bo-light .view[data-view="staff"] .st-void { text-decoration: line-through; color: var(--blk-ink-3); }

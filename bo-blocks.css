@@ -1,0 +1,430 @@
+/* ============================================================================
+   BACK OFFICE — BLOCKS (v35). The one place every page's look comes from.
+
+   Ported from blocks-v2.html (the lab). Loaded LAST, after styles.css and every
+   bo-*.css, so it wins. Every piece of UI is one of the types below; each type has
+   its tokens at the top of this file and its rules in its own section. Change a
+   type's token here and every page's copy of that type moves together — a page
+   file never restyles a block, it only lays blocks out.
+
+     .bo-card              the block shell: grey, 12px, a hairline. Every card is one.
+     .bo-card.blk-kpi      KPI: label, then the number with its trend chip on the RIGHT
+     .bo-card.blk-list     striped rows (low stock, deliveries, breakdowns)
+     .bo-card.blk-chart    a chart, head number with its chip on the right
+     .bo-card.blk-table    a table: white card, soft ring, tinted header, hairline rows
+     .bo-card.blk-empty    nothing to show: label + one centred line
+     .btn / .primary-btn / .secondary-btn / .seg-btn / .pbtn   buttons
+     .status-pill          pills
+   A trend always sits beside its number, never on a line under it.
+   ============================================================================ */
+body.bo-light {
+  /* ---- page: one tone, white, sidebar included ---- */
+  --po-bg: #FFFFFF;
+  --po-sidebar: #FFFFFF;
+  --po-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --po-mono: var(--po-font);
+
+  /* ---- every block ---- */
+  --blk-bg: #F9F9F9;            /* the block's own grey */
+  --blk-raised: #FFFFFF;        /* a striped row / input ON a block */
+  --blk-outline: #E1E1E1;       /* the hairline round a block */
+  --blk-r: 12px;                /* every outer corner in the back office */
+  --blk-pad: 16px;
+  --blk-gap: 14px;              /* between blocks */
+  --blk-unit: 248px;            /* one grid unit: a KPI is 1, a list is 2 */
+  --blk-ink: #303030; --blk-ink-2: #616161; --blk-ink-3: #8C8C8C;
+  --blk-t-label: 13px; --blk-t-meta: 12.5px; --blk-t-micro: 11px;
+  --po-r-card: var(--blk-r);
+
+  /* ---- trend chip ---- */
+  --trend-up: #047B5D;  --trend-up-tint: #D3ECDD;
+  --trend-down: #D72C0D; --trend-down-tint: #F8D8D0;
+  --trend-flat-tint: #EFEFEF;
+
+  /* ---- KPI ---- */
+  --kpi-value: 27px; --kpi-weight: 560;
+
+  /* ---- list ---- */
+  --list-row: 36px; --list-row-r: 7px;
+  --meter-track: #EFEFEF;
+
+  /* ---- chart ---- */
+  --chart-1: #2B7DE9;           /* sales */
+  --chart-2: #8B5CF6;           /* profit: violet by default; Settings can make it the deeper blue */
+  --chart-grid: #ECECEC;
+  --data-1: #BCD7FA; --data-2: #75ADF2; --data-3: var(--chart-1);   /* split meters: lightest to deepest */
+
+  /* ---- dashboard rail ---- */
+  --rail-w: 354px;
+
+  /* ---- table ---- */
+  --tbl-bg: #FFFFFF; --tbl-row: 34px; --tbl-head-bg: #F7F7F7; --tbl-line: #EBEBEB;
+  --tbl-stripe: #F7F7F7;        /* every second row; the first stays white under the tinted header */
+  --tbl-hover: #EFEFEF;
+  --tbl-shadow: 0 1px 0 rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.05), 0 2px 4px rgba(0,0,0,.04);
+
+  /* ---- button ---- */
+  --btn-h: 28px; --btn-h-lg: 34px; --btn-r: 8px; --btn-line: #D4D4D4;
+  --btn-soft: #EDEDED; --btn-soft-hover: #E4E4E4;
+
+  /* ---- pill ---- */
+  --pill-h: 20px;
+
+  font-family: var(--po-font);
+  background: var(--po-bg);
+}
+body.bo-light.chart-blues { --chart-2: #174A8C; }   /* Settings → Chart colours: two blues */
+
+/* ============================================================================
+   SHELL — every card
+   ============================================================================ */
+body.bo-light .bo-card,
+body.bo-light .panel {
+  background: var(--blk-bg);
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--blk-outline);
+  border-radius: var(--blk-r);
+}
+body.bo-light .bo-card-head { padding: var(--blk-pad) var(--blk-pad) 0; min-height: 0; }
+body.bo-light .bo-card-inset { padding: 12px var(--blk-pad) var(--blk-pad); }
+body.bo-light .bo-card-inset.flush { padding: 0; }
+body.bo-light .bo-card-label,
+body.bo-light .panel-title { font-size: var(--blk-t-label); font-weight: 500; color: var(--blk-ink); letter-spacing: 0; }
+body.bo-light .bo-card-sub { font-size: var(--blk-t-meta); color: var(--blk-ink-3); }
+
+/* The block grid. auto-fill counts columns from the 248px unit, so a new column opens as soon as
+   one fits: a block never balloons, extra width adds blocks. One unit per KPI, lists span two. */
+body.bo-light .blk-grid {
+  display: grid; gap: var(--blk-gap); align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--blk-unit), 100%), 1fr));
+}
+body.bo-light .blk-grid .w2   { grid-column: span 2; }
+body.bo-light .blk-grid .full { grid-column: 1 / -1; }
+@media (max-width: 560px) { body.bo-light .blk-grid .w2 { grid-column: span 1; } }
+
+/* ============================================================================
+   KPI — label on top, number left, trend chip right on the number's line
+   ============================================================================ */
+body.bo-light .blk-kpi { padding: var(--blk-pad); min-width: 0; position: relative; }
+body.bo-light .blk-kpi .kpi-label {
+  margin: 0; font-size: var(--blk-t-label); font-weight: 400; line-height: 1.3; color: var(--blk-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+body.bo-light .blk-kpi .kpi-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+body.bo-light .blk-kpi .kpi-value,
+body.bo-light .blk-head-value {
+  margin: 0; font-size: var(--kpi-value); font-weight: var(--kpi-weight); line-height: 1.15;
+  letter-spacing: -.02em; color: var(--blk-ink); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+body.bo-light .blk-kpi .kpi-note { font-size: var(--blk-t-meta); color: var(--blk-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translateY(-3px); }
+body.bo-light .blk-kpi .kpi-note.down { color: var(--trend-down); }
+
+/* The trend chip. Same everywhere a trend heads a block: KPI, chart, breakdown. */
+body.bo-light .trend {
+  display: inline-block; flex: none; padding: 2px 8px; border-radius: 999px;
+  font-size: var(--blk-t-meta); font-weight: 500; line-height: 1.4;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  background: var(--trend-flat-tint); color: var(--blk-ink-3);
+  transform: translateY(-3px);   /* sits on the big number's line, not its baseline */
+}
+body.bo-light .trend.up   { background: var(--trend-up-tint);   color: var(--trend-up); }
+body.bo-light .trend.down { background: var(--trend-down-tint); color: var(--trend-down); }
+/* A row inside a block keeps the plain coloured percent, no chip. */
+body.bo-light .trend-plain { font-size: var(--blk-t-meta); color: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
+body.bo-light .trend-plain.up { color: var(--trend-up); }
+body.bo-light .trend-plain.down { color: var(--trend-down); }
+/* The dashboard's % switch hides every chip in the row, keeping the space. */
+body.bo-light .stat-grid:not(.show-delta) .trend,
+body.bo-light #dashStack:not(.show-delta) .trend { visibility: hidden; }
+
+/* The KPI row. Wraps to whole units, never a lonely orphan tray. */
+body.bo-light .stat-grid,
+body.bo-light .kpi-row {
+  display: grid; gap: var(--blk-gap);
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--blk-unit), 100%), 1fr));
+}
+
+/* ============================================================================
+   LIST — striped rows on the grey block. The white row is the stripe.
+   ============================================================================ */
+body.bo-light .blk-list .bo-card-inset { padding-top: 12px; }
+body.bo-light .blk-list .mini-list { margin: 0 -10px; }
+body.bo-light .blk-list .bo-card-inset:last-child > .mini-list:last-child { margin-bottom: -6px; }
+body.bo-light .blk-list .mini-list-row {
+  height: var(--list-row); padding: 0 10px; margin: 0; border: 0;
+  border-radius: var(--list-row-r); background: transparent; font-size: var(--blk-t-label);
+}
+body.bo-light .blk-list .mini-list-row:nth-child(even) { background: transparent; }
+body.bo-light .blk-list .mini-list-row:nth-child(odd) { background: var(--blk-raised); }
+body.bo-light .blk-list .mini-list-row:last-child { border-radius: var(--list-row-r); }
+body.bo-light .blk-list a.mini-list-row:hover { background: #F0F0F0; }
+body.bo-light .blk-list .ml-name { font-weight: 400; color: var(--blk-ink); }
+body.bo-light .blk-list .ml-sub { color: var(--blk-ink-3); }
+body.bo-light .blk-list .ml-value { font-weight: 600; }
+
+/* ============================================================================
+   EMPTY — label, one line centred where the data would be
+   ============================================================================ */
+body.bo-light .bo-empty { color: var(--blk-ink-2); font-size: var(--blk-t-label); padding: 40px 16px; text-align: center; background: none; }
+body.bo-light .blk-list .mini-list > .bo-empty { background: none; }
+
+/* ============================================================================
+   CHART — head: label, number left, chip right; keys switch each line
+   ============================================================================ */
+body.bo-light .blk-chart { padding: var(--blk-pad); }
+body.bo-light .blk-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+body.bo-light .blk-keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+body.bo-light .blk-key {
+  display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px;
+  border: 1px solid var(--blk-outline); border-radius: 999px; background: var(--blk-raised);
+  font: inherit; font-size: var(--blk-t-meta); color: var(--blk-ink-2); cursor: pointer; transition: opacity .12s ease;
+}
+body.bo-light .blk-key i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+body.bo-light .blk-key b { color: var(--blk-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+body.bo-light .blk-key[aria-pressed="false"] { opacity: .5; }
+body.bo-light .blk-key[aria-pressed="false"] i { background: #EFEFEF; }
+body.bo-light .blk-plot { position: relative; height: 240px; margin-top: 14px; }
+body.bo-light .blk-plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+body.bo-light .blk-plot .grid { stroke: var(--chart-grid); stroke-width: 1; }
+body.bo-light .blk-plot .axis { font-size: var(--blk-t-micro); fill: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
+body.bo-light .blk-plot .line { fill: none; stroke: var(--c); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+body.bo-light .blk-plot .fade-top { stop-color: var(--c); stop-opacity: .26; }
+body.bo-light .blk-plot .fade-bot { stop-color: var(--c); stop-opacity: 0; }
+body.bo-light .blk-plot .cross { stroke: var(--blk-ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
+body.bo-light .blk-plot .dot, body.bo-light .blk-plot .end { fill: var(--c); stroke: #fff; stroke-width: 2.5; }
+body.bo-light .blk-plot .halo { fill: var(--c); opacity: .16; }
+body.bo-light .blk-plot .tip {
+  position: absolute; top: 0; pointer-events: none; z-index: 2;
+  background: #fff; border: 1px solid var(--blk-outline); border-radius: 8px; padding: 6px 9px; white-space: nowrap;
+  font-size: var(--blk-t-meta); color: var(--blk-ink-2); box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+body.bo-light .blk-plot .tip b { color: var(--blk-ink); font-weight: 600; }
+body.bo-light .s0 { --c: var(--chart-1); }
+body.bo-light .s1 { --c: var(--chart-2); }
+
+/* ============================================================================
+   TABLE — lab table D: white card, soft ring, tinted header, a line between rows
+   ============================================================================ */
+body.bo-light .blk-table { background: var(--tbl-bg); box-shadow: var(--tbl-shadow); overflow: hidden; }
+/* Table D's head: one thin line. Label + count left, "View all →" right. */
+body.bo-light .blk-table .bo-card-head { padding: 8px var(--blk-pad) 9px; min-height: 26px; align-items: center; justify-content: space-between; }
+body.bo-light .bo-card-count { margin-left: 8px; font-size: var(--blk-t-meta); font-weight: 400; color: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
+body.bo-light .data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--blk-t-label); }
+/* The inset selector matches the old styles.css rules (border-top: 0, #FAFAFA) so the lab head wins in a card too. */
+body.bo-light .data-table th,
+body.bo-light .bo-card-inset .data-table th {
+  height: var(--tbl-row); padding: 0 10px; text-align: left; white-space: nowrap;
+  font-size: var(--blk-t-meta); font-weight: 500; color: #5A5A5A; text-transform: none; letter-spacing: 0;
+  background: var(--tbl-head-bg); border-top: 1px solid var(--tbl-line); border-bottom: 1px solid var(--tbl-line);
+}
+body.bo-light .data-table td { height: var(--tbl-row); padding: 0 10px; color: var(--blk-ink); border-bottom: 0; }
+body.bo-light .data-table th:first-child, body.bo-light .data-table td:first-child { padding-left: var(--blk-pad); }
+body.bo-light .data-table th:last-child,  body.bo-light .data-table td:last-child  { padding-right: var(--blk-pad); }
+body.bo-light .data-table th.num, body.bo-light .data-table td.num { text-align: right; }
+/* Stripes AND hairlines (owner, 2026-09-22): row 2, 4, 6… tinted, so a long row is easy to follow across. */
+body.bo-light .bo-card-inset .data-table tbody tr:nth-child(even) td,
+body.bo-light .data-table tbody tr:nth-child(even) td { background: var(--tbl-stripe); }
+body.bo-light .bo-card-inset .data-table tbody td { border-bottom: 0; }
+body.bo-light .data-table tbody tr:not(:last-child) td { box-shadow: inset 0 -1px 0 var(--tbl-line); }
+body.bo-light .data-table tbody tr:hover td,
+body.bo-light .bo-card-inset .data-table tbody tr:hover td { background: var(--tbl-hover); }
+body.bo-light .data-table td.num { font-variant-numeric: tabular-nums; }
+/* A total row: tinted like the header, a hairline above. */
+body.bo-light .data-table tfoot td { background: var(--tbl-head-bg); border-top: 1px solid var(--tbl-line); font-weight: 600; }
+/* An empty table says so in the roomy empty state, not a squashed 34px row. */
+body.bo-light .data-table td.bo-empty { height: auto; padding: 40px 16px; text-align: center; color: var(--blk-ink-2); }
+
+/* ============================================================================
+   BUTTONS — lab buttons. Outline (default), soft, primary (ink), and pill filters.
+   ============================================================================ */
+body.bo-light .btn,
+body.bo-light .primary-btn, body.bo-light a.primary-btn,
+body.bo-light .secondary-btn, body.bo-light a.secondary-btn,
+body.bo-light .text-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: var(--btn-h); padding: 0 10px; border-radius: var(--btn-r);
+  font: inherit; font-size: var(--blk-t-meta); font-weight: 600; line-height: 1; white-space: nowrap;
+  color: var(--blk-ink); background: #fff; border: 1px solid var(--btn-line);
+  box-shadow: 0 1px 0 rgba(0,0,0,.05); text-decoration: none; cursor: pointer; user-select: none;
+  transition: background-color .12s, box-shadow .12s;
+}
+body.bo-light .btn:hover, body.bo-light .secondary-btn:hover, body.bo-light a.secondary-btn:hover,
+body.bo-light .text-btn:hover { background: #F7F7F7; border-color: var(--btn-line); }
+body.bo-light .btn:active, body.bo-light .secondary-btn:active { background: #F0F0F0; box-shadow: none; }
+body.bo-light .btn.primary, body.bo-light .primary-btn, body.bo-light a.primary-btn {
+  background: var(--blk-ink); color: #fff; border-color: var(--blk-ink);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.2);
+}
+body.bo-light .btn.primary:hover, body.bo-light .primary-btn:hover, body.bo-light a.primary-btn:hover { background: #1F1F1F; border-color: #1F1F1F; }
+body.bo-light .btn.primary:active, body.bo-light .primary-btn:active { background: #000; box-shadow: none; }
+body.bo-light .btn.soft, body.bo-light .btn.ghost { background: var(--btn-soft); border-color: transparent; box-shadow: none; color: var(--blk-ink); }
+body.bo-light .btn.soft:hover, body.bo-light .btn.ghost:hover { background: var(--btn-soft-hover); }
+body.bo-light .btn.danger, body.bo-light .secondary-btn.danger { color: var(--trend-down); }
+body.bo-light .btn.danger { background: var(--trend-down); border-color: var(--trend-down); color: #fff; }
+body.bo-light .btn.sm, body.bo-light .primary-btn.small, body.bo-light .secondary-btn.small,
+body.bo-light a.primary-btn.small, body.bo-light a.secondary-btn.small { height: var(--btn-h); padding: 0 10px; font-size: var(--blk-t-meta); }
+body.bo-light .btn.lg { height: var(--btn-h-lg); padding: 0 14px; }
+body.bo-light .btn:disabled, body.bo-light .primary-btn:disabled, body.bo-light .secondary-btn:disabled {
+  opacity: .45; cursor: default; pointer-events: none;
+}
+body.bo-light .link-btn { color: var(--blk-ink); font-size: var(--blk-t-meta); font-weight: 600; margin-top: 0; }
+body.bo-light .bo-card-head .link-btn { margin-left: auto; }
+body.bo-light .data-table .link-btn, body.bo-light .bo-card-inset .link-btn { margin-top: 0; }
+
+/* Pill filters: segmented controls and range spans. One on at a time, filled ink. */
+body.bo-light .seg { display: inline-flex; gap: 6px; background: none; border: 0; padding: 0; box-shadow: none; }
+body.bo-light .seg-btn, body.bo-light .pbtn {
+  height: var(--btn-h); padding: 0 12px; border: 0; border-radius: 999px;
+  background: var(--btn-soft); color: var(--blk-ink); font: inherit; font-size: var(--blk-t-meta); font-weight: 600; cursor: pointer;
+}
+body.bo-light .seg-btn:hover, body.bo-light .pbtn:hover { background: var(--btn-soft-hover); color: var(--blk-ink); }
+body.bo-light .seg-btn.active, body.bo-light .seg-btn.on, body.bo-light .pbtn.on { background: var(--blk-ink); color: #fff; }
+
+/* Inputs: the lab's 28px field, white on the block. */
+body.bo-light .text-input, body.bo-light .search-input, body.bo-light .bo-select, body.bo-light .bo-date {
+  height: var(--btn-h); padding: 0 10px; border-radius: var(--btn-r);
+  border: 1px solid #E1E1E1; background: #fff; font: inherit; font-size: var(--blk-t-label); color: var(--blk-ink);
+}
+body.bo-light .search-input.small { height: 26px; width: 240px; padding: 0 10px; font-size: var(--blk-t-meta); }
+
+/* ============================================================================
+   PILLS — solid tint + dark ink, 20px, from the lab
+   ============================================================================ */
+body.bo-light .status-pill, body.bo-light .role-pill {
+  display: inline-block; height: var(--pill-h); line-height: var(--pill-h); padding: 0 9px;
+  border: 0; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+
+/* ============================================================================
+   HEADS & PANELS — a control in a head sits right, next to the sub, never mid-head
+   ============================================================================ */
+body.bo-light .bo-card-head > :is(.search-input, .bo-date, .text-input, select, .seg) ~ .bo-card-sub { margin-left: 0; }
+body.bo-light .bo-card-head > .bo-card-sub ~ :is(.search-input, .bo-date, .text-input, select, .seg) { margin-left: 0; }
+body.bo-light .panel { padding: var(--blk-pad); }
+body.bo-light .panel-head { border-bottom: 0; padding-bottom: 0; margin-bottom: 12px; }
+body.bo-light .settings-grid { gap: var(--blk-gap); }
+body.bo-light #custDetail { gap: var(--blk-gap); margin-top: var(--blk-gap); }
+
+/* The % switch sits in the page head beside the range picker, sized like its neighbours. */
+body.bo-light .view-actions .pct-toggle {
+  height: var(--btn-h); min-width: var(--btn-h); margin: 0; padding: 0 8px;
+  border: 1px solid var(--btn-line); border-radius: var(--btn-r); background: #fff;
+  color: var(--blk-ink-3); font-size: var(--blk-t-meta); font-weight: 600; line-height: 1;
+}
+body.bo-light .view-actions .pct-toggle.active { background: var(--blk-ink); border-color: var(--blk-ink); color: #fff; }
+
+/* DASHBOARD — a fixed main column (four KPIs, the chart, recent transactions) and a rail of the
+   owner's widgets, one card wide (owner, 2026-09-22). Every widget is the rail's width, so blocks of
+   different heights only ever stack and can't misalign. The rail drops under the main column below 1024px. */
+body.bo-light .view-dashboard > .view-head { margin-bottom: 24px; }   /* a little more air under the greeting (owner, 2026-09-22) */
+body.bo-light #dashStack { display: grid; grid-template-columns: minmax(0, 1fr) var(--rail-w); gap: var(--blk-gap); align-items: start; }
+body.bo-light .dash-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--blk-gap); min-width: 0; }
+body.bo-light .dash-rail { display: flex; flex-direction: column; gap: var(--blk-gap); min-width: 0; }
+body.bo-light #dashKpis { display: grid; gap: var(--blk-gap); margin: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1280px) { body.bo-light #dashKpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1024px) { body.bo-light #dashStack { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px)  { body.bo-light #dashKpis { grid-template-columns: 1fr; } }
+body.bo-light .blk-list > .bo-card-head { justify-content: space-between; }
+/* eight columns outgrow the main column on narrower screens: scroll inside the card, never clip Total */
+body.bo-light .dash-main .table-wrap { overflow-x: auto; }
+body.bo-light #txTable { min-width: 0; }
+body.bo-light #txTable .tx-cust { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+
+/* A share row: name + count, amount, then its percent in a fixed column. */
+body.bo-light .ml-share { flex: 0 0 36px; text-align: right; font-size: var(--blk-t-meta); color: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
+body.bo-light .blk-list .ml-sub.down { color: var(--trend-down); }
+
+/* BREAKDOWN — the lab's block D: one total, then striped rows of amount + change. */
+body.bo-light .bd-rows { margin-top: 13px; margin-bottom: -6px; }
+/* over a breakdown the head sits 5px lower and the chip rides 3px low, the lab's .card-head */
+body.bo-light .kpi-line:has(+ .bd-rows) { margin: 11px 0 8px; }
+body.bo-light .kpi-line:has(+ .bd-rows) .trend { transform: translateY(3px); }
+body.bo-light .bd-row {
+  display: flex; align-items: center; gap: 12px;
+  height: var(--list-row); padding: 0 10px; margin: 0 -10px; border-radius: var(--list-row-r);
+  font-size: var(--blk-t-label); color: var(--blk-ink);
+}
+body.bo-light .bd-row:nth-child(odd) { background: var(--blk-raised); }
+body.bo-light .bd-row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .bd-row .amt { flex: 0 0 auto; min-width: 96px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+body.bo-light .bd-row .cmp { flex: 0 0 auto; min-width: 50px; text-align: right; font-size: var(--blk-t-meta); color: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
+body.bo-light .bd-row .cmp.up { color: var(--trend-up); }
+body.bo-light .bd-row .cmp.down { color: var(--trend-down); }
+body.bo-light .bd-row.total .nm { font-weight: 600; }
+body.bo-light .blk-kpi > .kpi-note { display: block; transform: none; margin-top: 2px; }
+
+/* TARGET — the lab's block H: value over its goal, a meter, one row for what's left. */
+body.bo-light .kpi-value .of { margin-left: 2px; font-size: var(--blk-t-label); font-weight: 400; letter-spacing: 0; color: var(--blk-ink-3); }
+body.bo-light .target-pct { font-size: var(--blk-t-meta); font-weight: 500; color: var(--blk-ink); font-variant-numeric: tabular-nums; }
+body.bo-light .target-pct.up { color: var(--trend-up); }
+body.bo-light .meter { display: flex; height: 8px; margin-top: 12px; border-radius: 999px; overflow: hidden; background: var(--meter-track); }
+body.bo-light .meter i { display: block; height: 100%; background: var(--chart-1); border-radius: 999px; }
+body.bo-light .meter + .bd-rows { margin-top: 12px; }
+body.bo-light .target-field { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; font-size: var(--blk-t-meta); color: var(--blk-ink-2); }
+
+/* A block that opens its page: an invisible cover link, so the Edit switch stays its own button. */
+body.bo-light .blk-cover { position: absolute; inset: 0; border-radius: inherit; }
+body.bo-light .blk-cover:hover { background: rgba(0,0,0,.025); }
+body.bo-light .blk-cover:focus-visible { outline: 2px solid var(--chart-1); outline-offset: 2px; }
+
+/* RAIL — the widgets' extras: the ··· that opens the targets form, a split meter with its swatches,
+   and a full-width Set target button when there is no target yet. */
+body.bo-light .meter i.up { background: var(--trend-up); }
+body.bo-light .meter i.down { background: var(--trend-down); }
+body.bo-light .target-pct.down { color: var(--trend-down); }
+body.bo-light .meter.split { gap: 2px; }
+body.bo-light .meter.split i { border-radius: 0; }
+body.bo-light :is(.meter.split i, .sw).d0 { background: var(--data-3); }
+body.bo-light :is(.meter.split i, .sw).d1 { background: var(--data-2); }
+body.bo-light :is(.meter.split i, .sw).d2 { background: var(--data-1); }
+body.bo-light .bd-row .sw { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 3px; vertical-align: -1px; }
+body.bo-light .bd-row a { color: inherit; }
+body.bo-light .rail-dots {
+  position: absolute; top: 10px; right: 10px; z-index: 1; height: 22px; padding: 0 7px; border: 0; border-radius: 6px;
+  background: none; color: var(--blk-ink-3); font: 600 var(--blk-t-label)/1 var(--po-font); letter-spacing: 1px; cursor: pointer;
+}
+body.bo-light .rail-dots:hover { background: var(--btn-soft); color: var(--blk-ink); }
+body.bo-light .rail-set { width: 100%; margin-top: 12px; }
+
+/* EDIT — the dashboard's Edit button. Only the rail changes: ↑ ↓ × on each widget, Add widget at the foot. */
+body.bo-light .w-ctl { display: none; position: absolute; top: 10px; right: 10px; z-index: 2; gap: 4px; }
+body.bo-light .w-ctl button {
+  width: 26px; height: 26px; display: grid; place-items: center; padding: 0; cursor: pointer;
+  border: 1px solid var(--blk-outline); border-radius: 7px; background: var(--blk-raised);
+  font: inherit; font-size: var(--blk-t-meta); color: var(--blk-ink-2);
+}
+body.bo-light .w-ctl button:hover { color: var(--blk-ink); background: var(--tbl-hover); }
+body.bo-light .w-ctl button:disabled { opacity: .35; cursor: default; }
+body.bo-light .rail-add { display: none; padding: var(--blk-pad); background: none; box-shadow: none; border: 1px dashed var(--btn-line); }
+body.bo-light .rail-add-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+body.bo-light .rail-add .kpi-note { display: block; margin-top: 8px; font-size: var(--blk-t-meta); color: var(--blk-ink-3); }
+body.bo-light #dashStack.editing .w-ctl { display: flex; }
+body.bo-light #dashStack.editing .rail-add { display: block; }
+body.bo-light #dashStack.editing :is(.rail-dots, .dash-rail .blk-cover) { display: none; }
+body.bo-light #dashStack.editing .dash-rail > [data-w] { outline: 1px dashed var(--btn-line); outline-offset: 3px; }
+
+/* ============================================================================
+   DROPDOWNS — every menu opens from the button's right edge or its own picker,
+   so nothing runs off the page, and selects open the same white menu as Columns.
+   ============================================================================ */
+body.bo-light .view-products .pd-cols-menu { left: auto; right: 0; transform-origin: top right; }
+/* ponytail: customizable <select> (Edge/Chrome 135+); older browsers keep the native list. */
+@supports (appearance: base-select) {
+  body.bo-light .bo-select:not([multiple]),
+  body.bo-light .bo-select:not([multiple])::picker(select) { appearance: base-select; }
+  body.bo-light .bo-select:not([multiple]) { display: inline-flex; align-items: center; gap: 6px; padding-right: 8px; }
+  body.bo-light .bo-select::picker-icon { color: var(--po-ink-tertiary); font-size: 10px; }
+  body.bo-light .bo-select::picker(select) {
+    margin-top: 6px; padding: 5px; min-width: anchor-size(width); max-height: 320px;
+    background: var(--po-surface); border: 1px solid var(--po-line);
+    border-radius: var(--po-r-card); box-shadow: var(--po-shadow-pop);
+  }
+  body.bo-light .bo-select option {
+    padding: 6px 9px; border-radius: 6px; white-space: nowrap;
+    font-size: 12.5px; font-weight: 500; color: var(--po-ink);
+  }
+  body.bo-light .bo-select option::checkmark { display: none; }
+  body.bo-light .bo-select option:hover,
+  body.bo-light .bo-select option:focus-visible { background: var(--po-surface-hover); outline: 0; }
+  body.bo-light .bo-select option:checked { background: var(--po-ink); color: #fff; }
+}

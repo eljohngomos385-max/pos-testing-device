@@ -773,13 +773,16 @@
 
   function card(label, subText, cols, rows, emptyMsg, right = '') {
     const pg = paginate(rows, Router.route().params.page);
-    return `
-      <section class="bo-card">
+    const head = `
         <div class="bo-card-head">
           <span class="bo-card-label">${escapeHtml(label)}</span>
           <span class="bo-card-sub">${escapeHtml(subText)}</span>
           ${right}
-        </div>
+        </div>`;
+    // Nothing to show: the empty block (label + one centred line), not a table of headers.
+    if (!rows.length) return `<section class="bo-card blk-empty">${head}<div class="bo-empty">${escapeHtml(emptyMsg)}</div></section>`;
+    return `
+      <section class="bo-card blk-table">${head}
         <div class="bo-card-inset flush"><div class="table-wrap">${table(cols, pg.rows, emptyMsg)}</div>${pagerHtml(pg)}</div>
       </section>`;
   }
@@ -832,10 +835,6 @@
         const bar = (cells) => `<div class="stat-grid show-delta">${cells.join('')}</div>`;
         const w15 = win.get(15), w30 = win.get(30);
         const summary = `
-          <div class="stat-head">
-            <span class="bo-card-label">Cash tied up</span>
-            <span class="bo-card-sub">Stock on hand at cost, and how long it has sat</span>
-          </div>
             ${bar([stat('Tied up now', c.totalPesos, `${c.rows.length} products`),
               stat('Sitting over 15 days', w15.sittingOverPesos, `${Math.round((w15.sittingOverPesos / (c.totalPesos || 1)) * 100)}% of stock`),
               stat('Sitting over 30 days', w30.sittingOverPesos, `${Math.round((w30.sittingOverPesos / (c.totalPesos || 1)) * 100)}% of stock`)])}

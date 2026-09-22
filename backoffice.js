@@ -732,8 +732,8 @@ function deltaOf(cur, prev, cmp) {
   if (!prev) return { tone: 'flat', text: cur ? 'new' : '—', cmp: `vs ${cmp}` };
   const pct = ((cur - prev) / Math.abs(prev)) * 100;
   const tone = pct > 0.5 ? 'up' : pct < -0.5 ? 'down' : 'flat';
-  const arrow = tone === 'up' ? '↑' : tone === 'down' ? '↓' : '';
-  return { tone, text: `${arrow}${Math.abs(pct).toFixed(1)}%`, cmp: `vs ${cmp}` };
+  const sign = pct > 0 ? '+' : pct < 0 ? '−' : '';
+  return { tone, text: `${sign}${Math.abs(pct).toFixed(1)}%`, cmp: `vs ${cmp}` };
 }
 
 // Per-day buckets ending `offset` days before today.
@@ -812,110 +812,366 @@ function pesoAxis(n) {
   return '₱' + n;
 }
 
-// ponytail: one long bar of cells, not four separate cards — the dashboard is a
-// glance, and three numbers side by side read faster than three trays.
-// ponytail: the four-up cards on Sales/Inventory/Customers. Same markup the .kpi CSS already
-// describes; tone only colours the sub line. Fold into statCell if the two ever want one look.
-// `title` carries the comparison ("vs the day before") the way statCell does — spelled out in the
-// foot it wrapped onto a second line in every Sales card and pushed the row taller than the value.
+// The KPI block (bo-blocks.css → KPI). Every KPI on every page is built by one of these
+// two, so the markup can only drift in one place. Label on top; the number left and the
+// trend chip RIGHT on the same line — never a trend under the number.
+// `kpi` is for a number with a plain note beside it ("12 active debtors"); a down tone
+// reds the note. `statCell` is for a number with a real comparison: a chip, and the
+// comparison basis ("vs the day before") in its title.
 function kpi(label, value, sub, tone = 'flat', title = '') {
   return `
-    <div class="kpi">
-      <div class="kpi-body">
-        <div class="kpi-label">${escapeHtml(label)}</div>
-        <div class="kpi-main"><div class="kpi-value">${curHtml(value)}</div></div>
-      </div>
-      <div class="kpi-foot">
-        <span class="kpi-foot-dot"></span>
-        <span class="kpi-delta ${escapeHtml(tone)}"${title ? ` title="${escapeHtml(title)}"` : ''}>${escapeHtml(sub)}</span>
-      </div>
-    </div>`;
-}
-
-// A stat is its own card, not a row in a shared bar (v34). Six numbers striped into
-// two columns read as a spreadsheet: the owner's words were "I'd prefer it was
-// individual blocks". A card per number also gives the comparison basis somewhere to
-// live — "vs the day before" was a tooltip nobody hovers, and every reference
-// dashboard prints it as a line under the delta instead.
-function statCell({ label, value, unit, delta }) {
-  return `
-    <div class="stat">
+    <div class="bo-card blk-kpi">
       <div class="kpi-label">${escapeHtml(label)}</div>
-      <div class="kpi-value">${curHtml(value)}${unit ? `<span class="kpi-unit">${escapeHtml(unit)}</span>` : ''}</div>
-      <div class="kpi-trend">
-        <span class="kpi-delta ${delta.tone}">${escapeHtml(delta.text)}</span>
-        <span class="kpi-cmp">${escapeHtml(delta.cmp)}</span>
+      <div class="kpi-line">
+        <div class="kpi-value">${curHtml(value)}</div>
+        ${sub ? `<span class="kpi-note ${tone === 'down' ? 'down' : ''}"${title ? ` title="${escapeHtml(title)}"` : ''}>${escapeHtml(sub)}</span>` : ''}
       </div>
     </div>`;
 }
 
-// ponytail: profit is always <= revenue, so both series share one axis. No second scale.
-function renderLineChart(el, cur) {
-  const W = 600, H = 230, n = cur.length;
-  // ponytail: 4 gridlines over a top below 4 gives a fractional step, and pesoAxis
-  // rounds to whole pesos — so a zero day drew "₱1 ₱1 ₱1 ₱0 ₱0". Floor the axis at 4
-  // rather than adding centavos: "₱0.75" next to "₱1.2k" would read worse.
-  const top = Math.max(4, niceMax(Math.max(...cur.map(d => d.revenue))));
-  const xPct = i => (n <= 1 ? 50 : (i / (n - 1)) * 100);
-  const X = i => (xPct(i) / 100) * W;
-  const Y = v => H - (Math.max(0, v) / top) * H;
-  const path = key => cur.map((d, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(d[key]).toFixed(1)}`).join(' ');
-  const ticks = [0, 0.25, 0.5, 0.75, 1];
-  const grid = ticks.map(t => `<line class="lc-grid" x1="0" y1="${(H * t).toFixed(1)}" x2="${W}" y2="${(H * t).toFixed(1)}"/>`).join('');
-  const yLabels = ticks.map(t => `<span style="top:${t * 100}%">${pesoAxis(top * (1 - t))}</span>`).join('');
-  const bands = cur.map((d, i) => `<div class="lc-band" data-i="${i}" style="left:${xPct(i)}%;width:${100 / n}%"></div>`).join('');
-  const step = n > 14 ? Math.ceil(n / 7) : 1;
-  const xLabels = cur.map((d, i) => {
-    // Count back from the last point so the forced end label lands on the grid.
-    // Forcing i === n-1 on top of a forward step put "11 PM" 13% from "8 PM" and
-    // they overlapped; the last label is always shown either way.
-    const show = (n - 1 - i) % step === 0;
-    return `<span class="${i === n - 1 ? 'on' : ''}" style="left:${xPct(i)}%">${show ? escapeHtml(d.label) : ''}</span>`;
-  }).join('');
-
-  el.innerHTML = `
-    <div class="lc">
-      <div class="lc-y" style="height:${H}px">${yLabels}</div>
-      <div class="lc-plot" style="height:${H}px">
-        <svg class="lc-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
-          ${grid}
-          <path class="lc-area" d="${path('revenue')} L ${W} ${H} L 0 ${H} Z"/>
-          <path class="lc-alt" d="${path('profit')}"/>
-          <path class="lc-cur" d="${path('revenue')}"/>
-        </svg>
-        <div class="lc-guide" hidden></div>
-        <div class="lc-dot" hidden></div>
-        <div class="lc-tip" hidden></div>
-        <div class="lc-bands">${bands}</div>
+function statCell({ label, value, unit, delta }) {
+  const trend = !delta ? ''
+    : delta.cmp ? `<span class="trend ${delta.tone}" title="${escapeHtml(delta.cmp)}">${escapeHtml(delta.text)}</span>`
+    : `<span class="kpi-note">${escapeHtml(delta.text)}</span>`;   // a note, not a comparison: no chip
+  return `
+    <div class="bo-card blk-kpi">
+      <div class="kpi-label">${escapeHtml(label)}</div>
+      <div class="kpi-line">
+        <div class="kpi-value">${curHtml(value)}${unit ? ` <span class="kpi-note">${escapeHtml(unit)}</span>` : ''}</div>
+        ${trend}
       </div>
-    </div>
-    <div class="lc-x">${xLabels}</div>`;
+    </div>`;
+}
 
-  const plot = el.querySelector('.lc-plot');
-  const guide = el.querySelector('.lc-guide');
-  const dot = el.querySelector('.lc-dot');
-  const tip = el.querySelector('.lc-tip');
-  const hide = () => { guide.hidden = dot.hidden = tip.hidden = true; };
-
-  el.querySelector('.lc-bands').addEventListener('mouseover', (e) => {
-    const band = e.target.closest('.lc-band');
-    if (!band) return;
-    const i = Number(band.dataset.i);
-    const d = cur[i];
-    const x = xPct(i), y = (Y(d.revenue) / H) * 100;
-    guide.hidden = dot.hidden = tip.hidden = false;
-    guide.style.left = x + '%';
-    dot.style.left = x + '%';
-    dot.style.top = y + '%';
-    tip.style.left = x + '%';
-    tip.style.top = y + '%';
-    tip.className = 'lc-tip' + (x < 18 ? ' at-left' : x > 82 ? ' at-right' : '');
-    tip.innerHTML = `
-      <div class="lc-tip-title">${escapeHtml(d.title)} · ${d.txns} receipt${d.txns === 1 ? '' : 's'}</div>
-      <div class="lc-tip-row">Revenue <b>${pesoShort(d.revenue)}</b></div>
-      <div class="lc-tip-row ghost">Gross profit <b>${pesoShort(d.profit)}</b></div>`;
+// The chart block's plot (bo-blocks.css → CHART), ported from the blocks-v2 lab.
+// Drawn in real pixels at the box's width, so text never stretches; redrawn on resize.
+// Monotone cubic: smooth, but never bends past a real value (no dip under ₱0 overnight).
+// ponytail: profit is always <= revenue, so both series share one axis. No second scale.
+const SERIES = [['revenue', 'Revenue'], ['profit', 'Gross profit']];
+function chartCurve(P) {
+  const s = P.slice(1).map((q, i) => (q[1] - P[i][1]) / (q[0] - P[i][0]));
+  const m = P.map((_, i) => i === 0 ? s[0] : i === P.length - 1 ? s[i - 1]
+    : s[i - 1] * s[i] <= 0 ? 0 : 2 / (1 / s[i - 1] + 1 / s[i]));
+  return P.reduce((d, q, i) => {
+    if (!i) return `M${q[0]} ${q[1]}`;
+    const p = P[i - 1], t = (q[0] - p[0]) / 3;
+    return d + `C${p[0] + t} ${p[1] + m[i - 1] * t} ${q[0] - t} ${q[1] - m[i] * t} ${q[0]} ${q[1]}`;
+  }, '');
+}
+let chartSeq = 0;
+function renderLineChart(el, cur) {
+  el._cur = cur;
+  el._id = el._id || ++chartSeq;
+  if (!el._ro) { el._ro = new ResizeObserver(() => el._cur && drawLineChart(el)); el._ro.observe(el); }
+  // Keys under the head number double as the switch; the last line showing can't be hidden.
+  const keys = el.closest('.bo-card')?.querySelector('.blk-keys');
+  if (keys) {
+    keys.onclick = (e) => {
+      const k = e.target.closest('.blk-key');
+      if (!k) return;
+      const i = [...keys.children].indexOf(k), off = el.dataset.off;
+      if (off === String(i)) delete el.dataset.off;
+      else if (off === undefined) el.dataset.off = i;
+      else return;
+      [...keys.children].forEach((b, j) => b.setAttribute('aria-pressed', String(el.dataset.off !== String(j))));
+      drawLineChart(el);
+    };
+    SERIES.forEach(([key], i) => {
+      const b = keys.children[i]?.querySelector('b');
+      if (b) b.innerHTML = curHtml(pesoShort(cur.reduce((a, d) => a + d[key], 0)));
+    });
+  }
+  drawLineChart(el);
+}
+function drawLineChart(el) {
+  const cur = el._cur, n = cur.length, NS = 'http://www.w3.org/2000/svg';
+  const W = el.clientWidth, H = el.clientHeight, L = 44, B = 22, T = 6;
+  if (!W || !H || !n) return;
+  const on = SERIES.map((_, i) => String(i) !== el.dataset.off);
+  const top = Math.max(4, niceMax(Math.max(...cur.flatMap(d => SERIES.filter((_, i) => on[i]).map(([k]) => d[k])))));
+  const x = i => (n <= 1 ? L + (W - L) / 2 : L + (W - L) * i / (n - 1));
+  const y = v => T + (H - T - B) * (1 - Math.max(0, v) / top);
+  const mk = (tag, attrs, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return parent.appendChild(e);
+  };
+  el.innerHTML = '';
+  const svg = mk('svg', { viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' }, el);
+  for (const v of [0, top / 2, top]) {
+    mk('line', { class: 'grid', x1: L, x2: W, y1: y(v), y2: y(v) }, svg);
+    mk('text', { class: 'axis', x: 0, y: y(v) + 4 }, svg).textContent = pesoAxis(v);
+  }
+  const step = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L) / 70))));   // a label every ~70px
+  cur.forEach((d, i) => {                                             // counted back from the last, so it always shows
+    if ((n - 1 - i) % step) return;
+    const anchor = n > 1 && i === n - 1 ? 'end' : 'middle';
+    mk('text', { class: 'axis', x: x(i), y: H - 4, 'text-anchor': anchor }, svg).textContent = d.label;
   });
-  plot.addEventListener('mouseleave', hide);
+  const cross = mk('line', { class: 'cross', y1: T, y2: H - B, visibility: 'hidden' }, svg);
+  const dots = [];
+  let filled = false;                                                 // only the front line gets the fade: two muddy
+  SERIES.forEach(([key], i) => {
+    if (!on[i]) return;
+    const g = mk('g', { class: 's' + i }, svg);
+    const d = chartCurve(cur.map((b, h) => [x(h), y(b[key])]));
+    if (!filled && n > 1) {
+      filled = true;
+      const grad = mk('linearGradient', { id: `fade${el._id}-${i}`, x1: 0, y1: 0, x2: 0, y2: 1 }, mk('defs', {}, g));
+      mk('stop', { class: 'fade-top', offset: 0 }, grad); mk('stop', { class: 'fade-bot', offset: 1 }, grad);
+      mk('path', { d: d + `L${x(n - 1)} ${y(0)}L${x(0)} ${y(0)}Z`, fill: `url(#fade${el._id}-${i})` }, g);
+    }
+    mk('path', { class: 'line', d }, g);
+    if (!el.hasAttribute('data-still')) for (const [c, r] of [['halo', 10], ['end', 5]])   // marks "now"; a profile has no now
+      mk('circle', { class: c, r, cx: x(n - 1), cy: y(cur[n - 1][key]) }, g);
+    dots[i] = mk('circle', { class: 'dot', r: 4.5, visibility: 'hidden' }, g);
+  });
+  const tip = document.createElement('div');
+  tip.className = 'tip'; tip.hidden = true; el.appendChild(tip);
+  el.onpointermove = (e) => {
+    const box = el.getBoundingClientRect();
+    const h = Math.max(0, Math.min(n - 1, Math.round((e.clientX - box.left - L) / (W - L) * (n - 1))));
+    const d = cur[h];
+    cross.setAttribute('x1', x(h)); cross.setAttribute('x2', x(h)); cross.setAttribute('visibility', 'visible');
+    dots.forEach((dot, i) => { if (!dot) return;
+      dot.setAttribute('cx', x(h)); dot.setAttribute('cy', y(d[SERIES[i][0]])); dot.setAttribute('visibility', 'visible'); });
+    tip.innerHTML = `${escapeHtml(d.title)} · ${d.txns} receipt${d.txns === 1 ? '' : 's'}`
+      + SERIES.map(([k, name], i) => on[i] ? ` · ${name} <b>${escapeHtml(pesoShort(d[k]))}</b>` : '').join('');
+    tip.hidden = false;
+    const right = x(h) + 10 + tip.offsetWidth < W;                    // flip left near the right edge
+    tip.style.left = (right ? x(h) + 10 : x(h) - 10 - tip.offsetWidth) + 'px';
+  };
+  el.onpointerleave = () => {
+    cross.setAttribute('visibility', 'hidden');
+    dots.forEach(dot => dot && dot.setAttribute('visibility', 'hidden'));
+    tip.hidden = true;
+  };
+}
+
+// The four KPIs on top. Fixed: the same four in every store, so staff always know where to look.
+function renderDashKpis(cur, prev, cmp) {
+  $('#dashKpis').innerHTML = [
+    statCell({ label: 'Revenue', value: pesoShort(cur.revenue), delta: deltaOf(cur.revenue, prev.revenue, cmp) }),
+    statCell({ label: 'Profit', value: pesoShort(cur.profit), delta: deltaOf(cur.profit, prev.profit, cmp) }),
+    statCell({ label: 'Transactions', value: cur.txns.toLocaleString('en-PH'), delta: deltaOf(cur.txns, prev.txns, cmp) }),
+    statCell({ label: 'Average basket', value: pesoShort(cur.avg), delta: deltaOf(cur.avg, prev.avg, cmp) }),
+  ].join('');
+}
+
+// ---------- Dashboard rail ----------
+// The owner's widgets, one card wide, stacked: every widget is the same width, so nothing can
+// misalign. Which ones show, and in what order, is one list in HWPOS_STORE.ui 'dashRail'.
+// ponytail: per device like the old dashHidden; per store once settings sync to D1.
+const RAIL_DEFAULT = ['daily', 'monthly', 'low', 'pay'];
+const bdRow = (nm, amt = '', cmp = '', tone = '') =>
+  `<div class="bd-row"><span class="nm">${nm}</span>${amt !== '' ? `<span class="amt">${amt}</span>` : ''}${cmp !== '' ? `<span class="cmp ${tone}">${cmp}</span>` : ''}</div>`;
+const railHead = (label, value, side = '') =>
+  `<div class="kpi-label">${escapeHtml(label)}</div><div class="kpi-line"><div class="kpi-value">${value}</div>${side}</div>`;
+const pctOf = (a, b) => (b > 0 ? Math.round(a / b * 100) : 0);
+const meterHtml = (pct, tone = '') =>
+  `<div class="meter" role="img" aria-label="${pct}%"><i class="${tone}" style="width:${Math.min(100, Math.max(0, pct))}%"></i></div>`;
+const targetSide = (pct) => `<span class="target-pct ${pct >= 100 ? 'up' : ''}">${pct}%</span>`;
+
+// Targets are always today and this month, whatever the range says: a target is a promise
+// about the calendar, not about the window you happen to be looking at.
+// The owner sets the month; today's share is what is left spread over the days left, today
+// included, rounded to ₱10. An override replaces it for that one date only.
+function dashTargets(now = Date.now()) {
+  const t = state.settings.targets || {};
+  const d = new Date(now), today = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+  const days = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  const before = metricsOf(salesIn(monthStart, today)).revenue;
+  const done = metricsOf(salesIn(today, today + 864e5)).revenue;
+  const month = Number(t.month) || 0;
+  const left = days - d.getDate() + 1;   // ponytail: every day counts as open; skip closed days once store hours exist
+  const auto = month ? Math.max(0, Math.round((month - before) / left / 10) * 10) : 0;
+  const override = t.override && t.override.date === isoDate(now) ? Number(t.override.amount) || 0 : 0;
+  const elapsed = d.getDate() - 1 + (d.getHours() + d.getMinutes() / 60) / 24;
+  return { month, before, done, days, left, auto, override, daily: override || auto,
+    pace: elapsed > 0 ? (before + done) / elapsed * days : 0 };
+}
+function targetEmpty(label) {
+  return railHead(label, '—') + `<div class="bd-rows">${bdRow('No monthly target yet')}</div>`
+    + '<button type="button" class="secondary-btn small rail-set" data-act="targets">Set target</button>';
+}
+const DOTS = '<button type="button" class="rail-dots" data-act="targets" title="Set targets">···</button>';
+
+const DASH_WIDGETS = {
+  daily: ['Daily sales target', (t) => {
+    if (!t.daily) return targetEmpty('Daily sales target');
+    const pct = pctOf(t.done, t.daily), left = t.daily - t.done;
+    return DOTS + railHead('Daily sales target', `${curHtml(pesoShort(t.done))}<span class="of">/${pesoShort(t.daily)}</span>`, targetSide(pct))
+      + meterHtml(pct, pct >= 100 ? 'up' : '')
+      + `<div class="bd-rows">${left > 0 ? bdRow('Left to sell today', pesoShort(left)) : bdRow('Target hit, over by', pesoShort(-left))}</div>`;
+  }],
+  monthly: ['Monthly sales target', (t) => {
+    if (!t.month) return targetEmpty('Monthly sales target');
+    const sold = t.before + t.done, pct = pctOf(sold, t.month), ahead = t.pace >= t.month;
+    return DOTS + railHead('Monthly sales target', `${curHtml(pesoShort(sold))}<span class="of">/${pesoShort(t.month)}</span>`, targetSide(pct))
+      + meterHtml(pct, pct >= 100 ? 'up' : '')
+      + `<div class="bd-rows">${bdRow('On pace for', pesoShort(t.pace), ahead ? 'ahead' : 'behind', ahead ? 'up' : 'down')}</div>`;
+  }],
+  // The five that run out soonest, by the last 30 days' selling rate; the rest are in Needs buying.
+  low: ['Low stock', () => {
+    const since = Date.now() - 30 * 864e5, sold = new Map();
+    state.orders.forEach(o => {
+      if (saleSign(o) > 0 && o.ts >= since) o.items.forEach(i => sold.set(i.id, (sold.get(i.id) || 0) + i.qty));
+    });
+    const daysLeft = (p) => { const r = (sold.get(p.id) || 0) / 30; return p.stock <= 0 ? 0 : r ? p.stock / r : Infinity; };
+    // isLow() is the one definition of low, shared with Products and Inventory.
+    const low = state.products.filter(isLow).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock);
+    const rows = low.slice(0, 5).map(p => {
+      const dl = daysLeft(p), n = Math.max(1, Math.round(dl));
+      return bdRow(escapeHtml(p.name), `${Number(p.stock).toLocaleString('en-PH')} ${escapeHtml(p.unit || 'pc')}`,
+        dl === 0 ? 'Out' : dl === Infinity ? '—' : `${n} day${n > 1 ? 's' : ''}`, dl <= 3 ? 'down' : '');
+    }).join('');
+    const more = low.length > 5
+      ? `<div class="bd-row total"><span class="nm"><a href="#" data-jump="inventory" data-sub="reorder">+${low.length - 5} more in Needs buying →</a></span></div>` : '';
+    return railHead('Low stock', `${low.length.toLocaleString('en-PH')}<span class="of"> ${low.length ? 'below reorder point' : 'all stocked'}</span>`)
+      + (low.length ? `<div class="bd-rows">${rows}${more}</div>` : '');
+  }],
+  // Leads with what was collected, not revenue: revenue is already the first KPI.
+  // Sums come from the Sales page's own agg(), so they match Sales → Payment methods.
+  pay: ['Payment methods', (t, win) => {
+    const cur = window.renderSales.agg(state.orders.filter(o => o.ts >= win.start && o.ts < win.end));
+    const rows = cur.pays.filter(r => r.sales).sort((x, y) => y.revenue - x.revenue);
+    const total = cur.totals.revenue, credit = rows.filter(r => r.kind === 'credit').reduce((a, r) => a + r.revenue, 0);
+    return '<a class="blk-cover" href="#" data-jump="sales" aria-label="Open sales"></a>'
+      + railHead('Payment methods', `${curHtml(pesoShort(total - credit))}<span class="of"> collected</span>`,
+        credit ? `<span class="kpi-note"><b>${pesoShort(credit)}</b> on account</span>` : '')
+      + `<div class="bd-rows">${rows.length
+        ? rows.map(r => bdRow(escapeHtml(r.name), pesoShort(r.revenue), pctOf(r.revenue, total) + '%')).join('')
+          + `<div class="bd-row total"><span class="nm">Total</span><span class="amt">${pesoShort(total)}</span><span class="cmp">100%</span></div>`
+        : '<div class="bo-empty">No sales in this range.</div>'}</div>`;
+  }],
+  // Purchase orders due today or already late: stock coming in, not the POS's deliveries going out.
+  deliveries: ['Deliveries today', () => {
+    const today = isoDate(Date.now()), sup = new Map(loadSuppliers().map(s => [s.id, s.name]));
+    const dueOn = (po) => SUP_RULES.dayKey(SUP_RULES.dueDate(po));
+    const due = loadPurchaseOrders().filter(po => PO_INCOMING.includes(po.status) && dueOn(po) && dueOn(po) <= today);
+    const late = due.filter(po => dueOn(po) < today).length;
+    return '<a class="blk-cover" href="#" data-jump="suppliers" data-sub="orders" aria-label="Open purchase orders"></a>'
+      + railHead('Deliveries today', `${due.length}<span class="of"> arriving</span>`, late ? `<span class="kpi-note down">${late} late</span>` : '')
+      + (due.length ? `<div class="bd-rows">${due.slice(0, 5).map(po => {
+        const isLate = dueOn(po) < today, n = po.items.length;
+        return bdRow(`${escapeHtml(sup.get(po.supplierId) || 'Supplier')} · ${n} item${n === 1 ? '' : 's'}`, '', isLate ? 'Late' : 'Today', isLate ? 'down' : '');
+      }).join('')}</div>` : '');
+  }],
+  stock: ['Stock value', () => {
+    const on = state.products.filter(p => !p.archived && p.stock > 0);
+    const cost = on.reduce((a, p) => a + p.stock * (Number(p.cost) || 0), 0);
+    const retail = on.reduce((a, p) => a + p.stock * (Number(p.price) || 0), 0);
+    return railHead('Stock value', `${curHtml(pesoShort(cost))}<span class="of"> at cost</span>`)
+      + `<div class="bd-rows">${bdRow('At retail', pesoShort(retail))}${bdRow('Margin on the shelf', pesoShort(retail - cost), pctOf(retail - cost, retail) + '%')}`
+      + `${bdRow('Products in stock', on.length.toLocaleString('en-PH'))}</div>`;
+  }],
+  channel: ['Sales by channel', (t, win) => {
+    const fuls = window.renderSales.agg(state.orders.filter(o => o.ts >= win.start && o.ts < win.end)).fuls
+      .filter(r => r.revenue > 0).sort((x, y) => y.revenue - x.revenue);
+    const total = fuls.reduce((a, r) => a + r.revenue, 0);
+    if (!total) return railHead('Sales by channel', '—') + '<div class="bo-empty">No sales in this range.</div>';
+    return railHead('Sales by channel', `${pctOf(fuls[0].revenue, total)}%<span class="of"> ${escapeHtml(fuls[0].name.toLowerCase())}</span>`)
+      + `<div class="meter split" role="img">${fuls.map((r, i) => `<i class="d${i % 3}" style="width:${r.revenue / total * 100}%"></i>`).join('')}</div>`
+      + `<div class="bd-rows">${fuls.map((r, i) => bdRow(`<i class="sw d${i % 3}"></i>${escapeHtml(r.name)}`, pesoShort(r.revenue), pctOf(r.revenue, total) + '%')).join('')}</div>`;
+  }],
+  // What customers owe on account against the limits the store gave them.
+  credit: ['Credit used', () => {
+    const cs = allCustomerRecords();
+    const owed = cs.reduce((a, c) => a + (c.currentBalance || 0), 0), limit = cs.reduce((a, c) => a + (c.creditLimit || 0), 0);
+    const pct = pctOf(owed, limit);
+    return '<a class="blk-cover" href="#" data-jump="customers" aria-label="Open customers"></a>'
+      + railHead('Credit used', `${curHtml(pesoShort(owed))}<span class="of">/${pesoShort(limit)}</span>`,
+        `<span class="target-pct ${pct > 75 ? 'down' : ''}">${pct}%</span>`)
+      + meterHtml(pct, pct > 75 ? 'down' : '')
+      + `<div class="bd-rows">${bdRow('Available', pesoShort(Math.max(0, limit - owed)))}</div>`;
+  }],
+};
+
+function railList() {
+  const saved = HWPOS_STORE.ui.get('dashRail', null);
+  return (saved == null ? RAIL_DEFAULT : String(saved).split(',')).filter(k => DASH_WIDGETS[k]);
+}
+function renderDashRail(win = rangeWindows()) {
+  const rail = $('#dashRail');
+  if (!rail) return;
+  const list = railList(), t = dashTargets();
+  const off = Object.keys(DASH_WIDGETS).filter(k => !list.includes(k));
+  rail.innerHTML = list.map((k, i) => `
+    <section class="bo-card blk-kpi" data-w="${k}">
+      <div class="w-ctl">
+        <button type="button" data-move="-1" aria-label="Move up"${i ? '' : ' disabled'}>↑</button>
+        <button type="button" data-move="1" aria-label="Move down"${i < list.length - 1 ? '' : ' disabled'}>↓</button>
+        <button type="button" data-move="x" aria-label="Remove">×</button>
+      </div>
+      ${DASH_WIDGETS[k][1](t, win)}
+    </section>`).join('') + `
+    <section class="bo-card rail-add">
+      <div class="kpi-label">Add widget</div>
+      ${off.length ? `<div class="rail-add-list">${off.map(k => `<button type="button" class="pbtn" data-add="${k}">+ ${escapeHtml(DASH_WIDGETS[k][0])}</button>`).join('')}</div>`
+        : '<div class="kpi-note">Every widget is on the page.</div>'}
+    </section>`;
+}
+
+function openTargetDialog() {
+  const dlg = $('#targetDlg'), t = dashTargets();
+  dlg.innerHTML = `
+    <div class="bod-head">
+      <div class="bod-title"><h2>Sales targets</h2></div>
+      <button type="button" class="bod-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="adj-body">
+      <form class="adj-form" id="targetForm">
+        <div class="adj-grid">
+          <label class="adj-field"><span>Monthly target</span>
+            <input name="month" type="number" min="0" step="100" value="${t.month || ''}" autocomplete="off" required></label>
+          <label class="adj-field"><span>Today only (blank = worked out)</span>
+            <input name="override" type="number" min="0" step="10" value="${t.override || ''}" placeholder="${t.auto || ''}" autocomplete="off"></label>
+        </div>
+        <div class="adj-foot">
+          <span class="adj-last">Today's target is what's left of the month over the ${t.left} day${t.left === 1 ? '' : 's'} left, today included.</span>
+          <button type="button" class="secondary-btn small" data-act="targetCancel">Cancel</button>
+          <button type="submit" class="primary-btn small">Save</button>
+        </div>
+      </form>
+    </div>`;
+  dlg.showModal();
+  dlg.querySelector('input[name="month"]').focus();
+}
+
+// Edit: the main column is fixed; only the rail changes. ↑ ↓ × on each widget, Add widget at the foot.
+function initDashEdit() {
+  const stack = $('#dashStack'), rail = $('#dashRail'), btn = $('#dashEditBtn'), dlg = $('#targetDlg');
+  if (!stack || !rail || !btn || !dlg) return;
+  const save = (list) => { HWPOS_STORE.ui.set('dashRail', list.join(',')); renderDashRail(); };
+  btn.addEventListener('click', () => {
+    const on = stack.classList.toggle('editing');
+    btn.textContent = on ? 'Done' : 'Edit';
+    btn.setAttribute('aria-pressed', String(on));
+  });
+  rail.addEventListener('click', (e) => {
+    if (e.target.closest('[data-act="targets"]')) return openTargetDialog();
+    const list = railList(), add = e.target.closest('[data-add]'), mv = e.target.closest('[data-move]');
+    if (add) return save([...list, add.dataset.add]);
+    if (!mv) return;
+    const i = list.indexOf(mv.closest('[data-w]').dataset.w);
+    if (mv.dataset.move === 'x') list.splice(i, 1);
+    else { const j = i + Number(mv.dataset.move); [list[i], list[j]] = [list[j], list[i]]; }
+    save(list);
+  });
+  dlg.addEventListener('click', (e) => { if (e.target.closest('[data-act="targetCancel"]')) dlg.close(); });
+  dlg.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = new FormData(e.target), over = round2(f.get('override'));
+    state.settings.targets = {
+      month: round2(f.get('month')),
+      override: over > 0 ? { date: isoDate(Date.now()), amount: over } : null,
+    };
+    saveSettings();
+    dlg.close();
+    showToast('Targets saved');
+    renderCurrentView();   // the dashboard rail or the Sales targets block, whichever opened it
+  });
 }
 
 function renderDashboard() {
@@ -937,77 +1193,13 @@ function renderDashboard() {
   $$('.rp-opt').forEach(b => b.classList.toggle('on', b.dataset.range === state.range));
   $$('.range-select').forEach(sel => { sel.value = state.range; });
 
-  $('#statRangeLabel').textContent = rangeLabel();
-  $('#kpiRow').innerHTML = [
-    statCell({
-      label: 'Revenue', value: pesoShort(cur.revenue),
-      delta: deltaOf(cur.revenue, prev.revenue, cmp),
-    }),
-    statCell({
-      label: 'Gross profit', value: pesoShort(cur.profit),
-      delta: deltaOf(cur.profit, prev.profit, cmp),
-    }),
-    statCell({
-      label: 'Transactions', value: cur.txns.toLocaleString('en-PH'),
-      delta: deltaOf(cur.txns, prev.txns, cmp),
-    }),
-  ].join('');
+  renderDashKpis(cur, prev, cmp);
 
   // Sales trend — revenue against the profit it actually earned, over the selected range
   const trend = trendBuckets(state.range);
-  $('#trendRangeLabel').textContent = `revenue vs gross profit`;
-  $('.trend-total-label').textContent = rangeLabel();
-  $('#trendTotal').innerHTML = curHtml(pesoShort(trend.reduce((a, d) => a + d.revenue, 0)));
   renderLineChart($('#salesChart'), trend);
+  renderDashRail(win);
 
-  // Low stock
-  // isLow() is the one definition of low, shared with Products and Inventory (it also
-  // skips archived items, which the card was still listing).
-  const belowReorder = state.products.filter(isLow);
-  const lows = belowReorder
-    .slice()
-    .sort((a, b) => (a.stock / (a.reorderPoint || 1)) - (b.stock / (b.reorderPoint || 1)))
-    .slice(0, 5);
-  $('#lowCount').textContent = `${belowReorder.length} item${belowReorder.length === 1 ? '' : 's'}`;
-  $('#lowStockList').innerHTML = lows.length === 0
-    ? `<div class="bo-empty">All items above reorder point</div>`
-    : lows.map(p => {
-        const danger = p.stock <= p.reorderPoint * 0.25;
-        return `
-          <div class="mini-list-row ${danger ? 'danger' : 'warn'}">
-            <div class="ml-left">
-              <span class="ml-name">${escapeHtml(p.name)}</span>
-              <span class="ml-sub">${escapeHtml(p.sku)} · reorder at ${p.reorderPoint}</span>
-            </div>
-            <span class="ml-value">${p.stock} ${escapeHtml(p.unit)}</span>
-          </div>`;
-      }).join('');
-
-  // Deliveries coming — purchase orders still on their way in from a supplier.
-  // ponytail: derived, never stored. A PO is "coming" while its status is in PO_INCOMING.
-  // This is NOT orders.delivery, which is a customer's order going out.
-  const supName = new Map(loadSuppliers().map(x => [x.id, x.name]));
-  const incoming = loadPurchaseOrders()
-    .filter(po => PO_INCOMING.includes(po.status))
-    // Due = the supplier's promised date over our own guess; same rule as the Suppliers page.
-    .sort((a, b) => (SUP_RULES.dueDate(a) || '9999').localeCompare(SUP_RULES.dueDate(b) || '9999'));
-  const today = isoDate(Date.now());
-  $('#deliveryCount').textContent = incoming.length ? `${incoming.length} incoming` : '';
-  $('#deliveryList').innerHTML = incoming.length === 0
-    ? `<div class="bo-empty">No deliveries scheduled</div>`
-    : incoming.slice(0, 5).map(po => {
-        const due = SUP_RULES.dueDate(po), late = SUP_RULES.isOverdue(po, today);
-        return `
-          <a class="mini-list-row${late ? ' danger' : ''}" href="${Router.href('suppliers', po.id)}">
-            <div class="ml-left">
-              <span class="ml-name">${escapeHtml(supName.get(po.supplierId) || 'Unknown supplier')}</span>
-              <span class="ml-sub">${escapeHtml(po.number || po.id)} · ${poOutstanding(po)} to come</span>
-            </div>
-            <span class="ml-value">${due ? escapeHtml(due) : '—'}${late ? ' · overdue' : ''}</span>
-          </a>`;
-      }).join('');
-
-  renderAttendance();
   renderTxTable(win);
 }
 
@@ -1037,10 +1229,10 @@ function exportSalesCsv(win = rangeWindows()) {
 // Recent transactions — every status, so voids and refunds are visible.
 // Twelve was half a screen and stopped mid-morning on a busy day. The Sales summary
 // carries the same list; the Sales > Transactions tab is the one that pages past this.
-const RECENT_TX = 25;
+const RECENT_TX = 15;
 function renderTxTable(win = rangeWindows()) {
   const q = (state.txQuery || '').trim().toLowerCase();
-  const rows = state.orders
+  const all = state.orders
     .filter(o => o.ts >= win.start && o.ts < win.end)
     .sort((a, b) => b.ts - a.ts)
     .filter(o => {
@@ -1048,8 +1240,9 @@ function renderTxTable(win = rangeWindows()) {
       const hay = [o.number, o.customer?.name, o.cashier, o.paymentMethodLabel, ...o.items.map(i => i.name)]
         .filter(Boolean).join(' ').toLowerCase();
       return hay.includes(q);
-    })
-    .slice(0, RECENT_TX);
+    });
+  const rows = all.slice(0, RECENT_TX);
+  $('#txCount').textContent = all.length ? `${rows.length} of ${all.length}` : '';
 
   $('#txTable tbody').innerHTML = rows.length ? rows.map(o => {
     const status = STATUS_TONE[o.status || 'completed'] || STATUS_TONE.completed;
@@ -1057,7 +1250,7 @@ function renderTxTable(win = rangeWindows()) {
       <tr class="tx-row ${o.status === 'completed' ? '' : 'dim'}" data-order="${escapeHtml(o.id)}">
         <td class="tx-id">#${escapeHtml(o.number)}</td>
         <td class="tx-time">${escapeHtml(txTime(o.ts))}</td>
-        <td>${escapeHtml(o.customer?.name || '—')}</td>
+        <td class="tx-cust" title="${escapeHtml(o.customer?.name || '')}">${escapeHtml(o.customer?.name || '—')}</td>
         <td class="tx-staff">${escapeHtml(o.cashier || '—')}</td>
         <td class="tx-fulfil">${escapeHtml(orderFulfilLabel(o))}</td>
         <td><span class="pay-pill ${escapeHtml(o.paymentKind || 'cash')}">${escapeHtml(o.paymentMethodLabel || 'Cash')}</span></td>
@@ -1351,7 +1544,7 @@ function renderCustomerDetail(c) {
         <div><span>Available credit</span><b>${peso((c.creditLimit || 0) - (c.currentBalance || 0))}</b></div>
       </div>
     </section>
-    <section class="bo-card">
+    <section class="bo-card blk-table">
       <div class="bo-card-head">
         <span class="bo-card-label">Statement</span>
         <input type="date" class="bo-date" data-act="stFrom" value="${escapeHtml(p.from || '')}" />
@@ -1373,7 +1566,7 @@ function renderCustomerDetail(c) {
         </table>
       </div></div>
     </section>
-    <section class="bo-card">
+    <section class="bo-card blk-table">
       <div class="bo-card-head">
         <span class="bo-card-label">Transactions</span>
         <span class="bo-card-sub">${orders.length} order${orders.length === 1 ? '' : 's'}</span>
@@ -1388,7 +1581,7 @@ function renderCustomerDetail(c) {
         </table>
       </div>${pagerHtml(pg)}</div>
     </section>
-    <section class="bo-card">
+    <section class="bo-card blk-table">
       <div class="bo-card-head">
         <span class="bo-card-label">Items bought</span>
         <span class="bo-card-sub">${items.length} product${items.length === 1 ? '' : 's'}</span>
@@ -1419,25 +1612,6 @@ function attendanceKey() {
 function readAttendance() {
   const all = readJsonStorage(STORAGE_ATTENDANCE, {}) || {};
   return all[attendanceKey()] || {};
-}
-
-function renderAttendance() {
-  const marks = readAttendance();
-  const roster = loadStaff().filter(u => u.active)
-    .map(u => ({ ...u, mark: marks[u.name] || u.attendance || 'absent' }));
-  const inToday = roster.filter(u => u.mark === 'present' || u.mark === 'late' || u.mark === 'halfday').length;
-  $('#attendSummary').textContent = `${inToday} of ${roster.length} in`;
-  $('#attendList').innerHTML = roster.map(u => {
-    const [tone, label] = ATTEND_LABEL[u.mark] || ATTEND_LABEL.absent;
-    return `
-      <div class="mini-list-row">
-        <div class="ml-left">
-          <span class="ml-name">${escapeHtml(u.name)}</span>
-          <span class="ml-sub">${escapeHtml(u.role)}</span>
-        </div>
-        <span class="status-pill ${tone}">${label}</span>
-      </div>`;
-  }).join('');
 }
 
 function renderSettingsForm() {
@@ -1519,7 +1693,7 @@ function methodCardHtml(key) {
       <td class="num"><button class="secondary-btn small" data-m-del="${i}">Remove</button></td>
     </tr>`).join('');
   return `
-    <section class="bo-card" data-m-card="${key}">
+    <section class="bo-card blk-table full" data-m-card="${key}">
       <div class="bo-card-head"><span class="bo-card-label">${escapeHtml(card.title)}</span>
         <span class="bo-card-sub">${escapeHtml(card.sub)}</span></div>
       <div class="bo-card-inset flush"><div class="table-wrap"><table class="data-table">
@@ -1547,8 +1721,7 @@ function drawPayments() {
     <header class="view-head">
       <div class="view-title-wrap"><h1>Payments</h1></div>
     </header>
-    ${methodCardHtml('payments')}
-    ${methodCardHtml('fulfilment')}`;
+    <div class="blk-grid">${methodCardHtml('payments')}${methodCardHtml('fulfilment')}</div>`;
 }
 
 // One listener per event for both cards; data-m-card says which draft an edit belongs to.
@@ -1733,8 +1906,9 @@ function wireEvents() {
   // "View all →" jumps inside dashboard
   document.addEventListener('click', (e) => {
     const j = e.target.closest('[data-jump]');
-    if (!j) return;
-    setView(j.dataset.jump);
+    if (!j || j.closest('#dashStack.editing')) return;
+    e.preventDefault();
+    if (j.dataset.sub) goSub(j.dataset.jump, j.dataset.sub); else setView(j.dataset.jump);
   });
 
   // Every pager on every page is the same control: it writes ?page= and the route writes
@@ -1764,7 +1938,7 @@ function wireEvents() {
   // ponytail: a view preference, not app state — one key, no re-render needed.
   const deltaBtn = $('#statDeltaToggle');
   const showDeltas = (on) => {
-    $('#kpiRow').classList.toggle('show-delta', on);
+    $('#dashStack').classList.toggle('show-delta', on);
     deltaBtn.classList.toggle('active', on);
     localStorage.setItem(STORAGE_STAT_DELTAS, on ? '1' : '0');
   };
@@ -1774,6 +1948,7 @@ function wireEvents() {
   }
 
   $('#dashExportBtn')?.addEventListener('click', () => exportSalesCsv());
+  initDashEdit();
 
   $('#backupExportBtn')?.addEventListener('click', exportFullBackup);
   $('#backupImportBtn')?.addEventListener('click', () => $('#backupImportFile')?.click());
@@ -1792,18 +1967,18 @@ function wireEvents() {
   // ----- Settings → Appearance (S/M/L tile size + price toggle) -----
   // Sync initial state from localStorage
   const currentSize = storageGet(STORAGE_TILE_SIZE, 'md') || 'md';
-  $$('#settingsSizeToggle .bb-size-btn').forEach(b => {
+  $$('#settingsSizeToggle .seg-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.size === currentSize);
   });
   const currentShow = storageGet(STORAGE_SHOW_PRICE, '0') === '1';
   const showCb = $('#settingsShowPrice');
   if (showCb) showCb.checked = currentShow;
 
-  $$('#settingsSizeToggle .bb-size-btn').forEach(b => {
+  $$('#settingsSizeToggle .seg-btn').forEach(b => {
     b.addEventListener('click', () => {
       const size = b.dataset.size;
       storageSet(STORAGE_TILE_SIZE, size);
-      $$('#settingsSizeToggle .bb-size-btn').forEach(x => x.classList.toggle('active', x === b));
+      $$('#settingsSizeToggle .seg-btn').forEach(x => x.classList.toggle('active', x === b));
       showToast(`Tile size set to ${size.toUpperCase()} — Sell screen will update`);
     });
   });
@@ -1812,8 +1987,13 @@ function wireEvents() {
     showToast(e.target.checked ? 'Prices will show on tiles' : 'Prices hidden on tiles');
   });
 
+  // ----- Settings → Appearance (chart colours) -----
+  $$('#settingsChartHue .seg-btn').forEach(b => {
+    b.addEventListener('click', () => HWPOS_STORE.ui.set('chartHue', applyChartHue(b.dataset.hue)));
+  });
+
   // ----- Settings → Appearance (back office row size) -----
-  $$('#settingsDensityToggle .bb-size-btn').forEach(b => {
+  $$('#settingsDensityToggle .seg-btn').forEach(b => {
     b.addEventListener('click', () => {
       storageSet(STORAGE_DENSITY, applyDensity(b.dataset.density));
     });
@@ -1850,7 +2030,7 @@ function wireEvents() {
     if (e.key === STORAGE_TILE_SIZE || e.key === STORAGE_SHOW_PRICE || e.key === STORAGE_THEME) {
       // Appearance change from POS app — re-sync the Appearance panel UI
       const currentSize = storageGet(STORAGE_TILE_SIZE, 'md') || 'md';
-      $$('#settingsSizeToggle .bb-size-btn').forEach(b => {
+      $$('#settingsSizeToggle .seg-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.size === currentSize);
       });
       const currentShow = storageGet(STORAGE_SHOW_PRICE, '0') === '1';
@@ -1871,13 +2051,24 @@ const DENSITIES = ['sm', 'md', 'lg'];
 function applyDensity(size) {
   const d = DENSITIES.includes(size) ? size : 'md';
   document.body.dataset.density = d;
-  $$('#settingsDensityToggle .bb-size-btn').forEach(b => b.classList.toggle('active', b.dataset.density === d));
+  $$('#settingsDensityToggle .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.density === d));
   return d;
+}
+
+// ---------- Chart colours ----------
+// Profit's line: violet (default) or the deeper blue. One class on <body>; bo-blocks.css
+// re-points --chart-2 under it, so the lines, fades, dots and keys all follow.
+function applyChartHue(hue) {
+  const h = hue === 'blues' ? 'blues' : 'violet';
+  document.body.classList.toggle('chart-blues', h === 'blues');
+  $$('#settingsChartHue .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.hue === h));
+  return h;
 }
 
 // ---------- Init ----------
 function init() {
   applyDensity(storageGet(STORAGE_DENSITY, 'md'));
+  applyChartHue(HWPOS_STORE.ui.get('chartHue', 'violet'));
   refreshSharedState();
   wireEvents();
   wireSwitchers();

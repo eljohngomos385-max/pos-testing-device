@@ -123,8 +123,9 @@ if (typeof document !== 'undefined') (function () {
   const searchBox = (ph) =>
     `<input class="search-input small q-input" data-keep="q" type="search" placeholder="${ph}" value="${esc(state.invQuery)}">`;
 
+  // A flush card is always a table card here, so flush tags it blk-table.
   const card = (label, sub, body, flush, pager = '') => `
-    <div class="bo-card">
+    <div class="bo-card${flush ? ' blk-table' : ''}">
       <div class="bo-card-head"><span class="bo-card-label">${label}</span>${sub ? `<span class="bo-card-sub">${sub}</span>` : ''}</div>
       <div class="bo-card-inset${flush ? ' flush' : ''}">${body}${pager}</div>
     </div>`;
@@ -479,7 +480,7 @@ if (typeof document !== 'undefined') (function () {
       const sup = po ? null : suppliers.find((s) => s.id === id);
       el.innerHTML = po ? poEditor(po, agg)
         : sup ? supplierDetail(sup, agg)
-        : `<div class="bo-empty">That record no longer exists. <button class="link-btn" data-act="back-suppliers">Back to suppliers</button></div>`;
+        : `<div class="bo-card blk-empty"><div class="bo-empty">That record no longer exists. <button class="link-btn" data-act="back-suppliers">Back to suppliers</button></div></div>`;
     } else {
       el.innerHTML = params.tab === 'orders' ? poList(agg, params) : supplierList(agg, params);
     }

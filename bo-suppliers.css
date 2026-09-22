@@ -22,13 +22,8 @@ body.bo-light .view-suppliers .sup-note {
   white-space: nowrap;
 }
 
-/* Inputs that live inside a table cell: same control, tighter. */
-body.bo-light .view-suppliers .data-table .text-input {
-  height: 30px;
-  padding: 0 9px;
-  font-size: 12.5px;
-  width: 100%;
-}
+/* Inputs that live inside a table cell: the block input, filling the cell. */
+body.bo-light .view-suppliers .data-table .text-input { width: 100%; }
 body.bo-light .view-suppliers .data-table .text-input.mini {
   width: 136px;
   text-align: right;
@@ -36,20 +31,14 @@ body.bo-light .view-suppliers .data-table .text-input.mini {
 }
 body.bo-light .view-suppliers .data-table td:has(> .text-input.mini) { text-align: right; }
 
-body.bo-light .view-suppliers .data-table tfoot td {
-  padding: 10px 14px;
-  border-top: 1px solid var(--po-line-strong);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--po-ink);
-}
-body.bo-light .view-suppliers .data-table tfoot td.num { font-variant-numeric: tabular-nums; }
+/* The PO total row: blk-table has no tfoot, so only the rule above it and the weight. */
+body.bo-light .view-suppliers .data-table tfoot td { border-top: 1px solid var(--tbl-line); font-weight: 600; }
 
 body.bo-light .view-suppliers .sup-add td { background: var(--po-surface-2); }
 
 body.bo-light .view-suppliers .sup-warn {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--blk-t-micro);
   color: var(--po-warn);
   white-space: nowrap;
 }
@@ -59,8 +48,8 @@ body.bo-light .view-suppliers .sup-recv-foot {
   align-items: flex-end;
   justify-content: flex-end;
   gap: 12px;
-  padding: 10px 14px;
-  border-top: 1px solid var(--po-line);
+  padding: 10px var(--blk-pad);
+  border-top: 1px solid var(--tbl-line);
 }
 body.bo-light .view-suppliers .sup-arrived { margin-right: auto; }
 body.bo-light .view-suppliers .sup-arrived input { width: auto; }
@@ -68,9 +57,9 @@ body.bo-light .view-suppliers .sup-arrived input { width: auto; }
 /* Real lead time, beside the quoted figure it checks. */
 body.bo-light .view-suppliers .sup-hint {
   margin-left: 8px;
-  font-size: 12px;
+  font-size: var(--blk-t-meta);
   font-weight: 400;
-  color: var(--po-ink-tertiary);
+  color: var(--blk-ink-3);
 }
 
 /* The short-ship reason only asks when fewer arrive than were still to come. */
@@ -78,13 +67,12 @@ body.bo-light .view-suppliers [data-short][hidden] { display: none; }
 
 /* Supplier conversation: newest last, messages split by hairlines, compose under a hairline. */
 body.bo-light .view-suppliers .sup-thread { list-style: none; margin: 0; padding: 0; }
-body.bo-light .view-suppliers .sup-msg { padding: 10px 0; border-bottom: 1px solid var(--po-line); }
+body.bo-light .view-suppliers .sup-msg { padding: 10px 0; border-bottom: 1px solid var(--blk-outline); }
 body.bo-light .view-suppliers .sup-msg:last-child { border-bottom: none; }
-body.bo-light .view-suppliers .sup-msg-meta { font-size: 12px; color: var(--po-ink-tertiary); }
-body.bo-light .view-suppliers .sup-msg-meta .link-btn { font-size: inherit; }
+body.bo-light .view-suppliers .sup-msg-meta { font-size: var(--blk-t-meta); color: var(--blk-ink-3); }
 body.bo-light .view-suppliers .sup-msg-text {
   margin-top: 4px;
-  color: var(--po-ink);
+  color: var(--blk-ink);
   white-space: pre-wrap;        /* a pasted Viber thread keeps its line breaks */
   overflow-wrap: anywhere;
 }
@@ -94,7 +82,7 @@ body.bo-light .view-suppliers .sup-compose {
   gap: var(--po-gap);
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid var(--po-line);
+  border-top: 1px solid var(--blk-outline);
 }
 body.bo-light .view-suppliers .sup-compose textarea { width: 100%; box-sizing: border-box; resize: vertical; }
 body.bo-light .view-suppliers .sup-compose-bar {

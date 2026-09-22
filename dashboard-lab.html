@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dashboard lab</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   BLOCKS v2 — copy of blocks.html, then six changes.
+
+   1 · Softer numerals. Geist's figures are flat-sided and hard at 27px. The
+       whole file now runs on --b-font, with a comparison strip in Foundations
+       so the family is one token, not a rewrite.
+   2 · A block grid. One card = 1 unit. A card can be 1 or 2 units wide and
+       nothing is any other width. Row-list blocks are 2 units minimum.
+   3 · New block: the breakdown list. Label left, amount right, no icons,
+       striped rows, 2 units. For "here is the same total, split seven ways".
+   4 · The radial is taller: bigger stroke, bigger hole, more air.
+   5 · The KPI card is taller with an even vertical rhythm.
+   6 · New: trend badges (.delta.ic / .chip), H target, I combined KPI,
+       J split gauge, K area chart.
+   =========================================================================== */
+
+:root {
+  /* — type family ——————————————————————————————————————————————————————
+     Swap this one line to change every number in the system.
+     Two hard requirements in this product, both measured, not assumed:
+       · a real ₱ (U+20B1) — Figtree and DM Sans have none and silently fall
+         back to a system font mid-number, which is what makes the peso sign
+         look a different weight from the digits beside it;
+       · tabular figures — DM Sans has none, so right-hand columns drift.
+     Candidates that pass both: Geist · Inter · "Plus Jakarta Sans". */
+  --b-font: "Inter";
+  --b-num:  "Inter";   /* figures only — Inter's digits read softer at 27px */
+
+  /* — tone ———————————————————————————————————————————————————————————— */
+  --b-page:       #FFFFFF;                 /* → --po-surface */
+  --b-card:       #F9F9F9;                 /* → --po-bg */
+  --b-raised:     #FFFFFF;                 /* a striped row ON a card */
+  --b-line:       #ECECEC;
+  --b-outline:    #E1E1E1;                 /* the hairline around a block — blocks-tables' --b-line */                 /* hairline inside a card → --po-line */
+  --b-track:      #EFEFEF;                 /* the unfilled part of a bar or ring */
+
+  /* — ink ———————————————————————————————————————————————————————————— */
+  --b-ink:        #303030;                 /* → --po-ink */
+  --b-ink-2:      #616161;                 /* → --po-ink-secondary */
+  --b-ink-3:      #8C8C8C;                 /* → --po-ink-tertiary */
+
+  /* — status: the only colour allowed to mean good or bad ——————————— */
+  --b-up:         #047B5D;                 /* → --po-success */
+  --b-down:       #D72C0D;                 /* → --po-danger */
+  --b-up-tint:    #D3ECDD;                 /* the circle behind the arrow — pill.ok's fill */
+  --b-down-tint:  #F8D8D0;                 /* pill.danger's fill */
+
+  /* — data: one hue, three depths. NOT status. ————————————————————— */
+  --b-data-1:     #BCD7FA;                 /* the line chart's brighter blue, three depths (was a dull navy ramp) */
+  --b-data-2:     #75ADF2;
+  --b-data-3:     #2B7DE9;
+  --b-chart:      var(--b-data-3);         /* the line chart's one series */
+  --b-chart-2:    #174A8C;                 /* a second series: the same blue, deeper */
+
+  /* — type scale ——————————————————————————————————————————————————————
+     Three sizes. One step, used twice. */
+  --b-t-value:    27px;   --b-w-value: 560;
+  --b-t-label:    13px;
+  --b-t-meta:     12.5px;
+  --b-t-micro:    11px;
+  --b-track-tight: -.02em;
+
+  /* — the grid ————————————————————————————————————————————————————————
+     1 unit is one KPI card. Everything is 1 or 2 units. Nothing is 1.5. */
+  --b-unit:       248px;
+  --b-gap:        14px;
+
+  /* — geometry ———————————————————————————————————————————————————————— */
+  --b-r-card:     14px;
+  --b-r-row:      8px;
+  --b-pad:        16px;                    /* v1's even 16 — the thinner KPI */
+  --b-pad-bottom: 16px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--b-page); color: var(--b-ink);
+  font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===========================================================================
+   THE GRID — every block lives in one of these. Defined once.
+   =========================================================================== */
+.blocks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--b-unit), 1fr));
+  gap: var(--b-gap);
+  align-items: start;
+}
+.w2 { grid-column: span 2; }
+@media (max-width: 560px) { .w2 { grid-column: span 1; } }
+
+/* ===========================================================================
+   THE SHELL — every block sits in this.
+   =========================================================================== */
+.card {
+  background: var(--b-card);
+  border-radius: var(--b-r-card);
+  padding: var(--b-pad) var(--b-pad) var(--b-pad-bottom);
+  position: relative;
+}
+/* the card's three tiers, in order, for every block */
+.card-label { font-size: var(--b-t-label); color: var(--b-ink); line-height: 1.3; }
+.card-value {
+  font-size: var(--b-t-value); font-weight: var(--b-w-value);
+  letter-spacing: var(--b-track-tight); line-height: 1.15;
+  margin: 6px 0 8px; font-variant-numeric: tabular-nums;
+}
+/* every figure runs on --b-num; labels stay on --b-font */
+.card-value, .card-meta b, .row-amt, .bd-row .amt, .bd-row .cmp, .ring-total, .row-delta {
+  font-family: var(--b-num), var(--b-font), sans-serif;
+}
+/* wide blocks: the trend sits on the right, on the number's baseline */
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.card-head .card-meta, .card-head .delta { transform: translateY(3px); }   /* on the baseline it reads high beside the big figure */
+/* no trend line: the number is the foot, so the card's bottom matches its top */
+.card-value:last-child { margin-bottom: 0; }
+.card-meta { font-size: var(--b-t-meta); color: var(--b-ink); line-height: 1.4; }
+.card-meta b { font-weight: 500; font-variant-numeric: tabular-nums; }
+.card-meta b.up   { color: var(--b-up); }
+.card-meta b.down { color: var(--b-down); }
+.card-meta .none  { color: var(--b-ink-3); }
+/* KPI variant: the percent rides beside the number; the date picker names the comparison */
+.card-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 6px 0 0; }
+.card-line .card-value { margin: 0; }
+.delta { font-family: var(--b-num), var(--b-font), sans-serif; font-size: var(--b-t-meta); font-weight: 500;
+         font-variant-numeric: tabular-nums; color: var(--b-ink-3); }
+.delta.up   { color: var(--b-up); }
+.delta.down { color: var(--b-down); }
+/* the percent explains itself on hover (or a tap: a button takes focus); the card stays free for a click-through */
+button.delta { position: relative; border: 0; background: none; cursor: default;
+               padding: 6px 8px; margin: -6px -8px;   /* a bigger target than the text, same footprint */
+               text-decoration: underline dotted; text-underline-offset: 3px; }
+button.delta::after {
+  content: attr(data-tip); position: absolute; right: 0; top: calc(100% + 6px); z-index: 1;   /* below: above it would cover the label */
+  background: var(--b-raised); border: 1px solid var(--b-outline); border-radius: 8px; padding: 6px 9px; white-space: nowrap;
+  font-size: var(--b-t-meta); color: var(--b-ink-2); box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  opacity: 0; pointer-events: none; transition: opacity .12s ease;
+}
+button.delta:hover::after, button.delta:focus::after { opacity: 1; }
+
+/* the ··· — furniture, so it waits to be looked for */
+.dots {
+  position: absolute; top: 11px; right: 10px;
+  border: 0; background: transparent; color: var(--b-ink-3);
+  font-family: inherit; font-size: 14px; line-height: 1; padding: 2px 6px; border-radius: 6px;
+  cursor: pointer; opacity: 0; transition: opacity .12s ease;
+}
+.card:hover .dots, .dots:focus-visible { opacity: 1; }
+.dots:hover { background: #F0F0F0; color: var(--b-ink); }
+
+/* the universal row: a thing on the left, a number on the right.
+   Used by the ring's legend. */
+.row { display: flex; align-items: center; gap: 12px; }
+.row-name {
+  font-size: var(--b-t-label); font-weight: 600; color: var(--b-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.row-amt  { font-size: var(--b-t-label); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ===========================================================================
+   BLOCK A — KPI card. 1 unit.
+   =========================================================================== */
+/* nothing of its own: it IS the shell */
+
+/* ===========================================================================
+   BLOCK D — Breakdown list. 2 units minimum. No icons, striped rows.
+   =========================================================================== */
+/* over a breakdown the head sits 5px lower, off the label; the rows stay put */
+.card-head:has(+ .bd-rows) { margin-top: 5px; }
+.bd-rows { margin-top: 13px;     /* the head's 5px came out of this gap */
+           margin-bottom: -6px; } /* the 36px row's own air + the shared pad = the KPI's text-to-edge gap */
+.bd-row {
+  display: flex; align-items: center; gap: 12px;
+  height: 36px; padding: 0 10px; margin: 0 -10px; border-radius: 7px;   /* the ring legend's row, exactly */
+  font-size: var(--b-t-label);
+}
+.bd-row:nth-child(odd) { background: var(--b-raised); }
+.bd-row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-row .amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right;
+               flex: 0 0 auto; min-width: 96px; }
+.bd-row .cmp { font-variant-numeric: tabular-nums; color: var(--b-ink-3); font-size: var(--b-t-meta);
+               text-align: right; flex: 0 0 auto; width: 50px; }   /* fits "+12.0%" and no more, so the amount sits close */
+.bd-row .cmp.up   { color: var(--b-up); }
+.bd-row .cmp.down { color: var(--b-down); }
+.bd-row.total { font-weight: 600; }
+.bd-row.total .nm { font-weight: 600; }
+
+/* ===========================================================================
+   BLOCK C — Radial summary. Copied from v1: a full-height block, the ring
+   absorbs the height, the legend is a zebra-banded row with a share column.
+   =========================================================================== */
+/* ponytail: v1's exact size (354×352), fixed until the real block sizes are settled */
+.ring-block { width: 354px; max-width: 100%; justify-self: start; min-height: 352px; display: flex; flex-direction: column; }
+.ring-wrap {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1; margin: 10px 0;
+}
+.ring-svg { display: block; width: 100%; max-width: 280px; height: auto; }
+.ring-total {
+  font-size: 15px; font-weight: var(--b-w-value); letter-spacing: var(--b-track-tight);
+  fill: var(--b-ink); font-variant-numeric: tabular-nums;
+}
+.ring-cap { font-size: var(--b-t-micro); fill: var(--b-ink-3); letter-spacing: .01em; }
+.legend { width: 100%; }
+.legend .row { height: 36px; padding: 0 10px; margin: 0 -10px; border-radius: 7px; }
+.legend .row:nth-child(odd) { background: var(--b-raised); }
+.legend .row-name { flex: 1; min-width: 0; font-weight: 400; }
+.legend .row-amt  { font-weight: 400; }
+.row-delta {
+  flex: 0 0 36px; text-align: right;   /* fits "100%" */
+  font-size: var(--b-t-meta); color: var(--b-ink-3); font-variant-numeric: tabular-nums;
+}
+.sw { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+
+/* ===========================================================================
+   BLOCK E — Empty state. Any block with nothing to show: label, then one line
+   centred in the space the data would have filled.
+   =========================================================================== */
+.empty-block { min-height: 352px; display: flex; flex-direction: column; }
+.empty { flex: 1; display: grid; place-items: center; font-size: var(--b-t-label); color: var(--b-ink-2); }
+
+/* ===========================================================================
+   BLOCK F — Line chart. Full row. One series, so no legend: the label names it.
+   Drawn by the script at the bottom at the card's real width, so text never scales.
+   =========================================================================== */
+.full { grid-column: 1 / -1; }
+.chart { position: relative; margin-top: 14px; height: 240px; }
+.ring-block .chart { flex: 1; height: auto; }   /* the small one: same box as the radial, chart takes what's left */
+.chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.chart .grid { stroke: var(--b-line); stroke-width: 1; }
+.chart .axis { font-size: var(--b-t-micro); fill: var(--b-ink-3); font-family: var(--b-num), var(--b-font), sans-serif; }
+.chart .line { fill: none; stroke: var(--b-chart); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+.chart .fade-top { stop-color: var(--b-chart); stop-opacity: .26; }   /* the area under the line: tinted at the line, gone at ₱0 */
+.chart .fade-bot { stop-color: var(--b-chart); stop-opacity: 0; }
+.chart .cross { stroke: var(--b-ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart .dot, .chart .end { fill: var(--b-chart); stroke: var(--b-raised); stroke-width: 2.5; }   /* a white ring lifts it off the line */
+.chart .halo { fill: var(--b-chart); opacity: .16; }   /* the soft glow round "now" */
+.chart .bar { fill: var(--b-data-3); transition: opacity .12s ease; }
+.chart svg.hov .bar:not(.on) { opacity: .35; }   /* hovering one bar dims the rest */
+.chart .tip {
+  position: absolute; top: 0; pointer-events: none;   /* beside the crosshair, never over the dot */
+  background: var(--b-raised); border: 1px solid var(--b-outline); border-radius: 8px; padding: 6px 9px; white-space: nowrap;
+  font-size: var(--b-t-meta); color: var(--b-ink-2); box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+.chart .tip b { color: var(--b-ink); font-weight: 600; font-family: var(--b-num), var(--b-font), sans-serif; }
+
+/* ===========================================================================
+   TREND BADGES — the same .delta, two dressier options.
+   .ic   the arrow in a tinted circle, then the percent (colour stays on the text)
+   .chip the whole percent in a tinted pill
+   =========================================================================== */
+.delta.ic { display: inline-flex; align-items: center; gap: 5px; }
+.delta.ic.up::before, .delta.ic.down::before {
+  content: "↑"; display: grid; place-items: center; flex: none;
+  width: 16px; height: 16px; border-radius: 50%; font-size: 10.5px; font-weight: 700;
+  background: var(--b-up-tint);
+}
+.delta.ic.down::before { content: "↓"; background: var(--b-down-tint); }
+button.delta.ic, button.delta.chip { text-decoration: none; }   /* the circle / pill is the cue now */
+.delta.chip, button.delta.chip { padding: 2px 8px; margin: 0; border-radius: 999px; background: var(--b-track); }
+.delta.chip.up   { background: var(--b-up-tint); }
+.delta.chip.down { background: var(--b-down-tint); }
+.kpi > .delta::after { right: auto; left: 0; }   /* a left-aligned trend opens its tip rightward */
+
+/* ===========================================================================
+   BLOCK H — Target. 1 unit. Value over its goal, a meter, one row for what's left.
+   =========================================================================== */
+.card-value .of { font-size: var(--b-t-label); font-weight: 400; letter-spacing: 0; color: var(--b-ink-3); margin-left: 2px; }
+.meter { display: flex; gap: 2px; height: 8px; margin-top: 12px; border-radius: 999px; overflow: hidden; background: var(--b-track); }
+.meter i { display: block; height: 100%; background: var(--b-data-3); border-radius: 999px; }
+.meter.split { background: none; }                    /* the parts fill it end to end; the 2px gap shows the card */
+.meter.split i { border-radius: 0; }
+.meter + .bd-rows { margin-top: 12px; }
+.dot-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; font-size: var(--b-t-meta); color: var(--b-ink-2); }
+.dot-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot-legend b { color: var(--b-ink); font-weight: 500; font-family: var(--b-num), var(--b-font), sans-serif; font-variant-numeric: tabular-nums; }
+
+/* ===========================================================================
+   BLOCK I — Combined KPI. Two to four KPIs in one card, split by a hairline
+   that stops short of the edges. 2 units for two or three, full row for four.
+   =========================================================================== */
+.multi { display: flex; }
+.multi .kpi { flex: 1; min-width: 0; position: relative; padding: 0 var(--b-pad); }
+.multi .kpi:first-child { padding-left: 0; }
+.multi .kpi:last-child  { padding-right: 0; }
+.multi .kpi + .kpi::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 2px; width: 1px; background: var(--b-outline); }
+.multi .kpi .card-value { white-space: nowrap; }
+@media (max-width: 560px) {
+  .multi { flex-direction: column; }
+  .multi .kpi { padding: 0; }
+  .multi .kpi + .kpi { margin-top: 14px; padding-top: 14px; }
+  .multi .kpi + .kpi::before { top: 0; bottom: auto; right: 0; width: auto; height: 1px; }
+}
+
+/* ===========================================================================
+   BLOCK J — Split gauge. 1 unit. One half-ring cut into parts, dot legend under.
+   =========================================================================== */
+.gauge-svg { display: block; width: 100%; max-width: 196px; height: auto; margin: 16px auto 0; }
+.gauge-block .dot-legend { justify-content: center; margin-top: 14px; }
+
+/* ===========================================================================
+   BLOCK L — Two lines. A second series re-points --b-chart, so the line, fade,
+   dots and its key all follow one variable. Keys double as the show/hide switch.
+   =========================================================================== */
+.s1   { --b-chart: var(--b-chart-2); }
+.hue2 { --b-chart-2: #8B5CF6; }          /* option: a second hue instead of a second depth */
+.keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.key {
+  display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px;
+  border: 1px solid var(--b-outline); border-radius: 999px; background: var(--b-raised);
+  font: inherit; font-size: var(--b-t-meta); color: var(--b-ink-2); cursor: pointer;
+  transition: opacity .12s ease;
+}
+.key .sw { background: var(--b-chart); }
+.key b { color: var(--b-ink); font-weight: 600; font-family: var(--b-num), var(--b-font), sans-serif; font-variant-numeric: tabular-nums; }
+.key[aria-pressed="false"] { opacity: .5; }
+.key[aria-pressed="false"] .sw { background: var(--b-track); }
+.key:focus-visible { outline: 2px solid var(--b-ink); outline-offset: 1px; }
+
+/* ===========================================================================
+   PAGE CHROME — documentation only, not part of the system.
+   =========================================================================== */
+/* 1160 is not arbitrary: it is 4 units + 3 gaps + the stage's own padding, so the
+   demo grid lands on exactly four columns and never 3 + 1 orphan. */
+.wrap { max-width: 1160px; margin: 0 auto; padding: 44px 24px 120px; }
+header h1 { font-size: 26px; letter-spacing: -.02em; margin: 0 0 8px; }
+header p  { font-size: 13.5px; color: var(--b-ink-2); line-height: 1.7; max-width: 74ch; margin: 0 0 8px; }
+.badge { display: inline-block; background: #F1F1F1; color: var(--b-ink-2); border-radius: 999px;
+         padding: 3px 10px; font-size: 11.5px; font-weight: 600; margin-bottom: 14px; }
+section { margin-top: 52px; }
+section > h2 { font-size: 19px; letter-spacing: -.015em; margin: 0 0 4px; }
+section > .src, .stage > .src { font-size: 12px; color: var(--b-ink-3); margin: 0 0 18px; max-width: 74ch; line-height: 1.6; }
+.stage { border: 1px dashed #E3E3E3; border-radius: 12px; padding: 22px; background: var(--b-page); }
+.notes { margin: 16px 0 0; }
+.notes h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--b-ink-3); }
+.notes ul { margin: 0; padding-left: 17px; font-size: 12.5px; line-height: 1.75; color: #4A4A4A; max-width: 80ch; }
+.notes b { color: var(--b-ink); }
+.notes code, .tok code, .fonts code { background: #F1F1F1; border-radius: 4px; padding: 1px 5px; font-size: 11.5px;
+                         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.tok { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.tok > div { padding: 12px 14px; border: 1px solid #EFEFEF; border-radius: 10px; }
+.tok h5 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--b-ink-3); }
+.tok p { margin: 0; font-size: 12px; color: var(--b-ink-2); line-height: 1.6; }
+.chips { display: flex; gap: 6px; margin-bottom: 9px; flex-wrap: wrap; }
+.chips i { width: 26px; height: 26px; border-radius: 7px; border: 1px solid #E8E8E8; display: block; }
+
+/* the font comparison strip */
+.fonts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.fonts > div { padding: 14px 16px 16px; border: 1px solid #EFEFEF; border-radius: 10px; }
+.fonts .fam { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--b-ink-3);
+              margin-bottom: 8px; font-family: var(--b-font), sans-serif; }
+.fonts .num { font-size: 27px; font-weight: 560; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+              line-height: 1.15; }
+.fonts .sm  { font-size: 12.5px; color: var(--b-ink-2); margin-top: 6px; }
+.fonts .pick { border-color: var(--b-ink); }
+.fonts .pick .fam { color: var(--b-ink); font-weight: 600; }
+.fonts .out { opacity: .55; }
+.fonts .out .fam b { color: var(--b-down); font-weight: 600; }
+/* the unit ruler */
+.ruler { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--b-unit), 1fr)); gap: var(--b-gap); }
+.ruler div { height: 38px; border-radius: 8px; background: #F1F1F1; color: var(--b-ink-3);
+             display: grid; place-items: center; font-size: 11.5px; letter-spacing: .04em; }
+.ruler .two { grid-column: span 2; background: #EDEDED; }
+
+/* the faux dashboard — every block, the table and the controls on one fake Home page */
+.dash-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.dash-top h3 { font-size: 20px; font-weight: 600; letter-spacing: -.015em; margin: 0; }
+/* ponytail: 336px sits between the breakdown (~322) and the radial (352); not on the unit formula yet */
+.chart-block { height: 336px; display: flex; flex-direction: column; }
+.chart-block .chart { flex: 1; height: auto; }
+#dash .tbl-sys { --b-r-card: inherit; }            /* the corner slider reaches the table card too */
+#dash .tv-s { border-radius: var(--b-r-card); }
+
+/* hairline switch — outlines every block. Inset, so turning it on moves nothing. */
+body.outlined .card { box-shadow: inset 0 0 0 1px var(--b-outline); }
+.hl-switch, .r-knob { position: fixed; top: 14px; right: 14px; z-index: 10; display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px 6px 12px; background: var(--b-page); border: 1px solid var(--b-outline); border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06); font-size: 12.5px; font-weight: 600; color: var(--b-ink); cursor: pointer; user-select: none; }
+.hl-switch input { appearance: none; margin: 0; width: 30px; height: 18px; border-radius: 999px; background: #D4D4D4;
+  position: relative; cursor: pointer; transition: background-color .15s; }
+.hl-switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .15s; }
+.hl-switch input:checked { background: var(--b-ink); }
+.hl-switch input:checked::after { transform: translateX(12px); }
+.hl-switch input:focus-visible { outline: 2px solid var(--b-ink); outline-offset: 2px; }
+.r-knob { top: 56px; cursor: default; }
+.r-knob input { width: 110px; margin: 0; accent-color: var(--b-ink); }
+.r-knob output { min-width: 34px; text-align: right; font-family: var(--b-num), var(--b-font), sans-serif; font-variant-numeric: tabular-nums; }
+
+/* ===========================================================================
+   FROM BLOCKS-TABLES — table D, buttons, pills. Copied as-is, scoped to
+   .tbl-sys so its tokens (34px rows, 8px card corners, #E1E1E1 line) and its
+   .num / .nm / .card never touch the blocks above.
+   =========================================================================== */
+.tbl-sys { --b-card: #FFFFFF; --b-line: #E1E1E1; --b-ink-2: #5A5A5A; --b-ink-3: #7A7A7A;
+  --b-r-card: 8px; --b-r-input: 8px; --b-ctl: 28px; --b-row: 34px; }
+.tbl-sys .card { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); }
+.tbl-sys .card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 26px; }
+.tbl-sys .card-count { font-size: var(--b-t-meta); color: var(--b-ink-3); font-family: var(--b-num), var(--b-font), sans-serif; margin-left: 8px; }
+.tbl-sys .input, .tbl-sys .select {
+  height: var(--b-ctl); border-radius: var(--b-r-input); font: inherit; font-size: var(--b-t-label); color: var(--b-ink);
+  background: var(--b-raised); border: 1px solid var(--b-line); padding: 0 10px; }
+.tbl-sys .input { flex: 1; min-width: 200px; }
+.tbl-sys .input::placeholder { color: var(--b-ink-3); }
+.tbl-sys .card-top .input { flex: 0 0 240px; height: 26px; }
+.tbl-sys .select { appearance: none; padding-right: 28px; cursor: pointer; display: inline-flex; align-items: center; white-space: nowrap;
+  background: var(--b-raised) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238C8C8C' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center; }
+.tbl-sys .input:focus-visible, .tbl-sys .select:focus-visible, .tbl-sys .btn:focus-visible, .tbl-sys .pbtn:focus-visible { outline: 2px solid var(--b-ink); outline-offset: 1px; }
+
+/* buttons */
+.tbl-sys .btn, .tbl-sys .pbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: var(--b-ctl); font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1;
+  color: var(--b-ink); white-space: nowrap; cursor: pointer; user-select: none;
+  transition: background-color .12s, box-shadow .12s; }
+.tbl-sys .btn svg, .tbl-sys .pbtn svg { width: 12px; height: 12px; flex: none; }
+.tbl-sys .btn { padding: 0 10px; border-radius: var(--b-r-input); background: var(--b-raised);
+  border: 1px solid #D4D4D4; box-shadow: 0 1px 0 rgba(0,0,0,.05); }
+.tbl-sys .btn:hover  { background: #F7F7F7; }
+.tbl-sys .btn:active { background: #F0F0F0; box-shadow: none; }
+.tbl-sys .btn.soft { background: #EDEDED; border-color: transparent; box-shadow: none; }
+.tbl-sys .btn.soft:hover  { background: #E4E4E4; }
+.tbl-sys .btn.soft:active { background: #DCDCDC; }
+.tbl-sys .btn.primary { background: var(--b-ink); color: #fff; border-color: var(--b-ink);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.2); }
+.tbl-sys .btn.primary:hover  { background: #1F1F1F; }
+.tbl-sys .btn.primary:active { background: #000; box-shadow: none; }
+.tbl-sys .btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
+.tbl-sys .btn.on { background: var(--b-ink); color: #fff; border-color: var(--b-ink); box-shadow: none; }
+.tbl-sys .pbtn { padding: 0 12px; border-radius: 999px; border: 0; background: #EDEDED; color: var(--b-ink); }
+.tbl-sys .pbtn:hover  { background: #E4E4E4; }
+.tbl-sys .pbtn:active { background: #DCDCDC; }
+.tbl-sys .pbtn.ok     { background: #D3ECDD; color: #0B5A37; } .tbl-sys .pbtn.ok:hover     { background: #C3E3D0; }
+.tbl-sys .pbtn.warn   { background: #F7E2B8; color: #6E4D12; } .tbl-sys .pbtn.warn:hover   { background: #F2D7A2; }
+.tbl-sys .pbtn.danger { background: #F8D8D0; color: #8E2408; } .tbl-sys .pbtn.danger:hover { background: #F3C8BD; }
+.tbl-sys .pbtn.info   { background: #D8E3F6; color: #1F3F7A; } .tbl-sys .pbtn.info:hover   { background: #C8D7F1; }
+.tbl-sys .pbtn.on, .tbl-sys .pbtn.on:hover { background: var(--b-ink); color: #fff; }
+.tbl-sys .pbtns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* dropdown */
+.tbl-sys .dd { position: relative; display: inline-block; }
+.tbl-sys .dd.open > .select { border-color: #BDBDBD; }
+.tbl-sys .dd-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 100%;
+  max-height: 280px; overflow-y: auto; padding: 4px; background: var(--b-raised);
+  border: 1px solid var(--b-line); border-radius: var(--b-r-input);
+  box-shadow: 0 6px 20px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05); }
+.tbl-sys .dd.open > .dd-menu { display: block; }
+.tbl-sys .dd-menu.right { left: auto; right: 0; }
+.tbl-sys .dd-item { display: flex; align-items: center; gap: 8px; width: 100%; height: 28px; padding: 0 8px;
+  border: 0; border-radius: 6px; background: none; font: inherit; font-size: var(--b-t-label);
+  color: var(--b-ink); text-align: left; white-space: nowrap; cursor: pointer; }
+.tbl-sys .dd-item:hover, .tbl-sys .dd-item:focus-visible { background: #F1F1F1; outline: 0; }
+.tbl-sys .dd-item[aria-selected="true"] { font-weight: 600; }
+.tbl-sys .dd-item[aria-selected="true"]::after { content: ""; width: 12px; height: 12px; margin-left: auto; padding-left: 12px; flex: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.5l2.5 2.5 4.5-5.5' fill='none' stroke='%23303030' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right center; }
+.tbl-sys .dd-item.danger { color: var(--b-down); }
+.tbl-sys .dd-sep { height: 1px; margin: 4px -4px; background: var(--b-line); }
+
+/* pills */
+.tbl-sys .pill { display: inline-block; height: 20px; line-height: 20px; padding: 0 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; white-space: nowrap; background: #E6E6E6; color: #303030; }
+.tbl-sys .pill.ok     { background: #D3ECDD; color: #0B5A37; }
+.tbl-sys .pill.warn   { background: #F7E2B8; color: #6E4D12; }
+.tbl-sys .pill.danger { background: #F8D8D0; color: #8E2408; }
+.tbl-sys .pill.info   { background: #D8E3F6; color: #1F3F7A; }
+.tbl-sys .pill.owner  { background: #E5DDF9; color: #5A2BCB; }
+.tbl-sys .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* table D · Shopify card */
+.tbl-sys table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--b-t-label); }
+.tbl-sys th { text-align: left; font-weight: 500; font-size: var(--b-t-meta); color: var(--b-ink-2); height: var(--b-row);
+  padding: 0 10px; white-space: nowrap; background: #F7F7F7; border-top: 1px solid #EBEBEB; border-bottom: 1px solid #EBEBEB; }
+.tbl-sys td { height: var(--b-row); padding: 0 10px; white-space: nowrap; color: var(--b-ink); }
+.tbl-sys th:first-child, .tbl-sys td:first-child { padding-left: var(--b-pad); }
+.tbl-sys th:last-child,  .tbl-sys td:last-child  { padding-right: var(--b-pad); }
+.tbl-sys tbody tr { cursor: pointer; }
+.tbl-sys tbody tr:not(:last-child) td { box-shadow: inset 0 -1px 0 #EBEBEB; }
+.tbl-sys tbody tr:hover td { background: #F7F7F7; }
+.tbl-sys .num { text-align: right; font-family: var(--b-num), var(--b-font), sans-serif; font-variant-numeric: tabular-nums; }
+.tbl-sys th.num { font-family: inherit; }
+.tbl-sys .nm  { font-weight: 600; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+.tbl-sys .nm small { font-weight: 400; color: var(--b-ink-3); font-size: var(--b-t-micro); margin-left: 6px; }
+.tbl-sys .mut { color: var(--b-ink-3); }
+.tbl-sys .code { color: var(--b-ink-2); font-family: var(--b-num), var(--b-font), sans-serif; font-size: var(--b-t-meta); letter-spacing: .01em; }
+.tbl-sys td.code:first-child { color: var(--b-ink); font-weight: 600; }   /* receipt numbers lead the row */
+.tbl-sys .strong { font-weight: 600; }
+.tbl-sys .down { color: var(--b-down); }
+.tbl-sys .img { width: 22px; padding-right: 0; }
+.tbl-sys .thumb { display: block; width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--b-line); background: #F3F3F3; }
+.tbl-sys .tv-s { background: var(--b-card); border-radius: 12px; overflow: hidden;
+  box-shadow: 0 1px 0 rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.05), 0 2px 4px rgba(0,0,0,.04); }
+.tbl-sys .tv-s .card-top { padding: 8px var(--b-pad) 9px; }
+.tbl-sys .tv-wrap { overflow-x: auto; }
+.tbl-sys .tv-foot { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #EBEBEB;
+  padding: 10px var(--b-pad); font-size: var(--b-t-meta); color: var(--b-ink-3); }
+.tbl-sys .tv-foot b { color: var(--b-ink); font-weight: 600; font-family: var(--b-num), var(--b-font), sans-serif; }
+.tbl-sys .tv-foot a, .tbl-sys .card-top .view-all { font-size: var(--b-t-meta); color: var(--b-ink); font-weight: 600; text-decoration: none; }
+.tbl-sys .tv-foot a:hover, .tbl-sys .card-top .view-all:hover { text-decoration: underline; }
+
+/* ===========================================================================
+   DASHBOARD LAB — only what the blocks don't already have.
+   =========================================================================== */
+.wrap { max-width: 1500px; padding-top: 32px; }
+[hidden] { display: none !important; }   /* .ring-block's display:flex would beat the browser's own [hidden] */
+
+/* the layout: a fixed main column, and a rail of widgets the owner picks.
+   The rail is one card wide (the radial's 354px), so every widget is the same width and nothing can misalign. */
+.dash { display: grid; grid-template-columns: minmax(0, 1fr) 354px; gap: var(--b-gap); align-items: start; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--b-gap); }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--b-gap); }
+.rail { display: flex; flex-direction: column; gap: var(--b-gap); }
+.rail .ring-block { width: auto; }
+@media (max-width: 1180px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px)  { .dash { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px)  { .kpis { grid-template-columns: minmax(0, 1fr); } }
+
+/* edit mode: each widget gets up / down / remove, and the add card appears at the foot of the rail */
+.w-ctl { display: none; position: absolute; top: 10px; right: 10px; gap: 4px; }
+.w-ctl button { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; cursor: pointer;
+  border: 1px solid var(--b-outline); border-radius: 7px; background: var(--b-raised);
+  font: inherit; font-size: 12px; color: var(--b-ink-2); }
+.w-ctl button:hover { color: var(--b-ink); background: #F3F3F3; }
+.w-ctl button:disabled { opacity: .35; cursor: default; }
+.w-ctl button:focus-visible { outline: 2px solid var(--b-ink); outline-offset: 1px; }
+body.editing .w-ctl { display: flex; }
+body.editing .rail .dots { display: none; }
+body.editing .rail > [data-w] { outline: 1px dashed #C9C9C9; outline-offset: 3px; }
+.add-card { display: none; }
+body.editing .add-card { display: block; }
+.tbl-sys .card.add-card { border-style: dashed; background: none; }
+.add-card .pbtns { margin-top: 10px; }
+.add-card .none { margin-top: 8px; font-size: var(--b-t-meta); color: var(--b-ink-3); }
+.dash-top p { margin: 4px 0 0; font-size: var(--b-t-meta); color: var(--b-ink-3); }
+.bd-row a { color: var(--b-ink); font-weight: 600; text-decoration: none; }
+.bd-row a:hover { text-decoration: underline; }
+.card-head .card-meta b { font-weight: 600; }
+
+/* the targets form: a native <dialog>, the table system's inputs and buttons */
+dialog.tbl-sys { width: 380px; max-width: calc(100vw - 32px); padding: 20px; border: 1px solid var(--b-outline);
+  border-radius: 12px; color: var(--b-ink); box-shadow: 0 12px 40px rgba(0,0,0,.12); }
+dialog::backdrop { background: rgba(0,0,0,.18); }
+dialog h3 { margin: 0 0 4px; font-size: 16px; letter-spacing: -.01em; }
+dialog .sub { margin: 0 0 16px; font-size: var(--b-t-meta); color: var(--b-ink-3); line-height: 1.5; }
+dialog label { display: block; margin-bottom: 14px; font-size: var(--b-t-label); }
+dialog label .input { display: block; width: 100%; margin-top: 6px; font-family: var(--b-num), var(--b-font), sans-serif; }
+dialog .calc { margin: -6px 0 14px; padding: 10px 12px; border-radius: var(--b-r-row); background: #F7F7F7;
+  font-size: var(--b-t-meta); color: var(--b-ink-2); line-height: 1.5; }
+dialog .calc b { color: var(--b-ink); font-family: var(--b-num), var(--b-font), sans-serif; }
+dialog .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+</style>
+</head>
+<body class="outlined">
+<div class="wrap">
+
+<div class="dash-top tbl-sys">
+  <div>
+    <h3>Good afternoon, El John</h3>
+    <p>Tuesday, Sep 22 · as of 4:00 PM · trends compare to last Tuesday</p>
+  </div>
+  <div class="pbtns">
+    <button class="btn" id="edit-widgets" aria-pressed="false">Edit widgets</button>
+    <button class="btn primary"><svg viewBox="0 0 12 12"><path d="M6 2v8M2 6h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Create order</button>
+  </div>
+</div>
+
+<div class="dash">
+
+  <!-- ===== MAIN · fixed. Same cards, same order, every store. ===== -->
+  <div class="main">
+    <div class="kpis">
+      <div class="card">
+        <div class="card-label">Sales today</div>
+        <div class="card-line"><div class="card-value">₱38,200</div><button class="delta chip up" data-tip="+₱1,420 · was ₱36,780 last Tue">+3.9%</button></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Profit</div>
+        <div class="card-line"><div class="card-value">₱9,430</div><button class="delta chip up" data-tip="+₱650 · was ₱8,780 last Tue">+7.4%</button></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Transactions</div>
+        <div class="card-line"><div class="card-value">124</div><button class="delta chip down" data-tip="−3 · was 127 last Tue">−2.4%</button></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Average basket</div>
+        <div class="card-line"><div class="card-value">₱308</div><button class="delta chip up" data-tip="+₱18 · was ₱290 last Tue">+6.2%</button></div>
+      </div>
+    </div>
+
+    <div class="card chart-block hue2">
+      <div class="card-label">Sales and profit by the hour</div>
+      <div class="keys">
+        <button class="key" aria-pressed="true"><i class="sw"></i>Sales <b>₱38,200</b></button>
+        <button class="key s1" aria-pressed="true"><i class="sw"></i>Profit <b>₱9,430</b></button>
+      </div>
+      <div class="chart" data-names="Sales,Profit"
+           data-points="0,0,0,0,0,0,0,816,2561,4029,5563,4812,3937,5938,5029,4134,1381"
+           data-points2="0,0,0,0,0,0,0,202,633,995,1374,1189,972,1461,1242,1021,341"
+           role="img" aria-label="Sales and profit by the hour today: sales peak ₱5,938 and profit ₱1,461 at 1 PM"></div>
+    </div>
+
+    <div class="tbl-sys">
+      <div class="tv tv-s">
+        <div class="card-top">
+          <div class="card-label">Recent transactions<span class="card-count">15 of 124</span></div>
+          <a class="view-all" href="#">View all →</a>
+        </div>
+        <div class="tv-wrap">
+          <table>
+            <thead><tr>
+              <th>Receipt</th><th>Time</th><th>Customer</th><th>Staff</th><th>Fulfilment</th><th>Payment</th><th>Status</th><th class="num">Total</th>
+            </tr></thead>
+            <tbody>
+            <tr><td class="code">#1-3252</td><td class="num" style="text-align:left">3:52 PM</td><td class="mut">—</td><td>Joy P.</td><td><span class="pill">Walk-in</span></td><td><span class="pill info">Maya</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱625.00</td></tr>
+            <tr><td class="code">#1-3251</td><td class="num" style="text-align:left">3:41 PM</td><td>Ricardo Construction</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill warn">Account</span></td><td><span class="pill warn">Out for delivery</span></td><td class="num strong">₱3,440.00</td></tr>
+            <tr><td class="code">#1-3250</td><td class="num" style="text-align:left">3:28 PM</td><td class="mut">—</td><td>Maricel R.</td><td><span class="pill">Walk-in</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱1,256.50</td></tr>
+            <tr><td class="code">#1-3249</td><td class="num" style="text-align:left">3:10 PM</td><td class="mut">—</td><td>Joy P.</td><td><span class="pill">Walk-in</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱74.00</td></tr>
+            <tr><td class="code">#1-3248</td><td class="num" style="text-align:left">2:54 PM</td><td>Marie Variety Store</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Delivered</span></td><td class="num strong">₱2,980.00</td></tr>
+            <tr><td class="code">#1-3247</td><td class="num" style="text-align:left">2:37 PM</td><td class="mut">—</td><td>Maricel R.</td><td><span class="pill">Walk-in</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill danger">Voided</span></td><td class="num strong down">−₱348.00</td></tr>
+            <tr><td class="code">#1-3246</td><td class="num" style="text-align:left">2:15 PM</td><td class="mut">—</td><td>Joy P.</td><td><span class="pill">Walk-in</span></td><td><span class="pill info">QR Ph</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱1,004.55</td></tr>
+            <tr><td class="code">#1-3245</td><td class="num" style="text-align:left">1:58 PM</td><td>Rivera Plumbing Services</td><td>El John</td><td><span class="pill">Walk-in</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱4,120.00</td></tr>
+            <tr><td class="code">#1-3244</td><td class="num" style="text-align:left">1:39 PM</td><td class="mut">—</td><td>Aldrin S.</td><td><span class="pill">Walk-in</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱434.18</td></tr>
+            <tr><td class="code">#1-3243</td><td class="num" style="text-align:left">1:21 PM</td><td>JB Construction</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill info">QR Ph</span></td><td><span class="pill ok">Delivered</span></td><td class="num strong">₱6,190.00</td></tr>
+            <tr><td class="code">#1-3242</td><td class="num" style="text-align:left">12:47 PM</td><td class="mut">—</td><td>Maricel R.</td><td><span class="pill">Walk-in</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill">Refunded</span></td><td class="num strong">₱412.00</td></tr>
+            <tr><td class="code">#1-3241</td><td class="num" style="text-align:left">12:20 PM</td><td class="mut">—</td><td>Joy P.</td><td><span class="pill">Walk-in</span></td><td><span class="pill info">Maya</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱110.14</td></tr>
+            <tr><td class="code">#1-3240</td><td class="num" style="text-align:left">11:27 AM</td><td>Santos Builders</td><td>El John</td><td><span class="pill">Walk-in</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱5,980.00</td></tr>
+            <tr><td class="code">#1-3239</td><td class="num" style="text-align:left">10:14 AM</td><td class="mut">—</td><td>Joy P.</td><td><span class="pill">Walk-in</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱479.14</td></tr>
+            <tr><td class="code">#1-3238</td><td class="num" style="text-align:left">8:33 AM</td><td class="mut">—</td><td>Maricel R.</td><td><span class="pill">Walk-in</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱1,256.50</td></tr>
+          </tbody>
+          </table>
+        </div>
+        <div class="tv-foot"><span><b>124</b> transactions today</span><a href="#">View all in Sales →</a></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== RAIL · the owner's widgets. One card wide; add, remove and reorder in Edit widgets. ===== -->
+  <div class="rail" id="rail">
+    <div class="card" data-w="Daily sales target">
+      <button class="dots" title="Set targets" data-targets>···</button>
+      <div class="card-label">Daily sales target</div>
+      <div class="card-line"><div class="card-value" id="d-val"></div><span class="delta" id="d-pct"></span></div>
+      <div class="meter" id="d-meter" role="img"><i></i></div>
+      <div class="bd-rows"><div class="bd-row"><span class="nm" id="d-nm"></span><span class="amt" id="d-amt"></span></div></div>
+    </div>
+    <div class="card" data-w="Monthly sales target">
+      <button class="dots" title="Set targets" data-targets>···</button>
+      <div class="card-label">Monthly sales target</div>
+      <div class="card-line"><div class="card-value" id="m-val"></div><span class="delta" id="m-pct"></span></div>
+      <div class="meter" id="m-meter" role="img"><i></i></div>
+      <div class="bd-rows"><div class="bd-row"><span class="nm">On pace for</span><span class="amt" id="m-pace"></span></div></div>
+    </div>
+    <div class="card" data-w="Low stock">
+      <div class="card-label">Low stock</div>
+      <div class="card-head">
+        <div class="card-value">23<span class="of"> items below reorder point</span></div>
+        <button class="delta chip down" data-tip="+3 · was 20 yesterday">+3</button>
+      </div>
+      <!-- ponytail: the 5 that run out soonest; the rest live in Needs purchasing -->
+      <div class="bd-rows">
+        <div class="bd-row"><span class="nm">Portland Cement 40kg</span><span class="amt">18 bags</span><span class="cmp down">2 days</span></div>
+        <div class="bd-row"><span class="nm">THHN Wire #12</span><span class="amt">45 m</span><span class="cmp down">3 days</span></div>
+        <div class="bd-row"><span class="nm">Boysen Latex White 4L</span><span class="amt">4 cans</span><span class="cmp">4 days</span></div>
+        <div class="bd-row"><span class="nm">GI Sheet Gauge 26, 8ft</span><span class="amt">30 pcs</span><span class="cmp">5 days</span></div>
+        <div class="bd-row"><span class="nm">Deformed Bar 10mm</span><span class="amt">22 pcs</span><span class="cmp">6 days</span></div>
+        <div class="bd-row total"><span class="nm"><a href="#">+18 more in Needs purchasing →</a></span></div>
+      </div>
+    </div>
+    <div class="card" data-w="Payment methods">
+      <div class="card-label">Payment methods</div>
+      <div class="card-head">
+        <div class="card-value">₱34,760<span class="of"> collected</span></div>
+        <div class="card-meta"><b>₱3,440</b> <span class="none">on account</span></div>
+      </div>
+      <div class="bd-rows">
+        <div class="bd-row"><span class="nm">Cash</span><span class="amt">₱19,480.00</span><span class="cmp">51%</span></div>
+        <div class="bd-row"><span class="nm">GCash</span><span class="amt">₱7,640.00</span><span class="cmp">20%</span></div>
+        <div class="bd-row"><span class="nm">QR Ph</span><span class="amt">₱4,580.00</span><span class="cmp">12%</span></div>
+        <div class="bd-row"><span class="nm">Maya</span><span class="amt">₱3,060.00</span><span class="cmp">8%</span></div>
+        <div class="bd-row"><span class="nm">On account</span><span class="amt">₱3,440.00</span><span class="cmp">9%</span></div>
+        <div class="bd-row total"><span class="nm">Total</span><span class="amt">₱38,200.00</span><span class="cmp">100%</span></div>
+      </div>
+    </div>
+
+    <!-- off by default: switched on from Add widget -->
+    <div class="card" data-w="Deliveries today" hidden>
+      <div class="card-label">Deliveries today</div>
+      <div class="card-head">
+        <div class="card-value">2<span class="of"> arriving</span></div>
+        <div class="card-meta"><b class="down">1 late</b></div>
+      </div>
+      <div class="bd-rows">
+        <div class="bd-row"><span class="nm">Holcim · 200 bags cement</span><span class="amt">10:00 AM</span><span class="cmp up">Arrived</span></div>
+        <div class="bd-row"><span class="nm">Davies Paints · 36 items</span><span class="amt">2:00 PM</span><span class="cmp down">Late</span></div>
+      </div>
+    </div>
+    <div class="card ring-block" data-w="Stock value" hidden>
+      <div class="card-label">Stock value</div>
+      <div class="ring-wrap">
+        <svg class="ring-svg" width="210" height="112" viewBox="0 0 210 112" role="img"
+             aria-label="Stock value ₱922,703: on-hand 89%, committed to orders 10%, dead stock 1%">
+          <g fill="none" stroke-width="18" stroke-linecap="butt">
+            <path d="M161 105 A56 56 0 0 0 49 105"  stroke="var(--b-track)"/>
+            <path d="M161 105 A56 56 0 0 0 49 105"  stroke="var(--b-data-1)" stroke-dasharray="18.5 175.9"/>
+            <path d="M181 105 A76 76 0 0 0 29 105"  stroke="var(--b-track)"/>
+            <path d="M181 105 A76 76 0 0 0 29 105"  stroke="var(--b-data-2)" stroke-dasharray="115.4 238.8"/>
+            <path d="M201 105 A96 96 0 0 0 9 105"   stroke="var(--b-track)"/>
+            <path d="M201 105 A96 96 0 0 0 9 105"   stroke="var(--b-data-3)" stroke-dasharray="224.4 301.6"/>
+          </g>
+          <text class="ring-cap"   x="105" y="78"  text-anchor="middle">TOTAL</text>
+          <text class="ring-total" x="105" y="96" text-anchor="middle">₱922,703</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <div class="row"><i class="sw" style="background:var(--b-data-3)"></i><div class="row-name">On-hand value</div><div class="row-amt">₱821,234.74</div><div class="row-delta">89%</div></div>
+        <div class="row"><i class="sw" style="background:var(--b-data-2)"></i><div class="row-name">Committed to orders</div><div class="row-amt">₱89,834.24</div><div class="row-delta">10%</div></div>
+        <div class="row"><i class="sw" style="background:var(--b-data-1)"></i><div class="row-name">Dead stock</div><div class="row-amt">₱11,634.15</div><div class="row-delta">1%</div></div>
+      </div>
+    </div>
+    <div class="card" data-w="Sales by channel" hidden>
+      <div class="card-label">Sales by channel</div>
+      <div class="card-line"><div class="card-value">76%<span class="of"> walk-in</span></div></div>
+      <div class="meter split" role="img" aria-label="Walk-in 76%, delivery 24%">
+        <i style="width:76%;background:var(--b-data-3)"></i><i style="width:24%;background:var(--b-data-1)"></i>
+      </div>
+      <div class="dot-legend">
+        <span><i class="sw" style="background:var(--b-data-3)"></i>Walk-in <b>₱29,030</b></span>
+        <span><i class="sw" style="background:var(--b-data-1)"></i>Delivery <b>₱9,170</b></span>
+      </div>
+    </div>
+    <div class="card" data-w="Credit used" hidden>
+      <div class="card-label">Credit used</div>
+      <div class="card-line"><div class="card-value">₱64,500<span class="of">/₱80,000</span></div><span class="delta down">81%</span></div>
+      <div class="meter" role="img" aria-label="81% of the credit limit used"><i style="width:81%"></i></div>
+      <div class="bd-rows"><div class="bd-row"><span class="nm">Available</span><span class="amt">₱15,500</span></div></div>
+    </div>
+
+    <div class="tbl-sys"><div class="card add-card" id="add-card">
+      <div class="card-label">Add widget</div>
+      <div class="pbtns" id="add-list"></div>
+      <div class="none" id="add-none">Every widget is on the page.</div>
+    </div></div>
+  </div>
+
+</div>
+
+<div class="notes">
+  <h4>How this page decides things</h4>
+  <ul>
+    <li><b>Left is fixed:</b> four KPIs, the hourly chart, recent transactions. Same order in every store, so staff always know where to look.</li>
+    <li><b>Right is the owner's:</b> Edit widgets → ↑ ↓ to reorder, × to remove, Add widget at the bottom. The rail is one card wide, so widgets only ever stack and can't misalign.</li>
+    <li><b>Targets live in the rail</b> and are always today and this month. The ··· on a target card opens the form: set the month, and the daily target works itself out.</li>
+    <li>On by default: targets, low stock, payment methods. Off by default: deliveries, stock value, sales by channel, credit used.</li>
+  </ul>
+</div>
+
+</div>
+
+<dialog class="tbl-sys" id="targets">
+  <form method="dialog">
+    <h3>Sales targets</h3>
+    <p class="sub">Set the month; each day's target works itself out from what's left.</p>
+    <label>Monthly target (₱)<input class="input" id="t-month" inputmode="numeric"></label>
+    <div class="calc" id="t-calc"></div>
+    <label>Override today (₱) <span class="none" style="color:var(--b-ink-3)">— leave blank for auto</span><input class="input" id="t-over" inputmode="numeric" placeholder="Auto"></label>
+    <div class="foot">
+      <button class="btn" value="cancel">Cancel</button>
+      <button class="btn primary" value="save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+// Block F: one plain-SVG line chart per .chart, redrawn at the card's real width.
+// ponytail: hand-rolled, no library — fine for one series; reach for a lib if charts multiply.
+(function () {
+  const NS = 'http://www.w3.org/2000/svg', HOURS = 24;
+  const hr = h => (h % 12 || 12) + (h < 12 ? ' AM' : ' PM');
+  const peso = v => '₱' + v.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+  const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+
+  // Monotone cubic through the points: smooth, but never bends past a real value
+  // (no dip below ₱0 on the flat night hours, no fake peak above the top hour).
+  function curve(P) {
+    const s = P.slice(1).map((q, i) => (q[1] - P[i][1]) / (q[0] - P[i][0]));
+    const m = P.map((_, i) => i === 0 ? s[0] : i === P.length - 1 ? s[i - 1]
+      : s[i - 1] * s[i] <= 0 ? 0 : 2 / (1 / s[i - 1] + 1 / s[i]));
+    return P.reduce((d, q, i) => {
+      if (!i) return 'M' + q[0] + ' ' + q[1];
+      const p = P[i - 1], t = (q[0] - p[0]) / 3;
+      return d + `C${p[0] + t} ${p[1] + m[i - 1] * t} ${q[0] - t} ${q[1] - m[i] * t} ${q[0]} ${q[1]}`;
+    }, '');
+  }
+
+  function draw(box, n) {
+    const series = [box.dataset.points, box.dataset.points2].filter(Boolean).map(v => v.split(',').map(Number));
+    const names = (box.dataset.names || '').split(',');
+    const on = series.map((_, i) => i !== +box.dataset.off);            // data-off="1" hides the second line
+    const pts = series[0], top = Math.max(...series.filter((_, i) => on[i]).flat(), 1);
+    const W = box.clientWidth, H = box.clientHeight, L = 44, B = 22, T = 6;
+    const step = Math.pow(10, Math.floor(Math.log10(top)));
+    const max = Math.ceil(top / step) * step;                            // a round top: ₱10k, not ₱9,020
+    const unit = box.dataset.unit;                                       // e.g. "orders": counts, not pesos
+    const bars = box.dataset.kind === 'bar';                             // bars sit in hour slots, the line on hour ticks
+    const x = bars ? h => L + (W - L) * (h + .5) / HOURS : h => L + (W - L) * h / (HOURS - 1);
+    const y = v => T + (H - T - B) * (1 - v / max);
+    box.innerHTML = '';
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}` }, box);
+    for (const v of [0, max / 2, max]) {                                  // three gridlines, like the reference
+      el('line', { class: 'grid', x1: L, x2: W, y1: y(v), y2: y(v) }, svg);
+      el('text', { class: 'axis', x: 0, y: y(v) + 4 }, svg).textContent = (unit ? '' : '₱') + (v >= 1000 ? v / 1000 + 'k' : v);
+    }
+    for (let h = 0, every = W < 500 ? 6 : 2; h < HOURS; h += every)   // fewer hour labels when narrow
+      el('text', { class: 'axis', x: x(h), y: H - 4, 'text-anchor': 'middle' }, svg).textContent = hr(h);
+    const bw = Math.max(2, (W - L) / HOURS * .6), rects = [];
+    if (bars) pts.forEach((v, h) => {                                     // rounded top, flat foot on the ₱0 line
+      const l = x(h) - bw / 2, t = y(v), b = y(0), r = Math.min(3, bw * .2, b - t);   // scales with the bar: a thin bar gets a softer corner
+      rects[h] = el('path', { class: 'bar', d: `M${l} ${b}V${t + r}A${r} ${r} 0 0 1 ${l + r} ${t}H${l + bw - r}A${r} ${r} 0 0 1 ${l + bw} ${t + r}V${b}Z` }, svg);
+    });
+    const cross = el('line', { class: 'cross', y1: T, y2: H - B, visibility: 'hidden' }, svg);
+    const dots = [];
+    if (!bars) {
+      let filled = false;                                                // only the front line gets the fade: two fades muddy
+      series.forEach((p, i) => {
+        if (!on[i]) return;
+        const s = el('g', { class: 's' + i }, svg), d = curve(p.map((v, h) => [x(h), y(v)]));
+        if (!filled) {
+          filled = true;
+          const g = el('linearGradient', { id: `fade${n}-${i}`, x1: 0, y1: 0, x2: 0, y2: 1 }, el('defs', {}, s));
+          el('stop', { class: 'fade-top', offset: 0 }, g); el('stop', { class: 'fade-bot', offset: 1 }, g);
+          el('path', { d: d + `L${x(p.length - 1)} ${y(0)}L${x(0)} ${y(0)}Z`, fill: `url(#fade${n}-${i})` }, s);
+        }
+        el('path', { class: 'line', d }, s);
+        for (const [c, r] of [['halo', 10], ['end', 5]])                 // marks "now": the line ends here
+          el('circle', { class: c, r, cx: x(p.length - 1), cy: y(p[p.length - 1]) }, s);
+        dots[i] = el('circle', { class: 'dot', r: 4.5, visibility: 'hidden' }, s);
+      });
+    }
+    const fmt = v => unit ? v.toLocaleString() + ' ' + unit : peso(v);
+    const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; box.appendChild(tip);
+    box.onpointermove = e => {
+      const f = (e.offsetX - L) / (W - L);
+      const h = Math.max(0, Math.min(pts.length - 1, bars ? Math.floor(f * HOURS) : Math.round(f * (HOURS - 1))));
+      if (bars) { svg.classList.add('hov'); rects.forEach((r, i) => r.classList.toggle('on', i === h)); }
+      else {
+        cross.setAttribute('x1', x(h)); cross.setAttribute('x2', x(h)); cross.setAttribute('visibility', 'visible');
+        dots.forEach((d, i) => { if (!d) return;
+          d.setAttribute('cx', x(h)); d.setAttribute('cy', y(series[i][h])); d.setAttribute('visibility', 'visible'); });
+      }
+      tip.innerHTML = hr(h) + (series.length < 2 ? ' · <b>' + fmt(pts[h]) + '</b>'
+        : series.map((p, i) => on[i] ? ` · ${names[i]} <b>${fmt(p[h])}</b>` : '').join(''));
+      tip.hidden = false;
+      const right = x(h) + 10 + tip.offsetWidth < W;                     // flip left near the right edge
+      tip.style.left = (right ? x(h) + 10 : x(h) - 10 - tip.offsetWidth) + 'px';
+    };
+    box.onpointerleave = () => { svg.classList.remove('hov'); cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d && d.setAttribute('visibility', 'hidden')); tip.hidden = true; };
+  }
+  const boxes = document.querySelectorAll('.chart');
+  const redraw = () => boxes.forEach(draw);
+  // Keys: a click hides that line; the last line showing can't be hidden.
+  document.querySelectorAll('.keys').forEach(keys => keys.onclick = e => {
+    const k = e.target.closest('.key'), box = keys.closest('.card').querySelector('.chart');
+    if (!k) return;
+    const i = [...keys.children].indexOf(k), off = box.dataset.off;
+    if (off === String(i)) delete box.dataset.off;
+    else if (off === undefined) box.dataset.off = i;
+    else return;
+    [...keys.children].forEach((b, j) => b.setAttribute('aria-pressed', String(box.dataset.off !== String(j))));
+    draw(box, [...boxes].indexOf(box));
+  });
+  redraw(); new ResizeObserver(redraw).observe(document.body);
+  document.fonts && document.fonts.ready.then(redraw);
+})();
+</script>
+<script>
+// Targets (lab demo). ponytail: fixed demo numbers for Sep 22; the app reads these from orders.
+(function () {
+  const T = { month: 1200000, before: 804100, today: 38200, day: 22, days: 30, override: null };
+  const $ = id => document.getElementById(id);
+  const peso = v => '₱' + Math.round(v).toLocaleString('en-PH');
+  const short = v => v >= 1e6 ? '₱' + +(v / 1e6).toFixed(2) + 'M' : peso(v);
+  const num = s => Number(String(s).replace(/[^\d.]/g, '')) || 0;
+  const left = () => T.days - T.day + 1;                                  // store days left, today included
+  const auto = m => Math.round((m - T.before) / left() / 10) * 10;
+  const meter = (el, pct, label) => { el.firstElementChild.style.width = Math.min(pct, 100) + '%'; el.setAttribute('aria-label', label); };
+
+  function render() {
+    const daily = T.override ?? auto(T.month), dp = Math.round(T.today / daily * 100);
+    $('d-val').innerHTML = peso(T.today) + `<span class="of">/${peso(daily)}</span>`;
+    $('d-pct').textContent = dp + '%'; $('d-pct').className = 'delta' + (dp >= 100 ? ' up' : '');
+    meter($('d-meter'), dp, dp + '% of the daily target');
+    $('d-nm').textContent = T.today >= daily ? 'Over target' : 'Remaining';
+    $('d-amt').textContent = peso(Math.abs(daily - T.today));
+
+    const mtd = T.before + T.today, mp = Math.round(mtd / T.month * 100);
+    $('m-val').innerHTML = short(mtd) + `<span class="of">/${short(T.month)}</span>`;
+    $('m-pct').textContent = mp + '%'; $('m-pct').className = 'delta' + (mp >= 100 ? ' up' : '');
+    meter($('m-meter'), mp, mp + '% of the monthly target');
+    $('m-pace').textContent = short(mtd / T.day * T.days);
+  }
+
+  const dlg = $('targets');
+  const calc = () => {
+    const m = num($('t-month').value);
+    $('t-calc').innerHTML = `Today's target: <b>${peso(m - T.before)}</b> left ÷ <b>${left()}</b> days = <b>${peso(auto(m))}</b>`;
+  };
+  const open = () => { $('t-month').value = T.month.toLocaleString('en-PH'); $('t-over').value = T.override ?? ''; calc(); dlg.showModal(); };
+  $('t-month').oninput = calc;
+  document.querySelectorAll('[data-targets]').forEach(b => b.onclick = open);
+  dlg.onclose = () => {
+    if (dlg.returnValue !== 'save') return;
+    T.month = num($('t-month').value) || T.month;
+    T.override = $('t-over').value.trim() ? num($('t-over').value) : null;
+    render();
+  };
+  render();
+})();
+</script>
+<script>
+// Widget rail (lab demo): ↑ ↓ × on each widget in edit mode, hidden ones listed under Add widget.
+// ponytail: the order isn't saved; the app would keep it per store through HWPOS_STORE.
+(function () {
+  const rail = document.getElementById('rail'), addCard = document.getElementById('add-card').parentElement;
+  const list = document.getElementById('add-list'), none = document.getElementById('add-none');
+  const widgets = () => [...rail.querySelectorAll(':scope > [data-w]')];
+  const shown = () => widgets().filter(w => !w.hidden);
+
+  function sync() {
+    const on = shown();
+    on.forEach((w, i) => { const [up, down] = w.querySelectorAll('.w-ctl button');
+      up.disabled = i === 0; down.disabled = i === on.length - 1; });
+    list.innerHTML = '';
+    widgets().filter(w => w.hidden).forEach(w => {
+      const b = document.createElement('button'); b.className = 'pbtn'; b.textContent = '+ ' + w.dataset.w;
+      b.onclick = () => { w.hidden = false; rail.insertBefore(w, addCard); sync(); };
+      list.appendChild(b);
+    });
+    none.hidden = list.children.length > 0;
+  }
+
+  widgets().forEach(w => {
+    const c = document.createElement('div'); c.className = 'w-ctl';
+    c.innerHTML = `<button aria-label="Move ${w.dataset.w} up">↑</button><button aria-label="Move ${w.dataset.w} down">↓</button><button aria-label="Remove ${w.dataset.w}">×</button>`;
+    const [up, down, x] = c.children;
+    up.onclick   = () => { const on = shown(), i = on.indexOf(w); rail.insertBefore(w, on[i - 1]); sync(); up.focus(); };
+    down.onclick = () => { const on = shown(), i = on.indexOf(w); rail.insertBefore(on[i + 1], w); sync(); down.focus(); };
+    x.onclick    = () => { w.hidden = true; sync(); };
+    w.appendChild(c);
+  });
+
+  const btn = document.getElementById('edit-widgets');
+  btn.onclick = () => {
+    const on = document.body.classList.toggle('editing');
+    btn.textContent = on ? 'Done' : 'Edit widgets'; btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', on);
+  };
+  sync();
+})();
+</script>
+</body>
+</html>

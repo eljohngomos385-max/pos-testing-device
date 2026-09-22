@@ -95,7 +95,7 @@
     // In-app links navigate without a page load; anything else behaves normally.
     document.addEventListener('click', (e) => {
       const a = e.target.closest && e.target.closest('a[href]');
-      if (!a || a.target || a.hasAttribute('download') || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      if (!a || a.hasAttribute('data-jump') || a.target || a.hasAttribute('download') || e.metaKey || e.ctrlKey || e.shiftKey) return;
       const url = new URL(a.getAttribute('href'), location.href);
       if (url.origin !== location.origin) return;
       if (usePath ? !url.pathname.startsWith(BASE) : url.pathname !== location.pathname) return;

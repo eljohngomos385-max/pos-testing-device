@@ -137,7 +137,7 @@
         </details>
       </div>
       <div id="pdImport"></div>
-      <section class="bo-card pd-list">
+      <section class="bo-card blk-table pd-list">
         <div class="bo-card-head">
           <span class="bo-card-label">All products</span>
           <span class="bo-card-sub" id="pdShown"></span>
@@ -426,8 +426,9 @@
   };
   const segCtl = (name, value, opts) => `<div class="seg" data-seg="${name}">${opts.map(([v, l]) =>
     `<button type="button" class="seg-btn${v === value ? ' active' : ''}" data-seg-val="${escapeHtml(v)}">${escapeHtml(l)}</button>`).join('')}</div>`;
-  const card = (label, body, sub) => `
-    <section class="bo-card">
+  // blk: the block type (blk-table / blk-empty); a form card has none.
+  const card = (label, body, sub, blk) => `
+    <section class="bo-card${blk ? ' ' + blk : ''}">
       <div class="bo-card-head"><span class="bo-card-label">${escapeHtml(label)}</span>${sub ? `<span class="bo-card-sub">${escapeHtml(sub)}</span>` : ''}</div>
       <div class="bo-card-inset">${body}</div>
     </section>`;
@@ -510,7 +511,7 @@
         ${card('Variants', `
           <div class="bo-empty">Sold in sizes or colours? Add a variant. Each one is its own
             item with its own SKU, barcode, price, stock and picture.</div>
-          <div class="pd-actions"><button class="secondary-btn small" data-act="add-variant">Add variant</button></div>`)}
+          <div class="pd-actions"><button class="secondary-btn small" data-act="add-variant">Add variant</button></div>`, '', 'blk-empty')}
 
        </div>
 
@@ -627,7 +628,7 @@
           <label class="adj-field pd-vsince"><span>New variants in store since</span>
             <input class="bo-date" type="date" data-f="openingSince" value="${isoDate(Date.now())}" max="${isoDate(Date.now())}"></label>
           <div class="pd-actions"><button class="secondary-btn small" data-act="add-variant">Add variant</button></div>`,
-          `${n} in this family`)}
+          `${n} in this family`, 'blk-table')}
 
         ${card('Sold as', [
           row('How it is sold', segCtl('soldBy', base.soldBy, [['each', 'Each'], ['measure', 'By measure']]),

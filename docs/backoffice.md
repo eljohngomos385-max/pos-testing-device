@@ -19,6 +19,51 @@ superseded — **edit v23 for anything about how a card looks**, v21 for tokens,
 ones, or your change won't paint. Last block wins. Bump `?v=NN` on `styles.css` + `backoffice.js`
 in `backoffice.html`.
 
+## Blocks (v35, 2026-09-22) — read this first, it overrides everything below
+
+**`bo-blocks.css` is the one place the back office's look comes from.** It is ported from the lab
+file `blocks-v2.html` and loaded **last** in `backoffice.html`, after `styles.css` and every
+`bo-*.css`, so it wins. Every piece of UI is one block type, marked by a class on `.bo-card`:
+
+| Class | Block |
+|---|---|
+| `.bo-card` | the shell: `--blk-bg` grey, `--blk-r` 12px, inset hairline. Every card is one. |
+| `.blk-kpi` | label, then number left with its `.trend` chip **right, on the same line** |
+| `.blk-list` | striped `.mini-list-row` rows (the white row is the stripe), no count in the head |
+| `.blk-chart` | `.blk-head` (`.blk-head-value` + `.trend`), `.blk-keys` switches, `.blk-plot` |
+| `.blk-table` | white card, `--tbl-shadow` ring, tinted header, hairline rows **and** stripes on rows 2, 4, 6… (`--tbl-stripe`, owner 2026-09-22; the first row stays white under the tinted header) |
+| `.blk-empty` / `.bo-empty` | label + one centred line |
+| `.btn` `.primary-btn` `.secondary-btn` `.seg-btn` `.pbtn` | 28px lab buttons and pill filters |
+| `.status-pill` | 20px pills |
+
+Layout: `.blk-grid` (auto-fill units of `--blk-unit`), `.w2` / `.full` spans. **Dashboard layout** (owner, 2026-09-22, from `dashboard-lab.html`): `.dash-stack` is
+a fixed main column plus a widget rail `--rail-w` wide. **Its rules are scoped to `#dashStack`, never `.dash-stack`** — that class is every page's plain card stack (Sales, Inventory, Staff, Suppliers…), and styling the class turned every page into a dashboard. It drops to one column under 1024px.
+- **Main is fixed.** It is the same in every store and nobody edits it:
+  - four KPIs in `#dashKpis`: Revenue · Profit · Transactions · Average basket. They sit 4 across, 2 under 1280px, 1 under 560px.
+  - the Sales trend chart.
+  - Recent transactions: the newest `RECENT_TX` (15). The Customer cell truncates at 160px (full name in `title`), and the table drops the global 860px `min-width` so it fits the column.
+- **The rail is the owner's.** `DASH_WIDGETS` in `backoffice.js` holds `{ key: [label, render] }`, one card wide, so widgets only ever stack.
+  - On by default: `daily`, `monthly`, `low`, `pay`.
+  - Off by default: `deliveries`, `stock`, `channel`, `credit`.
+  - The order is kept per device in `HWPOS_STORE.ui` `dashRail`, a comma list.
+  - Edit toggles `#dashStack.editing`. Each widget then gets ↑ ↓ × and an Add widget card appears at the bottom; the `[data-jump]` links go quiet.
+  - Low stock lives in the rail, not the KPIs: the 5 that run out soonest, then "+N more in Needs buying".
+  - Payment methods leads with *collected* (total minus account) so it doesn't repeat the Revenue KPI.
+- **Targets** are stored in `state.settings.targets = { month, override: { date, amount } | null }` and saved through `saveSettings()`. The ··· on a target card opens `#targetDlg`.
+  - Today's target = (month − sold before today) ÷ days left, today included. Every day counts as open.
+  - The override applies only while `override.date` is today.
+  - Monthly "On pace for" = month-to-date ÷ days elapsed × days in the month.
+
+**Rules.** Change a type's token at the top of `bo-blocks.css` and every page moves together. A
+page file (`bo-*.css`) lays blocks out; it never restyles a shell, KPI, list, table, button or pill.
+KPIs go through `kpi()` / `statCell()` in `backoffice.js`, trends through `deltaOf()`. **A trend
+never sits under its number** — the lab's combined block I is banned; rows inside a block keep a
+plain coloured `.trend-plain`. The page is one tone, white, sidebar included. Type is Inter.
+
+**This supersedes** the notes further down about 8px radius, the grey `#F6F6F6` canvas and two-tone
+sidebar, striped-by-default tables (v33), Geist as the one font, and the old `.lc` chart markup.
+They are kept as history; where they disagree with this section, this section is right.
+
 ### The feel
 Shopify-admin calm: near-white grey canvas, white cards, **one** black topbar, ink is grey-black
 (`#303030`), not pure black. Inter, 13px base, letter-spacing 0. Restrained, dense, data-first.
@@ -142,15 +187,14 @@ underline (hover underlines the name only) — blue underlined text inside a lis
 6. Empty? `.bo-empty`, centered tertiary text. Never a blank card.
 7. Bump `?v=NN` in `backoffice.html`.
 
-### Sales-trend line chart
-`.lc` = `.lc-y` (absolute ₱ ticks) + `.lc-plot` (the SVG) + `.lc-x` (absolutely positioned weekday
-ticks, `left: %`, first/last pulled inside). The SVG is `viewBox="0 0 600 230"` with
-`preserveAspectRatio="none"`, so **every stroke needs `vector-effect: non-scaling-stroke`** or it
-distorts. Layers bottom-up: `.lc-grid` dotted lines → `.lc-area` revenue fill → `.lc-alt` dashed
-grey gross profit → `.lc-cur` black revenue. **Both series share one axis** — profit is
-always ≤ revenue, so a second scale would only lie about the gap. Hover is HTML, not SVG: invisible `.lc-band` columns delegate
-`mouseover` and position `.lc-guide` / `.lc-dot` / `.lc-tip` by percentage (`.at-left`/`.at-right`
-flip the tooltip at the edges). **Line only — never bars for the trend.**
+### Sales-trend line chart (v35)
+The lab's block L. `renderLineChart(el, data)` draws an SVG in real pixels at the `.blk-plot` box's
+width (ResizeObserver redraws it), so text never stretches. Two smooth monotone-cubic lines — sales
+`--chart-1`, gross profit `--chart-2` — share **one axis** (profit is always ≤ revenue). Only the front
+line gets the gradient fade. The `.blk-keys` buttons in the same `.bo-card` switch a line off; the
+last one showing can't be hidden. Settings → Appearance → Chart colours puts `body.chart-blues` on,
+which re-points `--chart-2` to a deeper blue (stored via `HWPOS_STORE.ui` `chartHue`). **Line only —
+never bars for the trend.**
 
 **`renderLineChart(el, data)` is the only chart in the product, and it takes any ordered list of
 `{ label, title, revenue, profit, txns }`** — it does not know or care whether the buckets are days,
@@ -183,6 +227,8 @@ one `_redirects` line on Cloudflare Pages. **Assets in `backoffice.html` must st
 `.view[data-view]` markup — never a second list.
 
 ### Landing page = Dashboard
+> **Superseded in part (2026-09-22):** the body below the head is now main + rail, described under Blocks above. The head, range picker, chart bucketing and transaction-row notes here still hold; the Overview, `.dash-top` and `.dash-grid-3` rows are gone.
+
 Head: greeting + **`.range-picker`** + Export CSV. **One control, not two**: the `.range-btn` pill
 reads `Last 15 days | Aug 20, 2026` (span left, the day it ends on right of a hairline), and opens
 an `.rp-menu` holding the four spans (Today · Last 7 / 15 / 30 days, current one inverted `.on`)
@@ -264,58 +310,62 @@ Empty state is `.bo-empty` centered tertiary text, never a blank card.
 
 ### Sales page (`bo-sales.js`)
 
-Seven tabs over one `agg()` pass: Summary · Patterns · By item · By category · By employee ·
-By payment · Transactions. **The Summary is a second dashboard, aimed at sales.** **Two blocks over the ledger** —
-`.sales-top` is a `1.5fr / 1fr` grid holding Overview and Payment mix, then Recent transactions runs
-full width beneath it:
+> **Rebuilt 2026-09-22** (owner, from `sales-lab.html`). The page was too fragmented: seven tabs,
+> three of them one card's worth of numbers. Patterns, By employee and By payment are **gone as tabs**
+> and live on the Summary as blocks. Recent transactions is gone too — Transactions has its own
+> sidebar page. Don't bring any of them back as tabs.
 
-1. **Overview** — one `.bo-card` tray holding **two** `.bo-card-inset.stat-bar` insets side by side
-   (`.sales-stats`, `1fr 1fr`), each stacking three `.stat` cells **vertically** with a `border-top`
-   hairline between them — the same mechanics as the dashboard's Overview. Left inset is the money
-   (**Revenue · Gross profit · Margin**), right is the volume (**Transactions · Average basket ·
-   Items sold**). Cells are `statCell()`. Six cells strung across the full width read as six cards
-   and pushed the sales below the fold — **don't put them back in a row.** Deltas are always on here
-   (no `%` toggle): this page is the report, not the glance.
-2. **Payment mix**, beside it, one white inset holding a plain `.mini-list` — name, `N txns · share`
-   sub, `.share-bar`, revenue. **Not the table**: the four-column version was more furniture than
-   answer, and **See all →** (`data-act="tab" data-by="payment"`) is one click to the real cut.
-3. **Recent transactions** — the newest `RECENT` (25) of the window, `TX_COLUMNS`, full width because
-   eight columns need it, with its own **See all →** into the Transactions tab.
+Four tabs over one `agg()` pass: **Summary · By item · By category · Transactions** (`tx` is owned by
+the sidebar link, so the Sales tree shows only the first three).
 
-Both cards in `.sales-top` are flex columns with `flex: 1` insets, so their bottoms line up.
+**The Summary is the Shopify analytics grid, not the dashboard's main + rail.** Blocks from
+`bo-blocks.css`; `bo-sales.css` only lays them out.
 
-**The summary's table is `sortable = false`.** There is one `?sort` key in the URL and the
-Transactions tab owns it, along with searching and paging past 25.
+1. `.stat-grid.show-delta.sales-kpis` — six `statCell()`s across: **Revenue · Gross profit · Margin ·
+   Transactions · Average basket · Items sold**, each with its delta against the previous window
+   (always on — this page is the report, not the glance). 6 → 3 columns under 1280px, 2 under 700px.
+2. `.sales-grid` — three equal columns, **every row the same fixed height** (`grid-auto-rows`), so no
+   block leaves a hole and none stretches too wide. 3 → 2 columns under 1100px, 1 under 700px.
+   - **Sales over time** (`.w2`, spans two) — `renderLineChart` over **this page's filtered rows**
+     (`trendSeries(rows)`), not `state.orders`: a line that disagreed with the payment and staff
+     filters above it would be worse than none.
+   - **Sales breakdown** — `bd-rows`: Gross sales · Discounts · Returns (n) · VAT included · Before
+     VAT, then a **Net sales** total row. Gross is worked back from revenue (`revenue + discounts +
+     returns`, `offTop()`), so the card always adds up. More discount or returns is the bad
+     direction — `worse()` flips the chip's tone. Voids go in the foot: "n voided, no revenue".
+   - **Sales by hour of day** / **Sales by day of week** — see Patterns below.
+   - **Payment methods** — top 6 by revenue with share, then a Total row. Credit carries a
+     "Not yet collected" pill.
+   - **Sales by staff** — top 6. **A name is a button that opens `#staffDlg`**: Revenue, Gross
+     profit, Transactions, Average basket, Voids, their top 5 items, and **View their transactions**,
+     which lands on the Transactions tab filtered to them. Same `agg()`, narrowed to one cashier, on
+     the page's own window and filters. A peek, not a route — same reasoning as `#orderDlg`.
+   - **Top items** — top 5, foot link into By item.
+   - **Targets** — the dashboard's `DASH_WIDGETS.monthly` over `daily` (dots stripped), one block.
+     Calendar, not range: they ignore the filters on purpose. Click opens `openTargetDialog()`;
+     saving calls `renderCurrentView()`, so whichever page opened it repaints.
 
-**Top items was removed from the Summary** — By item is an entire tab of it. Same reasoning as the
-dashboard: a cut that has its own page doesn't get a preview on the glance.
+**Dialogs sit at body level** (`#orderDlg`, `#targetDlg`, `#staffDlg`). A `<dialog>` inside a hidden
+`.view` section never shows — `#targetDlg` used to live in the dashboard section and couldn't open
+from Sales.
 
-**The Summary carries a Sales trend chart** (2026-09-12), below the reversal note and above Recent
-transactions. It is the dashboard's chart and the dashboard's markup — `trend-head`, `trend-legend`,
-`renderLineChart` — with one difference that matters: the buckets are built from **this page's
-filtered rows**, not from `state.orders`. `trendBuckets()` in the shell cannot be reused directly
-because it ignores the payment and staff selects sitting right above the chart, and a line that
-disagreed with the numbers beside it would be worse than no line.
+### Sales → hour and weekday blocks (were the Patterns tab)
 
-### Sales → Patterns
+**A profile is not a timeline**: the range is folded, so every Monday in the window lands on one
+Monday, and every 2 PM on one 2 PM. "What time do we get busy" is a different question from "what
+happened on Tuesday", and only the folded version answers it.
 
-Three questions the ledger could always answer and never did. **A profile is not a timeline**: the
-range is folded, so every Monday in the window lands on one Monday, and every 2 PM on one 2 PM.
-"What time do we get busy" is a different question from "what happened on Tuesday", and only the
-folded version answers it.
-
-- **Sales by hour of day** — 24 slots, `getHours()`. The card sub names the busiest hour and what it
-  took, because that one sentence is the whole reason to plot the profile.
-- **Sales by day of week** — 7 slots, **Monday first** (`(getDay() + 6) % 7`). A shop's week does not
-  start on Sunday.
-- **Walk-in vs delivery** — rides the same `agg()` pass (`fuls`), so it costs no second walk. Each
-  side also collects a `top` map of what it sells, and the table prints the highest-quantity item:
-  "delivery is 12% of revenue" is half an answer without "and it is mostly PVC pipe". An order with
-  no `fulfilment` field is a walk-in, never a third row.
+- **By hour** — `getHours()`, trimmed by `openHours()` to the hours that sold ±1 (6 AM–8 PM when
+  nothing sold), so a shop open 8 to 6 doesn't plot fourteen flat hours.
+- **By weekday** — 7 slots, **Monday first** (`(getDay() + 6) % 7`). A shop's week does not start
+  on Sunday.
+- Both heads name the peak and what it took (`peakHead()`) — that one sentence is the reason to plot
+  a profile.
+- **Lines, not bars** — the lab drew the weekday as bars; the one-chart rule above wins. Both pass
+  `data-still` so `drawLineChart` skips the live halo and end dot: a profile has no "now".
 
 Voids are skipped in every profile — `saleSign` is 0, so they book no money and belong to no hour.
-The CSV from this tab is the **hour** profile; the weekday chart is seven numbers anyone can read
-off the screen.
+Walk-in vs delivery was cut with the tab.
 
 ### One width for every page
 

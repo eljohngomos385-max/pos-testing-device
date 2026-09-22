@@ -8,14 +8,15 @@
   <link rel="icon" href="data:," />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=122" />
-  <link rel="stylesheet" href="/bo-products.css?v=87" />
-  <link rel="stylesheet" href="/bo-inventory.css?v=86" />
-  <link rel="stylesheet" href="/bo-sales.css?v=77" />
-  <link rel="stylesheet" href="/bo-suppliers.css?v=84" />
-  <link rel="stylesheet" href="/bo-staff.css?v=85" />
-  <link rel="stylesheet" href="/bo-insights.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Geist:wght@400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=124" />
+  <link rel="stylesheet" href="/bo-products.css?v=88" />
+  <link rel="stylesheet" href="/bo-inventory.css?v=87" />
+  <link rel="stylesheet" href="/bo-sales.css?v=79" />
+  <link rel="stylesheet" href="/bo-suppliers.css?v=85" />
+  <link rel="stylesheet" href="/bo-staff.css?v=86" />
+  <link rel="stylesheet" href="/bo-insights.css?v=3" />
+  <link rel="stylesheet" href="/bo-blocks.css?v=29" />
 </head>
 <body class="bo-body bo-light">
   <div id="app" class="bo-app">
@@ -153,6 +154,8 @@
             <h1 id="dashGreeting">Welcome back</h1>
           </div>
           <div class="view-actions">
+            <button class="secondary-btn small" id="dashEditBtn" aria-pressed="false">Edit</button>
+            <button class="pct-toggle" id="statDeltaToggle" title="Change vs previous period">%</button>
             <!-- One control: the range and the day it ends on -->
             <div class="range-picker" id="rangePicker">
               <button class="range-btn" id="rangeBtn" aria-expanded="false" aria-haspopup="true">
@@ -175,101 +178,50 @@
           </div>
         </header>
 
-        <div class="dash-stack">
-          <!-- Trend beside the numbers: chart narrower, stats stacked, still two cards -->
-          <!-- Stats lead, full width, one card per number. They used to sit in a
-               striped bar beside the chart, which read as a spreadsheet column. -->
-          <div class="stat-head">
-            <span class="bo-card-label">Overview</span>
-            <span class="bo-card-sub" id="statRangeLabel"></span>
-            <button class="pct-toggle" id="statDeltaToggle" title="Change vs previous period">%</button>
-          </div>
-          <div class="stat-grid" id="kpiRow"></div>
+        <!-- Left is fixed: four KPIs, the chart, recent transactions — same order in every store.
+             Right is the owner's rail of widgets (backoffice.js → DASH_WIDGETS); Edit adds, removes and reorders them. -->
+        <div class="dash-stack show-delta" id="dashStack">
+          <div class="dash-main">
+            <div class="stat-grid show-delta" id="dashKpis"></div>
 
-          <div class="dash-top">
-            <!-- Sales trend -->
-            <section class="bo-card">
-              <div class="bo-card-head">
-                <span class="bo-card-label">Sales trend</span>
-                <span class="bo-card-sub" id="trendRangeLabel"></span>
+            <section class="bo-card blk-chart">
+              <span class="bo-card-label">Sales trend</span>
+              <div class="blk-keys" id="trendKeys">
+                <button class="blk-key s0" aria-pressed="true"><i></i>Revenue <b id="trendKey0"></b></button>
+                <button class="blk-key s1" aria-pressed="true"><i></i>Gross profit <b id="trendKey1"></b></button>
               </div>
-              <div class="bo-card-inset">
-                <div class="trend-head">
-                  <div class="trend-total">
-                    <span class="trend-total-label">Total revenue</span>
-                    <span class="trend-total-value" id="trendTotal">—</span>
-                  </div>
-                  <div class="trend-legend">
-                    <span class="lg ghost">Gross profit</span>
-                    <span class="lg">Revenue</span>
-                  </div>
+              <div class="blk-plot" id="salesChart"></div>
+            </section>
+
+            <!-- Recent transactions -->
+            <section class="bo-card blk-table">
+              <div class="bo-card-head">
+                <span class="bo-card-label">Recent transactions<span class="bo-card-count" id="txCount"></span></span>
+                <button class="link-btn" data-jump="sales" data-sub="tx">View all →</button>
+              </div>
+              <div class="bo-card-inset flush">
+                <div class="table-wrap">
+                  <table class="data-table" id="txTable">
+                    <thead>
+                      <tr>
+                        <th>Receipt</th>
+                        <th>Time</th>
+                        <th>Customer</th>
+                        <th>Staff</th>
+                        <th>Fulfilment</th>
+                        <th>Payment</th>
+                        <th>Status</th>
+                        <th class="num">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
                 </div>
-                <div id="salesChart"></div>
-              </div>
-            </section>
-
-          </div>
-
-          <!-- Recent transactions -->
-          <section class="bo-card">
-            <div class="bo-card-head">
-              <span class="bo-card-label">Recent transactions</span>
-              <input class="search-input small q-input" id="txSearch" placeholder="Search transactions…" autocomplete="off" />
-            </div>
-            <div class="bo-card-inset flush">
-              <div class="table-wrap">
-                <table class="data-table" id="txTable">
-                  <thead>
-                    <tr>
-                      <th>Receipt</th>
-                      <th>Time</th>
-                      <th>Customer</th>
-                      <th>Staff</th>
-                      <th>Fulfilment</th>
-                      <th>Payment</th>
-                      <th>Status</th>
-                      <th class="num">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody></tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-
-          <div class="dash-grid-3">
-            <section class="bo-card">
-              <div class="bo-card-head">
-                <span class="bo-card-label">Low stock</span>
-                <span class="bo-card-sub" id="lowCount"></span>
-                <button class="link-btn" data-jump="inventory">Manage inventory →</button>
-              </div>
-              <div class="bo-card-inset">
-                <div class="mini-list" id="lowStockList"></div>
-              </div>
-            </section>
-
-            <section class="bo-card">
-              <div class="bo-card-head">
-                <span class="bo-card-label">Deliveries coming</span>
-                <span class="bo-card-sub" id="deliveryCount"></span>
-              </div>
-              <div class="bo-card-inset">
-                <div class="mini-list" id="deliveryList"></div>
-              </div>
-            </section>
-
-            <section class="bo-card">
-              <div class="bo-card-head">
-                <span class="bo-card-label">Attendance</span>
-                <span class="bo-card-sub" id="attendSummary"></span>
-              </div>
-              <div class="bo-card-inset">
-                <div class="mini-list" id="attendList"></div>
               </div>
             </section>
           </div>
 
+          <div class="dash-rail" id="dashRail"></div>
         </div>
       </section>
 
@@ -300,7 +252,7 @@
         <div class="kpi-row" id="custKpis"></div>
 
         <div id="custList">
-          <section class="bo-card">
+          <section class="bo-card blk-table">
             <div class="bo-card-head">
               <span class="bo-card-label">All accounts</span>
               <input class="search-input small q-input" id="custSearch" placeholder="Search customers..." />
@@ -387,23 +339,32 @@
               <div class="panel-title">Appearance</div>
             </div>
             <div class="setting-row">
-              <label>Back office row size
-                <div class="muted" style="font-size:11px;margin-top:2px">Height and text size of every list on this device. Larger is easier on the eyes.</div>
+              <label>Chart colours
+                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">The second line on the sales chart (gross profit), on this device.</div>
               </label>
-              <div class="bb-size-toggle" id="settingsDensityToggle" role="tablist">
-                <button class="bb-size-btn" data-density="sm">S</button>
-                <button class="bb-size-btn active" data-density="md">M</button>
-                <button class="bb-size-btn" data-density="lg">L</button>
+              <div class="seg" id="settingsChartHue" role="tablist">
+                <button class="seg-btn active" data-hue="violet">Blue + violet</button>
+                <button class="seg-btn" data-hue="blues">Two blues</button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <label>Back office row size
+                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Height and text size of every list on this device. Larger is easier on the eyes.</div>
+              </label>
+              <div class="seg" id="settingsDensityToggle" role="tablist">
+                <button class="seg-btn" data-density="sm">S</button>
+                <button class="seg-btn active" data-density="md">M</button>
+                <button class="seg-btn" data-density="lg">L</button>
               </div>
             </div>
             <div class="setting-row">
               <label>Sell-screen tile size
-                <div class="muted" style="font-size:11px;margin-top:2px">Affects the POS Sell grid (S = 30/page, M = 20/page, L = 12/page)</div>
+                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Affects the POS Sell grid (S = 30/page, M = 20/page, L = 12/page)</div>
               </label>
-              <div class="bb-size-toggle" id="settingsSizeToggle" role="tablist">
-                <button class="bb-size-btn" data-size="sm">S</button>
-                <button class="bb-size-btn active" data-size="md">M</button>
-                <button class="bb-size-btn" data-size="lg">L</button>
+              <div class="seg" id="settingsSizeToggle" role="tablist">
+                <button class="seg-btn" data-size="sm">S</button>
+                <button class="seg-btn active" data-size="md">M</button>
+                <button class="seg-btn" data-size="lg">L</button>
               </div>
             </div>
             <div class="setting-row">
@@ -416,13 +377,13 @@
             <div class="panel-head"><div class="panel-title">Backup</div></div>
             <div class="setting-row">
               <label>Full local backup
-                <div class="muted" style="font-size:11px;margin-top:2px">Exports products, orders, customers, settings, folders, groups, and POS display preferences.</div>
+                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Exports products, orders, customers, settings, folders, groups, and POS display preferences.</div>
               </label>
               <button class="primary-btn" id="backupExportBtn">Export backup</button>
             </div>
             <div class="setting-row">
               <label>Restore backup
-                <div class="muted" style="font-size:11px;margin-top:2px">Replaces this browser/device data with a Hardware POS backup file.</div>
+                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Replaces this browser/device data with a Hardware POS backup file.</div>
               </label>
               <button class="secondary-btn" id="backupImportBtn">Restore backup</button>
               <input type="file" id="backupImportFile" accept="application/json,.json" hidden>
@@ -435,19 +396,22 @@
   </div>
 
   <dialog id="orderDlg" class="bo-dialog"></dialog>
+  <!-- Outside the views: a dialog in a hidden section never shows. Targets opens from the dashboard and Sales. -->
+  <dialog id="targetDlg" class="bo-dialog adj-dlg"></dialog>
+  <dialog id="staffDlg" class="bo-dialog"></dialog>
   <div id="toast" class="toast" hidden></div>
 
   <script src="/data-store.js?v=31"></script>
   <script src="/data.js?v=27"></script>
   <script src="/bo-model.js?v=88"></script>
-  <script src="/router.js?v=61"></script>
-  <script src="/backoffice.js?v=116"></script>
-  <script src="/bo-products.js?v=87"></script>
-  <script src="/bo-insights.js?v=11"></script>
-  <script src="/bo-inventory.js?v=97"></script>
-  <script src="/bo-sales.js?v=84"></script>
-  <script src="/bo-suppliers.js?v=89"></script>
-  <script src="/bo-staff.js?v=89"></script>
+  <script src="/router.js?v=62"></script>
+  <script src="/backoffice.js?v=131"></script>
+  <script src="/bo-products.js?v=88"></script>
+  <script src="/bo-insights.js?v=13"></script>
+  <script src="/bo-inventory.js?v=98"></script>
+  <script src="/bo-sales.js?v=87"></script>
+  <script src="/bo-suppliers.js?v=90"></script>
+  <script src="/bo-staff.js?v=90"></script>
   <script>
     // ---- Back office: hamburger + topbar wiring (white mode) ----
     (function () {

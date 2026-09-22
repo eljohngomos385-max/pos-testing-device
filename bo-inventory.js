@@ -327,7 +327,7 @@
 
   function card(label, sub, inner, right = '', pager = '') {
     return `
-      <section class="bo-card">
+      <section class="bo-card blk-table">
         <div class="bo-card-head">
           <span class="bo-card-label">${escapeHtml(label)}</span>
           ${sub ? `<span class="bo-card-sub">${escapeHtml(sub)}</span>` : '<span class="bo-card-sub"></span>'}
@@ -356,7 +356,7 @@
     const kpis = `<div class="kpi-row">
       ${kpi('SKUs tracked', list.length.toLocaleString('en-PH'), d.q || d.cat ? 'matching filter' : 'active items')}
       ${kpi('Total units', Math.round(units).toLocaleString('en-PH'), 'on the shelf')}
-      ${kpi('Stock value at cost', pesoShort(value), 'what it cost us')}
+      ${kpi('Stock value at cost', pesoShort(value), 'what it cost us', 'flat', 'what it cost us')}
       ${kpi('Low stock', String(low), 'at or below danger level', low ? 'down' : 'flat')}
       ${kpi('Out of stock', String(out), 'nothing on hand', out ? 'down' : 'flat')}
     </div>`;
@@ -537,7 +537,7 @@
   function costTab(d) {
     const rows = costDrift(visible(d), d.movements, loadPurchaseOrders());
     if (!rows.length) {
-      return `<section class="bo-card"><div class="bo-card-head"><span class="bo-card-label">Cost changes</span></div>
+      return `<section class="bo-card blk-empty"><div class="bo-card-head"><span class="bo-card-label">Cost changes</span></div>
         <div class="bo-card-inset"><div class="bo-empty">${d.q || d.cat
           ? 'No products match those filters.'
           : 'Every product is priced off what it last cost. Nothing to review.'}</div></div></section>`;
@@ -552,7 +552,7 @@
           <td class="inv-cat">${escapeHtml(folderName(p.folder))}</td>
           <td class="num inv-soft">${peso(r.book)}</td>
           <td class="num"><strong>${peso(r.paid)}</strong></td>
-          <td class="num"><span class="kpi-delta ${r.gap > 0 ? 'down' : 'up'}">${r.gapPct == null
+          <td class="num"><span class="trend-plain ${r.gap > 0 ? 'down' : 'up'}">${r.gapPct == null
             ? 'no cost on file'
             : `${r.gap > 0 ? '+' : '−'}${Math.abs(r.gapPct).toFixed(1)}%`}</span></td>
           <td class="num inv-soft">${escapeHtml(shortDate(r.at))}</td>
@@ -583,7 +583,7 @@
   function reorderTab(d) {
     const groups = reorderGroups(visible(d));
     if (!groups.size) {
-      return `<section class="bo-card"><div class="bo-card-head"><span class="bo-card-label">Needs buying</span></div>
+      return `<section class="bo-card blk-empty"><div class="bo-card-head"><span class="bo-card-label">Needs buying</span></div>
         <div class="bo-card-inset"><div class="bo-empty">Nothing is at or below its reorder point.</div></div></section>`;
     }
     const names = new Map(loadSuppliers().map((s) => [s.id, s.name]));
@@ -626,7 +626,7 @@
 
     // One supplier already has its total in the card foot; only a split list needs a sum.
     return cards + (groups.size > 1
-      ? `<div class="inv-grand"><span>Total to buy, all suppliers</span><strong class="num">${peso(grand)}</strong></div>`
+      ? `<div class="bo-card inv-grand"><span>Total to buy, all suppliers</span><strong class="num">${peso(grand)}</strong></div>`
       : '');
   }
 
@@ -714,7 +714,7 @@
             </div>
           </div>
         </section>
-        <section class="bo-card">
+        <section class="bo-card blk-table">
           <div class="bo-card-head"><span class="bo-card-label">Items</span>
             <span class="bo-card-sub" id="docFoot">${escapeHtml(docFootText(byId))}</span></div>
           <div class="bo-card-inset flush"><div class="table-wrap">
@@ -750,7 +750,7 @@
               <th class="num">Change</th><th class="num">Unit cost</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>`)}
-        <div class="inv-grand"><span>Adjustments are append-only \u2014 a correction is a new
+        <div class="bo-card inv-grand"><span>Adjustments are append-only \u2014 a correction is a new
           adjustment, never an edit of this one.</span></div>
       </div>`;
   }
@@ -811,7 +811,7 @@
           <td>${e.field === 'cost' ? 'Cost' : 'Price'}</td>
           <td class="num inv-soft">${e.old == null ? '—' : peso(e.old)}</td>
           <td class="num"><strong>${peso(e.new)}</strong></td>
-          <td class="num">${pct == null ? '—' : `<span class="kpi-delta ${(pct > 0) === (e.field !== 'cost') ? 'up' : 'down'}">${pct > 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%</span>`}</td>
+          <td class="num">${pct == null ? '—' : `<span class="trend-plain ${(pct > 0) === (e.field !== 'cost') ? 'up' : 'down'}">${pct > 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%</span>`}</td>
           <td>${escapeHtml(e.staff || '—')}</td>
           <td class="inv-soft">${escapeHtml(SOURCE_LABEL[e.source] || e.source || '—')}</td>
         </tr>`;
