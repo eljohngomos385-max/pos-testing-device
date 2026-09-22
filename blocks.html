@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Blocks — the shared design system</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   BLOCKS — one design system, three blocks built on it.
+
+   Where this came from: five blocks were recreated from reference screenshots
+   in blocks-lab-picks.html, each one carrying its own reference's tokens. Three
+   were kept. This file is the step after that — the three rebuilt on ONE set of
+   tokens so they stop being three costumes and start being a system.
+
+   The base is block 3, the big KPI with a trend sentence. Its proportions are
+   not touched here; everything else was moved onto them.
+
+   Still standalone: no styles.css, nothing wired into the product. But every
+   token below names its --po-* counterpart, so graduating a block is a
+   find-and-replace and a screenshot, not a redesign.
+   =========================================================================== */
+
+:root {
+  /* — tone ————————————————————————————————————————————————————————————
+     The whole system is two greys and white, and which is which matters:
+     the PAGE is white and the CARD is the grey one. One step of tone plus a
+     white gutter does all the separating — no border, no shadow, anywhere. */
+  --b-page:       #FFFFFF;                 /* → --po-surface */
+  --b-card:       #F6F6F7;                 /* → --po-bg exactly. One step darker than it
+                                              was, so a white zebra band on it reads. */
+  --b-raised:     #FFFFFF;                 /* a tile ON a card: the step, flipped */
+  --b-line:       #ECECEC;                 /* hairline inside a card → --po-line */
+  --b-track:      #EFEFEF;                 /* the unfilled part of any bar or ring */
+
+  /* — ink ———————————————————————————————————————————————————————————— */
+  --b-ink:        #303030;                 /* → --po-ink */
+  --b-ink-2:      #616161;                 /* → --po-ink-secondary */
+  --b-ink-3:      #8C8C8C;                 /* → --po-ink-tertiary */
+
+  /* — status: the only colour allowed to mean something ——————————————— */
+  --b-up:         #047B5D;                 /* → --po-success */
+  --b-down:       #D72C0D;                 /* → --po-danger */
+
+  /* — data: one hue, three depths. NOT status. ————————————————————————
+     A share of a total is neither good nor bad, so it must not borrow the
+     green/red pair. One hue in three depths says "three parts of one thing". */
+  --b-data-1:     #9EC9EC;
+  --b-data-2:     #4E92C8;
+  --b-data-3:     #1F5E8F;
+
+  /* — type ————————————————————————————————————————————————————————————
+     Three sizes. That is the entire type system: one step, used twice. */
+  --b-t-value:    27px;   --b-w-value: 550;   /* the one number on the card */
+  --b-t-label:    13px;                       /* card label, row name, legend name */
+  --b-t-meta:     12.5px;                     /* trend sentence, timestamp, id */
+  --b-t-micro:    11px;                       /* captions only */
+  --b-track-tight: -.02em;                    /* on anything over 24px */
+
+  /* — geometry ———————————————————————————————————————————————————————— */
+  --b-r-card:     14px;                     /* → --po-r-card is 8px; this is ours */
+  --b-pad:        16px;
+  --b-gap:        12px;
+  --b-row:        36px;                     /* one breakdown row */
+
+  /* — the grid ————————————————————————————————————————————————————————
+     The page is a 3-column grid. A KPI is a half-height strip across the top;
+     everything below is a 1×1 that fills one cell. So a 1×1 has ONE height and
+     every block stretches to it — that is what makes them copy-pasteable. */
+  --b-h-block:    352px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--b-page); color: var(--b-ink);
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===========================================================================
+   THE SHELL — every block sits in this. Defined once, never overridden.
+   =========================================================================== */
+.card {
+  background: var(--b-card);
+  border-radius: var(--b-r-card);
+  padding: var(--b-pad);
+  position: relative;
+}
+/* a 1×1 cell: one height for every block, content distributes inside it */
+.block { min-height: var(--b-h-block); display: flex; flex-direction: column; }
+/* the card's three tiers, in order, for every block */
+.card-label { font-size: var(--b-t-label); color: var(--b-ink); line-height: 1.3; }
+.card-value {
+  font-size: var(--b-t-value); font-weight: var(--b-w-value);
+  letter-spacing: var(--b-track-tight); line-height: 1.15;
+  margin: 6px 0 8px; font-variant-numeric: tabular-nums;
+}
+.card-meta { font-size: var(--b-t-meta); color: var(--b-ink); }
+.card-meta b { font-weight: 400; font-variant-numeric: tabular-nums; }
+.card-meta b.up   { color: var(--b-up); }
+.card-meta b.down { color: var(--b-down); }
+.card-meta .none  { color: var(--b-ink-3); }
+
+/* the ··· — furniture, so it waits to be looked for */
+.dots {
+  position: absolute; top: 9px; right: 8px;
+  border: 0; background: transparent; color: var(--b-ink-3);
+  font-size: 14px; line-height: 1; padding: 2px 6px; border-radius: 6px;
+  cursor: pointer; opacity: 0; transition: opacity .12s ease;
+}
+.card:hover .dots, .dots:focus-visible { opacity: 1; }
+.dots:hover { background: #F0F0F0; color: var(--b-ink); }
+
+/* the universal row: a name on the left, a number on the right, one straight
+   right edge. Used by the breakdown list AND the ring legend. */
+.row { display: flex; align-items: center; gap: 12px; min-height: 0; }
+.row-name {
+  flex: 1; min-width: 0;
+  font-size: var(--b-t-label); color: var(--b-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.row-amt  { font-size: var(--b-t-label); font-variant-numeric: tabular-nums; text-align: right; }
+/* the third column: what it changed by, or an em dash where nothing to compare */
+.row-delta {
+  flex: 0 0 48px; text-align: right;
+  font-size: var(--b-t-meta); color: var(--b-ink-3); font-variant-numeric: tabular-nums;
+}
+.row-delta.up   { color: var(--b-up); }
+.row-delta.down { color: var(--b-down); }
+
+/* ===========================================================================
+   BLOCK A — KPI card.  The base. One line of padding tighter than the
+   reference: three lines this short did not need a 20px foot.
+   =========================================================================== */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--b-gap); }
+
+/* ===========================================================================
+   BLOCK B — Breakdown list.  Rows of one total taken apart. No icons, no
+   sub-lines, no second number per row — a zebra band is the whole separator.
+   =========================================================================== */
+.bd { margin-top: 10px; flex: 1; }
+.bd .row {
+  height: var(--b-row); padding: 0 10px; margin: 0 -10px; border-radius: 7px;
+}
+.bd .row:nth-child(odd) { background: var(--b-raised); }
+.bd .row.total {
+  background: none; border-radius: 0; border-top: 1px solid var(--b-line);
+  margin-top: 4px; font-weight: 600;
+}
+.bd .row.total .row-amt { font-weight: 600; }
+/* the dotted underline is the reference's "this figure has a definition" cue */
+.hint { border-bottom: 1px dotted var(--b-ink-3); cursor: help; }
+
+/* ===========================================================================
+   BLOCK C — Radial summary.  Adapted, plus four deliberate changes (noted).
+   =========================================================================== */
+.ring-wrap {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1; margin: 10px 0;
+}
+/* fixed viewBox, fluid size: the geometry below never has to be re-derived */
+.ring-svg { display: block; width: 100%; max-width: 280px; height: auto; }
+.ring-total {
+  /* 15 viewBox units, not the card's 27: the hole is 94 across and a circle, so
+     the figure has to clear the inner track at the TOP of its own box, not just
+     at the centreline. 17 cleared by one unit and read as a collision. The ring's
+     number is the one place the scale bends — the SVG scales it back up. */
+  font-size: 15px; font-weight: var(--b-w-value); letter-spacing: var(--b-track-tight);
+  fill: var(--b-ink); font-variant-numeric: tabular-nums;
+}
+.ring-cap { font-size: var(--b-t-micro); fill: var(--b-ink-3); letter-spacing: .01em; }
+.legend { width: 100%; }
+.legend .row { height: var(--b-row); padding: 0 10px; margin: 0 -10px; border-radius: 7px; }
+.legend .row:nth-child(odd) { background: var(--b-raised); }
+.sw { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+
+/* ===========================================================================
+   PAGE CHROME — the documentation around the blocks. Not part of the system.
+   =========================================================================== */
+.wrap { max-width: 1080px; margin: 0 auto; padding: 44px 24px 120px; }
+header h1 { font-size: 26px; letter-spacing: -.02em; margin: 0 0 8px; }
+header p  { font-size: 13.5px; color: var(--b-ink-2); line-height: 1.7; max-width: 74ch; margin: 0 0 8px; }
+.badge { display: inline-block; background: #F1F1F1; color: var(--b-ink-2); border-radius: 999px;
+         padding: 3px 10px; font-size: 11.5px; font-weight: 600; margin-bottom: 14px; }
+section { margin-top: 52px; }
+section > h2 { font-size: 19px; letter-spacing: -.015em; margin: 0 0 4px; }
+section > .src { font-size: 12px; color: var(--b-ink-3); margin: 0 0 18px; max-width: 74ch; line-height: 1.6; }
+.stage { border: 1px dashed #E3E3E3; border-radius: 12px; padding: 22px; background: var(--b-page); }
+.notes { margin: 16px 0 0; padding: 2px 0 0; }
+.notes h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--b-ink-3); }
+.notes ul { margin: 0; padding-left: 17px; font-size: 12.5px; line-height: 1.75; color: #4A4A4A; max-width: 80ch; }
+.notes b { color: var(--b-ink); }
+.notes code, .tok code { background: #F1F1F1; border-radius: 4px; padding: 1px 5px; font-size: 11.5px;
+                         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+/* foundations */
+.tok { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.tok > div { padding: 12px 14px; border: 1px solid #EFEFEF; border-radius: 10px; }
+.tok h5 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--b-ink-3); }
+.tok p { margin: 0; font-size: 12px; color: var(--b-ink-2); line-height: 1.6; }
+.chips { display: flex; gap: 6px; margin-bottom: 9px; flex-wrap: wrap; }
+.chips i { width: 26px; height: 26px; border-radius: 7px; border: 1px solid #E8E8E8; display: block; }
+.scale { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.scale span { color: var(--b-ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="badge">Blocks · shared system · scratch file, not wired into the product</span>
+  <h1>Blocks — one system, three blocks</h1>
+  <p>Three blocks: the <b>KPI strip</b>, the <b>breakdown list</b> and the <b>radial summary</b>. In
+  <code>blocks-lab-picks.html</code> each one wore its own reference's tokens — different greys,
+  different radii, three different ideas about where colour goes. That is fine for judging a
+  screenshot and useless for building a page.</p>
+  <p>So: <b>the KPI card is the base.</b> Its tone pair, its type scale and its radius are the system,
+  unchanged. The other two were moved onto them. Everything is drawn with CSS and hand-written SVG —
+  no library, no JS — so any of it can ship into the no-build-step app as it stands.</p>
+  <p><b>The page these land on is a three-column grid.</b> A KPI is a half-height strip across the
+  top; B and C are <b>1×1</b> and both stretch to one height, <code>--b-h-block</code>. Anything
+  wider is a 1×2 or 1×3 of the same shell. That is the part worth getting right here — once a 1×1 has
+  one height and one inside edge, building a page out of them is copy, paste, swap the rows.</p>
+</header>
+
+<!-- ============================ foundations ============================ -->
+<section id="foundations">
+  <h2>The system</h2>
+  <p class="src">Six decisions. Every block below obeys all six; where one is broken it is broken on purpose and says so.</p>
+  <div class="tok">
+    <div>
+      <div class="chips">
+        <i style="background:var(--b-page)"></i>
+        <i style="background:var(--b-card)"></i>
+        <i style="background:var(--b-line)"></i>
+        <i style="background:var(--b-ink-3)"></i>
+        <i style="background:var(--b-ink-2)"></i>
+        <i style="background:var(--b-ink)"></i>
+      </div>
+      <h5>1 · Tone, and which way round</h5>
+      <p>Page white, card <code>#F9F9F9</code>, gutter white. <b>No border, no shadow.</b> A tile on a card
+      steps back to white — the same one-step move, flipped. It only works in a run: four grey cards read as
+      a group, one alone reads as disabled.</p>
+    </div>
+    <div>
+      <div class="scale" style="margin-bottom:9px">
+        <span style="font-size:27px;font-weight:550;letter-spacing:-.02em">27</span>
+        <span style="font-size:13px">13</span>
+        <span style="font-size:12.5px;color:var(--b-ink-3)">12.5</span>
+      </div>
+      <h5>2 · Three sizes, one step</h5>
+      <p>Value 27/550/<code>-.02em</code>, label 13, meta 12.5. Label and meta are the same weight and nearly
+      the same size — the value is the only thing that changes, and it changes a lot. Tight tracking on
+      anything over 24px.</p>
+    </div>
+    <div>
+      <div class="chips">
+        <i style="background:var(--b-up)"></i>
+        <i style="background:var(--b-down)"></i>
+        <i style="background:var(--b-data-1)"></i>
+        <i style="background:var(--b-data-2)"></i>
+        <i style="background:var(--b-data-3)"></i>
+      </div>
+      <h5>3 · Two colour jobs, never mixed</h5>
+      <p><b>Status</b> is green/red and colours one word inside an otherwise black sentence.
+      <b>Data</b> is one hue in three depths, for shares of a total. A share is neither good nor bad, so it
+      must not borrow the green.</p>
+    </div>
+    <div>
+      <h5>4 · One number per card</h5>
+      <p>A card lands on one figure. The KPI puts it at 27px under the label; the ring puts it in the hole;
+      the breakdown puts it in the total row. Never twice on the same card.</p>
+    </div>
+    <div>
+      <h5>5 · Name left, number right, change last</h5>
+      <p>One <code>.row</code> rule serves the breakdown and the ring's legend: 36px, zebra banded, amounts
+      tabular and right-aligned so the right edge is a straight column. Names truncate; rows never change
+      height.</p>
+    </div>
+    <div>
+      <h5>6 · The comparison is always spelled out</h5>
+      <p>"in the last week", never a bare arrow with a tooltip. An <b>em dash</b> where there is nothing to
+      compare against — not <code>0%</code>, which claims a comparison that does not exist.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ A ============================ -->
+<section id="a">
+  <h2>A · KPI card <span style="font-size:12px;color:var(--b-ink-3);font-weight:400">— the base</span></h2>
+  <p class="src">One number that has to carry a page. Everything else in this file was bent to fit this card, not the other way round.</p>
+  <div class="stage">
+    <div class="kpi-grid">
+      <div class="card">
+        <button class="dots" title="More">···</button>
+        <div class="card-label">Net revenue</div>
+        <div class="card-value">₱503,450</div>
+        <div class="card-meta"><b class="up">↑5%</b> in the last week</div>
+      </div>
+      <div class="card">
+        <button class="dots" title="More">···</button>
+        <div class="card-label">Sales today</div>
+        <div class="card-value">₱3,090</div>
+        <div class="card-meta"><b class="up">↑2.2%</b> vs yesterday</div>
+      </div>
+      <div class="card">
+        <button class="dots" title="More">···</button>
+        <div class="card-label">Average basket</div>
+        <div class="card-value">₱412</div>
+        <div class="card-meta"><b class="down">↓1.8%</b> in the last week</div>
+      </div>
+      <div class="card">
+        <button class="dots" title="More">···</button>
+        <div class="card-label">Voids</div>
+        <div class="card-value">₱0</div>
+        <div class="card-meta"><b class="none">—</b> <span class="none">no sales yet today</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h4>Kept from the reference</h4>
+    <ul>
+      <li><b>Grey cards, white page, white gutter, no border and no shadow.</b> The opposite of the usual white-card-on-grey. Cheap, quiet, and it survives being printed.</li>
+      <li><b>The trend is a sentence and only one word is coloured.</b> The rest is the same near-black as the label — not a muted tail, and not bold. Colour does all the emphasising on its own.</li>
+      <li><b>One size step, used twice.</b> Label 13 → value 27 → meta 12.5. Tight tracking and a 550 weight on the number: at 27px a bold shouts, and default tracking looks like browser output.</li>
+      <li><b>Even 16px padding all round.</b> The reference gave the card a 20px foot and 9/10 around the number; at this size that read as slack rather than generosity. Roughly 8px came off the card's height and nothing about it got tighter to read.</li>
+    </ul>
+    <h4 style="margin-top:14px">Changed on purpose</h4>
+    <ul>
+      <li><b>Green and red, not all-green.</b> The reference never shows a down state, so it tells us nothing about a bad day. A cashier reading a red day needs the colour to do the work.</li>
+      <li><b>The ··· fades in on hover.</b> Four always-on menu buttons across a row is furniture competing with the numbers.</li>
+      <li><b>The em dash state exists.</b> The fourth card is the empty-day case: an em dash and a plain reason, no fake percentage.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ B ============================ -->
+<section id="b">
+  <h2>B · Breakdown list <span style="font-size:12px;color:var(--b-ink-3);font-weight:400">— replaces the icon list</span></h2>
+  <p class="src">One total taken apart, line by line. The icon list it replaces had a tile, a name, a timestamp, an amount and a receipt id on every row — five things to read per line, and the block is not about any of them.</p>
+  <div class="stage" style="max-width:400px">
+    <div class="card block">
+      <button class="dots" title="More">···</button>
+      <div class="card-label"><span class="hint" title="Every sale recorded today, before and after each adjustment.">Total sales breakdown</span></div>
+      <div class="bd">
+        <div class="row"><div class="row-name">Gross sales</div><div class="row-amt">₱11,240.00</div><div class="row-delta up">↑4.1%</div></div>
+        <div class="row"><div class="row-name">Discounts</div><div class="row-amt">−₱420.00</div><div class="row-delta">—</div></div>
+        <div class="row"><div class="row-name">Voids</div><div class="row-amt">−₱348.00</div><div class="row-delta down">↑2</div></div>
+        <div class="row"><div class="row-name">Refunds</div><div class="row-amt">₱0.00</div><div class="row-delta">—</div></div>
+        <div class="row"><div class="row-name">Net sales</div><div class="row-amt">₱10,472.00</div><div class="row-delta up">↑3.6%</div></div>
+        <div class="row"><div class="row-name">Delivery charges</div><div class="row-amt">₱200.00</div><div class="row-delta">—</div></div>
+        <div class="row"><div class="row-name">VAT</div><div class="row-amt">₱1,281.43</div><div class="row-delta">—</div></div>
+        <div class="row total"><div class="row-name">Total sales</div><div class="row-amt">₱10,672.00</div><div class="row-delta">—</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h4>What this one is</h4>
+    <ul>
+      <li><b>Three columns, nothing else.</b> Name, amount, change. Every row is the same shape, so the eye runs straight down the right edge instead of parsing each line. That is the entire block.</li>
+      <li><b>The zebra band replaces the hairline.</b> White on the grey card — the same one-step move as a card on the page, flipped, and already the system's raised tone. A band is easier to track across a wide row than a rule, and it costs no line weight. The stripes run 10px past the text on both sides so they read as bands, not highlights.</li>
+      <li><b>No icons.</b> A circled glyph on every row is five identical marks saying nothing; the one that does mean something (a void) is then indistinguishable at a glance. The word "Voids" is the icon.</li>
+      <li><b>The total is the exception row</b>: no band, a hairline above, semibold. It is the one figure the card exists to land on, which is also how it satisfies rule 4 without a 27px number — a breakdown that led with its total and then re-stated it at the bottom would print the same number twice.</li>
+      <li><b>Em dash where there is nothing to compare</b> (rule 6), and the change column is fixed at 48px so the dashes line up even when the percentages do not.</li>
+      <li><b>Names are ink, not link-blue.</b> The reference makes every name a blue link. Blue here would be the third colour job on a card that already has green, red and the data ramp elsewhere — say the word and they become links, but then blue has to mean "clickable" everywhere in the system.</li>
+      <li><b>36px rows</b>, eight of them plus the total, fills the 1×1 cell exactly. That is where <code>--b-h-block</code> comes from.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ C ============================ -->
+<section id="c">
+  <h2>C · Radial summary <span style="font-size:12px;color:var(--b-ink-3);font-weight:400">— adapted</span></h2>
+  <p class="src">A split of one total. The geometry was already right; what changed is what it leads with, what order the rings run in, and what the legend is.</p>
+  <div class="stage" style="max-width:400px">
+    <div class="card block">
+      <button class="dots" title="More">···</button>
+      <div class="card-label">Stock value</div>
+      <div class="ring-wrap">
+        <!-- Geometry, written out so the numbers can change without re-deriving them:
+             · cx/cy = 105/105, so every arc foot lands on the baseline y = 105.
+             · Ring centrelines r = 56 / 76 / 96 at stroke-width 18 → 2px between rings,
+               a 47px hole and an outer edge at 96 + 9 = 105, exactly half the viewBox.
+             · Each path starts at the RIGHT foot (cx + r) and sweeps counter-clockwise
+               over the top — large-arc 0, sweep 0. Because the path starts where the
+               fill starts, there is no stroke-dashoffset and no rotate().
+             · Half-circle length = π·r = 175.9 / 238.8 / 301.6.
+             · stroke-dasharray = "drawn rest", drawn = share × π·r.
+               74.4% → 224.4  ·  48.3% → 115.4  ·  10.5% → 18.5
+             · Butt caps: both ends square-cut, feet dead on the baseline. A round cap
+               would hang below the baseline and add ~4° of ink — a visible lie. -->
+        <svg class="ring-svg" width="210" height="112" viewBox="0 0 210 112" role="img"
+             aria-label="Stock value ₱922,703: on-hand 74%, committed to orders 48%, dead stock 11%">
+          <g fill="none" stroke-width="18" stroke-linecap="butt">
+            <path d="M161 105 A56 56 0 0 0 49 105"  stroke="var(--b-track)"/>
+            <path d="M161 105 A56 56 0 0 0 49 105"  stroke="var(--b-data-1)" stroke-dasharray="18.5 175.9"/>
+            <path d="M181 105 A76 76 0 0 0 29 105"  stroke="var(--b-track)"/>
+            <path d="M181 105 A76 76 0 0 0 29 105"  stroke="var(--b-data-2)" stroke-dasharray="115.4 238.8"/>
+            <path d="M201 105 A96 96 0 0 0 9 105"   stroke="var(--b-track)"/>
+            <path d="M201 105 A96 96 0 0 0 9 105"   stroke="var(--b-data-3)" stroke-dasharray="224.4 301.6"/>
+          </g>
+          <text class="ring-cap"   x="105" y="78"  text-anchor="middle">TOTAL</text>
+          <text class="ring-total" x="105" y="96" text-anchor="middle">₱922,703</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <div class="row">
+          <i class="sw" style="background:var(--b-data-3)"></i>
+          <div class="row-name">On-hand value</div>
+          <div class="row-amt">₱821,234.74</div>
+          <div class="row-delta">89%</div>
+        </div>
+        <div class="row">
+          <i class="sw" style="background:var(--b-data-2)"></i>
+          <div class="row-name">Committed to orders</div>
+          <div class="row-amt">₱89,834.24</div>
+          <div class="row-delta">10%</div>
+        </div>
+        <div class="row">
+          <i class="sw" style="background:var(--b-data-1)"></i>
+          <div class="row-name">Dead stock</div>
+          <div class="row-amt">₱11,634.15</div>
+          <div class="row-delta">1%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h4>The tweaks</h4>
+    <ul>
+      <li><b>1 · The hole carries the total.</b> The reference leaves it empty, which wastes the one piece of space a ring gives you for free and leaves the card without its 27px number. A caption and a figure inside the arc satisfy rule 4 without adding a line to the card. It sits above the baseline because the chart is a half-circle — the bottom of the hole is the baseline itself.</li>
+      <li><b>2 · Ring order flipped: biggest value on the outside.</b> The reference puts the largest figure on the innermost ring, which is also the shortest circumference — the largest number gets the least ink, and a 74% share and a 11% share can end up drawing arcs of similar length. Outer ring for the biggest share makes length and value agree.</li>
+      <li><b>3 · The legend is block B's row.</b> Same <code>.row</code>, same three columns, same 36px band, same zebra. Two blocks that both say "thing on the left, number on the right" should not say it two different ways, and the legend was inset to the chart's width for no reason other than the reference doing it. The third column earns its keep here: the share each figure is of the total, which is what the ring is drawing.</li>
+      <li><b>5 · It fills the cell.</b> The card was short enough next to block B to look like it had failed to load. Same <code>--b-h-block</code>, and the ring is what absorbs the difference — fixed viewBox, fluid width, so a bigger ring costs nothing and the geometry below is never re-derived.</li>
+      <li><b>4 · The hue ramp is a token, and it is not the status pair.</b> <code>--b-data-1..3</code>: one hue, three depths, lightest at the centre. Three different hues would imply the rings are unrelated; green would imply on-hand stock is good news.</li>
+    </ul>
+    <h4 style="margin-top:14px">Kept</h4>
+    <ul>
+      <li><b>One track tint at every radius</b> — the ring is only readable because you can see the part it did not fill. Same principle as a bar's track.</li>
+      <li><b>All three arcs start at the right foot and sweep the same way</b>, which is the only reason the three lengths compare at a glance.</li>
+      <li><b>Each ring is a share of its own target</b>, not of a common total — that is why they can each run past each other. The figures in the legend are exact; the arcs are for shape. A ring is a summary above a list, never the only view.</li>
+      <li><b>Plain SVG</b>: one path per ring drawn twice, track then value, with a <code>stroke-dasharray</code>. No library, no JS, ~12 lines.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ next ============================ -->
+<section id="next">
+  <h2>Using this</h2>
+  <p class="src">What it takes to put one of these on a real page.</p>
+  <div class="notes">
+    <ul>
+      <li>Copy <code>:root</code>, <code>.card</code> / <code>.card-*</code>, <code>.dots</code> and <code>.row</code> / <code>.row-*</code> — that is the whole system, about 40 lines. Each block on top of it is 10 to 20 more.</li>
+      <li>Every token names its <code>--po-*</code> counterpart in the comment beside it. Graduating means pointing the <code>--b-*</code> values at the real ones and re-reading the page, not rebuilding the block.</li>
+      <li>The two that will argue when they land in <code>backoffice.html</code>: the card radius (14 here, <code>--po-r-card</code> is 8) and the card tone (grey-on-white here, the back office is white-on-grey today). Both are a deliberate look, so they are a decision, not a bug — settle them once, here, before the first port.</li>
+      <li>Nothing in this file touches <code>styles.css</code>, and nothing graduates by being pasted out of it.</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

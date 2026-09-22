@@ -50,6 +50,7 @@ const DEFAULT_SETTINGS = {
   vatRate: 0.12,
   vatInclusive: true,
   defaultFulfilment: 'pickup',
+  fulfilment: { hidden: [], custom: [] },
   store: {
     name: 'EJ Hardware',
     address: 'Main Store, Laguna',
@@ -94,6 +95,15 @@ const state = {
 const signed = (s, n) => (n < 0 ? '−₱' : '₱') + s;
 const peso = (n) => signed(Math.abs(Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), n);
 const pesoShort = (n) => signed(Math.round(Math.abs(Number(n) || 0)).toLocaleString('en-PH'), n);
+// ₱ is a double-barred P. Set at the digits' own size and weight it out-weighs them —
+// on a small value like "₱0" the symbol is physically wider than the number it labels,
+// so the eye lands on the currency instead of the amount. Demote it: the amount reads
+// first and the unit stays legible. Swapping typeface does not help; every face we
+// tried (Inter, Plex, Source Sans, Figtree, Segoe, Arial) draws the same crammed glyph.
+// ponytail: big values only (.kpi-value). At 13px the symbol already behaves, and
+// wrapping the ~150 money sites wholesale would print literal tags at the 29 that
+// assign via textContent. Widen by moving a site to innerHTML + curHtml, one at a time.
+const curHtml = (s) => escapeHtml(String(s)).replace(/^(−?)₱/, '$1<span class="cur">₱</span>');
 const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
@@ -364,7 +374,7 @@ function normalizeOrder(raw = {}) {
     cashier: String(raw.cashier || 'El John'),
     customer: raw.customer ? { ...raw.customer, name: String(raw.customer.name || '') } : null,
     paymentMethod: raw.paymentMethod || 'cash',
-    fulfilment: raw.fulfilment === 'delivery' ? 'delivery' : 'pickup',
+    fulfilment: String(raw.fulfilment || 'pickup').trim() || 'pickup',
     payments: Array.isArray(raw.payments) ? raw.payments : [],
     items: items.map(i => ({
       id: String(i.productId || i.id || ''),
@@ -813,7 +823,7 @@ function kpi(label, value, sub, tone = 'flat', title = '') {
     <div class="kpi">
       <div class="kpi-body">
         <div class="kpi-label">${escapeHtml(label)}</div>
-        <div class="kpi-main"><div class="kpi-value">${escapeHtml(String(value))}</div></div>
+        <div class="kpi-main"><div class="kpi-value">${curHtml(value)}</div></div>
       </div>
       <div class="kpi-foot">
         <span class="kpi-foot-dot"></span>
@@ -822,13 +832,19 @@ function kpi(label, value, sub, tone = 'flat', title = '') {
     </div>`;
 }
 
+// A stat is its own card, not a row in a shared bar (v34). Six numbers striped into
+// two columns read as a spreadsheet: the owner's words were "I'd prefer it was
+// individual blocks". A card per number also gives the comparison basis somewhere to
+// live — "vs the day before" was a tooltip nobody hovers, and every reference
+// dashboard prints it as a line under the delta instead.
 function statCell({ label, value, unit, delta }) {
   return `
     <div class="stat">
       <div class="kpi-label">${escapeHtml(label)}</div>
-      <div class="kpi-main">
-        <div class="kpi-value">${escapeHtml(String(value))}${unit ? `<span class="kpi-unit">${escapeHtml(unit)}</span>` : ''}</div>
-        <span class="kpi-delta ${delta.tone}" title="${escapeHtml(delta.cmp)}">${escapeHtml(delta.text)}</span>
+      <div class="kpi-value">${curHtml(value)}${unit ? `<span class="kpi-unit">${escapeHtml(unit)}</span>` : ''}</div>
+      <div class="kpi-trend">
+        <span class="kpi-delta ${delta.tone}">${escapeHtml(delta.text)}</span>
+        <span class="kpi-cmp">${escapeHtml(delta.cmp)}</span>
       </div>
     </div>`;
 }
@@ -836,7 +852,10 @@ function statCell({ label, value, unit, delta }) {
 // ponytail: profit is always <= revenue, so both series share one axis. No second scale.
 function renderLineChart(el, cur) {
   const W = 600, H = 230, n = cur.length;
-  const top = niceMax(Math.max(...cur.map(d => d.revenue)));
+  // ponytail: 4 gridlines over a top below 4 gives a fractional step, and pesoAxis
+  // rounds to whole pesos — so a zero day drew "₱1 ₱1 ₱1 ₱0 ₱0". Floor the axis at 4
+  // rather than adding centavos: "₱0.75" next to "₱1.2k" would read worse.
+  const top = Math.max(4, niceMax(Math.max(...cur.map(d => d.revenue))));
   const xPct = i => (n <= 1 ? 50 : (i / (n - 1)) * 100);
   const X = i => (xPct(i) / 100) * W;
   const Y = v => H - (Math.max(0, v) / top) * H;
@@ -847,7 +866,10 @@ function renderLineChart(el, cur) {
   const bands = cur.map((d, i) => `<div class="lc-band" data-i="${i}" style="left:${xPct(i)}%;width:${100 / n}%"></div>`).join('');
   const step = n > 14 ? Math.ceil(n / 7) : 1;
   const xLabels = cur.map((d, i) => {
-    const show = i === n - 1 || i % step === 0;
+    // Count back from the last point so the forced end label lands on the grid.
+    // Forcing i === n-1 on top of a forward step put "11 PM" 13% from "8 PM" and
+    // they overlapped; the last label is always shown either way.
+    const show = (n - 1 - i) % step === 0;
     return `<span class="${i === n - 1 ? 'on' : ''}" style="left:${xPct(i)}%">${show ? escapeHtml(d.label) : ''}</span>`;
   }).join('');
 
@@ -935,7 +957,7 @@ function renderDashboard() {
   const trend = trendBuckets(state.range);
   $('#trendRangeLabel').textContent = `revenue vs gross profit`;
   $('.trend-total-label').textContent = rangeLabel();
-  $('#trendTotal').textContent = pesoShort(trend.reduce((a, d) => a + d.revenue, 0));
+  $('#trendTotal').innerHTML = curHtml(pesoShort(trend.reduce((a, d) => a + d.revenue, 0)));
   renderLineChart($('#salesChart'), trend);
 
   // Low stock
@@ -1006,7 +1028,7 @@ function exportSalesCsv(win = rangeWindows()) {
   downloadCsv(`sales-${isoDate(win.start)}-to-${isoDate(win.end - 1)}.csv`, [
     ['Receipt', 'Date', 'Customer', 'Cashier', 'Fulfilment', 'Payment', 'Status', 'Items', 'Total'],
     ...rows.map(o => ['#' + o.number, new Date(o.ts).toISOString(), o.customer?.name || '',
-      o.cashier || '', o.fulfilment === 'delivery' ? 'Delivery' : 'Walk-in',
+      o.cashier || '', orderFulfilLabel(o),
       orderPaymentLabel(o), o.status || 'completed',
       o.items.length, Number(o.total || 0).toFixed(2)]),
   ]);
@@ -1037,7 +1059,7 @@ function renderTxTable(win = rangeWindows()) {
         <td class="tx-time">${escapeHtml(txTime(o.ts))}</td>
         <td>${escapeHtml(o.customer?.name || '—')}</td>
         <td class="tx-staff">${escapeHtml(o.cashier || '—')}</td>
-        <td class="tx-fulfil">${o.fulfilment === 'delivery' ? 'Delivery' : 'Walk-in'}</td>
+        <td class="tx-fulfil">${escapeHtml(orderFulfilLabel(o))}</td>
         <td><span class="pay-pill ${escapeHtml(o.paymentKind || 'cash')}">${escapeHtml(o.paymentMethodLabel || 'Cash')}</span></td>
         <td><span class="status-pill ${status[0]}">${status[1]}</span></td>
         <td class="num"><strong>${peso(txTotal(o))}</strong></td>
@@ -1069,7 +1091,7 @@ function orderDialogHtml(o) {
         ${row('Date', escapeHtml(new Date(o.ts).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })))}
         ${row('Staff', escapeHtml(o.cashier || '—'))}
         ${row('Customer', escapeHtml(o.customer?.name || '—') + (o.customer?.phone ? ` <span class="bod-sub">${escapeHtml(o.customer.phone)}</span>` : ''))}
-        ${row('Fulfilment', o.fulfilment === 'delivery' ? 'Delivery' : 'Walk-in')}
+        ${row('Fulfilment', escapeHtml(orderFulfilLabel(o)))}
         ${row('Deliver to', escapeHtml(o.deliveryAddress))}
         ${row('Payment', `<span class="pay-pill ${escapeHtml(o.paymentKind || 'cash')}">${escapeHtml(orderPaymentLabel(o))}</span>`)}
       </div>
@@ -1193,7 +1215,7 @@ function renderCustomerList() {
   const active = customers.filter(c => c.currentBalance > 0).length;
   const utilization = totalLimit > 0 ? Math.round(totalOutstanding / totalLimit * 100) : 0;
 
-  $('#custSummary').textContent = `${list.length} customer${list.length === 1 ? '' : 's'}`;
+  $('#custTitle').textContent = 'Customers';
   $('#custKpis').innerHTML = [
     kpi('Outstanding credit', pesoShort(totalOutstanding), `${active} active debtors`, 'flat'),
     kpi('Credit limit pool', pesoShort(totalLimit), 'total approved', 'flat'),
@@ -1258,7 +1280,7 @@ function renderCustomerDetail(c) {
   const last = orders[0];
   const status = custStatus(c);
 
-  $('#custSummary').textContent = c.name;
+  $('#custTitle').textContent = c.name;
   $('#custKpis').innerHTML = [
     kpi('Total spent', pesoShort(spent), `${counted.length} order${counted.length === 1 ? '' : 's'}`, 'flat'),
     kpi('Balance', peso(c.currentBalance || 0), `of ${pesoShort(c.creditLimit || 0)} limit`, 'flat'),
@@ -1437,10 +1459,10 @@ function renderSettingsForm() {
   setChecked('setLogoOnReceipt', s.printing.logoOnReceipt);
 }
 
-// ---------- Payments: which cards the POS checkout shows ----------
-// settings.payments = { hidden: [kind], custom: [name] }, read by applyPayMethods() in app.js.
-// A custom name is saved on the order as a typed "Other" would be, so removing one never
-// touches past sales -- they keep their label.
+// ---------- Payments: which cards and fulfilment pills the POS checkout shows ----------
+// settings.payments = { hidden: [kind], custom: [name] }, read by applyPayMethods() in app.js;
+// settings.fulfilment the same shape, read by applyFulfilMethods(). A custom name is saved on
+// the order as its own label, so removing one never touches past sales -- they keep their label.
 const PAY_BUILTINS = [
   ['cash', 'Cash', 'Always on. The cash drawer counts it.'],
   ['gcash', 'GCash', ''],
@@ -1449,93 +1471,124 @@ const PAY_BUILTINS = [
   ['credit', 'Account', 'Charge to a customer. Shows only once a customer is picked.'],
   ['split', 'Split', 'Part cash, the rest on account. Shows only with a customer.'],
 ];
-const payConfig = () => ({ hidden: [], custom: [], ...(state.settings.payments || {}) });
+// Payment methods and fulfilment types are the same card twice: built-ins you switch off,
+// your own names you add, one locked entry that can never go. Both write { hidden, custom }.
+const METHOD_CARDS = {
+  payments: {
+    title: 'Payment methods', col: 'Method', locked: 'cash', builtins: PAY_BUILTINS,
+    sub: 'The POS picks changes up the next time checkout opens',
+    placeholder: 'Add a method, e.g. Maya or Card', saved: 'Payment methods saved',
+  },
+  fulfilment: {
+    title: 'Fulfilment types', col: 'Type', locked: 'pickup', builtins: FULFIL_BUILTINS,
+    sub: 'The pills above Check out in the POS cart',
+    placeholder: 'Add a type, e.g. Tricycle or Ship-out', saved: 'Fulfilment types saved',
+  },
+};
+const methodConfig = (key) => ({ hidden: [], custom: [], ...(state.settings[key] || {}) });
 // Edits go to a draft; nothing reaches the POS until Save. Opening the page drops an unsaved draft.
-let payDraft = null;
-function savePayConfig() {
-  state.settings = { ...state.settings, payments: payDraft };
-  saveSettings();
-  drawPayments();
-  showToast('Payment methods saved');
-}
+let methodDraft = {};
 
 function renderPayments() {
-  payDraft = payConfig();
+  methodDraft = Object.fromEntries(Object.keys(METHOD_CARDS).map((k) => [k, methodConfig(k)]));
   drawPayments();
+}
+
+function saveMethodCard(key) {
+  state.settings = { ...state.settings, [key]: methodDraft[key] };
+  saveSettings();
+  drawPayments();
+  showToast(METHOD_CARDS[key].saved);
+}
+
+function methodCardHtml(key) {
+  const card = METHOD_CARDS[key];
+  const draft = methodDraft[key];
+  const dirty = JSON.stringify(draft) !== JSON.stringify(methodConfig(key));
+  const off = new Set(draft.hidden);
+  const builtins = card.builtins.map(([k, label, note]) => `
+    <tr>
+      <td><strong>${escapeHtml(label)}</strong></td>
+      <td class="muted">${escapeHtml(note)}</td>
+      <td class="num"><input type="checkbox" data-m-kind="${escapeHtml(k)}"${off.has(k) ? '' : ' checked'}${k === card.locked ? ' disabled' : ''}></td>
+    </tr>`).join('');
+  const custom = draft.custom.map((name, i) => `
+    <tr>
+      <td><strong>${escapeHtml(name)}</strong></td>
+      <td class="muted">Added by you</td>
+      <td class="num"><button class="secondary-btn small" data-m-del="${i}">Remove</button></td>
+    </tr>`).join('');
+  return `
+    <section class="bo-card" data-m-card="${key}">
+      <div class="bo-card-head"><span class="bo-card-label">${escapeHtml(card.title)}</span>
+        <span class="bo-card-sub">${escapeHtml(card.sub)}</span></div>
+      <div class="bo-card-inset flush"><div class="table-wrap"><table class="data-table">
+        <thead><tr><th>${escapeHtml(card.col)}</th><th>Notes</th><th class="num">Show at checkout</th></tr></thead>
+        <tbody>${builtins}${custom}</tbody>
+      </table></div></div>
+      <div class="bo-card-inset">
+        <form class="pay-add" data-m-add style="display:flex;gap:8px;align-items:center">
+          <input class="text-input" name="name" maxlength="24" placeholder="${escapeHtml(card.placeholder)}" autocomplete="off" style="max-width:280px">
+          <button class="primary-btn small" type="submit">Add</button>
+          <span class="muted" data-m-err></span>
+        </form>
+      </div>
+      <div class="bo-card-inset" style="display:flex;gap:12px;align-items:center;justify-content:flex-end">
+        <span class="muted">${dirty ? 'Unsaved changes' : 'All changes saved'}</span>
+        <button class="primary-btn" data-m-save${dirty ? '' : ' disabled'}>Save</button>
+      </div>
+    </section>`;
 }
 
 function drawPayments() {
   const root = $('.view[data-view="payments"]');
   if (!root) return;
-  const pay = payDraft;
-  const dirty = JSON.stringify(pay) !== JSON.stringify(payConfig());
-  const off = new Set(pay.hidden);
-  const builtins = PAY_BUILTINS.map(([k, label, note]) => `
-    <tr>
-      <td><strong>${escapeHtml(label)}</strong></td>
-      <td class="muted">${escapeHtml(note)}</td>
-      <td class="num"><input type="checkbox" data-pay-kind="${k}"${off.has(k) ? '' : ' checked'}${k === 'cash' ? ' disabled' : ''}></td>
-    </tr>`).join('');
-  const custom = pay.custom.map((name, i) => `
-    <tr>
-      <td><strong>${escapeHtml(name)}</strong></td>
-      <td class="muted">Added by you</td>
-      <td class="num"><button class="secondary-btn small" data-pay-del="${i}">Remove</button></td>
-    </tr>`).join('');
   root.innerHTML = `
     <header class="view-head">
-      <div class="view-title-wrap"><h1>Payments</h1><span class="muted">What the POS checkout offers</span></div>
+      <div class="view-title-wrap"><h1>Payments</h1></div>
     </header>
-    <section class="bo-card">
-      <div class="bo-card-head"><span class="bo-card-label">Payment methods</span>
-        <span class="bo-card-sub">The POS picks changes up the next time checkout opens</span></div>
-      <div class="bo-card-inset flush"><div class="table-wrap"><table class="data-table">
-        <thead><tr><th>Method</th><th>Notes</th><th class="num">Show at checkout</th></tr></thead>
-        <tbody>${builtins}${custom}</tbody>
-      </table></div></div>
-      <div class="bo-card-inset">
-        <form class="pay-add" data-pay-add style="display:flex;gap:8px;align-items:center">
-          <input class="text-input" name="name" maxlength="24" placeholder="Add a method, e.g. Maya or Card" autocomplete="off" style="max-width:280px">
-          <button class="primary-btn small" type="submit">Add</button>
-          <span class="muted" data-pay-err></span>
-        </form>
-      </div>
-      <div class="bo-card-inset" style="display:flex;gap:12px;align-items:center;justify-content:flex-end">
-        <span class="muted">${dirty ? 'Unsaved changes' : 'All changes saved'}</span>
-        <button class="primary-btn" data-pay-save${dirty ? '' : ' disabled'}>Save</button>
-      </div>
-    </section>`;
+    ${methodCardHtml('payments')}
+    ${methodCardHtml('fulfilment')}`;
+}
+
+// One listener per event for both cards; data-m-card says which draft an edit belongs to.
+function cardKey(el) {
+  return el.closest('[data-m-card]')?.dataset.mCard || '';
 }
 
 function wirePayments() {
   const root = $('.view[data-view="payments"]');
   if (!root) return;
   root.addEventListener('change', (e) => {
-    const k = e.target.dataset.payKind;
-    if (!k || k === 'cash') return;
-    const hidden = new Set(payDraft.hidden);
+    const k = e.target.dataset.mKind;
+    const key = cardKey(e.target);
+    if (!k || !key || k === METHOD_CARDS[key].locked) return;
+    const hidden = new Set(methodDraft[key].hidden);
     if (e.target.checked) hidden.delete(k); else hidden.add(k);
     // Keep built-in order so toggling back and forth reads as "no changes".
-    payDraft = { ...payDraft, hidden: PAY_BUILTINS.map(([b]) => b).filter((b) => hidden.has(b)) };
+    methodDraft[key] = { ...methodDraft[key], hidden: METHOD_CARDS[key].builtins.map(([b]) => b).filter((b) => hidden.has(b)) };
     drawPayments();
   });
   root.addEventListener('click', (e) => {
-    if (e.target.closest('[data-pay-save]')) { savePayConfig(); return; }
-    const del = e.target.closest('[data-pay-del]');
+    const save = e.target.closest('[data-m-save]');
+    if (save) { saveMethodCard(cardKey(save)); return; }
+    const del = e.target.closest('[data-m-del]');
     if (!del) return;
-    payDraft = { ...payDraft, custom: payDraft.custom.filter((_, i) => i !== Number(del.dataset.payDel)) };
+    const key = cardKey(del);
+    methodDraft[key] = { ...methodDraft[key], custom: methodDraft[key].custom.filter((_, i) => i !== Number(del.dataset.mDel)) };
     drawPayments();
   });
   root.addEventListener('submit', (e) => {
-    if (!e.target.matches('[data-pay-add]')) return;
+    if (!e.target.matches('[data-m-add]')) return;
     e.preventDefault();
+    const key = cardKey(e.target);
     const name = e.target.elements.name.value.trim();
-    const taken = PAY_BUILTINS.map(([, l]) => l).concat(payDraft.custom).some((n) => n.toLowerCase() === name.toLowerCase());
+    const taken = METHOD_CARDS[key].builtins.map(([, l]) => l).concat(methodDraft[key].custom).some((n) => n.toLowerCase() === name.toLowerCase());
     const err = !name ? 'Type a name first.' : taken ? `${name} is already on the list.` : '';
-    if (err) { root.querySelector('[data-pay-err]').textContent = err; return; }
-    payDraft = { ...payDraft, custom: payDraft.custom.concat(name) };
+    if (err) { e.target.querySelector('[data-m-err]').textContent = err; return; }
+    methodDraft[key] = { ...methodDraft[key], custom: methodDraft[key].custom.concat(name) };
     drawPayments();
-    root.querySelector('[data-pay-add] input')?.focus();
+    root.querySelector(`[data-m-card="${key}"] [data-m-add] input`)?.focus();
   });
 }
 

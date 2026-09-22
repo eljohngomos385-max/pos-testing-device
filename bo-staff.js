@@ -154,9 +154,9 @@
   const dateText = (iso) => (iso ? new Date(iso + 'T00:00').toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 
 
-  const head = (title, sub, actions) => `
+  const head = (title, back, actions) => `
     <header class="view-head">
-      <div class="view-title-wrap"><h1>${title}</h1><span class="muted">${sub}</span></div>
+      <div class="view-title-wrap">${back}<h1>${title}</h1></div>
       <div class="view-actions">${actions}</div>
     </header>`;
 
@@ -179,7 +179,7 @@
         <td>${u.active ? '<span class="status-pill ok">Active</span>' : '<span class="status-pill muted">Inactive</span>'}</td>
       </tr>`).join('') : '';
 
-    return head('Staff', `${staff.length} people · ${active.length} active`,
+    return head('Staff', '',
       `<button class="secondary-btn small" data-act="exportCsv">Export CSV</button>
        <button class="primary-btn small" data-act="add">Add staff</button>`) + `
       <div class="dash-stack">
@@ -340,12 +340,13 @@
       </tr>`;
     }).join('');
 
-    return head('Staff', `${inToday} of ${roster.length} in on ${escapeHtml(dateText(date))}`, '') + `
+    return head(TABS.attendance, '', '') + `
       <div class="dash-stack">
         <section class="bo-card">
           <div class="bo-card-head">
             <span class="bo-card-label">Mark attendance</span>
             <input type="date" class="bo-date" data-act="date" value="${escapeHtml(date)}" />
+            <span class="bo-card-sub">${inToday} of ${roster.length} in</span>
           </div>
           <div class="bo-card-inset">${rows || '<div class="bo-empty">No active staff</div>'}</div>
         </section>
@@ -424,11 +425,11 @@
             : `<button class="link-btn" data-act="voidCa" data-id="${escapeHtml(a.id)}">Void</button>`}</td>
         </tr>`).join('');
 
-    return head('Staff', `${escapeHtml(monthName(month))} \u00b7 ${peso(netTotal)} to pay out`, '') + `
+    return head(TABS.payroll, '', '') + `
       <div class="dash-stack">
         <section class="bo-card">
           <div class="bo-card-head">
-            <span class="bo-card-label">Payroll</span>
+            <span class="bo-card-label">Payroll · ${peso(netTotal)} to pay out</span>
             <input type="month" class="bo-date" data-act="month" value="${escapeHtml(month)}" />
             <span class="st-note">Salary, less days not worked, less cash already drawn. An absence
               costs a full day at the daily rate and a half day costs half; a day off costs nothing.</span>
@@ -508,7 +509,7 @@
       </tr>`;
     }).join('');
 
-    return head('Staff', 'Which pages each role can open', '') + `
+    return head(TABS.access, '', '') + `
       <div class="dash-stack">
         <section class="bo-card">
           <div class="bo-card-head">
@@ -538,7 +539,7 @@
       const isNew = state.detailId === 'new';
       const person = isNew ? { ...STAFF_DEFAULTS, id: '' } : staff.find((u) => u.id === state.detailId);
       el.innerHTML = person ? personHtml(person, isNew, readAllAttendance())
-        : head('Staff', 'That person no longer exists', '<button class="secondary-btn small" data-act="back">All staff</button>')
+        : head('That person no longer exists', '', '<button class="secondary-btn small" data-act="back">All staff</button>')
           + '<div class="bo-empty">Not found</div>';
       if (person) refreshPayHints();
       return;

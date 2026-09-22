@@ -826,21 +826,22 @@
         const lastSale = new Map(s.cashAsleep.map((r) => [r.productId, r.lastSaleAt]));
         const note = (text) => ({ tone: 'flat', text, cmp: '' });
         const stat = (label, value, text) => statCell({ label, value: pesoShort(value), delta: note(text) });
-        const bar = (cells) => `<div class="bo-card-inset stat-bar show-delta">${cells.join('')}</div>`;
+        // A stat is its own card now (v34), so these are two grids under a plain head
+        // rather than two inset bars inside one card. statCell is shared with the
+        // dashboard and Sales; leaving this one wrapped would have nested card in card.
+        const bar = (cells) => `<div class="stat-grid show-delta">${cells.join('')}</div>`;
         const w15 = win.get(15), w30 = win.get(30);
         const summary = `
-          <section class="bo-card">
-            <div class="bo-card-head">
-              <span class="bo-card-label">Cash tied up</span>
-              <span class="bo-card-sub">Stock on hand at cost, and how long it has sat</span>
-            </div>
+          <div class="stat-head">
+            <span class="bo-card-label">Cash tied up</span>
+            <span class="bo-card-sub">Stock on hand at cost, and how long it has sat</span>
+          </div>
             ${bar([stat('Tied up now', c.totalPesos, `${c.rows.length} products`),
               stat('Sitting over 15 days', w15.sittingOverPesos, `${Math.round((w15.sittingOverPesos / (c.totalPesos || 1)) * 100)}% of stock`),
               stat('Sitting over 30 days', w30.sittingOverPesos, `${Math.round((w30.sittingOverPesos / (c.totalPesos || 1)) * 100)}% of stock`)])}
             ${bar([stat('Bought, last 15 days', w15.boughtPesos, `${peso(w15.soldAtCostPesos)} sold at cost`),
               stat('Bought, last 30 days', w30.boughtPesos, `${peso(w30.soldAtCostPesos)} sold at cost`),
-              stat('Lost, last 30 days', w30.lostPesos, 'shrinkage, breakage, write-off')])}
-          </section>`;
+              stat('Lost, last 30 days', w30.lostPesos, 'shrinkage, breakage, write-off')])}`;
         return summary + card('By product', c.ageBuckets.map((b) => `${b.label}d ${peso(b.pesos)}`).join(' · '), [
           ['Product', (r) => escapeHtml(r.name)], ['Qty', (r) => num(r.qty), 1], ['Stock value', (r) => money(r.stockPesos), 1],
           ...c.ageBuckets.map((b) => [`${b.label} days`, (r) => (r.pesosByAge[b.label] ? money(r.pesosByAge[b.label]) : DASH), 1]),
@@ -958,7 +959,6 @@
       <div class="view-head">
         <div class="view-title-wrap">
           <h1>${TABS[tab]}</h1>
-          <span class="muted">What the stored data says about ordering</span>
         </div>
         <div class="view-actions">
           <button class="secondary-btn small" data-act="export-ai">Export for AI</button>

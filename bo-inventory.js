@@ -311,8 +311,7 @@
     return `
       <div class="view-head">
         <div class="view-title-wrap">
-          <h1>Inventory</h1>
-          <span class="muted" id="invSub"></span>
+          <h1 id="invTitle"></h1>
         </div>
         <div class="view-actions">
           <input class="search-input small q-input" id="invSearch" type="search"
@@ -362,15 +361,23 @@
       ${kpi('Out of stock', String(out), 'nothing on hand', out ? 'down' : 'flat')}
     </div>`;
 
+    // Incoming = ordered on a PO that is out (ordered/partial) and not yet received. Derived, never stored.
+    const incoming = new Map();
+    loadPurchaseOrders().filter((po) => PO_INCOMING.includes(po.status)).forEach((po) =>
+      (po.items || []).forEach((l) => incoming.set(l.productId, (incoming.get(l.productId) || 0) +
+        Math.max(0, (Number(l.qty) || 0) - (Number(l.receivedQty) || 0)))));
+
     const pg = paginate(list, d.params.page);
     const rows = pg.rows.map((p) => {
       const [tone, label] = statusOf(p);
       const sold = sold30(d.byProduct.get(p.id));
+      const inc = incoming.get(p.id) || 0;
       return `
         <tr>
           <td><strong>${escapeHtml(p.name)}</strong></td>
           <td class="inv-cat">${escapeHtml(folderName(p.folder))}</td>
           <td class="num"><strong>${fmtQty(p, p.stock)}</strong> ${escapeHtml(p.unit || '')}</td>
+          <td class="num${inc ? '' : ' inv-soft'}">${inc ? fmtQty(p, inc) : '—'}</td>
           <td class="num inv-soft">${sold ? fmtQty(p, sold) : '—'}</td>
           <td><span class="status-pill ${tone}">${label}</span></td>
           <td class="num"><button class="secondary-btn small" data-adjust-open="${escapeHtml(p.id)}">Adjust</button></td>
@@ -385,8 +392,8 @@
       <table class="data-table inv-stock">
         <thead><tr>
           <th>Product</th><th class="inv-cat">Category</th>
-          <th class="num">On hand</th><th class="num">Sold 30d</th>
-          <th>Status</th><th class="num">Adjust</th>
+          <th class="num">On hand</th><th class="num" title="Ordered on open purchase orders, not received yet">Incoming</th>
+          <th class="num">Sold 30d</th><th>Status</th><th class="num">Adjust</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`, '', pagerHtml(pg));
@@ -640,7 +647,7 @@
       <div class="view-title-wrap">
         <a class="link-btn" href="${Router.href(VIEW, '', {})}">&larr; Inventory</a>
         <h1>${escapeHtml(title)}</h1>
-        <span class="muted">${escapeHtml(sub)}</span>
+        ${sub ? `<span class="muted">${escapeHtml(sub)}</span>` : ''}
       </div>
       <div class="view-actions">${actions}</div>
     </div>`;
@@ -685,7 +692,7 @@
     const options = state.products.filter((p) => !p.archived)
       .map((p) => `<option value="${escapeHtml(pickerLabel(p))}"></option>`).join('');
 
-    return docHead('New adjustment', 'One reason, one person, many lines',
+    return docHead('New adjustment', '',
       `<button class="secondary-btn small" data-act="doc-cancel">Cancel</button>
        <button class="primary-btn small" data-act="doc-save">Save adjustment</button>`) + `
       <datalist id="invPickList">${options}</datalist>
@@ -853,8 +860,7 @@
     set('#invReason', d.params.reason || '');
     set('#invFrom', d.params.from || '');
     set('#invTo', d.params.to || '');
-    r.querySelector('#invSub').textContent = TABS[d.tab] + (d.tab === 'stock'
-      ? ' · stock only changes by writing a movement' : '');
+    r.querySelector('#invTitle').textContent = d.tab === 'stock' ? 'Inventory' : TABS[d.tab];
   }
 
   const renderBody = () => render();

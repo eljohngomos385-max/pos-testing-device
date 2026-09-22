@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EJ Hardware — foundation blocks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   Shared head. Tokens and the three shell classes come straight out of
+   blocks-lab-picks.html so the four blocks below look exactly as they did
+   there. Everything under "page furniture" is this file's own scaffolding —
+   it is not part of the design, it is just what holds the blocks up.
+   =========================================================================== */
+:root {
+  /* Read off the screenshots: these dashboards all share roughly one palette. */
+  --canvas: #F4F5F7;
+  --card: #FFFFFF;
+  --ink: #101828;
+  --ink-2: #667085;
+  --ink-3: #98A2B3;
+  --line: #EAECF0;
+  --track: #EEF0F4;
+  --blue: #2563EB;
+  --blue-soft: #EFF4FF;
+  --green: #12A150;
+  --green-soft: #E7F7EE;
+  --red: #E5484D;
+  --red-soft: #FDECEC;
+  /* Amber is the state a hardware store actually lives in — low stock,
+     partially paid, arriving. It was missing and kept getting re-invented. */
+  --amber: #B54708;
+  --amber-soft: #FFF4E5;
+  --link: #1E6ED8;
+  --r: 16px;
+  --r-sm: 10px;
+  --shadow: 0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.04);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--canvas); color: var(--ink);
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- the shell the picked blocks lean on -------------------------------- */
+.c { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 20px; }
+.c-title { font-size: 13px; color: var(--ink-2); font-weight: 500; }
+.dots { border: 0; background: transparent; color: var(--ink-3); cursor: pointer; font-size: 16px;
+        line-height: 1; padding: 2px 6px; border-radius: 6px; }
+.dots:hover { background: #F2F4F7; color: var(--ink); }
+
+/* --- page furniture ----------------------------------------------------- */
+.wrap { max-width: 1280px; margin: 0 auto; padding: 44px 24px 120px; }
+header h1 { font-size: 24px; letter-spacing: -.02em; margin: 0 0 8px; }
+header p { font-size: 13.5px; color: var(--ink-2); line-height: 1.65; max-width: 76ch; margin: 0 0 6px; }
+.badge { display: inline-block; background: var(--amber-soft); color: var(--amber); border-radius: 999px;
+         padding: 3px 10px; font-size: 11.5px; font-weight: 600; margin-bottom: 14px; }
+.jump { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.jump a { font-size: 12.5px; color: var(--ink-2); text-decoration: none; background: var(--card);
+          border-radius: 999px; padding: 6px 13px; box-shadow: var(--shadow); }
+.jump a:hover { color: var(--blue); }
+
+.block-set { margin-top: 62px; scroll-margin-top: 20px; }
+.block-set > h2 { font-size: 19px; letter-spacing: -.015em; margin: 0 0 4px; }
+.block-set > .lead { font-size: 13px; color: var(--ink-2); margin: 0 0 18px; max-width: 80ch; line-height: 1.6; }
+
+/* Two across, so every block is judged at about the width it will really get. */
+.set { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 1080px) { .set { grid-template-columns: 1fr; } }
+.slot-t { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+          color: var(--ink-3); margin-bottom: 8px; }
+.stage { background: var(--canvas); border: 1px dashed #D0D5DD; border-radius: 12px; padding: 20px; }
+
+
+/* ======================= the blocks ======================= */
+/* ===================== block 1 ===================== */
+/* ===========================================================================
+   1 · metric card with a delta chip
+   Off-white card on a white stage. No shadow, no border — the tone step and
+   the white gutter do all the separating (sampled: card 250,250,250 /
+   gutter 255). Label top-left, optional control top-right, one big number,
+   and a footer of three things: chip, printed basis, link.
+   =========================================================================== */
+.s1 .stage { background: #FFFFFF; }
+
+.s1 .m-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.s1 .m-card { background: #FAFAFA; box-shadow: none; padding: 18px 18px 16px; }
+.s1 .m-card .m-top { display: flex; align-items: center; justify-content: space-between;
+                     margin-bottom: 13px; min-height: 18px; }
+.s1 .c-title { font-size: 13px; font-weight: 400; color: var(--ink-3); white-space: nowrap; }
+.s1 .m-value { font-size: 28px; font-weight: 650; letter-spacing: -.02em; line-height: 1.1;
+               font-variant-numeric: tabular-nums; }
+.s1 .m-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px;
+              flex-wrap: nowrap; white-space: nowrap; }
+
+/* The chip is BLUE in both directions — +3.2% and -4.2% are the same hue in the
+   reference — and the tint is a whisper, not an 8% wash. Sign first, arrow
+   trailing. It is markedly smaller than the sentence beside it. */
+.s1 .chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px;
+            padding: 2px 6px; background: #EFF6FE; color: var(--blue);
+            font-size: 10px; font-weight: 600; letter-spacing: 0;
+            font-variant-numeric: tabular-nums; white-space: nowrap; }
+.s1 .m-since { font-size: 12px; color: #B0B7C1; white-space: nowrap; }
+.s1 .m-more { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--blue);
+              text-decoration: none; white-space: nowrap; }
+.s1 .m-more:hover { text-decoration: underline; }
+
+/* the top-right slot is a picker, not an ornament — a branch picker here */
+.s1 .cur { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--ink-2);
+           white-space: nowrap; }
+.s1 .cur svg { color: var(--ink-3); flex: 0 0 auto; }
+
+/* --- derivative pieces ---------------------------------------------------- */
+/* a unit rides the number at label weight so the figure stays the biggest thing */
+.s1 .v1-unit { font-size: 14px; font-weight: 500; color: var(--ink-3);
+               letter-spacing: 0; margin-left: 5px; }
+/* no data is an em dash in the value's own slot — never 0%, never a red -100% */
+.s1 .v1-dash { color: #C9CDD4; }
+/* three across: the card loses ~90px, so the footer keeps the two facts that
+   matter and the per-card link goes. Everything else is unchanged. */
+.s1 .v1-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.s1 .v1-strip .m-card { padding: 14px 14px 13px; }
+.s1 .v1-strip .m-card .m-top { margin-bottom: 10px; }
+.s1 .v1-strip .c-title { font-size: 12px; }
+.s1 .v1-strip .m-value { font-size: 21px; }
+.s1 .v1-strip .m-foot { margin-top: 11px; gap: 7px; }
+.s1 .v1-strip .chip { font-size: 9.5px; padding: 2px 5px; gap: 3px; }
+.s1 .v1-strip .m-since { font-size: 11px; }
+
+/* ===================== block 3 ===================== */
+/* --- 3 · big KPI with a trend sentence ------------------------------------
+   Merged from the lab: the unprefixed "3 — big KPI with inline trend sentence"
+   rules plus the later #b3 corrections that win over them, rescoped to .s3.
+   -------------------------------------------------------------------------- */
+
+.s3 .stage { background: #FFFFFF; }
+
+/* The reference runs four across at ~250px a card. A 560px slot gives two
+   columns of ~253px — the same card width, so the type scale stays honest.
+   Pinned rather than auto-fit so the preview cannot reflow. */
+.s3 .k-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+/* quiet card on a white stage: no shadow, no border, separated by tone only */
+.s3 .k-card { background: #F9F9F9; border-radius: 14px; box-shadow: none;
+              padding: 16px 16px 20px; position: relative; }
+
+/* the ··· is on every card, all the time, at ~#667085 — not a hover ghost */
+.s3 .k-card .dots { position: absolute; top: 9px; right: 8px; opacity: 1;
+                    font-size: 14px; color: #667085; }
+
+.s3 .k-label { font-size: 13px; color: var(--ink); white-space: nowrap; }
+.s3 .k-value { font-size: 27px; font-weight: 550; letter-spacing: -.02em; line-height: 1.15;
+               margin: 9px 0 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* only the delta is coloured; the rest of the sentence is the same near-black
+   as the label — it is a sentence, not a chip with a muted tail */
+.s3 .k-trend { font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+.s3 .k-trend b { font-weight: 400; font-variant-numeric: tabular-nums; }
+.s3 .k-trend b.up { color: var(--green); }
+.s3 .k-trend b.down { color: var(--red); }
+
+/* B · three across — fewer cards, one step up in the number */
+.s3 .v3-three { grid-template-columns: repeat(3, 1fr); }
+.s3 .v3-three .k-card { padding: 15px 14px 18px; }
+.s3 .v3-three .k-label { font-size: 13.5px; }
+.s3 .v3-three .k-value { font-size: 28px; margin: 10px 0 10px; }
+
+/* C · the states it actually hits. Rule 3: no data is an em dash, never 0%
+   and never a red -100%. A flat week and a missing basis both stay ink. */
+.s3 .k-value.v3-none { color: var(--ink-3); }
+.s3 .k-trend b.v3-flat { color: var(--ink); }
+.s3 .k-trend b.v3-nil { color: var(--ink-3); }
+
+/* ===================== block 7 ===================== */
+/* 7 — Icon list.
+   Merged from the lab: the unprefixed "7 — icon list" rules plus the
+   later #b7 corrections that win, rescoped to .s7. Measured off the reference:
+   46px row pitch (30px tile + 8px padding top and bottom) and the tile is a
+   30px CIRCLE, not a rounded square. Every row carries the same pale blue
+   tint and the same blue glyph — there is no second tile colour in the
+   reference, so the derivatives keep colour out of the tile too. */
+.s7 .l-row { display: flex; align-items: center; gap: 11px; padding: 8px 0;
+             border-bottom: 1px solid var(--line); }
+.s7 .l-row:last-child { border-bottom: 0; }
+.s7 .l-icon { width: 30px; height: 30px; border-radius: 50%; background: var(--blue-soft);
+              color: var(--blue); display: grid; place-items: center; flex: 0 0 auto; }
+.s7 .l-main { min-width: 0; flex: 1; }
+.s7 .l-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden;
+              text-overflow: ellipsis; }
+.s7 .l-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+.s7 .l-right { text-align: right; flex: 0 0 auto; white-space: nowrap; }
+.s7 .l-amt { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.s7 .l-id { font-size: 11.5px; color: var(--ink-3); margin-top: 1px;
+            font-variant-numeric: tabular-nums; }
+
+/* card header — the lab wrote this inline; same values, named once */
+.s7 .v7-hd { display: flex; align-items: flex-start; justify-content: space-between; }
+.s7 .v7-t { font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+.s7 .v7-s { font-size: 12px; color: var(--ink-3); margin: 2px 0 8px; }
+
+/* single-line variant: the SKU qualifies the name, so it sits beside it (rule 8) */
+.s7 .v7-line { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+.s7 .v7-line .l-name { flex: 0 1 auto; }
+.s7 .v7-qual { font-size: 11.5px; color: var(--ink-3); flex: 0 0 auto;
+               font-variant-numeric: tabular-nums; }
+
+/* status word replaces the id line — a single word, never a whole row */
+.s7 .v7-st.bad { color: var(--red); }
+.s7 .v7-st.ok { color: var(--green); }
+
+/* two cards in one stage, for the states */
+.s7 .v7-stack { display: grid; gap: 14px; }
+.s7 .v7-empty .l-name { font-weight: 500; color: var(--ink-2); }
+.s7 .v7-empty .l-amt { color: var(--ink-3); }
+
+/* ===================== block 8 ===================== */
+/* 8 — radial summary. Concentric half-arcs over a common baseline, one hue in
+   depths, legend inset to the chart's own width.
+   Geometry, written out so the numbers can be changed without re-deriving them:
+   · cx/cy = 105/105, so every arc foot lands on the baseline y = 105.
+   · Each path starts at the RIGHT foot (cx + r) and sweeps counter-clockwise
+     over the top — large-arc 0, sweep 0. Starting there means no rotate() and
+     no stroke-dashoffset anywhere in the family.
+   · Half-circle length = π·r. stroke-dasharray = "drawn rest",
+     drawn = fraction × π·r.
+   · Butt caps: both ends square-cut, feet stop dead on the baseline.
+   · Every ring draws its track first, then its value over it — including the
+     ring at 100% and the ring at nothing. A fill with no remainder has no scale.
+   NOTE: no var() in SVG presentation attributes — it renders black. Every
+   stroke and fill below is a class. */
+.s8 .c { padding: 18px; max-width: 330px; }
+.s8 .c-title { margin-bottom: 6px; }
+.s8 .v8-basis { margin: -2px 0 8px; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+.s8 .r-wrap { display: flex; flex-direction: column; align-items: center; }
+
+/* legend — swatch 8px on a 17px row pitch, measured off the reference.
+   Inset to the chart's width, no rules between rows. */
+/* Inset to the chart's own width, but a peso figure on a long label needs 214px
+   and a hard 210px clipped it. Min, not fixed: short legends still line up with
+   the ring, long ones grow instead of overflowing. */
+.s8 .leg { min-width: 210px; max-width: 100%; margin-top: 14px; }
+.s8 .leg-row { display: flex; align-items: center; gap: 10px; font-size: 12.5px;
+               line-height: 17px; white-space: nowrap; }
+.s8 .leg-sw { width: 8px; height: 8px; border-radius: 3px; flex: 0 0 auto; }
+.s8 .leg-row b { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+.s8 .leg-row .v8-none { color: var(--ink-3); font-weight: 600; }
+
+/* one hue, five depths, lightest at the centre — nested rings are parts of one
+   story, so three different hues would say they are unrelated. */
+.s8 .v8-t  { stroke: #E8F4FD; }
+.s8 .v8-a1 { stroke: #8FCBF6; }
+.s8 .v8-a2 { stroke: #5CB2F0; }
+.s8 .v8-a3 { stroke: #2C99EC; }
+.s8 .v8-a4 { stroke: #0C8CE9; }
+.s8 .v8-a5 { stroke: #0963A4; }
+.s8 .v8-s1 { background: #8FCBF6; }
+.s8 .v8-s2 { background: #5CB2F0; }
+.s8 .v8-s3 { background: #2C99EC; }
+.s8 .v8-s4 { background: #0C8CE9; }
+.s8 .v8-s5 { background: #0963A4; }
+
+/* the number in the hole — the reference leaves the hole empty when there is a
+   legend, and fills it only when the ring is a single reading. */
+.s8 .v8-big { font-size: 34px; font-weight: 600; letter-spacing: -.025em;
+              fill: var(--ink); font-variant-numeric: tabular-nums; }
+.s8 .v8-cap { margin-top: 10px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+
+/* --- the reference strip at the end --- */
+.refs { margin-top: 72px; }
+.refs h2 { font-size: 19px; letter-spacing: -.015em; margin: 0 0 4px; }
+.refs .lead { font-size: 13px; color: var(--ink-2); margin: 0 0 18px; max-width: 80ch; line-height: 1.6; }
+.refs .grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 20px; }
+.refs figure { margin: 0; }
+.refs img { width: 100%; display: block; border-radius: 10px; border: 1px solid var(--line); }
+.refs figcaption { font-size: 12px; color: var(--ink-3); margin-top: 8px; line-height: 1.55; }
+.refs figcaption b { color: var(--ink-2); }
+@media (max-width: 1080px) { .refs .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="badge">Foundation · scratch file, nothing here is wired into the product</span>
+  <h1>The four blocks, and what they turn into</h1>
+  <p>These are the four you picked out of <code>blocks-lab-picks.html</code> — 1, 3, 7 and 8 — each
+  one first exactly as it was, then <b>three more blocks built in the same style</b>. Nothing else.
+  The point is to feel out each style with real hardware-store data in it before we decide anything.</p>
+  <p>Every block obeys the same eight rules the four originals already obeyed: one number per card
+  and it is the biggest thing; the comparison basis is printed, never hidden; no data is an em dash
+  rather than a red <code>-100%</code>; colour is a chip or a single word; label left, number right;
+  every bar and ring draws its own track; furniture recedes; and a second stacked line only when it
+  is a different kind of fact.</p>
+  <p><b>Tweak it here.</b> Nothing ports into <code>styles.css</code> until you say so.</p>
+  <nav class="jump">
+  <a href="#s1">1 · Metric card with a delta chip</a>
+  <a href="#s3">3 · Big KPI with a trend sentence</a>
+  <a href="#s7">7 · Icon list</a>
+  <a href="#s8">8 · Radial summary</a>
+  </nav>
+</header>
+
+<section class="block-set s1" id="s1">
+  <h2>1 · Metric card with a delta chip</h2>
+  <p class="lead">An off-white card on a white stage with no shadow and no border — one big number, and under it a whisper-blue chip, the printed basis and a link, always on one line.</p>
+  <div class="set">
+
+    <div class="slot"><span class="slot-t">Base — as picked</span>
+      <div class="stage">
+        <div class="m-grid">
+          <div class="c m-card">
+            <div class="m-top">
+              <span class="c-title">Total Sales</span>
+              <span class="cur">
+                <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true" fill="none"><path d="M7 12.5S11.5 9 11.5 5.8A4.5 4.5 0 0 0 2.5 5.8C2.5 9 7 12.5 7 12.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><circle cx="7" cy="5.7" r="1.5" stroke="currentColor" stroke-width="1.2"/></svg>
+                Sahara Mall
+                <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 4 L5 6.5 L7.5 4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+            </div>
+            <div class="m-value">₱52,418.50</div>
+            <div class="m-foot">
+              <span class="chip">+3.2% ↑</span>
+              <span class="m-since">From last month</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Total Purchases</span></div>
+            <div class="m-value">₱31,940.00</div>
+            <div class="m-foot">
+              <span class="chip">−4.2% ↓</span>
+              <span class="m-since">From last month</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Utang Balance</span></div>
+            <div class="m-value">₱14,275.00</div>
+            <div class="m-foot">
+              <span class="chip">+2.4% ↑</span>
+              <span class="m-since">From last month</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slot"><span class="slot-t">A · Counts</span>
+      <div class="stage">
+        <div class="m-grid">
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Transactions</span></div>
+            <div class="m-value">412</div>
+            <div class="m-foot">
+              <span class="chip">+8.6% ↑</span>
+              <span class="m-since">From last week</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Cement Sold</span></div>
+            <div class="m-value">1,284<span class="v1-unit">bags</span></div>
+            <div class="m-foot">
+              <span class="chip">−1.9% ↓</span>
+              <span class="m-since">From last week</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Void Rate</span></div>
+            <div class="m-value">0.8<span class="v1-unit">%</span></div>
+            <div class="m-foot">
+              <span class="chip">+0.3pt ↑</span>
+              <span class="m-since">From last week</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slot"><span class="slot-t">B · Strip</span>
+      <div class="stage">
+        <div class="m-grid v1-strip">
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Sahara Mall</span></div>
+            <div class="m-value">₱52,418</div>
+            <div class="m-foot">
+              <span class="chip">+3.2% ↑</span>
+              <span class="m-since">vs last week</span>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Poblacion</span></div>
+            <div class="m-value">₱18,306</div>
+            <div class="m-foot">
+              <span class="chip">−6.4% ↓</span>
+              <span class="m-since">vs last week</span>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Bypass Road</span></div>
+            <div class="m-value">₱9,740</div>
+            <div class="m-foot">
+              <span class="chip">+1.1% ↑</span>
+              <span class="m-since">vs last week</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slot"><span class="slot-t">C · Nothing to compare</span>
+      <div class="stage">
+        <div class="m-grid">
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Sales · Bypass Road</span></div>
+            <div class="m-value">₱9,740.00</div>
+            <div class="m-foot">
+              <span class="m-since">No prior month</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Utang Collected</span></div>
+            <div class="m-value v1-dash">—</div>
+            <div class="m-foot">
+              <span class="m-since">No collections yet</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">GCash Received</span></div>
+            <div class="m-value">₱4,120.00</div>
+            <div class="m-foot">
+              <span class="chip">+11.0% ↑</span>
+              <span class="m-since">From last month</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="block-set s3" id="s3">
+  <h2>3 · Big KPI with a trend sentence</h2>
+  <p class="lead">One number per card on a near-white tile, and the comparison written out as a sentence — only the delta carries colour, so a wall of these reads as prose rather than a row of badges.</p>
+  <div class="set">
+
+    <div class="slot"><span class="slot-t">Base — as picked</span><div class="stage">
+      <div class="k-grid">
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Sales today</div>
+          <div class="k-value">₱43,740</div>
+          <div class="k-trend"><b class="up">↑5%</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Gross margin</div>
+          <div class="k-value">₱11,280</div>
+          <div class="k-trend"><b class="up">↑2.2%</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Utang collected</div>
+          <div class="k-value">₱8,960</div>
+          <div class="k-trend"><b class="up">↑1.2%</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Purchases this month</div>
+          <div class="k-value">₱152,300</div>
+          <div class="k-trend"><b class="up">↑0.2%</b> in the last month</div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="slot"><span class="slot-t">A · Not money</span><div class="stage">
+      <div class="k-grid">
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Transactions today</div>
+          <div class="k-value">1,284</div>
+          <div class="k-trend"><b class="up">↑96</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Average time at till</div>
+          <div class="k-value">2m 40s</div>
+          <div class="k-trend"><b class="up">↓14s</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Items per basket</div>
+          <div class="k-value">3.4</div>
+          <div class="k-trend"><b class="up">↑0.2</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Utang paid on time</div>
+          <div class="k-value">68%</div>
+          <div class="k-trend"><b class="down">↓3%</b> in the last month</div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="slot"><span class="slot-t">B · Three across</span><div class="stage">
+      <div class="k-grid v3-three">
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Sahara Mall</div>
+          <div class="k-value">₱24,180</div>
+          <div class="k-trend"><b class="up">↑6%</b> vs last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Poblacion</div>
+          <div class="k-value">₱18,940</div>
+          <div class="k-trend"><b class="down">↓2%</b> vs last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Bypass Road</div>
+          <div class="k-value">₱11,520</div>
+          <div class="k-trend"><b class="up">↑11%</b> vs last week</div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="slot"><span class="slot-t">C · Quiet week</span><div class="stage">
+      <div class="k-grid">
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Cement sold</div>
+          <div class="k-value">142 bags</div>
+          <div class="k-trend"><b class="v3-flat">No change</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Bypass Road sales</div>
+          <div class="k-value">₱9,340</div>
+          <div class="k-trend"><b class="v3-nil">—</b> no prior week to compare</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">GCash share</div>
+          <div class="k-value">21%</div>
+          <div class="k-trend"><b class="down">↓8%</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Plywood sold</div>
+          <div class="k-value v3-none">—</div>
+          <div class="k-trend">Nothing rung up today</div>
+        </div>
+      </div>
+    </div></div>
+
+  </div>
+</section>
+
+<section class="block-set s7" id="s7">
+  <h2>7 · Icon list</h2>
+  <p class="lead">A 46px row held open by a 30px circle: glyph, then the thing and when it happened, then the number and what qualifies it — the same pitch whether a row carries one line or two.</p>
+  <div class="set">
+
+    <div class="slot"><span class="slot-t">Base — as picked</span><div class="stage">
+      <div class="c">
+        <div class="v7-hd">
+          <div>
+            <div class="v7-t">Recent sales</div>
+            <div class="v7-s">Newest first, all terminals</div>
+          </div>
+          <button class="dots" title="More">···</button>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+          <div class="l-main"><div class="l-name">Bosch GSB 550 Impact Drill</div><div class="l-sub">Sep 20, 2026 · 1:00 PM</div></div>
+          <div class="l-right"><div class="l-amt">₱5,980.00</div><div class="l-id">R-004812</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+          <div class="l-main"><div class="l-name">THHN Wire #14 (per metre)</div><div class="l-sub">Sep 20, 2026 · 12:41 PM</div></div>
+          <div class="l-right"><div class="l-amt">₱3,898.00</div><div class="l-id">R-004811</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+          <div class="l-main"><div class="l-name">Quick-Dry Enamel Black 1L</div><div class="l-sub">Sep 20, 2026 · 12:08 PM</div></div>
+          <div class="l-right"><div class="l-amt">₱348.00</div><div class="l-id">R-004810</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+          <div class="l-main"><div class="l-name">Silicone Sealant White</div><div class="l-sub">Sep 20, 2026 · 11:52 AM</div></div>
+          <div class="l-right"><div class="l-amt">₱98.00</div><div class="l-id">R-004809</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+          <div class="l-main"><div class="l-name">Stanley Measuring Tape 5m Heavy Duty Chrome</div><div class="l-sub">Sep 20, 2026 · 11:20 AM</div></div>
+          <div class="l-right"><div class="l-amt">₱348.00</div><div class="l-id">R-004808</div></div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="slot"><span class="slot-t">A · People</span><div class="stage">
+      <div class="c">
+        <div class="v7-hd">
+          <div>
+            <div class="v7-t">On shift</div>
+            <div class="v7-s">Mabini branch · Sep 21</div>
+          </div>
+          <button class="dots" title="More">···</button>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5"/></svg></div>
+          <div class="l-main"><div class="l-name">Rowena Cruz</div><div class="l-sub">Terminal 1 · in 7:02 AM</div></div>
+          <div class="l-right"><div class="l-amt">₱18,420.00</div><div class="l-id">37 sales</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5"/></svg></div>
+          <div class="l-main"><div class="l-name">Jomar Dela Peña</div><div class="l-sub">Terminal 2 · in 7:05 AM</div></div>
+          <div class="l-right"><div class="l-amt">₱12,980.00</div><div class="l-id">24 sales</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5"/></svg></div>
+          <div class="l-main"><div class="l-name">Aileen Bautista</div><div class="l-sub">Terminal 3 · in 10:00 AM</div></div>
+          <div class="l-right"><div class="l-amt">₱6,240.00</div><div class="l-id">11 sales</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5"/></svg></div>
+          <div class="l-main"><div class="l-name">Nestor Agbayani</div><div class="l-sub">Delivery desk · in 8:15 AM</div></div>
+          <div class="l-right"><div class="l-amt">₱4,880.00</div><div class="l-id">6 sales</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5"/></svg></div>
+          <div class="l-main"><div class="l-name">Marilou Sy</div><div class="l-sub">Cashier relief · in 1:30 PM</div></div>
+          <div class="l-right"><div class="l-amt">₱1,150.00</div><div class="l-id">3 sales</div></div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="slot"><span class="slot-t">B · One line</span><div class="stage">
+      <div class="c">
+        <div class="v7-hd">
+          <div>
+            <div class="v7-t">Below reorder point</div>
+            <div class="v7-s">Fort Bonifacio branch · counted 6:40 AM</div>
+          </div>
+          <button class="dots" title="More">···</button>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></div>
+          <div class="l-main"><div class="v7-line"><div class="l-name">Portland Cement 40kg</div><span class="v7-qual">CEM-40</span></div></div>
+          <div class="l-right"><div class="l-amt">12 bags</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></div>
+          <div class="l-main"><div class="v7-line"><div class="l-name">Hollow Block 4&quot;</div><span class="v7-qual">CHB-04</span></div></div>
+          <div class="l-right"><div class="l-amt">60 pcs</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></div>
+          <div class="l-main"><div class="v7-line"><div class="l-name">#14 Tie Wire</div><span class="v7-qual">TW-14</span></div></div>
+          <div class="l-right"><div class="l-amt">3 kg</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></div>
+          <div class="l-main"><div class="v7-line"><div class="l-name">PVC Pipe 2&quot;×10ft</div><span class="v7-qual">PVC-210</span></div></div>
+          <div class="l-right"><div class="l-amt">5 pcs</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></div>
+          <div class="l-main"><div class="v7-line"><div class="l-name">Marine Plywood 1/2&quot;</div><span class="v7-qual">PLY-12M</span></div></div>
+          <div class="l-right"><div class="l-amt">2 sheets</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></div>
+          <div class="l-main"><div class="v7-line"><div class="l-name">G.I. Sheet Ga.26</div><span class="v7-qual">GI-26</span></div></div>
+          <div class="l-right"><div class="l-amt">8 sheets</div></div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="slot"><span class="slot-t">C · States</span><div class="stage">
+      <div class="v7-stack">
+        <div class="c">
+          <div class="v7-hd">
+            <div>
+              <div class="v7-t">Utang due today</div>
+              <div class="v7-s">All branches · Sep 21</div>
+            </div>
+            <button class="dots" title="More">···</button>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12.5h3"/></svg></div>
+            <div class="l-main"><div class="l-name">Villamor Construction</div><div class="l-sub">Hardware St. · due Sep 14</div></div>
+            <div class="l-right"><div class="l-amt">₱4,250.00</div><div class="l-id v7-st bad">Overdue</div></div>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12.5h3"/></svg></div>
+            <div class="l-main"><div class="l-name">Ka Berting Motor Works</div><div class="l-sub">Mabini · due today</div></div>
+            <div class="l-right"><div class="l-amt">₱1,980.00</div><div class="l-id">Unpaid</div></div>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12.5h3"/></svg></div>
+            <div class="l-main"><div class="l-name">Sandra Lim</div><div class="l-sub">Fort Bonifacio · GCash 11:20 AM</div></div>
+            <div class="l-right"><div class="l-amt">₱3,600.00</div><div class="l-id v7-st ok">Settled</div></div>
+          </div>
+        </div>
+        <div class="c v7-empty">
+          <div class="v7-hd">
+            <div>
+              <div class="v7-t">Returns today</div>
+              <div class="v7-s">All branches</div>
+            </div>
+            <button class="dots" title="More">···</button>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6 4 10l4 4"/><path d="M4 10h9a5 5 0 1 1 0 10h-4"/></svg></div>
+            <div class="l-main"><div class="l-name">No returns filed</div><div class="l-sub">Since opening · 7:00 AM</div></div>
+            <div class="l-right"><div class="l-amt">—</div></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+
+  </div>
+</section>
+
+<section class="block-set s8" id="s8">
+  <h2>8 · Radial summary</h2>
+  <p class="lead">Concentric half-arcs on one baseline, one hue in depths, and a legend inset to the chart's width — for a total that splits, or a single figure against its target. Every ring draws its own track, so you can always see the part it did not fill.</p>
+  <div class="set">
+
+    <div class="slot"><span class="slot-t">Base — as picked</span><div class="stage">
+      <div class="c">
+        <div class="c-title">Stock value summary</div>
+        <div class="r-wrap">
+          <svg width="210" height="106" viewBox="0 0 210 106" role="img"
+               aria-label="Three concentric arcs: on-hand 74%, committed 48%, dead stock 43%">
+            <g fill="none" stroke-width="18" stroke-linecap="butt">
+              <path class="v8-t"  d="M161 105 A56 56 0 0 0 49 105"/>
+              <path class="v8-a2" d="M161 105 A56 56 0 0 0 49 105" stroke-dasharray="131 176"/>
+              <path class="v8-t"  d="M181 105 A76 76 0 0 0 29 105"/>
+              <path class="v8-a4" d="M181 105 A76 76 0 0 0 29 105" stroke-dasharray="115.4 238.8"/>
+              <path class="v8-t"  d="M201 105 A96 96 0 0 0 9 105"/>
+              <path class="v8-a5" d="M201 105 A96 96 0 0 0 9 105" stroke-dasharray="130.7 301.6"/>
+            </g>
+          </svg>
+          <div class="leg">
+            <div class="leg-row"><i class="leg-sw v8-s2"></i> On-hand value <b>₱821,234.74</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s4"></i> Committed to orders <b>₱89,834.24</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s5"></i> Dead stock <b>₱11,634.15</b></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="slot"><span class="slot-t">A · Single reading</span><div class="stage">
+      <div class="c">
+        <div class="c-title">Monthly target</div>
+        <div class="r-wrap">
+          <!-- r = 88 at stroke 20 → hole radius 78, wide enough for the number.
+               π·88 = 276.5; 68% → 188.0 -->
+          <svg width="210" height="106" viewBox="0 0 210 106" role="img"
+               aria-label="Target progress: 68 percent of the September target">
+            <g fill="none" stroke-width="20" stroke-linecap="butt">
+              <path class="v8-t"  d="M193 105 A88 88 0 0 0 17 105"/>
+              <path class="v8-a4" d="M193 105 A88 88 0 0 0 17 105" stroke-dasharray="188 276.5"/>
+            </g>
+            <text class="v8-big" x="105" y="88" text-anchor="middle">68%</text>
+          </svg>
+          <div class="v8-cap">₱30,600 of ₱45,000 · Mabini, September</div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="slot"><span class="slot-t">B · Five branches</span><div class="stage">
+      <div class="c">
+        <div class="c-title">Branch targets</div>
+        <div class="v8-basis">Share of each branch's own September target</div>
+        <div class="r-wrap">
+          <!-- five rings: stroke 11 on a 13px pitch, centrelines 44/57/70/83/96,
+               outer edge 101.5. π·r = 138.2 / 179.1 / 219.9 / 260.8 / 301.6 -->
+          <svg width="210" height="106" viewBox="0 0 210 106" role="img"
+               aria-label="Five concentric arcs: Mabini 92%, Poblacion 78%, San Jose 64%, Bagumbayan 51%, Talisay 34%">
+            <g fill="none" stroke-width="11" stroke-linecap="butt">
+              <path class="v8-t"  d="M149 105 A44 44 0 0 0 61 105"/>
+              <path class="v8-a1" d="M149 105 A44 44 0 0 0 61 105" stroke-dasharray="127.2 138.2"/>
+              <path class="v8-t"  d="M162 105 A57 57 0 0 0 48 105"/>
+              <path class="v8-a2" d="M162 105 A57 57 0 0 0 48 105" stroke-dasharray="139.7 179.1"/>
+              <path class="v8-t"  d="M175 105 A70 70 0 0 0 35 105"/>
+              <path class="v8-a3" d="M175 105 A70 70 0 0 0 35 105" stroke-dasharray="140.7 219.9"/>
+              <path class="v8-t"  d="M188 105 A83 83 0 0 0 22 105"/>
+              <path class="v8-a4" d="M188 105 A83 83 0 0 0 22 105" stroke-dasharray="133 260.8"/>
+              <path class="v8-t"  d="M201 105 A96 96 0 0 0 9 105"/>
+              <path class="v8-a5" d="M201 105 A96 96 0 0 0 9 105" stroke-dasharray="102.5 301.6"/>
+            </g>
+          </svg>
+          <div class="leg">
+            <div class="leg-row"><i class="leg-sw v8-s1"></i> Mabini <b>92%</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s2"></i> Poblacion <b>78%</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s3"></i> San Jose <b>64%</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s4"></i> Bagumbayan <b>51%</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s5"></i> Talisay <b>34%</b></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+
+    <div class="slot"><span class="slot-t">C · One in, two waiting</span><div class="stage">
+      <div class="c">
+        <div class="c-title">Deliveries received</div>
+        <div class="v8-basis">Since opening · 21 Sep, Mabini</div>
+        <div class="r-wrap">
+          <!-- one ring full, two empty. All three tracks are drawn: an arc at
+               100% and an arc at nothing look identical without them. -->
+          <svg width="210" height="106" viewBox="0 0 210 106" role="img"
+               aria-label="Three concentric arcs: Bacnotan Cement fully received, two deliveries not yet arrived">
+            <g fill="none" stroke-width="18" stroke-linecap="butt">
+              <path class="v8-t"  d="M161 105 A56 56 0 0 0 49 105"/>
+              <path class="v8-a2" d="M161 105 A56 56 0 0 0 49 105"/>
+              <path class="v8-t"  d="M181 105 A76 76 0 0 0 29 105"/>
+              <path class="v8-t"  d="M201 105 A96 96 0 0 0 9 105"/>
+            </g>
+          </svg>
+          <div class="leg">
+            <div class="leg-row"><i class="leg-sw v8-s2"></i> Bacnotan Cement <b>₱48,000.00</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s4"></i> Union Galvasteel <b class="v8-none">—</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s5"></i> Puyat Steel <b class="v8-none">—</b></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+
+  </div>
+</section>
+
+<div class="refs">
+  <h2>The references</h2>
+  <p class="lead">The four screenshots these came off, kept so the next change can be checked
+  against them instead of against memory.</p>
+  <div class="grid">
+  <figure><img src="docs/refs/03-metric-cards-balance.png" alt="reference for block 1"><figcaption><b>1</b> — The chip is blue in both directions and the tint is a whisper. No shadow, no border — the card separates from the stage by tone alone.</figcaption></figure>
+  <figure><img src="docs/refs/05-kpi-dashboard.png" alt="reference for block 3"><figcaption><b>3</b> — Only the percentage is coloured; the rest of the sentence is the same near-black as the label. The ··· is on every card, always.</figcaption></figure>
+  <figure><img src="docs/refs/07-icon-list.png" alt="reference for block 7"><figcaption><b>7</b> — 46px row pitch, 30px circle tile. The second line is a different kind of fact, never a restatement of the first.</figcaption></figure>
+  <figure><img src="docs/refs/04-radial-summary.png" alt="reference for block 8"><figcaption><b>8</b> — The ring draws its own track. 8px legend swatch on a 17px row pitch.</figcaption></figure>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

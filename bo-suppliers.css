@@ -65,9 +65,6 @@ body.bo-light .view-suppliers .sup-recv-foot {
 body.bo-light .view-suppliers .sup-arrived { margin-right: auto; }
 body.bo-light .view-suppliers .sup-arrived input { width: auto; }
 
-/* The detail views open from a row, so the back link sits above the title. */
-body.bo-light .view-suppliers .view-title-wrap .link-btn { margin-bottom: 2px; }
-
 /* Real lead time, beside the quoted figure it checks. */
 body.bo-light .view-suppliers .sup-hint {
   margin-left: 8px;

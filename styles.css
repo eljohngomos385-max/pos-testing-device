@@ -5591,6 +5591,13 @@ body.bo-light {
   --po-warn-bg: #FBF0DA;
   --po-danger: #C7320A;
   --po-danger-bg: #FCEDEA;
+  /* Solid pill fills + their ink (see PILLS): our own tint hues, one step deeper, not Shopify's. */
+  --po-pill-ok: #D3ECDD;      --po-pill-ok-ink: #0B5A37;
+  --po-pill-warn: #F7E2B8;    --po-pill-warn-ink: #6E4D12;
+  --po-pill-danger: #F8D8D0;  --po-pill-danger-ink: #8E2408;
+  --po-pill-info: #D8E3F6;    --po-pill-info-ink: #1F3F7A;
+  --po-pill-owner: #E5DDF9;   --po-pill-owner-ink: #5A2BCB;
+  --po-pill-neutral: #E6E6E6; --po-pill-neutral-ink: #303030;
   --po-accent-link: #1F5199;
   --po-r-card: 8px;
   --po-r-button: 8px;
@@ -6105,41 +6112,33 @@ body.bo-light .mr-time { color: var(--po-ink-tertiary); font-size: 12px; }
 body.bo-light .mr-meta { color: var(--po-ink-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body.bo-light .mr-amt { color: var(--po-ink); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 
-/* ---- PILLS (Shopify subdued tone + leading dot) ---- */
+/* ---- PILLS: solid fill, dark ink, no dot (2026-09-19, the owner: the tinted pill + dot read
+   washed out; copy Shopify's solid "Active" badge). Colours are the --po-pill-* tokens. ---- */
 body.bo-light .status-pill,
 body.bo-light .pay-pill,
 body.bo-light .role-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 2px 9px 2px 8px;
+  display: inline-flex; align-items: center;
+  /* One fixed height for every pill, in a row or not (fits the 27px sm density). */
+  height: 20px; padding: 0 9px;
   border-radius: var(--po-r-pill);
-  font-size: 12px; font-weight: 500;
-  background: #EBEBEB; color: var(--po-ink); border: none;
+  font-size: 12px; font-weight: 600;
+  background: var(--po-pill-neutral); color: var(--po-pill-neutral-ink); border: none;
   /* A pill is one token, never two lines: "Out of stock" wrapped in the Products status column
      and made that one row taller than every other row in the table. */
-  text-transform: none; line-height: 1.7; white-space: nowrap;
+  text-transform: none; line-height: 20px; white-space: nowrap;
 }
 body.bo-light .status-pill::before,
-body.bo-light .pay-pill::before {
-  content: ''; width: 8px; height: 8px; border-radius: 50%;
-  background: var(--po-ink-tertiary); flex-shrink: 0;
-}
-body.bo-light .status-pill.ok { background: var(--po-success-bg); color: #0B5A37; }
-body.bo-light .status-pill.ok::before { background: var(--po-success-dot); }
-body.bo-light .status-pill.low, body.bo-light .status-pill.warn { background: var(--po-warn-bg); color: #6E4D12; }
-body.bo-light .status-pill.low::before, body.bo-light .status-pill.warn::before { background: #C68A20; }
-body.bo-light .status-pill.out, body.bo-light .status-pill.danger { background: var(--po-danger-bg); color: #8E2408; }
-body.bo-light .status-pill.out::before, body.bo-light .status-pill.danger::before { background: #D0410F; }
-body.bo-light .status-pill.muted { background: #EBEBEB; color: var(--po-ink-secondary); }
-body.bo-light .pay-pill.cash { background: var(--po-success-bg); color: #0B5A37; }
-body.bo-light .pay-pill.cash::before { background: var(--po-success-dot); }
-body.bo-light .pay-pill.credit { background: var(--po-warn-bg); color: #6E4D12; }
-body.bo-light .pay-pill.credit::before { background: #C68A20; }
-body.bo-light .pay-pill.gcash, body.bo-light .pay-pill.card { background: #E6EDF9; color: #1F3F7A; }
-body.bo-light .pay-pill.gcash::before, body.bo-light .pay-pill.card::before { background: #3E63B0; }
-body.bo-light .role-pill { gap: 0; padding: 2px 9px; }
-body.bo-light .role-pill.owner { background: #EEE9FB; color: #5A2BCB; }
-body.bo-light .role-pill.manager { background: #E6EDF9; color: #1F3F7A; }
-body.bo-light .role-pill.cashier { background: #EBEBEB; color: var(--po-ink-secondary); }
+body.bo-light .pay-pill::before { content: none; }
+body.bo-light .status-pill.ok,
+body.bo-light .pay-pill.cash { background: var(--po-pill-ok); color: var(--po-pill-ok-ink); }
+body.bo-light .status-pill.low, body.bo-light .status-pill.warn,
+body.bo-light .pay-pill.credit { background: var(--po-pill-warn); color: var(--po-pill-warn-ink); }
+body.bo-light .status-pill.out, body.bo-light .status-pill.danger { background: var(--po-pill-danger); color: var(--po-pill-danger-ink); }
+body.bo-light .pay-pill.gcash, body.bo-light .pay-pill.qr, body.bo-light .pay-pill.card,
+body.bo-light .role-pill.manager { background: var(--po-pill-info); color: var(--po-pill-info-ink); }
+body.bo-light .role-pill.owner { background: var(--po-pill-owner); color: var(--po-pill-owner-ink); }
+body.bo-light .status-pill.muted,
+body.bo-light .role-pill.cashier { background: var(--po-pill-neutral); color: var(--po-pill-neutral-ink); }
 
 /* ---- SETTINGS ---- */
 body.bo-light .settings-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
@@ -6784,8 +6783,6 @@ body.bo-light .view-inv .inv-buy th:nth-child(2) { width: 18%; }
 body.bo-light .view-customers .cust-table tbody tr { cursor: pointer; }
 body.bo-light #custDetail { display: flex; flex-direction: column; gap: var(--po-gap); }
 body.bo-light #custDetail[hidden] { display: none; }
-body.bo-light .cust-back { margin-bottom: 10px; }
-body.bo-light .cust-back[hidden] { display: none; }
 /* Four facts, one line each: label above value, on the card's own padding. */
 body.bo-light .cust-facts {
   display: grid;
@@ -6830,9 +6827,6 @@ body.bo-light .bo-card-inset .data-table th { font-size: calc(var(--po-row-font)
 body.bo-light .bo-card-inset .data-table td .secondary-btn.small {
   height: calc(var(--po-row-h) - 8px);
   padding: 0 10px;
-}
-body.bo-light .bo-card-inset .data-table td .status-pill {
-  line-height: 18px; padding-top: 0; padding-bottom: 0;
 }
 /* A second fact about the row (a contact, a SKU, a variant count) goes beside the name,
    not under it. A stacked sub-line is what made Suppliers' rows taller than everyone
@@ -6977,11 +6971,12 @@ body.bo-light .bo-sidebar .side-nav .side-label:not(:first-child) {
 body.bo-light .bo-sidebar .side-link {
   gap: 10px; padding: 7px 8px;
   border: 1px solid transparent;
-  color: var(--po-ink-secondary); font-weight: 500;
+  color: var(--po-ink); font-weight: 500;
 }
-body.bo-light .bo-sidebar .side-link svg { width: 17px; height: 17px; color: var(--po-ink-tertiary); }
+/* Top-level rows read dark; the tree under them stays a step lighter. */
+body.bo-light .bo-sidebar .side-link svg { width: 17px; height: 17px; color: var(--po-ink); }
 body.bo-light .bo-sidebar .side-link:hover { background: rgba(0,0,0,0.04); color: #1A1A1A; }
-body.bo-light .bo-sidebar .side-link:hover svg { color: var(--po-ink-secondary); }
+body.bo-light .bo-sidebar .side-link:hover svg { color: #1A1A1A; }
 body.bo-light .bo-sidebar .side-link.active {
   background: var(--po-surface); border-color: var(--po-line);
   color: #1A1A1A; font-weight: 600; box-shadow: var(--po-shadow-card);
@@ -7097,6 +7092,10 @@ body.bo-light .bo-sidebar .side-grouphead {
   gap: 8px; padding: 4px; border: 0; border-radius: 6px; box-shadow: none;
   font-size: 13px; line-height: 18px; font-weight: 400; color: #525252;
 }
+/* Top-level rows sit dark; the tree under them is a step paler. */
+body.bo-light .bo-sidebar .side-link { color: var(--po-ink); font-weight: 500; }
+body.bo-light .bo-sidebar .side-sublink,
+body.bo-light .bo-sidebar .side-grouphead { color: var(--po-ink-secondary); }
 body.bo-light .bo-sidebar .side-link svg { width: 15px; height: 15px; color: currentColor; }
 body.bo-light .bo-sidebar .side-link .side-chev { width: 12px; height: 12px; color: var(--po-ink-tertiary); }
 body.bo-light .bo-sidebar .side-link:hover,
@@ -7117,8 +7116,10 @@ body.bo-light .bo-sidebar .side-sublink,
 body.bo-light .bo-sidebar .side-grouphead { padding-left: 27px; }
 body.bo-light .bo-sidebar .side-groupbody { gap: 3px; }
 body.bo-light .bo-sidebar .side-groupbody .side-sublink { padding-left: 39px; }
+/* No elbow marker on the lit sub-link — the highlight alone carries it. */
 body.bo-light .bo-sidebar .side-sublink.active::before,
 body.bo-light .bo-sidebar .side-groupbody .side-sublink.active::before { content: none; }
+body.bo-light .bo-sidebar .side-sublink { position: relative; }
 
 /* Account: a grey footer strip with one flat row — name, then role in grey. */
 body.bo-light .bo-sidebar .side-footer {
@@ -7185,6 +7186,22 @@ body.bo-light .bo-sidebar .side-link.open + .side-sub { grid-template-rows: 1fr;
   body.bo-light .bo-sidebar .side-sub { transition: none; }
 }
 
+/* SIDEBAR WEIGHT (v34): Shopify's hierarchy -- filled, rounded icons and a heavier top-level
+   row over a paler, lighter tree. An icon's inner detail (.i-cut lines, .i-hole dots) is drawn
+   in the row's own background, so it reads as a cutout on rest, hover and active alike. */
+body.bo-light { --po-sidebar-ink: #4D4D4D; }
+body.bo-light .bo-sidebar .side-link { --side-bg: var(--po-sidebar); font-weight: 550; color: var(--po-sidebar-ink); }
+body.bo-light .bo-sidebar .side-link:hover { --side-bg: var(--po-sidebar-hover); }
+body.bo-light .bo-sidebar .side-link.active { --side-bg: var(--po-sidebar-active); font-weight: 550; }
+body.bo-light .bo-sidebar .side-link.active:not(.folded):has(+ .side-sub .side-sublink.active) { --side-bg: var(--po-sidebar); }
+body.bo-light .bo-sidebar .side-link.active:not(.folded):has(+ .side-sub .side-sublink.active):hover { --side-bg: var(--po-sidebar-hover); }
+body.bo-light .bo-sidebar .side-link svg { width: 16px; height: 16px; }
+body.bo-light .bo-sidebar .side-link svg .i-cut { stroke: var(--side-bg); stroke-width: 1.8; }
+body.bo-light .bo-sidebar .side-link svg .i-hole { fill: var(--side-bg); stroke: none; }
+body.bo-light .bo-sidebar .side-sublink,
+body.bo-light .bo-sidebar .side-grouphead { font-weight: 450; color: var(--po-ink-secondary); }
+body.bo-light .bo-sidebar .side-sublink.active { color: #171717; font-weight: 500; }
+
 /* DROPDOWN MOTION (v31): every back office dropdown fades and drops 4px in and out. The menus
    still open and close with the `hidden` attribute (or <details>); `display` rides the
    transition (allow-discrete) so the close plays before it disappears, and @starting-style
@@ -7211,3 +7228,444 @@ body.bo-light .pd-cols::details-content { transition: content-visibility .15s al
 @media (prefers-reduced-motion: reduce) {
   body.bo-light .side-menu, body.bo-light .rp-menu, body.bo-light .pd-cols-menu { transition: none; }
 }
+
+/* ============================================================================
+   BACK OFFICE — FOUNDATION (v33)
+   The basic components, done properly, so everything after this is assembly.
+   A hybrid: the geometry and the interaction come from shadcn/ui (read out of
+   its own registry, style new-york-v4), the palette and the density stay ours.
+   Nothing is installed — shadcn is Tailwind utility classes on React components
+   and this app has no build step. What we took is the recipe, written in CSS.
+
+   THE ZEBRA STAYS. v32 got it wrong, not the idea: it drew the stripe as an
+   inset rounded pill floating inside the card, so a striped row looked selected
+   rather than alternate, and on a three-row card the middle band read as "this
+   one is special". A stripe is a band. It runs the full width of the card, it
+   has square sides, and it is the same on every even row. Fixed here.
+
+   The other half of the fix is that a striped row must not also be a bordered
+   row. Stripes and hairlines are two answers to one question and running both
+   is what made the tables feel busy — pick the stripe, drop the rule.
+
+   Ours, not theirs: our greys, our accent, our density. Their h-10 table header
+   is a web app's; ours is a till's, and it stays on --po-row-h.
+   Last block wins; edit HERE.
+   ============================================================================ */
+body.bo-light {
+  /* The stripe. One step deeper than --po-surface-hover, because a striped row
+     still has to visibly light up on hover, and one step deeper than Shopify's
+     #F7F7F7, because that is our page colour — at #F7F7F7 the band matches the
+     canvas around the card and the card stops reading as a card. */
+  --po-row-alt: #F4F4F4;
+
+  /* One accent for every interactive state — link, ring, selection — so the
+     page reads as one system. Same blue we already use for links. */
+  --po-accent: var(--po-accent-link);
+  --po-ring: 0 0 0 3px rgba(31, 81, 153, 0.28);
+
+  /* shadcn's radius ladder, sized to our 8px card. */
+  --po-r-sm: 4px;
+  --po-r-md: 6px;
+  --po-r-lg: 8px;
+  --po-r-xl: 12px;
+
+  /* One curve, two speeds. Out is faster than in: a panel that lingers on the
+     way out feels broken, one that eases in feels considered. */
+  --po-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --po-in: 150ms;
+  --po-out: 100ms;
+}
+body.bo-light ::selection { background: rgba(31, 81, 153, 0.15); }
+
+/* ---- Focus: one ring, everywhere ------------------------------------------
+   A 3px translucent halo plus a solid border, not a 2px outline. It reads on
+   any background, it never shifts layout, and it replaces the four different
+   focus styles that had accumulated. This one is straight from shadcn. */
+body.bo-light :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  border-color: var(--po-accent);
+  box-shadow: var(--po-ring);
+}
+
+/* ---- The stripe -----------------------------------------------------------
+   One rule for rows in a card, one for rows in a table, same colour, same
+   logic: even rows carry the band, nothing else decorates them. */
+
+/* Row list. The list bleeds out to the card's edge and each row pads itself
+   back in, so the text stays on the card's 14px gutter — lined up with the
+   head above it — while the stripe behind it runs wall to wall. */
+body.bo-light .mini-list { margin-inline: -14px; min-height: 0; }
+body.bo-light .mini-list-row {
+  margin-inline: 0;
+  padding: 0 14px;
+  border-radius: 0;
+  border-bottom: 0;
+  align-items: center;
+  gap: 10px;
+  /* Roomier than a table row. Eight lines can afford the air; fifty cannot,
+     which is why --po-row-h on its own stays the table's height. */
+  height: calc(var(--po-row-h) + 8px);
+  line-height: calc(var(--po-row-font) * 1.45);
+  transition: background var(--po-out) linear;
+}
+body.bo-light .mini-list-row:nth-child(even) { background: var(--po-row-alt); }
+/* Hover has to beat the stripe, so it is a darkening layer and not a colour. */
+body.bo-light a.mini-list-row:hover { background: rgba(0, 0, 0, 0.055); }
+
+/* The list ends where the card ends — no white gutter under the last stripe —
+   and the last row takes the card's corners so a stripe never squares them. */
+body.bo-light .bo-card-inset:last-child > .mini-list:last-child { margin-bottom: -14px; }
+body.bo-light .mini-list-row:last-child {
+  border-bottom-left-radius: var(--po-r-card);
+  border-bottom-right-radius: var(--po-r-card);
+}
+
+body.bo-light .ml-left { flex-direction: row; align-items: baseline; gap: 6px; overflow: hidden; }
+body.bo-light .ml-name { font-size: var(--po-row-font); flex: 0 1 auto; }
+body.bo-light .ml-sub {
+  /* The sub gives ground first. Equal shrink clipped the product name while the
+     SKU beside it stayed whole, which is backwards — the name is the row. */
+  flex: 0 999 auto;
+  font-size: calc(var(--po-row-font) - 2px);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+body.bo-light .ml-value {
+  font-size: var(--po-row-font); font-weight: 600; color: var(--po-ink);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+body.bo-light .ml-trail {
+  min-width: 58px; text-align: right; flex-shrink: 0;
+  font-size: calc(var(--po-row-font) - 1px);
+  color: var(--po-ink-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+body.bo-light .ml-trail.up { color: var(--po-success); }
+body.bo-light .ml-trail.down { color: var(--po-danger); }
+
+/* Table. Already full-bleed inside a flush inset, so it only needs the band
+   and the hairlines off. Striped by default now — .no-zebra opts out for the
+   two- or three-row tables where alternation has nothing to help you track. */
+body.bo-light .bo-card-inset .data-table tbody tr:nth-child(even) td { background: var(--po-row-alt); }
+body.bo-light .bo-card-inset .data-table tbody td { border-bottom: 0; }
+body.bo-light .bo-card-inset .data-table.no-zebra tbody tr:nth-child(even) td { background: transparent; }
+body.bo-light .bo-card-inset .data-table.no-zebra tbody td { border-bottom: 1px solid var(--po-line); }
+body.bo-light .bo-card-inset .data-table.no-zebra tbody tr:last-child td { border-bottom: 0; }
+/* The header keeps its rule — it is a different kind of row and needs the line
+   to say so. Medium weight, sentence case: it is a name, not a label. */
+body.bo-light .bo-card-inset .data-table th {
+  font-weight: 500;
+  color: var(--po-ink-secondary);
+  text-transform: none;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--po-line);
+}
+body.bo-light .data-table tbody tr { transition: background var(--po-out) linear; }
+body.bo-light .bo-card-inset .data-table tbody tr:hover td { background: rgba(0, 0, 0, 0.045); }
+/* Money is compared down the column, not read across, so it lines up and uses
+   lining figures. Ragged decimals defeat the comparison on any column over 3. */
+body.bo-light .data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- Button ---------------------------------------------------------------
+   Three variants, three heights. Anything beyond that is a one-off, and a
+   one-off is what nobody remembers to restyle when the palette moves. */
+body.bo-light .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 32px; padding: 0 12px;
+  border: 1px solid var(--po-line-strong);
+  border-radius: var(--po-r-md);
+  background: var(--po-surface); color: var(--po-ink);
+  font: inherit; font-size: 13px; font-weight: 500;
+  white-space: nowrap; cursor: pointer;
+  box-shadow: var(--po-shadow-card);
+  transition: background var(--po-out) linear, border-color var(--po-out) linear, box-shadow var(--po-out) linear;
+}
+body.bo-light .btn:hover { background: var(--po-surface-hover); }
+body.bo-light .btn:disabled { opacity: 0.5; pointer-events: none; }
+body.bo-light .btn.primary { background: var(--po-primary); border-color: var(--po-primary); color: var(--po-primary-ink); }
+body.bo-light .btn.primary:hover { background: var(--po-primary-hover); border-color: var(--po-primary-hover); }
+body.bo-light .btn.ghost { background: transparent; border-color: transparent; color: var(--po-ink-secondary); box-shadow: none; }
+body.bo-light .btn.ghost:hover { background: var(--po-surface-hover); color: var(--po-ink); }
+body.bo-light .btn.danger { background: var(--po-danger); border-color: var(--po-danger); color: #fff; }
+body.bo-light .btn.sm { height: 26px; padding: 0 9px; font-size: 12px; }
+body.bo-light .btn.lg { height: 38px; padding: 0 16px; font-size: 14px; }
+
+/* ---- Popup ----------------------------------------------------------------
+   The native popover attribute, not a div we show and hide. The browser gives
+   us the top layer, light-dismiss, Esc and focus return for free — every part
+   a hand-rolled dropdown gets wrong. @starting-style with allow-discrete is
+   what animates it BOTH ways with no JS: without them you can fade a menu in,
+   but it disappears instantly on close, which is the tell of a cheap one.
+   The motion itself is shadcn's — fade plus a 96% zoom, out faster than in. */
+body.bo-light [popover].pop {
+  margin: 0; padding: 6px;
+  border: 1px solid var(--po-line);
+  border-radius: var(--po-r-lg);
+  background: var(--po-surface);
+  box-shadow: var(--po-shadow-pop);
+  color: var(--po-ink);
+  min-width: 180px;
+  opacity: 0; transform: scale(0.96);
+  transition: opacity var(--po-out) linear, transform var(--po-out) var(--po-ease),
+              overlay var(--po-out) allow-discrete, display var(--po-out) allow-discrete;
+}
+body.bo-light [popover].pop:popover-open {
+  opacity: 1; transform: scale(1);
+  transition-duration: var(--po-in);
+}
+@starting-style {
+  body.bo-light [popover].pop:popover-open { opacity: 0; transform: scale(0.96); }
+}
+body.bo-light [popover].pop::backdrop { background: transparent; }
+body.bo-light .pop-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 6px 8px; border: 0; border-radius: var(--po-r-sm);
+  background: transparent; color: var(--po-ink);
+  font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+body.bo-light .pop-item:hover { background: var(--po-surface-hover); }
+body.bo-light .pop-item.danger { color: var(--po-danger); }
+body.bo-light .pop-sep { height: 1px; margin: 4px -2px; background: var(--po-line); }
+
+/* A dialog is the same motion with a backdrop that fades alongside it. */
+body.bo-light dialog.modal {
+  padding: 0; border: 1px solid var(--po-line); border-radius: var(--po-r-xl);
+  background: var(--po-surface); color: var(--po-ink);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+  opacity: 0; transform: scale(0.96);
+  transition: opacity var(--po-out) linear, transform var(--po-out) var(--po-ease),
+              overlay var(--po-out) allow-discrete, display var(--po-out) allow-discrete;
+}
+body.bo-light dialog.modal[open] { opacity: 1; transform: scale(1); transition-duration: var(--po-in); }
+@starting-style {
+  body.bo-light dialog.modal[open] { opacity: 0; transform: scale(0.96); }
+}
+body.bo-light dialog.modal::backdrop {
+  background: rgba(0,0,0,0.42); opacity: 0;
+  transition: opacity var(--po-out) linear, overlay var(--po-out) allow-discrete, display var(--po-out) allow-discrete;
+}
+body.bo-light dialog.modal[open]::backdrop { opacity: 1; transition-duration: var(--po-in); }
+@starting-style {
+  body.bo-light dialog.modal[open]::backdrop { opacity: 0; }
+}
+body.bo-light .modal-head { padding: 18px 20px 0; }
+body.bo-light .modal-title { font-size: 15px; font-weight: 600; }
+body.bo-light .modal-desc { font-size: 13px; color: var(--po-ink-secondary); margin-top: 4px; }
+body.bo-light .modal-body { padding: 14px 20px; font-size: 13px; }
+body.bo-light .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 0 20px 18px; }
+
+/* ---- Stat rows ------------------------------------------------------------
+   A stat cell is a row in a list, so it gets the same band, full width. */
+body.bo-light .dash-top .stat,
+body.bo-light .sales-top .stat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  /* Centre, not baseline. Baseline-aligning a 13px label against a 17px value
+     makes the row's track as tall as the big number's ascent PLUS its descent,
+     so the text sits 6px above centre in its own stripe. The two are 200px
+     apart — nobody can see a shared baseline across that gap, but everybody
+     sees the 6px. The value and its delta ARE adjacent, so they keep their
+     baseline, inside .kpi-main where it does some good. */
+  align-items: center;
+  gap: 12px;
+  /* The height comes from padding, never from `height`. A fixed height gives the
+     row one auto track that stretches to fill it, and baseline-aligning inside a
+     stretched track pins the text to the TOP — 20px of text sitting at the top of
+     a 44px stripe with 24px of dead grey under it, which is what looked broken.
+     align-content: center fixes the pinning but still lands ~6px high, because a
+     baseline group's track is taller than the text it holds. Symmetric padding
+     cannot be off-centre, so the row is padded and the stripe fits the text. */
+  padding: 12px 14px;
+  border-radius: 0;
+}
+body.bo-light .dash-top .stat-bar,
+body.bo-light .sales-top .stat-bar { padding: 0; }
+body.bo-light .dash-top .stat:nth-child(even),
+body.bo-light .sales-top .stat:nth-child(even) { background: var(--po-row-alt); }
+body.bo-light .dash-top .stat + .stat,
+body.bo-light .sales-top .stat + .stat { border-top: 0; }
+body.bo-light .dash-top .stat:first-child,
+body.bo-light .sales-top .stat:first-child {
+  border-top-left-radius: var(--po-r-card); border-top-right-radius: var(--po-r-card);
+}
+body.bo-light .dash-top .stat:last-child,
+body.bo-light .sales-top .stat:last-child {
+  border-bottom-left-radius: var(--po-r-card); border-bottom-right-radius: var(--po-r-card);
+}
+body.bo-light .dash-top .stat .kpi-label,
+body.bo-light .sales-top .stat .kpi-label {
+  /* The 6px is left over from when a KPI was stacked and the label sat above
+     the number. On a row it is a phantom: it grows the row's track without
+     drawing anything, so the text lands 6px high inside its own stripe. That
+     was the whole "stat rows look broken" bug. */
+  margin: 0;
+  font-size: var(--po-row-font);
+  color: var(--po-ink-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+body.bo-light .dash-top .stat .kpi-main,
+body.bo-light .sales-top .stat .kpi-main { margin-top: 0; align-items: baseline; gap: 10px; }
+body.bo-light .dash-top .stat .kpi-value,
+body.bo-light .sales-top .stat .kpi-value { font-size: calc(var(--po-row-font) + 4px); font-weight: 600; }
+body.bo-light .dash-top .stat .kpi-delta,
+body.bo-light .sales-top .stat .kpi-delta { min-width: 58px; text-align: right; }
+/* Rows size to their text, so the bar stops stretching to match the chart and
+   the card ends where its last row does. Beside a tall chart, the short card
+   is the honest one. */
+body.bo-light .dash-top { align-items: start; }
+body.bo-light .dash-top .stat-bar,
+body.bo-light .sales-top .stat-bar { grid-auto-rows: auto; }
+body.bo-light .dash-top .bo-card-inset.stat-bar { flex: 0 0 auto; }
+
+/* Cards in the bottom row size to their rows. Stretching them to match the
+   tallest left a striped list stopping halfway up a white card, which reads as
+   a list that failed to load. A short card is the honest one. */
+body.bo-light .dash-grid-3 { align-items: start; }
+body.bo-light .dash-grid-3 .mini-list { min-height: 0; }
+body.bo-light .dash-grid-3 .bo-card-inset { flex: 0 0 auto; }
+
+
+/* ============================================================================
+   BACK OFFICE — STAT CARDS + THE CURRENCY GLYPH (v34)
+   Last block wins; edit HERE.
+
+   2026-09-20, the owner, on the striped six-cell Overview v33 shipped: "I quite
+   don't like this type of stuff... I would prefer it was individual blocks."
+   Pointed at three reference dashboards, all doing the same thing: one card per
+   number, in a row across the top, above everything else. And separately: "change
+   the font for the money, it looks hella ugly."
+
+   So a stat is a card now, not a row in a shared bar. Six numbers striped into two
+   columns read as a spreadsheet — the stripe is right for a LIST of like things
+   (products, receipts) and wrong for six unlike measures that happen to be adjacent.
+   The row list keeps its zebra; this was never the same block.
+   ============================================================================ */
+
+/* ---- the currency glyph ----
+   ₱ is a double-barred P. At the digits' own size and weight it out-weighs them,
+   and on "₱0" the symbol is physically WIDER than the number it labels (72.8px vs
+   68.3px at 100px in Geist), so the eye lands on the currency instead of the
+   amount. Demote it and the amount reads first.
+
+   This is not a font problem and swapping families does not fix it — Inter, IBM
+   Plex Sans, Source Sans 3, Figtree, Segoe UI and Arial all draw the same crammed
+   glyph. It is a sizing problem, and it is the same move the reference cards make
+   with a raised unit. Applied through .cur, which backoffice.js's curHtml() wraps
+   around a leading ₱ on the big values only — at 13px the symbol already behaves. */
+body.bo-light .cur {
+  font-size: 0.78em;
+  font-weight: 500;
+  color: var(--po-ink-tertiary);
+  margin-right: 0.02em;
+}
+
+/* ---- the header strip above the grid ----
+   Not a .bo-card-head, because there is no card around the grid any more. Same
+   type, so the page still reads as one system. */
+body.bo-light .stat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 2px 9px;
+}
+/* The shared .bo-card-sub carries margin-left:auto to sit at a card head's right.
+   In this strip it follows the label, so that has to be cancelled explicitly. */
+body.bo-light .stat-head .bo-card-sub { margin-left: 0; margin-right: auto; }
+
+/* ---- the grid ----
+   auto-fit with a 168px floor: three across on the dashboard, six across on Sales
+   at full width, and it folds to two on a narrow laptop without a media query. */
+body.bo-light .stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: var(--po-gap);
+  margin-bottom: var(--po-gap);
+}
+
+/* ---- the card ----
+   Padding, never a fixed height — the v33 lesson still stands. A fixed height gives
+   the card one stretched track and pins its text to the top. */
+body.bo-light .stat-grid .stat {
+  display: block;
+  background: var(--po-surface);
+  border: 1px solid var(--po-line);
+  border-radius: var(--po-r-card);
+  padding: 14px 16px 15px;
+  min-width: 0;
+}
+body.bo-light .stat-grid .stat .kpi-label {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--po-ink-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The gap under the label is the block's signature in every reference — the number
+   needs air above it far more than below it. */
+body.bo-light .stat-grid .stat .kpi-value {
+  margin: 14px 0 0;
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--po-ink);
+  font-variant-numeric: tabular-nums;
+}
+body.bo-light .stat-grid .stat .kpi-unit {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--po-ink-tertiary);
+  letter-spacing: 0;
+  margin-left: 3px;
+}
+
+/* The delta and the basis it was measured against, stacked. "vs the day before"
+   was a title attribute, which is a tooltip nobody hovers — every reference prints
+   the comparison as a line instead, and it costs one muted 11.5px row. */
+body.bo-light .stat-grid .kpi-trend { margin-top: 9px; }
+body.bo-light .stat-grid .kpi-delta {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+body.bo-light .stat-grid .kpi-cmp {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--po-ink-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The % button still hides the comparison; it just hides the whole trend block now
+   rather than one inline span. Reserving the space keeps the cards the same height
+   whether it is on or off, so toggling does not make the page jump. */
+body.bo-light .stat-grid:not(.show-delta) .kpi-trend { visibility: hidden; }
+
+/* ---- the chart is alone on its row now ---- */
+body.bo-light .dash-top { grid-template-columns: 1fr; display: grid; }
+
+/* Six stats auto-fit to five across and leave one orphan on a row of its own.
+   The count is known at the call site, so the caller says three-up and gets two
+   tidy rows instead. Everything else has three or fewer and auto-fit is right. */
+body.bo-light .stat-grid.three-up { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) {
+  body.bo-light .stat-grid.three-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ============ BACK OFFICE — PAGE HEAD (v34) ============
+   Every page's title sits in one slot, and these two tokens are the whole coordinate
+   system: change them here and every page moves together. The head is one line, exactly
+   as tall as a control -- a fixed height, so a 34px search box overhangs it by a pixel
+   instead of pushing the title down -- and a page with buttons and a page without put
+   their title at the same y. Nothing goes UNDER a title -- no description line. A back
+   link sits before it and a detail page's one fact (SKU, status) sits after it, same line. */
+body.bo-light { --po-head-h: 32px; --po-head-gap: 16px; }
+body.bo-light .view-head { height: var(--po-head-h); margin-bottom: var(--po-head-gap); align-items: center; }
+body.bo-light .view-title-wrap { flex-direction: row; align-items: center; gap: 8px; min-width: 0; }
+body.bo-light .view-title-wrap [hidden] { display: none; }
+body.bo-light .view-head h1 { white-space: nowrap; }
+/* Stacked on a phone, the head has to grow to hold its wrapped controls. */
+@media (max-width: 600px) { body.bo-light .view-head { height: auto; min-height: var(--po-head-h); } }

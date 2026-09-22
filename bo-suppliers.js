@@ -114,9 +114,9 @@ if (typeof document !== 'undefined') (function () {
   const EMPTY_O = { open: 0, outstanding: 0, list: [] };
 
   /* ---------- Shared chrome ---------- */
-  const head = (title, sub, actions) => `
+  const head = (title, actions) => `
     <div class="view-head">
-      <div class="view-title-wrap"><h1>${title}</h1><span class="muted">${sub}</span></div>
+      <div class="view-title-wrap"><h1>${title}</h1></div>
       <div class="view-actions">${actions}</div>
     </div>`;
 
@@ -143,7 +143,6 @@ if (typeof document !== 'undefined') (function () {
     const list = q
       ? suppliers.filter((s) => [s.name, s.contact, s.phone, s.email].join(' ').toLowerCase().includes(q))
       : suppliers;
-    const openTotal = pos.reduce((n, o) => n + (isIncoming(o) ? 1 : 0), 0);
 
     const pg = paginate(list, params.page);
     const rows = pg.rows.map((s) => {
@@ -164,7 +163,6 @@ if (typeof document !== 'undefined') (function () {
 
     return head(
       'Suppliers',
-      `${suppliers.length} supplier${suppliers.length === 1 ? '' : 's'} · ${openTotal} purchase order${openTotal === 1 ? '' : 's'} incoming`,
       `${searchBox('Search suppliers')}
        <button class="secondary-btn small" data-act="export-suppliers">Export CSV</button>
        <button class="primary-btn small" data-act="new-supplier">Add supplier</button>`
@@ -223,7 +221,6 @@ if (typeof document !== 'undefined') (function () {
 
     return head(
       'Purchase orders',
-      `${list.length} of ${pos.length} · stock coming in`,
       `${searchBox('Search purchase orders')}
        <button class="primary-btn small" data-act="new-po">New purchase order</button>`
     ) + `<div class="sup-bar">

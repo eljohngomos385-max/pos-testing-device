@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Blocks Lab — picks — references &amp; recreations</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   BLOCKS LAB — a scratch file, deliberately standalone.
+   It does NOT load styles.css and nothing here is wired into the product. Every
+   block below is a recreation of a reference screenshot sitting next to it, so
+   the two can be compared honestly before anything is adopted.
+   Its tokens are the REFERENCES' tokens, not ours — that is the point. If a
+   block graduates, it gets rebuilt on --po-* in styles.css and documented in
+   design.html. Nothing graduates by being copied out of this file.
+   =========================================================================== */
+:root {
+  /* Read off the screenshots: these dashboards all share roughly one palette. */
+  --canvas: #F4F5F7;
+  --card: #FFFFFF;
+  --ink: #101828;
+  --ink-2: #667085;
+  --ink-3: #98A2B3;
+  --line: #EAECF0;
+  --track: #EEF0F4;
+  --blue: #2563EB;
+  --blue-soft: #EFF4FF;
+  --green: #12A150;
+  --green-soft: #E7F7EE;
+  --red: #E5484D;
+  --red-soft: #FDECEC;
+  --r: 16px;
+  --r-sm: 10px;
+  --shadow: 0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.04);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--canvas); color: var(--ink);
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1440px; margin: 0 auto; padding: 44px 24px 140px; }
+header h1 { font-size: 26px; letter-spacing: -.02em; margin: 0 0 8px; }
+header p { font-size: 13.5px; color: var(--ink-2); line-height: 1.65; max-width: 70ch; margin: 0 0 6px; }
+.badge { display: inline-block; background: #FFF4E5; color: #B54708; border-radius: 999px;
+         padding: 3px 10px; font-size: 11.5px; font-weight: 600; margin-bottom: 14px; }
+
+/* index */
+.toc { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px,1fr)); gap: 8px;
+       margin: 26px 0 0; padding: 18px; background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); }
+.toc a { font-size: 12.5px; color: var(--ink-2); text-decoration: none; display: block; padding: 3px 0; }
+.toc a:hover { color: var(--blue); }
+.toc b { grid-column: 1/-1; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+
+/* each block section */
+section { margin-top: 56px; }
+section > h2 { font-size: 19px; letter-spacing: -.015em; margin: 0 0 4px; }
+section > .src { font-size: 12px; color: var(--ink-3); margin: 0 0 18px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .pair { grid-template-columns: 1fr; } }
+.pane { min-width: 0; }
+.pane > h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3);
+             margin: 0 0 8px; font-weight: 600; }
+.ref { width: 100%; border-radius: 12px; border: 1px solid var(--line); background: #fff; display: block; }
+.stage { background: var(--canvas); border: 1px dashed #D0D5DD; border-radius: 12px; padding: 20px; }
+.stage.dark { background: #0E0F12; border-color: #23262D; }
+.notes { margin: 16px 0 0; padding: 16px 18px; background: var(--card); border-radius: var(--r-sm);
+         box-shadow: var(--shadow); }
+.notes h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.notes ul { margin: 0; padding-left: 17px; font-size: 12.5px; line-height: 1.75; color: #475467; }
+.notes li + li { margin-top: 2px; }
+.notes b { color: var(--ink); }
+.notes code { background: #F2F4F7; border-radius: 4px; padding: 1px 5px; font-size: 11.5px;
+              font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+/* ===========================================================================
+   THE BLOCKS THEMSELVES
+   =========================================================================== */
+
+/* --- shared card shell used by most references --- */
+.c { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 20px; }
+.c-title { font-size: 13px; color: var(--ink-2); font-weight: 500; }
+.dots { border: 0; background: transparent; color: var(--ink-3); cursor: pointer; font-size: 16px;
+        line-height: 1; padding: 2px 6px; border-radius: 6px; }
+.dots:hover { background: #F2F4F7; color: var(--ink); }
+
+/* 1 — metric card with a delta chip */
+.m-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap: 14px; }
+.m-card .m-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.m-value { font-size: 30px; font-weight: 700; letter-spacing: -.025em; line-height: 1.1;
+           font-variant-numeric: tabular-nums; }
+.m-foot { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.chip { display: inline-flex; align-items: center; gap: 3px; border-radius: 999px; padding: 2px 8px;
+        font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.chip.up { background: var(--green-soft); color: var(--green); }
+.chip.down { background: var(--red-soft); color: var(--red); }
+.m-since { font-size: 12px; color: var(--ink-3); }
+.m-more { margin-left: auto; font-size: 12px; color: var(--blue); text-decoration: none; font-weight: 500; }
+.m-more:hover { text-decoration: underline; }
+.flag { width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(#E5484D 33%, #fff 33% 66%, #2563EB 66%); }
+
+/* 2 — compact analytics tile (the Shopify one) */
+.t-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap: 12px; }
+.t-card { background: var(--card); border-radius: 12px; box-shadow: var(--shadow); padding: 13px 15px; }
+.t-label { font-size: 12px; color: var(--ink); text-decoration: underline dotted; text-underline-offset: 3px;
+           text-decoration-color: #D0D5DD; cursor: help; }
+.t-body { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 7px; gap: 10px; }
+.t-value { font-size: 13.5px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.t-value em { font-style: normal; color: var(--ink-3); margin-left: 5px; }
+.t-spark { flex: 0 0 auto; }
+/* the same tile, given a hierarchy — what we would actually ship */
+.t-card.fixed .t-value { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+.t-card.fixed .t-label { font-size: 12.5px; color: var(--ink-2); text-decoration: none; }
+.t-card.fixed { padding: 16px; }
+
+/* 3 — big KPI with inline trend sentence */
+.k-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 14px; }
+.k-card { background: var(--card); border-radius: 12px; box-shadow: var(--shadow); padding: 16px 18px; position: relative; }
+.k-card .dots { position: absolute; top: 10px; right: 8px; opacity: 0; transition: opacity .12s; }
+.k-card:hover .dots { opacity: 1; }
+.k-label { font-size: 12.5px; color: var(--ink-2); }
+.k-value { font-size: 32px; font-weight: 700; letter-spacing: -.03em; line-height: 1.15; margin: 4px 0 6px;
+           font-variant-numeric: tabular-nums; }
+.k-trend { font-size: 12px; color: var(--ink-3); }
+.k-trend b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.k-trend b.up { color: var(--green); }
+.k-trend b.down { color: var(--red); }
+
+/* 4 — stat card with a raised unit (the estate dashboard) */
+.e-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 12px; }
+.e-card { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); padding: 14px 16px 15px; }
+.e-label { font-size: 11.5px; color: var(--ink-3); }
+.e-value { font-size: 27px; font-weight: 700; letter-spacing: -.03em; margin: 7px 0 9px;
+           font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 2px; }
+.e-value sup, .e-value sub { font-size: 12px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
+.e-value sup { align-self: flex-start; margin-top: 4px; }
+.e-trend { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.e-trend.up { color: var(--green); }
+.e-trend.down { color: var(--red); }
+.e-period { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+
+/* 5 — dark card with an oversized ghost icon */
+.d-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap: 1px; background: #23262D;
+          border-radius: 14px; overflow: hidden; }
+.d-card { background: #131519; padding: 16px 18px 18px; position: relative; overflow: hidden; }
+.d-label { font-size: 12px; color: #98A2B3; }
+.d-value { font-size: 30px; font-weight: 600; color: #F5F6F8; letter-spacing: -.03em; margin-top: 8px;
+           font-variant-numeric: tabular-nums; }
+.d-ghost { position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+           width: 54px; height: 54px; border-radius: 10px; background: #1B1E24;
+           display: grid; place-items: center; color: #3A3F49; }
+
+/* 6 — ranked bars */
+.b-row + .b-row { margin-top: 15px; }
+.b-head { display: flex; align-items: baseline; gap: 8px; font-size: 13.5px; font-weight: 600; margin-bottom: 7px; }
+.b-head small { font-weight: 400; font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.b-head span { margin-left: auto; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.b-track { height: 9px; border-radius: 999px; background: var(--track); overflow: hidden; }
+.b-fill { height: 100%; border-radius: 999px; background: var(--blue); }
+
+/* 7 — icon list */
+.l-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.l-row:last-child { border-bottom: 0; }
+.l-icon { width: 34px; height: 34px; border-radius: 9px; background: var(--blue-soft); color: var(--blue);
+          display: grid; place-items: center; flex: 0 0 auto; }
+.l-icon.ok { background: var(--green-soft); color: var(--green); }
+.l-main { min-width: 0; flex: 1; }
+.l-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+.l-right { text-align: right; flex: 0 0 auto; }
+.l-amt { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.l-id { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+/* 8 — radial summary + legend */
+.r-wrap { display: flex; flex-direction: column; align-items: center; }
+.leg { width: 100%; margin-top: 18px; }
+.leg-row { display: flex; align-items: center; gap: 9px; padding: 7px 0; font-size: 12.5px; }
+.leg-row + .leg-row { border-top: 1px solid var(--line); }
+.leg-sw { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.leg-row b { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* 9 — ticker cards */
+.tk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px,1fr)); gap: 12px; }
+.tk { background: var(--card); border-radius: 12px; box-shadow: var(--shadow); padding: 13px 15px; }
+.tk-name { font-size: 13px; font-weight: 600; }
+.tk-sym { font-size: 10.5px; color: var(--ink-3); letter-spacing: .04em; margin-top: 1px; }
+.tk-price { font-size: 19px; font-weight: 700; letter-spacing: -.02em; margin-top: 11px;
+            font-variant-numeric: tabular-nums; }
+.tk-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 5px; font-size: 11.5px; }
+.tk-foot span { color: var(--ink-3); }
+.tk-foot b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tk-foot b.up { color: var(--green); }
+.tk-foot b.down { color: var(--red); }
+
+/* 10 — table with a sparkline column */
+.st { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.st th { text-align: left; font-weight: 500; color: var(--ink-3); font-size: 11.5px; padding: 0 10px 10px 0; }
+.st td { padding: 10px 10px 10px 0; border-top: 1px solid var(--line); vertical-align: middle; }
+.st .asset { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+.st .dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+           font-size: 9.5px; font-weight: 700; color: #fff; }
+.st .num { text-align: right; font-variant-numeric: tabular-nums; }
+.st .up { color: var(--green); font-weight: 600; }
+.st .down { color: var(--red); font-weight: 600; }
+
+/* the closing summary */
+.system { margin-top: 64px; background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 26px 28px; }
+.system h2 { margin: 0 0 6px; font-size: 19px; letter-spacing: -.015em; }
+.system > p { font-size: 13px; color: var(--ink-2); line-height: 1.7; max-width: 72ch; }
+.system h3 { font-size: 13px; margin: 22px 0 6px; }
+.system ul { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.8; color: #475467; }
+.system b { color: var(--ink); }
+
+
+/* ============ fidelity corrections, appended so they win ============ */
+/* --- from fix-b1-b3.html --- */
+/* ===========================================================================
+   1 & 3 — CORRECTIONS, after reading the two screenshots pixel by pixel.
+   Both references are the same way round, and it is not the way these blocks
+   were first built: the PAGE is white and the CARDS are the grey tone
+   (#FAFAFA in the banking shots, #F9F9F9 in the KPI dashboard). Neither one
+   has a drop shadow — the tone step and the white gutter do all the
+   separating. Sampled, not guessed: card fill 250,250,250 / gutter 255.
+   =========================================================================== */
+
+/* --- 1 · metric card with a delta chip ------------------------------------ */
+#b1 .stage { background: #FFFFFF; }
+#b1 .m-grid { gap: 12px; }
+#b1 .m-card { background: #FAFAFA; box-shadow: none; padding: 18px 18px 16px; }
+#b1 .m-card .m-top { margin-bottom: 13px; }
+#b1 .c-title { font-size: 13px; font-weight: 400; color: var(--ink-3); }
+#b1 .m-value { font-size: 28px; font-weight: 650; letter-spacing: -.02em; }
+#b1 .m-foot { margin-top: 14px; gap: 10px; }
+/* The chip is BLUE in both directions in the reference — +3.2% and -4.2% are
+   the same hue — and the tint is a whisper, not an 8% wash. Sign first, arrow
+   trailing. It is also markedly smaller than the sentence beside it. */
+#b1 .chip { background: #EFF6FE; color: var(--blue); font-size: 10px; font-weight: 600;
+            padding: 2px 6px; gap: 4px; letter-spacing: 0; }
+#b1 .m-since { font-size: 12px; color: #B0B7C1; }
+#b1 .m-more { font-size: 12px; font-weight: 400; }
+/* the top-right slot is a currency picker, not an ornament */
+#b1 .cur { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--ink-2); }
+#b1 .cur svg { color: var(--ink-3); flex: 0 0 auto; }
+#b1 .flag { width: 15px; height: 15px;
+            background: linear-gradient(#3C3B6E 0 45%, transparent 45%) left top / 50% 100% no-repeat,
+                        linear-gradient(#B22234 0 20%, #fff 20% 40%, #B22234 40% 60%, #fff 60% 80%, #B22234 80%); }
+
+/* --- 3 · big KPI with a trend sentence ------------------------------------ */
+#b3 .stage { background: #FFFFFF; }
+#b3 .k-grid { gap: 12px; }
+#b3 .k-card { background: #F9F9F9; box-shadow: none; border-radius: 14px; padding: 16px 16px 20px; }
+/* the ··· is on every card, all the time — measured at ~#4C4C4C, not a ghost */
+#b3 .k-card .dots { opacity: 1; top: 9px; right: 8px; font-size: 14px; color: #667085; }
+#b3 .k-label { font-size: 13px; color: var(--ink); }
+#b3 .k-value { font-size: 27px; font-weight: 550; letter-spacing: -.02em; margin: 9px 0 10px; }
+/* only the percentage is coloured; the rest of the sentence is the same
+   near-black as the label — it is not a muted tail */
+#b3 .k-trend { font-size: 12.5px; color: var(--ink); }
+#b3 .k-trend b { font-weight: 400; }
+
+/* --- from fix-b8.html --- */
+/* 8 — radial summary: the reference's own proportions, measured off the shot.
+   The card is 247px wide there and the chart+legend column only 154px, so the
+   legend is inset to the chart's width rather than running the card's full
+   content box. Rows sit on a 16.5px pitch with no rule between them. */
+#b8 .c { padding: 18px; }
+#b8 .r-wrap { align-items: center; }
+#b8 .leg { width: 210px; margin-top: 14px; }
+#b8 .leg-row { padding: 4px 0; gap: 10px; }
+#b8 .leg-row + .leg-row { border-top: 0; }
+
+/* --- from fix-b2-b4-b7.html --- */
+/* ===========================================================================
+   SECOND PASS — measured off the screenshots pixel by pixel, scoped to the
+   three sections so the first-guess rules above stay readable as what they are.
+   =========================================================================== */
+
+/* 2 — the Shopify tile measures 382×75 with 16px padding all round. It is NOT
+   borderless: 1px #E3E3E3 on three sides, a darker #C8C8C8 bottom edge, then a
+   short shadow under it. Label and value are both ~13px #303030 — identical. */
+#b2 .t-card { padding: 16px; border: 1px solid #E3E3E3; border-bottom-color: #C8C8C8;
+              box-shadow: 0 1px 2px rgba(16,24,40,.05); }
+#b2 .t-label { font-size: 13px; text-decoration-color: #CCC; text-decoration-thickness: 1.5px;
+               text-underline-offset: 4px; }
+#b2 .t-body { margin-top: 4px; }            /* 23px baseline-to-baseline, measured */
+#b2 .t-value { font-size: 13px; }
+#b2 .t-value em { color: #A2A2A2; margin-left: 7px; }
+/* the deliberately-fixed row keeps its hierarchy (id beats the class above) */
+#b2 .t-card.fixed .t-label { font-size: 13px; color: var(--ink-2); text-decoration: none; }
+#b2 .t-card.fixed .t-value { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+
+/* 7 — measured: 46px row pitch, and the tile is a 30px CIRCLE, not a rounded
+   square. All five rows carry the same pale blue tint and the same blue glyph —
+   there is no second colour in the reference. */
+#b7 .l-row { padding: 8px 0; gap: 11px; }
+#b7 .l-icon { width: 30px; height: 30px; border-radius: 50%; }
+#b7 .l-name { font-weight: 600; }
+#b7 .l-sub, #b7 .l-id { margin-top: 1px; }
+
+
+/* ============ fix round: the pane was the problem ============
+   Rendered all ten and five blocks wrapped or overflowed. Every one was the same
+   thing — .wrap capped the page at 1120px, each pane got 527px, and a card drawn at
+   the reference's own width (249-250px) could not hold a line the reference holds.
+   The pane is 1440/2 now; these pin the column counts so auto-fit cannot re-orphan
+   a card at some in-between width. */
+
+/* Two up, and the third drops below — which is exactly what the reference shows:
+   Total Balance and Total Expenses share a row, Total Savings sits under them. */
+#b1 .m-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* The chip, the basis and the link are one line in the reference, never two. */
+#b1 .m-foot { flex-wrap: nowrap; white-space: nowrap; }
+#b1 .m-since, #b1 .m-more, #b1 .chip { white-space: nowrap; }
+
+/* "Committed to orders" was folding and pushing its row out of the legend rhythm. */
+#b8 .lg-name, #b8 .lg-row span { white-space: nowrap; }</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="badge">Picks · 1 2 3 7 8 — scratch file, not wired into the product</span>
+  <h1>Blocks Lab — the five picks</h1>
+  <p>The five blocks you picked out of the ten — 1, 2, 3, 7 and 8 — rebuilt from scratch so they can be judged side by side with the
+  screenshot that inspired them. <b>Nothing here touches <code>styles.css</code></b> — this file carries
+  its own tokens, borrowed from the references themselves, because copying a look accurately is the only
+  way to find out whether we actually want it.</p>
+  <p>Each one lists <b>the system</b>: the handful of decisions that make it work, which is the part worth
+  keeping. A block graduates by being rebuilt on our <code>--po-*</code> tokens in <code>styles.css</code>
+  and written up in <code>design.html</code> — never by being pasted out of here.</p>
+</header>
+
+<nav class="toc">
+  <b>Numbers</b>
+  <a href="#b1">1 · Metric card with a delta chip</a>
+  <a href="#b2">2 · Compact analytics tile</a>
+  <a href="#b3">3 · Big KPI with a trend sentence</a>
+  <b>Lists &amp; charts</b>
+  <a href="#b7">7 · Icon list</a>
+  <a href="#b8">8 · Radial summary</a>
+  <b>End</b>
+  <a href="#system">What they all share</a>
+</nav>
+
+<!-- ============================ 1 ============================ -->
+<section id="b1">
+  <h2>1 · Metric card with a delta chip</h2>
+  <p class="src">Reference: banking dashboard — Total Balance / Total Expenses / Total Savings</p>
+  <div class="pair">
+    <div class="pane">
+      <h3>Reference</h3>
+      <img class="ref" src="docs/refs/03-metric-cards-balance.png" alt="Reference: Total Balance and Total Expenses cards" />
+      <img class="ref" style="margin-top:10px" src="docs/refs/01-metric-card-savings.png" alt="Reference: Total Savings card" />
+    </div>
+    <div class="pane">
+      <h3>Recreation</h3>
+      <div class="stage">
+        <div class="m-grid">
+          <div class="c m-card">
+            <div class="m-top">
+              <span class="c-title">Total Balance</span>
+              <span class="cur"><span class="flag"></span>USD
+                <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 4 L5 6.5 L7.5 4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+            </div>
+            <div class="m-value">₱21,234.74</div>
+            <div class="m-foot">
+              <span class="chip">+3.2% ↑</span>
+              <span class="m-since">From last month</span>
+              <a class="m-more" href="#b1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Total Expenses</span></div>
+            <div class="m-value">₱9,834.24</div>
+            <div class="m-foot">
+              <span class="chip">−4.2% ↓</span>
+              <span class="m-since">From last month</span>
+              <a class="m-more" href="#b1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Total Savings</span></div>
+            <div class="m-value">₱11,634.15</div>
+            <div class="m-foot">
+              <span class="chip">+2.4% ↑</span>
+              <span class="m-since">From last month</span>
+              <a class="m-more" href="#b1">View More</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h4>The system</h4>
+    <ul>
+      <li><b>Three tiers, one per line.</b> Label 13px muted → value 28px bold → context row 12px. Roughly 2:1 between label and value, which is the whole hierarchy; you read it top to bottom and never have to hunt for the number.</li>
+      <li><b>The card is the grey one.</b> Page <code>#FFFFFF</code>, card <code>#FAFAFA</code>, and the gutter between cards stays white — <b>no shadow at all</b>. The separation is one step of tone plus the gap. Worth knowing before we copy it: at that contrast the card edge is almost invisible in a bright room, which is exactly why our own surfaces carry a line.</li>
+      <li><b>The delta is a chip, not coloured text.</b> A pill (tint ~<code>#EFF6FE</code>, text at full) survives being small in a way coloured text does not, and it separates "how it changed" from "what it is". Note how faint the tint is — this is a wash, not a badge.</li>
+      <li><b>But the chip is blue in both directions.</b> <code>+3.2% ↑</code> and <code>−4.2% ↓</code> are the same hue in the reference; only the sign and the arrow carry the meaning. That is the one thing here not to copy — a POS cashier reading a red-to-black day needs the colour to do the work. Green/red is our change, made knowingly.</li>
+      <li><b>The chip is smaller than the sentence next to it</b> — ~10px against 12px. It reads as an annotation on the number, not as a peer of "From last month".</li>
+      <li><b>The comparison is spelled out</b> — "From last month". Our own <code>↓100.0%</code> with a tooltip is the same information hidden; this costs one muted line and removes the question.</li>
+      <li><b>"View More" is pushed right with <code>margin-left:auto</code></b>, so the card has a left cluster (the facts) and a right anchor (the exit). No centre.</li>
+      <li>The top-right slot is a <b>currency picker</b> (flag + <code>USD</code> + chevron), not decoration, and only the first card has one — the control sits on the card it governs.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ 2 ============================ -->
+<section id="b2">
+  <h2>2 · Compact analytics tile</h2>
+  <p class="src">Reference: Shopify Analytics — and your note that these are <em>too small</em></p>
+  <div class="pair">
+    <div class="pane">
+      <h3>Reference</h3>
+      <img class="ref" src="docs/refs/02-shopify-analytics-tiles.png" alt="Reference: Shopify analytics tiles" />
+    </div>
+    <div class="pane">
+      <h3>Recreation — theirs, then fixed</h3>
+      <div class="stage">
+        <div class="t-row">
+          <div class="t-card">
+            <span class="t-label">Gross sales</span>
+            <div class="t-body">
+              <div class="t-value">₱0.00 <em>—</em></div>
+              <svg class="t-spark" width="40" height="16" viewBox="0 0 40 16"><path d="M1 13h38" stroke="#7AD1F7" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+            </div>
+          </div>
+          <div class="t-card">
+            <span class="t-label">Orders fulfilled</span>
+            <div class="t-body">
+              <div class="t-value">0 <em>—</em></div>
+              <svg class="t-spark" width="40" height="16" viewBox="0 0 40 16"><path d="M1 13h38" stroke="#7AD1F7" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="t-row" style="margin-top:12px">
+          <div class="t-card fixed">
+            <span class="t-label">Gross sales</span>
+            <div class="t-body">
+              <div class="t-value">₱182,400</div>
+              <svg class="t-spark" width="54" height="22" viewBox="0 0 54 22"><path d="M1 17 L11 12 L21 15 L31 7 L41 10 L53 3" stroke="#2563EB" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+          <div class="t-card fixed">
+            <span class="t-label">Orders fulfilled</span>
+            <div class="t-body">
+              <div class="t-value">1,284</div>
+              <svg class="t-spark" width="54" height="22" viewBox="0 0 54 22"><path d="M1 6 L11 9 L21 5 L31 12 L41 10 L53 16" stroke="#2563EB" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h4>The system — and why you were right</h4>
+    <ul>
+      <li><b>The value is exactly the same size as the label</b> — both measure ~13px in the same #303030, so the tile has no focal point at all and four of them across a page read as a paragraph of small print. The second row changes exactly one thing — value to 22px — and the tile starts working.</li>
+      <li><b>The dotted underline on the label is a real idea worth stealing.</b> It is the standard "this term has a definition" affordance; hovering explains what <em>Gross sales</em> counts. Useful in a POS, where "gross sales" and "net sales" get argued about. In the reference it is a 2px dashed rule, ~4px under the baseline, in a very light grey.</li>
+      <li><b>The em dash is a deliberate no-data marker</b>, not a bug. Better than <code>0%</code>, which claims a real comparison that does not exist. We should use it: an em dash where there is nothing to compare against.</li>
+      <li>The flat sparkline at zero still draws a line. <b>A chart with no data should still show its axis</b> — an empty box reads as broken, a flat line reads as quiet.</li>
+      <li><b>This is the one reference in the set with a visible border</b>: 1px #E3E3E3, a darker bottom edge and only a whisper of shadow, on a #F1F1F1 canvas. Worth knowing before block 1's "borderless card" gets treated as universal — Shopify draws the edge, everyone else here uses shadow alone.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ 3 ============================ -->
+<section id="b3">
+  <h2>3 · Big KPI with a trend sentence</h2>
+  <p class="src">Reference: KPIs Dashboard — Net Revenue / Day Sales / Weekly Sales / Monthly Purchases</p>
+  <div class="pair">
+    <div class="pane">
+      <h3>Reference</h3>
+      <img class="ref" src="docs/refs/05-kpi-dashboard.png" alt="Reference: KPIs dashboard" />
+    </div>
+    <div class="pane">
+      <h3>Recreation</h3>
+      <div class="stage">
+        <div class="k-grid">
+          <div class="k-card">
+            <button class="dots" title="More">···</button>
+            <div class="k-label">Net Revenue</div>
+            <div class="k-value">₱503,450</div>
+            <div class="k-trend"><b class="up">↑5%</b> in the last week</div>
+          </div>
+          <div class="k-card">
+            <button class="dots" title="More">···</button>
+            <div class="k-label">Day Sales</div>
+            <div class="k-value">₱3,090</div>
+            <div class="k-trend"><b class="up">↑2.2%</b> in the last day</div>
+          </div>
+          <div class="k-card">
+            <button class="dots" title="More">···</button>
+            <div class="k-label">Weekly Sales</div>
+            <div class="k-value">₱43,740</div>
+            <div class="k-trend"><b class="up">↑1.2%</b> in the last week</div>
+          </div>
+          <div class="k-card">
+            <button class="dots" title="More">···</button>
+            <div class="k-label">Monthly Purchases</div>
+            <div class="k-value">₱15,230</div>
+            <div class="k-trend"><b class="up">↑0.2%</b> in the last month</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h4>The system</h4>
+    <ul>
+      <li><b>Grey cards on a white page</b> — <code>#F9F9F9</code> tiles, white canvas, white gutter, no border and no shadow. The opposite of the usual white-card-on-grey, and the opposite of how this block was first drawn. It only works because the cards sit in a run: four grey rectangles in a row read as a group, one alone would read as disabled.</li>
+      <li><b>The trend is a sentence, and only the percentage is coloured.</b> "<span style="color:#12A150">↑5%</span> in the last week" — but the rest of the sentence is the <em>same near-black as the label</em>, not a muted tail, and it is not bold either. The colour is the only thing doing any emphasising.</li>
+      <li><b>All four deltas are green, including the 0.2% one.</b> The reference never shows the down state, so it tells us nothing about how red would behave here — worth remembering before we assume this palette survives a bad day.</li>
+      <li><b>Label and trend are the same size</b> (~13px) and the same colour; the value at ~27px is the only thing that changes. One size step, done twice, is the entire type system on this card.</li>
+      <li><b>Tight tracking on the big number</b> (<code>letter-spacing:-.02em</code>) and a medium weight, not a bold — at 27px, 550 keeps it from shouting. Default spacing at that size looks loose; this is the single cheapest thing that makes a number look designed.</li>
+      <li><b>The ··· is always visible, on every card.</b> Four menu buttons across a row, at a solid grey — furniture competing with the numbers. Ours should fade it in on hover instead; that is our change, not theirs.</li>
+      <li>Generous bottom padding (~20px against 16 on the sides) leaves the trend sentence sitting well clear of the card edge, which is what stops the tile feeling cramped despite carrying three lines.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ 7 ============================ -->
+<section id="b7">
+  <h2>7 · Icon list</h2>
+  <p class="src">Reference: Revenue — product rows with amount and reference id</p>
+  <div class="pair">
+    <div class="pane">
+      <h3>Reference</h3>
+      <img class="ref" src="docs/refs/07-icon-list.png" alt="Reference: revenue icon list" />
+    </div>
+    <div class="pane">
+      <h3>Recreation</h3>
+      <div class="stage">
+        <div class="c">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between">
+            <div>
+              <div style="font-size:15px;font-weight:650;letter-spacing:-.01em">Recent sales</div>
+              <div style="font-size:12px;color:var(--ink-3);margin:2px 0 8px">Newest first, all terminals</div>
+            </div>
+            <button class="dots" title="More">···</button>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+            <div class="l-main"><div class="l-name">Bosch GSB 550 Impact Drill</div><div class="l-sub">Sep 20, 2026 · 1:00 PM</div></div>
+            <div class="l-right"><div class="l-amt">₱5,980.00</div><div class="l-id">R-004812</div></div>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+            <div class="l-main"><div class="l-name">THHN Wire #14 (per metre)</div><div class="l-sub">Sep 20, 2026 · 12:41 PM</div></div>
+            <div class="l-right"><div class="l-amt">₱3,898.00</div><div class="l-id">R-004811</div></div>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+            <div class="l-main"><div class="l-name">Quick-Dry Enamel Black 1L</div><div class="l-sub">Sep 20, 2026 · 12:08 PM</div></div>
+            <div class="l-right"><div class="l-amt">₱348.00</div><div class="l-id">R-004810</div></div>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+            <div class="l-main"><div class="l-name">Silicone Sealant White</div><div class="l-sub">Sep 20, 2026 · 11:52 AM</div></div>
+            <div class="l-right"><div class="l-amt">₱98.00</div><div class="l-id">R-004809</div></div>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+            <div class="l-main"><div class="l-name">Stanley Measuring Tape 5m Heavy Duty Chrome</div><div class="l-sub">Sep 20, 2026 · 11:20 AM</div></div>
+            <div class="l-right"><div class="l-amt">₱348.00</div><div class="l-id">R-004808</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h4>The system</h4>
+    <ul>
+      <li><b>Two stacked columns, mirrored.</b> Left: name over timestamp. Right: amount over reference id. The strong thing is on top in both, the weak thing underneath in both — so the row scans as two lines, not four fields.</li>
+      <li><b>This is the honest exception to our "one row, one line" rule</b>, and it is worth naming why: here the second line is a <em>different kind</em> of fact (when / which receipt) rather than more of the same. When the sub-line is just a qualifier on the name — a SKU, a reorder point — it belongs beside it. Compare block 1 of <code>design.html</code>.</li>
+      <li><b>The icon tile is a 30px circle in one pale blue tint — the same tint on every row.</b> Only the glyph changes (card sale vs completed). The tint is the <em>list's</em> colour, not the row's; colouring rows by status would turn a quiet list into a status board, which is a different component.</li>
+      <li><b>The row is 46px, and the tile sets it.</b> 30px circle plus 8px above and below, name and timestamp stacked tight inside it. That is dense enough to show five sales without scrolling and still leave the tile room to be round.</li>
+      <li>Amounts are tabular and right-aligned; so are the ids, which makes the right edge a clean line even though the two columns are different lengths. Long names truncate with an ellipsis rather than wrapping — the row height never changes.</li>
+      <li>Hairlines between rows, <b>none after the last</b> — a trailing rule makes the card look cut off.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ 8 ============================ -->
+<section id="b8">
+  <h2>8 · Radial summary</h2>
+  <p class="src">Reference: Accounts summary — concentric arcs with a value legend</p>
+  <div class="pair">
+    <div class="pane">
+      <h3>Reference</h3>
+      <img class="ref" src="docs/refs/04-radial-summary.png" alt="Reference: accounts summary radial chart" />
+    </div>
+    <div class="pane">
+      <h3>Recreation</h3>
+      <div class="stage">
+        <div class="c" style="max-width:330px">
+          <div class="c-title" style="margin-bottom:6px">Stock value summary</div>
+          <div class="r-wrap">
+            <!-- Geometry, written out so the numbers can be changed without re-deriving them:
+                 · cx/cy = 105/105, so every arc foot lands on the baseline y = 105.
+                 · Ring centrelines r = 56 / 76 / 96 at stroke-width 18 → a 2px gap between
+                   rings, a 47px hole (56 − 9) and an outer edge of 96 + 9 = 105, i.e. exactly
+                   half the viewBox width. Same ratios as the reference (13px stroke on a 77px
+                   outer radius), scaled ×1.36.
+                 · Each path starts at the RIGHT foot (cx + r) and sweeps counter-clockwise over
+                   the top — large-arc 0, sweep 0. That is the direction the reference fills in,
+                   so the dash grows right → top → left. Starting the path there means no
+                   transform="rotate(...)" and no stroke-dashoffset are needed at all.
+                 · Half-circle length = π·r = 175.9 / 238.8 / 301.6.
+                 · stroke-dasharray = "drawn rest", drawn = fraction × π·r. The fractions are the
+                   reference's own, protractored off the screenshot: 134° / 87° / 78° out of 180°
+                   = .744 / .483 / .433. Swap in real ratios when this graduates.
+                 · Butt caps, not round: in the reference both ends of every arc are square-cut
+                   and the feet stop dead on the baseline. -->
+            <svg width="210" height="106" viewBox="0 0 210 106" role="img"
+                 aria-label="Three concentric arcs: on-hand 74%, committed 48%, dead stock 43%">
+              <g fill="none" stroke-width="18" stroke-linecap="butt">
+                <!-- innermost ring = first legend row; the ramp lightens toward the centre -->
+                <path d="M161 105 A56 56 0 0 0 49 105" stroke="#E8F4FD"/>
+                <path d="M161 105 A56 56 0 0 0 49 105" stroke="#5CB2F0" stroke-dasharray="131 176"/>
+                <path d="M181 105 A76 76 0 0 0 29 105" stroke="#E8F4FD"/>
+                <path d="M181 105 A76 76 0 0 0 29 105" stroke="#0C8CE9" stroke-dasharray="115.4 238.8"/>
+                <path d="M201 105 A96 96 0 0 0 9 105" stroke="#E8F4FD"/>
+                <path d="M201 105 A96 96 0 0 0 9 105" stroke="#0963A4" stroke-dasharray="130.7 301.6"/>
+              </g>
+            </svg>
+            <div class="leg">
+              <div class="leg-row"><i class="leg-sw" style="background:#5CB2F0"></i> On-hand value <b>₱821,234.74</b></div>
+              <div class="leg-row"><i class="leg-sw" style="background:#0C8CE9"></i> Committed to orders <b>₱89,834.24</b></div>
+              <div class="leg-row"><i class="leg-sw" style="background:#0963A4"></i> Dead stock <b>₱11,634.15</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <h4>The system</h4>
+    <ul>
+      <li><b>One hue, three depths, lightest at the centre.</b> The ramp runs light → mid → dark going <em>outward</em>: <code>#5CB2F0</code> on the inner ring, <code>#0C8CE9</code> in the middle, <code>#0963A4</code> on the rim. Because the rings are nested rather than side by side, three <em>different</em> hues would imply they are unrelated; one hue says "three parts of the same total".</li>
+      <li><b>Legend order is ring order, inner to outer.</b> In the reference the biggest figure takes the innermost ring — which is also the shortest circumference, so the largest number gets the least ink. Reproduced here because it is what the reference does, but it is the one thing we would flip if this graduates.</li>
+      <li><b>All three arcs start at the right foot and sweep counter-clockwise</b> — right, over the top, toward the left. Not left-to-right. Every ring shares the start, which is the only reason the three lengths are comparable at a glance.</li>
+      <li><b>Square ends, not rounded.</b> The reference's caps are butt on both ends and the feet stop dead on the baseline. A round cap would hang half a stroke below the baseline and add ~4° of ink to each end — on the smallest ring that is a visible lie about the value.</li>
+      <li><b>One track tint for all three rings</b> — <code>#E8F4FD</code> at every radius, not a tint per ring. Same principle as the bar track: the ring is only readable because you can see the part it did not fill.</li>
+      <li><b>The legend carries the numbers, the chart carries the shape.</b> No labels on the arcs, no percentages, and no centre label — the reference leaves the hole empty. The chart answers "roughly how do these compare"; the legend answers "exactly what are they". It is inset to the chart's own width, with no rules between rows.</li>
+      <li>It is plain SVG: a half-circle <code>path</code> per ring, drawn twice — once as the track, once as the value with <code>stroke-dasharray</code>. Because each path already starts where its fill starts, there is no <code>stroke-dashoffset</code> and no <code>rotate()</code>. <b>No chart library, no JS.</b></li>
+      <li>Honest caveat: the reference's arcs are not proportional to its own figures — Savings ($11,634) draws a <em>shorter</em> arc than Expenses ($9,834), so each ring must be a share of its own target rather than of a common total. The fractions here are copied for shape only; real ratios go in before this ships. And a ring is a poor way to compare three numbers precisely — it earns its place as a <em>summary</em> above a list that gives the real figures, never as the only view.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ closing ============================ -->
+<div class="system" id="system">
+  <h2>What they all share</h2>
+  <p>These five came out of six different products, and the same eight decisions keep turning up. This is the
+  part actually worth taking — the specific pixel values above are a costume, these are the pattern.</p>
+
+  <h3>1 · One number per card, and it is unmistakably the biggest thing</h3>
+  <ul>
+    <li>Value is 2× to 3× the label. The Shopify tile is the only one that breaks this and it is the only one that looks weak — which is what you spotted straight away.</li>
+    <li>Tight negative tracking on anything over 24px. Costs nothing, and its absence is what makes a number look like default browser output.</li>
+  </ul>
+
+  <h3>2 · The comparison is always spelled out</h3>
+  <ul>
+    <li>"From last month", "in the last week", "vs Last Week", "This Month" — every single reference prints the basis. None of them hides it in a tooltip, which is what we currently do.</li>
+    <li>An em dash where there is no comparison. Not <code>0%</code>, not <code>↓100%</code>. <b>This is the fix for our empty-day Overview</b> and it does not need the red-vs-grey argument settled first.</li>
+  </ul>
+
+  <h3>3 · Colour is a chip or a word, never a row</h3>
+  <ul>
+    <li>Tinted pill at ~8% background with full-strength text, or a single bold coloured number inside an otherwise muted sentence. Nothing colours a whole row or a whole card.</li>
+  </ul>
+
+  <h3>4 · Label left, number right — everywhere</h3>
+  <ul>
+    <li>Bars, legends, list rows, ticker footers, table columns. The right edge becomes a single clean line of tabular figures you can read down without your eye tracking back.</li>
+  </ul>
+
+  <h3>5 · Every bar and ring draws its own remainder</h3>
+  <ul>
+    <li>The track is what gives the fill a scale. A fill with no track is a coloured rectangle of unknown meaning.</li>
+  </ul>
+
+  <h3>6 · Furniture recedes or hides</h3>
+  <ul>
+    <li>Icons at low contrast, oversized, decorative. ··· menus on hover only. Borders replaced by gaps and shadows. In every one of these, the chrome is quieter than the content — which is not true of our tables today.</li>
+  </ul>
+
+  <h3>7 · Two stacked lines are allowed when the second is a different kind of fact</h3>
+  <ul>
+    <li>Name over timestamp, amount over receipt id: fine, because the pair reads as one unit. Name over SKU: not fine, because the SKU is a qualifier on the name and belongs beside it. Our rule stands, and now it has a stated boundary.</li>
+  </ul>
+
+  <h3>8 · No chart library anywhere in this file</h3>
+  <ul>
+    <li>Sparklines are a <code>&lt;path&gt;</code>. Rings are two arcs and a <code>stroke-dasharray</code>. Bars are two divs. Everything on this page is hand-drawn SVG and CSS, which means every one of these could ship in our no-build-step app exactly as it is.</li>
+  </ul>
+
+  <h3>What you picked</h3>
+  <ul>
+    <li><b>1 · Metric card with a delta chip</b> — the Overview and Sales stat cards.</li>
+    <li><b>2 · Compact analytics tile</b> — a dense strip where a full card is too loud.</li>
+    <li><b>3 · Big KPI with a trend sentence</b> — one number that has to carry a page.</li>
+    <li><b>7 · Icon list</b> — ranked rows that are things rather than numbers.</li>
+    <li><b>8 · Radial summary</b> — a split of one total.</li>
+  </ul>
+  <p style="margin-top:18px"><b>Nothing is ported yet.</b> These five get edited here first, then
+  rebuilt on <code>--po-*</code> in <code>styles.css</code> and written into <code>design.html</code>.</p>
+</div>
+
+</div>
+</body>
+</html>

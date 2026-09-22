@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Block 3 — playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   Block 3 — "Big KPI with a trend sentence" — as a playground.
+
+   Every number in the block is a CSS variable on #board. The panel does not
+   know anything about the block: each control just writes its variable. So
+   adding a knob is one line of DATA below, never new plumbing.
+
+   This is a scratch tool, not product code. It is the only file in the repo
+   that carries JavaScript outside the app, and its localStorage use is its own
+   UI state — it is deliberately nothing to do with HWPOS_STORE.
+   =========================================================================== */
+:root {
+  --canvas: #F4F5F7;
+  --card: #FFFFFF;
+  --ink: #101828;
+  --ink-2: #667085;
+  --ink-3: #98A2B3;
+  --line: #EAECF0;
+  --blue: #2563EB;
+  --green: #12A150;
+  --red: #E5484D;
+  --shadow: 0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.04);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--canvas); color: var(--ink);
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ----------------------------------------------------------------- layout */
+.pg { display: grid; grid-template-columns: 290px minmax(0, 1fr); min-height: 100vh; }
+.panel { background: var(--card); border-right: 1px solid var(--line); padding: 18px 16px 60px;
+         overflow-y: auto; height: 100vh; position: sticky; top: 0; }
+main { padding: 24px 28px 80px; min-width: 0; }
+
+.panel h1 { font-size: 15px; margin: 0 0 3px; letter-spacing: -.01em; }
+.panel .sub { font-size: 11.5px; color: var(--ink-3); margin: 0 0 16px; line-height: 1.5; }
+.grp { border-top: 1px solid var(--line); padding: 12px 0 4px; }
+.grp > h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em;
+            color: var(--ink-3); margin: 0 0 10px; }
+.ctl { display: grid; grid-template-columns: 1fr 64px; align-items: center;
+       gap: 8px; margin-bottom: 9px; }
+.ctl label { font-size: 12px; color: var(--ink-2); }
+.ctl input[type=range] { grid-column: 1 / -1; width: 100%; margin: 0; accent-color: var(--blue); }
+.ctl .n { font-size: 11.5px; color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
+.ctl input[type=color] { width: 100%; height: 26px; padding: 0; border: 1px solid var(--line);
+                         border-radius: 6px; background: none; cursor: pointer; grid-column: 2; }
+.ctl select { grid-column: 2; font: inherit; font-size: 11.5px; padding: 3px 4px;
+              border: 1px solid var(--line); border-radius: 6px; background: var(--card); }
+.chk { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2);
+       margin-bottom: 8px; cursor: pointer; }
+.chk input { accent-color: var(--blue); margin: 0; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+button.act { font: inherit; font-size: 12px; padding: 6px 11px; border-radius: 7px;
+             border: 1px solid var(--line); background: var(--card); color: var(--ink);
+             cursor: pointer; }
+button.act:hover { background: #F2F4F7; }
+button.act.pri { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* ------------------------------------------------------------- the board */
+.bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+       font-size: 12px; color: var(--ink-3); margin-bottom: 10px; }
+.bar b { color: var(--ink-2); font-weight: 500; font-variant-numeric: tabular-nums; }
+.bar .hint { margin-left: auto; }
+
+/* The container itself. resize:both is the browser's own handle — no drag
+   library, and it reports real pixels back through the ResizeObserver. */
+#board {
+  background: var(--stage-bg);
+  width: 620px; min-width: 240px; max-width: 100%; min-height: 180px;
+  padding: 20px; border-radius: 12px; border: 1px dashed #D0D5DD;
+  resize: both; overflow: auto; position: relative;
+}
+#grid { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: var(--gap); }
+
+/* ------------------------------------------------------- the block itself */
+.k-card {
+  background: var(--card-bg); border-radius: var(--card-r);
+  padding: var(--pad-t) var(--pad-x) var(--pad-b);
+  border: var(--card-bd) solid var(--card-bd-c);
+  box-shadow: var(--card-sh);
+  position: relative; min-width: 0;
+}
+.k-card .dots {
+  position: absolute; top: var(--dots-t); right: var(--dots-r);
+  border: 0; background: transparent; cursor: pointer; line-height: 1; padding: 2px 6px;
+  border-radius: 6px; font-size: var(--dots-s); color: var(--dots-c);
+}
+.k-label { font-size: var(--label-s); font-weight: var(--label-w); color: var(--label-c);
+           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k-value { font-size: var(--val-s); font-weight: var(--val-w); letter-spacing: var(--val-ls);
+           line-height: 1.15; color: var(--val-c); margin: var(--val-mt) 0 var(--val-mb);
+           font-variant-numeric: tabular-nums; white-space: nowrap; }
+.k-trend { font-size: var(--trend-s); color: var(--trend-c); white-space: nowrap; }
+.k-trend b { font-weight: var(--delta-w); font-variant-numeric: tabular-nums; }
+.k-trend b.up { color: var(--green); }
+.k-trend b.down { color: var(--red); }
+.k-trend b.flat { color: var(--trend-c); }
+.k-value.none, .k-trend b.nil { color: var(--ink-3); }
+
+/* ------------------------------------------------------------- the guides */
+/* Outlines every box so you can see what is actually sized and what is just
+   flowing. Uses outline, not border, so nothing shifts when you turn it on. */
+.g-out #grid * { outline: 1px solid rgba(37,99,235,.42); }
+.g-out .k-card { outline: 1px solid rgba(229,72,77,.55); }
+
+/* The padding box, drawn where the padding actually ends. */
+.g-pad .k-card::after {
+  content: ""; position: absolute; pointer-events: none;
+  inset: var(--pad-t) var(--pad-x) var(--pad-b);
+  outline: 1px dashed rgba(18,161,80,.75);
+}
+
+/* The column overlay is a second grid laid over the first with the same
+   template, so it cannot disagree with the real columns. */
+.colguide { position: absolute; inset: 20px; pointer-events: none; display: none;
+            grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: var(--gap); }
+.g-col .colguide { display: grid; }
+.colguide i { background: rgba(37,99,235,.07); border-left: 1px solid rgba(37,99,235,.28);
+              border-right: 1px solid rgba(37,99,235,.28); }
+
+/* A baseline rule every --base px from the board's padding edge. It has to sit
+   ON TOP — behind the cards it only shows in the gaps, which is where you least
+   need it. */
+.baseguide { position: absolute; inset: 20px; pointer-events: none; display: none; z-index: 2;
+             background-image: repeating-linear-gradient(
+               to bottom, rgba(229,72,77,.28) 0 1px, transparent 1px var(--base)); }
+.g-base .baseguide { display: block; }
+
+/* Centre lines, for judging whether a number reads as centred when it isn't. */
+.g-mid::before, .g-mid::after {
+  content: ""; position: absolute; pointer-events: none; background: rgba(229,72,77,.5); z-index: 3;
+}
+.g-mid::before { left: 50%; top: 0; bottom: 0; width: 1px; }
+.g-mid::after { top: 50%; left: 0; right: 0; height: 1px; }
+
+/* -------------------------------------------------------------- dragging */
+.k-card[draggable=true] { cursor: grab; }
+.k-card.dragging { opacity: .35; cursor: grabbing; }
+.k-card.over { outline: 2px solid var(--blue); outline-offset: 2px; }
+[contenteditable]:focus { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 3px; }
+
+/* ----------------------------------------------------------------- output */
+#out { width: 100%; margin-top: 18px; height: 200px; font-size: 11.5px; line-height: 1.55;
+       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+       border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: var(--card);
+       color: var(--ink-2); resize: vertical; display: none; }
+#out.on { display: block; }
+.note { font-size: 11.5px; color: var(--ink-3); margin: 14px 0 0; line-height: 1.6; max-width: 70ch; }
+@media (max-width: 900px) { .pg { grid-template-columns: 1fr; }
+  .panel { height: auto; position: static; border-right: 0; border-bottom: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<div class="pg">
+
+<aside class="panel">
+  <h1>Block 3 · playground</h1>
+  <p class="sub">Every knob writes one CSS variable. Drag the board's bottom-right corner to resize
+  it, drag a card to reorder, click any text to edit it.</p>
+  <div id="panel"></div>
+  <div class="grp">
+    <h2>Cards</h2>
+    <div class="btns">
+      <button class="act" id="add">Add card</button>
+      <button class="act" id="del">Remove last</button>
+    </div>
+  </div>
+  <div class="grp">
+    <h2>Guides</h2>
+    <div id="guides"></div>
+  </div>
+  <div class="grp">
+    <h2>Session</h2>
+    <div class="btns">
+      <button class="act pri" id="copy">Copy CSS</button>
+      <button class="act" id="reset">Reset</button>
+    </div>
+  </div>
+</aside>
+
+<main>
+  <div class="bar">
+    <span>Board <b id="bsize">620 × —</b></span>
+    <span>Card <b id="csize">—</b></span>
+    <span class="hint">Resize from the corner ↘</span>
+  </div>
+
+  <div id="board">
+    <div class="colguide" id="colguide"></div>
+    <div id="grid"></div>
+    <div class="baseguide"></div>
+  </div>
+
+  <textarea id="out" spellcheck="false" readonly></textarea>
+
+  <p class="note">The numbers you land on are the whole point — hit <b>Copy CSS</b> and paste it
+  back to me and I will fold it into the block. Your settings survive a refresh.</p>
+</main>
+
+</div>
+
+<script>
+// --- the knobs. One row of data per control; the panel is generated from it,
+//     which is also what makes "reset" and "copy CSS" impossible to get out of
+//     sync with what is on screen. ------------------------------------------
+const DATA = [
+  ["Layout", [
+    ["--cols",     "Columns",        "range",  1, 6, 1, "",    2],
+    ["--gap",      "Gap",            "range",  0, 40, 1, "px", 12],
+    ["--stage-bg", "Stage",          "color",  0, 0, 0, "",    "#ffffff"],
+  ]],
+  ["Card", [
+    ["--card-bg",  "Fill",           "color",  0, 0, 0, "",    "#f9f9f9"],
+    ["--card-r",   "Radius",         "range",  0, 32, 1, "px", 14],
+    ["--pad-t",    "Padding top",    "range",  0, 40, 1, "px", 16],
+    ["--pad-x",    "Padding sides",  "range",  0, 40, 1, "px", 16],
+    ["--pad-b",    "Padding bottom", "range",  0, 40, 1, "px", 20],
+    ["--card-bd",  "Border",         "range",  0, 3, 1, "px",  0],
+    ["--card-bd-c","Border colour",  "color",  0, 0, 0, "",    "#e1e1e1"],
+    ["--card-sh",  "Shadow",         "select", 0, 0, 0, "",    "none",
+      [["none","none"],
+       ["soft","0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.04)"],
+       ["lifted","0 1px 3px rgba(16,24,40,.08), 0 6px 16px rgba(16,24,40,.06)"]]],
+  ]],
+  ["Label", [
+    ["--label-s",  "Size",           "range",  9, 22, .5, "px", 13],
+    ["--label-w",  "Weight",         "range",  300, 700, 50, "", 400],
+    ["--label-c",  "Colour",         "color",  0, 0, 0, "",    "#101828"],
+  ]],
+  ["Value", [
+    ["--val-s",    "Size",           "range",  14, 64, 1, "px", 27],
+    ["--val-w",    "Weight",         "range",  300, 800, 50, "", 550],
+    ["--val-ls",   "Tracking",       "range",  -.06, .02, .005, "em", -.02],
+    ["--val-c",    "Colour",         "color",  0, 0, 0, "",    "#101828"],
+    ["--val-mt",   "Space above",    "range",  0, 32, 1, "px", 9],
+    ["--val-mb",   "Space below",    "range",  0, 32, 1, "px", 10],
+  ]],
+  ["Trend sentence", [
+    ["--trend-s",  "Size",           "range",  9, 20, .5, "px", 12.5],
+    ["--trend-c",  "Colour",         "color",  0, 0, 0, "",    "#101828"],
+    ["--delta-w",  "Delta weight",   "range",  300, 800, 50, "", 400],
+  ]],
+  ["The ···", [
+    ["--dots-s",   "Size",           "range",  8, 24, 1, "px", 14],
+    ["--dots-c",   "Colour",         "color",  0, 0, 0, "",    "#667085"],
+    ["--dots-t",   "From top",       "range",  0, 24, 1, "px", 9],
+    ["--dots-r",   "From right",     "range",  0, 24, 1, "px", 8],
+  ]],
+];
+
+const GUIDES = [
+  ["g-out",  "Outline every box"],
+  ["g-pad",  "Padding edge"],
+  ["g-col",  "Grid columns"],
+  ["g-base", "Baseline rule"],
+  ["g-mid",  "Centre lines"],
+];
+
+const CARDS = [
+  ["Sales today",          "₱43,740",  'up',   "↑5%",   " in the last week"],
+  ["Gross margin",         "₱11,280",  'up',   "↑2.2%", " in the last week"],
+  ["Utang collected",      "₱8,960",   'up',   "↑1.2%", " in the last week"],
+  ["Purchases this month", "₱152,300", 'up',   "↑0.2%", " in the last month"],
+];
+
+const KEY = "block3-playground";
+const board = document.getElementById("board");
+const grid  = document.getElementById("grid");
+const defaults = {};
+DATA.forEach(([, rows]) => rows.forEach(r => defaults[r[0]] = r[7]));
+defaults["--base"] = 8;
+
+// --- build the panel --------------------------------------------------------
+const panel = document.getElementById("panel");
+DATA.forEach(([title, rows]) => {
+  const g = document.createElement("div");
+  g.className = "grp";
+  g.innerHTML = "<h2>" + title + "</h2>";
+  rows.forEach(([v, label, type, min, max, step, unit, def, opts]) => {
+    const d = document.createElement("div");
+    d.className = "ctl";
+    if (type === "range") {
+      d.innerHTML = '<label>' + label + '</label><span class="n"></span>' +
+        '<input type="range" min="' + min + '" max="' + max + '" step="' + step + '">';
+    } else if (type === "color") {
+      d.innerHTML = '<label>' + label + '</label><input type="color">';
+    } else {
+      d.innerHTML = '<label>' + label + '</label><select>' +
+        opts.map(o => '<option value="' + o[1] + '">' + o[0] + '</option>').join("") + '</select>';
+    }
+    const input = d.querySelector("input,select");
+    input.dataset.var = v;
+    input.dataset.unit = unit;
+    g.appendChild(d);
+  });
+  panel.appendChild(g);
+});
+
+// The baseline step belongs with the guide that uses it, not with the block.
+const guides = document.getElementById("guides");
+GUIDES.forEach(([cls, label]) => {
+  const l = document.createElement("label");
+  l.className = "chk";
+  l.innerHTML = '<input type="checkbox" data-cls="' + cls + '"><span>' + label + '</span>';
+  guides.appendChild(l);
+});
+const bs = document.createElement("div");
+bs.className = "ctl";
+bs.innerHTML = '<label>Baseline step</label><span class="n"></span>' +
+               '<input type="range" min="2" max="24" step="1" data-var="--base" data-unit="px">';
+guides.appendChild(bs);
+
+// --- one listener for every knob -------------------------------------------
+const inputs = [...document.querySelectorAll("[data-var]")];
+function apply(input) {
+  const v = input.dataset.var, unit = input.dataset.unit || "";
+  board.style.setProperty(v, input.value + unit);
+  const n = input.parentElement.querySelector(".n");
+  if (n) n.textContent = input.value + unit;
+  if (v === "--cols" || v === "--gap") drawCols();
+  measure();
+}
+inputs.forEach(i => i.addEventListener("input", () => { apply(i); save(); }));
+
+document.querySelectorAll("[data-cls]").forEach(c => c.addEventListener("change", () => {
+  board.classList.toggle(c.dataset.cls, c.checked);
+  measure(); save();
+}));
+
+// --- cards ------------------------------------------------------------------
+function cardHTML(label, value, dir, delta, tail) {
+  return '<button class="dots" title="row menu">···</button>' +
+    '<div class="k-label" contenteditable>' + label + '</div>' +
+    '<div class="k-value" contenteditable>' + value + '</div>' +
+    '<div class="k-trend"><b class="' + dir + '" contenteditable>' + delta + '</b>' +
+    '<span contenteditable>' + tail + '</span></div>';
+}
+function addCard(spec) {
+  const el = document.createElement("div");
+  el.className = "k-card";
+  el.draggable = true;
+  el.innerHTML = cardHTML.apply(null, spec || CARDS[grid.children.length % CARDS.length]);
+  grid.appendChild(el);
+  return el;
+}
+document.getElementById("add").onclick = () => { addCard(); measure(); save(); };
+document.getElementById("del").onclick = () => {
+  if (grid.lastElementChild) grid.lastElementChild.remove();
+  measure(); save();
+};
+
+// --- drag to reorder. Native HTML5 drag; the drop target is whichever card the
+//     pointer is over, and we insert before or after it by midpoint. ----------
+let dragged = null;
+grid.addEventListener("dragstart", e => {
+  const c = e.target.closest(".k-card");
+  if (!c) return;
+  dragged = c; c.classList.add("dragging");
+  e.dataTransfer.effectAllowed = "move";
+});
+grid.addEventListener("dragend", () => {
+  if (dragged) dragged.classList.remove("dragging");
+  grid.querySelectorAll(".over").forEach(c => c.classList.remove("over"));
+  dragged = null; save();
+});
+grid.addEventListener("dragover", e => {
+  e.preventDefault();
+  const over = e.target.closest(".k-card");
+  grid.querySelectorAll(".over").forEach(c => c !== over && c.classList.remove("over"));
+  if (!over || over === dragged || !dragged) return;
+  over.classList.add("over");
+  const r = over.getBoundingClientRect();
+  const after = (e.clientX - r.left) > r.width / 2;
+  grid.insertBefore(dragged, after ? over.nextSibling : over);
+});
+grid.addEventListener("drop", e => e.preventDefault());
+
+// Editing text must not start a drag, or you can never place the caret.
+grid.addEventListener("focusin", e => {
+  const c = e.target.closest(".k-card");
+  if (c && e.target.isContentEditable) c.draggable = false;
+});
+grid.addEventListener("focusout", e => {
+  const c = e.target.closest(".k-card");
+  if (c) c.draggable = true;
+  save();
+});
+
+// --- guides that have to be drawn, and the size readout ---------------------
+function drawCols() {
+  const n = +getComputedStyle(board).getPropertyValue("--cols") || 1;
+  const g = document.getElementById("colguide");
+  g.innerHTML = "<i></i>".repeat(n);
+}
+function measure() {
+  const c = grid.firstElementChild;
+  document.getElementById("bsize").textContent =
+    Math.round(board.clientWidth) + " × " + Math.round(board.clientHeight);
+  document.getElementById("csize").textContent = c
+    ? Math.round(c.getBoundingClientRect().width) + " × " + Math.round(c.getBoundingClientRect().height)
+    : "—";
+}
+new ResizeObserver(() => { measure(); save(); }).observe(board);
+
+// --- copy out ---------------------------------------------------------------
+const out = document.getElementById("out");
+document.getElementById("copy").onclick = () => {
+  const lines = Object.keys(defaults).map(v => {
+    const cur = board.style.getPropertyValue(v).trim();
+    return "  " + v + ": " + (cur || defaults[v]) + ";";
+  });
+  const text = "/* block 3 — " + Math.round(board.clientWidth) + "px board, " +
+    grid.children.length + " cards */\n.s3 {\n" + lines.join("\n") + "\n}\n";
+  out.value = text; out.classList.add("on");
+  if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
+  out.select();
+};
+
+// --- state. This is the tool's own UI state in its own file; it is not app
+//     data and deliberately does not go anywhere near HWPOS_STORE. -----------
+let ready = false;
+function save() {
+  if (!ready) return;              // the ResizeObserver fires before load() has run
+  try {
+    const vars = {};
+    inputs.forEach(i => vars[i.dataset.var] = i.value);
+    localStorage.setItem(KEY, JSON.stringify({
+      vars,
+      guides: [...document.querySelectorAll("[data-cls]")].filter(c => c.checked).map(c => c.dataset.cls),
+      // Only what the resize handle actually wrote. Saving clientWidth would
+      // store the padded-in value and shrink the board a little every reload.
+      width: board.style.width || "",
+      height: board.style.height || "",
+      cards: [...grid.children].map(c => c.innerHTML),
+    }));
+  } catch (e) { /* private window, or storage blocked — the tool still works */ }
+}
+
+function load() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {}
+  inputs.forEach(i => {
+    const v = s && s.vars && s.vars[i.dataset.var];
+    i.value = v !== undefined && v !== null ? v : defaults[i.dataset.var];
+    apply(i);
+  });
+  if (s && s.guides) document.querySelectorAll("[data-cls]").forEach(c => {
+    c.checked = s.guides.indexOf(c.dataset.cls) > -1;
+    board.classList.toggle(c.dataset.cls, c.checked);
+  });
+  if (s && s.width) board.style.width = s.width;
+  if (s && s.height) board.style.height = s.height;
+  grid.innerHTML = "";
+  if (s && s.cards && s.cards.length) {
+    s.cards.forEach(h => {
+      const el = document.createElement("div");
+      el.className = "k-card"; el.draggable = true; el.innerHTML = h;
+      grid.appendChild(el);
+    });
+  } else {
+    CARDS.forEach(c => addCard(c));
+  }
+  drawCols(); measure();
+  ready = true;
+}
+
+document.getElementById("reset").onclick = () => {
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  board.style.cssText = ""; board.className = "";
+  document.querySelectorAll("[data-cls]").forEach(c => c.checked = false);
+  out.classList.remove("on");
+  load();
+};
+
+load();
+</script>
+</body>
+</html>

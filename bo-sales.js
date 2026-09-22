@@ -65,8 +65,10 @@
 
       // Walk-in or delivery. `top` collects what that side of the shop actually buys --
       // "delivery is 40% of revenue" is half an answer without "and it is mostly cement".
-      const fk = o.fulfilment === 'delivery' ? 'delivery' : 'walkin';
-      const fb = bucket(fuls, fk, () => blank({ key: fk, name: fk === 'delivery' ? 'Delivery' : 'Walk-in', top: new Map() }));
+      // One row per fulfilment type in use, including the owner's own -- an order with no
+      // fulfilment field is a walk-in, never a third row.
+      const fk = o.fulfilment || 'pickup';
+      const fb = bucket(fuls, fk, () => blank({ key: fk, name: orderFulfilLabel(o), top: new Map() }));
       fb.revenue += rev; fb.net += net; fb.txns += 1; fb.voids += voided; fb.refunds += back;
       if (sign) fb.sales += 1;
 
@@ -203,7 +205,7 @@
     { key: 'ts', label: 'Time', cell: o => `<span class="tx-time">${escapeHtml(txTime(o.ts))}</span>`, csv: o => new Date(o.ts).toISOString() },
     { key: 'customer', label: 'Customer', cell: o => escapeHtml((o.customer && o.customer.name) || '—'), csv: o => (o.customer && o.customer.name) || '' },
     { key: 'cashier', label: 'Staff', cell: o => `<span class="tx-staff">${escapeHtml(o.cashier || '—')}</span>`, csv: o => o.cashier || '' },
-    { key: 'fulfilment', label: 'Fulfilment', cell: o => `<span class="tx-fulfil">${o.fulfilment === 'delivery' ? 'Delivery' : 'Walk-in'}</span>`, csv: o => (o.fulfilment === 'delivery' ? 'Delivery' : 'Walk-in') },
+    { key: 'fulfilment', label: 'Fulfilment', cell: o => `<span class="tx-fulfil">${escapeHtml(orderFulfilLabel(o))}</span>`, csv: o => orderFulfilLabel(o) },
     { key: 'paymentKind', label: 'Payment', cell: o => `<span class="pay-pill ${escapeHtml(o.paymentKind || 'cash')}">${escapeHtml(orderPaymentLabel(o))}</span>`, csv: o => orderPaymentLabel(o) },
     { key: 'status', label: 'Status', cell: o => { const s = STATUS_TONE[o.status] || STATUS_TONE.completed; return `<span class="status-pill ${s[0]}">${s[1]}</span>`; }, csv: o => o.status },
     { key: 'total', label: 'Total', num: 1, cell: o => `<strong>${peso(txTotal(o))}</strong>`, csv: o => money(txTotal(o)) },
@@ -368,15 +370,14 @@
   }
 
   // ---------- Render ----------
-  function head(v, payOpts, staffOpts, totals) {
+  function head(v, payOpts, staffOpts) {
     const opt = (value, label, on) => `<option value="${escapeHtml(value)}"${on ? ' selected' : ''}>${escapeHtml(label)}</option>`;
     const rangeOpts = ['today', '7d', '15d', '30d']
       .map(r => `<button class="rp-opt${state.range === r ? ' on' : ''}" data-act="range" data-range="${r}">${escapeHtml(RANGE_LABEL[r])}</button>`).join('');
     return `
       <header class="view-head">
         <div class="view-title-wrap">
-          <h1>Sales</h1>
-          <span class="muted">${escapeHtml(rangeLabel())} · ${int(totals.txns)} transaction${totals.txns === 1 ? '' : 's'}</span>
+          <h1>${v.tab === 'summary' ? 'Sales' : escapeHtml(TABS.find(t => t[0] === v.tab)[1])}</h1>
         </div>
         <div class="view-actions">
           <select class="bo-select" data-filter="pay">
@@ -406,35 +407,29 @@
       </header>`;
   }
 
-  // Two blocks, then the ledger. Six numbers strung across the full width read as six
-  // cards and pushed the sales below the fold; stacked two-and-two -- money left, volume
-  // right -- the header costs one card and the width goes to the only thing that needs
-  // it. Payment mix rides alongside as a plain list; the table lives on its own tab.
+  // Stats, then the picture, then the ledger. The six numbers ARE six cards now (v34) and
+  // they lead the page at full width; the chart takes the width they used to take and the
+  // payment mix rides alongside it as a plain list. The table lives on its own tab.
   function summary(a, prev, v, rows) {
     const cmp = state.range === 'today' ? 'the day before' : 'prev period';
     const d = (cur, was) => deltaOf(cur, was, cmp);
     const t = a.totals;
-    const bar = (cells) => `<div class="bo-card-inset stat-bar show-delta">${cells.join('')}</div>`;
-
+    // Six cards in one grid, not two striped three-row bars inside a card (v34).
     const stats = `
-      <section class="bo-card">
-        <div class="bo-card-head">
-          <span class="bo-card-label">Overview</span>
-          <span class="bo-card-sub">${escapeHtml(rangeLabel())}</span>
-        </div>
-        <div class="sales-stats">
-          ${bar([
-            statCell({ label: 'Revenue', value: pesoShort(t.revenue), delta: d(t.revenue, prev.revenue) }),
-            statCell({ label: 'Gross profit', value: pesoShort(t.profit), delta: d(t.profit, prev.profit) }),
-            statCell({ label: 'Margin', value: t.net ? pct(t.margin) : '—', delta: d(t.margin, prev.margin) }),
-          ])}
-          ${bar([
-            statCell({ label: 'Transactions', value: int(t.txns), delta: d(t.txns, prev.txns) }),
-            statCell({ label: 'Average basket', value: pesoShort(t.avg), delta: d(t.avg, prev.avg) }),
-            statCell({ label: 'Items sold', value: qtyText(t.qty), delta: d(t.qty, prev.qty) }),
-          ])}
-        </div>
-      </section>`;
+      <div class="stat-head">
+        <span class="bo-card-label">Overview</span>
+        <span class="bo-card-sub">${escapeHtml(rangeLabel())}</span>
+      </div>
+      <div class="stat-grid three-up show-delta">
+        ${[
+          statCell({ label: 'Revenue', value: pesoShort(t.revenue), delta: d(t.revenue, prev.revenue) }),
+          statCell({ label: 'Gross profit', value: pesoShort(t.profit), delta: d(t.profit, prev.profit) }),
+          statCell({ label: 'Margin', value: t.net ? pct(t.margin) : '—', delta: d(t.margin, prev.margin) }),
+          statCell({ label: 'Transactions', value: int(t.txns), delta: d(t.txns, prev.txns) }),
+          statCell({ label: 'Average basket', value: pesoShort(t.avg), delta: d(t.avg, prev.avg) }),
+          statCell({ label: 'Items sold', value: qtyText(t.qty), delta: d(t.qty, prev.qty) }),
+        ].join('')}
+      </div>`;
 
     // A four-column table for "where did the money land" was more furniture than answer.
     // Name, share, amount -- the dashboard's own mini-list, and the By-payment tab is
@@ -486,7 +481,11 @@
     // obeys the payment and staff filters sitting above it.
     const trend = chartCard('Sales trend', rangeLabel(), trendSeries(rows));
 
-    return `<div class="sales-top">${stats}${payMix}</div>` + reversals + trend + recentCard;
+    // Stats lead full width (v34), then the chart and the payment mix share the row the
+    // stats used to sit in. The six cards inside .sales-top were being re-striped by the
+    // rules written for the bar they replaced, and the head and the grid landed in two
+    // different columns of that grid.
+    return stats + reversals + `<div class="sales-top">${trend}${payMix}</div>` + recentCard;
   }
 
   function txTab(rows, v) {
@@ -541,7 +540,7 @@
       : v.tab === 'patterns' ? patternsTab(a, rows)
       : v.tab === 'tx' ? txTab(rows, v)
       : cutTab(a, v);
-    el.innerHTML = head(v, payOpts, staffOpts, a.totals) + `<div class="dash-stack">${body}</div>`;
+    el.innerHTML = head(v, payOpts, staffOpts) + `<div class="dash-stack">${body}</div>`;
     charts.forEach(([id, data]) => renderLineChart(el.querySelector('#' + id), data));
 
     if (focused) {

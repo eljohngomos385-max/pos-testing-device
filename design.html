@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en" class="bo">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EJ Hardware — Back Office blocks</title>
+  <link rel="icon" href="data:," />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&display=swap" rel="stylesheet">
+  <!-- The real stylesheet. This page has no CSS of its own for any block it documents,
+       so a block cannot look right here and wrong in the product. -->
+  <link rel="stylesheet" href="styles.css?v=114" />
+  <style>
+    /* Page chrome only — never a block. Anything below this comment is the guide's
+       own furniture: the two-column shell, the code panes and the swatch grid. */
+    body.bo-light { margin: 0; }
+    .g-wrap { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 36px; max-width: 1180px; margin: 0 auto; padding: 40px 28px 120px; }
+    .g-nav { position: sticky; top: 24px; align-self: start; font-size: 12.5px; line-height: 2; }
+    .g-nav a { display: block; color: var(--po-ink-secondary); text-decoration: none; }
+    .g-nav a:hover { color: var(--po-ink); }
+    .g-nav b { display: block; margin: 14px 0 2px; font-size: 11px; font-weight: 600; color: var(--po-ink-tertiary); }
+    .g-nav b:first-child { margin-top: 0; }
+    h1 { font-size: 24px; letter-spacing: -0.02em; margin: 0 0 6px; }
+    .g-lede { font-size: 13.5px; color: var(--po-ink-secondary); max-width: 62ch; margin: 0 0 8px; line-height: 1.6; }
+    h2 { font-size: 17px; letter-spacing: -0.015em; margin: 52px 0 4px; padding-top: 18px; border-top: 1px solid var(--po-line); }
+    h3 { font-size: 13.5px; font-weight: 650; margin: 28px 0 8px; }
+    .g-note { font-size: 12.5px; color: var(--po-ink-secondary); line-height: 1.65; max-width: 68ch; margin: 0 0 14px; }
+    .g-note code, .g-rules code { background: #EDEDED; border-radius: 4px; padding: 1px 4px; font-size: 11.5px; }
+    .g-rules { font-size: 12.5px; color: var(--po-ink-secondary); line-height: 1.7; max-width: 68ch; margin: 12px 0 0; padding-left: 18px; }
+    .g-rules li { margin-bottom: 3px; }
+    /* A demo sits on the page canvas, the way a card does in the product. */
+    .g-demo { background: var(--po-bg); border: 1px dashed var(--po-line-strong); border-radius: var(--po-r-card); padding: 18px; }
+    .g-demo.narrow > * { max-width: 460px; }
+    .g-code { margin: 0; background: #FAFAFA; border: 1px solid var(--po-line); border-top: 0; border-radius: 0 0 var(--po-r-card) var(--po-r-card); padding: 12px 14px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; line-height: 1.6; color: #4A4A4A; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .g-demo + .g-code { border-radius: 0 0 var(--po-r-card) var(--po-r-card); margin-top: -1px; }
+    .g-demo:has(+ .g-code) { border-radius: var(--po-r-card) var(--po-r-card) 0 0; }
+    .g-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
+    .g-sw { border: 1px solid var(--po-line); border-radius: var(--po-r-card); overflow: hidden; background: var(--po-surface); }
+    .g-sw i { display: block; height: 42px; border-bottom: 1px solid var(--po-line); }
+    .g-sw span { display: block; padding: 7px 9px 8px; font-size: 11px; line-height: 1.5; color: var(--po-ink-tertiary); }
+    .g-sw b { display: block; font-size: 11.5px; font-weight: 600; color: var(--po-ink); }
+    .g-type td { padding: 9px 14px 9px 0; border-bottom: 1px solid var(--po-line); vertical-align: baseline; }
+    .g-type { border-collapse: collapse; width: 100%; }
+    .g-type td:last-child { font-size: 11.5px; color: var(--po-ink-tertiary); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .g-vs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .g-vs > div > h4 { margin: 0 0 8px; font-size: 11.5px; font-weight: 600; letter-spacing: 0; }
+    .g-vs .no h4 { color: var(--po-danger); }
+    .g-vs .yes h4 { color: var(--po-success); }
+    /* The one thing the guide fakes: the old two-line row, kept so the change is visible. */
+    .g-old .mini-list-row { height: auto; padding: 10px 14px; align-items: center; border-bottom: 1px solid var(--po-line); background: none; }
+    .g-old .mini-list-row:last-child { border-bottom: 0; }
+    .g-old .ml-left { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .g-old .ml-sub { font-size: 11px; }
+    .g-old .ml-value { font-weight: 600; }
+    @media (max-width: 860px) { .g-wrap { grid-template-columns: 1fr; } .g-nav { position: static; } .g-vs { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="bo-body bo-light">
+<div class="g-wrap">
+
+  <nav class="g-nav">
+    <b>Start</b>
+    <a href="#how">How to use this</a>
+    <a href="#rules">The five rules</a>
+    <b>Foundations</b>
+    <a href="#color">Colour</a>
+    <a href="#type">Type</a>
+    <a href="#space">Space &amp; radius</a>
+    <b>Blocks</b>
+    <a href="#card">Card</a>
+    <a href="#rowlist">Row list</a>
+    <a href="#statrow">Stat rows</a>
+    <a href="#table">Table</a>
+    <a href="#pills">Pills</a>
+    <a href="#buttons">Buttons</a>
+    <a href="#popup">Popup menu</a>
+    <a href="#dialog">Dialog</a>
+    <a href="#focus">Focus &amp; states</a>
+    <a href="#empty">Empty state</a>
+    <b>Reference</b>
+    <a href="#dont">Don't</a>
+    <a href="#borrow">What we borrow</a>
+  </nav>
+
+  <main>
+    <h1>Back office blocks</h1>
+    <p class="g-lede">Every block on this page is rendered by the real <code>styles.css</code>, with the
+    real class names. If something looks wrong here it is wrong in the product, and fixing it here is
+    fixing it there. Nothing on this page is a mockup.</p>
+
+    <h2 id="how">How to use this</h2>
+    <p class="g-note">Building a screen: find the block, copy the markup under it, fill it with your data.
+    Do not write new CSS for a screen. If no block fits, add one <em>here</em> first — as a new
+    numbered block at the bottom of <code>styles.css</code> — then use it.</p>
+    <ul class="g-rules">
+      <li>CSS lives in numbered blocks at the end of <code>styles.css</code>. <b>Last block wins</b>, so edit the newest one that owns the thing, never an older one — the change won't paint.</li>
+      <li>Current head: <code>ROW BLOCKS (v32)</code>. Tokens are in <code>SHOPIFY ADMIN REDESIGN (v21)</code>.</li>
+      <li>Bump <code>?v=NN</code> on <code>styles.css</code> and <code>backoffice.js</code> in <code>backoffice.html</code> (and on this page's link) whenever you ship.</li>
+      <li>Every colour, size, radius and gap comes from a <code>--po-*</code> token. Typing <code>8px</code> or <code>#E1E1E1</code> means the token already exists and you missed it.</li>
+    </ul>
+
+    <h2 id="rules">The five rules</h2>
+    <ol class="g-rules">
+      <li><b>One card, one surface.</b> A card is a single white box with a hairline. No box inside a box — head, body and table all sit on the same white.</li>
+      <li><b>Separate with a hairline or a stripe, never with a second surface</b> — and never with both at once.</li>
+      <li><b>A row is one line of text.</b> A second fact goes <em>beside</em> the name, never under it. If a cell needs two lines it is the wrong cell.</li>
+      <li><b>Money and counts are tabular and right-aligned.</b> Labels are sentence case, tertiary ink, never caps.</li>
+      <li><b>Depth comes from hairlines, not shadows.</b> Only a genuinely floating layer (a menu, a toast) casts a shadow.</li>
+    </ol>
+
+    <h2 id="color">Colour</h2>
+    <p class="g-note">Read live out of the stylesheet — this grid is not a copy, it is the tokens themselves.</p>
+    <div class="g-swatches" id="swatches"></div>
+    <p class="g-note" style="margin-top:14px"><code>--po-accent-link #1F5199</code> is the only blue in the
+    back office, and it is only ever a link. It is never a button fill, never a heading, never a border.</p>
+
+    <h2 id="type">Type</h2>
+    <p class="g-note">One typeface: <b>Geist</b>. A second face on the same screen reads as a second design.
+    What makes a column of money line up is <code>font-variant-numeric: tabular-nums</code>, not a monospace
+    font — add <code>.num</code> and let the token do it.</p>
+    <table class="g-type">
+      <tr><td style="font-size:24px;letter-spacing:-0.02em">Page title</td><td>24px / 700 / -0.02em</td></tr>
+      <tr><td style="font-size:17px;letter-spacing:-0.015em;font-weight:650">Section title</td><td>17px / 650</td></tr>
+      <tr><td style="font-size:13.5px;font-weight:650">Card title</td><td>13.5px / 650 — <code>.bo-card-label</code></td></tr>
+      <tr><td style="font-size:13px">Row text and body</td><td>13px / 500 — <code>--po-row-font</code></td></tr>
+      <tr><td style="font-size:17px;font-weight:600;font-variant-numeric:tabular-nums">₱148,320.00</td><td>17px / 600 tabular — stat value</td></tr>
+      <tr><td style="font-size:12px;color:var(--po-ink-secondary)">Secondary text</td><td>12px — <code>--po-ink-secondary</code></td></tr>
+      <tr><td style="font-size:11.5px;color:var(--po-ink-tertiary)">Label, column header, axis tick</td><td>11.5px — <code>--po-ink-tertiary</code></td></tr>
+    </table>
+    <p class="g-note" style="margin-top:14px">Row text and table text are sized by <code>--po-row-font</code>,
+    which Settings → Appearance moves between 12 / 13 / 15px. <b>Nothing in a row may carry a hardcoded
+    font-size or height</b> — derive from <code>--po-row-font</code> and <code>--po-row-h</code> or it breaks
+    at S and L.</p>
+
+    <h2 id="space">Space &amp; radius</h2>
+    <ul class="g-rules">
+      <li><b>14px is the card's left edge.</b> Head, body, every row and every table cell line up on it. A child that doesn't respect it visibly steps in or out.</li>
+      <li><b>10px between cards</b> (<code>--po-gap</code>). 12px inside a grid of stats, 16px inside a settings form. Reach for an existing step — no one-off 13px or 21px.</li>
+      <li><b>8px radius on everything</b> (<code>--po-r-card</code> / <code>--po-r-button</code> / <code>--po-r-input</code>). Small nested things sit at 6px, pills at 999px. No 12px, no 16px.</li>
+      <li><b>One row height</b> (<code>--po-row-h</code>, 32px at M). A row of text, a row with a pill and a row with a button all measure the same; a control inside a row is <code>calc(var(--po-row-h) - 8px)</code>.</li>
+    </ul>
+
+    <h2 id="card">Card</h2>
+    <p class="g-note">The container everything else goes in. Three levels, never a fourth, and never a
+    <code>.bo-card</code> inside a <code>.bo-card</code>. Two regions in one card are two
+    <code>.bo-card-inset</code> children — the hairline between them comes free.</p>
+    <div class="g-demo">
+      <div class="bo-card" style="max-width:480px">
+        <div class="bo-card-head">
+          <span class="bo-card-label">Card title</span>
+          <span class="bo-card-sub">a fact, right</span>
+        </div>
+        <div class="bo-card-inset">
+          Body text sits on the card's own white. There is no inner box, no second border and no
+          second grey — <code>.bo-card-inset</code> is padding and nothing else.
+        </div>
+        <div class="bo-card-inset">
+          A second inset is a second section of the same card. The hairline above it is automatic.
+        </div>
+      </div>
+    </div>
+    <ul class="g-rules">
+      <li>A link or a count in the head, right — <code>.bo-card-sub</code> or <code>.link-btn</code>. <b>Never under the last row</b>: a link below a list reads as one more row.</li>
+      <li>Table or chart inside? Add <code>.flush</code> and let it bleed to the card edge.</li>
+      <li>No <code>border-bottom</code> on the head. Where a table follows, its tinted header strip is the boundary.</li>
+    </ul>
+
+    <h2 id="rowlist">Row list <span style="font-size:11.5px;font-weight:400;color:var(--po-success)">v33</span></h2>
+    <p class="g-note">The workhorse. Any list of <b>label → value</b>: low stock, payment mix, a sales
+    breakdown, deliveries, attendance. One line per row, stripes instead of hairlines, the value tabular
+    and right. This is the pattern the Shopify admin's <em>Total sales breakdown</em> uses, and it is the
+    one to reach for by default.</p>
+    <div class="g-demo">
+      <div class="bo-card" style="max-width:520px">
+        <div class="bo-card-head"><span class="bo-card-label">Total sales breakdown</span><a class="link-btn" href="#rowlist">See all →</a></div>
+        <div class="bo-card-inset">
+          <div class="mini-list">
+            <div class="mini-list-row"><div class="ml-left"><span class="ml-name">Gross sales</span></div><span class="ml-value">₱182,400.00</span><span class="ml-trail up">+4.1%</span></div>
+            <div class="mini-list-row"><div class="ml-left"><span class="ml-name">Discounts</span></div><span class="ml-value">−₱6,120.00</span><span class="ml-trail">—</span></div>
+            <div class="mini-list-row"><div class="ml-left"><span class="ml-name">Sales reversals</span></div><span class="ml-value">−₱980.00</span><span class="ml-trail down">−2.0%</span></div>
+            <div class="mini-list-row"><div class="ml-left"><span class="ml-name">Net sales</span></div><span class="ml-value">₱175,300.00</span><span class="ml-trail up">+3.8%</span></div>
+            <div class="mini-list-row"><div class="ml-left"><span class="ml-name">Taxes</span></div><span class="ml-value">₱18,782.14</span><span class="ml-trail">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <h3>With a second fact, and as a link</h3>
+    <div class="g-demo">
+      <div class="bo-card" style="max-width:520px">
+        <div class="bo-card-head"><span class="bo-card-label">Low stock</span><span class="bo-card-sub">7 items</span><a class="link-btn" href="#rowlist" style="margin-left:10px">Manage inventory →</a></div>
+        <div class="bo-card-inset">
+          <div class="mini-list">
+            <a class="mini-list-row danger" href="#rowlist"><div class="ml-left"><span class="ml-name">Claw Hammer 16oz</span><span class="ml-sub">HMR-CLAW-16 · reorder at 5</span></div><span class="ml-value">0 pc</span></a>
+            <a class="mini-list-row danger" href="#rowlist"><div class="ml-left"><span class="ml-name">Combination Pliers 8"</span><span class="ml-sub">PLIER-CB-8 · reorder at 6</span></div><span class="ml-value">0 pc</span></a>
+            <a class="mini-list-row danger" href="#rowlist"><div class="ml-left"><span class="ml-name">Quick-Dry Enamel Black 1L</span><span class="ml-sub">PAINT-ENAMEL-1L-BLK · reorder at 8</span></div><span class="ml-value">0 L</span></a>
+            <a class="mini-list-row warn" href="#rowlist"><div class="ml-left"><span class="ml-name">Brass Faucet 1/2"</span><span class="ml-sub">FAUCET-BR-12 · reorder at 10</span></div><span class="ml-value">1 pc</span></a>
+            <a class="mini-list-row warn" href="#rowlist"><div class="ml-left"><span class="ml-name">Aluminum Level 24"</span><span class="ml-sub">LVL-ALUM-24 · reorder at 3</span></div><span class="ml-value">1 pc</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ul class="g-rules">
+      <li><code>.ml-left</code> holds the name and, optionally, <b>one</b> second fact beside it. Never under it.</li>
+      <li><code>.ml-value</code> is the answer. <code>.ml-trail</code> is the optional third column — a delta, a share, or an em dash where there is no comparison. It is fixed-width so the values above each other line up.</li>
+      <li><code>.warn</code> / <code>.danger</code> on the row colours the value only. The row itself never turns red.</li>
+      <li>A whole row can be an <code>&lt;a&gt;</code>. It still looks like a row — inherited ink, no underline until hover.</li>
+      <li>Stripes, not hairlines. Do not add a <code>border-bottom</code> back.</li>
+    </ul>
+
+    <h2 id="statrow">Stat rows</h2>
+    <p class="g-note">Three to six numbers with their comparison. Same row rhythm as the list above, one
+    step larger on the value. Use it for an Overview card, never as a row of separate boxes across the
+    page — six numbers strung across the full width read as six cards and push the real content below
+    the fold.</p>
+    <div class="g-demo">
+      <div class="dash-top" style="grid-template-columns:minmax(0,1fr)">
+        <div class="bo-card" style="max-width:420px">
+          <div class="bo-card-head"><span class="bo-card-label">Overview</span><span class="bo-card-sub">Last 30 days</span></div>
+          <div class="bo-card-inset stat-bar show-delta">
+            <div class="stat"><div class="kpi-label">Revenue</div><div class="kpi-main"><div class="kpi-value">₱182,400</div><span class="kpi-delta up" title="vs previous 30 days">↑4.1%</span></div></div>
+            <div class="stat"><div class="kpi-label">Gross profit</div><div class="kpi-main"><div class="kpi-value">₱41,905</div><span class="kpi-delta up" title="vs previous 30 days">↑2.6%</span></div></div>
+            <div class="stat"><div class="kpi-label">Transactions</div><div class="kpi-main"><div class="kpi-value">1,284</div><span class="kpi-delta down" title="vs previous 30 days">↓1.2%</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ul class="g-rules">
+      <li>Money first, then volume. Label left, value and delta right, all on one line.</li>
+      <li>Green up, red down, and the comparison it is against lives in the <code>title</code> — never spelled out on the card, it wraps to a second line and doubles the row.</li>
+      <li><code>.stat-bar.show-delta</code> gates the percentages. On the dashboard they sit behind the <code>%</code> toggle; on a report page they are always on.</li>
+      <li>No unit caption under the value, no sparkline. The trend chart beside it already draws the shape.</li>
+    </ul>
+
+    <h2 id="table">Table</h2>
+    <p class="g-note">Once a row needs more than a label and a value, it is a table. Dense: one line per
+    row, <code>6px 14px</code> in a cell, nothing wraps — a long SKU scrolls sideways inside
+    <code>.table-wrap</code> rather than doubling every row&rsquo;s height. <b>Striped by default</b>
+    (v33): the band is what your eye rides across a wide row, and it is why the hairline is gone —
+    stripes <em>or</em> rules, never both.</p>
+    <div class="g-demo">
+      <div class="bo-card">
+        <div class="bo-card-head"><span class="bo-card-label">Recent transactions</span><a class="link-btn" href="#table">See all &rarr;</a></div>
+        <div class="bo-card-inset flush">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Receipt</th><th>Time</th><th>Customer</th><th>Payment</th><th>Status</th><th class="num">Total</th></tr></thead>
+              <tbody>
+                <tr><td class="tx-id">R-004812</td><td class="tx-time">2:41 PM</td><td>Marilou Cruz</td><td class="tx-fulfil">Cash</td><td><span class="status-pill ok">Paid</span></td><td class="num">&#8369;1,240.00</td></tr>
+                <tr><td class="tx-id">R-004811</td><td class="tx-time">2:28 PM</td><td>&mdash;</td><td class="tx-fulfil">GCash</td><td><span class="status-pill ok">Paid</span></td><td class="num">&#8369;486.50</td></tr>
+                <tr><td class="tx-id">R-004810</td><td class="tx-time">1:55 PM</td><td>Bayanihan Builders <span class="row-sub">acct 0042</span></td><td class="tx-fulfil">Account</td><td><span class="status-pill warn">Partial</span></td><td class="num">&#8369;12,980.00</td></tr>
+                <tr class="tx-row dim"><td class="tx-id">R-004809</td><td class="tx-time">1:30 PM</td><td>&mdash;</td><td class="tx-fulfil">Cash</td><td><span class="status-pill danger">Voided</span></td><td class="num">&#8369;0.00</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ul class="g-rules">
+      <li>Wrap it in <code>.bo-card-inset.flush</code> so it bleeds to the card edge, and in <code>.table-wrap</code> so a wide table scrolls instead of squashing.</li>
+      <li>Money and counts get <code>.num</code> and right-align, with lining figures. A money column is read <em>down</em>, and ragged decimals defeat that.</li>
+      <li><b>One coloured pill per row.</b> The payment method is a fact about the sale the way the time is, so it is plain text. Two filled pills on a row is confetti &mdash; you stop reading and start decoding, and the eight-column version of this table was the proof.</li>
+      <li>A second fact goes in <code>&lt;span class="row-sub"&gt;</code> beside the name &mdash; inline, tertiary, clipped at 140px.</li>
+      <li>Voids and refunds stay in the list, dimmed with <code>.tx-row.dim</code>. A ledger never hides what happened.</li>
+      <li>Two or three rows with nothing to track across? <code>.no-zebra</code> gives hairlines instead.</li>
+    </ul>
+
+    <h2 id="pills">Pills</h2>
+    <p class="g-note">Solid fill, dark ink, no dot, 20px tall everywhere. One pill is one token and never
+    wraps to a second line. A tint with a dot was tried and read washed out.</p>
+    <div class="g-demo">
+      <span class="status-pill ok">Paid</span>
+      <span class="status-pill warn">Low stock</span>
+      <span class="status-pill danger">Out of stock</span>
+      <span class="status-pill muted">Draft</span>
+      <span class="pay-pill gcash">GCash</span>
+      <span class="role-pill owner">owner</span>
+      <span class="role-pill manager">manager</span>
+      <span class="role-pill cashier">cashier</span>
+    </div>
+
+    <h2 id="buttons">Buttons</h2>
+    <p class="g-note">Three variants, three heights, one class. Anything outside this set is a one-off,
+    and a one-off is what nobody remembers to restyle when the palette moves. The geometry is
+    shadcn&rsquo;s (<code>rounded-md</code>, 13px medium, 6px icon gap); the colours stay ours.</p>
+    <div class="g-demo">
+      <button class="btn primary">Save</button>
+      <button class="btn">Export CSV</button>
+      <button class="btn ghost">Cancel</button>
+      <button class="btn danger">Void sale</button>
+      <button class="btn" disabled>Disabled</button>
+      <button class="btn sm">Small</button>
+      <button class="btn lg">Large</button>
+      <a class="link-btn" href="#buttons">Manage inventory &rarr;</a>
+    </div>
+    <ul class="g-rules">
+      <li>One primary per screen &mdash; the thing you came to do. Everything else is default or ghost.</li>
+      <li><code>.btn.danger</code> is for the confirm inside a dialog, never sitting in a toolbar next to Save. In a toolbar a destructive verb is a quiet link, pushed left.</li>
+      <li>Heights are 26 / 32 / 38. The 32 is the default and matches an input, so a button beside a field lines up without anyone having to think about it.</li>
+    </ul>
+
+    <h2 id="popup">Popup menu</h2>
+    <p class="g-note">Built on the browser&rsquo;s own <code>popover</code> attribute &mdash; no library and
+    <b>no JavaScript at all</b>. The browser gives us the top layer, click-outside to dismiss, Esc, and
+    focus return: every part a hand-rolled dropdown gets wrong. Open it, then press Esc.</p>
+    <div class="g-demo">
+      <button class="btn" popovertarget="demoMenu">Actions &#9662;</button>
+      <div id="demoMenu" popover class="pop">
+        <button class="pop-item">Edit product</button>
+        <button class="pop-item">Duplicate</button>
+        <button class="pop-item">Print label</button>
+        <div class="pop-sep"></div>
+        <button class="pop-item danger">Archive</button>
+      </div>
+    </div>
+    <ul class="g-rules">
+      <li>The motion is shadcn&rsquo;s: fade plus a 96% zoom, <b>150ms in, 100ms out</b>. A panel that lingers on the way out feels broken; one that eases in feels considered.</li>
+      <li>It animates <em>both</em> ways because of <code>@starting-style</code> and <code>transition-behavior: allow-discrete</code>. Without those two you can fade a menu in but it vanishes on close &mdash; that snap is the tell of a cheap menu, and it is exactly what ours used to do.</li>
+      <li>Never more than about seven items. Past that it is a page, not a menu.</li>
+    </ul>
+
+    <h2 id="dialog">Dialog</h2>
+    <p class="g-note">The same motion with a backdrop that fades alongside it. Native
+    <code>&lt;dialog&gt;</code>, so Esc, the focus trap and the scroll lock are the browser&rsquo;s
+    problem and not ours.</p>
+    <div class="g-demo">
+      <button class="btn" onclick="document.getElementById('demoDlg').showModal()">Void sale R-004812</button>
+      <dialog id="demoDlg" class="modal">
+        <div class="modal-head">
+          <div class="modal-title">Void this sale?</div>
+          <div class="modal-desc">R-004812 &middot; &#8369;1,240.00 &middot; Marilou Cruz</div>
+        </div>
+        <div class="modal-body">The sale stays in the ledger as a voided row and the stock goes back. This cannot be undone.</div>
+        <div class="modal-foot">
+          <button class="btn" onclick="this.closest('dialog').close()">Keep it</button>
+          <button class="btn danger" onclick="this.closest('dialog').close()">Void sale</button>
+        </div>
+      </dialog>
+    </div>
+    <ul class="g-rules">
+      <li>The title is a question, the body says what will happen, and the confirm button is the <b>verb</b> &mdash; &ldquo;Void sale&rdquo;, never &ldquo;OK&rdquo;. Someone clicking fast should still be able to read the button and know what they just did.</li>
+      <li>Cancel sits on the left and is the plain button. The dangerous one is never where your hand lands by default.</li>
+      <li>A dialog is for a decision. Anything you have to fill in is a page.</li>
+    </ul>
+
+    <h2 id="focus">Focus &amp; states</h2>
+    <p class="g-note">Tab through this. One ring for the whole product: a 3px translucent halo in the
+    accent plus a solid border. It reads on any background and never shifts layout, which is why it
+    replaced the four different focus styles that had piled up.</p>
+    <div class="g-demo">
+      <button class="btn">Tab to me</button>
+      <button class="btn primary">Then me</button>
+      <input placeholder="And this field" style="height:32px;padding:0 10px;border:1px solid var(--po-line-strong);border-radius:var(--po-r-md);font:inherit;font-size:13px" />
+      <a class="link-btn" href="#focus">And a link</a>
+    </div>
+    <ul class="g-rules">
+      <li>Never <code>outline: none</code> without putting a ring back. Half of this app is driven from a keyboard at a counter.</li>
+      <li><code>:focus-visible</code>, not <code>:focus</code> &mdash; a mouse click should not light a button up.</li>
+      <li>Row hover is a darkening layer (<code>rgba(0,0,0,.045)</code>), not a grey. It has to show on a striped row as well as a white one, and a flat grey vanishes on the stripe.</li>
+    </ul>
+
+    <h2 id="empty">Empty state</h2>
+    <p class="g-note">Centred tertiary text inside the card. <b>Never a blank card</b> — a card with
+    nothing in it reads as broken.</p>
+    <div class="g-demo">
+      <div class="bo-card" style="max-width:420px">
+        <div class="bo-card-head"><span class="bo-card-label">Deliveries coming</span></div>
+        <div class="bo-card-inset"><div class="bo-empty">No deliveries scheduled</div></div>
+      </div>
+    </div>
+
+    <h2 id="dont">Don't</h2>
+    <p class="g-note">Each of these was in the product and was taken out. They are listed so they don't
+    come back.</p>
+
+    <h3>A two-line row</h3>
+    <div class="g-vs">
+      <div class="no">
+        <h4>✕ The sub under the name</h4>
+        <div class="g-demo g-old" style="padding:0">
+          <div class="bo-card">
+            <div class="bo-card-inset" style="padding:0 14px">
+              <div class="mini-list">
+                <div class="mini-list-row"><div class="ml-left"><span class="ml-name">Claw Hammer 16oz</span><span class="ml-sub">HMR-CLAW-16 · reorder at 5</span></div><span class="ml-value" style="color:var(--po-danger)">0 pc</span></div>
+                <div class="mini-list-row"><div class="ml-left"><span class="ml-name">Combination Pliers 8"</span><span class="ml-sub">PLIER-CB-8 · reorder at 6</span></div><span class="ml-value" style="color:var(--po-danger)">0 pc</span></div>
+                <div class="mini-list-row"><div class="ml-left"><span class="ml-name">Brass Faucet 1/2"</span><span class="ml-sub">FAUCET-BR-12 · reorder at 10</span></div><span class="ml-value" style="color:var(--po-danger)">1 pc</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="yes">
+        <h4>✓ Beside it, one line, striped</h4>
+        <div class="g-demo" style="padding:0">
+          <div class="bo-card">
+            <div class="bo-card-inset" style="padding:0 14px 0">
+              <div class="mini-list">
+                <div class="mini-list-row danger"><div class="ml-left"><span class="ml-name">Claw Hammer 16oz</span><span class="ml-sub">HMR-CLAW-16 · reorder at 5</span></div><span class="ml-value">0 pc</span></div>
+                <div class="mini-list-row danger"><div class="ml-left"><span class="ml-name">Combination Pliers 8"</span><span class="ml-sub">PLIER-CB-8 · reorder at 6</span></div><span class="ml-value">0 pc</span></div>
+                <div class="mini-list-row warn"><div class="ml-left"><span class="ml-name">Brass Faucet 1/2"</span><span class="ml-sub">FAUCET-BR-12 · reorder at 10</span></div><span class="ml-value">1 pc</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="g-note" style="margin-top:12px">Three products cost 171px on the left and 96px on the right.
+    The SKU was never a second row's worth of information.</p>
+
+    <h3>The rest</h3>
+    <ul class="g-rules">
+      <li><b>A card inside a card.</b> Two borders, two radii and two greys for one card's worth of content. A hairline tells things apart.</li>
+      <li><b>A heavy shadow, or a <code>0 0 0 1px</code> ring on top of the border.</b> It doubles the hairline and the card starts to float.</li>
+      <li><b>A big number alone in a tall cell.</b> ₱0 at 25px in 100px of white is what made Overview look broken on an empty day. The stat row sizes to its text.</li>
+      <li><b>A row of separate stat boxes across the page.</b> Six numbers, six cards, and the sales below the fold.</li>
+      <li><b>ALL CAPS labels and letter-spacing.</b> Sentence case, plain, tertiary.</li>
+      <li><b>A second typeface for numbers.</b> <code>tabular-nums</code> does the aligning; a mono face just reads as a second design.</li>
+      <li><b>A link under the last row of a list.</b> Put it in the card head.</li>
+      <li><b>A hardcoded height or font-size inside a row.</b> It looks right at M and breaks at S and L.</li>
+      <li><b>A blue that isn't a link.</b> <code>--po-accent-link</code> is for links, full stop.</li>
+    </ul>
+
+    <h2 id="borrow">What we borrow</h2>
+    <p class="g-note">We do not adopt anyone's design system — a component library is a build step and
+    this app has none. What we take is <b>the decisions</b>: the row rhythm, the token names, the rules
+    about when a thing is a card. Verified 2026-09-20.</p>
+
+    <h3>shadcn/ui &mdash; the geometry and the interaction</h3>
+    <p class="g-note"><a class="link-btn" href="https://ui.shadcn.com" target="_blank" rel="noopener">ui.shadcn.com</a>.
+    MIT, no field-of-use clause, and unusually it is <b>not a dependency</b> even for the people who
+    use it properly &mdash; it hands you the source and you own it. That is the licence we want and
+    the philosophy we already had.</p>
+    <p class="g-note">We do not run <code>npx shadcn init</code>, because that scaffolds React and
+    Tailwind and this app has neither. What we did instead is read its registry directly
+    (<code>ui.shadcn.com/r/styles/new-york-v4/*.json</code>, which is just the component source as
+    JSON) and port the recipes into plain CSS. What came across:</p>
+    <ul class="g-rules">
+      <li><b>The focus ring</b> &mdash; 3px translucent halo plus a solid border, on <code>:focus-visible</code>. Their best single idea; it replaced four different focus styles here.</li>
+      <li><b>The popup motion</b> &mdash; fade plus 96% zoom, 150ms in, 100ms out. The part you liked. Ours does it on the native <code>popover</code> attribute with zero JS, which they cannot do because they are on Radix.</li>
+      <li><b>The button set</b> &mdash; variants and heights, <code>rounded-md</code>, 13px medium, 6px icon gap.</li>
+      <li><b>The radius ladder</b> &mdash; sm/md/lg/xl, sized onto our existing 8px card instead of their 10px base.</li>
+    </ul>
+    <p class="g-note">What did <em>not</em> come across: their palette, their density and their table.
+    Their neutral is a cold grey and ours is warmer; their header row is <code>h-10</code>, which is a
+    web app's, not a till's; and their table has no stripes at all, which we tried and rejected &mdash;
+    the zebra stays. <b>That mix is the blend.</b> A page built from these blocks should not be
+    mistakable for a shadcn demo or for Shopify admin.</p>
+
+    <h3>Shopify Polaris — the reference, with a catch</h3>
+    <p class="g-note"><a class="link-btn" href="https://shopify.dev/docs/api/polaris" target="_blank" rel="noopener">shopify.dev/docs/api/polaris</a>
+    (<code>polaris.shopify.com</code> now redirects here). <b>Read the licence before copying anything.</b></p>
+    <ul class="g-rules">
+      <li><code>@shopify/polaris-tokens</code> is <b>plain MIT</b> — the numbers are free to take. That is the package to read.</li>
+      <li><code>@shopify/polaris</code> (the React components) and <code>polaris-viz</code> are MIT <b>plus a field-of-use clause</b>: the rights only cover apps that are "dissimilar and visually distinct from Shopify products". Taking their <em>values</em> is fine. Lifting their component CSS into a non-Shopify product is not, and we don't.</li>
+      <li>Polaris React has been <b>frozen since March 2025</b> and the repos are archived. Its replacement, Polaris Web Components / Polaris 2.0, publishes <b>no token file</b> and its components explicitly cannot be styled with custom CSS — so there is nothing newer to borrow.</li>
+      <li>Shopify shipped a <b>new admin look on 2026-09-15</b>. The values below are the admin before that refresh. They are still the only published, machine-readable Polaris numbers.</li>
+    </ul>
+
+    <h3>What their numbers say, and where we differ on purpose</h3>
+    <table class="g-type">
+      <tr><td><b>Thing</b></td><td style="text-align:left;color:var(--po-ink)"><b>Polaris</b></td><td style="text-align:left;color:var(--po-ink)"><b>Us — and why</b></td></tr>
+      <tr><td>Body text</td><td style="text-align:left">13px</td><td style="text-align:left">13px — same</td></tr>
+      <tr><td>Table cell padding</td><td style="text-align:left">6px, row ≈33px</td><td style="text-align:left">6px 14px, row 32px — same</td></tr>
+      <tr><td>Zebra stripe</td><td style="text-align:left">#FFFFFF / #F7F7F7</td><td style="text-align:left">#FFFFFF / <b>#F4F4F4</b> — their grey is our canvas colour, so at #F7F7F7 the stripe blends with the page around the card and the card stops reading as a card</td></tr>
+      <tr><td>Row label in a list</td><td style="text-align:left">bold near-black, monochrome link</td><td style="text-align:left">the same — a blue that isn't a link is banned here too</td></tr>
+      <tr><td>Card padding</td><td style="text-align:left">16px</td><td style="text-align:left">14px — denser, the owner's preference</td></tr>
+      <tr><td>Card radius</td><td style="text-align:left">12px</td><td style="text-align:left">8px — one radius for the whole page</td></tr>
+      <tr><td>Gap between cards</td><td style="text-align:left">16px</td><td style="text-align:left">10px</td></tr>
+      <tr><td>Card edge</td><td style="text-align:left">no border — an inset bevel shadow</td><td style="text-align:left">a 1px hairline. Simpler, and it survives a screenshot</td></tr>
+      <tr><td>Negative delta</td><td style="text-align:left"><b>grey #616161</b>, red is for errors only</td><td style="text-align:left">red — <b>under review</b>, see below</td></tr>
+    </table>
+    <p class="g-note" style="margin-top:14px"><b>The one worth arguing about:</b> polaris-viz paints a falling
+    number in neutral grey with a down arrow, and keeps red for errors and destructive actions. Ours goes
+    red, which is why a quiet day with no sales renders as ₱0 next to a red ↓100% — the card looks like an
+    incident, not a slow morning. Direction and sentiment are also separate there: refunds rising is an up
+    arrow that is bad news. Not changed yet.</p>
+
+    <h3>The others</h3>
+    <ul class="g-rules">
+      <li><b>IBM Carbon</b> — <a class="link-btn" href="https://carbondesignsystem.com" target="_blank" rel="noopener">carbondesignsystem.com</a>, Apache-2.0, actively maintained, tokens published as W3C DTCG JSON. The best free writing on data tables and density — it ships four row heights the way we ship three. Its look is not ours; take the reasoning.</li>
+      <li><b>GitHub Primer</b> — <a class="link-btn" href="https://primer.style" target="_blank" rel="noopener">primer.style</a>, MIT, the richest downloadable token set of any of them. Worth reading for dense tables and for its do/don't format.</li>
+      <li><b>Adobe Spectrum</b> — Apache-2.0, tokens as schema'd JSON. Strongly branded; reasoning only.</li>
+      <li><b>Atlassian</b> — the npm package says Apache-2.0 but the system's own licence limits it to software that integrates with Atlassian products. Same trap as Polaris React. Read, don't adopt.</li>
+      <li><b>The actual POS competitors have nothing public.</b> Square's admin system (Market) is internal — the public <code>@square/maker</code> is a different, Vue thing. Lightspeed's token package was abandoned in 2019. Toast and Intuit publish no design system at all. They are only useful as screenshots.</li>
+    </ul>
+    <p class="g-note" style="margin-top:14px"><b>The rule when borrowing:</b> a decision comes in as a
+    sentence — here or in <code>docs/backoffice.md</code> — first, then as CSS in a new numbered block.
+    Nothing arrives as a copied stylesheet, and no dependency is added. The product has no build step and
+    is not getting one.</p>
+
+  </main>
+</div>
+
+<script>
+/* Swatches read out of the live stylesheet, so this grid can never disagree with the tokens. */
+const TOKENS = [
+  ['--po-bg', 'Page canvas'], ['--po-surface', 'Card'], ['--po-row-alt', 'Row stripe'],
+  ['--po-surface-hover', 'Hover'], ['--po-line', 'Hairline'], ['--po-line-strong', 'Input border'],
+  ['--po-ink', 'Ink'], ['--po-ink-secondary', 'Ink secondary'], ['--po-ink-tertiary', 'Ink tertiary'],
+  ['--po-accent-link', 'Link (the only blue)'], ['--po-success', 'Up / good'], ['--po-danger', 'Down / bad'],
+  ['--po-pill-ok', 'Pill ok'], ['--po-pill-warn', 'Pill warn'], ['--po-pill-danger', 'Pill danger'],
+  ['--po-pill-info', 'Pill info'], ['--po-pill-owner', 'Pill owner'], ['--po-pill-neutral', 'Pill neutral'],
+];
+const cs = getComputedStyle(document.body);
+document.getElementById('swatches').innerHTML = TOKENS.map(([tok, name]) => {
+  const val = cs.getPropertyValue(tok).trim();
+  return `<div class="g-sw"><i style="background:${val}"></i><span><b>${name}</b>${tok}<br>${val}</span></div>`;
+}).join('');
+
+/* Print the markup of every demo from the demo itself, so the code shown is the code rendered. */
+for (const demo of document.querySelectorAll('.g-demo')) {
+  if (demo.closest('.g-vs')) continue;           // the before/after pair explains itself
+  const src = demo.innerHTML
+    .replace(/^\n/, '').replace(/\s+$/, '')
+    .replace(/ style="[^"]*"/g, '')              // demo-only widths, not part of the block
+    .split('\n').filter(l => l.trim());
+  const indent = Math.min(...src.map(l => l.match(/^ */)[0].length));
+  const pre = document.createElement('pre');
+  pre.className = 'g-code';
+  pre.textContent = src.map(l => l.slice(indent)).join('\n');
+  demo.after(pre);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EJ Hardware — block canvas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   Shared head. Tokens and the three shell classes come straight out of
+   blocks-lab-picks.html so the four blocks below look exactly as they did
+   there. Everything under "page furniture" is this file's own scaffolding —
+   it is not part of the design, it is just what holds the blocks up.
+   =========================================================================== */
+:root {
+  /* Read off the screenshots: these dashboards all share roughly one palette. */
+  --canvas: #F4F5F7;
+  --card: #FFFFFF;
+  --ink: #101828;
+  --ink-2: #667085;
+  --ink-3: #98A2B3;
+  --line: #EAECF0;
+  --track: #EEF0F4;
+  --blue: #2563EB;
+  --blue-soft: #EFF4FF;
+  --green: #12A150;
+  --green-soft: #E7F7EE;
+  --red: #E5484D;
+  --red-soft: #FDECEC;
+  /* Amber is the state a hardware store actually lives in — low stock,
+     partially paid, arriving. It was missing and kept getting re-invented. */
+  --amber: #B54708;
+  --amber-soft: #FFF4E5;
+  --link: #1E6ED8;
+  --r: 16px;
+  --r-sm: 10px;
+  --shadow: 0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.04);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--canvas); color: var(--ink);
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- the shell the picked blocks lean on -------------------------------- */
+.c { background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); padding: 20px; }
+.c-title { font-size: 13px; color: var(--ink-2); font-weight: 500; }
+.dots { border: 0; background: transparent; color: var(--ink-3); cursor: pointer; font-size: 16px;
+        line-height: 1; padding: 2px 6px; border-radius: 6px; }
+.dots:hover { background: #F2F4F7; color: var(--ink); }
+
+/* ======================= the blocks ======================= */
+/* ======================= the blocks ======================= */
+/* ===================== block 1 ===================== */
+/* ===========================================================================
+   1 · metric card with a delta chip
+   Off-white card on a white stage. No shadow, no border — the tone step and
+   the white gutter do all the separating (sampled: card 250,250,250 /
+   gutter 255). Label top-left, optional control top-right, one big number,
+   and a footer of three things: chip, printed basis, link.
+   =========================================================================== */
+.s1 .stage { background: #FFFFFF; }
+
+.s1 .m-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.s1 .m-card { background: #FAFAFA; box-shadow: none; padding: 18px 18px 16px; }
+.s1 .m-card .m-top { display: flex; align-items: center; justify-content: space-between;
+                     margin-bottom: 13px; min-height: 18px; }
+.s1 .c-title { font-size: 13px; font-weight: 400; color: var(--ink-3); white-space: nowrap; }
+.s1 .m-value { font-size: 28px; font-weight: 650; letter-spacing: -.02em; line-height: 1.1;
+               font-variant-numeric: tabular-nums; }
+.s1 .m-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px;
+              flex-wrap: nowrap; white-space: nowrap; }
+
+/* The chip is BLUE in both directions — +3.2% and -4.2% are the same hue in the
+   reference — and the tint is a whisper, not an 8% wash. Sign first, arrow
+   trailing. It is markedly smaller than the sentence beside it. */
+.s1 .chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px;
+            padding: 2px 6px; background: #EFF6FE; color: var(--blue);
+            font-size: 10px; font-weight: 600; letter-spacing: 0;
+            font-variant-numeric: tabular-nums; white-space: nowrap; }
+.s1 .m-since { font-size: 12px; color: #B0B7C1; white-space: nowrap; }
+.s1 .m-more { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--blue);
+              text-decoration: none; white-space: nowrap; }
+.s1 .m-more:hover { text-decoration: underline; }
+
+/* the top-right slot is a picker, not an ornament — a branch picker here */
+.s1 .cur { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--ink-2);
+           white-space: nowrap; }
+.s1 .cur svg { color: var(--ink-3); flex: 0 0 auto; }
+
+/* --- derivative pieces ---------------------------------------------------- */
+/* a unit rides the number at label weight so the figure stays the biggest thing */
+.s1 .v1-unit { font-size: 14px; font-weight: 500; color: var(--ink-3);
+               letter-spacing: 0; margin-left: 5px; }
+/* no data is an em dash in the value's own slot — never 0%, never a red -100% */
+.s1 .v1-dash { color: #C9CDD4; }
+/* three across: the card loses ~90px, so the footer keeps the two facts that
+   matter and the per-card link goes. Everything else is unchanged. */
+.s1 .v1-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.s1 .v1-strip .m-card { padding: 14px 14px 13px; }
+.s1 .v1-strip .m-card .m-top { margin-bottom: 10px; }
+.s1 .v1-strip .c-title { font-size: 12px; }
+.s1 .v1-strip .m-value { font-size: 21px; }
+.s1 .v1-strip .m-foot { margin-top: 11px; gap: 7px; }
+.s1 .v1-strip .chip { font-size: 9.5px; padding: 2px 5px; gap: 3px; }
+.s1 .v1-strip .m-since { font-size: 11px; }
+
+/* ===================== block 3 ===================== */
+/* --- 3 · big KPI with a trend sentence ------------------------------------
+   Merged from the lab: the unprefixed "3 — big KPI with inline trend sentence"
+   rules plus the later #b3 corrections that win over them, rescoped to .s3.
+   -------------------------------------------------------------------------- */
+
+.s3 .stage { background: #FFFFFF; }
+
+/* The reference runs four across at ~250px a card. A 560px slot gives two
+   columns of ~253px — the same card width, so the type scale stays honest.
+   Pinned rather than auto-fit so the preview cannot reflow. */
+.s3 .k-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+/* quiet card on a white stage: no shadow, no border, separated by tone only */
+.s3 .k-card { background: #F9F9F9; border-radius: 14px; box-shadow: none;
+              padding: 16px 16px 20px; position: relative; }
+
+/* the ··· is on every card, all the time, at ~#667085 — not a hover ghost */
+.s3 .k-card .dots { position: absolute; top: 9px; right: 8px; opacity: 1;
+                    font-size: 14px; color: #667085; }
+
+.s3 .k-label { font-size: 13px; color: var(--ink); white-space: nowrap; }
+.s3 .k-value { font-size: 27px; font-weight: 550; letter-spacing: -.02em; line-height: 1.15;
+               margin: 9px 0 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* only the delta is coloured; the rest of the sentence is the same near-black
+   as the label — it is a sentence, not a chip with a muted tail */
+.s3 .k-trend { font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+.s3 .k-trend b { font-weight: 400; font-variant-numeric: tabular-nums; }
+.s3 .k-trend b.up { color: var(--green); }
+.s3 .k-trend b.down { color: var(--red); }
+
+/* B · three across — fewer cards, one step up in the number */
+.s3 .v3-three { grid-template-columns: repeat(3, 1fr); }
+.s3 .v3-three .k-card { padding: 15px 14px 18px; }
+.s3 .v3-three .k-label { font-size: 13.5px; }
+.s3 .v3-three .k-value { font-size: 28px; margin: 10px 0 10px; }
+
+/* C · the states it actually hits. Rule 3: no data is an em dash, never 0%
+   and never a red -100%. A flat week and a missing basis both stay ink. */
+.s3 .k-value.v3-none { color: var(--ink-3); }
+.s3 .k-trend b.v3-flat { color: var(--ink); }
+.s3 .k-trend b.v3-nil { color: var(--ink-3); }
+
+/* ===================== block 7 ===================== */
+/* 7 — Icon list.
+   Merged from the lab: the unprefixed "7 — icon list" rules plus the
+   later #b7 corrections that win, rescoped to .s7. Measured off the reference:
+   46px row pitch (30px tile + 8px padding top and bottom) and the tile is a
+   30px CIRCLE, not a rounded square. Every row carries the same pale blue
+   tint and the same blue glyph — there is no second tile colour in the
+   reference, so the derivatives keep colour out of the tile too. */
+.s7 .l-row { display: flex; align-items: center; gap: 11px; padding: 8px 0;
+             border-bottom: 1px solid var(--line); }
+.s7 .l-row:last-child { border-bottom: 0; }
+.s7 .l-icon { width: 30px; height: 30px; border-radius: 50%; background: var(--blue-soft);
+              color: var(--blue); display: grid; place-items: center; flex: 0 0 auto; }
+.s7 .l-main { min-width: 0; flex: 1; }
+.s7 .l-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden;
+              text-overflow: ellipsis; }
+.s7 .l-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+.s7 .l-right { text-align: right; flex: 0 0 auto; white-space: nowrap; }
+.s7 .l-amt { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.s7 .l-id { font-size: 11.5px; color: var(--ink-3); margin-top: 1px;
+            font-variant-numeric: tabular-nums; }
+
+/* card header — the lab wrote this inline; same values, named once */
+.s7 .v7-hd { display: flex; align-items: flex-start; justify-content: space-between; }
+.s7 .v7-t { font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+.s7 .v7-s { font-size: 12px; color: var(--ink-3); margin: 2px 0 8px; }
+
+/* single-line variant: the SKU qualifies the name, so it sits beside it (rule 8) */
+.s7 .v7-line { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+.s7 .v7-line .l-name { flex: 0 1 auto; }
+.s7 .v7-qual { font-size: 11.5px; color: var(--ink-3); flex: 0 0 auto;
+               font-variant-numeric: tabular-nums; }
+
+/* status word replaces the id line — a single word, never a whole row */
+.s7 .v7-st.bad { color: var(--red); }
+.s7 .v7-st.ok { color: var(--green); }
+
+/* two cards in one stage, for the states */
+.s7 .v7-stack { display: grid; gap: 14px; }
+.s7 .v7-empty .l-name { font-weight: 500; color: var(--ink-2); }
+.s7 .v7-empty .l-amt { color: var(--ink-3); }
+
+/* ===================== block 8 ===================== */
+/* 8 — radial summary. Concentric half-arcs over a common baseline, one hue in
+   depths, legend inset to the chart's own width.
+   Geometry, written out so the numbers can be changed without re-deriving them:
+   · cx/cy = 105/105, so every arc foot lands on the baseline y = 105.
+   · Each path starts at the RIGHT foot (cx + r) and sweeps counter-clockwise
+     over the top — large-arc 0, sweep 0. Starting there means no rotate() and
+     no stroke-dashoffset anywhere in the family.
+   · Half-circle length = π·r. stroke-dasharray = "drawn rest",
+     drawn = fraction × π·r.
+   · Butt caps: both ends square-cut, feet stop dead on the baseline.
+   · Every ring draws its track first, then its value over it — including the
+     ring at 100% and the ring at nothing. A fill with no remainder has no scale.
+   NOTE: no var() in SVG presentation attributes — it renders black. Every
+   stroke and fill below is a class. */
+.s8 .c { padding: 18px; max-width: 330px; }
+.s8 .c-title { margin-bottom: 6px; }
+.s8 .v8-basis { margin: -2px 0 8px; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+.s8 .r-wrap { display: flex; flex-direction: column; align-items: center; }
+
+/* legend — swatch 8px on a 17px row pitch, measured off the reference.
+   Inset to the chart's width, no rules between rows. */
+/* Inset to the chart's own width, but a peso figure on a long label needs 214px
+   and a hard 210px clipped it. Min, not fixed: short legends still line up with
+   the ring, long ones grow instead of overflowing. */
+.s8 .leg { min-width: 210px; max-width: 100%; margin-top: 14px; }
+.s8 .leg-row { display: flex; align-items: center; gap: 10px; font-size: 12.5px;
+               line-height: 17px; white-space: nowrap; }
+.s8 .leg-sw { width: 8px; height: 8px; border-radius: 3px; flex: 0 0 auto; }
+.s8 .leg-row b { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+.s8 .leg-row .v8-none { color: var(--ink-3); font-weight: 600; }
+
+/* one hue, five depths, lightest at the centre — nested rings are parts of one
+   story, so three different hues would say they are unrelated. */
+.s8 .v8-t  { stroke: #E8F4FD; }
+.s8 .v8-a1 { stroke: #8FCBF6; }
+.s8 .v8-a2 { stroke: #5CB2F0; }
+.s8 .v8-a3 { stroke: #2C99EC; }
+.s8 .v8-a4 { stroke: #0C8CE9; }
+.s8 .v8-a5 { stroke: #0963A4; }
+.s8 .v8-s1 { background: #8FCBF6; }
+.s8 .v8-s2 { background: #5CB2F0; }
+.s8 .v8-s3 { background: #2C99EC; }
+.s8 .v8-s4 { background: #0C8CE9; }
+.s8 .v8-s5 { background: #0963A4; }
+
+/* the number in the hole — the reference leaves the hole empty when there is a
+   legend, and fills it only when the ring is a single reading. */
+.s8 .v8-big { font-size: 34px; font-weight: 600; letter-spacing: -.025em;
+              fill: var(--ink); font-variant-numeric: tabular-nums; }
+.s8 .v8-cap { margin-top: 10px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+
+/* ===========================================================================
+   The editor. Everything below is chrome — it never styles a block, only the
+   frame around one. Blocks keep their own .s1/.s3/.s7/.s8 rules untouched, so
+   what you drag around here is literally what the foundation file ships.
+   =========================================================================== */
+html, body { height: 100%; overflow: hidden; }
+.app { display: grid; grid-template-columns: 224px minmax(0,1fr) 216px; height: 100vh; }
+
+/* ------------------------------------------------------------- the palette */
+.lib { background: var(--card); border-right: 1px solid var(--line); overflow-y: auto; padding: 14px 12px 40px; }
+.lib h1 { font-size: 14px; margin: 0 0 2px; letter-spacing: -.01em; }
+.lib .sub { font-size: 11px; color: var(--ink-3); margin: 0 0 14px; line-height: 1.5; }
+.lib h2 { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3);
+          margin: 16px 0 7px; padding-top: 12px; border-top: 1px solid var(--line); }
+.lib h2:first-of-type { border-top: 0; padding-top: 0; }
+.pi { display: block; width: 100%; text-align: left; font: inherit; font-size: 12px;
+      color: var(--ink); background: #FAFAFA; border: 1px solid var(--line); border-radius: 8px;
+      padding: 7px 9px; margin-bottom: 5px; cursor: grab; }
+.pi:hover { background: #F2F4F7; border-color: #D8DDE5; }
+.pi:active { cursor: grabbing; }
+.pi small { display: block; color: var(--ink-3); font-size: 10.5px; margin-top: 1px; }
+
+/* --------------------------------------------------------------- the stage */
+/* min-height: 0 on both, or a flex/grid child grows to fit its content instead of
+   scrolling — and with body overflow hidden, the lower blocks become unreachable. */
+.mid { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #E9EBEF; }
+.bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 9px 12px;
+       background: var(--card); border-bottom: 1px solid var(--line); }
+.bar .sep { width: 1px; height: 20px; background: var(--line); margin: 0 3px; }
+.bar .rt { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.tb { font: inherit; font-size: 12px; padding: 5px 9px; border-radius: 7px; border: 1px solid var(--line);
+      background: var(--card); color: var(--ink); cursor: pointer; white-space: nowrap; }
+.tb:hover { background: #F2F4F7; }
+.tb.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.tb[disabled] { opacity: .4; cursor: default; }
+.zoom { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; min-width: 42px;
+        text-align: center; }
+.scroll { flex: 1; min-height: 0; overflow: auto; padding: 28px; display: flex; justify-content: center;
+          align-items: flex-start; }
+
+#art {
+  position: relative; background: #fff; flex: 0 0 auto;
+  width: 1440px; height: 1000px; transform-origin: top center;
+  box-shadow: 0 1px 3px rgba(16,24,40,.12), 0 12px 40px rgba(16,24,40,.10);
+}
+/* An 8px grid, drawn only when asked for, with a heavier line every 80. */
+#art.grid {
+  background-image:
+    repeating-linear-gradient(to right,  rgba(16,24,40,.05) 0 1px, transparent 1px var(--g)),
+    repeating-linear-gradient(to bottom, rgba(16,24,40,.05) 0 1px, transparent 1px var(--g)),
+    repeating-linear-gradient(to right,  rgba(16,24,40,.10) 0 1px, transparent 1px calc(var(--g) * 10)),
+    repeating-linear-gradient(to bottom, rgba(16,24,40,.10) 0 1px, transparent 1px calc(var(--g) * 10));
+}
+
+/* --------------------------------------------------------------- the items */
+/* No text selection while dragging: a selection drag makes the browser cancel
+   the pointer gesture mid-move, and the block sticks after the first pixel. */
+.item { position: absolute; user-select: none; -webkit-user-select: none; }
+.item [contenteditable] { user-select: text; -webkit-user-select: text; }
+.item > .wrap { width: 100%; height: 100%; overflow: hidden; }
+/* Several families cap their card's width so it reads well on the foundation
+   page. On a canvas you are the one deciding how wide it is, so the cap goes. */
+.item > .wrap > .c { max-width: 100%; }
+/* A hairline on hover so you can find an edge before you commit to a click. */
+.item:hover { outline: 1px solid rgba(37,99,235,.35); }
+.item.sel { outline: 1.5px solid var(--blue); }
+.item.drag { opacity: .9; }
+.hnds { position: absolute; inset: 0; pointer-events: none; display: none; }
+.item.sel .hnds { display: block; }
+.h { position: absolute; width: 9px; height: 9px; background: #fff; border: 1.5px solid var(--blue);
+     border-radius: 2px; pointer-events: auto; }
+.h.nw { left: -5px; top: -5px; cursor: nwse-resize; }
+.h.n  { left: calc(50% - 4.5px); top: -5px; cursor: ns-resize; }
+.h.ne { right: -5px; top: -5px; cursor: nesw-resize; }
+.h.e  { right: -5px; top: calc(50% - 4.5px); cursor: ew-resize; }
+.h.se { right: -5px; bottom: -5px; cursor: nwse-resize; }
+.h.s  { left: calc(50% - 4.5px); bottom: -5px; cursor: ns-resize; }
+.h.sw { left: -5px; bottom: -5px; cursor: nesw-resize; }
+.h.w  { left: -5px; top: calc(50% - 4.5px); cursor: ew-resize; }
+/* The size tag that follows a drag, like every design tool. */
+.tag { position: absolute; top: -22px; left: 0; background: var(--blue); color: #fff;
+       font-size: 10.5px; padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+       font-variant-numeric: tabular-nums; pointer-events: none; display: none; }
+.item.sel .tag, .item.drag .tag { display: block; }
+
+/* Snap guides. Drawn in an overlay so they sit over every block. */
+#guides { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
+/* gv/gh, not v/h: .h is already the resize handle, and a 9px-wide handle rule
+   was winning over a guide that had no width of its own. */
+#guides i { position: absolute; background: #F5308B; }
+#guides i.gv { top: 0; bottom: 0; width: 1px; }
+#guides i.gh { left: 0; right: 0; height: 1px; }
+/* The marquee for dragging a selection box over several items. */
+#band { position: absolute; border: 1px solid var(--blue); background: rgba(37,99,235,.08);
+        pointer-events: none; z-index: 49; display: none; }
+
+/* ----------------------------------------------------------- the inspector */
+.insp { background: var(--card); border-left: 1px solid var(--line); overflow-y: auto;
+        padding: 14px 12px 40px; }
+.insp h2 { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3);
+           margin: 0 0 9px; }
+.insp .grp { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 13px; }
+.insp .grp:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+.xy { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.f { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 7px;
+     padding: 4px 7px; }
+.f span { font-size: 10.5px; color: var(--ink-3); }
+.f input { font: inherit; font-size: 12px; border: 0; width: 100%; min-width: 0; padding: 0;
+           background: none; color: var(--ink); font-variant-numeric: tabular-nums; }
+.f input:focus { outline: none; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.insp .tb { width: 100%; }
+.none { font-size: 12px; color: var(--ink-3); line-height: 1.6; }
+#sel-name { font-size: 12px; margin-bottom: 8px; line-height: 1.45; }
+#sel-name span { display: block; color: var(--ink-3); font-size: 11px; }
+.keys { font-size: 11px; color: var(--ink-3); line-height: 1.8; margin: 0; }
+.keys b { color: var(--ink-2); font-weight: 500;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#out { width: 100%; height: 120px; font-size: 10.5px; margin-top: 8px; display: none;
+       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+       border: 1px solid var(--line); border-radius: 8px; padding: 8px; color: var(--ink-2); }
+#out.on { display: block; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="lib">
+    <h1>Block canvas</h1>
+    <p class="sub">Drag anything onto the page. Move it, resize it, double-click to edit the words.</p>
+    <div id="palette"></div>
+  </aside>
+
+  <div class="mid">
+    <div class="bar">
+      <button class="tb" id="t-guides" title="Snap to other blocks (G)">Guides</button>
+      <button class="tb" id="t-grid" title="Show the grid (R)">Grid</button>
+      <button class="tb" id="t-snapgrid" title="Snap to the grid">Snap grid</button>
+      <span class="sep"></span>
+      <button class="tb" id="b-dup" disabled>Duplicate</button>
+      <button class="tb" id="b-front" disabled>Front</button>
+      <button class="tb" id="b-back" disabled>Back</button>
+      <button class="tb" id="b-del" disabled>Delete</button>
+      <div class="rt">
+        <button class="tb" id="z-out">−</button>
+        <span class="zoom" id="zlabel">75%</span>
+        <button class="tb" id="z-in">+</button>
+        <button class="tb" id="z-fit">Fit</button>
+        <span class="sep"></span>
+        <button class="tb" id="b-copy">Copy HTML</button>
+        <button class="tb" id="b-clear" title="Throw the page away and lay every block out again">Reset</button>
+      </div>
+    </div>
+    <div class="scroll" id="scroll">
+      <div id="art">
+        <div id="band"></div>
+        <div id="guides"></div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="insp">
+    <div class="grp">
+      <h2>Selection</h2>
+      <div id="sel-none" class="none">Nothing selected. Drag a block in from the left, or drag a box
+      across the page to pick several.</div>
+      <div id="sel-on" style="display:none">
+        <div id="sel-name"></div>
+        <div class="xy" style="margin-bottom:7px">
+          <div class="f"><span>X</span><input id="i-x" type="number"></div>
+          <div class="f"><span>Y</span><input id="i-y" type="number"></div>
+        </div>
+        <div class="xy">
+          <div class="f"><span>W</span><input id="i-w" type="number"></div>
+          <div class="f"><span>H</span><input id="i-h" type="number" placeholder="auto"></div>
+        </div>
+        <button class="tb" id="b-auto" style="margin-top:7px">Height to fit</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <h2>Align</h2>
+      <div class="row2">
+        <button class="tb" data-al="l">Left</button>
+        <button class="tb" data-al="cx">Centre</button>
+        <button class="tb" data-al="r">Right</button>
+        <button class="tb" data-al="t">Top</button>
+        <button class="tb" data-al="cy">Middle</button>
+        <button class="tb" data-al="b">Bottom</button>
+      </div>
+      <div class="row2" style="margin-top:6px">
+        <button class="tb" data-al="dx">Space across</button>
+        <button class="tb" data-al="dy">Space down</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <h2>Page</h2>
+      <div class="xy">
+        <div class="f"><span>W</span><input id="p-w" type="number" value="1440"></div>
+        <div class="f"><span>H</span><input id="p-h" type="number" value="1000"></div>
+      </div>
+      <div class="f" style="margin-top:7px"><span>Grid</span><input id="p-g" type="number" value="8"></div>
+    </div>
+
+    <div class="grp">
+      <h2>Keys</h2>
+      <p class="keys">
+        <b>drag</b> move · <b>alt+drag</b> copy<br>
+        <b>shift+click</b> add to selection<br>
+        <b>← ↑ → ↓</b> nudge · <b>+shift</b> by 10<br>
+        <b>ctrl+D</b> duplicate · <b>del</b> remove<br>
+        <b>G</b> guides · <b>R</b> grid · <b>esc</b> deselect
+      </p>
+      <textarea id="out" spellcheck="false" readonly></textarea>
+    </div>
+  </aside>
+
+</div>
+
+<div id="lib-templates" hidden>
+<template data-fam="s1" data-group="1 · Metric card with a delta chip" data-name="Base — as picked" data-kind="block">
+<div class="m-grid">
+          <div class="c m-card">
+            <div class="m-top">
+              <span class="c-title">Total Sales</span>
+              <span class="cur">
+                <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true" fill="none"><path d="M7 12.5S11.5 9 11.5 5.8A4.5 4.5 0 0 0 2.5 5.8C2.5 9 7 12.5 7 12.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><circle cx="7" cy="5.7" r="1.5" stroke="currentColor" stroke-width="1.2"/></svg>
+                Sahara Mall
+                <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 4 L5 6.5 L7.5 4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+            </div>
+            <div class="m-value">₱52,418.50</div>
+            <div class="m-foot">
+              <span class="chip">+3.2% ↑</span>
+              <span class="m-since">From last month</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Total Purchases</span></div>
+            <div class="m-value">₱31,940.00</div>
+            <div class="m-foot">
+              <span class="chip">−4.2% ↓</span>
+              <span class="m-since">From last month</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Utang Balance</span></div>
+            <div class="m-value">₱14,275.00</div>
+            <div class="m-foot">
+              <span class="chip">+2.4% ↑</span>
+              <span class="m-since">From last month</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+        </div>
+</template>
+<template data-fam="s1" data-group="1 · Metric card with a delta chip" data-name="A · Counts" data-kind="block">
+<div class="m-grid">
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Transactions</span></div>
+            <div class="m-value">412</div>
+            <div class="m-foot">
+              <span class="chip">+8.6% ↑</span>
+              <span class="m-since">From last week</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Cement Sold</span></div>
+            <div class="m-value">1,284<span class="v1-unit">bags</span></div>
+            <div class="m-foot">
+              <span class="chip">−1.9% ↓</span>
+              <span class="m-since">From last week</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Void Rate</span></div>
+            <div class="m-value">0.8<span class="v1-unit">%</span></div>
+            <div class="m-foot">
+              <span class="chip">+0.3pt ↑</span>
+              <span class="m-since">From last week</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+        </div>
+</template>
+<template data-fam="s1" data-group="1 · Metric card with a delta chip" data-name="B · Strip" data-kind="block">
+<div class="m-grid v1-strip">
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Sahara Mall</span></div>
+            <div class="m-value">₱52,418</div>
+            <div class="m-foot">
+              <span class="chip">+3.2% ↑</span>
+              <span class="m-since">vs last week</span>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Poblacion</span></div>
+            <div class="m-value">₱18,306</div>
+            <div class="m-foot">
+              <span class="chip">−6.4% ↓</span>
+              <span class="m-since">vs last week</span>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Bypass Road</span></div>
+            <div class="m-value">₱9,740</div>
+            <div class="m-foot">
+              <span class="chip">+1.1% ↑</span>
+              <span class="m-since">vs last week</span>
+            </div>
+          </div>
+        </div>
+</template>
+<template data-fam="s1" data-group="1 · Metric card with a delta chip" data-name="C · Nothing to compare" data-kind="block">
+<div class="m-grid">
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Sales · Bypass Road</span></div>
+            <div class="m-value">₱9,740.00</div>
+            <div class="m-foot">
+              <span class="m-since">No prior month</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">Utang Collected</span></div>
+            <div class="m-value v1-dash">—</div>
+            <div class="m-foot">
+              <span class="m-since">No collections yet</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+          <div class="c m-card">
+            <div class="m-top"><span class="c-title">GCash Received</span></div>
+            <div class="m-value">₱4,120.00</div>
+            <div class="m-foot">
+              <span class="chip">+11.0% ↑</span>
+              <span class="m-since">From last month</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+        </div>
+</template>
+<template data-fam="s3" data-group="3 · Big KPI with a trend sentence" data-name="Base — as picked" data-kind="block">
+<div class="k-grid">
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Sales today</div>
+          <div class="k-value">₱43,740</div>
+          <div class="k-trend"><b class="up">↑5%</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Gross margin</div>
+          <div class="k-value">₱11,280</div>
+          <div class="k-trend"><b class="up">↑2.2%</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Utang collected</div>
+          <div class="k-value">₱8,960</div>
+          <div class="k-trend"><b class="up">↑1.2%</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Purchases this month</div>
+          <div class="k-value">₱152,300</div>
+          <div class="k-trend"><b class="up">↑0.2%</b> in the last month</div>
+        </div>
+      </div>
+</template>
+<template data-fam="s3" data-group="3 · Big KPI with a trend sentence" data-name="A · Not money" data-kind="block">
+<div class="k-grid">
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Transactions today</div>
+          <div class="k-value">1,284</div>
+          <div class="k-trend"><b class="up">↑96</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Average time at till</div>
+          <div class="k-value">2m 40s</div>
+          <div class="k-trend"><b class="up">↓14s</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Items per basket</div>
+          <div class="k-value">3.4</div>
+          <div class="k-trend"><b class="up">↑0.2</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Utang paid on time</div>
+          <div class="k-value">68%</div>
+          <div class="k-trend"><b class="down">↓3%</b> in the last month</div>
+        </div>
+      </div>
+</template>
+<template data-fam="s3" data-group="3 · Big KPI with a trend sentence" data-name="B · Three across" data-kind="block">
+<div class="k-grid v3-three">
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Sahara Mall</div>
+          <div class="k-value">₱24,180</div>
+          <div class="k-trend"><b class="up">↑6%</b> vs last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Poblacion</div>
+          <div class="k-value">₱18,940</div>
+          <div class="k-trend"><b class="down">↓2%</b> vs last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Bypass Road</div>
+          <div class="k-value">₱11,520</div>
+          <div class="k-trend"><b class="up">↑11%</b> vs last week</div>
+        </div>
+      </div>
+</template>
+<template data-fam="s3" data-group="3 · Big KPI with a trend sentence" data-name="C · Quiet week" data-kind="block">
+<div class="k-grid">
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Cement sold</div>
+          <div class="k-value">142 bags</div>
+          <div class="k-trend"><b class="v3-flat">No change</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Bypass Road sales</div>
+          <div class="k-value">₱9,340</div>
+          <div class="k-trend"><b class="v3-nil">—</b> no prior week to compare</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">GCash share</div>
+          <div class="k-value">21%</div>
+          <div class="k-trend"><b class="down">↓8%</b> in the last week</div>
+        </div>
+        <div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Plywood sold</div>
+          <div class="k-value v3-none">—</div>
+          <div class="k-trend">Nothing rung up today</div>
+        </div>
+      </div>
+</template>
+<template data-fam="s7" data-group="7 · Icon list" data-name="Base — as picked" data-kind="block">
+<div class="c">
+        <div class="v7-hd">
+          <div>
+            <div class="v7-t">Recent sales</div>
+            <div class="v7-s">Newest first, all terminals</div>
+          </div>
+          <button class="dots" title="More">···</button>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+          <div class="l-main"><div class="l-name">Bosch GSB 550 Impact Drill</div><div class="l-sub">Sep 20, 2026 · 1:00 PM</div></div>
+          <div class="l-right"><div class="l-amt">₱5,980.00</div><div class="l-id">R-004812</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+          <div class="l-main"><div class="l-name">THHN Wire #14 (per metre)</div><div class="l-sub">Sep 20, 2026 · 12:41 PM</div></div>
+          <div class="l-right"><div class="l-amt">₱3,898.00</div><div class="l-id">R-004811</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+          <div class="l-main"><div class="l-name">Quick-Dry Enamel Black 1L</div><div class="l-sub">Sep 20, 2026 · 12:08 PM</div></div>
+          <div class="l-right"><div class="l-amt">₱348.00</div><div class="l-id">R-004810</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+          <div class="l-main"><div class="l-name">Silicone Sealant White</div><div class="l-sub">Sep 20, 2026 · 11:52 AM</div></div>
+          <div class="l-right"><div class="l-amt">₱98.00</div><div class="l-id">R-004809</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+          <div class="l-main"><div class="l-name">Stanley Measuring Tape 5m Heavy Duty Chrome</div><div class="l-sub">Sep 20, 2026 · 11:20 AM</div></div>
+          <div class="l-right"><div class="l-amt">₱348.00</div><div class="l-id">R-004808</div></div>
+        </div>
+      </div>
+</template>
+<template data-fam="s7" data-group="7 · Icon list" data-name="A · People" data-kind="block">
+<div class="c">
+        <div class="v7-hd">
+          <div>
+            <div class="v7-t">On shift</div>
+            <div class="v7-s">Mabini branch · Sep 21</div>
+          </div>
+          <button class="dots" title="More">···</button>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5"/></svg></div>
+          <div class="l-main"><div class="l-name">Rowena Cruz</div><div class="l-sub">Terminal 1 · in 7:02 AM</div></div>
+          <div class="l-right"><div class="l-amt">₱18,420.00</div><div class="l-id">37 sales</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5"/></svg></div>
+          <div class="l-main"><div class="l-name">Jomar Dela Peña</div><div class="l-sub">Terminal 2 · in 7:05 AM</div></div>
+          <div class="l-right"><div class="l-amt">₱12,980.00</div><div class="l-id">24 sales</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5"/></svg></div>
+          <div class="l-main"><div class="l-name">Aileen Bautista</div><div class="l-sub">Terminal 3 · in 10:00 AM</div></div>
+          <div class="l-right"><div class="l-amt">₱6,240.00</div><div class="l-id">11 sales</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5"/></svg></div>
+          <div class="l-main"><div class="l-name">Nestor Agbayani</div><div class="l-sub">Delivery desk · in 8:15 AM</div></div>
+          <div class="l-right"><div class="l-amt">₱4,880.00</div><div class="l-id">6 sales</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.4 3.1-5.5 7-5.5s7 2.1 7 5.5"/></svg></div>
+          <div class="l-main"><div class="l-name">Marilou Sy</div><div class="l-sub">Cashier relief · in 1:30 PM</div></div>
+          <div class="l-right"><div class="l-amt">₱1,150.00</div><div class="l-id">3 sales</div></div>
+        </div>
+      </div>
+</template>
+<template data-fam="s7" data-group="7 · Icon list" data-name="B · One line" data-kind="block">
+<div class="c">
+        <div class="v7-hd">
+          <div>
+            <div class="v7-t">Below reorder point</div>
+            <div class="v7-s">Fort Bonifacio branch · counted 6:40 AM</div>
+          </div>
+          <button class="dots" title="More">···</button>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></div>
+          <div class="l-main"><div class="v7-line"><div class="l-name">Portland Cement 40kg</div><span class="v7-qual">CEM-40</span></div></div>
+          <div class="l-right"><div class="l-amt">12 bags</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></div>
+          <div class="l-main"><div class="v7-line"><div class="l-name">Hollow Block 4&quot;</div><span class="v7-qual">CHB-04</span></div></div>
+          <div class="l-right"><div class="l-amt">60 pcs</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></div>
+          <div class="l-main"><div class="v7-line"><div class="l-name">#14 Tie Wire</div><span class="v7-qual">TW-14</span></div></div>
+          <div class="l-right"><div class="l-amt">3 kg</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></div>
+          <div class="l-main"><div class="v7-line"><div class="l-name">PVC Pipe 2&quot;×10ft</div><span class="v7-qual">PVC-210</span></div></div>
+          <div class="l-right"><div class="l-amt">5 pcs</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></div>
+          <div class="l-main"><div class="v7-line"><div class="l-name">Marine Plywood 1/2&quot;</div><span class="v7-qual">PLY-12M</span></div></div>
+          <div class="l-right"><div class="l-amt">2 sheets</div></div>
+        </div>
+        <div class="l-row">
+          <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></div>
+          <div class="l-main"><div class="v7-line"><div class="l-name">G.I. Sheet Ga.26</div><span class="v7-qual">GI-26</span></div></div>
+          <div class="l-right"><div class="l-amt">8 sheets</div></div>
+        </div>
+      </div>
+</template>
+<template data-fam="s7" data-group="7 · Icon list" data-name="C · States" data-kind="block">
+<div class="v7-stack">
+        <div class="c">
+          <div class="v7-hd">
+            <div>
+              <div class="v7-t">Utang due today</div>
+              <div class="v7-s">All branches · Sep 21</div>
+            </div>
+            <button class="dots" title="More">···</button>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12.5h3"/></svg></div>
+            <div class="l-main"><div class="l-name">Villamor Construction</div><div class="l-sub">Hardware St. · due Sep 14</div></div>
+            <div class="l-right"><div class="l-amt">₱4,250.00</div><div class="l-id v7-st bad">Overdue</div></div>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12.5h3"/></svg></div>
+            <div class="l-main"><div class="l-name">Ka Berting Motor Works</div><div class="l-sub">Mabini · due today</div></div>
+            <div class="l-right"><div class="l-amt">₱1,980.00</div><div class="l-id">Unpaid</div></div>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 12.5h3"/></svg></div>
+            <div class="l-main"><div class="l-name">Sandra Lim</div><div class="l-sub">Fort Bonifacio · GCash 11:20 AM</div></div>
+            <div class="l-right"><div class="l-amt">₱3,600.00</div><div class="l-id v7-st ok">Settled</div></div>
+          </div>
+        </div>
+        <div class="c v7-empty">
+          <div class="v7-hd">
+            <div>
+              <div class="v7-t">Returns today</div>
+              <div class="v7-s">All branches</div>
+            </div>
+            <button class="dots" title="More">···</button>
+          </div>
+          <div class="l-row">
+            <div class="l-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6 4 10l4 4"/><path d="M4 10h9a5 5 0 1 1 0 10h-4"/></svg></div>
+            <div class="l-main"><div class="l-name">No returns filed</div><div class="l-sub">Since opening · 7:00 AM</div></div>
+            <div class="l-right"><div class="l-amt">—</div></div>
+          </div>
+        </div>
+      </div>
+</template>
+<template data-fam="s8" data-group="8 · Radial summary" data-name="Base — as picked" data-kind="block">
+<div class="c">
+        <div class="c-title">Stock value summary</div>
+        <div class="r-wrap">
+          <svg width="210" height="106" viewBox="0 0 210 106" role="img"
+               aria-label="Three concentric arcs: on-hand 74%, committed 48%, dead stock 43%">
+            <g fill="none" stroke-width="18" stroke-linecap="butt">
+              <path class="v8-t"  d="M161 105 A56 56 0 0 0 49 105"/>
+              <path class="v8-a2" d="M161 105 A56 56 0 0 0 49 105" stroke-dasharray="131 176"/>
+              <path class="v8-t"  d="M181 105 A76 76 0 0 0 29 105"/>
+              <path class="v8-a4" d="M181 105 A76 76 0 0 0 29 105" stroke-dasharray="115.4 238.8"/>
+              <path class="v8-t"  d="M201 105 A96 96 0 0 0 9 105"/>
+              <path class="v8-a5" d="M201 105 A96 96 0 0 0 9 105" stroke-dasharray="130.7 301.6"/>
+            </g>
+          </svg>
+          <div class="leg">
+            <div class="leg-row"><i class="leg-sw v8-s2"></i> On-hand value <b>₱821,234.74</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s4"></i> Committed to orders <b>₱89,834.24</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s5"></i> Dead stock <b>₱11,634.15</b></div>
+          </div>
+        </div>
+      </div>
+</template>
+<template data-fam="s8" data-group="8 · Radial summary" data-name="A · Single reading" data-kind="block">
+<div class="c">
+        <div class="c-title">Monthly target</div>
+        <div class="r-wrap">
+          <!-- r = 88 at stroke 20 → hole radius 78, wide enough for the number.
+               π·88 = 276.5; 68% → 188.0 -->
+          <svg width="210" height="106" viewBox="0 0 210 106" role="img"
+               aria-label="Target progress: 68 percent of the September target">
+            <g fill="none" stroke-width="20" stroke-linecap="butt">
+              <path class="v8-t"  d="M193 105 A88 88 0 0 0 17 105"/>
+              <path class="v8-a4" d="M193 105 A88 88 0 0 0 17 105" stroke-dasharray="188 276.5"/>
+            </g>
+            <text class="v8-big" x="105" y="88" text-anchor="middle">68%</text>
+          </svg>
+          <div class="v8-cap">₱30,600 of ₱45,000 · Mabini, September</div>
+        </div>
+      </div>
+</template>
+<template data-fam="s8" data-group="8 · Radial summary" data-name="B · Five branches" data-kind="block">
+<div class="c">
+        <div class="c-title">Branch targets</div>
+        <div class="v8-basis">Share of each branch's own September target</div>
+        <div class="r-wrap">
+          <!-- five rings: stroke 11 on a 13px pitch, centrelines 44/57/70/83/96,
+               outer edge 101.5. π·r = 138.2 / 179.1 / 219.9 / 260.8 / 301.6 -->
+          <svg width="210" height="106" viewBox="0 0 210 106" role="img"
+               aria-label="Five concentric arcs: Mabini 92%, Poblacion 78%, San Jose 64%, Bagumbayan 51%, Talisay 34%">
+            <g fill="none" stroke-width="11" stroke-linecap="butt">
+              <path class="v8-t"  d="M149 105 A44 44 0 0 0 61 105"/>
+              <path class="v8-a1" d="M149 105 A44 44 0 0 0 61 105" stroke-dasharray="127.2 138.2"/>
+              <path class="v8-t"  d="M162 105 A57 57 0 0 0 48 105"/>
+              <path class="v8-a2" d="M162 105 A57 57 0 0 0 48 105" stroke-dasharray="139.7 179.1"/>
+              <path class="v8-t"  d="M175 105 A70 70 0 0 0 35 105"/>
+              <path class="v8-a3" d="M175 105 A70 70 0 0 0 35 105" stroke-dasharray="140.7 219.9"/>
+              <path class="v8-t"  d="M188 105 A83 83 0 0 0 22 105"/>
+              <path class="v8-a4" d="M188 105 A83 83 0 0 0 22 105" stroke-dasharray="133 260.8"/>
+              <path class="v8-t"  d="M201 105 A96 96 0 0 0 9 105"/>
+              <path class="v8-a5" d="M201 105 A96 96 0 0 0 9 105" stroke-dasharray="102.5 301.6"/>
+            </g>
+          </svg>
+          <div class="leg">
+            <div class="leg-row"><i class="leg-sw v8-s1"></i> Mabini <b>92%</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s2"></i> Poblacion <b>78%</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s3"></i> San Jose <b>64%</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s4"></i> Bagumbayan <b>51%</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s5"></i> Talisay <b>34%</b></div>
+          </div>
+        </div>
+      </div>
+</template>
+<template data-fam="s8" data-group="8 · Radial summary" data-name="C · One in, two waiting" data-kind="block">
+<div class="c">
+        <div class="c-title">Deliveries received</div>
+        <div class="v8-basis">Since opening · 21 Sep, Mabini</div>
+        <div class="r-wrap">
+          <!-- one ring full, two empty. All three tracks are drawn: an arc at
+               100% and an arc at nothing look identical without them. -->
+          <svg width="210" height="106" viewBox="0 0 210 106" role="img"
+               aria-label="Three concentric arcs: Bacnotan Cement fully received, two deliveries not yet arrived">
+            <g fill="none" stroke-width="18" stroke-linecap="butt">
+              <path class="v8-t"  d="M161 105 A56 56 0 0 0 49 105"/>
+              <path class="v8-a2" d="M161 105 A56 56 0 0 0 49 105"/>
+              <path class="v8-t"  d="M181 105 A76 76 0 0 0 29 105"/>
+              <path class="v8-t"  d="M201 105 A96 96 0 0 0 9 105"/>
+            </g>
+          </svg>
+          <div class="leg">
+            <div class="leg-row"><i class="leg-sw v8-s2"></i> Bacnotan Cement <b>₱48,000.00</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s4"></i> Union Galvasteel <b class="v8-none">—</b></div>
+            <div class="leg-row"><i class="leg-sw v8-s5"></i> Puyat Steel <b class="v8-none">—</b></div>
+          </div>
+        </div>
+      </div>
+</template>
+<template data-fam="s1" data-group="1 · Metric card with a delta chip" data-name="One card" data-kind="piece">
+<div class="c m-card">
+            <div class="m-top">
+              <span class="c-title">Total Sales</span>
+              <span class="cur">
+                <svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true" fill="none"><path d="M7 12.5S11.5 9 11.5 5.8A4.5 4.5 0 0 0 2.5 5.8C2.5 9 7 12.5 7 12.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><circle cx="7" cy="5.7" r="1.5" stroke="currentColor" stroke-width="1.2"/></svg>
+                Sahara Mall
+                <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 4 L5 6.5 L7.5 4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+            </div>
+            <div class="m-value">₱52,418.50</div>
+            <div class="m-foot">
+              <span class="chip">+3.2% ↑</span>
+              <span class="m-since">From last month</span>
+              <a class="m-more" href="#s1">View More</a>
+            </div>
+          </div>
+</template>
+<template data-fam="s3" data-group="3 · Big KPI with a trend sentence" data-name="One card" data-kind="piece">
+<div class="k-card">
+          <button class="dots" title="More">···</button>
+          <div class="k-label">Sales today</div>
+          <div class="k-value">₱43,740</div>
+          <div class="k-trend"><b class="up">↑5%</b> in the last week</div>
+        </div>
+</template>
+<template data-fam="s7" data-group="7 · Icon list" data-name="One card" data-kind="piece">
+<div class="v7-hd">
+          <div>
+            <div class="v7-t">Recent sales</div>
+            <div class="v7-s">Newest first, all terminals</div>
+          </div>
+          <button class="dots" title="More">···</button>
+        </div>
+</template>
+<template data-fam="s8" data-group="8 · Radial summary" data-name="One card" data-kind="piece">
+<div class="c-title">Stock value summary</div>
+</template>
+</div>
+
+<script>
+"use strict";
+/* ---------------------------------------------------------------------------
+   The whole editor. The DOM is the document: an item is an absolutely placed
+   div holding one block's markup, and saving is just serialising #art. There
+   is no model to keep in step with the screen, which is the only reason this
+   fits in one file.
+   --------------------------------------------------------------------------- */
+const art    = document.getElementById("art");
+const scroll = document.getElementById("scroll");
+const gl     = document.getElementById("guides");
+const band   = document.getElementById("band");
+const KEY    = "blocks-canvas";
+
+let zoom = .75, sel = [], snapItems = true, snapGrid = false, grid = 8;
+
+/* ------------------------------------------------------------- the palette */
+const BASICS = [
+  ["Panel",   "a plain white card to group things",
+   '<div class="c" style="height:100%"></div>'],
+  ["Heading", "section title",
+   '<div style="font-size:19px;font-weight:600;letter-spacing:-.015em">Section title</div>'],
+  ["Text",    "a line of copy",
+   '<div style="font-size:13px;color:var(--ink-2);line-height:1.6">Some explaining text.</div>'],
+  ["Divider", "a hairline",
+   '<div style="height:1px;background:var(--line)"></div>'],
+];
+
+const pal = document.getElementById("palette");
+function palBtn(name, sub, html, fam, w, group) {
+  const b = document.createElement("button");
+  b.className = "pi";
+  b.draggable = true;
+  b.innerHTML = name + (sub ? "<small>" + sub + "</small>" : "");
+  b.dataset.html = html;
+  b.dataset.fam = fam || "";
+  b.dataset.w = w || 560;
+  b.dataset.name = name;
+  b.dataset.group = group || "";
+  return b;
+}
+function group(title) {
+  const h = document.createElement("h2");
+  h.textContent = title;
+  pal.appendChild(h);
+}
+
+group("Basics");
+BASICS.forEach(([n, s, h]) => pal.appendChild(palBtn(n, s, h, "", n === "Heading" || n === "Text" ? 320 : 300)));
+
+const tpl = [...document.querySelectorAll("#lib-templates template")];
+const groups = [];
+tpl.forEach(t => {
+  const g = t.dataset.group;
+  if (!groups.includes(g)) groups.push(g);
+});
+groups.forEach(g => {
+  group(g);
+  tpl.filter(t => t.dataset.group === g).forEach(t => {
+    const w = t.dataset.kind === "piece" ? 270 : 560;
+    pal.appendChild(palBtn(t.dataset.name, t.dataset.kind === "piece" ? "single" : "",
+                           t.innerHTML.trim(), t.dataset.fam, w, t.dataset.group));
+  });
+});
+
+/* -------------------------------------------------------------- item making */
+let z = 1;
+function make(html, fam, x, y, w, name, group) {
+  const it = document.createElement("div");
+  it.className = "item";
+  if (name) { it.dataset.name = name; it.dataset.group = group || ""; }
+  it.style.cssText = "left:" + Math.round(x) + "px;top:" + Math.round(y) + "px;width:" +
+                     Math.round(w) + "px;z-index:" + (++z);
+  const wrap = document.createElement("div");
+  wrap.className = "wrap";
+  if (fam) wrap.classList.add(fam);
+  wrap.innerHTML = html;
+  // An id inside a cloned block would be a duplicate the moment you place two.
+  wrap.querySelectorAll("[id]").forEach(e => e.removeAttribute("id"));
+  it.appendChild(wrap);
+  it.insertAdjacentHTML("beforeend",
+    '<div class="tag"></div><div class="hnds">' +
+    ["nw","n","ne","e","se","s","sw","w"].map(d => '<i class="h ' + d + '" data-d="' + d + '"></i>').join("") +
+    "</div>");
+  art.appendChild(it);
+  return it;
+}
+
+/* Palette drag-and-drop onto the page, plus click to drop in the middle. */
+let dragSpec = null;
+pal.addEventListener("dragstart", e => {
+  const b = e.target.closest(".pi");
+  if (!b) return;
+  dragSpec = { html: b.dataset.html, fam: b.dataset.fam, w: +b.dataset.w,
+               name: b.dataset.name, group: b.dataset.group };
+  e.dataTransfer.effectAllowed = "copy";
+  e.dataTransfer.setData("text/plain", "block");
+});
+pal.addEventListener("click", e => {
+  const b = e.target.closest(".pi");
+  if (!b) return;
+  const it = make(b.dataset.html, b.dataset.fam, 60, 60, +b.dataset.w,
+                  b.dataset.name, b.dataset.group);
+  place(it); select([it]); save();
+});
+/* A drag starting INSIDE the page is the browser trying to drag text or an
+   image. Left alone it fires pointercancel and the block sticks one pixel into
+   the move. Stopping it here rather than on pointerdown matters: preventing
+   pointerdown's default also suppresses click and dblclick, which is how you
+   get into the text. */
+art.addEventListener("dragstart", e => e.preventDefault());
+art.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; });
+art.addEventListener("drop", e => {
+  e.preventDefault();
+  if (!dragSpec) return;
+  const p = pt(e);
+  const it = make(dragSpec.html, dragSpec.fam, p.x - dragSpec.w / 2, p.y - 20, dragSpec.w,
+                  dragSpec.name, dragSpec.group);
+  dragSpec = null;
+  select([it]); save();
+});
+
+/* A dropped-by-click item should not land on top of the last one. */
+function place(it) {
+  const others = items().filter(o => o !== it);
+  let y = 60;
+  others.forEach(o => { y = Math.max(y, o.offsetTop + o.offsetHeight + 20); });
+  it.style.top = Math.min(y, art.clientHeight - 80) + "px";
+}
+
+const items = () => [...art.querySelectorAll(".item")];
+function pt(e) {
+  const r = art.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / zoom, y: (e.clientY - r.top) / zoom };
+}
+const box = it => ({ x: it.offsetLeft, y: it.offsetTop, w: it.offsetWidth, h: it.offsetHeight });
+
+/* -------------------------------------------------------------- selection */
+function select(list) {
+  sel.forEach(i => i.classList.remove("sel"));
+  sel = list || [];
+  sel.forEach(i => i.classList.add("sel"));
+  const on = sel.length > 0;
+  document.getElementById("sel-none").style.display = on ? "none" : "";
+  document.getElementById("sel-on").style.display = on ? "" : "none";
+  ["b-dup", "b-front", "b-back", "b-del"].forEach(id => document.getElementById(id).disabled = !on);
+  sync();
+}
+function sync() {
+  if (!sel.length) return;
+  const n = document.getElementById("sel-name"), d = sel[0].dataset;
+  n.innerHTML = sel.length > 1 ? sel.length + " selected"
+    : d.name ? d.name + "<span>" + (d.group || "") + "</span>" : "";
+  const b = box(sel[0]);
+  document.getElementById("i-x").value = Math.round(b.x);
+  document.getElementById("i-y").value = Math.round(b.y);
+  document.getElementById("i-w").value = Math.round(b.w);
+  document.getElementById("i-h").value = sel[0].style.height ? Math.round(b.h) : "";
+  sel.forEach(i => {
+    const t = i.querySelector(".tag"), bb = box(i);
+    if (t) t.textContent = Math.round(bb.w) + " × " + Math.round(bb.h);
+  });
+}
+
+/* ------------------------------------------------------------ snap guides */
+/* Every edge and centre of every other item, plus the page's own edges and
+   middle. A moving edge within 6px of one of these gets pulled onto it and the
+   line is drawn so you can see WHY it jumped. */
+function targets(moving) {
+  const xs = [0, art.clientWidth / 2, art.clientWidth], ys = [0, art.clientHeight / 2, art.clientHeight];
+  items().forEach(o => {
+    if (moving.includes(o)) return;
+    const b = box(o);
+    xs.push(b.x, b.x + b.w / 2, b.x + b.w);
+    ys.push(b.y, b.y + b.h / 2, b.y + b.h);
+  });
+  return { xs, ys };
+}
+function snap(v, list, tol) {
+  let best = null, d = tol;
+  list.forEach(t => { const dd = Math.abs(t - v); if (dd < d) { d = dd; best = t; } });
+  return best;
+}
+function drawGuides(lines) {
+  gl.innerHTML = lines.map(l => l.v
+    ? '<i class="gv" style="left:' + l.at + 'px"></i>'
+    : '<i class="gh" style="top:' + l.at + 'px"></i>').join("");
+}
+const clearGuides = () => gl.innerHTML = "";
+
+/* ------------------------------------------------------- move and resize */
+art.addEventListener("pointerdown", e => {
+  const handle = e.target.closest(".h");
+  const it = e.target.closest(".item");
+
+  // Editing text must not drag the card out from under the caret.
+  if (e.target.isContentEditable) return;
+  if (e.button !== 0) return;
+
+  if (handle && it) { startResize(e, it, handle.dataset.d); return; }
+
+  if (!it) { startBand(e); return; }
+
+  if (e.shiftKey) {
+    const next = sel.includes(it) ? sel.filter(s => s !== it) : sel.concat([it]);
+    select(next);
+  } else if (!sel.includes(it)) {
+    select([it]);
+  }
+  startMove(e, e.altKey);
+});
+
+function startMove(e, copy) {
+  let moving = sel.slice();
+  if (copy) {
+    moving = moving.map(i => {
+      const c = i.cloneNode(true);
+      c.style.zIndex = ++z;
+      art.appendChild(c);
+      return c;
+    });
+    select(moving);
+  }
+  const start = pt(e), orig = moving.map(box);
+  art.setPointerCapture(e.pointerId);
+  moving.forEach(i => i.classList.add("drag"));
+
+  function move(ev) {
+    const p = pt(ev);
+    let dx = p.x - start.x, dy = p.y - start.y;
+    const lines = [];
+    // Round where it lands, not how far it went — rounding the distance leaves
+    // a block that started off-grid off-grid forever. The first of a multiple
+    // selection is the anchor; the rest keep their offsets from it.
+    if (snapGrid) {
+      dx = Math.round((orig[0].x + dx) / grid) * grid - orig[0].x;
+      dy = Math.round((orig[0].y + dy) / grid) * grid - orig[0].y;
+    }
+    if (snapItems && !ev.ctrlKey) {
+      const t = targets(moving), tol = 6 / zoom;
+      const b = orig[0];
+      const sx = snap(b.x + dx, t.xs, tol), cx = snap(b.x + b.w / 2 + dx, t.xs, tol),
+            rx = snap(b.x + b.w + dx, t.xs, tol);
+      if (sx !== null)      { dx = sx - b.x;             lines.push({ v: 1, at: sx }); }
+      else if (cx !== null) { dx = cx - b.x - b.w / 2;   lines.push({ v: 1, at: cx }); }
+      else if (rx !== null) { dx = rx - b.x - b.w;       lines.push({ v: 1, at: rx }); }
+      const sy = snap(b.y + dy, t.ys, tol), cy = snap(b.y + b.h / 2 + dy, t.ys, tol),
+            by = snap(b.y + b.h + dy, t.ys, tol);
+      if (sy !== null)      { dy = sy - b.y;             lines.push({ h: 1, at: sy }); }
+      else if (cy !== null) { dy = cy - b.y - b.h / 2;   lines.push({ h: 1, at: cy }); }
+      else if (by !== null) { dy = by - b.y - b.h;       lines.push({ h: 1, at: by }); }
+    }
+    moving.forEach((i, n) => {
+      i.style.left = Math.round(orig[n].x + dx) + "px";
+      i.style.top  = Math.round(orig[n].y + dy) + "px";
+    });
+    drawGuides(lines);
+    sync();
+  }
+  function up(ev) {
+    try { art.releasePointerCapture(ev.pointerId); } catch (err) {}
+    art.removeEventListener("pointermove", move);
+    art.removeEventListener("pointerup", up);
+    art.removeEventListener("pointercancel", up);
+    moving.forEach(i => i.classList.remove("drag"));
+    clearGuides(); sync(); save();
+  }
+  art.addEventListener("pointermove", move);
+  art.addEventListener("pointerup", up);
+  art.addEventListener("pointercancel", up);
+}
+
+function startResize(e, it, dir) {
+  e.stopPropagation();
+  const start = pt(e), o = box(it);
+  art.setPointerCapture(e.pointerId);
+  function move(ev) {
+    const p = pt(ev);
+    let dx = p.x - start.x, dy = p.y - start.y;
+    let x = o.x, y = o.y, w = o.w, h = o.h;
+    if (dir.includes("e")) w = o.w + dx;
+    if (dir.includes("s")) h = o.h + dy;
+    if (dir.includes("w")) { w = o.w - dx; x = o.x + dx; }
+    if (dir.includes("n")) { h = o.h - dy; y = o.y + dy; }
+    if (snapGrid) { w = Math.round(w / grid) * grid; h = Math.round(h / grid) * grid; }
+    w = Math.max(60, w); h = Math.max(24, h);
+    it.style.left = Math.round(x) + "px"; it.style.top = Math.round(y) + "px";
+    it.style.width = Math.round(w) + "px";
+    // Dragging only a side edge leaves the height alone, so a block can keep
+    // growing to fit its own content instead of being clipped.
+    if (dir.includes("n") || dir.includes("s")) it.style.height = Math.round(h) + "px";
+    sync();
+  }
+  function up(ev) {
+    try { art.releasePointerCapture(ev.pointerId); } catch (err) {}
+    art.removeEventListener("pointermove", move);
+    art.removeEventListener("pointerup", up);
+    art.removeEventListener("pointercancel", up);
+    save();
+  }
+  art.addEventListener("pointermove", move);
+  art.addEventListener("pointerup", up);
+  art.addEventListener("pointercancel", up);
+}
+
+/* ------------------------------------------------- marquee over empty page */
+function startBand(e) {
+  const start = pt(e);
+  if (!e.shiftKey) select([]);
+  art.setPointerCapture(e.pointerId);
+  band.style.display = "block";
+  function move(ev) {
+    const p = pt(ev);
+    const x = Math.min(p.x, start.x), y = Math.min(p.y, start.y);
+    const w = Math.abs(p.x - start.x), h = Math.abs(p.y - start.y);
+    band.style.cssText = "display:block;left:" + x + "px;top:" + y + "px;width:" + w + "px;height:" + h + "px";
+    const hit = items().filter(i => {
+      const b = box(i);
+      return b.x < x + w && b.x + b.w > x && b.y < y + h && b.y + b.h > y;
+    });
+    select(hit);
+  }
+  function up(ev) {
+    try { art.releasePointerCapture(ev.pointerId); } catch (err) {}
+    art.removeEventListener("pointermove", move);
+    art.removeEventListener("pointerup", up);
+    art.removeEventListener("pointercancel", up);
+    band.style.display = "none";
+  }
+  art.addEventListener("pointermove", move);
+  art.addEventListener("pointerup", up);
+  art.addEventListener("pointercancel", up);
+}
+
+/* Double-click puts the caret in the words, the way every editor does. */
+art.addEventListener("dblclick", e => {
+  // e.target is the artboard, not the word under the cursor: the drag took a
+  // pointer capture on the way in and that retargets the mouse events. Ask the
+  // document what is actually at the point.
+  const hit = document.elementFromPoint(e.clientX, e.clientY);
+  const it = hit && hit.closest(".item");
+  if (!it) return;
+  const t = hit.closest(".wrap *") || it.querySelector(".wrap");
+  if (!t) return;
+  t.contentEditable = "true";
+  t.focus();
+  const done = () => { t.removeAttribute("contenteditable"); t.removeEventListener("blur", done); save(); };
+  t.addEventListener("blur", done);
+});
+
+/* ----------------------------------------------------------------- toolbar */
+function toggle(id, get, set) {
+  const b = document.getElementById(id);
+  b.classList.toggle("on", get());
+  b.onclick = () => { set(!get()); b.classList.toggle("on", get()); save(); };
+}
+toggle("t-guides", () => snapItems, v => snapItems = v);
+toggle("t-grid", () => art.classList.contains("grid"), v => art.classList.toggle("grid", v));
+toggle("t-snapgrid", () => snapGrid, v => snapGrid = v);
+
+function setZoom(v) {
+  zoom = Math.min(2, Math.max(.25, v));
+  art.style.transform = "scale(" + zoom + ")";
+  // The artboard is scaled, not resized, so its layout box is still the old
+  // size and the scroller would clip the overflow. Margins reserve exactly the
+  // extra the transform takes — half each side horizontally, all of it below,
+  // because the origin is top centre.
+  art.style.margin = "0 " + (art.clientWidth * (zoom - 1) / 2) + "px " +
+                     (art.clientHeight * (zoom - 1)) + "px";
+  document.getElementById("zlabel").textContent = Math.round(zoom * 100) + "%";
+}
+document.getElementById("z-in").onclick  = () => setZoom(zoom + .25);
+document.getElementById("z-out").onclick = () => setZoom(zoom - .25);
+document.getElementById("z-fit").onclick = () =>
+  setZoom((scroll.clientWidth - 64) / art.clientWidth);
+
+const del = () => { sel.forEach(i => i.remove()); select([]); save(); };
+const dup = () => {
+  const c = sel.map(i => {
+    const n = i.cloneNode(true);
+    n.style.left = i.offsetLeft + 20 + "px";
+    n.style.top = i.offsetTop + 20 + "px";
+    n.style.zIndex = ++z;
+    art.appendChild(n);
+    return n;
+  });
+  select(c); save();
+};
+document.getElementById("b-del").onclick = del;
+document.getElementById("b-dup").onclick = dup;
+document.getElementById("b-front").onclick = () => { sel.forEach(i => i.style.zIndex = ++z); save(); };
+document.getElementById("b-back").onclick = () => { sel.forEach(i => i.style.zIndex = --z || 0); save(); };
+document.getElementById("b-clear").onclick = () => {
+  items().forEach(i => i.remove());
+  seed(); select([]); save();
+};
+document.getElementById("b-auto").onclick = () => {
+  sel.forEach(i => i.style.height = "");
+  sync(); save();
+};
+
+const out = document.getElementById("out");
+document.getElementById("b-copy").onclick = () => {
+  const html = items().map(i => {
+    const b = box(i), w = i.querySelector(".wrap");
+    return '<div style="position:absolute;left:' + b.x + 'px;top:' + b.y + 'px;width:' + b.w + 'px">\n' +
+           '  <div class="' + (w.className.replace("wrap", "").trim() || "") + '">' +
+           w.innerHTML.trim() + "</div>\n</div>";
+  }).join("\n");
+  out.value = html; out.classList.add("on");
+  if (navigator.clipboard) navigator.clipboard.writeText(html).catch(() => {});
+  out.select();
+};
+
+/* --------------------------------------------------------------- inspector */
+[["i-x", "left"], ["i-y", "top"], ["i-w", "width"], ["i-h", "height"]].forEach(([id, prop]) => {
+  document.getElementById(id).addEventListener("input", e => {
+    if (!sel.length) return;
+    const v = e.target.value;
+    sel.forEach(i => i.style[prop] = v === "" ? "" : parseFloat(v) + "px");
+    sync(); save();
+  });
+});
+["p-w", "p-h"].forEach((id, n) => document.getElementById(id).addEventListener("input", e => {
+  art.style[n ? "height" : "width"] = (parseFloat(e.target.value) || 100) + "px";
+  setZoom(zoom); save();
+}));
+document.getElementById("p-g").addEventListener("input", e => {
+  grid = Math.max(2, parseFloat(e.target.value) || 8);
+  art.style.setProperty("--g", grid + "px"); save();
+});
+
+document.querySelectorAll("[data-al]").forEach(b => b.onclick = () => {
+  if (!sel.length) return;
+  const how = b.dataset.al, bs = sel.map(box);
+  const W = art.clientWidth, H = art.clientHeight;
+  if (sel.length === 1) {
+    // One thing aligns to the page; several align to each other.
+    const i = sel[0], o = bs[0];
+    if (how === "l")  i.style.left = "0px";
+    if (how === "r")  i.style.left = (W - o.w) + "px";
+    if (how === "cx") i.style.left = Math.round((W - o.w) / 2) + "px";
+    if (how === "t")  i.style.top = "0px";
+    if (how === "b")  i.style.top = (H - o.h) + "px";
+    if (how === "cy") i.style.top = Math.round((H - o.h) / 2) + "px";
+  } else {
+    const L = Math.min(...bs.map(b => b.x)), R = Math.max(...bs.map(b => b.x + b.w));
+    const T = Math.min(...bs.map(b => b.y)), B = Math.max(...bs.map(b => b.y + b.h));
+    sel.forEach((i, n) => {
+      const o = bs[n];
+      if (how === "l")  i.style.left = L + "px";
+      if (how === "r")  i.style.left = (R - o.w) + "px";
+      if (how === "cx") i.style.left = Math.round((L + R) / 2 - o.w / 2) + "px";
+      if (how === "t")  i.style.top = T + "px";
+      if (how === "b")  i.style.top = (B - o.h) + "px";
+      if (how === "cy") i.style.top = Math.round((T + B) / 2 - o.h / 2) + "px";
+    });
+    if (how === "dx" || how === "dy") {
+      const key = how === "dx" ? "x" : "y", size = how === "dx" ? "w" : "h";
+      const order = sel.map((i, n) => [i, bs[n]]).sort((a, b) => a[1][key] - b[1][key]);
+      const first = order[0][1], last = order[order.length - 1][1];
+      const span = (last[key] + last[size]) - first[key];
+      const used = order.reduce((s, o) => s + o[1][size], 0);
+      const gap = (span - used) / (order.length - 1);
+      let at = first[key];
+      order.forEach(([i, o]) => {
+        i.style[how === "dx" ? "left" : "top"] = Math.round(at) + "px";
+        at += o[size] + gap;
+      });
+    }
+  }
+  sync(); save();
+});
+
+/* ------------------------------------------------------------------- keys */
+document.addEventListener("keydown", e => {
+  const typing = e.target.isContentEditable || /INPUT|TEXTAREA/.test(e.target.tagName);
+  if (typing) return;
+  if (e.key === "Escape") return select([]);
+  if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); return del(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") { e.preventDefault(); return dup(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
+    e.preventDefault(); return select(items());
+  }
+  if (e.key.toLowerCase() === "g" && !e.ctrlKey) return document.getElementById("t-guides").click();
+  if (e.key.toLowerCase() === "r" && !e.ctrlKey) return document.getElementById("t-grid").click();
+  const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (d && sel.length) {
+    e.preventDefault();
+    const n = e.shiftKey ? 10 : 1;
+    sel.forEach(i => {
+      i.style.left = i.offsetLeft + d[0] * n + "px";
+      i.style.top  = i.offsetTop  + d[1] * n + "px";
+    });
+    sync(); save();
+  }
+});
+
+/* -------------------------------------------------------- the starting page */
+/* The canvas opens with every block already laid out — an empty page is a
+   worse starting point than the foundation sheet it came from. Rows are
+   stacked off measured heights rather than guessed ones, so a block that grows
+   pushes the next row down instead of overlapping it. */
+function seed() {
+  const COL = [80, 700], W = 560, GAP = 28;
+  let y = 44;
+  const head = txt => make('<div style="font-size:19px;font-weight:600;letter-spacing:-.015em">' +
+                           txt + "</div>", "", COL[0], y, 1200);
+  groups.forEach(g => {
+    y += head(g).offsetHeight + 16;
+    const list = tpl.filter(t => t.dataset.group === g);
+    for (let i = 0; i < list.length; i += 2) {
+      const row = [list[i], list[i + 1]].filter(Boolean).map((t, n) =>
+        make(t.innerHTML.trim(), t.dataset.fam, COL[n], y, t.dataset.kind === "piece" ? 270 : W,
+             t.dataset.name, t.dataset.group));
+      y += Math.max(...row.map(e => e.offsetHeight)) + GAP;
+    }
+    y += 30;
+  });
+  art.style.height = (y + 20) + "px";
+  document.getElementById("p-h").value = parseInt(art.style.height);
+  setZoom(zoom);
+}
+
+/* ------------------------------------------------------------------- state */
+/* A scratch tool's own UI state, in its own file. Nothing to do with the app's
+   data layer, which is why it does not go through HWPOS_STORE. */
+let ready = false;
+function save() {
+  if (!ready) return;
+  try {
+    localStorage.setItem(KEY, JSON.stringify({
+      items: items().map(i => ({ s: i.getAttribute("style"), c: i.querySelector(".wrap").className,
+                                 h: i.querySelector(".wrap").innerHTML,
+                                 n: i.dataset.name || "", g: i.dataset.group || "" })),
+      zoom, snapItems, snapGrid, grid,
+      gridOn: art.classList.contains("grid"),
+      w: art.style.width || "1440px", h: art.style.height || "1000px",
+    }));
+  } catch (err) { /* storage blocked — the editor still works, it just forgets */ }
+}
+function load() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (err) {}
+  art.style.setProperty("--g", grid + "px");
+  if (s) {
+    (s.items || []).forEach(o => {
+      const it = document.createElement("div");
+      it.className = "item";
+      it.setAttribute("style", o.s);
+      if (o.n) { it.dataset.name = o.n; it.dataset.group = o.g || ""; }
+      it.innerHTML = '<div class="' + o.c + '">' + o.h + "</div>" +
+        '<div class="tag"></div><div class="hnds">' +
+        ["nw","n","ne","e","se","s","sw","w"].map(d => '<i class="h ' + d + '" data-d="' + d + '"></i>').join("") +
+        "</div>";
+      art.appendChild(it);
+      z = Math.max(z, +it.style.zIndex || 0);
+    });
+    snapItems = s.snapItems !== false;
+    snapGrid = !!s.snapGrid;
+    grid = s.grid || 8;
+    art.style.setProperty("--g", grid + "px");
+    art.classList.toggle("grid", !!s.gridOn);
+    art.style.width = s.w; art.style.height = s.h;
+    document.getElementById("p-w").value = parseInt(s.w);
+    document.getElementById("p-h").value = parseInt(s.h);
+    document.getElementById("p-g").value = grid;
+    setZoom(s.zoom || .75);
+  } else {
+    setZoom(.75);
+  }
+  document.getElementById("t-guides").classList.toggle("on", snapItems);
+  document.getElementById("t-snapgrid").classList.toggle("on", snapGrid);
+  document.getElementById("t-grid").classList.toggle("on", art.classList.contains("grid"));
+  select([]);
+  // Seeding before the webfont arrives measures every block at fallback
+  // metrics and lays the rows out to the wrong heights.
+  if (!s) return document.fonts.ready.then(() => { seed(); select([]); ready = true; save(); });
+  ready = true;
+}
+load();
+</script>
+</body>
+</html>

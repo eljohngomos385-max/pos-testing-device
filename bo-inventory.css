@@ -79,8 +79,6 @@ body.bo-light .view-inv .inv-grand strong {
 }
 
 /* ---- Adjustment document (/admin/inventory/adjust/…) ---- */
-body.bo-light .view-inv .view-title-wrap { flex-wrap: wrap; }
-body.bo-light .view-inv .view-title-wrap .link-btn { flex-basis: 100%; margin-bottom: 2px; }
 body.bo-light .view-inv .doc-pick { width: 100%; min-width: 180px; }
 /* The delta is the column the counter reads back, so it gets the value font. */
 body.bo-light .view-inv .doc-delta {

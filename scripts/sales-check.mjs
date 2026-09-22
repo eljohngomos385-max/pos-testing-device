@@ -42,6 +42,8 @@ const ctx = {
   itemNet: (i) => (i.lineTotal != null ? i.lineTotal : i.price * i.qty),
   folderName: (id) => ({ plumbing: 'Plumbing' })[id] || 'Uncategorized',
   orderPaymentLabel: (o) => o.paymentMethodLabel || 'Cash',
+  // bo-model's real one: a custom type is stored as its own name (see FULFIL_BUILTINS).
+  orderFulfilLabel: (o) => (o.fulfilment === 'delivery' ? 'Delivery' : !o.fulfilment || o.fulfilment === 'pickup' ? 'Walk-in' : o.fulfilment),
   saleSign: (o) => SALE_SIGN[o.status || 'completed'] ?? 0,
 };
 vm.createContext(ctx);

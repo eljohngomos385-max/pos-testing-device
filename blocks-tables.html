@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blocks tables</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300..800&family=Inter:wght@300..800&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   TABLES on the blocks-v2 system. Lab file: nothing here is wired to the app.
+   Same tokens as blocks-v2.html — the table is a block like any other: grey
+   card on a white page, label on top, rows banded white instead of ruled.
+   =========================================================================== */
+:root {
+  --b-font: "Plus Jakarta Sans";
+  --b-num:  "Inter";
+
+  --b-page:   #FFFFFF;
+  --b-card:   #FFFFFF;
+  --b-band:   #FAFAFA;       /* header row, the app's --po-surface-2 */
+  --b-zebra:  #F7F7F7;       /* every other row, the app's --po-surface-hover */
+  --b-raised: #FFFFFF;
+  --b-line:   #E1E1E1;       /* the hairline, the app's --po-line */
+
+  --b-ink:   #303030;
+  --b-ink-2: #5A5A5A;
+  --b-ink-3: #7A7A7A;
+
+  --b-up:   #047B5D;
+  --b-down: #D72C0D;
+  --b-warn: #B26A00;
+
+  --b-t-value: 27px;  --b-w-value: 560;
+  --b-t-label: 13px;
+  --b-t-meta:  12.5px;
+  --b-t-micro: 11px;
+  --b-track-tight: -.02em;
+
+  --b-r-card: 8px;
+  --b-r-row:  8px;
+  --b-r-input: 8px;
+  --b-ctl:    28px;          /* every button and toolbar control: one height */
+  --b-pad:    16px;
+  --b-gap:    14px;
+  --b-row:    34px;          /* one table row, and the header row: same height everywhere */
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--b-page); color: var(--b-ink);
+  font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* — the shell, same as blocks-v2 ———————————————————————————————————— */
+.card { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); position: relative; }
+.card:has(.tbl-wrap) { padding-top: 8px; padding-bottom: 0; overflow: hidden; }  /* a table card's title bar is a slim strip: 8 + 26 + 8 */
+.card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.card-top { min-height: 26px; }  /* one height, with or without a search or the selection bar */
+.card-top .input { flex: 0 0 240px; height: 26px; }
+.card-label { font-size: var(--b-t-label); color: var(--b-ink); line-height: 1.3; }
+.card-count { font-size: var(--b-t-meta); color: var(--b-ink-3); font-family: var(--b-num), var(--b-font), sans-serif; }
+
+/* — toolbar: sits on the page, above the block, one row ———————————————— */
+.toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.input, .select {
+  height: var(--b-ctl); border-radius: var(--b-r-input); font: inherit; font-size: var(--b-t-label); color: var(--b-ink);
+  background: var(--b-raised); border: 1px solid var(--b-line); padding: 0 10px;
+}
+.input { flex: 1; min-width: 200px; }
+.input::placeholder { color: var(--b-ink-3); }
+.select { appearance: none; padding-right: 28px; cursor: pointer; display: inline-flex; align-items: center; white-space: nowrap;
+  background: var(--b-raised) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238C8C8C' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center; }
+.input:focus-visible, .select:focus-visible, .btn:focus-visible, .pbtn:focus-visible { outline: 2px solid var(--b-ink); outline-offset: 1px; }
+.check { display: inline-flex; align-items: center; gap: 7px; font-size: var(--b-t-label); color: var(--b-ink-2); padding: 0 6px; cursor: pointer; }
+
+/* — buttons: two shapes, one height ————————————————————————————————————
+   .btn   rectangle, 8px corners. White + hairline is the default; .soft is the
+          grey one for quiet actions; .primary is the one dark button per view.
+   .pbtn  a pill: the table pills made clickable, grown to the same 28px. */
+.btn, .pbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: var(--b-ctl); font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1;
+  color: var(--b-ink); white-space: nowrap; cursor: pointer; user-select: none;
+  transition: background-color .12s, box-shadow .12s;
+}
+.btn svg, .pbtn svg { width: 12px; height: 12px; flex: none; }
+.btn { padding: 0 10px; border-radius: var(--b-r-input); background: var(--b-raised);
+  border: 1px solid #D4D4D4; box-shadow: 0 1px 0 rgba(0,0,0,.05); }
+.btn:hover  { background: #F7F7F7; }
+.btn:active { background: #F0F0F0; box-shadow: none; }
+.btn.soft { background: #EDEDED; border-color: transparent; box-shadow: none; }
+.btn.soft:hover  { background: #E4E4E4; }
+.btn.soft:active { background: #DCDCDC; }
+.btn.primary { background: var(--b-ink); color: #fff; border-color: var(--b-ink);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.2); }
+.btn.primary:hover  { background: #1F1F1F; }
+.btn.primary:active { background: #000; box-shadow: none; }
+.btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
+
+.pbtn { padding: 0 12px; border-radius: 999px; border: 0; background: #EDEDED; color: var(--b-ink); }
+.pbtn:hover  { background: #E4E4E4; }
+.pbtn:active { background: #DCDCDC; }
+.pbtn.ok     { background: #D3ECDD; color: #0B5A37; } .pbtn.ok:hover     { background: #C3E3D0; }
+.pbtn.warn   { background: #F7E2B8; color: #6E4D12; } .pbtn.warn:hover   { background: #F2D7A2; }
+.pbtn.danger { background: #F8D8D0; color: #8E2408; } .pbtn.danger:hover { background: #F3C8BD; }
+.pbtn.info   { background: #D8E3F6; color: #1F3F7A; } .pbtn.info:hover   { background: #C8D7F1; }
+.pbtn.on, .pbtn.on:hover { background: var(--b-ink); color: #fff; }   /* the chosen one in a filter row */
+.pbtns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.card-top .pbtn { height: 26px; }
+
+/* — dropdown: one menu for both jobs ——————————————————————————————————
+   data-dd="pick"  a filter: the trigger shows the choice, the choice is ticked.
+   data-dd="menu"  an action list behind a button (More actions). */
+.dd { position: relative; display: inline-block; }
+.dd.open > .select { border-color: #BDBDBD; }
+.dd-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 100%;
+  max-height: 280px; overflow-y: auto; padding: 4px; background: var(--b-raised);
+  border: 1px solid var(--b-line); border-radius: var(--b-r-input);
+  box-shadow: 0 6px 20px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05); }
+.dd.open > .dd-menu { display: block; }
+.dd-menu.right { left: auto; right: 0; }
+.dd-item { display: flex; align-items: center; gap: 8px; width: 100%; height: 28px; padding: 0 8px;
+  border: 0; border-radius: 6px; background: none; font: inherit; font-size: var(--b-t-label);
+  color: var(--b-ink); text-align: left; white-space: nowrap; cursor: pointer; }
+.dd-item:hover, .dd-item:focus-visible { background: #F1F1F1; outline: 0; }
+.dd-item[aria-selected="true"] { font-weight: 600; }
+.dd-item[aria-selected="true"]::after { content: ""; width: 12px; height: 12px; margin-left: auto; padding-left: 12px; flex: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.5l2.5 2.5 4.5-5.5' fill='none' stroke='%23303030' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right center; }
+.dd-item.danger { color: var(--b-down); }
+/* ===========================================================================
+   TABLE VERSIONS A · B · C — the block's own look, three ways. 34px rows in all.
+   Shared: the grey block (#F9F9F9, 14px corners), label top-left, no header
+   band, no sticky, labels in ink-3. They differ only in how a row is drawn.
+   =========================================================================== */
+.tv { background: #F9F9F9; border: 1px solid transparent; border-radius: 14px; padding: 8px; }
+.tv .card-top { padding: 4px 8px 0; min-height: 26px; }
+.tv .tv-wrap { margin-top: 8px; overflow-x: auto; }
+.tv table th { position: static; background: none; border: 0; height: 30px; font-weight: 400; color: var(--b-ink-3); }
+.tv table th:first-child, .tv table td:first-child { padding-left: 8px; }
+.tv table th:last-child,  .tv table td:last-child  { padding-right: 8px; }
+.tv tbody tr:nth-child(even) td { background: none; }
+.tv .pbtn:not(.on) { background: var(--b-raised); }
+.tv .pbtn:not(.on):hover { background: #F1F1F1; }
+
+/* D · C, with the outer block doing a job. The grey frame is tight (4px) and
+   carries two strips: the title + count + search on top, a quiet summary and
+   "View all" underneath. Concentric corners: 14 outside, 10 on the sheet.
+   The sheet lifts off the grey with a hairline and a 1px shadow. */
+.tv-d { padding: 4px; }
+.tv-d .card-top { padding: 6px 12px 2px; }
+.tv-d .card-count { margin-left: 8px; }
+.tv-d .tv-wrap { margin-top: 6px; background: var(--b-raised); border: 1px solid #E6E6E6; border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.tv-d table th { height: 32px; color: var(--b-ink-2); font-weight: 500; background: #EDEDED; border-bottom: 1px solid var(--b-line); }
+.tv-d table th:first-child, .tv-d table td:first-child { padding-left: 12px; }
+.tv-d table th:last-child,  .tv-d table td:last-child  { padding-right: 12px; }
+.tv-d tbody tr:hover td { background: #F1F1F1; }
+/* C · one box: B's header, lines and footer, but title, table and footer
+   share one white card with a hairline around it — no grey frame. */
+.tv.tv-one { background: #F9F9F9; border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0; overflow: hidden; }
+.tv.tv-one .card-top { padding: 8px var(--b-pad) 9px; }   /* 43px, same as the title strips up top */
+.tv.tv-one .card-count { margin-left: 8px; }
+.tv.tv-one .tv-wrap { margin: 0; background: var(--b-raised); }   /* title strip and footer keep B's grey; only the rows are white */
+.tv.tv-one table th { height: 32px; color: var(--b-ink-2); font-weight: 500; background: #EDEDED;
+  border-top: 1px solid var(--b-line); border-bottom: 1px solid var(--b-line); }
+.tv.tv-one table th:first-child, .tv.tv-one table td:first-child { padding-left: var(--b-pad); }
+.tv.tv-one table th:last-child,  .tv.tv-one table td:last-child  { padding-right: var(--b-pad); }
+.tv.tv-one .tv-foot { border-top: 1px solid var(--b-line); padding: 10px var(--b-pad); }
+
+/* D · Shopify card: white card, soft shadow instead of a border,
+   white title strip, #F7F7F7 header band, hairlines between rows. */
+.tv.tv-s { background: var(--b-card); border: 0; border-radius: 12px; padding: 0; overflow: hidden;
+  box-shadow: 0 1px 0 rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.05), 0 2px 4px rgba(0,0,0,.04); }
+.tv.tv-s .card-top { padding: 8px var(--b-pad) 9px; }
+.tv.tv-s .card-count { margin-left: 8px; }
+.tv.tv-s .tv-wrap { margin: 0; }
+.tv.tv-s table th { height: 34px; color: var(--b-ink-2); font-weight: 500; background: #F7F7F7;
+  border-top: 1px solid #EBEBEB; border-bottom: 1px solid #EBEBEB; }
+.tv.tv-s table th:first-child, .tv.tv-s table td:first-child { padding-left: var(--b-pad); }
+.tv.tv-s table th:last-child,  .tv.tv-s table td:last-child  { padding-right: var(--b-pad); }
+.tv.tv-s tbody tr:not(:last-child) td { box-shadow: inset 0 -1px 0 #EBEBEB; }
+.tv.tv-s tbody tr:hover td { background: #F7F7F7; }
+.tv.tv-s .tv-foot { border-top: 1px solid #EBEBEB; padding: 10px var(--b-pad); }
+
+/* stripes: per table, flipped by the switch under each one */
+.tv.striped tbody tr:nth-child(even) td { background: var(--b-zebra); }
+.tv.striped tbody tr:hover td { background: #EFEFEF; }
+.stripe-sw { float: right; display: inline-flex; align-items: center; gap: 7px; font-weight: 600; color: var(--b-ink); cursor: pointer; user-select: none; }
+.stripe-sw input { appearance: none; margin: 0; width: 26px; height: 16px; border-radius: 999px; background: #D4D4D4;
+  position: relative; cursor: pointer; transition: background-color .15s; }
+.stripe-sw input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .15s; }
+.stripe-sw input:checked { background: var(--b-ink); }
+.stripe-sw input:checked::after { transform: translateX(10px); }
+.stripe-sw input:focus-visible { outline: 2px solid var(--b-ink); outline-offset: 2px; }
+
+
+.tv-foot { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 6px;
+  font-size: var(--b-t-meta); color: var(--b-ink-3); }
+.tv-foot b { color: var(--b-ink); font-weight: 600; font-family: var(--b-num), var(--b-font), sans-serif; }
+.tv-foot a, .card-top .view-all { font-size: var(--b-t-meta); color: var(--b-ink); font-weight: 600; text-decoration: none; }
+.tv-foot a:hover, .card-top .view-all:hover { text-decoration: underline; }
+
+/* G · D with dividers: no zebra, a hairline between every row. Drawn as an
+   inset shadow so the rows stay 34px. */
+.tv-g tbody tr:not(:last-child) td { box-shadow: inset 0 -1px 0 #ECECEC; }
+.tv-g tbody tr:hover td { background: #F1F1F1; }
+
+.dd-sep { height: 1px; margin: 4px -4px; background: var(--b-line); }
+input[type=checkbox] { width: 15px; height: 15px; margin: 0; accent-color: var(--b-ink); cursor: pointer; }
+
+/* — the table ————————————————————————————————————————————————————————
+   The app's table: runs edge to edge inside the card, a grey header band
+   between two hairlines, full-width zebra rows. No row radius. */
+.tbl-wrap { margin: 8px calc(-1 * var(--b-pad)) 0; overflow-x: auto; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--b-t-label); }
+th {
+  text-align: left; font-weight: 500; font-size: var(--b-t-meta); color: var(--b-ink-2);
+  height: var(--b-row); padding: 0 10px; white-space: nowrap; position: sticky; top: 0; background: var(--b-band);
+  border-top: 1px solid var(--b-line); border-bottom: 1px solid var(--b-line);
+}
+th:first-child, td:first-child { padding-left: var(--b-pad); }
+th:last-child,  td:last-child  { padding-right: var(--b-pad); }
+td { height: var(--b-row); padding: 0 10px; white-space: nowrap; color: var(--b-ink); }
+tbody tr:nth-child(even) td { background: var(--b-zebra); }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: #EFEFEF; }
+.num { text-align: right; font-family: var(--b-num), var(--b-font), sans-serif; font-variant-numeric: tabular-nums; }
+th.num { font-family: inherit; }
+.nm  { font-weight: 600; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+.nm small { font-weight: 400; color: var(--b-ink-3); font-size: var(--b-t-micro); margin-left: 6px; }
+.mut { color: var(--b-ink-3); }
+.code { color: var(--b-ink-2); font-family: var(--b-num), var(--b-font), sans-serif; font-size: var(--b-t-meta); letter-spacing: .01em; }
+#tx td.code:first-child, #versions td.code:first-child { color: var(--b-ink); font-weight: 600; }   /* receipt numbers: the row's name, so they lead */
+.strong { font-weight: 600; }
+.down { color: var(--b-down); }
+.img { width: 22px; padding-right: 0; }
+.thumb { display: block; width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--b-line); background: #F3F3F3 center / cover no-repeat; }  /* the app's .pd-thumb; grey box until a photo is set */
+
+/* pills: the app's own (styles.css "PILLS: solid fill, dark ink, no dot").
+   Fill says the kind, the word says the thing — never colour alone. */
+.pill { display: inline-block; height: 20px; line-height: 20px; padding: 0 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; white-space: nowrap; background: #E6E6E6; color: #303030; }
+.pill.ok     { background: #D3ECDD; color: #0B5A37; }
+.pill.warn   { background: #F7E2B8; color: #6E4D12; }
+.pill.danger { background: #F8D8D0; color: #8E2408; }
+.pill.info   { background: #D8E3F6; color: #1F3F7A; }
+.pill.owner  { background: #E5DDF9; color: #5A2BCB; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* select mode: "Select" in the toolbar shows a box column left of the picture;
+   ticking rows swaps the card's top line for the selection bar. */
+.cb { width: 15px; padding-right: 0; display: none; }
+.selecting .cb { display: table-cell; }
+.selecting .img { padding-left: 10px; }
+.selecting tbody tr.sel td { background: #E8E8E8; }
+.btn.on { background: var(--b-ink); color: #fff; border-color: var(--b-ink); box-shadow: none; }
+.bulk { display: flex; align-items: center; gap: 8px; }
+.bulk b { font-weight: 600; font-size: var(--b-t-label); margin-right: 6px; }
+.bulk .btn { height: 26px; }
+
+/* empty: same line, same grey as the empty block */
+.empty td { height: 120px; text-align: center; color: var(--b-ink-2); background: none !important; cursor: default; }
+
+/* — page chrome, documentation only ————————————————————————————————— */
+.wrap { max-width: 1160px; margin: 0 auto; padding: 44px 24px 120px; }
+header h1 { font-size: 26px; letter-spacing: -.02em; margin: 0 0 8px; }
+header p { font-size: 13.5px; color: var(--b-ink-2); line-height: 1.7; max-width: 74ch; margin: 0; }
+section { margin-top: 52px; }
+section > h2 { font-size: 19px; letter-spacing: -.015em; margin: 0 0 4px; }
+section > .src { font-size: 12px; color: var(--b-ink-3); margin: 0 0 18px; max-width: 74ch; line-height: 1.6; }
+.stage { border: 1px dashed #E3E3E3; border-radius: 12px; padding: 22px; }
+.notes { margin: 16px 0 0; }
+.notes ul { margin: 0; padding-left: 17px; font-size: 12.5px; line-height: 1.75; color: #4A4A4A; max-width: 80ch; }
+.notes b { color: var(--b-ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Tables</h1>
+  <p>The Products list and the dashboard's Recent transactions, redrawn on the blocks-v2 system.
+  Same columns and the same controls as the app; only the look changes. Nothing here is wired up.</p>
+</header>
+
+<!-- ============================ Products ============================ -->
+<section id="products">
+  <h2>Products</h2>
+  <p class="src">The toolbar sits on the page; the table is one block. Press <b>Select</b> to tick rows.</p>
+  <div class="stage">
+    <div class="toolbar">
+      <input class="input" placeholder="Search name, SKU, barcode…" aria-label="Search products">
+      <div class="dd" data-dd="pick"><button class="select" aria-haspopup="listbox" aria-expanded="false" aria-label="Category">All categories</button><div class="dd-menu" role="listbox"><button class="dd-item" role="option" aria-selected="true">All categories</button><button class="dd-item" role="option" aria-selected="false">Adhesive</button><button class="dd-item" role="option" aria-selected="false">Cement</button><button class="dd-item" role="option" aria-selected="false">Electrical</button><button class="dd-item" role="option" aria-selected="false">Fasteners</button><button class="dd-item" role="option" aria-selected="false">Paint</button><button class="dd-item" role="option" aria-selected="false">Plumbing</button><button class="dd-item" role="option" aria-selected="false">Safety</button><button class="dd-item" role="option" aria-selected="false">Tools</button></div></div>
+      <div class="dd" data-dd="pick"><button class="select" aria-haspopup="listbox" aria-expanded="false" aria-label="Supplier">All suppliers</button><div class="dd-menu" role="listbox"><button class="dd-item" role="option" aria-selected="true">All suppliers</button><button class="dd-item" role="option" aria-selected="false">No supplier</button><button class="dd-item" role="option" aria-selected="false">Ace Steel &amp; Hardware</button><button class="dd-item" role="option" aria-selected="false">Lopez Hardware (Wholesale)</button><button class="dd-item" role="option" aria-selected="false">Metro Builders Supply</button></div></div>
+      <label class="check"><input type="checkbox"> Low stock only</label>
+      <label class="check"><input type="checkbox"> Show archived</label>
+      <button class="btn" id="p-select">Select</button>
+      <button class="btn">Columns</button>
+    </div>
+    <div class="card" id="p-card">
+      <div class="card-top" id="p-top">
+        <div class="card-label">All products</div>
+        <div class="card-count">37 shown</div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th class="cb"><input type="checkbox" aria-label="Select all"></th><th class="img"></th>
+            <th>Name</th><th>SKU</th><th>Category</th><th>Supplier</th>
+            <th class="num">Cost</th><th class="num">Price</th><th class="num">Margin</th><th class="num">Stock</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="cb"><input type="checkbox" aria-label="Select row"></td><td class="img"><span class="thumb"></span></td><td class="nm">Aluminum Level 24"</td><td class="code">LVL-ALUM-24</td><td>Tools</td><td class="mut">—</td><td class="num">₱270.00</td><td class="num strong">₱385.00</td><td class="num">42.6%</td><td class="num">6 pc</td></tr>
+            <tr><td class="cb"><input type="checkbox" aria-label="Select row"></td><td class="img"><span class="thumb"></span></td><td class="nm">Brass Faucet 1/2"</td><td class="code">FAUCET-BR-12</td><td>Plumbing</td><td class="mut">—</td><td class="num">₱130.00</td><td class="num strong">₱185.00</td><td class="num">42.3%</td><td class="num">22 pc</td></tr>
+            <tr><td class="cb"><input type="checkbox" aria-label="Select row"></td><td class="img"><span class="thumb"></span></td><td class="nm">Circuit Breaker 30A</td><td class="code">BREAKER-30A</td><td>Electrical</td><td class="mut">—</td><td class="num">₱240.00</td><td class="num strong">₱320.00</td><td class="num">33.3%</td><td class="num">8 pc</td></tr>
+            <tr><td class="cb"><input type="checkbox" aria-label="Select row"></td><td class="img"><span class="thumb"></span></td><td class="nm">Claw Hammer 16oz</td><td class="code">HMR-CLAW-16</td><td>Tools</td><td class="mut">—</td><td class="num">₱195.00</td><td class="num strong">₱285.00</td><td class="num">46.1%</td><td class="num">14 pc</td></tr>
+            <tr><td class="cb"><input type="checkbox" aria-label="Select row"></td><td class="img"><span class="thumb"></span></td><td class="nm">Common Wire Nails<small>2 variants</small></td><td class="mut">—</td><td>Fasteners</td><td class="mut">—</td><td class="num">₱62.00 – ₱65.00</td><td class="num strong">₱90.00 – ₱95.00</td><td class="num">45.2% – 46.1%</td><td class="num">62 kg</td></tr>
+            <tr><td class="cb"><input type="checkbox" aria-label="Select row"></td><td class="img"><span class="thumb"></span></td><td class="nm">Contact Cement Rugby 250mL</td><td class="code">GLUE-RUGBY</td><td>Adhesive</td><td class="mut">—</td><td class="num">₱95.00</td><td class="num strong">₱145.00</td><td class="num">52.6%</td><td class="num">18 pc</td></tr>
+            <tr><td class="cb"><input type="checkbox" aria-label="Select row"></td><td class="img"><span class="thumb"></span></td><td class="nm">Fine Sand (per cu.m)</td><td class="code">SAND-FINE-CUM</td><td>Cement</td><td class="mut">—</td><td class="num">₱1,100.00</td><td class="num strong">₱1,450.00</td><td class="num">31.8%</td><td class="num">4 cu.m</td></tr>
+            <tr><td class="cb"><input type="checkbox" aria-label="Select row"></td><td class="img"><span class="thumb"></span></td><td class="nm">N95 Dust Mask</td><td class="code">MASK-N95</td><td>Safety</td><td class="mut">—</td><td class="num">₱32.00</td><td class="num strong">₱55.00</td><td class="num">71.9%</td><td class="num down">0 pc</td></tr>
+            <tr><td class="cb"><input type="checkbox" aria-label="Select row"></td><td class="img"><span class="thumb"></span></td><td class="nm">PVC Pipes &amp; Tees<small>2 variants</small></td><td class="mut">—</td><td>Plumbing</td><td class="mut">—</td><td class="num">₱9.00 – ₱105.00</td><td class="num strong">₱14.50 – ₱145.00</td><td class="num">38.1% – 61.1%</td><td class="num">260 pc</td></tr>
+            <tr><td class="cb"><input type="checkbox" aria-label="Select row"></td><td class="img"><span class="thumb"></span></td><td class="nm">Portland Cement 40kg</td><td class="code">CEM-PORT-40</td><td>Cement</td><td class="mut">—</td><td class="num">₱235.00</td><td class="num strong">₱285.00</td><td class="num">21.3%</td><td class="num">110 bag</td></tr>
+            <tr><td class="cb"><input type="checkbox" aria-label="Select row"></td><td class="img"><span class="thumb"></span></td><td class="nm">Quick-Dry Enamel Black 1L</td><td class="code">PAINT-ENAMEL-1L-BLK</td><td>Paint</td><td class="mut">—</td><td class="num">₱220.00</td><td class="num strong">₱320.00</td><td class="num">45.5%</td><td class="num">16 L</td></tr>
+            <tr><td class="cb"><input type="checkbox" aria-label="Select row"></td><td class="img"><span class="thumb"></span></td><td class="nm">THHN Wire #14 (per meter)</td><td class="code">WIRE-THHN-14</td><td>Electrical</td><td class="mut">—</td><td class="num">₱6.50</td><td class="num strong">₱9.00</td><td class="num">38.5%</td><td class="num down">12 m</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ul>
+    <li><b>The app's table.</b> White card, hairline border, 8px corners; grey header band between two hairlines; full-width zebra rows. Hover and selected are two steps of grey, never a colour.</li>
+    <li><b>Every figure is Inter, right-aligned, tabular</b> — Cost, Price, Margin and Stock line up down the column. Price is the one bold number, as in the app.</li>
+    <li><b>Red only where stock is at or under the reorder point.</b> No other colour in the table.</li>
+  </ul></div>
+</section>
+
+<!-- ============================ Recent transactions ============================ -->
+<section id="tx">
+  <h2>Recent transactions</h2>
+  <p class="src">The dashboard's block. The search lives in the card's top line, because it filters this block only.</p>
+  <div class="stage">
+    <div class="card">
+      <div class="card-top">
+        <div class="card-label">Recent transactions</div>
+        <a class="view-all" href="#">View all →</a>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Receipt</th><th>Time</th><th>Customer</th><th>Staff</th><th>Fulfilment</th><th>Payment</th><th>Status</th><th class="num">Total</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="code">R-004812</td><td class="num" style="text-align:left">1:00 PM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱5,980.00</td></tr>
+            <tr><td class="code">R-004811</td><td class="num" style="text-align:left">12:41 PM</td><td>JB Construction</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill info">GCash</span></td><td><span class="pill warn">Out for delivery</span></td><td class="num strong">₱3,898.00</td></tr>
+            <tr><td class="code">R-004810</td><td class="num" style="text-align:left">12:08 PM</td><td>Walk-in</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill danger">Voided</span></td><td class="num strong">−₱348.00</td></tr>
+            <tr><td class="code">R-004809</td><td class="num" style="text-align:left">11:52 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill info">Card</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱98.00</td></tr>
+            <tr><td class="code">R-004808</td><td class="num" style="text-align:left">11:30 AM</td><td>R. Dela Cruz</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill">Refunded</span></td><td class="num strong">₱412.00</td></tr>
+            <tr><td class="code">R-004807</td><td class="num" style="text-align:left">11:14 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱1,260.00</td></tr>
+            <tr><td class="code">R-004806</td><td class="num" style="text-align:left">10:58 AM</td><td>Santos Builders</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill warn">Credit</span></td><td><span class="pill warn">Out for delivery</span></td><td class="num strong">₱18,450.00</td></tr>
+            <tr><td class="code">R-004805</td><td class="num" style="text-align:left">10:41 AM</td><td>Walk-in</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱235.00</td></tr>
+            <tr><td class="code">R-004804</td><td class="num" style="text-align:left">10:27 AM</td><td>M. Reyes</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱710.00</td></tr>
+            <tr><td class="code">R-004803</td><td class="num" style="text-align:left">10:05 AM</td><td>Walk-in</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill info">Card</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱2,590.00</td></tr>
+            <tr><td class="code">R-004802</td><td class="num" style="text-align:left">9:48 AM</td><td>JB Construction</td><td>El John</td><td><span class="pill info">Delivery</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱6,125.00</td></tr>
+            <tr><td class="code">R-004801</td><td class="num" style="text-align:left">9:31 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱45.00</td></tr>
+            <tr><td class="code">R-004800</td><td class="num" style="text-align:left">9:17 AM</td><td>A. Villanueva</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱388.00</td></tr>
+            <tr><td class="code">R-004799</td><td class="num" style="text-align:left">8:52 AM</td><td>Walk-in</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱167.50</td></tr>
+            <tr><td class="code">R-004798</td><td class="num" style="text-align:left">8:20 AM</td><td>Lopez Hardware</td><td>Maricel R.</td><td><span class="pill info">Delivery</span></td><td><span class="pill warn">Credit</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱9,340.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:var(--b-gap)">
+      <div class="card-top">
+        <div class="card-label">Recent transactions</div>
+        <a class="view-all" href="#">View all →</a>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Receipt</th><th>Time</th><th>Customer</th><th>Staff</th><th>Fulfilment</th><th>Payment</th><th>Status</th><th class="num">Total</th>
+          </tr></thead>
+          <tbody><tr class="empty"><td colspan="8">No transactions in this range</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ul>
+    <li><b>Fulfilment, payment and status are pills</b> — the app's pill set, unchanged. Green done / cash, blue digital / delivery, amber in progress / credit, red voided, grey refunded / pickup. The word is always there, so nothing is colour alone.</li>
+    <li><b>The empty state</b> keeps the headers so you can see what would be there, and uses the empty block's line.</li>
+  </ul></div>
+</section>
+
+<!-- ============================ Buttons ============================ -->
+<section id="buttons">
+  <h2>Buttons</h2>
+  <p class="src">Two shapes, both 28px tall. Rectangles do things; pill buttons choose or filter things.</p>
+  <div class="stage">
+    <div class="card" style="display:grid;gap:18px">
+      <div class="pbtns" style="justify-content:flex-end">
+        <button class="btn"><svg viewBox="0 0 12 12"><path d="M6 1.5v6M3.5 5L6 7.5 8.5 5M2 10h8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Export</button>
+        <div class="dd" data-dd="menu"><button class="btn" aria-haspopup="menu" aria-expanded="false">More actions<svg viewBox="0 0 12 12"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="dd-menu right" role="menu"><button class="dd-item" role="menuitem">Print receipt</button><button class="dd-item" role="menuitem">Duplicate</button><button class="dd-item" role="menuitem">Export as CSV</button><div class="dd-sep"></div><button class="dd-item danger" role="menuitem">Void order</button></div></div>
+        <button class="btn primary"><svg viewBox="0 0 12 12"><path d="M6 2v8M2 6h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Create order</button>
+      </div>
+      <div class="pbtns">
+        <button class="btn">Default</button>
+        <button class="btn soft">Soft</button>
+        <button class="btn primary">Primary</button>
+        <button class="btn on">Toggled on</button>
+        <button class="btn" disabled>Disabled</button>
+        <button class="btn soft"><svg viewBox="0 0 12 12"><path d="M6 1.5v6M3.5 5L6 7.5 8.5 5M2 10h8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Export</button>
+        <div class="dd" data-dd="menu"><button class="btn soft" aria-haspopup="menu" aria-expanded="false">More actions<svg viewBox="0 0 12 12"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="dd-menu right" role="menu"><button class="dd-item" role="menuitem">Print receipt</button><button class="dd-item" role="menuitem">Duplicate</button><button class="dd-item" role="menuitem">Export as CSV</button><div class="dd-sep"></div><button class="dd-item danger" role="menuitem">Void order</button></div></div>
+      </div>
+      <div class="pbtns" data-filter>
+        <button class="pbtn on">All</button>
+        <button class="pbtn">Today</button>
+        <button class="pbtn">Last 7 days</button>
+        <button class="pbtn">This month</button>
+        <div class="dd" data-dd="pick"><button class="select" aria-haspopup="listbox" aria-expanded="false" aria-label="Sort">Newest first</button><div class="dd-menu" role="listbox"><button class="dd-item" role="option" aria-selected="true">Newest first</button><button class="dd-item" role="option" aria-selected="false">Oldest first</button><button class="dd-item" role="option" aria-selected="false">Highest total</button><button class="dd-item" role="option" aria-selected="false">Lowest total</button></div></div>
+      </div>
+      <div class="pbtns">
+        <button class="pbtn"><svg viewBox="0 0 12 12"><path d="M6 2.5l4 6H2z" fill="currentColor"/></svg>N/A</button>
+        <button class="pbtn ok">Completed</button>
+        <button class="pbtn info">GCash</button>
+        <button class="pbtn warn">Credit</button>
+        <button class="pbtn danger">Voided</button>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ul>
+    <li><b>Dropdown</b>: one white menu, hairline, 8px corners, 28px rows. As a filter (categories, suppliers, sort) the trigger shows the choice and the choice is ticked; behind a button (More actions) it's a list of actions, with a line before the risky one. Arrow keys, Enter and Esc work; clicking outside closes it.</li>
+    <li><b>Rectangle</b> for actions. White with a hairline by default; <b>soft</b> grey for quiet ones beside it; one <b>primary</b> per view. Hover and press are two steps darker; nothing grows or moves.</li>
+    <li><b>Pill button</b> for choosing: filters, ranges, a status you click to narrow the table. Same fills as the table pills, 28px instead of 20, and the chosen one goes dark.</li>
+    <li>Both are <b>28px</b>, the same as the toolbar's search and dropdowns, so a row of mixed controls lines up.</li>
+  </ul></div>
+</section>
+
+<!-- ============================ Pills ============================ -->
+<section id="pills">
+  <h2>Pills</h2>
+  <p class="src">Six kinds, one shape. The same fills the app already uses for status, payment and role.</p>
+  <div class="stage">
+    <div class="card"><div class="pills">
+      <span class="pill ok">Completed</span><span class="pill ok">Cash</span>
+      <span class="pill info">GCash</span><span class="pill info">Delivery</span>
+      <span class="pill warn">Out for delivery</span><span class="pill warn">Credit</span>
+      <span class="pill danger">Voided</span><span class="pill">Refunded</span><span class="pill">Pickup</span>
+      <span class="pill owner">Owner</span>
+    </div></div>
+  </div>
+  <div class="notes"><ul>
+    <li><b>ok</b> done, cash · <b>info</b> digital pay, delivery, manager · <b>warn</b> in progress, credit, low · <b>danger</b> voided, out of stock · <b>neutral</b> refunded, pickup, cashier · <b>owner</b> the owner role only.</li>
+  </ul></div>
+</section>
+
+<!-- ============================ Table versions ============================ -->
+<section id="versions">
+  <h2>Table versions — pick and mix</h2>
+  <p class="src">Recent transactions drawn to sit next to the blocks in blocks-v2. Same data, same 34px rows, same pills. The tables above are untouched.</p>
+  <div class="stage">
+    <div class="tv tv-d striped">
+      <div class="card-top">
+        <div class="card-label">Recent transactions<span class="card-count">15 of 128</span></div>
+        <a class="view-all" href="#">View all →</a>
+      </div>
+      <div class="tv-wrap">
+        <table>
+          <thead><tr>
+            <th>Receipt</th><th>Time</th><th>Customer</th><th>Staff</th><th>Fulfilment</th><th>Payment</th><th>Status</th><th class="num">Total</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="code">R-004812</td><td class="num" style="text-align:left">1:00 PM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱5,980.00</td></tr>
+            <tr><td class="code">R-004811</td><td class="num" style="text-align:left">12:41 PM</td><td>JB Construction</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill info">GCash</span></td><td><span class="pill warn">Out for delivery</span></td><td class="num strong">₱3,898.00</td></tr>
+            <tr><td class="code">R-004810</td><td class="num" style="text-align:left">12:08 PM</td><td>Walk-in</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill danger">Voided</span></td><td class="num strong">−₱348.00</td></tr>
+            <tr><td class="code">R-004809</td><td class="num" style="text-align:left">11:52 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill info">Card</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱98.00</td></tr>
+            <tr><td class="code">R-004808</td><td class="num" style="text-align:left">11:30 AM</td><td>R. Dela Cruz</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill">Refunded</span></td><td class="num strong">₱412.00</td></tr>
+            <tr><td class="code">R-004807</td><td class="num" style="text-align:left">11:14 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱1,260.00</td></tr>
+            <tr><td class="code">R-004806</td><td class="num" style="text-align:left">10:58 AM</td><td>Santos Builders</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill warn">Credit</span></td><td><span class="pill warn">Out for delivery</span></td><td class="num strong">₱18,450.00</td></tr>
+            <tr><td class="code">R-004805</td><td class="num" style="text-align:left">10:41 AM</td><td>Walk-in</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱235.00</td></tr>
+            <tr><td class="code">R-004804</td><td class="num" style="text-align:left">10:27 AM</td><td>M. Reyes</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱710.00</td></tr>
+            <tr><td class="code">R-004803</td><td class="num" style="text-align:left">10:05 AM</td><td>Walk-in</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill info">Card</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱2,590.00</td></tr>
+            <tr><td class="code">R-004802</td><td class="num" style="text-align:left">9:48 AM</td><td>JB Construction</td><td>El John</td><td><span class="pill info">Delivery</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱6,125.00</td></tr>
+            <tr><td class="code">R-004801</td><td class="num" style="text-align:left">9:31 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱45.00</td></tr>
+            <tr><td class="code">R-004800</td><td class="num" style="text-align:left">9:17 AM</td><td>A. Villanueva</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱388.00</td></tr>
+            <tr><td class="code">R-004799</td><td class="num" style="text-align:left">8:52 AM</td><td>Walk-in</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱167.50</td></tr>
+            <tr><td class="code">R-004798</td><td class="num" style="text-align:left">8:20 AM</td><td>Lopez Hardware</td><td>Maricel R.</td><td><span class="pill info">Delivery</span></td><td><span class="pill warn">Credit</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱9,340.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="src" style="margin:10px 0 26px"><label class="stripe-sw">Stripes <input type="checkbox" role="switch" checked></label><b>A · Framed sheet.</b> Tighter grey frame with a count by the title and a summary and <b>View all</b> underneath. Striped rows.</p>
+    <div class="tv tv-d tv-g striped">
+      <div class="card-top">
+        <div class="card-label">Recent transactions<span class="card-count">15 of 128</span></div>
+        <a class="view-all" href="#">View all →</a>
+      </div>
+      <div class="tv-wrap">
+        <table>
+          <thead><tr>
+            <th>Receipt</th><th>Time</th><th>Customer</th><th>Staff</th><th>Fulfilment</th><th>Payment</th><th>Status</th><th class="num">Total</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="code">R-004812</td><td class="num" style="text-align:left">1:00 PM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱5,980.00</td></tr>
+            <tr><td class="code">R-004811</td><td class="num" style="text-align:left">12:41 PM</td><td>JB Construction</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill info">GCash</span></td><td><span class="pill warn">Out for delivery</span></td><td class="num strong">₱3,898.00</td></tr>
+            <tr><td class="code">R-004810</td><td class="num" style="text-align:left">12:08 PM</td><td>Walk-in</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill danger">Voided</span></td><td class="num strong">−₱348.00</td></tr>
+            <tr><td class="code">R-004809</td><td class="num" style="text-align:left">11:52 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill info">Card</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱98.00</td></tr>
+            <tr><td class="code">R-004808</td><td class="num" style="text-align:left">11:30 AM</td><td>R. Dela Cruz</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill">Refunded</span></td><td class="num strong">₱412.00</td></tr>
+            <tr><td class="code">R-004807</td><td class="num" style="text-align:left">11:14 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱1,260.00</td></tr>
+            <tr><td class="code">R-004806</td><td class="num" style="text-align:left">10:58 AM</td><td>Santos Builders</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill warn">Credit</span></td><td><span class="pill warn">Out for delivery</span></td><td class="num strong">₱18,450.00</td></tr>
+            <tr><td class="code">R-004805</td><td class="num" style="text-align:left">10:41 AM</td><td>Walk-in</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱235.00</td></tr>
+            <tr><td class="code">R-004804</td><td class="num" style="text-align:left">10:27 AM</td><td>M. Reyes</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱710.00</td></tr>
+            <tr><td class="code">R-004803</td><td class="num" style="text-align:left">10:05 AM</td><td>Walk-in</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill info">Card</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱2,590.00</td></tr>
+            <tr><td class="code">R-004802</td><td class="num" style="text-align:left">9:48 AM</td><td>JB Construction</td><td>El John</td><td><span class="pill info">Delivery</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱6,125.00</td></tr>
+            <tr><td class="code">R-004801</td><td class="num" style="text-align:left">9:31 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱45.00</td></tr>
+            <tr><td class="code">R-004800</td><td class="num" style="text-align:left">9:17 AM</td><td>A. Villanueva</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱388.00</td></tr>
+            <tr><td class="code">R-004799</td><td class="num" style="text-align:left">8:52 AM</td><td>Walk-in</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱167.50</td></tr>
+            <tr><td class="code">R-004798</td><td class="num" style="text-align:left">8:20 AM</td><td>Lopez Hardware</td><td>Maricel R.</td><td><span class="pill info">Delivery</span></td><td><span class="pill warn">Credit</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱9,340.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="src" style="margin:10px 0 26px"><label class="stripe-sw">Stripes <input type="checkbox" role="switch" checked></label><b>B · Framed sheet, lined.</b> Same as A, but a thin line between rows instead of stripes.</p>
+    <div class="tv tv-d tv-g">
+      <div class="card-top">
+        <div class="card-label">All products<span class="card-count">12 of 37</span></div>
+        <input class="input" placeholder="Search name, SKU, barcode…" aria-label="Search products">
+      </div>
+      <div class="tv-wrap">
+        <table>
+          <thead><tr>
+            <th class="img"></th>
+            <th>Name</th><th>SKU</th><th>Category</th><th>Supplier</th>
+            <th class="num">Cost</th><th class="num">Price</th><th class="num">Margin</th><th class="num">Stock</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Aluminum Level 24"</td><td class="code">LVL-ALUM-24</td><td>Tools</td><td class="mut">—</td><td class="num">₱270.00</td><td class="num strong">₱385.00</td><td class="num">42.6%</td><td class="num">6 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Brass Faucet 1/2"</td><td class="code">FAUCET-BR-12</td><td>Plumbing</td><td class="mut">—</td><td class="num">₱130.00</td><td class="num strong">₱185.00</td><td class="num">42.3%</td><td class="num">22 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Circuit Breaker 30A</td><td class="code">BREAKER-30A</td><td>Electrical</td><td class="mut">—</td><td class="num">₱240.00</td><td class="num strong">₱320.00</td><td class="num">33.3%</td><td class="num">8 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Claw Hammer 16oz</td><td class="code">HMR-CLAW-16</td><td>Tools</td><td class="mut">—</td><td class="num">₱195.00</td><td class="num strong">₱285.00</td><td class="num">46.1%</td><td class="num">14 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Common Wire Nails<small>2 variants</small></td><td class="mut">—</td><td>Fasteners</td><td class="mut">—</td><td class="num">₱62.00 – ₱65.00</td><td class="num strong">₱90.00 – ₱95.00</td><td class="num">45.2% – 46.1%</td><td class="num">62 kg</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Contact Cement Rugby 250mL</td><td class="code">GLUE-RUGBY</td><td>Adhesive</td><td class="mut">—</td><td class="num">₱95.00</td><td class="num strong">₱145.00</td><td class="num">52.6%</td><td class="num">18 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Fine Sand (per cu.m)</td><td class="code">SAND-FINE-CUM</td><td>Cement</td><td class="mut">—</td><td class="num">₱1,100.00</td><td class="num strong">₱1,450.00</td><td class="num">31.8%</td><td class="num">4 cu.m</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">N95 Dust Mask</td><td class="code">MASK-N95</td><td>Safety</td><td class="mut">—</td><td class="num">₱32.00</td><td class="num strong">₱55.00</td><td class="num">71.9%</td><td class="num down">0 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">PVC Pipes &amp; Tees<small>2 variants</small></td><td class="mut">—</td><td>Plumbing</td><td class="mut">—</td><td class="num">₱9.00 – ₱105.00</td><td class="num strong">₱14.50 – ₱145.00</td><td class="num">38.1% – 61.1%</td><td class="num">260 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Portland Cement 40kg</td><td class="code">CEM-PORT-40</td><td>Cement</td><td class="mut">—</td><td class="num">₱235.00</td><td class="num strong">₱285.00</td><td class="num">21.3%</td><td class="num">110 bag</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Quick-Dry Enamel Black 1L</td><td class="code">PAINT-ENAMEL-1L-BLK</td><td>Paint</td><td class="mut">—</td><td class="num">₱220.00</td><td class="num strong">₱320.00</td><td class="num">45.5%</td><td class="num">16 L</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">THHN Wire #14 (per meter)</td><td class="code">WIRE-THHN-14</td><td>Electrical</td><td class="mut">—</td><td class="num">₱6.50</td><td class="num strong">₱9.00</td><td class="num">38.5%</td><td class="num down">12 m</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tv-foot"><span><b>2</b> low on stock · <b>37</b> products</span><a href="#">View all products →</a></div>
+    </div>
+    <p class="src" style="margin:10px 0 26px"><label class="stripe-sw">Stripes <input type="checkbox" role="switch"></label><b>B · Framed sheet, lined — products.</b> The same B, with the Products table inside.</p>
+    <div class="tv tv-one tv-g striped">
+      <div class="card-top">
+        <div class="card-label">Recent transactions<span class="card-count">15 of 128</span></div>
+        <a class="view-all" href="#">View all →</a>
+      </div>
+      <div class="tv-wrap">
+        <table>
+          <thead><tr>
+            <th>Receipt</th><th>Time</th><th>Customer</th><th>Staff</th><th>Fulfilment</th><th>Payment</th><th>Status</th><th class="num">Total</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="code">R-004812</td><td class="num" style="text-align:left">1:00 PM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱5,980.00</td></tr>
+            <tr><td class="code">R-004811</td><td class="num" style="text-align:left">12:41 PM</td><td>JB Construction</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill info">GCash</span></td><td><span class="pill warn">Out for delivery</span></td><td class="num strong">₱3,898.00</td></tr>
+            <tr><td class="code">R-004810</td><td class="num" style="text-align:left">12:08 PM</td><td>Walk-in</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill danger">Voided</span></td><td class="num strong">−₱348.00</td></tr>
+            <tr><td class="code">R-004809</td><td class="num" style="text-align:left">11:52 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill info">Card</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱98.00</td></tr>
+            <tr><td class="code">R-004808</td><td class="num" style="text-align:left">11:30 AM</td><td>R. Dela Cruz</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill">Refunded</span></td><td class="num strong">₱412.00</td></tr>
+            <tr><td class="code">R-004807</td><td class="num" style="text-align:left">11:14 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱1,260.00</td></tr>
+            <tr><td class="code">R-004806</td><td class="num" style="text-align:left">10:58 AM</td><td>Santos Builders</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill warn">Credit</span></td><td><span class="pill warn">Out for delivery</span></td><td class="num strong">₱18,450.00</td></tr>
+            <tr><td class="code">R-004805</td><td class="num" style="text-align:left">10:41 AM</td><td>Walk-in</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱235.00</td></tr>
+            <tr><td class="code">R-004804</td><td class="num" style="text-align:left">10:27 AM</td><td>M. Reyes</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱710.00</td></tr>
+            <tr><td class="code">R-004803</td><td class="num" style="text-align:left">10:05 AM</td><td>Walk-in</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill info">Card</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱2,590.00</td></tr>
+            <tr><td class="code">R-004802</td><td class="num" style="text-align:left">9:48 AM</td><td>JB Construction</td><td>El John</td><td><span class="pill info">Delivery</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱6,125.00</td></tr>
+            <tr><td class="code">R-004801</td><td class="num" style="text-align:left">9:31 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱45.00</td></tr>
+            <tr><td class="code">R-004800</td><td class="num" style="text-align:left">9:17 AM</td><td>A. Villanueva</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱388.00</td></tr>
+            <tr><td class="code">R-004799</td><td class="num" style="text-align:left">8:52 AM</td><td>Walk-in</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱167.50</td></tr>
+            <tr><td class="code">R-004798</td><td class="num" style="text-align:left">8:20 AM</td><td>Lopez Hardware</td><td>Maricel R.</td><td><span class="pill info">Delivery</span></td><td><span class="pill warn">Credit</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱9,340.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="src" style="margin:10px 0 26px"><label class="stripe-sw">Stripes <input type="checkbox" role="switch" checked></label><b>C · One box.</b> B without the grey frame: title, table and footer in one white card with a hairline around it.</p>
+    <div class="tv tv-one tv-g">
+      <div class="card-top">
+        <div class="card-label">All products<span class="card-count">12 of 37</span></div>
+        <input class="input" placeholder="Search name, SKU, barcode…" aria-label="Search products">
+      </div>
+      <div class="tv-wrap">
+        <table>
+          <thead><tr>
+            <th class="img"></th>
+            <th>Name</th><th>SKU</th><th>Category</th><th>Supplier</th>
+            <th class="num">Cost</th><th class="num">Price</th><th class="num">Margin</th><th class="num">Stock</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Aluminum Level 24"</td><td class="code">LVL-ALUM-24</td><td>Tools</td><td class="mut">—</td><td class="num">₱270.00</td><td class="num strong">₱385.00</td><td class="num">42.6%</td><td class="num">6 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Brass Faucet 1/2"</td><td class="code">FAUCET-BR-12</td><td>Plumbing</td><td class="mut">—</td><td class="num">₱130.00</td><td class="num strong">₱185.00</td><td class="num">42.3%</td><td class="num">22 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Circuit Breaker 30A</td><td class="code">BREAKER-30A</td><td>Electrical</td><td class="mut">—</td><td class="num">₱240.00</td><td class="num strong">₱320.00</td><td class="num">33.3%</td><td class="num">8 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Claw Hammer 16oz</td><td class="code">HMR-CLAW-16</td><td>Tools</td><td class="mut">—</td><td class="num">₱195.00</td><td class="num strong">₱285.00</td><td class="num">46.1%</td><td class="num">14 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Common Wire Nails<small>2 variants</small></td><td class="mut">—</td><td>Fasteners</td><td class="mut">—</td><td class="num">₱62.00 – ₱65.00</td><td class="num strong">₱90.00 – ₱95.00</td><td class="num">45.2% – 46.1%</td><td class="num">62 kg</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Contact Cement Rugby 250mL</td><td class="code">GLUE-RUGBY</td><td>Adhesive</td><td class="mut">—</td><td class="num">₱95.00</td><td class="num strong">₱145.00</td><td class="num">52.6%</td><td class="num">18 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Fine Sand (per cu.m)</td><td class="code">SAND-FINE-CUM</td><td>Cement</td><td class="mut">—</td><td class="num">₱1,100.00</td><td class="num strong">₱1,450.00</td><td class="num">31.8%</td><td class="num">4 cu.m</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">N95 Dust Mask</td><td class="code">MASK-N95</td><td>Safety</td><td class="mut">—</td><td class="num">₱32.00</td><td class="num strong">₱55.00</td><td class="num">71.9%</td><td class="num down">0 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">PVC Pipes &amp; Tees<small>2 variants</small></td><td class="mut">—</td><td>Plumbing</td><td class="mut">—</td><td class="num">₱9.00 – ₱105.00</td><td class="num strong">₱14.50 – ₱145.00</td><td class="num">38.1% – 61.1%</td><td class="num">260 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Portland Cement 40kg</td><td class="code">CEM-PORT-40</td><td>Cement</td><td class="mut">—</td><td class="num">₱235.00</td><td class="num strong">₱285.00</td><td class="num">21.3%</td><td class="num">110 bag</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Quick-Dry Enamel Black 1L</td><td class="code">PAINT-ENAMEL-1L-BLK</td><td>Paint</td><td class="mut">—</td><td class="num">₱220.00</td><td class="num strong">₱320.00</td><td class="num">45.5%</td><td class="num">16 L</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">THHN Wire #14 (per meter)</td><td class="code">WIRE-THHN-14</td><td>Electrical</td><td class="mut">—</td><td class="num">₱6.50</td><td class="num strong">₱9.00</td><td class="num">38.5%</td><td class="num down">12 m</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tv-foot"><span><b>2</b> low on stock · <b>37</b> products</span><a href="#">View all products →</a></div>
+    </div>
+    <p class="src" style="margin:10px 0 26px"><label class="stripe-sw">Stripes <input type="checkbox" role="switch"></label><b>C · One box — products.</b> The same C, with the Products table inside.</p>
+    <div class="tv tv-s tv-g">
+      <div class="card-top">
+        <div class="card-label">Recent transactions<span class="card-count">15 of 128</span></div>
+        <a class="view-all" href="#">View all →</a>
+      </div>
+      <div class="tv-wrap">
+        <table>
+          <thead><tr>
+            <th>Receipt</th><th>Time</th><th>Customer</th><th>Staff</th><th>Fulfilment</th><th>Payment</th><th>Status</th><th class="num">Total</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="code">R-004812</td><td class="num" style="text-align:left">1:00 PM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱5,980.00</td></tr>
+            <tr><td class="code">R-004811</td><td class="num" style="text-align:left">12:41 PM</td><td>JB Construction</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill info">GCash</span></td><td><span class="pill warn">Out for delivery</span></td><td class="num strong">₱3,898.00</td></tr>
+            <tr><td class="code">R-004810</td><td class="num" style="text-align:left">12:08 PM</td><td>Walk-in</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill danger">Voided</span></td><td class="num strong">−₱348.00</td></tr>
+            <tr><td class="code">R-004809</td><td class="num" style="text-align:left">11:52 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill info">Card</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱98.00</td></tr>
+            <tr><td class="code">R-004808</td><td class="num" style="text-align:left">11:30 AM</td><td>R. Dela Cruz</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill">Refunded</span></td><td class="num strong">₱412.00</td></tr>
+            <tr><td class="code">R-004807</td><td class="num" style="text-align:left">11:14 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱1,260.00</td></tr>
+            <tr><td class="code">R-004806</td><td class="num" style="text-align:left">10:58 AM</td><td>Santos Builders</td><td>Aldrin S.</td><td><span class="pill info">Delivery</span></td><td><span class="pill warn">Credit</span></td><td><span class="pill warn">Out for delivery</span></td><td class="num strong">₱18,450.00</td></tr>
+            <tr><td class="code">R-004805</td><td class="num" style="text-align:left">10:41 AM</td><td>Walk-in</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱235.00</td></tr>
+            <tr><td class="code">R-004804</td><td class="num" style="text-align:left">10:27 AM</td><td>M. Reyes</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱710.00</td></tr>
+            <tr><td class="code">R-004803</td><td class="num" style="text-align:left">10:05 AM</td><td>Walk-in</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill info">Card</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱2,590.00</td></tr>
+            <tr><td class="code">R-004802</td><td class="num" style="text-align:left">9:48 AM</td><td>JB Construction</td><td>El John</td><td><span class="pill info">Delivery</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱6,125.00</td></tr>
+            <tr><td class="code">R-004801</td><td class="num" style="text-align:left">9:31 AM</td><td>Walk-in</td><td>Maricel R.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱45.00</td></tr>
+            <tr><td class="code">R-004800</td><td class="num" style="text-align:left">9:17 AM</td><td>A. Villanueva</td><td>Aldrin S.</td><td><span class="pill">Pickup</span></td><td><span class="pill ok">Cash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱388.00</td></tr>
+            <tr><td class="code">R-004799</td><td class="num" style="text-align:left">8:52 AM</td><td>Walk-in</td><td>El John</td><td><span class="pill">Pickup</span></td><td><span class="pill info">GCash</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱167.50</td></tr>
+            <tr><td class="code">R-004798</td><td class="num" style="text-align:left">8:20 AM</td><td>Lopez Hardware</td><td>Maricel R.</td><td><span class="pill info">Delivery</span></td><td><span class="pill warn">Credit</span></td><td><span class="pill ok">Completed</span></td><td class="num strong">₱9,340.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="src" style="margin:10px 0 26px"><label class="stripe-sw">Stripes <input type="checkbox" role="switch"></label><b>D · Shopify card.</b> A white card with a soft shadow, a lightly tinted header row, and a line between rows. The title strip stays white.</p>
+    <div class="tv tv-s tv-g">
+      <div class="card-top">
+        <div class="card-label">All products<span class="card-count">12 of 37</span></div>
+        <input class="input" placeholder="Search name, SKU, barcode…" aria-label="Search products">
+      </div>
+      <div class="tv-wrap">
+        <table>
+          <thead><tr>
+            <th class="img"></th>
+            <th>Name</th><th>SKU</th><th>Category</th><th>Supplier</th>
+            <th class="num">Cost</th><th class="num">Price</th><th class="num">Margin</th><th class="num">Stock</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Aluminum Level 24"</td><td class="code">LVL-ALUM-24</td><td>Tools</td><td class="mut">—</td><td class="num">₱270.00</td><td class="num strong">₱385.00</td><td class="num">42.6%</td><td class="num">6 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Brass Faucet 1/2"</td><td class="code">FAUCET-BR-12</td><td>Plumbing</td><td class="mut">—</td><td class="num">₱130.00</td><td class="num strong">₱185.00</td><td class="num">42.3%</td><td class="num">22 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Circuit Breaker 30A</td><td class="code">BREAKER-30A</td><td>Electrical</td><td class="mut">—</td><td class="num">₱240.00</td><td class="num strong">₱320.00</td><td class="num">33.3%</td><td class="num">8 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Claw Hammer 16oz</td><td class="code">HMR-CLAW-16</td><td>Tools</td><td class="mut">—</td><td class="num">₱195.00</td><td class="num strong">₱285.00</td><td class="num">46.1%</td><td class="num">14 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Common Wire Nails<small>2 variants</small></td><td class="mut">—</td><td>Fasteners</td><td class="mut">—</td><td class="num">₱62.00 – ₱65.00</td><td class="num strong">₱90.00 – ₱95.00</td><td class="num">45.2% – 46.1%</td><td class="num">62 kg</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Contact Cement Rugby 250mL</td><td class="code">GLUE-RUGBY</td><td>Adhesive</td><td class="mut">—</td><td class="num">₱95.00</td><td class="num strong">₱145.00</td><td class="num">52.6%</td><td class="num">18 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Fine Sand (per cu.m)</td><td class="code">SAND-FINE-CUM</td><td>Cement</td><td class="mut">—</td><td class="num">₱1,100.00</td><td class="num strong">₱1,450.00</td><td class="num">31.8%</td><td class="num">4 cu.m</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">N95 Dust Mask</td><td class="code">MASK-N95</td><td>Safety</td><td class="mut">—</td><td class="num">₱32.00</td><td class="num strong">₱55.00</td><td class="num">71.9%</td><td class="num down">0 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">PVC Pipes &amp; Tees<small>2 variants</small></td><td class="mut">—</td><td>Plumbing</td><td class="mut">—</td><td class="num">₱9.00 – ₱105.00</td><td class="num strong">₱14.50 – ₱145.00</td><td class="num">38.1% – 61.1%</td><td class="num">260 pc</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Portland Cement 40kg</td><td class="code">CEM-PORT-40</td><td>Cement</td><td class="mut">—</td><td class="num">₱235.00</td><td class="num strong">₱285.00</td><td class="num">21.3%</td><td class="num">110 bag</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">Quick-Dry Enamel Black 1L</td><td class="code">PAINT-ENAMEL-1L-BLK</td><td>Paint</td><td class="mut">—</td><td class="num">₱220.00</td><td class="num strong">₱320.00</td><td class="num">45.5%</td><td class="num">16 L</td></tr>
+            <tr><td class="img"><span class="thumb"></span></td><td class="nm">THHN Wire #14 (per meter)</td><td class="code">WIRE-THHN-14</td><td>Electrical</td><td class="mut">—</td><td class="num">₱6.50</td><td class="num strong">₱9.00</td><td class="num">38.5%</td><td class="num down">12 m</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tv-foot"><span><b>2</b> low on stock · <b>37</b> products</span><a href="#">View all products →</a></div>
+    </div>
+    <p class="src" style="margin:10px 0 26px"><label class="stripe-sw">Stripes <input type="checkbox" role="switch"></label><b>D · Shopify card — products.</b> The same D, with the Products table inside.</p>
+  </div>
+</section>
+
+</div>
+<script>
+// Select mode, lab demo only.
+(function () {
+  const card = document.getElementById('p-card'), top = document.getElementById('p-top'), btn = document.getElementById('p-select');
+  const plain = top.innerHTML, all = card.querySelector('thead input');
+  const boxes = [...card.querySelectorAll('tbody input')];
+  function sync() {
+    const n = boxes.filter(b => b.checked).length;
+    boxes.forEach(b => b.closest('tr').classList.toggle('sel', b.checked));
+    all.checked = n === boxes.length; all.indeterminate = n > 0 && n < boxes.length;
+    top.innerHTML = n ? `<div class="bulk"><b>${n} selected</b><button class="btn">Edit prices</button><button class="btn">Archive</button></div>` : plain;
+  }
+  btn.onclick = () => {
+    const on = card.classList.toggle('selecting');
+    btn.classList.toggle('on', on); btn.textContent = on ? 'Done' : 'Select';
+    if (!on) { boxes.forEach(b => b.checked = false); sync(); }
+  };
+  boxes.forEach(b => b.onchange = sync);
+  all.onchange = () => { boxes.forEach(b => b.checked = all.checked); sync(); };
+  // in select mode the whole row is the hit target, not just the 15px box
+  card.querySelector('tbody').onclick = e => {
+    if (!card.classList.contains('selecting') || e.target.matches('input')) return;
+    const b = e.target.closest('tr').querySelector('.cb input'); b.checked = !b.checked; sync();
+  };
+})();
+</script>
+<script>
+// Pill filter rows: one chosen at a time (lab demo).
+document.querySelectorAll('[data-filter]').forEach(row => row.onclick = e => {
+  const b = e.target.closest('.pbtn'); if (!b) return;
+  row.querySelectorAll('.pbtn').forEach(x => x.classList.toggle('on', x === b));
+});
+</script>
+<script>
+// Dropdowns (lab demo): click or arrow keys to open, Esc or a click outside to close.
+document.querySelectorAll('.dd').forEach(dd => {
+  const t = dd.querySelector(':scope > button'), items = [...dd.querySelectorAll('.dd-item')];
+  const open = on => {
+    dd.classList.toggle('open', on); t.setAttribute('aria-expanded', on);
+    if (on) (items.find(i => i.getAttribute('aria-selected') === 'true') || items[0]).focus();
+  };
+  t.onclick = () => open(!dd.classList.contains('open'));
+  items.forEach(i => i.onclick = () => {
+    if (dd.dataset.dd === 'pick') { items.forEach(x => x.setAttribute('aria-selected', x === i)); t.textContent = i.textContent; }
+    open(false); t.focus();
+  });
+  dd.onkeydown = e => {
+    if (e.key === 'Escape' && dd.classList.contains('open')) { open(false); t.focus(); }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    if (!dd.classList.contains('open')) return open(true);
+    const k = items.indexOf(document.activeElement), d = e.key === 'ArrowDown' ? 1 : -1;
+    items[(k + d + items.length) % items.length].focus();
+  };
+});
+document.addEventListener('click', e => document.querySelectorAll('.dd.open').forEach(dd => {
+  if (!dd.contains(e.target)) { dd.classList.remove('open'); dd.querySelector(':scope > button').setAttribute('aria-expanded', false); }
+}));
+</script>
+<script>
+// Stripes switch under each version: flips .striped on the table just above it.
+document.querySelectorAll('.stripe-sw input').forEach(i => i.onchange = () =>
+  i.closest('p').previousElementSibling.classList.toggle('striped', i.checked));
+</script>
+</body>
+</html>

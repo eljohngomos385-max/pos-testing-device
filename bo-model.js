@@ -388,6 +388,31 @@ function upsertDays(rows) {
   saveList(STORAGE_DAYS, [...byDate.values()].sort((a, b) => a.id.localeCompare(b.id)));
 }
 
+/* ---------- Fulfilment ----------
+   Two built-ins; anything else is a type the owner added in Settings and is stored in the
+   same `fulfilment` column as its own name. That is why a removed type never rewrites past
+   sales -- the order already carries its label, exactly like a custom payment method.
+   Only 'delivery' means an address; every custom type is a counter sale with a different word. */
+const FULFIL_BUILTINS = [
+  ['pickup', 'Pickup', 'Always on. The counter sale.'],
+  ['delivery', 'Delivery', 'Asks for an address and a map pin.'],
+];
+// The back office has always called a pickup "Walk-in"; the POS pill says "Pickup". One
+// helper, one caller-chosen word for that single key -- nothing else differs.
+function orderFulfilLabel(order, pickup = 'Walk-in') {
+  const f = String((order && order.fulfilment) || 'pickup');
+  return f === 'delivery' ? 'Delivery' : f === 'pickup' ? pickup : f;
+}
+// The POS pill list: built-ins the owner kept, then the ones they added.
+function fulfilMethods(settings) {
+  const cfg = (settings && settings.fulfilment) || {};
+  const off = new Set(cfg.hidden || []);
+  return FULFIL_BUILTINS
+    .filter(([k]) => k === 'pickup' || !off.has(k))
+    .map(([key, label]) => ({ key, label, custom: false }))
+    .concat((cfg.custom || []).map((name) => ({ key: name, label: name, custom: true })));
+}
+
 /* ---------- CSV: one column table, used for both directions ----------
    Import and export read the same list, so a file exported here re-imports
    without losing a field — which is the only reason a two-way CSV is worth
@@ -575,6 +600,15 @@ if (typeof module !== 'undefined' && require.main === module) {
   assert.deepEqual(logged.map((r) => [r.productId, r.field, r.old, r.new]), [['a', 'price', 300, 325], ['n', 'price', null, 5]]);
   assert.equal(makeMovement({ productId: 'p', qty: -3, reason: 'count', expected: 40, counted: 37 }).counted, 37);
 
+  // A custom type is its own label, and an order keeps that label after the type is removed.
+  assert.equal(orderFulfilLabel({}), 'Walk-in');
+  assert.equal(orderFulfilLabel({ fulfilment: 'pickup' }, 'Pickup'), 'Pickup');
+  assert.equal(orderFulfilLabel({ fulfilment: 'delivery' }), 'Delivery');
+  assert.equal(orderFulfilLabel({ fulfilment: 'Tricycle' }), 'Tricycle');
+  assert.deepEqual(fulfilMethods({ fulfilment: { hidden: ['delivery'], custom: ['Tricycle'] } }).map((m) => m.key),
+    ['pickup', 'Tricycle']);
+  assert.deepEqual(fulfilMethods({ fulfilment: { hidden: ['pickup'] } }).map((m) => m.key), ['pickup', 'delivery']);
+
   console.log('bo-model: ok');
 }
 
@@ -589,5 +623,6 @@ if (typeof module !== 'undefined') {
     SUPPLIER_DEFAULTS, STAFF_DEFAULTS, STAFF_ROLES, STOCK_REASONS, SOLD_BY, MARGIN_MODES,
     GROUP_DEFAULTS, SEED_STAFF, PAGE_ROWS, paginate, pageNumbers,
     EVENT_LOGS, STORAGE_DAYS, makeEvent, priceChanges,
+    FULFIL_BUILTINS, orderFulfilLabel, fulfilMethods,
   };
 }

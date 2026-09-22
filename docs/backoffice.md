@@ -4,6 +4,12 @@ The POS is dark; the Back Office is **light**. It is a separate design system in
 `styles.css`, scoped entirely to `body.bo-light`. Everything in `docs/design-pos.md` (dark tokens, shine, gloss)
 **does not apply here** — don't carry dark-mode recipes across.
 
+**`design.html` is the block catalogue** — open it in a browser. It loads the real `styles.css` and
+renders every block with the real class names, so a block cannot look right there and wrong in the
+product. Find the block, copy its markup, fill it with data. **If no block fits, add one there
+first**, then use it. It also carries the Don't list and what we borrow from Polaris / Primer /
+Carbon. This file stays the *why*; `design.html` is the *what*.
+
 **Authoritative blocks:** `BACK OFFICE — SHOPIFY ADMIN REDESIGN (v21)` holds the tokens/shell;
 `BACK OFFICE — CARD SYSTEM (v22)` holds the card markup; `BACK OFFICE — FLAT CARDS (v23)` flattens v22's
 tray into one surface; `BACK OFFICE — DENSE TABLES (v24)` sets the width of the list pages;
@@ -55,12 +61,23 @@ Inter. 17px/700 page title · 13.5px/650 panel title · 13px/500 body & rows · 
 - Shell: fixed black topbar (46px) → fixed sidebar below it → `.bo-main` offset by both.
 - `.view` is `max-width: 1240px`, centered, `padding: 20px 24px 48px`.
 - `.view-head`: title left, `.view-actions` pushed right with `margin-left: auto`.
+  **One title slot for every page** (`PAGE HEAD (v34)`, last in styles.css, 2026-09-20): the head is
+  a fixed `--po-head-h` (32px) line with `--po-head-gap` under it, so every `h1` lands on the same
+  coordinate and moving those two tokens moves every page together. **Nothing goes under a title —
+  no description line** (the owner removed them all). A back link sits *before* the `h1` like a
+  breadcrumb and a detail page's one fact (SKU, PO status) sits *after* it, same line. A sub-page
+  is titled by its own name ("Movement history", not "Inventory" + a sub); the default tab keeps
+  the page's name. Never override `.view-head` / `.view-title-wrap` geometry in a `bo-*.css`.
 - `.panel-head`: title left, sub/link right via `margin-left: auto`, `border-bottom: 1px solid --po-line`,
   `padding-bottom: 10px; margin-bottom: 12px`. Every card body row after it is label-left/value-right.
 - Grid gutter is **12px** everywhere (`.kpi-row`, `.dash-grid`, `.dash-col`); 16px inside settings.
   Card padding is **14px** (see v23 below). Reach for an existing step — no one-off 13/21px.
-- Rows in lists/tables separate with `border-bottom: 1px solid --po-line`, and the **last row drops it**.
-- Status/pay pills: tinted bg + dark text + a leading `::before` colour dot. No outlines, no saturated fills.
+- Rows in a **table** separate with `border-bottom: 1px solid --po-line`, and the last row drops it.
+  Rows in a **row list** separate with a stripe instead (v33 below), and so does any table over a
+  couple of rows. Stripes or hairlines, never both.
+- Status/pay/role pills: **solid fill + dark ink, no dot, 20px tall everywhere** (`--po-pill-*` tokens;
+  2026-09-19). The owner found tint + dot washed out, then found Shopify's mint/neon badge "too close to
+  Shopify" — the fills are our own old tint hues one step deeper. No outlines, no per-table height override.
 
 ### One card, one surface (v23) — the structural rule
 **A card is a single white box.** Head, body and table all sit on the same surface, separated by
@@ -339,6 +356,10 @@ the category sub-line were all removed: the category `<select>` above the table 
 sub-line, Needs buying is the whole page for danger levels, and Movement history is the whole
 page for the log. Stock value at cost survives as a KPI, where one number belongs.
 
+**Incoming** (2026-09-19) sits after On hand: units on purchase orders that are out
+(`PO_INCOMING`: ordered/partial) minus what has been received. Derived on render, never stored;
+a draft PO isn't incoming, a received or cancelled one no longer is.
+
 **Adjust opens `#adjustDlg`, a native `<dialog>`.** It used to expand a row inline, which pushed
 every product below it down the page. The dialog element is rendered **inside the view root**, at
 the end of `shell()`, so the module's `mine(e)` event gate still matches it — `showModal()` puts it
@@ -541,7 +562,8 @@ PO line created from Needs buying, one `reprice` row per Apply in Cost changes. 
 
 `/admin/customers` is the list; `/admin/customers/<id>` is one account's history. The id is on the
 URL (`state.detailId`), so a link to a customer is shareable, and one `renderCustomers()` picks the
-screen. Clicking a row navigates; the back link lives above the page title, not between the cards.
+screen. Clicking a row navigates; the back link sits before the page title (which becomes the customer's
+name), not between the cards.
 
 The history is three cards: the account's facts, **Transactions** (paginated, each row opens the
 existing `#orderDlg` receipt via the delegated `tr[data-order]` handler — no new dialog), and
@@ -636,6 +658,16 @@ Stock (`/admin/inventory?tab=prices`): every `priceLog` row, newest first, filte
 search and category. The editor's Pricing card only links to it (`?q=<product name>`). Nothing new is
 recorded; `saveProducts` and the POS already diff every save into `priceLog`.
 
+**Fulfilment types are a second card on the Payments page** (2026-09-20; the owner wanted to add
+types beyond Pickup/Delivery). The page keeps its name -- do not rename it. Both cards share one
+renderer (`methodCardHtml`/`METHOD_CARDS` in backoffice.js): built-ins you switch off, your own
+names you add, one locked entry per card (`cash`, `pickup`). `settings.fulfilment` has the same
+`{hidden, custom}` shape as `settings.payments`; the POS `applyFulfilMethods()` hides and inserts
+pills from it. A custom type is stored in the order's existing `fulfilment` column **as its own
+name** -- no schema column, no worker field, and a removed type never rewrites past sales.
+`orderFulfilLabel()` in bo-model.js is the one place that turns that column into a word (the back
+office says "Walk-in" where the POS pill says "Pickup"); every table, CSV and receipt calls it.
+
 **Payments is a Manage page that drives the POS checkout grid** (2026-09-19; GCash is Philippine-only,
 so a store elsewhere must be able to hide it). It writes `settings.payments = {hidden: [kind], custom:
 [name]}`; the POS `applyPayMethods()` hides those cards and inserts one card per custom name. Cash can't
@@ -656,6 +688,80 @@ control** (`.pd-rail .setting-row` goes to a single `minmax(0, 1fr)` track) — 
 a 200px label track. Same `.setting-row` / `.pd-control` / `.pd-hint` markup, one CSS override; do
 not grow a parallel set of row classes for the rail.
 
+### Foundation (v33) — rows, stripes, and the shadcn half
+
+2026-09-20, the owner, twice. First: the dashboard's mini-lists and the Overview card "look ugly",
+and Shopify's *Total sales breakdown* "is nice and easy to see". Then, on v32's answer: it is "too
+close to Shopify, it doesn't really have our own blend", the tables are "not even clean to see",
+and — on the stripes — **"I like zebra honestly, you just implemented it badly."** Plus: use shadcn
+for the basics, hybrid the two, keep our colours.
+
+So v33 is the basics done once, and everything after it is assembly. It is a hybrid on purpose:
+**the geometry and the interaction are shadcn's, the palette and the density are ours.** The shadcn
+values were read out of its own registry (`ui.shadcn.com/r/styles/new-york-v4/*.json`) — nothing is
+installed, there is no build step, and there is not going to be one. We copied recipes, not code.
+
+**What v32 got wrong about the stripe, because the idea was right and the drawing was not.** v32
+drew it as an inset rounded band (`margin-inline: -6px` + `--po-r-card`) floating inside the card.
+A rounded band with its own margins is the shape of a *selected* row, so on a three-row card the
+middle one looked picked out rather than alternate. **A stripe is a band**: full width of the card,
+square sides, identical on every even row. `.mini-list` bleeds out with `margin-inline: -14px` and
+each row pads itself back in, so the text still lands on the card's 14px gutter — lined up with the
+head — while the fill behind it runs wall to wall. Only the last row takes `--po-r-card` on its
+bottom corners, so a stripe never squares off the card.
+
+- **A row is one line.** Name and its one second fact (`.ml-sub`) side by side, never stacked — v25's
+  table rule, now off tables too. Three low-stock products cost 171px stacked, 96px on one line.
+- **Stripes, not hairlines** (`--po-row-alt #F4F4F4`). Never both: two separators for one boundary
+  is the card-inside-a-card mistake again. One step deeper than Shopify's #F7F7F7 because that is
+  our page colour — at #F7F7F7 the band matches the canvas and the card stops reading as a card.
+- **Tables are striped by default** now, not opt-in. `.no-zebra` gives hairlines back for the two-
+  or three-row tables where there is nothing to track across.
+- **A list row is roomier than a table row** — `calc(var(--po-row-h) + 8px)`. Eight lines can afford
+  the air; fifty cannot. Both still track the density setting.
+- **Hover is a darkening layer**, `rgba(0,0,0,.045)`, not a grey. A flat grey disappears on a stripe.
+- `.ml-value` is the answer (600, ink, tabular). `.ml-trail` is the optional third column, fixed at
+  58px so values line up. `.warn`/`.danger` colour **the value only**; the row never turns red.
+- **One coloured pill per row.** The payment method is a fact like the time is, so it is plain text.
+  Two filled pills per row was what made the transactions table unreadable — you stop reading and
+  start decoding. Colour means "this needs you".
+
+**A stat row is padded, never a fixed height.** Three separate things pushed the text to the top of
+its own stripe and all three are worth remembering: a fixed `height` leaves one auto track that
+stretches, and baseline-aligning inside a stretched track pins items to the top; `align-items:
+baseline` across a 13px label and a 17px value makes the track as tall as the big number's ascent
+*plus* its descent; and `.kpi-label` still carried `margin-bottom: 6px` from the stacked-KPI era, a
+phantom that grew the track without drawing anything. So: symmetric `padding`, `align-items: center`
+on the row (the value and its delta keep their baseline inside `.kpi-main`, where they are adjacent
+and it shows), and the label margin zeroed. **If a row ever looks top-heavy again, check for a
+leftover margin on a child before touching the row.**
+
+**A stat cell is a row too.** `.dash-top .stat` / `.sales-top .stat` are label-left, value-and-delta-
+right, one line, same full-bleed stripe. Stacked, three numbers had to fill the height of the chart
+card beside them and had nothing to put in it — ₱0 at 25px in 100px of white is what made the
+Overview read as broken on an empty day. **Cards size to their rows now**: `.dash-top` and
+`.dash-grid-3` are `align-items: start` and the 275px `min-height` on dashboard lists is gone, so a
+short card is short. Ragged card bottoms are the accepted cost; a striped list stopping halfway up
+a white card reads as a list that failed to load. This supersedes the "flex: 1 insets so they match
+height" note under *Landing page* above.
+
+**The shadcn half**, all new in v33 and all catalogued in `design.html`:
+
+- **One focus ring for the product** — a 3px translucent halo in the accent plus a solid border, on
+  `:focus-visible` only. Reads on any background, never shifts layout, replaces the four different
+  focus styles that had accumulated. Never `outline: none` without putting it back: half this app is
+  driven from a keyboard at a counter.
+- **`.btn`** — three variants (default / `.primary` / `.ghost` / `.danger`) and three heights
+  (26 / 32 / 38). The 32 matches an input so a button beside a field lines up for free. `.danger` is
+  for the confirm inside a dialog, never a red button sitting next to Save in a toolbar.
+- **Popups use the native `popover` attribute and `<dialog>`** — no library, no JS. The browser
+  gives us the top layer, light-dismiss, Esc and focus return: every part a hand-rolled dropdown
+  gets wrong. The motion is shadcn's, fade plus a 96% zoom, **150ms in and 100ms out**. It animates
+  *both* ways only because of `@starting-style` + `transition-behavior: allow-discrete`; without
+  those a menu fades in and then vanishes on close, which is the tell of a cheap one.
+- **One accent** (`--po-accent`, the existing link blue) drives link, ring and selection, so the
+  page reads as one system. Changing that line rebrands the product.
+
 ### Sidebar (v26–v27)
 One flush full-height column (the user rejected an inset floating island): **location switcher** on
 top (business name small, location big, because the location is what you switch), then four
@@ -673,7 +779,7 @@ menus keep opening with `hidden` / `<details>`, and the CSS fades and drops them
 `@starting-style` + `display ... allow-discrete`. A new dropdown adds its class to that rule. Tried and rejected, don't redo:
 six labelled sections with every sub-page as its own link ("stuff gets lost"), and a bare
 Shopify list with no labels or chevrons ("too much like Shopify"). Then then the **account switcher** as a card (name + role, no avatar).
-Outline icons in muted ink; the active page is a white pill. Menus: `renderSwitchers()` in
+**Filled, rounded icons** in the row ink (v34, 2026-09-21, matched to Shopify): inner detail is an `.i-cut` line or `.i-hole` dot painted in the row's own `--side-bg`, so it stays a cutout on rest, hover and active -- a new icon uses those classes, never a white stroke. Top-level rows are 550 in `--po-sidebar-ink` #4D4D4D (toned down from `--po-ink` the same day, "too dark"; hover and active still go #171717), the tree under them 450 in `--po-ink-secondary`; the owner asked for the head of the tree to read thicker than its subs. Menus: `renderSwitchers()` in
 backoffice.js, run on every paint. Until a stores table exists there is one location (first part
 of the store address); picking an account sets `settings.store.cashier`, which `actor()` reads.
 It needs a PIN once there is a login.
@@ -698,4 +804,4 @@ and needs no plain link.
 `insights`, so saved links and access maps keep working. Its page title is the report name.
 CSS: `SIDEBAR SWITCHERS (v26)` + `SIDEBAR LOOK (v27)` + `COMPACT SIDEBAR (v28)` (Shopify density:
 ~27px rows, no dividers, flat white active row; keeps the v27 muted grey ink -- the user rejected
-darker, bolder nav text), last in styles.css.
+darker, bolder nav text in v28; v34 `SIDEBAR WEIGHT` later asked for the 550 parent weight), last in styles.css.

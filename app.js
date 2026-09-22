@@ -21,6 +21,8 @@ const DEFAULT_SETTINGS = {
   vatRate: 0.12,           // PH standard VAT, inclusive
   vatInclusive: true,
   defaultFulfilment: 'pickup', // 'pickup' | 'delivery'
+  // Which fulfilment pills the checkout shows. { hidden: [builtin key], custom: [name] }
+  fulfilment: { hidden: [], custom: [] },
   store: {
     name: 'EJ Hardware',
     address: 'Main Store, Laguna',
@@ -613,7 +615,9 @@ function normalizeOrderRecord(raw = {}) {
   const store = currentStoreInfo();
   const id = String(raw.id || orderUid());
   const number = String(raw.number || raw.receiptNumber || raw.orderNumber || id);
-  const fulfilment = raw.fulfilment === 'delivery' ? 'delivery' : 'pickup';
+  // Any non-empty name is a type the owner added; it is stored as itself so the order
+  // keeps its label after the type is removed. Only 'delivery' carries an address.
+  const fulfilment = String(raw.fulfilment || 'pickup').trim() || 'pickup';
   return {
     schemaVersion: ORDER_SCHEMA_VERSION,
     formatKey: ORDER_FORMAT_KEY,
@@ -662,9 +666,8 @@ function normalizeOrderRecord(raw = {}) {
 
 function toReceiptViewModel(order) {
   const o = normalizeOrderRecord(order);
-  const fulfilmentLabel = o.fulfilment === 'delivery'
-    ? `DELIVERY${o.deliveryAddress ? ' · ' + o.deliveryAddress : ''}`
-    : 'PICKUP';
+  const fulfilmentLabel = orderFulfilLabel(o, 'Pickup').toUpperCase()
+    + (o.fulfilment === 'delivery' && o.deliveryAddress ? ' · ' + o.deliveryAddress : '');
   return {
     store: currentStoreInfo(),
     number: o.number,
@@ -1731,9 +1734,9 @@ function clearCartDiscount() {
   flashControl($('#cartDiscountBtn'));
 }
 
-// ---------- Fulfilment (Pickup / Delivery) ----------
+// ---------- Fulfilment (Pickup / Delivery / whatever the owner added) ----------
 function setFulfilment(mode) {
-  if (mode !== 'pickup' && mode !== 'delivery') return;
+  if (!fulfilMethods(state.settings).some(m => m.key === mode)) return;
   if (mode === 'delivery') {
     // Address is optional; prefill it when we already know one.
     const addr = state.deliveryAddress || (state.customer && state.customer.address) || '';
@@ -1742,11 +1745,36 @@ function setFulfilment(mode) {
     $('#deliveryModal').hidden = false;
     return;
   }
-  state.fulfilment = 'pickup';
+  state.fulfilment = mode;
   state.deliveryAddress = '';
   state.deliveryLocation = null;
   renderCart();
 }
+
+// The pills the owner configured, rebuilt in place. Pickup is never removable, so the
+// markup keeps it and delivery; a custom type is a pill cloned from pickup's.
+function applyFulfilMethods() {
+  const row = $('.cart-fulfilment-row');
+  if (!row) return;
+  const methods = fulfilMethods(state.settings);
+  const keep = new Set(methods.map(m => m.key));
+  $$('.fulfil-pill[data-fulfil-custom]', row).forEach(b => b.remove());
+  $$('.fulfil-pill', row).forEach(b => { b.hidden = !keep.has(b.dataset.fulfil); });
+  const before = $('#cartDiscountBtn');
+  const template = $('.fulfil-pill[data-fulfil="pickup"]', row);
+  methods.filter(m => m.custom).forEach(({ key, label }) => {
+    const b = template.cloneNode(true);
+    b.classList.remove('active');
+    b.hidden = false;
+    b.dataset.fulfil = key;
+    b.dataset.fulfilCustom = '';
+    b.querySelector('span').textContent = label;
+    row.insertBefore(b, before);
+  });
+  // A hidden or deleted type must not stay selected on the cart in front of the cashier.
+  if (!keep.has(state.fulfilment)) state.fulfilment = 'pickup';
+}
+
 function saveDeliveryAddress() {
   const addr = $('#deliveryAddrInput').value.trim();
   state.fulfilment = 'delivery';
@@ -2088,6 +2116,7 @@ function renderCart() {
   const sb = $('#saveBtn'); if (sb) sb.disabled = state.cart.length === 0;
 
   // Fulfilment pills + discount label
+  applyFulfilMethods();
   $$('.fulfil-pill').forEach(b => b.classList.toggle('active', b.dataset.fulfil === state.fulfilment));
   const deliveryBtn = document.querySelector('.fulfil-pill[data-fulfil="delivery"] span');
   if (deliveryBtn) deliveryBtn.textContent = 'Delivery';
@@ -4791,9 +4820,10 @@ function attachEvents() {
   $('#cdApplyBtn')?.addEventListener('click', applyCartDiscount);
   $('#cdRemoveBtn')?.addEventListener('click', clearCartDiscount);
 
-  // Fulfilment pills
-  $$('.fulfil-pill').forEach(b => {
-    b.addEventListener('click', () => setFulfilment(b.dataset.fulfil));
+  // Fulfilment pills -- delegated, the custom ones are rebuilt on every cart render.
+  $('.cart-fulfilment-row')?.addEventListener('click', (e) => {
+    const pill = e.target.closest('.fulfil-pill');
+    if (pill) setFulfilment(pill.dataset.fulfil);
   });
   // Delivery modal save
   $('#deliverySaveBtn')?.addEventListener('click', saveDeliveryAddress);
