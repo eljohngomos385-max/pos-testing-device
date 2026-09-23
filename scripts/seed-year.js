@@ -1,7 +1,11 @@
-/* Dev only. A year of trading, written straight into the same localStorage the app reads.
-   Load it in the back office (or the POS) and call seedYear().
+/* Dev only. Six months of trading over a 200+ item catalog, written straight into the same
+   localStorage the app reads. Open the back office, paste this in the DevTools console (F12),
+   then reload the page:
 
-     fetch('/scripts/seed-year.js').then(r => r.text()).then(eval); seedYear();
+     fetch('/scripts/seed-year.js').then(r => r.text()).then(eval).then(() => console.log(seedYear()));
+
+   seedYear(365) still writes a full year. It REPLACES products, sales, stock, POs and
+   attendance in this browser -- there is no undo.
 
    It is not a test — the tests are scripts/*-check.mjs and scripts/sim-year.mjs. This exists
    so the pages can be USED: a year of sales to filter, stock that actually moved, purchase
@@ -13,7 +17,7 @@
 // `busy` scales the daily order count. A full year at busy=1 is ~4,200 orders, which is
 // ~4 MB of localStorage -- past what Chrome gives one origin, so the till then refuses to
 // record the next sale. Keep the year, turn the volume down, until the D1 store lands.
-function seedYear(days = 365, busy = 0.55) {
+function seedYear(days = 182, busy = 0.8) {
   let seed = 20260908;
   const rnd = () => {
     seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
@@ -37,12 +41,118 @@ function seedYear(days = 365, busy = 0.55) {
     { id: 'sup_gen', name: 'Metro Builders Supply', contact: 'Danny Ong', phone: '0905 555 0980', email: 'metrobuilders@gmail.com', address: 'Maharlika Hwy, San Leonardo', note: 'Everything else. Cash on delivery.' },
   ].map((s) => ({ ...SUPPLIER_DEFAULTS, ...s }));
 
-  // ---- Products: keep the seed catalog, give it cost, margin and a supplier --
-  const products = loadProducts().map((raw, i) => {
+  // ---- Catalog: the seed list, topped up to 200+ lines ----------------------
+  // Families x sizes, the way a real hardware shelf grows; price climbs with the size.
+  // [folder, unit, brand, name, sizes, base price, step per size, soldBy]
+  const FAMILIES = [
+    ['plumbing', 'pc', 'Atlanta', 'PVC Elbow', ['1"', '1 1/2"', '2"', '3"', '4"'], 22, 0.55],
+    ['plumbing', 'pc', 'Atlanta', 'PVC Tee', ['3/4"', '1"', '2"', '3"', '4"'], 20, 0.6],
+    ['plumbing', 'pc', 'Atlanta', 'PVC Pipe', ['3/4" × 3m', '1" × 3m', '2" × 3m', '3" × 3m', '4" × 3m'], 180, 0.7],
+    ['plumbing', 'pc', 'Atlanta', 'PVC Coupling', ['1/2"', '3/4"', '1"', '2"'], 9, 0.5],
+    ['plumbing', 'pc', 'Atlanta', 'PVC Clean-out', ['2"', '3"', '4"'], 65, 0.4],
+    ['plumbing', 'pc', 'Omega', 'Gate Valve Brass', ['1/2"', '3/4"', '1"'], 320, 0.45],
+    ['plumbing', 'pc', 'Omega', 'Hose Bibb', ['1/2"', '3/4"'], 210, 0.3],
+    ['plumbing', 'pc', 'HCG', 'Flexible Hose', ['12"', '16"', '20"'], 95, 0.2],
+    ['plumbing', 'pc', 'HCG', 'Floor Drain Stainless', ['3" × 3"', '4" × 4"'], 150, 0.4],
+    ['plumbing', 'pc', 'HCG', 'P-Trap', ['1 1/4"', '1 1/2"'], 140, 0.25],
+    ['electrical', 'm', 'Phelps Dodge', 'THHN Wire', ['#10 (per meter)', '#8 (per meter)', '#16 (per meter)'], 38, 0.35, 'measure'],
+    ['electrical', 'pc', 'Firefly', 'LED Bulb Daylight', ['5W', '12W', '15W', '20W'], 85, 0.3],
+    ['electrical', 'pc', 'Firefly', 'LED Tube T8', ['9W', '18W'], 160, 0.4],
+    ['electrical', 'pc', 'Panasonic', 'Convenience Outlet', ['1-Gang', '3-Gang', 'Universal'], 110, 0.3],
+    ['electrical', 'pc', 'Panasonic', 'Switch', ['2-Gang', '3-Gang', '3-Way'], 120, 0.3],
+    ['electrical', 'pc', 'GE', 'Circuit Breaker', ['15A', '20A', '40A', '60A'], 360, 0.25],
+    ['electrical', 'pc', 'Royu', 'Extension Cord', ['3m 3-Outlet', '5m 4-Outlet', '10m 4-Outlet'], 280, 0.5],
+    ['electrical', 'pc', 'Royu', 'Junction Box', ['2" × 4"', '4" × 4"'], 22, 0.4],
+    ['electrical', 'pc', 'Neltex', 'PVC Conduit × 3m', ['1/2"', '3/4"', '1"'], 75, 0.4],
+    ['electrical', 'pc', 'Royu', 'Lamp Holder', ['Receptacle', 'Pendant'], 35, 0.3],
+    ['fasteners', 'kg', 'Generic', 'Common Wire Nail', ['1"', '1 1/2"', '4"', '5"'], 85, 0.05],
+    ['fasteners', 'kg', 'Generic', 'Concrete Nail', ['1"', '2"', '3"'], 140, 0.1],
+    ['fasteners', 'kg', 'Generic', 'Umbrella Nail', ['2"', '2 1/2"'], 120, 0.08],
+    ['fasteners', 'pc', 'Generic', 'Wood Screw #8', ['× 1 1/2"', '× 2"', '× 3"'], 2.5, 0.3],
+    ['fasteners', 'pc', 'Generic', 'Tek Screw', ['× 1"', '× 2"', '× 3"'], 3.5, 0.35],
+    ['fasteners', 'pc', 'Generic', 'Hex Bolt', ['M6 × 50mm', 'M8 × 75mm', 'M12 × 150mm'], 7, 0.6],
+    ['fasteners', 'pc', 'Generic', 'Hex Nut', ['M6', 'M8', 'M10', 'M12'], 1.5, 0.4],
+    ['fasteners', 'pc', 'Generic', 'Flat Washer', ['M6', 'M8', 'M12'], 1, 0.4],
+    ['fasteners', 'pc', 'Fischer', 'Tox Plug', ['#6', '#8', '#10'], 1.5, 0.3],
+    ['fasteners', 'pc', 'Generic', 'Anchor Bolt', ['3/8"', '1/2"'], 28, 0.5],
+    ['fasteners', 'kg', 'Ace', 'Tie Wire #16', ['(per kg)'], 95, 0],
+    ['fasteners', 'pc', 'Ace', 'Deformed Bar Grade 33', ['10mm × 6m', '12mm × 6m', '16mm × 6m'], 180, 0.55],
+    ['tools', 'pc', 'Stanley', 'Claw Hammer', ['8oz', '20oz'], 280, 0.4],
+    ['tools', 'pc', 'Stanley', 'Flat Screwdriver', ['3"', '4"', '6"'], 75, 0.2],
+    ['tools', 'pc', 'Stanley', 'Phillips Screwdriver', ['#1', '#3'], 80, 0.2],
+    ['tools', 'pc', 'Tolsen', 'Long Nose Pliers', ['6"', '8"'], 190, 0.2],
+    ['tools', 'pc', 'Tolsen', 'Adjustable Wrench', ['8"', '10"', '12"'], 240, 0.3],
+    ['tools', 'pc', 'Stanley', 'Tape Measure', ['3m', '7.5m', '10m'], 120, 0.5],
+    ['tools', 'pc', 'Lotus', 'Hand Saw', ['18"', '22"'], 260, 0.2],
+    ['tools', 'pc', 'Lotus', 'Hacksaw Blade', ['18T', '24T', '32T'], 45, 0.05],
+    ['tools', 'pc', 'Lotus', 'Masonry Trowel', ['6"', '8"'], 110, 0.2],
+    ['tools', 'pc', 'Lotus', 'Shovel', ['Round Point', 'Square Point'], 390, 0.05],
+    ['tools', 'pc', 'Makita', 'Masonry Drill Bit', ['1/4"', '3/8"', '1/2"'], 65, 0.4],
+    ['tools', 'pc', 'Makita', 'Cutting Disc 4"', ['Metal', 'Stainless', 'Masonry'], 35, 0.1],
+    ['tools', 'pc', 'Makita', 'Grinding Disc 4"', ['Metal'], 55, 0],
+    ['tools', 'pc', 'Tolsen', 'Utility Cutter', ['Small', 'Large'], 55, 0.5],
+    ['tools', 'pc', 'Tolsen', 'Wheelbarrow', ['Heavy Duty'], 2450, 0],
+    ['paint', 'L', 'Boysen', 'Latex Paint', ['Blue 1L', 'Cream 1L', 'Green 1L', 'White 4L', 'Cream 4L'], 290, 0.35],
+    ['paint', 'L', 'Davies', 'Quick-Dry Enamel', ['White 1L', 'Red 1L', 'Gray 1L', 'Black 4L'], 330, 0.3],
+    ['paint', 'L', 'Boysen', 'Flat Wall Enamel', ['White 1L', 'White 4L'], 310, 1.6],
+    ['paint', 'L', 'Boysen', 'Red Oxide Primer', ['1L', '4L'], 260, 2.2],
+    ['paint', 'L', 'Boysen', 'Acrylic Paint Tint', ['Black', 'Blue', 'Red', 'Yellow'], 95, 0],
+    ['paint', 'L', 'Boysen', 'Lacquer Thinner', ['1L', '4L'], 140, 2.4],
+    ['paint', 'pc', 'Tolsen', 'Paint Brush', ['1"', '2"', '4"'], 35, 0.45],
+    ['paint', 'pc', 'Tolsen', 'Paint Roller', ['4"', '7"'], 85, 0.4],
+    ['paint', 'pc', 'Generic', 'Sandpaper', ['#80', '#120', '#240', '#400'], 18, 0],
+    ['paint', 'pc', 'Generic', 'Masking Tape', ['1"', '2"'], 45, 0.6],
+    ['cement', 'bag', 'Republic', 'Portland Cement', ['Type 1P 40kg'], 265, 0],
+    ['cement', 'bag', 'Holcim', 'Holcim Excel Cement', ['40kg'], 275, 0],
+    ['cement', 'bag', 'Generic', 'Tile Adhesive', ['5kg', '25kg'], 120, 2.8],
+    ['cement', 'bag', 'Generic', 'Tile Grout', ['2kg White', '2kg Gray'], 75, 0],
+    ['cement', 'pc', 'Generic', 'Hollow Block', ['5"', '6"'], 16, 0.25],
+    ['cement', 'cu.m', 'Generic', 'Washed Sand', ['(per cu.m)'], 1350, 0, 'measure'],
+    ['cement', 'bag', 'Generic', 'Lime', ['25kg'], 210, 0],
+    ['safety', 'pair', 'Generic', 'Rubber Gloves', ['Medium', 'Large'], 55, 0.1],
+    ['safety', 'pair', 'Generic', 'Leather Welding Gloves', ['Standard'], 180, 0],
+    ['safety', 'pair', 'Generic', 'Rubber Boots', ['Size 8', 'Size 9', 'Size 10'], 390, 0.05],
+    ['safety', 'pc', '3M', 'Ear Plugs', ['Corded'], 45, 0],
+    ['safety', 'pc', 'Generic', 'Reflective Vest', ['Orange', 'Lime'], 150, 0],
+    ['safety', 'pc', 'Generic', 'Hard Hat', ['White', 'Blue'], 220, 0],
+    ['safety', 'pc', 'Generic', 'Face Shield', ['Clear'], 95, 0],
+    ['adhesive', 'pc', 'Pioneer', 'Epoxy Clear', ['1/4 pint', '1/2 pint'], 190, 0.8],
+    ['adhesive', 'pc', 'Rugby', 'Contact Cement', ['100mL', '1L'], 70, 3.5],
+    ['adhesive', 'pc', 'Neltex', 'PVC Solvent Cement', ['100mL', '400mL'], 60, 1.4],
+    ['adhesive', 'pc', 'Dow', 'Silicone Sealant', ['Clear', 'Black'], 185, 0],
+    ['adhesive', 'pc', 'Elmers', 'Wood Glue', ['250g', '1kg'], 95, 2.2],
+    ['adhesive', 'pc', 'Bostik', 'Construction Adhesive', ['300mL'], 260, 0],
+  ];
+  // The generated lines (x001...) are dropped and rebuilt, so a re-run never keeps stale ones.
+  const seeded = loadProducts().filter((p) => !/^x\d{3}$/.test(p.id));
+  // Keyed on name, so running the seed again does not stack a second copy of the extras.
+  const taken = new Set(seeded.map((p) => p.name.toLowerCase()));
+  const extra = [];
+  for (const [folder, unit, brand, base, sizes, price, step, soldBy] of FAMILIES) {
+    sizes.forEach((size, k) => {
+      const name = `${base} ${size}`;
+      if (taken.has(name.toLowerCase())) return;
+      taken.add(name.toLowerCase());
+      const n = extra.length + 1;
+      const pr = round2(price * (1 + step * k));
+      extra.push({
+        id: 'x' + String(n).padStart(3, '0'),
+        sku: `${base.replace(/[^A-Za-z]/g, '').slice(0, 6)}-${size.replace(/[^A-Za-z0-9]/g, '').slice(0, 6)}-${n}`.toUpperCase(),
+        barcode: '4809' + String(n).padStart(9, '0'),
+        name, brand, folder, unit, soldBy: soldBy || 'each',
+        price: pr, cost: round2(pr * (0.6 + rnd() * 0.2)),
+        reorderPoint: pr > 1000 ? between(2, 5) : pr > 200 ? between(5, 15) : between(15, 60),
+        aliases: [],
+      });
+    });
+  }
+
+  // ---- Products: give every line cost, margin and a supplier ---------------
+  const products = [...seeded, ...extra].map((raw, i) => {
     const p = normalizeProduct(raw);
-    p.supplierId = /paint|boysen/i.test(p.name) ? 'sup_boy'
+    p.supplierId = /paint|boysen|enamel|primer|thinner/i.test(p.name) ? 'sup_boy'
       : /pvc|pipe|elbow|tee/i.test(p.name) ? 'sup_pvc'
-      : /rebar|wire|steel|nail/i.test(p.name) ? 'sup_ace' : 'sup_gen';
+      : /rebar|wire|steel|nail|deformed bar/i.test(p.name) ? 'sup_ace' : 'sup_gen';
     if (!p.cost) p.cost = round2(p.price * (0.62 + rnd() * 0.18));
     // Half the catalog is priced off a percentage, half off a flat peso margin. Both have to
     // survive a year of cost changes, so both need to exist in the data.
@@ -75,7 +185,7 @@ function seedYear(days = 365, busy = 0.55) {
 
   // ---- Opening stock: one count, a year ago -------------------------------
   const open = dayTs(0);
-  products.forEach((p) => move(open, p.id, between(40, 260), 'count', '', 'Opening count', 'El John'));
+  products.forEach((p) => move(open, p.id, between(p.reorderPoint * 2, p.reorderPoint * 6), 'count', '', 'Opening count', 'El John'));
 
   // ---- Buying, driven by the shelf ----------------------------------------
   // Weekly, per supplier, and only the lines that are actually low -- the old version bought
@@ -93,7 +203,7 @@ function seedYear(days = 365, busy = 0.55) {
 
   function orderStock(d, day) {
     for (const sup of suppliers) {
-      const low = products.filter((p) => p.supplierId === sup.id && stockOf(p.id) < p.reorderPoint * 2);
+      const low = products.filter((p) => p.supplierId === sup.id && stockOf(p.id) < p.reorderPoint);
       if (!low.length) continue;
       const chosen = low.slice(0, 6);
       const po = {

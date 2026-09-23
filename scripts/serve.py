@@ -33,6 +33,23 @@ class SPAHandler(SimpleHTTPRequestHandler):
                 return os.path.join(ROOT, shell)
         return full
 
+    def do_GET(self):
+        # /seed: the back office plus a line that runs scripts/seed-year.js and reloads to
+        # /admin. For devices with no DevTools console (iPad Safari). This server only, so
+        # production never has a URL that wipes a browser's data.
+        if self.path.split('?', 1)[0] != '/seed':
+            return super().do_GET()
+        with open(os.path.join(ROOT, 'backoffice.html'), encoding='utf-8') as f:
+            html = f.read()
+        run = ("<script>fetch('/scripts/seed-year.js').then(r => r.text()).then(eval)"
+               ".then(() => { console.log(seedYear()); location.replace('/admin'); });</script>")
+        body = html.replace('</body>', run + '</body>').encode('utf-8')
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def end_headers(self):
         # Dev only: makes ?v=NN cache-busting unnecessary while iterating.
         self.send_header('Cache-Control', 'no-store')

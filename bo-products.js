@@ -130,7 +130,7 @@
         <label class="bo-check"><input type="checkbox" data-filter="archived"> Show archived</label>
         <details class="pd-cols">
           <summary class="secondary-btn small">Columns</summary>
-          <div class="pd-cols-menu">
+          <div class="pd-cols-menu check-menu">
             ${COLUMNS.map(([k, label]) =>
               `<label class="bo-check"><input type="checkbox" data-col-toggle="${k}"> ${label}</label>`).join('')}
           </div>
@@ -141,11 +141,18 @@
         <div class="bo-card-head">
           <span class="bo-card-label">All products</span>
           <span class="bo-card-sub" id="pdShown"></span>
+          <div class="pd-bulk" id="pdBulk" hidden>
+            <span class="pd-bulk-n"></span>
+            <button class="secondary-btn small" data-act="bulk-export">Export CSV</button>
+            <button class="secondary-btn small" data-act="bulk-archive">Archive</button>
+            <button class="link-btn" data-act="bulk-clear">Clear</button>
+          </div>
         </div>
         <div class="bo-card-inset flush">
           <div class="table-wrap">
             <table class="data-table" id="pdTable">
               <thead><tr>
+                <th class="pd-sel"><input type="checkbox" data-pick-all aria-label="Select all on this page"></th>
                 <th class="pd-img-col" data-col="img"></th><th>Name</th>
                 <th data-col="sku">SKU</th><th data-col="cat">Category</th><th data-col="supplier">Supplier</th>
                 <th class="num" data-col="cost">Cost</th><th class="num" data-col="price">Price</th>
@@ -221,15 +228,38 @@
     const filtered = state.invQuery || p.cat || p.supplier || p.low;
     const pg = paginate(rows, p.page);
     root().querySelector('#pdTable tbody').innerHTML = pg.rows.map((r) => r.html).join('')
-      || `<tr><td colspan="10" class="bo-empty">${filtered ? 'No products match these filters.' : 'No products yet. Add one to get started.'}</td></tr>`;
+      || `<tr><td colspan="11" class="bo-empty">${filtered ? 'No products match these filters.' : 'No products yet. Add one to get started.'}</td></tr>`;
     root().querySelector('#pdPager').innerHTML = pagerHtml(pg);
     root().querySelector('#pdShown').textContent = `${rows.length} shown`;
+    paintPicked();
   }
+
+  /* Ticked rows: product ids and family ids, kept across pages and filters until an
+     action runs or Clear. In memory only - a selection is not worth syncing. */
+  const picked = new Set();
+  const pickBox = (id) =>
+    `<td class="pd-sel"><input type="checkbox" data-pick="${escapeHtml(id)}"${picked.has(id) ? ' checked' : ''} aria-label="Select"></td>`;
+
+  function paintPicked() {
+    const r = root();
+    const boxes = [...r.querySelectorAll('[data-pick]')];
+    const all = r.querySelector('[data-pick-all]');
+    const on = boxes.filter((b) => b.checked).length;
+    all.checked = boxes.length > 0 && on === boxes.length;
+    all.indeterminate = on > 0 && on < boxes.length;
+    r.querySelector('#pdBulk').hidden = !picked.size;
+    r.querySelector('#pdShown').hidden = !!picked.size;
+    r.querySelector('.pd-bulk-n').textContent = `${picked.size} selected`;
+  }
+
+  // A family tick means every variant in it.
+  const pickedProducts = () => state.products.filter((x) => picked.has(x.id) || picked.has(x.groupId));
 
   function rowHtml(p, supplierMap) {
     const markup = marginSummary(p.cost, p.price).markup;
     return `
       <tr class="pd-row${p.archived ? ' pd-arch' : ''}" data-id="${escapeHtml(p.id)}">
+        ${pickBox(p.id)}
         <td class="pd-img-col" data-col="img">${thumb(p.imageUrl)}</td>
         <td><strong>${escapeHtml(p.name)}</strong></td>
         <td class="mono" data-col="sku">${escapeHtml(p.sku || '-')}</td>
@@ -257,6 +287,7 @@
         : '<span class="status-pill ok">In stock</span>';
     return `
       <tr class="pd-row${members.every((m) => m.archived) ? ' pd-arch' : ''}" data-id="${escapeHtml(g.id)}">
+        ${pickBox(g.id)}
         <td class="pd-img-col" data-col="img">${thumb(imageFor(members[0], [g]))}</td>
         <td><strong>${escapeHtml(g.name)}</strong>
             <span class="pd-vcount">${members.length} variants</span></td>
@@ -904,7 +935,7 @@
     }
 
     const rowEl = e.target.closest('.pd-row');
-    if (mine(rowEl) && !e.target.closest('a')) { Router.go(VIEW, rowEl.dataset.id); return; }
+    if (mine(rowEl) && !e.target.closest('a, .pd-sel')) { Router.go(VIEW, rowEl.dataset.id); return; }
 
     const btn = e.target.closest('[data-act]');
     if (!mine(btn)) return;
@@ -912,6 +943,26 @@
     if (act === 'back') Router.go(VIEW, '');
     else if (act === 'new') Router.go(VIEW, 'new');
     else if (act === 'export') exportCsv();
+    else if (act === 'bulk-clear') { picked.clear(); paintTable(); }
+    else if (act === 'bulk-export') {
+      const list = pickedProducts().map(normalizeProduct);
+      downloadCsv('products.csv', [PRODUCT_COLUMNS.map((c) => c.head)].concat(list.map(productToCsvRow)));
+      showToast(`Exported ${list.length} product${list.length === 1 ? '' : 's'}`);
+    } else if (act === 'bulk-archive') {
+      const ids = new Set(pickedProducts().filter((x) => !x.archived).map((x) => x.id));
+      if (!ids.size) { showToast('Those are already archived'); return; }
+      if (!confirm(`Archive ${ids.size} product${ids.size === 1 ? '' : 's'}?
+
+They stop showing in the POS. Old receipts still resolve, and you can restore each one from its page.`)) return;
+      // Never delete: an old receipt has to stay resolvable.
+      const stamp = new Date().toISOString();
+      state.products = state.products.map((x) => (ids.has(x.id) ? { ...x, archived: true, updatedAt: stamp } : x));
+      saveProducts();
+      picked.clear();
+      refreshSharedState();
+      renderCurrentView();
+      showToast(`Archived ${ids.size} - old receipts still resolve`);
+    }
     else if (act === 'import') r.querySelector('#pdFile').click();
     else if (act === 'import-cancel') { pending = null; paintImport(); }
     else if (act === 'import-apply') {
@@ -979,6 +1030,19 @@ It stops showing in the POS. Old receipts still resolve, and you can restore it 
     if (!mine(el)) return;
     if (el.dataset.filter) {
       Router.setParams({ [el.dataset.filter]: el.type === 'checkbox' ? (el.checked ? '1' : '') : el.value, page: '' });
+      return;
+    }
+    if (el.dataset.pick !== undefined) {
+      if (el.checked) picked.add(el.dataset.pick); else picked.delete(el.dataset.pick);
+      paintPicked();
+      return;
+    }
+    if (el.dataset.pickAll !== undefined) {
+      root().querySelectorAll('[data-pick]').forEach((b) => {
+        b.checked = el.checked;
+        if (el.checked) picked.add(b.dataset.pick); else picked.delete(b.dataset.pick);
+      });
+      paintPicked();
       return;
     }
     if (el.dataset.colToggle) {

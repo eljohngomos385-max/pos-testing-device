@@ -209,6 +209,9 @@
 
   const hay = (p) => `${p.name} ${p.sku || ''} ${p.barcode || ''} ${folderName(p.folder)}`.toLowerCase();
 
+  // statusOf()'s tones, in the order the Stock level filter lists them.
+  const STOCK_LEVELS = [['ok', 'In stock'], ['warn', 'Low'], ['danger', 'Out of stock']];
+
   const statusOf = (p) => (Number(p.stock) <= 0 ? ['danger', 'Out of stock']
     : isLow(p) ? ['warn', 'Low'] : ['ok', 'In stock']);
 
@@ -283,12 +286,14 @@
       params, tab, movements, byId, byProduct, balance,
       docId: detail === 'adjust' ? 'new' : detail.startsWith('adjust/') ? detail.slice(7) : '',
       q: (state.invQuery || '').trim().toLowerCase(),
-      cat: params.cat || '',
+      // ?cat= and ?level= are comma lists (multi-pick); the single-select tabs just send one.
+      cats: (params.cat || '').split(',').filter(Boolean),
+      levels: (params.level || '').split(',').filter(Boolean),
     };
   }
 
   const visible = (d) => state.products.filter((p) =>
-    !p.archived && (!d.cat || p.folder === d.cat) && (!d.q || hay(p).includes(d.q)));
+    !p.archived && (!d.cats.length || d.cats.includes(p.folder)) && (!d.q || hay(p).includes(d.q)));
 
   /* ================================== shell =========================================== */
 
@@ -306,7 +311,10 @@
          <input type="date" class="bo-date" id="invFrom" aria-label="From date">
          <input type="date" class="bo-date" id="invTo" aria-label="To date">
          <button class="secondary-btn small" data-act="export">Export CSV</button>`
+      : d.tab === 'stock' ? ''
       : `<select class="bo-select" id="invCat">${cats}</select>`;
+    const search = `<input class="search-input small q-input" id="invSearch" type="search"
+                 placeholder="Search products…" autocomplete="off">`;
 
     return `
       <div class="view-head">
@@ -314,14 +322,18 @@
           <h1 id="invTitle"></h1>
         </div>
         <div class="view-actions">
-          <input class="search-input small q-input" id="invSearch" type="search"
-                 placeholder="Search products…" autocomplete="off">
+          ${d.tab === 'stock' ? '' : search}
           ${filters}
           <button class="secondary-btn small" data-act="receive">Receive stock</button>
           <button class="primary-btn small" data-act="doc-new">New adjustment</button>
         </div>
       </div>
-      <div class="dash-stack" id="invBody"></div>
+      <div class="dash-stack" id="invBody">${d.tab === 'stock'
+        // On hand: the filter row sits between the KPIs and the table, and outlives both
+        // re-renders so the search box keeps focus while typing.
+        ? `<div id="invKpis"></div>
+           <div class="tx-filters">${search}<span class="inv-picks" id="invPicks"></span></div>
+           <div id="invMain"></div>` : ''}</div>
       <dialog id="adjustDlg" class="bo-dialog adj-dlg"></dialog>`;
   }
 
@@ -342,7 +354,7 @@
   /* ================================ tab 1 — on hand =================================== */
 
   function stockTab(d) {
-    const list = visible(d).sort((a, b) =>
+    const list = visible(d).filter((p) => !d.levels.length || d.levels.includes(statusOf(p)[0])).sort((a, b) =>
       urgency(a) - urgency(b) ||
       (a.stock / (a.reorderPoint || 1)) - (b.stock / (b.reorderPoint || 1)));
 
@@ -354,7 +366,7 @@
     });
 
     const kpis = `<div class="kpi-row">
-      ${kpi('SKUs tracked', list.length.toLocaleString('en-PH'), d.q || d.cat ? 'matching filter' : 'active items')}
+      ${kpi('SKUs tracked', list.length.toLocaleString('en-PH'), d.q || d.cats.length || d.levels.length ? 'matching filter' : 'active items')}
       ${kpi('Total units', Math.round(units).toLocaleString('en-PH'), 'on the shelf')}
       ${kpi('Stock value at cost', pesoShort(value), 'what it cost us', 'flat', 'what it cost us')}
       ${kpi('Low stock', String(low), 'at or below danger level', low ? 'down' : 'flat')}
@@ -383,12 +395,12 @@
           <td class="num"><button class="secondary-btn small" data-adjust-open="${escapeHtml(p.id)}">Adjust</button></td>
         </tr>
 `;
-    }).join('') || empty(d.q || d.cat ? 'No products match those filters.' : 'No products yet — add them in Products.');
+    }).join('') || empty(d.q || d.cats.length || d.levels.length ? 'No products match those filters.' : 'No products yet — add them in Products.');
 
     // What it is, where it belongs, how many, how fast it goes, is that a problem, fix
     // it. SKU, danger level and value at cost stayed off — the rest lives in Needs
     // buying and Movement history.
-    return kpis + card('On hand', `${list.length} item${list.length === 1 ? '' : 's'}`, `
+    return [kpis, card('On hand', `${list.length} item${list.length === 1 ? '' : 's'}`, `
       <table class="data-table inv-stock">
         <thead><tr>
           <th>Product</th><th class="inv-cat">Category</th>
@@ -396,7 +408,7 @@
           <th class="num">Sold 30d</th><th>Status</th><th class="num">Adjust</th>
         </tr></thead>
         <tbody>${rows}</tbody>
-      </table>`, '', pagerHtml(pg));
+      </table>`, '', pagerHtml(pg))];
   }
 
   function adjustPanel(p, last) {
@@ -463,7 +475,7 @@
       if (from && day < from) continue;
       if (to && day > to) continue;
       const p = d.byId.get(m.productId);
-      if (d.cat && (!p || p.folder !== d.cat)) continue;
+      if (d.cats.length && (!p || !d.cats.includes(p.folder))) continue;
       if (d.q) {
         const text = `${p ? hay(p) : m.productId} ${m.note || ''} ${m.refId || ''} ${m.staff || ''}`.toLowerCase();
         if (!text.includes(d.q)) continue;
@@ -538,7 +550,7 @@
     const rows = costDrift(visible(d), d.movements, loadPurchaseOrders());
     if (!rows.length) {
       return `<section class="bo-card blk-empty"><div class="bo-card-head"><span class="bo-card-label">Cost changes</span></div>
-        <div class="bo-card-inset"><div class="bo-empty">${d.q || d.cat
+        <div class="bo-card-inset"><div class="bo-empty">${d.q || d.cats.length
           ? 'No products match those filters.'
           : 'Every product is priced off what it last cost. Nothing to review.'}</div></div></section>`;
     }
@@ -815,7 +827,7 @@
           <td>${escapeHtml(e.staff || '—')}</td>
           <td class="inv-soft">${escapeHtml(SOURCE_LABEL[e.source] || e.source || '—')}</td>
         </tr>`;
-    }).join('') || empty(d.q || d.cat ? 'No price changes match those filters.'
+    }).join('') || empty(d.q || d.cats.length ? 'No price changes match those filters.'
       : 'No price or cost changes yet. Every change from here on is logged.');
     return card('Price history', `showing ${pg.rows.length} of ${all.length}`, `
       <table class="data-table">
@@ -844,9 +856,13 @@
       r.dataset.tab = d.tab;
     }
     syncControls(d);
+    if (d.tab === 'stock') {
+      [r.querySelector('#invKpis').innerHTML, r.querySelector('#invMain').innerHTML] = stockTab(d);
+      return;
+    }
     r.querySelector('#invBody').innerHTML =
       d.tab === 'movements' ? movementsTab(d) : d.tab === 'reorder' ? reorderTab(d)
-      : d.tab === 'cost' ? costTab(d) : d.tab === 'prices' ? pricesTab(d) : stockTab(d);
+      : d.tab === 'cost' ? costTab(d) : pricesTab(d);
   }
 
   function syncControls(d) {
@@ -856,7 +872,17 @@
       if (el && el !== document.activeElement && el.value !== value) el.value = value;
     };
     set('#invSearch', state.invQuery || '');
-    set('#invCat', d.cat);
+    // On hand's multi-picks: redrawn each render (the search box beside them stays put),
+    // reopening whichever menu was open so a tick doesn't snap it shut.
+    const picks = r.querySelector('#invPicks');
+    if (picks) {
+      const open = picks.querySelector('.ms-pick[open]');
+      const cats = state.folders.filter((f) => f.id !== 'all').map((f) => [f.id, f.name]);
+      picks.innerHTML = multiPick('cat', 'All categories', 'No categories yet', 'categories', cats, d.cats)
+        + multiPick('level', 'All stock levels', '', 'stock levels', STOCK_LEVELS, d.levels);
+      if (open) picks.querySelector(`.ms-pick[data-ms="${open.dataset.ms}"]`).open = true;
+    }
+    set('#invCat', d.cats[0] || '');
     set('#invReason', d.params.reason || '');
     set('#invFrom', d.params.from || '');
     set('#invTo', d.params.to || '');
@@ -1003,12 +1029,15 @@
   const lineOf = (el) => draft && draft.lines[Number(el.closest('tr').dataset.line)];
 
   document.addEventListener('click', (e) => {
+    const r = root();
+    if (r) r.querySelectorAll('.ms-pick[open]').forEach((m) => { if (!m.contains(e.target)) m.open = false; });
     if (!mine(e)) return;
     const el = e.target.closest('button');
     if (!el) return;
 
     if (el.dataset.adjustOpen) return openAdjustDialog(el.dataset.adjustOpen);
     switch (el.dataset.act) {
+      case 'ms-clear': return Router.setParams({ [el.dataset.key]: '', page: '' });
       case 'receive': return Router.go('suppliers', '');   // receiving is a PO action, and Suppliers owns it
       case 'export': return exportMovements(collect());
       case 'adjust-cancel': return closeAdjustDialog();
@@ -1054,6 +1083,10 @@
       form.querySelector('.adj-qty-label').textContent = qtyLabel(adjEvent(form)[1]);
       form.querySelector('.adj-date-label').textContent = dateLabel(adjEvent(form)[1]);
       return updatePreview(form);
+    }
+    if (el.dataset.multi) {
+      const picked = [...root().querySelectorAll(`input[data-multi="${el.dataset.multi}"]:checked`)].map((i) => i.value);
+      return Router.setParams({ [el.dataset.multi]: picked.join(','), page: '' });
     }
     if (el.id === 'invCat') return Router.setParams({ cat: el.value, page: '' });
     if (el.id === 'invReason') return Router.setParams({ reason: el.value, page: '' });

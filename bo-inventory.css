@@ -83,3 +83,6 @@ body.bo-light .view-inv .doc-delta {
   color: var(--blk-ink-2); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 body.bo-light .view-inv .inv-more { padding: 10px var(--blk-pad); box-shadow: inset 0 1px 0 var(--tbl-line); }
+
+/* On hand filter row: the two multi-picks sit in the .tx-filters flex row like siblings */
+body.bo-light .view-inv .inv-picks { display: contents; }

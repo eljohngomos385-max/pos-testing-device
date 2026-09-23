@@ -239,7 +239,6 @@ body.bo-light .view-products .pd-cols-menu {
   border-radius: var(--po-r-card);
   box-shadow: var(--po-shadow-pop);
 }
-body.bo-light .view-products .pd-cols-menu .bo-check { padding: 3px 4px; white-space: nowrap; }
 
 body.bo-light .view-products .hide-img [data-col="img"],
 body.bo-light .view-products .hide-sku [data-col="sku"],
@@ -258,6 +257,40 @@ body.bo-light .view-products #pdTable td,
 body.bo-light .view-products #pdTable th { white-space: nowrap; }
 body.bo-light .view-products .pd-thumb { width: 22px; height: 22px; }
 body.bo-light .view-products .pd-img-col { width: 36px; }
+/* Tick box ahead of the picture; the bar replaces "N shown" while anything is ticked. */
+body.bo-light .view-products .pd-sel { width: 28px; padding-right: 0; cursor: default; }
+/* Drawn, not native: the browser's box has a hard dark edge. A soft hairline square,
+   ink fill with a white tick when on, a dash when the page is only partly ticked. */
+body.bo-light .view-products .pd-sel input {
+  appearance: none;
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  /* Mid-grey, not the hairline: at --po-line-strong it read as a second picture box. */
+  border: 1.5px solid var(--po-ink-tertiary);
+  border-radius: var(--po-r-sm);
+  background: var(--po-surface) center / 12px no-repeat;
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+body.bo-light .view-products .pd-sel input:hover { border-color: var(--po-ink-secondary); }
+body.bo-light .view-products .pd-sel input:focus-visible { outline: none; box-shadow: var(--po-ring); }
+body.bo-light .view-products .pd-sel input:checked,
+body.bo-light .view-products .pd-sel input:indeterminate {
+  border-color: var(--po-primary);
+  background-color: var(--po-primary);
+}
+body.bo-light .view-products .pd-sel input:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.3 2.3 4.7-4.9' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+body.bo-light .view-products .pd-sel input:indeterminate {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6h6' stroke='white' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+body.bo-light .view-products .pd-bulk { display: flex; align-items: center; gap: 8px; }
+body.bo-light .view-products .pd-bulk[hidden] { display: none; }
+body.bo-light .view-products .pd-bulk-n { font-size: var(--blk-t-meta); color: var(--po-ink-secondary); }
+body.bo-light .view-products .pd-bulk .link-btn { margin-left: 0; }
 body.bo-light .view-products .pd-vcount {
   margin-left: 6px; font-size: 11px; color: var(--po-ink-tertiary);
 }

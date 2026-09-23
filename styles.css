@@ -6256,6 +6256,17 @@ body.bo-light .bo-check {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 12px; color: var(--po-ink-secondary); white-space: nowrap;
 }
+/* In a dropdown the box goes: a picked row gets a check on the right instead.
+   The input stays (visually hidden) so click, keyboard and screen readers still work. */
+body.bo-light .check-menu .bo-check {
+  position: relative; justify-content: space-between; gap: 16px;
+  padding: 5px 8px; border-radius: var(--po-r-inner); cursor: pointer; color: var(--po-ink);
+}
+body.bo-light .check-menu .bo-check:hover { background: var(--po-bg); }
+body.bo-light .check-menu .bo-check > input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+body.bo-light .check-menu .bo-check::after { content: ''; width: 12px; font-weight: 600; text-align: right; color: var(--po-ink); }
+body.bo-light .check-menu .bo-check:has(input:checked)::after { content: '✓'; }
+body.bo-light .check-menu .bo-check:has(input:focus-visible) { outline: 2px solid var(--po-line-strong); outline-offset: -2px; }
 body.bo-light .dash-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--po-gap); }
 
 body.bo-light .bo-datepill {

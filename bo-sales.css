@@ -1,5 +1,45 @@
 /* Back office — Sales. Layout and page-only pieces; every block's look is bo-blocks.css. */
 
+/* Transactions toolbar: same row as Products' .pd-filters */
+body.bo-light .view-sales .tx-filters,
+body.bo-light .view-inv .tx-filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+body.bo-light .view-sales .tx-filters .q-input,
+body.bo-light .view-inv .tx-filters .q-input,
+body.bo-light .view-products .pd-filters .q-input {
+  flex: 1; min-width: 220px; height: 28px; padding: 0 12px; font-size: 13px;
+  box-shadow: var(--po-shadow-pill);
+}
+
+/* Payment / staff multi-pick: a <details> checkbox menu, same as Products' Columns */
+body.bo-light .view-sales .ms-pick,
+body.bo-light .view-inv .ms-pick { position: relative; }
+body.bo-light .view-sales .ms-pick > summary,
+body.bo-light .view-inv .ms-pick > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+body.bo-light .view-sales .ms-pick > summary::-webkit-details-marker,
+body.bo-light .view-inv .ms-pick > summary::-webkit-details-marker { display: none; }
+body.bo-light .view-sales .ms-pick > summary::after,
+body.bo-light .view-inv .ms-pick > summary::after { content: '▾'; font-size: 10px; color: var(--po-ink-tertiary); }
+body.bo-light .view-sales .ms-menu,
+body.bo-light .view-inv .ms-menu {
+  position: absolute; z-index: 30; top: calc(100% + 6px); right: 0;
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 180px; max-height: 320px; overflow-y: auto; padding: 8px;
+  background: var(--po-surface);
+  border: 1px solid var(--po-line);
+  border-radius: var(--po-r-card);
+  box-shadow: var(--po-shadow-pop);
+}
+body.bo-light .view-sales .ms-empty,
+body.bo-light .view-inv .ms-empty { padding: 5px 8px; font-size: 12px; color: var(--po-ink-tertiary); white-space: nowrap; }
+body.bo-light .view-sales .ms-clear,
+body.bo-light .view-inv .ms-clear {
+  margin-top: 4px; padding: 6px 8px 2px; border: 0; border-top: 1px solid var(--po-line);
+  background: none; color: var(--po-ink-secondary); font: inherit; font-size: 12px; text-align: left; cursor: pointer;
+}
+
 body.bo-light .view-sales th[data-act="sort"] { cursor: pointer; user-select: none; white-space: nowrap; }
 
 /* Share: the number keeps the column tabular, the bar is the glance */

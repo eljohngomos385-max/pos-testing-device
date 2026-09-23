@@ -170,6 +170,23 @@ function pagerHtml(p) {
     </div>`;
 }
 
+// ---------- Multi-pick filter ----------
+// A checkbox menu per filter (the Products "Columns" pattern): tick several, none ticked = all.
+// Sales and Inventory both draw it; `?key=` is a comma list.
+function multiPick(key, all, one, many, opts, picked) {
+  const names = opts.filter(([val]) => picked.includes(val)).map(([, label]) => label);
+  const text = !picked.length ? all : picked.length === 1 ? (names[0] || picked[0]) : `${picked.length} ${many}`;
+  return `
+        <details class="ms-pick" data-ms="${key}">
+          <summary class="bo-select">${escapeHtml(text)}</summary>
+          <div class="ms-menu check-menu">
+            ${opts.length ? opts.map(([val, label]) => `<label class="bo-check"><input type="checkbox" data-multi="${key}" value="${escapeHtml(val)}"${picked.includes(val) ? ' checked' : ''}> ${escapeHtml(label)}</label>`).join('')
+              : `<span class="ms-empty">${escapeHtml(one)}</span>`}
+            ${picked.length ? `<button type="button" class="ms-clear" data-act="ms-clear" data-key="${key}">Clear</button>` : ''}
+          </div>
+        </details>`;
+}
+
 // ---------- Persistence (read same data POS app writes) ----------
 function loadFolders() {
   try {
@@ -845,19 +862,10 @@ function statCell({ label, value, unit, delta }) {
 
 // The chart block's plot (bo-blocks.css → CHART), ported from the blocks-v2 lab.
 // Drawn in real pixels at the box's width, so text never stretches; redrawn on resize.
-// Monotone cubic: smooth, but never bends past a real value (no dip under ₱0 overnight).
+// Straight segments between the real points: the curve read as decoration, not data (owner, 2026-09-22).
 // ponytail: profit is always <= revenue, so both series share one axis. No second scale.
 const SERIES = [['revenue', 'Revenue'], ['profit', 'Gross profit']];
-function chartCurve(P) {
-  const s = P.slice(1).map((q, i) => (q[1] - P[i][1]) / (q[0] - P[i][0]));
-  const m = P.map((_, i) => i === 0 ? s[0] : i === P.length - 1 ? s[i - 1]
-    : s[i - 1] * s[i] <= 0 ? 0 : 2 / (1 / s[i - 1] + 1 / s[i]));
-  return P.reduce((d, q, i) => {
-    if (!i) return `M${q[0]} ${q[1]}`;
-    const p = P[i - 1], t = (q[0] - p[0]) / 3;
-    return d + `C${p[0] + t} ${p[1] + m[i - 1] * t} ${q[0] - t} ${q[1] - m[i] * t} ${q[0]} ${q[1]}`;
-  }, '');
-}
+const chartCurve = (P) => P.map((q, i) => `${i ? 'L' : 'M'}${q[0]} ${q[1]}`).join('');
 let chartSeq = 0;
 function renderLineChart(el, cur) {
   el._cur = cur;
@@ -1031,15 +1039,15 @@ const DASH_WIDGETS = {
     return railHead('Low stock', `${low.length.toLocaleString('en-PH')}<span class="of"> ${low.length ? 'below reorder point' : 'all stocked'}</span>`)
       + (low.length ? `<div class="bd-rows">${rows}${more}</div>` : '');
   }],
-  // Leads with what was collected, not revenue: revenue is already the first KPI.
+  // Leads with what was collected, not revenue: revenue is already the first KPI. No label or
+  // "on account" note beside it — the Account row below already says both (owner, 2026-09-22).
   // Sums come from the Sales page's own agg(), so they match Sales → Payment methods.
   pay: ['Payment methods', (t, win) => {
     const cur = window.renderSales.agg(state.orders.filter(o => o.ts >= win.start && o.ts < win.end));
     const rows = cur.pays.filter(r => r.sales).sort((x, y) => y.revenue - x.revenue);
     const total = cur.totals.revenue, credit = rows.filter(r => r.kind === 'credit').reduce((a, r) => a + r.revenue, 0);
     return '<a class="blk-cover" href="#" data-jump="sales" aria-label="Open sales"></a>'
-      + railHead('Payment methods', `${curHtml(pesoShort(total - credit))}<span class="of"> collected</span>`,
-        credit ? `<span class="kpi-note"><b>${pesoShort(credit)}</b> on account</span>` : '')
+      + railHead('Payment methods', curHtml(pesoShort(total - credit)))
       + `<div class="bd-rows">${rows.length
         ? rows.map(r => bdRow(escapeHtml(r.name), pesoShort(r.revenue), pctOf(r.revenue, total) + '%')).join('')
           + `<div class="bd-row total"><span class="nm">Total</span><span class="amt">${pesoShort(total)}</span><span class="cmp">100%</span></div>`
@@ -1229,7 +1237,7 @@ function exportSalesCsv(win = rangeWindows()) {
 // Recent transactions — every status, so voids and refunds are visible.
 // Twelve was half a screen and stopped mid-morning on a busy day. The Sales summary
 // carries the same list; the Sales > Transactions tab is the one that pages past this.
-const RECENT_TX = 15;
+const RECENT_TX = 20;
 function renderTxTable(win = rangeWindows()) {
   const q = (state.txQuery || '').trim().toLowerCase();
   const all = state.orders

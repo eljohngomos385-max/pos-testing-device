@@ -41,7 +41,7 @@ a fixed main column plus a widget rail `--rail-w` wide. **Its rules are scoped t
 - **Main is fixed.** It is the same in every store and nobody edits it:
   - four KPIs in `#dashKpis`: Revenue · Profit · Transactions · Average basket. They sit 4 across, 2 under 1280px, 1 under 560px.
   - the Sales trend chart.
-  - Recent transactions: the newest `RECENT_TX` (15). The Customer cell truncates at 160px (full name in `title`), and the table drops the global 860px `min-width` so it fits the column.
+  - Recent transactions: the newest `RECENT_TX` (20). The Customer cell truncates at 160px (full name in `title`), and the table drops the global 860px `min-width` so it fits the column.
 - **The rail is the owner's.** `DASH_WIDGETS` in `backoffice.js` holds `{ key: [label, render] }`, one card wide, so widgets only ever stack.
   - On by default: `daily`, `monthly`, `low`, `pay`.
   - Off by default: `deliveries`, `stock`, `channel`, `credit`.
@@ -189,7 +189,7 @@ underline (hover underlines the name only) — blue underlined text inside a lis
 
 ### Sales-trend line chart (v35)
 The lab's block L. `renderLineChart(el, data)` draws an SVG in real pixels at the `.blk-plot` box's
-width (ResizeObserver redraws it), so text never stretches. Two smooth monotone-cubic lines — sales
+width (ResizeObserver redraws it), so text never stretches. Two straight-segment lines (the curve read as decoration, owner 2026-09-22) — sales
 `--chart-1`, gross profit `--chart-2` — share **one axis** (profit is always ≤ revenue). Only the front
 line gets the gradient fade. The `.blk-keys` buttons in the same `.bo-card` switch a line off; the
 last one showing can't be hidden. Settings → Appearance → Chart colours puts `body.chart-blues` on,
@@ -345,6 +345,18 @@ the sidebar link, so the Sales tree shows only the first three).
      Calendar, not range: they ignore the filters on purpose. Click opens `openTargetDialog()`;
      saving calls `renderCurrentView()`, so whichever page opened it repaints.
 
+**Transactions has the Products toolbar** (`.tx-filters`, 2026-09-22): search, All payment types and
+All employees on one row under the head, not in the card head or `view-actions`. The head keeps
+only the range picker and Export. The card is "All transactions" with an "n shown" count.
+Payment type and employee are **multi-pick checkbox menus** (`multiPick()`, a `<details>` like
+Products' Columns), on every Sales tab: `?pay=` and `?staff=` are comma lists, none ticked = all.
+
+**Inventory → On hand has the same row** (2026-09-22), between the KPI cards and the table: search,
+All categories, All stock levels (In stock / Low / Out of stock — `statusOf()`'s tones). Both are
+`multiPick()` (now in `backoffice.js`, shared with Sales): `?cat=` and `?level=` are comma lists.
+The row lives in the shell between `#invKpis` and `#invMain` so a re-render never eats the caret.
+The other Inventory tabs keep search + single category select in the head; they read `?cat=` as a list.
+
 **Dialogs sit at body level** (`#orderDlg`, `#targetDlg`, `#staffDlg`). A `<dialog>` inside a hidden
 `.view` section never shows — `#targetDlg` used to live in the dashboard section and couldn't open
 from Sales.
@@ -398,6 +410,14 @@ Every `th` and `td` carries `data-col="<key>"`; `applyCols()` toggles one `hide-
 one entry in `COLUMNS`, the `data-col` stamp on the header and both row builders
 (`rowHtml` and `groupRowHtml` — the family row is easy to forget), and one selector in
 `bo-products.css`.
+
+### Products — ticking rows
+Each row starts with a tick box (`.pd-sel`, not a `COLUMNS` entry, so it cannot be hidden); the
+header box ticks the page. The ticked ids live in the in-memory `picked` Set in `bo-products.js`,
+kept across pages and filters until an action runs or **Clear**, and never stored. A family row's
+id stands for every variant in it. While anything is ticked, `#pdBulk` ("N selected · Export CSV ·
+Archive · Clear") replaces "N shown" in the card head. Bulk Archive asks once, sets `archived` +
+`updatedAt` and never deletes, same as the editor's Archive.
 
 ### Inventory — four columns and a popup
 The On hand tab answers two questions: how many are there, and is that a problem. So it is

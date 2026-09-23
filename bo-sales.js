@@ -283,8 +283,10 @@
     const tab = TABS.some(t => t[0] === p.by) ? p.by : 'summary';
     return {
       tab,
-      pay: p.pay || '',
-      staff: p.staff || '',
+      // Multi-pick filters ride the URL as comma lists; empty means all.
+      // ponytail: a staff name with a comma in it would split, switch to ids if that ever happens.
+      pay: (p.pay || '').split(',').filter(Boolean),
+      staff: (p.staff || '').split(',').filter(Boolean),
       // Revenue desc is the answer to "what makes us money"; everything else is a click away.
       // The ledger is a ledger, so it opens newest-first instead.
       sort: { key: p.sort || (tab === 'tx' ? 'ts' : 'revenue'), dir: p.dir === 'asc' ? 'asc' : 'desc' },
@@ -303,8 +305,8 @@
       const kind = o.paymentKind || o.paymentMethod || 'cash';
       if (!payOpts.has(kind)) payOpts.set(kind, orderPaymentLabel(o));
       if (o.cashier) staffOpts.add(o.cashier);
-      if (v.pay && kind !== v.pay) continue;
-      if (v.staff && o.cashier !== v.staff) continue;
+      if (v.pay.length && !v.pay.includes(kind)) continue;
+      if (v.staff.length && !v.staff.includes(o.cashier)) continue;
       rows.push(o);
     }
     rows.sort((a, b) => b.ts - a.ts);
@@ -315,15 +317,19 @@
     const win = rangeWindows();
     return state.orders.filter(o => {
       if (o.ts < win.prevStart || o.ts >= win.prevEnd) return false;
-      if (v.pay && (o.paymentKind || o.paymentMethod || 'cash') !== v.pay) return false;
-      if (v.staff && o.cashier !== v.staff) return false;
+      if (v.pay.length && !v.pay.includes(o.paymentKind || o.paymentMethod || 'cash')) return false;
+      if (v.staff.length && !v.staff.includes(o.cashier)) return false;
       return true;
     });
   }
 
   // ---------- Render ----------
+  function filterSelects(v, payOpts, staffOpts) {
+    return multiPick('pay', 'All payment types', 'No payments in this range', 'payment types', Array.from(payOpts), v.pay)
+      + multiPick('staff', 'All employees', 'No staff in this range', 'employees', staffOpts.map(s => [s, s]), v.staff);
+  }
+
   function head(v, payOpts, staffOpts) {
-    const opt = (value, label, on) => `<option value="${escapeHtml(value)}"${on ? ' selected' : ''}>${escapeHtml(label)}</option>`;
     const rangeOpts = ['today', '7d', '15d', '30d']
       .map(r => `<button class="rp-opt${state.range === r ? ' on' : ''}" data-act="range" data-range="${r}">${escapeHtml(RANGE_LABEL[r])}</button>`).join('');
     return `
@@ -332,14 +338,7 @@
           <h1>${v.tab === 'summary' ? 'Sales' : escapeHtml(TABS.find(t => t[0] === v.tab)[1])}</h1>
         </div>
         <div class="view-actions">
-          <select class="bo-select" data-filter="pay">
-            ${opt('', 'All payment types', !v.pay)}
-            ${Array.from(payOpts, ([kind, label]) => opt(kind, label, v.pay === kind)).join('')}
-          </select>
-          <select class="bo-select" data-filter="staff">
-            ${opt('', 'All employees', !v.staff)}
-            ${staffOpts.map(s => opt(s, s, v.staff === s)).join('')}
-          </select>
+          ${v.tab === 'tx' ? '' : filterSelects(v, payOpts, staffOpts)}
           <div class="range-picker" data-rp>
             <button class="range-btn" data-act="rp-toggle" aria-haspopup="true">
               <span>${escapeHtml(RANGE_LABEL[state.range])}</span>
@@ -476,7 +475,8 @@
     dlg.showModal();
   }
 
-  function txTab(rows, v) {
+  // Transactions carries the Products toolbar: search and filters on one row under the head.
+  function txTab(rows, v, payOpts, staffOpts) {
     const q = (state.txQuery || '').trim().toLowerCase();
     const hits = sortRows(q
       ? rows.filter(o => [o.number, o.customer && o.customer.name, o.cashier].filter(Boolean).join(' ').toLowerCase().includes(q))
@@ -484,8 +484,9 @@
     const pg = paginate(hits, v.page);
     const search = `<input class="search-input small q-input" placeholder="Search receipt, customer or staff…" autocomplete="off" value="${escapeHtml(state.txQuery || '')}" />`;
     return `
+      <div class="tx-filters">${search}${filterSelects(v, payOpts, staffOpts)}</div>
       <section class="bo-card blk-table">
-        <div class="bo-card-head"><span class="bo-card-label">Transactions</span>${search}</div>
+        <div class="bo-card-head"><span class="bo-card-label">All transactions</span><span class="bo-card-sub">${int(hits.length)} shown</span></div>
         <div class="bo-card-inset flush">
           ${table(TX_COLUMNS, pg.rows, v.sort, q ? 'No transactions match that search.' : 'No transactions in this range.')}
           ${pagerHtml(pg)}
@@ -513,13 +514,18 @@
     const focused = document.activeElement && el.contains(document.activeElement) && document.activeElement.classList.contains('q-input');
     const caret = focused ? document.activeElement.selectionStart : 0;
 
+    // The render rebuilds the menu, so a tick would snap it shut: reopen whichever was open.
+    const openMs = el.querySelector('.ms-pick[open]');
+    const reopen = openMs && openMs.dataset.ms;
+
     charts = [];
     const pRows = v.tab === 'summary' ? prevRows(v) : [];
     const body = v.tab === 'summary' ? summary(a, agg(pRows), rows, pRows)
-      : v.tab === 'tx' ? txTab(rows, v)
+      : v.tab === 'tx' ? txTab(rows, v, payOpts, staffOpts)
       : cutTab(a, v);
     el.innerHTML = head(v, payOpts, staffOpts) + `<div class="dash-stack">${body}</div>`;
     charts.forEach(([id, data]) => renderLineChart(el.querySelector('#' + id), data));
+    if (reopen) { const d = el.querySelector(`.ms-pick[data-ms="${reopen}"]`); if (d) d.open = true; }
 
     if (focused) {
       const input = el.querySelector('.q-input');
@@ -566,6 +572,7 @@
     // Close the range menu on any click outside it, including one landing off this view.
     const menu = el.querySelector('[data-rp-menu]');
     if (menu && !menu.hidden && !e.target.closest('[data-rp]')) menu.hidden = true;
+    el.querySelectorAll('.ms-pick[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; });
     if (!el.contains(e.target)) return;
     const hit = e.target.closest('[data-act]');
     if (!hit) return;
@@ -573,6 +580,7 @@
     if (act === 'rp-toggle') { if (menu) menu.hidden = !menu.hidden; return; }
     if (act === 'range') { Router.setParams({ range: hit.dataset.range === 'today' ? '' : hit.dataset.range, page: '' }, { replace: false }); return; }
     if (act === 'export') { exportCsv(); return; }
+    if (act === 'ms-clear') { Router.setParams({ [hit.dataset.key]: '', page: '' }); return; }
     if (act === 'staff') { openStaff(hit.dataset.name); return; }
     if (act === 'targets') { openTargetDialog(); return; }
     if (act === 'tab') { goSub(VIEW, hit.dataset.by); return; }
@@ -587,6 +595,12 @@
   document.addEventListener('change', (e) => {
     const el = root();
     if (!el || !el.contains(e.target)) return;
+    const m = e.target.dataset.multi;
+    if (m) {
+      const picked = [...el.querySelectorAll(`input[data-multi="${m}"]:checked`)].map(i => i.value);
+      Router.setParams({ [m]: picked.join(','), page: '' });
+      return;
+    }
     const f = e.target.dataset.filter;
     if (!f) return;
     if (f === 'date') Router.setParams({ date: e.target.value || '' }, { replace: false });
