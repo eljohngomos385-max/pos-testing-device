@@ -289,20 +289,6 @@ create table delivery_events (
 create index delivery_events_order on delivery_events (store_id, order_id, ts);
 create index delivery_events_sync on delivery_events (store_id, received_at, id);
 
-create table clock_events (
-  id            text primary key not null,
-  store_id      text not null,
-  ts            text not null,
-  staff         text,
-  staff_id      text not null,
-  staff_name    text,
-  event         text not null check (event in ('in','out')),
-  -- Server clock, never sent by the client: pull cursor for `?since=` paging.
-  received_at   text not null default (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-);
-create index clock_staff on clock_events (store_id, staff_id, ts);
-create index clock_events_sync on clock_events (store_id, received_at, id);
-
 create table supplier_messages (
   id            text primary key not null,
   store_id      text not null,
@@ -361,30 +347,6 @@ create table till_events (
 create index till_events_ts on till_events (store_id, ts);
 create index till_events_type on till_events (store_id, type, ts);
 create index till_events_sync on till_events (store_id, received_at, id);
-
--- ---------- STATE: the day spine ----------
--- One row per store per LOCAL date. Everything joins to it by date. Upserted and merged,
--- because the weather for a day arrives after the day and must not wipe a typed road closure.
-create table days (
-  id            text not null,          -- 'YYYY-MM-DD', the store's local date (= date)
-  store_id      text not null,
-  date          text,
-  rain_mm       real,                   -- not money: REAL is fine
-  rain_hours_open real,                 -- hours with rain during opening hours
-  temp_max_c    real,
-  weather_code  integer,                -- WMO code
-  holiday_name  text,
-  is_payday     integer,                -- 1 / 0
-  events        text,                   -- local events, free text
-  road_closure  text,
-  note          text,
-  source        text,                   -- who filled it: manual | open-meteo | ...
-  updated_at    text not null,
-  -- Server clock, never sent by the client: pull cursor for `?since=` paging.
-  received_at   text not null default (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  primary key (store_id, id)            -- a date is not unique across stores
-);
-create index days_sync on days (store_id, received_at, id);
 
 -- Balance is DERIVED. Nothing writes it, so nothing can lose it.
 -- Replaces the read-modify-write at app.js:2446 / app.js:2474.

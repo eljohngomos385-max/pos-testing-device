@@ -5,9 +5,46 @@
 (function () {
   const VIEW = 'products';
   const root = () => document.querySelector(`.view[data-view="${VIEW}"]`);
+  // One list, two readings: Catalog (what it is, what it costs) and Stock (how many, is it moving).
+  // Both are sidebar links (data-sub), so this registers no tree of its own.
 
   /* ---------- shared reads ---------- */
   const params = () => Router.route().params;
+  const isStock = () => params().view === 'stock';
+  // The detail segment: '' | 'new' | '<id>' (item page) | '<id>/edit' (editor). The editor
+  // and its actions only ever want the id.
+  const editId = () => state.detailId.replace(/\/edit$/, '');
+  // A bare id is the item page (bo-item.js) when it is loaded; it owns the root then.
+  const onItemPage = () => !!state.detailId && state.detailId !== 'new'
+    && !state.detailId.endsWith('/edit') && typeof window.renderProductPage === 'function';
+
+  /* ---------- stock level: bo-model's STOCK_LEVEL, one answer for filter, tile and pill ---------- */
+  const LEVEL_OPTS = [['out', 'Out of stock'], ['low', 'Low'], ['dead', 'Dead']];
+  const LEVEL_RANK = { out: 0, low: 1, dead: 2, ok: 3 };
+  // ?level= is a comma list; ?low=1 is the old checkbox, read as level=low but never written.
+  const levelsOf = (p) => (p.level ? p.level.split(',').filter(Boolean) : p.low === '1' ? ['low'] : []);
+  const worstLevel = (keys) => keys.reduce((a, b) => (LEVEL_RANK[b] < LEVEL_RANK[a] ? b : a), 'ok');
+  const levelPill = (key) => `<span class="status-pill ${STOCK_LEVEL[key][0]}">${STOCK_LEVEL[key][1]}</span>`;
+
+  // Read the movement log once per paint: the sale clock (last sold, dead) and sold in 30 days.
+  function stockFacts() {
+    const moves = loadMovements();
+    const from = Date.now() - 30 * 86400000;
+    const sold = new Map();
+    for (const m of moves) {
+      if (m.reason === 'sale' && Date.parse(m.ts) >= from) {
+        sold.set(m.productId, (sold.get(m.productId) || 0) + Math.abs(Number(m.qty) || 0));
+      }
+    }
+    const clock = saleClock(moves);
+    const now = Date.now();
+    return { clock, sold, now, level: (p) => stockLevel(p, clock.get(p.id), now) };
+  }
+  const lastSold = (ms, now) => {
+    if (ms == null) return 'Never';
+    const d = Math.floor((now - ms) / 86400000);
+    return d <= 0 ? 'Today' : `${d}d ago`;
+  };
   const loadGroups = () => readJsonStorage(STORAGE_GROUPS, null)
     || (typeof SEED_GROUPS !== 'undefined' ? SEED_GROUPS.map((g) => ({ ...g })) : []);
   const putGroups = (list) => storageSet(STORAGE_GROUPS, JSON.stringify(list));
@@ -96,20 +133,34 @@
     if (t) COLUMNS.forEach(([k]) => t.classList.toggle('hide-' + k, !on.has(k)));
   }
 
-  function statusPill(p) {
-    if (p.archived) return '<span class="status-pill muted">Archived</span>';
-    if (!(num(p.stock) > 0)) return '<span class="status-pill danger">Out of stock</span>';
-    if (isLow(p)) return '<span class="status-pill warn">Low</span>';
-    return '<span class="status-pill ok">In stock</span>';
-  }
+  const statusPill = (p, facts) =>
+    (p.archived ? '<span class="status-pill muted">Archived</span>' : levelPill(facts.level(p)));
 
   /* ================= LIST ================= */
 
-  function listShell() {
+  // Stock view: name, how many, how fast, what it is worth, when it last sold, is that a
+  // problem, fix it. Catalog view keeps the definition columns and the chooser.
+  const HEAD_STOCK = `<th>Name</th><th class="num">On hand</th><th class="num">Sold 30d</th>
+    <th class="num">Stock value</th><th class="num">Last sold</th><th>Status</th><th class="num"></th>`;
+  const HEAD_CATALOG = `<th class="pd-img-col" data-col="img"></th><th>Name</th>
+    <th data-col="sku">SKU</th><th data-col="cat">Category</th><th data-col="supplier">Supplier</th>
+    <th class="num" data-col="cost">Cost</th><th class="num" data-col="price">Price</th>
+    <th class="num" data-col="margin">Margin</th>
+    <th class="num" data-col="stock">Stock</th><th data-col="status">Status</th><th class="num"></th>`;
+
+  // Catalog | Stock is a switch inside the page (owner, 2026-09-23), not two sidebar links:
+  // one table, two column sets. Search and filters ride along; only `view` and the page change.
+  const viewSwitch = (stock) => {
+    const href = (v) => Router.href(VIEW, '', { ...params(), view: v === 'catalog' ? '' : v, page: '' });
+    return `<div class="seg pd-switch">${[['catalog', 'Catalog'], ['stock', 'Stock']].map(([v, label]) =>
+      `<a class="seg-btn${(v === 'stock') === stock ? ' active' : ''}" href="${escapeHtml(href(v))}">${label}</a>`).join('')}</div>`;
+  };
+
+  function listShell(stock) {
     const folders = state.folders.filter((f) => f.id !== 'all');
     return `
       <header class="view-head">
-        <div class="view-title-wrap"><h1>Products</h1></div>
+        <div class="view-title-wrap"><h1>Products</h1>${viewSwitch(stock)}</div>
         <div class="view-actions">
           <button class="secondary-btn small" data-act="import">Import CSV</button>
           <button class="secondary-btn small" data-act="export">Export CSV</button>
@@ -117,6 +168,7 @@
           <input type="file" id="pdFile" accept=".csv,text/csv" hidden>
         </div>
       </header>
+      ${stock ? '<div class="kpi-row pd-kpis" id="pdKpis"></div>' : ''}
       <div class="pd-filters">
         <input class="search-input small q-input" placeholder="Search name, SKU, barcode..." autocomplete="off"
                value="${escapeHtml(state.invQuery)}">
@@ -126,20 +178,20 @@
         <select class="bo-select" data-filter="supplier">
           ${opt('', 'All suppliers')}${loadSuppliers().map((s) => opt(s.id, s.name)).join('')}${opt('none', 'No supplier')}
         </select>
-        <label class="bo-check"><input type="checkbox" data-filter="low"> Low stock only</label>
+        <span class="pd-level" id="pdLevel"></span>
         <label class="bo-check"><input type="checkbox" data-filter="archived"> Show archived</label>
-        <details class="pd-cols">
+        ${stock ? '' : `<details class="pd-cols">
           <summary class="secondary-btn small">Columns</summary>
           <div class="pd-cols-menu check-menu">
             ${COLUMNS.map(([k, label]) =>
               `<label class="bo-check"><input type="checkbox" data-col-toggle="${k}"> ${label}</label>`).join('')}
           </div>
-        </details>
+        </details>`}
       </div>
       <div id="pdImport"></div>
-      <section class="bo-card blk-table pd-list">
+      <section class="bo-card blk-table pd-list" data-pd-view="${stock ? 'stock' : 'catalog'}">
         <div class="bo-card-head">
-          <span class="bo-card-label">All products</span>
+          <span class="bo-card-label">${stock ? 'On hand' : 'All products'}</span>
           <span class="bo-card-sub" id="pdShown"></span>
           <div class="pd-bulk" id="pdBulk" hidden>
             <span class="pd-bulk-n"></span>
@@ -153,11 +205,7 @@
             <table class="data-table" id="pdTable">
               <thead><tr>
                 <th class="pd-sel"><input type="checkbox" data-pick-all aria-label="Select all on this page"></th>
-                <th class="pd-img-col" data-col="img"></th><th>Name</th>
-                <th data-col="sku">SKU</th><th data-col="cat">Category</th><th data-col="supplier">Supplier</th>
-                <th class="num" data-col="cost">Cost</th><th class="num" data-col="price">Price</th>
-                <th class="num" data-col="margin">Margin</th>
-                <th class="num" data-col="stock">Stock</th><th data-col="status">Status</th>
+                ${stock ? HEAD_STOCK : HEAD_CATALOG}
               </tr></thead>
               <tbody></tbody>
             </table>
@@ -172,15 +220,21 @@
     const r = root();
     r.querySelector('[data-filter="cat"]').value = p.cat || '';
     r.querySelector('[data-filter="supplier"]').value = p.supplier || '';
-    r.querySelector('[data-filter="low"]').checked = p.low === '1';
     r.querySelector('[data-filter="archived"]').checked = p.archived === '1';
+    // Redrawn each render so the label tracks the URL; reopen it if a tick was just made.
+    const lvl = r.querySelector('#pdLevel');
+    const open = !!lvl.querySelector('.ms-pick[open]');
+    lvl.innerHTML = multiPick('level', 'All stock levels', '', 'stock levels', LEVEL_OPTS, levelsOf(p));
+    if (open) lvl.querySelector('.ms-pick').open = true;
     const on = loadCols();
     r.querySelectorAll('[data-col-toggle]').forEach((b) => { b.checked = on.has(b.dataset.colToggle); });
   }
 
-  // The URL is the filter. One predicate, shared by the table and by Export.
-  function filterProducts() {
+  // The URL is the filter. One predicate, shared by the table and by Export. withLevel false
+  // is the set the KPI tiles count, so a tile never reads 0 because its own filter is on.
+  function filterProducts(facts = stockFacts(), withLevel = true) {
     const p = params();
+    const levels = withLevel ? levelsOf(p) : [];
     const q = state.invQuery.trim().toLowerCase();
     // Searching "pvc elbow" has to find the variants, so the group name is part
     // of the haystack. Built once, and only when there is something to search.
@@ -190,7 +244,7 @@
       if (p.cat && item.folder !== p.cat) return false;
       if (p.supplier && (p.supplier === 'none'
         ? item.supplierId : !supplierIdsOf(item).includes(p.supplier))) return false;
-      if (p.low === '1' && !isLow(item)) return false;
+      if (levels.length && !levels.includes(facts.level(item))) return false;
       if (!q) return true;
       const hay = `${item.name} ${item.sku} ${item.barcode} `
         + `${item.aliases.join(' ')} ${gname.get(item.groupId) || ''}`;
@@ -204,8 +258,31 @@
       ? fmt(vals[0])
       : `${fmt(Math.min(...vals))} &ndash; ${fmt(Math.max(...vals))}`);
 
+  // Stock view KPIs. Out / Low / Dead toggle their key in ?level=; Cash in stock clears it.
+  function paintKpis(facts) {
+    const el = root().querySelector('#pdKpis');
+    if (!el) return;
+    const levels = levelsOf(params());
+    const n = { out: 0, low: 0, dead: 0 };
+    let cash = 0;
+    filterProducts(facts, false).forEach((item) => {
+      const k = facts.level(item);
+      if (k in n) n[k] += 1;
+      if (num(item.stock) > 0) cash += stockValue(item);
+    });
+    // kpi() owns the tile markup; this only stamps the click target and the selected state.
+    const tile = (key, html) => html.replace('class="bo-card blk-kpi"',
+      `class="bo-card blk-kpi pd-kpi${key && levels.includes(key) ? ' on' : ''}" data-level="${key}" role="button" tabindex="0"`);
+    el.innerHTML = tile('out', kpi('Out of stock', String(n.out), 'nothing on hand', n.out ? 'down' : 'flat'))
+      + tile('low', kpi('Low', String(n.low), 'at or below danger level', n.low ? 'down' : 'flat'))
+      + tile('dead', kpi('Dead', String(n.dead), `no sale in ${DEAD_DAYS} days`))
+      + tile('', kpi('Cash in stock', pesoShort(cash), 'at cost'));
+  }
+
   function paintTable() {
     const p = params();
+    const stock = isStock();
+    const facts = stockFacts();
     const groupMap = new Map(loadGroups().map((g) => [g.id, g]));
     const supplierMap = new Map(loadSuppliers().map((s) => [s.id, s.name]));
 
@@ -213,22 +290,27 @@
     // list - "Common Wire Nails" reads as one thing until you open it.
     const rows = [];
     const fams = new Map();
-    filterProducts().forEach((item) => {
+    filterProducts(facts).forEach((item) => {
       const g = item.groupId ? groupMap.get(item.groupId) : null;
-      if (!g) { rows.push({ key: item.name, html: rowHtml(item, supplierMap) }); return; }
+      if (!g) {
+        rows.push({ key: item.name, html: stock ? stockRowHtml(item, facts) : rowHtml(item, supplierMap, facts) });
+        return;
+      }
       if (!fams.has(g.id)) fams.set(g.id, []);
       fams.get(g.id).push(item);
     });
     fams.forEach((members, gid) => {
       const g = groupMap.get(gid);
-      rows.push({ key: g.name, html: groupRowHtml(g, members, supplierMap) });
+      rows.push({ key: g.name,
+        html: stock ? stockGroupRowHtml(g, members, facts) : groupRowHtml(g, members, supplierMap, facts) });
     });
     rows.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 
-    const filtered = state.invQuery || p.cat || p.supplier || p.low;
+    const filtered = state.invQuery || p.cat || p.supplier || levelsOf(p).length;
     const pg = paginate(rows, p.page);
+    paintKpis(facts);
     root().querySelector('#pdTable tbody').innerHTML = pg.rows.map((r) => r.html).join('')
-      || `<tr><td colspan="11" class="bo-empty">${filtered ? 'No products match these filters.' : 'No products yet. Add one to get started.'}</td></tr>`;
+      || `<tr><td colspan="12" class="bo-empty">${filtered ? 'No products match these filters.' : 'No products yet. Add one to get started.'}</td></tr>`;
     root().querySelector('#pdPager').innerHTML = pagerHtml(pg);
     root().querySelector('#pdShown').textContent = `${rows.length} shown`;
     paintPicked();
@@ -255,7 +337,45 @@
   // A family tick means every variant in it.
   const pickedProducts = () => state.products.filter((x) => picked.has(x.id) || picked.has(x.groupId));
 
-  function rowHtml(p, supplierMap) {
+  const editBtn = '<td class="num pd-act"><button class="secondary-btn small" data-act="edit">Edit</button></td>';
+
+  // Stock view. A plain product gets Adjust (backoffice.js opens the dialog off data-adjust-open);
+  // a family does not - its row opens the item page, where each variant is adjusted.
+  const stockCells = (name, onHand, sold, value, last, level, act) => `
+        <td>${name}</td>
+        <td class="num"><strong>${onHand}</strong></td>
+        <td class="num">${sold ? round2(sold) : '&mdash;'}</td>
+        <td class="num">${peso(value)}</td>
+        <td class="num">${last}</td>
+        <td>${levelPill(level)}</td>
+        <td class="num pd-act">${act}</td>`;
+
+  function stockRowHtml(p, facts) {
+    const c = facts.clock.get(p.id);
+    return `
+      <tr class="pd-row${p.archived ? ' pd-arch' : ''}" data-id="${escapeHtml(p.id)}">
+        ${pickBox(p.id)}${stockCells(`<strong>${escapeHtml(p.name)}</strong>`,
+          `${p.stock} ${escapeHtml(p.unit)}`, facts.sold.get(p.id) || 0, stockValue(p),
+          lastSold(c && c.lastSale, facts.now), facts.level(p),
+          `<button class="secondary-btn small" data-adjust-open="${escapeHtml(p.id)}">Adjust</button>`)}
+      </tr>`;
+  }
+
+  function stockGroupRowHtml(g, members, facts) {
+    const sales = members.map((m) => (facts.clock.get(m.id) || {}).lastSale).filter((t) => t != null);
+    return `
+      <tr class="pd-row${members.every((m) => m.archived) ? ' pd-arch' : ''}" data-id="${escapeHtml(g.id)}">
+        ${pickBox(g.id)}${stockCells(`<strong>${escapeHtml(g.name)}</strong>
+            <span class="pd-vcount">${members.length} variants</span>`,
+          `${round2(members.reduce((n, m) => n + num(m.stock), 0))} ${escapeHtml(members[0].unit)}`,
+          members.reduce((n, m) => n + (facts.sold.get(m.id) || 0), 0),
+          members.reduce((n, m) => n + stockValue(m), 0),
+          lastSold(sales.length ? Math.max(...sales) : null, facts.now),
+          worstLevel(members.map(facts.level)), '')}
+      </tr>`;
+  }
+
+  function rowHtml(p, supplierMap, facts) {
     const markup = marginSummary(p.cost, p.price).markup;
     return `
       <tr class="pd-row${p.archived ? ' pd-arch' : ''}" data-id="${escapeHtml(p.id)}">
@@ -270,21 +390,18 @@
         <td class="num" data-col="price"><strong>${peso(p.price)}</strong></td>
         <td class="num" data-col="margin">${markup.toFixed(1)}%</td>
         <td class="num" data-col="stock">${p.stock} ${escapeHtml(p.unit)}</td>
-        <td data-col="status">${statusPill(p)}</td>
+        <td data-col="status">${statusPill(p, facts)}</td>
+        ${editBtn}
       </tr>`;
   }
 
   // The collapsed family: aggregates, and the picture is the group's unless every
   // variant brought its own.
-  function groupRowHtml(g, members, supplierMap) {
+  function groupRowHtml(g, members, supplierMap, facts) {
     const stock = round2(members.reduce((n, m) => n + num(m.stock), 0));
     const sups = new Set(members.map((m) => m.supplierId));
     const alts = new Set(members.flatMap((m) => m.altSupplierIds));
-    const status = stock <= 0
-      ? '<span class="status-pill danger">Out of stock</span>'
-      : members.some(isLow)
-        ? '<span class="status-pill warn">Low</span>'
-        : '<span class="status-pill ok">In stock</span>';
+    const status = levelPill(worstLevel(members.map(facts.level)));
     return `
       <tr class="pd-row${members.every((m) => m.archived) ? ' pd-arch' : ''}" data-id="${escapeHtml(g.id)}">
         ${pickBox(g.id)}
@@ -300,6 +417,7 @@
         <td class="num" data-col="margin">${rangeText(members.map((m) => marginSummary(m.cost, m.price).markup), (v) => v.toFixed(1) + '%')}</td>
         <td class="num" data-col="stock">${stock} ${escapeHtml(members[0].unit)}</td>
         <td data-col="status">${status}</td>
+        ${editBtn}
       </tr>`;
   }
 
@@ -524,7 +642,7 @@
 
         ${card('Inventory', [
           row('On hand', `<input class="text-input" value="${escapeHtml(p.stock + ' ' + p.unit)}" disabled>`
-            + `<a class="link-btn" href="${escapeHtml(Router.href('inventory', '', {}))}">Move stock in Inventory</a>`,
+            + `<a class="link-btn" href="${escapeHtml(Router.href(VIEW, '', { view: 'stock', q: p.name }))}">See stock</a>`,
             'Products creates items; Inventory moves stock.'),
           isNew ? row('Opening quantity',
             field('openingQty', '', ' type="number" step="0.01" min="0" inputmode="decimal" placeholder="0"'),
@@ -877,7 +995,7 @@
   // A plain product grows variants by becoming a family. It keeps its stock and its
   // history by staying a product - it is simply variant one now.
   function convertToGroup() {
-    const id = state.detailId;
+    const id = editId();
     const f = collect();
     if (!f.name) { showToast('Name the product first'); return; }
 
@@ -901,17 +1019,21 @@
     }
     refreshSharedState();
     addOnRender = true;
-    Router.go(VIEW, g.id);
+    Router.go(VIEW, g.id + '/edit');
   }
 
   /* ================= render + events ================= */
 
   window.renderProducts = function () {
     const r = root();
-    if (state.detailId) { renderEditor(state.detailId); return; }
+    if (onItemPage()) { window.renderProductPage(state.detailId); return; }
+    if (state.detailId) { renderEditor(editId()); return; }
     // The search box is inside the view, so the shell is rebuilt only when it is
-    // missing - re-rendering it on every keystroke would steal focus.
-    if (!r.querySelector('.pd-list')) r.innerHTML = listShell();
+    // missing or the Catalog | Stock view changed - re-rendering it on every keystroke
+    // would steal focus.
+    const stock = isStock();
+    const list = r.querySelector('.pd-list');
+    if (!list || list.dataset.pdView !== (stock ? 'stock' : 'catalog')) r.innerHTML = listShell(stock);
     syncControls();
     applyCols();
     paintImport();
@@ -920,11 +1042,20 @@
 
   const rebuild = () => { root().innerHTML = ''; refreshSharedState(); renderCurrentView(); };
   const mine = (el) => !!el && !!root() && root().contains(el);
-  const isFamily = () => !!state.detailId && loadGroups().some((g) => g.id === state.detailId);
+  const isFamily = () => !!state.detailId && loadGroups().some((g) => g.id === editId());
 
   document.addEventListener('click', (e) => {
     const r = root();
-    if (!r || r.hidden || !e.target.closest) return;
+    if (!r || r.hidden || !e.target.closest || onItemPage()) return;
+
+    const tileEl = e.target.closest('.pd-kpi');
+    if (mine(tileEl)) {
+      const key = tileEl.dataset.level;
+      const on = new Set(levelsOf(params()));
+      if (!key) on.clear(); else if (on.has(key)) on.delete(key); else on.add(key);
+      Router.setParams({ level: [...on].join(','), low: '', page: '' });
+      return;
+    }
 
     const segBtn = e.target.closest('.seg-btn');
     if (mine(segBtn)) {
@@ -935,13 +1066,16 @@
     }
 
     const rowEl = e.target.closest('.pd-row');
-    if (mine(rowEl) && !e.target.closest('a, .pd-sel')) { Router.go(VIEW, rowEl.dataset.id); return; }
+    // Buttons in a row (Edit, Adjust) are their own click, not the row's.
+    if (mine(rowEl) && !e.target.closest('a, button, .pd-sel')) { Router.go(VIEW, rowEl.dataset.id); return; }
 
     const btn = e.target.closest('[data-act]');
     if (!mine(btn)) return;
     const act = btn.dataset.act;
     if (act === 'back') Router.go(VIEW, '');
     else if (act === 'new') Router.go(VIEW, 'new');
+    else if (act === 'edit') Router.go(VIEW, btn.closest('.pd-row').dataset.id + '/edit');
+    else if (act === 'ms-clear') Router.setParams({ [btn.dataset.key]: '', low: '', page: '' });
     else if (act === 'export') exportCsv();
     else if (act === 'bulk-clear') { picked.clear(); paintTable(); }
     else if (act === 'bulk-export') {
@@ -973,7 +1107,7 @@ They stop showing in the POS. Old receipts still resolve, and you can restore ea
       const n = plan.create.length + plan.update.length;
       showToast(`Imported ${n} product${n === 1 ? '' : 's'}`);
     } else if (act === 'save') {
-      if (isFamily()) saveGroup(state.detailId); else save(state.detailId);
+      if (isFamily()) saveGroup(editId()); else save(editId());
     } else if (act === 'add-variant') {
       if (!isFamily()) { convertToGroup(); return; }
       const tb = r.querySelector('#pdVariants tbody');
@@ -990,7 +1124,7 @@ They stop showing in the POS. Old receipts still resolve, and you can restore ea
       setImage(btn.closest('.pd-imgpick'), '');
     } else if (act === 'archive') {
       const list = state.products.slice();
-      const at = list.findIndex((x) => x.id === state.detailId);
+      const at = list.findIndex((x) => x.id === editId());
       if (at < 0) return;
       // ponytail: native confirm(), same as cancelling a PO in bo-suppliers.js. Archiving is
       // reversible from this very button, so it needs the pause, not a designed dialog.
@@ -1009,9 +1143,15 @@ It stops showing in the POS. Old receipts still resolve, and you can restore it 
     }
   });
 
+  // The KPI tiles are role=button divs (kpi() owns their markup), so give them the keyboard.
+  document.addEventListener('keydown', (e) => {
+    const t = e.target.closest && e.target.closest('.pd-kpi');
+    if (mine(t) && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); t.click(); }
+  });
+
   document.addEventListener('input', (e) => {
     const el = e.target;
-    if (!el.dataset || !mine(el)) return;
+    if (!el.dataset || !mine(el) || onItemPage()) return;
     if (el.dataset.v) {
       const tr = el.closest('.pd-vrow');
       if (el.dataset.v === 'cost' || el.dataset.v === 'price') {
@@ -1027,7 +1167,12 @@ It stops showing in the POS. Old receipts still resolve, and you can restore it 
 
   document.addEventListener('change', async (e) => {
     const el = e.target;
-    if (!mine(el)) return;
+    if (!mine(el) || onItemPage()) return;
+    if (el.dataset.multi) {
+      const picked = [...root().querySelectorAll(`input[data-multi="${el.dataset.multi}"]:checked`)].map((i) => i.value);
+      Router.setParams({ [el.dataset.multi]: picked.join(','), low: '', page: '' });
+      return;
+    }
     if (el.dataset.filter) {
       Router.setParams({ [el.dataset.filter]: el.type === 'checkbox' ? (el.checked ? '1' : '') : el.value, page: '' });
       return;

@@ -11,10 +11,6 @@ const STORAGE_GROUPS   = 'hwpos.groups.v1';
 const STORAGE_ORDER_SEQ = 'hwpos.orderSeq.v1';
 const STORAGE_CUSTOMERS = 'hwpos.customers.v1';
 const STORAGE_CUSTOMER_LEDGER = 'hwpos.customerLedger.v1';
-const STORAGE_ATTENDANCE = 'hwpos.attendance.v1';
-// Cash handed to staff before payday. Append-only money rows, so they belong in a backup
-// the same way orders do - and so does the attendance they are netted against.
-const STORAGE_ADVANCES = 'hwpos.advances.v1';
 const STORAGE_STAT_DELTAS = 'hwpos.bo.statDeltas';
 const STORAGE_DRAWER_CLOSEOUTS = 'hwpos.drawerCloseouts.v1';
 const STORAGE_SETTINGS = 'hwpos.settings.v1';
@@ -36,8 +32,6 @@ const BACKUP_KEYS = [
   STORAGE_ORDER_SEQ,
   STORAGE_CUSTOMERS,
   STORAGE_CUSTOMER_LEDGER,
-  STORAGE_ATTENDANCE,
-  STORAGE_ADVANCES,
   STORAGE_DRAWER_CLOSEOUTS,
   STORAGE_SETTINGS,
   STORAGE_ROLE,
@@ -464,7 +458,7 @@ const VIEWS = {
   dashboard: { label: 'Dashboard', render: () => renderDashboard() },
   sales:     { label: 'Sales',     render: () => renderSales() },
   products:  { label: 'Products',  render: () => renderProducts() },
-  inventory: { label: 'Inventory', render: () => renderInventory() },
+  inventory: { label: 'Stock history', render: () => renderInventory() },
   customers: { label: 'Customers', render: () => renderCustomers() },
   suppliers: { label: 'Suppliers', render: () => renderSuppliers() },
   staff:     { label: 'Staff',     render: () => renderStaff() },
@@ -562,7 +556,10 @@ const CHEVRON_SVG = '<svg class="side-chev" width="14" height="14" viewBox="0 0 
 // which is how one view's sub-pages split across several short sidebar entries.
 function goSub(view, key) {
   const sub = SUBNAV[view], { params } = Router.route();
-  Router.go(view, '', { range: params.range, date: params.date, [sub.param]: key === sub.def ? '' : key });
+  const value = key === sub.def ? '' : key;
+  // Same page, no record open: keep the filters (q, cat, level…), swap only the sub-page.
+  if (view === state.view && !state.detailId) return Router.setParams({ [sub.param]: value, page: '' }, { replace: false });
+  Router.go(view, '', { range: params.range, date: params.date, [sub.param]: value });
 }
 function buildSubnav() {
   Object.entries(SUBNAV).forEach(([view, sub]) => {
@@ -866,6 +863,10 @@ function statCell({ label, value, unit, delta }) {
 // ponytail: profit is always <= revenue, so both series share one axis. No second scale.
 const SERIES = [['revenue', 'Revenue'], ['profit', 'Gross profit']];
 const chartCurve = (P) => P.map((q, i) => `${i ? 'L' : 'M'}${q[0]} ${q[1]}`).join('');
+const barPath = (x0, w, top, base) => {                               // a bar with only its top corners rounded
+  const r = Math.min(3, w / 2, base - top);
+  return `M${x0} ${base}V${top + r}Q${x0} ${top} ${x0 + r} ${top}H${x0 + w - r}Q${x0 + w} ${top} ${x0 + w} ${top + r}V${base}Z`;
+};
 let chartSeq = 0;
 function renderLineChart(el, cur) {
   el._cur = cur;
@@ -893,11 +894,16 @@ function renderLineChart(el, cur) {
 }
 function drawLineChart(el) {
   const cur = el._cur, n = cur.length, NS = 'http://www.w3.org/2000/svg';
-  const W = el.clientWidth, H = el.clientHeight, L = 44, B = 22, T = 6;
+  // R leaves room to centre the last date under "now"; L is sized to the widest ₱ label below.
+  // Bars (Settings → Chart style) put each bucket mid-slot instead, so they need no R.
+  const bars = document.body.classList.contains('chart-bars');
+  const W = el.clientWidth, H = el.clientHeight, R = bars ? 0 : 20, B = 24, T = 6;
   if (!W || !H || !n) return;
   const on = SERIES.map((_, i) => String(i) !== el.dataset.off);
-  const top = Math.max(4, niceMax(Math.max(...cur.flatMap(d => SERIES.filter((_, i) => on[i]).map(([k]) => d[k])))));
-  const x = i => (n <= 1 ? L + (W - L) / 2 : L + (W - L) * i / (n - 1));
+  // Gridlines on a round step just above the peak (₱0/10k/20k/30k for a ₱29k peak), not the next
+  // round number past it: ₱50k over a ₱29k peak left the top 40% of the plot empty.
+  const peak = Math.max(4, ...cur.flatMap(d => SERIES.filter((_, i) => on[i]).map(([k]) => d[k])));
+  const stepY = niceMax(peak / 3), top = Math.ceil(peak / stepY) * stepY;
   const y = v => T + (H - T - B) * (1 - Math.max(0, v) / top);
   const mk = (tag, attrs, parent) => {
     const e = document.createElementNS(NS, tag);
@@ -906,22 +912,27 @@ function drawLineChart(el) {
   };
   el.innerHTML = '';
   const svg = mk('svg', { viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' }, el);
-  for (const v of [0, top / 2, top]) {
-    mk('line', { class: 'grid', x1: L, x2: W, y1: y(v), y2: y(v) }, svg);
-    mk('text', { class: 'axis', x: 0, y: y(v) + 4 }, svg).textContent = pesoAxis(v);
-  }
-  const step = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L) / 70))));   // a label every ~70px
+  const ticks = Array.from({ length: Math.round(top / stepY) + 1 }, (_, k) => k * stepY);
+  const yl = ticks.map(v => { const t = mk('text', { class: 'axis', x: 0, y: y(v) + 4 }, svg); t.textContent = pesoAxis(v); return t; });
+  const L = Math.ceil(Math.max(...yl.map(t => t.getComputedTextLength()))) + 10;
+  const x = i => (bars ? L + (W - L) * (i + 0.5) / n : n <= 1 ? L + (W - L - R) / 2 : L + (W - L - R) * i / (n - 1));
+  const bw = Math.min(28, (W - L) / n * 0.62);                         // bar width: 62% of a slot, 28px at most
+  ticks.forEach(v => mk('line', { class: 'grid', x1: L, x2: W, y1: y(v), y2: y(v) }, svg));
+  const step = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 70))));   // a label every ~70px
   cur.forEach((d, i) => {                                             // counted back from the last, so it always shows
     if ((n - 1 - i) % step) return;
-    const anchor = n > 1 && i === n - 1 ? 'end' : 'middle';
-    mk('text', { class: 'axis', x: x(i), y: H - 4, 'text-anchor': anchor }, svg).textContent = d.label;
+    mk('text', { class: 'axis', x: x(i), y: H - 4, 'text-anchor': 'middle' }, svg).textContent = d.label;
   });
-  const cross = mk('line', { class: 'cross', y1: T, y2: H - B, visibility: 'hidden' }, svg);
+  const cross = mk('line', { class: 'cross', y1: T, y2: H - B, visibility: 'hidden' }, bars ? document.createElementNS(NS, 'g') : svg);
   const dots = [];
   let filled = false;                                                 // only the front line gets the fade: two muddy
   SERIES.forEach(([key], i) => {
     if (!on[i]) return;
     const g = mk('g', { class: 's' + i }, svg);
+    if (bars) {                                                       // profit drawn over revenue: the share it kept
+      cur.forEach((b, h) => { if (b[key] > 0) mk('path', { class: 'bar', 'data-h': h, d: barPath(x(h) - bw / 2, bw, y(b[key]), y(0)) }, g); });
+      return;
+    }
     const d = chartCurve(cur.map((b, h) => [x(h), y(b[key])]));
     if (!filled && n > 1) {
       filled = true;
@@ -934,13 +945,16 @@ function drawLineChart(el) {
       mk('circle', { class: c, r, cx: x(n - 1), cy: y(cur[n - 1][key]) }, g);
     dots[i] = mk('circle', { class: 'dot', r: 4.5, visibility: 'hidden' }, g);
   });
+  if (bars) mk('line', { class: 'base', x1: L, x2: W, y1: y(0) + 0.5, y2: y(0) + 0.5 }, svg);   // the ₱0 line, just under the bars' feet
   const tip = document.createElement('div');
   tip.className = 'tip'; tip.hidden = true; el.appendChild(tip);
   el.onpointermove = (e) => {
     const box = el.getBoundingClientRect();
-    const h = Math.max(0, Math.min(n - 1, Math.round((e.clientX - box.left - L) / (W - L) * (n - 1))));
+    const f = (e.clientX - box.left - L) / (W - L - R);
+    const h = Math.max(0, Math.min(n - 1, bars ? Math.floor(f * n) : Math.round(f * (n - 1))));
     const d = cur[h];
     el._onScrub?.(d);
+    if (bars) { svg.classList.add('scrub'); svg.querySelectorAll('.bar').forEach(r => r.classList.toggle('hot', +r.dataset.h === h)); }
     cross.setAttribute('x1', x(h)); cross.setAttribute('x2', x(h)); cross.setAttribute('visibility', 'visible');
     dots.forEach((dot, i) => { if (!dot) return;
       dot.setAttribute('cx', x(h)); dot.setAttribute('cy', y(d[SERIES[i][0]])); dot.setAttribute('visibility', 'visible'); });
@@ -952,6 +966,7 @@ function drawLineChart(el) {
   };
   el.onpointerleave = () => {
     el._onScrub?.(null);
+    svg.classList.remove('scrub');
     cross.setAttribute('visibility', 'hidden');
     dots.forEach(dot => dot && dot.setAttribute('visibility', 'hidden'));
     tip.hidden = true;
@@ -1034,7 +1049,7 @@ const DASH_WIDGETS = {
       + meterHtml(pct, pct >= 100 ? 'up' : '')
       + `<div class="bd-rows">${bdRow('On pace for', pesoShort(t.pace), ahead ? 'ahead' : 'behind', ahead ? 'up' : 'down')}</div>`;
   }],
-  // The five that run out soonest, by the last 30 days' selling rate; the rest are in Needs buying.
+  // The five that run out soonest, by the last 30 days' selling rate; the rest are in Products' stock view.
   low: ['Low stock', () => {
     const since = Date.now() - 30 * 864e5, sold = new Map();
     state.orders.forEach(o => {
@@ -1047,7 +1062,7 @@ const DASH_WIDGETS = {
     const rows = low.slice(0, 5).map(p => bdRow(escapeHtml(p.name), `${Number(p.stock).toLocaleString('en-PH')} ${escapeHtml(p.unit || 'pc')}`,
       p.stock <= 0 ? '<span class="status-pill out">Out</span>' : '<span class="status-pill low">Low</span>')).join('');
     // Just the count: the label already says Low stock. View all sits top right, like Recent transactions (owner, 2026-09-23).
-    return (low.length ? '<a href="#" class="rail-more" data-jump="inventory" data-sub="reorder">View all ›</a>' : '') + railHead('Low stock', `${low.length.toLocaleString('en-PH')}${low.length ? '' : '<span class="of"> all stocked</span>'}`)
+    return (low.length ? `<a class="rail-more" href="${Router.href('products', '', { view: 'stock', level: 'out,low' })}">View all ›</a>` : '') + railHead('Low stock', `${low.length.toLocaleString('en-PH')}${low.length ? '' : '<span class="of"> all stocked</span>'}`)
       + (low.length ? `<div class="bd-rows">${rows}</div>` : '');
   }],
   // A table, no headline number and no shares: the total is Revenue, already the first KPI, and
@@ -1060,7 +1075,7 @@ const DASH_WIDGETS = {
     return '<a class="blk-cover" href="#" data-jump="sales" aria-label="Open sales"></a>'
       + '<div class="kpi-label">Payment methods</div>'
       + `<div class="bd-rows">${rows.length
-        ? rows.map(r => bdRow(escapeHtml(r.name), pesoShort(r.revenue))).join('')
+        ? rows.map(r => bdRow(`<i class="sw pay ${escapeHtml(r.kind)}"></i>${escapeHtml(r.name)}`, pesoShort(r.revenue))).join('')
           + `<div class="bd-row total"><span class="nm">Total</span><span class="amt">${pesoShort(total)}</span></div>`
         : '<div class="bo-empty">No sales in this range.</div>'}</div>`;
   }],
@@ -1414,6 +1429,18 @@ function custStatus(c) {
        : ['muted', 'Active'];
 }
 
+// How often each customer buys (bo-insights.js customerCycles), keyed by id. Lives on Customers,
+// not Reports (owner, 2026-09-24): it is a fact about the customer.
+const CYCLE_PILL = { overdue: ['danger', 'Overdue'], due: ['warn', 'Due'], ok: ['ok', 'On track'] };
+function customerCycleMap() {
+  return new Map(HWPOS_INSIGHTS.customerCycles(state.orders, [], Date.now()).map(r => [r.customerId, r]));
+}
+const cycleEvery = (r) => (r && r.medianGapDays != null ? `~${Math.round(r.medianGapDays)} days` : '—');
+const cyclePill = (r) => {
+  const p = r && CYCLE_PILL[r.status];
+  return p ? `<span class="status-pill ${p[0]}">${p[1]}</span>` : '<span class="muted">—</span>';
+};
+
 function renderCustomerList() {
   const q = state.custQuery.trim().toLowerCase();
   const customers = allCustomerRecords();
@@ -1436,21 +1463,24 @@ function renderCustomerList() {
   ].join('');
 
   const pg = paginate(list, Router.route().params.page);
+  const cycles = customerCycleMap();
   $('#custPager').innerHTML = pagerHtml(pg);
   $('#custTable tbody').innerHTML = pg.rows.map(c => {
-    const avail = (c.creditLimit || 0) - (c.currentBalance || 0);
     const status = custStatus(c);
+    const cy = cycles.get(c.id);
     return `
       <tr data-customer="${escapeHtml(c.id)}">
         <td><strong>${escapeHtml(c.name)}</strong></td>
         <td>${escapeHtml(c.phone || '—')}</td>
-        <td>${escapeHtml(c.address || '—')}</td>
-        <td class="num">${pesoShort(c.creditLimit)}</td>
+        <td class="num">${cy ? cy.orders : 0}</td>
+        <td class="num">${pesoShort(cy ? cy.revenuePesos : 0)}</td>
+        <td>${cy ? escapeHtml(shortDate(cy.lastOrderDate + 'T00:00')) : '—'}</td>
+        <td class="num">${cycleEvery(cy)}</td>
+        <td>${cyclePill(cy)}</td>
         <td class="num"><strong>${peso(c.currentBalance)}</strong></td>
-        <td class="num">${pesoShort(avail)}</td>
         <td><span class="status-pill ${status[0]}">${status[1]}</span></td>
       </tr>`;
-  }).join('') || `<tr><td colspan="7" class="bo-empty">No customers match.</td></tr>`;
+  }).join('') || `<tr><td colspan="9" class="bo-empty">No customers match.</td></tr>`;
 }
 
 const ORDER_STATUS = {
@@ -1491,6 +1521,7 @@ function renderCustomerDetail(c) {
   const spent = counted.reduce((a, o) => a + (o.total || 0), 0);
   const last = orders[0];
   const status = custStatus(c);
+  const cy = customerCycleMap().get(c.id);
 
   $('#custTitle').textContent = c.name;
   $('#custKpis').innerHTML = [
@@ -1561,6 +1592,8 @@ function renderCustomerDetail(c) {
         <div><span>Address</span><b>${escapeHtml(c.address || '—')}</b></div>
         <div><span>Account</span><b>${escapeHtml(c.id)}</b></div>
         <div><span>Available credit</span><b>${peso((c.creditLimit || 0) - (c.currentBalance || 0))}</b></div>
+        <div><span>Buys every</span><b>${cycleEvery(cy)}</b></div>
+        <div><span>Next order due</span><b>${cy && cy.dueDate ? escapeHtml(shortDate(cy.dueDate + 'T00:00')) + ' ' + cyclePill(cy) : '—'}</b></div>
       </div>
     </section>
     <section class="bo-card blk-table">
@@ -1614,23 +1647,6 @@ function renderCustomerDetail(c) {
         </table>
       </div></div>
     </section>`;
-}
-
-// ---------- Attendance (the dashboard card; the Staff page is bo-staff.js) ----------
-const ATTEND_LABEL = {
-  present: ['ok', 'Present'], late: ['warn', 'Late'], halfday: ['warn', 'Half day'],
-  dayoff: ['muted', 'Day off'], absent: ['danger', 'Absent'],
-};
-
-// ponytail: today's marks only, keyed by date in one localStorage blob. No history, no
-// timestamps — the staff page can grow a real log when someone needs to look backwards.
-function attendanceKey() {
-  return isoDate(Date.now());
-}
-
-function readAttendance() {
-  const all = readJsonStorage(STORAGE_ATTENDANCE, {}) || {};
-  return all[attendanceKey()] || {};
 }
 
 function renderSettingsForm() {
@@ -1857,6 +1873,17 @@ function wireEvents() {
     Router.setParams({ range: sel.value === 'today' ? '' : sel.value }, { replace: false });
   }));
 
+  // Any [data-adjust-open] on any page opens the stock adjust dialog (bo-inventory.js).
+  // Capture phase: the rows it sits in navigate on click from their own document-level
+  // listeners, and stopping it here is the only way to beat those.
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-adjust-open]');
+    if (!b) return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.openAdjustDialog?.(b.dataset.adjustOpen);
+  }, true);
+
   // Any transaction row, on any page, opens its receipt. Delegated so a page module
   // re-rendering its own table keeps the wiring.
   document.addEventListener('click', (e) => {
@@ -2011,6 +2038,10 @@ function wireEvents() {
     b.addEventListener('click', () => HWPOS_STORE.ui.set('chartHue', applyChartHue(b.dataset.hue)));
   });
 
+  $$('#settingsChartStyle .seg-btn').forEach(b => {
+    b.addEventListener('click', () => HWPOS_STORE.ui.set('chartStyle', applyChartStyle(b.dataset.style)));
+  });
+
   // ----- Settings → Appearance (back office row size) -----
   $$('#settingsDensityToggle .seg-btn').forEach(b => {
     b.addEventListener('click', () => {
@@ -2084,10 +2115,19 @@ function applyChartHue(hue) {
   return h;
 }
 
+// Line (default) or bars, for every sales chart. One class on <body>; drawLineChart reads it.
+function applyChartStyle(style) {
+  const v = style === 'bars' ? 'bars' : 'line';
+  document.body.classList.toggle('chart-bars', v === 'bars');
+  $$('#settingsChartStyle .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.style === v));
+  return v;
+}
+
 // ---------- Init ----------
 function init() {
   applyDensity(storageGet(STORAGE_DENSITY, 'md'));
   applyChartHue(HWPOS_STORE.ui.get('chartHue', 'violet'));
+  applyChartStyle(HWPOS_STORE.ui.get('chartStyle', 'line'));
   refreshSharedState();
   wireEvents();
   wireSwitchers();

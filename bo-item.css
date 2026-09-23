@@ -1,0 +1,20 @@
+/* Back office - one item's page (bo-item.js). Lays blocks out only; the cards, KPIs, tables,
+   pills and buttons are bo-blocks.css. */
+body.bo-light .item-page { display: grid; gap: var(--blk-gap); min-width: 0; }
+body.bo-light .item-grid {
+  display: grid; gap: var(--blk-gap); align-items: start;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+}
+body.bo-light .item-col { display: grid; gap: var(--blk-gap); min-width: 0; }
+/* The global 860px floor is for the list pages; a half-width card scrolls instead. */
+body.bo-light .item-page .data-table { min-width: 0; }
+body.bo-light .item-note { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--blk-ink-2); }
+/* One short line, not the 40px block a whole empty page gets. */
+body.bo-light .item-page .bo-empty { padding: 4px 0 0; text-align: left; color: var(--blk-ink-3); }
+body.bo-light .item-period { margin-right: 4px; }
+body.bo-light .item-period .seg-btn { text-decoration: none; display: inline-flex; align-items: center; }
+/* Five KPIs on one line on a wide screen; the shared 248px unit would wrap the fifth alone. */
+body.bo-light .item-page > .kpi-row { grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); }
+@media (max-width: 1024px) {
+  body.bo-light .item-grid { grid-template-columns: minmax(0, 1fr); }
+}

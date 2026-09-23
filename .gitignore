@@ -21,3 +21,6 @@ nul
 /*.png
 !/test-barcode-*.png
 .playwright-mcp/
+
+# Python bytecode
+__pycache__/

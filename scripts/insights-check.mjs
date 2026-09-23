@@ -189,31 +189,6 @@ assert.deepEqual(JSON.parse(JSON.stringify(all)), all);
 assert.equal(all.apiVersion, 1);
 assert.ok(Object.keys(all.sections).every((k) => k in all.fieldNotes), 'every section is documented for an AI reader');
 
-/* ---- Day spine: hourly weather to one row per date, payday, and rows that never touch typed fields ---- */
-assert.equal(I.paydayFor('2026-09-15'), true);
-assert.equal(I.paydayFor('2026-09-30'), true);
-assert.equal(I.paydayFor('2026-02-28'), true);
-assert.equal(I.paydayFor('2028-02-28'), false);             // leap year: the 29th is payday
-assert.equal(I.paydayFor('2026-09-16'), false);
-const wx = I.rollupWeather({
-  hourly: { time: ['06', '07', '08', '12', '18', '19'].map((h) => `2026-09-01T${h}:00`).concat('2026-09-02T10:00'),
-    precipitation: [5, 0.5, 0.05, 1, 2, 3, null], temperature_2m: [24, 25, 26, 31.5, 28, 27, 30] },
-  daily: { time: ['2026-09-01', '2026-09-02'], weather_code: [63, 3] },
-});
-assert.equal(wx.length, 1);                                  // the 2nd has no rain value yet: fetched again later
-// Open 07-18: the 07:00 label is 06-07 (closed), 08:00 is under 0.1 mm, 12:00 and 18:00 count, 19:00 is after close.
-assert.deepEqual(wx[0], { id: '2026-09-01', date: '2026-09-01', rainMm: 11.55, rainHoursOpen: 2, tempMaxC: 31.5, weatherCode: 63 });
-const stored = [{ id: '2026-09-01', rainMm: 0 }, { id: '2026-09-02', note: 'fiesta' }, { id: '2026-09-03', rainMm: 1, source: 'open-meteo-forecast' }];
-assert.deepEqual(I.missingDayKeys(stored, '2026-08-31', '2026-09-03'), ['2026-08-31', '2026-09-02', '2026-09-03']);
-const dayRowsOut = I.dayRows(['2026-09-01', '2026-09-15', '2027-01-01'],
-  { weather: wx, holidaysByYear: { 2026: [{ date: '2026-09-15', name: 'Test Day' }] }, today: '2026-09-14' });
-assert.equal(dayRowsOut.length, 2);                          // 2027: no weather and its holidays never loaded
-assert.deepEqual(dayRowsOut[0], { id: '2026-09-01', date: '2026-09-01', isPayday: false, holidayName: '',
-  rainMm: 11.55, rainHoursOpen: 2, tempMaxC: 31.5, weatherCode: 63, source: 'open-meteo' });
-assert.deepEqual(dayRowsOut[1], { id: '2026-09-15', date: '2026-09-15', isPayday: true, holidayName: 'Test Day' });
-assert.ok(dayRowsOut.every((r) => !('events' in r) && !('roadClosure' in r) && !('note' in r)), 'a fetch never blanks what was typed');
-assert.equal(I.dayRows(['2026-09-14'], { weather: [{ ...wx[0], id: '2026-09-14' }], today: '2026-09-14' })[0].source, 'open-meteo-forecast');
-
 // HWPOS_AI.snapshot() names the movement log stockMovements; a raw dump uses the storage key.
 const mvRow = { id: 'mv_x', productId: 'p', qty: 1, reason: 'delivery', ts: '2026-09-01T00:00:00Z' };
 assert.equal(I.dataFromDump({ stockMovements: [mvRow] }).movements.length, 1);

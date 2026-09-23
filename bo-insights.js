@@ -1,7 +1,7 @@
 /* Back office — Insights. Tier 0 of docs/data-roadmap.md: reads, not captures.
 
    Everything above the seam is a pure function over plain arrays -- products, the movement
-   log, purchase orders, suppliers, orders, customers, attendance marks and the event logs --
+   log, purchase orders, suppliers, orders, customers and the event logs --
    with an explicit `now`. Nothing here reads storage; the caller loads and passes. Every
    return is plain JSON with the unit in the field name (dailyRate is units/day, leadDays,
    pesos, pct 0..100, rate 0..1), so an AI can read `buildInsights()` without this file.
@@ -9,7 +9,7 @@
    Order status rules are the ones backoffice.js SALE_SIGN encodes: completed +1, return -1,
    voided/refunded/saved 0 (the original was flipped in place, so it contributes nothing).
    Uses bo-model.js globals: cent, round2, stepFor, normalizeProduct, SUPPLIER_DEFAULTS,
-   PO_DEFAULTS, EVENT_LOGS, STORAGE_DAYS. */
+   PO_DEFAULTS, EVENT_LOGS. */
 (function () {
   /* ================= pure logic (exported for scripts/insights-check.mjs) ============= */
 
@@ -471,42 +471,6 @@
       });
   }
 
-  /* ---- 11. Sales per staff day ---- */
-  // Attendance is { 'YYYY-MM-DD': { staffName: mark } } and orders name the cashier, so the
-  // join is by name. Clock rows pair an 'in' with the next 'out'; a dangling 'in' is ignored.
-  function salesPerStaffDay(orders, attendance = {}, clock = []) {
-    const rows = new Map();
-    const row = (date, staff) => {
-      const k = date + '|' + staff;
-      if (!rows.has(k)) rows.set(k, { date, staff, orders: 0, c: 0, mark: '', ms: 0, clocked: false });
-      return rows.get(k);
-    };
-    for (const o of orders || []) {
-      const sign = saleSign(o);
-      if (!sign || !hasTs(o)) continue;
-      const r = row(dayKey(o.ts), o.cashier || '');
-      if (sign > 0) r.orders++;
-      r.c += cent(o.total) * sign;
-    }
-    Object.entries(attendance || {}).forEach(([date, marks]) =>
-      Object.entries(marks || {}).forEach(([name, mark]) => { row(date, name).mark = mark; }));
-    const open = new Map();
-    (clock || []).filter(hasTs).sort((a, b) => toMs(a.ts) - toMs(b.ts)).forEach((e) => {
-      const who = e.staffName || e.staffId || '';
-      if (e.event === 'in') open.set(who, e);
-      else if (e.event === 'out' && open.has(who)) {
-        const r = row(dayKey(open.get(who).ts), who);
-        r.ms += toMs(e.ts) - toMs(open.get(who).ts); r.clocked = true;
-        open.delete(who);
-      }
-    });
-    return [...rows.values()].map((r) => {
-      const hours = r.clocked ? r2(r.ms / 36e5) : null;
-      return { date: r.date, staff: r.staff, orders: r.orders, revenuePesos: r2(r.c / 100), mark: r.mark,
-        clockedHours: hours, revenuePerHourPesos: hours ? r2(r.c / 100 / hours) : null };
-    }).sort((a, b) => a.date.localeCompare(b.date) || a.staff.localeCompare(b.staff));
-  }
-
   /* ---- 12. Count accuracy ---- */
   // Each count scores 1 - |counted - expected| / max(expected, counted, 1). Confidence is the
   // mean of the last five, shrunk by n/(n+1): one perfect count is 0.5, not certainty.
@@ -572,7 +536,7 @@
   const DUMP_KEYS = {
     products: 'hwpos.products.v2', orders: 'hwpos.orders.v1', customers: 'hwpos.customers.v1',
     movements: 'hwpos.stockMovements.v1', purchaseOrders: 'hwpos.purchaseOrders.v1', suppliers: 'hwpos.suppliers.v1',
-    attendance: 'hwpos.attendance.v1', days: STORAGE_DAYS, ...EVENT_LOGS,
+    ...EVENT_LOGS,
   };
   function dataFromDump(dump = {}) {
     const out = {};
@@ -581,13 +545,13 @@
       let v = dump[name] !== undefined ? dump[name]
         : name === 'movements' && dump.stockMovements !== undefined ? dump.stockMovements : dump[key];
       if (typeof v === 'string') { try { v = JSON.parse(v); } catch (_) { v = undefined; } }
-      out[name] = v == null ? (name === 'attendance' ? {} : []) : v;
+      out[name] = v == null ? [] : v;
     }
     return out;
   }
 
   const FIELD_NOTES = {
-    _conventions: 'Money fields end in Pesos (2dp). Rates 0..1 end in Rate; percentages 0..100 end in Pct. dailyRate is product units per day (pieces, or metres/kg for soldBy=measure). ts fields are ISO UTC; date fields are store-local YYYY-MM-DD (UTC+8) and join to hwpos.days.v1 by id.',
+    _conventions: 'Money fields end in Pesos (2dp). Rates 0..1 end in Rate; percentages 0..100 end in Pct. dailyRate is product units per day (pieces, or metres/kg for soldBy=measure). ts fields are ISO UTC; date fields are store-local YYYY-MM-DD (UTC+8).',
     stockouts: 'Per product, intervals where replayed stock was <= 0. start/end ISO, end null = still out; days fractional. A stockout that began before the movement log is not reported.',
     supplierLeadTimes: 'Per supplier. lead days = receivedAt date - (sentAt || orderedAt) date, n = POs with both. onTimeRate vs promisedAt || expectedAt. fillRate = receivedQty/qty over received+partial POs. invoiceGapPct = billed vs quoted cost on lines with invoiceCost.',
     demand: 'Per product over the last windowDays complete days. dailyRate/sdDaily use only inStockDays (days that opened with stock); uncensoredDailyRate counts every day and understates demand. pattern from adi (days per selling day) and cv2 (squared variation of selling-day size): smooth/erratic/intermittent/lumpy/none.',
@@ -600,7 +564,6 @@
     customerCycles: 'Per customer on completed sales. medianGapDays between distinct order dates. status overdue (> 1.5x median since last), due (>= median), ok, unknown (< 3 order dates).',
     basketAffinity: 'Completed, unreturned orders. support = share of baskets with both; confidenceAtoB = P(b|a); lift > 1 means bought together more than chance. categories uses product folder.',
     deliveryPoints: 'Completed/refunded delivery orders with a map pin. minutesToArrive = first dispatched to next arrived event (null without deliveryEvents).',
-    salesPerStaffDay: 'Per staff name per date. orders = completed sales rung up; revenuePesos nets returns. mark from attendance. clockedHours from clock in/out pairs, null when none.',
     countAccuracy: 'Per product with counts that kept expected and counted. confidence 0..1, lowest first = count these next.',
     lostDemand: 'Unfilled requests grouped by productId (or typed text). qty = units asked. reasons and substitutes are counts.',
     priceHistory: 'Price and cost changes per product, oldest change first. changePct vs old value.',
@@ -645,7 +608,6 @@
         customerCycles: customerCycles(orders, data.customers || [], now),
         basketAffinity: basketAffinity(orders, { products }),
         deliveryPoints: deliveryPoints(orders, data.deliveryEvents || []),
-        salesPerStaffDay: salesPerStaffDay(orders, data.attendance || {}, data.clock || []),
         countAccuracy: countAccuracy(movements),
         lostDemand: lostDemandSummary(data.lostDemand || []),
         priceHistory: priceHistory(data.priceLog || []),
@@ -654,99 +616,42 @@
     };
   }
 
-  /* ---- 15. Day spine: weather, holidays and payday per store-local date ---- */
-  // ponytail: payday is the 15th and the month's last day, even when that falls on a Sunday
-  // and payroll runs a day early. A per-store payroll rule the day a store pays weekly.
-  const paydayFor = (key) => {
-    const [y, m, d] = key.split('-').map(Number);
-    return d === 15 || d === new Date(Date.UTC(y, m, 0)).getUTCDate();
-  };
-
-  // Open-Meteo JSON (timezone=Asia/Manila, so hourly.time is store-local 'YYYY-MM-DDTHH:00')
-  // to one row per date. An hour's precipitation is what fell in the hour BEFORE its label,
-  // so the 08:00 value is 07:00-08:00 and "open" is labels in (openHour, closeHour].
-  // A date with no precipitation value yet (archive lag) is left out, so it is fetched again.
-  function rollupWeather(json, { openHour = 7, closeHour = 18 } = {}) {
-    const h = (json && json.hourly) || {}, by = new Map();
-    (h.time || []).forEach((t, i) => {
-      const rain = h.precipitation ? h.precipitation[i] : null, temp = h.temperature_2m ? h.temperature_2m[i] : null;
-      if (rain == null) return;
-      const id = t.slice(0, 10), hour = Number(t.slice(11, 13));
-      const r = by.get(id) || { id, date: id, rainMm: 0, rainHoursOpen: 0, tempMaxC: null };
-      r.rainMm += rain;
-      if (rain > 0.1 && hour > openHour && hour <= closeHour) r.rainHoursOpen++;
-      if (temp != null && (r.tempMaxC == null || temp > r.tempMaxC)) r.tempMaxC = temp;
-      by.set(id, r);
-    });
-    const d = (json && json.daily) || {}, codes = d.weather_code || d.weathercode || [];
-    (d.time || []).forEach((id, i) => { if (by.has(id) && codes[i] != null) by.get(id).weatherCode = codes[i]; });
-    return [...by.values()].map((r) => ({ ...r, rainMm: r2(r.rainMm) }));
-  }
-
-  // Dates in [fromKey, toKey] with no weather yet. A forecast row counts as missing: the
-  // real weather replaces it once the day has happened.
-  function missingDayKeys(days, fromKey, toKey) {
-    const by = new Map((days || []).map((d) => [d.id, d])), out = [];
-    for (let n = dayNum(fromKey); n <= dayNum(toKey); n++) {
-      const k = keyOfDay(n), d = by.get(k);
-      if (!d || d.rainMm == null || d.source === 'open-meteo-forecast') out.push(k);
-    }
-    return out;
-  }
-
-  // Rows for upsertDays. Only machine-filled fields -- never events, roadClosure or note --
-  // because upsertDays spreads the row over what is stored. holidaysByYear: { 2026: [{date, name}] },
-  // a year that failed to load is absent and leaves holidayName untouched.
-  function dayRows(keys, { weather = [], holidaysByYear = {}, today } = {}) {
-    const wBy = new Map((weather || []).map((w) => [w.id, w]));
-    const hol = new Map(Object.values(holidaysByYear || {}).flat().map((h) => [h.date, h.name || h.localName || '']));
-    return (keys || []).flatMap((id) => {
-      const w = wBy.get(id), yearLoaded = !!(holidaysByYear || {})[id.slice(0, 4)];
-      if (!w && !yearLoaded) return [];
-      const row = { id, date: id, isPayday: paydayFor(id) };
-      if (yearLoaded) row.holidayName = hol.get(id) || '';
-      if (w) Object.assign(row, { rainMm: w.rainMm, rainHoursOpen: w.rainHoursOpen, tempMaxC: w.tempMaxC,
-        ...(w.weatherCode != null ? { weatherCode: w.weatherCode } : {}),
-        source: today && id >= today ? 'open-meteo-forecast' : 'open-meteo' });
-      return [row];
-    });
-  }
-
   const API = { TZ_MIN, dayKey, dayNum, dayStartIso, outDayNums, reviewDaysFor, zFor, onOrderBy, dataFromDump,
     stockoutIntervals, supplierLeadTimes, demandStats, reorderPlan, cashAsleep, cashTiedUp, sellThrough, deadStock,
-    customerCycles, basketAffinity, deliveryPoints, salesPerStaffDay, countAccuracy,
-    lostDemandSummary, priceHistory, buildInsights, paydayFor, rollupWeather, missingDayKeys, dayRows };
+    customerCycles, basketAffinity, deliveryPoints, countAccuracy,
+    lostDemandSummary, priceHistory, buildInsights };
   if (typeof module === 'object' && module.exports) { module.exports = API; return; }
   window.HWPOS_INSIGHTS = API;
 
   /* ================================ page renderer ====================================== */
   // Reads storage through the bo-model / backoffice.js loaders, passes the arrays to
   // buildInsights, renders plain tables. Nothing above this line may touch the DOM or storage.
-  // The one write on this page is the day spine (upsertDays).
+  // It never writes.
   const VIEW = 'insights';
   const root = () => document.querySelector(`.view[data-view="${VIEW}"]`);
-  const TABS = { cash: 'Cash tied up', reorder: 'Reorder plan', stockouts: 'Stockouts', dead: 'Dead stock',
-    sell: 'Sell-through', leads: 'Supplier lead times', cycles: 'Customer cycles', basket: 'Basket affinity',
-    deliveries: 'Deliveries', staff: 'Staff days', counts: 'Count accuracy', lost: 'Lost demand',
-    prices: 'Price history', days: 'Day spine' };
+  // No Reorder plan, Supplier lead times or Price history tabs (owner, 2026-09-23): a forecast
+  // needs context a POS doesn't have, lead times are columns on Suppliers, and the price log is
+  // already on the item page and Stock history. The pure functions stay for buildInsights.
+  const TABS = { cash: 'Cash tied up', stockouts: 'Stockouts', dead: 'Dead stock',
+    sell: 'Sell-through',
+    counts: 'Count accuracy', lost: 'Lost demand' };
+  // Days & staff removed (owner, 2026-09-24): no weather log, no attendance join. Customer
+  // cycles moved onto Customers the same day; Deliveries removed (Transactions has Fulfilment);
+  // Basket affinity is Sales -> Bought together.
+  const MOVED = { staff: ['staff', {}], days: ['staff', {}], cycles: ['customers', {}], basket: ['sales', { by: 'basket' }], deliveries: ['sales', { by: 'tx' }], reorder: ['products', { view: 'stock', level: 'out,low' }], leads: ['suppliers', {}],
+    prices: ['inventory', { tab: 'prices' }] };
   const DEFAULT_TAB = 'cash';
   (globalThis.HWPOS_SUBNAV = globalThis.HWPOS_SUBNAV || {}).insights = { param: 'tab', def: DEFAULT_TAB, items: Object.entries(TABS), groups: [
-    ['Stock', ['cash', 'reorder', 'stockouts', 'dead', 'sell', 'counts', 'lost', 'prices']],
-    ['Suppliers', ['leads', 'deliveries']],
-    ['Customers', ['cycles', 'basket']],
-    ['Staff & days', ['staff', 'days']],
+    ['Stock', ['cash', 'stockouts', 'dead', 'sell', 'counts', 'lost']],
   ] };
-  const DAY_FIELDS = ['events', 'roadClosure', 'note'];      // the typed ones; a fetch never writes them
-  const BACK_DAYS = 400, AHEAD_DAYS = 7, ARCHIVE_LAG_DAYS = 5;
-  const STORE_AT = { lat: 14.2691, lng: 121.4113 };          // app.js DELIVERY_MAP_DEFAULT
 
   // Raw orders, not state.orders: normalizeOrder drops deliveryLocation and originalOrderId.
   function gather() {
     return {
       products: loadProducts(), folders: state.folders, orders: loadList(STORAGE_ORDERS), customers: allCustomerRecords(),
       movements: loadMovements(), purchaseOrders: loadPurchaseOrders(), suppliers: loadSuppliers(),
-      staff: loadStaff().map(({ pin, ...u }) => u), attendance: readJsonStorage(STORAGE_ATTENDANCE, {}) || {},
-      days: loadDays(), ...Object.fromEntries(Object.keys(EVENT_LOGS).map((k) => [k, loadEvents(k)])),
+      staff: loadStaff().map(({ pin, ...u }) => u),
+      ...Object.fromEntries(Object.keys(EVENT_LOGS).map((k) => [k, loadEvents(k)])),
     };
   }
 
@@ -757,7 +662,6 @@
   const pct = (rate) => (rate == null ? DASH : `${Math.round(rate * 100)}%`);
   const money = (v) => (v == null ? DASH : peso(v));
   const day = (iso) => (iso ? dayKey(iso) : DASH);
-  const clockOf = (iso) => (iso ? new Date(toMs(iso) + TZ_MIN * 60000).toISOString().slice(11, 16) : DASH);
   const sub = (main, second) => `${main}${second ? ` <span class="row-sub">${second}</span>` : ''}`;
   const pill = (tone, label) => `<span class="status-pill ${tone}">${escapeHtml(label)}</span>`;
   const counts = (obj, nameOf = (k) => k) => txt(Object.entries(obj || {}).map(([k, n]) => `${nameOf(k)} ×${n}`).join(', '));
@@ -792,29 +696,13 @@
     const s = ins.sections;
     const nameOf = new Map(data.products.map((p) => [p.id, p.name]));
     const supOf = new Map(data.suppliers.map((x) => [x.id, x.name]));
-    const custOf = new Map(data.customers.map((c) => [c.id, c.name]));
     const product = (id) => txt(nameOf.get(id) || id);
-    const CONF = { high: 'ok', medium: 'warn', low: 'muted' };
     const idleCols = [
       ['Product', (r) => escapeHtml(r.name)], ['Qty', (r) => num(r.qty), 1], ['Cost', (r) => money(r.costPesos), 1],
       ['Stock value', (r) => money(r.stockPesos), 1], ['Last sale', (r) => day(r.lastSaleAt), 1],
       ['Idle days', (r) => num(r.idleDays), 1], ['Peso-days', (r) => num(r.pesoDays), 1]];
 
     switch (tab) {
-      case 'reorder': {
-        const rows = [...s.reorder].sort((a, b) => (b.suggestQty > 0) - (a.suggestQty > 0) || b.cashPesos - a.cashPesos || a.name.localeCompare(b.name));
-        const buy = rows.filter((r) => r.suggestQty > 0);
-        return card('Reorder plan', `${buy.length} to order · ${peso(r2(buy.reduce((t, r) => t + r.cashPesos, 0)))} at cost`, [
-          ['Product', (r) => sub(`<strong>${escapeHtml(r.name)}</strong>`, escapeHtml(supOf.get(r.supplierId) || ''))],
-          ['Stock', (r) => num(r.stock), 1], ['On order', (r) => num(r.onOrder), 1],
-          ['Lead days', (r) => sub(num(r.leadDays), r.leadBasis), 1], ['Review days', (r) => num(r.reviewDays), 1],
-          ['Per day', (r) => num(r.dailyRate), 1], ['Safety', (r) => num(r.safetyStock), 1],
-          ['Reorder at', (r) => num(r.reorderPoint), 1], ['Order up to', (r) => num(r.orderUpTo), 1],
-          ['Suggest', (r) => (r.suggestQty ? `<strong>${r.suggestQty}</strong>` : '0'), 1], ['Cash', (r) => money(r.cashPesos), 1],
-          ['Confidence', (r) => sub(pill(CONF[r.confidence], r.confidence), r.basis)],
-          ['Reason', (r) => `<span class="ins-reason" title="${escapeHtml(r.reason)}">${escapeHtml(r.reason)}</span>`],
-        ], rows, 'No active products.');
-      }
       case 'stockouts': {
         const rows = [...s.stockouts.rows].sort((a, b) => b.outNow - a.outNow || b.daysOut - a.daysOut);
         const last = (r) => r.intervals[r.intervals.length - 1] || {};
@@ -859,49 +747,17 @@
           ['Cleared', (r) => day(r.clearedAt), 1], ['Days to clear', (r) => num(r.daysToClear), 1],
         ], rows, 'No deliveries logged.');
       }
-      case 'leads':
-        return card('Supplier lead times', 'Measured from received purchase orders, against what they quote', [
-          ['Supplier', (r) => txt(r.name || r.supplierId)], ['POs', (r) => num(r.purchaseOrders), 1], ['Received', (r) => num(r.n), 1],
-          ['Lead days', (r) => sub(num(r.leadDaysMean), r.leadDaysSd != null ? `sd ${r.leadDaysSd}` : ''), 1],
-          ['Range', (r) => (r.leadDaysMin == null ? DASH : `${r.leadDaysMin}–${r.leadDaysMax}`), 1],
-          ['Quoted', (r) => num(r.quotedLeadDays || null), 1], ['On time', (r) => pct(r.onTimeRate), 1], ['Fill', (r) => pct(r.fillRate), 1],
-          ['Invoice gap', (r) => num(r.invoiceGapPct, '%'), 1], ['Short reasons', (r) => counts(r.shortReasons)],
-        ], s.supplierLeadTimes, 'No suppliers.');
-      case 'cycles': {
-        const TONE = { overdue: 'danger', due: 'warn', ok: 'ok', unknown: 'muted' };
-        return card('Customer cycles', 'Median days between order dates; overdue past 1.5x', [
-          ['Customer', (r) => sub(txt(r.name || r.customerId), escapeHtml(r.phone))], ['Orders', (r) => num(r.orders), 1],
-          ['Revenue', (r) => money(r.revenuePesos), 1], ['Last order', (r) => num(r.lastOrderDate), 1],
-          ['Median gap', (r) => num(r.medianGapDays), 1], ['Days since', (r) => num(r.daysSinceLast), 1],
-          ['Due', (r) => num(r.dueDate), 1], ['Status', (r) => pill(TONE[r.status], r.status)],
-        ], s.customerCycles, 'No named customers with completed sales.');
-      }
       case 'basket': {
-        const by = params.by === 'categories' ? 'categories' : 'products';
+        const by = params.pairs === 'categories' ? 'categories' : 'products';
         const label = (id, name) => txt(by === 'categories' ? folderName(id) : name);
         const toggle = `<div class="seg">${[['products', 'Products'], ['categories', 'Categories']].map(([k, l]) =>
-          `<button class="seg-btn${k === by ? ' active' : ''}" data-by="${k}">${l}</button>`).join('')}</div>`;
-        return card('Basket affinity', `${s.basketAffinity.baskets} baskets · pairs seen 3+ times, highest lift first`, [
+          `<button class="seg-btn${k === by ? ' active' : ''}" data-pairs="${k}">${l}</button>`).join('')}</div>`;
+        return card('Bought together', `${s.basketAffinity.baskets} baskets · pairs seen 3+ times, highest lift first`, [
           ['Item A', (r) => label(r.a, r.aName)], ['Item B', (r) => label(r.b, r.bName)], ['Baskets', (r) => num(r.count), 1],
           ['Support', (r) => pct(r.support), 1], ['A then B', (r) => pct(r.confidenceAtoB), 1],
           ['B then A', (r) => pct(r.confidenceBtoA), 1], ['Lift', (r) => num(r.lift), 1],
         ], s.basketAffinity[by], 'No pair bought together often enough yet.', toggle);
       }
-      case 'deliveries': {
-        const rows = [...s.deliveryPoints].sort((a, b) => b.ts.localeCompare(a.ts));
-        return card('Deliveries', 'Delivery orders with a map pin', [
-          ['Order', (r) => sub(txt(r.number), r.date)], ['Customer', (r) => txt(custOf.get(r.customerId))],
-          ['Lat', (r) => r.lat.toFixed(5), 1], ['Lng', (r) => r.lng.toFixed(5), 1], ['Total', (r) => money(r.totalPesos), 1],
-          ['Driver', (r) => txt(r.driver)], ['Dispatched', (r) => clockOf(r.dispatchedAt), 1], ['Arrived', (r) => clockOf(r.arrivedAt), 1],
-          ['Minutes', (r) => num(r.minutesToArrive), 1], ['Last event', (r) => txt(r.lastEvent)],
-        ], rows, 'No pinned deliveries.');
-      }
-      case 'staff':
-        return card('Staff days', 'Sales rung up per person per day, with attendance and clocked hours', [
-          ['Date', (r) => r.date], ['Staff', (r) => txt(r.staff)], ['Mark', (r) => txt(r.mark)], ['Orders', (r) => num(r.orders), 1],
-          ['Revenue', (r) => money(r.revenuePesos), 1], ['Clocked hours', (r) => num(r.clockedHours), 1],
-          ['Per hour', (r) => money(r.revenuePerHourPesos), 1],
-        ], [...s.salesPerStaffDay].reverse(), 'No sales or attendance yet.');
       case 'counts':
         return card('Count accuracy', 'Least trusted counts first: count these next', [
           ['Product', (r) => product(r.productId)], ['Counts', (r) => num(r.counts), 1], ['Last counted', (r) => day(r.lastCountedAt), 1],
@@ -914,46 +770,28 @@
           ['Took instead', (r) => counts(r.substitutes, (id) => nameOf.get(id) || id)],
           ['First', (r) => day(r.firstAt), 1], ['Last', (r) => day(r.lastAt), 1],
         ], s.lostDemand, 'No lost sales logged.');
-      case 'prices': {
-        const last = (r) => r.changes[r.changes.length - 1];
-        return card('Price history', 'Price and cost changes, most recent first', [
-          ['Product', (r) => product(r.productId)], ['Price changes', (r) => num(r.priceChanges), 1],
-          ['Cost changes', (r) => num(r.costChanges), 1], ['Last change', (r) => day(r.lastChangeAt), 1],
-          ['Last', (r) => sub(`${escapeHtml(last(r).field)} ${money(last(r).old)} → ${money(last(r).new)}`, last(r).changePct == null ? '' : `${last(r).changePct}%`), 1],
-        ], s.priceHistory, 'No price or cost changes logged.');
-      }
     }
     return '';
   }
 
-  // Every date in the fetch window, newest first, so a note can go on a day nobody fetched.
-  function daysCard(stored) {
-    const by = new Map(stored.map((d) => [d.id, d]));
-    const todayN = dayNum(dayKey(Date.now()));
-    const rows = [];
-    for (let n = todayN + AHEAD_DAYS; n >= todayN - BACK_DAYS; n--) { const k = keyOfDay(n); rows.push(by.get(k) || { id: k }); }
-    const weekday = (k) => new Date(k + 'T00:00:00Z').toLocaleDateString('en-PH', { weekday: 'short', timeZone: 'UTC' });
-    const input = (d, f) => `<input class="text-input mini" data-day="${d.id}" data-field="${f}" value="${escapeHtml(d[f] || '')}" aria-label="${f} ${d.id}">`;
-    const filled = rows.filter((d) => d.rainMm != null).length;
-    return card('Day spine', `${filled} of ${rows.length} days have weather · Asia/Manila dates`, [
-      ['Date', (d) => sub(d.id, weekday(d.id))], ['Rain mm', (d) => num(d.rainMm), 1], ['Rain hours open', (d) => num(d.rainHoursOpen), 1],
-      ['Max °C', (d) => num(d.tempMaxC), 1], ['WMO', (d) => num(d.weatherCode), 1], ['Holiday', (d) => txt(d.holidayName)],
-      ['Payday', (d) => ((d.isPayday ?? paydayFor(d.id)) ? 'Yes' : DASH)],
-      ['Events', (d) => input(d, 'events')], ['Road closure', (d) => input(d, 'roadClosure')], ['Note', (d) => input(d, 'note')],
-      ['Source', (d) => txt(d.source)],
-    ], rows, '', '<button class="secondary-btn small" data-act="fetch-days">Fetch weather &amp; holidays</button>');
-  }
+  // One tab's card as an HTML string, for pages outside Analytics (Stock history renders
+  // lost and counts). Plain markup: its pager is the global one, no hook to run after.
+  API.card = (tab, params = Router.route().params) => {
+    const data = gather();
+    return tabCard(tab, buildInsights(data, { now: new Date().toISOString() }), data, params);
+  };
 
   function render() {
     const el = root();
     if (!el) return;
     refreshSharedState();
     const params = Router.route().params;
+    if (MOVED[params.tab]) return Router.go(MOVED[params.tab][0], '', MOVED[params.tab][1], { replace: true });   // old Buying links
     const tab = TABS[params.tab] ? params.tab : DEFAULT_TAB;
     const data = gather();
     // ponytail: rebuilt on every paint. Cache on a storage version once a year of movements
     // makes tab switching feel slow.
-    const inner = tab === 'days' ? daysCard(data.days) : tabCard(tab, buildInsights(data, { now: new Date().toISOString() }), data, params);
+    const inner = tabCard(tab, buildInsights(data, { now: new Date().toISOString() }), data, params);
     el.innerHTML = `
       <div class="view-head">
         <div class="view-title-wrap">
@@ -966,7 +804,7 @@
       <div class="dash-stack">${inner}</div>`;
   }
 
-  /* ---- the two actions ---- */
+  /* ---- the one action ---- */
   async function exportForAi() {
     refreshSharedState();
     const data = gather(), now = new Date().toISOString();
@@ -980,71 +818,17 @@
     showToast('AI export downloaded');
   }
 
-  const getJson = (url) => fetch(url).then((r) => {
-    if (!r.ok) throw new Error(`${new URL(url).hostname} ${r.status}`);
-    return r.json();
-  });
-
-  let fetching = false;
-  async function fetchDays() {
-    if (fetching) return;
-    fetching = true;
-    const btn = root().querySelector('[data-act="fetch-days"]');
-    if (btn) btn.disabled = true;
-    try {
-      const todayN = dayNum(dayKey(Date.now())), today = keyOfDay(todayN), cut = keyOfDay(todayN - ARCHIVE_LAG_DAYS);
-      const keys = missingDayKeys(loadDays(), keyOfDay(todayN - BACK_DAYS), keyOfDay(todayN + AHEAD_DAYS));
-      if (!keys.length) return showToast('Every day already has weather');
-      const store = (state.settings && state.settings.store) || {};
-      const coord = (v, d) => (v === '' || v == null || !Number.isFinite(Number(v)) ? d : Number(v));
-      const hour = (t, d) => (Number.isFinite(parseInt(t, 10)) ? parseInt(t, 10) : d);
-      const hours = { openHour: hour(store.openTime, 7), closeHour: hour(store.closeTime, 18) };
-      const q = `latitude=${coord(store.lat, STORE_AT.lat)}&longitude=${coord(store.lng, STORE_AT.lng)}`
-        + '&hourly=precipitation,temperature_2m&daily=weather_code&timezone=Asia%2FManila';
-      // The archive runs about five days behind; the forecast API covers those days and the week ahead.
-      const old = keys.filter((k) => k < cut), jobs = [];
-      if (old.length) jobs.push(getJson(`https://archive-api.open-meteo.com/v1/archive?${q}&start_date=${old[0]}&end_date=${old[old.length - 1]}`));
-      if (old.length < keys.length) jobs.push(getJson(`https://api.open-meteo.com/v1/forecast?${q}&past_days=${ARCHIVE_LAG_DAYS}&forecast_days=${AHEAD_DAYS + 1}`));
-      const years = [...new Set(keys.map((k) => k.slice(0, 4)))];
-      const [wx, hol] = await Promise.all([Promise.allSettled(jobs),
-        Promise.allSettled(years.map((y) => getJson(`https://date.nager.at/api/v3/PublicHolidays/${y}/PH`)))]);
-      const holidaysByYear = {};
-      hol.forEach((r, i) => { if (r.status === 'fulfilled' && Array.isArray(r.value)) holidaysByYear[years[i]] = r.value; });
-      const weather = wx.filter((r) => r.status === 'fulfilled').flatMap((r) => rollupWeather(r.value, hours));
-      const rows = dayRows(keys, { weather, holidaysByYear, today });
-      if (rows.length) upsertDays(rows);
-      const failed = [...wx, ...hol].filter((r) => r.status === 'rejected').length;
-      const got = rows.filter((r) => r.rainMm != null).length;
-      showToast(failed ? `Weather for ${got} days; ${failed} request${failed === 1 ? '' : 's'} failed, try again later`
-        : `Weather for ${got} days filled`);
-      if (state.view === VIEW) render();
-    } catch (err) {
-      showToast(`Could not fetch weather: ${err.message}`);
-    } finally {
-      fetching = false;
-      const b = root() && root().querySelector('[data-act="fetch-days"]');
-      if (b) b.disabled = false;
-    }
-  }
-
   /* ---- one listener per event type ---- */
   const mine = (e) => { const r = root(); return r && r.contains(e.target) ? r : null; };
 
   document.addEventListener('click', (e) => {
+    // The Bought together toggle, wherever the card is drawn (Sales).
+    const p = e.target.closest && e.target.closest('[data-pairs]');
+    if (p) return Router.setParams({ pairs: p.dataset.pairs === 'products' ? '' : p.dataset.pairs, page: '' });
     if (!mine(e)) return;
     const el = e.target.closest('button');
     if (!el) return;
-    if (el.dataset.by) return Router.setParams({ by: el.dataset.by === 'products' ? '' : el.dataset.by, page: '' });
     if (el.dataset.act === 'export-ai') return exportForAi();
-    if (el.dataset.act === 'fetch-days') return fetchDays();
-  });
-
-  // Saved on change, not re-rendered, so tabbing along a row keeps focus.
-  document.addEventListener('change', (e) => {
-    const el = e.target;
-    if (!mine(e) || !el.dataset.day || !DAY_FIELDS.includes(el.dataset.field)) return;
-    upsertDays([{ id: el.dataset.day, date: el.dataset.day, [el.dataset.field]: el.value.trim() }]);
-    showToast('Day saved');
   });
 
   window.renderInsights = render;

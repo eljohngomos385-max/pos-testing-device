@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Back office redesign lab</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<!--
+  Redesign lab, round 2: Dashboard and Sales from scratch. Standalone; loads nothing from the app.
+  Palette is the live one (bo-blocks.css / body.bo-light). The rule this round is hierarchy:
+    1. one hero per page: the headline number big, three supporting numbers small, the chart under it
+    2. then a few tiles, each answering one question
+    3. anything else waits behind a switch or a fold, never on screen by default
+  Trend chips sit right of their number, on the same line.
+-->
+<style>
+:root {
+  --bg: #FFFFFF;
+  --tile: #F9F9F9;           /* --blk-bg */
+  --line: #E1E1E1;           /* --po-line */
+  --ink: #303030;
+  --ink-strong: #1A1A1A;
+  --ink-2: #616161;
+  --ink-3: #8C8C8C;
+  --up: #047B5D;   --up-tint: #D3ECDD;
+  --down: #D72C0D; --down-tint: #F8D8D0;
+  --track: #EFEFEF;           /* --meter-track */
+  --chart-1: #2B7DE9;
+  --chart-2: #8B5CF6;
+  --grid: #ECECEC;
+  --data-1: #BCD7FA; --data-2: #75ADF2;
+  --link: #1F5199;
+  --btn-line: #D4D4D4;
+  --hover: rgba(0,0,0,0.04);
+
+  --r: 16px;       /* tiles */
+  --r-sm: 8px;     /* buttons, rows */
+  --gap: 20px;     /* between tiles */
+  --pad: 28px;     /* inside a tile */
+  --row: 48px;
+  --side-w: 224px;
+
+  --t-body: 15px; --t-label: 13px; --t-title: 17px; --t-h1: 26px;
+  --t-hero: 48px; --t-stat: 24px;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 400 var(--t-body)/1.45 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+
+/* ---- shell ---- */
+.app { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); min-height: 100vh; }
+.side {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--line); padding: 16px 12px;
+}
+.store { display: flex; align-items: center; gap: 10px; padding: 6px 8px 18px; font-weight: 600; color: var(--ink-strong); }
+.store .mark {
+  width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--ink-strong); color: var(--bg); font-size: 11px; font-weight: 700;
+}
+.nav { flex: 1; overflow-y: auto; }
+.nav h6 { margin: 14px 8px 4px; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.nav h6:first-child { margin-top: 0; }
+.nav a { display: block; padding: 6px 10px; border-radius: var(--r-sm); color: var(--ink); text-decoration: none; font-size: 14px; }
+.nav a:hover { background: var(--hover); }
+.nav a.on { background: var(--track); color: var(--ink-strong); font-weight: 600; }
+.nav .sub { display: none; margin: 2px 0 4px; }
+.nav .sub.open { display: block; }
+.nav .sub a { padding-left: 22px; color: var(--ink-2); }
+.nav .sub a.on { background: none; color: var(--ink-strong); }
+.me { padding: 12px 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.me span { color: var(--ink-2); margin-left: 6px; }
+
+.main { padding: 32px 40px 72px; }
+.page { max-width: 1120px; margin: 0 auto; display: none; }
+.page.on { display: grid; gap: var(--gap); }
+
+/* ---- head: title left, controls right ---- */
+.head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.head h1 { margin: 0 auto 0 0; font-size: var(--t-h1); font-weight: 650; letter-spacing: -0.02em; color: var(--ink-strong); }
+.seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--track); }
+.seg button {
+  height: 32px; padding: 0 14px; border: 0; border-radius: var(--r-sm); background: none;
+  font-size: 14px; font-weight: 500; color: var(--ink-2); cursor: pointer;
+}
+.seg button.on { background: var(--bg); color: var(--ink-strong); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+.btn {
+  height: 38px; padding: 0 14px; border: 1px solid var(--btn-line); border-radius: var(--r-sm);
+  background: var(--bg); font-size: 14px; font-weight: 500; cursor: pointer;
+}
+.btn:hover { background: var(--tile); }
+
+/* ---- tile ---- */
+.tile { background: var(--tile); border-radius: var(--r); padding: var(--pad); min-width: 0; }
+.tile h2 { margin: 0 0 16px; font-size: var(--t-title); font-weight: 600; color: var(--ink-strong); }
+.tile-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.tile-head h2 { margin: 0; }
+.tile-head .aside { margin-left: auto; font-size: 14px; color: var(--link); text-decoration: none; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); }
+
+/* ---- hero: one big number, three small ones, the chart ---- */
+.hero-top { display: flex; align-items: flex-end; gap: 40px; flex-wrap: wrap; margin-bottom: 28px; }
+.hero-main { margin-right: auto; }
+.label { font-size: var(--t-label); color: var(--ink-2); }
+.hero-main .line, .stat .line { display: flex; align-items: center; gap: 12px; }
+.hero-main .value { font-size: var(--t-hero); font-weight: 650; letter-spacing: -0.03em; color: var(--ink-strong); line-height: 1.1; }
+.stats { display: flex; gap: 32px; }
+.stat .value { font-size: var(--t-stat); font-weight: 600; letter-spacing: -0.01em; color: var(--ink-strong); line-height: 1.2; }
+.stat .line { gap: 8px; }
+.keys { display: flex; gap: 18px; font-size: var(--t-label); color: var(--ink-2); margin-bottom: 14px; }
+.keys span { display: inline-flex; align-items: center; gap: 6px; }
+.keys i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.plot { height: 260px; }
+.plot.sm { height: 200px; }
+.plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.plot text { font: 12px var(--font); fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+.chip {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.chip.up { background: var(--up-tint); color: var(--up); }
+.chip.down { background: var(--down-tint); color: var(--down); }
+.chip.sm { height: 20px; padding: 0 6px; font-size: 12px; }
+
+/* ---- rows ---- */
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows li { display: flex; align-items: center; gap: 12px; min-height: var(--row); border-top: 1px solid var(--line); }
+.rows li:first-child { border-top: 0; }
+.rows li > a { flex: 1; display: flex; align-items: center; gap: 12px; min-height: var(--row); color: inherit; text-decoration: none; }
+.rows a:hover .name { text-decoration: underline; }
+.rows .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rows .val { font-weight: 600; color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+.rows .val.bad { color: var(--down); }
+.rows .go { color: var(--ink-3); font-size: 18px; line-height: 1; }
+.rows .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+.rows .share { width: 44px; text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.rows .sub { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.rows li.total { font-weight: 600; color: var(--ink-strong); }
+.rows li.total, .rows li.gap { border-top-color: var(--ink-3); }
+
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: var(--t-label); font-weight: 500; color: var(--ink-2); padding: 0 0 8px; }
+td { height: var(--row); border-top: 1px solid var(--line); white-space: nowrap; }
+th + th, td + td { padding-left: 16px; }
+.r { text-align: right; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td:first-child { text-decoration: underline; }
+.void { color: var(--ink-3); text-decoration: line-through; }
+.tag { font-size: var(--t-label); font-weight: 600; margin-right: 10px; }
+.tag.refund { color: var(--down); }
+.tag.voided { color: var(--ink-2); }
+
+/* ---- targets ---- */
+.target + .target { margin-top: 22px; }
+.target .top { display: flex; justify-content: space-between; align-items: baseline; }
+.target .value { font-size: 22px; font-weight: 600; color: var(--ink-strong); margin: 2px 0 10px; font-variant-numeric: tabular-nums; }
+.target .value small { font-size: 14px; font-weight: 400; color: var(--ink-2); }
+.bar { height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 999px; background: var(--chart-1); }
+.target .note { margin-top: 8px; font-size: var(--t-label); color: var(--ink-2); }
+
+.split { display: flex; gap: 3px; height: 10px; margin: 4px 0 16px; border-radius: 999px; overflow: hidden; }
+.split i { background: var(--c); }
+.foot { margin-top: 14px; font-size: var(--t-label); color: var(--ink-2); }
+
+/* ---- the one switch on Sales ---- */
+.panel { display: none; }
+.panel.on { display: block; }
+.panel .stat { margin-bottom: 14px; }
+
+/* ---- details fold ---- */
+details.tile { padding: 0; }
+details summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px;
+  padding: 22px var(--pad); font-size: var(--t-title); font-weight: 600; color: var(--ink-strong);
+}
+details summary::-webkit-details-marker { display: none; }
+details summary .val { margin-left: auto; font-variant-numeric: tabular-nums; }
+details summary .go { color: var(--ink-3); transition: transform .15s; }
+details[open] summary .go { transform: rotate(90deg); }
+details .rows { padding: 0 var(--pad) 22px; }
+details .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; padding: 0 var(--pad) 22px; }
+details .cols .rows { padding: 0; }
+
+@media (max-width: 1000px) {
+  .two { grid-template-columns: minmax(0, 1fr); }
+  details .cols { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 800px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side { display: none; }
+  .main { padding: 20px 16px 48px; }
+  :root { --pad: 20px; --t-hero: 38px; }
+  .stats { gap: 20px; flex-wrap: wrap; }
+  .tile { overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="store"><span class="mark">EJ</span>Main Store</div>
+    <nav class="nav">
+      <h6>Main menu</h6>
+      <a href="#" data-go="dash" class="on">Dashboard</a>
+      <a href="#" data-go="sales">Sales</a>
+      <div class="sub" id="salesSub">
+        <a href="#" class="on">Summary</a>
+        <a href="#">By item</a>
+        <a href="#">By category</a>
+      </div>
+      <a href="#">Transactions</a>
+      <a href="#">Customers</a>
+      <h6>Stock</h6>
+      <a href="#">Products</a>
+      <a href="#">Price history</a>
+      <a href="#">Inventory</a>
+      <a href="#">Needs buying</a>
+      <a href="#">Purchase orders</a>
+      <a href="#">Suppliers</a>
+      <h6>Reports</h6>
+      <a href="#">Stock health</a>
+      <a href="#">Buying</a>
+      <a href="#">Customer habits</a>
+      <a href="#">Days &amp; staff</a>
+      <h6>Manage</h6>
+      <a href="#">Staff</a>
+      <a href="#">Attendance</a>
+      <a href="#">Payments</a>
+      <a href="#">Settings</a>
+    </nav>
+    <div class="me">El John<span>Owner</span></div>
+  </aside>
+
+  <main class="main">
+    <!-- ===================== DASHBOARD ===================== -->
+    <section class="page on" id="dash">
+      <div class="head">
+        <h1>Welcome back, El John</h1>
+        <div class="seg"><button class="on">Today</button><button>7 days</button><button>15 days</button><button>30 days</button></div>
+      </div>
+
+      <div class="tile">
+        <div class="hero-top">
+          <div class="hero-main">
+            <div class="label">Revenue today</div>
+            <div class="line"><span class="value num">₱48,210</span><span class="chip up" title="vs yesterday">↑ 12.4%</span></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="label">Profit</div><div class="line"><span class="value num">₱9,870</span><span class="chip sm up">↑ 8.1%</span></div></div>
+            <div class="stat"><div class="label">Transactions</div><div class="line"><span class="value num">64</span><span class="chip sm down">↓ 3.0%</span></div></div>
+            <div class="stat"><div class="label">Average basket</div><div class="line"><span class="value num">₱753</span><span class="chip sm up">↑ 15.9%</span></div></div>
+          </div>
+        </div>
+        <div class="keys"><span style="--c: var(--chart-1)"><i></i>Revenue</span><span style="--c: var(--chart-2)"><i></i>Profit</span></div>
+        <div class="plot" id="dashChart"></div>
+      </div>
+
+      <div class="two">
+        <div class="tile">
+          <h2>Targets</h2>
+          <div class="target">
+            <div class="top"><span class="label">Today</span><span class="label">88%</span></div>
+            <div class="value">₱48,210 <small>of ₱55,000</small></div>
+            <div class="bar"><i style="width: 88%"></i></div>
+            <div class="note">₱6,790 to go</div>
+          </div>
+          <div class="target">
+            <div class="top"><span class="label">September</span><span class="label">72%</span></div>
+            <div class="value">₱1,086,400 <small>of ₱1,500,000</small></div>
+            <div class="bar"><i style="width: 72%"></i></div>
+            <div class="note">On pace for ₱1,417,000</div>
+          </div>
+        </div>
+
+        <div class="tile">
+          <h2>Needs attention</h2>
+          <ul class="rows">
+            <li><a href="#"><span class="name">Out of stock</span><span class="val bad">1 item</span><span class="go">›</span></a></li>
+            <li><a href="#"><span class="name">Low stock</span><span class="val">4 items</span><span class="go">›</span></a></li>
+            <li><a href="#"><span class="name">Not yet collected</span><span class="val">₱12,760</span><span class="go">›</span></a></li>
+            <li><a href="#"><span class="name">Refunds and voids today</span><span class="val">2</span><span class="go">›</span></a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="tile">
+        <div class="tile-head"><h2>Recent transactions</h2><a class="aside" href="#">View all</a></div>
+        <table>
+          <thead><tr><th>Customer</th><th>Time</th><th>Payment</th><th class="r">Total</th></tr></thead>
+          <tbody id="recent"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== SALES ===================== -->
+    <section class="page" id="sales">
+      <div class="head">
+        <h1>Sales</h1>
+        <button class="btn">Filter</button>
+        <div class="seg"><button>Today</button><button>7 days</button><button>15 days</button><button class="on">30 days</button></div>
+        <button class="btn">Export CSV</button>
+      </div>
+
+      <div class="tile">
+        <div class="hero-top">
+          <div class="hero-main">
+            <div class="label">Revenue, last 30 days</div>
+            <div class="line"><span class="value num">₱1,412,380</span><span class="chip up" title="vs the 30 days before">↑ 6.8%</span></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="label">Gross profit</div><div class="line"><span class="value num">₱289,540</span><span class="chip sm up">↑ 4.2%</span></div></div>
+            <div class="stat"><div class="label">Transactions</div><div class="line"><span class="value num">1,874</span><span class="chip sm up">↑ 3.1%</span></div></div>
+            <div class="stat"><div class="label">Average basket</div><div class="line"><span class="value num">₱754</span><span class="chip sm up">↑ 3.6%</span></div></div>
+          </div>
+        </div>
+        <div class="keys"><span style="--c: var(--chart-1)"><i></i>Revenue</span><span style="--c: var(--chart-2)"><i></i>Gross profit</span></div>
+        <div class="plot" id="salesChart"></div>
+      </div>
+
+      <div class="tile">
+        <div class="tile-head">
+          <div class="seg" id="panelSeg">
+            <button class="on" data-panel="items">Top items</button>
+            <button data-panel="staff">Staff</button>
+            <button data-panel="pay">Payments</button>
+            <button data-panel="hours">Busy times</button>
+          </div>
+        </div>
+
+        <div class="panel on" id="items">
+          <table>
+            <thead><tr><th>Item</th><th class="r">Sold</th><th class="r">Revenue</th></tr></thead>
+            <tbody id="topItems"></tbody>
+          </table>
+          <div class="foot"><a href="#" style="color: var(--link); text-decoration: none">See all items</a></div>
+        </div>
+
+        <div class="panel" id="staff"><ul class="rows" id="staffRows"></ul></div>
+
+        <div class="panel" id="pay">
+          <div class="split" id="paySplit"></div>
+          <ul class="rows" id="payRows"></ul>
+          <div class="foot">₱276,180 on account, not yet collected</div>
+        </div>
+
+        <div class="panel" id="hours">
+          <div class="two">
+            <div><div class="label">Busiest hour</div><div class="stat"><span class="value">10 AM</span></div><div class="plot sm" id="hourChart"></div></div>
+            <div><div class="label">Busiest day</div><div class="stat"><span class="value">Saturday</span></div><div class="plot sm" id="dayChart"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <details class="tile">
+        <summary>Net sales details<span class="val">₱1,412,380</span><span class="go">›</span></summary>
+        <div class="cols">
+          <ul class="rows">
+            <li><span class="name">Gross sales</span><span class="val">₱1,468,920</span></li>
+            <li><span class="name">Discounts</span><span class="val">−₱38,760</span></li>
+            <li><span class="name">Returns (12)</span><span class="val">−₱17,780</span></li>
+            <li class="total"><span class="name">Net sales</span><span class="val">₱1,412,380</span></li>
+          </ul>
+          <ul class="rows">
+            <li><span class="name">VAT included</span><span class="val">₱151,326</span></li>
+            <li><span class="name">Before VAT</span><span class="val">₱1,261,054</span></li>
+            <li><span class="name">Margin</span><span class="val">20.5% <span class="chip sm down">↓ 0.5 pts</span></span></li>
+            <li><span class="name">Items sold</span><span class="val">6,212</span></li>
+          </ul>
+        </div>
+        <div class="foot" style="padding: 0 var(--pad) 22px; margin: 0">3 voided sales, no revenue</div>
+      </details>
+    </section>
+  </main>
+</div>
+
+<script>
+// ponytail: static sample data; the lab only has to look right, nothing is wired to the store.
+const peso = n => (n < 0 ? '−' : '') + '₱' + Math.abs(n).toLocaleString('en-PH');
+const short = n => n >= 1e6 ? '₱' + +(n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? '₱' + +(n / 1e3).toFixed(1) + 'k' : '₱' + n;
+const $ = id => document.getElementById(id);
+
+$('recent').innerHTML = [
+  ['Ramon Dizon', '10:31 AM', 'GCash', 2340],
+  ['Walk-in', '10:24 AM', 'Cash', 185],
+  ['Santos Construction', '10:18 AM', 'Account', 12760],
+  ['Liza Mercado', '9:55 AM', 'Card', -1120, 'Refund'],
+  ['Walk-in', '9:47 AM', 'Cash', 430, 'Voided'],
+].map(([c, t, p, amt, st]) => `<tr>
+  <td class="${c === 'Walk-in' ? 'muted' : ''}">${c}</td><td class="muted num">${t}</td><td>${p}</td>
+  <td class="r num">${st ? `<span class="tag ${st.toLowerCase()}">${st}</span>` : ''}<span class="${st === 'Voided' ? 'void' : ''}">${peso(amt)}</span></td></tr>`).join('');
+
+$('topItems').innerHTML = [
+  ['Portland Cement 40kg', '1,240 bags', 334800], ['Deformed Bar 10mm', '860 pc', 146200], ['Boysen Paint 4L', '180 cans', 111600],
+  ['Plywood ¾"', '96 sheets', 105600], ['GI Sheet Ga. 26', '210 pc', 92400],
+].map(([n, q, v]) => `<tr><td>${n}</td><td class="r muted num">${q}</td><td class="r num">${peso(v)}</td></tr>`).join('');
+
+$('staffRows').innerHTML = [['Maria Santos', 512300, 684], ['Joel Cruz', 438900, 571], ['Ana Lim', 301480, 402], ['El John', 159700, 217]]
+  .map(([n, v, t]) => `<li><span class="name">${n}</span><span class="sub">${t} sales</span><span class="val" style="min-width: 100px; text-align: right">${peso(v)}</span></li>`).join('');
+
+// Cash, GCash, card are money in hand (blues); account is owed (grey).
+const PAY = [['Cash', 712300, 50, 'var(--chart-1)'], ['GCash', 298400, 21, 'var(--data-2)'], ['Account', 276180, 20, 'var(--line)'], ['Card', 125500, 9, 'var(--data-1)']];
+$('paySplit').innerHTML = PAY.map(([, , s, c]) => `<i style="--c:${c}; flex:${s}"></i>`).join('');
+$('payRows').innerHTML = PAY.map(([n, v, s, c]) => `<li><span class="dot" style="--c:${c}"></span><span class="name">${n}</span><span class="val">${peso(v)}</span><span class="share">${s}%</span></li>`).join('');
+
+// ---- series ----
+const HOURS = ['7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM'];
+const today = [1200, 3400, 5200, 6100, 4800, 3900, 4200, 5600, 4700, 3800, 2900, 1600, 810];
+const byHour = [52000, 98000, 151000, 182400, 164000, 121000, 118500, 139000, 127000, 108000, 82000, 48000, 21480];
+const byDay = [196000, 188500, 201300, 194800, 222400, 256900, 152480];
+
+// 30 days ending Sep 23, 2026, shaped by weekday, scaled so it sums to the Revenue figure.
+const days = [], daily = [];
+const noise = [1.04, .96, 1.08, .93, 1.02, 1.1, .9, .97, 1.05, 1.01, .94, 1.07, .99, 1.03, .95, 1.06, 1, .92, 1.09, .98, 1.02, .96, 1.04, 1.01, .95, 1.08, .97, 1.03, 1, 1.05];
+for (let i = 29; i >= 0; i--) {
+  const d = new Date(2026, 8, 23 - i);
+  days.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+  daily.push(byDay[(d.getDay() + 6) % 7] * noise[29 - i]);
+}
+const scale = 1412380 / daily.reduce((a, b) => a + b, 0);
+daily.forEach((v, i) => daily[i] = Math.round(v * scale));
+
+function niceMax(m) {
+  const mag = 10 ** Math.floor(Math.log10(m));
+  return [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map(s => s * mag).find(s => s >= m);
+}
+
+// One line chart: straight segments, one shared axis, fade under the first series only.
+function draw(host, labels, series) {
+  const w = host.clientWidth, h = host.clientHeight;
+  if (!w) return;
+  const L = 48, R = 8, T = 8, B = 26, pw = w - L - R, ph = h - T - B;
+  const max = niceMax(Math.max(...series.flatMap(s => s.v)));
+  const x = i => L + i * pw / (labels.length - 1);
+  const y = v => T + ph - v / max * ph;
+  const id = host.id + 'Fade';
+  let out = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--chart-1)" stop-opacity=".14"/><stop offset="1" stop-color="var(--chart-1)" stop-opacity="0"/></linearGradient></defs>`;
+  [0, .5, 1].forEach(f => {
+    out += `<line x1="${L}" x2="${w - R}" y1="${y(max * f)}" y2="${y(max * f)}" stroke="var(--grid)"/>`;
+    out += `<text x="${L - 10}" y="${y(max * f) + 4}" text-anchor="end">${short(max * f)}</text>`;
+  });
+  const every = Math.ceil(labels.length / Math.max(2, Math.floor(pw / 90)));
+  labels.forEach((l, i) => { if (i % every === 0) out += `<text x="${x(i)}" y="${h - 6}" text-anchor="middle">${l}</text>`; });
+  series.forEach((s, k) => {
+    const pts = s.v.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+    if (k === 0) out += `<path d="M${pts.join('L')}L${x(s.v.length - 1)},${T + ph}L${L},${T + ph}Z" fill="url(#${id})"/>`;
+    out += `<polyline points="${pts.join(' ')}" fill="none" stroke="${s.c}" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round"/>`;
+  });
+  host.innerHTML = `<svg viewBox="0 0 ${w} ${h}">${out}</svg>`;
+}
+const profit = arr => arr.map(v => Math.round(v * 0.205));
+// draw() skips hidden hosts (width 0), so redraw everything after any show/hide.
+const charts = () => {
+  draw($('dashChart'), HOURS, [{ v: today, c: 'var(--chart-1)' }, { v: profit(today), c: 'var(--chart-2)' }]);
+  draw($('salesChart'), days, [{ v: daily, c: 'var(--chart-1)' }, { v: profit(daily), c: 'var(--chart-2)' }]);
+  draw($('hourChart'), HOURS, [{ v: byHour, c: 'var(--chart-1)' }]);
+  draw($('dayChart'), ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], [{ v: byDay, c: 'var(--chart-1)' }]);
+};
+
+document.querySelectorAll('[data-go]').forEach(a => a.addEventListener('click', e => {
+  e.preventDefault();
+  document.querySelectorAll('.page').forEach(v => v.classList.toggle('on', v.id === a.dataset.go));
+  document.querySelectorAll('[data-go]').forEach(n => n.classList.toggle('on', n === a));
+  $('salesSub').classList.toggle('open', a.dataset.go === 'sales');
+  history.replaceState(null, '', '#' + a.dataset.go);
+  charts();
+}));
+document.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  if (b.dataset.panel) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === b.dataset.panel));
+    charts();
+  }
+}));
+if (location.hash === '#sales') document.querySelector('[data-go="sales"]').click();
+addEventListener('resize', charts);
+charts();
+</script>
+</body>
+</html>

@@ -12,7 +12,7 @@ object; `HWPOS_AI.dictionaryUrl` points here.
 | Money | **Pesos** (number, 2dp) in the browser and on the wire. **Integer centavos** in D1. `worker/index.js` `TABLES[].money` converts. Never REAL. |
 | Quantity | Units of the product's `unit`, signed where it is a movement. Whole for `soldBy:'each'`, 0.01 step for `soldBy:'measure'`. D1 stores **hundredths** (`TABLES[].scaled`). |
 | Timestamps | Two formats exist, by age of the code: **epoch milliseconds** (number) on `orders.ts`, `customerLedger.ts`, `drawerCloseouts.ts`, `orders.voidedAt/refundedAt/returnedAt`; **ISO-8601 UTC string** (`2026-09-14T02:15:00.000Z`) on everything else (movements, event logs, POs, `updatedAt`, `createdAt`). `new Date(x)` reads both. |
-| The date key | **Local calendar date of the store, `YYYY-MM-DD`, Asia/Manila (UTC+8, no DST).** The pages compute it with the device's local clock (`isoDate()` in backoffice.js: `getFullYear/getMonth/getDate`), and the tills are in the Philippines; `bo-insights.js` uses a fixed UTC+8 (`TZ_MIN = 480`) so its numbers do not depend on the device. **Do not use `ts.slice(0,10)` on an ISO string** — that is the UTC date, and anything 00:00–07:59 Manila lands on the previous day. Fields that are already a local date: `days.id`, `advances.date`, `adjustments.date`, `attendance` keys, `PO.promisedAt/expectedAt` when entered as a date. |
+| The date key | **Local calendar date of the store, `YYYY-MM-DD`, Asia/Manila (UTC+8, no DST).** The pages compute it with the device's local clock (`isoDate()` in backoffice.js: `getFullYear/getMonth/getDate`), and the tills are in the Philippines; `bo-insights.js` uses a fixed UTC+8 (`TZ_MIN = 480`) so its numbers do not depend on the device. **Do not use `ts.slice(0,10)` on an ISO string** — that is the UTC date, and anything 00:00–07:59 Manila lands on the previous day. Fields that are already a local date: `adjustments.date`, `PO.promisedAt/expectedAt` when entered as a date. |
 | Weekdays | `0 = Sunday … 6 = Saturday` (JS `getDay()`), in the local date. |
 | ids | Client-generated. Prefix tells the kind: `mv_` movement, `ev_` event-log row, `pol_` PO line, `ca_` cash advance, `adj_` adjustment document, `ord_` order, `led_` ledger row, `drawer_` closeout, `cust_` customer. Seed rows use short ids (`p001`, `c-001`, `u1`). |
 | store_id | Not on client rows. The Worker stamps it from the JWT (`app_metadata.store_id`) on every write; every D1 query is scoped by it. |
@@ -35,14 +35,10 @@ object; `HWPOS_AI.dictionaryUrl` points here.
 | purchaseOrders | `hwpos.purchaseOrders.v1` | STATE | an order to a supplier, lines embedded | back office | purchase_orders + purchase_order_items (`poItems`) |
 | suppliers | `hwpos.suppliers.v1` | STATE | a supplier | back office | suppliers |
 | staff | `hwpos.staff.v1` | STATE | an employee (`pin` removed from the AI snapshot) | back office | — |
-| attendance | `hwpos.attendance.v1` | STATE (object) | `{ date: { staffName: mark } }` | back office | — |
-| advances | `hwpos.advances.v1` | EVENT* | one cash advance handed to an employee | back office | — |
 | adjustments | `hwpos.adjustments.v1` | EVENT | a saved stock count / adjustment document | back office | — (its movements sync) |
-| days | `hwpos.days.v1` | STATE (upsert) | one local date: weather, holiday, payday, events | back office | days |
 | priceLog | `hwpos.priceLog.v1` | EVENT | a price or cost changed | back office (`saveProducts`), POS product editor (`saveProduct`) | price_log |
 | lostDemand | `hwpos.lostDemand.v1` | EVENT | a customer asked and did not get it | POS | lost_demand |
 | deliveryEvents | `hwpos.deliveryEvents.v1` | EVENT | a customer delivery changed stage | POS / back office | delivery_events |
-| clock | `hwpos.clock.v1` | EVENT | an employee clocked in or out | POS / back office | clock_events |
 | supplierMessages | `hwpos.supplierMessages.v1` | EVENT | one message to or from a supplier | back office | supplier_messages |
 | decisions | `hwpos.decisions.v1` | EVENT | one automated suggestion/action and its outcome | back office | decisions |
 | settings | `hwpos.settings.v1` | STATE (object) | store config (VAT rate, store info) | POS settings | — |
@@ -60,8 +56,7 @@ object; `HWPOS_AI.dictionaryUrl` points here.
 | adjustment id | stockMovements.refId (reason count/adjustment/shrinkage/damage/writeoff from Inventory) | adjustments.id |
 | supplierId | products.supplierId / altSupplierIds, purchaseOrders.supplierId, supplierMessages.supplierId | suppliers.id |
 | customerId | orders.customer.id, customerLedger.customerId | customers.id |
-| staffId | advances.staffId, clock.staffId | staff.id |
-| staff name | orders.cashier, stockMovements.staff, adjustments.staff, event `staff`, attendance keys | staff.name (not unique) |
+| staff name | orders.cashier, stockMovements.staff, adjustments.staff, event `staff` | staff.name (not unique) |
 | date | local date of any timestamp (see Conventions) | days.id |
 
 ## products — `hwpos.products.v2` (bo-model.js `PRODUCT_DEFAULTS`)
@@ -230,60 +225,14 @@ Current stock of a product = sum of `qty` over its movements.
 
 | Field | Type | Unit | Meaning |
 |---|---|---|---|
-| id, name, email, phone | string | | |
+| id, name, email | string | | |
 | role | string | | owner\|manager\|cashier\|stock |
 | pin | string | | **credential — stripped from `HWPOS_AI.snapshot()`** |
-| salary | number | pesos/month | |
-| salaryPerDay | number | pesos/day | |
-| workDays | number | days/month | |
-| startedAt | date | | `2024-01-15` |
 | active | bool | | |
-| attendance | string | | legacy seed "today" mark; use the attendance blob |
-
-## attendance — `hwpos.attendance.v1` (bo-staff.js) · object
-
-`{ "2026-09-14": { "Aldrin S.": "late", "Joy P.": "dayoff" } }` — keys are local dates, then **staff name**.
-Marks: `present` · `late` · `halfday` · `dayoff` · `absent`. A day mark, not hours (hours: `clock`).
-
-## advances — `hwpos.advances.v1` (bo-staff.js) · EVENT*
-
-| Field | Type | Unit | Meaning |
-|---|---|---|---|
-| id | string | | `ca_…` |
-| staffId | string | | staff.id |
-| amount | number | pesos | handed over |
-| date | date | local | day of the handover; payroll month = `date.slice(0,7)` |
-| note | string | | reason |
-| createdAt | ISO | | when recorded |
-| voided | bool | | set in place when entered by mistake |
 
 ## drawerCloseouts — `hwpos.drawerCloseouts.v1` (app.js)
 
 `{ id:'drawer_…', ts: epoch ms, date, expectedCash, …drawer summary, countedCash, difference, notes, cashier }` — pesos. One per `date` (a re-close replaces it).
-
-## days — `hwpos.days.v1` (bo-model.js `upsertDays`) · STATE, upsert-merge
-
-One row per local date. Merged: writing `rainMm` never clears `roadClosure`.
-
-| Field (client → D1) | Type | Unit | Meaning | Example |
-|---|---|---|---|---|
-| id → id | date | local | the date, also the key (D1 key is store_id + id) | `2026-09-14` |
-| date → date | date | | mirror of id | |
-| rainMm → rain_mm | number | mm | rain over the day | 12.5 |
-| rainHoursOpen → rain_hours_open | number | hours | hourly readings > 0.1 mm labelled after `openTime` up to `closeTime` (defaults 7 and 18) | 3 |
-| tempMaxC → temp_max_c | number | °C | | 33 |
-| weatherCode → weather_code | int | WMO code | | 63 |
-| holidayName → holiday_name | string | | empty = not a holiday | `National Heroes Day` |
-| isPayday → is_payday | bool / 1\|0 | | the 15th or the last day of the month (bo-insights `paydayFor`) | true |
-| events → events | string | | local events (fiesta, market day) | |
-| roadClosure → road_closure | string | | | `Rizal St` |
-| note → note | string | | | |
-| source → source | string | | who filled it; `open-meteo-forecast` rows are re-fetched until the day is past | `manual`, `open-meteo`, `open-meteo-forecast` |
-
-Filled by Insights → Days → *Fill weather and holidays* (free Open-Meteo archive + forecast at
-`settings.store.lat/lng`, falling back to the delivery-map default; holidays from Nager.Date). A year whose
-holidays failed to load leaves `holidayName` untouched; a loaded year overwrites it, typed names included.
-| updatedAt → updated_at | ISO | | | |
 
 ## Event logs — every row `{ id:'ev_…', ts: ISO, staff, …fields }` (bo-model.js `makeEvent`, `appendEvents`)
 
@@ -326,14 +275,6 @@ Written by the POS order-details modal (app.js `recordDeliveryEvent`). The trip'
 the newest `ts` for that orderId. Drive time = `arrived.ts − dispatched.ts` for the same orderId. Taps
 are not ordered or de-duplicated: read them as facts, not a state machine.
 
-### clock — `hwpos.clock.v1` → `clock_events`
-
-| Field | Type | Meaning |
-|---|---|---|
-| staffId → staff_id | string | staff.id |
-| staffName → staff_name | string | name at the time |
-| event | `in`\|`out` | hours = pair in→out by staffId, same local date |
-
 ### supplierMessages — `hwpos.supplierMessages.v1` → `supplier_messages`
 
 | Field | Type | Meaning |
@@ -360,7 +301,7 @@ Written today:
 
 | kind | Where | inputs | rule | choice | accepted |
 |---|---|---|---|---|---|
-| `reorder` | Inventory → Needs buying → Create purchase order, one row per line | `onHand, reorderPoint` | `suggestQty v0` (rows written before the park say `reorderPlan v1`, with `dailyRate, sdDaily, leadDays, reviewDays, onOrder, serviceLevel, basis`) | `suggestQty, orderedQty, poId` | `orderedQty === suggestQty` |
+| `reorder` | **No longer written** (Needs buying removed 2026-09-23); old rows came from its Create purchase order, one row per line | `onHand, reorderPoint` | `suggestQty v0` (rows written before the park say `reorderPlan v1`, with `dailyRate, sdDaily, leadDays, reviewDays, onOrder, serviceLevel, basis`) | `suggestQty, orderedQty, poId` | `orderedQty === suggestQty` |
 | `reprice` | Inventory → Cost changes → Apply | `bookCost, paidCost, gapPct, price, marginMode, deliveryRefId` | `costDrift heldPrice v1` | `cost, price` | always true |
 
 `actor` and `staff` are `settings.store.cashier` (backoffice.js `actor()`, shared by every back-office event log).
@@ -408,7 +349,6 @@ Read them in the browser with `HWPOS_AI.tillEvents()`; Export for AI includes th
 | app_visible / app_hidden | — | the tab or app comes to the front or goes to the back |
 | online / offline | — | the browser's connection flips |
 | cashier_switch | from, to | the till reloads settings and the cashier setting changed (another tab, or the app coming back to the front). There is no till login. |
-| clock | event `in`\|`out`, staffName | **not written by this build**: the till has no clock. Clock rows come from Staff → Attendance (`clock` log). |
 | cart_start | — | the first item goes into an empty cart |
 | item_add | productId, qty, unitPrice, stockOnHand, via `scan`\|`search`\|`tile`\|`variant`\|`other` | a line is added. `keypad` is reserved; the till has no PLU keypad. |
 | item_qty | productId, from, to | a line's quantity is changed |
@@ -467,14 +407,14 @@ Computed on read by `bo-insights.js` (`HWPOS_INSIGHTS.buildInsights(collections,
 | Supplier lead time & reliability | purchaseOrders | `(sentAt‖orderedAt) → receivedAt` in days, mean + spread; vs `quotedLeadDays` and `promisedAt` |
 | Supplier fill rate | PO lines | Σ receivedQty ÷ Σ qty, with shortReason |
 | Demand rate & variability | stockMovements (sale − return) | units per in-stock day, excluding stockout days; std-dev |
-| Reorder plan | demand, lead time, stock, supplier orderDays/minOrder | reorder point = demand × lead + safety. **Parked**: Insights only; Needs buying stays on `suggestQty` until the capture layer has data |
+| Reorder plan | demand, lead time, stock, supplier orderDays/minOrder | reorder point = demand × lead + safety. **Not shown anywhere** (2026-09-23, owner: no forecasting in the POS); kept only for Export for AI. POs use `suggestQty` via Add low stock items |
 | Cash asleep | products, movements | stock × cost × days since last sale, ranked |
 | Sell-through per delivery | delivery movements vs later sales | received qty on a date → days to clear |
 | Dead stock | movements, products | no sale in 90 days, peso value at cost |
 | Customer reorder cycles | orders.customer.id | median days between orders; overdue list |
 | Basket affinity | order items | products co-occurring on receipts (support / lift) |
 | Delivery points | orders.deliveryLocation | lat/lng of delivery orders, count and value |
-| Sales per staff day | orders.cashier × attendance (× clock) | revenue per person per local date |
+| Sales per person | orders.cashier | revenue, sales, voids, refunds per name, last 30 days (Staff page) |
 | Count accuracy | count movements | per product `|counted − expected| ÷ expected` over time → confidence |
 | Current stock, customer balance, low-stock, deliveries coming | movements / ledger / POs | see docs/architecture.md "Derived, never stored" |
 
@@ -488,15 +428,13 @@ Computed on read by `bo-insights.js` (`HWPOS_INSIGHTS.buildInsights(collections,
   before 08:00 local roll into the previous day there. Use local dates for joins to `days`.
 - **Orders are mutated locally on void/refund** (`saveOrderMutation` flips `status`, sets
   `voidedAt`/`refundedAt`); only a `return` is a new row. The Worker is append-only, so a void made
-  after the sale synced does not reach D1 as it stands. Advances set `voided` in place too.
-- **Attendance is keyed by staff name**, a day mark with no hours; rename a person and history splits.
-  Real hours come only from `clock`, which starts empty.
+  after the sale synced does not reach D1 as it stands.
+- **Sales per person join by cashier name**; rename a person and their history splits.
 - **Back-office event `staff` is the store's cashier setting**, not whoever is at the screen, until the
   back office has a login. POS rows (`lostDemand`, `deliveryEvents`) use the till's cashier setting.
 - **Price history before the log** exists only as order-line `price`/`cost` and movement `unitCost`.
 - **Movement `expected`/`counted`** exist only on counts written after 2026-09-14; older counts
   have `qty` only (variance, not accuracy). **`balanceAfter`** is likewise null on movements from
   builds before it; replay the running sum for those.
-- **Not yet synced to D1**: staff, attendance, advances, adjustments, drawerCloseouts, settings, folders.
+- **Not yet synced to D1**: staff, adjustments, drawerCloseouts, settings, folders.
 - **ids are `prefix_time+random`**, not UUIDs; unique enough per store, not a global guarantee.
-- **`days` starts empty.** Weather, holidays and paydays are only as complete as whoever fills them.

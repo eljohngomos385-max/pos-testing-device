@@ -84,8 +84,7 @@ over the `TABLES` map, not a handler per collection; adding a table is one entry
   500 with the parser's message.
 - **`?since=` pages by `received_at`, the SERVER clock — never the client's own stamp.** Every
   table (`purchase_orders` excepted, see below) carries `received_at text not null default
-  (strftime(...))`, set fresh on every insert and bumped by hand on every UPDATE (PATCH, the
-  `days` upsert). A tablet that uploads an old row late is still seen by anyone who already
+  (strftime(...))`, set fresh on every insert and bumped by hand on every UPDATE (PATCH). A tablet that uploads an old row late is still seen by anyone who already
   pulled past that row's own `ts`/`updated_at`, because `received_at` only moves forward.
   Ordered `received_at, id`, capped `limit 5000` per request; a caller that gets a full page pages
   with `&after=<lastRow.id>`, resending the *last row's own* `received_at` as `since` — the query

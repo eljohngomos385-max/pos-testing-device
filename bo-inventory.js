@@ -6,8 +6,16 @@
 (function () {
   const VIEW = 'inventory';
   const root = () => document.querySelector(`.view[data-view="${VIEW}"]`);
-  const TABS = { stock: 'On hand', movements: 'Movement history', reorder: 'Needs buying', cost: 'Cost changes', prices: 'Price history' };
-  (globalThis.HWPOS_SUBNAV = globalThis.HWPOS_SUBNAV || {}).inventory = { param: 'tab', def: 'stock', items: Object.entries(TABS) };
+  // Stock history is one page (owner, 2026-09-23): KPIs, the latest movements and price changes,
+  // and a rail of lost demand and shelf checks. Each block's View all opens its full page here,
+  // not in the sidebar. The two insight pages come from bo-insights.js.
+  const TABS = { overview: 'Stock history', movements: 'Movements', prices: 'Price changes',
+    lost: 'Lost demand', counts: 'Shelf check' };
+  const INSIGHT_TABS = ['lost', 'counts'];
+  const FULL_PAGES = ['movements', 'prices', 'lost', 'counts'];   // these get "← Stock history"
+  // One sidebar entry; a full page falls back to def, so Stock history stays lit.
+  (globalThis.HWPOS_SUBNAV = globalThis.HWPOS_SUBNAV || {}).inventory =
+    { param: 'tab', def: 'overview', items: [['overview', TABS.overview]] };
 
   /* ================= pure logic (exported for scripts/inventory-check.mjs) ============= */
 
@@ -158,10 +166,10 @@
     return rows.sort((a, b) => mag(b) - mag(a));
   }
 
-  /* ---- Needs buying: the typed danger level and suggestQty ----
-     ponytail: reorderPlan (bo-insights.js) is parked until the till event stream has real
-     demand data under it. Every product at or below its reorderPoint, grouped by supplier,
-     most urgent first. */
+  /* ---- Low stock by supplier, for "Add low stock items" on a purchase order ----
+     Every product at or below its reorderPoint, grouped by supplier, most urgent first.
+     No forecast on purpose (owner, 2026-09-23): the POS knows sales and stock, not promos,
+     seasons or cash, so the owner's reorder point is the rule and suggestQty tops it up. */
   function reorderGroups(products) {
     const groups = new Map();
     products.filter(isLow)
@@ -174,24 +182,9 @@
     return groups;
   }
 
-  // Decision log: what the rule saw, what it said, what the person actually ordered.
-  function reorderDecisions(lines, byId, poId, actor) {
-    return lines.map((l) => {
-      const p = byId.get(l.productId) || {};
-      const suggested = suggestQty(p);
-      return makeEvent({
-        kind: 'reorder', subjectId: l.productId,
-        inputs: { onHand: Number(p.stock) || 0, reorderPoint: Number(p.reorderPoint) || 0 },
-        rule: 'suggestQty v0',
-        choice: { suggestQty: suggested, orderedQty: l.qty, poId },
-        accepted: l.qty === suggested, actor,
-      }, actor);
-    });
-  }
-
   const API = { r2, ceilStep, countDelta, suggestQty, runningBalances, urgency,
     stockMovement, documentMovements, lastPaid, heldPrice, costDrift,
-    reorderGroups, reorderDecisions };
+    reorderGroups };
   if (typeof module === 'object' && module.exports) { module.exports = API; return; }
 
   /* ================================ formatting ======================================== */
@@ -208,30 +201,6 @@
   const fmtSigned = (p, n) => (n > 0 ? '+' : n < 0 ? '−' : '') + fmtQty(p, Math.abs(n));
 
   const hay = (p) => `${p.name} ${p.sku || ''} ${p.barcode || ''} ${folderName(p.folder)}`.toLowerCase();
-
-  // statusOf()'s tones, in the order the Stock level filter lists them.
-  const STOCK_LEVELS = [['ok', 'In stock'], ['warn', 'Low'], ['danger', 'Out of stock']];
-
-  const statusOf = (p) => (Number(p.stock) <= 0 ? ['danger', 'Out of stock']
-    : isLow(p) ? ['warn', 'Low'] : ['ok', 'In stock']);
-
-  /* ---- How fast it leaves the shelf ----
-     "47 on hand" is not an answer on its own — 47 of something that sells 40 a week is
-     nearly out, 47 of something that sells one a month is nine months of dead money.
-     Sold in the last 30 days is the rate, and it comes out of the movement log that is
-     already loaded. Days of cover was dropped: it is this number divided by itself, blank
-     on everything that has not sold in a month, and Needs buying is where that decision
-     actually gets made. */
-  const SOLD_WINDOW = 30;
-
-  function sold30(moves) {
-    const from = Date.now() - SOLD_WINDOW * 86400000;
-    let n = 0;
-    for (const m of moves || []) {
-      if (m.reason === 'sale' && Date.parse(m.ts) >= from) n += Math.abs(Number(m.qty) || 0);
-    }
-    return n;
-  }
 
   /* Reason and Mode asked the same question twice - "Adjustment" plus "Set to count"
      could disagree with each other, and most of the 15 combinations were nonsense. One
@@ -268,15 +237,13 @@
 
   /* ================================ page state ======================================== */
 
-  // Not filters — a transient panel and per-row overrides the URL has no business carrying.
-  const orderQty = new Map();
   // ponytail: the unsaved document lives in memory only, so navigating away loses it.
   // Persist it to hwpos.adjustments.v1 as a `draft` status if that ever bites.
   let draft = null;
 
   function collect() {
     const params = Router.route().params;
-    const tab = TABS[params.tab] ? params.tab : 'stock';
+    const tab = TABS[params.tab] ? params.tab : 'overview';
     const byId = new Map(state.products.map((p) => [p.id, p]));
     const movements = loadMovements();
     const { byProduct, balance } = runningBalances(movements, (pid) => (byId.get(pid) || {}).stock || 0);
@@ -286,9 +253,8 @@
       params, tab, movements, byId, byProduct, balance,
       docId: detail === 'adjust' ? 'new' : detail.startsWith('adjust/') ? detail.slice(7) : '',
       q: (state.invQuery || '').trim().toLowerCase(),
-      // ?cat= and ?level= are comma lists (multi-pick); the single-select tabs just send one.
+      // ?cat= is a comma list (Products' multi-pick writes one); the select here sends one.
       cats: (params.cat || '').split(',').filter(Boolean),
-      levels: (params.level || '').split(',').filter(Boolean),
     };
   }
 
@@ -311,30 +277,29 @@
          <input type="date" class="bo-date" id="invFrom" aria-label="From date">
          <input type="date" class="bo-date" id="invTo" aria-label="To date">
          <button class="secondary-btn small" data-act="export">Export CSV</button>`
-      : d.tab === 'stock' ? ''
       : `<select class="bo-select" id="invCat">${cats}</select>`;
+    // The insight cards (lost, counts) read no search or category, so they get neither.
     const search = `<input class="search-input small q-input" id="invSearch" type="search"
                  placeholder="Search products…" autocomplete="off">`;
+    const insight = INSIGHT_TABS.includes(d.tab);
+    const back = FULL_PAGES.includes(d.tab)
+      ? `<a class="link-btn" href="${Router.href(VIEW, '', {})}">&larr; Stock history</a>` : '';
+    const periods = `<div class="seg sh-period">${PERIOD_LIST.map(([k, label]) =>
+      `<a class="seg-btn" data-p="${k}" href="${Router.href(VIEW, '', { period: k === PERIOD_DEF ? '' : k })}">${label}</a>`).join('')}</div>`;
 
     return `
       <div class="view-head">
         <div class="view-title-wrap">
+          ${back}
           <h1 id="invTitle"></h1>
         </div>
         <div class="view-actions">
-          ${d.tab === 'stock' ? '' : search}
-          ${filters}
+          ${d.tab === 'overview' ? periods : insight ? '' : search + filters}
           <button class="secondary-btn small" data-act="receive">Receive stock</button>
           <button class="primary-btn small" data-act="doc-new">New adjustment</button>
         </div>
       </div>
-      <div class="dash-stack" id="invBody">${d.tab === 'stock'
-        // On hand: the filter row sits between the KPIs and the table, and outlives both
-        // re-renders so the search box keeps focus while typing.
-        ? `<div id="invKpis"></div>
-           <div class="tx-filters">${search}<span class="inv-picks" id="invPicks"></span></div>
-           <div id="invMain"></div>` : ''}</div>
-      <dialog id="adjustDlg" class="bo-dialog adj-dlg"></dialog>`;
+      <div class="dash-stack" id="invBody"></div>`;
   }
 
   function card(label, sub, inner, right = '', pager = '') {
@@ -350,66 +315,6 @@
   }
 
   const empty = (msg) => `<tr><td colspan="12" class="bo-empty">${escapeHtml(msg)}</td></tr>`;
-
-  /* ================================ tab 1 — on hand =================================== */
-
-  function stockTab(d) {
-    const list = visible(d).filter((p) => !d.levels.length || d.levels.includes(statusOf(p)[0])).sort((a, b) =>
-      urgency(a) - urgency(b) ||
-      (a.stock / (a.reorderPoint || 1)) - (b.stock / (b.reorderPoint || 1)));
-
-    let units = 0, value = 0, low = 0, out = 0;
-    list.forEach((p) => {
-      units += Number(p.stock) || 0;
-      value += stockValue(p);
-      if (Number(p.stock) <= 0) out++; else if (isLow(p)) low++;
-    });
-
-    const kpis = `<div class="kpi-row">
-      ${kpi('SKUs tracked', list.length.toLocaleString('en-PH'), d.q || d.cats.length || d.levels.length ? 'matching filter' : 'active items')}
-      ${kpi('Total units', Math.round(units).toLocaleString('en-PH'), 'on the shelf')}
-      ${kpi('Stock value at cost', pesoShort(value), 'what it cost us', 'flat', 'what it cost us')}
-      ${kpi('Low stock', String(low), 'at or below danger level', low ? 'down' : 'flat')}
-      ${kpi('Out of stock', String(out), 'nothing on hand', out ? 'down' : 'flat')}
-    </div>`;
-
-    // Incoming = ordered on a PO that is out (ordered/partial) and not yet received. Derived, never stored.
-    const incoming = new Map();
-    loadPurchaseOrders().filter((po) => PO_INCOMING.includes(po.status)).forEach((po) =>
-      (po.items || []).forEach((l) => incoming.set(l.productId, (incoming.get(l.productId) || 0) +
-        Math.max(0, (Number(l.qty) || 0) - (Number(l.receivedQty) || 0)))));
-
-    const pg = paginate(list, d.params.page);
-    const rows = pg.rows.map((p) => {
-      const [tone, label] = statusOf(p);
-      const sold = sold30(d.byProduct.get(p.id));
-      const inc = incoming.get(p.id) || 0;
-      return `
-        <tr>
-          <td><strong>${escapeHtml(p.name)}</strong></td>
-          <td class="inv-cat">${escapeHtml(folderName(p.folder))}</td>
-          <td class="num"><strong>${fmtQty(p, p.stock)}</strong> ${escapeHtml(p.unit || '')}</td>
-          <td class="num${inc ? '' : ' inv-soft'}">${inc ? fmtQty(p, inc) : '—'}</td>
-          <td class="num inv-soft">${sold ? fmtQty(p, sold) : '—'}</td>
-          <td><span class="status-pill ${tone}">${label}</span></td>
-          <td class="num"><button class="secondary-btn small" data-adjust-open="${escapeHtml(p.id)}">Adjust</button></td>
-        </tr>
-`;
-    }).join('') || empty(d.q || d.cats.length || d.levels.length ? 'No products match those filters.' : 'No products yet — add them in Products.');
-
-    // What it is, where it belongs, how many, how fast it goes, is that a problem, fix
-    // it. SKU, danger level and value at cost stayed off — the rest lives in Needs
-    // buying and Movement history.
-    return [kpis, card('On hand', `${list.length} item${list.length === 1 ? '' : 's'}`, `
-      <table class="data-table inv-stock">
-        <thead><tr>
-          <th>Product</th><th class="inv-cat">Category</th>
-          <th class="num">On hand</th><th class="num" title="Ordered on open purchase orders, not received yet">Incoming</th>
-          <th class="num">Sold 30d</th><th>Status</th><th class="num">Adjust</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`, '', pagerHtml(pg))];
-  }
 
   function adjustPanel(p, last) {
     const events = ADJ_EVENTS.map(([v, label]) =>
@@ -448,18 +353,19 @@
   }
 
   // The form is the whole point of the popup, so it is built and shown in one step.
+  // #adjustDlg sits at body level so any page can open it: backoffice.js wires every
+  // [data-adjust-open] in the document to this.
   function openAdjustDialog(id) {
-    const d = collect();
-    const p = d.byId.get(id);
-    const dlg = root().querySelector('#adjustDlg');
+    const p = state.products.find((x) => x.id === id);
+    const dlg = document.getElementById('adjustDlg');
     if (!p || !dlg) return;
-    dlg.innerHTML = adjustPanel(p, (d.byProduct.get(id) || []).slice(-1)[0]);
+    dlg.innerHTML = adjustPanel(p, loadMovements().findLast((m) => m.productId === id));
     dlg.showModal();
     const first = dlg.querySelector('select, input');
     if (first) first.focus();
   }
 
-  const closeAdjustDialog = () => root()?.querySelector('#adjustDlg')?.close();
+  const closeAdjustDialog = () => document.getElementById('adjustDlg')?.close();
 
   /* ============================ tab 2 — movement history ============================== */
 
@@ -540,14 +446,13 @@
     downloadCsv(`stock-movements-${isoDate(Date.now())}.csv`, rows);
   }
 
-  /* ============================== tab 3 — needs buying ================================ */
+  /* ============================== cost changes ========================================= */
 
   /* One button per row, and no "apply all". Repricing is a decision per product -- some
      rises get absorbed to hold a customer, some get passed on the same day -- and a bulk
      button would make that decision for all of them at once, silently. The row is a link
      into the product editor for anything that needs more thought than this. */
-  function costTab(d) {
-    const rows = costDrift(visible(d), d.movements, loadPurchaseOrders());
+  function costTab(d, rows) {
     if (!rows.length) {
       return `<section class="bo-card blk-empty"><div class="bo-card-head"><span class="bo-card-label">Cost changes</span></div>
         <div class="bo-card-inset"><div class="bo-empty">${d.q || d.cats.length
@@ -592,56 +497,6 @@
       </table>`);
   }
 
-  function reorderTab(d) {
-    const groups = reorderGroups(visible(d));
-    if (!groups.size) {
-      return `<section class="bo-card blk-empty"><div class="bo-card-head"><span class="bo-card-label">Needs buying</span></div>
-        <div class="bo-card-inset"><div class="bo-empty">Nothing is at or below its reorder point.</div></div></section>`;
-    }
-    const names = new Map(loadSuppliers().map((s) => [s.id, s.name]));
-    let grand = 0;
-
-    const cards = Array.from(groups, ([supplierId, items]) => {
-      let total = 0;
-      const rows = items.map((p) => {
-        const qty = orderQty.has(p.id) ? orderQty.get(p.id) : suggestQty(p);
-        const line = r2((Number(p.cost) || 0) * qty);
-        total = r2(total + line);
-        return `
-          <tr>
-            <td><strong>${escapeHtml(p.name)}</strong></td>
-            <td class="inv-cat">${escapeHtml(folderName(p.folder))}</td>
-            <td class="num">${fmtQty(p, p.stock)}</td>
-            <td class="num">${fmtQty(p, p.reorderPoint)}</td>
-            <td class="num inv-soft">${fmtQty(p, suggestQty(p))}</td>
-            <td class="num"><input class="inv-qty" type="number" min="0" step="${stepFor(p)}"
-                 value="${qty}" data-qty="${escapeHtml(p.id)}" aria-label="Order quantity"></td>
-            <td class="num">${peso(p.cost)}</td>
-            <td class="num"><strong>${peso(line)}</strong></td>
-          </tr>`;
-      }).join('');
-      grand = r2(grand + total);
-
-      return card(names.get(supplierId) || 'No supplier',
-        `${items.length} item${items.length === 1 ? '' : 's'} · ${peso(total)}`, `
-        <table class="data-table inv-buy">
-          <thead><tr>
-            <th>Product</th><th class="inv-cat">Category</th>
-            <th class="num">On hand</th><th class="num">Reorder at</th><th class="num">Suggested</th>
-            <th class="num">Order qty</th><th class="num">Cost</th><th class="num">Line cost</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-          <tfoot><tr><td colspan="7">Total to buy</td><td class="num"><strong>${peso(total)}</strong></td></tr></tfoot>
-        </table>`,
-        `<button class="primary-btn small" data-act="po" data-supplier="${escapeHtml(supplierId)}">Create purchase order</button>`);
-    }).join('');
-
-    // One supplier already has its total in the card foot; only a split list needs a sum.
-    return cards + (groups.size > 1
-      ? `<div class="bo-card inv-grand"><span>Total to buy, all suppliers</span><strong class="num">${peso(grand)}</strong></div>`
-      : '');
-  }
-
   /* ======================= the adjustment document (its own URL) ====================== */
 
   function newDraft() {
@@ -657,7 +512,7 @@
   const docHead = (title, sub, actions) => `
     <div class="view-head">
       <div class="view-title-wrap">
-        <a class="link-btn" href="${Router.href(VIEW, '', {})}">&larr; Inventory</a>
+        <a class="link-btn" href="${Router.href(VIEW, '', {})}">&larr; Stock history</a>
         <h1>${escapeHtml(title)}</h1>
         ${sub ? `<span class="muted">${escapeHtml(sub)}</span>` : ''}
       </div>
@@ -808,7 +663,15 @@
   /* Every price and cost change, newest first. Green = good for margin (price up, cost down). Read-only: saveProducts (back office) and the
      POS already diff each save into priceLog, so this page records nothing. */
   const SOURCE_LABEL = { pos: 'POS', backoffice: 'Back office' };
+  // Price changes = the price log plus Cost changes (with its Apply). The cost card leads
+  // while it has something to act on, else it sits under the log.
   function pricesTab(d) {
+    const drift = costDrift(visible(d), d.movements, loadPurchaseOrders());
+    const cost = costTab(d, drift), log = priceLogCard(d);
+    return drift.length ? cost + log : log + cost;
+  }
+
+  function priceLogCard(d) {
     const shown = new Set(visible(d).map((p) => p.id));
     const all = loadEvents('priceLog').filter((e) => shown.has(e.productId))
       .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
@@ -839,10 +702,126 @@
       </table>`, '', pagerHtml(pg));
   }
 
+  /* ============================ Stock history — the overview ========================== */
+
+  // Today runs from midnight and compares with all of yesterday; 7 and 30 are rolling windows
+  // against the same length before them.
+  // An array, not an object: numeric keys would sort ahead of 'today'.
+  const PERIOD_LIST = [['today', 'Today', 'yesterday'], ['7', '7 days', 'previous 7 days'], ['30', '30 days', 'previous 30 days']];
+  const PERIODS = Object.fromEntries(PERIOD_LIST.map(([k, ...rest]) => [k, rest]));
+  const PERIOD_DEF = '7';
+  const periodOf = (params) => (PERIODS[params.period] ? String(params.period) : PERIOD_DEF);
+  function periodWindows(key, now = Date.now()) {
+    if (key === 'today') {
+      const mid = new Date(now).setHours(0, 0, 0, 0);
+      return { cur: [mid, now + 1], prev: [mid - 864e5, mid] };
+    }
+    const span = Number(key) * 864e5;
+    return { cur: [now - span, now + 1], prev: [now - 2 * span, now - span] };
+  }
+  const inWin = (t, [a, b]) => { const ms = new Date(t).getTime(); return ms >= a && ms < b; };
+
+  // Stock in / out at cost, in centavos while adding. Counts stay out: a shelf check corrects
+  // the number, it is not stock arriving or leaving.
+  function flow(movements, byId, win) {
+    let inC = 0, outC = 0, checks = 0;
+    for (const m of movements) {
+      if (!inWin(m.happenedOn || m.ts, win)) continue;
+      if (m.reason === 'count') { if (Number(m.qty)) checks++; continue; }
+      const cost = m.unitCost ?? (byId.get(m.productId) || {}).cost ?? 0;
+      const c = Math.round(Math.abs(Number(m.qty) || 0) * Number(cost) * 100);
+      if (m.qty > 0) inC += c; else outC += c;
+    }
+    return { in: inC / 100, out: outC / 100, checks };
+  }
+
+  const viewAll = (tab) => `<a class="link-btn view-all" href="${Router.href(VIEW, '', { tab })}">View all ›</a>`;
+  const railMore = (tab) => `<a class="rail-more" href="${Router.href(VIEW, '', { tab })}">View all ›</a>`;
+  const productLink = (d, id, text = '') => {
+    const p = d.byId.get(id);
+    return p ? `<a class="link-btn" href="${Router.href('products', id)}">${escapeHtml(p.name)}</a>` : escapeHtml(text || id || '—');
+  };
+
+  function overviewTab(d) {
+    const key = periodOf(d.params), cmp = PERIODS[key][1], w = periodWindows(key);
+    const priceLog = loadEvents('priceLog'), lost = loadEvents('lostDemand');
+    const cur = flow(d.movements, d.byId, w.cur), prev = flow(d.movements, d.byId, w.prev);
+    const n = (list, win) => list.filter((e) => inWin(e.ts, win)).length;
+    // More lost requests or more shelf corrections is bad news, so those chips read the other way.
+    const flip = (x) => ({ ...x, tone: x.tone === 'up' ? 'down' : x.tone === 'down' ? 'up' : x.tone });
+    const cell = (label, value, c, p, bad) =>
+      statCell({ label, value, delta: bad ? flip(deltaOf(c, p, cmp)) : deltaOf(c, p, cmp) });
+    const lostNow = n(lost, w.cur), pricesNow = n(priceLog, w.cur);
+    const kpis = `<section class="bo-card sh-kpi-card"><div class="stat-grid show-delta sh-kpis">${[
+      cell('Stock added', pesoShort(cur.in), cur.in, prev.in),
+      cell('Stock out', pesoShort(cur.out), cur.out, prev.out),
+      cell('Price changes', pricesNow.toLocaleString('en-PH'), pricesNow, n(priceLog, w.prev)),
+      cell('Lost requests', lostNow.toLocaleString('en-PH'), lostNow, n(lost, w.prev), true),
+      cell('Shelf changes', cur.checks.toLocaleString('en-PH'), cur.checks, prev.checks, true),
+    ].join('')}</div></section>`;
+
+    // The latest 10 of each, whatever the period: the KPIs say how much, these say what.
+    const moves = d.movements.slice(-10).reverse().map((m) => {
+      const p = d.byId.get(m.productId), bal = d.balance.get(m.id);
+      return `<tr>
+        <td class="tx-time">${escapeHtml(txTime(m.ts))}</td>
+        <td>${productLink(d, m.productId)}</td>
+        <td><span class="status-pill ${REASON_TONE[m.reason] || 'muted'}">${escapeHtml(STOCK_REASONS[m.reason] || m.reason)}</span></td>
+        <td class="num ${m.qty >= 0 ? 'ok' : 'danger'}">${fmtSigned(p, m.qty)}</td>
+        <td class="num">${bal == null ? '—' : fmtQty(p, bal)}</td></tr>`;
+    }).join('') || empty('No stock movements yet.');
+    const moveCard = card('Movements', 'latest 10', `<table class="data-table">
+      <thead><tr><th>When</th><th>Product</th><th>Reason</th><th class="num">Qty</th><th class="num">Balance</th></tr></thead>
+      <tbody>${moves}</tbody></table>`, viewAll('movements'));
+
+    const drift = costDrift(visible(d), d.movements, loadPurchaseOrders()).length;
+    const prices = priceLog.slice().sort((a, b) => String(b.ts).localeCompare(String(a.ts))).slice(0, 10).map((e) => {
+      const pct = e.old ? ((e.new - e.old) / e.old) * 100 : null;
+      return `<tr>
+        <td class="tx-time">${escapeHtml(txTime(e.ts))}</td>
+        <td>${productLink(d, e.productId)}</td>
+        <td>${e.field === 'cost' ? 'Cost' : 'Price'}</td>
+        <td class="num"><span class="inv-soft">${e.old == null ? '—' : peso(e.old)} →</span> <strong>${peso(e.new)}</strong></td>
+        <td class="num">${pct == null ? '—' : `<span class="trend-plain ${(pct > 0) === (e.field !== 'cost') ? 'up' : 'down'}">${pct > 0 ? '↑' : '↓'} ${Math.abs(pct).toFixed(1)}%</span>`}</td></tr>`;
+    }).join('') || empty('No price or cost changes yet.');
+    const review = drift ? `<a class="link-btn sh-review" href="${Router.href(VIEW, '', { tab: 'prices' })}">${drift} cost${drift === 1 ? '' : 's'} to review</a>` : '';
+    const priceCard = card('Price changes', 'latest 10', `<table class="data-table">
+      <thead><tr><th>When</th><th>Product</th><th>What</th><th class="num">From → to</th><th class="num">Change</th></tr></thead>
+      <tbody>${prices}</tbody></table>`, review + viewAll('prices'));
+
+    // Rail: the dashboard's breakdown lists. Lost demand ranks what was asked for in the period.
+    const asked = HWPOS_INSIGHTS.lostDemandSummary(lost.filter((e) => inWin(e.ts, w.cur)));
+    const lostCard = `<section class="bo-card blk-kpi">${railMore('lost')}
+      ${railHead('Lost demand', lostNow.toLocaleString('en-PH'), '<span class="kpi-note">requests</span>')}
+      <div class="bd-rows">${asked.slice(0, 5).map((r) => bdRow(productLink(d, r.productId, r.text), `asked ${r.requests}×`)).join('')
+        || bdRow('Nobody asked for anything you were out of')}</div></section>`;
+
+    // Shelf check: the five latest counts that changed the number, "system → shelf".
+    const counts = d.movements.filter((m) => m.reason === 'count' && Number(m.qty)).slice(-5).reverse();
+    const shelfCard = `<section class="bo-card blk-kpi">${railMore('counts')}
+      ${railHead('Shelf check', cur.checks.toLocaleString('en-PH'), '<span class="kpi-note">changes</span>')}
+      <div class="bd-rows">${counts.map((m) => {
+        const p = d.byId.get(m.productId);
+        const was = m.expected == null ? '' : `${fmtQty(p, m.expected)} → ${fmtQty(p, m.counted)}`;
+        return bdRow(productLink(d, m.productId), was, fmtSigned(p, m.qty), m.qty < 0 ? 'down' : 'up');
+      }).join('') || bdRow('No shelf counts changed the number')}</div></section>`;
+
+    return `${kpis}<div class="sh-grid"><div class="dash-main">${moveCard}${priceCard}</div>
+      <div class="dash-rail">${lostCard}${shelfCard}</div></div>`;
+  }
+
   function render() {
     const r = root();
     if (!r) return;
     const d = collect();
+    // Old links: On hand is Products' stock view now, Cost changes lives on Price changes.
+    if (!d.docId && d.params.tab === 'stock') {
+      const { q, cat, level } = d.params;
+      return Router.go('products', '', { view: 'stock', q, cat, level }, { replace: true });
+    }
+    if (!d.docId && d.params.tab === 'cost') return Router.setParams({ tab: 'prices' });
+    // Needs buying was folded away: what is low lives in Products' stock view.
+    if (!d.docId && d.params.tab === 'reorder') return Router.go('products', '', { view: 'stock', level: 'out,low' }, { replace: true });
     // A record has its own URL — clicking through never opens a modal.
     if (d.docId) {
       r.dataset.tab = '';
@@ -856,13 +835,9 @@
       r.dataset.tab = d.tab;
     }
     syncControls(d);
-    if (d.tab === 'stock') {
-      [r.querySelector('#invKpis').innerHTML, r.querySelector('#invMain').innerHTML] = stockTab(d);
-      return;
-    }
     r.querySelector('#invBody').innerHTML =
-      d.tab === 'movements' ? movementsTab(d) : d.tab === 'reorder' ? reorderTab(d)
-      : d.tab === 'cost' ? costTab(d) : pricesTab(d);
+      d.tab === 'overview' ? overviewTab(d) : d.tab === 'movements' ? movementsTab(d)
+      : d.tab === 'prices' ? pricesTab(d) : HWPOS_INSIGHTS.card(d.tab, d.params);
   }
 
   function syncControls(d) {
@@ -872,24 +847,15 @@
       if (el && el !== document.activeElement && el.value !== value) el.value = value;
     };
     set('#invSearch', state.invQuery || '');
-    // On hand's multi-picks: redrawn each render (the search box beside them stays put),
-    // reopening whichever menu was open so a tick doesn't snap it shut.
-    const picks = r.querySelector('#invPicks');
-    if (picks) {
-      const open = picks.querySelector('.ms-pick[open]');
-      const cats = state.folders.filter((f) => f.id !== 'all').map((f) => [f.id, f.name]);
-      picks.innerHTML = multiPick('cat', 'All categories', 'No categories yet', 'categories', cats, d.cats)
-        + multiPick('level', 'All stock levels', '', 'stock levels', STOCK_LEVELS, d.levels);
-      if (open) picks.querySelector(`.ms-pick[data-ms="${open.dataset.ms}"]`).open = true;
-    }
     set('#invCat', d.cats[0] || '');
     set('#invReason', d.params.reason || '');
     set('#invFrom', d.params.from || '');
     set('#invTo', d.params.to || '');
-    r.querySelector('#invTitle').textContent = d.tab === 'stock' ? 'Inventory' : TABS[d.tab];
+    r.querySelector('#invTitle').textContent = TABS[d.tab];
+    const p = periodOf(d.params);
+    r.querySelectorAll('.sh-period .seg-btn').forEach((b) => b.classList.toggle('active', b.dataset.p === p));
   }
 
-  const renderBody = () => render();
 
   /* ================================ the write path ==================================== */
 
@@ -956,25 +922,6 @@
     showToast(`${p.name}: cost ${peso(row.book)} → ${peso(p.cost)}, price ${peso(was)} → ${peso(p.price)}`);
   }
 
-  // Who pressed the button, for the decision log. Same fallback saveProducts uses for priceLog.
-  // actor() lives in backoffice.js: every event log names the same person.
-
-  function createPo(supplierId, d) {
-    const items = (reorderGroups(visible(d)).get(supplierId) || []).map((p) =>
-      poLine(p.id, orderQty.has(p.id) ? orderQty.get(p.id) : suggestQty(p), p.cost));
-    if (!items.length) return;
-    const all = loadPurchaseOrders();
-    const po = {
-      ...PO_DEFAULTS, id: newId('po'), supplierId, status: 'draft',
-      number: 'PO-' + String(all.length + 1).padStart(4, '0'),
-      items, updatedAt: new Date().toISOString(),
-    };
-    savePurchaseOrders(all.concat(po));
-    appendEvents('decisions', reorderDecisions(items, d.byId, po.id, actor()));
-    showToast(`Draft ${po.number} created with ${items.length} line${items.length === 1 ? '' : 's'}`);
-    Router.go('suppliers', po.id);
-  }
-
   /* =========================== one listener per event type ============================ */
 
   const mine = (e) => {
@@ -1028,20 +975,19 @@
 
   const lineOf = (el) => draft && draft.lines[Number(el.closest('tr').dataset.line)];
 
+  // The adjust dialog lives at body level, outside the view root, so its events are gated
+  // on the dialog rather than on mine().
+  const inAdjust = (e) => !!(e.target.closest && e.target.closest('#adjustDlg'));
+
   document.addEventListener('click', (e) => {
-    const r = root();
-    if (r) r.querySelectorAll('.ms-pick[open]').forEach((m) => { if (!m.contains(e.target)) m.open = false; });
+    if (inAdjust(e) && e.target.closest('[data-act="adjust-cancel"]')) return closeAdjustDialog();
     if (!mine(e)) return;
     const el = e.target.closest('button');
     if (!el) return;
 
-    if (el.dataset.adjustOpen) return openAdjustDialog(el.dataset.adjustOpen);
     switch (el.dataset.act) {
-      case 'ms-clear': return Router.setParams({ [el.dataset.key]: '', page: '' });
       case 'receive': return Router.go('suppliers', '');   // receiving is a PO action, and Suppliers owns it
       case 'export': return exportMovements(collect());
-      case 'adjust-cancel': return closeAdjustDialog();
-      case 'po': return createPo(el.dataset.supplier, collect());
       case 'reprice': return reprice(el.dataset.reprice, collect());
       case 'doc-new': return Router.go(VIEW, 'adjust/new');
       case 'doc-cancel': draft = null; return Router.go(VIEW, '');
@@ -1057,15 +1003,15 @@
   });
 
   document.addEventListener('submit', (e) => {
-    if (!mine(e) || !e.target.dataset.adjust) return;
+    if (!inAdjust(e) || !e.target.dataset.adjust) return;
     e.preventDefault();
     commit(e.target);
   });
 
   document.addEventListener('input', (e) => {
-    if (!mine(e)) return;
     const el = e.target;
-    if (el.name === 'qty') return updatePreview(el.closest('form'));
+    if (inAdjust(e) && el.name === 'qty') return updatePreview(el.closest('form'));
+    if (!mine(e)) return;
     if (el.dataset.field === 'counted' && draft) {          // live delta, no re-render
       const ln = lineOf(el);
       ln.counted = el.value;
@@ -1076,18 +1022,14 @@
   });
 
   document.addEventListener('change', (e) => {
-    if (!mine(e)) return;
     const el = e.target;
-    if (el.name === 'event') {
+    if (inAdjust(e) && el.name === 'event') {
       const form = el.closest('form');
       form.querySelector('.adj-qty-label').textContent = qtyLabel(adjEvent(form)[1]);
       form.querySelector('.adj-date-label').textContent = dateLabel(adjEvent(form)[1]);
       return updatePreview(form);
     }
-    if (el.dataset.multi) {
-      const picked = [...root().querySelectorAll(`input[data-multi="${el.dataset.multi}"]:checked`)].map((i) => i.value);
-      return Router.setParams({ [el.dataset.multi]: picked.join(','), page: '' });
-    }
+    if (!mine(e)) return;
     if (el.id === 'invCat') return Router.setParams({ cat: el.value, page: '' });
     if (el.id === 'invReason') return Router.setParams({ reason: el.value, page: '' });
     if (el.id === 'invFrom') return Router.setParams({ from: el.value, page: '' });
@@ -1097,12 +1039,11 @@
       lineOf(el).productId = resolveProduct(el.value);      // step + on-hand depend on it
       return renderLines();
     }
-    if (el.dataset.qty) {                                  // reorder override — page state, not the URL
-      const n = Number(el.value);
-      orderQty.set(el.dataset.qty, Number.isFinite(n) && n > 0 ? n : 0);
-      renderBody();
-    }
   });
 
   window.renderInventory = render;
+  window.openAdjustDialog = openAdjustDialog;
+  // The PO editor's "Add low stock items": this supplier's low and out items at the suggested qty.
+  window.lowStockLines = (supplierId) =>
+    (reorderGroups(state.products.filter((p) => !p.archived)).get(supplierId) || []).map((p) => ({ p, qty: suggestQty(p) }));
 })();

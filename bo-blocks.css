@@ -187,6 +187,7 @@ body.bo-light .blk-key[aria-pressed="false"] i { background: #EFEFEF; }
 body.bo-light .blk-plot { position: relative; height: 240px; margin-top: 14px; }
 body.bo-light .blk-plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
 body.bo-light .blk-plot .grid { stroke: var(--chart-grid); stroke-width: 1; }
+body.bo-light .blk-plot .base { stroke: var(--blk-outline); stroke-width: 1; }   /* bars' baseline: the card hairline, a shade over the grid */
 body.bo-light .blk-plot .axis { font-size: var(--blk-t-micro); fill: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
 body.bo-light .blk-plot .line { fill: none; stroke: var(--c); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
 body.bo-light .blk-plot .fade-top { stop-color: var(--c); stop-opacity: .26; }
@@ -202,6 +203,8 @@ body.bo-light .blk-plot .tip {
 body.bo-light .blk-plot .tip b { color: var(--blk-ink); font-weight: 600; }
 body.bo-light .s0 { --c: var(--chart-1); }
 body.bo-light .s1 { --c: var(--chart-2); }
+body.bo-light .blk-plot .bar { fill: var(--c); transition: opacity .12s; }   /* Settings → Chart style: Bars */
+body.bo-light .blk-plot svg.scrub .bar:not(.hot) { opacity: .4; }
 
 /* ============================================================================
    TABLE — lab table D: white card, soft ring, tinted header, a line between rows
@@ -236,6 +239,9 @@ body.bo-light .data-table td.num { font-variant-numeric: tabular-nums; }
 body.bo-light .data-table tfoot td { background: var(--tbl-head-bg); border-top: 1px solid var(--tbl-line); font-weight: 600; }
 /* An empty table says so in the roomy empty state, not a squashed 34px row. */
 body.bo-light .data-table td.bo-empty { height: auto; padding: 40px 16px; text-align: center; color: var(--blk-ink-2); }
+/* The pager is as tall as the head row (owner, 2026-09-23): 34px strip, 24px buttons. */
+body.bo-light .bo-pager { min-height: var(--tbl-row); padding: 0 var(--blk-pad); border-top-color: var(--tbl-line); }
+body.bo-light .bo-page-btn { min-width: 24px; height: 24px; padding: 0 7px; }
 
 /* ============================================================================
    BUTTONS — lab buttons. Outline (default), soft, primary (ink), and pill filters.
@@ -370,6 +376,9 @@ body.bo-light [data-w="low"] .bd-row .cmp { min-width: 36px; }   /* the Low pill
 body.bo-light [data-w="channel"] .bd-row { gap: 6px; }   /* % only: sit the share right next to the amount */
 body.bo-light [data-w="channel"] .bd-row .cmp { min-width: 38px; }
 body.bo-light .bd-row.total .nm { font-weight: 600; }
+/* An unstriped Total closing the card has no fill to mark its edge, so its text floated ~19px off the
+   bottom against the label's 14px at the top (owner, 2026-09-23). Striped (odd) totals keep the edge. */
+body.bo-light [data-w="pay"] .bd-row.total:last-child:nth-child(even) { margin-bottom: -5px; }
 body.bo-light .blk-kpi > .kpi-note { display: block; transform: none; margin-top: 2px; }
 
 /* TARGET — the lab's block H: value over its goal, a meter, one row for what's left. */
@@ -397,10 +406,18 @@ body.bo-light :is(.meter.split i, .sw).d0 { background: var(--data-3); }
 body.bo-light :is(.meter.split i, .sw).d1 { background: var(--data-2); }
 body.bo-light :is(.meter.split i, .sw).d2 { background: var(--data-1); }
 body.bo-light .bd-row .sw { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 3px; vertical-align: -1px; }
+/* Payment methods: each swatch is its pay-pill's text colour (styles.css → PILLS), lifted to a soft
+   pastel on the same hue -- the pale fill is too faint at 10px, the raw ink too dark (owner, 2026-09-23).
+   Unknown kinds (Maya, custom) get the neutral pill. */
+body.bo-light .sw.pay { --k: var(--po-pill-neutral-ink); background: oklch(from var(--k) calc(l + .28) calc(c * 1.1) h); }
+body.bo-light .sw.pay.cash { --k: var(--po-pill-ok-ink); }
+body.bo-light .sw.pay.credit { --k: var(--po-pill-warn-ink); }
+body.bo-light .sw.pay:is(.gcash, .qr, .card) { --k: var(--po-pill-info-ink); }
 body.bo-light .bd-row a { color: inherit; }
-/* Quiet "View all ›" across from the card label, like Recent transactions' head. */
-body.bo-light .rail-more { position: absolute; top: var(--blk-pad); right: var(--blk-pad); z-index: 1; font-size: var(--blk-t-meta); font-weight: 500; color: var(--blk-ink-2); text-decoration: none; }
-body.bo-light .rail-more:hover { color: var(--blk-ink); }
+/* One quiet "View all ›": the rail's, across from the card label, and a table head's. */
+body.bo-light :is(.rail-more, .link-btn.view-all) { font-size: var(--blk-t-meta); font-weight: 500; color: var(--blk-ink-2); text-decoration: none; }
+body.bo-light :is(.rail-more, .link-btn.view-all):hover { color: var(--blk-ink); text-decoration: none; }
+body.bo-light .rail-more { position: absolute; top: var(--blk-pad); right: var(--blk-pad); z-index: 1; }
 body.bo-light .rail-dots {
   position: absolute; top: 10px; right: 10px; z-index: 1; height: 22px; padding: 0 7px; border: 0; border-radius: 6px;
   background: none; color: var(--blk-ink-3); font: 600 var(--blk-t-label)/1 var(--po-font); letter-spacing: 1px; cursor: pointer;

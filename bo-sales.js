@@ -9,7 +9,7 @@
   // Patterns, By employee and By payment are cards on the Summary now (owner, 2026-09-22).
   // Transactions is its own sidebar link (data-sub="tx"), so it stays a tab here but
   // never shows in Sales' own tree.
-  const TABS = [['summary', 'Summary'], ['item', 'By item'], ['category', 'By category'], ['tx', 'Transactions']];
+  const TABS = [['summary', 'Summary'], ['item', 'By item'], ['category', 'By category'], ['tx', 'Transactions'], ['basket', 'Bought together']];
   (globalThis.HWPOS_SUBNAV = globalThis.HWPOS_SUBNAV || {}).sales = { param: 'by', def: 'summary', items: TABS };
 
   // How each status moves money. This is the single easiest thing to get wrong here:
@@ -287,6 +287,7 @@
       // ponytail: a staff name with a comma in it would split, switch to ids if that ever happens.
       pay: (p.pay || '').split(',').filter(Boolean),
       staff: (p.staff || '').split(',').filter(Boolean),
+      ful: (p.ful || '').split(',').filter(Boolean),
       // Revenue desc is the answer to "what makes us money"; everything else is a click away.
       // The ledger is a ledger, so it opens newest-first instead.
       sort: { key: p.sort || (tab === 'tx' ? 'ts' : 'revenue'), dir: p.dir === 'asc' ? 'asc' : 'desc' },
@@ -298,19 +299,22 @@
   // window so picking a staff member cannot empty the payment dropdown.
   function windowRows(v) {
     const win = rangeWindows();
-    const payOpts = new Map(), staffOpts = new Set();
+    const payOpts = new Map(), staffOpts = new Set(), fulOpts = new Map();
     const rows = [];
     for (const o of state.orders) {
       if (o.ts < win.start || o.ts >= win.end) continue;
       const kind = o.paymentKind || o.paymentMethod || 'cash';
       if (!payOpts.has(kind)) payOpts.set(kind, orderPaymentLabel(o));
       if (o.cashier) staffOpts.add(o.cashier);
+      const ful = o.fulfilment || 'pickup';
+      if (!fulOpts.has(ful)) fulOpts.set(ful, orderFulfilLabel(o));
       if (v.pay.length && !v.pay.includes(kind)) continue;
       if (v.staff.length && !v.staff.includes(o.cashier)) continue;
+      if (v.ful.length && !v.ful.includes(ful)) continue;
       rows.push(o);
     }
     rows.sort((a, b) => b.ts - a.ts);
-    return { rows, win, payOpts, staffOpts: Array.from(staffOpts).sort() };
+    return { rows, win, payOpts, fulOpts, staffOpts: Array.from(staffOpts).sort() };
   }
 
   function prevRows(v) {
@@ -319,17 +323,19 @@
       if (o.ts < win.prevStart || o.ts >= win.prevEnd) return false;
       if (v.pay.length && !v.pay.includes(o.paymentKind || o.paymentMethod || 'cash')) return false;
       if (v.staff.length && !v.staff.includes(o.cashier)) return false;
+      if (v.ful.length && !v.ful.includes(o.fulfilment || 'pickup')) return false;
       return true;
     });
   }
 
   // ---------- Render ----------
-  function filterSelects(v, payOpts, staffOpts) {
+  function filterSelects(v, payOpts, staffOpts, fulOpts) {
     return multiPick('pay', 'All payment types', 'No payments in this range', 'payment types', Array.from(payOpts), v.pay)
-      + multiPick('staff', 'All employees', 'No staff in this range', 'employees', staffOpts.map(s => [s, s]), v.staff);
+      + multiPick('staff', 'All employees', 'No staff in this range', 'employees', staffOpts.map(s => [s, s]), v.staff)
+      + multiPick('ful', 'All fulfilment', 'No orders in this range', 'fulfilment types', Array.from(fulOpts), v.ful);
   }
 
-  function head(v, payOpts, staffOpts) {
+  function head(v, payOpts, staffOpts, fulOpts) {
     const rangeOpts = ['today', '7d', '15d', '30d']
       .map(r => `<button class="rp-opt${state.range === r ? ' on' : ''}" data-act="range" data-range="${r}">${escapeHtml(RANGE_LABEL[r])}</button>`).join('');
     return `
@@ -338,7 +344,7 @@
           <h1>${v.tab === 'summary' ? 'Sales' : escapeHtml(TABS.find(t => t[0] === v.tab)[1])}</h1>
         </div>
         <div class="view-actions">
-          ${v.tab === 'tx' ? '' : filterSelects(v, payOpts, staffOpts)}
+          ${v.tab === 'tx' ? '' : filterSelects(v, payOpts, staffOpts, fulOpts)}
           <div class="range-picker" data-rp>
             <button class="range-btn" data-act="rp-toggle" aria-haspopup="true">
               <span>${escapeHtml(RANGE_LABEL[state.range])}</span>
@@ -476,7 +482,7 @@
   }
 
   // Transactions carries the Products toolbar: search and filters on one row under the head.
-  function txTab(rows, v, payOpts, staffOpts) {
+  function txTab(rows, v, payOpts, staffOpts, fulOpts) {
     const q = (state.txQuery || '').trim().toLowerCase();
     const hits = sortRows(q
       ? rows.filter(o => [o.number, o.customer && o.customer.name, o.cashier].filter(Boolean).join(' ').toLowerCase().includes(q))
@@ -484,7 +490,7 @@
     const pg = paginate(hits, v.page);
     const search = `<input class="search-input small q-input" placeholder="Search receipt, customer or staff…" autocomplete="off" value="${escapeHtml(state.txQuery || '')}" />`;
     return `
-      <div class="tx-filters">${search}${filterSelects(v, payOpts, staffOpts)}</div>
+      <div class="tx-filters">${search}${filterSelects(v, payOpts, staffOpts, fulOpts)}</div>
       <section class="bo-card blk-table">
         <div class="bo-card-head"><span class="bo-card-label">All transactions</span><span class="bo-card-sub">${int(hits.length)} shown</span></div>
         <div class="bo-card-inset flush">
@@ -507,7 +513,13 @@
   window.renderSales = function () {
     refreshSharedState();
     const v = readView();
-    const { rows, payOpts, staffOpts } = windowRows(v);
+    // Bought together counts every receipt ever, not the range: no filters, range or CSV.
+    if (v.tab === 'basket') {
+      root().innerHTML = `<header class="view-head"><div class="view-title-wrap"><h1>Bought together</h1></div></header>
+        <div class="dash-stack">${HWPOS_INSIGHTS.card('basket')}</div>`;
+      return;
+    }
+    const { rows, payOpts, staffOpts, fulOpts } = windowRows(v);
     const a = agg(rows);
     const el = root();
     // Restore the caret: the shell's ?q= listener re-runs this render on every keystroke.
@@ -521,9 +533,9 @@
     charts = [];
     const pRows = v.tab === 'summary' ? prevRows(v) : [];
     const body = v.tab === 'summary' ? summary(a, agg(pRows), rows, pRows)
-      : v.tab === 'tx' ? txTab(rows, v, payOpts, staffOpts)
+      : v.tab === 'tx' ? txTab(rows, v, payOpts, staffOpts, fulOpts)
       : cutTab(a, v);
-    el.innerHTML = head(v, payOpts, staffOpts) + `<div class="dash-stack">${body}</div>`;
+    el.innerHTML = head(v, payOpts, staffOpts, fulOpts) + `<div class="dash-stack">${body}</div>`;
     charts.forEach(([id, data]) => renderLineChart(el.querySelector('#' + id), data));
     if (reopen) { const d = el.querySelector(`.ms-pick[data-ms="${reopen}"]`); if (d) d.open = true; }
 

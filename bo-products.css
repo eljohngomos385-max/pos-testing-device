@@ -25,6 +25,13 @@ body.bo-light .view-products .pd-img-col { width: 44px; }
 
 body.bo-light .view-products .pd-row { cursor: pointer; }
 body.bo-light .view-products .pd-arch { opacity: 0.62; }
+/* Edit / Adjust: shrink to the button so the name absorbs the slack. */
+body.bo-light .view-products .pd-act { width: 1px; }
+
+/* Stock view: Out / Low / Dead tiles filter ?level=; a ticked one wears the selection ring. */
+body.bo-light .view-products .pd-kpis { margin-bottom: var(--po-gap); }
+body.bo-light .view-products .pd-kpi { cursor: pointer; }
+body.bo-light .view-products .pd-kpi.on { box-shadow: inset 0 0 0 2px var(--po-accent); }
 
 /* Variants: the table IS the form, so every cell is a field. Widths keep the row
    from collapsing; .table-wrap scrolls it when the screen is too narrow. */
@@ -306,3 +313,7 @@ body.bo-light .view-products .pd-vcount {
   body.bo-light .view-products .pd-margin { padding-left: 0; }
 }
 
+
+/* Catalog | Stock switch sits beside the title, inside the page (2026-09-23). */
+body.bo-light .pd-switch { margin-left: 8px; }
+body.bo-light .pd-switch .seg-btn { text-decoration: none; display: inline-flex; align-items: center; }

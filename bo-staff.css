@@ -13,39 +13,12 @@ body.bo-light .st-note {
   color: var(--blk-ink-3);
 }
 
-/* The salary ÷ working days arithmetic, shown under the field it explains. */
-body.bo-light .st-hint {
-  font-size: var(--blk-t-micro);
-  color: var(--blk-ink-3);
-  font-variant-numeric: tabular-nums;
-}
-body.bo-light .st-hint .link-btn { font-size: var(--blk-t-micro); margin-left: 4px; }
-body.bo-light .setting-row.st-stack { padding-top: 0; border-bottom: 0; }
-
 /* A select on its own in a row lines up with the text inputs above and below it. */
 body.bo-light .setting-row > .bo-select { width: 230px; }
 
-/* Money field + its working-days select on one line. */
-body.bo-light .st-pair { display: flex; align-items: center; gap: 8px; }
-body.bo-light .st-pair .text-input { width: 130px; }
-
-/* Attendance: name on the left, the five marks on the right. */
+/* A seg control in a settings row keeps its size (Suppliers' order days). */
 body.bo-light .setting-row .seg { flex: 0 0 auto; }
-body.bo-light .setting-row label .role-pill { margin-left: 6px; }
-
-/* Today's clock times + the in/out button, pushed right next to the marks. */
-body.bo-light .st-clock { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-body.bo-light .st-clock-times {
-  font-size: var(--blk-t-meta);
-  color: var(--blk-ink-2);
-  font-variant-numeric: tabular-nums;
-}
 
 @media (max-width: 760px) {
   body.bo-light .st-note { text-align: left; margin-left: 0; }
 }
-
-/* Money coming off the pay. Red is the only colour on the payroll table, so the eye
-   lands on what was taken before it reads the total. */
-body.bo-light .view[data-view="staff"] .st-cut { color: var(--trend-down); }
-body.bo-light .view[data-view="staff"] .st-void { text-decoration: line-through; color: var(--blk-ink-3); }

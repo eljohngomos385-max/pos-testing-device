@@ -57,7 +57,7 @@ body.bo-light .adj-last {
   body.bo-light .adj-note { grid-column: span 1; }
 }
 
-/* ---- Needs buying ---- */
+/* ---- Adjustment document: qty inputs and the total strip ---- */
 body.bo-light .view-inv .inv-qty {
   width: 104px; padding: 5px 8px; text-align: right;
   font-variant-numeric: tabular-nums;
@@ -86,3 +86,24 @@ body.bo-light .view-inv .inv-more { padding: 10px var(--blk-pad); box-shadow: in
 
 /* On hand filter row: the two multi-picks sit in the .tx-filters flex row like siblings */
 body.bo-light .view-inv .inv-picks { display: contents; }
+
+/* ---- Stock history overview: one KPI card, then the dashboard's main + rail grid. */
+body.bo-light .view-inv .sh-kpi-card { padding: var(--blk-pad) 0; }
+body.bo-light .view-inv .sh-kpis { display: grid; gap: 12px 0; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+body.bo-light .view-inv .sh-kpis .blk-kpi { background: none; box-shadow: none; border-radius: 0; padding: 0 var(--blk-pad); }
+body.bo-light .view-inv .sh-kpis .blk-kpi + .blk-kpi { border-left: 1px solid var(--blk-outline); }
+body.bo-light .view-inv .sh-grid { display: grid; grid-template-columns: minmax(0, 1fr) var(--rail-w); gap: var(--blk-gap); align-items: start; }
+body.bo-light .view-inv .sh-grid .table-wrap { overflow-x: auto; }
+body.bo-light .view-inv .sh-grid .data-table { min-width: 0; }   /* five columns fit; the global 860px clipped Balance */
+body.bo-light .view-inv .sh-period .seg-btn { text-decoration: none; display: inline-flex; align-items: center; }
+body.bo-light .view-inv .sh-review { margin-right: 12px; font-size: var(--blk-t-meta); color: var(--trend-down); }
+body.bo-light .view-inv .bd-row .amt { min-width: 0; }
+@media (max-width: 1280px) {
+  body.bo-light .view-inv .sh-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body.bo-light .view-inv .sh-kpis .blk-kpi:nth-child(3n + 1) { border-left: 0; }
+}
+@media (max-width: 1024px) { body.bo-light .view-inv .sh-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) {
+  body.bo-light .view-inv .sh-kpis { grid-template-columns: 1fr; }
+  body.bo-light .view-inv .sh-kpis .blk-kpi { border-left: 0; }
+}

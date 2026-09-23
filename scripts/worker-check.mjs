@@ -217,18 +217,6 @@ test('a PO line keeps invoice cost apart from quoted, and a supplier its order r
   assert.equal(l.received_qty, 8);
 });
 
-test('a day upserts and merges: weather does not wipe the road closure, stores do not collide', async () => {
-  await call('POST', '/days', { id: '2026-09-14', date: '2026-09-14', road_closure: 'Rizal St', is_payday: 1 });
-  await call('POST', '/days', { id: '2026-09-14', rain_mm: 12.5, weather_code: 63, source: 'open-meteo' });
-  await call('POST', '/days', { id: '2026-09-14', note: 'branch' }, token({ app_metadata: { store_id: 'branch2' } }));
-  const d = await (await call('GET', '/days/2026-09-14')).json();
-  assert.equal(d.road_closure, 'Rizal St');
-  assert.equal(d.rain_mm, 12.5);
-  assert.equal(d.is_payday, 1);
-  assert.equal(d.note, null, "another store's row stayed its own");
-  assert.equal(sqlite.prepare('select count(*) c from days').get().c, 2);
-});
-
 test('a movement carries the stock it left behind; an old build without it still books', async () => {
   await call('POST', '/stockMovements', { id: 'm5', ts: '2026-09-14T03:00:00.000Z', product_id: 'p2', qty: -2.5,
                                           reason: 'sale', balance_after: 37.5 });

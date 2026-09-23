@@ -107,7 +107,9 @@ if (typeof document !== 'undefined') (function () {
       a.list.push(o);
       if (isIncoming(o)) { a.open += 1; a.outstanding += poOutValue(o); }
     }
-    return { byId, prod, po };
+    // Measured from received POs (bo-insights.js); was the Supplier lead times tab until 2026-09-23.
+    const lead = new Map(HWPOS_INSIGHTS.supplierLeadTimes(pos, suppliers).map((r) => [r.supplierId, r]));
+    return { byId, prod, po, lead };
   }
 
   const EMPTY_P = { n: 0, value: 0, items: [] };
@@ -149,6 +151,8 @@ if (typeof document !== 'undefined') (function () {
     const rows = pg.rows.map((s) => {
       const p = agg.prod.get(s.id) || EMPTY_P;
       const o = agg.po.get(s.id) || EMPTY_O;
+      const l = agg.lead.get(s.id) || {};
+      const days = l.leadDaysMean == null ? null : Math.round(l.leadDaysMean);
       return `
         <tr data-go="${esc(s.id)}">
           <td><strong>${dash(s.name)}</strong>${s.contact ? `<span class="row-sub">${esc(s.contact)}</span>` : ''}</td>
@@ -158,6 +162,8 @@ if (typeof document !== 'undefined') (function () {
           <td class="num">${pesoShort(p.value)}</td>
           <td class="num">${o.open || '—'}</td>
           <td class="num">${o.outstanding ? pesoShort(o.outstanding) : '—'}</td>
+          <td class="num">${days == null ? '—' : `${days} day${days === 1 ? '' : 's'}`}</td>
+          <td class="num">${l.onTimeRate == null ? '—' : Math.round(l.onTimeRate * 100) + '%'}</td>
           <td class="sup-note muted-sub">${dash(s.note)}</td>
         </tr>`;
     }).join('');
@@ -170,8 +176,10 @@ if (typeof document !== 'undefined') (function () {
     ) + `
     <div class="dash-stack">${card('All suppliers', `${list.length} shown`, table(
       `<th>Supplier</th><th>Phone</th><th>Email</th><th class="num">Products</th><th class="num">On hand at cost</th>
-       <th class="num">Open POs</th><th class="num">Outstanding</th><th>Note</th>`,
-      rows, 8, q ? 'No supplier matches that search.' : 'No suppliers yet. Add one to start raising purchase orders.'
+       <th class="num">Open POs</th><th class="num">Outstanding</th>
+       <th class="num" title="Average days from sending a PO to receiving it">Delivers in</th>
+       <th class="num" title="Received on or before the promised date">On time</th><th>Note</th>`,
+      rows, 10, q ? 'No supplier matches that search.' : 'No suppliers yet. Add one to start raising purchase orders.'
     ), true, pagerHtml(pg))}</div>`;
   }
 
@@ -389,6 +397,7 @@ if (typeof document !== 'undefined') (function () {
     };
 
     const actions = [
+      canEdit && po.supplierId ? '<button class="secondary-btn small" data-act="add-low">Add low stock items</button>' : '',
       po.status === 'draft' ? '<button class="primary-btn small" data-act="mark-ordered">Mark ordered</button>' : '',
       receiving ? '<button class="primary-btn small" data-act="receive">Receive delivery</button>' : '',
       po.status !== 'received' && po.status !== 'cancelled' ? '<button class="secondary-btn small danger" data-act="cancel-po">Cancel PO</button>' : '',
@@ -623,6 +632,15 @@ if (typeof document !== 'undefined') (function () {
         return Router.go(VIEW, s.id, {}, { replace: false });
       }
       case 'new-po': return newPo(currentSupplier()?.id || Router.route().params.supplier);
+      case 'add-low': {
+        if (!po) return;
+        const have = new Set((po.items || []).map((l) => l.productId));
+        const add = lowStockLines(po.supplierId).filter(({ p }) => !have.has(p.id));
+        if (!add.length) return showToast('No low stock items from this supplier to add');
+        po.items = (po.items || []).concat(add.map(({ p, qty }) => poLine(p.id, qty, p.cost)));
+        saveAndRepaint(po);
+        return showToast(`Added ${add.length} low stock item${add.length === 1 ? '' : 's'}`);
+      }
       case 'remove-line': {
         const row = hit.closest('[data-line]');
         if (!po || !row) return;

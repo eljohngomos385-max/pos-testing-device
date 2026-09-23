@@ -43,15 +43,11 @@
     purchaseOrders: 'hwpos.purchaseOrders.v1',
     suppliers: 'hwpos.suppliers.v1',
     staff:     'hwpos.staff.v1',
-    attendance: 'hwpos.attendance.v1',
-    advances:  'hwpos.advances.v1',
     adjustments: 'hwpos.adjustments.v1',
-    days:      'hwpos.days.v1',
     // Event logs, append-only (bo-model.js EVENT_LOGS).
     priceLog:  'hwpos.priceLog.v1',
     lostDemand: 'hwpos.lostDemand.v1',
     deliveryEvents: 'hwpos.deliveryEvents.v1',
-    clock:     'hwpos.clock.v1',
     supplierMessages: 'hwpos.supplierMessages.v1',
     decisions: 'hwpos.decisions.v1',
     // Till event stream lives in IndexedDB 'hwpos-events'; these two only catch it when IDB can't.
@@ -467,11 +463,11 @@
 
   // ---- Read-only AI/data API ----
   const DICTIONARY_URL = 'docs/data-dictionary.md';
-  // Array collections read straight from storage. attendance is the one object blob.
-  const LIST_COLLECTIONS = ['stockMovements', 'purchaseOrders', 'suppliers', 'staff', 'advances', 'adjustments', 'days',
-    'priceLog', 'lostDemand', 'deliveryEvents', 'clock', 'supplierMessages', 'decisions'];
+  // Array collections read straight from storage.
+  const LIST_COLLECTIONS = ['stockMovements', 'purchaseOrders', 'suppliers', 'staff', 'adjustments',
+    'priceLog', 'lostDemand', 'deliveryEvents', 'supplierMessages', 'decisions'];
   const COLLECTIONS = ['products', 'folders', 'groups', 'orders', 'customers', 'customerLedger', 'drawerCloseouts',
-    'settings', 'attendance', ...LIST_COLLECTIONS];
+    'settings', ...LIST_COLLECTIONS];
   const pick = (snapshot) => Object.fromEntries(COLLECTIONS.map((name) => [name, snapshot[name]]));
   function clone(value) {
     return JSON.parse(JSON.stringify(value == null ? null : value));
@@ -767,7 +763,6 @@
     }
     // A PIN is a credential, not a data point.
     snapshot.staff = snapshot.staff.map(({ pin, ...u }) => u);
-    snapshot.attendance = readKey(KEYS.attendance, {}) || {};
     COLLECTIONS.forEach((name) => { snapshot.schema[name] = KEYS[name]; });
     if (options.includeMetrics !== false) snapshot.metrics = buildMetrics(snapshot, { range: options.range || 'all' });
     if (options.includeInsights !== false) {

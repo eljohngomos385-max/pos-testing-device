@@ -40,7 +40,7 @@ Reads, not captures. The data is in `hwpos.orders.v1`, `hwpos.stockMovements.v1`
 - **Customer reorder cycles** — orders carry `customerId`; customers carry a phone number.
 - **Basket affinity** — what sells with what, and which line drove the trip.
 - **Delivery heat map** — `deliveryLocation` lat/lng is already stored on every delivery order.
-- **Sales per staff day** — orders against attendance. Coarse until clock-in exists.
+- **Sales per person** — done: the Staff page reads it off `orders.cashier`.
 - **Backtest harness** — replay the real year against any ordering rule, report cash tied up
   against stockouts.
 
@@ -49,8 +49,6 @@ Reads, not captures. The data is in `hwpos.orders.v1`, `hwpos.stockMovements.v1`
 Small additions to what already gets written. Each is an event that happens today and vanishes.
 
 - **Price and cost change log** — product, old, new, who, when, reason. Prices overwrite in place now.
-- **The day spine** — one row per store per day: rain during trading hours, holiday, payday,
-  local events, road closures. Everything joins to it by date.
 - **Delivery lifecycle** — driver, dispatched at, arrived at, returned at.
 - **Unfilled requests** — product, qty asked, time, staff.
 - **Substitution flag** — bought B because A was out.
@@ -60,7 +58,6 @@ Small additions to what already gets written. Each is an event that happens toda
 - **Short ships on receiving** — ordered against received per line, with a reason. Supplier fill rate.
 - **Sent date and promised date** — distinct from drafted and from `expectedAt`.
 - **Supplier invoice price** — billed against quoted.
-- **Staff clock in and out** — real hours, not a present/absent day mark.
 - **Supplier order cycle and minimums** — an order draft cannot be finished without them.
 - **Supplier conversation thread** — every message both ways, attached to the PO. Suppliers are on
   Viber, not an API; an AI can read a thread.
@@ -79,12 +76,9 @@ Small additions to what already gets written. Each is an event that happens toda
   per count and wants the owner's OK.
 - **Delivery heat map** has nothing to draw until orders carry `deliveryLocation`; the seed has none.
 - **Who, not just what** is half done: back-office rows name the store's cashier setting, not a login.
-- **Clock** has no shift start, so it never marks late, no button on the POS, and overnight shifts are
-  not paired.
-- **Settings has no field** for store lat/lng or open and close hours; the day spine uses defaults.
 - **Sync**: no camelCase → snake_case push adapter yet; voids and refunds edit orders in place; staff,
-  attendance, advances, adjustments and closeouts have no D1 table.
-- **Back-dating is stock only.** Clock in/out, delivery events, lost sales and closeouts still take
+  adjustments and closeouts have no D1 table.
+- **Back-dating is stock only.** Delivery events, lost sales and closeouts still take
   the moment they are typed; the closeout day is the UTC date, not the store's (app.js closeout).
   A voided sale's demand is not kept. Two tablets editing the same product's stock: last write wins.
   Till events sharing a millisecond have no sequence number to order them.
@@ -117,15 +111,14 @@ Built on everything above. Straightforward once the data exists.
   and in `HWPOS_AI.snapshot().insights` and Export for AI: stockout intervals, supplier lead time and
   fill rate, demand rate and spread over in-stock days, `reorderPlan` (Insights only; parked, not
   on Needs buying), cash asleep, sell-through per delivery, dead stock, customer cycles, basket
-  affinity, delivery points, sales per staff day. `scripts/backtest.mjs` replays a year against
+  affinity, delivery points (sales per staff day removed 2026-09-24). `scripts/backtest.mjs` replays a year against
   the old rule and `reorderPlan`.
 - **Tier 1 captures** (2026-09-14) — event logs in `bo-model.js` `EVENT_LOGS`, D1 tables in
   `schema.sql`, fields in `docs/data-dictionary.md`:
-  price and cost log (`priceLog`); the day spine (`days`, free Open-Meteo weather plus holidays and
-  payday); delivery dispatched/arrived/returned/failed (`deliveryEvents`); lost sales with a
+  price and cost log (`priceLog`); the day spine (`days`, removed 2026-09-24); delivery dispatched/arrived/returned/failed (`deliveryEvents`); lost sales with a
   substitute (`lostDemand`); expected and counted kept on count movements; `shrinkage` · `damage` ·
   `writeoff` reason codes; short ships with a reason, sent date, promised date and invoice cost on
-  PO lines; clock in and out (`clock`); supplier order days, minimum order and quoted lead;
+  PO lines (clock in/out removed 2026-09-24); supplier order days, minimum order and quoted lead;
   supplier conversation per PO (`supplierMessages`); decision log for reorder and reprice (`decisions`).
 - **Till event stream** (2026-09-14) — every till action as a raw row, no calculations:
   `HWPOS_STORE.events` (data-store.js) buffers taps and writes them to IndexedDB `hwpos-events` in

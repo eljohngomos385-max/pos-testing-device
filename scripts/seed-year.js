@@ -4,8 +4,8 @@
 
      fetch('/scripts/seed-year.js').then(r => r.text()).then(eval).then(() => console.log(seedYear()));
 
-   seedYear(365) still writes a full year. It REPLACES products, sales, stock, POs and
-   attendance in this browser -- there is no undo.
+   seedYear(365) still writes a full year. It REPLACES products, sales, stock and POs
+   in this browser -- there is no undo.
 
    It is not a test — the tests are scripts/*-check.mjs and scripts/sim-year.mjs. This exists
    so the pages can be USED: a year of sales to filter, stock that actually moved, purchase
@@ -346,25 +346,11 @@ function seedYear(days = 182, busy = 0.8) {
   movements.forEach((m) => stock.set(m.productId, round2((stock.get(m.productId) || 0) + m.qty)));
   products.forEach((p) => { p.stock = stock.get(p.id) || 0; });
 
-  // ---- Attendance ----------------------------------------------------------
-  const marks = {};
-  for (let d = Math.max(0, days - 60); d < days; d++) {
-    const day = dayTs(d);
-    if (day.getDay() === 0) continue;
-    const key = iso(day);
-    marks[key] = {};
-    staff.forEach((u) => {
-      const r = rnd();
-      marks[key][u.name] = r < 0.82 ? 'present' : r < 0.9 ? 'late' : r < 0.95 ? 'half' : r < 0.98 ? 'off' : 'absent';
-    });
-  }
-
   orders.sort((a, b) => a.ts - b.ts);
   localStorage.setItem('hwpos.products.v2', JSON.stringify(products));
   localStorage.setItem('hwpos.orders.v1', JSON.stringify(orders));
   localStorage.setItem('hwpos.orderSeq.v1', String(num));
   localStorage.setItem('hwpos.customerLedger.v1', JSON.stringify(ledger));
-  localStorage.setItem('hwpos.attendance.v1', JSON.stringify(marks));
   saveSuppliers(suppliers);
   savePurchaseOrders(pos);
   saveMovements(movements);

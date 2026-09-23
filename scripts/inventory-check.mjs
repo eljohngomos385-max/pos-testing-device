@@ -11,7 +11,7 @@ Object.assign(globalThis, model);
 const inv = require('../bo-inventory.js');
 
 const { countDelta, suggestQty, runningBalances, urgency, ceilStep, documentMovements, stockMovement,
-  lastPaid, heldPrice, costDrift, reorderGroups, reorderDecisions } = inv;
+  lastPaid, heldPrice, costDrift, reorderGroups } = inv;
 const { normalizeProduct, makeMovement, applyMovement, isLow, poLine, PO_DEFAULTS } = model;
 
 /* ---- "Set to count" records the count, not the answer ---- */
@@ -185,7 +185,7 @@ assert.deepEqual(costDrift([pipe], alternating, altPos), [], 'the preferred supp
 assert.equal(costDrift([{ ...pipe, supplierId: 'sC' }], alternating, altPos)[0].paid, 80,
   'preferred supplier never delivered: the last delivery decides');
 
-/* ---- Needs buying: typed danger level + suggestQty (reorderPlan parked) ---- */
+/* ---- Low stock by supplier, for "Add low stock items" on a PO ---- */
 const low1 = normalizeProduct({ id: 'low1', name: 'Cement', cost: 50, stock: 2, reorderPoint: 5, supplierId: 's1' });
 const out1 = normalizeProduct({ id: 'out1', name: 'Hinge', cost: 30, stock: 0, reorderPoint: 10, supplierId: 's1' });
 const fine = normalizeProduct({ id: 'fine', name: 'Paint', cost: 200, stock: 20, reorderPoint: 5, supplierId: 's1' });
@@ -194,14 +194,6 @@ const needs = reorderGroups([low1, out1, fine, low2]);
 assert.deepEqual([...needs.keys()], ['s1', 's2']);
 assert.deepEqual(needs.get('s1').map((x) => x.id), ['out1', 'low1'], 'most urgent first, only at or below the danger level');
 
-// Decision log: one row per PO line; accepted only when the order matched suggestQty.
-const byId = new Map([low1, out1].map((x) => [x.id, x]));
-const lines = [poLine('low1', suggestQty(low1), 50), poLine('out1', 3, 30)];
-const decided = reorderDecisions(lines, byId, 'po10', 'Maricel R.');
-assert.deepEqual(decided.map((r) => [r.kind, r.subjectId, r.accepted]), [['reorder', 'low1', true], ['reorder', 'out1', false]]);
-assert.equal(decided[0].rule, 'suggestQty v0');
-assert.deepEqual(decided[1].choice, { suggestQty: 20, orderedQty: 3, poId: 'po10' });
-assert.deepEqual(decided[0].inputs, { onHand: 2, reorderPoint: 5 });
-assert.ok(decided[0].id && decided[0].ts && decided[0].staff === 'Maricel R.' && decided[0].actor === 'Maricel R.');
+assert.equal(suggestQty(low1), 8, 'tops the shelf up to twice the reorder point');
 
 console.log('inventory: ok');

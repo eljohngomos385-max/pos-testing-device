@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Back office blocks lab</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<!--
+  Redesign lab, round 3: a copy of backoffice-redesign-lab.html (round 2), dressed in the blocks system.
+  Layout and hero sizing are round 2's, untouched (owner likes them). What changed is the parts:
+    tokens      the live bo-blocks.css names and values (--blk-*, --trend-*, --chart-*, --tbl-*, --btn-*)
+    blocks      #F9F9F9 with the hairline round it, 12px corners
+    chips       the trend chip explains itself on hover ("vs yesterday · ₱42,890")
+    chart keys  pill keys that switch each line on and off
+    chart       fade .26 under the front line only, a dot + halo marking "now", crosshair tooltip on hover
+    targets     block H: value over its goal, meter, one striped row
+    lists       block D: 36px striped rows, no hairlines
+    table       table D: white card, soft ring, tinted header, stripes and hairlines (live rule)
+    controls    pill filters (one on, filled ink) and 28px rectangle buttons; status is a solid-tint pill
+  Standalone; loads nothing from the app.
+-->
+<style>
+:root {
+  /* ---- the live system (bo-blocks.css) ---- */
+  --po-bg: #FFFFFF;
+  --blk-bg: #F9F9F9; --blk-raised: #FFFFFF; --blk-outline: #E1E1E1;
+  --blk-r: 12px; --blk-pad: 16px; --blk-gap: 14px;
+  --blk-ink: #303030; --blk-ink-2: #616161; --blk-ink-3: #8C8C8C;
+  --blk-t-label: 13px; --blk-t-meta: 12.5px; --blk-t-micro: 11px;
+  --trend-up: #047B5D;  --trend-up-tint: #D3ECDD;
+  --trend-down: #D72C0D; --trend-down-tint: #F8D8D0;
+  --list-row: 36px; --list-row-r: 7px;
+  --meter-track: #EFEFEF;
+  --chart-1: #2B7DE9; --chart-2: #8B5CF6; --chart-grid: #ECECEC;
+  --data-1: #BCD7FA; --data-2: #75ADF2; --data-3: var(--chart-1);
+  --tbl-bg: #FFFFFF; --tbl-row: 34px; --tbl-head-bg: #F7F7F7; --tbl-line: #EBEBEB;
+  --tbl-stripe: #F7F7F7; --tbl-hover: #EFEFEF;
+  --tbl-shadow: 0 1px 0 rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.05), 0 2px 4px rgba(0,0,0,.04);
+  --btn-h: 28px; --btn-r: 8px; --btn-line: #D4D4D4; --btn-soft: #EDEDED; --btn-soft-hover: #E4E4E4;
+  --pill-h: 20px;
+  --po-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* ---- lab only: round 2's sizing, kept on purpose ---- */
+  --ink-strong: #1A1A1A;
+  --pad: 28px;       /* inside a tile: more air than --blk-pad, the round-2 feel */
+  --gap: 20px;       /* between tiles */
+  --side-w: 224px;
+  --t-body: 15px; --t-title: 15px; --t-h1: 26px;
+  --t-hero: 48px; --t-stat: 24px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--po-bg); color: var(--blk-ink);
+  font: 400 var(--t-body)/1.45 var(--po-font);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--blk-ink-2); }
+
+/* ---- shell ---- */
+.app { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); min-height: 100vh; }
+.side {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--blk-outline); padding: 16px 12px;
+}
+.store { display: flex; align-items: center; gap: 10px; padding: 6px 8px 18px; font-weight: 600; color: var(--ink-strong); }
+.store .mark {
+  width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--ink-strong); color: var(--po-bg); font-size: 11px; font-weight: 700;
+}
+.nav { flex: 1; overflow-y: auto; }
+.nav h6 { margin: 14px 8px 4px; font-size: 12px; font-weight: 500; color: var(--blk-ink-2); }
+.nav h6:first-child { margin-top: 0; }
+.nav a { display: block; padding: 6px 10px; border-radius: var(--btn-r); color: var(--blk-ink); text-decoration: none; font-size: 14px; }
+.nav a:hover { background: rgba(0,0,0,.04); }
+.nav a.on { background: var(--meter-track); color: var(--ink-strong); font-weight: 600; }
+.nav .sub { display: none; margin: 2px 0 4px; }
+.nav .sub.open { display: block; }
+.nav .sub a { padding-left: 22px; color: var(--blk-ink-2); }
+.nav .sub a.on { background: none; color: var(--ink-strong); }
+.me { padding: 12px 8px 0; border-top: 1px solid var(--blk-outline); font-size: 14px; }
+.me span { color: var(--blk-ink-2); margin-left: 6px; }
+
+.main { padding: 32px 40px 72px; }
+.page { max-width: 1120px; margin: 0 auto; display: none; }
+.page.on { display: grid; gap: var(--gap); }
+
+/* ---- head: title left, controls right ---- */
+.head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.head h1 { margin: 0 auto 0 0; font-size: var(--t-h1); font-weight: 650; letter-spacing: -0.02em; color: var(--ink-strong); }
+
+/* ---- controls: pill filters choose, rectangles act ---- */
+.pbtns { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.pbtn {
+  height: var(--btn-h); padding: 0 12px; border: 0; border-radius: 999px;
+  background: var(--btn-soft); font-size: var(--blk-t-meta); font-weight: 600; cursor: pointer;
+}
+.pbtn:hover { background: var(--btn-soft-hover); }
+.pbtn.on { background: var(--blk-ink); color: #fff; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: var(--btn-h); padding: 0 10px; border: 1px solid var(--btn-line); border-radius: var(--btn-r);
+  background: #fff; box-shadow: 0 1px 0 rgba(0,0,0,.05);
+  font-size: var(--blk-t-meta); font-weight: 600; cursor: pointer;
+}
+.btn:hover { background: #F7F7F7; }
+.btn:active { background: #F0F0F0; box-shadow: none; }
+.btn svg { width: 12px; height: 12px; }
+.pbtn:focus-visible, .btn:focus-visible, .key:focus-visible, .chip:focus-visible { outline: 2px solid var(--blk-ink); outline-offset: 1px; }
+
+/* ---- the block: grey, hairline, 12px ---- */
+.tile {
+  background: var(--blk-bg); border-radius: var(--blk-r); padding: var(--pad); min-width: 0;
+  box-shadow: inset 0 0 0 1px var(--blk-outline);
+}
+.tile h2 { margin: 0 0 14px; font-size: var(--t-title); font-weight: 600; color: var(--ink-strong); }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); }
+
+/* ---- hero: round 2's sizing, untouched ---- */
+.hero-top { display: flex; align-items: flex-end; gap: 40px; flex-wrap: wrap; margin-bottom: 24px; }
+.hero-main { margin-right: auto; }
+.label { font-size: var(--blk-t-label); color: var(--blk-ink-2); }
+.hero-main .line, .stat .line { display: flex; align-items: center; gap: 12px; }
+.hero-main .value { font-size: var(--t-hero); font-weight: 650; letter-spacing: -0.03em; color: var(--ink-strong); line-height: 1.1; }
+.stats { display: flex; gap: 32px; }
+.stat .value { font-size: var(--t-stat); font-weight: 600; letter-spacing: -0.01em; color: var(--ink-strong); line-height: 1.2; }
+.stat .line { gap: 8px; }
+
+/* ---- trend chip: beside its number, explains itself on hover or tap ---- */
+.chip {
+  position: relative; display: inline-flex; align-items: center; height: 24px; padding: 0 8px;
+  border: 0; border-radius: 999px; cursor: default;
+  font-size: 13px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.chip.up { background: var(--trend-up-tint); color: var(--trend-up); }
+.chip.down { background: var(--trend-down-tint); color: var(--trend-down); }
+.chip.sm { height: 20px; padding: 0 6px; font-size: 12px; }
+.chip[data-tip]::after {
+  content: attr(data-tip); position: absolute; left: 0; top: calc(100% + 6px); z-index: 3;
+  background: var(--blk-raised); border: 1px solid var(--blk-outline); border-radius: 8px; padding: 6px 9px;
+  font-size: var(--blk-t-meta); font-weight: 400; color: var(--blk-ink-2); box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  opacity: 0; pointer-events: none; transition: opacity .12s ease;
+}
+.stats .chip[data-tip]::after { left: auto; right: 0; }   /* the right-hand stats open leftward, inside the tile */
+.chip[data-tip]:hover::after, .chip[data-tip]:focus::after { opacity: 1; }
+
+/* ---- chart: keys switch each line; dot + halo mark "now"; hover shows the values ---- */
+.s0 { --c: var(--chart-1); }
+.s1 { --c: var(--chart-2); }
+.keys { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.key {
+  display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px;
+  border: 1px solid var(--blk-outline); border-radius: 999px; background: var(--blk-raised);
+  font-size: var(--blk-t-meta); color: var(--blk-ink-2); cursor: pointer; transition: opacity .12s ease;
+}
+.key i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+.key[aria-pressed="false"] { opacity: .5; }
+.key[aria-pressed="false"] i { background: var(--meter-track); }
+.plot { position: relative; height: 260px; }
+.plot.sm { height: 200px; margin-top: 12px; }
+.plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.plot .grid { stroke: var(--chart-grid); stroke-width: 1; }
+.plot .axis { font: var(--blk-t-micro) var(--po-font); fill: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
+.plot .line { fill: none; stroke: var(--c); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+.plot .fade-top { stop-color: var(--c); stop-opacity: .26; }
+.plot .fade-bot { stop-color: var(--c); stop-opacity: 0; }
+.plot .cross { stroke: var(--blk-ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
+.plot .dot, .plot .end { fill: var(--c); stroke: #fff; stroke-width: 2.5; }
+.plot .halo { fill: var(--c); opacity: .16; }
+.plot .tip {
+  position: absolute; top: 0; pointer-events: none; z-index: 2;
+  background: #fff; border: 1px solid var(--blk-outline); border-radius: 8px; padding: 6px 9px; white-space: nowrap;
+  font-size: var(--blk-t-meta); color: var(--blk-ink-2); box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+.plot .tip b { color: var(--blk-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---- block D rows: 36px, striped, no hairlines ---- */
+.rows { list-style: none; margin: 0 -10px; padding: 0; }
+.rows li, .rows li > a {
+  display: flex; align-items: center; gap: 12px; min-height: var(--list-row);
+  font-size: var(--blk-t-label);
+}
+.rows li { padding: 0 10px; border-radius: var(--list-row-r); }
+.rows li:nth-child(odd) { background: var(--blk-raised); }
+.rows li > a { flex: 1; color: inherit; text-decoration: none; }
+.rows a:hover .name { text-decoration: underline; }
+.rows .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rows .val { font-weight: 600; color: var(--blk-ink); font-variant-numeric: tabular-nums; text-align: right; }
+.rows .val.bad { color: var(--trend-down); }
+.rows .sub { color: var(--blk-ink-3); font-size: var(--blk-t-meta); font-variant-numeric: tabular-nums; }
+.rows .cmp { width: 64px; text-align: right; font-size: var(--blk-t-meta); color: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
+.rows .cmp.down { color: var(--trend-down); }
+.rows .go { color: var(--blk-ink-3); font-size: 16px; line-height: 1; }
+.rows .sw { width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex: none; }
+.rows li.total { font-weight: 600; }
+
+/* ---- block H: value over its goal, a meter, one row ---- */
+.targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+.target .line { display: flex; align-items: baseline; justify-content: space-between; gap: 0 8px; flex-wrap: wrap; margin: 4px 0 0; }
+.target .value { font-size: var(--t-stat); font-weight: 600; letter-spacing: -0.01em; color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+.target .of { font-size: var(--blk-t-label); font-weight: 400; letter-spacing: 0; color: var(--blk-ink-3); margin-left: 2px; }
+.target .pct { font-size: var(--blk-t-meta); font-weight: 500; color: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
+.meter { display: flex; gap: 2px; height: 8px; margin: 12px 0; border-radius: 999px; overflow: hidden; background: var(--meter-track); }
+.meter i { display: block; height: 100%; background: var(--data-3); border-radius: 999px; }
+.meter.split { background: none; }
+.meter.split i { border-radius: 0; background: var(--c); }
+.foot { margin-top: 12px; font-size: var(--blk-t-meta); color: var(--blk-ink-2); }
+.foot a { color: var(--blk-ink); font-weight: 600; text-decoration: none; }
+.foot a:hover { text-decoration: underline; }
+
+/* ---- table D: white card, soft ring, tinted header, stripes and hairlines ---- */
+.tbl { background: var(--tbl-bg); border-radius: var(--blk-r); box-shadow: var(--tbl-shadow); overflow: hidden; }
+.tbl-head { display: flex; align-items: center; justify-content: space-between; padding: 12px var(--blk-pad); }
+.tbl-head h2 { margin: 0; font-size: var(--t-title); font-weight: 600; color: var(--ink-strong); }
+.tbl-head .count { margin-left: 8px; font-size: var(--blk-t-meta); font-weight: 400; color: var(--blk-ink-3); }
+.tbl-head a { font-size: var(--blk-t-meta); font-weight: 600; color: var(--blk-ink); text-decoration: none; }
+.tbl-head a:hover { text-decoration: underline; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--blk-t-label); }
+th {
+  height: var(--tbl-row); padding: 0 10px; text-align: left; white-space: nowrap;
+  font-size: var(--blk-t-meta); font-weight: 500; color: #5A5A5A;
+  background: var(--tbl-head-bg); border-top: 1px solid var(--tbl-line); border-bottom: 1px solid var(--tbl-line);
+}
+td { height: var(--tbl-row); padding: 0 10px; white-space: nowrap; }
+th:first-child, td:first-child { padding-left: var(--blk-pad); }
+th:last-child, td:last-child { padding-right: var(--blk-pad); }
+tbody tr { cursor: pointer; }
+tbody tr:nth-child(even) td { background: var(--tbl-stripe); }
+tbody tr:not(:last-child) td { box-shadow: inset 0 -1px 0 var(--tbl-line); }
+tbody tr:hover td { background: var(--tbl-hover); }
+.r { text-align: right; }
+td.strong { font-weight: 600; }
+.void { color: var(--blk-ink-3); text-decoration: line-through; }
+.pill {
+  display: inline-block; height: var(--pill-h); line-height: var(--pill-h); padding: 0 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; white-space: nowrap; background: #E6E6E6; color: #303030;
+}
+.pill.ok { background: #D3ECDD; color: #0B5A37; }
+.pill.warn { background: #F7E2B8; color: #6E4D12; }
+.pill.danger { background: #F8D8D0; color: #8E2408; }
+
+/* ---- the one switch on Sales ---- */
+.panel-head { margin-bottom: 16px; }
+.panel { display: none; }
+.panel.on { display: block; }
+
+/* ---- details fold ---- */
+details.tile { padding: 0; }
+details summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px;
+  padding: 20px var(--pad); font-size: var(--t-title); font-weight: 600; color: var(--ink-strong);
+}
+details summary::-webkit-details-marker { display: none; }
+details summary .val { margin-left: auto; font-variant-numeric: tabular-nums; }
+details summary .go { color: var(--blk-ink-3); transition: transform .15s; }
+details[open] summary .go { transform: rotate(90deg); }
+details .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; padding: 0 var(--pad); }
+details .foot { padding: 0 var(--pad) 22px; }
+
+@media (max-width: 1000px) {
+  .two { grid-template-columns: minmax(0, 1fr); }
+  details .cols { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 800px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side { display: none; }
+  .main { padding: 20px 16px 48px; }
+  :root { --pad: 20px; --t-hero: 38px; }
+  .stats { gap: 20px; flex-wrap: wrap; }
+  .tbl { overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="store"><span class="mark">EJ</span>Main Store</div>
+    <nav class="nav">
+      <h6>Main menu</h6>
+      <a href="#" data-go="dash" class="on">Dashboard</a>
+      <a href="#" data-go="sales">Sales</a>
+      <div class="sub" id="salesSub">
+        <a href="#" class="on">Summary</a>
+        <a href="#">By item</a>
+        <a href="#">By category</a>
+      </div>
+      <a href="#">Transactions</a>
+      <a href="#">Customers</a>
+      <h6>Stock</h6>
+      <a href="#">Products</a>
+      <a href="#">Price history</a>
+      <a href="#">Inventory</a>
+      <a href="#">Needs buying</a>
+      <a href="#">Purchase orders</a>
+      <a href="#">Suppliers</a>
+      <h6>Reports</h6>
+      <a href="#">Stock health</a>
+      <a href="#">Buying</a>
+      <a href="#">Customer habits</a>
+      <a href="#">Days &amp; staff</a>
+      <h6>Manage</h6>
+      <a href="#">Staff</a>
+      <a href="#">Attendance</a>
+      <a href="#">Payments</a>
+      <a href="#">Settings</a>
+    </nav>
+    <div class="me">El John<span>Owner</span></div>
+  </aside>
+
+  <main class="main">
+    <!-- ===================== DASHBOARD ===================== -->
+    <section class="page on" id="dash">
+      <div class="head">
+        <h1>Welcome back, El John</h1>
+        <div class="pbtns" data-filter><button class="pbtn on">Today</button><button class="pbtn">7 days</button><button class="pbtn">15 days</button><button class="pbtn">30 days</button></div>
+      </div>
+
+      <div class="tile">
+        <div class="hero-top">
+          <div class="hero-main">
+            <div class="label">Revenue today</div>
+            <div class="line"><span class="value num">₱48,210</span><button class="chip up" data-tip="vs yesterday · ₱42,890">↑ 12.4%</button></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="label">Profit</div><div class="line"><span class="value num">₱9,870</span><button class="chip sm up" data-tip="vs yesterday · ₱9,130">↑ 8.1%</button></div></div>
+            <div class="stat"><div class="label">Transactions</div><div class="line"><span class="value num">64</span><button class="chip sm down" data-tip="vs yesterday · 66">↓ 3.0%</button></div></div>
+            <div class="stat"><div class="label">Average basket</div><div class="line"><span class="value num">₱753</span><button class="chip sm up" data-tip="vs yesterday · ₱650">↑ 15.9%</button></div></div>
+          </div>
+        </div>
+        <div class="keys" data-for="dashChart"><button class="key s0" aria-pressed="true"><i></i>Revenue</button><button class="key s1" aria-pressed="true"><i></i>Profit</button></div>
+        <div class="plot" id="dashChart" role="img" aria-label="Revenue and profit by the hour today"></div>
+      </div>
+
+      <div class="two">
+        <div class="tile">
+          <h2>Targets</h2>
+          <div class="targets">
+          <div class="target">
+            <div class="label">Today</div>
+            <div class="line"><span class="value">₱48,210<span class="of">/ ₱55,000</span></span><span class="pct">88%</span></div>
+            <div class="meter" role="img" aria-label="88% of today's target"><i style="width: 88%"></i></div>
+            <ul class="rows"><li><span class="name">To go</span><span class="val">₱6,790</span></li></ul>
+          </div>
+          <div class="target">
+            <div class="label">September</div>
+            <div class="line"><span class="value">₱1,086,400<span class="of">/ ₱1.5M</span></span><span class="pct">72%</span></div>
+            <div class="meter" role="img" aria-label="72% of the September target"><i style="width: 72%"></i></div>
+            <ul class="rows"><li><span class="name">On pace for</span><span class="val">₱1,417,000</span></li></ul>
+          </div>
+          </div>
+        </div>
+
+        <div class="tile">
+          <h2>Needs attention</h2>
+          <ul class="rows">
+            <li><a href="#"><span class="name">Out of stock</span><span class="val bad">1 item</span><span class="go">›</span></a></li>
+            <li><a href="#"><span class="name">Low stock</span><span class="val">4 items</span><span class="go">›</span></a></li>
+            <li><a href="#"><span class="name">Not yet collected</span><span class="val">₱12,760</span><span class="go">›</span></a></li>
+            <li><a href="#"><span class="name">Refunds and voids today</span><span class="val">2</span><span class="go">›</span></a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="tbl">
+        <div class="tbl-head"><h2>Recent transactions<span class="count">5 of 64</span></h2><a href="#">View all →</a></div>
+        <table>
+          <thead><tr><th>Customer</th><th>Time</th><th>Payment</th><th class="r">Total</th></tr></thead>
+          <tbody id="recent"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== SALES ===================== -->
+    <section class="page" id="sales">
+      <div class="head">
+        <h1>Sales</h1>
+        <div class="pbtns" data-filter><button class="pbtn">Today</button><button class="pbtn">7 days</button><button class="pbtn">15 days</button><button class="pbtn on">30 days</button></div>
+        <button class="btn"><svg viewBox="0 0 12 12"><path d="M1.5 2.5h9M3 6h6M4.5 9.5h3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Filter</button>
+        <button class="btn"><svg viewBox="0 0 12 12"><path d="M6 1.5v6M3.5 5L6 7.5 8.5 5M2 10h8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Export CSV</button>
+      </div>
+
+      <div class="tile">
+        <div class="hero-top">
+          <div class="hero-main">
+            <div class="label">Revenue, last 30 days</div>
+            <div class="line"><span class="value num">₱1,412,380</span><button class="chip up" data-tip="vs the 30 days before · ₱1,322,453">↑ 6.8%</button></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="label">Gross profit</div><div class="line"><span class="value num">₱289,540</span><button class="chip sm up" data-tip="vs the 30 days before · ₱277,870">↑ 4.2%</button></div></div>
+            <div class="stat"><div class="label">Transactions</div><div class="line"><span class="value num">1,874</span><button class="chip sm up" data-tip="vs the 30 days before · 1,818">↑ 3.1%</button></div></div>
+            <div class="stat"><div class="label">Average basket</div><div class="line"><span class="value num">₱754</span><button class="chip sm up" data-tip="vs the 30 days before · ₱728">↑ 3.6%</button></div></div>
+          </div>
+        </div>
+        <div class="keys" data-for="salesChart"><button class="key s0" aria-pressed="true"><i></i>Revenue</button><button class="key s1" aria-pressed="true"><i></i>Gross profit</button></div>
+        <div class="plot" id="salesChart" role="img" aria-label="Revenue and gross profit by day, last 30 days"></div>
+      </div>
+
+      <div class="tile">
+        <div class="panel-head">
+          <div class="pbtns" id="panelSeg">
+            <button class="pbtn on" data-panel="items">Top items</button>
+            <button class="pbtn" data-panel="staff">Staff</button>
+            <button class="pbtn" data-panel="pay">Payments</button>
+            <button class="pbtn" data-panel="hours">Busy times</button>
+          </div>
+        </div>
+
+        <div class="panel on" id="items">
+          <ul class="rows" id="topItems"></ul>
+          <div class="foot"><a href="#">See all items →</a></div>
+        </div>
+
+        <div class="panel" id="staff"><ul class="rows" id="staffRows"></ul></div>
+
+        <div class="panel" id="pay">
+          <div class="meter split" id="paySplit" role="img" aria-label="Cash 50%, GCash 21%, account 20%, card 9%"></div>
+          <ul class="rows" id="payRows"></ul>
+          <div class="foot">₱276,180 on account, not yet collected</div>
+        </div>
+
+        <div class="panel" id="hours">
+          <div class="two">
+            <div><div class="label">Busiest hour</div><div class="stat"><span class="value">10 AM</span></div><div class="plot sm" id="hourChart"></div></div>
+            <div><div class="label">Busiest day</div><div class="stat"><span class="value">Saturday</span></div><div class="plot sm" id="dayChart"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <details class="tile">
+        <summary>Net sales details<span class="val">₱1,412,380</span><span class="go">›</span></summary>
+        <div class="cols">
+          <ul class="rows">
+            <li><span class="name">Gross sales</span><span class="val">₱1,468,920</span></li>
+            <li><span class="name">Discounts</span><span class="val">−₱38,760</span></li>
+            <li><span class="name">Returns (12)</span><span class="val">−₱17,780</span></li>
+            <li class="total"><span class="name">Net sales</span><span class="val">₱1,412,380</span></li>
+          </ul>
+          <ul class="rows">
+            <li><span class="name">VAT included</span><span class="val">₱151,326</span></li>
+            <li><span class="name">Before VAT</span><span class="val">₱1,261,054</span></li>
+            <li><span class="name">Margin</span><span class="cmp down">−0.5 pts</span><span class="val">20.5%</span></li>
+            <li><span class="name">Items sold</span><span class="val">6,212</span></li>
+          </ul>
+        </div>
+        <div class="foot">3 voided sales, no revenue</div>
+      </details>
+    </section>
+  </main>
+</div>
+
+<script>
+// ponytail: static sample data; the lab only has to look right, nothing is wired to the store.
+const peso = n => (n < 0 ? '−' : '') + '₱' + Math.abs(n).toLocaleString('en-PH');
+const short = n => n >= 1e6 ? '₱' + +(n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? '₱' + +(n / 1e3).toFixed(1) + 'k' : '₱' + n;
+const $ = id => document.getElementById(id);
+
+$('recent').innerHTML = [
+  ['Ramon Dizon', '10:31 AM', 'GCash', 2340],
+  ['Walk-in', '10:24 AM', 'Cash', 185],
+  ['Santos Construction', '10:18 AM', 'Account', 12760],
+  ['Liza Mercado', '9:55 AM', 'Card', -1120, 'Refund'],
+  ['Walk-in', '9:47 AM', 'Cash', 430, 'Voided'],
+].map(([c, t, p, amt, st]) => `<tr>
+  <td class="${c === 'Walk-in' ? 'muted' : 'strong'}">${c}</td><td class="muted num">${t}</td><td>${p}</td>
+  <td class="r num">${st ? `<span class="pill ${st === 'Refund' ? 'danger' : ''}" style="margin-right: 10px">${st}</span>` : ''}<span class="${st === 'Voided' ? 'void' : ''}">${peso(amt)}</span></td></tr>`).join('');
+
+$('topItems').innerHTML = [
+  ['Portland Cement 40kg', '1,240 bags', 334800], ['Deformed Bar 10mm', '860 pc', 146200], ['Boysen Paint 4L', '180 cans', 111600],
+  ['Plywood ¾"', '96 sheets', 105600], ['GI Sheet Ga. 26', '210 pc', 92400],
+].map(([n, q, v]) => `<li><span class="name">${n}</span><span class="sub">${q}</span><span class="val" style="min-width: 100px">${peso(v)}</span></li>`).join('');
+
+$('staffRows').innerHTML = [['Maria Santos', 512300, 684], ['Joel Cruz', 438900, 571], ['Ana Lim', 301480, 402], ['El John', 159700, 217]]
+  .map(([n, v, t]) => `<li><span class="name">${n}</span><span class="sub">${t} sales</span><span class="val" style="min-width: 100px">${peso(v)}</span></li>`).join('');
+
+// Cash, GCash, card are money in hand (blues, deepest first); account is owed (grey).
+const PAY = [['Cash', 712300, 50, 'var(--data-3)'], ['GCash', 298400, 21, 'var(--data-2)'], ['Account', 276180, 20, 'var(--btn-line)'], ['Card', 125500, 9, 'var(--data-1)']];
+$('paySplit').innerHTML = PAY.map(([, , s, c]) => `<i style="--c:${c}; flex:${s}"></i>`).join('');
+$('payRows').innerHTML = PAY.map(([n, v, s, c]) => `<li><span class="sw" style="--c:${c}"></span><span class="name">${n}</span><span class="val">${peso(v)}</span><span class="cmp">${s}%</span></li>`).join('');
+
+// ---- series ----
+const HOURS = ['7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM'];
+const today = [1200, 3400, 5200, 6100, 4800, 3900, 4200, 5600, 4700, 3800, 2900, 1600, 810];
+const byHour = [52000, 98000, 151000, 182400, 164000, 121000, 118500, 139000, 127000, 108000, 82000, 48000, 21480];
+const byDay = [196000, 188500, 201300, 194800, 222400, 256900, 152480];
+
+// 30 days ending Sep 23, 2026, shaped by weekday, scaled so it sums to the Revenue figure.
+const days = [], daily = [];
+const noise = [1.04, .96, 1.08, .93, 1.02, 1.1, .9, .97, 1.05, 1.01, .94, 1.07, .99, 1.03, .95, 1.06, 1, .92, 1.09, .98, 1.02, .96, 1.04, 1.01, .95, 1.08, .97, 1.03, 1, 1.05];
+for (let i = 29; i >= 0; i--) {
+  const d = new Date(2026, 8, 23 - i);
+  days.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+  daily.push(byDay[(d.getDay() + 6) % 7] * noise[29 - i]);
+}
+const scale = 1412380 / daily.reduce((a, b) => a + b, 0);
+daily.forEach((v, i) => daily[i] = Math.round(v * scale));
+
+function niceMax(m) {
+  const mag = 10 ** Math.floor(Math.log10(m));
+  return [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map(s => s * mag).find(s => s >= m);
+}
+
+const profit = arr => arr.map(v => Math.round(v * 0.205));
+const CHARTS = {
+  dashChart:  { labels: HOURS, series: [{ name: 'Revenue', v: today }, { name: 'Profit', v: profit(today) }] },
+  salesChart: { labels: days, series: [{ name: 'Revenue', v: daily }, { name: 'Gross profit', v: profit(daily) }] },
+  hourChart:  { still: true, labels: HOURS, series: [{ name: 'Revenue', v: byHour }] },
+  dayChart:   { still: true, labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], series: [{ name: 'Revenue', v: byDay }] },
+};
+
+// The live line chart: straight segments, one shared axis, fade under the front line only,
+// a dot + halo on the last point, a crosshair and tooltip on hover. Hidden lines leave the scale.
+function draw(host) {
+  const w = host.clientWidth, h = host.clientHeight;
+  if (!w) return;
+  const { labels, series, still } = CHARTS[host.id];   // still: a by-hour / by-weekday pattern, so no "now" dot
+  const off = host.dataset.off, shown = series.map((s, k) => ({ ...s, k })).filter(s => String(s.k) !== off);
+  const L = 48, R = 8, T = 8, B = 24, pw = w - L - R, ph = h - T - B, n = labels.length;
+  const max = niceMax(Math.max(...shown.flatMap(s => s.v)));
+  const x = i => L + i * pw / (n - 1);
+  const y = v => T + ph - v / max * ph;
+  let out = '';
+  [0, .5, 1].forEach(f => {
+    out += `<line class="grid" x1="${L}" x2="${w - R}" y1="${y(max * f)}" y2="${y(max * f)}"/>`;
+    out += `<text class="axis" x="${L - 10}" y="${y(max * f) + 4}" text-anchor="end">${short(max * f)}</text>`;
+  });
+  const every = Math.ceil(n / Math.max(2, Math.floor(pw / 90)));
+  labels.forEach((l, i) => { if (i % every === 0) out += `<text class="axis" x="${x(i)}" y="${h - 4}" text-anchor="middle">${l}</text>`; });
+  out += `<line class="cross" y1="${T}" y2="${T + ph}" visibility="hidden"/>`;
+  shown.forEach((s, j) => {
+    const pts = s.v.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`), id = `${host.id}Fade`;
+    out += `<g class="s${s.k}">`;
+    if (j === 0) out += `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop class="fade-top" offset="0"/><stop class="fade-bot" offset="1"/></linearGradient></defs>`
+      + `<path d="M${pts.join('L')}L${x(n - 1)},${T + ph}L${L},${T + ph}Z" fill="url(#${id})"/>`;
+    out += `<polyline class="line" points="${pts.join(' ')}"/>`
+      + (still ? '' : `<circle class="halo" r="10" cx="${x(n - 1)}" cy="${y(s.v[n - 1])}"/><circle class="end" r="5" cx="${x(n - 1)}" cy="${y(s.v[n - 1])}"/>`)
+      + `<circle class="dot" r="4.5" visibility="hidden" data-k="${s.k}"/></g>`;
+  });
+  host.innerHTML = `<svg viewBox="0 0 ${w} ${h}">${out}</svg><div class="tip" hidden></div>`;
+  const cross = host.querySelector('.cross'), dots = host.querySelectorAll('.dot'), tip = host.querySelector('.tip');
+  host.onpointermove = e => {
+    const i = Math.max(0, Math.min(n - 1, Math.round((e.clientX - host.getBoundingClientRect().left - L) / pw * (n - 1))));
+    cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
+    dots.forEach(d => { d.setAttribute('cx', x(i)); d.setAttribute('cy', y(series[d.dataset.k].v[i])); d.setAttribute('visibility', 'visible'); });
+    tip.innerHTML = labels[i] + shown.map(s => ` · ${shown.length > 1 ? s.name + ' ' : ''}<b>${peso(s.v[i])}</b>`).join('');
+    tip.hidden = false;
+    tip.style.left = (x(i) + 10 + tip.offsetWidth < w ? x(i) + 10 : x(i) - 10 - tip.offsetWidth) + 'px';   // flip left near the edge
+  };
+  host.onpointerleave = () => { cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); tip.hidden = true; };
+}
+// draw() skips hidden hosts (width 0), so redraw everything after any show/hide.
+const charts = () => Object.keys(CHARTS).forEach(id => draw($(id)));
+
+// Keys: a click hides that line; the last line showing can't be hidden.
+document.querySelectorAll('.keys').forEach(keys => keys.addEventListener('click', e => {
+  const k = e.target.closest('.key'), host = $(keys.dataset.for);
+  if (!k) return;
+  const i = String([...keys.children].indexOf(k)), off = host.dataset.off;
+  if (off === i) delete host.dataset.off;
+  else if (off === undefined) host.dataset.off = i;
+  else return;
+  [...keys.children].forEach((b, j) => b.setAttribute('aria-pressed', String(host.dataset.off !== String(j))));
+  draw(host);
+}));
+
+document.querySelectorAll('[data-go]').forEach(a => a.addEventListener('click', e => {
+  e.preventDefault();
+  document.querySelectorAll('.page').forEach(v => v.classList.toggle('on', v.id === a.dataset.go));
+  document.querySelectorAll('[data-go]').forEach(n => n.classList.toggle('on', n === a));
+  $('salesSub').classList.toggle('open', a.dataset.go === 'sales');
+  history.replaceState(null, '', '#' + a.dataset.go);
+  charts();
+}));
+// Pill rows: one on at a time; the panel switch also swaps the panel.
+document.querySelectorAll('.pbtns').forEach(row => row.addEventListener('click', e => {
+  const b = e.target.closest('.pbtn');
+  if (!b) return;
+  row.querySelectorAll('.pbtn').forEach(x => x.classList.toggle('on', x === b));
+  if (b.dataset.panel) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === b.dataset.panel));
+    charts();
+  }
+}));
+if (location.hash === '#sales') document.querySelector('[data-go="sales"]').click();
+addEventListener('resize', charts);
+document.fonts && document.fonts.ready.then(charts);
+charts();
+</script>
+</body>
+</html>

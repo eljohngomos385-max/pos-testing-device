@@ -10,13 +10,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Geist:wght@400..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css?v=125" />
-  <link rel="stylesheet" href="/bo-products.css?v=97" />
-  <link rel="stylesheet" href="/bo-inventory.css?v=90" />
+  <link rel="stylesheet" href="/bo-products.css?v=100" />
+  <link rel="stylesheet" href="/bo-item.css?v=1" />
+  <link rel="stylesheet" href="/bo-inventory.css?v=93" />
   <link rel="stylesheet" href="/bo-sales.css?v=87" />
   <link rel="stylesheet" href="/bo-suppliers.css?v=85" />
-  <link rel="stylesheet" href="/bo-staff.css?v=86" />
+  <link rel="stylesheet" href="/bo-staff.css?v=87" />
   <link rel="stylesheet" href="/bo-insights.css?v=3" />
-  <link rel="stylesheet" href="/bo-blocks.css?v=50" />
+  <link rel="stylesheet" href="/bo-blocks.css?v=59" />
 </head>
 <body class="bo-body bo-light">
   <div id="app" class="bo-app">
@@ -69,18 +70,6 @@
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle class="i-hole" cx="7.5" cy="7.5" r="1.8"/></svg>
             <span>Products</span>
           </button>
-          <button class="side-link" data-view="inventory" data-sub="prices">
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path fill="none" d="M3 3v18h18"/><path d="M7 17v-2.5l4-4 3 3 6-6V17z"/></svg>
-            <span>Price history</span>
-          </button>
-          <button class="side-link" data-view="inventory">
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path class="i-cut" fill="none" d="m3.5 8.3 8.5 4.7 8.5-4.7M12 13v8"/></svg>
-            <span>Inventory</span>
-          </button>
-          <button class="side-link" data-view="inventory" data-sub="reorder">
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path fill="none" d="M2 3h3l1.2 5"/><path d="M6.2 8h15.3l-1.6 7a2 2 0 0 1-2 1.5H9.6a2 2 0 0 1-2-1.6z"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg>
-            <span>Needs buying</span>
-          </button>
           <button class="side-link" data-view="suppliers" data-sub="orders">
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="8.5" y="2" width="7" height="3.5" rx="1"/><path class="i-cut" d="M9 11h6M9 15h4"/></svg>
             <span>Purchase orders</span>
@@ -92,21 +81,9 @@
         </div></div>
         <button class="side-label" type="button" data-fold="reports" aria-expanded="true">Reports<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="side-fold"><div class="side-fold-in">
-          <button class="side-link" data-view="insights" data-sub="cash stockouts dead sell lost counts">
+          <button class="side-link" data-view="inventory" data-sub="overview">
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path class="i-cut" fill="none" d="M6 12h2.5l2-4 3 8 2-4H18"/></svg>
-            <span>Stock health</span>
-          </button>
-          <button class="side-link" data-view="insights" data-sub="reorder leads prices">
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path fill="none" d="M12 3v9m-4-4 4 4 4-4"/><path d="M3 15h18v3a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z"/></svg>
-            <span>Buying</span>
-          </button>
-          <button class="side-link" data-view="insights" data-sub="cycles basket deliveries">
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path class="i-cut" fill="none" d="M16 12a4 4 0 1 1-1.2-2.9M16 7v3h-3"/></svg>
-            <span>Customer habits</span>
-          </button>
-          <button class="side-link" data-view="insights" data-sub="days staff">
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path fill="none" d="M8 3v3M16 3v3"/><rect x="3" y="5" width="18" height="16" rx="2.5"/><path class="i-cut" d="M3 10h18"/></svg>
-            <span>Days &amp; staff</span>
+            <span>Stock history</span>
           </button>
         </div></div>
         <button class="side-label" type="button" data-fold="manage" aria-expanded="true">Manage<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
@@ -114,10 +91,6 @@
           <button class="side-link" data-view="staff">
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0z"/><path fill="none" d="M16 4.3a3.5 3.5 0 0 1 0 6.4M18.5 14a6.5 6.5 0 0 1 3 6"/></svg>
             <span>Staff</span>
-          </button>
-          <button class="side-link" data-view="staff" data-sub="attendance">
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path class="i-cut" fill="none" d="M12 7v5l3 2"/></svg>
-            <span>Attendance</span>
           </button>
           <button class="side-link" data-view="payments">
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path class="i-cut" d="M2 10h20M6 15h4"/></svg>
@@ -193,7 +166,7 @@
             <section class="bo-card blk-table">
               <div class="bo-card-head">
                 <span class="bo-card-label">Recent transactions<span class="bo-card-count" id="txCount"></span></span>
-                <button class="link-btn" data-jump="sales" data-sub="tx">View all →</button>
+                <button class="link-btn view-all" data-jump="sales" data-sub="tx">View all ›</button>
               </div>
               <div class="bo-card-inset flush">
                 <div class="table-wrap">
@@ -259,10 +232,12 @@
                     <tr>
                       <th>Name</th>
                       <th>Phone</th>
-                      <th>Address</th>
-                      <th class="num">Credit limit</th>
+                      <th class="num">Orders</th>
+                      <th class="num">Spent</th>
+                      <th>Last order</th>
+                      <th class="num">Buys every</th>
+                      <th>Due</th>
                       <th class="num">Balance</th>
-                      <th class="num">Available</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -343,6 +318,15 @@
               </div>
             </div>
             <div class="setting-row">
+              <label>Chart style
+                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Lines or bars on every sales chart, on this device.</div>
+              </label>
+              <div class="seg" id="settingsChartStyle" role="tablist">
+                <button class="seg-btn active" data-style="line">Line</button>
+                <button class="seg-btn" data-style="bars">Bars</button>
+              </div>
+            </div>
+            <div class="setting-row">
               <label>Back office row size
                 <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Height and text size of every list on this device. Larger is easier on the eyes.</div>
               </label>
@@ -394,19 +378,22 @@
   <!-- Outside the views: a dialog in a hidden section never shows. Targets opens from the dashboard and Sales. -->
   <dialog id="targetDlg" class="bo-dialog adj-dlg"></dialog>
   <dialog id="staffDlg" class="bo-dialog"></dialog>
+  <!-- Stock adjust: bo-inventory.js fills it; any [data-adjust-open] on any page opens it. -->
+  <dialog id="adjustDlg" class="bo-dialog adj-dlg"></dialog>
   <div id="toast" class="toast" hidden></div>
 
   <script src="/data-store.js?v=31"></script>
   <script src="/data.js?v=27"></script>
-  <script src="/bo-model.js?v=88"></script>
+  <script src="/bo-model.js?v=90"></script>
   <script src="/router.js?v=62"></script>
-  <script src="/backoffice.js?v=147"></script>
-  <script src="/bo-products.js?v=90"></script>
-  <script src="/bo-insights.js?v=13"></script>
-  <script src="/bo-inventory.js?v=100"></script>
-  <script src="/bo-sales.js?v=91"></script>
-  <script src="/bo-suppliers.js?v=90"></script>
-  <script src="/bo-staff.js?v=90"></script>
+  <script src="/backoffice.js?v=157"></script>
+  <script src="/bo-products.js?v=92"></script>
+  <script src="/bo-item.js?v=1"></script>
+  <script src="/bo-insights.js?v=20"></script>
+  <script src="/bo-inventory.js?v=105"></script>
+  <script src="/bo-sales.js?v=93"></script>
+  <script src="/bo-suppliers.js?v=91"></script>
+  <script src="/bo-staff.js?v=93"></script>
   <script>
     // ---- Back office: hamburger + topbar wiring (white mode) ----
     (function () {

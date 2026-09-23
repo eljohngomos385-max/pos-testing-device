@@ -10,6 +10,7 @@ this is one `try_files $uri /backoffice.html;` line, or a Netlify _redirects rul
     /admin/*  /backoffice.html  200
 """
 import os
+import re
 import sys
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -34,16 +35,32 @@ class SPAHandler(SimpleHTTPRequestHandler):
         return full
 
     def do_GET(self):
+        clean = self.path.split('?', 1)[0]
+        # /demo turns on six months of generated data (scripts/demo-fill.js, in memory only, the
+        # real localStorage is never touched); /demo/off turns it off. A cookie, so a refresh or a
+        # pasted /admin link stays in the demo.
+        if clean in ('/demo', '/demo/off'):
+            on = clean == '/demo'
+            self.send_response(302)
+            self.send_header('Set-Cookie', f"hwpos_demo={'1' if on else ''}; Path=/; Max-Age={2592000 if on else 0}")
+            self.send_header('Location', '/admin')
+            return self.end_headers()
+        demo = 'hwpos_demo=1' in (self.headers.get('Cookie') or '')
         # /seed: the back office plus a line that runs scripts/seed-year.js and reloads to
         # /admin. For devices with no DevTools console (iPad Safari). This server only, so
         # production never has a URL that wipes a browser's data.
-        if self.path.split('?', 1)[0] != '/seed':
+        if clean != '/seed' and not (demo and self.translate_path(self.path).endswith('backoffice.html')):
             return super().do_GET()
         with open(os.path.join(ROOT, 'backoffice.html'), encoding='utf-8') as f:
             html = f.read()
-        run = ("<script>fetch('/scripts/seed-year.js').then(r => r.text()).then(eval)"
-               ".then(() => { console.log(seedYear()); location.replace('/admin'); });</script>")
-        body = html.replace('</body>', run + '</body>').encode('utf-8')
+        if clean == '/seed':
+            run = ("<script>fetch('/scripts/seed-year.js').then(r => r.text()).then(eval)"
+                   ".then(() => { console.log(seedYear()); location.replace('/admin'); });</script>")
+            body = html.replace('</body>', run + '</body>').encode('utf-8')
+        else:
+            # After bo-model.js: data.js and SEED_STAFF exist, backoffice.js has not read storage yet.
+            body = re.sub(r'(<script src="/bo-model\.js[^"]*"></script>)',
+                          r'\1\n  <script src="/scripts/demo-fill.js"></script>', html, count=1).encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))

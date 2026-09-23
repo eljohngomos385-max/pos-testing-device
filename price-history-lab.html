@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Price History Lab</title>
+<link rel="icon" href="data:," />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   PRICE HISTORY LAB — standalone scratch file, not wired into the product.
+   Question: how does one item's price history live on the Products list,
+   outside the editor, without a button on every row? Four answers, switchable
+   from the bar at the top, all on the same sample data:
+     1 Quick view   row click opens an item panel; Edit is inside it
+     2 Split view   list left, the selected item's detail right
+     3 Hover price  hover the price for its last few changes
+     4 Switch       "Products | Price changes" toggles the table itself
+   Tokens copied from body.bo-light --po-* so it reads like the back office.
+   =========================================================================== */
+:root {
+  --po-bg: #F6F6F6;
+  --po-surface: #FFFFFF;
+  --po-surface-2: #FAFAFA;
+  --po-surface-hover: #F7F7F7;
+  --po-line: #E1E1E1;
+  --po-line-strong: #D2D2D2;
+  --po-ink: #303030;
+  --po-ink-secondary: #6B6B6B;
+  --po-ink-tertiary: #8A8A8A;
+  --po-primary: #303030;
+  --po-primary-ink: #FFFFFF;
+  --po-success: #0E7C4A;
+  --po-danger: #C7320A;
+  --po-pill-ok: #D3ECDD;      --po-pill-ok-ink: #0B5A37;
+  --po-pill-warn: #F7E2B8;    --po-pill-warn-ink: #6E4D12;
+  --po-pill-danger: #F8D8D0;  --po-pill-danger-ink: #8E2408;
+  --po-r-card: 8px;
+  --po-r-button: 8px;
+  --po-r-pill: 999px;
+  --po-shadow-card: 0 1px 1px rgba(0,0,0,0.03);
+  --po-shadow-pop: 0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
+  --po-mono: "Geist Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--po-bg); color: var(--po-ink); font: 13px/1.45 Geist, system-ui, sans-serif; }
+.page { max-width: 1240px; margin: 0 auto; padding: 16px 16px 60px; }
+h1 { font-size: 20px; margin: 0; }
+
+/* Lab chrome: which option is showing. Not part of any design. */
+.lab { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 10px; margin-bottom: 18px;
+  border: 1px dashed var(--po-line-strong); border-radius: var(--po-r-card); }
+.lab b { margin-right: 6px; }
+.lab button { border: 1px solid var(--po-line-strong); background: var(--po-surface); border-radius: var(--po-r-pill);
+  padding: 4px 12px; font: inherit; cursor: pointer; }
+.lab button.on { background: var(--po-primary); color: var(--po-primary-ink); border-color: var(--po-primary); }
+.lab .hint { flex-basis: 100%; color: var(--po-ink-secondary); margin: 4px 2px 0; }
+
+.head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.head h1 { margin-right: auto; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--po-line-strong);
+  border-radius: var(--po-r-button); background: var(--po-surface); color: var(--po-ink); font: inherit; font-weight: 500; cursor: pointer; }
+.btn:hover { background: var(--po-surface-hover); }
+.btn[hidden], .select[hidden] { display: none; }
+.btn.primary { background: var(--po-primary); color: var(--po-primary-ink); border-color: var(--po-primary); }
+.filters { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.input, .select { padding: 6px 10px; border: 1px solid var(--po-line-strong); border-radius: var(--po-r-button);
+  background: var(--po-surface); font: inherit; color: var(--po-ink); }
+.input { flex: 1; min-width: 200px; max-width: 380px; }
+.shown { margin-left: auto; color: var(--po-ink-tertiary); }
+
+.card { background: var(--po-surface); border: 1px solid var(--po-line); border-radius: var(--po-r-card); box-shadow: var(--po-shadow-card); }
+.card.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-weight: 500; color: var(--po-ink-secondary); background: var(--po-surface-2);
+  padding: 8px 12px; border-bottom: 1px solid var(--po-line); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--po-line); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: none; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.muted { color: var(--po-ink-tertiary); }
+.mono { font-family: var(--po-mono); font-size: 12px; }
+.pd-row { cursor: pointer; }
+.pd-row:hover { background: var(--po-surface-hover); }
+.pd-row.sel { background: #EFEFEF; box-shadow: inset 3px 0 0 var(--po-primary); }
+.vcount { color: var(--po-ink-tertiary); margin-left: 6px; }
+.status-pill { display: inline-block; padding: 1px 8px; border-radius: var(--po-r-pill); font-size: 12px; }
+.status-pill.ok { background: var(--po-pill-ok); color: var(--po-pill-ok-ink); }
+.status-pill.warn { background: var(--po-pill-warn); color: var(--po-pill-warn-ink); }
+.status-pill.danger { background: var(--po-pill-danger); color: var(--po-pill-danger-ink); }
+.up { color: var(--po-success); }
+.down { color: var(--po-danger); }
+.empty { color: var(--po-ink-tertiary); padding: 24px 0; text-align: center; }
+.seg { display: inline-flex; border: 1px solid var(--po-line-strong); border-radius: var(--po-r-button); overflow: hidden; }
+.seg button { border: 0; background: var(--po-surface); padding: 4px 12px; font: inherit; font-size: 12px; cursor: pointer; color: var(--po-ink-secondary); }
+.seg button + button { border-left: 1px solid var(--po-line-strong); }
+.seg button.on { background: var(--po-primary); color: var(--po-primary-ink); }
+.seg.big button { padding: 6px 14px; font-size: 13px; }
+/* 6 - the Inventory "Adjust" button, as Edit */
+.row-btn { height: 30px; padding: 0 12px; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--po-ink);
+  background: var(--po-surface); border: 1px solid var(--po-line-strong); border-radius: 6px; }
+.row-btn:hover { background: var(--po-surface-hover); border-color: var(--po-ink-tertiary); }
+
+/* 5 - tabs over the table, and the grouped Price changes view */
+.tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--po-line); margin-bottom: 12px; }
+.tabs button { border: 0; background: none; font: inherit; font-weight: 500; color: var(--po-ink-secondary); padding: 8px 0; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button.on { color: var(--po-ink); border-bottom-color: var(--po-primary); }
+.tabs .count { color: var(--po-ink-tertiary); font-weight: 400; margin-left: 6px; }
+.chev { display: inline-block; width: 14px; color: var(--po-ink-tertiary); transition: transform .15s; }
+.pc-row.open .chev { transform: rotate(90deg); }
+.pc-row { cursor: pointer; }
+.pc-row:hover { background: var(--po-surface-hover); }
+.pc-row.open { background: var(--po-surface-2); }
+.pc-sub > td { padding: 0 12px 12px 38px; background: var(--po-surface-2); }
+.pc-sub table { background: var(--po-surface); border: 1px solid var(--po-line); border-radius: var(--po-r-card); border-collapse: separate; border-spacing: 0; overflow: hidden; }
+.pc-sub th { background: var(--po-surface); }
+.pc-sub td, .pc-sub th { padding: 7px 10px; }
+
+/* Item detail — shared by option 1 (in the drawer) and option 2 (in the right pane). */
+.det-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--po-line); display: flex; gap: 12px; align-items: flex-start; }
+.det-head h2 { font-size: 16px; margin: 0; }
+.det-head .sub { color: var(--po-ink-secondary); margin-top: 2px; }
+.det-head .acts { margin-left: auto; display: flex; gap: 6px; }
+.x { border: 0; background: none; font-size: 20px; line-height: 1; cursor: pointer; color: var(--po-ink-secondary); padding: 2px 8px; border-radius: var(--po-r-button); }
+.x:hover { background: var(--po-surface-hover); }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--po-line); }
+.stats > div { padding: 12px 20px; }
+.stats > div + div { border-left: 1px solid var(--po-line); }
+.stats .lbl { color: var(--po-ink-tertiary); font-size: 12px; }
+.stats .val { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.det-sec { padding: 14px 20px 20px; }
+.det-sec .top { display: flex; align-items: center; margin-bottom: 8px; }
+.det-sec h3 { font-size: 14px; margin: 0 auto 0 0; }
+.det-sec td, .det-sec th { padding: 8px 10px; }
+
+/* 1 — drawer */
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.18); opacity: 0; pointer-events: none; transition: opacity .15s; }
+.scrim.open { opacity: 1; pointer-events: auto; }
+.drawer { position: fixed; top: 0; right: 0; height: 100%; width: min(600px, 100%); background: var(--po-surface);
+  box-shadow: var(--po-shadow-pop); transform: translateX(100%); transition: transform .2s ease, visibility .2s; overflow: auto; visibility: hidden; }
+.drawer.open { transform: none; visibility: visible; }
+
+/* 2 — split */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 14px; align-items: start; }
+.split .pane { position: sticky; top: 12px; }
+.split .pane .stats { grid-template-columns: repeat(2, 1fr); }
+.split .pane .stats > div:nth-child(3) { border-left: 0; border-top: 1px solid var(--po-line); }
+.split .pane .stats > div:nth-child(4) { border-top: 1px solid var(--po-line); }
+@media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+
+/* 3 — hover card on the price */
+.hp { position: relative; }
+.hp-trig { border-bottom: 1px dotted var(--po-ink-tertiary); cursor: help; }
+.hp-card { display: none; position: absolute; right: 0; top: calc(100% - 4px); z-index: 5; width: 330px; text-align: left;
+  background: var(--po-surface); border: 1px solid var(--po-line); border-radius: var(--po-r-card); box-shadow: var(--po-shadow-pop);
+  padding: 10px 12px; cursor: default; white-space: normal; }
+.hp:hover .hp-card, .hp:focus-within .hp-card { display: block; }
+.hp-card .t { font-weight: 600; margin-bottom: 6px; }
+.hp-card table td { padding: 5px 4px; border-bottom: 1px solid var(--po-line); }
+.hp-card .more { margin-top: 6px; color: var(--po-ink-secondary); font-size: 12px; }
+
+.link { border: 0; background: none; padding: 0; font: inherit; color: var(--po-ink); cursor: pointer; text-align: left; }
+.link:hover { text-decoration: underline; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--po-primary);
+  color: var(--po-primary-ink); padding: 8px 14px; border-radius: var(--po-r-button); opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="lab" id="lab">
+    <b>Option</b>
+    <button data-mode="quick" class="on">1 · Quick view</button>
+    <button data-mode="split">2 · Split view</button>
+    <button data-mode="hover">3 · Hover price</button>
+    <button data-mode="switch">4 · Switch</button>
+    <button data-mode="switch2">5 · Switch v2</button>
+    <button data-mode="editcol">6 · Edit like Adjust</button>
+    <button data-mode="page">7 · Own page</button>
+    <div class="hint" id="hint"></div>
+  </div>
+
+  <div class="head">
+    <h1 id="title">Products</h1>
+    <button class="btn pd-only">Import CSV</button>
+    <button class="btn">Export CSV</button>
+    <button class="btn primary pd-only">Add product</button>
+  </div>
+  <div id="tabs"></div>
+  <div class="filters">
+    <span id="switchSeg"></span>
+    <input class="input" id="q" type="search" placeholder="Search name or SKU" />
+    <select class="select" id="cat"><option value="">All categories</option></select>
+    <select class="select" id="period" hidden><option value="">Any time</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option></select>
+    <span class="shown" id="shown"></span>
+  </div>
+  <div id="main"></div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-label="Product quick view"></aside>
+<div class="toast" id="toast"></div>
+
+<script>
+// Sample data, shaped like state.products and the priceLog events.
+const products = [
+  { id: 'p1', name: 'Aluminum Ladder 24"', sku: 'LAD-AL-24', cat: 'Tools', cost: 3150, price: 4250, stock: 6, unit: 'pc', low: 3 },
+  { id: 'p2', name: 'Portland Cement 40kg', sku: 'CEM-40', cat: 'Building', cost: 238, price: 285, stock: 140, unit: 'bag', low: 50 },
+  { id: 'p3', name: 'Deformed Bar 10mm', sku: 'RB-10', cat: 'Steel', cost: 178, price: 215, stock: 22, unit: 'pc', low: 40 },
+  { id: 'p4', name: 'Boysen Latex White 4L', sku: 'PNT-BLW-4', cat: 'Paint', cost: 610, price: 745, stock: 0, unit: 'can', low: 4 },
+  { id: 'p5', name: 'Common Wire Nail 2"', variant: '2"', sku: 'NL-CW-2', cat: 'Fasteners', cost: 62, price: 85, stock: 38, unit: 'kg', low: 10, group: 'Common Wire Nails' },
+  { id: 'p6', name: 'Common Wire Nail 3"', variant: '3"', sku: 'NL-CW-3', cat: 'Fasteners', cost: 60, price: 82, stock: 41, unit: 'kg', low: 10, group: 'Common Wire Nails' },
+  { id: 'p7', name: 'PVC Pipe 1/2" x 3m', sku: 'PVC-12', cat: 'Plumbing', cost: 95, price: 120, stock: 60, unit: 'pc', low: 20 },
+];
+const priceLog = [
+  ['p1', 'price', '2025-11-04T09:12', 3650, 3850, 'Mika', 'backoffice'],
+  ['p1', 'cost',  '2026-02-18T14:40', 2900, 3050, 'Mika', 'backoffice'],
+  ['p1', 'price', '2026-02-18T14:41', 3850, 3990, 'Mika', 'backoffice'],
+  ['p1', 'price', '2026-06-02T10:05', 3990, 4150, 'Jun', 'pos'],
+  ['p1', 'cost',  '2026-08-27T08:30', 3050, 3150, 'Mika', 'backoffice'],
+  ['p1', 'price', '2026-08-27T08:31', 4150, 4250, 'Mika', 'backoffice'],
+  ['p2', 'price', '2026-03-10T11:00', 265, 275, 'Mika', 'backoffice'],
+  ['p2', 'cost',  '2026-07-01T09:00', 225, 238, 'Mika', 'backoffice'],
+  ['p2', 'price', '2026-07-01T09:02', 275, 285, 'Mika', 'backoffice'],
+  ['p3', 'price', '2026-05-15T16:20', 225, 215, 'Jun', 'pos'],
+  ['p4', 'price', '2026-09-01T13:15', 720, 745, 'Mika', 'backoffice'],
+  ['p5', 'price', '2026-04-02T10:00', 80, 85, 'Mika', 'backoffice'],
+  ['p6', 'price', '2026-04-02T10:01', 78, 82, 'Mika', 'backoffice'],
+].map(([productId, field, ts, old, nu, staff, source]) => ({ productId, field, ts, old, new: nu, staff, source }));
+
+const HINTS = {
+  quick: 'Click any row. A panel opens with the item and its price history. "Edit product" inside it goes to the editor.',
+  split: 'Click a row on the left; its details and price history show on the right. The list never goes away.',
+  hover: 'Hover a price with a dotted underline to see its last changes. Row click still opens the editor.',
+  switch: 'Use "Products | Price changes" at the left of the filters. Search "ladder" in Price changes to see one item.',
+  page: 'Its own page (sidebar: Inventory → Price history). Only items that were repriced, one row each: was, now, overall change. Click a row for its full history; search one item and it opens by itself.',
+  editcol: 'Same as Inventory → On hand: the row is for looking, the button is for changing. Click a row for its info and price history; the Edit button on the right goes to the editor.',
+  switch2: 'Tabs over the table. Products keeps the hover-price card. Price changes is one row per item (was, now, overall change); click a row for its full history. Search one item and it opens by itself.',
+};
+
+const $ = (id) => document.getElementById(id);
+const peso = (n) => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const when = (ts) => new Date(ts).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+const SOURCE = { pos: 'POS', backoffice: 'Back office' };
+const range = (vals, f) => Math.min(...vals) === Math.max(...vals) ? f(vals[0]) : `${f(Math.min(...vals))} – ${f(Math.max(...vals))}`;
+const markup = (p) => ((p.price - p.cost) / p.cost) * 100;
+const statusOf = (stock, low) => stock <= 0 ? '<span class="status-pill danger">Out of stock</span>'
+  : low ? '<span class="status-pill warn">Low</span>' : '<span class="status-pill ok">In stock</span>';
+const pctOf = (e) => (e.old ? ((e.new - e.old) / e.old) * 100 : null);
+// Green = good for margin: price up, cost down. Same rule as Inventory's price tab.
+const chg = (e) => { const p = pctOf(e); return p == null ? '—'
+  : `<span class="${(p > 0) === (e.field !== 'cost') ? 'up' : 'down'}">${p > 0 ? '+' : '−'}${Math.abs(p).toFixed(1)}%</span>`; };
+const byId = (id) => products.find((p) => p.id === id);
+const newest = (a, b) => b.ts.localeCompare(a.ts);
+
+let mode = 'quick', query = '', cat = '', field = 'price', openKey = null, selKey = 'p1', table = 'products', period = '', expanded = new Set();
+let shownN = null;
+const NOW = new Date('2026-09-22T12:00');   // lab clock, so the periods line up with the sample data
+
+// One row per product; a family collapses to one row, like the live list.
+function items() {
+  const q = query.trim().toLowerCase(), out = [], fams = new Map();
+  products.filter((p) => (!cat || p.cat === cat) && (!q || `${p.name} ${p.sku} ${p.group || ''}`.toLowerCase().includes(q)))
+    .forEach((p) => { if (!p.group) out.push({ key: p.id, name: p.name, members: [p] });
+      else { if (!fams.has(p.group)) out.push(fams.set(p.group, { key: p.group, name: p.group, members: [] }).get(p.group)); fams.get(p.group).members.push(p); } });
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+const itemFor = (key) => { const m = products.filter((p) => p.id === key || p.group === key);
+  return m.length ? { key, name: m[0].group || m[0].name, members: m } : null; };
+const logFor = (it) => priceLog.filter((e) => it.members.some((m) => m.id === e.productId));
+
+function cells(it, { price = (it) => `<strong>${range(it.members.map((m) => m.price), peso)}</strong>`, compact = false } = {}) {
+  const m = it.members, stock = m.reduce((n, x) => n + x.stock, 0);
+  const fam = m[0].group ? `<span class="vcount">${m.length} variants</span>` : '';
+  if (compact) return `<td><strong>${esc(it.name)}</strong>${fam}</td><td class="num">${price(it)}</td><td class="num">${stock} ${m[0].unit}</td>`;
+  return `<td><strong>${esc(it.name)}</strong>${fam}</td><td class="mono">${m.length > 1 ? '—' : m[0].sku}</td><td>${m[0].cat}</td>
+    <td class="num">${range(m.map((x) => x.cost), peso)}</td><td class="num">${price(it)}</td>
+    <td class="num">${range(m.map(markup), (v) => v.toFixed(1) + '%')}</td>
+    <td class="num">${stock} ${m[0].unit}</td><td>${statusOf(stock, m.some((x) => x.stock <= x.low))}</td>`;
+}
+const FULL_HEAD = '<th>Product</th><th>SKU</th><th>Category</th><th class="num">Cost</th><th class="num">Price</th><th class="num">Margin</th><th class="num">Stock</th><th>Status</th>';
+const noRows = (n) => `<tr><td colspan="${n}" class="empty">No products match these filters.</td></tr>`;
+
+// Item detail: numbers now, then the history table. Used by options 1 and 2.
+function detailHtml(it, closable) {
+  const m = it.members, fam = !!m[0].group;
+  const list = logFor(it).filter((e) => field === 'all' || e.field === field).sort(newest);
+  const seg = ['price', 'cost', 'all'].map((f) => `<button data-field="${f}" class="${f === field ? 'on' : ''}">${{ price: 'Price', cost: 'Cost', all: 'Both' }[f]}</button>`).join('');
+  return `
+    <div class="det-head">
+      <div><h2>${esc(it.name)}</h2><div class="sub">${fam ? `${m.length} variants` : m[0].sku} · ${m[0].cat}</div></div>
+      <div class="acts"><button class="btn" data-edit>Edit product</button>${closable ? '<button class="x" data-close aria-label="Close">&times;</button>' : ''}</div>
+    </div>
+    <div class="stats">
+      <div><div class="lbl">Price</div><div class="val">${range(m.map((x) => x.price), peso)}</div></div>
+      <div><div class="lbl">Cost</div><div class="val">${range(m.map((x) => x.cost), peso)}</div></div>
+      <div><div class="lbl">Margin</div><div class="val">${range(m.map(markup), (v) => v.toFixed(1) + '%')}</div></div>
+      <div><div class="lbl">Stock</div><div class="val">${m.reduce((n, x) => n + x.stock, 0)} ${m[0].unit}</div></div>
+    </div>
+    <div class="det-sec">
+      <div class="top"><h3>Price history</h3><div class="seg">${seg}</div></div>
+      ${list.length ? `<table>
+        <thead><tr><th>When</th>${fam ? '<th>Variant</th>' : ''}${field === 'all' ? '<th>What</th>' : ''}<th class="num">Was</th><th class="num">Now</th><th class="num">Change</th><th>By</th></tr></thead>
+        <tbody>${list.map((e) => `<tr><td>${when(e.ts)}</td>${fam ? `<td>${esc(byId(e.productId).variant)}</td>` : ''}${field === 'all' ? `<td>${e.field === 'cost' ? 'Cost' : 'Price'}</td>` : ''}
+          <td class="num muted">${peso(e.old)}</td><td class="num"><strong>${peso(e.new)}</strong></td><td class="num">${chg(e)}</td>
+          <td>${esc(e.staff)} <span class="muted">· ${SOURCE[e.source]}</span></td></tr>`).join('')}</tbody>
+      </table>` : `<div class="empty">No ${field === 'all' ? '' : field + ' '}changes logged yet.</div>`}
+    </div>`;
+}
+
+const VIEWS = {
+  quick(list) {
+    return `<div class="card scroll"><table><thead><tr>${FULL_HEAD}</tr></thead><tbody>${
+      list.map((it) => `<tr class="pd-row" data-open="${esc(it.key)}">${cells(it)}</tr>`).join('') || noRows(8)}</tbody></table></div>`;
+  },
+  split(list) {
+    if (!list.some((it) => it.key === selKey) && list.length) selKey = list[0].key;
+    const sel = list.find((it) => it.key === selKey);
+    return `<div class="split">
+      <div class="card scroll"><table><thead><tr><th>Product</th><th class="num">Price</th><th class="num">Stock</th></tr></thead><tbody>${
+        list.map((it) => `<tr class="pd-row${it.key === selKey ? ' sel' : ''}" data-sel="${esc(it.key)}">${cells(it, { compact: true })}</tr>`).join('') || noRows(3)}</tbody></table></div>
+      <div class="card pane">${sel ? detailHtml(sel, false) : '<div class="empty">Pick a product.</div>'}</div>
+    </div>`;
+  },
+  hover(list) {
+    return `<div class="card"><table><thead><tr>${FULL_HEAD}</tr></thead><tbody>${
+      list.map((it) => `<tr class="pd-row" data-edit>${cells(it, { price: hoverPrice })}</tr>`).join('') || noRows(8)}</tbody></table></div>`;
+  },
+  editcol(list) {
+    return `<div class="card scroll"><table><thead><tr>${FULL_HEAD}<th class="num">Edit</th></tr></thead><tbody>${
+      list.map((it) => `<tr class="pd-row" data-open="${esc(it.key)}">${cells(it)}
+        <td class="num"><button class="row-btn" data-edit>Edit</button></td></tr>`).join('') || noRows(9)}</tbody></table></div>`;
+  },
+  switch2(list) {
+    if (table === 'products' && mode !== 'page') return VIEWS.hover(list);
+    const since = period ? new Date(NOW - Number(period) * 864e5).toISOString() : '';
+    const rows = list.map((it) => ({ it, log: logFor(it).filter((e) => e.field === field && e.ts >= since).sort(newest) }))
+      .filter((r) => r.log.length).sort((a, b) => newest(a.log[0], b.log[0]));
+    shownN = rows.length;
+    const auto = rows.length === 1;   // searched down to one item: just show its history
+    return `<div class="card scroll"><table>
+      <thead><tr><th>Product</th><th class="num">Changes</th><th class="num">Was</th><th class="num">Now</th><th class="num">Overall</th><th>Last changed</th></tr></thead>
+      <tbody>${rows.map(({ it, log }) => {
+        const open = auto || expanded.has(it.key), fam = !!it.members[0].group;
+        // Was = the oldest logged value in the period, per variant; Now = today's value.
+        const per = it.members.map((m) => { const l = log.filter((e) => e.productId === m.id);
+          return l.length ? { was: l[l.length - 1].old, now: m[field] } : null; }).filter(Boolean);
+        const pcts = per.map((x) => ((x.now - x.was) / x.was) * 100);
+        const overall = chg({ field, old: 100, new: 100 + Math.min(...pcts) })
+          + (Math.min(...pcts) === Math.max(...pcts) ? '' : ` – ${chg({ field, old: 100, new: 100 + Math.max(...pcts) })}`);
+        return `<tr class="pc-row${open ? ' open' : ''}" data-exp="${esc(it.key)}">
+            <td><span class="chev">›</span> <strong>${esc(it.name)}</strong>${fam ? `<span class="vcount">${it.members.length} variants</span>` : ''}</td>
+            <td class="num">${log.length}</td>
+            <td class="num muted">${range(per.map((x) => x.was), peso)}</td>
+            <td class="num"><strong>${range(per.map((x) => x.now), peso)}</strong></td>
+            <td class="num">${overall}</td>
+            <td>${when(log[0].ts)} <span class="muted">· ${esc(log[0].staff)}</span></td></tr>
+          ${open ? `<tr class="pc-sub"><td colspan="6"><table>
+            <thead><tr><th>When</th>${fam ? '<th>Variant</th>' : ''}<th class="num">Was</th><th class="num">Now</th><th class="num">Change</th><th>By</th></tr></thead>
+            <tbody>${log.map((e) => `<tr><td>${when(e.ts)}</td>${fam ? `<td>${esc(byId(e.productId).variant)}</td>` : ''}
+              <td class="num muted">${peso(e.old)}</td><td class="num"><strong>${peso(e.new)}</strong></td><td class="num">${chg(e)}</td>
+              <td>${esc(e.staff)} <span class="muted">· ${SOURCE[e.source]}</span></td></tr>`).join('')}</tbody></table></td></tr>` : ''}`;
+      }).join('') || `<tr><td colspan="6" class="empty">No ${field} changes${period ? ' in this period' : ''} match these filters.</td></tr>`}</tbody></table></div>`;
+  },
+};
+
+function hoverPrice(it) {
+  {
+    const price = (it) => {
+      const log = logFor(it).filter((e) => e.field === 'price').sort(newest), p = `<strong>${range(it.members.map((m) => m.price), peso)}</strong>`;
+      if (!log.length) return p;
+      const fam = !!it.members[0].group;
+      return `<span class="hp" tabindex="0"><span class="hp-trig">${p}</span><span class="hp-card" data-noedit>
+        <div class="t">Price history</div>
+        <table><tbody>${log.slice(0, 4).map((e) => `<tr><td>${when(e.ts)}${fam ? ` <span class="muted">${esc(byId(e.productId).variant)}</span>` : ''}</td>
+          <td class="num muted">${peso(e.old)}</td><td class="num">${peso(e.new)}</td><td class="num">${chg(e)}</td></tr>`).join('')}</tbody></table>
+        ${log.length > 4 ? `<div class="more">+${log.length - 4} older</div>` : ''}</span></span>`;
+    };
+    return price(it);
+  }
+}
+
+Object.assign(VIEWS, { switch(list) {
+    if (table === 'products') return `<div class="card scroll"><table><thead><tr>${FULL_HEAD}</tr></thead><tbody>${
+      list.map((it) => `<tr class="pd-row" data-edit>${cells(it)}</tr>`).join('') || noRows(8)}</tbody></table></div>`;
+    const log = list.flatMap(logFor).filter((e) => field === 'all' || e.field === field).sort(newest);
+    const one = list.length === 1;
+    return `<div class="card scroll"><table>
+      <thead><tr><th>When</th>${one && !list[0].members[0].group ? '' : '<th>Product</th>'}${field === 'all' ? '<th>What</th>' : ''}<th class="num">Was</th><th class="num">Now</th><th class="num">Change</th><th>By</th></tr></thead>
+      <tbody>${log.map((e) => { const p = byId(e.productId); return `<tr><td>${when(e.ts)}</td>
+        ${one && !p.group ? '' : `<td><button class="link" data-q="${esc(p.group || p.name)}">${esc(p.name)}</button></td>`}
+        ${field === 'all' ? `<td>${e.field === 'cost' ? 'Cost' : 'Price'}</td>` : ''}
+        <td class="num muted">${peso(e.old)}</td><td class="num"><strong>${peso(e.new)}</strong></td><td class="num">${chg(e)}</td>
+        <td>${esc(e.staff)} <span class="muted">· ${SOURCE[e.source]}</span></td></tr>`; }).join('')
+        || '<tr><td colspan="7" class="empty">No price changes match these filters.</td></tr>'}</tbody></table></div>`;
+  },
+});
+
+function paint() {
+  const list = items();
+  document.querySelectorAll('#lab [data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
+  $('hint').textContent = HINTS[mode];
+  $('switchSeg').innerHTML = mode !== 'switch' ? '' : `<span class="seg big">${
+    [['products', 'Products'], ['changes', 'Price changes']].map(([k, l]) => `<button data-table="${k}" class="${table === k ? 'on' : ''}">${l}</button>`).join('')}</span>${
+    table === 'changes' ? ` <span class="seg">${['price', 'cost', 'all'].map((f) => `<button data-field="${f}" class="${f === field ? 'on' : ''}">${{ price: 'Price', cost: 'Cost', all: 'Both' }[f]}</button>`).join('')}</span>` : ''}`;
+  shownN = null;
+  const changed = list.filter((it) => logFor(it).length).length;
+  $('tabs').innerHTML = mode !== 'switch2' ? '' : `<div class="tabs">${[['products', 'Products', list.length], ['changes', 'Price changes', changed]]
+    .map(([k, l, n]) => `<button data-table="${k}" class="${table === k ? 'on' : ''}">${l}<span class="count">${n}</span></button>`).join('')}</div>`;
+  const pageMode = mode === 'page';
+  $('title').textContent = pageMode ? 'Price history' : 'Products';
+  document.querySelectorAll('.pd-only').forEach((b) => { b.hidden = pageMode; });
+  if (mode === 'switch2' || pageMode) $('switchSeg').innerHTML = table !== 'changes' && !pageMode ? '' : `<span class="seg">${
+    ['price', 'cost'].map((f) => `<button data-field="${f}" class="${f === field ? 'on' : ''}">${f === 'price' ? 'Price' : 'Cost'}</button>`).join('')}</span>`;
+  $('period').hidden = !(pageMode || (mode === 'switch2' && table === 'changes'));
+  $('main').innerHTML = (pageMode ? VIEWS.switch2 : VIEWS[mode])(list);
+  $('shown').textContent = `${shownN ?? list.length} shown`;
+  const it = openKey && itemFor(openKey);
+  $('drawer').classList.toggle('open', !!it);
+  $('scrim').classList.toggle('open', !!it);
+  if (it) $('drawer').innerHTML = detailHtml(it, true);
+}
+
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1200); }
+
+$('cat').innerHTML += [...new Set(products.map((p) => p.cat))].sort().map((c) => `<option>${c}</option>`).join('');
+$('cat').addEventListener('change', (e) => { cat = e.target.value; paint(); });
+$('period').addEventListener('change', (e) => { period = e.target.value; paint(); });
+$('q').addEventListener('input', (e) => { query = e.target.value; paint(); });
+document.addEventListener('click', (e) => {
+  const t = (s) => e.target.closest(s);
+  if (t('[data-mode]')) { mode = t('[data-mode]').dataset.mode; openKey = null; field = 'price'; table = 'products'; paint(); return; }
+  if (t('[data-noedit]')) return;
+  if (t('[data-field]')) { field = t('[data-field]').dataset.field; paint(); return; }
+  if (t('[data-exp]')) { const k = t('[data-exp]').dataset.exp; expanded.has(k) ? expanded.delete(k) : expanded.add(k); paint(); return; }
+  if (t('[data-table]')) { table = t('[data-table]').dataset.table; paint(); return; }
+  if (t('[data-q]')) { query = t('[data-q]').dataset.q; $('q').value = query; paint(); return; }
+  if (t('[data-close]') || e.target.id === 'scrim') { openKey = null; paint(); return; }
+  if (t('button[data-edit]')) { toast('Would open the editor'); return; }
+  if (t('[data-open]')) { openKey = t('[data-open]').dataset.open; field = 'price'; paint(); return; }
+  if (t('[data-sel]')) { selKey = t('[data-sel]').dataset.sel; paint(); return; }
+  if (t('[data-edit]')) toast('Would open the editor');
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openKey) { openKey = null; paint(); } });
+paint();
+</script>
+</body>
+</html>

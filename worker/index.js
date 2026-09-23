@@ -79,18 +79,11 @@ const TABLES = {
   deliveryEvents: { table: 'delivery_events', money: [], json: [], stamp: 'ts', event: true, required: ['order_id', 'event'],
                     cols: ['id', 'store_id', 'ts', 'staff', 'order_id', 'event', 'driver', 'lat', 'lng', 'note',
                            'terminal'] },
-  clock:          { table: 'clock_events', money: [], json: [], stamp: 'ts', event: true, required: ['staff_id', 'event'],
-                    cols: ['id', 'store_id', 'ts', 'staff', 'staff_id', 'staff_name', 'event'] },
   supplierMessages: { table: 'supplier_messages', money: [], json: [], stamp: 'ts', event: true, required: ['direction'],
                     cols: ['id', 'store_id', 'ts', 'staff', 'supplier_id', 'po_id', 'direction', 'channel', 'text'] },
   decisions:      { money: [], json: ['inputs', 'choice'], stamp: 'ts', event: true, required: ['kind'],
                     cols: ['id', 'store_id', 'ts', 'staff', 'kind', 'subject_id', 'inputs', 'rule', 'choice',
                            'accepted', 'actor'] },
-  // The day spine. id IS the local date, so it is only unique per store: POST merges the
-  // columns sent into the existing row instead of doing nothing.
-  days:           { money: [], json: [], stamp: 'updated_at', event: false, upsert: true,
-                    cols: ['id', 'store_id', 'date', 'rain_mm', 'rain_hours_open', 'temp_max_c', 'weather_code',
-                           'holiday_name', 'is_payday', 'events', 'road_closure', 'note', 'source', 'updated_at'] },
 };
 
 const json = (body, status = 200) =>
@@ -291,15 +284,7 @@ async function handle(req, env, url) {
     // A tablet that loses the response retries the same client-generated id, so a
     // duplicate must be a no-op -- but ONLY a duplicate. `or ignore` would also
     // swallow a not-null or foreign-key violation and silently lose the sale.
-    // `upsert` tables (days) key on (store_id, id) and merge only the columns sent, so a
-    // weather fill never blanks a road closure someone typed. Either way the cursor bumps,
-    // because a merge changes the row just as much as a fresh insert does.
-    const conflict = t.upsert
-      ? `on conflict(store_id, id) do update set ${cols.filter((c) => c !== 'id' && c !== 'store_id')
-          .map((c) => `${c} = excluded.${c}`).join(', ')}, ${cursor} = ?`
-      : 'on conflict(id) do nothing';
-    const stmt = db.prepare(insertSql(table, cols, conflict));
-    await (t.upsert ? stmt.bind(...cols.map((c) => row[c]), now()) : stmt.bind(...cols.map((c) => row[c]))).run();
+    await db.prepare(insertSql(table, cols, 'on conflict(id) do nothing')).bind(...cols.map((c) => row[c])).run();
     return json(fromRow(t, row), 201);
   }
 

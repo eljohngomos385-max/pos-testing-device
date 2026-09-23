@@ -190,6 +190,34 @@ function applyMovement(product, movement) {
 const isLow = (p) => !p.archived && Number(p.stock) <= Number(p.reorderPoint);
 const stockValue = (p) => round2(cent(p.cost) * (Number(p.stock) || 0) / 100);
 
+/* One stock level for every filter, tile and pill: out, low, dead or ok. Dead = on the shelf
+   and nothing sold for DEAD_DAYS, the same 90 days as the Insights dead-stock list. The clock
+   starts at the last sale, or at the first movement for something that never sold; no
+   movements at all means we cannot tell, so it is not called dead. */
+const DEAD_DAYS = 90;
+const STOCK_LEVEL = { out: ['danger', 'Out of stock'], low: ['warn', 'Low'], dead: ['muted', 'Dead'], ok: ['ok', 'In stock'] };
+
+// productId -> { lastSale, first } in ms, one pass over the movement log.
+function saleClock(movements) {
+  const idx = new Map();
+  for (const m of movements || []) {
+    const ms = Date.parse(m.happenedOn || m.ts);
+    if (!Number.isFinite(ms)) continue;
+    const r = idx.get(m.productId) || { lastSale: null, first: ms };
+    if (ms < r.first) r.first = ms;
+    if (m.reason === 'sale' && (r.lastSale == null || ms > r.lastSale)) r.lastSale = ms;
+    idx.set(m.productId, r);
+  }
+  return idx;
+}
+
+function stockLevel(p, clock, now = Date.now()) {
+  if (Number(p.stock) <= 0) return 'out';
+  if (isLow(p)) return 'low';
+  const since = clock ? (clock.lastSale ?? clock.first) : null;
+  return since != null && now - since >= DEAD_DAYS * 86400000 ? 'dead' : 'ok';
+}
+
 /* ---------- Suppliers and purchase orders ---------- */
 
 const PO_STATUS = {
@@ -257,8 +285,7 @@ function receivePo(po, received /* { lineId: qty } */, happenedOn = '') {
 /* ---------- Staff ---------- */
 
 const STAFF_DEFAULTS = {
-  id: '', name: '', role: 'cashier', email: '', phone: '', pin: '',
-  salary: 0, salaryPerDay: 0, workDays: 26, startedAt: '', active: true,
+  id: '', name: '', role: 'cashier', email: '', pin: '', active: true,
 };
 const STAFF_ROLES = { owner: 'Owner', manager: 'Manager', cashier: 'Cashier', stock: 'Stock clerk' };
 
@@ -300,12 +327,10 @@ function pageNumbers(at, pages) {
 }
 
 const SEED_STAFF = [
-  // Phone and startedAt are columns the Staff table already prints; leaving them blank made
-  // every row read "— —" and looked like the page had failed to load.
-  { id: 'u1', name: 'El John',    role: 'owner',   email: 'eljohngomos385@gmail.com', phone: '0917 555 0101', pin: '••••', salary: 0,     salaryPerDay: 0,   startedAt: '2021-03-01', active: true, attendance: 'present' },
-  { id: 'u2', name: 'Maricel R.', role: 'manager', email: 'maricel@ejhardware.ph',    phone: '0918 555 0142', pin: '••••', salary: 18000, salaryPerDay: 700, startedAt: '2022-07-18', active: true, attendance: 'present' },
-  { id: 'u3', name: 'Aldrin S.',  role: 'cashier', email: '',                         phone: '0920 555 0233', pin: '••••', salary: 13000, salaryPerDay: 520, startedAt: '2024-01-15', active: true, attendance: 'late' },
-  { id: 'u4', name: 'Joy P.',     role: 'cashier', email: '',                         phone: '0905 555 0388', pin: '••••', salary: 13000, salaryPerDay: 520, startedAt: '2025-06-02', active: true, attendance: 'dayoff' },
+  { id: 'u1', name: 'El John',    role: 'owner',   email: 'eljohngomos385@gmail.com', pin: '••••', active: true },
+  { id: 'u2', name: 'Maricel R.', role: 'manager', email: 'maricel@ejhardware.ph',    pin: '••••', active: true },
+  { id: 'u3', name: 'Aldrin S.',  role: 'cashier', email: '',                         pin: '••••', active: true },
+  { id: 'u4', name: 'Joy P.',     role: 'cashier', email: '',                         pin: '••••', active: true },
 ];
 
 const loadList = (key, seed) => {
@@ -342,11 +367,9 @@ const EVENT_LOGS = {
   priceLog:         'hwpos.priceLog.v1',         // productId, field, old, new, reason, source
   lostDemand:       'hwpos.lostDemand.v1',       // productId|text, qty, reason, substituteProductId
   deliveryEvents:   'hwpos.deliveryEvents.v1',   // orderId, event, driver, lat, lng
-  clock:            'hwpos.clock.v1',            // staffId, staffName, event: in|out
   supplierMessages: 'hwpos.supplierMessages.v1', // supplierId, poId, direction, channel, text
   decisions:        'hwpos.decisions.v1',        // kind, subjectId, inputs, rule, choice, actor
 };
-const STORAGE_DAYS = 'hwpos.days.v1';
 
 const makeEvent = (fields, staff = '') =>
   ({ id: newId('ev'), ts: new Date().toISOString(), staff, ...fields });
@@ -375,17 +398,6 @@ function priceChanges(before, after, { source = '', reason = '', staff = '' } = 
     });
   });
   return rows;
-}
-
-const loadDays = () => loadList(STORAGE_DAYS);
-// Merge, never blank: a weather fetch must not wipe the road closure someone typed.
-function upsertDays(rows) {
-  const byDate = new Map(loadDays().map((d) => [d.id, d]));
-  rows.forEach((r) => {
-    const cur = byDate.get(r.id) || { id: r.id, date: r.id };
-    byDate.set(r.id, { ...cur, ...r, updatedAt: new Date().toISOString() });
-  });
-  saveList(STORAGE_DAYS, [...byDate.values()].sort((a, b) => a.id.localeCompare(b.id)));
 }
 
 /* ---------- Fulfilment ----------
@@ -609,6 +621,16 @@ if (typeof module !== 'undefined' && require.main === module) {
     ['pickup', 'Tricycle']);
   assert.deepEqual(fulfilMethods({ fulfilment: { hidden: ['pickup'] } }).map((m) => m.key), ['pickup', 'delivery']);
 
+  // Dead is 90 days since the last sale, or since the first movement when it never sold.
+  const day = 86400000, t0 = Date.parse('2026-01-01T00:00:00Z');
+  const clk = saleClock([{ productId: 'd', reason: 'delivery', ts: '2026-01-01T00:00:00Z' },
+    { productId: 's', reason: 'delivery', ts: '2026-01-01T00:00:00Z' }, { productId: 's', reason: 'sale', ts: '2026-03-01T00:00:00Z' }]);
+  assert.equal(stockLevel({ stock: 5, reorderPoint: 1 }, clk.get('d'), t0 + 90 * day), 'dead');
+  assert.equal(stockLevel({ stock: 5, reorderPoint: 1 }, clk.get('s'), t0 + 90 * day), 'ok');
+  assert.equal(stockLevel({ stock: 5, reorderPoint: 1 }, undefined, t0), 'ok');   // no history, no verdict
+  assert.equal(stockLevel({ stock: 0, reorderPoint: 1 }, clk.get('d'), t0 + 90 * day), 'out');
+  assert.equal(stockLevel({ stock: 1, reorderPoint: 1 }, clk.get('d'), t0 + 90 * day), 'low');
+
   console.log('bo-model: ok');
 }
 
@@ -618,11 +640,12 @@ if (typeof module !== 'undefined') {
     normalizeProduct, PRODUCT_DEFAULTS, PRODUCT_COLUMNS, productToCsvRow, productFromCsvRow,
     supplierIdsOf,
     makeMovement, applyMovement, isLow, stockValue, roundQty, stepFor, newId,
+    DEAD_DAYS, STOCK_LEVEL, saleClock, stockLevel,
     groupOf, variantsOf, imageFor,
     PO_DEFAULTS, PO_STATUS, PO_INCOMING, poLine, poTotal, poOutstanding, receivePo,
     SUPPLIER_DEFAULTS, STAFF_DEFAULTS, STAFF_ROLES, STOCK_REASONS, SOLD_BY, MARGIN_MODES,
     GROUP_DEFAULTS, SEED_STAFF, PAGE_ROWS, paginate, pageNumbers,
-    EVENT_LOGS, STORAGE_DAYS, makeEvent, priceChanges,
+    EVENT_LOGS, makeEvent, priceChanges,
     FULFIL_BUILTINS, orderFulfilLabel, fulfilMethods,
   };
 }
