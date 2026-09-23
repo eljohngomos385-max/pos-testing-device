@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="/bo-suppliers.css?v=85" />
   <link rel="stylesheet" href="/bo-staff.css?v=86" />
   <link rel="stylesheet" href="/bo-insights.css?v=3" />
-  <link rel="stylesheet" href="/bo-blocks.css?v=29" />
+  <link rel="stylesheet" href="/bo-blocks.css?v=50" />
 </head>
 <body class="bo-body bo-light">
   <div id="app" class="bo-app">
@@ -182,15 +182,11 @@
              Right is the owner's rail of widgets (backoffice.js → DASH_WIDGETS); Edit adds, removes and reorders them. -->
         <div class="dash-stack show-delta" id="dashStack">
           <div class="dash-main">
-            <div class="stat-grid show-delta" id="dashKpis"></div>
-
-            <section class="bo-card blk-chart">
-              <span class="bo-card-label">Sales trend</span>
-              <div class="blk-keys" id="trendKeys">
-                <button class="blk-key s0" aria-pressed="true"><i></i>Revenue <b id="trendKey0"></b></button>
-                <button class="blk-key s1" aria-pressed="true"><i></i>Gross profit <b id="trendKey1"></b></button>
-              </div>
-              <div class="blk-plot" id="salesChart"></div>
+            <!-- The four KPIs head the Sales trend: one card. Scrubbing the chart swaps them to that
+                 hour (or day). One line, revenue; data-off hides series 1 (owner's design, 2026-09-23). -->
+            <section class="bo-card blk-chart" id="dashTrend">
+              <div class="stat-grid show-delta" id="dashKpis"></div>
+              <div class="blk-plot" id="salesChart" data-off="1"></div>
             </section>
 
             <!-- Recent transactions -->
@@ -404,7 +400,7 @@
   <script src="/data.js?v=27"></script>
   <script src="/bo-model.js?v=88"></script>
   <script src="/router.js?v=62"></script>
-  <script src="/backoffice.js?v=135"></script>
+  <script src="/backoffice.js?v=147"></script>
   <script src="/bo-products.js?v=90"></script>
   <script src="/bo-insights.js?v=13"></script>
   <script src="/bo-inventory.js?v=100"></script>

@@ -28,10 +28,10 @@ file `blocks-v2.html` and loaded **last** in `backoffice.html`, after `styles.cs
 | Class | Block |
 |---|---|
 | `.bo-card` | the shell: `--blk-bg` grey, `--blk-r` 12px, inset hairline. Every card is one. |
-| `.blk-kpi` | label, then number left with its `.trend` chip **right, on the same line** |
+| `.blk-kpi` | label, then number left with its `.trend` chip **right, on the same line**. Label → number is `--kpi-gap` 8px on every KPI and rail card, whatever sits below |
 | `.blk-list` | striped `.mini-list-row` rows (the white row is the stripe), no count in the head |
 | `.blk-chart` | `.blk-head` (`.blk-head-value` + `.trend`), `.blk-keys` switches, `.blk-plot` |
-| `.blk-table` | white card, `--tbl-shadow` ring, tinted header, hairline rows **and** stripes on rows 2, 4, 6… (`--tbl-stripe`, owner 2026-09-22; the first row stays white under the tinted header) |
+| `.blk-table` | white card, `--tbl-shadow` = the cards' `--blk-outline` hairline (no drop shadow), tinted header, hairline rows **and** stripes on rows 2, 4, 6… (`--tbl-stripe`, owner 2026-09-22; the first row stays white under the tinted header) |
 | `.blk-empty` / `.bo-empty` | label + one centred line |
 | `.btn` `.primary-btn` `.secondary-btn` `.seg-btn` `.pbtn` | 28px lab buttons and pill filters |
 | `.status-pill` | 20px pills |
@@ -39,16 +39,17 @@ file `blocks-v2.html` and loaded **last** in `backoffice.html`, after `styles.cs
 Layout: `.blk-grid` (auto-fill units of `--blk-unit`), `.w2` / `.full` spans. **Dashboard layout** (owner, 2026-09-22, from `dashboard-lab.html`): `.dash-stack` is
 a fixed main column plus a widget rail `--rail-w` wide. **Its rules are scoped to `#dashStack`, never `.dash-stack`** — that class is every page's plain card stack (Sales, Inventory, Staff, Suppliers…), and styling the class turned every page into a dashboard. It drops to one column under 1024px.
 - **Main is fixed.** It is the same in every store and nobody edits it:
-  - four KPIs in `#dashKpis`: Revenue · Profit · Transactions · Average basket. They sit 4 across, 2 under 1280px, 1 under 560px.
-  - the Sales trend chart.
+  - the Sales trend card `#dashTrend` (owner's design, 2026-09-23): the four KPIs in `#dashKpis` across its top —
+    Revenue · Profit · Transactions · Margin, hairlines between, 4 across, 2 under 1280px, 1 under 560px — then one
+    revenue line. Scrubbing the chart swaps all four to that hour/day and hides the chips.
   - Recent transactions: the newest `RECENT_TX` (20). The Customer cell truncates at 160px (full name in `title`), and the table drops the global 860px `min-width` so it fits the column.
 - **The rail is the owner's.** `DASH_WIDGETS` in `backoffice.js` holds `{ key: [label, render] }`, one card wide, so widgets only ever stack.
   - On by default: `daily`, `monthly`, `low`, `pay`.
   - Off by default: `deliveries`, `stock`, `channel`, `credit`.
   - The order is kept per device in `HWPOS_STORE.ui` `dashRail`, a comma list.
   - Edit toggles `#dashStack.editing`. Each widget then gets ↑ ↓ × and an Add widget card appears at the bottom; the `[data-jump]` links go quiet.
-  - Low stock lives in the rail, not the KPIs: the 5 that run out soonest, then "+N more in Needs buying".
-  - Payment methods leads with *collected* (total minus account) so it doesn't repeat the Revenue KPI.
+  - Low stock lives in the rail, not the KPIs: a bare count, the 5 that run out soonest, each with an Out or Low `.status-pill`, with a quiet "View all ›" to Needs buying top right, across from the label.
+  - Payment methods is a table of amounts only, no headline number and no percents: its total is Revenue, already the first KPI, and shares live on the Sales page.
 - **Targets** are stored in `state.settings.targets = { month, override: { date, amount } | null }` and saved through `saveSettings()`. The ··· on a target card opens `#targetDlg`.
   - Today's target = (month − sold before today) ÷ days left, today included. Every day counts as open.
   - The override applies only while `override.date` is today.
@@ -115,7 +116,7 @@ Inter. 17px/700 page title · 13.5px/650 panel title · 13px/500 body & rows · 
   the page's name. Never override `.view-head` / `.view-title-wrap` geometry in a `bo-*.css`.
 - `.panel-head`: title left, sub/link right via `margin-left: auto`, `border-bottom: 1px solid --po-line`,
   `padding-bottom: 10px; margin-bottom: 12px`. Every card body row after it is label-left/value-right.
-- Grid gutter is **12px** everywhere (`.kpi-row`, `.dash-grid`, `.dash-col`); 16px inside settings.
+- Grid gutter is **10px** everywhere (`--blk-gap`), across and down alike; card padding is `--blk-pad` 14px.
   Card padding is **14px** (see v23 below). Reach for an existing step — no one-off 13/21px.
 - Rows in a **table** separate with `border-bottom: 1px solid --po-line`, and the last row drops it.
   Rows in a **row list** separate with a stripe instead (v33 below), and so does any table over a

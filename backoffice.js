@@ -940,16 +940,18 @@ function drawLineChart(el) {
     const box = el.getBoundingClientRect();
     const h = Math.max(0, Math.min(n - 1, Math.round((e.clientX - box.left - L) / (W - L) * (n - 1))));
     const d = cur[h];
+    el._onScrub?.(d);
     cross.setAttribute('x1', x(h)); cross.setAttribute('x2', x(h)); cross.setAttribute('visibility', 'visible');
     dots.forEach((dot, i) => { if (!dot) return;
       dot.setAttribute('cx', x(h)); dot.setAttribute('cy', y(d[SERIES[i][0]])); dot.setAttribute('visibility', 'visible'); });
     tip.innerHTML = `${escapeHtml(d.title)} · ${d.txns} receipt${d.txns === 1 ? '' : 's'}`
       + SERIES.map(([k, name], i) => on[i] ? ` · ${name} <b>${escapeHtml(pesoShort(d[k]))}</b>` : '').join('');
-    tip.hidden = false;
+    tip.hidden = !!el._onScrub;                                       // the card's own figures show it instead
     const right = x(h) + 10 + tip.offsetWidth < W;                    // flip left near the right edge
     tip.style.left = (right ? x(h) + 10 : x(h) - 10 - tip.offsetWidth) + 'px';
   };
   el.onpointerleave = () => {
+    el._onScrub?.(null);
     cross.setAttribute('visibility', 'hidden');
     dots.forEach(dot => dot && dot.setAttribute('visibility', 'hidden'));
     tip.hidden = true;
@@ -962,8 +964,20 @@ function renderDashKpis(cur, prev, cmp) {
     statCell({ label: 'Revenue', value: pesoShort(cur.revenue), delta: deltaOf(cur.revenue, prev.revenue, cmp) }),
     statCell({ label: 'Profit', value: pesoShort(cur.profit), delta: deltaOf(cur.profit, prev.profit, cmp) }),
     statCell({ label: 'Transactions', value: cur.txns.toLocaleString('en-PH'), delta: deltaOf(cur.txns, prev.txns, cmp) }),
-    statCell({ label: 'Average basket', value: pesoShort(cur.avg), delta: deltaOf(cur.avg, prev.avg, cmp) }),
+    statCell({ label: 'Margin', value: cur.revenue ? (cur.profit / cur.revenue * 100).toFixed(1) + '%' : '—',
+      delta: deltaOf(cur.revenue && cur.profit / cur.revenue, prev.revenue && prev.profit / prev.revenue, cmp) }),
   ].join('');
+  // Scrubbing the chart below swaps all four to that hour (or day). The chips compare whole
+  // periods, so they hide meanwhile; leaving the chart puts the totals back.
+  const fmt = [m => pesoShort(m.revenue), m => pesoShort(m.profit), m => m.txns.toLocaleString('en-PH'),
+    m => (m.revenue ? (m.profit / m.revenue * 100).toFixed(1) + '%' : '—')];
+  const cells = $$('#dashKpis .blk-kpi'), label = cells[0].querySelector('.kpi-label');
+  $('#salesChart')._onScrub = (d) => {
+    const m = d || cur;
+    $('#dashTrend').classList.toggle('scrubbing', !!d);
+    label.textContent = d ? `Revenue · ${d.title}` : 'Revenue';
+    cells.forEach((c, i) => { c.querySelector('.kpi-value').innerHTML = curHtml(fmt[i](m)); });
+  };
 }
 
 // ---------- Dashboard rail ----------
@@ -1029,28 +1043,25 @@ const DASH_WIDGETS = {
     const daysLeft = (p) => { const r = (sold.get(p.id) || 0) / 30; return p.stock <= 0 ? 0 : r ? p.stock / r : Infinity; };
     // isLow() is the one definition of low, shared with Products and Inventory.
     const low = state.products.filter(isLow).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock);
-    const rows = low.slice(0, 5).map(p => {
-      const dl = daysLeft(p), n = Math.max(1, Math.round(dl));
-      return bdRow(escapeHtml(p.name), `${Number(p.stock).toLocaleString('en-PH')} ${escapeHtml(p.unit || 'pc')}`,
-        dl === 0 ? 'Out' : dl === Infinity ? '—' : `${n} day${n > 1 ? 's' : ''}`, dl <= 3 ? 'down' : '');
-    }).join('');
-    const more = low.length > 5
-      ? `<div class="bd-row total"><span class="nm"><a href="#" data-jump="inventory" data-sub="reorder">+${low.length - 5} more in Needs buying →</a></span></div>` : '';
-    return railHead('Low stock', `${low.length.toLocaleString('en-PH')}<span class="of"> ${low.length ? 'below reorder point' : 'all stocked'}</span>`)
-      + (low.length ? `<div class="bd-rows">${rows}${more}</div>` : '');
+    // Days left only sorts the list; each row says Out or Low in the Products pill (owner, 2026-09-23).
+    const rows = low.slice(0, 5).map(p => bdRow(escapeHtml(p.name), `${Number(p.stock).toLocaleString('en-PH')} ${escapeHtml(p.unit || 'pc')}`,
+      p.stock <= 0 ? '<span class="status-pill out">Out</span>' : '<span class="status-pill low">Low</span>')).join('');
+    // Just the count: the label already says Low stock. View all sits top right, like Recent transactions (owner, 2026-09-23).
+    return (low.length ? '<a href="#" class="rail-more" data-jump="inventory" data-sub="reorder">View all ›</a>' : '') + railHead('Low stock', `${low.length.toLocaleString('en-PH')}${low.length ? '' : '<span class="of"> all stocked</span>'}`)
+      + (low.length ? `<div class="bd-rows">${rows}</div>` : '');
   }],
-  // Leads with what was collected, not revenue: revenue is already the first KPI. No label or
-  // "on account" note beside it — the Account row below already says both (owner, 2026-09-22).
+  // A table, no headline number and no shares: the total is Revenue, already the first KPI, and
+  // percents belong on the Sales page, not the dashboard (owner, 2026-09-23).
   // Sums come from the Sales page's own agg(), so they match Sales → Payment methods.
   pay: ['Payment methods', (t, win) => {
     const cur = window.renderSales.agg(state.orders.filter(o => o.ts >= win.start && o.ts < win.end));
     const rows = cur.pays.filter(r => r.sales).sort((x, y) => y.revenue - x.revenue);
-    const total = cur.totals.revenue, credit = rows.filter(r => r.kind === 'credit').reduce((a, r) => a + r.revenue, 0);
+    const total = cur.totals.revenue;
     return '<a class="blk-cover" href="#" data-jump="sales" aria-label="Open sales"></a>'
-      + railHead('Payment methods', curHtml(pesoShort(total - credit)))
+      + '<div class="kpi-label">Payment methods</div>'
       + `<div class="bd-rows">${rows.length
-        ? rows.map(r => bdRow(escapeHtml(r.name), pesoShort(r.revenue), pctOf(r.revenue, total) + '%')).join('')
-          + `<div class="bd-row total"><span class="nm">Total</span><span class="amt">${pesoShort(total)}</span><span class="cmp">100%</span></div>`
+        ? rows.map(r => bdRow(escapeHtml(r.name), pesoShort(r.revenue))).join('')
+          + `<div class="bd-row total"><span class="nm">Total</span><span class="amt">${pesoShort(total)}</span></div>`
         : '<div class="bo-empty">No sales in this range.</div>'}</div>`;
   }],
   // Purchase orders due today or already late: stock coming in, not the POS's deliveries going out.
@@ -1203,7 +1214,7 @@ function renderDashboard() {
 
   renderDashKpis(cur, prev, cmp);
 
-  // Sales trend — revenue against the profit it actually earned, over the selected range
+  // Sales trend — one revenue line under the KPIs, same card
   const trend = trendBuckets(state.range);
   renderLineChart($('#salesChart'), trend);
   renderDashRail(win);

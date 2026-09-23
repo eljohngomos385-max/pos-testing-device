@@ -29,8 +29,8 @@ body.bo-light {
   --blk-raised: #FFFFFF;        /* a striped row / input ON a block */
   --blk-outline: #E1E1E1;       /* the hairline round a block */
   --blk-r: 12px;                /* every outer corner in the back office */
-  --blk-pad: 16px;
-  --blk-gap: 14px;              /* between blocks */
+  --blk-pad: 14px;
+  --blk-gap: 10px;              /* between blocks, same across and down */
   --blk-unit: 248px;            /* one grid unit: a KPI is 1, a list is 2 */
   --blk-ink: #303030; --blk-ink-2: #616161; --blk-ink-3: #8C8C8C;
   --blk-t-label: 13px; --blk-t-meta: 12.5px; --blk-t-micro: 11px;
@@ -43,6 +43,7 @@ body.bo-light {
 
   /* ---- KPI ---- */
   --kpi-value: 27px; --kpi-weight: 560;
+  --kpi-gap: 8px;               /* label → number, every KPI and rail card alike (owner, 2026-09-23) */
 
   /* ---- list ---- */
   --list-row: 36px; --list-row-r: 7px;
@@ -61,7 +62,7 @@ body.bo-light {
   --tbl-bg: #FFFFFF; --tbl-row: 34px; --tbl-head-bg: #F7F7F7; --tbl-line: #EBEBEB;
   --tbl-stripe: #F7F7F7;        /* every second row; the first stays white under the tinted header */
   --tbl-hover: #EFEFEF;
-  --tbl-shadow: 0 1px 0 rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.05), 0 2px 4px rgba(0,0,0,.04);
+  --tbl-shadow: inset 0 0 0 1px var(--blk-outline);   /* the same hairline as every card, no drop shadow (owner, 2026-09-23) */
 
   /* ---- button ---- */
   --btn-h: 28px; --btn-h-lg: 34px; --btn-r: 8px; --btn-line: #D4D4D4;
@@ -110,7 +111,7 @@ body.bo-light .blk-kpi .kpi-label {
   margin: 0; font-size: var(--blk-t-label); font-weight: 400; line-height: 1.3; color: var(--blk-ink);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-body.bo-light .blk-kpi .kpi-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+body.bo-light .blk-kpi .kpi-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: var(--kpi-gap); }
 body.bo-light .blk-kpi .kpi-value,
 body.bo-light .blk-head-value {
   margin: 0; font-size: var(--kpi-value); font-weight: var(--kpi-weight); line-height: 1.15;
@@ -205,7 +206,9 @@ body.bo-light .s1 { --c: var(--chart-2); }
 /* ============================================================================
    TABLE — lab table D: white card, soft ring, tinted header, a line between rows
    ============================================================================ */
-body.bo-light .blk-table { background: var(--tbl-bg); box-shadow: var(--tbl-shadow); overflow: hidden; }
+body.bo-light .blk-table { position: relative; background: var(--tbl-bg); box-shadow: none; overflow: hidden; }
+/* The hairline rides on top: an inset shadow on the card itself hides under the header and striped rows. */
+body.bo-light .blk-table::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; box-shadow: var(--tbl-shadow); pointer-events: none; }
 /* Table D's head: one thin line. Label + count left, "View all →" right. */
 body.bo-light .blk-table .bo-card-head { padding: 8px var(--blk-pad) 9px; min-height: 26px; align-items: center; justify-content: space-between; }
 body.bo-light .bo-card-count { margin-left: 8px; font-size: var(--blk-t-meta); font-weight: 400; color: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
@@ -320,10 +323,20 @@ body.bo-light .view-dashboard > .view-head { margin-bottom: 24px; }   /* a littl
 body.bo-light #dashStack { display: grid; grid-template-columns: minmax(0, 1fr) var(--rail-w); gap: var(--blk-gap); align-items: start; }
 body.bo-light .dash-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--blk-gap); min-width: 0; }
 body.bo-light .dash-rail { display: flex; flex-direction: column; gap: var(--blk-gap); min-width: 0; }
-body.bo-light #dashKpis { display: grid; gap: var(--blk-gap); margin: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-@media (max-width: 1280px) { body.bo-light #dashKpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* The four KPIs head the Sales trend card (owner's design, 2026-09-23): no shell of their own, a
+   hairline between them. The row bleeds out by the card's padding so each cell pads itself and the
+   first still lands on the card's edge. Scrubbing hides the chips; they compare whole periods. */
+body.bo-light #dashKpis { display: grid; gap: 12px 0; margin: 0 calc(-1 * var(--blk-pad)); grid-template-columns: repeat(4, minmax(0, 1fr)); }
+body.bo-light #dashKpis .blk-kpi { background: none; box-shadow: none; border-radius: 0; padding: 0 var(--blk-pad); }
+body.bo-light #dashKpis .blk-kpi + .blk-kpi { border-left: 1px solid var(--blk-outline); }
+body.bo-light #dashTrend.scrubbing .trend { visibility: hidden; }
+body.bo-light #dashTrend .blk-plot { margin-top: 44px; }   /* air between the figures and the top gridline (owner's mockup) */
+@media (max-width: 1280px) {
+  body.bo-light #dashKpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.bo-light #dashKpis .blk-kpi:nth-child(odd) { border-left: 0; }
+}
 @media (max-width: 1024px) { body.bo-light #dashStack { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 560px)  { body.bo-light #dashKpis { grid-template-columns: 1fr; } }
+@media (max-width: 560px)  { body.bo-light #dashKpis { grid-template-columns: 1fr; } body.bo-light #dashKpis .blk-kpi { border-left: 0; } }
 body.bo-light .blk-list > .bo-card-head { justify-content: space-between; }
 /* eight columns outgrow the main column on narrower screens: scroll inside the card, never clip Total */
 body.bo-light .dash-main .table-wrap { overflow-x: auto; }
@@ -336,8 +349,9 @@ body.bo-light .blk-list .ml-sub.down { color: var(--trend-down); }
 
 /* BREAKDOWN — the lab's block D: one total, then striped rows of amount + change. */
 body.bo-light .bd-rows { margin-top: 13px; margin-bottom: -6px; }
-/* over a breakdown the head sits 5px lower and the chip rides 3px low, the lab's .card-head */
-body.bo-light .kpi-line:has(+ .bd-rows) { margin: 11px 0 8px; }
+/* over a breakdown the chip rides 3px low, the lab's .card-head */
+body.bo-light .kpi-line:has(+ .bd-rows) { margin: var(--kpi-gap) 0 8px; }
+body.bo-light .kpi-label + .bd-rows { margin-top: var(--kpi-gap); }   /* table-only rail card (Payment methods) */
 body.bo-light .kpi-line:has(+ .bd-rows) .trend { transform: translateY(3px); }
 body.bo-light .bd-row {
   display: flex; align-items: center; gap: 12px;
@@ -350,6 +364,11 @@ body.bo-light .bd-row .amt { flex: 0 0 auto; min-width: 96px; text-align: right;
 body.bo-light .bd-row .cmp { flex: 0 0 auto; min-width: 50px; text-align: right; font-size: var(--blk-t-meta); color: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
 body.bo-light .bd-row .cmp.up { color: var(--trend-up); }
 body.bo-light .bd-row .cmp.down { color: var(--trend-down); }
+body.bo-light .bd-row .status-pill { --pill-h: 17px; padding: 0 7px; font-size: var(--blk-t-micro); }   /* Low stock's Out/Low, a size down */
+body.bo-light [data-w="low"] .bd-row { gap: 8px; }   /* the pill sits right after the count */
+body.bo-light [data-w="low"] .bd-row .cmp { min-width: 36px; }   /* the Low pill's width, so counts still line up */
+body.bo-light [data-w="channel"] .bd-row { gap: 6px; }   /* % only: sit the share right next to the amount */
+body.bo-light [data-w="channel"] .bd-row .cmp { min-width: 38px; }
 body.bo-light .bd-row.total .nm { font-weight: 600; }
 body.bo-light .blk-kpi > .kpi-note { display: block; transform: none; margin-top: 2px; }
 
@@ -379,6 +398,9 @@ body.bo-light :is(.meter.split i, .sw).d1 { background: var(--data-2); }
 body.bo-light :is(.meter.split i, .sw).d2 { background: var(--data-1); }
 body.bo-light .bd-row .sw { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 3px; vertical-align: -1px; }
 body.bo-light .bd-row a { color: inherit; }
+/* Quiet "View all ›" across from the card label, like Recent transactions' head. */
+body.bo-light .rail-more { position: absolute; top: var(--blk-pad); right: var(--blk-pad); z-index: 1; font-size: var(--blk-t-meta); font-weight: 500; color: var(--blk-ink-2); text-decoration: none; }
+body.bo-light .rail-more:hover { color: var(--blk-ink); }
 body.bo-light .rail-dots {
   position: absolute; top: 10px; right: 10px; z-index: 1; height: 22px; padding: 0 7px; border: 0; border-radius: 6px;
   background: none; color: var(--blk-ink-3); font: 600 var(--blk-t-label)/1 var(--po-font); letter-spacing: 1px; cursor: pointer;
@@ -400,7 +422,7 @@ body.bo-light .rail-add-list { display: flex; flex-wrap: wrap; gap: 6px; margin-
 body.bo-light .rail-add .kpi-note { display: block; margin-top: 8px; font-size: var(--blk-t-meta); color: var(--blk-ink-3); }
 body.bo-light #dashStack.editing .w-ctl { display: flex; }
 body.bo-light #dashStack.editing .rail-add { display: block; }
-body.bo-light #dashStack.editing :is(.rail-dots, .dash-rail .blk-cover) { display: none; }
+body.bo-light #dashStack.editing :is(.rail-dots, .rail-more, .dash-rail .blk-cover) { display: none; }
 body.bo-light #dashStack.editing .dash-rail > [data-w] { outline: 1px dashed var(--btn-line); outline-offset: 3px; }
 
 /* ============================================================================
