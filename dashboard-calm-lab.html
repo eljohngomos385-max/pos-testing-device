@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Calm dashboard lab</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   DASHBOARD LAB — the back office Dashboard, same layout, in the calm-summary language:
+     left  · one card: the four KPIs over the sales bars; then Recent transactions
+     right · the widget rail: daily target, monthly target, low stock, payment methods
+   A clicked bar or receipt opens in a centred pop-up, so the rail never has to move.
+   Tokens are the --b-* set (→ --po-* on port).
+   =========================================================================== */
+:root {
+  --b-font: "Inter";
+  --b-page:      #FFFFFF;
+  --b-card:      #F9F9F9;
+  --b-raised:    #FFFFFF;
+  --b-line:      #ECECEC;
+  --b-outline:   #E1E1E1;
+  --b-track:     #EFEFEF;
+  --b-ink:       #303030;
+  --b-ink-2:     #616161;
+  --b-ink-3:     #8C8C8C;
+  --b-up:        #047B5D;
+  --b-down:      #D72C0D;
+  --b-up-tint:   #D3ECDD;
+  --b-down-tint: #F8D8D0;
+  --b-data:      #2B7DE9;
+  --b-data-1:    #BCD7FA;
+  --b-data-tint: #DCE9FB;
+  --b-data-ink:  #1F5FB8;
+  --b-warn-tint: #FCEFC7;
+  --b-warn:      #7A5B00;
+  --b-t-value:   27px;
+  --b-t-label:   13px;
+  --b-t-meta:    12.5px;
+  --b-t-micro:   11px;
+  --b-r-card:    14px;
+  --b-r-cell:    10px;
+  --b-r-row:     7px;
+  --b-pad:       16px;
+  --rail-w:      340px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--b-page); color: var(--b-ink);
+  font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--b-t-label); -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+a { color: var(--b-data); text-decoration: none; }
+
+main { padding: 20px 24px 40px; max-width: 1560px; margin: 0 auto; }
+.note { font-size: var(--b-t-meta); color: var(--b-ink-3); margin: 0 0 14px; }
+.note b { color: var(--b-ink-2); font-weight: 500; }
+
+.bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.bar h1 { font-size: 18px; font-weight: 600; margin: 0; }
+.bar .when { color: var(--b-ink-3); margin-right: auto; }
+.seg { display: inline-flex; background: var(--b-track); border-radius: 9px; padding: 2px; }
+.seg button { border: 0; background: none; padding: 5px 14px; border-radius: 7px; cursor: pointer; color: var(--b-ink-2); }
+.seg button[aria-pressed="true"] { background: var(--b-raised); color: var(--b-ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 500; }
+.icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; }
+.icon-btn:disabled { opacity: .35; cursor: default; }
+
+/* ---------- the layout: main column + widget rail, as the real Dashboard ---------- */
+.dash { display: grid; grid-template-columns: minmax(0, 1fr) var(--rail-w); gap: 12px; align-items: start; }
+.col, .rail { display: grid; gap: 12px; min-width: 0; }
+.card { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); }
+
+/* ---------- KPIs over the bars: one card ---------- */
+.trend { padding: var(--b-pad) 4px 12px; }
+.strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.stat { padding: 0 16px; border-left: 1px solid var(--b-line); min-width: 0; }
+.stat:first-child { border-left: 0; }
+.stat .lbl { color: var(--b-ink-2); }
+.stat .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.stat .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chip { font-size: var(--b-t-meta); font-weight: 500; padding: 2px 8px; border-radius: 999px; background: var(--b-track);
+        color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chip.up { background: var(--b-up-tint); color: var(--b-up); }
+.chip.down { background: var(--b-down-tint); color: var(--b-down); }
+
+.plot { position: relative; height: 300px; margin: 22px 16px 0; }
+.grid, .cols { position: absolute; left: 44px; right: 0; top: 0; bottom: 22px; }
+.gl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--b-line); }
+.gl span { position: absolute; right: calc(100% + 8px); top: -7px; font-size: var(--b-t-micro); color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gl.zero { border-top-color: #D6D6D6; }
+.cols { display: grid; }
+.b { position: relative; height: 100%; border: 0; background: none; padding: 0; display: flex; align-items: flex-end; justify-content: center; cursor: pointer; }
+.b i { position: relative; width: min(62%, 28px); background: var(--b-data); border-radius: 4px 4px 0 0; }
+.b .x { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-size: var(--b-t-micro); color: var(--b-ink-3); white-space: nowrap; }
+.b .x.now { color: var(--b-ink); font-weight: 600; }
+.b .tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); display: none; z-index: 2;
+          background: var(--b-ink); color: #fff; font-size: var(--b-t-meta); font-weight: 500; padding: 3px 8px; border-radius: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cols:hover .b i { opacity: .4; }
+.cols .b:hover i, .cols .b:focus-visible i { opacity: 1; }
+.b:hover .tip, .b:focus-visible .tip { display: block; }
+.b.future { cursor: default; }
+.b.future .x { color: #C2C2C2; }
+
+/* ---------- recent transactions ---------- */
+.head { display: flex; align-items: center; gap: 10px; min-height: 40px; line-height: 18px; }
+.head .lbl { font-weight: 500; }
+.head .sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-right: auto; font-variant-numeric: tabular-nums; }
+.head a { font-size: var(--b-t-meta); }
+.txcard { padding-top: 0; padding-bottom: 0; overflow: hidden; }
+.flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
+.tx { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tx th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; border-top: 1px solid var(--b-line); }
+.tx td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
+.tx th:first-child, .tx td:first-child { padding-left: var(--b-pad); }
+.tx th:last-child, .tx td:last-child { padding-right: var(--b-pad); }
+.tx tr[data-receipt] { cursor: pointer; }
+.tx tr[data-receipt]:hover td { background: #F6F6F6; }
+.tx .id { font-weight: 600; }
+.tx tr.dim .id { font-weight: 400; }
+.tx .pill { margin: 0; font-size: 11.5px; font-weight: 500; padding: 2px 9px; }
+.tx tr.dim td { color: var(--b-ink-3); }
+.tx tr.dim .amt { text-decoration: line-through; }
+.tx .t { color: var(--b-ink-2); }
+.tx .cust { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.tx .mut { color: var(--b-ink-3); }
+.tx .n { text-align: right; }
+.tx td.amt { font-weight: 600; }
+
+/* ---------- the rail's widgets ---------- */
+.w .top { display: flex; justify-content: space-between; align-items: baseline; color: var(--b-ink-2); }
+.w .top a { font-size: var(--b-t-meta); }
+.w .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.w .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.w .of { font-size: var(--b-t-label); font-weight: 400; letter-spacing: 0; color: var(--b-ink-3); margin-left: 2px; }
+.w .pct { font-weight: 600; font-variant-numeric: tabular-nums; }
+.w .pct.up { color: var(--b-up); }
+.meter { height: 6px; background: var(--b-track); border-radius: 99px; overflow: hidden; margin-top: 10px; }
+.meter i { display: block; height: 100%; background: var(--b-data); border-radius: 99px; }
+.w { overflow: hidden; }
+.w .rows { margin: 12px calc(-1 * var(--b-pad)) calc(-1 * var(--b-pad)); border-radius: 0; }
+.w .row, .w .row:nth-child(odd) { background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); min-height: 34px; padding: 0 var(--b-pad); }
+.w .top.band { margin-top: calc(-1 * var(--b-pad)); min-height: 40px; align-items: center; }
+.w .top.band + .rows { margin-top: 0; }
+.w .set { margin-top: 10px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 12px; cursor: pointer; }
+
+/* ---------- rows, shared by the rail and the pop-up ---------- */
+.rows { border-radius: 10px; }
+.row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px; border-radius: var(--b-r-row); }
+.row:nth-child(odd) { background: var(--b-raised); }
+button.row { width: 100%; border: 0; text-align: left; cursor: pointer; background: none; }
+button.row:nth-child(odd) { background: var(--b-raised); }
+button.row:hover { background: #F1F1F1; }
+.row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .nm small { display: block; color: var(--b-ink-3); font-size: var(--b-t-micro); margin-top: -2px; }
+.row .amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.row .cmp { width: 46px; text-align: right; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+.row .cmp.up { color: var(--b-up); }
+.row .cmp.down { color: var(--b-down); }
+.row .t { width: 64px; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+.row.total .nm, .row.total .amt { font-weight: 600; }
+.row.dim .nm, .row.dim .amt { color: var(--b-ink-3); text-decoration: line-through; }
+.pill { font-size: 10.5px; padding: 1px 7px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); margin-left: 6px; text-decoration: none; display: inline-block; }
+.pill.warn { background: var(--b-warn-tint); color: var(--b-warn); }
+.pill.up { background: var(--b-up-tint); color: var(--b-up); }
+.pill.data { background: var(--b-data-tint); color: var(--b-data-ink); }
+.pill.down { background: var(--b-down-tint); color: var(--b-down); }
+
+/* ---------- the pop-up: one bar, or one receipt ---------- */
+dialog { border: 0; padding: 0; border-radius: var(--b-r-card); width: min(560px, calc(100vw - 32px)); max-height: 86vh; color: var(--b-ink); }
+dialog::backdrop { background: rgba(0,0,0,.28); }
+.pop { padding: 18px 20px 22px; }
+.pop .rows { background: var(--b-card); padding: 4px; }
+.p-top { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+.p-top h2 { font-size: 15px; font-weight: 600; margin: 0 auto 0 0; }
+.p-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.p-head .val { font-size: var(--b-t-value); font-weight: 560; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.p-sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 4px 0 0; }
+.p-sec { margin-top: 20px; }
+.p-sec > .lbl { font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
+.p-sec > .lbl span { color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); }
+
+@media (max-width: 1000px) {
+  .dash { grid-template-columns: minmax(0, 1fr); }
+  .rail { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+@media (max-width: 760px) {
+  main { padding: 16px; }
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
+  .stat:nth-child(odd) { border-left: 0; }
+  .plot { height: 190px; margin: 18px 12px 0 8px; }
+  .cols.many .b:nth-child(even) .x { visibility: hidden; }
+  .tx .opt { display: none; }
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="bar">
+    <h1 id="hello">Welcome back</h1>
+    <span class="when" id="when"></span>
+    <div class="seg" id="range">
+      <button data-range="today">Today</button><button data-range="7d">7 days</button><button data-range="15d">15 days</button><button data-range="30d">30 days</button>
+    </div>
+  </div>
+  <p class="note" id="source"></p>
+  <div class="dash">
+    <div class="col">
+      <section class="card trend">
+        <div class="strip" id="strip"></div>
+        <div class="plot" id="plot"></div>
+      </section>
+      <section class="card txcard">
+        <div class="head"><span class="lbl">Recent transactions</span><span class="sub" id="txsub"></span><a href="/admin/sales?by=tx">View all ›</a></div>
+        <div id="tx"></div>
+      </section>
+    </div>
+    <div class="rail" id="rail"></div>
+  </div>
+</main>
+<dialog id="pop"><div class="pop" id="popin"></div></dialog>
+
+<script src="/data-store.js"></script>
+<script>
+(async function () {
+  // ---------- money + dates (same helpers as sales-calendar-lab) ----------
+  const peso = v => (v < 0 ? '−₱' : '₱') + Math.round(Math.abs(v)).toLocaleString('en-PH');
+  const peso2 = v => (v < 0 ? '−₱' : '₱') + Math.abs(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const short = v => Math.abs(v) >= 1e6 ? (v < 0 ? '−' : '') + '₱' + +(Math.abs(v) / 1e6).toFixed(2) + 'M'
+    : Math.abs(v) >= 1e4 ? (v < 0 ? '−' : '') + '₱' + +(Math.abs(v) / 1e3).toFixed(1) + 'k' : peso(v);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = n => String(n).padStart(2, '0');
+  const iso = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const addDays = (t, n) => { const d = new Date(t); d.setDate(d.getDate() + n); return d.getTime(); };
+  const dayStart = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const fmt = (t, o) => new Date(t).toLocaleDateString('en-PH', o);
+  const clock = t => new Date(t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+  const hourText = h => (h % 12 || 12) + (h < 12 ? 'a' : 'p');
+  const hourLong = h => (h % 12 || 12) + (h % 24 < 12 ? ' AM' : ' PM');
+  const NOW = Date.now(), TODAY = dayStart(NOW);
+
+  // ---------- data ----------
+  const store = window.HWPOS_STORE;
+  let orders = [], products = [], settings = {};
+  try { [orders, products, settings] = await Promise.all([store.orders.list(), store.products.list(), store.settings.get()]); } catch (_) {}
+  const real = Array.isArray(orders) && orders.length > 0;
+  if (!real) { orders = demoOrders(); products = demoProducts(); }
+  settings = settings || {};
+  orders = orders.filter(o => o.ts < NOW).sort((x, y) => x.ts - y.ts);
+  document.getElementById('source').innerHTML = real
+    ? `Reading <b>${orders.length.toLocaleString()}</b> orders from the back office.`
+    : 'No orders on this origin, so this is <b>generated demo data</b>. Open it at <b>localhost:8765/dashboard-calm-lab.html</b> to read the back office’s orders.';
+  document.getElementById('hello').textContent = `Welcome back, ${settings.store?.cashier || 'there'}`;
+  document.getElementById('when').textContent = fmt(NOW, { weekday: 'long', month: 'long', day: 'numeric' }) + ` · as of ${clock(NOW)}`;
+
+  const SIGN = { completed: 1, return: -1, refunded: 0, voided: 0, saved: 0 };
+  const sign = o => SIGN[o.status || 'completed'] ?? 0;
+  const prodBy = new Map((products || []).flatMap(p => [['i:' + p.id, p], ['n:' + p.name, p]]));
+  const productFor = i => prodBy.get('i:' + (i.productId || i.id)) || prodBy.get('n:' + i.name);
+  const costOf = i => i.cost != null ? +i.cost : (productFor(i)?.cost || 0);
+  const itemOf = i => productFor(i)?.name || i.name;
+  const lineNet = i => i.lineTotal != null ? +i.lineTotal : (+i.price || 0) * (+i.qty || 0);
+  const profit = o => (+o.total - (+o.vatAmount || 0)) - (o.items || []).reduce((s, i) => s + costOf(i) * (+i.qty || 0), 0);
+  const payKind = o => o.paymentKind || o.paymentMethod || 'cash';
+  const payLabel = o => o.paymentMethodLabel || { cash: 'Cash', gcash: 'GCash', qr: 'QR', maya: 'Maya', credit: 'Account', split: 'Split payment' }[payKind(o)] || 'Cash';
+  const fulfil = o => { const f = String(o.fulfilment || 'pickup'); return f === 'delivery' ? 'Delivery' : f === 'pickup' ? 'Walk-in' : f; };   // bo-model.js orderFulfilLabel
+  const between = (a, b) => orders.filter(o => o.ts >= a && o.ts < b);
+
+  function metrics(list) {
+    const m = { rev: 0, gp: 0, n: 0 };
+    for (const o of list) { const s = sign(o); if (!s) continue; m.rev += o.total * s; m.gp += profit(o) * s; if (s > 0) m.n++; }
+    return m;
+  }
+  const trend = (cur, prev, title) => {
+    if (!prev) return '';
+    const r = Math.round((cur - prev) / Math.abs(prev) * 1000) / 10;
+    return `<span class="chip ${r > 0 ? 'up' : r < 0 ? 'down' : ''}" title="${esc(title)}">${r > 0 ? '+' : ''}${r.toFixed(1)}%</span>`;
+  };
+
+  // ---------- view state in the URL: ?range=7d, ?at=10 (an hour) or ?at=2026-09-20 (a day), ?receipt= ----------
+  const q = new URLSearchParams(location.search);
+  const RANGES = { today: 1, '7d': 7, '15d': 15, '30d': 30 };
+  const S = {
+    range: RANGES[q.get('range')] ? q.get('range') : 'today',
+    sel: q.get('at') ? { kind: 'at', key: q.get('at') } : q.get('receipt') ? { kind: 'receipt', id: q.get('receipt') } : null,
+  };
+  function saveUrl() {
+    const p = new URLSearchParams();
+    if (S.range !== 'today') p.set('range', S.range);
+    if (S.sel) p.set(S.sel.kind, S.sel.kind === 'at' ? S.sel.key : S.sel.id);
+    history.replaceState(null, '', p.toString() ? '?' + p : location.pathname);
+  }
+
+  // The window, and the one it's compared with: today against the same weekday last week up to
+  // this minute; N days against the N days before, also up to this minute. Never a half day vs a whole one.
+  let W;
+  function windowFor(range) {
+    const n = RANGES[range], start = addDays(TODAY, 1 - n), back = range === 'today' ? 7 : n;
+    const w = { range, n, start, rows: between(start, NOW), prev: between(addDays(start, -back), addDays(NOW, -back)) };
+    w.vs = range === 'today' ? `vs last ${fmt(addDays(TODAY, -7), { weekday: 'long' })} at this time` : `vs the ${n} days before`;
+    if (range === 'today') {
+      // store hours: whatever hours sold in the last four weeks
+      const seen = between(addDays(TODAY, -28), NOW).map(o => new Date(o.ts).getHours());
+      const h0 = seen.length ? Math.min(...seen) : 7, h1 = seen.length ? Math.max(...seen) : 18;
+      w.buckets = [];
+      for (let h = h0; h <= h1; h++) w.buckets.push({ key: String(h), x: hourText(h), title: `${hourLong(h)} – ${hourLong(h + 1)}`,
+        start: TODAY + h * 36e5, end: TODAY + (h + 1) * 36e5, back: 7, backName: `the same hour last ${fmt(addDays(TODAY, -7), { weekday: 'long' })}` });
+    } else {
+      w.buckets = Array.from({ length: n }, (_, i) => { const t = addDays(start, i);
+        return { key: iso(t), x: n > 7 ? String(new Date(t).getDate()) : fmt(t, { weekday: 'short' }), title: fmt(t, { weekday: 'long', month: 'long', day: 'numeric' }),
+          start: t, end: addDays(t, 1), back: 7, backName: `${fmt(addDays(t, -7), { weekday: 'long', month: 'short', day: 'numeric' })}` }; });
+    }
+    for (const b of w.buckets) { b.future = b.start >= NOW; b.now = !b.future && NOW < b.end; b.m = metrics(w.rows.filter(o => o.ts >= b.start && o.ts < b.end)); }
+    return w;
+  }
+
+  // ---------- KPIs: the same four as the real Dashboard ----------
+  function renderStrip() {
+    const m = metrics(W.rows), p = metrics(W.prev), mg = x => x.rev ? x.gp / x.rev * 100 : 0;
+    const stat = (lbl, val, side) =>
+      `<div class="stat"><div class="lbl">${lbl}</div><div class="line"><span class="val">${val}</span>${side}</div></div>`;
+    document.getElementById('strip').innerHTML =
+        stat('Revenue', peso(m.rev), trend(m.rev, p.rev, W.vs))
+      + stat('Profit', peso(m.gp), trend(m.gp, p.gp, W.vs))
+      + stat('Transactions', m.n.toLocaleString(), trend(m.n, p.n, W.vs))
+      + stat('Margin', m.rev ? mg(m).toFixed(1) + '%' : '—', m.rev && p.rev ? trend(mg(m), mg(p), W.vs) : '');
+  }
+
+  // ---------- the bars: revenue per hour (today) or per day ----------
+  function niceStep(v) { const e = Math.pow(10, Math.floor(Math.log10(v))), f = v / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e; }
+  function renderPlot() {
+    const bs = W.buckets, peak = Math.max(100, ...bs.map(b => b.m.rev));
+    const step = niceStep(peak / 3), top = Math.ceil(peak / step) * step;
+    const every = Math.ceil(bs.length / 12);                                   // a label every few bars on 30 days, counted back from today
+    let grid = '';
+    for (let v = 0; v <= top + 1e-6; v += step) grid += `<div class="gl${v ? '' : ' zero'}" style="bottom:${v / top * 100}%"><span>${short(v)}</span></div>`;
+    const cols = bs.map((b, i) => b.future
+      ? `<div class="b future"><span class="x">${(bs.length - 1 - i) % every ? '' : b.x}</span></div>`
+      : `<button class="b" data-at="${b.key}" aria-label="${esc(b.title)}: ${peso(b.m.rev)}">`
+        + `<i style="height:${Math.max(0, b.m.rev) / top * 100}%"><span class="tip">${esc(b.title)} · ${peso(b.m.rev)}</span></i>`
+        + `<span class="x${b.now ? ' now' : ''}">${(bs.length - 1 - i) % every && !b.now ? '' : b.x}</span></button>`).join('');
+    document.getElementById('plot').innerHTML = `<div class="grid">${grid}</div>`
+      + `<div class="cols${bs.length > 8 ? ' many' : ''}" style="grid-template-columns:repeat(${bs.length},minmax(0,1fr))">${cols}</div>`;
+  }
+
+  // ---------- recent transactions: the latest 20 in the range, every status ----------
+  const RECENT_TX = 20;
+  const statusCell = o => { const st = o.status || 'completed';
+    return `<span class="pill ${{ completed: 'up', voided: 'down', return: 'warn', refunded: 'warn' }[st] || ''}">${st[0].toUpperCase() + st.slice(1)}</span>`; };
+  const payCell = o => `<span class="pill ${{ cash: 'up', gcash: 'data', qr: 'data', credit: 'warn' }[payKind(o)] || ''}">${esc(payLabel(o))}</span>`;
+  const txTime = t => t >= TODAY ? clock(t) : `${fmt(t, { month: 'short', day: 'numeric' })}, ${clock(t)}`;
+  function renderTx() {
+    const list = W.rows.slice().reverse(), shown = list.slice(0, RECENT_TX);
+    document.getElementById('txsub').textContent = list.length ? `${shown.length} of ${list.length.toLocaleString()}` : '';
+    document.getElementById('tx').innerHTML = shown.length ? `<div class="flush"><table class="tx">
+      <tr><th>Receipt</th><th>Time</th><th class="opt">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th><th class="n">Total</th></tr>
+      ${shown.map(o => `<tr data-receipt="${esc(o.id)}" class="${sign(o) ? '' : 'dim'}">
+        <td class="id">#${esc(o.number || o.id)}</td><td class="t">${txTime(o.ts)}</td>
+        <td class="opt cust">${o.customer?.name ? esc(o.customer.name) : '<span class="mut">—</span>'}</td>
+        <td class="opt">${esc(o.cashier || '—')}</td><td class="opt">${fulfil(o)}</td>
+        <td>${payCell(o)}</td><td class="opt">${statusCell(o)}</td>
+        <td class="n amt">${peso2(sign(o) < 0 ? -o.total : +o.total)}</td></tr>`).join('')}
+    </table></div>` : `<p class="note" style="margin:6px 0 16px">No transactions ${S.range === 'today' ? 'yet today' : 'in this range'}.</p>`;
+  }
+
+  // ---------- the rail ----------
+  const row = (nm, amt, cmp = null, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span><span class="amt">${amt}</span>${cmp !== null ? `<span class="cmp ${cls}">${cmp}</span>` : ''}</div>`;
+  function renderRail() {
+    // Targets as backoffice.js dashTargets(): always today and this month, whatever the range says.
+    const d = new Date(NOW), mStart = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+    const days = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    const before = metrics(between(mStart, TODAY)).rev, done = metrics(between(TODAY, NOW)).rev;
+    let month = +(settings.targets && settings.targets.month) || 0;
+    if (!real && !month) {                                                       // demo only: last month + 6%
+      const pA = new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime();
+      month = Math.round(metrics(between(pA, mStart)).rev * 1.06 / 1e4) * 1e4;
+    }
+    const auto = month ? Math.max(0, Math.round((month - before) / (days - d.getDate() + 1) / 10) * 10) : 0;
+    const ov = settings.targets?.override, daily = ov && ov.date === iso(NOW) ? +ov.amount || auto : auto;
+    const elapsed = d.getDate() - 1 + (d.getHours() + d.getMinutes() / 60) / 24, pace = elapsed > 0 ? (before + done) / elapsed * days : 0;
+
+    const meter = pct => `<div class="meter" role="img" aria-label="${pct}%"><i style="width:${Math.min(100, Math.max(0, pct))}%"></i></div>`;
+    const head = (lbl, val, side = '', link = '') => `<div class="top"><span>${lbl}</span>${link}</div><div class="line"><span class="val">${val}</span>${side}</div>`;
+    const pctSide = pct => `<span class="pct ${pct >= 100 ? 'up' : ''}">${pct}%</span>`;
+    const empty = lbl => head(lbl, '—') + `<button class="set">Set target</button><div class="rows">${row('No monthly target yet', '')}</div>`;
+    const out = [];
+
+    if (!daily) out.push(empty('Daily sales target'));
+    else {
+      const pct = Math.round(done / daily * 100), left = daily - done;
+      out.push(head('Daily sales target', `${peso(done)}<span class="of">/${peso(daily)}</span>`, pctSide(pct)) + meter(pct)
+        + `<div class="rows">${left > 0 ? row('Left to sell today', peso(left)) : row('Target hit, over by', peso(-left))}</div>`);
+    }
+    if (!month) out.push(empty('Monthly sales target'));
+    else {
+      const sold = before + done, pct = Math.round(sold / month * 100), ahead = pace >= month;
+      out.push(head('Monthly sales target', `${short(sold)}<span class="of">/${short(month)}</span>`, pctSide(pct)) + meter(pct)
+        + `<div class="rows">${row('On pace for', short(pace), ahead ? 'ahead' : 'behind', ahead ? 'up' : 'down')}</div>`);
+    }
+
+    // Low stock: bo-model.js isLow(), the five that run out first by the last 30 days' selling.
+    const sold = new Map();
+    for (const o of between(TODAY - 30 * 864e5, NOW)) if (sign(o) > 0) for (const i of o.items || []) { const p = productFor(i); if (p) sold.set(p.id, (sold.get(p.id) || 0) + (+i.qty || 0)); }
+    const daysLeft = p => { const r = (sold.get(p.id) || 0) / 30; return p.stock <= 0 ? 0 : r ? p.stock / r : Infinity; };
+    const low = (products || []).filter(p => !p.archived && Number(p.stock) <= Number(p.reorderPoint)).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock);
+    out.push(head('Low stock', low.length ? String(low.length) : `0<span class="of"> all stocked</span>`, '',
+        low.length ? '<a href="/admin/products?view=stock&level=out,low">View all ›</a>' : '')
+      + (low.length ? `<div class="rows">${low.slice(0, 5).map(p => `<div class="row"><span class="nm">${esc(p.name)}</span><span class="amt">${Number(p.stock).toLocaleString()} ${esc(p.unit || 'pc')}</span>`
+        + `<span class="pill ${p.stock <= 0 ? 'down' : 'warn'}" style="margin:0">${p.stock <= 0 ? 'Out' : 'Low'}</span></div>`).join('')}</div>` : ''));
+
+    // Payment methods, for the range: the only widget that follows it.
+    const pays = new Map();
+    for (const o of W.rows) { const s = sign(o); if (s) pays.set(payLabel(o), (pays.get(payLabel(o)) || 0) + o.total * s); }
+    const payRows = [...pays].filter(p => p[1]).sort((x, y) => y[1] - x[1]);
+    out.push(`<div class="top band"><span>Payment methods</span></div>` + (payRows.length
+      ? `<div class="rows">${payRows.map(([k, v]) => row(esc(k), peso(v))).join('')}${row('Total', peso(payRows.reduce((s, p) => s + p[1], 0)), null, 'total')}</div>`
+      : '<p class="note" style="margin:10px 0 0">No sales in this range.</p>'));
+
+    document.getElementById('rail').innerHTML = out.map(h => `<section class="card w">${h}</section>`).join('');
+  }
+
+  // ---------- the pop-up: one bar (hour or day), or one receipt ----------
+  const sec = (lbl, body, side = '') => `<div class="p-sec"><div class="lbl">${lbl}<span>${side}</span></div>${body}</div>`;
+  const popTop = (title, prev, next) => `<div class="p-top"><h2>${title}</h2>
+    <button class="icon-btn" data-step="-1" aria-label="Previous" ${prev ? '' : 'disabled'}>‹</button>
+    <button class="icon-btn" data-step="1" aria-label="Next" ${next ? '' : 'disabled'}>›</button>
+    <button class="icon-btn" data-close aria-label="Close">✕</button></div>`;
+  const statusPill = o => { const st = o.status || 'completed'; return st === 'completed' ? '' : `<span class="pill ${st === 'voided' ? 'down' : 'warn'}">${st[0].toUpperCase() + st.slice(1)}</span>`; };
+  const rcRow = o => `<button class="row ${sign(o) ? '' : 'dim'}" data-receipt="${esc(o.id)}"><span class="t">${clock(o.ts)}</span>`
+    + `<span class="nm">#${esc(o.number || o.id)} · ${esc(payLabel(o))}${statusPill(o)}</span><span class="amt">${peso(sign(o) < 0 ? -o.total : +o.total)}</span></button>`;
+  const live = () => W.buckets.filter(b => !b.future);
+
+  function barPop(b) {
+    const rows = W.rows.filter(o => o.ts >= b.start && o.ts < b.end), m = b.m;
+    const p = metrics(between(addDays(b.start, -b.back), Math.min(addDays(b.end, -b.back), addDays(NOW, -b.back))));
+    const share = v => m.rev ? (v / m.rev * 100).toFixed(1) + '%' : '';
+    const group = key => { const g = new Map(); for (const o of rows) { const s = sign(o); if (s) for (const [k, v] of key(o, s)) g.set(k, (g.get(k) || 0) + v); } return [...g].sort((x, y) => y[1] - x[1]); };
+    const L = live(), i = L.indexOf(b);
+    let html = popTop(b.title, i > 0, i < L.length - 1)
+      + `<div class="p-head"><span class="val">${peso(m.rev)}</span>${trend(m.rev, p.rev, 'vs ' + b.backName + (b.now ? ' at this time' : ''))}</div>`
+      + `<p class="p-sub">${m.n} transaction${m.n === 1 ? '' : 's'} · ${peso(m.gp)} profit${b.now ? ' · so far' : ''}</p>`;
+    if (!rows.length) return html + '<p class="p-sub" style="margin-top:20px">No sales.</p>';
+    html += sec('Payment methods', `<div class="rows">${group((o, s) => [[payLabel(o), o.total * s]]).map(([k, v]) => row(esc(k), peso(v), share(v))).join('')}</div>`);
+    const its = group((o, s) => (o.items || []).map(i => [itemOf(i), lineNet(i) * s]));
+    html += sec('Top items', `<div class="rows">${its.slice(0, 5).map(([k, v]) => row(esc(k), peso(v), share(v))).join('')}</div>`, `${its.length} items sold`);
+    html += sec('Transactions', `<div class="rows">${rows.slice().reverse().map(rcRow).join('')}</div>`, `${rows.length} total`);
+    return html;
+  }
+  function receiptPop(o) {
+    const i = W.rows.indexOf(o), s = sign(o), its = o.items || [];
+    const sub = its.reduce((x, it) => x + lineNet(it), 0);
+    let html = popTop(`Receipt #${esc(o.number || o.id)}`, i > 0, i >= 0 && i < W.rows.length - 1)
+      + `<div class="p-head"><span class="val">${peso2(s < 0 ? -o.total : +o.total)}</span>${statusPill(o)}</div>`
+      + `<p class="p-sub">${txTime(o.ts)} · ${esc(o.cashier || '—')} · ${fulfil(o)} · ${esc(payLabel(o))}${o.customer?.name ? ' · ' + esc(o.customer.name) : ''}</p>`;
+    html += sec('Items', `<div class="rows">${its.map(it => row(`${esc(itemOf(it))}<small>${+it.qty} × ${peso2(+it.price || lineNet(it) / (+it.qty || 1))}</small>`, peso2(lineNet(it)))).join('')}</div>`, `${its.length} line${its.length === 1 ? '' : 's'}`);
+    html += sec('Totals', `<div class="rows">
+      ${row('Subtotal', peso2(sub))}
+      ${+o.discount ? row('Discount', peso2(-o.discount)) : ''}
+      ${row('VAT included', peso2(+o.vatAmount || 0))}
+      ${row('Total', peso2(+o.total), null, 'total')}</div>`,
+      s ? '' : 'Books no revenue');
+    if (payKind(o) === 'credit' && s > 0) html += '<p class="p-sub" style="margin-top:10px"><span class="pill warn" style="margin:0">Not collected</span> On the customer’s account.</p>';
+    return html;
+  }
+  const dlg = document.getElementById('pop'), popin = document.getElementById('popin');
+  function renderPop() {
+    const b = S.sel?.kind === 'at' ? W.buckets.find(x => x.key === S.sel.key && !x.future) : null;
+    const o = S.sel?.kind === 'receipt' ? W.rows.find(x => x.id === S.sel.id) : null;
+    if (!b && !o) { S.sel = null; if (dlg.open) dlg.close(); return; }
+    popin.innerHTML = o ? receiptPop(o) : barPop(b);
+    if (!dlg.open) dlg.showModal();
+  }
+
+  // ---------- wiring ----------
+  function render() {
+    W = windowFor(S.range);
+    document.querySelectorAll('#range button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.range === S.range)));
+    renderStrip(); renderPlot(); renderTx(); renderRail(); renderPop(); saveUrl();
+  }
+  const open = sel => { S.sel = sel; renderPop(); saveUrl(); };
+  const close = () => { S.sel = null; renderPop(); saveUrl(); };
+  document.getElementById('range').onclick = e => { const b = e.target.closest('[data-range]'); if (b) { S.range = b.dataset.range; S.sel = null; render(); } };
+  document.getElementById('plot').onclick = e => { const c = e.target.closest('[data-at]'); if (c) open({ kind: 'at', key: c.dataset.at }); };
+  document.getElementById('tx').onclick = e => { const r = e.target.closest('[data-receipt]'); if (r) open({ kind: 'receipt', id: r.dataset.receipt }); };
+  dlg.addEventListener('cancel', e => { e.preventDefault(); close(); });          // Esc
+  dlg.onclick = e => {
+    if (e.target === dlg || e.target.closest('[data-close]')) return close();       // the backdrop, or ✕
+    const r = e.target.closest('[data-receipt]'); if (r) return open({ kind: 'receipt', id: r.dataset.receipt });
+    const st = e.target.closest('[data-step]'); if (!st) return;
+    const n = +st.dataset.step;
+    if (S.sel.kind === 'at') { const L = live(); open({ kind: 'at', key: L[L.findIndex(b => b.key === S.sel.key) + n].key }); }
+    else open({ kind: 'receipt', id: W.rows[W.rows.findIndex(x => x.id === S.sel.id) + n].id });
+  };
+  render();
+
+  // ---------- demo, only when this origin has no orders ----------
+  function demoItems() {
+    return [['Portland Cement 40kg', 265, 238, 'bag', 120, 40], ['Holcim Excel Cement 40kg', 275, 246, 'bag', 18, 30], ['Deformed Bar 12mm × 6m', 310, 262, 'pc', 64, 20],
+      ['Deformed Bar 10mm × 6m', 215, 181, 'pc', 90, 20], ['Hollow Block 6"', 24, 18, 'pc', 800, 300], ['GI Sheet Gauge 26', 420, 355, 'pc', 6, 10],
+      ['Common Nails 3" (kg)', 95, 72, 'kg', 40, 15], ['PVC Pipe 1/2"', 118, 88, 'pc', 55, 20], ['Boysen Latex White 4L', 690, 560, 'can', 0, 6],
+      ['THHN Wire #12 (m)', 38, 29, 'm', 300, 100], ['Plywood 1/4"', 520, 440, 'pc', 24, 10], ['Gravel 3/4" (cu.m)', 1450, 1180, 'cu.m', 9, 5],
+      ['Sand (cu.m)', 1100, 890, 'cu.m', 3, 5], ['Tie Wire #16 (kg)', 88, 66, 'kg', 0, 8], ['LED Bulb Daylight 9W', 95, 60, 'pc', 4, 12]];
+  }
+  function demoProducts() {
+    return demoItems().map(([name, price, cost, unit, stock, reorderPoint], i) => ({ id: 'P' + i, name, price, cost, unit, stock, reorderPoint }));
+  }
+  function demoOrders() {
+    const ITEMS = demoItems();
+    const STAFF = ['Aldrin S.', 'Liza M.', 'Joy P.', 'Maricel R.'], PAY = ['cash', 'cash', 'cash', 'cash', 'gcash', 'gcash', 'credit', 'qr'];
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const out = []; let n = 1;
+    for (let t = addDays(TODAY, -70); t <= TODAY; t = addDays(t, 1)) {
+      const dow = new Date(t).getDay(); if (dow === 0 && rnd() < .6) continue;
+      const count = Math.round((dow === 2 ? 34 : dow === 6 ? 30 : 24) * (.7 + rnd() * .6));
+      for (let k = 0; k < count; k++) {
+        const hour = 7 + Math.floor(Math.pow(rnd(), 1.4) * 11), ts = t + hour * 36e5 + Math.floor(rnd() * 36e5);
+        const items = Array.from({ length: 1 + Math.floor(rnd() * 3) }, () => { const [name, price, cost, unit] = ITEMS[Math.floor(rnd() * ITEMS.length)]; const i = ITEMS.findIndex(x => x[0] === name); const qty = 1 + Math.floor(rnd() * 6); return { id: 'P' + i, name, price, cost, unit, qty, lineTotal: price * qty }; });
+        const total = items.reduce((s, i) => s + i.lineTotal, 0), r = rnd(), kind = PAY[Math.floor(rnd() * PAY.length)];
+        if (ts > Date.now()) continue;
+        out.push({ id: 'D' + n, number: '1-' + String(6000 + n++), ts, total, vatAmount: Math.round(total / 1.12 * .12 * 100) / 100, items, cashier: STAFF[Math.floor(rnd() * STAFF.length)],
+          paymentKind: kind, customer: kind === 'credit' ? { name: 'Ricardo Construction' } : null, status: r < .015 ? 'voided' : 'completed',
+          fulfilment: total > 3000 && r > .6 ? 'delivery' : 'pickup' });
+        if (r > .99 && ts + 36e5 < Date.now()) out.push({ id: 'D' + n, number: '1-' + String(6000 + n++), ts: ts + 36e5, total, vatAmount: 0, items, cashier: STAFF[0], paymentKind: 'cash', status: 'return' });
+      }
+    }
+    out.sort((x, y) => x.ts - y.ts).forEach((o, i) => { o.number = '1-' + (6001 + i); });   // receipt numbers run in time order
+    return out;
+  }
+})();
+</script>
+</body>
+</html>

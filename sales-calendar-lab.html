@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sales calendar lab</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   SALES CALENDAR LAB — the Sales summary as three things, nothing else:
+     1 · one strip of numbers for the period
+     2 · the calendar (month) or twelve month tiles (year)
+     3 · highlights, said in words instead of charted
+     4 · one Top 10 table (items or categories) — the month's lineup
+   Every chart and table moved into the side panel, scoped to the day or week
+   you clicked. Tokens are sales-lab.html's --b-* set (→ --po-* on port).
+   =========================================================================== */
+:root {
+  --b-font: "Inter";
+  --b-page:      #FFFFFF;
+  --b-card:      #F9F9F9;
+  --b-raised:    #FFFFFF;
+  --b-line:      #ECECEC;
+  --b-outline:   #E1E1E1;
+  --b-track:     #EFEFEF;
+  --b-ink:       #303030;
+  --b-ink-2:     #616161;
+  --b-ink-3:     #8C8C8C;
+  --b-up:        #047B5D;
+  --b-down:      #D72C0D;
+  --b-up-tint:   #D3ECDD;
+  --b-down-tint: #F8D8D0;
+  --b-up-soft:   #EAF6EF;     /* a good day's cell — lighter than the chip so 20 of them don't shout */
+  --b-down-soft: #FCEDE9;
+  --b-data:      #2B7DE9;
+  --b-data-1:    #BCD7FA;
+  --b-t-value:   27px;
+  --b-t-label:   13px;
+  --b-t-meta:    12.5px;
+  --b-t-micro:   11px;
+  --b-r-card:    14px;
+  --b-r-cell:    10px;
+  --b-r-row:     7px;
+  --b-pad:       16px;
+  --b-gap:       14px;
+  --panel-w:     420px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--b-page); color: var(--b-ink);
+  font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--b-t-label); -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- page + panel: the calendar shrinks, it never hides ---------- */
+.shell { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; }
+.shell.open { grid-template-columns: minmax(0, 1fr) var(--panel-w); }
+main { padding: 20px 24px 40px; max-width: 1180px; width: 100%; margin: 0 auto; }
+
+.note { font-size: var(--b-t-meta); color: var(--b-ink-3); margin: 0 0 14px; }
+.note b { color: var(--b-ink-2); font-weight: 500; }
+
+/* ---------- top bar ---------- */
+.bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
+.seg { display: inline-flex; background: var(--b-track); border-radius: 9px; padding: 2px; }
+.seg button { border: 0; background: none; padding: 5px 14px; border-radius: 7px; cursor: pointer; color: var(--b-ink-2); }
+.seg button[aria-pressed="true"] { background: var(--b-raised); color: var(--b-ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 500; }
+.nav { display: inline-flex; align-items: center; gap: 4px; }
+.nav b { min-width: 124px; text-align: center; font-weight: 600; font-size: 14px; }
+.icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; }
+.icon-btn:disabled { opacity: .35; cursor: default; }
+
+/* ---------- 1 · the strip ---------- */
+.strip { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad) 4px; display: grid;
+         grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.stat { padding: 0 16px; border-left: 1px solid var(--b-line); min-width: 0; }
+.stat:first-child { border-left: 0; }
+.stat .lbl { color: var(--b-ink-2); }
+.stat .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.stat .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stat .sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .val.up { color: var(--b-up); }
+.stat .val.down { color: var(--b-down); }
+.chip { font-size: var(--b-t-meta); font-weight: 500; padding: 2px 8px; border-radius: 999px; background: var(--b-track);
+        color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chip.up { background: var(--b-up-tint); color: var(--b-up); }
+.chip.down { background: var(--b-down-tint); color: var(--b-down); }
+.target { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; margin: 14px 16px 0; padding-top: 12px;
+          border-top: 1px solid var(--b-line); color: var(--b-ink-2); }
+.target .meter { flex: 1; height: 6px; background: var(--b-track); border-radius: 99px; overflow: hidden; }
+.target .meter i { display: block; height: 100%; background: var(--b-data); border-radius: 99px; }
+.target b { color: var(--b-ink); font-weight: 600; }
+
+/* ---------- 2 · the calendar ---------- */
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.15fr); gap: 8px; margin-top: 8px; }
+.cal .dow { text-align: center; color: var(--b-ink-3); font-size: var(--b-t-meta); padding-bottom: 2px; }
+.cell { min-height: 92px; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised);
+        padding: 9px 10px; text-align: left; display: flex; flex-direction: column; gap: 3px; min-width: 0; cursor: pointer; }
+button.cell:hover { border-color: #C9C9C9; }
+.cell .d { font-size: var(--b-t-meta); color: var(--b-ink-2); font-weight: 500; }
+.cell .v { font-size: 15px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; margin-top: auto; white-space: nowrap; }
+.cell .m { font-size: var(--b-t-micro); color: var(--b-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell .v .sm { display: none; }   /* phone swaps in the short figure */
+.cell.good { background: var(--b-up-soft); border-color: #CFE7D9; }
+.cell.good .v { color: var(--b-up); }
+.cell.loss { background: var(--b-down-soft); border-color: #F2D3CB; }
+.cell.loss .v { color: var(--b-down); }
+.cell.shut, .cell.future { background: transparent; cursor: default; }
+.cell.shut .m, .cell.future .d { color: #B5B5B5; }
+.cell.pad { visibility: hidden; }
+.cell.today { box-shadow: inset 0 0 0 1.5px var(--b-ink); }
+.cell.sel { box-shadow: inset 0 0 0 2px var(--b-data); }
+.cell.week { background: var(--b-card); }
+.cell.week .d { color: var(--b-ink-3); }
+.legend { display: flex; justify-content: flex-end; gap: 16px; flex-wrap: wrap; margin-top: 18px; color: var(--b-ink-3); font-size: var(--b-t-meta); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--b-line); }
+.legend .g { background: var(--b-up-soft); border-color: #CFE7D9; }
+.legend .r { background: var(--b-down-soft); border-color: #F2D3CB; }
+
+/* year: twelve tiles, same cell */
+.months { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.months .cell { min-height: 110px; }
+.months .cell .d { font-size: var(--b-t-label); }
+.months .cell .v { font-size: 18px; }
+
+/* ---------- 3 · highlights ---------- */
+.hls { margin-top: 28px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.hl { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-cell); padding: 14px; line-height: 1.45; color: var(--b-ink-2); }
+.hl b { color: var(--b-ink); font-weight: 600; }
+.hl .k { display: block; font-size: var(--b-t-micro); color: var(--b-ink-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+
+/* ---------- 4 · top 10 ---------- */
+.top { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0 var(--b-pad); overflow: hidden; }
+.flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
+.top table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.top th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; }
+.top td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
+.top th:first-child, .top td:first-child { padding-left: var(--b-pad); }
+.top th:last-child, .top td:last-child { padding-right: var(--b-pad); }
+.top .empty { margin: 0; padding: 12px 0; }
+.sec-h { display: flex; align-items: center; gap: 10px; margin: 28px 0 8px; }
+.sec-h .k { font-size: var(--b-t-micro); color: var(--b-ink-3); text-transform: uppercase; letter-spacing: .04em; margin-right: auto; }
+.sec-h a { color: var(--b-data); text-decoration: none; font-size: var(--b-t-meta); }
+/* the name column's header is the Items / Categories switch: bigger buttons, less cell padding, same row height */
+.top th.sw { padding: 4px 12px 4px 10px; }
+.top td.nm { padding-left: 24px; }   /* names start where the switch's "Items" text does: 10 + 2 track + 12 button */
+.top th .seg button { padding: 4px 12px; font-size: var(--b-t-label); font-weight: 400; }
+.top th .seg button[aria-pressed="true"] { font-weight: 500; }
+.top .nm { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.top .nm small { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-left: 8px; }
+.top .n { text-align: right; }
+.top td.amt { font-weight: 600; }
+.top .sh { width: 150px; }
+.top .sh span { display: inline-block; width: 90px; height: 6px; background: var(--b-track); border-radius: 99px; overflow: hidden; vertical-align: middle; margin-right: 8px; }
+.top .sh i { display: block; height: 100%; background: var(--b-data); border-radius: 99px; }
+.top .cmp { color: var(--b-ink-3); font-size: var(--b-t-meta); width: 64px; }
+.top .cmp.up { color: var(--b-up); }
+.top .cmp.down { color: var(--b-down); }
+
+/* ---------- the side panel ---------- */
+aside { border-left: 1px solid var(--b-line); background: var(--b-page); height: 100vh; position: sticky; top: 0;
+        overflow-y: auto; padding: 18px 18px 40px; }
+aside[hidden] { display: none; }
+.p-top { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+.p-top h2 { font-size: 15px; font-weight: 600; margin: 0 auto 0 0; }
+.p-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.p-head .val { font-size: var(--b-t-value); font-weight: 560; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.p-sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 4px 0 0; }
+.p-sec { margin-top: 20px; }
+.p-sec > .lbl { font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
+.p-sec > .lbl span { color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); }
+.rows { background: var(--b-card); border-radius: 10px; padding: 4px; }
+.row { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: var(--b-r-row); }
+.row:nth-child(odd) { background: var(--b-raised); }
+.row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.row .cmp { width: 46px; text-align: right; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+.row .t { width: 64px; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+.row.total .nm, .row.total .amt { font-weight: 600; }
+.row.dim .nm, .row.dim .amt { color: var(--b-ink-3); text-decoration: line-through; }
+.pill { font-size: 10.5px; padding: 1px 7px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); margin-left: 6px; }
+.pill.warn { background: #FCEFC7; color: #7A5B00; }
+.pill.down { background: var(--b-down-tint); color: var(--b-down); }
+.hours { display: flex; align-items: flex-end; gap: 3px; height: 96px; background: var(--b-card); border-radius: 10px; padding: 10px 10px 0; }
+.hours div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+.hours i { display: block; background: var(--b-data-1); border-radius: 3px 3px 0 0; min-height: 2px; }
+.hours i.top { background: var(--b-data); }
+.hours-x { display: flex; gap: 3px; padding: 4px 10px 0; color: var(--b-ink-3); font-size: 10.5px; }
+.hours-x span { flex: 1; text-align: center; white-space: nowrap; }
+.more { border: 0; background: none; color: var(--b-data); cursor: pointer; padding: 8px 10px 2px; font-size: var(--b-t-meta); }
+
+@media (max-width: 1100px) {
+  .shell.open { grid-template-columns: minmax(0, 1fr); }
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  aside { position: fixed; inset: 0 0 0 auto; width: min(var(--panel-w), 100vw); box-shadow: -8px 0 24px rgba(0,0,0,.08); z-index: 5; }
+}
+@media (max-width: 760px) {
+  main { padding: 16px; }
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
+  .stat:nth-child(odd) { border-left: 0; }
+  .cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .cal .wk, .cal .dow.wk { display: none; }
+  .cell { min-height: 56px; padding: 6px; }
+  .cell .v { font-size: 11px; }
+  .cell .m, .cell .v .full { display: none; }
+  .cell .v .sm { display: inline; }
+  .months { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .top .sh, .top .qty, .top .nm small { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="shell" id="shell">
+  <main>
+    <div class="bar">
+      <h1>Sales</h1>
+      <div class="seg" id="seg">
+        <button data-view="month">Month</button>
+        <button data-view="year">Year</button>
+      </div>
+      <div class="nav">
+        <button class="icon-btn" id="prev" aria-label="Previous">‹</button>
+        <b id="period"></b>
+        <button class="icon-btn" id="next" aria-label="Next">›</button>
+      </div>
+    </div>
+    <p class="note" id="source"></p>
+    <section class="strip" id="strip"></section>
+    <section id="grid"></section>
+    <section class="hls" id="hls"></section>
+    <div class="sec-h"><span class="k">Top selling</span><a id="topall" href="/admin/sales?by=item">See all →</a></div>
+    <section class="top">
+      <div id="top"></div>
+    </section>
+  </main>
+  <aside id="panel" hidden></aside>
+</div>
+
+<script src="/data-store.js"></script>
+<script>
+(async function () {
+  // ---------- money + dates ----------
+  const peso = v => (v < 0 ? '−₱' : '₱') + Math.round(Math.abs(v)).toLocaleString('en-PH');
+  const short = v => Math.abs(v) >= 1e6 ? (v < 0 ? '−' : '') + '₱' + +(Math.abs(v) / 1e6).toFixed(2) + 'M'
+    : Math.abs(v) >= 1e4 ? (v < 0 ? '−' : '') + '₱' + +(Math.abs(v) / 1e3).toFixed(1) + 'k' : peso(v);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = n => String(n).padStart(2, '0');
+  const iso = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const fromIso = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d || 1).getTime(); };
+  const addDays = (t, n) => { const d = new Date(t); d.setDate(d.getDate() + n); return d.getTime(); };
+  const dayStart = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const fmt = (t, o) => new Date(t).toLocaleDateString('en-PH', o);
+  const hourText = h => (h % 12 || 12) + (h < 12 ? 'a' : 'p');
+  const TODAY = dayStart(Date.now());
+
+  // ---------- data: the back office's orders, or a demo when there are none ----------
+  const store = window.HWPOS_STORE;
+  let orders = [], products = [], settings = {}, folders = [];
+  try { [orders, products, settings] = await Promise.all([store.orders.list(), store.products.list(), store.settings.get()]); folders = await store.folders.list(); } catch (_) {}
+  const real = Array.isArray(orders) && orders.length > 0;
+  if (!real) orders = demoOrders();
+  settings = settings || {};
+  document.getElementById('source').innerHTML = real
+    ? `Reading <b>${orders.length.toLocaleString()}</b> orders from the back office.`
+    : 'No orders on this origin, so this is <b>generated demo data</b>. Open it at <b>localhost:8765/sales-calendar-lab.html</b> to read the back office’s orders.';
+
+  // Same rules as backoffice.js: a void/refund books nothing, a return row cancels its sale.
+  const SIGN = { completed: 1, return: -1, refunded: 0, voided: 0, saved: 0 };
+  const sign = o => SIGN[o.status || 'completed'] ?? 0;
+  const prodBy = new Map((products || []).flatMap(p => [['i:' + p.id, p], ['n:' + p.name, p]]));
+  const productFor = i => prodBy.get('i:' + (i.productId || i.id)) || prodBy.get('n:' + i.name);
+  const folderName = new Map((folders || []).map(x => [x.id, x.name]));
+  const costOf = i => i.cost != null ? +i.cost : (productFor(i)?.cost || 0);
+  const itemOf = i => productFor(i)?.name || i.name;
+  const catOf = i => folderName.get(productFor(i)?.folder) || i.cat || 'Uncategorized';
+  const lineNet = i => i.lineTotal != null ? +i.lineTotal : (+i.price || 0) * (+i.qty || 0);
+  const profit = o => (+o.total - (+o.vatAmount || 0)) - (o.items || []).reduce((s, i) => s + costOf(i) * (+i.qty || 0), 0);
+  const payLabel = o => o.paymentMethodLabel || { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Account', split: 'Split payment' }[o.paymentKind || o.paymentMethod] || 'Cash';
+
+  const byDay = new Map();
+  for (const o of orders) { const k = iso(o.ts); (byDay.get(k) || byDay.set(k, []).get(k)).push(o); }
+  const rowsIn = (a, b) => { const out = []; for (let t = a; t < b; t = addDays(t, 1)) out.push(...(byDay.get(iso(t)) || [])); return out; };
+
+  function metrics(list) {
+    const m = { rev: 0, gp: 0, n: 0, sales: 0, ret: 0, retN: 0, disc: 0, vat: 0, voids: 0 };
+    for (const o of list) {
+      const s = sign(o);
+      if (!s) { if (o.status === 'voided' || o.status === 'refunded') m.voids++; continue; }
+      m.rev += o.total * s; m.gp += profit(o) * s; m.vat += (+o.vatAmount || 0) * s;
+      if (s > 0) { m.n++; m.sales += +o.total; m.disc += +o.discount || 0; } else { m.ret += +o.total; m.retN++; }
+    }
+    return m;
+  }
+  const trend = (cur, prev, title) => {
+    if (!prev) return '';
+    const p = (cur - prev) / Math.abs(prev) * 100, r = Math.round(p * 10) / 10;
+    return `<span class="chip ${r > 0 ? 'up' : r < 0 ? 'down' : ''}" title="${esc(title)}">${r > 0 ? '+' : ''}${r.toFixed(1)}%</span>`;
+  };
+
+  // ---------- view state lives in the URL, like every other filter ----------
+  const last = orders.reduce((a, o) => Math.max(a, o.ts), 0) || Date.now();
+  const q = new URLSearchParams(location.search);
+  const S = {
+    view: q.get('view') === 'year' ? 'year' : 'month',
+    month: q.get('month') ? fromIso(q.get('month') + '-01') : (d => new Date(d.getFullYear(), d.getMonth(), 1).getTime())(new Date(Math.min(last, Date.now()))),
+    top: q.get('top') === 'cat' ? 'cat' : 'item',
+    sel: q.get('day') ? { kind: 'day', at: fromIso(q.get('day')) } : q.get('week') ? { kind: 'week', at: fromIso(q.get('week')) } : null,
+  };
+  function saveUrl() {
+    const p = new URLSearchParams();
+    if (S.view === 'year') p.set('view', 'year');
+    p.set('month', iso(S.month).slice(0, 7));
+    if (S.sel) p.set(S.sel.kind, iso(S.sel.at));
+    if (S.top === 'cat') p.set('top', 'cat');
+    history.replaceState(null, '', '?' + p);
+  }
+
+  const monthEnd = t => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime(); };
+  const weekEnd = t => Math.min(addDays(t, 7 - ((new Date(t).getDay() + 6) % 7)), monthEnd(t));   // exclusive, clipped to the month
+  const daysIn = t => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); };
+  // ponytail: a flat share of the monthly target per calendar day. The live target spreads what's
+  // left over the days left; that's a "today" promise, and a past day needs a fixed bar to be judged by.
+  const monthTarget = +(settings.targets && settings.targets.month) || 0;
+
+  // ---------- 1 · the strip ----------
+  function strip(cur, prev, prevTitle, best, worst, unit, target) {
+    const stat = (lbl, val, side, sub, cls = '') =>
+      `<div class="stat"><div class="lbl">${lbl}</div><div class="line"><span class="val ${cls}">${val}</span>${side || ''}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
+    const margin = cur.rev ? (cur.gp / cur.rev * 100).toFixed(1) + '% margin' : '';
+    let html = stat('Revenue', short(cur.rev), trend(cur.rev, prev.rev, prevTitle))
+      + stat('Gross profit', short(cur.gp), trend(cur.gp, prev.gp, prevTitle), margin)
+      + stat('Receipts', cur.n.toLocaleString(), trend(cur.n, prev.n, prevTitle), cur.n ? peso(cur.rev / cur.n) + ' average' : '')
+      + stat('Best ' + unit, best ? short(best.m.rev) : '—', '', best ? best.label : '', best ? 'up' : '')
+      + stat('Slowest ' + unit, worst ? short(worst.m.rev) : '—', '', worst ? worst.label : '', worst && worst.m.rev < 0 ? 'down' : '');
+    if (target) {
+      const pct = Math.round(cur.rev / target * 100);
+      html += `<div class="target"><span>Target <b>${short(target)}</b></span><div class="meter" role="img" aria-label="${pct}% of target"><i style="width:${Math.min(pct, 100)}%"></i></div><b class="num">${pct}%</b></div>`;
+    }
+    return html;
+  }
+
+  // ---------- 2a · month ----------
+  function renderMonth() {
+    const a = S.month, b = monthEnd(a), d0 = new Date(a);
+    const cutoff = Math.min(b, addDays(TODAY, 1));                    // "so far" for the month you're in
+    const prevA = new Date(d0.getFullYear(), d0.getMonth() - 1, 1).getTime();
+    const prevB = Math.min(monthEnd(prevA), addDays(prevA, Math.round((cutoff - a) / 864e5)));
+    const cur = metrics(rowsIn(a, b)), prev = metrics(rowsIn(prevA, prevB));
+    const days = [];
+    for (let t = a; t < b; t = addDays(t, 1)) { const rows = byDay.get(iso(t)) || []; if (rows.length) days.push({ t, m: metrics(rows) }); }
+    const open = days.filter(d => d.m.n || d.m.retN), done = open.filter(d => d.t < TODAY);   // today isn't over yet
+    const best = done.reduce((x, d) => !x || d.m.rev > x.m.rev ? d : x, null);
+    const worst = done.length > 1 ? done.reduce((x, d) => !x || d.m.rev < x.m.rev ? d : x, null) : null;
+    const lab = d => d && (d.label = fmt(d.t, { weekday: 'short', month: 'short', day: 'numeric' }));
+    lab(best); lab(worst);
+    const prevTitle = `vs ${fmt(prevA, { month: 'short', day: 'numeric' })} – ${fmt(prevB - 1, { day: 'numeric' })}`;
+    document.getElementById('strip').innerHTML = strip(cur, prev, prevTitle, best, worst, 'day', monthTarget);
+
+    const bar = monthTarget ? monthTarget / daysIn(a) : (open.length ? cur.rev / open.length : 0);
+    const lead = (d0.getDay() + 6) % 7;                                // Monday-first, a hardware shop's week
+    let anyLoss = false;
+    let html = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="dow">${d}</div>`).join('') + '<div class="dow wk">Week</div>';
+    for (let w = addDays(a, -lead); w < b; w = addDays(w, 7)) {
+      for (let i = 0; i < 7; i++) {
+        const t = addDays(w, i);
+        if (t < a || t >= b) { html += '<div class="cell pad"></div>'; continue; }
+        const dn = new Date(t).getDate(), rows = byDay.get(iso(t)) || [];
+        const sel = S.sel && S.sel.kind === 'day' && S.sel.at === t ? ' sel' : '', today = t === TODAY ? ' today' : '';
+        if (t > TODAY) { html += `<div class="cell future${today}"><span class="d">${dn}</span></div>`; continue; }
+        if (!rows.length) { html += `<div class="cell shut${today}"><span class="d">${dn}</span><span class="m">No sales</span></div>`; continue; }
+        const m = metrics(rows), tone = m.rev < 0 ? ' loss' : bar && m.rev >= bar ? ' good' : '';
+        if (m.rev < 0) anyLoss = true;
+        html += `<button class="cell${tone}${today}${sel}" data-day="${iso(t)}"><span class="d">${dn}</span>`
+          + `<span class="v"><span class="full">${peso(m.rev)}</span><span class="sm">${short(m.rev)}</span></span><span class="m">${m.n} receipts${m.retN ? ` · ${m.retN} ret` : ''}</span></button>`;
+      }
+      const ws = Math.max(w, a), we = Math.min(addDays(w, 7), b, addDays(TODAY, 1));
+      if (ws >= we) { html += '<div class="cell week wk pad"></div>'; continue; }
+      const wr = rowsIn(ws, we), wm = metrics(wr), wdays = new Set(wr.map(o => iso(o.ts))).size;
+      const sel = S.sel && S.sel.kind === 'week' && S.sel.at === ws ? ' sel' : '';
+      html += `<button class="cell week wk${sel}" data-week="${iso(ws)}"><span class="d">${fmt(ws, { month: 'short', day: 'numeric' })} – ${fmt(we - 1, { day: 'numeric' })}</span>`
+        + `<span class="v">${peso(wm.rev)}</span><span class="m">${wdays} days · ${wm.n} receipts</span></button>`;
+    }
+    html = `<div class="legend"><span><i class="g"></i>Green days made ${peso(bar)} or more, ${monthTarget ? 'the daily target' : 'this month’s daily average'}</span>${anyLoss ? '<span><i class="r"></i>Red days had more returns than sales</span>' : ''}</div><div class="cal">${html}</div>`;
+    document.getElementById('grid').innerHTML = html;
+    document.getElementById('period').textContent = fmt(a, { month: 'long', year: 'numeric' });
+    document.getElementById('next').disabled = b > TODAY;
+    highlights(rowsIn(a, b), open.length);
+    TOP = { rows: rowsIn(a, b), prev: rowsIn(prevA, prevB), sub: fmt(a, { month: 'long' }) + (b > TODAY ? ' so far' : '') + ' · ' + prevTitle };
+    renderTop();
+  }
+
+  // ---------- 2b · year ----------
+  function renderYear() {
+    const y = new Date(S.month).getFullYear(), a = new Date(y, 0, 1).getTime(), b = new Date(y + 1, 0, 1).getTime();
+    const cutoff = Math.min(b, addDays(TODAY, 1)), prevA = new Date(y - 1, 0, 1).getTime();
+    const prevB = addDays(prevA, Math.round((cutoff - a) / 864e5));
+    const cur = metrics(rowsIn(a, b)), prev = metrics(rowsIn(prevA, prevB));
+    const months = Array.from({ length: 12 }, (_, i) => { const t = new Date(y, i, 1).getTime(); return { t, m: metrics(rowsIn(t, monthEnd(t))) }; });
+    const open = months.filter(x => x.m.n), done = open.filter(x => monthEnd(x.t) <= TODAY);   // nor is this month
+    const best = done.reduce((x, d) => !x || d.m.rev > x.m.rev ? d : x, null);
+    const worst = done.length > 1 ? done.reduce((x, d) => !x || d.m.rev < x.m.rev ? d : x, null) : null;
+    [best, worst].forEach(d => d && (d.label = fmt(d.t, { month: 'long' })));
+    document.getElementById('strip').innerHTML = strip(cur, prev, `vs the same days of ${y - 1}`, best, worst, 'month', 0);
+    const avg = open.length ? cur.rev / open.length : 0;
+    document.getElementById('grid').innerHTML = `<div class="legend"><span><i class="g"></i>Green months made ${peso(monthTarget || avg)} or more, ${monthTarget ? 'the monthly target' : 'this year’s monthly average'}</span><span>Click a month to open its calendar</span></div><div class="months">` + months.map(({ t, m }) => {
+      const name = fmt(t, { month: 'long' });
+      if (t > TODAY) return `<div class="cell future"><span class="d">${name}</span></div>`;
+      if (!m.n) return `<div class="cell shut"><span class="d">${name}</span><span class="m">No sales</span></div>`;
+      const hit = monthTarget ? m.rev >= monthTarget : m.rev >= avg;
+      return `<button class="cell${hit ? ' good' : ''}" data-month="${iso(t).slice(0, 7)}"><span class="d">${name}</span>`
+        + `<span class="v">${peso(m.rev)}</span><span class="m">${m.n.toLocaleString()} receipts · ${m.rev ? (m.gp / m.rev * 100).toFixed(1) : 0}% margin</span></button>`;
+    }).join('') + '</div>';
+    document.getElementById('period').textContent = y;
+    document.getElementById('next').disabled = b > TODAY;
+    highlights(rowsIn(a, b), null);
+    TOP = { rows: rowsIn(a, b), prev: rowsIn(prevA, prevB), sub: y + (b > TODAY ? ' so far' : '') + ` · vs the same days of ${y - 1}` };
+    renderTop();
+  }
+
+  // ---------- 3 · highlights: the answers the old charts made you squint for ----------
+  function highlights(rows, openDays) {
+    const out = [], live = rows.filter(o => sign(o));
+    if (!live.length) { document.getElementById('hls').innerHTML = '<div class="hl">No sales in this period yet.</div>'; return; }
+    const wd = Array.from({ length: 7 }, () => ({ rev: 0, days: new Set() })), hr = Array(24).fill(0);
+    let total = 0, credit = 0, creditN = 0, ret = 0, retN = 0;
+    for (const o of live) {
+      const s = sign(o), d = new Date(o.ts), w = wd[(d.getDay() + 6) % 7];
+      w.rev += o.total * s; w.days.add(iso(o.ts)); hr[d.getHours()] += o.total * s; total += o.total * s;
+      if (s > 0 && (o.paymentKind || o.paymentMethod) === 'credit') { credit += +o.total; creditN++; }
+      if (s < 0) { ret += +o.total; retN++; }
+    }
+    const names = ['Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays', 'Sundays'];
+    const avg = wd.map((w, i) => ({ i, a: w.days.size ? w.rev / w.days.size : 0 })).filter(x => x.a);
+    const bw = avg.reduce((x, y) => y.a > x.a ? y : x), lw = avg.reduce((x, y) => y.a < x.a ? y : x);
+    out.push(['Best day of the week', `<b>${names[bw.i]}</b> bring in <b>${short(bw.a)}</b> on average, ${lw.a ? `<b>${(bw.a / lw.a).toFixed(1)}×</b> ${names[lw.i]}` : ''}.`]);
+    const h = hr.indexOf(Math.max(...hr));
+    out.push(['Busiest hour', `<b>${hourText(h).replace('a', ' AM').replace('p', ' PM')} – ${hourText(h + 1).replace('a', ' AM').replace('p', ' PM')}</b> takes <b>${Math.round(hr[h] / total * 100)}%</b> of the day’s money.`]);
+    if (credit) out.push(['On account', `<b>${short(credit)}</b> across ${creditN} receipts went on account and isn’t cash yet.`]);
+    if (retN) out.push(['Returns', `<b>${retN}</b> returns gave back <b>${short(ret)}</b>.`]);
+    if (openDays != null && openDays) out.push(['Open days', `Open <b>${openDays}</b> days, averaging <b>${short(total / openDays)}</b> a day.`]);
+    document.getElementById('hls').innerHTML = out.slice(0, 4).map(([k, v]) => `<div class="hl"><span class="k">${k}</span>${v}</div>`).join('');
+  }
+
+  // ---------- 4 · top 10: items or categories, for the same window as the strip ----------
+  // The order's total is split across its lines by line share, as bo-sales.js does, so a
+  // discount can't make the items add up to more than the receipt.
+  let TOP = { rows: [], prev: [], sub: '' };
+  function tops(rows, key) {
+    const g = new Map();
+    for (const o of rows) {
+      const s = sign(o), its = o.items || [];
+      if (!s || !its.length) continue;
+      const gross = its.reduce((x, i) => x + lineNet(i), 0);
+      for (const i of its) {
+        const k = key(i), b = g.get(k) || g.set(k, { name: k, cat: catOf(i), unit: i.unit || '', qty: 0, rev: 0, items: new Set() }).get(k);
+        b.qty += (+i.qty || 0) * s; b.items.add(itemOf(i));
+        b.rev += o.total * s * (gross > 0 ? lineNet(i) / gross : 1 / its.length);
+      }
+    }
+    return g;
+  }
+  function renderTop() {
+    const cat = S.top === 'cat', cur = tops(TOP.rows, cat ? catOf : itemOf), before = tops(TOP.prev, cat ? catOf : itemOf);
+    const total = [...cur.values()].reduce((x, b) => x + b.rev, 0);
+    const list = [...cur.values()].sort((x, y) => y.rev - x.rev).slice(0, 10), max = list.length ? list[0].rev : 1;
+    document.getElementById('topall').href = '/admin/sales?by=' + (cat ? 'category' : 'item');
+    const sw = `<div class="seg">${[['item', 'Items'], ['cat', 'Categories']].map(([k, l]) => `<button data-top="${k}" aria-pressed="${S.top === k}">${l}</button>`).join('')}</div>`;
+    const qty = b => cat ? b.items.size + (b.items.size === 1 ? ' item' : ' items') : +b.qty.toFixed(2) + (b.unit && !/^pcs?$/.test(b.unit) ? ' ' + b.unit : '');
+    const vs = b => {
+      const p = before.get(b.name)?.rev;
+      if (!p) return '<td class="n cmp">New</td>';
+      const r = Math.round((b.rev - p) / Math.abs(p) * 1000) / 10;
+      return `<td class="n cmp ${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : ''}${r.toFixed(1)}%</td>`;
+    };
+    document.getElementById('top').innerHTML = list.length ? `<div class="flush"><table>
+      <tr><th class="sw">${sw}</th><th class="n qty">${cat ? 'Range' : 'Sold'}</th><th class="n">Revenue</th><th class="sh">Share</th><th class="n cmp" title="${esc(TOP.sub)}">Trend</th></tr>
+      ${list.map(b => `<tr><td class="nm">${esc(b.name)}${cat || b.cat === 'Uncategorized' ? '' : `<small>${esc(b.cat)}</small>`}</td>
+        <td class="n qty">${qty(b)}</td><td class="n amt">${peso(b.rev)}</td>
+        <td class="sh"><span><i style="width:${Math.max(0, b.rev / max * 100)}%"></i></span>${total ? (b.rev / total * 100).toFixed(1) : 0}%</td>${vs(b)}</tr>`).join('')}
+    </table></div>` : '<p class="note empty">No sales in this period yet.</p>';
+  }
+  document.getElementById('top').onclick = e => { const b = e.target.closest('[data-top]'); if (b) { S.top = b.dataset.top; renderTop(); saveUrl(); } };
+
+  // ---------- the side panel: everything the old page charted, for one day or one week ----------
+  function renderPanel() {
+    const el = document.getElementById('panel'), shell = document.getElementById('shell');
+    if (!S.sel) { el.hidden = true; shell.classList.remove('open'); return; }
+    const { kind, at } = S.sel, isDay = kind === 'day';
+    const end = isDay ? addDays(at, 1) : weekEnd(at);
+    const rows = rowsIn(at, end).sort((x, y) => y.ts - x.ts), m = metrics(rows);
+    const span = Math.round((end - at) / 864e5), prevRows = rowsIn(addDays(at, -7), addDays(at, -7 + span)), pm = metrics(prevRows);
+    const title = isDay ? fmt(at, { weekday: 'long', month: 'long', day: 'numeric' })
+      : `${fmt(at, { month: 'short', day: 'numeric' })} – ${fmt(end - 1, { month: 'short', day: 'numeric' })}`;
+    const row = (nm, amt, cmp = '', cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span><span class="amt">${amt}</span>${cmp !== null ? `<span class="cmp">${cmp}</span>` : ''}</div>`;
+    const share = v => m.rev ? (v / m.rev * 100).toFixed(1) + '%' : '';
+    const sec = (lbl, body, side = '') => `<div class="p-sec"><div class="lbl">${lbl}<span>${side}</span></div>${body}</div>`;
+
+    let html = `<div class="p-top"><h2>${title}</h2>
+      <button class="icon-btn" data-step="-1" aria-label="Previous ${kind}">‹</button>
+      <button class="icon-btn" data-step="1" aria-label="Next ${kind}" ${end > TODAY ? 'disabled' : ''}>›</button>
+      <button class="icon-btn" data-close aria-label="Close">✕</button></div>`;
+    html += `<div class="p-head"><span class="val">${peso(m.rev)}</span>${trend(m.rev, pm.rev, isDay ? 'vs the same day last week' : 'vs the week before')}</div>`
+      + `<p class="p-sub">${m.n} receipts · ${peso(m.gp)} gross profit · ${m.n ? peso(m.rev / m.n) : '₱0'} average</p>`;
+
+    if (!rows.length) { el.innerHTML = html + '<p class="p-sub" style="margin-top:20px">No sales.</p>'; }
+    else {
+      // hours: the ones that sold, one either side
+      const hr = Array(24).fill(0);
+      for (const o of rows) if (sign(o)) hr[new Date(o.ts).getHours()] += o.total * sign(o);
+      const sold = hr.map((v, i) => v ? i : -1).filter(i => i >= 0);
+      const h0 = sold.length ? Math.max(0, sold[0] - 1) : 7, h1 = sold.length ? Math.min(23, sold[sold.length - 1] + 1) : 18;
+      const top = Math.max(...hr.slice(h0, h1 + 1), 1), peak = hr.indexOf(Math.max(...hr));
+      let bars = '', xs = '';
+      for (let i = h0; i <= h1; i++) {
+        bars += `<div title="${hourText(i)} · ${peso(hr[i])}"><i class="${i === peak ? 'top' : ''}" style="height:${Math.max(0, hr[i]) / top * 100}%"></i></div>`;
+        xs += `<span>${(i - h0) % 3 ? '' : hourText(i)}</span>`;
+      }
+      html += sec('By hour', `<div class="hours">${bars}</div><div class="hours-x">${xs}</div>`, `busiest ${hourText(peak)}`);
+
+      html += sec('Breakdown', `<div class="rows">
+        ${row('Gross sales', peso(m.sales + m.disc), null)}
+        ${row('Discounts', m.disc ? peso(-m.disc) : '₱0', null)}
+        ${row(`Returns${m.retN ? ` (${m.retN})` : ''}`, m.ret ? peso(-m.ret) : '₱0', null)}
+        ${row('VAT included', peso(m.vat), null)}
+        ${row('Net sales', peso(m.rev), null, 'total')}</div>`, m.voids ? `${m.voids} voided, no revenue` : '');
+
+      const group = (key, val) => { const g = new Map(); for (const o of rows) { const s = sign(o); if (s) for (const [k, v] of key(o, s)) g.set(k, (g.get(k) || 0) + v); } return [...g].sort((x, y) => y[1] - x[1]); };
+      const pays = group((o, s) => [[payLabel(o), o.total * s]]);
+      html += sec('Payment methods', `<div class="rows">${pays.map(([k, v]) => row(esc(k) + (k === 'Account' ? '<span class="pill warn">Not collected</span>' : ''), peso(v), share(v))).join('')}</div>`);
+      const its = group((o, s) => (o.items || []).map(i => [i.name, lineNet(i) * s]));
+      html += sec('Top items', `<div class="rows">${its.slice(0, 5).map(([k, v]) => row(esc(k), peso(v), share(v))).join('')}</div>`, `${its.length} items sold`);
+      const staff = group((o, s) => [[o.cashier || '—', o.total * s]]);
+      html += sec('Staff', `<div class="rows">${staff.map(([k, v]) => row(esc(k), peso(v), share(v))).join('')}</div>`);
+
+      // voids and refunds stay in the list, struck through, never filtered out
+      const rc = o => {
+        const s = sign(o), st = o.status || 'completed';
+        const pill = st === 'completed' ? '' : `<span class="pill ${st === 'return' ? 'down' : ''}">${st[0].toUpperCase() + st.slice(1)}</span>`;
+        const when = isDay ? new Date(o.ts).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }) : fmt(o.ts, { month: 'short', day: 'numeric' });
+        return `<div class="row ${s ? '' : 'dim'}"><span class="t">${when}</span><span class="nm">${esc(o.number || o.id || '')} · ${esc(payLabel(o))}${pill}</span><span class="amt">${peso(s < 0 ? -o.total : +o.total)}</span></div>`;
+      };
+      const list = rows.filter(o => o.status !== 'saved');
+      html += sec('Receipts', `<div class="rows" id="rc">${list.slice(0, 12).map(rc).join('')}</div>${list.length > 12 ? `<button class="more" data-more>Show all ${list.length}</button>` : ''}`, `${list.length} total`);
+      el.innerHTML = html;
+      const more = el.querySelector('[data-more]');
+      if (more) more.onclick = () => { el.querySelector('#rc').innerHTML = list.map(rc).join(''); more.remove(); };
+    }
+    el.hidden = false; shell.classList.add('open');
+  }
+
+  // ---------- wiring ----------
+  function render() {
+    document.querySelectorAll('#seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)));
+    if (S.view === 'year') { S.sel = null; renderYear(); } else renderMonth();
+    renderPanel(); saveUrl();
+  }
+  document.getElementById('seg').onclick = e => { const b = e.target.closest('[data-view]'); if (b) { S.view = b.dataset.view; render(); } };
+  const shift = n => { const d = new Date(S.month); S.month = S.view === 'year' ? new Date(d.getFullYear() + n, d.getMonth(), 1).getTime() : new Date(d.getFullYear(), d.getMonth() + n, 1).getTime(); S.sel = null; render(); };
+  document.getElementById('prev').onclick = () => shift(-1);
+  document.getElementById('next').onclick = () => shift(1);
+  document.getElementById('grid').onclick = e => {
+    const c = e.target.closest('button.cell'); if (!c) return;
+    if (c.dataset.month) { S.view = 'month'; S.month = fromIso(c.dataset.month + '-01'); S.sel = null; }
+    else { const kind = c.dataset.day ? 'day' : 'week', at = fromIso(c.dataset[kind]);
+      S.sel = S.sel && S.sel.kind === kind && S.sel.at === at ? null : { kind, at }; }   // click again to close
+    render();
+  };
+  document.getElementById('panel').onclick = e => {
+    if (e.target.closest('[data-close]')) { S.sel = null; return render(); }
+    const st = e.target.closest('[data-step]'); if (!st) return;
+    const n = +st.dataset.step, { kind, at } = S.sel;
+    // a week cell is its Monday, or the 1st when the week straddles a month: step to the cell holding the next/previous day
+    const day = kind === 'day' ? addDays(at, n) : n > 0 ? weekEnd(at) : addDays(at, -1), d = new Date(day);
+    const first = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+    S.sel = { kind, at: kind === 'day' ? day : Math.max(first, addDays(day, -((d.getDay() + 6) % 7))) };
+    S.month = first;
+    render();
+  };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.sel) { S.sel = null; render(); } });
+  render();
+
+  // ---------- demo orders, only when this origin has none ----------
+  function demoOrders() {
+    const ITEMS = [['Portland Cement 40kg', 265, 238, 'Cement'], ['Holcim Excel Cement 40kg', 275, 246, 'Cement'], ['Deformed Bar 12mm × 6m', 310, 262, 'Steel'], ['Deformed Bar 10mm × 6m', 215, 181, 'Steel'],
+      ['Hollow Block 6"', 24, 18, 'Masonry'], ['Hollow Block 4"', 18, 13, 'Masonry'], ['GI Sheet Gauge 26', 420, 355, 'Roofing'], ['Common Nails 3" (kg)', 95, 72, 'Fasteners'],
+      ['PVC Pipe 1/2"', 118, 88, 'Plumbing'], ['Boysen Latex White 4L', 690, 560, 'Paint'], ['THHN Wire #12 (m)', 38, 29, 'Electrical'], ['Plywood 1/4"', 520, 440, 'Lumber'],
+      ['Gravel 3/4" (cu.m)', 1450, 1180, 'Aggregates'], ['Sand (cu.m)', 1100, 890, 'Aggregates'], ['Tie Wire #16 (kg)', 88, 66, 'Fasteners']];
+    const STAFF = ['Aldrin S.', 'Liza M.', 'Joy P.', 'Maricel R.'], PAY = ['cash', 'cash', 'cash', 'cash', 'gcash', 'gcash', 'credit', 'qr'];
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const out = []; let n = 1;
+    for (let t = addDays(TODAY, -200); t <= TODAY; t = addDays(t, 1)) {
+      const dow = new Date(t).getDay(); if (dow === 0 && rnd() < .6) continue;
+      const count = Math.round((dow === 2 ? 34 : dow === 6 ? 30 : 24) * (.7 + rnd() * .6)) * (t === TODAY ? .5 : 1);
+      for (let k = 0; k < count; k++) {
+        const hour = 7 + Math.floor(Math.pow(rnd(), 1.4) * 11), ts = t + hour * 36e5 + Math.floor(rnd() * 36e5);
+        if (ts > Date.now()) continue;
+        const items = Array.from({ length: 1 + Math.floor(rnd() * 3) }, () => { const [name, price, cost, cat] = ITEMS[Math.floor(rnd() * ITEMS.length)]; const qty = 1 + Math.floor(rnd() * 6); return { name, price, cost, cat, qty, lineTotal: price * qty }; });
+        const total = items.reduce((s, i) => s + i.lineTotal, 0), r = rnd();
+        const kind = PAY[Math.floor(rnd() * PAY.length)];
+        out.push({ id: 'D' + n, number: 'R-' + String(n++).padStart(5, '0'), ts, total, vatAmount: Math.round(total / 1.12 * .12 * 100) / 100, items, cashier: STAFF[Math.floor(rnd() * STAFF.length)],
+          paymentKind: kind, status: r < .012 ? 'voided' : 'completed' });
+        if (r > .994) out.push({ id: 'D' + n, number: 'R-' + String(n++).padStart(5, '0'), ts: ts + 36e5, total, vatAmount: 0, items, cashier: STAFF[0], paymentKind: 'cash', status: 'return' });
+      }
+    }
+    return out;
+  }
+})();
+</script>
+</body>
+</html>
