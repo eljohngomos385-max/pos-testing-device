@@ -13,8 +13,8 @@
    SALES CALENDAR LAB — the Sales summary as three things, nothing else:
      1 · one strip of numbers for the period
      2 · the calendar (month) or twelve month tiles (year)
-     3 · highlights, said in words instead of charted
-     4 · one Top 10 table (items or categories) — the month's lineup
+     3 · (the highlights moved into the Top 10: rank by Day or Time)
+     4 · one Top 10 table: items, categories, weekdays or hours
      5 · three cards: payment methods, breakdown, staff
    Every chart and table moved into the side panel, scoped to the day or week
    you clicked. Tokens are sales-lab.html's --b-* set (→ --po-* on port).
@@ -148,32 +148,25 @@ button.cell:hover { border-color: #C9C9C9; }
 .months .cell .d { font-size: var(--b-t-label); }
 .months .cell .v { font-size: 18px; }
 
-/* ---------- 3 · highlights ---------- */
-.hls { margin-top: 28px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
-.hl { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-cell); padding: 14px; line-height: 1.45; color: var(--b-ink-2); }
-.hl b { color: var(--b-ink); font-weight: 600; }
-.hl .k { display: block; font-size: var(--b-t-micro); color: var(--b-ink-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
-/* a highlight reads at a glance: one value at the calendar cells' size (not the strip's, or it steals the eye), one grey line */
-.hl .v { display: block; font-size: 15px; font-weight: 600; letter-spacing: -.01em; line-height: 1.3; color: var(--b-ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.hl .s { display: block; font-size: var(--b-t-meta); color: var(--b-ink-3); margin-top: 2px; }
 
 /* ---------- 4 · top 10 ---------- */
-.top { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0 var(--b-pad); overflow: hidden; }
+.top { margin-top: 28px; background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0 var(--b-pad); overflow: hidden; }
 .flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
 .top table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.top th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; }
+.top th { white-space: nowrap; text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; }
 .top td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
 .top th:first-child, .top td:first-child { padding-left: var(--b-pad); }
 .top th:last-child, .top td:last-child { padding-right: var(--b-pad); }
 .top .empty { margin: 0; padding: 12px 0; }
-.sec-h { display: flex; align-items: center; gap: 10px; margin: 28px 0 8px; }
-.sec-h .k { font-size: var(--b-t-micro); color: var(--b-ink-3); text-transform: uppercase; letter-spacing: .04em; margin-right: auto; }
-.sec-h a { color: var(--b-data); text-decoration: none; font-size: var(--b-t-meta); }
-/* the name column's header is the Items / Categories switch: bigger buttons, less cell padding, same row height */
+/* See all is the table's last row: a link where a footer would be, only for items and categories */
+.top .all { display: flex; align-items: center; height: 34px; padding-left: 24px; border-top: 1px solid var(--b-line); background: var(--b-raised);
+            color: var(--b-data); text-decoration: none; font-size: var(--b-t-meta); }
+.top .all:hover { background: #F6F6F6; }
+/* the name column's header is the rank-by dropdown: Items / Categories / Day / Time, same row height */
 .top th.sw { padding: 4px 12px 4px 10px; }
-.top td.nm { padding-left: 24px; }   /* names start where the switch's "Items" text does: 10 + 2 track + 12 button */
-.top th .seg button { padding: 4px 12px; font-size: var(--b-t-label); font-weight: 400; }
-.top th .seg button[aria-pressed="true"] { font-weight: 500; }
+.top td.nm { padding-left: 24px; }   /* names start where the dropdown's text does: 10 + 1 border + 13 padding */
+.top th select { font: inherit; font-weight: 500; color: var(--b-ink); padding: 4px 6px 4px 13px; border: 1px solid var(--b-outline);
+                 border-radius: 8px; background: var(--b-raised); cursor: pointer; }
 .top .nm { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .top .nm small { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-left: 8px; }
 .top .n { text-align: right; }
@@ -252,6 +245,8 @@ aside[hidden] { display: none; }
   .cell .v .sm { display: inline; }
   .months { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .top .sh, .top .qty, .top .nm small { display: none; }
+  .top .avg .qty { display: table-cell; }   /* days and hours rank by the average: show it, not the total */
+  .top .avg .amt { display: none; }
 }
 </style>
 </head>
@@ -273,8 +268,6 @@ aside[hidden] { display: none; }
     <p class="note" id="source"></p>
     <section class="strip" id="strip"></section>
     <section id="grid"></section>
-    <section class="hls" id="hls"></section>
-    <div class="sec-h"><span class="k">Top selling</span><a id="topall" href="/admin/sales?by=item">See all →</a></div>
     <section class="top">
       <div id="top"></div>
     </section>
@@ -360,7 +353,7 @@ aside[hidden] { display: none; }
   const S = {
     view: q.get('view') === 'year' ? 'year' : 'month',
     month: q.get('month') ? fromIso(q.get('month') + '-01') : (d => new Date(d.getFullYear(), d.getMonth(), 1).getTime())(new Date(Math.min(last, Date.now()))),
-    top: q.get('top') === 'cat' ? 'cat' : 'item',
+    top: ['cat', 'day', 'hour'].includes(q.get('top')) ? q.get('top') : 'item',
     sel: q.get('day') ? { kind: 'day', at: fromIso(q.get('day')) } : q.get('week') ? { kind: 'week', at: fromIso(q.get('week')) } : null,
   };
   function saveUrl() {
@@ -368,7 +361,7 @@ aside[hidden] { display: none; }
     if (S.view === 'year') p.set('view', 'year');
     p.set('month', iso(S.month).slice(0, 7));
     if (S.sel) p.set(S.sel.kind, iso(S.sel.at));
-    if (S.top === 'cat') p.set('top', 'cat');
+    if (S.top !== 'item') p.set('top', S.top);
     history.replaceState(null, '', '?' + p);
   }
 
@@ -454,7 +447,6 @@ aside[hidden] { display: none; }
     document.getElementById('grid').innerHTML = html;
     document.getElementById('period').textContent = fmt(a, { month: 'long', year: 'numeric' });
     document.getElementById('next').disabled = b > TODAY;
-    highlights(rowsIn(a, b), open.length);
     TOP = { rows: rowsIn(a, b), prev: rowsIn(prevA, prevB), sub: fmt(a, { month: 'long' }) + (b > TODAY ? ' so far' : '') + ' · ' + prevTitle };
     renderTop(); renderMix();
   }
@@ -486,73 +478,66 @@ aside[hidden] { display: none; }
     }).join('') + `</div><div class="legend"><span><i class="g"></i>${monthTarget ? 'Hit the monthly target' : 'Above the monthly average'} (${peso(goal)})</span><span>Click a month to open its calendar</span></div>`;
     document.getElementById('period').textContent = y;
     document.getElementById('next').disabled = b > TODAY;
-    highlights(rowsIn(a, b), null);
     TOP = { rows: rowsIn(a, b), prev: rowsIn(prevA, prevB), sub: y + (b > TODAY ? ' so far' : '') + ` · vs the same days of ${y - 1}` };
     renderTop(); renderMix();
   }
 
-  // ---------- 3 · highlights: the answers the old charts made you squint for ----------
-  function highlights(rows, openDays) {
-    const out = [], live = rows.filter(o => sign(o));
-    if (!live.length) { document.getElementById('hls').innerHTML = '<div class="hl">No sales in this period yet.</div>'; return; }
-    const wd = Array.from({ length: 7 }, () => ({ rev: 0, days: new Set() })), hr = Array(24).fill(0);
-    let total = 0, credit = 0, creditN = 0, ret = 0, retN = 0;
-    for (const o of live) {
-      const s = sign(o), d = new Date(o.ts), w = wd[(d.getDay() + 6) % 7];
-      w.rev += o.total * s; w.days.add(iso(o.ts)); hr[d.getHours()] += o.total * s; total += o.total * s;
-      if (s > 0 && (o.paymentKind || o.paymentMethod) === 'credit') { credit += +o.total; creditN++; }
-      if (s < 0) { ret += +o.total; retN++; }
-    }
-    const names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const avg = wd.map((w, i) => ({ i, a: w.days.size ? w.rev / w.days.size : 0 })).filter(x => x.a);
-    const bw = avg.reduce((x, y) => y.a > x.a ? y : x), lw = avg.reduce((x, y) => y.a < x.a ? y : x);
-    out.push(['Best day of the week', names[bw.i], `${short(bw.a)} avg${lw.a && lw.i !== bw.i ? ` · ${(bw.a / lw.a).toFixed(1)}× ${names[lw.i]}s` : ''}`]);
-    const h = hr.indexOf(Math.max(...hr)), ap = x => x % 24 < 12 ? 'AM' : 'PM', hh = x => x % 12 || 12;
-    out.push(['Busiest hour', ap(h) === ap(h + 1) ? `${hh(h)} – ${hh(h + 1)} ${ap(h)}` : `${hh(h)} ${ap(h)} – ${hh(h + 1)} ${ap(h + 1)}`,
-      `${Math.round(hr[h] / total * 100)}% of the day’s sales`]);
-    if (credit) out.push(['On account', short(credit), `${creditN} receipt${creditN === 1 ? '' : 's'}, not paid yet`]);
-    if (retN) out.push(['Returns', short(ret), `${retN} return${retN === 1 ? '' : 's'}`]);
-    if (openDays) out.push(['Open days', String(openDays), `${short(total / openDays)} daily avg`]);
-    document.getElementById('hls').innerHTML = out.slice(0, 4).map(([k, v, sub]) => `<div class="hl"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${sub}</span></div>`).join('');
-  }
-
-  // ---------- 4 · top 10: items or categories, for the same window as the strip ----------
-  // The order's total is split across its lines by line share, as bo-sales.js does, so a
-  // discount can't make the items add up to more than the receipt.
+  // ---------- 4 · top 10: items, categories, weekdays or hours, for the same window as the strip ----------
+  // Items: the order's total is split across its lines by line share, as bo-sales.js does, so a
+  // discount can't make the items add up to more than the receipt. Days and hours take whole orders.
   let TOP = { rows: [], prev: [], sub: '' };
-  function tops(rows, key) {
-    const g = new Map();
+  const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const hourSpan = h => { const ap = x => x % 24 < 12 ? 'AM' : 'PM', hh = x => x % 12 || 12;
+    return ap(h) === ap(h + 1) ? `${hh(h)} – ${hh(h + 1)} ${ap(h)}` : `${hh(h)} ${ap(h)} – ${hh(h + 1)} ${ap(h + 1)}`; };
+  function tops(rows, by) {
+    const g = new Map(), open = new Set();
+    const bucket = (k, init) => g.get(k) || g.set(k, { name: k, qty: 0, rev: 0, items: new Set(), days: new Set(), ...init }).get(k);
     for (const o of rows) {
       const s = sign(o), its = o.items || [];
-      if (!s || !its.length) continue;
+      if (!s) continue;
+      open.add(iso(o.ts));
+      if (by === 'day' || by === 'hour') {
+        const d = new Date(o.ts), b = bucket(by === 'day' ? DAYS[(d.getDay() + 6) % 7] : hourSpan(d.getHours()));
+        b.rev += o.total * s; b.days.add(iso(o.ts));
+        continue;
+      }
+      if (!its.length) continue;
       const gross = its.reduce((x, i) => x + lineNet(i), 0);
       for (const i of its) {
-        const k = key(i), b = g.get(k) || g.set(k, { name: k, cat: catOf(i), unit: i.unit || '', qty: 0, rev: 0, items: new Set() }).get(k);
+        const b = bucket((by === 'cat' ? catOf : itemOf)(i), { cat: catOf(i), unit: i.unit || '' });
         b.qty += (+i.qty || 0) * s; b.items.add(itemOf(i));
         b.rev += o.total * s * (gross > 0 ? lineNet(i) / gross : 1 / its.length);
       }
     }
+    // a weekday averages over the days it was open; an hour over every open day in the window
+    for (const b of g.values()) b.avg = b.rev / ((by === 'day' ? b.days.size : open.size) || 1);
     return g;
   }
+  // the dropdown is the table's title, so there's no heading above it
+  const TOP_BY = [['item', 'Top items', 'Sold'], ['cat', 'Top categories', 'Range'],
+    ['day', 'Busiest days', 'Avg / day'], ['hour', 'Busiest hours', 'Avg / day']];
   function renderTop() {
-    const cat = S.top === 'cat', cur = tops(TOP.rows, cat ? catOf : itemOf), before = tops(TOP.prev, cat ? catOf : itemOf);
-    const total = [...cur.values()].reduce((x, b) => x + b.rev, 0);
-    const list = [...cur.values()].sort((x, y) => y.rev - x.rev).slice(0, 10), max = list.length ? list[0].rev : 1;
-    document.getElementById('topall').href = '/admin/sales?by=' + (cat ? 'category' : 'item');
-    const sw = `<div class="seg">${[['item', 'Items'], ['cat', 'Categories']].map(([k, l]) => `<button data-top="${k}" aria-pressed="${S.top === k}">${l}</button>`).join('')}</div>`;
-    const qty = b => cat ? b.items.size + (b.items.size === 1 ? ' item' : ' items') : +b.qty.toFixed(2) + (b.unit && !/^pcs?$/.test(b.unit) ? ' ' + b.unit : '');
+    const by = S.top, [, , qtyHead] = TOP_BY.find(x => x[0] === by), cur = tops(TOP.rows, by), before = tops(TOP.prev, by);
+    // weekdays rank and share by their average: a month can hold five Wednesdays and four Saturdays
+    const val = b => by === 'day' ? b.avg : b.rev;
+    const total = [...cur.values()].reduce((x, b) => x + val(b), 0);
+    const list = [...cur.values()].sort((x, y) => val(y) - val(x)).slice(0, 10), max = list.length ? val(list[0]) : 1;
+    const sw = `<select aria-label="Rank by">${TOP_BY.map(([k, l]) => `<option value="${k}"${by === k ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+    const qty = b => by === 'day' || by === 'hour' ? peso(b.avg) : by === 'cat' ? b.items.size + (b.items.size === 1 ? ' item' : ' items')
+      : +b.qty.toFixed(2) + (b.unit && !/^pcs?$/.test(b.unit) ? ' ' + b.unit : '');
     const vs = b => {
       const p = before.get(b.name)?.rev;
       if (!p) return '<td class="n cmp">New</td>';
       const r = Math.round((b.rev - p) / Math.abs(p) * 1000) / 10;
       return `<td class="n cmp ${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : ''}${r.toFixed(1)}%</td>`;
     };
-    document.getElementById('top').innerHTML = list.length ? `<div class="flush"><table>
-      <tr><th class="sw">${sw}</th><th class="n qty">${cat ? 'Range' : 'Sold'}</th><th class="n">Revenue</th><th class="sh">Share</th><th class="n cmp" title="${esc(TOP.sub)}">Trend</th></tr>
-      ${list.map(b => `<tr><td class="nm">${esc(b.name)}${cat || b.cat === 'Uncategorized' ? '' : `<small>${esc(b.cat)}</small>`}</td>
+    document.getElementById('top').innerHTML = list.length ? `<div class="flush"><table${by === 'day' || by === 'hour' ? ' class="avg"' : ''}>
+      <tr><th class="sw">${sw}</th><th class="n qty">${qtyHead}</th><th class="n amt">Revenue</th><th class="sh">Share</th><th class="n cmp" title="${esc(TOP.sub)}">Trend</th></tr>
+      ${list.map(b => `<tr><td class="nm">${esc(b.name)}${by !== 'item' || b.cat === 'Uncategorized' ? '' : `<small>${esc(b.cat)}</small>`}</td>
         <td class="n qty">${qty(b)}</td><td class="n amt">${peso(b.rev)}</td>
-        <td class="sh"><span><i style="width:${Math.max(0, b.rev / max * 100)}%"></i></span>${total ? (b.rev / total * 100).toFixed(1) : 0}%</td>${vs(b)}</tr>`).join('')}
-    </table></div>` : '<p class="note empty">No sales in this period yet.</p>';
+        <td class="sh"><span><i style="width:${Math.max(0, val(b) / max * 100)}%"></i></span>${total ? (val(b) / total * 100).toFixed(1) : 0}%</td>${vs(b)}</tr>`).join('')}
+    </table>${by === 'item' || by === 'cat' ? `<a class="all" href="/admin/sales?by=${by === 'cat' ? 'category' : 'item'}">See all ${cur.size} ${by === 'cat' ? 'categories' : 'items'} →</a>` : ''}</div>`
+      : '<p class="note empty">No sales in this period yet.</p>';
   }
   const row = (nm, amt, cmp = '', cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span><span class="amt">${amt}</span>${cmp !== null ? `<span class="cmp">${cmp}</span>` : ''}</div>`;
 
@@ -594,7 +579,7 @@ aside[hidden] { display: none; }
     render();
   });
 
-  document.getElementById('top').onclick = e => { const b = e.target.closest('[data-top]'); if (b) { S.top = b.dataset.top; renderTop(); saveUrl(); } };
+  document.getElementById('top').onchange = e => { if (e.target.matches('select')) { S.top = e.target.value; renderTop(); saveUrl(); } };
 
   // ---------- the side panel: everything the old page charted, for one day or one week ----------
   function renderPanel() {
