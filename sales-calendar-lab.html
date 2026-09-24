@@ -60,7 +60,7 @@ button { font: inherit; color: inherit; }
 /* ---------- page + panel: the calendar shrinks, it never hides ---------- */
 .shell { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; }
 .shell.open { grid-template-columns: minmax(0, 1fr) var(--panel-w); }
-main { padding: 20px 24px 40px; max-width: 1180px; width: 100%; margin: 0 auto; }
+main { padding: 20px 24px 40px; max-width: 1180px; width: 100%; margin: 0 auto; container-type: inline-size; }
 
 .note { font-size: var(--b-t-meta); color: var(--b-ink-3); margin: 0 0 14px; }
 .note b { color: var(--b-ink-2); font-weight: 500; }
@@ -78,7 +78,7 @@ main { padding: 20px 24px 40px; max-width: 1180px; width: 100%; margin: 0 auto; 
 
 /* ---------- 1 · the strip ---------- */
 .strip { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad) 4px; display: grid;
-         grid-template-columns: repeat(5, minmax(0, 1fr)); }
+         grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr)); }
 .stat { padding: 0 16px; border-left: 1px solid var(--b-line); min-width: 0; }
 .stat:first-child { border-left: 0; }
 .stat .lbl { color: var(--b-ink-2); }
@@ -91,14 +91,26 @@ main { padding: 20px 24px 40px; max-width: 1180px; width: 100%; margin: 0 auto; 
         color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .chip.up { background: var(--b-up-tint); color: var(--b-up); }
 .chip.down { background: var(--b-down-tint); color: var(--b-down); }
-.target { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; margin: 14px 16px 0; padding-top: 12px;
-          border-top: 1px solid var(--b-line); color: var(--b-ink-2); }
-.target .meter { flex: 1; height: 6px; background: var(--b-track); border-radius: 99px; overflow: hidden; }
-.target .meter i { display: block; height: 100%; background: var(--b-data); border-radius: 99px; }
-.target b { color: var(--b-ink); font-weight: 600; }
+/* the target is a stat like the others: revenue, a plain % where the chip goes, "of ₱X" below, click to change */
+button.stat { font: inherit; color: inherit; text-align: left; background: none; border-top: 0; border-right: 0; border-bottom: 0; cursor: pointer;
+              display: flex; flex-direction: column; justify-content: flex-start; }   /* a button centers its content; stats sit at the top */
+button.stat:hover .lbl { color: var(--b-data); }
+.stat .pct { font-size: var(--b-t-meta); font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat .set { color: var(--b-data); font-size: var(--b-t-meta); }
+dialog.tdlg { border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); width: min(340px, calc(100vw - 32px));
+              background: var(--b-raised); color: var(--b-ink); box-shadow: 0 12px 32px rgba(0,0,0,.14); }
+dialog.tdlg::backdrop { background: rgba(0,0,0,.18); }
+.tdlg h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+.tdlg label { display: block; color: var(--b-ink-2); }
+.tdlg input { display: block; width: 100%; margin-top: 6px; font: inherit; font-size: 15px; padding: 7px 10px; border: 1px solid var(--b-outline);
+              border-radius: var(--b-r-row); font-variant-numeric: tabular-nums; }
+.tdlg p { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 8px 0 0; }
+.tdlg .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.tdlg button { font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--b-outline); background: var(--b-raised); cursor: pointer; }
+.tdlg button[type="submit"] { background: var(--b-data); border-color: var(--b-data); color: #fff; font-weight: 500; }
 
 /* ---------- 2 · the calendar ---------- */
-.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.15fr); gap: 8px; margin-top: 8px; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.15fr); gap: 8px; margin-top: 22px; }
 .cal .dow { text-align: center; color: var(--b-ink-3); font-size: var(--b-t-meta); padding-bottom: 2px; }
 .cell { min-height: 92px; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised);
         padding: 9px 10px; text-align: left; display: flex; flex-direction: column; gap: 3px; min-width: 0; cursor: pointer; }
@@ -118,13 +130,13 @@ button.cell:hover { border-color: #C9C9C9; }
 .cell.sel { box-shadow: inset 0 0 0 2px var(--b-data); }
 .cell.week { background: var(--b-card); }
 .cell.week .d { color: var(--b-ink-3); }
-.legend { display: flex; justify-content: flex-end; gap: 16px; flex-wrap: wrap; margin-top: 18px; color: var(--b-ink-3); font-size: var(--b-t-meta); }
+.legend { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 12px; color: var(--b-ink-3); font-size: var(--b-t-meta); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--b-line); }
 .legend .g { background: var(--b-up-soft); border-color: #CFE7D9; }
 .legend .r { background: var(--b-down-soft); border-color: #F2D3CB; }
 
 /* year: twelve tiles, same cell */
-.months { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.months { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 22px; }
 .months .cell { min-height: 110px; }
 .months .cell .d { font-size: var(--b-t-label); }
 .months .cell .v { font-size: 18px; }
@@ -134,6 +146,9 @@ button.cell:hover { border-color: #C9C9C9; }
 .hl { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-cell); padding: 14px; line-height: 1.45; color: var(--b-ink-2); }
 .hl b { color: var(--b-ink); font-weight: 600; }
 .hl .k { display: block; font-size: var(--b-t-micro); color: var(--b-ink-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+/* a highlight reads at a glance: one value at the calendar cells' size (not the strip's, or it steals the eye), one grey line */
+.hl .v { display: block; font-size: 15px; font-weight: 600; letter-spacing: -.01em; line-height: 1.3; color: var(--b-ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hl .s { display: block; font-size: var(--b-t-meta); color: var(--b-ink-3); margin-top: 2px; }
 
 /* ---------- 4 · top 10 ---------- */
 .top { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0 var(--b-pad); overflow: hidden; }
@@ -200,10 +215,16 @@ aside[hidden] { display: none; }
   .shell { grid-template-columns: minmax(0, 1fr); }
   aside { position: fixed; inset: 0 0 0 auto; width: min(var(--panel-w), 100vw); box-shadow: -8px 0 24px rgba(0,0,0,.08); z-index: 5; }
 }
+/* six stats need ~180px each: a narrow window or an open day panel wraps them into rows of three */
+@container (max-width: 1000px) {
+  .strip { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 14px; }
+  .stat:nth-child(3n+1) { border-left: 0; }
+}
 @media (max-width: 760px) {
   main { padding: 16px; }
   .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
   .stat:nth-child(odd) { border-left: 0; }
+  .stat:nth-child(even) { border-left: 1px solid var(--b-line); }
   .cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
   .cal .wk, .cal .dow.wk { display: none; }
   .cell { min-height: 56px; padding: 6px; }
@@ -239,6 +260,12 @@ aside[hidden] { display: none; }
       <div id="top"></div>
     </section>
   </main>
+  <dialog class="tdlg" id="tdlg"><form method="dialog" id="tform">
+    <h2>Monthly target</h2>
+    <label>Revenue to aim for each month<input name="month" type="number" min="0" step="1000" inputmode="numeric" autocomplete="off"></label>
+    <p>Days that make a share of it turn green. Leave blank to judge days by the month's average.</p>
+    <div class="acts"><button type="button" onclick="this.closest('dialog').close()">Cancel</button><button type="submit" value="save">Save</button></div>
+  </form></dialog>
   <aside id="panel" hidden></aside>
 </div>
 
@@ -326,23 +353,27 @@ aside[hidden] { display: none; }
   const daysIn = t => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); };
   // ponytail: a flat share of the monthly target per calendar day. The live target spreads what's
   // left over the days left; that's a "today" promise, and a past day needs a fixed bar to be judged by.
-  const monthTarget = +(settings.targets && settings.targets.month) || 0;
+  let monthTarget = +(settings.targets && settings.targets.month) || 0;
 
   // ---------- 1 · the strip ----------
-  function strip(cur, prev, prevTitle, best, worst, unit, target) {
-    const stat = (lbl, val, side, sub, cls = '') =>
-      `<div class="stat"><div class="lbl">${lbl}</div><div class="line"><span class="val ${cls}">${val}</span>${side || ''}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
+  // days = days that had sales, the same average an untargeted calendar greens against
+  function strip(cur, prev, prevTitle, best, worst, unit, days, target) {
+    const stat = (lbl, val, side, sub, cls = '', tip = '') =>
+      `<div class="stat"${tip ? ` title="${esc(tip)}"` : ''}><div class="lbl">${lbl}</div><div class="line"><span class="val ${cls}">${val}</span>${side || ''}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
     const margin = cur.rev ? (cur.gp / cur.rev * 100).toFixed(1) + '% margin' : '';
-    let html = stat('Revenue', short(cur.rev), trend(cur.rev, prev.rev, prevTitle))
+    const perDay = v => days ? v / days : 0;
+    let html = stat('Revenue', short(cur.rev), trend(cur.rev, prev.rev, prevTitle), days ? peso(perDay(cur.rev)) + ' daily avg' : '')
       + stat('Gross profit', short(cur.gp), trend(cur.gp, prev.gp, prevTitle), margin)
-      + stat('Receipts', cur.n.toLocaleString(), trend(cur.n, prev.n, prevTitle), cur.n ? peso(cur.rev / cur.n) + ' average' : '')
+      + stat('Receipts', cur.n.toLocaleString(), trend(cur.n, prev.n, prevTitle),
+        days ? perDay(cur.n).toLocaleString('en-PH', { maximumFractionDigits: 1 }) + ' daily avg' : '', '', cur.n ? peso(cur.rev / cur.n) + ' average receipt' : '')
       + stat('Best ' + unit, best ? short(best.m.rev) : '—', '', best ? best.label : '', best ? 'up' : '')
       + stat('Slowest ' + unit, worst ? short(worst.m.rev) : '—', '', worst ? worst.label : '', worst && worst.m.rev < 0 ? 'down' : '');
-    if (target) {
-      const pct = Math.round(cur.rev / target * 100);
-      html += `<div class="target"><span>Target <b>${short(target)}</b></span><div class="meter" role="img" aria-label="${pct}% of target"><i style="width:${Math.min(pct, 100)}%"></i></div><b class="num">${pct}%</b></div>`;
-    }
-    return html;
+    if (target == null) return html;                                   // year view: five stats, as before
+    const pct = target ? Math.round(cur.rev / target * 100) : 0;
+    return html + `<button class="stat" data-act="target" title="${target ? `${peso(cur.rev)} of ${peso(target)} · click to change` : 'Set a monthly target'}">`
+      + `<div class="lbl">Target</div><div class="line">${target
+        ? `<span class="val">${short(cur.rev)}</span><b class="pct">${pct}%</b></div><div class="sub">of ${short(target)}</div>`
+        : '<span class="val">—</span><span class="set">Set</span></div>'}</button>`;
   }
 
   // ---------- 2a · month ----------
@@ -360,11 +391,14 @@ aside[hidden] { display: none; }
     const lab = d => d && (d.label = fmt(d.t, { weekday: 'short', month: 'short', day: 'numeric' }));
     lab(best); lab(worst);
     const prevTitle = `vs ${fmt(prevA, { month: 'short', day: 'numeric' })} – ${fmt(prevB - 1, { day: 'numeric' })}`;
-    document.getElementById('strip').innerHTML = strip(cur, prev, prevTitle, best, worst, 'day', monthTarget);
+    document.getElementById('strip').innerHTML = strip(cur, prev, prevTitle, best, worst, 'day', open.length, monthTarget);
+    document.getElementById('strip').style.setProperty('--cols', 6);
 
     const bar = monthTarget ? monthTarget / daysIn(a) : (open.length ? cur.rev / open.length : 0);
     const lead = (d0.getDay() + 6) % 7;                                // Monday-first, a hardware shop's week
     let anyLoss = false;
+    const goodKey = `${monthTarget ? 'Hit the daily target' : 'Above the daily average'} (${peso(bar)})`;
+    const goodTip = monthTarget ? `Hit the ${peso(bar)} daily target` : `Above the ${peso(bar)} daily average`;
     let html = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="dow">${d}</div>`).join('') + '<div class="dow wk">Week</div>';
     for (let w = addDays(a, -lead); w < b; w = addDays(w, 7)) {
       for (let i = 0; i < 7; i++) {
@@ -376,7 +410,8 @@ aside[hidden] { display: none; }
         if (!rows.length) { html += `<div class="cell shut${today}"><span class="d">${dn}</span><span class="m">No sales</span></div>`; continue; }
         const m = metrics(rows), tone = m.rev < 0 ? ' loss' : bar && m.rev >= bar ? ' good' : '';
         if (m.rev < 0) anyLoss = true;
-        html += `<button class="cell${tone}${today}${sel}" data-day="${iso(t)}"><span class="d">${dn}</span>`
+        const tip = tone === ' good' ? goodTip : tone === ' loss' ? 'More returns than sales' : '';
+        html += `<button class="cell${tone}${today}${sel}" data-day="${iso(t)}"${tip ? ` title="${tip}"` : ''}><span class="d">${dn}</span>`
           + `<span class="v"><span class="full">${peso(m.rev)}</span><span class="sm">${short(m.rev)}</span></span><span class="m">${m.n} receipts${m.retN ? ` · ${m.retN} ret` : ''}</span></button>`;
       }
       const ws = Math.max(w, a), we = Math.min(addDays(w, 7), b, addDays(TODAY, 1));
@@ -386,7 +421,7 @@ aside[hidden] { display: none; }
       html += `<button class="cell week wk${sel}" data-week="${iso(ws)}"><span class="d">${fmt(ws, { month: 'short', day: 'numeric' })} – ${fmt(we - 1, { day: 'numeric' })}</span>`
         + `<span class="v">${peso(wm.rev)}</span><span class="m">${wdays} days · ${wm.n} receipts</span></button>`;
     }
-    html = `<div class="legend"><span><i class="g"></i>Green days made ${peso(bar)} or more, ${monthTarget ? 'the daily target' : 'this month’s daily average'}</span>${anyLoss ? '<span><i class="r"></i>Red days had more returns than sales</span>' : ''}</div><div class="cal">${html}</div>`;
+    html = `<div class="cal">${html}</div><div class="legend"><span><i class="g"></i>${goodKey}</span>${anyLoss ? '<span><i class="r"></i>More returns than sales</span>' : ''}</div>`;
     document.getElementById('grid').innerHTML = html;
     document.getElementById('period').textContent = fmt(a, { month: 'long', year: 'numeric' });
     document.getElementById('next').disabled = b > TODAY;
@@ -406,16 +441,20 @@ aside[hidden] { display: none; }
     const best = done.reduce((x, d) => !x || d.m.rev > x.m.rev ? d : x, null);
     const worst = done.length > 1 ? done.reduce((x, d) => !x || d.m.rev < x.m.rev ? d : x, null) : null;
     [best, worst].forEach(d => d && (d.label = fmt(d.t, { month: 'long' })));
-    document.getElementById('strip').innerHTML = strip(cur, prev, `vs the same days of ${y - 1}`, best, worst, 'month', 0);
+    let days = 0;
+    for (let t = a; t < b; t = addDays(t, 1)) if (byDay.has(iso(t))) days++;
+    document.getElementById('strip').innerHTML = strip(cur, prev, `vs the same days of ${y - 1}`, best, worst, 'month', days);
+    document.getElementById('strip').style.setProperty('--cols', 5);
     const avg = open.length ? cur.rev / open.length : 0;
-    document.getElementById('grid').innerHTML = `<div class="legend"><span><i class="g"></i>Green months made ${peso(monthTarget || avg)} or more, ${monthTarget ? 'the monthly target' : 'this year’s monthly average'}</span><span>Click a month to open its calendar</span></div><div class="months">` + months.map(({ t, m }) => {
+    const goal = monthTarget || avg, goodTip = monthTarget ? `Hit the ${peso(goal)} monthly target` : `Above the ${peso(goal)} monthly average`;
+    document.getElementById('grid').innerHTML = '<div class="months">' + months.map(({ t, m }) => {
       const name = fmt(t, { month: 'long' });
       if (t > TODAY) return `<div class="cell future"><span class="d">${name}</span></div>`;
       if (!m.n) return `<div class="cell shut"><span class="d">${name}</span><span class="m">No sales</span></div>`;
       const hit = monthTarget ? m.rev >= monthTarget : m.rev >= avg;
-      return `<button class="cell${hit ? ' good' : ''}" data-month="${iso(t).slice(0, 7)}"><span class="d">${name}</span>`
+      return `<button class="cell${hit ? ' good' : ''}" data-month="${iso(t).slice(0, 7)}"${hit ? ` title="${goodTip}"` : ''}><span class="d">${name}</span>`
         + `<span class="v">${peso(m.rev)}</span><span class="m">${m.n.toLocaleString()} receipts · ${m.rev ? (m.gp / m.rev * 100).toFixed(1) : 0}% margin</span></button>`;
-    }).join('') + '</div>';
+    }).join('') + `</div><div class="legend"><span><i class="g"></i>${monthTarget ? 'Hit the monthly target' : 'Above the monthly average'} (${peso(goal)})</span><span>Click a month to open its calendar</span></div>`;
     document.getElementById('period').textContent = y;
     document.getElementById('next').disabled = b > TODAY;
     highlights(rowsIn(a, b), null);
@@ -435,16 +474,17 @@ aside[hidden] { display: none; }
       if (s > 0 && (o.paymentKind || o.paymentMethod) === 'credit') { credit += +o.total; creditN++; }
       if (s < 0) { ret += +o.total; retN++; }
     }
-    const names = ['Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays', 'Sundays'];
+    const names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const avg = wd.map((w, i) => ({ i, a: w.days.size ? w.rev / w.days.size : 0 })).filter(x => x.a);
     const bw = avg.reduce((x, y) => y.a > x.a ? y : x), lw = avg.reduce((x, y) => y.a < x.a ? y : x);
-    out.push(['Best day of the week', `<b>${names[bw.i]}</b> bring in <b>${short(bw.a)}</b> on average, ${lw.a ? `<b>${(bw.a / lw.a).toFixed(1)}×</b> ${names[lw.i]}` : ''}.`]);
-    const h = hr.indexOf(Math.max(...hr));
-    out.push(['Busiest hour', `<b>${hourText(h).replace('a', ' AM').replace('p', ' PM')} – ${hourText(h + 1).replace('a', ' AM').replace('p', ' PM')}</b> takes <b>${Math.round(hr[h] / total * 100)}%</b> of the day’s money.`]);
-    if (credit) out.push(['On account', `<b>${short(credit)}</b> across ${creditN} receipts went on account and isn’t cash yet.`]);
-    if (retN) out.push(['Returns', `<b>${retN}</b> returns gave back <b>${short(ret)}</b>.`]);
-    if (openDays != null && openDays) out.push(['Open days', `Open <b>${openDays}</b> days, averaging <b>${short(total / openDays)}</b> a day.`]);
-    document.getElementById('hls').innerHTML = out.slice(0, 4).map(([k, v]) => `<div class="hl"><span class="k">${k}</span>${v}</div>`).join('');
+    out.push(['Best day of the week', names[bw.i], `${short(bw.a)} avg${lw.a && lw.i !== bw.i ? ` · ${(bw.a / lw.a).toFixed(1)}× ${names[lw.i]}s` : ''}`]);
+    const h = hr.indexOf(Math.max(...hr)), ap = x => x % 24 < 12 ? 'AM' : 'PM', hh = x => x % 12 || 12;
+    out.push(['Busiest hour', ap(h) === ap(h + 1) ? `${hh(h)} – ${hh(h + 1)} ${ap(h)}` : `${hh(h)} ${ap(h)} – ${hh(h + 1)} ${ap(h + 1)}`,
+      `${Math.round(hr[h] / total * 100)}% of the day’s sales`]);
+    if (credit) out.push(['On account', short(credit), `${creditN} receipt${creditN === 1 ? '' : 's'}, not paid yet`]);
+    if (retN) out.push(['Returns', short(ret), `${retN} return${retN === 1 ? '' : 's'}`]);
+    if (openDays) out.push(['Open days', String(openDays), `${short(total / openDays)} daily avg`]);
+    document.getElementById('hls').innerHTML = out.slice(0, 4).map(([k, v, sub]) => `<div class="hl"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${sub}</span></div>`).join('');
   }
 
   // ---------- 4 · top 10: items or categories, for the same window as the strip ----------
@@ -485,6 +525,22 @@ aside[hidden] { display: none; }
         <td class="sh"><span><i style="width:${Math.max(0, b.rev / max * 100)}%"></i></span>${total ? (b.rev / total * 100).toFixed(1) : 0}%</td>${vs(b)}</tr>`).join('')}
     </table></div>` : '<p class="note empty">No sales in this period yet.</p>';
   }
+  // the Target stat opens a small editor; saving goes through the store, like the back office's Set target
+  const tdlg = document.getElementById('tdlg');
+  document.getElementById('strip').onclick = e => {
+    if (!e.target.closest('[data-act="target"]')) return;
+    tdlg.querySelector('input').value = monthTarget || '';
+    tdlg.returnValue = '';
+    tdlg.showModal();
+  };
+  tdlg.addEventListener('close', async () => {
+    if (tdlg.returnValue !== 'save') return;
+    const v = Math.max(0, Math.round(+tdlg.querySelector('input').value || 0));
+    try { settings = await store.settings.set({ targets: { ...(settings.targets || {}), month: v } }); } catch (_) {}
+    monthTarget = v;
+    render();
+  });
+
   document.getElementById('top').onclick = e => { const b = e.target.closest('[data-top]'); if (b) { S.top = b.dataset.top; renderTop(); saveUrl(); } };
 
   // ---------- the side panel: everything the old page charted, for one day or one week ----------
