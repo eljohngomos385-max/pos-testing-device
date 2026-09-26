@@ -42,8 +42,8 @@ const CASES = [
   ['Sales, day open', '/sales-calendar-lab.html', '/admin/sales', '?month=2026-07&day=2026-07-14', '.view.calm-sales'],
   ['Dashboard', '/dashboard-calm-lab.html', '/admin', '?range=7d&vs=none', '.view.calm-dash'],
   ['Dashboard, bar open', '/dashboard-calm-lab.html', '/admin', `?range=7d&vs=none&at=${TODAY}`, '.view.calm-dash'],
-  ['Transactions', '/transactions-compact-lab.html', '/admin/sales', '?by=tx&range=7d', '.view.calm-tx'],
-  ['Transactions, filtered', '/transactions-compact-lab.html', '/admin/sales', '?by=tx&range=30d&pay=gcash', '.view.calm-tx'],
+  ['Transactions', '/transactions-compact-lab.html', '/admin/transactions', '?range=7d', '.view.calm-tx'],
+  ['Transactions, filtered', '/transactions-compact-lab.html', '/admin/transactions', '?range=30d&pay=gcash', '.view.calm-tx'],
 ];
 // Differences that are data or port plumbing, not design. Keyed "selector|prop" (lab selector), or "selector|count".
 const WHITELIST = new Map([

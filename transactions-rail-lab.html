@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Transactions rail lab</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   TRANSACTIONS RAIL LAB — a try of transactions-lab.html with the Dashboard's widget rail beside the table.
+     title · range · Export CSV, then search + three filters, then the table left and the rail right:
+     Net sales, Fulfilment, Payment methods, Staff. The rail follows the range, search and filters; a breakdown row
+     is a filter (click to tick it), and each breakdown ignores its own filter so the other values stay in view.
+     Graphics stay small and one-hued: a sparkline of net sales over the range, and a share bar on each breakdown
+     (a blue ramp, biggest first, with a matching dot on each row). No pies or gauges: shares read better on one bar.
+   Tokens are the --b-* set (→ --po-* on port).
+   =========================================================================== */
+:root {
+  --b-font: "Inter";
+  --b-page:      #FFFFFF;
+  --b-card:      #F9F9F9;
+  --b-raised:    #FFFFFF;
+  --b-line:      #ECECEC;
+  --b-outline:   #E1E1E1;
+  --b-track:     #EFEFEF;
+  --b-ink:       #303030;
+  --b-ink-2:     #616161;
+  --b-ink-3:     #8C8C8C;
+  --b-up:        #047B5D;
+  --b-down:      #D72C0D;
+  --b-up-tint:   #D3ECDD;
+  --b-down-tint: #F8D8D0;
+  --b-data:      #2B7DE9;
+  --b-data-1:    #BCD7FA;
+  --b-data-tint: #DCE9FB;
+  --b-data-ink:  #1F5FB8;
+  --b-data-2:    #5E9BEE;   /* the share-bar ramp: --b-data, -2, -3, -1, then --b-track for the rest */
+  --b-data-3:    #93BDF4;
+  --b-warn-tint: #FCEFC7;
+  --b-warn:      #7A5B00;
+  --b-t-value:   27px;
+  --b-t-label:   13px;
+  --b-t-meta:    12.5px;
+  --b-t-micro:   11px;
+  --b-r-card:    14px;
+  --b-r-cell:    10px;
+  --b-r-row:     7px;
+  --b-pad:       16px;
+  --rail-w:      340px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--b-page); color: var(--b-ink);
+  font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--b-t-label); -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; color: inherit; }
+a { color: var(--b-data); text-decoration: none; }
+
+main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--rail-w)); margin: 0 auto; }   /* the Dashboard's width */
+
+.bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
+.pick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 10px 5px 12px; cursor: pointer; font-weight: 500; white-space: nowrap; }
+.pick::after { content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
+.pick.on { background: var(--b-data-tint); border-color: var(--b-data-1); color: var(--b-data-ink); }
+.pick.on::after { border-color: var(--b-data-ink); }
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-ink); background: var(--b-ink); color: #fff; border-radius: 8px; padding: 5px 12px; cursor: pointer; font-weight: 500;
+       box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.2); }   /* the app's primary button: the one black thing on the page */
+.btn:hover { background: #1F1F1F; }
+.menu { margin: 0; inset: auto; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); padding: 4px; min-width: 200px; max-height: 60vh; overflow-y: auto; color: var(--b-ink); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+.menu hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
+.menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: var(--b-r-row); cursor: pointer; }
+.menu button:hover { background: var(--b-card); }
+.menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
+.menu .clear { color: var(--b-data); }
+.menu .none { padding: 7px 10px; color: var(--b-ink-3); }
+.icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; }
+.icon-btn:disabled { opacity: .35; cursor: default; }
+.note { font-size: var(--b-t-meta); color: var(--b-ink-3); margin: 0; }
+
+/* ---------- search + filters, outside the table ---------- */
+.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.q { flex: 1; min-width: 220px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 12px; }
+.q:focus { outline: 2px solid var(--b-data-1); outline-offset: -1px; }
+
+/* ---------- the table: the Dashboard's Recent transactions, all of them ---------- */
+.card { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0 var(--b-pad); overflow: hidden; }
+/* ---------- the layout: table + widget rail, as the Dashboard ---------- */
+.dash { display: grid; grid-template-columns: minmax(0, 1fr) var(--rail-w); gap: 12px; align-items: start; }
+.rail { display: grid; gap: 12px; min-width: 0; }
+.w { padding: var(--b-pad); overflow: hidden; }
+.w .top { display: flex; justify-content: space-between; align-items: baseline; color: var(--b-ink-2); }
+.w .top a { font-size: var(--b-t-meta); cursor: pointer; }
+.w .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.w .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.w .of { color: var(--b-ink-3); font-variant-numeric: tabular-nums; }
+.w .rows { margin: 0 calc(-1 * var(--b-pad)) calc(-1 * var(--b-pad)); border-radius: 0; }
+.w .row, .w .row:nth-child(odd) { background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); min-height: 34px; padding: 0 var(--b-pad); }
+.w .top.band { margin-top: calc(-1 * var(--b-pad)); min-height: 37px; align-items: center; }
+.w:has(.line) { padding-top: 10px; }
+.w:has(.line) .line { margin-top: 7px; }
+.w .line + .rows { margin-top: 9px; }
+.w .rows.foot .row { min-height: 37px; }
+.w .rows.foot .amt { font-weight: 400; color: var(--b-ink-2); }
+.w .row .cnt { color: var(--b-ink-3); font-variant-numeric: tabular-nums; }
+.w .row[data-f] { cursor: pointer; }
+.w .row[data-f]:hover { background: #F6F6F6; }
+.w .row.on, .w .row.on:hover { background: var(--b-data-tint); }
+.w .row.on .nm { color: var(--b-data-ink); font-weight: 500; }
+.w .row.total .cnt { color: var(--b-ink-2); }
+.w .spark { display: block; width: 100%; height: 44px; margin-top: 10px; overflow: visible; }
+.w .spark + .rows { margin-top: 12px; }
+.w .span { display: flex; justify-content: space-between; color: var(--b-ink-3); font-size: var(--b-t-micro); margin-top: 4px; }
+.w .span + .rows { margin-top: 10px; }
+.w .share { display: flex; gap: 2px; height: 8px; margin: 2px 0 14px; }
+.w .share i { border-radius: 2px; min-width: 2px; }
+.w .dot { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.w .row .nm { display: flex; align-items: center; gap: 8px; }
+.head { display: flex; align-items: center; gap: 10px; min-height: 36px; line-height: 18px; }
+.head .lbl { font-weight: 500; margin-right: auto; }
+.head .sum { margin-left: 6px; color: var(--b-ink-3); font-variant-numeric: tabular-nums; }
+.head a { font-size: var(--b-t-meta); cursor: pointer; }
+.flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
+.tx { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tx th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; border-top: 1px solid var(--b-line); }
+.tx th .sort { border: 0; background: none; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.tx th .sort[data-on]::after { content: attr(data-on); margin-left: 4px; color: var(--b-data); }
+.tx td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
+.tx th:first-child, .tx td:first-child { padding-left: var(--b-pad); }
+.tx th:last-child, .tx td:last-child { padding-right: var(--b-pad); }
+.tx tr[data-receipt] { cursor: pointer; }
+.tx tr[data-receipt]:hover td { background: #F6F6F6; }
+.tx .id { font-weight: 600; }
+.tx tr.dim .id { font-weight: 400; }
+.tx .pill { margin: 0; font-size: 11.5px; font-weight: 500; padding: 2px 9px; }
+.tx tr.dim td { color: var(--b-ink-3); }
+.tx tr.dim .amt { text-decoration: line-through; }
+.tx .t { color: var(--b-ink-2); }
+.tx .cust { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.tx .mut { color: var(--b-ink-3); }
+.tx .n { text-align: right; }
+.tx td.amt { font-weight: 600; }
+.pager { display: flex; align-items: center; gap: 4px; min-height: 34px; margin: 0 calc(-1 * var(--b-pad)); padding: 0 var(--b-pad);
+         border-top: 1px solid var(--b-line); background: var(--b-raised); color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+.pager span { margin-right: auto; }
+.pager .icon-btn { width: 24px; height: 24px; border-radius: 6px; }
+.card > .note { padding: 6px 0 16px; }
+
+/* ---------- rows + pills, for the pop-up ---------- */
+.rows { border-radius: 10px; }
+.row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px; border-radius: var(--b-r-row); }
+.row:nth-child(odd) { background: var(--b-raised); }
+.row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .nm small { display: block; color: var(--b-ink-3); font-size: var(--b-t-micro); margin-top: -2px; }
+.row .amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.row.total .nm, .row.total .amt { font-weight: 600; }
+.pill { font-size: 10.5px; padding: 1px 7px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); margin-left: 6px; text-decoration: none; display: inline-block; }
+.pill.warn { background: var(--b-warn-tint); color: var(--b-warn); }
+.pill.up { background: var(--b-up-tint); color: var(--b-up); }
+.pill.data { background: var(--b-data-tint); color: var(--b-data-ink); }
+.pill.down { background: var(--b-down-tint); color: var(--b-down); }
+
+/* ---------- the pop-up: one receipt ---------- */
+dialog { border: 0; padding: 0; border-radius: var(--b-r-card); width: min(560px, calc(100vw - 32px)); max-height: 86vh; color: var(--b-ink); }
+dialog::backdrop { background: rgba(0,0,0,.28); }
+.pop { padding: 18px 20px 22px; }
+.pop .rows { background: var(--b-card); padding: 4px; }
+.p-top { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+.p-top h2 { font-size: 15px; font-weight: 600; margin: 0 auto 0 0; }
+.p-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.p-head .val { font-size: var(--b-t-value); font-weight: 560; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.p-sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 4px 0 0; }
+.p-sec { margin-top: 20px; }
+.p-sec > .lbl { font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
+.p-sec > .lbl span { color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); }
+
+@media (max-width: 1100px) {
+  .dash { grid-template-columns: minmax(0, 1fr); }
+  .rail { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+@media (max-width: 760px) {
+  main { padding: 16px; }
+  .q { flex-basis: 100%; }
+  .tx .opt { display: none; }
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="bar">
+    <h1>Transactions</h1>
+    <button class="pick" id="pick" popovertarget="range"></button>
+    <div class="menu" id="range" popover role="menu"></div>
+    <button class="btn" id="csv"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4 20h16"/></svg>Export CSV</button>
+  </div>
+  <div class="filters">
+    <input class="q" id="q" type="search" placeholder="Search receipt, customer, staff or item" aria-label="Search transactions" />
+    <button class="pick" id="b-pay" popovertarget="m-pay"></button><div class="menu" id="m-pay" popover role="menu" data-f="pay"></div>
+    <button class="pick" id="b-staff" popovertarget="m-staff"></button><div class="menu" id="m-staff" popover role="menu" data-f="staff"></div>
+    <button class="pick" id="b-ful" popovertarget="m-ful"></button><div class="menu" id="m-ful" popover role="menu" data-f="ful"></div>
+  </div>
+  <div class="dash">
+    <section class="card">
+      <div class="head"><span class="lbl">All transactions</span><a id="clear" hidden>Clear filters</a></div>
+      <div id="tx"></div>
+    </section>
+    <div class="rail" id="rail"></div>
+  </div>
+</main>
+<dialog id="pop"><div class="pop" id="popin"></div></dialog>
+
+<script src="/data-store.js"></script>
+<script>
+(async function () {
+  // ---------- money + dates (same helpers as dashboard-calm-lab) ----------
+  const peso = v => (v < 0 ? '−₱' : '₱') + Math.round(Math.abs(v)).toLocaleString('en-PH');
+  const peso2 = v => (v < 0 ? '−₱' : '₱') + Math.abs(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = n => String(n).padStart(2, '0');
+  const iso = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const addDays = (t, n) => { const d = new Date(t); d.setDate(d.getDate() + n); return d.getTime(); };
+  const dayStart = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const fmt = (t, o) => new Date(t).toLocaleDateString('en-PH', o);
+  const clock = t => new Date(t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+  const cap = s => s[0].toUpperCase() + s.slice(1);
+  const NOW = Date.now(), TODAY = dayStart(NOW);
+
+  // ---------- data ----------
+  const store = window.HWPOS_STORE;
+  let orders = [], products = [];
+  try { [orders, products] = await Promise.all([store.orders.list(), store.products.list()]); } catch (_) {}
+  if (!Array.isArray(orders) || !orders.length) { orders = demoOrders(); products = demoProducts(); }
+  orders = orders.filter(o => o.ts < NOW).sort((x, y) => x.ts - y.ts);
+
+  const SIGN = { completed: 1, return: -1, refunded: 0, voided: 0, saved: 0 };
+  const sign = o => SIGN[o.status || 'completed'] ?? 0;
+  const net = o => o.total * sign(o);
+  const prodBy = new Map((products || []).flatMap(p => [['i:' + p.id, p], ['n:' + p.name, p]]));
+  const itemOf = i => (prodBy.get('i:' + (i.productId || i.id)) || prodBy.get('n:' + i.name))?.name || i.name;
+  const lineNet = i => i.lineTotal != null ? +i.lineTotal : (+i.price || 0) * (+i.qty || 0);
+  const payKind = o => o.paymentKind || o.paymentMethod || 'cash';
+  const payLabel = o => payKind(o) === 'credit' ? 'Account' : o.paymentMethodLabel || { cash: 'Cash', gcash: 'GCash', qr: 'QR', maya: 'Maya', credit: 'Account', split: 'Split payment' }[payKind(o)] || 'Cash';
+  const fulfil = o => { const f = String(o.fulfilment || 'pickup'); return f === 'delivery' ? 'Delivery' : f === 'pickup' ? 'Walk-in' : f; };   // bo-model.js orderFulfilLabel
+
+  // ---------- view state in the URL: ?range= &pay=a,b &staff= &ful= &q= &sort= &page= &receipt= ----------
+  const q = new URLSearchParams(location.search);
+  const RANGES = { today: 1, '7d': 7, '15d': 15, '30d': 30 };
+  const RANGE_LBL = { today: 'Today', '7d': 'Last 7 days', '15d': 'Last 15 days', '30d': 'Last 30 days' };
+  const SORTS = ['', 'old', 'high', 'low'];   // newest first, oldest first, biggest total, smallest
+  const list = k => (q.get(k) || '').split(',').filter(Boolean);
+  const S = {
+    range: RANGES[q.get('range')] ? q.get('range') : 'today',
+    pay: list('pay'), staff: list('staff'), ful: list('ful'), q: q.get('q') || '',
+    sort: SORTS.includes(q.get('sort')) ? q.get('sort') : '', page: Math.max(0, (+q.get('page') || 1) - 1), receipt: q.get('receipt') || '',
+  };
+  function saveUrl() {
+    const p = new URLSearchParams();
+    if (S.range !== 'today') p.set('range', S.range);
+    for (const k of ['pay', 'staff', 'ful']) if (S[k].length) p.set(k, S[k].join(','));
+    for (const k of ['q', 'sort', 'receipt']) if (S[k]) p.set(k, S[k]);
+    if (S.page) p.set('page', S.page + 1);
+    history.replaceState(null, '', p.toString() ? '?' + p : location.pathname);
+  }
+
+  // ---------- the filters: the app's three (bo-sales.js multiPick), any mix of values each ----------
+  const FILTERS = {
+    pay:   { all: 'All payment types', many: 'payment types', key: payKind,                               name: payLabel },
+    staff: { all: 'All employees',     many: 'employees',     key: o => o.cashier || '—',                 name: o => o.cashier || '—' },
+    ful:   { all: 'All fulfilment',    many: 'fulfilment types', key: o => String(o.fulfilment || 'pickup'), name: fulfil },
+  };
+  let rows = [];   // the range
+  const hay = o => [o.number, o.id, o.customer?.name, o.cashier, ...(o.items || []).map(itemOf)].join(' ').toLowerCase();
+  const pass = (o, skip) => Object.keys(FILTERS).every(f => f === skip || !S[f].length || S[f].includes(FILTERS[f].key(o)))
+    && (!S.q || hay(o).includes(S.q.toLowerCase()));
+  const filtered = () => {
+    const by = { '': (a, b) => b.ts - a.ts, old: (a, b) => a.ts - b.ts, high: (a, b) => net(b) - net(a) || b.ts - a.ts, low: (a, b) => net(a) - net(b) || b.ts - a.ts }[S.sort];
+    return rows.filter(o => pass(o)).sort(by);
+  };
+  const options = f => {   // what this range has, plus anything already picked
+    const m = new Map(); for (const o of rows) m.set(FILTERS[f].key(o), FILTERS[f].name(o));
+    for (const v of S[f]) if (!m.has(v)) m.set(v, v);
+    return [...m].sort((a, b) => a[1].localeCompare(b[1]));
+  };
+  function renderFilters() {
+    for (const [f, F] of Object.entries(FILTERS)) {
+      const opts = options(f), picked = opts.filter(([k]) => S[f].includes(k));
+      const b = document.getElementById('b-' + f);
+      b.textContent = !picked.length ? F.all : picked.length === 1 ? picked[0][1] : `${picked.length} ${F.many}`;
+      b.classList.toggle('on', picked.length > 0);
+      document.getElementById('m-' + f).innerHTML = (opts.length
+        ? opts.map(([k, n]) => `<button role="menuitemcheckbox" data-v="${esc(k)}" aria-checked="${S[f].includes(k)}">${esc(n)}</button>`).join('')
+        : '<div class="none">Nothing in this range</div>')
+        + (S[f].length ? '<hr><button class="clear" data-v="">Show all</button>' : '');
+    }
+  }
+
+  // ---------- the table ----------
+  const PAGE = 50;
+  const statusCell = o => { const st = o.status || 'completed';
+    return `<span class="pill ${{ completed: 'up', voided: 'down', return: 'warn', refunded: 'warn' }[st] || ''}">${cap(st)}</span>`; };
+  const payCell = o => `<span class="pill ${{ cash: 'up', gcash: 'data', qr: 'data', credit: 'warn' }[payKind(o)] || ''}">${esc(payLabel(o))}</span>`;
+  const txTime = t => t >= TODAY ? clock(t) : `${fmt(t, { month: 'short', day: 'numeric' })}, ${clock(t)}`;
+  function renderTx() {
+    const L = filtered(), pages = Math.max(1, Math.ceil(L.length / PAGE));
+    S.page = Math.min(S.page, pages - 1);
+    const shown = L.slice(S.page * PAGE, S.page * PAGE + PAGE);
+    const any = S.pay.length || S.staff.length || S.ful.length || S.q;
+    document.getElementById('clear').hidden = !any;
+    const sortTh = (lbl, a, b, cls = '') => { const on = S.sort === a ? '↓' : S.sort === b ? '↑' : '';
+      return `<th class="${cls}"><button class="sort" data-sort="${S.sort === a ? b : a}"${on ? ` data-on="${on}"` : ''}>${lbl}</button></th>`; };
+    document.getElementById('tx').innerHTML = shown.length ? `<div class="flush"><table class="tx">
+      <tr><th>Receipt</th>${sortTh('Time', '', 'old')}<th class="opt">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th>${sortTh('Total', 'high', 'low', 'n')}</tr>
+      ${shown.map(o => `<tr data-receipt="${esc(o.id)}" class="${sign(o) ? '' : 'dim'}">
+        <td class="id">#${esc(o.number || o.id)}</td><td class="t">${txTime(o.ts)}</td>
+        <td class="opt cust">${o.customer?.name ? esc(o.customer.name) : '<span class="mut">—</span>'}</td>
+        <td class="opt">${esc(o.cashier || '—')}</td><td class="opt">${esc(fulfil(o))}</td>
+        <td>${payCell(o)}</td><td class="opt">${statusCell(o)}</td>
+        <td class="n amt">${peso2(sign(o) < 0 ? -o.total : +o.total)}</td></tr>`).join('')}
+    </table></div>
+    ${pages > 1 ? `<div class="pager"><span>${S.page * PAGE + 1}–${S.page * PAGE + shown.length} of ${L.length.toLocaleString()}</span>
+      <button class="icon-btn" data-page="-1" aria-label="Previous page" ${S.page ? '' : 'disabled'}>‹</button>
+      <button class="icon-btn" data-page="1" aria-label="Next page" ${S.page < pages - 1 ? '' : 'disabled'}>›</button></div>` : ''}`
+      : `<p class="note">No transactions ${any ? 'match these filters' : S.range === 'today' ? 'yet today' : 'in this range'}.</p>`;
+  }
+
+  // ---------- the rail: the Dashboard's widgets, over what the table holds ----------
+  const wrow = (nm, cnt, amt, attrs = '', cls = '', dot = '') => `<div class="row ${cls}"${attrs}><span class="nm">${dot ? `<i class="dot" style="background:${dot}"></i>` : ''}${nm}</span><span class="cnt">${cnt}</span><span class="amt">${amt}</span></div>`;
+  // Net sales over the range: by hour for Today, by day otherwise.
+  function spark(L) {
+    const days = RANGES[S.range], start = addDays(TODAY, 1 - days);
+    const n = days === 1 ? new Date(NOW).getHours() + 1 : days;
+    const at = t => days === 1 ? new Date(t).getHours() : Math.round((dayStart(t) - start) / 864e5);
+    const v = new Array(n).fill(0);
+    for (const o of L) { const i = at(o.ts); if (i >= 0 && i < n) v[i] += net(o); }
+    if (n < 2) return '';
+    const hi = Math.max(...v, 1), x = i => (i / (n - 1) * 100).toFixed(2), y = a => (40 - Math.max(0, a) / hi * 36).toFixed(2);
+    const pts = v.map((a, i) => `${x(i)},${y(a)}`).join(' ');
+    const lbl = t => days === 1 ? t : fmt(t, { month: 'short', day: 'numeric' });
+    return `<svg class="spark" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+        <polygon points="0,40 ${pts} 100,40" fill="var(--b-data-tint)"/>
+        <polyline points="${pts}" fill="none" stroke="var(--b-data)" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>
+      <div class="span"><span>${days === 1 ? '12 AM' : lbl(start)}</span><span>${days === 1 ? 'Now' : 'Today'}</span></div>`;
+  }
+  const RAMP = ['var(--b-data)', 'var(--b-data-2)', 'var(--b-data-3)', 'var(--b-data-1)'];
+  const tone = i => RAMP[i] || 'var(--b-track)';
+  function renderRail() {
+    const L = filtered(), sales = L.filter(o => sign(o) > 0), rets = L.filter(o => sign(o) < 0), voids = L.filter(o => !sign(o));
+    const tot = L.reduce((s, o) => s + net(o), 0);   // sales less returns; voids book nothing
+    const out = [`<div class="top"><span>Net sales</span></div>
+      <div class="line"><span class="val">${peso(tot)}</span><span class="of">${sales.length.toLocaleString()} sale${sales.length === 1 ? '' : 's'}</span></div>
+      ${spark(L)}
+      <div class="rows foot">${wrow('Average sale', '', sales.length ? peso(sales.reduce((s, o) => s + o.total, 0) / sales.length) : '—')}
+        ${wrow('Returns', rets.length || '', rets.length ? peso(rets.reduce((s, o) => s + net(o), 0)) : '—')}
+        ${wrow('Not completed', voids.length || '', voids.length ? peso(voids.reduce((s, o) => s + o.total, 0)) : '—')}</div>`];
+    const facet = (f, title, top = 0) => {
+      const m = new Map();
+      for (const o of rows) if (pass(o, f) && sign(o)) {
+        const k = FILTERS[f].key(o), e = m.get(k) || { name: FILTERS[f].name(o), n: 0, v: 0 };
+        e.n += sign(o) > 0; e.v += net(o); m.set(k, e);   // counts sales; returns only take off the amount
+      }
+      let list = [...m].sort((a, b) => b[1].v - a[1].v);
+      const more = top && list.length > top ? list.length - top : 0;
+      if (more) list = list.slice(0, top);
+      const sum = [...m.values()].reduce((s, e) => s + e.v, 0), n = [...m.values()].reduce((s, e) => s + e.n, 0);
+      const bar = list.filter(([, e]) => e.v > 0).map(([, e], i) => `<i style="flex:${e.v};background:${tone(i)}" title="${esc(e.name)}"></i>`).join('')
+        + (more ? `<i style="flex:${sum - list.reduce((a, [, e]) => a + Math.max(0, e.v), 0)};background:var(--b-track)"></i>` : '');
+      return `<div class="top band"><span>${title}</span>${S[f].length ? `<a data-f="${f}" data-v="">Show all</a>` : ''}</div>` + (list.length
+        ? `<div class="share">${bar}</div><div class="rows">${list.map(([k, e], i) => wrow(esc(e.name), e.n.toLocaleString(), peso(e.v), ` data-f="${f}" data-v="${esc(k)}"`, S[f].includes(k) ? 'on' : '', tone(i))).join('')}
+          ${wrow('Total', n.toLocaleString(), peso(sum), '', 'total')}</div>`
+        : '<p class="note" style="margin:10px 0 0">No sales here.</p>');
+    };
+    out.push(facet('ful', 'Fulfilment'), facet('pay', 'Payment methods'), facet('staff', 'Staff', 6));
+    document.getElementById('rail').innerHTML = out.map(h => `<section class="card w">${h}</section>`).join('');
+  }
+
+  // ---------- the pop-up: one receipt; ‹ › walk the table as it's filtered and sorted ----------
+  const row = (nm, amt, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span><span class="amt">${amt}</span></div>`;
+  const sec = (lbl, body, side = '') => `<div class="p-sec"><div class="lbl">${lbl}<span>${side}</span></div>${body}</div>`;
+  const popTop = (title, prev, next) => `<div class="p-top"><h2>${title}</h2>
+    <button class="icon-btn" data-step="-1" aria-label="Previous" ${prev ? '' : 'disabled'}>‹</button>
+    <button class="icon-btn" data-step="1" aria-label="Next" ${next ? '' : 'disabled'}>›</button>
+    <button class="icon-btn" data-close aria-label="Close">✕</button></div>`;
+  const statusPill = o => { const st = o.status || 'completed'; return st === 'completed' ? '' : `<span class="pill ${st === 'voided' ? 'down' : 'warn'}">${cap(st)}</span>`; };
+  function receiptPop(o, L) {
+    const i = L.indexOf(o), s = sign(o), its = o.items || [];
+    const sub = its.reduce((x, it) => x + lineNet(it), 0);
+    let html = popTop(`Receipt #${esc(o.number || o.id)}`, i > 0, i >= 0 && i < L.length - 1)
+      + `<div class="p-head"><span class="val">${peso2(s < 0 ? -o.total : +o.total)}</span>${statusPill(o)}</div>`
+      + `<p class="p-sub">${txTime(o.ts)} · ${esc(o.cashier || '—')} · ${esc(fulfil(o))} · ${esc(payLabel(o))}${o.customer?.name ? ' · ' + esc(o.customer.name) : ''}</p>`;
+    html += sec('Items', `<div class="rows">${its.map(it => row(`${esc(itemOf(it))}<small>${+it.qty} × ${peso2(+it.price || lineNet(it) / (+it.qty || 1))}</small>`, peso2(lineNet(it)))).join('')}</div>`, `${its.length} line${its.length === 1 ? '' : 's'}`);
+    html += sec('Totals', `<div class="rows">
+      ${row('Subtotal', peso2(sub))}
+      ${+o.discount ? row('Discount', peso2(-o.discount)) : ''}
+      ${row('VAT included', peso2(+o.vatAmount || 0))}
+      ${row('Total', peso2(+o.total), 'total')}</div>`,
+      s ? '' : 'Books no revenue');
+    if (payKind(o) === 'credit' && s > 0) html += '<p class="p-sub" style="margin-top:10px"><span class="pill warn" style="margin:0">Not collected</span> On the customer’s account.</p>';
+    return html;
+  }
+  const dlg = document.getElementById('pop'), popin = document.getElementById('popin');
+  function renderPop() {
+    const L = filtered(), o = S.receipt ? L.find(x => x.id === S.receipt) || rows.find(x => x.id === S.receipt) : null;
+    if (!o) { S.receipt = ''; if (dlg.open) dlg.close(); return; }
+    popin.innerHTML = receiptPop(o, L);
+    if (!dlg.open) dlg.showModal();
+  }
+
+  // ---------- wiring ----------
+  function renderBody() { renderFilters(); renderTx(); renderRail(); renderPop(); saveUrl(); }
+  function render() {
+    const start = addDays(TODAY, 1 - RANGES[S.range]);
+    rows = orders.filter(o => o.ts >= start);
+    document.getElementById('pick').textContent = RANGE_LBL[S.range];
+    document.getElementById('range').innerHTML = Object.keys(RANGES).map(r => `<button role="menuitemradio" data-range="${r}" aria-checked="${r === S.range}">${RANGE_LBL[r]}</button>`).join('');
+    renderBody();
+  }
+  const hang = (menu, btn, right) => menu.addEventListener('toggle', e => { if (e.newState !== 'open') return;   // under its button
+    const r = btn.getBoundingClientRect();
+    menu.style.top = r.bottom + 6 + 'px';
+    menu.style.left = Math.max(16, Math.min(right ? r.right - menu.offsetWidth : r.left, innerWidth - menu.offsetWidth - 16)) + 'px'; });
+  const menu = document.getElementById('range');
+  hang(menu, document.getElementById('pick'), true);
+  menu.onclick = e => { const b = e.target.closest('[data-range]'); if (!b) return;
+    S.range = b.dataset.range; S.page = 0; S.receipt = ''; menu.hidePopover(); render(); };
+  for (const f of Object.keys(FILTERS)) {   // stays open: tick as many as you like
+    const m = document.getElementById('m-' + f);
+    hang(m, document.getElementById('b-' + f), false);
+    m.onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return;
+      const v = b.dataset.v;
+      S[f] = !v ? [] : S[f].includes(v) ? S[f].filter(x => x !== v) : [...S[f], v];
+      S.page = 0; renderBody(); };
+  }
+  document.getElementById('rail').onclick = e => {   // a breakdown row ticks its filter, like the menus
+    const b = e.target.closest('[data-f]'); if (!b) return;
+    const f = b.dataset.f, v = b.dataset.v;
+    S[f] = !v ? [] : S[f].includes(v) ? S[f].filter(x => x !== v) : [...S[f], v];
+    S.page = 0; renderBody();
+  };
+  const box = document.getElementById('q');
+  box.value = S.q;
+  box.oninput = () => { S.q = box.value.trim(); S.page = 0; renderBody(); };
+  document.getElementById('clear').onclick = () => { S.pay = []; S.staff = []; S.ful = []; S.q = box.value = ''; S.page = 0; renderBody(); };
+  document.getElementById('tx').onclick = e => {
+    const s = e.target.closest('[data-sort]'); if (s) { S.sort = s.dataset.sort; S.page = 0; return renderBody(); }
+    const p = e.target.closest('[data-page]'); if (p) { S.page += +p.dataset.page; return renderBody(); }
+    const r = e.target.closest('[data-receipt]'); if (r) { S.receipt = r.dataset.receipt; renderPop(); saveUrl(); }
+  };
+  document.getElementById('csv').onclick = () => {
+    const cell = v => /[",\n]/.test(v = String(v ?? '')) ? `"${v.replace(/"/g, '""')}"` : v;
+    const lines = [['Receipt', 'Date', 'Time', 'Customer', 'Staff', 'Fulfilment', 'Payment', 'Status', 'Total'],
+      ...filtered().map(o => [o.number || o.id, iso(o.ts), clock(o.ts), o.customer?.name || '', o.cashier || '', fulfil(o), payLabel(o),
+        cap(o.status || 'completed'), (sign(o) < 0 ? -o.total : +o.total).toFixed(2)])];
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([lines.map(l => l.map(cell).join(',')).join('\r\n')], { type: 'text/csv' }));
+    a.download = `transactions-${iso(addDays(TODAY, 1 - RANGES[S.range]))}-to-${iso(NOW)}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  };
+  const close = () => { S.receipt = ''; renderPop(); saveUrl(); };
+  dlg.addEventListener('cancel', e => { e.preventDefault(); close(); });          // Esc
+  dlg.onclick = e => {
+    if (e.target === dlg || e.target.closest('[data-close]')) return close();       // the backdrop, or ✕
+    const st = e.target.closest('[data-step]'); if (!st) return;
+    const L = filtered(), i = L.findIndex(x => x.id === S.receipt) + +st.dataset.step;
+    S.receipt = L[i].id; S.page = Math.floor(i / PAGE); renderTx(); renderPop(); saveUrl();   // the table pages along
+  };
+  render();
+
+  // ---------- demo, only when this origin has no orders (same as dashboard-calm-lab) ----------
+  function demoItems() {
+    return [['Portland Cement 40kg', 265, 238, 'bag', 120, 40], ['Holcim Excel Cement 40kg', 275, 246, 'bag', 18, 30], ['Deformed Bar 12mm × 6m', 310, 262, 'pc', 64, 20],
+      ['Deformed Bar 10mm × 6m', 215, 181, 'pc', 90, 20], ['Hollow Block 6"', 24, 18, 'pc', 800, 300], ['GI Sheet Gauge 26', 420, 355, 'pc', 6, 10],
+      ['Common Nails 3" (kg)', 95, 72, 'kg', 40, 15], ['PVC Pipe 1/2"', 118, 88, 'pc', 55, 20], ['Boysen Latex White 4L', 690, 560, 'can', 0, 6],
+      ['THHN Wire #12 (m)', 38, 29, 'm', 300, 100], ['Plywood 1/4"', 520, 440, 'pc', 24, 10], ['Gravel 3/4" (cu.m)', 1450, 1180, 'cu.m', 9, 5],
+      ['Sand (cu.m)', 1100, 890, 'cu.m', 3, 5], ['Tie Wire #16 (kg)', 88, 66, 'kg', 0, 8], ['LED Bulb Daylight 9W', 95, 60, 'pc', 4, 12]];
+  }
+  function demoProducts() {
+    return demoItems().map(([name, price, cost, unit, stock, reorderPoint], i) => ({ id: 'P' + i, name, price, cost, unit, stock, reorderPoint }));
+  }
+  function demoOrders() {
+    const ITEMS = demoItems();
+    const STAFF = ['Aldrin S.', 'Liza M.', 'Joy P.', 'Maricel R.'], PAY = ['cash', 'cash', 'cash', 'cash', 'gcash', 'gcash', 'credit', 'qr'];
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const out = []; let n = 1;
+    for (let t = addDays(TODAY, -70); t <= TODAY; t = addDays(t, 1)) {
+      const dow = new Date(t).getDay(); if (dow === 0 && rnd() < .6) continue;
+      const count = Math.round((dow === 2 ? 34 : dow === 6 ? 30 : 24) * (.7 + rnd() * .6));
+      for (let k = 0; k < count; k++) {
+        const hour = 7 + Math.floor(Math.pow(rnd(), 1.4) * 11), ts = t + hour * 36e5 + Math.floor(rnd() * 36e5);
+        const items = Array.from({ length: 1 + Math.floor(rnd() * 3) }, () => { const [name, price, cost, unit] = ITEMS[Math.floor(rnd() * ITEMS.length)]; const i = ITEMS.findIndex(x => x[0] === name); const qty = 1 + Math.floor(rnd() * 6); return { id: 'P' + i, name, price, cost, unit, qty, lineTotal: price * qty }; });
+        const total = items.reduce((s, i) => s + i.lineTotal, 0), r = rnd(), kind = PAY[Math.floor(rnd() * PAY.length)];
+        if (ts > Date.now()) continue;
+        out.push({ id: 'D' + n, number: '1-' + String(6000 + n++), ts, total, vatAmount: Math.round(total / 1.12 * .12 * 100) / 100, items, cashier: STAFF[Math.floor(rnd() * STAFF.length)],
+          paymentKind: kind, customer: kind === 'credit' ? { name: 'Ricardo Construction' } : null, status: r < .015 ? 'voided' : 'completed',
+          fulfilment: total > 3000 && r > .6 ? 'delivery' : 'pickup' });
+        if (r > .99 && ts + 36e5 < Date.now()) out.push({ id: 'D' + n, number: '1-' + String(6000 + n++), ts: ts + 36e5, total, vatAmount: 0, items, cashier: STAFF[0], paymentKind: 'cash', status: 'return' });
+      }
+    }
+    out.sort((x, y) => x.ts - y.ts).forEach((o, i) => { o.number = '1-' + (6001 + i); });   // receipt numbers run in time order
+    return out;
+  }
+})();
+</script>
+</body>
+</html>

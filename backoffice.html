@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Geist:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=129" />
+  <link rel="stylesheet" href="/styles.css?v=136" />
   <link rel="stylesheet" href="/bo-products.css?v=102" />
   <link rel="stylesheet" href="/bo-item.css?v=1" />
   <link rel="stylesheet" href="/bo-inventory.css?v=93" />
@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="/bo-staff.css?v=87" />
   <link rel="stylesheet" href="/bo-insights.css?v=3" />
   <link rel="stylesheet" href="/bo-blocks.css?v=61" />
-  <link rel="stylesheet" href="/bo-calm.css?v=11" />
+  <link rel="stylesheet" href="/bo-calm.css?v=26" />
 </head>
 <body class="bo-body bo-light">
   <div id="app" class="bo-app">
@@ -43,6 +43,10 @@
           <svg class="ss-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
         </button>
         <div class="side-menu" id="locMenu" role="menu" hidden></div>
+        <!-- Folds the sidebar to an icon rail (desktop). After the menu: wireSwitchers() opens a switch's nextElementSibling. -->
+        <button class="side-rail-btn" id="sideRailBtn" type="button" aria-label="Fold sidebar" aria-expanded="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 5a2 2 0 0 1 2-2h4v18H5a2 2 0 0 1-2-2z" fill="currentColor"/></svg>
+        </button>
       </div>
 
       <nav class="side-nav">
@@ -52,11 +56,11 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="f" width="7" height="9" x="3" y="3" rx="1"/><rect class="f" width="7" height="5" x="14" y="3" rx="1"/><rect class="f" width="7" height="9" x="14" y="12" rx="1"/><rect class="f" width="7" height="5" x="3" y="16" rx="1"/></svg>
             <span>Dashboard</span>
           </button>
-          <button class="side-link" data-view="sales">
+          <button class="side-link" data-view="sales" data-sub="summary item category basket">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><rect class="f" x="15" y="5" width="4" height="12" rx="1"/><rect class="f" x="7" y="8" width="4" height="9" rx="1"/></svg>
             <span>Sales</span>
           </button>
-          <button class="side-link" data-view="sales" data-sub="tx">
+          <button class="side-link" data-view="transactions">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"/><path class="k" d="M14 8H8M16 12H8M13 16H8"/></svg>
             <span>Transactions</span>
           </button>
@@ -114,22 +118,24 @@
            ============================================ -->
       <!-- The calm Dashboard (dashboard-calm-lab.html, ported as is; styles in bo-calm.css).
            Left: the four KPIs as folder tabs over the bars, then recent transactions.
-           Right: daily target, monthly target, low stock, payment methods. backoffice.js → renderDashboard. -->
+           Right: daily target, monthly target, low stock, payment methods, each on or off from the Widgets menu. backoffice.js → renderDashboard. -->
       <section class="view view-dashboard calm-dash active" data-view="dashboard">
         <div class="c-main">
           <div class="bar">
             <h1 id="dashGreeting">Welcome back</h1>
+            <button class="pick" id="dashWBtn" popovertarget="dashW">Widgets</button>
+            <div class="menu" id="dashW" popover role="menu"></div>
             <button class="pick" id="dashPick" popovertarget="dashRange"></button>
             <div class="menu" id="dashRange" popover role="menu"></div>
           </div>
-          <div class="dash">
+          <div class="dash" id="dashGrid">
             <div class="col">
               <section class="card trend">
                 <div class="strip" id="dashStrip" role="tablist" aria-label="Chart shows"></div>
                 <div class="panel"><div class="plot" id="dashPlot"></div></div>
               </section>
               <section class="card txcard">
-                <div class="head"><span class="lbl">Recent transactions</span><a id="dashTxAll" href="/admin/sales?by=tx">View all ›</a></div>
+                <div class="head"><span class="lbl">Recent transactions</span><a id="dashTxAll" href="/admin/transactions">View all ›</a></div>
                 <div id="dashTx"></div>
               </section>
             </div>
@@ -141,6 +147,9 @@
 
       <!-- Sales: markup lives in bo-sales.js -->
       <section class="view view-sales" data-view="sales" hidden></section>
+
+      <!-- Transactions: markup lives in bo-transactions.js -->
+      <section class="view view-tx calm-tx" data-view="transactions" hidden></section>
 
       <!-- Products: markup lives in bo-products.js -->
       <section class="view view-products" data-view="products" hidden></section>
@@ -333,14 +342,15 @@
   <script src="/data.js?v=27"></script>
   <script src="/bo-model.js?v=90"></script>
   <script src="/router.js?v=62"></script>
-  <script src="/backoffice.js?v=167"></script>
+  <script src="/backoffice.js?v=174"></script>
   <script src="/bo-products.js?v=93"></script>
   <script src="/bo-item.js?v=1"></script>
-  <script src="/bo-insights.js?v=20"></script>
+  <script src="/bo-insights.js?v=21"></script>
   <script src="/bo-inventory.js?v=105"></script>
-  <script src="/bo-sales.js?v=99"></script>
+  <script src="/bo-sales.js?v=106"></script>
+  <script src="/bo-transactions.js?v=1"></script>
   <script src="/bo-suppliers.js?v=93"></script>
-  <script src="/bo-staff.js?v=95"></script>
+  <script src="/bo-staff.js?v=96"></script>
   <script>
     // ---- Back office: hamburger + topbar wiring (white mode) ----
     (function () {
@@ -376,7 +386,10 @@
 
       // Drag the sidebar's right edge to resize (desktop only); the width is a per-device pref.
       var grip = document.getElementById('sideResizer');
-      var MIN_W = 168, MAX_W = 320;
+      // Dragged left of FOLD_AT it previews the icon rail; back past OPEN_AT (hysteresis, so it
+      // doesn't flicker on the line) it opens again. Only letting go commits the fold.
+      var MIN_W = 168, MAX_W = 320, FOLD_AT = 96, OPEN_AT = 128;
+      var dragFromW = '', foldedAt = 0;
       function setSideW(w) { document.body.style.setProperty('--po-sidebar-w', w + 'px'); }
       var savedW = +HWPOS_STORE.ui.get('sidebarW');
       if (savedW >= MIN_W && savedW <= MAX_W) {
@@ -391,13 +404,47 @@
           e.preventDefault();
           grip.setPointerCapture(e.pointerId);
           app.classList.add('side-resizing');
+          dragFromW = document.body.style.getPropertyValue('--po-sidebar-w');
         });
+        // One width change per frame: every change re-lays out the page beside it, and a mouse can
+        // fire several moves a frame.
+        var dragX = null;
         grip.addEventListener('pointermove', function (e) {
           if (!grip.hasPointerCapture(e.pointerId)) return;
-          setSideW(Math.round(Math.min(MAX_W, Math.max(MIN_W, e.clientX))));
+          if (dragX === null) requestAnimationFrame(dragTo);
+          dragX = e.clientX;
         });
+        function dragTo() {
+          var x = dragX;
+          dragX = null;
+          if (x === null) return;   // let go before this frame
+          var railed = app.classList.contains('side-rail');
+          if (railed ? x <= OPEN_AT : x < FOLD_AT) {
+            if (!railed) {   // transitions back on, so the preview folds in its one motion
+              app.classList.remove('side-resizing');
+              setRail(true);
+              foldedAt = Date.now();
+            }
+            return;
+          }
+          // Under MIN_W the edge still follows, at half speed, so it leans into the fold rather than
+          // stopping dead at 168 and then jumping; letting go there springs back to MIN_W.
+          setSideW(Math.round(x < MIN_W ? MIN_W - (MIN_W - x) / 2 : Math.min(MAX_W, x)));
+          if (railed) { setRail(false); foldedAt = Date.now(); }
+          // Let an open/fold finish its .24s slide before the drag goes back to tracking 1:1.
+          if (Date.now() - foldedAt > 240) app.classList.add('side-resizing');
+        }
         grip.addEventListener('lostpointercapture', function () {
+          dragTo();   // a flick let go before its frame still lands where it was let go
           app.classList.remove('side-resizing');
+          if (app.classList.contains('side-rail')) {
+            // Folded: keep the width it had before the drag for when it unfolds.
+            if (dragFromW) document.body.style.setProperty('--po-sidebar-w', dragFromW);
+            else document.body.style.removeProperty('--po-sidebar-w');
+            setRail(true, true);
+          } else if (parseInt(document.body.style.getPropertyValue('--po-sidebar-w'), 10) < MIN_W) {
+            setSideW(MIN_W);
+          }
           HWPOS_STORE.ui.set('sidebarW', parseInt(document.body.style.getPropertyValue('--po-sidebar-w'), 10) || '');
         });
         grip.addEventListener('dblclick', function () {
@@ -405,6 +452,35 @@
           HWPOS_STORE.ui.set('sidebarW', '');
         });
       }
+
+      // Fold to an icon rail (desktop only -- CSS ignores .side-rail below 1024px, where the
+      // overlay's .sidebar-collapsed rules). A per-device pref, like the width.
+      var railBtn = document.getElementById('sideRailBtn');
+      function setRail(on, save) {
+        app.classList.toggle('side-rail', on);
+        railBtn.setAttribute('aria-expanded', String(!on));
+        document.querySelectorAll('.bo-sidebar .side-link').forEach(function (l) {
+          var t = l.querySelector('span');
+          if (on && t) l.title = t.textContent.trim(); else l.removeAttribute('title');
+        });
+        if (save) HWPOS_STORE.ui.set('sidebarRail', on ? '1' : '');
+      }
+      if (HWPOS_STORE.ui.get('sidebarRail') === '1') {
+        app.classList.add('side-resizing');   // no slide on load, as with the saved width
+        setRail(true);
+        void app.offsetWidth;
+        app.classList.remove('side-resizing');
+      }
+      railBtn.addEventListener('click', function () {
+        if (typeof closeSideMenus === 'function') closeSideMenus();
+        setRail(!app.classList.contains('side-rail'), true);
+      });
+      // The store and account menus need the full width, so a badge clicked on the rail unfolds first.
+      document.querySelectorAll('.bo-sidebar .side-switch').forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (app.classList.contains('side-rail') && window.matchMedia('(min-width: 1024px)').matches) setRail(false, true);
+        });
+      });
 
       // Tapping the dimmed backdrop on mobile closes the overlay
       document.addEventListener('click', function (e) {

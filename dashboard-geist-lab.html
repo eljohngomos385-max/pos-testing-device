@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en" class="bo"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F7F6F3">
+  <title>Dashboard — Geist</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&amp;family=Geist:wght@400..700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=136">
+  <link rel="stylesheet" href="bo-products.css?v=102">
+  <link rel="stylesheet" href="bo-item.css?v=1">
+  <link rel="stylesheet" href="bo-inventory.css?v=93">
+  <link rel="stylesheet" href="bo-sales.css?v=87">
+  <link rel="stylesheet" href="bo-suppliers.css?v=87">
+  <link rel="stylesheet" href="bo-staff.css?v=87">
+  <link rel="stylesheet" href="bo-insights.css?v=3">
+  <link rel="stylesheet" href="bo-blocks.css?v=61">
+  <link rel="stylesheet" href="bo-calm.css?v=23">
+<style>
+/* Geist everywhere — the only change from the live back office */
+body.bo-light { --po-font: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; --po-mono: var(--po-font); }
+body.bo-light, body.bo-light * { font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important; }
+/* Numbers in Inter: KPI values, deltas, targets, chart ticks, receipt #, times, amounts */
+body.bo-light :is(.val, .val *, .chip, .pct, .amt, .gl span, .x, td.id, td.t) { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body class="bo-body bo-light" data-density="md">
+  <div id="app" class="bo-app">
+
+    <!-- ============== TOPBAR (black strip) ============== -->
+    <!-- ponytail: no topbar. The hamburger only matters below 1024px, where the
+         sidebar overlays; CSS hides it on desktop. -->
+    <button id="boSidebarToggle" class="bo-hamburger" aria-label="Toggle menu" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
+
+    <!-- ============== SIDEBAR ============== -->
+    <aside class="sidebar bo-sidebar">
+      <div class="side-resizer" id="sideResizer" title="Drag to resize · double-click to reset"></div>
+      <!-- Location switcher: a store badge, the location you switch, and a ⌄ beside it. -->
+      <div class="side-switch-wrap">
+        <button class="side-switch" id="locBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="ss-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"></path><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"></path><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"></path></svg></span>
+          <span class="ss-text"><span class="ss-label" id="locBiz">EJ Hardware</span><span class="ss-name" id="locName">Main Store</span></span>
+          <svg class="ss-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+        <div class="side-menu" id="locMenu" role="menu" hidden="">
+    <div class="sm-head">Locations</div>
+    <button class="sm-opt on" type="button" role="menuitem"><span class="sm-text">Main Store</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></button>
+    <div class="sm-note">Other locations show here once their terminals sync.</div></div>
+        <!-- Folds the sidebar to an icon rail (desktop). After the menu: wireSwitchers() opens a switch's nextElementSibling. -->
+        <button class="side-rail-btn" id="sideRailBtn" type="button" aria-label="Fold sidebar" aria-expanded="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 5a2 2 0 0 1 2-2h4v18H5a2 2 0 0 1-2-2z" fill="currentColor"></path></svg>
+        </button>
+      </div>
+
+      <nav class="side-nav">
+        <button class="side-label" type="button" data-fold="main-menu" aria-expanded="true">Main menu<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></button>
+        <div class="side-fold"><div class="side-fold-in">
+          <button class="side-link active" data-view="dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="f" width="7" height="9" x="3" y="3" rx="1"></rect><rect class="f" width="7" height="5" x="14" y="3" rx="1"></rect><rect class="f" width="7" height="9" x="14" y="12" rx="1"></rect><rect class="f" width="7" height="5" x="3" y="16" rx="1"></rect></svg>
+            <span>Dashboard</span>
+          </button>
+          <button class="side-link has-sub" data-view="sales" data-sub="summary item category basket">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><rect class="f" x="15" y="5" width="4" height="12" rx="1"></rect><rect class="f" x="7" y="8" width="4" height="9" rx="1"></rect></svg>
+            <span>Sales</span>
+          <svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></button><div class="side-sub" data-view="sales"><div class="side-fold-in"><button class="side-sublink" type="button" data-sub="item">By item</button><button class="side-sublink" type="button" data-sub="category">By category</button><button class="side-sublink" type="button" data-sub="basket">Bought together</button></div></div>
+          <button class="side-link" data-view="transactions">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"></path><path class="k" d="M14 8H8M16 12H8M13 16H8"></path></svg>
+            <span>Transactions</span>
+          </button>
+          <button class="side-link" data-view="customers">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="12" cy="8" r="5"></circle><path class="f" d="M20 21a8 8 0 0 0-16 0"></path></svg>
+            <span>Customers</span>
+          </button>
+        </div></div>
+        <button class="side-label" type="button" data-fold="stock" aria-expanded="true">Stock<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></button>
+        <div class="side-fold"><div class="side-fold-in">
+          <button class="side-link has-sub" data-view="products">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" transform="matrix(-1 0 0 1 24 0)" d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"></path><circle class="hole" cx="16.5" cy="7.5" r="1.5"></circle></svg>
+            <span>Products</span><svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
+          <div class="side-sub" data-view="inventory"><div class="side-fold-in"><button class="side-sublink" type="button" data-sub="overview">Stock history</button></div></div>
+          <button class="side-link has-sub" data-view="suppliers" data-sub="suppliers orders">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"></path><path d="M15 18H9"></path><path class="f" d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"></path><circle class="f k" cx="17" cy="18" r="2"></circle><circle class="f k" cx="7" cy="18" r="2"></circle></svg>
+            <span>Suppliers</span>
+          <svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></button><div class="side-sub" data-view="suppliers"><div class="side-fold-in"><button class="side-sublink" type="button" data-sub="orders">Purchase orders</button></div></div>
+        </div></div>
+        <button class="side-label" type="button" data-fold="manage" aria-expanded="true">Manage<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></button>
+        <div class="side-fold"><div class="side-fold-in">
+          <button class="side-link" data-view="staff">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="10" cy="8" r="5"></circle><path class="f" d="M18 21a8 8 0 0 0-16 0"></path><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"></path></svg>
+            <span>Staff</span>
+          </button>
+          <button class="side-link" data-view="payments">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="f" width="20" height="14" x="2" y="5" rx="2"></rect><path class="k" d="M2 10h20M6 14h2"></path></svg>
+            <span>Payments</span>
+          </button>
+          <button class="side-link" data-view="settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><circle class="hole" cx="12" cy="12" r="3"></circle></svg>
+            <span>Settings</span>
+          </button>
+        </div></div>
+      </nav>
+
+      <div class="side-footer">
+        <!-- Account switcher: a user badge, name + role. No chevron; only the store gets one. -->
+        <div class="side-switch-wrap">
+          <button class="side-switch acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+            <span class="ss-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg></span>
+            <span class="ss-text"><span class="ss-name" id="acctName">El John</span><span class="ss-label" id="acctRole">Owner</span></span>
+          </button>
+          <div class="side-menu up" id="acctMenu" role="menu" hidden=""><div class="sm-head">Switch account</div>
+    <button class="sm-opt on" type="button" role="menuitem" data-staff="El John">
+      <span class="sm-text">El John<span class="sm-sub">Owner</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+    </button>
+    <button class="sm-opt" type="button" role="menuitem" data-staff="Maricel R.">
+      <span class="sm-text">Maricel R.<span class="sm-sub">Manager</span></span>
+    </button>
+    <button class="sm-opt" type="button" role="menuitem" data-staff="Aldrin S.">
+      <span class="sm-text">Aldrin S.<span class="sm-sub">Cashier</span></span>
+    </button>
+    <button class="sm-opt" type="button" role="menuitem" data-staff="Joy P.">
+      <span class="sm-text">Joy P.<span class="sm-sub">Cashier</span></span>
+    </button>
+    <button class="sm-opt" type="button" role="menuitem" data-staff="Ramon D.">
+      <span class="sm-text">Ramon D.<span class="sm-sub">Stock clerk</span></span>
+    </button>
+    <button class="sm-opt" type="button" role="menuitem" data-staff="Liza M.">
+      <span class="sm-text">Liza M.<span class="sm-sub">Cashier</span></span>
+    </button></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============== MAIN ============== -->
+    <div class="main bo-main">
+
+      <!-- ============================================
+           DASHBOARD
+           ============================================ -->
+      <!-- The calm Dashboard (dashboard-calm-lab.html, ported as is; styles in bo-calm.css).
+           Left: the four KPIs as folder tabs over the bars, then recent transactions.
+           Right: daily target, monthly target, low stock, payment methods, each on or off from the Widgets menu. backoffice.js → renderDashboard. -->
+      <section class="view view-dashboard calm-dash active" data-view="dashboard">
+        <div class="c-main">
+          <div class="bar">
+            <h1 id="dashGreeting">Welcome back, El John</h1>
+            <button class="pick" id="dashWBtn" popovertarget="dashW">Widgets</button>
+            <div class="menu" id="dashW" popover="" role="menu"><div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr><button role="menuitemcheckbox" data-w="daily" aria-checked="true">Daily sales target</button><button role="menuitemcheckbox" data-w="monthly" aria-checked="true">Monthly sales target</button><button role="menuitemcheckbox" data-w="low" aria-checked="true">Low stock</button><button role="menuitemcheckbox" data-w="pay" aria-checked="true">Payment methods</button></div>
+            <button class="pick" id="dashPick" popovertarget="dashRange">Today<span class="vs">vs last Saturday</span></button>
+            <div class="menu" id="dashRange" popover="" role="menu"><button role="menuitemradio" data-range="today" aria-checked="true">Today</button><button role="menuitemradio" data-range="7d" aria-checked="false">Last 7 days</button><button role="menuitemradio" data-range="15d" aria-checked="false">Last 15 days</button><button role="menuitemradio" data-range="30d" aria-checked="false">Last 30 days</button><hr><h3>Compare to</h3><button role="menuitemradio" data-vs="" aria-checked="true">Last Saturday</button><button role="menuitemradio" data-vs="day" aria-checked="false">Yesterday</button><button role="menuitemradio" data-vs="none" aria-checked="false">No comparison</button></div>
+          </div>
+          <div class="dash" id="dashGrid">
+            <div class="col">
+              <section class="card trend">
+                <div class="strip" id="dashStrip" role="tablist" aria-label="Chart shows"><button class="stat" role="tab" data-chart="rev" aria-selected="true"><div class="lbl">Revenue</div><div class="line"><span class="val">₱20,200</span><span class="chip down" title="vs last Saturday at this time">-39.0%</span></div></button><button class="stat" role="tab" data-chart="gp" aria-selected="false"><div class="lbl">Profit</div><div class="line"><span class="val">₱3,619</span><span class="chip down" title="vs last Saturday at this time">-42.4%</span></div></button><button class="stat" role="tab" data-chart="n" aria-selected="false"><div class="lbl">Transactions</div><div class="line"><span class="val">25</span><span class="chip down" title="vs last Saturday at this time">-44.4%</span></div></button><button class="stat" role="tab" data-chart="mg" aria-selected="false"><div class="lbl">Margin</div><div class="line"><span class="val">17.9%</span><span class="chip down" title="vs last Saturday at this time">-5.6%</span></div></button></div>
+                <div class="panel"><div class="plot" id="dashPlot"><div class="grid"><div class="gl zero" style="bottom:0%"><span>₱0</span></div><div class="gl" style="bottom:33.33333333333333%"><span>₱2,500</span></div><div class="gl" style="bottom:66.66666666666666%"><span>₱5,000</span></div><div class="gl" style="bottom:100%"><span>₱7,500</span></div></div><div class="cols many" style="grid-template-columns:repeat(11,minmax(0,1fr))"><button class="b" data-at="7" aria-label="7 AM – 8 AM: ₱2,984"><i style="height:39.78%"><span class="tip"><b>7 AM – 8 AM</b><span class="on">Revenue<em>₱2,984</em></span><span class="">Profit<em>₱433</em></span><span class="">Transactions<em>2</em></span><span class="">Margin<em>14.5%</em></span></span></i><span class="x">7a</span></button><button class="b" data-at="8" aria-label="8 AM – 9 AM: ₱6,237"><i style="height:83.16640000000001%"><span class="tip"><b>8 AM – 9 AM</b><span class="on">Revenue<em>₱6,237</em></span><span class="">Profit<em>₱1,353</em></span><span class="">Transactions<em>5</em></span><span class="">Margin<em>21.7%</em></span></span></i><span class="x">8a</span></button><button class="b" data-at="9" aria-label="9 AM – 10 AM: ₱1,447"><i style="height:19.292%"><span class="tip"><b>9 AM – 10 AM</b><span class="on">Revenue<em>₱1,447</em></span><span class="">Profit<em>₱274</em></span><span class="">Transactions<em>2</em></span><span class="">Margin<em>18.9%</em></span></span></i><span class="x">9a</span></button><button class="b" data-at="10" aria-label="10 AM – 11 AM: ₱5,203"><i style="height:69.37719999999999%"><span class="tip"><b>10 AM – 11 AM</b><span class="on">Revenue<em>₱5,203</em></span><span class="">Profit<em>₱704</em></span><span class="">Transactions<em>6</em></span><span class="">Margin<em>13.5%</em></span></span></i><span class="x">10a</span></button><button class="b" data-at="11" aria-label="11 AM – 12 PM: ₱1,476"><i style="height:19.680400000000002%"><span class="tip"><b>11 AM – 12 PM</b><span class="on">Revenue<em>₱1,476</em></span><span class="">Profit<em>₱290</em></span><span class="">Transactions<em>3</em></span><span class="">Margin<em>19.6%</em></span></span></i><span class="x">11a</span></button><button class="b" data-at="12" aria-label="12 PM – 1 PM: ₱1,966"><i style="height:26.2148%"><span class="tip"><b>12 PM – 1 PM</b><span class="on">Revenue<em>₱1,966</em></span><span class="">Profit<em>₱392</em></span><span class="">Transactions<em>3</em></span><span class="">Margin<em>20.0%</em></span></span></i><span class="x">12p</span></button><button class="b" data-at="13" aria-label="1 PM – 2 PM: ₱887"><i style="height:11.824533333333335%"><span class="tip"><b>1 PM – 2 PM</b><span class="on">Revenue<em>₱887</em></span><span class="">Profit<em>₱173</em></span><span class="">Transactions<em>4</em></span><span class="">Margin<em>19.5%</em></span></span></i><span class="x now">1p</span></button><div class="b future"><span class="x">2p</span></div><div class="b future"><span class="x">3p</span></div><div class="b future"><span class="x">4p</span></div><div class="b future"><span class="x">5p</span></div></div></div></div>
+              </section>
+              <section class="card txcard">
+                <div class="head"><span class="lbl">Recent transactions</span><a id="dashTxAll" href="/admin/transactions">View all ›</a></div>
+                <div id="dashTx"><div class="flush"><table class="tx">
+    <tbody><tr><th>Receipt</th><th>Time</th><th class="opt">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th><th class="n">Total</th></tr>
+    <tr data-receipt="ord_demou68" class="">
+      <td class="id">#1-6554</td><td class="t">1:34 PM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Liza M.</td><td class="opt">Walk-in</td>
+      <td><span class="pill up">Cash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱167.24</td></tr><tr data-receipt="ord_demou66" class="">
+      <td class="id">#2-2842</td><td class="t">1:28 PM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Maricel R.</td><td class="opt">Walk-in</td>
+      <td><span class="pill data">QR</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱83.60</td></tr><tr data-receipt="ord_demou64" class="">
+      <td class="id">#1-6553</td><td class="t">1:24 PM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Aldrin S.</td><td class="opt">Walk-in</td>
+      <td><span class="pill up">Cash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱176.00</td></tr><tr data-receipt="ord_demou61" class="">
+      <td class="id">#1-6552</td><td class="t">1:13 PM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Aldrin S.</td><td class="opt">Walk-in</td>
+      <td><span class="pill data">GCash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱460.00</td></tr><tr data-receipt="ord_demou6c" class="dim">
+      <td class="id">#1-6556</td><td class="t">1:03 PM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Maricel R.</td><td class="opt">Walk-in</td>
+      <td><span class="pill ">Not completed</span></td>
+      <td class="opt"><span class="pill ">Saved</span></td>
+      <td class="n amt">₱39.00</td></tr><tr data-receipt="ord_demou5z" class="">
+      <td class="id">#1-6551</td><td class="t">12:46 PM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Joy P.</td><td class="opt">Walk-in</td>
+      <td><span class="pill up">Cash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱462.00</td></tr><tr data-receipt="ord_demou6b" class="dim">
+      <td class="id">#1-6555</td><td class="t">12:43 PM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Aldrin S.</td><td class="opt">Walk-in</td>
+      <td><span class="pill ">Not completed</span></td>
+      <td class="opt"><span class="pill ">Saved</span></td>
+      <td class="n amt">₱986.00</td></tr><tr data-receipt="ord_demou5v" class="">
+      <td class="id">#1-6550</td><td class="t">12:34 PM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Aldrin S.</td><td class="opt">Walk-in</td>
+      <td><span class="pill up">Cash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱1,237.11</td></tr><tr data-receipt="ord_demou5o" class="dim">
+      <td class="id">#1-6549</td><td class="t">12:26 PM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Maricel R.</td><td class="opt">Walk-in</td>
+      <td><span class="pill up">Cash</span></td>
+      <td class="opt"><span class="pill down">Voided</span></td>
+      <td class="n amt">₱583.00</td></tr><tr data-receipt="ord_demou5l" class="">
+      <td class="id">#1-6548</td><td class="t">12:24 PM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Aldrin S.</td><td class="opt">Walk-in</td>
+      <td><span class="pill up">Cash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱267.00</td></tr><tr data-receipt="ord_demou5g" class="">
+      <td class="id">#1-6547</td><td class="t">11:52 AM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Liza M.</td><td class="opt">Walk-in</td>
+      <td><span class="pill up">Cash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱888.86</td></tr><tr data-receipt="ord_demou5d" class="">
+      <td class="id">#1-6546</td><td class="t">11:44 AM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Joy P.</td><td class="opt">Walk-in</td>
+      <td><span class="pill up">Cash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱210.20</td></tr><tr data-receipt="ord_demou5b" class="">
+      <td class="id">#1-6545</td><td class="t">11:03 AM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Joy P.</td><td class="opt">Walk-in</td>
+      <td><span class="pill data">GCash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱376.97</td></tr><tr data-receipt="ord_demou59" class="">
+      <td class="id">#1-6544</td><td class="t">10:59 AM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Joy P.</td><td class="opt">Walk-in</td>
+      <td><span class="pill up">Cash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱1,116.00</td></tr><tr data-receipt="ord_demou57" class="">
+      <td class="id">#2-2841</td><td class="t">10:59 AM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Aldrin S.</td><td class="opt">Walk-in</td>
+      <td><span class="pill data">QR</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱246.35</td></tr><tr data-receipt="ord_demou55" class="">
+      <td class="id">#1-6543</td><td class="t">10:51 AM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Maricel R.</td><td class="opt">Walk-in</td>
+      <td><span class="pill up">Cash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱241.21</td></tr><tr data-receipt="ord_demou52" class="">
+      <td class="id">#1-6542</td><td class="t">10:22 AM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Joy P.</td><td class="opt">Walk-in</td>
+      <td><span class="pill up">Cash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱481.23</td></tr><tr data-receipt="ord_demou50" class="">
+      <td class="id">#1-6541</td><td class="t">10:13 AM</td>
+      <td class="opt cust">Arnold Flores</td>
+      <td class="opt">Aldrin S.</td><td class="opt">Walk-in</td>
+      <td><span class="pill ">Maya</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱100.00</td></tr><tr data-receipt="ord_demou4v" class="">
+      <td class="id">#2-2840</td><td class="t">10:07 AM</td>
+      <td class="opt cust"><span class="mut">—</span></td>
+      <td class="opt">Maricel R.</td><td class="opt">Walk-in</td>
+      <td><span class="pill data">QR</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱3,018.50</td></tr><tr data-receipt="ord_demou4s" class="">
+      <td class="id">#1-6540</td><td class="t">9:17 AM</td>
+      <td class="opt cust">Marie Variety Store</td>
+      <td class="opt">Aldrin S.</td><td class="opt">Walk-in</td>
+      <td><span class="pill data">GCash</span></td>
+      <td class="opt"><span class="pill up">Completed</span></td>
+      <td class="n amt">₱1,181.90</td></tr>
+  </tbody></table></div></div>
+              </section>
+            </div>
+            <div class="rail" id="dashRail"><section class="card w"><div class="top"><span>Daily sales target</span></div><div class="line"><span class="val">₱20,200<span class="of">/₱79,930</span></span><span class="pct ">25%</span></div><div class="rows foot"><div class="row "><span class="nm">Left to sell today</span><span class="amt">₱59,730</span></div></div></section><section class="card w"><div class="top"><span>Monthly sales target</span></div><div class="line"><span class="val">₱1.5M<span class="of">/₱1.88M</span></span><span class="pct ">80%</span></div><div class="rows foot"><div class="row "><span class="nm">Left to sell this month</span><span class="amt">₱379.5k</span></div></div></section><section class="card w"><div class="top"><span>Low stock</span><a href="/admin/products?view=stock&amp;level=out%2Clow">View all ›</a></div><div class="line"><span class="val">20</span></div><div class="rows"><div class="row"><span class="nm">Hex Bolt M10 × 100mm</span><span class="pill down" style="margin:0">Out</span></div><div class="row"><span class="nm">Teflon Tape 3/4"</span><span class="pill down" style="margin:0">Out</span></div><div class="row"><span class="nm">Circuit Breaker 15A</span><span class="pill down" style="margin:0">Out</span></div><div class="row"><span class="nm">Tox Plug #10</span><span class="pill down" style="margin:0">Out</span></div><div class="row"><span class="nm">Cutting Disc 4" Stainless</span><span class="pill down" style="margin:0">Out</span></div></div></section><section class="card w"><div class="top band"><span>Payment methods</span></div><div class="rows"><div class="row "><span class="nm">Cash</span><span class="amt">₱6,449</span></div><div class="row "><span class="nm">GCash</span><span class="amt">₱5,154</span></div><div class="row "><span class="nm">Account</span><span class="amt">₱5,149</span></div><div class="row "><span class="nm">QR</span><span class="amt">₱3,348</span></div><div class="row "><span class="nm">Maya</span><span class="amt">₱100</span></div><div class="row total"><span class="nm">Total</span><span class="amt">₱20,200</span></div></div></section></div>
+          </div>
+        </div>
+        <dialog id="dashPop"><div class="pop" id="dashPopIn"></div></dialog>
+      </section>
+
+      <!-- Sales: markup lives in bo-sales.js -->
+      <section class="view view-sales" data-view="sales" hidden=""></section>
+
+      <!-- Transactions: markup lives in bo-transactions.js -->
+      <section class="view view-tx calm-tx" data-view="transactions" hidden=""></section>
+
+      <!-- Products: markup lives in bo-products.js -->
+      <section class="view view-products" data-view="products" hidden=""></section>
+
+      <!-- Inventory: markup lives in bo-inventory.js -->
+      <section class="view view-inv" data-view="inventory" hidden=""></section>
+
+      <!-- ============================================
+           CUSTOMERS
+           ============================================ -->
+      <section class="view view-customers calm-cust" data-view="customers" hidden="">
+        <header class="view-head">
+          <div class="view-title-wrap">
+            <span id="custBack" hidden=""></span>
+            <h1 id="custTitle">Customers</h1>
+          </div>
+          <div class="view-actions">
+            <button class="pick" id="custWBtn" popovertarget="custW">Widgets</button>
+            <div class="menu" id="custW" popover="" role="menu"></div>
+            <button class="primary-btn small" id="custAddBtn">Add customer</button>
+          </div>
+        </header>
+
+        <div id="custList">
+          <div class="dash" id="custDash">
+          <div>
+          <div class="list-filters">
+            <input class="search-input small q-input" id="custSearch" placeholder="Search customers...">
+          </div>
+          <section class="bo-card blk-table">
+            <div class="bo-card-head">
+              <span class="bo-card-label">All accounts</span>
+            </div>
+            <div class="bo-card-inset flush">
+              <div class="table-wrap">
+                <table class="data-table cust-table" id="custTable">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th class="num">Orders</th>
+                      <th class="num">Spent</th>
+                      <th>Last order</th>
+                      <th class="num">Buys every</th>
+                      <th>Due</th>
+                      <th class="num">Balance</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div id="custPager"></div>
+            </div>
+          </section>
+          </div>
+          <div class="rail" id="custRail"></div>
+          </div>
+        </div>
+
+        <!-- The account screen's figures; the list's sit in #custRail. After #custList so nothing spaces the list off the head. -->
+        <div class="kpi-row" id="custKpis"></div>
+        <div id="custDetail" hidden=""></div>
+        <dialog id="custDlg" class="bo-dialog adj-dlg"></dialog>
+      </section>
+
+      <!-- Suppliers: markup lives in bo-suppliers.js -->
+      <section class="view view-suppliers" data-view="suppliers" hidden=""></section>
+
+      <!-- Staff: markup lives in bo-staff.js -->
+      <section class="view view-staff" data-view="staff" hidden=""></section>
+
+      <!-- Insights: markup lives in bo-insights.js -->
+      <section class="view view-insights" data-view="insights" hidden=""></section>
+
+      <!-- ============================================
+           SETTINGS
+           ============================================ -->
+      <section class="view" data-view="payments" hidden=""></section>
+
+      <section class="view view-settings" data-view="settings" hidden="">
+        <header class="view-head">
+          <div class="view-title-wrap">
+            <h1>Settings</h1>
+          </div>
+        </header>
+
+        <div class="settings-grid">
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">Store</div></div>
+            <div class="setting-row"><label>Store name</label><input class="text-input" id="setStoreName"></div>
+            <div class="setting-row"><label>Address</label><input class="text-input" id="setStoreAddress"></div>
+            <div class="setting-row"><label>Phone</label><input class="text-input" id="setStorePhone"></div>
+            <div class="setting-row"><label>Currency</label><input class="text-input" id="setCurrency"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">Tax</div></div>
+            <div class="setting-row"><label>VAT registered</label><input type="checkbox" id="setVatRegistered"></div>
+            <div class="setting-row"><label>VAT rate</label><input class="text-input" id="setVatRate"></div>
+            <div class="setting-row"><label>TIN</label><input class="text-input" id="setTin"></div>
+          </div>
+
+
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">Printing</div></div>
+            <div class="setting-row"><label>Printer width</label><input class="text-input" id="setPrinterWidth"></div>
+            <div class="setting-row"><label>Print on sale</label><input type="checkbox" id="setPrintOnSale"></div>
+            <div class="setting-row"><label>Logo on receipt</label><input type="checkbox" id="setLogoOnReceipt"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Appearance</div>
+            </div>
+            <div class="setting-row">
+              <label>Chart colours
+                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">The second line on the sales chart (gross profit), on this device.</div>
+              </label>
+              <div class="seg" id="settingsChartHue" role="tablist">
+                <button class="seg-btn active" data-hue="violet">Blue + violet</button>
+                <button class="seg-btn" data-hue="blues">Two blues</button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <label>Chart style
+                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Lines or bars on every sales chart, on this device.</div>
+              </label>
+              <div class="seg" id="settingsChartStyle" role="tablist">
+                <button class="seg-btn active" data-style="line">Line</button>
+                <button class="seg-btn" data-style="bars">Bars</button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <label>Back office row size
+                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Height and text size of every list on this device. Larger is easier on the eyes.</div>
+              </label>
+              <div class="seg" id="settingsDensityToggle" role="tablist">
+                <button class="seg-btn" data-density="sm">S</button>
+                <button class="seg-btn active" data-density="md">M</button>
+                <button class="seg-btn" data-density="lg">L</button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <label>Sell-screen tile size
+                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Affects the POS Sell grid (S = 30/page, M = 20/page, L = 12/page)</div>
+              </label>
+              <div class="seg" id="settingsSizeToggle" role="tablist">
+                <button class="seg-btn" data-size="sm">S</button>
+                <button class="seg-btn active" data-size="md">M</button>
+                <button class="seg-btn" data-size="lg">L</button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <label>Show price on tiles</label>
+              <input type="checkbox" id="settingsShowPrice">
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">Backup</div></div>
+            <div class="setting-row">
+              <label>Full local backup
+                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Exports products, orders, customers, settings, folders, groups, and POS display preferences.</div>
+              </label>
+              <button class="primary-btn" id="backupExportBtn">Export backup</button>
+            </div>
+            <div class="setting-row">
+              <label>Restore backup
+                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Replaces this browser/device data with a Hardware POS backup file.</div>
+              </label>
+              <button class="secondary-btn" id="backupImportBtn">Restore backup</button>
+              <input type="file" id="backupImportFile" accept="application/json,.json" hidden="">
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <dialog id="orderDlg" class="bo-dialog"></dialog>
+  <!-- Outside the views: a dialog in a hidden section never shows. Targets opens from the dashboard and Sales. -->
+  <dialog id="targetDlg" class="bo-dialog adj-dlg"></dialog>
+  <!-- Stock adjust: bo-inventory.js fills it; any [data-adjust-open] on any page opens it. -->
+  <dialog id="adjustDlg" class="bo-dialog adj-dlg"></dialog>
+  <div id="toast" class="toast" hidden=""></div>
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+
+</body></html>

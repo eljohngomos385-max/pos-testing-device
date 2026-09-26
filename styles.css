@@ -6928,7 +6928,7 @@ body.bo-light .bo-sidebar .side-footer .side-switch-wrap {
 
 /* Analytics reports hang under their nav item as a tree, open only while that page is active. */
 body.bo-light .bo-sidebar .side-sub { display: none; flex-direction: column; gap: 1px; padding: 2px 0 6px; }
-body.bo-light .bo-sidebar .side-link.active + .side-sub { display: flex; }
+body.bo-light .bo-sidebar .side-link.active + .side-sub { display: grid; }   /* v30 folds slide on the grid rows */
 body.bo-light .bo-sidebar .side-sublink {
   width: 100%; padding: 5px 6px 5px 33px;
   background: none; border: 0; border-radius: 7px;
@@ -6988,7 +6988,6 @@ body.bo-light .bo-sidebar .side-link .side-chev {
   color: var(--po-ink-tertiary); transition: transform .15s;
 }
 body.bo-light .bo-sidebar .side-link.active:not(.folded) .side-chev { transform: rotate(180deg); }
-body.bo-light .bo-sidebar .side-link.active.folded + .side-sub { display: none; }
 body.bo-light .bo-sidebar .side-grouphead {
   display: flex; align-items: center; width: 100%;
   padding: 5px 8px 5px 36px;
@@ -7125,7 +7124,11 @@ body.bo-light .bo-sidebar .side-resizer {
 body.bo-light .bo-sidebar .side-resizer:hover,
 body.bo-light .bo-app.side-resizing .side-resizer { background: var(--po-line-strong); }
 body.bo-light .bo-app.side-resizing,
-body.bo-light .bo-app.side-resizing * { cursor: col-resize; user-select: none; transition: none !important; }
+body.bo-light .bo-app.side-resizing * { cursor: col-resize; -webkit-user-select: none; user-select: none; transition: none !important; }
+/* The sidebar is chrome, nothing in it to select: a drag or long-press on it (iPad) must not pick up
+   text. iOS Safari only reads the -webkit- form. A finger needs a wider grip than the 5px edge. */
+body.bo-light .bo-sidebar { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+@media (pointer: coarse) { body.bo-light .bo-sidebar .side-resizer { width: 14px; } }
 @media (max-width: 1023px) { body.bo-light .bo-sidebar .side-resizer { display: none; } }
 /* Tree chevrons show only while their row is hovered (or keyboard-focused). */
 body.bo-light .bo-sidebar .side-chev { opacity: 0; transition: opacity .12s, transform .15s; }
@@ -7154,6 +7157,7 @@ body.bo-light .bo-sidebar .side-sub {
 body.bo-light .bo-sidebar .side-fold-in {
   display: flex; flex-direction: column; gap: 3px; min-height: 0; overflow: hidden;
 }
+body.bo-light .bo-sidebar .side-fold-in > * { flex-shrink: 0; }   /* rows slide out whole, never squash */
 /* The nav's own 3px gap is cancelled on a tree and put back inside it, so a shut tree adds nothing. */
 body.bo-light .bo-sidebar .side-sub { margin-top: -3px; }
 body.bo-light .bo-sidebar .side-sub > .side-fold-in > :first-child { margin-top: 3px; }
@@ -7211,17 +7215,17 @@ body.bo-light {
 body.bo-light .bo-app { background: var(--po-sidebar-bg); }
 body.bo-light .bo-sidebar { background: none; border-right: 0; }
 @media (max-width: 1023px) { body.bo-light .bo-sidebar { background: var(--po-sidebar-bg); } }
-/* The sheet scrolls, not the document, so its curved corners stay on screen (the lab's .page).
-   Below 1024px the sidebar overlays and the sheet is flat. */
+/* The sheet scrolls, not the document, so its edge stays on screen (the lab's .page). A straight
+   edge, no rounded corners (owner 2026-09-26). Below 1024px the sidebar overlays and the sheet is flat. */
 @media (min-width: 1024px) {
   body.bo-light .main.bo-main {
     height: 100vh; overflow-y: auto;
-    border-radius: 14px 0 0 20px; box-shadow: var(--po-sheet-shadow);
+    box-shadow: var(--po-sheet-shadow);
   }
-  body.bo-light .bo-app.sidebar-collapsed .main.bo-main { border-radius: 0; box-shadow: none; }
+  body.bo-light .bo-app.sidebar-collapsed .main.bo-main { box-shadow: none; }
 }
 /* Store switcher: badge, name, ⌄ -- it hugs its name. Both badges carry a real icon. */
-body.bo-light .bo-sidebar > .side-switch-wrap { padding: 12px 8px 0; }
+body.bo-light .bo-sidebar > .side-switch-wrap { padding: 20px 8px 0; }   /* 20px = the pages' top padding: switcher and page titles share one 36px centre line */
 body.bo-light .bo-sidebar > .side-switch-wrap .side-switch { width: auto; max-width: 100%; height: 32px; padding: 0 8px 0 10px; }
 body.bo-light .bo-sidebar > .side-switch-wrap .ss-text { flex: 0 1 auto; }
 body.bo-light .bo-sidebar > .side-switch-wrap .ss-name { font-size: 14px; font-weight: 600; color: var(--po-sidebar-ink-hi); }
@@ -7262,6 +7266,43 @@ body.bo-light .bo-sidebar .side-link svg .hole { fill: var(--knock); stroke: non
 body.bo-light .bo-sidebar .side-footer { padding: 8px; background: none; border-top: 0; }
 body.bo-light .bo-sidebar .side-switch.acct { height: 30px; padding: 0 8px 0 10px; gap: 10px; }
 body.bo-light .bo-sidebar .acct .ss-name { font-size: 14px; font-weight: 400; color: var(--po-sidebar-ink); }
+/* Fold to icons (the lab's .fold): the panel icon right of the store switcher folds the sidebar
+   to a 60px rail on desktop -- .side-rail on .bo-app, remembered per device in HWPOS_STORE.ui
+   `sidebarRail`. Not .sidebar-collapsed, which is the <1024px overlay being shut. On the rail
+   trees stay shut and each link's name is its title.
+   It folds in one motion: nothing re-lays out. The edge closes over the names (clipped, fading),
+   the icons nudge 3px to centre, trees slide shut, and the button rides the edge to sit over the
+   store badge -- on the rail it shows on hover in the badge's place, the badge otherwise. */
+body.bo-light .bo-sidebar > .side-switch-wrap { display: flex; align-items: center; gap: 4px; padding-right: 40px; }
+body.bo-light .bo-sidebar > .side-switch-wrap .side-switch { min-width: 0; }
+body.bo-light .bo-sidebar .side-rail-btn {
+  position: absolute; top: 22px; right: 8px;
+  width: 28px; height: 28px; display: grid; place-items: center;
+  border: 0; border-radius: var(--po-r-md); background: none; color: var(--po-sidebar-icon); cursor: pointer;
+  transition: right .24s cubic-bezier(.4,0,.2,1), opacity .15s, background .1s, color .1s;
+}
+body.bo-light .bo-sidebar .side-rail-btn:hover { background: var(--po-sidebar-hover); color: var(--po-sidebar-ink-hi); }
+@media (max-width: 1023px) {
+  body.bo-light .bo-sidebar .side-rail-btn { display: none; }
+  body.bo-light .bo-sidebar > .side-switch-wrap { padding-right: 8px; }
+}
+@media (min-width: 1024px) {
+  body.bo-light .bo-sidebar { transition: transform .24s cubic-bezier(.4,0,.2,1), width .24s cubic-bezier(.4,0,.2,1); }
+  body.bo-light .bo-app.side-rail { --po-sidebar-w: 60px; }   /* beats the dragged width set on body; .bo-main follows */
+  body.bo-light .bo-sidebar :is(.side-link, .side-switch) { overflow: hidden; transition: background .1s, color .1s, padding-left .24s cubic-bezier(.4,0,.2,1); }
+  body.bo-light .bo-sidebar :is(.side-link > span, .ss-text, .ss-chev, .ss-mark) { transition: opacity .18s; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-resizer { display: none; }
+  body.bo-light .bo-app.side-rail .bo-sidebar :is(.side-link > span, .side-chev, .ss-text, .ss-chev) { opacity: 0; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-nav .side-sub { grid-template-rows: 0fr; opacity: 0; visibility: hidden; }
+  body.bo-light .bo-app.side-rail .bo-sidebar > .side-switch-wrap { padding-right: 8px; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-switch { width: 100%; }
+  body.bo-light .bo-app.side-rail .bo-sidebar :is(.side-link, .side-switch) { padding-left: 13px; }   /* 16px icon centred in the 60px rail */
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-rail-btn { right: 16px; opacity: 0; }
+  body.bo-light .bo-app.side-rail .bo-sidebar > .side-switch-wrap:is(:hover, :focus-within) .side-rail-btn { opacity: 1; }
+  body.bo-light .bo-app.side-rail .bo-sidebar > .side-switch-wrap:is(:hover, :focus-within) .ss-mark { opacity: 0; }
+  /* With its tree hidden, a page lit through a sub-link (Stock history, Purchase orders) fills its parent's icon. */
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-link.active:not(.folded):has(+ .side-sub .side-sublink.active) { background: var(--po-sidebar-active); --knock: var(--po-sidebar-active); }
+}
 
 /* DROPDOWN MOTION (v31): every back office dropdown fades and drops 4px in and out. The menus
    still open and close with the `hidden` attribute (or <details>); `display` rides the

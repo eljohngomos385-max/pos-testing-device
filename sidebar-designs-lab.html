@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sidebar designs lab</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
+<style>
+/* Nine sidebar designs, each beside the same static copy of the Sales page. */
+:root {
+  --b-font: "Inter";
+  --b-page: #FFFFFF; --b-card: #F9F9F9; --b-raised: #FFFFFF; --b-line: #ECECEC; --b-outline: #E1E1E1; --b-track: #EFEFEF;
+  --b-ink: #303030; --b-ink-2: #616161; --b-ink-3: #8C8C8C;
+  --b-up: #047B5D; --b-down: #D72C0D; --b-up-tint: #D3ECDD; --b-down-tint: #F8D8D0; --b-heat: #1FA855;
+  --b-data: #2B7DE9; --b-data-1: #BCD7FA;
+  --b-t-value: 27px; --b-t-label: 13px; --b-t-meta: 12.5px; --b-t-micro: 11px;
+  --b-r-card: 14px; --b-r-cell: 10px; --b-r-row: 7px; --b-pad: 16px; --b-gap: 14px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #EDEDED; color: var(--b-ink); font-family: var(--b-font), -apple-system, "Segoe UI", sans-serif;
+       font-size: var(--b-t-label); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- gallery chrome ---------- */
+.intro { max-width: 1440px; margin: 0 auto; padding: 32px 0 8px; }
+.intro h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; }
+.intro p { color: var(--b-ink-2); margin: 0; max-width: 760px; line-height: 1.5; }
+.jump { position: sticky; top: 0; z-index: 50; background: rgba(237,237,237,.92); backdrop-filter: blur(8px); }
+.jump div { max-width: 1440px; margin: 0 auto; padding: 10px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.jump a { padding: 5px 10px; border-radius: 8px; background: #fff; border: 1px solid var(--b-outline); color: var(--b-ink); text-decoration: none; font-weight: 500; }
+.design { max-width: 1440px; margin: 28px auto 0; scroll-margin-top: 60px; }
+.design h2 { font-size: 16px; font-weight: 600; margin: 0; }
+.design h2 span { color: var(--b-ink-3); font-weight: 500; margin-right: 8px; }
+.design .why { color: var(--b-ink-2); margin: 4px 0 12px; max-width: 900px; line-height: 1.5; }
+.design .refs { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: -6px 0 12px; }
+.design:last-of-type { margin-bottom: 60px; }
+
+/* ---------- the window each design sits in: sidebar column + the page ---------- */
+.frame { width: 1440px; height: 820px; display: grid; grid-template-columns: auto minmax(0, 1fr); background: var(--b-page);
+         border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.06); }
+.frame > .sb { min-width: 0; }
+.mock { min-width: 0; overflow: hidden; background: var(--b-page); }
+
+/* ---------- the Sales page copy (don't restyle from a design) ---------- */
+.mock main { padding: 20px 24px 40px; max-width: 1180px; margin: 0 auto; }
+.mock .bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.mock .bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
+.mock .seg { display: inline-flex; background: var(--b-track); border-radius: 9px; padding: 2px; }
+.mock .seg b { padding: 5px 14px; border-radius: 7px; color: var(--b-ink-2); font-weight: 400; }
+.mock .seg b.on { background: var(--b-raised); color: var(--b-ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 500; }
+.mock .ib { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: var(--b-ink-2); }
+.mock .mo { font-size: 15px; font-weight: 600; }
+.mock .note { font-size: var(--b-t-meta); color: var(--b-ink-3); margin: 0 0 14px; }
+.mock .strip { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad) 4px;
+               display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin-bottom: 18px; }
+.mock .stat { padding: 0 16px; border-left: 1px solid var(--b-line); min-width: 0; }
+.mock .stat:first-child { border-left: 0; }
+.mock .lbl { color: var(--b-ink-2); }
+.mock .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.mock .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mock .val.up { color: var(--b-up); }
+.mock .sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-top: 2px; white-space: nowrap; }
+.mock .chip { font-size: var(--b-t-meta); font-weight: 500; padding: 2px 8px; border-radius: 999px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mock .chip.up { background: var(--b-up-tint); color: var(--b-up); }
+.mock .chip.down { background: var(--b-down-tint); color: var(--b-down); }
+.mock .pct { font-weight: 600; font-size: var(--b-t-meta); }
+.mock .cal { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; }
+.mock .dow { text-align: center; color: var(--b-ink-2); padding-bottom: 2px; }
+.mock .cell { min-height: 82px; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); padding: 8px 10px; display: flex; flex-direction: column; background: var(--b-page); }
+.mock .cell .d { color: var(--b-ink-2); }
+.mock .cell .v { margin-top: auto; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mock .cell .m { font-size: 11px; color: var(--b-ink-3); margin-top: 1px; }
+.mock .cell.wk { background: var(--b-card); }
+.mock .cell.fut .d { color: #BDBDBD; }
+.mock .cell.today { box-shadow: inset 0 0 0 1.5px var(--b-ink); }
+.mock .cell.heat { background: var(--heat); border-color: color-mix(in srgb, var(--heat) 85%, var(--b-ink)); }
+.mock .cell.heat .d, .mock .cell.heat .m { color: rgba(0,0,0,.55); }
+.mock .blank { border: 0; background: none; }
+.mock .legend { text-align: center; color: var(--b-ink-2); font-size: var(--b-t-meta); margin: 14px 0 18px; }
+.mock .hls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--b-gap); }
+.mock .hl { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 12px 14px; }
+.mock .hl .k { display: block; font-size: var(--b-t-micro); color: var(--b-ink-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+.mock .hl b { display: block; font-size: 15px; font-weight: 600; }
+.mock .hl small { color: var(--b-ink-3); font-size: var(--b-t-meta); }
+</style>
+<template class="design" data-id="A1" data-title="Segmented rail" data-why="Top to bottom it goes money in, goods on the shelf, then the people and setup behind them. Groups are split by space alone, no lines or labels. The rail uses the grey track from the page's Month/Year control, and the current page is its white thumb, so the sidebar reads as part of the same kit." data-refs="Shopify admin (Polaris grey nav + near-white selected row), the page's own segmented control">
+<style>
+.d-A1 .sb { display: flex; flex-direction: column; min-height: 0; }
+.d-A1 .sb a { display: flex; align-items: center; text-decoration: none; white-space: nowrap; }
+.d-A1 .sb svg { flex: none; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+.d-A1 .sb .who { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.d-A1 .sb .who b { font-weight: 600; color: var(--b-ink); }
+.d-A1 .sb .who small { font-size: var(--b-t-micro); color: var(--b-ink-3); }
+.d-A1 .sb .ud { width: 14px; height: 14px; margin-left: auto; color: var(--b-ink-3); stroke-width: 1.8; }
+.d-A1 .sb .mark, .d-A1 .sb .av { flex: none; display: grid; place-items: center; font-size: 10.5px; font-weight: 600; }
+.d-A1 .sb .me small { margin-left: auto; font-size: var(--b-t-meta); color: var(--b-ink-3); }
+.d-A1 .sb .me b { font-weight: 500; color: var(--b-ink); }
+.d-A1 .sb { width: 232px; background: var(--b-track); padding: 12px 10px 10px; }
+.d-A1 .sb .list { flex: 1; }
+.d-A1 .sb a { gap: 11px; height: 32px; padding: 0 10px; border-radius: var(--b-r-row); color: var(--b-ink); font-size: 13.5px; }
+.d-A1 .sb a:hover { background: rgba(0,0,0,.04); }
+.d-A1 .sb .list svg { width: 18px; height: 18px; stroke-width: 1.7; color: var(--b-ink-2); }
+.d-A1 .sb a[aria-current] { background: var(--b-raised); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 600; }
+.d-A1 .sb a[aria-current] svg { color: var(--b-ink); }
+.d-A1 .sb .g + .g { margin-top: 16px; }
+.d-A1 .sb .store { height: 48px; margin-bottom: 14px; padding: 0 8px; }
+.d-A1 .sb .mark { width: 28px; height: 28px; border-radius: var(--b-r-row); background: var(--b-ink); color: var(--b-raised); }
+.d-A1 .sb .me { height: 40px; padding: 0 8px; }
+.d-A1 .sb .av { width: 26px; height: 26px; border-radius: 50%; background: var(--b-raised); color: var(--b-ink-2); }
+</style>
+<nav class="sb"><a class="store" href="#"><span class="mark">EJ</span><span class="who"><b>EJ Hardware</b><small>Main Store</small></span><svg class="ud" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></a><div class="list"><div class="g"><a href="#"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg>Dashboard</a><a href="#" aria-current="page"><svg viewBox="0 0 24 24"><path d="M5 20v-6M10 20V9M15 20v-6M20 20V5"/></svg>Sales</a><a href="#"><svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z"/><path d="M9.5 8.5h5M9.5 12h5"/></svg>Transactions</a><a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Customers</a></div><div class="g"><a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 4.5a1 1 0 0 1 1-1h7.3a1 1 0 0 1 .7.3l8 8a1.4 1.4 0 0 1 0 2l-6.6 6.6a1.4 1.4 0 0 1-2 0l-8-8a1 1 0 0 1-.4-.7z"/><circle cx="8" cy="8" r="1.4"/></svg>Products</a><a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4v4h4"/><path d="M12 8v4.5l3 2"/></svg>Stock history</a><a href="#"><svg viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 3.5h6v2.5H9zM9 11h6M9 15h4"/></svg>Purchase orders</a><a href="#"><svg viewBox="0 0 24 24"><path d="M13.5 16.5V6.5h-11v10M13.5 10h4l3 3v3.5M8.3 17.5h7M2.5 16.5v1h2.3"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>Suppliers</a></div><div class="g"><a href="#"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5a3.2 3.2 0 0 1 0 6.2M17.5 14a6 6 0 0 1 3.5 5.5"/></svg>Staff</a><a href="#"><svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19M6.5 14.5h3"/></svg>Payments</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Settings</a></div></div><a class="me" href="#"><span class="av">EJ</span><b>El John</b><small>Owner</small></a></nav>
+</template>
+<template class="design" data-id="A2" data-title="Grey frame, white sheet" data-why="Ordered by how often an owner opens each page: the daily four at the top, the weekly four under them, and the set-up-once three pinned to the bottom with the account. The grey is the whole window and the page sits in it as a white sheet, so the sidebar needs no box or edge of its own." data-refs="Shopify admin 2023 frame, Stripe Dashboard (short top list, settings apart), macOS source lists">
+<style>
+.d-A2 .sb { display: flex; flex-direction: column; min-height: 0; }
+.d-A2 .sb a { display: flex; align-items: center; text-decoration: none; white-space: nowrap; }
+.d-A2 .sb svg { flex: none; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+.d-A2 .sb .who { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.d-A2 .sb .who b { font-weight: 600; color: var(--b-ink); }
+.d-A2 .sb .who small { font-size: var(--b-t-micro); color: var(--b-ink-3); }
+.d-A2 .sb .ud { width: 14px; height: 14px; margin-left: auto; color: var(--b-ink-3); stroke-width: 1.8; }
+.d-A2 .sb .mark, .d-A2 .sb .av { flex: none; display: grid; place-items: center; font-size: 10.5px; font-weight: 600; }
+.d-A2 .sb .me small { margin-left: auto; font-size: var(--b-t-meta); color: var(--b-ink-3); }
+.d-A2 .sb .me b { font-weight: 500; color: var(--b-ink); }
+.d-A2 { background: var(--b-track); padding: 8px 8px 8px 0; }
+.d-A2 > .mock { border-radius: var(--b-r-card); box-shadow: 0 0 0 1px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.05); }
+.d-A2 .sb { width: 224px; padding: 6px 10px 2px 12px; }
+.d-A2 .sb .list { flex: 1; display: flex; flex-direction: column; }
+.d-A2 .sb a { gap: 10px; height: 30px; padding: 0 9px; border-radius: var(--b-r-row); color: var(--b-ink); font-size: 13.5px; }
+.d-A2 .sb a:hover { background: rgba(0,0,0,.04); }
+.d-A2 .sb .list svg { width: 18px; height: 18px; stroke-width: 1.7; color: var(--b-ink-2); }
+.d-A2 .sb a[aria-current] { background: rgba(0,0,0,.075); font-weight: 600; }
+.d-A2 .sb a[aria-current] svg { color: var(--b-ink); }
+.d-A2 .sb .g + .g { margin-top: 14px; }
+.d-A2 .sb .g:last-child { margin-top: auto; }
+.d-A2 .sb .store { height: 46px; margin-bottom: 10px; padding: 0 9px; }
+.d-A2 .sb .mark { width: 26px; height: 26px; border-radius: var(--b-r-row); background: var(--b-raised); color: var(--b-ink); box-shadow: 0 0 0 1px var(--b-outline); }
+.d-A2 .sb .me { height: 40px; margin-top: 6px; padding: 0 9px; }
+.d-A2 .sb .av { width: 24px; height: 24px; border-radius: 50%; background: var(--b-raised); color: var(--b-ink-2); box-shadow: 0 0 0 1px var(--b-outline); }
+</style>
+<nav class="sb"><a class="store" href="#"><span class="mark">EJ</span><span class="who"><b>EJ Hardware</b><small>Main Store</small></span><svg class="ud" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></a><div class="list"><div class="g"><a href="#"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg>Dashboard</a><a href="#" aria-current="page"><svg viewBox="0 0 24 24"><path d="M5 20v-6M10 20V9M15 20v-6M20 20V5"/></svg>Sales</a><a href="#"><svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z"/><path d="M9.5 8.5h5M9.5 12h5"/></svg>Transactions</a><a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 4.5a1 1 0 0 1 1-1h7.3a1 1 0 0 1 .7.3l8 8a1.4 1.4 0 0 1 0 2l-6.6 6.6a1.4 1.4 0 0 1-2 0l-8-8a1 1 0 0 1-.4-.7z"/><circle cx="8" cy="8" r="1.4"/></svg>Products</a></div><div class="g"><a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Customers</a><a href="#"><svg viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 3.5h6v2.5H9zM9 11h6M9 15h4"/></svg>Purchase orders</a><a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4v4h4"/><path d="M12 8v4.5l3 2"/></svg>Stock history</a><a href="#"><svg viewBox="0 0 24 24"><path d="M13.5 16.5V6.5h-11v10M13.5 10h4l3 3v3.5M8.3 17.5h7M2.5 16.5v1h2.3"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>Suppliers</a></div><div class="g"><a href="#"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5a3.2 3.2 0 0 1 0 6.2M17.5 14a6 6 0 0 1 3.5 5.5"/></svg>Staff</a><a href="#"><svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19M6.5 14.5h3"/></svg>Payments</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Settings</a></div></div><a class="me" href="#"><span class="av">EJ</span><b>El John</b><small>Owner</small></a></nav>
+</template>
+<template class="design" data-id="A3" data-title="Named by the flow of goods" data-why="Pages follow a product through the store: bought from suppliers, held as stock, then sold to customers, with the store's own setup last. Because that order isn't obvious, each group gets a quiet sentence-case name instead of a divider. The column is the page's card grey with a firm edge, and the icons are bigger and darker for large screens." data-refs="Loyverse back office (Items, Inventory, Customers, Settings), Square Dashboard location picker, Stripe sentence-case sections">
+<style>
+.d-A3 .sb { display: flex; flex-direction: column; min-height: 0; }
+.d-A3 .sb a { display: flex; align-items: center; text-decoration: none; white-space: nowrap; }
+.d-A3 .sb svg { flex: none; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+.d-A3 .sb .who { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.d-A3 .sb .who b { font-weight: 600; color: var(--b-ink); }
+.d-A3 .sb .who small { font-size: var(--b-t-micro); color: var(--b-ink-3); }
+.d-A3 .sb .ud { width: 14px; height: 14px; margin-left: auto; color: var(--b-ink-3); stroke-width: 1.8; }
+.d-A3 .sb .mark, .d-A3 .sb .av { flex: none; display: grid; place-items: center; font-size: 10.5px; font-weight: 600; }
+.d-A3 .sb .me small { margin-left: auto; font-size: var(--b-t-meta); color: var(--b-ink-3); }
+.d-A3 .sb .me b { font-weight: 500; color: var(--b-ink); }
+.d-A3 .sb { width: 240px; background: color-mix(in srgb, var(--b-track) 65%, var(--b-card)); border-right: 1px solid var(--b-line); padding: 10px 12px 10px; }
+.d-A3 .sb .list { flex: 1; }
+.d-A3 .sb a { gap: 11px; height: 32px; padding: 0 10px; border-radius: var(--b-r-row); color: var(--b-ink); font-size: 13.5px; }
+.d-A3 .sb a:hover { background: var(--b-track); }
+.d-A3 .sb .list svg { width: 19px; height: 19px; stroke-width: 1.6; color: var(--b-ink-2); }
+.d-A3 .sb a[aria-current] { background: var(--b-raised); box-shadow: inset 0 0 0 1px var(--b-outline); font-weight: 600; }
+.d-A3 .sb a[aria-current] svg { color: var(--b-ink); }
+.d-A3 .sb .lbl { margin: 0; padding: 0 10px 4px; font-size: var(--b-t-meta); font-weight: 500; color: var(--b-ink-3); }
+.d-A3 .sb .g + .g { margin-top: 16px; }
+.d-A3 .sb .store { height: 52px; margin-bottom: 12px; padding: 0 10px; background: var(--b-raised); border-radius: var(--b-r-cell); box-shadow: inset 0 0 0 1px var(--b-line); }
+.d-A3 .sb .mark { width: 28px; height: 28px; border-radius: var(--b-r-row); background: var(--b-track); color: var(--b-ink); }
+.d-A3 .sb .me { height: 40px; padding: 0 10px; }
+.d-A3 .sb .av { width: 26px; height: 26px; border-radius: 50%; background: var(--b-track); color: var(--b-ink-2); }
+</style>
+<nav class="sb"><a class="store" href="#"><span class="mark">EJ</span><span class="who"><b>EJ Hardware</b><small>Main Store</small></span><svg class="ud" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></a><div class="list"><div class="g"><a href="#"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg>Dashboard</a></div><div class="g"><p class="lbl">Buying</p><a href="#"><svg viewBox="0 0 24 24"><path d="M13.5 16.5V6.5h-11v10M13.5 10h4l3 3v3.5M8.3 17.5h7M2.5 16.5v1h2.3"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>Suppliers</a><a href="#"><svg viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 3.5h6v2.5H9zM9 11h6M9 15h4"/></svg>Purchase orders</a></div><div class="g"><p class="lbl">Stock</p><a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 4.5a1 1 0 0 1 1-1h7.3a1 1 0 0 1 .7.3l8 8a1.4 1.4 0 0 1 0 2l-6.6 6.6a1.4 1.4 0 0 1-2 0l-8-8a1 1 0 0 1-.4-.7z"/><circle cx="8" cy="8" r="1.4"/></svg>Products</a><a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4v4h4"/><path d="M12 8v4.5l3 2"/></svg>Stock history</a></div><div class="g"><p class="lbl">Selling</p><a href="#" aria-current="page"><svg viewBox="0 0 24 24"><path d="M5 20v-6M10 20V9M15 20v-6M20 20V5"/></svg>Sales</a><a href="#"><svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z"/><path d="M9.5 8.5h5M9.5 12h5"/></svg>Transactions</a><a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Customers</a></div><div class="g"><p class="lbl">Store</p><a href="#"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5a3.2 3.2 0 0 1 0 6.2M17.5 14a6 6 0 0 1 3.5 5.5"/></svg>Staff</a><a href="#"><svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19M6.5 14.5h3"/></svg>Payments</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Settings</a></div></div><a class="me" href="#"><span class="av">EJ</span><b>El John</b><small>Owner</small></a></nav>
+</template>
+
+<template class="design" data-id="B1" data-title="Grey track, white thumb" data-why="Top to bottom runs from what you open every day to what you set up once: selling, then stock (traced back from the shelf to the supplier), then the till's setup — three groups split by space alone, no labels, no lines. The sidebar is the page's segmented control turned on its side: the same grey track, and the current page is the same white thumb with the same tiny shadow." data-refs="macOS Finder and Mail source lists (grey sidebar, 28–32pt rows), System Settings (groups split by space, no headers), the page's own Month/Year control">
+<style>
+.d-B1 .sb { width: 236px; background: var(--b-track); display: flex; flex-direction: column; padding: 14px 10px 10px; }
+.d-B1 .sb a { display: flex; align-items: center; gap: 11px; height: 32px; padding: 0 10px; border-radius: var(--b-r-row);
+  color: var(--b-ink); text-decoration: none; font-size: 13.5px; font-weight: 450; }
+.d-B1 .sb a svg { color: var(--b-ink-2); }
+.d-B1 .sb a[aria-current] svg { color: var(--b-ink); }
+.d-B1 .sb a:hover { background: color-mix(in srgb, var(--b-ink) 5%, transparent); }
+.d-B1 .sb svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.d-B1 .sb a[aria-current] { background: var(--b-raised); color: var(--b-ink); font-weight: 550; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.d-B1 .sb .g + .g { margin-top: 16px; }
+.d-B1 .sb .who { height: 44px; gap: 10px; }
+.d-B1 .sb .who:hover { background: color-mix(in srgb, var(--b-ink) 5%, transparent); }
+.d-B1 .sb .mark { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: var(--b-r-row);
+  background: var(--b-raised); box-shadow: 0 1px 2px rgba(0,0,0,.08); color: var(--b-ink); font-size: var(--b-t-micro); font-weight: 650; }
+.d-B1 .sb .foot .mark { border-radius: 50%; }
+.d-B1 .sb .who span:not(.mark) { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.d-B1 .sb .who b { color: var(--b-ink); font-weight: 600; }
+.d-B1 .sb .who small { color: var(--b-ink-3); font-size: 12px; font-weight: 400; }
+.d-B1 .sb .who .ud { width: 14px; height: 14px; margin-left: auto; color: var(--b-ink-3); }
+.d-B1 .sb .head { margin-bottom: 16px; }
+.d-B1 .sb .foot { margin-top: auto; }
+.d-B1 .sb .foot b { font-weight: 500; }
+.d-B1 .sb .foot small { margin-left: auto; }
+</style>
+<nav class="sb">
+  <div class="head"><a class="who" href="#"><span class="mark">EJ</span><span><b>Main Store</b><small>EJ Hardware</small></span><svg class="ud" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></a></div>
+  <div class="g">
+    <a href="#"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg>Dashboard</a>
+    <a href="#" aria-current="page"><svg viewBox="0 0 24 24"><path d="M5 20v-6M10 20V9M15 20v-6M20 20V5"/></svg>Sales</a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z"/><path d="M9.5 8.5h5M9.5 12h5"/></svg>Transactions</a>
+    <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Customers</a>
+  </div>
+  <div class="g">
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 4.5a1 1 0 0 1 1-1h7.3a1 1 0 0 1 .7.3l8 8a1.4 1.4 0 0 1 0 2l-6.6 6.6a1.4 1.4 0 0 1-2 0l-8-8a1 1 0 0 1-.4-.7z"/><circle cx="8" cy="8" r="1.4"/></svg>Products</a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4v4h4"/><path d="M12 8v4.5l3 2"/></svg>Stock history</a>
+    <a href="#"><svg viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 3.5h6v2.5H9zM9 11h6M9 15h4"/></svg>Purchase orders</a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M13.5 16.5V6.5h-11v10M13.5 10h4l3 3v3.5M8.3 17.5h7M2.5 16.5v1h2.3"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>Suppliers</a>
+  </div>
+  <div class="g">
+    <a href="#"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5a3.2 3.2 0 0 1 0 6.2M17.5 14a6 6 0 0 1 3.5 5.5"/></svg>Staff</a>
+    <a href="#"><svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19M6.5 14.5h3"/></svg>Payments</a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Settings</a>
+  </div>
+  <div class="foot"><a class="who" href="#"><span class="mark">EJ</span><b>El John</b><small>Owner</small></a></div>
+</nav>
+</template>
+
+<template class="design" data-id="B2" data-title="Grey window, white sheet" data-why="Dashboard sits alone on top as the overview, then three short sentence-case headings — Selling, Stock, Setup — that say what's under them (unlike “Main menu” or “Manage”), so the heading does the separating and no line is needed. The whole window is a soft grey and the page is a white sheet with the cards' own 14px corners and hairline, so the sidebar isn't a panel at all — it's just the ground the page rests on." data-refs="iPadOS Health and Files (unlabelled top items, then named sections), macOS Tahoe Music/Notes (sentence-case section titles, grey unemphasized selection), macOS Tahoe layered window">
+<style>
+.d-B2 { background: color-mix(in srgb, var(--b-track) 75%, var(--b-card)); padding: 8px 8px 8px 0; }
+.d-B2 > .mock { border-radius: var(--b-r-card); box-shadow: 0 0 0 1px var(--b-line), 0 1px 3px rgba(0,0,0,.04); }
+.d-B2 .sb { width: 228px; display: flex; flex-direction: column; padding: 12px 10px 2px 10px; }
+.d-B2 .sb a { display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 10px; border-radius: var(--b-r-row);
+  color: var(--b-ink); text-decoration: none; font-size: 13.5px; font-weight: 450; }
+.d-B2 .sb a:hover { background: color-mix(in srgb, var(--b-ink) 5%, transparent); }
+.d-B2 .sb svg { width: 17px; height: 17px; flex: none; fill: none; stroke: var(--b-ink-2); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.d-B2 .sb a[aria-current] { background: color-mix(in srgb, var(--b-ink) 9%, transparent); font-weight: 600; }
+.d-B2 .sb a[aria-current] svg { stroke: var(--b-ink); }
+.d-B2 .sb h3 { margin: 18px 0 2px; padding: 0 10px; font-size: 12px; font-weight: 600; color: var(--b-ink-3); }
+.d-B2 .sb .who { height: 46px; gap: 10px; }
+.d-B2 .sb .who span:not(.mark) { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.d-B2 .sb .who small { color: var(--b-ink-3); font-size: 12px; font-weight: 400; }
+.d-B2 .sb .who b { font-weight: 600; }
+.d-B2 .sb .mark { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: var(--b-r-row);
+  background: var(--b-raised); color: var(--b-ink); box-shadow: 0 0 0 1px var(--b-line); font-size: var(--b-t-micro); font-weight: 650; }
+.d-B2 .sb .who .ud { width: 14px; height: 14px; margin-left: auto; stroke: var(--b-ink-3); }
+.d-B2 .sb .head { margin-bottom: 10px; }
+.d-B2 .sb .foot { margin-top: auto; }
+.d-B2 .sb .foot .mark { border-radius: 50%; background: var(--b-raised); color: var(--b-ink); box-shadow: 0 0 0 1px var(--b-line); }
+.d-B2 .sb .foot b { font-weight: 500; }
+.d-B2 .sb .foot small { margin-left: auto; }
+</style>
+<nav class="sb">
+  <div class="head"><a class="who" href="#"><span class="mark">EJ</span><span><b>Main Store</b><small>EJ Hardware</small></span><svg class="ud" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></a></div>
+  <a href="#"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg>Dashboard</a>
+  <h3>Selling</h3>
+  <a href="#" aria-current="page"><svg viewBox="0 0 24 24"><path d="M5 20v-6M10 20V9M15 20v-6M20 20V5"/></svg>Sales</a>
+  <a href="#"><svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z"/><path d="M9.5 8.5h5M9.5 12h5"/></svg>Transactions</a>
+  <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Customers</a>
+  <h3>Stock</h3>
+  <a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 4.5a1 1 0 0 1 1-1h7.3a1 1 0 0 1 .7.3l8 8a1.4 1.4 0 0 1 0 2l-6.6 6.6a1.4 1.4 0 0 1-2 0l-8-8a1 1 0 0 1-.4-.7z"/><circle cx="8" cy="8" r="1.4"/></svg>Products</a>
+  <a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4v4h4"/><path d="M12 8v4.5l3 2"/></svg>Stock history</a>
+  <a href="#"><svg viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 3.5h6v2.5H9zM9 11h6M9 15h4"/></svg>Purchase orders</a>
+  <a href="#"><svg viewBox="0 0 24 24"><path d="M13.5 16.5V6.5h-11v10M13.5 10h4l3 3v3.5M8.3 17.5h7M2.5 16.5v1h2.3"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>Suppliers</a>
+  <h3>Setup</h3>
+  <a href="#"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5a3.2 3.2 0 0 1 0 6.2M17.5 14a6 6 0 0 1 3.5 5.5"/></svg>Staff</a>
+  <a href="#"><svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19M6.5 14.5h3"/></svg>Payments</a>
+  <a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Settings</a>
+  <div class="foot"><a class="who" href="#"><span class="mark">EJ</span><b>El John</b><small>Owner</small></a></div>
+</nav>
+</template>
+
+<template class="design" data-id="B3" data-title="Icon tiles, identity on top" data-why="Same order — daily selling, then stock traced back to the supplier, then setup — but who and where you are comes first, in one card, the way System Settings leads with your account. Each page gets a small white tile like a calendar cell so the icons carry weight on a big screen without any colour; the current page's tile turns ink, the way today's cell is ringed in ink." data-refs="macOS System Settings (account first, icon tiles, groups by spacing), iOS/iPadOS Settings grouped inset card, the page's calendar cells">
+<style>
+.d-B3 .sb { width: 244px; background: color-mix(in srgb, var(--b-track) 60%, var(--b-card)); display: flex; flex-direction: column; padding: 12px 10px; }
+.d-B3 .sb .id { background: var(--b-raised); border-radius: var(--b-r-cell); box-shadow: 0 0 0 1px var(--b-line), 0 1px 2px rgba(0,0,0,.04); margin-bottom: 16px; }
+.d-B3 .sb .id a { height: 46px; padding: 0 10px; border-radius: 0; }
+.d-B3 .sb .id a + a { height: 38px; box-shadow: inset 0 1px 0 var(--b-line); }
+.d-B3 .sb .id a:hover { background: none; }
+.d-B3 .sb .id span:not(.t) { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.d-B3 .sb .id b { font-weight: 600; }
+.d-B3 .sb .id small { color: var(--b-ink-3); font-size: 12px; }
+.d-B3 .sb .id .ud { width: 14px; height: 14px; margin-left: auto; color: var(--b-ink-3); }
+.d-B3 .sb .id .me { font-weight: 500; }
+.d-B3 .sb .id .me small { margin-left: auto; }
+.d-B3 .sb a { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 6px; border-radius: var(--b-r-cell);
+  color: var(--b-ink); text-decoration: none; font-size: 13.5px; font-weight: 450; }
+.d-B3 .sb a:hover { background: color-mix(in srgb, var(--b-ink) 5%, transparent); }
+.d-B3 .sb .t { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: var(--b-r-row);
+  background: var(--b-raised); box-shadow: 0 0 0 1px var(--b-line); color: var(--b-ink); font-size: var(--b-t-micro); font-weight: 650; }
+.d-B3 .sb .t svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.d-B3 .sb .id .me .t { width: 22px; height: 22px; margin: 0 2px; border-radius: 50%; background: var(--b-card); color: var(--b-ink-2); box-shadow: 0 0 0 1px var(--b-line); font-size: 10px; }
+.d-B3 .sb a[aria-current] { background: var(--b-raised); box-shadow: 0 0 0 1px var(--b-line); font-weight: 600; }
+.d-B3 .sb a[aria-current] .t { background: var(--b-ink); color: var(--b-raised); box-shadow: none; }
+.d-B3 .sb .g + .g { margin-top: 14px; }
+</style>
+<nav class="sb">
+  <div class="id">
+    <a href="#"><span class="t">EJ</span><span><b>Main Store</b><small>EJ Hardware</small></span><svg class="ud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></a>
+    <a class="me" href="#"><span class="t">EJ</span>El John<small>Owner</small></a>
+  </div>
+  <div class="g">
+    <a href="#"><span class="t"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg></span>Dashboard</a>
+    <a href="#" aria-current="page"><span class="t"><svg viewBox="0 0 24 24"><path d="M5 20v-6M10 20V9M15 20v-6M20 20V5"/></svg></span>Sales</a>
+    <a href="#"><span class="t"><svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z"/><path d="M9.5 8.5h5M9.5 12h5"/></svg></span>Transactions</a>
+    <a href="#"><span class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span>Customers</a>
+  </div>
+  <div class="g">
+    <a href="#"><span class="t"><svg viewBox="0 0 24 24"><path d="M3.5 4.5a1 1 0 0 1 1-1h7.3a1 1 0 0 1 .7.3l8 8a1.4 1.4 0 0 1 0 2l-6.6 6.6a1.4 1.4 0 0 1-2 0l-8-8a1 1 0 0 1-.4-.7z"/><circle cx="8" cy="8" r="1.4"/></svg></span>Products</a>
+    <a href="#"><span class="t"><svg viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4v4h4"/><path d="M12 8v4.5l3 2"/></svg></span>Stock history</a>
+    <a href="#"><span class="t"><svg viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 3.5h6v2.5H9zM9 11h6M9 15h4"/></svg></span>Purchase orders</a>
+    <a href="#"><span class="t"><svg viewBox="0 0 24 24"><path d="M13.5 16.5V6.5h-11v10M13.5 10h4l3 3v3.5M8.3 17.5h7M2.5 16.5v1h2.3"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg></span>Suppliers</a>
+  </div>
+  <div class="g">
+    <a href="#"><span class="t"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5a3.2 3.2 0 0 1 0 6.2M17.5 14a6 6 0 0 1 3.5 5.5"/></svg></span>Staff</a>
+    <a href="#"><span class="t"><svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19M6.5 14.5h3"/></svg></span>Payments</a>
+    <a href="#"><span class="t"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></span>Settings</a>
+  </div>
+</nav>
+</template>
+
+<template class="design" data-id="C1" data-title="Inset page" data-why="Top to bottom follows the money: see it (Dashboard), sell it (Sales, Transactions, Customers), restock it (Products, Purchase orders, Suppliers, Stock history), and the set-once pages (Staff, Payments, Settings) drop to the bottom by the account; groups are split by space, not lines or labels. The sidebar sits on a grey a notch darker than the cards and the page is the white sheet on top, so the current page is the same white as the sheet it opens." data-refs="Linear 2024 refresh (dimmer sidebar, content in front), Vercel 2026 dashboard, Arc, shadcn inset sidebar">
+<style>
+.d-C1 .sb { display: flex; flex-direction: column; min-height: 0; }
+.d-C1 .sb a { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: var(--b-r-row);
+  text-decoration: none; white-space: nowrap; }
+.d-C1 .sb svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.d-C1 .sb .nm { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.d-C1 .sb .ud { width: 14px; height: 14px; margin-left: auto; }
+.d-C1 .sb .mark, .d-C1 .sb .av { flex: none; display: grid; place-items: center; font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+
+.d-C1 { --c1-chrome: color-mix(in srgb, var(--b-track) 80%, var(--b-card)); background: var(--c1-chrome); padding: 8px 8px 8px 0; }
+.d-C1 > .mock { border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.d-C1 .sb { width: 224px; padding: 12px 10px 10px 12px; }
+.d-C1 .sb nav { display: flex; flex-direction: column; gap: 14px; flex: 1; margin-top: 14px; }
+.d-C1 .sb nav a { color: var(--b-ink); font-weight: 450; }
+.d-C1 .sb nav a svg { color: var(--b-ink-2); }
+.d-C1 .sb nav a:hover { background: color-mix(in srgb, var(--b-ink) 5%, transparent); }
+.d-C1 .sb nav a[aria-current] { background: var(--b-raised); font-weight: 550; box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 0 0 1px var(--b-line); }
+.d-C1 .sb nav a[aria-current] svg { color: var(--b-ink); }
+.d-C1 .sb .end { margin-top: auto; }
+.d-C1 .sb .store { height: 44px; padding: 0 8px; color: var(--b-ink); }
+.d-C1 .sb .store:hover, .d-C1 .sb .me:hover { background: color-mix(in srgb, var(--b-ink) 5%, transparent); }
+.d-C1 .sb .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--b-ink); color: var(--b-page); }
+.d-C1 .sb .store small { font-size: var(--b-t-micro); color: var(--b-ink-3); }
+.d-C1 .sb .store b { font-size: 14px; font-weight: 600; }
+.d-C1 .sb .ud { color: var(--b-ink-3); }
+.d-C1 .sb .me { height: 40px; padding: 0 8px; margin-top: 10px; color: var(--b-ink); }
+.d-C1 .sb .av { width: 26px; height: 26px; border-radius: 50%; background: var(--b-raised); box-shadow: 0 0 0 1px var(--b-outline); color: var(--b-ink-2); font-size: 10px; }
+.d-C1 .sb .me b { font-weight: 500; }
+.d-C1 .sb .me small { color: var(--b-ink-3); font-size: var(--b-t-meta); }
+</style>
+<nav class="sb"><a class="store" href="#"><span class="mark">EJ</span><span class="nm"><small>EJ Hardware</small><b>Main Store</b></span><svg class="ud" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></a><nav><div class="grp"><a href="#"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg>Dashboard</a></div><div class="grp"><a href="#" aria-current="page"><svg viewBox="0 0 24 24"><path d="M5 20v-6M10 20V9M15 20v-6M20 20V5"/></svg>Sales</a><a href="#"><svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z"/><path d="M9.5 8.5h5M9.5 12h5"/></svg>Transactions</a><a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Customers</a></div><div class="grp"><a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 4.5a1 1 0 0 1 1-1h7.3a1 1 0 0 1 .7.3l8 8a1.4 1.4 0 0 1 0 2l-6.6 6.6a1.4 1.4 0 0 1-2 0l-8-8a1 1 0 0 1-.4-.7z"/><circle cx="8" cy="8" r="1.4"/></svg>Products</a><a href="#"><svg viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 3.5h6v2.5H9zM9 11h6M9 15h4"/></svg>Purchase orders</a><a href="#"><svg viewBox="0 0 24 24"><path d="M13.5 16.5V6.5h-11v10M13.5 10h4l3 3v3.5M8.3 17.5h7M2.5 16.5v1h2.3"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>Suppliers</a><a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4v4h4"/><path d="M12 8v4.5l3 2"/></svg>Stock history</a></div><div class="end"><div class="grp"><a href="#"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5a3.2 3.2 0 0 1 0 6.2M17.5 14a6 6 0 0 1 3.5 5.5"/></svg>Staff</a><a href="#"><svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19M6.5 14.5h3"/></svg>Payments</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Settings</a></div></div></nav><a class="me" href="#"><span class="av">EJ</span><span class="nm"><b>El John</b><small>Owner</small></span></a></nav>
+</template>
+<template class="design" data-id="C2" data-title="Grouped by noun" data-why="Between Dashboard and Settings every page is about one of three things, in three each: Money (Sales, Transactions, Payments), Goods (Products, Stock history, Purchase orders), People (Customers, Suppliers, Staff), so the small grey labels name what is inside instead of Main menu or Manage. The column is the page&#39;s segmented control turned on its side: the same grey track, and the current page is the white thumb with its tiny shadow." data-refs="Apple Health / macOS sidebar, Notion (tinted flush column), Mercury (flat tone shift, 1px edge), Refactoring UI on active states">
+<style>
+.d-C2 .sb { display: flex; flex-direction: column; min-height: 0; }
+.d-C2 .sb a { display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 10px; border-radius: var(--b-r-row);
+  text-decoration: none; white-space: nowrap; }
+.d-C2 .sb svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.d-C2 .sb .nm { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.d-C2 .sb .ud { width: 14px; height: 14px; margin-left: auto; }
+.d-C2 .sb .mark, .d-C2 .sb .av { flex: none; display: grid; place-items: center; font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+
+.d-C2 .sb { width: 216px; background: var(--b-track); border-right: 1px solid var(--b-outline); padding: 14px 10px 10px; }
+.d-C2 .sb nav { flex: 1; margin-top: 10px; }
+.d-C2 .sb .grp + .grp { margin-top: 16px; }
+.d-C2 .sb .lab { margin: 0 0 3px; padding: 0 10px; font-size: 12px; font-weight: 500; color: var(--b-ink-3); }
+.d-C2 .sb nav a { color: var(--b-ink); }
+.d-C2 .sb nav a svg { color: var(--b-ink-2); }
+.d-C2 .sb nav a:hover { background: color-mix(in srgb, var(--b-ink) 5%, transparent); }
+.d-C2 .sb nav a[aria-current] { background: var(--b-raised); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.d-C2 .sb nav a[aria-current] svg { color: var(--b-ink); }
+.d-C2 .sb .store { height: 44px; padding: 0 8px; color: var(--b-ink); }
+.d-C2 .sb .store:hover { background: color-mix(in srgb, var(--b-ink) 5%, transparent); }
+.d-C2 .sb .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--b-raised); color: var(--b-ink); box-shadow: 0 0 0 1px var(--b-outline); }
+.d-C2 .sb .store small { font-size: var(--b-t-micro); color: var(--b-ink-3); }
+.d-C2 .sb .store b { font-size: var(--b-t-label); font-weight: 600; }
+.d-C2 .sb .ud { color: var(--b-ink-3); }
+.d-C2 .sb .me { height: 36px; padding: 0 10px; color: var(--b-ink); }
+.d-C2 .sb .me:hover { background: color-mix(in srgb, var(--b-ink) 5%, transparent); }
+.d-C2 .sb .av { width: 22px; height: 22px; border-radius: 50%; background: var(--b-ink-3); color: var(--b-page); font-size: 9.5px; }
+.d-C2 .sb .me b { font-weight: 500; }
+.d-C2 .sb .me small { margin-left: auto; color: var(--b-ink-3); font-size: var(--b-t-meta); }
+</style>
+<nav class="sb"><a class="store" href="#"><span class="mark">EJ</span><span class="nm"><small>EJ Hardware</small><b>Main Store</b></span><svg class="ud" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></a><nav><div class="grp"><a href="#"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg>Dashboard</a></div><div class="grp"><p class="lab">Money</p><a href="#" aria-current="page"><svg viewBox="0 0 24 24"><path d="M5 20v-6M10 20V9M15 20v-6M20 20V5"/></svg>Sales</a><a href="#"><svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z"/><path d="M9.5 8.5h5M9.5 12h5"/></svg>Transactions</a><a href="#"><svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19M6.5 14.5h3"/></svg>Payments</a></div><div class="grp"><p class="lab">Goods</p><a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 4.5a1 1 0 0 1 1-1h7.3a1 1 0 0 1 .7.3l8 8a1.4 1.4 0 0 1 0 2l-6.6 6.6a1.4 1.4 0 0 1-2 0l-8-8a1 1 0 0 1-.4-.7z"/><circle cx="8" cy="8" r="1.4"/></svg>Products</a><a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4v4h4"/><path d="M12 8v4.5l3 2"/></svg>Stock history</a><a href="#"><svg viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 3.5h6v2.5H9zM9 11h6M9 15h4"/></svg>Purchase orders</a></div><div class="grp"><p class="lab">People</p><a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Customers</a><a href="#"><svg viewBox="0 0 24 24"><path d="M13.5 16.5V6.5h-11v10M13.5 10h4l3 3v3.5M8.3 17.5h7M2.5 16.5v1h2.3"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>Suppliers</a><a href="#"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5a3.2 3.2 0 0 1 0 6.2M17.5 14a6 6 0 0 1 3.5 5.5"/></svg>Staff</a></div><div class="grp"><a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Settings</a></div></nav><a class="me" href="#"><span class="av">EJ</span><b>El John</b><small>Owner</small></a></nav>
+</template>
+<template class="design" data-id="C3" data-title="Ink rail" data-why="Pages split by what is on each row: first the ones where every row has a date (Sales, Transactions, Purchase orders, Stock history), then the lists of names you keep (Products, Customers, Suppliers, Staff), then the two set-once pages (Payments, Settings) at the bottom; space between the blocks, no labels needed. The column is the page&#39;s own ink colour, the darkest thing on the screen, so it holds its edge on a wide monitor the way a white one could not, and it matches the dark POS the staff use." data-refs="Raycast, Linear dark, Vercel 2026 (reordered by most-common workflow), NN/g on making vertical nav salient with a background colour">
+<style>
+.d-C3 .sb { display: flex; flex-direction: column; min-height: 0; }
+.d-C3 .sb a { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: var(--b-r-row);
+  text-decoration: none; white-space: nowrap; }
+.d-C3 .sb svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.d-C3 .sb .nm { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.d-C3 .sb .ud { width: 14px; height: 14px; margin-left: auto; }
+.d-C3 .sb .mark, .d-C3 .sb .av { flex: none; display: grid; place-items: center; font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+
+.d-C3 { --c3-on: rgba(255,255,255,.94); --c3-dim: rgba(255,255,255,.62); }
+.d-C3 .sb { width: 220px; background: var(--b-ink); padding: 12px 10px 10px; }
+.d-C3 .sb nav { flex: 1; display: flex; flex-direction: column; margin-top: 14px; }
+.d-C3 .sb .grp { display: flex; flex-direction: column; gap: 1px; }
+.d-C3 .sb .grp + .grp { margin-top: 14px; }
+.d-C3 .sb nav a { color: var(--c3-dim); font-weight: 450; }
+.d-C3 .sb nav a:hover { color: var(--c3-on); background: rgba(255,255,255,.06); }
+.d-C3 .sb nav a[aria-current] { color: var(--c3-on); background: rgba(255,255,255,.12); font-weight: 550; }
+.d-C3 .sb .end { margin-top: auto; }
+.d-C3 .sb .store { height: 46px; padding: 0 8px; color: var(--c3-on); }
+.d-C3 .sb .store:hover, .d-C3 .sb .me:hover { background: rgba(255,255,255,.06); }
+.d-C3 .sb .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--b-raised); color: var(--b-ink); }
+.d-C3 .sb .store small { font-size: var(--b-t-micro); color: var(--c3-dim); }
+.d-C3 .sb .store b { font-size: 14px; font-weight: 600; }
+.d-C3 .sb .ud { color: var(--c3-dim); }
+.d-C3 .sb .me { height: 44px; padding: 0 8px; margin-top: 10px; color: var(--c3-on); }
+.d-C3 .sb .av { width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.14); color: var(--c3-on); font-size: 10px; }
+.d-C3 .sb .me b { font-weight: 500; }
+.d-C3 .sb .me small { color: var(--c3-dim); font-size: var(--b-t-meta); }
+</style>
+<nav class="sb"><a class="store" href="#"><span class="mark">EJ</span><span class="nm"><small>EJ Hardware</small><b>Main Store</b></span><svg class="ud" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></a><nav><div class="grp"><a href="#"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg>Dashboard</a></div><div class="grp"><a href="#" aria-current="page"><svg viewBox="0 0 24 24"><path d="M5 20v-6M10 20V9M15 20v-6M20 20V5"/></svg>Sales</a><a href="#"><svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5z"/><path d="M9.5 8.5h5M9.5 12h5"/></svg>Transactions</a><a href="#"><svg viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 3.5h6v2.5H9zM9 11h6M9 15h4"/></svg>Purchase orders</a><a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4v4h4"/><path d="M12 8v4.5l3 2"/></svg>Stock history</a></div><div class="grp"><a href="#"><svg viewBox="0 0 24 24"><path d="M3.5 4.5a1 1 0 0 1 1-1h7.3a1 1 0 0 1 .7.3l8 8a1.4 1.4 0 0 1 0 2l-6.6 6.6a1.4 1.4 0 0 1-2 0l-8-8a1 1 0 0 1-.4-.7z"/><circle cx="8" cy="8" r="1.4"/></svg>Products</a><a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Customers</a><a href="#"><svg viewBox="0 0 24 24"><path d="M13.5 16.5V6.5h-11v10M13.5 10h4l3 3v3.5M8.3 17.5h7M2.5 16.5v1h2.3"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>Suppliers</a><a href="#"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M15.5 5a3.2 3.2 0 0 1 0 6.2M17.5 14a6 6 0 0 1 3.5 5.5"/></svg>Staff</a></div><div class="end"><div class="grp"><a href="#"><svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19M6.5 14.5h3"/></svg>Payments</a><a href="#"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Settings</a></div></div></nav><a class="me" href="#"><span class="av">EJ</span><span class="nm"><b>El John</b><small>Owner</small></span></a></nav>
+</template>
+
+
+</head>
+<body>
+<div class="intro">
+  <h1>Sidebar designs</h1>
+  <p>Nine sidebars from three rounds of research, each next to the same copy of the Sales page at 1440px. The note under each title says why the order and colours are what they are.</p>
+</div>
+<nav class="jump"><div id="jump"></div></nav>
+<div id="designs"></div>
+
+<template id="mock">
+<div class="mock"><main>
+  <div class="bar"><h1>Sales</h1><span class="seg"><b class="on">Month</b><b>Year</b></span><span class="ib">‹</span><span class="mo">September 2026</span><span class="ib" style="opacity:.5">›</span></div>
+  <p class="note">Reading <b>1,731</b> orders from the back office.</p>
+  <div class="strip">
+    <div class="stat"><div class="lbl">Revenue</div><div class="line"><span class="val">₱262.3k</span><span class="chip down">−8.2%</span></div><div class="sub">₱11,406 daily avg</div></div>
+    <div class="stat"><div class="lbl">Gross profit</div><div class="line"><span class="val">₱40k</span><span class="chip down">−12.9%</span></div><div class="sub">15.3% margin</div></div>
+    <div class="stat"><div class="lbl">Receipts</div><div class="line"><span class="val">229</span><span class="chip up">+3.6%</span></div><div class="sub">10 daily avg</div></div>
+    <div class="stat"><div class="lbl">Best day</div><div class="line"><span class="val up">₱29.3k</span></div><div class="sub">Wed, Sep 16</div></div>
+    <div class="stat"><div class="lbl">Slowest day</div><div class="line"><span class="val">₱1,829</span></div><div class="sub">Sun, Sep 6</div></div>
+    <div class="stat"><div class="lbl">Target</div><div class="line"><span class="val">₱262.3k</span><b class="pct">52%</b></div><div class="sub">of ₱500k</div></div>
+  </div>
+  <div class="cal"></div>
+  <div class="legend">Below the ₱16,667 daily target &nbsp; Above</div>
+  <div class="hls">
+    <div class="hl"><span class="k">Best day of the week</span><b>Wednesday</b><small>₱20.3k avg · 6.6× Sundays</small></div>
+    <div class="hl"><span class="k">Busiest hour</span><b>2 – 3 PM</b><small>13% of the day’s sales</small></div>
+    <div class="hl"><span class="k">On account</span><b>₱36.4k</b><small>17 receipts, not paid yet</small></div>
+    <div class="hl"><span class="k">Returns</span><b>₱29</b><small>1 return</small></div>
+  </div>
+</main></div>
+</template>
+
+<script>
+// September 2026 from the owner's screenshot: [day, revenue, receipts]
+const DAYS = [[1,4241,5],[2,18938,12],[3,11645,9],[4,5112,10],[5,7906,9],[6,1829,3],[7,5569,7],[8,6764,8],[9,8589,13],[10,11767,13],[11,15628,12],[12,9042,9],[13,4461,6],
+  [14,13539,8],[15,28657,20],[16,29306,13],[17,13897,14],[18,5202,10],[19,9701,10],[20,2917,3],[21,15719,14],[22,7452,9],[23,24451,12]];
+const WEEKS = [['Sep 1 – 6', 49671, '6 days · 48 receipts'], ['Sep 7 – 13', 61820, '7 days · 68 receipts'], ['Sep 14 – 20', 103220, '7 days · 78 receipts'], ['Sep 21 – 24', 47622, '3 days · 35 receipts']];
+const bar = 16667, hi = 29306, peso = v => '₱' + v.toLocaleString('en-PH');
+function calendar() {
+  let h = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun','Week'].map(d => `<div class="dow">${d}</div>`).join('') + '<div class="cell blank"></div>';
+  for (let d = 1, col = 1, w = 0; d <= 30; d++) {
+    const r = DAYS.find(x => x[0] === d);
+    if (r) {
+      const heat = r[1] >= bar ? ` heat" style="--heat:color-mix(in srgb, var(--b-heat) ${Math.round(12 + 43 * (r[1] - bar) / (hi - bar))}%, white)` : '';
+      h += `<div class="cell${heat}"><span class="d">${d}</span><span class="v">${peso(r[1])}</span><span class="m">${r[2]} receipts</span></div>`;
+    } else h += `<div class="cell${d === 24 ? ' today' : ' fut'}"><span class="d">${d}</span>${d === 24 ? '<span class="m">No sales</span>' : ''}</div>`;
+    if (++col === 7 || d === 30) { if (WEEKS[w]) h += `<div class="cell wk"><span class="d">${WEEKS[w][0]}</span><span class="v">${peso(WEEKS[w][1])}</span><span class="m">${WEEKS[w][2]}</span></div>`; w++; col = 0; }
+  }
+  return h;
+}
+const mock = document.getElementById('mock').innerHTML.replace('<div class="cal"></div>', `<div class="cal">${calendar()}</div>`);
+for (const t of document.querySelectorAll('template.design')) {
+  const id = t.dataset.id, sec = document.createElement('section');
+  sec.className = 'design'; sec.id = id;
+  sec.innerHTML = `<h2><span>${id}</span>${t.dataset.title || ''}</h2><p class="why">${t.dataset.why || ''}</p>`
+    + (t.dataset.refs ? `<p class="refs">After: ${t.dataset.refs}</p>` : '')
+    + `<div class="frame d-${id}">${t.innerHTML}${mock}</div>`;
+  document.getElementById('designs').append(sec);
+  document.getElementById('jump').insertAdjacentHTML('beforeend', `<a href="#${id}">${id}</a>`);
+}
+</script>
+</body>
+</html>

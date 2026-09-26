@@ -81,4 +81,7 @@ if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
     print(f'POS    http://localhost:{port}/')
     print(f'Admin  http://localhost:{port}/admin')
+    # The back office loads ~40 files at once; the default backlog of 5 refuses the rest on
+    # Windows, which a tunnel (cloudflared) turns into 502s.
+    ThreadingHTTPServer.request_queue_size = 128
     ThreadingHTTPServer(('', port), partial(SPAHandler, directory=ROOT)).serve_forever()

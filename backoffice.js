@@ -472,6 +472,7 @@ function orderPaymentLabel(order) {
 const VIEWS = {
   dashboard: { label: 'Dashboard', render: () => renderDashboard() },
   sales:     { label: 'Sales',     render: () => renderSales() },
+  transactions: { label: 'Transactions', render: () => renderTransactions() },
   products:  { label: 'Products',  render: () => renderProducts() },
   inventory: { label: 'Stock history', render: () => renderInventory() },
   customers: { label: 'Customers', render: () => renderCustomers() },
@@ -515,8 +516,11 @@ function paint() {
   const deep = !!$(`.side-link[data-view="${view}"][data-sub~="${cur}"]`);
   // Stock history sits in Products' tree, so Products stays lit (tree open) on it.
   const lit = view === 'inventory' ? 'products' : view;
+  const was = $('.side-link.active');
   $$('.side-link').forEach(b => b.classList.toggle('active',
     b.dataset.view === lit && (b.dataset.sub ? b.dataset.sub.split(' ').includes(cur) : !deep)));
+  // Back/forward and in-page links move pages without a sidebar click, so they shut stray trees too.
+  if ($('.side-link.active') !== was) shutTrees();
   $$('.view').forEach(v => {
     const on = v.dataset.view === view;
     v.classList.toggle('active', on);
@@ -530,12 +534,12 @@ function paint() {
   $$('.q-input').forEach(el => { if (el.value !== q) el.value = q; });
   $$('.range-select').forEach(sel => { sel.value = state.range; });
   renderSwitchers();
-  if (sub) {
-    $$(`.side-sub[data-view="${view}"] .side-sublink`).forEach(b => {
-      b.classList.toggle('active', b.dataset.sub === cur);
-      if (b.dataset.sub === cur) b.closest('.side-group')?.querySelector('.side-grouphead').setAttribute('aria-expanded', 'true');
-    });
-  }
+  // Every tree's leaves, not just this view's, so a leaf left behind doesn't stay lit in a peeked tree.
+  $$('.side-sublink').forEach(b => {
+    const on = !!sub && b.closest('.side-sub').dataset.view === view && b.dataset.sub === cur;
+    b.classList.toggle('active', on);
+    if (on) b.closest('.side-group')?.querySelector('.side-grouphead').setAttribute('aria-expanded', 'true');
+  });
   renderCurrentView();
 }
 
@@ -566,6 +570,15 @@ function renderSwitchers() {
 // Accordion tree: a page's sub-pages open under it while it is active, and clicking the
 // active page again folds them. A page may group its sub-pages ({ groups: [[label, keys]] });
 // each group is its own fold and opening one closes its siblings.
+// One tree open at a time: opening `keep`'s tree (or navigating, no `keep`) shuts every other,
+// the active page's included, and they slide shut on the same SIDEBAR FOLDS transition.
+function shutTrees(keep) {
+  $$('.side-link.has-sub').forEach(x => {
+    if (x === keep) return;
+    x.classList.remove('open');
+    x.classList.toggle('folded', !!keep && x.classList.contains('active'));
+  });
+}
 const CHEVRON_SVG = '<svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
 // Sub-pages that have their own sidebar link (data-sub) are left out of the tree. A link may
 // own several (data-sub="a b c"): it opens the first and carries the rest as its tree,
@@ -621,6 +634,7 @@ function buildSubnav() {
     }
     const b = e.target.closest('.side-sublink');
     if (!b) return;
+    shutTrees();
     goSub(b.closest('.side-sub').dataset.view, b.dataset.sub);
     if (!window.matchMedia('(min-width: 1024px)').matches) $('#app').classList.add('sidebar-collapsed');
   });
@@ -982,43 +996,52 @@ function dashTx(W) {
 
 // The rail: targets (always today and this month, whatever the range says), low stock, payment methods.
 const calmRow = (nm, amt, cmp = null, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span><span class="amt">${amt}</span>${cmp !== null ? `<span class="cmp ${cls}">${cmp}</span>` : ''}</div>`;
-function dashRail(W) {
+// The rail's cards. The Widgets menu shows and hides them, like Sales › Transactions; which are off is this
+// device's choice (HWPOS_STORE.ui 'dashHide').
+const DASH_W = { daily: 'Daily sales target', monthly: 'Monthly sales target', low: 'Low stock', pay: 'Payment methods' };
+const dashHidden = () => String(HWPOS_STORE.ui.get('dashHide', '') || '').split(',').filter(Boolean);
+
+function dashRail(W, on) {
   const t = dashTargets(W.now);
   const head = (lbl, val, side = '', link = '') => `<div class="top"><span>${lbl}</span>${link}</div><div class="line"><span class="val">${val}</span>${side}</div>`;
   const pctSide = pct => `<span class="pct ${pct >= 100 ? 'up' : ''}">${pct}%</span>`;
   const empty = lbl => head(lbl, '—') + `<button class="set">Set target</button><div class="rows foot">${calmRow('No monthly target yet', '')}</div>`;
-  const out = [];
-  if (!t.daily) out.push(empty('Daily sales target'));
-  else {
+  const out = {};
+  out.daily = () => {
+    if (!t.daily) return empty('Daily sales target');
     const pct = Math.round(t.done / t.daily * 100), left = t.daily - t.done;
-    out.push(head('Daily sales target', `${pesoShort(t.done)}<span class="of">/${pesoShort(t.daily)}</span>`, pctSide(pct))
-      + `<div class="rows foot">${left > 0 ? calmRow('Left to sell today', pesoShort(left)) : calmRow('Target hit, over by', pesoShort(-left))}</div>`);
-  }
-  if (!t.month) out.push(empty('Monthly sales target'));
-  else {
+    return head('Daily sales target', `${pesoShort(t.done)}<span class="of">/${pesoShort(t.daily)}</span>`, pctSide(pct))
+      + `<div class="rows foot">${left > 0 ? calmRow('Left to sell today', pesoShort(left)) : calmRow('Target hit, over by', pesoShort(-left))}</div>`;
+  };
+  out.monthly = () => {
+    if (!t.month) return empty('Monthly sales target');
     const sold = t.before + t.done, pct = Math.round(sold / t.month * 100), left = t.month - sold;
-    out.push(head('Monthly sales target', `${pesoK(sold)}<span class="of">/${pesoK(t.month)}</span>`, pctSide(pct))
-      + `<div class="rows foot">${left > 0 ? calmRow('Left to sell this month', pesoK(left)) : calmRow('Target hit, over by', pesoK(-left))}</div>`);
-  }
+    return head('Monthly sales target', `${pesoK(sold)}<span class="of">/${pesoK(t.month)}</span>`, pctSide(pct))
+      + `<div class="rows foot">${left > 0 ? calmRow('Left to sell this month', pesoK(left)) : calmRow('Target hit, over by', pesoK(-left))}</div>`;
+  };
 
   // Low stock: the five that run out first by the last 30 days' selling.
-  const sold = new Map();
-  for (const o of W.between(W.today - 30 * 864e5, W.now)) if (saleSign(o) > 0) for (const i of o.items || []) { const p = productFor(i); if (p) sold.set(p.id, (sold.get(p.id) || 0) + (+i.qty || 0)); }
-  const daysLeft = p => { const r = (sold.get(p.id) || 0) / 30; return p.stock <= 0 ? 0 : r ? p.stock / r : Infinity; };
-  const low = state.products.filter(isLow).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock);
-  out.push(head('Low stock', low.length ? String(low.length) : `0<span class="of"> all stocked</span>`, '',
-      low.length ? `<a href="${Router.href('products', '', { view: 'stock', level: 'out,low' })}">View all ›</a>` : '')
-    + (low.length ? `<div class="rows">${low.slice(0, 5).map(p => `<div class="row"><span class="nm">${escapeHtml(p.name)}</span>`
-      + `<span class="pill ${p.stock <= 0 ? 'down' : 'warn'}" style="margin:0">${p.stock <= 0 ? 'Out' : 'Low'}</span></div>`).join('')}</div>` : ''));
+  out.low = () => {
+    const sold = new Map();
+    for (const o of W.between(W.today - 30 * 864e5, W.now)) if (saleSign(o) > 0) for (const i of o.items || []) { const p = productFor(i); if (p) sold.set(p.id, (sold.get(p.id) || 0) + (+i.qty || 0)); }
+    const daysLeft = p => { const r = (sold.get(p.id) || 0) / 30; return p.stock <= 0 ? 0 : r ? p.stock / r : Infinity; };
+    const low = state.products.filter(isLow).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock);
+    return head('Low stock', low.length ? String(low.length) : `0<span class="of"> all stocked</span>`, '',
+        low.length ? `<a href="${Router.href('products', '', { view: 'stock', level: 'out,low' })}">View all ›</a>` : '')
+      + (low.length ? `<div class="rows">${low.slice(0, 5).map(p => `<div class="row"><span class="nm">${escapeHtml(p.name)}</span>`
+        + `<span class="pill ${p.stock <= 0 ? 'down' : 'warn'}" style="margin:0">${p.stock <= 0 ? 'Out' : 'Low'}</span></div>`).join('')}</div>` : '');
+  };
 
   // Payment methods, for the range: the only rail card that follows it.
-  const pays = new Map();
-  for (const o of W.rows) { const s = saleSign(o); if (s) pays.set(orderPaymentLabel(o), (pays.get(orderPaymentLabel(o)) || 0) + o.total * s); }
-  const payRows = [...pays].filter(p => p[1]).sort((x, y) => y[1] - x[1]);
-  out.push(`<div class="top band"><span>Payment methods</span></div>` + (payRows.length
-    ? `<div class="rows">${payRows.map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v))).join('')}${calmRow('Total', pesoShort(payRows.reduce((s, p) => s + p[1], 0)), null, 'total')}</div>`
-    : '<p class="note" style="margin:10px 0 0">No sales in this range.</p>'));
-  return out.map(h => `<section class="card w">${h}</section>`).join('');
+  out.pay = () => {
+    const pays = new Map();
+    for (const o of W.rows) { const s = saleSign(o); if (s) pays.set(orderPaymentLabel(o), (pays.get(orderPaymentLabel(o)) || 0) + o.total * s); }
+    const payRows = [...pays].filter(p => p[1]).sort((x, y) => y[1] - x[1]);
+    return `<div class="top band"><span>Payment methods</span></div>` + (payRows.length
+      ? `<div class="rows">${payRows.map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v))).join('')}${calmRow('Total', pesoShort(payRows.reduce((s, p) => s + p[1], 0)), null, 'total')}</div>`
+      : '<p class="note" style="margin:10px 0 0">No sales in this range.</p>');
+  };
+  return on.map(id => `<section class="card w">${out[id]()}</section>`).join('');
 }
 
 // The pop-up: one bar (hour or day), or one receipt. ‹ › step through the live bars or the range's receipts.
@@ -1077,8 +1100,11 @@ function renderDashboard() {
   $('#dashStrip').innerHTML = dashStrip(W, chart);
   $('#dashPlot').innerHTML = dashPlot(W, chart);
   $('#dashTx').innerHTML = dashTx(W);
-  $('#dashTxAll').href = Router.href('sales', '', { by: 'tx' });
-  $('#dashRail').innerHTML = dashRail(W);
+  $('#dashTxAll').href = Router.href('transactions', '');
+  const on = Object.keys(DASH_W).filter(id => !dashHidden().includes(id));
+  $('#dashW').innerHTML = `<div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr>${Object.entries(DASH_W).map(([id, n]) => `<button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}">${n}</button>`).join('')}`;
+  $('#dashGrid').classList.toggle('solo', !on.length);
+  $('#dashRail').innerHTML = dashRail(W, on);
 
   const dlg = $('#dashPop');
   const b = P.at ? W.buckets.find(x => x.key === P.at && !x.future) : null;
@@ -1114,6 +1140,21 @@ function initDashboard() {
   $('#dashPlot').addEventListener('click', (e) => { const c = e.target.closest('[data-at]'); if (c) open({ at: c.dataset.at }); });
   $('#dashTx').addEventListener('click', (e) => { const r = e.target.closest('[data-receipt]'); if (r) open({ receipt: r.dataset.receipt }); });
   $('#dashRail').addEventListener('click', (e) => { if (e.target.closest('.set')) openTargetDialog(); });
+  // Widgets: a menu tick — the main column glides to its new width (slideRender).
+  $('#dashW').addEventListener('click', (e) => {
+    const w = e.target.closest('[data-w], [data-w-all]');
+    if (!w) return;
+    const id = w.dataset.w, off = dashHidden();
+    HWPOS_STORE.ui.set('dashHide', w.dataset.wAll ? (w.dataset.wAll === 'on' ? '' : Object.keys(DASH_W).join(','))
+      : (off.includes(id) ? off.filter(x => x !== id) : [...off, id]).join(','));
+    slideRender(renderDashboard);
+  });
+  $('#dashW').addEventListener('toggle', (e) => {   // hang it under its button, right edges flush
+    if (e.newState !== 'open') return;
+    const m = e.currentTarget, r = $('#dashWBtn').getBoundingClientRect();
+    m.style.top = r.bottom + 6 + 'px';
+    m.style.left = Math.max(16, r.right - m.offsetWidth) + 'px';
+  });
   // Esc, the backdrop (the global dialog handler) and ✕ all just close it; closing clears the URL.
   dlg.addEventListener('close', () => { const P = Router.route().params; if (P.at || P.receipt) open({}); });
   dlg.addEventListener('click', (e) => {
@@ -1294,7 +1335,7 @@ const cyclePill = (r) => {
 };
 
 // The list's figures: a 288px rail beside the table, Sales › Transactions' blocks (bo-calm.css, .calm-cust).
-// × removes one, the Widgets menu brings it back; which are off is this device's choice (HWPOS_STORE.ui 'custHide').
+// The Widgets menu shows and hides them; which are off is this device's choice (HWPOS_STORE.ui 'custHide').
 const CUST_W = { owed: 'Outstanding credit', pool: 'Credit limit pool', use: 'Utilization', near: 'Near limit' };
 const custHidden = () => String(HWPOS_STORE.ui.get('custHide', '') || '').split(',').filter(Boolean);
 
@@ -1322,7 +1363,7 @@ function renderCustomerList() {
   $('#custW').innerHTML = `<div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr>${Object.entries(CUST_W).map(([id, n]) => `<button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}">${n}</button>`).join('')}`;
   $('#custDash').classList.toggle('solo', !on.length);
   $('#custRail').innerHTML = on.map(id => `<section class="card w one"><div class="top band one" title="${escapeHtml(w[id][1])}"><span>${CUST_W[id]}</span>
-    <span class="acts"><span class="cnt${w[id][2] || ''}">${escapeHtml(w[id][1])}</span><span class="nv">${w[id][0]}</span></span></div></section>`).join('');   // no ×, like Net sales: it squeezes the note out at 288px; the Widgets menu removes them
+    <span class="acts"><span class="cnt${w[id][2] || ''}">${escapeHtml(w[id][1])}</span><span class="nv">${w[id][0]}</span></span></div></section>`).join('');
 
   const pg = paginate(list, Router.route().params.page);
   const cycles = customerCycleMap();
@@ -1694,9 +1735,21 @@ function wireEvents() {
   // chevron on any other page peeks its tree open (.open) without leaving this one.
   $$('.side-link[data-view]').forEach(b => {
     b.addEventListener('click', (e) => {
-      if (b.classList.contains('has-sub') && b.classList.contains('active')) { b.classList.remove('open'); return b.classList.toggle('folded'); }
-      if (e.target.closest('.side-chev')) return b.classList.toggle('open');
-      $$('.side-link.folded').forEach(x => x.classList.remove('folded'));
+      // On the icon rail there is no tree to fold, so the link just navigates.
+      const rail = $('#app').classList.contains('side-rail') && window.matchMedia('(min-width: 1024px)').matches;
+      // Only on the page itself: from one of its leaves (By item, Stock history…) the name goes back to it.
+      const onLeaf = !!b.nextElementSibling?.querySelector('.side-sublink.active');
+      // The chevron always folds its own tree, leaf or not.
+      if (b.classList.contains('has-sub') && b.classList.contains('active') && !rail && (!onLeaf || e.target.closest('.side-chev'))) {
+        b.classList.remove('open');
+        if (b.classList.toggle('folded')) return;
+        return shutTrees(b);
+      }
+      if (e.target.closest('.side-chev')) {
+        if (b.classList.toggle('open')) shutTrees(b);
+        return;
+      }
+      shutTrees();
       if (b.dataset.sub) goSub(b.dataset.view, b.dataset.sub.split(' ')[0]); else setView(b.dataset.view);
     });
   });
@@ -1735,11 +1788,11 @@ function wireEvents() {
 
   // ----- Customers: add, edit, statement -----
   $('#custAddBtn')?.addEventListener('click', () => openCustomerDialog(''));
-  // Widgets: a menu tick or a block's × — the table glides to its new width (slideRender).
+  // Widgets: a menu tick — the table glides to its new width (slideRender).
   document.addEventListener('click', (e) => {
-    const w = e.target.closest('#custW [data-w], #custW [data-w-all], #custRail [data-hide]');
+    const w = e.target.closest('#custW [data-w], #custW [data-w-all]');
     if (!w) return;
-    const id = w.dataset.w || w.dataset.hide, off = custHidden();
+    const id = w.dataset.w, off = custHidden();
     HWPOS_STORE.ui.set('custHide', w.dataset.wAll ? (w.dataset.wAll === 'on' ? '' : Object.keys(CUST_W).join(','))
       : (off.includes(id) ? off.filter(x => x !== id) : [...off, id]).join(','));
     slideRender(renderCustomerList);

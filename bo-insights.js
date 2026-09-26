@@ -638,7 +638,7 @@
   // Days & staff removed (owner, 2026-09-24): no weather log, no attendance join. Customer
   // cycles moved onto Customers the same day; Deliveries removed (Transactions has Fulfilment);
   // Basket affinity is Sales -> Bought together.
-  const MOVED = { staff: ['staff', {}], days: ['staff', {}], cycles: ['customers', {}], basket: ['sales', { by: 'basket' }], deliveries: ['sales', { by: 'tx' }], reorder: ['products', { view: 'stock', level: 'out,low' }], leads: ['suppliers', {}],
+  const MOVED = { staff: ['staff', {}], days: ['staff', {}], cycles: ['customers', {}], basket: ['sales', { by: 'basket' }], deliveries: ['transactions', {}], reorder: ['products', { view: 'stock', level: 'out,low' }], leads: ['suppliers', {}],
     prices: ['inventory', { tab: 'prices' }] };
   const DEFAULT_TAB = 'cash';
   (globalThis.HWPOS_SUBNAV = globalThis.HWPOS_SUBNAV || {}).insights = { param: 'tab', def: DEFAULT_TAB, items: Object.entries(TABS), groups: [

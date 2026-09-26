@@ -234,7 +234,7 @@
     if (act === 'add') return Router.go(VIEW, 'new');
     if (act === 'tx') {
       const u = loadStaff().find((x) => x.id === state.detailId);
-      return u && Router.go('sales', '', { by: 'tx', range: '30d', staff: u.name });
+      return u && Router.go('transactions', '', { range: '30d', staff: u.name });
     }
     if (act === 'exportCsv') {
       const sales = salesByName(state.orders);

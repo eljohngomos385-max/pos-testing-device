@@ -7,9 +7,8 @@
   const root = () => document.querySelector(`.view[data-view="${VIEW}"]`);
 
   // Patterns, By employee and By payment are cards on the Summary now (owner, 2026-09-22).
-  // Transactions is its own sidebar link (data-sub="tx"), so it stays a tab here but
-  // never shows in Sales' own tree.
-  const TABS = [['summary', 'Summary'], ['item', 'By item'], ['category', 'By category'], ['tx', 'Transactions'], ['basket', 'Bought together']];
+  // Transactions is its own page (bo-transactions.js); renderSales forwards old ?by=tx links.
+  const TABS = [['summary', 'Summary'], ['item', 'By item'], ['category', 'By category'], ['basket', 'Bought together']];
   (globalThis.HWPOS_SUBNAV = globalThis.HWPOS_SUBNAV || {}).sales = { param: 'by', def: 'summary', items: TABS };
 
   // How each status moves money. This is the single easiest thing to get wrong here:
@@ -116,15 +115,9 @@
     return { totals: t, items: finish(items), cats: finish(cats), staff: finish(staff), pays: finish(pays), fuls: finish(fuls) };
   }
 
-  // A column's `csv` is already the row reduced to one plain scalar -- the customer's name,
-  // the ISO timestamp, the SIGNED total. Sorting on that means the table sorts by exactly
-  // what it prints, and there is no second list of accessors to drift out of step. Without
-  // it, sorting the ledger by Customer compares two objects and quietly does nothing.
-  const sortRows = (rows, key, dir, cols) => {
-    const col = cols && cols.find(c => c.key === key);
-    const val = col ? col.csv : (r) => r[key];
+  const sortRows = (rows, key, dir) => {
     return rows.slice().sort((a, b) => {
-      const x = val(a), y = val(b);
+      const x = a[key], y = b[key];
       const c = typeof x === 'string' ? x.localeCompare(String(y)) : (x || 0) - (y || 0);
       return dir === 'asc' ? c : -c;
     });
@@ -154,17 +147,6 @@
     category: [{ ...cName, label: 'Category' }, cQty, cRev, cCost, cProfit, cMargin, shareBar],
   };
 
-  const TX_COLUMNS = [
-    { key: 'number', label: 'Receipt', cell: o => `#${escapeHtml(o.number)}`, csv: o => '#' + o.number },
-    { key: 'ts', label: 'Time', cell: o => `<span class="tx-time">${escapeHtml(txTime(o.ts))}</span>`, csv: o => new Date(o.ts).toISOString() },
-    { key: 'customer', label: 'Customer', cell: o => escapeHtml((o.customer && o.customer.name) || '—'), csv: o => (o.customer && o.customer.name) || '' },
-    { key: 'cashier', label: 'Staff', cell: o => `<span class="tx-staff">${escapeHtml(o.cashier || '—')}</span>`, csv: o => o.cashier || '' },
-    { key: 'fulfilment', label: 'Fulfilment', cell: o => `<span class="tx-fulfil">${escapeHtml(orderFulfilLabel(o))}</span>`, csv: o => orderFulfilLabel(o) },
-    { key: 'paymentKind', label: 'Payment', cell: o => `<span class="pay-pill ${escapeHtml(o.paymentKind || 'cash')}">${escapeHtml(orderPaymentLabel(o))}</span>`, csv: o => orderPaymentLabel(o) },
-    { key: 'status', label: 'Status', cell: o => { const s = STATUS_TONE[o.status] || STATUS_TONE.completed; return `<span class="status-pill ${s[0]}">${s[1]}</span>`; }, csv: o => o.status },
-    { key: 'total', label: 'Total', num: 1, cell: o => `<strong>${peso(txTotal(o))}</strong>`, csv: o => money(txTotal(o)) },
-  ];
-
   function table(cols, rows, sort, empty, sortable = true) {
     const head = cols.map(c =>
       `<th class="${c.num ? 'num' : ''}"${sortable ? ` data-act="sort" data-key="${c.key}"` : ''}>${escapeHtml(c.label)}${sortable && sort.key === c.key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</th>`).join('');
@@ -189,22 +171,20 @@
       staff: (p.staff || '').split(',').filter(Boolean),
       ful: (p.ful || '').split(',').filter(Boolean),
       // Revenue desc is the answer to "what makes us money"; everything else is a click away.
-      // The ledger is a ledger, so it opens newest-first instead.
-      sort: { key: p.sort || (tab === 'tx' ? 'ts' : 'revenue'), dir: p.dir === 'asc' ? 'asc' : 'desc' },
-      page: Math.max(1, parseInt(p.page, 10) || 1),
+      sort: { key: p.sort || 'revenue', dir: p.dir === 'asc' ? 'asc' : 'desc' },
     };
   }
 
-  // A row's value for each filter, and its test. skip: the block that ignores its own filter.
+  // A row's value for each filter, and its test.
   const TX_KEY = { pay: o => o.paymentKind || o.paymentMethod || 'cash', staff: o => o.cashier, ful: o => o.fulfilment || 'pickup' };
-  const txPass = (o, v, skip) => Object.keys(TX_KEY).every(f => f === skip || !v[f].length || v[f].includes(TX_KEY[f](o)));
+  const txPass = (o, v) => Object.keys(TX_KEY).every(f => !v[f].length || v[f].includes(TX_KEY[f](o)));
 
   // Window rows plus the filter option lists, in one walk. Options come from the unfiltered
   // window so picking a staff member cannot empty the payment dropdown.
   function windowRows(v) {
     const win = rangeWindows();
     const payOpts = new Map(), staffOpts = new Set(), fulOpts = new Map();
-    const rows = [], all = [];
+    const rows = [];
     for (const o of state.orders) {
       if (o.ts < win.start || o.ts >= win.end) continue;
       const kind = o.paymentKind || o.paymentMethod || 'cash';
@@ -212,11 +192,10 @@
       if (o.cashier) staffOpts.add(o.cashier);
       const ful = o.fulfilment || 'pickup';
       if (!fulOpts.has(ful)) fulOpts.set(ful, orderFulfilLabel(o));
-      all.push(o);
       if (txPass(o, v)) rows.push(o);
     }
     rows.sort((a, b) => b.ts - a.ts);
-    return { rows, all, win, payOpts, fulOpts, staffOpts: Array.from(staffOpts).sort() };
+    return { rows, win, payOpts, fulOpts, staffOpts: Array.from(staffOpts).sort() };
   }
 
   // ---------- Render ----------
@@ -282,25 +261,35 @@
     return {
       view, month,
       top: ['cat', 'day', 'hour'].includes(p.top) ? p.top : 'item',
+      chart: ['gp', 'n', 'mg'].includes(p.chart) ? p.chart : 'rev',
       sel: view === 'year' ? null : p.day ? { kind: 'day', at: fromIso(p.day) } : p.week ? { kind: 'week', at: fromIso(p.week) } : null,
     };
   }
 
-  // The strip: days = days that had sales, the same average an untargeted calendar greens against.
-  function calStrip(cur, prev, prevTitle, best, worst, unit, days, target) {
-    const stat = (lbl, val, side, sub, cls = '', tip = '') =>
-      `<div class="stat"${tip ? ` title="${escapeHtml(tip)}"` : ''}><div class="lbl">${lbl}</div><div class="line"><span class="val ${cls}">${val}</span>${side || ''}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
-    const margin = cur.rev ? (cur.gp / cur.rev * 100).toFixed(1) + '% margin' : '';
+  // The strip is the card's folder tabs (sales-calendar-tabs-lab.html): the picked tab is what every calendar cell shows.
+  const mgOf = (x) => (x.rev ? x.gp / x.rev * 100 : 0);
+  const count = (v) => (+v.toFixed(1)).toLocaleString('en-PH');
+  const pct1 = (v) => v.toFixed(1) + '%';
+  const MEAS = {
+    rev: { lbl: 'Revenue', of: m => m.rev, fmt: pesoShort, sm: pesoK, sub: m => `${m.n} receipts` },
+    gp: { lbl: 'Gross profit', of: m => m.gp, fmt: pesoShort, sm: pesoK, sub: m => `${pct1(mgOf(m))} margin` },
+    n: { lbl: 'Receipts', of: m => m.n, fmt: count, sm: count, sub: m => (m.n ? `${pesoShort(m.rev / m.n)} average` : '') },
+    mg: { lbl: 'Margin', of: mgOf, fmt: pct1, sm: pct1, sub: m => `${pesoK(m.gp)} profit` },
+  };
+  // days = days that had sales, the same average an untargeted calendar greens against.
+  function calStrip(S, cur, prev, prevTitle, days, target) {
+    const tab = (k, val, side, sub, tip = '') =>
+      `<button class="stat" role="tab" data-chart="${k}" aria-selected="${S.chart === k}"${tip ? ` title="${escapeHtml(tip)}"` : ''}><div class="lbl">${MEAS[k].lbl}</div><div class="line"><span class="val">${val}</span>${side || ''}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</button>`;
     const perDay = (v) => (days ? v / days : 0);
-    const html = stat('Revenue', pesoK(cur.rev), calmChip(cur.rev, prev.rev, prevTitle), days ? pesoShort(perDay(cur.rev)) + ' daily avg' : '')
-      + stat('Gross profit', pesoK(cur.gp), calmChip(cur.gp, prev.gp, prevTitle), margin)
-      + stat('Receipts', cur.n.toLocaleString(), calmChip(cur.n, prev.n, prevTitle),
-        days ? perDay(cur.n).toLocaleString('en-PH', { maximumFractionDigits: 1 }) + ' daily avg' : '', '', cur.n ? pesoShort(cur.rev / cur.n) + ' average receipt' : '')
-      + stat('Best ' + unit, best ? pesoK(best.m.rev) : '—', '', best ? best.label : '', best ? 'up' : '')
-      + stat('Slowest ' + unit, worst ? pesoK(worst.m.rev) : '—', '', worst ? worst.label : '', worst && worst.m.rev < 0 ? 'down' : '');
-    if (target == null) return html;                                   // year view: five stats
+    let html = tab('rev', pesoK(cur.rev), calmChip(cur.rev, prev.rev, prevTitle), days ? pesoShort(perDay(cur.rev)) + ' daily avg' : '')
+      + tab('gp', pesoK(cur.gp), calmChip(cur.gp, prev.gp, prevTitle), days ? pesoShort(perDay(cur.gp)) + ' daily avg' : '')
+      + tab('n', cur.n.toLocaleString(), calmChip(cur.n, prev.n, prevTitle),
+        days ? count(perDay(cur.n)) + ' daily avg' : '', cur.n ? pesoShort(cur.rev / cur.n) + ' average receipt' : '')
+      + tab('mg', cur.rev ? pct1(mgOf(cur)) : '—', calmChip(mgOf(cur), mgOf(prev), prevTitle), '');
+    // no Best stat (owner 2026-09-26): the best day (month) is tagged on the calendar instead
+    if (target == null) return html;                                   // year view: four stats
     const pc = target ? Math.round(cur.rev / target * 100) : 0;
-    return html + `<button class="stat" data-act="cal-target" title="${target ? `${pesoShort(cur.rev)} of ${pesoShort(target)} · click to change` : 'Set a monthly target'}">`
+    return html + `<button class="stat act" data-act="cal-target" title="${target ? `${pesoShort(cur.rev)} of ${pesoShort(target)} · click to change` : 'Set a monthly target'}">`
       + `<div class="lbl">Target</div><div class="line">${target
         ? `<span class="val">${pesoK(cur.rev)}</span><b class="pct">${pc}%</b></div><div class="sub">of ${pesoK(target)}</div>`
         : '<span class="val">—</span><span class="set">Set</span></div>'}</button>`;
@@ -377,6 +366,9 @@
       + w('Staff', `<div class="rows">${group(o => o.cashier || '—').map(([k, v]) => calRow(escapeHtml(k), pesoShort(v), share(v))).join('')}</div>`);
   }
 
+  // the best and slowest day (month) name themselves in the cell's top right corner
+  const calTag = (top, slow) => (top ? '<b class="tag">Best</b>' : slow ? '<b class="tag slow">Slowest</b>' : '');
+
   function calMonth(S, rowsIn, byDay, TODAY, monthTarget) {
     const a = S.month, b = monthEnd(a), d0 = new Date(a);
     const cutoff = Math.min(b, shiftDays(TODAY, 1));                    // "so far" for the month you're in
@@ -386,20 +378,22 @@
     const days = [];
     for (let t = a; t < b; t = shiftDays(t, 1)) { const rows = byDay.get(isoDate(t)) || []; if (rows.length) days.push({ t, m: calmMetrics(rows) }); }
     const open = days.filter(d => d.m.n || d.m.retN), done = open.filter(d => d.t < TODAY);   // today isn't over yet
-    const best = done.reduce((x, d) => (!x || d.m.rev > x.m.rev ? d : x), null);
-    const worst = done.length > 1 ? done.reduce((x, d) => (!x || d.m.rev < x.m.rev ? d : x), null) : null;
-    [best, worst].forEach(d => d && (d.label = fmt(d.t, { weekday: 'short', month: 'short', day: 'numeric' })));
+    const { of, fmt: mf, sm, sub } = MEAS[S.chart], isRev = S.chart === 'rev';
+    const best = done.length > 1 ? done.reduce((x, d) => (!x || of(d.m) > of(x.m) ? d : x), null) : null;
+    const worst = done.length > 1 ? done.reduce((x, d) => (!x || of(d.m) < of(x.m) ? d : x), null) : null;
     const prevTitle = `vs ${fmt(prevA, { month: 'short', day: 'numeric' })} – ${fmt(prevB - 1, { day: 'numeric' })}`;
-    const strip = calStrip(cur, prev, prevTitle, best, worst, 'day', open.length, monthTarget);
+    const strip = calStrip(S, cur, prev, prevTitle, open.length, monthTarget);
 
     // ponytail: a flat share of the monthly target per calendar day. The live target spreads what's
     // left over the days left; that's a "today" promise, and a past day needs a fixed bar to be judged by.
-    const bar = monthTarget ? monthTarget / daysIn(a) : (open.length ? cur.rev / open.length : 0);
+    // revenue keeps the daily target; the others, the month's own per-day average (margin: the month's margin)
+    const bar = isRev && monthTarget ? monthTarget / daysIn(a) : S.chart === 'mg' ? mgOf(cur) : (open.length ? of(cur) / open.length : 0);
     const lead = (d0.getDay() + 6) % 7;                                // Monday-first, a hardware shop's week
-    let anyLoss = false;
-    const barName = `the ${pesoShort(bar)} daily ${monthTarget ? 'target' : 'average'}`;
+    let anyLoss = false, anySlow = false;
+    const barName = S.chart === 'mg' ? `the month's ${mf(bar)} margin`
+      : `the ${mf(bar)}${S.chart === 'n' ? ' receipts' : ''} daily ${isRev && monthTarget ? 'target' : 'average'}`;
     // a missed day stays white; a day over the bar goes green, deeper the further over, up to the month's best day
-    const hi = Math.max(0, ...open.map(d => d.m.rev));
+    const hi = Math.max(0, ...open.map(d => of(d.m)));
     const heat = (v) => `color-mix(in srgb, var(--b-heat) ${Math.round(12 + 43 * (hi > bar ? (v - bar) / (hi - bar) : 1))}%, white)`;
     let html = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="dow">${d}</div>`).join('') + '<div class="dow wk">Week</div>';
     for (let w = shiftDays(a, -lead); w < b; w = shiftDays(w, 7)) {
@@ -410,24 +404,28 @@
         const sel = S.sel && S.sel.kind === 'day' && S.sel.at === t ? ' sel' : '', today = t === TODAY ? ' today' : '';
         if (t > TODAY) { html += `<div class="cell future${today}"><span class="d">${dn}</span></div>`; continue; }
         if (!rows.length) { html += `<div class="cell shut${today}"><span class="d">${dn}</span><span class="m">No sales</span></div>`; continue; }
-        const m = calmMetrics(rows);
+        const m = calmMetrics(rows), v = of(m);
         let cls = '', style = '', tip = '';
         if (m.rev < 0) { cls = ' loss'; tip = 'More returns than sales'; anyLoss = true; }
-        else if (bar && m.rev >= bar) { cls = ' heat'; style = ` style="--heat:${heat(m.rev)}"`; tip = `${pesoShort(m.rev - bar)} over ${barName}`; }
-        else if (bar) tip = `${pesoShort(bar - m.rev)} short of ${barName}`;
-        html += `<button class="cell${cls}${today}${sel}" data-day="${isoDate(t)}"${style}${tip ? ` title="${tip}"` : ''}><span class="d">${dn}</span>`
-          + `<span class="v"><span class="full">${pesoShort(m.rev)}</span><span class="sm">${pesoK(m.rev)}</span></span><span class="m">${m.n} receipts${m.retN ? ` · ${m.retN} ret` : ''}</span></button>`;
+        else if (bar && v >= bar) { cls = ' heat'; style = ` style="--heat:${heat(v)}"`; tip = `${mf(v - bar)} over ${barName}`; }
+        else if (bar) tip = `${mf(bar - v)} short of ${barName}`;
+        const slow = worst && worst.t === t && cls !== ' heat';
+        if (slow) { cls = ' loss'; tip = 'Slowest day of the month' + (tip ? ' · ' + tip : ''); anySlow = true; }
+        const top = best && best.t === t;
+        if (top) { cls += ' best'; tip = 'Best day of the month' + (tip ? ' · ' + tip : ''); }
+        html += `<button class="cell${cls}${today}${sel}" data-day="${isoDate(t)}"${style}${tip ? ` title="${tip}"` : ''}><span class="d">${dn}</span>${calTag(top, slow)}`
+          + `<span class="v"><span class="full">${mf(v)}</span><span class="sm">${sm(v)}</span></span><span class="m">${sub(m)}${m.retN ? ` · ${m.retN} ret` : ''}</span></button>`;
       }
       const ws = Math.max(w, a), we = Math.min(shiftDays(w, 7), b, shiftDays(TODAY, 1));
       if (ws >= we) { html += '<div class="cell week wk pad"></div>'; continue; }
       const wr = rowsIn(ws, we), wm = calmMetrics(wr), wdays = new Set(wr.map(o => isoDate(o.ts))).size;
       const sel = S.sel && S.sel.kind === 'week' && S.sel.at === ws ? ' sel' : '';
       html += `<button class="cell week wk${sel}" data-week="${isoDate(ws)}"><span class="d">${fmt(ws, { month: 'short', day: 'numeric' })} – ${fmt(we - 1, { day: 'numeric' })}</span>`
-        + `<span class="v">${pesoShort(wm.rev)}</span><span class="m">${wdays} days · ${wm.n} receipts</span></button>`;
+        + `<span class="v">${mf(of(wm))}</span><span class="m">${wdays} days · ${sub(wm)}</span></button>`;
     }
     const grid = `<div class="cal">${html}</div><div class="legend"><span><i></i>Below ${barName}</span><span>Above<i class="scale"></i></span>`
-      + (anyLoss ? '<span><i class="r"></i>Lost money</span>' : '') + '</div>';
-    return { strip, cols: 6, grid, period: fmt(a, { month: 'long', year: 'numeric' }), last: b > TODAY,
+      + (anySlow || anyLoss ? `<span><i class="r"></i>${[anySlow && 'Slowest day', anyLoss && 'Lost money'].filter(Boolean).join(' · ')}</span>` : '') + '</div>';
+    return { strip, cols: 5, grid, period: fmt(a, { month: 'long', year: 'numeric' }), last: b > TODAY,
       T: { rows: rowsIn(a, b), prev: rowsIn(prevA, prevB), sub: fmt(a, { month: 'long' }) + (b > TODAY ? ' so far' : '') + ' · ' + prevTitle } };
   }
 
@@ -438,23 +436,25 @@
     const cur = calmMetrics(rowsIn(a, b)), prev = calmMetrics(rowsIn(prevA, prevB));
     const months = Array.from({ length: 12 }, (_, i) => { const t = new Date(y, i, 1).getTime(); return { t, m: calmMetrics(rowsIn(t, monthEnd(t))) }; });
     const open = months.filter(x => x.m.n), done = open.filter(x => monthEnd(x.t) <= TODAY);   // nor is this month
-    const best = done.reduce((x, d) => (!x || d.m.rev > x.m.rev ? d : x), null);
-    const worst = done.length > 1 ? done.reduce((x, d) => (!x || d.m.rev < x.m.rev ? d : x), null) : null;
-    [best, worst].forEach(d => d && (d.label = fmt(d.t, { month: 'long' })));
+    const { of, fmt: mf, sub } = MEAS[S.chart], isRev = S.chart === 'rev';
+    const best = done.length > 1 ? done.reduce((x, d) => (!x || of(d.m) > of(x.m) ? d : x), null) : null;
+    const worst = done.length > 1 ? done.reduce((x, d) => (!x || of(d.m) < of(x.m) ? d : x), null) : null;
     let days = 0;
     for (let t = a; t < b; t = shiftDays(t, 1)) if (byDay.has(isoDate(t))) days++;
-    const strip = calStrip(cur, prev, `vs the same days of ${y - 1}`, best, worst, 'month', days);
-    const avg = open.length ? cur.rev / open.length : 0;
-    const goal = monthTarget || avg, goodTip = monthTarget ? `Hit the ${pesoShort(goal)} monthly target` : `Above the ${pesoShort(goal)} monthly average`;
+    const strip = calStrip(S, cur, prev, `vs the same days of ${y - 1}`, days);
+    const avg = S.chart === 'mg' ? mgOf(cur) : open.length ? of(cur) / open.length : 0;
+    const goal = (isRev && monthTarget) || avg;
+    const goalName = isRev && monthTarget ? 'Hit the monthly target' : S.chart === 'mg' ? 'Above the year’s margin' : 'Above the monthly average';
     const grid = '<div class="months">' + months.map(({ t, m }) => {
       const name = fmt(t, { month: 'long' });
       if (t > TODAY) return `<div class="cell future"><span class="d">${name}</span></div>`;
       if (!m.n) return `<div class="cell shut"><span class="d">${name}</span><span class="m">No sales</span></div>`;
-      const hit = monthTarget ? m.rev >= monthTarget : m.rev >= avg;
-      return `<button class="cell${hit ? ' good' : ''}" data-month="${isoDate(t).slice(0, 7)}"${hit ? ` title="${goodTip}"` : ''}><span class="d">${name}</span>`
-        + `<span class="v">${pesoShort(m.rev)}</span><span class="m">${m.n.toLocaleString()} receipts · ${m.rev ? (m.gp / m.rev * 100).toFixed(1) : 0}% margin</span></button>`;
-    }).join('') + `</div><div class="legend"><span><i class="g"></i>${monthTarget ? 'Hit the monthly target' : 'Above the monthly average'} (${pesoShort(goal)})</span><span>Click a month to open its calendar</span></div>`;
-    return { strip, cols: 5, grid, period: String(y), last: b > TODAY,
+      const hit = of(m) >= goal, slow = !hit && worst && worst.t === t, top = best && best.t === t;
+      const tip = [top && 'Best month of the year', hit && `${goalName} (${mf(goal)})`, slow && 'Slowest month of the year'].filter(Boolean).join(' · ');
+      return `<button class="cell${hit ? ' good' : slow ? ' loss' : ''}${top ? ' best' : ''}" data-month="${isoDate(t).slice(0, 7)}"${tip ? ` title="${tip}"` : ''}><span class="d">${name}</span>${calTag(top, slow)}`
+        + `<span class="v">${mf(of(m))}</span><span class="m">${isRev ? `${m.n.toLocaleString()} receipts · ${pct1(mgOf(m))} margin` : sub(m)}</span></button>`;
+    }).join('') + `</div><div class="legend"><span><i class="g"></i>${goalName} (${mf(goal)})</span>${worst && of(worst.m) < goal ? '<span><i class="r"></i>Slowest month</span>' : ''}<span>Click a month to open its calendar</span></div>`;
+    return { strip, cols: 4, grid, period: String(y), last: b > TODAY,
       T: { rows: rowsIn(a, b), prev: rowsIn(prevA, prevB), sub: y + (b > TODAY ? ' so far' : '') + ` · vs the same days of ${y - 1}` } };
   }
 
@@ -530,8 +530,10 @@
             <button class="icon-btn" data-shift="1" aria-label="Next"${P.last ? ' disabled' : ''}>›</button>
           </div>
         </div>
-        <section class="strip" style="--cols:${P.cols}">${P.strip}</section>
-        <section>${P.grid}</section>
+        <section class="card">
+          <div class="strip n${P.cols}" role="tablist" aria-label="Calendar shows" style="--cols:${P.cols}">${P.strip}</div>
+          <div class="panel">${P.grid}</div>
+        </section>
         <section class="top"><div>${calTop(P.T, S.top)}</div></section>
         <section class="trio">${calMix(P.T.rows)}</section>
       </div>
@@ -549,6 +551,7 @@
   function calClick(hit) {
     const p = Router.route().params, S = calState(p, lastSale());   // the same month calendar() drew
     const set = (patch) => Router.setParams({ view: '', month: isoDate(S.month).slice(0, 7), day: '', week: '', ...patch });
+    if (hit.dataset.chart) return Router.setParams({ chart: hit.dataset.chart === 'rev' ? '' : hit.dataset.chart });
     if (hit.dataset.view) return set({ view: hit.dataset.view === 'year' ? 'year' : '' });
     if (hit.dataset.shift) {
       const d = new Date(S.month), n = +hit.dataset.shift;
@@ -570,121 +573,6 @@
     }
   }
 
-  // ---------- Transactions (transactions-compact-lab.html, ported as is; styles in bo-calm.css) ----------
-  // Title · Widgets · range · Export CSV; search + the three filters over the table, the blocks beside it. The URL holds it all: ?pay= ?staff= ?ful= (comma lists), ?q=, ?sort=&dir=,
-  // ?page=, ?receipt= for the pop-up. The range menu keeps "Ends on", so older receipts stay reachable.
-  const TX_PAGE = 50;
-  const DOWNLOAD_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4 20h16"/></svg>';
-  // What the table shows, in its order: the window's filtered rows, searched, sorted. The CSV and ‹ › use it too.
-  function txSearch(rows) {
-    const q = (state.txQuery || '').trim().toLowerCase();
-    const hay = o => [o.number, o.id, o.customer && o.customer.name, o.cashier, ...(o.items || []).map(itemOf)].join(' ').toLowerCase();
-    return q ? rows.filter(o => hay(o).includes(q)) : rows;
-  }
-  const txHits = (rows, v) => sortRows(txSearch(rows), v.sort.key, v.sort.dir, TX_COLUMNS);
-
-  // The blocks beside the table (transactions-compact-lab.html): the Dashboard's widgets, plain, one number a row.
-  // Payment and Staff in pesos, Fulfilment as a count; the other number shows when you point at a block.
-  // They follow the range, search and filters; a row is a filter, and each block ignores its own filter so its
-  // other values stay in view. × removes one, the Widgets menu brings it back; which are off is this device's
-  // choice (HWPOS_STORE.ui 'txHide', like the sidebar's folds).
-  const TX_W = { net: 'Net sales', pay: 'Payment', ful: 'Fulfilment', staff: 'Staff' };   // ponytail: Channels, Stores join here
-  const TX_NAME = { pay: orderPaymentLabel, staff: o => o.cashier || '—', ful: orderFulfilLabel };
-  const txHidden = () => String(HWPOS_STORE.ui.get('txHide', '') || '').split(',').filter(Boolean);
-  function txRail(v, all, on) {
-    const base = txSearch(all), L = base.filter(o => txPass(o, v));
-    const sales = L.filter(o => saleSign(o) > 0).length, rets = L.filter(o => saleSign(o) < 0).length;
-    const shut = id => `<button class="x" data-hide="${id}" aria-label="Remove ${TX_W[id]}" title="Remove">×</button>`;
-    const wrow = (nm, cnt, amt, attrs, cls) => `<div class="row ${cls}"${attrs}><span class="nm">${nm}</span><span class="cnt">${cnt}</span><span class="amt">${amt}</span></div>`;
-    const facet = (f, top = 0, count = false) => {   // count: the count is the number, pesos on hover
-      const m = new Map();
-      for (const o of base) if (txPass(o, v, f) && saleSign(o)) {
-        const k = TX_KEY[f](o), e = m.get(k) || { name: TX_NAME[f](o), n: 0, v: 0 };
-        e.n += saleSign(o) > 0; e.v += o.total * saleSign(o); m.set(k, e);   // counts sales; returns only take off the amount
-      }
-      const list = [...m].sort((a, b) => b[1].v - a[1].v).slice(0, top || undefined);
-      return `<div class="top band"><span>${TX_W[f]}</span><span class="acts">${v[f].length ? `<a data-f="${f}" data-v="">Show all</a>` : ''}${shut(f)}</span></div>` + (list.length
-        ? `<div class="rows">${list.map(([k, e]) => wrow(escapeHtml(e.name), ...(count ? [pesoShort(e.v), e.n.toLocaleString()] : [e.n.toLocaleString(), pesoShort(e.v)]), ` data-f="${f}" data-v="${escapeHtml(k)}"`, v[f].includes(k) ? 'on' : '')).join('')}</div>`
-        : '<p class="note" style="margin:10px 0 0">No sales here.</p>');
-    };
-    const html = {
-      net: () => `<div class="top band one" title="${sales.toLocaleString()} sale${sales === 1 ? '' : 's'}${rets ? ` · ${rets} return${rets === 1 ? '' : 's'}` : ''}"><span>Net sales</span>
-        <span class="acts"><span class="cnt">${sales.toLocaleString()} sale${sales === 1 ? '' : 's'}</span><span class="nv">${pesoShort(L.reduce((t, o) => t + o.total * saleSign(o), 0))}</span></span></div>`,   // no × here, it would push the amount off the edge; the Widgets menu removes it
-      pay: () => facet('pay'), ful: () => facet('ful', 0, true), staff: () => facet('staff', 6),
-    };
-    return on.map(id => `<section class="card w${id === 'net' ? ' one' : ''}">${html[id]()}</section>`).join('');
-  }
-  function txPage(v, rows, all, payOpts, staffOpts, fulOpts) {
-    const on = Object.keys(TX_W).filter(id => !txHidden().includes(id));
-    const L = txHits(rows, v), pages = Math.max(1, Math.ceil(L.length / TX_PAGE));
-    const page = Math.min(v.page, pages) - 1, shown = L.slice(page * TX_PAGE, page * TX_PAGE + TX_PAGE);
-    const any = v.pay.length || v.staff.length || v.ful.length || state.txQuery;
-    const pick = (f, all, many, have) => {   // what this range has, plus anything already picked
-      const m = new Map(have); for (const x of v[f]) if (!m.has(x)) m.set(x, x);
-      const opts = [...m].sort((a, b) => String(a[1]).localeCompare(String(b[1]))), picked = opts.filter(([k]) => v[f].includes(k));
-      return `<button class="pick${picked.length ? ' on' : ''}" popovertarget="txm-${f}">${escapeHtml(!picked.length ? all : picked.length === 1 ? picked[0][1] : `${picked.length} ${many}`)}</button>`
-        + `<div class="menu" id="txm-${f}" popover role="menu" data-f="${f}">${opts.length
-          ? opts.map(([k, n]) => `<button role="menuitemcheckbox" data-v="${escapeHtml(k)}" aria-checked="${v[f].includes(k)}">${escapeHtml(n)}</button>`).join('')
-          : '<div class="none">Nothing in this range</div>'}${v[f].length ? '<hr><button class="clear" data-v="">Show all</button>' : ''}</div>`;
-    };
-    const sortTh = (lbl, key, cls = '') => { const on = v.sort.key === key ? (v.sort.dir === 'asc' ? '↑' : '↓') : '';
-      return `<th class="${cls}"><button class="sort" data-act="sort" data-key="${key}"${on ? ` data-on="${on}"` : ''}>${lbl}</button></th>`; };
-    const table = shown.length ? `<div class="flush"><table class="tx">
-      <tr><th>Receipt</th>${sortTh('Time', 'ts')}<th class="opt">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th>${sortTh('Total', 'total', 'n')}</tr>
-      ${shown.map(o => `<tr data-receipt="${escapeHtml(o.id)}" class="${saleSign(o) ? '' : 'dim'}">
-        <td class="id">#${escapeHtml(o.number || o.id)}</td><td class="t">${escapeHtml(txTime(o.ts))}</td>
-        <td class="opt cust">${o.customer?.name ? escapeHtml(o.customer.name) : '<span class="mut">—</span>'}</td>
-        <td class="opt">${escapeHtml(o.cashier || '—')}</td><td class="opt">${escapeHtml(orderFulfilLabel(o))}</td>
-        <td><span class="pill ${PAY_TONE[o.paymentKind] || ''}">${escapeHtml(orderPaymentLabel(o))}</span></td>
-        <td class="opt"><span class="pill ${{ completed: 'up', voided: 'down', return: 'warn', refunded: 'warn' }[o.status || 'completed'] || ''}">${statusName(o)}</span></td>
-        <td class="n amt">${peso(txTotal(o))}</td></tr>`).join('')}
-    </table></div>
-    ${pages > 1 ? `<div class="pager"><span>${page * TX_PAGE + 1}–${page * TX_PAGE + shown.length} of ${L.length.toLocaleString()}</span>
-      <button class="icon-btn" data-act="tx-page" data-to="${page}" aria-label="Previous page" ${page ? '' : 'disabled'}>‹</button>
-      <button class="icon-btn" data-act="tx-page" data-to="${page + 2}" aria-label="Next page" ${page < pages - 1 ? '' : 'disabled'}>›</button></div>` : ''}`
-      : `<p class="note">No transactions ${any ? 'match these filters' : state.range === 'today' ? 'yet today' : 'in this range'}.</p>`;
-    return `<div class="c-main">
-      <div class="bar">
-        <h1>Transactions</h1>
-        <button class="pick" popovertarget="txW">Widgets</button>
-        <div class="menu" id="txW" popover role="menu"><div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr>${Object.entries(TX_W).map(([id, n]) => `<button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}">${n}</button>`).join('')}</div>
-        <button class="pick" popovertarget="txRange">${escapeHtml(rangeLabel())}</button>
-        <div class="menu" id="txRange" popover role="menu">
-          ${Object.keys(RANGE_DAYS).map(r => `<button role="menuitemradio" data-act="range" data-range="${r}" aria-checked="${r === state.range}">${RANGE_LABEL[r]}</button>`).join('')}
-          <hr data-app-only><label class="ends" data-app-only>Ends on<input type="date" data-filter="date" value="${isoDate(state.anchor)}" max="${isoDate(Date.now())}" /></label>
-        </div>
-        <button class="btn" data-act="export">${DOWNLOAD_ICON}Export CSV</button>
-      </div>
-      <div class="dash${on.length ? '' : ' solo'}">
-      <div>
-      <div class="filters">
-        <input class="q q-input" type="search" placeholder="Search receipt, customer, staff or item" aria-label="Search transactions" autocomplete="off" value="${escapeHtml(state.txQuery || '')}" />
-        ${pick('pay', 'All payment types', 'payment types', payOpts)}${pick('staff', 'All employees', 'employees', staffOpts.map(x => [x, x]))}${pick('ful', 'All fulfilment', 'fulfilment types', fulOpts)}
-      </div>
-      <section class="card">
-        <div class="head"><span class="lbl">All transactions<span class="sum">${pesoShort(L.reduce((s, o) => s + o.total * saleSign(o), 0))}</span></span><a data-act="tx-clear"${any ? '' : ' hidden'}>Clear filters</a></div>
-        ${table}
-      </section>
-      </div>
-      <div class="rail">${txRail(v, all, on)}</div>
-      </div>
-    </div>
-    <dialog><div class="pop"></div></dialog>`;
-  }
-  // The receipt pop-up, drawn after the page: ‹ › walk the table as it is filtered and sorted.
-  function txPop(el, v, rows) {
-    const id = Router.route().params.receipt;
-    if (!id) return;
-    const L = txHits(rows, v), o = L.find(x => x.id === id) || rows.find(x => x.id === id);
-    if (!o) { Router.setParams({ receipt: '' }); return; }   // a stale ?receipt= leaves the URL, like the Dashboard
-    const dlg = el.querySelector('dialog');
-    dlg.querySelector('.pop').innerHTML = receiptPop({ rows: L }, o);
-    // Esc, the backdrop (the global dialog handler) and ✕ all just close it; closing clears the URL.
-    // A re-render drops this dialog for a new one: that is not a close.
-    dlg.addEventListener('close', () => { if (dlg.isConnected) Router.setParams({ receipt: '' }); });
-    dlg.showModal();
-  }
-
   const CUT_ROWS = { item: a => a.items, category: a => a.cats };
   const CUT_LABEL = { item: 'By item', category: 'By category' };
 
@@ -696,40 +584,28 @@
   }
 
   window.renderSales = function () {
+    const p = Router.route().params;
+    // Transactions moved to its own page (2026-09-26): old ?by=tx links land there, filters kept.
+    if (p.by === 'tx') { const { by, ...rest } = p; Router.go('transactions', '', rest, { replace: true }); return; }
     refreshSharedState();
     const v = readView();
     const el = root();
     // Summary is the calm calendar page: its own window and its own look (bo-calm.css).
     el.classList.toggle('calm-sales', v.tab === 'summary');
-    el.classList.toggle('calm-tx', v.tab === 'tx');
     // Bought together counts every receipt ever, not the range: no filters, range or CSV.
     if (v.tab === 'basket') {
       el.innerHTML = `<header class="view-head"><div class="view-title-wrap"><h1>Bought together</h1></div></header>
         <div class="dash-stack">${HWPOS_INSIGHTS.card('basket')}</div>`;
       return;
     }
-    if (v.tab === 'summary') { el.innerHTML = calendar(Router.route().params); return; }
-    const { rows, all, payOpts, staffOpts, fulOpts } = windowRows(v);
+    if (v.tab === 'summary') { el.innerHTML = calendar(p); return; }
+    const { rows, payOpts, staffOpts, fulOpts } = windowRows(v);
     const a = agg(rows);
-    // Restore the caret: the shell's ?q= listener re-runs this render on every keystroke.
-    const focused = document.activeElement && el.contains(document.activeElement) && document.activeElement.classList.contains('q-input');
-    const caret = focused ? document.activeElement.selectionStart : 0;
-
     // The render rebuilds the menu, so a tick would snap it shut: reopen whichever was open.
     const openMs = el.querySelector('.ms-pick[open]');
     const reopen = openMs && openMs.dataset.ms;
-    const openMenu = el.querySelector('.menu[data-f]:popover-open, #txW:popover-open');   // Transactions: tick as many as you like
-
-    if (v.tab === 'tx') el.innerHTML = txPage(v, rows, all, payOpts, staffOpts, fulOpts);
-    else el.innerHTML = head(v, payOpts, staffOpts, fulOpts) + `<div class="dash-stack">${cutTab(a, v)}</div>`;
+    el.innerHTML = head(v, payOpts, staffOpts, fulOpts) + `<div class="dash-stack">${cutTab(a, v)}</div>`;
     if (reopen) { const d = el.querySelector(`.ms-pick[data-ms="${reopen}"]`); if (d) d.open = true; }
-    if (openMenu) document.getElementById(openMenu.id)?.showPopover();
-    if (v.tab === 'tx') txPop(el, v, rows);
-
-    if (focused) {
-      const input = el.querySelector('.q-input');
-      if (input) { input.focus(); input.setSelectionRange(caret, caret); }
-    }
   };
 
   // The maths, hung off the one global so scripts/sales-check.mjs can run it without
@@ -741,54 +617,12 @@
     const v = readView();
     const { rows } = windowRows(v);
     const a = agg(rows);
-    let cols, data;
-    if (v.tab === 'tx') {
-      cols = TX_COLUMNS;
-      // The CSV is what is on screen, in the order it is on screen.
-      data = txHits(rows, v);
-    } else {
-      cols = COLUMNS[v.tab];
-      data = sortRows(CUT_ROWS[v.tab](a), v.sort.key, v.sort.dir);
-    }
-    const cut = v.tab === 'tx' ? 'transactions' : 'by-' + v.tab;
-    const name = `sales-${cut}-${state.range}-${isoDate(state.anchor)}.csv`;
+    const cols = COLUMNS[v.tab];
+    const data = sortRows(CUT_ROWS[v.tab](a), v.sort.key, v.sort.dir);
+    const name = `sales-by-${v.tab}-${state.range}-${isoDate(state.anchor)}.csv`;
     downloadCsv(name, [cols.map(c => c.label)].concat(data.map(r => cols.map(c => c.csv(r)))));
     showToast(`Exported ${data.length} row${data.length === 1 ? '' : 's'}`);
   }
-
-  // ---------- Transactions: filter ticks, rows, the pop-up's ‹ › ✕; true when handled ----------
-  function txClick(t) {
-    const w = t.closest('#txW [data-w], #txW [data-w-all], .rail [data-hide]');
-    if (w) {
-      const id = w.dataset.w || w.dataset.hide, off = txHidden();
-      HWPOS_STORE.ui.set('txHide', w.dataset.wAll ? (w.dataset.wAll === 'on' ? '' : Object.keys(TX_W).join(','))
-        : (off.includes(id) ? off.filter(x => x !== id) : [...off, id]).join(','));
-      slideRender(renderSales);
-      return true;
-    }
-    const mv = t.closest('.menu[data-f] [data-v], .rail [data-f]');
-    if (mv) {
-      const f = mv.dataset.f || mv.closest('.menu').dataset.f, x = mv.dataset.v, cur = readView()[f];
-      Router.setParams({ [f]: (!x ? [] : cur.includes(x) ? cur.filter(y => y !== x) : [...cur, x]).join(','), page: '' });
-      return true;
-    }
-    const r = t.closest('tr[data-receipt]');
-    if (r) { Router.setParams({ receipt: r.dataset.receipt }); return true; }
-    if (t.closest('dialog [data-close]')) { t.closest('dialog').close(); return true; }
-    const st = t.closest('dialog [data-step]');
-    if (!st) return false;
-    const v = readView(), L = txHits(windowRows(v).rows, v), i = L.findIndex(x => x.id === Router.route().params.receipt) + +st.dataset.step;
-    if (L[i]) Router.setParams({ receipt: L[i].id, page: i < TX_PAGE ? '' : String(Math.floor(i / TX_PAGE) + 1) });   // the table pages along
-    return true;
-  }
-  // Menus hang under their button: the range right-aligned, the filters left. `toggle` does not bubble, so capture it.
-  document.addEventListener('toggle', (e) => {
-    const m = e.target;
-    if (e.newState !== 'open' || !m.matches || !m.matches('.calm-tx .menu')) return;
-    const r = root().querySelector(`[popovertarget="${m.id}"]`).getBoundingClientRect();
-    m.style.top = r.bottom + 6 + 'px';
-    m.style.left = Math.max(16, Math.min(m.id === 'txRange' || m.id === 'txW' ? r.right - m.offsetWidth : r.left, innerWidth - m.offsetWidth - 16)) + 'px';
-  }, true);
 
   // ---------- Events: one delegated listener per type ----------
   document.addEventListener('click', (e) => {
@@ -800,18 +634,16 @@
     el.querySelectorAll('.ms-pick[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; });
     if (!el.contains(e.target)) return;
     if (el.classList.contains('calm-sales')) {
-      const c = e.target.closest('.seg [data-view], [data-shift], button.cell, .c-aside [data-close], .c-aside [data-step]');
+      if (e.target.matches('.shell.open')) { Router.setParams({ day: '', week: '' }); return; }   // the pop-up's backdrop
+      const c = e.target.closest('.seg [data-view], [data-shift], [data-chart], button.cell, .c-aside [data-close], .c-aside [data-step]');
       if (c) { calClick(c); return; }
     }
-    if (el.classList.contains('calm-tx') && txClick(e.target)) return;
     const hit = e.target.closest('[data-act]');
     if (!hit) return;
     const act = hit.dataset.act;
     if (act === 'rp-toggle') { if (menu) menu.hidden = !menu.hidden; return; }
     if (act === 'range') { Router.setParams({ range: hit.dataset.range === 'today' ? '' : hit.dataset.range, page: '' }, { replace: false }); return; }
     if (act === 'export') { exportCsv(); return; }
-    if (act === 'tx-page') { Router.setParams({ page: hit.dataset.to === '1' ? '' : hit.dataset.to }); return; }
-    if (act === 'tx-clear') { Router.setParams({ pay: '', staff: '', ful: '', q: '', page: '' }); return; }
     if (act === 'ms-clear') { Router.setParams({ [hit.dataset.key]: '', page: '' }); return; }
     if (act === 'cal-target') { el.querySelector('dialog.tdlg').showModal(); return; }
     if (act === 'cal-cancel') { hit.closest('dialog').close(); return; }
@@ -851,7 +683,7 @@
     renderCurrentView();
   });
 
-  // Esc closes the day/week panel, unless a dialog is taking the key.
+  // Esc closes the day/week pop-up, unless a dialog is taking the key.
   document.addEventListener('keydown', (e) => {
     const el = root();
     if (e.key !== 'Escape' || !el || el.hidden || !el.classList.contains('calm-sales') || document.querySelector('dialog[open]')) return;

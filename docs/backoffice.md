@@ -39,8 +39,12 @@ Ported 1:1 from the owner-approved labs: **`dashboard-calm-lab.html` is the Dash
   "Set target" opens the same `openTargetDialog()`.
 - **Sales › Summary** (`bo-sales.js`, `calendar()`): month or year calendar with its own window — it
   ignores the range picker and filters (the other tabs keep them). URL: `view` (year), `month`,
-  `day` / `week` (the side panel), `top`. **Gone:** the Summary blocks grid, `#staffDlg`, the Summary CSV.
-- **Sales › Transactions** (`bo-sales.js`, `txPage()`, root class `.calm-tx`): title · range `.pick` ·
+  `day` / `week` (a centred pop-up over the calendar since 2026-09-26, not a side panel; its sections are widget cards; backdrop, ✕ and Esc close it), `top`. **Gone:** the Summary blocks grid, `#staffDlg`, the Summary CSV. Strip (owner 2026-09-26, to read like the
+  Dashboard's): Revenue · Gross profit · Receipts · Margin · Target (month view), the calendar card's tabs (URL `chart`). No Best or Slowest stat
+  (Best dropped 2026-09-26): the best finished day (month) keeps its heat and gets a white "Best" tag in the top right corner (a green dot on a phone); the slowest a red "Slowest" one;
+  the slowest finished day (month) is red on the calendar instead (`.loss`, "Slowest day" in the legend), unless it beat the bar.
+- **Sales › Transactions** (`bo-transactions.js`, `txPage()`, root class `.calm-tx`; its own view `/admin/transactions`
+  since 2026-09-26 so it can be worked on apart from Sales; `renderSales` forwards old `?by=tx` links, filters kept): title · range `.pick` ·
   **black** Export CSV (`.btn`, the app's primary look, with the download icon); search + three filter
   `.pick`s (payment, staff, fulfilment — popover menus that stay open while you tick); one card, "All
   transactions ₱net" (the net faint, ink-3, beside the name; no "n shown", owner 2026-09-25) and Clear
@@ -51,8 +55,8 @@ Ported 1:1 from the owner-approved labs: **`dashboard-calm-lab.html` is the Dash
   (`transactions-compact-lab.html`, owner 2026-09-26; replaces the old "no KPI cards" rule): search + filters
   span only the table's column; a 288px rail holds Net sales (one line), Payment and Staff (pesos) and
   Fulfilment (count), the other number fading in on hover. No graphs or bars. A block row ticks its filter;
-  each block ignores its own filter. × removes a block, a **Widgets** `.pick` by the range brings it back;
-  which are off is per device (`HWPOS_STORE.ui` `txHide`). Channels and Stores join as more blocks later.
+  each block ignores its own filter. A **Widgets** `.pick` by the range shows and hides blocks (no × on a
+  block, owner 2026-09-26: the menu is the one place); which are off is per device (`HWPOS_STORE.ui` `txHide`). Channels and Stores join as more blocks later.
   The range menu keeps **Ends on**
   (`data-app-only`, which design-check strips) so receipts older than 30 days stay reachable. CSV = the
   filtered, searched, sorted rows.
@@ -61,7 +65,7 @@ Ported 1:1 from the owner-approved labs: **`dashboard-calm-lab.html` is the Dash
   widgets fade in alongside it (40ms behind, table on top, both land together). No View Transitions, no fly-in (owner: "cringe"); a plain fade only.
 - **Customers** (owner 2026-09-26) borrows the same rail (root class `.calm-cust`, the `:is(.calm-tx, .calm-cust)`
   rules): Outstanding credit, Credit limit pool, Utilization, Near limit, one line each, the note on hover, no ×
-  (it squeezes the note out; the Widgets menu removes them). Hidden ones are `HWPOS_STORE.ui` `custHide`. The
+  (the Widgets menu shows and hides them). Hidden ones are `HWPOS_STORE.ui` `custHide`. The
   account page keeps its KPI row.
 - **Every list page has one layout** (owner 2026-09-26): title + actions, then `.list-filters` (search first and
   growing, filters after it), then the `.blk-table` card. `.blk-table` in `bo-blocks.css` is the Transactions
@@ -93,11 +97,8 @@ a fixed main column plus a widget rail `--rail-w` wide. **Its rules are scoped t
     Revenue · Profit · Transactions · Margin, hairlines between, 4 across, 2 under 1280px, 1 under 560px — then one
     revenue line. Scrubbing the chart swaps all four to that hour/day and hides the chips.
   - Recent transactions: the newest `RECENT_TX` (20). The Customer cell truncates at 160px (full name in `title`), and the table drops the global 860px `min-width` so it fits the column.
-- **The rail is the owner's.** `DASH_WIDGETS` in `backoffice.js` holds `{ key: [label, render] }`, one card wide, so widgets only ever stack.
-  - On by default: `daily`, `monthly`, `low`, `pay`.
-  - Off by default: `deliveries`, `stock`, `channel`, `credit`.
-  - The order is kept per device in `HWPOS_STORE.ui` `dashRail`, a comma list.
-  - Edit toggles `#dashStack.editing`. Each widget then gets ↑ ↓ × and an Add widget card appears at the bottom; the `[data-jump]` links go quiet.
+- **The rail is the owner's.** `DASH_W` in `backoffice.js` holds the cards (`daily`, `monthly`, `low`, `pay`, fixed order, all on by default), one card wide, so widgets only ever stack.
+  - The same engine as Sales › Transactions (owner 2026-09-26): a **Widgets** `.pick` left of the range, Show all · Hide all then one tick per card, no × on the cards. Off ones are per device in `HWPOS_STORE.ui` `dashHide`; all off drops `#dashGrid` to one column (`.solo`), redrawn through `slideRender()`.
   - Low stock lives in the rail, not the KPIs: a bare count, the 5 that run out soonest, each with an Out or Low `.status-pill`, with a quiet "View all ›" to Products → Stock filtered to Out + Low (`?view=stock&level=out,low`) top right, across from the label. Recent transactions uses the same `.link-btn.view-all`.
   - Payment methods is a table of amounts only, no headline number and no percents: its total is Revenue, already the first KPI, and shares live on the Sales page. Each row leads with a swatch in its pay-pill's hue (`.sw.pay` in `bo-blocks.css`): the pill's text colour lifted to a soft pastel, since the raw ink read too dark and the pill fill too faint (owner, 2026-09-23).
 - **Targets** are stored in `state.settings.targets = { month, override: { date, amount } | null }` and saved through `saveSettings()`. The ··· on a target card opens `#targetDlg`.
@@ -154,10 +155,25 @@ Pull the token, don't type `8px`.
   `--po-accent-link #1F5199` is the *only* blue — links/`.link-btn` only, never a button fill.
 - Chrome: `--po-sidebar-w 240px` (v35, 2026-09-26; 192px since v29; one grey fill for the active row — a lit sub-link leaves its parent unfilled, no hook line). The look is the Notion lab's
   (`SIDEBAR + SHEET (v35)`): an off-white `--po-sidebar-bg #F6F6F6` sidebar sitting under a white
-  sheet. `.bo-main` scrolls on its own with 14px/20px left corners and `--po-sheet-shadow`, and goes
-  flat below 1024px. Rows are 30px with 14px text and solid one-colour 16px icons. Drag its right edge to resize (168–320px, double-click resets); the width is a per-device pref in `HWPOS_STORE.ui`, never synced. **There is no topbar** — `--po-topbar-h` is `0px` and kept only
+  sheet. `.bo-main` scrolls on its own with a straight left edge (no rounded corners, owner 2026-09-26) and `--po-sheet-shadow`, and goes
+  flat below 1024px. Rows are 30px with 14px text and solid one-colour 16px icons. Drag its right edge to resize (168–320px, double-click resets; under 168px the edge follows at half speed and springs back to 168 on release; dragged left of 96px it previews the icon rail, back past 128px it opens again, and only letting go folds it, keeping its pre-drag width for unfolding); the width is a per-device pref in `HWPOS_STORE.ui`, never synced. **There is no topbar** — `--po-topbar-h` is `0px` and kept only
   so the sidebar/main offsets stay expressed in one place. The global search went with it; the
   hamburger survives as a fixed 38px button that CSS shows only below 1024px, where the sidebar overlays.
+- Fold to icons (2026-09-26, the lab's `.fold`): the panel-icon button `#sideRailBtn` right of the store
+  switcher folds the sidebar to a 60px icon rail on desktop and unfolds it again. That is
+  `.bo-app.side-rail` (it sets `--po-sidebar-w: 60px`, so `.bo-main` follows) and `sidebarRail` in
+  `HWPOS_STORE.ui`, per device, never synced. It is **not** `.sidebar-collapsed`, which is the
+  <1024px overlay being shut; below 1024px the button hides and `.side-rail` does nothing. On the
+  rail: names, trees, chevrons, the store/account text and the resizer hide; icons and badges
+  centre; each link's name is its `title`; the button sits over the store badge, shown on hover
+  (the badge otherwise). It folds in **one motion, nothing re-lays out** (owner, 2026-09-26: the old
+  `display:none` swap flashed): names clip and fade under the closing edge, icons nudge 3px to
+  centre, an open tree slides shut on its grid rows, the button rides the edge. Don't bring back
+  `display:none` or a column swap on `.side-rail`. Clicking a
+  badge unfolds first (its menu needs the width); an active tree parent navigates instead of
+  folding its tree. CSS is at the end of `SIDEBAR + SHEET (v35)`; JS is next to the resize code
+  in `backoffice.html`.
+- **One header line** (owner, 2026-09-26): the store switcher, the fold button and every page's title share one centre line, 36px from the top. The sidebar's top row has 20px top padding (= the pages' top padding) and is 32px tall; every page's title row (`.view-head`, the calm pages' `.bar`) is at least 32px tall, and the content starts 16px under it (68px from the top) on every page. Change one and you change the other.
 
 ### Type
 Inter. 17px/700 page title · 13.5px/650 panel title · 13px/500 body & rows · 12px secondary ·
@@ -958,7 +974,7 @@ open tree holds at most ~6 items.** Section labels are buttons that fold their l
 (`aria-expanded`, remembered per device in `HWPOS_STORE.ui` `sideFolded`, never synced). Section
 folds and page trees share one animation: `SIDEBAR FOLDS (v30)`, a one-row grid sliding
 0fr <-> 1fr around `.side-fold-in`; don't swap it back to `display: none`. The chevron on any page
-with a tree opens that tree in place (`.open`) without navigating; clicking the name navigates. **Every dropdown animates** (`DROPDOWN MOTION (v31)`, CSS only):
+with a tree opens that tree in place (`.open`) without navigating; clicking the name navigates. **One tree open at a time** (owner, 2026-09-26): opening a tree (chevron, re-clicking the active page, or navigating) slides every other shut, the active page's included (`shutTrees()`), and every open *and* close animates -- never add a `display: none` on `.folded` / `.side-sub` again (that is what made folding snap). **Sales is its own Summary** (owner, 2026-09-26): the link is `data-sub="summary item category basket"`, so clicking Sales lights Sales and the tree is By item / By category / Bought together, no Summary leaf. Re-clicking a page folds its tree only when you are on that page itself; from one of its leaves (By item, Purchase orders, Stock history) the name navigates back to the page (owner, 2026-09-26). The chevron still folds it from a leaf. `paint()` calls `shutTrees()` whenever the lit link changes, so Back/Forward and in-page links can't leave two trees open. **Every dropdown animates** (`DROPDOWN MOTION (v31)`, CSS only):
 menus keep opening with `hidden` / `<details>`, and the CSS fades and drops them 4px using
 `@starting-style` + `display ... allow-discrete`. A new dropdown adds its class to that rule. Tried and rejected, don't redo:
 six labelled sections with every sub-page as its own link ("stuff gets lost"), and a bare
