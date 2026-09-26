@@ -169,7 +169,7 @@
         </div>
       </header>
       ${stock ? '<div class="kpi-row pd-kpis" id="pdKpis"></div>' : ''}
-      <div class="pd-filters">
+      <div class="pd-filters list-filters">
         <input class="search-input small q-input" placeholder="Search name, SKU, barcode..." autocomplete="off"
                value="${escapeHtml(state.invQuery)}">
         <select class="bo-select" data-filter="cat">

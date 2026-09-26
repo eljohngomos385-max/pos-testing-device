@@ -66,7 +66,6 @@ if (typeof document !== 'undefined') (function () {
   // Codes are what gets stored; the labels are only what the select prints.
   const SHORT_REASONS = { 'supplier-out-of-stock': 'Out of stock at supplier', damaged: 'Damaged',
     'wrong-item': 'Wrong item', 'partial-ship': 'Partial ship', other: 'Other' };
-  const CHANNELS = { viber: 'Viber', sms: 'SMS', email: 'Email', call: 'Call', other: 'Other' };
   // Monday first — a shop's week does not start on Sunday. The stored value is still 0 = Sunday.
   const WEEK = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [0, 'Sun']];
 
@@ -117,10 +116,10 @@ if (typeof document !== 'undefined') (function () {
 
   /* ---------- Shared chrome ---------- */
   const head = (title, actions) => `
-    <div class="view-head">
+    <header class="view-head">
       <div class="view-title-wrap"><h1>${title}</h1></div>
       <div class="view-actions">${actions}</div>
-    </div>`;
+    </header>`;
 
   const searchBox = (ph) =>
     `<input class="search-input small q-input" data-keep="q" type="search" placeholder="${ph}" value="${esc(state.invQuery)}">`;
@@ -170,10 +169,10 @@ if (typeof document !== 'undefined') (function () {
 
     return head(
       'Suppliers',
-      `${searchBox('Search suppliers')}
-       <button class="secondary-btn small" data-act="export-suppliers">Export CSV</button>
+      `<button class="secondary-btn small" data-act="export-suppliers">Export CSV</button>
        <button class="primary-btn small" data-act="new-supplier">Add supplier</button>`
     ) + `
+    <div class="list-filters">${searchBox('Search suppliers')}</div>
     <div class="dash-stack">${card('All suppliers', `${list.length} shown`, table(
       `<th>Supplier</th><th>Phone</th><th>Email</th><th class="num">Products</th><th class="num">On hand at cost</th>
        <th class="num">Open POs</th><th class="num">Outstanding</th>
@@ -230,9 +229,9 @@ if (typeof document !== 'undefined') (function () {
 
     return head(
       'Purchase orders',
-      `${searchBox('Search purchase orders')}
-       <button class="primary-btn small" data-act="new-po">New purchase order</button>`
-    ) + `<div class="sup-bar">
+      `<button class="primary-btn small" data-act="new-po">New purchase order</button>`
+    ) + `<div class="list-filters">
+      ${searchBox('Search purchase orders')}
       <select class="bo-select" data-filter="status">${opts(st, STATUS_FILTERS)}</select>
       <select class="bo-select" data-filter="supplier">${opts(sup, [['', 'All suppliers']].concat(suppliers.map((s) => [s.id, s.name || 'Unnamed'])))}</select>
     </div>
@@ -247,35 +246,6 @@ if (typeof document !== 'undefined') (function () {
   const field = (label, key, value, type) =>
     `<div class="setting-row"><label>${label}</label>
       <input class="text-input" type="${type || 'text'}"${type === 'number' ? ' min="0"' : ''} data-field="${key}" value="${esc(value)}"></div>`;
-
-  const fmtStamp = (ts) => {
-    const d = new Date(ts);
-    return isNaN(d) ? '—' : d.toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-  };
-
-  // One thread, newest last. On a PO it is that order's messages; on a supplier it is all of
-  // them, each tagged with its PO. Pasting a whole Viber chat as one message is fine.
-  function conversation(msgs, tagPo) {
-    const byId = tagPo ? new Map(pos.map((o) => [o.id, o])) : null;
-    const list = msgs.slice().sort((a, b) => String(a.ts).localeCompare(String(b.ts))).map((m) => {
-      const po = byId && m.poId && byId.get(m.poId);
-      return `<li class="sup-msg">
-        <div class="sup-msg-meta">${m.direction === 'in' ? 'From supplier' : 'To supplier'} · ${esc(CHANNELS[m.channel] || m.channel)}
-          · ${fmtStamp(m.ts)}${m.staff ? ` · ${esc(m.staff)}` : ''}${po ? ` · <button class="link-btn" data-go="${esc(po.id)}">${dash(po.number)}</button>` : ''}</div>
-        <div class="sup-msg-text">${esc(m.text)}</div>
-      </li>`;
-    }).join('');
-    return card('Conversation', `${msgs.length} message${msgs.length === 1 ? '' : 's'}`, `
-      ${list ? `<ul class="sup-thread">${list}</ul>` : '<div class="bo-empty">No messages yet. Paste the Viber thread here to keep it with the order.</div>'}
-      <div class="sup-compose">
-        <textarea rows="3" data-msg="text" placeholder="Paste or type the message…"></textarea>
-        <div class="sup-compose-bar">
-          <select class="bo-select" data-msg="direction"><option value="in">From supplier</option><option value="out">To supplier</option></select>
-          <select class="bo-select" data-msg="channel">${Object.keys(CHANNELS).map((k) => `<option value="${k}">${CHANNELS[k]}</option>`).join('')}</select>
-          <button class="secondary-btn small" data-act="add-msg">Add message</button>
-        </div>
-      </div>`);
-  }
 
   function supplierDetail(s, agg) {
     const p = agg.prod.get(s.id) || EMPTY_P;
@@ -333,7 +303,6 @@ if (typeof document !== 'undefined') (function () {
         ${card('Purchase orders', `${o.list.length}`, table(
           '<th>PO</th><th>Status</th><th>Due</th><th class="num">Total</th>',
           orders, 4, 'No purchase orders for this supplier yet.'), true)}
-        ${conversation(loadEvents('supplierMessages').filter((m) => m.supplierId === s.id), true)}
       </div>`;
   }
 
@@ -452,7 +421,6 @@ if (typeof document !== 'undefined') (function () {
             <label class="adj-field sup-arrived"><span>Arrived on</span>
               <input class="bo-date" type="date" id="supArrivedOn" value="${esc(isoDate(Date.now()))}" max="${esc(isoDate(Date.now()))}"></label>
             <button class="secondary-btn small" data-act="fill-all">Fill all lines</button></div>`, true) : ''}
-        ${conversation(loadEvents('supplierMessages').filter((m) => m.poId === po.id), false)}
       </div>`;
   }
 
@@ -665,19 +633,6 @@ if (typeof document !== 'undefined') (function () {
         s.orderDays = [...hit.parentNode.querySelectorAll('.seg-btn.active')].map((b) => Number(b.dataset.day)).sort();
         s.updatedAt = new Date().toISOString();
         return saveSuppliers(suppliers);
-      }
-      case 'add-msg': {
-        const sup = currentSupplier();
-        const box = hit.closest('.sup-compose');
-        if ((!po && !sup) || !box) return;
-        const text = box.querySelector('[data-msg="text"]').value.trim();
-        if (!text) return showToast('Type or paste the message first');
-        appendEvents('supplierMessages', [makeEvent({
-          supplierId: po ? po.supplierId : sup.id, poId: po ? po.id : '',
-          direction: box.querySelector('[data-msg="direction"]').value,
-          channel: box.querySelector('[data-msg="channel"]').value, text,
-        }, actor())]);
-        return renderCurrentView();
       }
       case 'cancel-po': {
         if (!po || !confirm(`Cancel ${po.number || 'this purchase order'}?`)) return;

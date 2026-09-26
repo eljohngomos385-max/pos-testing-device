@@ -54,15 +54,22 @@ body {
   font-size: var(--b-t-label); -webkit-font-smoothing: antialiased;
 }
 button { font: inherit; color: inherit; }
-a { color: var(--b-data); text-decoration: none; }
+a { color: var(--b-ink-2); font-weight: 500; text-decoration: none; }
+a:hover { color: var(--b-ink); }
 
 main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--rail-w)); margin: 0 auto; }   /* left column = the Sales page's width */
 
 .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
 .bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
-.seg { display: inline-flex; background: var(--b-track); border-radius: 9px; padding: 2px; }
-.seg button { border: 0; background: none; padding: 5px 14px; border-radius: 7px; cursor: pointer; color: var(--b-ink-2); }
-.seg button[aria-pressed="true"] { background: var(--b-raised); color: var(--b-ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 500; }
+.pick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 10px 5px 12px; cursor: pointer; font-weight: 500; }
+.pick .vs { font-weight: 400; color: var(--b-ink-3); }
+.pick::after { content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
+.menu { margin: 0; inset: auto; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); padding: 4px; min-width: 200px; color: var(--b-ink); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+.menu h3 { margin: 0; padding: 8px 10px 4px; font-size: var(--b-t-micro); font-weight: 500; color: var(--b-ink-3); }
+.menu hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
+.menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: var(--b-r-row); cursor: pointer; }
+.menu button:hover { background: var(--b-card); }
+.menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
 .icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; }
 .icon-btn:disabled { opacity: .35; cursor: default; }
 
@@ -75,7 +82,7 @@ main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--rail-w)); 
    and has no line under it, so it opens into the panel. The rest stay on the grey. ---------- */
 .trend { padding: 0; }
 .strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--b-line); }
-.stat { position: relative; min-width: 0; width: 100%; padding: var(--b-pad) 20px 14px; border: 0; border-left: 1px solid var(--b-line);
+.stat { position: relative; min-width: 0; width: 100%; padding: 10px 20px 14px; border: 0; border-left: 1px solid var(--b-line);
         background: none; text-align: left; cursor: pointer; }
 .stat:first-child { border-left: 0; border-top-left-radius: calc(var(--b-r-card) - 1px); }
 .stat:last-child { border-top-right-radius: calc(var(--b-r-card) - 1px); }
@@ -85,7 +92,7 @@ main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--rail-w)); 
 .panel { background: var(--b-raised); padding: 36px 20px 14px 18px; border-radius: 0 0 calc(var(--b-r-card) - 1px) calc(var(--b-r-card) - 1px); }
 .stat .lbl { color: var(--b-ink-2); }
 .stat[aria-selected="true"] .lbl { color: var(--b-ink); font-weight: 500; }
-.stat .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.stat .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 7px; }   /* label and number on the same lines as the target cards beside them */
 .stat .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .chip { font-size: var(--b-t-meta); font-weight: 500; padding: 2px 8px; border-radius: 999px; background: var(--b-track);
         color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -118,9 +125,8 @@ main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--rail-w)); 
 .b.future .x { color: #C2C2C2; }
 
 /* ---------- recent transactions ---------- */
-.head { display: flex; align-items: center; gap: 10px; min-height: 40px; line-height: 18px; }
-.head .lbl { font-weight: 500; }
-.head .sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-right: auto; font-variant-numeric: tabular-nums; }
+.head { display: flex; align-items: center; gap: 10px; min-height: 36px; line-height: 18px; }
+.head .lbl { font-weight: 500; margin-right: auto; }
 .head a { font-size: var(--b-t-meta); }
 .txcard { padding-top: 0; padding-bottom: 0; overflow: hidden; }
 .flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
@@ -148,15 +154,18 @@ main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--rail-w)); 
 .w .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
 .w .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .w .of { font-size: var(--b-t-label); font-weight: 400; letter-spacing: 0; color: var(--b-ink-3); margin-left: 2px; }
-.w .pct { font-weight: 600; font-variant-numeric: tabular-nums; }
+.w .pct { color: var(--b-ink-2); font-variant-numeric: tabular-nums; }
 .w .pct.up { color: var(--b-up); }
-.meter { height: 6px; background: var(--b-track); border-radius: 99px; overflow: hidden; margin-top: 10px; }
-.meter i { display: block; height: 100%; background: var(--b-data); border-radius: 99px; }
 .w { overflow: hidden; }
-.w .rows { margin: 12px calc(-1 * var(--b-pad)) calc(-1 * var(--b-pad)); border-radius: 0; }
+.w .rows { margin: 16px calc(-1 * var(--b-pad)) calc(-1 * var(--b-pad)); border-radius: 0; }
 .w .row, .w .row:nth-child(odd) { background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); min-height: 34px; padding: 0 var(--b-pad); }
-.w .top.band { margin-top: calc(-1 * var(--b-pad)); min-height: 40px; align-items: center; }
+.w .top.band { margin-top: calc(-1 * var(--b-pad)); min-height: 37px; align-items: center; }
 .w .top.band + .rows { margin-top: 0; }
+.w:has(.line) { padding-top: 10px; }   /* label + number cards: every gap is 14 of ink — edge, label, number, line, row, edge */
+.w:has(.line) .line { margin-top: 7px; }
+.w .line + .rows { margin-top: 9px; }
+.w .rows.foot .row { min-height: 37px; }
+.w .rows.foot .amt { font-weight: 400; color: var(--b-ink-2); }   /* one bold number per target card: the sold amount */
 .w .set { margin-top: 10px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 12px; cursor: pointer; }
 
 /* ---------- rows, shared by the rail and the pop-up ---------- */
@@ -214,9 +223,8 @@ dialog::backdrop { background: rgba(0,0,0,.28); }
 <main>
   <div class="bar">
     <h1 id="hello">Welcome back</h1>
-    <div class="seg" id="range">
-      <button data-range="today">Today</button><button data-range="7d">7 days</button><button data-range="15d">15 days</button><button data-range="30d">30 days</button>
-    </div>
+    <button class="pick" id="pick" popovertarget="range"></button>
+    <div class="menu" id="range" popover role="menu"></div>
   </div>
   <div class="dash">
     <div class="col">
@@ -225,7 +233,7 @@ dialog::backdrop { background: rgba(0,0,0,.28); }
         <div class="panel"><div class="plot" id="plot"></div></div>
       </section>
       <section class="card txcard">
-        <div class="head"><span class="lbl">Recent transactions</span><span class="sub" id="txsub"></span><a href="/admin/sales?by=tx">View all ›</a></div>
+        <div class="head"><span class="lbl">Recent transactions</span><a href="/admin/sales?by=tx">View all ›</a></div>
         <div id="tx"></div>
       </section>
     </div>
@@ -272,7 +280,7 @@ dialog::backdrop { background: rgba(0,0,0,.28); }
   const lineNet = i => i.lineTotal != null ? +i.lineTotal : (+i.price || 0) * (+i.qty || 0);
   const profit = o => (+o.total - (+o.vatAmount || 0)) - (o.items || []).reduce((s, i) => s + costOf(i) * (+i.qty || 0), 0);
   const payKind = o => o.paymentKind || o.paymentMethod || 'cash';
-  const payLabel = o => o.paymentMethodLabel || { cash: 'Cash', gcash: 'GCash', qr: 'QR', maya: 'Maya', credit: 'Account', split: 'Split payment' }[payKind(o)] || 'Cash';
+  const payLabel = o => payKind(o) === 'credit' ? 'Account' : o.paymentMethodLabel || { cash: 'Cash', gcash: 'GCash', qr: 'QR', maya: 'Maya', credit: 'Account', split: 'Split payment' }[payKind(o)] || 'Cash';
   const fulfil = o => { const f = String(o.fulfilment || 'pickup'); return f === 'delivery' ? 'Delivery' : f === 'pickup' ? 'Walk-in' : f; };   // bo-model.js orderFulfilLabel
   const between = (a, b) => orders.filter(o => o.ts >= a && o.ts < b);
 
@@ -292,12 +300,14 @@ dialog::backdrop { background: rgba(0,0,0,.28); }
   const RANGES = { today: 1, '7d': 7, '15d': 15, '30d': 30 };
   const S = {
     range: RANGES[q.get('range')] ? q.get('range') : 'today',
+    vs: q.get('vs') || '',
     sel: q.get('at') ? { kind: 'at', key: q.get('at') } : q.get('receipt') ? { kind: 'receipt', id: q.get('receipt') } : null,
     chart: ['gp', 'n', 'mg'].includes(q.get('chart')) ? q.get('chart') : 'rev',
   };
   function saveUrl() {
     const p = new URLSearchParams();
     if (S.range !== 'today') p.set('range', S.range);
+    if (S.vs) p.set('vs', S.vs);
     if (S.chart !== 'rev') p.set('chart', S.chart);
     if (S.sel) p.set(S.sel.kind, S.sel.kind === 'at' ? S.sel.key : S.sel.id);
     history.replaceState(null, '', p.toString() ? '?' + p : location.pathname);
@@ -305,11 +315,19 @@ dialog::backdrop { background: rgba(0,0,0,.28); }
 
   // The window, and the one it's compared with: today against the same weekday last week up to
   // this minute; N days against the N days before, also up to this minute. Never a half day vs a whole one.
+  // ?vs= picks another: '' is that default, 'day' is yesterday (today only), 'none' turns the chips off.
   let W;
+  const RANGE_LBL = { today: 'Today', '7d': 'Last 7 days', '15d': 'Last 15 days', '30d': 'Last 30 days' };
+  function compares(range) {   // [key, menu label, days back, chip tooltip]
+    const n = RANGES[range], wd = fmt(addDays(TODAY, -7), { weekday: 'long' });
+    return (range === 'today'
+      ? [['', `Last ${wd}`, 7, `vs last ${wd} at this time`], ['day', 'Yesterday', 1, 'vs yesterday at this time']]
+      : [['', `Previous ${n} days`, n, `vs the ${n} days before`]]).concat([['none', 'No comparison', 0, '']]);
+  }
+  const compareFor = range => compares(range).find(c => c[0] === S.vs) || compares(range)[0];
   function windowFor(range) {
-    const n = RANGES[range], start = addDays(TODAY, 1 - n), back = range === 'today' ? 7 : n;
-    const w = { range, n, start, rows: between(start, NOW), prev: between(addDays(start, -back), addDays(NOW, -back)) };
-    w.vs = range === 'today' ? `vs last ${fmt(addDays(TODAY, -7), { weekday: 'long' })} at this time` : `vs the ${n} days before`;
+    const n = RANGES[range], start = addDays(TODAY, 1 - n), [vsKey, vsLbl, back, vs] = compareFor(range);
+    const w = { range, n, start, rows: between(start, NOW), prev: back ? between(addDays(start, -back), addDays(NOW, -back)) : [], vs, vsLbl: back ? vsLbl : '', vsKey };
     if (range === 'today') {
       // store hours: whatever hours sold in the last four weeks
       const seen = between(addDays(TODAY, -28), NOW).map(o => new Date(o.ts).getHours());
@@ -374,7 +392,6 @@ dialog::backdrop { background: rgba(0,0,0,.28); }
   const txTime = t => t >= TODAY ? clock(t) : `${fmt(t, { month: 'short', day: 'numeric' })}, ${clock(t)}`;
   function renderTx() {
     const list = W.rows.slice().reverse(), shown = list.slice(0, RECENT_TX);
-    document.getElementById('txsub').textContent = list.length ? `${shown.length} of ${list.length.toLocaleString()}` : '';
     document.getElementById('tx').innerHTML = shown.length ? `<div class="flush"><table class="tx">
       <tr><th>Receipt</th><th>Time</th><th class="opt">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th><th class="n">Total</th></tr>
       ${shown.map(o => `<tr data-receipt="${esc(o.id)}" class="${sign(o) ? '' : 'dim'}">
@@ -400,25 +417,23 @@ dialog::backdrop { background: rgba(0,0,0,.28); }
     }
     const auto = month ? Math.max(0, Math.round((month - before) / (days - d.getDate() + 1) / 10) * 10) : 0;
     const ov = settings.targets?.override, daily = ov && ov.date === iso(NOW) ? +ov.amount || auto : auto;
-    const elapsed = d.getDate() - 1 + (d.getHours() + d.getMinutes() / 60) / 24, pace = elapsed > 0 ? (before + done) / elapsed * days : 0;
 
-    const meter = pct => `<div class="meter" role="img" aria-label="${pct}%"><i style="width:${Math.min(100, Math.max(0, pct))}%"></i></div>`;
     const head = (lbl, val, side = '', link = '') => `<div class="top"><span>${lbl}</span>${link}</div><div class="line"><span class="val">${val}</span>${side}</div>`;
     const pctSide = pct => `<span class="pct ${pct >= 100 ? 'up' : ''}">${pct}%</span>`;
-    const empty = lbl => head(lbl, '—') + `<button class="set">Set target</button><div class="rows">${row('No monthly target yet', '')}</div>`;
+    const empty = lbl => head(lbl, '—') + `<button class="set">Set target</button><div class="rows foot">${row('No monthly target yet', '')}</div>`;
     const out = [];
 
     if (!daily) out.push(empty('Daily sales target'));
     else {
       const pct = Math.round(done / daily * 100), left = daily - done;
-      out.push(head('Daily sales target', `${peso(done)}<span class="of">/${peso(daily)}</span>`, pctSide(pct)) + meter(pct)
-        + `<div class="rows">${left > 0 ? row('Left to sell today', peso(left)) : row('Target hit, over by', peso(-left))}</div>`);
+      out.push(head('Daily sales target', `${peso(done)}<span class="of">/${peso(daily)}</span>`, pctSide(pct))
+        + `<div class="rows foot">${left > 0 ? row('Left to sell today', peso(left)) : row('Target hit, over by', peso(-left))}</div>`);
     }
     if (!month) out.push(empty('Monthly sales target'));
     else {
-      const sold = before + done, pct = Math.round(sold / month * 100), ahead = pace >= month;
-      out.push(head('Monthly sales target', `${short(sold)}<span class="of">/${short(month)}</span>`, pctSide(pct)) + meter(pct)
-        + `<div class="rows">${row('On pace for', short(pace), ahead ? 'ahead' : 'behind', ahead ? 'up' : 'down')}</div>`);
+      const sold = before + done, pct = Math.round(sold / month * 100), left = month - sold;
+      out.push(head('Monthly sales target', `${short(sold)}<span class="of">/${short(month)}</span>`, pctSide(pct))
+        + `<div class="rows foot">${left > 0 ? row('Left to sell this month', short(left)) : row('Target hit, over by', short(-left))}</div>`);
     }
 
     // Low stock: bo-model.js isLow(), the five that run out first by the last 30 days' selling.
@@ -428,7 +443,7 @@ dialog::backdrop { background: rgba(0,0,0,.28); }
     const low = (products || []).filter(p => !p.archived && Number(p.stock) <= Number(p.reorderPoint)).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock);
     out.push(head('Low stock', low.length ? String(low.length) : `0<span class="of"> all stocked</span>`, '',
         low.length ? '<a href="/admin/products?view=stock&level=out,low">View all ›</a>' : '')
-      + (low.length ? `<div class="rows">${low.slice(0, 5).map(p => `<div class="row"><span class="nm">${esc(p.name)}</span><span class="amt">${Number(p.stock).toLocaleString()} ${esc(p.unit || 'pc')}</span>`
+      + (low.length ? `<div class="rows">${low.slice(0, 5).map(p => `<div class="row"><span class="nm">${esc(p.name)}</span>`
         + `<span class="pill ${p.stock <= 0 ? 'down' : 'warn'}" style="margin:0">${p.stock <= 0 ? 'Out' : 'Low'}</span></div>`).join('')}</div>` : ''));
 
     // Payment methods, for the range: the only widget that follows it.
@@ -497,12 +512,21 @@ dialog::backdrop { background: rgba(0,0,0,.28); }
   // ---------- wiring ----------
   function render() {
     W = windowFor(S.range);
-    document.querySelectorAll('#range button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.range === S.range)));
+    const opt = (attr, v, lbl, on) => `<button role="menuitemradio" ${attr}="${v}" aria-checked="${on}">${lbl}</button>`;
+    document.getElementById('pick').innerHTML = RANGE_LBL[S.range] + (W.vsLbl ? `<span class="vs">vs ${W.vsLbl[0].toLowerCase() + W.vsLbl.slice(1)}</span>` : '');
+    document.getElementById('range').innerHTML = Object.keys(RANGES).map(r => opt('data-range', r, RANGE_LBL[r], r === S.range)).join('')
+      + '<hr><h3>Compare to</h3>' + compares(S.range).map(c => opt('data-vs', c[0], c[1], c[0] === W.vsKey)).join('');
     renderStrip(); renderPlot(); renderTx(); renderRail(); renderPop(); saveUrl();
   }
   const open = sel => { S.sel = sel; renderPop(); saveUrl(); };
   const close = () => { S.sel = null; renderPop(); saveUrl(); };
-  document.getElementById('range').onclick = e => { const b = e.target.closest('[data-range]'); if (b) { S.range = b.dataset.range; S.sel = null; render(); } };
+  const menu = document.getElementById('range');
+  menu.onclick = e => { const b = e.target.closest('[data-range],[data-vs]'); if (!b) return;
+    if (b.dataset.range) { S.range = b.dataset.range; if (!compares(S.range).some(c => c[0] === S.vs)) S.vs = ''; } else S.vs = b.dataset.vs;
+    S.sel = null; menu.hidePopover(); render(); };
+  menu.addEventListener('toggle', e => { if (e.newState !== 'open') return;          // hang it under the button, right edges flush
+    const r = document.getElementById('pick').getBoundingClientRect();
+    menu.style.top = r.bottom + 6 + 'px'; menu.style.left = Math.max(16, r.right - menu.offsetWidth) + 'px'; });
   document.getElementById('strip').onclick = e => { const c = e.target.closest('[data-chart]'); if (c) { S.chart = c.dataset.chart; renderStrip(); renderPlot(); saveUrl(); } };  document.getElementById('plot').onclick =e => { const c = e.target.closest('[data-at]'); if (c) open({ kind: 'at', key: c.dataset.at }); };
   document.getElementById('tx').onclick = e => { const r = e.target.closest('[data-receipt]'); if (r) open({ kind: 'receipt', id: r.dataset.receipt }); };
   dlg.addEventListener('cancel', e => { e.preventDefault(); close(); });          // Esc

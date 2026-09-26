@@ -1,0 +1,552 @@
+/* ===========================================================================
+   Calm pages — the Dashboard, Sales › Summary and Sales › Transactions, ported
+   1:1 from dashboard-calm-lab.html, sales-calendar-lab.html and
+   transactions-compact-lab.html. Rules are the labs' own, scoped under .calm-dash /
+   .calm-sales / .calm-tx (lab `main` → .c-main, `aside`
+   → .c-aside). scripts/design-check.mjs holds the two in step.
+   =========================================================================== */
+body.bo-light {
+  --b-font:      var(--po-font);
+  --b-page:      var(--po-surface);
+  --b-card:      var(--blk-bg);
+  --b-raised:    var(--blk-raised);
+  --b-line:      #ECECEC;          /* the labs' hairline; no --po/--blk token is this light */
+  --b-outline:   var(--blk-outline);
+  --b-track:     var(--meter-track);
+  --b-ink:       var(--blk-ink);
+  --b-ink-2:     var(--blk-ink-2);
+  --b-ink-3:     var(--blk-ink-3);
+  --b-up:        var(--trend-up);
+  --b-down:      var(--trend-down);
+  --b-up-tint:   var(--trend-up-tint);
+  --b-down-tint: var(--trend-down-tint);
+  --b-up-soft:   #EAF6EF;          /* a good day's cell */
+  --b-heat:      #1FA855;          /* a day over target */
+  --b-down-soft: #FCEDE9;
+  --b-data:      var(--chart-1);
+  --b-data-1:    var(--data-1);
+  --b-data-tint: #DCE9FB;
+  --b-data-ink:  #1F5FB8;
+  --b-warn-tint: #FCEFC7;
+  --b-warn:      #7A5B00;
+  --b-t-value:   27px;
+  --b-t-label:   var(--blk-t-label);
+  --b-t-meta:    var(--blk-t-meta);
+  --b-t-micro:   var(--blk-t-micro);
+  --b-r-card:    14px;
+  --b-r-cell:    10px;
+  --b-r-row:     7px;
+  --b-pad:       16px;
+  --b-gap:       14px;
+  --b-panel-w:   420px;
+  --b-rail-w:    340px;
+}
+/* the view is the lab's whole page: no back-office gutter or width cap */
+body.bo-light .view.calm-dash, body.bo-light .view.calm-sales, body.bo-light .view.calm-tx { padding: 0; max-width: none; min-height: 100vh; }
+body.bo-light .view.calm-dash.active, body.bo-light .view.calm-sales.active, body.bo-light .view.calm-tx.active { display: block; }   /* the lab body is a block; in a flex column .c-main's auto margins shrink it */
+
+/* ---------------------------------------------------------------- Dashboard */
+body.bo-light .calm-dash {
+  margin: 0; background: var(--b-page); color: var(--b-ink);
+  font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--b-t-label); -webkit-font-smoothing: antialiased;
+  line-height: normal;   /* the labs never set one; the back office's body is 1.5 */
+}
+body.bo-light .calm-dash button { font: inherit; color: inherit; }
+body.bo-light .calm-dash a { color: var(--b-ink-2); font-weight: 500; text-decoration: none; }
+body.bo-light .calm-dash a:hover { color: var(--b-ink); }
+
+body.bo-light .calm-dash .c-main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--b-rail-w)); margin: 0 auto; }   /* left column = the Sales page's width */
+
+body.bo-light .calm-dash .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+body.bo-light .calm-dash .bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
+body.bo-light .calm-dash .pick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 10px 5px 12px; cursor: pointer; font-weight: 500; }
+body.bo-light .calm-dash .pick .vs { font-weight: 400; color: var(--b-ink-3); }
+body.bo-light .calm-dash .pick::after { content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
+body.bo-light .calm-dash .menu { margin: 0; inset: auto; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); padding: 4px; min-width: 200px; color: var(--b-ink); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+body.bo-light .calm-dash .menu h3 { margin: 0; padding: 8px 10px 4px; font-size: var(--b-t-micro); font-weight: 500; color: var(--b-ink-3); }
+body.bo-light .calm-dash .menu hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
+body.bo-light .calm-dash .menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: var(--b-r-row); cursor: pointer; }
+body.bo-light .calm-dash .menu button:hover { background: var(--b-card); }
+body.bo-light .calm-dash .menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
+body.bo-light .calm-dash .icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; padding: revert; }   /* the POS's .icon-btn zeroes it */
+body.bo-light .calm-dash .icon-btn:disabled { opacity: .35; cursor: default; }
+
+/* ---------- the layout: main column + widget rail, as the real Dashboard ---------- */
+body.bo-light .calm-dash .dash { display: grid; grid-template-columns: minmax(0, 1fr) var(--b-rail-w); gap: 12px; align-items: start; }
+body.bo-light .calm-dash .col, body.bo-light .calm-dash .rail { display: grid; gap: 12px; min-width: 0; }
+body.bo-light .calm-dash .card { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); }
+
+/* ---------- KPIs over the bars: one card, folder tabs. The bars sit on a white panel; the picked KPI is white too
+   and has no line under it, so it opens into the panel. The rest stay on the grey. ---------- */
+body.bo-light .calm-dash .trend { padding: 0; display: block; font: inherit; color: inherit; white-space: normal; transform: none; }   /* undo bo-blocks' .trend chip */
+body.bo-light .calm-dash .strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--b-line); }
+body.bo-light .calm-dash .stat { position: relative; min-width: 0; width: 100%; padding: 10px 20px 14px; border: 0; border-left: 1px solid var(--b-line);
+        background: none; text-align: left; cursor: pointer; }
+body.bo-light .calm-dash .stat:first-child { border-left: 0; border-top-left-radius: calc(var(--b-r-card) - 1px); }
+body.bo-light .calm-dash .stat:last-child { border-top-right-radius: calc(var(--b-r-card) - 1px); }
+body.bo-light .calm-dash .stat:hover { background: color-mix(in srgb, var(--b-raised) 50%, var(--b-card)); }
+body.bo-light .calm-dash .stat[aria-selected="true"] { background: var(--b-raised); cursor: default; }
+body.bo-light .calm-dash .stat[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--b-raised); }   /* covers the hairline */
+body.bo-light .calm-dash .panel { background: var(--b-raised); padding: 36px 20px 14px 18px; border-radius: 0 0 calc(var(--b-r-card) - 1px) calc(var(--b-r-card) - 1px); box-shadow: none; }
+body.bo-light .calm-dash .stat .lbl { color: var(--b-ink-2); }
+body.bo-light .calm-dash .stat[aria-selected="true"] .lbl { color: var(--b-ink); font-weight: 500; }
+body.bo-light .calm-dash .stat .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 7px; }   /* label and number on the same lines as the target cards beside them */
+body.bo-light .calm-dash .stat .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .chip { font-size: var(--b-t-meta); font-weight: 500; padding: 2px 8px; border-radius: 999px; background: var(--b-track);
+        color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .chip.up { background: var(--b-up-tint); color: var(--b-up); }
+body.bo-light .calm-dash .chip.down { background: var(--b-down-tint); color: var(--b-down); }
+
+body.bo-light .calm-dash .plot { position: relative; height: 300px; }
+body.bo-light .calm-dash .grid, body.bo-light .calm-dash .cols { position: absolute; left: 32px; right: 0; top: 0; bottom: 20px; }
+body.bo-light .calm-dash .grid { border-left: 1px solid #D6D6D6; }                                                    /* the y axis, same ink as the ₱0 line */
+body.bo-light .calm-dash .gl { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--b-outline); }
+body.bo-light .calm-dash .gl span { position: absolute; right: calc(100% + 6px); bottom: 1px; font-size: 10px; color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .gl.zero { border-top-color: #D6D6D6; border-top-style: solid; }
+body.bo-light .calm-dash .cols { display: grid; }
+body.bo-light .calm-dash .b { position: relative; height: 100%; border: 0; background: none; padding: 0; display: flex; align-items: flex-end; justify-content: center; cursor: pointer; }
+body.bo-light .calm-dash .b i { position: relative; width: min(62%, 28px); background: var(--b-data); border-radius: 4px 4px 0 0; }
+body.bo-light .calm-dash .b .x { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-size: var(--b-t-micro); color: var(--b-ink-3); white-space: nowrap; }
+body.bo-light .calm-dash .b .x.now { color: var(--b-ink); font-weight: 600; }
+body.bo-light .calm-dash .b .tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); display: none; z-index: 2;
+          background: var(--b-ink); color: #fff; font-size: var(--b-t-meta); font-weight: 500; padding: 6px 10px; border-radius: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .b .tip b { display: block; font-weight: 600; margin-bottom: 3px; }
+body.bo-light .calm-dash .b .tip span { display: flex; justify-content: space-between; gap: 16px; opacity: .65; }
+body.bo-light .calm-dash .b .tip span.on { opacity: 1; }
+body.bo-light .calm-dash .b .tip, body.bo-light .calm-dash .b .tip em { font-style: normal; }                                           /* the tip sits inside the bar's <i> */
+body.bo-light .calm-dash .cols .b:nth-child(-n+3) .tip { left: 0; transform: none; }                           /* edge bars: keep the tip inside the card */
+body.bo-light .calm-dash .cols .b:nth-last-child(-n+3) .tip { left: auto; right: 0; transform: none; }
+body.bo-light .calm-dash .cols:hover .b i { opacity: .4; }
+body.bo-light .calm-dash .cols .b:hover i, body.bo-light .calm-dash .cols .b:focus-visible i { opacity: 1; }
+body.bo-light .calm-dash .b:hover .tip, body.bo-light .calm-dash .b:focus-visible .tip { display: block; }
+body.bo-light .calm-dash .b.future { cursor: default; }
+body.bo-light .calm-dash .b.future .x { color: #C2C2C2; }
+
+/* ---------- recent transactions ---------- */
+body.bo-light .calm-dash .head { display: flex; align-items: center; gap: 10px; min-height: 36px; line-height: 18px; }
+body.bo-light .calm-dash .head .lbl { font-weight: 500; margin-right: auto; }
+body.bo-light .calm-dash .head a { font-size: var(--b-t-meta); }
+body.bo-light .calm-dash .txcard { padding-top: 0; padding-bottom: 0; overflow: hidden; }
+body.bo-light .calm-dash .flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
+body.bo-light .calm-dash .tx { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .tx th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; border-top: 1px solid var(--b-line); }
+body.bo-light .calm-dash .tx td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
+body.bo-light .calm-dash .tx th:first-child, body.bo-light .calm-dash .tx td:first-child { padding-left: var(--b-pad); }
+body.bo-light .calm-dash .tx th:last-child, body.bo-light .calm-dash .tx td:last-child { padding-right: var(--b-pad); }
+body.bo-light .calm-dash .tx tr[data-receipt] { cursor: pointer; }
+body.bo-light .calm-dash .tx tr[data-receipt]:hover td { background: #F6F6F6; }
+body.bo-light .calm-dash .tx .id { font-weight: 600; }
+body.bo-light .calm-dash .tx tr.dim .id { font-weight: 400; }
+body.bo-light .calm-dash .tx .pill { margin: 0; font-size: 11.5px; font-weight: 500; padding: 2px 9px; }
+body.bo-light .calm-dash .tx tr.dim td { color: var(--b-ink-3); }
+body.bo-light .calm-dash .tx tr.dim .amt { text-decoration: line-through; }
+body.bo-light .calm-dash .tx .t { color: var(--b-ink-2); }
+body.bo-light .calm-dash .tx .cust { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-dash .tx .mut { color: var(--b-ink-3); }
+body.bo-light .calm-dash .tx .n { text-align: right; }
+body.bo-light .calm-dash .tx td.amt { font-weight: 600; }
+
+/* ---------- the rail's widgets ---------- */
+body.bo-light .calm-dash .w .top { display: flex; justify-content: space-between; align-items: baseline; color: var(--b-ink-2); }
+body.bo-light .calm-dash .w .top a { font-size: var(--b-t-meta); }
+body.bo-light .calm-dash .w .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+body.bo-light .calm-dash .w .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .w .of { font-size: var(--b-t-label); font-weight: 400; letter-spacing: 0; color: var(--b-ink-3); margin-left: 2px; }
+body.bo-light .calm-dash .w .pct { color: var(--b-ink-2); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .w .pct.up { color: var(--b-up); }
+body.bo-light .calm-dash .w { overflow: hidden; }
+body.bo-light .calm-dash .w .rows { margin: 16px calc(-1 * var(--b-pad)) calc(-1 * var(--b-pad)); border-radius: 0; }
+body.bo-light .calm-dash .w .row, body.bo-light .calm-dash .w .row:nth-child(odd) { background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); min-height: 34px; padding: 0 var(--b-pad); }
+body.bo-light .calm-dash .w .top.band { margin-top: calc(-1 * var(--b-pad)); min-height: 37px; align-items: center; }
+body.bo-light .calm-dash .w .top.band + .rows { margin-top: 0; }
+body.bo-light .calm-dash .w:has(.line) { padding-top: 10px; }   /* label + number cards: every gap is 14 of ink — edge, label, number, line, row, edge */
+body.bo-light .calm-dash .w:has(.line) .line { margin-top: 7px; }
+body.bo-light .calm-dash .w .line + .rows { margin-top: 9px; }
+body.bo-light .calm-dash .w .rows.foot .row { min-height: 37px; }
+body.bo-light .calm-dash .w .rows.foot .amt { font-weight: 400; color: var(--b-ink-2); }   /* one bold number per target card: the sold amount */
+body.bo-light .calm-dash .w .set { margin-top: 10px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 12px; cursor: pointer; }
+
+/* ---------- rows, shared by the rail and the pop-up ---------- */
+body.bo-light .calm-dash .rows { border-radius: 10px; }
+body.bo-light .calm-dash .row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px; border-radius: var(--b-r-row); }
+body.bo-light .calm-dash .row:nth-child(odd) { background: var(--b-raised); }
+body.bo-light .calm-dash button.row { width: 100%; border: 0; text-align: left; cursor: pointer; background: none; }
+body.bo-light .calm-dash button.row:nth-child(odd) { background: var(--b-raised); }
+body.bo-light .calm-dash button.row:hover { background: #F1F1F1; }
+body.bo-light .calm-dash .row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-dash .row .nm small { display: block; color: var(--b-ink-3); font-size: var(--b-t-micro); margin-top: -2px; }
+body.bo-light .calm-dash .row .amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+body.bo-light .calm-dash .row .cmp { width: 46px; text-align: right; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .row .cmp.up { color: var(--b-up); }
+body.bo-light .calm-dash .row .cmp.down { color: var(--b-down); }
+body.bo-light .calm-dash .row .t { width: 64px; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .row.total .nm, body.bo-light .calm-dash .row.total .amt { font-weight: 600; }
+body.bo-light .calm-dash .row.dim .nm, body.bo-light .calm-dash .row.dim .amt { color: var(--b-ink-3); text-decoration: line-through; }
+body.bo-light .calm-dash .pill { font-size: 10.5px; padding: 1px 7px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); margin-left: 6px; text-decoration: none; display: inline-block; }
+body.bo-light .calm-dash .pill.warn { background: var(--b-warn-tint); color: var(--b-warn); }
+body.bo-light .calm-dash .pill.up { background: var(--b-up-tint); color: var(--b-up); }
+body.bo-light .calm-dash .pill.data { background: var(--b-data-tint); color: var(--b-data-ink); }
+body.bo-light .calm-dash .pill.down { background: var(--b-down-tint); color: var(--b-down); }
+
+/* ---------- the pop-up: one bar, or one receipt ---------- */
+body.bo-light .calm-dash dialog { border: 0; padding: 0; border-radius: var(--b-r-card); width: min(560px, calc(100vw - 32px)); max-height: 86vh; color: var(--b-ink); }
+body.bo-light .calm-dash dialog::backdrop { background: rgba(0,0,0,.28); }
+body.bo-light .calm-dash .pop { padding: 18px 20px 22px; }
+body.bo-light .calm-dash .pop .rows { background: var(--b-card); padding: 4px; }
+body.bo-light .calm-dash .p-top { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+body.bo-light .calm-dash .p-top h2 { font-size: 15px; font-weight: 600; margin: 0 auto 0 0; }
+body.bo-light .calm-dash .p-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.bo-light .calm-dash .p-head .val { font-size: var(--b-t-value); font-weight: 560; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .p-sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 4px 0 0; }
+body.bo-light .calm-dash .p-sec { margin-top: 20px; }
+body.bo-light .calm-dash .p-sec > .lbl { font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
+body.bo-light .calm-dash .p-sec > .lbl span { color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); }
+
+@media (max-width: 1000px) {
+  body.bo-light .calm-dash .dash { grid-template-columns: minmax(0, 1fr); }
+  body.bo-light .calm-dash .rail { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+@media (max-width: 760px) {
+  body.bo-light .calm-dash .c-main { padding: 16px; }
+  body.bo-light .calm-dash .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.bo-light .calm-dash .stat { padding: 12px 16px; }
+  body.bo-light .calm-dash .panel { padding: 18px 12px 10px 16px; }
+  body.bo-light .calm-dash .plot { height: 190px; }
+  body.bo-light .calm-dash .cols.many .b:nth-child(even) .x { visibility: hidden; }
+  body.bo-light .calm-dash .tx .opt { display: none; }
+}
+
+/* ---------------------------------------------------------------- Sales › Summary */
+body.bo-light .calm-sales {
+  margin: 0; background: var(--b-page); color: var(--b-ink);
+  font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--b-t-label); -webkit-font-smoothing: antialiased;
+  line-height: normal;   /* the labs never set one; the back office's body is 1.5 */
+}
+body.bo-light .calm-sales button { font: inherit; color: inherit; }
+body.bo-light .calm-sales .num { font-variant-numeric: tabular-nums; }
+
+/* ---------- page + panel: the calendar shrinks, it never hides ---------- */
+body.bo-light .calm-sales .shell { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; }
+body.bo-light .calm-sales .shell.open { grid-template-columns: minmax(0, 1fr) var(--b-panel-w); }
+body.bo-light .calm-sales .c-main { padding: 20px 24px 40px; max-width: 1180px; width: 100%; margin: 0 auto; container-type: inline-size; }
+
+body.bo-light .calm-sales .note { font-size: var(--b-t-meta); color: var(--b-ink-3); margin: 0 0 14px; }
+body.bo-light .calm-sales .note b { color: var(--b-ink-2); font-weight: 500; }
+
+/* ---------- top bar ---------- */
+body.bo-light .calm-sales .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+body.bo-light .calm-sales .bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
+body.bo-light .calm-sales .seg { display: inline-flex; background: var(--b-track); border-radius: 9px; padding: 2px;
+  height: auto; gap: normal; font-size: inherit; font-weight: inherit; color: inherit; }   /* undo the POS's global .seg */
+body.bo-light .calm-sales .seg button { border: 0; background: none; padding: 5px 14px; border-radius: 7px; cursor: pointer; color: var(--b-ink-2); }
+body.bo-light .calm-sales .seg button[aria-pressed="true"] { background: var(--b-raised); color: var(--b-ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 500; }
+body.bo-light .calm-sales .nav { display: inline-flex; align-items: center; gap: 4px; }
+body.bo-light .calm-sales .nav b { min-width: 124px; text-align: center; font-weight: 600; font-size: 14px; }
+body.bo-light .calm-sales .icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; padding: revert; }   /* the POS's .icon-btn zeroes it */
+body.bo-light .calm-sales .icon-btn:disabled { opacity: .35; cursor: default; }
+
+/* ---------- 1 · the strip ---------- */
+body.bo-light .calm-sales .strip { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad) 4px; display: grid;
+         grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr)); }
+body.bo-light .calm-sales .stat { padding: 0 16px; border-left: 1px solid var(--b-line); min-width: 0; }
+body.bo-light .calm-sales .stat:first-child { border-left: 0; }
+body.bo-light .calm-sales .stat .lbl { color: var(--b-ink-2); }
+body.bo-light .calm-sales .stat .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+body.bo-light .calm-sales .stat .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .stat .sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-sales .stat .val.up { color: var(--b-up); }
+body.bo-light .calm-sales .stat .val.down { color: var(--b-down); }
+body.bo-light .calm-sales .chip { font-size: var(--b-t-meta); font-weight: 500; padding: 2px 8px; border-radius: 999px; background: var(--b-track);
+        color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .chip.up { background: var(--b-up-tint); color: var(--b-up); }
+body.bo-light .calm-sales .chip.down { background: var(--b-down-tint); color: var(--b-down); }
+/* the target is a stat like the others: revenue, a plain % where the chip goes, "of ₱X" below, click to change */
+body.bo-light .calm-sales button.stat { font: inherit; color: inherit; text-align: left; background: none; border-top: 0; border-right: 0; border-bottom: 0; cursor: pointer;
+              display: flex; flex-direction: column; justify-content: flex-start; }   /* a button centers its content; stats sit at the top */
+body.bo-light .calm-sales button.stat:hover .lbl { color: var(--b-data); }
+body.bo-light .calm-sales .stat .pct { font-size: var(--b-t-meta); font-weight: 600; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .stat .set { color: var(--b-data); font-size: var(--b-t-meta); }
+body.bo-light .calm-sales dialog.tdlg { border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); width: min(340px, calc(100vw - 32px));
+              background: var(--b-raised); color: var(--b-ink); box-shadow: 0 12px 32px rgba(0,0,0,.14); }
+body.bo-light .calm-sales dialog.tdlg::backdrop { background: rgba(0,0,0,.18); }
+body.bo-light .calm-sales .tdlg h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+body.bo-light .calm-sales .tdlg label { display: block; color: var(--b-ink-2); }
+body.bo-light .calm-sales .tdlg input { display: block; width: 100%; margin-top: 6px; font: inherit; font-size: 15px; padding: 7px 10px; border: 1px solid var(--b-outline);
+              border-radius: var(--b-r-row); font-variant-numeric: tabular-nums; color: revert; box-shadow: none; }   /* the lab's is a bare UA input */
+body.bo-light .calm-sales .tdlg p { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 8px 0 0; }
+body.bo-light .calm-sales .tdlg .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+body.bo-light .calm-sales .tdlg button { font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--b-outline); background: var(--b-raised); cursor: pointer; }
+body.bo-light .calm-sales .tdlg button[type="submit"] { background: var(--b-data); border-color: var(--b-data); color: #fff; font-weight: 500; }
+
+/* ---------- 2 · the calendar ---------- */
+body.bo-light .calm-sales .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.15fr); gap: 8px; margin-top: 22px; }
+body.bo-light .calm-sales .cal .dow { text-align: center; color: var(--b-ink-3); font-size: var(--b-t-meta); padding-bottom: 2px; }
+body.bo-light .calm-sales .cell { min-height: 92px; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised);
+        padding: 9px 10px; text-align: left; display: flex; flex-direction: column; gap: 3px; min-width: 0; cursor: pointer; }
+body.bo-light .calm-sales button.cell:hover { border-color: #C9C9C9; }
+body.bo-light .calm-sales .cell .d { font-size: var(--b-t-meta); color: var(--b-ink-2); font-weight: 500; }
+body.bo-light .calm-sales .cell .v { font-size: 15px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; margin-top: auto; white-space: nowrap; }
+body.bo-light .calm-sales .cell .m { font-size: var(--b-t-micro); color: var(--b-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-sales .cell .v .sm { display: none; }   /* phone swaps in the short figure */
+body.bo-light .calm-sales .cell.good { background: var(--b-up-soft); border-color: #CFE7D9; }
+body.bo-light .calm-sales .cell.good .v { color: var(--b-up); }
+body.bo-light .calm-sales .cell.loss { background: var(--b-down-soft); border-color: #F2D3CB; }
+body.bo-light .calm-sales .cell.loss .v { color: var(--b-down); }
+body.bo-light .calm-sales .cell.shut, body.bo-light .calm-sales .cell.future { background: transparent; cursor: default; }
+body.bo-light .calm-sales .cell.shut .m, body.bo-light .calm-sales .cell.future .d { color: #B5B5B5; }
+body.bo-light .calm-sales .cell.pad { visibility: hidden; }
+body.bo-light .calm-sales .cell.today { box-shadow: inset 0 0 0 1.5px var(--b-ink); }
+body.bo-light .calm-sales .cell.sel { box-shadow: inset 0 0 0 2px var(--b-data); }
+body.bo-light .calm-sales .cell.week { background: var(--b-card); }
+body.bo-light .calm-sales .cell.week .d { color: var(--b-ink-3); }
+body.bo-light .calm-sales .legend { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 12px; color: var(--b-ink-3); font-size: var(--b-t-meta); }
+body.bo-light .calm-sales .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--b-line); }
+body.bo-light .calm-sales .legend .g { background: var(--b-up-soft); border-color: #CFE7D9; }
+body.bo-light .calm-sales .legend .r { background: var(--b-down-soft); border-color: #F2D3CB; }
+/* heat: green above the daily bar, red below, strongest at the month's best and worst day */
+body.bo-light .calm-sales .cell.heat { background: var(--heat); border-color: color-mix(in srgb, var(--heat) 85%, var(--b-ink)); }
+body.bo-light .calm-sales .cell.heat .d, body.bo-light .calm-sales .cell.heat .m { color: rgba(0,0,0,.55); }   /* grey meta vanishes on a tint; darken the ink instead */
+body.bo-light .calm-sales .legend .scale { width: 64px; height: 8px; border: 0; border-radius: 99px; margin: 0 8px; vertical-align: 0;
+                 background: linear-gradient(90deg, color-mix(in srgb, var(--b-heat) 12%, white), color-mix(in srgb, var(--b-heat) 55%, white)); }
+
+/* year: twelve tiles, same cell */
+body.bo-light .calm-sales .months { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 22px; }
+body.bo-light .calm-sales .months .cell { min-height: 110px; }
+body.bo-light .calm-sales .months .cell .d { font-size: var(--b-t-label); }
+body.bo-light .calm-sales .months .cell .v { font-size: 18px; }
+
+
+/* ---------- 4 · top 10 ---------- */
+body.bo-light .calm-sales .top { margin-top: 28px; background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0 var(--b-pad); overflow: hidden; }
+body.bo-light .calm-sales .flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
+body.bo-light .calm-sales .top table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .top th { white-space: nowrap; text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; }
+body.bo-light .calm-sales .top td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
+body.bo-light .calm-sales .top th:first-child, body.bo-light .calm-sales .top td:first-child { padding-left: var(--b-pad); }
+body.bo-light .calm-sales .top th:last-child, body.bo-light .calm-sales .top td:last-child { padding-right: var(--b-pad); }
+body.bo-light .calm-sales .top .empty { margin: 0; padding: 12px 0; }
+/* See all is the table's last row: a link where a footer would be, only for items and categories */
+body.bo-light .calm-sales .top .all { display: flex; align-items: center; height: 34px; padding-left: 24px; border-top: 1px solid var(--b-line); background: var(--b-raised);
+            color: var(--b-data); text-decoration: none; font-size: var(--b-t-meta); }
+body.bo-light .calm-sales .top .all:hover { background: #F6F6F6; }
+/* the name column's header is the rank-by dropdown: Items / Categories / Day / Time, same row height */
+body.bo-light .calm-sales .top th.sw { padding: 4px 12px 4px 10px; }
+body.bo-light .calm-sales .top td.nm { padding-left: 24px; }   /* names start where the dropdown's text does: 10 + 1 border + 13 padding */
+body.bo-light .calm-sales .top th select { font: inherit; font-weight: 500; color: var(--b-ink); padding: 4px 6px 4px 13px; border: 1px solid var(--b-outline);
+                 border-radius: 8px; background: var(--b-raised); cursor: pointer; box-shadow: none; }
+body.bo-light .calm-sales .top .nm { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-sales .top .nm small { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-left: 8px; }
+body.bo-light .calm-sales .top .n { text-align: right; }
+body.bo-light .calm-sales .top td.amt { font-weight: 600; }
+body.bo-light .calm-sales .top .sh { width: 150px; }
+body.bo-light .calm-sales .top .sh span { display: inline-block; width: 90px; height: 6px; background: var(--b-track); border-radius: 99px; overflow: hidden; vertical-align: middle; margin-right: 8px; }
+body.bo-light .calm-sales .top .sh i { display: block; height: 100%; background: var(--b-data); border-radius: 99px; }
+body.bo-light .calm-sales .top .cmp { color: var(--b-ink-3); font-size: var(--b-t-meta); width: 64px; }
+body.bo-light .calm-sales .top .cmp.up { color: var(--b-up); }
+body.bo-light .calm-sales .top .cmp.down { color: var(--b-down); }
+
+/* ---------- 5 · payments, breakdown, staff: three equal cards, the dashboard rail's widget look ---------- */
+body.bo-light .calm-sales .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; align-items: start; }
+body.bo-light .calm-sales .w { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); min-width: 0; overflow: hidden; }
+body.bo-light .calm-sales .w .band { display: flex; justify-content: space-between; align-items: center; min-height: 32px; margin-top: calc(-1 * var(--b-pad)); color: var(--b-ink-2); }
+body.bo-light .calm-sales .w .band span { color: var(--b-ink-3); font-size: var(--b-t-meta); }
+body.bo-light .calm-sales .w .rows { margin: 0 calc(-1 * var(--b-pad)) calc(-1 * var(--b-pad)); padding: 0; background: none; border-radius: 0; }
+body.bo-light .calm-sales .w .row, body.bo-light .calm-sales .w .row:nth-child(odd) { background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); min-height: 34px; padding: 0 var(--b-pad); }
+body.bo-light .calm-sales .w .empty { margin: 0; padding-bottom: 4px; }
+
+/* ---------- the side panel ---------- */
+body.bo-light .calm-sales .c-aside { border-left: 1px solid var(--b-line); background: var(--b-page); height: 100vh; position: sticky; top: 0;
+        overflow-y: auto; padding: 18px 18px 40px; }
+body.bo-light .calm-sales .c-aside[hidden] { display: none; }
+body.bo-light .calm-sales .p-top { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+body.bo-light .calm-sales .p-top h2 { font-size: 15px; font-weight: 600; margin: 0 auto 0 0; }
+body.bo-light .calm-sales .p-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.bo-light .calm-sales .p-head .val { font-size: var(--b-t-value); font-weight: 560; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .p-sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 4px 0 0; }
+body.bo-light .calm-sales .p-sec { margin-top: 20px; }
+body.bo-light .calm-sales .p-sec > .lbl { font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
+body.bo-light .calm-sales .p-sec > .lbl span { color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); }
+body.bo-light .calm-sales .rows { background: var(--b-card); border-radius: 10px; padding: 4px; }
+body.bo-light .calm-sales .row { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: var(--b-r-row); }
+body.bo-light .calm-sales .row:nth-child(odd) { background: var(--b-raised); }
+body.bo-light .calm-sales .row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-sales .row .amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+body.bo-light .calm-sales .row .cmp { width: 46px; text-align: right; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .row .t { width: 64px; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .row.total .nm, body.bo-light .calm-sales .row.total .amt { font-weight: 600; }
+body.bo-light .calm-sales .row.dim .nm, body.bo-light .calm-sales .row.dim .amt { color: var(--b-ink-3); text-decoration: line-through; }
+body.bo-light .calm-sales .pill { font-size: 10.5px; padding: 1px 7px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); margin-left: 6px; }
+body.bo-light .calm-sales .pill.warn { background: #FCEFC7; color: #7A5B00; }
+body.bo-light .calm-sales .pill.down { background: var(--b-down-tint); color: var(--b-down); }
+body.bo-light .calm-sales .hours { display: flex; align-items: flex-end; gap: 3px; height: 96px; background: var(--b-card); border-radius: 10px; padding: 10px 10px 0; }
+body.bo-light .calm-sales .hours div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+body.bo-light .calm-sales .hours i { display: block; background: var(--b-data-1); border-radius: 3px 3px 0 0; min-height: 2px; }
+body.bo-light .calm-sales .hours i.top { background: var(--b-data); }
+body.bo-light .calm-sales .hours-x { display: flex; gap: 3px; padding: 4px 10px 0; color: var(--b-ink-3); font-size: 10.5px; }
+body.bo-light .calm-sales .hours-x span { flex: 1; text-align: center; white-space: nowrap; }
+body.bo-light .calm-sales .more { border: 0; background: none; color: var(--b-data); cursor: pointer; padding: 8px 10px 2px; font-size: var(--b-t-meta); }
+
+@media (max-width: 1100px) {
+  body.bo-light .calm-sales .shell.open { grid-template-columns: minmax(0, 1fr); }
+  body.bo-light .calm-sales .shell { grid-template-columns: minmax(0, 1fr); }
+  body.bo-light .calm-sales .c-aside { position: fixed; inset: 0 0 0 auto; width: min(var(--b-panel-w), 100vw); box-shadow: -8px 0 24px rgba(0,0,0,.08); z-index: 5; }
+}
+/* six stats need ~180px each: a narrow window or an open day panel wraps them into rows of three */
+@container (max-width: 1000px) {
+  body.bo-light .calm-sales .strip { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 14px; }
+  body.bo-light .calm-sales .stat:nth-child(3n+1) { border-left: 0; }
+}
+@container (max-width: 760px) {
+  body.bo-light .calm-sales .trio { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  body.bo-light .calm-sales .c-main { padding: 16px; }
+  body.bo-light .calm-sales .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
+  body.bo-light .calm-sales .stat:nth-child(odd) { border-left: 0; }
+  body.bo-light .calm-sales .stat:nth-child(even) { border-left: 1px solid var(--b-line); }
+  body.bo-light .calm-sales .cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  body.bo-light .calm-sales .cal .wk, body.bo-light .calm-sales .cal .dow.wk { display: none; }
+  body.bo-light .calm-sales .cell { min-height: 56px; padding: 6px; }
+  body.bo-light .calm-sales .cell .v { font-size: 11px; }
+  body.bo-light .calm-sales .cell .m, body.bo-light .calm-sales .cell .v .full { display: none; }
+  body.bo-light .calm-sales .cell .v .sm { display: inline; }
+  body.bo-light .calm-sales .months { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.bo-light .calm-sales .top .sh, body.bo-light .calm-sales .top .qty, body.bo-light .calm-sales .top .nm small { display: none; }
+  body.bo-light .calm-sales .top .avg .qty { display: table-cell; }   /* days and hours rank by the average: show it, not the total */
+  body.bo-light .calm-sales .top .avg .amt { display: none; }
+}
+
+/* ---------------------------------------------------------------- Sales › Transactions */
+body.bo-light .calm-tx { margin: 0; background: var(--b-page); color: var(--b-ink); font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: var(--b-t-label); -webkit-font-smoothing: antialiased; line-height: normal; }   /* the labs never set one; the back office's body is 1.5 */
+body.bo-light .calm-tx button, body.bo-light .calm-tx input { font: inherit; color: inherit; }
+body.bo-light .calm-tx a { color: var(--b-data); text-decoration: none; }
+body.bo-light .calm-tx .c-main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--b-rail-w)); margin: 0 auto; }
+body.bo-light .calm-tx .bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+body.bo-light .calm-tx .bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
+body.bo-light :is(.calm-tx, .calm-cust) .pick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 10px 5px 12px; cursor: pointer; font-weight: 500; white-space: nowrap; }
+body.bo-light :is(.calm-tx, .calm-cust) .pick::after { content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
+body.bo-light .calm-tx .pick.on { background: var(--b-data-tint); border-color: var(--b-data-1); color: var(--b-data-ink); }
+body.bo-light .calm-tx .pick.on::after { border-color: var(--b-data-ink); }
+body.bo-light .calm-tx .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-ink); background: var(--b-ink); color: #fff; border-radius: 8px; padding: 5px 12px; cursor: pointer; font-weight: 500; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.2); }
+body.bo-light .calm-tx .btn:hover { background: #1F1F1F; }
+body.bo-light :is(.calm-tx, .calm-cust) .menu { margin: 0; inset: auto; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); padding: 4px; min-width: 200px; max-height: 60vh; overflow-y: auto; color: var(--b-ink); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+body.bo-light :is(.calm-tx, .calm-cust) .menu hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
+body.bo-light :is(.calm-tx, .calm-cust) .menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: var(--b-r-row); cursor: pointer; }
+body.bo-light :is(.calm-tx, .calm-cust) .menu button:hover { background: var(--b-card); }
+body.bo-light :is(.calm-tx, .calm-cust) .menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
+body.bo-light .calm-tx .menu .clear { color: var(--b-data); }
+body.bo-light .calm-tx .menu .none { padding: 7px 10px; color: var(--b-ink-3); }
+body.bo-light .calm-tx .menu .ends { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 4px 5px 10px; color: var(--b-ink-2); }   /* app only: the lab has no Ends on */
+body.bo-light .calm-tx .menu .ends input { border: 1px solid var(--b-outline); border-radius: var(--b-r-row); padding: 3px 6px; background: var(--b-raised); }
+body.bo-light .calm-tx .icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; padding: revert; }   /* the POS's .icon-btn zeroes it */
+body.bo-light .calm-tx .icon-btn:disabled { opacity: .35; cursor: default; }
+body.bo-light .calm-tx .note { font-size: var(--b-t-meta); color: var(--b-ink-3); margin: 0; }
+body.bo-light .calm-tx .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+body.bo-light .calm-tx .q { flex: 1; min-width: 220px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 12px; box-shadow: none; }   /* the back office's inputs carry an inset shadow */
+body.bo-light .calm-tx .q:focus { outline: 2px solid var(--b-data-1); outline-offset: -1px; }
+body.bo-light .calm-tx .card, body.bo-light .calm-cust .w { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0 var(--b-pad); overflow: hidden; }
+body.bo-light .calm-tx .head { display: flex; align-items: center; gap: 10px; min-height: 36px; line-height: 18px; }
+body.bo-light .calm-tx .head .lbl { font-weight: 500; margin-right: auto; }
+body.bo-light .calm-tx .head .sum { margin-left: 6px; color: var(--b-ink-3); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-tx .head a { font-size: var(--b-t-meta); cursor: pointer; }
+body.bo-light .calm-tx .flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
+body.bo-light .calm-tx .tx { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-tx .tx th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; border-top: 1px solid var(--b-line); }
+body.bo-light .calm-tx .tx th .sort { border: 0; background: none; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+body.bo-light .calm-tx .tx th .sort[data-on]::after { content: attr(data-on); margin-left: 4px; color: var(--b-data); }
+body.bo-light .calm-tx .tx td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
+body.bo-light .calm-tx .tx th:first-child, body.bo-light .calm-tx .tx td:first-child { padding-left: var(--b-pad); }
+body.bo-light .calm-tx .tx th:last-child, body.bo-light .calm-tx .tx td:last-child { padding-right: var(--b-pad); }
+body.bo-light .calm-tx .tx tr[data-receipt] { cursor: pointer; }
+body.bo-light .calm-tx .tx tr[data-receipt]:hover td { background: #F6F6F6; }
+body.bo-light .calm-tx .tx .id { font-weight: 600; }
+body.bo-light .calm-tx .tx tr.dim .id { font-weight: 400; }
+body.bo-light .calm-tx .tx .pill { margin: 0; font-size: 11.5px; font-weight: 500; padding: 2px 9px; }
+body.bo-light .calm-tx .tx tr.dim td { color: var(--b-ink-3); }
+body.bo-light .calm-tx .tx tr.dim .amt { text-decoration: line-through; }
+body.bo-light .calm-tx .tx .t { color: var(--b-ink-2); }
+body.bo-light .calm-tx .tx .cust { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-tx .tx .mut { color: var(--b-ink-3); }
+body.bo-light .calm-tx .tx .n { text-align: right; }
+body.bo-light .calm-tx .tx td.amt { font-weight: 600; }
+body.bo-light .calm-tx .pager { display: flex; align-items: center; gap: 4px; min-height: 34px; margin: 0 calc(-1 * var(--b-pad)); padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); background: var(--b-raised); color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-tx .pager span { margin-right: auto; }
+body.bo-light .calm-tx .pager .icon-btn { width: 24px; height: 24px; border-radius: 6px; }
+body.bo-light .calm-tx .card > .note { padding: 6px 0 16px; }
+body.bo-light .calm-tx .rows { border-radius: 10px; }
+body.bo-light .calm-tx .row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px; border-radius: var(--b-r-row); }
+body.bo-light .calm-tx .row:nth-child(odd) { background: var(--b-raised); }
+body.bo-light .calm-tx .row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-tx .row .nm small { display: block; color: var(--b-ink-3); font-size: var(--b-t-micro); margin-top: -2px; }
+body.bo-light .calm-tx .row .amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+body.bo-light .calm-tx .row.total .nm, body.bo-light .calm-tx .row.total .amt { font-weight: 600; }
+body.bo-light .calm-tx .pill { font-size: 10.5px; padding: 1px 7px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); margin-left: 6px; text-decoration: none; display: inline-block; }
+body.bo-light .calm-tx .pill.warn { background: var(--b-warn-tint); color: var(--b-warn); }
+body.bo-light .calm-tx .pill.up { background: var(--b-up-tint); color: var(--b-up); }
+body.bo-light .calm-tx .pill.data { background: var(--b-data-tint); color: var(--b-data-ink); }
+body.bo-light .calm-tx .pill.down { background: var(--b-down-tint); color: var(--b-down); }
+body.bo-light .calm-tx dialog { border: 0; padding: 0; border-radius: var(--b-r-card); width: min(560px, calc(100vw - 32px)); max-height: 86vh; color: var(--b-ink); }
+body.bo-light .calm-tx dialog::backdrop { background: rgba(0,0,0,.28); }
+body.bo-light .calm-tx .pop { padding: 18px 20px 22px; }
+body.bo-light .calm-tx .pop .rows { background: var(--b-card); padding: 4px; }
+body.bo-light .calm-tx .p-top { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+body.bo-light .calm-tx .p-top h2 { font-size: 15px; font-weight: 600; margin: 0 auto 0 0; }
+body.bo-light .calm-tx .p-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.bo-light .calm-tx .p-head .val { font-size: var(--b-t-value); font-weight: 560; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-tx .p-sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 4px 0 0; }
+body.bo-light .calm-tx .p-sec { margin-top: 20px; }
+body.bo-light .calm-tx .p-sec > .lbl { font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
+body.bo-light .calm-tx .p-sec > .lbl span { color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); }
+/* the blocks beside the table (transactions-compact-lab.html) */
+body.bo-light :is(.calm-tx, .calm-cust) { --b-rail-w: 288px; }
+body.bo-light :is(.calm-tx, .calm-cust) .dash { display: grid; grid-template-columns: minmax(0, 1fr) var(--b-rail-w); gap: 12px; align-items: start; }
+body.bo-light :is(.calm-tx, .calm-cust) .dash.solo { grid-template-columns: minmax(0, 1fr); }
+/* Show / hide a block: the table glides to its new width and the rail fades (slideRender() in backoffice.js).
+   The snapshots are cropped, not stretched, so the text never squashes mid-slide. */
+body.bo-light :is(.calm-tx, .calm-cust) .dash > :first-child { view-transition-name: page-main; }
+body.bo-light :is(.calm-tx, .calm-cust) .rail { view-transition-name: page-rail; }
+::view-transition-group(page-main), ::view-transition-group(page-rail) { animation-duration: .28s; animation-timing-function: cubic-bezier(.2, 0, 0, 1); }
+::view-transition-old(page-main), ::view-transition-new(page-main) { height: 100%; object-fit: none; object-position: left top; }
+body.bo-light :is(.calm-tx, .calm-cust) .menu .all { display: flex; gap: 4px; }
+body.bo-light :is(.calm-tx, .calm-cust) .menu .all button { justify-content: center; color: var(--b-ink-2); }
+body.bo-light :is(.calm-tx, .calm-cust) .rail { display: grid; gap: 8px; min-width: 0; }
+body.bo-light :is(.calm-tx, .calm-cust) .w { padding: var(--b-pad); overflow: hidden; }
+body.bo-light :is(.calm-tx, .calm-cust) .w .top { display: flex; justify-content: space-between; align-items: baseline; color: var(--b-ink-2); }
+body.bo-light .calm-tx .w .top a { font-size: var(--b-t-meta); cursor: pointer; }
+body.bo-light .calm-tx .w .rows { margin: 0 calc(-1 * var(--b-pad)) calc(-1 * var(--b-pad)); border-radius: 0; }
+body.bo-light .calm-tx .w .row, body.bo-light .calm-tx .w .row:nth-child(odd) { background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); min-height: 27px; padding: 0 var(--b-pad); }
+body.bo-light :is(.calm-tx, .calm-cust) .w .top.band { margin-top: calc(-1 * var(--b-pad)); min-height: 30px; align-items: center; }
+body.bo-light :is(.calm-tx, .calm-cust) .w.one { padding-block: 0; }
+body.bo-light :is(.calm-tx, .calm-cust) .w .top.one { margin: 0; min-height: 40px; }
+body.bo-light :is(.calm-tx, .calm-cust) .w .nv { font-size: 16px; font-weight: 600; color: var(--b-ink); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+body.bo-light :is(.calm-tx, .calm-cust) .w .cnt { color: var(--b-ink-3); font-variant-numeric: tabular-nums; }
+@media (hover: hover) { body.bo-light :is(.calm-tx, .calm-cust) .w .cnt { opacity: 0; transition: opacity .12s; } body.bo-light :is(.calm-tx, .calm-cust) .w:hover .cnt { opacity: 1; } }   /* the second number, when you point at the block */
+body.bo-light .calm-tx .w .row[data-f] { cursor: pointer; }
+body.bo-light .calm-tx .w .row[data-f]:hover { background: #F6F6F6; }
+body.bo-light .calm-tx .w .row.on, body.bo-light .calm-tx .w .row.on:hover { background: var(--b-data-tint); }
+body.bo-light .calm-tx .w .row.on .nm { color: var(--b-data-ink); font-weight: 500; }
+body.bo-light :is(.calm-tx, .calm-cust) .w .acts { display: flex; align-items: center; gap: 8px; align-self: center; }
+body.bo-light :is(.calm-tx, .calm-cust) .w .x { border: 0; background: none; padding: 0; width: 20px; height: 20px; border-radius: 6px; color: var(--b-ink-3); font-size: 15px; line-height: 1; cursor: pointer; }
+body.bo-light :is(.calm-tx, .calm-cust) .w .x:hover { background: var(--b-track); color: var(--b-ink); }
+@media (hover: hover) { body.bo-light :is(.calm-tx, .calm-cust) .w .x { opacity: 0; } body.bo-light :is(.calm-tx, .calm-cust) .w:hover .x, body.bo-light :is(.calm-tx, .calm-cust) .w .x:focus-visible { opacity: 1; } }
+@media (max-width: 1100px) {
+  body.bo-light :is(.calm-tx, .calm-cust) .dash { grid-template-columns: minmax(0, 1fr); }
+  body.bo-light :is(.calm-tx, .calm-cust) .rail { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+@media (max-width: 760px) {
+  body.bo-light .calm-tx .c-main { padding: 16px; }
+  body.bo-light .calm-tx .q { flex-basis: 100%; }
+  body.bo-light .calm-tx .tx .opt { display: none; }
+}
+/* Customers: the list borrows Transactions' rail and Widgets menu above (the .calm-cust half of each :is()).
+   Only those: its table stays a .blk-table card and its text the back office's own, so no root font here. */
+body.bo-light .calm-cust :is(.pick, .rail, .menu) { font-size: var(--b-t-label); line-height: normal; }
+body.bo-light .calm-cust :where(.pick, .menu button, .rail button) { font: inherit; }   /* :where, so .pick keeps its 500 */
+body.bo-light .calm-cust .w .cnt.down { color: var(--b-down); }   /* Near limit, when anyone is */
+/* 288px can't hold "Outstanding credit · 20 active debtors · ₱133,377 · ×": the label never wraps, the note
+   gives way with an ellipsis, and the band's title carries it whole. */
+body.bo-light .calm-cust .w .top > span:first-child { white-space: nowrap; }
+body.bo-light .calm-cust .w .acts { min-width: 0; }
+body.bo-light .calm-cust .w .cnt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

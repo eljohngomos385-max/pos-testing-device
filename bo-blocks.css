@@ -11,7 +11,7 @@
      .bo-card.blk-kpi      KPI: label, then the number with its trend chip on the RIGHT
      .bo-card.blk-list     striped rows (low stock, deliveries, breakdowns)
      .bo-card.blk-chart    a chart, head number with its chip on the right
-     .bo-card.blk-table    a table: white card, soft ring, tinted header, hairline rows
+     .bo-card.blk-table    a table: Transactions' grey card, white rows, a hairline over each
      .bo-card.blk-empty    nothing to show: label + one centred line
      .btn / .primary-btn / .secondary-btn / .seg-btn / .pbtn   buttons
      .status-pill          pills
@@ -58,11 +58,13 @@ body.bo-light {
   /* ---- dashboard rail ---- */
   --rail-w: 354px;
 
-  /* ---- table ---- */
-  --tbl-bg: #FFFFFF; --tbl-row: 34px; --tbl-head-bg: #F7F7F7; --tbl-line: #EBEBEB;
-  --tbl-stripe: #F7F7F7;        /* every second row; the first stays white under the tinted header */
-  --tbl-hover: #EFEFEF;
-  --tbl-shadow: inset 0 0 0 1px var(--blk-outline);   /* the same hairline as every card, no drop shadow (owner, 2026-09-23) */
+  /* ---- table: Sales › Transactions' card (bo-calm.css .calm-tx), on every list page ---- */
+  --tbl-bg: var(--blk-bg); --tbl-head-bg: var(--blk-bg); --tbl-line: #ECECEC;
+  --tbl-row: calc(var(--po-row-h, 32px) + 2px);   /* 34px; Settings → Density still moves it */
+  --tbl-r: 14px; --tbl-pad: 16px;
+  --tbl-stripe: #F7F7F7;        /* tables have no stripes now; kept for the staff pop-up's rows */
+  --tbl-hover: #F6F6F6;
+  --tbl-shadow: inset 0 0 0 1px var(--tbl-line);
 
   /* ---- button ---- */
   --btn-h: 28px; --btn-h-lg: 34px; --btn-r: 8px; --btn-line: #D4D4D4;
@@ -207,31 +209,35 @@ body.bo-light .blk-plot .bar { fill: var(--c); transition: opacity .12s; }   /* 
 body.bo-light .blk-plot svg.scrub .bar:not(.hot) { opacity: .4; }
 
 /* ============================================================================
-   TABLE — lab table D: white card, soft ring, tinted header, a line between rows
+   TABLE — Sales › Transactions' table (bo-calm.css .calm-tx .card/.tx): the grey card and its
+   head, white rows with a hairline over each, no stripes (owner, 2026-09-26)
    ============================================================================ */
-body.bo-light .blk-table { position: relative; background: var(--tbl-bg); box-shadow: none; overflow: hidden; }
-/* The hairline rides on top: an inset shadow on the card itself hides under the header and striped rows. */
+body.bo-light .blk-table { position: relative; background: var(--tbl-bg); box-shadow: none; border-radius: var(--tbl-r); overflow: hidden; }
+/* The hairline rides on top: an inset shadow on the card itself hides under the white rows. */
 body.bo-light .blk-table::after { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; box-shadow: var(--tbl-shadow); pointer-events: none; }
-/* Table D's head: one thin line. Label + count left, "View all →" right. */
-body.bo-light .blk-table .bo-card-head { padding: 8px var(--blk-pad) 9px; min-height: 26px; align-items: center; justify-content: space-between; }
+/* The head: one 36px line. Label, its count faint beside it, anything else pushed right. */
+body.bo-light .blk-table .bo-card-head { padding: 0 var(--tbl-pad); min-height: 36px; line-height: 18px; align-items: center; justify-content: space-between; }
+body.bo-light .blk-table .bo-card-head > .bo-card-sub { margin: 0 auto 0 -4px; font-size: var(--blk-t-label); color: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
 body.bo-light .bo-card-count { margin-left: 8px; font-size: var(--blk-t-meta); font-weight: 400; color: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
 body.bo-light .data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--blk-t-label); }
-/* The inset selector matches the old styles.css rules (border-top: 0, #FAFAFA) so the lab head wins in a card too. */
+/* The inset selector matches the old styles.css rules (padding, --po-row-h, zebra) so these win in a card too. */
 body.bo-light .data-table th,
 body.bo-light .bo-card-inset .data-table th {
-  height: var(--tbl-row); padding: 0 10px; text-align: left; white-space: nowrap;
-  font-size: var(--blk-t-meta); font-weight: 500; color: #5A5A5A; text-transform: none; letter-spacing: 0;
-  background: var(--tbl-head-bg); border-top: 1px solid var(--tbl-line); border-bottom: 1px solid var(--tbl-line);
+  height: auto; padding: 7px 12px; line-height: normal; text-align: left; white-space: nowrap;
+  font-size: var(--blk-t-meta); font-weight: 500; color: var(--blk-ink-2); text-transform: none; letter-spacing: 0;
+  background: var(--tbl-head-bg); border-top: 1px solid var(--tbl-line); border-bottom: 0;
 }
-body.bo-light .data-table td { height: var(--tbl-row); padding: 0 10px; color: var(--blk-ink); border-bottom: 0; }
-body.bo-light .data-table th:first-child, body.bo-light .data-table td:first-child { padding-left: var(--blk-pad); }
-body.bo-light .data-table th:last-child,  body.bo-light .data-table td:last-child  { padding-right: var(--blk-pad); }
+body.bo-light .data-table td,
+body.bo-light .bo-card-inset .data-table td {
+  height: var(--tbl-row); padding: 0 12px; color: var(--blk-ink);
+  border-top: 1px solid var(--tbl-line); border-bottom: 0;
+}
+body.bo-light .data-table td { background: var(--blk-raised); }   /* low on purpose: a page's own row tint (.sup-add) still wins */
+body.bo-light .data-table th:first-child, body.bo-light .data-table td:first-child { padding-left: var(--tbl-pad); }
+body.bo-light .data-table th:last-child,  body.bo-light .data-table td:last-child  { padding-right: var(--tbl-pad); }
 body.bo-light .data-table th.num, body.bo-light .data-table td.num { text-align: right; }
-/* Stripes AND hairlines (owner, 2026-09-22): row 2, 4, 6… tinted, so a long row is easy to follow across. */
-body.bo-light .bo-card-inset .data-table tbody tr:nth-child(even) td,
-body.bo-light .data-table tbody tr:nth-child(even) td { background: var(--tbl-stripe); }
-body.bo-light .bo-card-inset .data-table tbody td { border-bottom: 0; }
-body.bo-light .data-table tbody tr:not(:last-child) td { box-shadow: inset 0 -1px 0 var(--tbl-line); }
+/* No stripes: styles.css's zebra is undone, every row white. */
+body.bo-light .bo-card-inset .data-table tbody tr:nth-child(even) td { background: var(--blk-raised); }
 body.bo-light .data-table tbody tr:hover td,
 body.bo-light .bo-card-inset .data-table tbody tr:hover td { background: var(--tbl-hover); }
 body.bo-light .data-table td.num { font-variant-numeric: tabular-nums; }
@@ -240,7 +246,8 @@ body.bo-light .data-table tfoot td { background: var(--tbl-head-bg); border-top:
 /* An empty table says so in the roomy empty state, not a squashed 34px row. */
 body.bo-light .data-table td.bo-empty { height: auto; padding: 40px 16px; text-align: center; color: var(--blk-ink-2); }
 /* The pager is as tall as the head row (owner, 2026-09-23): 34px strip, 24px buttons. */
-body.bo-light .bo-pager { min-height: var(--tbl-row); padding: 0 var(--blk-pad); border-top-color: var(--tbl-line); }
+body.bo-light .bo-pager { min-height: var(--tbl-row); padding: 0 var(--tbl-pad); border-top-color: var(--tbl-line); background: var(--blk-raised); }
+body.bo-light .bo-pager-count { font-size: var(--blk-t-meta); color: var(--blk-ink-3); }
 body.bo-light .bo-page-btn { min-width: 24px; height: 24px; padding: 0 7px; }
 
 /* ============================================================================
@@ -296,6 +303,15 @@ body.bo-light .text-input, body.bo-light .search-input, body.bo-light .bo-select
 }
 body.bo-light .search-input.small { height: 26px; width: 240px; padding: 0 10px; font-size: var(--blk-t-meta); }
 
+/* The filter row between a list page's head and its table (Products' .pd-filters, Transactions'
+   .filters): the search fills the row, selects / buttons / checkboxes sit after it at their own width. */
+body.bo-light .list-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+body.bo-light .list-filters > * { flex: none; }
+body.bo-light .list-filters > .search-input {
+  flex: 1; min-width: 220px; width: auto; height: var(--btn-h); padding: 0 12px;
+  font-size: var(--blk-t-label); box-shadow: var(--po-shadow-pill);
+}
+
 /* ============================================================================
    PILLS — solid tint + dark ink, 20px, from the lab
    ============================================================================ */
@@ -303,6 +319,8 @@ body.bo-light .status-pill, body.bo-light .role-pill {
   display: inline-block; height: var(--pill-h); line-height: var(--pill-h); padding: 0 9px;
   border: 0; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
 }
+/* In a table row, Transactions' pill: a size down and lighter. */
+body.bo-light .data-table :is(.status-pill, .role-pill) { height: auto; line-height: normal; padding: 2px 9px; font-size: 11.5px; font-weight: 500; }
 
 /* ============================================================================
    HEADS & PANELS — a control in a head sits right, next to the sub, never mid-head

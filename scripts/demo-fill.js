@@ -262,12 +262,6 @@
     pos.push(po);
     const late = chance(sup.late) ? between(2, 4) : 0;
     inbound.push({ on: d + Math.max(1, sup.lead + between(-1, 1) + late), po, late });
-    event('supplierMessages', sentAt, 'Maricel R.', { supplierId: sup.id, poId: po.id, direction: 'out', channel: pick(['viber', 'viber', 'sms', 'email']),
-      text: `Hi ${sup.contact.split(' ')[0]}, order ${po.number}: ${po.items.length} items, list attached. Thank you po.` });
-    event('supplierMessages', new Date(sentAt.getTime() + between(20, 240) * 6e4), 'Maricel R.', { supplierId: sup.id, poId: po.id, direction: 'in', channel: 'viber',
-      text: `Noted po. Delivery ${sup.quotedLeadDays === 1 ? 'tomorrow' : `in ${sup.quotedLeadDays} days`}.` });
-    if (late) event('supplierMessages', at(plusDays(day, sup.quotedLeadDays), 9), 'Maricel R.', { supplierId: sup.id, poId: po.id, direction: 'in', channel: pick(['viber', 'call']),
-      text: pick(['Pasensya po, delayed ang truck. Next week na po.', 'Sorry, kulang pa stock sa bodega. Few days more po.', 'Truck broke down, reschedule po.']) });
   }
 
   function landPo(d, day, job) {
@@ -308,8 +302,6 @@
     po.updatedAt = ts.toISOString();
     if (owedAll) {
       inbound.push({ on: d + between(2, 5), po, part: true });
-      event('supplierMessages', new Date(ts.getTime() + 36e5), 'Maricel R.', { supplierId: sup.id, poId: po.id, direction: 'in', channel: 'viber',
-        text: 'Kulang po ang isang item, susunod na lang po sa next delivery.' });
     }
   }
 
@@ -377,7 +369,7 @@
       change = r2(tendered - total);
       payments = [{ method: 'cash', label: 'Cash', amount: total, tendered, change, ref: '' }];
     } else if (kind === 'credit') {
-      payments = [{ method: 'credit', label: 'Charge to account', amount: total, tendered: 0, change: 0, ref: '' }];
+      payments = [{ method: 'credit', label: 'Account', amount: total, tendered: 0, change: 0, ref: '' }];
     } else if (kind === 'split') {
       tendered = Math.min(total, Math.round(total * (0.3 + rnd() * 0.4) / 100) * 100 || 100);
       payments = [{ method: 'cash', label: 'Cash', amount: tendered, tendered, change: 0, ref: '' },
@@ -394,7 +386,7 @@
       customer: cust ? { id: cust.id, name: cust.name, phone: cust.phone, address: cust.address } : null,
       paymentMethod: kind === 'credit' || kind === 'split' ? kind : 'cash',
       paymentKind: ['cash', 'gcash', 'qr', 'credit', 'split'].includes(kind) ? kind : 'other',
-      paymentMethodLabel: { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Charge to account', split: 'Split payment' }[kind] || kind,
+      paymentMethodLabel: { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Account', split: 'Split payment' }[kind] || kind,
       payments, subtotal, discount, cartDiscount, originalOrderId: '', reason: '', voidedAt: 0, refundedAt: 0, returnedAt: 0,
       total, tendered, change, vatRate: 0.12, vatAmount: r2(total * 0.12 / 1.12), vatableSales: r2(total - total * 0.12 / 1.12),
       fulfilment: delivery ? 'delivery' : 'pickup', deliveryAddress: delivery ? (cust ? cust.address : `${pick(PLACES)}, Cabanatuan City`) : '',
@@ -613,12 +605,5 @@
     lostDemand: ev.lostDemand.length, deliveries: ev.deliveryEvents.length, mb: r2(mb), ms: Math.round(performance.now() - t0) };
   console.log('[demo]', window.HWPOS_DEMO);
 
-  // A pill so nobody mistakes this for the real store.
-  addEventListener('DOMContentLoaded', () => {
-    const a = document.createElement('a');
-    a.href = '/demo/off';
-    a.textContent = `Demo data · ${window.HWPOS_DEMO.orders.toLocaleString()} orders · Exit`;
-    a.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:9999;padding:6px 12px;border-radius:999px;background:#b45309;color:#fff;font:600 12px/1.2 system-ui;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.2)';
-    document.body.appendChild(a);
-  });
+  // No on-screen pill (owner, 2026-09-25): the demo is dev-only. Turn it off at /demo/off.
 })();

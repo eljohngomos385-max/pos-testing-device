@@ -1,13 +1,10 @@
 /* Back office — Staff. Renders the whole .view[data-view="staff"]; see CONTRACT.
-   Two tabs on one URL (/admin/staff?tab=…) plus /admin/staff/<id> for one person.
+   One page (/admin/staff): People, then Page access under it; /admin/staff/<id> is one person.
    Name, role and page access only (owner, 2026-09-24): no attendance, clock or payroll --
    the POS is not a time clock. What a person rang up is read off the orders. */
 (function () {
   const VIEW = 'staff';
   const root = () => document.querySelector(`.view[data-view="${VIEW}"]`);
-
-  const TABS = { people: 'People', access: 'Page access' };
-  (globalThis.HWPOS_SUBNAV = globalThis.HWPOS_SUBNAV || {}).staff = { param: 'tab', def: 'people', items: Object.entries(TABS) };
 
   /* ---------- What each person rang up, last 30 days ----------
      Orders name the cashier, so the join is by name. Voids and refunds are counted, not
@@ -65,7 +62,7 @@
       <div class="view-actions">${actions}</div>
     </header>`;
 
-  /* ---------- Tab 1: People ---------- */
+  /* ---------- People ---------- */
   function peopleHtml(staff, q, sales) {
     const needle = q.toLowerCase();
     // Archived people (someone who left) are hidden unless asked for, like archived products.
@@ -91,12 +88,14 @@
     return head('Staff', '',
       `<button class="secondary-btn small" data-act="exportCsv">Export CSV</button>
        <button class="primary-btn small" data-act="add">Add staff</button>`) + `
+      <div class="list-filters">
+        <input class="search-input small q-input" data-act="q" placeholder="Search staff…" autocomplete="off" value="${escapeHtml(q)}" />
+        ${archived ? `<label class="bo-check"><input type="checkbox" data-act="archived"${showArch ? ' checked' : ''}> Show archived (${archived})</label>` : ''}
+      </div>
       <div class="dash-stack">
         <section class="${tblCard(body)}">
           <div class="bo-card-head">
             <span class="bo-card-label">People</span>
-            <input class="search-input small q-input" data-act="q" placeholder="Search staff…" autocomplete="off" value="${escapeHtml(q)}" />
-            ${archived ? `<label class="bo-check"><input type="checkbox" data-act="archived"${showArch ? ' checked' : ''}> Show archived (${archived})</label>` : ''}
             <span class="bo-card-sub">Last ${DAYS} days</span>
           </div>
           <div class="bo-card-inset flush">
@@ -107,6 +106,7 @@
             : `<div class="bo-empty">${staff.length ? 'No staff match that search' : 'No staff yet. Add the first one.'}</div>`}
           </div>
         </section>
+        ${accessHtml()}
       </div>`;
   }
 
@@ -131,7 +131,7 @@
                   .map(([k, v]) => `<option value="${k}"${k === u.role ? ' selected' : ''}>${v}</option>`).join('')}</select></div>
               ${field('Email', 'email', u.email, 'email')}
               <div class="setting-row"><label>Can open</label>
-                <span class="st-note">${escapeHtml(access.map((v) => v[0].toUpperCase() + v.slice(1)).join(', ') || 'Nothing')} · set per role on Page access</span></div>
+                <span class="st-note">${escapeHtml(access.map((v) => v[0].toUpperCase() + v.slice(1)).join(', ') || 'Nothing')} · set per role on the Staff page</span></div>
             </div>
           </section>
 
@@ -153,7 +153,7 @@
       </div>`;
   }
 
-  /* ---------- Tab 2: Page access ---------- */
+  /* ---------- Page access: a card on the Staff page ---------- */
   function accessHtml() {
     const access = loadAccess();
     const rows = Object.keys(STAFF_ROLES).map((role) => {
@@ -165,8 +165,7 @@
       </tr>`;
     }).join('');
 
-    return head(TABS.access, '', '') + `
-      <div class="dash-stack">
+    return `
         <section class="bo-card blk-table">
           <div class="bo-card-head">
             <span class="bo-card-label">Page access</span>
@@ -177,15 +176,12 @@
               ${ACCESS_VIEWS.map((v) => `<th class="num">${v[0].toUpperCase() + v.slice(1)}</th>`).join('')}
             </tr></thead><tbody>${rows}</tbody></table></div>
           </div>
-        </section>
-      </div>`;
+        </section>`;
   }
 
   /* ---------- Render ---------- */
   window.renderStaff = function () {
     const el = root();
-    const { params } = Router.route();
-    const tab = TABS[params.tab] ? params.tab : 'people';
     const staff = loadStaff();
     const sales = salesByName(state.orders);
     // Typing in the search box re-routes, which re-renders this whole view — put
@@ -201,12 +197,9 @@
       return;
     }
 
-    if (tab === 'access') el.innerHTML = accessHtml();
-    else {
-      el.innerHTML = peopleHtml(staff, state.invQuery, sales);
-      const q = el.querySelector('[data-act="q"]');
-      if (caret != null && q) { q.focus(); q.setSelectionRange(caret, caret); }
-    }
+    el.innerHTML = peopleHtml(staff, state.invQuery, sales);
+    const q = el.querySelector('[data-act="q"]');
+    if (caret != null && q) { q.focus(); q.setSelectionRange(caret, caret); }
   };
 
   /* ---------- Events: one delegated listener per type ---------- */

@@ -11,7 +11,6 @@ const STORAGE_GROUPS   = 'hwpos.groups.v1';
 const STORAGE_ORDER_SEQ = 'hwpos.orderSeq.v1';
 const STORAGE_CUSTOMERS = 'hwpos.customers.v1';
 const STORAGE_CUSTOMER_LEDGER = 'hwpos.customerLedger.v1';
-const STORAGE_STAT_DELTAS = 'hwpos.bo.statDeltas';
 const STORAGE_DRAWER_CLOSEOUTS = 'hwpos.drawerCloseouts.v1';
 const STORAGE_SETTINGS = 'hwpos.settings.v1';
 const STORAGE_ROLE = 'hwpos.role.v1';
@@ -133,6 +132,12 @@ function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
+}
+
+// A redraw that slides: the table and the widget rail glide to their new widths (their view-transition-names
+// are in bo-calm.css). Browsers without View Transitions just redraw.
+function slideRender(render) {
+  document.startViewTransition ? document.startViewTransition(render) : render();
 }
 
 function showToast(msg) {
@@ -367,8 +372,8 @@ function normalizeOrder(raw = {}) {
   const kind = String(raw.paymentKind || raw.paymentMethod || 'cash');
   return {
     paymentKind: kind,
-    // ponytail: the POS writes "Charge to account"; this table is narrow, so credit keeps our
-    // own wording. Every other kind honours the stored label (custom names like "Maya").
+    // ponytail: credit always reads "Account" (the POS wrote "Charge to account" before
+    // 2026-09-25). Every other kind honours the stored label (custom names like "Maya").
     paymentMethodLabel: kind === 'credit' ? PAY_LABELS.credit : String(raw.paymentMethodLabel || PAY_LABELS[kind] || kind),
     vatAmount: toNumber(raw.vatAmount, 0),
     discount: toNumber(raw.discount, 0),
@@ -498,8 +503,10 @@ function paint() {
   const p = sub && Router.route().params[sub.param];
   const cur = sub ? (sub.items.some(([k]) => k === p) ? p : sub.def) : '';
   const deep = !!$(`.side-link[data-view="${view}"][data-sub~="${cur}"]`);
+  // Stock history sits in Products' tree, so Products stays lit (tree open) on it.
+  const lit = view === 'inventory' ? 'products' : view;
   $$('.side-link').forEach(b => b.classList.toggle('active',
-    b.dataset.view === view && (b.dataset.sub ? b.dataset.sub.split(' ').includes(cur) : !deep)));
+    b.dataset.view === lit && (b.dataset.sub ? b.dataset.sub.split(' ').includes(cur) : !deep)));
   $$('.view').forEach(v => {
     const on = v.dataset.view === view;
     v.classList.toggle('active', on);
@@ -654,7 +661,6 @@ function refreshSharedState() {
 
 // ---------- Dashboard ----------
 const RANGE_DAYS  = { today: 1, '7d': 7, '15d': 15, '30d': 30 };
-const RANGE_PREV  = { today: 'the day before', '7d': 'prev 7d', '15d': 'prev 15d', '30d': 'prev 30d' };
 const RANGE_LABEL = { today: 'Today', '7d': 'Last 7 days', '15d': 'Last 15 days', '30d': 'Last 30 days' };
 
 function shortDate(ts) {
@@ -750,81 +756,31 @@ function deltaOf(cur, prev, cmp) {
   return { tone, text: `${sign}${Math.abs(pct).toFixed(1)}%`, cmp: `vs ${cmp}` };
 }
 
-// Per-day buckets ending `offset` days before today.
-// ponytail: one range control for everything. Today plots the day hour by hour; 7d/30d plot
-// days. Buckets carry their own axis label + tooltip title so the chart stays range-agnostic.
-function trendBuckets(range) {
-  if (range === 'today') return hourBuckets();
-  const days = RANGE_DAYS[range] || 7;
-  return dayBuckets(days).map(b => ({
-    ...b,
-    label: b.date.toLocaleDateString('en-PH', days > 14 ? { month: 'short', day: 'numeric' } : { weekday: 'short' }),
-    title: b.date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }),
-  }));
-}
-
-function hourBuckets() {
-  const base = new Date(state.anchor);
-  const out = [];
-  for (let h = 0; h < 24; h++) {
-    const d = new Date(base);
-    d.setHours(h);
-    const label = d.toLocaleTimeString('en-PH', { hour: 'numeric' });
-    out.push({ date: d, ts: d.getTime(), revenue: 0, profit: 0, items: 0, txns: 0, label, title: label });
+// ---------- The calm pages (Dashboard, Sales › Summary) ----------
+// Ported from dashboard-calm-lab.html / sales-calendar-lab.html; both read these.
+// ₱12.3k / ₱1.23M for headline figures, whole pesos under ₱10k.
+const pesoK = (n) => {
+  const a = Math.abs(n), s = n < 0 ? '−' : '';
+  return a >= 1e6 ? `${s}₱${+(a / 1e6).toFixed(2)}M` : a >= 1e4 ? `${s}₱${+(a / 1e3).toFixed(1)}k` : pesoShort(n);
+};
+const hourShort = (h) => (h % 12 || 12) + (h < 12 ? 'a' : 'p');
+// One pass: revenue and profit signed, sales/discounts on the +1 rows, returns on the −1 rows.
+function calmMetrics(list) {
+  const m = { rev: 0, gp: 0, n: 0, sales: 0, ret: 0, retN: 0, disc: 0, vat: 0, voids: 0 };
+  for (const o of list) {
+    const s = saleSign(o);
+    if (!s) { if (o.status === 'voided' || o.status === 'refunded') m.voids++; continue; }
+    m.rev += o.total * s; m.gp += orderProfit(o) * s; m.vat += (+o.vatAmount || 0) * s;
+    if (s > 0) { m.n++; m.sales += +o.total; m.disc += +o.discount || 0; } else { m.ret += +o.total; m.retN++; }
   }
-  state.orders.forEach(o => {
-    const sign = saleSign(o);
-    if (!sign) return;
-    const d = new Date(o.ts);
-    if (d.toDateString() !== base.toDateString()) return;
-    const b = out[d.getHours()];
-    b.revenue += o.total * sign;
-    b.profit += orderProfit(o) * sign;
-    b.txns += 1;
-    o.items.forEach(it => { b.items += it.qty * sign; });
-  });
-  return out;
+  return m;
 }
-
-function dayBuckets(days, offset = 0) {
-  const base = new Date(state.anchor);
-  base.setDate(base.getDate() - offset);
-  const out = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(base);
-    d.setDate(base.getDate() - i);
-    out.push({ date: d, ts: d.getTime(), revenue: 0, profit: 0, items: 0, txns: 0 });
-  }
-  const idx = new Map(out.map((b, i) => [b.ts, i]));
-  state.orders.forEach(o => {
-    const sign = saleSign(o);
-    if (!sign) return;
-    const d = new Date(o.ts);
-    d.setHours(0, 0, 0, 0);
-    const i = idx.get(d.getTime());
-    if (i == null) return;
-    const b = out[i];
-    b.revenue += o.total * sign;
-    b.profit += orderProfit(o) * sign;
-    b.txns += 1;
-    o.items.forEach(it => { b.items += it.qty * sign; });
-  });
-  return out;
-}
-
-function niceMax(v) {
-  if (!(v > 0)) return 1;
-  const exp = Math.pow(10, Math.floor(Math.log10(v)));
-  const f = v / exp;
-  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * exp;
-}
-
-function pesoAxis(n) {
-  n = Math.round(n);
-  if (n >= 1000000) return '₱' + (n / 1000000).toFixed(n % 1000000 ? 1 : 0) + 'm';
-  if (n >= 1000) return '₱' + (n / 1000).toFixed(n < 10000 && n % 1000 ? 1 : 0) + 'k';
-  return '₱' + n;
-}
+// "+4.2%" beside a number; nothing when there is nothing to compare with.
+const calmChip = (cur, prev, title) => {
+  if (!prev) return '';
+  const r = Math.round((cur - prev) / Math.abs(prev) * 1000) / 10;
+  return `<span class="chip ${r > 0 ? 'up' : r < 0 ? 'down' : ''}" title="${escapeHtml(title)}">${r > 0 ? '+' : ''}${r.toFixed(1)}%</span>`;
+};
 
 // The KPI block (bo-blocks.css → KPI). Every KPI on every page is built by one of these
 // two, so the markup can only drift in one place. Label on top; the number left and the
@@ -857,157 +813,11 @@ function statCell({ label, value, unit, delta }) {
     </div>`;
 }
 
-// The chart block's plot (bo-blocks.css → CHART), ported from the blocks-v2 lab.
-// Drawn in real pixels at the box's width, so text never stretches; redrawn on resize.
-// Straight segments between the real points: the curve read as decoration, not data (owner, 2026-09-22).
-// ponytail: profit is always <= revenue, so both series share one axis. No second scale.
-const SERIES = [['revenue', 'Revenue'], ['profit', 'Gross profit']];
-const chartCurve = (P) => P.map((q, i) => `${i ? 'L' : 'M'}${q[0]} ${q[1]}`).join('');
-const barPath = (x0, w, top, base) => {                               // a bar with only its top corners rounded
-  const r = Math.min(3, w / 2, base - top);
-  return `M${x0} ${base}V${top + r}Q${x0} ${top} ${x0 + r} ${top}H${x0 + w - r}Q${x0 + w} ${top} ${x0 + w} ${top + r}V${base}Z`;
-};
-let chartSeq = 0;
-function renderLineChart(el, cur) {
-  el._cur = cur;
-  el._id = el._id || ++chartSeq;
-  if (!el._ro) { el._ro = new ResizeObserver(() => el._cur && drawLineChart(el)); el._ro.observe(el); }
-  // Keys under the head number double as the switch; the last line showing can't be hidden.
-  const keys = el.closest('.bo-card')?.querySelector('.blk-keys');
-  if (keys) {
-    keys.onclick = (e) => {
-      const k = e.target.closest('.blk-key');
-      if (!k) return;
-      const i = [...keys.children].indexOf(k), off = el.dataset.off;
-      if (off === String(i)) delete el.dataset.off;
-      else if (off === undefined) el.dataset.off = i;
-      else return;
-      [...keys.children].forEach((b, j) => b.setAttribute('aria-pressed', String(el.dataset.off !== String(j))));
-      drawLineChart(el);
-    };
-    SERIES.forEach(([key], i) => {
-      const b = keys.children[i]?.querySelector('b');
-      if (b) b.innerHTML = curHtml(pesoShort(cur.reduce((a, d) => a + d[key], 0)));
-    });
-  }
-  drawLineChart(el);
-}
-function drawLineChart(el) {
-  const cur = el._cur, n = cur.length, NS = 'http://www.w3.org/2000/svg';
-  // R leaves room to centre the last date under "now"; L is sized to the widest ₱ label below.
-  // Bars (Settings → Chart style) put each bucket mid-slot instead, so they need no R.
-  const bars = document.body.classList.contains('chart-bars');
-  const W = el.clientWidth, H = el.clientHeight, R = bars ? 0 : 20, B = 24, T = 6;
-  if (!W || !H || !n) return;
-  const on = SERIES.map((_, i) => String(i) !== el.dataset.off);
-  // Gridlines on a round step just above the peak (₱0/10k/20k/30k for a ₱29k peak), not the next
-  // round number past it: ₱50k over a ₱29k peak left the top 40% of the plot empty.
-  const peak = Math.max(4, ...cur.flatMap(d => SERIES.filter((_, i) => on[i]).map(([k]) => d[k])));
-  const stepY = niceMax(peak / 3), top = Math.ceil(peak / stepY) * stepY;
-  const y = v => T + (H - T - B) * (1 - Math.max(0, v) / top);
-  const mk = (tag, attrs, parent) => {
-    const e = document.createElementNS(NS, tag);
-    for (const k in attrs) e.setAttribute(k, attrs[k]);
-    return parent.appendChild(e);
-  };
-  el.innerHTML = '';
-  const svg = mk('svg', { viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' }, el);
-  const ticks = Array.from({ length: Math.round(top / stepY) + 1 }, (_, k) => k * stepY);
-  const yl = ticks.map(v => { const t = mk('text', { class: 'axis', x: 0, y: y(v) + 4 }, svg); t.textContent = pesoAxis(v); return t; });
-  const L = Math.ceil(Math.max(...yl.map(t => t.getComputedTextLength()))) + 10;
-  const x = i => (bars ? L + (W - L) * (i + 0.5) / n : n <= 1 ? L + (W - L - R) / 2 : L + (W - L - R) * i / (n - 1));
-  const bw = Math.min(28, (W - L) / n * 0.62);                         // bar width: 62% of a slot, 28px at most
-  ticks.forEach(v => mk('line', { class: 'grid', x1: L, x2: W, y1: y(v), y2: y(v) }, svg));
-  const step = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 70))));   // a label every ~70px
-  cur.forEach((d, i) => {                                             // counted back from the last, so it always shows
-    if ((n - 1 - i) % step) return;
-    mk('text', { class: 'axis', x: x(i), y: H - 4, 'text-anchor': 'middle' }, svg).textContent = d.label;
-  });
-  const cross = mk('line', { class: 'cross', y1: T, y2: H - B, visibility: 'hidden' }, bars ? document.createElementNS(NS, 'g') : svg);
-  const dots = [];
-  let filled = false;                                                 // only the front line gets the fade: two muddy
-  SERIES.forEach(([key], i) => {
-    if (!on[i]) return;
-    const g = mk('g', { class: 's' + i }, svg);
-    if (bars) {                                                       // profit drawn over revenue: the share it kept
-      cur.forEach((b, h) => { if (b[key] > 0) mk('path', { class: 'bar', 'data-h': h, d: barPath(x(h) - bw / 2, bw, y(b[key]), y(0)) }, g); });
-      return;
-    }
-    const d = chartCurve(cur.map((b, h) => [x(h), y(b[key])]));
-    if (!filled && n > 1) {
-      filled = true;
-      const grad = mk('linearGradient', { id: `fade${el._id}-${i}`, x1: 0, y1: 0, x2: 0, y2: 1 }, mk('defs', {}, g));
-      mk('stop', { class: 'fade-top', offset: 0 }, grad); mk('stop', { class: 'fade-bot', offset: 1 }, grad);
-      mk('path', { d: d + `L${x(n - 1)} ${y(0)}L${x(0)} ${y(0)}Z`, fill: `url(#fade${el._id}-${i})` }, g);
-    }
-    mk('path', { class: 'line', d }, g);
-    if (!el.hasAttribute('data-still')) for (const [c, r] of [['halo', 10], ['end', 5]])   // marks "now"; a profile has no now
-      mk('circle', { class: c, r, cx: x(n - 1), cy: y(cur[n - 1][key]) }, g);
-    dots[i] = mk('circle', { class: 'dot', r: 4.5, visibility: 'hidden' }, g);
-  });
-  if (bars) mk('line', { class: 'base', x1: L, x2: W, y1: y(0) + 0.5, y2: y(0) + 0.5 }, svg);   // the ₱0 line, just under the bars' feet
-  const tip = document.createElement('div');
-  tip.className = 'tip'; tip.hidden = true; el.appendChild(tip);
-  el.onpointermove = (e) => {
-    const box = el.getBoundingClientRect();
-    const f = (e.clientX - box.left - L) / (W - L - R);
-    const h = Math.max(0, Math.min(n - 1, bars ? Math.floor(f * n) : Math.round(f * (n - 1))));
-    const d = cur[h];
-    el._onScrub?.(d);
-    if (bars) { svg.classList.add('scrub'); svg.querySelectorAll('.bar').forEach(r => r.classList.toggle('hot', +r.dataset.h === h)); }
-    cross.setAttribute('x1', x(h)); cross.setAttribute('x2', x(h)); cross.setAttribute('visibility', 'visible');
-    dots.forEach((dot, i) => { if (!dot) return;
-      dot.setAttribute('cx', x(h)); dot.setAttribute('cy', y(d[SERIES[i][0]])); dot.setAttribute('visibility', 'visible'); });
-    tip.innerHTML = `${escapeHtml(d.title)} · ${d.txns} receipt${d.txns === 1 ? '' : 's'}`
-      + SERIES.map(([k, name], i) => on[i] ? ` · ${name} <b>${escapeHtml(pesoShort(d[k]))}</b>` : '').join('');
-    tip.hidden = !!el._onScrub;                                       // the card's own figures show it instead
-    const right = x(h) + 10 + tip.offsetWidth < W;                    // flip left near the right edge
-    tip.style.left = (right ? x(h) + 10 : x(h) - 10 - tip.offsetWidth) + 'px';
-  };
-  el.onpointerleave = () => {
-    el._onScrub?.(null);
-    svg.classList.remove('scrub');
-    cross.setAttribute('visibility', 'hidden');
-    dots.forEach(dot => dot && dot.setAttribute('visibility', 'hidden'));
-    tip.hidden = true;
-  };
-}
-
-// The four KPIs on top. Fixed: the same four in every store, so staff always know where to look.
-function renderDashKpis(cur, prev, cmp) {
-  $('#dashKpis').innerHTML = [
-    statCell({ label: 'Revenue', value: pesoShort(cur.revenue), delta: deltaOf(cur.revenue, prev.revenue, cmp) }),
-    statCell({ label: 'Profit', value: pesoShort(cur.profit), delta: deltaOf(cur.profit, prev.profit, cmp) }),
-    statCell({ label: 'Transactions', value: cur.txns.toLocaleString('en-PH'), delta: deltaOf(cur.txns, prev.txns, cmp) }),
-    statCell({ label: 'Margin', value: cur.revenue ? (cur.profit / cur.revenue * 100).toFixed(1) + '%' : '—',
-      delta: deltaOf(cur.revenue && cur.profit / cur.revenue, prev.revenue && prev.profit / prev.revenue, cmp) }),
-  ].join('');
-  // Scrubbing the chart below swaps all four to that hour (or day). The chips compare whole
-  // periods, so they hide meanwhile; leaving the chart puts the totals back.
-  const fmt = [m => pesoShort(m.revenue), m => pesoShort(m.profit), m => m.txns.toLocaleString('en-PH'),
-    m => (m.revenue ? (m.profit / m.revenue * 100).toFixed(1) + '%' : '—')];
-  const cells = $$('#dashKpis .blk-kpi'), label = cells[0].querySelector('.kpi-label');
-  $('#salesChart')._onScrub = (d) => {
-    const m = d || cur;
-    $('#dashTrend').classList.toggle('scrubbing', !!d);
-    label.textContent = d ? `Revenue · ${d.title}` : 'Revenue';
-    cells.forEach((c, i) => { c.querySelector('.kpi-value').innerHTML = curHtml(fmt[i](m)); });
-  };
-}
-
-// ---------- Dashboard rail ----------
-// The owner's widgets, one card wide, stacked: every widget is the same width, so nothing can
-// misalign. Which ones show, and in what order, is one list in HWPOS_STORE.ui 'dashRail'.
-// ponytail: per device like the old dashHidden; per store once settings sync to D1.
-const RAIL_DEFAULT = ['daily', 'monthly', 'low', 'pay'];
+// Breakdown rows and a label-over-number head for rail cards (Inventory, Staff).
 const bdRow = (nm, amt = '', cmp = '', tone = '') =>
   `<div class="bd-row"><span class="nm">${nm}</span>${amt !== '' ? `<span class="amt">${amt}</span>` : ''}${cmp !== '' ? `<span class="cmp ${tone}">${cmp}</span>` : ''}</div>`;
 const railHead = (label, value, side = '') =>
   `<div class="kpi-label">${escapeHtml(label)}</div><div class="kpi-line"><div class="kpi-value">${value}</div>${side}</div>`;
-const pctOf = (a, b) => (b > 0 ? Math.round(a / b * 100) : 0);
-const meterHtml = (pct, tone = '') =>
-  `<div class="meter" role="img" aria-label="${pct}%"><i class="${tone}" style="width:${Math.min(100, Math.max(0, pct))}%"></i></div>`;
-const targetSide = (pct) => `<span class="target-pct ${pct >= 100 ? 'up' : ''}">${pct}%</span>`;
 
 // Targets are always today and this month, whatever the range says: a target is a promise
 // about the calendar, not about the window you happen to be looking at.
@@ -1028,125 +838,6 @@ function dashTargets(now = Date.now()) {
   return { month, before, done, days, left, auto, override, daily: override || auto,
     pace: elapsed > 0 ? (before + done) / elapsed * days : 0 };
 }
-function targetEmpty(label) {
-  return railHead(label, '—') + `<div class="bd-rows">${bdRow('No monthly target yet')}</div>`
-    + '<button type="button" class="secondary-btn small rail-set" data-act="targets">Set target</button>';
-}
-const DOTS = '<button type="button" class="rail-dots" data-act="targets" title="Set targets">···</button>';
-
-const DASH_WIDGETS = {
-  daily: ['Daily sales target', (t) => {
-    if (!t.daily) return targetEmpty('Daily sales target');
-    const pct = pctOf(t.done, t.daily), left = t.daily - t.done;
-    return DOTS + railHead('Daily sales target', `${curHtml(pesoShort(t.done))}<span class="of">/${pesoShort(t.daily)}</span>`, targetSide(pct))
-      + meterHtml(pct, pct >= 100 ? 'up' : '')
-      + `<div class="bd-rows">${left > 0 ? bdRow('Left to sell today', pesoShort(left)) : bdRow('Target hit, over by', pesoShort(-left))}</div>`;
-  }],
-  monthly: ['Monthly sales target', (t) => {
-    if (!t.month) return targetEmpty('Monthly sales target');
-    const sold = t.before + t.done, pct = pctOf(sold, t.month), ahead = t.pace >= t.month;
-    return DOTS + railHead('Monthly sales target', `${curHtml(pesoShort(sold))}<span class="of">/${pesoShort(t.month)}</span>`, targetSide(pct))
-      + meterHtml(pct, pct >= 100 ? 'up' : '')
-      + `<div class="bd-rows">${bdRow('On pace for', pesoShort(t.pace), ahead ? 'ahead' : 'behind', ahead ? 'up' : 'down')}</div>`;
-  }],
-  // The five that run out soonest, by the last 30 days' selling rate; the rest are in Products' stock view.
-  low: ['Low stock', () => {
-    const since = Date.now() - 30 * 864e5, sold = new Map();
-    state.orders.forEach(o => {
-      if (saleSign(o) > 0 && o.ts >= since) o.items.forEach(i => sold.set(i.id, (sold.get(i.id) || 0) + i.qty));
-    });
-    const daysLeft = (p) => { const r = (sold.get(p.id) || 0) / 30; return p.stock <= 0 ? 0 : r ? p.stock / r : Infinity; };
-    // isLow() is the one definition of low, shared with Products and Inventory.
-    const low = state.products.filter(isLow).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock);
-    // Days left only sorts the list; each row says Out or Low in the Products pill (owner, 2026-09-23).
-    const rows = low.slice(0, 5).map(p => bdRow(escapeHtml(p.name), `${Number(p.stock).toLocaleString('en-PH')} ${escapeHtml(p.unit || 'pc')}`,
-      p.stock <= 0 ? '<span class="status-pill out">Out</span>' : '<span class="status-pill low">Low</span>')).join('');
-    // Just the count: the label already says Low stock. View all sits top right, like Recent transactions (owner, 2026-09-23).
-    return (low.length ? `<a class="rail-more" href="${Router.href('products', '', { view: 'stock', level: 'out,low' })}">View all ›</a>` : '') + railHead('Low stock', `${low.length.toLocaleString('en-PH')}${low.length ? '' : '<span class="of"> all stocked</span>'}`)
-      + (low.length ? `<div class="bd-rows">${rows}</div>` : '');
-  }],
-  // A table, no headline number and no shares: the total is Revenue, already the first KPI, and
-  // percents belong on the Sales page, not the dashboard (owner, 2026-09-23).
-  // Sums come from the Sales page's own agg(), so they match Sales → Payment methods.
-  pay: ['Payment methods', (t, win) => {
-    const cur = window.renderSales.agg(state.orders.filter(o => o.ts >= win.start && o.ts < win.end));
-    const rows = cur.pays.filter(r => r.sales).sort((x, y) => y.revenue - x.revenue);
-    const total = cur.totals.revenue;
-    return '<a class="blk-cover" href="#" data-jump="sales" aria-label="Open sales"></a>'
-      + '<div class="kpi-label">Payment methods</div>'
-      + `<div class="bd-rows">${rows.length
-        ? rows.map(r => bdRow(`<i class="sw pay ${escapeHtml(r.kind)}"></i>${escapeHtml(r.name)}`, pesoShort(r.revenue))).join('')
-          + `<div class="bd-row total"><span class="nm">Total</span><span class="amt">${pesoShort(total)}</span></div>`
-        : '<div class="bo-empty">No sales in this range.</div>'}</div>`;
-  }],
-  // Purchase orders due today or already late: stock coming in, not the POS's deliveries going out.
-  deliveries: ['Deliveries today', () => {
-    const today = isoDate(Date.now()), sup = new Map(loadSuppliers().map(s => [s.id, s.name]));
-    const dueOn = (po) => SUP_RULES.dayKey(SUP_RULES.dueDate(po));
-    const due = loadPurchaseOrders().filter(po => PO_INCOMING.includes(po.status) && dueOn(po) && dueOn(po) <= today);
-    const late = due.filter(po => dueOn(po) < today).length;
-    return '<a class="blk-cover" href="#" data-jump="suppliers" data-sub="orders" aria-label="Open purchase orders"></a>'
-      + railHead('Deliveries today', `${due.length}<span class="of"> arriving</span>`, late ? `<span class="kpi-note down">${late} late</span>` : '')
-      + (due.length ? `<div class="bd-rows">${due.slice(0, 5).map(po => {
-        const isLate = dueOn(po) < today, n = po.items.length;
-        return bdRow(`${escapeHtml(sup.get(po.supplierId) || 'Supplier')} · ${n} item${n === 1 ? '' : 's'}`, '', isLate ? 'Late' : 'Today', isLate ? 'down' : '');
-      }).join('')}</div>` : '');
-  }],
-  stock: ['Stock value', () => {
-    const on = state.products.filter(p => !p.archived && p.stock > 0);
-    const cost = on.reduce((a, p) => a + p.stock * (Number(p.cost) || 0), 0);
-    const retail = on.reduce((a, p) => a + p.stock * (Number(p.price) || 0), 0);
-    return railHead('Stock value', `${curHtml(pesoShort(cost))}<span class="of"> at cost</span>`)
-      + `<div class="bd-rows">${bdRow('At retail', pesoShort(retail))}${bdRow('Margin on the shelf', pesoShort(retail - cost), pctOf(retail - cost, retail) + '%')}`
-      + `${bdRow('Products in stock', on.length.toLocaleString('en-PH'))}</div>`;
-  }],
-  channel: ['Sales by channel', (t, win) => {
-    const fuls = window.renderSales.agg(state.orders.filter(o => o.ts >= win.start && o.ts < win.end)).fuls
-      .filter(r => r.revenue > 0).sort((x, y) => y.revenue - x.revenue);
-    const total = fuls.reduce((a, r) => a + r.revenue, 0);
-    if (!total) return railHead('Sales by channel', '—') + '<div class="bo-empty">No sales in this range.</div>';
-    return railHead('Sales by channel', `${pctOf(fuls[0].revenue, total)}%<span class="of"> ${escapeHtml(fuls[0].name.toLowerCase())}</span>`)
-      + `<div class="meter split" role="img">${fuls.map((r, i) => `<i class="d${i % 3}" style="width:${r.revenue / total * 100}%"></i>`).join('')}</div>`
-      + `<div class="bd-rows">${fuls.map((r, i) => bdRow(`<i class="sw d${i % 3}"></i>${escapeHtml(r.name)}`, pesoShort(r.revenue), pctOf(r.revenue, total) + '%')).join('')}</div>`;
-  }],
-  // What customers owe on account against the limits the store gave them.
-  credit: ['Credit used', () => {
-    const cs = allCustomerRecords();
-    const owed = cs.reduce((a, c) => a + (c.currentBalance || 0), 0), limit = cs.reduce((a, c) => a + (c.creditLimit || 0), 0);
-    const pct = pctOf(owed, limit);
-    return '<a class="blk-cover" href="#" data-jump="customers" aria-label="Open customers"></a>'
-      + railHead('Credit used', `${curHtml(pesoShort(owed))}<span class="of">/${pesoShort(limit)}</span>`,
-        `<span class="target-pct ${pct > 75 ? 'down' : ''}">${pct}%</span>`)
-      + meterHtml(pct, pct > 75 ? 'down' : '')
-      + `<div class="bd-rows">${bdRow('Available', pesoShort(Math.max(0, limit - owed)))}</div>`;
-  }],
-};
-
-function railList() {
-  const saved = HWPOS_STORE.ui.get('dashRail', null);
-  return (saved == null ? RAIL_DEFAULT : String(saved).split(',')).filter(k => DASH_WIDGETS[k]);
-}
-function renderDashRail(win = rangeWindows()) {
-  const rail = $('#dashRail');
-  if (!rail) return;
-  const list = railList(), t = dashTargets();
-  const off = Object.keys(DASH_WIDGETS).filter(k => !list.includes(k));
-  rail.innerHTML = list.map((k, i) => `
-    <section class="bo-card blk-kpi" data-w="${k}">
-      <div class="w-ctl">
-        <button type="button" data-move="-1" aria-label="Move up"${i ? '' : ' disabled'}>↑</button>
-        <button type="button" data-move="1" aria-label="Move down"${i < list.length - 1 ? '' : ' disabled'}>↓</button>
-        <button type="button" data-move="x" aria-label="Remove">×</button>
-      </div>
-      ${DASH_WIDGETS[k][1](t, win)}
-    </section>`).join('') + `
-    <section class="bo-card rail-add">
-      <div class="kpi-label">Add widget</div>
-      ${off.length ? `<div class="rail-add-list">${off.map(k => `<button type="button" class="pbtn" data-add="${k}">+ ${escapeHtml(DASH_WIDGETS[k][0])}</button>`).join('')}</div>`
-        : '<div class="kpi-note">Every widget is on the page.</div>'}
-    </section>`;
-}
-
 function openTargetDialog() {
   const dlg = $('#targetDlg'), t = dashTargets();
   dlg.innerHTML = `
@@ -1173,70 +864,6 @@ function openTargetDialog() {
   dlg.querySelector('input[name="month"]').focus();
 }
 
-// Edit: the main column is fixed; only the rail changes. ↑ ↓ × on each widget, Add widget at the foot.
-function initDashEdit() {
-  const stack = $('#dashStack'), rail = $('#dashRail'), btn = $('#dashEditBtn'), dlg = $('#targetDlg');
-  if (!stack || !rail || !btn || !dlg) return;
-  const save = (list) => { HWPOS_STORE.ui.set('dashRail', list.join(',')); renderDashRail(); };
-  btn.addEventListener('click', () => {
-    const on = stack.classList.toggle('editing');
-    btn.textContent = on ? 'Done' : 'Edit';
-    btn.setAttribute('aria-pressed', String(on));
-  });
-  rail.addEventListener('click', (e) => {
-    if (e.target.closest('[data-act="targets"]')) return openTargetDialog();
-    const list = railList(), add = e.target.closest('[data-add]'), mv = e.target.closest('[data-move]');
-    if (add) return save([...list, add.dataset.add]);
-    if (!mv) return;
-    const i = list.indexOf(mv.closest('[data-w]').dataset.w);
-    if (mv.dataset.move === 'x') list.splice(i, 1);
-    else { const j = i + Number(mv.dataset.move); [list[i], list[j]] = [list[j], list[i]]; }
-    save(list);
-  });
-  dlg.addEventListener('click', (e) => { if (e.target.closest('[data-act="targetCancel"]')) dlg.close(); });
-  dlg.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const f = new FormData(e.target), over = round2(f.get('override'));
-    state.settings.targets = {
-      month: round2(f.get('month')),
-      override: over > 0 ? { date: isoDate(Date.now()), amount: over } : null,
-    };
-    saveSettings();
-    dlg.close();
-    showToast('Targets saved');
-    renderCurrentView();   // the dashboard rail or the Sales targets block, whichever opened it
-  });
-}
-
-function renderDashboard() {
-  refreshSharedState();
-
-  const win = rangeWindows();
-  const sales = salesIn(win.start, win.end);
-  const prevSales = salesIn(win.prevStart, win.prevEnd);
-  const cur = metricsOf(sales);
-  const prev = metricsOf(prevSales);
-  const cmp = state.range === 'today' ? 'the day before' : (RANGE_PREV[state.range] || 'prev period');
-
-  $('#dashGreeting').textContent = `Welcome back, ${state.settings.store?.cashier || 'there'}`;
-
-  $('#rangeBtnLabel').textContent = RANGE_LABEL[state.range] || '';
-  $('#rangeBtnDate').textContent = shortDate(state.anchor);
-  $('#dashDate').max = isoDate(Date.now());
-  $('#dashDate').value = isoDate(state.anchor);
-  $$('.rp-opt').forEach(b => b.classList.toggle('on', b.dataset.range === state.range));
-  $$('.range-select').forEach(sel => { sel.value = state.range; });
-
-  renderDashKpis(cur, prev, cmp);
-
-  // Sales trend — one revenue line under the KPIs, same card
-  const trend = trendBuckets(state.range);
-  renderLineChart($('#salesChart'), trend);
-  renderDashRail(win);
-
-  renderTxTable(win);
-}
-
 // ponytail: the 7d/30d ranges span days, so a bare clock time is ambiguous — prefix the
 // date unless the sale happened today.
 function txTime(ts) {
@@ -1246,52 +873,265 @@ function txTime(ts) {
   return today ? time : `${d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}, ${time}`;
 }
 
-// The dashboard's Export CSV. Same rows as the table, but unpaged and unsearched: the
-// export describes the range in the URL, not the rows that happened to be on screen.
-function exportSalesCsv(win = rangeWindows()) {
-  const rows = state.orders.filter(o => o.ts >= win.start && o.ts < win.end).sort((a, b) => b.ts - a.ts);
-  if (!rows.length) return showToast('Nothing to export in this range.');
-  downloadCsv(`sales-${isoDate(win.start)}-to-${isoDate(win.end - 1)}.csv`, [
-    ['Receipt', 'Date', 'Customer', 'Cashier', 'Fulfilment', 'Payment', 'Status', 'Items', 'Total'],
-    ...rows.map(o => ['#' + o.number, new Date(o.ts).toISOString(), o.customer?.name || '',
-      o.cashier || '', orderFulfilLabel(o),
-      orderPaymentLabel(o), o.status || 'completed',
-      o.items.length, Number(o.total || 0).toFixed(2)]),
-  ]);
+// ---------- Dashboard (dashboard-calm-lab.html, bo-calm.css) ----------
+// The view lives in the URL: ?range= (applyRoute → state.range), ?vs= the comparison, ?chart= the
+// KPI the bars show, ?at= an hour ("10") or a day ("2026-09-20"), ?receipt= an order id.
+// ponytail: always ends now, like the lab; the old "Ends on" date went with the old picker.
+const hourLong = (h) => (h % 12 || 12) + (h % 24 < 12 ? ' AM' : ' PM');
+const dashDate = (t, o) => new Date(t).toLocaleDateString('en-PH', o);
+// The window, and the one it's compared with: today against the same weekday last week up to
+// this minute; N days against the N days before, also up to this minute. Never a half day vs a whole one.
+// ?vs= picks another: '' is that default, 'day' is yesterday (today only), 'none' turns the chips off.
+function dashCompares(range, today) {   // [key, menu label, days back, chip tooltip]
+  const n = RANGE_DAYS[range], wd = dashDate(shiftDays(today, -7), { weekday: 'long' });
+  return (range === 'today'
+    ? [['', `Last ${wd}`, 7, `vs last ${wd} at this time`], ['day', 'Yesterday', 1, 'vs yesterday at this time']]
+    : [['', `Previous ${n} days`, n, `vs the ${n} days before`]]).concat([['none', 'No comparison', 0, '']]);
+}
+function dashWindow(range, vs) {
+  const now = Date.now(), today = dayStart(now);
+  const all = state.orders.filter(o => o.ts < now).sort((a, b) => a.ts - b.ts);
+  const between = (a, b) => all.filter(o => o.ts >= a && o.ts < b);
+  const cs = dashCompares(range, today), [vsKey, vsLbl, back, vsTitle] = cs.find(c => c[0] === vs) || cs[0];
+  const n = RANGE_DAYS[range], start = shiftDays(today, 1 - n);
+  const w = { range, now, today, between, compares: cs, vsKey, vs: vsTitle, vsLbl: back ? vsLbl : '',
+    rows: between(start, now), prev: back ? between(shiftDays(start, -back), shiftDays(now, -back)) : [] };
+  if (range === 'today') {
+    // store hours: whatever hours sold in the last four weeks
+    const seen = between(shiftDays(today, -28), now).map(o => new Date(o.ts).getHours());
+    const h0 = seen.length ? Math.min(...seen) : 7, h1 = seen.length ? Math.max(...seen) : 18;
+    const lastWd = dashDate(shiftDays(today, -7), { weekday: 'long' });
+    w.buckets = [];
+    for (let h = h0; h <= h1; h++) w.buckets.push({ key: String(h), x: hourShort(h), title: `${hourLong(h)} – ${hourLong(h + 1)}`,
+      start: today + h * 36e5, end: today + (h + 1) * 36e5, backName: `the same hour last ${lastWd}` });
+  } else {
+    w.buckets = Array.from({ length: n }, (_, i) => { const t = shiftDays(start, i);
+      return { key: isoDate(t), x: n > 7 ? String(new Date(t).getDate()) : dashDate(t, { weekday: 'short' }),
+        title: dashDate(t, { weekday: 'long', month: 'long', day: 'numeric' }), start: t, end: shiftDays(t, 1),
+        backName: dashDate(shiftDays(t, -7), { weekday: 'long', month: 'short', day: 'numeric' }) }; });
+  }
+  for (const b of w.buckets) { b.future = b.start >= now; b.now = !b.future && now < b.end; b.m = calmMetrics(w.rows.filter(o => o.ts >= b.start && o.ts < b.end)); }
+  return w;
 }
 
-// Recent transactions — every status, so voids and refunds are visible.
-// Twelve was half a screen and stopped mid-morning on a busy day. The Sales summary
-// carries the same list; the Sales > Transactions tab is the one that pages past this.
-const RECENT_TX = 20;
-function renderTxTable(win = rangeWindows()) {
-  const q = (state.txQuery || '').trim().toLowerCase();
-  const all = state.orders
-    .filter(o => o.ts >= win.start && o.ts < win.end)
-    .sort((a, b) => b.ts - a.ts)
-    .filter(o => {
-      if (!q) return true;
-      const hay = [o.number, o.customer?.name, o.cashier, o.paymentMethodLabel, ...o.items.map(i => i.name)]
-        .filter(Boolean).join(' ').toLowerCase();
-      return hay.includes(q);
-    });
-  const rows = all.slice(0, RECENT_TX);
-  $('#txCount').textContent = all.length ? `${rows.length} of ${all.length}` : '';
+// The same four KPIs as before; each is also what the bars can show. of() reads calmMetrics().
+const dashMargin = (x) => (x.rev ? x.gp / x.rev * 100 : 0);
+const DASH_KPI = {
+  rev: { lbl: 'Revenue',      of: x => x.rev,  fmt: pesoShort,                        axis: pesoK,              floor: 100 },
+  gp:  { lbl: 'Profit',       of: x => x.gp,   fmt: pesoShort,                        axis: pesoK,              floor: 100 },
+  n:   { lbl: 'Transactions', of: x => x.n,    fmt: v => v.toLocaleString('en-PH'),   axis: v => +v.toFixed(1), floor: 5 },
+  mg:  { lbl: 'Margin',       of: dashMargin,  fmt: v => v.toFixed(1) + '%',          axis: v => v + '%',       floor: 10 },
+};
+function dashStrip(W, chart) {
+  const m = calmMetrics(W.rows), p = calmMetrics(W.prev);
+  const stat = (k, val, side) =>
+    `<button class="stat" role="tab" data-chart="${k}" aria-selected="${chart === k}"><div class="lbl">${DASH_KPI[k].lbl}</div><div class="line"><span class="val">${val}</span>${side}</div></button>`;
+  return stat('rev', pesoShort(m.rev), calmChip(m.rev, p.rev, W.vs))
+    + stat('gp', pesoShort(m.gp), calmChip(m.gp, p.gp, W.vs))
+    + stat('n', m.n.toLocaleString('en-PH'), calmChip(m.n, p.n, W.vs))
+    + stat('mg', m.rev ? dashMargin(m).toFixed(1) + '%' : '—', m.rev && p.rev ? calmChip(dashMargin(m), dashMargin(p), W.vs) : '');
+}
 
-  $('#txTable tbody').innerHTML = rows.length ? rows.map(o => {
-    const status = STATUS_TONE[o.status || 'completed'] || STATUS_TONE.completed;
-    return `
-      <tr class="tx-row ${o.status === 'completed' ? '' : 'dim'}" data-order="${escapeHtml(o.id)}">
-        <td class="tx-id">#${escapeHtml(o.number)}</td>
-        <td class="tx-time">${escapeHtml(txTime(o.ts))}</td>
-        <td class="tx-cust" title="${escapeHtml(o.customer?.name || '')}">${escapeHtml(o.customer?.name || '—')}</td>
-        <td class="tx-staff">${escapeHtml(o.cashier || '—')}</td>
-        <td class="tx-fulfil">${escapeHtml(orderFulfilLabel(o))}</td>
-        <td><span class="pay-pill ${escapeHtml(o.paymentKind || 'cash')}">${escapeHtml(o.paymentMethodLabel || 'Cash')}</span></td>
-        <td><span class="status-pill ${status[0]}">${status[1]}</span></td>
-        <td class="num"><strong>${peso(txTotal(o))}</strong></td>
-      </tr>`;
-  }).join('') : `<tr><td colspan="8" class="bo-empty">${q ? 'No transactions match that search.' : 'No transactions in this range.'}</td></tr>`;
+// The bars: the picked KPI per hour (today) or per day.
+function niceStep(v) { const e = Math.pow(10, Math.floor(Math.log10(v))), f = v / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e; }
+function dashPlot(W, chart) {
+  const K = DASH_KPI[chart], val = b => K.of(b.m);
+  const bs = W.buckets, peak = Math.max(K.floor, ...bs.map(val));
+  const step = niceStep(peak / 3), top = Math.ceil(peak * 1.1 / step) * step;   // ≥10% headroom: the tallest bar never touches the top line
+  const every = Math.ceil(bs.length / 12);                                   // a label every few bars on 30 days, counted back from today
+  let grid = '';
+  for (let v = 0; v <= top + 1e-6; v += step) grid += `<div class="gl${v ? '' : ' zero'}" style="bottom:${v / top * 100}%"><span>${K.axis(v)}</span></div>`;
+  const cols = bs.map((b, i) => b.future
+    ? `<div class="b future"><span class="x">${(bs.length - 1 - i) % every ? '' : b.x}</span></div>`
+    : `<button class="b" data-at="${b.key}" aria-label="${escapeHtml(b.title)}: ${K.fmt(val(b))}">`
+      + `<i style="height:${Math.max(0, val(b)) / top * 100}%"><span class="tip"><b>${escapeHtml(b.title)}</b>`
+      + Object.entries(DASH_KPI).map(([k, x]) => `<span class="${k === chart ? 'on' : ''}">${x.lbl}<em>${b.m.rev || k !== 'mg' ? x.fmt(x.of(b.m)) : '—'}</em></span>`).join('')
+      + `</span></i>`
+      + `<span class="x${b.now ? ' now' : ''}">${(bs.length - 1 - i) % every && !b.now ? '' : b.x}</span></button>`).join('');
+  return `<div class="grid">${grid}</div>`
+    + `<div class="cols${bs.length > 8 ? ' many' : ''}" style="grid-template-columns:repeat(${bs.length},minmax(0,1fr))">${cols}</div>`;
+}
+
+// Recent transactions: the latest 20 in the range, every status, so voids and refunds show.
+// Sales › Transactions is the one that pages past this.
+const RECENT_TX = 20;
+const PAY_TONE = { cash: 'up', gcash: 'data', qr: 'data', credit: 'warn' };
+const statusName = (o) => { const st = o.status || 'completed'; return st[0].toUpperCase() + st.slice(1); };
+function dashTx(W) {
+  const shown = W.rows.slice().reverse().slice(0, RECENT_TX);
+  return shown.length ? `<div class="flush"><table class="tx">
+    <tr><th>Receipt</th><th>Time</th><th class="opt">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th><th class="n">Total</th></tr>
+    ${shown.map(o => `<tr data-receipt="${escapeHtml(o.id)}" class="${saleSign(o) ? '' : 'dim'}">
+      <td class="id">#${escapeHtml(o.number || o.id)}</td><td class="t">${escapeHtml(txTime(o.ts))}</td>
+      <td class="opt cust">${o.customer?.name ? escapeHtml(o.customer.name) : '<span class="mut">—</span>'}</td>
+      <td class="opt">${escapeHtml(o.cashier || '—')}</td><td class="opt">${escapeHtml(orderFulfilLabel(o))}</td>
+      <td><span class="pill ${PAY_TONE[o.paymentKind] || ''}">${escapeHtml(orderPaymentLabel(o))}</span></td>
+      <td class="opt"><span class="pill ${{ completed: 'up', voided: 'down', return: 'warn', refunded: 'warn' }[o.status || 'completed'] || ''}">${statusName(o)}</span></td>
+      <td class="n amt">${peso(txTotal(o))}</td></tr>`).join('')}
+  </table></div>` : `<p class="note" style="margin:6px 0 16px">No transactions ${W.range === 'today' ? 'yet today' : 'in this range'}.</p>`;
+}
+
+// The rail: targets (always today and this month, whatever the range says), low stock, payment methods.
+const calmRow = (nm, amt, cmp = null, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span><span class="amt">${amt}</span>${cmp !== null ? `<span class="cmp ${cls}">${cmp}</span>` : ''}</div>`;
+function dashRail(W) {
+  const t = dashTargets(W.now);
+  const head = (lbl, val, side = '', link = '') => `<div class="top"><span>${lbl}</span>${link}</div><div class="line"><span class="val">${val}</span>${side}</div>`;
+  const pctSide = pct => `<span class="pct ${pct >= 100 ? 'up' : ''}">${pct}%</span>`;
+  const empty = lbl => head(lbl, '—') + `<button class="set">Set target</button><div class="rows foot">${calmRow('No monthly target yet', '')}</div>`;
+  const out = [];
+  if (!t.daily) out.push(empty('Daily sales target'));
+  else {
+    const pct = Math.round(t.done / t.daily * 100), left = t.daily - t.done;
+    out.push(head('Daily sales target', `${pesoShort(t.done)}<span class="of">/${pesoShort(t.daily)}</span>`, pctSide(pct))
+      + `<div class="rows foot">${left > 0 ? calmRow('Left to sell today', pesoShort(left)) : calmRow('Target hit, over by', pesoShort(-left))}</div>`);
+  }
+  if (!t.month) out.push(empty('Monthly sales target'));
+  else {
+    const sold = t.before + t.done, pct = Math.round(sold / t.month * 100), left = t.month - sold;
+    out.push(head('Monthly sales target', `${pesoK(sold)}<span class="of">/${pesoK(t.month)}</span>`, pctSide(pct))
+      + `<div class="rows foot">${left > 0 ? calmRow('Left to sell this month', pesoK(left)) : calmRow('Target hit, over by', pesoK(-left))}</div>`);
+  }
+
+  // Low stock: the five that run out first by the last 30 days' selling.
+  const sold = new Map();
+  for (const o of W.between(W.today - 30 * 864e5, W.now)) if (saleSign(o) > 0) for (const i of o.items || []) { const p = productFor(i); if (p) sold.set(p.id, (sold.get(p.id) || 0) + (+i.qty || 0)); }
+  const daysLeft = p => { const r = (sold.get(p.id) || 0) / 30; return p.stock <= 0 ? 0 : r ? p.stock / r : Infinity; };
+  const low = state.products.filter(isLow).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock);
+  out.push(head('Low stock', low.length ? String(low.length) : `0<span class="of"> all stocked</span>`, '',
+      low.length ? `<a href="${Router.href('products', '', { view: 'stock', level: 'out,low' })}">View all ›</a>` : '')
+    + (low.length ? `<div class="rows">${low.slice(0, 5).map(p => `<div class="row"><span class="nm">${escapeHtml(p.name)}</span>`
+      + `<span class="pill ${p.stock <= 0 ? 'down' : 'warn'}" style="margin:0">${p.stock <= 0 ? 'Out' : 'Low'}</span></div>`).join('')}</div>` : ''));
+
+  // Payment methods, for the range: the only rail card that follows it.
+  const pays = new Map();
+  for (const o of W.rows) { const s = saleSign(o); if (s) pays.set(orderPaymentLabel(o), (pays.get(orderPaymentLabel(o)) || 0) + o.total * s); }
+  const payRows = [...pays].filter(p => p[1]).sort((x, y) => y[1] - x[1]);
+  out.push(`<div class="top band"><span>Payment methods</span></div>` + (payRows.length
+    ? `<div class="rows">${payRows.map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v))).join('')}${calmRow('Total', pesoShort(payRows.reduce((s, p) => s + p[1], 0)), null, 'total')}</div>`
+    : '<p class="note" style="margin:10px 0 0">No sales in this range.</p>'));
+  return out.map(h => `<section class="card w">${h}</section>`).join('');
+}
+
+// The pop-up: one bar (hour or day), or one receipt. ‹ › step through the live bars or the range's receipts.
+const popSec = (lbl, body, side = '') => `<div class="p-sec"><div class="lbl">${lbl}<span>${side}</span></div>${body}</div>`;
+const popTop = (title, prev, next) => `<div class="p-top"><h2>${title}</h2>
+  <button class="icon-btn" data-step="-1" aria-label="Previous" ${prev ? '' : 'disabled'}>‹</button>
+  <button class="icon-btn" data-step="1" aria-label="Next" ${next ? '' : 'disabled'}>›</button>
+  <button class="icon-btn" data-close aria-label="Close">✕</button></div>`;
+const statusPill = (o) => { const st = o.status || 'completed'; return st === 'completed' ? '' : `<span class="pill ${st === 'voided' ? 'down' : 'warn'}">${statusName(o)}</span>`; };
+const clockOf = (t) => new Date(t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+const liveBars = (W) => W.buckets.filter(b => !b.future);
+function barPop(W, b) {
+  const rows = W.rows.filter(o => o.ts >= b.start && o.ts < b.end), m = b.m;
+  const p = calmMetrics(W.between(shiftDays(b.start, -7), Math.min(shiftDays(b.end, -7), shiftDays(W.now, -7))));
+  const share = v => m.rev ? (v / m.rev * 100).toFixed(1) + '%' : '';
+  const group = key => { const g = new Map(); for (const o of rows) { const s = saleSign(o); if (s) for (const [k, v] of key(o, s)) g.set(k, (g.get(k) || 0) + v); } return [...g].sort((x, y) => y[1] - x[1]); };
+  const L = liveBars(W), i = L.indexOf(b);
+  let html = popTop(b.title, i > 0, i < L.length - 1)
+    + `<div class="p-head"><span class="val">${pesoShort(m.rev)}</span>${calmChip(m.rev, p.rev, 'vs ' + b.backName + (b.now ? ' at this time' : ''))}</div>`
+    + `<p class="p-sub">${m.n} transaction${m.n === 1 ? '' : 's'} · ${pesoShort(m.gp)} profit${b.now ? ' · so far' : ''}</p>`;
+  if (!rows.length) return html + '<p class="p-sub" style="margin-top:20px">No sales.</p>';
+  html += popSec('Payment methods', `<div class="rows">${group((o, s) => [[orderPaymentLabel(o), o.total * s]]).map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v), share(v))).join('')}</div>`);
+  const its = group((o, s) => (o.items || []).map(i => [productFor(i)?.name || i.name, itemNet(i) * s]));
+  html += popSec('Top items', `<div class="rows">${its.slice(0, 5).map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v), share(v))).join('')}</div>`, `${its.length} items sold`);
+  html += popSec('Transactions', `<div class="rows">${rows.slice().reverse().map(o => `<button class="row ${saleSign(o) ? '' : 'dim'}" data-receipt="${escapeHtml(o.id)}"><span class="t">${clockOf(o.ts)}</span>`
+    + `<span class="nm">#${escapeHtml(o.number || o.id)} · ${escapeHtml(orderPaymentLabel(o))}${statusPill(o)}</span><span class="amt">${pesoShort(txTotal(o))}</span></button>`).join('')}</div>`, `${rows.length} total`);
+  return html;
+}
+function receiptPop(W, o) {
+  const i = W.rows.indexOf(o), s = saleSign(o), its = o.items || [];
+  const sub = its.reduce((x, it) => x + itemNet(it), 0);
+  let html = popTop(`Receipt #${escapeHtml(o.number || o.id)}`, i > 0, i >= 0 && i < W.rows.length - 1)
+    + `<div class="p-head"><span class="val">${peso(txTotal(o))}</span>${statusPill(o)}</div>`
+    + `<p class="p-sub">${escapeHtml(txTime(o.ts))} · ${escapeHtml(o.cashier || '—')} · ${escapeHtml(orderFulfilLabel(o))} · ${escapeHtml(orderPaymentLabel(o))}${o.customer?.name ? ' · ' + escapeHtml(o.customer.name) : ''}</p>`;
+  html += popSec('Items', `<div class="rows">${its.map(it => calmRow(`${escapeHtml(productFor(it)?.name || it.name)}<small>${+it.qty} × ${peso(+it.price || itemNet(it) / (+it.qty || 1))}</small>`, peso(itemNet(it)))).join('')}</div>`, `${its.length} line${its.length === 1 ? '' : 's'}`);
+  html += popSec('Totals', `<div class="rows">
+    ${calmRow('Subtotal', peso(sub))}
+    ${+o.discount ? calmRow('Discount', peso(-o.discount)) : ''}
+    ${calmRow('VAT included', peso(+o.vatAmount || 0))}
+    ${calmRow('Total', peso(+o.total), null, 'total')}</div>`,
+    s ? '' : 'Books no revenue');
+  if (o.paymentKind === 'credit' && s > 0) html += '<p class="p-sub" style="margin-top:10px"><span class="pill warn" style="margin:0">Not collected</span> On the customer’s account.</p>';
+  return html;
+}
+
+let dashW = null;   // the window last painted; the click wiring steps through it
+function renderDashboard() {
+  refreshSharedState();
+  const P = Router.route().params, W = dashW = dashWindow(state.range, P.vs || '');
+  const chart = DASH_KPI[P.chart] ? P.chart : 'rev';
+  const opt = (attr, v, lbl, on) => `<button role="menuitemradio" ${attr}="${v}" aria-checked="${on}">${lbl}</button>`;
+  $('#dashGreeting').textContent = `Welcome back, ${state.settings.store?.cashier || 'there'}`;
+  $('#dashPick').innerHTML = RANGE_LABEL[W.range] + (W.vsLbl ? `<span class="vs">vs ${W.vsLbl[0].toLowerCase() + W.vsLbl.slice(1)}</span>` : '');
+  $('#dashRange').innerHTML = Object.keys(RANGE_DAYS).map(r => opt('data-range', r, RANGE_LABEL[r], r === W.range)).join('')
+    + '<hr><h3>Compare to</h3>' + W.compares.map(c => opt('data-vs', c[0], c[1], c[0] === W.vsKey)).join('');
+  $('#dashStrip').innerHTML = dashStrip(W, chart);
+  $('#dashPlot').innerHTML = dashPlot(W, chart);
+  $('#dashTx').innerHTML = dashTx(W);
+  $('#dashTxAll').href = Router.href('sales', '', { by: 'tx' });
+  $('#dashRail').innerHTML = dashRail(W);
+
+  const dlg = $('#dashPop');
+  const b = P.at ? W.buckets.find(x => x.key === P.at && !x.future) : null;
+  const o = P.receipt ? W.rows.find(x => x.id === P.receipt) : null;
+  if (!b && !o) {   // nothing to show; a stale ?at= or ?receipt= leaves the URL, like the lab
+    if (dlg.open) dlg.close();
+    else if (P.at || P.receipt) Router.setParams({ at: '', receipt: '' });
+    return;
+  }
+  $('#dashPopIn').innerHTML = o ? receiptPop(W, o) : barPop(W, b);
+  if (!dlg.open) dlg.showModal();
+}
+
+function initDashboard() {
+  const menu = $('#dashRange'), dlg = $('#dashPop');
+  const open = (p) => Router.setParams({ at: '', receipt: '', ...p });
+  menu.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-range],[data-vs]');
+    if (!b) return;
+    menu.hidePopover();
+    if (b.dataset.range) {
+      const r = b.dataset.range, vs = Router.route().params.vs || '';
+      Router.setParams({ range: r === 'today' ? '' : r, vs: dashCompares(r, dayStart(Date.now())).some(c => c[0] === vs) ? vs : '', at: '', receipt: '' });
+    } else open({ vs: b.dataset.vs });
+  });
+  menu.addEventListener('toggle', (e) => {   // hang it under the button, right edges flush
+    if (e.newState !== 'open') return;
+    const r = $('#dashPick').getBoundingClientRect();
+    menu.style.top = r.bottom + 6 + 'px';
+    menu.style.left = Math.max(16, r.right - menu.offsetWidth) + 'px';
+  });
+  $('#dashStrip').addEventListener('click', (e) => { const c = e.target.closest('[data-chart]'); if (c) Router.setParams({ chart: c.dataset.chart === 'rev' ? '' : c.dataset.chart }); });
+  $('#dashPlot').addEventListener('click', (e) => { const c = e.target.closest('[data-at]'); if (c) open({ at: c.dataset.at }); });
+  $('#dashTx').addEventListener('click', (e) => { const r = e.target.closest('[data-receipt]'); if (r) open({ receipt: r.dataset.receipt }); });
+  $('#dashRail').addEventListener('click', (e) => { if (e.target.closest('.set')) openTargetDialog(); });
+  // Esc, the backdrop (the global dialog handler) and ✕ all just close it; closing clears the URL.
+  dlg.addEventListener('close', () => { const P = Router.route().params; if (P.at || P.receipt) open({}); });
+  dlg.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]')) return dlg.close();
+    const r = e.target.closest('[data-receipt]');
+    if (r) return open({ receipt: r.dataset.receipt });
+    const st = e.target.closest('[data-step]');
+    if (!st || !dashW) return;
+    const n = +st.dataset.step, P = Router.route().params;
+    if (P.at) { const L = liveBars(dashW); open({ at: L[L.findIndex(b => b.key === P.at) + n].key }); }
+    else open({ receipt: dashW.rows[dashW.rows.findIndex(x => x.id === P.receipt) + n].id });
+  });
+
+  const tdlg = $('#targetDlg');
+  tdlg.addEventListener('click', (e) => { if (e.target.closest('[data-act="targetCancel"]')) tdlg.close(); });
+  tdlg.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = new FormData(e.target), over = round2(f.get('override'));
+    state.settings.targets = {
+      month: round2(f.get('month')),
+      override: over > 0 ? { date: isoDate(Date.now()), amount: over } : null,
+    };
+    saveSettings();
+    tdlg.close();
+    showToast('Targets saved');
+    renderCurrentView();
+  });
 }
 
 // ---------- Order dialog ----------
@@ -1367,6 +1207,9 @@ function renderCustomers() {
   const back = $('#custBack');
   if (list) list.hidden = !!customer;
   if (detail) detail.hidden = !customer;
+  // The account screen keeps its KPI row; the list has the widget rail and its Widgets menu instead.
+  $('#custKpis').style.display = customer ? '' : 'none';
+  $('#custWBtn').style.display = customer ? 'none' : '';
   if (back) {
     back.hidden = !customer;
     back.innerHTML = customer
@@ -1441,6 +1284,11 @@ const cyclePill = (r) => {
   return p ? `<span class="status-pill ${p[0]}">${p[1]}</span>` : '<span class="muted">—</span>';
 };
 
+// The list's figures: a 288px rail beside the table, Sales › Transactions' blocks (bo-calm.css, .calm-cust).
+// × removes one, the Widgets menu brings it back; which are off is this device's choice (HWPOS_STORE.ui 'custHide').
+const CUST_W = { owed: 'Outstanding credit', pool: 'Credit limit pool', use: 'Utilization', near: 'Near limit' };
+const custHidden = () => String(HWPOS_STORE.ui.get('custHide', '') || '').split(',').filter(Boolean);
+
 function renderCustomerList() {
   const q = state.custQuery.trim().toLowerCase();
   const customers = allCustomerRecords();
@@ -1455,12 +1303,17 @@ function renderCustomerList() {
   const utilization = totalLimit > 0 ? Math.round(totalOutstanding / totalLimit * 100) : 0;
 
   $('#custTitle').textContent = 'Customers';
-  $('#custKpis').innerHTML = [
-    kpi('Outstanding credit', pesoShort(totalOutstanding), `${active} active debtors`, 'flat'),
-    kpi('Credit limit pool', pesoShort(totalLimit), 'total approved', 'flat'),
-    kpi('Utilization', utilization + '%', 'of total pool', 'flat'),
-    kpi('Near limit', overLimit, '> 75% utilized', overLimit > 0 ? 'down' : 'flat'),
-  ].join('');
+  const on = Object.keys(CUST_W).filter(id => !custHidden().includes(id));
+  const w = {   // [number, note, note class]
+    owed: [pesoShort(totalOutstanding), `${active} active debtors`],
+    pool: [pesoShort(totalLimit), 'total approved'],
+    use: [utilization + '%', 'of total pool'],
+    near: [overLimit, '> 75% utilized', overLimit > 0 ? ' down' : ''],
+  };
+  $('#custW').innerHTML = `<div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr>${Object.entries(CUST_W).map(([id, n]) => `<button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}">${n}</button>`).join('')}`;
+  $('#custDash').classList.toggle('solo', !on.length);
+  $('#custRail').innerHTML = on.map(id => `<section class="card w one"><div class="top band one" title="${escapeHtml(w[id][1])}"><span>${CUST_W[id]}</span>
+    <span class="acts"><span class="cnt${w[id][2] || ''}">${escapeHtml(w[id][1])}</span><span class="nv">${w[id][0]}</span></span></div></section>`).join('');   // no ×, like Net sales: it squeezes the note out at 288px; the Widgets menu removes them
 
   const pg = paginate(list, Router.route().params.page);
   const cycles = customerCycleMap();
@@ -1660,9 +1513,6 @@ function renderSettingsForm() {
   setValue('setTin', s.store.tin);
   setChecked('setVatRegistered', s.vatInclusive);
   setValue('setVatRate', `${Math.round((s.vatRate || 0) * 100)}%`);
-  setValue('setBackendUrl', s.sync.backendUrl);
-  setValue('setSyncInterval', s.sync.interval);
-  setChecked('setAllowOffline', s.sync.allowOfflineSales);
   setValue('setPrinterWidth', s.printing.width);
   setChecked('setPrintOnSale', s.printing.printOnSale);
   setChecked('setLogoOnReceipt', s.printing.logoOnReceipt);
@@ -1817,12 +1667,6 @@ function persistSettingsFromForm() {
       currency: val('setCurrency') || DEFAULT_SETTINGS.store.currency,
       tin: val('setTin') || DEFAULT_SETTINGS.store.tin,
     },
-    sync: {
-      ...state.settings.sync,
-      backendUrl: val('setBackendUrl'),
-      interval: val('setSyncInterval') || DEFAULT_SETTINGS.sync.interval,
-      allowOfflineSales: checked('setAllowOffline'),
-    },
     printing: {
       ...state.settings.printing,
       width: val('setPrinterWidth') || DEFAULT_SETTINGS.printing.width,
@@ -1847,26 +1691,6 @@ function wireEvents() {
       if (b.dataset.sub) goSub(b.dataset.view, b.dataset.sub.split(' ')[0]); else setView(b.dataset.view);
     });
   });
-
-  // Range picker — the span and the day it ends on live in one control.
-  // ponytail: the date field inside the menu is native; only the menu itself is ours.
-  const rangeMenu = $('#rangeMenu');
-  const openRangeMenu = (on) => {
-    rangeMenu.hidden = !on;
-    $('#rangeBtn').setAttribute('aria-expanded', String(on));
-  };
-  $('#rangeBtn')?.addEventListener('click', () => openRangeMenu(rangeMenu.hidden));
-  $$('.rp-opt').forEach(b => b.addEventListener('click', () => {
-    openRangeMenu(false);
-    Router.setParams({ range: b.dataset.range === 'today' ? '' : b.dataset.range }, { replace: false });
-  }));
-  $('#dashDate')?.addEventListener('change', (e) => {
-    Router.setParams({ date: e.target.value || '' }, { replace: false });
-  });
-  document.addEventListener('click', (e) => {
-    if (rangeMenu && !rangeMenu.hidden && !e.target.closest('#rangePicker')) openRangeMenu(false);
-  });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') openRangeMenu(false); });
 
   // Sales keeps a plain dropdown for the same state.
   $$('.range-select').forEach(sel => sel.addEventListener('change', () => {
@@ -1902,6 +1726,21 @@ function wireEvents() {
 
   // ----- Customers: add, edit, statement -----
   $('#custAddBtn')?.addEventListener('click', () => openCustomerDialog(''));
+  // Widgets: a menu tick or a block's × — the table glides to its new width (slideRender).
+  document.addEventListener('click', (e) => {
+    const w = e.target.closest('#custW [data-w], #custW [data-w-all], #custRail [data-hide]');
+    if (!w) return;
+    const id = w.dataset.w || w.dataset.hide, off = custHidden();
+    HWPOS_STORE.ui.set('custHide', w.dataset.wAll ? (w.dataset.wAll === 'on' ? '' : Object.keys(CUST_W).join(','))
+      : (off.includes(id) ? off.filter(x => x !== id) : [...off, id]).join(','));
+    slideRender(renderCustomerList);
+  });
+  $('#custW')?.addEventListener('toggle', (e) => {   // hang it under its button, right edges flush
+    if (e.newState !== 'open') return;
+    const m = e.currentTarget, r = $('#custWBtn').getBoundingClientRect();
+    m.style.top = r.bottom + 6 + 'px';
+    m.style.left = Math.max(16, Math.min(r.right - m.offsetWidth, innerWidth - m.offsetWidth - 16)) + 'px';
+  });
 
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-act]');
@@ -1952,7 +1791,7 @@ function wireEvents() {
   // "View all →" jumps inside dashboard
   document.addEventListener('click', (e) => {
     const j = e.target.closest('[data-jump]');
-    if (!j || j.closest('#dashStack.editing')) return;
+    if (!j) return;
     e.preventDefault();
     if (j.dataset.sub) goSub(j.dataset.jump, j.dataset.sub); else setView(j.dataset.jump);
   });
@@ -1981,20 +1820,7 @@ function wireEvents() {
     qTimer = setTimeout(() => Router.setParams({ q, page: '' }), 150);
   });
 
-  // ponytail: a view preference, not app state — one key, no re-render needed.
-  const deltaBtn = $('#statDeltaToggle');
-  const showDeltas = (on) => {
-    $('#dashStack').classList.toggle('show-delta', on);
-    deltaBtn.classList.toggle('active', on);
-    localStorage.setItem(STORAGE_STAT_DELTAS, on ? '1' : '0');
-  };
-  if (deltaBtn) {
-    deltaBtn.addEventListener('click', () => showDeltas(!deltaBtn.classList.contains('active')));
-    showDeltas(localStorage.getItem(STORAGE_STAT_DELTAS) !== '0');
-  }
-
-  $('#dashExportBtn')?.addEventListener('click', () => exportSalesCsv());
-  initDashEdit();
+  initDashboard();
 
   $('#backupExportBtn')?.addEventListener('click', exportFullBackup);
   $('#backupImportBtn')?.addEventListener('click', () => $('#backupImportFile')?.click());
@@ -2051,10 +1877,10 @@ function wireEvents() {
 
   [
     'setStoreName', 'setStoreAddress', 'setStorePhone', 'setCurrency', 'setVatRate', 'setTin',
-    'setBackendUrl', 'setSyncInterval', 'setPrinterWidth',
+    'setPrinterWidth',
   ].forEach(id => $('#' + id)?.addEventListener('change', persistSettingsFromForm));
   [
-    'setVatRegistered', 'setAllowOffline', 'setPrintOnSale', 'setLogoOnReceipt',
+    'setVatRegistered', 'setPrintOnSale', 'setLogoOnReceipt',
   ].forEach(id => $('#' + id)?.addEventListener('change', persistSettingsFromForm));
 
   // Re-pull localStorage when switching back to the tab (POS app might have edited it)
@@ -2115,7 +1941,7 @@ function applyChartHue(hue) {
   return h;
 }
 
-// Line (default) or bars, for every sales chart. One class on <body>; drawLineChart reads it.
+// Line (default) or bars. One class on <body>; the calm Dashboard and Sales always draw bars, so nothing reads it now.
 function applyChartStyle(style) {
   const v = style === 'bars' ? 'bars' : 'line';
   document.body.classList.toggle('chart-bars', v === 'bars');

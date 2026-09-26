@@ -288,15 +288,6 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .dot-ok { background: var(--ok); }
 .dot-warn { background: var(--warn); }
 
-.user-sync {
-  margin-left: auto;
-  color: var(--ink);
-  opacity: 0.5;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-}
-
 /* ============================================================
    FOLDER STRIP (on-page, both Sell and Inventory use this)
    ============================================================ */
@@ -2454,7 +2445,6 @@ select.text-input {
   .brand-mini span, .side-link span, .user-meta { display: none; }
   .side-link { justify-content: center; padding: 0; width: 40px; height: 40px; }
   .user-row { padding: 0; }
-  .user-sync { display: none; }
   .content-row { grid-template-columns: minmax(0, 1fr) 320px; }
   .form-grid { grid-template-columns: 1fr; }
   .checkout-content-row { grid-template-columns: minmax(0, 1fr) 340px; }
@@ -4682,7 +4672,6 @@ body.bo-light .bo-sidebar .user-avatar {
 }
 body.bo-light .bo-sidebar .user-name { font-size: 13px; font-weight: 600; color: var(--po-ink); }
 body.bo-light .bo-sidebar .user-sub { font-size: 11px; color: var(--po-ink-tertiary); }
-body.bo-light .bo-sidebar .user-sync { color: var(--po-ink); opacity: 0.5; }
 
 /* Main */
 body.bo-light .bo-main {
@@ -5559,7 +5548,6 @@ body.light-theme .sync-pill {
 }
 body.light-theme .dot-ok { background: var(--ok); }
 body.light-theme .dot-warn { background: var(--warn); }
-body.light-theme .user-sync { color: var(--ink); }
 
 /* ============================================================================
    BACK OFFICE — SHOPIFY ADMIN REDESIGN (v21)
@@ -7182,6 +7170,10 @@ body.bo-light .bo-sidebar .side-link.open + .side-sub { grid-template-rows: 1fr;
   body.bo-light .bo-sidebar .side-fold,
   body.bo-light .bo-sidebar .side-sub { transition: none; }
 }
+/* ponytail: section labels hidden for now (markup + fold JS kept). Every section is forced
+   open so a group someone folded earlier can't get stuck shut with no label to reopen it. */
+body.bo-light .bo-sidebar .side-label { display: none; }
+body.bo-light .bo-sidebar .side-label[aria-expanded="false"] + .side-fold { grid-template-rows: 1fr; opacity: 1; visibility: visible; }
 
 /* SIDEBAR WEIGHT (v34): Shopify's hierarchy -- filled, rounded icons and a heavier top-level
    row over a paler, lighter tree. An icon's inner detail (.i-cut lines, .i-hole dots) is drawn

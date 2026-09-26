@@ -325,7 +325,7 @@ aside[hidden] { display: none; }
   const catOf = i => folderName.get(productFor(i)?.folder) || i.cat || 'Uncategorized';
   const lineNet = i => i.lineTotal != null ? +i.lineTotal : (+i.price || 0) * (+i.qty || 0);
   const profit = o => (+o.total - (+o.vatAmount || 0)) - (o.items || []).reduce((s, i) => s + costOf(i) * (+i.qty || 0), 0);
-  const payLabel = o => o.paymentMethodLabel || { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Account', split: 'Split payment' }[o.paymentKind || o.paymentMethod] || 'Cash';
+  const payLabel = o => (o.paymentKind || o.paymentMethod) === 'credit' ? 'Account' : o.paymentMethodLabel || { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Account', split: 'Split payment' }[o.paymentKind || o.paymentMethod] || 'Cash';
 
   const byDay = new Map();
   for (const o of orders) { const k = iso(o.ts); (byDay.get(k) || byDay.set(k, []).get(k)).push(o); }

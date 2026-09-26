@@ -526,14 +526,14 @@ function normalizePayment(payment = {}) {
   };
 }
 
-const KNOWN_METHOD_LABELS = { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Charge to account', split: 'Split payment', unpaid: 'Not completed' };
+const KNOWN_METHOD_LABELS = { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Account', split: 'Split payment', unpaid: 'Not completed' };
 
 function buildOrderPayments({ status, paymentMethod, total, tendered = 0, change = 0 }) {
   if (status === 'saved' || paymentMethod === 'unpaid') {
     return [{ method: 'unpaid', label: 'Not completed', amount: 0, tendered: 0, change: 0, ref: '' }];
   }
   if (paymentMethod === 'credit') {
-    return [{ method: 'credit', label: 'Charge to account', amount: moneyValue(total), tendered: 0, change: 0, ref: '' }];
+    return [{ method: 'credit', label: 'Account', amount: moneyValue(total), tendered: 0, change: 0, ref: '' }];
   }
   if (paymentMethod === 'split') {
     const cashApplied = Math.min(moneyValue(tendered), moneyValue(total));
@@ -5207,20 +5207,8 @@ function attachEvents() {
     if (e.key === 'Enter') saveFolder();
   });
 
-  const renderSyncStatus = async () => {
-    const el = $('#syncPill');
-    if (!el) return;
-    let online = navigator.onLine !== false;
-    try {
-      const health = await window.HWPOS_STORE?.health?.();
-      if (health && typeof health.online === 'boolean') online = health.online;
-    } catch (_) {}
-  };
-  window.addEventListener('online', renderSyncStatus);
-  window.addEventListener('offline', renderSyncStatus);
   window.addEventListener('online', () => track('online'));
   window.addEventListener('offline', () => track('offline'));
-  renderSyncStatus();
 }
 
 // ---------- Init ----------

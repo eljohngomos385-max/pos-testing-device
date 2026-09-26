@@ -168,114 +168,14 @@
   function table(cols, rows, sort, empty, sortable = true) {
     const head = cols.map(c =>
       `<th class="${c.num ? 'num' : ''}"${sortable ? ` data-act="sort" data-key="${c.key}"` : ''}>${escapeHtml(c.label)}${sortable && sort.key === c.key ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</th>`).join('');
-    // Only the ledger's rows are orders; every other cut is an aggregate with nothing to open.
-    const attr = cols === TX_COLUMNS ? (r => ` class="tx-row" data-order="${escapeHtml(r.id)}"`) : (() => '');
     const body = rows.length
-      ? rows.map(r => `<tr${attr(r)}>${cols.map(c => `<td class="${c.num ? 'num' : ''}">${c.cell(r)}</td>`).join('')}</tr>`).join('')
+      ? rows.map(r => `<tr>${cols.map(c => `<td class="${c.num ? 'num' : ''}">${c.cell(r)}</td>`).join('')}</tr>`).join('')
       : `<tr><td colspan="${cols.length}" class="bo-empty">${escapeHtml(empty)}</td></tr>`;
     return `<div class="table-wrap"><table class="data-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
   }
 
   const card = (label, sub, body, flush) =>
     `<section class="bo-card blk-table"><div class="bo-card-head"><span class="bo-card-label">${escapeHtml(label)}</span>${sub ? `<span class="bo-card-sub">${escapeHtml(sub)}</span>` : ''}</div><div class="bo-card-inset${flush ? ' flush' : ''}">${body}</div></section>`;
-
-  // ---------- Profiles: the shell's chart, on this page's rows ----------
-  /* backoffice.js already draws revenue against gross profit (renderLineChart) and already
-     knows how to bucket a range. What it cannot do is respect this page's payment and staff
-     filters, because it walks state.orders directly. So the buckets get built here, out of
-     the same filtered rows every other number on the page comes from, and handed to the same
-     renderer. No second chart, no chart library.
-     A profile is not a timeline: 24 hours, or 7 weekdays, with every day in the range folded
-     on top of each other. "What time do we get busy" is a different question from "what
-     happened on Tuesday", and only the folded version answers it. */
-  function series(slots, rows, slotOf) {
-    const out = slots.map(s => ({ ...s, revenue: 0, profit: 0, items: 0, txns: 0 }));
-    for (const o of rows) {
-      const sign = saleSign(o);
-      if (!sign) continue;             // a void books no money and belongs to no hour
-      const b = out[slotOf(o)];
-      if (!b) continue;
-      b.revenue += o.total * sign;
-      b.profit += orderProfit(o) * sign;
-      b.txns += 1;
-      for (const i of o.items) b.items += i.qty * sign;
-    }
-    return out;
-  }
-
-  const hourText = (h) => new Date(2024, 0, 1, h).toLocaleTimeString('en-PH', { hour: 'numeric' });
-  // 1 Jan 2024 was a Monday. A hardware shop's week starts there, not on Sunday.
-  const dayText = (i, long) => new Date(2024, 0, 1 + i).toLocaleDateString('en-PH', { weekday: long ? 'long' : 'short' });
-
-  const hourSeries = (rows) => series(
-    Array.from({ length: 24 }, (_, h) => ({ label: hourText(h), title: hourText(h) })),
-    rows, o => new Date(o.ts).getHours());
-
-  const weekdaySeries = (rows) => series(
-    Array.from({ length: 7 }, (_, i) => ({ label: dayText(i), title: dayText(i, true) })),
-    rows, o => (new Date(o.ts).getDay() + 6) % 7);
-
-  // The range day by day -- what the dashboard plots, filtered. One day of range has no
-  // days to plot, so Today draws its own hours instead of a single dot.
-  function trendSeries(rows) {
-    if (state.range === 'today') return hourSeries(rows);
-    const days = RANGE_DAYS[state.range] || 7;
-    const base = new Date(state.anchor);
-    base.setHours(0, 0, 0, 0);
-    const slots = [], idx = new Map();
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(base);
-      d.setDate(base.getDate() - i);
-      idx.set(d.getTime(), slots.length);
-      slots.push({
-        label: d.toLocaleDateString('en-PH', days > 14 ? { month: 'short', day: 'numeric' } : { weekday: 'short' }),
-        title: d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }),
-      });
-    }
-    return series(slots, rows, (o) => {
-      const d = new Date(o.ts);
-      d.setHours(0, 0, 0, 0);
-      return idx.get(d.getTime());
-    });
-  }
-
-  // A chart is drawn, not stringified: the body builder leaves a placeholder and the
-  // renderer runs once the markup is in the document. Same chart-block markup as the
-  // dashboard card (bo-blocks.css → CHART); renderLineChart fills the key totals.
-  // `head` is the number line; `keys` adds the Revenue / Gross profit switch; `still` drops
-  // the "now" dot, which means nothing on an hour or weekday profile.
-  let charts = [];
-  function chartCard(label, data, { head, keys, still, cls = '' }) {
-    const id = `chart${charts.length}`;
-    charts.push([id, data]);
-    return `
-      <section class="bo-card blk-chart ${cls}">
-        <span class="bo-card-label">${escapeHtml(label)}</span>
-        <div class="blk-head">${head}</div>
-        ${keys ? `<div class="blk-keys">
-          <button class="blk-key s0" aria-pressed="true"><i></i>Revenue <b></b></button>
-          <button class="blk-key s1" aria-pressed="true"><i></i>Gross profit <b></b></button>
-        </div>` : ''}
-        <div class="blk-plot" id="${id}"${still ? ' data-still' : ''}></div>
-      </section>`;
-  }
-
-  // "Busiest at 10 AM" is the whole reason to plot a profile. Say it, rather than leave it
-  // to be eyeballed off the line.
-  function peakHead(data, short) {
-    const top = data.reduce((a, b) => (b.revenue > a.revenue ? b : a), data[0]);
-    return top && top.revenue > 0
-      ? `<div class="blk-head-value kpi-value">${escapeHtml(short(top))}<span class="of"> busiest</span></div><span class="kpi-note">${escapeHtml(pesoShort(top.revenue))}</span>`
-      : '<div class="blk-head-value kpi-value">—</div>';
-  }
-
-  // 24 hours flattens a shop that opens at 7 and shuts at 6: plot the hours that sold, one
-  // either side, and 6 AM to 8 PM when nothing did.
-  function openHours(hours) {
-    const sold = hours.map((h, i) => (h.txns ? i : -1)).filter(i => i >= 0);
-    if (!sold.length) return hours.slice(6, 21);
-    return hours.slice(Math.max(0, sold[0] - 1), Math.min(24, sold[sold.length - 1] + 2));
-  }
 
   // ---------- What the URL says ----------
   function readView() {
@@ -295,12 +195,16 @@
     };
   }
 
+  // A row's value for each filter, and its test. skip: the block that ignores its own filter.
+  const TX_KEY = { pay: o => o.paymentKind || o.paymentMethod || 'cash', staff: o => o.cashier, ful: o => o.fulfilment || 'pickup' };
+  const txPass = (o, v, skip) => Object.keys(TX_KEY).every(f => f === skip || !v[f].length || v[f].includes(TX_KEY[f](o)));
+
   // Window rows plus the filter option lists, in one walk. Options come from the unfiltered
   // window so picking a staff member cannot empty the payment dropdown.
   function windowRows(v) {
     const win = rangeWindows();
     const payOpts = new Map(), staffOpts = new Set(), fulOpts = new Map();
-    const rows = [];
+    const rows = [], all = [];
     for (const o of state.orders) {
       if (o.ts < win.start || o.ts >= win.end) continue;
       const kind = o.paymentKind || o.paymentMethod || 'cash';
@@ -308,24 +212,11 @@
       if (o.cashier) staffOpts.add(o.cashier);
       const ful = o.fulfilment || 'pickup';
       if (!fulOpts.has(ful)) fulOpts.set(ful, orderFulfilLabel(o));
-      if (v.pay.length && !v.pay.includes(kind)) continue;
-      if (v.staff.length && !v.staff.includes(o.cashier)) continue;
-      if (v.ful.length && !v.ful.includes(ful)) continue;
-      rows.push(o);
+      all.push(o);
+      if (txPass(o, v)) rows.push(o);
     }
     rows.sort((a, b) => b.ts - a.ts);
-    return { rows, win, payOpts, fulOpts, staffOpts: Array.from(staffOpts).sort() };
-  }
-
-  function prevRows(v) {
-    const win = rangeWindows();
-    return state.orders.filter(o => {
-      if (o.ts < win.prevStart || o.ts >= win.prevEnd) return false;
-      if (v.pay.length && !v.pay.includes(o.paymentKind || o.paymentMethod || 'cash')) return false;
-      if (v.staff.length && !v.staff.includes(o.cashier)) return false;
-      if (v.ful.length && !v.ful.includes(o.fulfilment || 'pickup')) return false;
-      return true;
-    });
+    return { rows, all, win, payOpts, fulOpts, staffOpts: Array.from(staffOpts).sort() };
   }
 
   // ---------- Render ----------
@@ -344,7 +235,7 @@
           <h1>${v.tab === 'summary' ? 'Sales' : escapeHtml(TABS.find(t => t[0] === v.tab)[1])}</h1>
         </div>
         <div class="view-actions">
-          ${v.tab === 'tx' ? '' : filterSelects(v, payOpts, staffOpts, fulOpts)}
+          ${filterSelects(v, payOpts, staffOpts, fulOpts)}
           <div class="range-picker" data-rp>
             <button class="range-btn" data-act="rp-toggle" aria-haspopup="true">
               <span>${escapeHtml(RANGE_LABEL[state.range])}</span>
@@ -364,140 +255,434 @@
       </header>`;
   }
 
-  // What came off the top before revenue: discounts on sales, and the money returns
-  // handed back. Gross is worked back from revenue so the card always adds up to it.
-  function offTop(rows) {
-    let disc = 0, ret = 0, retN = 0;
+  // ---------- Summary: the month calendar (sales-calendar-lab.html, ported as is) ----------
+  // Its own window, not the range picker's: a month or a year. The URL holds it all --
+  // ?view=year, ?month=YYYY-MM, ?day= / ?week= for the side panel, ?top= for the Top 10 --
+  // so every click is a setParams and a re-render, and Back walks it.
+  const fmt = (t, o) => new Date(t).toLocaleDateString('en-PH', o);
+  const fromIso = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d || 1).getTime(); };
+  const monthEnd = (t) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime(); };
+  const weekEnd = (t) => Math.min(shiftDays(t, 7 - ((new Date(t).getDay() + 6) % 7)), monthEnd(t));   // exclusive, clipped to the month
+  const daysIn = (t) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); };
+  const itemOf = (i) => productFor(i)?.name || i.name;
+  const catOf = (i) => folderName(productFor(i)?.folder);
+  const calRow = (nm, amt, cmp = '', cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span><span class="amt">${amt}</span>${cmp !== null ? `<span class="cmp">${cmp}</span>` : ''}</div>`;
+  const breakdownRows = (m) => `<div class="rows">
+      ${calRow('Gross sales', pesoShort(m.sales + m.disc), null)}
+      ${calRow('Discounts', m.disc ? pesoShort(-m.disc) : '₱0', null)}
+      ${calRow(`Returns${m.retN ? ` (${m.retN})` : ''}`, m.ret ? pesoShort(-m.ret) : '₱0', null)}
+      ${calRow('VAT included', pesoShort(m.vat), null)}
+      ${calRow('Net sales', pesoShort(m.rev), null, 'total')}</div>`;
+
+  const lastSale = () => state.orders.reduce((a, o) => Math.max(a, o.ts), 0) || Date.now();
+  function calState(p, last) {
+    const month = /^\d{4}-\d{2}$/.test(p.month || '') ? fromIso(p.month + '-01')
+      : (d => new Date(d.getFullYear(), d.getMonth(), 1).getTime())(new Date(Math.min(last, Date.now())));
+    const view = p.view === 'year' ? 'year' : 'month';
+    return {
+      view, month,
+      top: ['cat', 'day', 'hour'].includes(p.top) ? p.top : 'item',
+      sel: view === 'year' ? null : p.day ? { kind: 'day', at: fromIso(p.day) } : p.week ? { kind: 'week', at: fromIso(p.week) } : null,
+    };
+  }
+
+  // The strip: days = days that had sales, the same average an untargeted calendar greens against.
+  function calStrip(cur, prev, prevTitle, best, worst, unit, days, target) {
+    const stat = (lbl, val, side, sub, cls = '', tip = '') =>
+      `<div class="stat"${tip ? ` title="${escapeHtml(tip)}"` : ''}><div class="lbl">${lbl}</div><div class="line"><span class="val ${cls}">${val}</span>${side || ''}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
+    const margin = cur.rev ? (cur.gp / cur.rev * 100).toFixed(1) + '% margin' : '';
+    const perDay = (v) => (days ? v / days : 0);
+    const html = stat('Revenue', pesoK(cur.rev), calmChip(cur.rev, prev.rev, prevTitle), days ? pesoShort(perDay(cur.rev)) + ' daily avg' : '')
+      + stat('Gross profit', pesoK(cur.gp), calmChip(cur.gp, prev.gp, prevTitle), margin)
+      + stat('Receipts', cur.n.toLocaleString(), calmChip(cur.n, prev.n, prevTitle),
+        days ? perDay(cur.n).toLocaleString('en-PH', { maximumFractionDigits: 1 }) + ' daily avg' : '', '', cur.n ? pesoShort(cur.rev / cur.n) + ' average receipt' : '')
+      + stat('Best ' + unit, best ? pesoK(best.m.rev) : '—', '', best ? best.label : '', best ? 'up' : '')
+      + stat('Slowest ' + unit, worst ? pesoK(worst.m.rev) : '—', '', worst ? worst.label : '', worst && worst.m.rev < 0 ? 'down' : '');
+    if (target == null) return html;                                   // year view: five stats
+    const pc = target ? Math.round(cur.rev / target * 100) : 0;
+    return html + `<button class="stat" data-act="cal-target" title="${target ? `${pesoShort(cur.rev)} of ${pesoShort(target)} · click to change` : 'Set a monthly target'}">`
+      + `<div class="lbl">Target</div><div class="line">${target
+        ? `<span class="val">${pesoK(cur.rev)}</span><b class="pct">${pc}%</b></div><div class="sub">of ${pesoK(target)}</div>`
+        : '<span class="val">—</span><span class="set">Set</span></div>'}</button>`;
+  }
+
+  // Top 10: items, categories, weekdays or hours. Items split the order's total by line share,
+  // as agg() does, so a discount can't make the items add up to more than the receipt.
+  const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const hourSpan = (h) => { const ap = x => (x % 24 < 12 ? 'AM' : 'PM'), hh = x => x % 12 || 12;
+    return ap(h) === ap(h + 1) ? `${hh(h)} – ${hh(h + 1)} ${ap(h)}` : `${hh(h)} ${ap(h)} – ${hh(h + 1)} ${ap(h + 1)}`; };
+  function tops(rows, by) {
+    const g = new Map(), open = new Set();
+    const put = (k, init) => g.get(k) || g.set(k, { name: k, qty: 0, rev: 0, items: new Set(), days: new Set(), ...init }).get(k);
     for (const o of rows) {
-      const sign = saleSign(o);
-      if (sign > 0) disc += o.discount || 0;
-      if (sign < 0) { ret += o.total; retN += 1; }
+      const s = saleSign(o), its = o.items || [];
+      if (!s) continue;
+      open.add(isoDate(o.ts));
+      if (by === 'day' || by === 'hour') {
+        const d = new Date(o.ts), b = put(by === 'day' ? DAYS[(d.getDay() + 6) % 7] : hourSpan(d.getHours()));
+        b.rev += o.total * s; b.days.add(isoDate(o.ts));
+        continue;
+      }
+      if (!its.length) continue;
+      const gross = its.reduce((x, i) => x + itemNet(i), 0);
+      for (const i of its) {
+        const b = put((by === 'cat' ? catOf : itemOf)(i), { cat: catOf(i), unit: i.unit || '' });
+        b.qty += (+i.qty || 0) * s; b.items.add(itemOf(i));
+        b.rev += o.total * s * (gross > 0 ? itemNet(i) / gross : 1 / its.length);
+      }
     }
-    return { disc, ret, retN };
+    // a weekday averages over the days it was open; an hour over every open day in the window
+    for (const b of g.values()) b.avg = b.rev / ((by === 'day' ? b.days.size : open.size) || 1);
+    return g;
   }
-  // More discount or more returns is the bad direction: same chip maths, tone flipped.
-  const worse = (dl) => ({ ...dl, tone: dl.tone === 'up' ? 'down' : dl.tone === 'down' ? 'up' : 'flat' });
-  const cmpCell = (dl) => [escapeHtml(dl.text), dl.tone === 'flat' ? '' : dl.tone];
-
-  const nameBtn = (name) => `<button type="button" class="nm" data-act="staff" data-name="${escapeHtml(name)}">${escapeHtml(name)}</button>`;
-  const listCard = (label, body, foot = '', cls = '') =>
-    `<section class="bo-card blk-kpi ${cls}"><div class="kpi-label">${escapeHtml(label)}</div>${body}${foot && `<div class="sales-foot">${foot}</div>`}</section>`;
-  const emptyRows = '<div class="bo-empty">Nothing sold in this range.</div>';
-
-  // The Shopify-style grid (owner, 2026-09-22): six KPIs across, then three rows of three
-  // blocks -- the trend over two columns beside the breakdown; hour, weekday and payment;
-  // staff, top items and the targets. Every block is the same height, so the grid never
-  // leaves a hole. Patterns, By employee and By payment live here now, as blocks.
-  function summary(a, prev, rows, pRows) {
-    const cmp = state.range === 'today' ? 'the day before' : 'prev period';
-    const d = (cur, was) => deltaOf(cur, was, cmp);
-    const t = a.totals, p = prev.totals;
-
-    const stats = `
-      <div class="stat-grid show-delta sales-kpis">
-        ${[
-          statCell({ label: 'Revenue', value: pesoShort(t.revenue), delta: d(t.revenue, p.revenue) }),
-          statCell({ label: 'Gross profit', value: pesoShort(t.profit), delta: d(t.profit, p.profit) }),
-          statCell({ label: 'Margin', value: t.net ? pct(t.margin) : '—', delta: d(t.margin, p.margin) }),
-          statCell({ label: 'Transactions', value: int(t.txns), delta: d(t.txns, p.txns) }),
-          statCell({ label: 'Average basket', value: pesoShort(t.avg), delta: d(t.avg, p.avg) }),
-          statCell({ label: 'Items sold', value: qtyText(t.qty), delta: d(t.qty, p.qty) }),
-        ].join('')}
-      </div>`;
-
-    // Row 1: the trend, and where revenue came from.
-    const rev = d(t.revenue, p.revenue);
-    const trend = chartCard('Sales over time', trendSeries(rows), {
-      keys: true, cls: 'w2',
-      head: `<div class="blk-head-value">${curHtml(pesoShort(t.revenue))}</div><span class="trend ${rev.tone}" title="${escapeHtml(rev.cmp)}">${escapeHtml(rev.text)}</span>`,
-    });
-    const o = offTop(rows), po = offTop(pRows);
-    const gross = t.revenue + o.disc + o.ret, pGross = p.revenue + po.disc + po.ret;
-    const vat = t.revenue - t.net, pVat = p.revenue - p.net;
-    const [revText, revTone] = cmpCell(rev);
-    const breakdown = listCard('Sales breakdown', `<div class="bd-rows">
-      ${bdRow('Gross sales', pesoShort(gross), ...cmpCell(d(gross, pGross)))}
-      ${bdRow('Discounts', pesoShort(-o.disc), ...cmpCell(worse(d(o.disc, po.disc))))}
-      ${bdRow(`Returns${o.retN ? ` (${int(o.retN)})` : ''}`, pesoShort(-o.ret), ...cmpCell(worse(d(o.ret, po.ret))))}
-      ${bdRow('VAT included', pesoShort(vat), ...cmpCell(d(vat, pVat)))}
-      ${bdRow('Before VAT', pesoShort(t.net), ...cmpCell(d(t.net, p.net)))}
-      <div class="bd-row total"><span class="nm">Net sales</span><span class="amt">${pesoShort(t.revenue)}</span><span class="cmp ${revTone}">${revText}</span></div>
-    </div>`, t.voids ? `${int(t.voids)} voided, no revenue` : '');
-
-    // Row 2: when the shop sells, and how it gets paid. Lines, not bars -- there is one
-    // chart in the product (docs/backoffice.md → Sales-trend chart).
-    const hours = openHours(hourSeries(rows)), days = weekdaySeries(rows);
-    const hourCard = chartCard('Sales by hour of day', hours, { still: true, head: peakHead(hours, h => h.title) });
-    const dayCard = chartCard('Sales by day of week', days, { still: true, head: peakHead(days, x => x.label) });
-    const pays = sortRows(a.pays.filter(r => r.sales), 'revenue', 'desc');
-    const payCard = listCard('Payment methods', pays.length ? `<div class="bd-rows">
-      ${pays.slice(0, 6).map(r => bdRow(escapeHtml(r.name) + (r.kind === 'credit' ? ' <span class="status-pill warn">Not yet collected</span>' : ''),
-        pesoShort(r.revenue), pct(r.share))).join('')}
-      <div class="bd-row total"><span class="nm">Total</span><span class="amt">${pesoShort(t.revenue)}</span><span class="cmp">100%</span></div>
-    </div>` : emptyRows);
-
-    // Row 3: who sold, what sold, and the goal. A name opens that person's numbers.
-    const staff = sortRows(a.staff.filter(r => r.txns), 'revenue', 'desc');
-    const staffCard = listCard('Sales by staff', staff.length
-      ? `<div class="bd-rows">${staff.slice(0, 6).map(r => bdRow(nameBtn(r.name), pesoShort(r.revenue), pct(r.share))).join('')}</div>` : emptyRows,
-      staff.length ? 'Tap a name for their numbers' : '');
-    const items = sortRows(a.items, 'revenue', 'desc').slice(0, 5);
-    const itemCard = listCard('Top items', items.length
-      ? `<div class="bd-rows">${items.map(r => bdRow(escapeHtml(r.name), pesoShort(r.revenue), pct(r.share))).join('')}</div>` : emptyRows,
-      '<button type="button" class="link-btn" data-act="tab" data-by="item">All items and categories →</button>');
-    // The dashboard's two target widgets, stacked in one block. Calendar, not range: they
-    // ignore the filters on purpose (backoffice.js → dashTargets).
-    const tg = dashTargets();
-    const targetCard = `<section class="bo-card blk-kpi sales-targets">${DASH_WIDGETS.monthly[1](tg)}${tg.month
-      ? `<div class="sales-tgt">${DASH_WIDGETS.daily[1](tg).replace(DOTS, '')}</div>` : ''}</section>`;
-
-    return stats + `<div class="sales-grid">${trend}${breakdown}${hourCard}${dayCard}${payCard}${staffCard}${itemCard}${targetCard}</div>`;
+  const TOP_BY = [['item', 'Top items', 'Sold'], ['cat', 'Top categories', 'Range'],
+    ['day', 'Busiest days', 'Avg / day'], ['hour', 'Busiest hours', 'Avg / day']];
+  function calTop(T, by) {
+    const [, , qtyHead] = TOP_BY.find(x => x[0] === by), cur = tops(T.rows, by), before = tops(T.prev, by);
+    // weekdays rank and share by their average: a month can hold five Wednesdays and four Saturdays
+    const val = (b) => (by === 'day' ? b.avg : b.rev);
+    const total = [...cur.values()].reduce((x, b) => x + val(b), 0);
+    const list = [...cur.values()].sort((x, y) => val(y) - val(x)).slice(0, 10), max = list.length ? val(list[0]) : 1;
+    const sw = `<select aria-label="Rank by" data-cal="top">${TOP_BY.map(([k, l]) => `<option value="${k}"${by === k ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+    const qty = (b) => (by === 'day' || by === 'hour' ? pesoShort(b.avg) : by === 'cat' ? b.items.size + (b.items.size === 1 ? ' item' : ' items')
+      : +b.qty.toFixed(2) + (b.unit && !/^pcs?$/.test(b.unit) ? ' ' + escapeHtml(b.unit) : ''));
+    const vs = (b) => {
+      const p = before.get(b.name)?.rev;
+      if (!p) return '<td class="n cmp">New</td>';
+      const r = Math.round((b.rev - p) / Math.abs(p) * 1000) / 10;
+      return `<td class="n cmp ${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : ''}${r.toFixed(1)}%</td>`;
+    };
+    return list.length ? `<div class="flush"><table${by === 'day' || by === 'hour' ? ' class="avg"' : ''}>
+      <tr><th class="sw">${sw}</th><th class="n qty">${qtyHead}</th><th class="n amt">Revenue</th><th class="sh">Share</th><th class="n cmp" title="${escapeHtml(T.sub)}">Trend</th></tr>
+      ${list.map(b => `<tr><td class="nm">${escapeHtml(b.name)}${by !== 'item' || b.cat === 'Uncategorized' ? '' : `<small>${escapeHtml(b.cat)}</small>`}</td>
+        <td class="n qty">${qty(b)}</td><td class="n amt">${pesoShort(b.rev)}</td>
+        <td class="sh"><span><i style="width:${Math.max(0, val(b) / max * 100)}%"></i></span>${total ? (val(b) / total * 100).toFixed(1) : 0}%</td>${vs(b)}</tr>`).join('')}
+    </table>${by === 'item' || by === 'cat' ? `<a class="all" href="${Router.href(VIEW, '', { by: by === 'cat' ? 'category' : 'item' })}">See all ${cur.size} ${by === 'cat' ? 'categories' : 'items'} →</a>` : ''}</div>`
+      : '<p class="note empty">No sales in this period yet.</p>';
   }
 
-  // One person's numbers, on the page's own rows: the same agg(), narrowed to them.
-  function openStaff(name) {
-    const { rows } = windowRows(readView());
-    const t = agg(rows.filter(o => (o.cashier || '—') === name));
-    const dlg = document.getElementById('staffDlg');
-    const top = sortRows(t.items, 'revenue', 'desc').slice(0, 5);
-    const n = t.totals;
-    dlg.dataset.name = name;
-    dlg.innerHTML = `
-      <div class="bod-head">
-        <div class="bod-title"><h2>${escapeHtml(name)}</h2></div>
-        <button class="bod-close" value="close" aria-label="Close">&times;</button>
+  // Payment methods, breakdown and staff: the panel's lists, for the whole period.
+  function calMix(rows) {
+    const m = calmMetrics(rows);
+    const w = (title, body, side = '') => `<div class="w"><div class="band">${title}<span>${side}</span></div>${body}</div>`;
+    if (!rows.some(saleSign)) {
+      const none = '<p class="note empty">No sales in this period yet.</p>';
+      return w('Payment methods', none) + w('Breakdown', none) + w('Staff', none);
+    }
+    const group = (key) => { const g = new Map(); for (const o of rows) { const s = saleSign(o); if (s) g.set(key(o), (g.get(key(o)) || 0) + o.total * s); } return [...g].sort((x, y) => y[1] - x[1]); };
+    const share = (v) => (m.rev ? (v / m.rev * 100).toFixed(1) + '%' : '');
+    return w('Payment methods', `<div class="rows">${group(orderPaymentLabel).map(([k, v]) => calRow(escapeHtml(k) + (k === 'Account' ? '<span class="pill warn">Unpaid</span>' : ''), pesoShort(v), share(v))).join('')}
+      ${calRow('Total', pesoShort(m.rev), '', 'total')}</div>`)
+      + w('Breakdown', breakdownRows(m), m.voids ? `${m.voids} voided, no revenue` : '')
+      + w('Staff', `<div class="rows">${group(o => o.cashier || '—').map(([k, v]) => calRow(escapeHtml(k), pesoShort(v), share(v))).join('')}</div>`);
+  }
+
+  function calMonth(S, rowsIn, byDay, TODAY, monthTarget) {
+    const a = S.month, b = monthEnd(a), d0 = new Date(a);
+    const cutoff = Math.min(b, shiftDays(TODAY, 1));                    // "so far" for the month you're in
+    const prevA = new Date(d0.getFullYear(), d0.getMonth() - 1, 1).getTime();
+    const prevB = Math.min(monthEnd(prevA), shiftDays(prevA, Math.round((cutoff - a) / 864e5)));
+    const cur = calmMetrics(rowsIn(a, b)), prev = calmMetrics(rowsIn(prevA, prevB));
+    const days = [];
+    for (let t = a; t < b; t = shiftDays(t, 1)) { const rows = byDay.get(isoDate(t)) || []; if (rows.length) days.push({ t, m: calmMetrics(rows) }); }
+    const open = days.filter(d => d.m.n || d.m.retN), done = open.filter(d => d.t < TODAY);   // today isn't over yet
+    const best = done.reduce((x, d) => (!x || d.m.rev > x.m.rev ? d : x), null);
+    const worst = done.length > 1 ? done.reduce((x, d) => (!x || d.m.rev < x.m.rev ? d : x), null) : null;
+    [best, worst].forEach(d => d && (d.label = fmt(d.t, { weekday: 'short', month: 'short', day: 'numeric' })));
+    const prevTitle = `vs ${fmt(prevA, { month: 'short', day: 'numeric' })} – ${fmt(prevB - 1, { day: 'numeric' })}`;
+    const strip = calStrip(cur, prev, prevTitle, best, worst, 'day', open.length, monthTarget);
+
+    // ponytail: a flat share of the monthly target per calendar day. The live target spreads what's
+    // left over the days left; that's a "today" promise, and a past day needs a fixed bar to be judged by.
+    const bar = monthTarget ? monthTarget / daysIn(a) : (open.length ? cur.rev / open.length : 0);
+    const lead = (d0.getDay() + 6) % 7;                                // Monday-first, a hardware shop's week
+    let anyLoss = false;
+    const barName = `the ${pesoShort(bar)} daily ${monthTarget ? 'target' : 'average'}`;
+    // a missed day stays white; a day over the bar goes green, deeper the further over, up to the month's best day
+    const hi = Math.max(0, ...open.map(d => d.m.rev));
+    const heat = (v) => `color-mix(in srgb, var(--b-heat) ${Math.round(12 + 43 * (hi > bar ? (v - bar) / (hi - bar) : 1))}%, white)`;
+    let html = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="dow">${d}</div>`).join('') + '<div class="dow wk">Week</div>';
+    for (let w = shiftDays(a, -lead); w < b; w = shiftDays(w, 7)) {
+      for (let i = 0; i < 7; i++) {
+        const t = shiftDays(w, i);
+        if (t < a || t >= b) { html += '<div class="cell pad"></div>'; continue; }
+        const dn = new Date(t).getDate(), rows = byDay.get(isoDate(t)) || [];
+        const sel = S.sel && S.sel.kind === 'day' && S.sel.at === t ? ' sel' : '', today = t === TODAY ? ' today' : '';
+        if (t > TODAY) { html += `<div class="cell future${today}"><span class="d">${dn}</span></div>`; continue; }
+        if (!rows.length) { html += `<div class="cell shut${today}"><span class="d">${dn}</span><span class="m">No sales</span></div>`; continue; }
+        const m = calmMetrics(rows);
+        let cls = '', style = '', tip = '';
+        if (m.rev < 0) { cls = ' loss'; tip = 'More returns than sales'; anyLoss = true; }
+        else if (bar && m.rev >= bar) { cls = ' heat'; style = ` style="--heat:${heat(m.rev)}"`; tip = `${pesoShort(m.rev - bar)} over ${barName}`; }
+        else if (bar) tip = `${pesoShort(bar - m.rev)} short of ${barName}`;
+        html += `<button class="cell${cls}${today}${sel}" data-day="${isoDate(t)}"${style}${tip ? ` title="${tip}"` : ''}><span class="d">${dn}</span>`
+          + `<span class="v"><span class="full">${pesoShort(m.rev)}</span><span class="sm">${pesoK(m.rev)}</span></span><span class="m">${m.n} receipts${m.retN ? ` · ${m.retN} ret` : ''}</span></button>`;
+      }
+      const ws = Math.max(w, a), we = Math.min(shiftDays(w, 7), b, shiftDays(TODAY, 1));
+      if (ws >= we) { html += '<div class="cell week wk pad"></div>'; continue; }
+      const wr = rowsIn(ws, we), wm = calmMetrics(wr), wdays = new Set(wr.map(o => isoDate(o.ts))).size;
+      const sel = S.sel && S.sel.kind === 'week' && S.sel.at === ws ? ' sel' : '';
+      html += `<button class="cell week wk${sel}" data-week="${isoDate(ws)}"><span class="d">${fmt(ws, { month: 'short', day: 'numeric' })} – ${fmt(we - 1, { day: 'numeric' })}</span>`
+        + `<span class="v">${pesoShort(wm.rev)}</span><span class="m">${wdays} days · ${wm.n} receipts</span></button>`;
+    }
+    const grid = `<div class="cal">${html}</div><div class="legend"><span><i></i>Below ${barName}</span><span>Above<i class="scale"></i></span>`
+      + (anyLoss ? '<span><i class="r"></i>Lost money</span>' : '') + '</div>';
+    return { strip, cols: 6, grid, period: fmt(a, { month: 'long', year: 'numeric' }), last: b > TODAY,
+      T: { rows: rowsIn(a, b), prev: rowsIn(prevA, prevB), sub: fmt(a, { month: 'long' }) + (b > TODAY ? ' so far' : '') + ' · ' + prevTitle } };
+  }
+
+  function calYear(S, rowsIn, byDay, TODAY, monthTarget) {
+    const y = new Date(S.month).getFullYear(), a = new Date(y, 0, 1).getTime(), b = new Date(y + 1, 0, 1).getTime();
+    const cutoff = Math.min(b, shiftDays(TODAY, 1)), prevA = new Date(y - 1, 0, 1).getTime();
+    const prevB = shiftDays(prevA, Math.round((cutoff - a) / 864e5));
+    const cur = calmMetrics(rowsIn(a, b)), prev = calmMetrics(rowsIn(prevA, prevB));
+    const months = Array.from({ length: 12 }, (_, i) => { const t = new Date(y, i, 1).getTime(); return { t, m: calmMetrics(rowsIn(t, monthEnd(t))) }; });
+    const open = months.filter(x => x.m.n), done = open.filter(x => monthEnd(x.t) <= TODAY);   // nor is this month
+    const best = done.reduce((x, d) => (!x || d.m.rev > x.m.rev ? d : x), null);
+    const worst = done.length > 1 ? done.reduce((x, d) => (!x || d.m.rev < x.m.rev ? d : x), null) : null;
+    [best, worst].forEach(d => d && (d.label = fmt(d.t, { month: 'long' })));
+    let days = 0;
+    for (let t = a; t < b; t = shiftDays(t, 1)) if (byDay.has(isoDate(t))) days++;
+    const strip = calStrip(cur, prev, `vs the same days of ${y - 1}`, best, worst, 'month', days);
+    const avg = open.length ? cur.rev / open.length : 0;
+    const goal = monthTarget || avg, goodTip = monthTarget ? `Hit the ${pesoShort(goal)} monthly target` : `Above the ${pesoShort(goal)} monthly average`;
+    const grid = '<div class="months">' + months.map(({ t, m }) => {
+      const name = fmt(t, { month: 'long' });
+      if (t > TODAY) return `<div class="cell future"><span class="d">${name}</span></div>`;
+      if (!m.n) return `<div class="cell shut"><span class="d">${name}</span><span class="m">No sales</span></div>`;
+      const hit = monthTarget ? m.rev >= monthTarget : m.rev >= avg;
+      return `<button class="cell${hit ? ' good' : ''}" data-month="${isoDate(t).slice(0, 7)}"${hit ? ` title="${goodTip}"` : ''}><span class="d">${name}</span>`
+        + `<span class="v">${pesoShort(m.rev)}</span><span class="m">${m.n.toLocaleString()} receipts · ${m.rev ? (m.gp / m.rev * 100).toFixed(1) : 0}% margin</span></button>`;
+    }).join('') + `</div><div class="legend"><span><i class="g"></i>${monthTarget ? 'Hit the monthly target' : 'Above the monthly average'} (${pesoShort(goal)})</span><span>Click a month to open its calendar</span></div>`;
+    return { strip, cols: 5, grid, period: String(y), last: b > TODAY,
+      T: { rows: rowsIn(a, b), prev: rowsIn(prevA, prevB), sub: y + (b > TODAY ? ' so far' : '') + ` · vs the same days of ${y - 1}` } };
+  }
+
+  // The side panel: everything the old Summary charted, for one day or one week.
+  let calMore = '';   // the receipts past the first 12, for "Show all"
+  function calPanel(S, rowsIn, TODAY) {
+    const { kind, at } = S.sel, isDay = kind === 'day';
+    const end = isDay ? shiftDays(at, 1) : weekEnd(at);
+    const rows = rowsIn(at, end).sort((x, y) => y.ts - x.ts), m = calmMetrics(rows);
+    const span = Math.round((end - at) / 864e5), pm = calmMetrics(rowsIn(shiftDays(at, -7), shiftDays(at, -7 + span)));
+    const title = isDay ? fmt(at, { weekday: 'long', month: 'long', day: 'numeric' })
+      : `${fmt(at, { month: 'short', day: 'numeric' })} – ${fmt(end - 1, { month: 'short', day: 'numeric' })}`;
+    const share = (v) => (m.rev ? (v / m.rev * 100).toFixed(1) + '%' : '');
+    const sec = (lbl, body, side = '') => `<div class="p-sec"><div class="lbl">${lbl}<span>${side}</span></div>${body}</div>`;
+
+    let html = `<div class="p-top"><h2>${title}</h2>
+      <button class="icon-btn" data-step="-1" aria-label="Previous ${kind}">‹</button>
+      <button class="icon-btn" data-step="1" aria-label="Next ${kind}" ${end > TODAY ? 'disabled' : ''}>›</button>
+      <button class="icon-btn" data-close aria-label="Close">✕</button></div>`;
+    html += `<div class="p-head"><span class="val">${pesoShort(m.rev)}</span>${calmChip(m.rev, pm.rev, isDay ? 'vs the same day last week' : 'vs the week before')}</div>`
+      + `<p class="p-sub">${m.n} receipts · ${pesoShort(m.gp)} gross profit · ${m.n ? pesoShort(m.rev / m.n) : '₱0'} average</p>`;
+    if (!rows.length) return html + '<p class="p-sub" style="margin-top:20px">No sales.</p>';
+
+    // hours: the ones that sold, one either side
+    const hr = Array(24).fill(0);
+    for (const o of rows) if (saleSign(o)) hr[new Date(o.ts).getHours()] += o.total * saleSign(o);
+    const sold = hr.map((v, i) => (v ? i : -1)).filter(i => i >= 0);
+    const h0 = sold.length ? Math.max(0, sold[0] - 1) : 7, h1 = sold.length ? Math.min(23, sold[sold.length - 1] + 1) : 18;
+    const top = Math.max(...hr.slice(h0, h1 + 1), 1), peak = hr.indexOf(Math.max(...hr));
+    let bars = '', xs = '';
+    for (let i = h0; i <= h1; i++) {
+      bars += `<div title="${hourShort(i)} · ${pesoShort(hr[i])}"><i class="${i === peak ? 'top' : ''}" style="height:${Math.max(0, hr[i]) / top * 100}%"></i></div>`;
+      xs += `<span>${(i - h0) % 3 ? '' : hourShort(i)}</span>`;
+    }
+    html += sec('By hour', `<div class="hours">${bars}</div><div class="hours-x">${xs}</div>`, `busiest ${hourShort(peak)}`);
+    html += sec('Breakdown', breakdownRows(m), m.voids ? `${m.voids} voided, no revenue` : '');
+
+    const group = (key) => { const g = new Map(); for (const o of rows) { const s = saleSign(o); if (s) for (const [k, v] of key(o, s)) g.set(k, (g.get(k) || 0) + v); } return [...g].sort((x, y) => y[1] - x[1]); };
+    html += sec('Payment methods', `<div class="rows">${group((o, s) => [[orderPaymentLabel(o), o.total * s]]).map(([k, v]) => calRow(escapeHtml(k) + (k === 'Account' ? '<span class="pill warn">Not collected</span>' : ''), pesoShort(v), share(v))).join('')}</div>`);
+    const its = group((o, s) => (o.items || []).map(i => [i.name, itemNet(i) * s]));
+    html += sec('Top items', `<div class="rows">${its.slice(0, 5).map(([k, v]) => calRow(escapeHtml(k), pesoShort(v), share(v))).join('')}</div>`, `${its.length} items sold`);
+    html += sec('Staff', `<div class="rows">${group((o, s) => [[o.cashier || '—', o.total * s]]).map(([k, v]) => calRow(escapeHtml(k), pesoShort(v), share(v))).join('')}</div>`);
+
+    // voids and refunds stay in the list, struck through, never filtered out
+    const rc = (o) => {
+      const s = saleSign(o), st = o.status || 'completed';
+      const pill = st === 'completed' ? '' : `<span class="pill ${st === 'return' ? 'down' : ''}">${st[0].toUpperCase() + st.slice(1)}</span>`;
+      const when = isDay ? new Date(o.ts).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }) : fmt(o.ts, { month: 'short', day: 'numeric' });
+      return `<div class="row ${s ? '' : 'dim'}"><span class="t">${when}</span><span class="nm">${escapeHtml(o.number || o.id || '')} · ${escapeHtml(orderPaymentLabel(o))}${pill}</span><span class="amt">${pesoShort(s < 0 ? -o.total : +o.total)}</span></div>`;
+    };
+    const list = rows.filter(o => o.status !== 'saved');
+    calMore = list.map(rc).join('');
+    return html + sec('Receipts', `<div class="rows" data-rc>${list.slice(0, 12).map(rc).join('')}</div>${list.length > 12 ? `<button class="more" data-act="cal-more">Show all ${list.length}</button>` : ''}`, `${list.length} total`);
+  }
+
+  function calendar(params) {
+    const TODAY = dayStart(new Date());
+    const byDay = new Map();
+    for (const o of state.orders) { const k = isoDate(o.ts); (byDay.get(k) || byDay.set(k, []).get(k)).push(o); }
+    const rowsIn = (a, b) => { const out = []; for (let t = a; t < b; t = shiftDays(t, 1)) out.push(...(byDay.get(isoDate(t)) || [])); return out; };
+    const S = calState(params, lastSale());
+    const monthTarget = +(state.settings.targets && state.settings.targets.month) || 0;
+    const P = (S.view === 'year' ? calYear : calMonth)(S, rowsIn, byDay, TODAY, monthTarget);
+    const seg = (k, l) => `<button data-view="${k}" aria-pressed="${S.view === k}">${l}</button>`;
+    return `<div class="shell${S.sel ? ' open' : ''}">
+      <div class="c-main">
+        <div class="bar">
+          <h1>Sales</h1>
+          <div class="seg">${seg('month', 'Month')}${seg('year', 'Year')}</div>
+          <div class="nav">
+            <button class="icon-btn" data-shift="-1" aria-label="Previous">‹</button>
+            <b>${P.period}</b>
+            <button class="icon-btn" data-shift="1" aria-label="Next"${P.last ? ' disabled' : ''}>›</button>
+          </div>
+        </div>
+        <section class="strip" style="--cols:${P.cols}">${P.strip}</section>
+        <section>${P.grid}</section>
+        <section class="top"><div>${calTop(P.T, S.top)}</div></section>
+        <section class="trio">${calMix(P.T.rows)}</section>
       </div>
-      <div class="bod-body staff-pop">
-        <div class="bo-card-sub">${escapeHtml(rangeLabel())} · same filters as the page</div>
-        <div class="bd-rows">
-          ${bdRow('Revenue', pesoShort(n.revenue))}${bdRow('Gross profit', pesoShort(n.profit))}
-          ${bdRow('Transactions', int(n.txns))}${bdRow('Average basket', pesoShort(n.avg))}
-          ${bdRow('Voids', int(n.voids))}
-        </div>
-        <div class="kpi-label">Top items</div>
-        ${top.length ? `<div class="bd-rows">${top.map(r => bdRow(escapeHtml(r.name), pesoShort(r.revenue), qtyText(r.qty) + ' sold')).join('')}</div>` : emptyRows}
-        <div class="staff-pop-foot"><button type="button" class="secondary-btn small" data-act="staff-tx">View their transactions</button></div>
-      </div>`;
-    dlg.showModal();
+      <dialog class="tdlg"><form method="dialog" data-cal="target">
+        <h2>Monthly target</h2>
+        <label>Revenue to aim for each month<input name="month" type="number" min="0" step="1000" inputmode="numeric" autocomplete="off" value="${monthTarget || ''}"></label>
+        <p>Days that make a share of it turn green. Leave blank to judge days by the month's average.</p>
+        <div class="acts"><button type="button" data-act="cal-cancel">Cancel</button><button type="submit" value="save">Save</button></div>
+      </form></dialog>
+      <aside class="c-aside"${S.sel ? '' : ' hidden'}>${S.sel ? calPanel(S, rowsIn, TODAY) : ''}</aside>
+    </div>`;
   }
 
-  // Transactions carries the Products toolbar: search and filters on one row under the head.
-  function txTab(rows, v, payOpts, staffOpts, fulOpts) {
+  // Clicks on the calendar page. Each one moves the URL; the router re-renders.
+  function calClick(hit) {
+    const p = Router.route().params, S = calState(p, lastSale());   // the same month calendar() drew
+    const set = (patch) => Router.setParams({ view: '', month: isoDate(S.month).slice(0, 7), day: '', week: '', ...patch });
+    if (hit.dataset.view) return set({ view: hit.dataset.view === 'year' ? 'year' : '' });
+    if (hit.dataset.shift) {
+      const d = new Date(S.month), n = +hit.dataset.shift;
+      const m = S.view === 'year' ? new Date(d.getFullYear() + n, d.getMonth(), 1) : new Date(d.getFullYear(), d.getMonth() + n, 1);
+      return set({ view: p.view, month: isoDate(m).slice(0, 7) });
+    }
+    if (hit.dataset.month) return set({ month: hit.dataset.month });
+    if (hit.dataset.day || hit.dataset.week) {
+      const kind = hit.dataset.day ? 'day' : 'week', at = hit.dataset[kind];
+      return set({ [kind]: p[kind] === at ? '' : at });   // click again to close
+    }
+    if (hit.hasAttribute('data-close')) return set({});
+    if (hit.dataset.step) {
+      const n = +hit.dataset.step, { kind, at } = S.sel;
+      // a week cell is its Monday, or the 1st when the week straddles a month: step to the cell holding the next/previous day
+      const day = kind === 'day' ? shiftDays(at, n) : n > 0 ? weekEnd(at) : shiftDays(at, -1), d = new Date(day);
+      const first = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+      return set({ month: isoDate(first).slice(0, 7), [kind]: isoDate(kind === 'day' ? day : Math.max(first, shiftDays(day, -((d.getDay() + 6) % 7)))) });
+    }
+  }
+
+  // ---------- Transactions (transactions-compact-lab.html, ported as is; styles in bo-calm.css) ----------
+  // Title · Widgets · range · Export CSV; search + the three filters over the table, the blocks beside it. The URL holds it all: ?pay= ?staff= ?ful= (comma lists), ?q=, ?sort=&dir=,
+  // ?page=, ?receipt= for the pop-up. The range menu keeps "Ends on", so older receipts stay reachable.
+  const TX_PAGE = 50;
+  const DOWNLOAD_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4 20h16"/></svg>';
+  // What the table shows, in its order: the window's filtered rows, searched, sorted. The CSV and ‹ › use it too.
+  function txSearch(rows) {
     const q = (state.txQuery || '').trim().toLowerCase();
-    const hits = sortRows(q
-      ? rows.filter(o => [o.number, o.customer && o.customer.name, o.cashier].filter(Boolean).join(' ').toLowerCase().includes(q))
-      : rows, v.sort.key, v.sort.dir, TX_COLUMNS);
-    const pg = paginate(hits, v.page);
-    const search = `<input class="search-input small q-input" placeholder="Search receipt, customer or staff…" autocomplete="off" value="${escapeHtml(state.txQuery || '')}" />`;
-    return `
-      <div class="tx-filters">${search}${filterSelects(v, payOpts, staffOpts, fulOpts)}</div>
-      <section class="bo-card blk-table">
-        <div class="bo-card-head"><span class="bo-card-label">All transactions</span><span class="bo-card-sub">${int(hits.length)} shown</span></div>
-        <div class="bo-card-inset flush">
-          ${table(TX_COLUMNS, pg.rows, v.sort, q ? 'No transactions match that search.' : 'No transactions in this range.')}
-          ${pagerHtml(pg)}
+    const hay = o => [o.number, o.id, o.customer && o.customer.name, o.cashier, ...(o.items || []).map(itemOf)].join(' ').toLowerCase();
+    return q ? rows.filter(o => hay(o).includes(q)) : rows;
+  }
+  const txHits = (rows, v) => sortRows(txSearch(rows), v.sort.key, v.sort.dir, TX_COLUMNS);
+
+  // The blocks beside the table (transactions-compact-lab.html): the Dashboard's widgets, plain, one number a row.
+  // Payment and Staff in pesos, Fulfilment as a count; the other number shows when you point at a block.
+  // They follow the range, search and filters; a row is a filter, and each block ignores its own filter so its
+  // other values stay in view. × removes one, the Widgets menu brings it back; which are off is this device's
+  // choice (HWPOS_STORE.ui 'txHide', like the sidebar's folds).
+  const TX_W = { net: 'Net sales', pay: 'Payment', ful: 'Fulfilment', staff: 'Staff' };   // ponytail: Channels, Stores join here
+  const TX_NAME = { pay: orderPaymentLabel, staff: o => o.cashier || '—', ful: orderFulfilLabel };
+  const txHidden = () => String(HWPOS_STORE.ui.get('txHide', '') || '').split(',').filter(Boolean);
+  function txRail(v, all, on) {
+    const base = txSearch(all), L = base.filter(o => txPass(o, v));
+    const sales = L.filter(o => saleSign(o) > 0).length, rets = L.filter(o => saleSign(o) < 0).length;
+    const shut = id => `<button class="x" data-hide="${id}" aria-label="Remove ${TX_W[id]}" title="Remove">×</button>`;
+    const wrow = (nm, cnt, amt, attrs, cls) => `<div class="row ${cls}"${attrs}><span class="nm">${nm}</span><span class="cnt">${cnt}</span><span class="amt">${amt}</span></div>`;
+    const facet = (f, top = 0, count = false) => {   // count: the count is the number, pesos on hover
+      const m = new Map();
+      for (const o of base) if (txPass(o, v, f) && saleSign(o)) {
+        const k = TX_KEY[f](o), e = m.get(k) || { name: TX_NAME[f](o), n: 0, v: 0 };
+        e.n += saleSign(o) > 0; e.v += o.total * saleSign(o); m.set(k, e);   // counts sales; returns only take off the amount
+      }
+      const list = [...m].sort((a, b) => b[1].v - a[1].v).slice(0, top || undefined);
+      return `<div class="top band"><span>${TX_W[f]}</span><span class="acts">${v[f].length ? `<a data-f="${f}" data-v="">Show all</a>` : ''}${shut(f)}</span></div>` + (list.length
+        ? `<div class="rows">${list.map(([k, e]) => wrow(escapeHtml(e.name), ...(count ? [pesoShort(e.v), e.n.toLocaleString()] : [e.n.toLocaleString(), pesoShort(e.v)]), ` data-f="${f}" data-v="${escapeHtml(k)}"`, v[f].includes(k) ? 'on' : '')).join('')}</div>`
+        : '<p class="note" style="margin:10px 0 0">No sales here.</p>');
+    };
+    const html = {
+      net: () => `<div class="top band one" title="${sales.toLocaleString()} sale${sales === 1 ? '' : 's'}${rets ? ` · ${rets} return${rets === 1 ? '' : 's'}` : ''}"><span>Net sales</span>
+        <span class="acts"><span class="cnt">${sales.toLocaleString()} sale${sales === 1 ? '' : 's'}</span><span class="nv">${pesoShort(L.reduce((t, o) => t + o.total * saleSign(o), 0))}</span></span></div>`,   // no × here, it would push the amount off the edge; the Widgets menu removes it
+      pay: () => facet('pay'), ful: () => facet('ful', 0, true), staff: () => facet('staff', 6),
+    };
+    return on.map(id => `<section class="card w${id === 'net' ? ' one' : ''}">${html[id]()}</section>`).join('');
+  }
+  function txPage(v, rows, all, payOpts, staffOpts, fulOpts) {
+    const on = Object.keys(TX_W).filter(id => !txHidden().includes(id));
+    const L = txHits(rows, v), pages = Math.max(1, Math.ceil(L.length / TX_PAGE));
+    const page = Math.min(v.page, pages) - 1, shown = L.slice(page * TX_PAGE, page * TX_PAGE + TX_PAGE);
+    const any = v.pay.length || v.staff.length || v.ful.length || state.txQuery;
+    const pick = (f, all, many, have) => {   // what this range has, plus anything already picked
+      const m = new Map(have); for (const x of v[f]) if (!m.has(x)) m.set(x, x);
+      const opts = [...m].sort((a, b) => String(a[1]).localeCompare(String(b[1]))), picked = opts.filter(([k]) => v[f].includes(k));
+      return `<button class="pick${picked.length ? ' on' : ''}" popovertarget="txm-${f}">${escapeHtml(!picked.length ? all : picked.length === 1 ? picked[0][1] : `${picked.length} ${many}`)}</button>`
+        + `<div class="menu" id="txm-${f}" popover role="menu" data-f="${f}">${opts.length
+          ? opts.map(([k, n]) => `<button role="menuitemcheckbox" data-v="${escapeHtml(k)}" aria-checked="${v[f].includes(k)}">${escapeHtml(n)}</button>`).join('')
+          : '<div class="none">Nothing in this range</div>'}${v[f].length ? '<hr><button class="clear" data-v="">Show all</button>' : ''}</div>`;
+    };
+    const sortTh = (lbl, key, cls = '') => { const on = v.sort.key === key ? (v.sort.dir === 'asc' ? '↑' : '↓') : '';
+      return `<th class="${cls}"><button class="sort" data-act="sort" data-key="${key}"${on ? ` data-on="${on}"` : ''}>${lbl}</button></th>`; };
+    const table = shown.length ? `<div class="flush"><table class="tx">
+      <tr><th>Receipt</th>${sortTh('Time', 'ts')}<th class="opt">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th>${sortTh('Total', 'total', 'n')}</tr>
+      ${shown.map(o => `<tr data-receipt="${escapeHtml(o.id)}" class="${saleSign(o) ? '' : 'dim'}">
+        <td class="id">#${escapeHtml(o.number || o.id)}</td><td class="t">${escapeHtml(txTime(o.ts))}</td>
+        <td class="opt cust">${o.customer?.name ? escapeHtml(o.customer.name) : '<span class="mut">—</span>'}</td>
+        <td class="opt">${escapeHtml(o.cashier || '—')}</td><td class="opt">${escapeHtml(orderFulfilLabel(o))}</td>
+        <td><span class="pill ${PAY_TONE[o.paymentKind] || ''}">${escapeHtml(orderPaymentLabel(o))}</span></td>
+        <td class="opt"><span class="pill ${{ completed: 'up', voided: 'down', return: 'warn', refunded: 'warn' }[o.status || 'completed'] || ''}">${statusName(o)}</span></td>
+        <td class="n amt">${peso(txTotal(o))}</td></tr>`).join('')}
+    </table></div>
+    ${pages > 1 ? `<div class="pager"><span>${page * TX_PAGE + 1}–${page * TX_PAGE + shown.length} of ${L.length.toLocaleString()}</span>
+      <button class="icon-btn" data-act="tx-page" data-to="${page}" aria-label="Previous page" ${page ? '' : 'disabled'}>‹</button>
+      <button class="icon-btn" data-act="tx-page" data-to="${page + 2}" aria-label="Next page" ${page < pages - 1 ? '' : 'disabled'}>›</button></div>` : ''}`
+      : `<p class="note">No transactions ${any ? 'match these filters' : state.range === 'today' ? 'yet today' : 'in this range'}.</p>`;
+    return `<div class="c-main">
+      <div class="bar">
+        <h1>Transactions</h1>
+        <button class="pick" popovertarget="txW">Widgets</button>
+        <div class="menu" id="txW" popover role="menu"><div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr>${Object.entries(TX_W).map(([id, n]) => `<button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}">${n}</button>`).join('')}</div>
+        <button class="pick" popovertarget="txRange">${escapeHtml(rangeLabel())}</button>
+        <div class="menu" id="txRange" popover role="menu">
+          ${Object.keys(RANGE_DAYS).map(r => `<button role="menuitemradio" data-act="range" data-range="${r}" aria-checked="${r === state.range}">${RANGE_LABEL[r]}</button>`).join('')}
+          <hr data-app-only><label class="ends" data-app-only>Ends on<input type="date" data-filter="date" value="${isoDate(state.anchor)}" max="${isoDate(Date.now())}" /></label>
         </div>
-      </section>`;
+        <button class="btn" data-act="export">${DOWNLOAD_ICON}Export CSV</button>
+      </div>
+      <div class="dash${on.length ? '' : ' solo'}">
+      <div>
+      <div class="filters">
+        <input class="q q-input" type="search" placeholder="Search receipt, customer, staff or item" aria-label="Search transactions" autocomplete="off" value="${escapeHtml(state.txQuery || '')}" />
+        ${pick('pay', 'All payment types', 'payment types', payOpts)}${pick('staff', 'All employees', 'employees', staffOpts.map(x => [x, x]))}${pick('ful', 'All fulfilment', 'fulfilment types', fulOpts)}
+      </div>
+      <section class="card">
+        <div class="head"><span class="lbl">All transactions<span class="sum">${pesoShort(L.reduce((s, o) => s + o.total * saleSign(o), 0))}</span></span><a data-act="tx-clear"${any ? '' : ' hidden'}>Clear filters</a></div>
+        ${table}
+      </section>
+      </div>
+      <div class="rail">${txRail(v, all, on)}</div>
+      </div>
+    </div>
+    <dialog><div class="pop"></div></dialog>`;
+  }
+  // The receipt pop-up, drawn after the page: ‹ › walk the table as it is filtered and sorted.
+  function txPop(el, v, rows) {
+    const id = Router.route().params.receipt;
+    if (!id) return;
+    const L = txHits(rows, v), o = L.find(x => x.id === id) || rows.find(x => x.id === id);
+    if (!o) { Router.setParams({ receipt: '' }); return; }   // a stale ?receipt= leaves the URL, like the Dashboard
+    const dlg = el.querySelector('dialog');
+    dlg.querySelector('.pop').innerHTML = receiptPop({ rows: L }, o);
+    // Esc, the backdrop (the global dialog handler) and ✕ all just close it; closing clears the URL.
+    // A re-render drops this dialog for a new one: that is not a close.
+    dlg.addEventListener('close', () => { if (dlg.isConnected) Router.setParams({ receipt: '' }); });
+    dlg.showModal();
   }
 
   const CUT_ROWS = { item: a => a.items, category: a => a.cats };
@@ -513,15 +698,19 @@
   window.renderSales = function () {
     refreshSharedState();
     const v = readView();
+    const el = root();
+    // Summary is the calm calendar page: its own window and its own look (bo-calm.css).
+    el.classList.toggle('calm-sales', v.tab === 'summary');
+    el.classList.toggle('calm-tx', v.tab === 'tx');
     // Bought together counts every receipt ever, not the range: no filters, range or CSV.
     if (v.tab === 'basket') {
-      root().innerHTML = `<header class="view-head"><div class="view-title-wrap"><h1>Bought together</h1></div></header>
+      el.innerHTML = `<header class="view-head"><div class="view-title-wrap"><h1>Bought together</h1></div></header>
         <div class="dash-stack">${HWPOS_INSIGHTS.card('basket')}</div>`;
       return;
     }
-    const { rows, payOpts, staffOpts, fulOpts } = windowRows(v);
+    if (v.tab === 'summary') { el.innerHTML = calendar(Router.route().params); return; }
+    const { rows, all, payOpts, staffOpts, fulOpts } = windowRows(v);
     const a = agg(rows);
-    const el = root();
     // Restore the caret: the shell's ?q= listener re-runs this render on every keystroke.
     const focused = document.activeElement && el.contains(document.activeElement) && document.activeElement.classList.contains('q-input');
     const caret = focused ? document.activeElement.selectionStart : 0;
@@ -529,15 +718,13 @@
     // The render rebuilds the menu, so a tick would snap it shut: reopen whichever was open.
     const openMs = el.querySelector('.ms-pick[open]');
     const reopen = openMs && openMs.dataset.ms;
+    const openMenu = el.querySelector('.menu[data-f]:popover-open, #txW:popover-open');   // Transactions: tick as many as you like
 
-    charts = [];
-    const pRows = v.tab === 'summary' ? prevRows(v) : [];
-    const body = v.tab === 'summary' ? summary(a, agg(pRows), rows, pRows)
-      : v.tab === 'tx' ? txTab(rows, v, payOpts, staffOpts, fulOpts)
-      : cutTab(a, v);
-    el.innerHTML = head(v, payOpts, staffOpts, fulOpts) + `<div class="dash-stack">${body}</div>`;
-    charts.forEach(([id, data]) => renderLineChart(el.querySelector('#' + id), data));
+    if (v.tab === 'tx') el.innerHTML = txPage(v, rows, all, payOpts, staffOpts, fulOpts);
+    else el.innerHTML = head(v, payOpts, staffOpts, fulOpts) + `<div class="dash-stack">${cutTab(a, v)}</div>`;
     if (reopen) { const d = el.querySelector(`.ms-pick[data-ms="${reopen}"]`); if (d) d.open = true; }
+    if (openMenu) document.getElementById(openMenu.id)?.showPopover();
+    if (v.tab === 'tx') txPop(el, v, rows);
 
     if (focused) {
       const input = el.querySelector('.q-input');
@@ -555,30 +742,56 @@
     const { rows } = windowRows(v);
     const a = agg(rows);
     let cols, data;
-    if (v.tab === 'tx' || v.tab === 'summary') {
+    if (v.tab === 'tx') {
       cols = TX_COLUMNS;
       // The CSV is what is on screen, in the order it is on screen.
-      data = sortRows(rows, v.sort.key, v.sort.dir, TX_COLUMNS);
+      data = txHits(rows, v);
     } else {
       cols = COLUMNS[v.tab];
       data = sortRows(CUT_ROWS[v.tab](a), v.sort.key, v.sort.dir);
     }
-    const cut = v.tab === 'summary' || v.tab === 'tx' ? 'transactions' : 'by-' + v.tab;
+    const cut = v.tab === 'tx' ? 'transactions' : 'by-' + v.tab;
     const name = `sales-${cut}-${state.range}-${isoDate(state.anchor)}.csv`;
     downloadCsv(name, [cols.map(c => c.label)].concat(data.map(r => cols.map(c => c.csv(r)))));
     showToast(`Exported ${data.length} row${data.length === 1 ? '' : 's'}`);
   }
 
+  // ---------- Transactions: filter ticks, rows, the pop-up's ‹ › ✕; true when handled ----------
+  function txClick(t) {
+    const w = t.closest('#txW [data-w], #txW [data-w-all], .rail [data-hide]');
+    if (w) {
+      const id = w.dataset.w || w.dataset.hide, off = txHidden();
+      HWPOS_STORE.ui.set('txHide', w.dataset.wAll ? (w.dataset.wAll === 'on' ? '' : Object.keys(TX_W).join(','))
+        : (off.includes(id) ? off.filter(x => x !== id) : [...off, id]).join(','));
+      slideRender(renderSales);
+      return true;
+    }
+    const mv = t.closest('.menu[data-f] [data-v], .rail [data-f]');
+    if (mv) {
+      const f = mv.dataset.f || mv.closest('.menu').dataset.f, x = mv.dataset.v, cur = readView()[f];
+      Router.setParams({ [f]: (!x ? [] : cur.includes(x) ? cur.filter(y => y !== x) : [...cur, x]).join(','), page: '' });
+      return true;
+    }
+    const r = t.closest('tr[data-receipt]');
+    if (r) { Router.setParams({ receipt: r.dataset.receipt }); return true; }
+    if (t.closest('dialog [data-close]')) { t.closest('dialog').close(); return true; }
+    const st = t.closest('dialog [data-step]');
+    if (!st) return false;
+    const v = readView(), L = txHits(windowRows(v).rows, v), i = L.findIndex(x => x.id === Router.route().params.receipt) + +st.dataset.step;
+    if (L[i]) Router.setParams({ receipt: L[i].id, page: i < TX_PAGE ? '' : String(Math.floor(i / TX_PAGE) + 1) });   // the table pages along
+    return true;
+  }
+  // Menus hang under their button: the range right-aligned, the filters left. `toggle` does not bubble, so capture it.
+  document.addEventListener('toggle', (e) => {
+    const m = e.target;
+    if (e.newState !== 'open' || !m.matches || !m.matches('.calm-tx .menu')) return;
+    const r = root().querySelector(`[popovertarget="${m.id}"]`).getBoundingClientRect();
+    m.style.top = r.bottom + 6 + 'px';
+    m.style.left = Math.max(16, Math.min(m.id === 'txRange' || m.id === 'txW' ? r.right - m.offsetWidth : r.left, innerWidth - m.offsetWidth - 16)) + 'px';
+  }, true);
+
   // ---------- Events: one delegated listener per type ----------
   document.addEventListener('click', (e) => {
-    // The staff pop-up sits outside the view: a dialog inside a hidden section never shows.
-    const toTx = e.target.closest && e.target.closest('#staffDlg [data-act="staff-tx"]');
-    if (toTx) {
-      const dlg = toTx.closest('dialog'), { params } = Router.route();
-      dlg.close();
-      Router.go(VIEW, '', { range: params.range, date: params.date, pay: params.pay, by: 'tx', staff: dlg.dataset.name });
-      return;
-    }
     const el = root();
     if (!el || !e.target.closest) return;
     // Close the range menu on any click outside it, including one landing off this view.
@@ -586,16 +799,23 @@
     if (menu && !menu.hidden && !e.target.closest('[data-rp]')) menu.hidden = true;
     el.querySelectorAll('.ms-pick[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; });
     if (!el.contains(e.target)) return;
+    if (el.classList.contains('calm-sales')) {
+      const c = e.target.closest('.seg [data-view], [data-shift], button.cell, .c-aside [data-close], .c-aside [data-step]');
+      if (c) { calClick(c); return; }
+    }
+    if (el.classList.contains('calm-tx') && txClick(e.target)) return;
     const hit = e.target.closest('[data-act]');
     if (!hit) return;
     const act = hit.dataset.act;
     if (act === 'rp-toggle') { if (menu) menu.hidden = !menu.hidden; return; }
     if (act === 'range') { Router.setParams({ range: hit.dataset.range === 'today' ? '' : hit.dataset.range, page: '' }, { replace: false }); return; }
     if (act === 'export') { exportCsv(); return; }
+    if (act === 'tx-page') { Router.setParams({ page: hit.dataset.to === '1' ? '' : hit.dataset.to }); return; }
+    if (act === 'tx-clear') { Router.setParams({ pay: '', staff: '', ful: '', q: '', page: '' }); return; }
     if (act === 'ms-clear') { Router.setParams({ [hit.dataset.key]: '', page: '' }); return; }
-    if (act === 'staff') { openStaff(hit.dataset.name); return; }
-    if (act === 'targets') { openTargetDialog(); return; }
-    if (act === 'tab') { goSub(VIEW, hit.dataset.by); return; }
+    if (act === 'cal-target') { el.querySelector('dialog.tdlg').showModal(); return; }
+    if (act === 'cal-cancel') { hit.closest('dialog').close(); return; }
+    if (act === 'cal-more') { el.querySelector('[data-rc]').innerHTML = calMore; hit.remove(); return; }
     if (act === 'sort') {
       const key = hit.dataset.key;
       const cur = readView().sort;
@@ -607,6 +827,7 @@
   document.addEventListener('change', (e) => {
     const el = root();
     if (!el || !el.contains(e.target)) return;
+    if (e.target.dataset.cal === 'top') { Router.setParams({ top: e.target.value === 'item' ? '' : e.target.value }); return; }
     const m = e.target.dataset.multi;
     if (m) {
       const picked = [...el.querySelectorAll(`input[data-multi="${m}"]:checked`)].map(i => i.value);
@@ -617,5 +838,24 @@
     if (!f) return;
     if (f === 'date') Router.setParams({ date: e.target.value || '' }, { replace: false });
     else Router.setParams({ [f]: e.target.value, page: '' });
+  });
+
+  // The calendar's target: the month figure only, the same setting the dashboard's Set target writes.
+  document.addEventListener('submit', (e) => {
+    if (e.target.dataset.cal !== 'target') return;
+    e.preventDefault();
+    const v = Math.max(0, Math.round(+e.target.elements.month.value || 0));
+    state.settings.targets = { ...(state.settings.targets || {}), month: v };
+    saveSettings();
+    e.target.closest('dialog').close();
+    renderCurrentView();
+  });
+
+  // Esc closes the day/week panel, unless a dialog is taking the key.
+  document.addEventListener('keydown', (e) => {
+    const el = root();
+    if (e.key !== 'Escape' || !el || el.hidden || !el.classList.contains('calm-sales') || document.querySelector('dialog[open]')) return;
+    const p = Router.route().params;
+    if (p.day || p.week) Router.setParams({ day: '', week: '' });
   });
 })();

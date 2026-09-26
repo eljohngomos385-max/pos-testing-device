@@ -258,7 +258,7 @@ function seedYear(days = 182, busy = 0.8) {
   const ledger = [];
   let num = 1000;
   const KINDS = ['cash', 'cash', 'cash', 'cash', 'gcash', 'gcash', 'qr', 'credit', 'other'];
-  const LABEL = { cash: 'Cash', gcash: 'GCash', qr: 'QR Ph', credit: 'Charge to account', other: 'Maya' };
+  const LABEL = { cash: 'Cash', gcash: 'GCash', qr: 'QR Ph', credit: 'Account', other: 'Maya' };
 
   for (let d = 0; d < days; d++) {
     const day = dayTs(d);

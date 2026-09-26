@@ -1,14 +1,7 @@
 /* Back office - Products. Only what .bo-card / .data-table / .setting-row don't
    already give us. Tokens only, no hardcoded hex or radius. */
 
-body.bo-light .view-products .pd-filters {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-}
-body.bo-light .view-products .pd-filters .q-input { flex: 1; min-width: 220px; }
+/* The filter row (search + filters) is .list-filters in bo-blocks.css, shared by every list page. */
 
 /* A missing or unusable image URL has to be a neutral square, never a broken
    <img>, so the thumb is a background - it simply stays grey. */
