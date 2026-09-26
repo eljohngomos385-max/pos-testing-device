@@ -24,7 +24,7 @@ body.bo-light .view-products .pd-act { width: 1px; }
 /* Stock view: Out / Low / Dead tiles filter ?level=; a ticked one wears the selection ring. */
 body.bo-light .view-products .pd-kpis { margin-bottom: var(--po-gap); }
 body.bo-light .view-products .pd-kpi { cursor: pointer; }
-body.bo-light .view-products .pd-kpi.on { box-shadow: inset 0 0 0 2px var(--po-accent); }
+body.bo-light .view-products .pd-kpi.on { box-shadow: inset 0 0 0 2px var(--po-accent), var(--card-shadow); }
 
 /* Variants: the table IS the form, so every cell is a field. Widths keep the row
    from collapsing; .table-wrap scrolls it when the screen is too narrow. */

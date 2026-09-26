@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dashboard sidebar lab</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   DASHBOARD LAB — the back office Dashboard, same layout, in the calm-summary language:
+     left  · one card: the four KPIs as folder tabs, the picked one opening into the bars; then Recent transactions
+     right · the widget rail: daily target, monthly target, low stock, payment methods
+   A clicked bar or receipt opens in a centred pop-up, so the rail never has to move.
+   Tokens are the --b-* set (→ --po-* on port).
+   SIDEBAR LAB — the same page beside Shopify's sidebar: dark, one flat list, no headers, no dividers, no search.
+   The page sits on it as a white sheet. The panel icon folds it to icons.
+   =========================================================================== */
+:root {
+  --s-bg:        var(--b-page);    /* white, as the page: one surface, the curve's hairline is the only edge */
+  --s-hover:     var(--b-card);
+  --s-active:    var(--b-track);   /* a soft grey tint, no ring (keel) */
+  --s-ink-hi:    var(--b-ink);
+  --s-ink:       var(--b-ink);     /* the page's own ink: same weight of text on both sides of the edge */
+  --s-ink-3:     var(--b-ink-3);
+  --s-brand:     #1FA855;
+  --s-w:         240px;
+  --b-font: "Inter";
+  --b-page:      #FFFFFF;
+  --b-card:      #F9F9F9;
+  --b-raised:    #FFFFFF;
+  --b-line:      #ECECEC;
+  --b-outline:   #E1E1E1;
+  --b-track:     #EFEFEF;
+  --b-ink:       #303030;
+  --b-ink-2:     #616161;
+  --b-ink-3:     #8C8C8C;
+  --b-up:        #047B5D;
+  --b-down:      #D72C0D;
+  --b-up-tint:   #D3ECDD;
+  --b-down-tint: #F8D8D0;
+  --b-data:      #2B7DE9;
+  --b-data-1:    #BCD7FA;
+  --b-data-tint: #DCE9FB;
+  --b-data-ink:  #1F5FB8;
+  --b-warn-tint: #FCEFC7;
+  --b-warn:      #7A5B00;
+  --b-t-value:   27px;
+  --b-t-label:   13px;
+  --b-t-meta:    12.5px;
+  --b-t-micro:   11px;
+  --b-r-card:    14px;
+  --b-r-cell:    10px;
+  --b-r-row:     7px;
+  --b-pad:       16px;
+  --rail-w:      340px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--b-page); color: var(--b-ink);
+  font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--b-t-label); -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+a { color: var(--b-data); text-decoration: none; }
+
+main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--rail-w)); margin: 0 auto; }   /* left column = the Sales page's width */
+
+/* ---------- sidebar + sheet ---------- */
+body { background: var(--s-bg); display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100vh; overflow: hidden; }
+.page { background: var(--b-page); border-radius: var(--b-r-card) 0 0 var(--b-r-card); box-shadow: 0 0 0 1px var(--b-line); overflow-y: auto; container-type: inline-size; }   /* flush to the window, curved where it meets the sidebar */
+.side { position: relative; width: var(--s-w); display: flex; flex-direction: column; min-height: 0; padding: 12px 8px 8px; color: var(--s-ink); transition: width .15s; }
+/* drag the sheet's edge to resize: 200–320, double-click resets */
+.grip { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; z-index: 3; cursor: col-resize; }
+.grip::after { content: ''; position: absolute; inset: 0 3px; background: var(--b-data); opacity: 0; transition: opacity .15s; }
+.grip:hover::after, body.resizing .grip::after { opacity: .6; }
+body.resizing { cursor: col-resize; user-select: none; }
+body.resizing .side { transition: none; }   /* the fold's ease would trail the pointer */
+body.folded .grip { display: none; }
+.s-head { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 0 0 10px; margin-bottom: 20px; }   /* Gemini: the list starts ~50px under the name */
+.logo { width: 20px; height: 20px; flex: none; display: grid; place-items: center; border-radius: 7px; background: var(--s-brand); color: var(--b-raised); font-size: 9.5px; font-weight: 700; }
+.s-head b { flex: 1; font-weight: 600; color: var(--s-ink-hi); white-space: nowrap; overflow: hidden; }
+.fold { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border: 0; border-radius: 7px; background: none; color: var(--s-ink-3); cursor: pointer; }
+.fold:hover { background: var(--s-hover); color: var(--s-ink-hi); }
+.side nav { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.side .foot { padding-top: 8px; }
+.side a, .side .me { display: flex; align-items: center; gap: 10px; width: 100%; height: 32px; padding: 0 8px 0 10px;   /* Gemini: 32px pitch, no gap, text 40px in */ border: 0; border-radius: var(--b-r-cell);   /* the page's own corner, not a borrowed pill */ background: none;
+                     color: var(--s-ink); font-weight: 400;   /* same ink + weight as the page's table rows */ text-decoration: none; text-align: left; white-space: nowrap; cursor: pointer; }
+.side svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.side a svg { width: 18px; height: 18px; color: var(--s-ink); }   /* 1px lines, as thin as the 400 text beside them */
+.side svg .f { fill: currentColor; fill-opacity: .2; }   /* Lucide, filled: a soft tint inside each closed shape */
+.side a[aria-current="page"] svg .f { fill-opacity: .4; }
+.side a:hover, .side .me:hover { background: var(--s-hover); }
+.side a[aria-current="page"] { background: var(--s-active); color: var(--s-ink-hi); font-weight: 500; }   /* as the page's selected KPI tab */
+.side a[aria-current="page"] svg { color: var(--s-ink-hi); }
+.side .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.count { flex: none; font-size: var(--b-t-micro); font-weight: 500; padding: 1px 6px; border-radius: 6px; background: var(--b-raised); box-shadow: inset 0 0 0 1px var(--b-line); color: var(--s-ink); font-variant-numeric: tabular-nums; }
+.count:empty { display: none; }
+.av { width: 20px; height: 20px; margin: 0 -1px; flex: none;   /* an icon's 18px, so its name lines up with the links */ display: grid; place-items: center; border-radius: 6px; background: var(--b-data); color: var(--b-raised); font-size: 9.5px; font-weight: 700; }
+.menu-btn, .scrim { display: none; }
+@media (min-width: 761px) {   /* folded: icons only */
+  body.folded .side { width: 60px; }
+  body.folded .side :is(.logo, .s-head b, .t, .count) { display: none; }
+  body.folded .side :is(a, .me, .s-head) { justify-content: center; padding: 0; }
+}
+
+.bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
+.pick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 10px 5px 12px; cursor: pointer; font-weight: 500; }
+.pick .vs { font-weight: 400; color: var(--b-ink-3); }
+.pick::after { content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
+.menu { margin: 0; inset: auto; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); padding: 4px; min-width: 200px; color: var(--b-ink); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+.menu h3 { margin: 0; padding: 8px 10px 4px; font-size: var(--b-t-micro); font-weight: 500; color: var(--b-ink-3); }
+.menu hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
+.menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: var(--b-r-row); cursor: pointer; }
+.menu button:hover { background: var(--b-card); }
+.menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
+.icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; }
+.icon-btn:disabled { opacity: .35; cursor: default; }
+
+/* ---------- the layout: main column + widget rail, as the real Dashboard ---------- */
+.dash { display: grid; grid-template-columns: minmax(0, 1fr) var(--rail-w); gap: 12px; align-items: start; }
+.col, .rail { display: grid; gap: 12px; min-width: 0; }
+.card { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); }
+
+/* ---------- KPIs over the bars: one card, folder tabs. The bars sit on a white panel; the picked KPI is white too
+   and has no line under it, so it opens into the panel. The rest stay on the grey. ---------- */
+.trend { padding: 0; }
+.strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--b-line); }
+.stat { position: relative; min-width: 0; width: 100%; padding: 10px 20px 14px; border: 0; border-left: 1px solid var(--b-line);
+        background: none; text-align: left; cursor: pointer; }
+.stat:first-child { border-left: 0; border-top-left-radius: calc(var(--b-r-card) - 1px); }
+.stat:last-child { border-top-right-radius: calc(var(--b-r-card) - 1px); }
+.stat:hover { background: color-mix(in srgb, var(--b-raised) 50%, var(--b-card)); }
+.stat[aria-selected="true"] { background: var(--b-raised); cursor: default; }
+.stat[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--b-raised); }   /* covers the hairline */
+.panel { background: var(--b-raised); padding: 36px 20px 14px 18px; border-radius: 0 0 calc(var(--b-r-card) - 1px) calc(var(--b-r-card) - 1px); }
+.stat .lbl { color: var(--b-ink-2); }
+.stat[aria-selected="true"] .lbl { color: var(--b-ink); font-weight: 500; }
+.stat .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 7px; }   /* label and number on the same lines as the target cards beside them */
+.stat .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chip { font-size: var(--b-t-meta); font-weight: 500; padding: 2px 8px; border-radius: 999px; background: var(--b-track);
+        color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chip.up { background: var(--b-up-tint); color: var(--b-up); }
+.chip.down { background: var(--b-down-tint); color: var(--b-down); }
+
+.plot { position: relative; height: 300px; }
+.grid, .cols { position: absolute; left: 32px; right: 0; top: 0; bottom: 20px; }
+.grid { border-left: 1px solid #D6D6D6; }                                                    /* the y axis, same ink as the ₱0 line */
+.gl { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--b-outline); }
+.gl span { position: absolute; right: calc(100% + 6px); bottom: 1px; font-size: 10px; color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gl.zero { border-top-color: #D6D6D6; border-top-style: solid; }
+.cols { display: grid; }
+.b { position: relative; height: 100%; border: 0; background: none; padding: 0; display: flex; align-items: flex-end; justify-content: center; cursor: pointer; }
+.b i { position: relative; width: min(62%, 28px); background: var(--b-data); border-radius: 4px 4px 0 0; }
+.b .x { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-size: var(--b-t-micro); color: var(--b-ink-3); white-space: nowrap; }
+.b .x.now { color: var(--b-ink); font-weight: 600; }
+.b .tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); display: none; z-index: 2;
+          background: var(--b-ink); color: #fff; font-size: var(--b-t-meta); font-weight: 500; padding: 6px 10px; border-radius: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.b .tip b { display: block; font-weight: 600; margin-bottom: 3px; }
+.b .tip span { display: flex; justify-content: space-between; gap: 16px; opacity: .65; }
+.b .tip span.on { opacity: 1; }
+.b .tip, .b .tip em { font-style: normal; }                                           /* the tip sits inside the bar's <i> */
+.cols .b:nth-child(-n+3) .tip { left: 0; transform: none; }                           /* edge bars: keep the tip inside the card */
+.cols .b:nth-last-child(-n+3) .tip { left: auto; right: 0; transform: none; }
+.cols:hover .b i { opacity: .4; }
+.cols .b:hover i, .cols .b:focus-visible i { opacity: 1; }
+.b:hover .tip, .b:focus-visible .tip { display: block; }
+.b.future { cursor: default; }
+.b.future .x { color: #C2C2C2; }
+
+/* ---------- recent transactions ---------- */
+.head { display: flex; align-items: center; gap: 10px; min-height: 40px; line-height: 18px; }
+.head .lbl { font-weight: 500; margin-right: auto; }
+.head a { font-size: var(--b-t-meta); }
+.txcard { padding-top: 0; padding-bottom: 0; overflow: hidden; }
+.flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
+.tx { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tx th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; border-top: 1px solid var(--b-line); }
+.tx td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
+.tx th:first-child, .tx td:first-child { padding-left: var(--b-pad); }
+.tx th:last-child, .tx td:last-child { padding-right: var(--b-pad); }
+.tx tr[data-receipt] { cursor: pointer; }
+.tx tr[data-receipt]:hover td { background: #F6F6F6; }
+.tx .id { font-weight: 600; }
+.tx tr.dim .id { font-weight: 400; }
+.tx .pill { margin: 0; font-size: 11.5px; font-weight: 500; padding: 2px 9px; }
+.tx tr.dim td { color: var(--b-ink-3); }
+.tx tr.dim .amt { text-decoration: line-through; }
+.tx .t { color: var(--b-ink-2); }
+.tx .cust { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.tx .mut { color: var(--b-ink-3); }
+.tx .n { text-align: right; }
+.tx td.amt { font-weight: 600; }
+
+/* ---------- the rail's widgets ---------- */
+.w .top { display: flex; justify-content: space-between; align-items: baseline; color: var(--b-ink-2); }
+.w .top a { font-size: var(--b-t-meta); }
+.w .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.w .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.w .of { font-size: var(--b-t-label); font-weight: 400; letter-spacing: 0; color: var(--b-ink-3); margin-left: 2px; }
+.w .pct { color: var(--b-ink-2); font-variant-numeric: tabular-nums; }
+.w .pct.up { color: var(--b-up); }
+.w { overflow: hidden; }
+.w .rows { margin: 16px calc(-1 * var(--b-pad)) calc(-1 * var(--b-pad)); border-radius: 0; }
+.w .row, .w .row:nth-child(odd) { background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); min-height: 34px; padding: 0 var(--b-pad); }
+.w .top.band { margin-top: calc(-1 * var(--b-pad)); min-height: 37px; align-items: center; }
+.w .top.band + .rows { margin-top: 0; }
+.w:has(.line) { padding-top: 10px; }   /* label + number cards: every gap is 14 of ink — edge, label, number, line, row, edge */
+.w:has(.line) .line { margin-top: 7px; }
+.w .line + .rows { margin-top: 9px; }
+.w .rows.foot .row { min-height: 37px; }
+.w .rows.foot .amt { font-weight: 400; color: var(--b-ink-2); }   /* one bold number per target card: the sold amount */
+.w .set { margin-top: 10px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 12px; cursor: pointer; }
+
+/* ---------- rows, shared by the rail and the pop-up ---------- */
+.rows { border-radius: 10px; }
+.row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px; border-radius: var(--b-r-row); }
+.row:nth-child(odd) { background: var(--b-raised); }
+button.row { width: 100%; border: 0; text-align: left; cursor: pointer; background: none; }
+button.row:nth-child(odd) { background: var(--b-raised); }
+button.row:hover { background: #F1F1F1; }
+.row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .nm small { display: block; color: var(--b-ink-3); font-size: var(--b-t-micro); margin-top: -2px; }
+.row .amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.row .cmp { width: 46px; text-align: right; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+.row .cmp.up { color: var(--b-up); }
+.row .cmp.down { color: var(--b-down); }
+.row .t { width: 64px; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+.row.total .nm, .row.total .amt { font-weight: 600; }
+.row.dim .nm, .row.dim .amt { color: var(--b-ink-3); text-decoration: line-through; }
+.pill { font-size: 10.5px; padding: 1px 7px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); margin-left: 6px; text-decoration: none; display: inline-block; }
+.pill.warn { background: var(--b-warn-tint); color: var(--b-warn); }
+.pill.up { background: var(--b-up-tint); color: var(--b-up); }
+.pill.data { background: var(--b-data-tint); color: var(--b-data-ink); }
+.pill.down { background: var(--b-down-tint); color: var(--b-down); }
+
+/* ---------- the pop-up: one bar, or one receipt ---------- */
+dialog { border: 0; padding: 0; border-radius: var(--b-r-card); width: min(560px, calc(100vw - 32px)); max-height: 86vh; color: var(--b-ink); }
+dialog::backdrop { background: rgba(0,0,0,.28); }
+.pop { padding: 18px 20px 22px; }
+.pop .rows { background: var(--b-card); padding: 4px; }
+.p-top { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+.p-top h2 { font-size: 15px; font-weight: 600; margin: 0 auto 0 0; }
+.p-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.p-head .val { font-size: var(--b-t-value); font-weight: 560; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.p-sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 4px 0 0; }
+.p-sec { margin-top: 20px; }
+.p-sec > .lbl { font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
+.p-sec > .lbl span { color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); }
+
+@container (max-width: 1000px) {   /* the sheet's width, not the window's: the sidebar takes its share */
+  .dash { grid-template-columns: minmax(0, 1fr); }
+  .rail { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+@media (max-width: 760px) {
+  body { grid-template-columns: minmax(0, 1fr); }
+  .side { position: fixed; inset: 0 auto 0 0; z-index: 20; background: var(--s-bg); transform: translateX(-100%); transition: transform .2s; }
+  body.nav-open .side { transform: none; }
+  .scrim { position: fixed; inset: 0; z-index: 19; background: rgba(0,0,0,.4); }
+  body.nav-open .scrim { display: block; }
+  .fold { display: none; }
+  .menu-btn { display: grid; place-items: center; }
+  .page { border-radius: 0; }
+  .grip { display: none; }
+  main { padding: 16px; }
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat { padding: 12px 16px; }
+  .panel { padding: 18px 12px 10px 16px; }
+  .plot { height: 190px; }
+  .cols.many .b:nth-child(even) .x { visibility: hidden; }
+  .tx .opt { display: none; }
+}
+</style>
+</head>
+<body>
+<aside class="side" id="side">
+  <div class="s-head">
+    <span class="logo">EJ</span><b>EJ Hardware</b>
+    <button class="fold" id="fold" aria-label="Fold sidebar"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+  </div>
+  <nav>
+    <a href="#" aria-current="page"><svg viewBox="0 0 24 24"><rect class="f" width="7" height="9" x="3" y="3" rx="1"/><rect class="f" width="7" height="5" x="14" y="3" rx="1"/><rect class="f" width="7" height="9" x="14" y="12" rx="1"/><rect class="f" width="7" height="5" x="3" y="16" rx="1"/></svg><span class="t">Dashboard</span></a>
+    <a href="sales-calendar-lab.html"><svg viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><rect class="f" x="15" y="5" width="4" height="12" rx="1"/><rect class="f" x="7" y="8" width="4" height="9" rx="1"/></svg><span class="t">Sales</span></a>
+    <a href="transactions-lab.html"><svg viewBox="0 0 24 24"><path class="f" d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"/><path d="M14 8H8M16 12H8M13 16H8"/></svg><span class="t">Transactions</span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><circle class="f" cx="12" cy="8" r="5"/><path class="f" d="M20 21a8 8 0 0 0-16 0"/></svg><span class="t">Customers</span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><path class="f" d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg><span class="t">Products</span><span class="count" id="lowCount" title="Low on stock"></span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><path class="f" d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></svg><span class="t">Purchase orders</span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><path class="f" d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg><span class="t">Suppliers</span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><path class="f" d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><span class="t">Stock history</span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><circle class="f" cx="10" cy="8" r="5"/><path class="f" d="M18 21a8 8 0 0 0-16 0"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="t">Staff</span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><rect class="f" width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20M6 14h2"/></svg><span class="t">Payments</span></a>
+    <a href="#"><svg viewBox="0 0 24 24"><path class="f" d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg><span class="t">Settings</span></a>
+  </nav>
+  <div class="foot">
+    <button class="me" type="button"><span class="av">EJ</span><span class="t">El John</span></button>
+  </div>
+  <div class="grip" id="grip" title="Drag to resize · double-click to reset"></div>
+</aside>
+<div class="scrim" id="scrim"></div>
+<div class="page">
+<main>
+  <div class="bar">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <h1 id="hello">Welcome back</h1>
+    <button class="pick" id="pick" popovertarget="range"></button>
+    <div class="menu" id="range" popover role="menu"></div>
+  </div>
+  <div class="dash">
+    <div class="col">
+      <section class="card trend">
+        <div class="strip" id="strip" role="tablist" aria-label="Chart shows"></div>
+        <div class="panel"><div class="plot" id="plot"></div></div>
+      </section>
+      <section class="card txcard">
+        <div class="head"><span class="lbl">Recent transactions</span><a href="/admin/sales?by=tx">View all ›</a></div>
+        <div id="tx"></div>
+      </section>
+    </div>
+    <div class="rail" id="rail"></div>
+  </div>
+</main>
+</div>
+<dialog id="pop"><div class="pop" id="popin"></div></dialog>
+
+<script src="/data-store.js"></script>
+<script>
+(async function () {
+  // ---------- money + dates (same helpers as sales-calendar-lab) ----------
+  const peso = v => (v < 0 ? '−₱' : '₱') + Math.round(Math.abs(v)).toLocaleString('en-PH');
+  const peso2 = v => (v < 0 ? '−₱' : '₱') + Math.abs(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const short = v => Math.abs(v) >= 1e6 ? (v < 0 ? '−' : '') + '₱' + +(Math.abs(v) / 1e6).toFixed(2) + 'M'
+    : Math.abs(v) >= 1e4 ? (v < 0 ? '−' : '') + '₱' + +(Math.abs(v) / 1e3).toFixed(1) + 'k' : peso(v);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = n => String(n).padStart(2, '0');
+  const iso = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const addDays = (t, n) => { const d = new Date(t); d.setDate(d.getDate() + n); return d.getTime(); };
+  const dayStart = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const fmt = (t, o) => new Date(t).toLocaleDateString('en-PH', o);
+  const clock = t => new Date(t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+  const hourText = h => (h % 12 || 12) + (h < 12 ? 'a' : 'p');
+  const hourLong = h => (h % 12 || 12) + (h % 24 < 12 ? ' AM' : ' PM');
+  const NOW = Date.now(), TODAY = dayStart(NOW);
+
+  // ---------- data ----------
+  const store = window.HWPOS_STORE;
+  let orders = [], products = [], settings = {};
+  try { [orders, products, settings] = await Promise.all([store.orders.list(), store.products.list(), store.settings.get()]); } catch (_) {}
+  const real = Array.isArray(orders) && orders.length > 0;
+  if (!real) { orders = demoOrders(); products = demoProducts(); }
+  settings = settings || {};
+  orders = orders.filter(o => o.ts < NOW).sort((x, y) => x.ts - y.ts);
+  document.getElementById('hello').textContent = `Welcome back, ${settings.store?.cashier || 'there'}`;
+
+  const SIGN = { completed: 1, return: -1, refunded: 0, voided: 0, saved: 0 };
+  const sign = o => SIGN[o.status || 'completed'] ?? 0;
+  const prodBy = new Map((products || []).flatMap(p => [['i:' + p.id, p], ['n:' + p.name, p]]));
+  const productFor = i => prodBy.get('i:' + (i.productId || i.id)) || prodBy.get('n:' + i.name);
+  const costOf = i => i.cost != null ? +i.cost : (productFor(i)?.cost || 0);
+  const itemOf = i => productFor(i)?.name || i.name;
+  const lineNet = i => i.lineTotal != null ? +i.lineTotal : (+i.price || 0) * (+i.qty || 0);
+  const profit = o => (+o.total - (+o.vatAmount || 0)) - (o.items || []).reduce((s, i) => s + costOf(i) * (+i.qty || 0), 0);
+  const payKind = o => o.paymentKind || o.paymentMethod || 'cash';
+  const payLabel = o => payKind(o) === 'credit' ? 'Account' : o.paymentMethodLabel || { cash: 'Cash', gcash: 'GCash', qr: 'QR', maya: 'Maya', credit: 'Account', split: 'Split payment' }[payKind(o)] || 'Cash';
+  const fulfil = o => { const f = String(o.fulfilment || 'pickup'); return f === 'delivery' ? 'Delivery' : f === 'pickup' ? 'Walk-in' : f; };   // bo-model.js orderFulfilLabel
+  const between = (a, b) => orders.filter(o => o.ts >= a && o.ts < b);
+
+  function metrics(list) {
+    const m = { rev: 0, gp: 0, n: 0 };
+    for (const o of list) { const s = sign(o); if (!s) continue; m.rev += o.total * s; m.gp += profit(o) * s; if (s > 0) m.n++; }
+    return m;
+  }
+  const trend = (cur, prev, title) => {
+    if (!prev) return '';
+    const r = Math.round((cur - prev) / Math.abs(prev) * 1000) / 10;
+    return `<span class="chip ${r > 0 ? 'up' : r < 0 ? 'down' : ''}" title="${esc(title)}">${r > 0 ? '+' : ''}${r.toFixed(1)}%</span>`;
+  };
+
+  // ---------- view state in the URL: ?range=7d, ?at=10 (an hour) or ?at=2026-09-20 (a day), ?receipt= ----------
+  const q = new URLSearchParams(location.search);
+  const RANGES = { today: 1, '7d': 7, '15d': 15, '30d': 30 };
+  const S = {
+    range: RANGES[q.get('range')] ? q.get('range') : 'today',
+    vs: q.get('vs') || '',
+    sel: q.get('at') ? { kind: 'at', key: q.get('at') } : q.get('receipt') ? { kind: 'receipt', id: q.get('receipt') } : null,
+    chart: ['gp', 'n', 'mg'].includes(q.get('chart')) ? q.get('chart') : 'rev',
+  };
+  function saveUrl() {
+    const p = new URLSearchParams();
+    if (S.range !== 'today') p.set('range', S.range);
+    if (S.vs) p.set('vs', S.vs);
+    if (S.chart !== 'rev') p.set('chart', S.chart);
+    if (S.sel) p.set(S.sel.kind, S.sel.kind === 'at' ? S.sel.key : S.sel.id);
+    history.replaceState(null, '', p.toString() ? '?' + p : location.pathname);
+  }
+
+  // The window, and the one it's compared with: today against the same weekday last week up to
+  // this minute; N days against the N days before, also up to this minute. Never a half day vs a whole one.
+  // ?vs= picks another: '' is that default, 'day' is yesterday (today only), 'none' turns the chips off.
+  let W;
+  const RANGE_LBL = { today: 'Today', '7d': 'Last 7 days', '15d': 'Last 15 days', '30d': 'Last 30 days' };
+  function compares(range) {   // [key, menu label, days back, chip tooltip]
+    const n = RANGES[range], wd = fmt(addDays(TODAY, -7), { weekday: 'long' });
+    return (range === 'today'
+      ? [['', `Last ${wd}`, 7, `vs last ${wd} at this time`], ['day', 'Yesterday', 1, 'vs yesterday at this time']]
+      : [['', `Previous ${n} days`, n, `vs the ${n} days before`]]).concat([['none', 'No comparison', 0, '']]);
+  }
+  const compareFor = range => compares(range).find(c => c[0] === S.vs) || compares(range)[0];
+  function windowFor(range) {
+    const n = RANGES[range], start = addDays(TODAY, 1 - n), [vsKey, vsLbl, back, vs] = compareFor(range);
+    const w = { range, n, start, rows: between(start, NOW), prev: back ? between(addDays(start, -back), addDays(NOW, -back)) : [], vs, vsLbl: back ? vsLbl : '', vsKey };
+    if (range === 'today') {
+      // store hours: whatever hours sold in the last four weeks
+      const seen = between(addDays(TODAY, -28), NOW).map(o => new Date(o.ts).getHours());
+      const h0 = seen.length ? Math.min(...seen) : 7, h1 = seen.length ? Math.max(...seen) : 18;
+      w.buckets = [];
+      for (let h = h0; h <= h1; h++) w.buckets.push({ key: String(h), x: hourText(h), title: `${hourLong(h)} – ${hourLong(h + 1)}`,
+        start: TODAY + h * 36e5, end: TODAY + (h + 1) * 36e5, back: 7, backName: `the same hour last ${fmt(addDays(TODAY, -7), { weekday: 'long' })}` });
+    } else {
+      w.buckets = Array.from({ length: n }, (_, i) => { const t = addDays(start, i);
+        return { key: iso(t), x: n > 7 ? String(new Date(t).getDate()) : fmt(t, { weekday: 'short' }), title: fmt(t, { weekday: 'long', month: 'long', day: 'numeric' }),
+          start: t, end: addDays(t, 1), back: 7, backName: `${fmt(addDays(t, -7), { weekday: 'long', month: 'short', day: 'numeric' })}` }; });
+    }
+    for (const b of w.buckets) { b.future = b.start >= NOW; b.now = !b.future && NOW < b.end; b.m = metrics(w.rows.filter(o => o.ts >= b.start && o.ts < b.end)); }
+    return w;
+  }
+
+  // ---------- KPIs: the same four as the real Dashboard ----------
+  // Each one is also what the bars can show (the KPI tabs): of() reads it off metrics(), fmt() for values, axis() for the gridlines.
+  const mg = x => x.rev ? x.gp / x.rev * 100 : 0;
+  const KPI = {
+    rev: { lbl: 'Revenue',      of: x => x.rev, fmt: peso,                      axis: short,          floor: 100 },
+    gp:  { lbl: 'Profit',       of: x => x.gp,  fmt: peso,                      axis: short,          floor: 100 },
+    n:   { lbl: 'Transactions', of: x => x.n,   fmt: v => v.toLocaleString(),   axis: v => +v.toFixed(1), floor: 5 },
+    mg:  { lbl: 'Margin',       of: mg,         fmt: v => v.toFixed(1) + '%',   axis: v => v + '%',   floor: 10 },
+  };
+  function renderStrip() {
+    const m = metrics(W.rows), p = metrics(W.prev);
+    const stat = (k, val, side) =>
+      `<button class="stat" role="tab" data-chart="${k}" aria-selected="${S.chart === k}"><div class="lbl">${KPI[k].lbl}</div><div class="line"><span class="val">${val}</span>${side}</div></button>`;
+    document.getElementById('strip').innerHTML =
+        stat('rev', peso(m.rev), trend(m.rev, p.rev, W.vs))
+      + stat('gp', peso(m.gp), trend(m.gp, p.gp, W.vs))
+      + stat('n', m.n.toLocaleString(), trend(m.n, p.n, W.vs))
+      + stat('mg', m.rev ? mg(m).toFixed(1) + '%' : '—', m.rev && p.rev ? trend(mg(m), mg(p), W.vs) : '');
+  }
+
+  // ---------- the bars: the picked KPI per hour (today) or per day ----------
+  function niceStep(v) { const e = Math.pow(10, Math.floor(Math.log10(v))), f = v / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e; }
+  function renderPlot() {
+    const K = KPI[S.chart], val = b => K.of(b.m);
+    const bs = W.buckets, peak = Math.max(K.floor, ...bs.map(val));
+    const step = niceStep(peak / 3), top = Math.ceil(peak * 1.1 / step) * step;   // ≥10% headroom: the tallest bar never touches the top line
+    const every = Math.ceil(bs.length / 12);                                   // a label every few bars on 30 days, counted back from today
+    let grid = '';
+    for (let v = 0; v <= top + 1e-6; v += step) grid += `<div class="gl${v ? '' : ' zero'}" style="bottom:${v / top * 100}%"><span>${K.axis(v)}</span></div>`;
+    const cols = bs.map((b, i) => b.future
+      ? `<div class="b future"><span class="x">${(bs.length - 1 - i) % every ? '' : b.x}</span></div>`
+      : `<button class="b" data-at="${b.key}" aria-label="${esc(b.title)}: ${K.fmt(val(b))}">`
+        + `<i style="height:${Math.max(0, val(b)) / top * 100}%"><span class="tip"><b>${esc(b.title)}</b>`
+        + Object.entries(KPI).map(([k, x]) => `<span class="${k === S.chart ? 'on' : ''}">${x.lbl}<em>${b.m.rev || k !== 'mg' ? x.fmt(x.of(b.m)) : '—'}</em></span>`).join('')
+        + `</span></i>`
+        + `<span class="x${b.now ? ' now' : ''}">${(bs.length - 1 - i) % every && !b.now ? '' : b.x}</span></button>`).join('');
+    document.getElementById('plot').innerHTML = `<div class="grid">${grid}</div>`
+      + `<div class="cols${bs.length > 8 ? ' many' : ''}" style="grid-template-columns:repeat(${bs.length},minmax(0,1fr))">${cols}</div>`;
+  }
+
+  // ---------- recent transactions: the latest 20 in the range, every status ----------
+  const RECENT_TX = 20;
+  const statusCell = o => { const st = o.status || 'completed';
+    return `<span class="pill ${{ completed: 'up', voided: 'down', return: 'warn', refunded: 'warn' }[st] || ''}">${st[0].toUpperCase() + st.slice(1)}</span>`; };
+  const payCell = o => `<span class="pill ${{ cash: 'up', gcash: 'data', qr: 'data', credit: 'warn' }[payKind(o)] || ''}">${esc(payLabel(o))}</span>`;
+  const txTime = t => t >= TODAY ? clock(t) : `${fmt(t, { month: 'short', day: 'numeric' })}, ${clock(t)}`;
+  function renderTx() {
+    const list = W.rows.slice().reverse(), shown = list.slice(0, RECENT_TX);
+    document.getElementById('tx').innerHTML = shown.length ? `<div class="flush"><table class="tx">
+      <tr><th>Receipt</th><th>Time</th><th class="opt">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th><th class="n">Total</th></tr>
+      ${shown.map(o => `<tr data-receipt="${esc(o.id)}" class="${sign(o) ? '' : 'dim'}">
+        <td class="id">#${esc(o.number || o.id)}</td><td class="t">${txTime(o.ts)}</td>
+        <td class="opt cust">${o.customer?.name ? esc(o.customer.name) : '<span class="mut">—</span>'}</td>
+        <td class="opt">${esc(o.cashier || '—')}</td><td class="opt">${fulfil(o)}</td>
+        <td>${payCell(o)}</td><td class="opt">${statusCell(o)}</td>
+        <td class="n amt">${peso2(sign(o) < 0 ? -o.total : +o.total)}</td></tr>`).join('')}
+    </table></div>` : `<p class="note" style="margin:6px 0 16px">No transactions ${S.range === 'today' ? 'yet today' : 'in this range'}.</p>`;
+  }
+
+  // ---------- the rail ----------
+  const row = (nm, amt, cmp = null, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span><span class="amt">${amt}</span>${cmp !== null ? `<span class="cmp ${cls}">${cmp}</span>` : ''}</div>`;
+  function renderRail() {
+    // Targets as backoffice.js dashTargets(): always today and this month, whatever the range says.
+    const d = new Date(NOW), mStart = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+    const days = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    const before = metrics(between(mStart, TODAY)).rev, done = metrics(between(TODAY, NOW)).rev;
+    let month = +(settings.targets && settings.targets.month) || 0;
+    if (!real && !month) {                                                       // demo only: last month + 6%
+      const pA = new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime();
+      month = Math.round(metrics(between(pA, mStart)).rev * 1.06 / 1e4) * 1e4;
+    }
+    const auto = month ? Math.max(0, Math.round((month - before) / (days - d.getDate() + 1) / 10) * 10) : 0;
+    const ov = settings.targets?.override, daily = ov && ov.date === iso(NOW) ? +ov.amount || auto : auto;
+
+    const head = (lbl, val, side = '', link = '') => `<div class="top"><span>${lbl}</span>${link}</div><div class="line"><span class="val">${val}</span>${side}</div>`;
+    const pctSide = pct => `<span class="pct ${pct >= 100 ? 'up' : ''}">${pct}%</span>`;
+    const empty = lbl => head(lbl, '—') + `<button class="set">Set target</button><div class="rows foot">${row('No monthly target yet', '')}</div>`;
+    const out = [];
+
+    if (!daily) out.push(empty('Daily sales target'));
+    else {
+      const pct = Math.round(done / daily * 100), left = daily - done;
+      out.push(head('Daily sales target', `${peso(done)}<span class="of">/${peso(daily)}</span>`, pctSide(pct))
+        + `<div class="rows foot">${left > 0 ? row('Left to sell today', peso(left)) : row('Target hit, over by', peso(-left))}</div>`);
+    }
+    if (!month) out.push(empty('Monthly sales target'));
+    else {
+      const sold = before + done, pct = Math.round(sold / month * 100), left = month - sold;
+      out.push(head('Monthly sales target', `${short(sold)}<span class="of">/${short(month)}</span>`, pctSide(pct))
+        + `<div class="rows foot">${left > 0 ? row('Left to sell this month', short(left)) : row('Target hit, over by', short(-left))}</div>`);
+    }
+
+    // Low stock: bo-model.js isLow(), the five that run out first by the last 30 days' selling.
+    const sold = new Map();
+    for (const o of between(TODAY - 30 * 864e5, NOW)) if (sign(o) > 0) for (const i of o.items || []) { const p = productFor(i); if (p) sold.set(p.id, (sold.get(p.id) || 0) + (+i.qty || 0)); }
+    const daysLeft = p => { const r = (sold.get(p.id) || 0) / 30; return p.stock <= 0 ? 0 : r ? p.stock / r : Infinity; };
+    const low = (products || []).filter(p => !p.archived && Number(p.stock) <= Number(p.reorderPoint)).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock);
+    document.getElementById('lowCount').textContent = low.length || '';                  // the sidebar's Products badge
+    out.push(head('Low stock', low.length ? String(low.length) : `0<span class="of"> all stocked</span>`, '',
+        low.length ? '<a href="/admin/products?view=stock&level=out,low">View all ›</a>' : '')
+      + (low.length ? `<div class="rows">${low.slice(0, 5).map(p => `<div class="row"><span class="nm">${esc(p.name)}</span>`
+        + `<span class="pill ${p.stock <= 0 ? 'down' : 'warn'}" style="margin:0">${p.stock <= 0 ? 'Out' : 'Low'}</span></div>`).join('')}</div>` : ''));
+
+    // Payment methods, for the range: the only widget that follows it.
+    const pays = new Map();
+    for (const o of W.rows) { const s = sign(o); if (s) pays.set(payLabel(o), (pays.get(payLabel(o)) || 0) + o.total * s); }
+    const payRows = [...pays].filter(p => p[1]).sort((x, y) => y[1] - x[1]);
+    out.push(`<div class="top band"><span>Payment methods</span></div>` + (payRows.length
+      ? `<div class="rows">${payRows.map(([k, v]) => row(esc(k), peso(v))).join('')}${row('Total', peso(payRows.reduce((s, p) => s + p[1], 0)), null, 'total')}</div>`
+      : '<p class="note" style="margin:10px 0 0">No sales in this range.</p>'));
+
+    document.getElementById('rail').innerHTML = out.map(h => `<section class="card w">${h}</section>`).join('');
+  }
+
+  // ---------- the pop-up: one bar (hour or day), or one receipt ----------
+  const sec = (lbl, body, side = '') => `<div class="p-sec"><div class="lbl">${lbl}<span>${side}</span></div>${body}</div>`;
+  const popTop = (title, prev, next) => `<div class="p-top"><h2>${title}</h2>
+    <button class="icon-btn" data-step="-1" aria-label="Previous" ${prev ? '' : 'disabled'}>‹</button>
+    <button class="icon-btn" data-step="1" aria-label="Next" ${next ? '' : 'disabled'}>›</button>
+    <button class="icon-btn" data-close aria-label="Close">✕</button></div>`;
+  const statusPill = o => { const st = o.status || 'completed'; return st === 'completed' ? '' : `<span class="pill ${st === 'voided' ? 'down' : 'warn'}">${st[0].toUpperCase() + st.slice(1)}</span>`; };
+  const rcRow = o => `<button class="row ${sign(o) ? '' : 'dim'}" data-receipt="${esc(o.id)}"><span class="t">${clock(o.ts)}</span>`
+    + `<span class="nm">#${esc(o.number || o.id)} · ${esc(payLabel(o))}${statusPill(o)}</span><span class="amt">${peso(sign(o) < 0 ? -o.total : +o.total)}</span></button>`;
+  const live = () => W.buckets.filter(b => !b.future);
+
+  function barPop(b) {
+    const rows = W.rows.filter(o => o.ts >= b.start && o.ts < b.end), m = b.m;
+    const p = metrics(between(addDays(b.start, -b.back), Math.min(addDays(b.end, -b.back), addDays(NOW, -b.back))));
+    const share = v => m.rev ? (v / m.rev * 100).toFixed(1) + '%' : '';
+    const group = key => { const g = new Map(); for (const o of rows) { const s = sign(o); if (s) for (const [k, v] of key(o, s)) g.set(k, (g.get(k) || 0) + v); } return [...g].sort((x, y) => y[1] - x[1]); };
+    const L = live(), i = L.indexOf(b);
+    let html = popTop(b.title, i > 0, i < L.length - 1)
+      + `<div class="p-head"><span class="val">${peso(m.rev)}</span>${trend(m.rev, p.rev, 'vs ' + b.backName + (b.now ? ' at this time' : ''))}</div>`
+      + `<p class="p-sub">${m.n} transaction${m.n === 1 ? '' : 's'} · ${peso(m.gp)} profit${b.now ? ' · so far' : ''}</p>`;
+    if (!rows.length) return html + '<p class="p-sub" style="margin-top:20px">No sales.</p>';
+    html += sec('Payment methods', `<div class="rows">${group((o, s) => [[payLabel(o), o.total * s]]).map(([k, v]) => row(esc(k), peso(v), share(v))).join('')}</div>`);
+    const its = group((o, s) => (o.items || []).map(i => [itemOf(i), lineNet(i) * s]));
+    html += sec('Top items', `<div class="rows">${its.slice(0, 5).map(([k, v]) => row(esc(k), peso(v), share(v))).join('')}</div>`, `${its.length} items sold`);
+    html += sec('Transactions', `<div class="rows">${rows.slice().reverse().map(rcRow).join('')}</div>`, `${rows.length} total`);
+    return html;
+  }
+  function receiptPop(o) {
+    const i = W.rows.indexOf(o), s = sign(o), its = o.items || [];
+    const sub = its.reduce((x, it) => x + lineNet(it), 0);
+    let html = popTop(`Receipt #${esc(o.number || o.id)}`, i > 0, i >= 0 && i < W.rows.length - 1)
+      + `<div class="p-head"><span class="val">${peso2(s < 0 ? -o.total : +o.total)}</span>${statusPill(o)}</div>`
+      + `<p class="p-sub">${txTime(o.ts)} · ${esc(o.cashier || '—')} · ${fulfil(o)} · ${esc(payLabel(o))}${o.customer?.name ? ' · ' + esc(o.customer.name) : ''}</p>`;
+    html += sec('Items', `<div class="rows">${its.map(it => row(`${esc(itemOf(it))}<small>${+it.qty} × ${peso2(+it.price || lineNet(it) / (+it.qty || 1))}</small>`, peso2(lineNet(it)))).join('')}</div>`, `${its.length} line${its.length === 1 ? '' : 's'}`);
+    html += sec('Totals', `<div class="rows">
+      ${row('Subtotal', peso2(sub))}
+      ${+o.discount ? row('Discount', peso2(-o.discount)) : ''}
+      ${row('VAT included', peso2(+o.vatAmount || 0))}
+      ${row('Total', peso2(+o.total), null, 'total')}</div>`,
+      s ? '' : 'Books no revenue');
+    if (payKind(o) === 'credit' && s > 0) html += '<p class="p-sub" style="margin-top:10px"><span class="pill warn" style="margin:0">Not collected</span> On the customer’s account.</p>';
+    return html;
+  }
+  const dlg = document.getElementById('pop'), popin = document.getElementById('popin');
+  function renderPop() {
+    const b = S.sel?.kind === 'at' ? W.buckets.find(x => x.key === S.sel.key && !x.future) : null;
+    const o = S.sel?.kind === 'receipt' ? W.rows.find(x => x.id === S.sel.id) : null;
+    if (!b && !o) { S.sel = null; if (dlg.open) dlg.close(); return; }
+    popin.innerHTML = o ? receiptPop(o) : barPop(b);
+    if (!dlg.open) dlg.showModal();
+  }
+
+  // ---------- wiring ----------
+  function render() {
+    W = windowFor(S.range);
+    const opt = (attr, v, lbl, on) => `<button role="menuitemradio" ${attr}="${v}" aria-checked="${on}">${lbl}</button>`;
+    document.getElementById('pick').innerHTML = RANGE_LBL[S.range] + (W.vsLbl ? `<span class="vs">vs ${W.vsLbl[0].toLowerCase() + W.vsLbl.slice(1)}</span>` : '');
+    document.getElementById('range').innerHTML = Object.keys(RANGES).map(r => opt('data-range', r, RANGE_LBL[r], r === S.range)).join('')
+      + '<hr><h3>Compare to</h3>' + compares(S.range).map(c => opt('data-vs', c[0], c[1], c[0] === W.vsKey)).join('');
+    renderStrip(); renderPlot(); renderTx(); renderRail(); renderPop(); saveUrl();
+  }
+  const open = sel => { S.sel = sel; renderPop(); saveUrl(); };
+  const close = () => { S.sel = null; renderPop(); saveUrl(); };
+  const menu = document.getElementById('range');
+  menu.onclick = e => { const b = e.target.closest('[data-range],[data-vs]'); if (!b) return;
+    if (b.dataset.range) { S.range = b.dataset.range; if (!compares(S.range).some(c => c[0] === S.vs)) S.vs = ''; } else S.vs = b.dataset.vs;
+    S.sel = null; menu.hidePopover(); render(); };
+  menu.addEventListener('toggle', e => { if (e.newState !== 'open') return;          // hang it under the button, right edges flush
+    const r = document.getElementById('pick').getBoundingClientRect();
+    menu.style.top = r.bottom + 6 + 'px'; menu.style.left = Math.max(16, r.right - menu.offsetWidth) + 'px'; });
+  document.getElementById('strip').onclick = e => { const c = e.target.closest('[data-chart]'); if (c) { S.chart = c.dataset.chart; renderStrip(); renderPlot(); saveUrl(); } };  document.getElementById('plot').onclick =e => { const c = e.target.closest('[data-at]'); if (c) open({ kind: 'at', key: c.dataset.at }); };
+  document.getElementById('tx').onclick = e => { const r = e.target.closest('[data-receipt]'); if (r) open({ kind: 'receipt', id: r.dataset.receipt }); };
+  dlg.addEventListener('cancel', e => { e.preventDefault(); close(); });          // Esc
+  dlg.onclick = e => {
+    if (e.target === dlg || e.target.closest('[data-close]')) return close();       // the backdrop, or ✕
+    const r = e.target.closest('[data-receipt]'); if (r) return open({ kind: 'receipt', id: r.dataset.receipt });
+    const st = e.target.closest('[data-step]'); if (!st) return;
+    const n = +st.dataset.step;
+    if (S.sel.kind === 'at') { const L = live(); open({ kind: 'at', key: L[L.findIndex(b => b.key === S.sel.key) + n].key }); }
+    else open({ kind: 'receipt', id: W.rows[W.rows.findIndex(x => x.id === S.sel.id) + n].id });
+  };
+  // ---------- sidebar: fold to icons (desktop), slide in over the page (phone) ----------
+  document.getElementById('fold').onclick = () => {
+    const f = document.body.classList.toggle('folded');
+    document.querySelectorAll('.side a, .side .me').forEach(a => a.title = f ? a.querySelector('.t').textContent : '');
+  };
+  document.getElementById('menuBtn').onclick = () => document.body.classList.add('nav-open');
+  document.getElementById('scrim').onclick = () => document.body.classList.remove('nav-open');
+  // Resize: the width goes on the sidebar itself, not :root, so a drag restyles 20 nodes instead of the whole page,
+  // and at most once a frame. No store on file:// — it just doesn't remember there.
+  const side = document.getElementById('side'), grip = document.getElementById('grip'), ui = store?.ui;
+  const clampW = w => Math.min(320, Math.max(200, Math.round(w)));
+  const savedW = +(ui?.get('labDashSideW', 0) || 0);
+  if (savedW) side.style.setProperty('--s-w', clampW(savedW) + 'px');
+  grip.onpointerdown = e => {
+    const x0 = e.clientX, w0 = side.getBoundingClientRect().width;
+    let w = w0, frame = 0;
+    grip.setPointerCapture(e.pointerId);
+    document.body.classList.add('resizing');
+    grip.onpointermove = m => {
+      w = clampW(w0 + m.clientX - x0);
+      frame ||= requestAnimationFrame(() => { frame = 0; side.style.setProperty('--s-w', w + 'px'); });
+    };
+    grip.onpointerup = () => {
+      grip.onpointermove = grip.onpointerup = null;
+      document.body.classList.remove('resizing');
+      ui?.set('labDashSideW', w);
+    };
+  };
+  grip.ondblclick = () => { side.style.removeProperty('--s-w'); ui?.set('labDashSideW', 0); };
+  render();
+
+  // ---------- demo, only when this origin has no orders ----------
+  function demoItems() {
+    return [['Portland Cement 40kg', 265, 238, 'bag', 120, 40], ['Holcim Excel Cement 40kg', 275, 246, 'bag', 18, 30], ['Deformed Bar 12mm × 6m', 310, 262, 'pc', 64, 20],
+      ['Deformed Bar 10mm × 6m', 215, 181, 'pc', 90, 20], ['Hollow Block 6"', 24, 18, 'pc', 800, 300], ['GI Sheet Gauge 26', 420, 355, 'pc', 6, 10],
+      ['Common Nails 3" (kg)', 95, 72, 'kg', 40, 15], ['PVC Pipe 1/2"', 118, 88, 'pc', 55, 20], ['Boysen Latex White 4L', 690, 560, 'can', 0, 6],
+      ['THHN Wire #12 (m)', 38, 29, 'm', 300, 100], ['Plywood 1/4"', 520, 440, 'pc', 24, 10], ['Gravel 3/4" (cu.m)', 1450, 1180, 'cu.m', 9, 5],
+      ['Sand (cu.m)', 1100, 890, 'cu.m', 3, 5], ['Tie Wire #16 (kg)', 88, 66, 'kg', 0, 8], ['LED Bulb Daylight 9W', 95, 60, 'pc', 4, 12]];
+  }
+  function demoProducts() {
+    return demoItems().map(([name, price, cost, unit, stock, reorderPoint], i) => ({ id: 'P' + i, name, price, cost, unit, stock, reorderPoint }));
+  }
+  function demoOrders() {
+    const ITEMS = demoItems();
+    const STAFF = ['Aldrin S.', 'Liza M.', 'Joy P.', 'Maricel R.'], PAY = ['cash', 'cash', 'cash', 'cash', 'gcash', 'gcash', 'credit', 'qr'];
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const out = []; let n = 1;
+    for (let t = addDays(TODAY, -70); t <= TODAY; t = addDays(t, 1)) {
+      const dow = new Date(t).getDay(); if (dow === 0 && rnd() < .6) continue;
+      const count = Math.round((dow === 2 ? 34 : dow === 6 ? 30 : 24) * (.7 + rnd() * .6));
+      for (let k = 0; k < count; k++) {
+        const hour = 7 + Math.floor(Math.pow(rnd(), 1.4) * 11), ts = t + hour * 36e5 + Math.floor(rnd() * 36e5);
+        const items = Array.from({ length: 1 + Math.floor(rnd() * 3) }, () => { const [name, price, cost, unit] = ITEMS[Math.floor(rnd() * ITEMS.length)]; const i = ITEMS.findIndex(x => x[0] === name); const qty = 1 + Math.floor(rnd() * 6); return { id: 'P' + i, name, price, cost, unit, qty, lineTotal: price * qty }; });
+        const total = items.reduce((s, i) => s + i.lineTotal, 0), r = rnd(), kind = PAY[Math.floor(rnd() * PAY.length)];
+        if (ts > Date.now()) continue;
+        out.push({ id: 'D' + n, number: '1-' + String(6000 + n++), ts, total, vatAmount: Math.round(total / 1.12 * .12 * 100) / 100, items, cashier: STAFF[Math.floor(rnd() * STAFF.length)],
+          paymentKind: kind, customer: kind === 'credit' ? { name: 'Ricardo Construction' } : null, status: r < .015 ? 'voided' : 'completed',
+          fulfilment: total > 3000 && r > .6 ? 'delivery' : 'pickup' });
+        if (r > .99 && ts + 36e5 < Date.now()) out.push({ id: 'D' + n, number: '1-' + String(6000 + n++), ts: ts + 36e5, total, vatAmount: 0, items, cashier: STAFF[0], paymentKind: 'cash', status: 'return' });
+      }
+    }
+    out.sort((x, y) => x.ts - y.ts).forEach((o, i) => { o.number = '1-' + (6001 + i); });   // receipt numbers run in time order
+    return out;
+  }
+})();
+</script>
+</body>
+</html>

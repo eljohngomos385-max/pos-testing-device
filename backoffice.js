@@ -134,10 +134,20 @@ function escapeHtml(s) {
   }[c]));
 }
 
-// A redraw that slides: the table and the widget rail glide to their new widths (their view-transition-names
-// are in bo-calm.css). Browsers without View Transitions just redraw.
+// A redraw where the table slides to its new width while the widgets fade in where they stand (owner
+// 2026-09-26: no fly-in, and no gap between the two). The table sits above the rail while it narrows over
+// that column, so the fade shows through as the table clears it; both land together.
 function slideRender(render) {
-  document.startViewTransition ? document.startViewTransition(render) : render();
+  const main = () => [...document.querySelectorAll('.dash')].find(d => d.offsetParent)?.firstElementChild;
+  const from = main()?.offsetWidth;
+  render();
+  const m = main(), to = m?.offsetWidth, rail = m?.nextElementSibling;
+  if (!m || !from || from === to || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const t = { duration: 260, easing: 'cubic-bezier(.2, 0, 0, 1)' };
+  m.style.position = 'relative'; m.style.zIndex = 1;
+  m.animate([{ width: from + 'px' }, { width: to + 'px' }], t)
+    .finished.finally(() => { m.style.position = m.style.zIndex = ''; });
+  if (to < from && rail) rail.animate([{ opacity: 0 }, { opacity: 1 }], { ...t, delay: 40, easing: 'ease-out', fill: 'backwards' });
 }
 
 function showToast(msg) {
@@ -539,7 +549,6 @@ function renderSwitchers() {
   const loc = String(store.address || '').split(',')[0].trim() || 'Main Store';
   $('#locBiz').textContent = store.name;
   $('#locName').textContent = loc;
-  $('#locMark').textContent = store.name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
   $('#locMenu').innerHTML = `
     <div class="sm-head">Locations</div>
     <button class="sm-opt on" type="button" role="menuitem"><span class="sm-text">${escapeHtml(loc)}</span>${CHECK_SVG}</button>
@@ -559,7 +568,7 @@ function renderSwitchers() {
 // each group is its own fold and opening one closes its siblings.
 const CHEVRON_SVG = '<svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
 // Sub-pages that have their own sidebar link (data-sub) are left out of the tree. A link may
-// own several (data-sub="a b c"): it opens the first and carries all of them as its own tree,
+// own several (data-sub="a b c"): it opens the first and carries the rest as its tree,
 // which is how one view's sub-pages split across several short sidebar entries.
 function goSub(view, key) {
   const sub = SUBNAV[view], { params } = Router.route();
@@ -578,7 +587,7 @@ function buildSubnav() {
       link.insertAdjacentHTML('afterend', `<div class="side-sub" data-view="${view}"><div class="side-fold-in">${body}</div></div>`);
     };
     const deepLinks = $$(`.side-link[data-view="${view}"][data-sub]`);
-    deepLinks.forEach(l => { const keys = l.dataset.sub.split(' '); if (keys.length > 1) tree(l, keys.map(btn).join('')); });
+    deepLinks.forEach(l => { const keys = l.dataset.sub.split(' '); if (keys.length > 1) tree(l, keys.slice(1).map(btn).join('')); });
     const link = $(`.side-link[data-view="${view}"]:not([data-sub])`);
     const own = new Set(deepLinks.flatMap(l => l.dataset.sub.split(' ')));
     const left = (keys) => keys.filter(k => !own.has(k));

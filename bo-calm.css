@@ -75,7 +75,7 @@ body.bo-light .calm-dash .icon-btn:disabled { opacity: .35; cursor: default; }
 /* ---------- the layout: main column + widget rail, as the real Dashboard ---------- */
 body.bo-light .calm-dash .dash { display: grid; grid-template-columns: minmax(0, 1fr) var(--b-rail-w); gap: 12px; align-items: start; }
 body.bo-light .calm-dash .col, body.bo-light .calm-dash .rail { display: grid; gap: 12px; min-width: 0; }
-body.bo-light .calm-dash .card { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); }
+body.bo-light .calm-dash .card { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); box-shadow: var(--card-shadow); }   /* the one card shadow, bo-blocks.css */
 
 /* ---------- KPIs over the bars: one card, folder tabs. The bars sit on a white panel; the picked KPI is white too
    and has no line under it, so it opens into the panel. The rest stay on the grey. ---------- */
@@ -248,7 +248,7 @@ body.bo-light .calm-sales .icon-btn { border: 1px solid var(--b-outline); backgr
 body.bo-light .calm-sales .icon-btn:disabled { opacity: .35; cursor: default; }
 
 /* ---------- 1 · the strip ---------- */
-body.bo-light .calm-sales .strip { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad) 4px; display: grid;
+body.bo-light .calm-sales .strip { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); padding: var(--b-pad) 4px; display: grid;
          grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr)); }
 body.bo-light .calm-sales .stat { padding: 0 16px; border-left: 1px solid var(--b-line); min-width: 0; }
 body.bo-light .calm-sales .stat:first-child { border-left: 0; }
@@ -320,6 +320,7 @@ body.bo-light .calm-sales .months .cell .v { font-size: 18px; }
 
 /* ---------- 4 · top 10 ---------- */
 body.bo-light .calm-sales .top { margin-top: 28px; background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0 var(--b-pad); overflow: hidden; }
+body.bo-light .calm-sales section.top { box-shadow: var(--card-shadow); }   /* the card only: the side panel's peak hour bar is an i.top */
 body.bo-light .calm-sales .flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
 body.bo-light .calm-sales .top table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 body.bo-light .calm-sales .top th { white-space: nowrap; text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; }
@@ -349,7 +350,7 @@ body.bo-light .calm-sales .top .cmp.down { color: var(--b-down); }
 
 /* ---------- 5 · payments, breakdown, staff: three equal cards, the dashboard rail's widget look ---------- */
 body.bo-light .calm-sales .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; align-items: start; }
-body.bo-light .calm-sales .w { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); min-width: 0; overflow: hidden; }
+body.bo-light .calm-sales .w { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); padding: var(--b-pad); min-width: 0; overflow: hidden; }
 body.bo-light .calm-sales .w .band { display: flex; justify-content: space-between; align-items: center; min-height: 32px; margin-top: calc(-1 * var(--b-pad)); color: var(--b-ink-2); }
 body.bo-light .calm-sales .w .band span { color: var(--b-ink-3); font-size: var(--b-t-meta); }
 body.bo-light .calm-sales .w .rows { margin: 0 calc(-1 * var(--b-pad)) calc(-1 * var(--b-pad)); padding: 0; background: none; border-radius: 0; }
@@ -446,7 +447,7 @@ body.bo-light .calm-tx .note { font-size: var(--b-t-meta); color: var(--b-ink-3)
 body.bo-light .calm-tx .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 body.bo-light .calm-tx .q { flex: 1; min-width: 220px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 12px; box-shadow: none; }   /* the back office's inputs carry an inset shadow */
 body.bo-light .calm-tx .q:focus { outline: 2px solid var(--b-data-1); outline-offset: -1px; }
-body.bo-light .calm-tx .card, body.bo-light .calm-cust .w { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0 var(--b-pad); overflow: hidden; }
+body.bo-light .calm-tx .card, body.bo-light .calm-cust .w { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); padding: 0 var(--b-pad); overflow: hidden; }
 body.bo-light .calm-tx .head { display: flex; align-items: center; gap: 10px; min-height: 36px; line-height: 18px; }
 body.bo-light .calm-tx .head .lbl { font-weight: 500; margin-right: auto; }
 body.bo-light .calm-tx .head .sum { margin-left: 6px; color: var(--b-ink-3); font-variant-numeric: tabular-nums; }
@@ -503,12 +504,6 @@ body.bo-light .calm-tx .p-sec > .lbl span { color: var(--b-ink-3); font-weight: 
 body.bo-light :is(.calm-tx, .calm-cust) { --b-rail-w: 288px; }
 body.bo-light :is(.calm-tx, .calm-cust) .dash { display: grid; grid-template-columns: minmax(0, 1fr) var(--b-rail-w); gap: 12px; align-items: start; }
 body.bo-light :is(.calm-tx, .calm-cust) .dash.solo { grid-template-columns: minmax(0, 1fr); }
-/* Show / hide a block: the table glides to its new width and the rail fades (slideRender() in backoffice.js).
-   The snapshots are cropped, not stretched, so the text never squashes mid-slide. */
-body.bo-light :is(.calm-tx, .calm-cust) .dash > :first-child { view-transition-name: page-main; }
-body.bo-light :is(.calm-tx, .calm-cust) .rail { view-transition-name: page-rail; }
-::view-transition-group(page-main), ::view-transition-group(page-rail) { animation-duration: .28s; animation-timing-function: cubic-bezier(.2, 0, 0, 1); }
-::view-transition-old(page-main), ::view-transition-new(page-main) { height: 100%; object-fit: none; object-position: left top; }
 body.bo-light :is(.calm-tx, .calm-cust) .menu .all { display: flex; gap: 4px; }
 body.bo-light :is(.calm-tx, .calm-cust) .menu .all button { justify-content: center; color: var(--b-ink-2); }
 body.bo-light :is(.calm-tx, .calm-cust) .rail { display: grid; gap: 8px; min-width: 0; }

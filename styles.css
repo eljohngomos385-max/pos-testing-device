@@ -7191,6 +7191,78 @@ body.bo-light .bo-sidebar .side-sublink,
 body.bo-light .bo-sidebar .side-grouphead { font-weight: 450; color: var(--po-ink-secondary); }
 body.bo-light .bo-sidebar .side-sublink.active { color: #171717; font-weight: 500; }
 
+/* SIDEBAR + SHEET (v35, 2026-09-26, from dashboard-sidebar-notion-lab.html): an off-white sidebar
+   under a white sheet. Notion's rows -- 30px, 14px text, 16px solid one-colour icons -- with an
+   icon's detail (.k strokes, .hole dots) cut out in the row's own fill through --knock. The canvas
+   carries the sidebar colour and the sidebar itself is clear on desktop, so the sheet's edge shadow
+   lands on it. --po-sidebar-bg because bo-blocks.css (loaded later) pins --po-sidebar to white. */
+body.bo-light {
+  --po-sidebar-w: 240px;
+  --po-sidebar-bg: #F6F6F6;
+  --po-sidebar-hover: #EDEDED;
+  --po-sidebar-active: #E5E5E5;
+  --po-sidebar-ink: #262626;
+  --po-sidebar-ink-hi: #1F1F1F;
+  --po-sidebar-icon: #454545;
+  --po-sidebar-brand: #1FA855;   /* store badge */
+  --po-sidebar-me: #2B7DE9;      /* account badge */
+  --po-sheet-shadow: 0 0 0 1px rgb(16 24 40 / .07), 0 0 3px rgb(16 24 40 / .05);
+}
+body.bo-light .bo-app { background: var(--po-sidebar-bg); }
+body.bo-light .bo-sidebar { background: none; border-right: 0; }
+@media (max-width: 1023px) { body.bo-light .bo-sidebar { background: var(--po-sidebar-bg); } }
+/* The sheet scrolls, not the document, so its curved corners stay on screen (the lab's .page).
+   Below 1024px the sidebar overlays and the sheet is flat. */
+@media (min-width: 1024px) {
+  body.bo-light .main.bo-main {
+    height: 100vh; overflow-y: auto;
+    border-radius: 14px 0 0 20px; box-shadow: var(--po-sheet-shadow);
+  }
+  body.bo-light .bo-app.sidebar-collapsed .main.bo-main { border-radius: 0; box-shadow: none; }
+}
+/* Store switcher: badge, name, ⌄ -- it hugs its name. Both badges carry a real icon. */
+body.bo-light .bo-sidebar > .side-switch-wrap { padding: 12px 8px 0; }
+body.bo-light .bo-sidebar > .side-switch-wrap .side-switch { width: auto; max-width: 100%; height: 32px; padding: 0 8px 0 10px; }
+body.bo-light .bo-sidebar > .side-switch-wrap .ss-text { flex: 0 1 auto; }
+body.bo-light .bo-sidebar > .side-switch-wrap .ss-name { font-size: 14px; font-weight: 600; color: var(--po-sidebar-ink-hi); }
+body.bo-light .bo-sidebar .ss-mark { width: 16px; height: 16px; margin: 0 1px; border-radius: 5px; background: var(--po-sidebar-brand); color: var(--po-surface); }
+body.bo-light .bo-sidebar .acct .ss-mark { background: var(--po-sidebar-me); }
+body.bo-light .bo-sidebar .ss-mark svg { width: 11px; height: 11px; }
+/* Rows sit flush, no gap. */
+body.bo-light .bo-sidebar .side-nav { gap: 0; padding: 20px 8px 8px; }
+body.bo-light .bo-sidebar .side-fold-in,
+body.bo-light .bo-sidebar .side-groupbody { gap: 0; }
+body.bo-light .bo-sidebar .side-sub,
+body.bo-light .bo-sidebar .side-sub > .side-fold-in > :first-child { margin-top: 0; }
+body.bo-light .bo-sidebar .side-link,
+body.bo-light .bo-sidebar .side-sublink,
+body.bo-light .bo-sidebar .side-grouphead {
+  height: 30px; padding: 0 8px 0 10px; gap: 10px; border-radius: var(--po-r-md);
+  font-size: 14px; font-weight: 400; letter-spacing: 0;
+}
+/* The tree and the section labels stay quiet: secondary ink, text lined up with the names. */
+body.bo-light .bo-sidebar .side-sublink,
+body.bo-light .bo-sidebar .side-grouphead { padding-left: 38px; }
+body.bo-light .bo-sidebar .side-groupbody .side-sublink { padding-left: 50px; }
+body.bo-light .bo-sidebar .side-label,
+body.bo-light .bo-sidebar .side-label:first-child,
+body.bo-light .bo-sidebar .side-nav .side-label:not(:first-child) { padding-inline: 10px; font-size: 12px; }
+body.bo-light .bo-sidebar .side-link { --knock: var(--po-sidebar-bg); }
+body.bo-light .bo-sidebar .side-link:hover { --knock: var(--po-sidebar-hover); }
+body.bo-light .bo-sidebar .side-link.active,
+body.bo-light .bo-sidebar .side-sublink.active { --knock: var(--po-sidebar-active); color: var(--po-sidebar-ink-hi); font-weight: 400; }
+body.bo-light .bo-sidebar .side-link.active:not(.folded):has(+ .side-sub .side-sublink.active) { --knock: var(--po-sidebar-bg); }
+body.bo-light .bo-sidebar .side-link.active:not(.folded):has(+ .side-sub .side-sublink.active):hover { --knock: var(--po-sidebar-hover); }
+body.bo-light .bo-sidebar .side-link > svg:first-child { margin: 0 1px; color: var(--po-sidebar-icon); }
+body.bo-light .bo-sidebar .side-link.active > svg:first-child { color: var(--po-sidebar-ink-hi); }
+body.bo-light .bo-sidebar .side-link svg .f { fill: currentColor; }
+body.bo-light .bo-sidebar .side-link svg .k { stroke: var(--knock); }
+body.bo-light .bo-sidebar .side-link svg .hole { fill: var(--knock); stroke: none; }
+/* Account: one row like a link -- badge, name, role in grey. */
+body.bo-light .bo-sidebar .side-footer { padding: 8px; background: none; border-top: 0; }
+body.bo-light .bo-sidebar .side-switch.acct { height: 30px; padding: 0 8px 0 10px; gap: 10px; }
+body.bo-light .bo-sidebar .acct .ss-name { font-size: 14px; font-weight: 400; color: var(--po-sidebar-ink); }
+
 /* DROPDOWN MOTION (v31): every back office dropdown fades and drops 4px in and out. The menus
    still open and close with the `hidden` attribute (or <details>); `display` rides the
    transition (allow-discrete) so the close plays before it disappears, and @starting-style

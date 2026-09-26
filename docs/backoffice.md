@@ -57,8 +57,8 @@ Ported 1:1 from the owner-approved labs: **`dashboard-calm-lab.html` is the Dash
   (`data-app-only`, which design-check strips) so receipts older than 30 days stay reachable. CSV = the
   filtered, searched, sorted rows.
 - **Widgets menu** (owner 2026-09-26): Show all · Hide all side by side at the top, then one tick per block.
-  Showing or hiding redraws through `slideRender()` (`backoffice.js`, View Transitions), so the table glides to
-  its new width; the names are `page-main` / `page-rail` in `bo-calm.css`.
+  Showing or hiding redraws through `slideRender()` (`backoffice.js`): the table slides its width (260ms), the
+  widgets fade in alongside it (40ms behind, table on top, both land together). No View Transitions, no fly-in (owner: "cringe"); a plain fade only.
 - **Customers** (owner 2026-09-26) borrows the same rail (root class `.calm-cust`, the `:is(.calm-tx, .calm-cust)`
   rules): Outstanding credit, Credit limit pool, Utilization, Near limit, one line each, the note on hover, no ×
   (it squeezes the note out; the Widgets menu removes them). Hidden ones are `HWPOS_STORE.ui` `custHide`. The
@@ -81,7 +81,7 @@ file `blocks-v2.html` and loaded **last** in `backoffice.html`, after `styles.cs
 | `.blk-kpi` | label, then number left with its `.trend` chip **right, on the same line**. Label → number is `--kpi-gap` 8px on every KPI and rail card, whatever sits below |
 | `.blk-list` | striped `.mini-list-row` rows (the white row is the stripe), no count in the head |
 | `.blk-chart` | `.blk-head` (`.blk-head-value` + `.trend`), `.blk-keys` switches, `.blk-plot` |
-| `.blk-table` | white card, `--tbl-shadow` = the cards' `--blk-outline` hairline (no drop shadow), tinted header, hairline rows **and** stripes on rows 2, 4, 6… (`--tbl-stripe`, owner 2026-09-22; the first row stays white under the tinted header) |
+| `.blk-table` | white card, `--tbl-shadow` = the cards' `--blk-outline` hairline, lifted by the shared `--card-shadow`, tinted header, hairline rows **and** stripes on rows 2, 4, 6… (`--tbl-stripe`, owner 2026-09-22; the first row stays white under the tinted header) |
 | `.blk-empty` / `.bo-empty` | label + one centred line |
 | `.btn` `.primary-btn` `.secondary-btn` `.seg-btn` `.pbtn` | 28px lab buttons and pill filters |
 | `.status-pill` | 20px pills |
@@ -109,7 +109,7 @@ a fixed main column plus a widget rail `--rail-w` wide. **Its rules are scoped t
 page file (`bo-*.css`) lays blocks out; it never restyles a shell, KPI, list, table, button or pill.
 KPIs go through `kpi()` / `statCell()` in `backoffice.js`, trends through `deltaOf()`. **A trend
 never sits under its number** — the lab's combined block I is banned; rows inside a block keep a
-plain coloured `.trend-plain`. The page is one tone, white, sidebar included. Type is Inter.
+plain coloured `.trend-plain`. The page is one tone, white; only the sidebar under it is off-white (v35, see Chrome). Type is Inter.
 
 **This supersedes** the notes further down about 8px radius, the grey `#F6F6F6` canvas and two-tone
 sidebar, striped-by-default tables (v33), Geist as the one font, and the old `.lc` chart markup.
@@ -119,13 +119,21 @@ They are kept as history; where they disagree with this section, this section is
 Shopify-admin calm: near-white grey canvas, white cards, **one** black topbar, ink is grey-black
 (`#303030`), not pure black. Inter, 13px base, letter-spacing 0. Restrained, dense, data-first.
 
-### Depth comes from hairlines, not shadows
+### Depth: a hairline plus the one card shadow (owner, 2026-09-26)
 This is the rule that matters most and the one most recently corrected:
-- Every card/panel = `background: var(--po-surface)` + `1px solid var(--po-line)` + `var(--po-shadow-card)`.
-- `--po-shadow-card` is deliberately **almost invisible** (`0 1px 1px rgba(0,0,0,0.03)`). The border
-  does the separating. **Never re-add a heavier card shadow or a `0 0 0 1px` ring on top of the border** —
-  ring + border double the hairline and the card starts to float.
-- Only genuinely floating layers cast: `--po-shadow-pop` (search dropdown, toast). Nothing inline.
+- Every card = its hairline + **`var(--card-shadow)`**, defined once with the block tokens at the top of
+  `bo-blocks.css` (`0 1px 2px -1px rgb(26 26 26 / .07)`): a soft lift that fades under the card edge.
+  `.bo-card`/`.panel` carry it after their inset hairline, `.blk-table` on itself (its hairline is on
+  `::after`), and `bo-calm.css`'s `.card` / `.w` / `.strip` / `section.top` read the same token.
+  **Change the token to change every card; never type a card shadow anywhere else.**
+- **No crisp offset line.** A 1px offset under the border reads as a double hairline (the owner rejected
+  it) — the shadow must blur out, not draw a second edge. The border still does the separating.
+- **Never add a `0 0 0 1px` ring on top of the border** — ring + border double the hairline.
+- Only the outer card gets it. Things inside a card (`#dashKpis` / `.sh-kpis` KPIs, the dashboard's
+  bars `.panel`, tables, rows), controls, pills, menus and popovers never do.
+- `--po-shadow-card` is **not** the card shadow any more: only the sidebar and the mobile menu button
+  still use it, and no card reads it.
+- Only genuinely floating layers cast a real drop shadow: `--po-shadow-pop` (search dropdown, toast). Nothing inline.
 - Buttons keep their own 1px bottom shadow (`inset 0 -1px 0` on primary) — that's a control affordance,
   not elevation. Leave it.
 
@@ -144,7 +152,10 @@ Pull the token, don't type `8px`.
   Headings and values go `#1A1A1A`.
 - Semantic pairs, always tint-bg + dark text: `--po-success`, `--po-warn`, `--po-danger`.
   `--po-accent-link #1F5199` is the *only* blue — links/`.link-btn` only, never a button fill.
-- Chrome: `--po-sidebar-w 192px` (v29 sidebar, sized from crm-ui-table at ~92%; one grey fill for the active row — a lit sub-link leaves its parent unfilled, no hook line). Drag its right edge to resize (168–320px, double-click resets); the width is a per-device pref in `HWPOS_STORE.ui`, never synced. **There is no topbar** — `--po-topbar-h` is `0px` and kept only
+- Chrome: `--po-sidebar-w 240px` (v35, 2026-09-26; 192px since v29; one grey fill for the active row — a lit sub-link leaves its parent unfilled, no hook line). The look is the Notion lab's
+  (`SIDEBAR + SHEET (v35)`): an off-white `--po-sidebar-bg #F6F6F6` sidebar sitting under a white
+  sheet. `.bo-main` scrolls on its own with 14px/20px left corners and `--po-sheet-shadow`, and goes
+  flat below 1024px. Rows are 30px with 14px text and solid one-colour 16px icons. Drag its right edge to resize (168–320px, double-click resets); the width is a per-device pref in `HWPOS_STORE.ui`, never synced. **There is no topbar** — `--po-topbar-h` is `0px` and kept only
   so the sidebar/main offsets stay expressed in one place. The global search went with it; the
   hamburger survives as a fixed 38px button that CSS shows only below 1024px, where the sidebar overlays.
 
@@ -233,10 +244,12 @@ underline (hover underlines the name only) — blue underlined text inside a lis
 3. Need two regions? Second `.bo-card-inset`, hairline included for free. Not a second card.
 4. Every colour, radius and gap comes from a `--po-*` token. If you are typing `8px` or `#E1E1E1`,
    the token already exists.
-5. Money and counts: `.num` / `--po-mono` (Geist + `tabular-nums`), right-aligned. Labels: sentence case,
+5. The shadow comes free: the shell (`.bo-card`, calm `.card`) already carries `var(--card-shadow)`.
+   Never hardcode a card shadow; a new shell class uses `box-shadow: var(--card-shadow)`.
+6. Money and counts: `.num` / `--po-mono` (Geist + `tabular-nums`), right-aligned. Labels: sentence case,
    `--po-ink-tertiary`.
-6. Empty? `.bo-empty`, centered tertiary text. Never a blank card.
-7. Bump `?v=NN` in `backoffice.html`.
+7. Empty? `.bo-empty`, centered tertiary text. Never a blank card.
+8. Bump `?v=NN` in `backoffice.html`.
 
 ### Sales-trend line chart (v35)
 > **Superseded 2026-09-25:** the Dashboard and Sales › Summary now draw the calm pages' bars (see Calm pages at the top); `renderLineChart` is deleted.
@@ -938,7 +951,7 @@ One flush full-height column (the user rejected an inset floating island): **loc
 top (business name small, location big, because the location is what you switch), then three
 sections (2026-09-19, the owner asked for "1 click deep, not a lot when a dropdown is open"):
 `Main menu` (Dashboard, Sales, Transactions, Customers), `Stock` (Products,
-Purchase orders, Suppliers; Stock history is a tree leaf under Products since 2026-09-25, which
+Suppliers, with Purchase orders as a tree leaf under it (`data-sub="suppliers orders"`, owner 2026-09-26); Stock history is a tree leaf under Products since 2026-09-25, which
 emptied and removed `Reports`) and `Manage` (Staff, Payments, Settings). Daily-work sub-pages
 are their own links; reports stay in a tree. **Rule: nothing sits more than one fold deep, and an
 open tree holds at most ~6 items.** Section labels are buttons that fold their links
@@ -949,8 +962,8 @@ with a tree opens that tree in place (`.open`) without navigating; clicking the 
 menus keep opening with `hidden` / `<details>`, and the CSS fades and drops them 4px using
 `@starting-style` + `display ... allow-discrete`. A new dropdown adds its class to that rule. Tried and rejected, don't redo:
 six labelled sections with every sub-page as its own link ("stuff gets lost"), and a bare
-Shopify list with no labels or chevrons ("too much like Shopify"). Then then the **account switcher** as a card (name + role, no avatar).
-**Filled, rounded icons** in the row ink (v34, 2026-09-21, matched to Shopify): inner detail is an `.i-cut` line or `.i-hole` dot painted in the row's own `--side-bg`, so it stays a cutout on rest, hover and active -- a new icon uses those classes, never a white stroke. Top-level rows are 550 in `--po-sidebar-ink` #4D4D4D (toned down from `--po-ink` the same day, "too dark"; hover and active still go #171717), the tree under them 450 in `--po-ink-secondary`; the owner asked for the head of the tree to read thicker than its subs. Menus: `renderSwitchers()` in
+Shopify list with no labels or chevrons ("too much like Shopify"). Then the **account switcher** as a row: blue user badge, name + role. Only the store switcher (green store badge) carries the ⌄.
+**Solid one-colour icons** (v35, 2026-09-26, Lucide from `dashboard-sidebar-notion-lab.html`): shapes are `.f` (filled); inner detail is a `.k` stroke or `.hole` dot painted in `--knock`, the row's own fill, so it stays a cutout on rest, hover and active -- a new icon uses those classes, never a white stroke. Names are 400 in `--po-sidebar-ink` #262626, icons a step softer in `--po-sidebar-icon` #454545, both `--po-sidebar-ink-hi` on the active row; the tree under them is `--po-ink-secondary`. (v34 had Shopify's filled rounded icons, `.i-cut`/`.i-hole`, and 550 parents.) Menus: `renderSwitchers()` in
 backoffice.js, run on every paint. Until a stores table exists there is one location (first part
 of the store address); picking an account sets `settings.store.cashier`, which `actor()` reads.
 It needs a PIN once there is a login.
@@ -975,4 +988,4 @@ and needs no plain link.
 `insights`, so saved links and access maps keep working. Its page title is the report name.
 CSS: `SIDEBAR SWITCHERS (v26)` + `SIDEBAR LOOK (v27)` + `COMPACT SIDEBAR (v28)` (Shopify density:
 ~27px rows, no dividers, flat white active row; keeps the v27 muted grey ink -- the user rejected
-darker, bolder nav text in v28; v34 `SIDEBAR WEIGHT` later asked for the 550 parent weight), last in styles.css.
+darker, bolder nav text in v28; v34 `SIDEBAR WEIGHT` later asked for the 550 parent weight; v35 `SIDEBAR + SHEET` supersedes the look), last in styles.css.
