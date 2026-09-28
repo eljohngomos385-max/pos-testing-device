@@ -102,6 +102,7 @@ Reusable expand/collapse: a header row toggles `.open`; the detail panel animate
 
 ## Cross-device / touch
 
+- **The till's sidebar rules are the till's alone**: the base `.sidebar` / `.side-*` / `.brand-*` / `.user-row` rules, the `#app::before` backdrop and the ≤920px icons-only `@media` block in `styles.css` are all scoped to `:where(#app:not(.bo-app))`, because the back office is `#app` with `.sidebar` / `.side-link` too. A new sidebar rule gets the same scope (`:where()` keeps specificity unchanged).
 - **Safe-area inset (`env(safe-area-inset-bottom)`) is applied exactly once** — on `.cart-foot` only. Never double up (a child like `.cart-actions` must not also add it). Keep a constant base gap + single inset so the gap is tight on desktop and clears the home indicator on iPad/iPhone.
 - Product-grid swipe is tuned for **low resistance**: drag engages after 4px, page flips at 12% of width, plus flick detection (`elapsed < 300ms && |dx| > 30 && velocity > 0.25`). Don't raise these without reason.
 

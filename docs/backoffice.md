@@ -38,8 +38,8 @@ Ported 1:1 from the owner-approved labs: **`dashboard-calm-lab.html` is the Dash
   `at` (hour or ISO day), `receipt`. **Gone:** Edit (custom rail), the % toggle, Export CSV, "Ends on".
   "Set target" opens the same `openTargetDialog()`.
 - **Sales › Summary** (`bo-sales.js`, `calendar()`): month or year calendar with its own window — it
-  ignores the range picker and filters (the other tabs keep them). URL: `view` (year), `month`,
-  `day` / `week` (a centred pop-up over the calendar since 2026-09-26, not a side panel; its sections are widget cards; backdrop, ✕ and Esc close it), `top`. **Gone:** the Summary blocks grid, `#staffDlg`, the Summary CSV. Strip (owner 2026-09-26, to read like the
+  ignores the range picker and filters (the other tabs keep them). **One period control** (owner 2026-09-26, replaces the Month/Year segment + stepper): `‹ [September 2026 ▾] ›` joined into one group, its `.pick` menu (`#calRange`) This month · Last month · This year · Last year, then **Compare to**: Previous month · Same month last year · No comparison (a year: Previous year · No comparison). **No comparison is the default**: no strip chips, no Top 10 Trend column, no chip in the day/week pop-up; comparing puts "vs August" on the button. A finished period compares with the whole one before; the one you're in, with the same days so far (`calCompare()`, tested in `scripts/sales-check.mjs`). No Trend column when the compared period sold nothing. URL: `view` (year), `month`, `vs` (''/prev/year),
+  `day` / `week` (a centred pop-up over the calendar since 2026-09-26, not a side panel; its sections are widget cards; backdrop, ✕ and Esc close it), `top` (the Top 10 card's `.pick` menu `#calTop`, not a `<select>`; its See all opens the Items tab). Sales stays in its own 1180px frame, narrower than Dashboard/Transactions. **Gone:** the Summary blocks grid, `#staffDlg`, the Summary CSV. Strip (owner 2026-09-26, to read like the
   Dashboard's): Revenue · Gross profit · Receipts · Margin · Target (month view), the calendar card's tabs (URL `chart`). No Best or Slowest stat
   (Best dropped 2026-09-26): the best finished day (month) keeps its heat and gets a white "Best" tag in the top right corner (a green dot on a phone); the slowest a red "Slowest" one;
   the slowest finished day (month) is red on the calendar instead (`.loss`, "Slowest day" in the legend), unless it beat the bar.
@@ -66,7 +66,7 @@ Ported 1:1 from the owner-approved labs: **`dashboard-calm-lab.html` is the Dash
 - **Customers** (owner 2026-09-26) borrows the same rail (root class `.calm-cust`, the `:is(.calm-tx, .calm-cust)`
   rules): Outstanding credit, Credit limit pool, Utilization, Near limit, one line each, the note on hover, no ×
   (the Widgets menu shows and hides them). Hidden ones are `HWPOS_STORE.ui` `custHide`. The
-  account page keeps its KPI row.
+  account page keeps its figures, inside its one account card.
 - **Every list page has one layout** (owner 2026-09-26): title + actions, then `.list-filters` (search first and
   growing, filters after it), then the `.blk-table` card. `.blk-table` in `bo-blocks.css` is the Transactions
   table: 36px head with a faint count, no stripes, 34px hairline rows. Never put the search in the title row or a card head.
@@ -158,15 +158,26 @@ Pull the token, don't type `8px`.
   sheet. `.bo-main` scrolls on its own with a straight left edge (no rounded corners, owner 2026-09-26) and `--po-sheet-shadow`, and goes
   flat below 1024px. Rows are 30px with 14px text and solid one-colour 16px icons. Drag its right edge to resize (168–320px, double-click resets; under 168px the edge follows at half speed and springs back to 168 on release; dragged left of 96px it previews the icon rail, back past 128px it opens again, and only letting go folds it, keeping its pre-drag width for unfolding); the width is a per-device pref in `HWPOS_STORE.ui`, never synced. **There is no topbar** — `--po-topbar-h` is `0px` and kept only
   so the sidebar/main offsets stay expressed in one place. The global search went with it; the
-  hamburger survives as a fixed 38px button that CSS shows only below 1024px, where the sidebar overlays.
+  hamburger survives as a fixed 38px button (one `.bo-hamburger` rule: surface, strong line, card shadow) that CSS shows only below 1024px, where the sidebar overlays;
+  there the top slot (store switcher, or ← Back in Settings) is padded 54px clear of it, and so is every page's title row (`.view-head`, the calm pages' `.c-main > .bar`, 46px left padding). The overlay keeps its
+  full labels: every POS till sidebar rule in `styles.css` (the base ones, its `#app::before` backdrop and the
+  icons-only `@media (max-width: 920px)` block) is scoped at the source to `:where(#app:not(.bo-app))` (2026-09-27),
+  since both pages are `#app` and share `.sidebar` / `.side-link`. `.bo-sidebar` starts clean; don't undo till rules one by one.
+- **Sidebar state** (2026-09-27, owner: one source of truth). Two classes on `.bo-app`, one breakpoint read:
+  - `.side-rail` — the desktop pref (full or 60px rail), saved as `sidebarRail` in `HWPOS_STORE.ui`. CSS reads it at 1024px+ only.
+  - `.side-open` — the <1024px overlay is open. In memory only, never saved; the one `matchMedia('(min-width: 1024px)')`
+    listener in `backoffice.html` drops it on every crossing of 1024px (either way), so a resize always lands shut. The
+    hamburger toggles it; picking a page (not a tree chevron) or tapping the backdrop clears it. The CSS that hides the
+    sidebar lives only inside `@media (max-width: 1023px)`, so at 1024px+ the sidebar is always there, full or rail.
+  - There is no `.sidebar-collapsed` in the back office (that's the till's); don't reintroduce a second flag.
 - Fold to icons (2026-09-26, the lab's `.fold`): the panel-icon button `#sideRailBtn` right of the store
   switcher folds the sidebar to a 60px icon rail on desktop and unfolds it again. That is
   `.bo-app.side-rail` (it sets `--po-sidebar-w: 60px`, so `.bo-main` follows) and `sidebarRail` in
-  `HWPOS_STORE.ui`, per device, never synced. It is **not** `.sidebar-collapsed`, which is the
-  <1024px overlay being shut; below 1024px the button hides and `.side-rail` does nothing. On the
+  `HWPOS_STORE.ui`, per device, never synced. It is **not** `.side-open`, which is the
+  <1024px overlay being open; below 1024px the button hides and `.side-rail` does nothing. On the
   rail: names, trees, chevrons, the store/account text and the resizer hide; icons and badges
   centre; each link's name is its `title`; the button sits over the store badge, shown on hover
-  (the badge otherwise). It folds in **one motion, nothing re-lays out** (owner, 2026-09-26: the old
+  (the badge otherwise; in Settings the slot shows ←, and hover still shows the fold button). It folds in **one motion, nothing re-lays out** (owner, 2026-09-26: the old
   `display:none` swap flashed): names clip and fade under the closing edge, icons nudge 3px to
   centre, an open tree slides shut on its grid rows, the button rides the edge. Don't bring back
   `display:none` or a column swap on `.side-rail`. Clicking a
@@ -185,12 +196,34 @@ Inter. 17px/700 page title · 13.5px/650 panel title · 13px/500 body & rows · 
 - `.view` is `max-width: 1240px`, centered, `padding: 20px 24px 48px`.
 - `.view-head`: title left, `.view-actions` pushed right with `margin-left: auto`.
   **One title slot for every page** (`PAGE HEAD (v34)`, last in styles.css, 2026-09-20): the head is
-  a fixed `--po-head-h` (32px) line with `--po-head-gap` under it, so every `h1` lands on the same
+  at least a `--po-head-h` (32px) line with `--po-head-gap` under it, so every `h1` lands on the same
   coordinate and moving those two tokens moves every page together. **Nothing goes under a title —
   no description line** (the owner removed them all). A back link sits *before* the `h1` like a
-  breadcrumb and a detail page's one fact (SKU, PO status) sits *after* it, same line. A sub-page
+  breadcrumb and a detail page's one fact (SKU, PO status) sits *after* it, same line (the item
+  page is the one exception: its own `.item-head`, see Products below). A sub-page
   is titled by its own name ("Movement history", not "Inventory" + a sub); the default tab keeps
   the page's name. Never override `.view-head` / `.view-title-wrap` geometry in a `bo-*.css`.
+- **Narrow widths fold by the container, never the window** (2026-09-27, so the sidebar open or folded
+  changes nothing). One rule per shared piece, no per-page breakpoints:
+  - **Page head** (`.view-head`, and the item page's `.item-head`): a `min-height`, not a height; out
+    of room it wraps like the calm pages' `.bar` — title left (`margin-right: auto`), the actions on
+    the next line from the left edge, never stacked in a column. Purchase orders uses it as is.
+    Under 1024px the fixed hamburger clears the **title only** (its first child gets a 46px left
+    margin; `.item-head` pads 46px since its back link and name are two lines): a wrapped second line
+    starts at the page gutter like the cards under it.
+  - **Sales bar**: under 640px of page, `‹ period ›` always starts the second line and Export follows,
+    so the picker sits on the same spot in Summary and Items (their first lines differ in length).
+  - **KPI strip** (`.calm-dash .strip`, Dashboard and Stock history): folds by its own card
+    (`container: strip`) — 2×2 under 944px of card, which is what "₱1,477,772 −4.5%" needs a stat
+    wide; on a phone the value shrinks with `cqi`. **The chip stays right of its number, same row,
+    never under or over it** (owner). The Products stock tiles do the same by the page (`container: pd`,
+    2×2 under 600px). `.kpi-row.joined` tiles are at least 216px.
+  - **Card heads** (`.bo-card-head`, the calm `.head`): wrap whole items; a label or button never
+    breaks mid-phrase or clips past the card. The label and buttons are `nowrap`; a `.bo-card-sub`
+    is not — it drops to its own line and wraps its text (Insights' age buckets).
+  - **Tables** keep their 860px floor and scroll inside their card; on a phone the low-value columns
+    step out by a container query on the table's card (receipts `.tx .opt` under 640px, Staff's
+    Email under 480px), so the money column stays in view.
 - `.panel-head`: title left, sub/link right via `margin-left: auto`, `border-bottom: 1px solid --po-line`,
   `padding-bottom: 10px; margin-bottom: 12px`. Every card body row after it is label-left/value-right.
 - Grid gutter is **10px** everywhere (`--blk-gap`), across and down alike; card padding is `--blk-pad` 14px.
@@ -356,6 +389,9 @@ The Sales page carries the same `.range-select` — one `state.range`, every cop
    **Staff**, not "Cashier" — whoever rang the sale isn't always a cashier, and Staff is what the
    nav already calls them. (The field on the order is still `o.cashier`, and so is the CSV header.) `txTime()` prints a bare
    clock for today and date-prefixes anything older, because 7d/30d rows are otherwise ambiguous.
+   The Dashboard's own Time cell (`dashTime`) prints just the day for an older sale, the full time as
+   its title, and below 700px of card (1280 wide) the Customer column hides — the eight columns fit
+   the card without a scrollbar at 1280 and 1440.
    Fulfilment is plain
    secondary-ink text (`Delivery` / `Walk-in`) so the two pills keep the only colour in the row;
    customer falls back to `—`, not "Walk-in", or the two columns would say the same word.
@@ -396,8 +432,49 @@ Empty state is `.bo-empty` centered tertiary text, never a blank card.
 > and live on the Summary as blocks. Recent transactions is gone too — Transactions has its own
 > sidebar page. Don't bring any of them back as tabs.
 
-Four tabs over one `agg()` pass: **Summary · By item · By category · Transactions** (`tx` is owned by
-the sidebar link, so the Sales tree shows only the first three).
+**Summary | Items is a switch inside the page, not sidebar links** (owner, 2026-09-27: the sidebar means "go
+somewhere else"; Items is the same month seen a different way, so the switch goes where the eyes already are).
+It is Products' Catalog | Stock component (`.seg.pd-switch` of `<a class="seg-btn">` links, `tabSwitch()` in
+`bo-sales.js`), in the `.bar` right after the `Sales` title — both views title the page `Sales` — and before
+`‹ period ›`. The switch takes the bar's auto margin and Items' Export CSV sits *left* of the picker, so **the
+title and the picker hold still on a switch; only what is below changes** (measured at 1440/1024/390: same
+boxes). Items shows a "vs {period before}" in the picker only when `?vs=` is on, so the width holds then too.
+The URL is unchanged — `?by=items` is Items, no `by` the Summary — and the switch carries every param
+(`month`, `view`, `vs`, Items' `sort`/`ct`/`x`/`it`) except `day`/`week` (the pop-up) and `page`. Sales
+registers no `HWPOS_SUBNAV`.
+
+**Two tabs over one `agg()` pass: Summary · Items** (owner, 2026-09-26, round 4). Old
+`?by=item|category|basket` links redirect to Items; old `?by=staff` links open the Summary.
+- **The Summary keeps its Top 10**: the glance for the month. Its See all opens Items **on the same month**
+  (`?month=`, `?view=year` for a year).
+- **Items is the Summary's month in more depth**, not a second range picker: the Summary's `‹ September 2026 ›`
+  (`periodNav`, no "Compare to" section: Items always compares with the period before), Export CSV left of it.
+  **The split chart view (round 3) is gone; don't bring it back.** Top to bottom, cards 12px apart
+  (`bo-calm.css`, "Items, round 4"; owner: "what are the items? then what's rising, what's falling"):
+  1. **Categories** — a table, not a chart (owner: a store can have 50–100 categories; the stacked bar was
+     tried and dropped, don't bring it back): Category · Revenue (thin bar against the leader) · Share of the
+     period · Trend vs the period before. Revenue desc, fixed (`?sort=` is the items table's). Top 5, Show all
+     (`?x=category`, 50 a page; old `?all=category` redirects). A row click / Enter cuts the items table to that
+     category (`?ct=`, the row lit as a picked item; again undoes it; Uncategorized is `-`).
+  2. **The items table** — just the table, no title band ("too fat"): Item (no category under it; the brand
+     when two share a name) · Qty sold · Revenue · Profit · Margin · Trend (revenue vs the period before; "New"
+     sorts first). A header sorts (`?sort=`/`?dir=`; revenue desc by default, names A-Z first); a thin bar in
+     the sorted column when it's Qty/Revenue/Profit, else Revenue, against the leader. **10 rows, Show all**
+     (`?x=item`, 50 a page; old `?all=item` redirects). **A row click / Enter opens its chart under
+     it** (`?it=`, again to close, one open): name, revenue · profit · sold, `calmChip`, then revenue per day
+     (per month in a year) in the Dashboard's bars with a dashed line for the period before (skipped on days
+     the shorter month doesn't have). Narrow cards drop Margin (card under 780px), then Profit (under 640px);
+     on a phone (card under 600px, `@container cut` in `bo-calm.css`) Qty sold, the Categories' Share and the
+     in-cell revenue bar step out too and Revenue narrows to 96px, so the name keeps about half the row (both
+     tables) and Trend stays in the card. 1024 and up never reach it.
+  3. **Rising · Falling** side by side (`.duo`, stacked under 760px): the 5 items up / down most in pesos on
+     the period before (±₱1 to count), with +38% / −20% or New. No previous sales → "Nothing sold in {month} to compare with".
+  4. **Bought together** (`basketAffinity`, all receipts, 3+ baskets, items only) reads "A → B · bar · 38% of
+     the time · 4 of 11 receipts": A is the pair's rarer item (`countA`/`countB`), so the % is how often A
+     leaves with B; most often first, the % breaks ties, 5 rows, Show all (`?x=basket`) the 50 most frequent.
+     `?all=basket` → `HWPOS_INSIGHTS.card('basket')` stays.
+- **By staff is gone as a page** ("staff is just one thing"): the Summary's Staff card carries a quiet
+  "1 void · 2 refunds" after a cashier's name (refunds = `isReversal`: refunded originals and return rows).
 
 **The Summary is the Shopify analytics grid, not the dashboard's main + rail.** Blocks from
 `bo-blocks.css`; `bo-sales.css` only lays them out.
@@ -421,7 +498,7 @@ the sidebar link, so the Sales tree shows only the first three).
      profit, Transactions, Average basket, Voids, their top 5 items, and **View their transactions**,
      which lands on the Transactions tab filtered to them. Same `agg()`, narrowed to one cashier, on
      the page's own window and filters. A peek, not a route — same reasoning as `#orderDlg`.
-   - **Top items** — top 5, foot link into By item.
+   - **Top items** — top 5, foot link into Items.
    - **Targets** — the dashboard's `DASH_WIDGETS.monthly` over `daily` (dots stripped), one block.
      Calendar, not range: they ignore the filters on purpose. Click opens `openTargetDialog()`;
      saving calls `renderCurrentView()`, so whichever page opened it repaints.
@@ -476,6 +553,10 @@ cell wraps — long SKUs and supplier names scroll sideways inside `.table-wrap`
 doubling every row's height. If a cell needs a second line, it is the wrong cell.
 **The pager is as tall as the head row** (owner, 2026-09-23): `.bo-pager` is `--tbl-row` high
 with 24px page buttons, in `bo-blocks.css`.
+**50 rows a page on list pages, 25 on a single record's page** (owner, 2026-09-26): `paginate(rows,
+page, size)` in `bo-model.js` defaults to `PAGE_ROWS` (50); the customer and supplier pages pass
+`DETAIL_ROWS` (25), and their capped tables (Items bought, the supplier's POs) cut at it too. A second
+paged table on one page names its own URL key: `pagerHtml(pg, 'stpage')` (the customer's Statement).
 
 `.view` is 1240px, but **Products and Inventory are 1560px** — they hold columns, not prose.
 Don't widen the dashboard or a settings page to match; reading down a form wants the narrow measure.
@@ -497,6 +578,38 @@ one entry in `COLUMNS`, the `data-col` stamp on the header and both row builders
 (`rowHtml` and `groupRowHtml` — the family row is easy to forget), and one selector in
 `bo-products.css`.
 
+**Stock is off by default too** (2026-09-26): the Stock view answers it, and with it on the default
+set ran past a 1440px card. In the Stock view "In stock" is muted text; only Out / Low / Dead get a
+pill. Family margin reads as a whole-percent range (`18–42%`), SKUs are not tabular (tnum widens
+the hyphens), and the filter row wears the Transactions `.pick` look — on-state tint when a filter
+is set, Show archived as a toggle pill.
+
+**One dropdown language** (owner, 2026-09-26): every filter, check-menu, range menu and `<select>` in the
+back office wears the Dashboard's `.pick` + `.menu` — 28px hairline button, drawn chevron, white card at
+`--b-r-cell` with `--b-pop-shadow`, 7px 10px rows, grey hover, blue ✓ right. It is written once, the
+`ONE DROPDOWN LANGUAGE` block at the end of `bo-calm.css`; never a page copy. `<details>` menus
+(`multiPick`, Columns) close on an outside click or Esc and flip to the button's right edge (`.flip`)
+near the page edge — both wired once in `backoffice.js`. Form and dialog selects keep their field width.
+
+### Products — Pictures (2026-09-26)
+**Pictures is a store setting, not a column**: `state.settings.productPictures`, written through
+`HWPOS_STORE.settings.set()`, so it syncs and is the same on every terminal of that store. A retail
+counter doesn't want thumbnails; a café does. It is **Show pictures**, the first row of the Columns
+menu over a hairline, ✓ when on (owner, 2026-09-26: its own image-icon button in the filter row was too
+loud). Catalog only, since Stock has no Columns menu. Not a `COLUMNS` entry: it is not saved in pdCols. **Off by default** — no image column, normal row
+height. On adds `.pics` to `#pdTable`: a 48px rounded thumb column (`--po-r-inner`), taller rows,
+variant count under the name, and the quiet placeholder only for products without a photo.
+Still 50 rows a page either way. Demo mode reseeds settings on load, so it resets to off there.
+
+### Columns menus — Products and Suppliers (2026-09-26)
+One mechanism in `backoffice.js`: `colsMenu(cols, on, first)` draws the `<details class="pd-cols">`,
+`loadColPrefs` / `saveColPrefs` keep which are on per device (`hwpos.bo.pdCols`, `hwpos.bo.supCols`), and
+`hideColsClass` puts a `hide-<key>` class over the table; cells carry `data-col` and each page's CSS hides
+them, so a tick never re-renders. The menu sits at the right end of the filter row. On Suppliers the name
+always shows; the other seven columns are in the menu, all on by default. A new list reuses these four.
+The Suppliers filter row is always there (owner 2026-09-26): search, a `?show=` select (All suppliers · Has low
+stock · Has open POs), then Columns -- the Purchase orders / Products format.
+
 ### Products — ticking rows
 Each row starts with a tick box (`.pd-sel`, not a `COLUMNS` entry, so it cannot be hidden); the
 header box ticks the page. The ticked ids live in the in-memory `picked` Set in `bo-products.js`,
@@ -513,7 +626,7 @@ every block points to an action; **never a second copy of the item table**. So:
 - **`/admin/products` has a Catalog | Stock switch inside the page**, `?view=stock` — a `.seg`
   beside the title (`viewSwitch()`), like Gmail's tabs. **One sidebar link, Products; never a
   second "Inventory" link or a sidebar tree for this** (owner, 2026-09-23: two links read as two
-  pages — "you duplicated the thing"). This is the one allowed in-page switch; it flips columns
+  pages — "you duplicated the thing"). Sales' Summary | Items (2026-09-27) is the only other in-page switch; this one flips columns
   on the same table, it is not a sub-page. Switching keeps `q`, `cat`, `supplier` and `level`.
 - **Stock level filter on both views**: a `multiPick` writing `?level=out,low,dead`. `?low=1` is
   still read as `level=low`, never written.
@@ -528,10 +641,23 @@ every block points to an action; **never a second copy of the item table**. So:
   Incoming was not carried over.
 - **Catalog view** keeps the column chooser and adds an Edit button per row.
 - **A row opens the item page** `/admin/products/<id>` (`bo-item.js`, `renderProductPage(id)`;
-  product or family id). Header: status, 7/30/90 `?period=`, Adjust stock, Edit. KPIs: on hand ·
-  stock value · margin (a family shows the plain average of its variants) · last sold · units
-  sold. Then variants (family only), last 10 movements and last 10 price & cost changes — each with
-  View all into Stock history `?q=<name>` — and Often bought with (top 5, hidden when empty).
+  product or family id). **One column in a 1180px frame** (owner, 2026-09-26: "this can be one
+  column for everything"), every card full width, in this order: KPI bar → Variants (family only)
+  → Stock movements (last 10) → Price & cost changes (last 10) — both with View all into Stock
+  history `?q=<name>` — → Often bought with (top 5, hidden when empty). An empty card is one quiet line.
+  **KPIs are one bar**: `.kpi-row.joined` (hairlines between the tiles) in the `.cust-sum` card
+  dress — on hand · stock value · margin (a family's is the plain average of its variants) · last
+  sold · units sold. **On hand carries the status**: the `STOCK_LEVEL` pill beside the number, where
+  a trend chip goes, never under it and never a second copy in the head. One row wide; below a
+  1000px page it wraps 3 + 2 with a hairline over the second row, never 4 + a lone tile.
+  **Head** is its own `.item-head`, not `.view-head` (the one exception to "nothing under a
+  title"): a back line on its own (a drawn chevron + "Products" in `--b-data`, `aria-label="Back
+  to Products"`) that returns to the list as it was left — a capture-phase click on the list notes
+  its URL, filters and all; opened cold it is plain `/admin/products`. Then the product name, with
+  the period `.pick` + `.menu` (the Dashboard's dropdown, Last 7/30/90 days, `?period=`, 30 the
+  default and cleared), Adjust stock (products only) and Edit, all 28px and centred on the title;
+  under it one muted line, category · SKU (or N variants). A table card keeps only `.blk-table`'s
+  own hairline; a border on top of it drew the doubled edge the owner saw on Stock movements.
 - **The editor moved to `/admin/products/<id>/edit`** (and `new`). Save and Back still land on
   the list.
 
@@ -579,7 +705,7 @@ pill and a row with an Adjust button all measure the same. Before this, Inventor
 half again as tall as Movement history's — the 32px `.secondary-btn.small` in the Adjust column
 was setting the height, not the padding.
 
-**The height is a setting.** Settings → Appearance → *Back office row size* is an S/M/L control
+**The height is a setting.** Settings → Appearance → *Back office row size* is an S/M/L `<select>`
 that writes `hwpos.bo.density` and stamps `data-density` on `<body>`; `applyDensity()` in
 `backoffice.js` runs at the top of `init()`, before the first paint, so nothing resizes on screen.
 Only two tokens change, which is why changing size never re-renders a table and no page has to
@@ -615,20 +741,49 @@ One page, laid out like the dashboard (owner's call; it was the Stock health tre
 it is **Stock history**, the one leaf of a static tree under Products (owner, 2026-09-25): a
 `.side-sub[data-view="inventory"]` in backoffice.html, and `paint()` keeps Products lit on this view
 so the tree stays open. The Reports section went with it.
-- **Top:** one KPI card with a Today / 7 days / 30 days switch (`?period=`, default 7): Stock
-  added and Stock out (at cost, shelf counts left out), Price changes, Lost requests, Shelf
-  changes. Each has a trend chip on the right vs the previous period; for Lost requests and Shelf
-  changes, up is bad, so their tone is flipped.
-- **Main column:** Movements and Price changes, the latest 10 of each, with View all ›.
-- **Rail:** Lost demand (top 5 in the period, "asked N×") and Shelf check (the 5 latest counts
-  that changed the number, "40 → 37  −3"), as dashboard breakdown lists with View all ›.
+- **Revamp (owner, 2026-09-26: "looks ugly as hell … doesn't make sense").** The overview is now a
+  Dashboard page: `render()` puts `.calm-dash` on the view while `?tab=` is the overview, so the bar,
+  KPI tabs, bars, tables, pills and rail cards are bo-calm.css's. bo-inventory.css only adds what the
+  Dashboard lacks (header buttons, which calm's `button { font: inherit }` strips; the small type pick;
+  a container query so 1024 wide drops the rail and makes the strip 2×2). It answers four questions:
+  what came in, what went out, what went missing or was fixed, and what to act on.
+- **Header:** title, the range `.pick` + `.menu` popover (Today / Last 7 days / Last 30 days,
+  `?period=`, default 7; 7 and 30 are calendar days, today included), then Receive stock and New
+  adjustment. Today compares with **yesterday up to the same time**, not all of yesterday.
+- **KPI strip = folder tabs** (`?chart=in|out|lost|adj`, default `in`); the picked one is the only
+  series the bars show, from ₱0 up (`shPlot`, the Dashboard's `dashPlot`). Hover tip lists all four.
+  **Received** (deliveries, returns, transfers in), **Went out** (sold, used, transferred, lost),
+  **Lost** (shrinkage, breakage, write-off, and short shelf counts), all ₱ at cost; **Adjusted** is a
+  count of hand-typed changes. Each tab has a `title` saying so. ₱1M+ reads `₱1.25M`.
+- **Chips** are `calmChip`, beside the number, hidden when the previous period is 0. Only **Lost**
+  has a good direction (up is red); Received, Went out and Adjusted stay grey — a quiet week buys and
+  sells less, and that is not bad news. A period with nothing in the picked series says so in the
+  panel ("No stock lost today.") instead of drawing flat bars.
+- **Movements** in the period, newest first, top 10, with a type pick in its head (`?type=`):
+  **All but sales** (default — the POS writes hundreds of sales and they buried the deliveries,
+  fixes and losses), All, Received, Sold, Lost, Adjusted (`MOVE_TYPES`; Received/Lost match the
+  KPIs). Every reason is a coloured pill (owner wanted colour back): delivery green, return and
+  adjustment amber, shelf count blue, shrinkage/breakage/write-off red, sale and transfer grey. The
+  full Movements page uses the same tones as `.status-pill` and its Show select carries the types
+  plus one-reason options. View all passes `type` and `from` = the period's first day.
+- **Price changes** in the period, latest 5. Empty cards (Movements or Price changes) collapse to
+  one line: name, why it is empty, View all — never a big blank table.
+- **Rail = what to act on**, each a Dashboard band card, dropped when empty (all empty → `.dash.solo`):
+  **Lost demand** (top 5 asked-for-while-out in the period, `N×`; always shown, a quiet line when empty), **Counts that didn't match** ("system →
+  shelf", short in red, over plain), **Supplier costs changed** (`costDrift`, book → paid, %),
+  **Where it went** (out by reason, ₱ and %; only with two or more reasons).
+- Numbers come from `stockFlow()` — `{ in, out, lost, adj }` in total and per bucket, `why` by
+  reason (gated in `scripts/inventory-check.mjs`). A movement's time is `happenedOn` only when it is
+  a different day from `ts`; a bare date parses as UTC midnight (8 AM here), which put same-day
+  deliveries in the wrong hour bar.
 - **View all opens a full page inside Stock history** (`?tab=movements|prices|lost|counts`), with a
   "← Stock history" back link. It is not a sidebar entry. SUBNAV lists only `overview` and
   `reorder`, so these pages fall back to the default and keep Stock history lit.
 - **Counts is called Shelf check.** "Counts" read as stock movements.
 - **Sell-through was dropped.** Old `?tab=sell` links land on the overview.
-- **No charts here.** The owner rejected them: a chart doesn't show *which* item moved better than a
-  table does.
+- **One chart only** (owner, 2026-09-26, reversing the earlier "no charts"): the bars show *how
+  much*; the tables still show *which* item. One series at a time — the mirrored in/out chart with
+  an unsigned axis below zero did not read without explaining.
 - **No Reorder or Adjust buttons on these pages** (the owner rejected them).
 - **Old links redirect:** `?tab=stock` → `/admin/products?view=stock` (q, cat and level kept);
   `?tab=cost` → `?tab=prices`.
@@ -679,9 +834,13 @@ never made. The log already knew. `costDrift(products, movements)` is just the c
 has one tab per section (cash tied up, stockouts, dead stock, sell-through,
 counts, lost sales). Basket affinity moved to Sales → **Bought together** (`?by=basket`, all receipts
 ever, no range; its Products/Categories toggle is `?pairs=`) and the Customer habits link went. The Deliveries tab (customer delivery orders) was removed 2026-09-24;
-Transactions already shows each order's fulfilment. Customer cycles moved onto Customers 2026-09-24: the list
-shows orders, spent, last order, "buys every ~N days" and a Due pill (overdue past 1.5x the median
-gap), the customer page shows the next due date; both read `HWPOS_INSIGHTS.customerCycles`. The reorder, lead times and prices tabs were
+Transactions already shows each order's fulfilment. The Customers list
+shows orders, spent and last order (the date only), read from `HWPOS_INSIGHTS.customerTotals`
+(under 880px of card Phone hides, under 760px Orders too, and a name truncates at 160px, so seven columns fit beside the rail
+at 1440 and 1280; normal balance states are muted text, pills only for In use / Near limit — 2026-09-26). **No
+next-order prediction** (owner, 2026-09-27: the Next order column, "Next order due" and the Due / Overdue / On track
+pills were a median-gap guess; the back office shows facts, a forecast waits for a real model). Cadence is read off
+**Export for AI**. The reorder, lead times and prices tabs were
 removed 2026-09-23 (see "Buying removed" below); their old `?tab=` links redirect (`MOVED`). **Nothing it computes
 is stored** — `HWPOS_AI.snapshot().insights` and **Export for AI** rebuild it on read. Export writes
 every collection plus insights and the field dictionary as one JSON file.
@@ -700,14 +859,24 @@ already stamp. `cashAsleep` stays in the data; its tab was folded into this one.
 The owner is simplifying the app first. Removed: the **Needs buying** page and link, and the
 **Buying** sidebar tree (Reorder plan, Supplier lead times, Price history).
 - **No reorder forecast, on purpose.** The owner: reordering needs a lot of context the POS doesn't
-  have, so it is a job for something else. Don't bring `reorderPlan` back into a page, and don't
-  port its formula into anything. It stays a pure function for `buildInsights` / Export for AI only.
+  have, so it is a job for something else. **Removed entirely 2026-09-27** (owner: "build it from
+  the ground up again"): `reorderPlan`, `demandStats`, the `Z` table / `zFor`, and the `demand`,
+  `reorder` and `reorderBySupplier` sections of `buildInsights` are gone, so Export for AI and
+  `HWPOS_AI.snapshot().insights` carry no forecast either. `scripts/backtest.mjs` (it only compared
+  `reorderPlan` with `suggestQty`) and the POS's dead `buildReorderList()` went with them. Don't
+  port the old formula back; the owner rebuilds it from scratch.
+- **Count accuracy is facts only** (2026-09-27): counts, last counted, Mean miss (`meanAbsVariance`,
+  the average |counted − expected|) and each count's expected / counted / variance in `history`,
+  biggest average miss first. The Confidence column and the per-count `accuracy` score were removed
+  by the owner (a made-up score).
 - **"What's low?"** is Products → Stock, Out/Low filter. **"Order it"** is Purchase orders → a draft
   with a supplier → **Add low stock items**: adds that supplier's low and out products
   (`lowStockLines` in bo-inventory.js = `reorderGroups` + `suggestQty`, top up to twice the
-  reorder point), skipping ones already on the PO. It writes no `decisions` rows.
-- **Lead times are two Suppliers columns:** Delivers in (average days, rounded) and On time (%),
-  from `supplierLeadTimes`. The other lead-time stats were dropped.
+  reorder point), skipping ones already on the PO. It writes no `decisions` rows. The suggested
+  qty is only a pre-fill: each line's qty is the same editable input as any other PO line until the
+  PO receives stock. This stays (2026-09-27).
+- **Lead time is one Suppliers column:** Delivers in (average days, rounded), from
+  `supplierLeadTimes`. On time (%) and the other lead-time stats were dropped.
 - **Price history** duplicated the item page and Stock history → Price changes.
 - **Old links redirect:** `/admin/inventory?tab=reorder` and `/admin/insights?tab=reorder` go to
   Products → Stock (Out + Low); `?tab=leads` to Suppliers; `?tab=prices` to Stock history → Price
@@ -721,8 +890,12 @@ Losses are three events, not one adjustment: **shrinkage** (lost or stolen), **d
 
 ### Suppliers — what gets captured
 
-Supplier detail: **order days** (seg buttons, `orderDays` 0 = Sunday), **minimum order** in pesos,
-**quoted lead days**. A PO carries `sentAt` (stamped by Mark ordered) and **Supplier promised**
+Supplier detail (2026-09-26): the name as the heading with **Edit** (a `bo-dialog adj-dlg` for name,
+contact, phone, email, address, note) and **New purchase order**; contact · phone · email and
+address · note as read-only lines under it; a joined KPI strip (`.kpi-row.joined`, one card, hairlines) of On hand at cost, Incoming, Delivers in (measured only) —
+Products dropped, the card head counts them; Products by stock value as value | bar | % (bar scaled to the biggest, <1% for the tail) (paginated at 25, `DETAIL_ROWS`); last 25 POs. Order
+days, minimum order, quoted lead days and on-time were removed that day; old records may still carry
+the fields and nothing reads them (`schema.sql` columns are still there). A PO carries `sentAt` (stamped by Mark ordered) and **Supplier promised**
 (`promisedAt`), which the dashboard's Deliveries coming prefers over `expectedAt`
 (`SUP_RULES.dueDate`). Receiving asks per line for **invoice cost** (written onto the delivery
 movement's `unitCost`, so Cost changes sees what was billed) and a **short reason** when less
@@ -751,15 +924,18 @@ product is never refused for it — its stock is ignored anyway.
 ### Staff — name, role, page access
 
 Attendance, clock in/out, payroll and cash advances were removed (owner, 2026-09-24): the POS is
-not a time clock. A person is a name, a role and the pages that role opens. The People table and the
-person page show what they rang up in the last 30 days — revenue, sales, voids, refunds, last
-sale — read off `orders.cashier` by `salesByName` (gated by `scripts/staff-check.mjs`).
+not a time clock. A person is a name, a role and the pages that role opens. **Staff lives in
+Settings › Staff & access** (`/admin/settings/staff`, `?person=<id|new>` for one person; 2026-09-26):
+People with a Role `<select>` per row (search only past 10 staff), then a Roles list — name, head count,
+a muted "Dashboard, Sales +3" line; a click opens `#setDlg` with the page checkboxes. Both save on change
+with a toast, no Save button. Access stays per role (`hwpos.access.v1`); Owner is locked to all.
+Old `/admin/staff[/<id>]` URLs redirect there. **No sales numbers here** — what a person rang up is
+the Sales Summary's Staff card; `salesByName` stays exported (gated by `scripts/staff-check.mjs`).
 
 Someone who leaves is **archived, never deleted** — their name stays on old orders. Archived people
 drop off People unless "Show archived (N)" is ticked (`?archived=1`), same as archived products.
 
-**One page, no sub-tabs** (owner, 2026-09-24): the People table, then the Page access grid under it
-on `/admin/staff`. A Staff link that only opened a People tab was a click that went nowhere.
+**One page, no sub-tabs** (owner, 2026-09-24): the People table, then the Roles grid under it.
 The data field is still `active`.
 
 ### Decision log
@@ -772,12 +948,16 @@ The data field is still `active`.
 
 `/admin/customers` is the list; `/admin/customers/<id>` is one account's history. The id is on the
 URL (`state.detailId`), so a link to a customer is shareable, and one `renderCustomers()` picks the
-screen. Clicking a row navigates; the back link sits before the page title (which becomes the customer's
+screen. The list filters by balance status (`?status=`, the Status pill's words) and last order
+(`?last=7|30|90`, `-90` = nothing in 90+ days) with two `bo-select`s beside search. Clicking a row navigates; the back link sits before the page title (which becomes the customer's
 name), not between the cards.
 
-The history is three cards: the account's facts, **Transactions** (paginated, each row opens the
+The top is **one account card** (owner, 2026-09-26; was a KPI strip plus a Details card): a head band
+with the status pill and Edit, the joined strip (Total spent · Balance · Average order · Last purchase),
+a hairline, then Phone · Address · Available credit (`.cust-sum` in `bo-calm.css`).
+Under it Statement (25 a page on `?stpage=`), **Transactions** (25 a page, each row opens the
 existing `#orderDlg` receipt via the delegated `tr[data-order]` handler — no new dialog), and
-**Items bought**, one line per product across every order. Voided and refunded orders stay in the
+**Items bought**, one line per product across every order (top 25 by spend). Voided and refunded orders stay in the
 transaction list because they happened, but they are excluded from spend, averages and the item
 rollup.
 
@@ -872,8 +1052,8 @@ office says "Walk-in" where the POS pill says "Pickup"); every table, CSV and re
 so a store elsewhere must be able to hide it). It writes `settings.payments = {hidden: [kind], custom:
 [name]}`; the POS `applyPayMethods()` hides those cards and inserts one card per custom name. Cash can't
 be hidden. A custom card sells as kind `other` with the name as `paymentMethodLabel`, so reports need
-no new kind and removing a method never rewrites past sales. Edits sit in a draft until Save (toast
-"Payment methods saved"); reopening the page drops an unsaved draft. Owner-only by default (`ACCESS_VIEWS`).
+no new kind and removing a method never rewrites past sales. Each tick saves on change (toast);
+Add opens `#setDlg` for the name, Remove drops a custom one. Owner-only by default (`ACCESS_VIEWS`).
 Settings aren't in D1 yet, so this reaches other tabs on the same device, not other terminals.
 
 **The family editor stays one full-width column** — its variants table wants every column it can
@@ -922,9 +1102,14 @@ bottom corners, so a stripe never squares off the card.
 - **Hover is a darkening layer**, `rgba(0,0,0,.045)`, not a grey. A flat grey disappears on a stripe.
 - `.ml-value` is the answer (600, ink, tabular). `.ml-trail` is the optional third column, fixed at
   58px so values line up. `.warn`/`.danger` colour **the value only**; the row never turns red.
-- **One coloured pill per row.** The payment method is a fact like the time is, so it is plain text.
-  Two filled pills per row was what made the transactions table unreadable — you stop reading and
-  start decoding. Colour means "this needs you".
+- **Payment is a pill, the everyday "done" state is not** (owner, 2026-09-26, reversing the
+  plain-text payment rule: "we need to be able to distinguish it at a glance"). Every Payment cell
+  goes through `txPayStatus()` / `payPill()` in `backoffice.js`: one soft hue per method — cash green,
+  GCash blue, Maya violet, QR teal, card rose, Account amber, split and anything else grey (`.pay-*` in
+  `bo-calm.css`; a custom method takes the tone its name contains). A voided or saved row greys its
+  pay pill. The done states — Completed, a Received PO, a Clear balance — are muted text, so the
+  exceptions (Voided, Refunded, Active, In use, Ordered, Overdue…) are the only other pills. Pills,
+  not dots: dots were turned down 2026-09-19.
 
 **A stat row is padded, never a fixed height.** Three separate things pushed the text to the top of
 its own stripe and all three are worth remembering: a fixed `height` leaves one auto track that
@@ -966,15 +1151,23 @@ height" note under *Landing page* above.
 One flush full-height column (the user rejected an inset floating island): **location switcher** on
 top (business name small, location big, because the location is what you switch), then three
 sections (2026-09-19, the owner asked for "1 click deep, not a lot when a dropdown is open"):
-`Main menu` (Dashboard, Sales, Transactions, Customers), `Stock` (Products,
+`Main menu` (Dashboard, Sales, Transactions, Products, Customers: Products moved up by the owner 2026-09-26; Sales is a plain link with no tree since 2026-09-27), `Stock` (
 Suppliers, with Purchase orders as a tree leaf under it (`data-sub="suppliers orders"`, owner 2026-09-26); Stock history is a tree leaf under Products since 2026-09-25, which
-emptied and removed `Reports`) and `Manage` (Staff, Payments, Settings). Daily-work sub-pages
+emptied and removed `Reports`). **Settings sits at the bottom, in `.side-footer`** (2026-09-26; `Manage` is gone):
+clicking it swaps the sidebar to `.side-setnav` — Store, Tax,
+Payments, Receipt & printing, Staff & access, Appearance, Data, each its own route
+(`/admin/settings/<section>`; Payments keeps `/admin/payments`). **← Back takes the store switcher's slot**
+(`[data-set-back]`, owner 2026-09-27): it goes to the last main-nav URL, else the Dashboard; the footer's
+Settings row hides while in Settings, the account row stays; no Esc binding. Each section is one column of
+cards; typed values read as rows (`.set-rows`: label, value, ›) and a click opens that card's fields in
+`#setDlg` (Save/Cancel). On/off and pick-one settings save on change; no Save bar. Appearance is per device. Every choice is a native `<select>`; on/off
+stays a checkbox. Daily-work sub-pages
 are their own links; reports stay in a tree. **Rule: nothing sits more than one fold deep, and an
 open tree holds at most ~6 items.** Section labels are buttons that fold their links
 (`aria-expanded`, remembered per device in `HWPOS_STORE.ui` `sideFolded`, never synced). Section
 folds and page trees share one animation: `SIDEBAR FOLDS (v30)`, a one-row grid sliding
 0fr <-> 1fr around `.side-fold-in`; don't swap it back to `display: none`. The chevron on any page
-with a tree opens that tree in place (`.open`) without navigating; clicking the name navigates. **One tree open at a time** (owner, 2026-09-26): opening a tree (chevron, re-clicking the active page, or navigating) slides every other shut, the active page's included (`shutTrees()`), and every open *and* close animates -- never add a `display: none` on `.folded` / `.side-sub` again (that is what made folding snap). **Sales is its own Summary** (owner, 2026-09-26): the link is `data-sub="summary item category basket"`, so clicking Sales lights Sales and the tree is By item / By category / Bought together, no Summary leaf. Re-clicking a page folds its tree only when you are on that page itself; from one of its leaves (By item, Purchase orders, Stock history) the name navigates back to the page (owner, 2026-09-26). The chevron still folds it from a leaf. `paint()` calls `shutTrees()` whenever the lit link changes, so Back/Forward and in-page links can't leave two trees open. **Every dropdown animates** (`DROPDOWN MOTION (v31)`, CSS only):
+with a tree opens that tree in place (`.open`) without navigating; clicking the name navigates. **One tree open at a time** (owner, 2026-09-26): opening a tree (chevron, re-clicking the active page, or navigating) slides every other shut, the active page's included (`shutTrees()`), and every open *and* close animates -- never add a `display: none` on `.folded` / `.side-sub` again (that is what made folding snap). **Sales is a plain link** (owner, 2026-09-27): no `data-sub`, no tree; it stays lit on both Summary and Items, which switch inside the page (see Sales page). It was `data-sub="summary items"` with Items as a tree leaf (2026-09-26); don't bring the leaf back. Re-clicking a page folds its tree only when you are on that page itself; from one of its leaves (Purchase orders, Stock history) the name navigates back to the page (owner, 2026-09-26). The chevron still folds it from a leaf. `paint()` calls `shutTrees()` whenever the lit link changes, so Back/Forward and in-page links can't leave two trees open. **Every dropdown animates** (`DROPDOWN MOTION (v31)`, CSS only):
 menus keep opening with `hidden` / `<details>`, and the CSS fades and drops them 4px using
 `@starting-style` + `display ... allow-discrete`. A new dropdown adds its class to that rule. Tried and rejected, don't redo:
 six labelled sections with every sub-page as its own link ("stuff gets lost"), and a bare
@@ -998,7 +1191,10 @@ its own tree -- that is how Analytics splits into four short entries. Its `group
 reached (no plain Analytics link); the nav markup is the grouping now. `goSub()` navigates them,
 `paint()` lights the deep link when the URL's sub-page has one (else the view's plain link), and
 `buildSubnav()` leaves those keys out of the tree -- a view whose every key has a link gets no tree
-and needs no plain link.
+and needs no plain link. `data-sub` is for sub-pages that are somewhere else; two readings of the same
+thing are an in-page switch instead (Products' Catalog | Stock, Sales' Summary | Items — owner,
+2026-09-27). A view with a switch registers no `HWPOS_SUBNAV`, or `buildSubnav()` grows a tree back
+under its plain link.
 
 **Analytics** is the page title of the `insights` view (the sidebar shows its four report links). The key, URL and role-access entry stay
 `insights`, so saved links and access maps keep working. Its page title is the report name.

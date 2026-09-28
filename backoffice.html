@@ -9,16 +9,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Geist:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=136" />
-  <link rel="stylesheet" href="/bo-products.css?v=102" />
-  <link rel="stylesheet" href="/bo-item.css?v=1" />
-  <link rel="stylesheet" href="/bo-inventory.css?v=93" />
-  <link rel="stylesheet" href="/bo-sales.css?v=87" />
-  <link rel="stylesheet" href="/bo-suppliers.css?v=87" />
-  <link rel="stylesheet" href="/bo-staff.css?v=87" />
+  <link rel="stylesheet" href="/styles.css?v=152" />
+  <link rel="stylesheet" href="/bo-products.css?v=114" />
+  <link rel="stylesheet" href="/bo-item.css?v=12" />
+  <link rel="stylesheet" href="/bo-inventory.css?v=104" />
+  <link rel="stylesheet" href="/bo-sales.css?v=97" />
+  <link rel="stylesheet" href="/bo-suppliers.css?v=97" />
+  <link rel="stylesheet" href="/bo-staff.css?v=98" />
   <link rel="stylesheet" href="/bo-insights.css?v=3" />
-  <link rel="stylesheet" href="/bo-blocks.css?v=61" />
-  <link rel="stylesheet" href="/bo-calm.css?v=26" />
+  <link rel="stylesheet" href="/bo-blocks.css?v=63" />
+  <link rel="stylesheet" href="/bo-calm.css?v=45" />
 </head>
 <body class="bo-body bo-light">
   <div id="app" class="bo-app">
@@ -37,6 +37,11 @@
       <div class="side-resizer" id="sideResizer" title="Drag to resize · double-click to reset"></div>
       <!-- Location switcher: a store badge, the location you switch, and a ⌄ beside it. -->
       <div class="side-switch-wrap">
+        <!-- In Settings, ← Back takes the switcher's slot (owner, 2026-09-27); paint() swaps the two. Before #locBtn: its menu must stay its nextElementSibling. -->
+        <button class="side-link" type="button" data-set-back hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+          <span>Back</span>
+        </button>
         <button class="side-switch" id="locBtn" type="button" aria-haspopup="menu" aria-expanded="false">
           <span class="ss-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"/><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"/><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"/></svg></span>
           <span class="ss-text"><span class="ss-label" id="locBiz">EJ Hardware</span><span class="ss-name" id="locName">Main Store</span></span>
@@ -56,7 +61,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="f" width="7" height="9" x="3" y="3" rx="1"/><rect class="f" width="7" height="5" x="14" y="3" rx="1"/><rect class="f" width="7" height="9" x="14" y="12" rx="1"/><rect class="f" width="7" height="5" x="3" y="16" rx="1"/></svg>
             <span>Dashboard</span>
           </button>
-          <button class="side-link" data-view="sales" data-sub="summary item category basket">
+          <button class="side-link" data-view="sales">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><rect class="f" x="15" y="5" width="4" height="12" rx="1"/><rect class="f" x="7" y="8" width="4" height="9" rx="1"/></svg>
             <span>Sales</span>
           </button>
@@ -64,6 +69,11 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"/><path class="k" d="M14 8H8M16 12H8M13 16H8"/></svg>
             <span>Transactions</span>
           </button>
+          <button class="side-link has-sub" data-view="products">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" transform="matrix(-1 0 0 1 24 0)" d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle class="hole" cx="16.5" cy="7.5" r="1.5"/></svg>
+            <span>Products</span><svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="side-sub" data-view="inventory"><div class="side-fold-in"><button class="side-sublink" type="button" data-sub="overview">Stock history</button></div></div>
           <button class="side-link" data-view="customers">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="12" cy="8" r="5"/><path class="f" d="M20 21a8 8 0 0 0-16 0"/></svg>
             <span>Customers</span>
@@ -71,34 +81,53 @@
         </div></div>
         <button class="side-label" type="button" data-fold="stock" aria-expanded="true">Stock<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="side-fold"><div class="side-fold-in">
-          <button class="side-link has-sub" data-view="products">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" transform="matrix(-1 0 0 1 24 0)" d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle class="hole" cx="16.5" cy="7.5" r="1.5"/></svg>
-            <span>Products</span><svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-          </button>
-          <div class="side-sub" data-view="inventory"><div class="side-fold-in"><button class="side-sublink" type="button" data-sub="overview">Stock history</button></div></div>
           <button class="side-link" data-view="suppliers" data-sub="suppliers orders">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path class="f" d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle class="f k" cx="17" cy="18" r="2"/><circle class="f k" cx="7" cy="18" r="2"/></svg>
             <span>Suppliers</span>
           </button>
         </div></div>
-        <button class="side-label" type="button" data-fold="manage" aria-expanded="true">Manage<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
-        <div class="side-fold"><div class="side-fold-in">
-          <button class="side-link" data-view="staff">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="10" cy="8" r="5"/><path class="f" d="M18 21a8 8 0 0 0-16 0"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>
-            <span>Staff</span>
-          </button>
-          <button class="side-link" data-view="payments">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="f" width="20" height="14" x="2" y="5" rx="2"/><path class="k" d="M2 10h20M6 14h2"/></svg>
-            <span>Payments</span>
-          </button>
-          <button class="side-link" data-view="settings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle class="hole" cx="12" cy="12" r="3"/></svg>
-            <span>Settings</span>
-          </button>
-        </div></div>
+      </nav>
+
+      <!-- Settings swaps the sidebar for its own sections (owner, 2026-09-26, Shopify-style). paint() shows
+           this nav on the settings and payments views; ← Back, in the switcher slot above, returns to the last page outside them. -->
+      <nav class="side-nav side-setnav" hidden>
+        <div class="side-label">Settings</div>
+        <button class="side-link" type="button" data-set="store">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 11h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path class="f" d="M2 8l2-5h16l2 5a3 3 0 0 1-5 2.2 3 3 0 0 1-5 0 3 3 0 0 1-5 0A3 3 0 0 1 2 8z"/></svg>
+          <span>Store</span>
+        </button>
+        <button class="side-link" type="button" data-set="tax">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="7" cy="7" r="3"/><circle class="f" cx="17" cy="17" r="3"/><path d="M19 5 5 19"/></svg>
+          <span>Tax</span>
+        </button>
+        <button class="side-link" type="button" data-set="payments">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="f" width="20" height="14" x="2" y="5" rx="2"/><path class="k" d="M2 10h20M6 14h2"/></svg>
+          <span>Payments</span>
+        </button>
+        <button class="side-link" type="button" data-set="receipt">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"/><path class="k" d="M14 8H8M16 12H8M13 16H8"/></svg>
+          <span>Receipt &amp; printing</span>
+        </button>
+        <button class="side-link" type="button" data-set="staff">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="10" cy="8" r="5"/><path class="f" d="M18 21a8 8 0 0 0-16 0"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>
+          <span>Staff &amp; access</span>
+        </button>
+        <button class="side-link" type="button" data-set="appearance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="12" cy="12" r="10"/><circle class="hole" cx="8" cy="10" r="1.5"/><circle class="hole" cx="12" cy="7" r="1.5"/><circle class="hole" cx="16" cy="10" r="1.5"/></svg>
+          <span>Appearance</span>
+        </button>
+        <button class="side-link" type="button" data-set="data">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse class="f" cx="12" cy="5" rx="9" ry="3"/><path class="f" d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path class="k" d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>
+          <span>Data</span>
+        </button>
       </nav>
 
       <div class="side-footer">
+        <!-- Settings sits at the bottom, over the account; opening it swaps the nav above for .side-setnav and hides this row (paint()). -->
+        <button class="side-link" data-view="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle class="hole" cx="12" cy="12" r="3"/></svg>
+          <span>Settings</span>
+        </button>
         <!-- Account switcher: a user badge, name + role. No chevron; only the store gets one. -->
         <div class="side-switch-wrap">
           <button class="side-switch acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false">
@@ -178,6 +207,8 @@
           <div>
           <div class="list-filters">
             <input class="search-input small q-input" id="custSearch" placeholder="Search customers..." />
+            <select class="bo-select" data-cust="status" aria-label="Balance status"><option value="">Any balance</option><option value="Clear">Clear</option><option value="Active">Active</option><option value="In use">In use</option><option value="Near limit">Near limit</option></select>
+            <select class="bo-select" data-cust="last" aria-label="Last order"><option value="">Any last order</option><option value="7">Bought in last 7 days</option><option value="30">Bought in last 30 days</option><option value="90">Bought in last 90 days</option><option value="-90">No order in 90+ days</option></select>
           </div>
           <section class="bo-card blk-table">
             <div class="bo-card-head">
@@ -193,8 +224,6 @@
                       <th class="num">Orders</th>
                       <th class="num">Spent</th>
                       <th>Last order</th>
-                      <th class="num">Buys every</th>
-                      <th>Due</th>
                       <th class="num">Balance</th>
                       <th>Status</th>
                     </tr>
@@ -210,17 +239,13 @@
           </div>
         </div>
 
-        <!-- The account screen's figures; the list's sit in #custRail. After #custList so nothing spaces the list off the head. -->
-        <div class="kpi-row" id="custKpis"></div>
+        <!-- The account screen: its figures sit in its first card (the list's are in #custRail). -->
         <div id="custDetail" hidden></div>
         <dialog id="custDlg" class="bo-dialog adj-dlg"></dialog>
       </section>
 
       <!-- Suppliers: markup lives in bo-suppliers.js -->
       <section class="view view-suppliers" data-view="suppliers" hidden></section>
-
-      <!-- Staff: markup lives in bo-staff.js -->
-      <section class="view view-staff" data-view="staff" hidden></section>
 
       <!-- Insights: markup lives in bo-insights.js -->
       <section class="view view-insights" data-view="insights" hidden></section>
@@ -230,100 +255,112 @@
            ============================================ -->
       <section class="view" data-view="payments" hidden></section>
 
+      <!-- Settings: one section per URL (/admin/settings/<section>), one column of cards.
+           Typed values read as rows (label, value, ›); a row opens its card's fields in #setDlg.
+           On/off and pick-one settings save the moment they change, like Appearance (per device)
+           and Staff & access (bo-staff.js). No Save bar. -->
       <section class="view view-settings" data-view="settings" hidden>
-        <header class="view-head">
-          <div class="view-title-wrap">
-            <h1>Settings</h1>
+        <div class="set-pane" data-pane="store" hidden>
+          <header class="view-head"><div class="view-title-wrap"><h1>Store</h1></div></header>
+          <div class="set-col">
+            <section class="bo-card blk-table">
+              <div class="bo-card-head"><span class="bo-card-label">Store details</span></div>
+              <div class="bo-card-inset flush set-rows" data-set-rows="store"></div>
+            </section>
           </div>
-        </header>
+        </div>
 
-        <div class="settings-grid">
-          <div class="panel">
-            <div class="panel-head"><div class="panel-title">Store</div></div>
-            <div class="setting-row"><label>Store name</label><input class="text-input" id="setStoreName"></div>
-            <div class="setting-row"><label>Address</label><input class="text-input" id="setStoreAddress"></div>
-            <div class="setting-row"><label>Phone</label><input class="text-input" id="setStorePhone"></div>
-            <div class="setting-row"><label>Currency</label><input class="text-input" id="setCurrency"></div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-head"><div class="panel-title">Tax</div></div>
-            <div class="setting-row"><label>VAT registered</label><input type="checkbox" id="setVatRegistered"></div>
-            <div class="setting-row"><label>VAT rate</label><input class="text-input" id="setVatRate"></div>
-            <div class="setting-row"><label>TIN</label><input class="text-input" id="setTin"></div>
-          </div>
-
-
-          <div class="panel">
-            <div class="panel-head"><div class="panel-title">Printing</div></div>
-            <div class="setting-row"><label>Printer width</label><input class="text-input" id="setPrinterWidth"></div>
-            <div class="setting-row"><label>Print on sale</label><input type="checkbox" id="setPrintOnSale"></div>
-            <div class="setting-row"><label>Logo on receipt</label><input type="checkbox" id="setLogoOnReceipt"></div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-head">
-              <div class="panel-title">Appearance</div>
-            </div>
-            <div class="setting-row">
-              <label>Chart colours
-                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">The second line on the sales chart (gross profit), on this device.</div>
-              </label>
-              <div class="seg" id="settingsChartHue" role="tablist">
-                <button class="seg-btn active" data-hue="violet">Blue + violet</button>
-                <button class="seg-btn" data-hue="blues">Two blues</button>
+        <div class="set-pane" data-pane="tax" hidden>
+          <header class="view-head"><div class="view-title-wrap"><h1>Tax</h1></div></header>
+          <div class="set-col">
+            <section class="bo-card blk-table">
+              <div class="bo-card-head"><span class="bo-card-label">VAT</span></div>
+              <div class="bo-card-inset flush set-rows">
+                <div class="setting-row"><label for="setVatRegistered">VAT registered</label><input type="checkbox" id="setVatRegistered" data-set-now></div>
+                <div data-set-rows="tax"></div>
               </div>
-            </div>
-            <div class="setting-row">
-              <label>Chart style
-                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Lines or bars on every sales chart, on this device.</div>
-              </label>
-              <div class="seg" id="settingsChartStyle" role="tablist">
-                <button class="seg-btn active" data-style="line">Line</button>
-                <button class="seg-btn" data-style="bars">Bars</button>
-              </div>
-            </div>
-            <div class="setting-row">
-              <label>Back office row size
-                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Height and text size of every list on this device. Larger is easier on the eyes.</div>
-              </label>
-              <div class="seg" id="settingsDensityToggle" role="tablist">
-                <button class="seg-btn" data-density="sm">S</button>
-                <button class="seg-btn active" data-density="md">M</button>
-                <button class="seg-btn" data-density="lg">L</button>
-              </div>
-            </div>
-            <div class="setting-row">
-              <label>Sell-screen tile size
-                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Affects the POS Sell grid (S = 30/page, M = 20/page, L = 12/page)</div>
-              </label>
-              <div class="seg" id="settingsSizeToggle" role="tablist">
-                <button class="seg-btn" data-size="sm">S</button>
-                <button class="seg-btn active" data-size="md">M</button>
-                <button class="seg-btn" data-size="lg">L</button>
-              </div>
-            </div>
-            <div class="setting-row">
-              <label>Show price on tiles</label>
-              <input type="checkbox" id="settingsShowPrice">
-            </div>
+            </section>
           </div>
+        </div>
 
-          <div class="panel">
-            <div class="panel-head"><div class="panel-title">Backup</div></div>
-            <div class="setting-row">
-              <label>Full local backup
-                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Exports products, orders, customers, settings, folders, groups, and POS display preferences.</div>
-              </label>
-              <button class="primary-btn" id="backupExportBtn">Export backup</button>
-            </div>
-            <div class="setting-row">
-              <label>Restore backup
-                <div class="muted" style="font-size:var(--blk-t-micro);margin-top:2px">Replaces this browser/device data with a Hardware POS backup file.</div>
-              </label>
-              <button class="secondary-btn" id="backupImportBtn">Restore backup</button>
-              <input type="file" id="backupImportFile" accept="application/json,.json" hidden>
-            </div>
+        <div class="set-pane" data-pane="receipt" hidden>
+          <header class="view-head"><div class="view-title-wrap"><h1>Receipt &amp; printing</h1></div></header>
+          <div class="set-col">
+            <section class="bo-card blk-table">
+              <div class="bo-card-head"><span class="bo-card-label">Printing</span></div>
+              <div class="bo-card-inset flush set-rows">
+                <div class="setting-row"><label for="setPrinterWidth">Printer width</label>
+                  <select class="bo-select" id="setPrinterWidth" data-set-now><option value="58mm">58 mm</option><option value="80mm">80 mm</option></select></div>
+                <div class="setting-row"><label for="setPrintOnSale">Print on sale</label><input type="checkbox" id="setPrintOnSale" data-set-now></div>
+                <div class="setting-row"><label for="setLogoOnReceipt">Logo on receipt</label><input type="checkbox" id="setLogoOnReceipt" data-set-now></div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- Staff & access: bo-staff.js renders into this pane. -->
+        <div class="set-pane" data-pane="staff" id="staffPane" hidden></div>
+
+        <div class="set-pane" data-pane="appearance" hidden>
+          <header class="view-head"><div class="view-title-wrap"><h1>Appearance</h1></div></header>
+          <div class="set-col">
+            <section class="bo-card blk-table">
+              <div class="bo-card-head"><span class="bo-card-label">This device</span><span class="bo-card-sub">Applies as you pick</span></div>
+              <div class="bo-card-inset flush set-rows">
+                <div class="setting-row">
+                  <label for="settingsChartHue">Chart colours
+                    <small>The second line on the sales chart (gross profit).</small>
+                  </label>
+                  <select class="bo-select" id="settingsChartHue"><option value="violet">Blue + violet</option><option value="blues">Two blues</option></select>
+                </div>
+                <div class="setting-row">
+                  <label for="settingsChartStyle">Chart style
+                    <small>Lines or bars on every sales chart.</small>
+                  </label>
+                  <select class="bo-select" id="settingsChartStyle"><option value="line">Line</option><option value="bars">Bars</option></select>
+                </div>
+                <div class="setting-row">
+                  <label for="settingsDensityToggle">Back office row size
+                    <small>Height and text size of every list. Larger is easier on the eyes.</small>
+                  </label>
+                  <select class="bo-select" id="settingsDensityToggle"><option value="sm">Small</option><option value="md">Medium</option><option value="lg">Large</option></select>
+                </div>
+                <div class="setting-row">
+                  <label for="settingsSizeToggle">Sell-screen tile size
+                    <small>The POS Sell grid: Small 30 a page, Medium 20, Large 12.</small>
+                  </label>
+                  <select class="bo-select" id="settingsSizeToggle"><option value="sm">Small</option><option value="md">Medium</option><option value="lg">Large</option></select>
+                </div>
+                <div class="setting-row">
+                  <label for="settingsShowPrice">Show price on tiles</label>
+                  <input type="checkbox" id="settingsShowPrice">
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div class="set-pane" data-pane="data" hidden>
+          <header class="view-head"><div class="view-title-wrap"><h1>Data</h1></div></header>
+          <div class="set-col">
+            <section class="bo-card blk-table">
+              <div class="bo-card-head"><span class="bo-card-label">Backup</span></div>
+              <div class="bo-card-inset flush set-rows">
+                <div class="setting-row">
+                  <label>Full local backup
+                    <small>Exports products, orders, customers, settings, folders, groups, and POS display preferences.</small>
+                  </label>
+                  <button class="secondary-btn small" id="backupExportBtn">Export backup</button>
+                </div>
+                <div class="setting-row">
+                  <label>Restore backup
+                    <small>Replaces this browser/device data with a Hardware POS backup file.</small>
+                  </label>
+                  <button class="secondary-btn small" id="backupImportBtn">Restore backup</button>
+                  <input type="file" id="backupImportFile" accept="application/json,.json" hidden>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </section>
@@ -334,54 +371,43 @@
   <dialog id="orderDlg" class="bo-dialog"></dialog>
   <!-- Outside the views: a dialog in a hidden section never shows. Targets opens from the dashboard and Sales. -->
   <dialog id="targetDlg" class="bo-dialog adj-dlg"></dialog>
+  <!-- Settings: a card's typed values (Store details, VAT, a role's pages, a new payment method). -->
+  <dialog id="setDlg" class="bo-dialog adj-dlg"></dialog>
   <!-- Stock adjust: bo-inventory.js fills it; any [data-adjust-open] on any page opens it. -->
   <dialog id="adjustDlg" class="bo-dialog adj-dlg"></dialog>
   <div id="toast" class="toast" hidden></div>
 
   <script src="/data-store.js?v=31"></script>
   <script src="/data.js?v=27"></script>
-  <script src="/bo-model.js?v=90"></script>
+  <script src="/bo-model.js?v=100"></script>
   <script src="/router.js?v=62"></script>
-  <script src="/backoffice.js?v=174"></script>
-  <script src="/bo-products.js?v=93"></script>
-  <script src="/bo-item.js?v=1"></script>
-  <script src="/bo-insights.js?v=21"></script>
-  <script src="/bo-inventory.js?v=105"></script>
-  <script src="/bo-sales.js?v=106"></script>
-  <script src="/bo-transactions.js?v=1"></script>
-  <script src="/bo-suppliers.js?v=93"></script>
-  <script src="/bo-staff.js?v=96"></script>
+  <script src="/backoffice.js?v=187"></script>
+  <script src="/bo-products.js?v=103"></script>
+  <script src="/bo-item.js?v=11"></script>
+  <script src="/bo-insights.js?v=33"></script>
+  <script src="/bo-inventory.js?v=115"></script>
+  <script src="/bo-sales.js?v=120"></script>
+  <script src="/bo-transactions.js?v=11"></script>
+  <script src="/bo-suppliers.js?v=104"></script>
+  <script src="/bo-staff.js?v=106"></script>
   <script>
-    // ---- Back office: hamburger + topbar wiring (white mode) ----
+    // ---- Back office: sidebar state (see "Sidebar state" in docs/backoffice.md) ----
+    // 1024px+ : the sidebar is always there, full or the icon rail (.side-rail, a saved per-device pref).
+    // Under it: an overlay, shut unless .side-open -- in memory only, dropped on every crossing of 1024px.
     (function () {
       var app = document.getElementById('app');
       var btn = document.getElementById('boSidebarToggle');
-      var title = document.getElementById('boTopbarTitle');
       if (!app) return;
-
-      // Default collapsed on mobile, open on desktop
-      var isDesktop = window.matchMedia('(min-width: 1024px)').matches;
-      if (!isDesktop) app.classList.add('sidebar-collapsed');
-
-      if (btn) {
-        btn.addEventListener('click', function () {
-          app.classList.toggle('sidebar-collapsed');
-        });
-      }
-
-      // Close sidebar on mobile when user picks a nav item
-      document.querySelectorAll('.side-link').forEach(function (link) {
-        link.addEventListener('click', function (e) {
-          if (e.target.closest('.side-chev')) return;   // peeking a tree is not picking a page
-          if (!window.matchMedia('(min-width: 1024px)').matches) {
-            app.classList.add('sidebar-collapsed');
-          }
-          // Update topbar title to match current section
-          var view = link.dataset.view || '';
-          if (title && view) {
-            title.textContent = view.charAt(0).toUpperCase() + view.slice(1);
-          }
-        });
+      var wide = window.matchMedia('(min-width: 1024px)');
+      function setOpen(on) { app.classList.toggle('side-open', !!on && !wide.matches); }
+      wide.addEventListener('change', function () { setOpen(false); });
+      btn.addEventListener('click', function () { setOpen(!app.classList.contains('side-open')); });
+      document.addEventListener('click', function (e) {
+        if (!app.classList.contains('side-open')) return;
+        var t = e.target;
+        if (btn.contains(t)) return;
+        // Picking a page shuts it (peeking a tree with the chevron doesn't); so does a tap on the backdrop.
+        if (t.closest('.bo-sidebar') ? t.closest('.side-link, .side-sublink') && !t.closest('.side-chev') : true) setOpen(false);
       });
 
       // Drag the sidebar's right edge to resize (desktop only); the width is a per-device pref.
@@ -454,7 +480,7 @@
       }
 
       // Fold to an icon rail (desktop only -- CSS ignores .side-rail below 1024px, where the
-      // overlay's .sidebar-collapsed rules). A per-device pref, like the width.
+      // overlay's .side-open rules). A per-device pref, like the width.
       var railBtn = document.getElementById('sideRailBtn');
       function setRail(on, save) {
         app.classList.toggle('side-rail', on);
@@ -478,18 +504,8 @@
       // The store and account menus need the full width, so a badge clicked on the rail unfolds first.
       document.querySelectorAll('.bo-sidebar .side-switch').forEach(function (b) {
         b.addEventListener('click', function () {
-          if (app.classList.contains('side-rail') && window.matchMedia('(min-width: 1024px)').matches) setRail(false, true);
+          if (app.classList.contains('side-rail') && wide.matches) setRail(false, true);
         });
-      });
-
-      // Tapping the dimmed backdrop on mobile closes the overlay
-      document.addEventListener('click', function (e) {
-        if (window.matchMedia('(min-width: 1024px)').matches) return;
-        if (app.classList.contains('sidebar-collapsed')) return;
-        var sidebar = document.querySelector('.bo-sidebar');
-        if (sidebar && !sidebar.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
-          app.classList.add('sidebar-collapsed');
-        }
       });
     })();
   </script>

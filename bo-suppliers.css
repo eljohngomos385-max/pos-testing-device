@@ -6,13 +6,6 @@
 /* An expected date that has passed on an order still coming in. */
 body.bo-light .view-suppliers .sup-overdue { color: var(--po-danger); font-weight: 600; }
 
-body.bo-light .view-suppliers .sup-note {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* Inputs that live inside a table cell: the block input, filling the cell. */
 body.bo-light .view-suppliers .data-table .text-input { width: 100%; }
 body.bo-light .view-suppliers .data-table .text-input.mini {
@@ -45,14 +38,31 @@ body.bo-light .view-suppliers .sup-recv-foot {
 body.bo-light .view-suppliers .sup-arrived { margin-right: auto; }
 body.bo-light .view-suppliers .sup-arrived input { width: auto; }
 
-/* Real lead time, beside the quoted figure it checks. */
-body.bo-light .view-suppliers .sup-hint {
-  margin-left: 8px;
-  font-size: var(--blk-t-meta);
-  font-weight: 400;
-  color: var(--blk-ink-3);
+/* Supplier page: the read-only contact lines under the name (Edit opens #supDlg). */
+body.bo-light .view-suppliers .sup-contact {
+  margin: -8px 0 16px;
+  display: grid;
+  gap: 2px;
+  font-size: var(--blk-t-label);
+  color: var(--blk-ink-2);
 }
+body.bo-light .view-suppliers .sup-contact a { color: inherit; }
+body.bo-light .view-suppliers .sup-contact .sep { margin: 0 8px; color: var(--blk-ink-3); }
+body.bo-light .view-suppliers .sup-quote { font-style: italic; }
+body.bo-light .view-suppliers .sup-more { padding: 10px var(--blk-pad); border-top: 1px solid var(--tbl-line); text-align: right; }
+
+/* Share of this supplier's stock value: value | bar | %, as Sales' Top items. The bar is the glance. */
+body.bo-light .view-suppliers .data-table .share-td { width: 152px; padding-right: 0; }
+body.bo-light .view-suppliers .data-table .share-pct { width: 72px; text-align: left; color: var(--b-ink-3); font-size: var(--b-t-meta); }
+body.bo-light .view-suppliers .share-bar { display: block; width: 100%; height: 6px; border-radius: 99px; background: var(--b-track); overflow: hidden; }
+body.bo-light .view-suppliers .share-bar > i { display: block; height: 100%; min-width: 2px; border-radius: 99px; background: var(--b-data); }
 
 /* The short-ship reason only asks when fewer arrive than were still to come. */
 body.bo-light .view-suppliers [data-short][hidden] { display: none; }
 
+
+/* Columns (owner 2026-09-26): Products' chooser, at the right end of the filter row; CSS hides the cells. */
+body.bo-light .view-suppliers .list-filters > .pd-cols { margin-left: auto; }
+body.bo-light .view-suppliers .pd-cols-menu { left: auto; right: 0; transform-origin: top right; }
+body.bo-light .view-suppliers :is(.hide-phone [data-col="phone"], .hide-email [data-col="email"], .hide-products [data-col="products"],
+  .hide-value [data-col="value"], .hide-open [data-col="open"], .hide-outstanding [data-col="outstanding"], .hide-lead [data-col="lead"]) { display: none; }

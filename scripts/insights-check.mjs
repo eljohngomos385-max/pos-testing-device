@@ -4,12 +4,11 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-// bo-insights.js calls cent/stepFor/normalizeProduct as globals, the way the browser hands
+// bo-insights.js calls cent/normalizeProduct as globals, the way the browser hands
 // them over from bo-model.js. Same wiring as inventory-check.mjs.
 const model = require('../bo-model.js');
 Object.assign(globalThis, model);
 const I = require('../bo-insights.js');
-const { suggestQty } = require('../bo-inventory.js');
 const { normalizeProduct } = model;
 
 const at = (date, hh = '10:00') => `${date}T${hh}:00+08:00`;   // store-local clock
@@ -36,50 +35,7 @@ const empty = I.stockoutIntervals([{ id: 'e', stock: 0 }], [mv('e', at('2026-09-
 assert.equal(empty.rows[0].intervals[0].end, null);
 assert.equal(empty.rows[0].daysOut, 1.58);
 
-/* ---- Censored demand: days that opened empty do not count as zero-sale days ---- */
-const [dem] = I.demandStats([cement], log, now, { days: 10, stockouts: so });
-assert.equal(dem.windowDays, 10);
-assert.equal(dem.daysOut, 3);                               // 6th, 7th, and the 8th opened empty
-assert.equal(dem.inStockDays, 7);
-assert.equal(dem.dailyRate, 2);                             // the real rate...
-assert.equal(dem.uncensoredDailyRate, 1.6);                 // ...not what naive sales say
-assert.equal(dem.sdDaily, 0);
-assert.equal(dem.pattern, 'smooth');
-
-/* ---- Reorder point formula ---- */
-const lead = { n: 3, leadDaysMean: 5, leadDaysSd: 1 };
-const demand = { dailyRate: 2, sdDaily: 1, inStockDays: 60, demandDays: 60 };
-// safety = 1.645 * sqrt((5+7)*1 + 2^2*1^2) = 6.58; rop = 10 + 6.58; up to = 24 + 6.58
-const plan = I.reorderPlan({ ...cement, stock: 10 }, { demand, lead, reviewDays: 7 });
-assert.equal(plan.safetyStock, 6.58);
-assert.equal(plan.reorderPoint, 16.58);
-assert.equal(plan.orderUpTo, 30.58);
-assert.equal(plan.suggestQty, 21);                          // 20.58 rounded UP to a whole bag
-assert.equal(plan.cashPesos, 2100);
-assert.equal(plan.basis, 'history');
-assert.equal(plan.confidence, 'high');
-assert.equal(I.reorderPlan({ ...cement, stock: 17 }, { demand, lead, reviewDays: 7 }).suggestQty, 0);
-// What is already coming counts: 10 on the shelf + 10 on order is above the reorder point.
-assert.equal(I.reorderPlan({ ...cement, stock: 10 }, { demand, lead, reviewDays: 7, onOrder: 10 }).suggestQty, 0);
-// Measure products keep 2dp; quoted lead is the fallback when nothing was ever received.
-const wire = normalizeProduct({ id: 'w', soldBy: 'measure', stock: 1.2, cost: 10 });
-const wp = I.reorderPlan(wire, { demand: { dailyRate: 0.5, sdDaily: 0, inStockDays: 40, demandDays: 20 },
-  supplier: { quotedLeadDays: 3, orderDays: [2] } });
-assert.equal(wp.leadBasis, 'quoted');
-assert.equal(wp.reviewDays, 7);
-assert.equal(wp.suggestQty, 3.8);                           // 0.5*(3+7) - 1.2
-// No history: the old heuristic, labelled as such, same answer as bo-inventory suggestQty.
-const low = normalizeProduct({ id: 'p1', stock: 2, reorderPoint: 5 });
-const fb = I.reorderPlan(low, { demand: { inStockDays: 5 } });
-assert.equal(fb.basis, 'fallback');
-assert.equal(fb.suggestQty, suggestQty(low));
-assert.equal(I.reorderPlan({ ...low, stock: 6 }, {}).suggestQty, 0);
-assert.equal(I.reviewDaysFor([2]), 7);
-assert.equal(I.reviewDaysFor([1, 4]), 4);                   // Thu -> Mon is the long gap
-assert.equal(I.reviewDaysFor([0, 1, 2, 3, 4, 5, 6]), 1);
-assert.equal(I.reviewDaysFor([]), 7);
-
-/* ---- Lead time spread, on-time, fill, invoice gap ---- */
+/* ---- Lead time spread, fill, invoice gap ---- */
 const leads = I.supplierLeadTimes([
   { supplierId: 's1', status: 'received', orderedAt: '2026-09-01', promisedAt: '2026-09-04', receivedAt: '2026-09-05',
     items: [{ productId: 'c', qty: 10, receivedQty: 10, cost: 100, invoiceCost: 110 }] },
@@ -87,10 +43,9 @@ const leads = I.supplierLeadTimes([
     receivedAt: '2026-09-08T03:00:00.000Z', items: [] },    // sentAt wins over orderedAt
   { supplierId: 's1', status: 'partial', orderedAt: '2026-09-01', receivedAt: '2026-09-09',
     items: [{ productId: 'c', qty: 10, receivedQty: 6, cost: 100, shortReason: 'backorder' }] },
-], [{ id: 's1', name: 'Ace' }, { id: 's2', name: 'Never used', quotedLeadDays: 4 }]);
+], [{ id: 's1', name: 'Ace' }, { id: 's2', name: 'Never used' }]);
 const s1 = leads.find((r) => r.supplierId === 's1');
 assert.deepEqual([s1.n, s1.leadDaysMean, s1.leadDaysSd, s1.leadDaysMin, s1.leadDaysMax], [3, 6, 2, 4, 8]);
-assert.equal(s1.onTimeRate, 0.5);
 assert.equal(s1.fillRate, 0.8);
 assert.equal(s1.invoiceGapPct, 10);
 assert.deepEqual(s1.shortReasons, { backorder: 1 });
@@ -111,7 +66,7 @@ const aff = I.basketAffinity(orders, { minCount: 1, products: [
   { id: 'a', name: 'Hammer', folder: 'Tools' }, { id: 'b', name: 'Nails', folder: 'Paint' }, { id: 'c', folder: 'Paint' }] });
 assert.equal(aff.baskets, 4);
 assert.equal(aff.products.length, 1);
-assert.deepEqual(aff.products[0], { a: 'a', b: 'b', aName: 'Hammer', bName: 'Nails', count: 2,
+assert.deepEqual(aff.products[0], { a: 'a', b: 'b', aName: 'Hammer', bName: 'Nails', count: 2, countA: 3, countB: 2,
   support: 0.5, confidenceAtoB: 0.667, confidenceBtoA: 1, lift: 1.33 });   // 2*4 / (3*2)
 assert.equal(aff.categories[0].lift, 0.89);                                 // 2*4 / (3*3)
 const spaced = I.basketAffinity([{ id: 'x1', status: 'completed', items: [{ productId: 'a' }, { productId: 'b' }] }],
@@ -138,9 +93,12 @@ const st2 = I.sellThrough([
 ], [], [{ id: 'o', stock: 12 }]);
 assert.deepEqual([st2[0].soldQty, st2[0].remainingQty], [0, 10]);
 
-/* ---- Count confidence and dead stock ---- */
-const acc = I.countAccuracy([mv('c', at('2026-09-01'), -3, 'count', { expected: 40, counted: 37 })]);
-assert.equal(acc[0].confidence, 0.46);                      // 0.925 accuracy, shrunk by 1/2 for one count
+/* ---- Count accuracy (facts only, biggest average miss first) and dead stock ---- */
+const acc = I.countAccuracy([mv('c', at('2026-09-01'), -3, 'count', { expected: 40, counted: 37 }),
+  mv('d', at('2026-09-01'), -1, 'count', { expected: 5, counted: 4 }), mv('d', at('2026-09-02'), -9, 'count', { expected: 20, counted: 11 })]);
+assert.deepEqual(acc.map((r) => [r.productId, r.counts, r.meanAbsVariance]), [['d', 2, 5], ['c', 1, 3]]);
+assert.deepEqual(acc[1].history[0], { ts: '2026-09-01T02:00:00.000Z', expected: 40, counted: 37, variance: -3, variancePct: -7.5, staff: '' });
+assert.ok(acc.every((r) => !('confidence' in r)));
 const dead = I.deadStock([{ ...cement, stock: 3 }], [mv('c', at('2026-05-01'), -1, 'sale')], now, { days: 90 });
 assert.equal(dead.totalPesos, 300);
 
@@ -187,6 +145,8 @@ assert.equal(so2.rows[0].intervals[0].end, '2026-09-03T16:00:00.000Z');   // 202
 const all = I.buildInsights({ products: [cement], movements: log, orders, suppliers: [{ id: 's1' }] }, { now });
 assert.deepEqual(JSON.parse(JSON.stringify(all)), all);
 assert.equal(all.apiVersion, 1);
+// The reorder forecast was removed 2026-09-27; nothing guessed goes to an AI reader.
+assert.ok(!['demand', 'reorder', 'reorderBySupplier'].some((k) => k in all.sections || k in all.fieldNotes));
 assert.ok(Object.keys(all.sections).every((k) => k in all.fieldNotes), 'every section is documented for an AI reader');
 
 // HWPOS_AI.snapshot() names the movement log stockMovements; a raw dump uses the storage key.

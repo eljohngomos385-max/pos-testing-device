@@ -125,16 +125,15 @@
           ? opts.map(([k, n]) => `<button role="menuitemcheckbox" data-v="${escapeHtml(k)}" aria-checked="${v[f].includes(k)}">${escapeHtml(n)}</button>`).join('')
           : '<div class="none">Nothing in this range</div>'}${v[f].length ? '<hr><button class="clear" data-v="">Show all</button>' : ''}</div>`;
     };
-    const sortTh = (lbl, key, cls = '') => { const on = v.sort.key === key ? (v.sort.dir === 'asc' ? '↑' : '↓') : '';
-      return `<th class="${cls}"><button class="sort" data-act="sort" data-key="${key}"${on ? ` data-on="${on}"` : ''}>${lbl}</button></th>`; };
+    // Click to sort; no arrow on the header (owner, 2026-09-26).
+    const sortTh = (lbl, key, cls = '') => `<th class="${cls}"><button class="sort" data-act="sort" data-key="${key}">${lbl}</button></th>`;
     const table = shown.length ? `<div class="flush"><table class="tx">
       <tr><th>Receipt</th>${sortTh('Time', 'ts')}<th class="opt">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th>${sortTh('Total', 'total', 'n')}</tr>
       ${shown.map(o => `<tr data-receipt="${escapeHtml(o.id)}" class="${saleSign(o) ? '' : 'dim'}">
         <td class="id">#${escapeHtml(o.number || o.id)}</td><td class="t">${escapeHtml(txTime(o.ts))}</td>
         <td class="opt cust">${o.customer?.name ? escapeHtml(o.customer.name) : '<span class="mut">—</span>'}</td>
         <td class="opt">${escapeHtml(o.cashier || '—')}</td><td class="opt">${escapeHtml(orderFulfilLabel(o))}</td>
-        <td><span class="pill ${PAY_TONE[o.paymentKind] || ''}">${escapeHtml(orderPaymentLabel(o))}</span></td>
-        <td class="opt"><span class="pill ${{ completed: 'up', voided: 'down', return: 'warn', refunded: 'warn' }[o.status || 'completed'] || ''}">${statusName(o)}</span></td>
+        ${txPayStatus(o)}
         <td class="n amt">${peso(txTotal(o))}</td></tr>`).join('')}
     </table></div>
     ${pages > 1 ? `<div class="pager"><span>${page * TX_PAGE + 1}–${page * TX_PAGE + shown.length} of ${L.length.toLocaleString()}</span>

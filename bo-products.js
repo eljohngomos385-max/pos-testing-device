@@ -24,7 +24,9 @@
   // ?level= is a comma list; ?low=1 is the old checkbox, read as level=low but never written.
   const levelsOf = (p) => (p.level ? p.level.split(',').filter(Boolean) : p.low === '1' ? ['low'] : []);
   const worstLevel = (keys) => keys.reduce((a, b) => (LEVEL_RANK[b] < LEVEL_RANK[a] ? b : a), 'ok');
-  const levelPill = (key) => `<span class="status-pill ${STOCK_LEVEL[key][0]}">${STOCK_LEVEL[key][1]}</span>`;
+  // In stock is the normal state: plain muted words. A pill is for Out, Low and Dead only.
+  const levelPill = (key) => (key === 'ok' ? `<span class="muted">${STOCK_LEVEL.ok[1]}</span>`
+    : `<span class="status-pill ${STOCK_LEVEL[key][0]}">${STOCK_LEVEL[key][1]}</span>`);
 
   // Read the movement log once per paint: the sale clock (last sold, dead) and sold in 30 days.
   function stockFacts() {
@@ -114,23 +116,29 @@
      is where stock levels are answered. */
   const STORAGE_COLS = 'hwpos.bo.pdCols';
   const COLUMNS = [
-    ['img', 'Image'], ['sku', 'SKU'], ['cat', 'Category'], ['supplier', 'Supplier'],
+    ['sku', 'SKU'], ['cat', 'Category'], ['supplier', 'Supplier'],
     ['cost', 'Cost'], ['price', 'Price'], ['margin', 'Margin'], ['stock', 'Stock'],
     ['status', 'Status'],
   ];
-  const DEFAULT_COLS = COLUMNS.map(([k]) => k).filter((k) => k !== 'status');
+  // Stock is off too (2026-09-26): the Stock view answers it, and with it on the default
+  // set ran past a 1440px card.
+  const DEFAULT_COLS = COLUMNS.map(([k]) => k).filter((k) => k !== 'status' && k !== 'stock');
 
-  function loadCols() {
-    const raw = readJsonStorage(STORAGE_COLS, null);
-    return new Set(Array.isArray(raw) ? raw.filter((k) => COLUMNS.some(([c]) => c === k)) : DEFAULT_COLS);
-  }
-  const saveCols = (set) => storageSet(STORAGE_COLS, JSON.stringify(COLUMNS.map(([k]) => k).filter((k) => set.has(k))));
+  const loadCols = () => loadColPrefs(STORAGE_COLS, COLUMNS, DEFAULT_COLS);   // backoffice.js, shared with Suppliers
+  const saveCols = (set) => saveColPrefs(STORAGE_COLS, COLUMNS, set);
+
+  // Pictures are the store's call, not the person's (owner, 2026-09-26): off for a hardware
+  // shop's 500 SKUs, on for a cafe's menu. So it rides the synced settings, not pdCols. Its switch is the
+  // first row of the Columns menu, over a hairline (owner, 2026-09-26: a button of its own was too loud).
+  const showPics = () => !!state.settings.productPictures;
 
   // One class per hidden column on the table; the cells carry data-col and CSS does the rest.
   function applyCols() {
     const on = loadCols();
     const t = root().querySelector('#pdTable');
-    if (t) COLUMNS.forEach(([k]) => t.classList.toggle('hide-' + k, !on.has(k)));
+    if (!t) return;
+    COLUMNS.forEach(([k]) => t.classList.toggle('hide-' + k, !on.has(k)));
+    t.classList.toggle('pics', showPics());
   }
 
   const statusPill = (p, facts) =>
@@ -180,13 +188,8 @@
         </select>
         <span class="pd-level" id="pdLevel"></span>
         <label class="bo-check"><input type="checkbox" data-filter="archived"> Show archived</label>
-        ${stock ? '' : `<details class="pd-cols">
-          <summary class="secondary-btn small">Columns</summary>
-          <div class="pd-cols-menu check-menu">
-            ${COLUMNS.map(([k, label]) =>
-              `<label class="bo-check"><input type="checkbox" data-col-toggle="${k}"> ${label}</label>`).join('')}
-          </div>
-        </details>`}
+        ${stock ? '' : colsMenu(COLUMNS, loadCols(),
+          '<label class="bo-check" title="A store setting: every terminal follows it."><input type="checkbox" data-pics> Show pictures</label><hr>')}
       </div>
       <div id="pdImport"></div>
       <section class="bo-card blk-table pd-list" data-pd-view="${stock ? 'stock' : 'catalog'}">
@@ -228,6 +231,8 @@
     if (open) lvl.querySelector('.ms-pick').open = true;
     const on = loadCols();
     r.querySelectorAll('[data-col-toggle]').forEach((b) => { b.checked = on.has(b.dataset.colToggle); });
+    const pics = r.querySelector('[data-pics]');
+    if (pics) pics.checked = showPics();
   }
 
   // The URL is the filter. One predicate, shared by the table and by Export. withLevel false
@@ -256,7 +261,13 @@
   const rangeText = (vals, fmt) =>
     (Math.min(...vals) === Math.max(...vals)
       ? fmt(vals[0])
-      : `${fmt(Math.min(...vals))} &ndash; ${fmt(Math.max(...vals))}`);
+      : `${fmt(Math.min(...vals))}&ndash;${fmt(Math.max(...vals))}`);
+  // A family's margin in whole percents with one sign, "30–37%": the spread is the point,
+  // the decimals only pushed the column off the card.
+  const marginRange = (vals) => {
+    const lo = Math.round(Math.min(...vals)), hi = Math.round(Math.max(...vals));
+    return lo === hi ? `${lo}%` : `${lo}&ndash;${hi}%`;
+  };
 
   // Stock view KPIs. Out / Low / Dead toggle their key in ?level=; Cash in stock clears it.
   function paintKpis(facts) {
@@ -273,8 +284,8 @@
     // kpi() owns the tile markup; this only stamps the click target and the selected state.
     const tile = (key, html) => html.replace('class="bo-card blk-kpi"',
       `class="bo-card blk-kpi pd-kpi${key && levels.includes(key) ? ' on' : ''}" data-level="${key}" role="button" tabindex="0"`);
-    el.innerHTML = tile('out', kpi('Out of stock', String(n.out), 'nothing on hand', n.out ? 'down' : 'flat'))
-      + tile('low', kpi('Low', String(n.low), 'at or below danger level', n.low ? 'down' : 'flat'))
+    el.innerHTML = tile('out', kpi('Out of stock', String(n.out), 'nothing on hand'))
+      + tile('low', kpi('Low', String(n.low), 'at or below danger level'))
       + tile('dead', kpi('Dead', String(n.dead), `no sale in ${DEAD_DAYS} days`))
       + tile('', kpi('Cash in stock', pesoShort(cash), 'at cost'));
   }
@@ -354,7 +365,7 @@
     const c = facts.clock.get(p.id);
     return `
       <tr class="pd-row${p.archived ? ' pd-arch' : ''}" data-id="${escapeHtml(p.id)}">
-        ${pickBox(p.id)}${stockCells(`<strong>${escapeHtml(p.name)}</strong>`,
+        ${pickBox(p.id)}${stockCells(escapeHtml(p.name),
           `${p.stock} ${escapeHtml(p.unit)}`, facts.sold.get(p.id) || 0, stockValue(p),
           lastSold(c && c.lastSale, facts.now), facts.level(p),
           `<button class="secondary-btn small" data-adjust-open="${escapeHtml(p.id)}">Adjust</button>`)}
@@ -365,8 +376,8 @@
     const sales = members.map((m) => (facts.clock.get(m.id) || {}).lastSale).filter((t) => t != null);
     return `
       <tr class="pd-row${members.every((m) => m.archived) ? ' pd-arch' : ''}" data-id="${escapeHtml(g.id)}">
-        ${pickBox(g.id)}${stockCells(`<strong>${escapeHtml(g.name)}</strong>
-            <span class="pd-vcount">${members.length} variants</span>`,
+        ${pickBox(g.id)}${stockCells(`${escapeHtml(g.name)}
+            <span class="pd-vcount">${members.length} variant${members.length === 1 ? '' : 's'}</span>`,
           `${round2(members.reduce((n, m) => n + num(m.stock), 0))} ${escapeHtml(members[0].unit)}`,
           members.reduce((n, m) => n + (facts.sold.get(m.id) || 0), 0),
           members.reduce((n, m) => n + stockValue(m), 0),
@@ -381,14 +392,14 @@
       <tr class="pd-row${p.archived ? ' pd-arch' : ''}" data-id="${escapeHtml(p.id)}">
         ${pickBox(p.id)}
         <td class="pd-img-col" data-col="img">${thumb(p.imageUrl)}</td>
-        <td><strong>${escapeHtml(p.name)}</strong></td>
+        <td>${escapeHtml(p.name)}</td>
         <td class="mono" data-col="sku">${escapeHtml(p.sku || '-')}</td>
         <td data-col="cat">${escapeHtml(folderName(p.folder))}</td>
         <td data-col="supplier">${escapeHtml(supplierMap.get(p.supplierId) || '-')}${
           p.altSupplierIds.length ? `<span class="muted"> +${p.altSupplierIds.length}</span>` : ''}</td>
         <td class="num" data-col="cost">${peso(p.cost)}</td>
         <td class="num" data-col="price"><strong>${peso(p.price)}</strong></td>
-        <td class="num" data-col="margin">${markup.toFixed(1)}%</td>
+        <td class="num" data-col="margin">${marginRange([markup])}</td>
         <td class="num" data-col="stock">${p.stock} ${escapeHtml(p.unit)}</td>
         <td data-col="status">${statusPill(p, facts)}</td>
         ${editBtn}
@@ -406,15 +417,15 @@
       <tr class="pd-row${members.every((m) => m.archived) ? ' pd-arch' : ''}" data-id="${escapeHtml(g.id)}">
         ${pickBox(g.id)}
         <td class="pd-img-col" data-col="img">${thumb(imageFor(members[0], [g]))}</td>
-        <td><strong>${escapeHtml(g.name)}</strong>
-            <span class="pd-vcount">${members.length} variants</span></td>
+        <td>${escapeHtml(g.name)}
+            <span class="pd-vcount">${members.length} variant${members.length === 1 ? '' : 's'}</span></td>
         <td class="mono" data-col="sku">&mdash;</td>
         <td data-col="cat">${escapeHtml(folderName(g.folder || members[0].folder))}</td>
         <td data-col="supplier">${sups.size > 1 ? 'Mixed' : escapeHtml(supplierMap.get(members[0].supplierId) || '-')}${
           alts.size ? `<span class="muted"> +${alts.size}</span>` : ''}</td>
         <td class="num" data-col="cost">${rangeText(members.map((m) => m.cost), peso)}</td>
         <td class="num" data-col="price"><strong>${rangeText(members.map((m) => m.price), peso)}</strong></td>
-        <td class="num" data-col="margin">${rangeText(members.map((m) => marginSummary(m.cost, m.price).markup), (v) => v.toFixed(1) + '%')}</td>
+        <td class="num" data-col="margin">${marginRange(members.map((m) => marginSummary(m.cost, m.price).markup))}</td>
         <td class="num" data-col="stock">${stock} ${escapeHtml(members[0].unit)}</td>
         <td data-col="status">${status}</td>
         ${editBtn}
@@ -1195,6 +1206,12 @@ It stops showing in the POS. Old receipts still resolve, and you can restore it 
       if (el.checked) on.add(el.dataset.colToggle); else on.delete(el.dataset.colToggle);
       saveCols(on);
       applyCols();                 // CSS hides the cells; no need to rebuild the rows
+      return;
+    }
+    if (el.dataset.pics !== undefined) {
+      state.settings = { ...state.settings, productPictures: el.checked };
+      HWPOS_STORE.settings.set({ productPictures: el.checked });
+      applyCols();
       return;
     }
     if (el.dataset.img) {

@@ -99,7 +99,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .main { width: 100%; height: 100%; min-width: 0; }
 
 /* Backdrop appears when the overlay sidebar is open */
-#app::before {
+#app:where(:not(.bo-app))::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -127,8 +127,10 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 /* ============================================================
    SIDEBAR — overlay, sits above the main content
+   The till's own: scoped to :where(#app:not(.bo-app)) (the backdrop above too), so the back office's
+   .bo-sidebar starts clean instead of undoing these. :where() keeps the till's specificity as it was.
    ============================================================ */
-.sidebar {
+:where(#app:not(.bo-app)) .sidebar {
   position: fixed;
   top: 0;
   left: 0;
@@ -147,20 +149,20 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   z-index: 95;
   box-shadow: none;
 }
-.sidebar > * {
+:where(#app:not(.bo-app)) .sidebar > * {
   white-space: nowrap;
 }
 #app.sidebar-collapsed .sidebar {
   transform: translateX(-100%);
   box-shadow: none;
 }
-.side-head {
+:where(#app:not(.bo-app)) .side-head {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 4px 8px 18px;
 }
-.brand-mini {
+:where(#app:not(.bo-app)) .brand-mini {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -169,18 +171,18 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   letter-spacing: -0.2px;
   color: var(--ink);
 }
-.brand-dot {
+:where(#app:not(.bo-app)) .brand-dot {
   width: 20px; height: 20px;
   border-radius: 50%;
   background: var(--ink);
 }
 
-.side-nav {
+:where(#app:not(.bo-app)) .side-nav {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-.side-link {
+:where(#app:not(.bo-app)) .side-link {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -195,22 +197,22 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   text-align: left;
   transition: background .12s, color .12s;
 }
-.side-link svg { color: var(--ink-tertiary); flex-shrink: 0; width: 20px; height: 20px; }
-.side-link:hover { background: rgba(255,255,255,0.05); color: var(--ink); }
-.side-link:hover svg { color: var(--ink-secondary); }
-.side-link.active {
+:where(#app:not(.bo-app)) .side-link svg { color: var(--ink-tertiary); flex-shrink: 0; width: 20px; height: 20px; }
+:where(#app:not(.bo-app)) .side-link:hover { background: rgba(255,255,255,0.05); color: var(--ink); }
+:where(#app:not(.bo-app)) .side-link:hover svg { color: var(--ink-secondary); }
+:where(#app:not(.bo-app)) .side-link.active {
   background: rgba(255,255,255,0.08);
   color: var(--ink);
   font-weight: 590;
 }
-.side-link.active svg { color: var(--ink); }
+:where(#app:not(.bo-app)) .side-link.active svg { color: var(--ink); }
 
-.side-footer {
+:where(#app:not(.bo-app)) .side-footer {
   margin-top: auto;
   padding-top: 24px;
   border-top: 1px solid var(--line);
 }
-.user-row {
+:where(#app:not(.bo-app)) .user-row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -219,7 +221,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   cursor: pointer;
   transition: background .12s;
 }
-.user-row:hover { background: rgba(255,255,255,0.05); }
+:where(#app:not(.bo-app)) .user-row:hover { background: rgba(255,255,255,0.05); }
 .user-avatar {
   width: 32px; height: 32px;
   border-radius: 50%;
@@ -2439,15 +2441,17 @@ select.text-input {
   .catalog { padding: 16px 22px; }
   .page-pad { padding: 16px 22px 32px; }
 }
+/* The POS till only: the back office is #app.bo-app too, and its sidebar keeps its labels at any width.
+   :where() keeps each rule's specificity what it was, so the till's cascade is unchanged. */
 @media (max-width: 920px) {
-  #app { grid-template-columns: 64px 1fr; }
-  .sidebar { padding: 12px 8px; align-items: center; }
-  .brand-mini span, .side-link span, .user-meta { display: none; }
-  .side-link { justify-content: center; padding: 0; width: 40px; height: 40px; }
-  .user-row { padding: 0; }
-  .content-row { grid-template-columns: minmax(0, 1fr) 320px; }
-  .form-grid { grid-template-columns: 1fr; }
-  .checkout-content-row { grid-template-columns: minmax(0, 1fr) 340px; }
+  #app:not(.bo-app) { grid-template-columns: 64px 1fr; }
+  :where(#app:not(.bo-app)) .sidebar { padding: 12px 8px; align-items: center; }
+  :where(#app:not(.bo-app)) .brand-mini span, :where(#app:not(.bo-app)) .side-link span, :where(#app:not(.bo-app)) .user-meta { display: none; }
+  :where(#app:not(.bo-app)) .side-link { justify-content: center; padding: 0; width: 40px; height: 40px; }
+  :where(#app:not(.bo-app)) .user-row { padding: 0; }
+  :where(#app:not(.bo-app)) .content-row { grid-template-columns: minmax(0, 1fr) 320px; }
+  :where(#app:not(.bo-app)) .form-grid { grid-template-columns: 1fr; }
+  :where(#app:not(.bo-app)) .checkout-content-row { grid-template-columns: minmax(0, 1fr) 340px; }
 }
 @media (max-width: 720px) {
   .content-row { grid-template-columns: 1fr; gap: 0; padding: 0; }
@@ -4576,7 +4580,6 @@ body.bo-light .bo-app {
   min-height: 100vh;
   background: var(--po-bg);
 }
-body.bo-light .bo-app.sidebar-collapsed { grid-template-columns: 0 1fr; }
 
 /* Sidebar */
 body.bo-light .bo-sidebar {
@@ -4590,13 +4593,8 @@ body.bo-light .bo-sidebar {
   position: sticky;
   top: 0;
   overflow: hidden;
+  white-space: nowrap;
   transition: transform 0.18s ease, width 0.18s ease, opacity 0.18s ease;
-}
-body.bo-light .bo-app.sidebar-collapsed .bo-sidebar {
-  transform: translateX(-240px);
-  width: 0;
-  opacity: 0;
-  pointer-events: none;
 }
 body.bo-light .bo-sidebar .side-head {
   padding: 18px 18px 14px;
@@ -4623,6 +4621,7 @@ body.bo-light .bo-sidebar .side-nav {
   padding: 12px 10px;
   overflow-y: auto;
 }
+body.bo-light .bo-sidebar .side-nav[hidden] { display: none; }   /* Settings swaps one nav for the other */
 body.bo-light .bo-sidebar .side-link {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 10px;
@@ -4954,10 +4953,13 @@ body.bo-light .toast {
     z-index: 50;
     box-shadow: 0 8px 30px rgba(0,0,0,0.12);
   }
-  body.bo-light .bo-app:not(.sidebar-collapsed)::after {
+  /* The overlay: shut unless .side-open (in memory, set by the hamburger, dropped on every crossing of
+     1024px -- see the state model in docs/backoffice.md). Nothing at 1024+ reads it. */
+  body.bo-light .bo-app:not(.side-open) .bo-sidebar { transform: translateX(-100%); box-shadow: none; }
+  body.bo-light .bo-app.side-open::after {
     content: '';
     position: fixed; inset: 0;
-    background: rgba(0,0,0,0.35);
+    background: rgba(0,0,0,0.58);   /* the two .35 backdrops it used to stack (this + the till's #app::before), as one */
     z-index: 40;
   }
   body.bo-light .view { padding: 16px; }
@@ -4981,11 +4983,16 @@ body.bo-light .toast {
 /* `html` is never a descendant of `body`, so the old `body.bo-light html` matched nothing and the
    POS shell rule (`html, body { height: 100dvh; overflow: hidden }`) still clipped the back office
    at the viewport -- the page could not scroll at all, and anything below the fold was unreachable.
-   `<html class="bo">` in backoffice.html is what this hooks onto. */
-html.bo, html.bo body { height: auto; min-height: 100dvh; overflow: auto; }
+   `<html class="bo">` in backoffice.html is what this hooks onto.
+   Locked to the screen like an installed app (owner, 2026-09-26): html and body are exactly the
+   visible viewport and never scroll or bounce; .bo-main is the one scroller (SIDEBAR + SHEET).
+   100dvh, not 100vh: iPad Safari's 100vh is the viewport with its toolbar hidden, taller than what
+   shows, so the sidebar's account row and the end of the page sat under the toolbar. */
+html.bo, html.bo body { height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; }
 /* Transparent so the body's --po-bg propagates to the canvas; the POS `--bg` #121212 was still
-   painting html, which showed as a black band under a page taller than the viewport. */
-html.bo { background: none; }
+   painting html, which showed as a black band under a page taller than the viewport. Light, so a
+   dark-mode iPad never paints the canvas dark either. */
+html.bo { background: none; color-scheme: light; }
 /* `max-height` matters as much as `height` here: the POS shell's `#app { max-height: 100dvh }` is an
    id selector, so leaving it out capped the back office shell at the viewport and killed page scroll. */
 body.bo-light #app { display: block; height: auto; max-height: none; min-height: 100vh; overflow: visible; }
@@ -4995,7 +5002,6 @@ body.bo-light .bo-app {
   background: var(--po-bg);
   min-height: 100vh;
 }
-body.bo-light .bo-app.sidebar-collapsed { grid-template-columns: none !important; }
 
 /* The shared .sidebar is position:fixed; let it stay that way and just
    restyle it. Override the fixed-position layout set in the existing
@@ -5016,37 +5022,15 @@ body.bo-light .bo-sidebar {
   opacity: 1;
   pointer-events: auto;
 }
-body.bo-light .bo-app.sidebar-collapsed .bo-sidebar {
-  transform: translateX(-100%);
-  width: var(--sidebar-w);
-  opacity: 1;
-  box-shadow: none;
-}
-
-/* Soft white-mode backdrop (instead of the dark POS backdrop) */
-body.bo-light #app::before { background: rgba(0,0,0,0.32); }
 
 /* On desktop: sidebar is a permanent rail, main shifts right */
 @media (min-width: 1024px) {
-  body.bo-light #app::before { display: none; }
   body.bo-light .bo-main {
     margin-left: var(--sidebar-w);
     transition: margin-left .28s cubic-bezier(.4, 0, .2, 1);
     min-height: 100vh;
   }
-  body.bo-light .bo-app.sidebar-collapsed .bo-main { margin-left: 0; }
 }
-
-/* Our hamburger button (different ID, must always be visible) */
-body.bo-light #boSidebarToggle {
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-  background: var(--po-surface);
-  border: 1px solid var(--po-line);
-  box-shadow: var(--po-shadow-button);
-}
-body.bo-light #boSidebarToggle:hover { background: var(--po-surface-hover); }
 
 /* --- Topbar polish --- */
 body.bo-light .bo-topbar {
@@ -5389,8 +5373,6 @@ body.bo-light .toast.show { opacity: 1; transform: translateX(-50%) translateY(0
 /* --- Mobile cleanups for things missed above --- */
 @media (max-width: 720px) {
   body.bo-light .view { padding: 16px 14px 32px; }
-  body.bo-light .view-head { flex-direction: column; align-items: flex-start; }
-  body.bo-light .view-actions { margin-left: 0; width: 100%; flex-wrap: wrap; }
   body.bo-light .setting-row { flex-direction: column; align-items: flex-start; gap: 8px; }
   body.bo-light .setting-row .text-input { width: 100%; }
   body.bo-light .mini-row { grid-template-columns: 80px 1fr auto; }
@@ -5621,20 +5603,6 @@ body.bo-light .bo-topbar {
   box-shadow: none;
 }
 body.bo-light .bo-topbar-left { display: flex; align-items: center; gap: 10px; flex: 1 1 0; min-width: 0; }
-body.bo-light .bo-hamburger {
-  width: 34px; height: 34px;
-  display: none;
-  place-items: center;
-  background: transparent !important;
-  border: none !important;
-  border-radius: 8px;
-  color: rgba(255,255,255,0.85) !important;
-  box-shadow: none !important;
-  cursor: pointer;
-  opacity: 1 !important; visibility: visible !important; pointer-events: auto !important;
-}
-body.bo-light .bo-hamburger:hover { background: rgba(255,255,255,0.12) !important; color: #fff !important; }
-@media (max-width: 1023px) { body.bo-light .bo-hamburger { display: grid; } }
 body.bo-light .bo-brand { display: flex; align-items: center; gap: 9px; }
 body.bo-light .bo-brand-mark {
   width: 26px; height: 26px; border-radius: 6px;
@@ -5770,7 +5738,6 @@ body.bo-light .bo-sidebar {
   transform: translateX(0);
   transition: transform .24s cubic-bezier(.4,0,.2,1);
 }
-body.bo-light .bo-app.sidebar-collapsed .bo-sidebar { transform: translateX(-100%); }
 body.bo-light .bo-sidebar .side-head { display: none; }
 body.bo-light .bo-sidebar .side-nav {
   flex: 1; display: flex; flex-direction: column; gap: 1px;
@@ -5843,8 +5810,6 @@ body.bo-light .main.bo-main {
 }
 @media (min-width: 1024px) {
   body.bo-light .main.bo-main { width: auto; margin-left: var(--po-sidebar-w); transition: margin-left .24s cubic-bezier(.4,0,.2,1); }
-  body.bo-light .bo-app.sidebar-collapsed .main.bo-main { margin-left: 0; }
-  body.bo-light #app::before { display: none; }
 }
 
 /* ---- Mobile-only menu toggle (replaces removed topbar hamburger) ---- */
@@ -6150,8 +6115,7 @@ body.bo-light .toast {
 }
 body.bo-light .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* ---- Mobile backdrop + responsive ---- */
-body.bo-light #app::before { background: rgba(0,0,0,0.35); }
+/* ---- Mobile responsive ---- */
 @media (max-width: 1023px) {
   body.bo-light .bo-sidebar { box-shadow: var(--po-shadow-pop); }
   body.bo-light .bo-search { max-width: none; }
@@ -6165,8 +6129,6 @@ body.bo-light #app::before { background: rgba(0,0,0,0.35); }
 @media (max-width: 600px) {
   body.bo-light .kpi-row { grid-template-columns: 1fr; }
   body.bo-light .bo-kbd { display: none; }
-  body.bo-light .view-head { flex-direction: column; align-items: flex-start; }
-  body.bo-light .view-actions { margin-left: 0; width: 100%; flex-wrap: wrap; }
   body.bo-light .setting-row { flex-direction: column; align-items: flex-start; gap: 8px; }
   body.bo-light .setting-row .text-input { width: 100%; }
   body.bo-light .mini-row { grid-template-columns: 84px 1fr auto; }
@@ -6429,7 +6391,11 @@ body.bo-light .bo-hamburger {
 }
 @media (max-width: 1023px) {
   body.bo-light .bo-hamburger { display: flex; }
-  body.bo-light .view-head { padding-left: 46px; }
+  /* The hamburger clears the title only: a head's wrapped second line starts at the page gutter, like the cards
+     under it, and Sales keeps its picker on one spot in Summary and Items. The item page's back link and name
+     are two lines, both in its reach. */
+  body.bo-light :is(.view-head, .bo-main .c-main > .bar) > :first-child { margin-left: 46px; }
+  body.bo-light .item-head { padding-left: 46px; }
 }
 
 /* --- Stat bar: revenue / transactions / gross profit in one long inset --- */
@@ -6774,7 +6740,7 @@ body.bo-light .cust-facts {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px 20px;
 }
-body.bo-light .cust-facts span {
+body.bo-light .cust-facts > div > span {   /* the label only: a pill in the value stays inline */
   display: block; font-size: 11.5px; color: var(--po-ink-tertiary); margin-bottom: 2px;
 }
 body.bo-light .cust-facts b { font-size: 13px; font-weight: 600; color: var(--po-ink); }
@@ -7215,14 +7181,24 @@ body.bo-light {
 body.bo-light .bo-app { background: var(--po-sidebar-bg); }
 body.bo-light .bo-sidebar { background: none; border-right: 0; }
 @media (max-width: 1023px) { body.bo-light .bo-sidebar { background: var(--po-sidebar-bg); } }
-/* The sheet scrolls, not the document, so its edge stays on screen (the lab's .page). A straight
-   edge, no rounded corners (owner 2026-09-26). Below 1024px the sidebar overlays and the sheet is flat. */
+/* The sheet scrolls, not the document, so its edge stays on screen (the lab's .page). It is the one
+   scroller at every width, and it and the sidebar are exactly the visible viewport tall (dvh; see
+   html.bo): the account row and the page's last row can't sit under Safari's toolbar. The older
+   min-height: 100vh rules above would out-size a dvh height, hence the resets. */
+body.bo-light #app, body.bo-light .bo-app { min-height: 0; }
+body.bo-light .bo-sidebar { height: calc(100vh - var(--po-topbar-h)); height: calc(100dvh - var(--po-topbar-h)); }
+body.bo-light .bo-sidebar .side-nav { overscroll-behavior: contain; }
+body.bo-light .main.bo-main {
+  height: 100vh; height: 100dvh; min-height: 0;
+  overflow-y: auto; overscroll-behavior: contain;
+}
+/* Paper has no viewport: unlock so Ctrl+P prints the whole page, not the one screen .bo-main shows. */
+@media print {
+  html.bo, html.bo body, body.bo-light .main.bo-main { height: auto; overflow: visible; }
+}
+/* A straight edge, no rounded corners (owner 2026-09-26). Below 1024px the sidebar overlays and the sheet is flat. */
 @media (min-width: 1024px) {
-  body.bo-light .main.bo-main {
-    height: 100vh; overflow-y: auto;
-    box-shadow: var(--po-sheet-shadow);
-  }
-  body.bo-light .bo-app.sidebar-collapsed .main.bo-main { box-shadow: none; }
+  body.bo-light .main.bo-main { box-shadow: var(--po-sheet-shadow); }
 }
 /* Store switcher: badge, name, ⌄ -- it hugs its name. Both badges carry a real icon. */
 body.bo-light .bo-sidebar > .side-switch-wrap { padding: 20px 8px 0; }   /* 20px = the pages' top padding: switcher and page titles share one 36px centre line */
@@ -7268,7 +7244,7 @@ body.bo-light .bo-sidebar .side-switch.acct { height: 30px; padding: 0 8px 0 10p
 body.bo-light .bo-sidebar .acct .ss-name { font-size: 14px; font-weight: 400; color: var(--po-sidebar-ink); }
 /* Fold to icons (the lab's .fold): the panel icon right of the store switcher folds the sidebar
    to a 60px rail on desktop -- .side-rail on .bo-app, remembered per device in HWPOS_STORE.ui
-   `sidebarRail`. Not .sidebar-collapsed, which is the <1024px overlay being shut. On the rail
+   `sidebarRail`. Not .side-open, which is the <1024px overlay being open. On the rail
    trees stay shut and each link's name is its title.
    It folds in one motion: nothing re-lays out. The edge closes over the names (clipped, fading),
    the icons nudge 3px to centre, trees slide shut, and the button rides the edge to sit over the
@@ -7284,7 +7260,7 @@ body.bo-light .bo-sidebar .side-rail-btn {
 body.bo-light .bo-sidebar .side-rail-btn:hover { background: var(--po-sidebar-hover); color: var(--po-sidebar-ink-hi); }
 @media (max-width: 1023px) {
   body.bo-light .bo-sidebar .side-rail-btn { display: none; }
-  body.bo-light .bo-sidebar > .side-switch-wrap { padding-right: 8px; }
+  body.bo-light .bo-sidebar > .side-switch-wrap { padding-right: 8px; padding-left: 54px; }   /* clear of the fixed hamburger (12px + 38px) */
 }
 @media (min-width: 1024px) {
   body.bo-light .bo-sidebar { transition: transform .24s cubic-bezier(.4,0,.2,1), width .24s cubic-bezier(.4,0,.2,1); }
@@ -7302,6 +7278,13 @@ body.bo-light .bo-sidebar .side-rail-btn:hover { background: var(--po-sidebar-ho
   body.bo-light .bo-app.side-rail .bo-sidebar > .side-switch-wrap:is(:hover, :focus-within) .ss-mark { opacity: 0; }
   /* With its tree hidden, a page lit through a sub-link (Stock history, Purchase orders) fills its parent's icon. */
   body.bo-light .bo-app.side-rail .bo-sidebar .side-link.active:not(.folded):has(+ .side-sub .side-sublink.active) { background: var(--po-sidebar-active); --knock: var(--po-sidebar-active); }
+}
+/* Settings (owner, 2026-09-27): ← Back takes the store switcher's slot; the footer's Settings row goes. paint() sets hidden. */
+body.bo-light .bo-sidebar :is(.side-link, .side-switch)[hidden] { display: none; }
+body.bo-light .bo-sidebar [data-set-back] { height: 32px; min-width: 0; }
+@media (min-width: 1024px) {
+  body.bo-light .bo-sidebar [data-set-back] > svg { transition: opacity .18s; }
+  body.bo-light .bo-app.side-rail .bo-sidebar > .side-switch-wrap:is(:hover, :focus-within) [data-set-back] > svg { opacity: 0; }
 }
 
 /* DROPDOWN MOTION (v31): every back office dropdown fades and drops 4px in and out. The menus
@@ -7760,14 +7743,14 @@ body.bo-light .stat-grid.three-up { grid-template-columns: repeat(3, minmax(0, 1
 /* ============ BACK OFFICE — PAGE HEAD (v34) ============
    Every page's title sits in one slot, and these two tokens are the whole coordinate
    system: change them here and every page moves together. The head is one line, exactly
-   as tall as a control -- a fixed height, so a 34px search box overhangs it by a pixel
-   instead of pushing the title down -- and a page with buttons and a page without put
-   their title at the same y. Nothing goes UNDER a title -- no description line. A back
+   as tall as a control -- a min-height, and it wraps (below) when the line runs out --
+   and a page with buttons and a page without put their title at the same y. Nothing goes UNDER a title -- no description line. A back
    link sits before it and a detail page's one fact (SKU, status) sits after it, same line. */
 body.bo-light { --po-head-h: 32px; --po-head-gap: 16px; }
-body.bo-light .view-head { height: var(--po-head-h); margin-bottom: var(--po-head-gap); align-items: center; }
-body.bo-light .view-title-wrap { flex-direction: row; align-items: center; gap: 8px; min-width: 0; }
+body.bo-light .view-head { min-height: var(--po-head-h); margin-bottom: var(--po-head-gap); align-items: center; flex-direction: row; flex-wrap: wrap; row-gap: 8px; }
+body.bo-light .view-title-wrap { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; margin-right: auto; }
 body.bo-light .view-title-wrap [hidden] { display: none; }
-body.bo-light .view-head h1 { white-space: nowrap; }
-/* Stacked on a phone, the head has to grow to hold its wrapped controls. */
-@media (max-width: 600px) { body.bo-light .view-head { height: auto; min-height: var(--po-head-h); } }
+body.bo-light .view-head h1, body.bo-light .view-title-wrap > .link-btn { white-space: nowrap; }
+/* Too narrow for one line, the head wraps like the calm pages' .bar, at any width and sidebar open or not:
+   title on the left, the actions on the next line from the left edge, never stacked and centred. */
+body.bo-light .view-actions { margin-left: 0; flex-wrap: wrap; }

@@ -166,14 +166,14 @@ function showToast(msg) {
 // paginate() / pageNumbers() / PAGE_ROWS live in bo-model.js so `node bo-model.js` can
 // check them; this is only the markup they get drawn as.
 // Nothing to page through, nothing to draw — one page of rows needs no chrome.
-function pagerHtml(p) {
+function pagerHtml(p, key = 'page') {
   if (p.pages < 2) return '';
   const btn = (label, page, cls, off) =>
     `<button class="bo-page-btn${cls}" data-page="${page}"${off ? ' disabled' : ''}>${label}</button>`;
   const nums = pageNumbers(p.page, p.pages).map((n) =>
     (typeof n === 'number' ? btn(n, n, n === p.page ? ' on' : '', false)
                            : '<span class="bo-page-gap">…</span>')).join('');
-  return `<div class="bo-pager">
+  return `<div class="bo-pager"${key === 'page' ? '' : ` data-key="${key}"`}>
       <span class="bo-pager-count">${p.from + 1}–${p.from + p.rows.length} of ${p.total}</span>
       ${btn('Previous', p.page - 1, '', p.page <= 1)}${nums}${btn('Next', p.page + 1, '', p.page >= p.pages)}
     </div>`;
@@ -192,6 +192,28 @@ function multiPick(key, all, one, many, opts, picked) {
             ${opts.length ? opts.map(([val, label]) => `<label class="bo-check"><input type="checkbox" data-multi="${key}" value="${escapeHtml(val)}"${picked.includes(val) ? ' checked' : ''}> ${escapeHtml(label)}</label>`).join('')
               : `<span class="ms-empty">${escapeHtml(one)}</span>`}
             ${picked.length ? `<button type="button" class="ms-clear" data-act="ms-clear" data-key="${key}">Clear</button>` : ''}
+          </div>
+        </details>`;
+}
+
+// ---------- Columns menu ----------
+// Products' and Suppliers' Columns: tick which columns show. Which are on is this device's choice (a
+// storage key per list), not the URL. Cells carry data-col and the table a hide-<key> class per hidden
+// column, so CSS does the hiding and a tick never rebuilds a row. `cols` is [[key, label], ...].
+function loadColPrefs(key, cols, defaults) {
+  const raw = readJsonStorage(key, null);
+  return new Set(Array.isArray(raw) ? raw.filter((k) => cols.some(([c]) => c === k)) : defaults);
+}
+const saveColPrefs = (key, cols, on) => storageSet(key, JSON.stringify(cols.map(([k]) => k).filter((k) => on.has(k))));
+const hideColsClass = (cols, on) => cols.filter(([k]) => !on.has(k)).map(([k]) => 'hide-' + k).join(' ');
+// `first` is markup for rows above the columns (Products' Show pictures).
+function colsMenu(cols, on, first = '') {
+  return `
+        <details class="pd-cols">
+          <summary class="secondary-btn small">Columns</summary>
+          <div class="pd-cols-menu check-menu">${first}
+            ${cols.map(([k, label]) =>
+              `<label class="bo-check"><input type="checkbox" data-col-toggle="${k}"${on.has(k) ? ' checked' : ''}> ${label}</label>`).join('')}
           </div>
         </details>`;
 }
@@ -477,7 +499,6 @@ const VIEWS = {
   inventory: { label: 'Stock history', render: () => renderInventory() },
   customers: { label: 'Customers', render: () => renderCustomers() },
   suppliers: { label: 'Suppliers', render: () => renderSuppliers() },
-  staff:     { label: 'Staff',     render: () => renderStaff() },
   insights:  { label: 'Analytics',  render: () => renderInsights() },
   payments:  { label: 'Payments',  render: () => renderPayments() },
   settings:  { label: 'Settings',  render: () => renderSettingsForm() },
@@ -495,6 +516,8 @@ const Router = window.HWPOS_ROUTER;
 
 function applyRoute() {
   const { view, id, params } = Router.route();
+  // Staff moved into Settings › Staff & access (2026-09-26); old links land there.
+  if (view === 'staff') return Router.go('settings', 'staff', { ...params, person: id }, { replace: true });
   state.view = VIEWS[view] ? view : 'dashboard';
   state.detailId = id || '';
   state.range = RANGE_DAYS[params.range] ? params.range : 'today';
@@ -503,9 +526,20 @@ function applyRoute() {
   state.anchor = picked && !isNaN(picked) ? dayStart(picked) : dayStart(new Date());
   // Only one view is on screen, so the three search boxes share one param.
   state.invQuery = state.custQuery = state.txQuery = params.q || '';
+  // Each page keeps its own scroll (owner 2026-09-26). .bo-main is one scroller for every page, so
+  // one page's offset used to leak into the next. A filter on the same page keeps the place;
+  // coming back to a page, by the sidebar or Back, lands where it was left.
+  const sub = SUBNAV[state.view], key = `${state.view}/${id}/${sub ? params[sub.param] || '' : ''}`;
+  const main = $('.bo-main'), moved = key !== scrollKey;
+  if (moved && scrollKey) scrollAt.set(scrollKey, main.scrollTop);
   paint();
+  if (moved) { main.scrollTop = scrollAt.get(key) || 0; scrollKey = key; }
 }
+const scrollAt = new Map();
+let scrollKey = '';
 
+// The last page outside Settings: the settings nav's Back returns to it.
+let mainRoute = null;
 function paint() {
   const view = state.view;
   document.title = `${viewLabel(view)} · EJ Hardware`;
@@ -521,6 +555,22 @@ function paint() {
     b.dataset.view === lit && (b.dataset.sub ? b.dataset.sub.split(' ').includes(cur) : !deep)));
   // Back/forward and in-page links move pages without a sidebar click, so they shut stray trees too.
   if ($('.side-link.active') !== was) shutTrees();
+  // Settings (and Payments, one of its sections) swap the main nav for the settings nav.
+  const inSet = view === 'settings' || view === 'payments';
+  if (!inSet) mainRoute = Router.route();
+  // Read before the toggles: hiding the focused button blurs it on the spot.
+  const wasSet = !$('.side-setnav').hidden, navFocus = $('.bo-sidebar').contains(document.activeElement);
+  $('.side-nav:not(.side-setnav)').hidden = inSet;
+  $('.side-setnav').hidden = !inSet;
+  // ← Back takes the store switcher's slot; the footer's Settings row goes (owner, 2026-09-27).
+  $('#locBtn').hidden = inSet;
+  $('[data-set-back]').hidden = !inSet;
+  $('.side-footer [data-view="settings"]').hidden = inSet;
+  const pane = view === 'payments' ? 'payments' : settingsPane();
+  $$('.side-setnav [data-set]').forEach(b => b.classList.toggle('active', inSet && b.dataset.set === pane));
+  // The button you pressed just hid: focus follows into, or back out of, the settings list.
+  if (inSet !== wasSet && navFocus && matchMedia('(min-width: 1024px)').matches)
+    (inSet ? $('.side-setnav .side-link.active') : $('.side-footer [data-view="settings"]'))?.focus();
   $$('.view').forEach(v => {
     const on = v.dataset.view === view;
     v.classList.toggle('active', on);
@@ -636,7 +686,6 @@ function buildSubnav() {
     if (!b) return;
     shutTrees();
     goSub(b.closest('.side-sub').dataset.view, b.dataset.sub);
-    if (!window.matchMedia('(min-width: 1024px)').matches) $('#app').classList.add('sidebar-collapsed');
   });
 }
 function closeSideMenus() {
@@ -822,7 +871,7 @@ function kpi(label, value, sub, tone = 'flat', title = '') {
     </div>`;
 }
 
-function statCell({ label, value, unit, delta }) {
+function statCell({ label, value, unit, delta, note }) {
   const trend = !delta ? ''
     : delta.cmp ? `<span class="trend ${delta.tone}" title="${escapeHtml(delta.cmp)}">${escapeHtml(delta.text)}</span>`
     : `<span class="kpi-note">${escapeHtml(delta.text)}</span>`;   // a note, not a comparison: no chip
@@ -832,7 +881,8 @@ function statCell({ label, value, unit, delta }) {
       <div class="kpi-line">
         <div class="kpi-value">${curHtml(value)}${unit ? ` <span class="kpi-note">${escapeHtml(unit)}</span>` : ''}</div>
         ${trend}
-      </div>
+      </div>${note ? `
+      <div class="kpi-note">${escapeHtml(note)}</div>` : ''}
     </div>`;
 }
 
@@ -978,18 +1028,29 @@ function dashPlot(W, chart) {
 // Recent transactions: the latest 20 in the range, every status, so voids and refunds show.
 // Sales › Transactions is the one that pages past this.
 const RECENT_TX = 20;
-const PAY_TONE = { cash: 'up', gcash: 'data', qr: 'data', credit: 'warn' };
 const statusName = (o) => { const st = o.status || 'completed'; return st[0].toUpperCase() + st.slice(1); };
+// Payment pills: one hue per method so cash reads apart from GCash at a glance (owner, 2026-09-26).
+// A custom method ('other') takes the tone its name says ("Maya", "Credit card"); anything else is grey.
+const PAY_TONES = ['cash', 'gcash', 'maya', 'qr', 'card', 'credit', 'split'];
+const payTone = (o) => PAY_TONES.includes(o.paymentKind) ? o.paymentKind
+  : PAY_TONES.find(k => orderPaymentLabel(o).toLowerCase().includes(k)) || 'other';
+// The Dashboard's Time cell: today's clock, or just the day for an older sale (the full time is its
+// title), so eight columns still fit the card at 1280 wide.
+const dashTime = (ts) => new Date().toDateString() === new Date(ts).toDateString() ? txTime(ts)
+  : new Date(ts).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+const payPill = (o) => `<span class="pill pay-${payTone(o)}">${escapeHtml(orderPaymentLabel(o))}</span>`;
+// Payment and Status cells, shared with Sales › Transactions and a customer's Transactions. Completed is
+// muted text; the exceptions (voided, refunded, saved) are pills.
+const txPayStatus = (o) => `<td>${payPill(o)}</td><td class="opt">${(o.status || 'completed') === 'completed'
+  ? '<span class="mut">Completed</span>' : `<span class="pill ${{ voided: 'down', return: 'warn', refunded: 'warn' }[o.status] || ''}">${statusName(o)}</span>`}</td>`;
 function dashTx(W) {
   const shown = W.rows.slice().reverse().slice(0, RECENT_TX);
   return shown.length ? `<div class="flush"><table class="tx">
-    <tr><th>Receipt</th><th>Time</th><th class="opt">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th><th class="n">Total</th></tr>
+    <tr><th>Receipt</th><th>Time</th><th class="opt cust">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th><th class="n">Total</th></tr>
     ${shown.map(o => `<tr data-receipt="${escapeHtml(o.id)}" class="${saleSign(o) ? '' : 'dim'}">
-      <td class="id">#${escapeHtml(o.number || o.id)}</td><td class="t">${escapeHtml(txTime(o.ts))}</td>
-      <td class="opt cust">${o.customer?.name ? escapeHtml(o.customer.name) : '<span class="mut">—</span>'}</td>
-      <td class="opt">${escapeHtml(o.cashier || '—')}</td><td class="opt">${escapeHtml(orderFulfilLabel(o))}</td>
-      <td><span class="pill ${PAY_TONE[o.paymentKind] || ''}">${escapeHtml(orderPaymentLabel(o))}</span></td>
-      <td class="opt"><span class="pill ${{ completed: 'up', voided: 'down', return: 'warn', refunded: 'warn' }[o.status || 'completed'] || ''}">${statusName(o)}</span></td>
+      <td class="id">#${escapeHtml(o.number || o.id)}</td><td class="t" title="${escapeHtml(txTime(o.ts))}">${escapeHtml(dashTime(o.ts))}</td>
+      <td class="opt cust"${o.customer?.name ? ` title="${escapeHtml(o.customer.name)}">${escapeHtml(o.customer.name)}` : '><span class="mut">—</span>'}</td>
+      <td class="opt">${escapeHtml(o.cashier || '—')}</td><td class="opt">${escapeHtml(orderFulfilLabel(o))}</td>${txPayStatus(o)}
       <td class="n amt">${peso(txTotal(o))}</td></tr>`).join('')}
   </table></div>` : `<p class="note" style="margin:6px 0 16px">No transactions ${W.range === 'today' ? 'yet today' : 'in this range'}.</p>`;
 }
@@ -1066,7 +1127,7 @@ function barPop(W, b) {
   html += popSec('Payment methods', `<div class="rows">${group((o, s) => [[orderPaymentLabel(o), o.total * s]]).map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v), share(v))).join('')}</div>`);
   const its = group((o, s) => (o.items || []).map(i => [productFor(i)?.name || i.name, itemNet(i) * s]));
   html += popSec('Top items', `<div class="rows">${its.slice(0, 5).map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v), share(v))).join('')}</div>`, `${its.length} items sold`);
-  html += popSec('Transactions', `<div class="rows">${rows.slice().reverse().map(o => `<button class="row ${saleSign(o) ? '' : 'dim'}" data-receipt="${escapeHtml(o.id)}"><span class="t">${clockOf(o.ts)}</span>`
+  html += popSec('Transactions', `<div class="rows">${rows.slice().reverse().slice(0, PAGE_ROWS).map(o => `<button class="row ${saleSign(o) ? '' : 'dim'}" data-receipt="${escapeHtml(o.id)}"><span class="t">${clockOf(o.ts)}</span>`
     + `<span class="nm">#${escapeHtml(o.number || o.id)} · ${escapeHtml(orderPaymentLabel(o))}${statusPill(o)}</span><span class="amt">${pesoShort(txTotal(o))}</span></button>`).join('')}</div>`, `${rows.length} total`);
   return html;
 }
@@ -1257,9 +1318,9 @@ function renderCustomers() {
   const back = $('#custBack');
   if (list) list.hidden = !!customer;
   if (detail) detail.hidden = !customer;
-  // The account screen keeps its KPI row; the list has the widget rail and its Widgets menu instead.
-  $('#custKpis').style.display = customer ? '' : 'none';
+  // The account screen has its figures in its first card; the list has the widget rail and its Widgets menu.
   $('#custWBtn').style.display = customer ? 'none' : '';
+  $('#custAddBtn').style.display = customer ? 'none' : '';   // the account page edits; adding is the list's
   if (back) {
     back.hidden = !customer;
     back.innerHTML = customer
@@ -1316,23 +1377,20 @@ function openCustomerDialog(id) {
 
 function custStatus(c) {
   const pct = c.creditLimit > 0 ? c.currentBalance / c.creditLimit : 0;
-  return pct === 0 ? ['ok', 'Clear']
+  return !(c.currentBalance > 0) ? ['muted', 'Clear']   // owing with no limit set is Active, not Clear
        : pct > 0.75 ? ['danger', 'Near limit']
        : pct > 0.4 ? ['warn', 'In use']
-       : ['muted', 'Active'];
+       : ['info', 'Active'];
 }
 
-// How often each customer buys (bo-insights.js customerCycles), keyed by id. Lives on Customers,
-// not Reports (owner, 2026-09-24): it is a fact about the customer.
-const CYCLE_PILL = { overdue: ['danger', 'Overdue'], due: ['warn', 'Due'], ok: ['ok', 'On track'] };
-function customerCycleMap() {
-  return new Map(HWPOS_INSIGHTS.customerCycles(state.orders, [], Date.now()).map(r => [r.customerId, r]));
+// Each customer's orders, spent and last order (bo-insights.js customerTotals), keyed by id. Facts only:
+// the Next order / Due / Overdue guess was removed (owner, 2026-09-27).
+function customerTotalsMap() {
+  return new Map(HWPOS_INSIGHTS.customerTotals(state.orders, [], Date.now()).map(r => [r.customerId, r]));
 }
-const cycleEvery = (r) => (r && r.medianGapDays != null ? `~${Math.round(r.medianGapDays)} days` : '—');
-const cyclePill = (r) => {
-  const p = r && CYCLE_PILL[r.status];
-  return p ? `<span class="status-pill ${p[0]}">${p[1]}</span>` : '<span class="muted">—</span>';
-};
+// Clear, the settled state, is muted text like Completed; every other state is a pill (owner, 2026-09-26).
+const custPill = ([tone, label]) => tone === 'muted'
+  ? `<span class="muted">${label}</span>` : `<span class="status-pill ${tone}">${label}</span>`;
 
 // The list's figures: a 288px rail beside the table, Sales › Transactions' blocks (bo-calm.css, .calm-cust).
 // The Widgets menu shows and hides them; which are off is this device's choice (HWPOS_STORE.ui 'custHide').
@@ -1342,9 +1400,14 @@ const custHidden = () => String(HWPOS_STORE.ui.get('custHide', '') || '').split(
 function renderCustomerList() {
   const q = state.custQuery.trim().toLowerCase();
   const customers = allCustomerRecords();
-  const list = q
-    ? customers.filter(c => c.name.toLowerCase().includes(q) || (c.phone || '').includes(q))
-    : customers;
+  const cycles = customerTotalsMap();
+  // Filters read off the URL (?status=, ?last=): last = N days bought within, -N = nothing in N days.
+  const prm = Router.route().params, last = Number(prm.last) || 0;
+  $$('.view-customers [data-cust]').forEach(el => { el.value = prm[el.dataset.cust] || ''; });
+  const ago = (c) => { const d = cycles.get(c.id)?.lastOrderDate; return d ? (Date.now() - new Date(d + 'T00:00')) / 864e5 : Infinity; };
+  const list = customers.filter(c => (!q || c.name.toLowerCase().includes(q) || (c.phone || '').includes(q))
+    && (!prm.status || custStatus(c)[1] === prm.status)
+    && (!last || (last > 0 ? ago(c) <= last : ago(c) > -last)));
 
   const totalOutstanding = customers.reduce((a, c) => a + (c.currentBalance || 0), 0);
   const totalLimit = customers.reduce((a, c) => a + (c.creditLimit || 0), 0);
@@ -1365,31 +1428,23 @@ function renderCustomerList() {
   $('#custRail').innerHTML = on.map(id => `<section class="card w one"><div class="top band one" title="${escapeHtml(w[id][1])}"><span>${CUST_W[id]}</span>
     <span class="acts"><span class="cnt${w[id][2] || ''}">${escapeHtml(w[id][1])}</span><span class="nv">${w[id][0]}</span></span></div></section>`).join('');
 
-  const pg = paginate(list, Router.route().params.page);
-  const cycles = customerCycleMap();
+  const pg = paginate(list, prm.page);
   $('#custPager').innerHTML = pagerHtml(pg);
   $('#custTable tbody').innerHTML = pg.rows.map(c => {
     const status = custStatus(c);
     const cy = cycles.get(c.id);
     return `
       <tr data-customer="${escapeHtml(c.id)}">
-        <td><strong>${escapeHtml(c.name)}</strong></td>
+        <td title="${escapeHtml(c.name)}"><strong>${escapeHtml(c.name)}</strong></td>
         <td>${escapeHtml(c.phone || '—')}</td>
         <td class="num">${cy ? cy.orders : 0}</td>
         <td class="num">${pesoShort(cy ? cy.revenuePesos : 0)}</td>
         <td>${cy ? escapeHtml(shortDate(cy.lastOrderDate + 'T00:00')) : '—'}</td>
-        <td class="num">${cycleEvery(cy)}</td>
-        <td>${cyclePill(cy)}</td>
-        <td class="num"><strong>${peso(c.currentBalance)}</strong></td>
-        <td><span class="status-pill ${status[0]}">${status[1]}</span></td>
+        <td class="num">${c.currentBalance > 0 ? peso(c.currentBalance) : '<span class="muted">—</span>'}</td>
+        <td>${custPill(status)}</td>
       </tr>`;
-  }).join('') || `<tr><td colspan="9" class="bo-empty">No customers match.</td></tr>`;
+  }).join('') || `<tr><td colspan="7" class="bo-empty">No customers match.</td></tr>`;
 }
-
-const ORDER_STATUS = {
-  completed: ['ok', 'Completed'], saved: ['warn', 'Saved'],
-  voided: ['danger', 'Voided'], refunded: ['danger', 'Refunded'], return: ['danger', 'Return'],
-};
 
 // Every order this account is named on, newest first. Voided and refunded orders stay
 // in the list — they are part of what happened — but they don't count toward spend.
@@ -1424,10 +1479,9 @@ function renderCustomerDetail(c) {
   const spent = counted.reduce((a, o) => a + (o.total || 0), 0);
   const last = orders[0];
   const status = custStatus(c);
-  const cy = customerCycleMap().get(c.id);
 
   $('#custTitle').textContent = c.name;
-  $('#custKpis').innerHTML = [
+  const kpis = [
     kpi('Total spent', pesoShort(spent), `${counted.length} order${counted.length === 1 ? '' : 's'}`, 'flat'),
     kpi('Balance', peso(c.currentBalance || 0), `of ${pesoShort(c.creditLimit || 0)} limit`, 'flat'),
     kpi('Average order', pesoShort(counted.length ? spent / counted.length : 0), 'per completed order', 'flat'),
@@ -1452,7 +1506,9 @@ function renderCustomerDetail(c) {
   const p = Router.route().params;
   const stRows = statementRows(orders, { from: p.from, to: p.to, chargesOnly: !p.all });
   const stTotal = stRows.reduce((a, o) => a + (p.all ? (o.total || 0) : creditOn(o)), 0);
-  const stBody = stRows.map(o => `
+  // 25 a page on its own ?stpage=, so it walks apart from Transactions; the Total is still the whole range.
+  const stPg = paginate(stRows, p.stpage, DETAIL_ROWS);
+  const stBody = stPg.rows.map(o => `
     <tr data-order="${escapeHtml(o.id)}">
       <td>${escapeHtml(shortDate(o.ts))}</td>
       <td><strong>#${escapeHtml(o.number)}</strong></td>
@@ -1461,21 +1517,18 @@ function renderCustomerDetail(c) {
       <td class="num"><strong>${peso(o.total)}</strong></td>
     </tr>`).join('') || `<tr><td colspan="5" class="bo-empty">Nothing in this range.</td></tr>`;
 
-  const pg = paginate(orders, Router.route().params.page);
-  const txRows = pg.rows.map(o => {
-    const st = ORDER_STATUS[o.status] || ['muted', o.status];
-    return `
+  const pg = paginate(orders, Router.route().params.page, DETAIL_ROWS);
+  const txRows = pg.rows.map(o => `
     <tr data-order="${escapeHtml(o.id)}">
       <td>${escapeHtml(shortDate(o.ts))}</td>
       <td><strong>#${escapeHtml(o.number)}</strong></td>
       <td class="num">${o.items.length}</td>
-      <td>${escapeHtml(o.paymentMethodLabel || o.paymentMethod || 'cash')}</td>
-      <td><span class="status-pill ${st[0]}">${escapeHtml(st[1])}</span></td>
+      ${txPayStatus(o)}
       <td class="num"><strong>${peso(o.total)}</strong></td>
-    </tr>`;
-  }).join('') || `<tr><td colspan="6" class="bo-empty">No transactions yet.</td></tr>`;
+    </tr>`).join('') || `<tr><td colspan="6" class="bo-empty">No transactions yet.</td></tr>`;
 
-  const itemRows = items.map(i => `
+  // Top 25 by spend; the count in the header is the full number.
+  const itemRows = items.slice(0, DETAIL_ROWS).map(i => `
     <tr>
       <td><strong>${escapeHtml(i.name)}</strong></td>
       <td class="num">${i.qty % 1 ? i.qty.toFixed(2) : i.qty} ${escapeHtml(i.unit || '')}</td>
@@ -1483,29 +1536,29 @@ function renderCustomerDetail(c) {
       <td class="num"><strong>${peso(i.spent)}</strong></td>
     </tr>`).join('') || `<tr><td colspan="4" class="bo-empty">Nothing bought yet.</td></tr>`;
 
+  // One account card (owner 2026-09-26): status + Edit in the head band, the figures, then the facts.
   $('#custDetail').innerHTML = `
-    <section class="bo-card">
+    <section class="cust-sum">
       <div class="bo-card-head">
-        <span class="bo-card-label">${escapeHtml(c.name)}</span>
-        <span class="bo-card-sub"><span class="status-pill ${status[0]}">${status[1]}</span></span>
+        <span class="bo-card-label">Account</span>
+        <span class="bo-card-sub">${custPill(status)}</span>
         <button class="secondary-btn small" data-act="custEdit" data-id="${escapeHtml(c.id)}">Edit</button>
       </div>
+      <div class="kpi-row joined">${kpis}</div>
       <div class="bo-card-inset cust-facts">
         <div><span>Phone</span><b>${escapeHtml(c.phone || '—')}</b></div>
         <div><span>Address</span><b>${escapeHtml(c.address || '—')}</b></div>
-        <div><span>Account</span><b>${escapeHtml(c.id)}</b></div>
         <div><span>Available credit</span><b>${peso((c.creditLimit || 0) - (c.currentBalance || 0))}</b></div>
-        <div><span>Buys every</span><b>${cycleEvery(cy)}</b></div>
-        <div><span>Next order due</span><b>${cy && cy.dueDate ? escapeHtml(shortDate(cy.dueDate + 'T00:00')) + ' ' + cyclePill(cy) : '—'}</b></div>
       </div>
     </section>
     <section class="bo-card blk-table">
-      <div class="bo-card-head">
+      <div class="bo-card-head st-head">
         <span class="bo-card-label">Statement</span>
-        <input type="date" class="bo-date" data-act="stFrom" value="${escapeHtml(p.from || '')}" />
-        <input type="date" class="bo-date" data-act="stTo" value="${escapeHtml(p.to || '')}" />
+        <span class="bo-card-sub">${stRows.length} receipt${stRows.length === 1 ? '' : 's'}</span>
+        <input type="date" class="bo-date" data-act="stFrom" value="${escapeHtml(p.from || '')}" aria-label="From" />
+        <span class="bo-card-sub">to</span>
+        <input type="date" class="bo-date" data-act="stTo" value="${escapeHtml(p.to || '')}" aria-label="To" />
         <label class="bo-check"><input type="checkbox" data-act="stAll" ${p.all ? 'checked' : ''} /> Include cash sales</label>
-        <span class="bo-card-sub">${stRows.length} receipt${stRows.length === 1 ? '' : 's'} · <strong>${peso(stTotal)}</strong></span>
         <button class="secondary-btn small" data-act="stExport">Export CSV</button>
       </div>
       <div class="bo-card-inset flush"><div class="table-wrap">
@@ -1519,7 +1572,7 @@ function renderCustomerDetail(c) {
             <td class="num"><strong>${peso(stTotal)}</strong></td>
             <td class="num"><strong>${peso(stRows.reduce((a, o) => a + (o.total || 0), 0))}</strong></td></tr></tfoot>
         </table>
-      </div></div>
+      </div>${pagerHtml(stPg, 'stpage')}</div>
     </section>
     <section class="bo-card blk-table">
       <div class="bo-card-head">
@@ -1530,7 +1583,7 @@ function renderCustomerDetail(c) {
         <table class="data-table cust-tx">
           <thead><tr>
             <th>Date</th><th>Receipt</th><th class="num">Items</th>
-            <th>Payment</th><th>Status</th><th class="num">Total</th>
+            <th>Payment</th><th class="opt">Status</th><th class="num">Total</th>
           </tr></thead>
           <tbody>${txRows}</tbody>
         </table>
@@ -1552,20 +1605,90 @@ function renderCustomerDetail(c) {
     </section>`;
 }
 
+// Settings is one section per URL (/admin/settings/<section>); a bare /admin/settings is Store.
+// Payments is a section too but keeps its own view and URL, so saved links still work.
+const SETTINGS_PANES = { store: 'Store', tax: 'Tax', receipt: 'Receipt & printing', staff: 'Staff & access', appearance: 'Appearance', data: 'Data' };
+function settingsPane() { return SETTINGS_PANES[state.detailId] ? state.detailId : 'store'; }
+
+// #setDlg: the one small form every settings card opens (Store details, VAT, a role, a new method).
+// onSave(form) returns an error to show, or nothing to close; no onSave means changes save as they happen.
+let setDlgSave = null;
+function openSetDialog(title, fields, onSave, saveLabel = 'Save') {
+  const dlg = $('#setDlg');
+  setDlgSave = onSave;
+  dlg.innerHTML = `
+    <div class="bod-head">
+      <div class="bod-title"><h2>${title}</h2></div>
+      <button type="button" class="bod-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="adj-body">
+      <form class="adj-form">
+        <div class="adj-grid">${fields}</div>
+        <div class="adj-foot">
+          <span class="adj-last" data-set-err></span>
+          ${onSave ? `<button type="button" class="secondary-btn small" data-set-cancel>Cancel</button>
+            <button type="submit" class="primary-btn small">${saveLabel}</button>`
+          : '<button type="button" class="primary-btn small" data-set-cancel>Done</button>'}
+        </div>
+      </form>
+    </div>`;
+  dlg.showModal();
+  return dlg;
+}
+
+// Typed values read as rows -- label, what is saved, › -- and a row opens its card's fields
+// (Shopify-like, owner 2026-09-26: no input box until you click). A blank falls back to the default.
+const SET_EDIT = {
+  store: { title: 'Store details', fields: [['Store name', 'name'], ['Address', 'address'], ['Phone', 'phone'], ['Currency', 'currency']] },
+  tax: { title: 'VAT', fields: [['VAT rate', 'vatRate'], ['TIN', 'tin']] },
+};
+const setShown = (key) => key === 'vatRate' ? `${Math.round((state.settings.vatRate || 0) * 100)}%` : state.settings.store[key] || '';
+const setRowsHtml = (card) => SET_EDIT[card].fields.map(([label, key]) => `
+  <button type="button" class="setting-row" data-set-edit="${card}" data-key="${key}">
+    <span class="set-lbl">${label}</span><span class="set-val">${escapeHtml(setShown(key)) || '<span class="muted">Not set</span>'}</span>
+    <span class="set-chev" aria-hidden="true">›</span></button>`).join('');
+
+function openSetEdit(card, focus) {
+  const c = SET_EDIT[card];
+  const dlg = openSetDialog(c.title, c.fields.map(([label, key]) => `<label class="adj-field"><span>${label}</span>
+      <input class="text-input" name="${key}" type="text" value="${escapeHtml(setShown(key))}" autocomplete="off"></label>`).join(''), (form) => {
+    const v = (k) => (form.elements[k]?.value || '').trim();
+    const s = state.settings, store = { ...s.store };
+    let vatRate = s.vatRate;
+    for (const [, k] of c.fields) {
+      if (k !== 'vatRate') { store[k] = v(k) || DEFAULT_SETTINGS.store[k]; continue; }
+      const n = parseFloat(v(k).replace('%', ''));
+      if (!(n >= 0 && n <= 100)) return 'VAT rate is a percent, like 12%.';
+      vatRate = n / 100;
+    }
+    state.settings = { ...s, vatRate, store };
+    saveSettings();
+    showToast(`${c.title} saved`);
+    renderSettingsForm();
+    renderSwitchers();   // the store name and location sit in the sidebar
+  });
+  dlg.querySelector(`[name="${focus}"]`)?.select();
+}
+
+// On/off and pick-one settings save the moment they change, like Appearance and Staff & access.
+const SET_NOW = {
+  setVatRegistered: (s, el) => ({ vatInclusive: el.checked }),
+  setPrinterWidth: (s, el) => ({ printing: { ...s.printing, width: el.value } }),
+  setPrintOnSale: (s, el) => ({ printing: { ...s.printing, printOnSale: el.checked } }),
+  setLogoOnReceipt: (s, el) => ({ printing: { ...s.printing, logoOnReceipt: el.checked } }),
+};
+
 function renderSettingsForm() {
+  const pane = settingsPane();
+  document.title = `${SETTINGS_PANES[pane]} · Settings · EJ Hardware`;
+  $$('.set-pane').forEach(p => { p.hidden = p.dataset.pane !== pane; });
+  if (pane === 'staff') return renderStaff();
   const s = state.settings;
-  const setValue = (id, value) => { const el = $('#' + id); if (el) el.value = value ?? ''; };
-  const setChecked = (id, value) => { const el = $('#' + id); if (el) el.checked = !!value; };
-  setValue('setStoreName', s.store.name);
-  setValue('setStoreAddress', s.store.address);
-  setValue('setStorePhone', s.store.phone);
-  setValue('setCurrency', s.store.currency);
-  setValue('setTin', s.store.tin);
-  setChecked('setVatRegistered', s.vatInclusive);
-  setValue('setVatRate', `${Math.round((s.vatRate || 0) * 100)}%`);
-  setValue('setPrinterWidth', s.printing.width);
-  setChecked('setPrintOnSale', s.printing.printOnSale);
-  setChecked('setLogoOnReceipt', s.printing.logoOnReceipt);
+  $$('[data-set-rows]').forEach(el => { el.innerHTML = setRowsHtml(el.dataset.setRows); });
+  $('#setVatRegistered').checked = !!s.vatInclusive;
+  $('#setPrinterWidth').value = s.printing.width === '80mm' ? '80mm' : '58mm';
+  $('#setPrintOnSale').checked = !!s.printing.printOnSale;
+  $('#setLogoOnReceipt').checked = !!s.printing.logoOnReceipt;
 }
 
 // ---------- Payments: which cards and fulfilment pills the POS checkout shows ----------
@@ -1585,26 +1708,22 @@ const PAY_BUILTINS = [
 const METHOD_CARDS = {
   payments: {
     title: 'Payment methods', col: 'Method', locked: 'cash', builtins: PAY_BUILTINS,
-    sub: 'The POS picks changes up the next time checkout opens',
+    sub: 'Ticked ones show at checkout',
     placeholder: 'Add a method, e.g. Maya or Card', saved: 'Payment methods saved',
   },
   fulfilment: {
     title: 'Fulfilment types', col: 'Type', locked: 'pickup', builtins: FULFIL_BUILTINS,
-    sub: 'The pills above Check out in the POS cart',
+    sub: 'Ticked ones show above Check out',
     placeholder: 'Add a type, e.g. Tricycle or Ship-out', saved: 'Fulfilment types saved',
   },
 };
 const methodConfig = (key) => ({ hidden: [], custom: [], ...(state.settings[key] || {}) });
-// Edits go to a draft; nothing reaches the POS until Save. Opening the page drops an unsaved draft.
-let methodDraft = {};
+// Every change saves at once, like the rest of Settings (owner, 2026-09-26: no Save bar, no input
+// box until you click Add).
+function renderPayments() { drawPayments(); }
 
-function renderPayments() {
-  methodDraft = Object.fromEntries(Object.keys(METHOD_CARDS).map((k) => [k, methodConfig(k)]));
-  drawPayments();
-}
-
-function saveMethodCard(key) {
-  state.settings = { ...state.settings, [key]: methodDraft[key] };
+function saveMethodCard(key, next) {
+  state.settings = { ...state.settings, [key]: { ...methodConfig(key), ...next } };
   saveSettings();
   drawPayments();
   showToast(METHOD_CARDS[key].saved);
@@ -1612,40 +1731,18 @@ function saveMethodCard(key) {
 
 function methodCardHtml(key) {
   const card = METHOD_CARDS[key];
-  const draft = methodDraft[key];
-  const dirty = JSON.stringify(draft) !== JSON.stringify(methodConfig(key));
-  const off = new Set(draft.hidden);
-  const builtins = card.builtins.map(([k, label, note]) => `
-    <tr>
-      <td><strong>${escapeHtml(label)}</strong></td>
-      <td class="muted">${escapeHtml(note)}</td>
-      <td class="num"><input type="checkbox" data-m-kind="${escapeHtml(k)}"${off.has(k) ? '' : ' checked'}${k === card.locked ? ' disabled' : ''}></td>
-    </tr>`).join('');
-  const custom = draft.custom.map((name, i) => `
-    <tr>
-      <td><strong>${escapeHtml(name)}</strong></td>
-      <td class="muted">Added by you</td>
-      <td class="num"><button class="secondary-btn small" data-m-del="${i}">Remove</button></td>
-    </tr>`).join('');
+  const cfg = methodConfig(key);
+  const off = new Set(cfg.hidden);
+  const row = (label, note, control) => `<div class="setting-row"><label>${escapeHtml(label)}${note ? `<small>${escapeHtml(note)}</small>` : ''}</label>${control}</div>`;
+  const builtins = card.builtins.map(([k, label, note]) => row(label, note,
+    `<input type="checkbox" data-m-kind="${escapeHtml(k)}" aria-label="Show ${escapeHtml(label)} at checkout"${off.has(k) ? '' : ' checked'}${k === card.locked ? ' disabled' : ''}>`)).join('');
+  const custom = cfg.custom.map((name, i) => row(name, 'Added by you', `<button class="link-btn" data-m-del="${i}">Remove</button>`)).join('');
   return `
-    <section class="bo-card blk-table full" data-m-card="${key}">
+    <section class="bo-card blk-table" data-m-card="${key}">
       <div class="bo-card-head"><span class="bo-card-label">${escapeHtml(card.title)}</span>
-        <span class="bo-card-sub">${escapeHtml(card.sub)}</span></div>
-      <div class="bo-card-inset flush"><div class="table-wrap"><table class="data-table">
-        <thead><tr><th>${escapeHtml(card.col)}</th><th>Notes</th><th class="num">Show at checkout</th></tr></thead>
-        <tbody>${builtins}${custom}</tbody>
-      </table></div></div>
-      <div class="bo-card-inset">
-        <form class="pay-add" data-m-add style="display:flex;gap:8px;align-items:center">
-          <input class="text-input" name="name" maxlength="24" placeholder="${escapeHtml(card.placeholder)}" autocomplete="off" style="max-width:280px">
-          <button class="primary-btn small" type="submit">Add</button>
-          <span class="muted" data-m-err></span>
-        </form>
-      </div>
-      <div class="bo-card-inset" style="display:flex;gap:12px;align-items:center;justify-content:flex-end">
-        <span class="muted">${dirty ? 'Unsaved changes' : 'All changes saved'}</span>
-        <button class="primary-btn" data-m-save${dirty ? '' : ' disabled'}>Save</button>
-      </div>
+        <span class="bo-card-sub">${escapeHtml(card.sub)}</span>
+        <button class="link-btn" data-m-add>Add ${escapeHtml(card.col.toLowerCase())}</button></div>
+      <div class="bo-card-inset flush set-rows">${builtins}${custom}</div>
     </section>`;
 }
 
@@ -1656,12 +1753,26 @@ function drawPayments() {
     <header class="view-head">
       <div class="view-title-wrap"><h1>Payments</h1></div>
     </header>
-    <div class="blk-grid">${methodCardHtml('payments')}${methodCardHtml('fulfilment')}</div>`;
+    <div class="set-col">${methodCardHtml('payments')}${methodCardHtml('fulfilment')}</div>`;
 }
 
-// One listener per event for both cards; data-m-card says which draft an edit belongs to.
+// One listener per event for both cards; data-m-card says which card an edit belongs to.
 function cardKey(el) {
   return el.closest('[data-m-card]')?.dataset.mCard || '';
+}
+
+function openMethodAdd(key) {
+  const card = METHOD_CARDS[key];
+  const dlg = openSetDialog(`Add a ${card.col.toLowerCase()}`, `<label class="adj-field adj-note"><span>Name</span>
+      <input class="text-input" name="name" maxlength="24" placeholder="${escapeHtml(card.placeholder)}" autocomplete="off"></label>`, (form) => {
+    const name = form.elements.name.value.trim();
+    const cfg = methodConfig(key);
+    const taken = card.builtins.map(([, l]) => l).concat(cfg.custom).some((n) => n.toLowerCase() === name.toLowerCase());
+    if (!name) return 'Type a name first.';
+    if (taken) return `${name} is already on the list.`;
+    saveMethodCard(key, { custom: cfg.custom.concat(name) });
+  }, 'Add');
+  dlg.querySelector('[name="name"]').focus();
 }
 
 function wirePayments() {
@@ -1671,60 +1782,19 @@ function wirePayments() {
     const k = e.target.dataset.mKind;
     const key = cardKey(e.target);
     if (!k || !key || k === METHOD_CARDS[key].locked) return;
-    const hidden = new Set(methodDraft[key].hidden);
+    const hidden = new Set(methodConfig(key).hidden);
     if (e.target.checked) hidden.delete(k); else hidden.add(k);
-    // Keep built-in order so toggling back and forth reads as "no changes".
-    methodDraft[key] = { ...methodDraft[key], hidden: METHOD_CARDS[key].builtins.map(([b]) => b).filter((b) => hidden.has(b)) };
-    drawPayments();
+    // Keep built-in order so the saved list reads the same however it was toggled.
+    saveMethodCard(key, { hidden: METHOD_CARDS[key].builtins.map(([b]) => b).filter((b) => hidden.has(b)) });
   });
   root.addEventListener('click', (e) => {
-    const save = e.target.closest('[data-m-save]');
-    if (save) { saveMethodCard(cardKey(save)); return; }
+    const add = e.target.closest('[data-m-add]');
+    if (add) return openMethodAdd(cardKey(add));
     const del = e.target.closest('[data-m-del]');
     if (!del) return;
     const key = cardKey(del);
-    methodDraft[key] = { ...methodDraft[key], custom: methodDraft[key].custom.filter((_, i) => i !== Number(del.dataset.mDel)) };
-    drawPayments();
+    saveMethodCard(key, { custom: methodConfig(key).custom.filter((_, i) => i !== Number(del.dataset.mDel)) });
   });
-  root.addEventListener('submit', (e) => {
-    if (!e.target.matches('[data-m-add]')) return;
-    e.preventDefault();
-    const key = cardKey(e.target);
-    const name = e.target.elements.name.value.trim();
-    const taken = METHOD_CARDS[key].builtins.map(([, l]) => l).concat(methodDraft[key].custom).some((n) => n.toLowerCase() === name.toLowerCase());
-    const err = !name ? 'Type a name first.' : taken ? `${name} is already on the list.` : '';
-    if (err) { e.target.querySelector('[data-m-err]').textContent = err; return; }
-    methodDraft[key] = { ...methodDraft[key], custom: methodDraft[key].custom.concat(name) };
-    drawPayments();
-    root.querySelector(`[data-m-card="${key}"] [data-m-add] input`)?.focus();
-  });
-}
-
-function persistSettingsFromForm() {
-  const val = id => ($('#' + id)?.value || '').trim();
-  const checked = id => !!$('#' + id)?.checked;
-  const vatRateRaw = val('setVatRate').replace('%', '');
-  const vatRate = parseFloat(vatRateRaw);
-  state.settings = {
-    ...state.settings,
-    vatInclusive: checked('setVatRegistered'),
-    vatRate: Number.isFinite(vatRate) ? vatRate / 100 : state.settings.vatRate,
-    store: {
-      ...state.settings.store,
-      name: val('setStoreName') || DEFAULT_SETTINGS.store.name,
-      address: val('setStoreAddress') || DEFAULT_SETTINGS.store.address,
-      phone: val('setStorePhone') || DEFAULT_SETTINGS.store.phone,
-      currency: val('setCurrency') || DEFAULT_SETTINGS.store.currency,
-      tin: val('setTin') || DEFAULT_SETTINGS.store.tin,
-    },
-    printing: {
-      ...state.settings.printing,
-      width: val('setPrinterWidth') || DEFAULT_SETTINGS.printing.width,
-      printOnSale: checked('setPrintOnSale'),
-      logoOnReceipt: checked('setLogoOnReceipt'),
-    },
-  };
-  saveSettings();
 }
 
 // ---------- Event wiring ----------
@@ -1753,11 +1823,51 @@ function wireEvents() {
       if (b.dataset.sub) goSub(b.dataset.view, b.dataset.sub.split(' ')[0]); else setView(b.dataset.view);
     });
   });
+  $('.bo-sidebar').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-set], [data-set-back]');
+    if (!b) return;
+    if (b.hasAttribute('data-set-back')) return mainRoute ? Router.go(mainRoute.view, mainRoute.id, mainRoute.params) : Router.go('dashboard', '');
+    Router.go(b.dataset.set === 'payments' ? 'payments' : 'settings', b.dataset.set === 'payments' ? '' : b.dataset.set);
+  });
+
+  // Settings: a value row opens its card's dialog; a checkbox or pick-one saves as it changes.
+  const setPage = $('.view-settings');
+  setPage.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-set-edit]');
+    if (row) openSetEdit(row.dataset.setEdit, row.dataset.key);
+  });
+  setPage.addEventListener('change', (e) => {
+    const f = SET_NOW[e.target.id];
+    if (!f) return;
+    state.settings = { ...state.settings, ...f(state.settings, e.target) };
+    saveSettings();
+    showToast('Settings saved');
+  });
+  const setDlg = $('#setDlg');
+  setDlg.addEventListener('click', (e) => { if (e.target.closest('[data-set-cancel]')) setDlg.close(); });
+  setDlg.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const err = setDlgSave?.(e.target);
+    if (err) e.target.querySelector('[data-set-err]').textContent = err; else setDlg.close();
+  });
 
   // Sales keeps a plain dropdown for the same state.
   $$('.range-select').forEach(sel => sel.addEventListener('change', () => {
     Router.setParams({ range: sel.value === 'today' ? '' : sel.value }, { replace: false });
   }));
+
+  // <details> menus (multiPick, Products' Columns) behave like the popover ones: a click outside or Esc
+  // closes them, and one hangs from its button's right edge (.flip) when the left would run off the page.
+  // `toggle` does not bubble, so capture it.
+  const openDetails = () => document.querySelectorAll('details:is(.ms-pick, .pd-cols)[open]');
+  document.addEventListener('click', (e) => openDetails().forEach(d => { if (!d.contains(e.target)) d.open = false; }));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') openDetails().forEach(d => { d.open = false; }); });
+  document.addEventListener('toggle', (e) => {
+    const m = e.target.open && e.target.matches?.('.ms-pick, .pd-cols') && e.target.querySelector('.ms-menu, .pd-cols-menu');
+    if (!m) return;
+    m.classList.remove('flip');
+    m.classList.toggle('flip', m.getBoundingClientRect().right > innerWidth - 16);
+  }, true);
 
   // Any [data-adjust-open] on any page opens the stock adjust dialog (bo-inventory.js).
   // Capture phase: the rows it sits in navigate on click from their own document-level
@@ -1788,6 +1898,10 @@ function wireEvents() {
 
   // ----- Customers: add, edit, statement -----
   $('#custAddBtn')?.addEventListener('click', () => openCustomerDialog(''));
+  document.addEventListener('change', (e) => {
+    const el = e.target.closest('.view-customers [data-cust]');
+    if (el) Router.setParams({ [el.dataset.cust]: el.value, page: '' });
+  });
   // Widgets: a menu tick — the table glides to its new width (slideRender).
   document.addEventListener('click', (e) => {
     const w = e.target.closest('#custW [data-w], #custW [data-w-all]');
@@ -1859,11 +1973,12 @@ function wireEvents() {
   });
 
   // Every pager on every page is the same control: it writes ?page= and the route writes
-  // it back. Delegated here so no page module has to own paging of its own.
+  // it back. Delegated here so no page module has to own paging of its own. A second table on
+  // one page (the customer's Statement) names its own key in data-key.
   document.addEventListener('click', (e) => {
     const b = e.target.closest('.bo-page-btn');
     if (!b || b.disabled) return;
-    Router.setParams({ page: b.dataset.page === '1' ? '' : b.dataset.page });
+    Router.setParams({ [b.closest('.bo-pager')?.dataset.key || 'page']: b.dataset.page === '1' ? '' : b.dataset.page });
   });
 
   // Every search box on every page is the same control: it writes ?q= and the
@@ -1898,52 +2013,24 @@ function wireEvents() {
     }
   });
 
-  // ----- Settings → Appearance (S/M/L tile size + price toggle) -----
-  // Sync initial state from localStorage
-  const currentSize = storageGet(STORAGE_TILE_SIZE, 'md') || 'md';
-  $$('#settingsSizeToggle .seg-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.size === currentSize);
+  // ----- Settings → Appearance: per-device, applied as picked (no Save bar) -----
+  const syncTiles = () => {
+    const size = $('#settingsSizeToggle'), show = $('#settingsShowPrice');
+    if (size) size.value = storageGet(STORAGE_TILE_SIZE, 'md') || 'md';
+    if (show) show.checked = storageGet(STORAGE_SHOW_PRICE, '0') === '1';
+  };
+  syncTiles();
+  $('#settingsSizeToggle')?.addEventListener('change', (e) => {
+    storageSet(STORAGE_TILE_SIZE, e.target.value);
+    showToast('Tile size saved. The Sell screen will update');
   });
-  const currentShow = storageGet(STORAGE_SHOW_PRICE, '0') === '1';
-  const showCb = $('#settingsShowPrice');
-  if (showCb) showCb.checked = currentShow;
-
-  $$('#settingsSizeToggle .seg-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      const size = b.dataset.size;
-      storageSet(STORAGE_TILE_SIZE, size);
-      $$('#settingsSizeToggle .seg-btn').forEach(x => x.classList.toggle('active', x === b));
-      showToast(`Tile size set to ${size.toUpperCase()} — Sell screen will update`);
-    });
-  });
-  showCb?.addEventListener('change', (e) => {
+  $('#settingsShowPrice')?.addEventListener('change', (e) => {
     storageSet(STORAGE_SHOW_PRICE, e.target.checked ? '1' : '0');
     showToast(e.target.checked ? 'Prices will show on tiles' : 'Prices hidden on tiles');
   });
-
-  // ----- Settings → Appearance (chart colours) -----
-  $$('#settingsChartHue .seg-btn').forEach(b => {
-    b.addEventListener('click', () => HWPOS_STORE.ui.set('chartHue', applyChartHue(b.dataset.hue)));
-  });
-
-  $$('#settingsChartStyle .seg-btn').forEach(b => {
-    b.addEventListener('click', () => HWPOS_STORE.ui.set('chartStyle', applyChartStyle(b.dataset.style)));
-  });
-
-  // ----- Settings → Appearance (back office row size) -----
-  $$('#settingsDensityToggle .seg-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      storageSet(STORAGE_DENSITY, applyDensity(b.dataset.density));
-    });
-  });
-
-  [
-    'setStoreName', 'setStoreAddress', 'setStorePhone', 'setCurrency', 'setVatRate', 'setTin',
-    'setPrinterWidth',
-  ].forEach(id => $('#' + id)?.addEventListener('change', persistSettingsFromForm));
-  [
-    'setVatRegistered', 'setPrintOnSale', 'setLogoOnReceipt',
-  ].forEach(id => $('#' + id)?.addEventListener('change', persistSettingsFromForm));
+  $('#settingsChartHue')?.addEventListener('change', (e) => HWPOS_STORE.ui.set('chartHue', applyChartHue(e.target.value)));
+  $('#settingsChartStyle')?.addEventListener('change', (e) => HWPOS_STORE.ui.set('chartStyle', applyChartStyle(e.target.value)));
+  $('#settingsDensityToggle')?.addEventListener('change', (e) => storageSet(STORAGE_DENSITY, applyDensity(e.target.value)));
 
   // Re-pull localStorage when switching back to the tab (POS app might have edited it)
   document.addEventListener('visibilitychange', () => {
@@ -1966,14 +2053,7 @@ function wireEvents() {
     ]);
     if (!watched.has(e.key)) return;
     if (e.key === STORAGE_TILE_SIZE || e.key === STORAGE_SHOW_PRICE || e.key === STORAGE_THEME) {
-      // Appearance change from POS app — re-sync the Appearance panel UI
-      const currentSize = storageGet(STORAGE_TILE_SIZE, 'md') || 'md';
-      $$('#settingsSizeToggle .seg-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.size === currentSize);
-      });
-      const currentShow = storageGet(STORAGE_SHOW_PRICE, '0') === '1';
-      const showCb = $('#settingsShowPrice');
-      if (showCb) showCb.checked = currentShow;
+      syncTiles();   // an Appearance change made in the POS
       return;
     }
     refreshSharedState();
@@ -1989,7 +2069,7 @@ const DENSITIES = ['sm', 'md', 'lg'];
 function applyDensity(size) {
   const d = DENSITIES.includes(size) ? size : 'md';
   document.body.dataset.density = d;
-  $$('#settingsDensityToggle .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.density === d));
+  const sel = $('#settingsDensityToggle'); if (sel) sel.value = d;
   return d;
 }
 
@@ -1999,7 +2079,7 @@ function applyDensity(size) {
 function applyChartHue(hue) {
   const h = hue === 'blues' ? 'blues' : 'violet';
   document.body.classList.toggle('chart-blues', h === 'blues');
-  $$('#settingsChartHue .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.hue === h));
+  const sel = $('#settingsChartHue'); if (sel) sel.value = h;
   return h;
 }
 
@@ -2007,7 +2087,7 @@ function applyChartHue(hue) {
 function applyChartStyle(style) {
   const v = style === 'bars' ? 'bars' : 'line';
   document.body.classList.toggle('chart-bars', v === 'bars');
-  $$('#settingsChartStyle .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.style === v));
+  const sel = $('#settingsChartStyle'); if (sel) sel.value = v;
   return v;
 }
 

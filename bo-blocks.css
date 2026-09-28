@@ -329,6 +329,11 @@ body.bo-light .data-table :is(.status-pill, .role-pill) { height: auto; line-hei
    ============================================================================ */
 body.bo-light .bo-card-head > :is(.search-input, .bo-date, .text-input, select, .seg) ~ .bo-card-sub { margin-left: 0; }
 body.bo-light .bo-card-head > .bo-card-sub ~ :is(.search-input, .bo-date, .text-input, select, .seg) { margin-left: 0; }
+/* Out of room (a phone, a narrow card), a head wraps whole items onto the next line: a label never
+   breaks mid-word, a control is never clipped past the card's edge. */
+body.bo-light .bo-card-head { flex-wrap: wrap; row-gap: 6px; }
+body.bo-light .blk-table .bo-card-head { padding-block: 3px; }   /* a wrapped line clears the card edge; one line stays 36px */
+body.bo-light .bo-card-head > :is(.bo-card-label, .link-btn, .bo-check, a, button) { white-space: nowrap; }
 body.bo-light .panel { padding: var(--blk-pad); }
 body.bo-light .panel-head { border-bottom: 0; padding-bottom: 0; margin-bottom: 12px; }
 body.bo-light .settings-grid { gap: var(--blk-gap); }

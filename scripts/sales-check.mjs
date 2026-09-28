@@ -45,6 +45,11 @@ const ctx = {
   // bo-model's real one: a custom type is stored as its own name (see FULFIL_BUILTINS).
   orderFulfilLabel: (o) => (o.fulfilment === 'delivery' ? 'Delivery' : !o.fulfilment || o.fulfilment === 'pickup' ? 'Walk-in' : o.fulfilment),
   saleSign: (o) => SALE_SIGN[o.status || 'completed'] ?? 0,
+  // the calendar's MEAS table names these at load; nothing here prints with them
+  pesoShort: String, pesoK: String,
+  // the calendar's date helpers, copied from backoffice.js
+  isoDate: (ts) => { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; },
+  shiftDays: (ts, n) => { const d = new Date(ts); d.setDate(d.getDate() + n); return d.getTime(); },
 };
 vm.createContext(ctx);
 vm.runInContext(code, ctx);
@@ -134,7 +139,9 @@ assert.equal(fmt.peso(-200), '−₱200.00', 'the minus goes in front of the pes
 assert.equal(fmt.peso(200), '₱200.00');
 assert.equal(fmt.txTotal(rows[3]), -200, 'a return row shows negative money');
 assert.equal(fmt.txTotal(rows[2]), 500, 'a voided row keeps its face value; the pill says it counts zero');
-assert.match(code.match(/key: 'total', label: 'Total',.*$/m)[0], /txTotal\(o\)/,
+// the tx table moved to bo-transactions.js (2026-09-26)
+const txCode = readFileSync(new URL('../bo-transactions.js', import.meta.url), 'utf8');
+assert.match(txCode.match(/key: 'total', label: 'Total',.*$/m)[0], /txTotal\(o\)/,
   'the tx table total column must be signed, in the cell and in the CSV');
 
 // ---- 8. Walk-in vs delivery splits the same money, no third bucket ----------
@@ -154,5 +161,60 @@ near(sum(mixed.fuls, 'revenue'), mixed.totals.revenue, 'mixed fulfilment sums ba
 assert.equal(byName.get('Delivery').top.size, 1, 'delivery keeps its own item list');
 assert.equal(byName.get('Delivery').top.get('p1').qty, 3);
 assert.ok(!byName.get('Walk-in').top.has('p1'), 'a delivered line must not land in the walk-in list');
+
+// ---- 9. Sales calendar: the comparison is off unless asked, and never half against whole --
+const { calCompare, calState } = ctx.window.renderSales;
+const D = (y, m, d = 1) => new Date(y, m - 1, d).getTime();
+const cmp = (p, today) => calCompare(calState(p, today), today);
+const day = (t) => ctx.isoDate(t);
+assert.equal(calState({}, D(2026, 9, 26)).vs, '', 'no ?vs= means no comparison');
+assert.equal(calState({ vs: 'junk' }, D(2026, 9, 26)).vs, '');
+assert.equal(calState({ view: 'year', vs: 'year' }, D(2026, 9, 26)).vs, 'prev', 'a year has no "same month last year"');
+let c = cmp({ month: '2026-09' }, D(2026, 9, 26));
+assert.equal(c.prevA, undefined, 'off: no previous window at all');
+assert.equal(c.title + c.label, '', 'off: no chip title, no "vs" on the button');
+assert.equal(day(c.a) + '/' + day(c.b), '2026-09-01/2026-10-01');
+// the month you're in: the same days so far
+c = cmp({ month: '2026-09', vs: 'prev' }, D(2026, 9, 26));
+assert.equal(day(c.prevA) + '/' + day(c.prevB), '2026-08-01/2026-08-27', 'Sep 1–26 against Aug 1–26');
+assert.equal(c.title, 'vs Aug 1 – 26');
+assert.equal(c.label, 'vs August');
+c = cmp({ month: '2026-09', vs: 'year' }, D(2026, 9, 26));
+assert.equal(day(c.prevA) + '/' + day(c.prevB), '2025-09-01/2025-09-27', 'Sep 1–26 against Sep 1–26 last year');
+assert.equal(c.title, 'vs Sep 1 – 26, 2025');
+assert.equal(c.label, 'vs September 2025');
+// a finished month: the whole month before, whatever its length
+c = cmp({ month: '2026-02', vs: 'prev' }, D(2026, 9, 26));
+assert.equal(day(c.prevA) + '/' + day(c.prevB), '2026-01-01/2026-02-01', 'February against all of January, not Jan 1–28');
+assert.equal(c.title, 'vs January');
+c = cmp({ month: '2026-03', vs: 'prev' }, D(2026, 9, 26));
+assert.equal(day(c.prevB), '2026-03-01', 'March against all of February');
+c = cmp({ month: '2026-01', vs: 'prev' }, D(2026, 9, 26));
+assert.equal(day(c.prevA) + '/' + day(c.prevB), '2025-12-01/2026-01-01', 'January steps back into last year');
+// so far past the shorter month's end: capped at that month
+c = cmp({ month: '2026-03', vs: 'prev' }, D(2026, 3, 30));
+assert.equal(day(c.prevB), '2026-03-01', 'Mar 1–30 against all of February, not into March');
+assert.equal(c.title, 'vs February');
+// years
+c = cmp({ view: 'year', month: '2026-09', vs: 'prev' }, D(2026, 9, 26));
+assert.equal(day(c.a) + '/' + day(c.b), '2026-01-01/2027-01-01');
+assert.equal(day(c.prevA) + '/' + day(c.prevB), '2025-01-01/2025-09-27', 'this year so far against the same days of last year');
+assert.equal(c.title, 'vs the same days of 2025');
+assert.equal(c.label, 'vs 2025');
+c = cmp({ view: 'year', month: '2025-01', vs: 'prev' }, D(2026, 9, 26));
+assert.equal(day(c.prevA) + '/' + day(c.prevB), '2024-01-01/2025-01-01', 'a finished year against all of the one before, Dec 31 of a leap year included');
+assert.equal(c.title, 'vs 2024');
+
+// ---- Items' Top 10 and By staff's last sale --------------------------------
+const rankTop = ctx.window.renderSales.rankTop;
+const many = agg(Array.from({ length: 12 }, (_, n) => order({ number: 'r' + n, ts: 1000 + n, cashier: n % 2 ? 'Ana' : 'Ben', total: 100 + n, items: [line(n % 2 ? 'p1' : 'p2', 1, 100 + n)] })));
+const top = rankTop(many.staff, 'revenue');
+assert.equal(top[0].r.name, 'Ana', 'highest revenue ranks first');
+near(top.reduce((s, x) => s + x.share, 0), 1, 'staff shares add to 1');
+assert.equal(top[0].bar, 1, 'the leader fills its bar');
+assert.equal(many.staff.find(s => s.name === 'Ana').last, 1011, 'last sale is the latest completed sale');
+assert.equal(rankTop(Array.from({ length: 15 }, (_, i) => ({ qty: i })), 'qty').length, 10, 'a Top 10 is ten rows');
+assert.equal(rankTop([{ cost: 0 }], 'cost')[0].share, null, 'nothing to share out: no share, not NaN');
+assert.equal(agg([order({ number: 'v', ts: 5, status: 'voided', items: [] })]).staff[0].last, 0, 'a void is not a last sale');
 
 console.log('sales-check: all assertions passed');

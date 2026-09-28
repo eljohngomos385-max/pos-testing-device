@@ -6,8 +6,8 @@
 (function () {
   const VIEW = 'inventory';
   const root = () => document.querySelector(`.view[data-view="${VIEW}"]`);
-  // Stock history is one page (owner, 2026-09-23): KPIs, the latest movements and price changes,
-  // and a rail of lost demand and shelf checks. Each block's View all opens its full page here,
+  // Stock history is one page (owner, 2026-09-23; a Dashboard page 2026-09-26): KPI tabs over one
+  // series of bars, the period's movements and price changes, and a rail of what to act on. Each block's View all opens its full page here,
   // not in the sidebar. The two insight pages come from bo-insights.js.
   const TABS = { overview: 'Stock history', movements: 'Movements', prices: 'Price changes',
     lost: 'Lost demand', counts: 'Shelf check' };
@@ -182,18 +182,63 @@
     return groups;
   }
 
+  // Stock history's numbers for one window [a, b) of ms, in total and per bucket (bucketOf(ms) -> key,
+  // a day or an hour), money at cost in pesos (centavos while adding):
+  //   in / out -- what arrived and what left. A shelf count is in neither: nothing arrived or left,
+  //               the number was corrected.
+  //   lost     -- stolen, broken, written off, or a count that came up short.
+  //   adj      -- how many changes were typed by hand (counts, adjustments, losses), a count.
+  // `why` splits out by reason.
+  // When a movement happened: its happenedOn day when that is not the day it was typed (a delivery
+  // entered late), else ts. A bare date parses as UTC midnight -- 8 AM in Manila -- so a same-day
+  // delivery typed at 10 used to land in the 8 AM bar; a backdated one takes local noon.
+  function whenMs(m) {
+    const ts = new Date(m.ts).getTime();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(m.happenedOn || '')) return ts;
+    const on = new Date(m.happenedOn + 'T12:00:00');
+    return on.toDateString() === new Date(ts).toDateString() ? ts : on.getTime();
+  }
+  const MANUAL = new Set(['count', 'adjustment', 'shrinkage', 'damage', 'writeoff']);
+  const LOSS = new Set(['shrinkage', 'damage', 'writeoff']);
+  const isLoss = (m) => LOSS.has(m.reason) || (m.reason === 'count' && Number(m.qty) < 0);
+  function stockFlow(movements, costOf, [a, b], bucketOf = () => '') {
+    const zero = () => ({ in: 0, out: 0, lost: 0, adj: 0 });
+    const t = zero(), buckets = new Map(), why = new Map();
+    for (const m of movements) {
+      const ms = whenMs(m), q = Number(m.qty) || 0;
+      if (!(ms >= a && ms < b) || !q) continue;
+      const c = Math.round(Math.abs(q) * Number(m.unitCost ?? costOf(m.productId) ?? 0) * 100);
+      const k = bucketOf(ms), bk = buckets.get(k) || zero();
+      const add = (f, v) => { t[f] += v; bk[f] += v; };
+      if (MANUAL.has(m.reason)) add('adj', 1);
+      if (isLoss(m)) add('lost', c);
+      if (m.reason !== 'count') {
+        if (q > 0) add('in', c);
+        else { add('out', c); why.set(m.reason, (why.get(m.reason) || 0) + c); }
+      }
+      buckets.set(k, bk);
+    }
+    const p = (x) => ({ in: x.in / 100, out: x.out / 100, lost: x.lost / 100, adj: x.adj });
+    return { ...p(t), buckets: new Map([...buckets].map(([k, v]) => [k, p(v)])),
+      why: [...why].sort((x, y) => y[1] - x[1]).map(([reason, c]) => ({ reason, value: c / 100, share: t.out ? c / t.out : 0 })) };
+  }
+
   const API = { r2, ceilStep, countDelta, suggestQty, runningBalances, urgency,
     stockMovement, documentMovements, lastPaid, heldPrice, costDrift,
-    reorderGroups };
+    reorderGroups, stockFlow };
   if (typeof module === 'object' && module.exports) { module.exports = API; return; }
 
   /* ================================ formatting ======================================== */
 
-  const REASON_TONE = {
-    sale: 'muted', return: 'warn', delivery: 'ok',
-    adjustment: 'warn', count: 'muted', transfer: 'muted',
-    shrinkage: 'warn', damage: 'warn', writeoff: 'warn',
-  };
+  // Every reason is a pill, one colour per kind, so a list scans (owner, 2026-09-26): green came in,
+  // amber a hand fix or a return, blue a shelf count, red a loss. Sales and transfers stay grey.
+  // The calm overview uses .pill tones; the full pages the back office's .status-pill ones.
+  const REASON_TONE = { delivery: 'up', return: 'warn', adjustment: 'warn', count: 'data',
+    shrinkage: 'down', damage: 'down', writeoff: 'down' };
+  const STATUS_TONE = { up: 'ok', warn: 'warn', data: 'info', down: 'danger' };
+  const reasonLabel = (r) => escapeHtml(STOCK_REASONS[r] || r);
+  const reasonPill = (r) => `<span class="pill ${REASON_TONE[r] || ''}">${reasonLabel(r)}</span>`;
+  const reasonCell = (r) => `<span class="status-pill ${STATUS_TONE[REASON_TONE[r]] || 'muted'}">${reasonLabel(r)}</span>`;
 
   const fmtQty = (p, n) => roundQty(p, n).toLocaleString('en-PH',
     p && p.soldBy === 'measure' ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : {});
@@ -264,13 +309,16 @@
   /* ================================== shell =========================================== */
 
   function shell(d) {
+    // The overview draws its own header (the Dashboard's bar), so it is only the frame.
+    if (d.tab === 'overview') return '<div class="c-main" id="invBody"></div>';
     // 'all' is the built-in catch-all folder; as an option it reads as a second
     // "All categories" and filters to almost nothing. It is not a category.
     const cats = ['<option value="">All categories</option>'].concat(
       state.folders.filter((f) => f.id !== 'all')
         .map((f) => `<option value="${escapeHtml(f.id)}">${escapeHtml(f.name)}</option>`)).join('');
-    const reasons = ['<option value="">All reasons</option>'].concat(
-      Object.entries(STOCK_REASONS).map(([k, v]) => `<option value="${k}">${escapeHtml(v)}</option>`)).join('');
+    // One control for what to show: a kind (the overview's type pick) or one reason.
+    const reasons = `<optgroup label="Show">${MOVE_TYPES.map(([k, v]) => `<option value="t:${k}">${v}</option>`).join('')}</optgroup>
+      <optgroup label="One reason">${Object.entries(STOCK_REASONS).map(([k, v]) => `<option value="r:${k}">${escapeHtml(v)}</option>`).join('')}</optgroup>`;
 
     const filters = d.tab === 'movements'
       ? `<select class="bo-select" id="invReason">${reasons}</select>
@@ -284,8 +332,6 @@
     const insight = INSIGHT_TABS.includes(d.tab);
     const back = FULL_PAGES.includes(d.tab)
       ? `<a class="link-btn" href="${Router.href(VIEW, '', {})}">&larr; Stock history</a>` : '';
-    const periods = `<div class="seg sh-period">${PERIOD_LIST.map(([k, label]) =>
-      `<a class="seg-btn" data-p="${k}" href="${Router.href(VIEW, '', { period: k === PERIOD_DEF ? '' : k })}">${label}</a>`).join('')}</div>`;
 
     return `
       <div class="view-head">
@@ -294,7 +340,7 @@
           <h1 id="invTitle"></h1>
         </div>
         <div class="view-actions">
-          ${d.tab === 'overview' ? periods : insight ? '' : search + filters}
+          ${insight ? '' : search + filters}
           <button class="secondary-btn small" data-act="receive">Receive stock</button>
           <button class="primary-btn small" data-act="doc-new">New adjustment</button>
         </div>
@@ -369,14 +415,28 @@
 
   /* ============================ tab 2 — movement history ============================== */
 
+  // What kind of change, wider than one reason: [?type=, label, test, empty text]. The default
+  // hides sales -- the POS writes hundreds, and they bury the deliveries, fixes and losses.
+  // Received and Lost match the KPIs of the same name (stockFlow).
+  const MOVE_TYPES = [
+    ['', 'All but sales', (m) => m.reason !== 'sale', 'Nothing but sales moved stock'],
+    ['all', 'All', () => true, 'No stock moved'],
+    ['in', 'Received', (m) => m.qty > 0 && m.reason !== 'count', 'Nothing received'],
+    ['sale', 'Sold', (m) => m.reason === 'sale', 'Nothing sold'],
+    ['lost', 'Lost', isLoss, 'Nothing lost'],
+    ['adj', 'Adjusted', (m) => MANUAL.has(m.reason), 'Nothing adjusted'],
+  ];
+  const moveType = (k) => MOVE_TYPES.find((t) => t[0] === (k || '')) || MOVE_TYPES[0];
+
   function filteredMovements(d) {
-    const reason = d.params.reason || '';
+    // One reason (the old ?reason= links) wins over a type.
+    const reason = d.params.reason || '', type = moveType(d.params.type)[2];
     const from = d.params.from || '';
     const to = d.params.to || '';
     const out = [];
     for (let i = d.movements.length - 1; i >= 0; i--) {   // newest first, one pass
       const m = d.movements[i];
-      if (reason && m.reason !== reason) continue;
+      if (reason ? m.reason !== reason : !type(m)) continue;
       const day = isoDate(m.ts);          // local day — UTC slice put early-morning rows on the wrong day
       if (from && day < from) continue;
       if (to && day > to) continue;
@@ -415,7 +475,7 @@
         <tr>
           <td class="tx-time">${escapeHtml(txTime(m.ts))}</td>
           <td>${escapeHtml(p ? p.name : m.productId || '—')}</td>
-          <td><span class="status-pill ${REASON_TONE[m.reason] || 'muted'}">${escapeHtml(STOCK_REASONS[m.reason] || m.reason)}</span></td>
+          <td>${reasonCell(m.reason)}</td>
           <td class="num ${tone}">${fmtSigned(p, m.qty)}</td>
           <td class="num">${m.unitCost == null ? '—' : peso(m.unitCost)}</td>
           <td class="num">${bal == null ? '—' : fmtQty(p, bal)}</td>
@@ -704,110 +764,175 @@
 
   /* ============================ Stock history — the overview ========================== */
 
-  // Today runs from midnight and compares with all of yesterday; 7 and 30 are rolling windows
-  // against the same length before them.
-  // An array, not an object: numeric keys would sort ahead of 'today'.
-  const PERIOD_LIST = [['today', 'Today', 'yesterday'], ['7', '7 days', 'previous 7 days'], ['30', '30 days', 'previous 30 days']];
+  // The overview is the Dashboard's page (bo-calm.css .calm-dash): a range pick, four KPIs as
+  // folder tabs over the bars, a Movements table, a rail of what to act on (owner, 2026-09-26:
+  // "what came in, what went out, what went missing or was fixed, and what to do about it").
+  // Today runs from midnight and compares with yesterday up to this time -- a morning against a
+  // whole day always read as a drop. 7 and 30 are calendar days, today included, each against
+  // the same stretch just before it. An array: numeric keys would sort ahead of 'today'.
+  const PERIOD_LIST = [['today', 'Today', 'yesterday at this time'],
+    ['7', 'Last 7 days', 'the previous 7 days'], ['30', 'Last 30 days', 'the previous 30 days']];
   const PERIODS = Object.fromEntries(PERIOD_LIST.map(([k, ...rest]) => [k, rest]));
   const PERIOD_DEF = '7';
   const periodOf = (params) => (PERIODS[params.period] ? String(params.period) : PERIOD_DEF);
+  const periodText = (key) => (key === 'today' ? 'today' : `in the last ${key} days`);
   function periodWindows(key, now = Date.now()) {
-    if (key === 'today') {
-      const mid = new Date(now).setHours(0, 0, 0, 0);
-      return { cur: [mid, now + 1], prev: [mid - 864e5, mid] };
-    }
-    const span = Number(key) * 864e5;
-    return { cur: [now - span, now + 1], prev: [now - 2 * span, now - span] };
+    const mid = dayStart(now);
+    if (key === 'today') return { cur: [mid, now + 1], prev: [mid - 864e5, now + 1 - 864e5] };
+    const start = shiftDays(mid, 1 - Number(key)), span = now + 1 - start;
+    return { cur: [start, now + 1], prev: [start - span, start] };
   }
   const inWin = (t, [a, b]) => { const ms = new Date(t).getTime(); return ms >= a && ms < b; };
+  const whenOf = whenMs;
 
-  // Stock in / out at cost, in centavos while adding. Counts stay out: a shelf check corrects
-  // the number, it is not stock arriving or leaving.
-  function flow(movements, byId, win) {
-    let inC = 0, outC = 0, checks = 0;
-    for (const m of movements) {
-      if (!inWin(m.happenedOn || m.ts, win)) continue;
-      if (m.reason === 'count') { if (Number(m.qty)) checks++; continue; }
-      const cost = m.unitCost ?? (byId.get(m.productId) || {}).cost ?? 0;
-      const c = Math.round(Math.abs(Number(m.qty) || 0) * Number(cost) * 100);
-      if (m.qty > 0) inC += c; else outC += c;
+  // The chart's bars: one per hour today (7a–6p, widened to any hour that moved stock), one per day otherwise.
+  function flowBuckets(key, [a, b], movements) {
+    if (key === 'today') {
+      const hrs = movements.filter((m) => inWin(whenOf(m), [a, b])).map((m) => new Date(whenOf(m)).getHours());
+      const h0 = Math.min(7, ...hrs), h1 = Math.max(18, ...hrs), now = new Date(b - 1).getHours();
+      return { of: (ms) => new Date(ms).getHours(), list: Array.from({ length: h1 - h0 + 1 }, (_, i) =>
+        ({ key: h0 + i, x: hourShort(h0 + i), title: `${hourLong(h0 + i)} – ${hourLong(h0 + i + 1)}`, future: h0 + i > now })) };
     }
-    return { in: inC / 100, out: outC / 100, checks };
+    const n = Number(key);
+    return { of: isoDate, list: Array.from({ length: n }, (_, i) => {
+      const t = shiftDays(a, i);
+      return { key: isoDate(t), x: n > 7 ? String(new Date(t).getDate()) : dashDate(t, { weekday: 'short' }),
+        title: dashDate(t, { weekday: 'long', month: 'long', day: 'numeric' }) };
+    }) };
   }
 
-  const viewAll = (tab) => `<a class="link-btn view-all" href="${Router.href(VIEW, '', { tab })}">View all ›</a>`;
-  const railMore = (tab) => `<a class="rail-more" href="${Router.href(VIEW, '', { tab })}">View all ›</a>`;
+  // The four KPIs; the picked one is what the bars show. Money is at cost. `tone` is what a rise
+  // means: Lost going up is bad news, so its chip reads red. Received, Went out and Adjusted have
+  // no good direction -- a quiet week sells less and buys less -- so their chips stay grey.
+  const count = (v) => v.toLocaleString('en-PH');
+  const money = (v) => (v >= 1e6 ? pesoK(v) : pesoShort(v));   // ₱1.25M: seven digits and a chip overran a tab
+  const SH_KPI = {
+    in:   { lbl: 'Received', fmt: money, axis: pesoK, floor: 100,
+      tip: 'Stock that came in: deliveries, returns, transfers in. At cost.' },
+    out:  { lbl: 'Went out', fmt: money, axis: pesoK, floor: 100,
+      tip: 'Stock that left: sold, used, transferred out or lost. At cost.' },
+    lost: { lbl: 'Lost', fmt: money, axis: pesoK, floor: 100, bad: true,
+      tip: 'Stolen, broken, written off, or short on a shelf count. At cost.' },
+    adj:  { lbl: 'Adjusted', fmt: count, axis: (v) => +v.toFixed(1), floor: 3,
+      tip: 'Changes typed in by hand: shelf counts, adjustments and losses.' },
+  };
+  const shChip = (k, cur, prev, title) => calmChip(cur, prev, title)
+    .replace(/chip (up|down)/, (_, t) => (SH_KPI[k].bad ? `chip ${t === 'up' ? 'down' : 'up'}` : 'chip'));
+
+  function shStrip(cur, prev, chart, vs) {
+    return Object.entries(SH_KPI).map(([k, K]) =>
+      `<button class="stat" role="tab" data-chart="${k}" aria-selected="${chart === k}" title="${escapeHtml(K.tip)}">`
+      + `<div class="lbl">${K.lbl}</div><div class="line"><span class="val">${K.fmt(cur[k])}</span>${shChip(k, cur[k], prev[k], vs)}</div></button>`).join('');
+  }
+
+  // The Dashboard's bars (dashPlot): the picked KPI, one series, from zero up.
+  function shPlot(bs, f, chart) {
+    const K = SH_KPI[chart], at = (b) => f.buckets.get(b.key) || { in: 0, out: 0, lost: 0, adj: 0 };
+    const peak = Math.max(K.floor, ...bs.map((b) => at(b)[chart]));
+    const step = niceStep(peak / 3), top = Math.ceil(peak * 1.1 / step) * step;
+    const every = Math.ceil(bs.length / 12);   // a label every few bars on 30 days, counted back from today
+    let grid = '';
+    for (let v = 0; v <= top + 1e-6; v += step) grid += `<div class="gl${v ? '' : ' zero'}" style="bottom:${v / top * 100}%"><span>${K.axis(v)}</span></div>`;
+    const cols = bs.map((b, i) => {
+      const x = `<span class="x">${(bs.length - 1 - i) % every ? '' : b.x}</span>`;
+      if (b.future) return `<div class="b future">${x}</div>`;
+      const v = at(b);
+      return `<div class="b" tabindex="0" aria-label="${escapeHtml(b.title)}: ${K.lbl} ${K.fmt(v[chart])}">`
+        + `<i style="height:${v[chart] / top * 100}%"><span class="tip"><b>${escapeHtml(b.title)}</b>`
+        + Object.entries(SH_KPI).map(([k, X]) => `<span class="${k === chart ? 'on' : ''}">${X.lbl}<em>${X.fmt(v[k])}</em></span>`).join('')
+        + `</span></i>${x}</div>`;
+    }).join('');
+    return `<div class="grid">${grid}</div>`
+      + `<div class="cols${bs.length > 8 ? ' many' : ''}" style="grid-template-columns:repeat(${bs.length},minmax(0,1fr))">${cols}</div>`;
+  }
+
+  const viewAll = (tab, params = {}) => `<a href="${Router.href(VIEW, '', { tab, ...params })}">View all ›</a>`;
   const productLink = (d, id, text = '') => {
     const p = d.byId.get(id);
-    return p ? `<a class="link-btn" href="${Router.href('products', id)}">${escapeHtml(p.name)}</a>` : escapeHtml(text || id || '—');
+    return p ? `<a href="${Router.href('products', id)}">${escapeHtml(p.name)}</a>` : escapeHtml(text || id || '—');
   };
+  const menuItem = (attr, v, lbl, on) => `<button role="menuitemradio" ${attr}="${v}" aria-checked="${on}">${escapeHtml(lbl)}</button>`;
+  // A card with nothing in it is one line: its name, why it is empty, and the way to the full list.
+  const quietCard = (lbl, why, more) => `<section class="card txcard"><div class="head"><span class="lbl">${lbl}<span class="sub">${escapeHtml(why)}</span></span>${more}</div></section>`;
 
   function overviewTab(d) {
-    const key = periodOf(d.params), cmp = PERIODS[key][1], w = periodWindows(key);
-    const priceLog = loadEvents('priceLog'), lost = loadEvents('lostDemand');
-    const cur = flow(d.movements, d.byId, w.cur), prev = flow(d.movements, d.byId, w.prev);
-    const n = (list, win) => list.filter((e) => inWin(e.ts, win)).length;
-    // More lost requests or more shelf corrections is bad news, so those chips read the other way.
-    const flip = (x) => ({ ...x, tone: x.tone === 'up' ? 'down' : x.tone === 'down' ? 'up' : x.tone });
-    const cell = (label, value, c, p, bad) =>
-      statCell({ label, value, delta: bad ? flip(deltaOf(c, p, cmp)) : deltaOf(c, p, cmp) });
-    const lostNow = n(lost, w.cur), pricesNow = n(priceLog, w.cur);
-    const kpis = `<section class="bo-card sh-kpi-card"><div class="stat-grid show-delta sh-kpis">${[
-      cell('Stock added', pesoShort(cur.in), cur.in, prev.in),
-      cell('Stock out', pesoShort(cur.out), cur.out, prev.out),
-      cell('Price changes', pricesNow.toLocaleString('en-PH'), pricesNow, n(priceLog, w.prev)),
-      cell('Lost requests', lostNow.toLocaleString('en-PH'), lostNow, n(lost, w.prev), true),
-      cell('Shelf changes', cur.checks.toLocaleString('en-PH'), cur.checks, prev.checks, true),
-    ].join('')}</div></section>`;
+    const key = periodOf(d.params), vs = `vs ${PERIODS[key][1]}`, w = periodWindows(key), when = periodText(key);
+    const chart = SH_KPI[d.params.chart] ? d.params.chart : 'in';
+    const costOf = (id) => (d.byId.get(id) || {}).cost;
+    const bs = flowBuckets(key, w.cur, d.movements);
+    const cur = stockFlow(d.movements, costOf, w.cur, bs.of), prev = stockFlow(d.movements, costOf, w.prev);
 
-    // The latest 10 of each, whatever the period: the KPIs say how much, these say what.
-    const moves = d.movements.slice(-10).reverse().map((m) => {
-      const p = d.byId.get(m.productId), bal = d.balance.get(m.id);
-      return `<tr>
-        <td class="tx-time">${escapeHtml(txTime(m.ts))}</td>
-        <td>${productLink(d, m.productId)}</td>
-        <td><span class="status-pill ${REASON_TONE[m.reason] || 'muted'}">${escapeHtml(STOCK_REASONS[m.reason] || m.reason)}</span></td>
-        <td class="num ${m.qty >= 0 ? 'ok' : 'danger'}">${fmtSigned(p, m.qty)}</td>
-        <td class="num">${bal == null ? '—' : fmtQty(p, bal)}</td></tr>`;
-    }).join('') || empty('No stock movements yet.');
-    const moveCard = card('Movements', 'latest 10', `<table class="data-table">
-      <thead><tr><th>When</th><th>Product</th><th>Reason</th><th class="num">Qty</th><th class="num">Balance</th></tr></thead>
-      <tbody>${moves}</tbody></table>`, viewAll('movements'));
+    const bar = `<div class="bar"><h1 id="invTitle"></h1>
+      <button class="pick" popovertarget="invRange">${PERIODS[key][0]}</button>
+      <div class="menu" id="invRange" popover role="menu">${PERIOD_LIST.map(([k, lbl]) => menuItem('data-period', k, lbl, k === key)).join('')}</div>
+      <button class="secondary-btn small" data-act="receive">Receive stock</button>
+      <button class="primary-btn small" data-act="doc-new">New adjustment</button></div>`;
 
-    const drift = costDrift(visible(d), d.movements, loadPurchaseOrders()).length;
-    const prices = priceLog.slice().sort((a, b) => String(b.ts).localeCompare(String(a.ts))).slice(0, 10).map((e) => {
-      const pct = e.old ? ((e.new - e.old) / e.old) * 100 : null;
-      return `<tr>
-        <td class="tx-time">${escapeHtml(txTime(e.ts))}</td>
-        <td>${productLink(d, e.productId)}</td>
-        <td>${e.field === 'cost' ? 'Cost' : 'Price'}</td>
-        <td class="num"><span class="inv-soft">${e.old == null ? '—' : peso(e.old)} →</span> <strong>${peso(e.new)}</strong></td>
-        <td class="num">${pct == null ? '—' : `<span class="trend-plain ${(pct > 0) === (e.field !== 'cost') ? 'up' : 'down'}">${pct > 0 ? '↑' : '↓'} ${Math.abs(pct).toFixed(1)}%</span>`}</td></tr>`;
-    }).join('') || empty('No price or cost changes yet.');
-    const review = drift ? `<a class="link-btn sh-review" href="${Router.href(VIEW, '', { tab: 'prices' })}">${drift} cost${drift === 1 ? '' : 's'} to review</a>` : '';
-    const priceCard = card('Price changes', 'latest 10', `<table class="data-table">
-      <thead><tr><th>When</th><th>Product</th><th>What</th><th class="num">From → to</th><th class="num">Change</th></tr></thead>
-      <tbody>${prices}</tbody></table>`, review + viewAll('prices'));
+    const trend = `<section class="card trend"><div class="strip" role="tablist" aria-label="Chart shows">${shStrip(cur, prev, chart, vs)}</div>
+      <div class="panel"><div class="plot">${cur[chart] ? shPlot(bs.list, cur, chart)
+        : `<p class="none">${chart === 'adj' ? 'Nothing adjusted' : `No stock ${{ in: 'received', out: 'went out', lost: 'lost' }[chart]}`} ${when}.</p>`}</div></div></section>`;
 
-    // Rail: the dashboard's breakdown lists. Lost demand ranks what was asked for in the period.
-    const asked = HWPOS_INSIGHTS.lostDemandSummary(lost.filter((e) => inWin(e.ts, w.cur)));
-    const lostCard = `<section class="bo-card blk-kpi">${railMore('lost')}
-      ${railHead('Lost demand', lostNow.toLocaleString('en-PH'), '<span class="kpi-note">requests</span>')}
-      <div class="bd-rows">${asked.slice(0, 5).map((r) => bdRow(productLink(d, r.productId, r.text), `asked ${r.requests}×`)).join('')
-        || bdRow('Nobody asked for anything you were out of')}</div></section>`;
+    // Movements in the period, newest first. Sales are hidden until asked for: the POS writes
+    // hundreds, and they bury the deliveries, fixes and losses this list is for.
+    const type = moveType(d.params.type);
+    const moves = d.movements.filter((m) => Number(m.qty) && inWin(whenOf(m), w.cur) && type[2](m)).reverse();
+    const typePick = `<button class="pick" popovertarget="invType">${type[1]}</button>
+      <div class="menu" id="invType" popover role="menu">${MOVE_TYPES.map(([k, lbl]) => menuItem('data-type', k, lbl, k === type[0])).join('')}</div>`;
+    const movesAll = viewAll('movements', { type: type[0], from: isoDate(w.cur[0]) });
+    const moveCard = !moves.length ? quietCard('Movements', `${type[3]} ${when}`, typePick + movesAll)
+      : `<section class="card txcard"><div class="head"><span class="lbl">Movements<span class="sub">${moves.length > 10 ? `latest 10 of ${count(moves.length)}` : count(moves.length)}</span></span>${typePick}${movesAll}</div>
+      <div class="flush"><table class="tx">
+        <tr><th>When</th><th>Product</th><th>Reason</th><th class="n">Qty</th><th class="n opt">Balance</th></tr>
+        ${moves.slice(0, 10).map((m) => {
+          const p = d.byId.get(m.productId), bal = d.balance.get(m.id);
+          return `<tr><td class="t">${escapeHtml(txTime(m.ts))}</td>
+            <td class="prod">${productLink(d, m.productId)}${m.note ? `<span class="mut"> · ${escapeHtml(m.note)}</span>` : ''}</td>
+            <td>${reasonPill(m.reason)}</td><td class="n">${fmtSigned(p, m.qty)}</td>
+            <td class="n opt">${bal == null ? '<span class="mut">—</span>' : fmtQty(p, bal)}</td></tr>`;
+        }).join('')}</table></div></section>`;
 
-    // Shelf check: the five latest counts that changed the number, "system → shelf".
-    const counts = d.movements.filter((m) => m.reason === 'count' && Number(m.qty)).slice(-5).reverse();
-    const shelfCard = `<section class="bo-card blk-kpi">${railMore('counts')}
-      ${railHead('Shelf check', cur.checks.toLocaleString('en-PH'), '<span class="kpi-note">changes</span>')}
-      <div class="bd-rows">${counts.map((m) => {
+    // Price and cost edits in the period. A cost going up is the bad direction, a price going up the good one.
+    const edits = loadEvents('priceLog').filter((e) => inWin(e.ts, w.cur)).sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+    const priceCard = !edits.length ? quietCard('Price changes', `None ${when}`, viewAll('prices'))
+      : `<section class="card txcard"><div class="head"><span class="lbl">Price changes<span class="sub">${edits.length > 5 ? `latest 5 of ${edits.length}` : edits.length}</span></span>${viewAll('prices')}</div>
+      <div class="flush"><table class="tx">
+        <tr><th>When</th><th>Product</th><th>What</th><th class="n">From → to</th><th class="n">Change</th></tr>
+        ${edits.slice(0, 5).map((e) => {
+          const pct = e.old ? ((e.new - e.old) / e.old) * 100 : null;
+          return `<tr><td class="t">${escapeHtml(txTime(e.ts))}</td><td class="prod">${productLink(d, e.productId)}</td>
+            <td>${e.field === 'cost' ? 'Cost' : 'Price'}</td>
+            <td class="n"><span class="mut">${e.old == null ? '—' : peso(e.old)} →</span> ${peso(e.new)}</td>
+            <td class="n">${pct == null ? '<span class="mut">—</span>'
+              : `<span class="${(pct > 0) === (e.field !== 'cost') ? 'good' : 'bad'}">${pct > 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%</span>`}</td></tr>`;
+        }).join('')}</table></div></section>`;
+
+    // The rail: what to act on. A card with nothing to say is not drawn -- except Lost demand, which the
+    // owner always wants to see (2026-09-26): an empty list there is news too.
+    const railCard = (lbl, more, rows, empty = '') => (rows.length || empty
+      ? `<section class="card w"><div class="top band"><span>${lbl}</span>${more}</div><div class="rows">${rows.length ? rows.join('') : calmRow(`<span class="mut">${empty}</span>`, '')}</div></section>` : '');
+    const asked = HWPOS_INSIGHTS.lostDemandSummary(loadEvents('lostDemand').filter((e) => inWin(e.ts, w.cur)));
+    const counts = d.movements.filter((m) => m.reason === 'count' && Number(m.qty) && inWin(whenOf(m), w.cur)).reverse();
+    const drift = costDrift(visible(d), d.movements, loadPurchaseOrders());
+    const pct = (s) => (s && s < 0.01 ? '<1%' : s < 1 && s > 0.99 ? '>99%' : `${Math.round(s * 100)}%`);
+    const rail = [
+      railCard('Lost demand', viewAll('lost'), asked.slice(0, 5).map((r) =>
+        calmRow(productLink(d, r.productId, r.text), `${r.requests}×`)), `Nobody asked for anything you were out of ${when}`),
+      // "system → shelf": short is red, over is plain -- extra on the shelf costs nothing.
+      railCard('Counts that didn’t match', viewAll('counts'), counts.slice(0, 5).map((m) => {
         const p = d.byId.get(m.productId);
-        const was = m.expected == null ? '' : `${fmtQty(p, m.expected)} → ${fmtQty(p, m.counted)}`;
-        return bdRow(productLink(d, m.productId), was, fmtSigned(p, m.qty), m.qty < 0 ? 'down' : 'up');
-      }).join('') || bdRow('No shelf counts changed the number')}</div></section>`;
+        return calmRow(productLink(d, m.productId), m.expected == null ? '' : `${fmtQty(p, m.expected)} → ${fmtQty(p, m.counted)}`,
+          fmtSigned(p, m.qty), m.qty < 0 ? 'down' : '');
+      })),
+      railCard('Supplier costs changed', viewAll('prices'), drift.slice(0, 5).map((r) =>
+        calmRow(productLink(d, r.p.id), `${peso(r.book)} → ${peso(r.paid)}`,
+          r.gapPct == null ? 'no cost' : `${r.gapPct > 0 ? '+' : '−'}${Math.abs(r.gapPct).toFixed(0)}%`, r.gap > 0 || r.gapPct == null ? 'down' : 'up'))),
+      // One reason is 100% of one bar: that says nothing Went out doesn't, so the card waits for two.
+      cur.why.length < 2 ? '' : railCard('Where it went', '', cur.why.map((r) =>
+        calmRow(reasonLabel(r.reason), pesoShort(r.value), pct(r.share)))),
+    ].join('');
 
-    return `${kpis}<div class="sh-grid"><div class="dash-main">${moveCard}${priceCard}</div>
-      <div class="dash-rail">${lostCard}${shelfCard}</div></div>`;
+    return `${bar}<div class="dash${rail ? '' : ' solo'}"><div class="col">${trend}${moveCard}${priceCard}</div>
+      ${rail ? `<div class="rail">${rail}</div>` : ''}</div>`;
   }
 
   function render() {
@@ -825,19 +950,21 @@
     // A record has its own URL — clicking through never opens a modal.
     if (d.docId) {
       r.dataset.tab = '';
+      r.classList.remove('calm-dash');
       r.innerHTML = documentView(d.docId, d.byId);
       return;
     }
     // Rebuild the shell only when the tab changes — a keystroke must not blow away the
     // search box the user is typing into.
+    r.classList.toggle('calm-dash', d.tab === 'overview');   // the overview is a Dashboard page (bo-calm.css)
     if (r.dataset.tab !== d.tab) {
       r.innerHTML = shell(d);
       r.dataset.tab = d.tab;
     }
-    syncControls(d);
     r.querySelector('#invBody').innerHTML =
       d.tab === 'overview' ? overviewTab(d) : d.tab === 'movements' ? movementsTab(d)
       : d.tab === 'prices' ? pricesTab(d) : HWPOS_INSIGHTS.card(d.tab, d.params);
+    syncControls(d);
   }
 
   function syncControls(d) {
@@ -848,12 +975,10 @@
     };
     set('#invSearch', state.invQuery || '');
     set('#invCat', d.cats[0] || '');
-    set('#invReason', d.params.reason || '');
+    set('#invReason', d.params.reason ? `r:${d.params.reason}` : `t:${moveType(d.params.type)[0]}`);
     set('#invFrom', d.params.from || '');
     set('#invTo', d.params.to || '');
     r.querySelector('#invTitle').textContent = TABS[d.tab];
-    const p = periodOf(d.params);
-    r.querySelectorAll('.sh-period .seg-btn').forEach((b) => b.classList.toggle('active', b.dataset.p === p));
   }
 
 
@@ -984,6 +1109,12 @@
     if (!mine(e)) return;
     const el = e.target.closest('button');
     if (!el) return;
+    // The overview's picks: the range and type menus, and the KPI tabs over the chart.
+    const menu = el.closest('[popover]');
+    if (menu) menu.hidePopover();
+    if (el.dataset.period) return Router.setParams({ period: el.dataset.period === PERIOD_DEF ? '' : el.dataset.period });
+    if ('type' in el.dataset) return Router.setParams({ type: el.dataset.type });
+    if (el.dataset.chart) return Router.setParams({ chart: el.dataset.chart === 'in' ? '' : el.dataset.chart });
 
     switch (el.dataset.act) {
       case 'receive': return Router.go('suppliers', '');   // receiving is a PO action, and Suppliers owns it
@@ -1031,7 +1162,10 @@
     }
     if (!mine(e)) return;
     if (el.id === 'invCat') return Router.setParams({ cat: el.value, page: '' });
-    if (el.id === 'invReason') return Router.setParams({ reason: el.value, page: '' });
+    if (el.id === 'invReason') {
+      const [k, v] = el.value.split(':');
+      return Router.setParams({ type: k === 't' ? v : '', reason: k === 'r' ? v : '', page: '' });
+    }
     if (el.id === 'invFrom') return Router.setParams({ from: el.value, page: '' });
     if (el.id === 'invTo') return Router.setParams({ to: el.value, page: '' });
     if (el.dataset.doc && draft) { draft[el.dataset.doc] = el.value; return; }
@@ -1040,6 +1174,15 @@
       return renderLines();
     }
   });
+
+  // A menu hangs under its button, right edges flush (the Dashboard's range pick). toggle does not bubble.
+  document.addEventListener('toggle', (e) => {
+    const m = e.target;
+    if (e.newState !== 'open' || !m.matches || !m.matches('.view-inv .menu')) return;
+    const b = root().querySelector(`[popovertarget="${m.id}"]`).getBoundingClientRect();
+    m.style.top = b.bottom + 6 + 'px';
+    m.style.left = Math.max(16, b.right - m.offsetWidth) + 'px';
+  }, true);
 
   window.renderInventory = render;
   window.openAdjustDialog = openAdjustDialog;

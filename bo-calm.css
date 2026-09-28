@@ -29,6 +29,9 @@ body.bo-light {
   --b-data-ink:  #1F5FB8;
   --b-warn-tint: #FCEFC7;
   --b-warn:      #7A5B00;
+  --b-violet-tint: var(--po-pill-owner);   --b-violet: var(--po-pill-owner-ink);
+  --b-teal-tint: #D2EFEA;  --b-teal: #0B6B5E;     /* payment pills only: QR */
+  --b-rose-tint: #FADCE7;  --b-rose: #9E2A5A;     /* payment pills only: card */
   --b-t-value:   27px;
   --b-t-label:   var(--blk-t-label);
   --b-t-meta:    var(--blk-t-meta);
@@ -42,7 +45,7 @@ body.bo-light {
   --b-rail-w:    340px;
 }
 /* the view is the lab's whole page: no back-office gutter or width cap */
-body.bo-light .view.calm-dash, body.bo-light .view.calm-sales, body.bo-light .view.calm-tx { padding: 0; max-width: none; min-height: 100vh; }
+body.bo-light .view.calm-dash, body.bo-light .view.calm-sales, body.bo-light .view.calm-tx { padding: 0; max-width: none; min-height: 100vh; min-height: 100dvh; }
 body.bo-light .view.calm-dash.active, body.bo-light .view.calm-sales.active, body.bo-light .view.calm-tx.active { display: block; }   /* the lab body is a block; in a flex column .c-main's auto margins shrink it */
 
 /* ---------------------------------------------------------------- Dashboard */
@@ -56,15 +59,15 @@ body.bo-light .calm-dash button { font: inherit; color: inherit; }
 body.bo-light .calm-dash a { color: var(--b-ink-2); font-weight: 500; text-decoration: none; }
 body.bo-light .calm-dash a:hover { color: var(--b-ink); }
 
-body.bo-light .calm-dash .c-main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--b-rail-w)); margin: 0 auto; }   /* left column = the Sales page's width */
+body.bo-light .calm-dash .c-main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--b-rail-w)); margin: 0 auto; container-type: inline-size; }   /* one frame for Dashboard and Transactions: the page edges line up (Sales keeps its narrower 1180). Folds by the page, not the window: the sidebar takes 240px at 1024 */
 
 body.bo-light .calm-dash .bar { display: flex; align-items: center; min-height: 32px; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 body.bo-light .calm-dash .bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
 body.bo-light .calm-dash .pick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 10px 5px 12px; cursor: pointer; font-weight: 500; }
-body.bo-light .calm-dash .pick .vs { font-weight: 400; color: var(--b-ink-3); }
+body.bo-light :is(.calm-dash, .calm-sales) .pick .vs { font-weight: 400; color: var(--b-ink-3); }
 body.bo-light .calm-dash .pick::after { content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
 body.bo-light .calm-dash .menu { margin: 0; inset: auto; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); padding: 4px; min-width: 200px; color: var(--b-ink); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
-body.bo-light .calm-dash .menu h3 { margin: 0; padding: 8px 10px 4px; font-size: var(--b-t-micro); font-weight: 500; color: var(--b-ink-3); }
+body.bo-light :is(.calm-dash, .calm-sales) .menu h3 { margin: 0; padding: 8px 10px 4px; font-size: var(--b-t-micro); font-weight: 500; color: var(--b-ink-3); }
 body.bo-light .calm-dash .menu hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
 body.bo-light .calm-dash .menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: var(--b-r-row); cursor: pointer; }
 body.bo-light .calm-dash .menu button:hover { background: var(--b-card); }
@@ -97,6 +100,23 @@ body.bo-light .calm-dash .chip { font-size: var(--b-t-meta); font-weight: 500; p
         color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 body.bo-light .calm-dash .chip.up { background: var(--b-up-tint); color: var(--b-up); }
 body.bo-light .calm-dash .chip.down { background: var(--b-down-tint); color: var(--b-down); }
+/* The chip stays beside its number (owner): the strip folds by its own card, sidebar open or not. A stat needs
+   ~236px for "₱1,477,772 −4.5%", so four go two by two under 944px of card; on a phone the Sales strip's
+   tighter stat keeps two a row. Stock history's strip is this one too. */
+body.bo-light .calm-dash .card:has(> .strip) { container: strip / inline-size; }
+@container strip (max-width: 944px) {
+  body.bo-light .calm-dash .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.bo-light .calm-dash .strip .stat:nth-child(odd) { border-left: 0; }
+  body.bo-light .calm-dash .strip .stat:nth-child(n+3) { border-top: 1px solid var(--b-line); }
+  body.bo-light .calm-dash .strip .stat:last-child { border-top-right-radius: 0; }
+  body.bo-light .calm-dash .strip .stat:nth-child(2) { border-top-right-radius: calc(var(--b-r-card) - 1px); }
+  body.bo-light .calm-dash .strip .stat:nth-child(-n+2)::after { content: none; }
+}
+@container strip (max-width: 520px) {
+  body.bo-light .calm-dash .stat { padding: 10px 8px 12px; }
+  body.bo-light .calm-dash .stat .line { gap: 6px; }
+  body.bo-light .calm-dash .stat .val { font-size: clamp(15px, 4.4cqi, 20px); }   /* "₱1,553,477 +14.8%" in half a 358px card, a few px to spare */
+}
 
 body.bo-light .calm-dash .plot { position: relative; height: 300px; }
 body.bo-light .calm-dash .grid, body.bo-light .calm-dash .cols { position: absolute; left: 32px; right: 0; top: 0; bottom: 20px; }
@@ -127,11 +147,14 @@ body.bo-light .calm-dash .b.future .x { color: #C2C2C2; }
 body.bo-light .calm-dash .head { display: flex; align-items: center; gap: 10px; min-height: 36px; line-height: 18px; }
 body.bo-light .calm-dash .head .lbl { font-weight: 500; margin-right: auto; }
 body.bo-light .calm-dash .head a { font-size: var(--b-t-meta); }
-body.bo-light .calm-dash .txcard { padding-top: 0; padding-bottom: 0; overflow: hidden; }
+/* Out of room, a card head wraps whole items, as .bo-card-head (bo-blocks.css): nothing breaks mid-phrase */
+body.bo-light :is(.calm-dash, .calm-tx) .head { flex-wrap: wrap; row-gap: 6px; padding-block: 3px; }
+body.bo-light :is(.calm-dash, .calm-tx) .head > * { white-space: nowrap; }
+body.bo-light .calm-dash .txcard { padding-top: 0; padding-bottom: 0; overflow: hidden; container-type: inline-size; }
 body.bo-light .calm-dash .flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
 body.bo-light .calm-dash .tx { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-body.bo-light .calm-dash .tx th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; border-top: 1px solid var(--b-line); }
-body.bo-light .calm-dash .tx td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
+body.bo-light .calm-dash .tx th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 10px; border-top: 1px solid var(--b-line); }
+body.bo-light .calm-dash .tx td { height: 34px; padding: 0 10px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
 body.bo-light .calm-dash .tx th:first-child, body.bo-light .calm-dash .tx td:first-child { padding-left: var(--b-pad); }
 body.bo-light .calm-dash .tx th:last-child, body.bo-light .calm-dash .tx td:last-child { padding-right: var(--b-pad); }
 body.bo-light .calm-dash .tx tr[data-receipt] { cursor: pointer; }
@@ -142,7 +165,15 @@ body.bo-light .calm-dash .tx .pill { margin: 0; font-size: 11.5px; font-weight: 
 body.bo-light .calm-dash .tx tr.dim td { color: var(--b-ink-3); }
 body.bo-light .calm-dash .tx tr.dim .amt { text-decoration: line-through; }
 body.bo-light .calm-dash .tx .t { color: var(--b-ink-2); }
-body.bo-light .calm-dash .tx .cust { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-dash .tx .cust { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+/* Eight columns in the card beside the rail (Fulfilment back, owner 2026-09-26): 10px cells and a 150px
+   customer fit the 798px card at 1440 wide. Narrower (1280 wide: 606px inside the card) Customer gives way
+   -- mostly "—", Account on the pill says a customer bought, Transactions has the name -- rather than
+   cutting every name to a few letters. */
+@container (max-width: 700px) {
+  body.bo-light .calm-dash .tx .cust { display: none; }
+  body.bo-light .calm-dash .tx :is(th, td) { padding-inline: 8px; }
+}
 body.bo-light .calm-dash .tx .mut { color: var(--b-ink-3); }
 body.bo-light .calm-dash .tx .n { text-align: right; }
 body.bo-light .calm-dash .tx td.amt { font-weight: 600; }
@@ -203,18 +234,15 @@ body.bo-light .calm-dash .p-sec { margin-top: 20px; }
 body.bo-light .calm-dash .p-sec > .lbl { font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
 body.bo-light .calm-dash .p-sec > .lbl span { color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); }
 
-@media (max-width: 1000px) {
+@container (max-width: 1000px) {
   body.bo-light .calm-dash .dash { grid-template-columns: minmax(0, 1fr); }
   body.bo-light .calm-dash .rail { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 }
 @media (max-width: 760px) {
   body.bo-light .calm-dash .c-main { padding: 16px; }
-  body.bo-light .calm-dash .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  body.bo-light .calm-dash .stat { padding: 12px 16px; }
   body.bo-light .calm-dash .panel { padding: 18px 12px 10px 16px; }
   body.bo-light .calm-dash .plot { height: 190px; }
   body.bo-light .calm-dash .cols.many .b:nth-child(even) .x { visibility: hidden; }
-  body.bo-light .calm-dash .tx .opt { display: none; }
 }
 
 /* ---------------------------------------------------------------- Sales › Summary */
@@ -228,7 +256,7 @@ body.bo-light .calm-sales button { font: inherit; color: inherit; }
 body.bo-light .calm-sales .num { font-variant-numeric: tabular-nums; }
 
 /* ---------- page: the day/week opens as a pop-up over it (owner 2026-09-26), so the calendar keeps its width ---------- */
-body.bo-light .calm-sales .shell { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; }
+body.bo-light .calm-sales .shell { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
 body.bo-light .calm-sales .shell.open::after { content: ""; position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.18); }   /* the backdrop; a click on it closes */
 body.bo-light .calm-sales .c-main { padding: 20px 24px 40px; max-width: 1180px; width: 100%; margin: 0 auto; container-type: inline-size; }
 
@@ -236,16 +264,29 @@ body.bo-light .calm-sales .note { font-size: var(--b-t-meta); color: var(--b-ink
 body.bo-light .calm-sales .note b { color: var(--b-ink-2); font-weight: 500; }
 
 /* ---------- top bar ---------- */
-body.bo-light .calm-sales .bar { display: flex; align-items: center; min-height: 32px; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-body.bo-light .calm-sales .bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
-body.bo-light .calm-sales .seg { display: inline-flex; background: var(--b-track); border-radius: 9px; padding: 2px;
-  height: auto; gap: normal; font-size: inherit; font-weight: inherit; color: inherit; }   /* undo the POS's global .seg */
-body.bo-light .calm-sales .seg button { border: 0; background: none; padding: 5px 14px; border-radius: 7px; cursor: pointer; color: var(--b-ink-2); }
-body.bo-light .calm-sales .seg button[aria-pressed="true"] { background: var(--b-raised); color: var(--b-ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 500; }
-body.bo-light .calm-sales .nav { display: inline-flex; align-items: center; gap: 4px; }
-body.bo-light .calm-sales .nav b { min-width: 124px; text-align: center; font-weight: 600; font-size: 14px; }
+body.bo-light .calm-sales .c-main > .bar { display: flex; align-items: center; min-height: 32px; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+body.bo-light .calm-sales .c-main > .bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
 body.bo-light .calm-sales .icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; padding: revert; }   /* the POS's .icon-btn zeroes it */
 body.bo-light .calm-sales .icon-btn:disabled { opacity: .35; cursor: default; }
+/* ‹ [period ▾] › is one control (owner 2026-09-26): the three share their borders; the pick's width is
+   fixed-ish so ‹ doesn't slide out from under the pointer as the month name changes */
+body.bo-light .calm-sales .nav { display: inline-flex; }
+body.bo-light .calm-sales .nav > button { height: 30px; border-radius: 0; margin-left: -1px; }
+body.bo-light .calm-sales .nav > button:first-child { margin-left: 0; border-radius: 8px 0 0 8px; }
+body.bo-light .calm-sales .nav > button:last-child { border-radius: 0 8px 8px 0; }
+body.bo-light .calm-sales .nav > .pick { min-width: 152px; justify-content: center; }
+/* Summary | Items (owner 2026-09-27): Products' .pd-switch 16px after the title, as there. The switch takes the
+   auto margin and Items' Export sits left of ‹ period ›, so neither the title nor the picker moves on a switch */
+body.bo-light .calm-sales .c-main > .bar h1 { margin-right: 0; }
+body.bo-light .calm-sales .c-main > .bar > .pd-switch { margin: 0 auto 0 4px; }
+/* Items' line (~610px with the phone's 46px hamburger inset) wraps where Summary's doesn't, so under 640px of page
+   ‹ period › always starts the second line and Export follows it: the picker keeps one spot on both views. */
+@container (max-width: 640px) {
+  body.bo-light .calm-sales .c-main > .bar { row-gap: 0; }
+  body.bo-light .calm-sales .c-main > .bar::after { content: ""; flex-basis: 100%; order: 1; }   /* the line break */
+  body.bo-light .calm-sales .c-main > .bar > :is(.nav, .btn) { order: 2; margin-top: 12px; }
+  body.bo-light .calm-sales .c-main > .bar > .btn { order: 3; }
+}
 
 /* ---------- 1 + 2 · one card (sales-calendar-tabs-lab.html): the strip is its folder tabs, like the Dashboard's; the calendar
    its white panel. The picked tab is white with no line under it, so it opens into the panel; the rest stay on the grey. ---------- */
@@ -328,7 +369,7 @@ body.bo-light .calm-sales .months .cell .v { font-size: 18px; }
 
 
 /* ---------- 4 · top 10 ---------- */
-body.bo-light .calm-sales .top { margin-top: 28px; background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0 var(--b-pad); overflow: hidden; }
+body.bo-light .calm-sales .top { margin-top: 12px; background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0 var(--b-pad); overflow: hidden; }
 body.bo-light .calm-sales section.top { box-shadow: var(--card-shadow); }   /* the card only: the side panel's peak hour bar is an i.top */
 body.bo-light .calm-sales .flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
 body.bo-light .calm-sales .top table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
@@ -344,10 +385,9 @@ body.bo-light .calm-sales .top .all:hover { background: #F6F6F6; }
 /* the name column's header is the rank-by dropdown: Items / Categories / Day / Time, same row height */
 body.bo-light .calm-sales .top th.sw { padding: 4px 12px 4px 10px; }
 body.bo-light .calm-sales .top td.nm { padding-left: 24px; }   /* names start where the dropdown's text does: 10 + 1 border + 13 padding */
-body.bo-light .calm-sales .top th select { font: inherit; font-weight: 500; color: var(--b-ink); padding: 4px 6px 4px 13px; border: 1px solid var(--b-outline);
-                 border-radius: 8px; background: var(--b-raised); cursor: pointer; box-shadow: none; }
+body.bo-light .calm-sales .top th .pick { padding-left: 13px; }
 body.bo-light .calm-sales .top .nm { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
-body.bo-light .calm-sales .top .nm small { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-left: 8px; }
+body.bo-light .calm-sales :is(.top, .row) .nm small { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-left: 8px; }
 body.bo-light .calm-sales .top .n { text-align: right; }
 body.bo-light .calm-sales .top td.amt { font-weight: 600; }
 body.bo-light .calm-sales .top .sh { width: 150px; }
@@ -358,7 +398,7 @@ body.bo-light .calm-sales .top .cmp.up { color: var(--b-up); }
 body.bo-light .calm-sales .top .cmp.down { color: var(--b-down); }
 
 /* ---------- 5 · payments, breakdown, staff: three equal cards, the dashboard rail's widget look ---------- */
-body.bo-light .calm-sales .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; align-items: start; }
+body.bo-light .calm-sales .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; align-items: start; }
 body.bo-light .calm-sales .w { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); padding: var(--b-pad); min-width: 0; overflow: hidden; }
 body.bo-light .calm-sales .w .band { display: flex; justify-content: space-between; align-items: center; min-height: 32px; margin-top: calc(-1 * var(--b-pad)); color: var(--b-ink-2); }
 body.bo-light .calm-sales .w .band span { color: var(--b-ink-3); font-size: var(--b-t-meta); }
@@ -368,7 +408,7 @@ body.bo-light .calm-sales .w .empty { margin: 0; padding-bottom: 4px; }
 
 /* ---------- the day/week pop-up: centred, its sections are the dashboard's widget cards ---------- */
 body.bo-light .calm-sales .c-aside { position: fixed; z-index: 21; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        width: min(var(--b-pop-w), calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow-y: auto; overscroll-behavior: contain;
+        width: min(var(--b-pop-w), calc(100vw - 32px)); max-height: calc(100vh - 64px); max-height: calc(100dvh - 64px); overflow-y: auto; overscroll-behavior: contain;
         background: var(--b-page); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: 0 12px 32px rgba(0,0,0,.14); padding: 18px 20px 20px; }
 body.bo-light .calm-sales .c-aside .p-sec { margin-top: 12px; background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; }
 body.bo-light .calm-sales .c-aside .p-head { margin-top: 2px; }
@@ -462,17 +502,17 @@ body.bo-light .calm-tx a { color: var(--b-data); text-decoration: none; }
 body.bo-light .calm-tx .c-main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--b-rail-w)); margin: 0 auto; }
 body.bo-light .calm-tx .bar { display: flex; align-items: center; min-height: 32px; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 body.bo-light .calm-tx .bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
-body.bo-light :is(.calm-tx, .calm-cust) .pick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 10px 5px 12px; cursor: pointer; font-weight: 500; white-space: nowrap; }
-body.bo-light :is(.calm-tx, .calm-cust) .pick::after { content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .pick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 10px 5px 12px; cursor: pointer; font-weight: 500; white-space: nowrap; }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .pick::after { content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
 body.bo-light .calm-tx .pick.on { background: var(--b-data-tint); border-color: var(--b-data-1); color: var(--b-data-ink); }
 body.bo-light .calm-tx .pick.on::after { border-color: var(--b-data-ink); }
-body.bo-light .calm-tx .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-ink); background: var(--b-ink); color: #fff; border-radius: 8px; padding: 5px 12px; cursor: pointer; font-weight: 500; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.2); }
-body.bo-light .calm-tx .btn:hover { background: #1F1F1F; }
-body.bo-light :is(.calm-tx, .calm-cust) .menu { margin: 0; inset: auto; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); padding: 4px; min-width: 200px; max-height: 60vh; overflow-y: auto; color: var(--b-ink); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
-body.bo-light :is(.calm-tx, .calm-cust) .menu hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
-body.bo-light :is(.calm-tx, .calm-cust) .menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: var(--b-r-row); cursor: pointer; }
-body.bo-light :is(.calm-tx, .calm-cust) .menu button:hover { background: var(--b-card); }
-body.bo-light :is(.calm-tx, .calm-cust) .menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
+body.bo-light :is(.calm-tx, .calm-sales) .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-ink); background: var(--b-ink); color: #fff; border-radius: 8px; padding: 5px 12px; cursor: pointer; font-weight: 500; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.2); }
+body.bo-light :is(.calm-tx, .calm-sales) .btn:hover { background: #1F1F1F; }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .menu { margin: 0; inset: auto; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); padding: 4px; min-width: 200px; max-height: 60vh; overflow-y: auto; color: var(--b-ink); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .menu hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: var(--b-r-row); cursor: pointer; }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .menu button:hover { background: var(--b-card); }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
 body.bo-light .calm-tx .menu .clear { color: var(--b-data); }
 body.bo-light .calm-tx .menu .none { padding: 7px 10px; color: var(--b-ink-3); }
 body.bo-light .calm-tx .menu .ends { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 4px 5px 10px; color: var(--b-ink-2); }   /* app only: the lab has no Ends on */
@@ -492,7 +532,6 @@ body.bo-light .calm-tx .flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: a
 body.bo-light .calm-tx .tx { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 body.bo-light .calm-tx .tx th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; border-top: 1px solid var(--b-line); }
 body.bo-light .calm-tx .tx th .sort { border: 0; background: none; padding: 0; color: inherit; font: inherit; cursor: pointer; }
-body.bo-light .calm-tx .tx th .sort[data-on]::after { content: attr(data-on); margin-left: 4px; color: var(--b-data); }
 body.bo-light .calm-tx .tx td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
 body.bo-light .calm-tx .tx th:first-child, body.bo-light .calm-tx .tx td:first-child { padding-left: var(--b-pad); }
 body.bo-light .calm-tx .tx th:last-child, body.bo-light .calm-tx .tx td:last-child { padding-right: var(--b-pad); }
@@ -560,15 +599,26 @@ body.bo-light .calm-tx .w .row[data-f]:hover { background: #F6F6F6; }
 body.bo-light .calm-tx .w .row.on, body.bo-light .calm-tx .w .row.on:hover { background: var(--b-data-tint); }
 body.bo-light .calm-tx .w .row.on .nm { color: var(--b-data-ink); font-weight: 500; }
 body.bo-light :is(.calm-tx, .calm-cust) .w .acts { display: flex; align-items: center; gap: 8px; align-self: center; }
-@media (hover: hover) { @media (max-width: 1100px) {
+/* The filters take their own row, so the rail starts level with the table card, like the Dashboard's. */
+body.bo-light .calm-tx .dash:not(.solo) > div:first-child { display: contents; }
+body.bo-light .calm-tx .dash:not(.solo) > div:first-child > * { grid-column: 1; }
+body.bo-light .calm-tx .dash:not(.solo) .filters { margin-bottom: 0; }
+body.bo-light .calm-tx .dash:not(.solo) .rail { grid-area: 2 / 2; }
+@media (max-width: 1100px) {
   body.bo-light :is(.calm-tx, .calm-cust) .dash { grid-template-columns: minmax(0, 1fr); }
   body.bo-light :is(.calm-tx, .calm-cust) .rail { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  body.bo-light .calm-tx .dash:not(.solo) .rail { grid-area: auto; }
 }
 @media (max-width: 760px) {
   body.bo-light .calm-tx .c-main { padding: 16px; }
   body.bo-light .calm-tx .q { flex-basis: 100%; }
-  body.bo-light .calm-tx .tx .opt { display: none; }
 }
+/* The receipts table, Dashboard card and Transactions page alike, folds by its card, not the window
+   (sidebar open or not): 8px cells under 800px of card, the optional columns out under 640px, so
+   Total stays in view on a phone. */
+body.bo-light .calm-tx .card { container-type: inline-size; }
+@container (max-width: 800px) { body.bo-light .calm-tx .tx :is(th, td) { padding-inline: 8px; } }
+@container (max-width: 640px) { body.bo-light :is(.calm-dash, .calm-tx) .tx .opt { display: none; } }
 /* Customers: the list borrows Transactions' rail and Widgets menu above (the .calm-cust half of each :is()).
    Only those: its table stays a .blk-table card and its text the back office's own, so no root font here. */
 body.bo-light .calm-cust :is(.pick, .rail, .menu) { font-size: var(--b-t-label); line-height: normal; }
@@ -579,3 +629,246 @@ body.bo-light .calm-cust .w .cnt.down { color: var(--b-down); }   /* Near limit,
 body.bo-light .calm-cust .w .top > span:first-child { white-space: nowrap; }
 body.bo-light .calm-cust .w .acts { min-width: 0; }
 body.bo-light .calm-cust .w .cnt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A customer's Transactions share the Transactions page's cells (txPayStatus): same pill, same muted Completed.
+   Active, the everyday owing state, is blue; Clear stays muted text. */
+body.bo-light .calm-cust .pill { display: inline-block; font-size: 11.5px; font-weight: 500; padding: 2px 9px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); }
+body.bo-light .calm-cust .pill.warn { background: var(--b-warn-tint); color: var(--b-warn); }
+body.bo-light .calm-cust .pill.down { background: var(--b-down-tint); color: var(--b-down); }
+body.bo-light .calm-cust .mut { color: var(--b-ink-3); }
+body.bo-light .calm-cust .status-pill.info { background: var(--b-data-tint); color: var(--b-data-ink); }
+
+/* Payment pills (owner, 2026-09-26: "someone pays cash, someone pays through a different method" at a
+   glance). One soft hue per method, the Low/Out pills' tint + deep ink; split and custom stay grey.
+   A voided or saved row's pill goes grey with the row, so its Status pill is the only colour left. */
+body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-cash   { background: var(--b-up-tint);     color: var(--b-up); }
+body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-gcash  { background: var(--b-data-tint);   color: var(--b-data-ink); }
+body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-maya   { background: var(--b-violet-tint); color: var(--b-violet); }
+body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-qr     { background: var(--b-teal-tint);   color: var(--b-teal); }
+body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-card   { background: var(--b-rose-tint);   color: var(--b-rose); }
+body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-credit { background: var(--b-warn-tint);   color: var(--b-warn); }
+body.bo-light :is(.calm-dash, .calm-tx) .tx tr.dim .pill[class*="pay-"] { background: var(--b-track); color: var(--b-ink-3); }
+
+/* ---------------------------------------------------------------- Sales › Items (2026-09-26)
+   Cards on the grey band: the title, no subtitle, no switch, no rank numbers. The items table opens a row's chart
+   under it; Bought together is a plain table. The Summary's Top 10 look, on the Summary's frame and month. */
+body.bo-light .sales-cuts .cut { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; font-size: var(--b-t-label); color: var(--b-ink); container: cut / inline-size; }
+body.bo-light .sales-cuts .cut-head { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 var(--b-pad); }
+body.bo-light .sales-cuts .cut-head .lbl { font-weight: 400; color: var(--b-ink-2); margin-right: auto; }
+body.bo-light .sales-cuts table { width: 100%; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
+body.bo-light .sales-cuts th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; white-space: nowrap; border-top: 1px solid var(--b-line); }
+body.bo-light .sales-cuts td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
+body.bo-light .sales-cuts :is(th, td):first-child { padding-left: var(--b-pad); }
+body.bo-light .sales-cuts :is(th, td):last-child { padding-right: var(--b-pad); }
+body.bo-light .sales-cuts td.nm { overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .sales-cuts small { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-left: 8px; font-weight: 400; }
+body.bo-light .sales-cuts .n { text-align: right; }
+/* widths hold the cell's padding (fixed layout): the last column carries the card's --b-pad too */
+body.bo-light .sales-cuts .amt { width: 108px; }
+body.bo-light .sales-cuts .bar { width: 152px; padding-right: 0; }
+body.bo-light .sales-cuts td.bar span { display: block; width: 100%; height: 6px; background: var(--b-track); border-radius: 99px; overflow: hidden; }
+body.bo-light .sales-cuts :is(td.bar, .ib) i { display: block; height: 100%; background: var(--b-data); border-radius: 99px; }
+body.bo-light .sales-cuts .all { display: flex; align-items: center; height: 34px; padding-left: var(--b-pad); border-top: 1px solid var(--b-line); background: var(--b-raised);
+            color: var(--b-data); text-decoration: none; font-size: var(--b-t-meta); }
+body.bo-light .sales-cuts .all:hover { background: var(--b-card); }
+body.bo-light .sales-cuts .empty { margin: 0; padding: 12px var(--b-pad); border-top: 1px solid var(--b-line); color: var(--b-ink-3); font-size: var(--b-t-meta); }
+body.bo-light .sales-cuts .bo-pager { border-top: 1px solid var(--b-line); }
+@media (max-width: 700px) { body.bo-light .sales-cuts .bar { display: none; } }
+
+/* Items (2026-09-26, round 2): the Summary's frame; every figure a column, the sorted one carrying the bar */
+body.bo-light .sales-cuts th[data-act="sort"] { cursor: pointer; }
+body.bo-light .sales-cuts th[aria-sort] { color: var(--b-ink); }
+body.bo-light .sales-cuts .qt { width: 124px; }
+body.bo-light .sales-cuts .rv { width: 172px; }
+body.bo-light .sales-cuts .pf { width: 124px; }
+body.bo-light .sales-cuts .mg { width: 76px; }
+body.bo-light .sales-cuts td.rv { font-weight: 600; }
+/* the bar: a fixed track at the cell's left, the figure right, so every row's bar starts in one line */
+body.bo-light .sales-cuts .bv { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+body.bo-light .sales-cuts .ib { flex: none; width: 36px; height: 6px; background: var(--b-track); border-radius: 99px; overflow: hidden; }
+/* narrow cards lose Margin first, then Profit; Revenue and Trend stay */
+@container cut (max-width: 780px) { body.bo-light .sales-cuts .mg { display: none; } }
+@container cut (max-width: 640px) { body.bo-light .sales-cuts .pf { display: none; } }
+/* a phone (under 600px of card): Qty, Categories' Share and the in-cell bar step out too, so the name keeps
+   half the row and Trend isn't pushed off the edge */
+@container cut (max-width: 600px) {
+  body.bo-light .sales-cuts :is(.qt, .sh, .ib) { display: none; }
+  body.bo-light .sales-cuts .rv { width: 96px; }
+}
+/* trend: plain coloured text in a row, a pill only in the open row's headline */
+body.bo-light .sales-cuts .tr { width: calc(var(--b-pad) + 64px); color: var(--b-ink-3); font-size: var(--b-t-meta); }
+body.bo-light .sales-cuts .tr.up { color: var(--b-up); }
+body.bo-light .sales-cuts .tr.down { color: var(--b-down); }
+body.bo-light .sales-cuts .chip { padding: 2px 8px; border-radius: 999px; font-size: var(--b-t-meta); font-weight: 500; background: var(--b-track); color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .sales-cuts .chip.up { background: var(--b-up-tint); color: var(--b-up); }
+body.bo-light .sales-cuts .chip.down { background: var(--b-down-tint); color: var(--b-down); }
+/* a row opens its detail; the open one wears the Transactions selected-row tint and an accent edge */
+body.bo-light .sales-cuts tr[data-sel] { cursor: pointer; }
+body.bo-light .sales-cuts :is(tr[data-sel], th[data-act]):focus-visible { outline: 2px solid var(--b-data-1); outline-offset: -2px; }
+body.bo-light .sales-cuts tr[data-sel]:not(.on):hover td { background: var(--b-card); }
+body.bo-light .sales-cuts tr.on td { background: var(--b-data-tint); }
+body.bo-light .sales-cuts tr.on td:first-child { box-shadow: inset 2px 0 0 var(--b-data); }
+body.bo-light .sales-cuts tr.on td.nm { color: var(--b-data-ink); font-weight: 500; }
+/* Bought together: A → B, how often, out of how many */
+body.bo-light .sales-cuts .to { color: var(--b-ink-3); margin: 0 8px; }
+body.bo-light .sales-cuts .pt { width: 132px; }
+body.bo-light .sales-cuts .rc { width: calc(var(--b-pad) + 132px); color: var(--b-ink-3); font-size: var(--b-t-meta); }
+/* an item's detail: one line of figures, then its bars (the Dashboard's .calm-dash rules, copied) */
+body.bo-light .sales-cuts tr.det td { height: auto; padding: 0; }
+body.bo-light .sales-cuts .chart { background: var(--b-raised); padding: 12px var(--b-pad); }
+body.bo-light .sales-cuts .dh { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: var(--b-t-meta); color: var(--b-ink-2); min-width: 0; }
+body.bo-light .sales-cuts .dh b { font-weight: 500; color: var(--b-ink); overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .sales-cuts .key { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--b-ink-3); font-size: var(--b-t-meta); }
+body.bo-light .sales-cuts .key i { width: 10px; height: 10px; border-radius: 2px; background: var(--b-data); }
+body.bo-light .sales-cuts .key i.was { width: 14px; height: 0; border-radius: 0; background: none; border-top: 1.5px dashed var(--b-ink-3); margin-left: 8px; }
+body.bo-light .sales-cuts .plot { position: relative; height: 160px; }
+body.bo-light .sales-cuts :is(.grid, .cols, svg.was) { position: absolute; left: 32px; right: 0; top: 0; bottom: 20px; }
+body.bo-light .sales-cuts .grid { border-left: 1px solid #D6D6D6; }
+body.bo-light .sales-cuts .gl { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--b-outline); }
+body.bo-light .sales-cuts .gl span { position: absolute; right: calc(100% + 6px); bottom: 1px; font-size: 10px; color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .sales-cuts .gl.zero { border-top-color: #D6D6D6; border-top-style: solid; }
+body.bo-light .sales-cuts .cols { display: grid; }
+body.bo-light .sales-cuts .b { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
+body.bo-light .sales-cuts .b i { position: relative; width: min(62%, 28px); background: var(--b-data); border-radius: 4px 4px 0 0; }
+body.bo-light .sales-cuts .b .x { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-size: var(--b-t-micro); color: var(--b-ink-3); white-space: nowrap; }
+body.bo-light .sales-cuts .b .tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); display: none; z-index: 2;
+          background: var(--b-ink); color: #fff; font-size: var(--b-t-meta); font-weight: 500; padding: 6px 10px; border-radius: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .sales-cuts .b .tip b { display: block; font-weight: 600; margin-bottom: 3px; }
+body.bo-light .sales-cuts .b .tip span { display: flex; justify-content: space-between; gap: 16px; opacity: .65; }
+body.bo-light .sales-cuts .b .tip span.on { opacity: 1; }
+body.bo-light .sales-cuts .b :is(.tip, em) { font-style: normal; }
+body.bo-light .sales-cuts .cols .b:nth-child(-n+3) .tip { left: 0; transform: none; }
+body.bo-light .sales-cuts .cols .b:nth-last-child(-n+3) .tip { left: auto; right: 0; transform: none; }
+body.bo-light .sales-cuts .cols:hover .b i { opacity: .4; }
+body.bo-light .sales-cuts .cols .b:hover i { opacity: 1; }
+body.bo-light .sales-cuts .b:hover .tip { display: block; }
+body.bo-light .sales-cuts svg.was { width: calc(100% - 32px); height: calc(100% - 20px); overflow: visible; pointer-events: none; z-index: 1; }
+body.bo-light .sales-cuts svg.was polyline { fill: none; stroke: var(--b-ink-3); stroke-width: 1.5; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
+/* The table is the card, no title band above it (owner 2026-09-26): its head row says Item / Category, under the
+   card's own border only. Two selectors, not one :is() -- a th is no child of .cut. */
+body.bo-light .sales-cuts .cut > table:first-child tr:first-child > *,
+body.bo-light .sales-cuts .cut > .empty:first-child { border-top: 0; }
+body.bo-light .sales-cuts .sh { width: 76px; }   /* Categories' share */
+/* Items, round 4 (owner 2026-09-26): the Summary's month in more depth, on the Summary's frame. Cards 12px apart
+   as the trio: Categories, the items, Rising / Falling side by side, Bought together. */
+body.bo-light .calm-sales .sales-cuts { display: grid; gap: 12px; }
+body.bo-light .calm-sales .duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+@container (max-width: 760px) { body.bo-light .calm-sales .duo { grid-template-columns: minmax(0, 1fr); } }
+body.bo-light .calm-sales .duo .row .cmp { width: 52px; }   /* the Summary's rows keep 46px */
+body.bo-light .calm-sales .row.up .cmp { color: var(--b-up); }
+body.bo-light .calm-sales .row.down .cmp { color: var(--b-down); }
+/* Bought together's own page (?all=basket): Items › Bought together, Items a link back */
+body.bo-light .view[data-view="sales"] h1 .crumb { color: var(--b-ink-3); text-decoration: none; }
+body.bo-light .view[data-view="sales"] h1 .crumb:hover { color: var(--b-ink); }
+
+/* A joined KPI strip: one card, a hairline between the figures — the Dashboard's strip without its
+   tabs (Supplier and Customer pages, 2026-09-26). `<div class="kpi-row joined">` around kpi()s. */
+body.bo-light .kpi-row.joined { gap: 0; grid-template-columns: repeat(auto-fit, minmax(min(216px, 100%), 1fr));   /* 216: "Sep 20, 2026 ₱7,375.19" keeps its note beside */
+  background: var(--blk-bg); box-shadow: inset 0 0 0 1px var(--blk-outline), var(--card-shadow); border-radius: var(--blk-r); }
+body.bo-light .kpi-row.joined > .blk-kpi { background: none; box-shadow: none; border-radius: 0; }
+body.bo-light .kpi-row.joined > .blk-kpi + .blk-kpi { box-shadow: inset 1px 0 0 var(--blk-outline); }
+/* The customer's account card (owner 2026-09-26): one Dashboard card — head band (status, Edit), the joined
+   strip laid flat inside it, a hairline, the facts. Replaces the separate strip + Details card. */
+body.bo-light .view-customers .cust-sum { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+body.bo-light .view-customers .cust-sum > .bo-card-head { padding: 0 var(--b-pad); min-height: 44px; align-items: center; }
+body.bo-light .view-customers .cust-sum > .kpi-row.joined { margin: 0; background: none; box-shadow: none; border-radius: 0; border-block: 1px solid var(--b-line); }
+body.bo-light .view-customers .cust-sum > .cust-facts { margin: 0; padding: 12px var(--b-pad) 14px; }
+/* Customers list: fits beside the rail; if a long name still outgrows it, the card scrolls rather than clipping Status. */
+body.bo-light .calm-cust .cust-table { min-width: 0; }
+/* Seven columns beside the rail: a name truncates at 160px (full name in title, like the Dashboard's Customer
+   cell); under 880px of card (1440 wide) Phone steps out -- it is on the account page and in search; under
+   760px (1280 wide) Orders too, Spent carries the volume. */
+body.bo-light .calm-cust .cust-table td:first-child { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-cust #custList .blk-table { container-type: inline-size; }
+@container (max-width: 880px) { body.bo-light .calm-cust .cust-table :is(th, td):nth-child(2) { display: none; } }
+@container (max-width: 760px) { body.bo-light .calm-cust .cust-table :is(th, td):nth-child(3) { display: none; } }
+body.bo-light .calm-cust #custList .table-wrap { overflow-x: auto; }
+/* The statement's range sits together after its count, Export at the far end — not spread by space-between. */
+body.bo-light .view-customers .st-head { justify-content: flex-start; gap: 8px; }
+body.bo-light .view-customers .st-head > .bo-date { height: 26px; font-size: var(--blk-t-meta); }
+body.bo-light .view-customers .st-head > .bo-card-sub { margin-right: 0; }
+body.bo-light .view-customers .st-head > .bo-date:first-of-type { margin-left: auto; }
+
+/* ================================================================== ONE DROPDOWN LANGUAGE (owner 2026-09-26)
+   Every filter, check-menu, range menu and <select> wears the Dashboard's .pick + .menu (above): a hairline
+   28px button with the drawn chevron; a white card, --b-r-cell radius, the soft drop, 4px inset; 7px 10px rows,
+   grey hover, a blue ✓ on the right for what's picked. A set filter or a toggle that's on takes the
+   Transactions .pick.on tint. Written once here for every page; the calm pages keep their own copies above. */
+body.bo-light { --b-pop-shadow: 0 8px 24px rgba(0,0,0,.08); }   /* the Dashboard menu's drop */
+/* closed */
+body.bo-light .view :is(.list-filters .bo-select:not([multiple]), .ms-pick > summary, .pd-cols > summary, .range-btn, .list-filters > .bo-check) {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box;
+  height: var(--btn-h); margin: 0; padding: 0 10px 0 12px;
+  border: 1px solid var(--b-outline); border-radius: var(--btn-r); background: var(--b-raised); box-shadow: none;
+  font: inherit; font-size: var(--b-t-label); font-weight: 500; line-height: normal; color: var(--b-ink);
+  white-space: nowrap; cursor: pointer; list-style: none; user-select: none;
+}
+body.bo-light .view .list-filters > .bo-check { padding-right: 12px; }
+body.bo-light .view .list-filters > .bo-check > svg { flex: none; color: var(--b-ink-3); }
+body.bo-light .view .list-filters > .bo-check > input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+body.bo-light .view :is(.ms-pick > summary, .pd-cols > summary)::-webkit-details-marker { display: none; }
+body.bo-light .view :is(.ms-pick > summary, .pd-cols > summary, .range-btn)::after {
+  content: ""; flex: none; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0;
+  transform: translateY(-2px) rotate(45deg); margin-left: 2px;
+}
+body.bo-light .view .range-btn > svg { display: none; }   /* the drawn chevron replaces its icon */
+body.bo-light .view .range-btn .rp-date { padding: 0; border: 0; font: inherit; font-weight: 400; color: var(--b-ink-3); }   /* like the Dashboard's "vs …" */
+body.bo-light .view :is(.list-filters .bo-select, .ms-pick > summary, .pd-cols > summary, .range-btn):focus-visible,
+body.bo-light .view .list-filters > .bo-check:has(input:focus-visible) { outline: 2px solid var(--b-data-1); outline-offset: -1px; }
+/* on: a filter is set, a toggle is on */
+body.bo-light .view :is(.list-filters .bo-select:not([multiple]):has(option:checked:not([value=""])), .ms-pick:has(input:checked) > summary,
+  .list-filters > .bo-check:has(input:checked)) { background: var(--b-data-tint); border-color: var(--b-data-1); color: var(--b-data-ink); }
+body.bo-light .view .ms-pick:has(input:checked) > summary::after { border-color: var(--b-data-ink); }
+body.bo-light .view .list-filters > .bo-check:has(input:checked) > svg { color: var(--b-data-ink); }
+
+/* open: the card. <details> menus hang from the button's left edge; backoffice.js adds .flip (right edge)
+   when that would run off the page. The range menu keeps its own right-edge placement. */
+body.bo-light .view :is(.ms-pick, .pd-cols) { position: relative; }
+body.bo-light .view :is(.ms-menu, .pd-cols-menu, .rp-menu) {
+  min-width: 200px; max-height: 60vh; overflow-y: auto; padding: 4px;
+  background: var(--b-raised); border: 1px solid var(--b-line); border-radius: var(--b-r-cell); box-shadow: var(--b-pop-shadow);
+  color: var(--b-ink); font-size: var(--b-t-label); font-weight: 400; line-height: normal;
+}
+body.bo-light .view :is(.ms-menu, .pd-cols-menu) {
+  position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; right: auto;
+  display: flex; flex-direction: column; gap: 0; transform-origin: top left;
+}
+body.bo-light .view :is(.ms-menu, .pd-cols-menu).flip { left: auto; right: 0; transform-origin: top right; }
+body.bo-light .view :is(.ms-menu, .pd-cols-menu) hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
+/* rows */
+body.bo-light .view :is(.check-menu .bo-check, .rp-opt, .ms-menu .ms-clear) {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%;
+  padding: 7px 10px; border: 0; border-radius: var(--b-r-row); background: none;
+  font: inherit; font-size: var(--b-t-label); font-weight: 400; color: var(--b-ink); text-align: left; white-space: nowrap; cursor: pointer;
+}
+body.bo-light .view :is(.check-menu .bo-check, .rp-opt, .ms-menu .ms-clear):hover { background: var(--b-card); }
+body.bo-light .view :is(.check-menu .bo-check, .rp-opt.on)::after { content: ""; color: var(--b-data); font-weight: 400; }
+body.bo-light .view :is(.check-menu .bo-check:has(input:checked), .rp-opt.on)::after { content: "✓"; }
+body.bo-light .view .rp-opt.on { background: none; color: var(--b-ink); }
+body.bo-light .view .rp-opt.on:hover { background: var(--b-card); }
+body.bo-light .view .check-menu .bo-check:has(input:focus-visible) { outline: 2px solid var(--b-data-1); outline-offset: -2px; }
+body.bo-light .view .ms-menu .ms-clear { margin-top: 9px; color: var(--b-data); }
+body.bo-light .view .ms-menu .ms-clear::before { content: ""; position: absolute; left: -4px; right: -4px; top: -5px; border-top: 1px solid var(--b-line); }
+body.bo-light .view .ms-menu .ms-empty { padding: 7px 10px; color: var(--b-ink-3); white-space: nowrap; }
+body.bo-light .view .rp-date-row { margin: 4px -4px 0; padding: 8px 14px 4px; border-top: 1px solid var(--b-line); color: var(--b-ink-3); font-size: var(--b-t-meta); }
+
+/* <select>: the closed field keeps its width in forms, but every one gets the drawn chevron, and
+   the open list is the same card (customizable select; older browsers keep the native list). */
+@supports (appearance: base-select) {
+  body.bo-light .bo-select::picker-icon {
+    content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0;
+    transform: translateY(-2px) rotate(45deg); margin: 0 2px 0 auto; font-size: 0;
+  }
+  body.bo-light .list-filters .bo-select::picker-icon { margin-left: 2px; }
+  body.bo-light .list-filters .bo-select:has(option:checked:not([value=""]))::picker-icon { border-color: var(--b-data-ink); }
+  body.bo-light .bo-select::picker(select) {
+    margin-top: 6px; padding: 4px; min-width: max(200px, anchor-size(width)); max-height: 60vh;
+    background: var(--b-raised); border: 1px solid var(--b-line); border-radius: var(--b-r-cell); box-shadow: var(--b-pop-shadow);
+  }
+  body.bo-light .bo-select option {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 7px 10px; border-radius: var(--b-r-row); font-size: var(--b-t-label); font-weight: 400; color: var(--b-ink);
+  }
+  body.bo-light .bo-select option::checkmark { display: block; order: 1; content: "✓"; color: var(--b-data); }
+  body.bo-light .bo-select option:checked { background: none; color: var(--b-ink); }
+  body.bo-light .bo-select option:is(:hover, :focus-visible) { background: var(--b-card); outline: 0; }
+}

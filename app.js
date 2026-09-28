@@ -4434,20 +4434,6 @@ function closeCashDrawer({ countedCash = 0, notes = '' } = {}) {
   return closeout;
 }
 
-function buildReorderList() {
-  return state.products
-    .filter(p => toNumber(p.stock, 0) <= toNumber(p.reorderPoint, 0))
-    .map(p => ({
-      id: p.id,
-      sku: p.sku,
-      name: p.name,
-      stock: toNumber(p.stock, 0),
-      reorderPoint: toNumber(p.reorderPoint, 0),
-      suggestedQty: Math.max(1, toNumber(p.reorderPoint, 0) * 2 - toNumber(p.stock, 0)),
-    }))
-    .sort((a, b) => (a.stock / Math.max(1, a.reorderPoint)) - (b.stock / Math.max(1, b.reorderPoint)));
-}
-
 // ============================================================
 // EVENTS
 // ============================================================

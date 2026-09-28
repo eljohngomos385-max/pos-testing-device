@@ -196,4 +196,31 @@ assert.deepEqual(needs.get('s1').map((x) => x.id), ['out1', 'low1'], 'most urgen
 
 assert.equal(suggestQty(low1), 8, 'tops the shelf up to twice the reorder point');
 
+/* ---- Stock history: in / out at cost, by bucket and by reason; counts are manual, not flow ---- */
+{
+  const { stockFlow } = inv;
+  const t = (d) => Date.parse(`2026-09-${d}T10:00:00`);
+  const mv = [
+    { productId: 'a', qty: 10, reason: 'delivery', unitCost: 50, ts: t(20) },   // in ₱500
+    { productId: 'a', qty: -4, reason: 'sale', ts: t(20) },                     // out 4 × ₱40 cost = ₱160
+    { productId: 'a', qty: -1, reason: 'damage', ts: t(21) },                   // out ₱40, manual
+    { productId: 'a', qty: -2, reason: 'count', ts: t(21) },                    // manual, not out
+    { productId: 'a', qty: 0, reason: 'count', ts: t(21) },                     // changed nothing: ignored
+    { productId: 'a', qty: -9, reason: 'sale', ts: t(25) },                     // outside the window
+  ];
+  const f = stockFlow(mv, () => 40, [t(19), t(22)], (ms) => new Date(ms).getDate());
+  assert.equal(f.in, 500);
+  assert.equal(f.out, 200);
+  assert.equal(f.adj, 2, 'the damage and the count that moved the number');
+  assert.equal(f.lost, 120, 'the breakage plus the short count, at cost');
+  assert.deepEqual(f.buckets.get(20), { in: 500, out: 160, lost: 0, adj: 0 });
+  assert.deepEqual(f.buckets.get(21), { in: 0, out: 40, lost: 120, adj: 2 }, 'the count is lost and adjusted, never out');
+  assert.deepEqual(f.why.map((w) => [w.reason, w.share]), [['sale', 0.8], ['damage', 0.2]]);
+  // happenedOn is a bare date: the same day keeps the typed time, another day is that day.
+  const late = [{ productId: 'a', qty: 1, reason: 'delivery', unitCost: 1, ts: t(21), happenedOn: '2026-09-21' },
+    { productId: 'a', qty: 1, reason: 'delivery', unitCost: 1, ts: t(21), happenedOn: '2026-09-20' }];
+  const h = stockFlow(late, () => 0, [t(19), t(22)], (ms) => new Date(ms).getDate() * 100 + new Date(ms).getHours());
+  assert.deepEqual([...h.buckets.keys()], [2110, 2012], 'typed 10 AM stays 10 AM; backdated lands on its day');
+}
+
 console.log('inventory: ok');

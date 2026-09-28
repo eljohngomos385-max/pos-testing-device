@@ -406,16 +406,15 @@ Computed on read by `bo-insights.js` (`HWPOS_INSIGHTS.buildInsights(collections,
 | Stockout intervals | stockMovements | running sum per product; spans where it sat ≤ 0, start/end ts |
 | Supplier lead time & reliability | purchaseOrders | `(sentAt‖orderedAt) → receivedAt` in days, mean + spread; vs `quotedLeadDays` and `promisedAt` |
 | Supplier fill rate | PO lines | Σ receivedQty ÷ Σ qty, with shortReason |
-| Demand rate & variability | stockMovements (sale − return) | units per in-stock day, excluding stockout days; std-dev |
-| Reorder plan | demand, lead time, stock, supplier orderDays/minOrder | reorder point = demand × lead + safety. **Not shown anywhere** (2026-09-23, owner: no forecasting in the POS); kept only for Export for AI. POs use `suggestQty` via Add low stock items |
+| ~~Demand rate, Reorder plan~~ | — | **Removed 2026-09-27** by the owner ("build it from the ground up again"): no `demand`, `reorder` or `reorderBySupplier` section, not in Export for AI either. POs use `suggestQty` via Add low stock items, an editable pre-fill |
 | Cash asleep | products, movements | stock × cost × days since last sale, ranked |
 | Sell-through per delivery | delivery movements vs later sales | received qty on a date → days to clear |
 | Dead stock | movements, products | no sale in 90 days, peso value at cost |
-| Customer reorder cycles | orders.customer.id | median days between orders; overdue list |
+| Customer totals | orders.customer.id | orders, spent, first / last order date (no next-order guess, 2026-09-27) |
 | Basket affinity | order items | products co-occurring on receipts (support / lift) |
 | Delivery points | orders.deliveryLocation | lat/lng of delivery orders, count and value |
 | Sales per person | orders.cashier | revenue, sales, voids, refunds per name, last 30 days (Staff page) |
-| Count accuracy | count movements | per product `|counted − expected| ÷ expected` over time → confidence |
+| Count accuracy | count movements | per product: counts, last counted, average `|counted − expected|` (`meanAbsVariance`, biggest first) and each count's expected / counted / variance. The confidence score was removed 2026-09-27 by the owner (a made-up score) |
 | Current stock, customer balance, low-stock, deliveries coming | movements / ledger / POs | see docs/architecture.md "Derived, never stored" |
 
 ## Known gaps — read before trusting a number

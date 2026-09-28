@@ -371,7 +371,7 @@ try {
     if (!result.ledgerTypes.includes('charge') || !result.ledgerTypes.includes('payment')) throw new Error('ledger missing charge/payment entries');
   });
 
-  await runCheck('cash drawer closeout and reorder list', async () => {
+  await runCheck('cash drawer closeout', async () => {
     await page.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' });
     await page.evaluate(() => localStorage.clear());
     const result = await page.evaluate(() => {
@@ -385,12 +385,10 @@ try {
       completeSale();
       const summary = buildCashDrawerSummary();
       const closeout = closeCashDrawer({ countedCash: total + 20, notes: 'test' });
-      const reorder = buildReorderList();
-      return { total, summary, closeout, reorderFirst: reorder[0] };
+      return { total, summary, closeout };
     });
     if (result.summary.expectedCash !== result.total) throw new Error(`drawer expected cash mismatch ${JSON.stringify(result.summary)}`);
     if (result.closeout.difference !== 20) throw new Error(`drawer difference mismatch ${JSON.stringify(result.closeout)}`);
-    if (!result.reorderFirst || result.reorderFirst.suggestedQty < 1) throw new Error('reorder list did not include low stock item');
   });
 
   await runCheck('orders search finds item names and statuses', async () => {

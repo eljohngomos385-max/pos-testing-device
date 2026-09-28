@@ -228,10 +228,9 @@ const PO_STATUS = {
 // customer's order going out; this is stock coming in.
 const PO_INCOMING = ['ordered', 'partial'];
 
-// orderDays: weekdays the supplier takes orders (0 = Sunday). minOrder: pesos. quotedLeadDays:
-// what they SAY; the real lead time is derived from orderedAt → receivedAt, never typed.
-const SUPPLIER_DEFAULTS = { id: '', name: '', contact: '', phone: '', email: '', address: '', note: '',
-  orderDays: [], minOrder: 0, quotedLeadDays: 0 };
+// Lead time is derived from sentAt/orderedAt → receivedAt, never typed. orderDays, minOrder and
+// quotedLeadDays were dropped 2026-09-26; an old record may still carry them and nothing reads them.
+const SUPPLIER_DEFAULTS = { id: '', name: '', contact: '', phone: '', email: '', address: '', note: '' };
 // sentAt: when it actually left for the supplier (orderedAt was being set on the status flip;
 // sentAt is the send). promisedAt: the date the SUPPLIER gave, kept apart from expectedAt, which
 // is our own guess and gets edited.
@@ -302,16 +301,19 @@ const STORAGE_STAFF = 'hwpos.staff.v1';
 /* ---------- Paging ----------
    Every list in the back office stops at PAGE_ROWS and walks with real page numbers on
    the URL, so ?page=3 reproduces the screen like every other filter does. One helper,
-   because a list that invents its own paging is a list that disagrees with the next one. */
+   because a list that invents its own paging is a list that disagrees with the next one.
+   A single record's page (a customer, a supplier) pages at DETAIL_ROWS: its tables sit
+   under the record's facts, and 50 rows buries them. */
 const PAGE_ROWS = 50;
+const DETAIL_ROWS = 25;
 
 // The page is clamped to what actually exists, so a stale ?page= left over from a wider
 // filter lands on the last real page instead of an empty table.
-function paginate(rows, page) {
-  const pages = Math.max(1, Math.ceil(rows.length / PAGE_ROWS));
+function paginate(rows, page, size = PAGE_ROWS) {
+  const pages = Math.max(1, Math.ceil(rows.length / size));
   const at = Math.min(Math.max(1, parseInt(page, 10) || 1), pages);
-  const from = (at - 1) * PAGE_ROWS;
-  return { rows: rows.slice(from, from + PAGE_ROWS), page: at, pages, from, total: rows.length };
+  const from = (at - 1) * size;
+  return { rows: rows.slice(from, from + size), page: at, pages, from, total: rows.length };
 }
 
 // 1 … 4 5 6 … 12 — the ends plus the current neighbourhood. Anything else is a wall of
@@ -603,6 +605,7 @@ if (typeof module !== 'undefined' && require.main === module) {
   assert.equal(paginate(nums, 'x').page, 1);         // junk -> first page
   assert.equal(paginate([], 4).pages, 1);            // empty list still has one page
   assert.deepEqual(paginate(nums, 2).rows[0], 50);   // no row is skipped or repeated
+  assert.deepEqual([paginate(nums, 5, DETAIL_ROWS).pages, paginate(nums, 5, DETAIL_ROWS).from], [5, 100]);   // detail pages: 25 a page
   assert.deepEqual(pageNumbers(1, 3), [1, 2, 3]);
   assert.deepEqual(pageNumbers(6, 12), [1, '…', 5, 6, 7, '…', 12]);
   assert.deepEqual(pageNumbers(2, 12), [1, 2, 3, '…', 12]);   // no gap of one page
@@ -644,7 +647,7 @@ if (typeof module !== 'undefined') {
     groupOf, variantsOf, imageFor,
     PO_DEFAULTS, PO_STATUS, PO_INCOMING, poLine, poTotal, poOutstanding, receivePo,
     SUPPLIER_DEFAULTS, STAFF_DEFAULTS, STAFF_ROLES, STOCK_REASONS, SOLD_BY, MARGIN_MODES,
-    GROUP_DEFAULTS, SEED_STAFF, PAGE_ROWS, paginate, pageNumbers,
+    GROUP_DEFAULTS, SEED_STAFF, PAGE_ROWS, DETAIL_ROWS, paginate, pageNumbers,
     EVENT_LOGS, makeEvent, priceChanges,
     FULFIL_BUILTINS, orderFulfilLabel, fulfilMethods,
   };

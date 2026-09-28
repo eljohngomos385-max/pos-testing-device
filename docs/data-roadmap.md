@@ -37,7 +37,7 @@ Reads, not captures. The data is in `hwpos.orders.v1`, `hwpos.stockMovements.v1`
 - **Cash asleep, ranked** — qty × cost × days sat, worst first.
 - **Sell-through per delivery** — bought this many on this date, cleared in this long.
 - **Dead stock register** — nothing sold in ninety days, with the peso value in it.
-- **Customer reorder cycles** — orders carry `customerId`; customers carry a phone number.
+- **Customer totals** — orders carry `customerId`; orders, spent and last order per customer. The reorder-cycle guess was removed 2026-09-27.
 - **Basket affinity** — what sells with what, and which line drove the trip.
 - **Delivery heat map** — `deliveryLocation` lat/lng is already stored on every delivery order.
 - **Sales per person** — done: the Staff page reads it off `orders.cashier`.
@@ -53,7 +53,8 @@ Small additions to what already gets written. Each is an event that happens toda
 - **Unfilled requests** — product, qty asked, time, staff.
 - **Substitution flag** — bought B because A was out.
 - **Stock count variance, retained** — expected against counted, over time, as a per-product
-  confidence score. `countDelta` computes it; nothing keeps it.
+  history. `countDelta` computes it; nothing keeps it. (No confidence score: removed 2026-09-27 by
+  the owner, a made-up score. Count accuracy shows the misses themselves.)
 - **Shrinkage, breakage, write-offs** — distinct reason codes, never a generic adjustment.
 - **Short ships on receiving** — ordered against received per line, with a reason. Supplier fill rate.
 - **Sent date and promised date** — distinct from drafted and from `expectedAt`.
@@ -65,13 +66,13 @@ Small additions to what already gets written. Each is an event that happens toda
 
 ### Still open from Tiers 0 and 1 (2026-09-14)
 
-- **Calculations are parked** (owner, 2026-09-14): capture first, maths later. `reorderPlan` is off
-  Needs buying (back on `suggestQty`) until the capture layer has data; it needed tuning anyway (the
-  backtest cuts cash tied up by a quarter but loses more units on lumpy products, and orders any day,
-  not on the supplier's order days). Insights stays as it is, not extended. Cash tied up stays.
+- **Calculations are parked** (owner, 2026-09-14): capture first, maths later. The reorder
+  forecast (`reorderPlan`, `demandStats`, `scripts/backtest.mjs`) was removed 2026-09-27 by the owner:
+  "build it from the ground up again". Purchase orders pre-fill with `suggestQty`. Insights stays as
+  it is, not extended. Cash tied up stays.
 - **Till event upload** is not built: `HWPOS_STORE.events.list({synced: 0})` → `POST /tillEvents` in
   batches of 1,000 → `markSynced` after a 201.
-- **Count confidence stays empty on a matching count.** A count with no difference writes no
+- **Count accuracy stays empty on a matching count.** A count with no difference writes no
   movement, so it leaves no expected-against-counted row. Changing that adds a zero-qty movement
   per count and wants the owner's OK.
 - **Delivery heat map** has nothing to draw until orders carry `deliveryLocation`; the seed has none.
@@ -99,7 +100,7 @@ Built on everything above. Straightforward once the data exists.
 - **The order draft** — one finished PO per supplier on their order day, each line with its reason.
 - **Exception-only escalation** — routine passes silently; six things a day, not a dashboard.
 - **Autonomy levels per decision** — suggest, do-unless-I-object, or just do.
-- **Self-scheduled stock counts** — targets products where confidence is lowest.
+- **Self-scheduled stock counts** — targets products whose counts miss the most.
 - **Pricing rules** — hold this margin, round to five, never twice in a month.
 - **Automatic supplier choice** — cheapest who actually delivers on time. `altSupplierIds` exists.
 - **Delivery chase** — the promised date passes and the system notices.
@@ -109,10 +110,10 @@ Built on everything above. Straightforward once the data exists.
 
 - **Tier 0, all of it** (2026-09-14) — `bo-insights.js` `buildInsights()`, shown on `/admin/insights`
   and in `HWPOS_AI.snapshot().insights` and Export for AI: stockout intervals, supplier lead time and
-  fill rate, demand rate and spread over in-stock days, `reorderPlan` (Insights only; parked, not
-  on Needs buying), cash asleep, sell-through per delivery, dead stock, customer cycles, basket
-  affinity, delivery points (sales per staff day removed 2026-09-24). `scripts/backtest.mjs` replays a year against
-  the old rule and `reorderPlan`.
+  fill rate, cash asleep, sell-through per delivery, dead stock, customer totals, basket
+  affinity, delivery points, count accuracy (sales per staff day removed 2026-09-24). The demand
+  rate, `reorderPlan` and `scripts/backtest.mjs` were removed 2026-09-27 (owner: "build it from the
+  ground up again").
 - **Tier 1 captures** (2026-09-14) — event logs in `bo-model.js` `EVENT_LOGS`, D1 tables in
   `schema.sql`, fields in `docs/data-dictionary.md`:
   price and cost log (`priceLog`); the day spine (`days`, removed 2026-09-24); delivery dispatched/arrived/returned/failed (`deliveryEvents`); lost sales with a

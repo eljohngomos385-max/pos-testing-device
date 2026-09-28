@@ -78,31 +78,41 @@
     const margin = margins.length ? margins.reduce((a, b) => a + b, 0) / margins.length : 0;
     const level = g ? familyLevel(members, clock) : levelOf(p, clock);
 
-    const periodHref = (n) => Router.href('products', id, { ...params, period: n === 30 ? '' : n });
-    const periodSeg = `<div class="seg item-period">${PERIODS.map((n) =>
-      `<a class="seg-btn${n === period ? ' active' : ''}" href="${escapeHtml(periodHref(n))}">${n} days</a>`).join('')}</div>`;
+    // The Dashboard's range dropdown (.pick + popover .menu, a ✓ on the one in use); the click
+    // and placement are wired once at the bottom of this file.
+    const periodPick = `<button class="pick" popovertarget="itemPeriod" aria-label="Period: last ${period} days">Last ${period} days</button>
+      <div class="menu" id="itemPeriod" popover role="menu">${PERIODS.map((n) =>
+        `<button role="menuitemradio" data-period="${n}" aria-checked="${n === period}">Last ${n} days</button>`).join('')}</div>`;
 
+    // Its own head, not .view-head: the one-line v34 slot has no room for the back line over the
+    // title and the meta line under it (owner, 2026-09-26). Back to the list as it was left; the
+    // name … period, Adjust, Edit; then category · SKU. The status rides on the On hand tile.
     const head = `
-      <header class="view-head">
-        <div class="view-title-wrap">
-          <a class="link-btn" href="${escapeHtml(Router.href('products', ''))}">← Products</a>
-          <h1>${escapeHtml(name)}</h1>
-          <span class="muted">${escapeHtml(folderName(g ? g.folder || (members[0] || {}).folder : p.folder))} · ${
-            g ? `${members.length} variant${members.length === 1 ? '' : 's'}` : escapeHtml(p.sku || 'No SKU')}</span>
-          ${pill(level)}
-        </div>
-        <div class="view-actions">
-          ${periodSeg}
+      <header class="item-head">
+        <a class="item-back" href="${escapeHtml(listHref || Router.href('products', ''))}" aria-label="Back to Products">Products</a>
+        <h1>${escapeHtml(name)}</h1>
+        <div class="item-acts">
+          ${periodPick}
           ${g ? '' : `<button class="secondary-btn small" data-adjust-open="${escapeHtml(p.id)}">Adjust stock</button>`}
           <a class="primary-btn small" href="${escapeHtml(Router.href('products', id + '/edit'))}">Edit</a>
         </div>
+        <p class="item-meta">${escapeHtml(folderName(g ? g.folder || (members[0] || {}).folder : p.folder))} · ${
+          g ? `${members.length} variant${members.length === 1 ? '' : 's'}` : escapeHtml(p.sku || 'No SKU')}</p>
       </header>`;
 
-    const kpis = `<div class="kpi-row">
-      ${statCell({ label: 'On hand', value: qty(onHand), unit })}
+    // One joined bar (bo-calm.css .kpi-row.joined, the customer page's strip). On hand is statCell's
+    // markup with the status pill where its trend chip goes: beside the number, never under it.
+    const kpis = `<div class="kpi-row joined">
+      <div class="bo-card blk-kpi">
+        <div class="kpi-label">On hand</div>
+        <div class="kpi-line">
+          <div class="kpi-value">${qty(onHand)}${unit ? ` <span class="kpi-note">${escapeHtml(unit)}</span>` : ''}</div>
+          ${pill(level)}
+        </div>
+      </div>
       ${kpi('Stock value', pesoShort(value), 'at cost')}
       ${kpi('Margin', pct(margin), g ? `avg of ${members.length} variants` : `${peso(marginSummary(p.cost, p.price).profit)} a unit`)}
-      ${kpi('Last sold', ago(lastSold < 0 ? null : lastSold), lastSold < 0 ? '' : shortDate(lastSold))}
+      ${kpi('Last sold', ago(lastSold < 0 ? null : lastSold))}
       ${kpi('Units sold', qty(sold), `last ${period} days`)}
     </div>`;
 
@@ -174,13 +184,33 @@
           <span class="ml-value">${n} order${n === 1 ? '' : 's'}</span>
         </a>`).join('')}</div></div>`, 'blk-list') : '';
 
-    root().innerHTML = `${head}
+    // One column, every card full width (owner, 2026-09-26): what it is, then what happened to it.
+    root().innerHTML = `
       <div class="item-page">
-        ${kpis}
-        <div class="item-grid">
-          <div class="item-col">${variants}${movesCard}</div>
-          <div class="item-col">${pricesCard}${oftenCard}</div>
-        </div>
+        ${head}${kpis}${variants}${movesCard}${pricesCard}${oftenCard}
       </div>`;
   };
+
+  // Back returns to the list as it was left: any click on the list (a row, a link) notes its URL first,
+  // filters and all. Capture phase, so it lands before the row navigates. Opened cold, it is plain Products.
+  let listHref = '';
+  document.addEventListener('click', () => {
+    const r = Router.route();
+    if (r.view === 'products' && !r.id) listHref = Router.href('products', '', r.params);
+  }, true);
+
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('.item-page .menu [data-period]');
+    if (!b) return;
+    b.closest('.menu').hidePopover();
+    Router.setParams({ period: b.dataset.period === '30' ? '' : b.dataset.period });
+  });
+  // The menu hangs under its button from the left edge. `toggle` does not bubble, so capture it.
+  document.addEventListener('toggle', (e) => {
+    const m = e.target;
+    if (e.newState !== 'open' || !m.matches || !m.matches('.item-page .menu')) return;
+    const r = root().querySelector(`[popovertarget="${m.id}"]`).getBoundingClientRect();
+    m.style.top = r.bottom + 6 + 'px';
+    m.style.left = Math.max(16, Math.min(r.left, innerWidth - m.offsetWidth - 16)) + 'px';
+  }, true);
 })();

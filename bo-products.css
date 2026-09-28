@@ -24,7 +24,24 @@ body.bo-light .view-products .pd-act { width: 1px; }
 /* Stock view: Out / Low / Dead tiles filter ?level=; a ticked one wears the selection ring. */
 body.bo-light .view-products .pd-kpis { margin-bottom: var(--po-gap); }
 body.bo-light .view-products .pd-kpi { cursor: pointer; }
-body.bo-light .view-products .pd-kpi.on { box-shadow: inset 0 0 0 2px var(--po-accent), var(--card-shadow); }
+/* The Dashboard's KPI strip (2026-09-26): one grey card, a hairline between cells, 22px figures.
+   A ticked tile turns white, like the Dashboard's selected tab. */
+body.bo-light .view-products #pdKpis {
+  gap: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden;
+  background: var(--blk-bg); border: 1px solid var(--blk-outline); box-shadow: var(--card-shadow);   /* a border, not an inset shadow: a ticked tile's white would paint over that */ border-radius: var(--blk-r);
+}
+body.bo-light .view-products #pdKpis .blk-kpi { background: none; box-shadow: none; border-radius: 0; }
+body.bo-light .view-products #pdKpis .blk-kpi + .blk-kpi { border-left: 1px solid var(--b-line); }
+body.bo-light .view-products #pdKpis .kpi-value { font-size: 22px; font-weight: 560; letter-spacing: -.02em; }
+body.bo-light .view-products #pdKpis .pd-kpi:hover { background: color-mix(in srgb, var(--b-raised) 50%, var(--b-card)); }
+body.bo-light .view-products #pdKpis .pd-kpi.on { background: var(--b-raised); }
+/* Two by two by the page, not the window, as the Dashboard's strip: a tile needs ~140px for "₱970,782 at cost" */
+body.bo-light .view-products { container: pd / inline-size; }
+@container pd (max-width: 600px) {
+  body.bo-light .view-products #pdKpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.bo-light .view-products #pdKpis .blk-kpi:nth-child(odd) { border-left: 0; }
+  body.bo-light .view-products #pdKpis .blk-kpi:nth-child(n+3) { border-top: 1px solid var(--b-line); }
+}
 
 /* Variants: the table IS the form, so every cell is a field. Widths keep the row
    from collapsing; .table-wrap scrolls it when the screen is too narrow. */
@@ -223,24 +240,9 @@ body.bo-light .view-products .pd-fail:last-child { border-bottom: none; }
 
 /* ---- Column chooser ----
    Hiding is CSS only: the cells are always rendered and carry data-col, so a toggle
-   never has to rebuild a row. <details> gives the open/close for free. */
-body.bo-light .view-products .pd-cols { position: relative; }
-body.bo-light .view-products .pd-cols > summary {
-  list-style: none; cursor: pointer; user-select: none;
-  display: inline-flex; align-items: center;
-}
-body.bo-light .view-products .pd-cols > summary::-webkit-details-marker { display: none; }
-body.bo-light .view-products .pd-cols-menu {
-  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0;
-  display: flex; flex-direction: column; gap: 2px;
-  min-width: 156px; padding: 8px;
-  background: var(--po-surface);
-  border: 1px solid var(--po-line);
-  border-radius: var(--po-r-card);
-  box-shadow: var(--po-shadow-pop);
-}
+   never has to rebuild a row. <details> gives the open/close for free. Its button and
+   menu are the shared ONE DROPDOWN LANGUAGE block at the end of bo-calm.css. */
 
-body.bo-light .view-products .hide-img [data-col="img"],
 body.bo-light .view-products .hide-sku [data-col="sku"],
 body.bo-light .view-products .hide-cat [data-col="cat"],
 body.bo-light .view-products .hide-supplier [data-col="supplier"],
@@ -310,3 +312,34 @@ body.bo-light .view-products .pd-vcount {
 /* Catalog | Stock switch sits beside the title, inside the page (2026-09-23). */
 body.bo-light .pd-switch { margin-left: 8px; }
 body.bo-light .pd-switch .seg-btn { text-decoration: none; display: inline-flex; align-items: center; }
+
+/* ---- The filter row wears Transactions' .pick (2026-09-26) ----
+   Search, selects, the stock-level menu, Show archived and Columns were five control styles
+   side by side. Now one: hairline outline, 500 weight, the same drawn chevron, and the same
+   blue tint when a filter is on. Show archived is a toggle pill, its box kept for the keyboard. */
+body.bo-light .view-products .pd-filters { line-height: normal; }
+body.bo-light .view-products .pd-filters .search-input {
+  height: auto; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px;
+  padding: 5px 12px; box-shadow: none; font-size: var(--b-t-label);
+}
+body.bo-light .view-products .pd-filters .search-input:focus { outline: 2px solid var(--b-data-1); outline-offset: -1px; }
+/* The selects, Stock levels, Show archived, Pictures and Columns: the shared ONE DROPDOWN LANGUAGE
+   block at the end of bo-calm.css (the Dashboard's .pick + .menu), not a Products copy. */
+
+/* Pictures (the image toggle in the filter row, the store's setting): off, no column and the 34px row; on,
+   a 48px thumb and the row grows around it. A product with no photo keeps the grey square. */
+body.bo-light .view-products #pdTable:not(.pics) [data-col="img"] { display: none; }
+body.bo-light .view-products #pdTable.pics .pd-img-col { width: 48px; padding-inline: 10px 0; }
+body.bo-light .view-products #pdTable.pics td { height: auto; padding-block: 6px; }
+body.bo-light .view-products #pdTable.pics .pd-thumb { width: 48px; height: 48px; border-radius: var(--po-r-inner); display: block; background-color: var(--b-card); border-color: var(--b-line); }
+/* SKU is a label, not code: the mono face made it the widest column on the card. */
+body.bo-light .view-products #pdTable td.mono { font-family: inherit; font-variant-numeric: normal; color: var(--po-ink-secondary); }/* Edit / Adjust on every row are quiet text, not 50 outlined buttons (2026-09-26): the row
+   already opens the item page, the word is only the shortcut. */
+body.bo-light .view-products #pdTable .pd-act .secondary-btn {
+  height: auto; padding: 0; border: 0; background: none; box-shadow: none;
+  font-weight: 500; color: var(--b-ink-3);
+}
+body.bo-light .view-products #pdTable .pd-act .secondary-btn:hover,
+body.bo-light .view-products #pdTable .pd-act .secondary-btn:focus-visible { color: var(--b-ink); background: none; }
+/* With pictures on the row is tall anyway: the variant count sits under the name. */
+body.bo-light .view-products #pdTable.pics .pd-vcount { display: block; margin: 2px 0 0; }

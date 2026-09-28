@@ -87,23 +87,32 @@ body.bo-light .view-inv .inv-more { padding: 10px var(--blk-pad); box-shadow: in
 /* On hand filter row: the two multi-picks sit in the .tx-filters flex row like siblings */
 body.bo-light .view-inv .inv-picks { display: contents; }
 
-/* ---- Stock history overview: one KPI card, then the dashboard's main + rail grid. */
-body.bo-light .view-inv .sh-kpi-card { padding: var(--blk-pad) 0; }
-body.bo-light .view-inv .sh-kpis { display: grid; gap: 12px 0; grid-template-columns: repeat(5, minmax(0, 1fr)); }
-body.bo-light .view-inv .sh-kpis .blk-kpi { background: none; box-shadow: none; border-radius: 0; padding: 0 var(--blk-pad); }
-body.bo-light .view-inv .sh-kpis .blk-kpi + .blk-kpi { border-left: 1px solid var(--blk-outline); }
-body.bo-light .view-inv .sh-grid { display: grid; grid-template-columns: minmax(0, 1fr) var(--rail-w); gap: var(--blk-gap); align-items: start; }
-body.bo-light .view-inv .sh-grid .table-wrap { overflow-x: auto; }
-body.bo-light .view-inv .sh-grid .data-table { min-width: 0; }   /* five columns fit; the global 860px clipped Balance */
-body.bo-light .view-inv .sh-period .seg-btn { text-decoration: none; display: inline-flex; align-items: center; }
-body.bo-light .view-inv .sh-review { margin-right: 12px; font-size: var(--blk-t-meta); color: var(--trend-down); }
-body.bo-light .view-inv .bd-row .amt { min-width: 0; }
-@media (max-width: 1280px) {
-  body.bo-light .view-inv .sh-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  body.bo-light .view-inv .sh-kpis .blk-kpi:nth-child(3n + 1) { border-left: 0; }
-}
-@media (max-width: 1024px) { body.bo-light .view-inv .sh-grid { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 560px) {
-  body.bo-light .view-inv .sh-kpis { grid-template-columns: 1fr; }
-  body.bo-light .view-inv .sh-kpis .blk-kpi { border-left: 0; }
-}
+/* ---- Stock history overview: a Dashboard page. While the overview shows, the view carries
+       .calm-dash (bo-inventory.js render), so the bar, the KPI tabs over the bars, the tables and
+       the rail cards are bo-calm.css's. Only what the Dashboard doesn't have lives here. */
+/* The header's two buttons: calm's `button { font: inherit; color: inherit }` outranks the back
+   office's, so their weight and ink come back here, at the range pick's 30px. */
+body.bo-light .view-inv.calm-dash :is(.primary-btn, .secondary-btn) { height: 30px; padding: 0 12px; font-weight: 500; }
+body.bo-light .view-inv.calm-dash .primary-btn { color: var(--b-raised); }
+/* The bars only show; nothing opens on a click. */
+body.bo-light .view-inv.calm-dash .b { cursor: default; }
+body.bo-light .view-inv.calm-dash .plot .none { position: absolute; inset: 0 0 20px; display: grid; place-items: center; margin: 0; color: var(--b-ink-3); }
+/* A card's head: its name, a quiet count or why it is empty, a small type pick, View all. */
+body.bo-light .view-inv.calm-dash .head .sub { margin-left: 8px; font-weight: 400; color: var(--b-ink-3); font-size: var(--b-t-meta); }
+body.bo-light .view-inv.calm-dash .head .pick { padding: 3px 8px 3px 10px; font-size: var(--b-t-meta); }
+/* A product name reads as the row's text, not as a link, until hovered. */
+body.bo-light .view-inv.calm-dash :is(.tx, .row) a { color: var(--b-ink); font-weight: 400; }
+body.bo-light .view-inv.calm-dash :is(.tx, .row) a:hover { text-decoration: underline; }
+body.bo-light .view-inv.calm-dash .tx .prod { max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .view-inv.calm-dash .tx .good { color: var(--b-up); }
+body.bo-light .view-inv.calm-dash .tx .bad { color: var(--b-down); }
+/* "system → shelf" and "was → paid" are the context, the % beside them the signal. */
+body.bo-light .view-inv.calm-dash .w .row .amt { font-weight: 400; color: var(--b-ink-2); }
+body.bo-light .view-inv.calm-dash .w .row .cmp { width: auto; min-width: 40px; }
+
+/* the page and strip folds are the Dashboard's own (bo-calm.css): by the page and by the strip's card, not the window */
+
+/* The full Movements page's count pill, in the overview's blue. */
+body.bo-light .view-inv .status-pill.info { background: var(--po-pill-info); color: var(--po-pill-info-ink); }
+/* "All but sales" is longer than "All reasons" was: one line, not two. */
+body.bo-light .view-inv #invReason { white-space: nowrap; }

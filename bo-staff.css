@@ -22,3 +22,39 @@ body.bo-light .setting-row .seg { flex: 0 0 auto; }
 @media (max-width: 760px) {
   body.bo-light .st-note { text-align: left; margin-left: 0; }
 }
+
+/* Settings: one calm column per section, Payments included (Shopify-like). */
+body.bo-light .set-col { max-width: 760px; display: flex; flex-direction: column; gap: var(--po-gap); }
+
+/* Settings rows: the table look without a table -- white rows with a hairline over each, under the
+   card's grey band (.blk-table). Label left; the saved value (ink-2) and a ›, or the control, right. */
+body.bo-light .set-rows .setting-row {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  min-height: var(--tbl-row); margin: 0; padding: 0 var(--tbl-pad);
+  background: var(--blk-raised); border: 0; border-top: 1px solid var(--tbl-line); border-radius: 0;
+  font: inherit; font-size: var(--blk-t-label); color: var(--blk-ink); text-align: left;
+}
+body.bo-light .set-rows .setting-row > label,
+body.bo-light .set-rows .set-lbl { flex: 1; min-width: 0; padding: 0; font-size: inherit; font-weight: 400; color: var(--blk-ink); }
+body.bo-light .set-rows .setting-row:has(small) { padding-block: 8px; }   /* one-line rows are table rows, 34px */
+body.bo-light .set-rows .set-lbl { min-width: max-content; }   /* "Stock clerk 1 person" stays one line; the pages beside it ellipsize */
+/* The title bar is as wide as the column under it, so Add staff ends where the cards end. */
+body.bo-light :is(.view-settings, .view[data-view="payments"]) .view-head { max-width: 760px; }
+body.bo-light .set-rows .setting-row small { display: block; margin-top: 2px; font-size: var(--blk-t-micro); color: var(--blk-ink-3); }
+body.bo-light .set-rows button.setting-row { cursor: pointer; }
+body.bo-light .set-rows button.setting-row:hover { background: var(--tbl-hover); }
+body.bo-light .set-rows .set-val { min-width: 0; color: var(--blk-ink-2); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .set-rows .set-count { margin-left: 8px; font-size: var(--blk-t-meta); color: var(--blk-ink-3); }
+body.bo-light .set-rows .set-chev { flex: 0 0 auto; color: var(--blk-ink-3); }
+body.bo-light .set-rows .setting-row > .bo-select { width: 180px; }
+body.bo-light .set-dlg-note { margin: 4px 0 0; font-size: var(--blk-t-meta); color: var(--blk-ink-3); }
+@media (max-width: 760px) {
+  body.bo-light .set-rows .setting-row { flex-direction: row; align-items: center; }
+}
+
+/* People: every role picker one width, right-aligned, so the column reads as one edge. */
+body.bo-light #staffPane td .bo-select { width: 128px; }
+body.bo-light #staffPane .data-table { min-width: 0; }   /* three columns fit the 760px column; the global 860px floor clipped Role */
+/* A phone: Email steps out (it is in the person's dialog), as the Customers list does, so Role stays in view. */
+body.bo-light #staffPane .blk-table { container-type: inline-size; }
+@container (max-width: 480px) { body.bo-light #staffPane .data-table :is(th, td):nth-child(2) { display: none; } }

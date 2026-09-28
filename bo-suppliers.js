@@ -66,10 +66,9 @@ if (typeof document !== 'undefined') (function () {
   // Codes are what gets stored; the labels are only what the select prints.
   const SHORT_REASONS = { 'supplier-out-of-stock': 'Out of stock at supplier', damaged: 'Damaged',
     'wrong-item': 'Wrong item', 'partial-ship': 'Partial ship', other: 'Other' };
-  // Monday first — a shop's week does not start on Sunday. The stored value is still 0 = Sunday.
-  const WEEK = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [0, 'Sun']];
 
-  const statusPill = (s) => `<span class="status-pill ${PO_TONE[s] || 'muted'}">${esc(PO_STATUS[s] || s)}</span>`;
+  // Received is where every PO ends up: muted text like a Completed sale, so the open and odd ones are the only pills.
+  const statusPill = (s) => (s === 'received' ? `<span class="muted">${esc(PO_STATUS[s])}</span>` :`<span class="status-pill ${PO_TONE[s] || 'muted'}">${esc(PO_STATUS[s] || s)}</span>`);
   const productLabel = (p) => (p.sku ? p.sku + ' — ' : '') + (p.name || '');
 
   function fmtDate(iso) {
@@ -140,11 +139,22 @@ if (typeof document !== 'undefined') (function () {
   (globalThis.HWPOS_SUBNAV = globalThis.HWPOS_SUBNAV || {}).suppliers = { param: 'tab', def: 'suppliers', items: [['suppliers', 'Suppliers'], ['orders', 'Purchase orders']] };
 
   /* ---------- Tab 1: suppliers ---------- */
+  // Columns menu (owner, 2026-09-26), Products' mechanism in backoffice.js; Supplier (the name) always shows.
+  const STORAGE_COLS = 'hwpos.bo.supCols';
+  const COLUMNS = [['phone', 'Phone'], ['email', 'Email'], ['products', 'Products'], ['value', 'On hand at cost'],
+    ['open', 'Open POs'], ['outstanding', 'Outstanding'], ['lead', 'Delivers in']];
+  const loadCols = () => loadColPrefs(STORAGE_COLS, COLUMNS, COLUMNS.map(([k]) => k));
+  // ?show=: the two reasons to open a supplier -- something to reorder, or something on its way.
+  const SHOW_FILTERS = [['', 'All suppliers'], ['low', 'Has low stock'], ['open', 'Has open POs']];
+
   function supplierList(agg, params) {
     const q = (state.invQuery || '').trim().toLowerCase();
-    const list = q
-      ? suppliers.filter((s) => [s.name, s.contact, s.phone, s.email].join(' ').toLowerCase().includes(q))
-      : suppliers;
+    const show = params.show || '';
+    const list = suppliers.filter((s) => {
+      if (show === 'low' && !(agg.prod.get(s.id) || EMPTY_P).items.some(isLow)) return false;
+      if (show === 'open' && !(agg.po.get(s.id) || EMPTY_O).open) return false;
+      return !q || [s.name, s.contact, s.phone, s.email].join(' ').toLowerCase().includes(q);
+    });
 
     const pg = paginate(list, params.page);
     const rows = pg.rows.map((s) => {
@@ -155,30 +165,31 @@ if (typeof document !== 'undefined') (function () {
       return `
         <tr data-go="${esc(s.id)}">
           <td><strong>${dash(s.name)}</strong>${s.contact ? `<span class="row-sub">${esc(s.contact)}</span>` : ''}</td>
-          <td>${dash(s.phone)}</td>
-          <td>${dash(s.email)}</td>
-          <td class="num">${p.n}</td>
-          <td class="num">${pesoShort(p.value)}</td>
-          <td class="num">${o.open || '—'}</td>
-          <td class="num">${o.outstanding ? pesoShort(o.outstanding) : '—'}</td>
-          <td class="num">${days == null ? '—' : `${days} day${days === 1 ? '' : 's'}`}</td>
-          <td class="num">${l.onTimeRate == null ? '—' : Math.round(l.onTimeRate * 100) + '%'}</td>
-          <td class="sup-note muted-sub">${dash(s.note)}</td>
+          <td data-col="phone">${dash(s.phone)}</td>
+          <td data-col="email">${dash(s.email)}</td>
+          <td class="num" data-col="products">${p.n}</td>
+          <td class="num" data-col="value">${pesoShort(p.value)}</td>
+          <td class="num" data-col="open">${o.open || '—'}</td>
+          <td class="num" data-col="outstanding">${o.outstanding ? pesoShort(o.outstanding) : '—'}</td>
+          <td class="num" data-col="lead">${days == null ? '—' : `${days} day${days === 1 ? '' : 's'}`}</td>
         </tr>`;
     }).join('');
 
+    // Search and a filter always, like Purchase orders and Products (owner 2026-09-26; was: search past ten only).
+    const on = loadCols();
     return head(
       'Suppliers',
       `<button class="secondary-btn small" data-act="export-suppliers">Export CSV</button>
        <button class="primary-btn small" data-act="new-supplier">Add supplier</button>`
     ) + `
-    <div class="list-filters">${searchBox('Search suppliers')}</div>
-    <div class="dash-stack">${card('All suppliers', `${list.length} shown`, table(
-      `<th>Supplier</th><th>Phone</th><th>Email</th><th class="num">Products</th><th class="num">On hand at cost</th>
-       <th class="num">Open POs</th><th class="num">Outstanding</th>
-       <th class="num" title="Average days from sending a PO to receiving it">Delivers in</th>
-       <th class="num" title="Received on or before the promised date">On time</th><th>Note</th>`,
-      rows, 10, q ? 'No supplier matches that search.' : 'No suppliers yet. Add one to start raising purchase orders.'
+    <div class="list-filters">${searchBox('Search suppliers')}
+      <select class="bo-select" data-filter="show">${SHOW_FILTERS.map(([v, l]) => `<option value="${v}"${v === show ? ' selected' : ''}>${l}</option>`).join('')}</select>
+      ${colsMenu(COLUMNS, on)}</div>
+    <div class="dash-stack sup-list ${hideColsClass(COLUMNS, on)}">${card('All suppliers', `${list.length} shown`, table(
+      `<th>Supplier</th><th data-col="phone">Phone</th><th data-col="email">Email</th><th class="num" data-col="products">Products</th>
+       <th class="num" data-col="value">On hand at cost</th><th class="num" data-col="open">Open POs</th><th class="num" data-col="outstanding">Outstanding</th>
+       <th class="num" data-col="lead" title="Average days from sending a PO to receiving it">Delivers in</th>`,
+      rows, 8, suppliers.length ? 'No supplier matches these filters.' : 'No suppliers yet. Add one to start raising purchase orders.'
     ), true, pagerHtml(pg))}</div>`;
   }
 
@@ -243,70 +254,114 @@ if (typeof document !== 'undefined') (function () {
   }
 
   /* ---------- Supplier detail ---------- */
-  const field = (label, key, value, type) =>
-    `<div class="setting-row"><label>${label}</label>
-      <input class="text-input" type="${type || 'text'}"${type === 'number' ? ' min="0"' : ''} data-field="${key}" value="${esc(value)}"></div>`;
+  // Read-only facts under the name; Edit opens a dialog (owner, 2026-09-26: the old page was a
+  // wall of inputs). Order days, minimum order and quoted lead days were removed the same day.
+  const SUP_FIELDS = [['name', 'Name', 'text'], ['contact', 'Contact person', 'text'], ['phone', 'Phone', 'tel'],
+    ['email', 'Email', 'email'], ['address', 'Address', 'text'], ['note', 'Note', 'text']];
+  let editOnOpen = false;   // a new supplier lands on its page with the dialog already up
 
-  function supplierDetail(s, agg) {
+  function supplierDialog(s) {
+    return `<dialog id="supDlg" class="bo-dialog adj-dlg">
+      <div class="bod-head">
+        <div class="bod-title"><h2>Edit supplier</h2></div>
+        <button type="button" class="bod-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="adj-body">
+        <form class="adj-form" id="supForm">
+          <div class="adj-grid">${SUP_FIELDS.map(([k, l, t]) => `<label class="adj-field${k === 'address' || k === 'note' ? ' adj-note' : ''}"><span>${l}</span>
+            <input name="${k}" type="${t}" value="${esc(s[k])}"${k === 'name' ? ' required' : ''} autocomplete="off"></label>`).join('')}</div>
+          <div class="adj-foot">
+            <button type="button" class="secondary-btn small" data-act="sup-edit-cancel">Cancel</button>
+            <button type="submit" class="primary-btn small">Save</button>
+          </div>
+        </form>
+      </div>
+    </dialog>`;
+  }
+
+  function supplierDetail(s, agg, params) {
     const p = agg.prod.get(s.id) || EMPTY_P;
     const o = agg.po.get(s.id) || EMPTY_O;
     const lead = SUP_RULES.realLead(pos, s.id);
-    const days = (s.orderDays || []).map(Number);
 
-    const products = p.items.map((x) => `
+    // Biggest money first; value | bar | % like Sales' Top items. The % is each product's share of
+    // what this supplier has on our shelf; the bar is scaled to the biggest, so the tail still reads.
+    const ranked = p.items.slice().sort((a, b) => stockValue(b) - stockValue(a));
+    const top = Math.max(0, stockValue(ranked[0] || {})) || 1;
+    const pg = paginate(ranked, params.page, DETAIL_ROWS);
+    const products = pg.rows.map((x) => {
+      const v = Math.max(0, stockValue(x)), share = p.value > 0 ? v / p.value : 0;
+      return `
       <tr data-product="${esc(x.id)}">
-        <td><strong>${esc(x.name)}</strong><span class="row-sub">${esc(x.sku || '')}</span></td>
+        <td>${esc(x.name)}<span class="row-sub">${esc(x.sku || '')}</span></td>
         <td class="num">${x.stock} ${esc(x.unit || '')}</td>
         <td class="num">${peso(x.cost)}</td>
         <td class="num">${peso(stockValue(x))}</td>
-      </tr>`).join('');
+        <td class="share-td"><i class="share-bar">${v > 0 ? `<i style="width:${(v / top * 100).toFixed(1)}%"></i>` : ''}</i></td>
+        <td class="share-pct">${share >= 0.005 ? Math.round(share * 100) + '%' : v > 0 ? '&lt;1%' : '—'}</td>
+      </tr>`;
+    }).join('');
 
-    const orders = o.list.slice().sort((a, b) =>
-      String(b.orderedAt || '').localeCompare(String(a.orderedAt || ''))).map((x) => `
+    const allOrders = o.list.slice().sort((a, b) => String(b.orderedAt || '').localeCompare(String(a.orderedAt || '')));
+    const orders = allOrders.slice(0, DETAIL_ROWS).map((x) => `
       <tr data-go="${esc(x.id)}">
         <td><strong>${dash(x.number)}</strong></td>
         <td>${statusPill(x.status)}</td>
+        <td>${fmtDate(x.orderedAt)}</td>
         <td>${fmtDate(SUP_RULES.dueDate(x))}</td>
         <td class="num">${peso(poTotal(x))}</td>
       </tr>`).join('');
+    const moreOrders = allOrders.length > DETAIL_ROWS
+      ? `<div class="sup-more"><button class="link-btn" data-act="sup-all-pos">All ${allOrders.length} in Purchase orders ›</button></div>` : '';
+
+    const join = (parts) => parts.filter(Boolean).join('<span class="sep">·</span>');
+    const line1 = join([s.contact && esc(s.contact), s.phone && `<a href="tel:${esc(s.phone.replace(/\s+/g, ''))}">${esc(s.phone)}</a>`,
+      s.email && `<a href="mailto:${esc(s.email)}">${esc(s.email)}</a>`]);
+    const line2 = join([s.address && esc(s.address), s.note && `<span class="sup-quote">${esc(s.note)}</span>`]);
 
     return `
       <div class="view-head">
         <div class="view-title-wrap">
           <button class="link-btn" data-act="back-suppliers">← Suppliers</button>
-          <h1 data-live="name">${dash(s.name)}</h1>
-          <span class="muted">${p.n} product${p.n === 1 ? '' : 's'} · ${pesoShort(p.value)} on hand at cost · ${o.open} incoming</span>
+          <h1>${dash(s.name)}</h1>
         </div>
         <div class="view-actions">
-          <button class="secondary-btn small" data-act="new-po">New purchase order</button>
+          <button class="secondary-btn small" data-act="sup-edit">Edit</button>
+          <button class="primary-btn small" data-act="new-po">New purchase order</button>
         </div>
       </div>
+      <div class="sup-contact">${line1 || line2
+        ? `${line1 ? `<div>${line1}</div>` : ''}${line2 ? `<div>${line2}</div>` : ''}`
+        : '<div>No contact details yet. <button class="link-btn" data-act="sup-edit">Add them</button></div>'}</div>
+      <div class="kpi-row joined">
+        ${kpi('On hand', pesoShort(p.value), 'at cost')}
+        ${kpi('Incoming', o.open ? pesoShort(o.outstanding) : '—', `${o.open} open PO${o.open === 1 ? '' : 's'}`)}
+        ${kpi('Delivers in', lead.n ? `${lead.avgDays} day${lead.avgDays === 1 ? '' : 's'}` : '—',
+          lead.n ? `avg of ${lead.n} PO${lead.n === 1 ? '' : 's'}` : 'none received')}
+      </div>
       <div class="dash-stack">
-        ${card('Details', 'Saved as you leave each field', `<div class="settings-grid">
-          ${field('Name', 'name', s.name)}
-          ${field('Contact person', 'contact', s.contact)}
-          ${field('Phone', 'phone', s.phone, 'tel')}
-          ${field('Email', 'email', s.email, 'email')}
-          ${field('Address', 'address', s.address)}
-          ${field('Note', 'note', s.note)}
-          <div class="setting-row"><label>Order days</label>
-            <div class="seg">${WEEK.map(([d, l]) =>
-              `<button class="seg-btn${days.indexOf(d) >= 0 ? ' active' : ''}" data-act="order-day" data-day="${d}">${l}</button>`).join('')}</div></div>
-          ${field('Minimum order (₱)', 'minOrder', s.minOrder, 'number')}
-          <div class="setting-row"><label>Quoted lead days${lead.n
-            ? `<span class="sup-hint">actually ${lead.avgDays} day${lead.avgDays === 1 ? '' : 's'} · ${lead.n} received PO${lead.n === 1 ? '' : 's'}</span>` : ''}</label>
-            <input class="text-input" type="number" min="0" data-field="quotedLeadDays" value="${esc(s.quotedLeadDays)}"></div>
-        </div>`)}
-        ${card('Products from this supplier', `${p.n}`, table(
-          '<th>Product</th><th class="num">On hand</th><th class="num">Cost</th><th class="num">Value</th>',
-          products, 4, 'No product is assigned to this supplier yet.'), true)}
+        ${card('Products from this supplier', `${p.n} · biggest value first`, table(
+          '<th>Product</th><th class="num">On hand</th><th class="num">Cost</th><th class="num">Value</th><th></th><th class="share-pct">Share</th>',
+          products, 6, 'No product is assigned to this supplier yet.'), true, pagerHtml(pg))}
         ${card('Purchase orders', `${o.list.length}`, table(
-          '<th>PO</th><th>Status</th><th>Due</th><th class="num">Total</th>',
-          orders, 4, 'No purchase orders for this supplier yet.'), true)}
-      </div>`;
+          '<th>PO</th><th>Status</th><th>Ordered</th><th>Due</th><th class="num">Total</th>',
+          orders, 5, 'No purchase orders for this supplier yet.') + moreOrders, true)}
+      </div>
+      ${supplierDialog(s)}`;
+  }
+
+  function openSupplierDialog() {
+    const dlg = root().querySelector('#supDlg');
+    if (!dlg) return;
+    dlg.showModal();
+    dlg.querySelector('input[name="name"]').select();
   }
 
   /* ---------- PO editor ---------- */
+  const field = (label, key, value, type) =>
+    `<div class="setting-row"><label>${label}</label>
+      <input class="text-input" type="${type || 'text'}" data-field="${key}" value="${esc(value)}"></div>`;
+
   function poEditor(po, agg) {
     const s = agg.byId.get(po.supplierId);
     const items = po.items || [];
@@ -456,12 +511,13 @@ if (typeof document !== 'undefined') (function () {
       const po = pos.find((o) => o.id === id);
       const sup = po ? null : suppliers.find((s) => s.id === id);
       el.innerHTML = po ? poEditor(po, agg)
-        : sup ? supplierDetail(sup, agg)
+        : sup ? supplierDetail(sup, agg, params)
         : `<div class="bo-card blk-empty"><div class="bo-empty">That record no longer exists. <button class="link-btn" data-act="back-suppliers">Back to suppliers</button></div></div>`;
     } else {
       el.innerHTML = params.tab === 'orders' ? poList(agg, params) : supplierList(agg, params);
     }
     restoreFocus(el, keep);
+    if (editOnOpen) { editOnOpen = false; openSupplierDialog(); }
   };
 
   /* ---------- Writes ---------- */
@@ -597,6 +653,7 @@ if (typeof document !== 'undefined') (function () {
         const s = { ...SUPPLIER_DEFAULTS, id: newId('sup'), name: 'New supplier' };
         suppliers.push(s);
         saveSuppliers(suppliers);
+        editOnOpen = true;
         return Router.go(VIEW, s.id, {}, { replace: false });
       }
       case 'new-po': return newPo(currentSupplier()?.id || Router.route().params.supplier);
@@ -626,14 +683,9 @@ if (typeof document !== 'undefined') (function () {
         }
         return saveAndRepaint(po);
       }
-      case 'order-day': {
-        const s = currentSupplier();
-        if (!s) return;
-        hit.classList.toggle('active');   // in place, so focus and scroll stay put
-        s.orderDays = [...hit.parentNode.querySelectorAll('.seg-btn.active')].map((b) => Number(b.dataset.day)).sort();
-        s.updatedAt = new Date().toISOString();
-        return saveSuppliers(suppliers);
-      }
+      case 'sup-edit': return openSupplierDialog();
+      case 'sup-edit-cancel': return hit.closest('dialog').close();
+      case 'sup-all-pos': return Router.go(VIEW, '', { tab: 'orders', supplier: currentSupplier()?.id || '' });
       case 'cancel-po': {
         if (!po || !confirm(`Cancel ${po.number || 'this purchase order'}?`)) return;
         po.status = 'cancelled';
@@ -663,6 +715,13 @@ if (typeof document !== 'undefined') (function () {
     const t = e.target;
 
     if (t.dataset.filter) return Router.setParams({ [t.dataset.filter]: t.value, page: '' });
+    if (t.dataset.colToggle) {   // CSS hides the cells; the menu stays open, nothing re-renders
+      const on = loadCols();
+      if (t.checked) on.add(t.dataset.colToggle); else on.delete(t.dataset.colToggle);
+      saveColPrefs(STORAGE_COLS, COLUMNS, on);
+      el.querySelector('.sup-list')?.classList.toggle('hide-' + t.dataset.colToggle, !t.checked);
+      return;
+    }
 
     // When it actually shipped, corrected after the fact — local noon of the chosen day
     // (now, if today), so lead time (sentAt -> receivedAt) reads off the real day, not
@@ -682,9 +741,7 @@ if (typeof document !== 'undefined') (function () {
       const po = currentPo();
       const rec = po || currentSupplier();
       if (!rec) return;
-      // minOrder (pesos) and quotedLeadDays are the only number fields; neither is ever negative.
-      if (t.type === 'number') t.value = round2(Math.max(0, Number(t.value) || 0));
-      rec[t.dataset.field] = t.type === 'number' ? Number(t.value) : t.value;
+      rec[t.dataset.field] = t.value;
       rec.updatedAt = new Date().toISOString();
       if (po) savePurchaseOrders(pos); else saveSuppliers(suppliers);
       const live = el.querySelector(`[data-live="${t.dataset.field === 'supplierId' ? 'supplier' : t.dataset.field}"]`);
@@ -731,6 +788,22 @@ if (typeof document !== 'undefined') (function () {
       }
       return;
     }
+  });
+
+  // The Edit dialog: one save for all six fields, then a repaint so the header and facts match.
+  document.addEventListener('submit', (e) => {
+    if (e.target.id !== 'supForm') return;
+    e.preventDefault();
+    const s = currentSupplier();
+    if (!s) return;
+    const f = new FormData(e.target);
+    if (!String(f.get('name') || '').trim()) return showToast('A supplier needs a name');
+    SUP_FIELDS.forEach(([k]) => { s[k] = String(f.get(k) || '').trim(); });
+    s.updatedAt = new Date().toISOString();
+    saveSuppliers(suppliers);
+    e.target.closest('dialog').close();
+    renderCurrentView();
+    showToast('Supplier saved');
   });
 
   // Over-receiving is allowed (suppliers over-ship) but never silent.

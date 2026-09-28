@@ -1,20 +1,64 @@
 /* Back office - one item's page (bo-item.js). Lays blocks out only; the cards, KPIs, tables,
    pills and buttons are bo-blocks.css. */
-body.bo-light .item-page { display: grid; gap: var(--blk-gap); min-width: 0; }
-body.bo-light .item-grid {
-  display: grid; gap: var(--blk-gap); align-items: start;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-}
-body.bo-light .item-col { display: grid; gap: var(--blk-gap); min-width: 0; }
-/* The global 860px floor is for the list pages; a half-width card scrolls instead. */
+/* One column in the Dashboard / Sales 1180px frame: every
+   card full width, a table never stretches past what a row can use. */
+body.bo-light .item-page { display: grid; gap: var(--blk-gap); width: 100%; max-width: 1180px; margin: 0 auto; min-width: 0; }
+
+/* The head: a back line, then the Dashboard's .bar — an 18px title, the controls on its line at
+   28px, centred with it — then one muted meta line. */
+body.bo-light .item-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-bottom: calc(var(--po-head-gap) - var(--blk-gap)); }   /* wraps like .bar: the controls drop under a long name, never squeeze it */
+body.bo-light .item-head :is(.item-back, .item-meta) { flex-basis: 100%; }
+body.bo-light .item-head h1 { margin: 0 auto 0 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 18px; font-weight: 600; line-height: var(--btn-h); color: var(--b-ink); letter-spacing: -0.01em; }
+/* Back reads as a way back (owner, 2026-09-26): the accent, a drawn chevron, on its own line. */
+body.bo-light .item-back { justify-self: start; display: inline-flex; align-items: center; gap: 6px; font-size: var(--b-t-label); font-weight: 500; color: var(--b-data); text-decoration: none; }
+body.bo-light .item-back::before { content: ""; width: 6px; height: 6px; border: solid currentColor; border-width: 0 0 1.5px 1.5px; transform: rotate(45deg); margin-left: 2px; }
+body.bo-light .item-back:hover { text-decoration: underline; }
+body.bo-light .item-acts { display: flex; align-items: center; gap: 8px; }
+body.bo-light .item-meta { margin: 0; font-size: var(--b-t-meta); color: var(--b-ink-3); }
+/* The Dashboard's .pick + .menu (bo-calm.css, "ONE DROPDOWN LANGUAGE"), at the buttons' 28px. */
+body.bo-light .item-page .pick { display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box; height: var(--btn-h); padding: 0 10px 0 12px; border: 1px solid var(--b-outline); border-radius: var(--btn-r); background: var(--b-raised); font: inherit; font-size: var(--b-t-label); font-weight: 500; color: var(--b-ink); white-space: nowrap; cursor: pointer; }
+body.bo-light .item-page .pick::after { content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
+body.bo-light .item-page .menu { margin: 0; inset: auto; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); padding: 4px; min-width: 200px; color: var(--b-ink); box-shadow: var(--b-pop-shadow); }
+body.bo-light .item-page .menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: var(--b-r-row); font: inherit; font-size: var(--b-t-label); color: inherit; cursor: pointer; }
+body.bo-light .item-page .menu button:hover { background: var(--b-card); }
+body.bo-light .item-page .menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
+
+/* The global 860px floor is for the list pages; here the card is the width, and a row that
+   still won't fit scrolls inside it. */
 body.bo-light .item-page .data-table { min-width: 0; }
-body.bo-light .item-note { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--blk-ink-2); }
+body.bo-light .item-note { max-width: 320px; overflow: hidden; text-overflow: ellipsis; color: var(--blk-ink-2); }
 /* One short line, not the 40px block a whole empty page gets. */
 body.bo-light .item-page .bo-empty { padding: 4px 0 0; text-align: left; color: var(--blk-ink-3); }
-body.bo-light .item-period { margin-right: 4px; }
-body.bo-light .item-period .seg-btn { text-decoration: none; display: inline-flex; align-items: center; }
-/* Five KPIs on one line on a wide screen; the shared 248px unit would wrap the fifth alone. */
-body.bo-light .item-page > .kpi-row { grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); }
-@media (max-width: 1024px) {
-  body.bo-light .item-grid { grid-template-columns: minmax(0, 1fr); }
+/* One KPI bar: the joined strip (bo-calm.css .kpi-row.joined) in the customer page's .cust-sum card
+   dress, its hairlines between the tiles. Five on one line on a wide screen; narrower they wrap
+   3 + 2 below 1000px (at 1280 the On hand pill touched the hairline), then 2 + 2 + 1, each row
+   filling the width - never 4 + a lone tile - and a wrapped row
+   takes a hairline over it. */
+body.bo-light .item-page { container-type: inline-size; }
+body.bo-light .item-page > .kpi-row.joined { display: flex; flex-wrap: wrap; background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+body.bo-light .item-page > .kpi-row > * { flex: 1 1 0; min-width: 0; }
+body.bo-light .item-page > .kpi-row .status-pill { align-self: center; }
+@container (max-width: 1000px) {
+  body.bo-light .item-page > .kpi-row > * { flex-basis: calc(100% / 3 - 1px); }
+  body.bo-light .item-page > .kpi-row.joined > .blk-kpi:nth-child(n+4) { box-shadow: inset 1px 0 0 var(--blk-outline), inset 0 1px 0 var(--blk-outline); }
+  body.bo-light .item-page > .kpi-row.joined > .blk-kpi:nth-child(4) { box-shadow: inset 0 1px 0 var(--blk-outline); }
 }
+@container (max-width: 560px) {
+  body.bo-light .item-page > .kpi-row > * { flex-basis: calc(100% / 2 - 1px); }
+  body.bo-light .item-page > .kpi-row.joined > .blk-kpi:nth-child(n+3) { box-shadow: inset 1px 0 0 var(--blk-outline), inset 0 1px 0 var(--blk-outline); }
+  body.bo-light .item-page > .kpi-row.joined > .blk-kpi:nth-child(odd):nth-child(n+3) { box-shadow: inset 0 1px 0 var(--blk-outline); }
+}
+/* Every card here is a Dashboard side card ("Low stock", "Daily sales target"; owner, 2026-09-26):
+   its corner, hairline and shadow, a grey band with a regular-weight title, then white 34px rows
+   edge to edge with a hairline over each and nothing under the last one. A table card already
+   draws its hairline (bo-blocks.css .blk-table::after); a border on top of it was the doubled edge. */
+body.bo-light .item-page > .bo-card { box-shadow: var(--card-shadow); border-radius: var(--b-r-card); overflow: hidden; }
+body.bo-light .item-page > .bo-card:not(.blk-table) { border: 1px solid var(--b-line); }
+body.bo-light .item-page > section > .bo-card-head { padding: 0 var(--b-pad); min-height: 37px; align-items: center; }
+body.bo-light .item-page > section .bo-card-label { font-weight: 400; color: var(--b-ink-2); }
+body.bo-light .item-page :is(.blk-list, .blk-empty) .bo-card-inset { padding: 0; }
+body.bo-light .item-page .blk-list .bo-card-inset:last-child > .mini-list:last-child { margin: 0; }
+body.bo-light .item-page .blk-list .mini-list-row:nth-child(n),
+body.bo-light .item-page .blk-empty .bo-empty { height: 34px; padding: 0 var(--b-pad); background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); display: flex; align-items: center; }
+body.bo-light .item-page .blk-list a.mini-list-row:hover { background: var(--b-card); }
+body.bo-light .item-page .blk-list .ml-value { font-weight: 400; }

@@ -21,7 +21,7 @@ body.bo-light .view-inv .ms-pick > summary {
 body.bo-light .view-sales .ms-pick > summary::-webkit-details-marker,
 body.bo-light .view-inv .ms-pick > summary::-webkit-details-marker { display: none; }
 body.bo-light .view-sales .ms-pick > summary::after,
-body.bo-light .view-inv .ms-pick > summary::after { content: '▾'; font-size: 10px; color: var(--po-ink-tertiary); }
+body.bo-light .view-inv .ms-pick > summary::after { content: ""; width: 6px; height: 6px; border: solid var(--po-ink-tertiary); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }   /* the Dashboard's chevron */
 body.bo-light .view-sales .ms-menu,
 body.bo-light .view-inv .ms-menu {
   position: absolute; z-index: 30; top: calc(100% + 6px); right: 0;

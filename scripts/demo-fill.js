@@ -69,12 +69,12 @@
   // ---- suppliers ---------------------------------------------------------------
   // lead: what actually happens (mean days), late: chance it slips 2-4 more, short: chance a line comes short.
   const SUP = [
-    { id: 'sup_ace', name: 'Ace Steel & Hardware', contact: 'Rowena Cruz', phone: '0917 555 0142', email: 'orders@acesteel.ph', address: 'Km 12 Maharlika Hwy, Cabanatuan', note: 'Rebar, nails, tie wire. Delivers Tuesdays.', orderDays: [1, 4], minOrder: 15000, quotedLeadDays: 3, lead: 3, late: 0.25, short: 0.12 },
-    { id: 'sup_boy', name: 'Boysen Depot Central', contact: 'Mark Villanueva', phone: '0918 555 0777', email: 'central@boysendepot.ph', address: '88 Quezon Ave, Cabanatuan', note: 'Paint. 30-day terms.', orderDays: [2], minOrder: 10000, quotedLeadDays: 2, lead: 2, late: 0.05, short: 0.05 },
-    { id: 'sup_pvc', name: 'Atlanta Plastics', contact: 'Jing Robles', phone: '0920 555 0311', email: 'sales@atlantaplastics.ph', address: 'Bgy. Sumacab, Cabanatuan', note: 'PVC pipe and fittings.', orderDays: [1, 3, 5], minOrder: 5000, quotedLeadDays: 2, lead: 2, late: 0.1, short: 0.08 },
-    { id: 'sup_hol', name: 'Holcim Dealer Nueva Ecija', contact: 'Arnel Tan', phone: '0998 555 0620', email: 'ne.dealer@holcim-partner.ph', address: 'Talavera, Nueva Ecija', note: 'Cement by the truck. Cash on delivery.', orderDays: [1, 4], minOrder: 20000, quotedLeadDays: 1, lead: 1, late: 0.15, short: 0.03 },
-    { id: 'sup_ele', name: 'Firefly Electric Trading', contact: 'Cathy Lim', phone: '0915 555 0833', email: 'trade@fireflyelectric.ph', address: 'Rizal Ave, San Jose City', note: 'Wire, breakers, lighting.', orderDays: [3], minOrder: 8000, quotedLeadDays: 4, lead: 5, late: 0.35, short: 0.15 },
-    { id: 'sup_gen', name: 'Metro Builders Supply', contact: 'Danny Ong', phone: '0905 555 0980', email: 'metrobuilders@gmail.com', address: 'Maharlika Hwy, San Leonardo', note: 'Tools, safety, adhesives. Everything else.', orderDays: [2, 5], minOrder: 3000, quotedLeadDays: 3, lead: 3, late: 0.12, short: 0.1 },
+    { id: 'sup_ace', name: 'Ace Steel & Hardware', contact: 'Rowena Cruz', phone: '0917 555 0142', email: 'orders@acesteel.ph', address: 'Km 12 Maharlika Hwy, Cabanatuan', note: 'Rebar, nails, tie wire. Delivers Tuesdays.', days: [1, 4], quote: 3, lead: 3, late: 0.25, short: 0.12 },
+    { id: 'sup_boy', name: 'Boysen Depot Central', contact: 'Mark Villanueva', phone: '0918 555 0777', email: 'central@boysendepot.ph', address: '88 Quezon Ave, Cabanatuan', note: 'Paint. 30-day terms.', days: [2], quote: 2, lead: 2, late: 0.05, short: 0.05 },
+    { id: 'sup_pvc', name: 'Atlanta Plastics', contact: 'Jing Robles', phone: '0920 555 0311', email: 'sales@atlantaplastics.ph', address: 'Bgy. Sumacab, Cabanatuan', note: 'PVC pipe and fittings.', days: [1, 3, 5], quote: 2, lead: 2, late: 0.1, short: 0.08 },
+    { id: 'sup_hol', name: 'Holcim Dealer Nueva Ecija', contact: 'Arnel Tan', phone: '0998 555 0620', email: 'ne.dealer@holcim-partner.ph', address: 'Talavera, Nueva Ecija', note: 'Cement by the truck. Cash on delivery.', days: [1, 4], quote: 1, lead: 1, late: 0.15, short: 0.03 },
+    { id: 'sup_ele', name: 'Firefly Electric Trading', contact: 'Cathy Lim', phone: '0915 555 0833', email: 'trade@fireflyelectric.ph', address: 'Rizal Ave, San Jose City', note: 'Wire, breakers, lighting.', days: [3], quote: 4, lead: 5, late: 0.35, short: 0.15 },
+    { id: 'sup_gen', name: 'Metro Builders Supply', contact: 'Danny Ong', phone: '0905 555 0980', email: 'metrobuilders@gmail.com', address: 'Maharlika Hwy, San Leonardo', note: 'Tools, safety, adhesives. Everything else.', days: [2, 5], quote: 3, lead: 3, late: 0.12, short: 0.1 },
   ];
   const supById = new Map(SUP.map((s) => [s.id, s]));
   const SUP_OF_FOLDER = { plumbing: 'sup_pvc', paint: 'sup_boy', cement: 'sup_hol', electrical: 'sup_ele', fasteners: 'sup_ace', tools: 'sup_gen', safety: 'sup_gen', adhesive: 'sup_gen' };
@@ -250,7 +250,7 @@
     const po = {
       id: uid('po'), number: 'PO-' + String(++poNum).padStart(4, '0'), supplierId: sup.id, status: 'ordered',
       orderedAt: orderedAt.toISOString(), sentAt: sentAt.toISOString(),
-      promisedAt: ymd(plusDays(day, sup.quotedLeadDays)), expectedAt: ymd(plusDays(day, sup.quotedLeadDays)), receivedAt: '',
+      promisedAt: ymd(plusDays(day, sup.quote)), expectedAt: ymd(plusDays(day, sup.quote)), receivedAt: '',
       note: '', updatedAt: sentAt.toISOString(),
       items: low.map((p) => {
         const want = p.reorderPoint * 4 - p.stock - (onOrder.get(p.id) || 0);
@@ -463,7 +463,7 @@
 
     // Deliveries that land today, and the POs raised this morning.
     for (let i = inbound.length - 1; i >= 0; i--) if (inbound[i].on === d && at(day, 10) < NOW) landPo(d, day, inbound.splice(i, 1)[0]);
-    if (d >= 3 && d < DAYS - 1) SUP.filter((s) => s.orderDays.includes(dow)).forEach((s) => raisePo(d, day, s));
+    if (d >= 3 && d < DAYS - 1) SUP.filter((s) => s.days.includes(dow)).forEach((s) => raisePo(d, day, s));
 
     // How busy: weekday ~50, Saturday more, Sunday half; paydays up, heavy rain and holidays down,
     // and a slow climb over the six months so the trend chips have something to say.
@@ -591,7 +591,8 @@
   put(K + 'drawerCloseouts.v1', closeouts);
   put(K + 'stockMovements.v1', movements);
   put(K + 'purchaseOrders.v1', pos);
-  put(K + 'suppliers.v1', SUP.map(({ lead, late, short, ...s }) => s));
+  // days / quote / lead / late / short only drive the simulation; they are not supplier fields.
+  put(K + 'suppliers.v1', SUP.map(({ days, quote, lead, late, short, ...s }) => s));
   put(K + 'staff.v1', staff);
   put(K + 'adjustments.v1', adjustments);
   // A monthly target a little above the last 90 days' pace, so the target cards have numbers.
