@@ -44,29 +44,37 @@ Ported 1:1 from the owner-approved labs: **`dashboard-calm-lab.html` is the Dash
   (Best dropped 2026-09-26): the best finished day (month) keeps its heat and gets a white "Best" tag in the top right corner (a green dot on a phone); the slowest a red "Slowest" one;
   the slowest finished day (month) is red on the calendar instead (`.loss`, "Slowest day" in the legend), unless it beat the bar.
 - **Sales › Transactions** (`bo-transactions.js`, `txPage()`, root class `.calm-tx`; its own view `/admin/transactions`
-  since 2026-09-26 so it can be worked on apart from Sales; `renderSales` forwards old `?by=tx` links, filters kept): title · range `.pick` ·
-  **black** Export CSV (`.btn`, the app's primary look, with the download icon); search + three filter
+  since 2026-09-26 so it can be worked on apart from Sales; `renderSales` forwards old `?by=tx` links, filters kept):
+  **List | Breakdown** `.pd-switch` (no title, owner 2026-09-28) · **black** Export CSV (List only, left of the range) · range `.pick`. Export CSV (`.btn`, the app's primary look, with the download icon); search + three filter
   `.pick`s (payment, staff, fulfilment — popover menus that stay open while you tick); one card, "All
   transactions ₱net" (the net faint, ink-3, beside the name; no "n shown", owner 2026-09-25) and Clear
   filters; Time and Total sort; 50 a page (like Products) with a 34px pager band, "1–50 of N" left, 24px ‹ ›
   right. A row opens the
   Dashboard's `receiptPop()` in the page's own `<dialog>`, ‹ › walking the filtered, sorted list. URL: `pay`,
-  `staff`, `ful`, `q`, `sort`/`dir`, `page`, `receipt`, plus `range`/`date`. **Blocks beside the table**
-  (`transactions-compact-lab.html`, owner 2026-09-26; replaces the old "no KPI cards" rule): search + filters
-  span only the table's column; a 288px rail holds Net sales (one line), Payment and Staff (pesos) and
-  Fulfilment (count), the other number fading in on hover. No graphs or bars. A block row ticks its filter;
-  each block ignores its own filter. A **Widgets** `.pick` by the range shows and hides blocks (no × on a
-  block, owner 2026-09-26: the menu is the one place); which are off is per device (`HWPOS_STORE.ui` `txHide`). Channels and Stores join as more blocks later.
+  `staff`, `ful`, `q`, `sort`/`dir`, `page`, `receipt`, plus `range`/`date` and `view`. **Breakdown** (`?view=breakdown`,
+  owner 2026-09-28; the blocks were a Widgets rail beside the table from 2026-09-26, now **no Widgets menu** here —
+  the in-page switch keeps you on the page, one click away): the same search, filters and range as the List, the
+  blocks full width under them — Net sales one line across, then Payment and Staff (pesos first, every staff
+  member) and Fulfilment (count first), the second number always showing. No graphs or bars. A block row ticks its
+  filter; each block ignores its own filter. Channels and Stores join as more blocks later. The old `txShow` key
+  is no longer read.
   The range menu keeps **Ends on**
   (`data-app-only`, which design-check strips) so receipts older than 30 days stay reachable. CSV = the
   filtered, searched, sorted rows.
 - **Widgets menu** (owner 2026-09-26): Show all · Hide all side by side at the top, then one tick per block.
+  **Rail order = tick order** (owner 2026-09-28): a tick puts that card last, Show all adds the rest in menu order;
+  the menu itself stays in its fixed order. One helper set in `backoffice.js` serves the menu (the Dashboard's; Customers
+  and Transactions dropped theirs 2026-09-28): `widgetsOn(page, W)` / `widgetsMenu()` / `widgetsTick()`, stored as an ordered list in
+  `HWPOS_STORE.ui` `<page>Show`; with no `<page>Show` yet, the old hide list `<page>Hide` sets it (menu order).
   Showing or hiding redraws through `slideRender()` (`backoffice.js`): the table slides its width (260ms), the
-  widgets fade in alongside it (40ms behind, table on top, both land together). No View Transitions, no fly-in (owner: "cringe"); a plain fade only.
-- **Customers** (owner 2026-09-26) borrows the same rail (root class `.calm-cust`, the `:is(.calm-tx, .calm-cust)`
-  rules): Outstanding credit, Credit limit pool, Utilization, Near limit, one line each, the note on hover, no ×
-  (the Widgets menu shows and hides them). Hidden ones are `HWPOS_STORE.ui` `custHide`. The
-  account page keeps its figures, inside its one account card.
+  widgets fade in alongside it (40ms behind, table on top, both land together); rail cards carry `data-rail="id"` so one that stays glides (FLIP) to its new place. A `display: contents` table column is measured and animated through its children (Transactions used it; no page does now). No View Transitions, no fly-in (owner: "cringe"); a plain fade only.
+- **Customers** (root class `.calm-cust`, the `:is(.calm-tx, .calm-cust)` rules): Outstanding credit, Credit limit
+  pool, Utilization, Near limit in **one thin strip over the filters** (`#custStrip`, owner 2026-09-28; a Widgets rail
+  from 2026-09-26, now **no Widgets menu** — four single totals aren't worth a click or a switch, and they're why
+  you open the page). Always on, four across (two by two under 900px), hairlines between, the note when you point
+  at a figure. **Near limit is a button** for `?status=Near limit` (tinted while on); its count uses `custStatus()`,
+  the filter's own test. The old `custShow` key is no longer read. The account page keeps its figures, inside its
+  one account card.
 - **Every list page has one layout** (owner 2026-09-26): title + actions, then `.list-filters` (search first and
   growing, filters after it), then the `.blk-table` card. `.blk-table` in `bo-blocks.css` is the Transactions
   table: 36px head with a faint count, no stripes, 34px hairline rows. Never put the search in the title row or a card head.
@@ -97,8 +105,8 @@ a fixed main column plus a widget rail `--rail-w` wide. **Its rules are scoped t
     Revenue · Profit · Transactions · Margin, hairlines between, 4 across, 2 under 1280px, 1 under 560px — then one
     revenue line. Scrubbing the chart swaps all four to that hour/day and hides the chips.
   - Recent transactions: the newest `RECENT_TX` (20). The Customer cell truncates at 160px (full name in `title`), and the table drops the global 860px `min-width` so it fits the column.
-- **The rail is the owner's.** `DASH_W` in `backoffice.js` holds the cards (`daily`, `monthly`, `low`, `pay`, fixed order, all on by default), one card wide, so widgets only ever stack.
-  - The same engine as Sales › Transactions (owner 2026-09-26): a **Widgets** `.pick` left of the range, Show all · Hide all then one tick per card, no × on the cards. Off ones are per device in `HWPOS_STORE.ui` `dashHide`; all off drops `#dashGrid` to one column (`.solo`), redrawn through `slideRender()`.
+- **The rail is the owner's.** `DASH_W` in `backoffice.js` holds the cards (`daily`, `monthly`, `low`, `pay`, all on by default; the rail follows tick order), one card wide, so widgets only ever stack.
+  - The same engine as Sales › Transactions (owner 2026-09-26): a **Widgets** `.pick` left of the range, Show all · Hide all then one tick per card, no × on the cards. Which are on, in tick order, is per device in `HWPOS_STORE.ui` `dashShow`; all off drops `#dashGrid` to one column (`.solo`), redrawn through `slideRender()`.
   - Low stock lives in the rail, not the KPIs: a bare count, the 5 that run out soonest, each with an Out or Low `.status-pill`, with a quiet "View all ›" to Products → Stock filtered to Out + Low (`?view=stock&level=out,low`) top right, across from the label. Recent transactions uses the same `.link-btn.view-all`.
   - Payment methods is a table of amounts only, no headline number and no percents: its total is Revenue, already the first KPI, and shares live on the Sales page. Each row leads with a swatch in its pay-pill's hue (`.sw.pay` in `bo-blocks.css`): the pill's text colour lifted to a soft pastel, since the raw ink read too dark and the pill fill too faint (owner, 2026-09-23).
 - **Targets** are stored in `state.settings.targets = { month, override: { date, amount } | null }` and saved through `saveSettings()`. The ··· on a target card opens `#targetDlg`.
@@ -435,9 +443,9 @@ Empty state is `.bo-empty` centered tertiary text, never a blank card.
 **Summary | Items is a switch inside the page, not sidebar links** (owner, 2026-09-27: the sidebar means "go
 somewhere else"; Items is the same month seen a different way, so the switch goes where the eyes already are).
 It is Products' Catalog | Stock component (`.seg.pd-switch` of `<a class="seg-btn">` links, `tabSwitch()` in
-`bo-sales.js`), in the `.bar` right after the `Sales` title — both views title the page `Sales` — and before
-`‹ period ›`. The switch takes the bar's auto margin and Items' Export CSV sits *left* of the picker, so **the
-title and the picker hold still on a switch; only what is below changes** (measured at 1440/1024/390: same
+`bo-sales.js`), leading the `.bar` — **no `Sales` title** (owner, 2026-09-28: the lit sidebar row names the
+page) — before `‹ period ›`. The switch takes the bar's auto margin and Items' Export CSV sits *left* of the
+picker, so **the switch and the picker hold still on a switch; only what is below changes** (measured at 1440/1024/390: same
 boxes). Items shows a "vs {period before}" in the picker only when `?vs=` is on, so the width holds then too.
 The URL is unchanged — `?by=items` is Items, no `by` the Summary — and the switch carries every param
 (`month`, `view`, `vs`, Items' `sort`/`ct`/`x`/`it`) except `day`/`week` (the pop-up) and `page`. Sales
@@ -624,7 +632,7 @@ history, six Stock-health tabs). The owner's rules for the merge: simple first, 
 every block points to an action; **never a second copy of the item table**. So:
 
 - **`/admin/products` has a Catalog | Stock switch inside the page**, `?view=stock` — a `.seg`
-  beside the title (`viewSwitch()`), like Gmail's tabs. **One sidebar link, Products; never a
+  leading the head with no `Products` title (`viewSwitch()`, 2026-09-28), like Gmail's tabs. **One sidebar link, Products; never a
   second "Inventory" link or a sidebar tree for this** (owner, 2026-09-23: two links read as two
   pages — "you duplicated the thing"). Sales' Summary | Items (2026-09-27) is the only other in-page switch; this one flips columns
   on the same table, it is not a sub-page. Switching keeps `q`, `cat`, `supplier` and `level`.
@@ -1195,6 +1203,13 @@ and needs no plain link. `data-sub` is for sub-pages that are somewhere else; tw
 thing are an in-page switch instead (Products' Catalog | Stock, Sales' Summary | Items — owner,
 2026-09-27). A view with a switch registers no `HWPOS_SUBNAV`, or `buildSubnav()` grows a tree back
 under its plain link.
+
+**The switch looks and moves one way** (owner, 2026-09-28, `switcher-lab.html` #1 and
+`sales-switcher-lab.html`): a grey track (`--btn-soft`) with the picked view on a white thumb, and no page
+title beside it, so it is sized as the heading: a pill, 30px tall, 13.5px text (34px with square corners was too big and boxy). The thumb is the active link's own background (`bo-products.css`), so it is right without JS.
+On a click `switchSettle()` (backoffice.js, run from `paint()`) glides a `.pd-glide` from the old place to the
+new one (200ms) and fades what sits below the head in (180ms opacity only, no slide). A new in-page switch uses
+`.seg.pd-switch` and gets both for free.
 
 **Analytics** is the page title of the `insights` view (the sidebar shows its four report links). The key, URL and role-access entry stay
 `insights`, so saved links and access maps keep working. Its page title is the report name.

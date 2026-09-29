@@ -11,6 +11,7 @@
   --surface: #2A2A2A;
   --surface-hover: #333333;
   --surface-2: #1F1F1F;
+  --tile: #2A2A2A;
 
   --line: rgba(255, 255, 255, 0.08);
   --line-strong: rgba(255, 255, 255, 0.14);
@@ -48,8 +49,8 @@
   --bottombar-h: 56px;
   --sidebar-w: 300px;
 
-  --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Display",
-                "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display",
+                "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;   /* the back office's font */
 }
 
 * { box-sizing: border-box; }
@@ -265,7 +266,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .view-hamburger {
   width: 48px;
   height: 48px;
-  border-radius: var(--r-input);
+  border-radius: var(--rl-r);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -369,7 +370,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   flex: 1;
   min-height: 0;
   height: 100%;
-  padding: 8px 10px 16px;
+  /* the grid ends level with Check out's bottom: rail margin 8 + card border 1 + .pay padding 12. Not flush with the
+     rail's cards (tried; too cramped) */
+  padding: 8px 10px calc(21px + env(safe-area-inset-bottom, 0px));
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -404,7 +407,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   padding: 0 42px 0 42px;
   background: var(--surface);
   border: none;
-  border-radius: var(--r-input);
+  border-radius: var(--rl-r);   /* the customer card's corner; 48px tall like it */
   font-size: 15px;
   letter-spacing: -0.15px;
   outline: none;
@@ -431,7 +434,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 .ghost-icon {
   width: 48px; height: 48px;
-  border-radius: var(--r-input);
+  border-radius: var(--rl-r);
   background: var(--surface);
   border: none;
   color: var(--ink-secondary);
@@ -2438,7 +2441,7 @@ select.text-input {
   #app { grid-template-columns: 200px 1fr; }
   .content-row { grid-template-columns: minmax(0, 1fr) 340px; }
   .view-head, .folder-strip-wrap { padding-left: 22px; padding-right: 22px; }
-  .catalog { padding: 16px 22px; }
+  .catalog { padding-left: 22px; padding-right: 22px; }
   .page-pad { padding: 16px 22px 32px; }
 }
 /* The POS till only: the back office is #app.bo-app too, and its sidebar keeps its labels at any width.
@@ -2451,16 +2454,12 @@ select.text-input {
   :where(#app:not(.bo-app)) .user-row { padding: 0; }
   :where(#app:not(.bo-app)) .content-row { grid-template-columns: minmax(0, 1fr) 320px; }
   :where(#app:not(.bo-app)) .form-grid { grid-template-columns: 1fr; }
-  :where(#app:not(.bo-app)) .checkout-content-row { grid-template-columns: minmax(0, 1fr) 340px; }
 }
 @media (max-width: 720px) {
   .content-row { grid-template-columns: 1fr; gap: 0; padding: 0; }
   .catalog { min-height: 56vh; }
   .cart { border-left: none; border-top: 1px solid var(--line); max-height: 44vh; border-radius: 16px 16px 0 0; margin: 0; }
   .view-head { flex-wrap: wrap; gap: 8px; }
-  .checkout-content-row { grid-template-columns: 1fr; gap: 0; padding: 0; }
-  .checkout-payment-col { padding: 16px 20px; }
-  .checkout-receipt-aside { max-height: 40vh; }
 }
 
 /* Scrollbar */
@@ -4131,379 +4130,140 @@ a.secondary-btn { text-decoration: none; }
 }
 .od-deliver .muted { color: var(--ink-tertiary); margin-right: 6px; }
 
-/* ----- Split Checkout view ----- */
-.view-checkout { display: none; flex-direction: column; }
-.view-checkout.active { display: flex; }
-.checkout-content-row {
-  grid-template-columns: minmax(0, 1fr) 460px;
+/* ----- Checkout: one page that moves forward (checkout-calm-lab.html) -----
+   The total has one place at the top of the payment column and never moves; only the step under it
+   changes: how they pay -> that method's one detail -> done. Every choice is the same 160x112 tile.
+   The items column is the list itself (no box); after the sale it shows the printed receipt. */
+.view-checkout {
+  --co-m: 20px;                                   /* page margin: Cancel's inset, column gutters */
+  --co-items-w: clamp(340px, 32vw, 420px);
+  --co-cust-h: 50px;                              /* customer row; its centre lines up with Cancel's */
+  --co-tw: 160px;
+  --co-gap: 14px;
+  --co-ease: cubic-bezier(.2, .8, .2, 1);
 }
-.checkout-payment-col {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  overflow-y: auto;
-  min-height: 0;
-  padding: 20px 40px 24px;
-}
-.checkout-payment-inner {
-  flex: 1;
-  width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 24px;
-}
-.checkout-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.co-back-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 6px;
-  display: grid;
-  place-items: center;
-  color: var(--ink-secondary);
-  flex-shrink: 0;
-  transition: background .12s, color .12s;
-}
-.co-back-btn:hover {
-  background: rgba(255,255,255,0.07);
-  color: var(--ink);
-}
+.co [hidden] { display: none !important; }
+.co .num { font-variant-numeric: tabular-nums; }
+.co { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--co-items-w); }
+.co-ic { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.co-pay { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; }
+/* Cancel's box is nudged so the chevron's ink sits exactly --co-m from the top and the left */
+.co-top { display: flex; align-items: center; padding: calc(var(--co-m) - 16.75px) var(--co-m) 0 calc(var(--co-m) - 14px); }
+.co-cancel { display: inline-flex; align-items: center; gap: 4px; min-width: 92px; height: 44px; padding: 0 12px 0 8px; border-radius: var(--r-input);
+             color: var(--ink); font-size: 15px; font-weight: 560; transition: background-color .12s, opacity .25s; }
+.co-cancel:hover { background: var(--surface-hover); }
+.co-cancel .co-ic { width: 18px; height: 18px; stroke-width: 2; color: var(--ink-secondary); }
+.is-done .co-cancel { opacity: 0; pointer-events: none; }
+.co-stage { overflow: auto; padding: 0 var(--co-m) 56px; }
+/* --lift centres the total + method tiles once per size (centreCheckout), never per step */
+.co-col { display: grid; width: 100%; max-width: 820px; margin: 0 auto; padding-top: var(--lift, 0px); }
+.co-hero { padding: clamp(16px, 4vh, 40px) 0 clamp(20px, 4vh, 36px); text-align: center; font-size: clamp(54px, 5.4vw, 72px); font-weight: 600;
+           letter-spacing: -.04em; line-height: 1; }
 
-/* Payment method 2×2 card grid */
-.pay-method-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.pay-method-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  height: 110px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 2px solid transparent;
-  color: var(--ink-secondary);
-  font-size: 14px;
-  font-weight: 510;
-  letter-spacing: -0.1px;
-  cursor: pointer;
-  transition: background .12s, border-color .14s, color .12s;
-}
-.pay-method-card[hidden] { display: none; }
-.pay-method-card:hover {
-  background: var(--surface-hover);
-  color: var(--ink);
-}
-.pay-method-card.active {
-  background: var(--surface-hover);
-  border-color: #fff;
-  color: #fff;
-  font-weight: 600;
-}
+.co-step { display: grid; gap: 12px; animation: co-in .3s var(--co-ease) both; }
+.co-step > :not(.co-tiles) { width: 100%; max-width: 440px; justify-self: center; }
+/* --cols is how many across the count wants; one tile size at any count, a tight column drops to fewer across */
+.co-tiles { --cols: 2; display: grid; gap: var(--co-gap); justify-self: center; width: 100%;
+            max-width: calc(var(--cols) * var(--co-tw) + (var(--cols) - 1) * var(--co-gap));
+            grid-template-columns: repeat(auto-fill, minmax(max(140px, (100% - (var(--cols) - 1) * var(--co-gap)) / var(--cols)), 1fr)); }
+.co-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 112px; padding: 0 10px;
+           border-radius: 14px; background: var(--tile); color: var(--ink); font-size: 15px; font-weight: 560; text-align: center;
+           transition: background-color .12s, transform .1s; }
+.co-tile:hover { background: var(--surface-hover); }
+.co-tile:active { transform: scale(.98); }
+.co-tile .co-ic { width: 26px; height: 26px; stroke-width: 1.5; color: var(--ink-secondary); }
+.co-big { font-size: 20px; font-weight: 600; letter-spacing: -.02em; line-height: 1.15; }
+.co-tile small { color: var(--ink-tertiary); font-size: 12.5px; font-weight: 400; }
+.co-tile small.up { color: var(--ok); font-weight: 500; }
 
-/* Other method name input */
-.other-method-row {
-  display: none;
-  margin-top: 8px;
-}
-.other-method-row.visible {
-  display: block;
-}
+/* cash: the typed amount is one line under the quick amounts, as wide as their row */
+.co-step > .co-cash-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-top: 2px;
+                         max-width: calc(var(--cols, 4) * var(--co-tw) + (var(--cols, 4) - 1) * var(--co-gap)); }
+.co-field { display: flex; align-items: center; gap: 6px; height: 56px; padding: 0 18px; border: 1px solid var(--line); border-radius: var(--r-input);
+            background: var(--surface-2); font-size: 22px; font-weight: 600; letter-spacing: -.02em; cursor: text; }
+.co-field:focus-within, .co-ref:focus { border-color: var(--ink-tertiary); }
+.co-cur { color: var(--ink-tertiary); font-weight: 500; }
+.co-field input { flex: 1; min-width: 0; padding: 0; border: 0; outline: 0; background: none; font: inherit; letter-spacing: inherit; }
+.co-field input::placeholder, .co-ref::placeholder { color: var(--ink-quaternary); }
+.co-ref { height: 50px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--r-input); outline: 0; background: var(--surface-2); font-size: 15px; }
+.co-ask { color: var(--ink-secondary); font-size: 14px; font-weight: 500; text-align: center; }
+.co-change { min-height: 24px; text-align: center; font-size: 17px; font-weight: 560; color: var(--ink-tertiary); }
+.co-change.up { color: var(--ok); }
+.co-change.down { color: var(--danger); }
+.co-error { width: 100%; max-width: 440px; justify-self: center; margin-top: 12px; padding: 9px 11px; border-radius: var(--r-input);
+            background: var(--danger-bg); color: var(--danger); font-size: 13px; font-weight: 600; text-align: center; }
 
-.checkout-back-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 8px;
-}
-.checkout-view-title {
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--ink);
-  line-height: 1.2;
-}
-.checkout-back-row .muted { font-size: 12px; color: var(--ink-tertiary); }
-.checkout-back-row .ghost-icon {
-  width: 48px; height: 48px;
-  border-radius: var(--r-input);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  color: var(--ink-secondary);
-  display: grid; place-items: center;
-  transition: background .12s, color .12s, border-color .12s;
-}
-.checkout-back-row .ghost-icon:hover { background: var(--surface-hover); color: var(--ink); border-color: var(--line-strong); }
-.checkout-receipt-aside {
-  margin: 8px 0;
-}
-.checkout-total {
-  text-align: center;
-  padding: 0;
-}
-.checkout-total-label {
-  font-size: 12px;
-  color: var(--ink-tertiary);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-.checkout-total-value {
-  font-size: 96px;
-  font-weight: 700;
-  color: var(--ink);
-  margin: 2px 0 4px;
-  letter-spacing: -2px;
-  line-height: 1;
-}
-.checkout-total-sub {
-  font-size: 13px;
-  color: var(--ink-secondary);
-}
-.checkout-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.checkout-section-label {
-  font-size: 13px;
-  color: var(--ink-secondary);
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  text-align: center;
-}
-.checkout-seg {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  background: transparent;
-  padding: 0;
-}
-.checkout-seg .seg {
-  height: 44px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 4px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  color: var(--ink-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all .12s;
-}
-.checkout-seg .seg:hover {
-  background: var(--bg-soft);
-  color: var(--ink);
-  border-color: var(--line-strong);
-}
-.checkout-seg .seg.active {
-  background: #fff;
-  border-color: #fff;
-  color: #121212;
-  font-weight: 700;
-}
-.checkout-input {
-  font-size: 24px;
-  font-weight: 600;
-  text-align: center;
-  padding: 16px 18px;
-  height: 60px;
-  border-radius: 12px;
-  background: var(--surface);
-}
-.checkout-input:focus {
-  background: var(--surface-hover);
-}
-.checkout-quick {
-  display: flex;
-  gap: 8px;
-}
-.checkout-quick button {
-  flex: 1;
-  height: 44px;
-  font-size: 14px;
-  font-weight: 590;
-  border-radius: 10px;
-  background: var(--surface);
-  border: none;
-  color: var(--ink-secondary);
-  font-variant-numeric: tabular-nums;
-  transition: background .12s, color .12s;
-}
-.checkout-quick button:hover {
-  background: var(--surface-hover);
-  color: var(--ink);
-}
-.checkout-change-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 16px;
-  font-weight: 600;
-  padding: 14px 18px;
-  background: var(--bg-soft);
-  border-radius: 12px;
-  margin-top: 8px;
-}
-.checkout-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 6px;
-}
-.checkout-actions .secondary-btn,
-.checkout-actions .primary-btn {
-  height: 52px;
-  justify-content: center;
-  padding: 0 18px;
-  font-size: 15px;
-  font-weight: 600;
-  border-radius: 10px;
-}
-.checkout-actions .primary-btn:not(:disabled) {
-  background: #fff;
-  color: #121212;
-}
-.checkout-actions .primary-btn:not(:disabled):hover {
-  background: #f0f0f0;
-}
-.checkout-error {
-  border: 1px solid rgba(239,83,80,0.35);
-  background: var(--danger-bg);
-  color: var(--danger);
-  border-radius: var(--r-card);
-  padding: 9px 11px;
-  font-size: 12px;
-  font-weight: 600;
-}
+.co-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 56px; padding: 0 22px;
+          border: 1px solid var(--line-strong); border-radius: var(--r-input); background: var(--surface-2); color: var(--ink);
+          font-size: 15px; font-weight: 600; white-space: nowrap; transition: background-color .12s, opacity .2s; }
+.co-btn:hover { background: var(--surface-hover); }
+.co-btn.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); box-shadow: var(--lt-primary-shadow, none); }
+.co-btn.primary:hover { background: var(--accent-hover); }
+.co-btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
+.co-step > .co-btn { height: 50px; margin-top: 6px; }
 
-.view-checkout-success { display: none; }
-.view-checkout-success.active { display: flex; }
-.checkout-success-page {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(360px, 1.1fr);
-  gap: 18px;
-  align-items: stretch;
-  padding: 24px 28px;
-  min-height: 0;
-  overflow: hidden;
+/* items column: the list itself, head and Total pinned, only the rows scroll */
+.co-items { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; overflow: hidden; border-left: 1px solid var(--line); }
+.co-cust { display: flex; align-items: center; gap: 10px; height: var(--co-cust-h); padding: 0 var(--co-m); border-bottom: 1px solid var(--line);
+           font-size: 14px; font-weight: 560; text-align: left; transition: background-color .12s; }
+.co-cust:hover { background: var(--surface-hover); }
+.co-cust span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.co-cust .co-ic { width: 18px; height: 18px; color: var(--ink-secondary); }
+.co-cust .co-chev { width: 16px; height: 16px; color: var(--ink-tertiary); }
+.is-done .co-cust { pointer-events: none; }
+.co-list { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }
+.co-head { display: flex; justify-content: space-between; gap: 12px; padding: 11px var(--co-m); background: var(--surface); border-bottom: 1px solid var(--line);
+           color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
+.co-rows { overflow-y: auto; overscroll-behavior: contain; }
+.co-row { display: flex; align-items: center; gap: 12px; min-height: 45px; padding: 7px var(--co-m); }
+.co-row + .co-row { border-top: 1px solid var(--line); }
+.co-nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
+.co-nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
+.co-amt { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.co-sum { padding: 14px var(--co-m) 16px; border-top: 1px solid var(--line); }
+.co-disc, .co-total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.co-disc { margin-bottom: 6px; color: var(--ink-secondary); font-size: 13px; }
+.co-total > :first-child { font-size: 14px; font-weight: 600; }
+.co-total > :last-child { font-size: 22px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+/* after the sale: the printed receipt, under the customer row */
+.co-rcpt { position: absolute; inset: var(--co-cust-h) 0 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--co-m); background: var(--surface);
+           visibility: hidden; opacity: 0; transition: opacity .25s, visibility 0s .25s; }
+.is-done .co-rcpt { visibility: visible; opacity: 1; transition: opacity .25s; }
+.co-rcpt .receipt-preview { max-height: none; overflow: visible; padding: 0; }
+.co-rcpt .rp-paper { margin: 0 auto; animation: co-print .9s var(--co-ease) both; }
+
+/* sale complete: the moment sits in the middle of the column */
+.is-done .co-stage { display: grid; align-content: center; }
+.co-done { display: grid; justify-items: center; gap: 4px; padding: 24px 0 4px; text-align: center; }
+.co-done > :not(.co-mark) { animation: co-rise .45s var(--co-ease) both; animation-delay: calc(var(--i, 0) * 70ms + 160ms); }
+.co-mark { position: relative; width: 72px; height: 72px; margin-bottom: 14px; animation: co-pop .42s var(--co-ease) both; }
+.co-mark::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--ok-bg); animation: co-pulse .85s .38s ease-out both; }
+.co-mark svg { position: relative; display: block; width: 100%; height: 100%; }
+.co-mark .m-c { fill: var(--ok-bg); stroke: var(--ok); stroke-width: 3; stroke-dasharray: 189; stroke-dashoffset: 189; transform: rotate(-90deg); transform-origin: center;
+                animation: co-draw .5s .05s var(--co-ease) forwards; }
+.co-mark .m-k { fill: none; stroke: var(--ok); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 36; stroke-dashoffset: 36;
+                animation: co-draw .3s .42s var(--co-ease) forwards; }
+.co-done-h { font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+/* the one number here is the change to hand back, said in one line */
+.co-done-chg { display: flex; align-items: baseline; justify-content: center; gap: 14px; margin-top: 6px; }
+.co-done-chg > :first-child { color: var(--ink-secondary); font-size: 22px; font-weight: 560; }
+.co-done-num { margin-right: -.035em; font-size: 64px; font-weight: 600; letter-spacing: -.035em; line-height: 1.1; transition: color .4s; }
+.co-done-num.settled { color: var(--ok); }
+.co-done-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 380px; margin-top: 28px; }
+.co-done-acts .co-btn { height: 50px; }
+
+@keyframes co-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes co-draw { to { stroke-dashoffset: 0; } }
+@keyframes co-pop { from { opacity: 0; transform: scale(.6); } }
+@keyframes co-pulse { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(1.9); } }
+@keyframes co-rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes co-print { from { clip-path: inset(0 0 100% 0); transform: translateY(-24px); } to { clip-path: inset(0 0 0 0); transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .co *, .co *::before { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
 }
-.checkout-success-card {
-  align-self: center;
-  justify-self: center;
-  width: 100%;
-  max-width: 520px;
-  background: transparent;
-  border: none;
-  padding: 34px 28px;
-  text-align: center;
-}
-.success-title {
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  margin-bottom: 8px;
-}
-.success-sub {
-  font-size: 15px;
-  color: var(--ink-tertiary);
-  margin-bottom: 32px;
-}
-.success-change-card {
-  background: var(--surface);
-  border-radius: 18px;
-  padding: 32px 32px 36px;
-  margin-bottom: 16px;
-}
-.success-change-label {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: var(--ink-tertiary);
-  margin-bottom: 8px;
-}
-.success-change {
-  font-size: clamp(24px, 7vw, 64px);
-  font-weight: 800;
-  letter-spacing: -2px;
-  line-height: 1;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-.success-paid-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-radius: 14px;
-  background: var(--bg-soft);
-  font-size: 17px;
-  font-weight: 510;
-  color: var(--ink-secondary);
-}
-.success-paid-row .success-total {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-.success-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 32px;
-}
-.success-actions .primary-btn,
-.success-actions .secondary-btn {
-  height: 58px;
-  width: 100%;
-  justify-content: center;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 700;
-}
-.success-actions .primary-btn {
-  background: #fff;
-  color: #121212;
-  text-transform: none;
-  letter-spacing: 0;
-}
-.success-actions .primary-btn:hover:not(:disabled) {
-  background: #f0f0f0;
-}
-.success-actions .secondary-btn {
-  text-transform: none;
-  letter-spacing: 0;
-}
-.checkout-success-receipt {
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow-y: auto;
-  padding: 20px 24px 26px;
-  background: transparent;
-  border: none;
-}
-.checkout-success-receipt .receipt-preview {
-  max-height: 100%;
-  width: 100%;
-  align-items: center;
-  overflow-y: auto;
-  padding: 0;
+@media (max-width: 720px) {
+  .co { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .co-items { max-height: 40vh; border-left: 0; border-top: 1px solid var(--line); }
 }
 
 /* Role switcher in sidebar footer */
@@ -4536,9 +4296,6 @@ a.secondary-btn { text-decoration: none; }
   .orders-col { border: none; }
   .order-detail { border: none; margin-top: 12px; }
   .od-meta-row { grid-template-columns: 1fr; }
-  .checkout-success-page { grid-template-columns: 1fr; overflow-y: auto; }
-  .checkout-success-card { align-self: start; }
-  .checkout-success-receipt { min-height: 420px; overflow: visible; }
 }
 
 /* ==========================================================
@@ -5382,36 +5139,37 @@ body.bo-light .toast.show { opacity: 1; transform: translateX(-50%) translateY(0
 
 /* ============================================================
    Light theme — applied to body when user selects Light in POS Settings.
-   Same palette as the back office (body.bo-light --po-* v21): #F1F1F1 page,
-   white cards with a #E1E1E1 hairline, #303030 ink, #303030 primary.
-   White surfaces on a light page need an outline to read, so the dark
-   theme's inset shine is swapped for a 1px hairline ring.
+   Same palette as the back office today (bo-blocks.css v35): one white page,
+   #F9F9F9 blocks with a #E1E1E1 hairline, #303030 / #616161 / #8C8C8C ink,
+   #303030 primary, Inter. White-ish surfaces on a light page need an outline
+   to read, so the dark theme's inset shine is swapped for a 1px hairline ring.
    ============================================================ */
 body.light-theme {
-  --bg: #F1F1F1;
-  --bg-soft: #EBEBEB;
-  --bg-softer: #E2E2E2;
-  --surface: #FFFFFF;
-  --surface-hover: #F7F7F7;
-  --surface-2: #EBEBEB;
-  --line: #E1E1E1;
-  --line-strong: #D2D2D2;
+  --bg: #FFFFFF;             /* --po-bg */
+  --bg-soft: #EDEDED;        /* --btn-soft */
+  --bg-softer: #E4E4E4;      /* --btn-soft-hover */
+  --surface: #F9F9F9;        /* --blk-bg */
+  --surface-hover: #F6F6F6;  /* --tbl-hover */
+  --surface-2: #FFFFFF;      /* --po-sidebar */
+  --line: #E1E1E1;           /* --blk-outline */
+  --line-strong: #D4D4D4;    /* --btn-line */
+  --tile: #F3F3F3;           /* soft grey tile, same as the checkout lab's payment tiles */
   --ink: #303030;
-  --ink-secondary: #6B6B6B;
-  --ink-tertiary: #8A8A8A;
+  --ink-secondary: #616161;
+  --ink-tertiary: #8C8C8C;
   --ink-quaternary: #B5B5B5;
   --accent: #303030;
   --accent-hover: #1A1A1A;
   --accent-pressed: #000000;
   --accent-tint: rgba(0, 0, 0, 0.06);
   --accent-ink: #FFFFFF;
-  --warn: #8A6116;
-  --warn-bg: #FBF0DA;
-  --danger: #C7320A;
-  --danger-bg: #FCEDEA;
-  --ok: #0E7C4A;
-  --ok-bg: #E3F1E9;
-  --shadow-card: 0 1px 1px rgba(0,0,0,0.03);
+  --warn: #7A5B00;
+  --warn-bg: #FCEFC7;
+  --danger: #D72C0D;         /* --trend-down */
+  --danger-bg: #F8D8D0;
+  --ok: #047B5D;             /* --trend-up */
+  --ok-bg: #D3ECDD;
+  --shadow-card: 0 1px 2px -1px rgb(26 26 26 / .07);   /* --card-shadow */
   --shadow-raised: 0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
   --shadow-modal: 0 20px 50px rgba(0,0,0,0.15), 0 8px 20px rgba(0,0,0,0.08);
   --lt-ring: 0 0 0 1px var(--line), var(--shadow-card);
@@ -5420,7 +5178,6 @@ body.light-theme {
 }
 
 /* Raised white surfaces: hairline ring instead of the invisible white shine */
-body.light-theme .product-card,
 body.light-theme #searchInput,
 body.light-theme #invSearchInput,
 body.light-theme .ghost-icon,
@@ -5443,10 +5200,19 @@ body.light-theme #invSearchInput:focus {
 }
 
 /* Product tiles — names were hardcoded white */
+/* Back-office blocks: the F9 fill with a hairline ring, drawn inset so the grid's overflow can't clip it;
+   back-office radius; names as typed in Inter 500 instead of tracked-out capitals */
+body.light-theme .product-card,
+body.light-theme .product-card.pc-group { background: var(--surface); border-radius: var(--r-input); box-shadow: inset 0 0 0 1px var(--line); }
+body.light-theme .product-card:hover,
+body.light-theme .product-card.pc-group:hover { background: var(--tile); }
+body.light-theme .product-card:active { background: var(--bg-soft); }
+body.light-theme .co-tile:hover { background: var(--bg-soft); }
+body.light-theme .co-tile:active { background: var(--bg-softer); }
 body.light-theme .pc-name,
-body.light-theme .pc-group .pc-name { color: var(--ink); }
+body.light-theme .pc-group .pc-name { color: var(--ink); font-weight: 500; letter-spacing: -0.1px; text-transform: none; }
 body.light-theme .pc-price-mini { color: var(--ink-tertiary); }
-body.light-theme .pc-group-badge { background: var(--bg-soft); color: var(--ink-secondary); }
+body.light-theme .pc-group-badge { background: var(--surface-2); color: var(--ink-secondary); }
 body.light-theme .pc-group-badge svg { stroke: var(--ink-secondary); }
 body.light-theme .product-card.pc-back {
   background: transparent;
@@ -5458,9 +5224,6 @@ body.light-theme .product-card.pc-back .pc-back-icon { background: var(--bg-soft
 
 /* Active / primary = dark #303030 fill, white text (back office primary button) */
 body.light-theme .folder-pill.active,
-body.light-theme .checkout-seg .seg.active,
-body.light-theme .checkout-actions .primary-btn:not(:disabled),
-body.light-theme .success-actions .primary-btn,
 body.light-theme .fulfil-pill.active,
 body.light-theme .fulfil-pill.active:hover,
 body.light-theme .cart-discount-btn.active,
@@ -5472,15 +5235,14 @@ body.light-theme .cart .cart-actions .charge-btn {
   color: var(--accent-ink);
   box-shadow: var(--lt-primary-shadow);
 }
+body.light-theme .cart .cart-actions .charge-btn { font-weight: 600; font-size: 15px; letter-spacing: 0; text-transform: none; }
 body.light-theme .fulfil-pill.active svg,
 body.light-theme .cart-discount-btn.active svg { color: var(--accent-ink); }
 body.light-theme .folder-pill.active .folder-pill-count { color: rgba(255,255,255,0.65); }
-body.light-theme .checkout-actions .primary-btn:not(:disabled):hover,
-body.light-theme .success-actions .primary-btn:hover:not(:disabled),
 body.light-theme .cart .cart-actions .charge-btn:hover:not(:disabled) { background: var(--accent-hover); }
 body.light-theme .cart .cart-actions .charge-btn:disabled,
 body.light-theme .cart-actions .charge-btn:disabled {
-  background: var(--bg-softer);
+  background: var(--bg-soft);
   color: var(--ink-tertiary);
   box-shadow: none;
 }
@@ -7754,3 +7516,159 @@ body.bo-light .view-head h1, body.bo-light .view-title-wrap > .link-btn { white-
 /* Too narrow for one line, the head wraps like the calm pages' .bar, at any width and sidebar open or not:
    title on the left, the actions on the next line from the left edge, never stacked and centred. */
 body.bo-light .view-actions { margin-left: 0; flex-wrap: wrap; }
+
+/* ============================================================
+   SALE SIDEBAR -- the rail (cart-lab-stack-h.html, checkout: cart-lab-checkout-2.js)
+   Three slim cards: who (customer + ⋯), the items, the money (Pickup | Discount share its first row, then
+   Total, Check out). Settings -> Appearance turns the Item / Amount band on or off. Colours come from the
+   theme tokens; light matches the lab.
+   ============================================================ */
+body {
+  --rl-card: var(--surface-2);
+  --rl-soft: var(--bg-softer);                          /* the band */
+  --rl-track: var(--surface-hover);                     /* the chosen fulfilment cell */
+  --rl-hover: var(--surface);
+  --rl-on: #8AB4F8;                                     /* a discount is on */
+  --rl-shadow: none;                                    /* the border alone; an inset top highlight doubled it */
+  --rl-r: 14px;
+  --rl-m: 20px;
+  --rl-gap: 8px;
+  --rl-ease: cubic-bezier(.2, .8, .2, 1);
+}
+body.light-theme {
+  --rl-soft: var(--surface);
+  --rl-track: var(--bg-soft);
+  --rl-hover: var(--surface-hover);
+  --rl-on: #1F5FB8;
+  --rl-shadow: 0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05);
+}
+/* the one safe-area inset of the sell view's bottom edge (docs/design-pos.md) */
+.rail { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--rl-gap); min-width: 0; min-height: 0;
+        margin: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px)); color: var(--ink); font-size: 13px; line-height: 1.4; }
+.rail button { font: inherit; color: inherit; touch-action: manipulation; cursor: pointer; }
+.rail .num { font-variant-numeric: tabular-nums; }
+.rail :focus-visible { outline: 2px solid var(--rl-on); outline-offset: 2px; }
+.rail .ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.rail .card { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); box-shadow: var(--rl-shadow); }
+
+/* who & how */
+.rail .who { z-index: 3; }
+.rail .c-row, .rail .f-row { display: flex; height: 46px; }
+.rail .f-row { border-top: 1px solid var(--line); }
+.rail .cust, .rail .pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 14px 0 var(--rl-m); border: 0; background: none; text-align: left;
+                           font-size: 14px; font-weight: 560; transition: background-color .12s; }
+.rail .cust { border-top-left-radius: calc(var(--rl-r) - 1px); }
+.rail .pick { border-radius: 0 0 calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px); }
+.rail .cust:hover, .rail .pick:hover, .rail .pick[aria-expanded="true"] { background: var(--rl-hover); }
+.rail .cust span, .rail .pick span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail .chev { width: 16px; height: 16px; color: var(--ink-tertiary); }
+.rail .more { display: grid; place-items: center; flex: none; width: 52px; border: 0; border-left: 1px solid var(--line); border-top-right-radius: calc(var(--rl-r) - 1px);
+              background: none; color: var(--ink-secondary); transition: background-color .12s, color .12s; }
+.rail .more:hover, .rail .more[aria-expanded="true"] { background: var(--rl-hover); color: var(--ink); }
+
+/* items */
+.rail .items { display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
+.rail .i-head { display: flex; justify-content: space-between; gap: 12px; padding: 11px var(--rl-m); background: var(--rl-soft); border-bottom: 1px solid var(--line);
+                color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
+.rail .lines { grid-row: 2; overflow-y: auto; overscroll-behavior: contain; }   /* row 2 even with the band off, so it still scrolls */
+.rail .line + .line { border-top: 1px solid var(--line); }
+.rail .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 45px; padding: 7px var(--rl-m); border: 0; background: none; text-align: left; transition: background-color .12s; }
+.rail .row:hover { background: var(--rl-hover); }
+.rail .row .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
+.rail .row .nm span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.rail .row .nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
+.rail .row .amt { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.rail .empty { display: grid; place-content: center; justify-items: center; gap: 4px; height: 100%; padding: 24px; text-align: center; }
+.rail .empty b { font-size: 14px; font-weight: 600; }
+.rail .empty span { color: var(--ink-tertiary); }
+
+/* the money */
+.rail .pay { display: flex; flex-direction: column; gap: var(--rl-gap); padding: 0 12px 12px; }
+.rail .d-row { display: flex; align-items: center; gap: 8px; height: 40px; margin: 0 -12px; padding: 0 14px 0 var(--rl-m); border: 0; border-bottom: 1px solid var(--line);
+               border-radius: calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px) 0 0; background: none; color: var(--ink-secondary); font-weight: 500; text-align: left; transition: background-color .12s; }
+.rail .d-row:hover { background: var(--rl-hover); color: var(--ink); }
+.rail .d-row span:first-child { flex: 1; }
+.rail .d-row.on { color: var(--rl-on); }
+.rail .d-row:disabled { color: var(--ink-quaternary); pointer-events: none; }
+.rail .break { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s var(--rl-ease); }
+.rail .break.open { grid-template-rows: 1fr; }
+.rail .break > div { min-height: 0; overflow: hidden; }
+.rail .break p { display: flex; justify-content: space-between; margin: 0; padding: 2px 8px; color: var(--ink-secondary); font-size: 13px; }
+.rail .break p:first-child { padding-top: 10px; }
+.rail .break p.dim { color: var(--ink-tertiary); }
+.rail .sum { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; height: 44px; padding: 0 8px; border: 0; background: none; text-align: left; }
+.rail .sum .l { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; }
+.rail .sum .l .ic { width: 14px; height: 14px; stroke-width: 2; color: var(--ink-tertiary); transition: transform .2s var(--rl-ease); }
+.rail .sum[aria-expanded="true"] .l .ic { transform: rotate(180deg); }
+.rail .sum .v { font-size: 22px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+.rail.empty-cart .sum .v { color: var(--ink-tertiary); }
+.rail .go { height: 52px; width: 100%; border: 1px solid var(--accent); border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-size: 15px; font-weight: 600;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.2); transition: background-color .12s, opacity .2s; }
+.rail .go:hover { background: var(--accent-hover); }
+.rail .go:active { background: var(--accent-pressed); }
+.rail .go:disabled { opacity: .3; pointer-events: none; }
+
+/* H: the customer row alone on top; Pickup | Discount share the money card's first row, true halves */
+.rail .opts { display: none; }
+.rail-h .c-row .cust { border-radius: calc(var(--rl-r) - 1px) 0 0 calc(var(--rl-r) - 1px); }
+.rail-h .c-row .more { border-radius: 0 calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px) 0; }
+.rail-h .opts { display: flex; height: 40px; margin: 0 -12px; border-bottom: 1px solid var(--line); }
+.rail-h .opts > .f-row, .rail-h .opts > .d-row { display: flex; flex: 0 0 50%; min-width: 0; }
+.rail-h .opts > .f-row { height: auto; border-top: 0; }
+.rail-h .opts .pick { font-weight: 500; border-radius: calc(var(--rl-r) - 1px) 0 0 0; }
+.rail-h .opts .d-row { height: auto; margin: 0; padding: 0 14px 0 16px; border-bottom: 0; border-left: 1px solid var(--line); border-radius: 0 calc(var(--rl-r) - 1px) 0 0; }
+.rail-h .opts .d-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-h .go { height: 44px; }
+
+/* the Item / Amount band off: the count sits beside Total (sidebar and checkout) */
+.rail-cnt { display: none; margin-left: 6px; color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
+.rail-nohead .rail-cnt { display: inline; }
+.rail-nohead .rail .i-head, .rail-nohead .co-head { display: none; }
+
+/* the morph menu: grows out of its trigger's box (app.js openMenu); the veil catches the outside tap */
+.rail-veil { position: fixed; inset: 0; z-index: 150; }
+.rail-menu { position: absolute; padding: 4px; border-radius: var(--r-input); background: var(--rl-card); box-shadow: var(--shadow-raised), 0 0 0 1px var(--line); }
+.rail-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0 var(--pr, 12px) 0 var(--pl, 12px); border: 0; border-radius: 7px; background: none;
+                    color: var(--ink-secondary); font: inherit; font-size: 14px; font-weight: 500; text-align: left; white-space: nowrap; cursor: pointer; }
+.rail-menu button span { flex: 1; }
+.rail-menu button:hover, .rail-menu button:focus-visible { background: var(--rl-hover); color: var(--ink); outline: 0; }
+.rail-menu button.cur { color: var(--ink); font-weight: 560; }
+.rail-menu button.red { color: var(--danger); }
+.rail-menu button.red:hover, .rail-menu button.red:focus-visible { background: var(--danger-bg); }
+.rail-menu button:disabled { color: var(--ink-quaternary); pointer-events: none; }
+.rail-menu hr { margin: 4px -4px; border: 0; border-top: 1px solid var(--line); }
+
+/* Checkout keeps the rail (Simplified 2): it tucks away in place what paying does not need. co-anim is on only
+   while tucking / untucking, so the rail's own hover transitions are untouched the rest of the time. */
+.co-anim .f-row, .co-anim .opts, .co-anim .more, .co-anim #cartDiscountBtn, .co-anim #payBtn, .co-anim .pay {
+  overflow: hidden; transition: height .26s var(--rl-ease), width .26s var(--rl-ease), margin .26s var(--rl-ease),
+                                border-width .26s var(--rl-ease), padding .26s var(--rl-ease), opacity .14s linear; }
+.co-mode .f-row { height: 0; opacity: 0; border-top-width: 0; }
+.co-mode .more { width: 0; padding: 0; opacity: 0; border-left-width: 0; }
+.co-mode #cartDiscountBtn { height: 0; opacity: 0; margin-bottom: calc(-1 * var(--rl-gap)); border-bottom-width: 0; }
+.co-mode #payBtn { height: 0; padding: 0; opacity: 0; margin-top: calc(-1 * var(--rl-gap)); border-width: 0; }
+.rail-h.co-mode .opts { height: 0; margin-bottom: calc(-1 * var(--rl-gap)); border-bottom-width: 0; }
+.co-mode .pay { padding-top: 6px; padding-bottom: 6px; }                   /* the Total row alone, centred in its card */
+.co-mode .cust .co-meta { flex: none; color: var(--ink-tertiary); font-weight: 500; animation: rail-fade .18s .1s both; }
+.co-mode .lines > * { pointer-events: none; }
+.rail-rcpt { position: absolute; inset: 0; z-index: 2; overflow-y: auto; overscroll-behavior: contain; padding: 20px; border-radius: inherit;
+             background: var(--surface); animation: rail-fade .25s both; }
+.rail-rcpt .receipt-preview { max-height: none; overflow: visible; padding: 0; }
+.rail-rcpt .rp-paper { margin: 0 auto; animation: co-print .9s var(--rl-ease) both; }
+@keyframes rail-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .rail *, .rail-rcpt * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+/* the pane covers only what is left of the rail (--co-right, app.js fitCheckout); under 721px the rail sits below
+   the products, so checkout stays full screen there */
+@media (min-width: 721px) {
+  #app.co-side .view-sell { display: flex; }
+  #app.co-side #sidebarToggle { visibility: hidden; }             /* z-index 96, above the pane; hidden with the sell view otherwise */
+  #app.co-side .view-checkout.active, #app.co-side .view-checkout.co-leaving {
+    position: absolute; top: 0; bottom: 0; left: 0; right: var(--co-right, 0px); z-index: 5; display: flex; background: var(--bg); }
+  #app.co-side .co { grid-template-columns: minmax(0, 1fr); }
+  #app.co-side .co-items { display: none; }
+}
+@media (max-width: 720px) {
+  .rail { max-height: 44vh; margin: 0; padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
+}

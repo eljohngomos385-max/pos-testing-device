@@ -60,7 +60,7 @@ The layout reads as a **grid of aligned edges and shared baselines**. When you p
   - Customers / Reports / Settings: `.view-head` (`padding-top: 16px`).
   - If you change any of these paddings, re-check that the hamburger still lands at 16px on all pages.
 - **Hamburger + search + barcode sit in one row, all 48px tall, edge-to-edge.** Gap between them is `7px` (`.search-row`). To widen the search bar, shrink the gap — never move the hamburger/barcode (they're pinned to the row edges; the search bar is `flex: 1`).
-- Sell hamburger/barcode use `.ghost-icon`; other pages use `.view-hamburger`. **Keep both visually identical** (48px, `var(--r-input)` radius, `var(--surface)` bg, no border).
+- Sell hamburger/barcode use `.ghost-icon`; other pages use `.view-hamburger`. **Keep both visually identical** (48px, `var(--rl-r)` radius — the sale sidebar's customer card, which they line up with — `var(--surface)` bg, no border). The product grid below them is deliberately **not** flush with the sidebar's cards (tried; too cramped): `.catalog` keeps its 14px gap under the search row, and its last row ends level with the **Check out button's** bottom, not the card's (`.catalog` bottom padding 21px = rail margin 8 + card border 1 + `.pay` padding 12).
 - **Horizontal page padding is 28px** for `.view-head` / `.orders-layout`; Sell resolves to 28px too (18px row + 10px catalog).
 
 ## The hairline shine (signature surface highlight)
@@ -90,7 +90,7 @@ Reusable expand/collapse: a header row toggles `.open`; the detail panel animate
 
 - Closed = `height: 0; overflow: hidden`. Open = measure inner, set px height, then `height: auto` on `transitionend`. Close = lock current px, then `requestAnimationFrame` → `0`.
 - A chevron (`<polyline points="6 9 12 15 18 9">`) rotates 180° via `.open`.
-- Live instances: cart totals (`#totalRow` / `.totals-detail`), order-detail modal Items (`#odmItemsToggle`) and Total/subtotals (`#odmTotalToggle`).
+- Live instances: order-detail modal Items (`#odmItemsToggle`) and Total/subtotals (`#odmTotalToggle`).
 - **Separator lines appear only when expanded.** No always-on divider above collapsed totals (`.cart-foot` has `border-top: none`; the line comes from `.totals.open .row.total`).
 
 ## Orders page specifics
@@ -103,7 +103,7 @@ Reusable expand/collapse: a header row toggles `.open`; the detail panel animate
 ## Cross-device / touch
 
 - **The till's sidebar rules are the till's alone**: the base `.sidebar` / `.side-*` / `.brand-*` / `.user-row` rules, the `#app::before` backdrop and the ≤920px icons-only `@media` block in `styles.css` are all scoped to `:where(#app:not(.bo-app))`, because the back office is `#app` with `.sidebar` / `.side-link` too. A new sidebar rule gets the same scope (`:where()` keeps specificity unchanged).
-- **Safe-area inset (`env(safe-area-inset-bottom)`) is applied exactly once** — on `.cart-foot` only. Never double up (a child like `.cart-actions` must not also add it). Keep a constant base gap + single inset so the gap is tight on desktop and clears the home indicator on iPad/iPhone.
+- **Safe-area inset (`env(safe-area-inset-bottom)`) is applied exactly once** — on the sale sidebar `.rail` only (its bottom margin; its bottom padding at ≤720px). Never double up (a child like `.pay` or `.go` must not also add it). Keep a constant base gap + single inset so the gap is tight on desktop and clears the home indicator on iPad/iPhone.
 - Product-grid swipe is tuned for **low resistance**: drag engages after 4px, page flips at 12% of width, plus flick detection (`elapsed < 300ms && |dx| > 30 && velocity > 0.25`). Don't raise these without reason.
 
 ## Settings-driven display

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cart switcher lab</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* CART SWITCHER LAB (2026-09-28): the sell-screen sidebar redesigns (cart-lab-*.html)
+   in one page. Round 3: Stack, Flush, Island, each as v1 / A / B / C / D (← → step through). The pill at the bottom left also sets
+   cart state (Normal / Many / Empty), how many fulfilment types the store has (?ful=2|3|5), and what Check out morphs the
+   sidebar into (?co=simple|simple2; Flush = the real items column, Simplified = the same sidebar, trimmed, Simplified 2 = trimmed
+   in place with nothing flying, in cart-lab-checkout-2.js; both need a C/D design), and ?head=0 (no Item / Amount band).
+   ponytail: each design stays its own file in an iframe, so a pick ports from that one file. */
+:root { --ink: #1F1F1F; --ink-2: #6B6B6B; --line: #ECECEC; --track: #F0F0F0; --card: #FFFFFF;
+        --shadow: 0 8px 28px rgba(0,0,0,.12), 0 0 0 1px rgba(0,0,0,.05); --ease: cubic-bezier(.2,.7,.3,1); }
+html, body { margin: 0; height: 100%; background: var(--card); font: 13px/1.2 Inter, system-ui, sans-serif; color: var(--ink); }
+iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
+.pick { position: fixed; left: 50px; bottom: 14px; display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
+        padding: 5px; border-radius: 14px; background: var(--card); box-shadow: var(--shadow); z-index: 1; }
+.seg { display: flex; padding: 2px; border-radius: 10px; background: var(--track); }
+.seg button { font: inherit; font-weight: 500; color: var(--ink-2); border: 0; background: none; cursor: pointer;
+              height: 32px; padding: 0 12px; border-radius: 8px; white-space: nowrap; transition: background .2s var(--ease), color .2s var(--ease); }
+.seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04); }
+.seg button small { color: var(--ink-2); font-weight: 400; margin-right: 5px; }
+.hide { position: fixed; left: 14px; bottom: 21px; width: 28px; height: 28px; border-radius: 50%; border: 0; cursor: pointer;
+        background: var(--card); box-shadow: var(--shadow); color: var(--ink-2); font: 15px/1 Inter, sans-serif; z-index: 1; }
+.row2 { display: flex; gap: 8px; }
+.fam { align-self: center; padding: 0 6px 0 10px; color: var(--ink-2); font-weight: 600; }
+.fam:first-child { padding-left: 6px; }
+body.min .pick { display: none; }
+@media (max-width: 760px) { .seg button { padding: 0 8px; } .seg button span { display: none; } }
+</style>
+</head><body>
+<iframe id="f" title="Design"></iframe>
+<div class="pick">
+  <div class="seg" id="designs"></div>
+  <div class="row2">
+    <div class="seg" id="states">
+      <button data-s="">Normal</button><button data-s="many=1">Many</button><button data-s="empty=1">Empty</button>
+    </div>
+    <div class="seg" id="ful" title="How many fulfilment types the store has">
+      <button data-f="2">2 types</button><button data-f="3">3</button><button data-f="5">5</button>
+    </div>
+    <div class="seg" id="co" title="What Check out morphs the sidebar into">
+      <button data-c="flush"><small>Checkout</small>Flush</button><button data-c="simple">Simplified</button><button data-c="simple2">Simplified 2</button>
+    </div>
+    <div class="seg" id="head" title="The Item / Amount band over the rows (off: the count sits beside Total)">
+      <button data-h="1"><small>Header</small>On</button><button data-h="0">Off</button>
+    </div>
+  </div>
+</div>
+<button class="hide" id="hide" title="Hide the picker (H)">×</button>
+<script>
+// Round 3: C = actions behind ⋯ on the customer row, D = the customer row is the sale menu; both use the morph menu.
+// Round 4 (Stack only): E = C with Pickup at the bottom, F = C with a smaller bottom, G = both, H = G with C's Total line.
+// Owner's rank: Stack, Flush, Island. Round 1's Receipt and Dock were dropped; their files stay.
+const FAMILIES = [['Stack', ['cart-lab-3-stack.html', 'cart-lab-stack-a.html', 'cart-lab-stack-b.html', 'cart-lab-stack-c.html', 'cart-lab-stack-d.html', 'cart-lab-stack-e.html', 'cart-lab-stack-f.html', 'cart-lab-stack-g.html', 'cart-lab-stack-h.html']],
+                  ['Flush', ['cart-lab-2-flush.html', 'cart-lab-flush-a.html', 'cart-lab-flush-b.html', 'cart-lab-flush-c.html', 'cart-lab-flush-d.html']],
+                  ['Island', ['cart-lab-1-island.html', 'cart-lab-island-a.html', 'cart-lab-island-b.html', 'cart-lab-island-c.html', 'cart-lab-island-d.html']]];
+const DESIGNS = FAMILIES.flatMap(([fam, files]) => files.map((f, i) => [f, fam, ['v1', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][i]]));
+const $ = s => document.querySelector(s);
+$('#designs').innerHTML = DESIGNS.map(([, fam, v], d) => (v === 'v1' ? `<span class="fam">${fam}</span>` : '') + `<button data-d="${d}">${v}</button>`).join('');
+const cur = { d: 3, s: '', f: '3', c: 'flush', h: '1' };
+try { Object.assign(cur, JSON.parse(localStorage.getItem('cartSwitcher3') || '{}')); } catch {}
+const hash = location.hash.match(/^#(\d+)/); if (hash) cur.d = Math.max(0, Math.min(DESIGNS.length - 1, hash[1] - 1));
+function show() {
+  const q = [cur.s, cur.f !== '2' && 'ful=' + cur.f, cur.c !== 'flush' && 'co=' + cur.c, cur.h === '0' && 'head=0'].filter(Boolean).join('&');
+  $('#f').src = DESIGNS[cur.d][0] + (q ? '?' + q : '');
+  document.querySelectorAll('[data-d]').forEach(b => b.classList.toggle('on', +b.dataset.d === cur.d));
+  document.querySelectorAll('[data-s]').forEach(b => b.classList.toggle('on', b.dataset.s === cur.s));
+  document.querySelectorAll('[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === cur.f));
+  document.querySelectorAll('[data-c]').forEach(b => b.classList.toggle('on', b.dataset.c === cur.c));
+  document.querySelectorAll('[data-h]').forEach(b => b.classList.toggle('on', b.dataset.h === cur.h));
+  history.replaceState(null, '', '#' + (cur.d + 1));
+  try { localStorage.setItem('cartSwitcher3', JSON.stringify(cur)); } catch {}
+}
+$('#designs').onclick = e => { const b = e.target.closest('[data-d]'); if (b) { cur.d = +b.dataset.d; show(); } };
+$('#states').onclick = e => { const b = e.target.closest('[data-s]'); if (b) { cur.s = b.dataset.s; show(); } };
+$('#ful').onclick = e => { const b = e.target.closest('[data-f]'); if (b) { cur.f = b.dataset.f; show(); } };
+$('#co').onclick = e => { const b = e.target.closest('[data-c]'); if (b) { cur.c = b.dataset.c; show(); } };
+$('#head').onclick = e => { const b = e.target.closest('[data-h]'); if (b) { cur.h = b.dataset.h; show(); } };
+$('#hide').onclick = () => document.body.classList.toggle('min');
+const keys = e => {
+  if (e.target.closest && e.target.closest('input, textarea')) return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { cur.d = (cur.d + (e.key === 'ArrowRight' ? 1 : DESIGNS.length - 1)) % DESIGNS.length; show(); }
+  else if (e.key === 'h' || e.key === 'H') document.body.classList.toggle('min');
+};
+addEventListener('keydown', keys);
+// keys still work after a click inside the design (same origin over http; file:// may block this, the pill still works)
+$('#f').addEventListener('load', () => { try { $('#f').contentWindow.addEventListener('keydown', keys); } catch {} });
+show();
+</script>
+</body></html>

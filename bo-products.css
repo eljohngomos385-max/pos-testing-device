@@ -309,9 +309,20 @@ body.bo-light .view-products .pd-vcount {
 }
 
 
-/* Catalog | Stock switch sits beside the title, inside the page (2026-09-23). */
-body.bo-light .pd-switch { margin-left: 8px; }
-body.bo-light .pd-switch .seg-btn { text-decoration: none; display: inline-flex; align-items: center; }
+/* Catalog | Stock and Sales' Summary | Items (owner 2026-09-28, switcher-lab.html #1): one grey track, the picked view
+   on a white thumb, no page title beside it. The thumb is the active link's own background, so it is right with no JS;
+   switchSettle() in backoffice.js glides a copy of it (.pd-glide) across after a click. With the title gone the switch
+   is the page's heading: a pill, 30px (between --btn-h and --btn-h-lg), 13.5px text. 34px square-cornered read too big and
+   boxy (owner 2026-09-28). */
+body.bo-light .seg.pd-switch { position: relative; height: auto; gap: 0; padding: 3px; border-radius: 999px; background: var(--btn-soft); }
+body.bo-light .pd-switch .seg-btn { position: relative; z-index: 1; height: 24px; padding: 0 14px; font-size: 13.5px;
+  border-radius: 999px; background: none; color: var(--blk-ink-2); font-weight: 500;
+  text-decoration: none; display: inline-flex; align-items: center; transition: color .2s; }
+body.bo-light .pd-switch .seg-btn:hover { background: none; color: var(--blk-ink); }
+body.bo-light .pd-switch .seg-btn.active, body.bo-light .pd-glide { background: var(--po-surface); color: var(--blk-ink); box-shadow: 0 1px 2px rgb(0 0 0 / .08), 0 0 0 1px rgb(0 0 0 / .04); }
+/* ^ the lab's lift, not the --po-line ring: a light line on the grey track read as a second, broken border (owner 2026-09-28) */
+body.bo-light .pd-glide { position: absolute; top: 3px; bottom: 3px; border-radius: 999px; pointer-events: none; }
+body.bo-light .pd-switch.gliding .seg-btn.active { background: none; box-shadow: none; }
 
 /* ---- The filter row wears Transactions' .pick (2026-09-26) ----
    Search, selects, the stock-level menu, Show archived and Columns were five control styles

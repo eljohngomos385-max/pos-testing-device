@@ -6,7 +6,10 @@
   <meta name="theme-color" content="#F7F6F3" />
   <title>Hardware POS</title>
   <link rel="icon" href="data:," />
-  <link rel="stylesheet" href="styles.css?v=74" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=83" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -120,72 +123,49 @@
 
               <div class="product-grid" id="productGrid"></div>
             </div>
-            <div class="bottom-bar">
-              <div class="bb-page-pill" id="bbPageDots"></div>
-            </div>
           </div>
 
-          <aside class="cart">
-            <div class="cart-head">
-              <div class="cart-title-wrap">
-                <div class="cart-title">Receipt</div>
-                <div class="cart-sub" id="cartCount">0 items</div>
-              </div>
-              <div class="cart-head-actions">
-                <button class="text-btn" id="lostSaleBtn" title="Customer asked for something we couldn't sell">Lost sale</button>
-                <button class="text-btn" id="saveBtn" disabled>Save receipt</button>
-                <button class="text-btn" id="clearCartBtn">Clear</button>
-              </div>
-            </div>
-
-            <button class="customer-btn" id="customerBtn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="8" r="3.5"/>
-                <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
-              </svg>
-              <span id="customerLabel">Walk-in customer</span>
-              <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-                <polyline points="9 6 15 12 9 18"/>
-              </svg>
-            </button>
-
-            <div class="cart-list" id="cartList"></div>
-
-            <div class="cart-foot">
-              <div class="totals" id="totalsBlock">
-                <div class="totals-detail" id="totalsDetail">
-                  <div class="totals-detail-inner">
-                    <div class="row"><span>Subtotal</span><span id="subtotal">₱0.00</span></div>
-                    <div class="row" id="discountRow"><span>Discount</span><span id="discount">₱0.00</span></div>
-                    <div class="row vat-row"><span>VAT (12% incl.)</span><span id="vatAmount">₱0.00</span></div>
-                  </div>
-                </div>
-                <div class="row total totals-toggle" id="totalRow">
-                  <span>Total</span>
-                  <div class="totals-right">
-                    <span id="total">₱0.00</span>
-                    <svg class="totals-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                  </div>
-                </div>
-              </div>
-              <div class="cart-fulfilment-row">
-                <button class="fulfil-pill active" data-fulfil="pickup">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17l-3-2-3 2-3-2-3 2z"/></svg>
-                  <span>Pickup</span>
+          <!-- The sale sidebar (cart-lab-stack-h.html): three slim cards -- who, the items, the money.
+               Fulfilment and Discount share the money card's first row, half and half. -->
+          <aside class="rail rail-h" id="side" aria-label="Receipt">
+            <section class="card who">
+              <div class="c-row">
+                <button type="button" class="cust" id="customerBtn" title="Change customer">
+                  <span id="customerLabel">Walk-in customer</span>
+                  <svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
                 </button>
-                <button class="fulfil-pill" data-fulfil="delivery">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="2"/><path d="M15 9h4l3 4v4h-7"/><circle cx="6" cy="20" r="2"/><circle cx="18" cy="20" r="2"/></svg>
-                  <span>Delivery</span>
-                </button>
-                <button class="cart-discount-btn" id="cartDiscountBtn" title="Add discount">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
-                  <span id="cartDiscountLabel">Discount</span>
+                <button type="button" class="more" id="cartMoreBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Save receipt, lost sale, clear">
+                  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
                 </button>
               </div>
-              <div class="cart-actions">
-                <button class="charge-btn" id="payBtn" disabled>Check out</button>
+            </section>
+
+            <section class="card items">
+              <div class="i-head"><span class="num" id="cartCount">Item</span><span>Amount</span></div>
+              <div class="lines" id="cartList"></div>
+            </section>
+
+            <section class="card pay">
+              <div class="opts" id="railOpts">
+                <div class="f-row" id="fulRow" role="group" aria-label="Fulfilment"></div>
+                <button type="button" class="d-row" id="cartDiscountBtn">
+                  <span id="cartDiscountLabel">Discount</span><span class="num" id="cartDiscountAmt"></span>
+                  <svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+                </button>
               </div>
-            </div>
+              <div>
+                <div class="break" id="totalsDetail"><div>
+                  <p><span>Subtotal</span><span class="num" id="subtotal">₱0.00</span></p>
+                  <p id="discountRow"><span>Discount</span><span class="num" id="discount">₱0.00</span></p>
+                  <p class="dim"><span>VAT (12% incl.)</span><span class="num" id="vatAmount">₱0.00</span></p>
+                </div></div>
+                <button type="button" class="sum" id="totalRow" aria-expanded="false">
+                  <span class="l">Total<span class="rail-cnt num" id="railCount"></span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+                  <span class="v num" id="total">₱0.00</span>
+                </button>
+              </div>
+              <button type="button" class="go" id="payBtn" disabled>Check out</button>
+            </section>
           </aside>
         </div>
       </section>
@@ -264,166 +244,67 @@
       </section>
 
       <!-- ============================================
-           CHECKOUT VIEW — split layout: payment left, receipt right
+           CHECKOUT VIEW — one page that moves forward (checkout-calm-lab.html).
+           The total never moves; under it: how they pay -> that method's one detail -> done.
+           The items column turns into the printed receipt once the sale is done.
            ============================================ -->
       <section class="view view-checkout" data-view="checkout">
-        <div class="content-row checkout-content-row">
-          <!-- LEFT: Payment section -->
-          <div class="checkout-payment-col">
-
-            <!-- Header sits top-left, outside the centered inner -->
-            <div class="checkout-header">
-              <button class="co-back-btn" data-act="checkout-back" aria-label="Back">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="15 18 9 12 15 6"/>
-                </svg>
+        <div class="co" id="checkoutApp">
+          <section class="co-pay" aria-label="Payment">
+            <header class="co-top">
+              <button type="button" class="co-cancel" id="checkoutCancelBtn">
+                <svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span id="checkoutBackText">Cancel</span>
               </button>
-              <div>
-                <div class="checkout-view-title">Checkout</div>
-                <span class="muted" id="checkoutSub">Walk-in customer</span>
-              </div>
-            </div>
-
-            <div class="checkout-payment-inner">
-
-              <div class="checkout-total">
-                <div class="checkout-total-label">Total due</div>
-                <div class="checkout-total-value" id="checkoutTotalDue">₱0.00</div>
-                <div class="checkout-total-sub" id="checkoutFulfilLine">Pickup</div>
-              </div>
-
-              <!-- Payment method: 2×2 card grid -->
-              <div class="checkout-section" id="checkoutMethodSection">
-                <div class="checkout-section-label">Payment method</div>
-                <div class="pay-method-grid">
-                  <button class="pay-method-card" data-co-method data-method="cash">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8L2 7"/><circle cx="12" cy="14" r="3"/>
-                    </svg>
-                    <span>Cash</span>
-                  </button>
-                  <button class="pay-method-card" data-co-method data-method="gcash">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="2.4"/>
-                    </svg>
-                    <span>GCash</span>
-                  </button>
-                  <button class="pay-method-card" data-co-method data-method="qr">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
-                      <path d="M14 14h2v2h-2v2h2 M18 14h3 M18 18h1v1h1v2 M21 14v2 M14 18v3h2"/>
-                    </svg>
-                    <span>QR</span>
-                  </button>
-                  <button class="pay-method-card" data-co-method data-method="other">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/>
-                    </svg>
-                    <span>Other</span>
-                  </button>
-                  <!-- Credit only exists for a named account, so these two are hidden for a walk-in. -->
-                  <button class="pay-method-card" data-co-method data-method="credit" id="payMethodCredit" hidden>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/>
-                    </svg>
-                    <span>Account</span>
-                  </button>
-                  <button class="pay-method-card" data-co-method data-method="split" id="payMethodSplit" hidden>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M12 3v18"/><path d="M4 7h5"/><path d="M4 12h5"/><path d="M15 9h5"/><path d="M15 15h5"/>
-                    </svg>
-                    <span>Split</span>
-                  </button>
-                </div>
-                <!-- Shown only when Other is selected -->
-                <div class="other-method-row" id="otherMethodRow">
-                  <input type="text" id="otherMethodInput" class="text-input" placeholder="e.g. Maya, bank transfer…" autocomplete="off" />
-                </div>
-              </div>
-
-              <!-- Amount tendered: hidden until method is chosen -->
-              <div class="checkout-section" id="checkoutCashFields" style="display:none">
-                <div class="checkout-section-label">Amount tendered</div>
-                <input type="text" inputmode="decimal" id="checkoutTender" class="text-input checkout-input" placeholder="0.00" />
-                <div class="quick-cash checkout-quick">
-                  <button data-co-cash="exact">Exact</button>
-                  <button data-co-cash="100">₱100</button>
-                  <button data-co-cash="200">₱200</button>
-                  <button data-co-cash="500">₱500</button>
-                  <button data-co-cash="1000">₱1000</button>
-                </div>
-                <div class="change-row checkout-change-row">
-                  <span>Change</span>
-                  <span id="checkoutChange">₱0.00</span>
-                </div>
-                <div class="checkout-error" id="checkoutError" hidden></div>
-              </div>
-
-              <div class="checkout-actions">
-                <button class="secondary-btn" id="checkoutCancelBtn">Cancel</button>
-                <button class="primary-btn" id="checkoutCompleteBtn" disabled>Complete sale</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- RIGHT: Receipt items preview -->
-          <aside class="cart checkout-receipt-aside">
-            <div class="cart-head">
-              <div class="cart-title-wrap">
-                <div class="cart-title">Receipt</div>
-                <div class="cart-sub" id="checkoutCartCount">0 items</div>
-              </div>
-            </div>
-            <div class="cart-list" id="checkoutCartList"></div>
-            <div class="cart-foot">
-              <div class="totals" id="checkoutTotalsBlock">
-                <div class="totals-detail" id="checkoutTotalsDetail">
-                  <div class="totals-detail-inner">
-                    <div class="row"><span>Subtotal</span><span id="checkoutSubtotal">₱0.00</span></div>
-                    <div class="row" id="checkoutDiscountRow"><span id="checkoutDiscountLabel">Discount</span><span id="checkoutDiscount">₱0.00</span></div>
-                    <div class="row vat-row"><span>VAT (12% incl.)</span><span id="checkoutVatAmount">₱0.00</span></div>
+            </header>
+            <div class="co-stage">
+              <div class="co-col" id="checkoutSteps">
+                <div class="co-hero num" id="checkoutTotalDue">₱0.00</div>
+                <!-- Tiles are built from the back office's Payments settings on every render -->
+                <div class="co-step" data-step="method"><div class="co-tiles" id="checkoutMethods"></div></div>
+                <!-- Cash (and the cash half of a split): a tap on an amount finishes the sale -->
+                <div class="co-step" data-step="cash" hidden>
+                  <div class="co-tiles" id="checkoutQuick"></div>
+                  <div class="co-cash-in">
+                    <label class="co-field num"><span class="co-cur">₱</span><input type="text" id="checkoutTender" inputmode="decimal" autocomplete="off" placeholder="Other amount" aria-label="Cash received" /></label>
+                    <button type="button" class="co-btn primary" id="checkoutCompleteBtn" data-complete disabled>Complete sale</button>
                   </div>
+                  <div class="co-change num" id="checkoutChange" aria-live="polite"></div>
                 </div>
-                <div class="row total totals-toggle" id="checkoutTotalRow">
-                  <span>Total</span>
-                  <div class="totals-right">
-                    <span id="checkoutTotal">₱0.00</span>
-                    <svg class="totals-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                  </div>
+                <!-- GCash, QR, a custom name, Other or Account: nothing to count, one confirm -->
+                <div class="co-step" data-step="paid" hidden>
+                  <h2 class="co-ask" id="checkoutAsk"></h2>
+                  <input type="text" id="otherMethodInput" class="co-ref" placeholder="e.g. Maya, bank transfer" autocomplete="off" aria-label="Payment method name" />
+                  <button type="button" class="co-btn primary" data-complete>Complete sale</button>
+                </div>
+                <div class="co-error" id="checkoutError" hidden></div>
+              </div>
+              <div class="co-done" id="checkoutDone" aria-live="polite" hidden>
+                <div class="co-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="m-c" cx="32" cy="32" r="30"/><path class="m-k" d="M20 33l8 8 16-17"/></svg></div>
+                <h2 class="co-done-h" style="--i:1">Sale complete</h2>
+                <div class="co-done-chg" id="successChangeBlock" style="--i:2"><span>Change</span><span class="co-done-num num" id="successChange">₱0.00</span></div>
+                <div class="co-done-acts" style="--i:4">
+                  <button type="button" class="co-btn" id="successPrintBtn">Print receipt</button>
+                  <button type="button" class="co-btn primary" id="successNewSaleBtn">New sale</button>
                 </div>
               </div>
             </div>
+          </section>
+          <aside class="co-items" aria-label="Items">
+            <button type="button" class="co-cust" id="checkoutCustBtn" title="Change customer">
+              <svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg>
+              <span id="checkoutSub">Walk-in customer</span>
+              <svg class="co-ic co-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+            <div class="co-list">
+              <div class="co-head"><span>Item</span><span>Amount</span></div>
+              <div class="co-rows" id="checkoutCartList"></div>
+              <div class="co-sum">
+                <div class="co-disc" id="checkoutDiscountRow" hidden><span id="checkoutDiscountLabel">Discount</span><span class="num" id="checkoutDiscount"></span></div>
+                <div class="co-total"><span>Total<span class="rail-cnt num" id="checkoutCount"></span></span><span class="num" id="checkoutTotal">₱0.00</span></div>
+              </div>
+            </div>
+            <div class="co-rcpt" id="checkoutReceipt" aria-label="Receipt"></div>
           </aside>
-        </div>
-      </section>
-
-      <section class="view view-checkout-success" data-view="checkout-success">
-        <div class="checkout-success-page">
-          <div class="checkout-success-card">
-            <div class="success-title">Sale complete</div>
-            <div class="success-sub" id="successSub">Receipt saved</div>
-
-            <div class="success-change-card">
-              <div class="success-change-label">Total paid</div>
-              <div class="success-change" id="successTotal">₱0.00</div>
-            </div>
-
-            <div class="success-paid-row" id="successChangeBlock">
-              <span>Change</span>
-              <span class="success-total" id="successChange">₱0.00</span>
-            </div>
-
-            <div class="success-actions">
-              <button class="primary-btn" id="successPrintBtn">Print receipt</button>
-              <button class="secondary-btn" id="successNewSaleBtn">New sale</button>
-            </div>
-          </div>
-          <div class="checkout-success-receipt" id="successReceiptPreview">
-            <div class="order-detail-empty">
-              <div class="empty-title">Receipt preview</div>
-              <div class="empty-sub">Complete a sale to view the receipt</div>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -528,102 +409,6 @@
                   <button class="bb-size-btn" data-theme="light">Light</button>
                 </div>
               </div>
-            </div>
-
-            <!-- Printing Panel -->
-            <div class="panel">
-              <div class="panel-head"><div class="panel-title">Printing</div></div>
-              <div class="setting-row">
-                <label>Printer
-                  <div class="muted" style="font-size:11px;margin-top:2px">Browser = pop-up print dialog</div>
-                </label>
-                <div class="bb-size-toggle" id="posDriverToggle" role="tablist">
-                  <button class="bb-size-btn active" data-driver="browser">Browser</button>
-                  <button class="bb-size-btn" data-driver="network">Wi-Fi</button>
-                  <button class="bb-size-btn" data-driver="bluetooth">Bluetooth</button>
-                </div>
-              </div>
-              <div class="setting-row" id="posScanRow" hidden>
-                <label>Find printer
-                  <div class="muted" style="font-size:11px;margin-top:2px">Searches your Wi-Fi for Epson printers</div>
-                </label>
-                <button class="secondary-btn small" id="posScanBtn">Scan for printers</button>
-              </div>
-              <div class="setting-row full" id="posPrinterListRow" hidden>
-                <div class="prn-list" id="posPrinterList"></div>
-                <div class="prn-scan-status" id="posScanStatus" hidden></div>
-              </div>
-              <div class="setting-row" id="posNetRow" hidden>
-                <label>Printer IP
-                  <div class="muted" style="font-size:11px;margin-top:2px">Manual entry — print the printer's status sheet to see its IP</div>
-                </label>
-                <input class="text-input" id="posPrinterIp" placeholder="192.168.1.50">
-              </div>
-              <div class="setting-row" id="posBtRow" hidden>
-                <label>Bluetooth printer
-                  <div class="muted" style="font-size:11px;margin-top:2px" id="posBtStatus">Not paired</div>
-                </label>
-                <button class="secondary-btn small" id="posBtPairBtn">Pair</button>
-              </div>
-              <div class="setting-row">
-                <label>Paper width</label>
-                <div class="bb-size-toggle" id="posWidthToggle" role="tablist">
-                  <button class="bb-size-btn" data-width="58mm">58mm</button>
-                  <button class="bb-size-btn active" data-width="80mm">80mm</button>
-                </div>
-              </div>
-              <div class="setting-row">
-                <label>Auto-cut paper</label>
-                <input type="checkbox" id="posPrintCut">
-              </div>
-              <div class="setting-row">
-                <label>Print delivery map
-                  <div class="muted" style="font-size:11px;margin-top:2px">Adds the pinned location to delivery receipts</div>
-                </label>
-                <input type="checkbox" id="posPrintMap">
-              </div>
-              <div class="setting-row">
-                <label>Print on sale
-                  <div class="muted" style="font-size:11px;margin-top:2px">Wi-Fi / Bluetooth printers only</div>
-                </label>
-                <input type="checkbox" id="posPrintOnSale">
-              </div>
-              <div class="setting-row">
-                <label>Test print</label>
-                <button class="secondary-btn small" id="posTestPrintBtn">Print test receipt</button>
-              </div>
-            </div>
-
-            <!-- Pricing Tiers Panel -->
-            <div class="panel">
-              <div class="panel-head"><div class="panel-title">Pricing Tiers</div><div class="panel-sub">Auto-discount by customer type (%)</div></div>
-              <div class="setting-row">
-                <label>Contractor</label>
-                <input class="text-input tier-input" id="posTierContractor" type="number" min="0" max="50" step="0.5" value="5">
-              </div>
-              <div class="setting-row">
-                <label>Wholesale</label>
-                <input class="text-input tier-input" id="posTierWholesale" type="number" min="0" max="50" step="0.5" value="10">
-              </div>
-              <div class="setting-row">
-                <label>Retail</label>
-                <input class="text-input tier-input" id="posTierRetail" type="number" min="0" max="50" step="0.5" value="0">
-              </div>
-              <div class="setting-row">
-                <label>Residential</label>
-                <input class="text-input tier-input" id="posTierResidential" type="number" min="0" max="50" step="0.5" value="0">
-              </div>
-            </div>
-
-            <!-- Customer Alerts Panel -->
-            <div class="panel">
-              <div class="panel-head"><div class="panel-title">Customer Alerts</div></div>
-              <div class="setting-row">
-                <label>Flag inactive after (days)</label>
-                <input class="text-input" id="posChurnDays" type="number" min="1" max="365" value="30">
-              </div>
-            </div>
-          </div>
         </div>
       </section>
     </div>
@@ -1184,6 +969,6 @@
   <script src="bo-model.js?v=89"></script>
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=34"></script>
-  <script src="app.js?v=59"></script>
+  <script src="app.js?v=64"></script>
 </body>
 </html>

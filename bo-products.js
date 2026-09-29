@@ -157,10 +157,11 @@
     <th class="num" data-col="stock">Stock</th><th data-col="status">Status</th><th class="num"></th>`;
 
   // Catalog | Stock is a switch inside the page (owner, 2026-09-23), not two sidebar links:
-  // one table, two column sets. Search and filters ride along; only `view` and the page change.
+  // one table, two column sets. Search and filters ride along; only `view` and the page change. No title beside it
+  // (owner 2026-09-28): the lit sidebar row already says Products.
   const viewSwitch = (stock) => {
     const href = (v) => Router.href(VIEW, '', { ...params(), view: v === 'catalog' ? '' : v, page: '' });
-    return `<div class="seg pd-switch">${[['catalog', 'Catalog'], ['stock', 'Stock']].map(([v, label]) =>
+    return `<div class="seg pd-switch" aria-label="Products view">${[['catalog', 'Catalog'], ['stock', 'Stock']].map(([v, label]) =>
       `<a class="seg-btn${(v === 'stock') === stock ? ' active' : ''}" href="${escapeHtml(href(v))}">${label}</a>`).join('')}</div>`;
   };
 
@@ -168,7 +169,7 @@
     const folders = state.folders.filter((f) => f.id !== 'all');
     return `
       <header class="view-head">
-        <div class="view-title-wrap"><h1>Products</h1>${viewSwitch(stock)}</div>
+        <div class="view-title-wrap">${viewSwitch(stock)}</div>
         <div class="view-actions">
           <button class="secondary-btn small" data-act="import">Import CSV</button>
           <button class="secondary-btn small" data-act="export">Export CSV</button>

@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Switcher lab</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   SWITCHER LAB (2026-09-28): the Sales Summary | Items switch (Products' Catalog | Stock uses the
+   same one). 0 is today's; 1-10 are switch styles; A-B are ways of not having a switch at all.
+   Every row is the real page head: title, switch, then Export (Items only) and ‹ period › on the right.
+   Click to try each. Tokens are the --b-* lab set (→ --po-* / --blk-* on port).
+   =========================================================================== */
+:root {
+  --b-font: "Inter";
+  --b-page: #FFFFFF; --b-card: #F9F9F9; --b-raised: #FFFFFF;
+  --b-line: #ECECEC; --b-outline: #E1E1E1; --b-track: #EFEFEF;
+  --b-soft: #EDEDED; --b-soft-hover: #E4E4E4;
+  --b-ink: #303030; --b-ink-2: #616161; --b-ink-3: #8C8C8C;
+  --b-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04);
+  --b-r: 8px; --b-h: 28px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--b-page); color: var(--b-ink); font: 14px/1.4 var(--b-font), system-ui, sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 80px; }
+header.lab h1 { font-size: 20px; margin: 0 0 4px; }
+header.lab p { margin: 0 0 28px; color: var(--b-ink-2); max-width: 720px; }
+section { border: 1px solid var(--b-line); border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+.note { display: flex; gap: 10px; align-items: baseline; padding: 10px 16px; background: var(--b-card); border-bottom: 1px solid var(--b-line); font-size: 13px; color: var(--b-ink-2); }
+.note b { color: var(--b-ink); font-weight: 600; white-space: nowrap; }
+.note .tag { margin-left: auto; font-size: 12px; color: var(--b-ink-3); white-space: nowrap; }
+.stage { padding: 20px 20px 24px; }
+.body-hint { margin-top: 14px; height: 56px; border-radius: var(--b-r); background: var(--b-card); border: 1px dashed var(--b-outline); display: grid; place-items: center; color: var(--b-ink-3); font-size: 13px; }
+
+/* The page head every variant sits in (bo-calm .calm-sales .c-main > .bar) */
+.bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-height: 32px; }
+.bar h2 { font-size: 18px; font-weight: 600; margin: 0; }
+.bar .grow { margin-left: auto; }
+.export { display: none; height: var(--b-h); padding: 0 12px; border: 1px solid var(--b-outline); border-radius: var(--b-r); background: var(--b-raised); font: inherit; font-size: 13px; font-weight: 500; color: var(--b-ink); }
+[data-view="items"] .export { display: inline-flex; align-items: center; }
+.nav { display: inline-flex; }
+.nav button { height: var(--b-h); border: 1px solid var(--b-outline); background: var(--b-raised); font: inherit; font-size: 13px; color: var(--b-ink); padding: 0 10px; }
+.nav button + button { margin-left: -1px; }
+.nav button:first-child { border-radius: 8px 0 0 8px; }
+.nav button:last-child { border-radius: 0 8px 8px 0; }
+.nav .pick { min-width: 152px; font-weight: 500; }
+button { cursor: pointer; }
+
+/* 0 · today: two soft pills, the on one filled ink */
+.v0 { display: inline-flex; gap: 6px; }
+.v0 button { height: var(--b-h); padding: 0 12px; border: 0; border-radius: 999px; background: var(--b-soft); color: var(--b-ink); font: inherit; font-size: 13px; font-weight: 600; }
+.v0 button.on { background: var(--b-ink); color: #fff; }
+
+/* 1 · segmented track: one grey track, a white thumb slides under the picked word */
+.slide { position: relative; display: inline-flex; padding: 2px; border-radius: 8px; background: var(--b-track); }
+.slide::before { content: ""; position: absolute; top: 2px; bottom: 2px; left: var(--x, 2px); width: var(--w, 0); border-radius: 6px; background: var(--b-raised); box-shadow: var(--b-shadow); transition: left .18s ease, width .18s ease; }
+.slide button { position: relative; height: 24px; padding: 0 12px; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 500; color: var(--b-ink-2); }
+.slide button.on { color: var(--b-ink); }
+
+/* 2 · underline tabs beside the title */
+.v2 { display: inline-flex; gap: 18px; align-self: stretch; }
+.v2 button { border: 0; background: none; padding: 0; font: inherit; font-size: 14px; font-weight: 500; color: var(--b-ink-3); box-shadow: inset 0 -2px 0 transparent; }
+.v2 button.on { color: var(--b-ink); box-shadow: inset 0 -2px 0 var(--b-ink); }
+.v2 button:hover { color: var(--b-ink); }
+
+/* 3 · the title is the switch: both words at h1 size, the off one grey */
+.v3 { display: inline-flex; gap: 16px; }
+.v3 button { border: 0; background: none; padding: 0; font: inherit; font-size: 18px; font-weight: 600; color: #C4C4C4; }
+.v3 button.on { color: var(--b-ink); }
+.v3 button:hover:not(.on) { color: var(--b-ink-3); }
+
+/* 4 · breadcrumb menu: Sales / Summary ▾ */
+.v4 { position: relative; }
+.v4 > button { display: inline-flex; align-items: center; gap: 6px; height: var(--b-h); padding: 0 8px; margin-left: -8px; border: 0; border-radius: 6px; background: none; font: inherit; font-size: 18px; font-weight: 600; color: var(--b-ink); }
+.v4 > button:hover { background: var(--b-soft); }
+.v4 > button::after { content: ""; width: 7px; height: 7px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); }
+.v4 .menu { position: absolute; top: 34px; left: -8px; z-index: 2; min-width: 180px; padding: 4px; border-radius: 10px; background: var(--b-raised); box-shadow: 0 8px 24px rgba(0,0,0,.12), 0 0 0 1px rgba(0,0,0,.06); }
+.v4 .menu[hidden] { display: none; }
+.v4 .menu button { display: flex; justify-content: space-between; width: 100%; padding: 8px 10px; border: 0; border-radius: 6px; background: none; font: inherit; color: var(--b-ink); text-align: left; }
+.v4 .menu button:hover { background: var(--b-card); }
+.v4 .menu button.on::after { content: "✓"; color: var(--b-ink-2); }
+.v4 .menu small { display: block; color: var(--b-ink-3); font-size: 12px; }
+.slash { color: var(--b-ink-3); font-size: 18px; margin: 0 -4px; }
+
+/* 5 · outlined joined buttons: same shape as the ‹ period › picker it shares the row with */
+.v5 { display: inline-flex; }
+.v5 button { height: var(--b-h); padding: 0 12px; border: 1px solid var(--b-outline); background: var(--b-raised); font: inherit; font-size: 13px; font-weight: 500; color: var(--b-ink-2); }
+.v5 button + button { margin-left: -1px; }
+.v5 button:first-child { border-radius: 8px 0 0 8px; }
+.v5 button:last-child { border-radius: 0 8px 8px 0; }
+.v5 button.on { background: var(--b-card); color: var(--b-ink); font-weight: 600; box-shadow: inset 0 1px 2px rgba(0,0,0,.06); }
+
+/* 6 · track with icons */
+.v6 button { display: inline-flex; align-items: center; gap: 6px; }
+.v6 svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* 7 · tab row under the title: its own line, a hairline under the whole head */
+.v7wrap { border-bottom: 1px solid var(--b-line); }
+.v7 { display: flex; gap: 22px; margin-top: 10px; }
+.v7 button { height: 34px; border: 0; background: none; padding: 0; font: inherit; font-size: 14px; font-weight: 500; color: var(--b-ink-3); box-shadow: inset 0 -2px 0 transparent; }
+.v7 button.on { color: var(--b-ink); box-shadow: inset 0 -2px 0 var(--b-ink); }
+
+/* 8 · folder tabs on the content card (the Dashboard's card tabs) */
+.v8 { display: flex; gap: 2px; margin-top: 14px; }
+.v8 button { height: 34px; padding: 0 16px; border: 1px solid var(--b-line); border-bottom: 0; border-radius: 10px 10px 0 0; background: var(--b-card); font: inherit; font-size: 13px; font-weight: 500; color: var(--b-ink-3); }
+.v8 button.on { background: var(--b-raised); color: var(--b-ink); font-weight: 600; position: relative; top: 1px; }
+.v8card { border: 1px solid var(--b-line); border-radius: 0 10px 10px 10px; padding: 14px; }
+.v8card .body-hint { margin: 0; }
+
+/* 9 · quiet text switch with a divider, no chrome at all */
+.v9 { display: inline-flex; align-items: center; font-size: 13px; }
+.v9 button { border: 0; background: none; padding: 4px 2px; font: inherit; font-weight: 500; color: var(--b-ink-3); }
+.v9 button.on { color: var(--b-ink); font-weight: 600; }
+.v9 i { width: 1px; height: 14px; background: var(--b-outline); margin: 0 10px; }
+
+/* 10 · track with counts: what's behind each side, e.g. Items 184 */
+.v10 button b { margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--b-soft); font-size: 11px; font-weight: 600; color: var(--b-ink-2); }
+.v10 button.on b { background: var(--b-track); }
+
+/* A · no switch: Items is a card on Summary with View all → its own page (Back arrow there) */
+.back { display: inline-grid; place-items: center; width: var(--b-h); height: var(--b-h); border-radius: 6px; border: 0; background: var(--b-soft); color: var(--b-ink); font-size: 15px; }
+.minicard { margin-top: 14px; border: 1px solid var(--b-line); border-radius: 10px; }
+.minicard .h { display: flex; padding: 10px 14px; border-bottom: 1px solid var(--b-line); font-weight: 600; font-size: 13px; }
+.minicard .h a { margin-left: auto; color: var(--b-ink-2); font-weight: 500; text-decoration: none; cursor: pointer; }
+.minicard .r { display: flex; padding: 8px 14px; font-size: 13px; border-bottom: 1px solid var(--b-line); }
+.minicard .r:last-child { border: 0; }
+.minicard .r span:last-child { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* B · keyboard: the switch is today's track, plus 1 / 2 to flip without the mouse */
+kbd { font: 11px var(--b-font); padding: 1px 5px; border-radius: 4px; border: 1px solid var(--b-outline); color: var(--b-ink-3); margin-left: 6px; }
+</style>
+</head>
+<body>
+<main>
+<header class="lab">
+  <h1>Switcher lab</h1>
+  <p>The Sales <b>Summary | Items</b> switch (Products' Catalog | Stock uses the same one). <b>0</b> is today's. <b>1–10</b> are other switch styles and <b>A–B</b> are alternatives to a switch. Click any of them: the title and <b>‹ period ›</b> must stay put, and Export shows only on Items.</p>
+</header>
+
+<!-- 0 -->
+<section><div class="note"><b>0 · Today</b> Two soft pills, the one you're on filled black. It reads like two filter chips, not like two views of the same page.<span class="tag">current</span></div>
+<div class="stage"><div class="bar" data-view="summary"><h2>Sales</h2>
+  <div class="v0 sw"><button class="on" data-v="summary">Summary</button><button data-v="items">Items</button></div>
+  <span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div>
+</div><div class="body-hint"></div></div></section>
+
+<!-- 1 -->
+<section><div class="note"><b>1 · Segmented track</b> One grey track with a white thumb that slides to the view you pick. It reads as one control with two positions (macOS, Linear, Vercel).<span class="tag">recommended</span></div>
+<div class="stage"><div class="bar" data-view="summary"><h2>Sales</h2>
+  <div class="slide sw"><button class="on" data-v="summary">Summary</button><button data-v="items">Items</button></div>
+  <span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div>
+</div><div class="body-hint"></div></div></section>
+
+<!-- 2 -->
+<section><div class="note"><b>2 · Underline tabs beside the title</b> Plain words, with a 2px line under the one you're on. It's lighter than any pill and still clearly tabs.<span class="tag">quiet</span></div>
+<div class="stage"><div class="bar" data-view="summary"><h2>Sales</h2>
+  <div class="v2 sw"><button class="on" data-v="summary">Summary</button><button data-v="items">Items</button></div>
+  <span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div>
+</div><div class="body-hint"></div></div></section>
+
+<!-- 3 -->
+<section><div class="note"><b>3 · The title is the switch</b> "Summary  Items" at title size, the one you're off greyed out. "Sales" is already highlighted in the sidebar, so the page head names the view.<span class="tag">bold</span></div>
+<div class="stage"><div class="bar" data-view="summary">
+  <div class="v3 sw"><button class="on" data-v="summary">Summary</button><button data-v="items">Items</button></div>
+  <span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div>
+</div><div class="body-hint"></div></div></section>
+
+<!-- 4 -->
+<section><div class="note"><b>4 · Breadcrumb menu</b> "Sales / Summary ▾" opens a small menu, each view with a one-line description. It scales past two views, but it hides the other view behind a click.<span class="tag">scales</span></div>
+<div class="stage"><div class="bar" data-view="summary"><h2>Sales</h2><span class="slash">/</span>
+  <div class="v4"><button data-open>Summary</button>
+    <div class="menu sw" hidden>
+      <button class="on" data-v="summary"><span>Summary<small>The month at a glance</small></span></button>
+      <button data-v="items"><span>Items<small>Every item sold, sortable</small></span></button>
+    </div></div>
+  <span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div>
+</div><div class="body-hint"></div></div></section>
+
+<!-- 5 -->
+<section><div class="note"><b>5 · Outlined joined buttons</b> The same outlined shape as the ‹ period › picker, so the head uses one kind of control. The one you're on is pressed in.<span class="tag">consistent</span></div>
+<div class="stage"><div class="bar" data-view="summary"><h2>Sales</h2>
+  <div class="v5 sw"><button class="on" data-v="summary">Summary</button><button data-v="items">Items</button></div>
+  <span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div>
+</div><div class="body-hint"></div></div></section>
+
+<!-- 6 -->
+<section><div class="note"><b>6 · Track with icons</b> Variant 1 with a chart and a list icon, so the two views are told apart at a glance and it stays readable if the labels ever shrink on a phone.</div>
+<div class="stage"><div class="bar" data-view="summary"><h2>Sales</h2>
+  <div class="slide v6 sw">
+    <button class="on" data-v="summary"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Summary</button>
+    <button data-v="items"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Items</button></div>
+  <span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div>
+</div><div class="body-hint"></div></div></section>
+
+<!-- 7 -->
+<section><div class="note"><b>7 · Tab row under the title</b> Tabs on their own line with a hairline under the whole head (GitHub, Shopify). This costs one row of height, but it makes room for a third or fourth view.<span class="tag">scales</span></div>
+<div class="stage"><div class="v7wrap" data-view="summary"><div class="bar"><h2>Sales</h2>
+  <span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div></div>
+  <div class="v7 sw"><button class="on" data-v="summary">Summary</button><button data-v="items">Items</button></div>
+</div><div class="body-hint"></div></div></section>
+
+<!-- 8 -->
+<section><div class="note"><b>8 · Folder tabs on the content</b> The switch becomes the tabs of the card below, like the Dashboard's card tabs. The switch and what it changes are physically joined.</div>
+<div class="stage" data-view="summary"><div class="bar"><h2>Sales</h2>
+  <span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div></div>
+  <div class="v8 sw"><button class="on" data-v="summary">Summary</button><button data-v="items">Items</button></div>
+  <div class="v8card"><div class="body-hint"></div></div>
+</div></section>
+
+<!-- 9 -->
+<section><div class="note"><b>9 · Quiet text with a divider</b> No shape at all, just "Summary | Items" with the one you're on in black. This is the calmest option, but it's the easiest to miss.<span class="tag">calmest</span></div>
+<div class="stage"><div class="bar" data-view="summary"><h2>Sales</h2>
+  <div class="v9 sw"><button class="on" data-v="summary">Summary</button><i></i><button data-v="items">Items</button></div>
+  <span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div>
+</div><div class="body-hint"></div></div></section>
+
+<!-- 10 -->
+<section><div class="note"><b>10 · Track with counts</b> Variant 1 with the number of items sold this period on Items, so you know what's behind the switch before you click it.</div>
+<div class="stage"><div class="bar" data-view="summary"><h2>Sales</h2>
+  <div class="slide v10 sw"><button class="on" data-v="summary">Summary</button><button data-v="items">Items<b>184</b></button></div>
+  <span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div>
+</div><div class="body-hint"></div></div></section>
+
+<!-- A -->
+<section><div class="note"><b>A · No switch: Items as a card</b> Summary shows the top 5 items in a card, and "View all" opens the full Items page, which has a ← back. There's one fewer control, but Items takes an extra click.<span class="tag">alternative</span></div>
+<div class="stage" data-a>
+  <div class="bar" data-view="summary"><h2>Sales</h2><span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div></div>
+  <div class="minicard"><div class="h">Top items<a data-go="items">View all ›</a></div>
+    <div class="r"><span>Portland Cement 40kg</span><span>₱48,200</span></div>
+    <div class="r"><span>Deformed Bar 10mm</span><span>₱31,560</span></div>
+    <div class="r"><span>Hollow Block 4"</span><span>₱22,900</span></div></div>
+  <template><div class="bar" data-view="items"><button class="back" data-go="summary">←</button><h2>Items</h2><span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div></div><div class="body-hint">Items: every item sold in the period</div></template>
+</div></section>
+
+<!-- B -->
+<section><div class="note"><b>B · Any switch + keys 1 / 2</b> Keep whichever style wins and add the number keys, so you can flip views without the mouse. The keys only show as small hints.<span class="tag">add-on</span></div>
+<div class="stage"><div class="bar" data-view="summary" data-keys><h2>Sales</h2>
+  <div class="slide sw"><button class="on" data-v="summary">Summary<kbd>1</kbd></button><button data-v="items">Items<kbd>2</kbd></button></div>
+  <span class="grow"></span><button class="export">Export</button><div class="nav"><button>‹</button><button class="pick">September 2026</button><button>›</button></div>
+</div><div class="body-hint"></div></div></section>
+</main>
+
+<script>
+const HINT = { summary: 'Summary: KPIs, calendar, top 10', items: 'Items: every item sold in the period' };
+const thumb = (sw) => { const on = sw.querySelector('.on'); if (sw.classList.contains('slide') && on) { sw.style.setProperty('--x', on.offsetLeft + 'px'); sw.style.setProperty('--w', on.offsetWidth + 'px'); } };
+function pick(sw, v) {
+  const stage = sw.closest('.stage'), scope = sw.closest('[data-view]') || stage.querySelector('[data-view]');
+  sw.querySelectorAll('[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  scope.dataset.view = v;
+  stage.querySelectorAll('.body-hint').forEach(h => h.textContent = HINT[v]);
+  const crumb = stage.querySelector('[data-open]'); if (crumb) crumb.textContent = v[0].toUpperCase() + v.slice(1);
+  thumb(sw);
+}
+document.querySelectorAll('.sw').forEach(sw => { pick(sw, 'summary'); sw.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) pick(sw, b.dataset.v); }); });
+document.addEventListener('click', e => {
+  const o = e.target.closest('[data-open]');
+  document.querySelectorAll('.v4 .menu').forEach(m => m.hidden = !(o && m.parentNode.contains(o)) || !m.hidden);
+});
+// A: swap the stage between Summary-with-card and the Items page.
+const a = document.querySelector('[data-a]'), aSummary = a.innerHTML;
+a.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (!g) return;
+  a.innerHTML = g.dataset.go === 'items' ? a.querySelector('template').innerHTML : aSummary; });
+// B: 1 / 2 flip the keyed switch.
+document.addEventListener('keydown', e => { const sw = document.querySelector('[data-keys] .sw');
+  if (e.key === '1') pick(sw, 'summary'); if (e.key === '2') pick(sw, 'items'); });
+document.fonts.ready.then(() => document.querySelectorAll('.slide').forEach(thumb));
+</script>
+</body>
+</html>

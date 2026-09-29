@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cart Live Receipt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<!--
+  CART LAB 4 · LIVE RECEIPT
+  The cart is the receipt being printed. A quiet grey side panel holds a white paper slip in the printer.js layout
+  (store name, dashed rules, name then "2 pc × ₱12.00 … amount", Subtotal / Discount / VAT), with a torn bottom edge.
+  The slip grows as items go on and scrolls inside the panel. Tap a line on the paper for − qty + and Remove.
+  Everything you press sits OFF the paper: customer and "⋯" (Lost sale, Save receipt, Clear) above it; the total,
+  Pickup | Delivery, Discount and Check out pinned below it. The total is said once, below the paper.
+  Lab URLs: ?empty=1 starts empty, ?many=1 seeds 24 lines. Money is integer centavos.
+-->
+<style>
+:root {
+  --b-font:      "Inter";
+  --b-page:      #FFFFFF;
+  --b-card:      #F9F9F9;
+  --b-raised:    #FFFFFF;
+  --b-line:      #ECECEC;
+  --b-outline:   #E1E1E1;
+  --b-track:     #EFEFEF;
+  --b-btn-line:  #D4D4D4;
+  --b-hover:     #F6F6F6;
+  --b-press:     #EDEDED;
+  --b-ink:       #303030;
+  --b-ink-2:     #616161;
+  --b-ink-3:     #8C8C8C;
+  --b-ink-4:     #C8C8C8;
+  --b-down:      #D72C0D;
+  --b-down-tint: #FCEDE9;
+  --b-data-1:    #BCD7FA;
+  --b-data-tint: #DCE9FB;
+  --b-data-ink:  #1F5FB8;
+  --b-t-label:   13px;
+  --b-t-meta:    12px;
+  --b-r-card:    14px;
+  --b-r-cell:    10px;
+  --b-r-btn:     12px;
+  --b-pop:       0 8px 24px rgb(0 0 0 / .08);
+  --tray:        #F3F3F3;          /* the side panel: checkout-lab grey tile */
+  --tray-track:  #E5E5E5;          /* a segmented track that still reads on the tray */
+  --tray-line:   #E6E6E6;
+  --paper:       #FFFFFF;
+  --paper-ink:   #1F1F1F;
+  --paper-rule:  #CFCFCF;
+  --paper-sel:   #F4F7FB;          /* the line being edited */
+  --paper-shadow: drop-shadow(0 1px 1px rgb(0 0 0 / .06)) drop-shadow(0 6px 10px rgb(0 0 0 / .05));
+  --tooth:       10px;             /* torn edge: tooth width (depth is half) */
+  --tile:        #F9F9F9;
+  --tile-ring:   #E6E6E6;
+  --r-input:     10px;
+  --ease:        cubic-bezier(.2,.8,.2,1);
+  --m:           20px;
+  --tap:         48px;
+  --side-w:      clamp(350px, 30vw, 410px);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; overflow: hidden; background: var(--b-page); color: var(--b-ink);
+  font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--b-t-label); line-height: 1.4; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+}
+button, input { font: inherit; color: inherit; }
+button { touch-action: manipulation; cursor: pointer; }
+.num { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--b-data-1); outline-offset: 2px; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+.app { display: grid; grid-template-columns: minmax(0, 1fr) var(--side-w); gap: var(--m); height: 100vh; height: 100dvh; padding: var(--m); }
+
+/* ---------- product area (the same in every cart lab) ---------- */
+.shop { display: grid; grid-template-rows: 48px minmax(0, 1fr); gap: 16px; min-width: 0; min-height: 0; }
+.search { display: flex; align-items: center; gap: 10px; padding: 0 16px; border-radius: var(--r-input); background: var(--tile); box-shadow: inset 0 0 0 1px var(--tile-ring); color: var(--b-ink-3); }
+.search:focus-within { box-shadow: inset 0 0 0 2px var(--b-data-1); }
+.search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font-size: 15px; color: var(--b-ink); }
+.search input::placeholder { color: var(--b-ink-3); }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: clamp(92px, 13.5vh, 128px); gap: 12px; align-content: start; overflow-y: auto; overscroll-behavior: contain; }
+.tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 12px; border: 0; border-radius: var(--r-input);
+        background: var(--tile); box-shadow: inset 0 0 0 1px var(--tile-ring); text-align: center; transition: background-color .12s, transform .1s; }
+.tile:hover { background: var(--b-hover); }
+.tile:active { transform: scale(.98); background: var(--b-press); }
+.tile b { font-size: 14px; font-weight: 560; line-height: 1.3; }
+.tile span { color: var(--b-ink-3); font-size: var(--b-t-meta); }
+
+/* ---------- the side panel: grey tray, paper in the middle ---------- */
+.side { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; min-height: 0; border-radius: var(--b-r-card); background: var(--tray); overflow: hidden; }
+
+/* above the paper: who it's for, and the rare actions */
+.bar { display: flex; align-items: center; gap: 4px; padding: 8px 8px 0; }
+.cust { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; height: var(--tap); padding: 0 10px 0 8px; border: 0; border-radius: var(--b-r-btn); background: none; text-align: left; transition: background-color .12s; }
+.cust:hover, .more:hover, .more[aria-expanded="true"] { background: var(--tray-track); }
+.av { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--b-raised); color: var(--b-ink-2); font-size: 13px; font-weight: 600; }
+.av.named { background: var(--b-data-tint); color: var(--b-data-ink); }
+.av .ic { width: 16px; height: 16px; }
+.cust-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 560; }
+.cust .chev { width: 16px; height: 16px; color: var(--b-ink-3); }
+.more { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: 0; border-radius: var(--b-r-btn); background: none; color: var(--b-ink-2); }
+.more .ic { width: 20px; height: 20px; }
+.menu { position: absolute; top: 54px; right: 8px; z-index: 5; min-width: 200px; padding: 4px; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); box-shadow: var(--b-pop); }
+.menu[hidden] { display: none; }
+.menu button { display: flex; align-items: center; gap: 10px; width: 100%; height: 44px; padding: 0 12px; border: 0; border-radius: 7px; background: none; text-align: left; font-size: 14px; }
+.menu button:hover { background: var(--b-card); }
+.menu button:disabled { opacity: .4; pointer-events: none; }
+.menu button .ic { color: var(--b-ink-3); }
+.menu hr { margin: 4px -4px; border: 0; border-top: 1px solid var(--b-line); }
+.menu .danger, .menu .danger .ic { color: var(--b-down); }
+
+/* the paper */
+.roll { overflow-y: auto; overscroll-behavior: contain; padding: 8px 16px 22px; scrollbar-width: thin;
+        mask-image: linear-gradient(#000 calc(100% - 20px), transparent); }   /* the slip feeds under the pinned area instead of being cut */
+.slip { filter: var(--paper-shadow); }
+.paper { position: relative; margin-bottom: calc(var(--tooth) / 2); padding: 20px 0 12px; border-radius: 3px 3px 0 0; background: var(--paper); color: var(--paper-ink); }
+.paper::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: calc(var(--tooth) / 2);   /* torn edge: teeth hang below the slip */
+  background: linear-gradient(to bottom right, var(--paper) 50%, transparent 50%) 0 0 / var(--tooth) 100% repeat-x,
+              linear-gradient(to bottom left, var(--paper) 50%, transparent 50%) 0 0 / var(--tooth) 100% repeat-x; }
+.p-head { padding: 0 18px; text-align: center; }
+.p-store { font-size: 13px; font-weight: 700; letter-spacing: .14em; }
+.p-meta { margin-top: 2px; color: var(--b-ink-3); font-size: 11.5px; }
+.p-rule { margin: 12px 18px; border-top: 1px dashed var(--paper-rule); }
+.p-rule.tight { margin-top: 6px; }
+
+.ln.open { background: var(--paper-sel); }
+.ln.flash { animation: flash .9s var(--ease); }
+.ln.new { animation: flash .9s var(--ease), feed .35s var(--ease); }
+.pl { display: block; width: 100%; min-height: 50px; padding: 7px 18px; border: 0; background: none; text-align: left; }
+.ln:not(.open) .pl:hover { background: var(--b-card); }
+.pl-nm { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 13.5px; font-weight: 500; line-height: 1.3; }
+.pl-q { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 1px; color: var(--b-ink-3); font-size: var(--b-t-meta); }
+.pl-q b { color: var(--paper-ink); font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+/* the open line: SKU, − qty +, Remove, still on the paper */
+.ed { display: flex; align-items: center; gap: 8px; padding: 2px 12px 10px 18px; }
+.sku { flex: 1; min-width: 0; color: var(--b-ink-3); font-size: var(--b-t-meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stepper { display: inline-flex; align-items: center; height: 44px; border: 1px solid var(--b-outline); border-radius: var(--b-r-cell); background: var(--b-raised); overflow: hidden; }
+.stepper button { display: grid; place-items: center; width: 44px; height: 100%; border: 0; background: none; color: var(--b-ink-2); }
+.stepper button:hover { background: var(--b-hover); color: var(--b-ink); }
+.stepper button:disabled { color: var(--b-ink-4); pointer-events: none; }
+.stepper input { width: 48px; height: 100%; padding: 0; border: 0; border-inline: 1px solid var(--b-line); outline: 0; background: none; text-align: center; font-size: 15px; font-weight: 600; }
+.stepper input:focus { background: var(--b-data-tint); }
+.rm { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--b-outline); border-radius: var(--b-r-cell); background: var(--b-raised); color: var(--b-down); }
+.rm:hover { background: var(--b-down-tint); border-color: transparent; }
+
+.p-sum { padding: 0 18px; color: var(--b-ink-2); font-size: 12.5px; }
+.p-sum div { display: flex; justify-content: space-between; gap: 12px; line-height: 24px; }
+.p-sum .dim { color: var(--b-ink-3); }
+.p-empty { padding: 22px 18px 16px; color: var(--b-ink-3); text-align: center; }
+.p-empty b { display: block; margin-bottom: 2px; color: var(--b-ink-2); font-size: 14px; font-weight: 560; }
+
+/* below the paper: pinned */
+.pay { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-top: 1px solid var(--tray-line); }
+.hero { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 4px; }
+.hero-l { color: var(--b-ink-2); font-size: 14px; font-weight: 600; }
+.hero-v { font-size: 32px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; }
+.ctl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; height: var(--tap); padding: 3px; border-radius: var(--b-r-btn); background: var(--tray-track); }
+.seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; border: 0; border-radius: 9px; background: none; color: var(--b-ink-2); font-weight: 500; font-size: 14px; }
+.seg button .ic { width: 16px; height: 16px; }
+.seg button[aria-pressed="true"] { background: var(--b-raised); color: var(--b-ink); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--tap); padding: 0 16px; border: 1px solid var(--b-btn-line); border-radius: var(--b-r-btn);
+       background: var(--b-raised); box-shadow: 0 1px 0 rgb(0 0 0 / .05); font-size: 14px; font-weight: 600; white-space: nowrap; transition: background-color .12s; }
+.btn:hover { background: var(--b-hover); }
+.btn:active { background: var(--b-press); box-shadow: none; }
+.btn .ic { width: 16px; height: 16px; stroke-width: 2; }
+.btn.on { background: var(--b-data-tint); border-color: var(--b-data-1); color: var(--b-data-ink); }
+.btn.primary { width: 100%; height: 52px; border-color: var(--b-ink); background: var(--b-ink); color: #fff; font-size: 16px;
+               box-shadow: inset 0 1px 0 rgb(255 255 255 / .18), 0 1px 0 rgb(0 0 0 / .2); }
+.btn.primary:hover { background: #1F1F1F; }
+.btn.primary:active { background: #000; }
+.btn:disabled { opacity: .35; pointer-events: none; }
+.rv { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .3s var(--ease), opacity .2s, margin .3s var(--ease); }
+.pay > .rv:not(.open) { margin-bottom: -10px; }
+.rv.open { grid-template-rows: 1fr; opacity: 1; }
+.rv > * { min-height: 0; overflow: hidden; }
+.disc-in { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 8px; }
+.disc-in .seg { height: 44px; }
+.disc-in .seg button { font-weight: 600; }
+.field { height: 44px; min-width: 0; padding: 0 14px; border: 1px solid var(--b-outline); border-radius: var(--b-r-cell); background: var(--b-raised); outline: 0; font-size: 15px; font-weight: 600; }
+.field:focus { border-color: var(--b-data-1); box-shadow: 0 0 0 1px var(--b-data-1); }
+.disc-in .btn { height: 44px; }
+
+.toast { position: fixed; left: 50%; bottom: 24px; z-index: 20; padding: 11px 18px; border-radius: 99px; background: var(--b-ink); color: #fff; font-size: 14px; font-weight: 500;
+         box-shadow: var(--b-pop); transform: translate(-50%, 12px); opacity: 0; pointer-events: none; transition: opacity .2s, transform .25s var(--ease); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@keyframes flash { from { background: var(--b-data-tint); } to { background: transparent; } }
+@keyframes feed { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="shop" aria-label="Products">
+    <label class="search">
+      <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search products or scan a barcode" autocomplete="off">
+    </label>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <aside class="side" aria-label="Receipt">
+    <div class="bar">
+      <button class="cust" id="cust" type="button">
+        <span class="av" id="av"></span>
+        <span class="cust-nm" id="custNm"></span>
+        <svg class="ic chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      <button class="more" id="more" type="button" aria-label="More" aria-expanded="false">
+        <svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+      </button>
+    </div>
+    <div class="menu" id="menu" hidden>
+      <button type="button" data-menu="lost"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5"/></svg>Lost sale</button>
+      <button type="button" data-menu="save"><svg class="ic" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 3v5h6"/></svg>Save receipt</button>
+      <hr>
+      <button type="button" data-menu="clear" class="danger"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Clear</button>
+    </div>
+
+    <div class="roll" id="roll">
+      <div class="slip"><div class="paper" id="paper"></div></div>
+    </div>
+
+    <section class="pay">
+      <div class="hero"><span class="hero-l">Total</span><span class="hero-v num" id="total"></span></div>
+      <div class="ctl">
+        <div class="seg" id="fulfil">
+          <button type="button" data-f="pickup" aria-pressed="true"><svg class="ic" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Pickup</button>
+          <button type="button" data-f="delivery" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24"><rect x="2" y="6" width="12" height="10" rx="1.5"/><path d="M14 9h4l3 3.5V16h-7"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>Delivery</button>
+        </div>
+        <button class="btn" id="discBtn" type="button"><svg class="ic" viewBox="0 0 24 24"><path d="M19 5L5 19"/><circle cx="7" cy="7" r="2.3"/><circle cx="17" cy="17" r="2.3"/></svg><span id="discLbl">Discount</span></button>
+      </div>
+      <div class="rv" id="discPanel"><div><div class="disc-in">
+        <div class="seg" id="discKind">
+          <button type="button" data-k="pct" aria-pressed="true">%</button>
+          <button type="button" data-k="amt" aria-pressed="false">₱</button>
+        </div>
+        <input class="field num" id="discVal" inputmode="decimal" placeholder="0" autocomplete="off">
+        <button class="btn" id="discDone" type="button">Done</button>
+      </div></div></div>
+      <button class="btn primary" id="checkout" type="button">Check out</button>
+    </section>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const PRODUCTS = [
+  ['PLB-0101', 'PVC Elbow 1/2"', 1200], ['PLB-0102', 'PVC Elbow 3/4"', 1600], ['PLB-0110', 'PVC Tee 1/2"', 1450], ['PLB-0201', 'PVC Pipe 1/2" × 3m', 14500],
+  ['PLB-0305', 'Brass Faucet 1/2"', 18500], ['PLB-0410', 'Teflon Tape 1/2"', 2500], ['ELC-0109', 'LED Bulb 9W Daylight', 8900], ['ELC-0202', 'Duplex Outlet 2-Gang', 6500],
+  ['ELC-0211', 'Switch 1-Gang', 4800], ['ELC-0301', 'Electrical Tape Black', 3500], ['ELC-0430', 'Circuit Breaker 30A', 42000], ['FST-0108', 'Wood Screw #8 × 1"', 250],
+  ['FST-0210', 'Hex Bolt M10 × 100mm', 1800], ['FST-0310', 'Flat Washer M10', 150], ['TLS-0116', 'Claw Hammer 16oz', 28500], ['TLS-0202', 'Phillips Screwdriver #2', 14500],
+  ['TLS-0308', 'Combination Pliers 8"', 22000], ['TLS-0405', 'Tape Measure 5m', 16500], ['TLS-0512', 'Hacksaw Frame 12"', 19500], ['TLS-0624', 'Aluminum Level 24"', 38500],
+].map(([sku, name, price]) => ({ sku, name, price }));
+// ponytail: off-grid items (as if found by search) so ?many=1 can reach 24 lines and test a long name
+const EXTRA = [
+  ['PLB-0202', 'PVC Pipe 3/4" × 3m', 19500], ['CEM-0040', 'Portland Cement 40kg Sack', 26500],
+  ['PNT-1004', 'Boysen Permacoat Latex Semi-Gloss Paint, Brilliant White, 4 Liters', 98500], ['ELC-0514', 'THHN Stranded Wire 14 AWG × 1m', 2800],
+].map(([sku, name, price]) => ({ sku, name, price }));
+const ALL = PRODUCTS.concat(EXTRA);
+const BY = Object.fromEntries(ALL.map(p => [p.sku, p]));
+const CUSTOMERS = ['Walk-in customer', 'Ricardo Construction', 'Santos Hardware'];
+
+const $ = s => document.querySelector(s);
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const peso = c => '₱' + (c / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const IC = {
+  minus: '<svg class="ic" viewBox="0 0 24 24"><path d="M6 12h12"/></svg>',
+  plus: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg>',
+  trash: '<svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  person: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>',
+};
+const now = new Date();
+const STAMP = now.toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ' + now.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+
+const q = new URLSearchParams(location.search);
+const S = { lines: [], open: null, flash: null, fresh: null, disc: null, discKind: 'pct', fulfil: 'pickup', cust: 0 };
+if (!q.has('empty')) {
+  const seed = q.has('many') ? ALL.map((p, i) => [i, [1, 2, 3, 1, 6, 1, 2, 10][i % 8]])
+                             : [[3, 2], [0, 6], [5, 3], [6, 4], [11, 50], [14, 1], [9, 2], [10, 1]];
+  S.lines = seed.map(([i, qty]) => ({ sku: ALL[i].sku, qty }));
+}
+
+function totals() {
+  const sub = S.lines.reduce((s, l) => s + BY[l.sku].price * l.qty, 0);
+  const disc = !S.disc ? 0 : S.disc.kind === 'pct' ? Math.round(sub * S.disc.v / 100) : Math.min(Math.round(S.disc.v * 100), sub);
+  const total = sub - disc;
+  return { sub, disc, total, vat: Math.round(total * 12 / 112) };
+}
+
+$('#grid').innerHTML = PRODUCTS.map(p => `<button class="tile" type="button" data-sku="${p.sku}"><b>${esc(p.name)}</b><span class="num">${peso(p.price)}</span></button>`).join('');
+
+function render() {
+  const n = S.lines.length, t = totals();
+  const lines = S.lines.map(l => {
+    const p = BY[l.sku], open = S.open === l.sku;
+    return `<div class="ln${open ? ' open' : ''}" data-sku="${l.sku}">
+      <button class="pl" type="button" data-act="toggle" aria-expanded="${open}"><span class="pl-nm">${esc(p.name)}</span>
+        <span class="pl-q num"><span>${l.qty} pc × ${peso(p.price)}</span><b>${peso(p.price * l.qty)}</b></span></button>
+      ${open ? `<div class="ed"><span class="sku">${p.sku}</span>
+        <div class="stepper"><button type="button" data-act="dec" aria-label="One less" ${l.qty <= 1 ? 'disabled' : ''}>${IC.minus}</button><input class="num" data-act="qty" inputmode="numeric" value="${l.qty}" aria-label="Quantity"><button type="button" data-act="inc" aria-label="One more">${IC.plus}</button></div>
+        <button class="rm" type="button" data-act="rm" aria-label="Remove">${IC.trash}</button></div>` : ''}
+    </div>`;
+  }).join('');
+  $('#paper').innerHTML = `<div class="p-head"><div class="p-store">EJ HARDWARE</div><div class="p-meta num">${STAMP}</div></div><div class="p-rule"></div>`
+    + (n ? `${lines}<div class="p-rule"></div><div class="p-sum num">
+        <div><span>Subtotal</span><span>${peso(t.sub)}</span></div>
+        ${t.disc ? `<div><span>Discount</span><span>−${peso(t.disc)}</span></div>` : ''}
+        <div class="dim"><span>VAT (12% incl.)</span><span>${peso(t.vat)}</span></div></div>`
+         : `<div class="p-empty"><b>Nothing on the receipt yet</b>Tap a product to add it.</div>`);
+
+  const named = S.cust > 0;
+  $('#av').className = 'av' + (named ? ' named' : '');
+  $('#av').innerHTML = named ? CUSTOMERS[S.cust][0] : IC.person;
+  $('#custNm').textContent = CUSTOMERS[S.cust];
+
+  $('#total').textContent = peso(t.total);
+  $('#discLbl').textContent = !S.disc ? 'Discount' : S.disc.kind === 'pct' ? `${S.disc.v}% off` : `−${peso(t.disc)}`;
+  $('#discBtn').classList.toggle('on', !!S.disc);
+  document.querySelectorAll('#fulfil button').forEach(b => b.setAttribute('aria-pressed', b.dataset.f === S.fulfil));
+  document.querySelectorAll('#discKind button').forEach(b => b.setAttribute('aria-pressed', b.dataset.k === S.discKind));
+  $('#checkout').disabled = !n;
+  $('#discBtn').disabled = !n;
+  $('[data-menu="save"]').disabled = !n;
+  $('[data-menu="clear"]').disabled = !n;
+
+  const hit = S.flash || S.open;
+  const el = hit && document.querySelector(`.ln[data-sku="${hit}"]`);
+  if (el) { if (S.flash) el.classList.add(S.fresh ? 'new' : 'flash'); el.scrollIntoView({ block: 'nearest' }); }
+  S.flash = S.fresh = null;
+}
+
+let tt;
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), 1800); }
+const line = sku => S.lines.find(l => l.sku === sku);
+
+function add(sku) {
+  const l = line(sku);
+  if (l) l.qty++; else { S.lines.push({ sku, qty: 1 }); S.fresh = true; }
+  S.flash = sku;
+  render();
+}
+$('#grid').addEventListener('click', e => { const t = e.target.closest('.tile'); if (t) add(t.dataset.sku); });
+$('#q').addEventListener('input', e => {
+  const s = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('.tile').forEach(t => { t.hidden = !!s && !BY[t.dataset.sku].name.toLowerCase().includes(s) && !t.dataset.sku.toLowerCase().includes(s); });
+});
+
+$('#paper').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'), ln = e.target.closest('.ln');
+  if (!b || !ln) return;
+  const sku = ln.dataset.sku, l = line(sku);
+  switch (b.dataset.act) {
+    case 'toggle': S.open = S.open === sku ? null : sku; break;
+    case 'inc': l.qty++; break;
+    case 'dec': l.qty = Math.max(1, l.qty - 1); break;
+    case 'rm': S.lines = S.lines.filter(x => x !== l); S.open = null; break;
+    default: return;
+  }
+  render();
+});
+$('#paper').addEventListener('change', e => {
+  if (e.target.dataset.act !== 'qty') return;
+  const sku = e.target.closest('.ln').dataset.sku, v = parseInt(e.target.value, 10);
+  if (v > 0) line(sku).qty = v; else if (v === 0) { S.lines = S.lines.filter(x => x.sku !== sku); S.open = null; }
+  render();
+});
+$('#paper').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset.act === 'qty') e.target.blur(); });
+$('#paper').addEventListener('focusin', e => { if (e.target.dataset.act === 'qty') e.target.select(); });
+
+$('#cust').addEventListener('click', () => { S.cust = (S.cust + 1) % CUSTOMERS.length; render(); });
+$('#fulfil').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { S.fulfil = b.dataset.f; render(); } });
+
+$('#discBtn').addEventListener('click', () => {
+  const on = $('#discPanel').classList.toggle('open');
+  if (on) { $('#discVal').value = S.disc ? S.disc.v : ''; setTimeout(() => $('#discVal').focus(), 60); }
+});
+$('#discKind').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) { S.discKind = b.dataset.k; render(); } });
+function applyDisc() {
+  const v = parseFloat($('#discVal').value);
+  S.disc = v > 0 ? { kind: S.discKind, v: S.discKind === 'pct' ? Math.min(v, 100) : v } : null;
+  $('#discPanel').classList.remove('open');
+  render();
+}
+$('#discDone').addEventListener('click', applyDisc);
+$('#discVal').addEventListener('keydown', e => { if (e.key === 'Enter') applyDisc(); });
+
+const menu = $('#menu'), more = $('#more');
+const setMenu = on => { menu.hidden = !on; more.setAttribute('aria-expanded', on); };
+more.addEventListener('click', e => { e.stopPropagation(); setMenu(menu.hidden); });
+document.addEventListener('click', e => { if (!menu.hidden && !menu.contains(e.target)) setMenu(false); });
+menu.addEventListener('click', e => {
+  const b = e.target.closest('[data-menu]'); if (!b) return;
+  setMenu(false);
+  if (b.dataset.menu === 'lost') toast('Lost sale noted');
+  if (b.dataset.menu === 'save') toast('Receipt saved');
+  if (b.dataset.menu === 'clear') { S.lines = []; S.open = null; S.disc = null; $('#discPanel').classList.remove('open'); render(); toast('Cleared'); }
+});
+$('#checkout').addEventListener('click', () => toast('Check out · ' + peso(totals().total)));
+
+render();
+</script>
+</body>
+</html>

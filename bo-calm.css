@@ -275,10 +275,10 @@ body.bo-light .calm-sales .nav > button { height: 30px; border-radius: 0; margin
 body.bo-light .calm-sales .nav > button:first-child { margin-left: 0; border-radius: 8px 0 0 8px; }
 body.bo-light .calm-sales .nav > button:last-child { border-radius: 0 8px 8px 0; }
 body.bo-light .calm-sales .nav > .pick { min-width: 152px; justify-content: center; }
-/* Summary | Items (owner 2026-09-27): Products' .pd-switch 16px after the title, as there. The switch takes the
-   auto margin and Items' Export sits left of ‹ period ›, so neither the title nor the picker moves on a switch */
-body.bo-light .calm-sales .c-main > .bar h1 { margin-right: 0; }
-body.bo-light .calm-sales .c-main > .bar > .pd-switch { margin: 0 auto 0 4px; }
+/* Summary | Items (owner 2026-09-27): Products' .pd-switch, leading the bar with no title (2026-09-28). It takes the
+   auto margin and Items' Export sits left of ‹ period ›, so the picker doesn't move on a switch. margin-right only:
+   the left is the phone hamburger's inset (styles.css). */
+body.bo-light .calm-sales .c-main > .bar > .pd-switch { margin-right: auto; }
 /* Items' line (~610px with the phone's 46px hamburger inset) wraps where Summary's doesn't, so under 640px of page
    ‹ period › always starts the second line and Export follows it: the picker keeps one spot on both views. */
 @container (max-width: 640px) {
@@ -501,7 +501,7 @@ body.bo-light .calm-tx button, body.bo-light .calm-tx input { font: inherit; col
 body.bo-light .calm-tx a { color: var(--b-data); text-decoration: none; }
 body.bo-light .calm-tx .c-main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--b-rail-w)); margin: 0 auto; }
 body.bo-light .calm-tx .bar { display: flex; align-items: center; min-height: 32px; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-body.bo-light .calm-tx .bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
+body.bo-light .calm-tx .bar > .pd-switch { margin-right: auto; }   /* List | Breakdown leads; Export sits left of the range, so the range holds still */
 body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .pick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 10px 5px 12px; cursor: pointer; font-weight: 500; white-space: nowrap; }
 body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .pick::after { content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
 body.bo-light .calm-tx .pick.on { background: var(--b-data-tint); border-color: var(--b-data-1); color: var(--b-data-ink); }
@@ -599,19 +599,20 @@ body.bo-light .calm-tx .w .row[data-f]:hover { background: #F6F6F6; }
 body.bo-light .calm-tx .w .row.on, body.bo-light .calm-tx .w .row.on:hover { background: var(--b-data-tint); }
 body.bo-light .calm-tx .w .row.on .nm { color: var(--b-data-ink); font-weight: 500; }
 body.bo-light :is(.calm-tx, .calm-cust) .w .acts { display: flex; align-items: center; gap: 8px; align-self: center; }
-/* The filters take their own row, so the rail starts level with the table card, like the Dashboard's. */
-body.bo-light .calm-tx .dash:not(.solo) > div:first-child { display: contents; }
-body.bo-light .calm-tx .dash:not(.solo) > div:first-child > * { grid-column: 1; }
-body.bo-light .calm-tx .dash:not(.solo) .filters { margin-bottom: 0; }
-body.bo-light .calm-tx .dash:not(.solo) .rail { grid-area: 2 / 2; }
+/* Breakdown (?view=breakdown, owner 2026-09-28): the blocks under the filters, full width. Net sales is one line across,
+   Payment · Fulfilment · Staff side by side, both numbers always showing (no hover fade here). */
+body.bo-light .calm-tx .rail.bd { display: flex; flex-wrap: wrap; align-items: flex-start; }   /* flex, not grid: Net sales across made auto-fit keep an empty 4th column */
+body.bo-light .calm-tx .rail.bd .w { flex: 1 1 260px; min-width: 0; }
+body.bo-light .calm-tx .rail.bd .w.one { flex-basis: 100%; }
+body.bo-light .calm-tx .rail.bd .w .cnt { opacity: 1; }
 @media (max-width: 1100px) {
   body.bo-light :is(.calm-tx, .calm-cust) .dash { grid-template-columns: minmax(0, 1fr); }
   body.bo-light :is(.calm-tx, .calm-cust) .rail { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
-  body.bo-light .calm-tx .dash:not(.solo) .rail { grid-area: auto; }
 }
 @media (max-width: 760px) {
   body.bo-light .calm-tx .c-main { padding: 16px; }
   body.bo-light .calm-tx .q { flex-basis: 100%; }
+  body.bo-light .calm-tx .bar > .btn { order: 1; }   /* Export wraps under, after the range, so List | Breakdown and the range share row one on both views */
 }
 /* The receipts table, Dashboard card and Transactions page alike, folds by its card, not the window
    (sidebar open or not): 8px cells under 800px of card, the optional columns out under 640px, so
@@ -619,13 +620,31 @@ body.bo-light .calm-tx .dash:not(.solo) .rail { grid-area: 2 / 2; }
 body.bo-light .calm-tx .card { container-type: inline-size; }
 @container (max-width: 800px) { body.bo-light .calm-tx .tx :is(th, td) { padding-inline: 8px; } }
 @container (max-width: 640px) { body.bo-light :is(.calm-dash, .calm-tx) .tx .opt { display: none; } }
-/* Customers: the list borrows Transactions' rail and Widgets menu above (the .calm-cust half of each :is()).
-   Only those: its table stays a .blk-table card and its text the back office's own, so no root font here. */
-body.bo-light .calm-cust :is(.pick, .rail, .menu) { font-size: var(--b-t-label); line-height: normal; }
-body.bo-light .calm-cust :where(.pick, .menu button, .rail button) { font: inherit; }   /* :where, so .pick keeps its 500 */
+/* Customers: its four figures are one thin strip over the filters (owner 2026-09-28; a Widgets rail before), built from
+   the rail's one-line block (the .calm-cust half of each :is() above). Always on, so the table keeps its full width.
+   Only that: its table stays a .blk-table card and its text the back office's own, so no root font here. */
+body.bo-light .calm-cust .cust-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0; margin-bottom: 12px;
+  font-size: var(--b-t-label); line-height: normal; }
+body.bo-light .calm-cust .cust-strip .top.one { align-items: center; padding: 0 var(--b-pad); border: 0; border-left: 1px solid var(--b-line); min-width: 0; }
+body.bo-light .calm-cust .cust-strip .top.one:first-child { border-left: 0; }
+body.bo-light .calm-cust .cust-strip button.top { width: 100%; background: none; font: inherit; color: var(--b-ink-2); text-align: left; cursor: pointer; }
+body.bo-light .calm-cust .cust-strip button.top:hover { background: color-mix(in srgb, var(--b-raised) 50%, var(--b-card)); }
+body.bo-light .calm-cust .cust-strip button.top[aria-pressed="true"] { background: var(--b-data-tint); color: var(--b-data-ink); }
+@media (hover: hover) { body.bo-light .calm-cust .cust-strip:hover .cnt { opacity: 0; } body.bo-light .calm-cust .cust-strip .top:hover .cnt { opacity: 1; } }   /* one figure's note at a time */
+@media (max-width: 900px) {   /* two by two */
+  body.bo-light .calm-cust .cust-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.bo-light .calm-cust .cust-strip .top.one:nth-child(odd) { border-left: 0; }
+  body.bo-light .calm-cust .cust-strip .top.one:nth-child(n+3) { border-top: 1px solid var(--b-line); }
+}
+@media (max-width: 560px) {   /* a phone's half can't hold label and number on one line: label over number, no note */
+  body.bo-light .calm-cust .cust-strip .top.one { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 8px 12px; }
+  body.bo-light .calm-cust .cust-strip .top.one > span:first-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  body.bo-light .calm-cust .cust-strip .cnt { display: none; }
+  body.bo-light .calm-cust .cust-strip .acts { align-self: flex-start; }
+}
 body.bo-light .calm-cust .w .cnt.down { color: var(--b-down); }   /* Near limit, when anyone is */
-/* 288px can't hold "Outstanding credit · 20 active debtors · ₱133,377 · ×": the label never wraps, the note
-   gives way with an ellipsis, and the band's title carries it whole. */
+/* A quarter of the strip can't always hold "Outstanding credit · 20 active debtors · ₱133,377": the label never wraps,
+   the note gives way with an ellipsis, and the cell's title carries it whole. */
 body.bo-light .calm-cust .w .top > span:first-child { white-space: nowrap; }
 body.bo-light .calm-cust .w .acts { min-width: 0; }
 body.bo-light .calm-cust .w .cnt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

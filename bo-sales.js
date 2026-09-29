@@ -13,12 +13,12 @@
   const TABS = [['summary', 'Summary'], ['items', 'Items']];
   const OLD_TABS = ['item', 'category', 'basket'];   // old ?by= links land on Items; ?by=staff on the Summary
   // Summary | Items is a switch inside the page (owner, 2026-09-27), Products' Catalog | Stock (.pd-switch), not
-  // sidebar links: the same month seen two ways, so no HWPOS_SUBNAV tree. It sits in the bar before ‹ period ›,
-  // so the title and the picker hold still. The period (?month= ?view= ?vs=) and Items' table state ride along;
+  // sidebar links: the same month seen two ways, so no HWPOS_SUBNAV tree. It leads the bar, with no title beside
+  // it (owner 2026-09-28), before ‹ period ›, so the picker holds still. The period (?month= ?view= ?vs=) and Items' table state ride along;
   // the day/week pop-up and the page don't.
   const tabSwitch = (tab) => {
     const { day, week, page, all, ...keep } = Router.route().params;
-    return `<div class="seg pd-switch">${TABS.map(([k, label]) =>
+    return `<div class="seg pd-switch" aria-label="Sales view">${TABS.map(([k, label]) =>
       `<a class="seg-btn${k === tab ? ' active' : ''}" href="${escapeHtml(Router.href(VIEW, '', { ...keep, by: k === 'summary' ? '' : k }))}">${label}</a>`).join('')}</div>`;
   };
 
@@ -499,7 +499,7 @@
     return `<div class="shell${S.sel ? ' open' : ''}">
       <div class="c-main">
         <div class="bar">
-          <h1>Sales</h1>${tabSwitch('summary')}
+          ${tabSwitch('summary')}
           ${periodNav(S, P, true)}
         </div>
         <section class="card">
@@ -760,7 +760,7 @@
     // its width across the switch; it names Items' own comparison, always the period before.
     const P = { period: W.yr ? W.now : fmt(C.a, { month: 'long', year: 'numeric' }), vsLabel: p.vs ? C.label : '', last: C.b > dayStart(new Date()) };
     return `<div class="shell"><div class="c-main">
-        <div class="bar"><h1>Sales</h1>${tabSwitch('items')}<button class="btn" data-act="export">${DOWNLOAD_ICON}Export CSV</button>${periodNav(S, P, false)}</div>
+        <div class="bar">${tabSwitch('items')}<button class="btn" data-act="export">${DOWNLOAD_ICON}Export CSV</button>${periodNav(S, P, false)}</div>
         <div class="sales-cuts">${catCard(a.cats, pa.cats, ct, any, v, p)}${rankCard(inCat(a.items, ct), pa.items, v.it, any, item, chart, v, p)}
           <div class="duo">${movers(a, pa, W, any)}</div>${basketCard(v.x)}</div>
       </div></div>`;

@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payment Flows Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --page:#FFFFFF; --surface:#F9F9F9; --raised:#FFFFFF;
+  --line:#E1E1E1; --line-in:#ECECEC; --line-btn:#D4D4D4;
+  --soft:#EDEDED; --soft-hover:#E4E4E4; --row-hover:#F6F6F6; --track:#EFEFEF;
+  --ink:#303030; --ink-2:#616161; --ink-3:#8C8C8C;
+  --primary:#303030; --primary-ink:#FFFFFF; --primary-hover:#1A1A1A;
+  --ok:#047B5D; --ok-tint:#D3ECDD; --bad:#D72C0D; --bad-tint:#F8D8D0; --warn:#7A5B00; --warn-tint:#FCEFC7;
+  --blue:#2B7DE9; --blue-tint:#DCE9FB;
+  --gcash:#2B7DE9; --gcash-tint:#DCE9FB; --qr:#0B6B5E; --qr-tint:#D2EFEA; --card:#9E2A5A; --card-tint:#FADCE7;
+  --r-card:12px; --r-btn:10px; --r-input:8px; --r-pill:999px;
+  --shadow:0 1px 2px -1px rgb(26 26 26 / .07), 0 0 0 1px var(--line);
+  --shadow-lift:0 -8px 32px rgb(26 26 26 / .10), 0 0 0 1px var(--line);
+  --scrim:rgb(26 26 26 / .28);
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--ink);font:400 14px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+h2{margin:0}
+.num{font-variant-numeric:tabular-nums}
+.lbl{font-size:12px;line-height:1.4;color:var(--ink-3);font-weight:500}
+.h{font-weight:600;font-size:15px}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.card{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--shadow)}
+.hero{font-size:72px;font-weight:600;letter-spacing:-.035em;line-height:1.05}
+.hero.md{font-size:56px}
+.hero.xl{font-size:84px}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:24px;padding:12px 24px;background:var(--page);border-bottom:1px solid var(--line-in)}
+.brand{font-weight:600;white-space:nowrap}
+.brand .lbl{margin-left:8px}
+.switch{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.switch button{border:0;background:none;height:34px;padding:0 12px;border-radius:var(--r-input);font-size:13px;font-weight:500;color:var(--ink-2);cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+.switch button:hover{background:var(--row-hover)}
+.switch button[aria-selected=true]{background:var(--soft);color:var(--ink)}
+.desc{max-width:1200px;margin:0 auto;padding:16px 24px 0;font-size:13px;color:var(--ink-3)}
+main{padding:24px 24px 80px}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border:0;border-radius:var(--r-btn);font-weight:560;cursor:pointer;transition:background .15s,color .15s,transform .12s}
+.btn:active:not(:disabled){transform:scale(.98)}
+.btn.primary{background:var(--primary);color:var(--primary-ink)}
+.btn.primary:hover:not(:disabled){background:var(--primary-hover)}
+.btn.primary:disabled{background:var(--track);color:var(--ink-3);cursor:not-allowed}
+.btn.soft{background:var(--soft)}
+.btn.soft:hover:not(:disabled){background:var(--soft-hover)}
+.btn.xl{width:100%;height:56px;font-size:16px}
+.icon-btn{display:grid;place-items:center;width:36px;height:36px;flex:none;border:0;border-radius:var(--r-input);background:var(--soft);color:var(--ink-2);cursor:pointer;transition:background .15s}
+.icon-btn:hover{background:var(--soft-hover)}
+.link{border:0;background:none;padding:4px;color:var(--ink-2);font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+svg.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+/* method dot + pill */
+.dot{display:inline-block;width:8px;height:8px;flex:none;border-radius:50%;background:var(--ink-3)}
+.dot[data-m=gcash]{background:var(--gcash)} .dot[data-m=qr]{background:var(--qr)} .dot[data-m=card]{background:var(--card)}
+.pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:var(--r-pill);background:var(--soft);color:var(--ink-2);font-size:12px;font-weight:560;white-space:nowrap}
+.pill[data-m=gcash]{background:var(--gcash-tint);color:var(--gcash)}
+.pill[data-m=qr]{background:var(--qr-tint);color:var(--qr)}
+.pill[data-m=card]{background:var(--card-tint);color:var(--card)}
+.pill.ok{background:var(--ok-tint);color:var(--ok)}
+.pill .dot{display:none}
+
+/* shared: host / pane */
+.host,.dhost,.sp-host{position:relative}
+
+/* tender */
+.tender{display:grid;gap:16px}
+.t-top{display:flex;justify-content:space-between;align-items:flex-end;gap:24px}
+.t-top > :first-child{flex:1;min-width:0}
+.t-top .lbl{margin-bottom:6px}
+.t-field{display:flex;align-items:baseline;gap:4px;padding:10px 14px;background:var(--raised);border-radius:var(--r-input);box-shadow:inset 0 0 0 1px var(--line-btn);cursor:text;transition:box-shadow .15s}
+.t-field:focus-within{box-shadow:inset 0 0 0 1px var(--blue),0 0 0 3px var(--blue-tint)}
+.t-field .cur{font-size:26px;font-weight:500;color:var(--ink-3)}
+.t-in{width:100%;min-width:0;border:0;outline:0;background:none;font-size:36px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:var(--ink)}
+.t-in::placeholder{color:var(--line-btn)}
+.t-change{text-align:right}
+.t-cval{font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1.2;color:var(--ink-3);transition:color .2s}
+.t-cval.is-ok{color:var(--ok)} .t-cval.is-short{color:var(--warn)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{height:36px;padding:0 14px;border:0;border-radius:var(--r-btn);background:var(--raised);box-shadow:inset 0 0 0 1px var(--line-btn);font-weight:560;font-variant-numeric:tabular-nums;cursor:pointer;transition:background .15s,color .15s,transform .12s}
+.chip:hover{background:var(--row-hover)}
+.chip:active{transform:scale(.95)}
+.chip.on{background:var(--primary);color:var(--primary-ink);box-shadow:none}
+
+/* keypad mode */
+.tender.kp-mode{grid-template-columns:minmax(0,1fr) minmax(260px,1fr);grid-template-areas:"top pad" "chips pad";column-gap:32px;row-gap:20px;align-items:start}
+.kp-mode .t-top{grid-area:top;flex-direction:column;align-items:stretch;gap:20px}
+.kp-mode .t-change{text-align:left}
+.kp-mode .chips{grid-area:chips}
+.kp-mode .chip{height:44px;padding:0 18px}
+.t-display{font-size:52px;font-weight:600;letter-spacing:-.03em;line-height:1.1;white-space:nowrap}
+.t-display .cur{color:var(--ink-3);font-weight:500;margin-right:2px}
+.t-display::after{content:"";display:inline-block;width:2px;height:.8em;margin-left:3px;vertical-align:-.05em;background:var(--blue);animation:blink 1.1s steps(1) infinite}
+.keypad{grid-area:pad;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.key{height:64px;border:0;border-radius:var(--r-btn);background:var(--raised);box-shadow:inset 0 0 0 1px var(--line);font-size:24px;font-weight:500;font-variant-numeric:tabular-nums;cursor:pointer;transition:background .12s,transform .1s}
+.key:hover{background:var(--row-hover)}
+.key:active,.key.hit{background:var(--soft);transform:scale(.96)}
+
+/* wait (GCash / QR) */
+.wait{display:grid;justify-items:center;gap:12px;padding:8px 0;text-align:center}
+.qr{width:168px;height:168px;padding:12px;background:var(--raised);border-radius:var(--r-card);box-shadow:var(--shadow)}
+.qr svg{display:block;width:100%;height:100%;fill:var(--ink)}
+.gc{display:grid;gap:2px;padding:8px 0}
+.gc-num{font-size:30px;font-weight:600;letter-spacing:-.01em}
+.w-amt{font-size:15px;font-weight:560;color:var(--ink-2)}
+.w-status{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:var(--r-pill);background:var(--soft);color:var(--ink-2);font-size:13px;font-weight:500;transition:background .3s,color .3s}
+.w-status.ok{background:var(--ok-tint);color:var(--ok)}
+.spin{display:inline-block;width:14px;height:14px;flex:none;border-radius:50%;border:2px solid var(--line-btn);border-top-color:var(--ink-2);animation:spin .8s linear infinite}
+.w-ok{display:none}
+.w-status.ok .spin{display:none}
+.w-status.ok .w-ok{display:inline-flex}
+.w-ok svg path{stroke-dasharray:14;stroke-dashoffset:14;animation:draw .3s .05s var(--ease) forwards}
+
+/* card / other */
+.cardpay{display:grid;gap:10px}
+.seg{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;padding:3px;background:var(--track);border-radius:var(--r-btn)}
+.seg .ind{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px) / var(--n));background:var(--raised);border-radius:var(--r-input);box-shadow:var(--shadow);transform:translateX(calc(var(--i) * 100%));transition:transform .32s var(--ease)}
+.seg button{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:8px;height:40px;border:0;background:none;font-weight:560;color:var(--ink-2);cursor:pointer;white-space:nowrap;transition:color .2s}
+.seg button[aria-pressed=true]{color:var(--ink)}
+.seg.sm button{height:34px;font-size:13px}
+.input{height:40px;width:100%;padding:0 12px;border:0;border-radius:var(--r-input);background:var(--raised);box-shadow:inset 0 0 0 1px var(--line-btn);outline:0}
+.input:focus{box-shadow:inset 0 0 0 1px var(--blue),0 0 0 3px var(--blue-tint)}
+.cardpay label{display:grid;gap:6px;margin-top:6px}
+.empty{padding:28px 16px;text-align:center;color:var(--ink-3);border:1px dashed var(--line-btn);border-radius:var(--r-card)}
+
+/* done */
+.done{display:grid;justify-items:center;gap:4px;padding:16px 0 4px;text-align:center}
+.done > :not(.mark){animation:rise .45s var(--ease) both;animation-delay:calc(var(--i,0) * 70ms + 160ms)}
+.mark{position:relative;width:72px;height:72px;margin-bottom:14px;animation:pop .42s var(--ease) both}
+.mark::before{content:"";position:absolute;inset:0;border-radius:50%;background:var(--ok-tint);animation:pulse .85s .38s ease-out both}
+.mark svg{position:relative;display:block;width:100%;height:100%}
+.m-c{fill:var(--ok-tint);stroke:var(--ok);stroke-width:3;stroke-dasharray:189;stroke-dashoffset:189;transform:rotate(-90deg);transform-origin:center;animation:draw .5s .05s var(--ease) forwards}
+.m-k{fill:none;stroke:var(--ok);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:36;stroke-dashoffset:36;animation:draw .3s .42s var(--ease) forwards}
+.done-h{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.done-num{font-size:64px;font-weight:600;letter-spacing:-.035em;line-height:1.1;transition:color .4s}
+.done-num.settled{color:var(--ok)}
+.rc-wrap{width:100%;max-width:420px;margin-top:16px}
+.actions{display:flex;gap:8px;width:100%;max-width:420px;margin-top:20px}
+.actions .btn{flex:1;height:48px}
+.btn .ck{width:14px;height:14px}
+
+/* receipt rows */
+.rc{padding:16px;background:var(--raised);border-radius:var(--r-card);box-shadow:var(--shadow);text-align:left}
+.rc-head{display:flex;justify-content:space-between;gap:12px;padding-bottom:10px;margin-bottom:8px;border-bottom:1px dashed var(--line-btn);font-size:12px;color:var(--ink-3)}
+.rc-row{display:flex;justify-content:space-between;gap:12px;padding:3px 0;font-size:13px}
+.rc-row .num{white-space:nowrap}
+.rc-row.sub{color:var(--ink-2)}
+.rc-row.total{margin-top:8px;padding-top:10px;border-top:1px solid var(--line-in);font-size:14px;font-weight:600}
+.x-q{color:var(--ink-3)}
+.lines{display:grid}
+.line{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-top:1px solid var(--line-in)}
+.line:first-child{border-top:0}
+.l-name{font-weight:500}
+.l-amt{font-weight:560}
+.totals{margin-top:4px;padding-top:12px;border-top:1px solid var(--line-in)}
+.totals .rc-row.total{margin-top:6px;padding-top:6px;border-top:0;font-size:16px}
+
+/* 1 · keypad */
+.kp{max-width:940px;margin:0 auto;padding:32px}
+.kp-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:24px}
+.kp .seg{margin-bottom:28px}
+.kp-body{margin-bottom:28px}
+
+/* 2 · steps */
+.st{max-width:480px;margin:0 auto}
+.st-top{display:flex;align-items:center;gap:14px;margin-bottom:28px}
+.prog{display:flex;flex:1;gap:6px}
+.prog i{position:relative;flex:1;height:4px;overflow:hidden;border-radius:var(--r-pill);background:var(--track)}
+.prog i::after{content:"";position:absolute;inset:0;background:var(--ink);transform:scaleX(0);transform-origin:left;transition:transform .45s var(--ease)}
+.prog i.on::after{transform:none}
+.prog-l{min-width:64px;text-align:right}
+.st-hero{margin:8px 0 32px;text-align:center}
+.rows{overflow:hidden}
+.row{display:flex;align-items:center;gap:14px;width:100%;padding:18px 20px;border:0;border-top:1px solid var(--line-in);background:none;text-align:left;cursor:pointer;transition:background .15s}
+.row:first-child{border-top:0}
+.row:hover{background:var(--row-hover)}
+.row > span{display:grid}
+.r-name{font-size:15px;font-weight:560}
+.chev{margin-left:auto;color:var(--ink-3);transition:transform .2s var(--ease)}
+.row:hover .chev{transform:translateX(3px)}
+.st-sum{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.st-due{color:var(--ink-2)}
+.st-due b{color:var(--ink);font-weight:600}
+.st-card{padding:24px;margin-bottom:16px}
+
+/* 3 · receipt beside */
+.sv{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:24px;max-width:1200px;margin:0 auto;align-items:start}
+.sv-pay{padding:32px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:28px 0 20px}
+.tile{display:grid;justify-items:start;gap:4px;padding:14px;border:0;border-radius:var(--r-btn);background:var(--raised);box-shadow:inset 0 0 0 1px var(--line-btn);text-align:left;cursor:pointer;transition:box-shadow .15s,background .15s,transform .12s}
+.tile:hover{background:var(--row-hover)}
+.tile:active{transform:scale(.98)}
+.tile[aria-pressed=true]{box-shadow:inset 0 0 0 2px var(--ink);background:var(--raised)}
+.tile .dot{margin-bottom:6px}
+.tl-name{font-weight:560}
+.sv .dhost{margin-bottom:20px}
+.sv-rc{position:sticky;top:84px;padding:24px}
+.sv-rh{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.sv-paid:not(:empty){margin-top:8px;padding-top:8px;border-top:1px dashed var(--line-btn)}
+.pop{animation:pop .4s var(--ease)}
+
+/* 4 · sheet */
+.sh-cart{max-width:640px;margin:0 auto;padding:24px}
+.sh-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px}
+.sh-cart .btn.xl{margin-top:20px}
+.scrim{position:fixed;inset:0;z-index:40;background:var(--scrim);opacity:0;pointer-events:none;transition:opacity .3s}
+.sheet{position:fixed;left:50%;bottom:0;z-index:41;width:min(640px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:10px 28px 28px;background:var(--page);border-radius:var(--r-card) var(--r-card) 0 0;box-shadow:var(--shadow-lift);transform:translate(-50%,105%);transition:transform .42s var(--ease)}
+.sh.open .scrim{opacity:1;pointer-events:auto}
+.sh.open .sheet{transform:translate(-50%,0)}
+.grab{width:40px;height:4px;margin:0 auto 18px;border-radius:var(--r-pill);background:var(--line-btn)}
+.sh-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.mpills{display:flex;flex-wrap:wrap;gap:8px}
+.mpill{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border:0;border-radius:var(--r-btn);background:var(--raised);box-shadow:inset 0 0 0 1px var(--line-btn);font-weight:560;cursor:pointer;transition:background .15s,box-shadow .15s,transform .12s}
+.mpill:hover{background:var(--row-hover)}
+.mpill:active{transform:scale(.97)}
+.mpill[aria-pressed=true]{box-shadow:inset 0 0 0 2px var(--ink)}
+.sheet .mpills{margin-bottom:24px}
+.sheet .dhost{margin-bottom:24px}
+
+/* 5 · method cards */
+.mc{max-width:560px;margin:0 auto}
+.mc-head{margin:8px 0 32px;text-align:center}
+.mc-list{display:grid;gap:10px}
+.mcard{overflow:hidden;transition:background .25s,opacity .25s}
+.mcard.open{background:var(--raised)}
+.mc-list.has-open .mcard:not(.open){opacity:.6}
+.mc-list.has-open .mcard:not(.open):hover{opacity:1}
+.mc-top{display:flex;align-items:center;gap:12px;width:100%;padding:18px 20px;border:0;background:none;text-align:left;cursor:pointer;transition:background .15s}
+.mc-top:hover{background:var(--row-hover)}
+.mcard.open .mc-top:hover{background:none}
+.mc-name{font-size:15px;font-weight:560}
+.mc-hint{margin-left:auto}
+.mc-top .chev{margin-left:8px;transform:rotate(90deg)}
+.mcard.open .mc-top .chev{transform:rotate(-90deg)}
+.mc-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .36s var(--ease)}
+.mcard.open .mc-body{grid-template-rows:1fr}
+.mc-inner{min-height:0;overflow:hidden}
+.mc-pad{display:grid;gap:20px;padding:4px 20px 20px;opacity:0;transition:opacity .25s}
+.mcard.open .mc-pad{opacity:1;transition-delay:.08s}
+
+/* 6 · split pay */
+.sp{max-width:640px;margin:0 auto}
+.sp > .host > .pane{display:grid;gap:16px}
+.sp-head{padding:24px}
+.sp-sum{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+.track{height:6px;margin:18px 0 6px;overflow:hidden;border-radius:var(--r-pill);background:var(--track)}
+.track .fill{display:block;width:0;height:100%;border-radius:inherit;background:var(--ok);transition:width .5s var(--ease)}
+.legs{margin:0;padding:0;list-style:none}
+.leg{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line-in)}
+.leg:first-child{margin-top:12px}
+.leg.in{animation:rise .32s var(--ease) both}
+.leg-st{display:inline-flex;align-items:center;gap:6px}
+.leg .amt{margin-left:auto;font-weight:560}
+.x{display:grid;place-items:center;width:28px;height:28px;border:0;border-radius:var(--r-input);background:none;color:var(--ink-3);cursor:pointer}
+.x:hover{background:var(--soft);color:var(--ink)}
+.sp-form,.sp-ready{display:grid;gap:16px;padding:24px}
+.sp-ready{justify-items:center}
+.hint{min-height:20px;font-size:13px;color:var(--ink-2)}
+.hint.warn{color:var(--warn)}
+
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+@keyframes pulse{from{opacity:.9;transform:scale(1)}to{opacity:0;transform:scale(1.9)}}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes blink{50%{opacity:0}}
+
+@media (max-width:980px){
+  .brand{display:none}
+  .sv{grid-template-columns:1fr}
+  .sv-rc{position:static}
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .hero{font-size:60px}
+  .hero.xl{font-size:72px}
+}
+@media (max-width:720px){
+  .tender.kp-mode{grid-template-columns:1fr;grid-template-areas:"top" "chips" "pad"}
+  .kp{padding:20px}
+  .seg button{font-size:13px}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.01ms!important;transition-delay:0s!important}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">Payment flows<span class="lbl">lab · sample cart</span></div>
+  <nav class="switch" id="switch" role="tablist" aria-label="Flow designs"></nav>
+</header>
+<p class="desc" id="desc"></p>
+<main id="stage"></main>
+
+<script>
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// ---------- data: all money in integer centavos ----------
+const CART = [
+  {name: 'Flat Washer M10', qty: 20, price: 250},
+  {name: 'PVC Elbow ½″', qty: 4, price: 1875},
+  {name: 'Boysen Permacoat 1L, White', qty: 1, price: 28900},
+  {name: 'Teflon Tape 12mm', qty: 1, price: 2350},
+];
+const TOTAL = CART.reduce((s, i) => s + i.qty * i.price, 0);
+const VATABLE = Math.round(TOTAL * 100 / 112), VAT = TOTAL - VATABLE; // prices are VAT-inclusive
+const DENOMS = [5000, 10000, 20000, 50000, 100000];
+let orSeq = 131;
+
+const commas = s => s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const peso = c => (c < 0 ? '−' : '') + '₱' + commas(String(Math.floor(Math.abs(c) / 100))) + '.' + String(Math.abs(c) % 100).padStart(2, '0');
+const pesoShort = c => c % 100 ? peso(c) : peso(c).slice(0, -3);
+const bufOf = c => Math.floor(c / 100) + '.' + String(c % 100).padStart(2, '0');
+const toCentavos = buf => { const [p, d = ''] = String(buf).split('.'); return (parseInt(p, 10) || 0) * 100 + parseInt((d + '00').slice(0, 2), 10); };
+function sanitize(s) {
+  s = s.replace(/[^\d.]/g, '');
+  const i = s.indexOf('.');
+  if (i > -1) s = s.slice(0, i + 1) + s.slice(i + 1).replace(/\./g, '').slice(0, 2);
+  const [p, d] = s.split('.');
+  return p.slice(0, 7).replace(/^0+(?=\d)/, '') + (d !== undefined ? '.' + d : '');
+}
+const showBuf = b => { if (!b) return '0'; const [p, d] = b.split('.'); return commas(p || '0') + (d !== undefined ? '.' + d : ''); };
+const quick = total => [['Exact', total], ...DENOMS.filter(v => v > total).map(v => [pesoShort(v), v])];
+const refNo = () => String(Math.floor(1e12 + Math.random() * 9e12)).replace(/(\d{4})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4');
+
+const METHODS = [
+  {id: 'cash', label: 'Cash', hint: 'Count the change'},
+  {id: 'gcash', label: 'GCash', hint: 'Send to store number'},
+  {id: 'qr', label: 'QR Ph', hint: 'Scan with any bank app'},
+  {id: 'card', label: 'Card / Other', hint: 'Card, transfer, cheque'},
+];
+const M = Object.fromEntries(METHODS.map(m => [m.id, m]));
+const dot = id => `<i class="dot" data-m="${id}"></i>`;
+const legName = l => l.method === 'card' ? (l.kind || 'Card') : M[l.method].label;
+
+// ---------- icons ----------
+const ICON_BACK = '<svg class="ic" viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></svg>';
+const ICON_CHEV = '<svg class="ic chev" viewBox="0 0 16 16"><path d="M6 3l5 5-5 5"/></svg>';
+const ICON_X = '<svg class="ic" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+const CHECK_SM = '<svg class="ic ck" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></svg>';
+const MARK = '<svg viewBox="0 0 64 64" aria-hidden="true"><circle class="m-c" cx="32" cy="32" r="30"/><path class="m-k" d="M20 33l8 8 16-17"/></svg>';
+let qrCache;
+function qrSVG() {
+  if (qrCache) return qrCache;
+  const n = 25; let s = 7, d = '';
+  const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+  const finder = (x, y) => (x < 8 && y < 8) || (x >= n - 8 && y < 8) || (x < 8 && y >= n - 8);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (!finder(x, y) && rnd() < .5) d += `M${x} ${y}h1v1h-1z`;
+  const f = (x, y) => `M${x} ${y}h7v7h-7zM${x + 1} ${y + 1}v5h5v-5zM${x + 2} ${y + 2}h3v3h-3z`;
+  return qrCache = `<svg viewBox="-1 -1 ${n + 2} ${n + 2}" role="img" aria-label="QR Ph code"><path fill-rule="evenodd" d="${d}${f(0, 0)}${f(n - 7, 0)}${f(0, n - 7)}"/></svg>`;
+}
+
+// ---------- motion ----------
+function tween(el, to, dur = 260, from) {
+  if (from === undefined) from = el._v ?? 0;
+  el._v = to; cancelAnimationFrame(el._raf);
+  if (RM || !dur || from === to) { el.textContent = peso(to); return; }
+  const t0 = performance.now();
+  const f = t => {
+    const k = Math.min(1, (t - t0) / dur), e = 1 - (1 - k) ** 3;
+    el.textContent = peso(Math.round(from + (to - from) * e));
+    if (k < 1) el._raf = requestAnimationFrame(f);
+  };
+  el._raf = requestAnimationFrame(f);
+}
+// Replace host's content with html: old pane fades out (absolute), new pane slides/fades in, host height animates.
+function swap(host, html, dir = 0) {
+  const nu = document.createElement('div');
+  nu.className = 'pane'; nu.innerHTML = html;
+  $$(':scope > [data-leaving]', host).forEach(n => n.remove());
+  const old = host.firstElementChild;
+  if (!old || RM) { host.replaceChildren(nu); return nu; }
+  const h0 = host.offsetHeight;
+  old.dataset.leaving = ''; old.inert = true;
+  Object.assign(old.style, {position: 'absolute', top: 0, left: 0, right: 0});
+  host.append(nu);
+  const h1 = host.offsetHeight, ease = 'cubic-bezier(.2,.8,.2,1)', dx = dir * 28;
+  old.animate([{opacity: 1, transform: 'none'}, {opacity: 0, transform: `translateX(${-dx}px)`}], {duration: 180, easing: 'ease-in', fill: 'forwards'}).onfinish = () => old.remove();
+  nu.animate([{opacity: 0, transform: dir ? `translateX(${dx}px)` : 'translateY(6px)'}, {opacity: 1, transform: 'none'}], {duration: 300, delay: 70, easing: ease, fill: 'backwards'});
+  if (h0 !== h1) {
+    Object.assign(host.style, {overflow: 'clip', overflowClipMargin: '8px'});
+    host.animate([{height: h0 + 'px'}, {height: h1 + 'px'}], {duration: 320, easing: ease}).onfinish = () => { host.style.overflow = ''; };
+  }
+  return nu;
+}
+
+// ---------- sale state ----------
+const blank = () => ({method: null, buf: '', fresh: false, tendered: 0, confirmed: false, ref: '', kind: 'Card', timer: 0, legs: [], sale: null});
+function resetPay(st) { clearTimeout(st.timer); Object.assign(st, {buf: '', fresh: false, tendered: 0, confirmed: false, ref: '', kind: 'Card', timer: 0}); }
+const ready = st => !st.sale && (st.method === 'cash' ? st.tendered >= TOTAL
+  : st.method === 'card' || ((st.method === 'gcash' || st.method === 'qr') && st.confirmed));
+function complete(st) {
+  clearTimeout(st.timer);
+  const legs = st.legs.length
+    ? st.legs.map(l => ({method: l.method, amount: l.amount, kind: l.kind, ref: l.ref}))
+    : [{method: st.method, amount: st.method === 'cash' ? st.tendered : TOTAL, kind: st.kind, ref: st.ref}];
+  const paid = legs.reduce((s, l) => s + l.amount, 0);
+  return st.sale = {or: String(orSeq++).padStart(6, '0'), at: new Date(), legs, paid, change: paid - TOTAL};
+}
+
+// ---------- shared blocks ----------
+const KEYS = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '.', '0', '⌫'];
+function tenderHTML(total, o = {}) {
+  const field = o.keypad
+    ? `<div class="t-display num" aria-live="polite"><span class="cur">₱</span><span class="t-val">0</span></div>`
+    : `<label class="t-field"><span class="cur">₱</span><input class="t-in num" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-label="Cash received"></label>`;
+  return `<div class="tender${o.keypad ? ' kp-mode' : ''}">
+    <div class="t-top"><div><div class="lbl">Cash received</div>${field}</div>
+      <div class="t-change"><div class="lbl t-clbl">Change</div><div class="num t-cval">—</div></div></div>
+    <div class="chips">${quick(total).map(([l, v]) => `<button type="button" class="chip" data-v="${v}">${l}</button>`).join('')}</div>
+    ${o.keypad ? `<div class="keypad">${KEYS.map(k => `<button type="button" class="key" data-k="${k}"${k === '⌫' ? ' aria-label="Backspace"' : ''}>${k}</button>`).join('')}</div>` : ''}
+  </div>`;
+}
+function press(st, k) {
+  if (st.fresh) { st.buf = ''; st.fresh = false; if (k === '⌫') return; }
+  if (k === '⌫') { st.buf = st.buf.slice(0, -1); return; }
+  const [p, d] = st.buf.split('.');
+  if (k === '.') { if (d === undefined) st.buf = (p || '0') + '.'; return; }
+  if (d !== undefined) { if (d.length < 2) st.buf += k; return; }
+  if (p.length < 7) st.buf = (p === '0' ? '' : p) + k;
+}
+function paintChange(pane, t, total) {
+  const lbl = $('.t-clbl', pane), v = $('.t-cval', pane);
+  const short = t > 0 && t < total;
+  lbl.textContent = short ? 'Short' : 'Change';
+  v.classList.toggle('is-short', short);
+  v.classList.toggle('is-ok', t >= total);
+  if (!t) { v.textContent = '—'; v._v = undefined; return; }
+  tween(v, short ? total - t : t - total);
+}
+function bindTender(pane, st, total, onChange) {
+  const inp = $('.t-in', pane), val = $('.t-val', pane);
+  const sync = () => {
+    st.tendered = toCentavos(st.buf);
+    if (val) val.textContent = showBuf(st.buf);
+    $$('.chip', pane).forEach(c => c.classList.toggle('on', st.tendered > 0 && +c.dataset.v === st.tendered));
+    paintChange(pane, st.tendered, total);
+    onChange();
+  };
+  if (inp) inp.oninput = () => { const s = sanitize(inp.value); if (s !== inp.value) inp.value = s; st.buf = s; sync(); };
+  $$('.chip', pane).forEach(c => c.onclick = () => { st.buf = bufOf(+c.dataset.v); st.fresh = true; if (inp) inp.value = st.buf; sync(); });
+  $$('.key', pane).forEach(k => k.onclick = () => { press(st, k.dataset.k); sync(); });
+  sync();
+}
+function waitHTML(method, total) {
+  const top = method === 'qr'
+    ? `<div class="qr">${qrSVG()}</div>`
+    : `<div class="gc"><div class="lbl">Customer sends to</div><div class="gc-num num">0917 555 0142</div><div class="lbl">EJ Hardware · GCash</div></div>`;
+  return `<div class="wait">${top}
+    <div class="w-amt num">${peso(total)}</div>
+    <div class="w-status" aria-live="polite"><span class="spin"></span><span class="w-ok">${CHECK_SM}</span><span class="w-text">Waiting for payment…</span></div>
+    <button type="button" class="link w-mark">Mark as paid</button>
+  </div>`;
+}
+function bindWait(pane, st, onChange, delay = 1600) {
+  const ok = () => {
+    clearTimeout(st.timer);
+    if (st.confirmed || !pane.isConnected) return;
+    st.confirmed = true; st.ref = refNo();
+    $('.w-status', pane).classList.add('ok');
+    $('.w-text', pane).textContent = `Received · Ref ${st.ref}`;
+    $('.w-mark', pane).hidden = true;
+    onChange();
+  };
+  st.timer = setTimeout(ok, delay);
+  $('.w-mark', pane).onclick = ok;
+}
+const cardHTML = () => `<div class="cardpay">
+  <div class="lbl">Type</div>
+  <div class="seg sm" style="--n:3;--i:0"><span class="ind"></span>${['Card', 'Bank transfer', 'Cheque'].map((k, i) => `<button type="button" data-kind="${k}" aria-pressed="${!i}">${k}</button>`).join('')}</div>
+  <label><span class="lbl">Approval or reference no. (optional)</span><input class="input c-ref" autocomplete="off" placeholder="e.g. 004512"></label>
+</div>`;
+function bindCard(pane, st, onChange) {
+  const seg = $('.seg', pane);
+  $$('[data-kind]', pane).forEach((b, i) => b.onclick = () => {
+    st.kind = b.dataset.kind; seg.style.setProperty('--i', i);
+    $$('[data-kind]', pane).forEach(x => x.setAttribute('aria-pressed', x === b)); onChange();
+  });
+  const r = $('.c-ref', pane); r.oninput = () => { st.ref = r.value.trim(); };
+}
+function detailHTML(st, total, o) {
+  if (st.method === 'cash') return tenderHTML(total, o);
+  if (st.method === 'card') return cardHTML();
+  if (st.method) return waitHTML(st.method, total);
+  return `<div class="empty">Choose how the customer pays</div>`;
+}
+function showDetail(host, st, total, o, onChange, dir = 0) {
+  resetPay(st);
+  const pane = swap(host, detailHTML(st, total, o), dir);
+  if (st.method === 'cash') bindTender(pane, st, total, onChange);
+  else if (st.method === 'card') bindCard(pane, st, onChange);
+  else if (st.method) bindWait(pane, st, onChange);
+  onChange();
+  if (o.focus) $('.t-in', pane)?.focus({preventScroll: true});
+  return pane;
+}
+const linesHTML = () => CART.map(i => `<div class="line"><div><div class="l-name">${esc(i.name)}</div><div class="lbl num">${i.qty} × ${peso(i.price)}</div></div><div class="num l-amt">${peso(i.qty * i.price)}</div></div>`).join('');
+const totalsHTML = () => `<div class="totals">
+  <div class="rc-row sub"><span>VATable sales</span><span class="num">${peso(VATABLE)}</span></div>
+  <div class="rc-row sub"><span>VAT 12%</span><span class="num">${peso(VAT)}</span></div>
+  <div class="rc-row total"><span>Total</span><span class="num">${peso(TOTAL)}</span></div></div>`;
+function receiptHTML(sale) {
+  const d = sale.at;
+  const when = d.toLocaleDateString('en-PH', {month: 'short', day: 'numeric', year: 'numeric'}) + ' · ' + d.toLocaleTimeString('en-PH', {hour: 'numeric', minute: '2-digit'});
+  return `<div class="rc">
+    <div class="rc-head"><span class="num">OR #${sale.or}</span><span>${when}</span></div>
+    ${CART.map(i => `<div class="rc-row"><span>${esc(i.name)} <span class="x-q num">×${i.qty}</span></span><span class="num">${peso(i.qty * i.price)}</span></div>`).join('')}
+    <div class="rc-row total"><span>Total</span><span class="num">${peso(TOTAL)}</span></div>
+    ${sale.legs.map(l => `<div class="rc-row sub"><span>${esc(legName(l))}${l.method === 'cash' ? ' tendered' : ''}${l.ref ? ` · <span class="num">${esc(l.ref)}</span>` : ''}</span><span class="num">${peso(l.amount)}</span></div>`).join('')}
+    ${sale.change > 0 ? `<div class="rc-row sub"><span>Change</span><span class="num">${peso(sale.change)}</span></div>` : ''}
+  </div>`;
+}
+function doneHTML(sale, o = {rc: true}) {
+  const hasChange = sale.change > 0, via = sale.legs.map(legName).join(' + ');
+  return `<div class="done" aria-live="polite">
+    <div class="mark">${MARK}</div>
+    <h2 class="done-h" style="--i:1">Sale complete</h2>
+    <div class="lbl done-sub" style="--i:2">${hasChange ? 'Change due' : 'Paid · ' + esc(via)}</div>
+    <div class="done-num num" style="--i:2" data-to="${hasChange ? sale.change : sale.paid}">${peso(0)}</div>
+    ${hasChange ? `<div class="lbl num" style="--i:3">${esc(via)} ${peso(sale.paid)} · Total ${peso(TOTAL)}</div>` : ''}
+    ${o.rc ? `<div class="rc-wrap" style="--i:4">${receiptHTML(sale)}</div>` : `<div class="lbl num" style="--i:3">OR #${sale.or}</div>`}
+    <div class="actions" style="--i:5"><button type="button" class="btn soft d-print">Print receipt</button><button type="button" class="btn primary d-new" data-primary>New sale</button></div>
+  </div>`;
+}
+function bindDone(pane, onNew) {
+  const n = $('.done-num', pane);
+  setTimeout(() => { tween(n, +n.dataset.to, 700, 0); setTimeout(() => n.classList.add('settled'), RM ? 0 : 720); }, RM ? 0 : 280);
+  const pr = $('.d-print', pane);
+  pr.onclick = () => { // lab: fake printer
+    pr.disabled = true; pr.textContent = 'Printing…';
+    setTimeout(() => { pr.disabled = false; pr.innerHTML = `${CHECK_SM} Printed`; }, 900);
+  };
+  $('.d-new', pane).onclick = onNew;
+  return pane;
+}
+
+// ---------- 1 · Keypad ----------
+function flowKeypad(el) {
+  el.innerHTML = `<div class="kp card"><div class="host"></div></div>`;
+  const host = $('.host', el);
+  let st;
+  const start = () => {
+    st = blank(); st.method = 'cash';
+    const pane = swap(host, `
+      <div class="kp-head"><div><div class="lbl">Amount due</div><div class="hero num">${peso(TOTAL)}</div></div><div class="lbl">${CART.length} items · Walk-in</div></div>
+      <div class="seg" role="group" aria-label="Payment method" style="--n:${METHODS.length};--i:0"><span class="ind"></span>${METHODS.map((m, i) => `<button type="button" data-m="${m.id}" aria-pressed="${!i}">${dot(m.id)}${m.label}</button>`).join('')}</div>
+      <div class="dhost kp-body"></div>
+      <button type="button" class="btn primary xl go" data-primary disabled>Complete sale</button>`);
+    const go = $('.go', pane), dh = $('.dhost', pane), seg = $('.seg', pane);
+    const onChange = () => { go.disabled = !ready(st); };
+    $$('button', seg).forEach((b, i) => b.onclick = () => {
+      if (st.method === b.dataset.m) return;
+      seg.style.setProperty('--i', i);
+      $$('button', seg).forEach(x => x.setAttribute('aria-pressed', x === b));
+      st.method = b.dataset.m;
+      showDetail(dh, st, TOTAL, {keypad: true}, onChange);
+    });
+    showDetail(dh, st, TOTAL, {keypad: true}, onChange);
+    go.onclick = () => { if (ready(st)) bindDone(swap(host, doneHTML(complete(st))), start); };
+  };
+  start();
+  return {
+    key(e) {
+      if (e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+      const k = e.key === 'Backspace' ? '⌫' : e.key;
+      const b = $$('.key', el).find(x => x.dataset.k === k && !x.closest('[inert]'));
+      if (!b) return;
+      e.preventDefault(); b.click();
+      b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 120);
+    },
+  };
+}
+
+// ---------- 2 · Steps ----------
+function flowSteps(el) {
+  el.innerHTML = `<div class="st">
+    <div class="st-top"><button type="button" class="icon-btn back" aria-label="Back">${ICON_BACK}</button><div class="prog"><i></i><i></i><i></i></div><span class="lbl prog-l"></span></div>
+    <div class="host"></div></div>`;
+  const host = $('.host', el), back = $('.back', el);
+  let st = blank();
+  const setStep = n => {
+    $$('.prog i', el).forEach((b, i) => b.classList.toggle('on', i < n));
+    $('.prog-l', el).textContent = ['Method', 'Payment', 'Done'][n - 1];
+    back.style.visibility = n === 2 ? 'visible' : 'hidden';
+  };
+  const step1 = dir => {
+    resetPay(st); st.method = null; setStep(1);
+    const pane = swap(host, `<div class="st-hero"><div class="lbl">Total due</div><div class="hero xl num">${peso(TOTAL)}</div><div class="lbl">${CART.length} items · VAT inclusive</div></div>
+      <div class="rows card">${METHODS.map(m => `<button type="button" class="row" data-m="${m.id}">${dot(m.id)}<span><span class="r-name">${m.label}</span><span class="lbl">${m.hint}</span></span>${ICON_CHEV}</button>`).join('')}</div>`, dir);
+    $$('.row', pane).forEach(r => r.onclick = () => { st.method = r.dataset.m; step2(); });
+  };
+  const step2 = () => {
+    setStep(2);
+    const pane = swap(host, `<div class="st-sum"><span class="pill" data-m="${st.method}">${M[st.method].label}</span><span class="num st-due">Due <b>${peso(TOTAL)}</b></span></div>
+      <div class="card st-card"><div class="dhost"></div></div>
+      <button type="button" class="btn primary xl go" data-primary disabled>Complete sale</button>`, 1);
+    const go = $('.go', pane);
+    showDetail($('.dhost', pane), st, TOTAL, {focus: true}, () => { go.disabled = !ready(st); });
+    go.onclick = () => {
+      if (!ready(st)) return;
+      setStep(3);
+      bindDone(swap(host, doneHTML(complete(st)), 1), () => { st = blank(); step1(0); });
+    };
+  };
+  back.onclick = () => step1(-1);
+  step1(0);
+}
+
+// ---------- 3 · Receipt beside ----------
+function flowReceipt(el) {
+  el.innerHTML = `<div class="sv">
+    <section class="sv-pay card"><div class="host"></div></section>
+    <aside class="sv-rc card" aria-label="Receipt">
+      <div class="sv-rh"><div><div class="h">EJ Hardware</div><div class="lbl num sv-or"></div></div><span class="pill sv-state">Draft</span></div>
+      <div class="lines">${linesHTML()}</div>${totalsHTML()}<div class="sv-paid"></div>
+    </aside></div>`;
+  const host = $('.host', el), paidEl = $('.sv-paid', el), state = $('.sv-state', el), orEl = $('.sv-or', el);
+  let st;
+  const paintRc = () => {
+    const rows = [];
+    if (st.method === 'cash' && st.tendered) {
+      rows.push(['Cash tendered', peso(st.tendered)]);
+      rows.push(st.tendered >= TOTAL ? ['Change', peso(st.tendered - TOTAL)] : ['Short', peso(TOTAL - st.tendered)]);
+    } else if (st.method === 'gcash' || st.method === 'qr') rows.push([M[st.method].label, st.confirmed ? peso(TOTAL) : 'Waiting…']);
+    else if (st.method === 'card') rows.push([st.kind, peso(TOTAL)]);
+    paidEl.innerHTML = rows.map(([a, b]) => `<div class="rc-row sub"><span>${esc(a)}</span><span class="num">${b}</span></div>`).join('');
+  };
+  const start = () => {
+    st = blank();
+    orEl.textContent = `OR #${String(orSeq).padStart(6, '0')}`;
+    state.className = 'pill sv-state'; state.textContent = 'Draft';
+    const pane = swap(host, `<div class="lbl">Amount due</div><div class="hero num">${peso(TOTAL)}</div>
+      <div class="tiles">${METHODS.map(m => `<button type="button" class="tile" data-m="${m.id}" aria-pressed="false">${dot(m.id)}<span class="tl-name">${m.label}</span><span class="lbl">${m.hint}</span></button>`).join('')}</div>
+      <div class="dhost"></div>
+      <button type="button" class="btn primary xl go" data-primary disabled>Complete sale</button>`);
+    const go = $('.go', pane), dh = $('.dhost', pane);
+    const onChange = () => { go.disabled = !ready(st); paintRc(); };
+    $$('.tile', pane).forEach(t => t.onclick = () => {
+      if (st.method === t.dataset.m) return;
+      st.method = t.dataset.m;
+      $$('.tile', pane).forEach(x => x.setAttribute('aria-pressed', x === t));
+      showDetail(dh, st, TOTAL, {focus: true}, onChange);
+    });
+    showDetail(dh, st, TOTAL, {}, onChange);
+    go.onclick = () => {
+      if (!ready(st)) return;
+      const sale = complete(st);
+      orEl.textContent = `OR #${sale.or}`;
+      state.className = 'pill ok sv-state pop'; state.textContent = 'Paid';
+      bindDone(swap(host, doneHTML(sale, {rc: false})), start);
+    };
+  };
+  start();
+}
+
+// ---------- 4 · Sheet ----------
+function flowSheet(el) {
+  el.innerHTML = `<div class="sh">
+    <div class="sh-cart card">
+      <div class="sh-top"><div><div class="lbl">Current sale</div><div class="h">Walk-in customer</div></div><span class="lbl">${CART.length} items</span></div>
+      <div class="lines">${linesHTML()}</div>${totalsHTML()}
+      <button type="button" class="btn primary xl sh-open" data-primary>Check out · ${peso(TOTAL)}</button>
+    </div>
+    <div class="scrim"></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Take payment" inert><div class="grab"></div><div class="host"></div></div>
+  </div>`;
+  const sh = $('.sh', el), cart = $('.sh-cart', el), sheet = $('.sheet', el), host = $('.host', el), openBtn = $('.sh-open', el);
+  let st = blank();
+  const close = () => {
+    resetPay(st); sh.classList.remove('open');
+    sheet.inert = true; cart.inert = false; openBtn.focus({preventScroll: true});
+  };
+  const open = () => {
+    st = blank(); st.method = 'cash';
+    host.replaceChildren();
+    const pane = swap(host, `<div class="sh-head"><div><div class="lbl">Charge</div><div class="hero md num">${peso(TOTAL)}</div></div><button type="button" class="icon-btn sh-x" aria-label="Close">${ICON_X}</button></div>
+      <div class="mpills">${METHODS.map((m, i) => `<button type="button" class="mpill" data-m="${m.id}" aria-pressed="${!i}">${dot(m.id)}${m.label}</button>`).join('')}</div>
+      <div class="dhost"></div>
+      <button type="button" class="btn primary xl go" data-primary disabled>Complete sale</button>`);
+    const go = $('.go', pane), dh = $('.dhost', pane);
+    const onChange = () => { go.disabled = !ready(st); };
+    $('.sh-x', pane).onclick = close;
+    $$('.mpill', pane).forEach(b => b.onclick = () => {
+      if (st.method === b.dataset.m) return;
+      st.method = b.dataset.m;
+      $$('.mpill', pane).forEach(x => x.setAttribute('aria-pressed', x === b));
+      showDetail(dh, st, TOTAL, {focus: true}, onChange);
+    });
+    showDetail(dh, st, TOTAL, {focus: true}, onChange);
+    go.onclick = () => { if (ready(st)) bindDone(swap(host, doneHTML(complete(st))), close); };
+    sh.classList.add('open'); sheet.inert = false; cart.inert = true;
+  };
+  openBtn.onclick = open;
+  $('.scrim', el).onclick = close;
+  return { key(e) { if (e.key === 'Escape' && sh.classList.contains('open')) close(); } };
+}
+
+// ---------- 5 · Method cards ----------
+function flowCards(el) {
+  el.innerHTML = `<div class="mc"><div class="host"></div></div>`;
+  const host = $('.host', el);
+  let st;
+  const start = () => {
+    st = blank();
+    const pane = swap(host, `<div class="mc-head"><div class="lbl">Total due</div><div class="hero num">${peso(TOTAL)}</div></div>
+      <div class="mc-list">${METHODS.map(m => `<div class="mcard card" data-m="${m.id}">
+        <button type="button" class="mc-top" aria-expanded="false">${dot(m.id)}<span class="mc-name">${m.label}</span><span class="lbl mc-hint">${m.hint}</span>${ICON_CHEV}</button>
+        <div class="mc-body" inert><div class="mc-inner"><div class="mc-pad"><div class="dhost"></div><button type="button" class="btn primary xl go" data-primary disabled>Complete sale</button></div></div></div>
+      </div>`).join('')}</div>`);
+    const list = $('.mc-list', pane), cards = $$('.mcard', pane);
+    const onChange = () => cards.forEach(c => { $('.go', c).disabled = !(c.dataset.m === st.method && ready(st)); });
+    cards.forEach(c => $('.mc-top', c).onclick = () => {
+      const opening = st.method !== c.dataset.m;
+      cards.forEach(x => {
+        const on = opening && x === c;
+        x.classList.toggle('open', on);
+        $('.mc-top', x).setAttribute('aria-expanded', on);
+        $('.mc-body', x).inert = !on;
+      });
+      list.classList.toggle('has-open', opening);
+      resetPay(st);
+      st.method = opening ? c.dataset.m : null;
+      if (opening) { const dh = $('.dhost', c); dh.replaceChildren(); showDetail(dh, st, TOTAL, {focus: true}, onChange); }
+      onChange();
+    });
+    $$('.go', pane).forEach(g => g.onclick = () => { if (ready(st)) bindDone(swap(host, doneHTML(complete(st))), start); });
+  };
+  start();
+}
+
+// ---------- 6 · Split pay ----------
+function flowSplit(el) {
+  el.innerHTML = `<div class="sp"><div class="host"></div></div>`;
+  const host = $('.host', el);
+  const LEG = {cash: 'cash', gcash: 'GCash', qr: 'QR Ph', card: 'card'};
+  let st = blank(), fm = 'cash', seq = 0, P, F, D, mode;
+  const paid = () => st.legs.reduce((s, l) => s + l.amount, 0);
+  const rem = () => Math.max(0, TOTAL - paid());
+  const pending = () => st.legs.some(l => l.pending);
+
+  const start = () => {
+    st.legs.forEach(l => clearTimeout(l.timer));
+    st = blank(); fm = 'cash'; mode = null;
+    P = swap(host, `<div class="card sp-head">
+        <div class="sp-sum"><div><div class="lbl sp-rl">Remaining</div><div class="hero md num sp-rem">${peso(TOTAL)}</div></div><div class="lbl num">Total ${peso(TOTAL)}</div></div>
+        <div class="track"><i class="fill"></i></div>
+        <ul class="legs"></ul>
+      </div>
+      <div class="sp-host"></div>`);
+    $('.sp-rem', P)._v = TOTAL;
+    paint(true);
+  };
+  const paintHead = () => {
+    const r = rem(), change = paid() - TOTAL;
+    $('.sp-rl', P).textContent = r ? 'Remaining' : change > 0 ? 'Change due' : pending() ? 'Awaiting confirmation' : 'Fully paid';
+    tween($('.sp-rem', P), r || Math.max(0, change), 420);
+    $('.fill', P).style.width = Math.min(100, paid() / TOTAL * 100) + '%';
+    const ul = $('.legs', P);
+    ul.innerHTML = st.legs.map(l => `<li class="leg${l.shown ? '' : ' in'}">
+      <span class="pill" data-m="${l.method}">${esc(legName(l))}</span>
+      <span class="lbl leg-st">${l.pending ? '<span class="spin"></span>Waiting…' : l.method === 'cash' ? 'Tendered' : l.ref ? 'Received · <span class="num">' + l.ref + '</span>' : 'Charged'}</span>
+      <span class="num amt">${peso(l.amount)}</span>
+      <button type="button" class="x" data-id="${l.id}" aria-label="Remove ${esc(legName(l))} payment">${ICON_X}</button></li>`).join('');
+    st.legs.forEach(l => { l.shown = true; });
+    $$('.x', ul).forEach(b => b.onclick = () => {
+      const l = st.legs.find(x => x.id === +b.dataset.id);
+      clearTimeout(l.timer); st.legs = st.legs.filter(x => x !== l); paint(true);
+    });
+  };
+  // reset=true refills the amount with what's left; a GCash confirm arriving mid-typing must not.
+  const paint = reset => { paintHead(); rem() > 0 ? form(reset) : finish(); };
+
+  const form = reset => {
+    const sh = $('.sp-host', P);
+    if (mode !== 'form') {
+      mode = 'form'; reset = true;
+      const p = swap(sh, `<div class="card sp-form">
+        <div class="lbl sp-fl"></div>
+        <div class="mpills">${METHODS.map(m => `<button type="button" class="mpill" data-m="${m.id}">${dot(m.id)}${m.label}</button>`).join('')}</div>
+        <label class="t-field"><span class="cur">₱</span><input class="t-in num" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-label="Amount"></label>
+        <div class="chips"></div>
+        <div class="hint"></div>
+        <button type="button" class="btn primary xl add" data-primary disabled>Add payment</button></div>`);
+      F = {p, inp: $('.t-in', p), chips: $('.chips', p), hint: $('.hint', p), add: $('.add', p)};
+      F.inp.oninput = () => { const s = sanitize(F.inp.value); if (s !== F.inp.value) F.inp.value = s; paintForm(); };
+      $$('.mpill', p).forEach(b => b.onclick = () => { fm = b.dataset.m; refill(); });
+      F.add.onclick = addLeg;
+    }
+    if (reset) refill();
+  };
+  const refill = () => {
+    const r = rem();
+    $('.sp-fl', F.p).textContent = st.legs.length ? 'Add another payment' : 'Add a payment';
+    $$('.mpill', F.p).forEach(b => b.setAttribute('aria-pressed', b.dataset.m === fm));
+    F.inp.value = bufOf(r);
+    const chips = fm === 'cash' ? [['Remaining', r], ...DENOMS.map(v => [pesoShort(v), v])] : [['Remaining', r]];
+    F.chips.innerHTML = chips.map(([l, v]) => `<button type="button" class="chip" data-v="${v}">${l}</button>`).join('');
+    $$('.chip', F.chips).forEach(c => c.onclick = () => { F.inp.value = bufOf(+c.dataset.v); paintForm(); });
+    paintForm();
+  };
+  const paintForm = () => {
+    const r = rem(), amt = toCentavos(F.inp.value);
+    let ok = amt > 0, msg = '';
+    if (fm !== 'cash' && amt > r) { ok = false; msg = `${M[fm].label} can’t be more than the remaining ${peso(r)}.`; }
+    else if (fm === 'cash' && amt > r) msg = `Change ${peso(amt - r)}`;
+    else if (ok && amt < r) msg = `${peso(r - amt)} left after this`;
+    F.hint.textContent = msg;
+    F.hint.classList.toggle('warn', !ok && amt > 0);
+    F.add.disabled = !ok;
+    F.add.textContent = ok ? `Add ${peso(amt)} ${LEG[fm]}` : 'Add payment';
+    $$('.chip', F.chips).forEach(c => c.classList.toggle('on', +c.dataset.v === amt));
+  };
+  const addLeg = () => {
+    const amt = toCentavos(F.inp.value), r = rem();
+    if (!amt || (fm !== 'cash' && amt > r)) return;
+    const l = {id: ++seq, method: fm, amount: amt, kind: fm === 'card' ? 'Card' : undefined, pending: fm === 'gcash' || fm === 'qr'};
+    st.legs.push(l);
+    if (l.pending) l.timer = setTimeout(() => { l.pending = false; l.ref = refNo(); if (st.legs.includes(l)) paint(false); }, 1600);
+    if (fm === 'cash' && rem() > 0) fm = 'gcash'; // the usual split: some cash, the rest on GCash
+    paint(true);
+  };
+  const finish = () => {
+    const sh = $('.sp-host', P);
+    if (mode !== 'done') {
+      mode = 'done';
+      const p = swap(sh, `<div class="card sp-ready"><div class="w-status"><span class="spin"></span><span class="w-ok">${CHECK_SM}</span><span class="w-text"></span></div>
+        <button type="button" class="btn primary xl go" data-primary disabled>Complete sale</button></div>`);
+      D = {status: $('.w-status', p), text: $('.w-text', p), go: $('.go', p)};
+      D.go.onclick = () => { if (!st.sale && !pending() && !rem()) bindDone(swap(host, doneHTML(complete(st))), start); };
+    }
+    const w = pending();
+    D.status.classList.toggle('ok', !w);
+    D.text.textContent = w ? 'Waiting for payment to confirm…' : 'Fully paid · ' + st.legs.map(legName).join(' + ');
+    D.go.disabled = w;
+  };
+  start();
+}
+
+// ---------- switcher ----------
+const FLOWS = [
+  {id: 'keypad', name: 'Keypad', init: flowKeypad, desc: 'Cash-first. A calculator keypad with the change beside it; your keyboard types into it too.'},
+  {id: 'steps', name: 'Steps', init: flowSteps, desc: 'One question per screen: pick the method, then take the money. Slides forward and back.'},
+  {id: 'receipt', name: 'Receipt beside', init: flowReceipt, desc: 'Payment on the left, the live receipt on the right. Tendered and change land on the receipt as you type.'},
+  {id: 'sheet', name: 'Sheet', init: flowSheet, desc: 'The cart stays in view; payment rises over it as a drawer and grows to fit each method.'},
+  {id: 'cards', name: 'Method cards', init: flowCards, desc: 'Four cards. Tap one and it opens in place with only what that method needs.'},
+  {id: 'split', name: 'Split pay', init: flowSplit, desc: 'Part cash, part GCash (or any mix). Add payments until the balance reaches zero.'},
+];
+const nav = $('#switch'), stage = $('#stage'), descEl = $('#desc');
+let cur = -1;
+FLOWS.forEach((f, i) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.setAttribute('role', 'tab'); b.textContent = `${i + 1} · ${f.name}`;
+  b.onclick = () => show(i);
+  const s = document.createElement('section');
+  s.className = 'flow'; s.hidden = true; s.setAttribute('aria-label', f.name);
+  nav.append(b); stage.append(s);
+  Object.assign(f, {btn: b, el: s});
+  f.api = f.init(s) || {};
+});
+function show(i) {
+  if (i === cur) return;
+  cur = i;
+  FLOWS.forEach((f, j) => { f.el.hidden = j !== i; f.btn.setAttribute('aria-selected', j === i); });
+  descEl.textContent = FLOWS[i].desc;
+  try { history.replaceState(null, '', '#' + FLOWS[i].id); } catch {}
+  if (!RM) FLOWS[i].el.animate([{opacity: 0, transform: 'translateY(6px)'}, {opacity: 1, transform: 'none'}], {duration: 260, easing: 'cubic-bezier(.2,.8,.2,1)'});
+}
+show(Math.max(0, FLOWS.findIndex(f => '#' + f.id === location.hash)));
+
+document.addEventListener('keydown', e => {
+  const f = FLOWS[cur];
+  if (e.key === 'Enter' && !e.target.closest?.('button, a, textarea')) {
+    const b = $$('[data-primary]', f.el).find(b => !b.disabled && !b.closest('[inert]') && b.getClientRects().length);
+    if (b) { e.preventDefault(); b.click(); }
+    return;
+  }
+  f.api.key?.(e);
+});
+
+// money self-check: failures show as console errors
+(() => {
+  const a = console.assert;
+  a(peso(43750) === '₱437.50', 'peso'); a(peso(123456789) === '₱1,234,567.89', 'peso commas'); a(peso(5) === '₱0.05', 'peso cents');
+  a(toCentavos('500') === 50000 && toCentavos('437.5') === 43750 && toCentavos('0.05') === 5 && toCentavos('') === 0, 'toCentavos');
+  a(bufOf(43750) === '437.50' && toCentavos(bufOf(123405)) === 123405, 'bufOf');
+  a(sanitize('1,2a34.567.8') === '1234.56' && sanitize('007') === '7', 'sanitize');
+  a(VATABLE + VAT === TOTAL && TOTAL === 43750, 'totals');
+  a(quick(TOTAL).map(q => q[1]).join() === '43750,50000,100000', 'quick amounts');
+})();
+</script>
+</body>
+</html>

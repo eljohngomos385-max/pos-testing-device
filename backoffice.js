@@ -136,18 +136,73 @@ function escapeHtml(s) {
 
 // A redraw where the table slides to its new width while the widgets fade in where they stand (owner
 // 2026-09-26: no fly-in, and no gap between the two). The table sits above the rail while it narrows over
-// that column, so the fade shows through as the table clears it; both land together.
+// that column, so the fade shows through as the table clears it; both land together. Rail cards
+// (`data-rail`) that stay glide to their new place; new ones fade in.
 function slideRender(render) {
-  const main = () => [...document.querySelectorAll('.dash')].find(d => d.offsetParent)?.firstElementChild;
-  const from = main()?.offsetWidth;
+  const dash = () => [...document.querySelectorAll('.dash')].find(d => d.offsetParent);
+  // The table column. Transactions lays it out with display: contents (filters and table in the grid), so
+  // there it is the children: a contents box has no width to measure or animate.
+  const main = d => { const f = d?.firstElementChild; return !f ? [] : getComputedStyle(f).display === 'contents' ? [...f.children] : [f]; };
+  const width = ms => Math.max(0, ...ms.map(m => m.offsetWidth));
+  const cards = d => new Map([...(d ? d.querySelectorAll('[data-rail]') : [])].map(c => [c.dataset.rail, c.getBoundingClientRect()]));
+  const d0 = dash(), from = width(main(d0)), was = cards(d0);
   render();
-  const m = main(), to = m?.offsetWidth, rail = m?.nextElementSibling;
-  if (!m || !from || from === to || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const d = dash();
+  if (!d || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const t = { duration: 260, easing: 'cubic-bezier(.2, 0, 0, 1)' };
-  m.style.position = 'relative'; m.style.zIndex = 1;
-  m.animate([{ width: from + 'px' }, { width: to + 'px' }], t)
-    .finished.finally(() => { m.style.position = m.style.zIndex = ''; });
-  if (to < from && rail) rail.animate([{ opacity: 0 }, { opacity: 1 }], { ...t, delay: 40, easing: 'ease-out', fill: 'backwards' });
+  const ms = main(d), to = width(ms);
+  if (from && to && from !== to) for (const m of ms) {
+    m.style.position = 'relative'; m.style.zIndex = 1;
+    m.animate([{ width: from + 'px' }, { width: to + 'px' }], t)
+      .finished.finally(() => { m.style.position = m.style.zIndex = ''; });
+  }
+  for (const c of d.querySelectorAll('[data-rail]')) {
+    const r = was.get(c.dataset.rail), now = c.getBoundingClientRect();
+    if (!r) c.animate([{ opacity: 0 }, { opacity: 1 }], { ...t, delay: 40, easing: 'ease-out', fill: 'backwards' });
+    else if (r.left !== now.left || r.top !== now.top) c.animate([{ transform: `translate(${r.left - now.left}px, ${r.top - now.top}px)` }, { transform: 'none' }], t);
+  }
+}
+
+// Catalog | Stock and Summary | Items (.pd-switch, owner 2026-09-28): a click routes and re-renders the page, so
+// the switch is rebuilt. The click keeps where the thumb was; after the render (paint) the new thumb glides from
+// there and what sits below the head fades in. The head itself doesn't move.
+let switchFrom = null;
+document.addEventListener('click', (e) => {
+  const a = !e.button && !(e.ctrlKey || e.metaKey || e.shiftKey) && e.target.closest('.pd-switch .seg-btn:not(.active)');
+  const on = a && a.parentNode.querySelector('.active');
+  switchFrom = on ? { left: on.offsetLeft, width: on.offsetWidth } : null;
+}, true);
+function switchSettle() {
+  const from = switchFrom; switchFrom = null;
+  const sw = from && $('.view.active .pd-switch'), on = sw && sw.querySelector('.active');
+  if (!on || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const thumb = document.createElement('span');
+  thumb.className = 'pd-glide';
+  sw.classList.add('gliding'); sw.prepend(thumb);
+  thumb.animate([{ left: from.left + 'px', width: from.width + 'px' }, { left: on.offsetLeft + 'px', width: on.offsetWidth + 'px' }],
+    { duration: 200, easing: 'cubic-bezier(.2, 0, 0, 1)', fill: 'forwards' })
+    .finished.finally(() => { thumb.remove(); sw.classList.remove('gliding'); });
+  const head = sw.closest('.bar, .view-head');
+  for (const el of head.parentElement.children) if (el !== head) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
+}
+
+// ---------- Widgets menus ----------
+// Dashboard, Customers and Sales › Transactions each tick rail cards on and off from a Widgets menu. The rail
+// shows them in tick order (owner 2026-09-28): a tick puts the card last, Show all adds the rest in menu order.
+// The menu keeps its fixed order so ticks don't jump. Which are on, in order, is this device's choice
+// (HWPOS_STORE.ui `<page>Show`); until the first tick the old hide list `<page>Hide` sets it, in menu order.
+function widgetsOn(page, W) {
+  const ids = Object.keys(W), saved = HWPOS_STORE.ui.get(page + 'Show', null);
+  if (saved == null) { const off = String(HWPOS_STORE.ui.get(page + 'Hide', '') || '').split(','); return ids.filter(id => !off.includes(id)); }
+  return String(saved).split(',').filter(id => ids.includes(id));
+}
+const widgetsMenu = (W, on) => `<div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr>${Object.entries(W).map(([id, n]) => `<button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}">${n}</button>`).join('')}`;
+// A tick on `el` in a Widgets menu: store the new order, then redraw through slideRender().
+function widgetsTick(page, W, el, render) {
+  const on = widgetsOn(page, W), id = el.dataset.w, all = el.dataset.wAll;
+  HWPOS_STORE.ui.set(page + 'Show', (all ? (all === 'on' ? [...on, ...Object.keys(W).filter(x => !on.includes(x))] : [])
+    : on.includes(id) ? on.filter(x => x !== id) : [...on, id]).join(','));
+  slideRender(render);
 }
 
 function showToast(msg) {
@@ -591,6 +646,7 @@ function paint() {
     if (on) b.closest('.side-group')?.querySelector('.side-grouphead').setAttribute('aria-expanded', 'true');
   });
   renderCurrentView();
+  switchSettle();
 }
 
 // ---------- Sidebar switchers ----------
@@ -1058,9 +1114,8 @@ function dashTx(W) {
 // The rail: targets (always today and this month, whatever the range says), low stock, payment methods.
 const calmRow = (nm, amt, cmp = null, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span><span class="amt">${amt}</span>${cmp !== null ? `<span class="cmp ${cls}">${cmp}</span>` : ''}</div>`;
 // The rail's cards. The Widgets menu shows and hides them, like Sales › Transactions; which are off is this
-// device's choice (HWPOS_STORE.ui 'dashHide').
+// device's choice, in tick order (widgetsOn 'dash').
 const DASH_W = { daily: 'Daily sales target', monthly: 'Monthly sales target', low: 'Low stock', pay: 'Payment methods' };
-const dashHidden = () => String(HWPOS_STORE.ui.get('dashHide', '') || '').split(',').filter(Boolean);
 
 function dashRail(W, on) {
   const t = dashTargets(W.now);
@@ -1102,7 +1157,7 @@ function dashRail(W, on) {
       ? `<div class="rows">${payRows.map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v))).join('')}${calmRow('Total', pesoShort(payRows.reduce((s, p) => s + p[1], 0)), null, 'total')}</div>`
       : '<p class="note" style="margin:10px 0 0">No sales in this range.</p>');
   };
-  return on.map(id => `<section class="card w">${out[id]()}</section>`).join('');
+  return on.map(id => `<section class="card w" data-rail="${id}">${out[id]()}</section>`).join('');
 }
 
 // The pop-up: one bar (hour or day), or one receipt. ‹ › step through the live bars or the range's receipts.
@@ -1162,8 +1217,8 @@ function renderDashboard() {
   $('#dashPlot').innerHTML = dashPlot(W, chart);
   $('#dashTx').innerHTML = dashTx(W);
   $('#dashTxAll').href = Router.href('transactions', '');
-  const on = Object.keys(DASH_W).filter(id => !dashHidden().includes(id));
-  $('#dashW').innerHTML = `<div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr>${Object.entries(DASH_W).map(([id, n]) => `<button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}">${n}</button>`).join('')}`;
+  const on = widgetsOn('dash', DASH_W);
+  $('#dashW').innerHTML = widgetsMenu(DASH_W, on);
   $('#dashGrid').classList.toggle('solo', !on.length);
   $('#dashRail').innerHTML = dashRail(W, on);
 
@@ -1204,11 +1259,7 @@ function initDashboard() {
   // Widgets: a menu tick — the main column glides to its new width (slideRender).
   $('#dashW').addEventListener('click', (e) => {
     const w = e.target.closest('[data-w], [data-w-all]');
-    if (!w) return;
-    const id = w.dataset.w, off = dashHidden();
-    HWPOS_STORE.ui.set('dashHide', w.dataset.wAll ? (w.dataset.wAll === 'on' ? '' : Object.keys(DASH_W).join(','))
-      : (off.includes(id) ? off.filter(x => x !== id) : [...off, id]).join(','));
-    slideRender(renderDashboard);
+    if (w) widgetsTick('dash', DASH_W, w, renderDashboard);
   });
   $('#dashW').addEventListener('toggle', (e) => {   // hang it under its button, right edges flush
     if (e.newState !== 'open') return;
@@ -1318,8 +1369,7 @@ function renderCustomers() {
   const back = $('#custBack');
   if (list) list.hidden = !!customer;
   if (detail) detail.hidden = !customer;
-  // The account screen has its figures in its first card; the list has the widget rail and its Widgets menu.
-  $('#custWBtn').style.display = customer ? 'none' : '';
+  // The account screen has its figures in its first card; the list has them in its strip.
   $('#custAddBtn').style.display = customer ? 'none' : '';   // the account page edits; adding is the list's
   if (back) {
     back.hidden = !customer;
@@ -1393,9 +1443,7 @@ const custPill = ([tone, label]) => tone === 'muted'
   ? `<span class="muted">${label}</span>` : `<span class="status-pill ${tone}">${label}</span>`;
 
 // The list's figures: a 288px rail beside the table, Sales › Transactions' blocks (bo-calm.css, .calm-cust).
-// The Widgets menu shows and hides them; which are off is this device's choice (HWPOS_STORE.ui 'custHide').
-const CUST_W = { owed: 'Outstanding credit', pool: 'Credit limit pool', use: 'Utilization', near: 'Near limit' };
-const custHidden = () => String(HWPOS_STORE.ui.get('custHide', '') || '').split(',').filter(Boolean);
+// The Widgets menu shows and hides them; which are on, in tick order, is this device's choice (widgetsOn 'cust').
 
 function renderCustomerList() {
   const q = state.custQuery.trim().toLowerCase();
@@ -1411,22 +1459,20 @@ function renderCustomerList() {
 
   const totalOutstanding = customers.reduce((a, c) => a + (c.currentBalance || 0), 0);
   const totalLimit = customers.reduce((a, c) => a + (c.creditLimit || 0), 0);
-  const overLimit = customers.filter(c => c.currentBalance > c.creditLimit * 0.75).length;
+  const overLimit = customers.filter(c => custStatus(c)[1] === 'Near limit').length;   // the status filter's own test, so the click shows exactly these
   const active = customers.filter(c => c.currentBalance > 0).length;
   const utilization = totalLimit > 0 ? Math.round(totalOutstanding / totalLimit * 100) : 0;
 
   $('#custTitle').textContent = 'Customers';
-  const on = Object.keys(CUST_W).filter(id => !custHidden().includes(id));
-  const w = {   // [number, note, note class]
-    owed: [pesoShort(totalOutstanding), `${active} active debtors`],
-    pool: [pesoShort(totalLimit), 'total approved'],
-    use: [utilization + '%', 'of total pool'],
-    near: [overLimit, '> 75% utilized', overLimit > 0 ? ' down' : ''],
-  };
-  $('#custW').innerHTML = `<div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr>${Object.entries(CUST_W).map(([id, n]) => `<button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}">${n}</button>`).join('')}`;
-  $('#custDash').classList.toggle('solo', !on.length);
-  $('#custRail').innerHTML = on.map(id => `<section class="card w one"><div class="top band one" title="${escapeHtml(w[id][1])}"><span>${CUST_W[id]}</span>
-    <span class="acts"><span class="cnt${w[id][2] || ''}">${escapeHtml(w[id][1])}</span><span class="nv">${w[id][0]}</span></span></div></section>`).join('');
+  // One thin strip over the filters (owner 2026-09-28; a Widgets rail before): always on, the note when you point
+  // at a figure. Near limit is a button for the status filter.
+  const near = prm.status === 'Near limit';
+  const cell = (tag, lbl, num, note, extra = '') => `<${tag} class="top one"${extra} title="${escapeHtml(note)}"><span>${lbl}</span>
+    <span class="acts"><span class="cnt${tag === 'button' && overLimit ? ' down' : ''}">${escapeHtml(note)}</span><span class="nv">${num}</span></span></${tag}>`;
+  $('#custStrip').innerHTML = cell('div', 'Outstanding credit', pesoShort(totalOutstanding), `${active} active debtors`)
+    + cell('div', 'Credit limit pool', pesoShort(totalLimit), 'total approved')
+    + cell('div', 'Utilization', utilization + '%', 'of total pool')
+    + cell('button', 'Near limit', overLimit, '> 75% utilized', ` type="button" data-act="custNear" aria-pressed="${near}"`);
 
   const pg = paginate(list, prm.page);
   $('#custPager').innerHTML = pagerHtml(pg);
@@ -1902,27 +1948,13 @@ function wireEvents() {
     const el = e.target.closest('.view-customers [data-cust]');
     if (el) Router.setParams({ [el.dataset.cust]: el.value, page: '' });
   });
-  // Widgets: a menu tick — the table glides to its new width (slideRender).
-  document.addEventListener('click', (e) => {
-    const w = e.target.closest('#custW [data-w], #custW [data-w-all]');
-    if (!w) return;
-    const id = w.dataset.w, off = custHidden();
-    HWPOS_STORE.ui.set('custHide', w.dataset.wAll ? (w.dataset.wAll === 'on' ? '' : Object.keys(CUST_W).join(','))
-      : (off.includes(id) ? off.filter(x => x !== id) : [...off, id]).join(','));
-    slideRender(renderCustomerList);
-  });
-  $('#custW')?.addEventListener('toggle', (e) => {   // hang it under its button, right edges flush
-    if (e.newState !== 'open') return;
-    const m = e.currentTarget, r = $('#custWBtn').getBoundingClientRect();
-    m.style.top = r.bottom + 6 + 'px';
-    m.style.left = Math.max(16, Math.min(r.right - m.offsetWidth, innerWidth - m.offsetWidth - 16)) + 'px';
-  });
 
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-act]');
     if (!el || !e.target.closest('.view-customers')) return;
     const act = el.dataset.act;
     if (act === 'custEdit') return openCustomerDialog(el.dataset.id);
+    if (act === 'custNear') return Router.setParams({ status: Router.route().params.status === 'Near limit' ? '' : 'Near limit', page: '' });
     if (act === 'custCancel') return $('#custDlg')?.close();
     if (act === 'stExport') {
       const c = allCustomerRecords().find(x => x.id === state.detailId);

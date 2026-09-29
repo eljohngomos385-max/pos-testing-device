@@ -208,6 +208,7 @@ const state = {
   tileText: (storageGet(STORAGE_TILE_TEXT, 'md') || 'md'),
   showPrice: storageGet(STORAGE_SHOW_PRICE, '0') === '1',
   theme: (storageGet(STORAGE_THEME, 'dark') || 'dark'),
+  cartHead: window.HWPOS_STORE?.ui.get('cartHead', '1') !== '0',               // the Item / Amount band
   custTypeFilter: 'all',
   tierDiscountDismissed: false,
   customersQuery: '',
@@ -846,8 +847,8 @@ function renderAllFolderUis() {
 
 // ---------- Roles ----------
 const ROLE_ALLOWED = {
-  cashier: new Set(['sell', 'orders', 'settings', 'checkout', 'checkout-success']),
-  manager: new Set(['sell', 'orders', 'customers', 'reports', 'back-office', 'settings', 'checkout', 'checkout-success']),
+  cashier: new Set(['sell', 'orders', 'settings', 'checkout']),
+  manager: new Set(['sell', 'orders', 'customers', 'reports', 'back-office', 'settings', 'checkout']),
 };
 function canAccess(view) {
   const allowed = ROLE_ALLOWED[state.role] || ROLE_ALLOWED.manager;
@@ -878,9 +879,12 @@ function switchView(view) {
     showToast('You do not have permission for that page');
     return;
   }
+  const fromCheckout = state.view === 'checkout';
   state.view = view;
   $$('.side-link').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === view));
+  if (view === 'checkout') railCheckout(true);
+  else if (fromCheckout) railCheckout(false, view === 'sell');
   if (view === 'back-office') { window.open('backoffice.html', '_blank', 'noopener'); return; }
   if (view === 'settings') { renderPosSettings(); return; }
   if (view === 'orders') {
@@ -894,6 +898,48 @@ function switchView(view) {
   if (view === 'checkout') renderCheckout();
 }
 
+// Checkout keeps the sale's sidebar on screen (Simplified 2, cart-lab-checkout-2.js). The pane covers only what is
+// left of it; the sidebar tucks away in place what paying doesn't need (fulfilment, the ⋯, Discount, Check out), the
+// fulfilment shows on the customer row and the Total stays put. Nothing flies: the pane fades in and out. Under
+// 721px the sidebar sits below the products, so styles.css keeps the full-screen checkout there.
+function tuckRail(on) {
+  const side = $('#side');
+  clearTimeout(tuckRail._t); side.classList.add('co-anim');
+  side.classList.toggle('co-mode', on);
+  tuckRail._t = setTimeout(() => side.classList.remove('co-anim'), 300);
+}
+function fitCheckout() {
+  const side = $('#side');
+  if (!$('#app').classList.contains('co-side') || !side.offsetWidth) return;
+  $('.view-checkout').style.setProperty('--co-right', `${$('.main').getBoundingClientRect().right - side.getBoundingClientRect().left}px`);
+}
+function railCheckout(on, fade) {
+  const app = $('#app'), side = $('#side'), pane = $('.view-checkout');
+  const end = () => {
+    $('.rail-rcpt', side)?.remove(); $('.co-meta', side)?.remove();
+    pane.classList.remove('co-leaving'); pane.getAnimations().forEach(a => a.cancel());
+    app.classList.remove('co-side');
+  };
+  clearTimeout(railCheckout._t);
+  if (pane.classList.contains('co-leaving')) end();          // Check out tapped again mid fade-out
+  if (on) {
+    if (app.classList.contains('co-side')) return;
+    app.classList.add('co-side');
+    fitCheckout();
+    const meta = document.createElement('span'); meta.className = 'co-meta'; meta.textContent = fulfilLabel();
+    $('#customerBtn').insertBefore(meta, $('#customerBtn .chev'));
+    tuckRail(true);
+    pane.animate({ opacity: [0, 1] }, { duration: calmMs(200), easing: 'ease-out' });
+    return;
+  }
+  if (!app.classList.contains('co-side')) return;
+  tuckRail(false);
+  if (!fade) return end();
+  pane.classList.add('co-leaving');
+  [pane, $('.rail-rcpt', side), $('.co-meta', side)].forEach(el => el?.animate({ opacity: [1, 0] }, { duration: calmMs(140), fill: 'forwards' }));
+  railCheckout._t = setTimeout(end, calmMs(150));
+}
+
 // ---------- Sell view ----------
 function renderSellHeader() {
   const folder = state.folders.find(f => f.id === state.folderId);
@@ -903,7 +949,6 @@ function renderSellHeader() {
     const count = getFilteredSellProducts().length;
     c.textContent = `${count} item${count === 1 ? '' : 's'}`;
   }
-  // Pager label is owned by renderPager() — do not write it here.
 }
 
 function getFilteredSellProducts() {
@@ -1042,7 +1087,6 @@ function updateProductTrackPosition() {
     const step = (grid ? grid.clientWidth : 0) + gap;
     track.style.transform = `translate3d(-${(state.page - 1) * step}px, 0, 0)`;
   }
-  renderPager();
   renderSellHeader();
 }
 
@@ -1068,7 +1112,6 @@ function renderProducts() {
         <div class="nr-sub">Try a different keyword or pick another folder</div>
         ${state.query.trim() ? `<button class="text-btn nr-lost" type="button" data-act="lost-sale">Log “${escapeHtml(state.query.trim())}” as a lost sale</button>` : ''}
       </div>`;
-    renderPager();
     renderSellHeader();
     requestAnimationFrame(syncSellGridMetrics);
     return;
@@ -1089,7 +1132,6 @@ function renderProducts() {
         </div>`).join('')}
     </div>`;
 
-  renderPager();
   renderSellHeader();
   requestAnimationFrame(() => {
     syncSellGridMetrics();
@@ -1222,27 +1264,6 @@ function addVariantToCart() {
   $('#variantModal').hidden = true;
 }
 
-function renderPager() {
-  const total = totalPages();
-  const label = $('#bbPageLabel');
-  if (label) label.textContent = `PAGE ${state.page} / ${total}`;
-  const prev = $('#bbPrevBtn');
-  const next = $('#bbNextBtn');
-  if (prev) prev.disabled = state.page <= 1;
-  if (next) next.disabled = state.page >= total;
-
-  // Page dots (cap at 7 visible)
-  const dots = $('#bbPageDots');
-  if (dots) {
-    const maxDots = Math.min(total, 7);
-    let html = '';
-    for (let i = 1; i <= maxDots; i++) {
-      html += `<span class="bb-pagedot ${i === Math.min(state.page, maxDots) ? 'active' : ''}"></span>`;
-    }
-    dots.innerHTML = html;
-  }
-}
-
 function changePage(delta) {
   const t = totalPages();
   const prev = state.page;
@@ -1256,7 +1277,7 @@ function setTileSize(size) {
   state.tileSize = size;
   state.page = 1;
   storageSet(STORAGE_TILE_SIZE, size);
-  $$('.bb-size-btn').forEach(b => b.classList.toggle('active', b.dataset.size === size));
+  $$('.bb-size-btn[data-size]').forEach(b => b.classList.toggle('active', b.dataset.size === size));
   renderProducts();
 }
 
@@ -1706,7 +1727,7 @@ function removeCartItemFromModal() {
 function openCartDiscountModal() {
   if (state.cart.length === 0) {
     flashControl($('#cartDiscountBtn'));
-    flashControl($('.cart'));
+    flashControl($('#side'));
     return;
   }
   const cd = state.cartDiscount || { type: 'amount', value: 0 };
@@ -1751,28 +1772,70 @@ function setFulfilment(mode) {
   renderCart();
 }
 
-// The pills the owner configured, rebuilt in place. Pickup is never removable, so the
-// markup keeps it and delivery; a custom type is a pill cloned from pickup's.
-function applyFulfilMethods() {
-  const row = $('.cart-fulfilment-row');
+// The types the owner configured (Pickup can't be removed): one picker that opens into the list -- half a row has
+// no room for a toggle.
+const RAIL_UPDOWN = '<svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>';
+function renderFulRow() {
+  const row = $('#fulRow');
   if (!row) return;
   const methods = fulfilMethods(state.settings);
-  const keep = new Set(methods.map(m => m.key));
-  $$('.fulfil-pill[data-fulfil-custom]', row).forEach(b => b.remove());
-  $$('.fulfil-pill', row).forEach(b => { b.hidden = !keep.has(b.dataset.fulfil); });
-  const before = $('#cartDiscountBtn');
-  const template = $('.fulfil-pill[data-fulfil="pickup"]', row);
-  methods.filter(m => m.custom).forEach(({ key, label }) => {
-    const b = template.cloneNode(true);
-    b.classList.remove('active');
-    b.hidden = false;
-    b.dataset.fulfil = key;
-    b.dataset.fulfilCustom = '';
-    b.querySelector('span').textContent = label;
-    row.insertBefore(b, before);
-  });
   // A hidden or deleted type must not stay selected on the cart in front of the cashier.
-  if (!keep.has(state.fulfilment)) state.fulfilment = 'pickup';
+  if (!methods.some(m => m.key === state.fulfilment)) state.fulfilment = 'pickup';
+  const cur = methods.find(m => m.key === state.fulfilment) || methods[0];
+  row.innerHTML = `<button type="button" class="pick" id="fulPick" aria-haspopup="menu" aria-expanded="false"><span>${escapeHtml(cur.label)}</span>${RAIL_UPDOWN}</button>`;
+}
+const fulfilLabel = () => (fulfilMethods(state.settings).find(m => m.key === state.fulfilment) || { label: 'Pickup' }).label;
+
+// Settings -> Item / Amount header. Off: the rows explain themselves and the count moves beside Total.
+function applyCartHead(on) {
+  state.cartHead = on;
+  document.body.classList.toggle('rail-nohead', !on);
+  const cb = $('#posCartHead'); if (cb) cb.checked = on;
+}
+
+// ---------- The morph menu (cart-lab-stack-c.html) ----------
+// The menu grows out of its trigger's own box, each item the trigger's height, always in the same order (the hand
+// learns where each choice is); the current one is only bold. A pick, a tap outside or Esc shrinks it back.
+// items: [{label, run, cur, red, off}] or '-' for a divider. opts.w: width (default the trigger's), opts.right: right-align.
+const calmMs = ms => matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : ms;
+let railMenu = null;
+function openMenu(trigger, items, opts = {}) {
+  const r = trigger.getBoundingClientRect(), cs = getComputedStyle(trigger);
+  const veil = document.createElement('div');
+  veil.className = 'rail-veil';
+  veil.innerHTML = `<div class="rail-menu" role="menu">${items.map((it, i) => it === '-' ? '<hr>'
+    : `<button type="button" role="menuitem" data-i="${i}" class="${it.cur ? 'cur' : ''}${it.red ? ' red' : ''}" style="height:${r.height}px"${it.off ? ' disabled' : ''}><span>${escapeHtml(it.label)}</span></button>`).join('')}</div>`;
+  const m = veil.firstChild, pad = 4, w = opts.w || r.width;
+  m.style.cssText = `width:${w}px;--pl:${Math.max(12, parseFloat(cs.paddingLeft) - pad)}px;--pr:${Math.max(8, parseFloat(cs.paddingRight) - pad)}px`;
+  document.body.append(veil);
+  const anchor = m.querySelector('button'), H = m.offsetHeight;
+  const left = Math.max(0, Math.min(innerWidth - w, opts.right ? r.right - w : r.left));
+  const top = Math.max(8, Math.min(innerHeight - H - 8, r.top - anchor.offsetTop));
+  m.style.left = left + 'px'; m.style.top = top + 'px';
+  const t = r.top - top, l = r.left - left;
+  const from = `inset(${t}px ${w - l - r.width}px ${H - t - r.height}px ${l}px round 10px)`, to = 'inset(-24px round 34px)';
+  m.style.transformOrigin = `${l + r.width / 2}px ${t + r.height / 2}px`;
+  m.animate([{ clipPath: from, transform: 'scale(.94)', boxShadow: 'none' }, { clipPath: to, transform: 'none' }], { duration: calmMs(180), easing: 'cubic-bezier(.3,1.45,.55,1)' });
+  trigger.setAttribute('aria-expanded', 'true');
+  railMenu = { veil, m, from, to, trigger };
+  (m.querySelector('button:not(:disabled)') || anchor).focus({ preventScroll: true });
+  veil.addEventListener('click', e => {
+    const b = e.target.closest('[data-i]');
+    if (b || e.target === veil) closeMenu();
+    if (b) items[b.dataset.i].run();
+  });
+  veil.addEventListener('keydown', e => {
+    const bs = [...m.querySelectorAll('button:not(:disabled)')], i = bs.indexOf(document.activeElement);
+    if (e.key === 'Escape') { e.stopPropagation(); closeMenu(); trigger.focus(); }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); bs[(i + (e.key === 'ArrowDown' ? 1 : bs.length - 1)) % bs.length]?.focus(); }
+  });
+}
+function closeMenu() {
+  if (!railMenu) return;
+  const { veil, m, from, to, trigger } = railMenu; railMenu = null;
+  trigger.setAttribute('aria-expanded', 'false');
+  veil.style.pointerEvents = 'none';
+  m.animate([{ clipPath: to }, { clipPath: from, opacity: 0, transform: 'scale(.96)' }], { duration: calmMs(90), easing: 'cubic-bezier(.4,0,1,1)' }).onfinish = () => veil.remove();
 }
 
 function saveDeliveryAddress() {
@@ -1781,7 +1844,7 @@ function saveDeliveryAddress() {
   state.deliveryAddress = addr;
   $('#deliveryModal').hidden = true;
   renderCart();
-  flashControl(document.querySelector('.fulfil-pill[data-fulfil="delivery"]'));
+  flashControl($('#fulRow'));
 }
 
 function deliveryPinLabel(location = state.deliveryLocation) {
@@ -2086,51 +2149,36 @@ function cartTotals() {
 function renderCart() {
   const list = $('#cartList');
   const t = cartTotals();
-  if (state.cart.length === 0) {
-    list.innerHTML = '';
+  const n = state.cart.length;
+  if (n === 0) {
+    list.innerHTML = '<div class="empty"><b>No items yet</b><span>Tap a product to add it.</span></div>';
   } else {
     list.innerHTML = state.cart.map(item => `
-      <button class="cart-item" data-id="${item.id}" title="Edit item">
-        <div class="ci-main">
-          <div class="ci-name">${escapeHtml(item.name)}</div>
-          <div class="ci-sub">${escapeHtml(item.sku)} · ${peso(item.price)}${item.qty === 1 ? '' : ` × ${item.qty}`}</div>
-        </div>
-        <div class="ci-right">${peso(item.price * item.qty)}</div>
-      </button>
-    `).join('');
+      <div class="line"><button type="button" class="row" data-id="${item.id}" title="Edit item">
+        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}</small></span>
+        <span class="amt num">${peso(item.price * item.qty)}</span>
+      </button></div>`).join('');
     list.scrollTop = list.scrollHeight;
   }
 
-  $('#cartCount').textContent = `${state.cart.length} item${state.cart.length === 1 ? '' : 's'}`;
+  const count = n ? `${n} item${n === 1 ? '' : 's'}` : '';
+  $('#cartCount').textContent = count || 'Item';
+  $('#railCount').textContent = count;          // beside Total when the band is off
   $('#subtotal').textContent = peso(t.subtotal);
   $('#discount').textContent = '-' + peso(t.discount);
-  const discRow = $('#discountRow'); if (discRow) discRow.style.display = t.discount > 0 ? '' : 'none';
-  const vatEl = $('#vatAmount'); if (vatEl) vatEl.textContent = peso(t.vatAmount);
+  $('#discountRow').style.display = t.discount > 0 ? '' : 'none';
+  $('#vatAmount').textContent = peso(t.vatAmount);
   $('#total').textContent = peso(t.total);
-  const pa = $('#payAmount'); if (pa) pa.textContent = peso(t.total);
-  const payBtn = $('#payBtn');
-  if (payBtn) {
-    payBtn.disabled = state.cart.length === 0;
-    payBtn.textContent = 'Check out';
-  }
-  const sb = $('#saveBtn'); if (sb) sb.disabled = state.cart.length === 0;
+  $('#payBtn').disabled = n === 0;
+  $('#side').classList.toggle('empty-cart', n === 0);
 
-  // Fulfilment pills + discount label
-  applyFulfilMethods();
-  $$('.fulfil-pill').forEach(b => b.classList.toggle('active', b.dataset.fulfil === state.fulfilment));
-  const deliveryBtn = document.querySelector('.fulfil-pill[data-fulfil="delivery"] span');
-  if (deliveryBtn) deliveryBtn.textContent = 'Delivery';
-  $('#cartDiscountBtn')?.classList.toggle('active', !!(state.cartDiscount && state.cartDiscount.value));
-  const cdLabel = $('#cartDiscountLabel');
-  if (cdLabel) {
-    if (state.cartDiscount && state.cartDiscount.value) {
-      cdLabel.textContent = state.cartDiscount.type === 'percent'
-        ? `${state.cartDiscount.value}% off`
-        : `${peso(state.cartDiscount.value)} off`;
-    } else {
-      cdLabel.textContent = 'Discount';
-    }
-  }
+  renderFulRow();
+  const cd = state.cartDiscount && state.cartDiscount.value ? state.cartDiscount : null;
+  const discBtn = $('#cartDiscountBtn');
+  discBtn.disabled = n === 0;
+  discBtn.classList.toggle('on', !!cd);
+  $('#cartDiscountLabel').textContent = cd && cd.type === 'percent' ? `Discount ${cd.value}%` : 'Discount';
+  $('#cartDiscountAmt').textContent = t.discount > 0 ? '−' + peso(t.discount) : '';
 }
 
 // ---------- Customer ----------
@@ -2207,33 +2255,18 @@ function renderCheckout() {
   const t = cartTotals();
   const total = t.total;
 
-  // Render receipt items (same format as sell view's cart)
   const cartList = $('#checkoutCartList');
-  const cartCount = $('#checkoutCartCount');
   if (cartList) {
-    if (state.cart.length === 0) {
-      cartList.innerHTML = '';
-    } else {
-      cartList.innerHTML = state.cart.map(item => `
-        <button class="cart-item" style="cursor:default">
-          <div class="ci-main">
-            <div class="ci-name">${escapeHtml(item.name)}</div>
-            <div class="ci-sub">${escapeHtml(item.sku)} · ${peso(item.price)}${item.qty === 1 ? '' : ` × ${item.qty}`}</div>
-          </div>
-          <div class="ci-right">${peso(item.price * item.qty)}</div>
-        </button>
-      `).join('');
-    }
+    cartList.innerHTML = state.cart.map(item => `
+      <div class="co-row">
+        <span class="co-nm">${escapeHtml(item.name)}<small class="num">${item.qty} × ${peso(item.price)}</small></span>
+        <span class="co-amt num">${peso(item.price * item.qty)}</span>
+      </div>`).join('');
   }
-  if (cartCount) cartCount.textContent = `${state.cart.length} item${state.cart.length === 1 ? '' : 's'}`;
-
-  // Render totals
-  const subEl = $('#checkoutSubtotal');
-  if (subEl) subEl.textContent = peso(t.subtotal);
-  const discEl = $('#checkoutDiscount');
-  if (discEl) discEl.textContent = '-' + peso(t.discount);
   const discRow = $('#checkoutDiscountRow');
-  if (discRow) discRow.style.display = t.discount > 0 ? '' : 'none';
+  if (discRow) discRow.hidden = !(t.discount > 0);
+  const discEl = $('#checkoutDiscount');
+  if (discEl) discEl.textContent = '−' + peso(t.discount);
   const discLabel = $('#checkoutDiscountLabel');
   if (discLabel) {
     if (state.cartDiscount?.tierType) {
@@ -2243,130 +2276,133 @@ function renderCheckout() {
       discLabel.textContent = 'Discount';
     }
   }
-  const vatEl = $('#checkoutVatAmount');
-  if (vatEl) vatEl.textContent = peso(t.vatAmount);
   const totalEl = $('#checkoutTotal');
   if (totalEl) totalEl.textContent = peso(total);
-
-  // Render payment section
+  $('#checkoutCount').textContent = $('#railCount').textContent;
   const totalDue = $('#checkoutTotalDue');
   if (totalDue) totalDue.textContent = peso(total);
+
   setCheckoutError('');
-  renderQuickCashOptions(total);
   if (!state.customer && (state.paymentMethod === 'credit' || state.paymentMethod === 'split')) {
     state.paymentMethod = 'cash';
   }
-  // You can only charge a named account, so the two credit cards appear with the customer.
+  // You can only charge a named account, so the two credit tiles appear with the customer.
   applyPayMethods(!!state.customer);
-  if (!state.paymentMethodChosen) {
-    // Step 1: show method grid, hide tender, disable complete
-    state.paymentMethod = 'cash';
-    $$('[data-co-method]').forEach(s => s.classList.remove('active'));
-    const ms = $('#checkoutMethodSection'); if (ms) ms.style.display = '';
-    const cb = $('#checkoutCompleteBtn'); if (cb) cb.disabled = true;
-  } else {
-    $$('[data-co-method]').forEach(s => s.classList.toggle('active', s.dataset.method === state.paymentMethod));
-    const ms = $('#checkoutMethodSection'); if (ms) ms.style.display = 'none';
-  }
-  syncPayFields();
-  $('#checkoutTender').value = '';
-  $('#checkoutChange').textContent = peso(0);
+  renderQuickCashOptions(total);
+  if (!state.paymentMethodChosen) state.paymentMethod = 'cash';
+  $('#checkoutApp')?.classList.remove('is-done');
+  const steps = $('#checkoutSteps'); if (steps) steps.hidden = false;
+  const done = $('#checkoutDone'); if (done) done.hidden = true;
+  const tender = $('#checkoutTender'); if (tender) tender.value = '';
+  showPayStep();
   renderCheckoutSub();
-  const fl = $('#checkoutFulfilLine');
-  if (fl) {
-    if (state.fulfilment === 'delivery') {
-      fl.textContent = state.deliveryAddress ? `Delivery · ${state.deliveryAddress}` : 'Delivery';
-    } else {
-      fl.textContent = 'Pickup';
-    }
-  }
 }
-// Who this sale is for. Picking a method doesn't re-render the checkout, so both callers
-// need this or the line goes stale the moment the cashier taps Account.
+
 // Which cards the checkout shows is the back office's call (Manage -> Payments):
 // settings.payments = { hidden: [kind], custom: [name] }. Cash can't be hidden -- the drawer
 // is cash. A custom name records exactly like typing it into Other (paymentKind 'other').
+const coIcon = d => `<svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+const PAY_TILES = [
+  ['cash', 'Cash', coIcon('<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8L2 7"/><circle cx="12" cy="14" r="3"/>')],
+  ['gcash', 'GCash', coIcon('<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01" stroke-width="2.4"/>')],
+  ['qr', 'QR', coIcon('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h2v2h-2v2h2M18 14h3M18 18h1v1h1v2M21 14v2M14 18v3h2"/>')],
+  ['other', 'Other', coIcon('<circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/>')],
+  ['credit', 'Account', coIcon('<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>')],
+  ['split', 'Split', coIcon('<path d="M12 3v18M4 7h5M4 12h5M15 9h5M15 15h5"/>')],
+];
+const CUSTOM_PAY_ICON = coIcon('<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="2.5"/>');
 function applyPayMethods(canCharge) {
-  const grid = $('.pay-method-grid');
+  const grid = $('#checkoutMethods');
   if (!grid) return;
   const pay = state.settings.payments || {};
   const off = new Set(pay.hidden || []);
-  $$('[data-co-method]:not([data-label])', grid).forEach((c) => {
-    const needsAccount = c.dataset.method === 'credit' || c.dataset.method === 'split';
-    c.hidden = c.dataset.method !== 'cash' && (off.has(c.dataset.method) || (needsAccount && !canCharge));
-  });
-  $$('[data-label]', grid).forEach((c) => c.remove());
-  const before = $('#payMethodCredit');
-  (pay.custom || []).forEach((name) => {
-    const b = document.createElement('button');
-    b.className = 'pay-method-card';
-    b.dataset.coMethod = '';
-    b.dataset.method = 'other';
-    b.dataset.label = name;
-    b.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg><span></span>';
-    b.querySelector('span').textContent = name;
-    grid.insertBefore(b, before);
-  });
+  const needsAccount = m => m === 'credit' || m === 'split';
+  const shown = PAY_TILES.filter(([m]) => m === 'cash' || (!off.has(m) && (canCharge || !needsAccount(m))));
+  const custom = (pay.custom || []).map(name => ['other', name, CUSTOM_PAY_ICON, name]);
+  const at = shown.findIndex(([m]) => needsAccount(m));
+  const tiles = at < 0 ? [...shown, ...custom] : [...shown.slice(0, at), ...custom, ...shown.slice(at)];
+  // How many across the count wants: 4 -> 2x2, 6 -> 3x2, 8 -> 4x2. One tile size at any count.
+  grid.style.setProperty('--cols', tiles.length <= 4 ? 2 : tiles.length <= 6 ? 3 : 4);
+  grid.innerHTML = tiles.map(([m, label, icon, name]) =>
+    `<button type="button" class="co-tile" data-co-method data-method="${m}"${name ? ` data-label="${escapeHtml(name)}"` : ''}>${icon}<span>${escapeHtml(label)}</span></button>`).join('');
 }
 
+// Who this sale is for, on top of the list it belongs to.
 function renderCheckoutSub() {
   const sub = $('#checkoutSub');
-  if (!sub) return;
-  if (state.paymentMethod === 'split' && state.customer) sub.textContent = `Cash + charge to ${state.customer.name}`;
-  else if (state.paymentMethod === 'credit' && state.customer) sub.textContent = `Charge to ${state.customer.name}`;
-  // A named customer stays named before a method is picked -- "Walk-in" over a ₱1,158
-  // account sale is how the wrong person gets charged.
-  else sub.textContent = state.customer ? state.customer.name : 'Walk-in customer';
+  if (sub) sub.textContent = state.customer ? state.customer.name : 'Walk-in customer';
 }
 
-function syncPayFields() {
-  const showTender = state.paymentMethodChosen && state.paymentMethod !== 'credit';
-  const cash = $('#checkoutCashFields');
-  if (cash) cash.style.display = showTender ? '' : 'none';
-  // On a split the same two fields mean the opposite thing: what they paid, and what is left owing.
-  const split = state.paymentMethod === 'split';
-  const tenderLabel = $('#checkoutCashFields .checkout-section-label');
-  if (tenderLabel) tenderLabel.textContent = split ? 'Cash amount' : 'Amount tendered';
-  const changeLabel = $('.checkout-change-row span:first-child');
-  if (changeLabel) changeLabel.textContent = split ? 'On account' : 'Change';
-  // Show "Other" name input only when other is selected
-  const otherRow = $('#otherMethodRow');
-  if (otherRow) otherRow.classList.toggle('visible', state.paymentMethod === 'other' && !state.paymentLabel);
-  // Legacy modal fields (kept for back-compat)
-  const payFields = $('#payFields');
-  if (payFields) payFields.style.display = state.paymentMethod === 'credit' ? 'none' : '';
+// Under the fixed total: the method tiles, or the chosen method's one detail.
+function showPayStep() {
+  const m = state.paymentMethod;
+  const step = !state.paymentMethodChosen ? 'method' : (m === 'cash' || m === 'split') ? 'cash' : 'paid';
+  $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== step; });
+  const backText = $('#checkoutBackText'); if (backText) backText.textContent = step === 'method' ? 'Cancel' : 'Back';
+  // On a split the field means the opposite thing: what they pay now, the rest goes on the account.
+  const quick = $('#checkoutQuick'); if (quick) quick.hidden = m === 'split';
+  const tender = $('#checkoutTender');
+  if (tender) tender.placeholder = m === 'split' ? 'Cash now' : 'Other amount';
+  const typing = m === 'other' && !state.paymentLabel;
+  const other = $('#otherMethodInput'); if (other) other.hidden = !typing;
+  const ask = $('#checkoutAsk');
+  if (ask) ask.textContent = m === 'credit' ? `Charge to ${state.customer?.name || 'account'}`
+    : typing ? 'Paid with' : `Paid with ${state.paymentLabel || KNOWN_METHOD_LABELS[m] || m}`;
+  updateChange();
+  if (step === 'method') centreCheckout();
 }
+
+// Centre what you see -- the top of the total's digits to the bottom of the method tiles -- 3% above
+// the middle of the payment column (dead centre reads low). Set from the method step only, so later
+// steps grow downward and the total never moves.
+function centreCheckout() {
+  const steps = $('#checkoutSteps'), hero = $('#checkoutTotalDue');
+  const method = $('#checkoutSteps [data-step="method"]'), col = $('.co-pay');
+  if (!steps || !hero || !method || method.hidden || state.view !== 'checkout') return;
+  steps.style.setProperty('--lift', '0px');
+  const cs = getComputedStyle(hero);
+  const inkTop = hero.getBoundingClientRect().top + parseFloat(cs.paddingTop) + parseFloat(cs.fontSize) * 0.14; // Inter digits start ~.14em into a line-height:1 box
+  const box = col.getBoundingClientRect();
+  const lift = box.top + box.height * 0.47 - (inkTop + method.getBoundingClientRect().bottom) / 2;
+  steps.style.setProperty('--lift', `${Math.max(0, Math.round(lift))}px`);
+}
+
 function updateChange() {
   const { total } = cartTotals();
-  const tender = parseFloat($('#checkoutTender')?.value || $('#tenderInput')?.value || 0) || 0;
-  const out = state.paymentMethod === 'split'
-    ? Math.max(0, total - tender)
-    : Math.max(0, tender - total);
-  const co = $('#checkoutChange'); if (co) co.textContent = peso(out);
-  const legacy = $('#changeValue'); if (legacy) legacy.textContent = peso(out);
+  const raw = ($('#checkoutTender')?.value || '').trim();
+  const tender = moneyValue(parseFloat(raw) || 0);
+  const split = state.paymentMethod === 'split';
+  const d = moneyValue(tender - total);
+  const ok = split ? tender > 0 && d < 0 : d >= 0;
+  const el = $('#checkoutChange');
+  if (el) {
+    el.textContent = !raw ? ''
+      : split ? (d < 0 ? `On account ${peso(-d)}` : 'Use Cash for the full amount')
+      : d < 0 ? `Short ${peso(-d)}` : d > 0 ? `Change ${peso(d)}` : 'No change';
+    el.className = 'co-change num' + (!raw ? '' : !ok ? ' down' : split ? '' : ' up');
+  }
+  const go = $('#checkoutCompleteBtn'); if (go) go.disabled = !raw || !ok;
   setCheckoutError('');
 }
 
-function roundedTenderOptions(total) {
-  const due = Math.max(0, Number(total) || 0);
-  if (due <= 0) return [];
-  let first;
-  if (due <= 500) first = Math.ceil(due / 50) * 50;
-  else if (due <= 1000) first = Math.ceil(due / 100) * 100;
-  else if (due <= 5000) first = Math.ceil(due / 500) * 500;
-  else first = Math.ceil(due / 1000) * 1000;
-  const bills = [50, 100, 200, 500, 1000, 2000, 5000, 10000].filter(v => v >= due);
-  return Array.from(new Set([first, ...bills])).filter(v => v >= due && v > 0).slice(0, 3);
+// Quick cash: Exact, then the next ₱500 / ₱1,000 / ₱5,000 / ₱10,000 above the total -- three of them, never below it.
+function quickTenders(total) {
+  const c = Math.round(total * 100);
+  const above = m => (Math.floor(c / m) + 1) * m / 100;
+  return [c / 100, ...new Set([50000, 100000, 500000, 1000000].map(above))].slice(0, 4);
 }
+console.assert(quickTenders(437.5).join() === '437.5,500,1000,5000' && quickTenders(24318.75).join() === '24318.75,24500,25000,30000'
+  && quickTenders(500).join() === '500,1000,5000,10000', 'quickTenders');
 
 function renderQuickCashOptions(total) {
-  const wrap = $('.checkout-quick');
+  const wrap = $('#checkoutQuick');
   if (!wrap) return;
-  const options = roundedTenderOptions(total);
-  wrap.innerHTML = [
-    '<button data-co-cash="exact">Exact</button>',
-    ...options.map(v => `<button data-co-cash="${v}">${peso(v)}</button>`),
-  ].join('');
+  const q = quickTenders(total);
+  const short = v => peso(v).replace(/\.00$/, '');
+  wrap.parentElement.style.setProperty('--cols', q.length); // the tiles and the cash row below share one width
+  wrap.innerHTML = q.map((v, i) => `<button type="button" class="co-tile" data-co-cash="${v}">${i === 0
+    ? '<span class="co-big">Exact</span><small>No change</small>'
+    : `<span class="co-big num">${short(v)}</span><small class="up num">Change ${peso(moneyValue(v - total))}</small>`}</button>`).join('');
 }
 
 function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentMethod, tendered = 0, change = 0, customerOverride } = {}) {
@@ -2482,20 +2518,41 @@ function showOrderAfterCartClears(order) {
 function showCheckoutSuccess(order) {
   clearCart();
   const back = $('#paymentModal'); if (back) back.hidden = true;
-  const total = $('#successTotal');
-  const sub = $('#successSub');
-  const preview = $('#successReceiptPreview');
-  if (total) total.textContent = peso(order.total);
-  if (sub) sub.textContent = `Receipt #${order.number} saved`;
-  // Change — show the block only when there's change to hand back
-  const changeBlock = $('#successChangeBlock');
-  const changeEl = $('#successChange');
+  if (state.view !== 'checkout') switchView('checkout');
+  // The only big number is the change to hand back; method, cash and total are on the receipt.
   const change = moneyValue(order.change || 0);
-  if (changeEl) changeEl.textContent = peso(change);
-  if (changeBlock) changeBlock.style.display = change > 0 ? '' : 'none';
-  if (preview) preview.innerHTML = buildReceiptPreview(order);
-  switchView('checkout-success');
-  clearTimeout(showCheckoutSuccess._t);
+  const changeBlock = $('#successChangeBlock');
+  if (changeBlock) changeBlock.hidden = !(change > 0);
+  const changeEl = $('#successChange');
+  $('#checkoutSteps').hidden = true;
+  $('#checkoutDone').hidden = false; // un-hiding replays the check and the rise
+  $('#checkoutApp').classList.add('is-done');
+  const receipt = $('#checkoutReceipt');
+  if (receipt) { receipt.innerHTML = buildReceiptPreview(order); receipt.scrollTop = 0; }
+  if (receipt && $('#app').classList.contains('co-side')) {   // the receipt prints inside the sidebar's items card
+    const rc = document.createElement('div'); rc.className = 'rail-rcpt'; rc.innerHTML = receipt.innerHTML;
+    $('#side .rail-rcpt')?.remove(); $('#side .items').append(rc);
+    // the cart is already cleared; the Total keeps showing the sale until New sale
+    const n = (order.items || []).length;
+    $('#total').textContent = peso(order.total);
+    $('#railCount').textContent = `${n} item${n === 1 ? '' : 's'}`;
+    $('#side').classList.remove('empty-cart');
+  }
+  if (changeEl && change > 0) {
+    changeEl.classList.remove('settled');
+    changeEl.textContent = peso(0);
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    clearTimeout(showCheckoutSuccess._t);
+    showCheckoutSuccess._t = setTimeout(() => {
+      const t0 = performance.now();
+      const step = (now) => {
+        const k = still ? 1 : Math.min(1, (now - t0) / 700);
+        changeEl.textContent = peso(change * (1 - (1 - k) ** 3));
+        if (k < 1) requestAnimationFrame(step); else changeEl.classList.add('settled');
+      };
+      requestAnimationFrame(step);
+    }, still ? 0 : 280);
+  }
   showCheckoutSuccess._orderId = order.id;
 }
 
@@ -2734,7 +2791,7 @@ function saveCurrentReceipt(customerOverride = null) {
   } catch (err) {
     console.error(err);
     showToast('Receipt was not saved. Check browser storage.');
-    flashControl($('#saveBtn'));
+    flashControl($('#cartMoreBtn'));
   }
 }
 
@@ -4325,6 +4382,8 @@ function renderPosSettings() {
   $$('#posThemeToggle .bb-size-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.theme === currentTheme);
   });
+  const headCb = $('#posCartHead');
+  if (headCb) headCb.checked = state.cartHead;
   const p = printerConfig();
   $$('#posWidthToggle .bb-size-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.width === (p.width || '80mm'));
@@ -4495,8 +4554,6 @@ function attachEvents() {
   }));
 
   // ---- Bottom bar: pagination ----
-  $('#bbPrevBtn')?.addEventListener('click', () => changePage(-1));
-  $('#bbNextBtn')?.addEventListener('click', () => changePage(1));
 
   // ---- Bottom bar: tile size toggle (S / M / L) ----
   $$('.bb-size-btn').forEach(btn => {
@@ -4506,8 +4563,7 @@ function attachEvents() {
   // ---- Bottom bar: toggle price display on tiles ----
   $('#bbViewBtn')?.addEventListener('click', toggleShowPrice);
 
-  // ---- Save button on cart: creates a not-completed saved receipt ----
-  $('#saveBtn')?.addEventListener('click', openSaveReceiptModal);
+  // ---- Save receipt (the cart's ⋯ menu): creates a not-completed saved receipt ----
   $('#saveReceiptConfirmBtn')?.addEventListener('click', saveReceiptFromModal);
   $('#saveReceiptNameInput')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -4766,7 +4822,7 @@ function attachEvents() {
 
   // ---- Cart row click → open edit modal ----
   $('#cartList').addEventListener('click', (e) => {
-    const row = e.target.closest('.cart-item');
+    const row = e.target.closest('[data-id]');
     if (!row) return;
     openCartItemModal(row.dataset.id);
   });
@@ -4806,10 +4862,11 @@ function attachEvents() {
   $('#cdApplyBtn')?.addEventListener('click', applyCartDiscount);
   $('#cdRemoveBtn')?.addEventListener('click', clearCartDiscount);
 
-  // Fulfilment pills -- delegated, the custom ones are rebuilt on every cart render.
-  $('.cart-fulfilment-row')?.addEventListener('click', (e) => {
-    const pill = e.target.closest('.fulfil-pill');
-    if (pill) setFulfilment(pill.dataset.fulfil);
+  // Fulfilment -- delegated, the row is rebuilt on every cart render. The picker opens into the list, the current
+  // type bold in its own place.
+  $('#fulRow').addEventListener('click', (e) => {
+    const pick = e.target.closest('#fulPick');
+    if (pick) openMenu(pick, fulfilMethods(state.settings).map(m => ({ label: m.label, cur: m.key === state.fulfilment, run: () => setFulfilment(m.key) })));
   });
   // Delivery modal save
   $('#deliverySaveBtn')?.addEventListener('click', saveDeliveryAddress);
@@ -4921,35 +4978,13 @@ function attachEvents() {
   });
   $('#custSaveBtn')?.addEventListener('click', saveSavedCustomerFromModal);
 
-  // Collapsible totals breakdown — animate explicit pixel height for smoothness
-  function toggleTotals(block) {
-    if (!block) return;
-    const detail = block.querySelector('.totals-detail');
-    const inner = block.querySelector('.totals-detail-inner');
-    if (!detail || !inner) return;
-    if (block.classList.contains('open')) {
-      // Close: lock current rendered height, then collapse to 0
-      detail.style.height = detail.getBoundingClientRect().height + 'px';
-      void detail.offsetHeight; // force reflow
-      block.classList.remove('open');
-      detail.style.height = '0px';
-    } else {
-      // Open: expand from current height to content height, then release to auto
-      block.classList.add('open');
-      detail.style.height = inner.offsetHeight + 'px';
-      const onEnd = (e) => {
-        if (e.propertyName !== 'height') return;
-        // Only release to auto if we're still open (guards rapid toggles)
-        if (block.classList.contains('open')) detail.style.height = 'auto';
-        detail.removeEventListener('transitionend', onEnd);
-      };
-      detail.addEventListener('transitionend', onEnd);
-    }
-  }
-  $('#totalRow')?.addEventListener('click', () => toggleTotals($('#totalsBlock')));
-  $('#checkoutTotalRow')?.addEventListener('click', () => toggleTotals($('#checkoutTotalsBlock')));
+  // Total opens its breakdown (Subtotal, Discount, VAT) above it
+  $('#totalRow').addEventListener('click', () => {
+    $('#totalRow').setAttribute('aria-expanded', $('#totalsDetail').classList.toggle('open'));
+  });
 
-  $('#clearCartBtn').addEventListener('click', () => {
+  // ⋯ opens the sale actions, the menu covering the ⋯ itself
+  function confirmClearCart() {
     if (state.cart.length === 0) return;
     showConfirm({
       title: 'Clear receipt?',
@@ -4963,17 +4998,26 @@ function attachEvents() {
         showToast('Cart cleared');
       }
     });
+  }
+  $('#cartMoreBtn').addEventListener('click', (e) => {
+    const empty = state.cart.length === 0;
+    openMenu(e.currentTarget, [
+      { label: 'Save receipt', run: openSaveReceiptModal, off: empty }, { label: 'Lost sale', run: () => openLostSale() }, '-',
+      { label: 'Clear sale', run: confirmClearCart, red: true, off: empty },
+    ], { w: 200, right: true });
   });
 
   // ---- Customer ----
-  $('#customerBtn').addEventListener('click', openCustomerModal);
+  $('#customerBtn').addEventListener('click', () => {
+    if (state.view === 'checkout' && $('#checkoutApp').classList.contains('is-done')) return;   // the sale is done
+    openCustomerModal();
+  });
   $('#customerModal').addEventListener('click', (e) => {
     const row = e.target.closest('[data-customer-id]');
     if (row) selectCustomer(row.dataset.customerId);
   });
 
   // ---- Lost sale ----
-  $('#lostSaleBtn')?.addEventListener('click', () => openLostSale());
   $('#lsItemInput')?.addEventListener('input', () => { state.lostSale.productId = ''; renderLostSale(); });
   $('#lsMatches')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-ls-product]');
@@ -5015,68 +5059,61 @@ function attachEvents() {
   // ---- Pay ----
   $('#payBtn').addEventListener('click', openPaymentModal);
 
-  // Payment-method selection (new card grid + legacy modal segs)
+  // Payment-method selection
   function selectPayMethod(method, label = '') {
     state.paymentMethod = method;
     state.paymentLabel = label;
     state.paymentMethodChosen = true;
     // A custom card fills the Other name itself, so completeSale records it unchanged.
-    if (method === 'other' && $('#otherMethodInput')) $('#otherMethodInput').value = label;
+    $('#otherMethodInput').value = method === 'other' ? label : '';
+    $('#checkoutTender').value = '';
     track('payment_method', { method });
-    $$('[data-co-method]').forEach(s =>
-      s.classList.toggle('active', s.dataset.method === method && (s.dataset.label || '') === label));
-    // Step 2: hide method grid, show tender, enable complete
-    $('#checkoutMethodSection').style.display = 'none';
-    const completeBtn = $('#checkoutCompleteBtn');
-    if (completeBtn) completeBtn.disabled = false;
-    syncPayFields();
-    renderCheckoutSub();
-    if (method !== 'other' || label) {
-      setTimeout(() => $('#checkoutTender')?.focus(), 60);
-    } else {
-      setTimeout(() => $('#otherMethodInput')?.focus(), 60);
-    }
+    showPayStep();
+    // No autofocus on cash: a tablet keyboard would cover the amounts.
+    if (method === 'split') setTimeout(() => $('#checkoutTender')?.focus(), 60);
+    else if (method === 'other' && !label) setTimeout(() => $('#otherMethodInput')?.focus(), 60);
   }
-  // Delegated: custom cards are rebuilt from settings on every checkout render.
-  $('.pay-method-grid')?.addEventListener('click', (e) => {
+  // Delegated: the tiles are rebuilt from settings on every checkout render.
+  $('#checkoutMethods')?.addEventListener('click', (e) => {
     const card = e.target.closest('[data-co-method]');
     if (card) selectPayMethod(card.dataset.method, card.dataset.label || '');
   });
 
-  // Cancel button: step 2 → back to step 1; step 1 → back to sell
+  // Back: a method's detail -> the method tiles; the tiles -> the cart.
   $('#checkoutCancelBtn')?.addEventListener('click', () => {
+    if ($('#checkoutApp').classList.contains('is-done')) return;
     if (state.paymentMethodChosen) {
-      // Go back to step 1
       state.paymentMethodChosen = false;
       state.paymentMethod = 'cash';
-      $$('[data-co-method]').forEach(s => s.classList.remove('active'));
-      $('#checkoutMethodSection').style.display = '';
-      const completeBtn = $('#checkoutCompleteBtn');
-      if (completeBtn) completeBtn.disabled = true;
-      syncPayFields();
+      state.paymentLabel = '';
       $('#checkoutTender').value = '';
-      $('#checkoutChange').textContent = peso(0);
-      setCheckoutError('');
+      showPayStep();
     } else {
       track('checkout_cancel');
       switchView(state.prevView && state.prevView !== 'checkout' ? state.prevView : 'sell');
     }
   });
-
-  // Checkout view: back, tender input, quick-cash, complete
-  document.addEventListener('click', (e) => {
-    const back = e.target.closest('[data-act="checkout-back"]');
-    if (back) { track('checkout_cancel'); switchView(state.prevView && state.prevView !== 'checkout' ? state.prevView : 'sell'); }
-  });
-  $('#checkoutTender')?.addEventListener('input', updateChange);
-  $('.checkout-quick')?.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-co-cash]');
-    if (!b) return;
-    const { total } = cartTotals();
-    $('#checkoutTender').value = b.dataset.coCash === 'exact' ? total.toFixed(2) : b.dataset.coCash;
+  $('#checkoutCustBtn')?.addEventListener('click', openCustomerModal);
+  $('#checkoutTender')?.addEventListener('input', (e) => {
+    // Digits and one point, two decimals.
+    const v = e.target.value.replace(/[^\d.]/g, '').replace(/(\.\d{0,2}).*$/, '$1');
+    if (v !== e.target.value) e.target.value = v;
     updateChange();
   });
-  $('#checkoutCompleteBtn')?.addEventListener('click', completeSale);
+  $('#checkoutTender')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !$('#checkoutCompleteBtn').disabled) completeSale();
+  });
+  $('#otherMethodInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') completeSale(); });
+  // A cash amount is the decision: the tap finishes the sale.
+  $('#checkoutQuick')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-co-cash]');
+    if (!b) return;
+    $('#checkoutTender').value = b.dataset.coCash;
+    updateChange();
+    completeSale();
+  });
+  $('#checkoutSteps')?.addEventListener('click', (e) => { if (e.target.closest('[data-complete]')) completeSale(); });
+  window.addEventListener('resize', () => { fitCheckout(); centreCheckout(); });
   $('#successPrintBtn')?.addEventListener('click', printSuccessReceipt);
   $('#successNewSaleBtn')?.addEventListener('click', startNewSaleFromSuccess);
 
@@ -5114,6 +5151,10 @@ function attachEvents() {
     b.addEventListener('click', () => {
       applyTheme(b.dataset.theme);
     });
+  });
+  $('#posCartHead')?.addEventListener('change', (e) => {
+    HWPOS_STORE.ui.set('cartHead', e.target.checked ? '1' : '0');
+    applyCartHead(e.target.checked);
   });
   $('#posPrintOnSale')?.addEventListener('change', persistPosSettings);
   $$('#posWidthToggle .bb-size-btn').forEach(b => {
@@ -5233,6 +5274,7 @@ function init() {
   renderSellFolderStrip();
   renderSellHeader();
   renderProducts();
+  applyCartHead(state.cartHead);
   renderCart();
   updateCustomerButton();
   populateFolderSelect();
@@ -5265,7 +5307,7 @@ function init() {
   window.visualViewport?.addEventListener('scroll', () => refitSellSurface());
 
   // Sync persisted UI state on first paint
-  $$('.bb-size-btn').forEach(b => b.classList.toggle('active', b.dataset.size === state.tileSize));
+  $$('.bb-size-btn[data-size]').forEach(b => b.classList.toggle('active', b.dataset.size === state.tileSize));
   $('#bbViewBtn')?.classList.toggle('active', state.showPrice);
 
   // Pick up appearance changes pushed from the back-office tab.

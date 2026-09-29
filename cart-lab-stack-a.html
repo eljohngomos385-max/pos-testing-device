@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cart Slim Stack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   CART LAB STACK-A: SLIM STACK. Round 1's three stacked back-office cards (customer / items / pay), slimmed:
+   a 46px customer card (name + chevron, no avatar), the items card with Flush's band and Flush's 45px rows
+   verbatim, and a pay card: Total (tap for Subtotal / Discount / VAT), fulfilment + Discount at 44px,
+   Check out at 52px. 8px between cards. Fulfilment adapts: 2 types = a segmented pair; 3+ = one button
+   showing the current type that opens a small list. Lost sale / Save receipt / Clear are always visible as
+   quiet text buttons in a strip at the foot of the items card, right above the pay card.
+   ?empty=1 starts empty, ?many=1 seeds 24 lines, ?ful=2|3|5 sets the fulfilment types (default 2); combinable.
+   Money is integer centavos; prices are VAT-inclusive.
+   =========================================================================== */
+:root {
+  --font:      "Inter";
+  --page:      #FFFFFF;
+  --card:      #FFFFFF;
+  --tile:      #F9F9F9;
+  --soft:      #F9F9F9;                               /* the band, an open line */
+  --track:     #EFEFEF;
+  --line:      #ECECEC;
+  --outline:   #E1E1E1;
+  --btn-line:  #D4D4D4;
+  --ring:      #E6E6E6;
+  --ink:       #303030;
+  --ink-2:     #616161;
+  --ink-3:     #8C8C8C;
+  --ink-4:     #C8C8C8;
+  --down:      #D72C0D;
+  --down-tint: #FBEDEA;
+  --data-1:    #BCD7FA;
+  --data-tint: #DCE9FB;
+  --data-ink:  #1F5FB8;
+  --hover:     #F6F6F6;
+  --press:     #EDEDED;
+  --shadow:    0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05);   /* the one card shadow */
+  --pop:       0 8px 24px rgba(0,0,0,.08);
+  --r-input:   10px;
+  --r-btn:     12px;
+  --r-card:    14px;
+  --m:         20px;                                  /* page margin and the row gutter */
+  --gap:       8px;                                   /* between cards */
+  --cust-h:    46px;
+  --ctl:       44px;
+  --go-h:      52px;
+  --side-w:    clamp(340px, 30vw, 400px);
+  --ease:      cubic-bezier(.2,.8,.2,1);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; background: var(--page); color: var(--ink);
+  font: 13px/1.4 var(--font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+button, input { font: inherit; color: inherit; }
+button { touch-action: manipulation; cursor: pointer; }
+[hidden] { display: none !important; }
+.num { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--data-1); outline-offset: 2px; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.app { display: grid; grid-template-columns: minmax(0, 1fr) var(--side-w); gap: var(--m); height: 100vh; height: 100dvh; padding: var(--m); }
+
+/* ---------- products (same in every lab) ---------- */
+.shop { display: grid; grid-template-rows: 48px minmax(0, 1fr); gap: 16px; min-width: 0; min-height: 0; }
+.search { display: flex; align-items: center; gap: 10px; padding: 0 16px; border-radius: var(--r-input); background: var(--tile); box-shadow: inset 0 0 0 1px var(--ring); color: var(--ink-3); }
+.search:focus-within { box-shadow: inset 0 0 0 2px var(--data-1); }
+.search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font-size: 15px; color: var(--ink); }
+.search input::placeholder { color: var(--ink-3); }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: clamp(92px, 13.5vh, 128px); gap: 12px; align-content: start; overflow-y: auto; overscroll-behavior: contain; }
+.tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 12px; border: 0; border-radius: var(--r-input);
+        background: var(--tile); box-shadow: inset 0 0 0 1px var(--ring); text-align: center; transition: background-color .12s, transform .1s; }
+.tile:hover { background: var(--hover); }
+.tile:active { transform: scale(.98); background: var(--press); }
+.tile b { font-size: 14px; font-weight: 560; line-height: 1.3; }
+.tile span { color: var(--ink-3); font-size: 12px; }
+
+/* ---------- the rail: three slim cards ---------- */
+.side { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--gap); min-width: 0; min-height: 0; }
+.card { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow); }
+
+/* (a) customer: one line, name + chevron */
+.cust { display: flex; align-items: center; gap: 8px; width: 100%; height: var(--cust-h); padding: 0 14px 0 var(--m); text-align: left; font-size: 14px; font-weight: 560; transition: background-color .12s; }
+.cust:hover { background: var(--hover); }
+.cust span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chev { width: 16px; height: 16px; color: var(--ink-3); }
+
+/* (b) items: Flush's band, rows and tray, verbatim */
+.items { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
+.i-head { display: flex; justify-content: space-between; gap: 12px; padding: 11px var(--m); background: var(--soft); border-bottom: 1px solid var(--line);
+          color: var(--ink-2); font-size: 12px; font-weight: 500; }
+.lines { overflow-y: auto; overscroll-behavior: contain; }
+.line + .line { border-top: 1px solid var(--line); }
+.line.open { background: var(--soft); }
+.row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 45px; padding: 7px var(--m); border: 0; background: none; text-align: left; }
+.row .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
+.row .nm span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.row .nm small { display: block; color: var(--ink-3); font-size: 12px; }
+.row .amt { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.line.flash { animation: flash .7s var(--ease); }
+@keyframes flash { from { background: var(--data-tint); } }
+.tray { display: flex; align-items: center; gap: 8px; padding: 0 var(--m) 10px; }
+.step { display: flex; align-items: center; height: 44px; border: 1px solid var(--outline); border-radius: var(--r-input); background: var(--page); }
+.step button { display: grid; place-items: center; width: 44px; height: 100%; border: 0; background: none; color: var(--ink-2); }
+.step button:active { background: var(--press); }
+.step output { min-width: 32px; text-align: center; font-size: 15px; font-weight: 600; }
+.price { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0; height: 44px; padding: 0 10px; border: 1px solid var(--outline); border-radius: var(--r-input); background: var(--page); color: var(--ink-3); }
+.price:focus-within { border-color: var(--data-1); outline: 2px solid var(--data-1); outline-offset: -1px; }
+.price input { flex: 1; min-width: 0; width: 100%; border: 0; outline: 0; background: none; color: var(--ink); font-size: 14px; font-weight: 500; }
+.del { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: 0; border-radius: var(--r-input); background: none; color: var(--down); }
+.del:hover { background: var(--down-tint); }
+
+.empty { display: grid; place-content: center; justify-items: center; gap: 4px; height: 100%; padding: 24px; text-align: center; }
+.empty b { font-size: 14px; font-weight: 600; }
+.empty span { color: var(--ink-3); }
+
+/* the quiet action strip at the foot of the items card */
+.acts { display: flex; align-items: center; gap: 2px; height: 40px; padding: 0 8px; border-top: 1px solid var(--line); }
+.acts .sp { flex: 1; }
+.link { height: 40px; padding: 0 12px; border: 0; border-radius: 8px; background: none; color: var(--ink-2); font-weight: 500; white-space: nowrap; transition: background-color .12s, color .12s; }
+.link:hover { background: var(--hover); color: var(--ink); }
+.link.danger:hover { background: var(--down-tint); color: var(--down); }
+.link:disabled { color: var(--ink-4); pointer-events: none; }
+
+/* (c) pay */
+.pay { display: flex; flex-direction: column; gap: var(--gap); padding: 2px 12px 12px; }
+.break { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s var(--ease); }
+.break.open { grid-template-rows: 1fr; }
+.break > div { min-height: 0; overflow: hidden; }
+.break p { display: flex; justify-content: space-between; margin: 0; padding: 2px 8px; color: var(--ink-2); font-size: 13px; }
+.break p:first-child { padding-top: 10px; }
+.break p.dim { color: var(--ink-3); }
+.sum { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; height: 44px; padding: 0 8px; border: 0; background: none; text-align: left; }
+.sum .l { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; }
+.sum .l .ic { width: 14px; height: 14px; stroke-width: 2; color: var(--ink-3); transition: transform .2s var(--ease); }
+.sum[aria-expanded="true"] .l .ic { transform: rotate(180deg); }
+.sum .v { font-size: 22px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+.empty-cart .sum .v { color: var(--ink-3); }
+
+.ctl { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; height: var(--ctl); padding: 3px; border-radius: var(--r-btn); background: var(--track); }
+.seg button { min-width: 0; border: 0; border-radius: 9px; background: none; color: var(--ink-2); font-size: 14px; font-weight: 500; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; height: var(--ctl); padding: 0 16px; border: 1px solid var(--btn-line); border-radius: var(--r-btn);
+       background: var(--card); box-shadow: 0 1px 0 rgb(0 0 0 / .05); font-size: 14px; font-weight: 600; white-space: nowrap; transition: background-color .12s; }
+.btn:hover { background: var(--hover); }
+.btn:active { background: var(--press); box-shadow: none; }
+.btn:disabled { opacity: .35; pointer-events: none; }
+.btn.on { background: var(--data-tint); border-color: var(--data-1); color: var(--data-ink); }
+#discBtn { min-width: 108px; }
+/* 3+ types: one button showing the current type */
+.pick { justify-content: space-between; width: 100%; padding: 0 12px 0 14px; }
+.pick .ic { width: 16px; height: 16px; color: var(--ink-3); }
+.pick[aria-expanded="true"] { background: var(--hover); }
+.pop { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 10; min-width: 220px; padding: 4px; border: 1px solid var(--line); border-radius: var(--r-input);
+       background: var(--card); box-shadow: var(--pop); }
+.pop button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; height: 44px; padding: 0 12px; border: 0; border-radius: 7px; background: none; text-align: left; font-size: 14px; }
+.pop button:hover { background: var(--soft); }
+.pop button[aria-selected="true"] { font-weight: 600; }
+.pop .ic { width: 16px; height: 16px; stroke-width: 2; color: var(--data-ink); }
+
+.disc { display: flex; gap: 8px; }
+.kind { flex: none; width: 96px; height: 44px; }
+.kind button { font-weight: 600; }
+.field { flex: 1; min-width: 0; height: 44px; padding: 0 12px; border: 1px solid var(--outline); border-radius: var(--r-input); background: var(--card); outline: 0; font-size: 15px; font-weight: 600; }
+.field:focus { border-color: var(--data-1); box-shadow: 0 0 0 1px var(--data-1); }
+.disc .btn { padding: 0 14px; border-radius: var(--r-input); }
+
+.go { height: var(--go-h); width: 100%; border: 1px solid var(--ink); border-radius: var(--r-btn); background: var(--ink); color: #fff; font-size: 15px; font-weight: 600;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.2); transition: background-color .12s, opacity .2s; }
+.go:hover { background: #1F1F1F; }
+.go:active { background: #000; }
+.go:disabled { opacity: .3; pointer-events: none; }
+
+.toast { position: fixed; left: 50%; bottom: 28px; z-index: 50; display: flex; align-items: center; gap: 14px; min-height: 44px; padding: 0 8px 0 16px; border-radius: var(--r-input);
+         background: var(--ink); color: #fff; font-size: 14px; font-weight: 500; box-shadow: var(--pop); transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
+         transition: opacity .2s, transform .25s var(--ease); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast:not(:has(button)) { padding-right: 16px; }
+.toast button { height: 32px; padding: 0 10px; border: 0; border-radius: 7px; background: rgba(255,255,255,.14); color: #fff; font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+/* the tiles fill the screen like the real sell page: 4 across, 5 down, no empty band under them */
+.shop { min-height: 0; }
+.grid { grid-template-rows: repeat(5, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); align-content: stretch; overflow: hidden; }
+.grid .tile { height: auto; min-height: 0; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+  <symbol id="i-updown" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M6 12h12"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></symbol>
+</svg>
+
+<div class="app">
+  <section class="shop" aria-label="Products">
+    <label class="search"><svg class="ic"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search products or scan a barcode" autocomplete="off"></label>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <aside class="side" id="side" aria-label="Receipt">
+    <button type="button" class="card cust" id="who" title="Change customer"><span id="cust"></span><svg class="ic chev"><use href="#i-right"/></svg></button>
+
+    <section class="card items">
+      <div class="i-head"><span class="num" id="count">Item</span><span>Amount</span></div>
+      <div class="lines" id="lines"></div>
+      <div class="acts">
+        <button type="button" class="link danger" id="clear">Clear</button>
+        <span class="sp"></span>
+        <button type="button" class="link" id="lost">Lost sale</button>
+        <button type="button" class="link" id="save">Save receipt</button>
+      </div>
+    </section>
+
+    <section class="card pay">
+      <div>
+        <div class="break" id="break"><div id="breakIn"></div></div>
+        <button type="button" class="sum" id="sum" aria-expanded="false"><span class="l">Total<svg class="ic"><use href="#i-up"/></svg></span><span class="v num" id="total"></span></button>
+      </div>
+      <div class="ctl">
+        <div id="ful"></div>
+        <button type="button" class="btn" id="discBtn"><span id="discLbl">Discount</span></button>
+        <div class="pop" id="pop" role="listbox" aria-label="Fulfilment" hidden></div>
+      </div>
+      <form class="disc" id="disc" hidden>
+        <div class="seg kind" role="group" aria-label="Discount type">
+          <button type="button" data-k="%" aria-pressed="true">%</button>
+          <button type="button" data-k="₱" aria-pressed="false">₱</button>
+        </div>
+        <input class="field num" id="discIn" inputmode="decimal" placeholder="Amount" autocomplete="off">
+        <button type="button" class="del" id="discOff" aria-label="Remove discount"><svg class="ic"><use href="#i-trash"/></svg></button>
+        <button type="submit" class="btn">Apply</button>
+      </form>
+      <button type="button" class="go" id="go">Check out</button>
+    </section>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const peso = c => '₱' + (c / 100).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const toC = s => Math.round((parseFloat(String(s).replace(/[^\d.]/g, '')) || 0) * 100);
+const svg = id => `<svg class="ic"><use href="#i-${id}"/></svg>`;
+
+// ---------- catalogue (centavos) ----------
+const PRODUCTS = [
+  ['PLB-1001', 'PVC Elbow 1/2"', 1200], ['PLB-1002', 'PVC Elbow 3/4"', 1600], ['PLB-1003', 'PVC Tee 1/2"', 1450], ['PLB-1010', 'PVC Pipe 1/2" × 3m', 14500],
+  ['PLB-1020', 'Brass Faucet 1/2"', 18500], ['PLB-1030', 'Teflon Tape 1/2"', 2500], ['ELC-2001', 'LED Bulb 9W Daylight', 8900], ['ELC-2010', 'Duplex Outlet 2-Gang', 6500],
+  ['ELC-2011', 'Switch 1-Gang', 4800], ['ELC-2020', 'Electrical Tape Black', 3500], ['ELC-2030', 'Circuit Breaker 30A', 42000], ['FST-3001', 'Wood Screw #8 × 1"', 250],
+  ['FST-3010', 'Hex Bolt M10 × 100mm', 1800], ['FST-3011', 'Flat Washer M10', 150], ['TLS-4001', 'Claw Hammer 16oz', 28500], ['TLS-4002', 'Phillips Screwdriver #2', 14500],
+  ['TLS-4003', 'Combination Pliers 8"', 22000], ['TLS-4004', 'Tape Measure 5m', 16500], ['TLS-4005', 'Hacksaw Frame 12"', 19500], ['TLS-4006', 'Aluminum Level 24"', 38500],
+].map(([sku, name, price]) => ({sku, name, price}));
+// ponytail: only ?many=1 needs these, to reach 24 lines and to test a long name
+const EXTRA = [
+  ['CNS-5001', 'Common Wire Nail 2" (1 kg pack)', 8500], ['CNS-5002', 'GI Tie Wire #16 (1 kg roll)', 9500], ['CNS-5003', 'Portland Cement 40kg Bag, Type 1', 26500],
+  ['CNS-5004', 'Marine Plywood 1/4" 4 × 8 ft Phenolic Board, Heavy Duty Exterior Grade', 68500],
+].map(([sku, name, price]) => ({sku, name, price}));
+const ALL = [...PRODUCTS, ...EXTRA];
+const CUSTOMERS = ['Walk-in customer', 'Ricardo Construction', 'Santos Hardware'];
+
+// ---------- state ----------
+const qs = new URLSearchParams(location.search);
+const FUL = ['Pickup', 'Delivery', 'Grab', 'Lalamove', 'Courier'].slice(0, Math.min(5, Math.max(2, parseInt(qs.get('ful'), 10) || 2)));
+let cart = qs.has('empty') ? [] : qs.has('many')
+  ? ALL.map((p, i) => ({sku: p.sku, qty: 1 + (i * 7) % 5, price: p.price}))
+  : [[0, 4], [3, 2], [5, 1], [6, 3], [10, 1], [12, 10], [13, 10], [15, 1]].map(([i, qty]) => ({sku: PRODUCTS[i].sku, qty, price: PRODUCTS[i].price}));
+let cust = 0, fulfil = FUL[0], disc = null, discKind = '%', openSku = null, lastCart = null;
+const bySku = sku => ALL.find(p => p.sku === sku);
+
+function totals() {
+  const sub = cart.reduce((s, l) => s + l.qty * l.price, 0);
+  const off = !disc ? 0 : Math.min(sub, disc.kind === '%' ? Math.round(sub * disc.val / 100) : disc.val);
+  const total = sub - off;
+  return {sub, off, total, vat: Math.round(total * 12 / 112)};   // VAT is included in the price
+}
+// self-check: the money path
+(() => { const keep = [cart, disc]; cart = [{qty: 1, price: 11200}]; disc = {kind: '%', val: 10};
+  const t = totals(); console.assert(t.sub === 11200 && t.off === 1120 && t.total === 10080 && t.vat === 1080, 'totals', t);
+  disc = {kind: '₱', val: 99999}; console.assert(totals().total === 0, 'discount capped at subtotal'); [cart, disc] = keep; })();
+
+// ---------- render ----------
+$('#grid').innerHTML = PRODUCTS.map(p => `<button type="button" class="tile" data-sku="${p.sku}"><b>${esc(p.name)}</b><span class="num">${peso(p.price)}</span></button>`).join('');
+
+function renderLines() {
+  const el = $('#lines');
+  if (!cart.length) { el.innerHTML = `<div class="empty"><b>No items yet</b><span>Tap a product to add it.</span></div>`; return; }
+  el.innerHTML = cart.map(l => {
+    const p = bySku(l.sku), open = l.sku === openSku;
+    return `<div class="line${open ? ' open' : ''}" data-sku="${l.sku}">
+      <button type="button" class="row" aria-expanded="${open}"><span class="nm"><span>${esc(p.name)}</span><small class="num">${l.qty} × ${peso(l.price)}</small></span><span class="amt num">${peso(l.qty * l.price)}</span></button>
+      ${open ? `<div class="tray">
+        <div class="step"><button type="button" data-q="-1" aria-label="Less">${svg('minus')}</button><output class="num">${l.qty}</output><button type="button" data-q="1" aria-label="More">${svg('plus')}</button></div>
+        <label class="price" title="Unit price">₱<input class="num" data-price inputmode="decimal" value="${(l.price / 100).toFixed(2)}"></label>
+        <button type="button" class="del" data-del aria-label="Remove">${svg('trash')}</button></div>` : ''}
+    </div>`;
+  }).join('');
+}
+// 2 types: a segmented pair. 3+: one button with the current type, opening the list.
+function renderFul() {
+  $('#ful').innerHTML = FUL.length <= 2
+    ? `<div class="seg" role="group" aria-label="Fulfilment">${FUL.map(f => `<button type="button" data-f="${f}" aria-pressed="${f === fulfil}">${f}</button>`).join('')}</div>`
+    : `<button type="button" class="btn pick" id="pick" aria-haspopup="listbox" aria-expanded="${!$('#pop').hidden}"><span>${fulfil}</span>${svg('updown')}</button>`;
+  $('#pop').innerHTML = FUL.map(f => `<button type="button" role="option" data-f="${f}" aria-selected="${f === fulfil}">${f}${f === fulfil ? svg('check') : ''}</button>`).join('');
+}
+function renderFoot() {
+  const t = totals(), n = cart.length;
+  $('#cust').textContent = CUSTOMERS[cust];
+  $('#count').textContent = n ? `${n} item${n === 1 ? '' : 's'}` : 'Item';
+  $('#total').textContent = peso(t.total);
+  $('#breakIn').innerHTML = `<p><span>Subtotal</span><span class="num">${peso(t.sub)}</span></p>`
+    + `<p><span>Discount${t.off && disc.kind === '%' ? ` (${disc.val}%)` : ''}</span><span class="num">${t.off ? '−' : ''}${peso(t.off)}</span></p>`
+    + `<p class="dim"><span>VAT (12% incl.)</span><span class="num">${peso(t.vat)}</span></p>`;
+  $('#discBtn').classList.toggle('on', !!disc);
+  $('#discLbl').textContent = disc ? (disc.kind === '%' ? `−${disc.val}%` : `−${peso(disc.val).replace(/\.00$/, '')}`) : 'Discount';
+  renderFul();
+  $('#go').disabled = $('#discBtn').disabled = !n;
+  $('#clear').disabled = $('#lost').disabled = $('#save').disabled = !n;
+  $('#side').classList.toggle('empty-cart', !n);
+}
+const render = () => { renderLines(); renderFoot(); };
+
+let tt;
+function toast(msg, undo) {
+  const el = $('#toast');
+  el.innerHTML = esc(msg) + (undo ? '<button type="button">Undo</button>' : '');
+  if (undo) el.querySelector('button').onclick = () => { undo(); el.classList.remove('show'); };
+  el.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), undo ? 4000 : 1800);
+}
+
+// ---------- actions ----------
+$('#grid').addEventListener('click', e => {
+  const t = e.target.closest('.tile'); if (!t) return;
+  const line = cart.find(l => l.sku === t.dataset.sku);
+  if (line) line.qty++; else cart.push({sku: t.dataset.sku, qty: 1, price: bySku(t.dataset.sku).price});
+  render();
+  const row = $(`.line[data-sku="${t.dataset.sku}"]`);
+  row.scrollIntoView({block: 'nearest', behavior: 'smooth'}); row.classList.add('flash');
+});
+$('#lines').addEventListener('click', e => {
+  const line = e.target.closest('.line'); if (!line) return;
+  const l = cart.find(x => x.sku === line.dataset.sku);
+  const q = e.target.closest('[data-q]');
+  if (e.target.closest('.row')) openSku = openSku === l.sku ? null : l.sku;
+  else if (q) { l.qty += +q.dataset.q; if (l.qty < 1) { removeLine(l); return; } }
+  else if (e.target.closest('[data-del]')) { removeLine(l); return; }
+  else return;
+  render();
+});
+$('#lines').addEventListener('change', e => {
+  if (!e.target.matches('[data-price]')) return;
+  cart.find(x => x.sku === e.target.closest('.line').dataset.sku).price = toC(e.target.value);
+  render();
+});
+function removeLine(l) {
+  const i = cart.indexOf(l); cart.splice(i, 1); openSku = null; render();
+  toast(`Removed ${bySku(l.sku).name}`, () => { cart.splice(i, 0, l); render(); });
+}
+function reset() { lastCart = {cart, disc}; cart = []; disc = null; openSku = null; $('#disc').hidden = true; render(); }
+$('#clear').onclick = () => { reset(); toast('Cleared', () => { ({cart, disc} = lastCart); render(); }); };
+$('#lost').onclick = () => { reset(); toast('Lost sale recorded'); };
+$('#save').onclick = () => { reset(); toast('Receipt saved'); };
+$('#who').onclick = () => { cust = (cust + 1) % CUSTOMERS.length; renderFoot(); };
+$('#sum').onclick = () => { const o = $('#break').classList.toggle('open'); $('#sum').setAttribute('aria-expanded', o); };
+
+// fulfilment: the pair picks directly; the one button opens the list, a pick closes it
+const pop = $('#pop');
+const setPop = on => { pop.hidden = !on; $('#pick')?.setAttribute('aria-expanded', on); };
+$('#ful').addEventListener('click', e => {
+  const f = e.target.closest('[data-f]');
+  if (f) { fulfil = f.dataset.f; renderFoot(); }
+  else if (e.target.closest('#pick')) { e.stopPropagation(); setPop(pop.hidden); }
+});
+pop.addEventListener('click', e => { const f = e.target.closest('[data-f]'); if (f) { fulfil = f.dataset.f; setPop(false); renderFoot(); } });
+document.addEventListener('click', e => { if (!pop.hidden && !pop.contains(e.target)) setPop(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !pop.hidden) { setPop(false); $('#pick').focus(); } });
+
+// discount: a tiny inline form, % or ₱
+function setKind(k) { discKind = k; document.querySelectorAll('[data-k]').forEach(b => b.setAttribute('aria-pressed', b.dataset.k === k)); }
+document.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { setKind(b.dataset.k); $('#discIn').focus(); });
+$('#discBtn').onclick = () => {
+  const f = $('#disc'); f.hidden = !f.hidden;
+  $('#discOff').hidden = !disc;
+  if (!f.hidden) { setKind(disc ? disc.kind : '%'); $('#discIn').value = disc ? (disc.kind === '%' ? disc.val : disc.val / 100) : ''; $('#discIn').focus(); }
+};
+$('#discOff').onclick = () => { disc = null; $('#disc').hidden = true; renderFoot(); toast('Discount removed'); };
+$('#disc').onsubmit = e => {
+  e.preventDefault();
+  const raw = parseFloat($('#discIn').value) || 0;
+  disc = raw <= 0 ? null : discKind === '%' ? {kind: '%', val: Math.min(100, raw)} : {kind: '₱', val: toC(raw)};
+  $('#disc').hidden = true; renderFoot();
+  toast(disc ? 'Discount applied' : 'Discount removed');
+};
+
+$('#go').onclick = () => labCheckout.open({  // the real POS checkout (cart-lab-checkout.js)
+  lines: cart.map(l => ({name: bySku(l.sku).name, qty: l.qty, price: l.price})), totals: totals(),
+  customer: cust ? CUSTOMERS[cust] : '', fulfil: String(fulfil),
+  onCustomer: () => { cust = (cust + 1) % CUSTOMERS.length; render(); return cust ? CUSTOMERS[cust] : ''; },
+  onSold: () => { cart = []; disc = null; openSku = null; render(); },
+});
+$('#q').oninput = e => { const s = e.target.value.toLowerCase(); document.querySelectorAll('.tile').forEach(t => t.hidden = !t.textContent.toLowerCase().includes(s)); };
+
+render();
+</script>
+<script>document.body.append(Object.assign(document.createElement('script'), { src: /[?&]co=simple2/.test(location.search) ? 'cart-lab-checkout-2.js' : 'cart-lab-checkout.js' }));  // Simplified 2 lives in its own copy</script>
+</body>
+</html>

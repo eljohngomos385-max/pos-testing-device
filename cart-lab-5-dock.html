@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cart Pay Dock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   CART LAB 5 — PAY DOCK.
+   The cart is the list itself on plain white, split from the products by one hairline and flush to the
+   right edge (the same column, same width, the checkout page puts its items in). No box, no title bar:
+   a slim top line with the customer on the left and a "⋯" menu (Lost sale / Save receipt / Clear).
+   Rows carry big − qty + steppers; tap a name to edit qty / price / remove.
+   Everything about paying sits in ONE docked grey panel at the bottom (Apple Pay sheet meets back-office
+   calm): Pickup | Delivery + Discount on one line, a breakdown that opens on tap, and one dark button that
+   carries the total — "Check out · ₱1,807.00". The total is said once, inside the action.
+   URL: ?empty=1 starts empty, ?many=1 seeds 24 lines. Money is integer centavos.
+   =========================================================================== */
+:root {
+  --font:      "Inter";
+  --page:      #FFFFFF;
+  --tile:      #F9F9F9;
+  --raised:    #F3F3F3;          /* the back office's raised grey: the dock, the steppers */
+  --raised-2:  #EAEAEA;          /* pressed on raised */
+  --hover:     #F6F6F6;
+  --line:      #ECECEC;          /* hairline */
+  --outline:   #E1E1E1;          /* tile ring */
+  --btn-line:  #D4D4D4;
+  --track:     rgb(0 0 0 / .055);
+  --ink:       #303030;
+  --ink-2:     #616161;
+  --ink-3:     #8C8C8C;
+  --ink-4:     #C8C8C8;
+  --black:     #1F1F1F;
+  --danger:    #D72C0D;
+  --tint:      #DCE9FB;          /* a discount that is on */
+  --tint-ink:  #1F5FB8;
+  --focus:     #BCD7FA;
+  --shadow:    0 1px 2px -1px rgb(26 26 26 / .07);
+  --shadow-thumb: 0 1px 2px rgb(0 0 0 / .08), 0 0 0 .5px rgb(0 0 0 / .04);
+  --shadow-pop: 0 8px 28px rgb(0 0 0 / .12), 0 0 0 1px rgb(0 0 0 / .05);
+  --r-input:   10px;
+  --r-btn:     12px;
+  --r-dock:    16px;
+  --t-label:   13px;
+  --t-meta:    12px;
+  --m:         20px;             /* page margin */
+  --tap:       44px;             /* smallest thing a finger hits */
+  --cart-w:    clamp(360px, 32vw, 420px);
+  --ease:      cubic-bezier(.2,.8,.2,1);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; background: var(--page); color: var(--ink);
+       font-family: var(--font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+       font-size: var(--t-label); line-height: 1.35; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+button, input { font: inherit; color: inherit; }
+button { touch-action: manipulation; cursor: pointer; }
+button:disabled { cursor: default; }
+[hidden] { display: none !important; }
+.num { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- the screen ---------- */
+.app { display: grid; grid-template-columns: minmax(0, 1fr) var(--cart-w); height: 100vh; height: 100dvh; }
+
+/* ---------- products (the same simplified left side in every lab) ---------- */
+.sell { display: grid; grid-template-rows: 48px minmax(0, 1fr); gap: 16px; min-width: 0; padding: var(--m); }
+.search { display: flex; align-items: center; gap: 10px; padding: 0 14px; border-radius: var(--r-input); background: var(--tile); box-shadow: inset 0 0 0 1px var(--outline); color: var(--ink-3); }
+.search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font-size: 15px; color: var(--ink); }
+.search input::placeholder { color: var(--ink-3); }
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(92px, auto); gap: 12px; align-content: start; overflow-y: auto; overscroll-behavior: contain; }
+.tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 12px; border: 0; border-radius: var(--r-input);
+        background: var(--tile); box-shadow: inset 0 0 0 1px var(--outline); text-align: center; transition: background-color .12s, transform .1s; }
+.tile:hover { background: var(--hover); }
+.tile:active { transform: scale(.98); background: var(--raised); }
+.tile b { font-size: 14px; font-weight: 560; line-height: 1.3; }
+.tile span { color: var(--ink-3); font-size: var(--t-meta); }
+
+/* ---------- the cart: the list itself on white ---------- */
+.cart { position: relative; container-type: inline-size; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; min-height: 0; border-left: 1px solid var(--line); }
+
+/* top line: customer | ⋯ — a hairline only once the rows scroll under it */
+.c-top { display: flex; align-items: center; gap: 4px; height: 60px; padding: 0 10px 0 8px; border-bottom: 1px solid transparent; transition: border-color .15s; }
+.cart.scrolled .c-top { border-bottom-color: var(--line); }
+.cust { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: var(--tap); padding: 0 10px 0 12px; border: 0; border-radius: var(--r-input);
+        background: none; font-size: 15px; font-weight: 600; text-align: left; transition: background-color .12s; }
+.cust:hover { background: var(--hover); }
+.cust:active { background: var(--raised); }
+.cust span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cust .ic { color: var(--ink-2); }
+.cust .chev { width: 16px; height: 16px; color: var(--ink-3); }
+.more { display: grid; place-items: center; width: var(--tap); height: var(--tap); border: 0; border-radius: var(--r-input); background: none; color: var(--ink-2); transition: background-color .12s; }
+.more:hover, .more[aria-expanded="true"] { background: var(--hover); }
+.more .ic { width: 20px; height: 20px; }
+
+/* the ⋯ menu */
+.menu { position: absolute; top: 54px; right: 10px; z-index: 20; display: grid; min-width: 200px; padding: 6px; border-radius: var(--r-btn); background: var(--page); box-shadow: var(--shadow-pop);
+        transform-origin: top right; transition: opacity .14s, transform .14s var(--ease); }
+.menu[hidden] { display: grid; opacity: 0; transform: scale(.96); pointer-events: none; visibility: hidden; }
+.menu button { display: flex; align-items: center; gap: 12px; height: var(--tap); padding: 0 12px; border: 0; border-radius: 8px; background: none; font-size: 14px; font-weight: 500; text-align: left; }
+.menu button:hover { background: var(--hover); }
+.menu button .ic { color: var(--ink-2); }
+.menu button.danger, .menu button.danger .ic { color: var(--danger); }
+.menu button:disabled { opacity: .35; }
+.menu hr { margin: 4px 8px; border: 0; border-top: 1px solid var(--line); }
+
+/* rows */
+.rows { overflow-y: auto; overscroll-behavior: contain; padding-bottom: 8px; border-bottom: 1px solid transparent; transition: border-color .15s; }
+.cart.more-below .rows { border-bottom-color: var(--line); }
+.row { border-top: 1px solid var(--line); transition: background-color .5s; }
+.row:first-child { border-top-color: transparent; }
+.row.flash { background: #F7F9FD; transition: none; }
+.r-main { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(76px, auto); align-items: center; gap: 12px; min-height: 58px; padding: 7px 16px 7px var(--m); }
+.r-name { min-width: 0; padding: 4px 0; border: 0; background: none; text-align: left; }
+.r-name b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; }
+.r-name small { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-3); font-size: var(--t-meta); }
+.r-name small.edited { color: var(--tint-ink); }
+.r-amt { font-size: 14px; font-weight: 600; text-align: right; white-space: nowrap; }
+
+/* the stepper: generous, on the dock's grey */
+.step { display: inline-flex; align-items: center; height: var(--tap); border-radius: var(--r-btn); background: var(--raised); }
+.step button { display: grid; place-items: center; width: 40px; height: 100%; border: 0; border-radius: var(--r-btn); background: none; color: var(--ink); transition: background-color .1s; }
+.step button:active { background: var(--raised-2); }
+.step button .ic { width: 16px; height: 16px; stroke-width: 2; }
+.step button.trash { color: var(--ink-2); }
+.step output { min-width: 28px; text-align: center; font-size: 15px; font-weight: 600; }
+
+/* inline edit under a row */
+.rv { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .28s var(--ease); }
+.rv.open { grid-template-rows: 1fr; }
+.rv > * { min-height: 0; overflow: hidden; }
+.r-edit { display: grid; grid-template-columns: 1fr 1.3fr auto; gap: 8px; padding: 0 16px 12px var(--m); }
+.fld { display: flex; align-items: center; gap: 6px; height: var(--tap); padding: 0 12px; border-radius: var(--r-input); background: var(--page); box-shadow: inset 0 0 0 1px var(--outline); cursor: text; }
+.fld:focus-within { box-shadow: inset 0 0 0 1px var(--focus), 0 0 0 2px var(--focus); }
+.fld span { color: var(--ink-3); font-size: var(--t-meta); font-weight: 500; }
+.fld input { flex: 1; min-width: 0; width: 100%; border: 0; outline: 0; background: none; font-size: 15px; font-weight: 560; font-variant-numeric: tabular-nums; }
+.btn-ghost { height: var(--tap); padding: 0 14px; border: 1px solid var(--btn-line); border-radius: var(--r-input); background: var(--page); font-size: 14px; font-weight: 560; white-space: nowrap; box-shadow: 0 1px 0 rgb(0 0 0 / .04); }
+.btn-ghost:active { background: var(--raised); }
+.btn-ghost.danger { color: var(--danger); }
+
+/* empty */
+.empty { display: grid; place-content: center; justify-items: center; gap: 12px; height: 100%; padding: 24px; text-align: center; color: var(--ink-3); font-size: 14px; }
+.empty .ic { width: 32px; height: 32px; stroke-width: 1.4; color: var(--ink-4); }
+
+/* ---------- the pay dock ---------- */
+.dock { display: grid; gap: 10px; margin: 12px 12px 12px; padding: 10px; border-radius: var(--r-dock); background: var(--raised); }
+.d-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.seg { position: relative; display: grid; grid-template-columns: 1fr 1fr; height: var(--tap); padding: 3px; border-radius: var(--r-btn); background: var(--track); }
+.seg::before { content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 9px; background: var(--page); box-shadow: var(--shadow-thumb);
+               transition: transform .22s var(--ease); }
+.seg[data-on="1"]::before { transform: translateX(100%); }
+.seg button { position: relative; display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; border: 0; background: none; color: var(--ink-2); font-size: 14px; font-weight: 560; transition: color .15s; }
+.seg button[aria-pressed="true"] { color: var(--ink); }
+.seg .ic { width: 16px; height: 16px; }
+.chip { display: flex; align-items: center; gap: 7px; height: var(--tap); padding: 0 14px; border: 0; border-radius: var(--r-btn); background: var(--track); color: var(--ink-2);
+        font-size: 14px; font-weight: 560; white-space: nowrap; transition: background-color .12s, color .12s; }
+.chip:hover { color: var(--ink); }
+.chip .ic { width: 16px; height: 16px; }
+.chip.on { background: var(--tint); color: var(--tint-ink); }
+.chip[aria-expanded="true"]:not(.on) { background: var(--page); color: var(--ink); box-shadow: var(--shadow-thumb); }
+.chip:disabled { opacity: .4; }
+@container (max-width: 400px) { .d-row:has(.chip.on) .seg .ic { display: none; } }   /* "Discount 10%" needs the room */
+
+/* discount editor: one line, opens inside the dock */
+.d-edit { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding-top: 2px; }
+.seg.mini { grid-template-columns: 44px 44px; }
+.d-edit .fld { background: var(--page); }
+
+/* the breakdown: a quiet line that opens */
+.bd-t { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 32px; margin: -2px 0; padding: 0 6px; border: 0; border-radius: 8px; background: none; color: var(--ink-2); font-size: var(--t-label); font-weight: 500; }
+.bd-t:hover { color: var(--ink); }
+.bd-t .ic { width: 16px; height: 16px; color: var(--ink-3); transition: transform .25s var(--ease); }
+.bd-t[aria-expanded="true"] .ic { transform: rotate(180deg); }
+.bd { display: grid; gap: 6px; padding: 4px 6px 2px; }
+.bd div { display: flex; justify-content: space-between; gap: 12px; color: var(--ink-2); }
+.bd div span:last-child { color: var(--ink); font-weight: 500; }
+.bd .disc span:last-child { color: var(--tint-ink); }
+
+/* the one action, carrying the total */
+.pay { position: relative; display: flex; align-items: center; justify-content: center; gap: 10px; height: 56px; padding: 0 18px; border: 0; border-radius: var(--r-btn);
+       background: var(--ink); color: #fff; font-size: 16px; font-weight: 600; white-space: nowrap;
+       box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), 0 1px 0 rgb(0 0 0 / .2); transition: background-color .12s, opacity .2s, transform .1s; }
+.pay:hover { background: var(--black); }
+.pay:active { background: #000; transform: scale(.99); }
+.pay i { width: 3px; height: 3px; border-radius: 50%; background: rgb(255 255 255 / .5); }
+.pay .num { letter-spacing: -.01em; }
+.pay:disabled { opacity: .3; transform: none; }
+
+/* toast */
+.toast { position: fixed; left: calc((100vw - var(--cart-w)) / 2); bottom: 28px; z-index: 40; transform: translate(-50%, 12px); padding: 12px 18px; border-radius: 99px;
+         background: var(--ink); color: #fff; font-size: 14px; font-weight: 500; white-space: nowrap; box-shadow: var(--shadow-pop); opacity: 0; pointer-events: none;
+         transition: opacity .2s, transform .25s var(--ease); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M8 10l4 4 4-4"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/><circle cx="18.5" cy="12" r="1.1" fill="currentColor"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M6 12h12"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><rect x="2" y="6" width="12" height="10" rx="1.5"/><path d="M14 9h4l3 3.5V16h-7"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.5L7 20z"/></symbol>
+  <symbol id="i-lost" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5h3M20 8V5h-3M4 16v3h3M20 16v3h-3M8 9v6M11 9v6M14 9v6M17 9v6"/></symbol>
+</svg>
+
+<div class="app">
+  <section class="sell" aria-label="Products">
+    <label class="search"><svg class="ic"><use href="#i-search"/></svg><input type="search" placeholder="Search products or scan a barcode" id="q"></label>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <aside class="cart" id="cart" aria-label="Receipt">
+    <div class="c-top">
+      <button type="button" class="cust" id="cust" title="Change customer"><svg class="ic"><use href="#i-user"/></svg><span id="custName"></span><svg class="ic chev"><use href="#i-chev"/></svg></button>
+      <button type="button" class="more" id="more" aria-label="More" aria-haspopup="menu" aria-expanded="false"><svg class="ic"><use href="#i-more"/></svg></button>
+    </div>
+    <div class="menu" id="menu" role="menu" hidden>
+      <button type="button" role="menuitem" data-act="lost"><svg class="ic"><use href="#i-lost"/></svg>Lost sale</button>
+      <button type="button" role="menuitem" data-act="save"><svg class="ic"><use href="#i-save"/></svg>Save receipt</button>
+      <hr>
+      <button type="button" role="menuitem" data-act="clear" class="danger"><svg class="ic"><use href="#i-x"/></svg>Clear</button>
+    </div>
+
+    <div class="rows" id="rows"></div>
+
+    <div class="dock">
+      <div class="d-row">
+        <div class="seg" id="fulfil" data-on="0" role="group" aria-label="Fulfilment">
+          <button type="button" aria-pressed="true" data-f="0"><svg class="ic"><use href="#i-bag"/></svg>Pickup</button>
+          <button type="button" aria-pressed="false" data-f="1"><svg class="ic"><use href="#i-truck"/></svg>Delivery</button>
+        </div>
+        <button type="button" class="chip" id="discBtn" aria-expanded="false"><svg class="ic"><use href="#i-tag"/></svg><span id="discLabel">Discount</span></button>
+      </div>
+      <div class="rv" id="discRv"><div>
+        <form class="d-edit" id="discForm">
+          <div class="seg mini" id="discType" data-on="0" role="group" aria-label="Discount type">
+            <button type="button" aria-pressed="true" data-t="pct">%</button>
+            <button type="button" aria-pressed="false" data-t="amt">₱</button>
+          </div>
+          <label class="fld"><input id="discIn" inputmode="decimal" autocomplete="off" placeholder="0"><span id="discUnit">%</span></label>
+          <button type="button" class="btn-ghost" id="discOff">Remove</button>
+        </form>
+      </div></div>
+      <button type="button" class="bd-t" id="bdT" aria-expanded="false"><span id="count" class="num"></span><svg class="ic"><use href="#i-chev"/></svg></button>
+      <div class="rv" id="bdRv"><div>
+        <div class="bd num" id="bd"></div>
+      </div></div>
+      <button type="button" class="pay" id="pay"></button>
+    </div>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+
+// ---------- money: integer centavos in, ₱1,807.00 out ----------
+const peso = c => '₱' + (c / 100).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const toC = s => Math.round((parseFloat(String(s).replace(/[^\d.]/g, '')) || 0) * 100);
+const vatOf = total => Math.round(total * 12 / 112);   // prices are VAT-inclusive
+console.assert(vatOf(11200) === 1200 && peso(180700) === '₱1,807.00', 'money path');
+
+// ---------- catalogue ----------
+const P = [
+  ['PL-1012', 'PVC Elbow 1/2"', 1200], ['PL-1016', 'PVC Elbow 3/4"', 1600], ['PL-1112', 'PVC Tee 1/2"', 1450], ['PL-2012', 'PVC Pipe 1/2" × 3m', 14500],
+  ['PL-3012', 'Brass Faucet 1/2"', 18500], ['PL-4012', 'Teflon Tape 1/2"', 2500], ['EL-1009', 'LED Bulb 9W Daylight', 8900], ['EL-2202', 'Duplex Outlet 2-Gang', 6500],
+  ['EL-2301', 'Switch 1-Gang', 4800], ['EL-3001', 'Electrical Tape Black', 3500], ['EL-4030', 'Circuit Breaker 30A', 42000], ['FA-1081', 'Wood Screw #8 × 1"', 250],
+  ['FA-2010', 'Hex Bolt M10 × 100mm', 1800], ['FA-3010', 'Flat Washer M10', 150], ['HT-1016', 'Claw Hammer 16oz', 28500], ['HT-2002', 'Phillips Screwdriver #2', 14500],
+  ['HT-3008', 'Combination Pliers 8"', 22000], ['HT-4005', 'Tape Measure 5m', 16500], ['HT-5012', 'Hacksaw Frame 12"', 19500], ['HT-6024', 'Aluminum Level 24"', 38500],
+].map(([sku, name, price]) => ({sku, name, price}));
+// lab: four off-grid lines so ?many=1 reaches 24 and tests long names
+const EXTRA = [
+  {sku: 'LU-0348', name: 'Marine Plywood 3/4" × 4\' × 8\' Phenolic Board, Heavy Duty Exterior Grade', price: 185000},
+  {sku: 'CE-4000', name: 'Portland Cement Type 1, 40kg Bag', price: 26500},
+  {sku: 'EL-5020', name: 'THHN Stranded Wire 2.0mm² Red (per meter)', price: 2800},
+  {sku: 'PA-1004', name: 'Boysen Permacoat Latex Semi-Gloss White 4L', price: 98000},
+];
+const bySku = Object.fromEntries([...P, ...EXTRA].map(p => [p.sku, p]));
+
+// ---------- state ----------
+const CUSTOMERS = ['Walk-in customer', 'Ricardo Construction', 'Santos Hardware'];
+const S = { lines: [], cust: 0, fulfil: 0, disc: {type: 'pct', value: 0}, editing: null, bd: false, discOpen: false };
+const line = (sku, qty) => ({id: crypto.randomUUID ? crypto.randomUUID() : sku + Math.random(), sku, qty, price: bySku[sku].price});
+const url = new URLSearchParams(location.search);
+if (url.has('many')) S.lines = [...P, ...EXTRA].map((p, i) => line(p.sku, 1 + (i * 5) % 7));
+else if (!url.has('empty')) S.lines = [['PL-2012', 2], ['PL-1012', 6], ['PL-1112', 4], ['PL-4012', 3], ['EL-1009', 5], ['EL-2301', 2], ['FA-1081', 40], ['HT-4005', 1]].map(([s, q]) => line(s, q));
+
+function totals() {
+  const sub = S.lines.reduce((s, l) => s + l.qty * l.price, 0);
+  const d = S.disc.value ? Math.min(sub, S.disc.type === 'pct' ? Math.round(sub * Math.min(S.disc.value, 100) / 100) : S.disc.value) : 0;
+  const total = sub - d;
+  return {sub, d, total, vat: vatOf(total), pcs: S.lines.reduce((s, l) => s + l.qty, 0)};
+}
+
+// ---------- render ----------
+$('#grid').innerHTML = P.map(p => `<button type="button" class="tile" data-sku="${p.sku}"><b>${esc(p.name)}</b><span class="num">${peso(p.price)}</span></button>`).join('');
+
+function rowHTML(l) {
+  const p = bySku[l.sku], open = S.editing === l.id, edited = l.price !== p.price;
+  return `<div class="row" data-id="${l.id}">
+    <div class="r-main">
+      <button type="button" class="r-name" data-edit aria-expanded="${open}"><b>${esc(p.name)}</b><small class="num${edited ? ' edited' : ''}">${p.sku} · ${peso(l.price)}</small></button>
+      <div class="step">
+        <button type="button" data-d="-1" ${l.qty === 1 ? 'class="trash" aria-label="Remove"' : 'aria-label="Less"'}><svg class="ic"><use href="#i-${l.qty === 1 ? 'trash' : 'minus'}"/></svg></button>
+        <output class="num">${l.qty}</output>
+        <button type="button" data-d="1" aria-label="More"><svg class="ic"><use href="#i-plus"/></svg></button>
+      </div>
+      <span class="r-amt num">${peso(l.qty * l.price)}</span>
+    </div>
+    <div class="rv${open ? ' open' : ''}"><div>
+      <div class="r-edit">
+        <label class="fld"><span>Qty</span><input data-f="qty" inputmode="numeric" value="${l.qty}"></label>
+        <label class="fld"><span>₱</span><input data-f="price" inputmode="decimal" value="${(l.price / 100).toFixed(2)}"></label>
+        <button type="button" class="btn-ghost danger" data-rm>Remove</button>
+      </div>
+    </div></div>
+  </div>`;
+}
+
+function render() {
+  const t = totals(), n = S.lines.length, empty = !n;
+  $('#custName').textContent = CUSTOMERS[S.cust];
+  $('#rows').innerHTML = empty
+    ? `<div class="empty"><svg class="ic"><use href="#i-scan"/></svg>Tap a product or scan to start a sale</div>`
+    : S.lines.map(rowHTML).join('');
+  // dock
+  const f = $('#fulfil'); f.dataset.on = S.fulfil;
+  f.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.f === S.fulfil));
+  const dt = $('#discType'); dt.dataset.on = S.disc.type === 'amt' ? 1 : 0;
+  dt.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.t === S.disc.type));
+  $('#discUnit').textContent = S.disc.type === 'pct' ? '%' : '₱';
+  const db = $('#discBtn');
+  db.disabled = empty; db.classList.toggle('on', !!t.d); db.setAttribute('aria-expanded', S.discOpen && !empty);
+  $('#discLabel').textContent = !t.d ? 'Discount' : S.disc.type === 'pct' ? `Discount ${S.disc.value}%` : `Discount ${peso(t.d)}`;
+  $('#discRv').classList.toggle('open', S.discOpen && !empty);
+  $('#discOff').hidden = !S.disc.value;
+  $('#bdT').hidden = empty;
+  $('#bdT').setAttribute('aria-expanded', S.bd);
+  $('#count').textContent = `${n} item${n === 1 ? '' : 's'} · ${t.pcs} pc${t.pcs === 1 ? '' : 's'}`;
+  $('#bdRv').classList.toggle('open', S.bd && !empty);
+  $('#bd').innerHTML = `<div><span>Subtotal</span><span>${peso(t.sub)}</span></div>`
+    + (t.d ? `<div class="disc"><span>Discount</span><span>−${peso(t.d)}</span></div>` : '')
+    + `<div><span>VAT (12% incl.)</span><span>${peso(t.vat)}</span></div>`;
+  const pay = $('#pay');
+  pay.disabled = empty;
+  pay.innerHTML = empty ? 'Check out' : `Check out<i></i><span class="num">${peso(t.total)}</span>`;
+  document.querySelectorAll('.menu [data-act="save"], .menu [data-act="clear"]').forEach(b => b.disabled = empty);
+  onScroll();
+}
+
+let toastT;
+function toast(msg) {
+  const el = $('#toast'); el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 1800);
+}
+function flash(id) {
+  const r = document.querySelector(`.row[data-id="${id}"]`); if (!r) return;
+  r.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  r.classList.add('flash'); requestAnimationFrame(() => requestAnimationFrame(() => r.classList.remove('flash')));
+}
+function onScroll() {
+  const r = $('#rows');
+  $('#cart').classList.toggle('scrolled', r.scrollTop > 0);
+  $('#cart').classList.toggle('more-below', r.scrollTop + r.clientHeight < r.scrollHeight - 1);
+}
+function menu(open) { $('#menu').hidden = !open; $('#more').setAttribute('aria-expanded', open); }
+
+// ---------- events ----------
+$('#grid').addEventListener('click', e => {
+  const b = e.target.closest('.tile'); if (!b) return;
+  let l = S.lines.find(x => x.sku === b.dataset.sku);
+  if (l) l.qty++; else S.lines.push(l = line(b.dataset.sku, 1));
+  render(); flash(l.id);
+});
+$('#rows').addEventListener('scroll', onScroll, {passive: true});
+$('#rows').addEventListener('click', e => {
+  const row = e.target.closest('.row'); if (!row) return;
+  const l = S.lines.find(x => x.id === row.dataset.id);
+  const step = e.target.closest('[data-d]');
+  if (step) {
+    l.qty += +step.dataset.d;
+    if (l.qty < 1) S.lines = S.lines.filter(x => x !== l);
+    render();
+  } else if (e.target.closest('[data-rm]')) {
+    S.lines = S.lines.filter(x => x !== l); S.editing = null; render();
+  } else if (e.target.closest('[data-edit]')) {
+    S.editing = S.editing === l.id ? null : l.id; render();
+  }
+});
+$('#rows').addEventListener('change', e => {
+  const inp = e.target.closest('[data-f]'); if (!inp) return;
+  const l = S.lines.find(x => x.id === inp.closest('.row').dataset.id);
+  if (inp.dataset.f === 'qty') l.qty = Math.max(1, Math.min(99999, parseInt(inp.value, 10) || 1));
+  else l.price = Math.max(0, toC(inp.value));
+  render();
+});
+$('#rows').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('[data-f]')) { e.target.blur(); S.editing = null; render(); } });
+
+$('#cust').addEventListener('click', () => { S.cust = (S.cust + 1) % CUSTOMERS.length; render(); });
+$('#more').addEventListener('click', e => { e.stopPropagation(); menu($('#menu').hidden); });
+document.addEventListener('click', e => { if (!e.target.closest('#menu')) menu(false); });
+$('#menu').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  menu(false);
+  if (b.dataset.act === 'lost') toast('Lost sale logged');
+  if (b.dataset.act === 'save') toast(`Receipt saved · ${S.lines.length} items`);
+  if (b.dataset.act === 'clear') { S.lines = []; S.disc.value = 0; S.editing = null; S.discOpen = false; S.bd = false; render(); }
+});
+
+$('#fulfil').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { S.fulfil = +b.dataset.f; render(); } });
+$('#discBtn').addEventListener('click', () => {
+  S.discOpen = !S.discOpen; render();
+  if (S.discOpen) { const i = $('#discIn'); i.value = S.disc.value ? (S.disc.type === 'amt' ? S.disc.value / 100 : S.disc.value) : ''; setTimeout(() => i.focus({preventScroll: true}), 60); }
+});
+$('#discType').addEventListener('click', e => {
+  const b = e.target.closest('[data-t]'); if (!b || b.dataset.t === S.disc.type) return;
+  S.disc = {type: b.dataset.t, value: 0}; $('#discIn').value = ''; render(); $('#discIn').focus();
+});
+$('#discIn').addEventListener('input', e => {
+  const v = e.target.value;
+  S.disc.value = S.disc.type === 'pct' ? Math.min(100, parseFloat(v) || 0) : toC(v);
+  render();
+});
+$('#discForm').addEventListener('submit', e => { e.preventDefault(); S.discOpen = false; render(); });
+$('#discOff').addEventListener('click', () => { S.disc.value = 0; S.discOpen = false; render(); });
+$('#bdT').addEventListener('click', () => { S.bd = !S.bd; render(); });
+$('#pay').addEventListener('click', () => {
+  const t = totals();
+  toast(`Check out ${peso(t.total)} · ${CUSTOMERS[S.cust]} · ${S.fulfil ? 'Delivery' : 'Pickup'}`);
+});
+
+render();
+</script>
+</body>
+</html>

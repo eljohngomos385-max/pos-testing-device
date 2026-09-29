@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en" class="bo"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F7F6F3">
+  <title>Sales switcher lab</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&amp;family=Geist:wght@400..700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/bo-products.css">
+  <link rel="stylesheet" href="/bo-item.css">
+  <link rel="stylesheet" href="/bo-inventory.css">
+  <link rel="stylesheet" href="/bo-sales.css">
+  <link rel="stylesheet" href="/bo-suppliers.css">
+  <link rel="stylesheet" href="/bo-staff.css">
+  <link rel="stylesheet" href="/bo-insights.css">
+  <link rel="stylesheet" href="/bo-blocks.css">
+  <link rel="stylesheet" href="/bo-calm.css">
+<style>
+/* ===========================================================================
+   SALES SWITCHER LAB (2026-09-28): a frozen snapshot of the real Sales page (Summary and Items),
+   nothing live. The panel at the bottom right swaps the Summary | Items switch between the
+   switcher-lab.html variants, picks how the content arrives, and hides the "Sales" title.
+   Rebuild the snapshot: scratchpad slab/build.mjs. Tokens: the app's --blk-* / --btn-soft set.
+   =========================================================================== */
+.lab-sw { --t: .2s cubic-bezier(.2,.7,.3,1); display: inline-flex; align-items: center; position: relative; }
+.bar > .lab-sw { margin: 0 0 0 4px; }
+.bar > .lab-grow { margin-left: auto; }
+.lab-notitle .bar > h1, .lab-notitle .bar > .lab-slash { display: none; }
+.lab-notitle .bar > .lab-sw { margin-left: 0; }
+.lab-sw button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+
+/* 1 / 6 / 10: one track, a white thumb slides under the picked word */
+.lab-sw.slide { padding: 2px; border-radius: 8px; background: var(--btn-soft); }
+.lab-sw.slide::before { content: ""; position: absolute; top: 2px; bottom: 2px; left: var(--x, 2px); width: var(--w, 0); border-radius: 6px;
+  background: var(--po-surface, #fff); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04); }
+.lab-sw.slide button { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 12px; font-size: 13px; font-weight: 500; color: var(--blk-ink-2); transition: color var(--t); }
+.lab-sw.slide button.on { color: var(--blk-ink); }
+.lab-sw svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.lab-sw .cnt { padding: 0 6px; border-radius: 999px; background: var(--btn-soft-hover); font-size: 11px; font-weight: 600; color: var(--blk-ink-2); }
+.lab-sw kbd { font-family: inherit; font-size: 11px; margin-left: 6px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--po-line, #E1E1E1); color: var(--blk-ink-3); }
+.lab-sw.ready::before, .lab-sw.ready::after { transition: left var(--t), width var(--t); }
+
+/* 2 / 7: underline tabs, the 2px line slides */
+.lab-sw.ul { gap: 20px; align-self: stretch; }
+.lab-sw.ul::after { content: ""; position: absolute; bottom: 0; height: 2px; left: var(--x, 0); width: var(--w, 0); border-radius: 2px; background: var(--blk-ink); }
+.lab-sw.ul button { padding: 0; font-size: 14px; font-weight: 500; color: var(--blk-ink-3); transition: color var(--t); }
+.lab-sw.ul button.on, .lab-sw.ul button:hover { color: var(--blk-ink); }
+.lab-row { display: flex; margin: -4px 0 16px; border-bottom: 1px solid var(--po-line, #E1E1E1); }
+.lab-row .lab-sw.ul { height: 38px; }
+
+/* 3: the title is the switch */
+.lab-sw.big { gap: 16px; }
+.lab-sw.big button { padding: 0; font-size: 18px; font-weight: 600; color: #C4C4C4; transition: color var(--t); }
+.lab-sw.big button.on { color: var(--blk-ink); }
+.lab-sw.big button:hover:not(.on) { color: var(--blk-ink-3); }
+
+/* 4: breadcrumb menu */
+.lab-slash { color: var(--blk-ink-3); font-size: 18px; margin: 0 -6px 0 0; }
+.lab-sw.crumb > .crumb-btn { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: 6px; font-size: 18px; font-weight: 600; color: var(--blk-ink); }
+.lab-sw.crumb > .crumb-btn:hover { background: var(--btn-soft); }
+.lab-sw.crumb > .crumb-btn::after { content: ""; width: 7px; height: 7px; border: solid var(--blk-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); }
+.lab-sw.crumb .crumb-menu { position: absolute; top: 36px; left: 0; z-index: 30; min-width: 200px; padding: 4px; border-radius: 10px; background: var(--po-surface, #fff);
+  box-shadow: 0 8px 24px rgba(0,0,0,.12), 0 0 0 1px rgba(0,0,0,.06); transform-origin: top left; transition: opacity .14s, transform .14s; }
+.lab-sw.crumb .crumb-menu[data-shut] { opacity: 0; transform: scale(.97); pointer-events: none; }
+.lab-sw.crumb .crumb-menu button { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 8px 10px; border-radius: 6px; text-align: left; color: var(--blk-ink); }
+.lab-sw.crumb .crumb-menu button:hover { background: var(--btn-soft); }
+.lab-sw.crumb .crumb-menu button.on::after { content: "✓"; color: var(--blk-ink-2); }
+.lab-sw.crumb small { display: block; color: var(--blk-ink-3); font-size: 12px; }
+
+/* 5: outlined joined, same shape as ‹ period › */
+.lab-sw.joined button { height: 30px; padding: 0 12px; border: 1px solid var(--po-line-strong, #D2D2D2); background: var(--po-surface, #fff); font-size: 13px; font-weight: 500; color: var(--blk-ink-2); transition: background var(--t), color var(--t); }
+.lab-sw.joined button + button { margin-left: -1px; }
+.lab-sw.joined button:first-child { border-radius: 8px 0 0 8px; }
+.lab-sw.joined button:last-child { border-radius: 0 8px 8px 0; }
+.lab-sw.joined button.on { background: var(--btn-soft); color: var(--blk-ink); font-weight: 600; }
+
+/* 8: folder tabs sitting on the content */
+.lab-folder { display: flex; margin: -4px 0 16px; border-bottom: 1px solid var(--po-line, #E1E1E1); }
+.lab-folder .lab-sw { gap: 2px; align-items: flex-end; }
+.lab-folder button { height: 34px; padding: 0 16px; border: 1px solid var(--po-line, #E1E1E1); border-bottom: 0; border-radius: 10px 10px 0 0; background: var(--btn-soft);
+  font-size: 13px; font-weight: 500; color: var(--blk-ink-3); margin-bottom: -1px; transition: background var(--t), color var(--t); }
+.lab-folder button.on { background: var(--po-surface, #fff); color: var(--blk-ink); font-weight: 600; padding-bottom: 1px; }
+
+/* 9: quiet text + divider */
+.lab-sw.quiet { font-size: 13px; }
+.lab-sw.quiet button { padding: 4px 2px; font-weight: 500; color: var(--blk-ink-3); transition: color var(--t); }
+.lab-sw.quiet button.on { color: var(--blk-ink); font-weight: 600; }
+.lab-sw.quiet i { width: 1px; height: 14px; background: var(--po-line-strong, #D2D2D2); margin: 0 10px; }
+
+/* The demo panel */
+.lab-panel { position: fixed; right: 16px; bottom: 16px; z-index: 100; width: 280px; padding: 12px 14px 14px; border-radius: 12px; background: var(--po-surface, #fff);
+  box-shadow: 0 12px 32px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.06); font-size: 13px; color: var(--blk-ink); }
+.lab-panel h4 { margin: 0 0 10px; font-size: 13px; font-weight: 600; display: flex; align-items: center; }
+.lab-panel h4 button { margin-left: auto; border: 0; background: none; color: var(--blk-ink-3); cursor: pointer; font: inherit; }
+.lab-panel.min > :not(h4) { display: none; }
+.lab-panel.min h4 { margin: 0; }
+.lab-panel label { display: block; margin-bottom: 10px; color: var(--blk-ink-2); }
+.lab-panel select { display: block; width: 100%; margin-top: 4px; height: 32px; padding: 0 8px; border: 1px solid var(--po-line-strong, #D2D2D2); border-radius: 6px; background: #fff; font: inherit; color: var(--blk-ink); }
+.lab-panel .chk { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; color: var(--blk-ink); }
+.lab-panel .chk label { margin: 0; color: var(--blk-ink); }
+.lab-panel .step { display: flex; gap: 6px; margin-top: 10px; }
+.lab-panel .step button { flex: 1; height: 30px; border: 0; border-radius: 6px; background: var(--btn-soft); font: inherit; font-weight: 500; color: var(--blk-ink); cursor: pointer; }
+.lab-panel .step button:hover { background: var(--btn-soft-hover); }
+.lab-panel p { margin: 8px 0 0; color: var(--blk-ink-3); font-size: 12px; line-height: 1.4; }
+/* Export is Items-only, as in the app; the button style would otherwise override [hidden] */
+[data-lab-export][hidden] { display: none !important; }
+</style>
+</head>
+<body class="bo-body bo-light" data-density="md">
+  <div id="app" class="bo-app">
+
+    <!-- ============== TOPBAR (black strip) ============== -->
+    <!-- ponytail: no topbar. The hamburger only matters below 1024px, where the
+         sidebar overlays; CSS hides it on desktop. -->
+    <button id="boSidebarToggle" class="bo-hamburger" aria-label="Toggle menu" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </button>
+
+    <!-- ============== SIDEBAR ============== -->
+    <aside class="sidebar bo-sidebar">
+      <div class="side-resizer" id="sideResizer" title="Drag to resize · double-click to reset"></div>
+      <!-- Location switcher: a store badge, the location you switch, and a ⌄ beside it. -->
+      <div class="side-switch-wrap">
+        <!-- In Settings, ← Back takes the switcher's slot (owner, 2026-09-27); paint() swaps the two. Before #locBtn: its menu must stay its nextElementSibling. -->
+        <button class="side-link" type="button" data-set-back="" hidden="">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"></path></svg>
+          <span>Back</span>
+        </button>
+        <button class="side-switch" id="locBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="ss-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"></path><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"></path><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"></path></svg></span>
+          <span class="ss-text"><span class="ss-label" id="locBiz">EJ Hardware</span><span class="ss-name" id="locName">Main Store</span></span>
+          <svg class="ss-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+        <div class="side-menu" id="locMenu" role="menu" hidden="">
+    <div class="sm-head">Locations</div>
+    <button class="sm-opt on" type="button" role="menuitem"><span class="sm-text">Main Store</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></button>
+    <div class="sm-note">Other locations show here once their terminals sync.</div></div>
+        <!-- Folds the sidebar to an icon rail (desktop). After the menu: wireSwitchers() opens a switch's nextElementSibling. -->
+        <button class="side-rail-btn" id="sideRailBtn" type="button" aria-label="Fold sidebar" aria-expanded="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 5a2 2 0 0 1 2-2h4v18H5a2 2 0 0 1-2-2z" fill="currentColor"></path></svg>
+        </button>
+      </div>
+
+      <nav class="side-nav">
+        <button class="side-label" type="button" data-fold="main-menu" aria-expanded="true">Main menu<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></button>
+        <div class="side-fold"><div class="side-fold-in">
+          <button class="side-link" data-view="dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="f" width="7" height="9" x="3" y="3" rx="1"></rect><rect class="f" width="7" height="5" x="14" y="3" rx="1"></rect><rect class="f" width="7" height="9" x="14" y="12" rx="1"></rect><rect class="f" width="7" height="5" x="3" y="16" rx="1"></rect></svg>
+            <span>Dashboard</span>
+          </button>
+          <button class="side-link active" data-view="sales">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><rect class="f" x="15" y="5" width="4" height="12" rx="1"></rect><rect class="f" x="7" y="8" width="4" height="9" rx="1"></rect></svg>
+            <span>Sales</span>
+          </button>
+          <button class="side-link" data-view="transactions">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"></path><path class="k" d="M14 8H8M16 12H8M13 16H8"></path></svg>
+            <span>Transactions</span>
+          </button>
+          <button class="side-link has-sub" data-view="products">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" transform="matrix(-1 0 0 1 24 0)" d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"></path><circle class="hole" cx="16.5" cy="7.5" r="1.5"></circle></svg>
+            <span>Products</span><svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
+          <div class="side-sub" data-view="inventory"><div class="side-fold-in"><button class="side-sublink" type="button" data-sub="overview">Stock history</button></div></div>
+          <button class="side-link" data-view="customers">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="12" cy="8" r="5"></circle><path class="f" d="M20 21a8 8 0 0 0-16 0"></path></svg>
+            <span>Customers</span>
+          </button>
+        </div></div>
+        <button class="side-label" type="button" data-fold="stock" aria-expanded="true">Stock<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></button>
+        <div class="side-fold"><div class="side-fold-in">
+          <button class="side-link has-sub" data-view="suppliers" data-sub="suppliers orders">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"></path><path d="M15 18H9"></path><path class="f" d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"></path><circle class="f k" cx="17" cy="18" r="2"></circle><circle class="f k" cx="7" cy="18" r="2"></circle></svg>
+            <span>Suppliers</span>
+          <svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></button><div class="side-sub" data-view="suppliers"><div class="side-fold-in"><button class="side-sublink" type="button" data-sub="orders">Purchase orders</button></div></div>
+        </div></div>
+      </nav>
+
+      <!-- Settings swaps the sidebar for its own sections (owner, 2026-09-26, Shopify-style). paint() shows
+           this nav on the settings and payments views; ← Back, in the switcher slot above, returns to the last page outside them. -->
+      <nav class="side-nav side-setnav" hidden="">
+        <div class="side-label">Settings</div>
+        <button class="side-link" type="button" data-set="store">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 11h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path><path class="f" d="M2 8l2-5h16l2 5a3 3 0 0 1-5 2.2 3 3 0 0 1-5 0 3 3 0 0 1-5 0A3 3 0 0 1 2 8z"></path></svg>
+          <span>Store</span>
+        </button>
+        <button class="side-link" type="button" data-set="tax">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="7" cy="7" r="3"></circle><circle class="f" cx="17" cy="17" r="3"></circle><path d="M19 5 5 19"></path></svg>
+          <span>Tax</span>
+        </button>
+        <button class="side-link" type="button" data-set="payments">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="f" width="20" height="14" x="2" y="5" rx="2"></rect><path class="k" d="M2 10h20M6 14h2"></path></svg>
+          <span>Payments</span>
+        </button>
+        <button class="side-link" type="button" data-set="receipt">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"></path><path class="k" d="M14 8H8M16 12H8M13 16H8"></path></svg>
+          <span>Receipt &amp; printing</span>
+        </button>
+        <button class="side-link" type="button" data-set="staff">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="10" cy="8" r="5"></circle><path class="f" d="M18 21a8 8 0 0 0-16 0"></path><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"></path></svg>
+          <span>Staff &amp; access</span>
+        </button>
+        <button class="side-link" type="button" data-set="appearance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="12" cy="12" r="10"></circle><circle class="hole" cx="8" cy="10" r="1.5"></circle><circle class="hole" cx="12" cy="7" r="1.5"></circle><circle class="hole" cx="16" cy="10" r="1.5"></circle></svg>
+          <span>Appearance</span>
+        </button>
+        <button class="side-link" type="button" data-set="data">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse class="f" cx="12" cy="5" rx="9" ry="3"></ellipse><path class="f" d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"></path><path class="k" d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"></path></svg>
+          <span>Data</span>
+        </button>
+      </nav>
+
+      <div class="side-footer">
+        <!-- Settings sits at the bottom, over the account; opening it swaps the nav above for .side-setnav and hides this row (paint()). -->
+        <button class="side-link" data-view="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><circle class="hole" cx="12" cy="12" r="3"></circle></svg>
+          <span>Settings</span>
+        </button>
+        <!-- Account switcher: a user badge, name + role. No chevron; only the store gets one. -->
+        <div class="side-switch-wrap">
+          <button class="side-switch acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+            <span class="ss-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg></span>
+            <span class="ss-text"><span class="ss-name" id="acctName">El John</span><span class="ss-label" id="acctRole">Owner</span></span>
+          </button>
+          <div class="side-menu up" id="acctMenu" role="menu" hidden=""><div class="sm-head">Switch account</div>
+    <button class="sm-opt on" type="button" role="menuitem" data-staff="El John">
+      <span class="sm-text">El John<span class="sm-sub">Owner</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+    </button>
+    <button class="sm-opt" type="button" role="menuitem" data-staff="Maricel R.">
+      <span class="sm-text">Maricel R.<span class="sm-sub">Manager</span></span>
+    </button>
+    <button class="sm-opt" type="button" role="menuitem" data-staff="Aldrin S.">
+      <span class="sm-text">Aldrin S.<span class="sm-sub">Cashier</span></span>
+    </button>
+    <button class="sm-opt" type="button" role="menuitem" data-staff="Joy P.">
+      <span class="sm-text">Joy P.<span class="sm-sub">Cashier</span></span>
+    </button>
+    <button class="sm-opt" type="button" role="menuitem" data-staff="Ramon D.">
+      <span class="sm-text">Ramon D.<span class="sm-sub">Stock clerk</span></span>
+    </button>
+    <button class="sm-opt" type="button" role="menuitem" data-staff="Liza M.">
+      <span class="sm-text">Liza M.<span class="sm-sub">Cashier</span></span>
+    </button></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============== MAIN ============== -->
+    <div class="main bo-main">
+
+      <!-- ============================================
+           DASHBOARD
+           ============================================ -->
+      <!-- The calm Dashboard (dashboard-calm-lab.html, ported as is; styles in bo-calm.css).
+           Left: the four KPIs as folder tabs over the bars, then recent transactions.
+           Right: daily target, monthly target, low stock, payment methods, each on or off from the Widgets menu. backoffice.js → renderDashboard. -->
+      
+
+      <!-- Sales: markup lives in bo-sales.js -->
+      <section class="view view-sales active calm-sales" data-view="sales"><div class="shell">
+      <div class="c-main">
+        <div class="bar">
+          <h1>Sales</h1><div class="seg pd-switch"><a class="seg-btn active" href="/admin/sales">Summary</a><a class="seg-btn" href="/admin/sales?by=items">Items</a></div>
+          <button class="btn" data-act="export" data-lab-export=""><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="M7.5 10.5 12 15l4.5-4.5"></path><path d="M4 20h16"></path></svg>Export CSV</button><div class="nav">
+        <button class="icon-btn" data-shift="-1" aria-label="Previous month">‹</button>
+        <button class="pick" popovertarget="calRange">September 2026</button>
+        <button class="icon-btn" data-shift="1" aria-label="Next month" disabled="">›</button>
+      </div>
+      <div class="menu" id="calRange" popover="" role="menu"><button role="menuitemradio" data-go="month|2026-09" aria-checked="true">This month</button><button role="menuitemradio" data-go="month|2026-08" aria-checked="false">Last month</button><button role="menuitemradio" data-go="year|2026-01" aria-checked="false">This year</button><button role="menuitemradio" data-go="year|2025-01" aria-checked="false">Last year</button><hr><h3>Compare to</h3><button role="menuitemradio" data-vs="prev" aria-checked="false">Previous month</button><button role="menuitemradio" data-vs="year" aria-checked="false">Same month last year</button><button role="menuitemradio" data-vs="" aria-checked="true">No comparison</button></div>
+        </div>
+        
+        
+        
+      <div data-pane="summary"><section class="card">
+          <div class="strip n5" role="tablist" aria-label="Calendar shows" style="--cols:5"><button class="stat" role="tab" data-chart="rev" aria-selected="true"><div class="lbl">Revenue</div><div class="line"><span class="val">₱1.48M</span></div><div class="sub">₱52,880 daily avg</div></button><button class="stat" role="tab" data-chart="gp" aria-selected="false"><div class="lbl">Gross profit</div><div class="line"><span class="val">₱283k</span></div><div class="sub">₱10,106 daily avg</div></button><button class="stat" role="tab" data-chart="n" aria-selected="false" title="₱1,024 average receipt"><div class="lbl">Receipts</div><div class="line"><span class="val">1,446</span></div><div class="sub">51.6 daily avg</div></button><button class="stat" role="tab" data-chart="mg" aria-selected="false"><div class="lbl">Margin</div><div class="line"><span class="val">19.1%</span></div></button><button class="stat act" data-act="cal-target" title="₱1,480,633 of ₱1,590,000 · click to change"><div class="lbl">Target</div><div class="line"><span class="val">₱1.48M</span><b class="pct">93%</b></div><div class="sub">of ₱1.59M</div></button></div>
+          <div class="panel"><div class="cal"><div class="dow">Mon</div><div class="dow">Tue</div><div class="dow">Wed</div><div class="dow">Thu</div><div class="dow">Fri</div><div class="dow">Sat</div><div class="dow">Sun</div><div class="dow wk">Week</div><div class="cell pad"></div><button class="cell heat" data-day="2026-09-01" style="--heat:color-mix(in srgb, var(--b-heat) 30%, white)" title="₱21,066 over the ₱53,000 daily target"><span class="d">1</span><span class="v"><span class="full">₱74,066</span><span class="sm">₱74.1k</span></span><span class="m">61 receipts</span></button><button class="cell heat" data-day="2026-09-02" style="--heat:color-mix(in srgb, var(--b-heat) 25%, white)" title="₱14,920 over the ₱53,000 daily target"><span class="d">2</span><span class="v"><span class="full">₱67,920</span><span class="sm">₱67.9k</span></span><span class="m">42 receipts</span></button><button class="cell" data-day="2026-09-03" title="₱769 short of the ₱53,000 daily target"><span class="d">3</span><span class="v"><span class="full">₱52,231</span><span class="sm">₱52.2k</span></span><span class="m">61 receipts</span></button><button class="cell" data-day="2026-09-04" title="₱218 short of the ₱53,000 daily target"><span class="d">4</span><span class="v"><span class="full">₱52,782</span><span class="sm">₱52.8k</span></span><span class="m">62 receipts · 1 ret</span></button><button class="cell heat" data-day="2026-09-05" style="--heat:color-mix(in srgb, var(--b-heat) 36%, white)" title="₱28,230 over the ₱53,000 daily target"><span class="d">5</span><span class="v"><span class="full">₱81,230</span><span class="sm">₱81.2k</span></span><span class="m">66 receipts</span></button><button class="cell" data-day="2026-09-06" title="₱33,610 short of the ₱53,000 daily target"><span class="d">6</span><span class="v"><span class="full">₱19,390</span><span class="sm">₱19.4k</span></span><span class="m">22 receipts</span></button><button class="cell week wk" data-week="2026-09-01"><span class="d">Sep 1 – 6</span><span class="v">₱347,620</span><span class="m">6 days · 314 receipts</span></button><button class="cell" data-day="2026-09-07" title="₱9,490 short of the ₱53,000 daily target"><span class="d">7</span><span class="v"><span class="full">₱43,510</span><span class="sm">₱43.5k</span></span><span class="m">45 receipts</span></button><button class="cell loss" data-day="2026-09-08" title="Slowest day of the month · ₱34,238 short of the ₱53,000 daily target"><span class="d">8</span><b class="tag slow">Slowest</b><span class="v"><span class="full">₱18,762</span><span class="sm">₱18.8k</span></span><span class="m">37 receipts</span></button><button class="cell heat" data-day="2026-09-09" style="--heat:color-mix(in srgb, var(--b-heat) 38%, white)" title="₱31,505 over the ₱53,000 daily target"><span class="d">9</span><span class="v"><span class="full">₱84,505</span><span class="sm">₱84.5k</span></span><span class="m">66 receipts</span></button><button class="cell" data-day="2026-09-10" title="₱12,425 short of the ₱53,000 daily target"><span class="d">10</span><span class="v"><span class="full">₱40,575</span><span class="sm">₱40.6k</span></span><span class="m">51 receipts · 2 ret</span></button><button class="cell heat" data-day="2026-09-11" style="--heat:color-mix(in srgb, var(--b-heat) 28%, white)" title="₱18,848 over the ₱53,000 daily target"><span class="d">11</span><span class="v"><span class="full">₱71,848</span><span class="sm">₱71.8k</span></span><span class="m">59 receipts</span></button><button class="cell heat" data-day="2026-09-12" style="--heat:color-mix(in srgb, var(--b-heat) 36%, white)" title="₱28,031 over the ₱53,000 daily target"><span class="d">12</span><span class="v"><span class="full">₱81,031</span><span class="sm">₱81k</span></span><span class="m">73 receipts</span></button><button class="cell" data-day="2026-09-13" title="₱18,548 short of the ₱53,000 daily target"><span class="d">13</span><span class="v"><span class="full">₱34,452</span><span class="sm">₱34.5k</span></span><span class="m">30 receipts</span></button><button class="cell week wk" data-week="2026-09-07"><span class="d">Sep 7 – 13</span><span class="v">₱374,683</span><span class="m">7 days · 361 receipts</span></button><button class="cell" data-day="2026-09-14" title="₱13,978 short of the ₱53,000 daily target"><span class="d">14</span><span class="v"><span class="full">₱39,022</span><span class="sm">₱39k</span></span><span class="m">52 receipts · 1 ret</span></button><button class="cell" data-day="2026-09-15" title="₱10,565 short of the ₱53,000 daily target"><span class="d">15</span><span class="v"><span class="full">₱42,435</span><span class="sm">₱42.4k</span></span><span class="m">46 receipts</span></button><button class="cell" data-day="2026-09-16" title="₱14,177 short of the ₱53,000 daily target"><span class="d">16</span><span class="v"><span class="full">₱38,823</span><span class="sm">₱38.8k</span></span><span class="m">56 receipts · 1 ret</span></button><button class="cell" data-day="2026-09-17" title="₱18,527 short of the ₱53,000 daily target"><span class="d">17</span><span class="v"><span class="full">₱34,474</span><span class="sm">₱34.5k</span></span><span class="m">42 receipts · 1 ret</span></button><button class="cell heat" data-day="2026-09-18" style="--heat:color-mix(in srgb, var(--b-heat) 14%, white)" title="₱2,404 over the ₱53,000 daily target"><span class="d">18</span><span class="v"><span class="full">₱55,404</span><span class="sm">₱55.4k</span></span><span class="m">52 receipts</span></button><button class="cell heat best" data-day="2026-09-19" style="--heat:color-mix(in srgb, var(--b-heat) 55%, white)" title="Best day of the month · ₱51,159 over the ₱53,000 daily target"><span class="d">19</span><b class="tag">Best</b><span class="v"><span class="full">₱104,159</span><span class="sm">₱104.2k</span></span><span class="m">75 receipts</span></button><button class="cell" data-day="2026-09-20" title="₱9,730 short of the ₱53,000 daily target"><span class="d">20</span><span class="v"><span class="full">₱43,270</span><span class="sm">₱43.3k</span></span><span class="m">34 receipts</span></button><button class="cell week wk" data-week="2026-09-14"><span class="d">Sep 14 – 20</span><span class="v">₱357,585</span><span class="m">7 days · 357 receipts</span></button><button class="cell heat" data-day="2026-09-21" style="--heat:color-mix(in srgb, var(--b-heat) 14%, white)" title="₱1,978 over the ₱53,000 daily target"><span class="d">21</span><span class="v"><span class="full">₱54,978</span><span class="sm">₱55k</span></span><span class="m">59 receipts</span></button><button class="cell heat" data-day="2026-09-22" style="--heat:color-mix(in srgb, var(--b-heat) 23%, white)" title="₱13,315 over the ₱53,000 daily target"><span class="d">22</span><span class="v"><span class="full">₱66,315</span><span class="sm">₱66.3k</span></span><span class="m">79 receipts</span></button><button class="cell" data-day="2026-09-23" title="₱6,456 short of the ₱53,000 daily target"><span class="d">23</span><span class="v"><span class="full">₱46,544</span><span class="sm">₱46.5k</span></span><span class="m">66 receipts</span></button><button class="cell heat" data-day="2026-09-24" style="--heat:color-mix(in srgb, var(--b-heat) 14%, white)" title="₱2,405 over the ₱53,000 daily target"><span class="d">24</span><span class="v"><span class="full">₱55,405</span><span class="sm">₱55.4k</span></span><span class="m">46 receipts</span></button><button class="cell" data-day="2026-09-25" title="₱10,524 short of the ₱53,000 daily target"><span class="d">25</span><span class="v"><span class="full">₱42,476</span><span class="sm">₱42.5k</span></span><span class="m">58 receipts</span></button><button class="cell" data-day="2026-09-26" title="₱5,046 short of the ₱53,000 daily target"><span class="d">26</span><span class="v"><span class="full">₱47,954</span><span class="sm">₱48k</span></span><span class="m">41 receipts</span></button><button class="cell heat" data-day="2026-09-27" style="--heat:color-mix(in srgb, var(--b-heat) 16%, white)" title="₱4,227 over the ₱53,000 daily target"><span class="d">27</span><span class="v"><span class="full">₱57,227</span><span class="sm">₱57.2k</span></span><span class="m">29 receipts</span></button><button class="cell week wk" data-week="2026-09-21"><span class="d">Sep 21 – 27</span><span class="v">₱370,899</span><span class="m">7 days · 378 receipts</span></button><button class="cell today" data-day="2026-09-28" title="₱23,154 short of the ₱53,000 daily target"><span class="d">28</span><span class="v"><span class="full">₱29,846</span><span class="sm">₱29.8k</span></span><span class="m">36 receipts</span></button><div class="cell future"><span class="d">29</span></div><div class="cell future"><span class="d">30</span></div><div class="cell pad"></div><div class="cell pad"></div><div class="cell pad"></div><div class="cell pad"></div><button class="cell week wk" data-week="2026-09-28"><span class="d">Sep 28 – 28</span><span class="v">₱29,846</span><span class="m">1 days · 36 receipts</span></button></div><div class="legend"><span><i></i>Below the ₱53,000 daily target</span><span>Above<i class="scale"></i></span><span><i class="r"></i>Slowest day</span></div></div>
+        </section><section class="top"><div><div class="flush"><table>
+      <tbody><tr><th class="sw"><button class="pick" popovertarget="calTop" aria-label="Rank by: Top items">Top items</button><div class="menu" id="calTop" popover="" role="menu"><button role="menuitemradio" data-set="top" data-v="item" aria-checked="true">Top items</button><button role="menuitemradio" data-set="top" data-v="cat" aria-checked="false">Top categories</button><button role="menuitemradio" data-set="top" data-v="day" aria-checked="false">Busiest days</button><button role="menuitemradio" data-set="top" data-v="hour" aria-checked="false">Busiest hours</button></div></th><th class="n qty">Sold</th><th class="n amt">Revenue</th><th class="sh">Share</th></tr>
+      <tr><td class="nm">Portland Cement 40kg<small>Cement</small></td>
+        <td class="n qty">311 bag</td><td class="n amt">₱88,036</td>
+        <td class="sh"><span><i style="width:100%"></i></span>5.9%</td></tr><tr><td class="nm">Deformed Bar Grade 33 12mm × 6m<small>Fasteners</small></td>
+        <td class="n qty">274</td><td class="n amt">₱80,282</td>
+        <td class="sh"><span><i style="width:91.19172262972982%"></i></span>5.4%</td></tr><tr><td class="nm">Deformed Bar Grade 33 16mm × 6m<small>Fasteners</small></td>
+        <td class="n qty">184</td><td class="n amt">₱69,506</td>
+        <td class="sh"><span><i style="width:78.95123410414008%"></i></span>4.7%</td></tr><tr><td class="nm">Holcim Excel Cement 40kg<small>Cement</small></td>
+        <td class="n qty">221 bag</td><td class="n amt">₱64,776</td>
+        <td class="sh"><span><i style="width:73.57825270751923%"></i></span>4.4%</td></tr><tr><td class="nm">Hollow Block 5"<small>Cement</small></td>
+        <td class="n qty">2835</td><td class="n amt">₱52,800</td>
+        <td class="sh"><span><i style="width:59.9747857876621%"></i></span>3.6%</td></tr><tr><td class="nm">Hollow Block 4"<small>Cement</small></td>
+        <td class="n qty">2888</td><td class="n amt">₱40,189</td>
+        <td class="sh"><span><i style="width:45.65064750430564%"></i></span>2.7%</td></tr><tr><td class="nm">Concrete Nail 2"<small>Fasteners</small></td>
+        <td class="n qty">223 kg</td><td class="n amt">₱35,246</td>
+        <td class="sh"><span><i style="width:40.03549667750285%"></i></span>2.4%</td></tr><tr><td class="nm">Deformed Bar Grade 33 10mm × 6m<small>Fasteners</small></td>
+        <td class="n qty">168</td><td class="n amt">₱31,522</td>
+        <td class="sh"><span><i style="width:35.80542201313772%"></i></span>2.1%</td></tr><tr><td class="nm">Fine Sand (per cu.m)<small>Cement</small></td>
+        <td class="n qty">19 cu.m</td><td class="n amt">₱29,385</td>
+        <td class="sh"><span><i style="width:33.377914245612736%"></i></span>2.0%</td></tr><tr><td class="nm">Gravel 3/4" (per cu.m)<small>Cement</small></td>
+        <td class="n qty">17.5 cu.m</td><td class="n amt">₱26,420</td>
+        <td class="sh"><span><i style="width:30.010725929528785%"></i></span>1.8%</td></tr>
+    </tbody></table><a class="all" href="/admin/sales?by=items&amp;month=2026-09">See all in Items →</a></div></div></section><section class="trio"><div class="w"><div class="band">Payment methods<span></span></div><div class="rows"><div class="row "><span class="nm">Cash</span><span class="amt">₱701,417</span><span class="cmp">47.4%</span></div><div class="row "><span class="nm">Account<span class="pill warn">Unpaid</span></span><span class="amt">₱313,675</span><span class="cmp">21.2%</span></div><div class="row "><span class="nm">GCash</span><span class="amt">₱248,959</span><span class="cmp">16.8%</span></div><div class="row "><span class="nm">QR</span><span class="amt">₱111,487</span><span class="cmp">7.5%</span></div><div class="row "><span class="nm">Maya</span><span class="amt">₱66,869</span><span class="cmp">4.5%</span></div><div class="row "><span class="nm">Split payment</span><span class="amt">₱38,225</span><span class="cmp">2.6%</span></div>
+      <div class="row total"><span class="nm">Total</span><span class="amt">₱1,480,633</span><span class="cmp"></span></div></div></div><div class="w"><div class="band">Breakdown<span>14 voided, no revenue</span></div><div class="rows">
+      <div class="row "><span class="nm">Gross sales</span><span class="amt">₱1,489,438</span></div>
+      <div class="row "><span class="nm">Discounts</span><span class="amt">−₱5,410</span></div>
+      <div class="row "><span class="nm">Returns (6)</span><span class="amt">−₱3,396</span></div>
+      <div class="row "><span class="nm">VAT included</span><span class="amt">₱158,639</span></div>
+      <div class="row total"><span class="nm">Net sales</span><span class="amt">₱1,480,633</span></div></div></div><div class="w"><div class="band">Staff<span></span></div><div class="rows"><div class="row "><span class="nm">Joy P.<small>1 void · 2 refunds</small></span><span class="amt">₱395,123</span><span class="cmp">26.7%</span></div><div class="row "><span class="nm">Aldrin S.<small>3 voids · 1 refund</small></span><span class="amt">₱361,451</span><span class="cmp">24.4%</span></div><div class="row "><span class="nm">Maricel R.<small>2 voids · 2 refunds</small></span><span class="amt">₱353,111</span><span class="cmp">23.8%</span></div><div class="row "><span class="nm">Liza M.<small>2 voids · 1 refund</small></span><span class="amt">₱331,073</span><span class="cmp">22.4%</span></div><div class="row "><span class="nm">El John<small>6 refunds</small></span><span class="amt">₱39,874</span><span class="cmp">2.7%</span></div></div></div></section></div><div data-pane="items" hidden=""><div class="sales-cuts"><section class="cut"><table><tbody><tr><th>Category</th><th class="n rv">Revenue</th><th class="n sh">Share</th><th class="n tr">Trend</th></tr><tr tabindex="0" data-sel="ct" data-key="cement" aria-current="false"><td class="nm" title="Cement">Cement</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:100.0%"></i></span>₱387,859</span></td><td class="n sh">26.2%</td><td class="n tr up">+19.1%</td></tr><tr tabindex="0" data-sel="ct" data-key="fasteners" aria-current="false"><td class="nm" title="Fasteners">Fasteners</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:86.3%"></i></span>₱334,604</span></td><td class="n sh">22.6%</td><td class="n tr up">+24.8%</td></tr><tr tabindex="0" data-sel="ct" data-key="electrical" aria-current="false"><td class="nm" title="Electrical">Electrical</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:53.5%"></i></span>₱207,392</span></td><td class="n sh">14.0%</td><td class="n tr up">+20.3%</td></tr><tr tabindex="0" data-sel="ct" data-key="paint" aria-current="false"><td class="nm" title="Paint">Paint</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:47.9%"></i></span>₱185,793</span></td><td class="n sh">12.5%</td><td class="n tr up">+4.8%</td></tr><tr tabindex="0" data-sel="ct" data-key="plumbing" aria-current="false"><td class="nm" title="Plumbing">Plumbing</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:39.1%"></i></span>₱151,667</span></td><td class="n sh">10.2%</td><td class="n tr up">+4.3%</td></tr></tbody></table><a class="all" href="/admin/sales?by=items&amp;x=category">Show all 8 ↓</a></section><section class="cut"><table><tbody><tr><th class="nm" tabindex="0" data-act="sort" data-key="name">Item</th><th class="n qt" tabindex="0" data-act="sort" data-key="qty">Qty sold</th><th class="n rv" tabindex="0" data-act="sort" data-key="revenue" aria-sort="descending">Revenue ↓</th><th class="n pf" tabindex="0" data-act="sort" data-key="profit">Profit</th><th class="n mg" tabindex="0" data-act="sort" data-key="margin">Margin</th><th class="n tr" tabindex="0" data-act="sort" data-key="trend">Trend</th></tr><tr tabindex="0" data-sel="it" data-key="c001" aria-expanded="false"><td class="nm" title="Portland Cement 40kg">Portland Cement 40kg</td><td class="n qt">311</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:100.0%"></i></span>₱88,036</span></td><td class="n pf">₱5,519</td><td class="n mg">7.0%</td><td class="n tr up">+45.6%</td></tr><tr tabindex="0" data-sel="it" data-key="d085" aria-expanded="false"><td class="nm" title="Deformed Bar Grade 33 12mm × 6m">Deformed Bar Grade 33 12mm × 6m</td><td class="n qt">274</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:91.2%"></i></span>₱80,282</span></td><td class="n pf">₱17,141</td><td class="n mg">23.9%</td><td class="n tr up">+19.7%</td></tr><tr tabindex="0" data-sel="it" data-key="d086" aria-expanded="false"><td class="nm" title="Deformed Bar Grade 33 16mm × 6m">Deformed Bar Grade 33 16mm × 6m</td><td class="n qt">184</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:79.0%"></i></span>₱69,506</span></td><td class="n pf">₱19,277</td><td class="n mg">31.1%</td><td class="n tr up">+30.4%</td></tr><tr tabindex="0" data-sel="it" data-key="d145" aria-expanded="false"><td class="nm" title="Holcim Excel Cement 40kg">Holcim Excel Cement 40kg</td><td class="n qt">221</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:73.6%"></i></span>₱64,776</span></td><td class="n pf">₱14,241</td><td class="n mg">24.6%</td><td class="n tr up">+0.2%</td></tr><tr tabindex="0" data-sel="it" data-key="d152" aria-expanded="false"><td class="nm" title="Hollow Block 5&quot;">Hollow Block 5"</td><td class="n qt">2,835</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:60.0%"></i></span>₱52,800</span></td><td class="n pf">₱14,283</td><td class="n mg">30.3%</td><td class="n tr up">+68.2%</td></tr><tr tabindex="0" data-sel="it" data-key="d062" aria-expanded="false"><td class="nm" title="Concrete Nail 2&quot;">Concrete Nail 2"</td><td class="n qt">223</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:40.0%"></i></span>₱35,246</span></td><td class="n pf">₱5,659</td><td class="n mg">18.0%</td><td class="n tr up">+61.8%</td></tr><tr tabindex="0" data-sel="it" data-key="d084" aria-expanded="false"><td class="nm" title="Deformed Bar Grade 33 10mm × 6m">Deformed Bar Grade 33 10mm × 6m</td><td class="n qt">168</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:35.8%"></i></span>₱31,522</span></td><td class="n pf">₱6,101</td><td class="n mg">21.7%</td><td class="n tr up">+17.3%</td></tr><tr tabindex="0" data-sel="it" data-key="c002" aria-expanded="false"><td class="nm" title="Fine Sand (per cu.m)">Fine Sand (per cu.m)</td><td class="n qt">19</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:33.4%"></i></span>₱29,385</span></td><td class="n pf">₱3,848</td><td class="n mg">14.7%</td><td class="n tr up">+2.6%</td></tr><tr tabindex="0" data-sel="it" data-key="c003" aria-expanded="false"><td class="nm" title="Gravel 3/4&quot; (per cu.m)">Gravel 3/4" (per cu.m)</td><td class="n qt">17.50</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:30.0%"></i></span>₱26,420</span></td><td class="n pf">₱2,939</td><td class="n mg">12.5%</td><td class="n tr up">+3.0%</td></tr><tr tabindex="0" data-sel="it" data-key="c004" aria-expanded="false"><td class="nm" title="Hollow Block 4&quot;">Hollow Block 4"<small>Local</small></td><td class="n qt">1,794</td><td class="n rv"><span class="bv"><span class="ib"><i style="width:27.5%"></i></span>₱24,249</span></td><td class="n pf">₱4,141</td><td class="n mg">19.1%</td><td class="n tr up">+23.6%</td></tr></tbody></table><a class="all" href="/admin/sales?by=items&amp;x=item">Show all 207 ↓</a></section>
+          <div class="duo"><div class="w"><div class="band">Rising<span>vs Aug 1 – 28</span></div><div class="rows"><div class="row up"><span class="nm">Portland Cement 40kg</span><span class="amt">+₱27,552</span><span class="cmp">+46%</span></div><div class="row up"><span class="nm">Hollow Block 5"</span><span class="amt">+₱21,399</span><span class="cmp">+68%</span></div><div class="row up"><span class="nm">Deformed Bar Grade 33 16mm × 6m</span><span class="amt">+₱16,208</span><span class="cmp">+30%</span></div><div class="row up"><span class="nm">Concrete Nail 2"</span><span class="amt">+₱13,457</span><span class="cmp">+62%</span></div><div class="row up"><span class="nm">Deformed Bar Grade 33 12mm × 6m</span><span class="amt">+₱13,205</span><span class="cmp">+20%</span></div></div></div><div class="w"><div class="band">Falling<span>vs Aug 1 – 28</span></div><div class="rows"><div class="row down"><span class="nm">Gravel 3/4 (per cu.m)</span><span class="amt">−₱7,750</span><span class="cmp">−43%</span></div><div class="row down"><span class="nm">Wheelbarrow Standard</span><span class="amt">−₱7,350</span><span class="cmp">−100%</span></div><div class="row down"><span class="nm">Latex Paint Blue 1L</span><span class="amt">−₱5,420</span><span class="cmp">−28%</span></div><div class="row down"><span class="nm">Teflon Tape 1/2"</span><span class="amt">−₱5,003</span><span class="cmp">−43%</span></div><div class="row down"><span class="nm">Tile Grout 2kg Beige</span><span class="amt">−₱4,024</span><span class="cmp">−38%</span></div></div></div></div><section class="cut"><div class="cut-head"><span class="lbl">Bought together</span></div><table><tbody><tr><td class="nm">Portland Cement 40kg<span class="to">→</span>Hollow Block 5"</td><td class="bar"><span><i style="width:13.1%"></i></span></td><td class="n pt">13% of the time</td><td class="n rc">37 of 282 receipts</td></tr><tr><td class="nm">Hollow Block 4"<small>Local</small><span class="to">→</span>Portland Cement 40kg</td><td class="bar"><span><i style="width:12.6%"></i></span></td><td class="n pt">13% of the time</td><td class="n rc">32 of 254 receipts</td></tr><tr><td class="nm">Holcim Excel Cement 40kg<span class="to">→</span>Hollow Block 5"</td><td class="bar"><span><i style="width:11.4%"></i></span></td><td class="n pt">11% of the time</td><td class="n rc">32 of 281 receipts</td></tr><tr><td class="nm">Hollow Block 4"<small>Local</small><span class="to">→</span>Hollow Block 5"</td><td class="bar"><span><i style="width:10.6%"></i></span></td><td class="n pt">11% of the time</td><td class="n rc">27 of 254 receipts</td></tr><tr><td class="nm">PVC Solvent Cement 400mL<span class="to">→</span>PVC Solvent Cement 200mL<small>Atlanta</small></td><td class="bar"><span><i style="width:15.1%"></i></span></td><td class="n pt">15% of the time</td><td class="n rc">24 of 159 receipts</td></tr></tbody></table><a class="all" href="/admin/sales?by=items&amp;x=basket">Show all 50 ↓</a></section></div></div></div>
+      <dialog class="tdlg"><form method="dialog" data-cal="target">
+        <h2>Monthly target</h2>
+        <label>Revenue to aim for each month<input name="month" type="number" min="0" step="1000" inputmode="numeric" autocomplete="off" value="1590000"></label>
+        <p>Days that make a share of it turn green. Leave blank to judge days by the month's average.</p>
+        <div class="acts"><button type="button" data-act="cal-cancel">Cancel</button><button type="submit" value="save">Save</button></div>
+      </form></dialog>
+      <aside class="c-aside" hidden=""></aside>
+    </div></section>
+
+      <!-- Transactions: markup lives in bo-transactions.js -->
+      
+
+      <!-- Products: markup lives in bo-products.js -->
+      
+
+      <!-- Inventory: markup lives in bo-inventory.js -->
+      
+
+      <!-- ============================================
+           CUSTOMERS
+           ============================================ -->
+      
+
+      <!-- Suppliers: markup lives in bo-suppliers.js -->
+      
+
+      <!-- Insights: markup lives in bo-insights.js -->
+      
+
+      <!-- ============================================
+           SETTINGS
+           ============================================ -->
+      
+
+      <!-- Settings: one section per URL (/admin/settings/<section>), one column of cards.
+           Typed values read as rows (label, value, ›); a row opens its card's fields in #setDlg.
+           On/off and pick-one settings save the moment they change, like Appearance (per device)
+           and Staff & access (bo-staff.js). No Save bar. -->
+      
+
+    </div>
+  </div>
+
+  <dialog id="orderDlg" class="bo-dialog"></dialog>
+  <!-- Outside the views: a dialog in a hidden section never shows. Targets opens from the dashboard and Sales. -->
+  <dialog id="targetDlg" class="bo-dialog adj-dlg"></dialog>
+  <!-- Settings: a card's typed values (Store details, VAT, a role's pages, a new payment method). -->
+  <dialog id="setDlg" class="bo-dialog adj-dlg"></dialog>
+  <!-- Stock adjust: bo-inventory.js fills it; any [data-adjust-open] on any page opens it. -->
+  <dialog id="adjustDlg" class="bo-dialog adj-dlg"></dialog>
+  <div id="toast" class="toast" hidden=""></div>
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+
+
+<script>
+// Sales switcher lab: frozen Summary + Items panes, a swappable switch, and the demo panel. Nothing here is live.
+(() => {
+  const view = document.querySelector('.view-sales'), main = view.querySelector('.c-main'), bar = main.querySelector(':scope > .bar');
+  const panes = { summary: main.querySelector('[data-pane="summary"]'), items: main.querySelector('[data-pane="items"]') };
+  const exportBtn = bar.querySelector('[data-lab-export]');
+  const itemCount = panes.items.querySelectorAll('tbody tr').length;
+  const ICON = { summary: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+                 items: '<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>' };
+  // key: [name, where it sits, class, extra]
+  const VARIANTS = {
+    0:  ['Today · two pills', 'bar'],
+    1:  ['Segmented track', 'bar', 'slide'],
+    2:  ['Underline tabs beside the title', 'bar', 'ul'],
+    3:  ['The title is the switch', 'title', 'big'],
+    4:  ['Breadcrumb menu', 'bar', 'crumb'],
+    5:  ['Outlined joined buttons', 'bar', 'joined'],
+    6:  ['Track with icons', 'bar', 'slide', 'icons'],
+    7:  ['Tab row under the title', 'row', 'ul'],
+    8:  ['Folder tabs on the content', 'folder'],
+    9:  ['Quiet text with a divider', 'bar', 'quiet'],
+    10: ['Track with counts', 'bar', 'slide', 'counts'],
+  };
+  const st = { v: '1', anim: 'rise', title: true, keys: false, at: 'summary' };
+  try { Object.assign(st, JSON.parse(sessionStorage.getItem('salesSwLab') || '{}')); } catch {}
+  const save = () => { try { sessionStorage.setItem('salesSwLab', JSON.stringify(st)); } catch {} };
+
+  const label = (k) => {
+    const extra = VARIANTS[st.v][3], name = k[0].toUpperCase() + k.slice(1);
+    return (extra === 'icons' ? ICON[k] : '') + name
+      + (extra === 'counts' && k === 'items' ? `<span class="cnt">${itemCount}</span>` : '')
+      + (st.keys ? `<kbd>${k === 'summary' ? 1 : 2}</kbd>` : '');
+  };
+  const btns = (cls = '', sep = '') => ['summary', 'items'].map(k => `<button type="button"${cls} data-v="${k}">${label(k)}</button>`).join(sep);
+  const make = (tag, className, text) => Object.assign(document.createElement(tag), { className }, text ? { textContent: text } : {});
+
+  let sw;
+  function build() {
+    main.querySelectorAll('.lab-sw, .lab-row, .lab-folder, .lab-slash, .lab-grow').forEach(n => n.remove());
+    bar.querySelector('.pd-switch')?.remove();
+    const [, place, cls] = VARIANTS[st.v];
+    const el = make('div', 'lab-sw ' + (cls || ''));
+    if (st.v === '0') { el.className = 'seg pd-switch lab-sw'; el.innerHTML = btns(' class="seg-btn"'); }
+    else if (cls === 'crumb') el.innerHTML = `<button type="button" class="crumb-btn" data-open></button><div class="crumb-menu" data-shut>
+        <button type="button" data-v="summary"><span>Summary<small>The month at a glance</small></span></button>
+        <button type="button" data-v="items"><span>Items<small>Every item sold, sortable</small></span></button></div>`;
+    else el.innerHTML = btns('', cls === 'quiet' ? '<i></i>' : '');
+    const h1 = bar.querySelector('h1'), grow = make('span', 'lab-grow');
+    if (place === 'row' || place === 'folder') {
+      const row = make('div', place === 'row' ? 'lab-row' : 'lab-folder');
+      row.append(el); bar.after(row); h1.after(grow);
+    } else {
+      h1.after(el, grow);
+      if (cls === 'crumb') el.before(make('span', 'lab-slash', '/'));
+    }
+    h1.hidden = place === 'title';
+    view.classList.toggle('lab-notitle', !st.title);
+    sw = el; pick(st.at, true);
+    requestAnimationFrame(() => requestAnimationFrame(() => sw.classList.add('ready')));
+  }
+
+  function thumb() {
+    const on = sw.querySelector('.on'); if (!on || !sw.matches('.slide, .ul')) return;
+    sw.style.setProperty('--x', on.offsetLeft + 'px'); sw.style.setProperty('--w', on.offsetWidth + 'px');
+  }
+  const ANIM = {
+    none: null,
+    fade: () => [[{ opacity: 0 }, { opacity: 1 }], 180],
+    rise: () => [[{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], 240],
+    slide: (dir) => [[{ opacity: 0, transform: `translateX(${dir * 28}px)` }, { opacity: 1, transform: 'none' }], 260],
+    scale: () => [[{ opacity: 0, transform: 'scale(.985)' }, { opacity: 1, transform: 'none' }], 220],
+  };
+  function pick(k, quiet) {
+    const was = st.at; st.at = k; save();
+    sw.querySelectorAll('[data-v]').forEach(b => { const on = b.dataset.v === k; b.classList.toggle('on', on); b.classList.toggle('active', on && st.v === '0'); });
+    const crumb = sw.querySelector('[data-open]'); if (crumb) crumb.textContent = k[0].toUpperCase() + k.slice(1);
+    if (exportBtn) exportBtn.hidden = k !== 'items';
+    for (const [n, p] of Object.entries(panes)) p.hidden = n !== k;
+    thumb();
+    const a = ANIM[st.anim] && ANIM[st.anim](k === 'items' ? 1 : -1);
+    if (!quiet && was !== k && a) panes[k].animate(a[0], { duration: a[1], easing: 'cubic-bezier(.2,.7,.3,1)' });
+  }
+
+  main.addEventListener('click', (e) => {
+    const o = e.target.closest('[data-open]'), menu = main.querySelector('.crumb-menu');
+    if (menu) menu.toggleAttribute('data-shut', !(o && menu.hasAttribute('data-shut')));
+    const b = e.target.closest('.lab-sw [data-v]'); if (b) pick(b.dataset.v);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!st.keys || e.target.closest('input, select, textarea')) return;
+    if (e.key === '1') pick('summary'); if (e.key === '2') pick('items');
+  });
+  // Frozen: no link leaves the page.
+  document.addEventListener('click', (e) => { if (!e.target.closest('.lab-panel, .lab-sw') && e.target.closest('a[href]')) e.preventDefault(); }, true);
+
+  // The demo panel
+  const panel = make('div', 'lab-panel');
+  panel.innerHTML = `<h4>Switcher demo<button type="button" data-min>–</button></h4>
+    <label>Switcher<select data-k="v">${Object.entries(VARIANTS).map(([k, [n]]) => `<option value="${k}">${k} · ${n}</option>`).join('')}</select></label>
+    <label>Content animation<select data-k="anim"><option value="none">None (today)</option><option value="fade">Fade</option><option value="rise">Fade + rise</option><option value="slide">Slide from the side</option><option value="scale">Fade + settle</option></select></label>
+    <div class="chk"><input type="checkbox" id="labTitle" data-k="title"><label for="labTitle">Show the "Sales" title</label></div>
+    <div class="chk"><input type="checkbox" id="labKeys" data-k="keys"><label for="labKeys">Keys 1 / 2 flip the view</label></div>
+    <div class="step"><button type="button" data-step="-1">‹ Prev</button><button type="button" data-flip>Flip view</button><button type="button" data-step="1">Next ›</button></div>
+    <p>Snapshot of the real Sales page, 2026-09-28. Nothing is live.</p>`;
+  document.body.append(panel);
+  const sync = () => panel.querySelectorAll('[data-k]').forEach(i => { if (i.type === 'checkbox') i.checked = st[i.dataset.k]; else i.value = st[i.dataset.k]; });
+  panel.addEventListener('change', (e) => { const k = e.target.dataset.k; if (!k) return;
+    st[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value; save(); if (k !== 'anim') build(); });
+  panel.addEventListener('click', (e) => {
+    if (e.target.closest('[data-min]')) panel.classList.toggle('min');
+    if (e.target.closest('[data-flip]')) pick(st.at === 'summary' ? 'items' : 'summary');
+    const s = e.target.closest('[data-step]');
+    if (s) { const keys = Object.keys(VARIANTS), i = keys.indexOf(st.v); st.v = keys[(i + +s.dataset.step + keys.length) % keys.length]; save(); sync(); build(); }
+  });
+  sync(); build();
+  document.fonts.ready.then(thumb);
+})();
+</script>
+</body></html>

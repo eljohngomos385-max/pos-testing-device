@@ -1,8 +1,9 @@
 /* Back office — Transactions (transactions-compact-lab.html, ported as is; styles in bo-calm.css).
    Its own page since 2026-09-26 (it was Sales' `?by=tx` tab; bo-sales.js forwards old links here).
-   Pure read: this page never writes storage, bar the Widgets menu's per-device `txHide`.
-   Title · Widgets · range · Export CSV; search + the three filters over the table, the blocks beside it.
-   The URL holds it all: ?pay= ?staff= ?ful= (comma lists), ?q=, ?sort=&dir=, ?page=, ?receipt= for the
+   Pure read: this page never writes storage.
+   List | Breakdown switch · Export CSV (List only) · range; search + the three filters over the table, or over the
+   breakdown blocks (?view=breakdown, owner 2026-09-28: they were widgets beside the table).
+   The URL holds it all: ?view=, ?pay= ?staff= ?ful= (comma lists), ?q=, ?sort=&dir=, ?page=, ?receipt= for the
    pop-up. The range menu keeps "Ends on", so older receipts stay reachable. */
 (function () {
   const VIEW = 'transactions';
@@ -46,6 +47,7 @@
       // The ledger is a ledger, so it opens newest-first.
       sort: { key: p.sort || 'ts', dir: p.dir === 'asc' ? 'asc' : 'desc' },
       page: Math.max(1, parseInt(p.page, 10) || 1),
+      bd: p.view === 'breakdown',
     };
   }
 
@@ -82,15 +84,13 @@
   const txHits = (rows, v) => sortRows(txSearch(rows), v.sort.key, v.sort.dir);
 
   // ---------- Render ----------
-  // The blocks beside the table (transactions-compact-lab.html): the Dashboard's widgets, plain, one number a row.
-  // Payment and Staff in pesos, Fulfilment as a count; the other number shows when you point at a block.
-  // They follow the range, search and filters; a row is a filter, and each block ignores its own filter so its
-  // other values stay in view. The Widgets menu shows and hides them; which are off is this device's
-  // choice (HWPOS_STORE.ui 'txHide', like the sidebar's folds).
+  // The Breakdown view (?view=breakdown, owner 2026-09-28; the widgets beside the table before, transactions-compact-lab.html):
+  // Net sales, then Payment and Staff led by pesos, Fulfilment by count, the other number beside it. They follow the
+  // range, search and filters, the same as the list; a row is a filter, and each block ignores its own filter so its
+  // other values stay in view.
   const TX_W = { net: 'Net sales', pay: 'Payment', ful: 'Fulfilment', staff: 'Staff' };   // ponytail: Channels, Stores join here
   const TX_NAME = { pay: orderPaymentLabel, staff: o => o.cashier || '—', ful: orderFulfilLabel };
-  const txHidden = () => String(HWPOS_STORE.ui.get('txHide', '') || '').split(',').filter(Boolean);
-  function txRail(v, all, on) {
+  function txRail(v, all) {
     const base = txSearch(all), L = base.filter(o => txPass(o, v));
     const sales = L.filter(o => saleSign(o) > 0).length, rets = L.filter(o => saleSign(o) < 0).length;
     const wrow = (nm, cnt, amt, attrs, cls) => `<div class="row ${cls}"${attrs}><span class="nm">${nm}</span><span class="cnt">${cnt}</span><span class="amt">${amt}</span></div>`;
@@ -108,12 +108,14 @@
     const html = {
       net: () => `<div class="top band one" title="${sales.toLocaleString()} sale${sales === 1 ? '' : 's'}${rets ? ` · ${rets} return${rets === 1 ? '' : 's'}` : ''}"><span>Net sales</span>
         <span class="acts"><span class="cnt">${sales.toLocaleString()} sale${sales === 1 ? '' : 's'}</span><span class="nv">${pesoShort(L.reduce((t, o) => t + o.total * saleSign(o), 0))}</span></span></div>`,
-      pay: () => facet('pay'), ful: () => facet('ful', 0, true), staff: () => facet('staff', 6),
+      pay: () => facet('pay'), ful: () => facet('ful', 0, true), staff: () => facet('staff'),
     };
-    return on.map(id => `<section class="card w${id === 'net' ? ' one' : ''}">${html[id]()}</section>`).join('');
+    return Object.keys(TX_W).map(id => `<section class="card w${id === 'net' ? ' one' : ''}" data-rail="${id}">${html[id]()}</section>`).join('');
   }
+  // List | Breakdown, the Sales and Products switch: search, filters, range and sort ride along.
+  const txSwitch = (bd) => `<div class="seg pd-switch" aria-label="Transactions view">${[['', 'List'], ['breakdown', 'Breakdown']].map(([k, label]) =>
+    `<a class="seg-btn${(k === 'breakdown') === bd ? ' active' : ''}" href="${escapeHtml(Router.href(VIEW, '', { ...Router.route().params, view: k, page: '', receipt: '' }))}">${label}</a>`).join('')}</div>`;
   function txPage(v, rows, all, payOpts, staffOpts, fulOpts) {
-    const on = Object.keys(TX_W).filter(id => !txHidden().includes(id));
     const L = txHits(rows, v), pages = Math.max(1, Math.ceil(L.length / TX_PAGE));
     const page = Math.min(v.page, pages) - 1, shown = L.slice(page * TX_PAGE, page * TX_PAGE + TX_PAGE);
     const any = v.pay.length || v.staff.length || v.ful.length || state.txQuery;
@@ -142,29 +144,22 @@
       : `<p class="note">No transactions ${any ? 'match these filters' : state.range === 'today' ? 'yet today' : 'in this range'}.</p>`;
     return `<div class="c-main">
       <div class="bar">
-        <h1>Transactions</h1>
-        <button class="pick" popovertarget="txW">Widgets</button>
-        <div class="menu" id="txW" popover role="menu"><div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr>${Object.entries(TX_W).map(([id, n]) => `<button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}">${n}</button>`).join('')}</div>
+        ${txSwitch(v.bd)}
+        ${v.bd ? '' : `<button class="btn" data-act="export">${DOWNLOAD_ICON}Export CSV</button>`}
         <button class="pick" popovertarget="txRange">${escapeHtml(rangeLabel())}</button>
         <div class="menu" id="txRange" popover role="menu">
           ${Object.keys(RANGE_DAYS).map(r => `<button role="menuitemradio" data-act="range" data-range="${r}" aria-checked="${r === state.range}">${RANGE_LABEL[r]}</button>`).join('')}
           <hr data-app-only><label class="ends" data-app-only>Ends on<input type="date" data-filter="date" value="${isoDate(state.anchor)}" max="${isoDate(Date.now())}" /></label>
         </div>
-        <button class="btn" data-act="export">${DOWNLOAD_ICON}Export CSV</button>
       </div>
-      <div class="dash${on.length ? '' : ' solo'}">
-      <div>
       <div class="filters">
         <input class="q q-input" type="search" placeholder="Search receipt, customer, staff or item" aria-label="Search transactions" autocomplete="off" value="${escapeHtml(state.txQuery || '')}" />
         ${pick('pay', 'All payment types', 'payment types', payOpts)}${pick('staff', 'All employees', 'employees', staffOpts.map(x => [x, x]))}${pick('ful', 'All fulfilment', 'fulfilment types', fulOpts)}
       </div>
-      <section class="card">
+      ${v.bd ? `<div class="rail bd">${txRail(v, all)}</div>` : `<section class="card">
         <div class="head"><span class="lbl">All transactions<span class="sum">${pesoShort(L.reduce((s, o) => s + o.total * saleSign(o), 0))}</span></span><a data-act="tx-clear"${any ? '' : ' hidden'}>Clear filters</a></div>
         ${table}
-      </section>
-      </div>
-      <div class="rail">${txRail(v, all, on)}</div>
-      </div>
+      </section>`}
     </div>
     <dialog><div class="pop"></div></dialog>`;
   }
@@ -191,7 +186,7 @@
     const focused = document.activeElement && el.contains(document.activeElement) && document.activeElement.classList.contains('q-input');
     const caret = focused ? document.activeElement.selectionStart : 0;
     // The render rebuilds the menus, so a tick would snap one shut: reopen whichever was open.
-    const openMenu = el.querySelector('.menu[data-f]:popover-open, #txW:popover-open');
+    const openMenu = el.querySelector('.menu[data-f]:popover-open');
     el.innerHTML = txPage(v, rows, all, payOpts, staffOpts, fulOpts);
     if (openMenu) document.getElementById(openMenu.id)?.showPopover();
     txPop(el, v, rows);
@@ -211,14 +206,6 @@
 
   // ---------- Events: filter ticks, rows, the pop-up's ‹ › ✕, then the page's buttons ----------
   function txClick(t) {
-    const w = t.closest('#txW [data-w], #txW [data-w-all]');
-    if (w) {
-      const id = w.dataset.w, off = txHidden();
-      HWPOS_STORE.ui.set('txHide', w.dataset.wAll ? (w.dataset.wAll === 'on' ? '' : Object.keys(TX_W).join(','))
-        : (off.includes(id) ? off.filter(x => x !== id) : [...off, id]).join(','));
-      slideRender(renderTransactions);
-      return true;
-    }
     const mv = t.closest('.menu[data-f] [data-v], .rail [data-f]');
     if (mv) {
       const f = mv.dataset.f || mv.closest('.menu').dataset.f, x = mv.dataset.v, cur = readView()[f];
@@ -240,7 +227,7 @@
     if (e.newState !== 'open' || !m.matches || !m.matches('.calm-tx .menu')) return;
     const r = root().querySelector(`[popovertarget="${m.id}"]`).getBoundingClientRect();
     m.style.top = r.bottom + 6 + 'px';
-    m.style.left = Math.max(16, Math.min(m.id === 'txRange' || m.id === 'txW' ? r.right - m.offsetWidth : r.left, innerWidth - m.offsetWidth - 16)) + 'px';
+    m.style.left = Math.max(16, Math.min(m.id === 'txRange' ? r.right - m.offsetWidth : r.left, innerWidth - m.offsetWidth - 16)) + 'px';
   }, true);
 
   document.addEventListener('click', (e) => {

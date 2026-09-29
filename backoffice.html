@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Geist:wght@400..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css?v=152" />
-  <link rel="stylesheet" href="/bo-products.css?v=114" />
+  <link rel="stylesheet" href="/bo-products.css?v=120" />
   <link rel="stylesheet" href="/bo-item.css?v=12" />
   <link rel="stylesheet" href="/bo-inventory.css?v=104" />
   <link rel="stylesheet" href="/bo-sales.css?v=97" />
@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="/bo-staff.css?v=98" />
   <link rel="stylesheet" href="/bo-insights.css?v=3" />
   <link rel="stylesheet" href="/bo-blocks.css?v=63" />
-  <link rel="stylesheet" href="/bo-calm.css?v=45" />
+  <link rel="stylesheet" href="/bo-calm.css?v=53" />
 </head>
 <body class="bo-body bo-light">
   <div id="app" class="bo-app">
@@ -196,15 +196,12 @@
             <h1 id="custTitle">Customers</h1>
           </div>
           <div class="view-actions">
-            <button class="pick" id="custWBtn" popovertarget="custW">Widgets</button>
-            <div class="menu" id="custW" popover role="menu"></div>
             <button class="primary-btn small" id="custAddBtn">Add customer</button>
           </div>
         </header>
 
         <div id="custList">
-          <div class="dash" id="custDash">
-          <div>
+          <div class="w cust-strip" id="custStrip"></div>
           <div class="list-filters">
             <input class="search-input small q-input" id="custSearch" placeholder="Search customers..." />
             <select class="bo-select" data-cust="status" aria-label="Balance status"><option value="">Any balance</option><option value="Clear">Clear</option><option value="Active">Active</option><option value="In use">In use</option><option value="Near limit">Near limit</option></select>
@@ -234,12 +231,9 @@
               <div id="custPager"></div>
             </div>
           </section>
-          </div>
-          <div class="rail" id="custRail"></div>
-          </div>
         </div>
 
-        <!-- The account screen: its figures sit in its first card (the list's are in #custRail). -->
+        <!-- The account screen: its figures sit in its first card (the list's are in #custStrip). -->
         <div id="custDetail" hidden></div>
         <dialog id="custDlg" class="bo-dialog adj-dlg"></dialog>
       </section>
@@ -381,13 +375,13 @@
   <script src="/data.js?v=27"></script>
   <script src="/bo-model.js?v=100"></script>
   <script src="/router.js?v=62"></script>
-  <script src="/backoffice.js?v=187"></script>
-  <script src="/bo-products.js?v=103"></script>
+  <script src="/backoffice.js?v=191"></script>
+  <script src="/bo-products.js?v=104"></script>
   <script src="/bo-item.js?v=11"></script>
   <script src="/bo-insights.js?v=33"></script>
   <script src="/bo-inventory.js?v=115"></script>
-  <script src="/bo-sales.js?v=120"></script>
-  <script src="/bo-transactions.js?v=11"></script>
+  <script src="/bo-sales.js?v=121"></script>
+  <script src="/bo-transactions.js?v=13"></script>
   <script src="/bo-suppliers.js?v=104"></script>
   <script src="/bo-staff.js?v=106"></script>
   <script>
