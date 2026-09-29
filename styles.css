@@ -270,11 +270,11 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface);
+  background: var(--rl-soft);                    /* the top bar wears the sidebar's Item / Amount band */
   color: var(--ink-secondary);
   border: none;
   flex-shrink: 0;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+  box-shadow: inset 0 0 0 1px var(--line);       /* and its cards' hairline */
   transition: background .12s, color .12s;
 }
 .view-hamburger:hover { background: var(--surface-hover); color: var(--ink); }
@@ -405,13 +405,13 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   width: 100%;
   height: 48px;
   padding: 0 42px 0 42px;
-  background: var(--surface);
+  background: var(--rl-soft);
   border: none;
   border-radius: var(--rl-r);   /* the customer card's corner; 48px tall like it */
   font-size: 15px;
   letter-spacing: -0.15px;
   outline: none;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+  box-shadow: inset 0 0 0 1px var(--line);
   transition: background .12s;
 }
 #searchInput::placeholder, #invSearchInput::placeholder { color: var(--ink-tertiary); }
@@ -443,6 +443,8 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   transition: background .12s, color .12s;
 }
 .ghost-icon:hover { background: var(--surface-hover); color: var(--ink); }
+.search-row .ghost-icon { background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--line); }   /* like .view-hamburger */
+.search-row .ghost-icon:hover { background: var(--surface-hover); }
 
 /* Product grid — Loyverse-style flat tiles (1-to-1 with reference) */
 .product-grid {
@@ -482,7 +484,8 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 }
 
 .product-card {
-  background: var(--surface);
+  background: var(--rl-soft);                    /* the sidebar's band + hairline, like the top bar */
+  box-shadow: inset 0 0 0 1px var(--line);       /* inset: the grid's overflow can't clip it */
   border: none;
   border-radius: 4px;
   padding: 14px 12px 18px;
@@ -541,7 +544,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 /* ---- Group parent tile (drill-in) — identical color to product tiles,
         only the folder badge in the corner signals it's a group. ---- */
-.product-card.pc-group { background: var(--surface); }
+.product-card.pc-group { background: var(--rl-soft); }
 .product-card.pc-group:hover { background: var(--surface-hover); }
 .pc-group .pc-name { color: rgba(255,255,255,0.92); }
 .pc-group-badge {
@@ -566,6 +569,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .product-card.pc-back {
   background: rgba(255,255,255,0.04);
   border: 1px dashed rgba(255,255,255,0.18);
+  box-shadow: none;                              /* the dashed border is its line */
   display: flex;
   flex-direction: column;
   align-items: center;

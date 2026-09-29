@@ -60,7 +60,7 @@ The layout reads as a **grid of aligned edges and shared baselines**. When you p
   - Customers / Reports / Settings: `.view-head` (`padding-top: 16px`).
   - If you change any of these paddings, re-check that the hamburger still lands at 16px on all pages.
 - **Hamburger + search + barcode sit in one row, all 48px tall, edge-to-edge.** Gap between them is `7px` (`.search-row`). To widen the search bar, shrink the gap — never move the hamburger/barcode (they're pinned to the row edges; the search bar is `flex: 1`).
-- Sell hamburger/barcode use `.ghost-icon`; other pages use `.view-hamburger`. **Keep both visually identical** (48px, `var(--rl-r)` radius — the sale sidebar's customer card, which they line up with — `var(--surface)` bg, no border). The product grid below them is deliberately **not** flush with the sidebar's cards (tried; too cramped): `.catalog` keeps its 14px gap under the search row, and its last row ends level with the **Check out button's** bottom, not the card's (`.catalog` bottom padding 21px = rail margin 8 + card border 1 + `.pay` padding 12).
+- Sell hamburger/barcode use `.ghost-icon`; other pages use `.view-hamburger`. **Keep both visually identical** (48px, `var(--rl-r)` radius — the sale sidebar's customer card, which they line up with — `var(--rl-soft)` bg (the sidebar's Item / Amount band) with an inset `var(--line)` hairline ring in both themes, no top shine). Product tiles wear the same fill and ring. The product grid below them is deliberately **not** flush with the sidebar's cards (tried; too cramped): `.catalog` keeps its 14px gap under the search row, and its last row ends level with the **Check out button's** bottom, not the card's (`.catalog` bottom padding 21px = rail margin 8 + card border 1 + `.pay` padding 12).
 - **Horizontal page padding is 28px** for `.view-head` / `.orders-layout`; Sell resolves to 28px too (18px row + 10px catalog).
 
 ## The hairline shine (signature surface highlight)
@@ -71,7 +71,7 @@ Every raised dark surface gets a faint top highlight so it doesn't look dead/fla
 box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
 ```
 
-Already on: `.ghost-icon`, `#searchInput`, `.view-hamburger`, `.orders-search-wrap input`, `.cart` (receipt), `.od-details-btn`, `.orders-list`, `.order-row.active`. **Add it to any new dark surface/button/input/box** for consistency. It survives `:focus` (focus only changes background) and `overflow: hidden`.
+Already on: `.ghost-icon` (modal close / map buttons), `.orders-search-wrap input`, `.cart` (receipt), `.od-details-btn`, `.orders-list`, `.order-row.active`. **Add it to any new dark surface/button/input/box** for consistency. It survives `:focus` (focus only changes background) and `overflow: hidden`.
 
 ## Active/white-button gloss
 
