@@ -446,9 +446,9 @@ It is Products' Catalog | Stock component (`.seg.pd-switch` of `<a class="seg-bt
 `bo-sales.js`), leading the `.bar` — **no `Sales` title** (owner, 2026-09-28: the lit sidebar row names the
 page) — before `‹ period ›`. The switch takes the bar's auto margin and Items' Export CSV sits *left* of the
 picker, so **the switch and the picker hold still on a switch; only what is below changes** (measured at 1440/1024/390: same
-boxes). Items shows a "vs {period before}" in the picker only when `?vs=` is on, so the width holds then too.
+boxes). Both tabs share one comparison: the period menu's Compare to (`?vs=`), no separate switch (owner, 2026-09-30).
 The URL is unchanged — `?by=items` is Items, no `by` the Summary — and the switch carries every param
-(`month`, `view`, `vs`, Items' `sort`/`ct`/`x`/`it`) except `day`/`week` (the pop-up) and `page`. Sales
+(`month`, `view`, `vs`, Items' `ct`/view picks/`sort`) except `day`/`week` (the pop-up), `page`, `all` and `q`. Sales
 registers no `HWPOS_SUBNAV`.
 
 **Two tabs over one `agg()` pass: Summary · Items** (owner, 2026-09-26, round 4). Old
@@ -456,31 +456,25 @@ registers no `HWPOS_SUBNAV`.
 - **The Summary keeps its Top 10**: the glance for the month. Its See all opens Items **on the same month**
   (`?month=`, `?view=year` for a year).
 - **Items is the Summary's month in more depth**, not a second range picker: the Summary's `‹ September 2026 ›`
-  (`periodNav`, no "Compare to" section: Items always compares with the period before), Export CSV left of it.
-  **The split chart view (round 3) is gone; don't bring it back.** Top to bottom, cards 12px apart
-  (`bo-calm.css`, "Items, round 4"; owner: "what are the items? then what's rising, what's falling"):
-  1. **Categories** — a table, not a chart (owner: a store can have 50–100 categories; the stacked bar was
-     tried and dropped, don't bring it back): Category · Revenue (thin bar against the leader) · Share of the
-     period · Trend vs the period before. Revenue desc, fixed (`?sort=` is the items table's). Top 5, Show all
-     (`?x=category`, 50 a page; old `?all=category` redirects). A row click / Enter cuts the items table to that
-     category (`?ct=`, the row lit as a picked item; again undoes it; Uncategorized is `-`).
-  2. **The items table** — just the table, no title band ("too fat"): Item (no category under it; the brand
-     when two share a name) · Qty sold · Revenue · Profit · Margin · Trend (revenue vs the period before; "New"
-     sorts first). A header sorts (`?sort=`/`?dir=`; revenue desc by default, names A-Z first); a thin bar in
-     the sorted column when it's Qty/Revenue/Profit, else Revenue, against the leader. **10 rows, Show all**
-     (`?x=item`, 50 a page; old `?all=item` redirects). **A row click / Enter opens its chart under
-     it** (`?it=`, again to close, one open): name, revenue · profit · sold, `calmChip`, then revenue per day
-     (per month in a year) in the Dashboard's bars with a dashed line for the period before (skipped on days
-     the shorter month doesn't have). Narrow cards drop Margin (card under 780px), then Profit (under 640px);
-     on a phone (card under 600px, `@container cut` in `bo-calm.css`) Qty sold, the Categories' Share and the
-     in-cell revenue bar step out too and Revenue narrows to 96px, so the name keeps about half the row (both
-     tables) and Trend stays in the card. 1024 and up never reach it.
-  3. **Rising · Falling** side by side (`.duo`, stacked under 760px): the 5 items up / down most in pesos on
-     the period before (±₱1 to count), with +38% / −20% or New. No previous sales → "Nothing sold in {month} to compare with".
-  4. **Bought together** (`basketAffinity`, all receipts, 3+ baskets, items only) reads "A → B · bar · 38% of
-     the time · 4 of 11 receipts": A is the pair's rarer item (`countA`/`countB`), so the % is how often A
-     leaves with B; most often first, the % breaks ties, 5 rows, Show all (`?x=basket`) the 50 most frequent.
-     `?all=basket` → `HWPOS_INSIGHTS.card('basket')` stays.
+  (`periodNav`), Export CSV left of it. **Ported from `sales-items-lab-3.html` (owner, 2026-09-30)**; the
+  lab's cards and CSS live under `.calm-sales .si` in `bo-calm.css`. Top to bottom:
+  1. **Strip A**: Items sold · Top 10 share · Margin · New sellers (Best day when not comparing) · Didn't sell; the counts open their page.
+  2. **Categories**: Donut (default) / Map / Bars / Rank. Top 5 + Other; Show all (`?all=categories`) is a
+     table. A category click / Enter cuts the items to it (`?ct=`, again undoes); on the Categories page it
+     opens All items cut to it.
+  3. **Top 10 items**: Bars (default, profit inside revenue) / Table. Show all (`?all=items`) is the full
+     table with search (`?q=`) and pages.
+  4. **What moved**: Slope (default) / Split / Lists. **Only when comparing.**
+  5. **Bought together** (`basketAffinity`): Network (default) / Ring / Table; Show all (`?all=pairs`).
+     A pair's % is taken from its rarer item. The network gives a group of 4+ a half-width cell.
+  - **Each card's view is a dropdown on its band**: the app's `.pick` button + popover `.menu` (✓ on
+    the current one, right-aligned to the button). **Never a native `<select>`** (owner, 2026-09-30,
+    rejected the OS list). It is `?cats=`/`?list=`/`?moved=`/`?pairs=`, and the default clears the param.
+  - **No comparison (no `?vs=`, the default) = plain facts**: no Trend column, no chips, Rank leaves the Categories
+    menu and What moved leaves the page. Don't show within-month substitutes. It is also off when the
+    period before has no sales.
+  - Old `?x=item|category|basket` and `?all=item|category|basket` links redirect to their `?all=` page.
+  - Under 760px (container) the bands wrap under their pick, and slope/network scroll inside their card.
 - **By staff is gone as a page** ("staff is just one thing"): the Summary's Staff card carries a quiet
   "1 void · 2 refunds" after a cashier's name (refunds = `isReversal`: refunded originals and return rows).
 

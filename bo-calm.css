@@ -667,116 +667,203 @@ body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-card   { backgroun
 body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-credit { background: var(--b-warn-tint);   color: var(--b-warn); }
 body.bo-light :is(.calm-dash, .calm-tx) .tx tr.dim .pill[class*="pay-"] { background: var(--b-track); color: var(--b-ink-3); }
 
-/* ---------------------------------------------------------------- Sales › Items (2026-09-26)
-   Cards on the grey band: the title, no subtitle, no switch, no rank numbers. The items table opens a row's chart
-   under it; Bought together is a plain table. The Summary's Top 10 look, on the Summary's frame and month. */
-body.bo-light .sales-cuts .cut { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; font-size: var(--b-t-label); color: var(--b-ink); container: cut / inline-size; }
-body.bo-light .sales-cuts .cut-head { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 var(--b-pad); }
-body.bo-light .sales-cuts .cut-head .lbl { font-weight: 400; color: var(--b-ink-2); margin-right: auto; }
-body.bo-light .sales-cuts table { width: 100%; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
-body.bo-light .sales-cuts th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; white-space: nowrap; border-top: 1px solid var(--b-line); }
-body.bo-light .sales-cuts td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
-body.bo-light .sales-cuts :is(th, td):first-child { padding-left: var(--b-pad); }
-body.bo-light .sales-cuts :is(th, td):last-child { padding-right: var(--b-pad); }
-body.bo-light .sales-cuts td.nm { overflow: hidden; text-overflow: ellipsis; }
-body.bo-light .sales-cuts small { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-left: 8px; font-weight: 400; }
-body.bo-light .sales-cuts .n { text-align: right; }
-/* widths hold the cell's padding (fixed layout): the last column carries the card's --b-pad too */
-body.bo-light .sales-cuts .amt { width: 108px; }
-body.bo-light .sales-cuts .bar { width: 152px; padding-right: 0; }
-body.bo-light .sales-cuts td.bar span { display: block; width: 100%; height: 6px; background: var(--b-track); border-radius: 99px; overflow: hidden; }
-body.bo-light .sales-cuts :is(td.bar, .ib) i { display: block; height: 100%; background: var(--b-data); border-radius: 99px; }
-body.bo-light .sales-cuts .all { display: flex; align-items: center; height: 34px; padding-left: var(--b-pad); border-top: 1px solid var(--b-line); background: var(--b-raised);
-            color: var(--b-data); text-decoration: none; font-size: var(--b-t-meta); }
-body.bo-light .sales-cuts .all:hover { background: var(--b-card); }
-body.bo-light .sales-cuts .empty { margin: 0; padding: 12px var(--b-pad); border-top: 1px solid var(--b-line); color: var(--b-ink-3); font-size: var(--b-t-meta); }
-body.bo-light .sales-cuts .bo-pager { border-top: 1px solid var(--b-line); }
-@media (max-width: 700px) { body.bo-light .sales-cuts .bar { display: none; } }
-
-/* Items (2026-09-26, round 2): the Summary's frame; every figure a column, the sorted one carrying the bar */
-body.bo-light .sales-cuts th[data-act="sort"] { cursor: pointer; }
-body.bo-light .sales-cuts th[aria-sort] { color: var(--b-ink); }
-body.bo-light .sales-cuts .qt { width: 124px; }
-body.bo-light .sales-cuts .rv { width: 172px; }
-body.bo-light .sales-cuts .pf { width: 124px; }
-body.bo-light .sales-cuts .mg { width: 76px; }
-body.bo-light .sales-cuts td.rv { font-weight: 600; }
-/* the bar: a fixed track at the cell's left, the figure right, so every row's bar starts in one line */
-body.bo-light .sales-cuts .bv { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-body.bo-light .sales-cuts .ib { flex: none; width: 36px; height: 6px; background: var(--b-track); border-radius: 99px; overflow: hidden; }
-/* narrow cards lose Margin first, then Profit; Revenue and Trend stay */
-@container cut (max-width: 780px) { body.bo-light .sales-cuts .mg { display: none; } }
-@container cut (max-width: 640px) { body.bo-light .sales-cuts .pf { display: none; } }
-/* a phone (under 600px of card): Qty, Categories' Share and the in-cell bar step out too, so the name keeps
-   half the row and Trend isn't pushed off the edge */
-@container cut (max-width: 600px) {
-  body.bo-light .sales-cuts :is(.qt, .sh, .ib) { display: none; }
-  body.bo-light .sales-cuts .rv { width: 96px; }
+/* ---------------------------------------------------------------- Sales › Items (sales-items-lab-3.html, 2026-09-30)
+   The Summary's month in charts: a strip, Categories, Top 10 items, What moved (comparing only), Bought together.
+   Each card picks its view from the app's .pick dropdown on its band; the comparison is the Summary's Compare to. Scoped to .si,
+   so the Summary's .card / .strip / .chip / .row keep their own look. */
+body.bo-light .calm-sales .si {
+  /* one hue, dark → light, for the donut's top 5 (palette steps 550 → 250); Other is grey */
+  --s1: #1C5CAB; --s2: #256ABF; --s3: var(--b-data); --s4: #5598E7; --s5: #86B6EF; --s-other: #D4D4D4;
 }
-/* trend: plain coloured text in a row, a pill only in the open row's headline */
-body.bo-light .sales-cuts .tr { width: calc(var(--b-pad) + 64px); color: var(--b-ink-3); font-size: var(--b-t-meta); }
-body.bo-light .sales-cuts .tr.up { color: var(--b-up); }
-body.bo-light .sales-cuts .tr.down { color: var(--b-down); }
-body.bo-light .sales-cuts .chip { padding: 2px 8px; border-radius: 999px; font-size: var(--b-t-meta); font-weight: 500; background: var(--b-track); color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
-body.bo-light .sales-cuts .chip.up { background: var(--b-up-tint); color: var(--b-up); }
-body.bo-light .sales-cuts .chip.down { background: var(--b-down-tint); color: var(--b-down); }
-/* a row opens its detail; the open one wears the Transactions selected-row tint and an accent edge */
-body.bo-light .sales-cuts tr[data-sel] { cursor: pointer; }
-body.bo-light .sales-cuts :is(tr[data-sel], th[data-act]):focus-visible { outline: 2px solid var(--b-data-1); outline-offset: -2px; }
-body.bo-light .sales-cuts tr[data-sel]:not(.on):hover td { background: var(--b-card); }
-body.bo-light .sales-cuts tr.on td { background: var(--b-data-tint); }
-body.bo-light .sales-cuts tr.on td:first-child { box-shadow: inset 2px 0 0 var(--b-data); }
-body.bo-light .sales-cuts tr.on td.nm { color: var(--b-data-ink); font-weight: 500; }
-/* Bought together: A → B, how often, out of how many */
-body.bo-light .sales-cuts .to { color: var(--b-ink-3); margin: 0 8px; }
-body.bo-light .sales-cuts .pt { width: 132px; }
-body.bo-light .sales-cuts .rc { width: calc(var(--b-pad) + 132px); color: var(--b-ink-3); font-size: var(--b-t-meta); }
-/* an item's detail: one line of figures, then its bars (the Dashboard's .calm-dash rules, copied) */
-body.bo-light .sales-cuts tr.det td { height: auto; padding: 0; }
-body.bo-light .sales-cuts .chart { background: var(--b-raised); padding: 12px var(--b-pad); }
-body.bo-light .sales-cuts .dh { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: var(--b-t-meta); color: var(--b-ink-2); min-width: 0; }
-body.bo-light .sales-cuts .dh b { font-weight: 500; color: var(--b-ink); overflow: hidden; text-overflow: ellipsis; }
-body.bo-light .sales-cuts .key { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--b-ink-3); font-size: var(--b-t-meta); }
-body.bo-light .sales-cuts .key i { width: 10px; height: 10px; border-radius: 2px; background: var(--b-data); }
-body.bo-light .sales-cuts .key i.was { width: 14px; height: 0; border-radius: 0; background: none; border-top: 1.5px dashed var(--b-ink-3); margin-left: 8px; }
-body.bo-light .sales-cuts .plot { position: relative; height: 160px; }
-body.bo-light .sales-cuts :is(.grid, .cols, svg.was) { position: absolute; left: 32px; right: 0; top: 0; bottom: 20px; }
-body.bo-light .sales-cuts .grid { border-left: 1px solid #D6D6D6; }
-body.bo-light .sales-cuts .gl { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--b-outline); }
-body.bo-light .sales-cuts .gl span { position: absolute; right: calc(100% + 6px); bottom: 1px; font-size: 10px; color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
-body.bo-light .sales-cuts .gl.zero { border-top-color: #D6D6D6; border-top-style: solid; }
-body.bo-light .sales-cuts .cols { display: grid; }
-body.bo-light .sales-cuts .b { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
-body.bo-light .sales-cuts .b i { position: relative; width: min(62%, 28px); background: var(--b-data); border-radius: 4px 4px 0 0; }
-body.bo-light .sales-cuts .b .x { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-size: var(--b-t-micro); color: var(--b-ink-3); white-space: nowrap; }
-body.bo-light .sales-cuts .b .tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); display: none; z-index: 2;
-          background: var(--b-ink); color: #fff; font-size: var(--b-t-meta); font-weight: 500; padding: 6px 10px; border-radius: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-body.bo-light .sales-cuts .b .tip b { display: block; font-weight: 600; margin-bottom: 3px; }
-body.bo-light .sales-cuts .b .tip span { display: flex; justify-content: space-between; gap: 16px; opacity: .65; }
-body.bo-light .sales-cuts .b .tip span.on { opacity: 1; }
-body.bo-light .sales-cuts .b :is(.tip, em) { font-style: normal; }
-body.bo-light .sales-cuts .cols .b:nth-child(-n+3) .tip { left: 0; transform: none; }
-body.bo-light .sales-cuts .cols .b:nth-last-child(-n+3) .tip { left: auto; right: 0; transform: none; }
-body.bo-light .sales-cuts .cols:hover .b i { opacity: .4; }
-body.bo-light .sales-cuts .cols .b:hover i { opacity: 1; }
-body.bo-light .sales-cuts .b:hover .tip { display: block; }
-body.bo-light .sales-cuts svg.was { width: calc(100% - 32px); height: calc(100% - 20px); overflow: visible; pointer-events: none; z-index: 1; }
-body.bo-light .sales-cuts svg.was polyline { fill: none; stroke: var(--b-ink-3); stroke-width: 1.5; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
-/* The table is the card, no title band above it (owner 2026-09-26): its head row says Item / Category, under the
-   card's own border only. Two selectors, not one :is() -- a th is no child of .cut. */
-body.bo-light .sales-cuts .cut > table:first-child tr:first-child > *,
-body.bo-light .sales-cuts .cut > .empty:first-child { border-top: 0; }
-body.bo-light .sales-cuts .sh { width: 76px; }   /* Categories' share */
-/* Items, round 4 (owner 2026-09-26): the Summary's month in more depth, on the Summary's frame. Cards 12px apart
-   as the trio: Categories, the items, Rising / Falling side by side, Bought together. */
-body.bo-light .calm-sales .sales-cuts { display: grid; gap: 12px; }
-body.bo-light .calm-sales .duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
-@container (max-width: 760px) { body.bo-light .calm-sales .duo { grid-template-columns: minmax(0, 1fr); } }
-body.bo-light .calm-sales .duo .row .cmp { width: 52px; }   /* the Summary's rows keep 46px */
-body.bo-light .calm-sales .row.up .cmp { color: var(--b-up); }
-body.bo-light .calm-sales .row.down .cmp { color: var(--b-down); }
-/* Bought together's own page (?all=basket): Items › Bought together, Items a link back */
-body.bo-light .view[data-view="sales"] h1 .crumb { color: var(--b-ink-3); text-decoration: none; }
+body.bo-light .calm-sales .si .stack { display: grid; gap: 12px; }
+body.bo-light .calm-sales .si .card { background: var(--b-raised); overflow: hidden; }
+body.bo-light .calm-sales .si .band { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-2); font-weight: 500; }
+body.bo-light .calm-sales .si .band .r { margin-left: auto; color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); display: inline-flex; align-items: center; gap: 12px; }
+/* the card's view dropdown: the app's .pick, sized to the band */
+body.bo-light .calm-sales .si .band .pick { margin-left: auto; padding: 3px 8px 3px 10px; font-size: var(--b-t-meta); color: var(--b-ink); }
+body.bo-light .calm-sales .si .band .r + .pick { margin-left: 6px; }
+body.bo-light .calm-sales .si .band .menu { min-width: 140px; }
+body.bo-light .calm-sales .si .cut { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--b-data-tint); color: var(--b-data-ink); border: 0; font-size: var(--b-t-meta); cursor: pointer; }
+body.bo-light .calm-sales .si .key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+body.bo-light .calm-sales .si .foot { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); }
+body.bo-light .calm-sales .si .link { color: var(--b-data); font-weight: 500; text-decoration: none; }
+body.bo-light .calm-sales .si .link:hover { text-decoration: underline; }
+body.bo-light .calm-sales .si .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+body.bo-light .calm-sales .si .up { color: var(--b-up); }
+body.bo-light .calm-sales .si .down { color: var(--b-down); }
+body.bo-light .calm-sales .si .new, body.bo-light .calm-sales .si .muted { color: var(--b-ink-3); }
+body.bo-light .calm-sales .si p.empty { margin: 0; padding: 14px var(--b-pad); color: var(--b-ink-3); }
+
+/* the strip: the Summary's joined strip, number left, chip right on the same line; a count links to its list */
+body.bo-light .calm-sales .si .strip { grid-template-columns: repeat(5, minmax(0, 1fr)); }   /* the strip is the card here: keep its bottom hairline */
+body.bo-light .calm-sales .si .strip > * { padding: 14px var(--b-pad); color: inherit; text-decoration: none; }
+body.bo-light .calm-sales .si .strip > * + * { box-shadow: inset 1px 0 0 var(--b-line); }
+body.bo-light .calm-sales .si .strip a { transition: background .12s; }
+body.bo-light .calm-sales .si .strip a:hover { background: #FAFAFA; }
+body.bo-light .calm-sales .si .strip a .l::after { content: " ›"; color: var(--b-ink-3); opacity: 0; transition: opacity .12s; }
+body.bo-light .calm-sales .si .strip a:hover .l::after { opacity: 1; }
+body.bo-light .calm-sales .si .strip .l { color: var(--b-ink-2); font-weight: 500; }
+body.bo-light .calm-sales .si .strip .v { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+body.bo-light .calm-sales .si .strip .v small { font-size: var(--b-t-meta); font-weight: 400; color: var(--b-ink-3); letter-spacing: 0; }
+body.bo-light .calm-sales .si .chip { font-size: var(--b-t-micro); font-weight: 600; padding: 2px 6px; border-radius: 6px; letter-spacing: 0; }
+body.bo-light .calm-sales .si .chip.flat { background: var(--b-track); color: var(--b-ink-2); }
+
+/* tables */
+body.bo-light .calm-sales .si table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .si th { height: 32px; padding: 0 var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-2); font-weight: 500; text-align: left; white-space: nowrap; }
+body.bo-light .calm-sales .si th[data-act] { cursor: pointer; }
+body.bo-light .calm-sales .si th[data-act]:hover, body.bo-light .calm-sales .si th[aria-sort] { color: var(--b-ink); }
+body.bo-light .calm-sales .si td { height: 34px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); }
+body.bo-light .calm-sales .si tr:last-child td { border-bottom: 0; }
+body.bo-light .calm-sales .si tbody tr:hover td { background: #FAFAFA; }
+body.bo-light .calm-sales .si tbody tr.on td { background: var(--b-data-tint); }
+body.bo-light .calm-sales .si [data-ct] { cursor: pointer; }
+body.bo-light .calm-sales .si :is(th[data-act], [data-ct][tabindex]):focus-visible { outline: 2px solid var(--b-data-1); outline-offset: -2px; }
+body.bo-light .calm-sales .si .nm small { margin-left: 8px; color: var(--b-ink-3); font-size: var(--b-t-meta); }
+body.bo-light .calm-sales .si .ib { display: inline-block; width: 36px; height: 6px; border-radius: 3px; background: var(--b-track); margin-right: 12px; vertical-align: 1px; overflow: hidden; }
+body.bo-light .calm-sales .si .ib i { display: block; height: 100%; border-radius: 3px; background: var(--b-data); }
+body.bo-light .calm-sales .si td.empty { height: 64px; text-align: center; color: var(--b-ink-3); }
+body.bo-light .calm-sales .si .pairs td .to, body.bo-light .calm-sales .si .ring td .to { margin: 0 8px; color: var(--b-ink-3); }
+body.bo-light .calm-sales .si .bo-pager { border-top: 1px solid var(--b-line); }
+
+/* donut: top 5 + Other, the legend is the ranked list beside it */
+body.bo-light .calm-sales .si .donut { display: grid; grid-template-columns: 240px minmax(0, 1fr); align-items: center; }
+body.bo-light .calm-sales .si .donut .pie { display: grid; place-items: center; padding: 18px 0; border-right: 1px solid var(--b-line); position: relative; }
+body.bo-light .calm-sales .si .donut .pie .mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+body.bo-light .calm-sales .si .donut .pie .mid b { font-size: 18px; font-weight: 600; }
+body.bo-light .calm-sales .si .donut path { cursor: pointer; stroke: #fff; stroke-width: 2; transition: opacity .15s; }
+body.bo-light .calm-sales .si .donut.hl path:not(.hot), body.bo-light .calm-sales .si .donut.hov path:not(.lit) { opacity: .35; }
+body.bo-light .calm-sales .si .donut tr.lit td { background: #FAFAFA; }
+body.bo-light .calm-sales .si .donut td:first-child { width: 20px; padding-right: 0; }
+body.bo-light .calm-sales .si .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; }
+body.bo-light .calm-sales .si tr.other td { color: var(--b-ink-2); }
+
+/* map: size = revenue, colour = vs the period before (or the margin, comparison off) */
+body.bo-light .calm-sales .si .tmap { position: relative; margin: 10px; }
+body.bo-light .calm-sales .si .tmap button { position: absolute; border: 0; border-radius: 6px; padding: 8px 10px; text-align: left; overflow: hidden; display: flex; flex-direction: column; gap: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.04); transition: filter .12s; cursor: pointer; }
+body.bo-light .calm-sales .si .tmap button:hover { filter: brightness(.96); }
+body.bo-light .calm-sales .si .tmap button.on { box-shadow: inset 0 0 0 2px var(--b-data); }
+body.bo-light .calm-sales .si .tmap b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+body.bo-light .calm-sales .si .tmap span { color: var(--b-ink-2); font-size: var(--b-t-meta); white-space: nowrap; }
+body.bo-light .calm-sales .si .tmap em { font-style: normal; font-size: var(--b-t-micro); font-weight: 600; }
+body.bo-light .calm-sales .si .tmap .sm :is(span, em), body.bo-light .calm-sales .si .tmap .xs b { display: none; }
+body.bo-light .calm-sales .si .scale { display: inline-flex; align-items: center; gap: 6px; }
+body.bo-light .calm-sales .si .scale i { width: 44px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, #F2B4A5, var(--b-track), #9FD6B9); }
+body.bo-light .calm-sales .si .scale.m i { background: linear-gradient(90deg, color-mix(in srgb, var(--b-data-1) 15%, #F7F7F7), var(--b-data-1)); }
+
+/* bars: profit (deep) inside revenue (light), one pesos axis. Not the Summary's striped .row. */
+body.bo-light .calm-sales .si .bars .row { display: grid; grid-template-columns: 24px minmax(160px, 260px) minmax(0, 1fr) 92px 64px 64px; align-items: center; gap: 0 12px; height: 38px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); border-radius: 0; background: none; }
+body.bo-light .calm-sales .si .bars.flat .row { grid-template-columns: 24px minmax(160px, 260px) minmax(0, 1fr) 92px 64px; }
+body.bo-light .calm-sales .si .bars .row:hover { background: #FAFAFA; }
+body.bo-light .calm-sales .si .bars .row.on { background: var(--b-data-tint); }
+body.bo-light .calm-sales .si .bars .row:nth-last-child(2) { border-bottom: 0; }   /* the last row, before the foot */
+body.bo-light .calm-sales .si .bars .hd { height: 32px; background: var(--b-card); color: var(--b-ink-2); font-weight: 500; }
+body.bo-light .calm-sales .si .bars .hd:hover { background: var(--b-card); }
+body.bo-light .calm-sales .si .bars .rk { color: var(--b-ink-3); font-size: var(--b-t-meta); text-align: right; }
+body.bo-light .calm-sales .si .bars .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-sales .si .bars .nm small { margin-left: 0; }
+body.bo-light .calm-sales .si .bars .trk { position: relative; height: 14px; }
+body.bo-light .calm-sales .si .bars :is(.rev, .pf) { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; }
+body.bo-light .calm-sales .si .bars .rev { background: var(--b-data-1); }
+body.bo-light .calm-sales .si .bars .pf { background: var(--b-data); }
+body.bo-light .calm-sales .si .bars .v { font-weight: 600; }
+
+/* what moved: slope, split, lists */
+body.bo-light .calm-sales .si .slope .pad { padding: 12px var(--b-pad) 8px; }
+body.bo-light .calm-sales .si .slope svg { display: block; width: 100%; height: auto; overflow: visible; }
+body.bo-light .calm-sales .si .slope text { font-size: 12px; fill: var(--b-ink); }
+body.bo-light .calm-sales .si .slope .ax { fill: var(--b-ink-2); font-weight: 500; }
+body.bo-light .calm-sales .si .slope .muted { fill: var(--b-ink-3); }
+body.bo-light .calm-sales .si .slope tspan.up { fill: var(--b-up); font-weight: 600; }
+body.bo-light .calm-sales .si .slope tspan.down { fill: var(--b-down); font-weight: 600; }
+body.bo-light .calm-sales .si .slope .axl { stroke: var(--b-line); stroke-width: 1; }
+body.bo-light .calm-sales .si .slope .ln { stroke-width: 2; }
+body.bo-light .calm-sales .si .slope .ln.up { stroke: #5BB88A; }
+body.bo-light .calm-sales .si .slope .ln.down { stroke: #E88A74; }
+body.bo-light .calm-sales .si .slope .ln.same { stroke: #B5B5B5; }
+body.bo-light .calm-sales .si .slope .hit { stroke: transparent; stroke-width: 12; cursor: pointer; }
+body.bo-light .calm-sales .si .slope circle.was { fill: #B5B5B5; }
+body.bo-light .calm-sales .si .slope circle.up { fill: var(--b-up); }
+body.bo-light .calm-sales .si .slope circle.down { fill: var(--b-down); }
+body.bo-light .calm-sales .si .slope g:hover .ln { stroke-width: 3; }
+body.bo-light .calm-sales .si .rank g { cursor: pointer; }
+body.bo-light .calm-sales .si .slope .two { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+body.bo-light .calm-sales .si h4 { margin: 0 0 4px; font-size: var(--b-t-label); font-weight: 600; }
+body.bo-light .calm-sales .si .mvs { display: grid; grid-template-columns: 1fr 1fr; }
+body.bo-light .calm-sales .si .mvs > div + div { box-shadow: inset 1px 0 0 var(--b-line); }
+body.bo-light .calm-sales .si .mvs h4 { margin: 0; padding: 10px var(--b-pad) 8px; border-bottom: 1px solid var(--b-line); }
+body.bo-light .calm-sales .si .mv { display: flex; align-items: center; height: 34px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); gap: 10px; }
+body.bo-light .calm-sales .si .mv:last-child { border-bottom: 0; }
+body.bo-light .calm-sales .si .mv .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-sales .si .mv .cmp { width: 52px; text-align: right; }
+
+/* bought together: network, ring, table */
+body.bo-light .calm-sales .si .net { padding: 8px var(--b-pad); }
+body.bo-light .calm-sales .si :is(.net, .ring) svg { display: block; width: 100%; height: auto; overflow: visible; }
+body.bo-light .calm-sales .si :is(.eg, .ch) { stroke: var(--b-data); fill: none; stroke-linecap: round; cursor: pointer; }
+body.bo-light .calm-sales .si .net .hit { stroke: transparent; stroke-width: 14; cursor: pointer; }
+body.bo-light .calm-sales .si .el { font-size: 10.5px; font-weight: 600; fill: var(--b-ink-2); paint-order: stroke; stroke: #fff; stroke-width: 3px; pointer-events: none; opacity: 0; }
+body.bo-light .calm-sales .si .hkhl .el.lit { opacity: 1; }
+body.bo-light .calm-sales .si :is(.net, .ring) circle { fill: var(--b-data-1); stroke: #fff; stroke-width: 2; cursor: pointer; }
+body.bo-light .calm-sales .si .nl { font-size: 11px; fill: var(--b-ink); paint-order: stroke; stroke: #fff; stroke-width: 3px; }
+body.bo-light .calm-sales .si .nl.hb { font-weight: 600; }
+body.bo-light .calm-sales .si .ring { display: grid; grid-template-columns: 540px minmax(0, 1fr); }
+body.bo-light .calm-sales .si .ring .pic { padding: 8px; }
+body.bo-light .calm-sales .si .ring svg text { font-size: 11px; fill: var(--b-ink); }
+body.bo-light .calm-sales .si .ring > div + div { border-left: 1px solid var(--b-line); display: flex; align-items: center; }
+body.bo-light .calm-sales .si .ring td:nth-child(3) { display: none; }
+body.bo-light .calm-sales .si :is(.net, .ring) [data-hk] { transition: opacity .12s; }
+body.bo-light .calm-sales .si .hkhl :is(.net, .ring) [data-hk]:not(.lit) { opacity: .12; }
+body.bo-light .calm-sales .si .hkhl .ring tr.lit td { background: #FAFAFA; }
+
+/* the pages behind Show all: Items › Title, a search */
+body.bo-light .calm-sales .si > .bar h1 { display: flex; align-items: baseline; gap: 8px; }
+body.bo-light .calm-sales .si > .bar h1 .sl { color: var(--b-ink-3); font-weight: 400; }
+body.bo-light .calm-sales .si > .bar h1 small { margin-left: 4px; font-size: var(--b-t-meta); font-weight: 400; color: var(--b-ink-3); }
+body.bo-light .calm-sales .si .filters { display: flex; gap: 8px; margin-bottom: 12px; }
+body.bo-light .calm-sales .si .search { flex: 1; max-width: 360px; height: 32px; padding: 0 12px; border: 1px solid var(--b-outline); border-radius: 8px; background: var(--b-raised); font: inherit; color: var(--b-ink); outline: 0; }
+body.bo-light .calm-sales .si .search:focus { border-color: var(--b-data); box-shadow: 0 0 0 3px var(--b-data-tint); }
+
+/* Compare with {prev}: an on/off switch in the bar, the height of the period picker */
+
+/* the hover tip: every mark carries its numbers */
+body.bo-light .calm-sales .si-tip { position: fixed; z-index: 30; pointer-events: none; opacity: 0; background: var(--b-raised); border: 1px solid var(--b-outline); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.08); padding: 8px 10px; font-size: var(--b-t-meta); min-width: 160px; }
+body.bo-light .calm-sales .si-tip b { display: block; margin-bottom: 4px; font-weight: 600; }
+body.bo-light .calm-sales .si-tip div { display: flex; justify-content: space-between; gap: 16px; color: var(--b-ink-2); }
+body.bo-light .calm-sales .si-tip em { font-style: normal; color: var(--b-ink); font-weight: 600; }
+
+@container (max-width: 860px) {
+  body.bo-light .calm-sales .si .strip { grid-template-columns: repeat(2, 1fr); }
+  body.bo-light .calm-sales .si .strip > :nth-child(odd) { box-shadow: none; }
+  body.bo-light .calm-sales .si .strip > :nth-child(n+3) { border-top: 1px solid var(--b-line); }
+}
+@container (max-width: 760px) {
+  body.bo-light .calm-sales .si .band:has(.pick) { flex-wrap: wrap; row-gap: 2px; padding-top: 6px; padding-bottom: 6px; }
+  body.bo-light .calm-sales .si .band:has(.pick) .r { order: 2; flex-basis: 100%; margin-left: 0; }
+  body.bo-light .calm-sales .si .band:has(.pick) .pick { margin-left: auto; }
+  body.bo-light .calm-sales .si .donut { grid-template-columns: 1fr; }
+  body.bo-light .calm-sales .si .donut .pie { border-right: 0; border-bottom: 1px solid var(--b-line); }
+  body.bo-light .calm-sales .si .donut :is(th, td):nth-child(4), body.bo-light .calm-sales .si .pairs td:nth-child(3), body.bo-light .calm-sales .si .pairs .ib { display: none; }
+  body.bo-light .calm-sales .si .bars .row { grid-template-columns: 20px minmax(0, 1fr) 80px 52px; }
+  body.bo-light .calm-sales .si .bars .row > :is(:nth-child(3), :nth-child(5)) { display: none; }
+  body.bo-light .calm-sales .si .bars.flat .row { grid-template-columns: 20px minmax(0, 1fr) 80px; }
+  /* the items table keeps Item, Revenue and Trend */
+  body.bo-light .calm-sales .si table.it :is(th, td):is(:nth-child(2), :nth-child(4), :nth-child(5)), body.bo-light .calm-sales .si table.it .ib { display: none; }
+  body.bo-light .calm-sales .si table:is(.it, .ct, .us) :is(th, td) { padding: 0 10px; }
+  body.bo-light .calm-sales .si table.ct :is(th, td):nth-child(4) { display: none; }
+  body.bo-light .calm-sales .si table.ct .ib { display: none; }
+  body.bo-light .calm-sales .si .nm small { display: none; }
+  body.bo-light .calm-sales .si .slope .two, body.bo-light .calm-sales .si .mvs { grid-template-columns: 1fr; }
+  body.bo-light .calm-sales .si .mvs > div + div { box-shadow: inset 0 1px 0 var(--b-line); }
+  body.bo-light .calm-sales .si .ring { grid-template-columns: 1fr; }
+  body.bo-light .calm-sales .si .ring > div + div { border-left: 0; border-top: 1px solid var(--b-line); }
+  /* wide charts keep readable text and scroll inside their card */
+  body.bo-light .calm-sales .si :is(.slope .pad, .net) { overflow-x: auto; }
+  body.bo-light .calm-sales .si :is(.slope, .net) svg { min-width: 760px; }
+  body.bo-light .calm-sales .si > .bar h1 { flex-basis: 100%; flex-wrap: wrap; }
+}
+/* Items' pages: Items › Title, Items a link back */
+body.bo-light .view[data-view="sales"] h1 .crumb { color: var(--b-ink-3); font-weight: 500; text-decoration: none; }
 body.bo-light .view[data-view="sales"] h1 .crumb:hover { color: var(--b-ink); }
 
 /* A joined KPI strip: one card, a hairline between the figures — the Dashboard's strip without its

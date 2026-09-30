@@ -17,7 +17,7 @@
   // it (owner 2026-09-28), before ‹ period ›, so the picker holds still. The period (?month= ?view= ?vs=) and Items' table state ride along;
   // the day/week pop-up and the page don't.
   const tabSwitch = (tab) => {
-    const { day, week, page, all, ...keep } = Router.route().params;
+    const { day, week, page, all, q, ...keep } = Router.route().params;
     return `<div class="seg pd-switch" aria-label="Sales view">${TABS.map(([k, label]) =>
       `<a class="seg-btn${k === tab ? ' active' : ''}" href="${escapeHtml(Router.href(VIEW, '', { ...keep, by: k === 'summary' ? '' : k }))}">${label}</a>`).join('')}</div>`;
   };
@@ -157,13 +157,15 @@
   function readView() {
     const p = Router.route().params;
     const tab = TABS.some(t => t[0] === p.by) ? p.by : 'summary';
-    // ?x= is Items' Show all: that card grown in place. ?all=basket is Bought together's own page.
-    const x = tab === 'items' && ['item', 'category', 'basket'].includes(p.x) ? p.x : '';
-    const all = tab === 'items' && p.all === 'basket' ? 'basket' : '';
+    // ?all= is a Show all page of Items; each card's view (?cats= ?list= ?moved= ?pairs=) falls back to its default.
+    const all = tab === 'items' && ALL_PAGES.includes(p.all) ? p.all : '';
+    const view = (k) => (VIEWS[k].some(o => o[0] === p[k]) ? p[k] : PICK_DEF[k]);
     return {
-      tab, all, x,
-      it: p.it || '',   // the item row that's open; none = all closed
-      ct: p.ct || '',   // the category the table is cut to; none = every item
+      tab, all,
+      ct: p.ct || '',   // the category the items are cut to; none = every item
+      cmp: p.vs === 'prev' || p.vs === 'year',   // the Summary's Compare to (?vs=), shared
+      cats: view('cats'), list: view('list'), moved: view('moved'), pairs: view('pairs'),
+      q: p.q || '', page: p.page,
       // Revenue desc is the answer to "what makes us money"; everything else is a click away.
       sort: { key: p.sort || 'revenue', dir: p.dir === 'asc' ? 'asc' : 'desc' },
     };
@@ -546,17 +548,19 @@
     }
   }
 
-  // ---------- Items: the Summary's month, told in more depth (owner 2026-09-26, round 4) ----------
-  // The same ‹ [period ▾] › as the Summary, always against the period before -- the month so far against the
-  // same days of the last. Top to bottom: the categories as one bar, what rose and what fell, every item in one
-  // sortable table (Top 10, Show all behind it), what sells together. No filters: the Summary's cards cut those.
+  // ---------- Items: the Summary's month in charts (sales-items-lab-3.html, owner 2026-09-30) ----------
+  // A strip of item facts, then the categories, the top 10 items, what moved and what sells together. Each card
+  // picks its view from a dropdown on its band (?cats= ?list= ?moved= ?pairs=): the app's .pick menu, never a
+  // native select (owner 2026-09-30). The comparison is the Summary's Compare to (?vs=) in the period menu, shared.
+  // Off, the page is plain facts: no Trend, no chips, no Rank, no What moved -- nothing stands in for a comparison.
+  // Show all, and the strip's counts, open their own page: ?all=categories|items|new|unsold|pairs.
   const METRIC = {
     revenue: ['Revenue', r => r.revenue, r => pesoShort(r.revenue)],
     profit: ['Gross profit', r => r.profit, r => pesoShort(r.profit)],
     cost: ['Cost', r => r.cost, r => pesoShort(r.cost)],
     qty: ['Qty sold', r => r.qty, r => qtyText(r.qty)],
   };
-  const TOP_N = 10, PAIRS_N = 5, MOVERS_N = 5, CATS_N = 5;
+  const TOP_N = 10;
 
   // The head of a ranking by one metric. Share is of the whole cut's total (null when that is
   // nothing to share out), the bar is against the leader so the top row always fills.
@@ -567,203 +571,387 @@
     return list.map(r => ({ r, share: total > 0 ? of(r) / total : null, bar: max > 0 ? Math.max(0, of(r)) / max : 0 }));
   }
 
-  // Links inside Items keep the period and sort; the page belongs to the table being left.
-  const itemsHref = (patch) => { const { page, all, ...keep } = Router.route().params; return Router.href(VIEW, '', { ...keep, ...patch }); };
+  // Links inside Items keep the period, the sort and the views; the page, the search and the Show all page stay behind.
+  const itemsHref = (patch) => { const { page, all, q, ...keep } = Router.route().params; return Router.href(VIEW, '', { ...keep, ...patch }); };
   const backToItems = () => itemsHref({});
   // The Dashboard's dropdown (bo-calm.css .pick / .menu): a button, its popover menu, a ✓ on the one in
-  // use. A choice sets ?<param>=, the default clears it. Summary's Top 10 uses it.
-  const PICK_DEF = { top: 'item' };
+  // use. A choice sets ?<param>=, the default clears it. Summary's Top 10 and every Items card use it.
+  const PICK_DEF = { top: 'item', cats: 'donut', list: 'bars', moved: 'slope', pairs: 'net' };
   const pickMenu = (id, param, opts, on, aria) => {
     const cur = (opts.find(o => o[0] === on) || opts[0])[1];
     return `<button class="pick" popovertarget="${id}" aria-label="${aria}: ${cur}">${cur}</button><div class="menu" id="${id}" popover role="menu">`
       + opts.map(([k, l]) => `<button role="menuitemradio" data-set="${param}" data-v="${k}" aria-checked="${k === on}">${l}</button>`).join('') + '</div>';
   };
-  const barCell = (f) => `<td class="bar"><span><i style="width:${(f * 100).toFixed(1)}%"></i></span></td>`;
-  // A card: the title, no subtitle and no switch (owner 2026-09-26: the title says what it counts).
-  const cutCard = (title, body, foot = '') =>
-    `<section class="cut"><div class="cut-head"><span class="lbl">${title}</span></div>${body}${foot}</section>`;
-  // Show all grows the card in place (?x=), Show less shrinks it; sort and page go with the table.
-  const more = (n, x, limit, open) => (open ? `<a class="all" href="${itemsHref({ x: '' })}">Show less ↑</a>`
-    : n > limit ? `<a class="all" href="${itemsHref({ x })}">Show all ${n} ↓</a>` : '');
-  const none = (msg) => `<p class="empty">${msg}</p>`;
-  // A row's change on the period before: plain coloured text, as the Summary's Trend column (a pill is
-  // for a headline number). Blank when the period before sold nothing at all.
-  const trendTd = (cur, prev, any) => {
-    if (!any || (!prev && !cur)) return '<td class="n tr"></td>';
-    if (!prev) return '<td class="n tr">New</td>';
-    const r = Math.round((cur - prev) / Math.abs(prev) * 1000) / 10;
-    return `<td class="n tr ${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : ''}${r.toFixed(1)}%</td>`;
-  };
-  // ?ct= cuts the table (and the CSV) to one category. Uncategorized is folder '', which the URL can't hold: '-'.
+  const VIEWS = { cats: [['donut', 'Donut'], ['map', 'Map'], ['bars', 'Bars'], ['rank', 'Rank']], list: [['bars', 'Bars'], ['table', 'Table']],
+    moved: [['slope', 'Slope'], ['slope2', 'Split'], ['lists', 'Lists']], pairs: [['net', 'Network'], ['ring', 'Ring'], ['table', 'Table']] };
+  const ALL_PAGES = ['categories', 'items', 'new', 'unsold', 'pairs'];
+  // ?ct= cuts the items to one category. Uncategorized is folder '', which the URL can't hold: '-'.
   const catKey = (k) => k || '-';
   const inCat = (items, ct) => (ct ? items.filter(r => catKey(r.folder) === ct) : items);
   // A ?ct= the period has no row for (it sold nothing this month; the month moved on) cuts nothing: an empty
-  // table with no lit row to click off would be a dead end.
+  // list with no lit row to click off would be a dead end.
   const liveCat = (cats, ct) => (cats.some(r => r.revenue > 0 && catKey(r.key) === ct) ? ct : '');
 
   // The period (the Summary's ?month= / ?view=year), the one before it, and both periods' receipts.
   function itemsWindow(p) {
-    const TODAY = dayStart(new Date()), S = { ...calState(p, lastSale()), vs: 'prev' }, C = calCompare(S, TODAY);
+    const TODAY = dayStart(new Date()), S = calState(p, lastSale()), C = calCompare(S, TODAY);
     const rows = [], prev = [];
     for (const o of state.orders) {
       if (o.ts >= C.a && o.ts < C.b) rows.push(o);
       else if (o.ts >= C.prevA && o.ts < C.prevB) prev.push(o);
     }
-    const yr = S.view === 'year', name = (t) => (yr ? String(new Date(t).getFullYear()) : fmt(t, { month: 'long' }));
-    return { S, C, rows, prev, yr, end: Math.min(C.b, shiftDays(TODAY, 1)), now: name(C.a), was: name(C.prevA) };
+    // Same month last year names both with their year: "September 2025" against "September 2026"
+    const yr = S.view === 'year', name = (t) => (yr ? String(new Date(t).getFullYear()) : fmt(t, S.vs === 'year' ? { month: 'long', year: 'numeric' } : { month: 'long' }));
+    return { S, C, rows, prev, yr, end: Math.min(C.b, shiftDays(TODAY, 1)), now: name(C.a), was: S.vs ? name(C.prevA) : '' };
   }
 
-  // An item's figure per day (a year: per month), this period and the one before, index for index.
-  // agg() per bucket, so the split of a discounted receipt is the table's own.
-  // ponytail: day buckets are 24h steps, fine in PH (no DST); use shiftDays() indexes if a DST store ever syncs in.
-  function series(W, key, of) {
-    const { a, prevA } = W.C, yr = W.yr;
-    const n = W.end <= a ? 0 : yr ? new Date(W.end - 1).getMonth() + 1 : Math.round((W.end - a) / 864e5);
-    const at = (t0, i) => (yr ? new Date(new Date(t0).getFullYear(), i, 1).getTime() : shiftDays(t0, i));
-    const cut = (list, t0) => {
-      const g = Array.from({ length: n }, () => []);
-      for (const o of list) { const i = yr ? new Date(o.ts).getMonth() : Math.floor((o.ts - t0) / 864e5); if (g[i]) g[i].push(o); }
-      return g.map(os => { const x = os.length && agg(os).items.find(r => r.key === key); return x ? of(x) : 0; });
-    };
-    const cur = cut(W.rows, a), was = cut(W.prev, prevA), pm = new Date(prevA).getMonth();
-    const long = yr ? { month: 'long', year: 'numeric' } : { weekday: 'long', month: 'long', day: 'numeric' };
-    return cur.map((v, i) => {
-      const t = at(a, i), p = at(prevA, i), had = yr || new Date(p).getMonth() === pm;   // a 31st has no 31st of September to compare
-      return { cur: v, prev: had ? was[i] : null, x: yr ? fmt(t, { month: 'short' }) : String(i + 1), title: fmt(t, long),
-        was: had ? fmt(p, yr ? long : { weekday: 'short', month: 'short', day: 'numeric' }) : '' };
-    });
-  }
-
-  // The Dashboard's bars (dashPlot() in backoffice.js), one metric, the period before a dashed line over them.
-  function plot(bs, key, any) {
-    const [lbl, , ] = METRIC[key], qty = key === 'qty';
-    const fv = qty ? qtyText : pesoShort, axis = qty ? (v => +v.toFixed(1)) : pesoK;
-    const peak = Math.max(qty ? 5 : 100, ...bs.map(b => Math.max(b.cur, any ? b.prev || 0 : 0)));
-    const step = niceStep(peak / 3), top = Math.ceil(peak * 1.1 / step) * step, every = Math.ceil(bs.length / 12);
-    const h = (v) => Math.max(0, v) / top * 100;
-    let grid = '';
-    for (let v = 0; v <= top + 1e-6; v += step) grid += `<div class="gl${v ? '' : ' zero'}" style="bottom:${h(v)}%"><span>${axis(v)}</span></div>`;
-    const cols = bs.map((b, i) => `<div class="b"><i style="height:${h(b.cur)}%"><span class="tip"><b>${escapeHtml(b.title)}</b>`
-      + `<span class="on">${lbl}<em>${fv(b.cur)}</em></span>${any && b.was ? `<span>${escapeHtml(b.was)}<em>${fv(b.prev)}</em></span>` : ''}</span></i>`
-      + `<span class="x">${(bs.length - 1 - i) % every ? '' : b.x}</span></div>`).join('');
-    const pts = bs.map((b, i) => (b.prev == null ? '' : `${i + 0.5},${(100 - h(b.prev)).toFixed(2)}`)).filter(Boolean).join(' ');
-    const line = any ? `<svg class="was" viewBox="0 0 ${bs.length} 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}"/></svg>` : '';
-    return `<div class="plot"><div class="grid">${grid}</div><div class="cols" style="grid-template-columns:repeat(${bs.length},minmax(0,1fr))">${cols}</div>${line}</div>`;
-  }
-
-  // Every item (owner 2026-09-26, round 2: "the most efficient way"): one table, every figure side by side. A
-  // header sorts (?sort=): by Profit or Margin is what makes money, by Trend the movers. A row opens its chart
-  // under it (?it=, again to close). Top 10, then Show all (?x=item) pages the rest, 50 at a time.
-  const COLS = [['name', 'nm', 'Item'], ['qty', 'qt', 'Qty sold'], ['revenue', 'rv', 'Revenue'], ['profit', 'pf', 'Profit'], ['margin', 'mg', 'Margin'], ['trend', 'tr', 'Trend']];
-  const BARRED = ['qty', 'revenue', 'profit'];   // the bar rides the sorted column when it's an amount, else Revenue
-  const inBar = (f, txt) => `<span class="bv"><span class="ib"><i style="width:${(Math.max(0, Math.min(1, f)) * 100).toFixed(1)}%"></i></span>${txt}</span>`;
-  // Trend is revenue on the period before; a row that sold nothing then is New and sorts first. The CSV sorts by it too.
+  // Trend is revenue on the period before; a row that sold nothing then is New and sorts first. The CSV sorts by it.
   const withTrend = (rows, prevRows, any) => { const before = new Map(prevRows.map(r => [r.key, r.revenue]));
     return rows.map(r => { const was = before.get(r.key) || 0;
       return { ...r, was, trend: !any ? 0 : was ? (r.revenue - was) / Math.abs(was) : r.revenue > 0 ? Infinity : 0 }; }); };
-  function rankCard(rows, prevRows, selKey, any, nameOf, detail, v, p) {
-    if (!rows.length) return `<section class="cut">${none('No sales in this period yet.')}</section>`;
-    const s = v.sort, kOf = (r) => r.key || '-';
-    const all = sortRows(withTrend(rows, prevRows, any), s.key, s.dir);
-    const bk = BARRED.includes(s.key) ? s.key : 'revenue', base = all.reduce((m, r) => Math.max(m, r[bk]), 0);   // against the leader
-    const cell = (k, cls, txt, r) => `<td class="n ${cls}">${k === bk && base > 0 ? inBar(r[k] / base, txt) : txt}</td>`;
-    const th = COLS.map(([k, c, l]) => `<th class="${k === 'name' ? '' : 'n '}${c}" tabindex="0" data-act="sort" data-key="${k}"${s.key === k ? ` aria-sort="${s.dir}ending"` : ''}>`
-      + `${l}${s.key === k ? (s.dir === 'asc' ? ' ↑' : ' ↓') : ''}</th>`).join('');
-    const tr = (r) => {
-      const on = kOf(r) === selKey;
-      return `<tr tabindex="0" data-sel="it" data-key="${escapeHtml(kOf(r))}" aria-expanded="${on}"${on ? ' class="on"' : ''}>`
-        + `<td class="nm" title="${escapeHtml(r.name)}">${nameOf(r)}</td>${cell('qty', 'qt', qtyText(r.qty), r)}${cell('revenue', 'rv', pesoShort(r.revenue), r)}`
-        + `${cell('profit', 'pf', pesoShort(r.profit), r)}<td class="n mg">${r.net ? pct(r.margin) : '—'}</td>${trendTd(r.revenue, r.was, any)}</tr>`
-        + (on ? detail(r) : '');
+
+  // One render's data (D) and view (V), held here so the lab's card functions port as they were.
+  // ponytail: one Items page renders at a time; pass them in if a second view ever shares this file.
+  let D = null, V = null;
+  const pc = (f, d = 1) => (f * 100).toFixed(d) + '%';
+  const chg = (cur, was) => (was > 0 ? (cur - was) / was : cur > 0 ? Infinity : 0);
+  const cmpNum = (p, q) => (typeof p === 'string' ? p.localeCompare(q) : (p > q) - (p < q));   // Infinity-safe
+  const trendTxt = (cur, was) => { const c = chg(cur, was);
+    return c === Infinity ? '<span class="new">New</span>' : !cur && !was ? '—' : Math.round(Math.abs(c) * 100) === 0 ? '<span class="new">0%</span>'
+      : `<span class="${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.round(Math.abs(c) * 100)}%</span>`; };
+  const chip = (c, pts) => { const v = pts ? c : Math.round(c * 100), k = Math.abs(v) < (pts ? .05 : .5) ? 'flat' : v > 0 ? 'up' : 'down';
+    return `<span class="chip ${k}">${k === 'up' ? '+' : k === 'down' ? '−' : ''}${pts ? Math.abs(v).toFixed(1) + ' pts' : Math.abs(v) + '%'}</span>`; };
+  // A hover tip's HTML, escaped once more to ride in a data-tip attribute.
+  const tip = (title, rows) => escapeHtml(`<b>${escapeHtml(title)}</b>` + rows.filter(Boolean).map(([l, v]) => `<div>${escapeHtml(l)}<em>${v}</em></div>`).join(''));
+  const vsRow = (x) => (V.cmp ? ['vs ' + D.was, x.prev ? `${chg(x.rev, x.prev) >= 0 ? '+' : '−'}${Math.round(Math.abs(chg(x.rev, x.prev)) * 100)}%` : 'New'] : null);
+  const ord = (n) => n + (n % 100 - n % 10 === 10 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+  const allLink = (n, to) => `<a class="link" href="${escapeHtml(itemsHref({ all: to }))}">Show all ${n} →</a>`;
+  const toCats = 'data-act="go" data-to="categories"';
+
+  // Every item in the catalogue and every item sold, this period against the one before; the categories that sold;
+  // the best day; and the pairs bought together (every receipt ever, not the period: three baskets make a pair).
+  function itemsData(W) {
+    const a = agg(W.rows), pa = agg(W.prev), prods = new Map(state.products.map(p => [p.id, p]));
+    const was = new Map(pa.items.map(r => [r.key, r.revenue])), cwas = new Map(pa.cats.map(r => [catKey(r.key), r.revenue]));
+    const items = a.items.map(r => ({ key: r.key, name: r.name, brand: r.brand, cat: r.cat, ck: catKey(r.folder), rev: r.revenue, prev: was.get(r.key) || 0,
+      profit: r.profit, margin: r.margin, qty: r.qty, p: prods.get(r.key) }));
+    const seen = new Set(items.map(x => x.key));
+    for (const p of state.products) if (!p.archived && !seen.has(p.id)) items.push({ key: p.id, name: p.name, brand: p.brand || '', cat: folderName(p.folder),
+      ck: catKey(p.folder), rev: 0, prev: was.get(p.id) || 0, profit: 0, margin: 0, qty: 0, p });
+    // two products can share a name (a Local and a Generic Hollow Block 4"): the brand tells them apart
+    const dup = new Map(); for (const x of items) dup.set(x.name, (dup.get(x.name) || 0) + 1);
+    for (const x of items) if (dup.get(x.name) > 1 && x.brand) x.name += ' · ' + x.brand;
+    const cats = a.cats.filter(r => r.revenue > 0).sort((x, y) => y.revenue - x.revenue).map(r => { const key = catKey(r.key);
+      return { key, name: r.name, rev: r.revenue, prev: cwas.get(key) || 0, profit: r.profit, margin: r.margin, n: items.filter(x => x.ck === key && x.rev > 0).length }; });
+    const days = new Map(); for (const o of W.rows) { const k = isoDate(o.ts); days.set(k, (days.get(k) || 0) + o.total * saleSign(o)); }
+    const [bk, bv] = [...days].reduce((m, d) => (d[1] > m[1] ? d : m), ['', 0]), bt = bk && fromIso(bk);
+    const best = bk ? [W.yr ? fmt(bt, { month: 'short', day: 'numeric' }) : `${fmt(bt, { weekday: 'short' })} ${new Date(bt).getDate()}`, bv] : null;
+    const label = new Map(items.map(x => [x.key, x.name])), NM = {}, RC = {};
+    const pairs = HWPOS_INSIGHTS.basketAffinity(loadList(STORAGE_ORDERS), { products: state.products, top: Infinity }).products.map(r => {
+      NM[r.a] = label.get(r.a) || r.aName; NM[r.b] = label.get(r.b) || r.bName; RC[r.a] = r.countA; RC[r.b] = r.countB;
+      // A is the rarer of the two, so the % is how often the rarer one leaves with the other
+      const [x, y, of] = r.countA <= r.countB ? [r.a, r.b, r.countA] : [r.b, r.a, r.countB];
+      return { a: x, b: y, n: r.count, of, f: r.count / of };
+    }).sort((p, q) => q.n - p.n || q.f - p.f).slice(0, 50);   // ponytail: past 50 a pair is a handful of receipts, noise more than a lead
+    // The charts draw the top 20. Items joined by pairs fall into groups, roughly the jobs people shop for: biggest first,
+    // in each the item with the most pair receipts leads.
+    const top = pairs.slice(0, 20), par = {}, f = (x) => (par[x] === x ? x : (par[x] = f(par[x])));
+    for (const p of top) { par[p.a] ??= p.a; par[p.b] ??= p.b; par[f(p.a)] = f(p.b); }
+    const g = new Map(); for (const x in par) { const r = f(x); (g.get(r) || g.set(r, []).get(r)).push(x); }
+    const w = (x) => top.reduce((s, p) => s + (p.a === x || p.b === x ? p.n : 0), 0);
+    const groups = [...g.values()].map(xs => xs.sort((p, q) => w(q) - w(p))).sort((p, q) => q.length - p.length || w(q[0]) - w(p[0]));
+    return { items, cats, best, pairs, top, groups, nodes: groups.flat(), NM, RC, maxN: Math.max(1, ...top.map(p => p.n)),
+      totals: a.totals, ptotals: pa.totals, prevData: pa.totals.sales > 0, now: W.now, was: W.was, unit: W.yr ? 'year' : 'month' };
+  }
+
+  // ---- the strip: each count a link to the list behind it
+  function strip() {
+    const it = D.items, sold = it.filter(x => x.rev > 0), wasSold = it.filter(x => x.prev > 0);
+    const rev = sold.reduce((s, x) => s + x.rev, 0), prevRev = wasSold.reduce((s, x) => s + x.prev, 0);
+    const top10 = (xs, f, tot) => (tot > 0 ? [...xs].sort((p, q) => f(q) - f(p)).slice(0, 10).reduce((s, x) => s + f(x), 0) / tot : 0);
+    const t10 = top10(sold, x => x.rev, rev), t10p = top10(wasSold, x => x.prev, prevRev), mg = D.totals.margin, mgp = D.ptotals.margin;
+    const fresh = sold.filter(x => !x.prev).length, dead = it.length - sold.length;
+    const cell = (l, v, extra = '', title = '', to = '') => { const inner = `<div class="l">${l}</div><div class="v">${v}${extra}</div>`;
+      return to ? `<a href="${escapeHtml(itemsHref({ all: to }))}" title="${title}">${inner}</a>` : `<div title="${title}">${inner}</div>`; };
+    // Without the period before there is nothing to be new against, so that tile shows the best day instead.
+    return `<section class="card strip">
+      ${cell('Items sold', `${sold.length}<small>of ${it.length}</small>`, V.cmp && wasSold.length ? chip(chg(sold.length, wasSold.length)) : '', 'Different items with at least one sale', 'items')}
+      ${cell('Top 10 share', pc(t10, 0), V.cmp ? chip((t10 - t10p) * 100, true) : '', 'How much of revenue your 10 best items bring in')}
+      ${cell('Margin', pc(mg), V.cmp ? chip((mg - mgp) * 100, true) : '')}
+      ${V.cmp ? cell('New sellers', fresh, '', `Sold this ${D.unit}, nothing in ${D.was}`, 'new')
+        : cell('Best day', D.best ? `${D.best[0]}<small>${pesoK(D.best[1])}</small>` : '—', '', `The day with the most sales this ${D.unit}`)}
+      ${cell('Didn\'t sell', dead, '', `In the catalogue, no sale this ${D.unit}`, 'unsold')}
+    </section>`;
+  }
+
+  // ---- categories
+  const catTotal = () => D.cats.reduce((s, c) => s + c.rev, 0);
+  const catTip = (c) => tip(c.name, [['Revenue', pesoShort(c.rev)], ['Share', pc(c.rev / catTotal())], ['Profit', pesoShort(c.profit)], vsRow(c), ['Items sold', c.n]]);
+  const catName = (k) => (D.cats.find(c => c.key === k) || {}).name || k;
+  const cutBtn = () => (V.ct ? `<button class="cut" data-act="uncut">${escapeHtml(catName(V.ct))} ✕</button>` : '');
+  const ctAttr = (c) => `tabindex="0" data-ct="${escapeHtml(c.key)}"`;
+
+  function catTable(full) {
+    const list = D.cats, tot = catTotal(), lead = list[0].rev, shown = full ? list : list.slice(0, 5);
+    return `<section class="card"><table class="ct"><thead><tr><th>Category</th><th class="n">Revenue</th><th class="n">Share</th><th class="n">Profit</th>${V.cmp ? '<th class="n">Trend</th>' : ''}</tr></thead><tbody>
+      ${shown.map(c => `<tr ${ctAttr(c)}${c.key === V.ct ? ' class="on"' : ''} data-tip="${catTip(c)}"><td>${escapeHtml(c.name)}</td><td class="n"><span class="ib"><i style="width:${c.rev / lead * 100}%"></i></span><b>${pesoShort(c.rev)}</b></td>`
+        + `<td class="n">${pc(c.rev / tot)}</td><td class="n">${pesoShort(c.profit)}</td>${V.cmp ? `<td class="n">${trendTxt(c.rev, c.prev)}</td>` : ''}</tr>`).join('')}
+      </tbody></table>${full ? '' : `<div class="foot">${allLink(list.length, 'categories')}</div>`}</section>`;
+  }
+
+  // Donut: five slices and Other, whatever the store -- 7 categories or 60 look the same.
+  function catDonut() {
+    const list = D.cats, tot = catTotal(), top = list.slice(0, 5), rest = list.slice(5);
+    const other = rest.length ? { key: '', name: `Other · ${rest.length} categories`, rev: rest.reduce((s, c) => s + c.rev, 0), prev: rest.reduce((s, c) => s + c.prev, 0), other: true } : null;
+    const parts = [...top, ...(other ? [other] : [])], col = (i, p) => (p.other ? 'var(--s-other)' : `var(--s${i + 1})`);
+    const R = 86, r0 = 58, cx = 100, cy = 100; let a = -Math.PI / 2;
+    const arc = (a0, a1) => { const L = a1 - a0 > Math.PI ? 1 : 0, pt = (rr, t) => `${(cx + rr * Math.cos(t)).toFixed(2)},${(cy + rr * Math.sin(t)).toFixed(2)}`;
+      return `M${pt(R, a0)}A${R},${R} 0 ${L} 1 ${pt(R, a1)}L${pt(r0, a1)}A${r0},${r0} 0 ${L} 0 ${pt(r0, a0)}Z`; };
+    const paths = parts.map((p, i) => { const a1 = a + p.rev / tot * Math.PI * 2, d = arc(a, Math.min(a1, a + Math.PI * 2 - 1e-4)); a = a1;
+      return `<path d="${d}" fill="${col(i, p)}" data-i="${i}" ${p.other ? toCats : `data-ct="${escapeHtml(p.key)}"`} data-tip="${p.other ? tip(p.name, [['Revenue', pesoShort(p.rev)], ['Share', pc(p.rev / tot)]]) : catTip(p)}"${V.ct && p.key === V.ct ? ' class="hot"' : ''}/>`; }).join('');
+    const rows = parts.map((p, i) => `<tr data-i="${i}" ${p.other ? `class="other" tabindex="0" ${toCats}` : `${ctAttr(p)}${p.key === V.ct ? ' class="on"' : ''}`}><td><i class="sw" style="background:${col(i, p)}"></i></td><td>${escapeHtml(p.name)}</td>`
+      + `<td class="n"><b>${pesoShort(p.rev)}</b></td><td class="n">${pc(p.rev / tot)}</td>${V.cmp ? `<td class="n">${trendTxt(p.rev, p.prev)}</td>` : ''}</tr>`).join('');
+    return `<section class="card"><div class="band">Categories<span class="r">Share of revenue</span></div><div class="donut${V.ct ? ' hl' : ''}"><div class="pie"><svg width="200" height="200" viewBox="0 0 200 200">${paths}</svg>
+        <div class="mid"><b>${pesoK(tot)}</b></div></div>
+      <table><thead><tr><th></th><th>Category</th><th class="n">Revenue</th><th class="n">Share</th>${V.cmp ? '<th class="n">Trend</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="foot">${allLink(list.length, 'categories')}</div></section>`;
+  }
+
+  // Map: size is revenue; colour the change on the period before, or with the comparison off the margin, one hue.
+  // The top 14 (7 on a phone) get a tile, the rest are one Other.
+  function squarify(vals, x, y, w, h) {
+    const out = [], tot = vals.reduce((s, v) => s + v, 0); let rest = vals.map((v, i) => ({ i, a: v / tot * w * h }));
+    while (rest.length) {
+      const side = Math.min(w, h); let row = [], best = Infinity;
+      for (const it of rest) { const t = [...row, it], s = t.reduce((q, z) => q + z.a, 0), mx = Math.max(...t.map(z => z.a)), mn = Math.min(...t.map(z => z.a));
+        const worst = Math.max(side * side * mx / (s * s), (s * s) / (side * side * mn)); if (worst > best) break; best = worst; row = t; }
+      const s = row.reduce((q, z) => q + z.a, 0), th = s / side; let off = 0;
+      for (const z of row) { const len = z.a / th; out[z.i] = w >= h ? { x, y: y + off, w: th, h: len } : { x: x + off, y, w: len, h: th }; off += len; }
+      if (w >= h) { x += th; w -= th; } else { y += th; h -= th; }
+      rest = rest.slice(row.length);
+    }
+    return out;
+  }
+  function catMap() {
+    // the card's width, from the view's: the page is at most 1180 wide, less its padding, the card's border and the map's margin
+    const W = Math.min(1180, root().clientWidth || 1180) - 70, phone = W < 700, N = phone ? 7 : 14;
+    const list = D.cats, tot = catTotal(), top = list.slice(0, N), rest = list.slice(N);
+    const parts = rest.length ? [...top, { key: '', name: `Other · ${rest.length}`, rev: rest.reduce((s, c) => s + c.rev, 0), prev: rest.reduce((s, c) => s + c.prev, 0), other: true }] : top;
+    const H = phone ? 520 : 440, g = 3, rects = squarify(parts.map(p => p.rev), 0, 0, W, H);
+    const ms = parts.filter(p => !p.other).map(p => p.margin), m0 = Math.min(...ms), m1 = Math.max(...ms);
+    const tint = (p) => { if (p.other) return '#F3F3F3'; if (!V.cmp) return `color-mix(in srgb, var(--b-data-1) ${Math.round(15 + (p.margin - m0) / (m1 - m0 || 1) * 85)}%, #F7F7F7)`;
+      const c = chg(p.rev, p.prev); if (c === Infinity) return 'var(--b-data-tint)';
+      const k = Math.min(1, Math.abs(c) / .4); return `color-mix(in srgb, ${c >= 0 ? '#9FD6B9' : '#F2B4A5'} ${Math.round(20 + k * 80)}%, #F3F3F3)`; };
+    const tiles = parts.map((p, i) => { const q = rects[i], sz = q.w < 90 || q.h < 58 ? (q.w < 60 || q.h < 30 ? 'xs' : 'sm') : '';
+      return `<button class="${sz}${p.key && p.key === V.ct ? ' on' : ''}" style="left:${q.x / W * 100}%;top:${q.y}px;width:calc(${q.w / W * 100}% - ${g}px);height:${q.h - g}px;background:${tint(p)}" ${p.other ? toCats : `data-ct="${escapeHtml(p.key)}"`} data-tip="${p.other ? tip(p.name + ' categories', [['Revenue', pesoShort(p.rev)], ['Share', pc(p.rev / tot)]]) : catTip(p)}">`
+        + `<b>${escapeHtml(p.name)}</b><span>${pesoK(p.rev)} · ${pc(p.rev / tot, 0)}</span><em>${V.cmp ? trendTxt(p.rev, p.prev) : p.other ? '' : pc(p.margin, 0) + ' margin'}</em></button>`; }).join('');
+    return `<section class="card"><div class="band">Categories<span class="r"><span>Size = revenue</span>${V.cmp ? `<span class="scale">Down<i></i>Up vs ${D.was}</span>` : '<span class="scale m">Thin<i></i>Better margin</span>'}</span></div>
+      <div class="tmap" style="height:${H}px">${tiles}</div><div class="foot">${allLink(list.length, 'categories')}</div></section>`;
+  }
+
+  // Bars, shared by categories and items: one pesos axis, revenue the light bar and profit the deep part inside it.
+  function barsCard(title, head, list, nameOf, tipOf, attrOf, foot) {
+    const lead = Math.max(1, list[0]?.rev || 0), w = (v) => Math.max(0, v) / lead * 100;
+    const rows = list.map((x, i) => `<div class="row${x.key && x.key === V.ct ? ' on' : ''}" ${attrOf(x)} data-tip="${tipOf(x)}"><span class="rk">${i + 1}</span><span class="nm">${nameOf(x)}</span>`
+      + `<span class="trk"><i class="rev" style="width:${w(x.rev)}%"></i><i class="pf" style="width:${w(x.profit)}%"></i></span>`
+      + `<span class="n v">${pesoShort(x.rev)}</span><span class="n">${pc(x.margin)}</span>${V.cmp ? `<span class="n">${trendTxt(x.rev, x.prev)}</span>` : ''}</div>`).join('');
+    return `<section class="card bars${V.cmp ? '' : ' flat'}"><div class="band">${title}<span class="r"><span class="key"><i style="background:var(--b-data)"></i>Profit</span><span class="key"><i style="background:var(--b-data-1)"></i>Revenue</span></span></div>
+      <div class="row hd"><span></span><span>${head}</span><span></span><span class="n">Revenue</span><span class="n">Margin</span>${V.cmp ? '<span class="n">Trend</span>' : ''}</div>${rows}
+      <div class="foot">${foot}</div></section>`;
+  }
+  const catBars = () => barsCard('Top 10 categories', 'Category', D.cats.slice(0, 10), c => escapeHtml(c.name), catTip, ctAttr, allLink(D.cats.length, 'categories'));
+
+  // Rank: where each of the top 10 ranked in the period before, and where it ranks now. Comparison only.
+  function catRank() {
+    const N = 10, cols = [[D.was, c => c.prev], [D.now, c => c.rev]];
+    const rankIn = (f) => { const s = D.cats.filter(c => f(c) > 0).sort((p, q) => f(q) - f(p)); return (c) => s.indexOf(c) + 1 || Infinity; };
+    const R = cols.map(([, f]) => rankIn(f)), top = D.cats.slice(0, N);
+    const W = 1130, RH = 34, T = 34, H = T + (N + 1) * RH + 6, xl = 250, xr = 720, xs = [xl, xr], y = (r) => T + (Math.min(r, N + 1) - .5) * RH;
+    let g = cols.map(([l], i) => `<text class="ax" x="${xs[i]}" y="16" text-anchor="middle">${escapeHtml(l)}</text><line class="axl" x1="${xs[i]}" x2="${xs[i]}" y1="${T - 6}" y2="${H - 6}"/>`).join('')
+      + `<text class="muted" x="${xl - 14}" y="${y(N + 1) + 4}" text-anchor="end">11th or lower</text>`;
+    for (let r = 1; r <= N; r++) g += `<text class="muted" x="${xl - 14}" y="${y(r) + 4}" text-anchor="end">${r}</text>`;
+    g += top.map((c, i) => { const rs = R.map(f => f(c)), a = rs[0], b = i + 1, k = a > b ? 'up' : a < b ? 'down' : 'same';
+      const d = `M${xs[0]},${y(rs[0])} C${(xl + xr) / 2},${y(rs[0])} ${(xl + xr) / 2},${y(b)} ${xr},${y(b)}`;
+      const was = a === Infinity ? 'New' : a > N ? `${ord(a)} in ${D.was}` : '';
+      return `<g data-ct="${escapeHtml(c.key)}" data-tip="${tip(c.name, [...cols.map(([l], j) => ['Rank, ' + l, rs[j] === Infinity ? '—' : rs[j]]), ['Revenue', pesoShort(c.rev)], vsRow(c)])}">`
+        + `<path class="ln ${k}" d="${d}" fill="none"/><path class="hit" d="${d}" fill="none"/><circle class="was" cx="${xl}" cy="${y(a)}" r="4"/><circle class="${k === 'same' ? 'was' : k}" cx="${xr}" cy="${y(b)}" r="5"/>`
+        + `<text x="${xr + 14}" y="${y(b) + 4}">${b}. ${escapeHtml(c.name)} <tspan class="muted">${pesoK(c.rev)}${was ? ' · ' + escapeHtml(was) : ''}</tspan></text></g>`; }).join('');
+    return `<section class="card slope rank"><div class="band">Top 10 categories<span class="r">Where each ranked in ${escapeHtml(D.was)}, and where it ranks now</span></div>
+      <div class="pad"><svg viewBox="0 0 ${W} ${H}">${g}</svg></div><div class="foot">${allLink(D.cats.length, 'categories')}</div></section>`;
+  }
+
+  // ---- items
+  const inCut = () => D.items.filter(x => x.rev > 0 && (!V.ct || x.ck === V.ct));
+  const itemTip = (x) => tip(x.name, [['Revenue', pesoShort(x.rev)], ['Profit', pesoShort(x.profit)], ['Margin', pc(x.margin)], ['Sold', qtyText(x.qty)], vsRow(x)]);
+  const hit = (x) => !V.q || (x.name + ' ' + x.cat).toLowerCase().includes(V.q.toLowerCase());
+  const search = () => `<div class="filters"><input class="q-input search" type="search" placeholder="Search items" value="${escapeHtml(V.q)}" autocomplete="off" aria-label="Search items"></div>`;
+  const ITEM_K = { name: x => x.name, qty: x => x.qty, revenue: x => x.rev, profit: x => x.profit, margin: x => x.margin, trend: x => chg(x.rev, x.prev) };
+
+  // The table, sortable (?sort= ?dir=). On its own page (full) it is searched and paged, 50 rows a page.
+  function itemTable(full, rows = inCut()) {
+    const s = V.sort, K = ITEM_K, m = s.dir === 'asc' ? 1 : -1;
+    const all = rows.filter(x => !full || hit(x)).sort((p, q) => cmpNum(K[s.key](p), K[s.key](q)) * m);
+    const pg = full ? paginate(all, V.page) : null, shown = full ? pg.rows : all.slice(0, TOP_N);
+    const bk = ['qty', 'revenue', 'profit'].includes(s.key) ? s.key : 'revenue', lead = all.reduce((mx, x) => Math.max(mx, K[bk](x)), 1);
+    const th = (k, l, n) => `<th class="${n ? 'n' : ''}" tabindex="0" data-act="sort" data-key="${k}"${s.key === k ? ` aria-sort="${s.dir}ending"` : ''}>${l}${s.key === k ? (s.dir === 'asc' ? ' ↑' : ' ↓') : ''}</th>`;
+    const cell = (k, txt, x) => `<td class="n">${k === bk ? `<span class="ib"><i style="width:${Math.max(0, K[k](x)) / lead * 100}%"></i></span>` : ''}${k === 'revenue' ? `<b>${txt}</b>` : txt}</td>`;
+    const foot = full ? '' : all.length > TOP_N ? allLink(all.length, 'items') : '';
+    const body = shown.length ? shown.map(x => `<tr data-tip="${itemTip(x)}"><td class="nm">${escapeHtml(x.name)}${V.ct ? '' : `<small>${escapeHtml(x.cat)}</small>`}</td>${cell('qty', qtyText(x.qty), x)}`
+      + `${cell('revenue', pesoShort(x.rev), x)}${cell('profit', pesoShort(x.profit), x)}<td class="n">${pc(x.margin)}</td>${V.cmp ? `<td class="n">${trendTxt(x.rev, x.prev)}</td>` : ''}</tr>`).join('')
+      : `<tr><td colspan="6" class="empty">${V.q ? `No item matches “${escapeHtml(V.q)}”.` : 'Nothing here this period.'}</td></tr>`;
+    return `<section class="card">${full ? '' : `<div class="band">Top 10 items ${cutBtn()}</div>`}<table class="it"><thead><tr>${th('name', 'Item')}${th('qty', 'Qty sold', 1)}${th('revenue', 'Revenue', 1)}${th('profit', 'Profit', 1)}${th('margin', 'Margin', 1)}${V.cmp ? th('trend', 'Trend', 1) : ''}</tr></thead><tbody>
+      ${body}</tbody></table>${full ? pagerHtml(pg) : foot ? `<div class="foot">${foot}</div>` : ''}</section>`;
+  }
+  function itemBars() {
+    const all = inCut().sort((p, q) => q.rev - p.rev);
+    return barsCard(`Top 10 items ${cutBtn()}`, 'Item', all.slice(0, TOP_N), x => escapeHtml(x.name) + (V.ct ? '' : `<small> ${escapeHtml(x.cat)}</small>`), itemTip, () => '', allLink(all.length, 'items'));
+  }
+
+  // ---- what moved: this period against the one before, so it only shows while the comparison is on
+  function movers() {
+    const A = D.was, B = D.now, d = D.items.map(x => ({ ...x, d: x.rev - x.prev }));
+    const up = d.filter(x => x.d >= 1).sort((p, q) => q.d - p.d).slice(0, 5), dn = d.filter(x => x.d <= -1).sort((p, q) => p.d - q.d).slice(0, 5);
+    if (!up.length && !dn.length) return `<section class="card"><div class="band">What moved</div><p class="empty">Nothing sold more or less than in ${escapeHtml(A)}.</p></section>`;
+    const c = (x) => (x.prev > 0 ? `${x.d > 0 ? '+' : '−'}${Math.round(Math.abs(x.d / x.prev) * 100)}%` : 'New');
+    const k = (x) => (x.d > 0 ? 'up' : 'down'), lbl = (x) => `${x.d > 0 ? '+' : '−'}${pesoK(Math.abs(x.d))}`;
+    const mtip = (x) => tip(x.name, [[B, pesoShort(x.rev)], [A, pesoShort(x.prev)], ['Change', lbl(x)]]);
+    if (V.moved === 'lists') {
+      const col = (t, xs, k) => `<div><h4 class="${k}">${t}</h4>${xs.map(x => `<div class="mv" data-tip="${mtip(x)}"><span class="nm">${escapeHtml(x.name)}</span><span class="n ${k}">${x.d > 0 ? '+' : '−'}${pesoShort(Math.abs(x.d))}</span><span class="cmp n ${k}">${c(x)}</span></div>`).join('') || '<p class="empty">Nothing.</p>'}</div>`;
+      return `<section class="card"><div class="band">What moved<span class="r">${escapeHtml(B)} against ${escapeHtml(A)}</span></div><div class="mvs">${col('Rising', up, 'up')}${col('Falling', dn, 'down')}</div></section>`;
+    }
+    // Slope: the period before on the left, this one on the right, one line per item. The scale is square root, so one
+    // big item doesn't flatten the rest. Split puts rising in one panel and falling in the other, on one scale.
+    const top = Math.sqrt(Math.max(1, ...[...up, ...dn].flatMap(x => [x.rev, x.prev].map(v => Math.max(0, v)))));
+    const slope = (ms, W, H, x1, x2, both) => {
+      const T = 34, B2 = 14, Y = (v) => T + (1 - Math.sqrt(Math.max(0, v)) / top) * (H - T - B2);
+      const spread = (pts) => { let last = -99; return pts.sort((p, q) => p.y - q.y).map(p => ({ ...p, ly: last = Math.max(p.y, last + 20) })); };
+      const L = spread(ms.map(x => ({ x, y: Y(x.prev) }))), R = spread(ms.map(x => ({ x, y: Y(x.rev) })));
+      const lines = ms.map(x => `<g data-tip="${mtip(x)}"><line class="ln ${k(x)}" x1="${x1}" y1="${Y(x.prev)}" x2="${x2}" y2="${Y(x.rev)}"/><line class="hit" x1="${x1}" y1="${Y(x.prev)}" x2="${x2}" y2="${Y(x.rev)}"/>`
+        + `<circle class="was" cx="${x1}" cy="${Y(x.prev)}" r="4"/><circle class="${k(x)}" cx="${x2}" cy="${Y(x.rev)}" r="4.5"/></g>`).join('');
+      const lt = L.map(p => `<text class="muted" x="${x1 - 12}" y="${p.ly + 4}" text-anchor="end">${escapeHtml(p.x.name)} · ${pesoK(p.x.prev)}</text>`).join('');
+      const rt = R.map(p => `<text x="${x2 + 12}" y="${p.ly + 4}">${pesoK(p.x.rev)} <tspan class="${k(p.x)}">${c(p.x)}</tspan>${both ? ` <tspan class="muted">${escapeHtml(p.x.name)}</tspan>` : ''}</text>`).join('');
+      const h = Math.max(H, ...L.map(p => p.ly + 14), ...R.map(p => p.ly + 14));
+      return `<svg viewBox="0 0 ${W} ${h}"><text class="ax" x="${x1}" y="14" text-anchor="middle">${escapeHtml(A)}</text><text class="ax" x="${x2}" y="14" text-anchor="middle">${escapeHtml(B)}</text>
+        <line class="axl" x1="${x1}" x2="${x1}" y1="${T - 8}" y2="${h - B2}"/><line class="axl" x1="${x2}" x2="${x2}" y1="${T - 8}" y2="${h - B2}"/>${lines}${lt}${rt}</svg>`;
     };
-    const open = v.x === 'item', pg = open ? paginate(all, p.page) : null;
-    let shown = open ? pg.rows : all.slice(0, TOP_N);
-    const sel = !open && selKey && all.find(r => kOf(r) === selKey);
-    if (sel && !shown.includes(sel)) shown = [...shown, sel];   // opened from past the ten: under them
-    return `<section class="cut"><table><tr>${th}</tr>${shown.map(tr).join('')}</table>${open ? pagerHtml(pg) : ''}${more(all.length, 'item', TOP_N, open)}</section>`;
+    if (V.moved === 'slope2') return `<section class="card slope"><div class="band">What moved<span class="r">${escapeHtml(B)} against ${escapeHtml(A)}, one scale</span></div><div class="pad two">
+      <div><h4 class="up">Rising</h4>${slope(up, 540, 420, 250, 420)}</div><div><h4 class="down">Falling</h4>${slope(dn, 540, 420, 250, 420)}</div></div></section>`;
+    return `<section class="card slope"><div class="band">What moved<span class="r">${up.length} up, ${dn.length} down</span></div><div class="pad">${slope([...up, ...dn], 1130, 560, 330, 740, true)}</div></section>`;
   }
 
-  // The categories as a table (owner 2026-09-26: a store can have 50 of them, a bar can't): revenue with its bar
-  // against the leader, share of the period, trend. Revenue desc, fixed -- ?sort= is the items table's. The top 5,
-  // Show all (?x=category) the rest. A row cuts the items table below to that category (?ct=); again undoes it.
-  function catCard(cats, prevCats, ct, any, v, p) {
-    const list = cats.filter(r => r.revenue > 0).sort((x, y) => y.revenue - x.revenue);
-    if (!list.length) return `<section class="cut">${none('No sales in this period yet.')}</section>`;
-    const before = new Map(prevCats.map(r => [r.key, r.revenue]));
-    const total = list.reduce((s, r) => s + r.revenue, 0), lead = list[0].revenue;
-    const tr = (r) => {
-      const k = catKey(r.key), on = k === ct;
-      return `<tr tabindex="0" data-sel="ct" data-key="${escapeHtml(k)}" aria-current="${on}"${on ? ' class="on"' : ''}>`
-        + `<td class="nm" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</td><td class="n rv">${inBar(r.revenue / lead, pesoShort(r.revenue))}</td>`
-        + `<td class="n sh">${(r.revenue / total * 100).toFixed(1)}%</td>${trendTd(r.revenue, before.get(r.key) || 0, any)}</tr>`;
-    };
-    const open = v.x === 'category', pg = open ? paginate(list, p.page) : null;
-    let shown = open ? pg.rows : list.slice(0, CATS_N);
-    const sel = !open && ct && list.find(r => catKey(r.key) === ct);
-    if (sel && !shown.includes(sel)) shown = [...shown, sel];   // picked from past the five: under them
-    return `<section class="cut"><table><tr><th>Category</th><th class="n rv">Revenue</th><th class="n sh">Share</th><th class="n tr">Trend</th></tr>`
-      + `${shown.map(tr).join('')}</table>${open ? pagerHtml(pg) : ''}${more(list.length, 'category', CATS_N, open)}</section>`;
+  // ---- bought together. A pair's % is taken from whichever of the two is on fewer receipts.
+  // Hover keys: a pair is "p3", an item carries its own key plus every pair it's in; hovering lights all that share one.
+  const nodeHk = (x) => ['n' + D.nodes.indexOf(x), ...D.top.flatMap((p, i) => (p.a === x || p.b === x ? ['p' + i] : []))].join(' ');
+  const pairTip = (p) => tip(D.NM[p.a] + ' → ' + D.NM[p.b], [['Together', p.n + ' receipts'], ['Receipts with ' + D.NM[p.a], p.of], ['How often', Math.round(p.f * 100) + '%']]);
+  const nodeTip = (x) => tip(D.NM[x], [['Receipts', D.RC[x]], ['Bought with', D.top.filter(p => p.a === x || p.b === x).length + ' items']]);
+  const edgeW = (p) => 1.5 + p.n / D.maxN * 7;
+
+  // Network: each group its own little constellation. Dot = an item (size = receipts), line = a pair (thickness = receipts together).
+  function pairsNet(foot) {
+    // The two biggest groups get half the width each; the row below packs the rest left to right, a quarter each,
+    // or a half for a group of four or more (its ring needs the room). A group's top label sits above it.
+    const W = 1130, H = D.groups.length > 2 ? 560 : 300, pos = {}, maxR = Math.max(...D.nodes.map(x => D.RC[x])), rad = (x) => 5 + Math.sqrt(D.RC[x] / maxR) * 10, hubs = new Set(), tops = new Set();
+    let fill = 0;
+    const cells = D.groups.slice(0, 6).map((xs, gi) => {
+      if (gi < 2) return [(gi * 2 + 1) * W / 4, 170, W / 2];
+      const w = xs.length > 3 ? W / 2 : W / 4;
+      if (fill + w > W) return null;   // ponytail: one row below; what doesn't fit is in the table behind Show all
+      fill += w; return [fill - w / 2, 440, w];
+    });
+    D.groups.slice(0, 6).forEach((xs, gi) => {
+      if (!cells[gi]) return;
+      const [cx, cy, cw] = cells[gi];
+      if (xs.length > 3) {
+        hubs.add(xs[0]); if (xs.length % 2 === 0) tops.add(xs[1]); pos[xs[0]] = [cx, cy];
+        const ring = xs.slice(1), rx = Math.min(170, cw / 2 - 100), n = ring.length, off = n % 2 ? 0 : .5;
+        ring.forEach((x, i) => { const t = -Math.PI / 2 + (i + off) / n * Math.PI * 2; pos[x] = [cx + rx * Math.cos(t), cy + 100 * Math.sin(t)]; });
+      } else if (xs.length === 3) { tops.add(xs[0]); pos[xs[0]] = [cx, cy - 45]; pos[xs[1]] = [cx - 70, cy + 35]; pos[xs[2]] = [cx + 70, cy + 35]; }
+      else xs.forEach((x, i) => { pos[x] = [cx + (i ? 70 : -70), cy]; });
+    });
+    const ps = D.top.filter(p => pos[p.a] && pos[p.b]);
+    const edges = ps.map(p => { const i = D.top.indexOf(p), [x1, y1] = pos[p.a], [x2, y2] = pos[p.b];
+      return `<g data-hk="p${i}" data-tip="${pairTip(p)}"><line class="eg" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${edgeW(p)}" stroke-opacity="${.25 + .55 * p.f}"/><line class="hit" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/></g>`; }).join('');
+    const pctL = ps.map(p => { const [x1, y1] = pos[p.a], [x2, y2] = pos[p.b]; return `<text class="el" x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 + 4}" text-anchor="middle" data-hk="p${D.top.indexOf(p)}">${Math.round(p.f * 100)}%</text>`; }).join('');
+    const nodes = Object.entries(pos).map(([x, [cx, cy]]) => { const t = tops.has(x);
+      return `<g data-hk="${nodeHk(x)}" data-tip="${nodeTip(x)}"><circle cx="${cx}" cy="${cy}" r="${rad(x)}"/><text class="nl${hubs.has(x) ? ' hb' : ''}" x="${cx}" y="${t ? cy - rad(x) - 7 : cy + rad(x) + 14}" text-anchor="middle">${escapeHtml(D.NM[x])}</text></g>`; }).join('');
+    return `<section class="card"><div class="band">Bought together<span class="r">Dot = an item, sized by receipts · Line = bought together</span></div>
+      <div class="net"><svg viewBox="0 0 ${W} ${H}">${edges}${nodes}${pctL}</svg></div><div class="foot">${foot}</div></section>`;
   }
 
-  // What moved (owner 2026-09-26): the items up most on the period before, in pesos, and the ones down most.
-  // An item that sold nothing back then is New; one that sold nothing now has fallen its whole amount.
-  function movers(a, pa, W, any) {
-    const w = (title, body) => `<div class="w"><div class="band">${title}<span>${any ? escapeHtml(W.C.title) : ''}</span></div>${body}</div>`;
-    const note = (t) => `<p class="note empty">${t}</p>`;
-    if (!any) return w('Rising', note(`Nothing sold in ${W.was} to compare with.`)) + w('Falling', note(`Nothing sold in ${W.was} to compare with.`));
-    const m = new Map();
-    for (const r of pa.items) m.set(r.key, { name: r.name, cur: 0, was: r.revenue });
-    for (const r of a.items) (m.get(r.key) || m.set(r.key, { name: r.name, cur: 0, was: 0 }).get(r.key)).cur = r.revenue;
-    const d = [...m.values()].map(x => ({ ...x, d: x.cur - x.was }));
-    const row = (x) => calRow(escapeHtml(x.name), (x.d > 0 ? '+' : '') + pesoShort(x.d),
-      x.was > 0 ? `${x.d > 0 ? '+' : '−'}${Math.round(Math.abs(x.d / x.was) * 100)}%` : 'New', x.d > 0 ? 'up' : 'down');
-    const list = (xs, empty) => (xs.length ? `<div class="rows">${xs.slice(0, MOVERS_N).map(row).join('')}</div>` : note(empty));
-    return w('Rising', list(d.filter(x => x.d >= 1).sort((x, y) => y.d - x.d), 'Nothing sold more.'))
-      + w('Falling', list(d.filter(x => x.d <= -1).sort((x, y) => x.d - y.d), 'Nothing sold less.'));
+  // Ring: every item around one circle, grouped, a chord for each pair. The top pairs sit beside it; hovering either side lights the other.
+  function pairsRing(foot) {
+    const Z = 580, c = Z / 2, R = 136, slots = D.nodes.length + D.groups.length, ang = {}, maxR = Math.max(...D.nodes.map(x => D.RC[x])); let s = 0;
+    D.groups.forEach(xs => { xs.forEach(x => { ang[x] = -Math.PI / 2 + (s++ + .5) / slots * Math.PI * 2; }); s++; });
+    const at = (x, r) => [c + r * Math.cos(ang[x]), c + r * Math.sin(ang[x])].map(v => v.toFixed(1));
+    const chords = D.top.map((p, i) => { const [x1, y1] = at(p.a, R - 7), [x2, y2] = at(p.b, R - 7);
+      return `<path class="ch" data-hk="p${i}" data-tip="${pairTip(p)}" d="M${x1},${y1} Q${c},${c} ${x2},${y2}" stroke-width="${edgeW(p)}" stroke-opacity="${.25 + .55 * p.f}"/>`; }).join('');
+    const nodes = D.nodes.map(x => { const [x1, y1] = at(x, R), [tx, ty] = at(x, R + 14), deg = ang[x] * 180 / Math.PI, flip = Math.cos(ang[x]) < 0;
+      return `<g data-hk="${nodeHk(x)}" data-tip="${nodeTip(x)}"><circle cx="${x1}" cy="${y1}" r="${3 + Math.sqrt(D.RC[x] / maxR) * 5}"/><text transform="translate(${tx},${ty}) rotate(${(flip ? deg + 180 : deg).toFixed(1)})" text-anchor="${flip ? 'end' : 'start'}" dy="4">${escapeHtml(D.NM[x])}</text></g>`; }).join('');
+    return `<section class="card"><div class="band">Bought together<span class="r">Hover an item or a line</span></div>
+      <div class="ring"><div class="pic"><svg viewBox="-70 0 ${Z + 140} ${Z}">${chords}${nodes}</svg></div><div>${pairsTable(D.top.slice(0, 10))}</div></div><div class="foot">${foot}</div></section>`;
+  }
+  function pairsTable(list, foot) {
+    return `<table><tbody>${list.map(p => `<tr data-hk="p${D.pairs.indexOf(p)}" data-tip="${pairTip(p)}"><td>${escapeHtml(D.NM[p.a])}<span class="to">→</span>${escapeHtml(D.NM[p.b])}</td>`
+      + `<td class="n"><span class="ib"><i style="width:${p.f * 100}%"></i></span>${Math.round(p.f * 100)}% of the time</td><td class="n muted">${p.n} of ${p.of} receipts</td></tr>`).join('')}</tbody></table>${foot ? `<div class="foot">${foot}</div>` : ''}`;
+  }
+  function pairs() {
+    if (!D.pairs.length) return `<section class="card"><div class="band">Bought together</div><p class="empty">No pair bought together often enough yet.</p></section>`;
+    const foot = allLink(D.pairs.length, 'pairs');
+    if (V.pairs === 'ring') return pairsRing(foot);
+    if (V.pairs === 'table') return `<section class="card pairs"><div class="band">Bought together</div>${pairsTable(D.pairs.slice(0, 5), foot)}</section>`;
+    return pairsNet(foot);
   }
 
-  // Bought together counts every receipt ever, not the period: three baskets make a pair. Read as "when they buy
-  // A, they also buy B" (owner 2026-09-26: make it actionable). A is the rarer of the two, so the % is the
-  // direction worth acting on: how often the rarer one leaves with the other. Items only -- a category pair
-  // rarely tells anyone what to shelve beside what. Most often first, the % breaks a tie.
-  function basketCard(x) {
-    const products = loadProducts();
-    const ba = HWPOS_INSIGHTS.basketAffinity(loadList(STORAGE_ORDERS), { products, top: Infinity });
-    // ponytail: the 50 most frequent; past that a pair is a handful of receipts, noise more than a lead
-    const pairs = ba.products.map(r => {
-      const [a, b, of] = r.countA <= r.countB ? [r.a, r.b, r.countA] : [r.b, r.a, r.countB];
-      return { a, b, of, n: r.count, f: r.count / of, name: { [r.a]: r.aName, [r.b]: r.bName } };
-    }).sort((r, s) => s.n - r.n || s.f - r.f).slice(0, 50);
-    if (!pairs.length) return cutCard('Bought together', none('No pair bought together often enough yet.'));
-    // two products can share a name (PVC Solvent Cement 200mL, two brands): the brand tells them apart
-    const dup = new Map(); for (const x of products) dup.set(x.name, (dup.get(x.name) || 0) + 1);
-    const brand = new Map(products.filter(x => x.brand && dup.get(x.name) > 1).map(x => [x.id, x.brand]));
-    const nm = (r, id) => escapeHtml(r.name[id]) + (brand.has(id) ? `<small>${escapeHtml(brand.get(id))}</small>` : '');
-    const open = x === 'basket';
-    const trs = (open ? pairs : pairs.slice(0, PAIRS_N)).map(r => `<tr><td class="nm">${nm(r, r.a)}<span class="to">→</span>${nm(r, r.b)}</td>`
-      + `${barCell(r.f)}<td class="n pt">${Math.round(r.f * 100)}% of the time</td><td class="n rc">${int(r.n)} of ${int(r.of)} receipts</td></tr>`).join('');
-    return cutCard('Bought together', `<table>${trs}</table>`, more(pairs.length, 'basket', PAIRS_N, open));
-  }
+  // Each card's view dropdown sits at the right of its band. ponytail: spliced into the card's first band, so the
+  // view functions stay as the lab has them.
+  const withPick = (k, html) => html.replace(/(<div class="band">[\s\S]*?)<\/div>/, (m, a) =>
+    a + pickMenu('si-' + k, k, VIEWS[k].filter(([x]) => V.cmp || x !== 'rank'), V[k], 'View') + '</div>');
+
+  // ---- the pages behind Show all and the strip: [title, meta, body]
+  const PAGES = {
+    categories: () => ['Categories', `${D.cats.length}`, D.cats.length ? catTable(true) : '<section class="card"><p class="empty">No sales in this period yet.</p></section>'],
+    items: () => ['All items', V.ct ? cutBtn() : `${inCut().length}`, search() + itemTable(true)],
+    new: () => { const xs = D.items.filter(x => x.rev > 0 && !x.prev); return ['New sellers', `${xs.length} · sold in ${escapeHtml(D.now)}, nothing in ${escapeHtml(D.was)}`, search() + itemTable(true, xs)]; },
+    unsold: () => {
+      // What didn't sell, and the stock it leaves on the shelf. With the comparison on, what sold in the period before
+      // comes first: those are the ones that stopped selling.
+      const xs = D.items.filter(x => !(x.rev > 0)).map(x => ({ ...x, onHand: Number(x.p?.stock) || 0, val: x.p ? stockValue(x.p) : 0 }))
+        .sort((p, q) => (V.cmp ? q.prev - p.prev : 0) || q.val - p.val);
+      const tied = xs.reduce((s, x) => s + x.val, 0), found = xs.filter(hit), pg = paginate(found, V.page);
+      const trs = pg.rows.map(x => `<tr><td class="nm">${escapeHtml(x.name)}<small>${escapeHtml(x.cat)}</small></td><td class="n">${qtyText(x.onHand)}</td><td class="n">${pesoShort(x.val)}</td>`
+        + `${V.cmp ? `<td class="n">${x.prev > 0 ? pesoShort(x.prev) : '<span class="new">—</span>'}</td>` : ''}</tr>`).join('')
+        || `<tr><td colspan="4" class="empty">${V.q ? `No item matches “${escapeHtml(V.q)}”.` : `Everything sold this ${D.unit}.`}</td></tr>`;
+      return ['Didn\'t sell', `${xs.length} · ${pesoShort(tied)} of stock sitting still`, search() + `<section class="card"><table class="us"><thead><tr><th>Item</th><th class="n">On hand</th><th class="n">Stock value</th>`
+        + `${V.cmp ? `<th class="n">Sold in ${escapeHtml(D.was)}</th>` : ''}</tr></thead><tbody>${trs}</tbody></table>${pagerHtml(pg)}</section>`];
+    },
+    pairs: () => ['Bought together', `${D.pairs.length} pairs · every receipt, not only this ${D.unit}`, D.pairs.length ? `<section class="card pairs">${pairsTable(D.pairs)}</section>` : pairs()],
+  };
 
   const DOWNLOAD_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4 20h16"/></svg>';
   function itemsPage(p, v) {
-    const W = itemsWindow(p), { S, C } = W, a = agg(W.rows), pa = agg(W.prev), any = pa.totals.sales > 0, ct = liveCat(a.cats, v.ct);
-    // Two products can share a name (a Local and a Generic Hollow Block 4"): the brand tells them apart.
-    const seen = new Map(); for (const r of a.items) seen.set(r.name, (seen.get(r.name) || 0) + 1);
-    const item = (r) => escapeHtml(r.name) + (seen.get(r.name) > 1 && r.brand ? `<small>${escapeHtml(r.brand)}</small>` : '');
-    const key = any ? `<span class="key"><i></i>${W.now}<i class="was"></i>${W.was}</span>` : '';
-    // An item's detail: one line of figures, then its revenue per day against the period before (dashed).
-    const chart = (r) => `<tr class="det"><td colspan="6"><div class="chart"><div class="dh"><b>${escapeHtml(r.name)}</b>`
-      + `<span>${pesoShort(r.revenue)} revenue · ${pesoShort(r.profit)} profit · ${qtyText(r.qty)} sold</span>${any ? calmChip(r.revenue, r.was, C.title) : ''}${key}</div>`
-      + plot(series(W, r.key, METRIC.revenue[1]), 'revenue', any) + '</div></td></tr>';
-    // No "vs" of its own (Rising / Falling say it) -- only when the Summary's Compare to is on, so the picker keeps
-    // its width across the switch; it names Items' own comparison, always the period before.
-    const P = { period: W.yr ? W.now : fmt(C.a, { month: 'long', year: 'numeric' }), vsLabel: p.vs ? C.label : '', last: C.b > dayStart(new Date()) };
-    return `<div class="shell"><div class="c-main">
-        <div class="bar">${tabSwitch('items')}<button class="btn" data-act="export">${DOWNLOAD_ICON}Export CSV</button>${periodNav(S, P, false)}</div>
-        <div class="sales-cuts">${catCard(a.cats, pa.cats, ct, any, v, p)}${rankCard(inCat(a.items, ct), pa.items, v.it, any, item, chart, v, p)}
-          <div class="duo">${movers(a, pa, W, any)}</div>${basketCard(v.x)}</div>
-      </div></div>`;
+    const W = itemsWindow(p), { S, C } = W;
+    D = itemsData(W);
+    V = { ...v, cmp: v.cmp && D.prevData, ct: D.cats.some(c => c.key === v.ct) ? v.ct : '' };
+    if (!V.cmp) { if (V.cats === 'rank') V.cats = 'donut'; if (V.sort.key === 'trend') V.sort = { key: 'revenue', dir: 'desc' }; }
+    // The Summary's period menu, Compare to and all: one comparison for both tabs.
+    const P = { period: W.yr ? W.now : fmt(C.a, { month: 'long', year: 'numeric' }), vsLabel: C.label, last: C.b > dayStart(new Date()) };
+    const tools = `<button class="btn" data-act="export">${DOWNLOAD_ICON}Export CSV</button>${periodNav(S, P, true)}`;
+    const page = PAGES[V.all];
+    let head, body;
+    if (page) {
+      const [title, meta, html] = page();
+      head = `<h1><a class="crumb" href="${escapeHtml(backToItems())}">Items</a><span class="sl">›</span>${title}${meta ? `<small>${meta}</small>` : ''}</h1>${tools}`;
+      body = html;
+    } else {
+      const cards = D.cats.length
+        ? withPick('cats', { donut: catDonut, map: catMap, bars: catBars, rank: catRank }[V.cats]())
+          + withPick('list', V.list === 'table' ? itemTable(false) : itemBars())
+          + (V.cmp ? withPick('moved', movers()) : '')
+        : '<section class="card"><p class="empty">No sales in this period yet.</p></section>';
+      head = tabSwitch('items') + tools;
+      body = `<div class="stack">${strip()}${cards}${withPick('pairs', pairs())}</div>`;
+    }
+    return `<div class="shell"><div class="c-main si"><div class="bar">${head}</div>${body}</div><div class="si-tip"></div></div>`;
   }
 
   window.renderSales = function () {
@@ -773,21 +961,18 @@
     if (OLD_TABS.includes(p.by)) { Router.setParams({ by: 'items', sort: '', dir: '', page: '' }); return; }
     // By staff is the Summary's Staff card now (owner 2026-09-26).
     if (p.by === 'staff') { Router.setParams({ by: '', sort: '', dir: '', page: '' }); return; }
-    // The old See all pages are Show all now: ?all=item / category grows that table in place.
-    if (p.all === 'item' || p.all === 'category') { Router.setParams({ all: '', x: p.all }); return; }
+    // The old Show all links (?x=item, ?all=category, ?all=basket ...) land on their own page now.
+    const OLD_ALL = { item: 'items', category: 'categories', basket: 'pairs' };
+    if (OLD_ALL[p.x] || OLD_ALL[p.all]) { Router.setParams({ x: '', it: '', all: OLD_ALL[p.x] || OLD_ALL[p.all] }); return; }
     refreshSharedState();
     const v = readView();
     const el = root();
-    // Bought together's full list counts every receipt ever, not the period: no picker or CSV.
-    if (v.all === 'basket') {
-      el.classList.remove('calm-sales');
-      el.innerHTML = `<header class="view-head"><div class="view-title-wrap"><h1><a class="crumb" href="${backToItems()}">Items</a> › Bought together</h1></div></header>
-        <div class="dash-stack">${HWPOS_INSIGHTS.card('basket')}</div>`;
-      return;
-    }
     // Both pages are calm (bo-calm.css): the Summary's calendar, and Items on the same month.
+    // The shell's ?q= listener re-renders on every keystroke: put the caret back.
+    const q = el.contains(document.activeElement) && document.activeElement.matches('.q-input') ? document.activeElement.selectionStart : -1;
     el.classList.add('calm-sales');
     el.innerHTML = v.tab === 'summary' ? calendar(p) : itemsPage(p, v);
+    if (q >= 0) { const i = el.querySelector('.q-input'); if (i) { i.focus(); i.setSelectionRange(q, q); } }
   };
 
   // The maths, hung off the one global so scripts/sales-check.mjs can run it without
@@ -811,14 +996,15 @@
   document.addEventListener('click', (e) => {
     const el = root();
     if (!el || !e.target.closest || !el.contains(e.target)) return;
-    // A picker menu's choice (Summary's Top), an Items row to open, or a Categories row to cut the items table to:
-    // the picked row again undoes either. A cut restarts the items table's pages, not the categories' own.
-    const pk = e.target.closest('.menu [data-set], [data-sel]');
-    if (pk) {
-      const { set, v, sel, key } = pk.dataset;
-      Router.setParams(set ? { [set]: v === PICK_DEF[set] ? '' : v }
-        : { [sel]: readView()[sel] === key ? '' : key, ...(sel === 'ct' && readView().x === 'item' ? { page: '' } : {}) });
-      if (sel === 'it') { const d = root().querySelector('tr.det'); if (d) d.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+    // A picker menu's choice (Summary's Top, a card's view): the default clears the param.
+    const pk = e.target.closest('.menu [data-set]');
+    if (pk) { const { set, v } = pk.dataset; Router.setParams({ [set]: v === PICK_DEF[set] ? '' : v }); return; }
+    // A category cuts the items to it; the same one again undoes it. On the Categories page it opens its items.
+    const ct = e.target.closest('[data-ct]');
+    if (ct) {
+      const k = ct.dataset.ct, v = readView();
+      if (v.all === 'categories') Router.setParams({ ct: k, all: 'items', page: '' }, { replace: false });
+      else Router.setParams({ ct: v.ct === k ? '' : k, page: '' });
       return;
     }
     if (e.target.matches('.shell.open')) { Router.setParams({ day: '', week: '' }); return; }   // the pop-up's backdrop
@@ -831,11 +1017,13 @@
     if (act === 'cal-target') { el.querySelector('dialog.tdlg').showModal(); return; }
     if (act === 'cal-cancel') { hit.closest('dialog').close(); return; }
     if (act === 'cal-more') { el.querySelector('[data-rc]').innerHTML = calMore; hit.remove(); return; }
+    if (act === 'uncut') { Router.setParams({ ct: '', page: '' }); return; }
+    if (act === 'go') { Router.setParams({ all: hit.dataset.to, page: '' }, { replace: false }); return; }
     if (act === 'sort') {
       const key = hit.dataset.key, cur = readView().sort;
       // Re-sorting deals the rows again, so page 3 of the old order means nothing. Names start A-Z, figures high first.
       const dir = cur.key === key ? (cur.dir === 'desc' ? 'asc' : 'desc') : key === 'name' ? 'asc' : 'desc';
-      Router.setParams({ sort: key, dir, ...(readView().x === 'item' ? { page: '' } : {}) });   // ?page= may be the categories'
+      Router.setParams({ sort: key, dir, page: '' });
     }
   });
 
@@ -855,19 +1043,44 @@
   document.addEventListener('toggle', (e) => {
     const m = e.target;
     if (e.newState !== 'open' || !m.matches || !m.matches('.calm-sales .menu')) return;
-    const r = root().querySelector(`[popovertarget="${m.id}"]`).getBoundingClientRect();
+    const b = root().querySelector(`[popovertarget="${m.id}"]`), r = b.getBoundingClientRect();
     m.style.top = r.bottom + 6 + 'px';
-    m.style.left = Math.max(16, Math.min(r.left, innerWidth - m.offsetWidth - 16)) + 'px';
+    // a card's view menu sits at the band's right edge: it opens right-aligned to its button
+    const x = b.closest('.band') ? r.right - m.offsetWidth : r.left;
+    m.style.left = Math.max(16, Math.min(x, innerWidth - m.offsetWidth - 16)) + 'px';
   }, true);
+
+  // Items' hover tip: every mark carries its numbers in data-tip. Hovering a donut slice or row lights its partner;
+  // hovering an item or a pair lights every line, dot and row that shares one of its keys (data-hk).
+  document.addEventListener('mousemove', (e) => {
+    const el = root(), tipEl = el && el.querySelector('.si-tip');
+    if (!tipEl || !e.target.closest) return;
+    const t = e.target.closest('.si [data-tip]'), card = e.target.closest('.si .card');
+    el.querySelectorAll('.si .lit').forEach(x => x.classList.remove('lit'));
+    el.querySelectorAll('.si .hkhl, .si .donut.hov').forEach(x => x.classList.remove('hkhl', 'hov'));
+    if (!t) { tipEl.style.opacity = 0; return; }
+    const i = t.dataset.i, hk = t.dataset.hk;
+    if (i != null && card) { card.querySelector('.donut')?.classList.add('hov'); card.querySelectorAll(`.donut [data-i="${i}"]`).forEach(x => x.classList.add('lit')); }
+    if (hk && card) {
+      const keys = hk.split(' ');
+      card.classList.add('hkhl');
+      card.querySelectorAll('[data-hk]').forEach(x => { if (x.dataset.hk.split(' ').some(k => keys.includes(k))) x.classList.add('lit'); });
+    }
+    tipEl.innerHTML = t.dataset.tip;
+    const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+    tipEl.style.left = Math.min(e.clientX + 14, innerWidth - w - 8) + 'px';
+    tipEl.style.top = (e.clientY + 16 + h > innerHeight ? e.clientY - h - 12 : e.clientY + 16) + 'px';
+    tipEl.style.opacity = 1;
+  });
 
   // Esc closes the day/week pop-up, unless a dialog is taking the key.
   document.addEventListener('keydown', (e) => {
-    // Items: Enter opens a row / sorts a header as a click does (neither has key activation of its own); the
-    // re-render replaces them, so focus goes back to the same row or header.
-    if (e.key === 'Enter' && e.target.matches && e.target.matches('.sales-cuts :is(tr[data-sel], th[data-act])')) {
-      const t = e.target, sel = t.dataset.sel ? `tr[data-sel="${t.dataset.sel}"]` : 'th[data-act]';
+    // Items: Enter sorts a header / cuts to a category as a click does (neither has key activation of its own);
+    // the re-render replaces them, so focus goes back to the same one.
+    if (e.key === 'Enter' && e.target.matches && e.target.matches('.si :is(th[data-act], [data-ct][tabindex])')) {
+      const t = e.target, sel = t.dataset.ct != null ? `[data-ct="${CSS.escape(t.dataset.ct)}"][tabindex]` : `th[data-key="${CSS.escape(t.dataset.key)}"]`;
       t.click();
-      root().querySelector(`.sales-cuts ${sel}[data-key="${CSS.escape(t.dataset.key)}"]`)?.focus();
+      root().querySelector(`.si ${sel}`)?.focus();
       return;
     }
     const el = root();

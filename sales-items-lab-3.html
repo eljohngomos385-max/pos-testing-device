@@ -308,11 +308,16 @@ td.empty { height: 64px; text-align: center; color: var(--b-ink-3); cursor: defa
   .quad { grid-template-columns: 1fr; } .quad .pc { border-right: 0 !important; border-bottom: 1px solid var(--b-line) !important; } .quad .pc:last-child { border-bottom: 0 !important; }
 }
 /* lab 3: a view dropdown on each card, the compare switch, movers lists in one card */
-.vs { margin-left: auto; height: 26px; padding: 0 26px 0 10px; border: 1px solid var(--b-outline); border-radius: 6px; appearance: none; cursor: pointer;
+.vs { margin-left: auto; height: 26px; padding: 0 26px 0 10px; border: 1px solid var(--b-outline); border-radius: 6px; cursor: pointer;
   background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5 5 6.5 8 3.5' fill='none' stroke='%238C8C8C' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center;
   font: inherit; font-size: var(--t-meta); font-weight: 500; color: var(--b-ink); }
 .vs:hover { border-color: #BDBDBD; }
 .band .r + .vs { margin-left: 6px; }
+/* the view menu: the app's .pick popover, never the OS <select> list */
+.menu { margin: 0; inset: auto; min-width: 140px; padding: 4px; border: 1px solid var(--b-line); border-radius: 8px; background: var(--b-raised); color: var(--b-ink); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+.menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; padding: 7px 10px; border: 0; border-radius: 6px; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.menu button:hover { background: var(--b-card); }
+.menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
 .bars.flat .row { grid-template-columns: 24px minmax(160px, 260px) minmax(0, 1fr) 92px 64px; }
 .cmpsw { display: inline-flex; align-items: center; gap: 8px; height: var(--btn-h); padding: 0 12px 0 8px; border: 1px solid var(--b-outline); border-radius: var(--btn-r); background: #fff; font: inherit; font-weight: 500; color: var(--b-ink-2); cursor: pointer; }
 .cmpsw i { position: relative; width: 28px; height: 16px; border-radius: 999px; background: #D4D4D4; transition: background .15s; }
@@ -669,7 +674,9 @@ const ord = (n) => n + (n % 100 - n % 10 === 10 ? 'th' : ['th', 'st', 'nd', 'rd'
 // Each card's view dropdown sits at the right of its band. ponytail: spliced into the card's first band, so the view functions stay as they were.
 const SW = { cats: [['donut', 'Donut'], ['map', 'Map'], ['bars', 'Bars'], ['rank', 'Rank']], items: [['bars', 'Bars'], ['table', 'Table']],
   movers: [['slope', 'Slope'], ['slope2', 'Split'], ['lists', 'Lists']], pairs: [['net', 'Network'], ['ring', 'Ring'], ['table', 'Table']] };
-const withSw = (k, html) => html.replace(/(<div class="band">[\s\S]*?)<\/div>/, (m, a) => a + `<select class="vs" data-sel="${k}">${SW[k].filter(([v]) => S.cmp || v !== 'rank').map(([v, l]) => `<option value="${v}"${S[k] === v ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`);
+const withSw = (k, html) => { const o = SW[k].filter(([v]) => S.cmp || v !== 'rank');
+  return html.replace(/(<div class="band">[\s\S]*?)<\/div>/, (m, a) => a + `<button class="vs" popovertarget="vs-${k}" aria-haspopup="menu">${o.find(([v]) => v === S[k])[1]}</button>`
+    + `<div class="menu" id="vs-${k}" popover role="menu">${o.map(([v, l]) => `<button role="menuitemradio" aria-checked="${S[k] === v}" data-sel="${k}" data-v="${v}">${l}</button>`).join('')}</div></div>`); };
 const CMP = () => `<button class="cmpsw${S.cmp ? ' on' : ''}" data-act="cmp"${S.prevData ? '' : ' disabled'}><i></i>${S.prevData ? 'Compare with August' : 'No August sales to compare'}</button>`;
 
 // F · rank. On: where each of the top 10 ranked in August, and where it ranks now. Off: the top 10 of the last 10 days, and where each stood earlier in the month.
@@ -709,15 +716,22 @@ function render() {
 }
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-lab],[data-act],[data-ct],[data-sort],[data-hub]'); if (!t) return;
-  if (t.dataset.lab) { const k = t.dataset.lab; S[k] = ['big', 'prevData'].includes(k) ? t.dataset.v === 'true' : t.dataset.v; if (k === 'big') { D = build(S.big); S.ct = ''; } if (k === 'prevData') S.cmp = S.prevData; }
+  const t = e.target.closest('[data-lab],[data-act],[data-ct],[data-sort],[data-hub],[data-sel]'); if (!t) return;
+  if (t.dataset.sel) S[t.dataset.sel] = t.dataset.v;
+  else if (t.dataset.lab) { const k = t.dataset.lab; S[k] = ['big', 'prevData'].includes(k) ? t.dataset.v === 'true' : t.dataset.v; if (k === 'big') { D = build(S.big); S.ct = ''; } if (k === 'prevData') S.cmp = S.prevData; }
   else if (t.dataset.ct) { if (route() === 'categories') { S.ct = t.dataset.ct; location.hash = 'items'; return; } S.ct = S.ct === t.dataset.ct ? '' : t.dataset.ct; }
   else if (t.dataset.hub) S.hub = t.dataset.hub;
   else if (t.dataset.sort) { S.dir = S.sort === t.dataset.sort ? -S.dir : t.dataset.sort === 'name' ? 1 : -1; S.sort = t.dataset.sort; }
   else ({ go: () => { location.hash = t.dataset.to; }, moreItems: () => S.shown += 50, uncut: () => S.ct = '', cmp: () => S.cmp = !S.cmp, lab: () => S.labMin = !S.labMin })[t.dataset.act]?.();
   render();
 });
-document.addEventListener('change', (e) => { const k = e.target.dataset.sel; if (k) { S[k] = e.target.value; render(); } });
+// a view menu opens under its button, right-aligned to it
+document.addEventListener('toggle', (e) => {
+  const m = e.target; if (!m.matches?.('.menu') || e.newState !== 'open') return;
+  const r = document.querySelector(`[popovertarget="${m.id}"]`).getBoundingClientRect();
+  m.style.position = 'fixed'; m.style.top = r.bottom + 6 + 'px';
+  m.style.left = Math.max(16, Math.min(r.right - m.offsetWidth, innerWidth - m.offsetWidth - 16)) + 'px';
+}, true);
 document.addEventListener('input', (e) => {
   if (e.target.id !== 'q') return;
   S.q = e.target.value; S.shown = 50; render();
