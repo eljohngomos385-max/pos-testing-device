@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orders Rail Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens: copied from styles.css (:root, body.light-theme, the SALE SIDEBAR block). The orders list wears the
+   Sell rail's three-card silhouette; the receipt keeps the main area. */
+:root {
+  --bg: #121212; --bg-soft: #1C1C1C; --bg-softer: #232323; --surface: #2A2A2A; --surface-hover: #333333; --surface-2: #1F1F1F;
+  --line: rgba(255,255,255,.08); --line-strong: rgba(255,255,255,.14);
+  --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45); --ink-quaternary: rgba(255,255,255,.28);
+  --accent: #FFFFFF; --accent-ink: #121212;
+  --warn: #FFB74D; --danger: #EF5350; --danger-bg: rgba(239,83,80,.14);
+  --r-input: 10px;
+  --shadow-raised: 0 4px 12px rgba(0,0,0,.4);
+  --rl-card: var(--surface-2); --rl-soft: var(--bg-softer); --rl-track: var(--surface-hover); --rl-hover: var(--surface);
+  --rl-on: #8AB4F8; --rl-shadow: none; --rl-hair: rgba(255,255,255,.03);
+  --rl-r: 14px; --rl-m: 20px; --rl-gap: 8px; --rl-ease: cubic-bezier(.2,.8,.2,1);
+  /* the back office's payment hues, lifted for a dark ground */
+  --pm-cash: #5CB88A; --pm-gcash: #6FA8F5; --pm-maya: #B69CF2; --pm-qr: #4FC1B0; --pm-acct: #E8B64C;
+  --paper-shadow: 0 8px 32px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.18);
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --lab: #0A0A0A; --lab-ink: rgba(255,255,255,.6);
+}
+.light {
+  --bg: #FFFFFF; --bg-soft: #EDEDED; --bg-softer: #E4E4E4; --surface: #F9F9F9; --surface-hover: #F6F6F6; --surface-2: #FFFFFF;
+  --line: #E1E1E1; --line-strong: #D4D4D4;
+  --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C; --ink-quaternary: #B5B5B5;
+  --accent: #303030; --accent-ink: #FFFFFF;
+  --warn: #7A5B00; --danger: #D72C0D; --danger-bg: #F8D8D0;
+  --shadow-raised: 0 4px 16px rgba(0,0,0,.12), 0 1px 4px rgba(0,0,0,.08);
+  --rl-card: var(--surface-2); --rl-soft: var(--surface); --rl-track: var(--bg-soft); --rl-hover: var(--surface-hover);   /* re-declared: var() resolves where it is declared */
+  --rl-on: #1F5FB8; --rl-hair: #EBEBEB;
+  --rl-shadow: 0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05);
+  --pm-cash: #047B5D; --pm-gcash: #1F5FB8; --pm-maya: #7B55C7; --pm-qr: #0B6B5E; --pm-acct: #B7860B;
+  --paper-shadow: 0 0 0 1px #E1E1E1, 0 1px 2px -1px rgb(26 26 26 / .07), 0 4px 14px -4px rgb(26 26 26 / .10);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--lab); font-family: var(--font); -webkit-font-smoothing: antialiased; overflow: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+.num { font-variant-numeric: tabular-nums; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- lab chrome (not part of the design) ---------- */
+.labbar { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 10px; padding: 4px; border-radius: 10px;
+          background: #1A1A1A; box-shadow: 0 0 0 1px rgba(255,255,255,.08); font-size: 12px; }
+.labbar div { display: flex; gap: 2px; }
+.labbar button { height: 28px; padding: 0 10px; white-space: nowrap; border: 0; border-radius: 7px; background: none; color: var(--lab-ink); }
+.labbar button.cur { background: #333; color: #fff; }
+.stage { position: fixed; inset: 50px 0 0; display: grid; place-items: center; }
+.dev { position: relative; flex: none; overflow: hidden; background: var(--bg); color: var(--ink); container: dev / size; transform-origin: center;
+       border-radius: 18px; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px rgba(0,0,0,.5); }
+.dev.fit { border-radius: 0; }
+.stage.free { place-items: start; padding: 12px 16px; }   /* anchored top-left so the corner handle tracks the pointer */
+.dev.free { resize: both; min-width: 360px; min-height: 480px; }
+
+/* ---------- the view: the rail on the left under ☰, the receipt on the right ---------- */
+.view { display: grid; grid-template-columns: 460px minmax(0,1fr); grid-template-rows: minmax(0,1fr); gap: 18px; height: 100%; padding: 8px 18px;
+        font-size: 13px; line-height: 1.4; }
+@container dev (max-width: 1100px) { .view { grid-template-columns: 340px minmax(0,1fr); } }
+@container dev (max-width: 920px)  { .view { grid-template-columns: 320px minmax(0,1fr); } }
+
+/* main: the top row (☰, which receipt, its actions) and the paper */
+.main { display: grid; grid-template-rows: auto minmax(0,1fr); gap: 14px; min-width: 0; min-height: 0; padding: 8px 10px 0; }
+.top { display: flex; align-items: center; gap: 7px; height: 48px; }
+.sq { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: none; height: 48px; min-width: 48px; padding: 0 14px; border: 0;
+      border-radius: var(--rl-r); background: var(--rl-soft); color: var(--ink-secondary); box-shadow: inset 0 0 0 1px var(--rl-hair); font-size: 14px; font-weight: 500;
+      transition: background-color .12s, color .12s; }
+.sq.icon { padding: 0; }
+.sq:hover, .sq[aria-expanded="true"] { background: var(--surface-hover); color: var(--ink); }
+.sq:disabled { color: var(--ink-quaternary); pointer-events: none; }
+.light .sq { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px rgb(26 26 26 / .07); }
+.ttl { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; overflow: hidden; }
+.ttl b { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.ttl b.walk { color: var(--ink-secondary); font-weight: 500; }   /* no customer: said, not shouted */
+.ttl span { flex: none; }
+.ttl span { color: var(--ink-tertiary); font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
+.ttl .flag { color: var(--danger); font-weight: 500; }
+.ttl .flag.warn { color: var(--warn); }
+/* the receipt's actions: still separate boxes, just compact -- 36px, the search's fill and ring */
+.acts { display: flex; gap: 6px; }
+.act { display: inline-flex; align-items: center; gap: 6px; height: 36px; min-width: 36px; padding: 0 12px; border: 0; border-radius: var(--r-input);
+       background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); color: var(--ink-secondary); font-size: 13px; font-weight: 500;
+       transition: background-color .12s, color .12s; }
+.light .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px rgb(26 26 26 / .07); }
+.act .ic { width: 15px; height: 15px; }
+.act.icon { justify-content: center; padding: 0; }
+.act:hover, .act[aria-expanded="true"] { background: var(--surface-hover); color: var(--ink); }
+.act:disabled { color: var(--ink-quaternary); pointer-events: none; }
+
+.paper-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1px 0 21px;   /* 1px: the light ring sits outside the paper, the scroller would clip it */
+                scrollbar-width: thin; }
+.paper { position: relative; width: min(400px, 100%); margin: 0 auto; padding: 24px 24px 28px; border-radius: 1px; background: #fff; color: #111;
+         font: 13px/1.42 "SF Mono", Menlo, Consolas, "Courier New", monospace; box-shadow: var(--paper-shadow); }
+@container dev (max-width: 920px) { .paper { padding: 20px 18px 24px; font-size: 12px; } }
+.paper .c { text-align: center; }
+.paper .store { font-size: 16px; font-weight: 800; letter-spacing: .4px; }
+.paper .sm { font-size: 12px; }
+.paper .rule { border-top: 1px dashed #111; margin: 11px 0; }
+.paper .r { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
+.paper .it { margin: 9px 0; }
+.paper .it b { font-weight: 800; }
+.paper .tot { margin: 9px 0; padding: 6px 0; border-top: 1px solid #111; border-bottom: 1px solid #111; font-size: 17px; font-weight: 800; }
+.paper .box { margin-top: 10px; padding: 6px 8px; border: 1px solid #111; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .4px; }
+.paper .box.solid { background: #111; color: #fff; }
+.paper.void > :not(.stamp) { opacity: .45; }
+.paper .stamp { position: absolute; top: 150px; left: 50%; transform: translateX(-50%) rotate(-12deg); padding: 4px 16px; border: 3px solid #C62828; border-radius: 6px;
+                color: #C62828; font: 800 28px/1.2 var(--font); letter-spacing: .12em; pointer-events: none; }
+
+/* ---------- the rail: ☰ + search, then the orders to the bottom ---------- */
+.rail { order: -1; display: grid; grid-template-rows: auto minmax(0,1fr); gap: var(--rl-gap); min-width: 0; min-height: 0; margin: 8px 0; }
+.card { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); box-shadow: var(--rl-shadow); }
+
+/* 1 · ☰ then search, in the customer card's place and height (☰ stays top-left, as on every page) */
+.head { display: flex; gap: 7px; min-width: 0; }
+.head .find { flex: 1; }
+.head .burger, .light .head .burger { width: 48px; height: 48px; border: 1px solid var(--line); background: var(--rl-card); box-shadow: var(--rl-shadow); }   /* the search card's twin */
+.head .burger:hover { background: var(--rl-hover); }
+.find { display: flex; height: 48px; }   /* Sell's search height, border included */
+.find label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 var(--rl-m); color: var(--ink-tertiary); cursor: text; }
+.find input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; }
+.find input::placeholder { color: var(--ink-tertiary); font-weight: 400; }
+.find .x { display: none; width: 26px; height: 26px; place-items: center; border: 0; border-radius: 50%; background: var(--rl-soft); color: var(--ink-secondary); }
+.find.typed .x { display: grid; }
+.more { position: relative; display: grid; place-items: center; flex: none; width: 52px; border: 0; border-left: 1px solid var(--line);
+        border-radius: 0 calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px) 0; background: none; color: var(--ink-secondary); transition: background-color .12s, color .12s; }
+.more:hover, .more[aria-expanded="true"] { background: var(--rl-hover); color: var(--ink); }
+.more.on { color: var(--rl-on); }
+.more.on::after { content: ""; position: absolute; top: 12px; right: 13px; width: 6px; height: 6px; border-radius: 50%; background: var(--rl-on); }
+
+/* 2 · the orders: a day band (the Item / Amount band) over its rows */
+.list { display: grid; grid-template-rows: minmax(0,1fr); overflow: hidden; }
+.lines { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+         scroll-snap-type: y mandatory; scroll-padding-top: 40px; }   /* rows settle whole under the sticky band: no half-row sliver (a second hairline) peeking out */
+.lines > .row { scroll-snap-align: start; }   /* rows only: a band never settles under the stuck one, it slides over it */
+.band { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 40px; padding: 0 var(--rl-m); background: var(--rl-soft);
+        border-bottom: 1px solid var(--line); color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
+.band + .row, .row + .row { border-top: 1px solid var(--line); }
+.band + .row { border-top: 0; }
+.row + .band { border-top: 0; }   /* the band's fill parts it from the row above; a top line would double the stuck band's */
+.row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; padding: 9px var(--rl-m); border: 0; background: none; text-align: left;
+       transition: background-color .12s; }
+.row:hover { background: var(--rl-hover); }
+.row.cur { background: var(--rl-track); }
+.row .nm, .row .rt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.row .nm { flex: 1; }
+.row .rt { flex: none; align-items: flex-end; }
+.row .nm span { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row small { display: flex; align-items: center; gap: 6px; color: var(--ink-tertiary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .amt { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.row .dot { width: 7px; height: 7px; border-radius: 2px; flex: none; }
+.row .st { font-weight: 500; }
+.row .st.red { color: var(--danger); }
+.row .st.warn { color: var(--warn); }
+.row.void .nm span, .row.void .amt { color: var(--ink-tertiary); }
+.row.void .amt { text-decoration: line-through; font-weight: 500; }
+.row.void .dot { background: var(--ink-quaternary) !important; }
+.empty { display: grid; place-content: center; justify-items: center; gap: 4px; height: 100%; padding: 24px; text-align: center; }
+.empty b { font-size: 14px; font-weight: 600; }
+.empty span { color: var(--ink-tertiary); }
+
+
+:focus-visible { outline: 2px solid var(--rl-on); outline-offset: 2px; }
+
+/* the morph menu (Sell's .rail-menu) */
+.veil { position: absolute; inset: 0; z-index: 150; }
+.menu { position: absolute; z-index: 151; min-width: 200px; max-height: calc(100% - 24px); overflow-y: auto; padding: 4px; border-radius: var(--r-input);
+        background: var(--rl-card); box-shadow: var(--shadow-raised), 0 0 0 1px var(--line); animation: pop .16s var(--rl-ease); transform-origin: top right; }
+@keyframes pop { from { opacity: 0; transform: scale(.96); } }
+.menu button { display: flex; align-items: center; gap: 8px; width: 100%; height: 40px; padding: 0 12px; border: 0; border-radius: 7px; background: none;
+               color: var(--ink-secondary); font-size: 14px; font-weight: 500; text-align: left; white-space: nowrap; }
+.menu button span { flex: 1; }
+.menu button:hover { background: var(--rl-hover); color: var(--ink); }
+.menu button.cur { color: var(--ink); font-weight: 560; }
+.menu button .tick { width: 16px; height: 16px; stroke-width: 2; visibility: hidden; }
+.menu button.cur .tick { visibility: visible; }
+.menu button.red { color: var(--danger); }
+.menu button.red:hover { background: var(--danger-bg); }
+.menu button:disabled { color: var(--ink-quaternary); pointer-events: none; }
+.menu .dot { width: 7px; height: 7px; border-radius: 2px; }
+.menu h6 { margin: 0; padding: 8px 12px 4px; color: var(--ink-tertiary); font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+.menu hr { margin: 4px -4px; border: 0; border-top: 1px solid var(--line); }
+
+/* the filter panel: every choice on one sheet, tapped options apply at once */
+.fp { width: 320px; padding: 6px 12px 12px; }
+.fp h6 { padding: 10px 0 6px; }
+.fp .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.fp .seg button { width: auto; height: 32px; padding: 0 11px; gap: 6px; border-radius: 8px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); font-size: 13px; }
+.fp .seg button.cur { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.fp .seg button.cur .dot { outline: 1.5px solid var(--accent-ink); }
+.fp .reset { width: fit-content; height: 32px; margin: 12px 0 0 auto; padding: 0 10px; color: var(--ink-tertiary); font-size: 13px; }
+.fp .reset:disabled { visibility: hidden; }
+
+.toast { position: absolute; left: 50%; bottom: 24px; z-index: 200; transform: translateX(-50%); padding: 10px 16px; border-radius: var(--r-input);
+         background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 500; box-shadow: var(--shadow-raised); animation: pop .2s var(--rl-ease); }
+
+/* phone: the list is the page; a tapped order slides its receipt over it */
+.back { display: none; }
+@container dev (max-width: 720px) {
+  .view { grid-template-columns: 1fr; padding: 0 12px; }
+  .rail { margin: 8px 0 12px; }
+  .main { position: absolute; inset: 0; z-index: 5; padding: 16px 12px 0; background: var(--bg); transform: translateX(100%); transition: transform .28s var(--rl-ease); }
+  .view.reading .main { transform: none; }
+  .back { display: inline-flex; }
+}
+</style>
+</head>
+<body>
+<div class="labbar">
+  <div id="devPick">
+    <button data-dev="land" class="cur">Tablet landscape</button>
+    <button data-dev="port">Tablet portrait</button>
+    <button data-dev="phone">Phone</button>
+    <button data-dev="free">Resizable</button>
+    <button data-dev="fit">Fit window</button>
+  </div>
+  <div id="themePick">
+    <button data-theme="dark" class="cur">Dark</button>
+    <button data-theme="light">Light</button>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="dev" id="dev">
+    <div class="view" id="view">
+      <section class="main" aria-label="Receipt">
+        <div class="top">
+          <button class="sq icon back" id="backBtn" aria-label="Back to orders"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <div class="ttl" id="ttl"></div>
+          <div class="acts">
+          <button class="act" id="printBtn" title="Print"><svg class="ic" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M7 14h10v6H7z"/></svg><span>Print</span></button>
+          <button class="act" id="refundBtn" title="Refund"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg><span>Refund</span></button>
+          <button class="act icon" id="actMore" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">
+            <svg class="ic" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
+          </button>
+          </div>
+        </div>
+        <div class="paper-scroll" id="paperScroll"></div>
+      </section>
+
+      <aside class="rail" aria-label="Orders">
+        <div class="head">
+          <button class="sq icon burger" aria-label="Menu" title="Menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+          </button>
+        <section class="card find" id="find">
+          <label>
+            <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input id="q" type="text" placeholder="Search # or customer" autocomplete="off">
+            <button class="x" id="qx" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          </label>
+          <button class="more" id="filterBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Filter orders" title="Filter">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+          </button>
+        </section>
+
+        </div>
+
+        <section class="card list"><div class="lines" id="lines"></div></section>
+
+      </aside>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- sample data (seeded, so every reload is the same) ---------- */
+let seed = 7;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const pick = a => a[Math.floor(rnd() * a.length)];
+const PRODUCTS = [
+  ['Duplex Outlet 2-Gang', 65, 'pc'], ['Wood Screw #8 × 1"', 1.5, 'pc'], ['Claw Hammer 16oz', 296.48, 'pc'], ['Aluminum Level 24"', 320, 'pc'],
+  ['Hacksaw Frame 12"', 235.86, 'pc'], ['Combination Pliers 8"', 195.87, 'pc'], ['Hex Bolt M10 × 100mm', 13.45, 'pc'], ['Flat Washer M10', 2, 'pc'],
+  ['Phillips Screwdriver #2', 166.74, 'pc'], ['Circuit Breaker 30A', 373.84, 'pc'], ['Electrical Tape Black', 32, 'roll'], ['PVC Pipe 1/2" × 10ft', 118, 'pc'],
+  ['Portland Cement 40kg', 265, 'bag'], ['Deformed Bar 10mm', 185, 'pc'], ['Plywood 1/4" Marine', 610, 'sheet'], ['Common Nail 3"', 78, 'kg'],
+  ['Latex Paint White 4L', 845, 'can'], ['Paint Brush 2"', 45, 'pc'], ['THHN Wire 3.5mm²', 32.5, 'm'], ['Teflon Tape', 18, 'roll'],
+];
+const STAFF = ['El John', 'Aldrin S.', 'Joy P.', 'Maricel R.', 'Suwi'];
+const CUSTOMERS = ['Rivera Plumbing Services', 'Engr. Cruz (Residential)', 'Ricardo Construction', 'Santos Hardware Supply', 'Dela Paz Builders'];
+const PAY = { cash: 'Cash', gcash: 'GCash', maya: 'Maya', qr: 'QR Ph', acct: 'Account' };
+const TODAY = new Date(2026, 8, 30);
+const DAY = 864e5;
+
+const orders = [];
+let no = 2732;
+for (let d = 0; d < 9; d++) {
+  const n = d === 0 ? 7 : 8 + Math.floor(rnd() * 6);
+  const times = Array.from({ length: n }, () => 8 * 60 + Math.floor(rnd() * 10 * 60)).sort((a, b) => b - a);
+  if (d === 0) times[0] = 15 * 60 + 19;
+  for (const mins of times) {
+    const at = new Date(TODAY.getTime() - d * DAY + mins * 6e4);
+    const cust = rnd() < .28 ? pick(CUSTOMERS) : null;
+    const lines = Array.from({ length: 1 + Math.floor(rnd() * (rnd() < .2 ? 11 : 4)) }, () => {
+      const p = pick(PRODUCTS); return { name: p[0], price: p[1], unit: p[2], qty: 1 + Math.floor(rnd() * (p[1] < 20 ? 20 : 3)) };
+    });
+    const sub = lines.reduce((s, l) => s + l.qty * l.price, 0);
+    const disc = rnd() < .12 ? Math.round(sub * .05 * 100) / 100 : 0;
+    const total = Math.round((sub - disc) * 100) / 100;
+    const pay = cust && rnd() < .45 ? 'acct' : pick(['cash', 'cash', 'cash', 'gcash', 'gcash', 'maya', 'qr']);
+    const r = rnd();
+    const status = r < .05 ? 'void' : r < .09 ? 'refund' : 'ok';
+    orders.push({
+      no: '1-' + no--, at, cust, staff: d === 0 && !orders.length ? 'El John' : pick(STAFF), lines, sub, disc, total, pay,
+      fulfil: cust && rnd() < .35 ? 'delivery' : 'pickup',
+      tendered: pay === 'cash' ? Math.ceil(total / 100) * 100 + (rnd() < .3 ? 500 : 0) : total,
+      status, refunded: status === 'refund' ? lines[0].price * lines[0].qty : 0,
+    });
+  }
+}
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const peso = v => '₱' + v.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const time = d => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+const pad = n => String(n).padStart(2, '0');
+const stamp = d => `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const dayKey = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const dayName = d => {
+  const ago = Math.round((dayKey(TODAY) - dayKey(d)) / DAY);
+  return ago === 0 ? 'Today' : ago === 1 ? 'Yesterday' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const net = o => o.status === 'void' ? 0 : o.total - o.refunded;
+const dot = m => `<i class="dot" style="background:var(--pm-${m})"></i>`;
+
+/* ---------- state ---------- */
+const RANGES = [['today', 'Today', 0], ['yday', 'Yesterday', 1], ['week', 'Last 7 days', 6], ['all', 'All orders', 99]];
+const DEF = { range: 'week', staff: '', pay: '', status: '', fulfil: '' };
+const S = { q: '', ...DEF, cur: orders[0].no };
+const isFiltered = () => Object.keys(DEF).some(k => S[k] !== DEF[k]);
+
+function shown() {
+  const r = RANGES.find(x => x[0] === S.range);
+  const q = S.q.trim().toLowerCase().replace(/^#/, '');
+  return orders.filter(o => {
+    const ago = Math.round((dayKey(TODAY) - dayKey(o.at)) / DAY);
+    if (S.range === 'yday' ? ago !== 1 : ago > r[2]) return false;
+    if (S.staff && o.staff !== S.staff) return false;
+    if (S.pay && o.pay !== S.pay) return false;
+    if (S.status && o.status !== S.status) return false;
+    if (S.fulfil && o.fulfil !== S.fulfil) return false;
+    return !q || o.no.includes(q) || (o.cust || 'walk-in').toLowerCase().includes(q);
+  });
+}
+
+/* ---------- the list ---------- */
+function renderList() {
+  const list = shown();
+  let html = '', key = null;
+  for (const o of list) {
+    const k = dayKey(o.at);
+    if (k !== key) {
+      key = k;
+      const day = list.filter(x => dayKey(x.at) === k);
+      html += `<div class="band"><span>${dayName(o.at)} <span class="num">· ${day.length}</span></span><span class="num">${peso(day.reduce((s, x) => s + net(x), 0))}</span></div>`;
+    }
+    const st = o.status === 'void' ? '<span class="st red">Voided</span>' : o.status === 'refund' ? '<span class="st warn">Refunded</span>' : '';
+    html += `<button class="row${o.status === 'void' ? ' void' : ''}${o.no === S.cur ? ' cur' : ''}" data-no="${o.no}">
+      <div class="nm"><span class="num">#${o.no}</span>
+        <small class="num">${o.fulfil === 'delivery' ? 'Delivery' : 'Pickup'} · ${time(o.at)} · ${esc(o.staff)}</small></div>
+      <div class="rt"><span class="amt num">${peso(o.total)}</span><small>${st}${PAY[o.pay]}</small></div></button>`;
+  }
+  $('lines').innerHTML = html || `<div class="empty"><b>No orders</b><span>Nothing matches these filters.</span></div>`;
+
+  $('filterBtn').classList.toggle('on', isFiltered());
+}
+
+/* ---------- the receipt (printer.js layout: header, meta, items, money, footer) ---------- */
+function renderReceipt() {
+  const o = orders.find(x => x.no === S.cur);
+  const flag = o.status === 'void' ? '<span class="flag">Voided</span>' : o.status === 'refund' ? '<span class="flag warn">Refunded</span>' : '';
+  $('ttl').innerHTML = `<b class="${o.cust ? '' : 'walk'}">${esc(o.cust || 'Walk-in customer')}</b>${flag}`;
+  $('refundBtn').disabled = o.status === 'void';
+  const vat = o.total * 12 / 112;
+  const r = (a, b, cls = '') => `<div class="r ${cls}"><span>${a}</span><span>${b}</span></div>`;
+  $('paperScroll').innerHTML = `<div class="paper${o.status === 'void' ? ' void' : ''}">
+    ${o.status === 'void' ? '<div class="stamp">VOIDED</div>' : ''}
+    <div class="c"><div class="store">COMFA HARDWARE</div><div class="sm">Main Store, Laguna</div><div class="sm">Tel: 0917-000-0000</div></div>
+    <div class="rule"></div>
+    ${r('Receipt #', o.no)}${r('Date', stamp(o.at))}${r('Cashier', esc(o.staff))}${o.cust ? r('Customer', esc(o.cust)) : ''}
+    <div class="sm" style="font-weight:800;margin-top:2px">${o.fulfil.toUpperCase()}</div>
+    ${o.fulfil === 'delivery' ? '<div class="sm">Brgy. Real, Calamba City, Laguna</div>' : ''}
+    <div class="rule"></div>
+    ${o.lines.map(l => `<div class="it"><b>${esc(l.name)}</b>${r(`${l.qty} ${l.unit} × ${peso(l.price)}`, peso(l.qty * l.price), 'sm')}</div>`).join('')}
+    <div class="rule"></div>
+    ${r('Subtotal', peso(o.sub))}${o.disc ? r('Discount', '−' + peso(o.disc)) : ''}${r('VAT (12%)', peso(vat), 'sm')}
+    ${r('TOTAL', peso(o.total), 'tot')}
+    ${o.pay === 'acct' ? r('ACCOUNT', peso(o.total)) + '<div class="box">CHARGED TO ACCOUNT</div>'
+      : r(PAY[o.pay].toUpperCase(), peso(o.tendered)) + (o.pay === 'cash' ? r('CHANGE', peso(o.tendered - o.total)) : '')}
+    ${o.refunded ? `<div class="box">REFUNDED ${peso(o.refunded)} · ${esc(o.lines[0].name).toUpperCase()}</div>` : ''}
+    ${o.status === 'void' ? `<div class="box solid">VOIDED ${stamp(new Date(o.at.getTime() + 9e5))} BY ${esc(o.staff).toUpperCase()}</div>` : ''}
+    <div class="rule"></div>
+    <div class="c sm">Thank you for shopping!</div>
+  </div>`;
+  $('paperScroll').scrollTop = 0;
+}
+
+/* ---------- menus: grow from their trigger, a veil catches the outside tap (Sell's openMenu) ---------- */
+const dev = $('dev');
+let scale = 1;
+function openMenu(btn, items) {
+  const veil = document.createElement('div'), menu = document.createElement('div');
+  veil.className = 'veil'; menu.className = 'menu'; menu.setAttribute('role', 'menu');
+  const close = () => { veil.remove(); menu.remove(); btn.setAttribute('aria-expanded', 'false'); };
+  veil.onclick = close;
+  for (const it of items) {
+    if (it === '-') { menu.append(document.createElement('hr')); continue; }
+    if (it.head) { const h = document.createElement('h6'); h.textContent = it.head; menu.append(h); continue; }
+    const b = document.createElement('button');
+    b.className = (it.cur ? 'cur ' : '') + (it.red ? 'red' : '');
+    b.disabled = !!it.disabled;
+    b.innerHTML = (it.dot ? dot(it.dot) : '') + `<span>${it.label}</span>` + (it.cur !== undefined ? '<svg class="ic tick" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>' : '');
+    b.onclick = () => { close(); it.on(); };
+    menu.append(b);
+  }
+  dev.append(veil, menu);
+  const d = dev.getBoundingClientRect(), t = btn.getBoundingClientRect();
+  const x = (t.left - d.left) / scale, y = (t.top - d.top) / scale, w = t.width / scale, h = t.height / scale;
+  const below = y + h + 6, mh = menu.offsetHeight, dh = dev.offsetHeight;
+  menu.style.top = (below + mh > dh - 12 ? Math.max(12, y - mh - 6) : below) + 'px';
+  menu.style.right = (dev.offsetWidth - x - w) + 'px';
+  btn.setAttribute('aria-expanded', 'true');
+}
+function toast(msg) {
+  document.querySelector('.toast')?.remove();
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; dev.append(t);
+  setTimeout(() => t.remove(), 1800);
+}
+const set = patch => { Object.assign(S, patch); renderList(); };
+
+/* the filter panel: When, Staff, Payment, Status, Fulfilment on one sheet; stays open while choosing */
+function openFilter(btn) {
+  openMenu(btn, []);
+  const menu = dev.querySelector('.menu');
+  menu.classList.add('fp');
+  const GROUPS = [
+    ['When', 'range', RANGES.map(([k, l]) => [k, l])],
+    ['Staff', 'staff', [['', 'Everyone'], ...STAFF.map(x => [x, x])]],
+    ['Payment', 'pay', [['', 'Any'], ...Object.entries(PAY)]],
+    ['Status', 'status', [['', 'Any'], ['ok', 'Completed'], ['refund', 'Refunded'], ['void', 'Voided']]],
+    ['Fulfilment', 'fulfil', [['', 'Both'], ['pickup', 'Pickup'], ['delivery', 'Delivery']]],
+  ];
+  const draw = () => {
+    menu.innerHTML = GROUPS.map(([h, key, opts]) => `<h6>${h}</h6><div class="seg">${opts.map(([k, l]) =>
+      `<button class="${S[key] === k ? 'cur' : ''}" data-k="${key}" data-v="${esc(k)}">${key === 'pay' && k ? dot(k) : ''}${l}</button>`).join('')}</div>`).join('')
+      + `<button class="reset" ${isFiltered() ? '' : 'disabled'}>Reset filters</button>`;
+  };
+  menu.onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    set(b.classList.contains('reset') ? { ...DEF } : { [b.dataset.k]: b.dataset.v });
+    draw();
+  };
+  draw();
+}
+
+/* ---------- wiring ---------- */
+$('lines').onclick = e => {
+  const b = e.target.closest('.row'); if (!b) return;
+  S.cur = b.dataset.no; renderList(); renderReceipt();
+  $('view').classList.add('reading');
+};
+$('backBtn').onclick = () => $('view').classList.remove('reading');
+$('q').oninput = e => { $('find').classList.toggle('typed', !!e.target.value); set({ q: e.target.value }); };
+$('qx').onclick = e => { e.preventDefault(); $('q').value = ''; $('find').classList.remove('typed'); set({ q: '' }); $('q').focus(); };
+$('filterBtn').onclick = e => openFilter(e.currentTarget);
+$('printBtn').onclick = () => toast('Printing #' + S.cur);
+$('refundBtn').onclick = () => toast('Refund opens here');
+$('actMore').onclick = e => {
+  const o = orders.find(x => x.no === S.cur), v = o.status === 'void';
+  openMenu(e.currentTarget, [
+    { label: 'Return items', disabled: v, on: () => toast('Return') },
+    { label: 'Exchange', disabled: v, on: () => toast('Exchange') },
+    { label: 'Email receipt', on: () => toast('Email receipt') },
+    '-', { label: 'Void sale', red: true, disabled: v, on: () => toast('Void asks to confirm') },
+  ]);
+};
+
+/* ---------- lab: device + theme ---------- */
+const DEVS = { land: [1180, 820], port: [820, 1180], phone: [390, 844] };
+let devKey = 'land';
+function fitDev() {
+  const st = document.querySelector('.stage').getBoundingClientRect();
+  dev.classList.toggle('fit', devKey === 'fit');
+  dev.classList.toggle('free', devKey === 'free');
+  document.querySelector('.stage').classList.toggle('free', devKey === 'free');
+  if (devKey === 'free') {   // ponytail: native CSS resize handle, bottom-right corner; starts at tablet landscape
+    scale = 1; dev.style.transform = '';
+    dev.style.maxWidth = st.width - 32 + 'px'; dev.style.maxHeight = st.height - 24 + 'px';
+    if (fitDev.fresh) { dev.style.width = '1180px'; dev.style.height = '820px'; fitDev.fresh = false; }
+    return;
+  }
+  dev.style.maxWidth = dev.style.maxHeight = '';
+  document.querySelector('[data-dev=free]').textContent = 'Resizable';
+  if (devKey === 'fit') { dev.style.width = st.width + 'px'; dev.style.height = st.height + 'px'; scale = 1; }
+  else {
+    const [w, h] = DEVS[devKey];
+    scale = Math.min(1, (st.width - 32) / w, (st.height - 24) / h);
+    dev.style.width = w + 'px'; dev.style.height = h + 'px';
+  }
+  dev.style.transform = `scale(${scale})`;
+}
+$('devPick').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  devKey = b.dataset.dev; fitDev.fresh = true;
+  for (const x of $('devPick').children) x.classList.toggle('cur', x === b);
+  $('view').classList.remove('reading');
+  fitDev();
+};
+$('themePick').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  dev.classList.toggle('light', b.dataset.theme === 'light');
+  for (const x of $('themePick').children) x.classList.toggle('cur', x === b);
+};
+addEventListener('resize', fitDev);
+new ResizeObserver(() => { if (devKey === 'free') document.querySelector('[data-dev=free]').textContent = `Resizable · ${dev.offsetWidth}×${dev.offsetHeight}`; }).observe(dev);
+
+renderList(); renderReceipt(); fitDev();
+</script>
+</body>
+</html>

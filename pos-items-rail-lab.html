@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Items Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens: copied from styles.css (:root, body.light-theme, the SALE SIDEBAR block). Cousin of pos-orders-rail-lab.html:
+   one full-screen item list; tap a row (or +) and the item's editor slides over it, the back office's fields on POS pieces. */
+:root {
+  --bg: #121212; --bg-soft: #1C1C1C; --bg-softer: #232323; --surface: #2A2A2A; --surface-hover: #333333; --surface-2: #1F1F1F;
+  --line: rgba(255,255,255,.08); --line-strong: rgba(255,255,255,.14);
+  --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45); --ink-quaternary: rgba(255,255,255,.28);
+  --accent: #FFFFFF; --accent-ink: #121212;
+  --warn: #FFB74D; --danger: #EF5350; --danger-bg: rgba(239,83,80,.14);
+  --r-input: 10px;
+  --shadow-raised: 0 4px 12px rgba(0,0,0,.4);
+  --rl-card: var(--surface-2); --rl-soft: var(--bg-softer); --rl-track: var(--surface-hover); --rl-hover: var(--surface);
+  --rl-on: #8AB4F8; --rl-shadow: none; --rl-hair: rgba(255,255,255,.03);
+  --rl-r: 14px; --rl-m: 20px; --rl-gap: 8px; --rl-ease: cubic-bezier(.2,.8,.2,1);
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --lab: #0A0A0A; --lab-ink: rgba(255,255,255,.6);
+}
+.light {
+  --bg: #FFFFFF; --bg-soft: #EDEDED; --bg-softer: #E4E4E4; --surface: #F9F9F9; --surface-hover: #F6F6F6; --surface-2: #FFFFFF;
+  --line: #E1E1E1; --line-strong: #D4D4D4;
+  --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C; --ink-quaternary: #B5B5B5;
+  --accent: #303030; --accent-ink: #FFFFFF;
+  --warn: #7A5B00; --danger: #D72C0D; --danger-bg: #F8D8D0;
+  --shadow-raised: 0 4px 16px rgba(0,0,0,.12), 0 1px 4px rgba(0,0,0,.08);
+  --rl-card: var(--surface-2); --rl-soft: var(--surface); --rl-track: var(--bg-soft); --rl-hover: var(--surface-hover);   /* re-declared: var() resolves where it is declared */
+  --rl-on: #1F5FB8; --rl-hair: #EBEBEB;
+  --rl-shadow: 0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--lab); font-family: var(--font); -webkit-font-smoothing: antialiased; overflow: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulation; }
+.num { font-variant-numeric: tabular-nums; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- lab chrome (not part of the design) ---------- */
+.labbar { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 10px; padding: 4px; border-radius: 10px;
+          background: #1A1A1A; box-shadow: 0 0 0 1px rgba(255,255,255,.08); font-size: 12px; }
+.labbar div { display: flex; gap: 2px; }
+.labbar button { height: 28px; padding: 0 10px; white-space: nowrap; border: 0; border-radius: 7px; background: none; color: var(--lab-ink); }
+.labbar button.cur { background: #333; color: #fff; }
+.stage { position: fixed; inset: 50px 0 0; display: grid; place-items: center; }
+.dev { color-scheme: dark; position: relative; flex: none; overflow: hidden; background: var(--bg); color: var(--ink); container: dev / size; transform-origin: center;
+       border-radius: 18px; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px rgba(0,0,0,.5); }
+.dev.fit { border-radius: 0; }
+.dev.light { color-scheme: light; }
+.stage.free { place-items: start; padding: 12px 16px; }   /* anchored top-left so the corner handle tracks the pointer */
+.dev.free { resize: both; min-width: 360px; min-height: 480px; }
+
+/* ---------- the view: the list fills the screen; the editor slides over it ---------- */
+.view { position: relative; height: 100%; font-size: 13px; line-height: 1.4; }
+.page { display: grid; grid-template-rows: auto minmax(0,1fr); gap: var(--rl-gap); height: 100%; padding: 16px 18px; }
+.card { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); box-shadow: var(--rl-shadow); }
+
+.sq { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 48px; height: 48px; border: 1px solid var(--line);
+      border-radius: var(--rl-r); background: var(--rl-card); color: var(--ink-secondary); box-shadow: var(--rl-shadow); transition: background-color .12s, color .12s; }
+.sq:hover { background: var(--rl-hover); color: var(--ink); }
+
+/* ☰ then search + filter (the orders rail's head, now the page's) */
+.head { display: flex; gap: 7px; min-width: 0; }
+.find { flex: 1; display: flex; height: 48px; }
+.find label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 var(--rl-m); color: var(--ink-tertiary); cursor: text; }
+.find input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; }
+.find input::placeholder { color: var(--ink-tertiary); font-weight: 400; }
+.find .x { display: none; width: 26px; height: 26px; place-items: center; border: 0; border-radius: 50%; background: var(--rl-soft); color: var(--ink-secondary); }
+.find.typed .x { display: grid; }
+.more { position: relative; display: grid; place-items: center; flex: none; width: 52px; border: 0; border-left: 1px solid var(--line);
+        border-radius: 0 calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px) 0; background: none; color: var(--ink-secondary); transition: background-color .12s, color .12s; }
+.more:hover, .more[aria-expanded="true"] { background: var(--rl-hover); color: var(--ink); }
+.more.on { color: var(--rl-on); }
+.more.on::after { content: ""; position: absolute; top: 12px; right: 13px; width: 6px; height: 6px; border-radius: 50%; background: var(--rl-on); }
+
+/* the list: one table, one band of column names, thin rows */
+.list { display: grid; overflow: hidden; }
+.cols { display: grid; grid-template-columns: minmax(0,1fr) 170px 190px 110px; align-items: center; gap: 12px; }
+.band { position: sticky; top: 0; z-index: 1; height: 40px; padding: 0 10px; background: var(--rl-soft); border-bottom: 1px solid var(--line); color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
+.band > :nth-child(n+3), .row > :nth-child(n+3) { text-align: right; }
+.lines { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-bottom: 88px; }   /* room under the last row for + */
+.row { width: 100%; min-height: 48px; padding: 6px 10px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; font-size: 14px;
+       transition: background-color .12s; }
+.row:hover { background: var(--rl-hover); }
+.row .nm { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.row .nm b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.row .tx { display: grid; min-width: 0; line-height: 1.3; }   /* variants sit under the name, same spot on every row */
+.row .nm small { color: var(--ink-tertiary); font-size: 12px; }
+.row .cat { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-secondary); }
+.row .pr { font-weight: 600; white-space: nowrap; }
+.row .from { display: none; color: var(--ink-tertiary); font-size: 12px; font-weight: 400; }
+.stk-low { color: var(--warn) !important; }
+.stk-out { color: var(--danger) !important; }
+.empty { display: grid; place-content: center; justify-items: center; gap: 4px; height: 100%; padding: 24px; text-align: center; }
+.empty b { font-size: 14px; font-weight: 600; }
+.empty span { color: var(--ink-tertiary); }
+
+/* the picture: a photo when there is one, else the category's tint + initials (Loyverse's colour tile) */
+.thumb { display: grid; place-items: center; flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: 7px; background: hsl(var(--h) 22% 24%); color: hsl(var(--h) 45% 78%);
+         font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+.light .thumb { background: hsl(var(--h) 50% 92%); color: hsl(var(--h) 40% 34%); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+.thumb.big { width: 64px; height: 64px; border-radius: 10px; font-size: 20px; }
+
+/* + : new item, bottom right where Loyverse keeps it */
+.fab { position: absolute; right: 34px; bottom: 32px; z-index: 2; display: grid; place-items: center; width: 56px; height: 56px; border: 0; border-radius: 50%;
+       background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-raised); transition: transform .12s; }
+.fab:active { transform: scale(.94); }
+.fab .ic { width: 24px; height: 24px; stroke-width: 2; }
+
+/* ---------- the editor: full screen, the back office's cards and fields ---------- */
+.editor { position: absolute; inset: 0; z-index: 5; display: grid; grid-template-columns: minmax(128px,1fr) minmax(0,720px) minmax(128px,1fr); grid-template-rows: minmax(0,1fr);
+          gap: 0 16px; padding: 16px 18px 0; background: var(--bg);
+          transform: translateX(100%); visibility: hidden; transition: transform .28s var(--rl-ease), visibility 0s .28s; }
+.view.editing .editor { transform: none; visibility: visible; transition: transform .28s var(--rl-ease); }
+.top { display: contents; }   /* wide: back and actions float in the margins beside the column */
+.top > .sq { grid-area: 1 / 1; justify-self: start; align-self: start; z-index: 1; }
+.acts { grid-area: 1 / 3; justify-self: end; align-self: start; z-index: 1; margin-right: 10px; display: flex; align-items: center; gap: 6px; height: 48px; }
+.act { display: inline-flex; flex: none; white-space: nowrap; align-items: center; justify-content: center; gap: 6px; height: 36px; min-width: 36px; padding: 0 12px; border: 0; border-radius: var(--r-input);
+       background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); color: var(--ink-secondary); font-size: 13px; font-weight: 500;
+       transition: background-color .12s, color .12s; }
+.light .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px rgb(26 26 26 / .07); }
+.act .ic { width: 15px; height: 15px; }
+.act.icon { padding: 0; }
+.act:hover, .act[aria-expanded="true"] { background: var(--surface-hover); color: var(--ink); }
+.act.primary { min-width: 76px; background: var(--accent); color: var(--accent-ink); box-shadow: none; font-weight: 600; }
+
+.form-scroll { grid-area: 1 / 1 / 2 / 4; display: grid; grid-template-columns: minmax(144px,1fr) minmax(0,720px) minmax(144px,1fr); align-content: start; scrollbar-gutter: stable both-edges; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.form { grid-column: 2; display: grid; gap: 12px; min-width: 0; padding-bottom: 24px; }
+.fc h3 { display: flex; justify-content: space-between; gap: 12px; margin: 0; padding: 12px 16px 6px; color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
+.fc h3 span { color: var(--ink-tertiary); font-weight: 400; }
+.fr { display: grid; grid-template-columns: 150px minmax(0,1fr); align-items: center; gap: 12px; min-height: 50px; padding: 6px 16px; border-top: 1px solid var(--line); }
+.fc h3 + .fr { border-top: 0; }
+.fr > label, .fr > .lb { color: var(--ink-secondary); }
+.fr .ctl { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.in { width: 100%; height: 38px; min-width: 0; padding: 0 12px; border: 0; border-radius: var(--r-input); outline: 0; background: var(--rl-soft); color: var(--ink);
+      box-shadow: inset 0 0 0 1px var(--rl-hair); font: inherit; font-size: 14px; }
+.light .in { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.in:focus { box-shadow: inset 0 0 0 1.5px var(--rl-on); }
+.in:disabled { color: var(--ink-tertiary); }
+.in.short { width: 150px; flex: none; }
+.in::placeholder { color: var(--ink-quaternary); }
+.in[type=date] { color-scheme: dark; }
+.light .in[type=date] { color-scheme: light; }
+.link { flex: none; border: 0; background: none; color: var(--ink-secondary); font-size: 13px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
+.link:hover { color: var(--ink); }
+.note { padding: 10px 16px 14px; border-top: 1px solid var(--line); color: var(--ink-tertiary); }
+.note b { color: var(--ink); font-weight: 600; }
+.pills { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+.pills button { height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); color: var(--ink-secondary);
+                font-size: 13px; font-weight: 500; }
+.pills button.cur { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.sw { appearance: none; position: relative; flex: none; width: 40px; height: 24px; margin: 0; border-radius: 12px; background: var(--surface-hover); cursor: pointer; transition: background-color .15s; }
+.light .sw { background: var(--bg-soft); }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s var(--rl-ease); }
+.sw:checked { background: var(--rl-on); }
+.sw:checked::after { transform: translateX(16px); }
+
+/* the variants: a table of inputs, as in the back office family editor */
+.vt-wrap { overflow-x: auto; }
+.vt { display: grid; grid-template-columns: minmax(110px,1fr) 120px 110px 76px 76px 44px 60px 28px; align-items: center; gap: 8px; min-width: 686px; padding: 6px 16px; border-top: 1px solid var(--line); }
+.vt.th { min-height: 34px; background: var(--rl-soft); color: var(--ink-tertiary); font-size: 12px; font-weight: 500; }
+.vt > :nth-child(n+4):nth-child(-n+7) { text-align: right; }
+.vt .in { height: 34px; padding: 0 10px; font-size: 13px; }
+.vt .in.n { text-align: right; }
+.vt .mg, .vt .st { color: var(--ink-secondary); }
+.vt .del { width: 28px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--ink-tertiary); }
+.vt .del:hover { background: var(--danger-bg); color: var(--danger); }
+.fc .foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px 12px; border-top: 1px solid var(--line); color: var(--ink-tertiary); }
+.fc .blurb { padding: 4px 16px 14px; color: var(--ink-tertiary); }
+
+:focus-visible { outline: 2px solid var(--rl-on); outline-offset: 2px; }
+
+/* the morph menu (Sell's .rail-menu) */
+.veil { position: absolute; inset: 0; z-index: 150; }
+.menu { position: absolute; z-index: 151; min-width: 200px; max-height: calc(100% - 24px); overflow-y: auto; padding: 4px; border-radius: var(--r-input);
+        background: var(--rl-card); box-shadow: var(--shadow-raised), 0 0 0 1px var(--line); animation: pop .16s var(--rl-ease); transform-origin: top right; }
+@keyframes pop { from { opacity: 0; transform: scale(.96); } }
+.menu button { display: flex; align-items: center; gap: 8px; width: 100%; height: 40px; padding: 0 12px; border: 0; border-radius: 7px; background: none;
+               color: var(--ink-secondary); font-size: 14px; font-weight: 500; text-align: left; white-space: nowrap; }
+.menu button span { flex: 1; }
+.menu button:hover { background: var(--rl-hover); color: var(--ink); }
+.menu button.red { color: var(--danger); }
+.menu button.red:hover { background: var(--danger-bg); }
+.menu h6 { margin: 0; padding: 8px 12px 4px; color: var(--ink-tertiary); font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+.menu hr { margin: 4px -4px; border: 0; border-top: 1px solid var(--line); }
+
+/* the filter panel: every choice on one sheet, tapped options apply at once */
+.fp { width: 340px; padding: 6px 12px 12px; }
+.fp h6 { padding: 10px 0 6px; }
+.fp .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.fp .seg button { width: auto; height: 32px; padding: 0 11px; border-radius: 8px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); font-size: 13px; }
+.fp .seg button.cur { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.fp .reset { width: fit-content; height: 32px; margin: 12px 0 0 auto; padding: 0 10px; color: var(--ink-tertiary); font-size: 13px; }
+.fp .reset:disabled { visibility: hidden; }
+
+.toast { position: absolute; left: 50%; bottom: 24px; z-index: 200; transform: translateX(-50%); padding: 10px 16px; border-radius: var(--r-input);
+         background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 500; box-shadow: var(--shadow-raised); animation: pop .2s var(--rl-ease); }
+
+@container dev (max-width: 920px) {
+  .cols { grid-template-columns: minmax(0,1fr) 130px 170px 90px; }
+}
+@container dev (max-width: 920px) {
+  .editor { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); gap: 12px; }
+  .form-scroll { grid-template-columns: minmax(0,1fr) minmax(0,720px) minmax(0,1fr); }
+  .top { display: flex; justify-content: space-between; }
+  .top > .sq, .acts, .form-scroll { grid-area: auto; }
+  .acts { margin-right: 0; }
+}
+/* phone: category folds away; the editor's labels sit above their fields */
+@container dev (max-width: 720px) {
+  .page { padding: 8px 12px 12px; }
+  .cols { grid-template-columns: minmax(0,1fr) auto 64px; }
+  .cols > :nth-child(2) { display: none; }
+  .row .from { display: inline; }
+  .row .hi { display: none; }
+  .fab { right: 24px; bottom: 24px; }
+  .editor { padding: 8px 12px 0; }
+  .fr { grid-template-columns: 1fr; gap: 6px; padding: 10px 16px; }
+}
+</style>
+</head>
+<body>
+<div class="labbar">
+  <div id="devPick">
+    <button data-dev="land" class="cur">Tablet landscape</button>
+    <button data-dev="port">Tablet portrait</button>
+    <button data-dev="phone">Phone</button>
+    <button data-dev="free">Resizable</button>
+    <button data-dev="fit">Fit window</button>
+  </div>
+  <div id="themePick">
+    <button data-theme="dark" class="cur">Dark</button>
+    <button data-theme="light">Light</button>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="dev" id="dev">
+    <div class="view" id="view">
+      <section class="page" aria-label="Items">
+        <div class="head">
+          <button class="sq burger" aria-label="Menu" title="Menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+          </button>
+          <section class="card find" id="find">
+            <label>
+              <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input id="q" type="text" placeholder="Search items, SKU or barcode" autocomplete="off">
+              <button class="x" id="qx" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            </label>
+            <button class="more" id="filterBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Filter items" title="Filter">
+              <svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+            </button>
+          </section>
+        </div>
+        <section class="card list">
+          <div class="lines" id="lines"><div class="band cols" id="band"></div><div id="rows"></div></div>
+        </section>
+        <button class="fab" id="addBtn" aria-label="New item" title="New item"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      </section>
+
+      <section class="editor" aria-label="Item editor">
+        <div class="top">
+          <button class="sq" id="backBtn" aria-label="Back to items" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <div class="acts">
+            <button class="act icon" id="edMore" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">
+              <svg class="ic" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
+            </button>
+            <button class="act primary" id="saveBtn">Save</button>
+          </div>
+        </div>
+        <div class="form-scroll" id="formScroll"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- sample data: [name, unit, price or {variant: price}, stock or {variant: stock}] per category ---------- */
+const CATS = {
+  'Building materials': [30, [
+    ['Portland Cement 40kg', 'bag', 265, 84], ['Deformed Bar', 'pc', { '10mm': 185, '12mm': 265, '16mm': 468 }, { '10mm': 120, '12mm': 64, '16mm': 3 }],
+    ['Plywood Marine', 'sheet', { '1/4"': 610, '1/2"': 1180, '3/4"': 1650 }, { '1/4"': 22, '1/2"': 9, '3/4"': 0 }], ['Hollow Block 4"', 'pc', 16, 1250],
+    ['Washed Sand', 'cu.m', 1450, 6], ['GI Sheet Corrugated 8ft', 'sheet', 420, -4]]],
+  'Electrical': [45, [
+    ['10" Ceiling Mounted Exhaust Fan 35W', 'pc', 1250, 2], ['Circuit Breaker', 'pc', { '15A': 298, '20A': 320, '30A': 373.84 }, { '15A': 11, '20A': 8, '30A': 5 }],
+    ['Duplex Outlet 2-Gang', 'pc', 65, 48], ['Electrical Tape Black', 'roll', 32, 150], ['THHN Wire 3.5mm²', 'm', 32.5, 640],
+    ['3 Gang Universal Socket', 'pc', { 'PHEC-100-3M': 149, 'PHEC-100-6M': 189, 'PHEC-200-3M': 239 }, { 'PHEC-100-3M': -4, 'PHEC-100-6M': 4, 'PHEC-200-3M': 2 }],
+    ['LED Bulb', 'pc', { '5W': 75, '9W': 95, '12W': 120, '18W': 165 }, { '5W': 40, '9W': 62, '12W': 30, '18W': 12 }]]],
+  'Fasteners': [265, [
+    ['Common Nail', 'kg', { '2"': 82, '3"': 78, '4"': 78 }, { '2"': 45, '3"': 60, '4"': 38 }], ['Wood Screw #8 × 1"', 'pc', 1.5, 2400],
+    ['Hex Bolt M10 × 100mm', 'pc', 13.45, 310], ['Flat Washer M10', 'pc', 2, 900], ['Concrete Nail 2"', 'box', 115, 0],
+    ['Tox Plug with Screw', 'pc', { '6mm': 2.5, '8mm': 3.5 }, { '6mm': 600, '8mm': 420 }]]],
+  'Paint': [5, [
+    ['Latex Paint 4L', 'can', { 'White': 845, 'Cream': 865, 'Gray': 865 }, { 'White': 18, 'Cream': 4, 'Gray': 7 }], ['Paint Brush', 'pc', { '1"': 28, '2"': 45, '3"': 68 }, { '1"': 30, '2"': 44, '3"': 20 }],
+    ['Paint Roller 7"', 'pc', 135, 16], ['Paint Thinner 1L', 'can', 120, 25], ['Masking Tape 1"', 'roll', 45, 1]]],
+  'Plumbing': [200, [
+    ['2 Way Angle Valve Brass Chrome Plated', 'pc', { '1/2 × 1/2': 330, '1/2 × 3/8': 330 }, { '1/2 × 1/2': 7, '1/2 × 3/8': 4 }],
+    ['3 Function Single Shower Head White', 'pc', 215, 18], ['PVC Pipe × 10ft', 'pc', { '1/2"': 118, '3/4"': 152, '1"': 210 }, { '1/2"': 55, '3/4"': 32, '1"': 14 }],
+    ['Teflon Tape', 'roll', 18, 210], ['2in1 ESprayer Cordless Agricultural Sprayer 18L', 'pc', 2290, 2], ['Faucet Stainless', 'pc', 385, 0]]],
+  'Tools': [150, [
+    ['2in1 Electric Staple & Nailer Gun w/ 500 Nails', 'pc', 2500, 2], ['Claw Hammer 16oz', 'pc', 296.48, 12], ['Aluminum Level 24"', 'pc', 320, 9],
+    ['Hacksaw Frame 12"', 'pc', 235.86, 6], ['Combination Pliers 8"', 'pc', 195.87, 15], ['Screwdriver Phillips', 'pc', { '#1': 142, '#2': 166.74, '#3': 188 }, { '#1': 8, '#2': 5, '#3': 0 }],
+    ['Measuring Tape', 'pc', { '5m': 165, '7.5m': 245 }, { '5m': 21, '7.5m': 11 }]]],
+};
+const SUPPLIERS = ['Ace Steel & Hardware', 'Atlanta Plastics', 'Boysen Depot Central', 'Metro Builders Supply', 'Royu Electrical Trading'];
+const MEASURE = ['m', 'kg', 'L', 'cu.m'];
+const r2 = v => Math.round(v * 100) / 100;
+const uid = () => crypto.randomUUID();
+const skuOf = (name, v) => (name.replace(/[^A-Za-z0-9 ]/g, '').split(' ').filter(Boolean).slice(0, 2).join('-') + (v ? '-' + v.replace(/[^A-Za-z0-9]/g, '') : '')).toUpperCase().slice(0, 18);
+const items = [];
+let n = 0;
+for (const [cat, [hue, list]] of Object.entries(CATS))
+  for (const [name, unit, price, stock] of list) {
+    n++;
+    const vs = typeof price === 'number' ? [['', price, stock]] : Object.keys(price).map(v => [v, price[v], stock[v]]);
+    items.push({
+      id: uid(), name, cat, hue, unit, soldBy: MEASURE.includes(unit) ? 'measure' : 'each', brand: n % 3 ? '' : 'Republic', img: '',
+      marginMode: 'percent', reorder: unit === 'pc' ? 5 : 3, sellOut: false, supplier: SUPPLIERS[n % SUPPLIERS.length], alt: n % 4 ? [] : [SUPPLIERS[(n + 2) % SUPPLIERS.length]],
+      weight: '', size: '', length: '',
+      variants: vs.map(([v, p, s], i) => ({ id: uid(), name: v, sku: skuOf(name, v), barcode: String(4800000100000 + n * 10 + i), cost: r2(p * (.66 + (n % 5) * .04)), price: p, stock: s })),
+    });
+  }
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const peso = v => '₱' + v.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const qty = v => v.toLocaleString('en-PH', { maximumFractionDigits: 2 });
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const initials = s => s.replace(/[^A-Za-z ]/g, ' ').split(/\s+/).filter(w => w.length > 1).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '+';
+const thumb = (it, big) => `<span class="thumb${big ? ' big' : ''}" style="--h:${it.hue}" aria-hidden="true">${it.img ? `<img src="${it.img}" alt="">` : initials(it.name)}</span>`;
+const total = it => it.variants.reduce((s, v) => s + v.stock, 0);
+const stk = it => { const t = total(it); return t <= 0 ? 'stk-out' : t <= it.reorder ? 'stk-low' : ''; };   // bo-model isLow: at or below the danger level
+const priceText = it => {
+  const ps = it.variants.map(v => v.price), lo = Math.min(...ps), hi = Math.max(...ps);
+  return lo === hi ? peso(lo) : `<small class="from">from </small>${peso(lo)}<span class="hi">–${peso(hi)}</span>`;
+};
+const markup = (cost, price) => cost > 0 ? (price - cost) / cost * 100 : 0;
+
+/* ---------- the list ---------- */
+const DEF = { cat: '', stock: '' };
+const S = { q: '', ...DEF };
+const isFiltered = () => Object.keys(DEF).some(k => S[k] !== DEF[k]);
+
+function shown() {
+  const q = S.q.trim().toLowerCase();
+  return items.filter(it => {
+    if (S.cat && it.cat !== S.cat) return false;
+    if (S.stock === 'low' && stk(it) !== 'stk-low') return false;
+    if (S.stock === 'out' && stk(it) !== 'stk-out') return false;
+    return !q || it.name.toLowerCase().includes(q) || it.variants.some(v => [v.name, v.sku, v.barcode].some(x => x.toLowerCase().includes(q)));
+  }).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function renderList() {
+  const list = shown();
+  $('band').innerHTML = `<span>Item <span class="num">· ${list.length}</span></span><span>Category</span><span>Price</span><span>In stock</span>`;
+  $('rows').innerHTML = list.map(it => {
+    const vn = it.variants.length;
+    return `<button class="row cols" data-id="${it.id}">
+      <span class="nm">${thumb(it)}<span class="tx"><b>${esc(it.name)}</b>${vn > 1 ? `<small>${vn} variants</small>` : ''}</span></span>
+      <span class="cat">${esc(it.cat)}</span>
+      <span class="pr num">${priceText(it)}</span>
+      <span class="num ${stk(it)}">${qty(total(it))} ${esc(it.unit)}</span></button>`;
+  }).join('') || `<div class="empty"><b>No items</b><span>Nothing matches this search or filter.</span></div>`;
+  $('filterBtn').classList.toggle('on', isFiltered());
+}
+
+/* ---------- the editor: a working copy E, written back on Save ---------- */
+let E = null, isNew = false;
+const blankVariant = () => ({ id: uid(), name: '', sku: '', barcode: '', cost: 0, price: 0, stock: 0, fresh: true });
+
+function openEditor(id) {
+  const it = items.find(x => x.id === id);
+  isNew = !it;
+  E = it ? structuredClone(it)
+    : { id: uid(), name: '', cat: '', hue: 220, unit: 'pc', soldBy: 'each', brand: '', img: '', marginMode: 'percent', reorder: 0, sellOut: false,
+        supplier: '', alt: [], weight: '', size: '', length: '', variants: [blankVariant()], since: new Date().toISOString().slice(0, 10) };
+  const v0 = E.variants[0];
+  E.marginValue = E.marginMode === 'percent' ? r2(markup(v0.cost, v0.price)) : r2(v0.price - v0.cost);
+  renderForm();
+  $('view').classList.add('editing');
+  $('formScroll').scrollTop = 0;
+}
+const closeEditor = () => $('view').classList.remove('editing');
+
+const fr = (label, ctl, cls = '') => `<div class="fr ${cls}"><span class="lb">${label}</span><div class="ctl">${ctl}</div></div>`;
+const inp = (f, v, attrs = '') => `<input class="in" data-f="${f}" value="${esc(v)}" ${attrs}>`;
+const MONEY = 'type="number" step="0.01" min="0" inputmode="decimal"';
+const pills = (f, cur, opts) => `<div class="pills" data-pills="${f}">${opts.map(([k, l]) => `<button type="button" class="${cur === k ? 'cur' : ''}" data-v="${esc(k)}">${l}</button>`).join('')}</div>`;
+const card = (title, body, sub = '', cls = '') => `<section class="card fc ${cls}"><h3>${title}${sub ? `<span>${sub}</span>` : ''}</h3>${body}</section>`;
+const marginNote = v => `You make <b>${peso(v.price - v.cost)}</b> · <b>${markup(v.cost, v.price).toFixed(1)}%</b> markup on cost · <b>${(v.price > 0 ? (v.price - v.cost) / v.price * 100 : 0).toFixed(1)}%</b> margin on price`;
+
+function variantRow(v) {
+  return `<div class="vt" data-vid="${v.id}">
+    <input class="in" data-v="name" value="${esc(v.name)}" placeholder="e.g. Red, 2 inch">
+    <input class="in" data-v="sku" value="${esc(v.sku)}">
+    <input class="in" data-v="barcode" value="${esc(v.barcode)}" inputmode="numeric">
+    <input class="in n" data-v="cost" value="${v.cost || ''}" ${MONEY}>
+    <input class="in n" data-v="price" value="${v.price || ''}" ${MONEY}>
+    <span class="mg num">${markup(v.cost, v.price).toFixed(0)}%</span>
+    ${v.fresh ? `<input class="in n" data-v="stock" value="${v.stock || ''}" type="number" step="${E.soldBy === 'measure' ? .01 : 1}" min="0" placeholder="0">`
+      : `<span class="st num ${v.stock <= 0 ? 'stk-out' : ''}">${qty(v.stock)} ${esc(E.unit)}</span>`}
+    <button type="button" class="del" data-act="del-variant" aria-label="Remove variant" title="Remove variant"><svg class="ic" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>`;
+}
+
+function renderForm() {
+  const fam = E.variants.length > 1, v0 = E.variants[0];
+  const cats = Object.keys(CATS);
+  const details = card('Details', [
+    fr('Name', inp('name', E.name, 'placeholder="Portland Cement 40kg"')),
+    fr('Brand', inp('brand', E.brand)),
+    fr('Image', `${thumb(E, true)}<label class="act">Upload<input type="file" accept="image/*" id="imgIn" hidden></label>${E.img ? '<button type="button" class="link" data-act="img-clear">Remove</button>' : ''}`),
+  ].join(''), fam ? 'Shared by every variant' : '');
+  const soldAs = card('Sold as', [
+    fr('How it is sold', pills('soldBy', E.soldBy, [['each', 'Each'], ['measure', 'By measure']])),
+    fr('Unit', inp('unit', E.unit, 'placeholder="pc" style="width:150px"')),
+  ].join(''), fam ? 'Shared by every variant' : '');
+  const pricing = fam ? '' : card('Pricing', [
+    fr('Cost', `<input class="in short num" data-f="cost" value="${v0.cost || ''}" ${MONEY}>`),
+    fr('Margin', pills('marginMode', E.marginMode, [['flat', 'Flat'], ['percent', 'Percent']])),
+    fr(E.marginMode === 'percent' ? 'Markup on cost (%)' : 'Profit per unit', `<input class="in short num" data-f="marginValue" value="${E.marginValue || ''}" type="number" step="0.01" inputmode="decimal">`),
+    fr('Price', `<input class="in short num" data-f="price" value="${v0.price || ''}" ${MONEY}>`),
+  ].join('') + `<div class="note num" id="mNote">${marginNote(v0)}</div>`);
+  const inventory = card('Inventory', [
+    fam ? '' : isNew ? fr('Opening quantity', `<input class="in short num" data-f="stock" value="${v0.stock || ''}" type="number" step="${E.soldBy === 'measure' ? .01 : 1}" min="0" placeholder="0">`)
+      : fr('On hand', `<input class="in short num" value="${qty(v0.stock)} ${esc(E.unit)}" disabled><button type="button" class="link" data-act="stock">Adjust stock</button>`),
+    isNew ? fr('In store since', `<input class="in short" type="date" data-f="since" value="${E.since}">`) : '',
+    fr('Danger level', `<input class="in short num" data-f="reorder" value="${E.reorder}" type="number" step="1" min="0" inputmode="numeric">`),
+    fr('Sell when out of stock', `<input type="checkbox" class="sw" data-f="sellOut" ${E.sellOut ? 'checked' : ''} aria-label="Sell when out of stock">`),
+    fam ? '' : fr('SKU', inp('sku', v0.sku)),
+    fam ? '' : fr('Barcode', inp('barcode', v0.barcode, 'inputmode="numeric"')),
+  ].join(''), fam ? 'Shared by every variant' : '');
+  const variants = fam
+    ? card('Variants', `<div class="vt-wrap"><div class="vt th"><span>Variant</span><span>SKU</span><span>Barcode</span><span>Cost</span><span>Price</span><span>Margin</span><span>Stock</span><span></span></div>
+        <div id="vRows">${E.variants.map(variantRow).join('')}</div></div>
+        <div class="foot"><span>Stock on a variant that exists is moved with Adjust stock.</span><button type="button" class="act" data-act="add-variant">Add variant</button></div>`,
+        `${E.variants.length} in this item`)
+    : card('Variants', `<div class="blurb">Sold in sizes or colours? Add a variant. Each one gets its own SKU, barcode, price and stock.</div>
+        <div class="foot" style="justify-content:flex-end"><button type="button" class="act" data-act="add-variant">Add variant</button></div>`);
+  const org = card('Organization', [
+    fr('Category', `<input class="in" data-f="cat" value="${esc(E.cat)}" list="catList" placeholder="Uncategorized">`),
+    fr('Supplier', `<input class="in" data-f="supplier" value="${esc(E.supplier)}" list="supList" placeholder="No supplier">`),
+    fr('Also stocked by', `<div class="pills" data-multi="alt">${SUPPLIERS.filter(s => s !== E.supplier).map(s => `<button type="button" class="${E.alt.includes(s) ? 'cur' : ''}" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>`),
+  ].join(''));
+  const specs = card('Specs', [
+    fr('Weight', inp('weight', E.weight, 'placeholder="2.5 kg"')),
+    fr('Size', inp('size', E.size, 'placeholder="3/4 in"')),
+    fr('Length', inp('length', E.length, 'placeholder="8 ft"')),
+  ].join(''), 'Free text');
+  $('formScroll').innerHTML = `<div class="form">
+    ${details}${soldAs}${pricing}${inventory}${variants}${org}${specs}
+    <datalist id="catList">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    <datalist id="supList">${SUPPLIERS.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+  </div>`;
+}
+
+/* cost / margin / price: any two drive the third (the back office's three-way binding) */
+function reprice(from) {
+  const v0 = E.variants[0], pct = E.marginMode === 'percent';
+  if (from === 'price') E.marginValue = r2(pct ? markup(v0.cost, v0.price) : v0.price - v0.cost);
+  else v0.price = r2(pct ? v0.cost * (1 + E.marginValue / 100) : v0.cost + E.marginValue);
+  const f = $('formScroll');
+  if (from !== 'price') f.querySelector('[data-f=price]').value = v0.price || '';
+  if (from === 'price') f.querySelector('[data-f=marginValue]').value = E.marginValue || '';
+  $('mNote').innerHTML = marginNote(v0);
+}
+
+$('formScroll').addEventListener('input', e => {
+  const t = e.target, f = t.dataset.f, v0 = E.variants[0];
+  if (t.dataset.v) {
+    const v = E.variants.find(x => x.id === t.closest('.vt').dataset.vid);
+    v[t.dataset.v] = t.type === 'number' ? Number(t.value) || 0 : t.value;
+    t.closest('.vt').querySelector('.mg').textContent = markup(v.cost, v.price).toFixed(0) + '%';
+    return;
+  }
+  if (!f) return;
+  if (f === 'sellOut') E.sellOut = t.checked;
+  else if (['cost', 'price', 'sku', 'barcode', 'stock'].includes(f)) v0[f] = t.type === 'number' ? Number(t.value) || 0 : t.value;
+  else E[f] = t.type === 'number' ? Number(t.value) || 0 : t.value;
+  if (f === 'cost' || f === 'marginValue') reprice(f);
+  if (f === 'price') reprice('price');
+});
+$('formScroll').addEventListener('change', e => {
+  if (e.target.id !== 'imgIn' || !e.target.files[0]) return;
+  E.img = URL.createObjectURL(e.target.files[0]);   // ponytail: lab only - the app uploads to R2 and keeps the URL
+  renderForm();
+});
+$('formScroll').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const pill = b.closest('[data-pills]'), multi = b.closest('[data-multi]');
+  if (pill) {
+    E[pill.dataset.pills] = b.dataset.v;
+    if (pill.dataset.pills === 'marginMode') { const v0 = E.variants[0]; E.marginValue = r2(b.dataset.v === 'percent' ? markup(v0.cost, v0.price) : v0.price - v0.cost); }
+    renderForm(); return;
+  }
+  if (multi) { E.alt = E.alt.includes(b.dataset.v) ? E.alt.filter(x => x !== b.dataset.v) : [...E.alt, b.dataset.v]; b.classList.toggle('cur'); return; }
+  const act = b.dataset.act;
+  if (act === 'add-variant') { E.variants.push(blankVariant()); renderForm(); $('formScroll').querySelector('.vt:last-child [data-v=name]')?.focus(); }
+  else if (act === 'del-variant') {
+    if (E.variants.length === 1) return toast('An item needs at least one variant');
+    E.variants = E.variants.filter(v => v.id !== b.closest('.vt').dataset.vid);
+    if (E.variants.length === 1) E.variants[0].name = '';   // one left: a plain item again
+    renderForm();
+  }
+  else if (act === 'img-clear') { E.img = ''; renderForm(); }
+  else if (act === 'stock') toast('Adjust stock opens here');
+});
+
+function save() {
+  if (!E.name.trim()) { toast('Give the item a name'); $('formScroll').querySelector('[data-f=name]').focus(); return; }
+  if (E.variants.length > 1 && E.variants.some(v => !v.name.trim())) { toast('Name every variant'); return; }
+  E.name = E.name.trim(); E.cat = E.cat.trim() || 'Uncategorized';
+  if (!CATS[E.cat]) CATS[E.cat] = [220, []];   // a new category name is created on save
+  E.hue = CATS[E.cat][0];
+  for (const v of E.variants) { delete v.fresh; if (!v.sku) v.sku = skuOf(E.name, v.name); }
+  delete E.marginValue; delete E.since;
+  const i = items.findIndex(x => x.id === E.id);
+  if (i < 0) items.push(E); else items[i] = E;
+  closeEditor(); renderList(); toast(isNew ? 'Item added' : 'Saved');
+}
+
+/* ---------- menus: grow from their trigger, a veil catches the outside tap (Sell's openMenu) ---------- */
+const dev = $('dev');
+let scale = 1;
+function openMenu(btn, list) {
+  const veil = document.createElement('div'), menu = document.createElement('div');
+  veil.className = 'veil'; menu.className = 'menu'; menu.setAttribute('role', 'menu');
+  const close = () => { veil.remove(); menu.remove(); btn.setAttribute('aria-expanded', 'false'); };
+  veil.onclick = close;
+  for (const it of list) {
+    if (it === '-') { menu.append(document.createElement('hr')); continue; }
+    const b = document.createElement('button');
+    b.className = it.red ? 'red' : '';
+    b.innerHTML = `<span>${it.label}</span>`;
+    b.onclick = () => { close(); it.on(); };
+    menu.append(b);
+  }
+  dev.append(veil, menu);
+  const d = dev.getBoundingClientRect(), t = btn.getBoundingClientRect();
+  const x = (t.left - d.left) / scale, y = (t.top - d.top) / scale, w = t.width / scale, h = t.height / scale;
+  const below = y + h + 6, mh = menu.offsetHeight, dh = dev.offsetHeight;
+  menu.style.top = (below + mh > dh - 12 ? Math.max(12, y - mh - 6) : below) + 'px';
+  menu.style.right = (dev.offsetWidth - x - w) + 'px';
+  btn.setAttribute('aria-expanded', 'true');
+}
+function toast(msg) {
+  document.querySelector('.toast')?.remove();
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; dev.append(t);
+  setTimeout(() => t.remove(), 1800);
+}
+const set = patch => { Object.assign(S, patch); renderList(); };
+
+/* the filter panel: Category and Stock on one sheet; stays open while choosing */
+function openFilter(btn) {
+  openMenu(btn, []);
+  const menu = dev.querySelector('.menu');
+  menu.classList.add('fp');
+  const draw = () => {
+    const GROUPS = [
+      ['Category', 'cat', [['', 'All items'], ...Object.keys(CATS).map(c => [c, c])]],
+      ['Stock', 'stock', [['', 'Any'], ['low', 'Low stock'], ['out', 'Out of stock']]],
+    ];
+    menu.innerHTML = GROUPS.map(([h, key, opts]) => `<h6>${h}</h6><div class="seg">${opts.map(([k, l]) =>
+      `<button class="${S[key] === k ? 'cur' : ''}" data-k="${key}" data-v="${esc(k)}">${esc(l)}</button>`).join('')}</div>`).join('')
+      + `<button class="reset" ${isFiltered() ? '' : 'disabled'}>Reset filters</button>`;
+  };
+  menu.onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    set(b.classList.contains('reset') ? { ...DEF } : { [b.dataset.k]: b.dataset.v });
+    draw();
+  };
+  draw();
+}
+
+/* ---------- wiring ---------- */
+$('lines').onclick = e => { const b = e.target.closest('.row'); if (b) openEditor(b.dataset.id); };
+$('addBtn').onclick = () => openEditor(null);
+$('backBtn').onclick = closeEditor;
+$('saveBtn').onclick = save;
+$('q').oninput = e => { $('find').classList.toggle('typed', !!e.target.value); set({ q: e.target.value }); };
+$('qx').onclick = e => { e.preventDefault(); $('q').value = ''; $('find').classList.remove('typed'); set({ q: '' }); $('q').focus(); };
+$('filterBtn').onclick = e => openFilter(e.currentTarget);
+$('edMore').onclick = e => openMenu(e.currentTarget, isNew ? [{ label: 'Discard', red: true, on: closeEditor }] : [
+  { label: 'Print labels', on: () => toast('Print labels') },
+  { label: 'Duplicate', on: () => toast('Duplicate') },
+  '-', { label: 'Archive item', red: true, on: () => { items.splice(items.findIndex(x => x.id === E.id), 1); closeEditor(); renderList(); toast('Archived'); } },
+]);
+
+/* ---------- lab: device + theme ---------- */
+const DEVS = { land: [1180, 820], port: [820, 1180], phone: [390, 844] };
+let devKey = 'land';
+function fitDev() {
+  const st = document.querySelector('.stage').getBoundingClientRect();
+  dev.classList.toggle('fit', devKey === 'fit');
+  dev.classList.toggle('free', devKey === 'free');
+  document.querySelector('.stage').classList.toggle('free', devKey === 'free');
+  if (devKey === 'free') {   // ponytail: native CSS resize handle, bottom-right corner; starts at tablet landscape
+    scale = 1; dev.style.transform = '';
+    dev.style.maxWidth = st.width - 32 + 'px'; dev.style.maxHeight = st.height - 24 + 'px';
+    if (fitDev.fresh) { dev.style.width = '1180px'; dev.style.height = '820px'; fitDev.fresh = false; }
+    return;
+  }
+  dev.style.maxWidth = dev.style.maxHeight = '';
+  document.querySelector('[data-dev=free]').textContent = 'Resizable';
+  if (devKey === 'fit') { dev.style.width = st.width + 'px'; dev.style.height = st.height + 'px'; scale = 1; }
+  else {
+    const [w, h] = DEVS[devKey];
+    scale = Math.min(1, (st.width - 32) / w, (st.height - 24) / h);
+    dev.style.width = w + 'px'; dev.style.height = h + 'px';
+  }
+  dev.style.transform = `scale(${scale})`;
+}
+$('devPick').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  devKey = b.dataset.dev; fitDev.fresh = true;
+  for (const x of $('devPick').children) x.classList.toggle('cur', x === b);
+  fitDev();
+};
+$('themePick').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  dev.classList.toggle('light', b.dataset.theme === 'light');
+  for (const x of $('themePick').children) x.classList.toggle('cur', x === b);
+};
+addEventListener('resize', fitDev);
+new ResizeObserver(() => { if (devKey === 'free') document.querySelector('[data-dev=free]').textContent = `Resizable · ${dev.offsetWidth}×${dev.offsetHeight}`; }).observe(dev);
+
+renderList(); fitDev();
+</script>
+</body>
+</html>
