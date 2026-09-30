@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orders</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* palette — dark (default) */
+  --page:#121212; --card:#1F1F1F; --tray:#181818; --soft:#232323; --hover:#2A2A2A; --press:#333333; --track:#333333;
+  --line:rgba(255,255,255,.08); --outline:rgba(255,255,255,.14);
+  --ink:#FFFFFF; --ink-2:rgba(255,255,255,.70); --ink-3:rgba(255,255,255,.45); --ink-4:rgba(255,255,255,.28);
+  --down:#EF5350; --down-tint:rgba(239,83,80,.14); --warn:#FFB74D; --focus:#8AB4F8; --accent:#FFFFFF; --accent-ink:#121212;
+  --shadow:none; --pop:0 12px 32px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08); --scrim:rgba(0,0,0,.72);
+  /* roles (derived — no new hues) */
+  --side:var(--tray); --pane:var(--page); --group:var(--card); --field:var(--hover);
+  --row-hover:var(--soft); --row-on:var(--hover); --fill:var(--hover); --fill-press:var(--press); --tb-fill:var(--hover);
+  /* type: three sizes, weight + colour do the rest */
+  --font:'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fs-hero:34px; --fs-body:15px; --fs-sub:13px;
+  /* 4/8 grid */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+  --bar-h:52px; --ctl-h:32px; --field-h:36px; --cell-h:44px;
+  --r-ctl:8px; --r-field:10px; --r-row:10px; --r-group:12px; --r-pop:14px;
+  --side-w:340px; --sheet-w:640px; --sheet-x:var(--s6); --drawer-w:264px;
+  --ease:cubic-bezier(.2,.8,.2,1); --t:.18s;
+}
+body.light{
+  --page:#FFFFFF; --card:#FFFFFF; --tray:#F6F6F6; --soft:#F9F9F9; --hover:#F6F6F6; --press:#EDEDED; --track:#EFEFEF;
+  --line:#ECECEC; --outline:#E1E1E1; --ink:#303030; --ink-2:#616161; --ink-3:#8C8C8C; --ink-4:#C8C8C8;
+  --down:#D72C0D; --down-tint:#FBEDEA; --warn:#A65F00; --focus:#BCD7FA; --accent:#303030; --accent-ink:#FFFFFF;
+  --shadow:0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05); --pop:0 8px 20px rgb(0 0 0 / .1), 0 0 0 1px rgb(0 0 0 / .06); --scrim:rgba(0,0,0,.22);
+  --side:var(--page); --pane:var(--tray); --group:var(--card); --field:var(--track);
+  --row-hover:var(--hover); --row-on:var(--press); --fill:var(--track); --fill-press:var(--press); --tb-fill:var(--card);
+}
+@media (max-width:1000px){ :root{ --side-w:300px; --sheet-x:var(--s5); } }
+@media (max-width:700px){ :root{ --sheet-x:var(--s4); --fs-hero:32px; } }
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--pane);color:var(--ink);font:400 var(--fs-body)/20px var(--font);
+  -webkit-font-smoothing:antialiased;font-feature-settings:'cv11';overflow:hidden}
+button,input{font:inherit;color:inherit;margin:0}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.down{color:var(--down)} .warn{color:var(--warn)}
+svg{display:block}
+.list,.scroll{scrollbar-width:thin;scrollbar-color:var(--track) transparent}
+
+.app{display:grid;grid-template-columns:var(--side-w) minmax(0,1fr);height:100dvh}
+
+/* ---------- navigation bars ---------- */
+.bar{flex:none;height:var(--bar-h);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:var(--s2);
+  padding:0 var(--s3);border-bottom:1px solid transparent;transition:border-color var(--t)}
+.bar.edge{border-bottom-color:var(--line)}
+.bar-l,.bar-r{display:flex;align-items:center;gap:var(--s1);min-width:0}
+.bar-r{justify-content:flex-end}
+.bar-t{font-size:var(--fs-body);font-weight:600;white-space:nowrap}
+.tb{position:relative;height:var(--ctl-h);min-width:var(--ctl-h);padding:0 var(--s3);border:0;border-radius:var(--r-ctl);
+  background:none;font-size:var(--fs-body);font-weight:500;color:var(--ink);white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;gap:2px;transition:background var(--t)}
+.tb::after{content:'';position:absolute;inset:-6px -2px} /* 44pt hit area, small visual */
+.tb:hover{background:var(--row-hover)}
+.tb:active,.tb[aria-expanded="true"]{background:var(--fill-press)}
+.tb.primary{background:var(--tb-fill);box-shadow:var(--shadow),0 0 0 1px var(--line);font-weight:600}
+.tb.primary:hover{background:var(--fill-press)}
+.tb.icon{padding:0;color:var(--ink-2)}
+.tb.back{display:none;padding:0 var(--s2) 0 var(--s1);color:var(--ink-2)}
+
+/* ---------- sidebar ---------- */
+.side{background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.side .bar{grid-template-columns:auto 1fr;gap:var(--s1);padding-left:var(--s2)}
+.search{position:relative;display:block;margin:0 var(--s4) var(--s2)}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--ink-3);pointer-events:none}
+.search input{width:100%;height:var(--field-h);padding:0 var(--s3) 0 34px;border:0;border-radius:var(--r-field);
+  background:var(--field);font-size:var(--fs-body);outline:none}
+.search input::placeholder{color:var(--ink-3)}
+.search input:focus-visible{box-shadow:0 0 0 2px var(--focus)}
+.search input::-webkit-search-cancel-button{filter:grayscale(1);opacity:.6}
+
+.list{flex:1;min-height:0;overflow:auto;padding:0 var(--s2) var(--s6);overscroll-behavior:contain}
+.day{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:baseline;
+  padding:var(--s4) var(--s3) var(--s1);background:var(--side);font-size:var(--fs-sub);font-weight:600;color:var(--ink)}
+.day .num{font-weight:400;color:var(--ink-3)}
+.row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px var(--s4);width:100%;
+  padding:var(--s2) var(--s3);border:0;border-radius:var(--r-row);background:none;text-align:left;transition:background var(--t)}
+.row:hover{background:var(--row-hover)}
+.row[aria-current="true"]{background:var(--row-on)}
+.r-who{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r-who.walkin{font-weight:400;color:var(--ink-2)}
+.r-amt{font-weight:500;text-align:right}
+.r-amt.struck{font-weight:400;color:var(--ink-3);text-decoration:line-through}
+.r-sub{font-size:var(--fs-sub);line-height:18px;color:var(--ink-3);white-space:nowrap}
+.r-sub span + span{margin-left:var(--s2)}
+.r-tag{font-size:var(--fs-sub);line-height:18px;color:var(--ink-3);text-align:right}
+.r-tag.down{color:var(--down)} .r-tag.warn{color:var(--warn)}
+.empty{padding:var(--s6) var(--s4);text-align:center;color:var(--ink-3);font-size:var(--fs-sub)}
+
+/* ---------- detail ---------- */
+.detail{display:flex;flex-direction:column;min-width:0;min-height:0}
+.scroll{flex:1;min-height:0;overflow:auto;scrollbar-gutter:stable both-edges}
+.sheet{max-width:var(--sheet-w);margin:0 auto;padding:var(--s2) var(--sheet-x) 72px}
+.sheet.in{animation:in .2s var(--ease)}
+@keyframes in{from{opacity:0;transform:translateY(4px)}}
+
+.hero{padding:var(--s1) var(--s4) var(--s5)}
+.h-amt{font-size:var(--fs-hero);line-height:40px;font-weight:650;letter-spacing:-.025em}
+.h-amt.struck{color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:2px}
+.h-who{margin-top:var(--s2);font-weight:600}
+.h-when{margin-top:2px;color:var(--ink-3)}
+.h-state{margin-top:var(--s3);font-weight:500}
+.h-note{color:var(--ink-3)}
+.link{padding:0;border:0;background:none;font-weight:inherit;color:inherit;text-decoration:underline;
+  text-decoration-color:currentColor;text-decoration-thickness:1px;text-underline-offset:3px;border-radius:4px}
+
+/* grouped inset lists */
+.group{background:var(--group);border-radius:var(--r-group);box-shadow:var(--shadow);overflow:hidden}
+.group + .group{margin-top:var(--s5)}
+.cell{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:0 var(--s4);
+  min-height:var(--cell-h);padding:var(--s3) var(--s4)}
+.cell + .cell::before{content:'';position:absolute;top:0;left:var(--s4);right:0;height:1px;background:var(--line)}
+.c-2{font-size:var(--fs-sub);line-height:18px;color:var(--ink-3)}
+.c-end{color:var(--ink-3);text-align:right}
+.item{align-items:start;padding-top:var(--s2);padding-bottom:var(--s2)}
+.item .c-end{color:var(--ink)}
+.c-end:has(.btn){display:flex;gap:var(--s2)}
+.btn{height:var(--ctl-h);padding:0 var(--s3);border:0;border-radius:var(--r-ctl);background:var(--fill);
+  color:var(--ink);font-size:var(--fs-sub);font-weight:600;white-space:nowrap;transition:background var(--t)}
+.btn:hover,.btn:active{background:var(--fill-press)}
+.btn.danger{background:var(--down-tint);color:var(--down)}
+.btn.danger:hover{background:var(--down-tint);box-shadow:inset 0 0 0 1px var(--down)}
+.more{width:100%;border:0;background:none;text-align:left;font-weight:500;color:var(--ink-2);transition:background var(--t)}
+.more:hover{background:var(--row-hover)}
+.foot{display:flex;justify-content:space-between;gap:var(--s4);margin:var(--s2) var(--s4) 0;font-size:var(--fs-sub);line-height:18px;color:var(--ink-3)}
+
+/* ---------- popover ---------- */
+.pop{position:fixed;z-index:60;min-width:200px;max-width:280px;padding:6px;border-radius:var(--r-pop);background:var(--card);
+  box-shadow:var(--pop);transform-origin:top right;animation:pop .16s var(--ease)}
+.pop[hidden]{display:none}
+@keyframes pop{from{opacity:0;transform:scale(.96)}}
+.mi{display:block;width:100%;height:40px;padding:0 var(--s3);border:0;border-radius:var(--r-ctl);background:none;text-align:left}
+.mi:hover,.mi:focus-visible{outline:none;background:var(--hover)}
+.mi.down{color:var(--down)}
+.mi-sep{height:1px;margin:6px var(--s3);background:var(--line)}
+.pop-h{padding:var(--s2) var(--s3) var(--s1);font-size:var(--fs-sub);font-weight:500;color:var(--ink-3)}
+.confirm{padding:var(--s3) var(--s3) var(--s2)}
+.confirm b{display:block;font-weight:600}
+.confirm p{margin:2px 0 var(--s4);font-size:var(--fs-sub);line-height:18px;color:var(--ink-3)}
+.confirm div{display:flex;justify-content:flex-end;gap:var(--s2)}
+
+/* ---------- app nav ---------- */
+.scrim{position:fixed;inset:0;z-index:40;background:var(--scrim);opacity:0;pointer-events:none;transition:opacity var(--t)}
+.drawer{position:fixed;z-index:41;top:0;bottom:0;left:0;width:var(--drawer-w);padding:0 var(--s2);background:var(--card);box-shadow:var(--pop);
+  transform:translateX(-102%);transition:transform .24s var(--ease),visibility .24s;visibility:hidden}
+body.nav-open .scrim{opacity:1;pointer-events:auto}
+body.nav-open .drawer{transform:none;visibility:visible}
+.drawer .bar{grid-template-columns:1fr auto;padding:0 0 0 var(--s3)}
+.nav{display:grid;gap:2px}
+.nav button{height:40px;padding:0 var(--s3);border:0;border-radius:var(--r-ctl);background:none;text-align:left;color:var(--ink-2)}
+.nav button:hover{background:var(--hover);color:var(--ink)}
+.nav button[aria-current="page"]{background:var(--hover);color:var(--ink);font-weight:600}
+
+/* ---------- toast ---------- */
+.toast{position:fixed;z-index:70;left:50%;bottom:var(--s5);transform:translate(-50%,8px);padding:10px var(--s4);border-radius:var(--r-field);
+  background:var(--card);box-shadow:var(--pop);font-size:var(--fs-sub);font-weight:500;opacity:0;pointer-events:none;
+  transition:opacity var(--t),transform var(--t);max-width:calc(100vw - 32px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- lab switch (not part of the design) ---------- */
+.lab{position:fixed;z-index:80;left:10px;bottom:10px;display:flex;padding:2px;border-radius:999px;background:var(--card);box-shadow:var(--pop)}
+.lab button{height:24px;padding:0 10px;border:0;border-radius:999px;background:none;font-size:11px;font-weight:500;color:var(--ink-3)}
+.lab button[aria-pressed="true"]{background:var(--press);color:var(--ink)}
+
+/* ---------- phone: list, then push the detail ---------- */
+@media (max-width:700px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{border-right:0}
+  .detail{display:none}
+  body.show-detail .side{display:none}
+  body.show-detail .detail{display:flex}
+  .tb.back{display:inline-flex}
+  .bar-t.rno{display:none}
+  .detail .bar{grid-template-columns:auto 1fr;padding-left:var(--s1)}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" aria-label="Orders">
+    <header class="bar">
+      <button class="tb icon" id="menuBtn" aria-label="Open navigation" aria-expanded="false" aria-controls="drawer">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3.5 6h13M3.5 10h13M3.5 14h13"/></svg>
+      </button>
+      <h1 class="bar-t" style="margin:0">Orders</h1>
+    </header>
+    <label class="search">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="4.75"/><path d="m10.5 10.5 3 3"/></svg>
+      <input id="q" type="search" placeholder="Search" aria-label="Search receipt no., customer or item" autocomplete="off">
+    </label>
+    <div class="list" id="list"></div>
+  </aside>
+  <main class="detail" id="detail">
+    <header class="bar" id="dbar"></header>
+    <div class="scroll" id="scroll" aria-live="polite"></div>
+  </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<nav class="drawer" id="drawer" aria-label="App">
+  <div class="bar">
+    <span class="bar-t">EJ Hardware</span>
+    <button class="tb icon" id="navClose" aria-label="Close navigation">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m4.5 4.5 9 9m0-9-9 9"/></svg>
+    </button>
+  </div>
+  <div class="nav">
+    <button>Sell</button>
+    <button aria-current="page">Orders</button>
+    <button>Customers</button>
+    <button>Reports</button>
+    <button>Back Office</button>
+    <button>Settings</button>
+  </div>
+</nav>
+
+<div class="pop" id="pop" role="menu" hidden></div>
+<div class="toast" id="toast" role="status"></div>
+
+<div class="lab" role="group" aria-label="Lab theme">
+  <button data-theme="dark" aria-pressed="true">Dark</button>
+  <button data-theme="light" aria-pressed="false">Light</button>
+</div>
+
+<script>
+/* ============ fake data (money in integer centavos) ============ */
+const NOW = new Date(2026, 8, 29, 17, 20);
+let clock = NOW;
+const tick = () => (clock = new Date(clock.getTime() + 60000));
+
+const P = {
+  cement:  { name:'Portland Cement 40kg',     price:26500,  unit:'bag' },
+  hb4:     { name:'Hollow Block 4"',          price:1600,   unit:'pc' },
+  hammer:  { name:'Claw Hammer 16oz',         price:28500,  unit:'pc' },
+  elbow:   { name:'PVC Elbow 3/4"',           price:1600,   unit:'pc' },
+  nail2:   { name:'Common Wire Nail 2"',      price:8500,   unit:'kg' },
+  ply:     { name:'Plywood 1/4"',             price:52000,  unit:'sheet' },
+  gravel:  { name:'Gravel',                   price:145000, unit:'cu.m' },
+  sand:    { name:'Washed Sand',              price:120000, unit:'cu.m' },
+  led:     { name:'LED Bulb 9W',              price:14500,  unit:'pc' },
+  rebar:   { name:'Deformed Bar 10mm × 6m',   price:21500,  unit:'pc' },
+  tie:     { name:'Tie Wire #16',             price:9500,   unit:'kg' },
+  paint:   { name:'Latex Paint White 4L',     price:72000,  unit:'can' },
+  pipe:    { name:'PVC Pipe 3/4" × 3m',       price:12500,  unit:'pc' },
+  teflon:  { name:'Teflon Tape',              price:2500,   unit:'pc' },
+  hacksaw: { name:'Hacksaw Blade 12"',        price:6500,   unit:'pc' },
+  etape:   { name:'Electrical Tape',          price:4500,   unit:'roll' },
+  sandp:   { name:'Sandpaper #120',           price:1500,   unit:'sheet' },
+  gi:      { name:'GI Sheet Corrugated 8ft',  price:48500,  unit:'sheet' },
+  thhn:    { name:'THHN Wire 3.5mm²',         price:2800,   unit:'m' },
+  outlet:  { name:'Duplex Outlet',            price:9500,   unit:'pc' },
+  switch1: { name:'Light Switch 1-Gang',      price:7500,   unit:'pc' },
+  breaker: { name:'Circuit Breaker 20A',      price:45000,  unit:'pc' },
+  roller:  { name:'Paint Roller 7"',          price:18500,  unit:'pc' },
+  brush:   { name:'Paint Brush 2"',           price:6000,   unit:'pc' },
+  thinner: { name:'Paint Thinner 1L',         price:16500,  unit:'bottle' },
+  cnail:   { name:'Concrete Nail 2"',         price:12000,  unit:'kg' },
+  trowel:  { name:'Masonry Trowel',           price:22000,  unit:'pc' },
+  shovel:  { name:'Shovel Pointed',           price:38500,  unit:'pc' },
+  tape5:   { name:'Measuring Tape 5m',        price:19500,  unit:'pc' },
+};
+const PLURAL = { pc:'pcs', bag:'bags', sheet:'sheets', can:'cans', roll:'rolls', bottle:'bottles', kg:'kg', 'cu.m':'cu.m', m:'m' };
+
+const CU = {
+  ricardo:{ name:'Ricardo Construction', addr:'Purok 3, Brgy. Alangilan, Batangas City' },
+  santos: { name:'Santos Hardware',      addr:'P. Burgos St, Lipa City' },
+  maria:  { name:'Maria Dela Cruz' },
+  reyes:  { name:'Reyes Builders',       addr:'Km 4, Diversion Rd, Batangas City' },
+  jun:    { name:'Jun Bautista' },
+};
+
+function at(daysAgo, h, m){ const d = new Date(NOW); d.setDate(d.getDate() - daysAgo); d.setHours(h, m, 0, 0); return d; }
+function due(d){ const x = new Date(d); x.setDate(x.getDate() + 30); return x; }
+const L = (sku, qty) => ({ sku, qty });
+const BIG = [L('cement',20),L('hb4',300),L('rebar',30),L('tie',4),L('nail2',3),L('ply',6),L('gravel',1),L('sand',1),L('pipe',8),L('elbow',12),
+  L('teflon',6),L('thhn',50),L('outlet',8),L('switch1',8),L('breaker',3),L('led',12),L('etape',4),L('paint',3),L('roller',2),L('brush',4),
+  L('thinner',2),L('gi',10),L('cnail',2),L('trowel',2),L('shovel',1)];
+
+const orders = [
+  { id:'1-341', at:at(0,17,5),  cashier:'Ana',     cu:CU.jun,     fulfil:'pickup',   pay:{ method:'Card', note:'Visa •••• 4417' }, items:[L('hammer',1),L('nail2',2)], status:'return', of:'1-336' },
+  { id:'1-340', at:at(0,16,52), cashier:'El John', cu:null,       fulfil:'pickup',   pay:{ method:'Cash', tendered:100000 }, items:[L('led',4),L('elbow',10)], status:'completed' },
+  { id:'1-339', at:at(0,16,31), cashier:'El John', cu:CU.reyes,   fulfil:'delivery', delivery:{}, pay:{ method:'Charge', due:due(at(0,16,31)) }, items:[L('hb4',500),L('cement',30)], status:'completed' },
+  { id:'2-118', at:at(0,16,5),  cashier:'Ana',     cu:CU.maria,   fulfil:'pickup',   pay:{ method:'GCash', note:'Ref 4012 885 1123' }, items:[L('hammer',1),L('nail2',1.5),L('teflon',3)], status:'completed' },
+  { id:'1-338', at:at(0,15,50), cashier:'El John', cu:CU.ricardo, fulfil:'delivery', delivery:{ driver:'Mario', dispatched:at(0,16,5) }, pay:{ method:'Cash', tendered:1050000 }, items:[L('cement',30),L('gravel',1),L('nail2',5),L('ply',1)], status:'completed' },
+  { id:'1-337', at:at(0,15,12), cashier:'Ana',     cu:null,       fulfil:'pickup',   pay:{ method:'Cash', tendered:50000 }, items:[L('elbow',6),L('pipe',2)], status:'voided', voided:{ by:'Ana', at:at(0,15,15), reason:'Rang up the wrong pipe size' } },
+  { id:'1-336', at:at(0,14,40), cashier:'El John', cu:CU.jun,     fulfil:'pickup',   pay:{ method:'Card', note:'Visa •••• 4417' }, items:[L('hammer',1),L('nail2',2)], status:'refunded', refundedBy:'1-341' },
+  { id:'1-335', at:at(0,13,58), cashier:'Ana',     cu:null,       fulfil:'pickup',   pay:null, items:[L('paint',2),L('sandp',10),L('etape',2)], status:'open' },
+  { id:'1-334', at:at(0,11,20), cashier:'El John', cu:CU.santos,  fulfil:'delivery', delivery:{ driver:'Jomar', dispatched:at(0,11,45), arrived:at(0,12,30) }, pay:{ method:'GCash', note:'Ref 4012 771 0098' }, items:[L('rebar',40),L('tie',5)], status:'completed' },
+  { id:'2-117', at:at(0,10,30), cashier:'Ana',     cu:CU.reyes,   fulfil:'delivery', delivery:{ driver:'Jomar', dispatched:at(0,11,0), arrived:at(0,11,50) }, pay:{ method:'Charge', due:due(at(0,10,30)) }, items:BIG, status:'completed' },
+  { id:'1-333', at:at(0,9,15),  cashier:'El John', cu:null,       fulfil:'pickup',   pay:{ method:'Cash', tendered:20000 }, items:[L('hacksaw',2),L('etape',1)], status:'completed' },
+
+  { id:'1-332', at:at(1,17,40), cashier:'Ana',     cu:CU.reyes,   fulfil:'delivery', delivery:{ driver:'Jomar', dispatched:at(1,17,55), cameBack:at(1,18,50) }, pay:{ method:'Charge', due:due(at(1,17,40)) }, items:[L('gravel',2),L('sand',2)], status:'completed' },
+  { id:'1-331', at:at(1,16,10), cashier:'El John', cu:null,       fulfil:'pickup',   pay:{ method:'Cash', tendered:50000 }, items:[L('led',2),L('etape',1)], status:'completed' },
+  { id:'2-116', at:at(1,14,25), cashier:'Ana',     cu:CU.maria,   fulfil:'pickup',   pay:{ method:'Card', note:'Mastercard •••• 0921' }, items:[L('paint',1),L('sandp',5)], discount:4000, status:'completed' },
+  { id:'1-330', at:at(1,11,5),  cashier:'El John', cu:null,       fulfil:'pickup',   pay:{ method:'Cash' }, items:[L('led',2)], status:'return', of:'1-325' },
+  { id:'1-329', at:at(1,9,30),  cashier:'El John', cu:CU.ricardo, fulfil:'delivery', delivery:{ driver:'Mario', dispatched:at(1,10,0), arrived:at(1,10,45) }, pay:{ method:'Charge', due:due(at(1,9,30)) }, items:[L('hb4',1000),L('cement',50)], status:'completed' },
+
+  { id:'1-328', at:at(2,15,20), cashier:'Ana',     cu:null,       fulfil:'pickup',   pay:{ method:'GCash', note:'Ref 4012 330 5561' }, items:[L('hammer',1),L('elbow',4)], status:'completed' },
+  { id:'1-327', at:at(2,10,40), cashier:'El John', cu:CU.santos,  fulfil:'delivery', delivery:{ driver:'Jomar', dispatched:at(2,11,10), arrived:at(2,12,5) }, pay:{ method:'GCash', note:'Ref 4012 118 9024' }, items:[L('ply',12),L('nail2',3)], status:'completed' },
+
+  { id:'1-326', at:at(3,16,45), cashier:'El John', cu:CU.jun,     fulfil:'pickup',   pay:{ method:'Cash', tendered:100000 }, items:[L('tie',2),L('rebar',3)], status:'completed' },
+  { id:'1-325', at:at(3,13,30), cashier:'El John', cu:null,       fulfil:'pickup',   pay:{ method:'Cash', tendered:100000 }, items:[L('led',6),L('etape',2)], status:'completed' },
+  { id:'1-324', at:at(3,9,5),   cashier:'Ana',     cu:CU.ricardo, fulfil:'pickup',   pay:{ method:'Charge', due:due(at(3,9,5)) }, items:[L('cement',20)], status:'completed' },
+
+  { id:'1-323', at:at(4,15,0),  cashier:'El John', cu:null,       fulfil:'pickup',   pay:{ method:'Cash', tendered:80000 }, items:[L('gravel',.5)], status:'completed' },
+];
+
+/* ============ helpers ============ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const get = id => orders.find(o => o.id === id);
+const lineTotal = l => Math.round(l.qty * P[l.sku].price);
+const gross = o => o.items.reduce((s, l) => s + lineTotal(l), 0);
+const total = o => (o.status === 'return' ? -1 : 1) * (gross(o) - (o.discount || 0));
+const vat = c => Math.round(Math.abs(c) * 12 / 112);
+function peso(c){ const s = (Math.abs(c) / 100).toLocaleString('en-PH', { minimumFractionDigits:2, maximumFractionDigits:2 }); return (c < 0 ? '−' : '') + '₱' + s; }
+const fmtQty = q => Number.isInteger(q) ? q.toLocaleString('en-PH') : String(q);
+const unit = (u, q) => q === 1 ? u : PLURAL[u];
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function time(d){ let h = d.getHours(); const m = d.getMinutes(), ap = h < 12 ? 'AM' : 'PM'; h = h % 12 || 12; return `${h}:${String(m).padStart(2,'0')} ${ap}`; }
+const dayKey = d => d.toDateString();
+function dayLabel(d){
+  const diff = Math.round((new Date(NOW.toDateString()) - new Date(d.toDateString())) / 864e5);
+  if (diff === 0) return 'Today'; if (diff === 1) return 'Yesterday';
+  return `${DAYS[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;
+}
+const when = d => `${dayLabel(d)} at ${time(d)}`;
+const counts = o => o.status === 'completed' || o.status === 'refunded' || o.status === 'return'; // money that moved
+const returnsOf = id => orders.filter(r => r.status === 'return' && r.of === id);
+const returnedQty = (o, sku) => returnsOf(o.id).reduce((s, r) => s + r.items.filter(l => l.sku === sku).reduce((a, l) => a + l.qty, 0), 0);
+const idLink = id => `<button class="link num" data-act="goto" data-id="${id}">#${id}</button>`;
+
+/* the one quiet word on a row */
+function tag(o){
+  if (o.status === 'voided')   return ['Voided', 'down'];
+  if (o.status === 'refunded') return ['Refunded', 'down'];
+  if (o.status === 'return')   return ['Return', 'down'];
+  if (o.status === 'open')     return ['Not completed', 'warn'];
+  return [o.fulfil === 'delivery' ? 'Delivery' : 'Pickup', ''];
+}
+
+/* ============ state ============ */
+let sel = '1-338', query = '', showAll = false;
+const PEEK = 6; // ponytail: show 6 lines, reveal the rest on demand
+
+/* ============ list ============ */
+function matches(o){
+  if (!query) return true;
+  const q = query.toLowerCase().replace(/^#/, '');
+  return o.id.includes(q) || (o.cu ? o.cu.name : 'walk-in').toLowerCase().includes(q)
+    || o.items.some(l => P[l.sku].name.toLowerCase().includes(q));
+}
+function renderList(){
+  const shown = orders.filter(matches);
+  if (!shown.length){ $('#list').innerHTML = `<div class="empty">No results for “${esc(query)}”</div>`; return; }
+  let html = '', key = null;
+  for (const o of shown){
+    if (dayKey(o.at) !== key){
+      key = dayKey(o.at);
+      const net = orders.filter(x => dayKey(x.at) === key && counts(x)).reduce((s, x) => s + total(x), 0);
+      html += `<div class="day"><span>${dayLabel(o.at)}</span><span class="num">${peso(net)}</span></div>`;
+    }
+    const [word, cls] = tag(o);
+    html += `<button class="row" data-id="${o.id}" aria-current="${o.id === sel}">
+      <span class="r-who${o.cu ? '' : ' walkin'}">${o.cu ? esc(o.cu.name) : 'Walk-in'}</span>
+      <span class="r-amt num${o.status === 'voided' ? ' struck' : ''}">${peso(total(o))}</span>
+      <span class="r-sub num"><span>#${o.id}</span><span>${time(o.at)}</span></span>
+      <span class="r-tag ${cls}">${word}</span>
+    </button>`;
+  }
+  $('#list').innerHTML = html;
+}
+
+/* ============ detail ============ */
+function stateLine(o){
+  if (o.status === 'voided')
+    return `<div class="h-state down">Voided by ${esc(o.voided.by)} at ${time(o.voided.at)}</div>${o.voided.reason ? `<div class="h-note">${esc(o.voided.reason)}</div>` : ''}`;
+  if (o.status === 'refunded') return `<div class="h-state down">Refunded on ${idLink(o.refundedBy)}</div>`;
+  if (o.status === 'return')   return `<div class="h-state down">Return of ${idLink(o.of)}</div>`;
+  if (o.status === 'open')     return `<div class="h-state warn">Not completed</div>`;
+  const rs = returnsOf(o.id);
+  return rs.length ? `<div class="h-state">Items returned on ${rs.map(r => idLink(r.id)).join(', ')}</div>` : '';
+}
+
+const cell = (a, b = '', end = '', cls = '') =>
+  `<div class="cell ${cls}"><div>${a}${b ? `<div class="c-2 num">${b}</div>` : ''}</div>${end ? `<div class="c-end num">${end}</div>` : ''}</div>`;
+
+function fulfilCells(o){
+  if (o.status === 'return') return '';
+  if (o.fulfil !== 'delivery') return cell('Pickup');
+  const d = o.delivery, live = o.status === 'completed';
+  const btn = (act, label, menu) => live ? `<button class="btn" data-act="${act}"${menu ? ' aria-haspopup="menu" aria-expanded="false"' : ''}>${label}</button>` : '';
+  let h = cell('Delivery', esc(o.cu.addr), d.dispatched ? '' : btn('dispatch-ask', 'Dispatch', 1));
+  const left = `Dispatched with ${esc(d.driver)} at ${time(d.dispatched)}`;
+  if (d.arrived) h += cell(`Arrived at ${time(d.arrived)}`, left);
+  else if (d.cameBack) h += cell(`<span class="down">Came back at ${time(d.cameBack)}</span>`, left, btn('dispatch-ask', 'Dispatch again', 1));
+  else if (d.dispatched) h += cell(`Dispatched with ${esc(d.driver)}`, time(d.dispatched), btn('arrived', 'Arrived') + btn('cameback', 'Came back'));
+  return h;
+}
+function payCell(o){
+  const p = o.pay, t = total(o);
+  if (!p) return ''; // "Not completed" above already says it
+  const name = p.method;
+  if (o.status === 'return')
+    return cell(name, p.method === 'Charge' ? 'Credited back' : p.method === 'Cash' ? '' : `Back to ${esc(p.note)}`);
+  if (p.method === 'Cash') return cell('Cash', p.tendered > t ? `${peso(p.tendered - t)} change from ${peso(p.tendered)}` : '');
+  if (p.method === 'Charge') return cell(name, `Due ${p.due.getDate()} ${MON[p.due.getMonth()]}`);
+  return cell(name, esc(p.note));
+}
+
+function itemsBlock(o){
+  const n = o.items.length, cut = n > PEEK + 1 && !showAll;
+  const lines = (cut ? o.items.slice(0, PEEK) : o.items).map(l => {
+    const p = P[l.sku], back = o.status === 'completed' ? returnedQty(o, l.sku) : 0;
+    return cell(esc(p.name), `${fmtQty(l.qty)} ${unit(p.unit, l.qty)} × ${peso(p.price)}${back ? `, ${fmtQty(back)} returned` : ''}`, peso(lineTotal(l)), 'item');
+  }).join('');
+  const disc = o.discount ? cell('Discount', '', '−' + peso(o.discount), 'item') : '';
+  const more = n > PEEK + 1 ? `<button class="cell more" data-act="all" aria-expanded="${showAll}">${showAll ? 'Show fewer' : `Show all ${n} items`}</button>` : '';
+  const t = total(o);
+  return `<section class="group" aria-label="${n} items">${lines}${cut ? '' : disc}${more}</section>
+    <div class="foot num"><span>VAT ${peso(Math.sign(t) * vat(t))}</span><span>Served by ${esc(o.cashier)}</span></div>`;
+}
+
+const MORE = `<button class="tb icon" data-act="more" aria-label="More actions" aria-haspopup="menu" aria-expanded="false">
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><circle cx="4.5" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="15.5" cy="10" r="1.5"/></svg></button>`;
+function actions(o){
+  // the primary always sits in the corner, so the thumb finds it on every order
+  if (o.status === 'open') return `${MORE}<button class="tb primary" data-act="continue">Continue sale</button>`;
+  if (o.status === 'completed') return `${MORE}<button class="tb" data-act="refund-ask" aria-haspopup="menu" aria-expanded="false">Refund</button><button class="tb primary" data-act="print">Print receipt</button>`;
+  return `<button class="tb primary" data-act="print">Print receipt</button>`;
+}
+
+function renderDetail(animate){
+  const o = get(sel);
+  $('#dbar').innerHTML = o ? `
+    <div class="bar-l"><button class="tb back" data-act="back" aria-label="Back to orders">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg>Orders</button></div>
+    <div class="bar-t rno num">#${o.id}</div>
+    <div class="bar-r">${actions(o)}</div>` : '';
+  if (!o){ $('#scroll').innerHTML = ''; return; }
+  const t = total(o);
+  $('#scroll').innerHTML = `<article class="sheet${animate ? ' in' : ''}">
+    <header class="hero">
+      <div class="h-amt num${o.status === 'voided' ? ' struck' : ''}">${peso(t)}</div>
+      <div class="h-who">${o.cu ? esc(o.cu.name) : 'Walk-in'}</div>
+      <div class="h-when">${when(o.at)}</div>
+      ${stateLine(o)}
+    </header>
+    <section class="group" aria-label="How it left and how it was paid">${fulfilCells(o)}${payCell(o)}</section>
+    ${itemsBlock(o)}
+  </article>`;
+}
+
+function render(animate){ renderList(); renderDetail(animate); }
+
+/* ============ popover ============ */
+const pop = $('#pop');
+let popBtn = null;
+function openPop(btn, html){
+  closePop();
+  popBtn = btn; pop.innerHTML = html; pop.hidden = false;
+  btn.setAttribute('aria-expanded', 'true');
+  placePop();
+  pop.querySelector('button')?.focus({ preventScroll:true });
+}
+function swapPop(html){ pop.innerHTML = html; placePop(); pop.querySelector('button')?.focus({ preventScroll:true }); }
+function placePop(){
+  const r = popBtn.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+  const left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8));
+  let top = r.bottom + 6;
+  if (top + h > innerHeight - 8) top = Math.max(8, r.top - h - 6);
+  pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  pop.style.transformOrigin = `${r.left + r.width / 2 - left}px ${top > r.top ? 0 : h}px`;
+}
+function closePop(refocus){
+  if (pop.hidden) return;
+  pop.hidden = true;
+  popBtn?.setAttribute('aria-expanded', 'false');
+  if (refocus && popBtn?.isConnected) popBtn.focus();
+  popBtn = null;
+}
+const confirmBox = (title, text, act, label) => `<div class="confirm"><b>${title}</b><p>${text}</p>
+  <div><button class="btn" data-act="pop-close">Cancel</button><button class="btn danger" data-act="${act}">${label}</button></div></div>`;
+
+/* ============ toast ============ */
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2400); }
+
+/* ============ actions (the lab mutates in place; the real app appends rows) ============ */
+function nextId(till){ return `${till}-${Math.max(...orders.filter(o => o.id.startsWith(till + '-')).map(o => +o.id.split('-')[1])) + 1}`; }
+const refundLeft = o => o.items.map(l => L(l.sku, l.qty - returnedQty(o, l.sku))).filter(l => l.qty > 0);
+
+function act(name, el){
+  const o = get(sel);
+  switch (name){
+    case 'goto': select(el.dataset.id); break;
+    case 'back': document.body.classList.remove('show-detail'); break;
+    case 'pop-close': closePop(true); break;
+    case 'all': showAll = !showAll; renderDetail(); break;
+    case 'print': toast(`Printing #${o.id}`); break;
+    case 'continue': toast(`Opening #${o.id} in Sell`); break;
+    case 'more':
+      if (popBtn === el) return closePop();
+      openPop(el, o.status === 'open'
+        ? `<button class="mi down" role="menuitem" data-act="void-ask">Void sale</button>`
+        : `<button class="mi" role="menuitem" data-act="return-items">Return items</button>
+           <button class="mi" role="menuitem" data-act="exchange">Exchange</button>
+           <div class="mi-sep" role="separator"></div>
+           <button class="mi down" role="menuitem" data-act="void-ask">Void sale</button>`);
+      break;
+    case 'return-items': closePop(true); toast('Pick the items that came back'); break;
+    case 'exchange': closePop(true); toast('Pick the items to swap'); break;
+    case 'void-ask': swapPop(confirmBox(`Void #${o.id}?`, 'Stock goes back on the shelf.', 'void', 'Void')); break;
+    case 'void':
+      o.status = 'voided'; o.voided = { by:'El John', at:tick(), reason:'' };
+      closePop(); render(); toast(`#${o.id} voided`); break;
+    case 'refund-ask': {
+      if (popBtn === el) return closePop();
+      const amt = refundLeft(o).reduce((s, l) => s + lineTotal(l), 0) - (o.discount || 0);
+      const to = o.pay.method === 'Cash' ? 'Paid back in cash.' : o.pay.method === 'Charge' ? 'Credited to their account.' : `Back to ${o.pay.method}.`;
+      openPop(el, confirmBox(`Refund ${peso(amt)}?`, to, 'refund', 'Refund'));
+      break;
+    }
+    case 'refund': {
+      const id = nextId(o.id.split('-')[0]);
+      orders.unshift({ id, at:tick(), cashier:'El John', cu:o.cu, fulfil:'pickup', pay:{ ...o.pay }, items:refundLeft(o), discount:o.discount, status:'return', of:o.id });
+      o.status = 'refunded'; o.refundedBy = id;
+      closePop(); render(); toast(`Refunded. Return #${id} added`); break;
+    }
+    case 'dispatch-ask':
+      if (popBtn === el) return closePop();
+      openPop(el, `<div class="pop-h">Driver</div>
+        <button class="mi" role="menuitem" data-act="dispatch" data-v="Mario">Mario</button>
+        <button class="mi" role="menuitem" data-act="dispatch" data-v="Jomar">Jomar</button>`);
+      break;
+    case 'dispatch':
+      o.delivery = { driver:el.dataset.v, dispatched:tick() };
+      closePop(); renderDetail(); toast(`#${o.id} dispatched with ${el.dataset.v}`); break;
+    case 'arrived': o.delivery.arrived = tick(); renderDetail(); toast(`#${o.id} arrived`); break;
+    case 'cameback': o.delivery.cameBack = tick(); renderDetail(); toast(`#${o.id} came back`); break;
+  }
+}
+
+function select(id){
+  const same = id === sel;
+  sel = id; showAll = false; closePop();
+  if (!orders.filter(matches).some(o => o.id === id)){ query = ''; $('#q').value = ''; }
+  render(!same);
+  document.body.classList.add('show-detail');
+  $('#scroll').scrollTop = 0; $('#dbar').classList.remove('edge');
+  document.querySelector(`.row[data-id="${id}"]`)?.scrollIntoView({ block:'nearest' });
+}
+
+/* ============ wiring ============ */
+document.addEventListener('click', e => {
+  const actEl = e.target.closest('[data-act]');
+  if (!pop.hidden && !pop.contains(e.target) && actEl !== popBtn) closePop();
+  const row = e.target.closest('.row');
+  if (row) return select(row.dataset.id);
+  if (actEl) act(actEl.dataset.act, actEl);
+});
+$('#q').addEventListener('input', e => { query = e.target.value.trim(); renderList(); });
+addEventListener('resize', () => { if (!pop.hidden) placePop(); });
+$('#scroll').addEventListener('scroll', e => { closePop(); $('#dbar').classList.toggle('edge', e.target.scrollTop > 4); });
+$('#list').addEventListener('scroll', e => $('.side .bar').classList.toggle('edge', e.target.scrollTop > 4));
+
+const setNav = open => { document.body.classList.toggle('nav-open', open); $('#menuBtn').setAttribute('aria-expanded', open); (open ? $('#navClose') : $('#menuBtn')).focus(); };
+$('#menuBtn').onclick = () => setNav(true);
+$('#navClose').onclick = $('#scrim').onclick = () => setNav(false);
+document.querySelectorAll('.nav button').forEach(b => b.onclick = () => { setNav(false); if (!b.hasAttribute('aria-current')) toast(`${b.textContent} opens here`); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!pop.hidden) closePop(true);
+  else if (document.body.classList.contains('nav-open')) setNav(false);
+});
+
+/* lab theme switch */
+function theme(t){
+  document.body.classList.toggle('light', t === 'light');
+  document.querySelectorAll('.lab button').forEach(b => b.setAttribute('aria-pressed', b.dataset.theme === t));
+}
+document.querySelectorAll('.lab button').forEach(b => b.onclick = () => theme(b.dataset.theme));
+theme(new URLSearchParams(location.search).get('light') === '1' ? 'light' : 'dark');
+
+render();
+</script>
+</body>
+</html>

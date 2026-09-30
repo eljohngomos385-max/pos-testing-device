@@ -54,6 +54,8 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .labbar button { height: 28px; padding: 0 10px; white-space: nowrap; border: 0; border-radius: 7px; background: none; color: var(--lab-ink); }
 .labbar button.cur { background: #333; color: #fff; }
 .stage { position: fixed; inset: 50px 0 0; display: grid; place-items: center; }
+body.full .labbar { display: none; }   /* ?full: the page alone, edge to edge (for a real tablet) */
+body.full .stage { inset: 0; }
 .dev { position: relative; flex: none; overflow: hidden; background: var(--bg); color: var(--ink); container: dev / size; transform-origin: center;
        border-radius: 18px; box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px rgba(0,0,0,.5); }
 .dev.fit { border-radius: 0; }
@@ -61,7 +63,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .dev.free { resize: both; min-width: 360px; min-height: 480px; }
 
 /* ---------- the view: the rail on the left under ☰, the receipt on the right ---------- */
-.view { display: grid; grid-template-columns: 460px minmax(0,1fr); grid-template-rows: minmax(0,1fr); gap: 18px; height: 100%; padding: 8px 18px;
+.view { display: grid; grid-template-columns: 460px minmax(0,1fr); grid-template-rows: minmax(0,1fr); gap: 18px; height: 100%; padding: 8px 18px 0;
         font-size: 13px; line-height: 1.4; }
 @container dev (max-width: 1100px) { .view { grid-template-columns: 340px minmax(0,1fr); } }
 @container dev (max-width: 920px)  { .view { grid-template-columns: 320px minmax(0,1fr); } }
@@ -114,7 +116,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
                 color: #C62828; font: 800 28px/1.2 var(--font); letter-spacing: .12em; pointer-events: none; }
 
 /* ---------- the rail: ☰ + search, then the orders to the bottom ---------- */
-.rail { order: -1; display: grid; grid-template-rows: auto minmax(0,1fr); gap: var(--rl-gap); min-width: 0; min-height: 0; margin: 8px 0; }
+.rail { order: -1; display: grid; grid-template-rows: auto minmax(0,1fr); gap: var(--rl-gap); min-width: 0; min-height: 0; margin: 8px 0 0; }
 .card { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); box-shadow: var(--rl-shadow); }
 
 /* 1 · ☰ then search, in the customer card's place and height (☰ stays top-left, as on every page) */
@@ -135,10 +137,8 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .more.on::after { content: ""; position: absolute; top: 12px; right: 13px; width: 6px; height: 6px; border-radius: 50%; background: var(--rl-on); }
 
 /* 2 · the orders: a day band (the Item / Amount band) over its rows */
-.list { display: grid; grid-template-rows: minmax(0,1fr); overflow: hidden; }
-.lines { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
-         scroll-snap-type: y mandatory; scroll-padding-top: 40px; }   /* rows settle whole under the sticky band: no half-row sliver (a second hairline) peeking out */
-.lines > .row { scroll-snap-align: start; }   /* rows only: a band never settles under the stuck one, it slides over it */
+.list { display: grid; grid-template-rows: minmax(0,1fr); overflow: hidden; border-bottom: 0; border-radius: var(--rl-r) var(--rl-r) 0 0; }   /* runs off the bottom edge: no floor line */
+.lines { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .band { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 40px; padding: 0 var(--rl-m); background: var(--rl-soft);
         border-bottom: 1px solid var(--line); color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
 .band + .row, .row + .row { border-top: 1px solid var(--line); }
@@ -204,7 +204,7 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .back { display: none; }
 @container dev (max-width: 720px) {
   .view { grid-template-columns: 1fr; padding: 0 12px; }
-  .rail { margin: 8px 0 12px; }
+  .rail { margin: 8px 0 0; }
   .main { position: absolute; inset: 0; z-index: 5; padding: 16px 12px 0; background: var(--bg); transform: translateX(100%); transition: transform .28s var(--rl-ease); }
   .view.reading .main { transform: none; }
   .back { display: inline-flex; }
@@ -484,6 +484,9 @@ $('actMore').onclick = e => {
 /* ---------- lab: device + theme ---------- */
 const DEVS = { land: [1180, 820], port: [820, 1180], phone: [390, 844] };
 let devKey = 'land';
+const QS = new URLSearchParams(location.search);
+if (QS.has('full')) { document.body.classList.add('full'); devKey = 'fit'; }
+if (QS.has('light')) dev.classList.add('light');
 function fitDev() {
   const st = document.querySelector('.stage').getBoundingClientRect();
   dev.classList.toggle('fit', devKey === 'fit');

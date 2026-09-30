@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transactions breakdown lab</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   TRANSACTIONS › BREAKDOWN LAB (2026-09-29): the Breakdown tab with charts, in the Sales › Items lab's
+   language (sales-items-lab-2.html). Nothing live: seeded fake sales, two store sizes. The search, the
+   range and the three filters really filter; clicking a row, slice or bar filters by it too.
+   Real bug, fixed here only: in the app the names and amounts are white on the card. The Breakdown
+   wrapper is `<div class="rail bd">` and styles.css:7555 `.rail { color: var(--ink) }` is the POS sale
+   sidebar's rule; the back office never redefines --ink, so it stays the dark theme's #FFFFFF.
+   =========================================================================== */
+:root {
+  --po-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --b-page: #FFFFFF; --b-card: #F9F9F9; --b-raised: #FFFFFF; --b-side: #F7F7F7;
+  --b-line: #ECECEC; --b-outline: #E1E1E1; --b-track: #EFEFEF;
+  --b-ink: #303030; --b-ink-2: #616161; --b-ink-3: #8C8C8C;
+  --b-up: #047B5D; --b-down: #D72C0D; --b-up-tint: #D3ECDD; --b-down-tint: #F8D8D0; --b-flat-tint: #EFEFEF;
+  --b-data: #2B7DE9; --b-data-1: #BCD7FA; --b-data-tint: #DCE9FB; --b-data-ink: #1F5FB8;
+  --card-shadow: 0 1px 2px -1px rgb(26 26 26 / .07);
+  --btn-h: 28px; --btn-r: 8px; --btn-soft: #EDEDED;
+  --b-r-card: 14px; --b-pad: 16px;
+  --t-label: 13px; --t-meta: 12.5px; --t-micro: 11px;
+  --s1: #1C5CAB; --s2: #256ABF; --s3: #2B7DE9; --s4: #5598E7; --s5: #86B6EF; --s-other: #D4D4D4;
+  --pos: #9FD6B9; --neg: #F2B4A5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--b-page); color: var(--b-ink); font: var(--t-label)/normal var(--po-font); -webkit-font-smoothing: antialiased; }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.n, .cnt, .amt, b, em { font-variant-numeric: tabular-nums; }
+
+/* the back office shell: sidebar + main, as the app */
+.shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
+.side { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 2px; padding: 18px 8px 12px; background: var(--b-side); border-right: 1px solid var(--b-outline); }
+.side .store { display: flex; align-items: center; gap: 8px; padding: 6px 10px 20px; font-size: 14px; font-weight: 600; }
+.side .store i { width: 18px; height: 18px; border-radius: 5px; background: #1FA463; }
+.side a { display: flex; align-items: center; gap: 12px; height: 30px; padding: 0 10px; border-radius: 8px; color: var(--b-ink); font-size: 14px; text-decoration: none; }
+.side a.on { background: #E6E6E6; } .side a:hover { background: #EDEDED; }
+.side svg { width: 16px; height: 16px; flex: none; }
+.side .sp { margin-top: auto; }
+.side small { color: var(--b-ink-3); font-size: var(--t-micro); }
+.main { min-width: 0; padding: 22px 24px 200px; }
+
+.bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.seg { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--btn-soft); margin-right: auto; }
+.seg span { height: 26px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: 999px; color: var(--b-ink-2); }
+.seg span.on { background: #fff; color: var(--b-ink); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04); }
+.pk { height: var(--btn-h); padding: 0 28px 0 12px; border: 1px solid var(--b-outline); border-radius: var(--btn-r); background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M2 3.5 5 6.5 8 3.5' fill='none' stroke='%23616161' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center; appearance: none; cursor: pointer; }
+.pk.set { border-color: var(--b-data); background-color: var(--b-data-tint); color: var(--b-data-ink); }
+.filters { display: flex; gap: 8px; margin-bottom: 12px; }
+.search { flex: 1; min-width: 0; height: var(--btn-h); padding: 0 12px; border: 1px solid var(--b-outline); border-radius: var(--btn-r); outline: 0; }
+.search:focus { border-color: #B5B5B5; }
+
+/* blocks: flex, as the app's .rail.bd — the small ones share a row and stretch, a wide chart takes the whole row */
+.blocks { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+.blocks > .card { flex: 1 1 300px; min-width: 0; } .blocks > .wide { flex-basis: 100%; }
+.card { background: var(--b-raised); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+.band { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-2); font-weight: 500; }
+.band .r { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; color: var(--b-ink-3); font-weight: 400; font-size: var(--t-meta); white-space: nowrap; }
+.band .r b { color: var(--b-ink); font-size: 15px; font-weight: 600; }
+.card.one .band { min-height: 40px; border-bottom: 0; }
+.cut { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border: 0; border-radius: 6px; background: var(--b-data-tint); color: var(--b-data-ink); font-size: var(--t-meta); }
+.key { display: inline-flex; align-items: center; gap: 5px; } .key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
+.key s { display: inline-block; width: 12px; border-top: 2px solid var(--b-ink-3); }
+.empty { margin: 0; padding: 14px var(--b-pad); color: var(--b-ink-3); }
+.chip { font-size: var(--t-micro); font-weight: 600; padding: 2px 6px; border-radius: 6px; }
+.chip.up { background: var(--b-up-tint); color: var(--b-up); } .chip.down { background: var(--b-down-tint); color: var(--b-down); } .chip.flat { background: var(--b-flat-tint); color: var(--b-ink-2); }
+.sw { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 3px; vertical-align: -1px; }
+
+/* rows: Now · List and every legend. Name, a grey second number, the bold one */
+.row { display: flex; align-items: center; gap: 12px; min-height: 34px; padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); cursor: pointer; }
+.rows .row:first-child { border-top: 0; }
+.row:hover { background: #F6F6F6; } .row.on, .row.on:hover { background: var(--b-data-tint); } .row.on .nm { color: var(--b-data-ink); font-weight: 500; }
+.row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .cnt { color: var(--b-ink-3); } .row .amt { min-width: 60px; text-align: right; font-weight: 600; }
+.row.other { cursor: default; color: var(--b-ink-2); } .row.other:hover { background: none; }
+
+/* A · one bar: every method's share in one line, the legend is the list */
+.sbar { display: flex; gap: 2px; height: 14px; margin: 16px var(--b-pad) 14px; border-radius: 4px; overflow: hidden; }
+.sbar i { min-width: 2px; cursor: pointer; transition: opacity .12s; display: grid; place-items: center; font-style: normal; font-size: var(--t-micro); font-weight: 600; color: #fff; }
+.sbar i.lt { color: var(--b-ink); } .sbar i.dim { opacity: .35; } .sbar:hover i:not(:hover) { opacity: .55; }
+.two { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: center; gap: 8px 10px; padding: 16px var(--b-pad) 14px; }
+.two .sbar { height: 22px; margin: 0; } .two span { color: var(--b-ink-3); font-size: var(--t-meta); }
+
+/* B · donut */
+.pie { position: relative; display: grid; place-items: center; padding: 16px 0 14px; }
+.pie svg { width: 150px; height: 150px; display: block; }
+.pie path, .pie circle { cursor: pointer; transition: opacity .12s; } .pie svg:hover :is(path, circle):not(:hover) { opacity: .45; }
+.pie .mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+.pie .mid b { font-size: 17px; font-weight: 600; } .pie .mid span { color: var(--b-ink-3); font-size: var(--t-micro); }
+
+/* C · bars: name, second number, value; the bar under, all on one pesos scale */
+.hb { display: grid; grid-template-columns: minmax(0, 1fr) auto 64px; align-items: center; gap: 5px 12px; padding: 8px var(--b-pad) 10px; border-top: 1px solid var(--b-line); cursor: pointer; }
+.hb:first-child { border-top: 0; }
+.hb:hover { background: #F6F6F6; } .hb.on { background: var(--b-data-tint); } .hb.on .nm { color: var(--b-data-ink); font-weight: 500; }
+.hb.other { cursor: default; } .hb.other:hover { background: none; }
+.hb .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .hb .cnt { color: var(--b-ink-3); font-size: var(--t-meta); } .hb .amt { text-align: right; font-weight: 600; }
+.hb .trk { grid-column: 1 / -1; display: block; height: 8px; border-radius: 4px; background: var(--b-track); overflow: hidden; }
+.hb .trk b { display: block; height: 100%; border-radius: 4px; background: var(--b-data); } .hb.other .trk b { background: var(--s-other); }
+
+/* Fulfilment A · split: count first, then pesos and the average sale; two thin share bars */
+.spl { display: grid; }
+.spl button { display: grid; gap: 4px; padding: 12px var(--b-pad); border: 0; border-top: 1px solid var(--b-line); background: none; text-align: left; }
+.spl button:first-child { border-top: 0; } .spl button:hover { background: #F6F6F6; } .spl button.on { background: var(--b-data-tint); }
+.spl .t { display: flex; align-items: baseline; gap: 8px; } .spl .t > span:first-child { flex: 1; color: var(--b-ink-2); font-weight: 500; }
+.spl .t em { font-style: normal; color: var(--b-ink-3); font-size: var(--t-meta); } .spl .t em b { color: var(--b-ink); }
+.spl .v { font-size: 20px; font-weight: 600; } .spl .v small { margin-left: 6px; color: var(--b-ink-3); font-size: var(--t-meta); font-weight: 400; }
+.pr { display: grid; grid-template-columns: 48px minmax(0, 1fr) 34px; align-items: center; gap: 8px; height: 14px; color: var(--b-ink-3); font-size: var(--t-micro); }
+.pr i { display: block; height: 6px; border-radius: 3px; background: var(--b-track); overflow: hidden; } .pr i b { display: block; height: 100%; border-radius: 3px; }
+.pr em { font-style: normal; text-align: right; }
+
+/* columns: by hour, by size. One axis on the left, gridlines, labels under */
+.cols { padding: 18px var(--b-pad) 10px 64px; }
+.plot { position: relative; display: flex; gap: 6px; border-bottom: 1px solid #D4D4D4; }
+.plot .gl { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--b-line); pointer-events: none; }
+.plot .gl.z { border-top-color: #B5B5B5; }
+.plot .gl span { position: absolute; right: calc(100% + 8px); top: -7px; color: var(--b-ink-3); font-size: var(--t-micro); white-space: nowrap; }
+.plot .c { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column-reverse; cursor: pointer; border-radius: 4px 4px 0 0; }
+.plot .c:hover { background: rgb(43 125 233 / .06); }
+.plot .c b { display: block; flex: none; margin: 0 14%; } .plot .c b:last-child { border-radius: 3px 3px 0 0; }
+.plot .c s { position: absolute; left: 8%; right: 8%; height: 0; border-top: 2px solid var(--b-ink-3); }
+.plot .c em { position: absolute; left: -10px; right: -10px; margin-bottom: 3px; text-align: center; font-style: normal; font-size: var(--t-micro); color: var(--b-ink-2); }
+.plot.dv .c b { position: absolute; left: 0; right: 0; } .plot.dv .c b.pos { background: var(--pos); border-radius: 3px 3px 0 0; } .plot.dv .c b.neg { background: var(--neg); border-radius: 0 0 3px 3px; }
+.xl { display: flex; gap: 6px; padding-top: 6px; }
+.xl span { flex: 1; min-width: 0; text-align: center; color: var(--b-ink-3); font-size: var(--t-micro); white-space: nowrap; }
+.xl small { display: block; margin-top: 1px; color: var(--b-ink-2); }
+
+/* Net B · tiles */
+.strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.strip > div { padding: 12px var(--b-pad) 14px; } .strip > div + div { box-shadow: inset 1px 0 0 var(--b-line); }
+.strip .l { color: var(--b-ink-2); font-weight: 500; }
+.strip .v { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+.strip .v small { color: var(--b-ink-3); font-size: var(--t-meta); font-weight: 400; letter-spacing: 0; }
+
+/* heat grids: staff × hour, weekday × hour */
+.hm { display: grid; grid-template-columns: 130px repeat(12, minmax(0, 1fr)) 64px; gap: 3px; align-items: center; padding: 12px var(--b-pad) 14px; }
+.hm i { display: block; height: 24px; border-radius: 4px; }
+.hm .hh { color: var(--b-ink-3); font-size: var(--t-micro); text-align: center; }
+.hm .nm { padding-right: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm button.nm { border: 0; background: none; padding: 0 10px 0 0; text-align: left; } .hm button.nm:hover { text-decoration: underline; } .hm .nm.on { color: var(--b-data-ink); font-weight: 600; }
+.hm .tt { text-align: right; font-weight: 600; } .hm .hh.tt { font-weight: 400; }
+.hk { display: inline-flex; align-items: center; gap: 3px; } .hk i { width: 12px; height: 10px; border-radius: 2px; } .hk i:first-of-type { margin-left: 4px; } .hk i:last-of-type { margin-right: 4px; }
+
+/* Staff B · leaderboard */
+table { width: 100%; border-collapse: collapse; }
+th { height: 32px; padding: 0 var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-2); font-weight: 500; text-align: left; white-space: nowrap; }
+td { height: 38px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+tbody tr { cursor: pointer; } tbody tr:hover td { background: #FAFAFA; } tbody tr.on td { background: var(--b-data-tint); }
+th.n, td.n { text-align: right; }
+.rk { width: 36px; color: var(--b-ink-3); } tr:nth-child(-n+3) .rk { color: var(--b-ink); font-weight: 600; }
+.av { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-right: 10px; border-radius: 50%; background: var(--b-data-tint); color: var(--b-data-ink); font-size: 10px; font-weight: 600; vertical-align: middle; }
+.ib { display: inline-block; width: 90px; height: 6px; margin-right: 12px; border-radius: 3px; background: var(--b-track); vertical-align: 1px; overflow: hidden; } .ib i { display: block; height: 100%; border-radius: 3px; background: var(--b-data); }
+
+/* Staff C · scatter */
+.scroll { overflow-x: auto; }
+.xy { display: block; width: 100%; height: auto; }
+.xy text { font-size: 12px; fill: var(--b-ink); font-family: var(--po-font); } .xy .ax { fill: var(--b-ink-3); font-size: 11px; }
+.xy .gl { stroke: var(--b-line); } .xy .med { stroke: #D4D4D4; stroke-dasharray: 3 3; } .xy .ld { stroke: #B5B5B5; }
+.xy circle { fill: var(--b-data); fill-opacity: .8; stroke: #fff; stroke-width: 1.5; cursor: pointer; } .xy circle:hover { fill-opacity: 1; } .xy circle.on { stroke: #303030; stroke-width: 2; }
+
+/* the hover tip */
+#tip { position: fixed; z-index: 20; pointer-events: none; display: none; min-width: 170px; padding: 8px 10px; background: #fff; border: 1px solid var(--b-outline); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.08); font-size: var(--t-meta); }
+#tip b { display: block; margin-bottom: 4px; }
+#tip div { display: flex; justify-content: space-between; gap: 16px; color: var(--b-ink-2); } #tip div em { font-style: normal; color: var(--b-ink); font-weight: 600; }
+
+/* the lab panel */
+.lab { position: fixed; right: 16px; bottom: 16px; z-index: 30; display: grid; gap: 6px; padding: 10px 12px; background: #fff; border: 1px solid var(--b-outline); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.1); font-size: var(--t-meta); }
+.lab .g { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.lab .g > span { width: 76px; color: var(--b-ink-3); }
+.lab button { height: 24px; padding: 0 9px; border: 1px solid var(--b-outline); border-radius: 6px; background: #fff; }
+.lab button.on { background: #303030; border-color: #303030; color: #fff; }
+.lab .min { justify-self: end; height: 20px; border: 0; padding: 0 4px; color: var(--b-ink-3); }
+.lab .note { max-width: 380px; color: var(--b-ink-3); line-height: 1.4; }
+
+@media (max-width: 1100px) { .strip { grid-template-columns: repeat(3, 1fr); } .strip > div:nth-child(n+4) { border-top: 1px solid var(--b-line); } .strip > div:nth-child(4) { box-shadow: none; } }
+@media (max-width: 760px) {
+  .shell { display: block; } .side { display: none; }
+  .main { padding: 16px 16px 24px; }
+  .filters { flex-wrap: wrap; } .search { flex-basis: 100%; } .filters .pk { flex: 1 1 0; min-width: 0; padding-right: 22px; background-position: right 7px center; }
+  .strip { grid-template-columns: 1fr 1fr; } .strip > div:nth-child(odd) { box-shadow: none; } .strip > div:nth-child(4) { box-shadow: inset 1px 0 0 var(--b-line); } .strip > div:nth-child(n+3) { border-top: 1px solid var(--b-line); } .strip > div:last-child { grid-column: 1 / -1; }
+  .cols { padding-left: 52px; } .hours .xl span:nth-child(even) { visibility: hidden; }
+  .scroll > * { min-width: 760px; }
+  .hm { grid-template-columns: 76px repeat(12, minmax(0, 1fr)); gap: 2px; } .hm .tt { display: none; } .hm i { height: 20px; }
+  .band { flex-wrap: wrap; padding-block: 7px; row-gap: 4px; } .band .r { white-space: normal; flex-wrap: wrap; }
+  :is(th, td):is(.m1, .m2) { display: none; } .ib { width: 40px; }
+  .lab { position: static; margin: 0 16px 16px; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="side">
+    <div class="store"><i></i>Main Store</div>
+    <a href="#"><svg viewBox="0 0 16 16" fill="currentColor"><rect x="1.5" y="1.5" width="5.5" height="6.5" rx="1.2"/><rect x="9" y="1.5" width="5.5" height="4" rx="1.2"/><rect x="1.5" y="10" width="5.5" height="4.5" rx="1.2"/><rect x="9" y="7.5" width="5.5" height="7" rx="1.2"/></svg>Dashboard</a>
+    <a href="#"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5h12v11H2z" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="4.5" y="7" width="2" height="4.5"/><rect x="7.5" y="4.5" width="2" height="7"/></svg>Sales</a>
+    <a href="#" class="on"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 1.5h10v13H3z"/><path d="M5.5 5h5M5.5 8h5M5.5 11h3" stroke="#E6E6E6" stroke-width="1.3"/></svg>Transactions</a>
+    <a href="#"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 8.5 8 2h6v6l-6.5 6.5z"/><circle cx="11" cy="5" r="1.2" fill="#F7F7F7"/></svg>Products</a>
+    <a href="#"><svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="5" r="3"/><path d="M2.5 14.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5z"/></svg>Customers</a>
+    <a href="#"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 3.5h9v8H1zM10 6h3l2 2.5v3h-5z"/><circle cx="4" cy="12.5" r="1.6" fill="#F7F7F7" stroke="currentColor"/><circle cx="12" cy="12.5" r="1.6" fill="#F7F7F7" stroke="currentColor"/></svg>Suppliers</a>
+    <a href="#" class="sp"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="2.3"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg>Settings</a>
+    <a href="#"><svg viewBox="0 0 16 16"><rect width="16" height="16" rx="4" fill="#2B7DE9"/><circle cx="8" cy="6.5" r="2.2" fill="none" stroke="#fff" stroke-width="1.3"/><path d="M4.5 12.5c.6-1.7 2-2.5 3.5-2.5s2.9.8 3.5 2.5" fill="none" stroke="#fff" stroke-width="1.3"/></svg>El John <small>Owner</small></a>
+  </nav>
+  <main class="main" id="app"></main>
+</div>
+<div id="tip"></div>
+<div class="lab" id="lab"></div>
+
+<script>
+// ---------------------------------------------------------------- data (seeded)
+function rng(s) { return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646; }
+const STAFF_BIG = ['El John', 'Mara Santos', 'Jun Reyes', 'Ana Cruz', 'Paolo Lim', 'Rica Dizon', 'Ben Tan', 'Joy Ramos', 'Nico Garcia', 'Liza Uy', 'Carlo Mendoza', 'Tess Villar'];
+const CUST = ['RJ Builders', 'Casa Verde Homes', 'Mang Tony', 'Aling Nena', 'Dela Cruz Const.', 'St. Jude Parish', 'Rivera Farms', 'Lopez Hardware'];
+const ITEMS = ['Portland Cement 40kg', 'Deformed Bar 10mm', 'Hollow Block 4"', 'Tie Wire #16', 'PVC Pipe 1/2"', 'Boysen Paint 4L', 'Common Nail 3"', 'Plywood 1/2"', 'GI Sheet', 'Washed Sand', 'LED Bulb 9W', 'Electrical Tape'];
+const HOURS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];   // the store's day, 7am to 7pm
+const day = (k) => new Date(2026, 8, 29 - k).getTime();         // k days before Tue 29 Sep 2026
+function build(big) {
+  const r = rng(big ? 20260929 : 929), gauss = () => Math.sqrt(-2 * Math.log(r() || 1e-9)) * Math.cos(2 * Math.PI * r());
+  const pick = (ws) => { let x = r() * ws.reduce((s, w) => s + w, 0); for (let i = 0; i < ws.length; i++) if ((x -= ws[i]) < 0) return i; return ws.length - 1; };
+  const PAY = big ? [['cash', 'Cash', 46], ['gcash', 'GCash', 24], ['card', 'Card', 12], ['maya', 'Maya', 10], ['credit', 'Credit', 8]] : [['cash', 'Cash', 62], ['gcash', 'GCash', 30], ['card', 'Card', 8]];
+  const FUL = big ? [['walkin', 'Walk-in', 70], ['pickup', 'Pickup', 18], ['delivery', 'Delivery', 12]] : [['walkin', 'Walk-in', 82], ['pickup', 'Pickup', 18]];
+  const staff = big ? STAFF_BIG : ['El John', 'Mara', 'Jun'], sw = staff.map(() => .35 + r());
+  const HW = [.35, .75, 1, 1.15, .95, .6, .8, 1, 1.1, .9, .55, .3], WD = [.55, 1.1, 1, 1, 1, 1.05, 1.35];   // by hour; Sun … Sat
+  const O = []; let no = big ? 48210 : 1210;
+  for (let k = 59; k >= 0; k--) {
+    const d0 = day(k), n = Math.round((big ? 150 : 17) * WD[new Date(d0).getDay()] * (.8 + .4 * r()));
+    const ts = Array.from({ length: n }, () => d0 + (7 + pick(HW)) * 36e5 + Math.floor(r() * 36e5)).sort((a, b) => a - b);
+    for (const t of ts) {
+      const f = FUL[pick(FUL.map(x => x[2]))][0], p = PAY[pick(PAY.map(x => x[2]))][0];
+      const base = Math.exp(Math.log(420) + gauss() * 1.05) * (f === 'delivery' ? 3.2 : f === 'pickup' ? 1.7 : 1) * (p === 'credit' ? 2.5 : p === 'card' ? 1.6 : 1);
+      const total = Math.max(25, Math.round(base / 5) * 5), ret = r() < .02, disc = !ret && r() < .08 ? Math.round(total * .05) : 0;
+      O.push({ no: ++no, ts: t, pay: p, ful: f, staff: staff[pick(sw)], total: ret ? -Math.round(total * .6) : total - disc, disc,
+        cust: f === 'walkin' && r() < .8 ? '' : CUST[Math.floor(r() * CUST.length)], txt: ITEMS[Math.floor(r() * ITEMS.length)] + ' ' + ITEMS[Math.floor(r() * ITEMS.length)] });
+    }
+  }
+  return { O, staff, pay: Object.fromEntries(PAY.map(x => [x[0], x[1]])), ful: Object.fromEntries(FUL.map(x => [x[0], x[1]])) };
+}
+
+// ---------------------------------------------------------------- helpers (the Items lab's)
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const peso = (n) => (n < 0 ? '−₱' : '₱') + Math.round(Math.abs(n)).toLocaleString('en-US');
+const pesoK = (n) => { const a = Math.abs(n), s = n < 0 ? '−₱' : '₱'; return a >= 1e6 ? s + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : a >= 1e4 ? s + (a / 1e3).toFixed(1).replace(/\.0$/, '') + 'k' : peso(n); };
+const pct = (f, d = 0) => (isFinite(f) ? f * 100 : 0).toFixed(d) + '%';
+const num = (n) => n.toLocaleString('en-US');
+const chip = (cur, was) => { if (!was) return ''; const v = Math.round((cur - was) / Math.abs(was) * 100), k = v === 0 ? 'flat' : v > 0 ? 'up' : 'down';
+  return `<span class="chip ${k}">${k === 'up' ? '+' : k === 'down' ? '−' : ''}${Math.abs(v)}%</span>`; };
+const vsTxt = (cur, was) => was ? `${cur >= was ? '+' : '−'}${Math.round(Math.abs(cur - was) / Math.abs(was) * 100)}%` : 'New';
+const tip = (title, rows) => esc(`<b>${esc(title)}</b>` + rows.map(([l, v]) => `<div>${l}<em>${v}</em></div>`).join(''));
+const niceStep = (m) => { const raw = (m || 1) / 4, e = 10 ** Math.floor(Math.log10(raw)); return [1, 2, 2.5, 5, 10].map(x => x * e).find(x => x >= raw); };
+const hr = (h) => `${h % 12 || 12}${h < 12 ? 'am' : 'pm'}`, hrShort = (h) => `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`;
+const HEAT = ['#F3F3F3', 'var(--b-data-tint)', 'var(--b-data-1)', 'var(--s5)', 'var(--s4)', 'var(--s3)', 'var(--s1)'];
+const heat = (v, max) => v <= 0 ? HEAT[0] : HEAT[1 + Math.min(5, Math.floor(v / max * 6 - 1e-9))];
+const HEATKEY = `<span class="hk">Less${HEAT.slice(1).map(c => `<i style="background:${c}"></i>`).join('')}More</span>`;
+const EMPTY = '<p class="empty">No sales here.</p>';
+
+// ---------------------------------------------------------------- state + filtering
+const S = { net: 'hours', pay: 'stack', ful: 'split', staff: 'bars', size: 'hist', busy: 'grid', big: true, rg: 'today', q: '', f: { pay: '', staff: '', ful: '' }, labMin: false };
+let D = build(true);
+const RANGES = {
+  today: { l: 'Today', from: day(0), to: day(-1), pf: day(7), pt: day(6), pl: 'last Tuesday' },
+  week: { l: 'Last 7 days', from: day(6), to: day(-1), pf: day(13), pt: day(6), pl: 'the week before' },
+  month: { l: 'September', from: day(28), to: day(-1), pf: new Date(2026, 7, 1).getTime(), pt: new Date(2026, 7, 30).getTime(), pl: 'Aug 1–29' },
+};
+const NAME = (f, k) => f === 'staff' ? k : D[f][k];
+const TITLE = { pay: 'Payment', ful: 'Fulfilment', staff: 'Staff' };
+const hit = (o) => !S.q || `#${o.no} ${o.cust} ${o.staff} ${o.txt}`.toLowerCase().includes(S.q.toLowerCase().trim());
+// skip: the facet whose own filter is ignored, so its block still lists every value (as the app's txPass)
+function pass(o, skip, prev) {
+  const R = RANGES[S.rg], a = prev ? R.pf : R.from, b = prev ? R.pt : R.to;
+  if (o.ts < a || o.ts >= b || !hit(o)) return false;
+  for (const f of ['pay', 'staff', 'ful']) if (f !== skip && S.f[f] && o[f] !== S.f[f]) return false;
+  return true;
+}
+const sel = (skip, prev) => D.O.filter(o => pass(o, skip, prev));
+const kpi = (A) => { let v = 0, n = 0, r = 0, rv = 0, disc = 0; for (const o of A) { v += o.total; disc += o.disc; if (o.total > 0) n++; else { r++; rv -= o.total; } } return { v, n, r, rv, disc, avg: n ? v / n : 0 }; };
+function facet(f) {
+  const m = new Map(), prev = new Map();
+  for (const o of sel(f)) { const e = m.get(o[f]) || { k: o[f], name: NAME(f, o[f]), n: 0, v: 0, r: 0, pv: 0 }; e.v += o.total; o.total > 0 ? e.n++ : e.r++; m.set(o[f], e); }
+  for (const o of sel(f, true)) prev.set(o[f], (prev.get(o[f]) || 0) + o.total);
+  return [...m.values()].map(e => ({ ...e, pv: prev.get(e.k) || 0 })).sort((a, b) => b.v - a.v);
+}
+const sumV = (rows) => rows.reduce((s, e) => s + e.v, 0);
+function topN(rows, n) {   // top n + Other, so a 15-person staff still reads as one chart
+  if (rows.length <= n + 1) return rows;
+  const rest = rows.slice(n), add = (k) => rest.reduce((s, e) => s + e[k], 0);
+  return [...rows.slice(0, n), { k: '', name: `Other ${rest.length}`, other: true, n: add('n'), v: add('v'), r: add('r'), pv: add('pv') }];
+}
+const colors = (rows) => { const R = rows.filter(e => !e.other).length <= 3 ? ['var(--s1)', 'var(--s3)', 'var(--s5)'] : ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)']; return rows.map((e, i) => e.other ? 'var(--s-other)' : R[i]); };
+const light = (c) => /s4|s5|other/.test(c);
+const fTip = (e, tot) => tip(e.name, [['Net sales', peso(e.v)], ['Sales', num(e.n)], ...(e.r ? [['Returns', e.r]] : []), ['Average sale', e.n ? peso(e.v / e.n) : '—'], ['Share', pct(e.v / tot, 1)], ['vs ' + RANGES[S.rg].pl, vsTxt(e.v, e.pv)]]);
+const fAttr = (f, e, tot) => `${e.other ? '' : `data-f="${f}" data-v="${esc(e.k)}" `}data-tip="${fTip(e, tot)}"`;
+const on = (f, e) => e.other ? ' other' : S.f[f] === e.k ? ' on' : '';
+const cutBtn = (f) => S.f[f] ? `<button class="cut" data-f="${f}" data-v="">${esc(NAME(f, S.f[f]))} ✕</button>` : '';
+const card = (title, right, body, cls = '') => `<section class="card ${cls}"><div class="band">${title}<span class="r">${right}</span></div>${body}</section>`;
+
+// ---------------------------------------------------------------- shared charts
+function cols(list, max, fmt, h = 180, cls = '') {
+  const st = niceStep(max), top = Math.ceil(max / st) * st || 1, ticks = [];
+  for (let t = 0; t <= top + 1e-9; t += st) ticks.push(t);
+  return `<div class="cols ${cls}"><div class="plot" style="height:${h}px">${ticks.map(t => `<i class="gl" style="bottom:${t / top * 100}%"><span>${fmt(t)}</span></i>`).join('')}
+    ${list.map(c => `<div class="c" ${c.attrs || ''} data-tip="${c.tip}">${c.parts.map(p => `<b style="height:${Math.max(0, p.v) / top * 100}%;background:${p.c}"></b>`).join('')}`
+      + `${c.mark != null ? `<s style="bottom:${Math.max(0, c.mark) / top * 100}%"></s>` : ''}${c.lab != null ? `<em style="bottom:${Math.max(0, c.top) / top * 100}%">${c.lab}</em>` : ''}</div>`).join('')}</div>
+    <div class="xl">${list.map(c => `<span>${c.l}</span>`).join('')}</div></div>`;
+}
+const byHour = (A) => { const a = HOURS.map(() => ({ v: 0, n: 0 })); for (const o of A) { const i = new Date(o.ts).getHours() - 7; if (a[i]) { a[i].v += o.total; a[i].n += o.total > 0; } } return a; };
+function legend(f, rows, c, tot, second = (e) => pct(Math.max(0, e.v) / tot)) {
+  return `<div class="lg">${rows.map((e, i) => `<div class="row${on(f, e)}" ${fAttr(f, e, tot)}><span class="nm"><i class="sw" style="background:${c[i]}"></i>${esc(e.name)}</span><span class="cnt">${second(e)}</span><span class="amt">${pesoK(e.v)}</span></div>`).join('')}</div>`;
+}
+
+// ---------------------------------------------------------------- Net sales
+function netBand() {   // Now: one line across
+  const k = kpi(sel());
+  return `<section class="card one wide"><div class="band">Net sales<span class="r">${num(k.n)} sales <b>${pesoK(k.v)}</b></span></div></section>`;
+}
+function netHours() {
+  const R = RANGES[S.rg], L = sel(), cur = byHour(L), prv = byHour(sel(null, true)), k = kpi(L), pk = kpi(sel(null, true));
+  const max = Math.max(1, ...cur.map(x => x.v), ...prv.map(x => x.v));
+  const list = HOURS.map((h, i) => ({ l: hrShort(h), parts: [{ v: cur[i].v, c: 'var(--b-data)' }], mark: prv[i].v,
+    tip: tip(`${hr(h)}–${hr(h + 1)}`, [['Net sales', peso(cur[i].v)], ['Sales', cur[i].n], ['Average sale', cur[i].n ? peso(cur[i].v / cur[i].n) : '—'], [R.pl, peso(prv[i].v)]]) }));
+  return card('Net sales · by hour', `<span class="key"><i style="background:var(--b-data)"></i>${R.l}</span><span class="key"><s></s>${R.pl}</span>${num(k.n)} sales <b>${pesoK(k.v)}</b>${chip(k.v, pk.v)}`, cols(list, max, pesoK, 180, 'hours'), 'wide');
+}
+function netTiles() {
+  const k = kpi(sel()), p = kpi(sel(null, true)), cell = (l, v, c = '') => `<div><div class="l">${l}</div><div class="v">${v}${c}</div></div>`;
+  return `<section class="card wide"><div class="strip">${cell('Net sales', pesoK(k.v), chip(k.v, p.v))}${cell('Sales', num(k.n), chip(k.n, p.n))}${cell('Average sale', peso(k.avg), chip(k.avg, p.avg))}`
+    + `${cell('Discounts', pesoK(k.disc), chip(k.disc, p.disc))}${cell('Returns', k.r, `<small>${pesoK(k.rv)}</small>`)}</div></section>`;
+}
+function netVs() {   // C · against the same hours before: green over the line, red under
+  const R = RANGES[S.rg], cur = byHour(sel()), prv = byHour(sel(null, true)), d = cur.map((x, i) => x.v - prv[i].v), k = kpi(sel()), pk = kpi(sel(null, true));
+  const st = niceStep(Math.max(1, ...d.map(Math.abs)) * 2) / 2, top = Math.ceil(Math.max(1, ...d.map(Math.abs)) / st) * st;
+  const ticks = [-top, -top / 2, 0, top / 2, top], sg = (t) => (t > 0 ? '+' : '') + pesoK(t);
+  return card(`Net sales · vs ${R.pl}`, `<span class="key"><i style="background:var(--pos)"></i>More</span><span class="key"><i style="background:var(--neg)"></i>Less</span><b>${pesoK(k.v - pk.v)}</b>${chip(k.v, pk.v)}`,
+    `<div class="cols hours"><div class="plot dv" style="height:180px">${ticks.map(t => `<i class="gl${t ? '' : ' z'}" style="bottom:${(t / top + 1) * 50}%"><span>${sg(t)}</span></i>`).join('')}
+      ${d.map((x, i) => `<div class="c" data-tip="${tip(`${hr(HOURS[i])}–${hr(HOURS[i] + 1)}`, [[R.l, peso(cur[i].v)], [R.pl, peso(prv[i].v)], ['Difference', (x >= 0 ? '+' : '') + peso(x)]])}"><b class="${x >= 0 ? 'pos' : 'neg'}" style="margin:0 14%;${x >= 0 ? 'bottom' : 'top'}:50%;height:${Math.abs(x) / top * 50}%"></b></div>`).join('')}</div>
+      <div class="xl">${HOURS.map(h => `<span>${hrShort(h)}</span>`).join('')}</div></div>`, 'wide');
+}
+
+// ---------------------------------------------------------------- Payment · Fulfilment · Staff (each variant works for any of the three)
+function listV(f, countLed) {   // Now · List, with the labels showing
+  const rows = facet(f), tot = sumV(rows);
+  return card(TITLE[f], cutBtn(f), rows.length ? `<div class="rows">${rows.map(e => `<div class="row${on(f, e)}" ${fAttr(f, e, tot)}><span class="nm">${esc(e.name)}</span>`
+    + `<span class="cnt">${countLed ? pesoK(e.v) : num(e.n)}</span><span class="amt">${countLed ? num(e.n) : pesoK(e.v)}</span></div>`).join('')}</div>` : EMPTY);
+}
+function stackV(f) {
+  const all = facet(f), tot = sumV(all), rows = topN(all, 5), c = colors(rows);
+  if (!rows.length) return card(TITLE[f], cutBtn(f), EMPTY);
+  return card(TITLE[f], cutBtn(f) || `${all.length} ${f === 'staff' ? 'people' : 'kinds'}`, `<div class="sbar">${rows.map((e, i) => e.v > 0 ? `<i style="flex:${e.v};background:${c[i]}"${S.f[f] && S.f[f] !== e.k ? ' class="dim"' : ''} ${fAttr(f, e, tot)}></i>` : '').join('')}</div>${legend(f, rows, c, tot)}`);
+}
+function donutV(f) {
+  const all = facet(f), tot = sumV(all), rows = topN(all, 5), c = colors(rows), pos = rows.reduce((s, e) => s + Math.max(0, e.v), 0);
+  if (!pos) return card(TITLE[f], cutBtn(f), EMPTY);
+  const R = 72, r0 = 48, p = (a, rad) => `${(80 + rad * Math.cos(a)).toFixed(2)} ${(80 + rad * Math.sin(a)).toFixed(2)}`;
+  let a = -Math.PI / 2;
+  const arcs = rows.map((e, i) => { if (e.v <= 0) return ''; const t = e.v / pos * Math.PI * 2, a1 = a + t, lg = t > Math.PI ? 1 : 0, from = a; a = a1;
+    return t > Math.PI * 2 - 1e-6 ? `<circle cx="80" cy="80" r="${(R + r0) / 2}" fill="none" stroke="${c[i]}" stroke-width="${R - r0}" ${fAttr(f, e, tot)}/>`
+      : `<path d="M${p(from, R)} A${R} ${R} 0 ${lg} 1 ${p(a1, R)} L${p(a1, r0)} A${r0} ${r0} 0 ${lg} 0 ${p(from, r0)}Z" fill="${c[i]}" stroke="#fff" stroke-width="2" ${fAttr(f, e, tot)}/>`; }).join('');
+  return card(TITLE[f], cutBtn(f), `<div class="pie"><svg viewBox="0 0 160 160">${arcs}</svg><div class="mid"><b>${pesoK(tot)}</b><span>net sales</span></div></div>${legend(f, rows, c, tot)}`);
+}
+function barsV(f, o = {}) {
+  const val = o.val || (e => e.v), fmt = o.fmt || pesoK, sub = o.sub || (e => `${num(e.n)} sales`);
+  const all = facet(f), tot = sumV(all), rows = topN(all, o.n || 7).sort((a, b) => !!a.other - !!b.other || val(b) - val(a)), max = Math.max(1, ...rows.map(val));
+  return card(o.title || TITLE[f], cutBtn(f) || o.right || '', rows.length ? `<div class="hbs">${rows.map(e => `<div class="hb${on(f, e)}" ${fAttr(f, e, tot)}><span class="nm">${esc(e.name)}</span><span class="cnt">${sub(e)}</span><span class="amt">${fmt(val(e))}</span>`
+    + `<i class="trk"><b style="width:${Math.max(0, val(e)) / max * 100}%"></b></i></div>`).join('')}</div>` : EMPTY);
+}
+function payHour() {   // D · by hour, stacked by method: when does GCash beat cash?
+  const all = facet('pay'), rows = topN(all, 5), c = colors(rows), keys = rows.map(e => e.k), A = sel('pay');
+  const cells = HOURS.map(() => rows.map(() => 0));
+  for (const o of A) { const i = new Date(o.ts).getHours() - 7; if (!cells[i]) continue; const j = keys.includes(o.pay) ? keys.indexOf(o.pay) : keys.indexOf(''); if (j >= 0) cells[i][j] += o.total; }
+  const max = Math.max(1, ...cells.map(r => r.reduce((s, v) => s + Math.max(0, v), 0)));
+  const list = HOURS.map((h, i) => ({ l: hrShort(h), parts: rows.map((e, j) => ({ v: cells[i][j], c: c[j] })),
+    tip: tip(`${hr(h)}–${hr(h + 1)}`, rows.map((e, j) => [e.name, peso(cells[i][j])])) }));
+  return card('Payment · by hour', cutBtn('pay') + rows.map((e, j) => `<span class="key"><i style="background:${c[j]}"></i>${esc(e.name)}</span>`).join(''), cols(list, max, pesoK, 180, 'hours'), 'wide');
+}
+function fulSplit() {   // A · count first (the app's rule for fulfilment), pesos and the average sale beside, two share bars
+  const rows = facet('ful'), tot = sumV(rows), totN = rows.reduce((s, e) => s + e.n, 0), c = colors(rows);
+  const bar = (l, f, col) => `<div class="pr"><span>${l}</span><i><b style="width:${Math.max(0, f) * 100}%;background:${col}"></b></i><em>${pct(f)}</em></div>`;
+  return card('Fulfilment', cutBtn('ful'), rows.length ? `<div class="spl">${rows.map((e, i) => `<button class="${on('ful', e).trim()}" ${fAttr('ful', e, tot)}>`
+    + `<div class="t"><span><i class="sw" style="background:${c[i]}"></i>${esc(e.name)}</span><em>avg <b>${e.n ? peso(e.v / e.n) : '—'}</b></em></div>`
+    + `<div class="v">${num(e.n)}<small>sales · ${pesoK(e.v)}</small></div>${bar('of sales', e.n / totN, c[i])}${bar('of ₱', e.v / tot, c[i])}</button>`).join('')}</div>` : EMPTY);
+}
+function fulTwo() {   // B · the same split twice: by count and by pesos. Delivery is few receipts but big ones.
+  const rows = facet('ful'), tot = sumV(rows), totN = rows.reduce((s, e) => s + e.n, 0), c = colors(rows);
+  const seg = (f, fn) => rows.map((e, i) => { const s = Math.max(0, fn(e)); return s > 0 ? `<i class="${light(c[i]) ? 'lt' : ''}${S.f.ful && S.f.ful !== e.k ? ' dim' : ''}" style="flex:${s};background:${c[i]}" ${fAttr('ful', e, tot)}>${s / f >= .12 ? pct(s / f) : ''}</i>` : ''; }).join('');
+  if (!rows.length) return card('Fulfilment', cutBtn('ful'), EMPTY);
+  return card('Fulfilment', cutBtn('ful'), `<div class="two"><span>Sales</span><div class="sbar">${seg(totN, e => e.n)}</div><span>Net ₱</span><div class="sbar">${seg(tot, e => e.v)}</div></div>`
+    + legend('ful', rows, c, tot, e => `${num(e.n)} · avg ${e.n ? pesoK(e.v / e.n) : '—'}`));
+}
+function staffBoard() {   // B · leaderboard: everyone, ranked, with the week-on-week chip
+  const rows = facet('staff'), tot = sumV(rows), max = Math.max(1, ...rows.map(e => e.v)), R = RANGES[S.rg];
+  return card('Staff', cutBtn('staff') || `${rows.length} people`, rows.length ? `<div class="scroll-no"><table><thead><tr><th class="rk">#</th><th>Staff</th><th class="n">Net sales</th><th class="n">Sales</th><th class="n m1">Average sale</th><th class="n m2">Returns</th><th class="n">vs ${R.pl}</th></tr></thead><tbody>`
+    + rows.map((e, i) => `<tr class="${on('staff', e).trim()}" data-f="staff" data-v="${esc(e.k)}" data-tip="${fTip(e, tot)}"><td class="rk">${i + 1}</td><td><span class="av">${esc(e.name.split(' ').map(w => w[0]).join('').slice(0, 2))}</span>${esc(e.name)}</td>`
+      + `<td class="n"><span class="ib"><i style="width:${Math.max(0, e.v) / max * 100}%"></i></span><b>${pesoK(e.v)}</b></td><td class="n">${num(e.n)}</td><td class="n m1">${e.n ? peso(e.v / e.n) : '—'}</td><td class="n m2">${e.r || '—'}</td><td class="n">${chip(e.v, e.pv) || '<span style="color:var(--b-ink-3)">New</span>'}</td></tr>`).join('')
+    + '</tbody></table></div>' : EMPTY, 'wide');
+}
+function staffXY() {   // C · who sells often, who sells big: sales count across, average sale up, dot = net sales
+  const rows = facet('staff').filter(e => e.n > 0), tot = sumV(rows);
+  if (!rows.length) return card('Staff', cutBtn('staff'), EMPTY, 'wide');
+  const W = 1000, H = 340, l = 64, rr = 110, t = 18, b = 40, avg = (e) => e.v / e.n;
+  const mx = Math.max(...rows.map(e => e.n)), my = Math.max(...rows.map(avg)), sx = niceStep(mx * 1.05), sy = niceStep(my * 1.1), tx = Math.ceil(mx * 1.05 / sx) * sx, ty = Math.ceil(my * 1.08 / sy) * sy, y0 = Math.max(0, Math.floor(Math.min(...rows.map(avg)) * .9 / sy) * sy), mv = Math.max(...rows.map(e => e.v));
+  const X = (n) => l + n / tx * (W - l - rr), Y = (a) => H - b - (a - y0) / (ty - y0) * (H - t - b);
+  const med = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; }, mN = med(rows.map(e => e.n)), mA = med(rows.map(avg));
+  let g = '';
+  for (let v = y0; v <= ty + 1e-9; v += sy) g += `<line class="gl" x1="${l}" x2="${W - rr}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${l - 8}" y="${Y(v) + 4}" text-anchor="end">${pesoK(v)}</text>`;
+  for (let v = 0; v <= tx + 1e-9; v += sx) g += `<text class="ax" x="${X(v)}" y="${H - b + 18}" text-anchor="middle">${num(v)}</text>`;
+  g += `<line class="med" x1="${X(mN)}" x2="${X(mN)}" y1="${t}" y2="${H - b}"/><line class="med" x1="${l}" x2="${W - rr}" y1="${Y(mA)}" y2="${Y(mA)}"/>`
+    + `<text class="ax" x="${W - rr + 6}" y="${Y(mA) + 4}">median sale</text><text class="ax" x="${W - rr}" y="${H - 6}" text-anchor="end">sales →</text>`;
+  const rad = (e) => 5 + Math.sqrt(Math.max(0, e.v) / mv) * 11, taken = rows.map(e => ({ x0: X(e.n) - rad(e), x1: X(e.n) + rad(e), y: Y(avg(e)) }));
+  const dots = rows.map(e => `<circle class="${S.f.staff === e.k ? 'on' : ''}" cx="${X(e.n)}" cy="${Y(avg(e))}" r="${rad(e)}" data-f="staff" data-v="${esc(e.k)}" data-tip="${fTip(e, tot)}"/>`).join('');
+  // labels top to bottom; one that would sit on an earlier label steps down 13px with a short leader back to its dot
+  const labels = [...rows].sort((a, b) => Y(avg(a)) - Y(avg(b))).map(e => { const cx = X(e.n), cy = Y(avg(e)), x0 = cx + rad(e) + 5, w = e.name.length * 6.4, bx = { x0, x1: x0 + w, y: cy };
+    for (let moved = true; moved;) { moved = false; for (const o of taken) if (bx.x0 < o.x1 && o.x0 < bx.x1 && Math.abs(bx.y - o.y) < 13 && o !== bx) { bx.y = o.y + 13; moved = true; } }
+    taken.push(bx);
+    return (bx.y - cy > 6 ? `<line class="ld" x1="${cx + rad(e)}" y1="${cy}" x2="${x0}" y2="${bx.y}"/>` : '') + `<text x="${x0}" y="${bx.y + 4}">${esc(e.name)}</text>`; }).join('');
+  return card('Staff · how they sell', cutBtn('staff') || 'Right = more sales · Up = bigger sales · Dot = net sales', `<div class="scroll"><svg class="xy" viewBox="0 0 ${W} ${H}">${g}${dots}${labels}</svg></div>`, 'wide');
+}
+function heatGrid(rowsOf, keyOf, nameCell, tipOf, withTotal = true) {
+  const m = new Map();
+  for (const o of rowsOf.A) { const i = new Date(o.ts).getHours() - 7; if (i < 0 || i > 11) continue; const k = keyOf(o) + '|' + i, x = m.get(k) || { v: 0, n: 0 }; x.v += o.total; x.n += o.total > 0; m.set(k, x); }
+  const max = Math.max(1, ...[...m.values()].map(x => x.v));
+  return `<div class="hm"><span></span>${HOURS.map(h => `<span class="hh">${hrShort(h)}</span>`).join('')}${withTotal ? '<span class="hh tt">Total</span>' : ''}`
+    + rowsOf.keys.map(r => { let tv = 0; const cells = HOURS.map((h, i) => { const x = m.get(r + '|' + i) || { v: 0, n: 0 }; tv += x.v; return `<i style="background:${heat(x.v, max)}" data-tip="${tipOf(r, h, x)}"></i>`; }).join('');
+      return nameCell(r) + cells + (withTotal ? `<span class="tt">${pesoK(tv)}</span>` : ''); }).join('') + '</div>';
+}
+function staffHeat() {   // D · who sold when: one row a person, one column an hour
+  const rows = facet('staff');
+  return card('Staff · by hour', cutBtn('staff') + HEATKEY, rows.length ? heatGrid({ A: sel('staff'), keys: rows.map(e => e.k) }, o => o.staff,
+    (k) => `<button class="nm${S.f.staff === k ? ' on' : ''}" data-f="staff" data-v="${esc(k)}">${esc(k)}</button>`,
+    (k, h, x) => tip(`${k} · ${hr(h)}–${hr(h + 1)}`, [['Net sales', peso(x.v)], ['Sales', x.n]])) : EMPTY, 'wide');
+}
+
+// ---------------------------------------------------------------- new blocks
+const SIZES = [[0, 100, 'under ₱100'], [100, 250, '₱100–250'], [250, 500, '₱250–500'], [500, 1e3, '₱500–1k'], [1e3, 2500, '₱1k–2.5k'], [2500, 5e3, '₱2.5k–5k'], [5e3, 1e4, '₱5k–10k'], [1e4, Infinity, '₱10k+']];
+function sizes() {   // how big is a sale: receipts per size, and what share of the pesos each size brings
+  const A = sel().filter(o => o.total > 0), tot = A.reduce((s, o) => s + o.total, 0), s = [...A].sort((a, b) => a.total - b.total), med = s.length ? s[Math.floor(s.length / 2)].total : 0;
+  const b = SIZES.map(([lo, hi, l]) => { const xs = A.filter(o => o.total >= lo && o.total < hi); return { l, n: xs.length, v: xs.reduce((t, o) => t + o.total, 0) }; });
+  const max = Math.max(1, ...b.map(x => x.n));
+  const list = b.map(x => ({ l: `${x.l}<small>${pct(x.v / tot)} of ₱</small>`, parts: [{ v: x.n, c: 'var(--b-data)' }], lab: x.n ? num(x.n) : '', top: x.n,
+    tip: tip(x.l, [['Sales', num(x.n)], ['Of all sales', pct(x.n / A.length, 1)], ['Net sales', peso(x.v)], ['Of the pesos', pct(x.v / tot, 1)]]) }));
+  return card('Sales by size', `Median sale <b>${peso(med)}</b>`, A.length ? `<div class="scroll"><div>${cols(list, max, (v) => num(Math.round(v)), 160)}</div></div>` : EMPTY, 'wide');
+}
+const WDN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+function busy() {   // hour × weekday over the picked range: when to put more people on the till
+  const A = sel(), wd = (o) => WDN[(new Date(o.ts).getDay() + 6) % 7], days = {};
+  for (let t = RANGES[S.rg].from; t < RANGES[S.rg].to; t += 864e5) { const k = WDN[(new Date(t).getDay() + 6) % 7]; days[k] = (days[k] || 0) + 1; }
+  const keys = S.rg === 'today' ? WDN.filter(k => days[k]) : WDN;
+  return card('Busy hours', (S.rg === 'today' ? 'One day: pick Last 7 days or September to fill the week · ' : '') + HEATKEY, heatGrid({ A, keys }, wd, (k) => `<span class="nm">${k}</span>`,
+    (k, h, x) => tip(`${k} · ${hr(h)}–${hr(h + 1)}`, [['Net sales', peso(x.v)], ['Sales', x.n], ['Days', days[k] || 0], ['Per day', peso(x.v / (days[k] || 1))]])), 'wide');
+}
+
+// ---------------------------------------------------------------- page
+function render() {
+  const R = RANGES[S.rg], opt = (f, all, keys) => `<select class="pk${S.f[f] ? ' set' : ''}" data-pick="${f}"><option value="">${all}</option>${keys.map(k => `<option value="${esc(k)}"${S.f[f] === k ? ' selected' : ''}>${esc(NAME(f, k))}</option>`).join('')}</select>`;
+  const net = { band: netBand, hours: netHours, tiles: netTiles, vs: netVs }[S.net]();
+  const pay = { stack: () => stackV('pay'), donut: () => donutV('pay'), bars: () => barsV('pay'), hour: payHour, list: () => listV('pay') }[S.pay]();
+  const ful = { split: fulSplit, two: fulTwo, avg: () => barsV('ful', { title: 'Fulfilment · average sale', val: e => e.n ? e.v / e.n : 0, fmt: peso }), donut: () => donutV('ful'), list: () => listV('ful', true) }[S.ful]();
+  const staff = { bars: () => barsV('staff'), board: staffBoard, xy: staffXY, heat: staffHeat, list: () => listV('staff') }[S.staff]();
+  document.getElementById('app').innerHTML = `<div class="bar"><div class="seg"><span>List</span><span class="on">Breakdown</span></div>
+      <select class="pk" data-pick="rg">${Object.entries(RANGES).map(([k, r]) => `<option value="${k}"${S.rg === k ? ' selected' : ''}>${r.l}</option>`).join('')}</select></div>
+    <div class="filters"><input id="q" class="search" type="search" placeholder="Search receipt, customer, staff or item" value="${esc(S.q)}" autocomplete="off">
+      ${opt('pay', 'All payment types', Object.keys(D.pay))}${opt('staff', 'All employees', D.staff)}${opt('ful', 'All fulfilment', Object.keys(D.ful))}</div>
+    <div class="blocks">${net}${pay}${ful}${staff}${S.size === 'hist' ? sizes() : ''}${S.busy === 'grid' ? busy() : ''}</div>`;
+  const g = (k, label, opts) => `<div class="g"><span>${label}</span>${opts.map(([v, l]) => `<button data-lab="${k}" data-v="${v}" class="${String(S[k]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  document.getElementById('lab').innerHTML = S.labMin ? `<button data-act="lab">Lab ↑</button>` : `<button class="min" data-act="lab">Hide ↓</button>`
+    + g('net', 'Net sales', [['hours', 'A · By hour'], ['tiles', 'B · Tiles'], ['vs', 'C · vs before'], ['band', 'Now · One line']])
+    + g('pay', 'Payment', [['stack', 'A · One bar'], ['donut', 'B · Donut'], ['bars', 'C · Bars'], ['hour', 'D · By hour'], ['list', 'Now · List']])
+    + g('ful', 'Fulfilment', [['split', 'A · Split'], ['two', 'B · Count vs ₱'], ['avg', 'C · Avg sale'], ['donut', 'D · Donut'], ['list', 'Now · List']])
+    + g('staff', 'Staff', [['bars', 'A · Bars'], ['board', 'B · Leaderboard'], ['xy', 'C · Scatter'], ['heat', 'D · By hour'], ['list', 'Now · List']])
+    + g('size', 'Sale size', [['hist', 'A · Histogram'], ['off', 'Off']])
+    + g('busy', 'Busy hours', [['grid', 'A · Hour × day'], ['off', 'Off']])
+    + g('big', 'Store', [['false', 'Demo · 3 staff'], ['true', 'Big · 12 staff']])
+    + `<div class="note">Hover anything for its numbers. Click a row, slice, bar or dot to filter the page by it; the search, range and filters are live. "Now · List" is today's app with the missing labels fixed.</div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-lab],[data-act],[data-f]'); if (!t) return;
+  if (t.dataset.lab) { const k = t.dataset.lab; S[k] = k === 'big' ? t.dataset.v === 'true' : t.dataset.v; if (k === 'big') { D = build(S.big); S.f = { pay: '', staff: '', ful: '' }; } }
+  else if (t.dataset.f) { const f = t.dataset.f, v = t.dataset.v; S.f[f] = S.f[f] === v ? '' : v; }
+  else if (t.dataset.act === 'lab') S.labMin = !S.labMin;
+  render();
+});
+document.addEventListener('change', (e) => { const f = e.target.dataset.pick; if (!f) return; if (f === 'rg') S.rg = e.target.value; else S.f[f] = e.target.value; render(); });
+document.addEventListener('input', (e) => {
+  if (e.target.id !== 'q') return;
+  S.q = e.target.value; render();
+  const q = document.getElementById('q'); q.focus(); q.setSelectionRange(q.value.length, q.value.length);
+});
+const TIP = document.getElementById('tip');
+document.addEventListener('mousemove', (e) => {
+  const t = e.target.closest('[data-tip]');
+  if (!t) { TIP.style.display = 'none'; return; }
+  TIP.innerHTML = t.dataset.tip; TIP.style.display = 'block';
+  const w = TIP.offsetWidth, h = TIP.offsetHeight;
+  TIP.style.left = Math.min(e.clientX + 14, innerWidth - w - 8) + 'px'; TIP.style.top = (e.clientY + 16 + h > innerHeight ? e.clientY - h - 12 : e.clientY + 16) + 'px';
+});
+render();
+</script>
+</body></html>

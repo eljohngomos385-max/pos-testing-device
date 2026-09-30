@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stock history lab</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   STOCK HISTORY LAB (2026-09-29): Inventory › Stock history (bo-inventory.js, the overview) with charts,
+   in the Sales › Items lab's language (sales-items-lab-2.html). Nothing live: seeded fake data — 60 days of
+   movements a POS and a back office would write — in two store sizes, so every chart is judged at 300
+   items / 60 categories, not only the demo's 18. Each block's "Now" is what the page shows today.
+   Panel bottom right swaps the variants.
+   =========================================================================== */
+:root {
+  --po-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --b-page: #FFFFFF; --b-card: #F9F9F9; --b-raised: #FFFFFF;
+  --b-line: #ECECEC; --b-outline: #E1E1E1; --b-track: #EFEFEF;
+  --b-ink: #303030; --b-ink-2: #616161; --b-ink-3: #8C8C8C;
+  --b-up: #047B5D; --b-down: #D72C0D; --b-up-tint: #D3ECDD; --b-down-tint: #F8D8D0; --b-flat-tint: #EFEFEF;
+  --b-warn: #8A6116; --b-warn-tint: #FCEFD2;
+  --b-data: #2B7DE9; --b-data-1: #BCD7FA; --b-data-tint: #DCE9FB; --b-data-ink: #1F5FB8;
+  --card-shadow: 0 1px 2px -1px rgb(26 26 26 / .07);
+  --btn-h: 28px; --btn-r: 8px; --btn-soft: #EDEDED;
+  --b-r-card: 14px; --b-pad: 16px;
+  --t-label: 13px; --t-meta: 12.5px; --t-micro: 11px;
+  --s1: #1C5CAB; --s2: #256ABF; --s3: #2B7DE9; --s4: #5598E7; --s5: #86B6EF; --s-other: #D4D4D4;
+  /* diverging: came in / went out, and the deeper red of a loss */
+  --g-in: #9FD6B9; --g-in-2: #5BB88A; --g-out: #F2B4A5; --g-out-2: #E88A74; --g-lost: #D9674E;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--b-page); color: var(--b-ink); font: var(--t-label)/normal var(--po-font); -webkit-font-smoothing: antialiased; }
+button, select { font: inherit; color: inherit; cursor: pointer; }
+.main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 200px; }
+
+/* the page bar, as the app: title, range pick, Receive stock, New adjustment */
+.bar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.bar h1 { display: flex; align-items: baseline; gap: 8px; margin: 0 auto 0 0; font-size: 18px; font-weight: 600; }
+.bar h1 .crumb { color: var(--b-ink-3); font-weight: 500; text-decoration: none; } .bar h1 .crumb:hover { color: var(--b-ink); }
+.bar h1 .sl { color: var(--b-ink-3); font-weight: 400; }
+.bar h1 small { margin-left: 4px; font-size: var(--t-meta); font-weight: 400; color: var(--b-ink-3); }
+.btn { height: var(--btn-h); padding: 0 12px; border: 0; border-radius: var(--btn-r); background: #303030; color: #fff; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.btn svg { width: 13px; height: 13px; }
+.btn2, .pick, .sel { height: var(--btn-h); padding: 0 10px; border: 1px solid var(--b-outline); border-radius: var(--btn-r); background: #fff; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+.sel { font-weight: 400; max-width: 260px; }
+
+.stack { display: grid; gap: 12px; }
+.card { background: var(--b-raised); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+.band { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; min-height: 36px; padding: 4px var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-2); font-weight: 500; }
+.band .r { margin-left: auto; color: var(--b-ink-3); font-weight: 400; font-size: var(--t-meta); display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.key { white-space: nowrap; }
+.key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+.foot { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); }
+.link { border: 0; background: none; padding: 0; color: #2B7DE9; font-weight: 500; text-decoration: none; }
+.link:hover { text-decoration: underline; }
+.foot .link:last-child { margin-left: auto; }
+.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.up { color: var(--b-up); } .down { color: var(--b-down); } .muted { color: var(--b-ink-3); }
+
+/* the strip: number left, chip right on the same line */
+.strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.strip > * { padding: 14px var(--b-pad); color: inherit; text-decoration: none; }
+.strip > * + * { box-shadow: inset 1px 0 0 var(--b-line); }
+.strip .l { color: var(--b-ink-2); font-weight: 500; }
+.strip .v { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+.strip .v small { font-size: var(--t-meta); font-weight: 400; color: var(--b-ink-3); letter-spacing: 0; }
+.strip a:hover { background: #FAFAFA; }
+.strip a .l::after { content: " ›"; color: var(--b-ink-3); opacity: 0; transition: opacity .12s; } .strip a:hover .l::after { opacity: 1; }
+.strip.cmp .v { margin-bottom: 8px; }
+.pr { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; height: 15px; color: var(--b-ink-3); font-size: var(--t-micro); }
+.pr i { display: block; height: 6px; border-radius: 3px; background: var(--b-track); overflow: hidden; } .pr b { display: block; height: 100%; border-radius: 3px; background: var(--b-data); }
+.pr.was b { background: var(--b-data-1); } .pr em { font-style: normal; }
+.sline { display: flex; flex-wrap: wrap; }
+.sline > * { display: flex; align-items: center; gap: 6px; padding: 12px var(--b-pad); color: var(--b-ink-2); text-decoration: none; }
+.sline > * + * { box-shadow: inset 1px 0 0 var(--b-line); } .sline a:hover { background: #FAFAFA; }
+.sline b { color: var(--b-ink); font-size: 16px; font-weight: 600; }
+.chip { font-size: var(--t-micro); font-weight: 600; padding: 2px 6px; border-radius: 6px; letter-spacing: 0; }
+.chip.up { background: var(--b-up-tint); } .chip.down { background: var(--b-down-tint); } .chip.flat { background: var(--b-flat-tint); color: var(--b-ink-2); }
+
+/* tables */
+table { width: 100%; border-collapse: collapse; }
+th { height: 32px; padding: 0 var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-2); font-weight: 500; text-align: left; white-space: nowrap; }
+td { height: 34px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: #FAFAFA; }
+td.nm small, .nm small { margin-left: 8px; color: var(--b-ink-3); font-size: var(--t-meta); }
+td.t { color: var(--b-ink-2); }
+td.empty { height: 64px; text-align: center; color: var(--b-ink-3); }
+.tw { overflow-x: auto; }
+.pill { display: inline-block; font-size: 11.5px; font-weight: 500; padding: 2px 9px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); white-space: nowrap; }
+.pill.up { background: var(--b-up-tint); color: var(--b-up); } .pill.down { background: var(--b-down-tint); color: var(--b-down); }
+.pill.warn { background: var(--b-warn-tint); color: var(--b-warn); } .pill.data { background: var(--b-data-tint); color: var(--b-data-ink); }
+
+/* Now: the real overview's KPI folder tabs over one series of bars (bo-calm.css .calm-dash) */
+.now { background: var(--b-card); }
+.now .tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--b-line); }
+.now .stat { position: relative; min-width: 0; padding: 10px 20px 14px; border: 0; border-left: 1px solid var(--b-line); background: none; text-align: left; }
+.now .stat:first-child { border-left: 0; }
+.now .stat:hover { background: #FCFCFC; }
+.now .stat[aria-selected="true"] { background: #fff; cursor: default; }
+.now .stat[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: #fff; }
+.now .lbl { color: var(--b-ink-2); } .now .stat[aria-selected="true"] .lbl { color: var(--b-ink); font-weight: 500; }
+.now .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 7px; }
+.now .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.now .chip { font-size: var(--t-meta); font-weight: 500; padding: 2px 8px; border-radius: 999px; }
+.now .chip.flat { background: var(--b-track); color: var(--b-ink-3); } .now .chip.up { color: var(--b-up); } .now .chip.down { color: var(--b-down); }
+.now .panel { background: #fff; padding: 36px 20px 14px 18px; }
+.now .plot { position: relative; height: 300px; }
+.now .grid, .now .cols { position: absolute; left: 44px; right: 0; top: 0; bottom: 20px; }
+.now .grid { border-left: 1px solid #D6D6D6; }
+.now .gl { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--b-outline); }
+.now .gl span { position: absolute; right: calc(100% + 6px); bottom: 1px; font-size: 10px; color: var(--b-ink-3); white-space: nowrap; }
+.now .gl.zero { border-top: 1px solid #D6D6D6; }
+.now .cols { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); }
+.now .b { position: relative; display: flex; align-items: flex-end; justify-content: center; }
+.now .b i { width: min(62%, 28px); background: var(--b-data); border-radius: 4px 4px 0 0; }
+.now .b .x { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-size: var(--t-micro); color: var(--b-ink-3); }
+.now .cols:hover .b i { opacity: .4; } .now .cols .b:hover i { opacity: 1; }
+/* Now: a rail card, the width it has beside the page's main column */
+.w { max-width: 380px; }
+.lr { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); }
+.lr:last-child { border-bottom: 0; }
+.lr .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lr .amt { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lr .cmp { width: 52px; text-align: right; color: var(--b-ink-3); font-size: var(--t-meta); font-variant-numeric: tabular-nums; }
+.lr .cmp.down { color: var(--b-down); }
+
+/* svg charts: one axis, a hairline grid, labels with a white halo */
+.chart { padding: 10px var(--b-pad) 6px; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .gl { stroke: var(--b-line); } .chart .gl.zero { stroke: #C9C9C9; }
+.chart .ax { fill: var(--b-ink-3); font-size: 11px; }
+.chart .lb { font-size: 11.5px; fill: var(--b-ink); paint-order: stroke; stroke: #fff; stroke-width: 3px; pointer-events: none; }
+.chart .lb.mu { fill: var(--b-ink-3); }
+.chart .hz { fill: transparent; } .chart .dc:hover .hz { fill: rgb(0 0 0 / .035); }
+.gin { fill: var(--g-in); } .gout { fill: var(--g-out); } .glost { fill: var(--g-lost); }
+.vl { fill: none; stroke: var(--b-data); stroke-width: 2; } .va { fill: var(--b-data-tint); opacity: .7; }
+.chart circle.mk { stroke: #fff; stroke-width: 1.5; cursor: pointer; } .chart circle.mk:hover { stroke: var(--b-ink); }
+.ro { stroke: #9A9A9A; stroke-dasharray: 4 4; } .ld { stroke: #C4C4C4; }
+.oz { fill: rgb(242 180 165 / .35); }
+.sp { fill: none; stroke: var(--b-data); stroke-width: 2; } .sa { fill: var(--b-data-tint); opacity: .6; }
+.mkr { cursor: pointer; stroke: #fff; stroke-width: 1.5; } .mkr:hover { stroke: var(--b-ink); }
+
+/* calendar */
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 12px var(--b-pad) 14px; }
+.cal .wd { color: var(--b-ink-3); font-size: var(--t-micro); padding: 0 8px 2px; }
+.cal .cd { display: grid; gap: 4px; align-content: start; min-width: 0; min-height: 78px; padding: 8px 10px 10px; border-radius: 8px; }
+.cal .dn { color: var(--b-ink-2); font-size: var(--t-meta); } .cal b { font-size: 15px; font-weight: 600; white-space: nowrap; }
+.cal .mb { display: block; height: 4px; border-radius: 2px; background: rgb(255 255 255 / .8); overflow: hidden; } .cal .mb i { display: block; height: 100%; }
+.cal .mb .i { background: var(--g-in-2); } .cal .mb .o { background: var(--g-out-2); }
+
+/* row lists: every list sets its own columns */
+.rl .rw { display: grid; grid-template-columns: var(--cols); align-items: center; gap: 0 12px; min-height: 34px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); }
+.rl .rw:last-child { border-bottom: 0; }
+.rl .rw:hover { background: #FAFAFA; }
+.rl .rw.hd { min-height: 32px; background: var(--b-card); color: var(--b-ink-2); font-weight: 500; }
+.rl .rw.sep { min-height: 8px; background: var(--b-card); }
+.rl .rw.oth { color: var(--b-ink-2); }
+.rl .rk { color: var(--b-ink-3); font-size: var(--t-meta); text-align: right; }
+.rl .nm { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rl .v { font-weight: 600; }
+.stk { display: flex; height: 14px; } .stk i { height: 100%; min-width: 2px; } .stk i:last-child { border-radius: 0 4px 4px 0; }
+.dvl, .dvr { display: flex; align-items: center; height: 34px; } .dvl { justify-content: flex-end; border-right: 1px solid #D4D4D4; }
+.dvl i, .dvr i { height: 14px; } .dvl i { border-radius: 4px 0 0 4px; } .dvr i { border-radius: 0 4px 4px 0; }
+.dvl b, .dvr b { font-size: var(--t-meta); font-weight: 600; padding: 0 6px; white-space: nowrap; }
+
+/* flow (the stock account) */
+.sk .bd { opacity: .65; transition: opacity .12s; cursor: pointer; } .sk .bd:hover { opacity: 1; }
+.sk text { font-size: 12px; fill: var(--b-ink); } .sk .mv { fill: var(--b-ink-3); } .sk .hd2 { fill: var(--b-ink-2); font-weight: 500; }
+
+/* shares */
+.sh { padding: 14px var(--b-pad); } .sh + .sh { border-top: 1px solid var(--b-line); }
+.shh { display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--b-ink-2); } .shh span { color: var(--b-ink); font-weight: 600; }
+.shb { display: flex; gap: 2px; height: 28px; border-radius: 6px; overflow: hidden; }
+.shb i { min-width: 3px; display: flex; align-items: center; padding-left: 8px; font-style: normal; font-size: var(--t-meta); font-weight: 600; white-space: nowrap; overflow: hidden; cursor: default; }
+.shb i.wt { color: #fff; }
+.shl { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; color: var(--b-ink-2); font-size: var(--t-meta); }
+.shl i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; } .shl b { margin-left: 4px; color: var(--b-ink); font-weight: 600; }
+
+/* count gaps: counted as a share of what the system expected, 100% is the ring */
+.gp, .gs { position: relative; height: 14px; }
+.gs span:first-child { transform: none; } .gs span:last-child { transform: translateX(-100%); }
+.gs span { position: absolute; transform: translateX(-50%); color: var(--b-ink-3); font-size: var(--t-micro); font-weight: 400; }
+.gp .c { position: absolute; top: -6px; bottom: -6px; width: 1px; background: #D4D4D4; }
+.gp .ln { position: absolute; top: 5px; height: 4px; border-radius: 2px; } .gp .ln.dn { background: var(--g-out); } .gp .ln.ov { background: var(--g-in); }
+.gp .dot, .gp .ring { position: absolute; top: 2px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; }
+.gp .ring { background: #fff; box-shadow: inset 0 0 0 2px #B5B5B5; } .gp .dot.dn { background: var(--b-down); } .gp .dot.ov { background: var(--b-up); }
+
+/* heat */
+.heat td.h { text-align: right; font-variant-numeric: tabular-nums; padding: 0 12px; }
+.heat th.h { text-align: right; padding: 0 12px; }
+
+/* timeline: one cell a day */
+.gc, .gx { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 2px; }
+.gc i { height: 16px; border-radius: 3px; background: #F3F3F3; }
+.gc i.o { background: var(--g-out-2); } .gc i.l { background: var(--b-down-tint); } .gc i.dv { box-shadow: inset 0 -4px 0 var(--g-in-2); }
+.gx span { font-size: var(--t-micro); color: var(--b-ink-3); text-align: center; font-weight: 400; white-space: nowrap; }
+.key i.dvk { background: #F3F3F3; box-shadow: inset 0 -3px 0 var(--g-in-2); }
+
+/* small multiples */
+.mini { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.mini button { display: grid; gap: 6px; min-width: 0; padding: 12px var(--b-pad) 14px; border: 0; border-right: 1px solid var(--b-line); border-bottom: 1px solid var(--b-line); background: none; text-align: left; }
+.mini button:nth-child(4n) { border-right: 0; } .mini button:nth-last-child(-n+4) { border-bottom: 0; }
+.mini button:hover { background: #FAFAFA; } .mini button.on { background: var(--b-data-tint); }
+.mini .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.mini .pv { display: flex; align-items: baseline; gap: 6px; color: var(--b-ink-3); font-size: var(--t-meta); } .mini .pv b { color: var(--b-ink); font-size: 18px; font-weight: 600; } .mini .pv em { margin-left: auto; font-style: normal; color: var(--b-down); font-weight: 600; }
+.mini svg { display: block; width: 100%; height: 48px; overflow: visible; }
+.mini .sp { stroke-width: 1.5; } .mini .z { fill: var(--b-down-tint); } .mini .ro { stroke-dasharray: 3 3; }
+
+/* movements by day / feed */
+.dh { display: flex; align-items: center; gap: 12px; min-height: 32px; padding: 0 var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-2); font-weight: 500; }
+.dh .r { margin-left: auto; font-weight: 400; font-size: var(--t-meta); display: flex; gap: 12px; }
+.fe { display: grid; grid-template-columns: 8px 64px minmax(0, 1fr) 64px; align-items: center; gap: 12px; min-height: 34px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); }
+.fe .tx2 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--b-ink-2); } .fe .tx2 b { color: var(--b-ink); font-weight: 500; }
+.fe .t { color: var(--b-ink-3); font-size: var(--t-meta); font-variant-numeric: tabular-nums; }
+.fe.fold { background: #FCFCFC; }
+.dt { width: 8px; height: 8px; border-radius: 50%; background: #B5B5B5; }
+.dt.up { background: var(--b-up); } .dt.down { background: var(--b-down); } .dt.warn { background: #C9962B; } .dt.data { background: var(--b-data); }
+.stack > .card:last-child .fe:last-child { border-bottom: 0; }
+
+.filters { display: flex; gap: 8px; margin-bottom: 12px; }
+.search { flex: 1; max-width: 360px; height: 32px; padding: 0 12px; border: 1px solid var(--b-outline); border-radius: var(--btn-r); font: inherit; color: var(--b-ink); outline: 0; }
+.search:focus { border-color: var(--b-data); box-shadow: 0 0 0 3px var(--b-data-tint); }
+
+/* the hover tip */
+#tip { position: fixed; z-index: 20; pointer-events: none; background: #fff; border: 1px solid var(--b-outline); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.08); padding: 8px 10px; font-size: var(--t-meta); min-width: 170px; display: none; }
+#tip b { display: block; margin-bottom: 4px; }
+#tip div { display: flex; justify-content: space-between; gap: 16px; color: var(--b-ink-2); } #tip div em { font-style: normal; color: var(--b-ink); font-weight: 600; }
+
+/* the lab panel */
+.lab { position: fixed; right: 16px; bottom: 16px; z-index: 30; max-width: 620px; background: #fff; border: 1px solid var(--b-outline); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.1); padding: 10px 12px; display: grid; gap: 6px; font-size: var(--t-meta); }
+.lab .g { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.lab .g > span { width: 84px; color: var(--b-ink-3); }
+.lab button { height: 24px; padding: 0 9px; border: 1px solid var(--b-outline); border-radius: 6px; background: #fff; }
+.lab button.on { background: #303030; border-color: #303030; color: #fff; }
+.lab .min { justify-self: end; height: 20px; border: 0; padding: 0 4px; color: var(--b-ink-3); }
+.lab .note { color: var(--b-ink-3); max-width: 560px; line-height: 1.4; }
+
+@media (max-width: 900px) { .strip { grid-template-columns: repeat(2, 1fr); } .strip > :nth-child(odd) { box-shadow: none; } .strip > :nth-child(n+3) { border-top: 1px solid var(--b-line); } }
+@media (max-width: 760px) {
+  .main { padding: 16px 16px 24px; }
+  .bar { flex-wrap: wrap; } .bar h1 { flex-basis: 100%; flex-wrap: wrap; }
+  .now .tabs { grid-template-columns: 1fr 1fr; } .now .stat:nth-child(3) { border-left: 0; } .now .stat:nth-child(n+3) { border-top: 1px solid var(--b-line); }
+  .now .stat { padding: 10px 10px 12px; } .now .val { font-size: 18px; } .now .panel { padding: 24px 8px 10px 4px; } .now .plot { height: 220px; }
+  .now .stat[aria-selected="true"]:nth-child(-n+2)::after { content: none; }
+  .chart { overflow-x: auto; } .chart svg { min-width: 760px; }   /* wide charts keep readable text and scroll inside their card */
+  .w { max-width: none; }
+  .cal { gap: 3px; padding: 10px 8px; } .cal .cd { min-height: 58px; padding: 6px; } .cal b { font-size: 11px; } .cal .wd { padding: 0 6px; }
+  .rl .rw { --cols: var(--cols-p) !important; } .rl .rw > .hp { display: none; }
+  .mini { grid-template-columns: 1fr 1fr; } .mini button:nth-child(odd) { border-right: 1px solid var(--b-line); } .mini button:nth-child(even) { border-right: 0; }
+  .mini button:nth-last-child(-n+4) { border-bottom: 1px solid var(--b-line); } .mini button:nth-last-child(-n+2) { border-bottom: 0; }
+  .fe { grid-template-columns: 8px 44px minmax(0, 1fr) 44px; gap: 8px; }
+  .dh .r { display: none; }
+  .lab { position: static; margin: 0 16px 16px; max-width: none; }
+}
+</style>
+</head>
+<body>
+<div class="main" id="app"></div>
+<div id="tip"></div>
+<div class="lab" id="lab"></div>
+
+<script>
+// ---------------------------------------------------------------- fake data, seeded
+// 60 days of movements, the last 30 (Aug 31 – Sep 29) are the period and the 30 before are what it is compared with.
+// Each item sells, runs low, gets a delivery a few days after it reaches its reorder point, and now and then is
+// returned, used, moved to the other branch, stolen, broken, written off or counted — the reasons bo-inventory.js knows.
+function rng(s) { return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646; }
+const REAL = [
+  ['Cement', ['Portland Cement 40kg', 'Gravel 3/4" (per cu.m)', 'Washed Sand (per cu.m)', 'Hollow Block 4"', 'Hollow Block 6"', 'Tile Adhesive 25kg', 'Skim Coat 20kg']],
+  ['Tools', ['Aluminum Level 24"', 'Claw Hammer 16oz', 'Hacksaw Frame 12"', 'Steel Tape 5m', 'Screwdriver Set 6pc', 'Pliers 8"', 'Utility Knife']],
+  ['Paint', ['Quick-Dry Enamel Black 1L', 'Latex Paint White 1L', 'Latex Paint White 4L', 'Flat Wall Enamel 4L', 'Paint Thinner 1L', 'Red Oxide Primer 1L']],
+  ['Adhesive', ['Silicone Sealant White', 'Mighty Bond Epoxy 50g', 'Contact Cement Rugby 250mL', 'PVC Solvent Cement 200mL', 'Wood Glue 500g']],
+  ['Safety', ['Safety Goggles Clear', 'Cotton Gloves (pair)', 'Dust Mask N95', 'Hard Hat Yellow', 'Rubber Boots']],
+  ['Plumbing', ['Brass Faucet 1/2"', 'PVC Elbow 1/2"', 'Teflon Tape', 'Gate Valve 3/4"', 'Flexible Hose 16"', 'P-Trap 1 1/2"']],
+  ['Electrical', ['THHN Wire 2.0mm (per m)', 'LED Bulb 9W', 'Convenience Outlet 2-gang', 'Extension Cord 5m', 'Circuit Breaker 20A', 'Electrical Tape']],
+  ['Roofing', ['GI Sheet 8ft', 'Roofing Nails 2.5" (kg)', 'Gutter 10ft', 'Ridge Roll']],
+  ['Lumber', ['Coco Lumber 2x2x8', 'Good Lumber 2x3x10', 'Marine Plywood 1/4"', 'Ordinary Plywood 1/2"']],
+  ['Fasteners', ['Common Nail 4" (kg)', 'Concrete Nail 2" (kg)', 'Wood Screw 1" (100pc)', 'Tekscrew 2" (100pc)', 'Anchor Bolt 3/8"']],
+  ['Steel', ['Deformed Bar 10mm', 'Deformed Bar 12mm', 'Tie Wire #16 (kg)', 'Angle Bar 1"']],
+  ['Hardware', ['Padlock 40mm', 'Door Hinge 3"', 'Door Knob Stainless', 'Cabinet Handle', 'Barrel Bolt 4"']],
+  ['Garden', ['Garden Hose 15m', 'Shovel Pointed', 'Wheelbarrow', 'Bolo', 'Rake']],
+  ['Power tools', ['Angle Grinder 4"', 'Cutting Disc 4"', 'Drill Bit Set', 'Impact Drill 13mm']],
+];
+const EXTRA = ['Tiles', 'Sanitary ware', 'Water tanks', 'Pumps', 'Welding', 'Glass', 'Wire mesh', 'GI pipe', 'PVC pipe', 'PVC fittings', 'Conduit', 'Lighting', 'Switches', 'Ladders', 'Rope & chain', 'Tape', 'Sandpaper', 'Brushes & rollers', 'Measuring', 'Cabinet hardware', 'Locks', 'Door hardware', 'Weatherproofing', 'Insulation', 'Ceiling', 'Drywall', 'Doors', 'Windows', 'Mouldings', 'Varnish & stain', 'Spray paint', 'Automotive', 'Batteries', 'Cleaning', 'Pest control', 'Storage', 'Kitchen', 'Bathroom accessories', 'Outdoor', 'Pet & farm', 'Fans', 'Generators', 'Scaffolding', 'Waterproofing', 'Grout', 'Sealants'];
+const SPECS = ['1/2"', '3/4"', '1"', 'Small', 'Medium', 'Large', 'Heavy duty', 'Standard', '2m', '5m', 'White', 'Black', 'Pro'];
+const STAFF = ['Ana', 'Ben', 'Carlo', 'Dina'];
+const THEFT = new Set(['Tools', 'Power tools', 'Hardware', 'Electrical', 'Locks', 'Batteries', 'Measuring']);
+const BRITTLE = new Set(['Cement', 'Paint', 'Glass', 'Tiles', 'Sanitary ware', 'Lighting', 'Spray paint']);
+
+// The reasons. [label, what it does to the totals, pill tone]. A count is neither in nor out; a short count is a loss.
+const RS = {
+  delivery: ['Received new stock', 'in', 'up'], return: ['Customer return', 'in', 'warn'], tin: ['Transfer in', 'in', ''],
+  sale: ['Sold', 'out', ''], adjustment: ['Used or other', 'out', 'warn'], tout: ['Transfer out', 'out', ''],
+  shrinkage: ['Lost or stolen', 'lost', 'down'], damage: ['Broken or damaged', 'lost', 'down'], writeoff: ['Written off', 'lost', 'down'],
+  count: ['Counted the shelf', 'count', 'data'], short: ['Short on a count', 'lost', 'down'], over: ['Over on a count', 'over', 'data'],
+};
+const MANUAL = new Set(['count', 'adjustment', 'shrinkage', 'damage', 'writeoff']);
+const LOSS_R = ['short', 'shrinkage', 'damage', 'writeoff'];
+const LC = { short: '#B8432A', shrinkage: '#D9674E', damage: '#EC9A85', writeoff: '#F6C9BD' };   // one red, dark → light
+const LL = { short: 'Short on counts', shrinkage: 'Lost or stolen', damage: 'Broken', writeoff: 'Written off' };
+const rkey = (m) => m.reason === 'count' ? (m.qty < 0 ? 'short' : 'over') : m.reason;
+const isLoss = (m) => RS[rkey(m)][1] === 'lost';
+
+const DAYS = 60, C0 = 30, CUR = Array.from({ length: 30 }, (_, i) => C0 + i);
+const dt = (d) => new Date(2026, 6, 32 + d);   // day 0 = Aug 1, day 59 = Tue Sep 29
+const dayMs = (d) => dt(d).getTime();
+
+function build(big) {
+  const r = rng(big ? 23 : 7), gauss = () => Math.sqrt(-2 * Math.log(r() + 1e-9)) * Math.cos(2 * Math.PI * r());
+  const pois = (l) => { if (l > 25) return Math.max(0, Math.round(l + gauss() * Math.sqrt(l))); let k = -1, p = 1; const L = Math.exp(-l); do { k++; p *= r(); } while (p > L); return k; };
+  const any = (a) => a[Math.floor(r() * a.length)];
+  const cats = big ? [...REAL, ...EXTRA.map(c => [c, Array.from({ length: 3 + Math.floor(r() * 4) }, (_, i) => `${c.replace(/s$/, '')} ${SPECS[(i * 5 + c.length) % SPECS.length]}`)])]
+                   : REAL.slice(0, 7).map(([c, l], i) => [c, l.slice(0, [3, 3, 3, 3, 2, 2, 2][i])]);
+  const P = [], M = []; let po = 1040;
+  cats.forEach(([cat, list], ci) => {
+    const cw = Math.exp(gauss() * .6) * (big && ci >= REAL.length ? .45 : 1);
+    list.forEach((name) => {
+      const price = any([45, 90, 180, 350, 720, 1500]), cost = Math.round(price * (.68 + r() * .17));
+      const rate = Math.min(30, Math.exp(gauss() * .8) * cw * (price > 700 ? .35 : price > 300 ? .7 : 1.5));
+      const p = { id: P.length, name, cat, price, cost, rate, reorder: Math.max(2, Math.round(rate * 4)), eod: [], asked: [], rcv: {}, n: 0, nm: 0 };
+      const slow = r() < .15, dropped = r() < .03, thief = THEFT.has(cat), brittle = BRITTLE.has(cat);
+      let stock = Math.round(p.reorder * (1.5 + r() * 2.5)), pend = -1, pq = 0;
+      for (let d = 0; d < DAYS; d++) {
+        const ev = [], wd = dt(d).getDay(), dem = pois(rate * (wd === 0 ? .55 : wd === 6 ? 1.2 : 1)), h = () => 9 + r() * 8;
+        if (d === pend) ev.push([8 + r() * 1.5, 'delivery']);
+        if (dem) ev.push([11 + r() * 6, 'sale', dem]);
+        if (r() < .003 + rate * .002) ev.push([h(), 'return']);
+        if (r() < .004) ev.push([h(), 'adjustment']);
+        if (r() < .003) ev.push([h(), 'tout']);
+        if (r() < .003) ev.push([h(), 'tin']);
+        if (r() < (thief ? .012 : .002)) ev.push([h(), 'shrinkage']);
+        if (r() < (brittle ? .012 : .003)) ev.push([h(), 'damage']);
+        if (r() < .0015) ev.push([h(), 'writeoff']);
+        if (d % 14 === p.id % 14 && r() < .75) ev.push([17.6 + r() * .8, 'count']);
+        ev.sort((a, b) => a[0] - b[0]);
+        for (const [hr, why, n] of ev) {
+          let q = 0, x = { note: '', ref: '' };
+          const take = (k) => -Math.min(stock, k);
+          if (why === 'delivery') { q = pq; x.ref = 'PO-' + po++; pend = -1; p.rcv[d] = (p.rcv[d] || 0) + q; }
+          else if (why === 'sale') { q = take(n); if (!stock && r() < .6) p.asked.push(d); x.rc = Math.max(1, Math.round(-q / (1 + r() * 1.5))); }
+          else if (why === 'return') { q = 1; x.note = any(['Wrong size', 'Not needed', 'Extra from a job']); }
+          else if (why === 'adjustment') { q = take(1 + Math.floor(r() * 2)); x.note = any(['Used in the shop', 'Sample for a customer', 'Opened for display', 'Repacked']); }
+          else if (why === 'tout') { q = take(1 + Math.floor(r() * 3)); x.note = 'To Branch 2'; }
+          else if (why === 'tin') { q = 1 + Math.floor(r() * 4); x.note = 'From Branch 2'; }
+          else if (why === 'shrinkage') { q = take(r() < .25 ? 2 : 1); x.note = any(['Missing from display', 'Not on the shelf', 'Empty box found']); }
+          else if (why === 'damage') { q = take(1 + Math.floor(r() * 3)); x.note = any(brittle ? ['Torn sack', 'Dropped', 'Water damage', 'Cracked'] : ['Dropped', 'Dented', 'Water damage']); }
+          else if (why === 'writeoff') { q = take(1 + Math.floor(r() * 4)); x.note = any(['Expired', 'Discontinued', 'Unsellable']); }
+          else { const rr = r(); q = rr < .5 ? 0 : rr < .88 ? take(1 + Math.floor(r() * (thief ? 4 : 2))) : 1 + (r() < .3); x.expected = stock; x.counted = stock + q; }
+          if (!q) continue;
+          stock += q;
+          M.push({ id: M.length, p, d, ts: dayMs(d) + hr * 36e5, qty: q, reason: why, bal: stock, staff: any(STAFF), ...x });
+          if (d >= C0) { p.n++; if (why !== 'sale') p.nm++; }
+        }
+        if (stock <= p.reorder && pend < 0 && !dropped) { pend = d + (slow ? 4 + Math.floor(r() * 6) : 1 + Math.floor(r() * 3)); pq = p.reorder * 2 + Math.round(rate * 10); }
+        p.eod[d] = stock;
+      }
+      P.push(p);
+    });
+  });
+  M.sort((a, b) => a.ts - b.ts);
+  // per day, at cost: in, out (not counts, as stockFlow), lost (counts included), hand-typed changes, and each reason
+  const day = Array.from({ length: DAYS }, () => ({ in: 0, out: 0, lost: 0, adj: 0, by: {}, uin: 0, uout: 0 }));
+  for (const m of M) {
+    const x = day[m.d], k = rkey(m), v = Math.abs(m.qty) * m.p.cost;
+    x.by[k] = (x.by[k] || 0) + v;
+    if (MANUAL.has(m.reason)) x.adj++;
+    if (isLoss(m)) x.lost += v;
+    if (m.reason !== 'count') { if (m.qty > 0) x.in += v; else x.out += v; }
+  }
+  const D = { P, M, day, val: day.map((_, d) => P.reduce((s, p) => s + p.eod[d] * p.cost, 0)) };
+  const sum = (a, b) => { const t = { in: 0, out: 0, lost: 0, adj: 0 }; for (let d = a; d < b; d++) for (const k in t) t[k] += day[d][k]; return t; };
+  const rs = (a, b) => { const t = {}; for (let d = a; d < b; d++) for (const k in day[d].by) t[k] = (t[k] || 0) + day[d].by[k]; return t; };
+  D.cur = sum(C0, DAYS); D.prev = sum(0, C0); D.rsum = rs(C0, DAYS); D.rprev = rs(0, C0);
+  D.cm = M.filter(m => m.d >= C0).reverse();   // the period, newest first
+  const lm = new Map();
+  for (const m of D.cm) {
+    if (!isLoss(m)) continue;
+    const x = lm.get(m.p) || lm.set(m.p, { p: m.p, by: {}, v: 0, u: 0 }).get(m.p), k = rkey(m), v = -m.qty * m.p.cost;
+    x.by[k] = (x.by[k] || 0) + v; x.v += v; x.u -= m.qty;
+  }
+  D.loss = [...lm.values()].sort((a, b) => b.v - a.v);
+  D.out = P.map(p => {
+    const ds = CUR.filter(d => p.eod[d] === 0); if (!ds.length) return null;
+    const back = CUR.find(d => d > ds[0] && p.eod[d] > 0);
+    return { p, days: ds.length, first: ds[0], back, asked: p.asked.filter(d => d >= C0).length };
+  }).filter(Boolean).sort((a, b) => b.days - a.days || b.asked - a.asked);
+  D.outPrev = P.filter(p => p.eod.slice(0, C0).some(v => v === 0)).length;
+  D.counts = D.cm.filter(m => m.reason === 'count');
+  // The item the line opens on: one that ran out and came back, with the most going on.
+  D.def = ([...D.out].filter(o => o.back != null).sort((a, b) => b.p.nm - a.p.nm)[0] || { p: [...P].sort((a, b) => b.n - a.n)[0] }).p.id;
+  return D;
+}
+
+// ---------------------------------------------------------------- helpers
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const peso = (n) => '₱' + Math.round(n).toLocaleString('en-US');
+const pesoK = (n) => n >= 1e6 ? '₱' + (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : n >= 1e4 ? '₱' + (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k' : peso(n);
+const pct = (f, d = 1) => (f * 100).toFixed(d) + '%';
+const chg = (cur, was) => was > 0 ? (cur - was) / was : cur > 0 ? Infinity : 0;
+// Received, Went out and Adjusted have no good direction, so their chip stays grey; Lost and Ran out going up is bad news.
+const chipN = (cur, was, bad) => { const c = chg(cur, was); if (c === Infinity) return '<span class="chip flat">New</span>'; const v = Math.round(c * 100);
+  return `<span class="chip ${!v || !bad ? 'flat' : v > 0 ? 'down' : 'up'}">${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)}%</span>`; };
+const tip = (title, rows) => esc(`<b>${esc(title)}</b>` + rows.map(([l, v]) => `<div>${l}<em>${v}</em></div>`).join(''));
+const signed = (q) => (q > 0 ? '+' : '−') + Math.abs(q);
+const dShort = (d) => dt(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const dLong = (d) => dt(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+const tStamp = (ts) => new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const tHour = (ts) => new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+const pill = (reason) => `<span class="pill ${RS[reason][2]}">${RS[reason][0]}</span>`;
+const nice = (v) => { if (v <= 0) return 1; const e = 10 ** Math.floor(Math.log10(v)), f = v / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e; };
+const axis = (max, n = 4) => { const step = Math.max(1, nice(max / n)); return { step, top: Math.max(step, Math.ceil(max / step) * step) }; };
+const allLink = (n, to) => `<a class="link" href="#${to}">Show all ${n} →</a>`;
+const key = (c, l) => `<span class="key"><i style="background:${c}"></i>${l}</span>`;
+const dayTip = (d) => { const x = D.day[d]; return tip(dLong(d), [['Received', peso(x.in)], ['Went out', peso(x.out)], ['Lost', peso(x.lost)], ['Adjusted', x.adj], ['Stock value at close', peso(D.val[d])]]); };
+// The day charts share a frame: 30 days across, one axis on the left, a date every third day counted back from today.
+const frame = (W, H, L, T, B, R) => { const bw = (W - L - R) / 30; return { W, H, L, T, B, R, bw, X: (i) => L + i * bw,
+  xl: () => CUR.map((d, i) => (29 - i) % 3 ? '' : `<text class="ax" x="${L + (i + .5) * bw}" y="${H - 6}" text-anchor="middle">${dt(d).getDate() <= 3 ? dShort(d) : dt(d).getDate()}</text>`).join('') }; };
+const gridY = (f, Y, top, step, fmt, lo = 0) => { let g = ''; for (let v = lo; v <= top + 1e-6; v += step) g += `<line class="gl${v ? '' : ' zero'}" x1="${f.L}" x2="${f.W - f.R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${f.L - 8}" y="${Y(v) + 4}" text-anchor="end">${fmt(v)}</text>`; return g; };
+
+// ---------------------------------------------------------------- state
+// The main view is #; the pages are #movements #losses #ranout #counts, so the browser's Back works.
+const S = { strip: 'tiles', flow: 'div', why: 'sankey', loss: 'bars', out: 'gantt', item: 'line', moves: 'now', big: true, chart: 'in', pick: null, type: '', q: '', shown: 50, labMin: false };
+let D = build(true);
+const route = () => location.hash.slice(1).split('?');
+const RANGE = `<button class="pick">Last 30 days <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="#8C8C8C" stroke-width="1.5"/></svg></button>`;
+const EXPORT = `<button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4 20h16"/></svg>Export CSV</button>`;
+
+// ---------------------------------------------------------------- strip
+// Each count is a link to the list behind it.
+function strip() {
+  if (S.strip === 'off') return '';
+  const c = D.cur, p = D.prev, o = D.out.length, tag = (to) => to ? `a href="#${to}"` : 'div', end = (to) => to ? 'a' : 'div';
+  const K = [['Received', pesoK(c.in), c.in, p.in, 0, 'movements?in', 'Deliveries, returns and transfers in. At cost.'],
+    ['Went out', pesoK(c.out), c.out, p.out, 0, 'movements?all', 'Sold, used or transferred out. At cost.'],
+    ['Lost', pesoK(c.lost), c.lost, p.lost, 1, 'losses', 'Stolen, broken, written off, or short on a shelf count. At cost.'],
+    ['Adjusted', c.adj, c.adj, p.adj, 0, 'movements?adj', 'Changes typed in by hand: counts, adjustments and losses'],
+    ['Ran out', `${o}<small>items</small>`, o, D.outPrev, 1, 'ranout', 'Items that hit zero at least once']];
+  if (S.strip === 'line') return `<section class="card sline">${K.map(([l, v, a, b, bad, to]) => `<${tag(to)}><b>${String(v).replace(/<small>.*/, '')}</b> ${l.toLowerCase()} ${chipN(a, b, bad)}</${end(to)}>`).join('')}</section>`;
+  if (S.strip === 'cmp') {
+    // B · with the 30 days before: each number over two thin bars on one scale, now dark and before light.
+    const fmt = (i) => (v) => i < 3 ? pesoK(v) : v;
+    return `<section class="card strip cmp">${K.map(([l, v, a, b, , to, t], i) => { const m = Math.max(a, b) || 1;
+      return `<${tag(to)} title="${t}"><div class="l">${l}</div><div class="v">${v}</div><div class="pr"><span>Now</span><i><b style="width:${a / m * 100}%"></b></i></div><div class="pr was"><span>Before</span><i><b style="width:${b / m * 100}%"></b></i><em>${fmt(i)(b)}</em></div></${end(to)}>`; }).join('')}</section>`;
+  }
+  return `<section class="card strip">${K.map(([l, v, a, b, bad, to, t]) => `<${tag(to)} title="${t}"><div class="l">${l}</div><div class="v">${v}${chipN(a, b, bad)}</div></${end(to)}>`).join('')}</section>`;
+}
+
+// ---------------------------------------------------------------- in and out, by day
+// Now · the page as it is: four KPIs as folder tabs, the picked one as bars.
+function flowNow() {
+  const K = { in: ['Received', pesoK], out: ['Went out', pesoK], lost: ['Lost', pesoK, 1], adj: ['Adjusted', (v) => v] }, k = S.chart;
+  const tabs = Object.entries(K).map(([kk, [l, f, bad]]) => `<button class="stat" data-chart="${kk}" aria-selected="${k === kk}"><div class="lbl">${l}</div><div class="line"><span class="val">${f(D.cur[kk])}</span>${chipN(D.cur[kk], D.prev[kk], bad)}</div></button>`).join('');
+  const { step, top } = axis(Math.max(...CUR.map(d => D.day[d][k])) * 1.1, 3);
+  let g = ''; for (let v = 0; v <= top + 1e-6; v += step) g += `<div class="gl${v ? '' : ' zero'}" style="bottom:${v / top * 100}%"><span>${K[k][1](v)}</span></div>`;
+  const cols = CUR.map((d, i) => `<div class="b" data-tip="${dayTip(d)}"><i style="height:${D.day[d][k] / top * 100}%"></i><span class="x">${(29 - i) % 3 ? '' : dt(d).getDate()}</span></div>`).join('');
+  return `<section class="card now"><div class="tabs">${tabs}</div><div class="panel"><div class="plot"><div class="grid">${g}</div><div class="cols">${cols}</div></div></div></section>`;
+}
+// A · in and out around one zero line: what came in grows up in green, what went out hangs down in red, losses the deep end.
+function flowDiv() {
+  const f = frame(1130, 300, 60, 10, 24, 8), mx = Math.max(...CUR.map(d => Math.max(D.day[d].in, D.day[d].out + (D.day[d].by.short || 0)))), { step, top } = axis(mx, 2);
+  const z = f.T + (f.H - f.T - f.B) / 2, h = (v) => v / top * (z - f.T), Y = (v) => z - h(v);
+  const bars = CUR.map((d, i) => { const x = D.day[d], lost = x.lost, keep = x.out + (x.by.short || 0) - lost, bx = f.X(i) + f.bw * .19, w = f.bw * .62;
+    return `<g class="dc" data-tip="${dayTip(d)}"><rect class="hz" x="${f.X(i)}" y="${f.T}" width="${f.bw}" height="${f.H - f.T - f.B}"/>`
+      + `<rect class="gin" x="${bx}" y="${z - h(x.in)}" width="${w}" height="${h(x.in)}"/><rect class="gout" x="${bx}" y="${z}" width="${w}" height="${h(keep)}"/>`
+      + `<rect class="glost" x="${bx}" y="${z + h(keep)}" width="${w}" height="${h(lost)}"/></g>`; }).join('');
+  return `<section class="card"><div class="band">Stock in and out, by day<span class="r">${key('var(--g-in)', 'Received ' + pesoK(D.cur.in))}${key('var(--g-out)', 'Went out ' + pesoK(D.cur.out - D.cur.lost + (D.rsum.short || 0)))}${key('var(--g-lost)', 'Lost ' + pesoK(D.cur.lost))}<span>At cost</span></span></div>
+    <div class="chart"><svg viewBox="0 0 ${f.W} ${f.H}">${gridY(f, Y, top, step, (v) => (v < 0 ? '−' : '') + pesoK(Math.abs(v)), -top)}${bars}${f.xl()}</svg></div></section>`;
+}
+// B · the stock's value at the close of each day, with the deliveries that lifted it (green) and the losses (red lane).
+function flowValue() {
+  const W = 1130, H = 300, L = 64, T = 14, B = 24, R = 14, ds = [C0 - 1, ...CUR], vs = ds.map(d => D.val[d]);
+  const lo0 = Math.min(...vs), hi0 = Math.max(...vs), step = nice((hi0 - lo0 || hi0) / 4), lo = Math.floor(lo0 / step) * step - step, hi = Math.ceil(hi0 / step) * step;
+  const X = (d) => L + (d - C0 + 1) / 30 * (W - L - R), Y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B - 20);
+  const f = { L, W, R }, lane = H - B - 8;
+  const pts = ds.map(d => `${X(d).toFixed(1)},${Y(D.val[d]).toFixed(1)}`).join(' ');
+  const mxIn = Math.max(...CUR.map(d => D.day[d].in)), mxL = Math.max(1, ...CUR.map(d => D.day[d].lost));
+  const hz = CUR.map(d => `<g class="dc" data-tip="${dayTip(d)}"><rect class="hz" x="${X(d - .5)}" y="${T}" width="${X(1) - X(0)}" height="${H - T - B}"/></g>`).join('');
+  const ins = CUR.filter(d => D.day[d].in > 0).map(d => `<circle class="mk" cx="${X(d)}" cy="${Y(D.val[d])}" r="${(3 + Math.sqrt(D.day[d].in / mxIn) * 7).toFixed(1)}" style="fill:var(--g-in-2)" data-tip="${tip(dLong(d), [['Received', peso(D.day[d].in)], ['Stock value at close', peso(D.val[d])]])}"/>`).join('');
+  const lost = CUR.filter(d => D.day[d].lost > 0).map(d => `<circle class="mk" cx="${X(d)}" cy="${lane}" r="${(2.5 + Math.sqrt(D.day[d].lost / mxL) * 5).toFixed(1)}" style="fill:var(--g-lost)" data-tip="${tip(dLong(d), [['Lost', peso(D.day[d].lost)], ...LOSS_R.filter(k => D.day[d].by[k]).map(k => [LL[k], peso(D.day[d].by[k])])])}"/>`).join('');
+  let g = ''; for (let v = lo + step; v <= hi + 1e-6; v += step) g += `<line class="gl" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${L - 8}" y="${Y(v) + 4}" text-anchor="end">${pesoK(v)}</text>`;
+  const xl = CUR.map((d, i) => (29 - i) % 3 ? '' : `<text class="ax" x="${X(d)}" y="${H - 6 + 0}" text-anchor="middle">${dt(d).getDate() <= 3 ? dShort(d) : dt(d).getDate()}</text>`).join('');
+  return `<section class="card"><div class="band">Stock value at cost, end of each day<span class="r">${key('var(--g-in-2)', 'Delivery, sized by amount')}${key('var(--g-lost)', 'Loss')}<span>${pesoK(D.val[C0 - 1])} → <b style="color:var(--b-ink)">${pesoK(D.val[59])}</b></span></span></div>
+    <div class="chart"><svg viewBox="0 0 ${W} ${H}">${g}<line class="gl zero" x1="${L}" x2="${W - R}" y1="${lane + 10}" y2="${lane + 10}"/><text class="ax" x="${L - 8}" y="${lane + 4}" text-anchor="end">Lost</text>
+      ${hz}<polygon class="va" points="${X(C0 - 1)},${Y(lo)} ${pts} ${X(59)},${Y(lo)}"/><polyline class="vl" points="${pts}"/>${ins}${lost}${xl}</svg></div></section>`;
+}
+// C · a calendar: each day tinted by what it did to the stock, green for more in than out, red for more out.
+function flowCal() {
+  const lead = (dt(C0).getDay() + 6) % 7, mx = Math.max(...CUR.map(d => Math.max(D.day[d].in, D.day[d].out))), nx = Math.max(1, ...CUR.map(d => Math.abs(D.day[d].in - D.day[d].out)));
+  const cells = CUR.map(d => { const x = D.day[d], n = x.in - x.out, a = (.12 + Math.abs(n) / nx * .6).toFixed(2);
+    return `<div class="cd" style="background:${n >= 0 ? `rgb(159 214 185 / ${a})` : `rgb(242 180 165 / ${a})`}" data-tip="${dayTip(d)}"><span class="dn">${dt(d).getDate() === 1 || d === C0 ? dShort(d) : dt(d).getDate()}</span>`
+      + `<b class="${n >= 0 ? 'up' : 'down'}">${n >= 0 ? '+' : '−'}${pesoK(Math.abs(n))}</b><span class="mb"><i class="i" style="width:${x.in / mx * 100}%"></i></span><span class="mb"><i class="o" style="width:${x.out / mx * 100}%"></i></span></div>`; });
+  return `<section class="card"><div class="band">Each day, in minus out<span class="r">${key('var(--g-in-2)', 'In')}${key('var(--g-out-2)', 'Out')}<span>Deeper = a bigger day</span></span></div>
+    <div class="cal">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(w => `<span class="wd">${w}</span>`).join('')}${'<span></span>'.repeat(lead)}${cells.join('')}</div></section>`;
+}
+// D · what went out each day, stacked by why: selling is the blues, losing is the red on top.
+function flowReason() {
+  const f = frame(1130, 300, 60, 10, 24, 8), G = [['sale', 'Sold', 'var(--s3)'], ['adjustment', 'Used or other', 'var(--s5)'], ['tout', 'Transfers out', 'var(--s-other)'], ['lost', 'Lost', 'var(--g-out-2)']];
+  const v = (d, k) => k === 'lost' ? D.day[d].lost : D.day[d].by[k] || 0, tot = (d) => G.reduce((s, [k]) => s + v(d, k), 0);
+  const { step, top } = axis(Math.max(...CUR.map(tot)), 4), Y = (x) => f.T + (1 - x / top) * (f.H - f.T - f.B);
+  const bars = CUR.map((d, i) => { let y = Y(0); const bx = f.X(i) + f.bw * .19, w = f.bw * .62;
+    return `<g class="dc" data-tip="${tip(dLong(d), G.map(([k, l]) => [l, peso(v(d, k))]))}"><rect class="hz" x="${f.X(i)}" y="${f.T}" width="${f.bw}" height="${f.H - f.T - f.B}"/>`
+      + G.map(([k, , c]) => { const hh = v(d, k) / top * (f.H - f.T - f.B); y -= hh; return hh ? `<rect x="${bx}" y="${y}" width="${w}" height="${hh}" style="fill:${c}"/>` : ''; }).join('') + '</g>'; }).join('');
+  return `<section class="card"><div class="band">What went out, by day<span class="r">${G.map(([k, l, c]) => key(c, l)).join('')}<span>At cost</span></span></div>
+    <div class="chart"><svg viewBox="0 0 ${f.W} ${f.H}">${gridY(f, Y, top, step, pesoK)}${bars}${f.xl()}</svg></div></section>`;
+}
+
+// ---------------------------------------------------------------- where it went
+const lostSum = () => LOSS_R.reduce((s, k) => s + (D.rsum[k] || 0), 0);
+// Now · the rail's "Where it went": what went out, by reason.
+function whyNow() {
+  const rows = ['sale', 'adjustment', 'tout', 'shrinkage', 'damage', 'writeoff'].filter(k => D.rsum[k]).sort((a, b) => D.rsum[b] - D.rsum[a]);
+  const tot = rows.reduce((s, k) => s + D.rsum[k], 0);
+  return `<section class="card w"><div class="band">Where it went</div>${rows.map(k => `<div class="lr"><span class="nm">${RS[k][0]}</span><span class="amt">${peso(D.rsum[k])}</span><span class="cmp">${D.rsum[k] / tot < .01 ? '<1%' : Math.round(D.rsum[k] / tot * 100) + '%'}</span></div>`).join('')}</section>`;
+}
+// A · two sides of one zero line: every reason stock came in by on the right, every reason it left by on the left.
+function whyTwo() {
+  const IN = ['delivery', 'return', 'tin', 'over'].filter(k => D.rsum[k]), OUT = ['sale', 'adjustment', 'tout', 'shrinkage', 'damage', 'writeoff', 'short'].filter(k => D.rsum[k]);
+  const lead = Math.max(...[...IN, ...OUT].map(k => D.rsum[k])), ti = IN.reduce((s, k) => s + D.rsum[k], 0), to = OUT.reduce((s, k) => s + D.rsum[k], 0);
+  const row = (k, side) => { const v = D.rsum[k], w = v / lead * 100, loss = LOSS_R.includes(k), was = D.rprev[k] || 0, c = chg(v, was);
+    const t = tip(RS[k][0], [['At cost', peso(v)], [side ? 'Share of what came in' : 'Share of what left', pct(v / (side ? ti : to))], ['30 days before', peso(was)]]);
+    const bar = `<i style="width:${w}%;background:${side ? 'var(--g-in)' : loss ? 'var(--g-out-2)' : 'var(--g-out)'}"></i>`;
+    return `<div class="rw" data-tip="${t}"><span class="nm">${RS[k][0]}</span><span class="dvl">${side ? '' : `<b>${pesoK(v)}</b>${bar}`}</span><span class="dvr">${side ? `${bar}<b>${pesoK(v)}</b>` : ''}</span>`
+      + `<span class="n hp">${c === Infinity ? '<span class="muted">New</span>' : `<span class="muted">${c >= 0 ? '+' : '−'}${Math.round(Math.abs(c) * 100)}%</span>`}</span></div>`; };
+  return `<section class="card rl" style="--cols:minmax(130px,200px) 1fr 1fr 56px;--cols-p:96px 1fr 1fr"><div class="band">Why stock moved<span class="r">${key('var(--g-in)', 'Came in ' + pesoK(ti))}${key('var(--g-out)', 'Left ' + pesoK(to))}${key('var(--g-out-2)', 'Lost')}<span>At cost · vs the 30 days before</span></span></div>
+    ${IN.map(k => row(k, 1)).join('')}<div class="rw sep"></div>${OUT.map(k => row(k, 0)).join('')}</section>`;
+}
+// B · the stock account as a flow: what was on the shelf plus what came in, on the left, equals what left plus what is on the shelf now, on the right.
+function whySankey() {
+  const R = D.rsum, lost = lostSum();
+  const left = [['On hand ' + dShort(C0 - 1), D.val[C0 - 1], 'st'], ['Received', R.delivery, 'in'], ['Customer returns', R.return, 'in'], ['Transfers in', R.tin, 'in'], ['Over on counts', R.over, 'in']].filter(x => x[1] > 0);
+  const right = [['Sold', R.sale, 'so'], ['Used or other', R.adjustment, 'us'], ['Transfers out', R.tout, 'tr'], ['Lost', lost, 'lo'], ['On hand ' + dShort(59), D.val[59], 'st']].filter(x => x[1] > 0);
+  const C = { st: ['#B5B5B5', '#E4E4E4'], in: ['var(--g-in-2)', 'var(--g-in)'], so: ['var(--s3)', 'var(--b-data-1)'], us: ['var(--s5)', 'var(--b-data-tint)'], tr: ['#B5B5B5', '#E4E4E4'], lo: ['var(--g-lost)', 'var(--g-out)'] };
+  const W = 1130, H = 400, T = 30, B = 14, nw = 12, gap = 12, xl = 260, xr = W - 260 - nw, xm = W / 2 - nw / 2;
+  const total = Math.max(left.reduce((s, x) => s + x[1], 0), right.reduce((s, x) => s + x[1], 0));
+  const k = (H - T - B - gap * (Math.max(left.length, right.length) - 1)) / total;
+  const lay = (list) => { let y = T, m = T; return list.map(([l, v, c]) => { const h = Math.max(2, v * k), o = { l, v, c, y, h, m }; y += h + gap; m += h; return o; }); };
+  const Ls = lay(left), Rs = lay(right), mh = Math.max(...[...Ls, ...Rs].map(o => o.m + o.h)) - T;
+  const band = (x1, a1, b1, x2, a2, b2) => { const m = (x1 + x2) / 2; return `M${x1},${a1}C${m},${a1} ${m},${a2} ${x2},${a2}L${x2},${b2}C${m},${b2} ${m},${b1} ${x1},${b1}Z`; };
+  const tipOf = (o) => tip(o.l, [['At cost', peso(o.v)], ['Of the stock account', pct(o.v / total)], ...(o.c === 'lo' ? LOSS_R.filter(k => R[k]).map(k => [LL[k], peso(R[k])]) : [])]);
+  const bands = Ls.map(o => `<path class="bd" d="${band(xl + nw, o.y, o.y + o.h, xm, o.m, o.m + o.h)}" style="fill:${C[o.c][1]}" data-tip="${tipOf(o)}"/>`).join('')
+    + Rs.map(o => `<path class="bd" d="${band(xm + nw, o.m, o.m + o.h, xr, o.y, o.y + o.h)}" style="fill:${C[o.c][1]}" data-tip="${tipOf(o)}"/>`).join('');
+  const nodes = [...Ls.map(o => [xl, o]), ...Rs.map(o => [xr, o])].map(([x, o]) => `<rect x="${x}" y="${o.y}" width="${nw}" height="${o.h}" rx="2" style="fill:${C[o.c][0]}" data-tip="${tipOf(o)}"/>`).join('');
+  // Labels beside their node; one that would sit on the label above steps down, with a short leader back.
+  const labels = (list, x, anchor, nx) => { let last = -1e9; return list.map(o => { const cy = o.y + o.h / 2, y = Math.max(cy, last + 16); last = y;
+    return (y - cy > 3 ? `<line class="ld" x1="${nx}" y1="${cy}" x2="${x + (anchor === 'end' ? 4 : -4)}" y2="${y - 4}"/>` : '') + `<text x="${x}" y="${y + 4}" text-anchor="${anchor}">${esc(o.l)}  <tspan class="mv">${pesoK(o.v)}</tspan></text>`; }).join(''); };
+  return `<section class="card"><div class="band">The stock account<span class="r"><span>What you had and got = what left and what you have · at cost · hover a band</span></span></div>
+    <div class="chart sk"><svg viewBox="0 0 ${W} ${H}">${bands}${nodes}<rect x="${xm}" y="${T}" width="${nw}" height="${mh}" rx="2" style="fill:var(--b-ink-2)"/>
+      <text class="hd2" x="${xm + nw / 2}" y="${T - 12}" text-anchor="middle">Stock</text><text class="hd2" x="${xl + nw}" y="${T - 12}" text-anchor="end">Had and got</text><text class="hd2" x="${xr}" y="${T - 12}">Left and have</text>
+      ${labels(Ls, xl - 10, 'end', xl)}${labels(Rs, xr + nw + 10, 'start', xr + nw)}</svg></div></section>`;
+}
+// C · two 100% bars: what came in and what went out, each split by reason.
+function whyShare() {
+  const R = D.rsum, val = (k) => k === 'lost' ? lostSum() : R[k] || 0;
+  const bar = (title, rows) => { rows = rows.filter(([k]) => val(k) > 0); const tot = rows.reduce((s, [k]) => s + val(k), 0);
+    return `<div class="sh"><div class="shh">${title}<span>${peso(tot)}</span></div><div class="shb">${rows.map(([k, l, c, wt]) => { const f = val(k) / tot;
+      return `<i class="${wt ? 'wt' : ''}" style="flex:${f};background:${c}" data-tip="${tip(l, [['At cost', peso(val(k))], ['Share', pct(f)]])}">${f > .07 ? pct(f, 0) : ''}</i>`; }).join('')}</div>`
+      + `<div class="shl">${rows.map(([k, l, c]) => `<span><i style="background:${c}"></i>${l}<b>${pesoK(val(k))}</b></span>`).join('')}</div></div>`; };
+  return `<section class="card"><div class="band">In and out, by reason<span class="r"><span>At cost</span></span></div>
+    ${bar('Came in', [['delivery', 'Received', 'var(--g-in-2)', 1], ['return', 'Customer returns', 'var(--g-in)'], ['tin', 'Transfers in', '#CDEBDB'], ['over', 'Over on counts', '#E3F3EA']])}
+    ${bar('Went out', [['sale', 'Sold', 'var(--s3)', 1], ['adjustment', 'Used or other', 'var(--s5)'], ['tout', 'Transfers out', 'var(--s-other)'], ['lost', 'Lost', 'var(--g-out-2)']])}</section>`;
+}
+
+// ---------------------------------------------------------------- what went missing
+const lossTip = (x) => tip(x.p.name, [...LOSS_R.filter(k => x.by[k]).map(k => [LL[k], peso(x.by[k])]), ['Units', x.u], ['Category', esc(x.p.cat)]]);
+const lossKey = () => LOSS_R.map(k => key(LC[k], LL[k])).join('');
+// Now · the rail's "Counts that didn't match": system → shelf, short is red.
+function lossNow() {
+  const rows = D.counts.slice(0, 5);
+  return `<section class="card w"><div class="band">Counts that didn’t match<span class="r"><a class="link" href="#counts">View all ›</a></span></div>${rows.map(m => `<div class="lr"><span class="nm">${esc(m.p.name)}</span><span class="cmp" style="width:auto">${m.expected} → ${m.counted}</span><span class="amt ${m.qty < 0 ? 'down' : ''}">${signed(m.qty)}</span></div>`).join('')}</section>`;
+}
+// A · the items that lost the most, each bar split by how. Top 10, then how much the rest lost.
+function lossBars() {
+  const top = D.loss.slice(0, 10), rest = D.loss.slice(10), lead = top[0]?.v || 1;
+  return `<section class="card rl" style="--cols:24px minmax(160px,300px) minmax(0,1fr) 48px 84px;--cols-p:18px minmax(0,1fr) 72px"><div class="band">Lost the most<span class="r">${lossKey()}</span></div>
+    <div class="rw hd"><span></span><span>Item</span><span class="hp"></span><span class="n hp">Units</span><span class="n">At cost</span></div>
+    ${top.map((x, i) => `<div class="rw" data-tip="${lossTip(x)}"><span class="rk">${i + 1}</span><span class="nm">${esc(x.p.name)}<small>${esc(x.p.cat)}</small></span><span class="stk hp">${LOSS_R.map(k => x.by[k] ? `<i style="width:${x.by[k] / lead * 100}%;background:${LC[k]}"></i>` : '').join('')}</span><span class="n hp">${x.u}</span><span class="n v">${peso(x.v)}</span></div>`).join('')}
+    <div class="foot">${rest.length ? `<span class="muted">${rest.length} more items lost ${peso(rest.reduce((s, x) => s + x.v, 0))}</span>` : ''}${allLink(D.loss.length, 'losses')}</div></section>`;
+}
+function lossByCat() {
+  const m = new Map(), get = (c) => m.get(c) || m.set(c, { cat: c, v: 0, out: 0, by: {}, w: [0, 0, 0, 0, 0] }).get(c);
+  for (const x of D.cm) { const c = get(x.p.cat), v = Math.abs(x.qty) * x.p.cost;
+    if (x.qty < 0 && x.reason !== 'count') c.out += v;
+    if (isLoss(x)) { const k = rkey(x); c.v += v; c.by[k] = (c.by[k] || 0) + v; c.w[WEEKS.findIndex(([a, b]) => x.d >= a && x.d < b)] += v; } }
+  return [...m.values()].filter(c => c.v > 0).sort((a, b) => b.v - a.v);
+}
+const topOther = (list, n) => { if (list.length <= n + 1) return list; const rest = list.slice(n), o = { cat: `Other ${rest.length} categories`, other: 1, v: 0, out: 0, by: {}, w: [0, 0, 0, 0, 0] };
+  for (const c of rest) { o.v += c.v; o.out += c.out; for (const k in c.by) o.by[k] = (o.by[k] || 0) + c.by[k]; c.w.forEach((v, i) => o.w[i] += v); } return [...list.slice(0, n), o]; };
+// B · by category, top 8 and the rest as Other: where losing stock is a habit, and how much of what left that was.
+function lossCat() {
+  const list = topOther(lossByCat(), 8), lead = Math.max(...list.filter(c => !c.other).map(c => c.v));   // Other is capped at the lead's length, so 51 categories don't flatten the named ones
+  return `<section class="card rl" style="--cols:minmax(140px,240px) minmax(0,1fr) 84px 108px 120px;--cols-p:minmax(0,1fr) 72px 64px"><div class="band">Lost, by category<span class="r">${lossKey()}${key('var(--s-other)', 'Other')}</span></div>
+    <div class="rw hd"><span>Category</span><span class="hp"></span><span class="n">At cost</span><span class="n">Of what left</span><span class="hp">Mostly</span></div>
+    ${list.map(c => { const main = LOSS_R.reduce((a, k) => (c.by[k] || 0) > (c.by[a] || 0) ? k : a, 'short');
+      return `<div class="rw${c.other ? ' oth' : ''}" data-tip="${tip(c.cat, [...LOSS_R.filter(k => c.by[k]).map(k => [LL[k], peso(c.by[k])]), ['Went out', peso(c.out)]])}"><span class="nm">${esc(c.cat)}</span>`
+        + `<span class="stk hp">${c.other ? `<i style="width:${Math.min(1, c.v / lead) * 100}%;background:var(--s-other)"></i>` : LOSS_R.map(k => c.by[k] ? `<i style="width:${c.by[k] / lead * 100}%;background:${LC[k]}"></i>` : '').join('')}</span>`
+        + `<span class="n v">${peso(c.v)}</span><span class="n">${c.out ? pct(c.v / c.out) : '—'}</span><span class="muted hp">${LL[main]}</span></div>`; }).join('')}</section>`;
+}
+// C · every shelf count that didn't match: the ring is what the system expected (100%), the dot what was on the shelf.
+function lossGap() {
+  const rows = [...D.counts].sort((a, b) => Math.abs(b.qty) * b.p.cost - Math.abs(a.qty) * a.p.cost).slice(0, 12), X = (f) => Math.min(150, f * 100) / 150 * 100;
+  const hd = `<span class="gs hp">${[0, 50, 100, 150].map(v => `<span style="left:${v / 150 * 100}%">${v}%</span>`).join('')}</span>`;
+  return `<section class="card rl" style="--cols:minmax(160px,260px) minmax(0,1fr) 72px 48px 84px;--cols-p:minmax(0,1fr) 64px 40px 64px"><div class="band">Counts that didn’t match<span class="r"><span class="key"><i style="background:#fff;box-shadow:inset 0 0 0 1.5px #B5B5B5;border-radius:50%"></i>Expected</span>${key('var(--b-down)', 'Short')}${key('var(--b-up)', 'Over')}</span></div>
+    <div class="rw hd"><span>Item</span>${hd}<span class="n">System → shelf</span><span class="n">Gap</span><span class="n">At cost</span></div>
+    ${rows.map(m => { const f = m.expected ? m.counted / m.expected : 1.5, a = X(Math.min(1, f)), b = X(Math.max(1, f)), c = m.qty < 0 ? 'dn' : 'ov';
+      return `<div class="rw" data-tip="${tip(m.p.name, [['Counted', tStamp(m.ts)], ['System said', m.expected], ['Shelf had', m.counted], ['By', m.staff]])}"><span class="nm">${esc(m.p.name)}</span>`
+        + `<span class="gp hp"><i class="c" style="left:${X(1)}%"></i><i class="ln ${c}" style="left:${a}%;width:${b - a}%"></i><i class="ring" style="left:${X(1)}%"></i><i class="dot ${c}" style="left:${X(f)}%"></i></span>`
+        + `<span class="n">${m.expected} → ${m.counted}</span><span class="n ${m.qty < 0 ? 'down' : 'up'}">${signed(m.qty)}</span><span class="n">${peso(Math.abs(m.qty) * m.p.cost)}</span></div>`; }).join('')}
+    <div class="foot">${allLink(D.counts.length, 'counts')}</div></section>`;
+}
+// D · category by week: when and where it went missing. Deeper red = more lost.
+const WEEKS = [[30, 37], [37, 44], [44, 51], [51, 58], [58, 60]];
+function lossHeat() {
+  const list = topOther(lossByCat(), 10), mx = Math.max(...list.filter(c => !c.other).flatMap(c => c.w));
+  return `<section class="card heat"><div class="band">Lost, by category and week<span class="r"><span>Deeper = more lost · at cost</span></span></div><div class="tw"><table>
+    <thead><tr><th>Category</th>${WEEKS.map(([a, b]) => `<th class="h">${b - a < 7 ? dShort(a) + '–' + dt(b - 1).getDate() : 'Week of ' + dShort(a)}</th>`).join('')}<th class="h">Total</th></tr></thead><tbody>
+    ${list.map(c => `<tr${c.other ? ' class="muted"' : ''}><td>${esc(c.cat)}</td>${c.w.map((v, i) => `<td class="h" style="${v && !c.other ? `background:rgb(232 138 116 / ${(.12 + v / mx * .7).toFixed(2)})` : ''}" data-tip="${tip(c.cat, [['Week', dShort(WEEKS[i][0])], ['Lost', peso(v)]])}">${v ? pesoK(v) : '<span class="muted">·</span>'}</td>`).join('')}<td class="h"><b>${pesoK(c.v)}</b></td></tr>`).join('')}
+    </tbody></table></div></section>`;
+}
+
+// ---------------------------------------------------------------- one item's stock
+const itemP = () => D.P[S.pick ?? D.def];
+const itemSel = (p) => `<select class="sel" data-sel="pick">${[...D.P].sort((a, b) => b.n - a.n).map(x => `<option value="${x.id}"${x === p ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`;
+const movesOf = (p) => D.M.filter(m => m.p === p && m.d >= C0);
+const mvTip = (m) => tip(RS[m.reason][0], [['When', tStamp(m.ts)], ['Qty', signed(m.qty)], ...(m.reason === 'count' ? [['System → shelf', `${m.expected} → ${m.counted}`]] : []), ['On hand after', m.bal], ...(m.ref ? [['Ref', m.ref]] : []), ...(m.note ? [['Note', esc(m.note)]] : []), ['By', m.staff]]);
+// The running on-hand as steps: every sale a step down, a delivery the jump back up, the reorder point dashed, the days at zero red.
+function stepSvg(p, withDays) {
+  const W = 1130, H = 280, L = 44, T = 14, B = 24, R = 110, t0 = dayMs(C0), t1 = dayMs(60), mv = movesOf(p), start = p.eod[C0 - 1];
+  const { step, top } = axis(Math.max(start, p.reorder, ...mv.map(m => m.bal)) * 1.08, 4);
+  const X = (ts) => L + (ts - t0) / (t1 - t0) * (W - L - R), Y = (v) => T + (1 - v / top) * (H - T - B);
+  let path = `M${X(t0)},${Y(start)}`, pb = start, pt = t0; const zero = [];
+  for (const m of mv) { path += `H${X(m.ts).toFixed(1)}V${Y(m.bal).toFixed(1)}`; if (pb === 0) zero.push([pt, m.ts]); pb = m.bal; pt = m.ts; }
+  const tEnd = dayMs(59) + 18.5 * 36e5; path += `H${X(tEnd)}`; if (pb === 0) zero.push([pt, tEnd]);
+  const f = { L, W, R };
+  const hz = CUR.map(d => { const ms = mv.filter(m => m.d === d), sold = -ms.filter(m => m.reason === 'sale').reduce((s, m) => s + m.qty, 0);
+    return `<g class="dc" data-tip="${tip(dLong(d), [['On hand at close', p.eod[d]], ['Sold', sold], ['Received', p.rcv[d] || 0], ['Other changes', ms.filter(m => !['sale', 'delivery'].includes(m.reason)).length]])}"><rect class="hz" x="${X(dayMs(d))}" y="${T}" width="${X(dayMs(d + 1)) - X(dayMs(d))}" height="${H - T - B}"/></g>`; }).join('');
+  const oz = zero.map(([a, b]) => `<rect class="oz" x="${X(a)}" y="${T}" width="${Math.max(2, X(b) - X(a))}" height="${H - T - B}"/>` + (X(b) - X(a) > 34 ? `<text class="lb" x="${(X(a) + X(b)) / 2}" y="${T + 14}" text-anchor="middle" style="fill:var(--b-down)">Out</text>` : '')).join('');
+  const mk = mv.filter(m => m.reason !== 'sale').map(m => { const x = X(m.ts), y = Y(m.bal), k = rkey(m), t = mvTip(m);
+    if (m.reason === 'delivery') return `<path class="mkr" d="M${x},${y - 8}L${x + 7},${y + 4}L${x - 7},${y + 4}Z" style="fill:var(--b-up)" data-tip="${t}"/>`;
+    if (m.reason === 'count') return `<path class="mkr" d="M${x},${y - 6}L${x + 6},${y}L${x},${y + 6}L${x - 6},${y}Z" style="fill:${m.qty < 0 ? 'var(--b-down)' : 'var(--b-data)'}" data-tip="${t}"/>`;
+    return `<circle class="mkr" cx="${x}" cy="${y}" r="5" style="fill:${isLoss(m) ? 'var(--b-down)' : m.qty > 0 ? 'var(--g-in-2)' : '#8C8C8C'}" data-tip="${t}"/>`; }).join('');
+  const xl = CUR.map((d, i) => (29 - i) % 3 ? '' : `<text class="ax" x="${X(dayMs(d) + 432e5)}" y="${H - 6}" text-anchor="middle">${dt(d).getDate() <= 3 ? dShort(d) : dt(d).getDate()}</text>`).join('');
+  let svg = `<svg viewBox="0 0 ${W} ${H}">${gridY(f, Y, top, step, (v) => v)}${oz}${hz}<path class="sa" d="${path}V${Y(0)}H${X(t0)}Z"/><path class="sp" d="${path}"/>`
+    + `<line class="ro" x1="${L}" x2="${W - R}" y1="${Y(p.reorder)}" y2="${Y(p.reorder)}"/><text class="lb mu" x="${W - R + 8}" y="${Y(p.reorder) + 4}">Reorder at ${p.reorder}</text>`
+    + `<text class="lb" x="${X(tEnd) + 8}" y="${Y(pb) + (Math.abs(Y(pb) - Y(p.reorder)) < 14 ? (Y(pb) < Y(p.reorder) ? -6 : 16) : 4)}" style="font-weight:600">${pb} now</text>${mk}${xl}</svg>`;
+  if (withDays) {
+    // Under it, each day's units in (up) and out (down), on their own units axis, lined up with the days above.
+    const h2 = 150, rows = CUR.map(d => { const ms = mv.filter(m => m.d === d); return { d, i: ms.filter(m => m.qty > 0 && m.reason !== 'count').reduce((s, m) => s + m.qty, 0), o: -ms.filter(m => m.qty < 0 && m.reason !== 'count').reduce((s, m) => s + m.qty, 0) }; });
+    const a = axis(Math.max(1, ...rows.map(x => Math.max(x.i, x.o))), 2), z = 10 + (h2 - 34) / 2, hh = (v) => v / a.top * (z - 10), bw = (X(dayMs(C0 + 1)) - X(dayMs(C0))) * .6;
+    let g = ''; for (let v = -a.top; v <= a.top + 1e-6; v += a.step) g += `<line class="gl${v ? '' : ' zero'}" x1="${L}" x2="${W - R}" y1="${z - hh(v)}" y2="${z - hh(v)}"/><text class="ax" x="${L - 8}" y="${z - hh(v) + 4}" text-anchor="end">${v < 0 ? '−' : v > 0 ? '+' : ''}${Math.abs(v)}</text>`;
+    svg += `<svg viewBox="0 0 ${W} ${h2}" style="margin-top:8px">${g}${rows.map(x => { const cx = X(dayMs(x.d) + 432e5) - bw / 2;
+      return `<g class="dc" data-tip="${tip(dLong(x.d), [['Units in', x.i], ['Units out', x.o]])}"><rect class="hz" x="${cx - bw / 3}" y="10" width="${bw * 5 / 3}" height="${h2 - 34}"/><rect class="gin" x="${cx}" y="${z - hh(x.i)}" width="${bw}" height="${hh(x.i)}"/><rect class="gout" x="${cx}" y="${z}" width="${bw}" height="${hh(x.o)}"/></g>`; }).join('')}`
+      + `<text class="lb mu" x="${W - R + 8}" y="${z - 10}">Units in</text><text class="lb mu" x="${W - R + 8}" y="${z + 18}">Units out</text></svg>`;
+  }
+  return svg;
+}
+function itemHead(p) {
+  const o = D.out.find(x => x.p === p);
+  return `<div class="band">${itemSel(p)}<span class="muted" style="font-weight:400">${esc(p.cat)}</span><span class="r"><span class="key"><svg width="10" height="9" style="margin-right:5px"><path d="M5 0L10 9H0Z" fill="#047B5D"/></svg>Received</span>${key('var(--b-down)', 'Lost')}<span class="key"><svg width="9" height="9" style="margin-right:5px"><path d="M4.5 0L9 4.5L4.5 9L0 4.5Z" fill="#2B7DE9"/></svg>Counted</span>${key('#8C8C8C', 'Used or moved')}${o ? `<span class="down">Out ${o.days} day${o.days > 1 ? 's' : ''}</span>` : ''}</span></div>`;
+}
+const itemLine = (days) => { const p = itemP(); return `<section class="card">${itemHead(p)}<div class="chart">${stepSvg(p, days)}</div></section>`; };
+// C · twelve items at once, the ones that ran short first: click one to open its line.
+function itemGrid() {
+  const list = [...new Set([...D.out.map(o => o.p), ...[...D.P].sort((a, b) => b.n - a.n)])].slice(0, 12), cur = itemP();
+  return `<section class="card"><div class="band">Twelve items, on hand each day<span class="r">${key('var(--b-down-tint)', 'Out')}<span class="key"><i style="background:none;border-top:1.5px dashed #9A9A9A;height:0;border-radius:0"></i>Reorder point</span><span>Click one for its line</span></span></div><div class="mini">${list.map(p => {
+    const ds = [C0 - 1, ...CUR], mx = Math.max(p.reorder, ...ds.map(d => p.eod[d])) * 1.1 || 1, X = (i) => i / 30 * 100, Y = (v) => 48 - v / mx * 46, o = D.out.find(x => x.p === p);
+    const pts = ds.map((d, i) => `${X(i)},${Y(p.eod[d]).toFixed(1)}`).join(' ');
+    return `<button class="${p === cur ? 'on' : ''}" data-pick="${p.id}" data-tip="${tip(p.name, [['On hand now', p.eod[59]], ['Reorder at', p.reorder], ['Days out', o ? o.days : 0], ['Moves', p.n]])}"><span class="nm">${esc(p.name)}</span><span class="pv"><b>${p.eod[59]}</b>on hand${o ? `<em>Out ${o.days}d</em>` : ''}</span>`
+      + `<svg viewBox="0 0 100 48" preserveAspectRatio="none">${ds.map((d, i) => p.eod[d] === 0 && i ? `<rect class="z" x="${X(i - 1)}" y="0" width="${X(1)}" height="48"/>` : '').join('')}<line class="ro" x1="0" x2="100" y1="${Y(p.reorder)}" y2="${Y(p.reorder)}" vector-effect="non-scaling-stroke"/><polyline class="sp" points="${pts}" vector-effect="non-scaling-stroke"/></svg></button>`; }).join('')}</div></section>`;
+}
+// Now · the Movement history table, for one item, sales included.
+function itemNow() {
+  const p = itemP(), mv = movesOf(p).reverse();
+  return `<section class="card">${itemHead(p)}<div class="tw"><table><thead><tr><th>When</th><th>Reason</th><th class="n">Qty</th><th class="n">Unit cost</th><th class="n">Balance</th><th>Ref</th><th>Note</th><th>Staff</th></tr></thead><tbody>
+    ${mv.slice(0, 12).map(m => `<tr><td class="t">${tStamp(m.ts)}</td><td>${pill(m.reason)}</td><td class="n ${m.qty < 0 ? 'down' : 'up'}">${signed(m.qty)}</td><td class="n">${peso(m.p.cost)}</td><td class="n">${m.bal}</td><td>${m.ref || '—'}</td><td>${esc(m.note || (m.rc ? m.rc + (m.rc > 1 ? ' receipts' : ' receipt') : '—'))}</td><td>${m.staff}</td></tr>`).join('')}
+    </tbody></table></div><div class="foot"><span class="muted">showing ${Math.min(12, mv.length)} of ${mv.length}</span></div></section>`;
+}
+
+// ---------------------------------------------------------------- ran out
+const outTip = (o) => tip(o.p.name, [['Ran out', dShort(o.first)], ['Back in', o.back != null ? dShort(o.back) : 'Still out'], ['Days out', o.days], ['Asked for while out', o.asked + '×'], ['On hand now', o.p.eod[59]]]);
+// Now · the rail's Lost demand: what people asked for that you were out of.
+function outNow() {
+  const rows = D.out.filter(o => o.asked).sort((a, b) => b.asked - a.asked).slice(0, 5);
+  return `<section class="card w"><div class="band">Lost demand<span class="r"><a class="link" href="#ranout">View all ›</a></span></div>${rows.length ? rows.map(o => `<div class="lr"><span class="nm">${esc(o.p.name)}</span><span class="amt">${o.asked}×</span></div>`).join('') : '<div class="lr"><span class="muted">Nobody asked for anything you were out of in the last 30 days</span></div>'}</section>`;
+}
+// A · a timeline: one row an item, one cell a day. Red = out, pink = below its reorder point, green underline = a delivery came.
+function outGantt() {
+  const top = D.out.slice(0, 12);
+  return `<section class="card rl" style="--cols:minmax(150px,240px) minmax(0,1fr) 64px 56px;--cols-p:110px minmax(0,1fr) 56px"><div class="band">Ran out<span class="r">${key('var(--g-out-2)', 'Out')}${key('var(--b-down-tint)', 'Below reorder point')}<span class="key"><i class="dvk"></i>Delivery</span></span></div>
+    <div class="rw hd"><span>Item</span><span class="gx">${CUR.map((d, i) => `<span>${(29 - i) % 6 ? '' : dt(d).getDate()}</span>`).join('')}</span><span class="n">Days out</span><span class="n hp">Asked</span></div>
+    ${top.map(o => { const p = o.p; return `<div class="rw"><span class="nm" data-tip="${outTip(o)}">${esc(p.name)}</span><span class="gc">${CUR.map(d => { const s = p.eod[d], rc = p.rcv[d], ak = p.asked.filter(x => x === d).length;
+      return `<i class="${s === 0 ? 'o' : s <= p.reorder ? 'l' : ''}${rc ? ' dv' : ''}" data-tip="${tip(p.name, [['Day', dLong(d)], ['On hand at close', s], ...(rc ? [['Received', '+' + rc]] : []), ...(ak ? [['Asked for', ak + '×']] : [])])}"></i>`; }).join('')}</span>`
+      + `<span class="n v ${o.back == null ? 'down' : ''}">${o.days}</span><span class="n hp">${o.asked ? o.asked + '×' : '<span class="muted">—</span>'}</span></div>`; }).join('')}
+    <div class="foot">${D.out.length > 12 ? `<span class="muted">${D.out.filter(o => o.back == null).length} still out today</span>` : ''}${allLink(D.out.length, 'ranout')}</div></section>`;
+}
+// B · how many items were out, and how many low, at the close of each day.
+function outCount() {
+  const f = frame(1130, 260, 44, 10, 24, 8), cnt = (d) => { const o = D.P.filter(p => p.eod[d] === 0); return { o, l: D.P.filter(p => p.eod[d] > 0 && p.eod[d] <= p.reorder).length }; };
+  const cs = CUR.map(cnt), { step, top } = axis(Math.max(...cs.map(c => c.o.length + c.l)), 4), Y = (v) => f.T + (1 - v / top) * (f.H - f.T - f.B);
+  const bars = cs.map((c, i) => { const d = CUR[i], bx = f.X(i) + f.bw * .19, w = f.bw * .62, ho = c.o.length / top * (f.H - f.T - f.B), hl = c.l / top * (f.H - f.T - f.B);
+    return `<g class="dc" data-tip="${tip(dLong(d), [['Out', c.o.length + ' items'], ['Below reorder point', c.l + ' items'], ...c.o.slice(0, 4).map(p => ['', esc(p.name)])])}"><rect class="hz" x="${f.X(i)}" y="${f.T}" width="${f.bw}" height="${f.H - f.T - f.B}"/>`
+      + `<rect x="${bx}" y="${Y(0) - ho}" width="${w}" height="${ho}" style="fill:var(--g-out-2)"/><rect x="${bx}" y="${Y(0) - ho - hl}" width="${w}" height="${hl}" style="fill:var(--b-down-tint)"/></g>`; }).join('');
+  return `<section class="card"><div class="band">Items out, each day<span class="r">${key('var(--g-out-2)', 'Out')}${key('var(--b-down-tint)', 'Below reorder point')}<a class="link" href="#ranout">${D.out.length} ran out ›</a></span></div>
+    <div class="chart"><svg viewBox="0 0 ${f.W} ${f.H}">${gridY(f, Y, top, step, (v) => v)}${bars}${f.xl()}</svg></div></section>`;
+}
+const outTable = (rows) => `<div class="tw"><table><thead><tr><th>Item</th><th>Ran out</th><th>Back in</th><th class="n">Days out</th><th class="n">Asked for</th><th class="n">On hand now</th><th class="n">Reorder at</th></tr></thead><tbody>
+  ${rows.map(o => `<tr data-tip="${outTip(o)}"><td class="nm">${esc(o.p.name)}<small>${esc(o.p.cat)}</small></td><td class="t">${dShort(o.first)}</td><td>${o.back != null ? dShort(o.back) : '<span class="down">Still out</span>'}</td><td class="n"><b>${o.days}</b></td><td class="n">${o.asked ? o.asked + '×' : '—'}</td><td class="n">${o.p.eod[59]}</td><td class="n">${o.p.reorder}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Nothing ran out.</td></tr>'}
+  </tbody></table></div>`;
+const outList = () => `<section class="card"><div class="band">Ran out<span class="r"><span>Longest out first</span></span></div>${outTable(D.out.slice(0, 10))}<div class="foot">${allLink(D.out.length, 'ranout')}</div></section>`;
+
+// ---------------------------------------------------------------- movements
+const TYPES = [['', 'All but sales', m => m.reason !== 'sale'], ['all', 'All', () => true], ['in', 'Received', m => m.qty > 0 && m.reason !== 'count'], ['sale', 'Sold', m => m.reason === 'sale'], ['lost', 'Lost', isLoss], ['adj', 'Adjusted', m => MANUAL.has(m.reason)]];
+const typeOf = () => TYPES.find(t => t[0] === S.type) || TYPES[0];
+const typeSel = () => `<select class="sel" data-sel="type">${TYPES.map(([k, l]) => `<option value="${k}"${k === typeOf()[0] ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+// Now · the overview's Movements card: the latest 10, sales hidden until asked for.
+function movesNow() {
+  const all = D.cm.filter(typeOf()[2]);
+  return `<section class="card"><div class="band">Movements <span class="muted" style="font-weight:400">latest 10 of ${all.length.toLocaleString('en-US')}</span><span class="r">${typeSel()}<a class="link" href="#movements">View all ›</a></span></div>
+    <div class="tw"><table><thead><tr><th>When</th><th>Product</th><th>Reason</th><th class="n">Qty</th><th class="n">Balance</th></tr></thead><tbody>
+    ${all.slice(0, 10).map(m => `<tr data-tip="${mvTip(m)}"><td class="t">${tStamp(m.ts)}</td><td>${esc(m.p.name)}${m.note ? `<span class="muted"> · ${esc(m.note)}</span>` : ''}</td><td>${pill(m.reason)}</td><td class="n">${signed(m.qty)}</td><td class="n">${m.bal}</td></tr>`).join('')}
+    </tbody></table></div></section>`;
+}
+const saleFold = (d) => { const s = D.cm.filter(m => m.d === d && m.reason === 'sale'); return { u: -s.reduce((a, m) => a + m.qty, 0), n: s.length, rc: s.reduce((a, m) => a + m.rc, 0), ts: Math.max(...s.map(m => m.ts)) }; };
+const sentence = (m) => { const q = Math.abs(m.qty), n = `<b>${esc(m.p.name)}</b>`, note = m.note ? ` · ${esc(m.note)}` : '';
+  return { delivery: `${m.staff} received ${q} × ${n} · ${m.ref}`, return: `A customer returned ${q} × ${n}${note}`, tin: `${q} × ${n} came from Branch 2`, tout: `${q} × ${n} went to Branch 2`,
+    adjustment: `${m.staff} took out ${q} × ${n}${note}`, shrinkage: `${q} × ${n} went missing${note}`, damage: `${q} × ${n} broken${note}`, writeoff: `${m.staff} wrote off ${q} × ${n}${note}`,
+    count: `${m.staff} counted ${n}: system ${m.expected}, shelf ${m.counted}` }[m.reason]; };
+// A · the last four days, each with what came in and went out; the day's sales folded into one line.
+function movesDay() {
+  return `<section class="card"><div class="band">Movements, by day<span class="r"><span>Sales folded into one line a day</span><a class="link" href="#movements">View all ›</a></span></div>${[59, 58, 57, 56].map(d => {
+    const ms = D.cm.filter(m => m.d === d && m.reason !== 'sale'), s = saleFold(d), x = D.day[d];
+    return `<div class="dh">${dLong(d)}<span class="r"><span class="up">+${pesoK(x.in)} in</span><span class="down">−${pesoK(x.out)} out</span></span></div>`
+      + ms.slice(0, 6).map(m => `<div class="fe" data-tip="${mvTip(m)}"><i class="dt ${RS[m.reason][2]}"></i><span class="t">${tHour(m.ts)}</span><span class="tx2">${pill(m.reason)} ${sentence(m)}</span><span class="n ${m.qty < 0 ? 'down' : 'up'}">${signed(m.qty)}</span></div>`).join('')
+      + (ms.length > 6 ? `<div class="fe"><i></i><span></span><span class="muted">${ms.length - 6} more</span><span></span></div>` : '')
+      + (s.n ? `<div class="fe fold"><i class="dt"></i><span class="t">All day</span><span class="tx2">${pill('sale')} ${s.u.toLocaleString('en-US')} units of ${s.n} items on about ${s.rc} receipts</span><span class="n">−${s.u.toLocaleString('en-US')}</span></div>` : ''); }).join('')}</section>`;
+}
+// B · a feed of sentences, newest first: who did what, sales folded per day.
+function movesFeed() {
+  const days = [59, 58, 57], items = days.flatMap(d => [...D.cm.filter(m => m.d === d && m.reason !== 'sale').map(m => ({ ts: m.ts, m })), { ts: dayMs(d) + 18.9 * 36e5, d, s: saleFold(d) }]).sort((a, b) => b.ts - a.ts).slice(0, 16);
+  return `<section class="card"><div class="band">What happened<span class="r"><a class="link" href="#movements">View all ›</a></span></div>${items.map(x => x.m
+    ? `<div class="fe" data-tip="${mvTip(x.m)}"><i class="dt ${RS[x.m.reason][2]}"></i><span class="t">${tHour(x.ts)}</span><span class="tx2">${sentence(x.m)}</span><span class="n ${x.m.qty < 0 ? 'down' : 'up'}">${signed(x.m.qty)}</span></div>`
+    : `<div class="fe fold"><i class="dt"></i><span class="t">${dShort(x.d)}</span><span class="tx2">The till sold <b>${x.s.u.toLocaleString('en-US')} units</b> of ${x.s.n} items</span><span class="n">−${x.s.u.toLocaleString('en-US')}</span></div>`).join('')}</section>`;
+}
+
+// ---------------------------------------------------------------- the pages behind Show all
+const page = (title, meta, body) => `<div class="bar"><h1><a class="crumb" href="#">Stock history</a><span class="sl">›</span>${title}${meta ? `<small>${meta}</small>` : ''}</h1>${EXPORT}${RANGE}</div>${body}`;
+const search = (ph, extra = '') => `<div class="filters"><input id="q" class="search" type="search" placeholder="${ph}" value="${esc(S.q)}" autocomplete="off">${extra}</div>`;
+const hit = (...xs) => !S.q || xs.join(' ').toLowerCase().includes(S.q.toLowerCase());
+const more = (n) => n > S.shown ? `<div class="foot"><span class="muted">${S.shown} of ${n.toLocaleString('en-US')}</span><button class="link" style="margin-left:auto" data-act="more">Show 50 more</button></div>` : '';
+const PAGES = {
+  movements: () => { const all = D.cm.filter(typeOf()[2]).filter(m => hit(m.p.name, m.p.cat, m.note, m.ref, m.staff));
+    return page('Movement history', `${all.length.toLocaleString('en-US')} · last 30 days`, search('Search product, note, ref or staff', typeSel()) + `<section class="card"><div class="tw"><table><thead><tr><th>When</th><th>Product</th><th>Reason</th><th class="n">Qty</th><th class="n">Unit cost</th><th class="n">Balance</th><th>Ref</th><th>Note</th><th>Staff</th></tr></thead><tbody>
+      ${all.slice(0, S.shown).map(m => `<tr><td class="t">${tStamp(m.ts)}</td><td>${esc(m.p.name)}</td><td>${pill(m.reason)}</td><td class="n ${m.qty < 0 ? 'down' : 'up'}">${signed(m.qty)}</td><td class="n">${peso(m.p.cost)}</td><td class="n">${m.bal}</td><td>${m.ref || '—'}</td><td>${esc(m.note || (m.rc ? m.rc + (m.rc > 1 ? ' receipts' : ' receipt') : '—'))}</td><td>${m.staff}</td></tr>`).join('') || '<tr><td colspan="9" class="empty">No stock movements match those filters.</td></tr>'}
+      </tbody></table></div>${more(all.length)}</section>`); },
+  losses: () => { const all = D.loss.filter(x => hit(x.p.name, x.p.cat));
+    return page('Lost', `${D.loss.length} items · ${peso(D.cur.lost)} at cost`, search('Search items') + `<section class="card"><div class="tw"><table><thead><tr><th>Item</th>${LOSS_R.map(k => `<th class="n">${LL[k]}</th>`).join('')}<th class="n">Units</th><th class="n">At cost</th></tr></thead><tbody>
+      ${all.slice(0, S.shown).map(x => `<tr data-tip="${lossTip(x)}"><td class="nm">${esc(x.p.name)}<small>${esc(x.p.cat)}</small></td>${LOSS_R.map(k => `<td class="n">${x.by[k] ? peso(x.by[k]) : '<span class="muted">—</span>'}</td>`).join('')}<td class="n">${x.u}</td><td class="n"><b>${peso(x.v)}</b></td></tr>`).join('') || `<tr><td colspan="7" class="empty">No item matches “${esc(S.q)}”.</td></tr>`}
+      </tbody></table></div>${more(all.length)}</section>`); },
+  ranout: () => { const all = D.out.filter(o => hit(o.p.name, o.p.cat));
+    return page('Ran out', `${D.out.length} items · ${D.out.filter(o => o.back == null).length} still out`, search('Search items') + `<section class="card">${outTable(all.slice(0, S.shown))}${more(all.length)}</section>`); },
+  counts: () => { const all = D.counts.filter(m => hit(m.p.name, m.p.cat, m.staff));
+    return page('Shelf counts that didn’t match', `${D.counts.length}`, search('Search items') + `<section class="card"><div class="tw"><table><thead><tr><th>When</th><th>Item</th><th class="n">System</th><th class="n">Shelf</th><th class="n">Gap</th><th class="n">At cost</th><th>By</th></tr></thead><tbody>
+      ${all.slice(0, S.shown).map(m => `<tr><td class="t">${tStamp(m.ts)}</td><td class="nm">${esc(m.p.name)}<small>${esc(m.p.cat)}</small></td><td class="n">${m.expected}</td><td class="n">${m.counted}</td><td class="n ${m.qty < 0 ? 'down' : 'up'}">${signed(m.qty)}</td><td class="n">${peso(Math.abs(m.qty) * m.p.cost)}</td><td>${m.staff}</td></tr>`).join('') || `<tr><td colspan="7" class="empty">No count matches “${esc(S.q)}”.</td></tr>`}
+      </tbody></table></div>${more(all.length)}</section>`); },
+};
+
+// ---------------------------------------------------------------- page
+function render() {
+  const P = PAGES[route()[0]];
+  const blocks = [
+    { now: flowNow, div: flowDiv, value: flowValue, cal: flowCal, reason: flowReason }[S.flow](),
+    { now: whyNow, two: whyTwo, sankey: whySankey, share: whyShare }[S.why](),
+    { now: lossNow, bars: lossBars, cat: lossCat, gap: lossGap, heat: lossHeat }[S.loss](),
+    { now: outNow, gantt: outGantt, count: outCount, list: outList }[S.out](),
+    { now: itemNow, line: () => itemLine(false), combo: () => itemLine(true), grid: itemGrid }[S.item](),
+    { now: movesNow, day: movesDay, feed: movesFeed }[S.moves](),
+  ];
+  document.getElementById('app').innerHTML = P ? P() : `<div class="bar"><h1>Stock history</h1>${RANGE}<button class="btn2">Receive stock</button><button class="btn">New adjustment</button></div>
+    <div class="stack">${strip()}${blocks.join('')}</div>`;
+  const g = (k, label, opts) => `<div class="g"><span>${label}</span>${opts.map(([v, l]) => `<button data-lab="${k}" data-v="${v}" class="${String(S[k]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  document.getElementById('lab').innerHTML = S.labMin ? `<button data-act="lab">Lab ↑</button>` : `<button class="min" data-act="lab">Hide ↓</button>`
+    + g('strip', 'Strip', [['tiles', 'A · Tiles'], ['cmp', 'B · With before'], ['line', 'C · One line'], ['off', 'Off']])
+    + g('flow', 'In and out', [['div', 'A · Up and down'], ['value', 'B · Stock value'], ['cal', 'C · Calendar'], ['reason', 'D · By reason'], ['now', 'Now · Tabs']])
+    + g('why', 'Where it went', [['two', 'A · Two sides'], ['sankey', 'B · Stock account'], ['share', 'C · Shares'], ['now', 'Now · List']])
+    + g('loss', 'Lost', [['bars', 'A · Top items'], ['cat', 'B · By category'], ['gap', 'C · Count gaps'], ['heat', 'D · By week'], ['now', 'Now · Counts']])
+    + g('out', 'Ran out', [['gantt', 'A · Timeline'], ['count', 'B · Per day'], ['list', 'C · List'], ['now', 'Now · Lost demand']])
+    + g('item', 'One item', [['line', 'A · Line'], ['combo', 'B · Line + days'], ['grid', 'C · Twelve'], ['now', 'Now · Table']])
+    + g('moves', 'Movements', [['day', 'A · By day'], ['feed', 'B · Feed'], ['now', 'Now · Table']])
+    + g('big', 'Store', [['false', 'Demo · 18 items'], ['true', 'Big · 300 items']])
+    + `<div class="note">Hover anything for its numbers. Money is at cost. Strip counts, Show all and View all open their own page; the item picker is in the One item card.</div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-lab],[data-act],[data-chart],[data-pick]'); if (!t) return;
+  if (t.dataset.lab) { const k = t.dataset.lab; S[k] = k === 'big' ? t.dataset.v === 'true' : t.dataset.v; if (k === 'big') { D = build(S.big); S.pick = null; } }
+  else if (t.dataset.chart) S.chart = t.dataset.chart;
+  else if (t.dataset.pick) { S.pick = +t.dataset.pick; S.item = 'line'; }
+  else ({ more: () => S.shown += 50, lab: () => S.labMin = !S.labMin })[t.dataset.act]?.();
+  render();
+});
+document.addEventListener('change', (e) => { const k = e.target.dataset.sel; if (!k) return; S[k] = k === 'pick' ? +e.target.value : e.target.value; S.shown = 50; render(); });
+document.addEventListener('input', (e) => {
+  if (e.target.id !== 'q') return;
+  S.q = e.target.value; S.shown = 50; render();
+  const q = document.getElementById('q'); q.focus(); q.setSelectionRange(q.value.length, q.value.length);
+});
+addEventListener('hashchange', () => { const [r, a] = route(); S.q = ''; S.shown = 50; if (r === 'movements' && a != null) S.type = a; render(); scrollTo(0, 0); });
+const TIP = document.getElementById('tip');
+document.addEventListener('mousemove', (e) => {
+  const t = e.target.closest('[data-tip]');
+  if (!t) { TIP.style.display = 'none'; return; }
+  TIP.innerHTML = t.dataset.tip; TIP.style.display = 'block';
+  const w = TIP.offsetWidth, h = TIP.offsetHeight;
+  TIP.style.left = Math.min(e.clientX + 14, innerWidth - w - 8) + 'px'; TIP.style.top = (e.clientY + 16 + h > innerHeight ? e.clientY - h - 12 : e.clientY + 16) + 'px';
+});
+if (route()[0] === 'movements' && route()[1] != null) S.type = route()[1];
+render();
+</script>
+</body></html>

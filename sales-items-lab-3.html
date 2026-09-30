@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sales items lab 3</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   SALES › ITEMS LAB 2 (2026-09-29): round 2 of sales-items-lab.html, which stays as it was. A brainstorm — the Items tab with charts, not only tables.
+   Owner: "too simple and boring… a pie, but a lot of categories gets overwhelming… top 10 can be a
+   chart, Show all turns it into the simple table". Nothing live: seeded fake data, two store sizes so
+   every chart is judged at 60 categories / 400+ items, not only the demo's 7 / 18.
+   Tokens are the back office's (--blk-*, --b-*, --chart-1). Panel bottom right swaps the variants.
+   =========================================================================== */
+:root {
+  --po-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --b-page: #FFFFFF; --b-card: #F9F9F9; --b-raised: #FFFFFF;
+  --b-line: #ECECEC; --b-outline: #E1E1E1; --b-track: #EFEFEF;
+  --b-ink: #303030; --b-ink-2: #616161; --b-ink-3: #8C8C8C;
+  --b-up: #047B5D; --b-down: #D72C0D; --b-up-tint: #D3ECDD; --b-down-tint: #F8D8D0; --b-flat-tint: #EFEFEF;
+  --b-data: #2B7DE9; --b-data-1: #BCD7FA; --b-data-tint: #DCE9FB;
+  --card-shadow: 0 1px 2px -1px rgb(26 26 26 / .07);
+  --btn-h: 28px; --btn-r: 8px; --btn-soft: #EDEDED;
+  --b-r-card: 14px; --b-pad: 16px;
+  --t-label: 13px; --t-meta: 12.5px; --t-micro: 11px;
+  /* one hue, dark → light, for the top 5 (palette steps 550 → 250); Other is grey */
+  --s1: #1C5CAB; --s2: #256ABF; --s3: #2B7DE9; --s4: #5598E7; --s5: #86B6EF; --s-other: #D4D4D4;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--b-page); color: var(--b-ink); font: var(--t-label)/normal var(--po-font); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 160px; }
+
+/* the page bar: Summary | Items, Export CSV, ‹ period › — as the app */
+.bar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.seg { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--btn-soft); margin-right: auto; }
+.seg span { height: 26px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: 999px; font-weight: 500; color: var(--b-ink-2); }
+.seg span.on { background: #fff; color: var(--b-ink); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04); }
+.btn { height: var(--btn-h); padding: 0 12px; border: 0; border-radius: var(--btn-r); background: #303030; color: #fff; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.btn svg { width: 13px; height: 13px; }
+.period { display: inline-flex; height: var(--btn-h); border: 1px solid var(--b-outline); border-radius: var(--btn-r); overflow: hidden; }
+.period > * { display: inline-flex; align-items: center; padding: 0 10px; background: #fff; border: 0; }
+.period > * + * { border-left: 1px solid var(--b-outline); }
+.period .mid { padding: 0 14px; font-weight: 500; gap: 6px; }
+.period .dis { color: #C4C4C4; }
+
+.stack { display: grid; gap: 12px; }
+.card { background: var(--b-raised); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+.band { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-2); font-weight: 500; }
+.band .r { margin-left: auto; color: var(--b-ink-3); font-weight: 400; font-size: var(--t-meta); display: inline-flex; align-items: center; gap: 12px; }
+.cut { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--b-data-tint); color: #1F5FB8; border: 0; font-size: var(--t-meta); }
+.key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+.foot { display: flex; align-items: center; height: 36px; padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); }
+.link { border: 0; background: none; padding: 0; color: #2B7DE9; font-weight: 500; }
+.link:hover { text-decoration: underline; }
+.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.up { color: var(--b-up); } .down { color: var(--b-down); } .new { color: var(--b-ink-3); }
+
+/* the KPI strip (Summary's joined strip): number left, chip right on the same line */
+.strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.strip > * { padding: 14px var(--b-pad); }
+.strip > * + * { box-shadow: inset 1px 0 0 var(--b-line); }
+.strip .l { color: var(--b-ink-2); font-weight: 500; }
+.strip .v { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+.strip .v small { font-size: var(--t-meta); font-weight: 400; color: var(--b-ink-3); letter-spacing: 0; }
+.chip { font-size: var(--t-micro); font-weight: 600; padding: 2px 6px; border-radius: 6px; letter-spacing: 0; }
+.chip.up { background: var(--b-up-tint); } .chip.down { background: var(--b-down-tint); } .chip.flat { background: var(--b-flat-tint); color: var(--b-ink-2); }
+@media (max-width: 900px) { .strip { grid-template-columns: repeat(2, 1fr); } .strip > :nth-child(odd) { box-shadow: none; } .strip > :nth-child(n+3) { border-top: 1px solid var(--b-line); } }
+
+/* tables (the app's .cut) */
+table { width: 100%; border-collapse: collapse; }
+th { height: 32px; padding: 0 var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-2); font-weight: 500; text-align: left; white-space: nowrap; }
+th.s { cursor: pointer; } th.s:hover { color: var(--b-ink); }
+td { height: 34px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); }
+tr:last-child td { border-bottom: 0; }
+tbody tr { cursor: pointer; } tbody tr:hover td { background: #FAFAFA; } tbody tr.on td { background: var(--b-data-tint); }
+.nm small { margin-left: 8px; color: var(--b-ink-3); }
+.ib { display: inline-block; width: 36px; height: 6px; border-radius: 3px; background: var(--b-track); margin-right: 12px; vertical-align: 1px; overflow: hidden; }
+.ib i { display: block; height: 100%; border-radius: 3px; background: var(--b-data); }
+
+/* A · donut: top 5 + Other, the legend is the ranked list beside it */
+.donut { display: grid; grid-template-columns: 240px minmax(0, 1fr); align-items: center; }
+.donut .pie { display: grid; place-items: center; padding: 18px 0; border-right: 1px solid var(--b-line); position: relative; }
+.donut .pie .mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+.donut .pie .mid b { font-size: 18px; font-weight: 600; } .donut .pie .mid span { color: var(--b-ink-3); font-size: var(--t-micro); margin-top: 2px; }
+.donut path { cursor: pointer; stroke: #fff; stroke-width: 2; transition: opacity .15s; }
+.donut.hl path:not(.hot) { opacity: .35; }
+.donut td:first-child { width: 20px; padding-right: 0; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; }
+tr.other td { color: var(--b-ink-2); }
+
+/* B · map: size = revenue, colour = vs the period before */
+.tmap { position: relative; height: 440px; margin: 10px; }
+.tmap button { position: absolute; border: 0; border-radius: 6px; padding: 8px 10px; text-align: left; overflow: hidden; display: flex; flex-direction: column; gap: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.04); transition: filter .12s; }
+.tmap button:hover { filter: brightness(.96); }
+.tmap button.on { box-shadow: inset 0 0 0 2px #2B7DE9; }
+.tmap b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tmap span { color: var(--b-ink-2); font-size: var(--t-meta); white-space: nowrap; }
+.tmap em { font-style: normal; font-size: var(--t-micro); font-weight: 600; }
+.tmap .sm span, .tmap .sm em { display: none; }
+.tmap .xs b { display: none; }
+.scale { display: inline-flex; align-items: center; gap: 6px; }
+.scale i { width: 44px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, #F2B4A5, var(--b-flat-tint), #9FD6B9); }
+
+/* A · items as bars: profit (deep) inside revenue (light), one pesos axis */
+.bars .row { display: grid; grid-template-columns: 24px minmax(160px, 260px) minmax(0, 1fr) 92px 64px 64px; align-items: center; gap: 0 12px; height: 38px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); cursor: pointer; }
+.bars .row:hover { background: #FAFAFA; } .bars .row.on { background: var(--b-data-tint); }
+.bars .row:last-child { border-bottom: 0; }
+.bars .hd { height: 32px; background: var(--b-card); color: var(--b-ink-2); font-weight: 500; cursor: default; }
+.bars .hd:hover { background: var(--b-card); }
+.bars .rk { color: var(--b-ink-3); font-size: var(--t-meta); text-align: right; }
+.bars .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bars .nm small { font-size: var(--t-meta); }
+.bars .trk { position: relative; height: 14px; }
+.bars .rev, .bars .pf { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; }
+.bars .rev { background: var(--b-data-1); } .bars .pf { background: var(--b-data); }
+.bars .v { font-weight: 600; }
+
+/* B · scatter: every item, revenue (log) against margin */
+.scat { position: relative; padding: 8px var(--b-pad) 4px; }
+.scat svg { display: block; width: 100%; height: 320px; overflow: visible; }
+.scat .q { fill: var(--b-ink-3); font-size: 11px; font-weight: 500; }
+.scat .ax { fill: var(--b-ink-3); font-size: 11px; }
+.scat .gl { stroke: var(--b-line); } .scat .med { stroke: #D4D4D4; stroke-dasharray: 3 3; }
+.scat circle { fill: var(--b-data); fill-opacity: .35; stroke: #fff; stroke-width: 1.5; cursor: pointer; }
+.scat circle.top { fill-opacity: 1; }
+.scat circle:hover { fill-opacity: 1; r: 6; }
+.scat .lb { font-size: 11px; fill: var(--b-ink); paint-order: stroke; stroke: #fff; stroke-width: 3px; pointer-events: none; }
+
+/* movers */
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.mv { display: flex; align-items: center; height: 34px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); gap: 10px; }
+.mv:last-child { border-bottom: 0; }
+.mv .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv .cmp { width: 52px; text-align: right; }
+.div .row { display: grid; grid-template-columns: minmax(140px, 240px) 1fr 1fr 64px; align-items: center; gap: 0 0; height: 34px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); }
+.div .row:last-child { border-bottom: 0; }
+.div .row > .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 12px; }
+.div .l, .div .r2 { position: relative; height: 22px; display: flex; align-items: center; }
+.div .l { justify-content: flex-end; border-right: 1px solid #D4D4D4; }
+.div .l i, .div .r2 i { height: 14px; }
+.div .l i { background: #F2B4A5; border-radius: 4px 0 0 4px; } .div .r2 i { background: #9FD6B9; border-radius: 0 4px 4px 0; }
+.div .l b, .div .r2 b { font-size: var(--t-meta); font-weight: 600; padding: 0 6px; white-space: nowrap; }
+.div .sep td, .div .sep { height: 8px; background: var(--b-card); border-bottom: 1px solid var(--b-line); padding: 0; }
+
+.pairs td .to { margin: 0 8px; color: var(--b-ink-3); }
+
+/* the hover tip */
+#tip { position: fixed; z-index: 20; pointer-events: none; background: #fff; border: 1px solid var(--b-outline); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.08); padding: 8px 10px; font-size: var(--t-meta); min-width: 160px; display: none; }
+#tip b { display: block; margin-bottom: 4px; }
+#tip div { display: flex; justify-content: space-between; gap: 16px; color: var(--b-ink-2); } #tip div em { font-style: normal; color: var(--b-ink); font-weight: 600; }
+
+/* the lab panel */
+.lab { position: fixed; right: 16px; bottom: 16px; z-index: 30; background: #fff; border: 1px solid var(--b-outline); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.1); padding: 10px 12px; display: grid; gap: 6px; font-size: var(--t-meta); }
+.lab .g { display: flex; align-items: center; gap: 6px; }
+.lab .g > span { width: 76px; color: var(--b-ink-3); }
+.lab button { height: 24px; padding: 0 9px; border: 1px solid var(--b-outline); border-radius: 6px; background: #fff; }
+.lab button.on { background: #303030; border-color: #303030; color: #fff; }
+.lab .note { color: var(--b-ink-3); max-width: 360px; line-height: 1.4; }
+@media (max-width: 760px) {
+  .duo { grid-template-columns: 1fr; }
+  .donut { grid-template-columns: 1fr; } .donut .pie { border-right: 0; border-bottom: 1px solid var(--b-line); }
+  .bars .row { grid-template-columns: 20px minmax(0, 1fr) 80px 52px; } .bars .row > :nth-child(3), .bars .row > :nth-child(5) { display: none; }
+  .main { padding: 16px 16px 24px; }
+  .bar { flex-wrap: wrap; }
+  .donut table :is(th, td):nth-child(4), .pairs td:nth-child(3), .pairs .ib { display: none; }
+  .lab { position: static; margin: 0 16px 16px; }
+}
+/* round 2 (2026-09-29): pages behind Show all and the strip, category bars, more movers and bought together */
+.bar h1 { display: flex; align-items: baseline; gap: 8px; margin: 0 auto 0 0; font-size: 18px; font-weight: 600; }
+.bar h1 .crumb { color: var(--b-ink-3); font-weight: 500; text-decoration: none; } .bar h1 .crumb:hover { color: var(--b-ink); }
+.bar h1 .sl { color: var(--b-ink-3); font-weight: 400; }
+.bar h1 small { margin-left: 4px; font-size: var(--t-meta); font-weight: 400; color: var(--b-ink-3); }
+.filters { display: flex; gap: 8px; margin-bottom: 12px; }
+.search { flex: 1; max-width: 360px; height: 32px; padding: 0 12px; border: 1px solid var(--b-outline); border-radius: var(--btn-r); font: inherit; color: var(--b-ink); outline: 0; }
+.search:focus { border-color: var(--b-data); box-shadow: 0 0 0 3px var(--b-data-tint); }
+a.link { text-decoration: none; }
+.muted { color: var(--b-ink-3); }
+td.empty { height: 64px; text-align: center; color: var(--b-ink-3); cursor: default; }
+.strip a { color: inherit; text-decoration: none; transition: background .12s; }
+.strip a:hover { background: #FAFAFA; }
+.strip a .l::after { content: " ›"; color: var(--b-ink-3); opacity: 0; transition: opacity .12s; }
+.strip a:hover .l::after { opacity: 1; }
+.key i.o { background: #fff; box-shadow: inset 0 0 0 1.5px #B5B5B5; border-radius: 50%; }
+.dumb .row { display: grid; grid-template-columns: minmax(140px, 240px) minmax(0, 1fr) 150px 56px; align-items: center; gap: 0 20px; height: 36px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); }
+.dumb .row:last-child { border-bottom: 0; }
+.dumb .row:hover { background: #FAFAFA; }
+.dumb .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dumb .db { position: relative; height: 14px; margin: 0 6px; }
+.dumb .db i { position: absolute; top: 50%; }
+.dumb .ln { height: 4px; margin-top: -2px; border-radius: 2px; } .dumb .ln.up { background: #9FD6B9; } .dumb .ln.down { background: #F2B4A5; }
+.dumb .was, .dumb .now { width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; }
+.dumb .was { background: #fff; box-shadow: inset 0 0 0 2px #B5B5B5; }
+.dumb .now.up { background: var(--b-up); } .dumb .now.down { background: var(--b-down); }
+.dumb .vv { color: var(--b-ink-3); } .dumb .vv b { color: var(--b-ink); font-weight: 600; }
+.dumb .sep { height: 8px; background: var(--b-card); border-bottom: 1px solid var(--b-line); }
+.slope .pad { padding: 12px var(--b-pad) 8px; }
+.slope svg { display: block; width: 100%; height: auto; overflow: visible; }
+.slope text { font-size: 12px; fill: var(--b-ink); }
+.slope .ax { fill: var(--b-ink-2); font-weight: 500; }
+.slope .muted { fill: var(--b-ink-3); }
+.slope tspan.up { fill: var(--b-up); font-weight: 600; } .slope tspan.down { fill: var(--b-down); font-weight: 600; }
+.slope .axl { stroke: var(--b-line); stroke-width: 1; }
+.slope .ln { stroke-width: 2; } .slope .ln.up { stroke: #5BB88A; } .slope .ln.down { stroke: #E88A74; }
+.slope .hit { stroke: transparent; stroke-width: 12; cursor: pointer; }
+.slope circle.was { fill: #B5B5B5; } .slope circle.up { fill: var(--b-up); } .slope circle.down { fill: var(--b-down); }
+.slope g:hover .ln { stroke-width: 3; }
+.pcs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pc { display: grid; gap: 10px; padding: 14px var(--b-pad); border-right: 1px solid var(--b-line); border-bottom: 1px solid var(--b-line); }
+.pc:nth-child(3n) { border-right: 0; } .pc:nth-last-child(-n+3) { border-bottom: 0; }
+.pc .pn { font-weight: 500; line-height: 1.4; } .pc .pn span { display: block; color: var(--b-ink-2); font-weight: 400; }
+.pc .pv { display: flex; align-items: baseline; gap: 8px; } .pc .pv b { font-size: 22px; font-weight: 600; } .pc .pv span { color: var(--b-ink-3); font-size: var(--t-meta); }
+.mt { display: block; height: 6px; border-radius: 3px; background: var(--b-track); overflow: hidden; } .mt i { display: block; height: 100%; border-radius: 3px; background: var(--b-data); }
+.hub { display: grid; grid-template-columns: 260px minmax(0, 1fr); }
+.hub .anc { display: grid; align-content: start; gap: 2px; padding: 6px; border-right: 1px solid var(--b-line); }
+.hub .anc button { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 32px; padding: 0 10px; border: 0; border-radius: 7px; background: none; text-align: left; }
+.hub .anc button:hover { background: #F5F5F5; } .hub .anc button.on { background: var(--b-data-tint); color: #1F5FB8; font-weight: 500; }
+.hub .anc small { color: var(--b-ink-3); font-weight: 400; }
+.hub .prt { padding: 12px var(--b-pad); }
+.hub .prt h3 { margin: 0 0 8px; font-size: var(--t-label); font-weight: 400; color: var(--b-ink-3); } .hub .prt h3 b { color: var(--b-ink); font-weight: 600; }
+.hub .pr { display: grid; grid-template-columns: minmax(140px, 220px) minmax(0, 1fr) 48px 96px; align-items: center; gap: 14px; height: 36px; border-bottom: 1px solid var(--b-line); }
+.hub .pr:last-child { border-bottom: 0; }
+.hub .pr .mt { height: 10px; border-radius: 4px; } .hub .pr .mt i { border-radius: 4px; }
+.lab .min { justify-self: end; height: 20px; border: 0; padding: 0 4px; color: var(--b-ink-3); }
+.foot { gap: 8px; }
+@media (max-width: 760px) {
+  .dumb .row { grid-template-columns: minmax(0, 1fr) 90px 52px; } .dumb .vv { display: none; }
+  .pcs { grid-template-columns: 1fr; } .pc { border-right: 0; } .pc:nth-last-child(-n+3) { border-bottom: 1px solid var(--b-line); } .pc:last-child { border-bottom: 0; }
+  .hub { grid-template-columns: 1fr; } .hub .anc { border-right: 0; border-bottom: 1px solid var(--b-line); }
+  .hub .pr { grid-template-columns: minmax(0, 1fr) 60px 44px; } .hub .pr > :last-child { display: none; }
+  .bar h1 { flex-basis: 100%; flex-wrap: wrap; }
+}
+/* round 3: split slope, movers scatter, network / ring / baskets */
+.slope .two { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.slope h4 { margin: 0 0 4px; font-size: var(--t-label); font-weight: 600; }
+.xy svg { height: auto; }
+.xy circle.up { fill: var(--b-up); } .xy circle.down { fill: var(--b-down); } .xy circle.flat { fill: #B5B5B5; }
+.xy circle.big { fill-opacity: 1; }
+.xy .dg { stroke: #B5B5B5; stroke-dasharray: 4 4; }
+.net { padding: 8px var(--b-pad); }
+.net svg, .ring svg { display: block; width: 100%; height: auto; overflow: visible; }
+.eg, .ch { stroke: var(--b-data); fill: none; stroke-linecap: round; cursor: pointer; }
+.net .hit { stroke: transparent; stroke-width: 14; cursor: pointer; }
+.el { font-size: 10.5px; font-weight: 600; fill: var(--b-ink-2); paint-order: stroke; stroke: #fff; stroke-width: 3px; pointer-events: none; }
+.net circle, .ring circle { fill: var(--b-data-1); stroke: #fff; stroke-width: 2; cursor: pointer; }
+.nl { font-size: 11px; fill: var(--b-ink); paint-order: stroke; stroke: #fff; stroke-width: 3px; }
+.ring { display: grid; grid-template-columns: 540px minmax(0, 1fr); }
+.ring .pic { padding: 8px; }
+.ring svg text { font-size: 11px; fill: var(--b-ink); }
+.ring > div + div { border-left: 1px solid var(--b-line); display: flex; align-items: center; }
+.ring td:nth-child(3) { display: none; }
+:is(.net, .ring) [data-hk] { transition: opacity .12s; }
+.hkhl :is(.net, .ring) [data-hk]:not(.lit) { opacity: .12; }
+.bk { align-content: start; }
+.bk .bh { display: flex; align-items: baseline; gap: 8px; } .bk .bh b { font-size: 15px; font-weight: 600; } .bk .bh span { color: var(--b-ink-3); font-size: var(--t-meta); }
+.bk .bm { color: var(--b-ink-2); line-height: 1.55; } .bk .bm i { font-style: normal; color: var(--b-ink-3); margin: 0 6px; }
+.bk .bl { display: grid; grid-template-columns: minmax(0, 1fr) 56px 36px; align-items: center; gap: 10px; height: 26px; }
+.bk .bl span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .bk .bl em { font-style: normal; color: var(--b-ink-3); }
+.lab .g { flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .slope .two { grid-template-columns: 1fr; }
+  .ring { grid-template-columns: 1fr; } .ring > div + div { border-left: 0; border-top: 1px solid var(--b-line); }
+}
+/* round 4: strip B/C, categories growth / tiles / rank, items running total / four kinds / by category, network + scatter labels */
+.strip.cmp .v { margin-bottom: 8px; }
+.pr { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 8px; height: 15px; color: var(--b-ink-3); font-size: var(--t-micro); }
+.pr i { display: block; height: 6px; border-radius: 3px; background: var(--b-track); overflow: hidden; } .pr b { display: block; height: 100%; border-radius: 3px; background: var(--b-data); }
+.pr.was b { background: var(--b-data-1); } .pr em { font-style: normal; }
+.strip .sub { margin-top: 2px; color: var(--b-ink-3); font-size: var(--t-meta); line-height: 1.35; }
+.sline { display: flex; flex-wrap: wrap; }
+.sline > * { display: flex; align-items: center; gap: 6px; padding: 12px var(--b-pad); color: var(--b-ink-2); text-decoration: none; }
+.sline > * + * { box-shadow: inset 1px 0 0 var(--b-line); } .sline a:hover { background: #FAFAFA; }
+.sline b { color: var(--b-ink); font-size: 16px; font-weight: 600; }
+.grow .gw { display: grid; grid-template-columns: minmax(140px, 240px) 1fr 1fr 80px 56px; align-items: center; height: 34px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); cursor: pointer; }
+.grow .gw:hover { background: #FAFAFA; } .grow .gw.on { background: var(--b-data-tint); }
+.grow .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 12px; } .grow .v { font-weight: 600; }
+.grow .neg, .grow .pos { display: flex; align-items: center; height: 100%; } .grow .neg { justify-content: flex-end; } .grow .pos { border-left: 1px solid #D4D4D4; }
+.grow .neg i, .grow .pos i { height: 14px; } .grow .neg i { background: #F2B4A5; border-radius: 4px 0 0 4px; } .grow .pos i { background: #9FD6B9; border-radius: 0 4px 4px 0; }
+.ctg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ctg button { display: grid; gap: 6px; padding: 12px var(--b-pad) 14px; border: 0; border-right: 1px solid var(--b-line); border-bottom: 1px solid var(--b-line); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.ctg button:nth-child(4n) { border-right: 0; } .ctg button:nth-last-child(-n+4) { border-bottom: 0; }
+.ctg button:hover { background: #FAFAFA; } .ctg button.on { background: var(--b-data-tint); }
+.ctg .nm { color: var(--b-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ctg b { font-size: 18px; font-weight: 600; }
+.ctg .other .mt i { background: var(--s-other); }
+.ctg .m { display: flex; justify-content: space-between; color: var(--b-ink-3); font-size: var(--t-meta); } .ctg em { font-style: normal; font-weight: 600; }
+.rank g { cursor: pointer; } .rank .ln.same { stroke: #B5B5B5; }
+.pareto svg, .rows svg { height: auto; }
+.pareto .ar { fill: var(--b-data-tint); } .pareto .cl { fill: none; stroke: var(--b-data); stroke-width: 2; }
+.pareto .gd { fill: none; stroke: #B5B5B5; stroke-dasharray: 3 3; pointer-events: none; }
+.pareto circle.mk { fill: var(--b-data); fill-opacity: 1; pointer-events: none; }
+.pareto .hz { fill: transparent; } .pareto .hz:hover { fill: rgb(43 125 233 / .12); }
+.quad { grid-template-columns: 1fr 1fr; }
+.quad .pc:nth-child(odd) { border-right: 1px solid var(--b-line); } .quad .pc:nth-child(even) { border-right: 0; }
+.quad .pc:nth-child(-n+2) { border-bottom: 1px solid var(--b-line); } .quad .pc:nth-child(n+3) { border-bottom: 0; }
+.ql { display: grid; grid-template-columns: minmax(0, 1fr) 90px 40px; align-items: center; gap: 10px; height: 28px; border-top: 1px solid var(--b-line); }
+.ql .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rows text { font-size: 12px; fill: var(--b-ink); } .rows .muted { fill: var(--b-ink-3); }
+.rows .rw { cursor: pointer; } .rows .rb { fill: transparent; } .rows .rw:hover .rb { fill: #FAFAFA; }
+.net .el { opacity: 0; } .hkhl .net .el.lit { opacity: 1; } .hkhl .net .el:not(.lit) { opacity: 0; }
+.nl.hb { font-weight: 600; }
+.xy .ld { stroke: #B5B5B5; }
+@media (max-width: 760px) {
+  .grow .gw { grid-template-columns: 100px 1fr 1fr 64px; } .grow .gw > :last-child { display: none; }
+  .ctg { grid-template-columns: 1fr 1fr; } .ctg button:nth-child(odd) { border-right: 1px solid var(--b-line); } .ctg button:nth-child(even) { border-right: 0; }
+  .ctg button:nth-last-child(-n+4) { border-bottom: 1px solid var(--b-line); } .ctg button:nth-last-child(-n+2) { border-bottom: 0; }
+  .scat, .slope .pad, .net { overflow-x: auto; } .scat svg, .slope svg, .net svg { min-width: 760px; }   /* wide charts keep readable text and scroll inside their card */
+  .quad { grid-template-columns: 1fr; } .quad .pc { border-right: 0 !important; border-bottom: 1px solid var(--b-line) !important; } .quad .pc:last-child { border-bottom: 0 !important; }
+}
+/* lab 3: a view dropdown on each card, the compare switch, movers lists in one card */
+.vs { margin-left: auto; height: 26px; padding: 0 26px 0 10px; border: 1px solid var(--b-outline); border-radius: 6px; appearance: none; cursor: pointer;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5 5 6.5 8 3.5' fill='none' stroke='%238C8C8C' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 9px center;
+  font: inherit; font-size: var(--t-meta); font-weight: 500; color: var(--b-ink); }
+.vs:hover { border-color: #BDBDBD; }
+.band .r + .vs { margin-left: 6px; }
+.bars.flat .row { grid-template-columns: 24px minmax(160px, 260px) minmax(0, 1fr) 92px 64px; }
+.cmpsw { display: inline-flex; align-items: center; gap: 8px; height: var(--btn-h); padding: 0 12px 0 8px; border: 1px solid var(--b-outline); border-radius: var(--btn-r); background: #fff; font: inherit; font-weight: 500; color: var(--b-ink-2); cursor: pointer; }
+.cmpsw i { position: relative; width: 28px; height: 16px; border-radius: 999px; background: #D4D4D4; transition: background .15s; }
+.cmpsw i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.cmpsw.on { color: var(--b-ink); } .cmpsw.on i { background: var(--b-data); } .cmpsw.on i::after { transform: translateX(12px); }
+.cmpsw:disabled { cursor: default; color: var(--b-ink-3); }
+.scale.m i { background: linear-gradient(90deg, color-mix(in srgb, var(--b-data-1) 15%, #F7F7F7), var(--b-data-1)); }
+.mvs { display: grid; grid-template-columns: 1fr 1fr; } .mvs > div + div { box-shadow: inset 1px 0 0 var(--b-line); }
+.mvs h4 { margin: 0; padding: 10px var(--b-pad) 8px; border-bottom: 1px solid var(--b-line); font-size: var(--t-label); font-weight: 600; }
+.mvs .mv:last-child { border-bottom: 0; }
+@media (max-width: 760px) {
+  .band:has(.vs) { flex-wrap: wrap; row-gap: 2px; padding-top: 6px; padding-bottom: 6px; }
+  .band:has(.vs) .r { order: 2; flex-basis: 100%; margin-left: 0; }
+  .band:has(.vs) .vs { margin-left: auto; }
+  .bars.flat .row { grid-template-columns: 20px minmax(0, 1fr) 80px; }
+  .mvs { grid-template-columns: 1fr; } .mvs > div + div { box-shadow: inset 0 1px 0 var(--b-line); }
+}
+</style>
+</head>
+<body>
+<div class="main" id="app"></div>
+<div id="tip"></div>
+<div class="lab" id="lab"></div>
+
+<script>
+// ---------------------------------------------------------------- fake data, seeded
+function rng(s) { return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646; }
+const REAL = [
+  ['Cement', ['Portland Cement 40kg', 'Gravel 3/4" (per cu.m)', 'Washed Sand (per cu.m)', 'Hollow Block 4"', 'Hollow Block 6"', 'Tile Adhesive 25kg', 'Skim Coat 20kg']],
+  ['Tools', ['Aluminum Level 24"', 'Claw Hammer 16oz', 'Hacksaw Frame 12"', 'Steel Tape 5m', 'Screwdriver Set 6pc', 'Pliers 8"', 'Utility Knife']],
+  ['Paint', ['Quick-Dry Enamel Black 1L', 'Latex Paint White 1L', 'Latex Paint White 4L', 'Flat Wall Enamel 4L', 'Paint Thinner 1L', 'Red Oxide Primer 1L']],
+  ['Adhesive', ['Silicone Sealant White', 'Mighty Bond Epoxy 50g', 'Contact Cement Rugby 250mL', 'PVC Solvent Cement 200mL', 'Wood Glue 500g']],
+  ['Safety', ['Safety Goggles Clear', 'Cotton Gloves (pair)', 'Dust Mask N95', 'Hard Hat Yellow', 'Rubber Boots']],
+  ['Plumbing', ['Brass Faucet 1/2"', 'PVC Elbow 1/2"', 'Teflon Tape', 'Gate Valve 3/4"', 'Flexible Hose 16"', 'P-Trap 1 1/2"']],
+  ['Electrical', ['THHN Wire 2.0mm (per m)', 'LED Bulb 9W', 'Convenience Outlet 2-gang', 'Extension Cord 5m', 'Circuit Breaker 20A', 'Electrical Tape']],
+  ['Roofing', ['GI Sheet 8ft', 'Roofing Nails 2.5" (kg)', 'Gutter 10ft', 'Ridge Roll']],
+  ['Lumber', ['Coco Lumber 2x2x8', 'Good Lumber 2x3x10', 'Marine Plywood 1/4"', 'Ordinary Plywood 1/2"']],
+  ['Fasteners', ['Common Nail 4" (kg)', 'Concrete Nail 2" (kg)', 'Wood Screw 1" (100pc)', 'Tekscrew 2" (100pc)', 'Anchor Bolt 3/8"']],
+  ['Steel', ['Deformed Bar 10mm', 'Deformed Bar 12mm', 'Tie Wire #16 (kg)', 'Angle Bar 1"']],
+  ['Hardware', ['Padlock 40mm', 'Door Hinge 3"', 'Door Knob Stainless', 'Cabinet Handle', 'Barrel Bolt 4"']],
+  ['Garden', ['Garden Hose 15m', 'Shovel Pointed', 'Wheelbarrow', 'Bolo', 'Rake']],
+  ['Power tools', ['Angle Grinder 4"', 'Cutting Disc 4"', 'Drill Bit Set', 'Impact Drill 13mm']],
+];
+const EXTRA = ['Tiles', 'Sanitary ware', 'Water tanks', 'Pumps', 'Welding', 'Glass', 'Wire mesh', 'GI pipe', 'PVC pipe', 'PVC fittings', 'Conduit', 'Lighting', 'Switches', 'Ladders', 'Rope & chain', 'Tape', 'Sandpaper', 'Brushes & rollers', 'Measuring', 'Cabinet hardware', 'Locks', 'Door hardware', 'Weatherproofing', 'Insulation', 'Ceiling', 'Drywall', 'Doors', 'Windows', 'Mouldings', 'Varnish & stain', 'Spray paint', 'Automotive', 'Batteries', 'Cleaning', 'Pest control', 'Storage', 'Kitchen', 'Bathroom accessories', 'Outdoor', 'Pet & farm', 'Fans', 'Generators', 'Scaffolding', 'Waterproofing', 'Grout', 'Sealants'];
+const SPECS = ['1/2"', '3/4"', '1"', 'Small', 'Medium', 'Large', 'Heavy duty', 'Standard', '2m', '5m', 'White', 'Black', 'Pro'];
+
+function build(big) {
+  const r = rng(big ? 11 : 5), gauss = () => Math.sqrt(-2 * Math.log(r() + 1e-9)) * Math.cos(2 * Math.PI * r());
+  let cats = big ? [...REAL.map(([c, l]) => [c, l]), ...EXTRA.map(c => [c, Array.from({ length: 4 + Math.floor(r() * 7) }, (_, i) => `${c.replace(/s$/, '')} ${SPECS[(i * 5 + c.length) % SPECS.length]}`)])]
+                  : REAL.slice(0, 7).map(([c, l], i) => [c, l.slice(0, [3, 3, 3, 3, 2, 2, 2][i])]);
+  const items = [];
+  cats.forEach(([cat, list], ci) => {
+    const cw = Math.exp(gauss() * (big ? .9 : .5)) * (big && ci >= REAL.length ? .3 : 1);   // the long tail: the made-up extras sell less
+    list.forEach((name, i) => {
+      const dead = big && r() < .18;
+      const rev = dead ? 0 : Math.exp(gauss() * 1.25) * cw;
+      const price = [60, 120, 250, 480, 900, 1800][Math.floor(r() * 6)];
+      const isNew = !dead && r() < .06, gone = dead && r() < .4;
+      const prev = isNew ? 0 : gone ? Math.exp(gauss()) * cw : rev * (.55 + r() * .9);
+      const m = .1 + r() * .25;
+      items.push({ key: cat + '|' + name, name, cat, rev, prev, m, price });
+    });
+  });
+  const total = items.reduce((s, x) => s + x.rev, 0), want = big ? 1462000 : 186000;
+  for (const x of items) {
+    x.rev = Math.round(x.rev / total * want); x.prev = Math.round(x.prev / total * want * .93);
+    x.qty = x.rev ? Math.max(1, Math.round(x.rev / x.price)) : 0; x.profit = Math.round(x.rev * x.m); x.margin = x.rev ? x.profit / x.rev : 0;
+  }
+  // Each item's month day by day: a drift up or down, busy Saturdays, quiet Sundays. Its own seed, so the totals match lab 2. 1 September 2026 is a Tuesday.
+  const r2 = rng(big ? 23 : 7);
+  for (const x of items) { const s = (r2() - .5) * 1.4, w = Array.from({ length: 30 }, (_, d) => { const wd = (d + 2) % 7; return (1 + s * (d / 29 - .5)) * (wd === 6 ? 1.4 : wd === 0 ? .6 : 1) * (.5 + r2()); });
+    const t = w.reduce((a, b) => a + b, 0); x.days = w.map(v => v / t * x.rev); }
+  const cm = new Map();
+  for (const x of items) { const c = cm.get(x.cat) || cm.set(x.cat, { key: x.cat, name: x.cat, rev: 0, prev: 0, profit: 0, n: 0, days: Array(30).fill(0) }).get(x.cat); x.days.forEach((v, i) => c.days[i] += v); c.rev += x.rev; c.prev += x.prev; c.profit += x.profit; c.n += x.rev > 0; }
+  return { items, cats: [...cm.values()].sort((a, b) => b.rev - a.rev), catalog: items.length };
+}
+
+// ---------------------------------------------------------------- helpers
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const peso = (n) => '₱' + Math.round(n).toLocaleString('en-US');
+const pesoK = (n) => n >= 1e6 ? '₱' + (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : n >= 1e4 ? '₱' + (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k' : peso(n);
+const pct = (f, d = 1) => (f * 100).toFixed(d) + '%';
+const chg = (cur, was) => was > 0 ? (cur - was) / was : cur > 0 ? Infinity : 0;
+const trendTxt = (cur, was) => { const c = chg(cur, was); return c === Infinity ? '<span class="new">New</span>' : !cur && !was ? '—' : Math.round(Math.abs(c) * 100) === 0 ? '<span class="new">0%</span>' : `<span class="${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.round(Math.abs(c) * 100)}%</span>`; };
+const chip = (c, pts) => { const v = pts ? c : Math.round(c * 100); const k = Math.abs(v) < (pts ? .05 : .5) ? 'flat' : v > 0 ? 'up' : 'down';
+  return `<span class="chip ${k}">${k === 'up' ? '+' : k === 'down' ? '−' : ''}${pts ? Math.abs(v).toFixed(1) + ' pts' : Math.abs(v) + '%'}</span>`; };
+const tip = (title, rows) => esc(`<b>${esc(title)}</b>` + rows.filter(Boolean).map(([l, v]) => `<div>${l}<em>${v}</em></div>`).join(''));
+
+// ---------------------------------------------------------------- state
+// The main view is #; the pages are #categories #items #unsold #new #pairs, so the browser's Back works.
+const S = { cmp: true, prevData: true, cats: 'donut', items: 'bars', movers: 'slope', pairs: 'net', big: true, ct: '', sort: 'rev', dir: -1, shown: 50, q: '', hub: '', labMin: false };
+let D = build(true);
+const route = () => location.hash.slice(1);
+const EXPORT = `<button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4 20h16"/></svg>Export CSV</button>`;
+const PERIOD = `<div class="period"><button>‹</button><span class="mid">September 2026 <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="#8C8C8C" stroke-width="1.5"/></svg></span><button class="dis">›</button></div>`;
+const allLink = (n, to) => `<a class="link" href="#${to}">Show all ${n} →</a>`;
+
+// ---------------------------------------------------------------- blocks
+// Each count in the strip is a link to the list behind it.
+function strip() {
+  const it = D.items, sold = it.filter(x => x.rev > 0), wasSold = it.filter(x => x.prev > 0);
+  const rev = sold.reduce((s, x) => s + x.rev, 0), prevRev = it.reduce((s, x) => s + x.prev, 0);
+  const top10 = [...sold].sort((a, b) => b.rev - a.rev).slice(0, 10).reduce((s, x) => s + x.rev, 0) / rev;
+  const top10p = [...wasSold].sort((a, b) => b.prev - a.prev).slice(0, 10).reduce((s, x) => s + x.prev, 0) / prevRev;
+  const mg = sold.reduce((s, x) => s + x.profit, 0) / rev, mgp = it.reduce((s, x) => s + x.prev * x.m, 0) / prevRev;
+  const fresh = sold.filter(x => !x.prev), dead = it.length - sold.length;
+  const tag = (to) => to ? `a href="#${to}"` : 'div', end = (to) => to ? 'a' : 'div';
+  const cell = (l, v, extra = '', title = '', to = '') => `<${tag(to)} title="${title}"><div class="l">${l}</div><div class="v">${v}${extra}</div></${end(to)}>`;
+  // Without August there is nothing to be new against, so that tile shows the month's best day instead. 1 September 2026 is a Tuesday.
+  const days = addDays(it), bd = days.indexOf(Math.max(...days)), day = `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][(bd + 2) % 7]} ${bd + 1}`;
+  return `<section class="card strip">
+    ${cell('Items sold', `${sold.length}<small>of ${it.length}</small>`, S.cmp ? chip(chg(sold.length, wasSold.length)) : '', 'Different items with at least one sale', 'items')}
+    ${cell('Top 10 share', pct(top10, 0), S.cmp ? chip((top10 - top10p) * 100, true) : '', 'How much of revenue your 10 best items bring in')}
+    ${cell('Margin', pct(mg), S.cmp ? chip((mg - mgp) * 100, true) : '')}
+    ${S.cmp ? cell('New sellers', fresh.length, '', 'Sold this month, nothing in August', 'new') : cell('Best day', `${day}<small>${pesoK(days[bd])}</small>`, '', 'The day with the most sales this month')}
+    ${cell('Didn\'t sell', dead, '', 'In the catalogue, no sale this month', 'unsold')}
+  </section>`;
+}
+
+const catTotal = () => D.cats.reduce((s, c) => s + c.rev, 0);
+const catTip = (c) => tip(c.name, [['Revenue', peso(c.rev)], ['Share', pct(c.rev / catTotal())], ['Profit', peso(c.profit)], vsRow(c), ['Items sold', c.n]]);
+const cutBtn = () => S.ct ? `<button class="cut" data-act="uncut">${esc(S.ct)} ✕</button>` : '';
+const toCats = 'data-act="go" data-to="categories"';
+
+function catTable(full) {
+  const list = D.cats.filter(c => c.rev > 0), tot = catTotal(), lead = list[0].rev, shown = full ? list : list.slice(0, 5);
+  return `<section class="card"><table><thead><tr><th>Category</th><th class="n">Revenue</th><th class="n">Share</th><th class="n">Profit</th>${S.cmp ? '<th class="n">Trend</th>' : ''}</tr></thead><tbody>
+    ${shown.map(c => `<tr data-ct="${esc(c.key)}"${c.key === S.ct ? ' class="on"' : ''} data-tip="${catTip(c)}"><td>${esc(c.name)}</td><td class="n"><span class="ib"><i style="width:${c.rev / lead * 100}%"></i></span><b>${peso(c.rev)}</b></td><td class="n">${pct(c.rev / tot)}</td><td class="n">${peso(c.profit)}</td>${S.cmp ? `<td class="n">${trendTxt(c.rev, c.prev)}</td>` : ''}</tr>`).join('')}
+    </tbody></table>${full ? '' : `<div class="foot">${allLink(list.length, 'categories')}</div>`}</section>`;
+}
+
+// A · donut. Five slices and Other, whatever the store: 7 categories or 60 look the same.
+function catDonut() {
+  const list = D.cats.filter(c => c.rev > 0), tot = catTotal(), top = list.slice(0, 5), rest = list.slice(5);
+  const other = rest.length ? { key: '', name: `Other · ${rest.length} categories`, rev: rest.reduce((s, c) => s + c.rev, 0), prev: rest.reduce((s, c) => s + c.prev, 0), days: addDays(rest), other: true } : null;
+  const parts = [...top, ...(other ? [other] : [])], col = (i, p) => p.other ? 'var(--s-other)' : `var(--s${i + 1})`;
+  const R = 86, r0 = 58, cx = 100, cy = 100; let a = -Math.PI / 2;
+  const arc = (a0, a1) => { const L = a1 - a0 > Math.PI ? 1 : 0, p = (rr, t) => `${(cx + rr * Math.cos(t)).toFixed(2)},${(cy + rr * Math.sin(t)).toFixed(2)}`;
+    return `M${p(R, a0)}A${R},${R} 0 ${L} 1 ${p(R, a1)}L${p(r0, a1)}A${r0},${r0} 0 ${L} 0 ${p(r0, a0)}Z`; };
+  const paths = parts.map((p, i) => { const a1 = a + p.rev / tot * Math.PI * 2, d = arc(a, Math.min(a1, a + Math.PI * 2 - 1e-4)); a = a1;
+    return `<path d="${d}" fill="${col(i, p)}" data-i="${i}" ${p.other ? toCats : `data-ct="${esc(p.key)}"`} data-tip="${p.other ? tip(p.name, [['Revenue', peso(p.rev)], ['Share', pct(p.rev / tot)]]) : catTip(p)}"${S.ct && p.key === S.ct ? ' class="hot"' : ''}/>`; }).join('');
+  const rows = parts.map((p, i) => `<tr data-i="${i}" ${p.other ? `class="other" ${toCats}` : `data-ct="${esc(p.key)}"${p.key === S.ct ? ' class="on"' : ''}`}><td><i class="sw" style="background:${col(i, p)}"></i></td><td>${esc(p.name)}</td>`
+    + `<td class="n"><b>${peso(p.rev)}</b></td><td class="n">${pct(p.rev / tot)}</td>${S.cmp ? `<td class="n">${trendTxt(p.rev, p.prev)}</td>` : ''}</tr>`).join('');
+  return `<section class="card"><div class="band">Categories<span class="r">Share of revenue</span></div><div class="donut${S.ct ? ' hl' : ''}"><div class="pie"><svg width="200" height="200" viewBox="0 0 200 200">${paths}</svg>
+      <div class="mid"><b>${pesoK(tot)}</b></div></div>
+    <table><thead><tr><th></th><th>Category</th><th class="n">Revenue</th><th class="n">Share</th>${S.cmp ? '<th class="n">Trend</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="foot">${allLink(list.length, 'categories')}</div></section>`;
+}
+
+// B · map. Size is revenue, colour is the change on August. The top 14 (7 on a phone) get a tile, the rest are one Other.
+function squarify(vals, x, y, w, h) {
+  const out = [], tot = vals.reduce((s, v) => s + v, 0); let rest = vals.map((v, i) => ({ i, a: v / tot * w * h }));
+  while (rest.length) {
+    const side = Math.min(w, h); let row = [], best = Infinity;
+    for (const it of rest) { const t = [...row, it], s = t.reduce((q, z) => q + z.a, 0), mx = Math.max(...t.map(z => z.a)), mn = Math.min(...t.map(z => z.a));
+      const worst = Math.max(side * side * mx / (s * s), (s * s) / (side * side * mn)); if (worst > best) break; best = worst; row = t; }
+    const s = row.reduce((q, z) => q + z.a, 0), th = s / side; let off = 0;
+    for (const z of row) { const len = z.a / th; out[z.i] = w >= h ? { x, y: y + off, w: th, h: len } : { x: x + off, y, w: len, h: th }; off += len; }
+    if (w >= h) { x += th; w -= th; } else { y += th; h -= th; }
+    rest = rest.slice(row.length);
+  }
+  return out;
+}
+function catMap() {
+  const list = D.cats.filter(c => c.rev > 0), tot = catTotal(), phone = innerWidth < 760, N = phone ? 7 : 14, top = list.slice(0, N), rest = list.slice(N);
+  const parts = rest.length ? [...top, { key: '', name: `Other · ${rest.length}`, rev: rest.reduce((s, c) => s + c.rev, 0), prev: rest.reduce((s, c) => s + c.prev, 0), days: addDays(rest), other: true }] : top;
+  const W = phone ? innerWidth - 54 : 1130, H = phone ? 520 : 440, g = 3, rects = squarify(parts.map(p => p.rev), 0, 0, W, H);
+  const ms = parts.filter(p => !p.other).map(p => p.profit / p.rev), m0 = Math.min(...ms), m1 = Math.max(...ms);
+  const tint = (p) => { if (p.other) return '#F3F3F3'; if (!S.cmp) return `color-mix(in srgb, var(--b-data-1) ${Math.round(15 + (p.profit / p.rev - m0) / (m1 - m0 || 1) * 85)}%, #F7F7F7)`; const c = chg(p.rev, p.prev); if (c === Infinity) return 'var(--b-data-tint)';
+    const k = Math.min(1, Math.abs(c) / .4); return `color-mix(in srgb, ${c >= 0 ? '#9FD6B9' : '#F2B4A5'} ${Math.round(20 + k * 80)}%, #F3F3F3)`; };
+  const tiles = parts.map((p, i) => { const q = rects[i], sz = q.w < 90 || q.h < 58 ? (q.w < 60 || q.h < 30 ? ' xs' : ' sm') : '';
+    return `<button class="${sz.trim()}${p.key && p.key === S.ct ? ' on' : ''}" style="left:${q.x / W * 100}%;top:${q.y}px;width:calc(${q.w / W * 100}% - ${g}px);height:${q.h - g}px;background:${tint(p)}" ${p.other ? toCats : `data-ct="${esc(p.key)}"`} data-tip="${p.other ? tip(p.name + ' categories', [['Revenue', peso(p.rev)], ['Share', pct(p.rev / tot)]]) : catTip(p)}">`
+      + `<b>${esc(p.name)}</b><span>${pesoK(p.rev)} · ${pct(p.rev / tot, 0)}</span><em>${S.cmp ? trendTxt(p.rev, p.prev) : p.other ? '' : pct(p.profit / p.rev, 0) + ' margin'}</em></button>`; }).join('');
+  return `<section class="card"><div class="band">Categories<span class="r"><span>Size = revenue</span>${S.cmp ? '<span class="scale">Down<i></i>Up vs August</span>' : '<span class="scale m">Thin<i></i>Better margin</span>'}</span></div>
+    <div class="tmap" style="height:${H}px">${tiles}</div><div class="foot">${allLink(list.length, 'categories')}</div></section>`;
+}
+
+// Bars, shared by categories and items: one pesos axis, revenue is the light bar and profit the deep part inside it.
+function barsCard(title, head, list, nameOf, tipOf, attrOf, foot) {
+  const lead = list[0]?.rev || 1;
+  const rows = list.map((x, i) => `<div class="row${x.key && x.key === S.ct ? ' on' : ''}" ${attrOf(x)} data-tip="${tipOf(x)}"><span class="rk">${i + 1}</span><span class="nm">${nameOf(x)}</span>`
+    + `<span class="trk"><i class="rev" style="width:${x.rev / lead * 100}%"></i><i class="pf" style="width:${x.profit / lead * 100}%"></i></span>`
+    + `<span class="n v">${peso(x.rev)}</span><span class="n">${pct(x.profit / x.rev)}</span>${S.cmp ? `<span class="n">${trendTxt(x.rev, x.prev)}</span>` : ''}</div>`).join('');
+  return `<section class="card bars${S.cmp ? '' : ' flat'}"><div class="band">${title}<span class="r"><span class="key"><i style="background:var(--b-data)"></i>Profit</span><span class="key"><i style="background:var(--b-data-1)"></i>Revenue</span></span></div>
+    <div class="row hd"><span></span><span>${head}</span><span></span><span class="n">Revenue</span><span class="n">Margin</span>${S.cmp ? '<span class="n">Trend</span>' : ''}</div>${rows}
+    <div class="foot">${foot}</div></section>`;
+}
+// C · the top 10 categories as bars, using the same card as the items.
+function catBars() {
+  const list = D.cats.filter(c => c.rev > 0);
+  return barsCard('Top 10 categories', 'Category', list.slice(0, 10), c => esc(c.name), catTip,
+    c => `data-ct="${esc(c.key)}"`, allLink(list.length, 'categories'));
+}
+
+function inCut() { return D.items.filter(x => x.rev > 0 && (!S.ct || x.cat === S.ct)); }
+const itemTip = (x) => tip(x.name, [['Revenue', peso(x.rev)], ['Profit', peso(x.profit)], ['Margin', pct(x.margin)], ['Sold', x.qty], vsRow(x)]);
+const hit = (x) => !S.q || (x.name + ' ' + x.cat).toLowerCase().includes(S.q.toLowerCase());
+
+// The table is the app's Items table, sortable. On its own page (full) it can be searched and shows 50 rows at a time.
+function itemTable(full, rows = inCut()) {
+  const K = { name: x => x.name, qty: x => x.qty, rev: x => x.rev, profit: x => x.profit, margin: x => x.margin, trend: x => chg(x.rev, x.prev) };
+  const all = rows.filter(x => !full || hit(x)).sort((a, b) => { const p = K[S.sort](a), q = K[S.sort](b); return (typeof p === 'string' ? p.localeCompare(q) : p - q) * S.dir; });
+  const shown = full ? all.slice(0, S.shown) : all.slice(0, 10), bk = ['qty', 'rev', 'profit'].includes(S.sort) ? S.sort : 'rev', lead = Math.max(1, ...all.map(K[bk]));
+  const th = (k, l, n) => `<th class="s${n ? ' n' : ''}" data-sort="${k}">${l}${S.sort === k ? (S.dir < 0 ? ' ↓' : ' ↑') : ''}</th>`;
+  const cell = (k, txt, x) => `<td class="n">${k === bk ? `<span class="ib"><i style="width:${K[k](x) / lead * 100}%"></i></span>` : ''}${k === 'rev' ? `<b>${txt}</b>` : txt}</td>`;
+  const foot = full ? (all.length > S.shown ? `<span class="muted">${S.shown} of ${all.length}</span><button class="link" style="margin-left:auto" data-act="moreItems">Show 50 more</button>` : '')
+    : all.length > 10 ? allLink(all.length, 'items') : '';
+  const body = shown.length ? shown.map(x => `<tr data-tip="${itemTip(x)}"><td class="nm">${esc(x.name)}${S.ct ? '' : `<small>${esc(x.cat)}</small>`}</td>${cell('qty', x.qty, x)}${cell('rev', peso(x.rev), x)}${cell('profit', peso(x.profit), x)}<td class="n">${pct(x.margin)}</td>${S.cmp ? `<td class="n">${trendTxt(x.rev, x.prev)}</td>` : ''}</tr>`).join('')
+    : `<tr><td colspan="6" class="empty">No item matches “${esc(S.q)}”.</td></tr>`;
+  return `<section class="card">${full ? '' : `<div class="band">Top 10 items ${cutBtn()}</div>`}<table><thead><tr>${th('name', 'Item')}${th('qty', 'Qty sold', 1)}${th('rev', 'Revenue', 1)}${th('profit', 'Profit', 1)}${th('margin', 'Margin', 1)}${S.cmp ? th('trend', 'Trend', 1) : ''}</tr></thead><tbody>
+    ${body}</tbody></table>${foot ? `<div class="foot">${foot}</div>` : ''}</section>`;
+}
+
+// A · the top 10 items as bars.
+function itemBars() {
+  const all = inCut().sort((a, b) => b.rev - a.rev);
+  return barsCard(`Top 10 items ${cutBtn()}`, 'Item', all.slice(0, 10), x => esc(x.name) + (S.ct ? '' : `<small> ${esc(x.cat)}</small>`), itemTip, () => '', allLink(all.length, 'items'));
+}
+
+// ---------------------------------------------------------------- what moved
+function movers() {
+  // What moved is September against August, so it only shows while the comparison is on.
+  const A = 'August', B = 'September', d = D.items.map(x => ({ ...x, d: x.rev - x.prev }));
+  const up = d.filter(x => x.d >= 1).sort((a, b) => b.d - a.d).slice(0, 5), dn = d.filter(x => x.d <= -1).sort((a, b) => a.d - b.d).slice(0, 5);
+  const c = (x) => x.prev ? `${x.d > 0 ? '+' : '−'}${Math.round(Math.abs(x.d / x.prev) * 100)}%` : 'New';
+  const k = (x) => x.d > 0 ? 'up' : 'down', lbl = (x) => `${x.d > 0 ? '+' : '−'}${pesoK(Math.abs(x.d))}`;
+  const mtip = (x) => tip(x.name, [[B, peso(x.rev)], [A, peso(x.prev)], ['Change', lbl(x)]]);
+  if (S.movers === 'lists') {
+    const col = (t, xs, k) => `<div><h4 class="${k}">${t}</h4>${xs.map(x => `<div class="mv" data-tip="${mtip(x)}"><span class="nm">${esc(x.name)}</span><span class="n ${k}">${x.d > 0 ? '+' : '−'}${peso(Math.abs(x.d))}</span><span class="cmp n ${k}">${c(x)}</span></div>`).join('')}</div>`;
+    return `<section class="card"><div class="band">What moved<span class="r">${B} against ${A}</span></div><div class="mvs">${col('Rising', up, 'up')}${col('Falling', dn, 'down')}</div></section>`;
+  }
+  // Slope: the earlier period on the left, the later on the right, one line per item. The scale is square root, so one big item doesn't flatten the rest.
+  // Split puts rising in one panel and falling in the other, so the lines stop crossing. Both panels share one scale.
+  const top = Math.sqrt(Math.max(1, ...[...up, ...dn].flatMap(x => [x.rev, x.prev])));
+  const slope = (ms, W, H, x1, x2, both) => {
+    const T = 34, B2 = 14, Y = (v) => T + (1 - Math.sqrt(v) / top) * (H - T - B2);
+    const spread = (pts) => { let last = -99; return pts.sort((a, b) => a.y - b.y).map(p => ({ ...p, ly: last = Math.max(p.y, last + 20) })); };
+    const L = spread(ms.map(x => ({ x, y: Y(x.prev) }))), R = spread(ms.map(x => ({ x, y: Y(x.rev) })));
+    const lines = ms.map(x => `<g data-tip="${mtip(x)}"><line class="ln ${k(x)}" x1="${x1}" y1="${Y(x.prev)}" x2="${x2}" y2="${Y(x.rev)}"/><line class="hit" x1="${x1}" y1="${Y(x.prev)}" x2="${x2}" y2="${Y(x.rev)}"/>`
+      + `<circle class="was" cx="${x1}" cy="${Y(x.prev)}" r="4"/><circle class="${k(x)}" cx="${x2}" cy="${Y(x.rev)}" r="4.5"/></g>`).join('');
+    const lt = L.map(p => `<text class="muted" x="${x1 - 12}" y="${p.ly + 4}" text-anchor="end">${esc(p.x.name)} · ${pesoK(p.x.prev)}</text>`).join('');
+    const rt = R.map(p => `<text x="${x2 + 12}" y="${p.ly + 4}">${pesoK(p.x.rev)} <tspan class="${k(p.x)}">${c(p.x)}</tspan>${both ? ` <tspan class="muted">${esc(p.x.name)}</tspan>` : ''}</text>`).join('');
+    const h = Math.max(H, ...L.map(p => p.ly + 14), ...R.map(p => p.ly + 14));
+    return `<svg viewBox="0 0 ${W} ${h}"><text class="ax" x="${x1}" y="14" text-anchor="middle">${A}</text><text class="ax" x="${x2}" y="14" text-anchor="middle">${B}</text>
+      <line class="axl" x1="${x1}" x2="${x1}" y1="${T - 8}" y2="${h - B2}"/><line class="axl" x1="${x2}" x2="${x2}" y1="${T - 8}" y2="${h - B2}"/>${lines}${lt}${rt}</svg>`;
+  };
+  if (S.movers === 'slope2') return `<section class="card slope"><div class="band">What moved<span class="r">${B} against ${A}, one scale</span></div><div class="pad two">
+    <div><h4 class="up">Rising</h4>${slope(up, 540, 420, 250, 420)}</div><div><h4 class="down">Falling</h4>${slope(dn, 540, 420, 250, 420)}</div></div></section>`;
+  return `<section class="card slope"><div class="band">What moved<span class="r">5 up, 5 down</span></div><div class="pad">${slope([...up, ...dn], 1130, 560, 330, 740, true)}</div></section>`;
+}
+
+// ---------------------------------------------------------------- bought together
+// How many receipts had each item, and how many had both items of a pair. As in the app, a pair's % is taken from whichever of the two is on fewer receipts.
+const RC = { 'Deformed Bar 10mm': 64, 'Tie Wire #16 (kg)': 88, 'Portland Cement 40kg': 142, 'Washed Sand (per cu.m)': 71, 'Gravel 3/4" (per cu.m)': 38, 'Hollow Block 4"': 96,
+  'Latex Paint White 4L': 54, 'Paint Thinner 1L': 77, 'Red Oxide Primer 1L': 29, 'Brass Faucet 1/2"': 31, 'Teflon Tape': 92, 'Flexible Hose 16"': 26, 'PVC Elbow 1/2"': 58,
+  'PVC Solvent Cement 200mL': 44, 'GI Sheet 8ft': 33, 'Roofing Nails 2.5" (kg)': 41, 'Gutter 10ft': 12, 'Angle Grinder 4"': 17, 'Cutting Disc 4"': 63, 'Safety Goggles Clear': 35,
+  'Coco Lumber 2x2x8': 57, 'Common Nail 4" (kg)': 81, 'Ordinary Plywood 1/2"': 24 };
+const PAIRS = [['Deformed Bar 10mm', 'Tie Wire #16 (kg)', 41], ['Deformed Bar 10mm', 'Portland Cement 40kg', 33], ['Deformed Bar 10mm', 'Hollow Block 4"', 22],
+  ['Portland Cement 40kg', 'Washed Sand (per cu.m)', 52], ['Portland Cement 40kg', 'Gravel 3/4" (per cu.m)', 27], ['Portland Cement 40kg', 'Hollow Block 4"', 48],
+  ['Hollow Block 4"', 'Washed Sand (per cu.m)', 30], ['Latex Paint White 4L', 'Paint Thinner 1L', 28], ['Latex Paint White 4L', 'Red Oxide Primer 1L', 9],
+  ['Brass Faucet 1/2"', 'Teflon Tape', 22], ['Brass Faucet 1/2"', 'Flexible Hose 16"', 14], ['PVC Elbow 1/2"', 'PVC Solvent Cement 200mL', 31], ['PVC Elbow 1/2"', 'Teflon Tape', 19],
+  ['GI Sheet 8ft', 'Roofing Nails 2.5" (kg)', 19], ['GI Sheet 8ft', 'Gutter 10ft', 8], ['Angle Grinder 4"', 'Cutting Disc 4"', 15], ['Angle Grinder 4"', 'Safety Goggles Clear', 6],
+  ['Coco Lumber 2x2x8', 'Common Nail 4" (kg)', 34], ['Coco Lumber 2x2x8', 'Ordinary Plywood 1/2"', 11]]
+  .map(([a, b, n]) => { const [A, B] = RC[a] <= RC[b] ? [a, b] : [b, a]; return { a: A, b: B, n, of: RC[A], f: n / RC[A] }; }).sort((p, q) => q.n - p.n || q.f - p.f);
+
+// Items joined by pairs fall into groups, roughly the jobs people shop for. Biggest group first; in each, the item with the most pair receipts leads.
+const GROUPS = (() => {
+  const par = {}, f = (x) => par[x] === x ? x : (par[x] = f(par[x]));
+  for (const p of PAIRS) { par[p.a] ??= p.a; par[p.b] ??= p.b; par[f(p.a)] = f(p.b); }
+  const g = new Map(); for (const x in par) { const r = f(x); (g.get(r) || g.set(r, []).get(r)).push(x); }
+  const w = (x) => PAIRS.reduce((s, p) => s + (p.a === x || p.b === x ? p.n : 0), 0);
+  return [...g.values()].map(xs => xs.sort((a, b) => w(b) - w(a))).sort((a, b) => b.length - a.length || w(b[0]) - w(a[0]));
+})();
+const NODES = GROUPS.flat();
+// Hover keys: a pair is "p3", and an item carries its own key plus every pair it's in. Hovering lights up everything that shares a key.
+const nodeHk = (x) => ['n' + NODES.indexOf(x), ...PAIRS.flatMap((p, i) => p.a === x || p.b === x ? ['p' + i] : [])].join(' ');
+const pairTip = (p) => tip(p.a + ' → ' + p.b, [['Together', p.n + ' receipts'], ['Receipts with ' + p.a, p.of], ['How often', Math.round(p.f * 100) + '%']]);
+const nodeTip = (x) => tip(x, [['Receipts', RC[x]], ['Bought with', PAIRS.filter(p => p.a === x || p.b === x).length + ' items']]);
+const edgeW = (p) => 1.5 + p.n / 52 * 7;
+
+// C · network: every group drawn as its own little constellation. Dot = an item (size = receipts), line = a pair (thickness = receipts together).
+function pairsNet(foot) {
+  // The two biggest groups get half the width each; the small ones share the row below. Top node's label sits above it, the rest below.
+  const W = 1130, H = 560, pos = {}, rad = (x) => 5 + Math.sqrt(RC[x]) * .9, hubs = new Set(), tops = new Set();
+  const cells = [[W / 4, 170, W / 2], [W * 3 / 4, 170, W / 2], ...[0, 1, 2, 3].map(i => [(i + .5) * W / 4, 440, W / 4])];
+  GROUPS.slice(0, 6).forEach((xs, gi) => {   // ponytail: 6 groups fit; a real store needs the top 6 + a "more" link, like the map's Other
+    const [cx, cy, cw] = cells[gi];
+    if (xs.length > 3) {
+      hubs.add(xs[0]); if (xs.length % 2 === 0) tops.add(xs[1]); pos[xs[0]] = [cx, cy];
+      const ring = xs.slice(1), rx = Math.min(170, cw / 2 - 100), n = ring.length, off = n % 2 ? 0 : .5;
+      ring.forEach((x, i) => { const t = -Math.PI / 2 + (i + off) / n * Math.PI * 2; pos[x] = [cx + rx * Math.cos(t), cy + 100 * Math.sin(t)]; });
+    } else if (xs.length === 3) { tops.add(xs[0]); pos[xs[0]] = [cx, cy - 45]; pos[xs[1]] = [cx - 70, cy + 35]; pos[xs[2]] = [cx + 70, cy + 35]; }
+    else xs.forEach((x, i) => pos[x] = [cx + (i ? 70 : -70), cy]);
+  });
+  const ps = PAIRS.filter(p => pos[p.a] && pos[p.b]);
+  const edges = ps.map(p => { const i = PAIRS.indexOf(p), [x1, y1] = pos[p.a], [x2, y2] = pos[p.b];
+    return `<g data-hk="p${i}" data-tip="${pairTip(p)}"><line class="eg" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${edgeW(p)}" stroke-opacity="${.25 + .55 * p.f}"/><line class="hit" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/></g>`; }).join('');
+  const pctL = ps.map(p => { const [x1, y1] = pos[p.a], [x2, y2] = pos[p.b]; return `<text class="el" x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 + 4}" text-anchor="middle" data-hk="p${PAIRS.indexOf(p)}">${Math.round(p.f * 100)}%</text>`; }).join('');
+  const nodes = Object.entries(pos).map(([x, [cx, cy]]) => { const top = tops.has(x);
+    return `<g data-hk="${nodeHk(x)}" data-tip="${nodeTip(x)}"><circle cx="${cx}" cy="${cy}" r="${rad(x)}"/><text class="nl${hubs.has(x) ? ' hb' : ''}" x="${cx}" y="${top ? cy - rad(x) - 7 : cy + rad(x) + 14}" text-anchor="middle">${esc(x)}</text></g>`; }).join('');
+  return `<section class="card"><div class="band">Bought together<span class="r">Dot = an item, sized by receipts · Line = bought together · Hover for how often</span></div>
+    <div class="net"><svg viewBox="0 0 ${W} ${H}">${edges}${nodes}${pctL}</svg></div><div class="foot">${foot}</div></section>`;
+}
+
+// D · ring: every item around one circle, grouped, with a chord for each pair. The top pairs sit beside it; hovering either side lights up the other.
+function pairsRing(foot) {
+  const Z = 580, c = Z / 2, R = 136, slots = NODES.length + GROUPS.length, ang = {}; let s = 0;
+  GROUPS.forEach(xs => { xs.forEach(x => ang[x] = -Math.PI / 2 + (s++ + .5) / slots * Math.PI * 2); s++; });
+  const at = (x, r) => [c + r * Math.cos(ang[x]), c + r * Math.sin(ang[x])].map(v => v.toFixed(1));
+  const chords = PAIRS.map((p, i) => { const [x1, y1] = at(p.a, R - 7), [x2, y2] = at(p.b, R - 7);
+    return `<path class="ch" data-hk="p${i}" data-tip="${pairTip(p)}" d="M${x1},${y1} Q${c},${c} ${x2},${y2}" stroke-width="${edgeW(p)}" stroke-opacity="${.25 + .55 * p.f}"/>`; }).join('');
+  const nodes = NODES.map(x => { const [x1, y1] = at(x, R), [tx, ty] = at(x, R + 14), deg = ang[x] * 180 / Math.PI, flip = Math.cos(ang[x]) < 0;
+    return `<g data-hk="${nodeHk(x)}" data-tip="${nodeTip(x)}"><circle cx="${x1}" cy="${y1}" r="${3 + Math.sqrt(RC[x]) * .45}"/><text transform="translate(${tx},${ty}) rotate(${(flip ? deg + 180 : deg).toFixed(1)})" text-anchor="${flip ? 'end' : 'start'}" dy="4">${esc(x)}</text></g>`; }).join('');
+  return `<section class="card"><div class="band">Bought together<span class="r">Hover an item or a line</span></div>
+    <div class="ring"><div class="pic"><svg viewBox="0 0 ${Z} ${Z}">${chords}${nodes}</svg></div><div>${pairsTable(PAIRS.slice(0, 10))}</div></div><div class="foot">${foot}</div></section>`;
+}
+
+function pairsTable(list, foot) {
+  return `<table><tbody>${list.map(p => `<tr data-hk="p${PAIRS.indexOf(p)}" data-tip="${pairTip(p)}"><td>${esc(p.a)}<span class="to">→</span>${esc(p.b)}</td><td class="n"><span class="ib"><i style="width:${p.f * 100}%"></i></span>${Math.round(p.f * 100)}% of the time</td><td class="n" style="color:var(--b-ink-3)">${p.n} of ${p.of} receipts</td></tr>`).join('')}</tbody></table>${foot ? `<div class="foot">${foot}</div>` : ''}`;
+}
+function pairs() {
+  const foot = allLink(PAIRS.length, 'pairs');
+  if (S.pairs === 'ring') return pairsRing(foot);
+  if (S.pairs === 'table') return `<section class="card pairs"><div class="band">Bought together</div>${pairsTable(PAIRS.slice(0, 5), foot)}</section>`;
+  return pairsNet(foot);
+}
+
+// ---------------------------------------------------------------- the pages behind Show all and the strip
+const page = (title, meta, body) => `<div class="bar"><h1><a class="crumb" href="#">Items</a><span class="sl">›</span>${title}${meta ? `<small>${meta}</small>` : ''}</h1>${EXPORT}${PERIOD}</div>${body}`;
+const search = (ph) => `<div class="filters"><input id="q" class="search" type="search" placeholder="${ph}" value="${esc(S.q)}" autocomplete="off"></div>`;
+const PAGES = {
+  categories: () => page('Categories', `${D.cats.filter(c => c.rev > 0).length}`, catTable(true)),
+  items: () => page('All items', S.ct ? cutBtn() : `${inCut().length}`, search('Search items') + itemTable(true)),
+  new: () => { const xs = D.items.filter(x => x.rev > 0 && !x.prev); return page('New sellers', `${xs.length} · sold in September, nothing in August`, itemTable(true, xs)); },
+  unsold: () => {
+    // What didn't sell, and the stock it leaves on the shelf. Items that sold in August come first, because those are the ones that stopped selling.
+    const xs = D.items.filter(x => !x.rev).map(x => { const onHand = (x.name.length * 7 + x.price) % 37 + 2; return { ...x, onHand, val: onHand * x.price * (1 - x.m) }; })
+      .filter(hit).sort((a, b) => b.prev - a.prev || b.val - a.val);
+    const tied = xs.reduce((s, x) => s + x.val, 0);
+    return page('Didn\'t sell', `${xs.length} · ${peso(tied)} of stock sitting still`, search('Search items') + `<section class="card"><table><thead><tr><th>Item</th><th class="n">On hand</th><th class="n">Stock value</th><th class="n">Sold in August</th></tr></thead><tbody>
+      ${xs.map(x => `<tr><td class="nm">${esc(x.name)}<small>${esc(x.cat)}</small></td><td class="n">${x.onHand}</td><td class="n">${peso(x.val)}</td><td class="n">${x.prev ? peso(x.prev) : '<span class="new">—</span>'}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">Everything sold this month.</td></tr>'}
+      </tbody></table></section>`);
+  },
+  pairs: () => page('Bought together', `${PAIRS.length} pairs`, `<section class="card pairs">${pairsTable(PAIRS)}</section>`),
+};
+
+// ---------------------------------------------------------------- lab 3: compare on/off, and a switch on each card
+// With the comparison off there is no Trend column, no Rank and no What moved: those only mean something against August.
+const sum = (a) => a.reduce((s, v) => s + v, 0);
+const addDays = (xs) => xs.reduce((a, x) => a.map((v, i) => v + x.days[i]), Array(30).fill(0));
+const vsRow = (x) => S.cmp ? ['vs August', x.prev ? `${chg(x.rev, x.prev) >= 0 ? '+' : '−'}${Math.round(Math.abs(chg(x.rev, x.prev)) * 100)}%` : 'New'] : null;
+const ord = (n) => n + (n % 100 - n % 10 === 10 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+
+// Each card's view dropdown sits at the right of its band. ponytail: spliced into the card's first band, so the view functions stay as they were.
+const SW = { cats: [['donut', 'Donut'], ['map', 'Map'], ['bars', 'Bars'], ['rank', 'Rank']], items: [['bars', 'Bars'], ['table', 'Table']],
+  movers: [['slope', 'Slope'], ['slope2', 'Split'], ['lists', 'Lists']], pairs: [['net', 'Network'], ['ring', 'Ring'], ['table', 'Table']] };
+const withSw = (k, html) => html.replace(/(<div class="band">[\s\S]*?)<\/div>/, (m, a) => a + `<select class="vs" data-sel="${k}">${SW[k].filter(([v]) => S.cmp || v !== 'rank').map(([v, l]) => `<option value="${v}"${S[k] === v ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`);
+const CMP = () => `<button class="cmpsw${S.cmp ? ' on' : ''}" data-act="cmp"${S.prevData ? '' : ' disabled'}><i></i>${S.prevData ? 'Compare with August' : 'No August sales to compare'}</button>`;
+
+// F · rank. On: where each of the top 10 ranked in August, and where it ranks now. Off: the top 10 of the last 10 days, and where each stood earlier in the month.
+function catRank() {
+  const list = D.cats.filter(c => c.rev > 0), N = 10;
+  const cols = [['August', c => c.prev], ['September', c => c.rev]];
+  const rankIn = (f) => { const s = D.cats.filter(c => f(c) > 0).sort((a, b) => f(b) - f(a)); return (c) => s.indexOf(c) + 1 || Infinity; };
+  const R = cols.map(([, f]) => rankIn(f)), last = cols[cols.length - 1][1], top = D.cats.filter(c => last(c) > 0).sort((a, b) => last(b) - last(a)).slice(0, N);
+  const W = 1130, RH = 34, T = 34, H = T + (N + 1) * RH + 6, xl = 250, xr = 720, xs = cols.map((_, i) => xl + (xr - xl) * i / (cols.length - 1)), y = (r) => T + (Math.min(r, N + 1) - .5) * RH;
+  let g = cols.map(([l], i) => `<text class="ax" x="${xs[i]}" y="16" text-anchor="middle">${l}</text><line class="axl" x1="${xs[i]}" x2="${xs[i]}" y1="${T - 6}" y2="${H - 6}"/>`).join('')
+    + `<text class="muted" x="${xl - 14}" y="${y(N + 1) + 4}" text-anchor="end">11th or lower</text>`;
+  for (let r = 1; r <= N; r++) g += `<text class="muted" x="${xl - 14}" y="${y(r) + 4}" text-anchor="end">${r}</text>`;
+  g += top.map((c, i) => { const rs = R.map(f => f(c)), a = rs[0], b = i + 1, k = a > b ? 'up' : a < b ? 'down' : 'same';
+    const d = rs.map((r, j) => j ? `C${(xs[j - 1] + xs[j]) / 2},${y(rs[j - 1])} ${(xs[j - 1] + xs[j]) / 2},${y(r)} ${xs[j]},${y(r)}` : `M${xs[0]},${y(r)}`).join(' ');
+    const was = a === Infinity ? 'New' : a > N ? `${ord(a)} in ${cols[0][0]}` : '';
+    return `<g data-ct="${esc(c.key)}" data-tip="${tip(c.name, [...cols.map(([l], j) => ['Rank, ' + l, rs[j] === Infinity ? '—' : rs[j]]), ['Revenue', peso(c.rev)], vsRow(c)])}">`
+      + `<path class="ln ${k}" d="${d}" fill="none"/><path class="hit" d="${d}" fill="none"/>`
+      + rs.slice(0, -1).map((r, j) => `<circle class="was" cx="${xs[j]}" cy="${y(r)}" r="4"/>`).join('') + `<circle class="${k === 'same' ? 'was' : k}" cx="${xr}" cy="${y(b)}" r="5"/>`
+      + `<text x="${xr + 14}" y="${y(b) + 4}">${b}. ${esc(c.name)} <tspan class="muted">${pesoK(last(c))}${was ? ' · ' + was : ''}</tspan></text></g>`; }).join('');
+  return `<section class="card slope rank"><div class="band">Top 10 categories<span class="r">Where each ranked in August, and where it ranks now</span></div>
+    <div class="pad"><svg viewBox="0 0 ${W} ${H}">${g}</svg></div><div class="foot">${allLink(list.length, 'categories')}</div></section>`;
+}
+
+// ---------------------------------------------------------------- page
+function render() {
+  if (!S.cmp) { if (S.cats === 'rank') S.cats = 'donut'; if (S.sort === 'trend') S.sort = 'rev'; }
+  const P = PAGES[route()];
+  const cats = withSw('cats', { donut: catDonut, map: catMap, bars: catBars, rank: catRank }[S.cats]());
+  const items = withSw('items', { bars: itemBars, table: () => itemTable(false) }[S.items]());
+  document.getElementById('app').innerHTML = P ? P() : `<div class="bar"><div class="seg"><span>Summary</span><span class="on">Items</span></div>${CMP()}${EXPORT}${PERIOD}</div>
+    <div class="stack">${strip()}${cats}${items}${S.cmp ? withSw('movers', movers()) : ''}${withSw('pairs', pairs())}</div>`;
+  const g = (k, label, opts) => `<div class="g"><span>${label}</span>${opts.map(([v, l]) => `<button data-lab="${k}" data-v="${v}" class="${String(S[k]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  document.getElementById('lab').innerHTML = S.labMin ? `<button data-act="lab">Lab ↑</button>` : `<button class="min" data-act="lab">Hide ↓</button>`
+    + g('big', 'Store', [['false', 'Demo · 7 cats'], ['true', 'Big · 60 cats']])
+    + g('prevData', 'August', [['true', 'Has sales'], ['false', 'None · new store']])
+    + `<div class="note">Each card has its own view switch. Compare with August is in the page bar. Hover anything for its numbers. Clicking a category shows only its items. Show all, and the Items sold, New sellers and Didn't sell counts in the strip, each open their own page.</div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-lab],[data-act],[data-ct],[data-sort],[data-hub]'); if (!t) return;
+  if (t.dataset.lab) { const k = t.dataset.lab; S[k] = ['big', 'prevData'].includes(k) ? t.dataset.v === 'true' : t.dataset.v; if (k === 'big') { D = build(S.big); S.ct = ''; } if (k === 'prevData') S.cmp = S.prevData; }
+  else if (t.dataset.ct) { if (route() === 'categories') { S.ct = t.dataset.ct; location.hash = 'items'; return; } S.ct = S.ct === t.dataset.ct ? '' : t.dataset.ct; }
+  else if (t.dataset.hub) S.hub = t.dataset.hub;
+  else if (t.dataset.sort) { S.dir = S.sort === t.dataset.sort ? -S.dir : t.dataset.sort === 'name' ? 1 : -1; S.sort = t.dataset.sort; }
+  else ({ go: () => { location.hash = t.dataset.to; }, moreItems: () => S.shown += 50, uncut: () => S.ct = '', cmp: () => S.cmp = !S.cmp, lab: () => S.labMin = !S.labMin })[t.dataset.act]?.();
+  render();
+});
+document.addEventListener('change', (e) => { const k = e.target.dataset.sel; if (k) { S[k] = e.target.value; render(); } });
+document.addEventListener('input', (e) => {
+  if (e.target.id !== 'q') return;
+  S.q = e.target.value; S.shown = 50; render();
+  const q = document.getElementById('q'); q.focus(); q.setSelectionRange(q.value.length, q.value.length);
+});
+addEventListener('resize', () => { if (S.cats === 'map' && !route()) render(); });
+addEventListener('hashchange', () => { S.q = ''; S.shown = 50; render(); scrollTo(0, 0); });
+const TIP = document.getElementById('tip');
+document.addEventListener('mousemove', (e) => {
+  const t = e.target.closest('[data-tip]');
+  document.querySelectorAll('.donut path.hot').forEach(p => { if (!S.ct || p.dataset.ct !== S.ct) p.classList.remove('hot'); });
+  const dn = e.target.closest('.donut'); if (dn) { const i = e.target.closest('[data-i]')?.dataset.i; dn.classList.toggle('hl', !!S.ct || i != null);
+    if (i != null) dn.querySelector(`path[data-i="${i}"]`)?.classList.add('hot'); }
+  document.querySelectorAll('.hkhl').forEach(cd => { cd.classList.remove('hkhl'); cd.querySelectorAll('.lit').forEach(x => x.classList.remove('lit')); });
+  const hk = e.target.closest('[data-hk]'), cd = hk?.closest('.card');
+  if (cd) { cd.classList.add('hkhl'); hk.dataset.hk.split(' ').forEach(k => cd.querySelectorAll(`[data-hk~="${k}"]`).forEach(x => x.classList.add('lit'))); }
+  if (!t) { TIP.style.display = 'none'; return; }
+  TIP.innerHTML = t.dataset.tip; TIP.style.display = 'block';
+  const w = TIP.offsetWidth, h = TIP.offsetHeight;
+  TIP.style.left = Math.min(e.clientX + 14, innerWidth - w - 8) + 'px'; TIP.style.top = (e.clientY + 16 + h > innerHeight ? e.clientY - h - 12 : e.clientY + 16) + 'px';
+});
+render();
+</script>
+</body></html>

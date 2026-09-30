@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sales summary lab</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   SALES › SUMMARY LAB (2026-09-29): the Summary's bottom three cards (bo-sales.js calMix) given the
+   Items lab's treatment. Today they are plain lists: Payment methods, Breakdown, Staff. Nothing live:
+   seeded fake data, September 1–29 against August 1–29, two store sizes (3 methods / 3 staff and
+   6 methods / 12 staff). Tokens are sales-items-lab-2.html's. Panel bottom right swaps the variants.
+   =========================================================================== */
+:root {
+  --po-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --b-page: #FFFFFF; --b-card: #F9F9F9; --b-raised: #FFFFFF;
+  --b-line: #ECECEC; --b-outline: #E1E1E1; --b-track: #EFEFEF;
+  --b-ink: #303030; --b-ink-2: #616161; --b-ink-3: #8C8C8C;
+  --b-up: #047B5D; --b-down: #D72C0D; --b-up-tint: #D3ECDD; --b-down-tint: #F8D8D0; --b-flat-tint: #EFEFEF;
+  --b-data: #2B7DE9; --b-data-1: #BCD7FA; --b-data-tint: #DCE9FB;
+  --card-shadow: 0 1px 2px -1px rgb(26 26 26 / .07);
+  --btn-h: 28px; --btn-r: 8px; --btn-soft: #EDEDED;
+  --b-r-card: 14px; --b-pad: 16px;
+  --t-label: 13px; --t-meta: 12.5px; --t-micro: 11px;
+  /* one hue, dark → light (--s6 only because a big store has six payment methods); Other is grey */
+  --s1: #1C5CAB; --s2: #256ABF; --s3: #2B7DE9; --s4: #5598E7; --s5: #86B6EF; --s6: #B3CFF3; --s-other: #D4D4D4;
+  --t-up: #9FD6B9; --t-down: #F2B4A5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--b-page); color: var(--b-ink); font: var(--t-label)/normal var(--po-font); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 200px; }
+
+/* the page bar: Summary | Items, ‹ period › — as the app */
+.bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.seg { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--btn-soft); margin-right: auto; }
+.seg span { height: 26px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: 999px; font-weight: 500; color: var(--b-ink-2); }
+.seg span.on { background: #fff; color: var(--b-ink); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04); }
+.period { display: inline-flex; height: var(--btn-h); border: 1px solid var(--b-outline); border-radius: var(--btn-r); overflow: hidden; }
+.period > * { display: inline-flex; align-items: center; padding: 0 10px; background: #fff; border: 0; }
+.period > * + * { border-left: 1px solid var(--b-outline); }
+.period .mid { padding: 0 14px; font-weight: 500; gap: 6px; } .period .mid small { color: var(--b-ink-3); font-weight: 400; font-size: var(--t-meta); }
+.period .dis { color: #C4C4C4; }
+.ghost { display: grid; place-items: center; height: 72px; margin-bottom: 12px; border: 1px dashed var(--b-outline); border-radius: var(--b-r-card); color: var(--b-ink-3); font-size: var(--t-meta); }
+
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.stackl { display: grid; gap: 12px; }
+@media (max-width: 900px) { .trio { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--b-raised); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; min-width: 0; }
+.band { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-2); font-weight: 500; white-space: nowrap; }
+.band .r { margin-left: auto; color: var(--b-ink-3); font-weight: 400; font-size: var(--t-meta); display: inline-flex; align-items: center; gap: 10px; overflow: hidden; text-overflow: ellipsis; }
+.key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.up { color: var(--b-up); } .down { color: var(--b-down); } .new, .mute { color: var(--b-ink-3); }
+.chip { font-size: var(--t-micro); font-weight: 600; padding: 2px 6px; border-radius: 6px; }
+.chip.up { background: var(--b-up-tint); } .chip.down { background: var(--b-down-tint); } .chip.flat { background: var(--b-flat-tint); color: var(--b-ink-2); }
+.pill { font-size: 10.5px; padding: 1px 7px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); margin-left: 6px; font-weight: 400; }
+.pill.warn { background: #FCEFC7; color: #7A5B00; }
+.nm { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nm small { margin-left: 8px; color: var(--b-ink-3); font-size: var(--t-meta); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+/* Account is sold, not yet paid: hatched wherever it is drawn. Discounts wear it too, money never taken. */
+.acct { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.65) 0 2px, transparent 2px 5px); }
+.mk { transition: opacity .12s; } .hkhl .mk:not(.lit) { opacity: .3; }
+.sub { padding: 0 var(--b-pad) 12px; color: var(--b-ink-3); font-size: var(--t-meta); }
+.sub b { color: var(--b-ink); font-weight: 600; }
+
+/* Now · the app's list (bo-calm.css .calm-sales .w .row) */
+.row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 var(--b-pad); }
+.row + .row { border-top: 1px solid var(--b-line); }
+.row .nm { flex: 1; } .row .amt { font-weight: 600; font-variant-numeric: tabular-nums; }
+.row .cmp { width: 46px; text-align: right; color: var(--b-ink-3); font-size: var(--t-meta); font-variant-numeric: tabular-nums; }
+.row.total .nm { font-weight: 600; }
+
+/* legend rows: swatch, name, amount, share, trend — the key under every split */
+.lg { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 44px 40px; align-items: center; gap: 10px; height: 34px; padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); }
+.lg.total { font-weight: 600; } .lg .n:nth-child(4) { color: var(--b-ink-3); font-size: var(--t-meta); } .lg .n:last-child { font-size: var(--t-meta); }
+.sbar { display: flex; gap: 2px; height: 18px; margin: 14px var(--b-pad) 8px; }
+.sbar i { min-width: 3px; border-radius: 3px; }
+
+/* B · donut */
+.pdn { display: grid; grid-template-columns: minmax(0, 1fr); }
+.pdn .pie { display: grid; place-items: center; padding: 14px 0; position: relative; }
+.pdn .pie .mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+.pdn .pie .mid b { font-size: 17px; font-weight: 600; } .pdn .pie .mid span { color: var(--b-ink-3); font-size: var(--t-micro); margin-top: 2px; }
+.pdn path { stroke: #fff; stroke-width: 2; }
+.stackl .pdn { grid-template-columns: 240px minmax(0, 1fr); align-items: center; } .stackl .pdn .pie { border-right: 1px solid var(--b-line); }
+.stackl .pdn .lg:first-child { border-top: 0; }
+@media (max-width: 760px) { .stackl .pdn { grid-template-columns: minmax(0, 1fr); } .stackl .pdn .pie { border-right: 0; } .stackl .pdn .lg:first-child { border-top: 1px solid var(--b-line); } }
+
+/* two bars per row, this month dark, the month before light, one scale */
+.pbr { display: grid; grid-template-columns: minmax(64px, 110px) minmax(0, 1fr) 58px 40px; align-items: center; gap: 10px; height: 38px; padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); }
+.pbr:first-child { border-top: 0; }
+.pbr .tk { display: grid; gap: 3px; } .pbr .tk i { display: block; height: 8px; border-radius: 0 3px 3px 0; background-color: var(--s3); } .pbr .tk i.was { height: 4px; background-color: var(--b-data-1); }
+.pbr .n:last-child { font-size: var(--t-meta); }
+.stackl .pbr { grid-template-columns: 180px minmax(0, 1fr) 80px 52px; }
+
+/* by day: rows × the month's days */
+.hm { display: grid; gap: 2px 1px; align-items: center; padding: 12px var(--b-pad) 10px; }
+.hm .hn { padding-right: 8px; font-size: var(--t-meta); } .hm .hc { height: 20px; border-radius: 2px; }
+.hm .hc:hover { outline: 2px solid var(--b-ink); outline-offset: -1px; }
+.hm .ht { height: 14px; color: var(--b-ink-3); font-size: var(--t-micro); white-space: nowrap; overflow: visible; }
+.stackl .hm { gap: 3px 3px; } .stackl .hm .hc { height: 24px; }
+
+/* staff bars */
+.sbr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 58px 34px; align-items: center; gap: 10px; height: 34px; padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); }
+.sbr.hd { height: 30px; border-top: 0; background: var(--b-card); color: var(--b-ink-3); font-size: var(--t-meta); border-bottom: 1px solid var(--b-line); margin-bottom: -1px; }
+.sbr:not(.hd) { height: auto; min-height: 34px; padding-top: 6px; padding-bottom: 6px; } .sbr .nm small { display: block; margin: 0; font-size: var(--t-micro); }
+.sbr .tk { height: 12px; } .sbr .tk i { display: block; height: 100%; border-radius: 0 3px 3px 0; background: var(--s3); }
+.sbr.other .tk i { background: var(--s-other); } .sbr .n:last-child { color: var(--b-ink-3); font-size: var(--t-meta); }
+.stackl .sbr { grid-template-columns: 220px minmax(0, 1fr) 80px 90px; }
+
+/* leaderboard */
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+th { height: 30px; padding: 0 8px; background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-3); font-weight: 500; font-size: var(--t-meta); text-align: left; white-space: nowrap; }
+td { height: 34px; padding: 0 8px; border-bottom: 1px solid var(--b-line); }
+tr:last-child td { border-bottom: 0; }
+:is(th, td):first-child { padding-left: var(--b-pad); } :is(th, td):last-child { padding-right: var(--b-pad); }
+tbody tr:hover td { background: #FAFAFA; }
+td.rk { color: var(--b-ink-3); font-size: var(--t-meta); }
+td small.up, td small.down { margin-left: 6px; font-size: var(--t-micro); font-weight: 600; }
+.trio .wide { display: none; }
+tr.total td { font-weight: 600; background: var(--b-card); }
+
+/* scatter */
+.scat { padding: 6px 0 2px; }
+.scat svg { display: block; overflow: visible; }
+.scat .ax { fill: var(--b-ink-3); font-size: 11px; } .scat .gl { stroke: var(--b-line); } .scat .med { stroke: #D4D4D4; stroke-dasharray: 3 3; }
+.scat circle { fill: var(--b-data); fill-opacity: .4; stroke: #fff; stroke-width: 1.5; } .scat circle.top { fill-opacity: 1; }
+.scat circle:hover { fill-opacity: 1; }
+.scat .lb { font-size: 11px; fill: var(--b-ink); paint-order: stroke; stroke: #fff; stroke-width: 3px; pointer-events: none; }
+.scat .ld { stroke: #B5B5B5; }
+
+/* dumbbell: August hollow, September filled, the gap tinted by which way it went */
+.db { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) 58px 40px; align-items: center; gap: 10px; height: 34px; padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); }
+.db:first-child { border-top: 0; }
+.db .tk { position: relative; height: 14px; }
+.db .tk .gap { position: absolute; top: 5px; height: 4px; border-radius: 2px; }
+.db .tk .dot { position: absolute; top: 2px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; }
+.db .dot.was { background: transparent; border: 2px solid #B5B5B5; } .db .dot.now { background: var(--s3); }
+.db .n:last-child { font-size: var(--t-meta); }
+.stackl .db { grid-template-columns: 220px minmax(0, 1fr) 80px 52px; }
+
+/* breakdown: the waterfall and the bridge, drawn across */
+.wf { display: grid; grid-template-columns: minmax(0, 104px) minmax(0, 1fr) 64px; align-items: center; gap: 10px; height: 38px; padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); }
+.wf:first-child { border-top: 0; } .wf.total { font-weight: 600; }
+.wf .nm small { display: block; margin: 0; font-weight: 400; font-size: var(--t-micro); }
+.wf .tk { position: relative; height: 14px; } .wf .tk i { position: absolute; top: 0; bottom: 0; min-width: 2px; border-radius: 2px; }
+.wf .tk .cn { position: absolute; top: -12px; bottom: -12px; border-left: 1px dashed #C9C9C9; }
+.stackl .wf { grid-template-columns: 200px minmax(0, 1fr) 90px; }
+.bh { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; padding: 12px var(--b-pad); border-bottom: 1px solid var(--b-line); color: var(--b-ink-3); font-size: var(--t-meta); }
+.bh b { color: var(--b-ink); font-size: 16px; font-weight: 600; } .bh .to { margin: 0 2px; }
+.bri { display: grid; grid-template-columns: minmax(0, 96px) minmax(0, 1fr) minmax(0, 1fr) 64px; align-items: center; height: 36px; padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); }
+.bri:first-of-type { border-top: 0; } .bri.total { font-weight: 600; background: var(--b-card); }
+.bri .l, .bri .rt { display: flex; align-items: center; height: 22px; } .bri .l { justify-content: flex-end; border-right: 1px solid #D4D4D4; }
+.bri .l i, .bri .rt i { height: 14px; min-width: 2px; } .bri .l i { background: var(--t-down); border-radius: 4px 0 0 4px; } .bri .rt i { background: var(--t-up); border-radius: 0 4px 4px 0; }
+.stackl .bri { grid-template-columns: 200px minmax(0, 1fr) minmax(0, 1fr) 90px; }
+
+/* the hover tip */
+#tip { position: fixed; z-index: 20; pointer-events: none; background: #fff; border: 1px solid var(--b-outline); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.08); padding: 8px 10px; font-size: var(--t-meta); min-width: 170px; display: none; }
+#tip b { display: block; margin-bottom: 4px; }
+#tip div { display: flex; justify-content: space-between; gap: 16px; color: var(--b-ink-2); } #tip div em { font-style: normal; color: var(--b-ink); font-weight: 600; }
+
+/* the lab panel */
+.lab { position: fixed; right: 16px; bottom: 16px; z-index: 30; background: #fff; border: 1px solid var(--b-outline); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.1); padding: 10px 12px; display: grid; gap: 6px; font-size: var(--t-meta); max-width: 640px; }
+.lab .g { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.lab .g > span { width: 76px; color: var(--b-ink-3); }
+.lab button { height: 24px; padding: 0 9px; border: 1px solid var(--b-outline); border-radius: 6px; background: #fff; }
+.lab button.on { background: #303030; border-color: #303030; color: #fff; }
+.lab .min { justify-self: end; height: 20px; border: 0; padding: 0 4px; color: var(--b-ink-3); }
+.lab .note { color: var(--b-ink-3); max-width: 560px; line-height: 1.4; }
+@media (max-width: 760px) {
+  .main { padding: 16px 16px 24px; }
+  .lab { position: static; margin: 0 16px 16px; }
+  .stackl :is(.pbr, .db) { grid-template-columns: minmax(64px, 100px) minmax(0, 1fr) 58px 40px; }
+  .stackl .sbr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 58px 34px; }
+  .stackl :is(.wf) { grid-template-columns: minmax(0, 104px) minmax(0, 1fr) 64px; }
+  .stackl .bri { grid-template-columns: minmax(0, 96px) minmax(0, 1fr) minmax(0, 1fr) 64px; }
+  .stackl .wide { display: none; }
+  .stackl .hm { gap: 2px 1px; }
+}
+</style>
+</head>
+<body>
+<div class="main" id="app"></div>
+<div id="tip"></div>
+<div class="lab" id="lab"></div>
+
+<script>
+// ---------------------------------------------------------------- fake data, seeded
+function rng(s) { return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646; }
+const NDAYS = 29, SEP = new Date(2026, 8, 1), AUG = new Date(2026, 7, 1);   // September 1–29 so far, against August 1–29
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const dateOf = (d, m0 = SEP) => new Date(m0.getFullYear(), m0.getMonth(), d);
+const dayName = (d) => `${WD[dateOf(d).getDay()]}, Sep ${d}`;
+// [name, September weight, August weight, basket size]: cards and transfers are the big jobs, Account the contractors' tabs
+const PAY = {
+  big: [['Cash', .52, .58, 1], ['GCash', .20, .15, .9], ['Card', .09, .09, 2.2], ['Maya', .07, .05, .9], ['Account', .07, .08, 2.6], ['Bank transfer', .05, .05, 3.2]],
+  demo: [['Cash', .70, .72, 1], ['GCash', .22, .20, .9], ['Account', .08, .08, 2.6]],
+};
+// [name, weight, days off (0 = Sunday), basket size, void rate, started in September]
+const STAFF = {
+  big: [['El John', 1, [], 1.15, .004], ['Marites', 1.4, [0], 1, .008], ['Jomar', 1.2, [3], .85, .02], ['Rosalie', 1.1, [1], 1.05, .006],
+    ['Carlo', .9, [0, 2], .9, .01], ['Aileen', .8, [4], 1.25, .005], ['Bong', .7, [0, 5], 1.6, .012], ['Mae', .6, [1, 3, 5], .8, .01],
+    ['Rico', .5, [2, 4, 6], .95, .03], ['Jun', .45, [1, 2, 3], 1.1, .01], ['Liza', .4, [0], .9, .008, true], ['Dennis', .3, [1, 2, 3, 4], 1, .01]],
+  demo: [['El John', 1, [], 1.1, .004], ['Marites', 1.2, [0], 1, .01], ['Jomar', .8, [3], .9, .02]],
+};
+
+function month(big, m0, seed, isSep) {
+  const r = rng(seed), gauss = () => Math.sqrt(-2 * Math.log(r() + 1e-9)) * Math.cos(2 * Math.PI * r());
+  const pays = PAY[big ? 'big' : 'demo'], staff = STAFF[big ? 'big' : 'demo'].filter(s => isSep || !s[5]);
+  const pick = (list, w) => { let x = r() * list.reduce((s, it) => s + w(it), 0); return list.find(it => (x -= w(it)) < 0) || list[0]; };
+  const r5 = (v) => Math.max(5, Math.round(v / 5) * 5), out = [];
+  for (let d = 1; d <= NDAYS; d++) {
+    const wd = dateOf(d, m0).getDay(), crew = staff.filter(s => !s[2].includes(wd));
+    const n = Math.max(0, Math.round((big ? 42 : 5) * (wd === 0 ? .55 : wd === 6 ? 1.3 : 1) * (1 + .22 * gauss()) * (isSep ? 1 : .93)));
+    for (let k = 0; k < n; k++) {
+      const p = pick(pays, x => x[isSep ? 1 : 2]), s = pick(crew, x => x[1]);
+      const total = r5(Math.exp(gauss() * .75) * 520 * p[3] * s[3]);
+      const o = { d, m: p[0], s: s[0], total, disc: r() < .12 ? Math.round(total * (r() < .5 ? .05 : .1)) : 0, st: r() < s[4] ? 'voided' : 'done' };
+      out.push(o);
+      if (o.st === 'done' && r() < .014) out.push({ d: Math.min(NDAYS, d + 1 + Math.floor(r() * 4)), m: o.m, s: o.s, total: r5(total * (.2 + .7 * r())), disc: 0, st: 'return' });
+    }
+  }
+  return out;
+}
+const sign = (o) => (o.st === 'voided' ? 0 : o.st === 'return' ? -1 : 1);
+// bo-sales.js calmMetrics: revenue signed, sales and discounts on the sales, returns on the return rows
+function metrics(os) {
+  const m = { rev: 0, n: 0, sales: 0, ret: 0, retN: 0, disc: 0, vat: 0, voids: 0 };
+  for (const o of os) {
+    const s = sign(o);
+    if (!s) { m.voids++; continue; }
+    m.rev += o.total * s; m.vat += o.total * 12 / 112 * s;
+    if (s > 0) { m.n++; m.sales += o.total; m.disc += o.disc; } else { m.ret += o.total; m.retN++; }
+  }
+  m.gross = m.sales + m.disc;
+  return m;
+}
+function group(os, key) {
+  const g = new Map();
+  for (const o of os) {
+    const k = o[key], x = g.get(k) || g.set(k, { name: k, rev: 0, n: 0, voids: 0, rets: 0, days: Array(NDAYS).fill(0), dn: Array(NDAYS).fill(0) }).get(k), s = sign(o);
+    if (!s) { x.voids++; continue; }
+    x.rev += o.total * s; x.days[o.d - 1] += o.total * s;
+    if (s > 0) { x.n++; x.dn[o.d - 1]++; } else x.rets++;
+  }
+  return g;
+}
+function build(big) {
+  const sep = month(big, SEP, big ? 11 : 5, true), aug = month(big, AUG, big ? 12 : 6, false);
+  const join = (key) => { const was = group(aug, key);
+    return [...group(sep, key).values()].map(x => { const p = was.get(x.name); return { ...x, prev: p ? p.rev : 0, pn: p ? p.n : 0, avg: x.n ? x.rev / x.n : 0, pavg: p && p.n ? p.rev / p.n : 0 }; })
+      .sort((a, b) => b.rev - a.rev); };
+  const day = Array(NDAYS).fill(0);
+  for (const o of sep) day[o.d - 1] += o.total * sign(o);
+  return { M: metrics(sep), P: metrics(aug), pays: join('m'), staff: join('s'), day };
+}
+
+// ---------------------------------------------------------------- helpers
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const peso = (n) => (n < 0 ? '−' : '') + '₱' + Math.round(Math.abs(n)).toLocaleString('en-US');
+const pesoK = (n) => { const a = Math.abs(n), s = n < 0 ? '−' : ''; return a >= 1e6 ? s + '₱' + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : a >= 1e4 ? s + '₱' + (a / 1e3).toFixed(1).replace(/\.0$/, '') + 'k' : peso(n); };
+const pct = (f, d = 1) => (f * 100).toFixed(d) + '%';
+const chg = (cur, was) => was > 0 ? (cur - was) / was : cur > 0 ? Infinity : 0;
+// inv: a cost line (discounts, returns), where up is bad news
+const trendTxt = (cur, was, inv) => { const c = chg(cur, was); return c === Infinity ? '<span class="new">New</span>' : !cur && !was ? '—' : Math.round(Math.abs(c) * 100) === 0 ? '<span class="new">0%</span>' : `<span class="${(c >= 0) !== !!inv ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.round(Math.abs(c) * 100)}%</span>`; };
+const chip = (c) => { const v = Math.round(c * 100), k = v === 0 ? 'flat' : v > 0 ? 'up' : 'down'; return `<span class="chip ${k}">${k === 'up' ? '+' : k === 'down' ? '−' : ''}${Math.abs(v)}%</span>`; };
+const tip = (title, rows) => esc(`<b>${esc(title)}</b>` + rows.map(([l, v]) => `<div>${l}<em>${v}</em></div>`).join(''));
+const plural = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
+const med = (a) => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const niceStep = (v) => { const p = 10 ** Math.floor(Math.log10(v)); return [1, 2, 2.5, 5, 10].map(k => k * p).find(k => k >= v); };
+// top n + Other; one left over shows itself, an "Other · 1" is just a worse name
+function fold(list, n, noun) {
+  if (list.length <= n + 1) return list;
+  const rest = list.slice(n), sum = (k) => rest.reduce((s, x) => s + x[k], 0);
+  const days = Array(NDAYS).fill(0).map((_, d) => rest.reduce((s, x) => s + x.days[d], 0)), dn = Array(NDAYS).fill(0).map((_, d) => rest.reduce((s, x) => s + x.dn[d], 0));
+  const o = { name: `Other · ${rest.length} ${noun}`, other: true, rev: sum('rev'), prev: sum('prev'), n: sum('n'), pn: sum('pn'), voids: sum('voids'), rets: sum('rets'), days, dn };
+  return [...list.slice(0, n), { ...o, avg: o.n ? o.rev / o.n : 0, pavg: o.pn ? o.prev / o.pn : 0 }];
+}
+const col = (x, i) => (x.other ? 'var(--s-other)' : `var(--s${Math.min(i + 1, 6)})`);
+const acct = (x) => (x.name === 'Account' ? ' acct' : '');
+const unpaid = (x) => (x.name === 'Account' ? '<span class="pill warn">Unpaid</span>' : '');
+const card = (title, right, body) => `<section class="card"><div class="band">${title}<span class="r">${right}</span></div>${body}</section>`;
+const KEY = `<span class="key"><i style="background:var(--s3)"></i>Sep</span><span class="key"><i style="background:var(--b-data-1)"></i>Aug</span>`;
+// The card's inner width, so each SVG is drawn at its real pixel size and its text stays 11px.
+const narrow = () => document.documentElement.clientWidth <= 900;
+const cw = () => { const vw = document.documentElement.clientWidth, m = Math.min(vw, 1180) - (vw <= 760 ? 32 : 48); return (S.layout === 'stack' || narrow() ? m : (m - 24) / 3) - 2; };
+
+// ---------------------------------------------------------------- state
+const S = { pay: 'split', bd: 'fall', st: 'bars', layout: 'trio', big: true, labMin: false };
+let D = build(true);
+
+// ---------------------------------------------------------------- payment methods
+const payTip = (x) => tip(x.name, [['Sales', peso(x.rev)], ['Share', pct(x.rev / D.M.rev)], ['Receipts', x.n.toLocaleString()], ['Average', peso(x.avg)], ['August', peso(x.prev)], ['Change', trendTxt(x.rev, x.prev)]]
+  .concat(x.name === 'Account' ? [['Not collected yet', '']] : []));
+const payLegend = (parts) => parts.map((x, i) => `<div class="lg" data-hk="m${i}" data-tip="${payTip(x)}"><i class="sw${acct(x)}" style="background-color:${col(x, i)}"></i><span class="nm">${esc(x.name)}${unpaid(x)}</span>`
+  + `<b class="n">${pesoK(x.rev)}</b><span class="n">${pct(x.rev / D.M.rev)}</span><span class="n">${trendTxt(x.rev, x.prev)}</span></div>`).join('')
+  + `<div class="lg total"><i></i><span class="nm">Total</span><b class="n">${pesoK(D.M.rev)}</b><span></span><span class="n">${trendTxt(D.M.rev, D.P.rev)}</span></div>`;
+const collected = () => { const a = D.pays.find(x => x.name === 'Account'); return a ? `<div class="sub"><b>${pesoK(D.M.rev - a.rev)}</b> collected · <b>${pesoK(a.rev)}</b> on account, not paid yet</div>` : ''; };
+
+function payNow() {
+  const share = (v) => pct(v / D.M.rev);
+  return card('Payment methods', '', `<div class="rows">${D.pays.map(x => `<div class="row" data-tip="${payTip(x)}"><span class="nm">${esc(x.name)}${unpaid(x)}</span><span class="amt">${peso(x.rev)}</span><span class="cmp">${share(x.rev)}</span></div>`).join('')}
+    <div class="row total"><span class="nm">Total</span><span class="amt">${peso(D.M.rev)}</span><span class="cmp"></span></div></div>`);
+}
+// A · one bar split by method, the legend is the list
+function paySplit() {
+  const parts = fold(D.pays, 5, 'methods');
+  const bar = parts.map((x, i) => `<i class="mk${acct(x)}" data-hk="m${i}" style="flex:${Math.max(0, x.rev)};background-color:${col(x, i)}" data-tip="${payTip(x)}"></i>`).join('');
+  return card('Payment methods', `${D.M.n.toLocaleString()} receipts`, `<div class="sbar">${bar}</div>${collected()}${payLegend(parts)}`);
+}
+// B · donut, total in the hole
+function payDonut() {
+  const parts = fold(D.pays, 5, 'methods'), tot = parts.reduce((s, x) => s + Math.max(0, x.rev), 0);
+  const R = 78, r0 = 54, c = 90; let a = -Math.PI / 2;
+  const arc = (a0, a1) => { const L = a1 - a0 > Math.PI ? 1 : 0, p = (rr, t) => `${(c + rr * Math.cos(t)).toFixed(2)},${(c + rr * Math.sin(t)).toFixed(2)}`;
+    return `M${p(R, a0)}A${R},${R} 0 ${L} 1 ${p(R, a1)}L${p(r0, a1)}A${r0},${r0} 0 ${L} 0 ${p(r0, a0)}Z`; };
+  const paths = parts.map((x, i) => { const a1 = a + Math.max(0, x.rev) / tot * Math.PI * 2, d = arc(a, Math.min(a1, a + Math.PI * 2 - 1e-4)); a = a1;
+    return `<path class="mk" data-hk="m${i}" d="${d}" fill="${col(x, i)}" data-tip="${payTip(x)}"/>${x.name === 'Account' ? `<path class="mk" data-hk="m${i}" d="${d}" fill="url(#hz)" pointer-events="none"/>` : ''}`; }).join('');
+  const hz = `<defs><pattern id="hz" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="5" fill="rgba(255,255,255,.65)"/></pattern></defs>`;
+  return card('Payment methods', `${D.M.n.toLocaleString()} receipts`, `<div class="pdn"><div class="pie"><svg width="180" height="180" viewBox="0 0 180 180">${hz}${paths}</svg>
+    <div class="mid"><b>${pesoK(D.M.rev)}</b><span>${collected() ? pct((D.M.rev - (D.pays.find(x => x.name === 'Account')?.rev || 0)) / D.M.rev, 0) + ' collected' : 'all collected'}</span></div></div><div>${payLegend(parts)}</div></div>`);
+}
+// C · each method against August, one pesos scale
+function payBars() {
+  const mx = Math.max(...D.pays.flatMap(x => [x.rev, x.prev]));
+  return card('Payment methods', KEY, D.pays.map(x => `<div class="pbr" data-tip="${payTip(x)}"><span class="nm">${esc(x.name)}${unpaid(x)}</span>`
+    + `<div class="tk"><i class="${acct(x).trim()}" style="width:${Math.max(0, x.rev) / mx * 100}%"></i><i class="was" style="width:${x.prev / mx * 100}%"></i></div>`
+    + `<b class="n">${pesoK(x.rev)}</b><span class="n">${trendTxt(x.rev, x.prev)}</span></div>`).join(''));
+}
+// D and staff E · rows × days. perRow: each row darkens against its own best day (Cash would drown GCash otherwise).
+function heat(list, perRow, kind) {
+  const all = Math.max(...list.flatMap(x => x.days));
+  const tick = Array.from({ length: NDAYS }, (_, d) => `<span class="ht">${[1, 8, 15, 22, 29].includes(d + 1) ? d + 1 : ''}</span>`).join('');
+  const rows = list.map((x, i) => { const mx = perRow ? Math.max(...x.days) : all;
+    return `<span class="hn nm" data-tip="${kind === 'pay' ? payTip(x) : staffTip(x)}">${esc(x.name)}</span>` + x.days.map((v, d) => {
+      const bg = v > 0 ? `color-mix(in srgb, var(--b-data) ${Math.round(8 + 82 * v / mx)}%, white)` : v < 0 ? 'var(--t-down)' : 'var(--b-track)';
+      const t = tip(`${x.name} · ${dayName(d + 1)}`, v || x.dn[d] ? [['Sales', peso(v)], ['Receipts', x.dn[d]], ['Share of the day', D.day[d] ? pct(v / D.day[d]) : '—']] : [[kind === 'pay' ? 'Not used' : 'No sales · day off', '']]);
+      return `<i class="hc${acct(x)}" style="background-color:${bg}" data-tip="${t}"></i>`; }).join(''); }).join('');
+  return `<div class="hm" style="grid-template-columns:${S.layout === 'stack' && !narrow() ? 150 : 84}px repeat(${NDAYS}, minmax(0, 1fr))">${rows}<span></span>${tick}</div>`;
+}
+const payHeat = () => card('Payment methods', 'Each row on its own scale', heat(fold(D.pays, 5, 'methods'), true, 'pay'));
+
+// ---------------------------------------------------------------- breakdown
+const bdTip = (l, cur, was, note, inv) => tip(l, [['September', peso(cur)], ['August', peso(was)], ['Change', trendTxt(cur, was, inv)]].concat(note ? [[note, '']] : []));
+const voidNote = () => (D.M.voids ? `${D.M.voids} voided, no revenue` : '');
+function bdNow() {
+  const { M } = D, r = (l, v, cls = '') => `<div class="row ${cls}"><span class="nm">${l}</span><span class="amt">${v}</span></div>`;
+  return card('Breakdown', voidNote(), `<div class="rows">${r('Gross sales', peso(M.gross))}${r('Discounts', M.disc ? peso(-M.disc) : '₱0')}${r(`Returns${M.retN ? ` (${M.retN})` : ''}`, M.ret ? peso(-M.ret) : '₱0')}`
+    + `${r('VAT included', peso(M.vat))}${r('Net sales', peso(M.rev), 'total')}</div>`);
+}
+// A · gross, less discounts, less returns, is net; VAT is the light end of the net bar, since it's inside it
+function bdFall() {
+  const { M, P } = D, X = (v) => v / M.gross * 100;
+  const seg = (a, b, bg, t, cls = '') => `<i class="mk${cls}" data-hk="${t[0]}" style="left:${X(a)}%;width:${X(b - a)}%;background-color:${bg}" data-tip="${t[1]}"></i>`;
+  const line = (at) => `<span class="cn" style="left:${X(at)}%"></span>`;
+  const row = (nm, v, bar, cls = '') => `<div class="wf ${cls}"><span class="nm">${nm}</span><div class="tk">${bar}</div><span class="n">${v}</span></div>`;
+  return card('Breakdown', voidNote(), row('Gross sales', pesoK(M.gross), seg(0, M.gross, 'var(--b-data-1)', ['g', bdTip('Gross sales', M.gross, P.gross, 'Before discounts and returns')]))
+    + row('Discounts', pesoK(-M.disc), line(M.gross) + seg(M.gross - M.disc, M.gross, 'var(--t-down)', ['d', bdTip('Discounts', M.disc, P.disc, pct(M.disc / M.gross) + ' of gross', 1)], ' acct'))
+    + row(`Returns${M.retN ? ` <small>${plural(M.retN, 'return')}</small>` : ''}`, pesoK(-M.ret), line(M.gross - M.disc) + seg(M.rev, M.gross - M.disc, 'var(--t-down)', ['r', bdTip('Returns', M.ret, P.ret, plural(M.retN, 'receipt') + ' back', 1)]))
+    + row(`Net sales <small>incl. ${pesoK(M.vat)} VAT</small>`, pesoK(M.rev), line(M.rev) + seg(0, M.rev - M.vat, 'var(--s3)', ['n', bdTip('Net sales before VAT', M.rev - M.vat, P.rev - P.vat)])
+      + seg(M.rev - M.vat, M.rev, 'var(--s5)', ['v', bdTip('VAT included', M.vat, P.vat, '12% inside the prices')]), 'total'));
+}
+// B · what moved net sales since August, each line's effect on net, green added, red took away
+function bdBridge() {
+  const { M, P } = D, eff = [['Gross sales', M.gross - P.gross, M.gross, P.gross], ['Discounts', -(M.disc - P.disc), M.disc, P.disc], ['Returns', -(M.ret - P.ret), M.ret, P.ret]];
+  const net = M.rev - P.rev, mx = Math.max(...eff.map(e => Math.abs(e[1])), Math.abs(net));
+  const row = ([nm, e, cur, was], cls = '') => `<div class="bri ${cls}" data-tip="${esc(`<b>${nm}</b><div>September<em>${peso(cur)}</em></div><div>August<em>${peso(was)}</em></div><div>Effect on net sales<em>${e >= 0 ? '+' : ''}${peso(e)}</em></div>`)}">`
+    + `<span class="nm">${nm}</span><div class="l">${e < 0 ? `<i class="mk" style="width:${-e / mx * 100}%"></i>` : ''}</div><div class="rt">${e > 0 ? `<i class="mk" style="width:${e / mx * 100}%"></i>` : ''}</div>`
+    + `<span class="n ${e > 0 ? 'up' : e < 0 ? 'down' : ''}">${e > 0 ? '+' : ''}${pesoK(e)}</span></div>`;
+  return card('Breakdown', 'Vs August 1 – 29', `<div class="bh"><span>August</span><b>${pesoK(P.rev)}</b><span class="to">→</span><span>September</span><b>${pesoK(M.rev)}</b>${chip(chg(M.rev, P.rev))}</div>`
+    + eff.map(e => row(e)).join('') + row(['Net sales', net, M.rev, P.rev], 'total'));
+}
+// C · where each gross peso went: kept, VAT, given back, discounted
+function bdWhere() {
+  const { M, P } = D, parts = [['Net sales, before VAT', M.rev - M.vat, P.rev - P.vat, 'var(--s3)', ''], ['VAT', M.vat, P.vat, 'var(--s5)', ''],
+    ['Returns', M.ret, P.ret, 'var(--t-down)', '', 1], ['Discounts', M.disc, P.disc, 'var(--t-down)', ' acct', 1]];
+  const t = (p) => tip(p[0], [['September', peso(p[1])], ['Of gross', pct(p[1] / M.gross)], ['August', peso(p[2])], ['Change', trendTxt(p[1], p[2], p[5])]]);
+  return card('Breakdown', `${pesoK(M.gross)} gross`, `<div class="sbar">${parts.map((p, i) => `<i class="mk${p[4]}" data-hk="b${i}" style="flex:${p[1]};background-color:${p[3]}" data-tip="${t(p)}"></i>`).join('')}</div>`
+    + `<div class="sub">Of every ₱100 rung up, <b>₱${(100 * (M.rev - M.vat) / M.gross).toFixed(0)}</b> is sales the shop keeps</div>`
+    + parts.map((p, i) => `<div class="lg" data-hk="b${i}" data-tip="${t(p)}"><i class="sw${p[4]}" style="background-color:${p[3]}"></i><span class="nm">${p[0]}</span><b class="n">${pesoK(p[1])}</b><span class="n">${pct(p[1] / M.gross)}</span><span class="n">${trendTxt(p[1], p[2], p[5])}</span></div>`).join(''));
+}
+// D · today's list, with August beside it
+function bdCmp() {
+  const { M, P } = D, rows = [['Gross sales', M.gross, P.gross], ['Discounts', -M.disc, -P.disc, 1], [`Returns${M.retN ? ` (${M.retN})` : ''}`, -M.ret, -P.ret, 1], ['VAT included', M.vat, P.vat]];
+  const tr = ([l, a, b, inv], cls = '') => `<tr class="${cls}" data-tip="${bdTip(l, Math.abs(a), Math.abs(b), '', inv)}"><td class="nm">${l}</td><td class="n"><b>${pesoK(a)}</b></td><td class="n mute">${pesoK(b)}</td><td class="n">${trendTxt(Math.abs(a), Math.abs(b), inv)}</td></tr>`;
+  return card('Breakdown', voidNote(), `<table><colgroup><col><col style="width:74px"><col style="width:70px"><col style="width:56px"></colgroup><thead><tr><th>September</th><th class="n">Sep</th><th class="n">Aug</th><th class="n">Trend</th></tr></thead>`
+    + `<tbody>${rows.map(r => tr(r)).join('')}${tr(['Net sales', M.rev, P.rev], 'total')}</tbody></table>`);
+}
+
+// ---------------------------------------------------------------- staff
+const staffTip = (x) => tip(x.name, [['Sales', peso(x.rev)], ['Share', pct(x.rev / D.M.rev)], ['Receipts', x.n.toLocaleString()], ['Average receipt', peso(x.avg)], ['August', x.prev ? peso(x.prev) : 'not here yet'], ['Change', trendTxt(x.rev, x.prev)]]
+  .concat(x.voids || x.rets ? [['Voids · refunds', `${x.voids} · ${x.rets}`]] : []));
+const oops = (x) => { const t = [x.voids && plural(x.voids, 'void'), x.rets && plural(x.rets, 'refund')].filter(Boolean); return t.length ? `<small>${t.join(' · ')}</small>` : ''; };
+const stCount = () => `${D.staff.length} staff`;
+function staffNow() {
+  return card('Staff', '', `<div class="rows">${D.staff.map(x => `<div class="row" data-tip="${staffTip(x)}"><span class="nm">${esc(x.name)}${oops(x)}</span><span class="amt">${peso(x.rev)}</span><span class="cmp">${pct(x.rev / D.M.rev)}</span></div>`).join('')}</div>`);
+}
+// A · sales as bars, receipts beside; top 8 + Other
+function staffBars() {
+  const list = fold(D.staff, 8, 'staff'), mx = Math.max(...list.map(x => x.rev));
+  return card('Staff', stCount(), `<div class="sbr hd"><span>Name</span><span>Sales</span><span class="n"></span><span class="n">Rcpts</span></div>`
+    + list.map(x => `<div class="sbr${x.other ? ' other' : ''}" data-tip="${staffTip(x)}"><span class="nm">${esc(x.name)}${oops(x)}</span><div class="tk"><i style="width:${Math.max(0, x.rev) / mx * 100}%"></i></div>`
+    + `<b class="n">${pesoK(x.rev)}</b><span class="n">${x.n.toLocaleString()}</span></div>`).join(''));
+}
+// B · leaderboard: sales, receipts, average, trend; the arrow is places moved since August
+function staffBoard() {
+  const was = [...D.staff].filter(x => x.prev > 0).sort((a, b) => b.prev - a.prev).map(x => x.name);
+  const rows = D.staff.map((x, i) => { const p = was.indexOf(x.name), mv = p < 0 ? 0 : p - i;
+    return `<tr data-tip="${staffTip(x)}"><td class="rk">${i + 1}</td><td class="nm">${esc(x.name)}${mv ? `<small class="${mv > 0 ? 'up' : 'down'}">${mv > 0 ? '↑' : '↓'}${Math.abs(mv)}</small>` : ''}</td>`
+      + `<td class="n"><b>${pesoK(x.rev)}</b></td><td class="n wide">${x.n.toLocaleString()}</td><td class="n">${pesoK(x.avg)}</td><td class="n">${trendTxt(x.rev, x.prev)}</td></tr>`; }).join('');
+  return card('Staff', 'Arrow = places since August', `<table><colgroup><col style="width:36px"><col><col style="width:68px"><col class="wide" style="width:76px"><col style="width:62px"><col style="width:54px"></colgroup>`
+    + `<thead><tr><th>#</th><th>Name</th><th class="n">Sales</th><th class="n wide">Receipts</th><th class="n">Average</th><th class="n">Trend</th></tr></thead><tbody>${rows}</tbody></table>`);
+}
+// C · receipts across, average receipt up, dot sized by sales: who serves many, who sells big
+function staffXY() {
+  const xs = D.staff, w = cw(), h = S.layout === 'stack' && !narrow() ? 320 : 250, L = 50, R = 14, T = 14, B = 30;
+  const xmx = Math.max(...xs.map(s => s.n)) * 1.08, a0 = Math.min(...xs.map(s => s.avg)) * .85, a1 = Math.max(...xs.map(s => s.avg)) * 1.08;
+  const X = (v) => L + v / xmx * (w - L - R), Y = (v) => T + (1 - (v - a0) / (a1 - a0)) * (h - T - B);
+  const rMax = Math.max(...xs.map(s => s.rev)), rad = (s) => 4 + Math.sqrt(Math.max(0, s.rev) / rMax) * 9;
+  let grid = '';
+  const xs1 = niceStep(xmx / 4); for (let v = 0; v <= xmx; v += xs1) grid += `<line class="gl" x1="${X(v)}" x2="${X(v)}" y1="${T}" y2="${h - B}"/><text class="ax" x="${X(v)}" y="${h - B + 15}" text-anchor="middle">${v}</text>`;
+  const ys = niceStep((a1 - a0) / 3); for (let v = Math.ceil(a0 / ys) * ys; v <= a1; v += ys) grid += `<line class="gl" x1="${L}" x2="${w - R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${pesoK(v)}</text>`;
+  const mn = med(xs.map(s => s.n)), ma = med(xs.map(s => s.avg));
+  grid += `<line class="med" x1="${X(mn)}" x2="${X(mn)}" y1="${T}" y2="${h - B}"/><line class="med" x1="${L}" x2="${w - R}" y1="${Y(ma)}" y2="${Y(ma)}"/>`
+    + `<text class="ax" x="${w - R}" y="${h - 2}" text-anchor="end">Receipts →</text><text class="ax" x="${L}" y="${T - 4}">↑ Average receipt</text>`;
+  const top = new Set(xs.slice(0, 5));
+  const dots = [...xs].reverse().map(s => `<circle class="${top.has(s) ? 'top' : ''}" cx="${X(s.n)}" cy="${Y(s.avg)}" r="${rad(s)}" data-tip="${staffTip(s)}"/>`).join('');
+  // Labels top to bottom; one that would sit on an earlier label or a dot steps down 13px, with a leader back to its dot.
+  const taken = xs.map(s => ({ x0: X(s.n) - rad(s), x1: X(s.n) + rad(s), y: Y(s.avg) }));
+  const labels = [...top].sort((a, b) => Y(a.avg) - Y(b.avg)).map(s => { const cx = X(s.n), cy = Y(s.avg), r = cx > w * .6, off = rad(s) + 4, tw = (s.name.length + 7) * 6.1;
+    const b = { x0: r ? cx - off - tw : cx + off, x1: r ? cx - off : cx + off + tw, y: cy };
+    for (let moved = true; moved;) { moved = false; for (const o of taken) if (o !== taken[xs.indexOf(s)] && b.x0 < o.x1 && o.x0 < b.x1 && Math.abs(b.y - o.y) < 13) { b.y = o.y + 13; moved = true; } }
+    taken.push(b);
+    return (b.y - cy > 6 ? `<line class="ld" x1="${cx}" y1="${cy}" x2="${r ? b.x1 : b.x0}" y2="${b.y}"/>` : '') + `<text class="lb" x="${r ? cx - off : cx + off}" y="${b.y + 4}" text-anchor="${r ? 'end' : 'start'}">${esc(s.name)} ${pesoK(s.rev)}</text>`; }).join('');
+  return card('Staff', 'Dot = sales · dashed = the middle', `<div class="scat"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${grid}${dots}${labels}</svg></div>`);
+}
+// D · August (hollow) to September (filled) on one pesos scale
+function staffDumb() {
+  const list = fold(D.staff, 8, 'staff'), mx = Math.max(...list.flatMap(x => [x.rev, x.prev]));
+  return card('Staff', `<span class="key"><i style="background:#fff;box-shadow:inset 0 0 0 2px #B5B5B5;border-radius:50%"></i>Aug</span><span class="key"><i style="background:var(--s3);border-radius:50%"></i>Sep</span>`,
+    list.map(x => { const a = x.prev / mx * 100, b = Math.max(0, x.rev) / mx * 100, up = b >= a;
+      return `<div class="db" data-tip="${staffTip(x)}"><span class="nm">${esc(x.name)}</span><div class="tk">${x.prev ? `<i class="gap" style="left:${Math.min(a, b)}%;width:${Math.abs(b - a)}%;background:var(${up ? '--t-up' : '--t-down'})"></i>` : ''}<i class="dot now" style="left:${b}%"></i>${x.prev ? `<i class="dot was" style="left:${a}%"></i>` : ''}`
+        + `</div><b class="n">${pesoK(x.rev)}</b><span class="n">${trendTxt(x.rev, x.prev)}</span></div>`; }).join(''));
+}
+const staffHeat = () => card('Staff', 'By day · grey = no sales', heat(fold(D.staff, 8, 'staff'), false, 'staff'));
+
+// ---------------------------------------------------------------- page
+function render() {
+  const pay = { split: paySplit, donut: payDonut, bars: payBars, heat: payHeat, list: payNow }[S.pay]();
+  const bd = { fall: bdFall, bridge: bdBridge, where: bdWhere, cmp: bdCmp, list: bdNow }[S.bd]();
+  const st = { bars: staffBars, board: staffBoard, xy: staffXY, dumb: staffDumb, heat: staffHeat, list: staffNow }[S.st]();
+  document.getElementById('app').innerHTML = `<div class="bar"><div class="seg"><span class="on">Summary</span><span>Items</span></div>`
+    + `<div class="period"><button>‹</button><span class="mid">September 2026 <small>vs August</small></span><button class="dis">›</button></div></div>`
+    + `<div class="ghost">Strip, calendar and Top 10 sit here, unchanged</div><div class="${S.layout === 'stack' ? 'stackl' : 'trio'}">${pay}${bd}${st}</div>`;
+  const g = (k, label, opts) => `<div class="g"><span>${label}</span>${opts.map(([v, l]) => `<button data-lab="${k}" data-v="${v}" class="${String(S[k]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  document.getElementById('lab').innerHTML = S.labMin ? `<button data-act="lab">Lab ↑</button>` : `<button class="min" data-act="lab">Hide ↓</button>`
+    + g('pay', 'Payment', [['split', 'A · Split bar'], ['donut', 'B · Donut'], ['bars', 'C · With August'], ['heat', 'D · By day'], ['list', 'Now · List']])
+    + g('bd', 'Breakdown', [['fall', 'A · Waterfall'], ['bridge', 'B · Vs August'], ['where', 'C · Where it went'], ['cmp', 'D · Table + August'], ['list', 'Now · List']])
+    + g('st', 'Staff', [['bars', 'A · Bars'], ['board', 'B · Leaderboard'], ['xy', 'C · Scatter'], ['dumb', 'D · With August'], ['heat', 'E · By day'], ['list', 'Now · List']])
+    + g('layout', 'Layout', [['trio', 'Now · Three across'], ['stack', 'Stacked, full width']])
+    + g('big', 'Store', [['false', 'Demo · 3 methods, 3 staff'], ['true', 'Big · 6 methods, 12 staff']])
+    + `<div class="note">Hover anything for its numbers. September 1–29 against August 1–29. Hatched = Account (sold, not paid yet) and discounts.</div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-lab],[data-act]'); if (!t) return;
+  if (t.dataset.lab) { const k = t.dataset.lab; S[k] = k === 'big' ? t.dataset.v === 'true' : t.dataset.v; if (k === 'big') D = build(S.big); }
+  else if (t.dataset.act === 'lab') S.labMin = !S.labMin;
+  render();
+});
+addEventListener('resize', render);
+const TIP = document.getElementById('tip');
+document.addEventListener('mousemove', (e) => {
+  const t = e.target.closest('[data-tip]');
+  document.querySelectorAll('.hkhl').forEach(cd => { cd.classList.remove('hkhl'); cd.querySelectorAll('.lit').forEach(x => x.classList.remove('lit')); });
+  const hk = e.target.closest('[data-hk]'), cd = hk?.closest('.card');
+  if (cd) { cd.classList.add('hkhl'); cd.querySelectorAll(`[data-hk="${hk.dataset.hk}"]`).forEach(x => x.classList.add('lit')); }
+  if (!t) { TIP.style.display = 'none'; return; }
+  TIP.innerHTML = t.dataset.tip; TIP.style.display = 'block';
+  const w = TIP.offsetWidth, h = TIP.offsetHeight;
+  TIP.style.left = Math.min(e.clientX + 14, innerWidth - w - 8) + 'px'; TIP.style.top = (e.clientY + 16 + h > innerHeight ? e.clientY - h - 12 : e.clientY + 16) + 'px';
+});
+render();
+</script>
+</body></html>

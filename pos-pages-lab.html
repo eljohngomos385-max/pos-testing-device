@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POS pages lab</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   POS PAGES LAB, round 4 (2026-09-29). Round 3's list was cluttered and the receipt sat in a container that
+   restated its own number and time. So:
+   - Lists are the Sell cart's items card: a band header (day | day total), 45px flush rows, hairlines.
+     Row = who or what + the time, one uniform status pill (only when it isn't the usual), the amount.
+   - Orders right side: just Print and ⋯ above the receipt. No header, no Dispatch button; delivery steps
+     are in ⋯ with Refund / Return / Exchange / Void, and the pill in the list says where a delivery is.
+   - Customers: a who card with ⋯, three figures, Record payment, then their orders as the same rows.
+   v2 (same day, owner beside Loyverse's Receipts): the list is flush like Loyverse's but keeps who, how and
+   the total; every row says Pickup/Delivery in its sub line and its status in one pill that always sits under
+   the amount (so a longer word in another language never moves anything); Print and ⋯ (and Record payment)
+   hold the page's top-right corner; the receipt is a quiet dark card; burger and search are the Sell page's.
+   v3 (owner: "adjust v1, no flush, don't touch the receipt"): v1's cards, white paper and grey/yellow/red pills,
+   with v2's Sell top bar and corner buttons. Each order row shows the receipt number beside
+   the time and keeps its pill under the amount; under the amount sits one word: Delivery (bright)
+   or Pickup (grey), else Voided / Refunded / Return / Not completed. The owner turned down icons, progress words and pills here.
+   v4 (owner beside Loyverse's Receipts header): v3's list, and the right side opens with one floating bar that says
+   what you're looking at at a glance: the receipt number, who, Pickup/Delivery (or Voided/Refunded…), when; Print and ⋯
+   live inside it. Customers get the same bar (name, type, phone | Record payment | ⋯) in place of the who card.
+   v5 (owner: "restart from scratch"): no bar, no pills. The right side opens like a page: a title row level with the
+   search (the receipt number or the customer's name, big; when and who under it; Print/Record payment and ⋯ at the right),
+   then one small card of plain label | value rows that answers the glance questions (Customer, Fulfilment, Payment, Total),
+   then the white receipt. Customers: the same title row, the figures, the orders.
+   Sell is not in this lab: it stays as it is. The pill picks the page and the theme; H hides it.
+   ?page=orders|customers&light=1&v=1|2|3|4   v5 is the default; v1 is round 4, v2 the flush try.   Money is integer centavos; prices are VAT-inclusive.
+   =========================================================================== */
+:root {
+  --font:    "Inter";
+  --r-input: 10px;
+  --r-btn:   12px;
+  --r-card:  14px;
+  --m:       20px;
+  --gap:     8px;
+  --row:     56px;
+  --list-w:  clamp(360px, 36vw, 440px);
+  --nav-w:   288px;
+  --ease:    cubic-bezier(.2,.8,.2,1);
+}
+body {
+  color-scheme: dark;
+  --page:      #121212;
+  --card:      #1F1F1F;
+  --tray:      #181818;
+  --soft:      #232323;
+  --hover:     #2A2A2A;
+  --press:     #333333;
+  --track:     #333333;
+  --line:      rgba(255,255,255,.08);
+  --outline:   rgba(255,255,255,.14);
+  --ink:       #FFFFFF;
+  --ink-2:     rgba(255,255,255,.70);
+  --ink-3:     rgba(255,255,255,.45);
+  --ink-4:     rgba(255,255,255,.28);
+  --down:      #EF5350;
+  --down-tint: rgba(239,83,80,.14);
+  --warn:      #FFB74D;
+  --focus:     #8AB4F8;
+  --accent:    #FFFFFF;
+  --accent-ink:#121212;
+  --shadow:    none;
+  --pop:       0 12px 32px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08);
+  --scrim:     rgba(0,0,0,.72);
+}
+body.light {
+  color-scheme: light;
+  --page:      #FFFFFF;
+  --card:      #FFFFFF;
+  --tray:      #F6F6F6;
+  --soft:      #F9F9F9;
+  --hover:     #F6F6F6;
+  --press:     #EDEDED;
+  --track:     #EFEFEF;
+  --line:      #ECECEC;
+  --outline:   #E1E1E1;
+  --ink:       #303030;
+  --ink-2:     #616161;
+  --ink-3:     #8C8C8C;
+  --ink-4:     #C8C8C8;
+  --down:      #D72C0D;
+  --down-tint: #FBEDEA;
+  --warn:      #A65F00;
+  --focus:     #BCD7FA;
+  --accent:    #303030;
+  --accent-ink:#FFFFFF;
+  --shadow:    0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05);
+  --pop:       0 8px 20px rgb(0 0 0 / .1), 0 0 0 1px rgb(0 0 0 / .06);
+  --scrim:     rgba(0,0,0,.22);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; background: var(--page); color: var(--ink);
+  font: 13px/1.4 var(--font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+button, input { font: inherit; color: inherit; }
+button { touch-action: manipulation; cursor: pointer; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.chev { width: 16px; height: 16px; color: var(--ink-3); }
+.warn-t { color: var(--warn); }
+.red-t { color: var(--down); }
+
+/* ---------- page ---------- */
+.page { height: 100vh; height: 100dvh; padding: 16px var(--m); }
+.split { display: grid; grid-template-columns: var(--list-w) minmax(0, 1fr); gap: var(--m); height: 100%; }
+.lcol { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 48px minmax(0, 1fr); gap: var(--gap); min-width: 0; min-height: 0; }
+.top { display: flex; gap: var(--gap); height: 48px; }
+.burger, .sq { display: grid; place-items: center; flex: none; width: 48px; height: 48px; border: 1px solid var(--line); border-radius: var(--r-card);
+               background: var(--card); box-shadow: var(--shadow); color: var(--ink-2); transition: background-color .12s; }
+.burger:hover, .sq:hover, .sq[aria-expanded="true"] { background: var(--hover); color: var(--ink); }
+.search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--r-card);
+          background: var(--card); box-shadow: var(--shadow); color: var(--ink-3); }
+.search:focus-within { border-color: var(--focus); }
+.search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font-size: 15px; color: var(--ink); }
+.search input::placeholder { color: var(--ink-3); }
+.btn { display: inline-flex; align-items: center; justify-content: center; flex: none; height: 48px; padding: 0 18px; border: 1px solid var(--line); border-radius: var(--r-card);
+       background: var(--card); box-shadow: var(--shadow); font-size: 14px; font-weight: 560; white-space: nowrap; transition: background-color .12s; }
+.btn:hover { background: var(--hover); }
+.btn.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { opacity: .92; }
+
+/* ---------- the list: the Sell cart's items card: a band, flush rows, hairlines ---------- */
+.card { min-width: 0; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--card); box-shadow: var(--shadow); }
+.list { overflow: hidden; }
+.list > .scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--track) transparent; }
+.band { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; gap: 12px; padding: 11px var(--m); background: var(--soft);
+        border-bottom: 1px solid var(--line); color: var(--ink-2); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.row + .band { border-top: 1px solid var(--line); }
+.row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 45px; padding: 7px var(--m); border: 0; background: none; text-align: left;
+       transition: background-color .12s; }
+.row + .row { border-top: 1px solid var(--line); }
+.row:hover, .row.on { background: var(--hover); }
+.row .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
+.row .nm span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .nm small { display: block; color: var(--ink-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .amt { font-size: 13px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.row .amt.void { color: var(--ink-3); font-weight: 500; text-decoration: line-through; }
+.row .amt.red { color: var(--down); }
+/* status: one pill, the same everywhere; only its dot changes colour */
+.pill { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 22px; padding: 0 9px 0 8px; border-radius: 999px; background: var(--track);
+        color: var(--ink-2); font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+.pill i { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); }
+.pill.warn i { background: var(--warn); }
+.pill.red i { background: var(--down); }
+.empty { display: grid; place-content: center; justify-items: center; gap: 4px; min-height: 160px; padding: 24px; text-align: center; }
+.empty b { font-size: 14px; font-weight: 600; }
+.empty span { color: var(--ink-3); }
+
+/* ---------- the right side ---------- */
+.rside { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--track) transparent; }
+.col { display: flex; flex-direction: column; gap: var(--gap); width: min(360px, 100%); margin: 0 auto; padding-bottom: 32px; }
+.col.wide { width: min(560px, 100%); }
+.tools { display: flex; justify-content: flex-end; gap: var(--gap); margin-bottom: 16px; }
+
+/* the paper: the app's .rp-paper, as a slip with a torn foot */
+.slip { filter: drop-shadow(0 12px 24px rgba(0,0,0,.4)) drop-shadow(0 2px 4px rgba(0,0,0,.25)); }
+body.light .slip { filter: drop-shadow(0 0 1px rgba(0,0,0,.2)) drop-shadow(0 8px 18px rgba(0,0,0,.08)); }
+.rp-paper { background: #fff; color: #111; padding: 26px 22px 36px; font-family: "SF Mono", "Menlo", "Consolas", "Courier New", monospace; font-size: 13px; line-height: 1.42;
+            -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 14px 100%;
+                    mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 14px 100%; }
+.rp-center { text-align: center; }
+.rp-store { font-size: 17px; font-weight: 800; letter-spacing: .4px; }
+.rp-small { font-size: 11.5px; }
+.rp-rule { border-top: 1px dashed #111; margin: 11px 0; }
+.rp-row { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
+.rp-item { margin: 9px 0; }
+.rp-item-name { font-weight: 800; }
+.rp-item-line { font-size: 11.5px; }
+.rp-total { border-top: 1px solid #111; border-bottom: 1px solid #111; margin: 9px 0; padding: 6px 0; font-size: 16px; font-weight: 800; }
+.rp-status { margin-top: 8px; padding: 6px 8px; text-align: center; border: 1px solid #111; font-size: 11px; font-weight: 800; letter-spacing: .4px; background: #111; color: #fff; }
+.rp-void { margin-bottom: 10px; padding: 6px 8px; text-align: center; border: 2px solid #111; font-size: 13px; font-weight: 800; letter-spacing: 2px; }
+.rp-thanks { margin-top: 8px; font-weight: 800; }
+
+/* customers: the cart's who row, the figures, the primary action, then the orders card */
+.who { display: flex; align-items: stretch; min-height: 56px; }
+.who .t { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 8px var(--m); }
+.who .t b { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who .t small { color: var(--ink-3); font-size: 12px; }
+.who .more { display: grid; place-items: center; flex: none; width: 52px; border: 0; border-left: 1px solid var(--line); border-radius: 0 calc(var(--r-card) - 1px) calc(var(--r-card) - 1px) 0;
+             background: none; color: var(--ink-2); }
+.who .more:hover, .who .more[aria-expanded="true"] { background: var(--hover); color: var(--ink); }
+.figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.figs > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 14px var(--m) 16px; }
+.figs > div + div { border-left: 1px solid var(--line); }
+.figs span { color: var(--ink-3); font-size: 12px; }
+.figs b { font-size: 20px; font-weight: 600; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.figs small { color: var(--ink-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.col > .list .band { border-radius: calc(var(--r-card) - 1px) calc(var(--r-card) - 1px) 0 0; }
+.showall { width: 100%; height: 44px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink-2); font-weight: 500; }
+.showall:hover { background: var(--hover); color: var(--ink); }
+.warn-t.warn-t { color: var(--warn); }   /* doubled so it beats `.figs small` */
+.red-t.red-t { color: var(--down); }
+
+/* ---------- the sidebar: B, grouped (the owner's pick) ---------- */
+.scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); opacity: 0; pointer-events: none; transition: opacity .2s; }
+.app.nav-open .scrim { opacity: 1; pointer-events: auto; }
+.nav { position: fixed; top: 8px; bottom: 8px; left: 8px; z-index: 50; display: flex; flex-direction: column; width: var(--nav-w); padding: 8px;
+       transform: translateX(calc(-100% - 16px)); transition: transform .24s var(--ease); }
+.app.nav-open .nav { transform: none; }
+.nav .bhead { display: flex; flex-direction: column; justify-content: center; min-height: 52px; padding: 0 12px 4px; }
+.nav .bhead b { font-size: 15px; font-weight: 600; }
+.nav .bhead small { color: var(--ink-3); font-size: 12px; }
+.nav .glabel { padding: 16px 12px 6px; color: var(--ink-3); font-size: 12px; font-weight: 500; }
+.nl { display: flex; align-items: center; gap: 12px; width: 100%; height: 42px; padding: 0 12px; border: 0; border-radius: var(--r-input); background: none; text-align: left;
+      color: var(--ink-2); font-size: 14px; font-weight: 500; transition: background-color .12s, color .12s; }
+.nl .ic { color: var(--ink-3); }
+.nl .ext { width: 14px; height: 14px; margin-left: auto; }
+.nl:hover { background: var(--hover); color: var(--ink); }
+.nl.on { background: var(--track); color: var(--ink); font-weight: 600; }
+.nl.on .ic { color: var(--ink); }
+.nav .bfoot { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); }
+.acct { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; margin-top: 4px; padding: 0 12px; border: 0; border-radius: var(--r-input); background: none; text-align: left; }
+.acct:hover, .acct[aria-expanded="true"] { background: var(--hover); }
+.acct > span:not(.av) { flex: 1; min-width: 0; }
+.acct b { display: block; font-size: 14px; font-weight: 560; }
+.acct small { display: block; color: var(--ink-3); font-size: 12px; }
+.av { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--track); color: var(--ink); font-size: 12px; font-weight: 600; }
+
+/* ---------- the morph menu / panel (Stack H) ---------- */
+.veil { position: fixed; inset: 0; z-index: 100; }
+.menu { position: absolute; padding: 4px; border-radius: var(--r-input); background: var(--card); box-shadow: var(--pop); }
+.menu > button { display: flex; align-items: center; width: 100%; padding: 0 12px; border: 0; border-radius: 7px; background: none;
+                 color: var(--ink-2); font-size: 14px; font-weight: 500; text-align: left; white-space: nowrap; }
+.menu > button:hover, .menu > button:focus-visible { background: var(--hover); color: var(--ink); outline: 0; }
+.menu > button.red { color: var(--down); }
+.menu > button.red:hover { background: var(--down-tint); }
+.menu > button:disabled { color: var(--ink-4); pointer-events: none; }
+.menu hr { margin: 4px -4px; border: 0; border-top: 1px solid var(--line); }
+.panel { position: absolute; display: flex; flex-direction: column; gap: 10px; padding: 0 12px 12px; border-radius: var(--r-card); background: var(--card); box-shadow: var(--pop); }
+.panel .ph { display: flex; align-items: center; justify-content: space-between; margin: 0 -12px; padding: 0 8px 0 var(--m); border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 600; }
+.panel .ph button { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 8px; background: none; color: var(--ink-3); }
+.panel .ph button:hover { background: var(--hover); color: var(--ink); }
+.field { display: flex; align-items: center; gap: 4px; height: 52px; padding: 0 14px; border: 1px solid var(--outline); border-radius: var(--r-input); color: var(--ink-3); font-size: 20px; font-weight: 600; }
+.field.txt { font-size: 15px; font-weight: 500; }
+.field:focus-within { border-color: var(--focus); }
+.field input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--ink); font-size: inherit; font-weight: inherit; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; height: 44px; padding: 3px; border-radius: var(--r-btn); background: var(--track); }
+.seg button { min-width: 0; border: 0; border-radius: 9px; background: none; color: var(--ink-2); font-size: 14px; font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+body:not(.light) .seg button[aria-pressed="true"] { background: #4A4A4A; }
+.go { width: 100%; height: 44px; border: 1px solid var(--accent); border-radius: var(--r-btn); background: var(--accent); color: var(--accent-ink); font-size: 15px; font-weight: 600; }
+.go:hover { opacity: .92; }
+
+.toast { position: fixed; left: 50%; bottom: 24px; z-index: 120; display: flex; align-items: center; gap: 14px; min-height: 44px; padding: 0 16px; border-radius: var(--r-input);
+         background: var(--accent); color: var(--accent-ink); font-size: 14px; font-weight: 500; box-shadow: var(--pop); transform: translate(-50%, 12px); opacity: 0; pointer-events: none;
+         transition: opacity .2s, transform .25s var(--ease); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast button { height: 32px; margin-right: -8px; padding: 0 10px; border: 0; border-radius: 7px; background: color-mix(in srgb, var(--accent-ink) 12%, transparent); color: inherit; font-weight: 600; }
+
+@media (max-width: 860px) { .split { grid-template-columns: 1fr; } .split .rside { display: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* ---------- v2: flush list (Loyverse's shape, our facts), status in one fixed spot, a quiet receipt ---------- */
+body:is(.v2, .v3) { --hair: rgba(255,255,255,.03); --up: #66BB6A; }
+body:is(.v2, .v3).light { --hair: #EBEBEB; --up: #1E8E3E; }
+/* the Sell page's top bar: 48px, --soft fill, the faint ring, 7px apart */
+:is(.v2, .v3) .top, :is(.v2, .v3) .tools { gap: 7px; }
+:is(.v2, .v3) .burger, :is(.v2, .v3) .sq, :is(.v2, .v3) .search, :is(.v2, .v3) .btn { border: 0; background: var(--soft); box-shadow: inset 0 0 0 1px var(--hair); }
+:is(.v2, .v3).light :is(.burger, .sq, .search, .btn) { box-shadow: 0 0 0 1px var(--hair), var(--shadow); }
+:is(.v2, .v3) .burger:hover, :is(.v2, .v3) .sq:hover, :is(.v2, .v3) .sq[aria-expanded="true"], :is(.v2, .v3) .btn:hover { background: var(--hover); }
+:is(.v2, .v3) .search { padding: 0 14px; }
+:is(.v2, .v3) .search:focus-within { background: var(--hover); }
+:is(.v2, .v3) .btn.primary { background: var(--accent); color: var(--accent-ink); }
+.v2 .page { padding: 0; }
+.v2 .split { gap: 0; }
+.v2 .lcol { gap: 16px; padding-top: 16px; border-right: 1px solid var(--line); }
+.v2 .lcol .top { padding: 0 var(--m); }
+.v2 .lcol .list { border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; }
+.v2 .rside { padding: 16px var(--m) 0; }
+:is(.v2, .v3) .tools { margin: 0 0 16px; }
+/* rows: who/what + time · fulfilment on the left; the amount and its status pill stacked on the right */
+.v2 .row { min-height: var(--row); padding: 8px var(--m); gap: 16px; }
+.v2 .row .nm span { font-size: 13.5px; }
+:is(.v2, .v3) .rt { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex: none; }
+.v2 .pill { height: 18px; padding: 0 8px 0 7px; font-size: 11px; }
+.v2 .pill.up i { background: var(--up); }
+/* the receipt, toned down: same lines, the app's card and type instead of white paper */
+.v2 .slip { filter: none; }
+.v2 .rp-paper { padding: 24px 24px 20px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--card); color: var(--ink-2); box-shadow: var(--shadow);
+                font-family: inherit; font-size: 13px; -webkit-mask: none; mask: none; }
+.v2 .rp-store { color: var(--ink); font-size: 15px; font-weight: 600; letter-spacing: 0; }
+.v2 .rp-small { color: var(--ink-3); font-size: 12px; }
+.v2 .rp-rule { border-top: 1px solid var(--line); margin: 14px 0; }
+.v2 .rp-item-name { color: var(--ink); font-weight: 500; }
+.v2 .rp-item-line { color: var(--ink-3); font-size: 12px; }
+.v2 .rp-total { border-color: var(--line); color: var(--ink); font-size: 15px; font-weight: 600; padding: 10px 0; }
+.v2 .rp-status, .v2 .rp-void { border: 0; border-radius: var(--r-input); background: var(--track); color: var(--ink); font-size: 12px; font-weight: 600; letter-spacing: .3px; }
+.v2 .rp-thanks { color: var(--ink-3); font-weight: 500; }
+
+/* ---------- v3: v1's cards and paper, v2's top bar and corner buttons, and no pills ----------
+   A row is the Sell cart's row with a second column: who/what over the receipt number and time, and the amount over
+   one fact (Pickup / Delivery, or Voided / Refunded / Return / Not completed). Both columns share their two baselines.
+   Delivery is the bright word, so deliveries stand out down the right edge; everything else is the quiet sub-line grey. */
+.v3 .row { min-height: 45px; padding: 7px var(--m); gap: 16px; }
+.v3 .rt { gap: 0; line-height: 1.3; }
+.v3 .rt .amt { line-height: 1.3; }
+.v3 .fact { color: var(--ink-3); font-size: 12px; white-space: nowrap; }
+.v3 .fact.del { color: var(--ink); font-weight: 500; }
+.v3 .fact.warn { color: var(--warn); }
+
+/* ---------- v4: v3 plus a floating head bar over the right side, the Sell top bar's height and look ---------- */
+.head { position: sticky; top: 0; z-index: 2; display: flex; align-items: stretch; flex: none; height: 48px; margin-bottom: 16px; border: 0; border-radius: var(--r-card);
+        background: var(--soft); box-shadow: inset 0 0 0 1px var(--hair); }
+.light .head { box-shadow: 0 0 0 1px var(--hair), var(--shadow); }
+.head .t { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 10px; padding: 0 var(--m); align-self: center; white-space: nowrap; overflow: hidden;
+           color: var(--ink-3); font-size: 13px; }
+.head .t b { color: var(--ink); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.head .t span { overflow: hidden; text-overflow: ellipsis; }
+.head .t span + span::before { content: "·"; margin-right: 10px; color: var(--ink-4); }
+.head .t .who { color: var(--ink-2); }
+.head .t .me { color: var(--ink); font-weight: 500; }
+.head .t .warn { color: var(--warn); }
+.head .hb { display: grid; place-items: center; flex: none; min-width: 52px; padding: 0 18px; border: 0; border-left: 1px solid var(--hair); background: none;
+            color: var(--ink); font-size: 14px; font-weight: 560; white-space: nowrap; }
+.head .hb:last-child { padding: 0; border-radius: 0 var(--r-card) var(--r-card) 0; color: var(--ink-2); }
+.head .hb:hover, .head .hb[aria-expanded="true"] { background: var(--hover); color: var(--ink); }
+
+/* ---------- v5: a title row, a facts card, the receipt ---------- */
+.ttl { display: flex; align-items: center; gap: 7px; height: 48px; margin-bottom: 16px; }
+.ttl .t { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.ttl .t b { font-size: 20px; font-weight: 600; letter-spacing: -.01em; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ttl .t small { color: var(--ink-3); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.facts .kv { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; min-height: 45px; padding: 13px var(--m); font-size: 13px; }
+.facts .kv + .kv { border-top: 1px solid var(--line); }
+.facts .kv span { color: var(--ink-3); white-space: nowrap; }
+.facts .kv b { min-width: 0; font-weight: 500; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.facts .kv b.big { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.facts .kv b.warn { color: var(--warn); }
+.v5 .facts + .slip { margin-top: 8px; }
+
+/* ---------- the lab's own pill (not part of the design) ---------- */
+.lab { position: fixed; right: 14px; bottom: 14px; z-index: 200; display: flex; gap: 6px; padding: 5px; border-radius: 14px; background: #fff; color: #1F1F1F;
+       box-shadow: 0 8px 28px rgba(0,0,0,.28), 0 0 0 1px rgba(0,0,0,.06); font: 12.5px/1.2 Inter, system-ui, sans-serif; }
+.lab .s { display: flex; align-items: center; padding: 2px; border-radius: 10px; background: #F0F0F0; }
+.lab button { height: 30px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: #6B6B6B; font-weight: 500; white-space: nowrap; }
+.lab button.on { background: #fff; color: #1F1F1F; box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04); }
+body.min .lab { display: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></symbol>
+  <symbol id="i-bars" viewBox="0 0 24 24"><path d="M4 20h16M7 20v-8M12 20V6M17 20v-5"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="9" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="14" width="8" height="7" rx="1.5"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 4.37 16.94l.06-.06A1.65 1.65 0 0 0 4.76 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 4.29l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M10 14L20 4M20 14v6H4V4h6"/></symbol>
+  <symbol id="i-updown" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+</svg>
+
+<div class="app" id="app">
+  <div class="scrim" id="scrim"></div>
+  <aside class="nav card" id="nav" aria-label="Menu"></aside>
+  <main class="page" id="page"></main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<div class="lab" id="lab">
+  <div class="s" data-k="ver"><button data-v="1">v1</button><button data-v="2">v2</button><button data-v="3">v3</button><button data-v="4">v4</button><button data-v="5">v5</button></div>
+  <div class="s" data-k="page"><button data-v="orders">Orders</button><button data-v="customers">Customers</button></div>
+  <div class="s" data-k="theme"><button data-v="dark">Dark</button><button data-v="light">Light</button></div>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const peso = c => (c < 0 ? '−' : '') + '₱' + (Math.abs(c) / 100).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const toC = s => Math.round((parseFloat(String(s).replace(/[^\d.]/g, '')) || 0) * 100);
+const svg = (id, cls = 'ic') => `<svg class="${cls}"><use href="#i-${id}"/></svg>`;
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+// ---------- data (centavos) ----------
+const NOW = new Date(2026, 8, 29, 17, 30);
+const at = (daysAgo, h, m) => { const d = new Date(NOW); d.setDate(d.getDate() - daysAgo); d.setHours(h, m, 0, 0); return d; };
+const CAT = {
+  washer: ['Flat Washer M10', 200], level: ['Aluminum Level 24"', 38500], elbow34: ['PVC Elbow 3/4"', 1600], hammer: ['Claw Hammer 16oz', 28500],
+  faucet: ['Brass Faucet 1/2"', 18500], elbow12: ['PVC Elbow 1/2"', 1200], cement: ['Portland Cement 40kg', 26500], sand: ['Fine Sand (per cu.m)', 145000, 'cu.m'],
+  gravel: ['Gravel 3/4" (per cu.m)', 138000, 'cu.m'], gloves: ['Cotton Work Gloves', 3800], hat: ['Hard Hat Yellow', 24000], roller: ['Paint Roller 9"', 14500],
+  solvent: ['PVC Solvent Cement 200mL', 9500], tape: ['Teflon Tape 1/2"', 2500], bulb: ['LED Bulb 9W Daylight', 8900], nails: ['Common Wire Nail 2" (1 kg)', 8500, 'kg'],
+  plywood: ['Marine Plywood 1/4" 4×8', 68500], tiewire: ['GI Tie Wire #16 (1 kg)', 9500, 'kg'], block: ['Hollow Block 4"', 1400], rebar: ['Rebar 10mm × 6m', 21500],
+};
+const PAY = {cash: 'Cash', gcash: 'GCash', card: 'Card', credit: 'Charge to account'};
+const CUSTOMERS = [
+  {id: 'ricardo', name: 'Ricardo Construction', phone: '0917 555 0142', type: 'Contractor', limit: 5000000, aging: {'0-30': 2400000, '31-60': 1445000}, n: 38, last: 0},
+  {id: 'santos', name: 'Santos Hardware', phone: '0918 222 7710', type: 'Reseller', limit: 3000000, aging: {'0-30': 860000, '31-60': 1200000, '61-90': 690000}, n: 24, last: 0},
+  {id: 'delacruz', name: 'Maria Dela Cruz', phone: '0927 410 3321', type: 'Retail', limit: 0, aging: {}, n: 9, last: 1},
+  {id: 'bautista', name: 'Jun Bautista', phone: '0915 870 2204', type: 'Contractor', limit: 2000000, aging: {'61-90': 1500000, '90+': 650000}, n: 17, last: 48},
+  {id: 'reyes', name: 'Reyes Builders', phone: '0920 118 4456', type: 'Contractor', limit: 8000000, aging: {'0-30': 1240000}, n: 52, last: 3},
+  {id: 'garcia', name: 'Ana Garcia', phone: '0936 552 9087', type: 'Retail', limit: 0, aging: {}, n: 6, last: 12},
+  {id: 'lim', name: 'Lim Trading', phone: '0917 333 2010', type: 'Reseller', limit: 4000000, aging: {}, n: 21, last: 95},
+  {id: 'villanueva', name: 'Pedro Villanueva', phone: '', type: 'Retail', limit: 0, aging: {}, n: 4, last: 34},
+  {id: 'aquino', name: 'Aquino Electrical', phone: '0998 404 7781', type: 'Contractor', limit: 1500000, aging: {'0-30': 450000}, n: 14, last: 6},
+  {id: 'torres', name: 'Liza Torres', phone: '0905 761 3348', type: 'Retail', limit: 0, aging: {}, n: 3, last: 2},
+];
+const custById = id => CUSTOMERS.find(c => c.id === id);
+const bal = c => Object.values(c.aging).reduce((s, v) => s + v, 0);
+
+const o = (n, d, h, m, cust, pay, ful, status, lines, x = {}) => ({id: 'o' + n, n, ts: at(d, h, m), cust, pay, ful, status, lines, staff: 'El John',
+  delivery: ful === 'delivery' ? {driver: '', events: []} : null, ...x});
+const ev = (e, d, h, m, by, note) => ({e, ts: at(d, h, m), by, note});
+const ORDERS = [
+  o(326, 0, 17, 12, 'ricardo', 'credit', 'delivery', 'completed', [['cement', 20], ['sand', 2], ['rebar', 10]]),
+  o(325, 0, 16, 40, null, 'gcash', 'pickup', 'completed', [['bulb', 4], ['tape', 3]]),
+  o(324, 0, 16, 5, null, 'cash', 'pickup', 'voided', [['hammer', 1]]),
+  o(323, 0, 15, 58, 'santos', 'cash', 'delivery', 'completed', [['plywood', 6], ['nails', 5]], {delivery: {driver: 'Mario', events: [ev('dispatched', 0, 16, 20, 'Mario')]}}),
+  o(322, 0, 15, 50, null, 'cash', 'delivery', 'completed', [['washer', 1], ['level', 1], ['elbow34', 1], ['hammer', 1], ['faucet', 1], ['elbow12', 1]], {tendered: 100000}),
+  o(321, 0, 15, 13, null, 'cash', 'pickup', 'completed', [['level', 1]], {tendered: 40000}),
+  o(320, 0, 14, 2, null, 'cash', 'pickup', 'saved', [['hat', 1], ['gloves', 2]]),
+  o(319, 1, 17, 44, 'delacruz', 'cash', 'pickup', 'return', [['faucet', -1]], {ref: 'o316'}),
+  o(318, 1, 16, 10, 'ricardo', 'credit', 'delivery', 'completed', [['block', 400], ['cement', 30]], {delivery: {driver: 'Mario', events: [ev('dispatched', 1, 16, 40, 'Mario'), ev('arrived', 1, 17, 25, 'Mario')]}}),
+  o(317, 1, 13, 30, null, 'card', 'pickup', 'completed', [['roller', 2], ['solvent', 1], ['gloves', 3]]),
+  o(316, 1, 11, 5, 'delacruz', 'cash', 'pickup', 'refunded', [['faucet', 1], ['tape', 2]]),
+  o(315, 1, 9, 20, null, 'cash', 'delivery', 'completed', [['gravel', 1], ['sand', 1]], {delivery: {driver: 'Jomar', events: [ev('dispatched', 1, 9, 50, 'Jomar'), ev('failed', 1, 10, 40, 'Jomar', 'Nobody home')]}}),
+  o(314, 2, 16, 45, 'reyes', 'credit', 'pickup', 'completed', [['rebar', 40], ['tiewire', 5]]),
+  o(313, 2, 14, 12, null, 'cash', 'pickup', 'completed', [['bulb', 2]]),
+  o(312, 2, 10, 30, 'aquino', 'gcash', 'pickup', 'completed', [['bulb', 20], ['tape', 10]]),
+  o(311, 2, 8, 55, null, 'cash', 'pickup', 'completed', [['nails', 2], ['hammer', 1]]),
+];
+const total = x => x.lines.reduce((s, [k, q]) => s + q * CAT[k][1], 0);
+const SIGN = {completed: 1, return: 1, refunded: 1, voided: 0, saved: 0};   // a return's lines are already negative
+
+// a customer's older history, made up but stable (seeded)
+function rng(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const HIST = [];
+(() => {
+  const r = rng(7), keys = Object.keys(CAT);
+  CUSTOMERS.forEach(c => {
+    let d = Math.max(3, c.last);
+    for (let i = ORDERS.filter(x => x.cust === c.id).length; i < c.n; i++) {
+      const lines = [...new Set(Array.from({length: 1 + Math.floor(r() * 4)}, () => keys[Math.floor(r() * keys.length)]))].map(k => [k, 1 + Math.floor(r() * (CAT[k][1] > 50000 ? 2 : 12))]);
+      HIST.push(o(0, d, 8 + Math.floor(r() * 9), Math.floor(r() * 60), c.id, c.limit && r() < .6 ? 'credit' : 'cash', 'pickup', 'completed', lines));
+      d += 3 + Math.floor(r() * 12);
+    }
+  });
+  HIST.sort((a, b) => a.ts - b.ts).forEach((x, i) => { x.n = i + 1; x.id = 'h' + x.n; });
+})();
+const ALLORD = () => [...ORDERS, ...HIST];
+const orderById = id => ALLORD().find(x => x.id === id);
+const no = x => '#1-' + String(x.n).padStart(3, '0');
+console.assert(total(ORDERS[4]) === 88500, 'the #1-322 sample is ₱885.00', total(ORDERS[4]));
+
+// ---------- dates ----------
+const dayDiff = d => Math.round((new Date(NOW).setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 864e5);
+const time = d => d.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'});
+const dayName = d => { const n = dayDiff(d); return n === 0 ? 'Today' : n === 1 ? 'Yesterday' : d.toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'}); };
+const ago = d => { const n = dayDiff(d); return n === 0 ? 'Today' : n === 1 ? 'Yesterday' : n < 60 ? `${n} days ago` : d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'}); };
+
+// ---------- status, in words, only when it isn't the usual ----------
+const DEL = {dispatched: 'Dispatched', arrived: 'Arrived', returned: 'Returned', failed: 'Failed'};
+const delState = x => x.delivery?.events.at(-1)?.e || 'none';
+function note(x) {   // → [text, class] or null
+  if (x.status === 'voided') return ['Voided', ''];
+  if (x.status === 'refunded') return ['Refunded', ''];
+  if (x.status === 'saved') return ['Not completed', 'warn'];
+  if (x.status === 'return') return ['Return', ''];
+  if (!x.delivery) return null;
+  const s = delState(x);
+  return s === 'none' ? ['To dispatch', 'warn'] : s === 'failed' ? ['Delivery failed', 'red'] : s === 'arrived' ? null : [DEL[s], ''];
+}
+
+// ---------- state ----------
+const qs = new URLSearchParams(location.search);
+const state = {page: qs.get('page') === 'customers' ? 'customers' : 'orders', theme: qs.get('light') ? 'light' : 'dark',
+  ver: ['1', '2', '3', '4'].includes(qs.get('v')) ? qs.get('v') : '5', oq: '', cq: '', oid: 'o322', cid: 'ricardo', allOrders: false};
+function saveUrl() { history.replaceState(null, '', '?' + new URLSearchParams({page: state.page, ...(state.theme === 'light' ? {light: 1} : {}), ...(state.ver !== '5' ? {v: state.ver} : {})})); }
+
+// ---------- sidebar (B, grouped) ----------
+const NAV = {sell: ['Sell', 'home'], orders: ['Orders', 'doc'], customers: ['Customers', 'user'], reports: ['Reports', 'bars'], backoffice: ['Back Office', 'grid', true], settings: ['Settings', 'gear']};
+const nl = id => { const [label, ic, ext] = NAV[id];
+  return `<button type="button" class="nl${state.page === id ? ' on' : ''}" data-nav="${id}">${svg(ic)}<span>${label}</span>${ext ? svg('ext', 'ic ext') : ''}</button>`; };
+function renderNav() {
+  $('#nav').innerHTML = `<div class="bhead"><b>EJ Hardware</b><small>Main Store · Till 1</small></div>
+    <div class="glabel">Till</div>${['sell', 'orders', 'customers'].map(nl).join('')}
+    <div class="glabel">Store</div>${['reports', 'backoffice'].map(nl).join('')}
+    <div class="bfoot">${nl('settings')}
+      <button type="button" class="acct" data-act="acct" aria-haspopup="menu" aria-expanded="false"><span class="av">EJ</span><span><b>El John</b><small>Manager</small></span>${svg('updown', 'ic chev')}</button></div>`;
+}
+const burger = () => `<button type="button" class="burger" data-act="nav" aria-label="Menu">${svg('menu')}</button>`;
+const setNav = open => $('#app').classList.toggle('nav-open', open);
+
+// ---------- the paper receipt (buildReceiptPreview's layout) ----------
+function receipt(x) {
+  const t = total(x), vat = Math.round(t * 12 / 112), d = x.ts, c = custById(x.cust);
+  const date = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const tender = x.tendered || Math.ceil(t / 10000) * 10000;
+  const pay = x.status === 'saved' ? '<div class="rp-status">NOT COMPLETED TRANSACTION</div>'
+    : x.pay === 'cash' ? `<div class="rp-row"><span>CASH</span><span>${peso(t < 0 ? t : tender)}</span></div>${t > 0 && tender > t ? `<div class="rp-row"><span>CHANGE</span><span>${peso(tender - t)}</span></div>` : ''}`
+    : `<div class="rp-row"><span>${esc(PAY[x.pay].toUpperCase())}</span><span>${peso(t)}</span></div>`;
+  return `<div class="rp-paper">
+    ${x.status === 'voided' ? '<div class="rp-void">VOID</div>' : ''}
+    <div class="rp-center rp-store">EJ Hardware</div><div class="rp-center rp-small">Main Store, Laguna</div><div class="rp-center rp-small">Tel: 0917-000-0000</div>
+    <div class="rp-rule"></div>
+    <div class="rp-row"><span>Receipt #</span><span>${no(x).slice(1)}</span></div><div class="rp-row"><span>Date</span><span>${date}</span></div>
+    <div class="rp-row"><span>Cashier</span><span>${esc(x.staff)}</span></div>
+    ${c ? `<div class="rp-small">Customer: ${esc(c.name)}</div>` : ''}
+    <div class="rp-small"><strong>${x.status === 'return' ? `RETURN OF ${no(orderById(x.ref))}` : x.ful.toUpperCase()}</strong></div>
+    <div class="rp-rule"></div>
+    ${x.lines.map(([k, q]) => `<div class="rp-item"><div class="rp-item-name">${esc(CAT[k][0])}</div><div class="rp-row rp-item-line"><span>${q} ${CAT[k][2] || 'pc'} × ${peso(CAT[k][1])}</span><span>${peso(q * CAT[k][1])}</span></div></div>`).join('')}
+    <div class="rp-rule"></div>
+    <div class="rp-row"><span>Subtotal</span><span>${peso(t)}</span></div><div class="rp-row rp-small"><span>VAT (12%)</span><span>${peso(vat)}</span></div>
+    <div class="rp-row rp-total"><span>TOTAL</span><span>${peso(t)}</span></div>
+    ${pay}
+    <div class="rp-rule"></div><div class="rp-center rp-thanks">Thank you!</div></div>`;
+}
+
+// ---------- Orders ----------
+// a row: who or what, the time, one status pill (only when it isn't the usual), the amount
+const what = x => { const more = x.lines.length - 1; return CAT[x.lines[0][0]][0] + (more ? ` +${more} more` : ''); };
+const pillOf = n => n ? `<span class="pill ${n[1]}"><i></i>${esc(n[0])}</span>` : '';
+const pill = x => pillOf(note(x));
+// v2: every row names its fulfilment in the sub line and its status in one pill, always under the amount
+const V2 = () => state.ver === '2', V3 = () => state.ver >= '3', V4 = () => state.ver === '4', V5 = () => state.ver === '5', TOP = () => state.ver !== '1';   // TOP: Print and ⋯ hold the page's corner
+const FUL = {pickup: 'Pickup', delivery: 'Delivery'};
+function status2(x) {
+  if (x.status !== 'completed' || !x.delivery) return note(x) || ['Completed', 'up'];
+  return {none: ['To dispatch', 'warn'], dispatched: ['Dispatched', ''], arrived: ['Delivered', 'up'], failed: ['Failed', 'red'], returned: ['Came back', '']}[delState(x)];
+}
+// v3: one fact in words, no pill: how it left, or what happened to it
+// ponytail: delivery progress (dispatched, failed…) isn't in the list; its steps stay in ⋯
+const fact3 = x => { const [t, c] = x.status !== 'completed' ? note(x) : x.delivery ? ['Delivery', 'del'] : ['Pickup', ''];
+  return `<small class="fact ${c}">${t}</small>`; };
+const sub = (x, when) => V2() ? `${when} · ${FUL[x.ful]}` : V3() ? `${no(x)} · ${when}` : when;
+const right = x => V3() ? `<span class="rt">${amt(x)}${fact3(x)}</span>` : V2() ? `<span class="rt">${amt(x)}${pillOf(status2(x))}</span>` : pill(x) + amt(x);
+const amt = x => `<span class="amt${x.status === 'voided' ? ' void' : ''}">${peso(total(x))}</span>`;
+function renderOrders() {
+  $('#page').innerHTML = `<div class="split">
+    <div class="lcol">
+      <div class="top">${burger()}<label class="search">${svg('search')}<input id="oq" type="search" placeholder="Search orders" value="${esc(state.oq)}" autocomplete="off"></label></div>
+      <section class="card list"><div class="scroll" id="olist"></div></section>
+    </div>
+    <div class="rside" id="oside"></div>
+  </div>`;
+  renderOrderList(); renderOrder();
+}
+function renderOrderList() {
+  const q = state.oq.trim().toLowerCase();
+  const list = ORDERS.filter(x => !q || [no(x), custById(x.cust)?.name, note(x)?.[0], ...x.lines.map(([k]) => CAT[k][0])].join(' ').toLowerCase().includes(q));
+  if (list.length && !list.some(x => x.id === state.oid)) state.oid = list[0].id;
+  if (!list.length) { $('#olist').innerHTML = '<div class="empty"><b>No matches</b><span>Try a receipt number, a customer or an item.</span></div>'; return; }
+  const sums = {};
+  list.forEach(x => { const d = dayName(x.ts); sums[d] = (sums[d] || 0) + SIGN[x.status] * total(x); });
+  let day = '';
+  $('#olist').innerHTML = list.map(x => {
+    const d = dayName(x.ts), band = d !== day ? `<div class="band"><span>${d}</span><span>${peso(sums[d])}</span></div>` : ''; day = d;
+    return band + `<button type="button" class="row${x.id === state.oid ? ' on' : ''}" data-oid="${x.id}">
+      <span class="nm"><span>${esc(custById(x.cust)?.name || what(x))}</span><small>${sub(x, time(x.ts))}</small></span>${right(x)}</button>`;
+  }).join('');
+}
+// the receipt already says the number, the time, the items and the payment, so nothing above it repeats them
+function renderOrder() {
+  const x = orderById(state.oid), el = $('#oside');
+  if (!x) { el.innerHTML = ''; return; }
+  const tools = `<div class="tools"><button type="button" class="btn" data-act="print">Print</button>
+      <button type="button" class="sq" data-act="od-more" aria-haspopup="menu" aria-expanded="false" aria-label="More">${svg('more')}</button></div>`;
+  // v4: one bar says which receipt this is, whose, how it left and when; Print and ⋯ sit inside it
+  const c = custById(x.cust), [t, k] = x.status !== 'completed' ? note(x) : x.delivery ? ['Delivery', 'me'] : ['Pickup', ''];
+  if (V5()) {
+    const kv = (k, v, cls = '') => `<div class="kv"><span>${k}</span><b class="${cls}">${v}</b></div>`, n = note(x);
+    el.innerHTML = `<div class="ttl"><div class="t"><b>${no(x)}</b><small>${dayName(x.ts)}, ${time(x.ts)} · ${esc(x.staff)}</small></div>
+        <button type="button" class="btn" data-act="print">Print</button><button type="button" class="sq" data-act="od-more" aria-haspopup="menu" aria-expanded="false" aria-label="More">${svg('more')}</button></div>
+      <div class="col"><section class="card facts">
+        ${kv('Customer', esc(c?.name || 'Walk-in'))}
+        ${kv('Fulfilment', x.status === 'return' ? `Return of ${no(orderById(x.ref))}` : x.delivery ? `Delivery${x.delivery.driver ? ` · ${esc(x.delivery.driver)}` : ''}` : 'Pickup')}
+        ${x.status === 'saved' ? '' : kv('Payment', PAY[x.pay])}
+        ${x.status !== 'completed' && x.status !== 'return' ? kv('Status', n[0], n[1] === 'warn' ? 'warn' : '') : ''}
+        ${kv('Total', peso(total(x)), 'big')}
+      </section><div class="slip">${receipt(x)}</div></div>`;
+    return;
+  }
+  if (V4()) { el.innerHTML = `<div class="head"><div class="t"><b>${no(x)}</b><span class="${c ? 'who' : ''}">${esc(c?.name || 'Walk-in')}</span><span class="${k}">${t}</span><span>${dayName(x.ts)}, ${time(x.ts)}</span></div>
+      <button type="button" class="hb" data-act="print">Print</button><button type="button" class="hb" data-act="od-more" aria-haspopup="menu" aria-expanded="false" aria-label="More">${svg('more')}</button></div>
+    <div class="col"><div class="slip">${receipt(x)}</div></div>`; return; }
+  // v2: the buttons hold the page's top-right corner; v1 kept them over the receipt
+  el.innerHTML = TOP() ? `${tools}<div class="col"><div class="slip">${receipt(x)}</div></div>` : `<div class="col">${tools}<div class="slip">${receipt(x)}</div></div>`;
+}
+
+// ---------- order actions ----------
+function refresh() { if (state.page === 'orders') { renderOrderList(); renderOrder(); } else renderCustomers(true); }
+// a delivery's next step lives in ⋯ with the rest; the pill in the list says where it is
+function orderActions(x) {
+  const done = x.status === 'completed' && total(x) > 0, s = delState(x);
+  const del = !x.delivery || x.status !== 'completed' || s === 'arrived' ? []
+    : s === 'dispatched' ? [{label: 'Mark arrived', run: () => setDelivery(x, 'arrived')}, {label: 'Delivery failed', run: () => setDelivery(x, 'failed')}, {label: 'Came back', run: () => setDelivery(x, 'returned')}]
+    : [{label: 'Mark dispatched', run: () => setDelivery(x, 'dispatched')}];
+  return [...del, ...(del.length ? ['-'] : []),
+    {label: 'Refund', off: !done, run: () => refund(x)},
+    {label: 'Return items', off: !done, run: () => toast('Return opens its own flow (not in this lab)')},
+    {label: 'Exchange', off: !done, run: () => toast('Exchange opens its own flow (not in this lab)')},
+    '-', {label: 'Void', red: true, off: !done, run: () => voidOrder(x)}];
+}
+// ponytail: the lab flips x.status so the list shows it; the app appends a void row and credits the account.
+function voidOrder(x) { x.status = 'voided'; refresh(); toast(`Voided ${no(x)}`, () => { x.status = 'completed'; refresh(); }); }
+function refund(x) {
+  const n = Math.max(...ORDERS.map(y => y.n)) + 1;
+  const r = o(n, 0, NOW.getHours(), NOW.getMinutes(), x.cust, x.pay, 'pickup', 'return', x.lines.map(([k, q]) => [k, -q]), {ref: x.id});
+  x.status = 'refunded'; ORDERS.unshift(r); refresh();
+  toast(`Refunded ${no(x)} · ${no(r)} added`);
+}
+function setDelivery(x, e) {
+  if (delState(x) === e) return;
+  const t = new Date(NOW); t.setMinutes(t.getMinutes() + x.delivery.events.length * 7);
+  x.delivery.events.push({e, ts: t, by: x.delivery.driver}); refresh();
+}
+
+// ---------- Customers ----------
+const custOrders = c => ALLORD().filter(x => x.cust === c.id && x.status !== 'saved').sort((a, b) => b.ts - a.ts);
+const over = c => c.limit && bal(c) > c.limit;
+function renderCustomers(keep) {
+  if (!keep || !$('#clist')) {
+    $('#page').innerHTML = `<div class="split">
+      <div class="lcol">
+        <div class="top">${burger()}<label class="search">${svg('search')}<input id="cq" type="search" placeholder="Search customers" value="${esc(state.cq)}" autocomplete="off"></label><button type="button" class="btn" data-act="add-cust">Add</button></div>
+        <section class="card list"><div class="scroll" id="clist"></div></section>
+      </div>
+      <div class="rside" id="cside"></div>
+    </div>`;
+  }
+  renderCustList(); renderCust();
+}
+function renderCustList() {
+  const q = state.cq.trim().toLowerCase();
+  const list = CUSTOMERS.filter(c => !q || [c.name, c.phone].join(' ').toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+  if (list.length && !list.some(c => c.id === state.cid)) state.cid = list[0].id;
+  $('#clist').innerHTML = !list.length ? '<div class="empty"><b>No matches</b><span>Try a name or a phone number.</span></div>'
+    : `<div class="band"><span>${plural(list.length, 'customer')}</span><span>Owes</span></div>` + list.map(c => { const b = bal(c);
+      return `<button type="button" class="row${c.id === state.cid ? ' on' : ''}" data-cid="${c.id}">
+        <span class="nm"><span>${esc(c.name)}</span><small>${esc(c.phone || 'No phone')}</small></span>
+        <span class="amt${over(c) ? ' red' : ''}">${b ? peso(b) : ''}</span></button>`; }).join('');
+}
+function renderCust() {
+  const c = custById(state.cid), el = $('#cside');
+  if (!c) { el.innerHTML = ''; return; }
+  const b = bal(c), ords = custOrders(c), last = ords[0];
+  const spent = ords.reduce((s, x) => s + SIGN[x.status] * total(x), 0);
+  const old = b - (c.aging['0-30'] || 0);
+  const shown = state.allOrders ? ords : ords.slice(0, 8);
+  const more = cls => `<button type="button" class="${cls}" data-act="cust-more" aria-haspopup="menu" aria-expanded="false" aria-label="More">${svg('more')}</button>`;
+  const head = `<div class="head"><div class="t"><b>${esc(c.name)}</b>${[c.type, c.phone || 'No phone'].filter(Boolean).map(v => `<span>${esc(v)}</span>`).join('')}</div>
+    ${b ? '<button type="button" class="hb" data-act="pay">Record payment</button>' : ''}${more('hb')}</div>`;
+  const ttl = `<div class="ttl"><div class="t"><b>${esc(c.name)}</b><small>${esc([c.type, c.phone || 'No phone'].filter(Boolean).join(' · '))}</small></div>
+    ${b ? '<button type="button" class="btn primary" data-act="pay">Record payment</button>' : ''}${more('sq')}</div>`;
+  el.innerHTML = (V5() ? ttl : V4() ? head : TOP() ? `<div class="tools">${b ? '<button type="button" class="btn primary" data-act="pay">Record payment</button>' : ''}${more('sq')}</div>` : '') + `<div class="col wide">
+    ${V4() || V5() ? '' : `<section class="card who"><div class="t"><b>${esc(c.name)}</b><small>${esc([c.type, c.phone].filter(Boolean).join(' · '))}</small></div>${TOP() ? '' : more('more')}</section>`}
+    <section class="card figs">
+      <div><span>Owes</span><b class="${over(c) ? 'red-t' : ''}">${peso(b)}</b><small class="${old ? 'warn-t' : ''}">${old ? `${peso(old)} over 30 days` : c.limit ? `Limit ${peso(c.limit)}` : 'No credit'}</small></div>
+      <div><span>Spent</span><b>${peso(spent)}</b><small>${plural(ords.length, 'order')}</small></div>
+      <div><span>Last visit</span><b>${last ? ago(last.ts) : 'Never'}</b><small>${last ? time(last.ts) : '&nbsp;'}</small></div>
+    </section>
+    ${b && !TOP() ? '<button type="button" class="go" data-act="pay">Record payment</button>' : ''}
+    <section class="card list"><div class="band"><span>Orders</span><span>Amount</span></div>
+      ${shown.map(x => `<button type="button" class="row" data-goorder="${x.id}">
+        <span class="nm"><span>${esc(what(x))}</span><small>${sub(x, `${dayName(x.ts)}, ${time(x.ts)}`)}</small></span>${right(x)}</button>`).join('')}
+      ${ords.length > 8 ? `<button type="button" class="showall" data-act="all-orders">${state.allOrders ? 'Show fewer' : `Show all ${ords.length}`}</button>` : ''}
+    </section>
+  </div>`;
+}
+// a payment settles the oldest money first
+const AGES = ['90+', '61-90', '31-60', '0-30'];
+function recordPayment(c, amt) {
+  let left = amt;
+  AGES.forEach(k => { const take = Math.min(left, c.aging[k] || 0); if (take) { c.aging[k] -= take; left -= take; if (!c.aging[k]) delete c.aging[k]; } });
+  return amt - left;
+}
+(() => { const c = {aging: {'0-30': 100, '90+': 50}}; console.assert(recordPayment(c, 70) === 70 && c.aging['90+'] === undefined && c.aging['0-30'] === 80, 'oldest first', c); })();
+
+// ---------- morph menu and panel (Stack H) ----------
+let pop = null;
+const motion = ms => matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : ms;
+function openPop(trigger, html, opts = {}) {
+  closePop();
+  const r = trigger.getBoundingClientRect();
+  const veil = document.createElement('div');
+  veil.className = 'veil';
+  veil.innerHTML = `<div class="${opts.cls || 'menu'}" role="${opts.cls === 'panel' ? 'dialog' : 'menu'}">${html}</div>`;
+  const m = veil.firstChild, w = opts.w || r.width;
+  m.style.width = w + 'px';
+  document.body.append(veil);
+  const H = m.offsetHeight;
+  const left = Math.max(8, Math.min(innerWidth - w - 8, opts.right ? r.right - w : r.left));
+  const top = Math.max(8, Math.min(innerHeight - H - 8, r.top));
+  m.style.left = left + 'px'; m.style.top = top + 'px';
+  const t = r.top - top, l = r.left - left;
+  const from = `inset(${t}px ${w - l - r.width}px ${H - t - r.height}px ${l}px round 12px)`, to = 'inset(-24px round 34px)';
+  m.style.transformOrigin = `${l + r.width / 2}px ${t + r.height / 2}px`;
+  m.animate([{clipPath: from, transform: 'scale(.94)', boxShadow: 'none'}, {clipPath: to, transform: 'none'}], {duration: motion(180), easing: 'cubic-bezier(.3,1.45,.55,1)'});
+  trigger.setAttribute('aria-expanded', 'true');
+  pop = {veil, m, from, to, trigger};
+  veil.addEventListener('click', e => { if (e.target === veil) closePop(); });
+  return m;
+}
+function closePop() {
+  if (!pop) return;
+  const {veil, m, from, to, trigger} = pop; pop = null;
+  trigger.setAttribute('aria-expanded', 'false');
+  veil.style.pointerEvents = 'none';
+  m.animate([{clipPath: to}, {clipPath: from, opacity: 0, transform: 'scale(.96)'}], {duration: motion(90), easing: 'cubic-bezier(.4,0,1,1)'}).onfinish = () => veil.remove();
+}
+function openMenu(trigger, items, opts = {}) {
+  const m = openPop(trigger, items.map((it, i) => it === '-' ? '<hr>'
+    : `<button type="button" role="menuitem" data-i="${i}" class="${it.red ? 'red' : ''}" style="height:44px"${it.off ? ' disabled' : ''}>${esc(it.label)}</button>`).join(''), {w: 220, right: true, ...opts});
+  m.querySelector('button:not(:disabled)')?.focus({preventScroll: true});
+  m.addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) { closePop(); items[b.dataset.i].run(); } });
+  m.addEventListener('keydown', e => {
+    const bs = [...m.querySelectorAll('button:not(:disabled)')], i = bs.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); bs[(i + (e.key === 'ArrowDown' ? 1 : bs.length - 1)) % bs.length].focus(); }
+  });
+}
+function openPayment(btn, c) {
+  const b = bal(c);
+  const m = openPop(btn, `<div class="ph" style="height:48px"><span>Record payment</span><button type="button" data-x aria-label="Close">${svg('x')}</button></div>
+    <label class="field">₱<input inputmode="decimal" value="${(b / 100).toFixed(2)}" autocomplete="off"></label>
+    <div class="seg" role="group" aria-label="Paid by">${['Cash', 'GCash', 'Bank'].map((l, i) => `<button type="button" aria-pressed="${!i}">${l}</button>`).join('')}</div>
+    <button type="button" class="go" data-ok>Record ${peso(b)}</button>`, {cls: 'panel', w: 320, right: true});
+  const inp = m.querySelector('input'), ok = m.querySelector('[data-ok]');
+  inp.focus(); inp.select();
+  inp.oninput = () => { ok.textContent = `Record ${peso(Math.min(toC(inp.value), b))}`; };
+  m.addEventListener('click', e => {
+    const s = e.target.closest('.seg button');
+    if (s) m.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === s));
+    if (e.target.closest('[data-x]')) closePop();
+    if (e.target.closest('[data-ok]')) {
+      const amt = Math.min(toC(inp.value), b); if (!amt) { inp.focus(); return; }
+      const paid = recordPayment(c, amt), by = m.querySelector('.seg [aria-pressed="true"]').textContent;
+      closePop(); renderCustomers(true); toast(`${peso(paid)} from ${c.name} · ${by}`);
+    }
+  });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok.click(); });
+}
+
+// ---------- toast ----------
+let tt;
+function toast(msg, undo) {
+  const el = $('#toast');
+  el.innerHTML = esc(msg) + (undo ? '<button type="button">Undo</button>' : '');
+  if (undo) el.querySelector('button').onclick = () => { undo(); el.classList.remove('show'); };
+  el.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('show'), undo ? 4000 : 1800);
+}
+
+// ---------- page switch ----------
+function go(page) {
+  if (page !== 'orders' && page !== 'customers') { toast({sell: 'Sell stays as it is', backoffice: 'Back Office opens in a new tab'}[page] || `${NAV[page][0]} stays as it is`); return; }
+  state.page = page; state.allOrders = false; render();
+}
+function render() {
+  document.body.classList.toggle('light', state.theme === 'light'); document.body.classList.toggle('v2', V2()); document.body.classList.toggle('v3', V3()); document.body.classList.toggle('v4', V4()); document.body.classList.toggle('v5', V5());
+  renderNav();
+  (state.page === 'orders' ? renderOrders : renderCustomers)();
+  document.querySelectorAll('.lab .s').forEach(s => s.querySelectorAll('[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === state[s.dataset.k])));
+  saveUrl();
+}
+
+// ---------- events ----------
+document.addEventListener('click', e => {
+  const t = e.target, el = t.closest('[data-act]'), a = el?.dataset.act;
+  const nav = t.closest('[data-nav]');
+  if (nav) { setNav(false); go(nav.dataset.nav); return; }
+  if (a === 'nav') { setNav(true); return; }
+  if (t.closest('#scrim')) { setNav(false); return; }
+  const row = t.closest('[data-oid]');
+  if (row) { state.oid = row.dataset.oid; renderOrderList(); renderOrder(); return; }
+  const crow = t.closest('[data-cid]');
+  if (crow) { state.cid = crow.dataset.cid; state.allOrders = false; renderCustList(); renderCust(); return; }
+  const g = t.closest('[data-goorder]');
+  if (g) { const x = orderById(g.dataset.goorder); if (!ORDERS.includes(x)) ORDERS.push(x); state.oid = x.id; state.oq = ''; go('orders'); return; }   // ponytail: lab-only, pulls history into the list
+  const x = orderById(state.oid);
+  if (a === 'acct') openMenu(el, [{label: 'Switch user', run: () => toast('Switch user')}, {label: 'Lock till', run: () => toast('Till locked')}], {right: false});
+  else if (a === 'print') toast(`Printing ${no(x)}`);
+  else if (a === 'od-more') openMenu(el, orderActions(x));
+  else if (a === 'add-cust') toast('Add customer opens its form (not in this lab)');
+  else if (a === 'cust-more') openMenu(el, [{label: 'New sale', run: () => go('sell')}, {label: 'Edit customer', run: () => toast('Edit opens its form (not in this lab)')}, {label: 'Statement', run: () => toast('Statement (not in this lab)')}]);
+  else if (a === 'pay') openPayment(el, custById(state.cid));
+  else if (a === 'all-orders') { state.allOrders = !state.allOrders; renderCust(); }
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'oq') { state.oq = e.target.value; renderOrderList(); renderOrder(); }
+  if (e.target.id === 'cq') { state.cq = e.target.value; renderCustList(); renderCust(); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (pop) { const tr = pop.trigger; closePop(); tr.focus(); } else setNav(false); return; }
+  if ((e.key === 'h' || e.key === 'H') && !e.target.closest('input')) document.body.classList.toggle('min');
+});
+$('#lab').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) { state[b.closest('.s').dataset.k] = b.dataset.v; render(); } });
+
+render();
+</script>
+</body>
+</html>

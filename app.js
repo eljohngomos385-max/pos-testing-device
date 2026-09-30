@@ -176,6 +176,7 @@ const state = {
   orders: [],
   selectedOrderId: null,
   ordersQuery: '',
+  ordersFilter: { range: 'week', staff: '', pay: '', status: '', fulfil: '' },   // ORDERS_FILTER_DEF
   customerLedger: [],
   drawerCloseouts: [],
   variantModal: { groupId: null, selectedId: null, qty: 1, comment: '' },
@@ -847,8 +848,8 @@ function renderAllFolderUis() {
 
 // ---------- Roles ----------
 const ROLE_ALLOWED = {
-  cashier: new Set(['sell', 'orders', 'settings', 'checkout']),
-  manager: new Set(['sell', 'orders', 'customers', 'reports', 'back-office', 'settings', 'checkout']),
+  cashier: new Set(['sell', 'orders', 'items', 'settings', 'checkout']),
+  manager: new Set(['sell', 'orders', 'items', 'customers', 'back-office', 'settings', 'checkout']),   // ponytail: Reports hidden for now; add 'reports' back to bring it back
 };
 function canAccess(view) {
   const allowed = ROLE_ALLOWED[state.role] || ROLE_ALLOWED.manager;
@@ -893,6 +894,7 @@ function switchView(view) {
     state.orders = loadOrders();
     renderOrders();
   }
+  if (view === 'items') renderItems();
   if (view === 'customers') renderCustomers();
   if (view === 'reports') renderReports();
   if (view === 'checkout') renderCheckout();
@@ -3269,123 +3271,301 @@ function buildReceiptPreview(order) {
     </div>`;
 }
 
+// pos-orders-rail-lab.html: the orders in a rail under ☰, grouped under day bands; the receipt beside it.
+const ORDER_RANGES = [['today', 'Today', 0], ['yday', 'Yesterday', 1], ['week', 'Last 7 days', 6], ['all', 'All orders', Infinity]];
+const ORDERS_FILTER_DEF = { range: 'week', staff: '', pay: '', status: '', fulfil: '' };
+const dayStart = ts => { const d = new Date(ts); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
+const daysAgo = ts => Math.round((dayStart(Date.now()) - dayStart(ts)) / 864e5);
+function orderDayName(ts) {
+  const ago = daysAgo(ts);
+  return ago === 0 ? 'Today' : ago === 1 ? 'Yesterday' : new Date(ts).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+// What an order adds to its day's band: a return takes back, voided / refunded / saved add nothing.
+function orderNet(o) {
+  if (o.status === 'return') return -o.total;
+  return isCompletedSale(o) ? o.total : 0;
+}
+function orderPayText(o) {
+  return isSavedOrder(o) ? '' : (o.paymentMethodLabel || reportMethodMeta(reportMethodKind(o)).label);
+}
+const ORDER_FLAG = { voided: ['Voided', ''], refunded: ['Refunded', 'warn'], return: ['Return', 'warn'], saved: ['Not completed', 'warn'] };
+function orderFlag(o, cls) {
+  const f = ORDER_FLAG[isSavedOrder(o) ? 'saved' : o.status];
+  return f ? `<span class="${cls} ${f[1]}">${f[0]}</span>` : '';
+}
+const ordersFiltered = () => Object.keys(ORDERS_FILTER_DEF).some(k => state.ordersFilter[k] !== ORDERS_FILTER_DEF[k]);
+
+function ordersShown() {
+  const F = state.ordersFilter;
+  const q = (state.ordersQuery || '').trim().toLowerCase().replace(/^#/, '');
+  const maxAgo = ORDER_RANGES.find(r => r[0] === F.range)[2];
+  return state.orders.filter(o => {
+    const ago = daysAgo(o.ts);
+    if (F.range === 'yday' ? ago !== 1 : ago > maxAgo) return false;
+    if (F.staff && o.cashier !== F.staff) return false;
+    if (F.pay && reportMethodKind(o) !== F.pay) return false;
+    if (F.status && (o.status || 'completed') !== F.status) return false;
+    if (F.fulfil && (o.fulfilment === 'delivery' ? 'delivery' : 'pickup') !== F.fulfil) return false;
+    return !q || [o.number, o.customer ? o.customer.name : 'walk-in', orderPaymentLabel(o), orderStatusLabel(o), fmtReceiptTime(o.ts),
+      ...(o.items || []).flatMap(i => [i.name, i.sku])].some(v => String(v || '').toLowerCase().includes(q));
+  }).sort((a, b) => b.ts - a.ts);
+}
+
 function renderOrders() {
   const list = $('#ordersList');
-  const count = $('#ordersCount');
   if (!list) return;
-
   // Defensive: make sure state.orders is an array (and refresh from storage).
   if (!Array.isArray(state.orders)) state.orders = loadOrders();
+  const shown = ordersShown();
+  if (!shown.some(o => o.id === state.selectedOrderId)) state.selectedOrderId = shown[0] ? shown[0].id : null;
 
-  if (state.orders.length === 0) {
-    if (count) count.textContent = 'No orders yet';
-    list.innerHTML = `
-      <div class="orders-empty">
-        <div class="empty-glyph">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
-        </div>
-        <div class="empty-title">No receipts yet</div>
-        <div class="empty-sub">Saved receipts and completed sales will appear here</div>
-      </div>`;
-    renderOrderDetail();
-    return;
-  }
-
-  if (count) {
-    const n = state.orders.length;
-    count.textContent = `${n} order${n === 1 ? '' : 's'}`;
-  }
-
-  // Apply search filter (number or customer name)
-  const q = (state.ordersQuery || '').trim().toLowerCase();
-  const filtered = q
-    ? state.orders.filter(o =>
-        o.number.toLowerCase().includes(q) ||
-        (o.customer && o.customer.name.toLowerCase().includes(q)) ||
-        (o.items || []).some(i => [i.name, i.sku].some(v => String(v || '').toLowerCase().includes(q))) ||
-        orderPaymentLabel(o).toLowerCase().includes(q) ||
-        orderStatusLabel(o).toLowerCase().includes(q) ||
-        fmtReceiptTime(o.ts).toLowerCase().includes(q))
-    : state.orders;
-
-  // Auto-select the most recent matching order if nothing's selected yet
-  if (filtered.length > 0 && !filtered.find(o => o.id === state.selectedOrderId)) {
-    state.selectedOrderId = filtered[0].id;
-  }
-
-  if (filtered.length === 0) {
-    list.innerHTML = `
-      <div class="orders-empty">
-        <div class="empty-title">No matches</div>
-        <div class="empty-sub">Try a different order number or name</div>
-      </div>`;
-    renderOrderDetail();
-    return;
-  }
-
-  const trips = latestDeliveryEvents(loadEvents('deliveryEvents'));
-  list.innerHTML = filtered.map(o => {
-    const active = state.selectedOrderId === o.id ? 'active' : '';
-    const cust = o.customer ? o.customer.name : 'Walk-in';
-    const method = isSavedOrder(o) ? 'Saved receipt' : orderPaymentLabel(o);
-    const statusCls = isSavedOrder(o) ? 'saved' : (isCompletedSale(o) ? 'done' : 'saved');
-    return `
-      <div class="order-row ${active}" data-order-id="${o.id}">
-        <div class="or-body">
-          <div class="or-head">
-            <span class="or-number">#${escapeHtml(o.number)}</span>
-            <span class="or-total">${peso(o.total)}</span>
-          </div>
-          <div class="or-sub">
-            <span class="or-sub-time">${fmtOrderTime(o.ts)} · ${orderItemCount(o)} item${orderItemCount(o) === 1 ? '' : 's'}</span>
-            <span class="or-status ${statusCls}">${orderStatusLabel(o)}</span>
-            ${o.fulfilment === 'delivery' && !isSavedOrder(o) ? deliveryChip(trips.get(o.id)) : ''}
-          </div>
-        </div>
-        <button class="or-receipt-btn" data-act="view-receipt" data-order-id="${o.id}" title="View receipt">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 2h9l3 3v17l-3-2-3 2-3-2-3 2z"/>
-            <line x1="8" y1="9" x2="14" y2="9"/>
-            <line x1="8" y1="13" x2="14" y2="13"/>
-            <line x1="8" y1="17" x2="12" y2="17"/>
-          </svg>
-        </button>
-      </div>`;
-  }).join('');
-
+  let html = '', key = null;
+  shown.forEach(o => {
+    const k = dayStart(o.ts);
+    if (k !== key) {
+      key = k;
+      const day = shown.filter(x => dayStart(x.ts) === k);
+      html += `<div class="band"><span>${orderDayName(o.ts)} <span class="num">· ${day.length}</span></span><span class="num">${peso(day.reduce((s, x) => s + orderNet(x), 0))}</span></div>`;
+    }
+    const time = new Date(o.ts).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+    html += `<button type="button" class="row${o.status === 'voided' ? ' void' : ''}${o.id === state.selectedOrderId ? ' cur' : ''}" data-order-id="${o.id}">
+      <div class="nm"><span class="num">#${escapeHtml(o.number)}</span>
+        <small class="num">${o.fulfilment === 'delivery' ? 'Delivery' : 'Pickup'} · ${time} · ${escapeHtml(o.cashier || '—')}</small></div>
+      <div class="rt"><span class="amt num">${peso(o.total)}</span><small>${orderFlag(o, 'st')}${escapeHtml(orderPayText(o))}</small></div></button>`;
+  });
+  list.innerHTML = html || (state.orders.length
+    ? '<div class="empty"><b>No orders</b><span>Nothing matches these filters.</span></div>'
+    : '<div class="empty"><b>No orders yet</b><span>Completed sales and saved receipts show up here.</span></div>');
+  $('#ordersFilter')?.classList.toggle('on', ordersFiltered());
   renderOrderDetail();
 }
 
 function renderOrderDetail() {
-  const detail = $('#orderDetail');
-  if (!detail) return;
+  const detail = $('#orderDetail'), ttl = $('#orderTtl');
+  if (!detail || !ttl) return;
   const o = state.orders.find(x => x.id === state.selectedOrderId);
+  $('#orderPrint').disabled = $('#orderMore').disabled = !o;
+  $('#orderRefund').disabled = !o || !isCompletedSale(o);
   if (!o) {
-    detail.innerHTML = `
-      <div class="order-detail-empty">
-        <div class="empty-title">Select an order</div>
-        <div class="empty-sub">Pick one from the list to view the receipt</div>
-      </div>`;
+    ttl.innerHTML = '';
+    detail.innerHTML = '<div class="empty"><b>No order selected</b><span>Pick one from the list to see its receipt.</span></div>';
     return;
   }
-
-  detail.innerHTML = `
-    <div class="od-scroll">
-      <div class="od-inner">
-        ${buildReceiptPreview(o)}
-      </div>
-    </div>
-    <div class="od-foot">
-      <button class="od-details-btn" type="button">View order details</button>
-    </div>`;
+  ttl.innerHTML = `<b class="${o.customer ? '' : 'walk'}">${escapeHtml(o.customer ? o.customer.name : 'Walk-in customer')}</b>${orderFlag(o, 'flag')}`;
+  detail.innerHTML = buildReceiptPreview(o);
+  if (o.status === 'voided') {
+    const paper = detail.querySelector('.rp-paper');
+    paper.classList.add('void');
+    paper.insertAdjacentHTML('afterbegin', '<div class="stamp">VOIDED</div>');
+  }
 }
 
-function selectOrder(id) {
-  state.selectedOrderId = id;
-  renderOrders();
+// The filter sheet (both labs): every choice on one sheet; a tap applies at once and the sheet stays open.
+// groups() -> [[heading, key, [[value, label, dotColour?]]]]; cur is the live filter object, def its defaults.
+function openFilterSheet(btn, groups, cur, def, apply) {
+  const veil = document.createElement('div');
+  veil.className = 'rail-veil';
+  veil.innerHTML = '<div class="rail-menu fp" role="dialog" aria-label="Filters"></div>';
+  const m = veil.firstChild;
+  const draw = () => {
+    m.innerHTML = groups().map(([h, key, opts]) => `<h6>${h}</h6><div class="fp-seg">${opts.map(([v, l, dot]) =>
+      `<button type="button" class="${cur[key] === v ? 'cur' : ''}" data-k="${key}" data-v="${escapeHtml(v)}">${dot ? `<i class="pm" style="background:${dot}"></i>` : ''}${escapeHtml(l)}</button>`).join('')}</div>`).join('')
+      + `<button type="button" class="reset"${Object.keys(def).some(k => cur[k] !== def[k]) ? '' : ' disabled'}>Reset filters</button>`;
+  };
+  draw();
+  document.body.append(veil);
+  const r = btn.getBoundingClientRect();
+  m.style.top = Math.max(12, Math.min(r.bottom + 6, innerHeight - m.offsetHeight - 12)) + 'px';
+  m.style.left = Math.max(12, Math.min(r.right - m.offsetWidth, innerWidth - m.offsetWidth - 12)) + 'px';
+  btn.setAttribute('aria-expanded', 'true');
+  const close = () => { veil.remove(); btn.setAttribute('aria-expanded', 'false'); };
+  veil.addEventListener('click', e => {
+    if (e.target === veil) { close(); return; }
+    const b = e.target.closest('button');
+    if (!b) return;
+    Object.assign(cur, b.classList.contains('reset') ? def : { [b.dataset.k]: b.dataset.v });
+    apply();
+    draw();
+  });
+  veil.addEventListener('keydown', e => { if (e.key === 'Escape') { close(); btn.focus(); } });
+  m.querySelector('button')?.focus({ preventScroll: true });
+}
+
+// The search card both pages share: typing shows the ×, the × clears and keeps focus.
+function wireFind(findSel, inputSel, clearSel, apply) {
+  const find = $(findSel), input = $(inputSel);
+  if (!find || !input) return;
+  input.addEventListener('input', () => { find.classList.toggle('typed', !!input.value); apply(input.value); });
+  $(clearSel).addEventListener('click', (e) => { e.preventDefault(); input.value = ''; find.classList.remove('typed'); apply(''); input.focus(); });
+}
+
+// ---------- Items view (pos-items-rail-lab.html) ----------
+// The catalog as items: a group's products are one item's variants. The editor works on a copy and Save is not
+// connected yet -- the catalog's writes wait for the back office + sync (ROADMAP.md), so Save only checks the form.
+const ITEMS_FILTER_DEF = { cat: '', stock: '' };
+const itemsFilter = { q: '', ...ITEMS_FILTER_DEF };
+const itemHue = s => [...String(s || '')].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+const itemQty = v => v.toLocaleString('en-PH', { maximumFractionDigits: 2 });
+const itemInitials = s => s.replace(/[^A-Za-z ]/g, ' ').split(/\s+/).filter(w => w.length > 1).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '+';
+const itemThumb = (it, big) => `<span class="thumb${big ? ' big' : ''}" style="--h:${it.hue}" aria-hidden="true">${it.img ? `<img src="${it.img}" alt="">` : itemInitials(it.name)}</span>`;
+const itemStock = it => it.variants.reduce((s, v) => s + v.stock, 0);
+const itemStk = it => { const t = itemStock(it); return t <= 0 ? 'stk-out' : t <= it.reorder ? 'stk-low' : ''; };   // bo-model isLow: at or below the danger level
+const itemMarkup = (cost, price) => cost > 0 ? (price - cost) / cost * 100 : 0;
+function itemPriceText(it) {
+  const ps = it.variants.map(v => v.price), lo = Math.min(...ps), hi = Math.max(...ps);
+  return lo === hi ? peso(lo) : `<small class="from">from </small>${peso(lo)}<span class="hi">–${peso(hi)}</span>`;
+}
+
+function catalogItems() {
+  const byKey = new Map();
+  state.products.forEach(p => {
+    const g = p.groupId ? groupById(p.groupId) : null, key = g ? g.id : p.id;
+    let it = byKey.get(key);
+    if (!it) {
+      const folder = (g && g.folder) || p.folder;
+      it = { id: key, name: g ? g.name : p.name, cat: folderName(folder), hue: itemHue(folder), unit: p.unit || 'pc',
+        soldBy: p.soldBy === 'measure' ? 'measure' : 'each', brand: p.brand || '', img: '', marginMode: 'percent',
+        reorder: p.reorderPoint || 0, sellOut: false, supplier: p.supplier || '', alt: [], weight: '', size: '', length: '', variants: [] };
+      byKey.set(key, it);
+    }
+    const vn = g && p.name.startsWith(g.name) ? p.name.slice(g.name.length).trim() : p.name;   // 'Common Wire Nails 2"' -> '2"'
+    it.variants.push({ id: p.id, name: g ? vn : '', sku: p.sku || '', barcode: p.barcode || '', cost: p.cost || 0, price: p.price || 0, stock: p.stock || 0 });
+  });
+  return [...byKey.values()];
+}
+const itemCategories = () => state.folders.filter(f => f.id !== 'all').map(f => f.name);
+const itemSuppliers = () => [...new Set(state.products.map(p => p.supplier).filter(Boolean))].sort();
+
+function renderItems() {
+  const rows = $('#itemsRows');
+  if (!rows) return;
+  const q = itemsFilter.q.trim().toLowerCase();
+  const list = catalogItems().filter(it => {
+    if (itemsFilter.cat && it.cat !== itemsFilter.cat) return false;
+    if (itemsFilter.stock === 'low' && itemStk(it) !== 'stk-low') return false;
+    if (itemsFilter.stock === 'out' && itemStk(it) !== 'stk-out') return false;
+    return !q || it.name.toLowerCase().includes(q) || it.variants.some(v => [v.name, v.sku, v.barcode].some(x => x.toLowerCase().includes(q)));
+  }).sort((a, b) => a.name.localeCompare(b.name));
+  $('#itemsBand').innerHTML = `<span>Item <span class="num">· ${list.length}</span></span><span>Category</span><span>Price</span><span>In stock</span>`;
+  rows.innerHTML = list.map(it => {
+    const vn = it.variants.length;
+    return `<button type="button" class="row cols" data-id="${escapeHtml(it.id)}">
+      <span class="nm">${itemThumb(it)}<span class="tx"><b>${escapeHtml(it.name)}</b>${vn > 1 ? `<small>${vn} variants</small>` : ''}</span></span>
+      <span class="cat">${escapeHtml(it.cat)}</span>
+      <span class="pr num">${itemPriceText(it)}</span>
+      <span class="num ${itemStk(it)}">${itemQty(itemStock(it))} ${escapeHtml(it.unit)}</span></button>`;
+  }).join('') || '<div class="empty"><b>No items</b><span>Nothing matches this search or filter.</span></div>';
+  $('#itemsFilter')?.classList.toggle('on', Object.keys(ITEMS_FILTER_DEF).some(k => itemsFilter[k] !== ITEMS_FILTER_DEF[k]));
+}
+
+// The editor: a working copy E of the item. Nothing here writes to the catalog.
+let itemEdit = null, itemIsNew = false;
+const blankVariant = () => ({ id: uid(), name: '', sku: '', barcode: '', cost: 0, price: 0, stock: 0, fresh: true });
+
+function openItemEditor(id) {
+  const it = id ? catalogItems().find(x => x.id === id) : null;
+  itemIsNew = !it;
+  itemEdit = it || { id: uid(), name: '', cat: '', hue: 220, unit: 'pc', soldBy: 'each', brand: '', img: '', marginMode: 'percent', reorder: 0, sellOut: false,
+    supplier: '', alt: [], weight: '', size: '', length: '', variants: [blankVariant()], since: new Date().toISOString().slice(0, 10) };
+  const v0 = itemEdit.variants[0];
+  itemEdit.marginValue = moneyValue(itemEdit.marginMode === 'percent' ? itemMarkup(v0.cost, v0.price) : v0.price - v0.cost);
+  renderItemForm();
+  $('#itemsView').classList.add('editing');
+  $('#itemForm').scrollTop = 0;
+}
+const closeItemEditor = () => $('#itemsView').classList.remove('editing');
+
+const ifr = (label, ctl) => `<div class="fr"><span class="lb">${label}</span><div class="ctl">${ctl}</div></div>`;
+const iinp = (f, v, attrs = '') => `<input class="in" data-f="${f}" value="${escapeHtml(v)}" ${attrs}>`;
+const IMONEY = 'type="number" step="0.01" min="0" inputmode="decimal"';
+const ipills = (f, cur, opts) => `<div class="pills" data-pills="${f}">${opts.map(([k, l]) => `<button type="button" class="${cur === k ? 'cur' : ''}" data-v="${escapeHtml(k)}">${l}</button>`).join('')}</div>`;
+const icard = (title, body, sub = '') => `<section class="card fc"><h3>${title}${sub ? `<span>${sub}</span>` : ''}</h3>${body}</section>`;
+const imarginNote = v => `You make <b>${peso(v.price - v.cost)}</b> · <b>${itemMarkup(v.cost, v.price).toFixed(1)}%</b> markup on cost · <b>${(v.price > 0 ? (v.price - v.cost) / v.price * 100 : 0).toFixed(1)}%</b> margin on price`;
+
+function itemVariantRow(v) {
+  const E = itemEdit;
+  return `<div class="vt" data-vid="${escapeHtml(v.id)}">
+    <input class="in" data-v="name" value="${escapeHtml(v.name)}" placeholder="e.g. Red, 2 inch">
+    <input class="in" data-v="sku" value="${escapeHtml(v.sku)}">
+    <input class="in" data-v="barcode" value="${escapeHtml(v.barcode)}" inputmode="numeric">
+    <input class="in n" data-v="cost" value="${v.cost || ''}" ${IMONEY}>
+    <input class="in n" data-v="price" value="${v.price || ''}" ${IMONEY}>
+    <span class="mg num">${itemMarkup(v.cost, v.price).toFixed(0)}%</span>
+    ${v.fresh ? `<input class="in n" data-v="stock" value="${v.stock || ''}" type="number" step="${E.soldBy === 'measure' ? .01 : 1}" min="0" placeholder="0">`
+      : `<span class="st num ${v.stock <= 0 ? 'stk-out' : ''}">${itemQty(v.stock)} ${escapeHtml(E.unit)}</span>`}
+    <button type="button" class="del" data-act="del-variant" aria-label="Remove variant" title="Remove variant"><svg class="ic" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>`;
+}
+
+function renderItemForm() {
+  const E = itemEdit, fam = E.variants.length > 1, v0 = E.variants[0], shared = fam ? 'Shared by every variant' : '';
+  const sups = itemSuppliers();
+  const details = icard('Details', [
+    ifr('Name', iinp('name', E.name, 'placeholder="Portland Cement 40kg"')),
+    ifr('Brand', iinp('brand', E.brand)),
+    ifr('Image', `${itemThumb(E, true)}<label class="act">Upload<input type="file" accept="image/*" id="itemImg" hidden></label>${E.img ? '<button type="button" class="link" data-act="img-clear">Remove</button>' : ''}`),
+  ].join(''), shared);
+  const soldAs = icard('Sold as', [
+    ifr('How it is sold', ipills('soldBy', E.soldBy, [['each', 'Each'], ['measure', 'By measure']])),
+    ifr('Unit', iinp('unit', E.unit, 'placeholder="pc" style="width:150px"')),
+  ].join(''), shared);
+  const pricing = fam ? '' : icard('Pricing', [
+    ifr('Cost', `<input class="in short num" data-f="cost" value="${v0.cost || ''}" ${IMONEY}>`),
+    ifr('Margin', ipills('marginMode', E.marginMode, [['flat', 'Flat'], ['percent', 'Percent']])),
+    ifr(E.marginMode === 'percent' ? 'Markup on cost (%)' : 'Profit per unit', `<input class="in short num" data-f="marginValue" value="${E.marginValue || ''}" type="number" step="0.01" inputmode="decimal">`),
+    ifr('Price', `<input class="in short num" data-f="price" value="${v0.price || ''}" ${IMONEY}>`),
+  ].join('') + `<div class="note num" id="itemMarginNote">${imarginNote(v0)}</div>`);
+  const inventory = icard('Inventory', [
+    fam ? '' : itemIsNew ? ifr('Opening quantity', `<input class="in short num" data-f="stock" value="${v0.stock || ''}" type="number" step="${E.soldBy === 'measure' ? .01 : 1}" min="0" placeholder="0">`)
+      : ifr('On hand', `<input class="in short num" value="${itemQty(v0.stock)} ${escapeHtml(E.unit)}" disabled><button type="button" class="link" data-act="stock">Adjust stock</button>`),
+    itemIsNew ? ifr('In store since', `<input class="in short" type="date" data-f="since" value="${E.since}">`) : '',
+    ifr('Danger level', `<input class="in short num" data-f="reorder" value="${E.reorder}" type="number" step="1" min="0" inputmode="numeric">`),
+    ifr('Sell when out of stock', `<input type="checkbox" class="sw" data-f="sellOut" ${E.sellOut ? 'checked' : ''} aria-label="Sell when out of stock">`),
+    fam ? '' : ifr('SKU', iinp('sku', v0.sku)),
+    fam ? '' : ifr('Barcode', iinp('barcode', v0.barcode, 'inputmode="numeric"')),
+  ].join(''), shared);
+  const variants = fam
+    ? icard('Variants', `<div class="vt-wrap"><div class="vt th"><span>Variant</span><span>SKU</span><span>Barcode</span><span>Cost</span><span>Price</span><span>Margin</span><span>Stock</span><span></span></div>
+        <div>${E.variants.map(itemVariantRow).join('')}</div></div>
+        <div class="foot"><span>Stock on a variant that exists is moved with Adjust stock.</span><button type="button" class="act" data-act="add-variant">Add variant</button></div>`,
+        `${E.variants.length} in this item`)
+    : icard('Variants', `<div class="blurb">Sold in sizes or colours? Add a variant. Each one gets its own SKU, barcode, price and stock.</div>
+        <div class="foot" style="justify-content:flex-end"><button type="button" class="act" data-act="add-variant">Add variant</button></div>`);
+  const org = icard('Organization', [
+    ifr('Category', `<input class="in" data-f="cat" value="${escapeHtml(E.cat)}" list="itemCatList" placeholder="Uncategorized">`),
+    ifr('Supplier', `<input class="in" data-f="supplier" value="${escapeHtml(E.supplier)}" list="itemSupList" placeholder="No supplier">`),
+    sups.length ? ifr('Also stocked by', `<div class="pills" data-multi="alt">${sups.filter(s => s !== E.supplier).map(s => `<button type="button" class="${E.alt.includes(s) ? 'cur' : ''}" data-v="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')}</div>`) : '',
+  ].join(''));
+  const specs = icard('Specs', [
+    ifr('Weight', iinp('weight', E.weight, 'placeholder="2.5 kg"')),
+    ifr('Size', iinp('size', E.size, 'placeholder="3/4 in"')),
+    ifr('Length', iinp('length', E.length, 'placeholder="8 ft"')),
+  ].join(''), 'Free text');
+  $('#itemForm').innerHTML = `<div class="form">
+    ${details}${soldAs}${pricing}${inventory}${variants}${org}${specs}
+    <datalist id="itemCatList">${itemCategories().map(c => `<option value="${escapeHtml(c)}">`).join('')}</datalist>
+    <datalist id="itemSupList">${sups.map(c => `<option value="${escapeHtml(c)}">`).join('')}</datalist>
+  </div>`;
+}
+
+// cost / margin / price: any two drive the third (the back office's three-way binding)
+function itemReprice(from) {
+  const E = itemEdit, v0 = E.variants[0], pct = E.marginMode === 'percent', f = $('#itemForm');
+  if (from === 'price') {
+    E.marginValue = moneyValue(pct ? itemMarkup(v0.cost, v0.price) : v0.price - v0.cost);
+    f.querySelector('[data-f=marginValue]').value = E.marginValue || '';
+  } else {
+    v0.price = moneyValue(pct ? v0.cost * (1 + E.marginValue / 100) : v0.cost + E.marginValue);
+    f.querySelector('[data-f=price]').value = v0.price || '';
+  }
+  $('#itemMarginNote').innerHTML = imarginNote(v0);
+}
+
+function saveItem() {
+  const E = itemEdit;
+  if (!E.name.trim()) { showToast('Give the item a name'); $('#itemForm').querySelector('[data-f=name]').focus(); return; }
+  if (E.variants.length > 1 && E.variants.some(v => !v.name.trim())) { showToast('Name every variant'); return; }
+  showToast("Saving isn't connected yet");   // ponytail: design only until the back office owns catalog writes
 }
 
 function openOrderDetailModal(orderId) {
@@ -4779,25 +4959,39 @@ function attachEvents() {
   });
   $('#variantAddBtn')?.addEventListener('click', addVariantToCart);
 
-  // ---- Orders list (sidebar view) ----
+  // ---- Orders (rail list + receipt) ----
   $('#ordersList')?.addEventListener('click', (e) => {
-    // Quick-view receipt icon (don't bubble to row-select)
-    const recBtn = e.target.closest('[data-act="view-receipt"]');
-    if (recBtn) {
-      e.stopPropagation();
-      const o = state.orders.find(x => x.id === recBtn.dataset.orderId);
-      if (o) openReceipt(o);
-      return;
-    }
-    const row = e.target.closest('.order-row');
+    const row = e.target.closest('.row');
     if (!row) return;
-    selectOrder(row.dataset.orderId);
+    state.selectedOrderId = row.dataset.orderId;
+    renderOrders();
+    $('#orderDetail').scrollTop = 0;
+    $('#ordersView').classList.add('reading');
   });
-  // Only the "View order details" button opens the full order details modal
-  $('#orderDetail')?.addEventListener('click', (e) => {
-    if (!e.target.closest('.od-details-btn')) return;
-    if (state.selectedOrderId) openOrderDetailModal(state.selectedOrderId);
+  $('#ordersBack')?.addEventListener('click', () => $('#ordersView').classList.remove('reading'));
+  const shownOrder = () => state.orders.find(x => x.id === state.selectedOrderId);
+  $('#orderPrint')?.addEventListener('click', () => { const o = shownOrder(); if (o) printOrder(o); });
+  $('#orderRefund')?.addEventListener('click', () => {
+    const o = shownOrder();
+    if (o) showConfirm({ title: `Refund #${o.number}?`, message: `${peso(o.total)} goes back to the customer.`, okText: 'Refund', onConfirm: () => refundOrder(o.id, 'Refunded from Orders') });
   });
+  $('#orderMore')?.addEventListener('click', (e) => {
+    const o = shownOrder();
+    if (!o) return;
+    const done = isCompletedSale(o);
+    openMenu(e.currentTarget, [
+      { label: 'Order details', run: () => openOrderDetailModal(o.id) },
+      { label: 'Return items', off: !done, run: () => showConfirm({ title: `Return items on #${o.number}?`, okText: 'Record return', onConfirm: () => recordReturn(o.id, 'Returned from Orders') }) },
+      { label: 'Exchange', off: !done, run: () => exchangeFirstInStock(o.id) },
+      '-',
+      { label: 'Void sale', red: true, off: o.status === 'voided', run: () => showConfirm({ title: `Void #${o.number}?`, message: 'The sale stays on record, marked voided.', okText: 'Void sale', onConfirm: () => voidOrder(o.id, 'Voided from Orders') }) },
+    ], { w: 200, right: true });
+  });
+  // ponytail: exchange swaps in the first product in stock -- the demo behaviour until an exchange picker exists
+  function exchangeFirstInStock(id) {
+    const replacement = state.products.find(p => p.stock > 0 && p.price > 0);
+    if (replacement) exchangeOrder(id, [{ id: replacement.id, qty: 1 }], 'Exchange from Orders');
+  }
   $('#orderDetailModal')?.addEventListener('click', (e) => {
     const trip = e.target.closest('[data-delivery-event]');
     if (trip) { recordDeliveryEvent(trip.dataset.orderId, trip.dataset.deliveryEvent); return; }
@@ -4807,17 +5001,75 @@ function attachEvents() {
     if (btn.dataset.orderOp === 'void') voidOrder(id, 'Voided from Orders');
     if (btn.dataset.orderOp === 'refund') refundOrder(id, 'Refunded from Orders');
     if (btn.dataset.orderOp === 'return') recordReturn(id, 'Returned from Orders');
-    if (btn.dataset.orderOp === 'exchange') {
-      const replacement = state.products.find(p => p.stock > 0 && p.price > 0);
-      if (replacement) exchangeOrder(id, [{ id: replacement.id, qty: 1 }], 'Exchange from Orders');
-    }
+    if (btn.dataset.orderOp === 'exchange') exchangeFirstInStock(id);
     $('#orderDetailModal').hidden = true;
     renderOrders();
   });
-  // Orders search
-  $('#ordersSearch')?.addEventListener('input', (e) => {
-    state.ordersQuery = e.target.value;
-    renderOrders();
+  wireFind('#ordersFind', '#ordersSearch', '#ordersSearchX', (q) => { state.ordersQuery = q; renderOrders(); });
+  $('#ordersFilter')?.addEventListener('click', (e) => openFilterSheet(e.currentTarget, () => [
+    ['When', 'range', ORDER_RANGES.map(([v, l]) => [v, l])],
+    ['Staff', 'staff', [['', 'Anyone'], ...[...new Set(state.orders.map(o => o.cashier).filter(Boolean))].sort().map(c => [c, c])]],
+    ['Payment', 'pay', [['', 'Any'], ...REPORT_METHOD_ORDER.map(k => [k, reportMethodMeta(k).label, `var(--pm-${k})`])]],
+    ['Status', 'status', [['', 'Any'], ['completed', 'Completed'], ['saved', 'Not completed'], ['refunded', 'Refunded'], ['voided', 'Voided'], ['return', 'Return']]],
+    ['Fulfilment', 'fulfil', [['', 'Any'], ['pickup', 'Pickup'], ['delivery', 'Delivery']]],
+  ], state.ordersFilter, ORDERS_FILTER_DEF, renderOrders));
+
+  // ---- Items (list + editor; Save is not connected yet) ----
+  $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) openItemEditor(row.dataset.id); });
+  $('#itemsAdd')?.addEventListener('click', () => openItemEditor(null));
+  $('#itemBack')?.addEventListener('click', closeItemEditor);
+  $('#itemSave')?.addEventListener('click', saveItem);
+  const notYet = what => () => showToast(`${what} isn't connected yet`);
+  $('#itemMore')?.addEventListener('click', (e) => openMenu(e.currentTarget, itemIsNew
+    ? [{ label: 'Discard', red: true, run: closeItemEditor }]
+    : [{ label: 'Print labels', run: notYet('Printing labels') }, { label: 'Duplicate', run: notYet('Duplicate') }, '-', { label: 'Archive', red: true, run: notYet('Archive') }],
+    { w: 200, right: true }));
+  wireFind('#itemsFind', '#itemsSearch', '#itemsSearchX', (q) => { itemsFilter.q = q; renderItems(); });
+  $('#itemsFilter')?.addEventListener('click', (e) => openFilterSheet(e.currentTarget, () => [
+    ['Category', 'cat', [['', 'All'], ...itemCategories().map(c => [c, c])]],
+    ['Stock', 'stock', [['', 'Any'], ['low', 'Low'], ['out', 'Out']]],
+  ], itemsFilter, ITEMS_FILTER_DEF, renderItems));
+  const itemForm = $('#itemForm');
+  itemForm?.addEventListener('input', (e) => {
+    const E = itemEdit, t = e.target, f = t.dataset.f, num = () => Number(t.value) || 0;
+    if (t.dataset.v) {   // a variant row
+      const v = E.variants.find(x => x.id === t.closest('.vt').dataset.vid);
+      v[t.dataset.v] = t.type === 'number' ? num() : t.value;
+      if (t.dataset.v === 'cost' || t.dataset.v === 'price') t.closest('.vt').querySelector('.mg').textContent = itemMarkup(v.cost, v.price).toFixed(0) + '%';
+      return;
+    }
+    if (!f || t.type === 'checkbox') return;
+    if (['cost', 'price', 'stock', 'sku', 'barcode'].includes(f)) E.variants[0][f] = t.type === 'number' ? num() : t.value;
+    else E[f] = f === 'marginValue' || f === 'reorder' ? num() : t.value;
+    if (f === 'cost' || f === 'marginValue') itemReprice('cost');
+    if (f === 'price') itemReprice('price');
+    if (f === 'name') itemForm.querySelector('.thumb.big').outerHTML = itemThumb(E, true);
+  });
+  itemForm?.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.dataset.f === 'sellOut') itemEdit.sellOut = t.checked;
+    if (t.id === 'itemImg' && t.files[0]) { itemEdit.img = URL.createObjectURL(t.files[0]); renderItemForm(); }
+  });
+  itemForm?.addEventListener('click', (e) => {
+    const E = itemEdit, b = e.target.closest('button');
+    if (!b) return;
+    const pills = b.closest('[data-pills]'), multi = b.closest('[data-multi]'), act = b.dataset.act;
+    if (pills) {
+      E[pills.dataset.pills] = b.dataset.v;
+      if (pills.dataset.pills === 'marginMode') { const v0 = E.variants[0]; E.marginValue = moneyValue(b.dataset.v === 'percent' ? itemMarkup(v0.cost, v0.price) : v0.price - v0.cost); }
+      renderItemForm();
+    } else if (multi) {
+      E.alt = E.alt.includes(b.dataset.v) ? E.alt.filter(s => s !== b.dataset.v) : [...E.alt, b.dataset.v];
+      b.classList.toggle('cur');
+    } else if (act === 'add-variant') {
+      E.variants.push(blankVariant());
+      renderItemForm();
+      itemForm.querySelector('.vt:last-child [data-v=name]')?.focus();
+    } else if (act === 'del-variant') {
+      E.variants = E.variants.filter(v => v.id !== b.closest('.vt').dataset.vid);
+      renderItemForm();
+    } else if (act === 'img-clear') { E.img = ''; renderItemForm(); }
+    else if (act === 'stock') showToast("Adjusting stock isn't connected yet");
   });
 
   // ---- Cart row click → open edit modal ----

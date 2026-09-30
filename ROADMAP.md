@@ -166,6 +166,64 @@ One page, several cuts of the same data. Tabs, not separate pages:
   If a requirement ever genuinely needs one employee unable to read another's rows, that is a
   new decision, not a tweak.
 
+## BIR compliance (Philippines)
+
+This is what sets the product apart in the PH. Loyverse is free and not BIR-compliant. UTAK,
+Qashier and StoreHub charge monthly largely because they are compliant. Rules from RMO 9-2021 and
+the EOPT Act; research done 2026-09-30.
+
+- **Gap-free invoice numbers per terminal.** One unbroken sequence per machine. A void keeps its
+  number and gets a new void row, so no number is ever skipped or reused. A wiped device must not
+  restart the count: the sequence belongs to the server, not to `localStorage`. This replaces
+  today's `<register>-<seq>`.
+- **Grand total that can never be reset, per terminal.** A running lifetime total of sales,
+  printed on every Z-reading. It only ever goes up.
+- **X-reading and Z-reading.** An X-reading is a mid-day report that doesn't close anything. A
+  Z-reading closes the day and bumps a reset counter. Both show:
+  - the first and last invoice numbers;
+  - gross sales, VAT-able, VAT-exempt and zero-rated sales, and the VAT amount;
+  - voids, returns and discounts, with SC/PWD as its own line;
+  - the grand total before and after.
+
+  Pairs with cash drawer sessions (gap 1 below). The Z-reading is the drawer close.
+- **SC/PWD discount.** Remove the 12% VAT first, then take 20% off the VAT-exclusive price.
+  Record the customer's ID number and name on the order. Itemise the discount on the invoice.
+  Add an SC/PWD sales report to the Sales page. This is not one of the existing price tiers:
+  the VAT is computed differently.
+- **Void and return reports.** A list of every void and return, with the cashier, the reason
+  and the original invoice. The append-only order log already holds all of this.
+- **"Invoice", not "Official Receipt".** The EOPT Act (April 2024) renamed it. The receipt
+  footer in `app.js` and `printer.js` still says "official receipt".
+  - **Header:** the Machine Identification Number (MIN), the serial number (or the software
+    licence number) and the store's VAT REG TIN with its branch code.
+  - **Footer:** the developer's name, TIN and accreditation number with its dates, and the
+    PTU number.
+  - **Invoice number:** a zero-padded series of at least 6 digits, separate from the order ID.
+  - **Reprints** print "REPRINT" with the date and time.
+- **EIS e-invoicing, due 31 Dec 2026** for taxpayers above micro size (the exact threshold is
+  still to be confirmed). Each invoice is sent to BIR's EIS. When offline, the store issues
+  manual invoices, then replaces each with an e-invoice that references it. This fits the POS
+  offline queue (step 7), since every order already carries a UUID.
+- **Also checked at the demo (RMO 24-2023):**
+  - no training or "no sale" mode in production;
+  - an activity log of who, what, value and time, including remote access by the developer;
+  - a daily e-journal in a single .txt file;
+  - no sales can be posted to a business date after its Z-reading;
+  - the grand total has at least 12 digits;
+  - a BIR Sales Summary report;
+  - sales books for SC, PWD, NAAC and Solo Parent discounts.
+- **Accreditation (RMO 24-2023).** Free, and done by the developer:
+  1. Register the business: DTI or SEC, then BIR Form 2303.
+  2. Enrol in eAccReg with a sworn declaration.
+  3. Apply online and file the Annex B documents at the RDO (the BIR district office).
+  4. Give a live demo to the BIR's Technical Working Group.
+  5. The Certificate of Accreditation follows within about 20 working days.
+
+  The developer's eAccReg account then files a free Permit to Use (PTU) for each store's
+  terminal. A major version change needs reaccreditation. Still to be confirmed: the current
+  Annex B document list, and whether a browser app on a tablet passes the storage and
+  tamper-proofing checks.
+
 ---
 
 ## Build order
@@ -181,6 +239,9 @@ Foundation first, because each step below is cheaper once the one above is real:
    any time from here; the pages do not change when it does.
 7. **POS offline queue and push.** Last, because it needs the API settled and the tablets are the
    part that must not break.
+8. **BIR compliance.** SC/PWD and the "Invoice" wording can ship any time. Gap-free numbers,
+   the grand total and EIS need the server (step 6) to own the sequence. Must be done before
+   the first PH store goes live.
 
 ---
 
@@ -227,9 +288,8 @@ Ordered by what a real hardware store notices first:
 2. **Returns are whole receipts.** A customer bringing back one of four bags gets the entire sale
    reversed. The return row already points at its original (`originalOrderId`), so the shape is
    right; the missing part is per-line quantities on the return.
-3. **BIR sequential invoice numbering.** Receipt numbers are `<register>-<seq>` per device. A BIR
-   registered POS needs an unbroken, gap-free sequence per machine with the gaps themselves
-   auditable. Right now a wiped device restarts from whatever the stored counter says.
+3. **BIR compliance.** No gap-free invoice numbers, no Z-reading, no SC/PWD discount. See
+   "BIR compliance" above.
 4. **Unit-of-measure conversion.** Cement is bought by the pallet and sold by the bag; wire is
    bought on a 100 m roll and sold by the metre. Purchasing and selling use the same unit today,
    so a PO in rolls has to be typed in metres.
