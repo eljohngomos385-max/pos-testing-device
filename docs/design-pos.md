@@ -103,12 +103,12 @@ Reusable expand/collapse: a header row toggles `.open`; the detail panel animate
 ## Cross-device / touch
 
 - **The till's sidebar rules are the till's alone**: the base `.sidebar` / `.side-*` / `.brand-*` / `.user-row` rules, the `#app::before` backdrop and the ≤920px icons-only `@media` block in `styles.css` are all scoped to `:where(#app:not(.bo-app))`, because the back office is `#app` with `.sidebar` / `.side-link` too. A new sidebar rule gets the same scope (`:where()` keeps specificity unchanged).
-- **Safe-area inset (`env(safe-area-inset-bottom)`) is applied exactly once** — on the sale sidebar `.rail` only (its bottom margin; its bottom padding at ≤720px). Never double up (a child like `.pay` or `.go` must not also add it). Keep a constant base gap + single inset so the gap is tight on desktop and clears the home indicator on iPad/iPhone.
+- **Safe-area inset (`env(safe-area-inset-bottom)`) is applied exactly once** — on the sale sidebar `.rail-h` only (its rules are scoped `.rail-h`, never bare `.rail`: the back office loads styles.css and has its own `.rail`) (its bottom margin; its bottom padding at ≤720px). Never double up (a child like `.pay` or `.go` must not also add it). Keep a constant base gap + single inset so the gap is tight on desktop and clears the home indicator on iPad/iPhone.
 - Product-grid swipe is tuned for **low resistance**: drag engages after 4px, page flips at 12% of width, plus flick detection (`elapsed < 300ms && |dx| > 30 && velocity > 0.25`). Don't raise these without reason.
 
 ## Settings-driven display
 
-Sell tiles are kept **flat** (`var(--surface)`, no gradient/shadow/lift) — the user rejected the 3D look. Two independent Settings → Appearance controls:
+Sell tiles are kept **flat** (`var(--surface)`, no gradient/shadow/lift) — the user rejected the 3D look. Both themes share one tile shape and type: `var(--r-input)` corners, names as typed in 500 weight (no capitals). Themes differ in **colour only** — a light-theme rule never changes radius, case, weight or size. Two independent Settings → Appearance controls:
 - **Tile size** (`hwpos.tileSize`, S/M/L) → items-per-page + grid density (`grid.dataset.size`).
 - **Tile text size** (`hwpos.tileText`, S/M/L/XL) → `.pc-name` font only, via `grid.dataset.text` → `--pc-name-size` (11/13/15/18px). Independent of tile size.
 

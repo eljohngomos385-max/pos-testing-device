@@ -487,7 +487,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   background: var(--rl-soft);                    /* the sidebar's band + hairline, like the top bar */
   box-shadow: inset 0 0 0 1px var(--rl-hair);    /* inset: the grid's overflow can't clip it */
   border: none;
-  border-radius: 4px;
+  border-radius: var(--r-input);
   padding: 14px 12px 18px;
   cursor: pointer;
   transition: background .12s, transform .08s;
@@ -506,11 +506,10 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 .pc-name {
   font-size: var(--pc-name-size, 13px);
-  font-weight: 600;
-  letter-spacing: 0.3px;
+  font-weight: 500;                              /* names as typed, both themes */
+  letter-spacing: -0.1px;
   line-height: 1.35;
   color: rgba(255,255,255,0.92);
-  text-transform: uppercase;
   text-align: center;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -590,7 +589,6 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   text-align: center;
   font-size: 12px;
   color: var(--ink);
-  letter-spacing: 0.5px;
 }
 
 .no-results {
@@ -5210,16 +5208,16 @@ body.light-theme .orders-search-wrap input:focus {
 
 /* Product tiles — names were hardcoded white */
 /* Back-office blocks: the F9 fill with a hairline ring, drawn inset so the grid's overflow can't clip it;
-   back-office radius; names as typed in Inter 500 instead of tracked-out capitals */
+   shape and type live on the base rules so both themes match */
 body.light-theme .product-card,
-body.light-theme .product-card.pc-group { background: var(--surface); border-radius: var(--r-input); box-shadow: inset 0 0 0 1px var(--rl-hair); }
+body.light-theme .product-card.pc-group { background: var(--surface); box-shadow: inset 0 0 0 1px var(--rl-hair); }
 body.light-theme .product-card:hover,
 body.light-theme .product-card.pc-group:hover { background: var(--tile); }
 body.light-theme .product-card:active { background: var(--bg-soft); }
 body.light-theme .co-tile:hover { background: var(--bg-soft); }
 body.light-theme .co-tile:active { background: var(--bg-softer); }
 body.light-theme .pc-name,
-body.light-theme .pc-group .pc-name { color: var(--ink); font-weight: 500; letter-spacing: -0.1px; text-transform: none; }
+body.light-theme .pc-group .pc-name { color: var(--ink); }
 body.light-theme .pc-price-mini { color: var(--ink-tertiary); }
 body.light-theme .pc-group-badge { background: var(--surface-2); color: var(--ink-secondary); }
 body.light-theme .pc-group-badge svg { stroke: var(--ink-secondary); }
@@ -5244,7 +5242,6 @@ body.light-theme .cart .cart-actions .charge-btn {
   color: var(--accent-ink);
   box-shadow: var(--lt-primary-shadow);
 }
-body.light-theme .cart .cart-actions .charge-btn { font-weight: 600; font-size: 15px; letter-spacing: 0; text-transform: none; }
 body.light-theme .fulfil-pill.active svg,
 body.light-theme .cart-discount-btn.active svg { color: var(--accent-ink); }
 body.light-theme .folder-pill.active .folder-pill-count { color: rgba(255,255,255,0.65); }
@@ -7554,73 +7551,73 @@ body.light-theme {
   --rl-shadow: 0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05);
 }
 /* the one safe-area inset of the sell view's bottom edge (docs/design-pos.md) */
-.rail { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--rl-gap); min-width: 0; min-height: 0;
+.rail-h { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--rl-gap); min-width: 0; min-height: 0;
         margin: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px)); color: var(--ink); font-size: 13px; line-height: 1.4; }
-.rail button { font: inherit; color: inherit; touch-action: manipulation; cursor: pointer; }
-.rail .num { font-variant-numeric: tabular-nums; }
-.rail :focus-visible { outline: 2px solid var(--rl-on); outline-offset: 2px; }
-.rail .ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.rail .card { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); box-shadow: var(--rl-shadow); }
+.rail-h button { font: inherit; color: inherit; touch-action: manipulation; cursor: pointer; }
+.rail-h .num { font-variant-numeric: tabular-nums; }
+.rail-h :focus-visible { outline: 2px solid var(--rl-on); outline-offset: 2px; }
+.rail-h .ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.rail-h .card { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); box-shadow: var(--rl-shadow); }
 
 /* who & how */
-.rail .who { z-index: 3; }
-.rail .c-row, .rail .f-row { display: flex; height: 46px; }
-.rail .f-row { border-top: 1px solid var(--line); }
-.rail .cust, .rail .pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 14px 0 var(--rl-m); border: 0; background: none; text-align: left;
+.rail-h .who { z-index: 3; }
+.rail-h .c-row, .rail-h .f-row { display: flex; height: 46px; }
+.rail-h .f-row { border-top: 1px solid var(--line); }
+.rail-h .cust, .rail-h .pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 14px 0 var(--rl-m); border: 0; background: none; text-align: left;
                            font-size: 14px; font-weight: 560; transition: background-color .12s; }
-.rail .cust { border-top-left-radius: calc(var(--rl-r) - 1px); }
-.rail .pick { border-radius: 0 0 calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px); }
-.rail .cust:hover, .rail .pick:hover, .rail .pick[aria-expanded="true"] { background: var(--rl-hover); }
-.rail .cust span, .rail .pick span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rail .chev { width: 16px; height: 16px; color: var(--ink-tertiary); }
-.rail .more { display: grid; place-items: center; flex: none; width: 52px; border: 0; border-left: 1px solid var(--line); border-top-right-radius: calc(var(--rl-r) - 1px);
+.rail-h .cust { border-top-left-radius: calc(var(--rl-r) - 1px); }
+.rail-h .pick { border-radius: 0 0 calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px); }
+.rail-h .cust:hover, .rail-h .pick:hover, .rail-h .pick[aria-expanded="true"] { background: var(--rl-hover); }
+.rail-h .cust span, .rail-h .pick span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-h .chev { width: 16px; height: 16px; color: var(--ink-tertiary); }
+.rail-h .more { display: grid; place-items: center; flex: none; width: 52px; border: 0; border-left: 1px solid var(--line); border-top-right-radius: calc(var(--rl-r) - 1px);
               background: none; color: var(--ink-secondary); transition: background-color .12s, color .12s; }
-.rail .more:hover, .rail .more[aria-expanded="true"] { background: var(--rl-hover); color: var(--ink); }
+.rail-h .more:hover, .rail-h .more[aria-expanded="true"] { background: var(--rl-hover); color: var(--ink); }
 
 /* items */
-.rail .items { display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
-.rail .i-head { display: flex; justify-content: space-between; gap: 12px; padding: 11px var(--rl-m); background: var(--rl-soft); border-bottom: 1px solid var(--line);
+.rail-h .items { display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
+.rail-h .i-head { display: flex; justify-content: space-between; gap: 12px; padding: 11px var(--rl-m); background: var(--rl-soft); border-bottom: 1px solid var(--line);
                 color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
-.rail .lines { grid-row: 2; overflow-y: auto; overscroll-behavior: contain; }   /* row 2 even with the band off, so it still scrolls */
-.rail .line + .line { border-top: 1px solid var(--line); }
-.rail .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 45px; padding: 7px var(--rl-m); border: 0; background: none; text-align: left; transition: background-color .12s; }
-.rail .row:hover { background: var(--rl-hover); }
-.rail .row .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
-.rail .row .nm span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-.rail .row .nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
-.rail .row .amt { font-size: 13px; font-weight: 600; white-space: nowrap; }
-.rail .empty { display: grid; place-content: center; justify-items: center; gap: 4px; height: 100%; padding: 24px; text-align: center; }
-.rail .empty b { font-size: 14px; font-weight: 600; }
-.rail .empty span { color: var(--ink-tertiary); }
+.rail-h .lines { grid-row: 2; overflow-y: auto; overscroll-behavior: contain; }   /* row 2 even with the band off, so it still scrolls */
+.rail-h .line + .line { border-top: 1px solid var(--line); }
+.rail-h .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 45px; padding: 7px var(--rl-m); border: 0; background: none; text-align: left; transition: background-color .12s; }
+.rail-h .row:hover { background: var(--rl-hover); }
+.rail-h .row .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
+.rail-h .row .nm span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.rail-h .row .nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
+.rail-h .row .amt { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.rail-h .empty { display: grid; place-content: center; justify-items: center; gap: 4px; height: 100%; padding: 24px; text-align: center; }
+.rail-h .empty b { font-size: 14px; font-weight: 600; }
+.rail-h .empty span { color: var(--ink-tertiary); }
 
 /* the money */
-.rail .pay { display: flex; flex-direction: column; gap: var(--rl-gap); padding: 0 12px 12px; }
-.rail .d-row { display: flex; align-items: center; gap: 8px; height: 40px; margin: 0 -12px; padding: 0 14px 0 var(--rl-m); border: 0; border-bottom: 1px solid var(--line);
+.rail-h .pay { display: flex; flex-direction: column; gap: var(--rl-gap); padding: 0 12px 12px; }
+.rail-h .d-row { display: flex; align-items: center; gap: 8px; height: 40px; margin: 0 -12px; padding: 0 14px 0 var(--rl-m); border: 0; border-bottom: 1px solid var(--line);
                border-radius: calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px) 0 0; background: none; color: var(--ink-secondary); font-weight: 500; text-align: left; transition: background-color .12s; }
-.rail .d-row:hover { background: var(--rl-hover); color: var(--ink); }
-.rail .d-row span:first-child { flex: 1; }
-.rail .d-row.on { color: var(--rl-on); }
-.rail .d-row:disabled { color: var(--ink-quaternary); pointer-events: none; }
-.rail .break { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s var(--rl-ease); }
-.rail .break.open { grid-template-rows: 1fr; }
-.rail .break > div { min-height: 0; overflow: hidden; }
-.rail .break p { display: flex; justify-content: space-between; margin: 0; padding: 2px 8px; color: var(--ink-secondary); font-size: 13px; }
-.rail .break p:first-child { padding-top: 10px; }
-.rail .break p.dim { color: var(--ink-tertiary); }
-.rail .sum { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; height: 44px; padding: 0 8px; border: 0; background: none; text-align: left; }
-.rail .sum .l { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; }
-.rail .sum .l .ic { width: 14px; height: 14px; stroke-width: 2; color: var(--ink-tertiary); transition: transform .2s var(--rl-ease); }
-.rail .sum[aria-expanded="true"] .l .ic { transform: rotate(180deg); }
-.rail .sum .v { font-size: 22px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
-.rail.empty-cart .sum .v { color: var(--ink-tertiary); }
-.rail .go { height: 52px; width: 100%; border: 1px solid var(--accent); border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-size: 15px; font-weight: 600;
+.rail-h .d-row:hover { background: var(--rl-hover); color: var(--ink); }
+.rail-h .d-row span:first-child { flex: 1; }
+.rail-h .d-row.on { color: var(--rl-on); }
+.rail-h .d-row:disabled { color: var(--ink-quaternary); pointer-events: none; }
+.rail-h .break { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s var(--rl-ease); }
+.rail-h .break.open { grid-template-rows: 1fr; }
+.rail-h .break > div { min-height: 0; overflow: hidden; }
+.rail-h .break p { display: flex; justify-content: space-between; margin: 0; padding: 2px 8px; color: var(--ink-secondary); font-size: 13px; }
+.rail-h .break p:first-child { padding-top: 10px; }
+.rail-h .break p.dim { color: var(--ink-tertiary); }
+.rail-h .sum { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; height: 44px; padding: 0 8px; border: 0; background: none; text-align: left; }
+.rail-h .sum .l { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; }
+.rail-h .sum .l .ic { width: 14px; height: 14px; stroke-width: 2; color: var(--ink-tertiary); transition: transform .2s var(--rl-ease); }
+.rail-h .sum[aria-expanded="true"] .l .ic { transform: rotate(180deg); }
+.rail-h .sum .v { font-size: 22px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+.rail-h.empty-cart .sum .v { color: var(--ink-tertiary); }
+.rail-h .go { height: 52px; width: 100%; border: 1px solid var(--accent); border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-size: 15px; font-weight: 600;
             box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.2); transition: background-color .12s, opacity .2s; }
-.rail .go:hover { background: var(--accent-hover); }
-.rail .go:active { background: var(--accent-pressed); }
-.rail .go:disabled { opacity: .3; pointer-events: none; }
+.rail-h .go:hover { background: var(--accent-hover); }
+.rail-h .go:active { background: var(--accent-pressed); }
+.rail-h .go:disabled { opacity: .3; pointer-events: none; }
 
 /* H: the customer row alone on top; Pickup | Discount share the money card's first row, true halves */
-.rail .opts { display: none; }
+.rail-h .opts { display: none; }
 .rail-h .c-row .cust { border-radius: calc(var(--rl-r) - 1px) 0 0 calc(var(--rl-r) - 1px); }
 .rail-h .c-row .more { border-radius: 0 calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px) 0; }
 .rail-h .opts { display: flex; height: 40px; margin: 0 -12px; border-bottom: 1px solid var(--line); }
@@ -7634,7 +7631,7 @@ body.light-theme {
 /* the Item / Amount band off: the count sits beside Total (sidebar and checkout) */
 .rail-cnt { display: none; margin-left: 6px; color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
 .rail-nohead .rail-cnt { display: inline; }
-.rail-nohead .rail .i-head, .rail-nohead .co-head { display: none; }
+.rail-nohead .rail-h .i-head, .rail-nohead .co-head { display: none; }
 
 /* the morph menu: grows out of its trigger's box (app.js openMenu); the veil catches the outside tap */
 .rail-veil { position: fixed; inset: 0; z-index: 150; }
@@ -7668,7 +7665,7 @@ body.light-theme {
 .rail-rcpt .rp-paper { margin: 0 auto; animation: co-print .9s var(--rl-ease) both; }
 @keyframes rail-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .rail *, .rail-rcpt * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  .rail-h *, .rail-rcpt * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 /* the pane covers only what is left of the rail (--co-right, app.js fitCheckout); under 721px the rail sits below
    the products, so checkout stays full screen there */
@@ -7681,7 +7678,7 @@ body.light-theme {
   #app.co-side .co-items { display: none; }
 }
 @media (max-width: 720px) {
-  .rail { max-height: 44vh; margin: 0; padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .rail-h { max-height: 44vh; margin: 0; padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ============================================================
@@ -7743,7 +7740,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .act.primary { min-width: 76px; background: var(--accent); color: var(--accent-ink); box-shadow: none; font-weight: 600; }
 
 /* ---------- Orders: the rail on the left under ☰, the receipt on the right ---------- */
-.lv .ov { display: grid; grid-template-columns: 460px minmax(0,1fr); grid-template-rows: minmax(0,1fr); gap: 18px; height: 100%; padding: 8px 18px 0; }
+.lv .ov { display: grid; grid-template-columns: 460px minmax(0,1fr); grid-template-rows: minmax(0,1fr); gap: 18px; height: 100%; padding: 8px 18px; }
 @container pv (max-width: 1100px) { .lv .ov { grid-template-columns: 340px minmax(0,1fr); } }
 @container pv (max-width: 920px)  { .lv .ov { grid-template-columns: 320px minmax(0,1fr); } }
 .lv .o-main { display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); gap: 14px; min-width: 0; min-height: 0; padding: 8px 10px 0; }
@@ -7762,7 +7759,8 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .rp-paper .stamp { position: absolute; top: 150px; left: 50%; transform: translateX(-50%) rotate(-12deg); padding: 4px 16px; border: 3px solid #C62828; border-radius: 6px;
                        color: #C62828; font: 800 28px/1.2 var(--font, inherit); letter-spacing: .12em; pointer-events: none; }
 
-.lv .o-rail { order: -1; display: grid; grid-template-rows: auto minmax(0,1fr); gap: var(--rl-gap); min-width: 0; min-height: 0; margin: 8px 0 0; }
+.lv .o-rail { order: -1; display: grid; grid-template-rows: auto minmax(0,1fr); gap: var(--rl-gap); min-width: 0; min-height: 0; margin: 8px 0; }
+.lv .o-rail .list { border-bottom: 1px solid var(--line); border-radius: var(--rl-r); }   /* ends 16px above the screen edge, closed like the lab at 673495f */
 .lv .o-rail .band { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 var(--rl-m); }
 .lv .o-rail .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; padding: 9px var(--rl-m); background: none; text-align: left; transition: background-color .12s; }
 .lv .o-rail .row + .row { border-top: 1px solid var(--line); }
@@ -7783,6 +7781,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .o-top .back { display: none; }
 @container pv (max-width: 720px) {
   .lv .ov { grid-template-columns: 1fr; padding: 0 12px; }
+  .lv .o-rail { margin: 8px 0 12px; }
   .lv .o-main { position: absolute; inset: 0; z-index: 5; padding: 16px 12px 0; background: var(--bg); transform: translateX(100%); transition: transform .28s var(--rl-ease); }
   .lv .ov.reading .o-main { transform: none; }
   .lv .o-top .back { display: inline-flex; }
@@ -7808,11 +7807,11 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .stk-out { color: var(--danger) !important; }
 
 /* the picture: a photo when there is one, else the category's tint + initials (Loyverse's colour tile) */
-.lv .thumb { display: grid; place-items: center; flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: 7px; background: hsl(var(--h) 22% 24%); color: hsl(var(--h) 45% 78%);
+.lv .thumb { display: grid; place-items: center; flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: 5px; background: hsl(var(--h) 22% 24%); color: hsl(var(--h) 45% 78%);
              font-size: 11px; font-weight: 600; letter-spacing: .02em; }
 body.light-theme .lv .thumb { background: hsl(var(--h) 50% 92%); color: hsl(var(--h) 40% 34%); }
 .lv .thumb img { width: 100%; height: 100%; object-fit: cover; }
-.lv .thumb.big { width: 64px; height: 64px; border-radius: 10px; font-size: 20px; }
+.lv .thumb.big { width: 64px; height: 64px; border-radius: 8px; font-size: 20px; }
 
 .lv .fab { position: absolute; right: 34px; bottom: 32px; z-index: 2; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
            background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-raised); transition: transform .12s; }
