@@ -42,6 +42,7 @@
     stockMovements: 'hwpos.stockMovements.v1',
     purchaseOrders: 'hwpos.purchaseOrders.v1',
     suppliers: 'hwpos.suppliers.v1',
+    modifiers: 'hwpos.modifiers.v1',
     staff:     'hwpos.staff.v1',
     adjustments: 'hwpos.adjustments.v1',
     // Event logs, append-only (bo-model.js EVENT_LOGS).
@@ -464,7 +465,7 @@
   // ---- Read-only AI/data API ----
   const DICTIONARY_URL = 'docs/data-dictionary.md';
   // Array collections read straight from storage.
-  const LIST_COLLECTIONS = ['stockMovements', 'purchaseOrders', 'suppliers', 'staff', 'adjustments',
+  const LIST_COLLECTIONS = ['stockMovements', 'purchaseOrders', 'suppliers', 'modifiers', 'staff', 'adjustments',
     'priceLog', 'lostDemand', 'deliveryEvents', 'supplierMessages', 'decisions'];
   const COLLECTIONS = ['products', 'folders', 'groups', 'orders', 'customers', 'customerLedger', 'drawerCloseouts',
     'settings', ...LIST_COLLECTIONS];

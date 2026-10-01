@@ -34,8 +34,17 @@ create table products (
   danger_level  integer not null default 0,   --   stock_movements is the truth; this is
   -- Hardware stores sell things they haven't got yet (order it in, deliver Friday).
   sell_out_of_stock integer not null default 0,
-  supplier_id   text references suppliers(id),
-  folder_id     text,                         -- doubles as the category: "sales by category"
+  track_stock   integer not null default 1,   -- 0: no counts, never asks "out of stock"
+  hidden        integer not null default 0,   -- off the till's tiles and search; a scan asks "sell anyway?"
+  description   text,
+  supplier_id   text references suppliers(id),  -- the main supplier (purchase orders); null = no main
+  alt_supplier_ids text not null default '[]',  -- json, the other suppliers, all equal
+  folder_id     text,                         -- the first of category_ids, for readers of one
+  -- An item sits in several categories (owner 2026-10-01). A json list, not a link table: it is
+  -- written whole with the product (state sync is whole-row last-write-wins, so a link table would
+  -- need its own tombstones), and Postgres reads it with jsonb + a GIN index for "items in X".
+  category_ids  text not null default '[]',
+  modifier_ids  text not null default '[]',   -- json, modifier_lists switched on for this item
   group_id      text,                         -- variants are siblings in a group
   weight        text,                         -- ponytail: free text. "3/4 in", "2.5kg", "8 ft" --
   size          text,                         --   nothing computes on these yet. Split into
@@ -75,6 +84,7 @@ create table product_groups (
   id            text primary key not null,
   store_id      text not null,
   name          text not null,
+  description   text,
   folder_id     text,
   image_url     text,
   updated_at    text not null,
@@ -83,6 +93,34 @@ create table product_groups (
 );
 create index groups_store on product_groups (store_id);
 create index product_groups_sync on product_groups (store_id, received_at, id);
+
+-- The till calls them folders. Deleting one leaves its items alone; they only lose it.
+-- ponytail: a delete is not synced yet (no tombstone, same as suppliers); add `deleted` when
+-- two terminals edit categories.
+create table categories (
+  id            text primary key not null,
+  store_id      text not null,
+  name          text not null,
+  updated_at    text not null,
+  received_at   text not null default (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+create index categories_store on categories (store_id);
+create index categories_sync on categories (store_id, received_at, id);
+
+-- A modifier list ("Cutting": Cut to length +20, Thread both ends +35), switched on per item.
+-- Options are json [{id, name, price}] with price in CENTAVOS: they are owned by the one list and
+-- written with it, and each keeps an id so an order line can name the option it sold. No stock.
+create table modifier_lists (
+  id            text primary key not null,
+  store_id      text not null,
+  name          text not null,
+  options       text not null default '[]',
+  archived      integer not null default 0,
+  updated_at    text not null,
+  received_at   text not null default (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+create index modifier_lists_store on modifier_lists (store_id);
+create index modifier_lists_sync on modifier_lists (store_id, received_at, id);
 
 create table suppliers (
   id            text primary key not null,

@@ -205,6 +205,19 @@ test('a count keeps expected and counted; a sale does not invent them', async ()
 });
 
 test('a PO line keeps invoice cost apart from quoted, and a supplier its order rules', async () => {
+  // Modifier option prices are money inside json: pesos out, centavos stored (2026-10-01).
+  await call('POST', '/modifiers', { id: 'm1', name: 'Cutting', options: [{ id: 'o1', name: 'Cut', price: 20.5 }] });
+  assert.equal(JSON.parse(sqlite.prepare('select options from modifier_lists where id=?').get('m1').options)[0].price, 2050);
+  assert.equal((await (await call('GET', '/modifiers/m1')).json()).options[0].price, 20.5);
+  // The till's own shape: folders / folder / reorderPoint, not the column names.
+  await call('POST', '/products', { id: 'p9', name: 'Wrench', folders: ['tools', 'plumbing'], folder: 'tools', reorderPoint: 3, hidden: true });
+  const p9 = await (await call('GET', '/products/p9')).json();
+  assert.deepEqual(p9.category_ids, ['tools', 'plumbing']);
+  assert.equal(p9.hidden, 1);
+  assert.equal(p9.folder_id, 'tools');
+  assert.equal(p9.danger_level, 3);
+  await call('POST', '/folders', { id: 'tools', name: 'Tools' });
+  assert.equal((await (await call('GET', '/folders/tools')).json()).name, 'Tools');
   await call('POST', '/suppliers', { id: 's2', name: 'Holcim', order_days: [1, 4], min_order: 15000.5, quoted_lead_days: 3 });
   const s = await (await call('GET', '/suppliers/s2')).json();
   assert.deepEqual(s.order_days, [1, 4]);

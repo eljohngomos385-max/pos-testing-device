@@ -74,7 +74,8 @@ assert.equal(plan.failed.length, 2);
 assert.deepEqual(plan.failed.map((f) => f.line), [6, 7]);
 assert.match(plan.failed[0].errors[0], /cost/);
 // A category the file names but we do not have is created, once, and by name or by id.
-assert.deepEqual(plan.folders, [{ id: 'cat_plumbing', name: 'Plumbing', builtin: false }]);
+assert.deepEqual(plan.folders.map(({ updatedAt, ...f }) => f), [{ id: 'cat_plumbing', name: 'Plumbing', builtin: false }]);
+assert.ok(plan.folders[0].updatedAt, 'a new category is stamped for sync');
 assert.equal(plan.create[0].product.folder, 'cat_plumbing');
 assert.equal(plan.update[0].product.folder, 'cat_tools');   // matched by name
 assert.equal(plan.update[1].product.folder, 'cat_tools');   // matched by id

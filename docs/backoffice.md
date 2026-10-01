@@ -982,8 +982,10 @@ orders are excluded from the money, the same rule the rest of the page follows.
 
 ### One product, several suppliers
 
-`supplierId` stays the **primary** — a purchase order and a reorder list each need one answer to
-"who do we buy this from". `altSupplierIds` on the product is who else stocks it, for the day the
+`supplierId` is the **main** supplier, and it is **optional** (owner, 2026-10-01): a purchase
+order and a reorder list need one answer to "who do we buy this from", but a product can also have
+suppliers and no main. In the editor, the first supplier added becomes main; tap a name to make it
+main, tap the main one to have none. `altSupplierIds` on the product is who else stocks it, for the day the
 primary cannot deliver. `supplierIdsOf(p)` in `bo-model.js` is the one helper that returns primary
 first then the backups; `normalizeProduct` dedupes it and drops the primary from it, so the two
 fields can never disagree.
@@ -995,9 +997,43 @@ one of its suppliers' lists, so counts and on-hand values **overlap between supp
 products list column, which prints the primary and `+N` for the rest. Inventory's reorder grouping
 deliberately still uses `p.supplierId` alone, so PO creation is unchanged.
 
-The editor control is a plain `<select multiple size="4">` — native, no widget, and `collect()`
-reads it with one extra branch. Like `aliases`, the field is client-side only: it is not in
-`schema.sql` or the Worker's column list, and a proper sync needs a join table, not a text column.
+The editor control is the Suppliers chip card. `alt_supplier_ids` is a json column on `products`
+(2026-10-01), written whole with the row like `category_ids`.
+
+### The product editor — one column, ported from the lab (2026-10-01) — overrides the layout notes below
+
+`product-edit-lab.html` is the reference. `paintEditor()` in `bo-products.js` draws it; every
+class is `pe-*` (`.card` / `.chip` / `.menu` already mean something else here) and lives under
+`body.bo-light .pe` in `bo-products.css`, with its own local tokens (`--in-h`, `--in-r`, `--pe-pad`,
+`--pe-gap`) on top of the `--po-*` / `--b-*` ones.
+
+- **Grid** `minmax(0,1fr) minmax(0,720px) minmax(0,1fr)`: the form is the middle track, Status
+  sits alone in the right track (max 260px). Below 1180px Status stacks above the form.
+- **One editor for a product, a family and a new one.** It edits a draft `P`; Save turns `P` into
+  product rows (`save()` / `saveGroup()`). "Add variants" makes a plain product variant one of a
+  new family, keeping its id, stock and history. A variant taken off the list is archived, never
+  deleted.
+- **Pickers are popovers** (`popover` + `popovertarget`), filled when they open, with a search box
+  and "Add “x”" for categories and suppliers. Status has two choices and no search.
+- **Save stays at the bottom** (`.pe-formbar`), Archive quiet on its left; both rules below still
+  hold. Save returns to the list.
+- The `.pd-editor` / `.setting-row` layout described below is gone; the Archive, Save-returns
+  and Price-history notes still apply.
+
+### Categories and Modifiers pages (2026-10-01)
+
+`bo-catalog.js`, views `categories` and `modifiers` (sidebar: under Products, after Stock history).
+Both copy the Products list: `.bo-card.blk-table` table, click a row for its page, search filters
+rows in place.
+
+- **Categories** — `/admin/categories` (name + item count) → `/<id>` (its items, Remove per row;
+  Delete, Rename, Add items in the head) → `/<id>/add` (every item not in it, ticks on the left,
+  "Add N" top right) · `/new` and `/<id>/edit` share one name form. A family counts and moves as
+  one item. Delete confirms, then strips the category from every live item; archived ones keep it (their
+  stamp is what Restore reads), and `addFolder` never reuses an id a product still holds.
+- **Modifiers** — `/admin/modifiers` (name, options summary, items using it; Show archived) →
+  `/<id>` editor: Name card + Options card (name, ₱ price, ×), Save and Archive at the bottom.
+  Archive, never delete — an old order line may name the option.
 
 ### The product editor — Save is at the bottom
 

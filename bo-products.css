@@ -1,4 +1,4 @@
-/* Back office - Products. Only what .bo-card / .data-table / .setting-row don't
+/* Back office - Products. Only what .bo-card / .data-table don't
    already give us. Tokens only, no hardcoded hex or radius. */
 
 /* The filter row (search + filters) is .list-filters in bo-blocks.css, shared by every list page. */
@@ -16,8 +16,8 @@ body.bo-light .view-products .pd-thumb {
 }
 body.bo-light .view-products .pd-img-col { width: 44px; }
 
-body.bo-light .view-products .pd-row { cursor: pointer; }
-body.bo-light .view-products .pd-arch { opacity: 0.62; }
+body.bo-light :is(.view-products, .view-categories, .view-modifiers) .pd-row { cursor: pointer; }
+body.bo-light :is(.view-products, .view-categories, .view-modifiers) .pd-arch { opacity: 0.62; }
 /* Edit / Adjust: shrink to the button so the name absorbs the slack. */
 body.bo-light .view-products .pd-act { width: 1px; }
 
@@ -43,130 +43,134 @@ body.bo-light .view-products { container: pd / inline-size; }
   body.bo-light .view-products #pdKpis .blk-kpi:nth-child(n+3) { border-top: 1px solid var(--b-line); }
 }
 
-/* Variants: the table IS the form, so every cell is a field. Widths keep the row
-   from collapsing; .table-wrap scrolls it when the screen is too narrow. */
-body.bo-light .view-products .pd-vtable .text-input {
-  width: 100%;
-  min-width: 0;
-}
-body.bo-light .view-products .pd-vtable .num .text-input { text-align: right; }
-body.bo-light .view-products .pd-vrow td { vertical-align: top; padding-block: 6px; }
-/* Text cells line up with the 28px field beside them. */
-body.bo-light .view-products .pd-vrow td.pd-vmargin { padding-top: 11px; }
-body.bo-light .view-products .pd-vname { min-width: 200px; }
-body.bo-light .view-products .pd-vsku { min-width: 116px; }
-/* Wide enough for a seven-figure price: a clipped number is the bug you only
-   notice on the receipt. */
-body.bo-light .view-products .pd-vnum { width: 136px; }
-body.bo-light .view-products .pd-vmargin {
-  font-family: var(--po-mono);
-  font-size: 12px;
-  color: var(--po-ink-secondary);
-}
-body.bo-light .view-products .pd-vstock {
-  display: inline-block;
-  font-family: var(--po-mono);
-  color: var(--po-ink-secondary);
-  padding-top: 5px;
-}
-body.bo-light .view-products .pd-vimg {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 5px;
-}
-body.bo-light .view-products .pd-vimg .pd-thumb {
-  width: 22px;
-  height: 22px;
-  flex: none;
-}
-
-/* Upload picker: thumb, Upload/Change, Remove - on one line. */
-body.bo-light .view-products .pd-imgpick {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-body.bo-light .view-products .pd-imgpick .link-btn { margin-top: 0; }
-body.bo-light .view-products .pd-control .pd-imgpick .pd-thumb { width: 56px; height: 56px; }
-body.bo-light .view-products .pd-vdel { width: 64px; }
-body.bo-light .view-products .pd-vdel .link-btn { color: var(--po-ink-tertiary); }
-body.bo-light .view-products .pd-vdel .link-btn:hover { color: var(--po-danger); }
-
-/* Editor
-   The list is a table and wants the page; the editor is a form and wants a measure.
-   Left at the view's full width the label sat on one edge of the screen and its box on
-   the other, ~1000px of nothing between them. So: cap the shell, centre it, and put the
-   control right next to its label instead of at the far edge.
-   Two columns: the form people fill top to bottom, and a rail for what files the product
-   rather than prices it. The family editor keeps the full width - its variants table is a
-   table - so only the head that precedes a .pd-editor is capped with it. */
-/* .view is a flex column, and an auto cross-axis margin turns off the stretch - so the
-   width has to be stated, or the box shrink-wraps its content instead of its cap. */
-body.bo-light .view-products .pd-editor-head:has(+ .pd-editor),
-body.bo-light .view-products .pd-editor {
-  width: 100%;
-  max-width: 930px;
-  margin-inline: auto;
-}
-/* Title on the card's left edge, Products button on its right - stated here, not
-   inherited from whichever .view-head block happens to be last in styles.css. */
-body.bo-light .view-products .pd-editor-head:has(+ .pd-editor) {
-  justify-content: space-between;
-  text-align: left;
-}
-body.bo-light .view-products .pd-editor {
+/* Editor (product-edit-lab.html, ported 2026-10-01). One 720px column; Status alone in a column
+   to its right (Shopify's rail, one card), dropping in above the cards when there is no room.
+   Cards: white, hairline, the one shadow; a grey band names each. Labels sit over their fields.
+   Pickers are an input-sized button + the app's popover menu, never the OS <select>. */
+body.bo-light .pe {
+  --in-h: 32px; --in-r: 8px; --pe-pad: 14px; --pe-gap: 12px;
+  --pe-faint: #B5B5B5;   /* placeholder ink, the lab's; no --b token is this light */
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: var(--po-gap);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 720px) minmax(0, 1fr);
+  column-gap: var(--pe-gap);
   align-items: start;
+  padding-bottom: 80px;
 }
-/* Save closes the whole form, not one column of it. */
-body.bo-light .view-products .pd-editor .pd-formbar { grid-column: 1 / -1; }
-/* 300px has no room for a 200px label track: the label sits over its control. */
-body.bo-light .view-products .pd-rail .setting-row {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
+body.bo-light .pe > * { grid-column: 2; }
+body.bo-light .pe > .pe-col { grid-row: 2; }
+body.bo-light .pe > .pe-side { grid-column: 3; grid-row: 2; max-width: 260px; }
+@media (max-width: 1180px) {
+  body.bo-light .pe { grid-template-columns: minmax(0, 1fr); max-width: 720px; width: 100%; margin-inline: auto; }
+  body.bo-light .pe > *, body.bo-light .pe > .pe-col, body.bo-light .pe > .pe-side { grid-column: 1; grid-row: auto; max-width: none; }
+  body.bo-light .pe > .pe-side { margin-bottom: var(--pe-gap); }
 }
-body.bo-light .view-products .pd-rail .setting-row > label { padding-top: 0; }
-@media (max-width: 900px) {
-  body.bo-light .view-products .pd-editor { grid-template-columns: minmax(0, 1fr); }
-}
+/* The variant count sits beside the name, not pushed to the far edge. */
+body.bo-light .pe .item-head h1 { margin-right: 0; }
+body.bo-light .pe .pe-muted { color: var(--b-ink-3); }
+body.bo-light .pe .pe-col { display: grid; gap: var(--pe-gap); min-width: 0; }
 
-/* Label column, then the control beside it. Both fixed, so the row reads the same
-   whether the card is 620px (single product) or full width (family editor). */
-body.bo-light .view-products .setting-row {
-  display: grid;
-  grid-template-columns: 200px minmax(0, 380px);
-  align-items: start;
-  /* The shared rule's `space-between` is a valid grid property too, and it shoves the
-     control track back onto the right edge whenever the card is wider than the row
-     (the family editor). The tracks start at the left now. */
-  justify-content: start;
-  gap: 4px 12px;
-  padding: 7px 0;
-}
-body.bo-light .view-products .setting-row > label {
-  flex: none;
-  padding-top: 8px;
-}
-body.bo-light .view-products .pd-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  min-width: 0;
-}
-/* Fill the column, but let a sibling (the err span, "Move stock in Inventory") share
-   the line rather than be pushed onto its own. */
-body.bo-light .view-products .pd-control .text-input,
-body.bo-light .view-products .pd-control .bo-select {
-  flex: 1 1 180px;
-  min-width: 0;
-}
-/* A price, a count or a danger level is never 380px of typing. */
-body.bo-light .view-products .pd-control .text-input[type="number"] { flex: 0 0 132px; }
+body.bo-light .pe .pe-card { background: var(--b-raised); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+body.bo-light .pe .pe-band { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 var(--pe-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink); font-weight: 500; }
+body.bo-light .pe .pe-r { margin-left: auto; color: var(--b-ink-3); font-weight: 400; }
+body.bo-light .pe .pe-body { display: grid; gap: 12px; padding: var(--pe-pad); }
+
+body.bo-light .pe .pe-f { display: grid; gap: 5px; min-width: 0; }
+body.bo-light .pe .pe-f > span { font-size: var(--b-t-meta); color: var(--b-ink-2); font-weight: 500; }
+body.bo-light .pe .pe-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+body.bo-light .pe .pe-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+@media (max-width: 520px) { body.bo-light .pe :is(.pe-row2, .pe-row3) { grid-template-columns: 1fr; } }
+body.bo-light .pe .pe-in { width: 100%; height: var(--in-h); padding: 0 10px; border: 1px solid var(--b-outline); border-radius: var(--in-r); background: var(--b-raised); color: var(--b-ink); font: inherit; outline: none; }
+body.bo-light .pe .pe-in:hover { border-color: var(--btn-line); }
+body.bo-light .pe :is(.pe-in, .pe-pick):focus-visible, body.bo-light .pe .pe-in:focus { border-color: var(--b-data); box-shadow: 0 0 0 3px var(--b-data-tint); }
+body.bo-light .pe .pe-in::placeholder { color: var(--pe-faint); }
+body.bo-light .pe textarea.pe-in { height: auto; min-height: 52px; padding: 8px 10px; resize: none; overflow: hidden; line-height: 1.5; }
+body.bo-light .pe .pe-in.big { font-weight: 500; }
+body.bo-light .pe .pe-num { text-align: right; font-variant-numeric: tabular-nums; }
+body.bo-light .pe .pe-affix { position: relative; }
+body.bo-light .pe .pe-affix > i { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; font-style: normal; color: var(--b-ink-3); pointer-events: none; }
+body.bo-light .pe .pe-affix.pre > i { left: 10px; }
+body.bo-light .pe .pe-affix.pre .pe-in { padding-left: 24px; }
+body.bo-light .pe .pe-affix.suf > i { right: 10px; }
+body.bo-light .pe .pe-affix.suf .pe-in { padding-right: 44px; }
+
+body.bo-light .pe .pe-pick { width: 100%; height: var(--in-h); display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--b-outline); border-radius: var(--in-r); background: var(--b-raised); color: var(--b-ink); font: inherit; text-align: left; outline: none; cursor: pointer; }
+body.bo-light .pe .pe-pick:hover { border-color: var(--btn-line); }
+body.bo-light .pe .pe-pick span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.bo-light .pe .pe-pick svg { width: 12px; height: 12px; flex: none; color: var(--b-ink-3); }
+body.bo-light .pe .pe-menu { margin: 0; inset: auto; width: 260px; max-height: 320px; padding: 4px; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); color: var(--b-ink); box-shadow: var(--b-pop-shadow); overflow: auto; font: var(--b-t-label)/1.45 var(--po-font); }
+body.bo-light .pe .pe-menu .pe-ms { width: 100%; height: 32px; margin-bottom: 4px; padding: 0 10px; border: 0; border-bottom: 1px solid var(--b-line); background: none; color: inherit; font: inherit; outline: none; }
+body.bo-light .pe .pe-menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; padding: 7px 10px; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+body.bo-light .pe .pe-menu button:hover { background: var(--b-card); }
+body.bo-light .pe .pe-menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
+body.bo-light .pe .pe-menu button.new { color: var(--b-data); font-weight: 500; }
+body.bo-light .pe .pe-menu :is(.pe-grp, .pe-none) { padding: 8px 10px 4px; font-size: var(--b-t-micro); color: var(--b-ink-3); }
+body.bo-light .pe .pe-menu .pe-none { padding-bottom: 8px; font-size: inherit; }
+body.bo-light .pe .pe-menu .pe-opt { display: grid; gap: 1px; }
+body.bo-light .pe .pe-menu .pe-opt small { color: var(--b-ink-3); font-size: var(--b-t-micro); }
+
+/* What it is: the photo square beside name and description. */
+body.bo-light .pe .pe-about { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px; align-items: start; padding: var(--pe-pad); }
+body.bo-light .pe .pe-fields { display: grid; gap: 12px; min-width: 0; }
+body.bo-light .pe .pe-photo { display: grid; place-items: center; width: 100%; aspect-ratio: 1; border: 1px dashed var(--btn-line); border-radius: var(--b-r-cell); background: center / cover no-repeat; color: var(--b-ink-3); cursor: pointer; }
+body.bo-light .pe .pe-photo:hover { border-color: var(--b-ink-3); color: var(--b-ink); }
+body.bo-light .pe .pe-photo.has { border: 1px solid var(--b-line); }
+body.bo-light .pe .pe-photo svg { width: 18px; height: 18px; }
+@media (max-width: 520px) { body.bo-light .pe .pe-about { grid-template-columns: 96px minmax(0, 1fr); } }
+
+/* Variants: a readable list; a row opens its own few fields under it. */
+body.bo-light .pe .pe-vlist { display: grid; }
+body.bo-light .pe .pe-vrow { display: grid; grid-template-columns: minmax(0, 1fr) 96px 64px 16px; align-items: center; gap: 12px; width: 100%; min-height: 46px; padding: 0 var(--pe-pad); border: 0; border-bottom: 1px solid var(--b-line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+body.bo-light .pe .pe-vrow:hover, body.bo-light .pe .pe-vrow.open { background: var(--b-card); }
+body.bo-light .pe .pe-vrow.open { border-bottom-color: transparent; }
+body.bo-light .pe .pe-vrow b { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.bo-light .pe .pe-vrow small { display: block; color: var(--b-ink-3); font-size: var(--b-t-meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.bo-light .pe .pe-vrow > svg { width: 14px; height: 14px; color: var(--b-ink-3); transition: transform .15s; }
+body.bo-light .pe .pe-vrow.open > svg { transform: rotate(180deg); }
+body.bo-light .pe .pe-vedit { display: grid; gap: 14px; padding: 4px var(--pe-pad) var(--pe-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); }
+body.bo-light .pe .pe-vfoot { display: flex; align-items: center; gap: 12px; }
+body.bo-light .pe .pe-vadd { display: flex; align-items: center; gap: 6px; width: 100%; height: 40px; padding: 0 var(--pe-pad); border: 0; border-top: 1px solid var(--b-line); background: none; color: var(--b-data); font: inherit; font-weight: 500; cursor: pointer; }
+body.bo-light .pe .pe-vlist .pe-vadd { border-top: 0; }
+body.bo-light .pe .pe-vadd:hover { background: var(--b-card); }
+body.bo-light .pe .pe-vadd svg { width: 14px; height: 14px; }
+body.bo-light .pe .pe-since { display: flex; align-items: center; gap: 10px; padding: 10px var(--pe-pad); border-top: 1px solid var(--b-line); color: var(--b-ink-2); }
+body.bo-light .pe .pe-since .pe-in { width: 160px; }
+
+body.bo-light .pe .pe-quiet { border: 0; background: none; padding: 0; color: var(--b-ink-3); font: inherit; font-weight: 500; font-size: var(--b-t-meta); cursor: pointer; }
+body.bo-light .pe .pe-quiet:hover { color: var(--b-down); }
+body.bo-light .pe .pe-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+body.bo-light .pe .pe-onhand { font-size: 20px; font-weight: 600; color: var(--b-ink); font-variant-numeric: tabular-nums; }
+body.bo-light .pe .pe-onhand small { font-size: var(--b-t-label); font-weight: 400; color: var(--b-ink-3); margin-left: 4px; }
+body.bo-light .pe .pe-say { color: var(--b-ink-2); font-variant-numeric: tabular-nums; }
+body.bo-light .pe .pe-say b { color: var(--b-ink); font-weight: 600; }
+
+body.bo-light .pe .pe-sw { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+body.bo-light .pe .pe-sw input { appearance: none; width: 32px; height: 18px; margin: 0 0 0 auto; border-radius: 999px; background: var(--btn-line); position: relative; cursor: pointer; transition: background .15s; flex: none; }
+body.bo-light .pe .pe-sw input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--b-raised); box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .15s; }
+body.bo-light .pe .pe-sw input:checked { background: var(--b-ink); }
+body.bo-light .pe .pe-sw input:checked::after { transform: translateX(14px); }
+body.bo-light .pe .pe-sw input:focus-visible { box-shadow: 0 0 0 3px var(--b-data-tint); outline: none; }
+
+/* Categories, modifiers, suppliers: chips that wrap; the add is a dashed chip at the end. */
+body.bo-light .pe .pe-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px var(--pe-pad); }
+body.bo-light .pe .pe-chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; height: 26px; padding: 0 3px 0 10px; border: 1px solid var(--b-outline); border-radius: 999px; background: var(--b-raised); font-size: var(--b-t-meta); }
+body.bo-light .pe .pe-chip > :is(span, .pe-nm) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.bo-light .pe .pe-nm { border: 0; padding: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+body.bo-light .pe .pe-nm:hover { color: var(--b-data); }
+body.bo-light .pe .pe-chip em { font-style: normal; font-size: var(--b-t-micro); color: var(--b-ink-3); margin-left: 4px; }
+body.bo-light .pe .pe-x { display: grid; place-items: center; width: 20px; height: 20px; flex: none; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--b-ink-3); cursor: pointer; }
+body.bo-light .pe .pe-x:hover { background: var(--b-card); color: var(--b-ink); }
+body.bo-light .pe .pe-x svg { width: 10px; height: 10px; }
+body.bo-light .pe .pe-chip-add { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border: 1px dashed var(--btn-line); border-radius: 999px; background: none; color: var(--b-data); font: inherit; font-size: var(--b-t-meta); font-weight: 500; cursor: pointer; }
+body.bo-light .pe .pe-chip-add:hover { border-color: var(--b-data); }
+body.bo-light .pe .pe-chip-add svg { width: 11px; height: 11px; }
+body.bo-light .pe .pe-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--btn-line); flex: none; }
+body.bo-light .pe .pe-dot.on { background: var(--b-up); }
+
+/* The end of the form: Archive quiet on the far left, Save where you finish. */
+body.bo-light .pe .pe-orow { display: grid; grid-template-columns: minmax(0, 1fr) 140px 20px; align-items: center; gap: 8px; }   /* a modifier option: name, price, remove */
+body.bo-light .pe .pe-formbar { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+body.bo-light .pe .pe-formbar .primary-btn { margin-left: auto; }
+
 body.bo-light .view-products .pd-hint {
   font-size: 11.5px;
   font-weight: 500;
@@ -174,36 +178,6 @@ body.bo-light .view-products .pd-hint {
   color: var(--po-ink-tertiary);
   margin-top: 2px;
 }
-body.bo-light .view-products .pd-err {
-  font-size: 11.5px;
-  color: var(--po-danger);
-}
-body.bo-light .view-products .pd-err:empty { display: none; }
-/* The computed markup belongs under the box it describes, not under the labels. */
-body.bo-light .view-products .pd-margin {
-  font-family: var(--po-mono);
-  font-size: 12px;
-  color: var(--po-ink-secondary);
-  padding: 6px 0 2px 212px;
-}
-/* The end of the form. Save is where the typing stops; Archive is pushed to the far
-   edge so the destructive verb never sits next to the one people aim for - and it is
-   quiet grey next to Save's black fill, red only on hover, same as .pd-vdel's Remove. */
-body.bo-light .view-products .pd-formbar {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 4px;
-}
-body.bo-light .view-products .pd-archive {
-  margin: 0 auto 0 0;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--po-ink-tertiary);
-}
-body.bo-light .view-products .pd-archive:hover,
-body.bo-light .view-products .pd-archive:focus-visible { color: var(--po-danger); }
 body.bo-light .view-products .pd-actions {
   display: flex;
   justify-content: flex-end;
@@ -260,10 +234,10 @@ body.bo-light .view-products #pdTable th { white-space: nowrap; }
 body.bo-light .view-products .pd-thumb { width: 22px; height: 22px; }
 body.bo-light .view-products .pd-img-col { width: 36px; }
 /* Tick box ahead of the picture; the bar replaces "N shown" while anything is ticked. */
-body.bo-light .view-products .pd-sel { width: 28px; padding-right: 0; cursor: default; }
+body.bo-light :is(.view-products, .view-categories) .pd-sel { width: 28px; padding-right: 0; cursor: default; }
 /* Drawn, not native: the browser's box has a hard dark edge. A soft hairline square,
    ink fill with a white tick when on, a dash when the page is only partly ticked. */
-body.bo-light .view-products .pd-sel input {
+body.bo-light :is(.view-products, .view-categories) .pd-sel input {
   appearance: none;
   display: block;
   width: 16px;
@@ -276,17 +250,17 @@ body.bo-light .view-products .pd-sel input {
   cursor: pointer;
   transition: background-color 0.12s, border-color 0.12s;
 }
-body.bo-light .view-products .pd-sel input:hover { border-color: var(--po-ink-secondary); }
-body.bo-light .view-products .pd-sel input:focus-visible { outline: none; box-shadow: var(--po-ring); }
-body.bo-light .view-products .pd-sel input:checked,
-body.bo-light .view-products .pd-sel input:indeterminate {
+body.bo-light :is(.view-products, .view-categories) .pd-sel input:hover { border-color: var(--po-ink-secondary); }
+body.bo-light :is(.view-products, .view-categories) .pd-sel input:focus-visible { outline: none; box-shadow: var(--po-ring); }
+body.bo-light :is(.view-products, .view-categories) .pd-sel input:checked,
+body.bo-light :is(.view-products, .view-categories) .pd-sel input:indeterminate {
   border-color: var(--po-primary);
   background-color: var(--po-primary);
 }
-body.bo-light .view-products .pd-sel input:checked {
+body.bo-light :is(.view-products, .view-categories) .pd-sel input:checked {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.3 2.3 4.7-4.9' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
-body.bo-light .view-products .pd-sel input:indeterminate {
+body.bo-light :is(.view-products, .view-categories) .pd-sel input:indeterminate {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6h6' stroke='white' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 body.bo-light .view-products .pd-bulk { display: flex; align-items: center; gap: 8px; }
@@ -296,18 +270,6 @@ body.bo-light .view-products .pd-bulk .link-btn { margin-left: 0; }
 body.bo-light .view-products .pd-vcount {
   margin-left: 6px; font-size: 11px; color: var(--po-ink-tertiary);
 }
-
-/* One column on a phone. The shared rule stacks .setting-row with flex-direction,
-   which a grid ignores - so the editor has to say it in grid terms. */
-@media (max-width: 600px) {
-  body.bo-light .view-products .setting-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
-  }
-  body.bo-light .view-products .setting-row > label { padding-top: 0; }
-  body.bo-light .view-products .pd-margin { padding-left: 0; }
-}
-
 
 /* Catalog | Stock and Sales' Summary | Items (owner 2026-09-28, switcher-lab.html #1): one grey track, the picked view
    on a white thumb, no page title beside it. The thumb is the active link's own background, so it is right with no JS;

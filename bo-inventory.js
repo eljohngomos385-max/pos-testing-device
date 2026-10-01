@@ -245,7 +245,7 @@
 
   const fmtSigned = (p, n) => (n > 0 ? '+' : n < 0 ? '−' : '') + fmtQty(p, Math.abs(n));
 
-  const hay = (p) => `${p.name} ${p.sku || ''} ${p.barcode || ''} ${folderName(p.folder)}`.toLowerCase();
+  const hay = (p) => `${p.name} ${p.sku || ''} ${p.barcode || ''} ${foldersOf(p).map(folderName).join(' ')}`.toLowerCase();
 
   /* Reason and Mode asked the same question twice - "Adjustment" plus "Set to count"
      could disagree with each other, and most of the 15 combinations were nonsense. One
@@ -304,7 +304,7 @@
   }
 
   const visible = (d) => state.products.filter((p) =>
-    !p.archived && (!d.cats.length || d.cats.includes(p.folder)) && (!d.q || hay(p).includes(d.q)));
+    !p.archived && (!d.cats.length || foldersOf(p).some((c) => d.cats.includes(c))) && (!d.q || hay(p).includes(d.q)));
 
   /* ================================== shell =========================================== */
 
@@ -441,7 +441,7 @@
       if (from && day < from) continue;
       if (to && day > to) continue;
       const p = d.byId.get(m.productId);
-      if (d.cats.length && (!p || !d.cats.includes(p.folder))) continue;
+      if (d.cats.length && (!p || !foldersOf(p).some((c) => d.cats.includes(c)))) continue;
       if (d.q) {
         const text = `${p ? hay(p) : m.productId} ${m.note || ''} ${m.refId || ''} ${m.staff || ''}`.toLowerCase();
         if (!text.includes(d.q)) continue;

@@ -103,15 +103,18 @@
           brand: (p && p.brand) || '',
           cat: folderName(p ? p.folder : ''),
           folder: (p && p.folder) || '',   // the category's key: By category's "Top in" list
+          folders: p && foldersOf(p).length ? foldersOf(p) : [''],   // an item sits in several; '' is uncategorized
         }));
         ib.qty += qty; ib.revenue += iRev; ib.net += iNet; ib.cost += cost;
 
         const ft = bucket(fb.top, ik, () => ({ name: (p && p.name) || i.name, qty: 0 }));
         ft.qty += qty;
 
-        const ck = (p && p.folder) || '';
-        const cb = bucket(cats, ck, () => blank({ key: ck, name: folderName(ck) }));
-        cb.qty += qty; cb.revenue += iRev; cb.net += iNet; cb.cost += cost;
+        // An item in two categories counts in both (owner 2026-10-01), so the category rows can add past the total.
+        for (const ck of ib.folders) {
+          const cb = bucket(cats, ck, () => blank({ key: ck, name: folderName(ck) }));
+          cb.qty += qty; cb.revenue += iRev; cb.net += iNet; cb.cost += cost;
+        }
       }
     }
     const finish = (map) => Array.from(map.values()).map(r => ({
@@ -587,7 +590,7 @@
   const ALL_PAGES = ['categories', 'items', 'new', 'unsold', 'pairs'];
   // ?ct= cuts the items to one category. Uncategorized is folder '', which the URL can't hold: '-'.
   const catKey = (k) => k || '-';
-  const inCat = (items, ct) => (ct ? items.filter(r => catKey(r.folder) === ct) : items);
+  const inCat = (items, ct) => (ct ? items.filter(r => r.folders.map(catKey).includes(ct)) : items);
   // A ?ct= the period has no row for (it sold nothing this month; the month moved on) cuts nothing: an empty
   // list with no lit row to click off would be a dead end.
   const liveCat = (cats, ct) => (cats.some(r => r.revenue > 0 && catKey(r.key) === ct) ? ct : '');
@@ -633,16 +636,16 @@
   function itemsData(W) {
     const a = agg(W.rows), pa = agg(W.prev), prods = new Map(state.products.map(p => [p.id, p]));
     const was = new Map(pa.items.map(r => [r.key, r.revenue])), cwas = new Map(pa.cats.map(r => [catKey(r.key), r.revenue]));
-    const items = a.items.map(r => ({ key: r.key, name: r.name, brand: r.brand, cat: r.cat, ck: catKey(r.folder), rev: r.revenue, prev: was.get(r.key) || 0,
+    const items = a.items.map(r => ({ key: r.key, name: r.name, brand: r.brand, cat: r.cat, cks: r.folders.map(catKey), rev: r.revenue, prev: was.get(r.key) || 0,
       profit: r.profit, margin: r.margin, qty: r.qty, p: prods.get(r.key) }));
     const seen = new Set(items.map(x => x.key));
     for (const p of state.products) if (!p.archived && !seen.has(p.id)) items.push({ key: p.id, name: p.name, brand: p.brand || '', cat: folderName(p.folder),
-      ck: catKey(p.folder), rev: 0, prev: was.get(p.id) || 0, profit: 0, margin: 0, qty: 0, p });
+      cks: (foldersOf(p).length ? foldersOf(p) : ['']).map(catKey), rev: 0, prev: was.get(p.id) || 0, profit: 0, margin: 0, qty: 0, p });
     // two products can share a name (a Local and a Generic Hollow Block 4"): the brand tells them apart
     const dup = new Map(); for (const x of items) dup.set(x.name, (dup.get(x.name) || 0) + 1);
     for (const x of items) if (dup.get(x.name) > 1 && x.brand) x.name += ' · ' + x.brand;
     const cats = a.cats.filter(r => r.revenue > 0).sort((x, y) => y.revenue - x.revenue).map(r => { const key = catKey(r.key);
-      return { key, name: r.name, rev: r.revenue, prev: cwas.get(key) || 0, profit: r.profit, margin: r.margin, n: items.filter(x => x.ck === key && x.rev > 0).length }; });
+      return { key, name: r.name, rev: r.revenue, prev: cwas.get(key) || 0, profit: r.profit, margin: r.margin, n: items.filter(x => x.cks.includes(key) && x.rev > 0).length }; });
     const days = new Map(); for (const o of W.rows) { const k = isoDate(o.ts); days.set(k, (days.get(k) || 0) + o.total * saleSign(o)); }
     const [bk, bv] = [...days].reduce((m, d) => (d[1] > m[1] ? d : m), ['', 0]), bt = bk && fromIso(bk);
     const best = bk ? [W.yr ? fmt(bt, { month: 'short', day: 'numeric' }) : `${fmt(bt, { weekday: 'short' })} ${new Date(bt).getDate()}`, bv] : null;
@@ -781,7 +784,7 @@
   }
 
   // ---- items
-  const inCut = () => D.items.filter(x => x.rev > 0 && (!V.ct || x.ck === V.ct));
+  const inCut = () => D.items.filter(x => x.rev > 0 && (!V.ct || x.cks.includes(V.ct)));
   const itemTip = (x) => tip(x.name, [['Revenue', pesoShort(x.rev)], ['Profit', pesoShort(x.profit)], ['Margin', pc(x.margin)], ['Sold', qtyText(x.qty)], vsRow(x)]);
   const hit = (x) => !V.q || (x.name + ' ' + x.cat).toLowerCase().includes(V.q.toLowerCase());
   const search = () => `<div class="filters"><input class="q-input search" type="search" placeholder="Search items" value="${escapeHtml(V.q)}" autocomplete="off" aria-label="Search items"></div>`;

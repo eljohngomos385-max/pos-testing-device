@@ -8,12 +8,15 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { createRequire } from 'node:module';
+const { foldersOf } = createRequire(import.meta.url)('../bo-model.js');
 
 const code = readFileSync(new URL('../bo-sales.js', import.meta.url), 'utf8');
 
 const PRODUCTS = [
   { id: 'p1', name: 'PVC Elbow', sku: 'PVC-1', folder: 'plumbing', cost: 100 },
   { id: 'p2', name: 'Hammer', sku: 'HM-1', folder: '', cost: 50 },
+  { id: 'p3', name: 'Pipe Wrench', sku: 'PW-1', folder: 'plumbing', folders: ['plumbing', 'tools'], cost: 80 },
 ];
 const byId = new Map(PRODUCTS.map(p => [p.id, p]));
 
@@ -40,7 +43,8 @@ const ctx = {
   productFor: (i) => byId.get(i.id) || null,
   costOf: (i) => (byId.get(i.id)?.cost || 0),
   itemNet: (i) => (i.lineTotal != null ? i.lineTotal : i.price * i.qty),
-  folderName: (id) => ({ plumbing: 'Plumbing' })[id] || 'Uncategorized',
+  folderName: (id) => ({ plumbing: 'Plumbing', tools: 'Tools' })[id] || 'Uncategorized',
+  foldersOf,
   orderPaymentLabel: (o) => o.paymentMethodLabel || 'Cash',
   // bo-model's real one: a custom type is stored as its own name (see FULFIL_BUILTINS).
   orderFulfilLabel: (o) => (o.fulfilment === 'delivery' ? 'Delivery' : !o.fulfilment || o.fulfilment === 'pickup' ? 'Walk-in' : o.fulfilment),
@@ -216,5 +220,10 @@ assert.equal(many.staff.find(s => s.name === 'Ana').last, 1011, 'last sale is th
 assert.equal(rankTop(Array.from({ length: 15 }, (_, i) => ({ qty: i })), 'qty').length, 10, 'a Top 10 is ten rows');
 assert.equal(rankTop([{ cost: 0 }], 'cost')[0].share, null, 'nothing to share out: no share, not NaN');
 assert.equal(agg([order({ number: 'v', ts: 5, status: 'voided', items: [] })]).staff[0].last, 0, 'a void is not a last sale');
+
+// An item in two categories counts in both (owner 2026-10-01): each row gets the whole line.
+const two = new Map(agg([order({ number: 'm', total: 150, items: [line('p3', 1, 150)] })]).cats.map(c => [c.name, c.revenue]));
+near(two.get('Plumbing'), 150, 'first category gets the sale');
+near(two.get('Tools'), 150, 'second category gets it too');
 
 console.log('sales-check: all assertions passed');

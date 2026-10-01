@@ -47,11 +47,6 @@
     const d = Math.floor((now - ms) / 86400000);
     return d <= 0 ? 'Today' : `${d}d ago`;
   };
-  const loadGroups = () => readJsonStorage(STORAGE_GROUPS, null)
-    || (typeof SEED_GROUPS !== 'undefined' ? SEED_GROUPS.map((g) => ({ ...g })) : []);
-  const putGroups = (list) => storageSet(STORAGE_GROUPS, JSON.stringify(list));
-  // ponytail: backoffice.js ships loadFolders but no saveFolders. Same storageSet seam,
-  // not a second store - move it up to the shell when another page needs it too.
 
   const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -82,33 +77,7 @@
     img.src = URL.createObjectURL(file);
   });
 
-  // attr is data-f on a product or group, data-v on a variant row - collect() and the
-  // variant reader both pick the hidden input up unchanged.
-  const imgPick = (value, attr) => {
-    const u = safeUrl(value);
-    return `<span class="pd-imgpick">${thumb(u)}`
-      + `<input type="hidden" ${attr}="imageUrl" value="${escapeHtml(u)}">`
-      + `<label class="link-btn">${u ? 'Change' : 'Upload'}<input type="file" accept="image/*" data-img="1" hidden></label>`
-      + `<button type="button" class="link-btn pd-imgclear" data-act="img-clear"${u ? '' : ' hidden'}>Remove</button>`
-      + `</span>`;
-  };
-  function setImage(wrap, url) {
-    wrap.querySelector('input[type=hidden]').value = url;
-    wrap.querySelector('.pd-thumb').style.backgroundImage = url ? `url('${url}')` : '';
-    wrap.querySelector('label.link-btn').firstChild.nodeValue = url ? 'Change' : 'Upload';
-    wrap.querySelector('.pd-imgclear').hidden = !url;
-  }
-
   const opt = (v, label, on) => `<option value="${escapeHtml(v)}"${v === on ? ' selected' : ''}>${escapeHtml(label)}</option>`;
-
-  // Type to filter, or type a name that does not exist yet and save creates it.
-  // ponytail: native <datalist>, not a custom combobox - the browser already does
-  // the filtering, the keyboard and the phone keyboard.
-  const combo = (name, value, id, names, placeholder) =>
-    `<input class="text-input" data-f="${name}" list="${id}" value="${escapeHtml(value || '')}"`
-    + ` placeholder="${escapeHtml(placeholder)}" autocomplete="off">`
-    + `<datalist id="${id}">${names.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('')}</datalist>`;
-  const nameOf = (list, id) => (list.find((x) => x.id === id) || {}).name || '';
 
   /* ---------- Which columns to show ----------
      A display preference, not a filter: it stays with the person, not with the link,
@@ -247,9 +216,9 @@
     const gname = q ? new Map(loadGroups().map((g) => [g.id, g.name])) : null;
     return state.products.map(normalizeProduct).filter((item) => {
       if (item.archived && p.archived !== '1') return false;
-      if (p.cat && item.folder !== p.cat) return false;
+      if (p.cat && !item.folders.includes(p.cat)) return false;
       if (p.supplier && (p.supplier === 'none'
-        ? item.supplierId : !supplierIdsOf(item).includes(p.supplier))) return false;
+        ? supplierIdsOf(item).length : !supplierIdsOf(item).includes(p.supplier))) return false;
       if (levels.length && !levels.includes(facts.level(item))) return false;
       if (!q) return true;
       const hay = `${item.name} ${item.sku} ${item.barcode} `
@@ -480,21 +449,22 @@
         const since = String(row[sinceCol] || '').trim();
         if (/^\d{4}-\d{2}-\d{2}$/.test(since)) product.openingSince = since;
       }
-      // The category column carries an id on a file we exported and a name on one we
-      // did not. Accept either, and create what neither knows about.
-      if (product.folder) {
-        const key = String(product.folder).toLowerCase();
-        const hit = byId.get(product.folder) || byFolderName.get(key) || made.get(key);
-        if (hit) product.folder = hit.id;
-        else {
-          const base = slug(product.folder);
+      // The category column carries ids on a file we exported and names on one we
+      // did not, | between several. Accept either, and create what neither knows about.
+      if (product.folders) {
+        product.folders = product.folders.map((name) => {
+          const key = String(name).toLowerCase();
+          const hit = byId.get(name) || byFolderName.get(key) || made.get(key);
+          if (hit) return hit.id;
+          const base = slug(name);
           let id = base ? 'cat_' + base : 'cat_' + (out.folders.length + 1);
           if (byId.has(id)) id += '_' + (out.folders.length + 1);
-          const f = { id, name: product.folder, builtin: false };
+          const f = { id, name, builtin: false, updatedAt: new Date().toISOString() };
           made.set(key, f);
           out.folders.push(f);
-          product.folder = id;
-        }
+          return id;
+        });
+        product.folder = product.folders[0];   // normalizeProduct keeps `folder` first
       }
       (match ? out.update : out.create).push({ product, match });
     });
@@ -566,480 +536,459 @@
     appendMovements(movements);
   }
 
-  /* ================= EDITOR ================= */
+  /* ================= EDITOR =================
+     Ported from product-edit-lab.html (2026-10-01). One editor for a plain product, a family
+     and a new one: the form edits P, Save turns P into product rows. The classes are pe-*
+     because .card / .chip / .menu already mean something else in this app. */
 
-  const row = (label, control, hint, id) => `
-    <div class="setting-row">
-      <label${id ? ` id="${id}"` : ''}>${escapeHtml(label)}${hint ? `<div class="pd-hint">${escapeHtml(hint)}</div>` : ''}</label>
-      <div class="pd-control">${control}</div>
-    </div>`;
-  const field = (name, value, attrs = '') =>
-    `<input class="text-input" data-f="${name}" value="${escapeHtml(value == null ? '' : value)}" ${attrs}>`
-    + `<span class="pd-err" data-err="${name}"></span>`;
-  // Who else stocks it. The primary is not repeated - it is the row above.
-  const altSupCtl = (suppliers, picked, primary) => {
-    const on = new Set(picked || []);
-    const opts = suppliers.filter((s) => s.id !== primary).map((s) =>
-      `<option value="${escapeHtml(s.id)}"${on.has(s.id) ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
-    return opts
-      ? `<select class="bo-select pd-alt-sup" data-f="altSuppliers" multiple size="4">${opts}</select>`
-      : '<span class="pd-hint">Nobody else on file yet.</span>';
+  const PE_CHEV = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5 9 4.5"/></svg>';
+  const PE_PLUS = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>';
+  const PE_X = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3l6 6M9 3 3 9"/></svg>';
+  const UNITS = [['Counted', ['pc', 'box', 'bag', 'set', 'pair', 'roll', 'sheet', 'can']], ['Measured', ['m', 'ft', 'kg', 'L', 'gal']]];
+  // Sold per picks soldBy: a measured unit takes decimals. A unit you typed keeps what it was.
+  const soldByFor = (unit, was) => (UNITS[1][1].includes(unit) ? 'measure' : UNITS[0][1].includes(unit) ? 'each' : was || 'each');
+
+  let P = null, openV = -1, dirty = false;
+
+  const val = (v) => (v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v));   // '' is no answer, not 0
+  const markupOf = (c, p) => (val(c) && val(p) != null ? ((p - c) / c) * 100 : null);
+  const fmtPct = (m) => (m == null || !Number.isFinite(m) ? '' : String(round2(m)));
+  const profitLine = (c, p, withMarkup) => {
+    const cc = val(c), pp = val(p);
+    if (cc == null || pp == null) return '';
+    const m = markupOf(cc, pp);
+    return `<b>${peso(pp - cc)}</b> profit on each${withMarkup && m != null ? ` · ${round2(m).toFixed(1)}% markup` : ''}`;
   };
-  const segCtl = (name, value, opts) => `<div class="seg" data-seg="${name}">${opts.map(([v, l]) =>
-    `<button type="button" class="seg-btn${v === value ? ' active' : ''}" data-seg-val="${escapeHtml(v)}">${escapeHtml(l)}</button>`).join('')}</div>`;
-  // blk: the block type (blk-table / blk-empty); a form card has none.
-  const card = (label, body, sub, blk) => `
-    <section class="bo-card${blk ? ' ' + blk : ''}">
-      <div class="bo-card-head"><span class="bo-card-label">${escapeHtml(label)}</span>${sub ? `<span class="bo-card-sub">${escapeHtml(sub)}</span>` : ''}</div>
-      <div class="bo-card-inset">${body}</div>
-    </section>`;
+  // A variant row names what makes it this one; the family name is already the title.
+  const blankVariant = () => ({ id: '', short: '', prefixed: true, sku: '', barcode: '', cost: '', price: '', openingQty: '', isNew: true });
+  const vName = (v) => (v.prefixed ? `${P.name.trim()} ${v.short.trim()}` : v.short.trim());
+  const liveStock = (id) => { const x = state.products.find((p) => p.id === id); return x ? round2(num(x.stock)) : 0; };
 
-  const MARGIN_LABEL = { percent: 'Markup on cost (%)', flat: 'Profit per unit' };
+  // What every variant shares (and what a plain product has the same way).
+  const sharedOf = (b) => ({
+    cats: foldersOf(b), sups: supplierIdsOf(b), main: b.supplierId, mods: [...b.modifierIds],
+    unit: b.unit || 'pc', low: b.reorderPoint || '', track: b.trackStock, hidden: b.hidden, sellOut: b.sellOutOfStock,
+    weight: b.weight, size: b.size, length: b.length, since: isoDate(Date.now()),
+  });
 
-  // "Add variant" clicked on a plain product: open its new family with a blank row
-  // waiting. Transient intent, not a filter - it has no business on the URL.
-  let addOnRender = false;
+  function loadP(id) {
+    const g = loadGroups().find((x) => x.id === id);
+    if (g) {
+      const live = state.products.map(normalizeProduct).filter((x) => x.groupId === g.id);
+      // All archived: the family was archived in one go, so its variants share the newest stamp;
+      // an older one was removed from the list before and stays removed on Restore.
+      const last = live.reduce((m, x) => (x.updatedAt > m ? x.updatedAt : m), '');
+      const members = live.some((x) => !x.archived) ? live.filter((x) => !x.archived) : live.filter((x) => x.updatedAt === last);
+      const b = members[0] || normalizeProduct({ folder: g.folder });
+      const pre = g.name + ' ';
+      return { ...sharedOf(b), key: id, family: true, gid: g.id, name: g.name, desc: g.description || '',
+        photo: safeUrl(imageFor(b, [g])), archived: members.length > 0 && members.every((m) => m.archived),
+        variants: members.map((m) => ({ id: m.id, short: m.name.startsWith(pre) ? m.name.slice(pre.length) : m.name,
+          prefixed: m.name.startsWith(pre), sku: m.sku, barcode: m.barcode, cost: m.cost, price: m.price })) };
+    }
+    const p = id === 'new' ? normalizeProduct({ folder: params().cat || '' })
+      : state.products.map(normalizeProduct).find((x) => x.id === id);
+    if (!p) return null;
+    if (p.groupId && loadGroups().some((x) => x.id === p.groupId)) return { ...loadP(p.groupId), key: id };
+    return { ...sharedOf(p), key: id, family: false, isNew: id === 'new', id: p.id, name: p.name, desc: p.description,
+      photo: safeUrl(p.imageUrl), sku: p.sku, barcode: p.barcode, archived: p.archived,
+      cost: id === 'new' ? '' : p.cost, price: id === 'new' ? '' : p.price, openingQty: '' };
+  }
+
+  /* ---- pieces ---- */
+  const peCard = (title, body, right = '') => `<section class="pe-card">${title ? `<div class="pe-band">${title}${right ? `<span class="pe-r">${right}</span>` : ''}</div>` : ''}${body}</section>`;
+  const fld = (label, ctl) => `<label class="pe-f"><span>${label}</span>${ctl}</label>`;
+  const inp = (k, v, attrs = '') => `<input class="pe-in" data-k="${k}" value="${escapeHtml(v == null ? '' : v)}"${attrs}>`;
+  const money = (attr, v) => `<div class="pe-affix pre"><i>₱</i><input class="pe-in" ${attr} value="${escapeHtml(v == null ? '' : v)}" inputmode="decimal" placeholder="0.00"></div>`;
+  const qty = (attr, v) => `<div class="pe-affix suf"><i>${escapeHtml(P.unit)}</i><input class="pe-in" ${attr} value="${escapeHtml(v == null ? '' : v)}" inputmode="decimal" placeholder="0"></div>`;
+  const pick = (id, inner) => `<button type="button" class="pe-pick" popovertarget="${id}">${inner}${PE_CHEV}</button><div class="pe-menu" id="${id}" popover></div>`;
+  const chipX = (list, i, v) => `<button type="button" class="pe-x" data-pe="del" data-list="${list}" data-i="${i}" aria-label="Remove ${escapeHtml(v)}">${PE_X}</button>`;
+  const chipAdd = (id, n, word) => `<button type="button" class="pe-chip-add" popovertarget="${id}">${PE_PLUS}${n ? 'Add' : word}</button><div class="pe-menu" id="${id}" popover></div>`;
+  const sw = (label, k, on) => `<label class="pe-sw">${label}<input type="checkbox" data-k="${k}"${on ? ' checked' : ''}></label>`;
+  const modsById = () => new Map(loadModifiers().map((m) => [m.id, m]));
+  const modSummary = (m) => (m.options.length ? m.options.map((o) => `${o.name} +${peso(o.price)}`).join(' · ') : 'No options yet');
+
+  function vRow(v, i) {
+    const stock = !P.track ? '' : v.isNew ? (val(v.openingQty) ? `${v.openingQty} ${escapeHtml(P.unit)}` : 'New') : `${liveStock(v.id)} ${escapeHtml(P.unit)}`;
+    return `<button type="button" class="pe-vrow${i === openV ? ' open' : ''}" data-pe="open-v" data-i="${i}">
+        <span><b>${escapeHtml(v.short || 'New variant')}</b><small>${escapeHtml(v.sku || 'No SKU')}</small></span>
+        <span class="pe-num">${val(v.price) != null ? peso(v.price) : '<span class="pe-muted">No price</span>'}</span>
+        <span class="pe-num pe-muted">${stock}</span>${PE_CHEV}
+      </button>`;
+  }
+  function vEdit(v, i) {
+    const at = (k) => `data-v="${k}" data-i="${i}"`;
+    return `<div class="pe-vedit">
+        ${fld('Variant', `<input class="pe-in" ${at('short')} value="${escapeHtml(v.short)}" placeholder="Red, 2 inch, 1 gal">`)}
+        <div class="pe-row2">${fld('Cost', money(at('cost'), v.cost))}${fld('Price', money(at('price'), v.price))}</div>
+        <div class="pe-say" data-vprofit>${profitLine(v.cost, v.price, true)}</div>
+        <div class="pe-row2">${fld('SKU', `<input class="pe-in" ${at('sku')} value="${escapeHtml(v.sku)}">`)}${fld('Barcode', `<input class="pe-in" ${at('barcode')} value="${escapeHtml(v.barcode)}" inputmode="numeric">`)}</div>
+        ${v.isNew && P.track ? `<div class="pe-row2">${fld('Opening stock', qty(at('openingQty'), v.openingQty))}<span></span></div>` : ''}
+        <div class="pe-vfoot"><button type="button" class="pe-quiet" data-pe="del-v" data-i="${i}">Remove variant</button></div>
+      </div>`;
+  }
+
+  function cardsHtml() {
+    const T = P.track;
+    const photo = `<div class="pe-f"><span>Photo</span><label class="pe-photo${P.photo ? ' has' : ''}"${P.photo ? ` style="background-image:url('${escapeHtml(P.photo)}')"` : ''}>
+        ${P.photo ? '' : PE_PLUS}<input type="file" accept="image/*" data-pe-img hidden></label>
+        ${P.photo ? '<button type="button" class="pe-quiet" data-pe="photo-clear">Remove</button>' : ''}</div>`;
+    const about = peCard('', `<div class="pe-about">${photo}<div class="pe-fields">
+        ${fld('Name', `<input class="pe-in big" data-k="name" value="${escapeHtml(P.name)}" placeholder="${P.family ? 'Acrylic Paint Tint' : 'Portland Cement 40kg'}">`)}
+        ${fld('Description', `<textarea class="pe-in" data-k="desc" rows="2" placeholder="What it is, what it fits, how to use it">${escapeHtml(P.desc)}</textarea>`)}
+      </div></div>`);
+
+    const cat = peCard('Categories', `<div class="pe-chips">
+        ${P.cats.map((c, i) => `<span class="pe-chip"><span>${escapeHtml(folderName(c))}</span>${chipX('cats', i, folderName(c))}</span>`).join('')}
+        ${chipAdd('pe-m-cat', P.cats.length, 'Add category')}</div>`);
+
+    const price = P.family ? '' : peCard('Price', `<div class="pe-body">
+        <div class="pe-row3">
+          ${fld('Cost', money('data-k="cost"', P.cost))}
+          ${fld('Markup', `<div class="pe-affix suf"><i>%</i><input class="pe-in" data-k="markup" value="${escapeHtml(fmtPct(markupOf(P.cost, P.price)))}" inputmode="decimal" placeholder="0"></div>`)}
+          ${fld('Price', money('data-k="price"', P.price))}
+        </div>
+        <div class="pe-say" data-profit>${profitLine(P.cost, P.price)}</div>
+      </div><button type="button" class="pe-vadd" data-pe="add-variant">${PE_PLUS}Add variants</button>`);
+
+    const variants = !P.family ? '' : peCard('Variants', `<div class="pe-vlist">
+        ${P.variants.map((v, i) => vRow(v, i) + (i === openV ? vEdit(v, i) : '')).join('')}
+        <button type="button" class="pe-vadd" data-pe="add-variant">${PE_PLUS}Add variant</button>
+        ${T && P.variants.some((v) => v.isNew && val(v.openingQty)) ? `<div class="pe-since">New stock was in store since <input class="pe-in" type="date" data-k="since" value="${P.since}" max="${isoDate(Date.now())}"></div>` : ''}
+      </div>`, `${P.variants.length}`);
+
+    const mods = modsById();
+    const mod = peCard('Modifiers', `<div class="pe-chips">
+        ${P.mods.map((id, i) => { const m = mods.get(id); return m ? `<span class="pe-chip" title="${escapeHtml(modSummary(m))}"><span>${escapeHtml(m.name)}</span>${chipX('mods', i, m.name)}</span>` : ''; }).join('')}
+        ${chipAdd('pe-m-mod', P.mods.length, 'Add modifier')}</div>`);
+
+    const stock = peCard('Stock', `<div class="pe-body">
+        ${!T || P.family || P.isNew ? '' : `<div class="pe-line"><span class="pe-onhand">${liveStock(P.id)}<small>${escapeHtml(P.unit)} on hand</small></span>
+          <button type="button" class="secondary-btn small" data-adjust-open="${escapeHtml(P.id)}">Adjust</button></div>`}
+        <div class="pe-row2">
+          ${fld('Sold per', pick('pe-m-unit', `<span>${escapeHtml(P.unit)}</span>`))}
+          ${T ? fld('Low stock at', qty('data-k="low"', P.low)) : '<span></span>'}
+        </div>
+        ${!T || P.family || !P.isNew ? '' : `<div class="pe-row2">${fld('Opening stock', qty('data-k="openingQty"', P.openingQty))}
+          ${fld('In store since', `<input class="pe-in" type="date" data-k="since" value="${P.since}" max="${isoDate(Date.now())}">`)}</div>`}
+        ${P.family ? '' : `<div class="pe-row2">${fld('SKU', inp('sku', P.sku))}${fld('Barcode', inp('barcode', P.barcode, ' inputmode="numeric"'))}</div>`}
+        ${sw('Track stock', 'track', T)}
+        ${T ? sw('Sell when out of stock', 'sellOut', P.sellOut) : ''}
+      </div>`);
+
+    // Optional main supplier (owner, 2026-10-01): purchase orders go to it. Tap a name to make it
+    // main, tap the main one to have none.
+    const supName = new Map(loadSuppliers().map((s) => [s.id, s.name]));
+    const sups = peCard('Suppliers', `<div class="pe-chips">
+        ${P.sups.map((s, i) => `<span class="pe-chip"><button type="button" class="pe-nm" data-pe="main" data-i="${i}"
+          title="${s === P.main ? 'Main supplier: purchase orders go here. Tap for none' : 'Make this the main supplier'}">${escapeHtml(supName.get(s) || s)}</button>${s === P.main ? '<em>Main</em>' : ''}${chipX('sups', i, supName.get(s) || s)}</span>`).join('')}
+        ${chipAdd('pe-m-sup', P.sups.length, 'Add supplier')}</div>`);
+
+    const specs = peCard('Specs', `<div class="pe-body"><div class="pe-row3">
+        ${fld('Weight', inp('weight', P.weight, ' placeholder="2.5 kg"'))}
+        ${fld('Size', inp('size', P.size, ' placeholder="3/4 in"'))}
+        ${fld('Length', inp('length', P.length, ' placeholder="8 ft"'))}
+      </div></div>`);
+
+    return about + cat + price + variants + mod + stock + sups + specs;
+  }
+
+  function paintEditor() {
+    const n = P.family ? P.variants.length : 0;
+    root().innerHTML = `<div class="pe">
+        <header class="item-head"><a class="item-back" href="${escapeHtml(Router.href(VIEW, ''))}">Products</a>
+          <h1>${escapeHtml(P.name || 'New product')}</h1>${P.family ? `<span class="pe-muted">${n} variant${n === 1 ? '' : 's'}</span>` : ''}</header>
+        <div class="pe-side">${peCard('Status', `<div class="pe-body">${pick('pe-m-status',
+          `<i class="pe-dot${P.hidden ? '' : ' on'}"></i><span>${P.hidden ? 'Hidden' : 'Active'}</span>`)}</div>`)}</div>
+        <div class="pe-col">${cardsHtml()}</div>
+        <div class="pe-formbar">${P.isNew ? '' : `<button type="button" class="pe-quiet" data-pe="archive">${P.archived ? 'Restore' : 'Archive'}</button>`}
+          <button type="button" class="primary-btn small" data-pe="save"${dirty ? '' : ' disabled'}>Save</button></div>
+      </div>`;
+    root().querySelectorAll('textarea.pe-in').forEach(grow);
+  }
 
   function renderEditor(id) {
-    const groups = loadGroups();
-    const g = groups.find((x) => x.id === id);
-    if (g) { renderGroupEditor(g); return; }
-    const products = state.products.map(normalizeProduct);
-    const suppliers = loadSuppliers();
-    const isNew = id === 'new';
-    const p = isNew ? normalizeProduct({ folder: params().cat || '' }) : products.find((x) => x.id === id);
-    if (!p) {
+    if (!P || P.key !== id || P.visit !== state.visit) {   // a re-render (sync, Adjust) keeps what is being typed
+      P = loadP(id); openV = -1; dirty = false;
+      if (P) P.visit = state.visit;
+    }
+    if (!P) {
       root().innerHTML = `<header class="view-head"><div class="view-title-wrap"><h1>Product not found</h1>
         <span class="muted">It may have been removed.</span></div>
         <div class="view-actions"><button class="secondary-btn small" data-act="back">Back to products</button></div></header>`;
       return;
     }
-    const folders = state.folders.filter((f) => f.id !== 'all');
-    const money = ' type="number" step="0.01" min="0" inputmode="decimal"';
-
-    root().innerHTML = `
-      <header class="view-head pd-editor-head">
-        <div class="view-title-wrap">
-          <h1>${escapeHtml(p.name || 'New product')}</h1>
-          <span class="muted">${escapeHtml(p.sku || (isNew ? 'Draft' : 'No SKU'))}</span>
-        </div>
-        <div class="view-actions">
-          <button class="secondary-btn small" data-act="back">Products</button>
-        </div>
-      </header>
-      <div class="pd-editor">
-       <div class="dash-stack pd-main">
-        ${card('Details', [
-          row('Name', field('name', p.name, 'placeholder="Portland Cement 40kg"')),
-          row('Brand', field('brand', p.brand)),
-          row('Image', imgPick(p.imageUrl, 'data-f'),
-            'Each variant can carry its own; this is the one they fall back to'),
-        ].join(''))}
-
-        ${card('Sold as', [
-          row('How it is sold', segCtl('soldBy', p.soldBy, [['each', 'Each'], ['measure', 'By measure']]),
-            'Each = pc / box / bag, whole numbers. By measure = m / kg / L, decimals allowed.'),
-          row('Unit', field('unit', p.unit, 'placeholder="pc"')),
-        ].join(''))}
-
-        ${card('Pricing', [
-          row('Cost', field('cost', p.cost, money), 'What we pay per unit'),
-          row('Margin', segCtl('marginMode', p.marginMode, [['flat', 'Flat'], ['percent', 'Percent']])),
-          row(MARGIN_LABEL[p.marginMode], field('marginValue', p.marginValue, ' type="number" step="0.01" inputmode="decimal"'), '', 'pdMarginLabel'),
-          row('Price', field('price', p.price, money),
-            'The authoritative number - margin recomputes it when cost changes'),
-          `<div class="pd-margin" id="pdMargin">${marginLine(marginSummary(p.cost, p.price))}</div>`,
-          isNew ? '' : `<a class="link-btn" href="${escapeHtml(Router.href('inventory', '', { tab: 'prices', q: p.name }))}">See price history</a>`,
-        ].join(''))}
-
-        ${card('Inventory', [
-          row('On hand', `<input class="text-input" value="${escapeHtml(p.stock + ' ' + p.unit)}" disabled>`
-            + `<a class="link-btn" href="${escapeHtml(Router.href(VIEW, '', { view: 'stock', q: p.name }))}">See stock</a>`,
-            'Products creates items; Inventory moves stock.'),
-          isNew ? row('Opening quantity',
-            field('openingQty', '', ' type="number" step="0.01" min="0" inputmode="decimal" placeholder="0"'),
-            'Saved as a stock count movement, not a bare number') : '',
-          isNew ? row('In store since',
-            `<input class="bo-date" type="date" data-f="openingSince" value="${isoDate(Date.now())}" max="${isoDate(Date.now())}">`,
-            'Already on the shelf? Backdate it instead of counting it in today.') : '',
-          row('Danger level', field('reorderPoint', p.reorderPoint, ' type="number" step="1" min="0" inputmode="numeric"'),
-            'At or below this it lands on the low-stock list'),
-          row('Sell when out of stock', `<input type="checkbox" data-f="sellOutOfStock"${p.sellOutOfStock ? ' checked' : ''}>`),
-          row('SKU', field('sku', p.sku)),
-          row('Barcode', field('barcode', p.barcode)),
-        ].join(''))}
-
-        ${card('Variants', `
-          <div class="bo-empty">Sold in sizes or colours? Add a variant. Each one is its own
-            item with its own SKU, barcode, price, stock and picture.</div>
-          <div class="pd-actions"><button class="secondary-btn small" data-act="add-variant">Add variant</button></div>`, '', 'blk-empty')}
-
-       </div>
-
-       <div class="dash-stack pd-rail">
-        ${card('Organization', [
-          row('Category', combo('folder', nameOf(folders, p.folder), 'pdFolders',
-            folders.map((f) => f.name), 'Uncategorized'),
-            'Pick one, or type a new name and it is created on save'),
-          row('Supplier', combo('supplier', nameOf(suppliers, p.supplierId), 'pdSuppliers',
-            suppliers.map((x) => x.name), 'No supplier'),
-            'Pick one, or type a new name and it is created on save'),
-          row('Also stocked by', altSupCtl(suppliers, p.altSupplierIds, p.supplierId),
-            'Hold Ctrl to pick more than one. Purchase orders still use the supplier above.'),
-        ].join(''))}
-
-        ${card('Specs', [
-          row('Weight', field('weight', p.weight, 'placeholder="2.5 kg"')),
-          row('Size', field('size', p.size, 'placeholder="3/4 in"')),
-          row('Length', field('length', p.length, 'placeholder="8 ft"')),
-        ].join(''), 'Free text - nothing computes on these')}
-       </div>
-
-        ${formBar(isNew ? '' :
-          `<button class="link-btn pd-archive" data-act="archive">${p.archived ? 'Restore' : 'Archive'}</button>`)}
-      </div>`;
+    paintEditor();
   }
 
-  /* You fill a form top to bottom; Save belongs where you finish, not where you started.
-     Archive sits at the far left of the same bar - the destructive verb never shares an
-     edge with the one people aim for. */
-  const formBar = (left) => `<div class="pd-formbar">${left}
-    <button class="primary-btn" data-act="save">Save</button></div>`;
+  const grow = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; };
+  const touch = () => { dirty = true; const b = root().querySelector('[data-pe="save"]'); if (b) b.disabled = false; };
+  const focusV = (i, k) => { const el = root().querySelector(`[data-v="${k}"][data-i="${i}"]`); if (el) el.focus(); };
 
-  /* ---------- The family editor: shared fields on top, variants as sub-items ----------
-     A variant IS a product (see bo-model.js), so this screen edits several product
-     rows at once. Everything above the table is shared and written to every member;
-     the table owns what makes a variant its own item - name, SKU, barcode, price,
-     picture and stock. */
-
-  const MONEY_ATTR = ' type="number" step="0.01" min="0" inputmode="decimal"';
-  const vMarkup = (cost, price) => marginSummary(num(cost), num(price)).markup.toFixed(1) + '%';
-
-  function variantRowHtml(v) {
-    const isNew = !v.id;
-    const cell = (name, attrs = '') =>
-      `<input class="text-input" data-v="${name}" value="${escapeHtml(v[name] == null ? '' : v[name])}"${attrs}>`;
-    return `
-      <tr class="pd-vrow" data-vid="${escapeHtml(v.id || '')}">
-        <td class="pd-vname">
-          ${cell('name', ' placeholder="e.g. Red, 2 inch"')}
-          <div class="pd-vimg">${imgPick(v.imageUrl, 'data-v')}</div>
-        </td>
-        <td class="pd-vsku">${cell('sku')}</td>
-        <td class="pd-vsku">${cell('barcode')}</td>
-        <td class="num pd-vnum">${cell('cost', MONEY_ATTR)}</td>
-        <td class="num pd-vnum">${cell('price', MONEY_ATTR)}</td>
-        <td class="num pd-vmargin">${vMarkup(v.cost, v.price)}</td>
-        <td class="num pd-vnum">${isNew
-          ? `<input class="text-input" data-v="openingQty" type="number" step="0.01" min="0" placeholder="0">`
-          : `<span class="pd-vstock">${v.stock} ${escapeHtml(v.unit)}</span>`}</td>
-        <td class="pd-vdel"><button type="button" class="link-btn" data-act="del-variant" title="Remove variant">Remove</button></td>
-      </tr>`;
+  /* ---- menus: filled when they open, searched as you type ---- */
+  function menuItems(id, q) {
+    const has = (s) => String(s).toLowerCase().includes(q.trim().toLowerCase());
+    const is = (s) => String(s).toLowerCase() === q.trim().toLowerCase();
+    const btn = (v, label, on, sub) => `<button type="button" role="menuitemradio" aria-checked="${!!on}" data-pe-pick="${id}" data-v="${escapeHtml(v)}">${sub
+      ? `<span class="pe-opt">${escapeHtml(label)}<small>${escapeHtml(sub)}</small></span>` : escapeHtml(label)}</button>`;
+    const add = (names, word) => (q.trim() && !names.some(is)
+      ? `<button type="button" class="new" data-pe-pick="${id}" data-new="${escapeHtml(q.trim())}">${word} “${escapeHtml(q.trim())}”</button>` : '');
+    const none = (hits) => (hits ? '' : `<div class="pe-none">${q.trim() ? 'No match' : 'All added'}</div>`);
+    if (id === 'pe-m-status') {
+      return btn('active', 'Active', !P.hidden, 'Sells on the till') + btn('hidden', 'Hidden', P.hidden, 'Kept, but not on the till');
+    }
+    if (id === 'pe-m-unit') {
+      return UNITS.map(([g, us]) => [g, us.filter(has)]).filter(([, us]) => us.length)
+        .map(([g, us]) => `<div class="pe-grp">${g}</div>${us.map((u) => btn(u, u, u === P.unit)).join('')}`).join('')
+        + add(UNITS.flatMap(([, us]) => us), 'Use');
+    }
+    if (id === 'pe-m-mod') {   // lists are made on the Modifiers page, so this only picks
+      const hits = loadModifiers().filter((m) => !m.archived && !P.mods.includes(m.id) && has(m.name));
+      return hits.map((m) => btn(m.id, m.name, false, modSummary(m))).join('') + none(hits.length);
+    }
+    const [all, mine] = id === 'pe-m-cat' ? [state.folders.filter((f) => f.id !== 'all'), P.cats] : [loadSuppliers(), P.sups];
+    const hits = all.filter((x) => !mine.includes(x.id) && has(x.name));
+    return hits.map((x) => btn(x.id, x.name, false)).join('') + add(all.map((x) => x.name), 'Add')
+      + (q.trim() ? '' : none(hits.length));
   }
 
-  function renderGroupEditor(g) {
-    const members = state.products.map(normalizeProduct)
-      .filter((x) => x.groupId === g.id && !x.archived);
-    // Shared values come off the first variant - they are written back to all of them.
-    const base = members[0] || normalizeProduct({ folder: g.folder });
-    const folders = state.folders.filter((f) => f.id !== 'all');
-    const suppliers = loadSuppliers();
-    const n = members.length + (addOnRender ? 1 : 0);
+  document.addEventListener('toggle', (e) => {
+    const m = e.target;
+    if (!m.matches || !m.matches('.pe-menu') || e.newState !== 'open' || !mine(m)) return;
+    const search = m.id !== 'pe-m-status';   // two choices need no search box
+    m.innerHTML = (search ? `<input class="pe-ms" placeholder="${m.id === 'pe-m-unit' ? 'Search or type your own' : 'Search'}" data-ms="${m.id}">` : '')
+      + `<div class="pe-ml">${menuItems(m.id, '')}</div>`;
+    const b = root().querySelector(`[popovertarget="${m.id}"]`).getBoundingClientRect();
+    m.style.position = 'fixed';
+    m.style.width = Math.max(b.width, 240) + 'px';
+    m.style.left = Math.max(16, Math.min(b.left, innerWidth - m.offsetWidth - 16)) + 'px';
+    const below = innerHeight - b.bottom - 16;
+    m.style.top = (below < Math.min(m.offsetHeight, 240) ? Math.max(16, b.top - 6 - m.offsetHeight) : b.bottom + 6) + 'px';
+    if (search) m.querySelector('.pe-ms').focus();
+  }, true);
 
-    root().innerHTML = `
-      <header class="view-head pd-editor-head">
-        <div class="view-title-wrap">
-          <h1>${escapeHtml(g.name)}</h1>
-          <span class="muted">${n} variant${n === 1 ? '' : 's'}</span>
-        </div>
-        <div class="view-actions">
-          <button class="secondary-btn small" data-act="back">Products</button>
-        </div>
-      </header>
-      <div class="dash-stack">
-        ${card('Details', [
-          row('Name', field('name', g.name, 'placeholder="Boysen Paint"'),
-            'The family name. Variants are named in the table below.'),
-          row('Category', combo('folder', nameOf(folders, g.folder || base.folder), 'pdFolders',
-            folders.map((f) => f.name), 'Uncategorized'),
-            'Pick one, or type a new name and it is created on save'),
-          row('Supplier', combo('supplier', nameOf(suppliers, base.supplierId), 'pdSuppliers',
-            suppliers.map((x) => x.name), 'No supplier'),
-            'Pick one, or type a new name and it is created on save'),
-          row('Also stocked by', altSupCtl(suppliers, base.altSupplierIds, base.supplierId),
-            'Hold Ctrl to pick more than one. Purchase orders still use the supplier above.'),
-          row('Brand', field('brand', base.brand)),
-          row('Image', imgPick(g.imageUrl, 'data-f'),
-            'The fallback picture, for variants that have none of their own'),
-        ].join(''), 'Shared by every variant')}
-
-        ${card('Variants', `
-          <div class="table-wrap">
-            <table class="data-table pd-vtable" id="pdVariants">
-              <thead><tr>
-                <th>Variant</th><th>SKU</th><th>Barcode</th>
-                <th class="num">Cost</th><th class="num">Price</th><th class="num">Margin</th>
-                <th class="num">Stock</th><th></th>
-              </tr></thead>
-              <tbody>${members.map(variantRowHtml).join('')}${addOnRender ? variantRowHtml(normalizeProduct({})) : ''}</tbody>
-            </table>
-          </div>
-          <p class="pd-hint">Stock on a variant that already exists is moved in Inventory. A new
-            variant may open with a quantity - it is saved as a stock count movement.</p>
-          <label class="adj-field pd-vsince"><span>New variants in store since</span>
-            <input class="bo-date" type="date" data-f="openingSince" value="${isoDate(Date.now())}" max="${isoDate(Date.now())}"></label>
-          <div class="pd-actions"><button class="secondary-btn small" data-act="add-variant">Add variant</button></div>`,
-          `${n} in this family`, 'blk-table')}
-
-        ${card('Sold as', [
-          row('How it is sold', segCtl('soldBy', base.soldBy, [['each', 'Each'], ['measure', 'By measure']]),
-            'Each = pc / box / bag, whole numbers. By measure = m / kg / L, decimals allowed.'),
-          row('Unit', field('unit', base.unit, 'placeholder="pc"')),
-          row('Danger level', field('reorderPoint', base.reorderPoint, ' type="number" step="1" min="0" inputmode="numeric"'),
-            'At or below this a variant lands on the low-stock list'),
-          row('Sell when out of stock', `<input type="checkbox" data-f="sellOutOfStock"${base.sellOutOfStock ? ' checked' : ''}>`),
-        ].join(''), 'Shared by every variant')}
-
-        ${card('Specs', [
-          row('Weight', field('weight', base.weight, 'placeholder="2.5 kg"')),
-          row('Size', field('size', base.size, 'placeholder="3/4 in"')),
-          row('Length', field('length', base.length, 'placeholder="8 ft"')),
-        ].join(''), 'Free text - nothing computes on these')}
-
-        ${formBar('')}
-      </div>`;
-    addOnRender = false;
+  // ponytail: "Add “x”" makes the category or supplier on the spot, before Save, like the lab.
+  // An abandoned edit leaves an unused name behind; the Categories page can delete it.
+  function peChoose(t) {
+    const id = t.dataset.pePick;
+    let v = t.dataset.v;
+    const made = t.dataset.new;
+    if (id === 'pe-m-cat' && made) v = addFolder(made);
+    if (id === 'pe-m-sup' && made) {
+      v = newId('sup');
+      saveSuppliers(loadSuppliers().concat({ ...SUPPLIER_DEFAULTS, id: v, name: made, updatedAt: new Date().toISOString() }));
+    }
+    if (id === 'pe-m-cat') P.cats.push(v);
+    if (id === 'pe-m-sup') { if (!P.sups.length) P.main = v; P.sups.push(v); }   // the first one is main until you say otherwise
+    if (id === 'pe-m-mod') P.mods.push(v);
+    if (id === 'pe-m-status') P.hidden = v === 'hidden';
+    if (id === 'pe-m-unit') P.unit = made || v;
+    t.closest('.pe-menu').hidePopover();
+    dirty = true;
+    paintEditor();
   }
 
-  const marginLine = (s) => `You make <strong>${peso(s.profit)}</strong> · `
-    + `<strong>${s.markup.toFixed(1)}%</strong> markup on cost · `
-    + `<strong>${s.margin.toFixed(1)}%</strong> margin on price`;
+  function peClick(t) {
+    if (t.dataset.pePick) { peChoose(t); return; }
+    const a = t.dataset.pe, i = Number(t.dataset.i);
+    if (a === 'open-v') { openV = openV === i ? -1 : i; paintEditor(); return; }
+    if (a === 'add-variant') {
+      if (!P.family) {
+        // A plain product grows variants by becoming a family: it is variant one, keeping its id,
+        // stock and history. Nothing is written until Save.
+        Object.assign(P, { family: true, gid: newId('grp'), variants: [{ ...blankVariant(), id: P.isNew ? '' : P.id,
+          isNew: !!P.isNew, sku: P.sku, barcode: P.barcode, cost: P.cost, price: P.price, openingQty: P.openingQty }] });
+        openV = 0;
+      } else {
+        P.variants.push(blankVariant());
+        openV = P.variants.length - 1;
+      }
+      touch(); paintEditor(); focusV(openV, 'short'); return;
+    }
+    if (a === 'del-v') {
+      if (P.variants.length < 2) { showToast('A product needs at least one variant'); return; }
+      P.variants.splice(i, 1); openV = -1; touch(); paintEditor(); return;
+    }
+    if (a === 'del') {
+      const [gone] = P[t.dataset.list].splice(i, 1);
+      if (t.dataset.list === 'sups' && gone === P.main) P.main = '';
+      touch(); paintEditor(); return;
+    }
+    if (a === 'main') {
+      const s = P.sups[i];
+      if (P.main === s) P.main = '';
+      else { P.main = s; P.sups.unshift(...P.sups.splice(i, 1)); }
+      touch(); paintEditor(); return;
+    }
+    if (a === 'photo-clear') { P.photo = ''; touch(); paintEditor(); return; }
+    if (a === 'save') { if (P.family) saveGroup(); else save(); return; }
+    if (a === 'archive') archive();
+  }
 
-  /* ---- the three-way binding: any two of cost / margin / price drive the third ---- */
-  const fieldEl = (name) => root().querySelector(`[data-f="${name}"]`);
-  const segValue = (name) => {
-    const on = root().querySelector(`.seg[data-seg="${name}"] .seg-btn.active`);
-    return on ? on.dataset.segVal : '';
-  };
-
-  function reprice(edited) {
-    const cost = num(fieldEl('cost').value);
-    const mode = segValue('marginMode');
-    if (edited === 'price') fieldEl('marginValue').value = marginFromPrice(cost, num(fieldEl('price').value), mode);
-    else fieldEl('price').value = priceFromMargin(cost, mode, num(fieldEl('marginValue').value));
-    root().querySelector('#pdMarginLabel').firstChild.nodeValue = MARGIN_LABEL[mode];
-    root().querySelector('#pdMargin').innerHTML = marginLine(marginSummary(cost, num(fieldEl('price').value)));
+  function peInput(t) {
+    if (t.dataset.ms) { t.closest('.pe-menu').querySelector('.pe-ml').innerHTML = menuItems(t.dataset.ms, t.value); return; }
+    if (t.matches('textarea')) grow(t);
+    const k = t.dataset.k;
+    const box = (key) => root().querySelector(`[data-k="${key}"]`);
+    if (k) {
+      if (k === 'track') { P.track = t.checked; touch(); paintEditor(); return; }
+      if (k === 'sellOut') P.sellOut = t.checked;
+      else if (k === 'markup') {
+        const m = val(t.value), c = val(P.cost);
+        if (m != null && c != null) { P.price = priceFromMargin(c, 'percent', m); box('price').value = P.price; }
+      } else P[k] = t.value;
+      // Cost moves the price at the same markup; a typed price moves the markup.
+      if (k === 'cost') {
+        const m = val(box('markup') && box('markup').value);
+        if (m != null && val(P.cost) != null) { P.price = priceFromMargin(P.cost, 'percent', m); box('price').value = P.price; }
+      }
+      if (k === 'price' && box('markup')) box('markup').value = fmtPct(markupOf(P.cost, P.price));
+      if (k === 'name') root().querySelector('.item-head h1').textContent = t.value || 'New product';
+      const pl = root().querySelector('[data-profit]');
+      if (pl) pl.innerHTML = profitLine(P.cost, P.price);
+    }
+    if (t.dataset.v) {
+      const i = Number(t.dataset.i), v = P.variants[i];
+      v[t.dataset.v] = t.value;
+      const rowEl = root().querySelector(`.pe-vrow[data-i="${i}"]`);
+      if (rowEl) rowEl.outerHTML = vRow(v, i);
+      root().querySelector('[data-vprofit]').innerHTML = profitLine(v.cost, v.price, true);
+      // The "in store since" line appears with the first opening quantity.
+      if (t.dataset.v === 'openingQty' && !!root().querySelector('.pe-since') !== P.variants.some((x) => x.isNew && val(x.openingQty))) {
+        paintEditor(); focusV(i, 'openingQty');
+      }
+    }
+    touch();
   }
 
   /* ---- save ---- */
-  function collect() {
-    const out = {};
-    root().querySelectorAll('[data-f]').forEach((el) => {
-      out[el.dataset.f] = el.type === 'checkbox' ? el.checked
-        : el.multiple ? Array.from(el.selectedOptions, (o) => o.value)
-        : el.value.trim();
-    });
-    root().querySelectorAll('.seg[data-seg]').forEach((s) => { out[s.dataset.seg] = segValue(s.dataset.seg); });
-    return out;
-  }
+  const bad = (msg) => { showToast(msg); return null; };
+  const moneyOk = (...xs) => xs.every((x) => val(x) != null && val(x) >= 0);
 
-  // The combo boxes hold a typed name; saving turns it into an id and creates the
-  // category or the supplier when that name is new. '' is a real answer (none).
-  function resolveFolder(f) {
-    const name = String(f.folder || '').trim();
-    if (!name) return '';
-    const hit = state.folders.find((x) => String(x.name).toLowerCase() === name.toLowerCase());
-    if (hit) return hit.id;
-    const base = slug(name);
-    const made = { id: base ? 'cat_' + base : newId('cat'), name, builtin: false };
-    saveFolders(state.folders.concat(made));
-    return made.id;
-  }
+  // The fields a plain product and every variant of a family are written with.
+  const sharedFields = (was) => ({
+    folders: P.cats, folder: P.cats[0] || '', supplierId: P.main, altSupplierIds: P.sups.filter((s) => s !== P.main),
+    modifierIds: P.mods, unit: P.unit || 'pc', soldBy: soldByFor(P.unit, was && was.soldBy),
+    reorderPoint: val(P.low) || 0, trackStock: P.track, hidden: P.hidden, sellOutOfStock: !!P.sellOut,
+    weight: String(P.weight || '').trim(), size: String(P.size || '').trim(), length: String(P.length || '').trim(),
+  });
+  const opening = (productId, q) => (P.track && val(q) > 0
+    ? makeMovement({ productId, qty: val(q), reason: 'count', note: 'Opening stock', happenedOn: P.since }) : null);
 
-  function resolveSupplier(f) {
-    const name = String(f.supplier || '').trim();
-    if (!name) return '';
-    const list = loadSuppliers();
-    const hit = list.find((x) => String(x.name).toLowerCase() === name.toLowerCase());
-    if (hit) return hit.id;
-    const made = { ...SUPPLIER_DEFAULTS, id: newId('sup'), name };
-    saveSuppliers(list.concat(made));
-    return made.id;
-  }
+  function save() {
+    if (!P.name.trim()) return bad('Name the product');
+    if (!moneyOk(P.cost, P.price)) return bad('Cost and price need a number, 0 or more');
+    if (P.isNew && P.openingQty !== '' && !(val(P.openingQty) >= 0)) return bad('Opening stock needs a number, 0 or more');
+    const existing = P.isNew ? null : state.products.find((x) => x.id === P.id);
+    if (!P.isNew && !existing) return bad('That product no longer exists');
 
-  function save(id, opts = {}) {
-    const f = collect();
-    const errs = {};
-    if (!f.name) errs.name = 'Name is required';
-    ['cost', 'price'].forEach((k) => {
-      const n = Number(f[k]);
-      if (f[k] === '' || !Number.isFinite(n) || n < 0) errs[k] = 'Enter a number, 0 or more';
-    });
-    if (f.openingQty !== undefined && f.openingQty !== '' && !(Number(f.openingQty) >= 0)) {
-      errs.openingQty = 'Enter a quantity, 0 or more';
-    }
-    root().querySelectorAll('[data-err]').forEach((el) => { el.textContent = errs[el.dataset.err] || ''; });
-    if (Object.keys(errs).length) { showToast('Fix the highlighted fields'); return null; }
-
-    const isNew = id === 'new';
-    const existing = isNew ? null : state.products.find((x) => x.id === id);
-    if (!isNew && !existing) { showToast('That product no longer exists'); return null; }
-
+    const cost = val(P.cost), price = val(P.price);
+    const marginMode = (existing && existing.marginMode) || 'percent';
     const next = normalizeProduct({
-      ...(existing || {}),
+      ...(existing || {}), ...sharedFields(existing),
       id: existing ? existing.id : newId('p'),
-      name: f.name, brand: f.brand, folder: resolveFolder(f), supplierId: resolveSupplier(f),
-      altSupplierIds: f.altSuppliers || (existing ? existing.altSupplierIds : []),
-      imageUrl: f.imageUrl, soldBy: f.soldBy, unit: f.unit || 'pc',
-      cost: Number(f.cost), price: Number(f.price),
-      marginMode: f.marginMode, marginValue: num(f.marginValue),
-      reorderPoint: num(f.reorderPoint), sellOutOfStock: !!f.sellOutOfStock,
-      sku: f.sku, barcode: f.barcode,
-      weight: f.weight, size: f.size, length: f.length,
+      name: P.name.trim(), description: String(P.desc || '').trim(), imageUrl: P.photo,
+      sku: String(P.sku || '').trim(), barcode: String(P.barcode || '').trim(),
+      cost, price, marginMode, marginValue: marginFromPrice(cost, price, marginMode),
       stock: existing ? existing.stock : 0,
       updatedAt: new Date().toISOString(),
     });
-
     // A new product may open with a quantity, but it still arrives as a movement.
-    const movements = [];
-    const opening = num(f.openingQty);
-    if (isNew && opening > 0) {
-      const mv = makeMovement({ productId: next.id, qty: opening, reason: 'count', note: 'Opening stock',
-        happenedOn: f.openingSince });
-      applyMovement(next, mv);
-      movements.push(mv);
-    }
+    const mv = P.isNew ? opening(next.id, P.openingQty) : null;
+    if (mv) applyMovement(next, mv);
 
     const list = state.products.slice();
     const at = list.findIndex((x) => x.id === next.id);
     if (at >= 0) list[at] = next; else list.push(next);
     state.products = list;
     saveProducts();
-    appendMovements(movements);
-    refreshSharedState();
-    if (opts.toast !== false) showToast('Saved');
-    if (opts.go === false) return next;
-    Router.go(VIEW, '');   // Save is done with this product - go back to the list
+    appendMovements(mv ? [mv] : []);
+    done();
     return next;
   }
 
-  /* ---------- saving a family: one form, several product rows ---------- */
-
-  function saveGroup(gid) {
-    const f = collect();
-    const rows = Array.from(root().querySelectorAll('.pd-vrow')).map((tr) => {
-      const v = { id: tr.dataset.vid || '' };
-      tr.querySelectorAll('[data-v]').forEach((el) => { v[el.dataset.v] = el.value.trim(); });
-      return v;
-    });
-
-    if (!f.name) { showToast('Name the product'); return null; }
-    if (!rows.length) { showToast('A product needs at least one variant'); return null; }
-    for (let i = 0; i < rows.length; i += 1) {
-      const v = rows[i];
-      if (!v.name) { showToast(`Variant ${i + 1} needs a name`); return null; }
-      const bad = ['cost', 'price'].find((k) => v[k] === '' || !(Number(v[k]) >= 0));
-      if (bad) { showToast(`Variant ${i + 1}: ${bad} must be a number, 0 or more`); return null; }
+  /* A family is one form and several product rows. A variant IS a product (bo-model.js); the
+     group carries the shared name, picture, description and first category. */
+  function saveGroup() {
+    if (!P.name.trim()) return bad('Name the product');
+    for (let i = 0; i < P.variants.length; i += 1) {
+      const v = P.variants[i];
+      const fail = !v.short.trim() ? `Variant ${i + 1} needs a name`
+        : !moneyOk(v.cost, v.price) ? `${v.short}: cost and price need a number, 0 or more` : '';
+      if (fail) { openV = i; paintEditor(); return bad(fail); }
     }
-
-    const folder = resolveFolder(f);
-    const supplierId = resolveSupplier(f);
-    const altSupplierIds = f.altSuppliers || [];
-
-    const groups = loadGroups();
-    const at = groups.findIndex((x) => x.id === gid);
-    const g = { ...GROUP_DEFAULTS, ...(groups[at] || { id: gid }),
-                name: f.name, folder, imageUrl: safeUrl(f.imageUrl) };
-    if (at >= 0) groups[at] = g; else groups.push(g);
-    putGroups(groups);
-
     const stamp = new Date().toISOString();
+    const groups = loadGroups();
+    const gi = groups.findIndex((x) => x.id === P.gid);
+    const g = { ...GROUP_DEFAULTS, ...(groups[gi] || { id: P.gid }),
+      name: P.name.trim(), folder: P.cats[0] || '', imageUrl: P.photo, description: String(P.desc || '').trim(), updatedAt: stamp };
+    if (gi >= 0) groups[gi] = g; else groups.push(g);
+    saveGroups(groups);
+
     const list = state.products.slice();
     const byId = new Map(list.map((x, i) => [x.id, i]));
-    const keep = new Set(rows.map((v) => v.id).filter(Boolean));
-    const movements = [];
-
-    // A variant taken off the table is archived, never deleted - an old receipt
-    // has to stay resolvable.
+    const keep = new Set(P.variants.map((v) => v.id).filter(Boolean));
+    // A variant taken off the list is archived, never deleted - an old receipt has to stay resolvable.
     list.forEach((x, i) => {
-      if (x.groupId === gid && !x.archived && !keep.has(x.id)) {
-        list[i] = { ...x, archived: true, updatedAt: stamp };
-      }
+      if (x.groupId === P.gid && !x.archived && !keep.has(x.id)) list[i] = { ...x, archived: true, updatedAt: stamp };
     });
-
-    rows.forEach((v) => {
+    const movements = [];
+    P.variants.forEach((v) => {
       const existing = v.id && byId.has(v.id) ? list[byId.get(v.id)] : null;
-      const cost = Number(v.cost);
-      const price = Number(v.price);
+      const cost = val(v.cost), price = val(v.price);
       const marginMode = (existing && existing.marginMode) || 'percent';
       const next = normalizeProduct({
-        ...(existing || {}),
-        id: existing ? existing.id : newId('p'),
-        groupId: gid, archived: false,
-        name: v.name, sku: v.sku, barcode: v.barcode, imageUrl: v.imageUrl,
+        ...(existing || {}), ...sharedFields(existing),
+        id: existing ? existing.id : newId('p'), groupId: P.gid,
+        archived: existing ? !!existing.archived : !!P.archived,
+        name: vName(v), sku: String(v.sku || '').trim(), barcode: String(v.barcode || '').trim(),
+        imageUrl: '',   // one photo per product, on the group (owner, 2026-10-01)
         cost, price, marginMode, marginValue: marginFromPrice(cost, price, marginMode),
-        folder, supplierId, altSupplierIds, brand: f.brand,
-        soldBy: f.soldBy, unit: f.unit || 'pc',
-        reorderPoint: num(f.reorderPoint), sellOutOfStock: !!f.sellOutOfStock,
-        weight: f.weight, size: f.size, length: f.length,
-        stock: existing ? existing.stock : 0,
-        updatedAt: stamp,
+        stock: existing ? existing.stock : 0, updatedAt: stamp,
       });
-      const opening = num(v.openingQty);
-      if (!existing && opening > 0) {
-        const mv = makeMovement({ productId: next.id, qty: opening, reason: 'count', note: 'Opening stock',
-          happenedOn: f.openingSince });
-        applyMovement(next, mv);
-        movements.push(mv);
-      }
+      const mv = existing ? null : opening(next.id, v.openingQty);
+      if (mv) { applyMovement(next, mv); movements.push(mv); }
       if (existing) list[byId.get(v.id)] = next; else list.push(next);
     });
-
     state.products = list;
     saveProducts();
     appendMovements(movements);
-    refreshSharedState();
-    showToast('Saved');
-    Router.go(VIEW, '');
+    done();
     return g;
   }
 
-  // A plain product grows variants by becoming a family. It keeps its stock and its
-  // history by staying a product - it is simply variant one now.
-  function convertToGroup() {
-    const id = editId();
-    const f = collect();
-    if (!f.name) { showToast('Name the product first'); return; }
-
-    let seed = null;
-    let folder = resolveFolder(f);
-    if (id !== 'new') {
-      seed = save(id, { go: false, toast: false });
-      if (!seed) return;
-      folder = seed.folder;
-    }
-
-    const g = { ...GROUP_DEFAULTS, id: newId('grp'), name: f.name, folder, imageUrl: safeUrl(f.imageUrl) };
-    putGroups(loadGroups().concat(g));
-
-    if (seed) {
-      const list = state.products.slice();
-      const at = list.findIndex((x) => x.id === seed.id);
-      list[at] = { ...list[at], groupId: g.id, updatedAt: new Date().toISOString() };
-      state.products = list;
-      saveProducts();
-    }
+  function done() {
+    P = null;
     refreshSharedState();
-    addOnRender = true;
-    Router.go(VIEW, g.id + '/edit');
+    showToast('Saved');
+    Router.go(VIEW, '');   // Save is done with this product - back to the list
+  }
+
+  // Archive a product, or every variant of a family. Restoring asks nothing.
+  function archive() {
+    const ids = new Set(P.family ? P.variants.map((v) => v.id).filter(Boolean) : [P.id]);
+    const to = !P.archived;
+    // ponytail: native confirm(), same as cancelling a PO in bo-suppliers.js. Archiving is
+    // reversible from this very button, so it needs the pause, not a designed dialog.
+    if (to && !confirm(`Archive "${P.name}"?
+
+It stops showing in the POS. Old receipts still resolve, and you can restore it from this page.`)) return;
+    const stamp = new Date().toISOString();
+    state.products = state.products.map((x) => (ids.has(x.id) ? { ...x, archived: to, updatedAt: stamp } : x));
+    saveProducts();
+    P.archived = to;
+    refreshSharedState();
+    paintEditor();
+    showToast(to ? 'Archived - old receipts still resolve' : 'Restored');
   }
 
   /* ================= render + events ================= */
 
   window.renderProducts = function () {
     const r = root();
+    if (state.detailId && !onItemPage()) { renderEditor(editId()); return; }
+    P = null;
     if (onItemPage()) { window.renderProductPage(state.detailId); return; }
-    if (state.detailId) { renderEditor(editId()); return; }
     // The search box is inside the view, so the shell is rebuilt only when it is
     // missing or the Catalog | Stock view changed - re-rendering it on every keystroke
     // would steal focus.
@@ -1054,11 +1003,13 @@
 
   const rebuild = () => { root().innerHTML = ''; refreshSharedState(); renderCurrentView(); };
   const mine = (el) => !!el && !!root() && root().contains(el);
-  const isFamily = () => !!state.detailId && loadGroups().some((g) => g.id === editId());
 
   document.addEventListener('click', (e) => {
     const r = root();
     if (!r || r.hidden || !e.target.closest || onItemPage()) return;
+
+    const pe = e.target.closest('[data-pe], [data-pe-pick]');
+    if (mine(pe)) { peClick(pe); return; }
 
     const tileEl = e.target.closest('.pd-kpi');
     if (mine(tileEl)) {
@@ -1066,14 +1017,6 @@
       const on = new Set(levelsOf(params()));
       if (!key) on.clear(); else if (on.has(key)) on.delete(key); else on.add(key);
       Router.setParams({ level: [...on].join(','), low: '', page: '' });
-      return;
-    }
-
-    const segBtn = e.target.closest('.seg-btn');
-    if (mine(segBtn)) {
-      segBtn.parentElement.querySelectorAll('.seg-btn').forEach((b) => b.classList.toggle('active', b === segBtn));
-      // Price is authoritative, so switching mode recomputes the margin, not the price.
-      if (segBtn.parentElement.dataset.seg === 'marginMode') reprice('price');
       return;
     }
 
@@ -1118,40 +1061,6 @@ They stop showing in the POS. Old receipts still resolve, and you can restore ea
       rebuild();
       const n = plan.create.length + plan.update.length;
       showToast(`Imported ${n} product${n === 1 ? '' : 's'}`);
-    } else if (act === 'save') {
-      if (isFamily()) saveGroup(editId()); else save(editId());
-    } else if (act === 'add-variant') {
-      if (!isFamily()) { convertToGroup(); return; }
-      const tb = r.querySelector('#pdVariants tbody');
-      tb.insertAdjacentHTML('beforeend', variantRowHtml(normalizeProduct({})));
-      tb.lastElementChild.querySelector('[data-v="name"]').focus();
-    } else if (act === 'del-variant') {
-      const tr = btn.closest('.pd-vrow');
-      if (r.querySelectorAll('.pd-vrow').length < 2) {
-        showToast('A product needs at least one variant');
-        return;
-      }
-      tr.remove();
-    } else if (act === 'img-clear') {
-      setImage(btn.closest('.pd-imgpick'), '');
-    } else if (act === 'archive') {
-      const list = state.products.slice();
-      const at = list.findIndex((x) => x.id === editId());
-      if (at < 0) return;
-      // ponytail: native confirm(), same as cancelling a PO in bo-suppliers.js. Archiving is
-      // reversible from this very button, so it needs the pause, not a designed dialog.
-      // Restoring is not destructive and asks nothing.
-      if (!list[at].archived
-        && !confirm(`Archive "${list[at].name}"?
-
-It stops showing in the POS. Old receipts still resolve, and you can restore it from this page.`)) return;
-      // Never delete: an old receipt has to stay resolvable.
-      list[at] = { ...list[at], archived: !list[at].archived, updatedAt: new Date().toISOString() };
-      state.products = list;
-      saveProducts();
-      refreshSharedState();
-      renderCurrentView();
-      showToast(list[at].archived ? 'Archived - old receipts still resolve' : 'Restored');
     }
   });
 
@@ -1159,22 +1068,17 @@ It stops showing in the POS. Old receipts still resolve, and you can restore it 
   document.addEventListener('keydown', (e) => {
     const t = e.target.closest && e.target.closest('.pd-kpi');
     if (mine(t) && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); t.click(); }
+    if (e.key === 'Enter' && e.target.matches && e.target.matches('.pe-ms')) {
+      e.preventDefault();
+      const first = e.target.closest('.pe-menu').querySelector('[data-pe-pick]');
+      if (first) first.click();
+    }
   });
 
   document.addEventListener('input', (e) => {
     const el = e.target;
     if (!el.dataset || !mine(el) || onItemPage()) return;
-    if (el.dataset.v) {
-      const tr = el.closest('.pd-vrow');
-      if (el.dataset.v === 'cost' || el.dataset.v === 'price') {
-        tr.querySelector('.pd-vmargin').textContent =
-          vMarkup(tr.querySelector('[data-v="cost"]').value, tr.querySelector('[data-v="price"]').value);
-      }
-      return;
-    }
-    if (!el.dataset.f) return;
-    const f = el.dataset.f;
-    if ((f === 'cost' || f === 'marginValue' || f === 'price') && !isFamily()) reprice(f);
+    if (P && el.closest('.pe')) peInput(el);
   });
 
   document.addEventListener('change', async (e) => {
@@ -1215,12 +1119,14 @@ It stops showing in the POS. Old receipts still resolve, and you can restore it 
       applyCols();
       return;
     }
-    if (el.dataset.img) {
+    if (el.dataset.peImg !== undefined) {
       const img = el.files && el.files[0];
       el.value = '';
-      if (!img) return;
+      if (!img || !P) return;
       try {
-        setImage(el.closest('.pd-imgpick'), await shrink(img));
+        P.photo = await shrink(img);
+        touch();
+        paintEditor();
       } catch (err) {
         showToast('Could not read that image');
       }

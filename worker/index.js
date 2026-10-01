@@ -29,13 +29,23 @@
 // here, not in the client, because there is one Worker and there will one day be
 // tablets running a build nobody has updated in a year. The trust boundary owns it.
 const TABLES = {
-  products:       { money: ['price', 'cost'], json: [], stamp: 'updated_at', event: false,
+  products:       { money: ['price', 'cost'], json: ['alt_supplier_ids', 'category_ids', 'modifier_ids'],
+                    stamp: 'updated_at', event: false,
+                    // columns whose client field is not just the camelCase of the column
+                    from: { category_ids: 'folders', folder_id: 'folder', danger_level: 'reorderPoint' },
                     cols: ['id', 'store_id', 'sku', 'barcode', 'name', 'unit', 'cost', 'price',
                            'margin_mode', 'margin_value', 'stock', 'danger_level', 'sell_out_of_stock',
-                           'supplier_id', 'folder_id', 'group_id', 'weight', 'size', 'length', 'image_url',
-                           'archived', 'updated_at'] },
-  groups:         { table: 'product_groups', money: [], json: [], stamp: 'updated_at', event: false,
-                    cols: ['id', 'store_id', 'name', 'folder_id', 'image_url', 'updated_at'] },
+                           'track_stock', 'hidden', 'description', 'supplier_id', 'alt_supplier_ids',
+                           'folder_id', 'category_ids', 'modifier_ids', 'group_id', 'weight', 'size', 'length',
+                           'image_url', 'archived', 'updated_at'] },
+  groups:         { table: 'product_groups', money: [], json: [], stamp: 'updated_at', event: false, from: { folder_id: 'folder' },
+                    cols: ['id', 'store_id', 'name', 'description', 'folder_id', 'image_url', 'updated_at'] },
+  folders:        { table: 'categories', money: [], json: [], stamp: 'updated_at', event: false,
+                    cols: ['id', 'store_id', 'name', 'updated_at'] },
+  // jsonMoney: money inside a json column -- each option's price, pesos on the wire, centavos stored.
+  modifiers:      { table: 'modifier_lists', money: [], json: ['options'], jsonMoney: { options: 'price' },
+                    stamp: 'updated_at', event: false,
+                    cols: ['id', 'store_id', 'name', 'options', 'archived', 'updated_at'] },
   suppliers:      { money: ['min_order'], json: ['order_days'], stamp: 'updated_at', event: false,
                     cols: ['id', 'store_id', 'name', 'contact', 'phone', 'email', 'address', 'note',
                            'order_days', 'min_order', 'quoted_lead_days', 'updated_at'] },
@@ -123,6 +133,7 @@ function toRow(t, obj, user) {
     if (c === 'store_id') continue;
     // snake_case, or the client's own camelCase (session_id <- sessionId), so a tablet uploads its rows as stored.
     let v = obj[c] !== undefined ? obj[c] : obj[c.replace(/_(\w)/g, (_, x) => x.toUpperCase())];
+    if (v === undefined && t.from && t.from[c]) v = obj[t.from[c]];
     if (v === undefined) continue;
     // The till keeps orders.ts and customerLedger.ts as epoch ms; D1 keeps ISO text, which ?since=
     // and the rollup's date(ts, ...) read. A numeric date column is converted here, once.
@@ -131,6 +142,8 @@ function toRow(t, obj, user) {
     if (v === null && (t.nullable || []).includes(c)) v = null;
     else if (t.money.includes(c) || (t.scaled || []).includes(c)) v = Math.round(Number(v || 0) * 100);
     else if (t.json.includes(c)) {
+      const k = (t.jsonMoney || {})[c];
+      if (k && Array.isArray(v)) v = v.map((o) => ({ ...o, [k]: Math.round(Number(o[k] || 0) * 100) }));
       // Already a JSON string (a retry re-sending what we stored) -> keep it. Otherwise it is a
       // live value that still needs encoding. JSON.stringify-ing an already-encoded string would
       // double-encode it, so a stored row would read back as a string, not the object it was.
@@ -155,6 +168,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 function rowError(t, o) {
   if (!o || typeof o !== 'object' || Array.isArray(o)) return 'row is not an object';
   if (typeof o.id !== 'string' || !o.id) return 'missing id';
+  if (t.table === 'categories' && o.id === 'all') return "'all' is the till's All Items view, not a category";
   if (t.stamp === 'ts') {
     const ts = o.ts;
     if (!Number.isFinite(ts) && (typeof ts !== 'string' || Number.isNaN(Date.parse(ts)))) return 'missing or unparseable ts';
@@ -190,6 +204,9 @@ function fromRow(t, row) {
   // null stays null (not-null columns never hold one), so a sale's absent `expected` is not 0.
   for (const c of t.money.concat(t.scaled || [])) out[c] = out[c] == null ? null : out[c] / 100;
   for (const c of t.json) { try { out[c] = JSON.parse(out[c]); } catch (_) { out[c] = null; } }
+  for (const [c, k] of Object.entries(t.jsonMoney || {})) {
+    if (Array.isArray(out[c])) out[c] = out[c].map((o) => ({ ...o, [k]: (Number(o[k]) || 0) / 100 }));
+  }
   return out;
 }
 

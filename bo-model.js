@@ -64,13 +64,23 @@ const MARGIN_MODES = { percent: 'Percent', flat: 'Flat' };
 // danger level — because renaming them means touching the POS for no gain.
 const PRODUCT_DEFAULTS = {
   id: '', sku: '', barcode: '', name: '', brand: 'Generic',
-  folder: '', unit: 'pc', soldBy: 'each',
+  folder: '', folders: [], unit: 'pc', soldBy: 'each',
   cost: 0, price: 0, marginMode: 'percent', marginValue: 0,
   stock: 0, reorderPoint: 0, sellOutOfStock: false,
   supplierId: '', altSupplierIds: [], groupId: '', imageUrl: '',
-  weight: '', size: '', length: '',
+  weight: '', size: '', length: '', description: '',
+  // hidden: kept and listed here, but off the till's tiles and search (owner, 2026-10-01).
+  // trackStock false: no counts and never an out-of-stock prompt (a service, a cut).
+  hidden: false, trackStock: true, modifierIds: [],
   aliases: [], archived: false, updatedAt: '',
 };
+
+// Several categories per item (owner, 2026-10-01). `folder` stays the first of them, so
+// everything that shows ONE category (tiles, item page, insights) reads it unchanged;
+// anything that filters or counts by category asks foldersOf(). A row from before the
+// list existed has only `folder`.
+const foldersOf = (p) => [...new Set([p && p.folder, ...((p && Array.isArray(p.folders)) ? p.folders : [])]
+  .map((x) => String(x || '')).filter((x) => x && x !== 'all'))];
 
 function normalizeProduct(raw) {
   const p = { ...PRODUCT_DEFAULTS, ...(raw || {}) };
@@ -81,6 +91,11 @@ function normalizeProduct(raw) {
   p.sellOutOfStock = !!p.sellOutOfStock;
   p.archived = !!p.archived;
   p.aliases = Array.isArray(p.aliases) ? p.aliases : [];
+  p.folders = foldersOf(p);
+  p.folder = p.folders[0] || '';
+  p.hidden = !!p.hidden;
+  p.trackStock = p.trackStock !== false;
+  p.modifierIds = [...new Set((Array.isArray(p.modifierIds) ? p.modifierIds : []).map(String).filter(Boolean))];
   // Backup suppliers. `supplierId` stays the primary because a purchase order and a
   // reorder list each need one answer to "who do we buy this from"; the rest are who
   // else stocks it when that one cannot deliver. Never repeats the primary.
@@ -120,7 +135,7 @@ const newId = (prefix) =>
    — a variant has to be sellable, countable and orderable, which is to say it
    has to be a product. The group carries the shared picture and category.     */
 
-const GROUP_DEFAULTS = { id: '', name: '', folder: '', imageUrl: '' };
+const GROUP_DEFAULTS = { id: '', name: '', folder: '', imageUrl: '', description: '' };
 
 const groupOf = (product, groups) =>
   (product && product.groupId && groups.find((g) => g.id === product.groupId)) || null;
@@ -187,7 +202,7 @@ function applyMovement(product, movement) {
   return product;
 }
 
-const isLow = (p) => !p.archived && Number(p.stock) <= Number(p.reorderPoint);
+const isLow = (p) => !p.archived && p.trackStock !== false && Number(p.stock) <= Number(p.reorderPoint);
 const stockValue = (p) => round2(cent(p.cost) * (Number(p.stock) || 0) / 100);
 
 /* One stock level for every filter, tile and pill: out, low, dead or ok. Dead = on the shelf
@@ -212,6 +227,7 @@ function saleClock(movements) {
 }
 
 function stockLevel(p, clock, now = Date.now()) {
+  if (p.trackStock === false) return 'ok';   // a service or a cut: no count to run out of
   if (Number(p.stock) <= 0) return 'out';
   if (isLow(p)) return 'low';
   const since = clock ? (clock.lastSale ?? clock.first) : null;
@@ -297,6 +313,9 @@ const STORAGE_SUPPLIERS = 'hwpos.suppliers.v1';
 const STORAGE_PURCHASE_ORDERS = 'hwpos.purchaseOrders.v1';
 const STORAGE_STOCK_MOVEMENTS = 'hwpos.stockMovements.v1';
 const STORAGE_STAFF = 'hwpos.staff.v1';
+// Modifier lists (owner, 2026-10-01): a named list of options, each a name and a price, switched
+// on per item (product.modifierIds). No stock. Back office only for now; the POS reads it later.
+const STORAGE_MODIFIERS = 'hwpos.modifiers.v1';
 
 /* ---------- Paging ----------
    Every list in the back office stops at PAGE_ROWS and walks with real page numbers on
@@ -349,6 +368,10 @@ const loadMovements = () => loadList(STORAGE_STOCK_MOVEMENTS);
 const saveMovements = (list) => saveList(STORAGE_STOCK_MOVEMENTS, list);
 const loadStaff = () => loadList(STORAGE_STAFF, SEED_STAFF).map((u) => ({ ...STAFF_DEFAULTS, ...u }));
 const saveStaff = (list) => saveList(STORAGE_STAFF, list);
+const MODIFIER_DEFAULTS = { id: '', name: '', options: [], archived: false, updatedAt: '' };
+const loadModifiers = () => loadList(STORAGE_MODIFIERS).map((m) => ({ ...MODIFIER_DEFAULTS, ...m,
+  options: (Array.isArray(m.options) ? m.options : []).map((o) => ({ id: String(o.id || ''), name: String(o.name || ''), price: round2(o.price) })) }));
+const saveModifiers = (list) => saveList(STORAGE_MODIFIERS, list);
 
 // Movements are append-only: a correction is another row, never an edit.
 // ponytail: newest first and capped at `limit` at the call site, because the log is
@@ -437,7 +460,7 @@ const PRODUCT_COLUMNS = [
   { key: 'barcode', head: 'barcode' },
   { key: 'name', head: 'name' },
   { key: 'brand', head: 'brand' },
-  { key: 'folder', head: 'category', alt: ['folder'] },
+  { key: 'folders', head: 'category', alt: ['categories', 'folder'], list: true },   // one or several, | between
   { key: 'unit', head: 'unit' },
   { key: 'soldBy', head: 'sold_by', alt: ['soldby'] },
   { key: 'cost', head: 'cost', num: true },
@@ -455,6 +478,8 @@ const PRODUCT_COLUMNS = [
   { key: 'size', head: 'size' },
   { key: 'length', head: 'length' },
   { key: 'aliases', head: 'aliases', list: true },
+  { key: 'description', head: 'description' },
+  { key: 'hidden', head: 'hidden', bool: true },
 ];
 
 const csvBool = (v) => /^(1|true|yes|y)$/i.test(String(v).trim());
@@ -498,6 +523,13 @@ if (typeof module !== 'undefined' && require.main === module) {
 
   // The example from the spec: cost 100, percent mode, 25%.
   assert.equal(priceFromMargin(100, 'percent', 25), 125);
+
+  // Several categories: the old single `folder` is folded in and stays the first.
+  const mc = normalizeProduct({ folder: 'cat_a', folders: ['cat_b', 'cat_a', ''] });
+  assert.deepEqual(mc.folders, ['cat_a', 'cat_b']);
+  assert.equal(mc.folder, 'cat_a');
+  assert.deepEqual(normalizeProduct({ folders: ['cat_b'] }).folder, 'cat_b');
+  assert.deepEqual(foldersOf({ folder: 'all' }), []);
   const s = marginSummary(100, 125);
   assert.equal(s.profit, 25);
   assert.equal(s.markup, 25);      // on cost, what was typed
@@ -641,7 +673,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     cent, unc, round2, priceFromMargin, marginFromPrice, marginSummary,
     normalizeProduct, PRODUCT_DEFAULTS, PRODUCT_COLUMNS, productToCsvRow, productFromCsvRow,
-    supplierIdsOf,
+    supplierIdsOf, foldersOf,
     makeMovement, applyMovement, isLow, stockValue, roundQty, stepFor, newId,
     DEAD_DAYS, STOCK_LEVEL, saleClock, stockLevel,
     groupOf, variantsOf, imageFor,

@@ -88,17 +88,38 @@ plus the `.side-link[data-view]` and `.view[data-view]` markup — never a secon
 
 ## Products
 
-List at `/admin/products?q=&cat=&supplier=&low=1`, editor at `/admin/products/<id>`.
-Every filter in the URL, like every other page.
+List at `/admin/products?q=&cat=&supplier=&low=1`, editor at `/admin/products/<id>/edit`
+(`new` for a new one). Every filter in the URL, like every other page.
 
-**The editor is six cards down the page** (`.bo-card` → `.bo-card-head` → `.bo-card-inset`):
+**The editor is one 720px column of cards, Status alone on the right** (ported from
+`product-edit-lab.html`, 2026-10-01; `pe-*` classes in `bo-products.css`):
 
-1. **Details** — name, title, category (`folder_id`), supplier, one image
-2. **Sold as** — each vs by measure
-3. **Pricing** — cost, margin mode toggle, price
-4. **Inventory** — quantity, danger level, sell-when-out-of-stock, SKU, barcode
-5. **Variants** — add variant → name + price (+ own SKU/barcode/stock)
-6. **Specs** — weight, size, length
+1. **About** — photo (left), name, description
+2. **Categories** — chips; an item sits in **several**. "Add “x”" in the picker makes a new one
+3. **Price** (one product) or **Variants** (a family) — "Add variants" turns a product into a family
+4. **Modifiers** — chips; the lists are made on the Modifiers page
+5. **Stock** — on hand + Adjust, sold per (unit), low stock at, SKU, barcode, Track stock,
+   Sell when out of stock
+6. **Suppliers** — chips; tap one to make it the **main** (optional; the first one added is main)
+7. **Specs** — weight, size, length
+
+**Status** is Active / Hidden. Hidden keeps the item in the back office but takes it off the
+till's tiles and search; a scan still finds it and asks "Sell anyway?". A family's status is all
+of its variants'. **Locations** from the lab is dropped (one store per catalogue today).
+
+**Settled 2026-10-01 (owner) — don't reopen:**
+- **Several categories per item.** Sales counts an item in each of them, so category totals can
+  add up past the store total. Deleting a category leaves its items alone; they only lose it.
+  Stored as `category_ids` json on the product, not a link table: products sync as whole rows
+  (last write wins), and a link table would need its own tombstones. Postgres reads it with jsonb
+  and a GIN index. `folder_id` stays the first one for readers of one.
+- **No variant photos.** One photo per product, on the family. Variants stay a flat list.
+- **Modifiers** are lists of options (name + price), switched on per item, no stock. Back office
+  only for now, but the rows are production shape: `modifier_lists`, ids on every option, prices
+  in centavos inside the json.
+- **Categories** and **Modifiers** are pages under Products, built like the Products list:
+  table → row page. A category's page lists its items; "Add items" is a ticked table with Add
+  top right.
 
 - **Identity** — `name`, `title` (what the POS tile shows when it differs from the name),
   `sku`, `barcode`, `image_url`, `folder_id` (category), `supplier_id`.

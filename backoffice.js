@@ -305,6 +305,19 @@ function saveFolders(list) {
   state.folders = list;
   return storageSet(STORAGE_FOLDERS, JSON.stringify(list));
 }
+const loadGroups = () => readJsonStorage(STORAGE_GROUPS, null)
+  || (typeof SEED_GROUPS !== 'undefined' ? SEED_GROUPS.map((g) => ({ ...g })) : []);
+const saveGroups = (list) => storageSet(STORAGE_GROUPS, JSON.stringify(list));
+// A readable id while the name is free (cat_paint), a random one when it is not. "Free" includes
+// archived products: a deleted category's id stays on them, and a namesake must not inherit them.
+function addFolder(name) {
+  const base = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const held = (id) => state.folders.some((f) => f.id === id)
+    || state.products.some((p) => p.folder === id || (p.folders || []).includes(id));
+  const id = base && !held('cat_' + base) ? 'cat_' + base : newId('cat');
+  saveFolders(state.folders.concat({ id, name: String(name).trim(), builtin: false, updatedAt: new Date().toISOString() }));
+  return id;
+}
 function loadOrders() {
   const raw = readJsonStorage(STORAGE_ORDERS, []);
   return Array.isArray(raw) ? raw.map(normalizeOrder).filter(Boolean) : [];
@@ -552,6 +565,8 @@ const VIEWS = {
   transactions: { label: 'Transactions', render: () => renderTransactions() },
   products:  { label: 'Products',  render: () => renderProducts() },
   inventory: { label: 'Stock history', render: () => renderInventory() },
+  categories: { label: 'Categories', render: () => renderCategories() },
+  modifiers: { label: 'Modifiers', render: () => renderModifiers() },
   customers: { label: 'Customers', render: () => renderCustomers() },
   suppliers: { label: 'Suppliers', render: () => renderSuppliers() },
   insights:  { label: 'Analytics',  render: () => renderInsights() },
@@ -573,7 +588,9 @@ function applyRoute() {
   const { view, id, params } = Router.route();
   // Staff moved into Settings › Staff & access (2026-09-26); old links land there.
   if (view === 'staff') return Router.go('settings', 'staff', { ...params, person: id }, { replace: true });
+  const was = state.view;
   state.view = VIEWS[view] ? view : 'dashboard';
+  if (state.view !== was) state.visit = (state.visit || 0) + 1;   // editors drop a draft from an earlier visit
   state.detailId = id || '';
   state.range = RANGE_DAYS[params.range] ? params.range : 'today';
   // A date that doesn't parse is the same as no date: today.
@@ -604,7 +621,7 @@ function paint() {
   const cur = sub ? (sub.items.some(([k]) => k === p) ? p : sub.def) : '';
   const deep = !!$(`.side-link[data-view="${view}"][data-sub~="${cur}"]`);
   // Stock history sits in Products' tree, so Products stays lit (tree open) on it.
-  const lit = view === 'inventory' ? 'products' : view;
+  const lit = ['inventory', 'categories', 'modifiers'].includes(view) ? 'products' : view;
   const was = $('.side-link.active');
   $$('.side-link').forEach(b => b.classList.toggle('active',
     b.dataset.view === lit && (b.dataset.sub ? b.dataset.sub.split(' ').includes(cur) : !deep)));
@@ -641,7 +658,9 @@ function paint() {
   renderSwitchers();
   // Every tree's leaves, not just this view's, so a leaf left behind doesn't stay lit in a peeked tree.
   $$('.side-sublink').forEach(b => {
-    const on = !!sub && b.closest('.side-sub').dataset.view === view && b.dataset.sub === cur;
+    // Categories and Modifiers are views of their own, so their leaves name the view, not a sub.
+    const on = b.dataset.view ? b.dataset.view === view
+      : !!sub && b.closest('.side-sub').dataset.view === view && b.dataset.sub === cur;
     b.classList.toggle('active', on);
     if (on) b.closest('.side-group')?.querySelector('.side-grouphead').setAttribute('aria-expanded', 'true');
   });
@@ -741,7 +760,7 @@ function buildSubnav() {
     const b = e.target.closest('.side-sublink');
     if (!b) return;
     shutTrees();
-    goSub(b.closest('.side-sub').dataset.view, b.dataset.sub);
+    if (b.dataset.view) setView(b.dataset.view); else goSub(b.closest('.side-sub').dataset.view, b.dataset.sub);
   });
 }
 function closeSideMenus() {

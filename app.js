@@ -155,7 +155,7 @@ function endSearch(keep = false) {
 // stockOnHand is the shelf at the tap -- the cart does not decrement stock until the sale.
 function trackItemAdd(p, qty, via) {
   const stockOnHand = Number(p.stock) || 0;
-  if (stockOnHand <= 0) track('oos_tap', { productId: p.id, stockOnHand });
+  if (p.trackStock !== false && stockOnHand <= 0) track('oos_tap', { productId: p.id, stockOnHand });
   track('item_add', { productId: p.id, qty, unitPrice: p.price, stockOnHand, via });
   if (via !== 'scan' && searchIntent && state.query.trim()) {
     searchIntent.picked = true;
@@ -396,8 +396,11 @@ function saveGroups() {
   return writeJsonStorage(STORAGE_GROUPS, state.groups);
 }
 function groupById(id) { return state.groups.find(g => g.id === id) || null; }
+// On the till = a tile and a search hit. Archived is gone; hidden is kept in the back office but
+// off the till (owner, 2026-10-01) -- a scan still finds both and asks (addProductByCode).
+const onTill = p => !p.archived && !p.hidden;
 function groupMembers(groupId) {
-  return state.products.filter(p => p.groupId === groupId);
+  return state.products.filter(p => p.groupId === groupId && onTill(p));
 }
 
 // ---------- Orders persistence ----------
@@ -715,7 +718,7 @@ function withPlurals(text) {
 }
 
 function rebuildFuse() {
-  const indexed = state.products.map(p => ({
+  const indexed = state.products.filter(onTill).map(p => ({
     ...p,
     searchBlob: withPlurals(
       [p.name, p.sku, p.barcode, p.brand, ...(p.aliases || [])].join(' ').toLowerCase()),
@@ -756,8 +759,9 @@ function rebuildFuse() {
 
 // ---------- Folder helpers ----------
 function folderCount(folderId) {
-  if (folderId === 'all') return state.products.length;
-  return state.products.filter(p => p.folder === folderId).length;
+  const live = state.products.filter(onTill);
+  if (folderId === 'all') return live.length;
+  return live.filter(p => foldersOf(p).includes(folderId)).length;   // an item sits in several
 }
 function folderName(id) {
   const f = state.folders.find(x => x.id === id);
@@ -832,7 +836,13 @@ function deleteFolder(id) {
     : `Delete folder “${f.name}”?`;
   if (!confirm(msg)) return;
   state.folders = state.folders.filter(x => x.id !== id);
-  state.products.forEach(p => { if (p.folder === id) p.folder = ''; });
+  // Deleting a category leaves its items alone: they only lose this one.
+  state.products.forEach(p => {
+    if (!foldersOf(p).includes(id)) return;
+    p.folders = foldersOf(p).filter(x => x !== id);
+    p.folder = p.folders[0] || '';
+    p.updatedAt = new Date().toISOString();
+  });
   saveFolders(); saveProducts();
   if (state.folderId === id) state.folderId = 'all';
   renderAllFolderUis();
@@ -954,12 +964,12 @@ function renderSellHeader() {
 }
 
 function getFilteredSellProducts() {
-  let list = state.products;
+  let list = state.products.filter(onTill);
   if (state.query.trim()) {
     list = state.fuse.search(state.query.trim()).map(r => r.item);
   }
   if (state.folderId !== 'all') {
-    list = list.filter(p => p.folder === state.folderId);
+    list = list.filter(p => foldersOf(p).includes(state.folderId));
   }
   if (searchIntent && state.query.trim()) searchIntent.results = list.length;   // the count the cashier saw
   return list;
@@ -1003,11 +1013,6 @@ function getSellCells() {
     if (!p.groupId) cells.push({ kind: 'product', product: p });
   });
   return cells;
-}
-
-function stockMeta(p) {
-  if (p.stock <= p.reorderPoint) return { cls: 'low', label: `Low · ${p.stock} ${p.unit}` };
-  return { cls: '', label: `${p.stock} ${p.unit}` };
 }
 
 function getSellGridProfile() {
@@ -1327,10 +1332,13 @@ function addToCart(productId, via = 'other') {
 function findProductByCode(rawCode) {
   const code = String(rawCode || '').trim();
   if (!code) return null;
-  const byBarcode = state.products.find(p => p.barcode && String(p.barcode).trim() === code);
-  if (byBarcode) return byBarcode;
   const lower = code.toLowerCase();
-  return state.products.find(p => p.sku && String(p.sku).toLowerCase() === lower) || null;
+  const hit = p => (p.barcode && String(p.barcode).trim() === code);
+  const sku = p => (p.sku && String(p.sku).toLowerCase() === lower);
+  // A removed variant keeps its barcode; the live row that took it over wins.
+  return state.products.find(p => onTill(p) && hit(p)) || state.products.find(p => !p.archived && hit(p))
+    || state.products.find(hit) || state.products.find(p => onTill(p) && sku(p))
+    || state.products.find(p => !p.archived && sku(p)) || state.products.find(sku) || null;
 }
 
 function addProductByCode(rawCode, { source = 'barcode' } = {}) {
@@ -1346,6 +1354,11 @@ function addProductByCode(rawCode, { source = 'barcode' } = {}) {
     showToast(message);
     return false;
   }
+  // Staff forget to unhide, so a hidden item asks rather than blocks -- like out of stock does.
+  if (!onTill(product) && !window.confirm(
+    `${product.name}
+
+This item is ${product.archived ? 'archived' : 'hidden'}. Sell anyway?`)) return false;
   addToCart(product.id, 'scan');
   const search = $('#searchInput');
   const clear = $('#searchClear');
@@ -2822,7 +2835,7 @@ function creditOverLimit(tendered = 0) {
 function stockShortfall(cart = state.cart) {
   return (cart || []).map((item) => {
     const p = productOf(item);
-    if (!p || p.sellOutOfStock) return null;
+    if (!p || p.sellOutOfStock || p.trackStock === false) return null;
     const short = roundQty(p, toNumber(item.qty, 0) - toNumber(p.stock, 0));
     return short > 0 ? { id: p.id, name: p.name, short, unit: p.unit || 'pc' } : null;
   }).filter(Boolean);
@@ -3409,7 +3422,7 @@ const itemQty = v => v.toLocaleString('en-PH', { maximumFractionDigits: 2 });
 const itemInitials = s => s.replace(/[^A-Za-z ]/g, ' ').split(/\s+/).filter(w => w.length > 1).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '+';
 const itemThumb = (it, big) => `<span class="thumb${big ? ' big' : ''}" style="--h:${it.hue}" aria-hidden="true">${it.img ? `<img src="${it.img}" alt="">` : itemInitials(it.name)}</span>`;
 const itemStock = it => it.variants.reduce((s, v) => s + v.stock, 0);
-const itemStk = it => { const t = itemStock(it); return t <= 0 ? 'stk-out' : t <= it.reorder ? 'stk-low' : ''; };   // bo-model isLow: at or below the danger level
+const itemStk = it => { const t = itemStock(it); return !it.track ? '' : t <= 0 ? 'stk-out' : t <= it.reorder ? 'stk-low' : ''; };   // bo-model isLow: at or below the danger level
 const itemMarkup = (cost, price) => cost > 0 ? (price - cost) / cost * 100 : 0;
 function itemPriceText(it) {
   const ps = it.variants.map(v => v.price), lo = Math.min(...ps), hi = Math.max(...ps);
@@ -3419,13 +3432,14 @@ function itemPriceText(it) {
 function catalogItems() {
   const byKey = new Map();
   state.products.forEach(p => {
+    if (p.archived) return;   // archived is gone; hidden is still listed here, only off the tiles
     const g = p.groupId ? groupById(p.groupId) : null, key = g ? g.id : p.id;
     let it = byKey.get(key);
     if (!it) {
       const folder = (g && g.folder) || p.folder;
-      it = { id: key, name: g ? g.name : p.name, cat: folderName(folder), hue: itemHue(folder), unit: p.unit || 'pc',
+      it = { id: key, name: g ? g.name : p.name, cat: folderName(folder), cats: foldersOf(p).map(folderName), hue: itemHue(folder), unit: p.unit || 'pc',
         soldBy: p.soldBy === 'measure' ? 'measure' : 'each', brand: p.brand || '', img: '', marginMode: 'percent',
-        reorder: p.reorderPoint || 0, sellOut: false, supplier: p.supplier || '', alt: [], weight: '', size: '', length: '', variants: [] };
+        reorder: p.reorderPoint || 0, track: p.trackStock !== false, sellOut: false, supplier: p.supplier || '', alt: [], weight: '', size: '', length: '', variants: [] };
       byKey.set(key, it);
     }
     const vn = g && p.name.startsWith(g.name) ? p.name.slice(g.name.length).trim() : p.name;   // 'Common Wire Nails 2"' -> '2"'
@@ -3441,7 +3455,7 @@ function renderItems() {
   if (!rows) return;
   const q = itemsFilter.q.trim().toLowerCase();
   const list = catalogItems().filter(it => {
-    if (itemsFilter.cat && it.cat !== itemsFilter.cat) return false;
+    if (itemsFilter.cat && !it.cats.includes(itemsFilter.cat)) return false;
     if (itemsFilter.stock === 'low' && itemStk(it) !== 'stk-low') return false;
     if (itemsFilter.stock === 'out' && itemStk(it) !== 'stk-out') return false;
     return !q || it.name.toLowerCase().includes(q) || it.variants.some(v => [v.name, v.sku, v.barcode].some(x => x.toLowerCase().includes(q)));

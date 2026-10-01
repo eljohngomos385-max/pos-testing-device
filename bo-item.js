@@ -8,8 +8,6 @@
   const PERIODS = [7, 30, 90];
   const DAY = 864e5;
 
-  const loadGroups = () => readJsonStorage(STORAGE_GROUPS, null)
-    || (typeof SEED_GROUPS !== 'undefined' ? SEED_GROUPS.map((g) => ({ ...g })) : []);
   const qty = (n) => (Number(n) || 0).toLocaleString('en-PH', { maximumFractionDigits: 2 });
   const signedQty = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + qty(Math.abs(n));
   const pct = (n) => `${n.toFixed(1)}%`;

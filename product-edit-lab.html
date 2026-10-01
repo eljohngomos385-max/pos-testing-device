@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product edit lab</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================================
+   PRODUCT EDIT LAB (2026-09-30). The editor at /admin/products/<id>/edit, redesigned.
+   Owner: "too spread… a lot of words… category is a drop down, supplier is a drop down, why
+   'also stocked by', they are just suppliers… remove the brand… simple to edit, almost for
+   barbers… two columns like Shopify, stuff on the side… add descriptions".
+   Order is the order you think in: what it is (photo beside name and description) → what it costs and
+   sells for → how it is stocked. The rail files it: categories (more than one), suppliers, specs.
+   Round 2: photo beside the name; Track stock switch (off hides every count); Sold per takes your own unit.
+   Labels sit over their fields; no hint lines. Tokens are the back office's (--b-*).
+   Nothing live: seeded fake data. The panel bottom right swaps Family / Single / New.
+   =========================================================================== */
+:root {
+  --po-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --b-page: #F6F6F6; --b-card: #F9F9F9;   /* page = the back office canvas (--po-bg), cards stay white on it */ --b-raised: #FFFFFF;
+  --b-line: #ECECEC; --b-outline: #E1E1E1; --b-strong: #D2D2D2;
+  --b-ink: #303030; --b-ink-2: #616161; --b-ink-3: #8C8C8C;
+  --b-down: #D72C0D;
+  --b-data: #2B7DE9; --b-data-tint: #DCE9FB;
+  --card-shadow: 0 1px 2px -1px rgb(26 26 26 / .07);
+  --pop-shadow: 0 8px 24px rgba(0,0,0,.08);
+  --btn-h: 28px; --btn-r: 8px; --btn-soft: #EDEDED;
+  --in-h: 32px; --in-r: 8px;
+  --b-r-card: 14px; --b-pad: 14px; --b-gap: 12px;
+  --t-label: 13px; --t-meta: 12.5px; --t-micro: 11px;
+  --rail-w: 300px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--b-page); color: var(--b-ink); font: var(--t-label)/1.45 var(--po-font); -webkit-font-smoothing: antialiased; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.page { margin: 0 auto; padding: 20px 24px 120px; }
+/* one centred column; Status alone stands in a column to its right (Shopify's rail, one card).
+   Too narrow for both: Status drops in above the cards. */
+.page { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 720px) minmax(0, 1fr); column-gap: var(--b-gap); align-items: start; }
+.page > * { grid-column: 2; }
+.page > .col { grid-row: 3; }
+.page > .side { grid-column: 3; grid-row: 3; max-width: 260px; }
+@media (max-width: 1180px) {
+  .page { grid-template-columns: minmax(0, 1fr); max-width: 720px; }
+  .page > *, .page > .col, .page > .side { grid-column: 1; grid-row: auto; max-width: none; }
+  .page > .side { margin-bottom: var(--b-gap); }
+}
+
+/* head: the back line, then the name (the item page's .item-head) */
+.back { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 0; color: var(--b-data); font-weight: 500; }
+.back svg { width: 14px; height: 14px; }
+.head { display: flex; align-items: baseline; gap: 8px; min-height: 32px; margin: 4px 0 16px; }
+.head h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.01em; color: #1A1A1A; }
+.muted { color: var(--b-ink-3); }
+.col { display: grid; gap: var(--b-gap); min-width: 0; }
+
+
+/* a card: white, hairline, the one shadow; a grey band names it, like the Products list's head */
+.card { background: var(--b-raised); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+.band { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink); font-weight: 500; }
+.band .r { margin-left: auto; color: var(--b-ink-3); font-weight: 400; }
+.body { display: grid; gap: 12px; padding: var(--b-pad); }
+
+/* a field: its label over it */
+.f { display: grid; gap: 5px; min-width: 0; }
+.f > span { font-size: var(--t-meta); color: var(--b-ink-2); font-weight: 500; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+@media (max-width: 520px) { .row2, .row3 { grid-template-columns: 1fr; } }
+.in { width: 100%; height: var(--in-h); padding: 0 10px; border: 1px solid var(--b-outline); border-radius: var(--in-r); background: #fff; outline: none; }
+.in:hover { border-color: var(--b-strong); }
+.in:focus, .pick:focus-visible, textarea.in:focus { border-color: var(--b-data); box-shadow: 0 0 0 3px var(--b-data-tint); }
+.in::placeholder, textarea.in::placeholder { color: #B5B5B5; }
+textarea.in { height: auto; min-height: 52px; padding: 8px 10px; resize: none; overflow: hidden; line-height: 1.5; }
+.in.big { font-weight: 500; }   /* the name: input size, only a touch heavier */
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* money and units carry their sign inside the box, quiet */
+.affix { position: relative; }
+.affix > i { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; font-style: normal; color: var(--b-ink-3); pointer-events: none; }
+.affix.pre > i { left: 10px; } .affix.pre .in { padding-left: 24px; }
+.affix.suf > i { right: 10px; } .affix.suf .in { padding-right: 44px; }
+
+/* the dropdown: an input-sized button, the app's popover menu under it (never the OS <select>) */
+.pick { width: 100%; height: var(--in-h); display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--b-outline); border-radius: var(--in-r); background: #fff; text-align: left; outline: none; }
+.pick:hover { border-color: var(--b-strong); }
+.pick span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick .ph { color: #B5B5B5; }
+.pick svg { width: 12px; height: 12px; flex: none; color: var(--b-ink-3); }
+.menu { margin: 0; inset: auto; width: 260px; max-height: 320px; padding: 4px; border: 1px solid var(--b-line); border-radius: 10px; background: var(--b-raised); color: var(--b-ink); box-shadow: var(--pop-shadow); overflow: auto; }
+.menu .ms { width: 100%; height: 32px; margin-bottom: 4px; padding: 0 10px; border: 0; border-bottom: 1px solid var(--b-line); border-radius: 0; outline: none; }
+.menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; padding: 7px 10px; border: 0; border-radius: 6px; background: none; text-align: left; }
+.menu button:hover, .menu button.hi { background: var(--b-card); }
+.menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
+.menu button.new { color: var(--b-data); font-weight: 500; }
+.menu .grp { padding: 8px 10px 4px; font-size: var(--t-micro); color: var(--b-ink-3); }
+.menu .none { padding: 8px 10px; color: var(--b-ink-3); }
+
+/* what it is: three photo layouts to pick from (lab switch "Photo"). Left and Right: a square
+   that runs from the top of the name box to the bottom of the description box, labels on one line.
+   Below: name and description full width, the photo tiles under them (Shopify's Media). */
+.about { display: grid; gap: 14px; padding: var(--b-pad); }
+.about.side { grid-template-columns: 112px minmax(0, 1fr); gap: 14px; align-items: start; }
+.about.right { grid-template-columns: minmax(0, 1fr) 112px; }
+.about.right > .f { order: 2; }
+.about .fields { display: grid; gap: 12px; min-width: 0; }
+.about.below textarea.in { min-height: 104px; }
+.photo { display: grid; place-items: center; width: 100%; aspect-ratio: 1; padding: 0; border: 1px dashed var(--b-strong); border-radius: 10px; background: none; color: var(--b-ink-3); }
+.about.below .photo { width: 88px; border-radius: 10px; }
+@media (max-width: 520px) { .about.side { grid-template-columns: 96px minmax(0, 1fr); } .about.right { grid-template-columns: minmax(0, 1fr) 96px; } }
+.photo:hover { border-color: var(--b-ink-3); color: var(--b-ink); }
+.photo.has { border: 1px solid var(--b-line); }
+.photo svg { width: 18px; height: 18px; }
+/* variant photos: tiles, the empty one dashed */
+.ph-tile { width: 64px; height: 64px; border-radius: 10px; border: 1px solid var(--b-line); flex: none; }
+.ph-add { display: grid; place-items: center; width: 64px; height: 64px; border: 1px dashed var(--b-strong); border-radius: 10px; background: none; color: var(--b-ink-3); }
+.ph-add:hover { border-color: var(--b-ink-3); color: var(--b-ink); }
+.ph-add svg { width: 18px; height: 18px; }
+
+/* variants: a readable list; a row opens its own few fields under it */
+.vlist { display: grid; }
+.vrow { display: grid; grid-template-columns: 32px minmax(0, 1fr) 96px 64px 16px; align-items: center; gap: 12px; min-height: 46px; padding: 0 var(--b-pad); border: 0; border-bottom: 1px solid var(--b-line); background: none; text-align: left; width: 100%; }
+.vrow:hover { background: #FCFCFC; }
+.vrow .th { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--b-line); }
+.vrow .th.empty { background: var(--b-card); }
+.vrow b { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vrow small { display: block; color: var(--b-ink-3); font-size: var(--t-meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vrow .chev { width: 14px; height: 14px; color: var(--b-ink-3); transition: transform .15s; }
+.vrow.open { background: #FCFCFC; border-bottom-color: transparent; }
+.vrow.open .chev { transform: rotate(180deg); }
+.vedit { display: grid; gap: 14px; padding: 4px var(--b-pad) var(--b-pad) calc(var(--b-pad) + 44px); background: #FCFCFC; border-bottom: 1px solid var(--b-line); }
+.vfoot { display: flex; align-items: center; gap: 12px; }
+.vfoot .ph-add, .vfoot .ph-tile { width: 40px; height: 40px; border-radius: 8px; }
+.vadd { display: flex; align-items: center; gap: 6px; width: 100%; height: 40px; padding: 0 var(--b-pad); border: 0; background: none; color: var(--b-data); font-weight: 500; }
+.vadd:hover { background: #FCFCFC; }
+.vadd svg { width: 14px; height: 14px; }
+.since { display: flex; align-items: center; gap: 10px; padding: 10px var(--b-pad); border-top: 1px solid var(--b-line); color: var(--b-ink-2); }
+.since .in { width: 160px; }
+
+.quiet { border: 0; background: none; padding: 0; color: var(--b-ink-3); font-weight: 500; font-size: var(--t-meta); }
+.quiet:hover { color: var(--b-down); }
+.link { border: 0; background: none; padding: 0; color: var(--b-data); font-weight: 500; }
+.link:hover { text-decoration: underline; }
+.line { display: flex; align-items: center; gap: 8px; }
+.line .r { margin-left: auto; }
+.onhand { font-size: 20px; font-weight: 600; color: #1A1A1A; font-variant-numeric: tabular-nums; }
+.onhand small { font-size: var(--t-label); font-weight: 400; color: var(--b-ink-3); margin-left: 4px; }
+.say { color: var(--b-ink-2); font-variant-numeric: tabular-nums; }
+.say b { color: var(--b-ink); font-weight: 600; }
+
+/* a switch, the label left */
+.sw { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.sw input { appearance: none; width: 32px; height: 18px; margin: 0 0 0 auto; border-radius: 999px; background: var(--b-strong); position: relative; cursor: pointer; transition: background .15s; flex: none; }
+.sw input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .15s; }
+.sw input:checked { background: var(--b-ink); }
+.sw input:checked::after { transform: translateX(14px); }
+.sw input:focus-visible { box-shadow: 0 0 0 3px var(--b-data-tint); outline: none; }
+
+/* categories and suppliers: chips that wrap; the add is a dashed chip at the end, and all there is
+   when the list is empty. The first supplier says "Orders" (purchase orders go there); tap another's
+   name to make it first. */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px var(--b-pad); }
+.chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; height: 26px; padding: 0 3px 0 10px; border: 1px solid var(--b-outline); border-radius: 999px; background: #fff; font-size: var(--t-meta); }
+.chip > span, .chip > button.nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip > button.nm { border: 0; padding: 0; background: none; font-size: inherit; }
+.chip > button.nm:hover { color: var(--b-data); }
+.chip em { font-style: normal; font-size: var(--t-micro); color: var(--b-ink-3); margin-left: 4px; }
+.chip .x { display: grid; place-items: center; width: 20px; height: 20px; flex: none; border: 0; border-radius: 50%; background: none; color: var(--b-ink-3); }
+.chip .x:hover { background: var(--b-card); color: var(--b-ink); }
+.chip .x svg { width: 10px; height: 10px; }
+.chip-add { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border: 1px dashed var(--b-strong); border-radius: 999px; background: none; color: var(--b-data); font-size: var(--t-meta); font-weight: 500; }
+.chip-add:hover { border-color: var(--b-data); }
+/* status: Active sells; Hidden keeps the item but takes it off the till (and any menu later).
+   Archive is still the way to be rid of one. */
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--b-strong); flex: none; }
+.dot.on { background: #29845A; }
+.menu .opt { display: grid; gap: 1px; }
+.menu .opt small { color: var(--b-ink-3); font-size: var(--t-micro); }
+.chip-add svg { width: 11px; height: 11px; }
+
+/* the end of the form: Archive quiet on the far left, Save where you finish */
+.formbar { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+.formbar .primary { margin-left: auto; }
+.primary { height: var(--btn-h); padding: 0 14px; border: 0; border-radius: var(--btn-r); background: #303030; color: #fff; font-weight: 600; }
+.primary:disabled { background: var(--btn-soft); color: #B5B5B5; cursor: default; }
+.ghost { height: var(--btn-h); padding: 0 12px; border: 1px solid var(--b-outline); border-radius: var(--btn-r); background: #fff; font-weight: 500; }
+
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 8px 14px; border-radius: 8px; background: #303030; color: #fff; font-weight: 500; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.on { opacity: 1; }
+
+/* lab only */
+.lab { position: fixed; left: 16px; bottom: 16px; display: inline-flex; padding: 2px; border-radius: 999px; background: var(--btn-soft); box-shadow: var(--pop-shadow); }
+.lab button { height: 26px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: var(--b-ink-2); font-weight: 500; }
+.lab button.on { background: #fff; color: var(--b-ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+</style>
+</head>
+<body>
+<div class="page" id="page"></div>
+<div class="lab" id="lay" style="bottom:52px"><span class="muted" style="padding:0 8px 0 10px;align-self:center">Photo</span><button data-lay="left">Left</button><button data-lay="right">Right</button><button data-lay="below">Below</button></div>
+<div class="lab" id="lab"><button data-mode="family">Family</button><button data-mode="single">Single</button><button data-mode="new">New</button></div>
+<div class="toast" id="toast">Saved</div>
+
+<script>
+const CHEV = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5 9 4.5"/></svg>';
+const PLUS = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>';
+const X = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 3l6 6M9 3 3 9"/></svg>';
+const BACK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg>';
+
+// 45 categories and 14 suppliers: the menus are judged at a real store's size, so they search
+const CATS = ['Adhesives & Sealants', 'Bathroom Fixtures', 'Bolts & Nuts', 'Brushes & Rollers', 'Cement & Aggregates', 'Chains & Ropes', 'Circuit Breakers',
+  'Cleaning Supplies', 'Doors & Jambs', 'Drill Bits', 'Electrical Tape', 'Electrical Wire', 'Faucets & Valves', 'Fasteners', 'Garden Tools', 'Glass & Mirrors',
+  'GI Sheets & Roofing', 'Gloves & Safety', 'Hand Tools', 'Hinges & Locks', 'Hoses & Fittings', 'Ladders', 'Lighting', 'Lumber', 'Masonry', 'Measuring Tools', 'Nails',
+  'Outlets & Switches', 'Paint', 'Paint Thinner & Solvents', 'Pipes – PVC', 'Pipes – GI', 'Plywood & Boards', 'Power Tools', 'Pumps', 'Rebar & Steel',
+  'Sandpaper & Abrasives', 'Screws', 'Sinks', 'Tiles', 'Tile Adhesive & Grout', 'Toilets', 'Water Tanks', 'Welding', 'Wood Finishes'];
+const MODS = { 'Paint mixing': 'Mix to colour +₱50', 'Cutting': 'Cut to size +₱20 a cut', 'Thread cutting': '+₱15 an end',
+  'Delivery': 'In town +₱150 · Out of town +₱300', 'Gift wrap': '+₱30' };
+const SUPS = ['Ace Steel & Hardware', 'Atlanta Plastics', 'Boysen Depot Central', 'Cebu Fasteners Co.', 'Davies Paints Distributor', 'Firefly Electric Trading',
+  'Holcim Dealer Nueva Ecija', 'Jolly Plywood Center', 'Makita Service Center', 'Megatile Trading', 'Neltex Pipes Warehouse', 'Omni Lighting Supply',
+  'Republic Cement Depot', 'Stanley Tools PH'];
+// The business's stores; the Locations card picks where an item sells
+const LOCS = ['Main store', 'San Jose branch', 'Warehouse'];
+const UNITS = [['Counted', ['pc', 'box', 'bag', 'set', 'pair', 'roll', 'sheet', 'can']], ['Measured', ['m', 'ft', 'kg', 'L', 'gal']]];
+
+const SEED = {
+  family: () => ({
+    family: true, mods: ['Paint mixing'], name: 'Acrylic Paint Tint', desc: '', photo: '', cats: ['Paint'], sups: ['Boysen Depot Central', 'Ace Steel & Hardware'],
+    unit: 'pc', low: 5, track: true, status: 'Active', locs: [...LOCS], sellOut: false, weight: '', size: '', length: '',
+    variants: [
+      { name: 'Acrylic Paint Tint Black', sku: 'ACRYL-BLACK-127', barcode: '4809101005713', cost: 66.03, price: 95, stock: 11, photo: '#2A2A2A' },
+      { name: 'Acrylic Paint Tint Blue', sku: 'ACRYL-BLUE-128', barcode: '4809101013632', cost: 70.27, price: 115.24, stock: 22, photo: '#2F62C9' },
+      { name: 'Acrylic Paint Tint Red', sku: 'ACRYL-RED-129', barcode: '4809101021551', cost: 57.96, price: 95, stock: 17, photo: '#C8372D' },
+      { name: 'Acrylic Paint Tint Yellow', sku: 'ACRYL-YELLO-130', barcode: '4809101029470', cost: 81.3, price: 104.88, stock: 37, photo: '#E9B824' },
+      { name: 'Acrylic Paint Tint Green', sku: 'ACRYL-GREEN-131', barcode: '4809101037389', cost: 70.87, price: 95, stock: 21, photo: '' },
+    ],
+  }),
+  single: () => ({
+    family: false, name: 'Portland Cement 40kg', desc: 'Type 1 general-purpose cement for concrete, mortar and plaster.', photo: '#B9B4AA', cats: ['Cement & Aggregates', 'Masonry'],
+    sups: ['Republic Cement Depot'], unit: 'bag', low: 40, track: true, status: 'Active', locs: [...LOCS], mods: [], sellOut: true, weight: '40 kg', size: '', length: '',
+    sku: 'CEM-40', barcode: '4800016123457', cost: 225, price: 265, stock: 312,
+  }),
+  add: () => ({
+    family: false, isNew: true, name: '', desc: '', photo: '', cats: [], sups: [], unit: 'pc', low: '', track: true, status: 'Active', locs: [...LOCS], mods: [], sellOut: false, weight: '', size: '', length: '',
+    sku: '', barcode: '', cost: '', price: '', openingQty: '', since: today(),
+  }),
+};
+SEED.new = SEED.add;
+
+let lay = 'left', mode = 'family', P = SEED.family(), openV = -1, dirty = false;
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const peso = (n) => '₱' + (+n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num = (v) => (v === '' || v == null || isNaN(+v) ? null : +v);
+function today() { return new Date().toISOString().slice(0, 10); }
+const markup = (c, p) => (num(c) && num(p) != null ? ((p - c) / c) * 100 : null);
+const r2 = (n) => Math.round(n * 100) / 100;
+// A variant row names what makes it this one; the family name is already the title
+const short = (v) => (v.name.startsWith(P.name + ' ') ? v.name.slice(P.name.length + 1) : v.name) || 'New variant';
+
+/* ---- pieces ---- */
+const card = (title, body, right = '') => `<section class="card">${title ? `<div class="band">${title}${right ? `<span class="r">${right}</span>` : ''}</div>` : ''}${body}</section>`;
+const fld = (label, ctl) => `<label class="f"><span>${label}</span>${ctl}</label>`;
+const inp = (k, v, attrs = '') => `<input class="in" data-k="${k}" value="${esc(v)}"${attrs}>`;
+const money = (k, v, attrs = '') => `<div class="affix pre"><i>₱</i><input class="in" data-k="${k}" value="${esc(v)}" inputmode="decimal" placeholder="0.00"${attrs}></div>`;
+const pick = (id, value, ph) => `<button type="button" class="pick" popovertarget="${id}">${value ? `<span>${esc(value)}</span>` : `<span class="ph">${ph}</span>`}${CHEV}</button><div class="menu" id="${id}" popover></div>`;
+const photoTile = (c) => (c ? `<span class="ph-tile" style="background:${c}"></span>` : '');
+
+function mainCol() {
+  const photo = `<div class="f"><span>Photo</span><button type="button" class="photo${P.photo ? ' has' : ''}" data-act="photo"${P.photo ? ` style="background:${P.photo}" aria-label="Change photo"` : ' aria-label="Add photo"'}>${P.photo ? '' : PLUS}</button></div>`;
+  const fields = fld('Name', `<input class="in big" data-k="name" value="${esc(P.name)}" placeholder="${P.family ? 'Acrylic Paint Tint' : 'Portland Cement 40kg'}">`)
+    + fld('Description', `<textarea class="in" data-k="desc" rows="2" placeholder="What it is, what it fits, how to use it">${esc(P.desc)}</textarea>`);
+  const about = card('', lay === 'below' ? `<div class="about below">${fields}${photo}</div>`
+    : `<div class="about side ${lay}">${photo}<div class="fields">${fields}</div></div>`);
+
+  const price = P.family ? '' : card('Price', `<div class="body">
+      <div class="row3">
+        ${fld('Cost', money('cost', P.cost))}
+        ${fld('Markup', `<div class="affix suf"><i>%</i><input class="in" data-k="markup" value="${esc(fmtPct(markup(P.cost, P.price)))}" inputmode="decimal" placeholder="0"></div>`)}
+        ${fld('Price', money('price', P.price))}
+      </div>
+      <div class="say" id="profit">${profitLine(P.cost, P.price)}</div>
+    </div>`);
+
+  const variants = !P.family ? '' : card('Variants', `<div class="vlist">
+      ${P.variants.map((v, i) => vRow(v, i) + (i === openV ? vEdit(v, i) : '')).join('')}
+      <button type="button" class="vadd" data-act="add-variant">${PLUS}Add variant</button>
+      ${P.track && P.variants.some((v) => v.isNew && num(v.openingQty)) ? `<div class="since">New stock was in store since <input class="in" type="date" data-k="since" value="${P.since || today()}" max="${today()}"></div>` : ''}
+    </div>`, `<span class="muted">${P.variants.length}</span>`);
+
+  const T = P.track;
+  const stock = card('Stock', `<div class="body">
+      ${!T || P.family || P.isNew ? '' : `<div class="line"><span class="onhand">${P.stock}<small>${esc(P.unit)} on hand</small></span><span class="r"><button type="button" class="ghost" data-act="adjust">Adjust</button></span></div>`}
+      <div class="row2">
+        ${fld('Sold per', pick('m-unit', P.unit, 'pc'))}
+        ${!T ? '<span></span>' : fld('Low stock at', `<div class="affix suf"><i>${esc(P.unit)}</i><input class="in" data-k="low" value="${esc(P.low)}" inputmode="numeric" placeholder="0"></div>`)}
+      </div>
+      ${!T || P.family || !P.isNew ? '' : `<div class="row2">${fld('Opening stock', `<div class="affix suf"><i>${esc(P.unit)}</i><input class="in" data-k="openingQty" value="${esc(P.openingQty)}" inputmode="decimal" placeholder="0"></div>`)}
+             ${fld('In store since', `<input class="in" type="date" data-k="since" value="${P.since}" max="${today()}">`)}</div>`}
+      ${P.family ? '' : `<div class="row2">${fld('SKU', inp('sku', P.sku))}${fld('Barcode', inp('barcode', P.barcode, ' inputmode="numeric"'))}</div>`}
+      <label class="sw">Track stock<input type="checkbox" data-k="track"${T ? ' checked' : ''}></label>
+      ${T ? `<label class="sw">Sell when out of stock<input type="checkbox" data-k="sellOut"${P.sellOut ? ' checked' : ''}></label>` : ''}
+    </div>`);
+
+  const r = railCol();   // owner's order: what it is, where it sits and sells, then price, stock, who supplies it
+  return about + r.cat + r.locs + price + variants + r.mods + stock + r.sups + r.specs;
+}
+
+const fmtPct = (m) => (m == null || !isFinite(m) ? '' : String(r2(m)));
+const profitLine = (c, p, withMarkup) => {
+  const cc = num(c), pp = num(p);
+  if (cc == null || pp == null) return '';
+  const m = markup(cc, pp);
+  return `<b>${peso(pp - cc)}</b> profit on each${withMarkup && m != null && isFinite(m) ? ` · ${r2(m).toFixed(1)}% markup` : ''}`;
+};
+
+function vRow(v, i) {
+  return `<button type="button" class="vrow${i === openV ? ' open' : ''}" data-act="open-v" data-i="${i}" data-row="${i}">
+      <span class="th${v.photo ? '' : ' empty'}"${v.photo ? ` style="background:${v.photo}"` : ''}></span>
+      <span><b>${esc(short(v))}</b><small>${esc(v.sku || 'No SKU')}</small></span>
+      <span class="num p">${num(v.price) != null ? peso(v.price) : '<span class="muted">No price</span>'}</span>
+      <span class="num muted">${!P.track ? '' : v.isNew ? (num(v.openingQty) ? v.openingQty + ' ' + esc(P.unit) : 'New') : v.stock + ' ' + esc(P.unit)}</span>
+      <svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4.5 6 7.5 9 4.5"/></svg>
+    </button>`;
+}
+function vEdit(v, i) {
+  const vi = (k, val, attrs = '') => `<input class="in" data-v="${k}" data-i="${i}" value="${esc(val)}"${attrs}>`;
+  const vm = (k, val) => `<div class="affix pre"><i>₱</i><input class="in" data-v="${k}" data-i="${i}" value="${esc(val)}" inputmode="decimal" placeholder="0.00"></div>`;
+  return `<div class="vedit">
+      ${fld('Variant', `<input class="in" data-v="short" data-i="${i}" value="${esc(v.name ? short(v) : '')}" placeholder="Red, 2 inch, 1 gal">`)}
+      <div class="row2">${fld('Cost', vm('cost', v.cost))}${fld('Price', vm('price', v.price))}</div>
+      <div class="say" id="vprofit">${profitLine(v.cost, v.price, true)}</div>
+      <div class="row2">${fld('SKU', vi('sku', v.sku))}${fld('Barcode', vi('barcode', v.barcode, ' inputmode="numeric"'))}</div>
+      ${v.isNew && P.track ? `<div class="row2">${fld('Opening stock', `<div class="affix suf"><i>${esc(P.unit)}</i><input class="in" data-v="openingQty" data-i="${i}" value="${esc(v.openingQty)}" inputmode="decimal" placeholder="0"></div>`)}<span></span></div>` : ''}
+      <div class="vfoot">${photoTile(v.photo)}<button type="button" class="ph-add" data-act="photo" aria-label="Add photo">${PLUS}</button>
+        <button type="button" class="quiet" data-act="del-v" data-i="${i}" style="margin-left:auto">Remove variant</button></div>
+    </div>`;
+}
+
+function railCol() {
+  const x = (list, i, v) => `<button type="button" class="x" data-act="del" data-list="${list}" data-i="${i}" aria-label="Remove ${esc(v)}">${X}</button>`;
+  const locs = card('Locations', `<div class="chips">
+        ${P.locs.map((l, i) => `<span class="chip"><span>${esc(l)}</span>${x('locs', i, l)}</span>`).join('')}
+        ${P.locs.length < LOCS.length ? `<button type="button" class="chip-add" popovertarget="m-loc">${PLUS}${P.locs.length ? 'Add' : 'Add location'}</button><div class="menu" id="m-loc" popover></div>` : ''}
+      </div>`);
+  const mods = card('Modifiers', `<div class="chips">
+        ${P.mods.map((m, i) => `<span class="chip" title="${esc(MODS[m])}"><span>${esc(m)}</span>${x('mods', i, m)}</span>`).join('')}
+        <button type="button" class="chip-add" popovertarget="m-mod">${PLUS}${P.mods.length ? 'Add' : 'Add modifier'}</button><div class="menu" id="m-mod" popover></div>
+      </div>`);
+  const cat = card('Categories', `<div class="chips">
+        ${P.cats.map((c, i) => `<span class="chip"><span>${esc(c)}</span>${x('cats', i, c)}</span>`).join('')}
+        <button type="button" class="chip-add" popovertarget="m-cat">${PLUS}${P.cats.length ? 'Add' : 'Add category'}</button><div class="menu" id="m-cat" popover></div>
+      </div>`);
+  const sups = card('Suppliers', `<div class="chips">
+        ${P.sups.map((s, i) => `<span class="chip">${i === 0
+          ? `<span>${esc(s)}</span>${P.sups.length > 1 ? '<em>Orders</em>' : ''}`
+          : `<button type="button" class="nm" data-act="main-sup" data-i="${i}" title="Send orders here">${esc(s)}</button>`}${x('sups', i, s)}</span>`).join('')}
+        <button type="button" class="chip-add" popovertarget="m-sup">${PLUS}${P.sups.length ? 'Add' : 'Add supplier'}</button><div class="menu" id="m-sup" popover></div>
+      </div>`);
+  const specs = card('Specs', `<div class="body"><div class="row3">
+      ${fld('Weight', inp('weight', P.weight, ' placeholder="2.5 kg"'))}
+      ${fld('Size', inp('size', P.size, ' placeholder="3/4 in"'))}
+      ${fld('Length', inp('length', P.length, ' placeholder="8 ft"'))}
+    </div></div>`);
+  return { locs, cat, mods, sups, specs };
+}
+
+function render() {
+  const n = P.family ? P.variants.length : 0;
+  $('#page').innerHTML = `
+    <button type="button" class="back" data-act="back">${BACK}Products</button>
+    <header class="head"><h1>${esc(P.name || 'New product')}</h1>${P.family ? `<span class="muted">${n} variant${n === 1 ? '' : 's'}</span>` : ''}</header>
+    <div class="side">${card('Status', `<div class="body"><button type="button" class="pick" popovertarget="m-status"><i class="dot${P.status === 'Active' ? ' on' : ''}"></i><span>${P.status}</span>${CHEV}</button><div class="menu" id="m-status" popover></div></div>`)}</div>
+    <div class="col">${mainCol()}</div>
+    <div class="formbar">${P.isNew ? '' : '<button type="button" class="quiet" data-act="archive">Archive</button>'}
+      <button type="button" class="primary" data-act="save"${dirty ? '' : ' disabled'}>Save</button></div>`;
+  document.querySelectorAll('#lab button').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
+  document.querySelectorAll('#lay button').forEach((b) => b.classList.toggle('on', b.dataset.lay === lay));
+  document.querySelectorAll('textarea.in').forEach(grow);
+}
+const grow = (t) => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; };
+const touch = () => { if (!dirty) { dirty = true; $('[data-act="save"]').disabled = false; } };
+
+/* ---- menus: built when they open, searched as you type ---- */
+function menuItems(id, q) {
+  const has = (s) => s.toLowerCase().includes(q.toLowerCase());
+  const btn = (v, on) => `<button type="button" role="menuitemradio" aria-checked="${on}" data-pick="${id}" data-v="${esc(v)}">${esc(v)}</button>`;
+  const is = (s) => s.toLowerCase() === q.trim().toLowerCase();
+  const add = (all, word) => (q.trim() && !all.some(is) ? `<button type="button" class="new" data-pick="${id}" data-v="${esc(q.trim())}">${word} “${esc(q.trim())}”</button>` : '');
+  if (id === 'm-status') {
+    return [['Active', 'Sells on the till'], ['Hidden', 'Kept, but not on the till']].map(([v, sub]) =>
+      `<button type="button" role="menuitemradio" aria-checked="${v === P.status}" data-pick="${id}" data-v="${v}"><span class="opt">${v}<small>${sub}</small></span></button>`).join('');
+  }
+  if (id === 'm-unit') {
+    return UNITS.map(([g, us]) => [g, us.filter(has)]).filter(([, us]) => us.length)
+      .map(([g, us]) => `<div class="grp">${g}</div>${us.map((u) => btn(u, u === P.unit)).join('')}`).join('')
+      + add(UNITS.flatMap(([, us]) => us), 'Use');
+  }
+  if (id === 'm-mod') {   // a list shows what it adds; new lists are made on their own page
+    const hits = Object.keys(MODS).filter((m) => !P.mods.includes(m) && has(m));
+    return hits.map((m) => `<button type="button" role="menuitemradio" aria-checked="false" data-pick="${id}" data-v="${esc(m)}"><span class="opt">${esc(m)}<small>${esc(MODS[m])}</small></span></button>`).join('')
+      || `<div class="none">${q.trim() ? 'No match' : 'All added'}</div>`;
+  }
+  const [all, mine] = id === 'm-cat' ? [CATS, P.cats] : id === 'm-loc' ? [LOCS, P.locs] : [SUPS, P.sups];
+  const hits = all.filter((s) => !mine.includes(s) && has(s));
+  return hits.map((v) => btn(v, false)).join('') + (id === 'm-loc' ? '' : add(all, 'Add'))   // stores are made in Settings, not here
+    + (!hits.length && !q.trim() ? '<div class="none">All added</div>' : '');
+}
+document.addEventListener('toggle', (e) => {
+  const m = e.target; if (!m.matches?.('.menu') || e.newState !== 'open') return;
+  const search = m.id !== 'm-status';   // two choices need no search box
+  m.innerHTML = (search ? `<input class="ms" placeholder="${m.id === 'm-unit' ? 'Search or type your own' : 'Search'}" data-ms="${m.id}">` : '') + `<div class="ml">${menuItems(m.id, '')}</div>`;
+  const b = document.querySelector(`[popovertarget="${m.id}"]`).getBoundingClientRect();
+  m.style.position = 'fixed'; m.style.width = Math.max(b.width, 220) + 'px';
+  m.style.left = Math.max(16, Math.min(b.left, innerWidth - m.offsetWidth - 16)) + 'px';
+  const below = innerHeight - b.bottom - 16;
+  m.style.top = (below < Math.min(m.offsetHeight, 240) ? Math.max(16, b.top - 6 - m.offsetHeight) : b.bottom + 6) + 'px';
+  m.querySelector('[aria-checked="true"]')?.scrollIntoView({ block: 'center' });
+  if (search) m.querySelector('.ms').focus();
+}, true);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.matches('.ms')) { e.preventDefault(); e.target.closest('.menu').querySelector('[data-pick]')?.click(); }
+});
+
+/* ---- edits ---- */
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.dataset.ms) { $('.ml', t.closest('.menu')).innerHTML = menuItems(t.dataset.ms, t.value); return; }
+  if (t.matches('textarea')) grow(t);
+  if (t.dataset.k) {
+    const k = t.dataset.k;
+    if (k === 'sellOut') P.sellOut = t.checked;
+    else if (k === 'track') { P.track = t.checked; touch(); render(); return; }
+    else if (k === 'markup') { const m = num(t.value), c = num(P.cost); if (m != null && c != null) { P.price = r2(c * (1 + m / 100)); $('[data-k="price"]').value = P.price; } }
+    else P[k] = t.value;
+    // cost moves the price at the same markup; a typed price moves the markup
+    if (k === 'cost') { const m = num($('[data-k="markup"]')?.value); if (m != null && num(P.cost) != null) { P.price = r2(P.cost * (1 + m / 100)); $('[data-k="price"]').value = P.price; } }
+    if (k === 'price') { const mk = $('[data-k="markup"]'); if (mk) mk.value = fmtPct(markup(P.cost, P.price)); }
+    if (k === 'name') { $('.head h1').textContent = t.value || 'New product'; }
+    if ($('#profit')) $('#profit').innerHTML = profitLine(P.cost, P.price);
+  }
+  if (t.dataset.v) {
+    const v = P.variants[+t.dataset.i];
+    if (t.dataset.v === 'short') v.name = t.value.trim() ? P.name + ' ' + t.value.trim() : ''; else v[t.dataset.v] = t.value;
+    const row = $(`[data-row="${t.dataset.i}"]`); row.outerHTML = vRow(v, +t.dataset.i);
+    $('#vprofit').innerHTML = profitLine(v.cost, v.price, true);
+    if (t.dataset.v === 'openingQty') { render(); focusV(t.dataset.i, 'openingQty'); }
+  }
+  touch();
+});
+const focusV = (i, k) => { const el = $(`[data-v="${k}"][data-i="${i}"]`); if (el) { el.focus(); el.setSelectionRange?.(el.value.length, el.value.length); } };
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-act], [data-pick], [data-mode], [data-lay]'); if (!t) return;
+  if (t.dataset.lay) { lay = t.dataset.lay; render(); return; }
+  if (t.dataset.mode) { mode = t.dataset.mode; P = SEED[mode](); openV = -1; dirty = false; render(); scrollTo(0, 0); return; }
+  if (t.dataset.pick) {
+    const v = t.dataset.v;
+    const id = t.dataset.pick, isNew = t.classList.contains('new');
+    if (id === 'm-cat') { P.cats.push(v); if (isNew) CATS.push(v); }
+    if (id === 'm-sup') { P.sups.push(v); if (isNew) SUPS.push(v); }
+    if (id === 'm-status') P.status = v;
+    if (id === 'm-mod') P.mods.push(v);
+    if (id === 'm-loc') P.locs = LOCS.filter((l) => l === v || P.locs.includes(l));   // keep the store order
+    if (id === 'm-unit') { P.unit = v; if (isNew) (UNITS[2] ||= ['Yours', []])[1].push(v); }
+    t.closest('.menu').hidePopover(); dirty = true; render(); return;
+  }
+  const a = t.dataset.act, i = +t.dataset.i;
+  if (a === 'open-v') { openV = openV === i ? -1 : i; render(); return; }
+  if (a === 'add-variant') {
+    P.variants.push({ name: '', sku: '', barcode: '', cost: '', price: '', stock: 0, openingQty: '', photo: '', isNew: true });
+    openV = P.variants.length - 1; dirty = true; render(); focusV(openV, 'short'); return;
+  }
+  if (a === 'del-v') { P.variants.splice(i, 1); openV = -1; dirty = true; render(); return; }
+  if (a === 'del') { P[t.dataset.list].splice(i, 1); dirty = true; render(); return; }
+  if (a === 'main-sup') { P.sups.unshift(...P.sups.splice(i, 1)); dirty = true; render(); return; }
+  if (a === 'save') { dirty = false; render(); const tt = $('#toast'); tt.classList.add('on'); setTimeout(() => tt.classList.remove('on'), 1400); }
+});
+render();
+</script>
+</body></html>
