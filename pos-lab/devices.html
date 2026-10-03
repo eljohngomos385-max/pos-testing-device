@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POS Lab Devices</title>
+<style>
+/* Lab chrome only: the POS lab (index.html) in a phone / tablet sized frame, the same bar as pos-items-rail-lab.html.
+   An iframe, so the POS's own screen-size rules see the device width, not the window's. */
+html, body { margin: 0; height: 100%; }
+body { background: #0A0A0A; font: 12px/1.4 Inter, system-ui, sans-serif; overflow: hidden; }
+button { font: inherit; cursor: pointer; }
+.labbar { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 10px; padding: 4px; border-radius: 10px;
+          background: #1A1A1A; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }
+.labbar div { display: flex; gap: 2px; }
+.labbar button { height: 28px; padding: 0 10px; white-space: nowrap; border: 0; border-radius: 7px; background: none; color: rgba(255,255,255,.6); }
+.labbar button.cur { background: #333; color: #fff; }
+.stage { position: fixed; inset: 50px 0 0; display: grid; place-items: center; }
+.dev { position: relative; flex: none; overflow: hidden; transform-origin: center; border-radius: 18px;
+       box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px rgba(0,0,0,.5); }
+.dev.fit { border-radius: 0; }
+.stage.free { place-items: start; padding: 12px 16px; }   /* anchored top-left so the corner handle tracks the pointer */
+.dev.free { resize: both; min-width: 360px; min-height: 480px; }
+iframe { display: block; width: 100%; height: 100%; border: 0; }
+@media (max-width: 760px) { .labbar { left: 8px; right: 8px; transform: none; overflow-x: auto; } }
+</style>
+</head>
+<body>
+<div class="labbar">
+  <div id="devPick">
+    <button data-dev="land" class="cur">Tablet landscape</button>
+    <button data-dev="port">Tablet portrait</button>
+    <button data-dev="phone">Phone</button>
+    <button data-dev="free" id="free">Resizable</button>
+    <button data-dev="fit">Fit window</button>
+  </div>
+  <div id="themePick">
+    <button data-theme="dark">Dark</button>
+    <button data-theme="light">Light</button>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="dev" id="dev"><iframe id="f" title="POS lab"></iframe></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const dev = $('dev'), f = $('f'), stage = document.querySelector('.stage');
+const DEVS = { land: [1180, 820], port: [820, 1180], phone: [390, 844] };
+let devKey = 'land', fresh = true, light = null;   // light: null = whatever the POS's own Settings say
+
+function fitDev() {
+  const st = stage.getBoundingClientRect();
+  dev.classList.toggle('fit', devKey === 'fit');
+  dev.classList.toggle('free', devKey === 'free');
+  stage.classList.toggle('free', devKey === 'free');
+  if (devKey === 'free') {   // ponytail: native CSS resize handle, bottom-right corner; starts at tablet landscape
+    dev.style.transform = '';
+    dev.style.maxWidth = st.width - 32 + 'px'; dev.style.maxHeight = st.height - 24 + 'px';
+    if (fresh) { dev.style.width = '1180px'; dev.style.height = '820px'; fresh = false; }
+    return;
+  }
+  dev.style.maxWidth = dev.style.maxHeight = '';
+  $('free').textContent = 'Resizable';
+  let scale = 1;
+  if (devKey === 'fit') { dev.style.width = st.width + 'px'; dev.style.height = st.height + 'px'; }
+  else {
+    const [w, h] = DEVS[devKey];
+    scale = Math.min(1, (st.width - 32) / w, (st.height - 24) / h);
+    dev.style.width = w + 'px'; dev.style.height = h + 'px';
+  }
+  dev.style.transform = `scale(${scale})`;
+}
+function applyTheme() {
+  if (light !== null) f.contentDocument?.body.classList.toggle('light-theme', light);
+}
+
+$('devPick').onclick = (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  devKey = b.dataset.dev; fresh = true;
+  for (const x of $('devPick').children) x.classList.toggle('cur', x === b);
+  fitDev();
+};
+$('themePick').onclick = (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  light = b.dataset.theme === 'light';
+  for (const x of $('themePick').children) x.classList.toggle('cur', x === b);
+  applyTheme();
+};
+f.addEventListener('load', applyTheme);
+f.src = 'index.html?' + Date.now();   // the browser kept serving a stale index.html inside the frame; the files it loads carry ?v= already
+addEventListener('resize', fitDev);
+new ResizeObserver(() => { if (devKey === 'free') $('free').textContent = `Resizable · ${dev.offsetWidth}×${dev.offsetHeight}`; }).observe(dev);
+fitDev();
+</script>
+</body>
+</html>

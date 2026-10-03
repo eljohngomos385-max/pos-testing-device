@@ -128,7 +128,7 @@ const state = {
   selectedOrderId: null,
   ordersQuery: '',
   ordersFilter: { range: 'week', staff: '', pay: '', status: '', fulfil: '' },   // ORDERS_FILTER_DEF
-  variantModal: { groupId: null, selectedId: null, qty: 1, comment: '' },
+  variantModal: { groupId: null, query: '', available: false },
   cartItemModal: { id: null },
   cart: [],
   cartDiscount: null,           // {type:'amount'|'percent', value:number}

@@ -191,86 +191,44 @@ function syncSellGridMetrics() {
   grid.style.setProperty('--visible-rows', rows);
 }
 
-// ---------- Variant picker modal ----------
+// ---------- Variant sheet (Shopify POS): slides up over the grid, the cart stays in view ----------
 function openVariantModal(groupId) {
   const g = groupById(groupId);
   if (!g) return;
-  const members = groupMembers(g.id);
-  if (members.length === 0) { showToast('No variants in this group'); return; }
-
-  // Preselect the first in-stock variant (or first if none in stock)
-  const firstAvail = members.find(p => p.stock > 0) || members[0];
-
-  state.variantModal = {
-    groupId: g.id,
-    selectedId: firstAvail.id,
-    qty: 1,
-    comment: '',
-  };
-
+  if (!groupMembers(g.id).length) { showToast('No variants in this group'); return; }
+  state.variantModal = { groupId: g.id, query: '', available: false };
   $('#variantTitle').textContent = g.name;
-  $('#variantBasePrice').textContent = peso(firstAvail.price);
-  $('#variantQtyInput').value = '1';
-  $('#variantCommentInput').value = '';
-
-  renderVariantGrid();
-  $('#variantModal').hidden = false;
+  $('#variantSearch').value = '';
+  renderVariantList();
+  $('#variantList').scrollTop = 0;
+  $('#variantSheet').classList.add('open');
+  $('#sidebarToggle').setAttribute('aria-label', 'Close');   // the menu button turns into the sheet's X (styles.css)
 }
 
-function renderVariantGrid() {
-  const grid = $('#variantGrid');
-  if (!grid) return;
-  const members = groupMembers(state.variantModal.groupId);
-  grid.innerHTML = members.map(p => {
-    const sel = state.variantModal.selectedId === p.id ? 'selected' : '';
-    return `
-      <button class="variant-tile ${sel}" data-variant-id="${p.id}">
-        <span class="vt-name">${escapeHtml(p.name)}</span>
-        <span class="vt-price">${peso(p.price)}</span>
-      </button>`;
-  }).join('');
+function closeVariantSheet() {
+  $('#variantSheet')?.classList.remove('open');
+  $('#sidebarToggle')?.setAttribute('aria-label', 'Menu');
 }
 
-function selectVariant(id) {
-  const p = state.products.find(x => x.id === id);
-  if (!p) return;
-  state.variantModal.selectedId = id;
-  $('#variantBasePrice').textContent = peso(p.price);
-  renderVariantGrid();
-}
-
-function changeVariantQty(delta) {
-  const input = $('#variantQtyInput');
-  const p = state.products.find(x => x.id === state.variantModal.selectedId);
-  // The buttons still step by a whole unit even for wire -- nobody taps + a hundred times
-  // to buy a metre. The typed field is what carries the fraction.
-  const q = qtyFrom(p, parseFloat(input.value) + delta, stepFor(p));
-  input.value = q;
-  state.variantModal.qty = q;
-}
-
-function addVariantToCart() {
+function renderVariantList() {
   const vm = state.variantModal;
-  if (!vm.selectedId) { showToast('Pick a variant first'); return; }
-  const p = state.products.find(x => x.id === vm.selectedId);
-  if (!p) return;
-
-  const qty = qtyFrom(p, $('#variantQtyInput').value);
-  const comment = $('#variantCommentInput').value.trim();
-
-  beginCart();
-  const existing = state.cart.find(i => i.id === p.id && (i.comment || '') === comment);
-  if (existing) existing.qty += qty;
-  else state.cart.push({
-    id: p.id, name: p.name, sku: p.sku, brand: p.brand,
-    unit: p.unit, price: p.price, qty,
-    comment: comment || undefined,
-  });
-
-  trackItemAdd(p, qty, 'variant');
-  renderCart();
-  showToast(`Added · ${qty} × ${p.name}`);
-  $('#variantModal').hidden = true;
+  const members = groupMembers(vm.groupId);
+  const q = vm.query.trim().toLowerCase();
+  const words = members.map(p => p.name.split(' '));   // rows drop the words every variant shares: "White 1L", not "Latex Paint White 1L"
+  let cut = 0;
+  while (words.length > 1 && words.every(w => w.length > cut + 1 && w[cut] === words[0][cut])) cut++;
+  const shown = members.filter(p => (!vm.available || p.stock > 0)
+    && (!q || [p.name, p.sku, p.barcode].some(s => String(s || '').toLowerCase().includes(q))));
+  $('#variantCount').textContent = `${shown.length} of ${members.length}`;
+  const avail = $('#variantAvail');
+  avail.hidden = members.every(p => p.stock > 0);   // nothing sold out = nothing to filter
+  avail.classList.toggle('active', vm.available);
+  avail.setAttribute('aria-pressed', String(vm.available));
+  $('#variantList').innerHTML = shown.length ? shown.map(p => `
+    <button type="button" class="vs-row" data-variant-id="${p.id}">
+      <span class="nm">${escapeHtml(p.name.split(' ').slice(cut).join(' '))}<small>${p.stock > 0 ? `${roundQty(p, p.stock)} available` : '<b>Sold out</b>'}</small></span>
+      <span class="amt num">${peso(p.price)}</span>
+    </button>`).join('') : '<div class="vs-empty">No variants match</div>';
 }
 
 function changePage(delta) {

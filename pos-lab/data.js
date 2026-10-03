@@ -154,6 +154,12 @@ const PRODUCTS = [
   { id: 'a004', sku: 'SILICONE-WHT', barcode: '4801235200048', name: 'Silicone Sealant White', brand: 'Bostik', folder: 'adhesive', unit: 'pc',
     price: 215.00, cost: 145.00, stock: 13, reorderPoint: 6,
     aliases: ['silicone', 'sealant', 'pampatak'] },
+  // Lab only: a paint group big enough to judge the variant sheet (search, Available, Sold out)
+  { id: 'pt101', sku: 'PAINT-LATEX-1L-RED', barcode: '4801234900101', name: 'Latex Paint Red 1L', brand: 'Boysen', folder: 'paint', unit: 'L', price: 285.00, cost: 210.00, stock: 10, reorderPoint: 4 },
+  { id: 'pt102', sku: 'PAINT-LATEX-1L-BLU', barcode: '4801234900118', name: 'Latex Paint Blue 1L', brand: 'Boysen', folder: 'paint', unit: 'L', price: 285.00, cost: 210.00, stock: 0, reorderPoint: 4 },
+  { id: 'pt103', sku: 'PAINT-LATEX-1L-YEL', barcode: '4801234900125', name: 'Latex Paint Yellow 1L', brand: 'Boysen', folder: 'paint', unit: 'L', price: 285.00, cost: 210.00, stock: 0, reorderPoint: 4 },
+  { id: 'pt104', sku: 'PAINT-LATEX-1L-GRN', barcode: '4801234900132', name: 'Latex Paint Green 1L', brand: 'Boysen', folder: 'paint', unit: 'L', price: 285.00, cost: 210.00, stock: 6, reorderPoint: 4 },
+  { id: 'pt105', sku: 'PAINT-LATEX-4L-WHT', barcode: '4801234900149', name: 'Latex Paint White 4L', brand: 'Boysen', folder: 'paint', unit: 'L', price: 980.00, cost: 760.00, stock: 3, reorderPoint: 2 },
 ];
 
 const CUSTOMERS = [
@@ -190,6 +196,7 @@ const SEED_GROUPS = [
   { id: 'grp_pvc_pipe',  name: 'PVC Pipes & Tees',   folder: 'plumbing'   },
   { id: 'grp_thhn',      name: 'THHN Wire',          folder: 'electrical' },
   { id: 'grp_nails',     name: 'Common Wire Nails',  folder: 'fasteners'  },
+  { id: 'grp_latex',     name: 'Boysen Latex Paint', folder: 'paint'      },
 ];
 
 // Attach groupIds to existing seed products so groups have members.
@@ -202,5 +209,7 @@ const _GROUP_MEMBERSHIP = {
   e001: 'grp_thhn',      e002: 'grp_thhn',
   // Common Wire Nails
   f001: 'grp_nails',     f002: 'grp_nails',
+  // Boysen Latex Paint (lab only)
+  pt001: 'grp_latex', pt101: 'grp_latex', pt102: 'grp_latex', pt103: 'grp_latex', pt104: 'grp_latex', pt105: 'grp_latex',
 };
 PRODUCTS.forEach(p => { if (_GROUP_MEMBERSHIP[p.id]) p.groupId = _GROUP_MEMBERSHIP[p.id]; });

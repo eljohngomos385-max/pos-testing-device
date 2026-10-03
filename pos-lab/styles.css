@@ -308,13 +308,14 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   background: var(--bg);
 }
 
+.catalog-wrap { --cat-x: 10px; }   /* the grid's side spacing; the variant sheet uses it too */
 .catalog {
   flex: 1;
   min-height: 0;
   height: 100%;
   /* the grid ends level with Check out's bottom: rail margin 8 + card border 1 + .pay padding 12. Not flush with the
      rail's cards (tried; too cramped) */
-  padding: 8px 10px calc(21px + env(safe-area-inset-bottom, 0px));
+  padding: 8px var(--cat-x) calc(21px + env(safe-area-inset-bottom, 0px));
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -343,7 +344,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   color: var(--ink-tertiary);
   pointer-events: none;
 }
-#searchInput, #invSearchInput {
+#searchInput, #invSearchInput, #variantSearch {
   width: 100%;
   height: 48px;
   padding: 0 42px 0 42px;
@@ -356,8 +357,8 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   box-shadow: inset 0 0 0 1px var(--rl-hair);
   transition: background .12s;
 }
-#searchInput::placeholder, #invSearchInput::placeholder { color: var(--ink-tertiary); }
-#searchInput:focus, #invSearchInput:focus {
+#searchInput::placeholder, #invSearchInput::placeholder, #variantSearch::placeholder { color: var(--ink-tertiary); }
+#searchInput:focus, #invSearchInput:focus, #variantSearch:focus {
   background: var(--surface-hover);
 }
 .search-clear {
@@ -2344,7 +2345,7 @@ select.text-input {
   #app { grid-template-columns: 200px 1fr; }
   .content-row { grid-template-columns: minmax(0, 1fr) 340px; }
   .view-head { padding-left: 22px; padding-right: 22px; }
-  .catalog { padding-left: 22px; padding-right: 22px; }
+  .catalog-wrap { --cat-x: 22px; }
   .page-pad { padding: 16px 22px 32px; }
 }
 /* The POS till only: the back office is #app.bo-app too, and its sidebar keeps its labels at any width.
@@ -3830,74 +3831,85 @@ a.secondary-btn { text-decoration: none; }
 .orders-empty .empty-sub { font-size: 12px; }
 
 /* ============================================================
-   VARIANT PICKER MODAL — Loyverse-style item-with-variants
+   VARIANT SHEET -- Shopify POS: a group tile slides one list card up over the item grid; the cart stays in view.
+   The catalog's top row turns into the sheet's own in place: the menu button morphs into its X, the search
+   swaps to Search variants and grows into the scan button's room (+ Available, only when a variant is sold
+   out). The card's band names the item the way the cart's band says "1 item", level with it; rows are like
+   cart lines (stock under the name, price right). Tap = add one and close.
    ============================================================ */
-.variant-backdrop {
-  /* Centered floating rectangular modal. */
-  padding: 28px;
-  background: rgba(0,0,0,0.55);
-}
-.variant-modal {
+.catalog-wrap { position: relative; }
+.vsheet {
+  position: absolute;
+  inset: 60px 0 0;   /* under the top row (8px catalog padding + 48px), 4px clear of the search bar's ring */
+  z-index: 5;
   display: flex;
   flex-direction: column;
-  width: min(1100px, 70vw);
-  max-width: 100%;
-  height: 75vh;
-  max-height: calc(100vh - 56px);
-  background: var(--bg-soft);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  margin: 0;
-  overflow: hidden;
-  box-shadow: var(--shadow-modal);
-  animation: pop .18s cubic-bezier(.4,0,.2,1);
+  /* the card lands level with the cart's items card (8 + 48 + 8) and its bottom with the money card's */
+  padding: 4px var(--cat-x) calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg);   /* covers the grid: no edge of the card sits on a tile's, so no hairline bleeds through */
+  transform: translateY(100%);
+  visibility: hidden;
+  transition: transform .16s var(--rl-ease), visibility 0s .16s;
 }
-.variant-head {
-  display: grid;
-  grid-template-columns: 36px 1fr auto;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--line);
-  background: var(--bg-soft);
-  flex-shrink: 0;
+.vsheet.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
+/* the top row while it's open: menu -> X, catalog search -> Search variants, scan button folds away */
+#sidebarToggle line { transform-origin: 12px 12px; transition: transform .24s var(--rl-ease), opacity .16s; }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(1) { transform: rotate(45deg) translateY(5px); }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(2) { opacity: 0; }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3) { transform: rotate(-45deg) translateY(-5px); }
+.vs-search, .vs-chip { display: none; }
+.catalog-wrap:has(> .vsheet.open) .search-wrap:not(.vs-search) { display: none; }
+.catalog-wrap:has(> .vsheet.open) .vs-search { display: flex; }
+.catalog-wrap:has(> .vsheet.open) .vs-chip:not([hidden]) { display: block; }
+#scanBtn { transition: background .12s, color .12s, width .24s var(--rl-ease), margin .24s var(--rl-ease), opacity .16s; }
+.catalog-wrap:has(> .vsheet.open) #scanBtn { width: 0; margin-left: -7px; opacity: 0; overflow: hidden; pointer-events: none; }   /* -7px: the row's gap */
+.vs-chip {
+  flex: none;
+  height: 48px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--rl-r);
+  background: var(--rl-soft);
+  box-shadow: inset 0 0 0 1px var(--rl-hair);
+  color: var(--ink-secondary);
+  font-size: 14px;
+  font-weight: 510;
+  transition: background-color .12s, color .12s;
 }
-.variant-title {
+.vs-chip:hover { background: var(--surface-hover); color: var(--ink); }
+.vs-chip.active { background: var(--accent); color: var(--accent-ink); }
+.vs-card { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+           border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); box-shadow: var(--rl-shadow); }
+.vs-head { display: flex; justify-content: space-between; gap: 12px; padding: 11px var(--rl-m); background: var(--rl-soft); border-bottom: 1px solid var(--line);
+           color: var(--ink-secondary); font-size: 12px; font-weight: 500; line-height: 1.4; }   /* .rail-h .i-head */
+.vs-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; color: var(--ink); font-weight: 600; }   /* not a button: band text, ink so it reads first */
+.vs-title #variantTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-count { flex: none; font-weight: 500; color: var(--ink-tertiary); }
+.vs-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.vs-row {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px var(--rl-m);
+  border: 0;
+  background: none;
   color: var(--ink);
-  min-width: 0;
+  font: inherit;
+  text-align: left;
+  transition: background-color .12s;
 }
-.variant-title #variantTitle {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.variant-base-price {
-  color: var(--ink);
-  font-weight: 600;
-}
-.variant-add-btn {
-  background: transparent;
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  padding: 8px 12px;
-}
-.variant-add-btn:hover { color: var(--accent-hover); }
-.variant-add-btn:disabled {
-  color: var(--ink-quaternary);
-  cursor: not-allowed;
-}
-.variant-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 14px 18px 24px;
-}
+.vs-row + .vs-row { border-top: 1px solid var(--line); }
+.vs-row:hover { background: var(--rl-hover); }
+.vs-row .nm { flex: 1; min-width: 0; font-size: 14px; font-weight: 510; line-height: 1.3; overflow-wrap: anywhere; }
+.vs-row small { display: block; font-size: 12px; font-weight: 400; color: var(--ink-tertiary); font-variant-numeric: tabular-nums; }
+.vs-row small b { font-weight: inherit; color: var(--danger); }
+.vs-row .amt { font-size: 14px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vs-empty { padding: 28px var(--rl-m); text-align: center; font-size: 13px; color: var(--ink-tertiary); }
+@media (prefers-reduced-motion: reduce) { .vsheet, .vsheet.open { transition: none; } }
+
+/* Section label + quantity stepper: the cart line editor's (and the tier inputs') */
 .variant-section-label {
   font-size: 11px;
   font-weight: 600;
@@ -3907,48 +3919,6 @@ a.secondary-btn { text-decoration: none; }
   margin: 14px 0 8px;
 }
 .variant-section-label:first-child { margin-top: 0; }
-.variant-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.variant-tile {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 14px 16px;
-  text-align: left;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 500;
-  transition: background .12s, border-color .12s, color .12s;
-  min-height: 48px;
-}
-.variant-tile:hover {
-  background: var(--surface-hover);
-  border-color: var(--line-strong);
-}
-.variant-tile.selected {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-ink);
-}
-.variant-tile.selected .vt-price { color: var(--accent-ink); }
-.variant-tile.out {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.vt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vt-price {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ink-tertiary);
-  margin-left: 12px;
-  white-space: nowrap;
-}
 .variant-qty-row {
   display: grid;
   grid-template-columns: 56px 1fr 56px;
@@ -3979,23 +3949,6 @@ a.secondary-btn { text-decoration: none; }
   font-weight: 500;
   color: var(--ink);
   outline: none;
-}
-.vc-input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--line);
-  padding: 10px 0;
-  font-size: 14px;
-  color: var(--ink);
-  outline: none;
-}
-.vc-input:focus { border-bottom-color: var(--accent); }
-
-@media (max-width: 720px) {
-  .variant-backdrop { padding: 12px; }
-  .variant-modal { width: 100%; max-height: calc(100vh - 24px); }
-  .variant-grid { grid-template-columns: 1fr; }
 }
 
 /* Cart item edit modal */
@@ -5082,6 +5035,7 @@ body.light-theme {
 /* Raised white surfaces: hairline ring instead of the invisible white shine */
 body.light-theme #searchInput,
 body.light-theme #invSearchInput,
+body.light-theme #variantSearch,
 body.light-theme .ghost-icon,
 body.light-theme .view-hamburger,
 body.light-theme .orders-search-wrap input,
@@ -5091,7 +5045,9 @@ body.light-theme .cart-discount-btn {
   box-shadow: var(--lt-ring);
 }
 body.light-theme #searchInput,
+body.light-theme #variantSearch,
 body.light-theme .search-row .ghost-icon,
+body.light-theme .vs-chip:not(.active),
 body.light-theme .orders-search-wrap input,
 body.light-theme .view-hamburger { box-shadow: 0 0 0 1px var(--rl-hair), var(--shadow-card); }   /* the tiles' softer ring */
 body.light-theme .cart,
@@ -5101,6 +5057,7 @@ body.light-theme .orders-list {
 }
 body.light-theme #searchInput:focus,
 body.light-theme #invSearchInput:focus,
+body.light-theme #variantSearch:focus,
 body.light-theme .orders-search-wrap input:focus {
   background: var(--surface);
   box-shadow: 0 0 0 1px var(--line-strong), var(--shadow-card);

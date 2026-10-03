@@ -10,6 +10,7 @@ function attachEvents() {
 
   // ---- Top bar: sidebar toggle ----
   $('#sidebarToggle')?.addEventListener('click', () => {
+    if ($('#variantSheet').classList.contains('open')) return closeVariantSheet();   // it is the variant sheet's X while that is open
     $('#app').classList.toggle('sidebar-collapsed');
   });
   // Per-view hamburger buttons (one in each view's header)
@@ -253,25 +254,15 @@ function attachEvents() {
     addToCart(card.dataset.id, 'tile');
   });
 
-  // ---- Variant picker modal ----
-  $('#variantGrid')?.addEventListener('click', (e) => {
-    const tile = e.target.closest('.variant-tile');
-    if (!tile) return;
-    selectVariant(tile.dataset.variantId);
+  // ---- Variant sheet ----
+  $('#variantList').addEventListener('click', (e) => {
+    const row = e.target.closest('.vs-row');
+    if (!row) return;
+    addToCart(row.dataset.variantId, 'variant');
+    closeVariantSheet();
   });
-  $$('#variantModal .vq-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      changeVariantQty(b.dataset.act === 'inc' ? 1 : -1);
-    });
-  });
-  $('#variantQtyInput')?.addEventListener('input', (e) => {
-    // Don't rewrite the field while it is being typed -- "2." and "2.5" are both mid-entry.
-    state.variantModal.qty = qtyFrom(state.products.find(x => x.id === state.variantModal.selectedId), e.target.value);
-  });
-  $('#variantQtyInput')?.addEventListener('blur', (e) => {
-    e.target.value = qtyFrom(state.products.find(x => x.id === state.variantModal.selectedId), e.target.value);
-  });
-  $('#variantAddBtn')?.addEventListener('click', addVariantToCart);
+  $('#variantSearch').addEventListener('input', (e) => { state.variantModal.query = e.target.value; renderVariantList(); });
+  $('#variantAvail').addEventListener('click', () => { state.variantModal.available = !state.variantModal.available; renderVariantList(); });
 
   // ---- Orders (rail list + receipt) ----
   $('#ordersList')?.addEventListener('click', (e) => {
@@ -636,6 +627,7 @@ function attachEvents() {
     if (e.key === 'Escape') {
       stopBarcodeScanner();
       closeModals();
+      closeVariantSheet();
     }
   });
 
