@@ -1,6 +1,6 @@
 # Back office — what we're building
 
-The architecture lives in `CLAUDE.md` ("Going online"). This file is the **feature spec**:
+The architecture lives in `docs/architecture.md` ("Going online"). This file is the **feature spec**:
 what each page has to do, and which decision has already been made so it doesn't get
 re-litigated. Delete a section when it ships and the code becomes the spec.
 
@@ -16,31 +16,32 @@ a column added today is free, and the same column added after go-live is a migra
 |---|---|---|
 | Real URLs, URL-as-state | `router.js`, `backoffice.js` | **Done.** `/admin/sales?range=30d`, back/forward walk filters |
 | SPA fallback | `scripts/serve.py`, `_redirects` | **Done.** Local server mirrors the Pages rule |
-| Database schema | `schema.sql` | **Done.** SQLite/D1, applies clean |
-| API | `worker/index.js` | **Done.** 10 checks pass, not yet deployed |
+| Database schema | `schema.sql` | **Done** for SQLite/D1, applies clean. Moves to Supabase Postgres (owner 2026-09-25) |
+| API | `worker/index.js` | **Done**, 10 checks pass, never deployed. **Retires**: no Worker, the apps talk to Supabase directly (owner 2026-10-02) |
 | Checks | `scripts/worker-check.mjs` | **Done.** Real Worker against real SQLite |
-| Wiring the app to it | `data-store.js` | **Not started.** Still dead code; `app.js` reads `localStorage` |
+| Wiring the app to it | `data-store.js` | **Local side done.** The till and back office persist through `HWPOS_STORE` (orders, stock movements and the ledger in IndexedDB, the rest `localStorage`). No network sync yet |
 | Offline queue on the tablet | — | **Not started** |
 
-**Blocked on three things only you can do**, in order:
-1. `cd worker && wrangler d1 create hwpos` → paste the id into `wrangler.toml`
-2. `wrangler d1 execute hwpos --file=../schema.sql`
-3. A Supabase project (auth only, empty database) → `wrangler secret put SUPABASE_JWT_SECRET`
+**Blocked on the owner:** a free Supabase test project (its URL + anon key; never the service-role
+key). The old D1 / `wrangler` steps are dead (Supabase Postgres + R2 over D1, 2026-09-25).
 
-Until then everything below can be built against `localStorage` through `HWPOS_STORE`, because
+Until then everything below can be built against local storage through `HWPOS_STORE`, because
 the store's surface is the same either way. **That is the point of the seam** — build the pages
 now, flip the adapter later, don't touch the pages again.
 
 ### Decisions already made — don't reopen
 
-- **Money is pesos in the UI, centavos in the database.** The Worker converts. Never do it twice.
+- **Money is exact `numeric(12,2)` in Postgres** in the store's currency, no centavo conversion
+  anywhere (owner 2026-10-02, replacing "centavos in the database, the Worker converts"). Never
+  REAL/float. Until the schema moves, `schema.sql` and the Worker keep integer centavos.
 - **Orders, the customer ledger and stock movements are append-only.** No page may offer an
   "edit this sale" button. A void, a refund and a correction are each a new row.
 - **Stock is the sum of `stock_movements`.** `products.stock` is a cache the grid reads so the
   product list stays one query. Every screen that changes stock writes a movement with a `reason`.
 - **Low stock is a query, not a flag.** `where stock <= danger_level`. Nothing sets "is low".
 - **Category == `products.folder_id`.** The POS folders already group products; "sales by
-  category" reads the same field. Do not add a second grouping concept.
+  category" reads the same field. Do not add a second grouping concept. (An item sits in several
+  since 2026-10-01: `category_ids`, `folder_id` the first — see Products.)
 - **Every variant carries its own image.** `products.image_url` on the variant row wins; the
   group's image is the fallback for the variants that have none. Decided 2026-09-11 — a
   variant is a distinct thing on the shelf, and red paint does not look like white paint.
@@ -60,13 +61,14 @@ now, flip the adapter later, don't touch the pages again.
 - **A movement records the cost at the time and who moved it.** `stock_movements.unit_cost` and
   `.staff`. Without the cost, every historical margin silently rewrites itself the next time a
   supplier re-prices; without the staff, "why does this say 12?" has no answer.
-- **A void, a refund and a return are three different signs.** `SALE_SIGN` in `backoffice.js` is
-  the one definition: `completed` +1, `return` −1, `refunded`/`voided`/`saved` 0. `app.js` flips
-  the original order to refunded in place *and* appends a new `return` row, so counting the
-  refunded original as well would reverse the sale twice. Nothing is ever filtered out of a cut —
-  the sign is what keeps voids visible while stopping them inflating revenue.
+- **A void and a refund are new rows with their own sign.** `SalesMath.SIGN` (`sales-math.js`, read
+  through `SalesMath.sign`) is the one definition: a sale (`completed`) +1, a `void` row −1, a
+  `refund` row −1 (a return or exchange is a refund with a reason; a line refund carries only its
+  lines), a parked cart 0. The sale itself is never edited; the new row points at it
+  (`originalOrderId`), and old `voided`/`refunded`/`return` rows are rewritten on load (`upgradeOrders`). Nothing is
+  ever filtered out of a cut — the sign is what keeps voids visible while stopping them inflating Net sales.
 - **Every editor is a page at its own URL, never a modal.** Decided 2026-09-08.
-  `/admin/products/p001`, `/admin/suppliers/po-0007`, `/admin/staff/u003`: you click a thing and
+  `/admin/products/p001`, `/admin/suppliers/po-0007`, `/admin/settings/staff?person=u003`: you click a thing and
   that thing becomes the page, like Shopify and Loyverse. It is also the smaller code — a modal
   needs open/close state, a focus trap, a scroll lock, a z-index and an unsaved-changes trap; a
   page is `if (state.detailId) renderEditor(); else renderList();`. The single exception is a
@@ -74,21 +76,24 @@ now, flip the adapter later, don't touch the pages again.
   `/admin/inventory/adjust/new` document.
 - **Two different things are called "delivery"** and they must never be merged:
   `orders.delivery` is a customer's order going out; `purchase_orders` is stock coming in from a
-  supplier. The dashboard's "Deliveries coming" card is the second one.
+  supplier. Suppliers › Incoming is the second one (the Dashboard's "Deliveries coming" card is gone).
 
 ---
 
-## Sidebar after this work
+## Sidebar — shipped
 
 ```
-Dashboard · Sales · Products · Inventory · Customers · Suppliers · Staff · Settings
+Dashboard · Sales · Orders · Items (Item list · Categories · Modifiers · Stock history) · Customers
+Suppliers (Purchase orders · Incoming) · Settings (Staff & access inside)
 ```
-`Products` is new; `Inventory` narrows to stock. Adding a view is one entry in `VIEW_LABELS`
+Items is the `products` view, Orders `transactions`, Stock history `inventory`. Analytics
+(`insights`) has no link today. Adding a view is one entry in `VIEWS` (`backoffice.js`)
 plus the `.side-link[data-view]` and `.view[data-view]` markup — never a second list.
 
-## Products
+## Products — shipped
 
-List at `/admin/products?q=&cat=&supplier=&low=1`, editor at `/admin/products/<id>/edit`
+List at `/admin/products?q=&cat=&supplier=&level=out,low,dead` (`?view=stock` the Stock view; old
+`low=1` still read), item page at `/admin/products/<id>`, editor at `/admin/products/<id>/edit`
 (`new` for a new one). Every filter in the URL, like every other page.
 
 **The editor is one 720px column of cards, Status alone on the right** (ported from
@@ -145,45 +150,53 @@ of its variants'. **Locations** from the lab is dropped (one store per catalogue
 - `archived` instead of delete. A product that has ever been sold must stay resolvable from
   an old receipt.
 
-## Inventory — two pages, not one
+## Inventory — two pages, not one — shipped
 
-The word covers two jobs that want different screens:
+Shipped as Items › Stock history (the log, `/admin/inventory`, adjust at `/admin/inventory/adjust/new`)
+and the Stock view of the Item list (`/admin/products?view=stock`). The word covers two jobs that want different screens:
 
 1. **Add / edit stock** — receiving, stock adjustment, counts. Every change writes a
-   `stock_movements` row: `qty` signed, `reason` one of `sale | return | delivery | adjustment | count`,
+   `stock_movements` row: `qty` signed, `reason` one of `sale | return | delivery | adjustment | count |
+   transfer | shrinkage | damage | writeoff | opening` (`STOCK_REASONS`; a count is stored as its difference),
    `ref_id` pointing at the order or PO when there is one, and a `note`. The reason is the
    point — "why does this say 12?" has to be answerable.
 2. **Inventory monitoring** — the read-only view. On-hand, value at cost, movement history,
    and the **danger-level list** (`stock <= danger_level`), which is the same list the dashboard
    card shows.
 
-## Sales
+## Sales — shipped
 
-One page, several cuts of the same data. Tabs, not separate pages:
+Shipped as Sales › Summary | Items, with the ledger as its own Orders page. One page, several cuts of the same data. Tabs, not separate pages:
 
-- **By item**, **by category** (`folder_id`), **by employee** (`orders.cashier`)
-- **Recent transactions** — the full pageable ledger. The dashboard shows 12; this is where you
+- **By item**, **by category** (`folder_id`), **by employee** — the Summary's Staff card
+  (`sellerOf`: a reversal counts against the original seller)
+- **Recent transactions** — the full pageable ledger, now the Orders page
+  (`/admin/transactions?pay=&staff=&ful=`). The dashboard shows 20; this is where you
   page through everything.
 - **Filters: payment type and employee**, and they belong in the URL like every other filter
   (`/admin/sales?by=item&pay=gcash&staff=...`) so a link reproduces the screen.
 - Voids and refunds stay visible in every cut. Never quietly filter them out.
 
-## Suppliers
+## Suppliers — shipped
 
 - Supplier records — `suppliers`.
 - **Purchase orders** — `purchase_orders` + `purchase_order_items`. Status runs
   `draft → ordered → partial → received`, or `cancelled`. Receiving a PO writes
   `stock_movements` with `reason: 'delivery'`; it does not set stock directly.
 - **The lineup of what's coming** — `where status in ('ordered','partial') order by expected_at`.
-  This is exactly what the dashboard's "Deliveries coming" card renders, which is why that card
-  is currently an empty state: there are no purchase orders yet.
+  This is Suppliers › Incoming (Due from `SUP_RULES.dueDate`); the dashboard's "Deliveries
+  coming" card is gone.
 
-## Staff and page access
+## Staff and page access — configured, not enforced
+
+Settings › Staff & access stores it (`hwpos.access.v1`, `bo-staff.js`); nothing checks it yet —
+there is no login. The server check is Supabase row-level security now that the Worker retires
+(2026-10-02).
 
 - Which pages a person can open. Configured, not derived — a short table of role → views,
-  checked in the Worker as well as reflected in the sidebar.
+  checked on the server as well as reflected in the sidebar.
 - **The grain is the page, not the row.** Employees are trusted staff in a physical shop.
-  The front end hiding a link is cosmetic; the Worker refusing the route is the control.
+  The front end hiding a link is cosmetic; the server refusing the request is the control.
   If a requirement ever genuinely needs one employee unable to read another's rows, that is a
   new decision, not a tweak.
 
@@ -251,13 +264,13 @@ the EOPT Act; research done 2026-09-30.
 
 Foundation first, because each step below is cheaper once the one above is real:
 
-1. **Products** — list then editor. The biggest single piece, and every other page reads it.
-2. **Inventory** — stock adjustment, then monitoring. Needs products to exist first.
-3. **Sales** — four tabs. Pure read, no new writes, so it is the fastest of the four.
-4. **Suppliers + purchase orders** — kills the last dashboard stub ("Deliveries coming").
-5. **Staff / page access.**
-6. `data-store.js` → the Worker, once you have run the three `wrangler` commands above. Can happen
-   any time from here; the pages do not change when it does.
+1. **Products** — list then editor. The biggest single piece, and every other page reads it. *Shipped.*
+2. **Inventory** — stock adjustment, then monitoring. Needs products to exist first. *Shipped.*
+3. **Sales** — four tabs. Pure read, no new writes, so it is the fastest of the four. *Shipped.*
+4. **Suppliers + purchase orders.** *Shipped.*
+5. **Staff / page access.** *Shipped client-side; enforced once step 6 lands.*
+6. `data-store.js` → Supabase directly (no Worker), once the owner has the test project above. Can
+   happen any time from here; the pages do not change when it does.
 7. **POS offline queue and push.** Last, because it needs the API settled and the tablets are the
    part that must not break.
 8. **BIR compliance.** SC/PWD and the "Invoice" wording can ship any time. Gap-free numbers,
@@ -276,7 +289,7 @@ balance; and all four Sales cuts sum back to the summary. A product priced at 25
 product priced at a flat +₱50 over the same cost land on the same shelf price and the same profit,
 which is the point of having two margin modes at all.
 
-### The ceiling we already hit — this is the case for D1
+### The ceiling we already hit — this is the case for a real database
 
 A month of trading takes **2.0 seconds to ring in September and 32 seconds in August**. Same work,
 16× the time, purely because the order history in front of it got longer:
@@ -294,9 +307,12 @@ row, and writes the entire list back — so the cost of ringing receipt *n* is p
 Four megabytes of orders after one year, against a `localStorage` quota of five. **A second year
 does not fit**, and the last months of the first one already feel slow on a tablet.
 
-Nothing in the UI fixes this. Step 6 of the build order — `data-store.js` → the Worker → D1 —
+Since 2026-10-02 orders, stock movements and the customer ledger live in IndexedDB
+(`data-store.js`), so the 5 MB quota no longer stops a till — but each save still rewrites the
+whole list, so ringing receipt *n* still costs *n*.
+
+Nothing in the UI fixes this. Step 6 of the build order — `data-store.js` → Supabase —
 is what fixes it, because an insert is an insert regardless of how many rows are already there.
-Until then, one store gets roughly one year per terminal.
 
 ### Gaps worth naming
 
@@ -306,9 +322,9 @@ Ordered by what a real hardware store notices first:
    over/short. The day's cash is derived from the receipts, which means it can only ever agree
    with itself — the number that catches theft is the one the cashier counts by hand and the
    system compares. This is the single biggest gap for a shop with staff.
-2. **Returns are whole receipts.** A customer bringing back one of four bags gets the entire sale
-   reversed. The return row already points at its original (`originalOrderId`), so the shape is
-   right; the missing part is per-line quantities on the return.
+2. ~~**Returns are whole receipts.**~~ *Shipped:* line refunds (`SalesMath.refundPart`, `qtyLeft`);
+   the sale reads "Part refunded" until every line is back. Each refund row points at its
+   original (`originalOrderId`).
 3. **BIR compliance.** No gap-free invoice numbers, no Z-reading, no SC/PWD discount. See
    "BIR compliance" above.
 4. **Unit-of-measure conversion.** Cement is bought by the pallet and sold by the bag; wire is
@@ -318,8 +334,8 @@ Ordered by what a real hardware store notices first:
    one pool. Multi-store is otherwise already a filter (`store_id` is on every row), so this is
    the one place the multi-store design is not finished.
 6. **Min *and* max reorder levels.** `reorderPoint` says when to buy, nothing says how much.
-   "Needs buying" can list what is low but cannot propose a quantity, which is what would let it
-   generate a draft PO instead of a shopping list.
+   A new PO already fills itself with what is out or low (`buyingList`), but the quantity is a
+   placeholder top-up (`suggestQty`, twice the reorder point) until a max level exists.
 7. **Price tiers are invisible in reporting.** Contractor 5% / wholesale 10% work and are applied
    automatically at checkout, and the profit maths is right because the back office sees them as
    an ordinary receipt discount. But `cartDiscount.tierType` is stored on every order and nothing

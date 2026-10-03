@@ -30,7 +30,7 @@ Reads, not captures. The data is in `hwpos.orders.v1`, `hwpos.stockMovements.v1`
 `hwpos.purchaseOrders.v1` already.
 
 - **Stockout intervals** — when each product hit zero and came back. Movement log.
-- **Supplier lead time and reliability** — `orderedAt` to `receivedAt`, with its spread. Purchase orders.
+- **Supplier lead time and reliability** — `sentAt` (else `orderedAt`) to the line's `receivedOn`, with its spread. Purchase orders.
 - **Demand rate and variability per product** — the swing, not just the average. Movement log.
 - **A real reorder point** — replaces `suggestQty`, which tops up to twice a hand-typed
   `reorderPoint` and ignores sales rate and lead time entirely. This is the overordering.
@@ -40,7 +40,7 @@ Reads, not captures. The data is in `hwpos.orders.v1`, `hwpos.stockMovements.v1`
 - **Customer totals** — orders carry `customerId`; orders, spent and last order per customer. The reorder-cycle guess was removed 2026-09-27.
 - **Basket affinity** — what sells with what, and which line drove the trip.
 - **Delivery heat map** — `deliveryLocation` lat/lng is already stored on every delivery order.
-- **Sales per person** — done: the Staff page reads it off `orders.cashier`.
+- **Sales per person** — done: Sales › By staff, by seller (`SalesMath.sellerOf`: the order's `staffId`, else its cashier name).
 - **Backtest harness** — replay the real year against any ordering rule, report cash tied up
   against stockouts.
 
@@ -59,7 +59,7 @@ Small additions to what already gets written. Each is an event that happens toda
 - **Short ships on receiving** — ordered against received per line, with a reason. Supplier fill rate.
 - **Sent date and promised date** — distinct from drafted and from `expectedAt`.
 - **Supplier invoice price** — billed against quoted.
-- **Supplier order cycle and minimums** — an order draft cannot be finished without them.
+- **Supplier order cycle and minimums** — captured, then dropped 2026-09-26: nothing read them.
 - **Supplier conversation thread** — every message both ways, attached to the PO. Suppliers are on
   Viber, not an API; an AI can read a thread.
 - **Decision log** — every automated action records inputs, rule, choice and time.
@@ -76,12 +76,12 @@ Small additions to what already gets written. Each is an event that happens toda
   movement, so it leaves no expected-against-counted row. Changing that adds a zero-qty movement
   per count and wants the owner's OK.
 - **Delivery heat map** has nothing to draw until orders carry `deliveryLocation`; the seed has none.
-- **Who, not just what** is half done: back-office rows name the store's cashier setting, not a login.
-- **Sync**: no camelCase → snake_case push adapter yet; voids and refunds edit orders in place; staff,
-  adjustments and closeouts have no D1 table.
-- **Back-dating is stock only.** Delivery events, lost sales and closeouts still take
-  the moment they are typed; the closeout day is the UTC date, not the store's (app.js closeout).
-  A voided sale's demand is not kept. Two tablets editing the same product's stock: last write wins.
+- **Who, not just what** is half done: the till's orders and movements carry `staffId` from the PIN
+  sign-in, but back-office rows name the store's cashier setting, not a login.
+- **Sync**: not built. Supabase Postgres is the target and is not connected (Phase 5); today's
+  `schema.sql` / Worker lag the client shapes (`docs/data-dictionary.md` Known gaps) and have no table
+  for staff or adjustments.
+- **Back-dating is stock only.** Delivery events and lost sales still take the moment they are typed.
   Till events sharing a millisecond have no sequence number to order them.
 
 ## Tier 2 — needs hardware or integration
@@ -119,7 +119,8 @@ Built on everything above. Straightforward once the data exists.
   price and cost log (`priceLog`); the day spine (`days`, removed 2026-09-24); delivery dispatched/arrived/returned/failed (`deliveryEvents`); lost sales with a
   substitute (`lostDemand`); expected and counted kept on count movements; `shrinkage` · `damage` ·
   `writeoff` reason codes; short ships with a reason, sent date, promised date and invoice cost on
-  PO lines (clock in/out removed 2026-09-24); supplier order days, minimum order and quoted lead;
+  PO lines (clock in/out removed 2026-09-24); supplier order days, minimum order and quoted lead
+  (dropped 2026-09-26);
   supplier conversation per PO (`supplierMessages`); decision log for reorder and reprice (`decisions`).
 - **Till event stream** (2026-09-14) — every till action as a raw row, no calculations:
   `HWPOS_STORE.events` (data-store.js) buffers taps and writes them to IndexedDB `hwpos-events` in
@@ -138,8 +139,8 @@ Built on everything above. Straightforward once the data exists.
   count movement instead of overwriting stock. CSV import refuses a new product with stock and no cost.
 - **Sync hardening** (2026-09-14) — `GET ?since=` pages on the server's `received_at`, not the
   tablet clock; a batch POST judges each row alone and answers `{received, inserted, rejected}`;
-  epoch-ms `ts` (orders, customer ledger) is stored as ISO text; the nightly rollup rebuilds the last
-  7 store-local days. The till event store has a pagehide stash, a fallback size cap and a
+  epoch-ms `ts` (orders, customer ledger, and since 2026-10-03 movements and event logs) is stored as
+  ISO text; the nightly rollup rebuilds the last 7 store-local days. The till event store has a pagehide stash, a fallback size cap and a
   transaction timeout, so a hung IndexedDB never blocks a sale. `scripts/worker-check.mjs`,
   `scripts/stress/events-fuzz.mjs`.
 - **Sales → Patterns** (2026-09-12) — by hour, by weekday, walk-in against delivery.

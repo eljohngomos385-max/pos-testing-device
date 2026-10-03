@@ -2,7 +2,7 @@
  * One layout, two encoders:
  *   Wi-Fi  : Epson ePOS-Print XML  -> POST to the printer's built-in web service (TM-m30III, TM-m30II, TM-T88VI/VII...)
  *   BT     : raw ESC/POS bytes     -> Web Bluetooth GATT write
- * Falls back to the existing pop-up (window.print) via app.js.
+ * The browser driver opens the receipt pop-up (openReceipt); a failed direct print shows the error and stops.
  * No SDK, no dependency — ePOS-Print is plain XML over HTTP, ESC/POS is plain bytes.
  */
 (function (g) {
