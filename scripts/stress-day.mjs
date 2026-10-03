@@ -107,8 +107,12 @@ try {
       return false;
     }
   }, null, { timeout: 10000 });
+  // init runs once IndexedDB is open (data-store.js ready()); same promise, so it has run by now.
+  await page.evaluate(() => HWPOS_STORE.ready());
 
   const result = await page.evaluate(async ({ transactionCount, seed }) => {
+    // A charge over a credit limit asks first; the day plays the manager who says yes.
+    window.confirm = () => true;
     const failures = [];
     const warnings = [];
     const samples = [];
@@ -129,6 +133,8 @@ try {
       'hwpos.orders.v1',
       'hwpos.orderSeq.v1',
       'hwpos.customers.v1',
+      'hwpos.customerLedger.v1',
+      'hwpos.customersMigrated.v1',
       'hwpos.settings.v1',
       'hwpos.role.v1',
     ];
@@ -146,7 +152,7 @@ try {
     }
 
     function resetSession() {
-      for (const key of storageKeys) localStorage.removeItem(key);
+      for (const key of storageKeys) HWPOS_STORE.kv.removeItem(key);
       stateRef.folders = loadFolders();
       stateRef.products = loadProducts().map(p => ({
         ...p,
@@ -154,7 +160,6 @@ try {
       }));
       stateRef.groups = loadGroups();
       stateRef.orders = [];
-      stateRef.customers = [];
       stateRef.settings = loadSettings();
       stateRef.vatRate = stateRef.settings.vatRate ?? 0.12;
       stateRef.role = 'manager';
@@ -162,11 +167,12 @@ try {
       stateRef.cartDiscount = null;
       stateRef.paymentMethod = 'cash';
       stateRef.customer = null;
-      stateRef.fulfilment = 'pickup';
+      stateRef.fulfilment = 'walkin';
       stateRef.deliveryAddress = '';
       stateRef.deliveryLocation = null;
       saveProducts();
-      saveSavedCustomers();
+      // A fresh till: the data.js accounts come back with their balances as opening rows (bo-model).
+      migrateCustomers();
       renderCart();
     }
 
@@ -176,7 +182,7 @@ try {
       stateRef.cartDiscount = null;
       stateRef.paymentMethod = 'cash';
       stateRef.customer = null;
-      stateRef.fulfilment = 'pickup';
+      stateRef.fulfilment = 'walkin';
       stateRef.deliveryAddress = '';
       stateRef.deliveryLocation = null;
       const tender = document.querySelector('#checkoutTender');
@@ -213,7 +219,7 @@ try {
 
     function prepareFulfilment(customer) {
       if (!chance(0.22)) {
-        stateRef.fulfilment = 'pickup';
+        stateRef.fulfilment = 'walkin';
         stateRef.deliveryAddress = '';
         stateRef.deliveryLocation = null;
         return;
@@ -241,6 +247,7 @@ try {
 
     resetSession();
     const customers = allCustomerRecords();
+    assert(customers.some(c => c.creditOn), 'setup: no credit customers, so credit and split go untested');
     const expectedCredit = new Map();
     let completed = 0;
     let saved = 0;
@@ -351,7 +358,7 @@ try {
     const seqs = numbers.map(n => parseInt(String(n).split('-')[1], 10)).filter(Number.isFinite).sort((a, b) => a - b);
     assert(seqs[0] === 1, `first order sequence should be 1, got ${seqs[0]}`);
     assert(seqs[seqs.length - 1] === transactionCount, `last order sequence should be ${transactionCount}, got ${seqs[seqs.length - 1]}`);
-    assert(orders.every(o => o.schemaVersion === 1 && o.formatKey === 'hwpos.order.v1'), 'not every order uses the canonical order format');
+    assert(orders.every(o => o.schemaVersion === 2 && o.formatKey === 'hwpos.order.v1'), 'not every order uses the canonical order format');
 
     for (const product of stateRef.products) {
       const expected = expectedStock.get(product.id);
@@ -360,8 +367,9 @@ try {
       }
     }
 
+    const finalCustomers = allCustomerRecords();   // balance = the ledger's sum, read fresh
     for (const [id, addedCredit] of expectedCredit) {
-      const savedCustomer = stateRef.customers.find(c => c.id === id);
+      const savedCustomer = finalCustomers.find(c => c.id === id);
       assert(!!savedCustomer, `credit customer ${id} was not saved after balance update`);
       const seedCustomer = customers.find(c => c.id === id);
       const expectedBalance = money((Number(seedCustomer?.currentBalance) || 0) + addedCredit);
@@ -376,7 +384,7 @@ try {
     switchView('reports');
     renderReports();
     const renderReportsMs = performance.now() - reportStarted;
-    const ordersJson = localStorage.getItem('hwpos.orders.v1') || '';
+    const ordersJson = HWPOS_STORE.kv.getItem('hwpos.orders.v1') || '';
     const productsJson = localStorage.getItem('hwpos.products.v2') || '';
     const customersJson = localStorage.getItem('hwpos.customers.v1') || '';
     const storageBytes = ordersJson.length + productsJson.length + customersJson.length;

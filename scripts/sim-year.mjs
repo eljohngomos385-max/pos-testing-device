@@ -16,9 +16,11 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const M = require('../bo-model.js');
+// The one margin (SalesMath.unitMargin); a non-VAT store reads cost and price as they are.
+const marginSummary = (cost, price) => require('../sales-math.js').unitMargin(cost, price, { vatInclusive: false });
 
 const {
-  cent, unc, round2, priceFromMargin, marginFromPrice, marginSummary,
+  cent, unc, round2, priceFromMargin, marginFromPrice,
   normalizeProduct, productToCsvRow, productFromCsvRow, PRODUCT_COLUMNS,
   makeMovement, applyMovement, isLow, stockValue, roundQty, stepFor,
   PO_DEFAULTS, poLine, poTotal, poOutstanding, receivePo,

@@ -214,7 +214,7 @@ function seedYear(days = 182, busy = 0.8) {
         expectedAt: iso(new Date(day.getTime() + 5 * 864e5)),
         note: '',
         status: 'ordered',
-        items: chosen.map((p) => poLine(p.id, Math.max(40, p.reorderPoint * 6) - stockOf(p.id), p.cost)),
+        items: chosen.map((p) => poLine(p.id, Math.max(40, p.reorderPoint * 6) - stockOf(p.id), p.cost, sup.id)),
         updatedAt: day.toISOString(),
       };
       pos.push(po);
@@ -300,7 +300,7 @@ function seedYear(days = 182, busy = 0.8) {
         cashier, customer: cust ? { id: cust.id, name: cust.name } : null,
         paymentMethod: kind === 'credit' ? 'credit' : 'cash',
         paymentKind: kind, paymentMethodLabel: LABEL[kind],
-        fulfilment: rnd() < 0.12 ? 'delivery' : 'pickup',
+        fulfilment: rnd() < 0.12 ? 'delivery' : 'walkin',
         vatAmount: round2(total - total / 1.12),
         discount, total, items: lines,
         // Only cash belongs in the drawer -- GCash/QR/custom are `other`, same rule as buildOrderPayments.
@@ -348,9 +348,9 @@ function seedYear(days = 182, busy = 0.8) {
 
   orders.sort((a, b) => a.ts - b.ts);
   localStorage.setItem('hwpos.products.v2', JSON.stringify(products));
-  localStorage.setItem('hwpos.orders.v1', JSON.stringify(orders));
+  HWPOS_STORE.kv.setItem('hwpos.orders.v1', JSON.stringify(orders));
   localStorage.setItem('hwpos.orderSeq.v1', String(num));
-  localStorage.setItem('hwpos.customerLedger.v1', JSON.stringify(ledger));
+  HWPOS_STORE.kv.setItem('hwpos.customerLedger.v1', JSON.stringify(ledger));
   saveSuppliers(suppliers);
   savePurchaseOrders(pos);
   saveMovements(movements);

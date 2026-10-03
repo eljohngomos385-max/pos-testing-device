@@ -75,15 +75,3 @@ body.bo-light .view-sales .sales-foot { margin-top: auto; padding-top: 12px; fon
 body.bo-light .view-sales .sales-foot .link-btn { padding: 0; border: 0; background: none; cursor: pointer; }
 /* Targets: month over today, one block. */
 body.bo-light .view-sales .sales-tgt { margin-top: 22px; }
-
-/* A staff name is a button that opens their numbers. */
-body.bo-light .bd-row button.nm { border: 0; background: none; padding: 0; font: inherit; color: var(--blk-ink); text-align: left; cursor: pointer; }
-body.bo-light .bd-row button.nm:hover { text-decoration: underline; }
-body.bo-light .bd-row button.nm:focus-visible { outline: 2px solid var(--blk-ink); outline-offset: 2px; border-radius: 3px; }
-
-/* The staff pop-up: breakdown rows on the white dialog. */
-body.bo-light .staff-pop { padding: 12px 24px 16px; }
-body.bo-light .staff-pop .bd-rows { margin: 10px 0 0; }
-body.bo-light .staff-pop .bd-row:nth-child(odd) { background: var(--tbl-stripe); }   /* the block's white stripe vanishes on a white dialog */
-body.bo-light .staff-pop > .kpi-label { margin-top: 18px; font-size: var(--blk-t-label); font-weight: 500; }
-body.bo-light .staff-pop-foot { display: flex; justify-content: flex-end; margin-top: 16px; }

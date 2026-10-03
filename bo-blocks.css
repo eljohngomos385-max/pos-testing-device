@@ -378,32 +378,6 @@ body.bo-light #txTable .tx-cust { max-width: 160px; overflow: hidden; text-overf
 body.bo-light .ml-share { flex: 0 0 36px; text-align: right; font-size: var(--blk-t-meta); color: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
 body.bo-light .blk-list .ml-sub.down { color: var(--trend-down); }
 
-/* BREAKDOWN — the lab's block D: one total, then striped rows of amount + change. */
-body.bo-light .bd-rows { margin-top: 13px; margin-bottom: -6px; }
-/* over a breakdown the chip rides 3px low, the lab's .card-head */
-body.bo-light .kpi-line:has(+ .bd-rows) { margin: var(--kpi-gap) 0 8px; }
-body.bo-light .kpi-label + .bd-rows { margin-top: var(--kpi-gap); }   /* table-only rail card (Payment methods) */
-body.bo-light .kpi-line:has(+ .bd-rows) .trend { transform: translateY(3px); }
-body.bo-light .bd-row {
-  display: flex; align-items: center; gap: 12px;
-  height: var(--list-row); padding: 0 10px; margin: 0 -10px; border-radius: var(--list-row-r);
-  font-size: var(--blk-t-label); color: var(--blk-ink);
-}
-body.bo-light .bd-row:nth-child(odd) { background: var(--blk-raised); }
-body.bo-light .bd-row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-body.bo-light .bd-row .amt { flex: 0 0 auto; min-width: 96px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-body.bo-light .bd-row .cmp { flex: 0 0 auto; min-width: 50px; text-align: right; font-size: var(--blk-t-meta); color: var(--blk-ink-3); font-variant-numeric: tabular-nums; }
-body.bo-light .bd-row .cmp.up { color: var(--trend-up); }
-body.bo-light .bd-row .cmp.down { color: var(--trend-down); }
-body.bo-light .bd-row .status-pill { --pill-h: 17px; padding: 0 7px; font-size: var(--blk-t-micro); }   /* Low stock's Out/Low, a size down */
-body.bo-light [data-w="low"] .bd-row { gap: 8px; }   /* the pill sits right after the count */
-body.bo-light [data-w="low"] .bd-row .cmp { min-width: 36px; }   /* the Low pill's width, so counts still line up */
-body.bo-light [data-w="channel"] .bd-row { gap: 6px; }   /* % only: sit the share right next to the amount */
-body.bo-light [data-w="channel"] .bd-row .cmp { min-width: 38px; }
-body.bo-light .bd-row.total .nm { font-weight: 600; }
-/* An unstriped Total closing the card has no fill to mark its edge, so its text floated ~19px off the
-   bottom against the label's 14px at the top (owner, 2026-09-23). Striped (odd) totals keep the edge. */
-body.bo-light [data-w="pay"] .bd-row.total:last-child:nth-child(even) { margin-bottom: -5px; }
 body.bo-light .blk-kpi > .kpi-note { display: block; transform: none; margin-top: 2px; }
 
 /* TARGET — the lab's block H: value over its goal, a meter, one row for what's left. */
@@ -412,7 +386,6 @@ body.bo-light .target-pct { font-size: var(--blk-t-meta); font-weight: 500; colo
 body.bo-light .target-pct.up { color: var(--trend-up); }
 body.bo-light .meter { display: flex; height: 8px; margin-top: 12px; border-radius: 999px; overflow: hidden; background: var(--meter-track); }
 body.bo-light .meter i { display: block; height: 100%; background: var(--chart-1); border-radius: 999px; }
-body.bo-light .meter + .bd-rows { margin-top: 12px; }
 body.bo-light .target-field { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; font-size: var(--blk-t-meta); color: var(--blk-ink-2); }
 
 /* A block that opens its page: an invisible cover link, so the Edit switch stays its own button. */
@@ -430,7 +403,6 @@ body.bo-light .meter.split i { border-radius: 0; }
 body.bo-light :is(.meter.split i, .sw).d0 { background: var(--data-3); }
 body.bo-light :is(.meter.split i, .sw).d1 { background: var(--data-2); }
 body.bo-light :is(.meter.split i, .sw).d2 { background: var(--data-1); }
-body.bo-light .bd-row .sw { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 3px; vertical-align: -1px; }
 /* Payment methods: each swatch is its pay-pill's text colour (styles.css → PILLS), lifted to a soft
    pastel on the same hue -- the pale fill is too faint at 10px, the raw ink too dark (owner, 2026-09-23).
    Unknown kinds (Maya, custom) get the neutral pill. */
@@ -438,7 +410,6 @@ body.bo-light .sw.pay { --k: var(--po-pill-neutral-ink); background: oklch(from 
 body.bo-light .sw.pay.cash { --k: var(--po-pill-ok-ink); }
 body.bo-light .sw.pay.credit { --k: var(--po-pill-warn-ink); }
 body.bo-light .sw.pay:is(.gcash, .qr, .card) { --k: var(--po-pill-info-ink); }
-body.bo-light .bd-row a { color: inherit; }
 /* One quiet "View all ›": the rail's, across from the card label, and a table head's. */
 body.bo-light :is(.rail-more, .link-btn.view-all) { font-size: var(--blk-t-meta); font-weight: 500; color: var(--blk-ink-2); text-decoration: none; }
 body.bo-light :is(.rail-more, .link-btn.view-all):hover { color: var(--blk-ink); text-decoration: none; }

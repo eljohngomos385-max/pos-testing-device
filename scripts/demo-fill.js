@@ -12,6 +12,7 @@
    ponytail: the till event stream (IndexedDB) is not generated; only Export for AI reads it.
    The shapes follow docs/data-dictionary.md; if the app disagrees, the app wins. */
 (() => {
+  window.HWPOS_MEMORY_ONLY = true;   // data-store.js: keep sales out of the real IndexedDB
   const mem = new Map();
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
@@ -193,7 +194,7 @@
       id: 'cust_demo' + String(i + 1).padStart(2, '0'), name, phone: `09${between(15, 99)}-${between(100, 999)}-${between(1000, 9999)}`,
       address: `${pick(PLACES)}, Cabanatuan City`, type,
       isCreditCustomer: type === 'contractor' || type === 'wholesale' || (type === 'residential' && i % 5 === 0),
-      creditLimit: type === 'wholesale' ? 50000 : type === 'contractor' ? 30000 : 5000, currentBalance: 0,
+      creditLimit: type === 'wholesale' ? 50000 : type === 'contractor' ? 30000 : 5000,
       // How often they come in (days). A few stop coming mid-way -- that is what churn looks like.
       every: type === 'retail' ? between(12, 40) : type === 'residential' ? between(7, 25) : between(2, 7),
       big: type === 'contractor' || type === 'wholesale',
@@ -223,7 +224,7 @@
   }
 
   // ---- ledgers the loop writes into -----------------------------------------
-  const orders = [], movements = [], ledger = [], pos = [], adjustments = [], closeouts = [];
+  const orders = [], movements = [], ledger = [], pos = [], adjustments = [];
   const ev = { priceLog: [], lostDemand: [], deliveryEvents: [], supplierMessages: [], decisions: [] };
   const event = (log, ts, staffName, fields) => ev[log].push({ id: uid('ev'), ts: ts.toISOString(), staff: staffName, ...fields });
   const onOrder = new Map();                        // productId -> qty still coming
@@ -389,7 +390,7 @@
       paymentMethodLabel: { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Account', split: 'Split payment' }[kind] || kind,
       payments, subtotal, discount, cartDiscount, originalOrderId: '', reason: '', voidedAt: 0, refundedAt: 0, returnedAt: 0,
       total, tendered, change, vatRate: 0.12, vatAmount: r2(total * 0.12 / 1.12), vatableSales: r2(total - total * 0.12 / 1.12),
-      fulfilment: delivery ? 'delivery' : 'pickup', deliveryAddress: delivery ? (cust ? cust.address : `${pick(PLACES)}, Cabanatuan City`) : '',
+      fulfilment: delivery ? 'delivery' : 'walkin', deliveryAddress: delivery ? (cust ? cust.address : `${pick(PLACES)}, Cabanatuan City`) : '',
       deliveryLocation: null, meta: { source: 'pos-app', replaceableFormat: true },
     };
     items.forEach((i) => move(ts, byId.get(i.productId), -i.qty, 'sale', order.id, cashier, { unitCost: i.cost }));
@@ -400,24 +401,19 @@
     }
     orders.push(order);
 
-    // After the fact: voids (same few minutes), refunds and returns (days later). Credit sales are left alone.
+    // After the fact, as a new row pointing at the sale -- the sale itself is never edited (sales-math.js):
+    // a void the same few minutes later, a refund days later. Credit sales are left alone.
     const roll = rnd();
-    const back = (o) => o.items.forEach((i) => move(new Date(o.back), byId.get(i.productId), i.qty, 'return', o.id, OWNER, { unitCost: i.cost, note: o.reason }));
-    if (!charged && roll < 0.012) {
-      order.status = 'voided'; order.reason = pick(['Wrong item rung up', 'Customer cancelled', 'Duplicate sale']);
-      order.voidedAt = order.back = ts.getTime() + between(1, 15) * 6e4; back(order); delete order.back;
-    } else if (!charged && roll < 0.017 && d < DAYS - 5) {
-      order.status = 'refunded'; order.reason = pick(['Defective', 'Wrong size', 'Not needed']);
-      order.refundedAt = order.back = at(plusDays(day, between(1, 4)), between(9, 16)).getTime(); back(order); delete order.back;
-    } else if (!charged && roll < 0.025 && d < DAYS - 5) {
-      const when = at(plusDays(day, between(1, 5)), between(9, 16));
+    const reverse = (status, when, reason) => {
       seq[register]++;
-      const ret = { ...order, id: uid('ord'), number: `${register}-${String(seq[register]).padStart(3, '0')}`, ts: when.getTime(), status: 'return',
-        originalOrderId: order.id, reason: 'Returned items', returnedAt: when.getTime(), cashier: OWNER,
-        payments: order.payments.map((p) => ({ ...p, label: 'Return', tendered: 0, change: 0, ref: order.number })) };
-      later.push(ret);
-    }
-    if (delivery && order.status === 'completed') {
+      later.push({ ...order, id: uid('ord'), number: `${register}-${String(seq[register]).padStart(3, '0')}`, ts: when.getTime(), status,
+        originalOrderId: order.id, reason, cashier: OWNER, tendered: 0, change: 0,
+        payments: order.payments.map((p) => ({ ...p, label: status === 'void' ? 'Void' : 'Refund', tendered: 0, change: 0, ref: order.number })) });
+      return status;
+    };
+    const undone = charged ? '' : roll < 0.012 ? reverse('void', new Date(ts.getTime() + between(1, 15) * 6e4), pick(['Wrong item rung up', 'Customer cancelled', 'Duplicate sale']))
+      : roll < 0.025 && d < DAYS - 5 ? reverse('refund', at(plusDays(day, between(1, 5)), between(9, 16)), pick(['Defective', 'Wrong size', 'Not needed', 'Returned items'])) : '';
+    if (delivery && undone !== 'void') {
       const out = new Date(ts.getTime() + between(20, 150) * 6e4);
       if (out < NOW) {
         const driver = pick(DRIVERS);
@@ -433,7 +429,7 @@
     }
     return order;
   }
-  const later = [];                                  // return rows land on a later day, in order
+  const later = [];                                  // void / refund rows wait for their own time
 
   // Reorder point = about a week of what the line really sells (~140 lines a day across the
   // catalog), so hollow blocks sold by the hundred don't run dry every afternoon.
@@ -494,14 +490,14 @@
         payments: [{ method: 'unpaid', label: 'Not completed', amount: 0, tendered: 0, change: 0, ref: '' }],
         subtotal: r2(p.price * 2), discount: 0, cartDiscount: null, originalOrderId: '', reason: '', voidedAt: 0, refundedAt: 0, returnedAt: 0,
         total: r2(p.price * 2), tendered: 0, change: 0, vatRate: 0.12, vatAmount: r2(p.price * 2 * 0.12 / 1.12), vatableSales: r2(p.price * 2 / 1.12),
-        fulfilment: 'pickup', deliveryAddress: '', deliveryLocation: null, meta: { source: 'pos-app', replaceableFormat: true } });
+        fulfilment: 'walkin', deliveryAddress: '', deliveryLocation: null, meta: { source: 'pos-app', replaceableFormat: true } });
     }
-    // Returns whose day has come.
+    // Voids and refunds whose time has come: the goods go back on the shelf then.
     for (let i = later.length - 1; i >= 0; i--) {
       const r = later[i];
       if (ymd(new Date(r.ts)) !== key || r.ts >= NOW.getTime()) continue;
       later.splice(i, 1);
-      r.items.forEach((it) => move(new Date(r.ts), byId.get(it.productId), it.qty, 'return', r.originalOrderId, r.cashier, { unitCost: it.cost, note: 'Customer return' }));
+      r.items.forEach((it) => move(new Date(r.ts), byId.get(it.productId), it.qty, 'return', r.originalOrderId, r.cashier, { unitCost: it.cost, note: r.reason }));
       orders.push(r);
     }
 
@@ -550,20 +546,6 @@
       c.balance = r2(c.balance - amount);
     });
 
-    // The drawer at close, if the day is over.
-    const close = at(day, 18, 30);
-    if (close < NOW) {
-      const todays = orders.filter((o) => ymd(new Date(o.ts)) === key);
-      let expectedCash = 0, cashSales = 0, adj = 0;
-      todays.forEach((o) => {
-        const cash = o.payments.filter((p) => p.method === 'cash').reduce((s, p) => s + p.amount, 0);
-        if (o.status === 'completed') { expectedCash += cash; if (cash) cashSales++; } else if (o.status !== 'saved') { if (o.status === 'return') expectedCash -= cash; adj++; }
-      });
-      expectedCash = r2(expectedCash);
-      const diff = chance(0.8) ? 0 : pick([-150, -50, -20, -5, 5, 10, 20]);
-      closeouts.unshift({ id: 'drawer_demo' + d, ts: close.getTime(), date: key, expectedCash, cashSales, adjustments: adj,
-        countedCash: r2(expectedCash + diff), difference: diff, notes: diff ? (diff < 0 ? 'Short, recounted twice' : 'Over, change not given?') : '', cashier: pick(onDuty) });
-    }
   }
 
   // A draft being built and one cancelled order, so every PO status shows up.
@@ -577,7 +559,8 @@
   orders.sort((a, b) => a.ts - b.ts);
   movements.sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0));
   Object.values(ev).forEach((rows) => rows.sort((a, b) => (a.ts < b.ts ? -1 : 1)));
-  customers.forEach((c) => { c.currentBalance = r2(c.balance || 0); delete c.balance; delete c.every; delete c.big; delete c.next; delete c.stopsAt; });
+  // Today's record (bo-model normalizeCustomer): credit on/off, no type or stored balance -- the balance is the ledger's sum.
+  const customerRecords = customers.map(({ balance, every, big, next, stopsAt, ...c }) => normalizeCustomer({ ...c, creditOn: !!c.isCreditCustomer }));
   products.forEach((p) => { delete p.pop; });
 
   const K = 'hwpos.';
@@ -586,9 +569,8 @@
   put(K + 'products.v2', products);
   put(K + 'orders.v1', orders);
   put(K + 'orderSeq.v1', String(seq[1]));
-  put(K + 'customers.v1', customers);
+  put(K + 'customers.v1', customerRecords);
   put(K + 'customerLedger.v1', ledger);
-  put(K + 'drawerCloseouts.v1', closeouts);
   put(K + 'stockMovements.v1', movements);
   put(K + 'purchaseOrders.v1', pos);
   // days / quote / lead / late / short only drive the simulation; they are not supplier fields.

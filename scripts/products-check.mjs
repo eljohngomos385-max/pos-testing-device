@@ -8,8 +8,10 @@ const require = createRequire(import.meta.url);
 const model = require('../bo-model.js');
 const {
   PRODUCT_COLUMNS, productToCsvRow, productFromCsvRow, normalizeProduct,
-  priceFromMargin, marginFromPrice, marginSummary, supplierIdsOf,
+  priceFromMargin, marginFromPrice, supplierIdsOf,
 } = model;
+// The one margin (SalesMath.unitMargin); a non-VAT store reads cost and price as they are.
+const marginSummary = (cost, price) => require('../sales-math.js').unitMargin(cost, price, { vatInclusive: false });
 
 // bo-products.js is a browser IIFE: give it just enough of a page to load.
 globalThis.window = globalThis;

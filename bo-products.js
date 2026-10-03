@@ -20,35 +20,36 @@
 
   /* ---------- stock level: bo-model's STOCK_LEVEL, one answer for filter, tile and pill ---------- */
   const LEVEL_OPTS = [['out', 'Out of stock'], ['low', 'Low'], ['dead', 'Dead']];
-  const LEVEL_RANK = { out: 0, low: 1, dead: 2, ok: 3 };
   // ?level= is a comma list; ?low=1 is the old checkbox, read as level=low but never written.
   const levelsOf = (p) => (p.level ? p.level.split(',').filter(Boolean) : p.low === '1' ? ['low'] : []);
-  const worstLevel = (keys) => keys.reduce((a, b) => (LEVEL_RANK[b] < LEVEL_RANK[a] ? b : a), 'ok');
+  // An item's level: a family is one item (bo-model familyLevel over its live variants), so the
+  // filter, the row's pill and the tiles (stockCounts) give one answer. A plain product is a family of one.
+  const famKey = (x) => x.groupId || x.id;
+  const famLevel = (members, facts) => {
+    const live = members.filter((m) => !m.archived);
+    return familyLevel(live.length ? live : members, facts.clock, facts.now, boZone());
+  };
   // In stock is the normal state: plain muted words. A pill is for Out, Low and Dead only.
   const levelPill = (key) => (key === 'ok' ? `<span class="muted">${STOCK_LEVEL.ok[1]}</span>`
     : `<span class="status-pill ${STOCK_LEVEL[key][0]}">${STOCK_LEVEL[key][1]}</span>`);
 
-  // Read the movement log once per paint: the sale clock (last sold, dead) and sold in 30 days.
+  // Once per paint: the sale clock off the movement log (last sold, dead), and units sold in
+  // 30 days off the ladder, so voids and refunds take theirs back like on the item page.
   function stockFacts() {
-    const moves = loadMovements();
-    const from = Date.now() - 30 * 86400000;
-    const sold = new Map();
-    for (const m of moves) {
-      if (m.reason === 'sale' && Date.parse(m.ts) >= from) {
-        sold.set(m.productId, (sold.get(m.productId) || 0) + Math.abs(Number(m.qty) || 0));
-      }
-    }
-    const clock = saleClock(moves);
     const now = Date.now();
-    return { clock, sold, now, level: (p) => stockLevel(p, clock.get(p.id), now) };
+    const units = soldLast30(now);
+    const sold = { get: (id) => units.get(id)?.unitsSold || 0 };
+    const clock = saleClock(loadMovements(), boZone(), state.orders);
+    return { clock, sold, now, level: (p) => stockLevel(p, clock.get(p.id), now, boZone()) };
   }
-  const lastSold = (ms, now) => {
-    if (ms == null) return 'Never';
-    const d = Math.floor((now - ms) / 86400000);
-    return d <= 0 ? 'Today' : `${d}d ago`;
-  };
+  // Store days, as the item page reads it: Never · Today · Yesterday · 3 days ago.
+  const lastSold = (ms, now) => SalesMath.agoText(ms, now, boZone());
 
+  // Who typed an opening count: the back office's name (actor), linked to its staff id, as every movement is.
+  const who = () => { const staff = actor(); return { staff, staffId: staffIdOf(staff) }; };
   const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  // One unit's profit, margin (tax out of the price first) and markup (on cost): sales-math's, the only copy.
+  const marginOf = (cost, price) => SalesMath.unitMargin(cost, price, state.settings);
   const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   // A url that cannot break out of url('...') or an attribute; anything else = no image.
   const safeUrl = (u) => (/^(https?:\/\/|\/|\.\/|data:image\/)[^'"()\\\s]*$/i.test(String(u || '')) ? String(u) : '');
@@ -117,7 +118,7 @@
 
   // Stock view: name, how many, how fast, what it is worth, when it last sold, is that a
   // problem, fix it. Catalog view keeps the definition columns and the chooser.
-  const HEAD_STOCK = `<th>Name</th><th class="num">On hand</th><th class="num">Sold 30d</th>
+  const HEAD_STOCK = `<th>Name</th><th class="num">In stock</th><th class="num">Units sold 30d</th>
     <th class="num">Stock value</th><th class="num">Last sold</th><th>Status</th><th class="num"></th>`;
   const HEAD_CATALOG = `<th class="pd-img-col" data-col="img"></th><th>Name</th>
     <th data-col="sku">SKU</th><th data-col="cat">Category</th><th data-col="supplier">Supplier</th>
@@ -127,10 +128,10 @@
 
   // Catalog | Stock is a switch inside the page (owner, 2026-09-23), not two sidebar links:
   // one table, two column sets. Search and filters ride along; only `view` and the page change. No title beside it
-  // (owner 2026-09-28): the lit sidebar row already says Products.
+  // (owner 2026-09-28): the lit sidebar row already says Items.
   const viewSwitch = (stock) => {
     const href = (v) => Router.href(VIEW, '', { ...params(), view: v === 'catalog' ? '' : v, page: '' });
-    return `<div class="seg pd-switch" aria-label="Products view">${[['catalog', 'Catalog'], ['stock', 'Stock']].map(([v, label]) =>
+    return `<div class="seg pd-switch" aria-label="Items view">${[['catalog', 'Catalog'], ['stock', 'Stock']].map(([v, label]) =>
       `<a class="seg-btn${(v === 'stock') === stock ? ' active' : ''}" href="${escapeHtml(href(v))}">${label}</a>`).join('')}</div>`;
   };
 
@@ -142,7 +143,7 @@
         <div class="view-actions">
           <button class="secondary-btn small" data-act="import">Import CSV</button>
           <button class="secondary-btn small" data-act="export">Export CSV</button>
-          <button class="primary-btn small" data-act="new">Add product</button>
+          <button class="primary-btn small" data-act="new">Add item</button>
           <input type="file" id="pdFile" accept=".csv,text/csv" hidden>
         </div>
       </header>
@@ -164,7 +165,7 @@
       <div id="pdImport"></div>
       <section class="bo-card blk-table pd-list" data-pd-view="${stock ? 'stock' : 'catalog'}">
         <div class="bo-card-head">
-          <span class="bo-card-label">${stock ? 'On hand' : 'All products'}</span>
+          <span class="bo-card-label">${stock ? 'In stock' : 'All items'}</span>
           <span class="bo-card-sub" id="pdShown"></span>
           <div class="pd-bulk" id="pdBulk" hidden>
             <span class="pd-bulk-n"></span>
@@ -214,50 +215,47 @@
     // Searching "pvc elbow" has to find the variants, so the group name is part
     // of the haystack. Built once, and only when there is something to search.
     const gname = q ? new Map(loadGroups().map((g) => [g.id, g.name])) : null;
-    return state.products.map(normalizeProduct).filter((item) => {
+    const list = state.products.map(normalizeProduct).filter((item) => {
       if (item.archived && p.archived !== '1') return false;
       if (p.cat && !item.folders.includes(p.cat)) return false;
       if (p.supplier && (p.supplier === 'none'
         ? supplierIdsOf(item).length : !supplierIdsOf(item).includes(p.supplier))) return false;
-      if (levels.length && !levels.includes(facts.level(item))) return false;
       if (!q) return true;
       const hay = `${item.name} ${item.sku} ${item.barcode} `
         + `${item.aliases.join(' ')} ${gname.get(item.groupId) || ''}`;
       return hay.toLowerCase().includes(q);
     });
+    if (!levels.length) return list;
+    // A level keeps or drops a whole family, by the family's level, so a row never shows half of one.
+    const fams = new Map();
+    list.forEach((x) => (fams.get(famKey(x)) || fams.set(famKey(x), []).get(famKey(x))).push(x));
+    const keep = new Set([...fams].filter(([, ms]) => levels.includes(famLevel(ms, facts))).map(([k]) => k));
+    return list.filter((x) => keep.has(famKey(x)));
   }
 
-  // Min-max of a column, printed as one value when the family agrees.
-  const rangeText = (vals, fmt) =>
-    (Math.min(...vals) === Math.max(...vals)
-      ? fmt(vals[0])
-      : `${fmt(Math.min(...vals))}&ndash;${fmt(Math.max(...vals))}`);
   // A family's margin in whole percents with one sign, "30–37%": the spread is the point,
   // the decimals only pushed the column off the card.
+  // Each end is SalesMath.pctText (unitMargin gives percent points), so a minus is a true minus.
   const marginRange = (vals) => {
-    const lo = Math.round(Math.min(...vals)), hi = Math.round(Math.max(...vals));
-    return lo === hi ? `${lo}%` : `${lo}&ndash;${hi}%`;
+    const [lo, hi] = [Math.min(...vals), Math.max(...vals)].map((v) => escapeHtml(SalesMath.pctText(v / 100, 1, 0)));
+    return lo === hi ? lo : `${lo.replace('%', '')}&ndash;${hi}`;
   };
 
-  // Stock view KPIs. Out / Low / Dead toggle their key in ?level=; Cash in stock clears it.
+  // Stock view KPIs. Out / Low / Dead toggle their key in ?level=; Stock value clears it.
   function paintKpis(facts) {
     const el = root().querySelector('#pdKpis');
     if (!el) return;
     const levels = levelsOf(params());
-    const n = { out: 0, low: 0, dead: 0 };
-    let cash = 0;
-    filterProducts(facts, false).forEach((item) => {
-      const k = facts.level(item);
-      if (k in n) n[k] += 1;
-      if (num(item.stock) > 0) cash += stockValue(item);
-    });
+    const shown = filterProducts(facts, false);
+    const n = stockCounts(shown, facts.clock, facts.now, boZone());   // one per item, as the rows are
+    const cash = stockValueOf(shown);
     // kpi() owns the tile markup; this only stamps the click target and the selected state.
     const tile = (key, html) => html.replace('class="bo-card blk-kpi"',
       `class="bo-card blk-kpi pd-kpi${key && levels.includes(key) ? ' on' : ''}" data-level="${key}" role="button" tabindex="0"`);
     el.innerHTML = tile('out', kpi('Out of stock', String(n.out), 'nothing on hand'))
       + tile('low', kpi('Low', String(n.low), 'at or below danger level'))
       + tile('dead', kpi('Dead', String(n.dead), `no sale in ${DEAD_DAYS} days`))
-      + tile('', kpi('Cash in stock', pesoShort(cash), 'at cost'));
+      + tile('', kpi('Stock value', pesoShort(cash), 'at cost'));
   }
 
   function paintTable() {
@@ -291,7 +289,7 @@
     const pg = paginate(rows, p.page);
     paintKpis(facts);
     root().querySelector('#pdTable tbody').innerHTML = pg.rows.map((r) => r.html).join('')
-      || `<tr><td colspan="12" class="bo-empty">${filtered ? 'No products match these filters.' : 'No products yet. Add one to get started.'}</td></tr>`;
+      || `<tr><td colspan="12" class="bo-empty">${filtered ? 'No items match these filters.' : 'No items yet. Add one to get started.'}</td></tr>`;
     root().querySelector('#pdPager').innerHTML = pagerHtml(pg);
     root().querySelector('#pdShown').textContent = `${rows.length} shown`;
     paintPicked();
@@ -325,7 +323,7 @@
   const stockCells = (name, onHand, sold, value, last, level, act) => `
         <td>${name}</td>
         <td class="num"><strong>${onHand}</strong></td>
-        <td class="num">${sold ? round2(sold) : '&mdash;'}</td>
+        <td class="num">${sold ? SalesMath.qtyText(sold) : '&mdash;'}</td>
         <td class="num">${peso(value)}</td>
         <td class="num">${last}</td>
         <td>${levelPill(level)}</td>
@@ -336,7 +334,7 @@
     return `
       <tr class="pd-row${p.archived ? ' pd-arch' : ''}" data-id="${escapeHtml(p.id)}">
         ${pickBox(p.id)}${stockCells(escapeHtml(p.name),
-          `${p.stock} ${escapeHtml(p.unit)}`, facts.sold.get(p.id) || 0, stockValue(p),
+          `${SalesMath.qtyText(p.stock)} ${escapeHtml(p.unit)}`, facts.sold.get(p.id) || 0, stockValueOf([p]),
           lastSold(c && c.lastSale, facts.now), facts.level(p),
           `<button class="secondary-btn small" data-adjust-open="${escapeHtml(p.id)}">Adjust</button>`)}
       </tr>`;
@@ -347,17 +345,16 @@
     return `
       <tr class="pd-row${members.every((m) => m.archived) ? ' pd-arch' : ''}" data-id="${escapeHtml(g.id)}">
         ${pickBox(g.id)}${stockCells(`${escapeHtml(g.name)}
-            <span class="pd-vcount">${members.length} variant${members.length === 1 ? '' : 's'}</span>`,
-          `${round2(members.reduce((n, m) => n + num(m.stock), 0))} ${escapeHtml(members[0].unit)}`,
+            <span class="pd-vcount">${SalesMath.plural(members.length, 'variant')}</span>`,
+          `${SalesMath.qtyText(onHandOf(members))} ${escapeHtml(members[0].unit)}`,
           members.reduce((n, m) => n + (facts.sold.get(m.id) || 0), 0),
-          members.reduce((n, m) => n + stockValue(m), 0),
+          stockValueOf(members),
           lastSold(sales.length ? Math.max(...sales) : null, facts.now),
-          worstLevel(members.map(facts.level)), '')}
+          famLevel(members, facts), '')}
       </tr>`;
   }
 
   function rowHtml(p, supplierMap, facts) {
-    const markup = marginSummary(p.cost, p.price).markup;
     return `
       <tr class="pd-row${p.archived ? ' pd-arch' : ''}" data-id="${escapeHtml(p.id)}">
         ${pickBox(p.id)}
@@ -369,8 +366,8 @@
           p.altSupplierIds.length ? `<span class="muted"> +${p.altSupplierIds.length}</span>` : ''}</td>
         <td class="num" data-col="cost">${peso(p.cost)}</td>
         <td class="num" data-col="price"><strong>${peso(p.price)}</strong></td>
-        <td class="num" data-col="margin">${marginRange([markup])}</td>
-        <td class="num" data-col="stock">${p.stock} ${escapeHtml(p.unit)}</td>
+        <td class="num" data-col="margin">${marginRange([marginOf(p.cost, p.price).margin])}</td>
+        <td class="num" data-col="stock">${SalesMath.qtyText(p.stock)} ${escapeHtml(p.unit)}</td>
         <td data-col="status">${statusPill(p, facts)}</td>
         ${editBtn}
       </tr>`;
@@ -379,24 +376,24 @@
   // The collapsed family: aggregates, and the picture is the group's unless every
   // variant brought its own.
   function groupRowHtml(g, members, supplierMap, facts) {
-    const stock = round2(members.reduce((n, m) => n + num(m.stock), 0));
+    const stock = onHandOf(members);
     const sups = new Set(members.map((m) => m.supplierId));
     const alts = new Set(members.flatMap((m) => m.altSupplierIds));
-    const status = levelPill(worstLevel(members.map(facts.level)));
+    const status = levelPill(famLevel(members, facts));
     return `
       <tr class="pd-row${members.every((m) => m.archived) ? ' pd-arch' : ''}" data-id="${escapeHtml(g.id)}">
         ${pickBox(g.id)}
         <td class="pd-img-col" data-col="img">${thumb(imageFor(members[0], [g]))}</td>
         <td>${escapeHtml(g.name)}
-            <span class="pd-vcount">${members.length} variant${members.length === 1 ? '' : 's'}</span></td>
+            <span class="pd-vcount">${SalesMath.plural(members.length, 'variant')}</span></td>
         <td class="mono" data-col="sku">&mdash;</td>
         <td data-col="cat">${escapeHtml(folderName(g.folder || members[0].folder))}</td>
         <td data-col="supplier">${sups.size > 1 ? 'Mixed' : escapeHtml(supplierMap.get(members[0].supplierId) || '-')}${
           alts.size ? `<span class="muted"> +${alts.size}</span>` : ''}</td>
-        <td class="num" data-col="cost">${rangeText(members.map((m) => m.cost), peso)}</td>
-        <td class="num" data-col="price"><strong>${rangeText(members.map((m) => m.price), peso)}</strong></td>
-        <td class="num" data-col="margin">${marginRange(members.map((m) => marginSummary(m.cost, m.price).markup))}</td>
-        <td class="num" data-col="stock">${stock} ${escapeHtml(members[0].unit)}</td>
+        <td class="num" data-col="cost">${rangeText(members.map((m) => m.cost))}</td>
+        <td class="num" data-col="price"><strong>${rangeText(members.map((m) => m.price))}</strong></td>
+        <td class="num" data-col="margin">${marginRange(members.map((m) => marginOf(m.cost, m.price).margin))}</td>
+        <td class="num" data-col="stock">${SalesMath.qtyText(stock)} ${escapeHtml(members[0].unit)}</td>
         <td data-col="status">${status}</td>
         ${editBtn}
       </tr>`;
@@ -408,13 +405,13 @@
 
   function exportCsv() {
     const list = filterProducts();
-    downloadCsv('products.csv', [PRODUCT_COLUMNS.map((c) => c.head)].concat(list.map(productToCsvRow)));
-    showToast(`Exported ${list.length} product${list.length === 1 ? '' : 's'}`);
+    downloadCsv('items.csv', [PRODUCT_COLUMNS.map((c) => c.head)].concat(list.map(productToCsvRow)));
+    showToast(`Exported ${SalesMath.plural(list.length, 'item')}`);
   }
 
   // Pure: what an import WOULD do. Matches by SKU, then barcode, then name, and names
   // the categories it would have to create. Exported for scripts/products-check.mjs.
-  function planImport(rows, products, folders) {
+  function planImport(rows, products, folders, suppliers = []) {
     const headers = (rows[0] || []).map((h) => String(h).trim().toLowerCase());
     const bySku = new Map(), byBarcode = new Map(), byName = new Map();
     products.forEach((p) => {
@@ -425,7 +422,23 @@
     const byId = new Map(folders.map((f) => [f.id, f]));
     const byFolderName = new Map(folders.map((f) => [String(f.name).toLowerCase(), f]));
     const made = new Map();
-    const out = { create: [], update: [], failed: [], folders: [] };
+    const out = { create: [], update: [], failed: [], folders: [], suppliers: [] };
+    // Suppliers the same way: ids on our own export, names on anyone else's. A name stored as an id
+    // left the item on no supplier's page and out of the "No supplier" filter too.
+    const supById = new Map(suppliers.map((s) => [s.id, s]));
+    const supByName = new Map(suppliers.map((s) => [String(s.name).toLowerCase(), s]));
+    const supId = (name) => {
+      const key = String(name).toLowerCase();
+      let s = supById.get(name) || supByName.get(key);
+      // An id we don't have (another store's export) is not a name: no supplier called "3f2a…".
+      if (!s && /^(sup_|[0-9a-f]{8}-[0-9a-f]{4}-)/i.test(name)) return '';
+      if (!s) {
+        s = { ...SUPPLIER_DEFAULTS, id: newId('sup'), name, updatedAt: new Date().toISOString() };
+        supByName.set(key, s);
+        out.suppliers.push(s);
+      }
+      return s.id;
+    };
 
     // Not a PRODUCT_COLUMNS field (bo-model.js owns that list) — read straight off the
     // header row so an importer's "in store since" survives without editing that file.
@@ -466,6 +479,8 @@
         });
         product.folder = product.folders[0];   // normalizeProduct keeps `folder` first
       }
+      if (product.supplierId) product.supplierId = supId(product.supplierId);
+      if (product.altSupplierIds) product.altSupplierIds = product.altSupplierIds.map(supId).filter(Boolean);
       (match ? out.update : out.create).push({ product, match });
     });
     return out;
@@ -489,9 +504,10 @@
             <span><strong>${pending.create.length}</strong> new</span>
             <span><strong>${pending.update.length}</strong> updated</span>
             <span><strong>${pending.failed.length}</strong> skipped</span>
-            ${pending.folders.length ? `<span><strong>${pending.folders.length}</strong> new categor${pending.folders.length === 1 ? 'y' : 'ies'}</span>` : ''}
+            ${pending.folders.length ? `<span><strong>${pending.folders.length}</strong> new ${SalesMath.pluralWord(pending.folders.length, 'category', 'categories')}</span>` : ''}
+            ${pending.suppliers.length ? `<span><strong>${pending.suppliers.length}</strong> new ${SalesMath.pluralWord(pending.suppliers.length, 'supplier')}</span>` : ''}
           </div>
-          <p class="pd-hint">Stock is applied only to new products, as an opening count. Products that already exist keep the stock Inventory has for them.</p>
+          <p class="pd-hint">Stock is applied only to new items, as an opening count. Items that already exist keep the stock Inventory has for them.</p>
           ${fails ? `<div class="pd-fails">${fails}</div>` : ''}
           <div class="pd-actions">
             <button class="secondary-btn small" data-act="import-cancel">Cancel</button>
@@ -505,6 +521,7 @@
     if (plan.folders.length) {
       saveFolders(state.folders.concat(plan.folders));
     }
+    if (plan.suppliers.length) saveSuppliers(loadSuppliers().concat(plan.suppliers));
     const list = state.products.slice();
     const idx = new Map(list.map((p, i) => [p.id, i]));
     const stamp = new Date().toISOString();
@@ -525,7 +542,7 @@
       const next = normalizeProduct({ ...rest, id: newId('p'), stock: 0, updatedAt: stamp });
       if (opening > 0) {
         const mv = makeMovement({ productId: next.id, qty: opening, reason: 'count', note: 'Opening stock (import)',
-          happenedOn });
+          happenedOn, ...who() });
         applyMovement(next, mv);
         movements.push(mv);
       }
@@ -551,13 +568,13 @@
   let P = null, openV = -1, dirty = false;
 
   const val = (v) => (v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v));   // '' is no answer, not 0
-  const markupOf = (c, p) => (val(c) && val(p) != null ? ((p - c) / c) * 100 : null);
+  const markupOf = (c, p) => (val(c) && val(p) != null ? marginOf(c, p).markup : null);
   const fmtPct = (m) => (m == null || !Number.isFinite(m) ? '' : String(round2(m)));
   const profitLine = (c, p, withMarkup) => {
     const cc = val(c), pp = val(p);
     if (cc == null || pp == null) return '';
     const m = markupOf(cc, pp);
-    return `<b>${peso(pp - cc)}</b> profit on each${withMarkup && m != null ? ` · ${round2(m).toFixed(1)}% markup` : ''}`;
+    return `<b>${peso(marginOf(cc, pp).profit)}</b> gross profit on each${withMarkup && m != null ? ` · ${SalesMath.pctText(m / 100)} markup` : ''}`;
   };
   // A variant row names what makes it this one; the family name is already the title.
   const blankVariant = () => ({ id: '', short: '', prefixed: true, sku: '', barcode: '', cost: '', price: '', openingQty: '', isNew: true });
@@ -599,7 +616,7 @@
   const peCard = (title, body, right = '') => `<section class="pe-card">${title ? `<div class="pe-band">${title}${right ? `<span class="pe-r">${right}</span>` : ''}</div>` : ''}${body}</section>`;
   const fld = (label, ctl) => `<label class="pe-f"><span>${label}</span>${ctl}</label>`;
   const inp = (k, v, attrs = '') => `<input class="pe-in" data-k="${k}" value="${escapeHtml(v == null ? '' : v)}"${attrs}>`;
-  const money = (attr, v) => `<div class="pe-affix pre"><i>₱</i><input class="pe-in" ${attr} value="${escapeHtml(v == null ? '' : v)}" inputmode="decimal" placeholder="0.00"></div>`;
+  const money = (attr, v) => `<div class="pe-affix pre"><i>${escapeHtml(SalesMath.currencySymbol(storeCurrency()))}</i><input class="pe-in" ${attr} value="${escapeHtml(v == null ? '' : v)}" inputmode="decimal" placeholder="0.00"></div>`;
   const qty = (attr, v) => `<div class="pe-affix suf"><i>${escapeHtml(P.unit)}</i><input class="pe-in" ${attr} value="${escapeHtml(v == null ? '' : v)}" inputmode="decimal" placeholder="0"></div>`;
   const pick = (id, inner) => `<button type="button" class="pe-pick" popovertarget="${id}">${inner}${PE_CHEV}</button><div class="pe-menu" id="${id}" popover></div>`;
   const chipX = (list, i, v) => `<button type="button" class="pe-x" data-pe="del" data-list="${list}" data-i="${i}" aria-label="Remove ${escapeHtml(v)}">${PE_X}</button>`;
@@ -696,8 +713,8 @@
   function paintEditor() {
     const n = P.family ? P.variants.length : 0;
     root().innerHTML = `<div class="pe">
-        <header class="item-head"><a class="item-back" href="${escapeHtml(Router.href(VIEW, ''))}">Products</a>
-          <h1>${escapeHtml(P.name || 'New product')}</h1>${P.family ? `<span class="pe-muted">${n} variant${n === 1 ? '' : 's'}</span>` : ''}</header>
+        <header class="item-head"><a class="item-back" href="${escapeHtml(Router.href(VIEW, ''))}">Items</a>
+          <h1>${escapeHtml(P.name || 'New item')}</h1>${P.family ? `<span class="pe-muted">${SalesMath.plural(n, 'variant')}</span>` : ''}</header>
         <div class="pe-side">${peCard('Status', `<div class="pe-body">${pick('pe-m-status',
           `<i class="pe-dot${P.hidden ? '' : ' on'}"></i><span>${P.hidden ? 'Hidden' : 'Active'}</span>`)}</div>`)}</div>
         <div class="pe-col">${cardsHtml()}</div>
@@ -713,9 +730,9 @@
       if (P) P.visit = state.visit;
     }
     if (!P) {
-      root().innerHTML = `<header class="view-head"><div class="view-title-wrap"><h1>Product not found</h1>
+      root().innerHTML = `<header class="view-head"><div class="view-title-wrap"><h1>Item not found</h1>
         <span class="muted">It may have been removed.</span></div>
-        <div class="view-actions"><button class="secondary-btn small" data-act="back">Back to products</button></div></header>`;
+        <div class="view-actions"><button class="secondary-btn small" data-act="back">Back to items</button></div></header>`;
       return;
     }
     paintEditor();
@@ -806,7 +823,7 @@
       touch(); paintEditor(); focusV(openV, 'short'); return;
     }
     if (a === 'del-v') {
-      if (P.variants.length < 2) { showToast('A product needs at least one variant'); return; }
+      if (P.variants.length < 2) { showToast('An item needs at least one variant'); return; }
       P.variants.splice(i, 1); openV = -1; touch(); paintEditor(); return;
     }
     if (a === 'del') {
@@ -843,7 +860,7 @@
         if (m != null && val(P.cost) != null) { P.price = priceFromMargin(P.cost, 'percent', m); box('price').value = P.price; }
       }
       if (k === 'price' && box('markup')) box('markup').value = fmtPct(markupOf(P.cost, P.price));
-      if (k === 'name') root().querySelector('.item-head h1').textContent = t.value || 'New product';
+      if (k === 'name') root().querySelector('.item-head h1').textContent = t.value || 'New item';
       const pl = root().querySelector('[data-profit]');
       if (pl) pl.innerHTML = profitLine(P.cost, P.price);
     }
@@ -873,14 +890,14 @@
     weight: String(P.weight || '').trim(), size: String(P.size || '').trim(), length: String(P.length || '').trim(),
   });
   const opening = (productId, q) => (P.track && val(q) > 0
-    ? makeMovement({ productId, qty: val(q), reason: 'count', note: 'Opening stock', happenedOn: P.since }) : null);
+    ? makeMovement({ productId, qty: val(q), reason: 'count', note: 'Opening stock', happenedOn: P.since, ...who() }) : null);
 
   function save() {
-    if (!P.name.trim()) return bad('Name the product');
+    if (!P.name.trim()) return bad('Name the item');
     if (!moneyOk(P.cost, P.price)) return bad('Cost and price need a number, 0 or more');
     if (P.isNew && P.openingQty !== '' && !(val(P.openingQty) >= 0)) return bad('Opening stock needs a number, 0 or more');
     const existing = P.isNew ? null : state.products.find((x) => x.id === P.id);
-    if (!P.isNew && !existing) return bad('That product no longer exists');
+    if (!P.isNew && !existing) return bad('That item no longer exists');
 
     const cost = val(P.cost), price = val(P.price);
     const marginMode = (existing && existing.marginMode) || 'percent';
@@ -910,7 +927,7 @@
   /* A family is one form and several product rows. A variant IS a product (bo-model.js); the
      group carries the shared name, picture, description and first category. */
   function saveGroup() {
-    if (!P.name.trim()) return bad('Name the product');
+    if (!P.name.trim()) return bad('Name the item');
     for (let i = 0; i < P.variants.length; i += 1) {
       const v = P.variants[i];
       const fail = !v.short.trim() ? `Variant ${i + 1} needs a name`
@@ -972,14 +989,14 @@
     // reversible from this very button, so it needs the pause, not a designed dialog.
     if (to && !confirm(`Archive "${P.name}"?
 
-It stops showing in the POS. Old receipts still resolve, and you can restore it from this page.`)) return;
+It stops showing in the POS. Old orders still resolve, and you can restore it from this page.`)) return;
     const stamp = new Date().toISOString();
     state.products = state.products.map((x) => (ids.has(x.id) ? { ...x, archived: to, updatedAt: stamp } : x));
     saveProducts();
     P.archived = to;
     refreshSharedState();
     paintEditor();
-    showToast(to ? 'Archived - old receipts still resolve' : 'Restored');
+    showToast(to ? 'Archived - old orders still resolve' : 'Restored');
   }
 
   /* ================= render + events ================= */
@@ -1035,14 +1052,14 @@ It stops showing in the POS. Old receipts still resolve, and you can restore it 
     else if (act === 'bulk-clear') { picked.clear(); paintTable(); }
     else if (act === 'bulk-export') {
       const list = pickedProducts().map(normalizeProduct);
-      downloadCsv('products.csv', [PRODUCT_COLUMNS.map((c) => c.head)].concat(list.map(productToCsvRow)));
-      showToast(`Exported ${list.length} product${list.length === 1 ? '' : 's'}`);
+      downloadCsv('items.csv', [PRODUCT_COLUMNS.map((c) => c.head)].concat(list.map(productToCsvRow)));
+      showToast(`Exported ${SalesMath.plural(list.length, 'item')}`);
     } else if (act === 'bulk-archive') {
       const ids = new Set(pickedProducts().filter((x) => !x.archived).map((x) => x.id));
       if (!ids.size) { showToast('Those are already archived'); return; }
-      if (!confirm(`Archive ${ids.size} product${ids.size === 1 ? '' : 's'}?
+      if (!confirm(`Archive ${SalesMath.plural(ids.size, 'item')}?
 
-They stop showing in the POS. Old receipts still resolve, and you can restore each one from its page.`)) return;
+They stop showing in the POS. Old orders still resolve, and you can restore each one from its page.`)) return;
       // Never delete: an old receipt has to stay resolvable.
       const stamp = new Date().toISOString();
       state.products = state.products.map((x) => (ids.has(x.id) ? { ...x, archived: true, updatedAt: stamp } : x));
@@ -1050,7 +1067,7 @@ They stop showing in the POS. Old receipts still resolve, and you can restore ea
       picked.clear();
       refreshSharedState();
       renderCurrentView();
-      showToast(`Archived ${ids.size} - old receipts still resolve`);
+      showToast(`Archived ${ids.size} - old orders still resolve`);
     }
     else if (act === 'import') r.querySelector('#pdFile').click();
     else if (act === 'import-cancel') { pending = null; paintImport(); }
@@ -1060,7 +1077,7 @@ They stop showing in the POS. Old receipts still resolve, and you can restore ea
       commitImport(plan);
       rebuild();
       const n = plan.create.length + plan.update.length;
-      showToast(`Imported ${n} product${n === 1 ? '' : 's'}`);
+      showToast(`Imported ${SalesMath.plural(n, 'item')}`);
     }
   });
 
@@ -1137,7 +1154,7 @@ They stop showing in the POS. Old receipts still resolve, and you can restore ea
       el.value = '';
       if (!file) return;
       try {
-        pending = { ...planImport(parseCsv(await file.text()), state.products, state.folders), file: file.name };
+        pending = { ...planImport(parseCsv(await file.text()), state.products, state.folders, loadSuppliers()), file: file.name };
         paintImport();
       } catch (err) {
         showToast((err && err.message) || 'Could not read that CSV');

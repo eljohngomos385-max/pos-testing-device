@@ -95,6 +95,19 @@ function fail(name, error) {
   report.failures.push(`${name}: ${message}`);
 }
 
+// Today's checkout: Check out -> the Cash tile -> Exact (a quick-cash tap finishes the sale).
+async function payExactCash(page) {
+  await page.click('#payBtn');
+  await page.click('#checkoutMethods [data-method="cash"]');
+  await page.click('#checkoutQuick [data-co-cash]:first-child');
+  await page.waitForSelector('#checkoutApp.is-done');
+}
+// The sidebar's morph menus (cart "...", fulfilment picker): open the trigger, pick by label.
+async function pickMenu(page, trigger, label) {
+  await page.click(trigger);
+  await page.click(`.rail-menu [role="menuitem"]:has-text("${label}")`);
+}
+
 async function runCheck(name, fn) {
   try {
     await fn();
@@ -110,14 +123,15 @@ try {
   const page = await context.newPage();
   const consoleErrors = [];
   page.on('console', msg => {
-    if (msg.type() === 'error') consoleErrors.push(msg.text());
+    // Map tiles are fetched live from OpenStreetMap; their 400s in a headless run are noise, not the app.
+    if (msg.type() === 'error' && !/tile\.openstreetmap\.org/.test(msg.location()?.url || '')) consoleErrors.push(msg.text() + (msg.location()?.url ? ` (${msg.location().url})` : ''));
   });
   page.on('pageerror', err => consoleErrors.push(err.message));
 
   await runCheck('barcode camera fallback decodes without BarcodeDetector', async () => {
     await page.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' });
     await page.evaluate(() => {
-      localStorage.clear();
+      (localStorage.clear(), ['hwpos.orders.v1', 'hwpos.stockMovements.v1', 'hwpos.customerLedger.v1'].forEach(k => HWPOS_STORE.kv.removeItem(k)));
       delete window.BarcodeDetector;
     });
     await page.reload({ waitUntil: 'networkidle' });
@@ -147,12 +161,12 @@ try {
     });
     await page.click('#scanBtn');
     await page.waitForFunction(() => document.body.innerText.includes('Brass Faucet 1/2"'), null, { timeout: 6000 });
-    await page.waitForFunction(() => document.querySelector('#cartCount')?.textContent.trim() === '1 items', null, { timeout: 3000 });
+    await page.waitForFunction(() => document.querySelector('#cartCount')?.textContent.trim() === '1 item', null, { timeout: 3000 });
     const scannerStillOpen = await page.$eval('#barcodeModal', el => !el.hidden);
     if (!scannerStillOpen) throw new Error('Scanner closed after the first barcode');
     await page.waitForTimeout(500);
     const countAfterHold = await page.$eval('#cartCount', el => el.textContent.trim());
-    if (countAfterHold !== '1 items') throw new Error(`Held barcode should not duplicate immediately, got ${countAfterHold}`);
+    if (countAfterHold !== '1 item') throw new Error(`Held barcode should not duplicate immediately, got ${countAfterHold}`);
     await page.fill('#barcodeManualInput', '4801234600039');
     await page.click('#barcodeManualBtn');
     await page.waitForFunction(() => document.querySelector('#cartCount')?.textContent.trim() === '2 items', null, { timeout: 3000 });
@@ -163,14 +177,14 @@ try {
   await runCheck('delivery map GPS, zoom, sale persistence, receipt preview', async () => {
     await page.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' });
     await page.evaluate(() => {
-      localStorage.clear();
+      (localStorage.clear(), ['hwpos.orders.v1', 'hwpos.stockMovements.v1', 'hwpos.customerLedger.v1'].forEach(k => HWPOS_STORE.kv.removeItem(k)));
       Object.defineProperty(navigator, 'geolocation', {
         configurable: true,
         value: { getCurrentPosition: (ok) => ok({ coords: { latitude: 14.12345, longitude: 121.54321 } }) },
       });
     });
     await page.click('.product-card[data-id]');
-    await page.click('.fulfil-pill[data-fulfil="delivery"]');
+    await pickMenu(page, '#fulPick', 'Delivery');
     await page.fill('#deliveryAddrInput', 'GPS delivery test');
     await page.click('#deliveryPinBtn');
     await page.waitForSelector('#deliveryMapModal:not([hidden])');
@@ -181,12 +195,9 @@ try {
     await page.mouse.wheel(0, -800);
     await page.click('#deliveryMapSave');
     await page.click('#deliverySaveBtn');
-    await page.click('#payBtn');
-    await page.click('[data-co-cash="exact"]');
-    await page.click('#checkoutCompleteBtn');
-    await page.waitForSelector('.view-checkout-success.active');
+    await payExactCash(page);
     const result = await page.evaluate(() => {
-      const order = JSON.parse(localStorage.getItem('hwpos.orders.v1') || '[]')[0] || {};
+      const order = JSON.parse(HWPOS_STORE.kv.getItem('hwpos.orders.v1') || '[]')[0] || {};
       return {
         fulfilment: order.fulfilment,
         deliveryAddress: order.deliveryAddress,
@@ -202,31 +213,32 @@ try {
 
   await runCheck('offline sale persists while already loaded', async () => {
     await page.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' });
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => (localStorage.clear(), ['hwpos.orders.v1', 'hwpos.stockMovements.v1', 'hwpos.customerLedger.v1'].forEach(k => HWPOS_STORE.kv.removeItem(k))));
     await context.setOffline(true);
-    await page.click('.product-card[data-id]');
-    await page.click('#payBtn');
-    await page.click('[data-co-cash="exact"]');
-    await page.click('#checkoutCompleteBtn');
-    await page.waitForSelector('.view-checkout-success.active');
-    const count = await page.evaluate(() => JSON.parse(localStorage.getItem('hwpos.orders.v1') || '[]').length);
-    await context.setOffline(false);
+    let count;
+    try {   // a stale selector must not leave every later check offline
+      await page.click('.product-card[data-id]');
+      await payExactCash(page);
+      count = await page.evaluate(() => JSON.parse(HWPOS_STORE.kv.getItem('hwpos.orders.v1') || '[]').length);
+    } finally {
+      await context.setOffline(false);
+    }
     if (count !== 1) throw new Error(`expected 1 offline order, got ${count}`);
   });
 
   await runCheck('saved receipt does not complete sale or reduce stock', async () => {
     await page.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' });
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => (localStorage.clear(), ['hwpos.orders.v1', 'hwpos.stockMovements.v1', 'hwpos.customerLedger.v1'].forEach(k => HWPOS_STORE.kv.removeItem(k))));
     await page.click('.product-card[data-id]');
     const before = await page.evaluate(() => {
       const id = eval('state').cart[0].id;
       const product = eval('state').products.find(p => p.id === id);
       return { id, stock: product.stock };
     });
-    await page.click('#saveBtn');
+    await pickMenu(page, '#cartMoreBtn', 'Save receipt');
     await page.click('#saveReceiptConfirmBtn');
     const result = await page.evaluate((productId) => {
-      const order = JSON.parse(localStorage.getItem('hwpos.orders.v1') || '[]')[0] || {};
+      const order = JSON.parse(HWPOS_STORE.kv.getItem('hwpos.orders.v1') || '[]')[0] || {};
       const stored = JSON.parse(localStorage.getItem('hwpos.products.v2') || '[]').find(p => p.id === productId);
       const live = eval('state').products.find(p => p.id === productId);
       const product = stored || live;
@@ -238,20 +250,17 @@ try {
 
   await runCheck('completed sale reduces stock and reload preserves order', async () => {
     await page.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' });
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => (localStorage.clear(), ['hwpos.orders.v1', 'hwpos.stockMovements.v1', 'hwpos.customerLedger.v1'].forEach(k => HWPOS_STORE.kv.removeItem(k))));
     await page.click('.product-card[data-id]');
     const before = await page.evaluate(() => {
       const id = eval('state').cart[0].id;
       const product = eval('state').products.find(p => p.id === id);
       return { id, stock: product.stock };
     });
-    await page.click('#payBtn');
-    await page.click('[data-co-cash="exact"]');
-    await page.click('#checkoutCompleteBtn');
-    await page.waitForSelector('.view-checkout-success.active');
+    await payExactCash(page);
     await page.reload({ waitUntil: 'networkidle' });
     const result = await page.evaluate((productId) => {
-      const orders = JSON.parse(localStorage.getItem('hwpos.orders.v1') || '[]');
+      const orders = JSON.parse(HWPOS_STORE.kv.getItem('hwpos.orders.v1') || '[]');
       const product = JSON.parse(localStorage.getItem('hwpos.products.v2') || '[]').find(p => p.id === productId);
       return { orderCount: orders.length, stock: product?.stock };
     }, before.id);
@@ -261,7 +270,7 @@ try {
 
   await runCheck('void and refund restore stock and require manager', async () => {
     await page.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' });
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => (localStorage.clear(), ['hwpos.orders.v1', 'hwpos.stockMovements.v1', 'hwpos.customerLedger.v1'].forEach(k => HWPOS_STORE.kv.removeItem(k))));
     const result = await page.evaluate(() => {
       state.role = 'manager';
       state.products = loadProducts().map(p => ({ ...p, stock: Math.max(5, Number(p.stock) || 5) }));
@@ -301,15 +310,15 @@ try {
       };
     });
     if (!result.denied) throw new Error('cashier was allowed to void');
-    if (result.voidedStatus !== 'voided') throw new Error('void did not set status');
-    if (result.refundedStatus !== 'refunded') throw new Error('refund did not set status');
+    if (result.voidedStatus !== 'void') throw new Error('void did not write a void row');
+    if (result.refundedStatus !== 'refund') throw new Error('refund did not write a refund row');
     if (result.afterSale !== result.before - 1 || result.afterVoid !== result.before) throw new Error(`void stock mismatch ${JSON.stringify(result)}`);
     if (result.afterSecondSale !== result.before - 1 || result.afterRefund !== result.before) throw new Error(`refund stock mismatch ${JSON.stringify(result)}`);
   });
 
   await runCheck('exchange refunds original and creates replacement sale', async () => {
     await page.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' });
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => (localStorage.clear(), ['hwpos.orders.v1', 'hwpos.stockMovements.v1', 'hwpos.customerLedger.v1'].forEach(k => HWPOS_STORE.kv.removeItem(k))));
     const result = await page.evaluate(() => {
       state.role = 'manager';
       state.products = loadProducts().map(p => ({ ...p, stock: Math.max(5, Number(p.stock) || 5) }));
@@ -327,6 +336,7 @@ try {
       const orders = loadOrders();
       return {
         originalStatus: orders.find(o => o.id === originalOrder.id)?.status,
+        refundStatus: SalesMath.reversalOf(orders, originalOrder.id)?.status,
         exchangeStatus: exchanged?.exchangeSale?.status,
         exchangeOriginalId: exchanged?.exchangeSale?.originalOrderId,
         originalStock: state.products.find(p => p.id === originalProduct.id).stock,
@@ -335,7 +345,7 @@ try {
         replacementBefore,
       };
     });
-    if (result.originalStatus !== 'refunded') throw new Error(`original was not refunded ${JSON.stringify(result)}`);
+    if (result.originalStatus !== 'completed' || result.refundStatus !== 'refund') throw new Error(`original was not refunded ${JSON.stringify(result)}`);
     if (result.exchangeStatus !== 'completed') throw new Error(`replacement sale was not completed ${JSON.stringify(result)}`);
     if (!result.exchangeOriginalId) throw new Error('exchange sale did not reference original order');
     if (result.originalStock !== result.originalBefore) throw new Error(`original stock not restored ${JSON.stringify(result)}`);
@@ -344,56 +354,33 @@ try {
 
   await runCheck('customer credit ledger and payment reduce utang', async () => {
     await page.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' });
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => (localStorage.clear(), ['hwpos.orders.v1', 'hwpos.stockMovements.v1', 'hwpos.customerLedger.v1'].forEach(k => HWPOS_STORE.kv.removeItem(k))));
     const result = await page.evaluate(() => {
       state.role = 'manager';
-      state.customers = [];
-      saveSavedCustomers();
-      state.customerLedger = [];
-      saveCustomerLedger();
       state.products = loadProducts().map(p => ({ ...p, stock: Math.max(5, Number(p.stock) || 5) }));
       saveProducts();
-      state.customer = allCustomerRecords()[0];
-      const customerId = state.customer.id;
-      const startingBalance = Number(state.customer.currentBalance) || 0;
+      // The balance is the sum of the ledger (bo-model accountBalance), never a stored field.
+      const customerId = saveCustomer({ id: 'c-hard', name: 'Hardening Co', creditOn: true, creditLimit: null }).id;
+      state.customer = allCustomerRecords().find(c => c.id === customerId);
+      const startingBalance = accountBalance(customerId);
       addToCart(state.products.find(p => p.stock > 0 && p.price > 0).id);
       const total = cartTotals().total;
       state.paymentMethod = 'credit';
       completeSale();
-      const charged = loadSavedCustomers().find(c => c.id === customerId);
+      const charged = accountBalance(customerId);
       recordCreditPayment(customerId, Math.min(50, total), 'test payment');
-      const paid = loadSavedCustomers().find(c => c.id === customerId);
+      const paid = accountBalance(customerId);
       const ledger = loadCustomerLedger();
-      return { total, startingBalance, charged: charged.currentBalance, paid: paid.currentBalance, ledgerTypes: ledger.map(x => x.type) };
+      return { total, startingBalance, charged, paid, ledgerTypes: ledger.map(x => x.type) };
     });
     if (result.charged !== result.startingBalance + result.total) throw new Error(`credit charge mismatch ${JSON.stringify(result)}`);
     if (!(result.paid < result.charged)) throw new Error(`payment did not reduce balance ${JSON.stringify(result)}`);
     if (!result.ledgerTypes.includes('charge') || !result.ledgerTypes.includes('payment')) throw new Error('ledger missing charge/payment entries');
   });
 
-  await runCheck('cash drawer closeout', async () => {
-    await page.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' });
-    await page.evaluate(() => localStorage.clear());
-    const result = await page.evaluate(() => {
-      state.role = 'manager';
-      state.products = loadProducts().map((p, i) => ({ ...p, stock: i === 0 ? 1 : Math.max(10, Number(p.stock) || 10), reorderPoint: i === 0 ? 5 : Number(p.reorderPoint) || 0 }));
-      saveProducts();
-      addToCart(state.products.find(p => p.stock > 1 && p.price > 0).id);
-      const total = cartTotals().total;
-      document.querySelector('#checkoutTender').value = String(total);
-      state.paymentMethod = 'cash';
-      completeSale();
-      const summary = buildCashDrawerSummary();
-      const closeout = closeCashDrawer({ countedCash: total + 20, notes: 'test' });
-      return { total, summary, closeout };
-    });
-    if (result.summary.expectedCash !== result.total) throw new Error(`drawer expected cash mismatch ${JSON.stringify(result.summary)}`);
-    if (result.closeout.difference !== 20) throw new Error(`drawer difference mismatch ${JSON.stringify(result.closeout)}`);
-  });
-
   await runCheck('orders search finds item names and statuses', async () => {
     await page.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' });
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => (localStorage.clear(), ['hwpos.orders.v1', 'hwpos.stockMovements.v1', 'hwpos.customerLedger.v1'].forEach(k => HWPOS_STORE.kv.removeItem(k))));
     const result = await page.evaluate(() => {
       state.products = loadProducts().map(p => ({ ...p, stock: Math.max(5, Number(p.stock) || 5) }));
       saveProducts();
@@ -419,36 +406,35 @@ try {
 
   await runCheck('back office dashboard sees POS sale', async () => {
     await page.goto(`${baseUrl}/index.html`, { waitUntil: 'networkidle' });
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => (localStorage.clear(), ['hwpos.orders.v1', 'hwpos.stockMovements.v1', 'hwpos.customerLedger.v1'].forEach(k => HWPOS_STORE.kv.removeItem(k))));
     await page.click('.product-card[data-id]');
-    await page.click('#payBtn');
-    await page.click('[data-co-cash="exact"]');
-    await page.click('#checkoutCompleteBtn');
-    await page.waitForSelector('.view-checkout-success.active');
+    await payExactCash(page);
     const bo = await context.newPage();
     await bo.goto(`${baseUrl}/backoffice.html`, { waitUntil: 'networkidle' });
     const dashboard = await bo.locator('body').innerText();
     await bo.close();
-    if (!/Transactions\s+1\b/i.test(dashboard.replace(/\r?\n/g, ' '))) {
-      throw new Error('Back Office dashboard did not show 1 transaction');
+    if (!/Orders\s+1\b/.test(dashboard.replace(/\r?\n/g, ' '))) {
+      throw new Error(`Back Office dashboard did not show 1 order: ${dashboard.replace(/\s+/g, ' ').slice(0, 400)}`);
     }
   });
 
   await runCheck('full backup export and restore round trip', async () => {
     await page.goto(`${baseUrl}/backoffice.html#settings`, { waitUntil: 'networkidle' });
     await page.evaluate(() => {
-      localStorage.clear();
+      (localStorage.clear(), ['hwpos.orders.v1', 'hwpos.stockMovements.v1', 'hwpos.customerLedger.v1'].forEach(k => HWPOS_STORE.kv.removeItem(k)));
       localStorage.setItem('hwpos.products.v2', JSON.stringify([{ id: 'p-test', name: 'Backup Test', sku: 'BKP-1', price: 10, stock: 3 }]));
-      localStorage.setItem('hwpos.orders.v1', JSON.stringify([{ id: 'o-test', number: '1-1', status: 'completed', items: [], total: 0 }]));
+      HWPOS_STORE.kv.setItem('hwpos.orders.v1', JSON.stringify([{ id: 'o-test', number: '1-1', status: 'completed', items: [], total: 0 }]));
       localStorage.setItem('hwpos.customers.v1', JSON.stringify([{ id: 'c-test', name: 'Backup Customer' }]));
       localStorage.setItem('hwpos.settings.v1', JSON.stringify({ store: { name: 'Backup Store' } }));
     });
     const backup = await page.evaluate(() => buildFullBackup());
-    await page.evaluate(() => localStorage.clear());
+    // A device that has opened the app once has run the one-time customer migration (bo-model); without
+    // the flag, restore would seed the data.js demo accounts on top of the backup.
+    await page.evaluate(() => (localStorage.clear(), localStorage.setItem('hwpos.customersMigrated.v1', '1'), ['hwpos.orders.v1', 'hwpos.stockMovements.v1', 'hwpos.customerLedger.v1'].forEach(k => HWPOS_STORE.kv.removeItem(k))));
     await page.evaluate((payload) => restoreFullBackup(payload), backup);
     const restored = await page.evaluate(() => ({
       products: JSON.parse(localStorage.getItem('hwpos.products.v2') || '[]').length,
-      orders: JSON.parse(localStorage.getItem('hwpos.orders.v1') || '[]').length,
+      orders: JSON.parse(HWPOS_STORE.kv.getItem('hwpos.orders.v1') || '[]').length,
       customers: JSON.parse(localStorage.getItem('hwpos.customers.v1') || '[]').length,
       settings: JSON.parse(localStorage.getItem('hwpos.settings.v1') || '{}')?.store?.name,
     }));

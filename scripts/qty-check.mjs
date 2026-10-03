@@ -4,11 +4,15 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert';
 import { roundQty, stepFor } from '../bo-model.js';
+import { POS_SCRIPTS } from './lib/till.mjs';
 
-const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+// Every till script, each line tagged with its file:line for the messages below.
+const tagged = POS_SCRIPTS.flatMap((f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8')
+  .split(/\r?\n/).map((l, i) => [`${f}:${i + 1}`, l]));
+const app = tagged.map(([, l]) => l).join('\n');
 const data = readFileSync(new URL('../data.js', import.meta.url), 'utf8');
 
-// The real qtyFrom, lifted out of app.js so this file cannot drift from the app.
+// The real qtyFrom, lifted out of the till's scripts so this file cannot drift from the app.
 const src = app.match(/function qtyFrom\(product, value, fallback = 1\) \{[\s\S]*?\n\}/)[0];
 const qtyFrom = new Function('roundQty', `${src}; return qtyFrom;`)(roundQty);
 
@@ -24,10 +28,8 @@ assert.equal(qtyFrom(wire, '-4'), 1, 'a negative quantity is not a refund');
 assert.equal(qtyFrom(wire, '0', stepFor(wire)), 0.01, 'the stepper floors at one step');
 
 // No quantity may be read with parseInt again -- that is the bug, not a style preference.
-const bad = app.split('\n')
-  .map((l, i) => [i + 1, l])
-  .filter(([, l]) => /parseInt/.test(l) && /qty|Qty/i.test(l));
-assert.equal(bad.length, 0, 'parseInt on a quantity at app.js:' + bad.map(([n]) => n).join(','));
+const bad = tagged.filter(([, l]) => /parseInt/.test(l) && /qty|Qty/i.test(l));
+assert.equal(bad.length, 0, 'parseInt on a quantity at ' + bad.map(([n]) => n).join(','));
 
 // Wire, nails and sand are cut, weighed and shovelled. If data.js forgets, stepFor lies.
 for (const id of ['e001', 'e002', 'f001', 'f002', 'c002', 'c003']) {
@@ -39,10 +41,8 @@ assert.ok(!/soldBy: 'measure'/.test(data.match(/\{ id: 'pt001',[\s\S]*?\n/)[0]))
 
 // Stock may only move through the log. A bare `product.stock = ...` on the till is how the
 // movement history silently stopped containing the sales that caused it.
-const writes = app.split(/\r?\n/)
-  .map((l, i) => [i + 1, l])
-  .filter(([, l]) => /\.stock\s*=[^=]/.test(l));
-assert.equal(writes.length, 0, 'stock assigned outside moveStock at app.js:' + writes.map(([n]) => n).join(','));
+const writes = tagged.filter(([, l]) => /(?<!ROLE_ALLOWED)\.stock\s*=[^=]/.test(l));   // ROLE_ALLOWED.stock is the stock-clerk role
+assert.equal(writes.length, 0, 'stock assigned outside moveStock at ' + writes.map(([n]) => n).join(','));
 assert.ok(/moveStock\(order\.items, \{ reason: 'sale', refId: order\.id \}\)/.test(app),
   'completeSale must write the movement that explains the sale');
 

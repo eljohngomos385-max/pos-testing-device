@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=92" />
+  <link rel="stylesheet" href="styles.css?v=94" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -64,7 +64,7 @@
             <rect x="13" y="10" width="8" height="11" rx="1.5"/>
             <rect x="3" y="14" width="8" height="7" rx="1.5"/>
           </svg>
-          <span>Back Office</span>
+          <span>Back office</span>
           <svg class="ext" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 4h6v6"/><path d="M10 14L20 4"/><path d="M20 14v6H4V4h6"/>
           </svg>
@@ -82,7 +82,7 @@
         <div class="user-row">
           <div class="user-meta">
             <div class="user-name">El John</div>
-            <div class="user-sub">Cashier · Main Store</div>
+            <div class="user-sub">Staff · Main store</div>
           </div>
         </div>
       </div>
@@ -164,7 +164,7 @@
                 <div class="break" id="totalsDetail"><div>
                   <p><span>Subtotal</span><span class="num" id="subtotal">₱0.00</span></p>
                   <p id="discountRow"><span>Discount</span><span class="num" id="discount">₱0.00</span></p>
-                  <p class="dim"><span>VAT (12% incl.)</span><span class="num" id="vatAmount">₱0.00</span></p>
+                  <p class="dim"><span id="vatLabel">VAT (12% incl.)</span><span class="num" id="vatAmount">₱0.00</span></p>
                 </div></div>
                 <button type="button" class="sum" id="totalRow" aria-expanded="false">
                   <span class="l">Total<span class="rail-cnt num" id="railCount"></span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
@@ -381,18 +381,18 @@
         <div class="page-pad reports-pad">
           <div class="reports-stats">
             <div class="report-stat">
-              <div class="report-stat-label">Today's Revenue</div>
+              <div class="report-stat-label">Today's net sales</div>
               <div class="report-stat-value" id="statRevenue">₱0.00</div>
             </div>
             <div class="report-stat">
-              <div class="report-stat-label">Transactions</div>
+              <div class="report-stat-label">Orders</div>
               <div class="report-stat-value" id="statTxns">0</div>
             </div>
           </div>
 
           <div class="reports-chart-box">
             <div class="reports-chart-head">
-              <span>Revenue · last 7 days</span>
+              <span>Payment methods · last 7 days</span>
               <span class="muted" id="reportsRangeTotal">₱0.00</span>
             </div>
             <div class="reports-chart" id="reportsChart"></div>
@@ -401,8 +401,8 @@
 
           <div class="reports-tx-box">
             <div class="reports-tx-head">
-              <span>Today's transactions</span>
-              <span class="muted" id="reportsTxCount">0 transactions</span>
+              <span>Today's orders</span>
+              <span class="muted" id="reportsTxCount">0 orders</span>
             </div>
             <div class="reports-tx-list" id="reportsTxList"></div>
           </div>
@@ -443,7 +443,7 @@
               </div>
               <div class="setting-row">
                 <label>Tile text size
-                  <div class="muted" style="font-size:11px;margin-top:2px">Resize the product name on tiles</div>
+                  <div class="muted" style="font-size:11px;margin-top:2px">Resize the item name on tiles</div>
                 </label>
                 <div class="bb-size-toggle" id="posTextToggle" role="tablist">
                   <button class="bb-size-btn" data-text="sm">S</button>
@@ -473,7 +473,7 @@
     <div class="modal-backdrop" id="customerModal" hidden>
       <div class="modal">
         <div class="modal-head">
-          <h2>Select Customer</h2>
+          <h2>Select customer</h2>
           <button class="ghost-icon close-x" data-close-modal aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
               <line x1="6" y1="6" x2="18" y2="18"/>
@@ -547,75 +547,7 @@
           </div>
           <div class="pay-actions">
             <button class="secondary-btn" data-close-modal>Cancel</button>
-            <button class="primary-btn" id="completeSaleBtn">Complete & Print</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Product editor (add / edit) -->
-    <div class="modal-backdrop" id="productModal" hidden>
-      <div class="modal product-modal">
-        <div class="modal-head">
-          <h2 id="productModalTitle">Add Product</h2>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-              <line x1="6" y1="6" x2="18" y2="18"/>
-              <line x1="18" y1="6" x2="6" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="form-grid">
-            <div class="form-row full">
-              <label>Product name</label>
-              <input type="text" id="pf_name" class="text-input" placeholder="e.g. PVC Elbow 1/2&quot;" />
-            </div>
-            <div class="form-row">
-              <label>SKU</label>
-              <input type="text" id="pf_sku" class="text-input" placeholder="PVC-ELB-12" />
-            </div>
-            <div class="form-row">
-              <label>Barcode</label>
-              <input type="text" id="pf_barcode" class="text-input" placeholder="4801234500011" />
-            </div>
-            <div class="form-row">
-              <label>Brand</label>
-              <input type="text" id="pf_brand" class="text-input" placeholder="Atlanta" />
-            </div>
-            <div class="form-row">
-              <label>Folder</label>
-              <select id="pf_folder" class="text-input"></select>
-            </div>
-            <div class="form-row">
-              <label>Unit</label>
-              <input type="text" id="pf_unit" class="text-input" placeholder="pc" />
-            </div>
-            <div class="form-row">
-              <label>Cost (₱)</label>
-              <input type="number" step="0.01" id="pf_cost" class="text-input" placeholder="0.00" />
-            </div>
-            <div class="form-row">
-              <label>Price (₱)</label>
-              <input type="number" step="0.01" id="pf_price" class="text-input" placeholder="0.00" />
-            </div>
-            <div class="form-row">
-              <label>Stock on hand</label>
-              <input type="number" id="pf_stock" class="text-input" placeholder="0" />
-            </div>
-            <div class="form-row">
-              <label>Reorder point</label>
-              <input type="number" id="pf_reorder" class="text-input" placeholder="0" />
-            </div>
-            <div class="form-row full">
-              <label>Aliases <span class="muted">(comma-separated, for fuzzy search)</span></label>
-              <input type="text" id="pf_aliases" class="text-input" placeholder="elbow, half elbow, pvc elbow" />
-            </div>
-          </div>
-
-          <div class="pay-actions" style="margin-top:18px">
-            <button class="secondary-btn" data-close-modal>Cancel</button>
-            <button class="primary-btn" id="saveProductBtn">Save product</button>
+            <button class="primary-btn" id="completeSaleBtn">Complete & print</button>
           </div>
         </div>
       </div>
@@ -658,7 +590,7 @@
         <div class="modal-body">
           <div class="discount-row">
             <div class="seg-control small">
-              <button class="seg active" data-cd-type="amount">₱ Amount</button>
+              <button class="seg active" data-cd-type="amount"><span class="cur-sym">₱</span> Amount</button>
               <button class="seg" data-cd-type="percent">% Percent</button>
             </div>
             <input type="number" id="cdInput" class="text-input" placeholder="0" min="0" step="0.01" inputmode="decimal" />
@@ -779,19 +711,7 @@
           </button>
         </div>
         <div class="modal-body">
-          <label class="pay-label">Name</label>
-          <input type="text" id="custName" class="text-input" placeholder="Juan dela Cruz" />
-          <label class="pay-label" style="margin-top:10px">Phone</label>
-          <input type="tel" id="custPhone" class="text-input" placeholder="0917-xxx-xxxx" />
-          <label class="pay-label" style="margin-top:10px">Address</label>
-          <textarea id="custAddress" class="text-input" rows="2" placeholder="House #, Street, District, City"></textarea>
-          <label class="pay-label" style="margin-top:10px">Customer type</label>
-          <select id="custType" class="text-input">
-            <option value="retail">Retail (walk-in)</option>
-            <option value="contractor">Contractor</option>
-            <option value="wholesale">Wholesale</option>
-            <option value="residential">Residential</option>
-          </select>
+          <div id="custFields"></div><!-- bo-model CUSTOMER_FIELDS, the same form as the back office -->
           <div class="pay-actions" style="margin-top:14px">
             <button class="secondary-btn" data-close-modal>Cancel</button>
             <button class="primary-btn" id="custSaveBtn">Save customer</button>
@@ -815,7 +735,7 @@
         <div class="modal-body">
           <div class="cust-detail-kpis" id="custDetailKpis"></div>
           <div class="cust-detail-aging" id="custDetailAging"></div>
-          <div class="cust-detail-orders-title">Order History</div>
+          <div class="cust-detail-orders-title">Order history</div>
           <div class="cust-detail-orders" id="custDetailOrders"></div>
         </div>
       </div>
@@ -879,7 +799,7 @@
           <div class="variant-section-label" style="margin-top:16px">Discount</div>
           <div class="discount-row">
             <div class="seg-control small">
-              <button class="seg active" data-cim-disc-type="amount">₱ Amount</button>
+              <button class="seg active" data-cim-disc-type="amount"><span class="cur-sym">₱</span> Amount</button>
               <button class="seg" data-cim-disc-type="percent">% Percent</button>
             </div>
             <input type="number" id="cimDiscInput" class="text-input" placeholder="0" min="0" step="0.01" inputmode="decimal" />
@@ -938,29 +858,6 @@
       </div>
     </div>
 
-    <!-- Folder add/rename -->
-    <div class="modal-backdrop" id="folderModal" hidden>
-      <div class="modal small-modal">
-        <div class="modal-head">
-          <h2 id="folderModalTitle">New Folder</h2>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-              <line x1="6" y1="6" x2="18" y2="18"/>
-              <line x1="18" y1="6" x2="6" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <label class="pay-label">Folder name</label>
-          <input type="text" id="folderNameInput" class="text-input" placeholder="e.g. Power Tools" />
-          <div class="pay-actions" style="margin-top:16px">
-            <button class="secondary-btn" data-close-modal>Cancel</button>
-            <button class="primary-btn" id="saveFolderBtn">Save</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Lost sale: the customer asked, we couldn't sell it -->
     <div class="modal-backdrop" id="lostSaleModal" hidden>
       <div class="modal small-modal confirm-modal lost-sale-modal">
@@ -1015,14 +912,46 @@
       </div>
     </div>
 
+    <!-- Manager PIN: approves a void, refund or over-limit charge (app.js gate) -->
+    <div class="modal-backdrop" id="pinModal" hidden>
+      <div class="modal small-modal confirm-modal">
+        <div class="modal-head">
+          <h2>Manager PIN</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="confirm-message" id="pinMessage"></div>
+          <input type="password" id="pinInput" class="text-input" inputmode="numeric" maxlength="6" autocomplete="off" aria-labelledby="pinMessage" style="margin-top:14px" />
+          <div class="co-error" id="pinError" hidden></div>
+          <div class="pay-actions" style="margin-top:14px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="pinOkBtn">Approve</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="toast" id="toast" hidden></div>
   </div>
 
-  <script src="data-store.js?v=32"></script>
+  <script src="sales-math.js?v=20"></script>
+  <script src="data-store.js?v=50"></script>
   <script src="data.js?v=27"></script>
-  <script src="bo-model.js?v=91"></script>
+  <script src="bo-model.js?v=123"></script>
   <script src="vendor/zxing-browser.min.js"></script>
-  <script src="printer.js?v=34"></script>
-  <script src="app.js?v=69"></script>
+  <script src="printer.js?v=43"></script>
+  <script src="pos-core.js?v=2"></script>
+  <script src="pos-sell.js?v=3"></script>
+  <script src="pos-checkout.js?v=2"></script>
+  <script src="pos-orders.js?v=2"></script>
+  <script src="pos-items.js?v=2"></script>
+  <script src="pos-customers.js?v=1"></script>
+  <script src="pos-settings.js?v=1"></script>
+  <script src="app.js?v=93"></script>
 </body>
 </html>

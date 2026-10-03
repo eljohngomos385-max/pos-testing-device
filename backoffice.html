@@ -4,21 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#F7F6F3" />
-  <title>EJ Hardware — Back Office</title>
+  <title>EJ Hardware — Back office</title>
   <link rel="icon" href="data:," />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Geist:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=153" />
+  <link rel="stylesheet" href="/styles.css?v=155" />
   <link rel="stylesheet" href="/bo-products.css?v=122" />
   <link rel="stylesheet" href="/bo-item.css?v=12" />
-  <link rel="stylesheet" href="/bo-inventory.css?v=104" />
-  <link rel="stylesheet" href="/bo-sales.css?v=97" />
+  <link rel="stylesheet" href="/bo-inventory.css?v=105" />
+  <link rel="stylesheet" href="/bo-sales.css?v=98" />
   <link rel="stylesheet" href="/bo-suppliers.css?v=97" />
   <link rel="stylesheet" href="/bo-staff.css?v=98" />
-  <link rel="stylesheet" href="/bo-insights.css?v=3" />
-  <link rel="stylesheet" href="/bo-blocks.css?v=63" />
-  <link rel="stylesheet" href="/bo-calm.css?v=55" />
+  <link rel="stylesheet" href="/bo-insights.css?v=4" />
+  <link rel="stylesheet" href="/bo-blocks.css?v=64" />
+  <link rel="stylesheet" href="/bo-calm.css?v=56" />
 </head>
 <body class="bo-body bo-light">
   <div id="app" class="bo-app">
@@ -67,13 +67,13 @@
           </button>
           <button class="side-link" data-view="transactions">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"/><path class="k" d="M14 8H8M16 12H8M13 16H8"/></svg>
-            <span>Transactions</span>
+            <span>Orders</span>
           </button>
           <button class="side-link has-sub" data-view="products">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" transform="matrix(-1 0 0 1 24 0)" d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle class="hole" cx="16.5" cy="7.5" r="1.5"/></svg>
-            <span>Products</span><svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            <span>Items</span><svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
           </button>
-          <div class="side-sub" data-view="inventory"><div class="side-fold-in"><button class="side-sublink" type="button" data-sub="overview">Stock history</button><button class="side-sublink" type="button" data-view="categories">Categories</button><button class="side-sublink" type="button" data-view="modifiers">Modifiers</button></div></div>
+          <div class="side-sub" data-view="inventory"><div class="side-fold-in"><button class="side-sublink" type="button" data-view="products">Item list</button><button class="side-sublink" type="button" data-view="categories">Categories</button><button class="side-sublink" type="button" data-view="modifiers">Modifiers</button><button class="side-sublink" type="button" data-sub="overview">Stock history</button></div></div>
           <button class="side-link" data-view="customers">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="12" cy="8" r="5"/><path class="f" d="M20 21a8 8 0 0 0-16 0"/></svg>
             <span>Customers</span>
@@ -81,7 +81,7 @@
         </div></div>
         <button class="side-label" type="button" data-fold="stock" aria-expanded="true">Stock<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="side-fold"><div class="side-fold-in">
-          <button class="side-link" data-view="suppliers" data-sub="suppliers orders">
+          <button class="side-link" data-view="suppliers" data-sub="suppliers orders incoming">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path class="f" d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle class="f k" cx="17" cy="18" r="2"/><circle class="f k" cx="7" cy="18" r="2"/></svg>
             <span>Suppliers</span>
           </button>
@@ -164,7 +164,7 @@
                 <div class="panel"><div class="plot" id="dashPlot"></div></div>
               </section>
               <section class="card txcard">
-                <div class="head"><span class="lbl">Recent transactions</span><a id="dashTxAll" href="/admin/transactions">View all ›</a></div>
+                <div class="head"><span class="lbl">Recent orders</span><a id="dashTxAll" href="/admin/transactions">View all ›</a></div>
                 <div id="dashTx"></div>
               </section>
             </div>
@@ -206,7 +206,7 @@
           <div class="w cust-strip" id="custStrip"></div>
           <div class="list-filters">
             <input class="search-input small q-input" id="custSearch" placeholder="Search customers..." />
-            <select class="bo-select" data-cust="status" aria-label="Balance status"><option value="">Any balance</option><option value="Clear">Clear</option><option value="Active">Active</option><option value="In use">In use</option><option value="Near limit">Near limit</option></select>
+            <select class="bo-select" data-cust="status" aria-label="Balance status"><option value="">Any balance</option><option value="Clear">Clear</option><option value="Active">Active</option><option value="In use">In use</option><option value="Near limit">Near limit</option><option value="Over limit">Over limit</option></select>
             <select class="bo-select" data-cust="last" aria-label="Last order"><option value="">Any last order</option><option value="7">Bought in last 7 days</option><option value="30">Bought in last 30 days</option><option value="90">Bought in last 90 days</option><option value="-90">No order in 90+ days</option></select>
           </div>
           <section class="bo-card blk-table">
@@ -221,7 +221,7 @@
                       <th>Name</th>
                       <th>Phone</th>
                       <th class="num">Orders</th>
-                      <th class="num">Spent</th>
+                      <th class="num">Total spent</th>
                       <th>Last order</th>
                       <th class="num">Balance</th>
                       <th>Status</th>
@@ -273,6 +273,8 @@
               <div class="bo-card-head"><span class="bo-card-label">VAT</span></div>
               <div class="bo-card-inset flush set-rows">
                 <div class="setting-row"><label for="setVatRegistered">VAT registered</label><input type="checkbox" id="setVatRegistered" data-set-now></div>
+                <div class="setting-row"><label for="setTaxOnTop">Tax added on top of prices</label><input type="checkbox" id="setTaxOnTop" data-set-now></div>
+                <div class="setting-row"><label for="setScPwd">SC/PWD discount</label><input type="checkbox" id="setScPwd" data-set-now></div>
                 <div data-set-rows="tax"></div>
               </div>
             </section>
@@ -344,7 +346,7 @@
               <div class="bo-card-inset flush set-rows">
                 <div class="setting-row">
                   <label>Full local backup
-                    <small>Exports products, orders, customers, settings, folders, groups, and POS display preferences.</small>
+                    <small>Saves everything on this device: items, stock, orders, customers, suppliers and settings.</small>
                   </label>
                   <button class="secondary-btn small" id="backupExportBtn">Export backup</button>
                 </div>
@@ -373,20 +375,21 @@
   <dialog id="adjustDlg" class="bo-dialog adj-dlg"></dialog>
   <div id="toast" class="toast" hidden></div>
 
-  <script src="/data-store.js?v=32"></script>
+  <script src="/sales-math.js?v=20"></script>
+  <script src="/data-store.js?v=50"></script>
   <script src="/data.js?v=27"></script>
-  <script src="/bo-model.js?v=102"></script>
+  <script src="/bo-model.js?v=123"></script>
   <script src="/router.js?v=62"></script>
-  <script src="/backoffice.js?v=194"></script>
-  <script src="/bo-products.js?v=107"></script>
-  <script src="/bo-catalog.js?v=3"></script>
-  <script src="/bo-item.js?v=12"></script>
-  <script src="/bo-insights.js?v=33"></script>
-  <script src="/bo-inventory.js?v=116"></script>
-  <script src="/bo-sales.js?v=126"></script>
-  <script src="/bo-transactions.js?v=13"></script>
-  <script src="/bo-suppliers.js?v=104"></script>
-  <script src="/bo-staff.js?v=106"></script>
+  <script src="/backoffice.js?v=219"></script>
+  <script src="/bo-products.js?v=117"></script>
+  <script src="/bo-catalog.js?v=9"></script>
+  <script src="/bo-item.js?v=21"></script>
+  <script src="/bo-insights.js?v=50"></script>
+  <script src="/bo-inventory.js?v=127"></script>
+  <script src="/bo-sales.js?v=143"></script>
+  <script src="/bo-transactions.js?v=23"></script>
+  <script src="/bo-suppliers.js?v=115"></script>
+  <script src="/bo-staff.js?v=116"></script>
   <script>
     // ---- Back office: sidebar state (see "Sidebar state" in docs/backoffice.md) ----
     // 1024px+ : the sidebar is always there, full or the icon rail (.side-rail, a saved per-device pref).

@@ -90,8 +90,13 @@ try {
         && typeof exchangeOrder === 'function';
     } catch (_) { return false; }
   }, null, { timeout: 10000 });
+  // init runs once IndexedDB is open (data-store.js ready()); same promise, so it has run by now.
+  await page.evaluate(() => HWPOS_STORE.ready());
 
   const result = await page.evaluate(({ iterations, seed }) => {
+    // A charge over a customer's credit limit asks first; the audit plays the manager who says yes.
+    // A dismissed ask left the sale unrung and the next check read the previous order as this one.
+    window.confirm = () => true;
     const failures = [];
     const samples = [];
     let rng = seed >>> 0;
@@ -102,7 +107,8 @@ try {
     const chance = p => random() < p;
     const pick = list => list[Math.floor(random() * list.length)];
     const money = value => Math.round((Number(value) || 0) * 100) / 100;
-    const approx = (a, b, eps = 0.01) => Math.abs(money(a) - money(b)) <= eps;
+    // In whole centavos: 924.44 − 924.43 is 0.0100000000000477 in floats, and one centavo is allowed.
+    const approx = (a, b, eps = 0.01) => Math.abs(Math.round(money(a) * 100) - Math.round(money(b) * 100)) <= Math.round(eps * 100);
     const stateRef = eval('state');
 
     function fail(message, detail = {}) {
@@ -121,21 +127,22 @@ try {
     function independentCart(cart, cartDiscount, vatRate) {
       let lineGross = 0;
       let lineDiscount = 0;
+      // Every line is whole centavos before the cart discount is taken off their sum.
       const lines = cart.map(item => {
-        const gross = Number(item.price) * Number(item.qty);
-        const disc = independentDiscount(gross, item.discount);
+        const gross = money(Number(item.price) * Number(item.qty));
+        const off = money(independentDiscount(gross, item.discount).off);
         lineGross += gross;
-        lineDiscount += disc.off;
+        lineDiscount += off;
         return {
           id: item.id,
-          gross: money(gross),
-          lineDiscount: money(disc.off),
-          lineTotal: money(disc.net),
+          gross,
+          lineDiscount: off,
+          lineTotal: money(gross - off),
         };
       });
-      const subtotalAfterLineDiscount = lineGross - lineDiscount;
-      const cartDisc = independentDiscount(subtotalAfterLineDiscount, cartDiscount);
-      const total = cartDisc.net;
+      const subtotalAfterLineDiscount = money(lineGross - lineDiscount);
+      const cartDisc = { off: money(independentDiscount(subtotalAfterLineDiscount, cartDiscount).off) };
+      const total = money(subtotalAfterLineDiscount - cartDisc.off);
       const vatAmount = vatRate > 0 ? total * (vatRate / (1 + vatRate)) : 0;
       return {
         lines,
@@ -161,15 +168,12 @@ try {
       [
         'hwpos.folders.v2', 'hwpos.products.v2', 'hwpos.groups.v1', 'hwpos.orders.v1',
         'hwpos.orderSeq.v1', 'hwpos.customers.v1', 'hwpos.customerLedger.v1',
-        'hwpos.drawerCloseouts.v1', 'hwpos.settings.v1', 'hwpos.role.v1',
-      ].forEach(key => localStorage.removeItem(key));
+        'hwpos.settings.v1', 'hwpos.role.v1', 'hwpos.customersMigrated.v1',
+      ].forEach(key => HWPOS_STORE.kv.removeItem(key));
       stateRef.folders = loadFolders();
       stateRef.products = loadProducts().map(p => ({ ...p, stock: p.stock > 0 ? Math.max(20000, p.stock) : 0 }));
       stateRef.groups = loadGroups();
       stateRef.orders = [];
-      stateRef.customers = [];
-      stateRef.customerLedger = [];
-      stateRef.drawerCloseouts = [];
       stateRef.settings = loadSettings();
       stateRef.vatRate = stateRef.settings.vatRate ?? 0.12;
       stateRef.role = 'manager';
@@ -177,13 +181,13 @@ try {
       stateRef.cartDiscount = null;
       stateRef.paymentMethod = 'cash';
       stateRef.customer = null;
-      stateRef.fulfilment = 'pickup';
+      stateRef.fulfilment = 'walkin';
       stateRef.deliveryAddress = '';
       stateRef.deliveryLocation = null;
       saveProducts();
-      saveSavedCustomers();
-      saveCustomerLedger();
-      saveDrawerCloseouts();
+      // Customers and their ledger were cleared above; a fresh till seeds the data.js accounts
+      // with their balances as opening rows (bo-model), so the audit has accounts to charge.
+      migrateCustomers();
       renderCart();
     }
 
@@ -193,7 +197,7 @@ try {
       stateRef.cartDiscount = null;
       stateRef.paymentMethod = 'cash';
       stateRef.customer = null;
-      stateRef.fulfilment = 'pickup';
+      stateRef.fulfilment = 'walkin';
       stateRef.deliveryAddress = '';
       stateRef.deliveryLocation = null;
       const tender = document.querySelector('#checkoutTender');
@@ -270,10 +274,10 @@ try {
     }
 
     resetAll();
+    if (!allCustomerRecords().some(c => c.creditOn)) fail('setup: no credit customers, so credit and split go unaudited');
     const expectedStock = new Map(stateRef.products.map(p => [p.id, Number(p.stock) || 0]));
     const startingCustomerBalances = new Map(allCustomerRecords().map(c => [c.id, Number(c.currentBalance) || 0]));
     const expectedCustomerBalances = new Map(startingCustomerBalances);
-    let expectedDrawerCash = 0;
     let completed = 0;
     let saved = 0;
     let voided = 0;
@@ -323,8 +327,6 @@ try {
       for (const item of order.items) {
         expectedStock.set(item.id, Math.max(0, (expectedStock.get(item.id) || 0) - item.qty));
       }
-      const cashPaid = (order.payments || []).filter(p => p.method === 'cash').reduce((sum, p) => sum + Number(p.amount || 0), 0);
-      expectedDrawerCash = money(expectedDrawerCash + cashPaid);
       const creditPaid = (order.payments || []).filter(p => p.method === 'credit').reduce((sum, p) => sum + Number(p.amount || 0), 0);
       if (creditPaid > 0 && order.customer) {
         expectedCustomerBalances.set(order.customer.id, money((expectedCustomerBalances.get(order.customer.id) || 0) + creditPaid));
@@ -333,15 +335,15 @@ try {
       if (chance(0.04)) {
         const before = new Map(stateRef.products.map(p => [p.id, p.stock]));
         voidOrder(order.id, 'math audit void');
-        const updated = loadOrders().find(o => o.id === order.id);
-        if (updated.status !== 'voided') fail(`void ${i + 1}: status mismatch`, updated);
+        const updated = SalesMath.reversalOf(loadOrders(), order.id);
+        if (updated?.status !== 'void') fail(`void ${i + 1}: no void row`, updated);
         for (const item of order.items) expectedStock.set(item.id, (expectedStock.get(item.id) || 0) + item.qty);
         if (creditPaid > 0 && order.customer) expectedCustomerBalances.set(order.customer.id, money((expectedCustomerBalances.get(order.customer.id) || 0) - creditPaid));
         voided += 1;
       } else if (chance(0.04)) {
         refundOrder(order.id, 'math audit refund');
-        const updated = loadOrders().find(o => o.id === order.id);
-        if (updated.status !== 'refunded') fail(`refund ${i + 1}: status mismatch`, updated);
+        const updated = SalesMath.reversalOf(loadOrders(), order.id);
+        if (updated?.status !== 'refund') fail(`refund ${i + 1}: no refund row`, updated);
         for (const item of order.items) expectedStock.set(item.id, (expectedStock.get(item.id) || 0) + item.qty);
         if (creditPaid > 0 && order.customer) expectedCustomerBalances.set(order.customer.id, money((expectedCustomerBalances.get(order.customer.id) || 0) - creditPaid));
         refunded += 1;
@@ -352,8 +354,10 @@ try {
           if (!exchangedResult?.exchangeSale) fail(`exchange ${i + 1}: no exchange sale`);
           for (const item of order.items) expectedStock.set(item.id, (expectedStock.get(item.id) || 0) + item.qty);
           if (creditPaid > 0 && order.customer) expectedCustomerBalances.set(order.customer.id, money((expectedCustomerBalances.get(order.customer.id) || 0) - creditPaid));
+          // An account sale's exchange stays on the account (app.js exchangeOrder): the replacement's charge goes back on.
+          const recharged = (exchangedResult?.exchangeSale?.payments || []).filter(p => p.method === 'credit').reduce((sum, p) => sum + Number(p.amount || 0), 0);
+          if (recharged > 0 && order.customer) expectedCustomerBalances.set(order.customer.id, money((expectedCustomerBalances.get(order.customer.id) || 0) + recharged));
           expectedStock.set(replacement.id, Math.max(0, (expectedStock.get(replacement.id) || 0) - 1));
-          expectedDrawerCash = money(expectedDrawerCash + money(replacement.price));
           exchanged += 1;
         }
       }
@@ -383,20 +387,9 @@ try {
       const actual = customers.find(c => c.id === id)?.currentBalance || 0;
       if (!approx(actual, expected)) fail('final customer balance mismatch', { id, actual, expected });
     }
-    const drawer = buildCashDrawerSummary();
-    const expectedOpenCash = loadOrders()
-      .filter(order => order.status === 'completed')
-      .flatMap(order => order.payments || [])
-      .filter(payment => payment.method === 'cash')
-      .reduce((sum, payment) => money(sum + Number(payment.amount || 0)), 0);
-    if (!approx(drawer.expectedCash, expectedOpenCash)) fail('cash drawer summary mismatch', { actual: drawer.expectedCash, expected: expectedOpenCash });
-    const closeout = closeCashDrawer({ countedCash: drawer.expectedCash + 12.34, notes: 'math audit' });
-    if (!approx(closeout.difference, 12.34)) fail('cash drawer closeout difference mismatch', closeout);
-
-    const completedOrders = loadOrders().filter(order => order.status === 'completed');
-    const reportRevenue = completedOrders.reduce((sum, order) => money(sum + order.total), 0);
+    const reportRevenue = loadOrders().reduce((sum, order) => money(sum + SalesMath.sign(order) * order.total), 0);
     const aiMetrics = window.HWPOS_AI.metrics({ range: 'all' });
-    if (!approx(aiMetrics.sales.revenue, reportRevenue)) fail('AI/report revenue mismatch', { actual: aiMetrics.sales.revenue, expected: reportRevenue });
+    if (!approx(aiMetrics.sales.netSales, reportRevenue)) fail('AI/report revenue mismatch', { actual: aiMetrics.sales.netSales, expected: reportRevenue });
 
     if (samples.length < 5) {
       for (const order of loadOrders().slice(0, 5)) {
@@ -413,7 +406,6 @@ try {
         minTotal: minTotal === Infinity ? 0 : money(minTotal),
         maxTotal: money(maxTotal),
         completedRevenue: reportRevenue,
-        drawerExpectedCash: drawer.expectedCash,
       },
       samples,
       consoleErrors: [],

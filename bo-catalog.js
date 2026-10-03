@@ -20,10 +20,8 @@
     });
     return [...by.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
-  const priceText = (ms) => {
-    const v = ms.map((m) => Number(m.price) || 0), lo = Math.min(...v), hi = Math.max(...v);
-    return lo === hi ? peso(lo) : `${peso(lo)}&ndash;${peso(hi)}`;
-  };
+  window.familyItems = items;   // Suppliers files items the same way
+  const priceText = (ms) => rangeText(ms.map((m) => Number(m.price) || 0));
   const skuText = (it) => (it.members.length > 1 ? `${it.members.length} variants` : escapeHtml(it.members[0].sku || ''));
   // Every member of the item gets the same change; folder stays folders[0] for the readers of one.
   function setCats(keys, fn) {
@@ -107,8 +105,8 @@
         <td>${escapeHtml(it.name)}</td><td>${skuText(it)}</td><td>${escapeHtml(foldersOf(it.members[0]).map(folderName).join(', '))}</td>
         <td class="num">${priceText(it.members)}</td></tr>`).join('');
     return `${head(`Add items to ${escapeHtml(f.name)}`, '<button class="primary-btn small" data-cg="cat-add" disabled>Add</button>', [escapeHtml(f.name), catHref(f.id)])}
-      ${search('Search products')}
-      ${card('Products', `${rest.length}`, '', tbl('<th class="pd-sel"></th><th>Item</th><th>SKU</th><th>Categories</th><th class="num">Price</th>', rows, 5, 'Every product is in this category already.'))}`;
+      ${search('Search items')}
+      ${card('Items', `${rest.length}`, '', tbl('<th class="pd-sel"></th><th>Item</th><th>SKU</th><th>Categories</th><th class="num">Price</th>', rows, 5, 'Every item is in this category already.'))}`;
   }
 
   function catAct(t) {
@@ -127,7 +125,7 @@
     } else if (a === 'cat-add') {
       const keys = new Set([...r.querySelectorAll('[data-tick]:checked')].map((x) => x.dataset.tick));
       setCats(keys, (fs) => fs.concat(id));
-      showToast(`Added ${keys.size} item${keys.size === 1 ? '' : 's'}`);
+      showToast(`Added ${SalesMath.plural(keys.size, 'item')}`);
       Router.go(CV, id, {}, { replace: true });
     } else if (a === 'cat-del') {
       const f = cats().find((x) => x.id === id);
@@ -155,7 +153,7 @@
       r.innerHTML = `${head('Modifiers', `<a class="primary-btn small" href="${escapeHtml(Router.href(MV, 'new'))}">Add modifier</a>`)}
         <div class="list-filters"><input class="search-input small" data-find placeholder="Search modifiers" autocomplete="off">
           <label class="bo-check"><input type="checkbox" data-cg="mod-arch"${show ? ' checked' : ''}> Show archived</label></div>
-        ${card('All modifiers', '', '', tbl('<th>Modifier</th><th>Options</th><th class="num">Items</th>', rows, 3, 'No modifiers yet. A modifier is a list of choices sold with an item, like Cut to length +₱20.'))}`;
+        ${card('All modifiers', '', '', tbl('<th>Modifier</th><th>Options</th><th class="num">Items</th>', rows, 3, `No modifiers yet. A modifier is a list of choices sold with an item, like Cut to length +${pesoShort(20)}.`))}`;
       return;
     }
     if (!M || M.key !== id || M.visit !== state.visit) {
@@ -170,7 +168,7 @@
     const r = rootOf(MV);
     const row = (o, i) => `<div class="pe-orow">
         <input class="pe-in" data-o="name" data-i="${i}" value="${escapeHtml(o.name)}" placeholder="Option, like Cut to length">
-        <div class="pe-affix pre"><i>₱</i><input class="pe-in pe-num" data-o="price" data-i="${i}" value="${escapeHtml(o.price)}" inputmode="decimal" placeholder="0.00"></div>
+        <div class="pe-affix pre"><i>${escapeHtml(SalesMath.currencySymbol(storeCurrency()))}</i><input class="pe-in pe-num" data-o="price" data-i="${i}" value="${escapeHtml(o.price)}" inputmode="decimal" placeholder="0.00"></div>
         <button type="button" class="pe-x" data-cg="opt-del" data-i="${i}" aria-label="Remove option">${PE_X}</button></div>`;
     r.innerHTML = `<div class="pe">${head(escapeHtml(M.name || 'New modifier'), '', ['Modifiers', Router.href(MV, '')])}
       <div class="pe-col">

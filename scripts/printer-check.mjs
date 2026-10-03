@@ -57,10 +57,18 @@ assert.match(text, /TOTAL {19}1,804\.50/);
 assert.match(text, /CASH {20}2,000\.00/);
 assert.match(text, /CHANGE {20}195\.50/);
 assert.match(text, /VAT \(12%\)/);
-assert.ok(text.includes('Goods sold are not returnable.'));
+assert.ok(text.includes('Keep for returns and exchanges.'));   // line refunds + exchanges (owner 2026-10-03)
 text.split('\n').forEach(l => assert.ok(l.length <= 32, `receipt line over 32 cols: "${l}"`));
 assert.ok(ops.some(o => o.op === 'cut'), 'cut expected by default');
 assert.ok(!P.layout(vm, { cut: false }).some(o => o.op === 'cut'), 'cut must be suppressible');
+
+// VATable sales only when the tax is inside the prices; tax on top prints the store's tax name alone.
+assert.ok(text.includes('VATable sales'));
+const onTop = P.preview({ ...vm, taxName: 'Sales tax', totals: { ...vm.totals, taxIncluded: false } }, { width: '58mm' });
+assert.ok(!onTop.includes('VATable sales') && /Sales tax \(12%\)/.test(onTop), 'tax on top has no VATable sales line');
+// A VAT-exempt (SC/PWD) sale carries no tax: no "VAT 0.00" row on the slip.
+const exempt = P.preview({ ...vm, totals: { ...vm.totals, vatAmount: 0, vatableSales: 0, vatExempt: 1804.5 } }, { width: '58mm' });
+assert.ok(!/VAT/.test(exempt), 'a VAT-exempt receipt prints no VAT row');
 
 // saved (unpaid) receipts show status instead of payments
 assert.ok(P.preview({ ...vm, status: 'saved' }, {}).includes('NOT COMPLETED'));

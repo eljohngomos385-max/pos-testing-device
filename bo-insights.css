@@ -12,3 +12,5 @@ body.bo-light .view-insights .data-table .text-input.mini {
   width: 150px;
   height: calc(var(--po-row-h) - 8px);
 }
+/* An item name opens its item page (the variants); it reads as the row's text, not a button. */
+body.bo-light .view-insights .data-table .link-btn { font-weight: inherit; }

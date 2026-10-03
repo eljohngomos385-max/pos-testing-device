@@ -7,11 +7,8 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const M = require('../bo-model.js');
-const { PO_DEFAULTS, PO_INCOMING, poLine, poTotal, poOutstanding, receivePo, cent, unc } = M;
-
-// The money still to arrive — what the Suppliers tables print next to a PO.
-const poOutValue = (po) => unc((po.items || []).reduce(
-  (s, l) => s + cent(l.cost) * Math.max(0, (Number(l.qty) || 0) - (Number(l.receivedQty) || 0)), 0));
+// poOpenValue: the money still to arrive, what the Suppliers tables print next to a PO.
+const { PO_DEFAULTS, PO_INCOMING, poLine, poTotal, poOutstanding, receivePo, poOpenValue: poOutValue } = M;
 
 const makePo = () => ({
   ...PO_DEFAULTS, id: 'po_test', number: 'PO-0001', supplierId: 'sup_1', status: 'ordered',
@@ -70,7 +67,8 @@ assert.equal(over.status, 'received');
 assert.equal(poOutstanding(over), 0);
 assert.equal(poOutValue(over), 0);
 
-// ---- Tier 1 captures (bo-suppliers.js SUP_RULES): due date, overdue, short ships, real lead ----
+// ---- Tier 1 captures (bo-suppliers.js SUP_RULES): due date, overdue, short ships ----
+// (Lead time is bo-insights.js supplierLeadTimes, per line supplier: scripts/purchase-order-check.mjs.)
 Object.assign(globalThis, M);                    // the page reads bo-model globals at call time
 const S = require('../bo-suppliers.js');
 const today = '2026-09-14';
@@ -88,14 +86,5 @@ assert.ok(S.isShort(half, 5));
 assert.ok(S.isShort(half, ''), 'nothing typed is nothing received');
 assert.ok(!S.isShort(half, 6));
 assert.ok(!S.isShort(half, 9), 'an over-ship is not short');
-
-assert.deepEqual(S.realLead([
-  { supplierId: 'a', status: 'received', orderedAt: '2026-09-01', receivedAt: '2026-09-05T10:00:00' },   // 4 days
-  { supplierId: 'a', status: 'received', orderedAt: '2026-08-01', sentAt: '2026-09-02T09:00:00',
-    receivedAt: '2026-09-09T18:00:00' },                                                                  // sent wins: 7
-  { supplierId: 'a', status: 'partial', orderedAt: '2026-09-01' },                                        // not arrived
-  { supplierId: 'b', status: 'received', orderedAt: '2026-09-01', receivedAt: '2026-09-30T08:00:00' },   // other supplier
-], 'a'), { n: 2, avgDays: 5.5 });
-assert.deepEqual(S.realLead([], 'a'), { n: 0, avgDays: 0 });
 
 console.log('suppliers: ok');

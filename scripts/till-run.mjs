@@ -13,6 +13,7 @@ import { boot } from './lib/till.mjs';
 
 const verbose = process.argv.includes('--verbose');
 const till = boot();
+const SalesMath = till.context.SalesMath;
 const money = (n) => '₱' + (Math.round(n * 100) / 100).toLocaleString('en-PH', { minimumFractionDigits: 2 });
 const round = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 0.005, `${msg}: got ${a}, expected ${b}`);
@@ -83,14 +84,12 @@ const wire = sell('cut wire, by measure', {
 });
 assert.equal(wire.items[0].qty, 12.5, 'a measure product keeps its fraction');
 
-// A contractor's 5% comes off by itself at checkout -- nobody types it. The back office sees
-// it as an ordinary receipt discount, which is why gross profit stays right without a
-// price-tier column anywhere in the reports.
+// No customer type, so no tier discount (owner 2026-10-02, features/customers): a contractor
+// pays the shelf price until tiers come back as their own feature.
 const trade = sell('contractor, on account', {
   items: [['c001', 20], ['f001', 5]], method: 'credit', customer: 'Ricardo Construction',
 });
-assert.equal(trade.cartDiscount?.tierType, 'contractor', 'the contractor tier is stamped on the receipt');
-near(trade.discount, round(trade.subtotal * 0.05), 'and it is 5% off, applied without anyone asking');
+assert.equal(trade.discount, 0, 'no tier discount comes off by itself');
 
 const split = sell('split: part cash, rest on account', {
   items: [['p004', 4]], method: 'split', customer: 'Ricardo Construction', tendered: 200,
@@ -127,20 +126,26 @@ const toReturn = sell('to be returned', {
 const returnRow = reverse('return', toReturn, 'returned');
 
 // The same thing again, paid in cash: the money goes back over the counter, so the drawer
-// has to lose it even though the original receipt stays `completed`.
+// has to lose it -- the original receipt stays `completed`, the refund row pays it out.
 const cashReturn = sell('to be returned, cash', {
   items: [['p006', 2]], method: 'cash', tendered: 500,
 });
 reverse('return', cashReturn, 'returned, cash');
-assert.equal(returnRow.status, 'return', 'a return is its own row');
+assert.equal(returnRow.status, 'refund', 'a return is its own refund row');
 assert.equal(returnRow.originalOrderId, toReturn.id, 'and it points at what it reverses');
-assert.equal(till.orders().find(o => o.id === toReturn.id).status, 'completed',
-  'the original stays completed -- SALE_SIGN.return = -1 is what cancels it');
+assert.equal(returnRow.reason, 'Refunded items', 'with the reason the goods came back');
+for (const o of [toVoid, toRefund, toReturn]) {
+  assert.equal(till.orders().find(x => x.id === o.id).status, 'completed', `${o.number}: the sale is never edited`);
+}
+assert.equal(SalesMath.reversalOf(till.orders(), toVoid.id).status, 'void', 'a void is its own row');
 
-// Which is exactly why it has to be stopped from being returned again: nothing about the
-// original says it has been. Twice through put the goods back twice and paid out twice.
+// Nothing about the original says it has been reversed, which is why a second attempt is
+// refused off the reversal row. Twice through put the goods back twice and paid out twice.
 const shelfAfterReturn = till.stock('p005').cached;
 assert.equal(till.return(toReturn.number), null, 'a receipt can only be returned once');
+assert.match(till.el('#toast').textContent, /already refunded/, 'and the cashier is told why');
+assert.equal(till.void(toVoid.number), null, 'a voided sale cannot be voided again');
+assert.equal(till.refund(toVoid.number), null, 'nor refunded after the void');
 near(till.stock('p005').cached, shelfAfterReturn, 'and the second attempt moves no stock');
 assert.equal(till.orders().filter(o => o.originalOrderId === toReturn.id).length, 1,
   'one return row, not two');
@@ -149,8 +154,10 @@ assert.equal(till.orders().filter(o => o.originalOrderId === toReturn.id).length
 const toSwap = sell('to be exchanged', { items: [['t002', 1]], method: 'cash', tendered: 500 });
 const { exchangeSale: swapped } = reverse('exchange', toSwap, 'exchanged', [['t004', 1]]);
 assert.equal(swapped.status, 'completed', 'the exchange books a fresh sale');
-assert.equal(till.orders().find(o => o.id === toSwap.id).status, 'refunded',
-  'the exchanged original is flipped in place, so only the replacement books revenue');
+assert.equal(till.orders().find(o => o.id === toSwap.id).status, 'completed',
+  'the exchanged original is never edited');
+assert.equal(SalesMath.reversalOf(till.orders(), toSwap.id).status, 'refund',
+  'a refund row cancels it, so only the replacement books net sales');
 take([['t004', 1]], -1);
 live.push(swapped);
 cashIn += swapped.payments.filter(p => p.method === 'cash').reduce((n, p) => n + p.amount, 0);
@@ -178,16 +185,19 @@ for (const o of [toVoid, toRefund, toReturn, toSwap]) {
 }
 near(byRef.get(walkIn.id), -8, 'a plain sale moves exactly what it sold');
 
-// 2. Revenue, the way the back office reads it: signed by status, nothing filtered out.
-const SALE_SIGN = { completed: 1, return: -1, refunded: 0, voided: 0, saved: 0 };
-const booked = till.orders().reduce((n, o) => n + (SALE_SIGN[o.status || 'completed'] ?? 0) * o.total, 0);
-near(booked, live.reduce((n, o) => n + o.total, 0), 'revenue: the signed ledger vs the live sales');
+// 2. Net sales, the way every screen reads it: SalesMath's ladder over every row.
+const day = SalesMath.summarize(till.orders());
+const booked = day.netSales;
+near(booked, live.reduce((n, o) => n + o.total, 0), 'net sales: the ladder vs the live sales');
+assert.equal(day.orders, live.length + 4, 'orders: every sale less the voided one (the 4 refunded still count)');
+near(day.grossSales - day.voids - day.refunds - day.discounts, day.netSales, 'the ladder adds up');
 
-// 3. Receivables. The stored balance, the ledger it is supposed to summarise, and the credit
-//    legs of the sales that still count all have to land on the same peso.
+// 3. Receivables. The balance is the ledger's sum (features/customers); what today's rows moved
+//    -- everything but the opening row -- and the credit legs of the sales that still count all
+//    have to land on the same peso.
 const ledgerBalance = (name) => {
   const c = till.run('allCustomerRecords()').find(x => x.name === name);
-  return round(till.ledger(c.id).reduce((n, e) => n + (e.type === 'payment' ? -e.amount : e.amount), 0));
+  return round(till.ledger(c.id).filter(e => e.type !== 'opening').reduce((n, e) => n + till.run('ledgerDelta')(e), 0));
 };
 near(openingBalance('Ricardo Construction'), ricardoOpening + credited - 5000,
   'Ricardo: charged, then paid 5,000 down');
@@ -197,14 +207,12 @@ near(openingBalance('Marie Variety Store'), marieOpening,
   'Marie: the returned charge came back off her account');
 
 // 4. The drawer. Cash in, minus cash handed back over the counter.
-const drawer = till.orders().reduce((n, o) => {
-  const sign = SALE_SIGN[o.status || 'completed'] ?? 0;
-  return n + sign * o.payments.filter(p => p.method === 'cash').reduce((s, p) => s + p.amount, 0);
-}, 0);
+const drawer = SalesMath.tenders(till.orders()).get('cash') || 0;
 near(drawer, cashIn, 'drawer: cash taken vs cash booked');
-// And the till's own end-of-day count has to be the same number. A return leaves the original
-// receipt `completed`, so the cash handed back has to come off here or the drawer reads long.
-near(till.run('buildCashDrawerSummary()').expectedCash, cashIn, 'drawer: the app own count vs cash booked');
+// And the till's own end-of-day count has to be the same number. A sale is never edited, so the
+// cash handed back has to come off on the refund row or the drawer reads long.
+// The 5,000 Ricardo paid down in cash at this register is in the drawer too (bug 9), though no sale carries it.
+near(till.run('buildCashDrawerSummary()').expectedCash, cashIn + 5000, 'drawer: the app own count vs cash booked + account payments');
 
 // 5. Selling what is not there. A shelf cannot go negative unless the product says it may,
 //    or unless a manager says so out loud.
@@ -221,14 +229,21 @@ near(till.stock('c001').cached, -50, 'and the shelf goes negative on purpose, wi
 till.void(overridden.number);
 near(till.stock('c001').cached, onHand, 'voiding the override puts it back');
 
+// 6. A void cancels today's sale only. Past midnight the cashier is sent to Refund, which
+//    counts on the day the money went back, not on the sale's.
+const lateSale = sell('sold yesterday', { items: [['p002', 1]], method: 'cash', tendered: 100 });
+till.clock(new Date(lateSale.ts).setHours(24, 0, 5, 0));
+assert.equal(till.void(lateSale.number), null, 'a sale from an earlier day cannot be voided');
+assert.match(till.el('#toast').textContent, /Refund it instead/, 'the cashier is told to refund');
+const lateRefund = reverse('refund', lateSale, 'refunded next day');
+assert.ok(lateRefund.ts > lateSale.ts && new Date(lateRefund.ts).getDate() !== new Date(lateSale.ts).getDate(),
+  'the refund row sits on its own day');
+till.clock(null);
+
 // ---- Report ------------------------------------------------------------------
 const cut = (key, label) => {
   const m = new Map();
-  for (const o of till.orders()) {
-    const sign = SALE_SIGN[o.status || 'completed'] ?? 0;
-    const k = key(o);
-    m.set(k, round((m.get(k) || 0) + sign * o.total));
-  }
+  for (const [k, g] of SalesMath.summarize(till.orders(), { by: key }).groups) m.set(k, g.netSales);
   console.log(`\n  ${label}`);
   for (const [k, v] of [...m].sort((a, b) => b[1] - a[1])) {
     console.log(`    ${String(k).padEnd(24)} ${money(v).padStart(12)}`);
@@ -236,7 +251,7 @@ const cut = (key, label) => {
 };
 
 console.log(`\nDay closed: ${till.orders().length} receipts`);
-console.log(`  revenue   ${money(booked).padStart(12)}`);
+console.log(`  net sales ${money(booked).padStart(12)}`);
 console.log(`  drawer    ${money(drawer).padStart(12)}`);
 console.log(`  on account${money(credited - 5000).padStart(12)}`);
 cut(o => o.paymentMethodLabel || o.paymentMethod, 'By payment');

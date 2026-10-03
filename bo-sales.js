@@ -1,7 +1,6 @@
 /* Back office — Sales. Renders the whole #view section; see CONTRACT.
-   Pure read: this page never writes storage. Every number comes from the shell's
-   helpers (rangeWindows / orderPaymentLabel / costOf / itemNet / productFor), so a
-   figure here and the same figure on the dashboard cannot drift apart. */
+   Pure read: this page never writes storage. Every money figure is a ladder() (the shell's
+   SalesMath.summarize), so a figure here and the same figure on the dashboard cannot drift apart. */
 (function () {
   const VIEW = 'sales';
   const root = () => document.querySelector(`.view[data-view="${VIEW}"]`);
@@ -17,143 +16,64 @@
   // it (owner 2026-09-28), before ‹ period ›, so the picker holds still. The period (?month= ?view= ?vs=) and Items' table state ride along;
   // the day/week pop-up and the page don't.
   const tabSwitch = (tab) => {
-    const { day, week, page, all, q, ...keep } = Router.route().params;
+    const { week, page, all, q, ...keep } = Router.route().params;   // ?day= carries: the pop-up's day is Items' day
     return `<div class="seg pd-switch" aria-label="Sales view">${TABS.map(([k, label]) =>
       `<a class="seg-btn${k === tab ? ' active' : ''}" href="${escapeHtml(Router.href(VIEW, '', { ...keep, by: k === 'summary' ? '' : k }))}">${label}</a>`).join('')}</div>`;
   };
 
-  // How each status moves money. This is the single easiest thing to get wrong here:
-  //   completed → the sale counted.
-  //   voided / refunded → the ORIGINAL row, flipped in place by app.js. Its revenue was
-  //     never booked separately, so it contributes 0 — subtracting would double-reverse it.
-  //     It still counts as a transaction and still shows with its status pill.
-  //   return → a NEW row app.js appends when money goes back out. That is the negative event.
-  // Nothing is ever filtered out of the ledger; the sign is what keeps voids and refunds
-  // visible without letting them inflate revenue.
-  // SALE_SIGN / saleSign live in backoffice.js so the dashboard and this page cannot disagree.
-  const isReversal = (s) => s === 'refunded' || s === 'return';
+  const qtyText = SalesMath.qtyText;   // THE quantity on screen
+  const money = SalesMath.round2; // CSV: plain number, no currency sign
 
-  const pct = (n) => (n * 100).toFixed(1) + '%';
-  const int = (n) => Math.round(Number(n) || 0).toLocaleString('en-PH');
-  const qtyText = (n) => (Math.abs(n % 1) > 0.001 ? Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : int(n));
-  const money = (n) => Math.round((Number(n) || 0) * 100) / 100; // CSV: plain number, no ₱
-
-  const blank = (extra) => ({ qty: 0, revenue: 0, net: 0, cost: 0, txns: 0, sales: 0, voids: 0, refunds: 0, ...extra });
-  function bucket(map, key, seed) {
-    let b = map.get(key);
-    if (!b) { b = seed(); map.set(key, b); }
-    return b;
-  }
-
-  // ---------- The one pass ----------
-  // Every cut is built here, in a single walk of the window. Adding a tab must not add a pass.
+  // ---------- Items and categories: one ladder ----------
+  // Each line keys its item and its FIRST category (categoryOf, owner 2026-10-02), so category rows
+  // add up to Net sales like item rows do; a cut (?ct=) is that same category, so it adds up to its row. Rows are
+  // ladder groups: netSales, grossProfit, margin (0..1), unitsSold, costOfGoods, plus their share.
   function agg(rows) {
-    const items = new Map(), cats = new Map(), staff = new Map(), pays = new Map(), fuls = new Map();
-    const t = blank();
-    for (const o of rows) {
-      const sign = saleSign(o);
-      const rev = o.total * sign;
-      const net = (o.total - (o.vatAmount || 0)) * sign;
-      const voided = o.status === 'voided' ? 1 : 0;
-      const back = isReversal(o.status) ? 1 : 0;
-
-      t.revenue += rev; t.net += net; t.txns += 1; t.voids += voided; t.refunds += back;
-      if (sign) t.sales += 1;
-
-      const st = bucket(staff, o.cashier || '—', () => blank({ key: o.cashier || '—', name: o.cashier || '—', last: 0 }));
-      st.revenue += rev; st.net += net; st.txns += 1; st.voids += voided; st.refunds += back;
-      if (sign) st.sales += 1;
-      if (sign > 0) st.last = Math.max(st.last, o.ts);
-
-      const kind = o.paymentKind || o.paymentMethod || 'cash';
-      const pb = bucket(pays, kind, () => blank({ key: kind, kind, name: orderPaymentLabel(o) }));
-      pb.revenue += rev; pb.net += net; pb.txns += 1; pb.voids += voided; pb.refunds += back;
-      if (sign) pb.sales += 1;
-
-      // Walk-in or delivery. `top` collects what that side of the shop actually buys --
-      // "delivery is 40% of revenue" is half an answer without "and it is mostly cement".
-      // One row per fulfilment type in use, including the owner's own -- an order with no
-      // fulfilment field is a walk-in, never a third row.
-      const fk = o.fulfilment || 'pickup';
-      const fb = bucket(fuls, fk, () => blank({ key: fk, name: orderFulfilLabel(o), top: new Map() }));
-      fb.revenue += rev; fb.net += net; fb.txns += 1; fb.voids += voided; fb.refunds += back;
-      if (sign) fb.sales += 1;
-
-      // Split the order's money across its lines by each line's share of the line totals.
-      // Using itemNet() directly would drift from o.total whenever an order-level discount
-      // was applied; allocating keeps by-item and by-category summing back to the summary.
-      const gross = o.items.reduce((sum, i) => sum + itemNet(i), 0);
-      const even = o.items.length ? 1 / o.items.length : 0;
-      for (const i of o.items) {
-        const share = gross > 0 ? itemNet(i) / gross : even;
-        const p = productFor(i);
-        const qty = i.qty * sign;
-        const cost = costOf(i) * i.qty * sign;
-        const iRev = rev * share, iNet = net * share;
-
-        t.qty += qty; t.cost += cost;
-        st.qty += qty; st.cost += cost;
-        fb.qty += qty; fb.cost += cost;
-
-        const ik = (p && p.id) || i.id || 'n:' + i.name;
-        const ib = bucket(items, ik, () => blank({
-          key: ik,
-          name: (p && p.name) || i.name,
-          sku: (p && p.sku) || i.sku || '—',
-          brand: (p && p.brand) || '',
-          cat: folderName(p ? p.folder : ''),
-          folder: (p && p.folder) || '',   // the category's key: By category's "Top in" list
-          folders: p && foldersOf(p).length ? foldersOf(p) : [''],   // an item sits in several; '' is uncategorized
-        }));
-        ib.qty += qty; ib.revenue += iRev; ib.net += iNet; ib.cost += cost;
-
-        const ft = bucket(fb.top, ik, () => ({ name: (p && p.name) || i.name, qty: 0 }));
-        ft.qty += qty;
-
-        // An item in two categories counts in both (owner 2026-10-01), so the category rows can add past the total.
-        for (const ck of ib.folders) {
-          const cb = bucket(cats, ck, () => blank({ key: ck, name: folderName(ck) }));
-          cb.qty += qty; cb.revenue += iRev; cb.net += iNet; cb.cost += cost;
-        }
-      }
+    const meta = new Map();
+    const t = ladder(rows, { by: (o, i) => {
+      if (!(o.items || []).length) return null;
+      const p = productFor(i), ik = (p && p.id) || SalesMath.itemKey(i);
+      if (!meta.has(ik)) meta.set(ik, {
+        key: ik,
+        name: (p && p.name) || i.name,
+        sku: (p && p.sku) || i.sku || '—',
+        brand: (p && p.brand) || '',
+        ck: categoryOf(p),   // the one category its money counts under; '' is uncategorized
+        cat: folderName(categoryOf(p)),
+        unit: i.unit || '',
+      });
+      return ['i:' + ik, 'c:' + meta.get(ik).ck];
+    } });
+    const items = [], cats = [];
+    for (const [k, g] of t.groups) {
+      const id = k.slice(2), r = { ...g, share: SalesMath.share(g.netSales, t.netSales) };
+      if (k[0] === 'i') items.push({ ...r, ...meta.get(id) }); else cats.push({ ...r, key: id, name: folderName(id) });
     }
-    const finish = (map) => Array.from(map.values()).map(r => ({
-      ...r,
-      profit: r.net - r.cost,
-      margin: r.net ? (r.net - r.cost) / r.net : 0,
-      share: t.revenue ? r.revenue / t.revenue : 0,
-      avg: r.sales ? r.revenue / r.sales : 0,
-      perSale: r.sales ? r.qty / r.sales : 0,
-    }));
-    t.profit = t.net - t.cost;
-    t.margin = t.net ? t.profit / t.net : 0;
-    t.avg = t.sales ? t.revenue / t.sales : 0;
-    return { totals: t, items: finish(items), cats: finish(cats), staff: finish(staff), pays: finish(pays), fuls: finish(fuls) };
+    // A category's Items sold: SalesMath.itemsSold of its items, the one count Top categories and Items both show.
+    for (const c of cats) c.itemsSold = SalesMath.itemsSold(items.filter(x => x.ck === c.key));
+    return { totals: t, items, cats };
   }
-
-  const sortRows = (rows, key, dir) => {
-    return rows.slice().sort((a, b) => {
-      const x = a[key], y = b[key];
-      const c = typeof x === 'string' ? x.localeCompare(String(y)) : (x || 0) - (y || 0);
-      return dir === 'asc' ? c : -c;
-    });
-  };
+  // Two products can share a name (a Local and a Generic Hollow Block 4"): the brand tells them apart,
+  // on every list, even one where only one of them sold.
+  const apart = (xs) => { const n = new Map(); for (const p of state.products) n.set(p.name, (n.get(p.name) || 0) + 1);
+    for (const x of xs) if (n.get(x.name) > 1 && x.brand) x.name += ' · ' + x.brand; return xs; };
+  // The items sold (SalesMath.itemsSold: a unit or more), biggest first: the day/week pop-ups here and on
+  // the dashboard. Its length is the "items sold" beside them.
+  const topItems = (rows) => apart(agg(rows).items).filter(r => r.unitsSold > 0).sort((x, y) => y.netSales - x.netSales);
 
   // ---------- Columns: what the CSV exports ----------
-  const cName = { key: 'name', label: 'Product', cell: r => escapeHtml(r.name), csv: r => r.name };
-  const cQty = { key: 'qty', label: 'Qty sold', num: 1, cell: r => qtyText(r.qty), csv: r => money(r.qty) };
-  const cRev = { key: 'revenue', label: 'Revenue', num: 1, cell: r => `<strong>${peso(r.revenue)}</strong>`, csv: r => money(r.revenue) };
-  const cCost = { key: 'cost', label: 'Cost', num: 1, cell: r => peso(r.cost), csv: r => money(r.cost) };
-  const cProfit = { key: 'profit', label: 'Gross profit', num: 1, cell: r => peso(r.profit), csv: r => money(r.profit) };
-  const cMargin = { key: 'margin', label: 'Margin %', num: 1, cell: r => (r.net ? pct(r.margin) : '—'), csv: r => (r.net ? money(r.margin * 100) : '') };
-  const cShare = { key: 'share', label: 'Share', num: 1, cell: r => pct(r.share), csv: r => money(r.share * 100) };
-
   // Items' CSV: every item in the period (the category picked, if one is), in the table's order.
   const COLUMNS = [
-    cName,
-    { key: 'sku', label: 'SKU', cell: r => `<span class="mono">${escapeHtml(r.sku)}</span>`, csv: r => r.sku },
-    { key: 'cat', label: 'Category', cell: r => escapeHtml(r.cat), csv: r => r.cat },
-    cQty, cRev, cCost, cProfit, cMargin, cShare,
+    { label: 'Item', csv: r => r.name },
+    { label: 'SKU', csv: r => r.sku },
+    { label: 'Category', csv: r => r.cat },
+    { label: 'Units sold', csv: r => money(r.unitsSold) },
+    { label: 'Net sales', csv: r => money(r.netSales) },
+    { label: 'Cost of goods', csv: r => money(r.costOfGoods) },
+    { label: 'Gross profit', csv: r => money(r.grossProfit) },
+    // pctText's rule, as a plain number: blank where the screen says '—' (nothing to be a margin or share of)
+    { label: 'Margin %', csv: r => (r.salesBeforeTax > 0 ? money(r.margin * 100) : '') },
+    { label: 'Share', csv: r => (D.totals.netSales > 0 ? money(r.share * 100) : '') },
   ];
 
   // ---------- What the URL says ----------
@@ -169,8 +89,8 @@
       cmp: p.vs === 'prev' || p.vs === 'year',   // the Summary's Compare to (?vs=), shared
       cats: view('cats'), list: view('list'), moved: view('moved'), pairs: view('pairs'),
       q: p.q || '', page: p.page,
-      // Revenue desc is the answer to "what makes us money"; everything else is a click away.
-      sort: { key: p.sort || 'revenue', dir: p.dir === 'asc' ? 'asc' : 'desc' },
+      // Net sales desc is the answer to "what makes us money"; everything else is a click away.
+      sort: { key: p.sort in ITEM_K ? p.sort : 'revenue', dir: p.dir === 'asc' ? 'asc' : 'desc' },
     };
   }
 
@@ -178,25 +98,59 @@
   // Its own window, not the range picker's: a month or a year. The URL holds it all --
   // ?view=year, ?month=YYYY-MM, ?day= / ?week= for the side panel, ?top= for the Top 10 --
   // so every click is a setParams and a re-render, and Back walks it.
-  const fmt = (t, o) => new Date(t).toLocaleDateString('en-PH', o);
-  const fromIso = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d || 1).getTime(); };
-  const monthEnd = (t) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime(); };
-  const weekEnd = (t) => Math.min(shiftDays(t, 7 - ((new Date(t).getDay() + 6) % 7)), monthEnd(t));   // exclusive, clipped to the month
-  const daysIn = (t) => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); };
-  const itemOf = (i) => productFor(i)?.name || i.name;
-  const catOf = (i) => folderName(productFor(i)?.folder);
+  // Every date here is on the STORE'S clock (boZone, SalesMath.dateParts), never the browser's.
+  const fmt = (t, o) => dashDate(t, o);   // the shell's store-day text
+  const clock = (t) => SalesMath.dateParts(t, boZone());   // { year, month 1-12, day, hour, weekday 0 = Sun }
+  const fromIso = (s) => SalesMath.dayStartMs(s, boZone());
+  // The store midnight that starts month m (1-12) of year y; m may run past either end (0 = December before).
+  const monthStart = (y, m) => fromIso(new Date(Date.UTC(y, m - 1, 1)).toISOString().slice(0, 10));
+  const monthEnd = (t) => { const p = clock(t); return monthStart(p.year, p.month + 1); };
+  const weekEnd = (t) => Math.min(shiftDays(t, 7 - ((clock(t).weekday + 6) % 7)), monthEnd(t));   // exclusive, clipped to the month
+  const daysIn = (t) => { const p = clock(t); return new Date(Date.UTC(p.year, p.month, 0)).getUTCDate(); };
+  // Every daily average divides by this (SalesMath.daysOpen); only the target spreads over daysIn.
+  const daysOpen = (rows) => SalesMath.daysOpen(rows, { zone: boZone() });
+  // Every share and margin on the page: SalesMath.pctText ('—' when there is nothing to be a share of), a true minus.
+  const pct = SalesMath.pctText;
+  const plural = SalesMath.plural;
+  // The hour a row is charted in, the Dashboard's rule (SalesMath.chartTime): a void on its sale's own day sits in
+  // the sale's hour, so it cancels that hour instead of pushing its own below zero. Build once per chart, from
+  // its rows: every window is whole store days, so a same-day void's sale is always among them.
+  const hourOf = (rows) => { const at = new Map(rows.map(o => [o.id, o.ts])); return (o) => clock(SalesMath.chartTime(o, at, boZone())).hour; };
+  // A trend in words (SalesMath.changeText, the Dashboard's chip text) and its tone for the class.
+  const tone = SalesMath.changeTone;   // the Dashboard chip's up/down rule, one copy
   const calRow = (nm, amt, cmp = '', cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span><span class="amt">${amt}</span>${cmp !== null ? `<span class="cmp">${cmp}</span>` : ''}</div>`;
+  // The ladder (sales-terms): Gross sales − Voids − Refunds − Discounts = Net sales; less the tax inside it,
+  // Sales before VAT. To the centavo: whole pesos would round each row apart and stop adding up.
+  // Tax inside the prices (PH) comes off Net sales; tax on top (US) was never in it, so it is only shown;
+  // no tax (a non-VAT store) shows no tax rows. Which one is the ladder's taxIncluded (a window mixing both reads as "included").
+  const nOf = (c) => (c ? ` (${c})` : '');
+  const taxRows = (m) => { const t = escapeHtml(SalesMath.taxName(state.settings));
+    return !m.tax ? '' : m.taxIncluded
+      ? calRow(`${t} included`, peso(m.tax), null) + calRow(`Sales before ${t}`, peso(m.salesBeforeTax), null)
+      : calRow(`${t} on top`, peso(m.tax), null); };
   const breakdownRows = (m) => `<div class="rows">
-      ${calRow('Gross sales', pesoShort(m.sales + m.disc), null)}
-      ${calRow('Discounts', m.disc ? pesoShort(-m.disc) : '₱0', null)}
-      ${calRow(`Returns${m.retN ? ` (${m.retN})` : ''}`, m.ret ? pesoShort(-m.ret) : '₱0', null)}
-      ${calRow('VAT included', pesoShort(m.vat), null)}
-      ${calRow('Net sales', pesoShort(m.rev), null, 'total')}</div>`;
+      ${calRow('Gross sales', peso(m.grossSales), null)}
+      ${calRow('Voids' + nOf(m.voidCount), peso(-m.voids), null)}
+      ${calRow('Refunds' + nOf(m.refundCount), peso(-m.refunds), null)}
+      ${calRow('Discounts', peso(-m.discounts, { signed: true }), null)}
+      ${calRow('Net sales', peso(m.netSales), null, 'total')}
+      ${taxRows(m)}</div>`;
+  // Groups of a ladder, biggest net sales first: [key, ladder].
+  const ranked = (rows, by) => [...ladder(rows, { by }).groups].sort((x, y) => y[1].netSales - x[1].netSales);
+  // Staff: [name, ladder] by SELLER (SalesMath.sellerOf, owner 2026-10-02): a void or refund is the minus of
+  // whoever made the sale, not whoever pressed it; grouped by staff id, named by the sale's cashier.
+  const byStaff = (rows) => { const seller = SalesMath.sellerOf(state.orders), names = new Map();
+    return ranked(rows, o => { const s = seller(o); if (!names.has(s.key)) names.set(s.key, s.name || '—'); return s.key; })
+      .map(([k, g]) => [names.get(k), g]); };
+  // Payment methods: byPayment (the shell's, SalesMath.tenders). Account is "on account", not "unpaid":
+  // whether it is still owed is the customer's statement (accountDebts), so no pill here.
+  const payRows = (rows, of) => byPayment(rows).map(([k, v]) => calRow(escapeHtml(k), pesoShort(v), of(v))).join('');
 
-  const lastSale = () => state.orders.reduce((a, o) => Math.max(a, o.ts), 0) || Date.now();
+  // The month the page opens on: the last sale's (SalesMath.lastSale: a voided sale, a parked cart or a refund never moves it).
+  const lastSale = () => SalesMath.lastSale(state.orders) || Date.now();
   function calState(p, last) {
     const month = /^\d{4}-\d{2}$/.test(p.month || '') ? fromIso(p.month + '-01')
-      : (d => new Date(d.getFullYear(), d.getMonth(), 1).getTime())(new Date(Math.min(last, Date.now())));
+      : (d => monthStart(d.year, d.month))(clock(Math.min(last, Date.now())));
     const view = p.view === 'year' ? 'year' : 'month';
     return {
       view, month,
@@ -211,14 +165,19 @@
   // The window, and what it's compared with (?vs=). Off unless asked (owner 2026-09-26): '' none,
   // 'prev' the month (year) before, 'year' the same month last year. A finished period against the
   // whole one before it; the one you're in against the same days so far, never half against whole.
+  // Items on a picked day (?day=): that day, against the same weekday a week before, like the pop-up's chip.
+  function dayCompare(S) {
+    const a = S.sel.at, b = shiftDays(a, 1);
+    return { a, b, title: '', ...(S.vs ? { prevA: shiftDays(a, -7), prevB: shiftDays(b, -7), label: `vs ${dayLabel(shiftDays(a, -7))}` } : { label: '' }) };
+  }
   function calCompare(S, TODAY) {
-    const d0 = new Date(S.month), y = d0.getFullYear(), isYear = S.view === 'year';
-    const a = isYear ? new Date(y, 0, 1).getTime() : S.month, b = isYear ? new Date(y + 1, 0, 1).getTime() : monthEnd(a);
+    const d0 = clock(S.month), y = d0.year, isYear = S.view === 'year';
+    const a = isYear ? monthStart(y, 1) : S.month, b = isYear ? monthStart(y + 1, 1) : monthEnd(a);
     if (!S.vs) return { a, b, title: '', label: '' };
-    const prevA = isYear ? new Date(y - 1, 0, 1).getTime() : new Date(y, d0.getMonth() - (S.vs === 'year' ? 12 : 1), 1).getTime();
+    const prevA = isYear ? monthStart(y - 1, 1) : monthStart(y, d0.month - (S.vs === 'year' ? 12 : 1));
     const prevEnd = isYear ? a : monthEnd(prevA), cutoff = Math.min(b, shiftDays(TODAY, 1));
     const prevB = cutoff >= b ? prevEnd : Math.min(prevEnd, shiftDays(prevA, Math.round((cutoff - a) / 864e5)));
-    const whole = prevB === prevEnd, py = new Date(prevA).getFullYear();
+    const whole = prevB === prevEnd, py = clock(prevA).year;
     const label = isYear ? `vs ${py}` : `vs ${fmt(prevA, { month: 'long' })}${S.vs === 'year' ? ` ${py}` : ''}`;
     const title = whole ? label : isYear ? `vs the same days of ${py}`
       : `vs ${fmt(prevA, { month: 'short', day: 'numeric' })} – ${fmt(prevB - 1, { day: 'numeric' })}${S.vs === 'year' ? `, ${py}` : ''}`;
@@ -226,138 +185,130 @@
   }
 
   // The strip is the card's folder tabs (sales-calendar-tabs-lab.html): the picked tab is what every calendar cell shows.
-  const mgOf = (x) => (x.rev ? x.gp / x.rev * 100 : 0);
+  // m is a ladder(). The ?chart= keys stay as they were so old links still open.
+  const mgOf = (x) => x.margin * 100;
   const count = (v) => (+v.toFixed(1)).toLocaleString('en-PH');
-  const pct1 = (v) => v.toFixed(1) + '%';
+  const pct1 = (v) => pct(v / 100);   // a margin already in points (mgOf): the calendar's bar and how far a cell is over or short of it
+  const mgText = (m, dp) => pct(m.margin, m.salesBeforeTax, dp);   // a ladder's (or an Items row's) margin: '—' with nothing sold
+  const orders = (m) => plural(m.orders, 'order');   // the ladder floors orders at 0
+  // `txt` is what a cell prints for its ladder, when it isn't fmt(of(m)): a margin with nothing sold is '—', as on the tab.
   const MEAS = {
-    rev: { lbl: 'Revenue', of: m => m.rev, fmt: pesoShort, sm: pesoK, sub: m => `${m.n} receipts` },
-    gp: { lbl: 'Gross profit', of: m => m.gp, fmt: pesoShort, sm: pesoK, sub: m => `${pct1(mgOf(m))} margin` },
-    n: { lbl: 'Receipts', of: m => m.n, fmt: count, sm: count, sub: m => (m.n ? `${pesoShort(m.rev / m.n)} average` : '') },
-    mg: { lbl: 'Margin', of: mgOf, fmt: pct1, sm: pct1, sub: m => `${pesoK(m.gp)} profit` },
+    rev: { lbl: 'Net sales', of: m => m.netSales, fmt: pesoShort, sm: pesoK, sub: m => orders(m) },
+    gp: { lbl: 'Gross profit', of: m => m.grossProfit, fmt: pesoShort, sm: pesoK, sub: m => `${mgText(m)} margin` },
+    n: { lbl: 'Orders', of: m => m.orders, fmt: count, sm: count, sub: m => (m.orders > 0 ? `${pesoShort(m.averageSale)} average` : '') },
+    mg: { lbl: 'Margin', of: mgOf, fmt: pct1, sm: pct1, txt: mgText, sub: m => `${pesoK(m.grossProfit)} gross profit` },
   };
+  // A cell's figure for ladder m under measure k, in fmt (or sm, the phone's short form).
+  const cellTxt = (k, m, f = MEAS[k].fmt) => (MEAS[k].txt ? MEAS[k].txt(m) : f(MEAS[k].of(m)));
+  // A day (month) that moved money: a sale, a void or a refund. A parked cart alone is not a sale day (SalesMath.daysOpen's rule).
+  const moved = (m) => m.orders || m.voidCount || m.refundCount;
   // days = days that had sales, the same average an untargeted calendar greens against.
   function calStrip(S, cur, prev, prevTitle, days, target) {
     const tab = (k, val, side, sub, tip = '') =>
       `<button class="stat" role="tab" data-chart="${k}" aria-selected="${S.chart === k}"${tip ? ` title="${escapeHtml(tip)}"` : ''}><div class="lbl">${MEAS[k].lbl}</div><div class="line"><span class="val">${val}</span>${side || ''}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</button>`;
     const perDay = (v) => (days ? v / days : 0);
-    let html = tab('rev', pesoK(cur.rev), calmChip(cur.rev, prev.rev, prevTitle), days ? pesoShort(perDay(cur.rev)) + ' daily avg' : '')
-      + tab('gp', pesoK(cur.gp), calmChip(cur.gp, prev.gp, prevTitle), days ? pesoShort(perDay(cur.gp)) + ' daily avg' : '')
-      + tab('n', cur.n.toLocaleString(), calmChip(cur.n, prev.n, prevTitle),
-        days ? count(perDay(cur.n)) + ' daily avg' : '', cur.n ? pesoShort(cur.rev / cur.n) + ' average receipt' : '')
-      + tab('mg', cur.rev ? pct1(mgOf(cur)) : '—', calmChip(mgOf(cur), mgOf(prev), prevTitle), '');
+    let html = tab('rev', pesoK(cur.netSales), calmChip(cur.netSales, prev.netSales, prevTitle), days ? pesoShort(perDay(cur.netSales)) + ' daily average' : '')
+      + tab('gp', pesoK(cur.grossProfit), calmChip(cur.grossProfit, prev.grossProfit, prevTitle), days ? pesoShort(perDay(cur.grossProfit)) + ' daily average' : '')
+      + tab('n', count(cur.orders), calmChip(cur.orders, prev.orders, prevTitle),
+        days ? count(perDay(cur.orders)) + ' daily average' : '', cur.orders > 0 ? pesoShort(cur.averageSale) + ' average sale' : '')
+      + tab('mg', mgText(cur), marginChip(cur, prev, prevTitle), '');   // backoffice.js marginChip: the one margin chip
     // no Best stat (owner 2026-09-26): the best day (month) is tagged on the calendar instead
     if (target == null) return html;                                   // year view: four stats
-    const pc = target ? Math.round(cur.rev / target * 100) : 0;
-    return html + `<button class="stat act" data-act="cal-target" title="${target ? `${pesoShort(cur.rev)} of ${pesoShort(target)} · click to change` : 'Set a monthly target'}">`
+    return html + `<button class="stat act" data-act="cal-target" title="${target ? `${pesoShort(cur.netSales)} of ${pesoShort(target)} · click to change` : 'Set a monthly target'}">`
       + `<div class="lbl">Target</div><div class="line">${target
-        ? `<span class="val">${pesoK(cur.rev)}</span><b class="pct">${pc}%</b></div><div class="sub">of ${pesoK(target)}</div>`
+        ? `<span class="val">${pesoK(cur.netSales)}</span><b class="pct">${pctOf(cur.netSales, target, 0)}</b></div><div class="sub">of ${pesoK(target)}</div>`
         : '<span class="val">—</span><span class="set">Set</span></div>'}</button>`;
   }
 
-  // Top 10: items, categories, weekdays or hours. Items split the order's total by line share,
-  // as agg() does, so a discount can't make the items add up to more than the receipt.
+  // Top 10: items, categories, weekdays or hours, each a ladder group, so a discount can't make the
+  // items add up to more than the receipt.
   const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const hourSpan = (h) => { const ap = x => (x % 24 < 12 ? 'AM' : 'PM'), hh = x => x % 12 || 12;
-    return ap(h) === ap(h + 1) ? `${hh(h)} – ${hh(h + 1)} ${ap(h)}` : `${hh(h)} ${ap(h)} – ${hh(h + 1)} ${ap(h + 1)}`; };
+  // "9 – 10 AM", "11 AM – 12 PM": the shell's hourLong, the AM/PM said once when both ends share it.
+  const hourSpan = (h) => { const a = hourLong(h), b = hourLong(h + 1);
+    return a.slice(-2) === b.slice(-2) ? `${a.slice(0, -3)} – ${b}` : `${a} – ${b}`; };
+  // Items and categories are agg()'s rows, the same ones the Items page ranks, keyed by product and folder.
+  // Only what sold ranks (SalesMath.itemsSold's rule): an item with a unit or more, a category with an item sold.
+  // A fully refunded item is not a top seller; a category stays while any of its items sold (its count column).
   function tops(rows, by) {
-    const g = new Map(), open = new Set();
-    const put = (k, init) => g.get(k) || g.set(k, { name: k, qty: 0, rev: 0, items: new Set(), days: new Set(), ...init }).get(k);
-    for (const o of rows) {
-      const s = saleSign(o), its = o.items || [];
-      if (!s) continue;
-      open.add(isoDate(o.ts));
-      if (by === 'day' || by === 'hour') {
-        const d = new Date(o.ts), b = put(by === 'day' ? DAYS[(d.getDay() + 6) % 7] : hourSpan(d.getHours()));
-        b.rev += o.total * s; b.days.add(isoDate(o.ts));
-        continue;
-      }
-      if (!its.length) continue;
-      const gross = its.reduce((x, i) => x + itemNet(i), 0);
-      for (const i of its) {
-        const b = put((by === 'cat' ? catOf : itemOf)(i), { cat: catOf(i), unit: i.unit || '' });
-        b.qty += (+i.qty || 0) * s; b.items.add(itemOf(i));
-        b.rev += o.total * s * (gross > 0 ? itemNet(i) / gross : 1 / its.length);
-      }
+    if (by === 'item' || by === 'cat') {
+      const a = agg(rows), xs = by === 'item' ? apart(a.items).filter(r => r.unitsSold > 0) : a.cats.filter(r => r.itemsSold > 0);
+      return new Map(xs.map(r => [r.key, { ...r, qty: r.unitsSold, items: r.itemsSold || 0 }]));
     }
-    // a weekday averages over the days it was open; an hour over every open day in the window
-    for (const b of g.values()) b.avg = b.rev / ((by === 'day' ? b.days.size : open.size) || 1);
-    return g;
+    const hour = hourOf(rows), keyOf = by === 'day' ? (o) => DAYS[(clock(o.ts).weekday + 6) % 7] : (o) => hourSpan(hour(o));
+    // a weekday averages over the days it was open; an hour over every open day in the window (daysOpen, the one day count)
+    const open = daysOpen(rows), byDay = by === 'day' && SalesMath.daysOpenBy(rows, keyOf, { zone: boZone() });
+    const per = (k) => (byDay ? byDay.get(k) : open) || 1;
+    return new Map([...ladder(rows, { by: keyOf }).groups].map(([k, x]) => [k, { key: k, name: k, qty: x.unitsSold, netSales: x.netSales,
+      avg: x.netSales / per(k) }]));
   }
-  const TOP_BY = [['item', 'Top items', 'Sold'], ['cat', 'Top categories', 'Range'],
-    ['day', 'Busiest days', 'Avg / day'], ['hour', 'Busiest hours', 'Avg / day']];
+  const TOP_BY = [['item', 'Top items', 'Units sold'], ['cat', 'Top categories', 'Items sold'],
+    ['day', 'Busiest days', 'Daily average'], ['hour', 'Busiest hours', 'Daily average']];
   function calTop(T, by) {
-    const [, , qtyHead] = TOP_BY.find(x => x[0] === by), cur = tops(T.rows, by), before = T.prev && T.prev.some(saleSign) && tops(T.prev, by);   // nothing sold back then: no Trend column of "New"
+    const [, , qtyHead] = TOP_BY.find(x => x[0] === by), cur = tops(T.rows, by), before = T.prev && T.prev.some(o => saleSign(o) > 0) && tops(T.prev, by);   // nothing sold back then: no Trend column of "New"
     // weekdays rank and share by their average: a month can hold five Wednesdays and four Saturdays
-    const val = (b) => (by === 'day' ? b.avg : b.rev);
-    const total = [...cur.values()].reduce((x, b) => x + val(b), 0);
+    // items and categories share the period's Net sales (SalesMath.share); weekdays and hours their own sum
+    const val = (b) => (by === 'day' ? b.avg : b.netSales);
+    const total = by === 'item' || by === 'cat' ? ladder(T.rows).netSales : [...cur.values()].reduce((x, b) => x + val(b), 0);
     const list = [...cur.values()].sort((x, y) => val(y) - val(x)).slice(0, 10), max = list.length ? val(list[0]) : 1;
     const sw = pickMenu('calTop', 'top', TOP_BY, by, 'Rank by');
-    const qty = (b) => (by === 'day' || by === 'hour' ? pesoShort(b.avg) : by === 'cat' ? b.items.size + (b.items.size === 1 ? ' item' : ' items')
-      : +b.qty.toFixed(2) + (b.unit && !/^pcs?$/.test(b.unit) ? ' ' + escapeHtml(b.unit) : ''));
+    const qty = (b) => (by === 'day' || by === 'hour' ? pesoShort(b.avg) : by === 'cat' ? plural(b.items, 'item')
+      : qtyText(b.qty) + (b.unit && !/^pcs?$/.test(b.unit) ? ' ' + escapeHtml(b.unit) : ''));
+    // the Trend of what the row ranks by: a weekday's average against its average then, so a fifth Wednesday is not growth
     const vs = (b) => {
       if (!before) return '';
-      const p = before.get(b.name)?.rev;
-      if (!p) return '<td class="n cmp">New</td>';
-      const r = Math.round((b.rev - p) / Math.abs(p) * 1000) / 10;
-      return `<td class="n cmp ${r > 0 ? 'up' : r < 0 ? 'down' : ''}">${r > 0 ? '+' : ''}${r.toFixed(1)}%</td>`;
+      const w = before.get(b.key), t = SalesMath.changeText(val(b), w ? val(w) : 0);
+      return `<td class="n cmp ${tone(t)}">${t}</td>`;
     };
     return list.length ? `<div class="flush"><table${by === 'day' || by === 'hour' ? ' class="avg"' : ''}>
-      <tr><th class="sw">${sw}</th><th class="n qty">${qtyHead}</th><th class="n amt">Revenue</th><th class="sh">Share</th>${before ? `<th class="n cmp" title="${escapeHtml(T.sub)}">Trend</th>` : ''}</tr>
+      <tr><th class="sw">${sw}</th><th class="n qty">${qtyHead}</th><th class="n amt">Net sales</th><th class="sh">Share</th>${before ? `<th class="n cmp" title="${escapeHtml(T.sub)}">Trend</th>` : ''}</tr>
       ${list.map(b => `<tr><td class="nm">${escapeHtml(b.name)}${by !== 'item' || b.cat === 'Uncategorized' ? '' : `<small>${escapeHtml(b.cat)}</small>`}</td>
-        <td class="n qty">${qty(b)}</td><td class="n amt">${pesoShort(b.rev)}</td>
-        <td class="sh"><span><i style="width:${Math.max(0, val(b) / max * 100)}%"></i></span>${total ? (val(b) / total * 100).toFixed(1) : 0}%</td>${vs(b)}</tr>`).join('')}
+        <td class="n qty">${qty(b)}</td><td class="n amt">${pesoShort(b.netSales)}</td>
+        <td class="sh"><span><i style="width:${Math.max(0, val(b) / max * 100)}%"></i></span>${pctOf(val(b), total)}</td>${vs(b)}</tr>`).join('')}
     </table>${by === 'item' || by === 'cat' ? `<a class="all" href="${Router.href(VIEW, '', { by: 'items', month: T.month, view: T.view })}">See all in Items →</a>` : ''}</div>`
       : '<p class="note empty">No sales in this period yet.</p>';
   }
 
   // Payment methods, breakdown and staff: the panel's lists, for the whole period.
   function calMix(rows) {
-    const m = calmMetrics(rows);
+    const m = ladder(rows);
     const w = (title, body, side = '') => `<div class="w"><div class="band">${title}<span>${side}</span></div>${body}</div>`;
     if (!rows.some(saleSign)) {
       const none = '<p class="note empty">No sales in this period yet.</p>';
       return w('Payment methods', none) + w('Breakdown', none) + w('Staff', none);
     }
-    const group = (key) => { const g = new Map(); for (const o of rows) { const s = saleSign(o); if (s) g.set(key(o), (g.get(key(o)) || 0) + o.total * s); } return [...g].sort((x, y) => y[1] - x[1]); };
-    const share = (v) => (m.rev ? (v / m.rev * 100).toFixed(1) + '%' : '');
     // What By staff used to add (owner 2026-09-26): each cashier's voids and refunds, quiet after the name.
-    const oops = new Map();
-    for (const o of rows) {
-      const k = o.cashier || '—', x = oops.get(k) || oops.set(k, { v: 0, r: 0 }).get(k);
-      if (o.status === 'voided') x.v++; else if (isReversal(o.status)) x.r++;
-    }
-    const plural = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
-    const note = (k) => { const x = oops.get(k), t = x ? [x.v && plural(x.v, 'void'), x.r && plural(x.r, 'refund')].filter(Boolean) : [];
+    const note = (x) => { const t = [x.voidCount && plural(x.voidCount, 'void'), x.refundCount && plural(x.refundCount, 'refund')].filter(Boolean);
       return t.length ? `<small>${t.join(' · ')}</small>` : ''; };
-    return w('Payment methods', `<div class="rows">${group(orderPaymentLabel).map(([k, v]) => calRow(escapeHtml(k) + (k === 'Account' ? '<span class="pill warn">Unpaid</span>' : ''), pesoShort(v), share(v))).join('')}
-      ${calRow('Total', pesoShort(m.rev), '', 'total')}</div>`)
-      + w('Breakdown', breakdownRows(m), m.voids ? `${m.voids} voided, no revenue` : '')
-      + w('Staff', `<div class="rows">${group(o => o.cashier || '—').map(([k, v]) => calRow(escapeHtml(k) + note(k), pesoShort(v), share(v))).join('')}</div>`);
+    return w('Payment methods', `<div class="rows">${payRows(rows, v => pctOf(v, m.collected))}
+      ${calRow('Total', pesoShort(m.collected), '', 'total')}</div>`)
+      + w('Breakdown', breakdownRows(m))
+      + w('Staff', `<div class="rows">${byStaff(rows).map(([k, x]) => calRow(escapeHtml(k) + note(x), pesoShort(x.netSales), pctOf(x.netSales, m.netSales))).join('')}</div>`);
   }
 
   // the best and slowest day (month) name themselves in the cell's top right corner
   const calTag = (top, slow) => (top ? '<b class="tag">Best</b>' : slow ? '<b class="tag slow">Slowest</b>' : '');
 
   function calMonth(S, rowsIn, byDay, TODAY, monthTarget) {
-    const C = calCompare(S, TODAY), { a, b } = C, d0 = new Date(a);
+    const C = calCompare(S, TODAY), { a, b } = C;
     const prevRows = S.vs ? rowsIn(C.prevA, C.prevB) : null;
-    const cur = calmMetrics(rowsIn(a, b)), prev = calmMetrics(prevRows || []);
+    const cur = ladder(rowsIn(a, b)), prev = ladder(prevRows || []);
     const days = [];
-    for (let t = a; t < b; t = shiftDays(t, 1)) { const rows = byDay.get(isoDate(t)) || []; if (rows.length) days.push({ t, m: calmMetrics(rows) }); }
-    const open = days.filter(d => d.m.n || d.m.retN), done = open.filter(d => d.t < TODAY);   // today isn't over yet
+    for (let t = a; t < b; t = shiftDays(t, 1)) { const rows = byDay.get(isoDate(t)) || []; if (rows.length) days.push({ t, m: ladder(rows) }); }
+    const open = days.filter(d => moved(d.m)), done = open.filter(d => d.t < TODAY);   // today isn't over yet
     const { of, fmt: mf, sm, sub } = MEAS[S.chart], isRev = S.chart === 'rev';
-    const best = done.length > 1 ? done.reduce((x, d) => (!x || of(d.m) > of(x.m) ? d : x), null) : null;
+    const best = done.length > 1 ? SalesMath.bestDay(done.map(d => [d.t, of(d.m)]), TODAY) : null;   // [t, value]
     const worst = done.length > 1 ? done.reduce((x, d) => (!x || of(d.m) < of(x.m) ? d : x), null) : null;
-    const strip = calStrip(S, cur, prev, C.title, open.length, monthTarget);
+    const nOpen = daysOpen(rowsIn(a, b));   // the one "per day" divisor: days with a sale, void or refund
+    const strip = calStrip(S, cur, prev, C.title, nOpen, monthTarget);
 
     // ponytail: a flat share of the monthly target per calendar day. The live target spreads what's
     // left over the days left; that's a "today" promise, and a past day needs a fixed bar to be judged by.
-    // revenue keeps the daily target; the others, the month's own per-day average (margin: the month's margin)
-    const bar = isRev && monthTarget ? monthTarget / daysIn(a) : S.chart === 'mg' ? mgOf(cur) : (open.length ? of(cur) / open.length : 0);
-    const lead = (d0.getDay() + 6) % 7;                                // Monday-first, a hardware shop's week
+    // net sales keeps the daily target; the others, the month's own per-day average (margin: the month's margin)
+    const bar = isRev && monthTarget ? monthTarget / daysIn(a) : S.chart === 'mg' ? mgOf(cur) : (nOpen ? of(cur) / nOpen : 0);
+    const lead = (clock(a).weekday + 6) % 7;                               // Monday-first, a hardware shop's week
     let anyLoss = false, anySlow = false;
-    const barName = S.chart === 'mg' ? `the month's ${mf(bar)} margin`
-      : `the ${mf(bar)}${S.chart === 'n' ? ' receipts' : ''} daily ${isRev && monthTarget ? 'target' : 'average'}`;
+    const barName = S.chart === 'mg' ? `the month's ${mgText(cur)} margin`
+      : `the ${mf(bar)}${S.chart === 'n' ? ' orders' : ''} daily ${isRev && monthTarget ? 'target' : 'average'}`;
     // a missed day stays white; a day over the bar goes green, deeper the further over, up to the month's best day
     const hi = Math.max(0, ...open.map(d => of(d.m)));
     const heat = (v) => `color-mix(in srgb, var(--b-heat) ${Math.round(12 + 43 * (hi > bar ? (v - bar) / (hi - bar) : 1))}%, white)`;
@@ -366,28 +317,30 @@
       for (let i = 0; i < 7; i++) {
         const t = shiftDays(w, i);
         if (t < a || t >= b) { html += '<div class="cell pad"></div>'; continue; }
-        const dn = new Date(t).getDate(), rows = byDay.get(isoDate(t)) || [];
+        const dn = clock(t).day, rows = byDay.get(isoDate(t)) || [];
         const sel = S.sel && S.sel.kind === 'day' && S.sel.at === t ? ' sel' : '', today = t === TODAY ? ' today' : '';
         if (t > TODAY) { html += `<div class="cell future${today}"><span class="d">${dn}</span></div>`; continue; }
-        if (!rows.length) { html += `<div class="cell shut${today}"><span class="d">${dn}</span><span class="m">No sales</span></div>`; continue; }
-        const m = calmMetrics(rows), v = of(m);
+        const m = ladder(rows), v = of(m);
+        if (!moved(m)) { html += `<div class="cell shut${today}"><span class="d">${dn}</span><span class="m">No sales</span></div>`; continue; }
         let cls = '', style = '', tip = '';
-        if (m.rev < 0) { cls = ' loss'; tip = 'More returns than sales'; anyLoss = true; }
+        if (m.netSales < 0) { cls = ' loss'; tip = 'More refunds than sales'; anyLoss = true; }
         else if (bar && v >= bar) { cls = ' heat'; style = ` style="--heat:${heat(v)}"`; tip = `${mf(v - bar)} over ${barName}`; }
         else if (bar) tip = `${mf(bar - v)} short of ${barName}`;
         const slow = worst && worst.t === t && cls !== ' heat';
         if (slow) { cls = ' loss'; tip = 'Slowest day of the month' + (tip ? ' · ' + tip : ''); anySlow = true; }
-        const top = best && best.t === t;
+        const top = best && best[0] === t;
         if (top) { cls += ' best'; tip = 'Best day of the month' + (tip ? ' · ' + tip : ''); }
+        // the refunds ride in the tip (and the day's panel): each line refund is its own row, so the cell ran out of room
+        if (m.refundCount) tip = (tip ? tip + ' · ' : '') + plural(m.refundCount, 'refund');
         html += `<button class="cell${cls}${today}${sel}" data-day="${isoDate(t)}"${style}${tip ? ` title="${tip}"` : ''}><span class="d">${dn}</span>${calTag(top, slow)}`
-          + `<span class="v"><span class="full">${mf(v)}</span><span class="sm">${sm(v)}</span></span><span class="m">${sub(m)}${m.retN ? ` · ${m.retN} ret` : ''}</span></button>`;
+          + `<span class="v"><span class="full">${cellTxt(S.chart, m)}</span><span class="sm">${cellTxt(S.chart, m, sm)}</span></span><span class="m">${sub(m)}</span></button>`;
       }
       const ws = Math.max(w, a), we = Math.min(shiftDays(w, 7), b, shiftDays(TODAY, 1));
       if (ws >= we) { html += '<div class="cell week wk pad"></div>'; continue; }
-      const wr = rowsIn(ws, we), wm = calmMetrics(wr), wdays = new Set(wr.map(o => isoDate(o.ts))).size;
+      const wr = rowsIn(ws, we), wm = ladder(wr), wdays = daysOpen(wr);
       const sel = S.sel && S.sel.kind === 'week' && S.sel.at === ws ? ' sel' : '';
       html += `<button class="cell week wk${sel}" data-week="${isoDate(ws)}"><span class="d">${fmt(ws, { month: 'short', day: 'numeric' })} – ${fmt(we - 1, { day: 'numeric' })}</span>`
-        + `<span class="v">${mf(of(wm))}</span><span class="m">${wdays} days · ${sub(wm)}</span></button>`;
+        + `<span class="v">${cellTxt(S.chart, wm)}</span><span class="m">${plural(wdays, 'day')} · ${sub(wm)}</span></button>`;
     }
     const grid = `<div class="cal">${html}</div><div class="legend"><span><i></i>Below ${barName}</span><span>Above<i class="scale"></i></span>`
       + (anySlow || anyLoss ? `<span><i class="r"></i>${[anySlow && 'Slowest day', anyLoss && 'Lost money'].filter(Boolean).join(' · ')}</span>` : '') + '</div>';
@@ -396,107 +349,108 @@
   }
 
   function calYear(S, rowsIn, byDay, TODAY, monthTarget) {
-    const C = calCompare(S, TODAY), { a, b } = C, y = new Date(a).getFullYear();
+    const C = calCompare(S, TODAY), { a, b } = C, y = clock(a).year;
     const prevRows = S.vs ? rowsIn(C.prevA, C.prevB) : null;
-    const cur = calmMetrics(rowsIn(a, b)), prev = calmMetrics(prevRows || []);
-    const months = Array.from({ length: 12 }, (_, i) => { const t = new Date(y, i, 1).getTime(); return { t, m: calmMetrics(rowsIn(t, monthEnd(t))) }; });
-    const open = months.filter(x => x.m.n), done = open.filter(x => monthEnd(x.t) <= TODAY);   // nor is this month
+    const cur = ladder(rowsIn(a, b)), prev = ladder(prevRows || []);
+    const months = Array.from({ length: 12 }, (_, i) => { const t = monthStart(y, i + 1); return { t, m: ladder(rowsIn(t, monthEnd(t))) }; });
+    const open = months.filter(x => moved(x.m)), done = open.filter(x => monthEnd(x.t) <= TODAY);   // nor is this month
     const { of, fmt: mf, sub } = MEAS[S.chart], isRev = S.chart === 'rev';
     const best = done.length > 1 ? done.reduce((x, d) => (!x || of(d.m) > of(x.m) ? d : x), null) : null;
     const worst = done.length > 1 ? done.reduce((x, d) => (!x || of(d.m) < of(x.m) ? d : x), null) : null;
-    let days = 0;
-    for (let t = a; t < b; t = shiftDays(t, 1)) if (byDay.has(isoDate(t))) days++;
-    const strip = calStrip(S, cur, prev, C.title, days);
+    const strip = calStrip(S, cur, prev, C.title, daysOpen(rowsIn(a, b)));
     const avg = S.chart === 'mg' ? mgOf(cur) : open.length ? of(cur) / open.length : 0;
     const goal = (isRev && monthTarget) || avg;
     const goalName = isRev && monthTarget ? 'Hit the monthly target' : S.chart === 'mg' ? 'Above the year’s margin' : 'Above the monthly average';
     const grid = '<div class="months">' + months.map(({ t, m }) => {
       const name = fmt(t, { month: 'long' });
       if (t > TODAY) return `<div class="cell future"><span class="d">${name}</span></div>`;
-      if (!m.n) return `<div class="cell shut"><span class="d">${name}</span><span class="m">No sales</span></div>`;
+      if (!moved(m)) return `<div class="cell shut"><span class="d">${name}</span><span class="m">No sales</span></div>`;
       const hit = of(m) >= goal, slow = !hit && worst && worst.t === t, top = best && best.t === t;
       const tip = [top && 'Best month of the year', hit && `${goalName} (${mf(goal)})`, slow && 'Slowest month of the year'].filter(Boolean).join(' · ');
       return `<button class="cell${hit ? ' good' : slow ? ' loss' : ''}${top ? ' best' : ''}" data-month="${isoDate(t).slice(0, 7)}"${tip ? ` title="${tip}"` : ''}><span class="d">${name}</span>${calTag(top, slow)}`
-        + `<span class="v">${mf(of(m))}</span><span class="m">${isRev ? `${m.n.toLocaleString()} receipts · ${pct1(mgOf(m))} margin` : sub(m)}</span></button>`;
+        + `<span class="v">${cellTxt(S.chart, m)}</span><span class="m">${isRev ? `${orders(m)} · ${mgText(m)} margin` : sub(m)}</span></button>`;
     }).join('') + `</div><div class="legend"><span><i class="g"></i>${goalName} (${mf(goal)})</span>${worst && of(worst.m) < goal ? '<span><i class="r"></i>Slowest month</span>' : ''}<span>Click a month to open its calendar</span></div>`;
     return { strip, cols: 4, grid, period: String(y), vsLabel: C.label, last: b > TODAY,
       T: { rows: rowsIn(a, b), prev: prevRows, month: y + '-01', view: 'year', sub: y +(b > TODAY ? ' so far' : '') + ' · ' + C.title } };
   }
 
-  // The side panel: everything the old Summary charted, for one day or one week.
-  let calMore = '';   // the receipts past the first 12, for "Show all"
+  // The side panel: everything the old Summary charted, for one day or one week. Two columns of cards;
+  // its receipts are links into Transactions, which owns the full list (owner 2026-10-02).
   function calPanel(S, rowsIn, TODAY) {
     const { kind, at } = S.sel, isDay = kind === 'day';
     const end = isDay ? shiftDays(at, 1) : weekEnd(at);
-    const rows = rowsIn(at, end).sort((x, y) => y.ts - x.ts), m = calmMetrics(rows);
-    const span = Math.round((end - at) / 864e5), pm = calmMetrics(rowsIn(shiftDays(at, -7), shiftDays(at, -7 + span)));
+    const rows = rowsIn(at, end).sort(SalesMath.newestFirst), m = ladder(rows);
+    // the week you're in against the same days of the one before, never half against whole (calCompare's cutoff)
+    const span = Math.round((Math.min(end, shiftDays(TODAY, 1)) - at) / 864e5), pm =ladder(rowsIn(shiftDays(at, -7), shiftDays(at, -7 + span)));
     const title = isDay ? fmt(at, { weekday: 'long', month: 'long', day: 'numeric' })
       : `${fmt(at, { month: 'short', day: 'numeric' })} – ${fmt(end - 1, { month: 'short', day: 'numeric' })}`;
-    const share = (v) => (m.rev ? (v / m.rev * 100).toFixed(1) + '%' : '');
-    const sec = (lbl, body, side = '') => `<div class="p-sec"><div class="lbl">${lbl}<span>${side}</span></div>${body}</div>`;
+    const share = (v, of = m.netSales) => pctOf(v, of);
+    const sec = (lbl, body, side = '', wide = false) => `<div class="p-sec${wide ? ' wide' : ''}"><div class="lbl">${lbl}<span>${side}</span></div>${body}</div>`;
 
     let html = `<div class="p-top"><h2>${title}</h2>
       <button class="icon-btn" data-step="-1" aria-label="Previous ${kind}">‹</button>
       <button class="icon-btn" data-step="1" aria-label="Next ${kind}" ${end > TODAY ? 'disabled' : ''}>›</button>
       <button class="icon-btn" data-close aria-label="Close">✕</button></div>`;
-    html += `<div class="p-head"><span class="val">${pesoShort(m.rev)}</span>${!S.vs ? '' : calmChip(m.rev, pm.rev, isDay ? 'vs the same day last week' : 'vs the week before')}</div>`
-      + `<p class="p-sub">${m.n} receipts · ${pesoShort(m.gp)} gross profit · ${m.n ? pesoShort(m.rev / m.n) : '₱0'} average</p>`;
+    html += `<div class="p-head"><span class="val">${pesoShort(m.netSales)}</span>${!S.vs ? '' : calmChip(m.netSales, pm.netSales, isDay ? 'vs the same day last week' : 'vs the week before')}</div>`
+      + `<p class="p-sub">${orders(m)} · ${pesoShort(m.grossProfit)} gross profit · ${pesoShort(m.averageSale)} average</p>`;
     if (!rows.length) return html + '<p class="p-sub" style="margin-top:20px">No sales.</p>';
 
-    // hours: the ones that sold, one either side
+    // hours: the ones that sold, one either side; a same-day void in its sale's hour (hourOf, the Dashboard's bars)
     const hr = Array(24).fill(0);
-    for (const o of rows) if (saleSign(o)) hr[new Date(o.ts).getHours()] += o.total * saleSign(o);
+    for (const [h, g] of ladder(rows, { by: hourOf(rows) }).groups) hr[h] = g.netSales;
     const sold = hr.map((v, i) => (v ? i : -1)).filter(i => i >= 0);
     const h0 = sold.length ? Math.max(0, sold[0] - 1) : 7, h1 = sold.length ? Math.min(23, sold[sold.length - 1] + 1) : 18;
-    const top = Math.max(...hr.slice(h0, h1 + 1), 1), peak = hr.indexOf(Math.max(...hr));
+    const hi = Math.max(...hr), top = Math.max(...hr.slice(h0, h1 + 1), 1), peak = hi > 0 ? hr.indexOf(hi) : -1;   // only refunds: no busiest hour
     let bars = '', xs = '';
     for (let i = h0; i <= h1; i++) {
       bars += `<div title="${hourShort(i)} · ${pesoShort(hr[i])}"><i class="${i === peak ? 'top' : ''}" style="height:${Math.max(0, hr[i]) / top * 100}%"></i></div>`;
       xs += `<span>${(i - h0) % 3 ? '' : hourShort(i)}</span>`;
     }
-    html += sec('By hour', `<div class="hours">${bars}</div><div class="hours-x">${xs}</div>`, `busiest ${hourShort(peak)}`);
-    html += sec('Breakdown', breakdownRows(m), m.voids ? `${m.voids} voided, no revenue` : '');
+    let grid = sec('By hour', `<div class="hours">${bars}</div><div class="hours-x">${xs}</div>`, peak < 0 ? '' : `busiest ${hourShort(peak)}`, true);
+    grid += sec('Breakdown', breakdownRows(m));
 
-    const group = (key) => { const g = new Map(); for (const o of rows) { const s = saleSign(o); if (s) for (const [k, v] of key(o, s)) g.set(k, (g.get(k) || 0) + v); } return [...g].sort((x, y) => y[1] - x[1]); };
-    html += sec('Payment methods', `<div class="rows">${group((o, s) => [[orderPaymentLabel(o), o.total * s]]).map(([k, v]) => calRow(escapeHtml(k) + (k === 'Account' ? '<span class="pill warn">Not collected</span>' : ''), pesoShort(v), share(v))).join('')}</div>`);
-    const its = group((o, s) => (o.items || []).map(i => [i.name, itemNet(i) * s]));
-    html += sec('Top items', `<div class="rows">${its.slice(0, 5).map(([k, v]) => calRow(escapeHtml(k), pesoShort(v), share(v))).join('')}</div>`, `${its.length} items sold`);
-    html += sec('Staff', `<div class="rows">${group((o, s) => [[o.cashier || '—', o.total * s]]).map(([k, v]) => calRow(escapeHtml(k), pesoShort(v), share(v))).join('')}</div>`);
+    grid += sec('Payment methods', `<div class="rows">${payRows(rows, v => share(v, m.collected))}</div>`);
+    const its = topItems(rows);
+    grid += sec('Top items', `<div class="rows">${its.slice(0, 5).map(r => calRow(escapeHtml(r.name), pesoShort(r.netSales), share(r.netSales))).join('')}</div>`, `${plural(its.length, 'item')} sold`);
+    grid += sec('Staff', `<div class="rows">${byStaff(rows).map(([k, g]) => calRow(escapeHtml(k), pesoShort(g.netSales), share(g.netSales))).join('')}</div>`);
 
     // voids and refunds stay in the list, struck through, never filtered out
     const rc = (o) => {
-      const s = saleSign(o), st = o.status || 'completed';
-      const pill = st === 'completed' ? '' : `<span class="pill ${st === 'return' ? 'down' : ''}">${st[0].toUpperCase() + st.slice(1)}</span>`;
-      const when = isDay ? new Date(o.ts).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }) : fmt(o.ts, { month: 'short', day: 'numeric' });
-      return `<div class="row ${s ? '' : 'dim'}"><span class="t">${when}</span><span class="nm">${escapeHtml(o.number || o.id || '')} · ${escapeHtml(orderPaymentLabel(o))}${pill}</span><span class="amt">${pesoShort(s < 0 ? -o.total : +o.total)}</span></div>`;
+      const when = SalesMath.dateText(o.ts, boZone(), isDay ? 'time' : 'day');
+      return `<a class="row ${rowDim(o)}" href="${escapeHtml(Router.href('transactions', '', { ...txWin, receipt: o.id }))}"><span class="t">${when}</span><span class="nm">${escapeHtml(o.number || o.id || '')} · ${escapeHtml(orderPaymentLabel(o))}${statusPill(o)}</span><span class="amt">${txTotal(o, pesoShort)}</span></a>`;
     };
+    // ponytail: Transactions ranges are 1/7/15/30 days, so a week cut by the month edge opens as its whole
+    // Mon-Sun week, and "See all" drops the count it would not match. A from/to range there if that bites.
+    const txWin = isDay ? { date: isoDate(at) } : { range: '7d', date: isoDate(shiftDays(at, 6 - ((clock(at).weekday + 6) % 7))) };
     const list = rows.filter(o => o.status !== 'saved');
-    calMore = list.slice(0, 50).map(rc).join('');   // 50 at most; Transactions pages the rest
-    return html + sec('Receipts', `<div class="rows" data-rc>${list.slice(0, 12).map(rc).join('')}</div>${list.length > 12 ? `<button class="more" data-act="cal-more">Show ${Math.min(list.length, 50)}</button>` : ''}`, `${list.length} total`);
+    grid += sec('Orders', `<div class="rows">${list.slice(0, 12).map(rc).join('')}</div>`,
+      `<a class="all" href="${escapeHtml(Router.href('transactions', '', txWin))}">See all${isDay || span === 7 ? ' ' + rows.length : ''} →</a>`, true);   // Transactions lists parked sales too
+    return html + `<div class="p-grid">${grid}</div>`;
   }
 
   // One control (owner 2026-09-26): ‹ [period ▾] ›, its menu the presets and, on the Summary, Compare to, like
   // the Dashboard's. Items shares it: the same month, told in more depth. P: { period, vsLabel, last }.
   function periodNav(S, P, compare) {
-    const now = new Date(), cy = now.getFullYear(), cm = now.getMonth(), ym = (y, m) => isoDate(new Date(y, m, 1)).slice(0, 7);
-    const on = (view, m) => S.view === view && (view === 'year' ? new Date(S.month).getFullYear() === +m.slice(0, 4) : isoDate(S.month).startsWith(m));
+    const now = clock(Date.now()), cy = now.year, cm = now.month, ym = (y, m) => isoDate(monthStart(y, m)).slice(0, 7);
+    const isDay = S.sel?.kind === 'day';
+    const on = (view, m) => !isDay && S.view === view && (view === 'year' ? clock(S.month).year === +m.slice(0, 4) : isoDate(S.month).startsWith(m));
     const opt = (attr, v, lbl, checked) => `<button role="menuitemradio" ${attr}="${v}" aria-checked="${checked}">${lbl}</button>`;
     const menu = [['This month', 'month', ym(cy, cm)], ['Last month', 'month', ym(cy, cm - 1)], ['This year', 'year', cy + '-01'], ['Last year', 'year', cy - 1 + '-01']]
       .map(([l, view, m]) => opt('data-go', `${view}|${m}`, l, on(view, m))).join('')
-      + (!compare ? '' : '<hr><h3>Compare to</h3>' + (S.view === 'year' ? [['prev', 'Previous year']] : [['prev', 'Previous month'], ['year', 'Same month last year']])
-        .concat([['', 'No comparison']]).map(([k, l]) => opt('data-vs', k, l, S.vs === k)).join(''));
+      + (!compare ? '' : '<hr><h3>Compare to</h3>' + (isDay ? [['prev', 'Same day last week']] : S.view === 'year' ? [['prev', 'Previous year']] : [['prev', 'Previous month'], ['year', 'Same month last year']])
+        .concat([['', 'No comparison']]).map(([k, l]) => opt('data-vs', k, l, S.vs === k || (isDay && k === 'prev' && !!S.vs))).join(''))
+      + dayPickRow(isDay && S.sel.at);
     return `<div class="nav">
-        <button class="icon-btn" data-shift="-1" aria-label="Previous ${S.view}">‹</button>
+        <button class="icon-btn" data-shift="-1" aria-label="Previous ${isDay ? 'day' : S.view}">‹</button>
         <button class="pick" popovertarget="calRange">${P.period}${P.vsLabel ? `<span class="vs">${P.vsLabel}</span>` : ''}</button>
-        <button class="icon-btn" data-shift="1" aria-label="Next ${S.view}"${P.last ? ' disabled' : ''}>›</button>
+        <button class="icon-btn" data-shift="1" aria-label="Next ${isDay ? 'day' : S.view}"${P.last ? ' disabled' : ''}>›</button>
       </div>
       <div class="menu" id="calRange" popover role="menu">${menu}</div>`;
   }
 
   function calendar(params) {
     const TODAY = dayStart(new Date());
-    const byDay = new Map();
-    for (const o of state.orders) { const k = isoDate(o.ts); (byDay.get(k) || byDay.set(k, []).get(k)).push(o); }
+    const byDay = SalesMath.groupByDay(state.orders, boZone());
     const rowsIn = (a, b) => { const out = []; for (let t = a; t < b; t = shiftDays(t, 1)) out.push(...(byDay.get(isoDate(t)) || [])); return out; };
     const S = calState(params, lastSale());
     const monthTarget = +(state.settings.targets && state.settings.targets.month) || 0;
@@ -516,7 +470,7 @@
       </div>
       <dialog class="tdlg"><form method="dialog" data-cal="target">
         <h2>Monthly target</h2>
-        <label>Revenue to aim for each month<input name="month" type="number" min="0" step="1000" inputmode="numeric" autocomplete="off" value="${monthTarget || ''}"></label>
+        <label>Net sales to aim for each month<input name="month" type="number" min="0" step="1000" inputmode="numeric" autocomplete="off" value="${monthTarget || ''}"></label>
         <p>Days that make a share of it turn green. Leave blank to judge days by the month's average.</p>
         <div class="acts"><button type="button" data-act="cal-cancel">Cancel</button><button type="submit" value="save">Save</button></div>
       </form></dialog>
@@ -530,10 +484,11 @@
     const set = (patch) => Router.setParams({ view: '', month: isoDate(S.month).slice(0, 7), day: '', week: '', page: '', ...patch });   // page: Items' table
     if (hit.dataset.chart) return Router.setParams({ chart: hit.dataset.chart === 'rev' ? '' : hit.dataset.chart });
     if (hit.dataset.go) { const [view, m] = hit.dataset.go.split('|'); return set({ view: view === 'year' ? 'year' : '', month: m }); }
-    if ('vs' in hit.dataset) return set({ view: p.view, vs: hit.dataset.vs });
+    if ('vs' in hit.dataset) return set({ view: p.view, day: p.day || '', vs: hit.dataset.vs });
+    if (hit.dataset.shift && S.sel?.kind === 'day') { const day = shiftDays(S.sel.at, +hit.dataset.shift); return set({ month: isoDate(day).slice(0, 7), day: isoDate(day) }); }
     if (hit.dataset.shift) {
-      const d = new Date(S.month), n = +hit.dataset.shift;
-      const m = S.view === 'year' ? new Date(d.getFullYear() + n, d.getMonth(), 1) : new Date(d.getFullYear(), d.getMonth() + n, 1);
+      const d = clock(S.month), n = +hit.dataset.shift;
+      const m = S.view === 'year' ? monthStart(d.year + n, d.month) : monthStart(d.year, d.month + n);
       return set({ view: p.view, month: isoDate(m).slice(0, 7) });
     }
     if (hit.dataset.month) return set({ month: hit.dataset.month });
@@ -545,9 +500,9 @@
     if (hit.dataset.step) {
       const n = +hit.dataset.step, { kind, at } = S.sel;
       // a week cell is its Monday, or the 1st when the week straddles a month: step to the cell holding the next/previous day
-      const day = kind === 'day' ? shiftDays(at, n) : n > 0 ? weekEnd(at) : shiftDays(at, -1), d = new Date(day);
-      const first = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
-      return set({ month: isoDate(first).slice(0, 7), [kind]: isoDate(kind === 'day' ? day : Math.max(first, shiftDays(day, -((d.getDay() + 6) % 7)))) });
+      const day = kind === 'day' ? shiftDays(at, n) : n > 0 ? weekEnd(at) : shiftDays(at, -1), d = clock(day);
+      const first = monthStart(d.year, d.month);
+      return set({ month: isoDate(first).slice(0, 7), [kind]: isoDate(kind === 'day' ? day : Math.max(first, shiftDays(day, -((d.weekday + 6) % 7)))) });
     }
   }
 
@@ -557,22 +512,7 @@
   // native select (owner 2026-09-30). The comparison is the Summary's Compare to (?vs=) in the period menu, shared.
   // Off, the page is plain facts: no Trend, no chips, no Rank, no What moved -- nothing stands in for a comparison.
   // Show all, and the strip's counts, open their own page: ?all=categories|items|new|unsold|pairs.
-  const METRIC = {
-    revenue: ['Revenue', r => r.revenue, r => pesoShort(r.revenue)],
-    profit: ['Gross profit', r => r.profit, r => pesoShort(r.profit)],
-    cost: ['Cost', r => r.cost, r => pesoShort(r.cost)],
-    qty: ['Qty sold', r => r.qty, r => qtyText(r.qty)],
-  };
   const TOP_N = 10;
-
-  // The head of a ranking by one metric. Share is of the whole cut's total (null when that is
-  // nothing to share out), the bar is against the leader so the top row always fills.
-  function rankTop(rows, key, n = TOP_N) {
-    const of = METRIC[key][1];
-    const list = rows.slice().sort((x, y) => of(y) - of(x)).slice(0, n);
-    const total = rows.reduce((s, r) => s + of(r), 0), max = list.length ? Math.max(0, of(list[0])) : 0;
-    return list.map(r => ({ r, share: total > 0 ? of(r) / total : null, bar: max > 0 ? Math.max(0, of(r)) / max : 0 }));
-  }
 
   // Links inside Items keep the period, the sort and the views; the page, the search and the Show all page stay behind.
   const itemsHref = (patch) => { const { page, all, q, ...keep } = Router.route().params; return Router.href(VIEW, '', { ...keep, ...patch }); };
@@ -590,43 +530,36 @@
   const ALL_PAGES = ['categories', 'items', 'new', 'unsold', 'pairs'];
   // ?ct= cuts the items to one category. Uncategorized is folder '', which the URL can't hold: '-'.
   const catKey = (k) => k || '-';
-  const inCat = (items, ct) => (ct ? items.filter(r => r.folders.map(catKey).includes(ct)) : items);
-  // A ?ct= the period has no row for (it sold nothing this month; the month moved on) cuts nothing: an empty
-  // list with no lit row to click off would be a dead end.
-  const liveCat = (cats, ct) => (cats.some(r => r.revenue > 0 && catKey(r.key) === ct) ? ct : '');
 
   // The period (the Summary's ?month= / ?view=year), the one before it, and both periods' receipts.
   function itemsWindow(p) {
-    const TODAY = dayStart(new Date()), S = calState(p, lastSale()), C = calCompare(S, TODAY);
+    const TODAY = dayStart(new Date()), S = calState(p, lastSale()), C = S.sel?.kind === 'day' ? dayCompare(S) : calCompare(S, TODAY);
     const rows = [], prev = [];
     for (const o of state.orders) {
-      if (o.ts >= C.a && o.ts < C.b) rows.push(o);
-      else if (o.ts >= C.prevA && o.ts < C.prevB) prev.push(o);
+      const t = SalesMath.tsOf(o);
+      if (t >= C.a && t < C.b) rows.push(o);
+      else if (t >= C.prevA && t < C.prevB) prev.push(o);
     }
     // Same month last year names both with their year: "September 2025" against "September 2026"
-    const yr = S.view === 'year', name = (t) => (yr ? String(new Date(t).getFullYear()) : fmt(t, S.vs === 'year' ? { month: 'long', year: 'numeric' } : { month: 'long' }));
-    return { S, C, rows, prev, yr, end: Math.min(C.b, shiftDays(TODAY, 1)), now: name(C.a), was: S.vs ? name(C.prevA) : '' };
+    const yr = S.view === 'year', day = S.sel?.kind === 'day';
+    const name = (t) => (day ? dayLabel(t) : yr ? String(clock(t).year) : fmt(t, S.vs === 'year' ? { month: 'long', year: 'numeric' } : { month: 'long' }));
+    return { S, C, rows, prev, yr, day, today: isoDate(TODAY), end: Math.min(C.b, shiftDays(TODAY, 1)), now:name(C.a), was: S.vs ? name(C.prevA) : '' };
   }
-
-  // Trend is revenue on the period before; a row that sold nothing then is New and sorts first. The CSV sorts by it.
-  const withTrend = (rows, prevRows, any) => { const before = new Map(prevRows.map(r => [r.key, r.revenue]));
-    return rows.map(r => { const was = before.get(r.key) || 0;
-      return { ...r, was, trend: !any ? 0 : was ? (r.revenue - was) / Math.abs(was) : r.revenue > 0 ? Infinity : 0 }; }); };
 
   // One render's data (D) and view (V), held here so the lab's card functions port as they were.
   // ponytail: one Items page renders at a time; pass them in if a second view ever shares this file.
   let D = null, V = null;
-  const pc = (f, d = 1) => (f * 100).toFixed(d) + '%';
-  const chg = (cur, was) => (was > 0 ? (cur - was) / was : cur > 0 ? Infinity : 0);
+  // THE change (SalesMath.change) as a sort and colour key: nothing before but something now ('New') sorts and tints above every rise.
+  const chg = (cur, was) => SalesMath.change(cur, was) ?? (cur > 0 ? Infinity : 0);
   const cmpNum = (p, q) => (typeof p === 'string' ? p.localeCompare(q) : (p > q) - (p < q));   // Infinity-safe
-  const trendTxt = (cur, was) => { const c = chg(cur, was);
-    return c === Infinity ? '<span class="new">New</span>' : !cur && !was ? '—' : Math.round(Math.abs(c) * 100) === 0 ? '<span class="new">0%</span>'
-      : `<span class="${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.round(Math.abs(c) * 100)}%</span>`; };
-  const chip = (c, pts) => { const v = pts ? c : Math.round(c * 100), k = Math.abs(v) < (pts ? .05 : .5) ? 'flat' : v > 0 ? 'up' : 'down';
-    return `<span class="chip ${k}">${k === 'up' ? '+' : k === 'down' ? '−' : ''}${pts ? Math.abs(v).toFixed(1) + ' pts' : Math.abs(v) + '%'}</span>`; };
+  // Every Trend on Items is SalesMath.changeText, the Summary's Top 10 and the Dashboard's text: New, —, 0.0% read quiet.
+  const trendTxt = (cur, was) => { const t = SalesMath.changeText(cur, was); return t === '—' ? t : `<span class="${tone(t) || 'new'}">${t}</span>`; };
+  // A chip: the percent change (changeText), shares included -- no points chips (owner 2026-10-03); a margin's is backoffice.js marginChip.
+  const chipOf = (t) => `<span class="chip ${tone(t) || 'flat'}">${t}</span>`;
+  const chip = (cur, was) => chipOf(SalesMath.changeText(cur, was));
   // A hover tip's HTML, escaped once more to ride in a data-tip attribute.
   const tip = (title, rows) => escapeHtml(`<b>${escapeHtml(title)}</b>` + rows.filter(Boolean).map(([l, v]) => `<div>${escapeHtml(l)}<em>${v}</em></div>`).join(''));
-  const vsRow = (x) => (V.cmp ? ['vs ' + D.was, x.prev ? `${chg(x.rev, x.prev) >= 0 ? '+' : '−'}${Math.round(Math.abs(chg(x.rev, x.prev)) * 100)}%` : 'New'] : null);
+  const vsRow = (x) => (V.cmp ? ['vs ' + D.was, SalesMath.changeText(x.rev, x.prev)] : null);
   const ord = (n) => n + (n % 100 - n % 10 === 10 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
   const allLink = (n, to) => `<a class="link" href="${escapeHtml(itemsHref({ all: to }))}">Show all ${n} →</a>`;
   const toCats = 'data-act="go" data-to="categories"';
@@ -635,26 +568,34 @@
   // the best day; and the pairs bought together (every receipt ever, not the period: three baskets make a pair).
   function itemsData(W) {
     const a = agg(W.rows), pa = agg(W.prev), prods = new Map(state.products.map(p => [p.id, p]));
-    const was = new Map(pa.items.map(r => [r.key, r.revenue])), cwas = new Map(pa.cats.map(r => [catKey(r.key), r.revenue]));
-    const items = a.items.map(r => ({ key: r.key, name: r.name, brand: r.brand, cat: r.cat, cks: r.folders.map(catKey), rev: r.revenue, prev: was.get(r.key) || 0,
-      profit: r.profit, margin: r.margin, qty: r.qty, p: prods.get(r.key) }));
+    const was = new Map(pa.items.map(r => [r.key, r.netSales])), wasQ = new Map(pa.items.map(r => [r.key, r.unitsSold])), cwas = new Map(pa.cats.map(r => [catKey(r.key), r.netSales]));
+    // ck: the one category an item's money counts under (categoryOf); a cut (?ct=) is that category too, so the
+    // items it lists add up to the category row that was clicked. salesBeforeTax: what a margin is of (mgText).
+    const items = a.items.map(r => ({ key: r.key, name: r.name, brand: r.brand, cat: r.cat, ck: catKey(r.ck), rev: r.netSales, prev: was.get(r.key) || 0, pq: wasQ.get(r.key) || 0,
+      profit: r.grossProfit, margin: r.margin, salesBeforeTax: r.salesBeforeTax, qty: r.unitsSold, p: prods.get(r.key), row: r }));
     const seen = new Set(items.map(x => x.key));
-    for (const p of state.products) if (!p.archived && !seen.has(p.id)) items.push({ key: p.id, name: p.name, brand: p.brand || '', cat: folderName(p.folder),
-      cks: (foldersOf(p).length ? foldersOf(p) : ['']).map(catKey), rev: 0, prev: was.get(p.id) || 0, profit: 0, margin: 0, qty: 0, p });
-    // two products can share a name (a Local and a Generic Hollow Block 4"): the brand tells them apart
-    const dup = new Map(); for (const x of items) dup.set(x.name, (dup.get(x.name) || 0) + 1);
-    for (const x of items) if (dup.get(x.name) > 1 && x.brand) x.name += ' · ' + x.brand;
-    const cats = a.cats.filter(r => r.revenue > 0).sort((x, y) => y.revenue - x.revenue).map(r => { const key = catKey(r.key);
-      return { key, name: r.name, rev: r.revenue, prev: cwas.get(key) || 0, profit: r.profit, margin: r.margin, n: items.filter(x => x.cks.includes(key) && x.rev > 0).length }; });
-    const days = new Map(); for (const o of W.rows) { const k = isoDate(o.ts); days.set(k, (days.get(k) || 0) + o.total * saleSign(o)); }
-    const [bk, bv] = [...days].reduce((m, d) => (d[1] > m[1] ? d : m), ['', 0]), bt = bk && fromIso(bk);
-    const best = bk ? [W.yr ? fmt(bt, { month: 'short', day: 'numeric' }) : `${fmt(bt, { weekday: 'short' })} ${new Date(bt).getDate()}`, bv] : null;
+    for (const p of state.products) if (!p.archived && !seen.has(p.id)) items.push({ key: p.id, name: p.name, brand: p.brand || '', cat: folderName(categoryOf(p)),
+      ck: catKey(categoryOf(p)), rev: 0, prev: was.get(p.id) || 0, pq: wasQ.get(p.id) || 0, profit: 0, margin: 0, salesBeforeTax: 0, qty: 0, p });
+    // sold only the period before and archived or deleted now: kept for the before figures (Items sold's chip, Top 10
+    // share, What moved), out of "of N" (listed), All items (no row) and Didn't sell (didntSell)
+    const listed = items.length, keys = new Set(items.map(x => x.key));
+    for (const r of pa.items) if (!keys.has(r.key)) items.push({ key: r.key, name: r.name, brand: r.brand, cat: r.cat, ck: catKey(r.ck),
+      rev: 0, prev: r.netSales, pq: r.unitsSold, profit: 0, margin: 0, salesBeforeTax: 0, qty: 0, p: prods.get(r.key) });
+    apart(items);
+    // Every category that moved money, even one at zero or below, so the rows add up to Net sales
+    const cats = a.cats.sort((x, y) => y.netSales - x.netSales).map(r => { const key = catKey(r.key);
+      return { key, name: r.name, rev: r.netSales, prev: cwas.get(key) || 0, profit: r.grossProfit, margin: r.margin, salesBeforeTax: r.salesBeforeTax, n: r.itemsSold }; });
+    const hour = hourOf(W.rows), days = ladder(W.rows, { by: o => (W.day ? hour(o) : isoDate(o.ts)) }).groups;
+    // a day: SalesMath.bestDay, the calendar's Best tag (finished days only); an hour: the most of the day
+    const sold = [...days].map(([k, g]) => [k, g.netSales]).filter(d => d[1] > 0);
+    const [bk, bv] = (W.day ? sold.reduce((m, d) => (d[1] > m[1] ? d : m), ['', 0]) : SalesMath.bestDay(sold, W.today)) || ['', 0], bt = W.day || bk === '' ? 0 : fromIso(bk);
+    const best = bk === '' ? null : [W.day ? hourShort(bk) : W.yr ? fmt(bt, { month: 'short', day: 'numeric' }) : `${fmt(bt, { weekday: 'short' })} ${clock(bt).day}`, bv];
     const label = new Map(items.map(x => [x.key, x.name])), NM = {}, RC = {};
-    const pairs = HWPOS_INSIGHTS.basketAffinity(loadList(STORAGE_ORDERS), { products: state.products, top: Infinity }).products.map(r => {
+    const pairs = HWPOS_INSIGHTS.basketAffinity(state.orders, { products: state.products, top: Infinity }).products.map(r => {
       NM[r.a] = label.get(r.a) || r.aName; NM[r.b] = label.get(r.b) || r.bName; RC[r.a] = r.countA; RC[r.b] = r.countB;
       // A is the rarer of the two, so the % is how often the rarer one leaves with the other
       const [x, y, of] = r.countA <= r.countB ? [r.a, r.b, r.countA] : [r.b, r.a, r.countB];
-      return { a: x, b: y, n: r.count, of, f: r.count / of };
+      return { a: x, b: y, n: r.count, of, f: r.count / of, pct: pctOf(r.count, of, 0) };
     }).sort((p, q) => q.n - p.n || q.f - p.f).slice(0, 50);   // ponytail: past 50 a pair is a handful of receipts, noise more than a lead
     // The charts draw the top 20. Items joined by pairs fall into groups, roughly the jobs people shop for: biggest first,
     // in each the item with the most pair receipts leads.
@@ -663,64 +604,72 @@
     const g = new Map(); for (const x in par) { const r = f(x); (g.get(r) || g.set(r, []).get(r)).push(x); }
     const w = (x) => top.reduce((s, p) => s + (p.a === x || p.b === x ? p.n : 0), 0);
     const groups = [...g.values()].map(xs => xs.sort((p, q) => w(q) - w(p))).sort((p, q) => q.length - p.length || w(q[0]) - w(p[0]));
-    return { items, cats, best, pairs, top, groups, nodes: groups.flat(), NM, RC, maxN: Math.max(1, ...top.map(p => p.n)),
-      totals: a.totals, ptotals: pa.totals, prevData: pa.totals.sales > 0, now: W.now, was: W.was, unit: W.yr ? 'year' : 'month' };
+    return { items, listed, cats, best, pairs, top, groups, nodes: groups.flat(), NM, RC, maxN: Math.max(1, ...top.map(p => p.n)),
+      totals: a.totals, ptotals: pa.totals, prevData: pa.totals.orders > 0, now: W.now, was: W.was, unit: W.day ? 'day' : W.yr ? 'year' : 'month' };
   }
 
+  // Didn't sell: a catalogue product (not archived, not a deleted one) with no unit sold this period. An archived
+  // product's refund still moves the period's money (All items), but it is not stock sitting still.
+  const didntSell = (x) => !(x.qty > 0) && x.p && !x.p.archived;
   // ---- the strip: each count a link to the list behind it
   function strip() {
-    const it = D.items, sold = it.filter(x => x.rev > 0), wasSold = it.filter(x => x.prev > 0);
-    const rev = sold.reduce((s, x) => s + x.rev, 0), prevRev = wasSold.reduce((s, x) => s + x.prev, 0);
-    const top10 = (xs, f, tot) => (tot > 0 ? [...xs].sort((p, q) => f(q) - f(p)).slice(0, 10).reduce((s, x) => s + f(x), 0) / tot : 0);
-    const t10 = top10(sold, x => x.rev, rev), t10p = top10(wasSold, x => x.prev, prevRev), mg = D.totals.margin, mgp = D.ptotals.margin;
-    const fresh = sold.filter(x => !x.prev).length, dead = it.length - sold.length;
+    // sold = SalesMath.itemsSold's rule (a unit or more); a top-10 share is of the period's Net sales
+    const it = D.items, sold = it.filter(x => x.qty > 0), wasSold = it.filter(x => x.pq > 0);
+    const top10 = (xs, f, tot) => SalesMath.share([...xs].sort((p, q) => f(q) - f(p)).slice(0, 10).reduce((s, x) => s + f(x), 0), tot);
+    const t10 = top10(sold, x => x.rev, D.totals.netSales), t10p = top10(wasSold, x => x.prev, D.ptotals.netSales), mg = D.totals.margin;
+    const fresh = sold.filter(x => !(x.pq > 0)).length, dead = it.filter(didntSell).length;
     const cell = (l, v, extra = '', title = '', to = '') => { const inner = `<div class="l">${l}</div><div class="v">${v}${extra}</div>`;
       return to ? `<a href="${escapeHtml(itemsHref({ all: to }))}" title="${title}">${inner}</a>` : `<div title="${title}">${inner}</div>`; };
     // Without the period before there is nothing to be new against, so that tile shows the best day instead.
     return `<section class="card strip">
-      ${cell('Items sold', `${sold.length}<small>of ${it.length}</small>`, V.cmp && wasSold.length ? chip(chg(sold.length, wasSold.length)) : '', 'Different items with at least one sale', 'items')}
-      ${cell('Top 10 share', pc(t10, 0), V.cmp ? chip((t10 - t10p) * 100, true) : '', 'How much of revenue your 10 best items bring in')}
-      ${cell('Margin', pc(mg), V.cmp ? chip((mg - mgp) * 100, true) : '')}
+      ${cell('Items sold', `${sold.length}<small>of ${D.listed}</small>`, V.cmp && wasSold.length ? chip(sold.length, wasSold.length) : '', 'Different items with at least one sale', 'items')}
+      ${cell('Top 10 share', pct(t10, D.totals.netSales, 0), V.cmp && D.totals.netSales > 0 && D.ptotals.netSales > 0 ? chip(t10, t10p) : '', 'How much of net sales your 10 best items bring in')}
+      ${cell('Margin', pct(mg, D.totals.salesBeforeTax), V.cmp ? marginChip(D.totals, D.ptotals, 'vs ' + D.was) : '')}
       ${V.cmp ? cell('New sellers', fresh, '', `Sold this ${D.unit}, nothing in ${D.was}`, 'new')
-        : cell('Best day', D.best ? `${D.best[0]}<small>${pesoK(D.best[1])}</small>` : '—', '', `The day with the most sales this ${D.unit}`)}
+        : cell(D.unit === 'day' ? 'Best hour' : 'Best day', D.best ? `${D.best[0]}<small>${pesoK(D.best[1])}</small>` : '—', '', `The ${D.unit === 'day' ? 'hour' : 'day'} with the most sales this ${D.unit}`)}
       ${cell('Didn\'t sell', dead, '', `In the catalogue, no sale this ${D.unit}`, 'unsold')}
     </section>`;
   }
 
   // ---- categories
-  const catTotal = () => D.cats.reduce((s, c) => s + c.rev, 0);
-  const catTip = (c) => tip(c.name, [['Revenue', pesoShort(c.rev)], ['Share', pc(c.rev / catTotal())], ['Profit', pesoShort(c.profit)], vsRow(c), ['Items sold', c.n]]);
+  // Share is of the period's Net sales (SalesMath.share). Each sale sits under one category, so they add to 100%.
+  const catShare = (c, dp) => pctOf(c.rev, D.totals.netSales, dp);
+  // A chart can't draw a slice at zero or below: those categories stay in the table, out of the donut and map.
+  const drawn = () => D.cats.filter(c => c.rev > 0);
+  // The donut's and the map's one Other slice: the categories past the top, their money added to the centavo (round2).
+  const otherOf = (rest, name) => ({ key: '', name, rev: money(rest.reduce((s, c) => s + c.rev, 0)), prev: money(rest.reduce((s, c) => s + c.prev, 0)), other: true });
+  const catTip = (c) => tip(c.name, [['Net sales', pesoShort(c.rev)], ['Share', catShare(c)], ['Gross profit', pesoShort(c.profit)], vsRow(c), ['Items sold', c.n]]);
   const catName = (k) => (D.cats.find(c => c.key === k) || {}).name || k;
   const cutBtn = () => (V.ct ? `<button class="cut" data-act="uncut">${escapeHtml(catName(V.ct))} ✕</button>` : '');
   const ctAttr = (c) => `tabindex="0" data-ct="${escapeHtml(c.key)}"`;
 
   function catTable(full) {
-    const list = D.cats, tot = catTotal(), lead = list[0].rev, shown = full ? list : list.slice(0, 5);
-    return `<section class="card"><table class="ct"><thead><tr><th>Category</th><th class="n">Revenue</th><th class="n">Share</th><th class="n">Profit</th>${V.cmp ? '<th class="n">Trend</th>' : ''}</tr></thead><tbody>
-      ${shown.map(c => `<tr ${ctAttr(c)}${c.key === V.ct ? ' class="on"' : ''} data-tip="${catTip(c)}"><td>${escapeHtml(c.name)}</td><td class="n"><span class="ib"><i style="width:${c.rev / lead * 100}%"></i></span><b>${pesoShort(c.rev)}</b></td>`
-        + `<td class="n">${pc(c.rev / tot)}</td><td class="n">${pesoShort(c.profit)}</td>${V.cmp ? `<td class="n">${trendTxt(c.rev, c.prev)}</td>` : ''}</tr>`).join('')}
-      </tbody></table>${full ? '' : `<div class="foot">${allLink(list.length, 'categories')}</div>`}</section>`;
+    const list = D.cats, lead = Math.max(1, list[0].rev), shown = full ? list : list.slice(0, 5);
+    return `<section class="card"><table class="ct"><thead><tr><th>Category</th><th class="n">Net sales</th><th class="n">Share</th><th class="n">Gross profit</th>${V.cmp ? '<th class="n">Trend</th>' : ''}</tr></thead><tbody>
+      ${shown.map(c => `<tr ${ctAttr(c)}${c.key === V.ct ? ' class="on"' : ''} data-tip="${catTip(c)}"><td>${escapeHtml(c.name)}</td><td class="n"><span class="ib"><i style="width:${Math.max(0, c.rev) / lead * 100}%"></i></span><b>${pesoShort(c.rev)}</b></td>`
+        + `<td class="n">${catShare(c)}</td><td class="n">${pesoShort(c.profit)}</td>${V.cmp ? `<td class="n">${trendTxt(c.rev, c.prev)}</td>` : ''}</tr>`).join('')}
+      </tbody></table>${full ? '' : `<div class="foot">${allLink(D.cats.length, 'categories')}</div>`}</section>`;
   }
 
   // Donut: five slices and Other, whatever the store -- 7 categories or 60 look the same.
   function catDonut() {
-    const list = D.cats, tot = catTotal(), top = list.slice(0, 5), rest = list.slice(5);
-    const other = rest.length ? { key: '', name: `Other · ${rest.length} categories`, rev: rest.reduce((s, c) => s + c.rev, 0), prev: rest.reduce((s, c) => s + c.prev, 0), other: true } : null;
+    const list = drawn(), tot = list.reduce((s, c) => s + c.rev, 0), top = list.slice(0, 5), rest = list.slice(5);
+    const other = rest.length ? otherOf(rest, `Other · ${rest.length} categories`) : null;
     const parts = [...top, ...(other ? [other] : [])], col = (i, p) => (p.other ? 'var(--s-other)' : `var(--s${i + 1})`);
     const R = 86, r0 = 58, cx = 100, cy = 100; let a = -Math.PI / 2;
     const arc = (a0, a1) => { const L = a1 - a0 > Math.PI ? 1 : 0, pt = (rr, t) => `${(cx + rr * Math.cos(t)).toFixed(2)},${(cy + rr * Math.sin(t)).toFixed(2)}`;
       return `M${pt(R, a0)}A${R},${R} 0 ${L} 1 ${pt(R, a1)}L${pt(r0, a1)}A${r0},${r0} 0 ${L} 0 ${pt(r0, a0)}Z`; };
     const paths = parts.map((p, i) => { const a1 = a + p.rev / tot * Math.PI * 2, d = arc(a, Math.min(a1, a + Math.PI * 2 - 1e-4)); a = a1;
-      return `<path d="${d}" fill="${col(i, p)}" data-i="${i}" ${p.other ? toCats : `data-ct="${escapeHtml(p.key)}"`} data-tip="${p.other ? tip(p.name, [['Revenue', pesoShort(p.rev)], ['Share', pc(p.rev / tot)]]) : catTip(p)}"${V.ct && p.key === V.ct ? ' class="hot"' : ''}/>`; }).join('');
+      return `<path d="${d}" fill="${col(i, p)}" data-i="${i}" ${p.other ? toCats : `data-ct="${escapeHtml(p.key)}"`} data-tip="${p.other ? tip(p.name, [['Net sales', pesoShort(p.rev)], ['Share', catShare(p)]]) : catTip(p)}"${V.ct && p.key === V.ct ? ' class="hot"' : ''}/>`; }).join('');
     const rows = parts.map((p, i) => `<tr data-i="${i}" ${p.other ? `class="other" tabindex="0" ${toCats}` : `${ctAttr(p)}${p.key === V.ct ? ' class="on"' : ''}`}><td><i class="sw" style="background:${col(i, p)}"></i></td><td>${escapeHtml(p.name)}</td>`
-      + `<td class="n"><b>${pesoShort(p.rev)}</b></td><td class="n">${pc(p.rev / tot)}</td>${V.cmp ? `<td class="n">${trendTxt(p.rev, p.prev)}</td>` : ''}</tr>`).join('');
-    return `<section class="card"><div class="band">Categories<span class="r">Share of revenue</span></div><div class="donut${V.ct ? ' hl' : ''}"><div class="pie"><svg width="200" height="200" viewBox="0 0 200 200">${paths}</svg>
-        <div class="mid"><b>${pesoK(tot)}</b></div></div>
-      <table><thead><tr><th></th><th>Category</th><th class="n">Revenue</th><th class="n">Share</th>${V.cmp ? '<th class="n">Trend</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div>
-      <div class="foot">${allLink(list.length, 'categories')}</div></section>`;
+      + `<td class="n"><b>${pesoShort(p.rev)}</b></td><td class="n">${catShare(p)}</td>${V.cmp ? `<td class="n">${trendTxt(p.rev, p.prev)}</td>` : ''}</tr>`).join('');
+    return `<section class="card"><div class="band">Categories<span class="r">Share of net sales</span></div><div class="donut${V.ct ? ' hl' : ''}"><div class="pie"><svg width="200" height="200" viewBox="0 0 200 200">${paths}</svg>
+        <div class="mid"><b>${pesoK(D.totals.netSales)}</b></div></div>
+      <table><thead><tr><th></th><th>Category</th><th class="n">Net sales</th><th class="n">Share</th>${V.cmp ? '<th class="n">Trend</th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="foot">${allLink(D.cats.length, 'categories')}</div></section>`;
   }
 
-  // Map: size is revenue; colour the change on the period before, or with the comparison off the margin, one hue.
+  // Map: size is net sales; colour the change on the period before, or with the comparison off the margin, one hue.
   // The top 14 (7 on a phone) get a tile, the rest are one Other.
   function squarify(vals, x, y, w, h) {
     const out = [], tot = vals.reduce((s, v) => s + v, 0); let rest = vals.map((v, i) => ({ i, a: v / tot * w * h }));
@@ -738,28 +687,28 @@
   function catMap() {
     // the card's width, from the view's: the page is at most 1180 wide, less its padding, the card's border and the map's margin
     const W = Math.min(1180, root().clientWidth || 1180) - 70, phone = W < 700, N = phone ? 7 : 14;
-    const list = D.cats, tot = catTotal(), top = list.slice(0, N), rest = list.slice(N);
-    const parts = rest.length ? [...top, { key: '', name: `Other · ${rest.length}`, rev: rest.reduce((s, c) => s + c.rev, 0), prev: rest.reduce((s, c) => s + c.prev, 0), other: true }] : top;
+    const list = drawn(), top = list.slice(0, N), rest = list.slice(N);
+    const parts = rest.length ? [...top, otherOf(rest, `Other · ${rest.length}`)] : top;
     const H = phone ? 520 : 440, g = 3, rects = squarify(parts.map(p => p.rev), 0, 0, W, H);
     const ms = parts.filter(p => !p.other).map(p => p.margin), m0 = Math.min(...ms), m1 = Math.max(...ms);
     const tint = (p) => { if (p.other) return '#F3F3F3'; if (!V.cmp) return `color-mix(in srgb, var(--b-data-1) ${Math.round(15 + (p.margin - m0) / (m1 - m0 || 1) * 85)}%, #F7F7F7)`;
       const c = chg(p.rev, p.prev); if (c === Infinity) return 'var(--b-data-tint)';
       const k = Math.min(1, Math.abs(c) / .4); return `color-mix(in srgb, ${c >= 0 ? '#9FD6B9' : '#F2B4A5'} ${Math.round(20 + k * 80)}%, #F3F3F3)`; };
     const tiles = parts.map((p, i) => { const q = rects[i], sz = q.w < 90 || q.h < 58 ? (q.w < 60 || q.h < 30 ? 'xs' : 'sm') : '';
-      return `<button class="${sz}${p.key && p.key === V.ct ? ' on' : ''}" style="left:${q.x / W * 100}%;top:${q.y}px;width:calc(${q.w / W * 100}% - ${g}px);height:${q.h - g}px;background:${tint(p)}" ${p.other ? toCats : `data-ct="${escapeHtml(p.key)}"`} data-tip="${p.other ? tip(p.name + ' categories', [['Revenue', pesoShort(p.rev)], ['Share', pc(p.rev / tot)]]) : catTip(p)}">`
-        + `<b>${escapeHtml(p.name)}</b><span>${pesoK(p.rev)} · ${pc(p.rev / tot, 0)}</span><em>${V.cmp ? trendTxt(p.rev, p.prev) : p.other ? '' : pc(p.margin, 0) + ' margin'}</em></button>`; }).join('');
-    return `<section class="card"><div class="band">Categories<span class="r"><span>Size = revenue</span>${V.cmp ? `<span class="scale">Down<i></i>Up vs ${D.was}</span>` : '<span class="scale m">Thin<i></i>Better margin</span>'}</span></div>
-      <div class="tmap" style="height:${H}px">${tiles}</div><div class="foot">${allLink(list.length, 'categories')}</div></section>`;
+      return `<button class="${sz}${p.key && p.key === V.ct ? ' on' : ''}" style="left:${q.x / W * 100}%;top:${q.y}px;width:calc(${q.w / W * 100}% - ${g}px);height:${q.h - g}px;background:${tint(p)}" ${p.other ? toCats : `data-ct="${escapeHtml(p.key)}"`} data-tip="${p.other ? tip(p.name + ' categories', [['Net sales', pesoShort(p.rev)], ['Share', catShare(p)]]) : catTip(p)}">`
+        + `<b>${escapeHtml(p.name)}</b><span>${pesoK(p.rev)} · ${catShare(p, 0)}</span><em>${V.cmp ? trendTxt(p.rev, p.prev) : p.other ? '' : mgText(p, 0) + ' margin'}</em></button>`; }).join('');
+    return `<section class="card"><div class="band">Categories<span class="r"><span>Size = net sales</span>${V.cmp ? `<span class="scale">Down<i></i>Up vs ${D.was}</span>` : '<span class="scale m">Thin<i></i>Better margin</span>'}</span></div>
+      <div class="tmap" style="height:${H}px">${tiles}</div><div class="foot">${allLink(D.cats.length, 'categories')}</div></section>`;
   }
 
-  // Bars, shared by categories and items: one pesos axis, revenue the light bar and profit the deep part inside it.
+  // Bars, shared by categories and items: one pesos axis, net sales the light bar and gross profit the deep part inside it.
   function barsCard(title, head, list, nameOf, tipOf, attrOf, foot) {
     const lead = Math.max(1, list[0]?.rev || 0), w = (v) => Math.max(0, v) / lead * 100;
     const rows = list.map((x, i) => `<div class="row${x.key && x.key === V.ct ? ' on' : ''}" ${attrOf(x)} data-tip="${tipOf(x)}"><span class="rk">${i + 1}</span><span class="nm">${nameOf(x)}</span>`
       + `<span class="trk"><i class="rev" style="width:${w(x.rev)}%"></i><i class="pf" style="width:${w(x.profit)}%"></i></span>`
-      + `<span class="n v">${pesoShort(x.rev)}</span><span class="n">${pc(x.margin)}</span>${V.cmp ? `<span class="n">${trendTxt(x.rev, x.prev)}</span>` : ''}</div>`).join('');
-    return `<section class="card bars${V.cmp ? '' : ' flat'}"><div class="band">${title}<span class="r"><span class="key"><i style="background:var(--b-data)"></i>Profit</span><span class="key"><i style="background:var(--b-data-1)"></i>Revenue</span></span></div>
-      <div class="row hd"><span></span><span>${head}</span><span></span><span class="n">Revenue</span><span class="n">Margin</span>${V.cmp ? '<span class="n">Trend</span>' : ''}</div>${rows}
+      + `<span class="n v">${pesoShort(x.rev)}</span><span class="n">${mgText(x)}</span>${V.cmp ? `<span class="n">${trendTxt(x.rev, x.prev)}</span>` : ''}</div>`).join('');
+    return `<section class="card bars${V.cmp ? '' : ' flat'}"><div class="band">${title}<span class="r"><span class="key"><i style="background:var(--b-data)"></i>Gross profit</span><span class="key"><i style="background:var(--b-data-1)"></i>Net sales</span></span></div>
+      <div class="row hd"><span></span><span>${head}</span><span></span><span class="n">Net sales</span><span class="n">Margin</span>${V.cmp ? '<span class="n">Trend</span>' : ''}</div>${rows}
       <div class="foot">${foot}</div></section>`;
   }
   const catBars = () => barsCard('Top 10 categories', 'Category', D.cats.slice(0, 10), c => escapeHtml(c.name), catTip, ctAttr, allLink(D.cats.length, 'categories'));
@@ -776,7 +725,7 @@
     g += top.map((c, i) => { const rs = R.map(f => f(c)), a = rs[0], b = i + 1, k = a > b ? 'up' : a < b ? 'down' : 'same';
       const d = `M${xs[0]},${y(rs[0])} C${(xl + xr) / 2},${y(rs[0])} ${(xl + xr) / 2},${y(b)} ${xr},${y(b)}`;
       const was = a === Infinity ? 'New' : a > N ? `${ord(a)} in ${D.was}` : '';
-      return `<g data-ct="${escapeHtml(c.key)}" data-tip="${tip(c.name, [...cols.map(([l], j) => ['Rank, ' + l, rs[j] === Infinity ? '—' : rs[j]]), ['Revenue', pesoShort(c.rev)], vsRow(c)])}">`
+      return `<g data-ct="${escapeHtml(c.key)}" data-tip="${tip(c.name, [...cols.map(([l], j) => ['Rank, ' + l, rs[j] === Infinity ? '—' : rs[j]]), ['Net sales', pesoShort(c.rev)], vsRow(c)])}">`
         + `<path class="ln ${k}" d="${d}" fill="none"/><path class="hit" d="${d}" fill="none"/><circle class="was" cx="${xl}" cy="${y(a)}" r="4"/><circle class="${k === 'same' ? 'was' : k}" cx="${xr}" cy="${y(b)}" r="5"/>`
         + `<text x="${xr + 14}" y="${y(b) + 4}">${b}. ${escapeHtml(c.name)} <tspan class="muted">${pesoK(c.rev)}${was ? ' · ' + escapeHtml(was) : ''}</tspan></text></g>`; }).join('');
     return `<section class="card slope rank"><div class="band">Top 10 categories<span class="r">Where each ranked in ${escapeHtml(D.was)}, and where it ranks now</span></div>
@@ -784,38 +733,42 @@
   }
 
   // ---- items
-  const inCut = () => D.items.filter(x => x.rev > 0 && (!V.ct || x.cks.includes(V.ct)));
-  const itemTip = (x) => tip(x.name, [['Revenue', pesoShort(x.rev)], ['Profit', pesoShort(x.profit)], ['Margin', pc(x.margin)], ['Sold', qtyText(x.qty)], vsRow(x)]);
+  const inCut = () => D.items.filter(x => x.row && (!V.ct || x.ck === V.ct));   // every item the period touched, net at zero or below too: the rows add up to Net sales
+  const itemTip = (x) => tip(x.name, [['Net sales', pesoShort(x.rev)], ['Gross profit', pesoShort(x.profit)], ['Margin', mgText(x)], ['Units sold', qtyText(x.qty)], vsRow(x)]);
   const hit = (x) => !V.q || (x.name + ' ' + x.cat).toLowerCase().includes(V.q.toLowerCase());
   const search = () => `<div class="filters"><input class="q-input search" type="search" placeholder="Search items" value="${escapeHtml(V.q)}" autocomplete="off" aria-label="Search items"></div>`;
   const ITEM_K = { name: x => x.name, qty: x => x.qty, revenue: x => x.rev, profit: x => x.profit, margin: x => x.margin, trend: x => chg(x.rev, x.prev) };
 
   // The table, sortable (?sort= ?dir=). On its own page (full) it is searched and paged, 50 rows a page.
+  // The table's rows in its order; the CSV exports this same list.
+  const tableRows = (full, rows = inCut()) => { const s = V.sort, m = s.dir === 'asc' ? 1 : -1;
+    return rows.filter(x => !full || hit(x)).sort((p, q) => cmpNum(ITEM_K[s.key](p), ITEM_K[s.key](q)) * m); };
   function itemTable(full, rows = inCut()) {
-    const s = V.sort, K = ITEM_K, m = s.dir === 'asc' ? 1 : -1;
-    const all = rows.filter(x => !full || hit(x)).sort((p, q) => cmpNum(K[s.key](p), K[s.key](q)) * m);
-    const pg = full ? paginate(all, V.page) : null, shown = full ? pg.rows : all.slice(0, TOP_N);
+    const s = V.sort, K = ITEM_K;
+    const all = tableRows(full, rows);
+    // the Top 10 card ranks only what sold a unit or more; Show all lists the rest
+    const pg = full ? paginate(all, V.page) : null, shown = full ? pg.rows : all.filter(x => x.qty > 0).slice(0, TOP_N);
     const bk = ['qty', 'revenue', 'profit'].includes(s.key) ? s.key : 'revenue', lead = all.reduce((mx, x) => Math.max(mx, K[bk](x)), 1);
     const th = (k, l, n) => `<th class="${n ? 'n' : ''}" tabindex="0" data-act="sort" data-key="${k}"${s.key === k ? ` aria-sort="${s.dir}ending"` : ''}>${l}${s.key === k ? (s.dir === 'asc' ? ' ↑' : ' ↓') : ''}</th>`;
     const cell = (k, txt, x) => `<td class="n">${k === bk ? `<span class="ib"><i style="width:${Math.max(0, K[k](x)) / lead * 100}%"></i></span>` : ''}${k === 'revenue' ? `<b>${txt}</b>` : txt}</td>`;
-    const foot = full ? '' : all.length > TOP_N ? allLink(all.length, 'items') : '';
+    const foot = full ? '' : all.length > shown.length ? allLink(all.length, 'items') : '';
     const body = shown.length ? shown.map(x => `<tr data-tip="${itemTip(x)}"><td class="nm">${escapeHtml(x.name)}${V.ct ? '' : `<small>${escapeHtml(x.cat)}</small>`}</td>${cell('qty', qtyText(x.qty), x)}`
-      + `${cell('revenue', pesoShort(x.rev), x)}${cell('profit', pesoShort(x.profit), x)}<td class="n">${pc(x.margin)}</td>${V.cmp ? `<td class="n">${trendTxt(x.rev, x.prev)}</td>` : ''}</tr>`).join('')
+      + `${cell('revenue', pesoShort(x.rev), x)}${cell('profit', pesoShort(x.profit), x)}<td class="n">${mgText(x)}</td>${V.cmp ? `<td class="n">${trendTxt(x.rev, x.prev)}</td>` : ''}</tr>`).join('')
       : `<tr><td colspan="6" class="empty">${V.q ? `No item matches “${escapeHtml(V.q)}”.` : 'Nothing here this period.'}</td></tr>`;
-    return `<section class="card">${full ? '' : `<div class="band">Top 10 items ${cutBtn()}</div>`}<table class="it"><thead><tr>${th('name', 'Item')}${th('qty', 'Qty sold', 1)}${th('revenue', 'Revenue', 1)}${th('profit', 'Profit', 1)}${th('margin', 'Margin', 1)}${V.cmp ? th('trend', 'Trend', 1) : ''}</tr></thead><tbody>
+    return `<section class="card">${full ? '' : `<div class="band">Top 10 items ${cutBtn()}</div>`}<table class="it"><thead><tr>${th('name', 'Item')}${th('qty', 'Units sold', 1)}${th('revenue', 'Net sales', 1)}${th('profit', 'Gross profit', 1)}${th('margin', 'Margin', 1)}${V.cmp ? th('trend', 'Trend', 1) : ''}</tr></thead><tbody>
       ${body}</tbody></table>${full ? pagerHtml(pg) : foot ? `<div class="foot">${foot}</div>` : ''}</section>`;
   }
   function itemBars() {
     const all = inCut().sort((p, q) => q.rev - p.rev);
-    return barsCard(`Top 10 items ${cutBtn()}`, 'Item', all.slice(0, TOP_N), x => escapeHtml(x.name) + (V.ct ? '' : `<small> ${escapeHtml(x.cat)}</small>`), itemTip, () => '', allLink(all.length, 'items'));
+    return barsCard(`Top 10 items ${cutBtn()}`, 'Item', all.filter(x => x.qty > 0).slice(0, TOP_N), x => escapeHtml(x.name) + (V.ct ? '' : `<small> ${escapeHtml(x.cat)}</small>`), itemTip, () => '', allLink(all.length, 'items'));
   }
 
   // ---- what moved: this period against the one before, so it only shows while the comparison is on
   function movers() {
-    const A = D.was, B = D.now, d = D.items.map(x => ({ ...x, d: x.rev - x.prev }));
+    const A = D.was, B = D.now, d = D.items.map(x => ({ ...x, d: money(x.rev - x.prev) }));
     const up = d.filter(x => x.d >= 1).sort((p, q) => q.d - p.d).slice(0, 5), dn = d.filter(x => x.d <= -1).sort((p, q) => p.d - q.d).slice(0, 5);
     if (!up.length && !dn.length) return `<section class="card"><div class="band">What moved</div><p class="empty">Nothing sold more or less than in ${escapeHtml(A)}.</p></section>`;
-    const c = (x) => (x.prev > 0 ? `${x.d > 0 ? '+' : '−'}${Math.round(Math.abs(x.d / x.prev) * 100)}%` : 'New');
+    const c = (x) => SalesMath.changeText(x.rev, x.prev);
     const k = (x) => (x.d > 0 ? 'up' : 'down'), lbl = (x) => `${x.d > 0 ? '+' : '−'}${pesoK(Math.abs(x.d))}`;
     const mtip = (x) => tip(x.name, [[B, pesoShort(x.rev)], [A, pesoShort(x.prev)], ['Change', lbl(x)]]);
     if (V.moved === 'lists') {
@@ -845,8 +798,8 @@
   // ---- bought together. A pair's % is taken from whichever of the two is on fewer receipts.
   // Hover keys: a pair is "p3", an item carries its own key plus every pair it's in; hovering lights all that share one.
   const nodeHk = (x) => ['n' + D.nodes.indexOf(x), ...D.top.flatMap((p, i) => (p.a === x || p.b === x ? ['p' + i] : []))].join(' ');
-  const pairTip = (p) => tip(D.NM[p.a] + ' → ' + D.NM[p.b], [['Together', p.n + ' receipts'], ['Receipts with ' + D.NM[p.a], p.of], ['How often', Math.round(p.f * 100) + '%']]);
-  const nodeTip = (x) => tip(D.NM[x], [['Receipts', D.RC[x]], ['Bought with', D.top.filter(p => p.a === x || p.b === x).length + ' items']]);
+  const pairTip = (p) => tip(D.NM[p.a] + ' → ' + D.NM[p.b], [['Together', p.n + ' orders'], ['Orders with ' + D.NM[p.a], p.of], ['How often', p.pct]]);
+  const nodeTip = (x) => tip(D.NM[x], [['Orders', D.RC[x]], ['Bought with', D.top.filter(p => p.a === x || p.b === x).length + ' items']]);
   const edgeW = (p) => 1.5 + p.n / D.maxN * 7;
 
   // Network: each group its own little constellation. Dot = an item (size = receipts), line = a pair (thickness = receipts together).
@@ -874,10 +827,10 @@
     const ps = D.top.filter(p => pos[p.a] && pos[p.b]);
     const edges = ps.map(p => { const i = D.top.indexOf(p), [x1, y1] = pos[p.a], [x2, y2] = pos[p.b];
       return `<g data-hk="p${i}" data-tip="${pairTip(p)}"><line class="eg" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${edgeW(p)}" stroke-opacity="${.25 + .55 * p.f}"/><line class="hit" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/></g>`; }).join('');
-    const pctL = ps.map(p => { const [x1, y1] = pos[p.a], [x2, y2] = pos[p.b]; return `<text class="el" x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 + 4}" text-anchor="middle" data-hk="p${D.top.indexOf(p)}">${Math.round(p.f * 100)}%</text>`; }).join('');
+    const pctL = ps.map(p => { const [x1, y1] = pos[p.a], [x2, y2] = pos[p.b]; return `<text class="el" x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 + 4}" text-anchor="middle" data-hk="p${D.top.indexOf(p)}">${p.pct}</text>`; }).join('');
     const nodes = Object.entries(pos).map(([x, [cx, cy]]) => { const t = tops.has(x);
       return `<g data-hk="${nodeHk(x)}" data-tip="${nodeTip(x)}"><circle cx="${cx}" cy="${cy}" r="${rad(x)}"/><text class="nl${hubs.has(x) ? ' hb' : ''}" x="${cx}" y="${t ? cy - rad(x) - 7 : cy + rad(x) + 14}" text-anchor="middle">${escapeHtml(D.NM[x])}</text></g>`; }).join('');
-    return `<section class="card"><div class="band">Bought together<span class="r">Dot = an item, sized by receipts · Line = bought together</span></div>
+    return `<section class="card"><div class="band">Bought together<span class="r">Dot = an item, sized by orders · Line = bought together</span></div>
       <div class="net"><svg viewBox="0 0 ${W} ${H}">${edges}${nodes}${pctL}</svg></div><div class="foot">${foot}</div></section>`;
   }
 
@@ -895,7 +848,7 @@
   }
   function pairsTable(list, foot) {
     return `<table><tbody>${list.map(p => `<tr data-hk="p${D.pairs.indexOf(p)}" data-tip="${pairTip(p)}"><td>${escapeHtml(D.NM[p.a])}<span class="to">→</span>${escapeHtml(D.NM[p.b])}</td>`
-      + `<td class="n"><span class="ib"><i style="width:${p.f * 100}%"></i></span>${Math.round(p.f * 100)}% of the time</td><td class="n muted">${p.n} of ${p.of} receipts</td></tr>`).join('')}</tbody></table>${foot ? `<div class="foot">${foot}</div>` : ''}`;
+      + `<td class="n"><span class="ib"><i style="width:${p.f * 100}%"></i></span>${p.pct} of the time</td><td class="n muted">${p.n} of ${p.of} orders</td></tr>`).join('')}</tbody></table>${foot ? `<div class="foot">${foot}</div>` : ''}`;
   }
   function pairs() {
     if (!D.pairs.length) return `<section class="card"><div class="band">Bought together</div><p class="empty">No pair bought together often enough yet.</p></section>`;
@@ -913,31 +866,41 @@
   // ---- the pages behind Show all and the strip: [title, meta, body]
   const PAGES = {
     categories: () => ['Categories', `${D.cats.length}`, D.cats.length ? catTable(true) : '<section class="card"><p class="empty">No sales in this period yet.</p></section>'],
-    items: () => ['All items', V.ct ? cutBtn() : `${inCut().length}`, search() + itemTable(true)],
-    new: () => { const xs = D.items.filter(x => x.rev > 0 && !x.prev); return ['New sellers', `${xs.length} · sold in ${escapeHtml(D.now)}, nothing in ${escapeHtml(D.was)}`, search() + itemTable(true, xs)]; },
+    // every item the period touched; the strip's Items sold counts only those that sold a unit, so say both when they differ
+    items: () => { const n = inCut().length, s = inCut().filter(x => x.qty > 0).length;
+      return ['All items', V.ct ? cutBtn() : n === s ? `${n}` : `${n} · ${s} sold`, search() + itemTable(true)]; },
+    new: () => { const xs = D.items.filter(x => x.qty > 0 && !(x.pq > 0)); return ['New sellers', `${xs.length} · sold in ${escapeHtml(D.now)}, nothing in ${escapeHtml(D.was)}`, search() + itemTable(true, xs)]; },
     unsold: () => {
       // What didn't sell, and the stock it leaves on the shelf. With the comparison on, what sold in the period before
       // comes first: those are the ones that stopped selling.
-      const xs = D.items.filter(x => !(x.rev > 0)).map(x => ({ ...x, onHand: Number(x.p?.stock) || 0, val: x.p ? stockValue(x.p) : 0 }))
+      // Stock value is bo-model's stockValueOf, per row and for the total, so the rows add up to it.
+      const xs = D.items.filter(didntSell).map(x => ({ ...x, onHand: Number(x.p.stock) || 0, val: stockValueOf([x.p]) }))
         .sort((p, q) => (V.cmp ? q.prev - p.prev : 0) || q.val - p.val);
-      const tied = xs.reduce((s, x) => s + x.val, 0), found = xs.filter(hit), pg = paginate(found, V.page);
+      const tied = stockValueOf(xs.map(x => x.p)), found = xs.filter(hit), pg = paginate(found, V.page);
       const trs = pg.rows.map(x => `<tr><td class="nm">${escapeHtml(x.name)}<small>${escapeHtml(x.cat)}</small></td><td class="n">${qtyText(x.onHand)}</td><td class="n">${pesoShort(x.val)}</td>`
         + `${V.cmp ? `<td class="n">${x.prev > 0 ? pesoShort(x.prev) : '<span class="new">—</span>'}</td>` : ''}</tr>`).join('')
         || `<tr><td colspan="4" class="empty">${V.q ? `No item matches “${escapeHtml(V.q)}”.` : `Everything sold this ${D.unit}.`}</td></tr>`;
-      return ['Didn\'t sell', `${xs.length} · ${pesoShort(tied)} of stock sitting still`, search() + `<section class="card"><table class="us"><thead><tr><th>Item</th><th class="n">On hand</th><th class="n">Stock value</th>`
+      return ['Didn\'t sell', `${xs.length} · ${pesoShort(tied)} of stock sitting still`, search() + `<section class="card"><table class="us"><thead><tr><th>Item</th><th class="n">In stock</th><th class="n">Stock value</th>`
         + `${V.cmp ? `<th class="n">Sold in ${escapeHtml(D.was)}</th>` : ''}</tr></thead><tbody>${trs}</tbody></table>${pagerHtml(pg)}</section>`];
     },
-    pairs: () => ['Bought together', `${D.pairs.length} pairs · every receipt, not only this ${D.unit}`, D.pairs.length ? `<section class="card pairs">${pairsTable(D.pairs)}</section>` : pairs()],
+    pairs: () => ['Bought together', `${D.pairs.length} pairs · every order, not only this ${D.unit}`, D.pairs.length ? `<section class="card pairs">${pairsTable(D.pairs)}</section>` : pairs()],
   };
 
-  const DOWNLOAD_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4 20h16"/></svg>';
-  function itemsPage(p, v) {
-    const W = itemsWindow(p), { S, C } = W;
+  // Sets D and V for one render (or the CSV) and returns the window.
+  function itemsView(p, v) {
+    const W = itemsWindow(p);
     D = itemsData(W);
     V = { ...v, cmp: v.cmp && D.prevData, ct: D.cats.some(c => c.key === v.ct) ? v.ct : '' };
     if (!V.cmp) { if (V.cats === 'rank') V.cats = 'donut'; if (V.sort.key === 'trend') V.sort = { key: 'revenue', dir: 'desc' }; }
+    // Nothing to draw (only voids, or every category at zero or below): the donut and map have no slice, so Bars,
+    // and the view picker says so.
+    if (!drawn().length && (V.cats === 'donut' || V.cats === 'map')) V.cats = 'bars';
+    return W;
+  }
+  function itemsPage(p, v) {
+    const W = itemsView(p, v), { S, C } = W;
     // The Summary's period menu, Compare to and all: one comparison for both tabs.
-    const P = { period: W.yr ? W.now : fmt(C.a, { month: 'long', year: 'numeric' }), vsLabel: C.label, last: C.b > dayStart(new Date()) };
+    const P = { period: W.yr || W.day ? W.now : fmt(C.a, { month: 'long', year: 'numeric' }), vsLabel: C.label, last: C.b > dayStart(new Date()) };
     const tools = `<button class="btn" data-act="export">${DOWNLOAD_ICON}Export CSV</button>${periodNav(S, P, true)}`;
     const page = PAGES[V.all];
     let head, body;
@@ -946,7 +909,7 @@
       head = `<h1><a class="crumb" href="${escapeHtml(backToItems())}">Items</a><span class="sl">›</span>${title}${meta ? `<small>${meta}</small>` : ''}</h1>${tools}`;
       body = html;
     } else {
-      const cards = D.cats.length
+      const cards = D.cats.some(c => c.rev)
         ? withPick('cats', { donut: catDonut, map: catMap, bars: catBars, rank: catRank }[V.cats]())
           + withPick('list', V.list === 'table' ? itemTable(false) : itemBars())
           + (V.cmp ? withPick('moved', movers()) : '')
@@ -981,18 +944,19 @@
   // The maths, hung off the one global so scripts/sales-check.mjs can run it without
   // a DOM. Not a second global, and nothing in the page reads it.
   window.renderSales.agg = agg;
+  window.renderSales.tops = tops;
+  window.renderSales.topItems = topItems;
   window.renderSales.calCompare = calCompare;
   window.renderSales.calState = calState;
-  window.renderSales.rankTop = rankTop;
+  window.renderSales.taxRows = taxRows;
 
   // ---------- CSV: Items' table, whole -- every item in the period (the picked category's), in its sort ----------
   function exportCsv() {
-    const v = readView(), W = itemsWindow(Router.route().params);
-    const a = agg(W.rows), pa = agg(W.prev);
-    const data = sortRows(withTrend(inCat(a.items, liveCat(a.cats, v.ct)), pa.items, pa.totals.sales > 0), v.sort.key, v.sort.dir);
-    const name = `sales-by-item-${isoDate(W.C.a).slice(0, W.yr ? 4 : 7)}.csv`;
+    const W = itemsView(Router.route().params, readView());
+    const data = tableRows(false).map(x => ({ ...x.row, name: x.name }));
+    const name = `sales-by-item-${isoDate(W.C.a).slice(0, W.day ? 10 : W.yr ? 4 : 7)}.csv`;
     downloadCsv(name, [COLUMNS.map(c => c.label)].concat(data.map(r => COLUMNS.map(c => c.csv(r)))));
-    showToast(`Exported ${data.length} row${data.length === 1 ? '' : 's'}`);
+    showToast(`Exported ${plural(data.length, 'row')}`);
   }
 
   // ---------- Events: one delegated listener per type ----------
@@ -1019,7 +983,6 @@
     if (act === 'export') { exportCsv(); return; }
     if (act === 'cal-target') { el.querySelector('dialog.tdlg').showModal(); return; }
     if (act === 'cal-cancel') { hit.closest('dialog').close(); return; }
-    if (act === 'cal-more') { el.querySelector('[data-rc]').innerHTML = calMore; hit.remove(); return; }
     if (act === 'uncut') { Router.setParams({ ct: '', page: '' }); return; }
     if (act === 'go') { Router.setParams({ all: hit.dataset.to, page: '' }, { replace: false }); return; }
     if (act === 'sort') {
@@ -1028,6 +991,14 @@
       const dir = cur.key === key ? (cur.dir === 'desc' ? 'asc' : 'desc') : key === 'name' ? 'asc' : 'desc';
       Router.setParams({ sort: key, dir, page: '' });
     }
+  });
+
+  // Pick a day (dayPickRow): the Summary opens that day's pop-up; Items shows that one day.
+  document.addEventListener('change', (e) => {
+    const el = root(), t = e.target;
+    if (!el || !el.contains(t) || !t.matches('[data-day-pick]') || !t.value) return;
+    t.closest('[popover]').hidePopover();
+    Router.setParams({ view: '', month: t.value.slice(0, 7), day: t.value, week: '', page: '' }, { replace: false });
   });
 
   // The calendar's target: the month figure only, the same setting the dashboard's Set target writes.
@@ -1088,7 +1059,6 @@
     }
     const el = root();
     if (e.key !== 'Escape' || !el || el.hidden || !el.classList.contains('calm-sales') || document.querySelector('dialog[open]')) return;
-    const p = Router.route().params;
-    if (p.day || p.week) Router.setParams({ day: '', week: '' });
+    if (el.querySelector('.shell.open')) Router.setParams({ day: '', week: '' });   // on Items ?day= is the window, not a pop-up
   });
 })();

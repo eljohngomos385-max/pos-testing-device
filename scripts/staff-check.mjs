@@ -1,26 +1,19 @@
-// Smallest check that fails if the per-person sales rollup on the Staff page breaks.
+// Smallest check that fails if the Staff page's PIN rule breaks. Staff sales are Sales › By staff
+// (summarize grouped by SalesMath.sellerOf), checked in sales-math-check.
 // Run: node scripts/staff-check.mjs
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { salesByName } = require('../bo-staff.js');
+globalThis.isPin = require('../bo-model.js').isPin;
+const { pinClash } = require('../bo-staff.js');
 
-const NOW = Date.UTC(2026, 8, 24, 4);
-const ago = (d) => NOW - d * 864e5;
-const by = salesByName([
-  { cashier: 'Joy P.', status: 'completed', total: 500, ts: ago(1) },
-  { cashier: 'Joy P.', status: 'completed', total: 250.5, ts: ago(3) },
-  { cashier: 'Joy P.', status: 'voided', total: 900, ts: ago(0.5) },      // not money, not the last sale
-  { cashier: 'Joy P.', status: 'refunded', total: 100, ts: ago(2) },
-  { cashier: 'Joy P.', status: 'return', total: -40, ts: ago(2) },
-  { cashier: 'Joy P.', status: 'completed', total: 9999, ts: ago(31) },   // outside 30 days
-  { cashier: 'Aldrin S.', status: 'saved', total: 70, ts: ago(1) },        // a parked cart is not a sale
-], NOW);
-
-assert.deepEqual(by.get('Joy P.'), { revenue: 750.5, sales: 2, voids: 1, refunds: 2, last: ago(1) });
-assert.deepEqual(by.get('Aldrin S.'), { revenue: 0, sales: 0, voids: 0, refunds: 0, last: 0 });
-assert.equal(salesByName([], NOW).size, 0);
-assert.equal(salesByName(null, NOW).size, 0);
+// One PIN, one person (C2): judged on the record they will have, active or not.
+const team = [{ id: 'a', pin: '1234', active: true }, { id: 'b', pin: '1234', active: false }, { id: 'c', pin: '5555', active: true }];
+assert.equal(pinClash(team, 1, { ...team[1], active: true }), true, 'restoring someone whose PIN was taken since');
+assert.equal(pinClash(team, 2, { ...team[2], pin: '1234' }), true, 'taking a PIN someone active has');
+assert.equal(pinClash(team, 2, { ...team[2] }), false, 'keeping your own PIN');
+assert.equal(pinClash(team, 0, { ...team[0], active: false }), false, 'archiving frees it');
+assert.equal(pinClash(team, -1, { pin: '1234', active: false }), false, 'an archived person may share it');
 
 console.log('staff-check: ok');

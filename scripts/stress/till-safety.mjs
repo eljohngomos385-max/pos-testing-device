@@ -96,11 +96,11 @@ const SELL = async (page, lines = 2) => withTimeout(page.evaluate(async (lines) 
   const tender = document.querySelector('#checkoutTender');
   if (tender) tender.value = String(cartTotals().total);
   state.paymentMethod = 'cash';
-  const before = JSON.parse(localStorage.getItem('hwpos.orders.v1') || '[]').length;
+  const before = JSON.parse(HWPOS_STORE.kv.getItem('hwpos.orders.v1') || '[]').length;
   completeSale();
-  const orders = JSON.parse(localStorage.getItem('hwpos.orders.v1') || '[]');
+  const orders = JSON.parse(HWPOS_STORE.kv.getItem('hwpos.orders.v1') || '[]');
   const order = orders[0] || {};
-  const moves = JSON.parse(localStorage.getItem('hwpos.stockMovements.v1') || '[]').filter((m) => m.refId === order.id);
+  const moves = JSON.parse(HWPOS_STORE.kv.getItem('hwpos.stockMovements.v1') || '[]').filter((m) => m.refId === order.id);
   let printed = null;
   const any = new Proxy(function () {}, { get: (_, k) => (k === Symbol.toPrimitive ? () => '' : any), apply: () => any, set: () => true });
   const w = window.open; window.open = () => any;
@@ -120,7 +120,7 @@ const EVENT_STATE = (page) => withTimeout(page.evaluate(async () => {
 const ROUTES = (page) => page.evaluate(() => {
   const views = [...document.querySelectorAll('.side-link[data-view]')].map((b) => '/admin/' + b.dataset.view);
   const cust = (JSON.parse(localStorage.getItem('hwpos.customers.v1') || '[]').slice(-1)[0] || {}).id;
-  const ord = (JSON.parse(localStorage.getItem('hwpos.orders.v1') || '[]')[0] || {}).id;
+  const ord = (JSON.parse(HWPOS_STORE.kv.getItem('hwpos.orders.v1') || '[]')[0] || {}).id;
   return views.concat(cust ? ['/admin/customers/' + cust] : [], ord ? ['/admin/sales/' + ord] : []);
 });
 
@@ -249,7 +249,7 @@ try {
     let oldSale; try { oldSale = await SELL(old.page, 3); } catch (e) { oldSale = { err: e.message }; }
     await old.page.evaluate(() => {   // plus back-office-era rows from before balanceAfter/unitCost existed
       const p = JSON.parse(localStorage.getItem('hwpos.products.v2') || '[]')[0] || { id: 'x' };
-      localStorage.setItem('hwpos.stockMovements.v1', JSON.stringify([{ id: 'm_old', ts: '2025-01-01T00:00:00.000Z', productId: p.id, qty: -1, reason: 'sale', refId: 'o_old' }]));
+      HWPOS_STORE.kv.setItem('hwpos.stockMovements.v1', JSON.stringify([{ id: 'm_old', ts: '2025-01-01T00:00:00.000Z', productId: p.id, qty: -1, reason: 'sale', refId: 'o_old' }]));
     });
     await old.page.close();
     const till = await visitAll(ctx, 'old HEAD-build data');
@@ -314,9 +314,10 @@ try {
     await tp.fill('#searchInput', X); await tp.waitForTimeout(400); await tp.fill('#searchInput', ''); await tp.waitForTimeout(200);
     await tp.evaluate((X) => {
       addProductByCode(X, { source: 'camera' }); addProductByCode(X, { source: 'barcode' });
-      document.querySelector('#custName').value = X; document.querySelector('#custPhone').value = X; document.querySelector('#custAddress').value = X;
+      openCustomerEditModal();
+      ['name', 'phone', 'address'].forEach(n => { document.querySelector(`#customerEditModal [name="${n}"]`).value = X; });
       saveSavedCustomerFromModal();
-      const c = state.customers[state.customers.length - 1]; selectCustomer(c.id);
+      const c = allCustomerRecords().at(-1); selectCustomer(c.id);
     }, X);
     await SELL(tp);
     await tp.evaluate(() => { for (const v of ['orders', 'customers', 'reports', 'sell']) { try { switchView(v); } catch (_) {} } try { openCustomerModal(); } catch (_) {} try { openReceipt(loadOrders()[0]); } catch (_) {} });

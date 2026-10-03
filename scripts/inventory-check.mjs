@@ -6,12 +6,13 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 // bo-inventory.js calls stepFor/isLow/makeMovement as globals, the way the browser
 // hands them over from bo-model.js. Same wiring here, no shims.
+require('../sales-math.js');   // sets globalThis.SalesMath, as the page's <script> does
 const model = require('../bo-model.js');
 Object.assign(globalThis, model);
 const inv = require('../bo-inventory.js');
 
 const { countDelta, suggestQty, runningBalances, urgency, ceilStep, documentMovements, stockMovement,
-  lastPaid, heldPrice, costDrift, reorderGroups } = inv;
+  lastPaid, heldPrice, costDrift, buyingList } = inv;
 const { normalizeProduct, makeMovement, applyMovement, isLow, poLine, PO_DEFAULTS } = model;
 
 /* ---- "Set to count" records the count, not the answer ---- */
@@ -36,8 +37,9 @@ const wire = normalizeProduct({ id: 'w', name: 'Wire', soldBy: 'measure', stock:
   log.push(m);
   applyMovement(wire, m);
 });
-const stock = new Map([['p1', p.stock], ['w', wire.stock]]);
-const { byProduct, balance } = runningBalances(log, (id) => stock.get(id));
+// The column is the running sum of the rows (no cache read): its last row is stockOnHand's.
+const { byProduct, balance } = runningBalances(log);
+assert.deepEqual([balance.get(log[2].id), balance.get(log[4].id)], [model.stockOnHand(log).get('p1'), model.stockOnHand(log).get('w')]);
 
 assert.equal(p.stock, 2);
 assert.deepEqual(byProduct.get('p1').map((m) => balance.get(m.id)), [10, 7, 2]);
@@ -185,14 +187,14 @@ assert.deepEqual(costDrift([pipe], alternating, altPos), [], 'the preferred supp
 assert.equal(costDrift([{ ...pipe, supplierId: 'sC' }], alternating, altPos)[0].paid, 80,
   'preferred supplier never delivered: the last delivery decides');
 
-/* ---- Low stock by supplier, for "Add low stock items" on a PO ---- */
+/* ---- The buying list a new PO fills itself with (on order and per-line suppliers: purchase-order-check) ---- */
 const low1 = normalizeProduct({ id: 'low1', name: 'Cement', cost: 50, stock: 2, reorderPoint: 5, supplierId: 's1' });
 const out1 = normalizeProduct({ id: 'out1', name: 'Hinge', cost: 30, stock: 0, reorderPoint: 10, supplierId: 's1' });
 const fine = normalizeProduct({ id: 'fine', name: 'Paint', cost: 200, stock: 20, reorderPoint: 5, supplierId: 's1' });
 const low2 = normalizeProduct({ id: 'low2', name: 'Wire', cost: 10, stock: 1, reorderPoint: 3, supplierId: 's2' });
-const needs = reorderGroups([low1, out1, fine, low2]);
-assert.deepEqual([...needs.keys()], ['s1', 's2']);
-assert.deepEqual(needs.get('s1').map((x) => x.id), ['out1', 'low1'], 'most urgent first, only at or below the danger level');
+const needs = buyingList([low1, out1, fine, low2]);
+assert.deepEqual(needs.map((x) => x.p.id), ['out1', 'low2', 'low1'], 'most urgent first, only at or below the danger level');
+assert.deepEqual(buyingList([low1, out1, fine, low2], [], 's1').map((x) => x.p.id), ['out1', 'low1']);
 
 assert.equal(suggestQty(low1), 8, 'tops the shelf up to twice the reorder point');
 
@@ -221,6 +223,48 @@ assert.equal(suggestQty(low1), 8, 'tops the shelf up to twice the reorder point'
     { productId: 'a', qty: 1, reason: 'delivery', unitCost: 1, ts: t(21), happenedOn: '2026-09-20' }];
   const h = stockFlow(late, () => 0, [t(19), t(22)], (ms) => new Date(ms).getDate() * 100 + new Date(ms).getHours());
   assert.deepEqual([...h.buckets.keys()], [2110, 2012], 'typed 10 AM stays 10 AM; backdated lands on its day');
+}
+
+/* ---- Stock = the sum of its movements (owner 2026-10-03): derived on load, never written ---- */
+{
+  const { withStock, openingRows } = model;
+  // Two tills, one catalog. Both seed the same opening row (fixed id), then each sells and counts alone.
+  const catalog = [{ id: 'k', soldBy: 'each', stock: 10 }];
+  const open = openingRows(catalog, []);
+  const tillA = open.concat([makeMovement({ productId: 'k', qty: -3, reason: 'sale' })]);
+  const tillB = open.concat([makeMovement({ productId: 'k', qty: -2, reason: 'sale' }),
+    makeMovement({ productId: 'k', qty: 1, reason: 'count', expected: 8, counted: 9 })]);   // a count is its difference
+  // The sync merges the logs by id (data-store mergeSheet), so the shared opening row lands once.
+  const merged = [...new Map(tillA.concat(tillB).map((m) => [m.id, m])).values()];
+  assert.equal(merged.filter((m) => m.reason === 'opening').length, 1);
+  // Each till's saved count is stale (A saved 7, B saved 9); neither is read: 10 - 3 - 2 + 1.
+  assert.equal(withStock([{ id: 'k', stock: 7 }], merged)[0].stock, 6);
+  assert.equal(withStock([{ id: 'k', stock: 9 }], merged.slice().reverse())[0].stock, 6, 'order of arrival does not matter');
+  assert.equal(openingRows([{ id: 'k', stock: 7 }], merged).length, 0, 'the opening row is there: a stale count plants nothing');
+
+  // Nothing writes product.stock as a number of its own. The only writers are bo-model's withStock
+  // (the sum, on load) and applyMovement (that sum stepped by the row being appended).
+  const { readFileSync, readdirSync } = await import('node:fs');
+  const root = new URL('../', import.meta.url);
+  const files = ['app.js', 'backoffice.js', 'data-store.js', 'sales-math.js', 'printer.js',
+    ...readdirSync(root).filter((f) => /^(bo|pos)-.*\.js$/.test(f))];
+  const writes = [];
+  for (const f of files) {
+    readFileSync(new URL(f, root), 'utf8').split('\n').forEach((line, i) => {
+      const m = /(\w+)\.stock\s*[-+*/]?=(?!=)/.exec(line);
+      if (m && !['ROLE_ALLOWED', 'itemsFilter'].includes(m[1])) writes.push(`${f}:${i + 1}: ${line.trim()}`);
+    });
+  }
+  assert.deepEqual(writes.map((w) => w.replace(/:\d+:/, ':')), [
+    'bo-model.js: p.stock = Number(p.stock) || 0;',   // normalizeProduct: the type, not a count
+    'bo-model.js: product.stock = roundQty(product, (Number(product.stock) || 0) + movement.qty);',
+    'bo-model.js: for (const p of products || []) p.stock = roundQty(p, sum.get(p.id) || 0);',
+  ], 'stock written outside withStock/applyMovement:\n' + writes.join('\n'));
+  // Both pages load the catalog through withStock, so every screen reads the derived number.
+  for (const f of ['pos-core.js', 'backoffice.js']) {
+    const body = (/function loadProducts\(\) \{([\s\S]*?)\n\}/.exec(readFileSync(new URL(f, root), 'utf8')) || [])[1] || '';
+    assert.match(body, /withStock\(/, f + ' loadProducts must derive stock');
+  }
 }
 
 console.log('inventory: ok');

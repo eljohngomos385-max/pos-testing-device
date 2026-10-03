@@ -81,12 +81,14 @@ const take = (items, sign) => items.forEach(([id, qty]) => {
 });
 const costOf = (id) => till.bySku(id).cost;
 
-/** Book a sale into the harness's ledger. `sign` flips it back out on a reversal. */
-function book(o, sign) {
+/** Book a sale into the harness's ledger. `sign` flips it back out on a reversal; the money
+ *  comes off the reversal row `paid`, since what was already paid off an account charge goes
+ *  back in cash, not to the account. */
+function book(o, sign, paid = o) {
   liveRevenue = round(liveRevenue + sign * o.total);
   liveCost = round(liveCost + sign * o.items.reduce((n, i) => n + costOf(i.id) * i.qty, 0));
-  cashIn = round(cashIn + sign * o.payments.filter(p => p.method === 'cash').reduce((n, p) => n + p.amount, 0));
-  credited = round(credited + sign * o.payments.filter(p => p.method === 'credit').reduce((n, p) => n + p.amount, 0));
+  cashIn = round(cashIn + sign * paid.payments.filter(p => p.method === 'cash').reduce((n, p) => n + p.amount, 0));
+  credited = round(credited + sign * paid.payments.filter(p => p.method === 'credit').reduce((n, p) => n + p.amount, 0));
   take(o.items.map(i => [i.id, i.qty]), -sign);
 }
 
@@ -143,7 +145,7 @@ for (let d = 0; d < DAYS; d++) {
       tendered: method === 'split' ? Math.max(1, Math.floor(total * 0.4))
               : (method === 'credit' ? null : Math.ceil(total / 100) * 100),
       discount: chance(0.08) ? { type: 'percent', value: pick([5, 10, 15]) } : null,
-      fulfilment: chance(0.12) ? 'delivery' : 'pickup',
+      fulfilment: chance(0.12) ? 'delivery' : 'walkin',
       address: 'Blk 7 Lot 12, San Pedro, Laguna',
       // A cashier cannot wave a sale past the credit limit or an empty shelf; only the
       // over-limit prompt gets a yes here, and only sometimes.
@@ -155,23 +157,26 @@ for (let d = 0; d < DAYS; d++) {
     book(o, 1);
     done.push(o);
 
-    // Receipts come back a few days later, not the same minute.
+    // Receipts come back a few days later, not the same minute. A void is only for today's
+    // sale (an older one is refunded), so it takes the receipt just rung.
     if (done.length > 40 && chance(0.06)) {
       till.clock(dayStart + 12 * 3600000);
-      const old = done.splice(Math.floor(rnd() * (done.length - 20)), 1)[0];
+      const at = Math.floor(rnd() * (done.length - 20));
       const how = pick(['void', 'refund', 'return', 'exchange']);
+      const old = how === 'void' ? done.pop() : done.splice(at, 1)[0];
       if (how === 'exchange') {
         const swap = till.bySku(pick(sellable));
         if (swap.stock < 5) restock(swap);
         const res = till.exchange(old.number, [[swap.id, 1]]);
         if (!res) continue;
-        book(old, -1);
+        book(old, -1, res.refund);
         book(res.exchangeSale, 1);
         done.push(res.exchangeSale);
         exchanged++;
       } else {
-        if (!till[how](old.number)) continue;
-        book(old, -1);
+        const back = till[how](old.number);
+        if (!back) continue;
+        book(old, -1, back);
         if (how === 'void') voided++; else if (how === 'refund') refunded++; else returned++;
       }
     }
@@ -194,8 +199,8 @@ for (let d = 0; d < DAYS; d++) {
 
 // ---- Reconciliation ----------------------------------------------------------
 const orders = till.orders();
-const SALE_SIGN = { completed: 1, return: -1, refunded: 0, voided: 0, saved: 0 };
-const signOf = (o) => SALE_SIGN[o.status || 'completed'] ?? 0;
+const SalesMath = till.context.SalesMath;
+const signOf = SalesMath.sign;
 
 // 1. Stock: the cached number, the movement log, and what the harness knows it sold.
 for (const [id, moved] of shelf) {
@@ -209,19 +214,17 @@ const booked = round(orders.reduce((n, o) => n + signOf(o) * o.total, 0));
 near(booked, liveRevenue, 'revenue: the signed ledger vs what the harness rang', 0.02);
 
 // 3. The drawer.
-const drawer = round(orders.reduce((n, o) =>
-  n + signOf(o) * o.payments.filter(p => p.method === 'cash').reduce((s, p) => s + p.amount, 0), 0));
+const drawer = SalesMath.tenders(orders).get('cash') || 0;
 near(drawer, cashIn, 'drawer: cash taken vs cash booked', 0.02);
 
-// 4. Receivables: every account's stored balance is explained by its ledger, to the centavo.
+// 4. Receivables: every account's balance is the seeded opening plus the year's ledger rows, to the centavo.
 let owedTotal = 0;
+const delta = till.run('ledgerDelta');
 for (const c of till.run('allCustomerRecords()')) {
-  const moved = round(till.ledger(c.id).reduce((n, e) => n + (e.type === 'payment' ? -e.amount : e.amount), 0));
+  const moved = round(till.ledger(c.id).filter(e => e.type !== 'opening').reduce((n, e) => n + delta(e), 0));
   const opening = { 'c-001': 8450, 'c-003': 1280.5, 'c-004': 22450 }[c.id] || 0;
-  // `adjustCustomerBalance` floors an account at zero, so a paid-down account can hold less
-  // than its ledger says. It can never hold MORE -- that would be money nobody owes.
-  assert.ok(c.currentBalance <= round(opening + moved) + 0.005,
-    `${c.name}: the stored balance claims more than the ledger explains (${c.currentBalance} vs ${round(opening + moved)})`);
+  // The seeded balances became `opening` rows (migrateCustomers); the balance is the ledger's sum.
+  near(c.currentBalance, round(opening + moved), `${c.name}: balance vs opening + ledger`, 0.005);
   owedTotal = round(owedTotal + c.currentBalance);
 }
 
@@ -238,9 +241,11 @@ for (const m of till.movements()) {
   assert.ok(orderById.has(m.refId), `a stock movement points at receipt ${m.refId}, which does not exist`);
   byRef.set(m.refId, round((byRef.get(m.refId) || 0) + m.qty));
 }
+const rev = SalesMath.reversals(orders);
 for (const o of orders) {
-  if (o.status === 'voided' || o.status === 'refunded') {
-    near(byRef.get(o.id) || 0, 0, `${o.number} is ${o.status} -- its stock movements must cancel`);
+  const st = SalesMath.rowState(o, rev);
+  if (st === 'voided' || st === 'refunded') {
+    near(byRef.get(o.id) || 0, 0, `${o.number} is ${st} -- its stock movements must cancel`);
   }
 }
 
@@ -249,27 +254,34 @@ for (const o of orders) {
 // check: it derives cost per line itself, so a percent-margin product and a flat-margin one
 // have to come out of it with the profit the shelf implies.
 const byId = new Map(till.products().map(p => [p.id, p]));
+// The back office's own costOf: the cost stamped on the line, else the product's.
+const boCostOf = (i) => (i.cost != null ? i.cost : (byId.get(i.id)?.cost || 0));
+const show = () => '';   // display helpers bo-sales.js names at load; this check only reads agg()
 const agCtx = {
   window: {}, document: { addEventListener() {} },
   productFor: (i) => byId.get(i.id) || null,
-  costOf: (i) => (byId.get(i.id)?.cost || 0),
-  itemNet: (i) => (i.lineTotal != null ? i.lineTotal : i.price * i.qty),
   folderName: (id) => id || 'Uncategorized',
-  orderPaymentLabel: (o) => o.paymentMethodLabel || 'Cash',
-  saleSign: signOf,
+  foldersOf: (p) => [p.folder || ''],
+  categoryOf: (p) => (p ? p.folder || '' : ''),   // bo-model categoryOf over this stub's foldersOf
+  SalesMath,
+  ladder: (rows, opts = {}) => SalesMath.summarize(rows, { costOf: boCostOf, ...opts }),
+  peso: show, pesoShort: show, pesoK: show,
 };
 vm.createContext(agCtx);
 vm.runInContext(readFileSync(new URL('../bo-sales.js', import.meta.url), 'utf8'), agCtx);
 const a = agCtx.window.renderSales.agg(orders);
+const groups = (by) => [...SalesMath.summarize(orders, { by }).groups].map(([name, g]) => ({ name, ...g }));
+const staff = groups(o => o.cashier || '—');
+const pays = [...SalesMath.tenders(orders)].map(([name, netSales]) => ({ name, netSales }));
 
 const sum = (rows, key) => round(rows.reduce((n, r) => n + r[key], 0));
-near(a.totals.revenue, booked, 'Sales summary vs the ledger', 0.02);
-near(sum(a.items, 'revenue'), a.totals.revenue, 'sales by item sums to the summary', 0.05);
-near(sum(a.cats, 'revenue'), a.totals.revenue, 'sales by category sums to the summary', 0.05);
-near(sum(a.staff, 'revenue'), a.totals.revenue, 'sales by employee sums to the summary', 0.05);
-near(sum(a.pays, 'revenue'), a.totals.revenue, 'sales by payment type sums to the summary', 0.05);
-near(sum(a.items, 'profit'), a.totals.profit, 'profit by item sums to the summary', 0.05);
-near(sum(a.cats, 'profit'), a.totals.profit, 'profit by category sums to the summary', 0.05);
+near(a.totals.netSales, booked, 'Sales summary vs the ledger', 0.02);
+near(sum(a.items, 'netSales'), a.totals.netSales, 'sales by item sums to the summary', 0.05);
+near(sum(a.cats, 'netSales'), a.totals.netSales, 'sales by category sums to the summary', 0.05);
+near(sum(staff, 'netSales'), a.totals.netSales, 'sales by employee sums to the summary', 0.05);
+near(sum(pays, 'netSales'), a.totals.netSales, 'sales by payment type sums to the summary', 0.05);
+near(sum(a.items, 'grossProfit'), a.totals.grossProfit, 'gross profit by item sums to the summary', 0.05);
+near(sum(a.cats, 'grossProfit'), a.totals.grossProfit, 'gross profit by category sums to the summary', 0.05);
 
 // The margin, end to end, on its own clean set of receipts. Mixed into a year of discounts
 // and reversals the arithmetic is only checkable against the aggregator's own formula, which
@@ -286,14 +298,14 @@ for (const [id, label] of [['pt001', 'percent 25% on ₱200'], ['pt002', 'flat +
   const row = pa.items.find(r => r.key === id);
   const p = byId.get(id);
   near(p.price, 250, `${label}: the shelf price`);
-  near(row.qty, 4, `${label}: quantity`);
-  near(row.revenue, 1000, `${label}: revenue is price x qty`);
-  near(row.net, round(1000 / (1 + VAT)), `${label}: revenue ex-VAT`, 0.02);
-  near(row.cost, 800, `${label}: cost is the stamped cost x qty`);
-  near(row.profit, round(1000 / (1 + VAT) - 800), `${label}: gross profit`, 0.02);
+  near(row.unitsSold, 4, `${label}: quantity`);
+  near(row.netSales, 1000, `${label}: net sales is price x qty`);
+  near(row.salesBeforeTax, round(1000 / (1 + VAT)), `${label}: sales before tax`, 0.02);
+  near(row.costOfGoods, 800, `${label}: cost is the stamped cost x qty`);
+  near(row.grossProfit, round(1000 / (1 + VAT) - 800), `${label}: gross profit`, 0.02);
 }
 const pc = pa.items.find(r => r.key === 'pt001'), fl = pa.items.find(r => r.key === 'pt002');
-near(pc.profit, fl.profit,
+near(pc.grossProfit, fl.grossProfit,
   'a 25% margin and a flat +₱50 on the same cost earn the same profit -- the mode is how it is typed, not what it is worth');
 near(pc.margin, fl.margin, 'and the same margin percentage');
 
@@ -301,8 +313,8 @@ near(pc.margin, fl.margin, 'and the same margin percentage');
 // same way the revenue is -- so a reversal takes its cost back out too.
 const yearCost = round(orders.reduce((n, o) =>
   n + signOf(o) * o.items.reduce((s, i) => s + (byId.get(i.id)?.cost || 0) * i.qty, 0), 0));
-near(a.totals.cost, yearCost, 'the year cost the report uses vs the cost on the products', 0.05);
-near(a.totals.profit, round(a.totals.net - yearCost), 'gross profit is revenue ex-VAT minus that cost', 0.05);
+near(a.totals.costOfGoods, yearCost, 'the year cost the report uses vs the cost on the products', 0.05);
+near(a.totals.grossProfit, round(a.totals.salesBeforeTax - yearCost), 'gross profit is sales before tax minus that cost', 0.05);
 
 // ---- Report ------------------------------------------------------------------
 const days = new Set(orders.map(o => new Date(o.ts).toDateString())).size;
@@ -311,8 +323,8 @@ console.log(`\nA year on the till — ${DAYS} days, ${days} trading days`);
 console.log(`  receipts       ${String(orders.length).padStart(12)}   (${rung} sales, ${refused} refused at checkout)`);
 console.log(`  reversals      ${String(voided + refunded + returned + exchanged).padStart(12)}   (${voided} void, ${refunded} refund, ${returned} return, ${exchanged} exchange)`);
 console.log(`  deliveries in  ${String(restocks).padStart(12)}`);
-console.log(`  revenue        ${money(a.totals.revenue).padStart(12)}`);
-console.log(`  gross profit   ${money(a.totals.profit).padStart(12)}   ${round(a.totals.margin * 100)}%`);
+console.log(`  net sales      ${money(a.totals.netSales).padStart(12)}`);
+console.log(`  gross profit   ${money(a.totals.grossProfit).padStart(12)}   ${round(a.totals.margin * 100)}%`);
 console.log(`  drawer         ${money(drawer).padStart(12)}`);
 console.log(`  receivables    ${money(owedTotal).padStart(12)}`);
 console.log(`  orders on disk ${String(Math.round(bytes / 1024)).padStart(12)} KB   (${round(bytes / orders.length)} bytes a receipt)`);
@@ -329,16 +341,16 @@ const top = (rows, key, label, n = 5) => {
     console.log(`    ${String(r.name).slice(0, 30).padEnd(32)} ${money(r[key]).padStart(13)}`);
   }
 };
-top(a.items, 'revenue', 'Top items by revenue');
-top(a.items, 'profit', 'Top items by profit');
-top(a.cats, 'revenue', 'By category');
-top(a.pays, 'revenue', 'By payment type');
-top(a.staff, 'revenue', 'By employee');
+top(a.items, 'netSales', 'Top items by net sales');
+top(a.items, 'grossProfit', 'Top items by gross profit');
+top(a.cats, 'netSales', 'By category');
+top(pays, 'netSales', 'By payment type');
+top(staff, 'netSales', 'By employee');
 
 console.log('\n  Margin modes, end to end (4 units each, no discount)');
 for (const [id, label] of [['pt001', 'percent 25%'], ['pt002', 'flat +₱50']]) {
   const p = byId.get(id), r = pa.items.find(x => x.key === id);
-  console.log(`    ${p.name.slice(0, 24).padEnd(26)} ${label.padEnd(12)} cost ${money(p.cost)}  price ${money(p.price)}  profit ${money(r.profit).padStart(10)}  ${round(r.margin * 100)}% margin`);
+  console.log(`    ${p.name.slice(0, 24).padEnd(26)} ${label.padEnd(12)} cost ${money(p.cost)}  price ${money(p.price)}  gross profit ${money(r.grossProfit).padStart(10)}  ${round(r.margin * 100)}% margin`);
 }
 
 if (verbose) {
@@ -359,7 +371,7 @@ assert.ok(lowBefore.length, 'a year of trading should leave something below its 
 const buy = lowBefore.slice(0, 6).map(p => ({
   id: p.id, name: p.name, was: p.stock, order: round(Math.max(p.reorderPoint * 3 - p.stock, 1)),
 }));
-const receiveNow = Object.fromEntries(buy.map((b, i) => [b.id, i === 0 ? round(b.order / 2) : b.order]));
+const receiveNow = Object.fromEntries(buy.map((b, i) => [b.id, i === 0 ? Math.floor(b.order / 2) : b.order]));
 
 const po = till.run(`(() => {
   const buy = ${JSON.stringify(buy)}, take = ${JSON.stringify(receiveNow)};
@@ -373,7 +385,7 @@ const po = till.run(`(() => {
   // Receiving is the only thing on that page that moves stock, and it moves it the same way
   // a sale does -- a movement with a reason, not an assignment to product.stock.
   const map = Object.fromEntries(po.items.map(l => [l.id, take[l.productId]]));
-  const movements = receivePo(po, map);
+  const movements = receivePo(po, map, '', id => byId.get(id));
   movements.forEach(m => applyMovement(byId.get(m.productId), m));
   appendMovements(movements);
   saveProducts();

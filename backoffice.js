@@ -4,78 +4,49 @@
    (hwpos.folders.v2 / hwpos.products.v2) so changes stay in sync.
    ========================================================== */
 
-const STORAGE_FOLDERS  = 'hwpos.folders.v2';
-const STORAGE_PRODUCTS = 'hwpos.products.v2';
-const STORAGE_ORDERS   = 'hwpos.orders.v1';
-const STORAGE_GROUPS   = 'hwpos.groups.v1';
-const STORAGE_ORDER_SEQ = 'hwpos.orderSeq.v1';
-const STORAGE_CUSTOMERS = 'hwpos.customers.v1';
-const STORAGE_CUSTOMER_LEDGER = 'hwpos.customerLedger.v1';
-const STORAGE_DRAWER_CLOSEOUTS = 'hwpos.drawerCloseouts.v1';
-const STORAGE_SETTINGS = 'hwpos.settings.v1';
-const STORAGE_ROLE = 'hwpos.role.v1';
+// The key names live once, in data-store.js (HWPOS_STORAGE_KEYS); these globals are what bo-*.js read.
+const STORAGE_FOLDERS  = HWPOS_STORAGE_KEYS.folders;
+const STORAGE_PRODUCTS = HWPOS_STORAGE_KEYS.products;
+const STORAGE_ORDERS   = HWPOS_STORAGE_KEYS.orders;
+const STORAGE_GROUPS   = HWPOS_STORAGE_KEYS.groups;
+const STORAGE_CUSTOMERS = HWPOS_STORAGE_KEYS.customers;
+const STORAGE_CUSTOMER_LEDGER = HWPOS_STORAGE_KEYS.customerLedger;
+const STORAGE_SETTINGS = HWPOS_STORAGE_KEYS.settings;
 // Who an event row names. ponytail: the store's cashier setting until the back office has a login.
 function actor() { return state.settings?.store?.cashier || ''; }
-const STORAGE_TILE_SIZE  = 'hwpos.tileSize';
+const STORAGE_TILE_SIZE  = HWPOS_STORAGE_KEYS.tileSize;
 // How tall a list row is. A display preference belonging to the person reading the
 // screen, not to the store — it stays on this device and never syncs.
 const STORAGE_DENSITY = 'hwpos.bo.density';
-const STORAGE_SHOW_PRICE = 'hwpos.showPrice';
-const STORAGE_THEME = 'hwpos.theme';
+const STORAGE_SHOW_PRICE = HWPOS_STORAGE_KEYS.showPrice;
+const STORAGE_THEME = HWPOS_STORAGE_KEYS.theme;
 const BACKUP_FORMAT_KEY = 'hwpos.backup.v1';
-const BACKUP_KEYS = [
-  STORAGE_FOLDERS,
-  STORAGE_PRODUCTS,
-  STORAGE_GROUPS,
-  STORAGE_ORDERS,
-  STORAGE_ORDER_SEQ,
-  STORAGE_CUSTOMERS,
-  STORAGE_CUSTOMER_LEDGER,
-  STORAGE_DRAWER_CLOSEOUTS,
-  STORAGE_SETTINGS,
-  STORAGE_ROLE,
-  STORAGE_TILE_SIZE,
-  STORAGE_SHOW_PRICE,
-  STORAGE_THEME,
-];
+// Every store list data-store knows (suppliers, purchase orders, the event logs...), so a list added
+// there is backed up without a second edit here. Restore clears all of them first: an old backup
+// never sits next to today's suppliers or purchase orders. Left out: `role` (who is signed in on
+// this device) and the till-event fallback (the stream lives in IndexedDB, not in a backup yet).
+// ponytail: till events not in the backup; add an async export/import when data-store has one.
+const BACKUP_KEYS = [...new Set([
+  ...Object.entries(HWPOS_STORAGE_KEYS)
+    .filter(([name]) => !['role', 'tillEventsFallback', 'tillEventsDropped'].includes(name)).map(([, key]) => key),
+  STORAGE_CUSTOMERS_MIGRATED, // travels with the data: an old backup has none, so restoring it migrates again
+])]; // access, tileSize, showPrice and theme are in HWPOS_STORAGE_KEYS, so they ride along above
 
-const DEFAULT_SETTINGS = {
-  vatRate: 0.12,
-  vatInclusive: true,
-  defaultFulfilment: 'pickup',
-  fulfilment: { hidden: [], custom: [] },
-  store: {
-    name: 'EJ Hardware',
-    address: 'Main Store, Laguna',
-    phone: '0917-000-0000',
-    tin: '000-000-000-000',
-    registerNo: '1',
-    cashier: 'El John',
-    currency: 'PHP (₱)',
-  },
-  sync: {
-    backendUrl: '',
-    interval: 'Every 30 seconds',
-    allowOfflineSales: true,
-  },
-  printing: {
-    width: '58mm',
-    printOnSale: true,
-    logoOnReceipt: false,
-  },
-};
-
+// The settings defaults live once, in data-store.js (HWPOS_STORE.defaults / readSettings): the till
+// and the back office used to keep a copy each and disagreed on the receipt width.
 const state = {
   view: 'dashboard',
   range: 'today',
   // ponytail: one anchor for the whole back office — every range ends on this day, so the
   // date picker and the range dropdown are the same control expressed twice.
-  anchor: dayStart(new Date()),
+  // 0 until applyRoute sets it (it always runs before the first paint); dayStart reads the
+  // store's zone from state.settings, which isn't there yet while this literal is built.
+  anchor: 0,
   folders: [],
   products: [],
   orders: [],
   customers: [],
-  settings: { ...DEFAULT_SETTINGS },
+  settings: HWPOS_STORE.defaults(),
   detailId: '',
   invQuery: '',
   custQuery: '',
@@ -85,9 +56,15 @@ const state = {
 // ---------- Helpers ----------
 // The minus goes in front of the sign, not between it and the digits: money out of the till
 // reads "−₱972.32", never "₱-972.32". Returns and down deltas are the only negatives here.
-const signed = (s, n) => (n < 0 ? '−₱' : '₱') + s;
-const peso = (n) => signed(Math.abs(Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), n);
-const pesoShort = (n) => signed(Math.round(Math.abs(Number(n) || 0)).toLocaleString('en-PH'), n);
+// The store's currency (Settings › Store), so a US or Japan store reads $ or ¥ with its own decimals.
+const storeCurrency = () => state.settings?.store?.currency;
+const peso = (n, opts) => SalesMath.formatMoney(n, storeCurrency(), opts);
+const pesoShort = (n) => SalesMath.formatMoney(n, storeCurrency(), { whole: true });
+// v as a share of `of` (12.3%; '—' when there is nothing to be a share of): every share on every page.
+const pctOf = (v, of, dp) => SalesMath.pctText(SalesMath.share(v, of), of, dp);
+// Min–max of a family's column, one value when they agree: ₱120.00–₱185.00.
+const rangeText = (vals, fmt = peso) => (Math.min(...vals) === Math.max(...vals)
+  ? fmt(vals[0]) : `${fmt(Math.min(...vals))}&ndash;${fmt(Math.max(...vals))}`);
 // ₱ is a double-barred P. Set at the digits' own size and weight it out-weighs them —
 // on a small value like "₱0" the symbol is physically wider than the number it labels,
 // so the eye lands on the currency instead of the amount. Demote it: the amount reads
@@ -96,13 +73,17 @@ const pesoShort = (n) => signed(Math.round(Math.abs(Number(n) || 0)).toLocaleStr
 // ponytail: big values only (.kpi-value). At 13px the symbol already behaves, and
 // wrapping the ~150 money sites wholesale would print literal tags at the 29 that
 // assign via textContent. Widen by moving a site to innerHTML + curHtml, one at a time.
-const curHtml = (s) => escapeHtml(String(s)).replace(/^(−?)₱/, '$1<span class="cur">₱</span>');
+const curHtml = (s) => {
+  const t = String(s), sym = SalesMath.currencySymbol(storeCurrency()), at = t.indexOf(sym);
+  return at === 0 || (at === 1 && t[0] === '−')
+    ? escapeHtml(t.slice(0, at)) + `<span class="cur">${escapeHtml(sym)}</span>` + escapeHtml(t.slice(at + sym.length)) : escapeHtml(t);
+};
 const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
 function storageGet(key, fallback = null) {
   try {
-    const value = localStorage.getItem(key);
+    const value = HWPOS_STORE.kv.getItem(key);
     return value == null ? fallback : value;
   } catch (_) {
     return fallback;
@@ -111,7 +92,7 @@ function storageGet(key, fallback = null) {
 
 function storageSet(key, value) {
   try {
-    localStorage.setItem(key, value);
+    HWPOS_STORE.kv.setItem(key, value);
     return true;
   } catch (_) {
     return false;
@@ -133,6 +114,8 @@ function escapeHtml(s) {
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
 }
+// The Export CSV button's icon (Sales › Items, Orders).
+const DOWNLOAD_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4 20h16"/></svg>';
 
 // A redraw where the table slides to its new width while the widgets fade in where they stand (owner
 // 2026-09-26: no fly-in, and no gap between the two). The table sits above the rail while it narrows over
@@ -281,23 +264,15 @@ function loadFolders() {
   } catch (_) {}
   return SEED_FOLDERS.map(f => ({ ...f }));
 }
+// On hand = the movement log's sum (bo-model withStock).
 function loadProducts() {
-  try {
-    const raw = storageGet(STORAGE_PRODUCTS);
-    if (raw) return JSON.parse(raw);
-  } catch (_) {}
-  return PRODUCTS.map(p => ({ ...p }));
+  return withStock(readJsonStorage(STORAGE_PRODUCTS, null) || PRODUCTS.map(p => ({ ...p })));
 }
-// Every price and cost change is logged here, at the one write, by diffing against what was
-// stored -- see priceChanges in bo-model.js. `reason` is optional context from the caller.
+// The one catalog write both apps share (bo-model saveCatalog), which logs every price and cost
+// change. `reason` is optional context from the caller.
 function saveProducts(reason = '') {
   buildProductIndex();
-  const before = readJsonStorage(STORAGE_PRODUCTS, null);
-  const ok = storageSet(STORAGE_PRODUCTS, JSON.stringify(state.products));
-  if (ok && Array.isArray(before)) {
-    appendEvents('priceLog', priceChanges(before, state.products, { source: 'backoffice', reason, staff: actor() }));
-  }
-  return ok;
+  return saveCatalog(state.products, { source: 'backoffice', reason, staff: actor() });
 }
 // Categories are created from two places (the product editor and CSV import) and read from
 // four, so the write lives here with the other loaders rather than in a page module.
@@ -315,27 +290,14 @@ function addFolder(name) {
   const held = (id) => state.folders.some((f) => f.id === id)
     || state.products.some((p) => p.folder === id || (p.folders || []).includes(id));
   const id = base && !held('cat_' + base) ? 'cat_' + base : newId('cat');
-  saveFolders(state.folders.concat({ id, name: String(name).trim(), builtin: false, updatedAt: new Date().toISOString() }));
+  saveFolders(state.folders.concat(stampRow({ id, name: String(name).trim(), builtin: false })));   // store id + updatedAt
   return id;
 }
 function loadOrders() {
   const raw = readJsonStorage(STORAGE_ORDERS, []);
-  return Array.isArray(raw) ? raw.map(normalizeOrder).filter(Boolean) : [];
+  return Array.isArray(raw) ? SalesMath.upgradeOrders(raw.map(r => SalesMath.readOrder(r, { rate: SalesMath.taxOpts(state.settings).rate })).filter(Boolean), boZone()) : [];
 }
-function loadSavedCustomers() {
-  const raw = readJsonStorage(STORAGE_CUSTOMERS, []);
-  return Array.isArray(raw) ? raw : [];
-}
-function loadSettings() {
-  const saved = readJsonStorage(STORAGE_SETTINGS, {}) || {};
-  return {
-    ...DEFAULT_SETTINGS,
-    ...saved,
-    store: { ...DEFAULT_SETTINGS.store, ...(saved.store || {}) },
-    sync: { ...DEFAULT_SETTINGS.sync, ...(saved.sync || {}) },
-    printing: { ...DEFAULT_SETTINGS.printing, ...(saved.printing || {}) },
-  };
-}
+const loadSettings = () => HWPOS_STORE.readSettings(readJsonStorage(STORAGE_SETTINGS, {}) || {});
 function saveSettings() {
   return storageSet(STORAGE_SETTINGS, JSON.stringify(state.settings));
 }
@@ -384,14 +346,15 @@ function buildFullBackup() {
       orders: readJsonStorage(STORAGE_ORDERS, []).length || 0,
       customers: readJsonStorage(STORAGE_CUSTOMERS, []).length || 0,
       ledgerEntries: readJsonStorage(STORAGE_CUSTOMER_LEDGER, []).length || 0,
-      drawerCloseouts: readJsonStorage(STORAGE_DRAWER_CLOSEOUTS, []).length || 0,
       folders: readJsonStorage(STORAGE_FOLDERS, []).length || 0,
     },
   };
 }
 
 function exportFullBackup() {
-  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  // The file name reads on the store clock, like every date in the back office.
+  const now = Date.now(), d = SalesMath.dateParts(now, boZone()), two = (n) => String(n).padStart(2, '0');
+  const stamp = `${isoDate(now)}-${two(d.hour)}-${two(d.minute)}-${two(new Date(now).getSeconds())}`;
   downloadJson(`hardware-pos-backup-${stamp}.json`, buildFullBackup());
   showToast('Backup exported');
 }
@@ -422,8 +385,8 @@ function validateBackupPayload(payload) {
 
 function restoreFullBackup(payload) {
   const values = validateBackupPayload(payload);
-  BACKUP_KEYS.forEach(key => localStorage.removeItem(key));
-  Object.entries(values).forEach(([key, value]) => localStorage.setItem(key, value));
+  BACKUP_KEYS.forEach(key => HWPOS_STORE.kv.removeItem(key));
+  Object.entries(values).forEach(([key, value]) => HWPOS_STORE.kv.setItem(key, value));
   refreshSharedState();
   renderCurrentView();
   showToast('Backup restored');
@@ -460,99 +423,22 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-const PAY_LABELS = { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Account', split: 'Split payment', unpaid: 'Not completed', other: 'Other' };
-
-function normalizeOrder(raw = {}) {
-  if (!raw || typeof raw !== 'object') return null;
-  const items = Array.isArray(raw.items) ? raw.items : [];
-  const total = toNumber(raw.total, items.reduce((sum, i) => sum + toNumber(i.price) * toNumber(i.qty, 1), 0));
-  // The POS coerces paymentMethod to cash/credit/split/unpaid for drawer + credit
-  // math and keeps the real tendered method in paymentKind/paymentMethodLabel.
-  // Carry both through, or GCash/QR/Maya all read as "Cash" in here.
-  const kind = String(raw.paymentKind || raw.paymentMethod || 'cash');
-  return {
-    paymentKind: kind,
-    // ponytail: credit always reads "Account" (the POS wrote "Charge to account" before
-    // 2026-09-25). Every other kind honours the stored label (custom names like "Maya").
-    paymentMethodLabel: kind === 'credit' ? PAY_LABELS.credit : String(raw.paymentMethodLabel || PAY_LABELS[kind] || kind),
-    vatAmount: toNumber(raw.vatAmount, 0),
-    discount: toNumber(raw.discount, 0),
-    // Only the order dialog reads these four; the tables never did, which is why they
-    // were dropped here and the receipt had nothing to show.
-    subtotal: toNumber(raw.subtotal, items.reduce((sum, i) => sum + toNumber(i.price) * toNumber(i.qty, 1), 0)),
-    tendered: toNumber(raw.tendered, 0),
-    change: toNumber(raw.change, 0),
-    deliveryAddress: String(raw.deliveryAddress || ''),
-    id: String(raw.id || raw.number || ''),
-    number: String(raw.number || raw.id || ''),
-    ts: toNumber(raw.ts, Date.now()),
-    status: ['saved', 'completed', 'voided', 'refunded', 'return'].includes(raw.status) ? raw.status : 'completed',
-    cashier: String(raw.cashier || 'El John'),
-    customer: raw.customer ? { ...raw.customer, name: String(raw.customer.name || '') } : null,
-    paymentMethod: raw.paymentMethod || 'cash',
-    fulfilment: String(raw.fulfilment || 'pickup').trim() || 'pickup',
-    payments: Array.isArray(raw.payments) ? raw.payments : [],
-    items: items.map(i => ({
-      id: String(i.productId || i.id || ''),
-      name: String(i.name || 'Item'),
-      sku: String(i.sku || ''),
-      unit: String(i.unit || 'pc'),
-      // Floor at 0, not 1: a hardware store sells 2.5 m of wire and 0.75 kg of nails,
-      // and clamping that up to 1 silently invents stock and revenue.
-      qty: Math.max(0, toNumber(i.qty, 1)),
-      price: toNumber(i.price, 0),
-      cost: i.cost != null ? toNumber(i.cost, 0) : null,
-      lineTotal: i.lineTotal != null ? toNumber(i.lineTotal, 0) : null,
-    })),
-    total,
-  };
-}
-
-function allCustomerRecords() {
-  const seen = new Set();
-  const out = [];
-  for (const c of state.customers || []) {
-    if (!c?.id || seen.has(c.id)) continue;
-    seen.add(c.id);
-    out.push(c);
-  }
-  for (const c of (typeof CUSTOMERS !== 'undefined' ? CUSTOMERS : [])) {
-    if (!c?.id || seen.has(c.id)) continue;
-    seen.add(c.id);
-    out.push(c);
-  }
-  return out;
-}
-
-function dayStart(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
-
-function isoDate(ts) {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function shiftDays(ts, n) {
-  const d = new Date(ts);
-  d.setDate(d.getDate() + n);
-  return d.getTime();
-}
-
-function rangeStart(range = state.range) {
-  return shiftDays(state.anchor, -((RANGE_DAYS[range] || 1) - 1));
-}
-
+// The store's clock (SalesMath): every day boundary, date and time on these pages is the STORE'S,
+// never the browser's. These names stay because the bo-*.js pages call them; each is one line over
+// SalesMath. `boZone()` reads state.settings at call time, so a Settings change applies at once.
+const boZone = () => SalesMath.storeZone(state.settings);
+const dayStart = (ts) => SalesMath.dayStartMs(SalesMath.dayKey(+new Date(ts), boZone()), boZone());
+const isoDate = (ts) => SalesMath.dayKey(+new Date(ts), boZone());
+// n store days later, same time of day (a day start stays a day start across a clock change).
+const shiftDays = (ts, n) => { ts = +new Date(ts); return SalesMath.dayStartMs(SalesMath.addDays(isoDate(ts), n), boZone()) + (ts - dayStart(ts)); };
+const rangeStart = (range = state.range) => SalesMath.rangeWindow(RANGE_DAYS[range] || 1, state.anchor, boZone()).from;
 // exclusive: the day after the anchor
-function rangeEnd() {
-  return shiftDays(state.anchor, 1);
-}
+const rangeEnd = () => SalesMath.rangeWindow(1, state.anchor, boZone()).to;
 
-function orderPaymentLabel(order) {
-  return order.paymentMethodLabel || PAY_LABELS[order.paymentKind] || 'Cash';
-}
+// An order's payment in one word: its tender, 'Split payment', or the store's own method name.
+// SalesMath.payWord is the one namer (the till's Orders rail uses it too); bo-sales and
+// bo-transactions call this name.
+const orderPaymentLabel = (o) => SalesMath.payWord(o);
 
 
 // ---------- Routing ----------
@@ -562,8 +448,8 @@ function orderPaymentLabel(order) {
 const VIEWS = {
   dashboard: { label: 'Dashboard', render: () => renderDashboard() },
   sales:     { label: 'Sales',     render: () => renderSales() },
-  transactions: { label: 'Transactions', render: () => renderTransactions() },
-  products:  { label: 'Products',  render: () => renderProducts() },
+  transactions: { label: 'Orders', render: () => renderTransactions() },
+  products:  { label: 'Items',  render: () => renderProducts() },
   inventory: { label: 'Stock history', render: () => renderInventory() },
   categories: { label: 'Categories', render: () => renderCategories() },
   modifiers: { label: 'Modifiers', render: () => renderModifiers() },
@@ -576,7 +462,7 @@ const VIEWS = {
 // A page with sub-pages registers them here ({ param, def, items: [[key, label]] }) and they
 // render as a tree under its sidebar link -- the page itself carries no tab strip.
 const SUBNAV = globalThis.HWPOS_SUBNAV = globalThis.HWPOS_SUBNAV || {};
-const viewLabel = (v) => (VIEWS[v] ? VIEWS[v].label : 'Back Office');
+const viewLabel = (v) => (VIEWS[v] ? VIEWS[v].label : 'Back office');
 
 // The URL is the state. `applyRoute` is the only thing that writes state.view /
 // state.range / state.anchor / the search boxes — every control navigates instead
@@ -594,8 +480,9 @@ function applyRoute() {
   state.detailId = id || '';
   state.range = RANGE_DAYS[params.range] ? params.range : 'today';
   // A date that doesn't parse is the same as no date: today.
-  const picked = params.date ? new Date(`${params.date}T00:00`) : null;
-  state.anchor = picked && !isNaN(picked) ? dayStart(picked) : dayStart(new Date());
+  // The date is a STORE day, so it starts at the store's midnight, not the browser's.
+  const picked = /^\d{4}-\d{2}-\d{2}$/.test(params.date || '') ? SalesMath.dayStartMs(params.date, boZone()) : NaN;
+  state.anchor = Number.isFinite(picked) ? dayStart(picked) : dayStart(Date.now());
   // Only one view is on screen, so the three search boxes share one param.
   state.invQuery = state.custQuery = state.txQuery = params.q || '';
   // Each page keeps its own scroll (owner 2026-09-26). .bo-main is one scroller for every page, so
@@ -798,11 +685,12 @@ function renderCurrentView() {
 }
 
 function refreshSharedState() {
+  state.settings = loadSettings();   // first: upgrading old orders reads the store's day from it
   state.folders  = loadFolders();
-  state.products = loadProducts();
+  state.products = loadProducts();   // on hand derived from the log, once per refresh
   state.orders = loadOrders();
-  state.customers = loadSavedCustomers();
-  state.settings = loadSettings();
+  state.reversals = SalesMath.reversals(state.orders);   // sale id → its void / refund row
+  migrateCustomers();   // once: stored balances become opening rows (bo-model)
   buildProductIndex();
 }
 
@@ -810,26 +698,28 @@ function refreshSharedState() {
 const RANGE_DAYS  = { today: 1, '7d': 7, '15d': 15, '30d': 30 };
 const RANGE_LABEL = { today: 'Today', '7d': 'Last 7 days', '15d': 'Last 15 days', '30d': 'Last 30 days' };
 
-function shortDate(ts) {
-  return new Date(ts).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' });
-}
+// Dates as people read them, on the store's clock (SalesMath.dateText).
+const shortDate = (ts) => SalesMath.dateText(ts, boZone(), 'dayYear');
 
+// "Thu, Oct 1": one picked day, on every date menu's button.
+const dayLabel = (ts) => SalesMath.dateText(ts, boZone(), 'weekdayDay');
 // The anchor can sit in the past, and "Today" would then be a lie.
 function rangeLabel(range = state.range) {
-  if (state.anchor === dayStart(new Date())) return range === 'today' ? 'Today' : RANGE_LABEL[range];
-  return range === 'today' ? shortDate(state.anchor) : `${RANGE_DAYS[range]} days to ${shortDate(state.anchor)}`;
+  if (state.anchor === dayStart(Date.now())) return range === 'today' ? 'Today' : RANGE_LABEL[range];
+  return range === 'today' ? dayLabel(state.anchor) : `${RANGE_DAYS[range]} days to ${shortDate(state.anchor)}`;
 }
-const STATUS_TONE = {
-  completed: ['ok', 'Completed'],
-  voided:    ['danger', 'Voided'],
-  refunded:  ['warn', 'Refunded'],
-  return:    ['warn', 'Return'],
-  saved:     ['muted', 'Saved'],
-};
+// The last row of every date menu (owner 2026-10-02): one day, any day. It sets the shared ?date=;
+// each page's change handler also switches its own period to one day, and its presets clear ?date=.
+// The picked value as a ?date=: today is no date, so a tab left open still rolls over at midnight.
+const dayParam = (v) => (v === isoDate(Date.now()) ? '' : v);
+function dayPickRow(ts) {
+  const today = dayStart(Date.now());
+  return `<hr data-app-only><label class="ends" data-app-only>Pick a day<input type="date" data-day-pick value="${ts && ts !== today ? isoDate(ts) : ''}" max="${isoDate(today)}" /></label>`;
+}
 
 // Cost lookup: orders store the sale price, products store the cost.
 // ponytail: one Map, rebuilt whenever products change, instead of three linear scans per
-// line item. orderProfit runs this for every item of every order in the range -- over a year
+// line item. costOf runs this for every item of every order in the range -- over a year
 // of sales that was millions of passes across the catalog.
 let productIndex = new Map();
 function buildProductIndex() {
@@ -843,7 +733,7 @@ function buildProductIndex() {
   productIndex = m;
 }
 function productFor(item) {
-  return productIndex.get('i:' + item.id)
+  return productIndex.get('i:' + (item.productId || item.id))
     || (item.sku && productIndex.get('s:' + item.sku))
     || productIndex.get('n:' + item.name)
     || null;
@@ -851,83 +741,45 @@ function productFor(item) {
 // The cost the line was sold at, not the cost it would be bought at today. Old receipts
 // (and every sale made before app.js started stamping it) fall back to the product.
 const costOf = (item) => (item.cost != null ? item.cost : (productFor(item)?.cost || 0));
-const itemNet = (item) => (item.lineTotal != null ? item.lineTotal : item.price * item.qty);
+// A receipt line's amount, as printed. Display only: every SUM goes through ladder() below.
+// A receipt line before discounts: the lines add up to the receipt's Subtotal, the discount sits below.
+const lineGross = (item) => (item.lineGross != null ? item.lineGross : SalesMath.lineMoney(item.price, item.qty).lineGross);
 
-// ponytail: gross profit = revenue ex-VAT minus cost of goods. Ignores order-level
-// discounts already folded into total; good enough to steer buying, not for BIR.
-function orderProfit(order) {
-  const cogs = order.items.reduce((sum, i) => sum + costOf(i) * i.qty, 0);
-  return (order.total - (order.vatAmount || 0)) - cogs;
-}
-
-// A sale's contribution to revenue. The two shapes `app.js` writes, and why the signs differ:
-// a void, a refund and an exchange flip the ORIGINAL in place (voided/refunded, sign 0) and an
-// exchange adds its own completed sale; a RETURN leaves the original completed and appends a
-// separate `return` row, which is why that one is -1 -- it has to cancel a +1 that is still
-// there. Nothing is ever filtered out of a cut; the sign is what keeps them visible while they
-// stop counting.
-const SALE_SIGN = { completed: 1, return: -1, refunded: 0, voided: 0, saved: 0 };
-const saleSign = (o) => SALE_SIGN[o.status || 'completed'] ?? 0;
-
-// What a ledger ROW shows in its money column. A return handed the money back, so it prints
-// negative -- printing +₱972.32 next to a "Return" pill reads as a second sale and it took
-// hand-adding the column against the summary to notice. A void or a refund keeps its face
-// value: the row is showing what was voided, and the status pill already says it counts zero.
-const txTotal = (o) => (saleSign(o) < 0 ? -o.total : o.total);
-
-function salesIn(start, end) {
-  return state.orders.filter(o => saleSign(o) !== 0 && o.ts >= start && o.ts < end);
-}
+// ---------- Sales money: one ladder (sales-math.js) behind every figure ----------
+// Gross sales − Voids − Refunds − Discounts = Net sales − VAT = Sales before VAT − Cost of goods
+// = Gross profit. ladder(orders, { from, to, by }) is the only place the back office adds money up.
+const ladder = (orders, opts = {}) => SalesMath.summarize(orders, { costOf, ...opts });
+// Units sold per product in the last 30 store days up to the real now: Map id → ladder row
+// (.unitsSold). Stock is always today's, so its selling rate is too, whatever day the page picked.
+// The Dashboard's Out or low and Items › Sold 30d both read this.
+const soldLast30 = (now = Date.now()) => ladder(state.orders, { from: SalesMath.rangeWindow(30, now, boZone()).from, by: (o, i) => productFor(i)?.id || null }).groups;
+const saleSign = SalesMath.sign;   // sale +1 · void / refund −1 · parked 0
+// A row's state, derived: a sale a void row cancels reads Voided; the void row itself reads Void.
+const rowState = (o) => SalesMath.rowState(o, state.reversals);
+// What a list ROW shows in its money column: SalesMath.rowAmount (a void or refund handed money back,
+// so it prints negative). A parked cart is not money (rowAmount null): '—' on its greyed row (rowDim),
+// as on the till's Orders rail and Sales › Orders, and never in a sum.
+const txTotal = (o, fmt = peso) => SalesMath.rowAmount(o) == null ? '<span class="mut">—</span>' : fmt(SalesMath.rowAmount(o));
 
 function rangeWindows(range = state.range) {
   const start = rangeStart(range), end = rangeEnd();
   return { start, end, prevStart: shiftDays(start, -(RANGE_DAYS[range] || 1)), prevEnd: start };
 }
 
-function metricsOf(sales) {
-  let revenue = 0, items = 0, profit = 0;
-  sales.forEach(o => {
-    const sign = saleSign(o);
-    revenue += o.total * sign;
-    profit += orderProfit(o) * sign;
-    o.items.forEach(i => { items += i.qty * sign; });
-  });
-  return { revenue, profit, items, txns: sales.length, avg: sales.length ? revenue / sales.length : 0 };
-}
-
-function deltaOf(cur, prev, cmp) {
-  if (!prev) return { tone: 'flat', text: cur ? 'new' : '—', cmp: `vs ${cmp}` };
-  const pct = ((cur - prev) / Math.abs(prev)) * 100;
-  const tone = pct > 0.5 ? 'up' : pct < -0.5 ? 'down' : 'flat';
-  const sign = pct > 0 ? '+' : pct < 0 ? '−' : '';
-  return { tone, text: `${sign}${Math.abs(pct).toFixed(1)}%`, cmp: `vs ${cmp}` };
-}
-
 // ---------- The calm pages (Dashboard, Sales › Summary) ----------
 // Ported from dashboard-calm-lab.html / sales-calendar-lab.html; both read these.
 // ₱12.3k / ₱1.23M for headline figures, whole pesos under ₱10k.
-const pesoK = (n) => {
-  const a = Math.abs(n), s = n < 0 ? '−' : '';
-  return a >= 1e6 ? `${s}₱${+(a / 1e6).toFixed(2)}M` : a >= 1e4 ? `${s}₱${+(a / 1e3).toFixed(1)}k` : pesoShort(n);
-};
+const pesoK = (n) => SalesMath.formatMoney(n, storeCurrency(), { compact: true });
 const hourShort = (h) => (h % 12 || 12) + (h < 12 ? 'a' : 'p');
-// One pass: revenue and profit signed, sales/discounts on the +1 rows, returns on the −1 rows.
-function calmMetrics(list) {
-  const m = { rev: 0, gp: 0, n: 0, sales: 0, ret: 0, retN: 0, disc: 0, vat: 0, voids: 0 };
-  for (const o of list) {
-    const s = saleSign(o);
-    if (!s) { if (o.status === 'voided' || o.status === 'refunded') m.voids++; continue; }
-    m.rev += o.total * s; m.gp += orderProfit(o) * s; m.vat += (+o.vatAmount || 0) * s;
-    if (s > 0) { m.n++; m.sales += +o.total; m.disc += +o.discount || 0; } else { m.ret += +o.total; m.retN++; }
-  }
-  return m;
-}
-// "+4.2%" beside a number; nothing when there is nothing to compare with.
+// "+4.2%" beside a number (SalesMath.changeText); nothing when there is nothing to compare with.
 const calmChip = (cur, prev, title) => {
   if (!prev) return '';
-  const r = Math.round((cur - prev) / Math.abs(prev) * 1000) / 10;
-  return `<span class="chip ${r > 0 ? 'up' : r < 0 ? 'down' : ''}" title="${escapeHtml(title)}">${r > 0 ? '+' : ''}${r.toFixed(1)}%</span>`;
+  const t = SalesMath.changeText(cur, prev);
+  return `<span class="chip ${SalesMath.changeTone(t) || 'flat'}" title="${escapeHtml(title)}">${t}</span>`;
 };
+// THE margin chip (Dashboard, Sales Summary, Sales › Items): the margin's percent change like every chip, never points
+// (owner 2026-10-03). cur/prev are ladders; only when both sold something, '—' beside a −100% chip would claim a drop in nothing.
+const marginChip = (cur, prev, title) => (cur.salesBeforeTax > 0 && prev.salesBeforeTax > 0 ? calmChip(cur.margin, prev.margin, title) : '');
 
 // The KPI block (bo-blocks.css → KPI). Every KPI on every page is built by one of these
 // two, so the markup can only drift in one place. Label on top; the number left and the
@@ -961,28 +813,23 @@ function statCell({ label, value, unit, delta, note }) {
     </div>`;
 }
 
-// Breakdown rows and a label-over-number head for rail cards (Inventory, Staff).
-const bdRow = (nm, amt = '', cmp = '', tone = '') =>
-  `<div class="bd-row"><span class="nm">${nm}</span>${amt !== '' ? `<span class="amt">${amt}</span>` : ''}${cmp !== '' ? `<span class="cmp ${tone}">${cmp}</span>` : ''}</div>`;
-const railHead = (label, value, side = '') =>
-  `<div class="kpi-label">${escapeHtml(label)}</div><div class="kpi-line"><div class="kpi-value">${value}</div>${side}</div>`;
-
 // Targets are always today and this month, whatever the range says: a target is a promise
 // about the calendar, not about the window you happen to be looking at.
 // The owner sets the month; today's share is what is left spread over the days left, today
 // included, rounded to ₱10. An override replaces it for that one date only.
 function dashTargets(now = Date.now()) {
-  const t = state.settings.targets || {};
-  const d = new Date(now), today = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
-  const days = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  const before = metricsOf(salesIn(monthStart, today)).revenue;
-  const done = metricsOf(salesIn(today, today + 864e5)).revenue;
+  const t = state.settings.targets || {}, z = boZone();
+  // The store's today and month, never the browser's.
+  const d = SalesMath.dateParts(now, z), key = isoDate(now), today = dayStart(now);
+  const monthStart = SalesMath.dayStartMs(key.slice(0, 8) + '01', z);
+  const days = new Date(Date.UTC(d.year, d.month, 0)).getUTCDate();
+  const before = ladder(state.orders, { from: monthStart, to: today }).netSales;
+  const done = ladder(state.orders, { from: today, to: shiftDays(today, 1) }).netSales;
   const month = Number(t.month) || 0;
-  const left = days - d.getDate() + 1;   // ponytail: every day counts as open; skip closed days once store hours exist
+  const left = days - d.day + 1;   // ponytail: every day counts as open; skip closed days once store hours exist
   const auto = month ? Math.max(0, Math.round((month - before) / left / 10) * 10) : 0;
-  const override = t.override && t.override.date === isoDate(now) ? Number(t.override.amount) || 0 : 0;
-  const elapsed = d.getDate() - 1 + (d.getHours() + d.getMinutes() / 60) / 24;
+  const override = t.override && t.override.date === key ? Number(t.override.amount) || 0 : 0;
+  const elapsed = d.day - 1 + (d.hour + d.minute / 60) / 24;
   return { month, before, done, days, left, auto, override, daily: override || auto,
     pace: elapsed > 0 ? (before + done) / elapsed * days : 0 };
 }
@@ -1002,7 +849,7 @@ function openTargetDialog() {
             <input name="override" type="number" min="0" step="10" value="${t.override || ''}" placeholder="${t.auto || ''}" autocomplete="off"></label>
         </div>
         <div class="adj-foot">
-          <span class="adj-last">Today's target is what's left of the month over the ${t.left} day${t.left === 1 ? '' : 's'} left, today included.</span>
+          <span class="adj-last">Today's target is what's left of the month over the ${SalesMath.plural(t.left, 'day')} left, today included.</span>
           <button type="button" class="secondary-btn small" data-act="targetCancel">Cancel</button>
           <button type="submit" class="primary-btn small">Save</button>
         </div>
@@ -1014,30 +861,30 @@ function openTargetDialog() {
 
 // ponytail: the 7d/30d ranges span days, so a bare clock time is ambiguous — prefix the
 // date unless the sale happened today.
-function txTime(ts) {
-  const d = new Date(ts);
-  const time = d.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
-  const today = new Date().toDateString() === d.toDateString();
-  return today ? time : `${d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}, ${time}`;
-}
+const isToday = (ts) => isoDate(ts) === isoDate(Date.now());   // the store's today
+const txTime = (ts) => SalesMath.dateText(ts, boZone(), isToday(ts) ? 'time' : 'dayTime');
 
 // ---------- Dashboard (dashboard-calm-lab.html, bo-calm.css) ----------
 // The view lives in the URL: ?range= (applyRoute → state.range), ?vs= the comparison, ?chart= the
 // KPI the bars show, ?at= an hour ("10") or a day ("2026-09-20"), ?receipt= an order id.
-// ponytail: always ends now, like the lab; the old "Ends on" date went with the old picker.
+// ?date= (Pick a day) moves the window's end to that day; a past day is read whole, with no "at this time".
 const hourLong = (h) => (h % 12 || 12) + (h % 24 < 12 ? ' AM' : ' PM');
-const dashDate = (t, o) => new Date(t).toLocaleDateString('en-PH', o);
+const dashDate = (t, o) => new Date(t).toLocaleDateString('en-PH', { ...o, timeZone: boZone() });   // the store's day
 // The window, and the one it's compared with: today against the same weekday last week up to
 // this minute; N days against the N days before, also up to this minute. Never a half day vs a whole one.
 // ?vs= picks another: '' is that default, 'day' is yesterday (today only), 'none' turns the chips off.
 function dashCompares(range, today) {   // [key, menu label, days back, chip tooltip]
   const n = RANGE_DAYS[range], wd = dashDate(shiftDays(today, -7), { weekday: 'long' });
+  if (range === 'today' && today !== dayStart(Date.now())) {   // a picked past day: whole days, named by date
+    const last = dashDate(shiftDays(today, -7), { weekday: 'short', month: 'short', day: 'numeric' });
+    return [['', 'Same day last week', 7, `vs ${last}`], ['day', 'The day before', 1, 'vs the day before'], ['none', 'No comparison', 0, '']];
+  }
   return (range === 'today'
     ? [['', `Last ${wd}`, 7, `vs last ${wd} at this time`], ['day', 'Yesterday', 1, 'vs yesterday at this time']]
     : [['', `Previous ${n} days`, n, `vs the ${n} days before`]]).concat([['none', 'No comparison', 0, '']]);
 }
 function dashWindow(range, vs) {
-  const now = Date.now(), today = dayStart(now);
+  const today = state.anchor, now = Math.min(Date.now(), shiftDays(today, 1));
   const all = state.orders.filter(o => o.ts < now).sort((a, b) => a.ts - b.ts);
   const between = (a, b) => all.filter(o => o.ts >= a && o.ts < b);
   const cs = dashCompares(range, today), [vsKey, vsLbl, back, vsTitle] = cs.find(c => c[0] === vs) || cs[0];
@@ -1046,7 +893,7 @@ function dashWindow(range, vs) {
     rows: between(start, now), prev: back ? between(shiftDays(start, -back), shiftDays(now, -back)) : [] };
   if (range === 'today') {
     // store hours: whatever hours sold in the last four weeks
-    const seen = between(shiftDays(today, -28), now).map(o => new Date(o.ts).getHours());
+    const seen = between(shiftDays(today, -28), now).map(o => SalesMath.dateParts(o.ts, boZone()).hour);
     const h0 = seen.length ? Math.min(...seen) : 7, h1 = seen.length ? Math.max(...seen) : 18;
     const lastWd = dashDate(shiftDays(today, -7), { weekday: 'long' });
     w.buckets = [];
@@ -1054,30 +901,38 @@ function dashWindow(range, vs) {
       start: today + h * 36e5, end: today + (h + 1) * 36e5, backName: `the same hour last ${lastWd}` });
   } else {
     w.buckets = Array.from({ length: n }, (_, i) => { const t = shiftDays(start, i);
-      return { key: isoDate(t), x: n > 7 ? String(new Date(t).getDate()) : dashDate(t, { weekday: 'short' }),
+      return { key: isoDate(t), x: n > 7 ? String(SalesMath.dateParts(t, boZone()).day) : dashDate(t, { weekday: 'short' }),
         title: dashDate(t, { weekday: 'long', month: 'long', day: 'numeric' }), start: t, end: shiftDays(t, 1),
         backName: dashDate(shiftDays(t, -7), { weekday: 'long', month: 'short', day: 'numeric' }) }; });
   }
-  for (const b of w.buckets) { b.future = b.start >= now; b.now = !b.future && now < b.end; b.m = calmMetrics(w.rows.filter(o => o.ts >= b.start && o.ts < b.end)); }
+  // A same-day void sits in its sale's hour on the bars (SalesMath.chartTime): a 9 am sale voided at
+  // 2 pm cancels the 9 am bar instead of pushing 2 pm below zero. Day totals do not move.
+  // ponytail: each row's chart time is worked out once per render, then every bar is a plain number scan.
+  const saleAt = new Map(state.orders.map(o => [o.id, o.ts]));
+  const placed = all.map(o => [o, SalesMath.chartTime(o, saleAt, boZone())]), at = new Map(placed);
+  w.at = (o) => at.get(o) ?? SalesMath.chartTime(o, saleAt, boZone());
+  w.within = (a, b) => placed.filter(([, t]) => t >= a && t < b).map(([o, t]) => (t === o.ts ? o : { ...o, ts: t }));
+  for (const b of w.buckets) { b.future = b.start >= now; b.now = !b.future && now < b.end; b.m = ladder(w.within(b.start, b.end)); }
   return w;
 }
 
-// The same four KPIs as before; each is also what the bars can show. of() reads calmMetrics().
-const dashMargin = (x) => (x.rev ? x.gp / x.rev * 100 : 0);
+// The four headline KPIs (sales-terms: Net sales · Gross profit · Orders · Margin); each is also what
+// the bars can show. of() reads a ladder(). The ?chart= keys stay as they were so old links still open.
+const dashMargin = (x) => x.margin * 100;
 const DASH_KPI = {
-  rev: { lbl: 'Revenue',      of: x => x.rev,  fmt: pesoShort,                        axis: pesoK,              floor: 100 },
-  gp:  { lbl: 'Profit',       of: x => x.gp,   fmt: pesoShort,                        axis: pesoK,              floor: 100 },
-  n:   { lbl: 'Transactions', of: x => x.n,    fmt: v => v.toLocaleString('en-PH'),   axis: v => +v.toFixed(1), floor: 5 },
-  mg:  { lbl: 'Margin',       of: dashMargin,  fmt: v => v.toFixed(1) + '%',          axis: v => v + '%',       floor: 10 },
+  rev: { lbl: 'Net sales',    of: x => x.netSales,    fmt: pesoShort,                      axis: pesoK,              floor: 100 },
+  gp:  { lbl: 'Gross profit', of: x => x.grossProfit, fmt: pesoShort,                      axis: pesoK,              floor: 100 },
+  n:   { lbl: 'Orders',       of: x => x.orders,      fmt: v => v.toLocaleString('en-PH'), axis: v => +v.toFixed(1), floor: 5 },
+  mg:  { lbl: 'Margin',       of: dashMargin,         fmt: v => SalesMath.pctText(v / 100),       axis: v => v + '%',       floor: 10 },
 };
 function dashStrip(W, chart) {
-  const m = calmMetrics(W.rows), p = calmMetrics(W.prev);
+  const m = ladder(W.rows), p = ladder(W.prev);
   const stat = (k, val, side) =>
     `<button class="stat" role="tab" data-chart="${k}" aria-selected="${chart === k}"><div class="lbl">${DASH_KPI[k].lbl}</div><div class="line"><span class="val">${val}</span>${side}</div></button>`;
-  return stat('rev', pesoShort(m.rev), calmChip(m.rev, p.rev, W.vs))
-    + stat('gp', pesoShort(m.gp), calmChip(m.gp, p.gp, W.vs))
-    + stat('n', m.n.toLocaleString('en-PH'), calmChip(m.n, p.n, W.vs))
-    + stat('mg', m.rev ? dashMargin(m).toFixed(1) + '%' : '—', m.rev && p.rev ? calmChip(dashMargin(m), dashMargin(p), W.vs) : '');
+  return stat('rev', pesoShort(m.netSales), calmChip(m.netSales, p.netSales, W.vs))
+    + stat('gp', pesoShort(m.grossProfit), calmChip(m.grossProfit, p.grossProfit, W.vs))
+    + stat('n', m.orders.toLocaleString('en-PH'), calmChip(m.orders, p.orders, W.vs))
+    + stat('mg', SalesMath.pctText(m.margin, m.salesBeforeTax), marginChip(m, p, W.vs));
 }
 
 // The bars: the picked KPI per hour (today) or per day.
@@ -1093,7 +948,7 @@ function dashPlot(W, chart) {
     ? `<div class="b future"><span class="x">${(bs.length - 1 - i) % every ? '' : b.x}</span></div>`
     : `<button class="b" data-at="${b.key}" aria-label="${escapeHtml(b.title)}: ${K.fmt(val(b))}">`
       + `<i style="height:${Math.max(0, val(b)) / top * 100}%"><span class="tip"><b>${escapeHtml(b.title)}</b>`
-      + Object.entries(DASH_KPI).map(([k, x]) => `<span class="${k === chart ? 'on' : ''}">${x.lbl}<em>${b.m.rev || k !== 'mg' ? x.fmt(x.of(b.m)) : '—'}</em></span>`).join('')
+      + Object.entries(DASH_KPI).map(([k, x]) => `<span class="${k === chart ? 'on' : ''}">${x.lbl}<em>${b.m.salesBeforeTax || k !== 'mg' ? x.fmt(x.of(b.m)) : '—'}</em></span>`).join('')
       + `</span></i>`
       + `<span class="x${b.now ? ' now' : ''}">${(bs.length - 1 - i) % every && !b.now ? '' : b.x}</span></button>`).join('');
   return `<div class="grid">${grid}</div>`
@@ -1103,7 +958,12 @@ function dashPlot(W, chart) {
 // Recent transactions: the latest 20 in the range, every status, so voids and refunds show.
 // Sales › Transactions is the one that pages past this.
 const RECENT_TX = 20;
-const statusName = (o) => { const st = o.status || 'completed'; return st[0].toUpperCase() + st.slice(1); };
+// What a row SHOWS (SalesMath.statusOf): rowState, with 'part' for a sale partly refunded.
+const rowStatus = (o) => SalesMath.statusOf(o, state.reversals);
+const statusName = (o) => SalesMath.ROW_LABEL[rowStatus(o)];
+// Pill tone per row status; a plain sale has none. Dim = a row that adds nothing (a parked cart, a voided sale).
+const ROW_TONE = { voided: 'down', void: 'down', part: 'warn', refunded: 'warn', refund: 'warn', saved: '' };
+const rowDim = (o) => (['voided', 'saved'].includes(rowState(o)) ? 'dim' : '');
 // Payment pills: one hue per method so cash reads apart from GCash at a glance (owner, 2026-09-26).
 // A custom method ('other') takes the tone its name says ("Maya", "Credit card"); anything else is grey.
 const PAY_TONES = ['cash', 'gcash', 'maya', 'qr', 'card', 'credit', 'split'];
@@ -1111,67 +971,72 @@ const payTone = (o) => PAY_TONES.includes(o.paymentKind) ? o.paymentKind
   : PAY_TONES.find(k => orderPaymentLabel(o).toLowerCase().includes(k)) || 'other';
 // The Dashboard's Time cell: today's clock, or just the day for an older sale (the full time is its
 // title), so eight columns still fit the card at 1280 wide.
-const dashTime = (ts) => new Date().toDateString() === new Date(ts).toDateString() ? txTime(ts)
-  : new Date(ts).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+const dashTime = (ts) => (isToday(ts) ? txTime(ts) : SalesMath.dateText(ts, boZone(), 'day'));
 const payPill = (o) => `<span class="pill pay-${payTone(o)}">${escapeHtml(orderPaymentLabel(o))}</span>`;
 // Payment and Status cells, shared with Sales › Transactions and a customer's Transactions. Completed is
 // muted text; the exceptions (voided, refunded, saved) are pills.
-const txPayStatus = (o) => `<td>${payPill(o)}</td><td class="opt">${(o.status || 'completed') === 'completed'
-  ? '<span class="mut">Completed</span>' : `<span class="pill ${{ voided: 'down', return: 'warn', refunded: 'warn' }[o.status] || ''}">${statusName(o)}</span>`}</td>`;
+const txPayStatus = (o) => `<td>${payPill(o)}</td><td class="opt">${statusPill(o) || '<span class="mut">Completed</span>'}</td>`;
+// Staff on a list = the SELLER (SalesMath.sellerOf): a void or refund names the original sale's
+// seller, the person it counts against (owner 2026-10-02). Who pressed it shows on the receipt.
 function dashTx(W) {
-  const shown = W.rows.slice().reverse().slice(0, RECENT_TX);
+  const shown = W.rows.slice().sort(SalesMath.newestFirst).slice(0, RECENT_TX);
+  const seller = SalesMath.sellerOf(state.orders, loadStaff());
   return shown.length ? `<div class="flush"><table class="tx">
-    <tr><th>Receipt</th><th>Time</th><th class="opt cust">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th><th class="n">Total</th></tr>
-    ${shown.map(o => `<tr data-receipt="${escapeHtml(o.id)}" class="${saleSign(o) ? '' : 'dim'}">
+    <tr><th>Order</th><th>Time</th><th class="opt cust">Customer</th><th class="opt">Staff</th><th class="opt">Fulfilment</th><th>Payment</th><th class="opt">Status</th><th class="n">Total</th></tr>
+    ${shown.map(o => `<tr data-receipt="${escapeHtml(o.id)}" class="${rowDim(o)}">
       <td class="id">#${escapeHtml(o.number || o.id)}</td><td class="t" title="${escapeHtml(txTime(o.ts))}">${escapeHtml(dashTime(o.ts))}</td>
       <td class="opt cust"${o.customer?.name ? ` title="${escapeHtml(o.customer.name)}">${escapeHtml(o.customer.name)}` : '><span class="mut">—</span>'}</td>
-      <td class="opt">${escapeHtml(o.cashier || '—')}</td><td class="opt">${escapeHtml(orderFulfilLabel(o))}</td>${txPayStatus(o)}
-      <td class="n amt">${peso(txTotal(o))}</td></tr>`).join('')}
-  </table></div>` : `<p class="note" style="margin:6px 0 16px">No transactions ${W.range === 'today' ? 'yet today' : 'in this range'}.</p>`;
+      <td class="opt">${escapeHtml(seller(o).name || '—')}</td><td class="opt">${escapeHtml(orderFulfilLabel(o))}</td>${txPayStatus(o)}
+      <td class="n amt">${txTotal(o)}</td></tr>`).join('')}
+  </table></div>` : `<p class="note" style="margin:6px 0 16px">No orders ${W.range !== 'today' ? 'in this range' : W.now === shiftDays(W.today, 1) ? 'on this day' : 'yet today'}.</p>`;
 }
 
 // The rail: targets (always today and this month, whatever the range says), low stock, payment methods.
 const calmRow = (nm, amt, cmp = null, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span><span class="amt">${amt}</span>${cmp !== null ? `<span class="cmp ${cls}">${cmp}</span>` : ''}</div>`;
 // The rail's cards. The Widgets menu shows and hides them, like Sales › Transactions; which are off is this
 // device's choice, in tick order (widgetsOn 'dash').
-const DASH_W = { daily: 'Daily sales target', monthly: 'Monthly sales target', low: 'Low stock', pay: 'Payment methods' };
+const DASH_W = { daily: 'Daily sales target', monthly: 'Monthly sales target', low: 'Out or low stock', pay: 'Payment methods' };
 
 function dashRail(W, on) {
-  const t = dashTargets(W.now);
+  const t = dashTargets();   // the real today, not a picked day
   const head = (lbl, val, side = '', link = '') => `<div class="top"><span>${lbl}</span>${link}</div><div class="line"><span class="val">${val}</span>${side}</div>`;
-  const pctSide = pct => `<span class="pct ${pct >= 100 ? 'up' : ''}">${pct}%</span>`;
+  const pctSide = (sold, target) => { const r = SalesMath.share(sold, target);
+    return `<span class="pct ${r >= 1 ? 'up' : ''}">${SalesMath.pctText(r, target, 0)}</span>`; };
   const empty = lbl => head(lbl, '—') + `<button class="set">Set target</button><div class="rows foot">${calmRow('No monthly target yet', '')}</div>`;
   const out = {};
   out.daily = () => {
     if (!t.daily) return empty('Daily sales target');
-    const pct = Math.round(t.done / t.daily * 100), left = t.daily - t.done;
-    return head('Daily sales target', `${pesoShort(t.done)}<span class="of">/${pesoShort(t.daily)}</span>`, pctSide(pct))
+    const left = t.daily - t.done;
+    return head('Daily sales target', `${pesoShort(t.done)}<span class="of">/${pesoShort(t.daily)}</span>`, pctSide(t.done, t.daily))
       + `<div class="rows foot">${left > 0 ? calmRow('Left to sell today', pesoShort(left)) : calmRow('Target hit, over by', pesoShort(-left))}</div>`;
   };
   out.monthly = () => {
     if (!t.month) return empty('Monthly sales target');
-    const sold = t.before + t.done, pct = Math.round(sold / t.month * 100), left = t.month - sold;
-    return head('Monthly sales target', `${pesoK(sold)}<span class="of">/${pesoK(t.month)}</span>`, pctSide(pct))
+    const sold = t.before + t.done, left = t.month - sold;
+    return head('Monthly sales target', `${pesoK(sold)}<span class="of">/${pesoK(t.month)}</span>`, pctSide(sold, t.month))
       + `<div class="rows foot">${left > 0 ? calmRow('Left to sell this month', pesoK(left)) : calmRow('Target hit, over by', pesoK(-left))}</div>`;
   };
 
-  // Low stock: the five that run out first by the last 30 days' selling.
+  // Out or low: the items that need buying -- bo-model stockCounts, one per family, the same count as
+  // the Items page's Out + Low filter -- the five that run out first by the last 30 days' selling. A
+  // family shows once, by its variant that runs out first, with the family's level.
   out.low = () => {
-    const sold = new Map();
-    for (const o of W.between(W.today - 30 * 864e5, W.now)) if (saleSign(o) > 0) for (const i of o.items || []) { const p = productFor(i); if (p) sold.set(p.id, (sold.get(p.id) || 0) + (+i.qty || 0)); }
-    const daysLeft = p => { const r = (sold.get(p.id) || 0) / 30; return p.stock <= 0 ? 0 : r ? p.stock / r : Infinity; };
-    const low = state.products.filter(isLow).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock);
-    return head('Low stock', low.length ? String(low.length) : `0<span class="of"> all stocked</span>`, '',
-        low.length ? `<a href="${Router.href('products', '', { view: 'stock', level: 'out,low' })}">View all ›</a>` : '')
+    const sold = soldLast30();
+    const daysLeft = p => { const r = (sold.get(p.id)?.unitsSold || 0) / 30; return p.stock <= 0 ? 0 : r ? p.stock / r : Infinity; };
+    const live = state.products.filter(p => !p.archived), fam = p => p.groupId || p.id, seen = new Set();
+    const n = stockCounts(live, null, Date.now(), boZone()), count = n.out + n.low;
+    const low = live.filter(p => ['out', 'low'].includes(stockLevel(p, null, Date.now(), boZone()))).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock)
+      .filter(p => !seen.has(fam(p)) && seen.add(fam(p)));
+    const level = p => familyLevel(live.filter(x => fam(x) === fam(p)), null, Date.now(), boZone());
+    return head('Out or low stock', count ? String(count) : `0<span class="of"> all stocked</span>`, '',
+        count ? `<a href="${Router.href('products', '', { view: 'stock', level: 'out,low' })}">View all ›</a>` : '')
       + (low.length ? `<div class="rows">${low.slice(0, 5).map(p => `<div class="row"><span class="nm">${escapeHtml(p.name)}</span>`
-        + `<span class="pill ${p.stock <= 0 ? 'down' : 'warn'}" style="margin:0">${p.stock <= 0 ? 'Out' : 'Low'}</span></div>`).join('')}</div>` : '');
+        + `<span class="pill ${level(p) === 'out' ? 'down' : 'warn'}" style="margin:0">${level(p) === 'out' ? 'Out' : 'Low'}</span></div>`).join('')}</div>` : '');
   };
 
   // Payment methods, for the range: the only rail card that follows it.
   out.pay = () => {
-    const pays = new Map();
-    for (const o of W.rows) { const s = saleSign(o); if (s) pays.set(orderPaymentLabel(o), (pays.get(orderPaymentLabel(o)) || 0) + o.total * s); }
-    const payRows = [...pays].filter(p => p[1]).sort((x, y) => y[1] - x[1]);
+    const payRows = byPayment(W.rows);
     return `<div class="top band"><span>Payment methods</span></div>` + (payRows.length
       ? `<div class="rows">${payRows.map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v))).join('')}${calmRow('Total', pesoShort(payRows.reduce((s, p) => s + p[1], 0)), null, 'total')}</div>`
       : '<p class="note" style="margin:10px 0 0">No sales in this range.</p>');
@@ -1185,40 +1050,68 @@ const popTop = (title, prev, next) => `<div class="p-top"><h2>${title}</h2>
   <button class="icon-btn" data-step="-1" aria-label="Previous" ${prev ? '' : 'disabled'}>‹</button>
   <button class="icon-btn" data-step="1" aria-label="Next" ${next ? '' : 'disabled'}>›</button>
   <button class="icon-btn" data-close aria-label="Close">✕</button></div>`;
-const statusPill = (o) => { const st = o.status || 'completed'; return st === 'completed' ? '' : `<span class="pill ${st === 'voided' ? 'down' : 'warn'}">${statusName(o)}</span>`; };
-const clockOf = (t) => new Date(t).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' });
+// Money in per payment method (what reached the drawer, refunds out), biggest first. SalesMath.tenders
+// is the one count: a split sale is its legs (cash + account), never a "Split" bucket.
+const byPayment = (rows) => [...SalesMath.tenders(rows)]
+  .map(([k, v]) => [SalesMath.tenderLabel(k), v]).filter(p => p[1]).sort((x, y) => y[1] - x[1]);
+const statusPill = (o) => { const s = rowStatus(o); return s === 'sale' ? '' : `<span class="pill ${ROW_TONE[s]}">${SalesMath.ROW_LABEL[s]}</span>`; };
+const clockOf = (t) => SalesMath.dateText(t, boZone(), 'time');   // the store clock, not this browser's
 const liveBars = (W) => W.buckets.filter(b => !b.future);
 function barPop(W, b) {
-  const rows = W.rows.filter(o => o.ts >= b.start && o.ts < b.end), m = b.m;
-  const p = calmMetrics(W.between(shiftDays(b.start, -7), Math.min(shiftDays(b.end, -7), shiftDays(W.now, -7))));
-  const share = v => m.rev ? (v / m.rev * 100).toFixed(1) + '%' : '';
-  const group = key => { const g = new Map(); for (const o of rows) { const s = saleSign(o); if (s) for (const [k, v] of key(o, s)) g.set(k, (g.get(k) || 0) + v); } return [...g].sort((x, y) => y[1] - x[1]); };
+  const rows = W.rows.filter(o => W.at(o) >= b.start && W.at(o) < b.end), m = b.m;   // the bar's rows, voids in their sale's hour
+  const p = ladder(W.within(shiftDays(b.start, -7), Math.min(shiftDays(b.end, -7), shiftDays(W.now, -7))));
   const L = liveBars(W), i = L.indexOf(b);
   let html = popTop(b.title, i > 0, i < L.length - 1)
-    + `<div class="p-head"><span class="val">${pesoShort(m.rev)}</span>${calmChip(m.rev, p.rev, 'vs ' + b.backName + (b.now ? ' at this time' : ''))}</div>`
-    + `<p class="p-sub">${m.n} transaction${m.n === 1 ? '' : 's'} · ${pesoShort(m.gp)} profit${b.now ? ' · so far' : ''}</p>`;
+    + `<div class="p-head"><span class="val">${pesoShort(m.netSales)}</span>${calmChip(m.netSales, p.netSales, 'vs ' + b.backName + (b.now ? ' at this time' : ''))}</div>`
+    + `<p class="p-sub">${SalesMath.plural(m.orders, 'order')} · ${pesoShort(m.grossProfit)} gross profit${b.now ? ' · so far' : ''}</p>`;
   if (!rows.length) return html + '<p class="p-sub" style="margin-top:20px">No sales.</p>';
-  html += popSec('Payment methods', `<div class="rows">${group((o, s) => [[orderPaymentLabel(o), o.total * s]]).map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v), share(v))).join('')}</div>`);
-  const its = group((o, s) => (o.items || []).map(i => [productFor(i)?.name || i.name, itemNet(i) * s]));
-  html += popSec('Top items', `<div class="rows">${its.slice(0, 5).map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v), share(v))).join('')}</div>`, `${its.length} items sold`);
-  html += popSec('Transactions', `<div class="rows">${rows.slice().reverse().slice(0, PAGE_ROWS).map(o => `<button class="row ${saleSign(o) ? '' : 'dim'}" data-receipt="${escapeHtml(o.id)}"><span class="t">${clockOf(o.ts)}</span>`
-    + `<span class="nm">#${escapeHtml(o.number || o.id)} · ${escapeHtml(orderPaymentLabel(o))}${statusPill(o)}</span><span class="amt">${pesoShort(txTotal(o))}</span></button>`).join('')}</div>`, `${rows.length} total`);
+  html += popSec('Payment methods', `<div class="rows">${byPayment(rows).map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v), pctOf(v, m.collected))).join('')}</div>`);
+  const its = renderSales.topItems(rows);
+  html += popSec('Top items', `<div class="rows">${its.slice(0, 5).map(r => calmRow(escapeHtml(r.name), pesoShort(r.netSales), pctOf(r.netSales, m.netSales))).join('')}</div>`, `${SalesMath.plural(SalesMath.itemsSold(its), 'item')} sold`);
+  // The list holds every receipt (sales, voids, refunds, parked carts); "Orders" above counts sales only
+  // (sales-terms), so the side note counts receipts, the customer page's word for the same list.
+  html += popSec('Orders', `<div class="rows">${rows.slice().sort(SalesMath.newestFirst).slice(0, PAGE_ROWS).map(o => `<button class="row ${rowDim(o)}" data-receipt="${escapeHtml(o.id)}"><span class="t">${clockOf(o.ts)}</span>`
+    + `<span class="nm">#${escapeHtml(o.number || o.id)} · ${escapeHtml(orderPaymentLabel(o))}${statusPill(o)}</span><span class="amt">${txTotal(o, pesoShort)}</span></button>`).join('')}</div>`, SalesMath.plural(rows.length, 'receipt'));
   return html;
 }
+// A void or refund shows like the slip it reverses, every figure as printed; its pill says Void or
+// Refund. The list row it opens from carries the minus (txTotal), never half the pop-up.
+// What both receipt views say beyond the lines, from SalesMath.receiptParts (the slip's own words):
+// the VOID / REFUND of #… mark, the SC/PWD lines, the seller (who the row counts for, as on every
+// list) and, on a reversal, who pressed it ("Voided by Mara").
+function slipOf(o) {
+  const sale = o.originalOrderId ? state.orders.find(x => x.id === o.originalOrderId) : null;
+  const parts = SalesMath.receiptParts(o, sale, state.reversals);
+  const seller = SalesMath.sellerOf(state.orders, loadStaff())(o).name;
+  const presser = parts.mark && o.cashier ? `${parts.whoWord} ${o.cashier}` : '';
+  // The totals block, row for row the till's pop-up and the paper slip (SalesMath.totalRows).
+  const totals = SalesMath.totalRows({ totals: o, scPwd: parts.scPwd, taxName: SalesMath.taxName({ ...state.settings, taxOnTop: !o.taxIncluded }) });
+  // Under Total: Paid / Given back and Change, SalesMath.paidOf as on the till's pop-up (none for a parked cart).
+  const pay = SalesMath.paidOf(o);
+  const paid = pay ? [[`${parts.paidWord} (${SalesMath.payWord(o)})`, pay.paid], ...(pay.change > 0 ? [['Change', pay.change]] : [])] : [];
+  return { ...parts, seller, presser, totals, paid };
+}
+// What is still owed on a sale today, from the customer's ledger (bo-model debtStatusOf): an account
+// sale paid off since says nothing. Both receipt views read this.
+function owedWord(o) {
+  const id = rowState(o) === 'sale' && SalesMath.customerIdOf(o);
+  const s = id && debtStatusOf(o.id, accountRows(id));
+  return s === 'Unpaid' || s === 'Part paid' ? s : '';
+}
 function receiptPop(W, o) {
-  const i = W.rows.indexOf(o), s = saleSign(o), its = o.items || [];
-  const sub = its.reduce((x, it) => x + itemNet(it), 0);
-  let html = popTop(`Receipt #${escapeHtml(o.number || o.id)}`, i > 0, i >= 0 && i < W.rows.length - 1)
-    + `<div class="p-head"><span class="val">${peso(txTotal(o))}</span>${statusPill(o)}</div>`
-    + `<p class="p-sub">${escapeHtml(txTime(o.ts))} · ${escapeHtml(o.cashier || '—')} · ${escapeHtml(orderFulfilLabel(o))} · ${escapeHtml(orderPaymentLabel(o))}${o.customer?.name ? ' · ' + escapeHtml(o.customer.name) : ''}</p>`;
-  html += popSec('Items', `<div class="rows">${its.map(it => calmRow(`${escapeHtml(productFor(it)?.name || it.name)}<small>${+it.qty} × ${peso(+it.price || itemNet(it) / (+it.qty || 1))}</small>`, peso(itemNet(it)))).join('')}</div>`, `${its.length} line${its.length === 1 ? '' : 's'}`);
+  const i = W.rows.indexOf(o), its = o.items || [], slip = slipOf(o);
+  let html = popTop(`Order #${escapeHtml(o.number || o.id)}`, i > 0, i >= 0 && i < W.rows.length - 1)
+    + `<div class="p-head"><span class="val">${peso(o.total)}</span>${statusPill(o)}</div>`
+    + `<p class="p-sub">${[slip.mark, txTime(o.ts), slip.seller || '—', slip.presser, orderFulfilLabel(o), orderPaymentLabel(o), o.customer?.name]
+      .filter(Boolean).map(escapeHtml).join(' · ')}</p>`;
+  html += popSec('Items', `<div class="rows">${its.map(it => calmRow(`${escapeHtml(it.name)}<small>${SalesMath.qtyText(it.qty)} × ${peso(it.price)}</small>`, peso(lineGross(it)))).join('')}</div>`, SalesMath.plural(its.length, 'line'));
   html += popSec('Totals', `<div class="rows">
-    ${calmRow('Subtotal', peso(sub))}
-    ${+o.discount ? calmRow('Discount', peso(-o.discount)) : ''}
-    ${calmRow('VAT included', peso(+o.vatAmount || 0))}
-    ${calmRow('Total', peso(+o.total), null, 'total')}</div>`,
-    s ? '' : 'Books no revenue');
-  if (o.paymentKind === 'credit' && s > 0) html += '<p class="p-sub" style="margin-top:10px"><span class="pill warn" style="margin:0">Not collected</span> On the customer’s account.</p>';
+    ${slip.totals.map(([label, amount]) => calmRow(escapeHtml(label), peso(amount))).join('')}
+    ${calmRow('Total', peso(o.total), null, 'total')}
+    ${slip.paid.map(([label, amount]) => calmRow(escapeHtml(label), peso(amount))).join('')}</div>`,
+    saleSign(o) ? '' : 'Not counted in sales');
+  const owed = owedWord(o);
+  if (owed) html += `<p class="p-sub" style="margin-top:10px"><span class="pill warn" style="margin:0">${owed}</span> On the customer’s account.</p>`;
   return html;
 }
 
@@ -1229,13 +1122,14 @@ function renderDashboard() {
   const chart = DASH_KPI[P.chart] ? P.chart : 'rev';
   const opt = (attr, v, lbl, on) => `<button role="menuitemradio" ${attr}="${v}" aria-checked="${on}">${lbl}</button>`;
   $('#dashGreeting').textContent = `Welcome back, ${state.settings.store?.cashier || 'there'}`;
-  $('#dashPick').innerHTML = RANGE_LABEL[W.range] + (W.vsLbl ? `<span class="vs">vs ${W.vsLbl[0].toLowerCase() + W.vsLbl.slice(1)}</span>` : '');
+  $('#dashPick').innerHTML = escapeHtml(rangeLabel(W.range)) + (W.vsLbl ? `<span class="vs">vs ${W.vsLbl[0].toLowerCase() + W.vsLbl.slice(1)}</span>` : '');
   $('#dashRange').innerHTML = Object.keys(RANGE_DAYS).map(r => opt('data-range', r, RANGE_LABEL[r], r === W.range)).join('')
-    + '<hr><h3>Compare to</h3>' + W.compares.map(c => opt('data-vs', c[0], c[1], c[0] === W.vsKey)).join('');
+    + '<hr><h3>Compare to</h3>' + W.compares.map(c => opt('data-vs', c[0], c[1], c[0] === W.vsKey)).join('')
+    + dayPickRow(W.range === 'today' && W.today);
   $('#dashStrip').innerHTML = dashStrip(W, chart);
   $('#dashPlot').innerHTML = dashPlot(W, chart);
   $('#dashTx').innerHTML = dashTx(W);
-  $('#dashTxAll').href = Router.href('transactions', '');
+  $('#dashTxAll').href = Router.href('transactions', '', { range: P.range || '', date: P.date || '' });
   const on = widgetsOn('dash', DASH_W);
   $('#dashW').innerHTML = widgetsMenu(DASH_W, on);
   $('#dashGrid').classList.toggle('solo', !on.length);
@@ -1262,8 +1156,13 @@ function initDashboard() {
     menu.hidePopover();
     if (b.dataset.range) {
       const r = b.dataset.range, vs = Router.route().params.vs || '';
-      Router.setParams({ range: r === 'today' ? '' : r, vs: dashCompares(r, dayStart(Date.now())).some(c => c[0] === vs) ? vs : '', at: '', receipt: '' });
+      Router.setParams({ range: r === 'today' ? '' : r, vs: dashCompares(r, dayStart(Date.now())).some(c => c[0] === vs) ? vs : '', date: '', at: '', receipt: '' });
     } else open({ vs: b.dataset.vs });
+  });
+  menu.addEventListener('change', (e) => {
+    if (!e.target.matches('[data-day-pick]')) return;
+    menu.hidePopover();
+    Router.setParams({ range: '', date: dayParam(e.target.value), at: '', receipt: '' }, { replace: false });
   });
   menu.addEventListener('toggle', (e) => {   // hang it under the button, right edges flush
     if (e.newState !== 'open') return;
@@ -1320,24 +1219,28 @@ function initDashboard() {
 // ponytail: native <dialog>.showModal() — backdrop, Escape and focus trapping for free,
 // and no route of its own, so the peek never costs you your place in the list.
 function orderDialogHtml(o) {
-  const status = STATUS_TONE[o.status || 'completed'] || STATUS_TONE.completed;
+  const tone = { sale: 'ok', voided: 'danger', void: 'danger', part: 'warn', refunded: 'warn', refund: 'warn', saved: 'muted' }[rowStatus(o)];
   const row = (label, value) => (value
     ? `<div class="bod-meta-row"><span>${escapeHtml(label)}</span><strong>${value}</strong></div>` : '');
   const total = (label, value, strong) =>
     `<div class="bod-total-row${strong ? ' strong' : ''}"><span>${escapeHtml(label)}</span><span>${value}</span></div>`;
-  const cash = o.paymentKind === 'cash' || o.paymentKind === 'split';
+  const slip = slipOf(o), owed = owedWord(o);   // the receipt pop-up's own words and pill
   return `
     <div class="bod-head">
       <div class="bod-title">
         <h2>#${escapeHtml(o.number)}</h2>
-        <span class="status-pill ${status[0]}">${status[1]}</span>
+        <span class="status-pill ${tone}">${statusName(o)}</span>
+        ${owed ? `<span class="status-pill warn">${owed}</span>` : ''}
+        ${slip.mark ? `<span class="bod-sub">${escapeHtml(slip.mark)}</span>` : ''}
       </div>
       <button class="bod-close" value="close" aria-label="Close">&times;</button>
     </div>
     <div class="bod-body">
       <div class="bod-meta">
-        ${row('Date', escapeHtml(new Date(o.ts).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })))}
-        ${row('Staff', escapeHtml(o.cashier || '—'))}
+        ${row('Date', escapeHtml(`${shortDate(o.ts)}, ${clockOf(o.ts)}`))}
+        ${row('Staff', escapeHtml(slip.seller || '—'))}
+        ${slip.mark ? row(slip.whoWord, escapeHtml(o.cashier)) : ''}
+        ${row('Approved by', escapeHtml(staffNameOf(o.approvedBy) || o.approvedBy))}
         ${row('Customer', escapeHtml(o.customer?.name || '—') + (o.customer?.phone ? ` <span class="bod-sub">${escapeHtml(o.customer.phone)}</span>` : ''))}
         ${row('Fulfilment', escapeHtml(orderFulfilLabel(o)))}
         ${row('Deliver to', escapeHtml(o.deliveryAddress))}
@@ -1350,20 +1253,17 @@ function orderDialogHtml(o) {
             ${o.items.map(i => `
               <tr>
                 <td>${escapeHtml(i.name)}${i.sku ? `<div class="bod-sub">${escapeHtml(i.sku)}</div>` : ''}</td>
-                <td class="num">${i.qty} ${escapeHtml(i.unit || 'pc')}</td>
+                <td class="num">${SalesMath.qtyText(i.qty)} ${escapeHtml(i.unit || 'pc')}</td>
                 <td class="num">${peso(i.price)}</td>
-                <td class="num">${peso(itemNet(i))}</td>
+                <td class="num">${peso(lineGross(i))}</td>
               </tr>`).join('') || '<tr><td colspan="4" class="bo-empty">No items on this order.</td></tr>'}
           </tbody>
         </table>
       </div>
       <div class="bod-totals">
-        ${total('Subtotal', peso(o.subtotal))}
-        ${o.discount ? total('Discount', '−' + peso(o.discount)) : ''}
-        ${o.vatAmount ? total('VAT included', peso(o.vatAmount)) : ''}
-        ${total('Total', peso(txTotal(o)), true)}
-        ${cash && o.tendered ? total('Tendered', peso(o.tendered)) : ''}
-        ${cash && o.tendered ? total('Change', peso(o.change)) : ''}
+        ${slip.totals.map(([label, amount]) => total(label, peso(amount))).join('')}
+        ${total('Total', peso(o.total), true)}
+        ${slip.paid.map(([label, amount]) => total(label, peso(amount))).join('')}
       </div>
     </div>`;
 }
@@ -1399,65 +1299,76 @@ function renderCustomers() {
 }
 
 /* ---------- Adding and editing an account ----------
-   `allCustomerRecords()` reads the stored list ahead of the seeded one, so saving a
-   record under an existing id overrides the seed instead of duplicating it. The balance
-   is never a field here: it is the sum of what was charged and paid, and typing over it
-   would make the ledger and the account disagree. */
-function saveCustomerRecord(rec) {
-  const list = loadSavedCustomers();
-  const i = list.findIndex(c => c.id === rec.id);
-  if (i >= 0) list[i] = { ...list[i], ...rec };
-  else list.push(rec);
-  storageSet(STORAGE_CUSTOMERS, JSON.stringify(list));
-  state.customers = list;
-}
-
+   The fields, the words and the check are bo-model's CUSTOMER_FIELDS / customerFromForm, the
+   same form the POS shows. The balance is never a field: it is the sum of the ledger. */
 function openCustomerDialog(id) {
   const dlg = $('#custDlg');
   if (!dlg) return;
   const c = id ? allCustomerRecords().find(x => x.id === id) : null;
-  const f = (label, name, value, type = 'text', extra = '') =>
-    `<label class="adj-field"><span>${label}</span>
-      <input name="${name}" type="${type}" value="${escapeHtml(String(value ?? ''))}" ${extra} autocomplete="off"></label>`;
+  const wrap = (f, control) => `<label class="adj-field${f.wide ? ' adj-note' : ''}"><span>${f.label}</span>${control}</label>`;
   dlg.innerHTML = `
     <div class="bod-head">
       <div class="bod-title"><h2>${c ? 'Edit ' + escapeHtml(c.name) : 'New customer'}</h2></div>
       <button type="button" class="bod-close" aria-label="Close">&times;</button>
     </div>
     <div class="adj-body">
-      <form class="adj-form" id="custForm" data-id="${escapeHtml(c ? c.id : '')}">
-        <div class="adj-grid">
-          ${f('Name', 'name', c ? c.name : '', 'text', 'required')}
-          ${f('Phone', 'phone', c ? c.phone : '', 'tel')}
-          <label class="adj-field adj-note"><span>Address</span>
-            <input name="address" type="text" value="${escapeHtml(c ? c.address || '' : '')}" autocomplete="off"></label>
-          ${f('Credit limit', 'creditLimit', c ? c.creditLimit || 0 : 0, 'number', 'min="0" step="0.01"')}
-        </div>
+      <form class="adj-form" id="custForm" data-id="${escapeHtml(c ? c.id : '')}" novalidate>
+        <div class="adj-grid">${customerFieldsHtml(c || {}, { wrap })}</div>
         <div class="adj-foot">
-          <span class="adj-last">0 means no limit: the account can run as far as you let it.</span>
+          <span class="adj-last" id="custErr"></span>
           <button type="button" class="secondary-btn small" data-act="custCancel">Cancel</button>
           <button type="submit" class="primary-btn small">${c ? 'Save' : 'Add customer'}</button>
         </div>
       </form>
     </div>`;
   dlg.showModal();
-  dlg.querySelector('input[name="name"]').focus();
+  dlg.querySelector('[name="name"]').focus();
 }
 
-function custStatus(c) {
-  const pct = c.creditLimit > 0 ? c.currentBalance / c.creditLimit : 0;
-  return !(c.currentBalance > 0) ? ['muted', 'Clear']   // owing with no limit set is Active, not Clear
-       : pct > 0.75 ? ['danger', 'Near limit']
-       : pct > 0.4 ? ['warn', 'In use']
-       : ['info', 'Active'];
+/* Record payment (owner 2026-10-02): an amount and a method, one ledger row (bo-model
+   recordPayment). The four ways: Full balance fills the amount; ticking orders fills it with what
+   they owe; lowering it pays part of the one ticked; nothing ticked pays the oldest first. */
+const PAY_METHODS = ['cash', 'gcash', 'qr'];   // the built-in ones; the store's own names follow, then Other
+function openPaymentDialog(c) {
+  const dlg = $('#custDlg');
+  if (!dlg || !c) return;
+  const open = accountDebts(accountRows(c.id)).filter(d => d.orderId && d.left > 0);
+  const number = new Map(state.orders.map(o => [o.id, o.number]));
+  const pay = state.settings.payments || {}, off = new Set(pay.hidden || []);
+  const methods = PAY_METHODS.filter(m => m === 'cash' || !off.has(m)).map(m => [m, SalesMath.tenderLabel(m)])
+    .concat((pay.custom || []).map(n => [n, n]), [['other', SalesMath.tenderLabel('other')]]);
+  dlg.innerHTML = `
+    <div class="bod-head">
+      <div class="bod-title"><h2>Record payment</h2><span class="bod-sub">${escapeHtml(c.name)} ${owedText(c.currentBalance, peso)}</span></div>
+      <button type="button" class="bod-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="adj-body">
+      <form class="adj-form" id="payForm" data-id="${escapeHtml(c.id)}" novalidate>
+        <div class="adj-grid">
+          <label class="adj-field"><span>Amount</span><input name="amount" type="number" min="0.01" step="0.01" autocomplete="off"></label>
+          <label class="adj-field"><span>Method</span><select name="method">${methods.map(([v, l]) => `<option value="${escapeHtml(v)}">${escapeHtml(l)}</option>`).join('')}</select></label>
+          ${open.length ? `<div class="adj-field adj-note"><span>For orders · none ticked pays the oldest first</span>
+            ${open.map(d => `<label class="bo-check"><input type="checkbox" name="order" value="${escapeHtml(d.orderId)}" data-left="${d.left}">
+              #${escapeHtml(number.get(d.orderId) || d.orderId)} · ${escapeHtml(shortDate(d.ts))} · ${peso(d.left)} owed</label>`).join('')}</div>` : ''}
+          <label class="adj-field adj-note"><span>Note</span><input name="note" type="text" autocomplete="off"></label>
+        </div>
+        <div class="adj-foot">
+          <span class="adj-last"><button type="button" class="link-btn" data-act="payFull">Full balance</button></span>
+          <button type="button" class="secondary-btn small" data-act="custCancel">Cancel</button>
+          <button type="submit" class="primary-btn small">Record payment</button>
+        </div>
+      </form>
+    </div>`;
+  dlg.showModal();
+  dlg.querySelector('[name="amount"]').focus();
 }
 
-// Each customer's orders, spent and last order (bo-insights.js customerTotals), keyed by id. Facts only:
-// the Next order / Due / Overdue guess was removed (owner, 2026-09-27).
-function customerTotalsMap() {
-  return new Map(HWPOS_INSIGHTS.customerTotals(state.orders, [], Date.now()).map(r => [r.customerId, r]));
-}
+// Each customer's ladder (orders, netSales = Total spent, lastSale), keyed by id: the same summarize
+// over SalesMath.customerOrders that the account page reads, grouped in one pass. Facts only: the
+// Next order / Due / Overdue guess was removed (owner, 2026-09-27).
+const customerTotalsMap = () => ladder(state.orders, { by: (o) => SalesMath.customerIdOf(o) }).groups;
 // Clear, the settled state, is muted text like Completed; every other state is a pill (owner, 2026-09-26).
+// The status itself is bo-model's accountStatus, the POS's word too.
 const custPill = ([tone, label]) => tone === 'muted'
   ? `<span class="muted">${label}</span>` : `<span class="status-pill ${tone}">${label}</span>`;
 
@@ -1470,117 +1381,106 @@ function renderCustomerList() {
   const cycles = customerTotalsMap();
   // Filters read off the URL (?status=, ?last=): last = N days bought within, -N = nothing in N days.
   const prm = Router.route().params, last = Number(prm.last) || 0;
+  // The status menu is every word accountStatus can give (bo-model ACCOUNT_STATUSES), so it never misses one.
+  const statusSel = $('.view-customers [data-cust="status"]');
+  if (statusSel) statusSel.innerHTML = '<option value="">Any balance</option>'
+    + ACCOUNT_STATUSES.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
   $$('.view-customers [data-cust]').forEach(el => { el.value = prm[el.dataset.cust] || ''; });
-  const ago = (c) => { const d = cycles.get(c.id)?.lastOrderDate; return d ? (Date.now() - new Date(d + 'T00:00')) / 864e5 : Infinity; };
+  // Whole store days, the "days ago" every screen uses (SalesMath.daysAgo, 0 = today): "last 7 days" is
+  // today and the 6 before, the same days as SalesMath.rangeWindow(7); "No order in 90+ days" is the rest.
+  const now = Date.now(), ago = (c) => { const t = cycles.get(c.id)?.lastSale; return t ? SalesMath.daysAgo(t, now, boZone()) : Infinity; };
   const list = customers.filter(c => (!q || c.name.toLowerCase().includes(q) || (c.phone || '').includes(q))
-    && (!prm.status || custStatus(c)[1] === prm.status)
-    && (!last || (last > 0 ? ago(c) <= last : ago(c) > -last)));
+    && (!prm.status || accountStatus(c)[1] === prm.status)
+    && (!last || (last > 0 ? ago(c) < last : ago(c) >= -last)));
 
-  const totalOutstanding = customers.reduce((a, c) => a + (c.currentBalance || 0), 0);
-  const totalLimit = customers.reduce((a, c) => a + (c.creditLimit || 0), 0);
-  const overLimit = customers.filter(c => custStatus(c)[1] === 'Near limit').length;   // the status filter's own test, so the click shows exactly these
-  const active = customers.filter(c => c.currentBalance > 0).length;
-  const utilization = totalLimit > 0 ? Math.round(totalOutstanding / totalLimit * 100) : 0;
+  // bo-model creditPool: money held for a customer is not credit out; Over limit is the status filter's own
+  // test; Utilization is what is owed on accounts WITH a limit over the limits (a no-limit debt uses none).
+  const { owed: totalOutstanding, used, limit: totalLimit, over: overLimit, active } = creditPool(customers);
+  const utilization = pctOf(used, totalLimit, 0);
 
   $('#custTitle').textContent = 'Customers';
   // One thin strip over the filters (owner 2026-09-28; a Widgets rail before): always on, the note when you point
-  // at a figure. Near limit is a button for the status filter.
-  const near = prm.status === 'Near limit';
+  // at a figure. Over limit is a button for the status filter.
+  const near = prm.status === 'Over limit';
   const cell = (tag, lbl, num, note, extra = '') => `<${tag} class="top one"${extra} title="${escapeHtml(note)}"><span>${lbl}</span>
     <span class="acts"><span class="cnt${tag === 'button' && overLimit ? ' down' : ''}">${escapeHtml(note)}</span><span class="nv">${num}</span></span></${tag}>`;
-  $('#custStrip').innerHTML = cell('div', 'Outstanding credit', pesoShort(totalOutstanding), `${active} active debtors`)
+  $('#custStrip').innerHTML = cell('div', 'Balance', pesoShort(totalOutstanding), `${SalesMath.plural(active, 'customer')} ${active === 1 ? 'owes' : 'owe'}`)
     + cell('div', 'Credit limit pool', pesoShort(totalLimit), 'total approved')
-    + cell('div', 'Utilization', utilization + '%', 'of total pool')
-    + cell('button', 'Near limit', overLimit, '> 75% utilized', ` type="button" data-act="custNear" aria-pressed="${near}"`);
+    + cell('div', 'Utilization', utilization, 'of total pool')
+    + cell('button', 'Over limit', overLimit, 'owing past their limit', ` type="button" data-act="custNear" aria-pressed="${near}"`);
 
   const pg = paginate(list, prm.page);
   $('#custPager').innerHTML = pagerHtml(pg);
   $('#custTable tbody').innerHTML = pg.rows.map(c => {
-    const status = custStatus(c);
+    const status = accountStatus(c);
     const cy = cycles.get(c.id);
     return `
       <tr data-customer="${escapeHtml(c.id)}">
         <td title="${escapeHtml(c.name)}"><strong>${escapeHtml(c.name)}</strong></td>
         <td>${escapeHtml(c.phone || '—')}</td>
         <td class="num">${cy ? cy.orders : 0}</td>
-        <td class="num">${pesoShort(cy ? cy.revenuePesos : 0)}</td>
-        <td>${cy ? escapeHtml(shortDate(cy.lastOrderDate + 'T00:00')) : '—'}</td>
-        <td class="num">${c.currentBalance > 0 ? peso(c.currentBalance) : '<span class="muted">—</span>'}</td>
+        <td class="num">${pesoShort(cy ? cy.netSales : 0)}</td>
+        <td>${cy?.lastSale ? escapeHtml(shortDate(cy.lastSale)) : '—'}</td>
+        <td class="num">${c.currentBalance ? peso(c.currentBalance) : '<span class="muted">—</span>'}</td>
         <td>${custPill(status)}</td>
       </tr>`;
   }).join('') || `<tr><td colspan="7" class="bo-empty">No customers match.</td></tr>`;
 }
 
-// Every order this account is named on, newest first. Voided and refunded orders stay
-// in the list — they are part of what happened — but they don't count toward spend.
-function customerOrders(id) {
-  return state.orders
-    .filter(o => o.customer && o.customer.id === id)
-    .sort((a, b) => b.ts - a.ts);
-}
-
 /* ---------- The statement ----------
-   The workflow this replaces: keep every receipt in a pile, add them up by hand when the
-   customer finally pays. A charge is an order with a `credit` payment on it, which the POS
-   already writes, so nothing new is recorded - the range is read off the URL and totalled. */
-const creditOn = (o) => (o.payments || [])
-  .filter(p => p.method === 'credit')
-  .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-
-function statementRows(orders, { from, to, chargesOnly }) {
-  // A date input gives a day, and `to` has to include that whole day.
-  const lo = from ? new Date(from + 'T00:00').getTime() : -Infinity;
-  const hi = to ? new Date(to + 'T23:59:59.999').getTime() : Infinity;
-  return orders.filter(o => {
-    if (o.status === 'voided' || o.status === 'refunded') return false;   // never happened, for money
-    if (o.ts < lo || o.ts > hi) return false;
-    return chargesOnly ? creditOn(o) > 0 : true;
-  });
+   The account's ledger, newest first: every charge, payment, reversal, opening balance and
+   adjustment, with the balance after each. A return is a reversal on the paid side, never a
+   second charge (bug 3). Each debt says Paid / Part paid / Unpaid (bo-model accountDebts); a
+   payment can be undone, which writes a reversal, never a delete. An undone payment stays,
+   marked Undone, and counts for nothing; the rows undoing it are bookkeeping and are not shown
+   (bo-model undoneIds, so two undos of one payment still read once). The range is on the URL. */
+// bo-model accountStatement: store-clock days, and a Brought forward row when From cuts history off, so
+// brought forward + Charged − Paid = the closing balance on the page. Its own payment word
+// (methodLabel, else SalesMath.tenderLabel) names each payment.
+function statementRows(customerId, { from, to }) {
+  const number = new Map(state.orders.map(o => [o.id, o.number]));
+  return accountStatement(accountRows(customerId), { from, to, zone: boZone(), numberOf: id => number.get(id) });
 }
 
 function renderCustomerDetail(c) {
-  const orders = customerOrders(c.id);
-  const counted = orders.filter(o => o.status === 'completed' || o.status === 'saved');
-  const spent = counted.reduce((a, o) => a + (o.total || 0), 0);
-  const last = orders[0];
-  const status = custStatus(c);
+  const orders = SalesMath.customerOrders(state.orders, c.id);
+  // What they bought, on the ladder: refunds come back off, parked carts never count. lastSale is
+  // the newest sale still standing (a voided one never happened, a refunded one did).
+  const m = ladder(orders);
+  const last = m.lastSale ? orders.find(o => saleSign(o) > 0 && SalesMath.tsOf(o) === m.lastSale) : null;
+  const status = accountStatus(c);
 
   $('#custTitle').textContent = c.name;
   const kpis = [
-    kpi('Total spent', pesoShort(spent), `${counted.length} order${counted.length === 1 ? '' : 's'}`, 'flat'),
-    kpi('Balance', peso(c.currentBalance || 0), `of ${pesoShort(c.creditLimit || 0)} limit`, 'flat'),
-    kpi('Average order', pesoShort(counted.length ? spent / counted.length : 0), 'per completed order', 'flat'),
+    kpi('Total spent', pesoShort(m.netSales), SalesMath.plural(m.orders, 'order'), 'flat'),
+    kpi('Balance', peso(c.currentBalance || 0), limitText(c) || `of ${pesoShort(c.creditLimit)} limit`, 'flat'),
+    kpi('Average sale', pesoShort(m.averageSale), 'per order', 'flat'),
     kpi('Last purchase', last ? shortDate(last.ts) : '—', last ? peso(last.total) : 'no orders yet', 'flat'),
   ].join('');
 
-  // One line per product across every order — what they actually keep buying.
-  const byItem = new Map();
-  for (const o of counted) {
-    for (const i of o.items) {
-      const key = i.id || i.name;
-      const row = byItem.get(key) || { name: i.name, unit: i.unit, qty: 0, times: 0, spent: 0 };
-      row.qty += i.qty;
-      row.times += 1;
-      row.spent += i.lineTotal != null ? i.lineTotal : i.price * i.qty;
-      byItem.set(key, row);
-    }
-  }
-  const items = [...byItem.values()].sort((a, b) => b.spent - a.spent);
+  // One line per item across every order — what they actually keep buying. Sales › Items' own list
+  // (renderSales.topItems): same item key, same "Name · brand" for two items sharing a name.
+  const items = renderSales.topItems(orders)
+    .map(r => ({ name: r.name, unit: r.unit, qty: r.unitsSold, times: r.orders, spent: r.netSales }));
 
   // The statement reads its range off the URL, like every other filter in the back office.
   const p = Router.route().params;
-  const stRows = statementRows(orders, { from: p.from, to: p.to, chargesOnly: !p.all });
-  const stTotal = stRows.reduce((a, o) => a + (p.all ? (o.total || 0) : creditOn(o)), 0);
-  // 25 a page on its own ?stpage=, so it walks apart from Transactions; the Total is still the whole range.
+  const stRows = statementRows(c.id, { from: p.from, to: p.to });
+  const sum = (k) => round2(stRows.reduce((a, x) => a + x[k], 0));
+  // 25 a page on its own ?stpage=, so it walks apart from Transactions; the totals are the whole range.
   const stPg = paginate(stRows, p.stpage, DETAIL_ROWS);
-  const stBody = stPg.rows.map(o => `
-    <tr data-order="${escapeHtml(o.id)}">
-      <td>${escapeHtml(shortDate(o.ts))}</td>
-      <td><strong>#${escapeHtml(o.number)}</strong></td>
-      <td class="num">${o.items.length}</td>
-      <td class="num">${creditOn(o) ? peso(creditOn(o)) : '<span class="muted">—</span>'}</td>
-      <td class="num"><strong>${peso(o.total)}</strong></td>
-    </tr>`).join('') || `<tr><td colspan="5" class="bo-empty">Nothing in this range.</td></tr>`;
+  const money = (n) => n ? peso(n) : '<span class="muted">—</span>';
+  const stBody = stPg.rows.map(x => `
+    <tr${x.r.orderId && x.kind === 'charge' ? ` data-order="${escapeHtml(x.r.orderId)}"` : ''}>
+      <td>${escapeHtml(shortDate(x.r.ts))}</td>
+      <td>${escapeHtml(x.entry)}</td>
+      <td>${['Paid', 'Undone', 'Reversed'].includes(x.status) ? `<span class="muted">${x.status}</span>` : x.status ? custPill(['warn', x.status]) : ''}</td>
+      <td class="num">${money(x.charged)}</td>
+      <td class="num">${x.status === 'Undone' ? `<s class="muted">${peso(x.r.amount)}</s>` : money(x.paid)}</td>
+      <td class="num"><strong>${peso(x.balance)}</strong></td>
+      <td class="num">${x.kind === 'payment' && !x.status
+        ? `<button class="secondary-btn small" data-act="payUndo" data-id="${escapeHtml(x.r.id)}">Undo</button>` : ''}</td>
+    </tr>`).join('') || `<tr><td colspan="7" class="bo-empty">Nothing in this range.</td></tr>`;
 
   const pg = paginate(orders, Router.route().params.page, DETAIL_ROWS);
   const txRows = pg.rows.map(o => `
@@ -1589,14 +1489,14 @@ function renderCustomerDetail(c) {
       <td><strong>#${escapeHtml(o.number)}</strong></td>
       <td class="num">${o.items.length}</td>
       ${txPayStatus(o)}
-      <td class="num"><strong>${peso(o.total)}</strong></td>
-    </tr>`).join('') || `<tr><td colspan="6" class="bo-empty">No transactions yet.</td></tr>`;
+      <td class="num"><strong>${txTotal(o)}</strong></td>
+    </tr>`).join('') || `<tr><td colspan="6" class="bo-empty">No orders yet.</td></tr>`;
 
   // Top 25 by spend; the count in the header is the full number.
   const itemRows = items.slice(0, DETAIL_ROWS).map(i => `
     <tr>
       <td><strong>${escapeHtml(i.name)}</strong></td>
-      <td class="num">${i.qty % 1 ? i.qty.toFixed(2) : i.qty} ${escapeHtml(i.unit || '')}</td>
+      <td class="num">${SalesMath.qtyText(i.qty)} ${escapeHtml(i.unit || '')}</td>
       <td class="num">${i.times}</td>
       <td class="num"><strong>${peso(i.spent)}</strong></td>
     </tr>`).join('') || `<tr><td colspan="4" class="bo-empty">Nothing bought yet.</td></tr>`;
@@ -1608,46 +1508,47 @@ function renderCustomerDetail(c) {
         <span class="bo-card-label">Account</span>
         <span class="bo-card-sub">${custPill(status)}</span>
         <button class="secondary-btn small" data-act="custEdit" data-id="${escapeHtml(c.id)}">Edit</button>
+        ${canRecordPayment(c) ? '<button class="primary-btn small" data-act="payNew">Record payment</button>' : ''}
       </div>
       <div class="kpi-row joined">${kpis}</div>
       <div class="bo-card-inset cust-facts">
         <div><span>Phone</span><b>${escapeHtml(c.phone || '—')}</b></div>
         <div><span>Address</span><b>${escapeHtml(c.address || '—')}</b></div>
-        <div><span>Available credit</span><b>${peso((c.creditLimit || 0) - (c.currentBalance || 0))}</b></div>
+        <div><span>Available credit</span><b>${limitText(c) || peso(creditRoom(c))}</b></div>
       </div>
     </section>
     <section class="bo-card blk-table">
       <div class="bo-card-head st-head">
         <span class="bo-card-label">Statement</span>
-        <span class="bo-card-sub">${stRows.length} receipt${stRows.length === 1 ? '' : 's'}</span>
+        <span class="bo-card-sub">${SalesMath.plural(stRows.filter(x => x.kind !== 'forward').length, 'entry', 'entries')}</span>
         <input type="date" class="bo-date" data-act="stFrom" value="${escapeHtml(p.from || '')}" aria-label="From" />
         <span class="bo-card-sub">to</span>
         <input type="date" class="bo-date" data-act="stTo" value="${escapeHtml(p.to || '')}" aria-label="To" />
-        <label class="bo-check"><input type="checkbox" data-act="stAll" ${p.all ? 'checked' : ''} /> Include cash sales</label>
         <button class="secondary-btn small" data-act="stExport">Export CSV</button>
       </div>
       <div class="bo-card-inset flush"><div class="table-wrap">
         <table class="data-table cust-tx">
           <thead><tr>
-            <th>Date</th><th>Receipt</th><th class="num">Items</th>
-            <th class="num">Charged</th><th class="num">Receipt total</th>
+            <th>Date</th><th>Entry</th><th>Status</th>
+            <th class="num">Charged</th><th class="num">Paid</th><th class="num">Balance</th><th></th>
           </tr></thead>
           <tbody>${stBody}</tbody>
           <tfoot><tr><td colspan="3"><strong>Total</strong></td>
-            <td class="num"><strong>${peso(stTotal)}</strong></td>
-            <td class="num"><strong>${peso(stRows.reduce((a, o) => a + (o.total || 0), 0))}</strong></td></tr></tfoot>
+            <td class="num"><strong>${peso(sum('charged'))}</strong></td>
+            <td class="num"><strong>${peso(sum('paid'))}</strong></td>
+            <td class="num"><strong>${peso(stRows[0]?.balance || 0)}</strong></td><td></td></tr></tfoot>
         </table>
       </div>${pagerHtml(stPg, 'stpage')}</div>
     </section>
     <section class="bo-card blk-table">
       <div class="bo-card-head">
-        <span class="bo-card-label">Transactions</span>
-        <span class="bo-card-sub">${orders.length} order${orders.length === 1 ? '' : 's'}</span>
+        <span class="bo-card-label">Orders</span>
+        <span class="bo-card-sub">${SalesMath.plural(orders.length, 'receipt')}</span>
       </div>
       <div class="bo-card-inset flush"><div class="table-wrap">
         <table class="data-table cust-tx">
           <thead><tr>
-            <th>Date</th><th>Receipt</th><th class="num">Items</th>
+            <th>Date</th><th>Order</th><th class="num">Items</th>
             <th>Payment</th><th class="opt">Status</th><th class="num">Total</th>
           </tr></thead>
           <tbody>${txRows}</tbody>
@@ -1657,12 +1558,12 @@ function renderCustomerDetail(c) {
     <section class="bo-card blk-table">
       <div class="bo-card-head">
         <span class="bo-card-label">Items bought</span>
-        <span class="bo-card-sub">${items.length} product${items.length === 1 ? '' : 's'}</span>
+        <span class="bo-card-sub">${SalesMath.plural(items.length, 'item')}</span>
       </div>
       <div class="bo-card-inset flush"><div class="table-wrap">
         <table class="data-table cust-items">
           <thead><tr>
-            <th>Item</th><th class="num">Qty</th><th class="num">Orders</th><th class="num">Spent</th>
+            <th>Item</th><th class="num">Units sold</th><th class="num">Orders</th><th class="num">Total spent</th>
           </tr></thead>
           <tbody>${itemRows}</tbody>
         </table>
@@ -1705,9 +1606,15 @@ function openSetDialog(title, fields, onSave, saveLabel = 'Save') {
 // (Shopify-like, owner 2026-09-26: no input box until you click). A blank falls back to the default.
 const SET_EDIT = {
   store: { title: 'Store details', fields: [['Store name', 'name'], ['Address', 'address'], ['Phone', 'phone'], ['Currency', 'currency']] },
-  tax: { title: 'VAT', fields: [['VAT rate', 'vatRate'], ['TIN', 'tin']] },
+  tax: { title: 'VAT', fields: [['VAT rate', 'vatRate'], ['Tax name', 'taxName'], ['TIN', 'tin']] },
 };
-const setShown = (key) => key === 'vatRate' ? `${Math.round((state.settings.vatRate || 0) * 100)}%` : state.settings.store[key] || '';
+// vatRate and taxName are store-wide settings; the rest sit under settings.store. The tax name is
+// what the receipt prints (SalesMath.taxName), shown as the till uses it when none is typed.
+const setShown = (key) => key === 'vatRate' ? SalesMath.ratePct(state.settings.vatRate || 0)
+  : key === 'taxName' ? SalesMath.taxName(state.settings) : state.settings.store[key] || '';
+// The dialog leaves Tax name blank while it is the default (shown as the placeholder), so turning
+// "Tax added on top" on later still reads Tax, not a VAT someone saved without typing it.
+const taxDefault = () => SalesMath.taxName({ taxOnTop: state.settings.taxOnTop });
 const setRowsHtml = (card) => SET_EDIT[card].fields.map(([label, key]) => `
   <button type="button" class="setting-row" data-set-edit="${card}" data-key="${key}">
     <span class="set-lbl">${label}</span><span class="set-val">${escapeHtml(setShown(key)) || '<span class="muted">Not set</span>'}</span>
@@ -1716,17 +1623,18 @@ const setRowsHtml = (card) => SET_EDIT[card].fields.map(([label, key]) => `
 function openSetEdit(card, focus) {
   const c = SET_EDIT[card];
   const dlg = openSetDialog(c.title, c.fields.map(([label, key]) => `<label class="adj-field"><span>${label}</span>
-      <input class="text-input" name="${key}" type="text" value="${escapeHtml(setShown(key))}" autocomplete="off"></label>`).join(''), (form) => {
+      <input class="text-input" name="${key}" type="text" value="${escapeHtml(key === 'taxName' ? state.settings.taxName || '' : setShown(key))}"${key === 'taxName' ? ` placeholder="${escapeHtml(taxDefault())}"` : ''} autocomplete="off"></label>`).join(''), (form) => {
     const v = (k) => (form.elements[k]?.value || '').trim();
     const s = state.settings, store = { ...s.store };
-    let vatRate = s.vatRate;
+    let vatRate = s.vatRate, taxName = s.taxName;
     for (const [, k] of c.fields) {
-      if (k !== 'vatRate') { store[k] = v(k) || DEFAULT_SETTINGS.store[k]; continue; }
+      if (k === 'taxName') { taxName = v(k) === taxDefault() ? '' : v(k); continue; }
+      if (k !== 'vatRate') { store[k] = v(k) || HWPOS_STORE.defaults().store[k]; continue; }
       const n = parseFloat(v(k).replace('%', ''));
       if (!(n >= 0 && n <= 100)) return 'VAT rate is a percent, like 12%.';
       vatRate = n / 100;
     }
-    state.settings = { ...s, vatRate, store };
+    state.settings = { ...s, vatRate, taxName, store };
     saveSettings();
     showToast(`${c.title} saved`);
     renderSettingsForm();
@@ -1738,6 +1646,10 @@ function openSetEdit(card, focus) {
 // On/off and pick-one settings save the moment they change, like Appearance and Staff & access.
 const SET_NOW = {
   setVatRegistered: (s, el) => ({ vatInclusive: el.checked }),
+  // Read by SalesMath.taxOpts: on = the shelf price is before tax and tax is added at checkout (US).
+  setTaxOnTop: (s, el) => ({ taxOnTop: el.checked }),
+  // SC/PWD (owner, 2026-10-02): the switch comes first; the till's SC/PWD checkout step reads it later.
+  setScPwd: (s, el) => ({ scPwdOn: el.checked }),
   setPrinterWidth: (s, el) => ({ printing: { ...s.printing, width: el.value } }),
   setPrintOnSale: (s, el) => ({ printing: { ...s.printing, printOnSale: el.checked } }),
   setLogoOnReceipt: (s, el) => ({ printing: { ...s.printing, logoOnReceipt: el.checked } }),
@@ -1751,6 +1663,8 @@ function renderSettingsForm() {
   const s = state.settings;
   $$('[data-set-rows]').forEach(el => { el.innerHTML = setRowsHtml(el.dataset.setRows); });
   $('#setVatRegistered').checked = !!s.vatInclusive;
+  $('#setTaxOnTop').checked = !!s.taxOnTop;
+  $('#setScPwd').checked = !!s.scPwdOn;
   $('#setPrinterWidth').value = s.printing.width === '80mm' ? '80mm' : '58mm';
   $('#setPrintOnSale').checked = !!s.printing.printOnSale;
   $('#setLogoOnReceipt').checked = !!s.printing.logoOnReceipt;
@@ -1764,7 +1678,7 @@ const PAY_BUILTINS = [
   ['cash', 'Cash', 'Always on. The cash drawer counts it.'],
   ['gcash', 'GCash', ''],
   ['qr', 'QR', 'Any QR wallet'],
-  ['other', 'Other', 'The cashier types the name at checkout'],
+  ['other', 'Other', 'Staff type the name at checkout'],
   ['credit', 'Account', 'Charge to a customer. Shows only once a customer is picked.'],
   ['split', 'Split', 'Part cash, the rest on account. Shows only with a customer.'],
 ];
@@ -1777,7 +1691,7 @@ const METHOD_CARDS = {
     placeholder: 'Add a method, e.g. Maya or Card', saved: 'Payment methods saved',
   },
   fulfilment: {
-    title: 'Fulfilment types', col: 'Type', locked: 'pickup', builtins: FULFIL_BUILTINS,
+    title: 'Fulfilment types', col: 'Type', locked: 'walkin', builtins: FULFIL_BUILTINS,
     sub: 'Ticked ones show above Check out',
     placeholder: 'Add a type, e.g. Tricycle or Ship-out', saved: 'Fulfilment types saved',
   },
@@ -1973,14 +1887,26 @@ function wireEvents() {
     if (!el || !e.target.closest('.view-customers')) return;
     const act = el.dataset.act;
     if (act === 'custEdit') return openCustomerDialog(el.dataset.id);
-    if (act === 'custNear') return Router.setParams({ status: Router.route().params.status === 'Near limit' ? '' : 'Near limit', page: '' });
+    if (act === 'custNear') return Router.setParams({ status: Router.route().params.status === 'Over limit' ? '' : 'Over limit', page: '' });
     if (act === 'custCancel') return $('#custDlg')?.close();
+    if (act === 'payNew') return openPaymentDialog(allCustomerRecords().find(x => x.id === state.detailId));
+    if (act === 'payFull') {
+      const f = $('#payForm');
+      f.querySelectorAll('[name="order"]').forEach(b => { b.checked = false; });
+      f.amount.value = Math.max(0, allCustomerRecords().find(x => x.id === f.dataset.id)?.currentBalance || 0) || '';
+      return;
+    }
+    if (act === 'payUndo') {
+      if (!window.confirm('Undo this payment? It stays on the statement, marked Undone.')) return;
+      if (undoPayment(loadCustomerLedger().find(r => r.id === el.dataset.id), { staff: actor() })) showToast('Payment undone');
+      return renderCurrentView();
+    }
     if (act === 'stExport') {
       const c = allCustomerRecords().find(x => x.id === state.detailId);
       const p = Router.route().params;
-      const rows = [['date', 'receipt', 'items', 'charged_to_account', 'receipt_total']];
-      statementRows(customerOrders(state.detailId), { from: p.from, to: p.to, chargesOnly: !p.all })
-        .forEach(o => rows.push([isoDate(o.ts), o.number, o.items.length, creditOn(o), o.total]));
+      const rows = [['date', 'entry', 'status', 'charged', 'paid', 'balance']];
+      statementRows(state.detailId, { from: p.from, to: p.to }).reverse()
+        .forEach(x => rows.push([isoDate(x.r.ts), x.entry, x.status, x.charged, x.paid, x.balance]));
       const span = [p.from || 'start', p.to || isoDate(Date.now())].join('-to-');
       return downloadCsv(`statement-${(c ? c.name : state.detailId).replace(/\W+/g, '-').toLowerCase()}-${span}.csv`, rows);
     }
@@ -1991,27 +1917,44 @@ function wireEvents() {
     const act = e.target.dataset.act;
     if (act === 'stFrom') Router.setParams({ from: e.target.value });
     else if (act === 'stTo') Router.setParams({ to: e.target.value });
-    else if (act === 'stAll') Router.setParams({ all: e.target.checked ? '1' : '' });
+    else if (e.target.name === 'order') {   // ticking orders fills the amount with what they owe
+      const f = e.target.form, n = [...f.querySelectorAll('[name="order"]:checked')].reduce((a, b) => a + Number(b.dataset.left), 0);
+      f.amount.value = n ? round2(n) : '';
+    }
   });
 
   document.addEventListener('submit', (e) => {
+    if (e.target.id === 'payForm') {
+      e.preventDefault();
+      const f = e.target, c = allCustomerRecords().find(x => x.id === f.dataset.id);
+      const amount = round2(f.amount.value), m = f.method.value;
+      if (!(amount > 0)) { showToast('Enter an amount above 0'); return f.amount.focus(); }
+      const [method, methodLabel] = PAY_METHODS.includes(m) || m === 'other' ? [m, ''] : ['other', m];   // a custom name is saved as its own label
+      recordPayment(c, amount, { method, ...(methodLabel && { methodLabel }), note: f.note.value.trim(), staff: actor(),
+        orderIds: [...f.querySelectorAll('[name="order"]:checked')].map(b => b.value) });
+      $('#custDlg')?.close();
+      showToast(`${peso(amount)} recorded`);
+      return renderCurrentView();
+    }
     if (e.target.id !== 'custForm') return;
     e.preventDefault();
-    const f = new FormData(e.target);
-    const name = String(f.get('name') || '').trim();
-    if (!name) return showToast('Name is required');
     const id = e.target.dataset.id;
-    const existing = id ? allCustomerRecords().find(c => c.id === id) : null;
-    saveCustomerRecord({
-      ...(existing || { currentBalance: 0 }),
-      id: id || newId('cust'),
-      name,
-      phone: String(f.get('phone') || '').trim(),
-      address: String(f.get('address') || '').trim(),
-      creditLimit: round2(f.get('creditLimit')),
-    });
+    const values = Object.fromEntries(new FormData(e.target));
+    const res = customerFromForm(values, id ? allCustomerRecords().find(c => c.id === id) : null);
+    if (res.error) {
+      $('#custErr').textContent = res.error;
+      return e.target.querySelector(`[name="${res.field}"]`).focus();
+    }
+    // Someone else has this phone (bo-model phoneOwner): say so once and offer them; saving again adds anyway.
+    const dup = phoneOwner(res.customer.phone, id);
+    if (dup && e.target.dataset.phone !== res.customer.phone) {
+      e.target.dataset.phone = res.customer.phone;
+      $('#custErr').innerHTML = phoneOwnerNote(dup, `<a class="link-btn" href="${escapeHtml(Router.href('customers', dup.id))}" data-act="custCancel">Open ${escapeHtml(dup.name)}</a>`);
+      return;
+    }
+    saveCustomer(res.customer);
     $('#custDlg')?.close();
-    showToast(id ? 'Customer saved' : `${name} added`);
+    showToast(id ? 'Customer saved' : `${res.customer.name} added`);
     renderCurrentView();
   });
 
@@ -2097,6 +2040,9 @@ function wireEvents() {
       STORAGE_PRODUCTS,
       STORAGE_ORDERS,
       STORAGE_CUSTOMERS,
+      STORAGE_CUSTOMER_LEDGER,
+      STORAGE_PURCHASE_ORDERS,   // a receipt in another window repaints this one
+      STORAGE_STOCK_MOVEMENTS,   // a sale or count on another till: on hand re-derives
       STORAGE_SETTINGS,
       STORAGE_TILE_SIZE,
       STORAGE_SHOW_PRICE,
@@ -2154,4 +2100,4 @@ function init() {
   Router.start(applyRoute);
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => HWPOS_STORE.ready().then(init));

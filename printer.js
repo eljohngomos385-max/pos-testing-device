@@ -18,9 +18,15 @@
       .replace(/[^\x20-\x7E\n]/g, '');
   }
 
-  function money(n) {
+  // The receipt maths is SalesMath's (one formula per number); in Node the check script loads it beside us.
+  // ponytail: resolved per call, so script order on the page doesn't matter.
+  const SM = () => g.SalesMath || require('./sales-math.js');
+
+  // The store's currency decides the decimals (P 2, Y 0); the symbol stays off the slip.
+  function money(n, currency) {
     const v = Number(n) || 0;
-    return v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const s = SM().formatMoney(Math.abs(v), currency).replace(/[^\d.,]/g, '').replace(/^[.,]+|[.,]+$/g, '');
+    return (v < 0 && /[1-9]/.test(s) ? '-' : '') + s;
   }
 
   function wrap(s, cols) {
@@ -49,6 +55,25 @@
     return /80/.test(String(width || '')) ? 48 : 32;
   }
 
+  // The money lines under TOTAL, from the receipt view model (app.js toReceiptViewModel), as [label, amount],
+  // unsigned. Used by this layout and by the till's on-screen slips, so paper and screen say the same.
+  // A sale names each tender (vm.legs, SalesMath.paymentsOf: 'GCash', never 'Refund'); CASH is what was
+  // handed over, then CHANGE. A void or refund is money going back: GIVEN BACK and the tender, never
+  // 'CASH 237.86' as if it came in. A parked cart has none.
+  function payRows(vm) {
+    if (!vm || vm.status === 'saved') return [];
+    const legs = vm.legs || [];
+    const name = (p, i) => String((legs[i] && legs[i].label) || p.label || p.method).toUpperCase();
+    if (vm.paidWord === 'Given back') return (vm.payments || []).map((p, i) => ['GIVEN BACK · ' + name(p, i), Number(p.amount) || 0]);
+    return (vm.payments || []).flatMap((p, i) => (p.method === 'cash'
+      ? [['CASH', SM().tenderedOf(p)], ...(p.change > 0 ? [['CHANGE', p.change]] : [])]
+      : [[name(p, i), Number(p.amount) || 0]]));
+  }
+
+  // The totals block above TOTAL is SalesMath.totalRows, the one list every slip, the paper and the
+  // back office receipt share.
+  const totalRows = vm => SM().totalRows(vm);
+
   // ---------- layout: receipt view model -> op list ----------
 
   function layout(vm, opts) {
@@ -71,6 +96,7 @@
     };
 
     const st = vm.store || {};
+    const cash = n => money(n, st.currency);
 
     align('center');
     bold(true); big(true);
@@ -83,60 +109,50 @@
     align('left');
     rule();
 
+    if (vm.mark) { align('center'); bold(true); text(vm.mark); bold(false); align('left'); }
     row('Receipt #', vm.number || '');
     row('Date', vm.dateText || '');
-    row('Cashier', vm.cashier || '');
+    row(vm.whoWord || 'Cashier', vm.cashier || '');   // a void or refund names who pressed it
     row('Register', vm.register || '1');
 
     if (vm.customer && vm.customer.name) text('Customer: ' + vm.customer.name);
 
-    const delivery = /^DELIVERY/.test(vm.fulfilmentLabel || '');
-    bold(true);
-    text(delivery ? 'DELIVERY' : 'PICKUP');
-    bold(false);
+    // The word is the till's (bo-model orderFulfilLabel, upper-cased): Walk-in, Pickup, Delivery or a store's own type.
+    const fulfil = String(vm.fulfilmentLabel || '').split(' · ')[0];
+    const delivery = fulfil === 'DELIVERY';
+    if (fulfil) { bold(true); text(fulfil); bold(false); }
     if (delivery && vm.deliveryAddress) wrap(vm.deliveryAddress, cols).forEach(text);
 
     rule();
 
-    (vm.items || []).forEach(i => {
+    const t = vm.totals || {};
+    // Each line at price x qty before discount, fitted to the Subtotal; the discount prints once, below.
+    SM().receiptLines({ ...t, items: vm.items || [] }).forEach(({ item: i, amount }) => {
       wrap(i.name, cols).forEach(text);
-      const qty = ('  ' + i.qty + ' ' + (i.unit || '')).replace(/\s+$/, '') + ' x ' + money(i.price);
-      row(qty, money(i.lineTotal != null ? i.lineTotal : i.price * i.qty));
+      const qty = ('  ' + SM().qtyText(i.qty) + ' ' + (i.unit || '')).replace(/\s+$/, '') + ' x ' + cash(i.price);
+      row(qty, cash(amount));
     });
 
     rule();
 
-    const t = vm.totals || {};
-    row('Subtotal', money(t.subtotal));
-    if (t.discount > 0) row('Discount', '-' + money(t.discount));
-    if (t.vatAmount > 0) {
-      row('VATable sales', money(t.vatableSales));
-      row('VAT (' + Math.round((t.vatRate || 0.12) * 100) + '%)', money(t.vatAmount));
-    }
+    totalRows(vm).forEach(([l, n]) => row(l, cash(n)));
     rule('=');
     bold(true); big(true);
-    row('TOTAL', money(t.total));
+    row('TOTAL', cash(t.total));
     big(false); bold(false);
 
     if (vm.status === 'saved') {
       row('STATUS', 'NOT COMPLETED');
     } else {
-      (vm.payments || []).forEach(p => {
-        if (p.method === 'cash') {
-          row('CASH', money(p.tendered != null ? p.tendered : p.amount));
-          if (p.change > 0) row('CHANGE', money(p.change));
-        } else {
-          row(String(p.label || p.method).toUpperCase(), money(p.amount));
-        }
-      });
+      payRows(vm).forEach(([l, n]) => row(l, cash(n)));
     }
 
     rule();
     if (delivery) mapBlock(o.mapImage);
     align('center');
     bold(true); text('Thank you!'); bold(false);
-    wrap('This serves as your official receipt.', cols).forEach(text);
-    wrap('Goods sold are not returnable.', cols).forEach(text);
+    // SalesMath.receiptParts' footer: a sale is the official receipt; a void or refund slip says it is not.
+    (vm.footer || SM().receiptParts(vm).footer).forEach(l => wrap(l, cols).forEach(text));
     align('left');
 
     ops.push({ op: 'feed', v: 4 });
@@ -543,7 +559,7 @@
       .join('\n');
   }
 
-  const API = { print, preview, pairBluetooth, scanNetwork, probe, layout, escpos, eposXml, eposUrl, mapRaster, packMono, levels, stretch, colsFor, pad, wrap, money, ascii };
+  const API = { print, preview, pairBluetooth, scanNetwork, probe, layout, escpos, eposXml, eposUrl, mapRaster, packMono, levels, stretch, colsFor, pad, wrap, money, ascii, payRows, totalRows };
   g.HWPOS_PRINTER = API;
   if (typeof module === 'object' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

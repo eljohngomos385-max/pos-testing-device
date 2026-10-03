@@ -46,9 +46,10 @@ body.bo-light .adj-preview {
   color: var(--blk-ink-2); font-variant-numeric: tabular-nums;
 }
 /* Last movement used to be a column on every row; it only matters once you are
-   about to move the stock, so it lives here now. */
+   about to move the stock, so it lives here now. Wraps rather than push the buttons out of a
+   dialog when a note runs long (the duplicate-phone note, the target help). */
 body.bo-light .adj-last {
-  margin-right: auto; white-space: nowrap;
+  margin-right: auto;
   font-size: 12px; color: var(--blk-ink-3);
 }
 

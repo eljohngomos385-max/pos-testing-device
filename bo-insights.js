@@ -6,21 +6,22 @@
    return is plain JSON with the unit in the field name (leadDays, idleDays,
    pesos, pct 0..100, rate 0..1), so an AI can read `buildInsights()` without this file.
 
-   Order status rules are the ones backoffice.js SALE_SIGN encodes: completed +1, return -1,
-   voided/refunded/saved 0 (the original was flipped in place, so it contributes nothing).
-   Uses bo-model.js globals: cent, round2, normalizeProduct, SUPPLIER_DEFAULTS,
-   PO_DEFAULTS, EVENT_LOGS. */
+   Orders follow the sales-math.js row model (a void or refund is its own row pointing at the
+   sale); money is added up there, never here. Uses the SalesMath global and bo-model.js globals:
+   cent, round2, normalizeProduct, SUPPLIER_DEFAULTS, PO_DEFAULTS, EVENT_LOGS, saleClock, stockLevel, familyLevel, STOCK_LEVEL, DEAD_DAYS, stockFlow, lotWalk, latestEvents, groupOf. */
 (function () {
   /* ================= pure logic (exported for scripts/insights-check.mjs) ============= */
 
-  // ponytail: one fixed store clock, Manila (UTC+8). Make it a per-store setting the day a
-  // store outside UTC+8 exists. Every date key below comes out of dayKey, so it is one edit.
-  const TZ_MIN = 480;
+  // The store's clock (SalesMath.storeZone/dayKey/dayStartMs), the one every page cuts days on.
+  // Node has no settings: storeZone(null) is Manila.
+  const zone = () => SalesMath.storeZone(typeof state !== 'undefined' ? state.settings : null);
   const DAY_MS = 864e5;
   const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
-  const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
-  const r3 = (n) => Math.round((Number(n) || 0) * 1000) / 1000;
+  const r2 = SalesMath.round2;
+  const r3 = (n) => SalesMath.milli(n) / 1000;
+  // A ...Pct field (0..100) off SalesMath.change, the one "% vs before"; null when there is no before.
+  const pctVs = (now, was) => { const c = SalesMath.change(now, was); return c == null ? null : r2(c * 100); };
   const sum = (a) => a.reduce((s, x) => s + x, 0);
   const mean = (a) => (a.length ? sum(a) / a.length : 0);
   const sd = (a) => {                                   // sample sd; one point has no spread
@@ -30,26 +31,17 @@
   };
 
   // Orders carry epoch ms, movements ISO strings, purchase orders sometimes a bare date.
-  // A bare date is store-local midnight.
-  const toMs = (ts) => (typeof ts === 'number' ? ts
-    : DATE_ONLY.test(ts || '') ? Date.parse(ts + 'T00:00:00Z') - TZ_MIN * 60000 : Date.parse(ts));
-  const dayKey = (ts) => (DATE_ONLY.test(typeof ts === 'string' ? ts : '') ? ts
-    : new Date(toMs(ts) + TZ_MIN * 60000).toISOString().slice(0, 10));
-  const dayNum = (key) => Math.round(Date.parse(key + 'T00:00:00Z') / DAY_MS);
-  const keyOfDay = (n) => new Date(n * DAY_MS).toISOString().slice(0, 10);
+  // A bare date is store-local midnight; anything else reads through SalesMath.tsOf (ms, ISO, or ms
+  // as text), the one reading. No readable time: NaN, so hasTs skips it.
+  const toMs = (ts) => (DATE_ONLY.test(ts || '') ? SalesMath.dayStartMs(ts, zone()) : SalesMath.tsOf({ ts }) || NaN);
+  const dayKey = (ts) => SalesMath.dayKey(ts, zone());
   const isoOf = (ts) => new Date(toMs(ts)).toISOString();
   // A row with no readable ts has no date to join on; skipped rather than thrown on.
   const hasTs = (x) => Number.isFinite(toMs(x && x.ts));
 
-  // A movement's real date: happenedOn when it's a valid date AND differs from the day it was
-  // typed in (so an ordinary same-day row is untouched); otherwise ts, as always. toMs/dayKey/
-  // isoOf all already accept a date-only string as store-local midnight, so `when(m)` drops
-  // straight into every place below that used to read `m.ts`.
-  const when = (m) => (DATE_ONLY.test((m && m.happenedOn) || '') && m.happenedOn !== dayKey(m.ts) ? m.happenedOn : m.ts);
-
-  // Same table as backoffice.js SALE_SIGN; copied because the POS and node load this without it.
-  const SIGN = { completed: 1, return: -1, refunded: 0, voided: 0, saved: 0 };
-  const saleSign = (o) => SIGN[o.status || 'completed'] ?? 0;
+  // When a movement happened, in ms: bo-model movedAt, the one reading Inventory uses too
+  // (happenedOn at store noon when it isn't the typed day, else ts). No readable ts: NaN, skipped.
+  const when = (m) => movedAt(m, zone()) || NaN;
 
   // The movement log per product, oldest first. Rows without a readable ts are skipped.
   function movesByProduct(movements) {
@@ -89,26 +81,38 @@
   }
 
   /* ---- 2. Supplier lead time and reliability ---- */
+  // A buying list mixes suppliers, so each supplier is judged on its own lines of a PO: the PO
+  // counts once per supplier on it, and its lead runs from the send to that supplier's last arrival.
   function supplierLeadTimes(purchaseOrders, suppliers) {
     const by = new Map((suppliers || []).map((s) => [s.id, { s, pos: [] }]));
     for (const po of purchaseOrders || []) {
-      if (!by.has(po.supplierId)) by.set(po.supplierId, { s: { id: po.supplierId }, pos: [] });
-      by.get(po.supplierId).pos.push(po);
+      const slices = new Map();
+      for (const l of po.items || []) {
+        const k = lineSupplier(po, l);
+        slices.set(k, (slices.get(k) || []).concat([l]));
+      }
+      if (!slices.size) slices.set(lineSupplier(po, {}), []);
+      slices.forEach((lines, k) => {
+        if (!by.has(k)) by.set(k, { s: { id: k }, pos: [] });
+        by.get(k).pos.push({ po, lines });
+      });
     }
     return [...by.values()].map(({ s, pos }) => {
       const leads = [], shortReasons = {};
       let ordered = 0, received = 0, quotedC = 0, invoiceC = 0, invoiceLines = 0;
-      for (const po of pos) {
+      for (const { po, lines } of pos) {
         const sent = po.sentAt || po.orderedAt;
-        if (po.receivedAt && sent) {
-          const lead = dayNum(dayKey(po.receivedAt)) - dayNum(dayKey(sent));
+        const arrived = lines.map((l) => l.receivedOn || '').sort().pop() || po.receivedAt;
+        if (arrived && sent) {
+          const lead = SalesMath.daysAgo(sent, arrived, zone());   // store days, sent to arrived
           if (lead >= 0) leads.push(lead);
         }
-        // A 'received' PO is full by definition (receivePo); the short ships live in 'partial'.
-        if (po.status !== 'received' && po.status !== 'partial') continue;
-        for (const l of po.items || []) {
+        // Fill counts once something of theirs arrived -- a cancelled PO included, or cancelling
+        // the rest of a short ship would hide it. Nothing arrived yet is still coming, not short.
+        if (!lines.some((l) => Number(l.receivedQty) > 0)) continue;
+        for (const l of lines) {
           const q = Number(l.qty) || 0, got = Number(l.receivedQty) || 0;
-          ordered += q; received += got;
+          ordered += q; received += Math.min(got, q);   // an over-ship is not a better fill
           if (got < q && l.shortReason) shortReasons[l.shortReason] = (shortReasons[l.shortReason] || 0) + 1;
           if (l.invoiceCost != null && l.invoiceCost !== '') {
             const units = got || q;
@@ -122,7 +126,7 @@
         leadDaysMean: leads.length ? r2(mean(leads)) : null, leadDaysSd: leads.length ? r2(sd(leads)) : null,
         leadDaysMin: leads.length ? Math.min(...leads) : null, leadDaysMax: leads.length ? Math.max(...leads) : null,
         fillRate: ordered ? r3(received / ordered) : null,
-        invoiceLines, invoiceGapPct: quotedC ? r2(((invoiceC - quotedC) / quotedC) * 100) : null, shortReasons,
+        invoiceLines, invoiceGapPct: pctVs(invoiceC, quotedC), shortReasons,
       };
     });
   }
@@ -131,69 +135,85 @@
   // the owner: "build it from the ground up again". Facts only until then.
 
   /* ---- 5 & 7. Cash asleep and dead stock ---- */
-  function cashAsleep(products, movements, now) {
-    const nowMs = toMs(now), idx = new Map();
-    for (const m of movements || []) {
-      const ms = toMs(when(m));
-      if (!Number.isFinite(ms)) continue;
-      const r = idx.get(m.productId) || { firstMs: ms, lastSaleMs: null };
-      if (ms < r.firstMs) r.firstMs = ms;
-      if (m.reason === 'sale' && (r.lastSaleMs == null || ms > r.lastSaleMs)) r.lastSaleMs = ms;
-      idx.set(m.productId, r);
-    }
+  // Last sold = bo-model saleClock, THE "last sold" of an item (the latest sale not cancelled by a
+  // void; a refunded sale still counts), the same clock as the Dead pill. Idle days are store days
+  // (SalesMath.daysAgo), the days "Last sold 3 days ago" and stockLevel count.
+  function cashAsleep(products, movements, now, orders) {
+    const nowMs = toMs(now), idx = saleClock(movements, zone(), orders);
     return (products || []).filter((p) => !p.archived && Number(p.stock) > 0).map((p) => {
-      const h = idx.get(p.id), since = h ? (h.lastSaleMs ?? h.firstMs) : null;
-      const stockPesos = r2((cent(p.cost) * Number(p.stock)) / 100);
-      const idleDays = since == null ? null : Math.max(0, Math.floor((nowMs - since) / DAY_MS));
+      const h = idx.get(p.id), since = h ? (h.lastSale ?? h.first) : null;
+      const stockPesos = stockValue(p);   // bo-model: the one stock value (untracked = 0)
+      const idleDays = since == null ? null : Math.max(0, SalesMath.daysAgo(since, nowMs, zone()));
       return { productId: p.id, name: p.name || '', qty: Number(p.stock), costPesos: round2(p.cost), stockPesos,
-        lastSaleAt: h && h.lastSaleMs != null ? isoOf(h.lastSaleMs) : null, idleDays,
+        lastSaleAt: h && h.lastSale != null ? isoOf(h.lastSale) : null, idleDays,
         pesoDays: Math.round(stockPesos * (idleDays || 0)) };
     }).sort((a, b) => b.pesoDays - a.pesoDays || b.stockPesos - a.stockPesos);
   }
 
-  function deadStock(products, movements, now, { days = 90 } = {}) {
-    const rows = cashAsleep(products, movements, now).filter((r) => r.idleDays != null && r.idleDays >= days)
+  // Dead = bo-model stockLevel, the word the Items tile and pill use: tracked, in stock, not Low (Low
+  // ranks first there too) and DEAD_DAYS store days idle. One row per variant (the tile counts families).
+  function deadStock(products, movements, now, { orders } = {}) {
+    const clock = saleClock(movements, zone(), orders), nowMs = toMs(now);
+    const dead = new Set((products || []).filter((p) => stockLevel(p, clock.get(p.id), nowMs, zone()) === 'dead').map((p) => p.id));
+    const rows = cashAsleep(products, movements, now, orders).filter((r) => dead.has(r.productId))
       .sort((a, b) => b.stockPesos - a.stockPesos);
-    return { days, totalPesos: r2(sum(rows.map((r) => r.stockPesos))), rows };
+    return { days: DEAD_DAYS, totalPesos: r2(sum(rows.map((r) => r.stockPesos))), rows };
   }
 
+  /* ---- Per product: the Items page's rule, a family of variants is ONE item (owner 2026-10-03) ---- */
+  // Folds rows keyed by productId into one row per family (groupId, else the product: the key bo-model
+  // stockCounts/familyRows count by), so "N items" here is the Items tiles' N. Each keeps its variant
+  // rows (the item page opens them) and sums `add`'s fields. `members`: the family's live products,
+  // what familyLevel reads. The sections stay per variant for the AI export.
+  function perProduct(rows, products, groups, add = []) {
+    const byId = new Map((products || []).map((p) => [p.id, p]));
+    const fam = (id) => { const p = byId.get(id); return p ? p.groupId || p.id : id; };
+    const live = new Map(), by = new Map();
+    for (const p of products || []) if (!p.archived) { const k = p.groupId || p.id; (live.get(k) || live.set(k, []).get(k)).push(p); }
+    for (const r of rows || []) { const k = fam(r.productId); (by.get(k) || by.set(k, []).get(k)).push(r); }
+    return [...by].map(([productId, variants]) => {
+      const p = byId.get(variants[0].productId), g = groupOf(p, groups || []), members = live.get(productId) || [];
+      return { productId, name: (g && g.name) || (p && p.name) || variants[0].name || '', family: !!g, members, variants,
+        ...Object.fromEntries(add.map((f) => [f, r2(sum(variants.map((v) => Number(v[f]) || 0)))])) };
+    });
+  }
+  // Dead per item: a family is dead only when every live variant has a dead row.
+  const deadItems = (rows, products, groups, add) => perProduct(rows, products, groups, add)
+    .filter((f) => f.members.every((m) => f.variants.some((v) => v.productId === m.id)));
+
   /* ---- 5b. Cash tied up: stock at cost by how long it has sat, and money in and out per window ---- */
-  // Oldest sells first, so what is on the shelf is the newest stock: walk the stock-in rows
-  // newest first until today's stock is covered, and each unit is as old as the row it came in on.
-  // Stock the log doesn't reach predates it and goes in the oldest bucket.
-  // A return is old stock going back on the shelf (app.js restoreOrderStock, voids/refunds),
-  // not fresh stock arriving -- it must not start a new age layer, or a customer return makes
-  // 90-day-old stock read as 0 days old. Every other positive row (delivery, opening stock,
-  // counts) still starts a layer dated `when(m)`.
+  // Ages are bo-model lotWalk, the one FIFO walk sell-through reads too: what is left on the shelf
+  // is what the oldest-first drain has not reached, each unit as old as the lot it came in on. A
+  // return (void or refund) goes back to the lot its sale drained, so it never makes old stock
+  // fresh; an opening row and stock the log doesn't reach predate the log (beforeLogQty, oldest
+  // bucket). Sold at cost and Lost are bo-model stockFlow, Inventory's numbers: sales net of
+  // returns, and isLoss (a short count too). Stock value is stockValue: untracked items hold none.
   const AGE_BUCKETS = [['0-15', 0, 15], ['16-30', 16, 30], ['31-60', 31, 60], ['61-90', 61, 90], ['90+', 91, Infinity]];
-  const LOSS_REASONS = new Set(['shrinkage', 'damage', 'writeoff']);
   function cashTiedUp(products, movements, now, { windows = [15, 30] } = {}) {
-    const today = dayNum(dayKey(now)), moves = movesByProduct(movements);
+    const nowMs = toMs(now), z = zone();
     const bucketOf = (age) => AGE_BUCKETS.findIndex(([, lo, hi]) => age >= lo && age <= hi);
     const total = AGE_BUCKETS.map(() => 0), over = windows.map(() => 0);           // centavos
-    const flow = windows.map((days) => ({ days, boughtC: 0, soldC: 0, lostC: 0 }));
+    const costOf = new Map((products || []).map((p) => [p.id, Number(p.cost) || 0]));
+    // The window is the last N store days, today included (and anything dated after now).
+    const flow = windows.map((days) => {
+      const from = SalesMath.rangeWindow(days, nowMs, z).from;
+      const cost = (id) => costOf.get(id) ?? 0;
+      const f = stockFlow(movements, cost, [from, Infinity], undefined, z);
+      // Bought = stockFlow's Came in over deliveries only (a hand change up is not a purchase).
+      const boughtC = SalesMath.cent(stockFlow((movements || []).filter((m) => m.reason === 'delivery'), cost, [from, Infinity], undefined, z).in);
+      const otherOut = sum(f.why.filter((w) => w.reason !== 'sale').map((w) => w.value));
+      return { days, boughtC, soldC: SalesMath.cent(f.out - otherOut), lostC: SalesMath.cent(f.lost) };
+    });
+    const live = (products || []).filter((p) => !p.archived && p.trackStock !== false && Number(p.stock) > 0);
+    const lots = lotWalk(movements, live, z);
     const rows = [];
-    for (const p of products || []) {
-      const list = moves.get(p.id) || [], costC = cent(p.cost);
-      const at = (m) => (m.unitCost != null ? cent(m.unitCost) : costC) * Math.abs(Number(m.qty) || 0);
-      for (const m of list) {
-        const age = today - dayNum(dayKey(when(m)));
-        flow.forEach((f) => {
-          if (age >= f.days) return;                    // the window is the last N store days, today included
-          if (m.reason === 'delivery') f.boughtC += at(m);
-          else if (m.reason === 'sale') f.soldC += Number(m.qty) < 0 ? at(m) : -at(m);
-          else if (m.reason === 'return') f.soldC -= at(m);
-          else if (LOSS_REASONS.has(m.reason)) f.lostC += at(m);
-        });
-      }
-      const stock = Number(p.stock) || 0;
-      if (p.archived || stock <= 0) continue;
+    for (const p of live) {
+      const stock = Number(p.stock), costC = cent(p.cost);
       const byAge = AGE_BUCKETS.map(() => 0), overQty = windows.map(() => 0);
+      const dated = (lots.get(p.id) || []).filter((l) => l.at != null && l.left > 1e-9);
       let left = stock, oldestDays = 0;
-      for (let i = list.length - 1; i >= 0 && left > 1e-9; i--) {
-        const q = Number(list[i].qty) || 0;
-        if (q <= 0 || list[i].reason === 'return') continue;
-        const take = Math.min(q, left), age = Math.max(0, today - dayNum(dayKey(when(list[i]))));
+      for (let i = dated.length - 1; i >= 0 && left > 1e-9; i--) {   // newest lot first, capped at the shelf
+        const take = Math.min(dated[i].left, left), age = Math.max(0, SalesMath.daysAgo(dated[i].at, nowMs, z));
         byAge[bucketOf(age)] += take; left = r3(left - take); oldestDays = age;
         windows.forEach((days, w) => { if (age > days) overQty[w] += take; });
       }
@@ -202,11 +222,11 @@
       byAge.forEach((q, b) => { total[b] += Math.round(q * costC); });
       overQty.forEach((q, w) => { over[w] += Math.round((q + beforeLogQty) * costC); });
       rows.push({ productId: p.id, name: p.name || '', qty: stock, costPesos: round2(p.cost),
-        stockPesos: r2((costC * stock) / 100), oldestDays: beforeLogQty > 0 ? null : oldestDays, beforeLogQty,
+        stockPesos: stockValue(p), oldestDays: beforeLogQty > 0 ? null : oldestDays, beforeLogQty,
         pesosByAge: Object.fromEntries(AGE_BUCKETS.map(([label], b) => [label, r2((byAge[b] * costC) / 100)])) });
     }
     return {
-      totalPesos: r2(sum(total) / 100),
+      totalPesos: stockValueOf(live),   // bo-model: the Items page's Stock value
       ageBuckets: AGE_BUCKETS.map(([label, fromDays, toDays], b) =>
         ({ label, fromDays, toDays: toDays === Infinity ? null : toDays, pesos: r2(total[b] / 100) })),
       windows: flow.map((f, w) => ({ days: f.days, boughtPesos: r2(f.boughtC / 100), soldAtCostPesos: r2(f.soldC / 100),
@@ -216,43 +236,20 @@
   }
 
   /* ---- 6. Sell-through per delivery, FIFO ---- */
-  // Every positive movement is a lot (the opening count too, or the first delivery would be
-  // blamed for selling stock that was already there); every negative one drains the oldest.
-  // ponytail: assumes the log starts from an empty shelf, as the seed and a new store do.
-  // Stock on hand before the first logged movement (stock minus every logged qty) is the oldest lot.
+  // One row per delivery lot of bo-model lotWalk, the one FIFO walk: stock that predates the log
+  // sells first, and a void or refund puts its units back in the lot its sale drained (a refunded
+  // sale is not "sold"), so sell-through and the age chart tell one story.
   function sellThrough(movements, purchaseOrders = [], products = []) {
     const poBy = new Map((purchaseOrders || []).map((po) => [po.id, po]));
-    const stockOf = new Map((products || []).map((p) => [p.id, Number(p.stock) || 0]));
     const rows = [];
-    for (const [productId, list] of movesByProduct(movements)) {
-      const opening = stockOf.has(productId) ? r2(stockOf.get(productId) - sum(list.map((m) => Number(m.qty) || 0))) : 0;
-      const lots = opening > 0 ? [{ row: null, left: opening }] : [];
-      for (const m of list) {
-        const q = Number(m.qty) || 0;
-        if (q > 0) {
-          let row = null;
-          if (m.reason === 'delivery') {
-            const po = poBy.get(m.refId);
-            row = { movementId: m.id, productId, poId: m.refId || '', poNumber: po ? po.number : '',
-              supplierId: po ? po.supplierId : '', receivedAt: isoOf(when(m)), qtyReceived: q,
-              soldQty: 0, otherOutQty: 0, remainingQty: q, clearedAt: null, daysToClear: null };
-            rows.push(row);
-          }
-          lots.push({ row, left: q });
-          continue;
-        }
-        let need = -q;
-        while (need > 1e-9 && lots.length) {
-          const lot = lots[0], take = Math.min(lot.left, need);
-          lot.left = r2(lot.left - take); need = r2(need - take);
-          if (lot.row) {
-            if (m.reason === 'sale') lot.row.soldQty = r2(lot.row.soldQty + take);
-            else lot.row.otherOutQty = r2(lot.row.otherOutQty + take);
-            lot.row.remainingQty = lot.left;
-            if (lot.left <= 0) { lot.row.clearedAt = isoOf(when(m)); lot.row.daysToClear = r2((toMs(when(m)) - toMs(lot.row.receivedAt)) / DAY_MS); }
-          }
-          if (lot.left <= 0) lots.shift();
-        }
+    for (const [productId, lots] of lotWalk(movements, products, zone())) {
+      for (const l of lots) {
+        if (!l.m || l.m.reason !== 'delivery') continue;
+        const m = l.m, po = poBy.get(m.refId), cleared = l.clearedAt != null;
+        rows.push({ movementId: m.id, productId, poId: m.refId || '', poNumber: po ? po.number : '',
+          supplierId: deliverySupplier(po, m), receivedAt: isoOf(l.at), qtyReceived: l.qty,
+          soldQty: l.sold, otherOutQty: l.otherOut, remainingQty: l.left,
+          clearedAt: cleared ? isoOf(l.clearedAt) : null, daysToClear: cleared ? r2((l.clearedAt - l.at) / DAY_MS) : null });
       }
     }
     return rows;
@@ -260,21 +257,25 @@
 
   /* ---- 8. Customer totals ---- */
   // Facts only: no next-order guess (owner, 2026-09-27: "this feels like a guess").
+  // Orders, Net sales and the last order are the ladder's, the till's and the customer page's too:
+  // summarize grouped by SalesMath.customerIdOf (a voided sale drops out, a refund takes its money
+  // back, lastSale skips a voided sale). The days are the sales that still stand, voided ones aside.
   function customerTotals(orders, customers = [], now) {
-    const today = dayNum(dayKey(now)), info = new Map((customers || []).map((c) => [c.id, c])), by = new Map();
+    const nowMs = toMs(now), info = new Map((customers || []).map((c) => [c.id, c])), by = new Map();
+    const idOf = SalesMath.customerIdOf;
+    const money = SalesMath.summarize(orders, { by: idOf }).groups, rev = SalesMath.reversals(orders);
     for (const o of orders || []) {
-      const id = (o.customer && o.customer.id) || o.customerId;
-      if (!id || saleSign(o) !== 1 || !hasTs(o)) continue;
-      const r = by.get(id) || { days: new Set(), orders: 0, c: 0, name: (o.customer && o.customer.name) || '' };
-      r.days.add(dayNum(dayKey(o.ts))); r.orders++; r.c += cent(o.total);
+      const id = idOf(o);
+      if (!id || !SalesMath.isSale(o) || SalesMath.rowState(o, rev) === 'voided' || !hasTs(o)) continue;
+      const r = by.get(id) || { days: new Set(), name: (o.customer && o.customer.name) || '' };
+      r.days.add(dayKey(o.ts));   // YYYY-MM-DD sorts as text
       by.set(id, r);
     }
     return [...by].map(([id, r]) => {
-      const d = [...r.days].sort((a, b) => a - b), last = d[d.length - 1];
-      const c = info.get(id) || {};
-      return { customerId: id, name: c.name || r.name, phone: c.phone || '', orders: r.orders, orderDays: d.length,
-        revenuePesos: r2(r.c / 100), firstOrderDate: keyOfDay(d[0]), lastOrderDate: keyOfDay(last),
-        daysSinceLast: today - last };
+      const d = [...r.days].sort(), c = info.get(id) || {}, m = money.get(id);
+      return { customerId: id, name: c.name || r.name, phone: c.phone || '', orders: m.orders, orderDays: d.length,
+        netSales: m.netSales, firstOrderDate: d[0], lastOrderDate: dayKey(m.lastSale),
+        daysSinceLast: SalesMath.daysAgo(m.lastSale, nowMs, zone()) };
     }).sort((a, b) => a.daysSinceLast - b.daysSinceLast);
   }
 
@@ -301,11 +302,11 @@
   function basketAffinity(orders, { minSupport = 0, minCount = 3, top = 50, products = [] } = {}) {
     const folderOf = new Map((products || []).map((p) => [p.id, p.folder || '']));
     const nameOf = new Map((products || []).map((p) => [p.id, p.name]));
-    // A return leaves the original 'completed'; the basket did not really leave the shop.
-    const returned = new Set((orders || []).filter((o) => o.status === 'return').map((o) => o.originalOrderId));
+    // A voided or refunded sale: the basket did not really leave the shop.
+    const reversed = SalesMath.reversals(orders);
     const baskets = [];
     for (const o of orders || []) {
-      if (saleSign(o) !== 1 || returned.has(o.id)) continue;
+      if (!SalesMath.isSale(o) || reversed.has(o.id)) continue;
       const ids = [...new Set((o.items || []).map((i) => {
         const id = String(i.productId || i.id || '');
         if (id && !nameOf.has(id)) nameOf.set(id, i.name);
@@ -320,18 +321,19 @@
 
   /* ---- 10. Delivery points ---- */
   function deliveryPoints(orders, deliveryEvents = []) {
-    const ev = new Map();
+    // Last event = bo-model latestEvents, the trip state Transactions shows.
+    const ev = new Map(), rev = SalesMath.reversals(orders), latest = latestEvents((deliveryEvents || []).filter(hasTs));
     (deliveryEvents || []).filter(hasTs).sort((a, b) => toMs(a.ts) - toMs(b.ts)).forEach((e) => {
       const l = ev.get(e.orderId); if (l) l.push(e); else ev.set(e.orderId, [e]);
     });
     return (orders || []).filter((o) => hasTs(o) && o.fulfilment === 'delivery' && o.deliveryLocation
       && Number.isFinite(Number(o.deliveryLocation.lat)) && Number.isFinite(Number(o.deliveryLocation.lng))
-      && ['completed', 'refunded'].includes(o.status || 'completed'))
+      && ['sale', 'refunded'].includes(SalesMath.rowState(o, rev)))
       .map((o) => {
         const list = ev.get(o.id) || [];
         const sent = list.find((e) => e.event === 'dispatched');
         const arrived = list.find((e) => e.event === 'arrived' && (!sent || toMs(e.ts) >= toMs(sent.ts)));
-        const last = list[list.length - 1];
+        const last = latest.get(o.id);
         return { orderId: o.id, number: o.number || '', ts: isoOf(o.ts), date: dayKey(o.ts),
           lat: Number(o.deliveryLocation.lat), lng: Number(o.deliveryLocation.lng), totalPesos: round2(o.total),
           customerId: (o.customer && o.customer.id) || '', driver: ((sent || last) && (sent || last).driver) || '',
@@ -351,7 +353,7 @@
         if (m.reason !== 'count' || m.expected == null || m.counted == null) continue;
         const expected = Number(m.expected) || 0, counted = Number(m.counted) || 0, variance = r2(counted - expected);
         const h = by.get(productId) || [];
-        h.push({ ts: isoOf(when(m)), expected, counted, variance, variancePct: expected ? r2((variance / expected) * 100) : null,
+        h.push({ ts: isoOf(when(m)), expected, counted, variance, variancePct: pctVs(counted, expected),
           staff: m.staff || '' });
         by.set(productId, h);
       }
@@ -388,7 +390,7 @@
     (priceLog || []).filter(hasTs).sort((a, b) => toMs(a.ts) - toMs(b.ts)).forEach((e) => {
       const l = by.get(e.productId) || [];
       l.push({ ts: isoOf(e.ts), date: dayKey(e.ts), field: e.field, old: e.old, new: e.new,
-        changePct: e.old ? r2(((e.new - e.old) / e.old) * 100) : null, reason: e.reason || '', source: e.source || '', staff: e.staff || '' });
+        changePct: pctVs(e.new, e.old), reason: e.reason || '', source: e.source || '', staff: e.staff || '' });
       by.set(e.productId, l);
     });
     return [...by].map(([productId, changes]) => ({ productId,
@@ -418,14 +420,14 @@
   }
 
   const FIELD_NOTES = {
-    _conventions: 'Money fields end in Pesos (2dp). Rates 0..1 end in Rate; percentages 0..100 end in Pct. Quantities are product units (pieces, or metres/kg for soldBy=measure). ts fields are ISO UTC; date fields are store-local YYYY-MM-DD (UTC+8).',
+    _conventions: 'Money fields end in Pesos (2dp). Rates 0..1 end in Rate; percentages 0..100 end in Pct. Quantities are product units (pieces, or metres/kg for soldBy=measure). ts fields are ISO UTC; date fields are YYYY-MM-DD in the store\'s time zone (Asia/Manila unless set).',
     stockouts: 'Per product, intervals where replayed stock was <= 0. start/end ISO, end null = still out; days fractional. A stockout that began before the movement log is not reported.',
-    supplierLeadTimes: 'Per supplier. lead days = receivedAt date - (sentAt || orderedAt) date, n = POs with both. fillRate = receivedQty/qty over received+partial POs. invoiceGapPct = billed vs quoted cost on lines with invoiceCost.',
-    cashAsleep: 'Per product in stock. idleDays = days since last sale, or since first movement when never sold (lastSaleAt null). pesoDays = stockPesos * idleDays, worst first.',
-    sellThrough: 'Per delivery movement, FIFO against later outflows; stock that predates the log sells first. soldQty by sales, otherOutQty by counts/damage/shrinkage. daysToClear null = not cleared yet.',
-    deadStock: 'cashAsleep rows with idleDays >= days. totalPesos at cost.',
-    cashTiedUp: 'Stock on hand at cost (product cost). Units are aged newest-in first (oldest sells first) from the positive movement they came in on -- happenedOn when set and different from the day it was typed, else ts -- in store-local days; returns do not start a layer (old stock going back on the shelf, not new stock in) and are absorbed by older layers or beforeLogQty. beforeLogQty = units older than the log, counted in 90+ and in every sittingOverPesos. oldestDays null when some stock predates the log. windows: last N store days incl. today. boughtPesos = delivery movements, soldAtCostPesos = sales minus returns, lostPesos = shrinkage/damage/writeoff; each at the movement unitCost, else product cost. sittingOverPesos = stock value that has sat more than N days.',
-    customerTotals: 'Per customer on completed sales: orders, distinct order days, revenue, first and last order date, days since last. Most recent first.',
+    supplierLeadTimes: 'Per supplier, by the supplier on each PO line. lead days = latest line receivedOn (else receivedAt) date - (sentAt || orderedAt) date, n = POs with both. fillRate = receivedQty/qty over every PO where some of theirs arrived, cancelled ones included. invoiceGapPct = billed vs quoted cost on lines with invoiceCost.',
+    cashAsleep: 'Per product in stock. idleDays = store days since the last sale not cancelled by a void (a refunded sale still counts), or since first movement when never sold (lastSaleAt null). pesoDays = stockPesos * idleDays, worst first.',
+    sellThrough: 'Per delivery movement, FIFO against later outflows; stock that predates the log sells first. soldQty by sales net of voids and refunds (their units go back to the lot), otherOutQty by counts/damage/shrinkage. daysToClear null = not cleared yet.',
+    deadStock: 'cashAsleep rows the Items page calls Dead: stock tracked, above its reorder point, idleDays >= days (90). One row per product (variant). totalPesos at cost.',
+    cashTiedUp: 'Tracked stock on hand at cost (product cost; untracked items hold no stock value). Units are aged with the same oldest-sells-first walk as sellThrough: what is left of each stock-in lot, dated by happenedOn when set and different from the day it was typed, else ts, in store-local days. A void or refund return goes back to the lot its sale took from; opening stock and units the log does not reach are beforeLogQty, counted in 90+ and in every sittingOverPesos. oldestDays null when some stock predates the log. windows: last N store days incl. today. boughtPesos = delivery movements, soldAtCostPesos = sales minus returns, lostPesos = shrinkage/damage/writeoff and stock counts that came up short (the Inventory page numbers); each at the movement unitCost, else product cost. sittingOverPesos = stock value that has sat more than N days.',
+    customerTotals: 'Per customer: orders (sales less voided ones), distinct order days, netSales (less voids and refunds), first and last order date (a voided sale is not an order; a refunded one is), days since last. Most recent first.',
     basketAffinity: 'Completed, unreturned orders. support = share of baskets with both; confidenceAtoB = P(b|a); countA/countB = baskets holding each; lift > 1 means bought together more than chance. categories uses product folder.',
     deliveryPoints: 'Completed/refunded delivery orders with a map pin. minutesToArrive = first dispatched to next arrived event (null without deliveryEvents).',
     countAccuracy: 'Per product with counts that kept expected and counted. meanAbsVariance = average |counted - expected| in units, biggest first. history = every count: expected, counted, variance, variancePct.',
@@ -438,17 +440,17 @@
     const movements = data.movements || [];
     const purchaseOrders = (data.purchaseOrders || []).map((po) => ({ ...PO_DEFAULTS, ...po }));
     const suppliers = (data.suppliers || []).map((s) => ({ ...SUPPLIER_DEFAULTS, ...s }));
-    const orders = data.orders || [];
+    const orders = SalesMath.upgradeOrders(data.orders);   // a raw dump may still hold old rows
 
     return {
       generatedAt: isoOf(now), apiVersion: 1, windowDays: days,
       sections: {
         stockouts: stockoutIntervals(products, movements, now),
         supplierLeadTimes: supplierLeadTimes(purchaseOrders, suppliers),
-        cashAsleep: cashAsleep(products, movements, now),
+        cashAsleep: cashAsleep(products, movements, now, orders),
         cashTiedUp: cashTiedUp(products, movements, now),
         sellThrough: sellThrough(movements, purchaseOrders, products),
-        deadStock: deadStock(products, movements, now, { days }),
+        deadStock: deadStock(products, movements, now, { orders }),
         customerTotals: customerTotals(orders, data.customers || [], now),
         basketAffinity: basketAffinity(orders, { products }),
         deliveryPoints: deliveryPoints(orders, data.deliveryEvents || []),
@@ -460,8 +462,8 @@
     };
   }
 
-  const API = { TZ_MIN, dayKey, dayNum, dataFromDump,
-    stockoutIntervals, supplierLeadTimes, cashAsleep, cashTiedUp, sellThrough, deadStock,
+  const API = { dayKey, dataFromDump,
+    stockoutIntervals, supplierLeadTimes, cashAsleep, cashTiedUp, sellThrough, deadStock, perProduct, deadItems,
     customerTotals, basketAffinity, deliveryPoints, countAccuracy,
     lostDemandSummary, priceHistory, buildInsights };
   if (typeof module === 'object' && module.exports) { module.exports = API; return; }
@@ -476,7 +478,7 @@
   // No Reorder plan, Supplier lead times or Price history tabs (owner, 2026-09-23): a forecast
   // needs context a POS doesn't have, lead times are columns on Suppliers, and the price log is
   // already on the item page and Stock history. The reorder forecast itself was removed 2026-09-27.
-  const TABS = { cash: 'Cash tied up', stockouts: 'Stockouts', dead: 'Dead stock',
+  const TABS = { cash: 'Stock value', stockouts: 'Stockouts', dead: 'Dead stock',
     sell: 'Sell-through',
     counts: 'Count accuracy', lost: 'Lost demand' };
   // Days & staff removed (owner, 2026-09-24): no weather log, no attendance join. Customer
@@ -489,10 +491,9 @@
     ['Stock', ['cash', 'stockouts', 'dead', 'sell', 'counts', 'lost']],
   ] };
 
-  // Raw orders, not state.orders: normalizeOrder drops deliveryLocation and originalOrderId.
   function gather() {
     return {
-      products: loadProducts(), folders: state.folders, orders: loadList(STORAGE_ORDERS), customers: allCustomerRecords(),
+      products: loadProducts(), groups: loadGroups(), folders: state.folders, orders: loadOrders(), customers: allCustomerRecords(),
       movements: loadMovements(), purchaseOrders: loadPurchaseOrders(), suppliers: loadSuppliers(),
       staff: loadStaff().map(({ pin, ...u }) => u),
       ...Object.fromEntries(Object.keys(EVENT_LOGS).map((k) => [k, loadEvents(k)])),
@@ -503,9 +504,11 @@
   const DASH = '<span class="muted">—</span>';
   const txt = (v) => (v == null || v === '' ? DASH : escapeHtml(String(v)));
   const num = (v, unit = '') => (v == null ? DASH : `${v}${unit}`);
-  const pct = (rate) => (rate == null ? DASH : `${Math.round(rate * 100)}%`);
+  const qty = (v) => (v == null ? DASH : SalesMath.qtyText(v));
+  const pct = (rate) => (rate == null ? DASH : escapeHtml(SalesMath.pctText(rate, 1, 0)));
   const money = (v) => (v == null ? DASH : peso(v));
-  const day = (iso) => (iso ? dayKey(iso) : DASH);
+  // With the year: dead stock and old deliveries run past twelve months, and "Oct 1" can't say which.
+  const day = (iso) => (iso ? escapeHtml(shortDate(iso)) : DASH);
   const sub = (main, second) => `${main}${second ? ` <span class="row-sub">${second}</span>` : ''}`;
   const pill = (tone, label) => `<span class="status-pill ${tone}">${escapeHtml(label)}</span>`;
   const counts = (obj, nameOf = (k) => k) => txt(Object.entries(obj || {}).map(([k, n]) => `${nameOf(k)} ×${n}`).join(', '));
@@ -541,17 +544,29 @@
     const nameOf = new Map(data.products.map((p) => [p.id, p.name]));
     const supOf = new Map(data.suppliers.map((x) => [x.id, x.name]));
     const product = (id) => txt(nameOf.get(id) || id);
+    // Per product, as Items counts (perProduct); the name opens the item page, which lists the variants.
+    const fams = (rows, add) => perProduct(rows, data.products, data.groups, add);
+    const item = (r) => sub(`<a class="link-btn" href="${escapeHtml(Router.href('products', r.productId))}">${escapeHtml(r.name)}</a>`,
+      r.family ? SalesMath.plural(r.members.length, 'variant') : '');
+    const latest = (xs) => xs.filter(Boolean).sort().pop() || null;          // ISO text sorts as time
     const idleCols = [
-      ['Product', (r) => escapeHtml(r.name)], ['Qty', (r) => num(r.qty), 1], ['Cost', (r) => money(r.costPesos), 1],
-      ['Stock value', (r) => money(r.stockPesos), 1], ['Last sale', (r) => day(r.lastSaleAt), 1],
-      ['Idle days', (r) => num(r.idleDays), 1], ['Peso-days', (r) => num(r.pesoDays), 1]];
+      ['Item', item], ['Qty', (r) => qty(r.qty), 1], ['Cost', (r) => rangeText(r.variants.map((v) => v.costPesos), money), 1],
+      ['Stock value', (r) => money(r.stockPesos), 1], ['Last sold', (r) => day(r.lastSaleAt), 1],
+      ['Idle days', (r) => num(r.idleDays), 1], ['Stock value × days', (r) => num(r.pesoDays), 1]];
 
     switch (tab) {
       case 'stockouts': {
-        const rows = [...s.stockouts.rows].sort((a, b) => b.outNow - a.outNow || b.daysOut - a.daysOut);
+        // Now = bo-model familyLevel over the live variants, the Items pill: Out, Low (one out or at its
+        // reorder point), else In stock. An archived variant is history: its stockouts count, not its stock.
+        const NOW = { out: 0, low: 1, ok: 2 };   // sort order only; the pill is bo-model STOCK_LEVEL's
+        // ponytail: no sale clock -- it only tells Dead from ok, and both read In stock here (backoffice.js does the same).
+        const rows = fams(s.stockouts.rows, ['stockouts', 'daysOut']).map((f) => {
+          const lv = f.members.length ? familyLevel(f.members, null) : 'ok', all = f.variants.flatMap((v) => v.intervals);
+          return { ...f, now: lv, intervals: all.sort((a, b) => (a.start < b.start ? -1 : 1)) };
+        }).filter((f) => f.stockouts || f.now !== 'ok').sort((a, b) => NOW[a.now] - NOW[b.now] || b.daysOut - a.daysOut);
         const last = (r) => r.intervals[r.intervals.length - 1] || {};
-        return card('Stockouts', `${s.stockouts.totalDaysOut} product-days out, replayed from the movement log`, [
-          ['Product', (r) => escapeHtml(r.name)], ['Now', (r) => (r.outNow ? pill('danger', 'Out') : pill('ok', 'In stock'))],
+        return card('Stockouts', `${s.stockouts.totalDaysOut} item-days out, replayed from the movement log`, [
+          ['Item', item], ['Now', (r) => pill(...STOCK_LEVEL[r.now])],
           ['Stockouts', (r) => num(r.stockouts), 1], ['Days out', (r) => num(r.daysOut), 1],
           ['Last ran out', (r) => day(last(r).start), 1], ['Back in', (r) => (last(r).start ? day(last(r).end) : DASH), 1],
         ], rows, 'Nothing has run out.');
@@ -559,6 +574,12 @@
       case 'cash': {
         const c = s.cashTiedUp, win = new Map(c.windows.map((w) => [w.days, w]));
         const lastSale = new Map(s.cashAsleep.map((r) => [r.productId, r.lastSaleAt]));
+        // The oldest stock of a family is its oldest variant's; any variant older than the log makes it "Before log".
+        const rows = fams(c.rows, ['qty', 'stockPesos']).map((f) => ({ ...f,
+          pesosByAge: Object.fromEntries(c.ageBuckets.map(({ label }) => [label, r2(sum(f.variants.map((v) => v.pesosByAge[label])))])),
+          oldestDays: f.variants.some((v) => v.oldestDays == null) ? null : Math.max(...f.variants.map((v) => v.oldestDays)),
+          lastSaleAt: latest(f.variants.map((v) => lastSale.get(v.productId))) }))
+          .sort((a, b) => (b.oldestDays ?? Infinity) - (a.oldestDays ?? Infinity) || b.stockPesos - a.stockPesos);
         const note = (text) => ({ tone: 'flat', text, cmp: '' });
         const stat = (label, value, text) => statCell({ label, value: pesoShort(value), delta: note(text) });
         // A stat is its own card now (v34), so these are two grids under a plain head
@@ -567,34 +588,39 @@
         const bar = (cells) => `<div class="stat-grid show-delta">${cells.join('')}</div>`;
         const w15 = win.get(15), w30 = win.get(30);
         const summary = `
-            ${bar([stat('Tied up now', c.totalPesos, `${c.rows.length} products`),
-              stat('Sitting over 15 days', w15.sittingOverPesos, `${Math.round((w15.sittingOverPesos / (c.totalPesos || 1)) * 100)}% of stock`),
-              stat('Sitting over 30 days', w30.sittingOverPesos, `${Math.round((w30.sittingOverPesos / (c.totalPesos || 1)) * 100)}% of stock`)])}
+            ${bar([stat('Stock value now', c.totalPesos, SalesMath.plural(rows.length, 'item')),
+              stat('Sitting over 15 days', w15.sittingOverPesos, `${pctOf(w15.sittingOverPesos, c.totalPesos, 0)} of stock`),
+              stat('Sitting over 30 days', w30.sittingOverPesos, `${pctOf(w30.sittingOverPesos, c.totalPesos, 0)} of stock`)])}
             ${bar([stat('Bought, last 15 days', w15.boughtPesos, `${peso(w15.soldAtCostPesos)} sold at cost`),
               stat('Bought, last 30 days', w30.boughtPesos, `${peso(w30.soldAtCostPesos)} sold at cost`),
-              stat('Lost, last 30 days', w30.lostPesos, 'shrinkage, breakage, write-off')])}`;
-        return summary + card('By product', c.ageBuckets.map((b) => `${b.label}d ${peso(b.pesos)}`).join(' · '), [
-          ['Product', (r) => escapeHtml(r.name)], ['Qty', (r) => num(r.qty), 1], ['Stock value', (r) => money(r.stockPesos), 1],
+              stat('Lost, last 30 days', w30.lostPesos, 'stolen, broken, written off or counted short')])}`;
+        return summary + card('By item', c.ageBuckets.map((b) => `${b.label}d ${peso(b.pesos)}`).join(' · '), [
+          ['Item', item], ['Qty', (r) => qty(r.qty), 1], ['Stock value', (r) => money(r.stockPesos), 1],
           ...c.ageBuckets.map((b) => [`${b.label} days`, (r) => (r.pesosByAge[b.label] ? money(r.pesosByAge[b.label]) : DASH), 1]),
-          ['Oldest', (r) => (r.oldestDays == null ? 'Before log' : num(r.oldestDays, 'd')), 1], ['Last sale', (r) => day(lastSale.get(r.productId)), 1],
-        ], c.rows, 'No stock on hand.');
+          ['Oldest', (r) => (r.oldestDays == null ? 'Before log' : num(r.oldestDays, 'd')), 1], ['Last sold', (r) => day(r.lastSaleAt), 1],
+        ], rows, 'No stock on hand.');
       }
-      case 'dead':
-        return card('Dead stock', `${s.deadStock.rows.length} products unsold ${s.deadStock.days}+ days · ${peso(s.deadStock.totalPesos)} at cost`,
-          idleCols, s.deadStock.rows, `Nothing has sat unsold for ${s.deadStock.days} days.`);
+      case 'dead': {
+        // Dead when every variant is (familyLevel), so the count is the Items Dead tile's.
+        const rows = deadItems(s.deadStock.rows, data.products, data.groups, ['qty', 'stockPesos', 'pesoDays']).map((f) => ({ ...f,
+          lastSaleAt: latest(f.variants.map((v) => v.lastSaleAt)), idleDays: Math.min(...f.variants.map((v) => v.idleDays)) }))
+          .sort((a, b) => b.stockPesos - a.stockPesos);   // a Dead variant always has a clock, so idleDays
+        return card('Dead stock', `${SalesMath.plural(rows.length, 'item')} unsold ${s.deadStock.days}+ days · ${peso(r2(sum(rows.map((r) => r.stockPesos))))} at cost`,
+          idleCols, rows, `Nothing has sat unsold for ${s.deadStock.days} days.`);
+      }
       case 'sell': {
         const rows = [...s.sellThrough].sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
         return card('Sell-through', 'Each delivery, drained oldest first', [
-          ['Received', (r) => sub(day(r.receivedAt), escapeHtml(r.poNumber))], ['Product', (r) => product(r.productId)],
-          ['Supplier', (r) => txt(supOf.get(r.supplierId))], ['Qty in', (r) => num(r.qtyReceived), 1],
-          ['Sold', (r) => num(r.soldQty), 1], ['Other out', (r) => num(r.otherOutQty), 1], ['Left', (r) => num(r.remainingQty), 1],
+          ['Received', (r) => sub(day(r.receivedAt), escapeHtml(r.poNumber))], ['Item', (r) => product(r.productId)],
+          ['Supplier', (r) => txt(supOf.get(r.supplierId))], ['Qty in', (r) => qty(r.qtyReceived), 1],
+          ['Units sold', (r) => qty(r.soldQty), 1], ['Other out', (r) => qty(r.otherOutQty), 1], ['Left', (r) => qty(r.remainingQty), 1],
           ['Cleared', (r) => day(r.clearedAt), 1], ['Days to clear', (r) => num(r.daysToClear), 1],
         ], rows, 'No deliveries logged.');
       }
       case 'basket': {
         const by = params.pairs === 'categories' ? 'categories' : 'products';
         const label = (id, name) => txt(by === 'categories' ? folderName(id) : name);
-        const toggle = `<div class="seg">${[['products', 'Products'], ['categories', 'Categories']].map(([k, l]) =>
+        const toggle = `<div class="seg">${[['products', 'Items'], ['categories', 'Categories']].map(([k, l]) =>
           `<button class="seg-btn${k === by ? ' active' : ''}" data-pairs="${k}">${l}</button>`).join('')}</div>`;
         return card('Bought together', `${s.basketAffinity.baskets} baskets · pairs seen 3+ times, highest lift first`, [
           ['Item A', (r) => label(r.a, r.aName)], ['Item B', (r) => label(r.b, r.bName)], ['Baskets', (r) => num(r.count), 1],
@@ -602,18 +628,31 @@
           ['B then A', (r) => pct(r.confidenceBtoA), 1], ['Lift', (r) => num(r.lift), 1],
         ], s.basketAffinity[by], 'No pair bought together often enough yet.', toggle);
       }
-      case 'counts':
+      case 'counts': {
+        // A family's mean miss is over every count of its variants, not an average of averages.
+        const rows = fams(s.countAccuracy, ['counts']).map((f) => ({ ...f, lastCountedAt: latest(f.variants.map((v) => v.lastCountedAt)),
+          meanAbsVariance: r2(mean(f.variants.flatMap((v) => v.history.map((h) => Math.abs(h.variance))))) }))
+          .sort((a, b) => b.meanAbsVariance - a.meanAbsVariance);
         return card('Count accuracy', 'Biggest average miss first', [
-          ['Product', (r) => product(r.productId)], ['Counts', (r) => num(r.counts), 1], ['Last counted', (r) => day(r.lastCountedAt), 1],
+          ['Item', item], ['Counts', (r) => num(r.counts), 1], ['Last counted', (r) => day(r.lastCountedAt), 1],
           ['Mean miss', (r) => num(r.meanAbsVariance), 1],
-        ], s.countAccuracy, 'No stock counts with an expected quantity yet.');
-      case 'lost':
+        ], rows, 'No stock counts with an expected quantity yet.');
+      }
+      case 'lost': {
+        // Asked-for items per product; a typed request with no item stays its own row.
+        const add = (objs) => objs.reduce((o, x) => { Object.entries(x || {}).forEach(([k, n]) => { o[k] = (o[k] || 0) + n; }); return o; }, {});
+        const first = (xs) => xs.filter(Boolean).sort()[0] || null;
+        const rows = [...fams(s.lostDemand.filter((r) => r.productId), ['requests', 'qty']).map((f) => ({ ...f,
+          reasons: add(f.variants.map((v) => v.reasons)), substitutes: add(f.variants.map((v) => v.substitutes)),
+          firstAt: first(f.variants.map((v) => v.firstAt)), lastAt: latest(f.variants.map((v) => v.lastAt)) })),
+        ...s.lostDemand.filter((r) => !r.productId)].sort((a, b) => b.requests - a.requests || b.qty - a.qty);
         return card('Lost demand', 'What customers asked for and did not get', [
-          ['Item', (r) => (r.productId ? product(r.productId) : txt(r.text))], ['Requests', (r) => num(r.requests), 1],
-          ['Qty asked', (r) => num(r.qty), 1], ['Reasons', (r) => counts(r.reasons)],
+          ['Item', (r) => (r.productId ? item(r) : txt(r.text))], ['Requests', (r) => num(r.requests), 1],
+          ['Qty asked', (r) => qty(r.qty), 1], ['Reasons', (r) => counts(r.reasons)],
           ['Took instead', (r) => counts(r.substitutes, (id) => nameOf.get(id) || id)],
           ['First', (r) => day(r.firstAt), 1], ['Last', (r) => day(r.lastAt), 1],
-        ], s.lostDemand, 'No lost sales logged.');
+        ], rows, 'No lost sales logged.');
+      }
     }
     return '';
   }

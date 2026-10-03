@@ -1,4 +1,4 @@
-/* A headless till. Boots the REAL app.js (and data.js) in a node:vm realm behind a
+/* A headless till. Boots the REAL till scripts (and data.js) in a node:vm realm behind a
    localStorage shim and a null-object DOM, so a whole trading day -- sales, credit, splits,
    voids, returns, refunds, stock -- can be rung from Node without a browser.
 
@@ -12,7 +12,12 @@
 import { readFileSync } from 'node:fs';
 import { Script, createContext } from 'node:vm';
 
-// A DOM element that swallows everything. app.js renders on every mutation, so the harness
+// The till's own scripts (pos-*.js, then app.js), in the order index.html loads them -- read off the page,
+// so a check never keeps a second list.
+export const POS_SCRIPTS = [...readFileSync(new URL('../../index.html', import.meta.url), 'utf8')
+  .matchAll(/<script src="((?:pos-[\w-]+|app)\.js)\?/g)].map((m) => m[1]);
+
+// A DOM element that swallows everything. The till renders on every mutation, so the harness
 // needs the render calls to be harmless rather than stubbed one id at a time. Elements are
 // remembered per selector, which is what lets the harness set #checkoutTender and have
 // completeSale read it back.
@@ -31,14 +36,15 @@ function fakeEl(sel = '') {
     dataset: {},
     style: { setProperty() {}, removeProperty() {} },
     classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
-    children: [], childNodes: [], parentElement: null, firstChild: null,
+    children: [], childNodes: [], get parentElement() { return fakeEl(); }, firstChild: null,
     focus() {}, blur() {}, click() {}, select() {}, remove() {}, scrollIntoView() {},
+    animate: () => ({ finished: Promise.resolve(), cancel() {}, onfinish: null }),
     appendChild(c) { this.children.push(c); return c; },
-    insertAdjacentHTML() {}, setAttribute() {}, removeAttribute() {},
+    insertAdjacentHTML() {}, insertBefore(c) { return c; }, setAttribute() {}, removeAttribute() {},
     getAttribute: () => null, hasAttribute: () => false,
     addEventListener() {}, removeEventListener() {}, dispatchEvent: () => true,
     closest: () => null,
-    querySelector: () => null,
+    querySelector: (s) => fakeEl(s),
     querySelectorAll: () => [],
     getBoundingClientRect: () => ({ top: 0, left: 0, right: 800, bottom: 600, width: 800, height: 600 }),
   };
@@ -67,7 +73,7 @@ export function boot({ now = null, seed = true } = {}) {
   let confirmAnswer = true;
 
   const sandbox = {
-    console: { log() {}, warn() {}, error() {} },
+    console: { log() {}, warn() {}, error() {}, assert() {} },
     Date: TillDate, Math, Number, String, Array, Object, JSON, Set, Map, RegExp, Error, Promise,
     isNaN, isFinite, parseInt, parseFloat, encodeURIComponent, decodeURIComponent,
     navigator: { onLine: true },
@@ -113,15 +119,21 @@ export function boot({ now = null, seed = true } = {}) {
   const context = createContext(sandbox);
   const load = (file) => new Script(readFileSync(new URL('../../' + file, import.meta.url), 'utf8'),
     { filename: file }).runInContext(context);
-  // Same realm, separate scripts: data.js's top-level consts become app.js's globals, and
-  // `run()` below can reach app.js's own lexical `state` the same way.
+  // Same realm, separate scripts: data.js's top-level consts become the till's globals, and
+  // `run()` below can reach the till's own lexical `state` the same way.
+  load('sales-math.js');
+  // The page's own order (index.html): the data store gives the till its storage keys and settings
+  // defaults (HWPOS_STORAGE_KEYS, HWPOS_STORE.defaults). No IndexedDB in here, so its sheets stay on
+  // the localStorage shim, as on a till whose database never opened.
+  load('data-store.js');
   if (seed) load('data.js');
   load('bo-model.js');
-  load('app.js');
-  // app.js hydrates state on DOMContentLoaded, which never fires in here.
-  new Script('init()', { filename: 'boot' }).runInContext(context);
+  POS_SCRIPTS.forEach(load);
+  // The till hydrates state on DOMContentLoaded, which never fires in here. ready() first, as the page:
+  // with no IndexedDB it seeds the opening stock rows synchronously, and on hand is their sum.
+  new Script('HWPOS_STORE.ready(); init()', { filename: 'boot' }).runInContext(context);
 
-  // Evaluate an expression against app.js's lexical scope. This is the whole harness.
+  // Evaluate an expression against the till's lexical scope. This is the whole harness.
   const run = (code) => new Script(code, { filename: 'till.mjs' }).runInContext(context);
 
   // A bridge installed once, so the hot paths are a plain function call instead of compiling
@@ -152,9 +164,8 @@ export function boot({ now = null, seed = true } = {}) {
   const ledger = (customerId) => json('hwpos.customerLedger.v1', '[]')
     .filter((e) => !customerId || e.customerId === customerId);
 
-  // What was on the shelf before the harness rang anything. The seed products carry a bare
-  // `stock` with no movement behind it, so `cached === logged` can never hold on its own --
-  // the invariant that actually means something is `cached === opening + logged`.
+  // What was on the shelf before the harness rang anything: the seed's counts, which boot turned
+  // into 'opening' rows. `logged` below is everything after them, so `cached === opening + logged`.
   const opening = new Map(products().map((p) => [p.id, Number(p.stock || 0)]));
 
   // Quantities are hundredths of a unit; float sums have to be pulled back to that grid or
@@ -163,7 +174,7 @@ export function boot({ now = null, seed = true } = {}) {
 
   const customerNamed = (name) => run('allCustomerRecords()').find((c) => c.name === name || c.id === name);
 
-  // `[sku, qty]` or `[sku, qty, price]` -> the cart line shape app.js expects.
+  // `[sku, qty]` or `[sku, qty, price]` -> the cart line shape the till expects.
   const lines = (items = []) => items.map(([sku, qty, price]) => {
     const p = bySku(sku);
     if (!p) throw new Error(`no such product: ${sku}`);
@@ -172,7 +183,7 @@ export function boot({ now = null, seed = true } = {}) {
   });
 
   function setCart({ items = [], customer = null, method = 'cash', discount = null,
-                     fulfilment = 'pickup', address = '' }) {
+                     fulfilment = 'walkin', address = '' }) {
     const cust = typeof customer === 'string' ? customerNamed(customer) : customer;
     if (customer && !cust) throw new Error(`no such customer: ${customer}`);
     run(`state.cart = ${JSON.stringify(lines(items))};
@@ -197,9 +208,9 @@ export function boot({ now = null, seed = true } = {}) {
     ring(opts) {
       setCart(opts);
       const before = H.count();
-      // Go through the checkout screen, not straight to `completeSale()`. The contractor and
-      // wholesale price tiers are applied by `openPaymentModal()` -- a harness that skips it
-      // rings every contractor sale at the walk-in price and would never notice.
+      // Go through the checkout screen, not straight to `completeSale()`: `openPaymentModal()`
+      // sets the screen up the way a cashier meets it, and a harness that skips it would test
+      // a sale no cashier can ring.
       run('openPaymentModal()');
       // Then pick the method, the way the cashier taps a card on that screen. The checkout
       // resets to cash until one is chosen, so this has to come after the screen opens.
@@ -248,7 +259,7 @@ export function boot({ now = null, seed = true } = {}) {
      *  Reads the whole movement log, so this is for reconciling, not for driving. */
     stock(sku) {
       const p = H.find(sku);
-      const logged = round(movements(sku).reduce((n, m) => n + m.qty, 0));
+      const logged = round(movements(sku).filter((m) => m.reason !== 'opening').reduce((n, m) => n + m.qty, 0));
       const open = opening.has(p.id) ? opening.get(p.id) : Number(p.stock || 0);
       return { cached: round(p.stock), opening: open, logged, expected: round(open + logged), product: p };
     },
@@ -266,7 +277,7 @@ export function boot({ now = null, seed = true } = {}) {
 
     balance(name) {
       const c = customerNamed(name);
-      return ledger(c && c.id).reduce((n, e) => n + (e.type === 'payment' ? -e.amount : e.amount), 0);
+      return ledger(c && c.id).reduce((n, e) => n + run('ledgerDelta')(e), 0);   // the app's own sign per kind
     },
   };
   return till;

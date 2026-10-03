@@ -19,7 +19,17 @@
 
   /* ================= pure logic (exported for scripts/inventory-check.mjs) ============= */
 
-  const r2 = (n) => Math.round(Number(n || 0) * 100) / 100;
+  const r2 = SalesMath.round2;
+
+  // The store's clock (SalesMath.storeZone): every day and hour on this page is the store's, never
+  // the browser's. undefined in node (no settings) = movedAt's default, Manila.
+  const zone = () => (typeof SalesMath !== 'undefined' && typeof state !== 'undefined' ? SalesMath.storeZone(state.settings) : undefined);
+  const settings = () => (typeof state !== 'undefined' ? state.settings : {});
+  // SalesMath: a global in the page, a require in node (the checks).
+  const SM = () => (typeof SalesMath !== 'undefined' ? SalesMath : require('./sales-math.js'));
+  const tsOf = (row) => SM().tsOf(row);
+  // When a movement happened: bo-model movedAt, the one reading Insights and the dead clock use too.
+  const when = (m) => movedAt(m, zone());
 
   // Round a wanted quantity UP to something the product can actually be ordered in.
   const ceilStep = (n, step) => (step === 1 ? Math.ceil(n) : r2(Math.ceil(n / step - 1e-9) * step));
@@ -38,26 +48,8 @@
     return ceilStep(want > 0 ? want : step, step);
   }
 
-  // The interesting column: read down it and every row explains the next. The log starts
-  // after the seeded stock, so balances are anchored to today's cached on-hand and walked
-  // backwards — that way the column and the On hand tab can never disagree.
-  // `movements` must be in append order (it is; the log is append-only).
-  function runningBalances(movements, stockOf) {
-    const byProduct = new Map();
-    for (const m of movements) {
-      const list = byProduct.get(m.productId);
-      if (list) list.push(m); else byProduct.set(m.productId, [m]);
-    }
-    const balance = new Map();
-    byProduct.forEach((list, pid) => {
-      let running = Number(stockOf(pid)) || 0;
-      for (let i = list.length - 1; i >= 0; i--) {
-        balance.set(list[i].id, running);
-        running = r2(running - (Number(list[i].qty) || 0));
-      }
-    });
-    return { byProduct, balance };
-  }
+  // The Balance column is bo-model's runningBalances (the running sum of the movements), shared
+  // with the item page.
 
   // Most urgent first: out of stock, then below the danger level, then everything else.
   const urgency = (p) => (Number(p.stock) <= 0 ? 0 : isLow(p) ? 1 : 2);
@@ -68,11 +60,13 @@
   // wrong, so it rides along with the quantity and falls back to the product's cost.
   // `expected`/`counted` ride along on anything that was counted, so the variance survives
   // the qty (countAccuracy in bo-insights.js reads them).
-  function stockMovement({ product, delta, reason, note, unitCost, staff, refId, expected, counted, happenedOn }) {
+  // Who did it: the dialogs pick staff by name and look the id up (bo-model staffIdOf) before calling --
+  // this stays pure, no storage read.
+  function stockMovement({ product, delta, reason, note, unitCost, staff, staffId, refId, expected, counted, happenedOn }) {
     const typed = unitCost === '' || unitCost == null ? NaN : Number(unitCost);
     return makeMovement({
       productId: product.id, qty: delta, reason,
-      refId: refId || '', note: note || '', staff: staff || '',
+      refId: refId || '', note: note || '', staff: staff || '', staffId: staffId || '',
       unitCost: Number.isFinite(typed) ? typed : (Number(product.cost) || 0),
       expected, counted, happenedOn,
     });
@@ -82,16 +76,21 @@
   // that actually moved becomes a movement sharing the document id as `refId`, so the
   // history can group them back into "Sept 8 count, 14 items, Maricel R.".
   // A line counted and found correct writes nothing — that is not a stock movement.
+  // One item on two lines is ONE count, the last one typed: each line works its change out from
+  // the same on-hand, so applying both moved the shelf twice (counted 37 from 40 ended at 34).
   function documentMovements(doc, productOf) {
-    const out = [];
+    const out = [], last = new Map();
     (doc.lines || []).forEach((line) => {
+      if (line.counted !== '' && line.counted != null) last.set(line.productId, line);
+    });
+    last.forEach((line) => {
       const p = productOf(line.productId);
-      if (!p || line.counted === '' || line.counted == null) return;
+      if (!p) return;
       const counted = roundQty(p, line.counted);
       const delta = countDelta(p.stock, counted);
       if (!delta) return;
       out.push(stockMovement({
-        product: p, delta, reason: doc.reason, note: doc.note,
+        product: p, delta, reason: doc.reason, note: doc.note, staffId: doc.staffId,
         unitCost: line.unitCost, staff: doc.staff, refId: doc.id,
         expected: r2(Number(p.stock) || 0), counted, happenedOn: doc.date,
       }));
@@ -109,19 +108,20 @@
 
   // Keyed by productId (latest from anyone) AND by `productId|supplierId` (latest from that
   // supplier), so a product bought from two suppliers is compared against the right one.
-  // The supplier comes off the PO the delivery's refId points at.
+  // The supplier comes off the PO line the delivery's refId points at (a line carries its own).
   function lastPaid(movements, purchaseOrders = []) {
-    const supplierOf = new Map(purchaseOrders.map((po) => [po.id, po.supplierId || '']));
+    const poOf = new Map(purchaseOrders.map((po) => [po.id, po]));
     const out = new Map();
     for (const m of movements) {
       if (m.reason !== 'delivery') continue;    // only a purchase tells you a price
       const cost = Number(m.unitCost);
       if (!Number.isFinite(cost) || cost <= 0) continue;
-      const supplierId = supplierOf.get(m.refId) || '';
-      const row = { cost: r2(cost), ts: m.ts, refId: m.refId || '', supplierId };
+      const supplierId = deliverySupplier(poOf.get(m.refId), m);
+      // ts is epoch ms on new rows, ISO text on old ones: compare through tsOf, never raw.
+      const row = { cost: r2(cost), ts: tsOf(m), refId: m.refId || '', supplierId };
       for (const key of supplierId ? [m.productId, m.productId + '|' + supplierId] : [m.productId]) {
         const seen = out.get(key);
-        if (!seen || m.ts > seen.ts) out.set(key, row);
+        if (!seen || row.ts > seen.ts) out.set(key, row);
       }
     }
     return out;
@@ -150,14 +150,15 @@
       // No cost on file at all is the worst row on the page, not a 0% change: every sale
       // of it has been booking the whole price as profit. It has no old margin to hold,
       // so it gets no suggested price -- the product editor is where that gets decided.
-      if (book > 0 && Math.abs(gap / book) * 100 < DRIFT_MIN) continue;
+      const rate = SM().change(paid.cost, book);   // null when no cost on file
+      if (rate != null && Math.abs(rate) * 100 < DRIFT_MIN) continue;
       rows.push({
         p, paid: paid.cost, at: paid.ts, refId: paid.refId, book, gap,
-        gapPct: book ? r2((gap / book) * 100) : null,
+        gapPct: rate == null ? null : r2(rate * 100),
         suggested: heldPrice(p, paid.cost),
         // What today's shelf price really earns, against what the reports still claim.
-        nowMarkup: marginSummary(paid.cost, p.price).markup,
-        bookMarkup: marginSummary(book, p.price).markup,
+        nowMarkup: SM().unitMargin(paid.cost, p.price, settings()).markup,
+        bookMarkup: SM().unitMargin(book, p.price, settings()).markup,
       });
     }
     // Percent, not pesos: a ₱20 rise on a ₱1,200 item is noise, the same rise on a
@@ -166,66 +167,48 @@
     return rows.sort((a, b) => mag(b) - mag(a));
   }
 
-  /* ---- Low stock by supplier, for "Add low stock items" on a purchase order ----
-     Every product at or below its reorderPoint, grouped by supplier, most urgent first.
+  /* ---- The buying list: what a new purchase order fills itself with (owner, 2026-10-02) ----
+     Every item at or below its reorderPoint, most urgent first, at the suggested top-up minus
+     what is already on a list, bought from its main supplier ('' when it has none: still listed).
+     supplierId narrows it to what that supplier sells, main or other, and buys it there.
      No forecast on purpose (owner, 2026-09-23): the POS knows sales and stock, not promos,
      seasons or cash, so the owner's reorder point is the rule and suggestQty tops it up. */
-  function reorderGroups(products) {
-    const groups = new Map();
-    products.filter(isLow)
+  function buyingList(products, purchaseOrders = [], supplierId = '') {
+    const onOrder = onOrderQty(purchaseOrders);
+    return products.filter((p) => isLow(p) && (!supplierId || supplierIdsOf(p).includes(supplierId)))
       .sort((a, b) => (a.stock / (a.reorderPoint || 1)) - (b.stock / (b.reorderPoint || 1)))
-      .forEach((p) => {
-        const key = p.supplierId || '';
-        const g = groups.get(key);
-        if (g) g.push(p); else groups.set(key, [p]);
-      });
-    return groups;
+      .map((p) => ({ p, qty: ceilStep(suggestQty(p) - (onOrder.get(p.id) || 0), stepFor(p)),
+        supplierId: supplierId || p.supplierId || '' }))
+      .filter((x) => x.qty > 0);
   }
 
-  // Stock history's numbers for one window [a, b) of ms, in total and per bucket (bucketOf(ms) -> key,
-  // a day or an hour), money at cost in pesos (centavos while adding):
-  //   in / out -- what arrived and what left. A shelf count is in neither: nothing arrived or left,
-  //               the number was corrected.
-  //   lost     -- stolen, broken, written off, or a count that came up short.
-  //   adj      -- how many changes were typed by hand (counts, adjustments, losses), a count.
-  // `why` splits out by reason.
-  // When a movement happened: its happenedOn day when that is not the day it was typed (a delivery
-  // entered late), else ts. A bare date parses as UTC midnight -- 8 AM in Manila -- so a same-day
-  // delivery typed at 10 used to land in the 8 AM bar; a backdated one takes local noon.
-  function whenMs(m) {
-    const ts = new Date(m.ts).getTime();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(m.happenedOn || '')) return ts;
-    const on = new Date(m.happenedOn + 'T12:00:00');
-    return on.toDateString() === new Date(ts).toDateString() ? ts : on.getTime();
-  }
-  const MANUAL = new Set(['count', 'adjustment', 'shrinkage', 'damage', 'writeoff']);
-  const LOSS = new Set(['shrinkage', 'damage', 'writeoff']);
-  const isLoss = (m) => LOSS.has(m.reason) || (m.reason === 'count' && Number(m.qty) < 0);
-  function stockFlow(movements, costOf, [a, b], bucketOf = () => '') {
-    const zero = () => ({ in: 0, out: 0, lost: 0, adj: 0 });
-    const t = zero(), buckets = new Map(), why = new Map();
-    for (const m of movements) {
-      const ms = whenMs(m), q = Number(m.qty) || 0;
-      if (!(ms >= a && ms < b) || !q) continue;
-      const c = Math.round(Math.abs(q) * Number(m.unitCost ?? costOf(m.productId) ?? 0) * 100);
-      const k = bucketOf(ms), bk = buckets.get(k) || zero();
-      const add = (f, v) => { t[f] += v; bk[f] += v; };
-      if (MANUAL.has(m.reason)) add('adj', 1);
-      if (isLoss(m)) add('lost', c);
-      if (m.reason !== 'count') {
-        if (q > 0) add('in', c);
-        else { add('out', c); why.set(m.reason, (why.get(m.reason) || 0) + c); }
-      }
-      buckets.set(k, bk);
+  // Stock history's numbers (in / out / lost / adj, by bucket and by reason) are bo-model stockFlow,
+  // the one Insights' sold at cost reads too: a return (void or refund) nets against Went out, never
+  // Came in. The movement list's types below test rows the same way.
+  const cameIn = (m) => m.qty > 0 && !['return', 'count', 'opening'].includes(m.reason);
+
+  // A movement's reason in the till's words: stock back from a receipt says Void, Refund or Exchange,
+  // read off the order rows that point at it (an exchange is a refund plus a sale with the same
+  // originalOrderId). A return typed by hand has no receipt and keeps "Return". Item page uses it too.
+  function reasonWords(orders) {
+    const rev = new Map(), swap = new Set();
+    for (const o of orders || []) {
+      if (!o || !o.originalOrderId) continue;
+      const k = String(o.originalOrderId);
+      if (o.status === 'void' || o.status === 'refund') rev.set(k, o.status);
+      else if (o.status === 'completed' || !o.status) swap.add(k);
     }
-    const p = (x) => ({ in: x.in / 100, out: x.out / 100, lost: x.lost / 100, adj: x.adj });
-    return { ...p(t), buckets: new Map([...buckets].map(([k, v]) => [k, p(v)])),
-      why: [...why].sort((x, y) => y[1] - x[1]).map(([reason, c]) => ({ reason, value: c / 100, share: t.out ? c / t.out : 0 })) };
+    return (m) => {
+      const k = String(m.refId || '');
+      if (m.reason !== 'return' || !rev.has(k)) return STOCK_REASONS[m.reason] || m.reason;
+      return swap.has(k) ? 'Exchange' : rev.get(k) === 'void' ? 'Void' : 'Refund';
+    };
   }
 
+  // stockFlow re-exported for scripts/inventory-check.mjs: it is bo-model's, on the store clock.
   const API = { r2, ceilStep, countDelta, suggestQty, runningBalances, urgency,
     stockMovement, documentMovements, lastPaid, heldPrice, costDrift,
-    reorderGroups, stockFlow };
+    buyingList, stockFlow, reasonWords };
   if (typeof module === 'object' && module.exports) { module.exports = API; return; }
 
   /* ================================ formatting ======================================== */
@@ -237,11 +220,11 @@
     shrinkage: 'down', damage: 'down', writeoff: 'down' };
   const STATUS_TONE = { up: 'ok', warn: 'warn', data: 'info', down: 'danger' };
   const reasonLabel = (r) => escapeHtml(STOCK_REASONS[r] || r);
-  const reasonPill = (r) => `<span class="pill ${REASON_TONE[r] || ''}">${reasonLabel(r)}</span>`;
-  const reasonCell = (r) => `<span class="status-pill ${STATUS_TONE[REASON_TONE[r]] || 'muted'}">${reasonLabel(r)}</span>`;
+  // A movement's pill: tone by reason, words by reasonWords (`word`, built once per render).
+  const reasonPill = (m, word) => `<span class="pill ${REASON_TONE[m.reason] || ''}">${escapeHtml(word(m))}</span>`;
+  const reasonCell = (m, word) => `<span class="status-pill ${STATUS_TONE[REASON_TONE[m.reason]] || 'muted'}">${escapeHtml(word(m))}</span>`;
 
-  const fmtQty = (p, n) => roundQty(p, n).toLocaleString('en-PH',
-    p && p.soldBy === 'measure' ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : {});
+  const fmtQty = (p, n) => SalesMath.qtyText(roundQty(p, n));   // what the product sells in, shown the one way
 
   const fmtSigned = (p, n) => (n > 0 ? '+' : n < 0 ? '−' : '') + fmtQty(p, Math.abs(n));
 
@@ -250,11 +233,11 @@
   /* Reason and Mode asked the same question twice - "Adjustment" plus "Set to count"
      could disagree with each other, and most of the 15 combinations were nonsense. One
      control now: what happened. Each answer carries its own sign and its own log label.
-     Nothing adds stock blindly except a delivery; any other upward correction is a count,
-     which is what a shop actually does. Sales are not here on purpose - the POS writes
-     those against a receipt, and a hand-typed one would move stock with nothing behind it. */
+     Nothing adds stock blindly; an upward correction is a count, which is what a shop actually
+     does. Sales are not here on purpose - the POS writes those against a receipt, and a hand-typed
+     one would move stock with nothing behind it. Deliveries neither (2026-10-02): bought stock comes
+     in by receiving its purchase order line, or it gets counted in twice. */
   const ADJ_EVENTS = [
-    ['delivery:add', 'Received new stock'],
     ['return:add', 'Customer return'],
     ['transfer:add', 'Transferred in'],
     ['transfer:remove', 'Transferred out'],
@@ -266,7 +249,7 @@
     ['adjustment:remove', 'Used or other (note required)'],
     ['count:set', 'Counted the shelf'],
   ];
-  const adjEvent = (form) => String(form.elements.event.value || 'delivery:add').split(':');
+  const adjEvent = (form) => String(form.elements.event.value || ADJ_EVENTS[0][0]).split(':');
   const qtyLabel = (mode) => (mode === 'set' ? 'Counted quantity' : `Quantity to ${mode}`);
   // Stock adds are often typed late — the shelf held it before anyone opened this dialog.
   // Removals happen the day they happen, so the date is just "when".
@@ -291,7 +274,7 @@
     const tab = TABS[params.tab] ? params.tab : 'overview';
     const byId = new Map(state.products.map((p) => [p.id, p]));
     const movements = loadMovements();
-    const { byProduct, balance } = runningBalances(movements, (pid) => (byId.get(pid) || {}).stock || 0);
+    const { byProduct, balance } = runningBalances(movements);
     // state.detailId is the segment after the view: '' | 'adjust/new' | 'adjust/<id>'.
     const detail = state.detailId || '';
     return {
@@ -328,7 +311,7 @@
       : `<select class="bo-select" id="invCat">${cats}</select>`;
     // The insight cards (lost, counts) read no search or category, so they get neither.
     const search = `<input class="search-input small q-input" id="invSearch" type="search"
-                 placeholder="Search products…" autocomplete="off">`;
+                 placeholder="Search items…" autocomplete="off">`;
     const insight = INSIGHT_TABS.includes(d.tab);
     const back = FULL_PAGES.includes(d.tab)
       ? `<a class="link-btn" href="${Router.href(VIEW, '', {})}">&larr; Stock history</a>` : '';
@@ -382,14 +365,14 @@
             <label class="adj-field"><span class="adj-qty-label">Quantity to add</span>
               <input name="qty" type="number" min="0" step="${step}" value="" inputmode="decimal" autocomplete="off"></label>
             <label class="adj-field"><span class="adj-date-label">${dateLabel('add')}</span>
-              <input name="date" type="date" value="${isoDate(Date.now())}" max="${isoDate(Date.now())}"></label>
+              <input name="date" type="date" value="${storeDay(Date.now())}" max="${storeDay(Date.now())}"></label>
             <label class="adj-field"><span>Staff</span>
               <select name="staff">${staff || '<option value="">—</option>'}</select></label>
             <label class="adj-field adj-note"><span>Note</span>
               <input name="note" type="text" placeholder="Why did the stock move?" autocomplete="off"></label>
           </div>
           <div class="adj-foot">
-            <span class="adj-preview">On hand ${fmtQty(p, p.stock)} ${escapeHtml(p.unit || '')}</span>
+            <span class="adj-preview">In stock ${fmtQty(p, p.stock)} ${escapeHtml(p.unit || '')}</span>
             <span class="adj-last">Last movement ${last ? escapeHtml(txTime(last.ts)) : '—'}</span>
             <button type="button" class="secondary-btn small" data-act="adjust-cancel">Cancel</button>
             <button type="submit" class="primary-btn small">Save movement</button>
@@ -417,14 +400,14 @@
 
   // What kind of change, wider than one reason: [?type=, label, test, empty text]. The default
   // hides sales -- the POS writes hundreds, and they bury the deliveries, fixes and losses.
-  // Received and Lost match the KPIs of the same name (stockFlow).
+  // Came in, Lost and Adjustments match the KPIs of the same name (stockFlow).
   const MOVE_TYPES = [
     ['', 'All but sales', (m) => m.reason !== 'sale', 'Nothing but sales moved stock'],
     ['all', 'All', () => true, 'No stock moved'],
-    ['in', 'Received', (m) => m.qty > 0 && m.reason !== 'count', 'Nothing received'],
+    ['in', 'Came in', cameIn, 'Nothing came in'],
     ['sale', 'Sold', (m) => m.reason === 'sale', 'Nothing sold'],
     ['lost', 'Lost', isLoss, 'Nothing lost'],
-    ['adj', 'Adjusted', (m) => MANUAL.has(m.reason), 'Nothing adjusted'],
+    ['adj', 'Adjustments', (m) => MANUAL_REASON.has(m.reason), 'Nothing adjusted'],
   ];
   const moveType = (k) => MOVE_TYPES.find((t) => t[0] === (k || '')) || MOVE_TYPES[0];
 
@@ -437,7 +420,7 @@
     for (let i = d.movements.length - 1; i >= 0; i--) {   // newest first, one pass
       const m = d.movements[i];
       if (reason ? m.reason !== reason : !type(m)) continue;
-      const day = isoDate(m.ts);          // local day — UTC slice put early-morning rows on the wrong day
+      const day = storeDay(whenOf(m));    // the store's day it moved, as the overview reads it
       if (from && day < from) continue;
       if (to && day > to) continue;
       const p = d.byId.get(m.productId);
@@ -465,7 +448,7 @@
   function movementsTab(d) {
     const all = filteredMovements(d);
     const pg = paginate(all, d.params.page);
-    const refNo = refNumbers();
+    const refNo = refNumbers(), word = reasonWords(state.orders);
 
     const rows = pg.rows.map((m) => {
       const p = d.byId.get(m.productId);
@@ -475,7 +458,7 @@
         <tr>
           <td class="tx-time">${escapeHtml(txTime(m.ts))}</td>
           <td>${escapeHtml(p ? p.name : m.productId || '—')}</td>
-          <td>${reasonCell(m.reason)}</td>
+          <td>${reasonCell(m, word)}</td>
           <td class="num ${tone}">${fmtSigned(p, m.qty)}</td>
           <td class="num">${m.unitCost == null ? '—' : peso(m.unitCost)}</td>
           <td class="num">${bal == null ? '—' : fmtQty(p, bal)}</td>
@@ -488,7 +471,7 @@
     return card('Movement history', `showing ${pg.rows.length} of ${all.length}`, `
       <table class="data-table">
         <thead><tr>
-          <th>When</th><th>Product</th><th>Reason</th><th class="num">Qty</th><th class="num">Unit cost</th>
+          <th>When</th><th>Item</th><th>Reason</th><th class="num">Qty</th><th class="num">Unit cost</th>
           <th class="num">Balance</th><th>Ref</th><th>Note</th><th>Staff</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -496,14 +479,16 @@
   }
 
   function exportMovements(d) {
-    const rows = [['when', 'product', 'sku', 'reason', 'qty', 'unit_cost', 'balance', 'ref', 'note', 'staff']];
-    const refNo = refNumbers();
+    const rows = [['when', 'item', 'sku', 'reason', 'qty', 'unit_cost', 'balance', 'ref', 'note', 'staff']];
+    const refNo = refNumbers(), word = reasonWords(state.orders);
+    // When on the store's clock, as the screen reads it (an ISO stamp is UTC: a 7am Manila move read as yesterday).
+    const at = (m) => `${storeDay(tsOf(m))} ${SalesMath.dateText(tsOf(m), zone(), 'time')}`;
     filteredMovements(d).forEach((m) => {
       const p = d.byId.get(m.productId);
-      rows.push([m.ts, p ? p.name : m.productId, p ? p.sku : '', STOCK_REASONS[m.reason] || m.reason,
+      rows.push([at(m), p ? p.name : m.productId, p ? p.sku : '', word(m),
         m.qty, m.unitCost == null ? '' : m.unitCost, d.balance.get(m.id) ?? '', refNo.get(m.refId) || m.refId || '', m.note || '', m.staff || '']);
     });
-    downloadCsv(`stock-movements-${isoDate(Date.now())}.csv`, rows);
+    downloadCsv(`stock-movements-${storeDay(Date.now())}.csv`, rows);
   }
 
   /* ============================== cost changes ========================================= */
@@ -516,8 +501,8 @@
     if (!rows.length) {
       return `<section class="bo-card blk-empty"><div class="bo-card-head"><span class="bo-card-label">Cost changes</span></div>
         <div class="bo-card-inset"><div class="bo-empty">${d.q || d.cats.length
-          ? 'No products match those filters.'
-          : 'Every product is priced off what it last cost. Nothing to review.'}</div></div></section>`;
+          ? 'No items match those filters.'
+          : 'Every item is priced off what it last cost. Nothing to review.'}</div></div></section>`;
     }
     const up = rows.filter((r) => r.gap > 0).length;
     const body = rows.map((r) => {
@@ -531,11 +516,11 @@
           <td class="num"><strong>${peso(r.paid)}</strong></td>
           <td class="num"><span class="trend-plain ${r.gap > 0 ? 'down' : 'up'}">${r.gapPct == null
             ? 'no cost on file'
-            : `${r.gap > 0 ? '+' : '−'}${Math.abs(r.gapPct).toFixed(1)}%`}</span></td>
+            : SalesMath.changeText(r.paid, r.book)}</span></td>
           <td class="num inv-soft">${escapeHtml(shortDate(r.at))}</td>
           <td class="num">${peso(p.price)}</td>
           <td class="num">${r.suggested == null ? '—' : `<strong>${peso(r.suggested)}</strong>`}</td>
-          <td class="num inv-soft">${r.bookMarkup.toFixed(1)}% → ${r.nowMarkup.toFixed(1)}%</td>
+          <td class="num inv-soft">${SalesMath.pctText(r.bookMarkup / 100, r.book)} → ${SalesMath.pctText(r.nowMarkup / 100, r.paid)}</td>
           <td class="num">${canReprice
             ? `<button class="secondary-btn small" data-act="reprice" data-reprice="${escapeHtml(p.id)}">Apply</button>`
             : '—'}</td>
@@ -543,12 +528,12 @@
     }).join('');
 
     const note = `<div class="sales-note">Gross profit on Sales is worked out from the Cost column, not from what
-      the last delivery actually charged. While these disagree, ${up ? 'profit is being reported higher than it was earned' : 'profit is being reported lower than it was earned'}.</div>`;
+      the last delivery actually charged. While these disagree, ${up ? 'gross profit is being reported higher than it was earned' : 'gross profit is being reported lower than it was earned'}.</div>`;
 
-    return note + card('Cost changes', `${rows.length} product${rows.length === 1 ? '' : 's'} · ${up} went up`, `
+    return note + card('Cost changes', `${SalesMath.plural(rows.length, 'item')} · ${up} went up`, `
       <table class="data-table inv-cost">
         <thead><tr>
-          <th>Product</th><th class="inv-cat">Category</th>
+          <th>Item</th><th class="inv-cat">Category</th>
           <th class="num">Cost on file</th><th class="num">Last paid</th><th class="num">Change</th>
           <th class="num">Delivered</th><th class="num">Price now</th><th class="num">Holds margin at</th>
           <th class="num">Markup</th><th class="num">Apply</th>
@@ -565,7 +550,7 @@
     return {
       id: newId('adj'), reason: 'count',
       staff: people.some((u) => u.name === who) ? who : (people[0] ? people[0].name : ''),
-      date: isoDate(Date.now()), note: '', lines: [{ productId: '', counted: '' }],
+      date: storeDay(Date.now()), note: '', lines: [{ productId: '', counted: '' }],
     };
   }
 
@@ -589,7 +574,7 @@
     const mv = documentMovements(draft, (id) => byId.get(id));
     const net = mv.reduce((n, m) => r2(n + m.qty), 0);
     const sign = net > 0 ? '+' : net < 0 ? '\u2212' : '';
-    return `${mv.length} item${mv.length === 1 ? '' : 's'} moving \u00b7 net ${sign}${Math.abs(net).toLocaleString('en-PH')}`;
+    return `${SalesMath.plural(mv.length, 'item')} moving \u00b7 net ${sign}${SalesMath.qtyText(Math.abs(net))}`;
   }
 
   function draftRows(byId) {
@@ -598,7 +583,7 @@
       return `
         <tr data-line="${i}">
           <td><input class="text-input doc-pick" list="invPickList" data-field="product"
-               value="${escapeHtml(p ? pickerLabel(p) : '')}" placeholder="Search product\u2026" autocomplete="off"></td>
+               value="${escapeHtml(p ? pickerLabel(p) : '')}" placeholder="Search items\u2026" autocomplete="off"></td>
           <td class="num">${p ? `${fmtQty(p, p.stock)} ${escapeHtml(p.unit || '')}` : '\u2014'}</td>
           <td class="num"><input class="inv-qty" type="number" min="0" step="${p ? stepFor(p) : 1}"
                data-field="counted" value="${escapeHtml(String(ln.counted))}" ${p ? '' : 'disabled'}
@@ -611,7 +596,7 @@
   }
 
   function draftView(byId) {
-    const reasons = Object.entries(STOCK_REASONS).map(([k, v]) =>
+    const reasons = Object.entries(STOCK_REASONS).filter(([k]) => k !== 'delivery' && k !== 'opening').map(([k, v]) =>
       `<option value="${k}" ${k === draft.reason ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
     const people = loadStaff().filter((u) => u.active).map((u) =>
       `<option value="${escapeHtml(u.name)}" ${u.name === draft.staff ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
@@ -634,7 +619,7 @@
               <label class="adj-field"><span>Staff</span>
                 <select class="bo-select" data-doc="staff">${people || '<option value="">\u2014</option>'}</select></label>
               <label class="adj-field"><span>Date</span>
-                <input type="date" class="bo-date" data-doc="date" value="${escapeHtml(draft.date)}" max="${isoDate(Date.now())}"></label>
+                <input type="date" class="bo-date" data-doc="date" value="${escapeHtml(draft.date)}" max="${storeDay(Date.now())}"></label>
               <label class="adj-field adj-note"><span>Note</span>
                 <input type="text" class="text-input" data-doc="note" value="${escapeHtml(draft.note)}"
                        placeholder="Why is this being counted?" autocomplete="off"></label>
@@ -646,7 +631,7 @@
             <span class="bo-card-sub" id="docFoot">${escapeHtml(docFootText(byId))}</span></div>
           <div class="bo-card-inset flush"><div class="table-wrap">
             <table class="data-table">
-              <thead><tr><th>Product</th><th class="num">On hand now</th><th class="num">Counted</th>
+              <thead><tr><th>Item</th><th class="num">In stock now</th><th class="num">Counted</th>
                 <th class="num">Change</th><th class="num"></th></tr></thead>
               <tbody id="docLines">${draftRows(byId)}</tbody>
             </table>
@@ -668,12 +653,12 @@
       </tr>`).join('') || empty('This adjustment moved nothing.');
 
     return docHead(STOCK_REASONS[doc.reason] || 'Adjustment',
-      `${doc.date} \u00b7 ${doc.staff || '\u2014'} \u00b7 ${lines.length} item${lines.length === 1 ? '' : 's'}`,
+      `${doc.date} \u00b7 ${doc.staff || '\u2014'} \u00b7 ${SalesMath.plural(lines.length, 'item')}`,
       '<button class="secondary-btn small" data-act="doc-new">New adjustment</button>') + `
       <div class="dash-stack">
         ${card('Items moved', doc.note || 'No note', `
           <table class="data-table">
-            <thead><tr><th>Product</th><th class="num">Was</th><th class="num">Counted</th>
+            <thead><tr><th>Item</th><th class="num">Was</th><th class="num">Counted</th>
               <th class="num">Change</th><th class="num">Unit cost</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>`)}
@@ -694,7 +679,8 @@
   }
 
   function saveDraft(byId) {
-    const movements = documentMovements(draft, (id) => byId.get(id));
+    const staffId = staffIdOf(draft.staff);
+    const movements = documentMovements({ ...draft, staffId }, (id) => byId.get(id));
     if (!movements.length) { showToast('Nothing counted differently \u2014 no movement to save'); return; }
     // Snapshot the figures onto the document: read back next year it has to show what was
     // counted then, not what the shelf holds today.
@@ -707,14 +693,15 @@
     movements.forEach((m) => applyMovement(byId.get(m.productId), m));  // stamps balanceAfter, so before the append
     appendMovements(movements);
     saveProducts();
-    saveAdjustments(loadAdjustments().concat({
-      id: draft.id, reason: draft.reason, staff: draft.staff, date: draft.date,
+    // stampRow: the document carries store_id and updated_at like every record (bo-model).
+    saveAdjustments(loadAdjustments().concat(stampRow({
+      id: draft.id, reason: draft.reason, staff: draft.staff, staffId, date: draft.date,
       note: draft.note, lines, createdAt: new Date().toISOString(),
-    }));
+    })));
     const id = draft.id;
     draft = null;
     refreshSharedState();
-    showToast(`Adjustment saved \u00b7 ${movements.length} item${movements.length === 1 ? '' : 's'} moved`);
+    showToast(`Adjustment saved \u00b7 ${SalesMath.plural(movements.length, 'item')} moved`);
     Router.go(VIEW, 'adjust/' + id, {}, { replace: true });
   }
 
@@ -731,14 +718,18 @@
     return drift.length ? cost + log : log + cost;
   }
 
+  // A price or cost edit's change, the trend chips' one rule (SalesMath.changeText). good: a price going
+  // up, or a cost going down. No old value: nothing to be a change of (null).
+  const editChange = (e) => (e.old ? { good: (e.new > e.old) === (e.field !== 'cost'), text: SalesMath.changeText(e.new, e.old) } : null);
+
   function priceLogCard(d) {
     const shown = new Set(visible(d).map((p) => p.id));
     const all = loadEvents('priceLog').filter((e) => shown.has(e.productId))
-      .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+      .sort((a, b) => tsOf(b) - tsOf(a));
     const pg = paginate(all, d.params.page);
     const rows = pg.rows.map((e) => {
       const p = d.byId.get(e.productId);
-      const pct = e.old ? ((e.new - e.old) / e.old) * 100 : null;
+      const ch = editChange(e);
       return `
         <tr>
           <td class="tx-time">${escapeHtml(txTime(e.ts))}</td>
@@ -746,7 +737,7 @@
           <td>${e.field === 'cost' ? 'Cost' : 'Price'}</td>
           <td class="num inv-soft">${e.old == null ? '—' : peso(e.old)}</td>
           <td class="num"><strong>${peso(e.new)}</strong></td>
-          <td class="num">${pct == null ? '—' : `<span class="trend-plain ${(pct > 0) === (e.field !== 'cost') ? 'up' : 'down'}">${pct > 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%</span>`}</td>
+          <td class="num">${ch == null ? '—' : `<span class="trend-plain ${ch.good ? 'up' : 'down'}">${ch.text}</span>`}</td>
           <td>${escapeHtml(e.staff || '—')}</td>
           <td class="inv-soft">${escapeHtml(SOURCE_LABEL[e.source] || e.source || '—')}</td>
         </tr>`;
@@ -755,7 +746,7 @@
     return card('Price history', `showing ${pg.rows.length} of ${all.length}`, `
       <table class="data-table">
         <thead><tr>
-          <th>When</th><th>Product</th><th>What</th><th class="num">From</th><th class="num">To</th>
+          <th>When</th><th>Item</th><th>What</th><th class="num">From</th><th class="num">To</th>
           <th class="num">Change</th><th>Changed by</th><th>Where</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -776,45 +767,51 @@
   const PERIOD_DEF = '7';
   const periodOf = (params) => (PERIODS[params.period] ? String(params.period) : PERIOD_DEF);
   const periodText = (key) => (key === 'today' ? 'today' : `in the last ${key} days`);
+  // Store days (SalesMath.rangeWindow), not the browser's.
   function periodWindows(key, now = Date.now()) {
-    const mid = dayStart(now);
-    if (key === 'today') return { cur: [mid, now + 1], prev: [mid - 864e5, now + 1 - 864e5] };
-    const start = shiftDays(mid, 1 - Number(key)), span = now + 1 - start;
+    const start = SalesMath.rangeWindow(key === 'today' ? 1 : Number(key), now, zone()).from;
+    if (key === 'today') return { cur: [start, now + 1], prev: [start - 864e5, now + 1 - 864e5] };
+    const span = now + 1 - start;
     return { cur: [start, now + 1], prev: [start - span, start] };
   }
-  const inWin = (t, [a, b]) => { const ms = new Date(t).getTime(); return ms >= a && ms < b; };
-  const whenOf = whenMs;
+  const inWin = (t, [a, b]) => { const ms = tsOf({ ts: t }); return ms >= a && ms < b; };
+  const whenOf = when;
+  const storeDay = (t) => SalesMath.dayKey(t, zone());
+  const storeHour = (ms) => Math.floor((ms - SalesMath.dayStartMs(storeDay(ms), zone())) / 36e5);
 
   // The chart's bars: one per hour today (7a–6p, widened to any hour that moved stock), one per day otherwise.
   function flowBuckets(key, [a, b], movements) {
     if (key === 'today') {
-      const hrs = movements.filter((m) => inWin(whenOf(m), [a, b])).map((m) => new Date(whenOf(m)).getHours());
-      const h0 = Math.min(7, ...hrs), h1 = Math.max(18, ...hrs), now = new Date(b - 1).getHours();
-      return { of: (ms) => new Date(ms).getHours(), list: Array.from({ length: h1 - h0 + 1 }, (_, i) =>
+      const hrs = movements.filter((m) => inWin(whenOf(m), [a, b])).map((m) => storeHour(whenOf(m)));
+      const h0 = Math.min(7, ...hrs), h1 = Math.max(18, ...hrs), now = storeHour(b - 1);
+      return { of: storeHour, list: Array.from({ length: h1 - h0 + 1 }, (_, i) =>
         ({ key: h0 + i, x: hourShort(h0 + i), title: `${hourLong(h0 + i)} – ${hourLong(h0 + i + 1)}`, future: h0 + i > now })) };
     }
     const n = Number(key);
-    return { of: isoDate, list: Array.from({ length: n }, (_, i) => {
-      const t = shiftDays(a, i);
-      return { key: isoDate(t), x: n > 7 ? String(new Date(t).getDate()) : dashDate(t, { weekday: 'short' }),
+    return { of: storeDay, list: Array.from({ length: n }, (_, i) => {
+      const k = SalesMath.addDays(storeDay(a), i), t = SalesMath.dayStartMs(k, zone()) + 12 * 36e5;   // noon labels the right date
+      return { key: k, x: n > 7 ? String(Number(k.slice(8))) : dashDate(t, { weekday: 'short' }),
         title: dashDate(t, { weekday: 'long', month: 'long', day: 'numeric' }) };
     }) };
   }
 
   // The four KPIs; the picked one is what the bars show. Money is at cost. `tone` is what a rise
-  // means: Lost going up is bad news, so its chip reads red. Received, Went out and Adjusted have
+  // means: Lost going up is bad news, so its chip reads red. Came in, Went out and Adjustments have
   // no good direction -- a quiet week sells less and buys less -- so their chips stay grey.
-  const count = (v) => v.toLocaleString('en-PH');
+  // Words say what each adds (received-word, 2026-10-02): "Received" read as deliveries but counted
+  // returns and transfers too; "Adjusted" sat as a count next to money; a short count is Lost but
+  // never Went out (nothing left the shop, the number was corrected).
+  const count = SalesMath.qtyText;
   const money = (v) => (v >= 1e6 ? pesoK(v) : pesoShort(v));   // ₱1.25M: seven digits and a chip overran a tab
   const SH_KPI = {
-    in:   { lbl: 'Received', fmt: money, axis: pesoK, floor: 100,
-      tip: 'Stock that came in: deliveries, returns, transfers in. At cost.' },
+    in:   { lbl: 'Came in', fmt: money, axis: pesoK, floor: 100,
+      tip: 'Stock that came in: deliveries and transfers in. At cost.' },
     out:  { lbl: 'Went out', fmt: money, axis: pesoK, floor: 100,
-      tip: 'Stock that left: sold, used, transferred out or lost. At cost.' },
+      tip: 'Stock that left: sold (less what came back on a void, a refund or a customer return), used, transferred out, stolen, broken or written off. At cost.' },
     lost: { lbl: 'Lost', fmt: money, axis: pesoK, floor: 100, bad: true,
       tip: 'Stolen, broken, written off, or short on a shelf count. At cost.' },
-    adj:  { lbl: 'Adjusted', fmt: count, axis: (v) => +v.toFixed(1), floor: 3,
-      tip: 'Changes typed in by hand: shelf counts, adjustments and losses.' },
+    adj:  { lbl: 'Adjustments', fmt: count, axis: (v) => +v.toFixed(1), floor: 3,
+      tip: 'How many changes were typed in by hand: shelf counts, adjustments and losses. A count, not money.' },
   };
   const shChip = (k, cur, prev, title) => calmChip(cur, prev, title)
     .replace(/chip (up|down)/, (_, t) => (SH_KPI[k].bad ? `chip ${t === 'up' ? 'down' : 'up'}` : 'chip'));
@@ -838,7 +835,9 @@
       if (b.future) return `<div class="b future">${x}</div>`;
       const v = at(b);
       return `<div class="b" tabindex="0" aria-label="${escapeHtml(b.title)}: ${K.lbl} ${K.fmt(v[chart])}">`
-        + `<i style="height:${v[chart] / top * 100}%"><span class="tip"><b>${escapeHtml(b.title)}</b>`
+        // A bar starts at zero: a bucket that took back more than it sold (a refund of an earlier
+        // day's sale, bo-model stockFlow) is net negative -- its tip says so, the bar stays empty.
+        + `<i style="height:${Math.max(0, v[chart]) / top * 100}%"><span class="tip"><b>${escapeHtml(b.title)}</b>`
         + Object.entries(SH_KPI).map(([k, X]) => `<span class="${k === chart ? 'on' : ''}">${X.lbl}<em>${X.fmt(v[k])}</em></span>`).join('')
         + `</span></i>${x}</div>`;
     }).join('');
@@ -856,54 +855,61 @@
   const quietCard = (lbl, why, more) => `<section class="card txcard"><div class="head"><span class="lbl">${lbl}<span class="sub">${escapeHtml(why)}</span></span>${more}</div></section>`;
 
   function overviewTab(d) {
-    const key = periodOf(d.params), vs = `vs ${PERIODS[key][1]}`, w = periodWindows(key), when = periodText(key);
+    // Pick a day (?date=): that one whole STORE day, against the day before. Read off the key in the
+    // store's zone, not the browser-midnight anchor (a picked day read the wrong window off Manila).
+    const dateKey = /^\d{4}-\d{2}-\d{2}$/.test(d.params.date || '') && d.params.date !== storeDay(Date.now()) ? d.params.date : '';
+    const dayEnd = dateKey ? SalesMath.dayStartMs(SalesMath.addDays(dateKey, 1), zone()) - 1 : 0;
+    // backoffice.js's dayLabel / dayPickRow read the browser's clock: store noon names the right date.
+    const day = dateKey ? SalesMath.dayStartMs(dateKey, zone()) + 12 * 36e5 : 0;
+    const key = day ? 'today' : periodOf(d.params), w = periodWindows(key, day ? dayEnd : Date.now());
+    const vs = day ? 'vs the day before' : `vs ${PERIODS[key][1]}`, when = day ? `on ${dayLabel(day)}` : periodText(key);
     const chart = SH_KPI[d.params.chart] ? d.params.chart : 'in';
     const costOf = (id) => (d.byId.get(id) || {}).cost;
     const bs = flowBuckets(key, w.cur, d.movements);
-    const cur = stockFlow(d.movements, costOf, w.cur, bs.of), prev = stockFlow(d.movements, costOf, w.prev);
+    const cur = stockFlow(d.movements, costOf, w.cur, bs.of, zone()), prev = stockFlow(d.movements, costOf, w.prev, undefined, zone());
 
     const bar = `<div class="bar"><h1 id="invTitle"></h1>
-      <button class="pick" popovertarget="invRange">${PERIODS[key][0]}</button>
-      <div class="menu" id="invRange" popover role="menu">${PERIOD_LIST.map(([k, lbl]) => menuItem('data-period', k, lbl, k === key)).join('')}</div>
+      <button class="pick" popovertarget="invRange">${day ? dayLabel(day) : PERIODS[key][0]}</button>
+      <div class="menu" id="invRange" popover role="menu">${PERIOD_LIST.map(([k, lbl]) => menuItem('data-period', k, lbl, !day && k === key)).join('')}${dayPickRow(day)}</div>
       <button class="secondary-btn small" data-act="receive">Receive stock</button>
       <button class="primary-btn small" data-act="doc-new">New adjustment</button></div>`;
 
     const trend = `<section class="card trend"><div class="strip" role="tablist" aria-label="Chart shows">${shStrip(cur, prev, chart, vs)}</div>
       <div class="panel"><div class="plot">${cur[chart] ? shPlot(bs.list, cur, chart)
-        : `<p class="none">${chart === 'adj' ? 'Nothing adjusted' : `No stock ${{ in: 'received', out: 'went out', lost: 'lost' }[chart]}`} ${when}.</p>`}</div></div></section>`;
+        : `<p class="none">${chart === 'adj' ? 'Nothing adjusted' : `No stock ${{ in: 'came in', out: 'went out', lost: 'lost' }[chart]}`} ${when}.</p>`}</div></div></section>`;
 
     // Movements in the period, newest first. Sales are hidden until asked for: the POS writes
     // hundreds, and they bury the deliveries, fixes and losses this list is for.
-    const type = moveType(d.params.type);
+    const type = moveType(d.params.type), word = reasonWords(state.orders);
     const moves = d.movements.filter((m) => Number(m.qty) && inWin(whenOf(m), w.cur) && type[2](m)).reverse();
     const typePick = `<button class="pick" popovertarget="invType">${type[1]}</button>
       <div class="menu" id="invType" popover role="menu">${MOVE_TYPES.map(([k, lbl]) => menuItem('data-type', k, lbl, k === type[0])).join('')}</div>`;
-    const movesAll = viewAll('movements', { type: type[0], from: isoDate(w.cur[0]) });
+    const movesAll = viewAll('movements', { type: type[0], from: storeDay(w.cur[0]), to: dateKey });
     const moveCard = !moves.length ? quietCard('Movements', `${type[3]} ${when}`, typePick + movesAll)
       : `<section class="card txcard"><div class="head"><span class="lbl">Movements<span class="sub">${moves.length > 10 ? `latest 10 of ${count(moves.length)}` : count(moves.length)}</span></span>${typePick}${movesAll}</div>
       <div class="flush"><table class="tx">
-        <tr><th>When</th><th>Product</th><th>Reason</th><th class="n">Qty</th><th class="n opt">Balance</th></tr>
+        <tr><th>When</th><th>Item</th><th>Reason</th><th class="n">Qty</th><th class="n opt">Balance</th></tr>
         ${moves.slice(0, 10).map((m) => {
           const p = d.byId.get(m.productId), bal = d.balance.get(m.id);
           return `<tr><td class="t">${escapeHtml(txTime(m.ts))}</td>
             <td class="prod">${productLink(d, m.productId)}${m.note ? `<span class="mut"> · ${escapeHtml(m.note)}</span>` : ''}</td>
-            <td>${reasonPill(m.reason)}</td><td class="n">${fmtSigned(p, m.qty)}</td>
+            <td>${reasonPill(m, word)}</td><td class="n">${fmtSigned(p, m.qty)}</td>
             <td class="n opt">${bal == null ? '<span class="mut">—</span>' : fmtQty(p, bal)}</td></tr>`;
         }).join('')}</table></div></section>`;
 
     // Price and cost edits in the period. A cost going up is the bad direction, a price going up the good one.
-    const edits = loadEvents('priceLog').filter((e) => inWin(e.ts, w.cur)).sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+    const edits = loadEvents('priceLog').filter((e) => inWin(e.ts, w.cur)).sort((a, b) => tsOf(b) - tsOf(a));
     const priceCard = !edits.length ? quietCard('Price changes', `None ${when}`, viewAll('prices'))
       : `<section class="card txcard"><div class="head"><span class="lbl">Price changes<span class="sub">${edits.length > 5 ? `latest 5 of ${edits.length}` : edits.length}</span></span>${viewAll('prices')}</div>
       <div class="flush"><table class="tx">
-        <tr><th>When</th><th>Product</th><th>What</th><th class="n">From → to</th><th class="n">Change</th></tr>
+        <tr><th>When</th><th>Item</th><th>What</th><th class="n">From → to</th><th class="n">Change</th></tr>
         ${edits.slice(0, 5).map((e) => {
-          const pct = e.old ? ((e.new - e.old) / e.old) * 100 : null;
+          const ch = editChange(e);
           return `<tr><td class="t">${escapeHtml(txTime(e.ts))}</td><td class="prod">${productLink(d, e.productId)}</td>
             <td>${e.field === 'cost' ? 'Cost' : 'Price'}</td>
             <td class="n"><span class="mut">${e.old == null ? '—' : peso(e.old)} →</span> ${peso(e.new)}</td>
-            <td class="n">${pct == null ? '<span class="mut">—</span>'
-              : `<span class="${(pct > 0) === (e.field !== 'cost') ? 'good' : 'bad'}">${pct > 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%</span>`}</td></tr>`;
+            <td class="n">${ch == null ? '<span class="mut">—</span>'
+              : `<span class="${ch.good ? 'good' : 'bad'}">${ch.text}</span>`}</td></tr>`;
         }).join('')}</table></div></section>`;
 
     // The rail: what to act on. A card with nothing to say is not drawn -- except Lost demand, which the
@@ -913,7 +919,6 @@
     const asked = HWPOS_INSIGHTS.lostDemandSummary(loadEvents('lostDemand').filter((e) => inWin(e.ts, w.cur)));
     const counts = d.movements.filter((m) => m.reason === 'count' && Number(m.qty) && inWin(whenOf(m), w.cur)).reverse();
     const drift = costDrift(visible(d), d.movements, loadPurchaseOrders());
-    const pct = (s) => (s && s < 0.01 ? '<1%' : s < 1 && s > 0.99 ? '>99%' : `${Math.round(s * 100)}%`);
     const rail = [
       railCard('Lost demand', viewAll('lost'), asked.slice(0, 5).map((r) =>
         calmRow(productLink(d, r.productId, r.text), `${r.requests}×`)), `Nobody asked for anything you were out of ${when}`),
@@ -925,10 +930,10 @@
       })),
       railCard('Supplier costs changed', viewAll('prices'), drift.slice(0, 5).map((r) =>
         calmRow(productLink(d, r.p.id), `${peso(r.book)} → ${peso(r.paid)}`,
-          r.gapPct == null ? 'no cost' : `${r.gapPct > 0 ? '+' : '−'}${Math.abs(r.gapPct).toFixed(0)}%`, r.gap > 0 || r.gapPct == null ? 'down' : 'up'))),
+          r.gapPct == null ? 'no cost' : SalesMath.changeText(r.paid, r.book, 0), r.gap > 0 || r.gapPct == null ? 'down' : 'up'))),
       // One reason is 100% of one bar: that says nothing Went out doesn't, so the card waits for two.
       cur.why.length < 2 ? '' : railCard('Where it went', '', cur.why.map((r) =>
-        calmRow(reasonLabel(r.reason), pesoShort(r.value), pct(r.share)))),
+        calmRow(reasonLabel(r.reason), pesoShort(r.value), SalesMath.pctText(r.share, 1, 0)))),
     ].join('');
 
     return `${bar}<div class="dash${rail ? '' : ' solo'}"><div class="col">${trend}${moveCard}${priceCard}</div>
@@ -1007,7 +1012,7 @@
       return;
     }
     const mv = stockMovement({
-      product: p, delta, reason, note, staff: form.elements.staff.value,
+      product: p, delta, reason, note, staff: form.elements.staff.value, staffId: staffIdOf(form.elements.staff.value),
       expected: mode === 'set' ? on : null, counted: mode === 'set' ? qty : null,
       happenedOn: form.elements.date.value,
     });   // no cost typed here - the movement takes the product's cost
@@ -1063,14 +1068,14 @@
     const unit = p.unit || '';
     const out = form.querySelector('.adj-preview');
     if (!Number.isFinite(typed) || form.elements.qty.value === '') {
-      out.textContent = `On hand ${fmtQty(p, on)} ${unit}`;
+      out.textContent = `In stock ${fmtQty(p, on)} ${unit}`;
       return;
     }
     const qty = roundQty(p, typed);
     const delta = mode === 'set' ? countDelta(on, qty) : mode === 'remove' ? -qty : qty;
     out.textContent = mode === 'set'
-      ? `On hand ${fmtQty(p, on)}, counted ${fmtQty(p, qty)} → ${fmtSigned(p, delta)}`
-      : `On hand ${fmtQty(p, on)} → ${fmtQty(p, on + delta)} ${unit}`;
+      ? `In stock ${fmtQty(p, on)}, counted ${fmtQty(p, qty)} → ${fmtSigned(p, delta)}`
+      : `In stock ${fmtQty(p, on)} → ${fmtQty(p, on + delta)} ${unit}`;
   }
 
   const productMap = () => new Map(state.products.map((p) => [p.id, p]));
@@ -1112,12 +1117,12 @@
     // The overview's picks: the range and type menus, and the KPI tabs over the chart.
     const menu = el.closest('[popover]');
     if (menu) menu.hidePopover();
-    if (el.dataset.period) return Router.setParams({ period: el.dataset.period === PERIOD_DEF ? '' : el.dataset.period });
+    if (el.dataset.period) return Router.setParams({ period: el.dataset.period === PERIOD_DEF ? '' : el.dataset.period, date: '' });
     if ('type' in el.dataset) return Router.setParams({ type: el.dataset.type });
     if (el.dataset.chart) return Router.setParams({ chart: el.dataset.chart === 'in' ? '' : el.dataset.chart });
 
     switch (el.dataset.act) {
-      case 'receive': return Router.go('suppliers', '');   // receiving is a PO action, and Suppliers owns it
+      case 'receive': return Router.go('suppliers', '', { tab: 'incoming' });   // receiving is a PO line action, and Suppliers owns it
       case 'export': return exportMovements(collect());
       case 'reprice': return reprice(el.dataset.reprice, collect());
       case 'doc-new': return Router.go(VIEW, 'adjust/new');
@@ -1154,6 +1159,10 @@
 
   document.addEventListener('change', (e) => {
     const el = e.target;
+    if (mine(e) && el.matches('[data-day-pick]')) {
+      el.closest('[popover]').hidePopover();
+      return Router.setParams({ period: 'today', date: dayParam(el.value) }, { replace: false });
+    }
     if (inAdjust(e) && el.name === 'event') {
       const form = el.closest('form');
       form.querySelector('.adj-qty-label').textContent = qtyLabel(adjEvent(form)[1]);
@@ -1186,7 +1195,7 @@
 
   window.renderInventory = render;
   window.openAdjustDialog = openAdjustDialog;
-  // The PO editor's "Add low stock items": this supplier's low and out items at the suggested qty.
-  window.lowStockLines = (supplierId) =>
-    (reorderGroups(state.products.filter((p) => !p.archived)).get(supplierId) || []).map((p) => ({ p, qty: suggestQty(p) }));
+  window.buyingList = buyingList;   // a new purchase order fills itself from it (bo-suppliers.js)
+  window.reasonWords = reasonWords; // the item page's Stock movements say Void / Refund / Exchange too
+  window.lastPaid = lastPaid;       // and prices a line at what its supplier last billed
 })();

@@ -201,7 +201,7 @@ create table orders (
   vat_amount    integer not null default 0,
   items         text not null default '[]',
   payments      text not null default '[]',
-  fulfilment    text default 'pickup',
+  fulfilment    text default 'walkin',  -- walkin | pickup | delivery | the store's own type
   delivery      text,                   -- JSON { address, lat, lng, zoom }
   -- ponytail: the ONLY mutable column. It's a workflow flag, not money, so
   -- last-write-wins is fine. This is what the queue display polls.

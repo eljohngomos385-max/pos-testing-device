@@ -1,0 +1,977 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#F7F6F3" />
+  <title>POS Lab</title>
+  <link rel="icon" href="data:," />
+  <script>
+    // Lab seal: this copy keeps its own data (localStorage keys under "hwpos-lab:"), skips
+    // IndexedDB (so no shared database and no BroadcastChannel to the real till) and ignores
+    // the real till's storage events. Reset the lab: localStorage keys starting "hwpos-lab:".
+    (function () {
+      const real = window.localStorage, P = 'hwpos-lab:';
+      const own = () => Object.keys(real).filter((k) => k.startsWith(P));
+      const lab = {
+        getItem: (k) => real.getItem(P + k),
+        setItem: (k, v) => real.setItem(P + k, String(v)),
+        removeItem: (k) => real.removeItem(P + k),
+        clear: () => own().forEach((k) => real.removeItem(k)),
+        key: (i) => (own()[i] || '').slice(P.length) || null,
+        get length() { return own().length; },
+      };
+      Object.defineProperty(window, 'localStorage', { value: lab, configurable: true });
+      Object.defineProperty(window, 'indexedDB', { value: undefined, configurable: true });
+      window.addEventListener('storage', (e) => e.stopImmediatePropagation(), true);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=94" />
+</head>
+<body>
+  <div id="app" class="sidebar-collapsed">
+
+    <!-- ============== SIDEBAR ============== -->
+    <aside class="sidebar">
+      <div class="side-head"></div>
+
+      <nav class="side-nav">
+        <button class="side-link active" data-view="sell">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/>
+          </svg>
+          <span>Sell</span>
+        </button>
+        <button class="side-link" data-view="orders">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="8" y1="13" x2="16" y2="13"/>
+            <line x1="8" y1="17" x2="16" y2="17"/>
+          </svg>
+          <span>Orders</span>
+        </button>
+        <button class="side-link" data-view="items">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/>
+            <circle cx="7.5" cy="7.5" r="1.3"/>
+          </svg>
+          <span>Items</span>
+        </button>
+        <button class="side-link" data-view="customers">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="3.5"/>
+            <path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>
+          </svg>
+          <span>Customers</span>
+        </button>
+        <button class="side-link" data-view="reports">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="20" x2="20" y2="20"/>
+            <line x1="7" y1="20" x2="7" y2="12"/>
+            <line x1="12" y1="20" x2="12" y2="6"/>
+            <line x1="17" y1="20" x2="17" y2="15"/>
+          </svg>
+          <span>Reports</span>
+        </button>
+        <button class="side-link" data-view="back-office">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="8" height="9" rx="1.5"/>
+            <rect x="13" y="3" width="8" height="5" rx="1.5"/>
+            <rect x="13" y="10" width="8" height="11" rx="1.5"/>
+            <rect x="3" y="14" width="8" height="7" rx="1.5"/>
+          </svg>
+          <span>Back office</span>
+          <svg class="ext" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 4h6v6"/><path d="M10 14L20 4"/><path d="M20 14v6H4V4h6"/>
+          </svg>
+        </button>
+        <button class="side-link" data-view="settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 4.37 16.94l.06-.06A1.65 1.65 0 0 0 4.76 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 4.29l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+      <div class="side-footer">
+        <div class="user-row">
+          <div class="user-meta">
+            <div class="user-name">El John</div>
+            <div class="user-sub">Staff · Main store</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============== MAIN ============== -->
+    <div class="main">
+
+      <!-- ============================================
+           SELL VIEW
+           ============================================ -->
+      <section class="view view-sell active" data-view="sell">
+        <div class="content-row">
+          <div class="catalog-wrap">
+            <div class="catalog">
+              <div class="search-row" id="catalogSearchRow">
+                <button class="ghost-icon" id="sidebarToggle" aria-label="Menu" title="Menu">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                    <line x1="4" y1="7" x2="20" y2="7"/>
+                    <line x1="4" y1="12" x2="20" y2="12"/>
+                    <line x1="4" y1="17" x2="20" y2="17"/>
+                  </svg>
+                </button>
+                <div class="search-wrap">
+                  <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7"/>
+                    <line x1="20" y1="20" x2="16.5" y2="16.5"/>
+                  </svg>
+                  <input id="searchInput" type="text" autocomplete="off"
+                    placeholder="Search SKU, name, alias, or brand" />
+                  <button class="search-clear" id="searchClear" aria-label="Clear">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+                <button class="ghost-icon" id="scanBtn" title="Scan barcode">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+                    <path d="M7 8v8M11 8v8M15 8v8M19 8v8"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="product-grid" id="productGrid"></div>
+            </div>
+          </div>
+
+          <!-- The sale sidebar (cart-lab-stack-h.html): three slim cards -- who, the items, the money.
+               Fulfilment and Discount share the money card's first row, half and half. -->
+          <aside class="rail rail-h" id="side" aria-label="Receipt">
+            <section class="card who">
+              <div class="c-row">
+                <button type="button" class="cust" id="customerBtn" title="Change customer">
+                  <span id="customerLabel">Walk-in customer</span>
+                  <svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+                </button>
+                <button type="button" class="more" id="cartMoreBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Save receipt, lost sale, clear">
+                  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
+                </button>
+              </div>
+            </section>
+
+            <section class="card items">
+              <div class="i-head"><span class="num" id="cartCount">Item</span><span>Amount</span></div>
+              <div class="lines" id="cartList"></div>
+            </section>
+
+            <section class="card pay">
+              <div class="opts" id="railOpts">
+                <div class="f-row" id="fulRow" role="group" aria-label="Fulfilment"></div>
+                <button type="button" class="d-row" id="cartDiscountBtn">
+                  <span id="cartDiscountLabel">Discount</span><span class="num" id="cartDiscountAmt"></span>
+                  <svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+                </button>
+              </div>
+              <div>
+                <div class="break" id="totalsDetail"><div>
+                  <p><span>Subtotal</span><span class="num" id="subtotal">₱0.00</span></p>
+                  <p id="discountRow"><span>Discount</span><span class="num" id="discount">₱0.00</span></p>
+                  <p class="dim"><span id="vatLabel">VAT (12% incl.)</span><span class="num" id="vatAmount">₱0.00</span></p>
+                </div></div>
+                <button type="button" class="sum" id="totalRow" aria-expanded="false">
+                  <span class="l">Total<span class="rail-cnt num" id="railCount"></span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+                  <span class="v num" id="total">₱0.00</span>
+                </button>
+              </div>
+              <button type="button" class="go" id="payBtn" disabled>Check out</button>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ============================================
+           ORDERS VIEW — completed sales list
+           ============================================ -->
+      <!-- pos-orders-rail-lab.html: the orders in a rail under ☰, the receipt beside it -->
+      <section class="view view-orders lv" data-view="orders">
+        <div class="ov" id="ordersView">
+          <section class="o-main" aria-label="Receipt">
+            <div class="o-top">
+              <button class="sq back" id="ordersBack" aria-label="Back to orders"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <div class="ttl" id="orderTtl"></div>
+              <div class="acts">
+                <button class="act" id="orderPrint" title="Print"><svg class="ic" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M7 14h10v6H7z"/></svg><span>Print</span></button>
+                <button class="act" id="orderRefund" title="Refund"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg><span>Refund</span></button>
+                <button class="act icon" id="orderMore" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">
+                  <svg class="ic" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="paper-scroll" id="orderDetail"></div>
+          </section>
+          <aside class="o-rail" aria-label="Orders">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+              </button>
+              <section class="card find" id="ordersFind">
+                <label>
+                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <input id="ordersSearch" type="text" placeholder="Search # or customer" autocomplete="off">
+                  <button class="x" id="ordersSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                </label>
+                <button class="more" id="ordersFilter" aria-haspopup="menu" aria-expanded="false" aria-label="Filter orders" title="Filter">
+                  <svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+                </button>
+              </section>
+            </div>
+            <section class="card list"><div class="lines" id="ordersList"></div></section>
+          </aside>
+        </div>
+      </section>
+
+      <!-- pos-items-rail-lab.html: one full-screen item list; a row (or +) slides the editor over it -->
+      <section class="view view-items lv" data-view="items">
+        <div class="iv" id="itemsView">
+          <section class="page" aria-label="Items">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+              </button>
+              <section class="card find" id="itemsFind">
+                <label>
+                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <input id="itemsSearch" type="text" placeholder="Search items, SKU or barcode" autocomplete="off">
+                  <button class="x" id="itemsSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                </label>
+                <button class="more" id="itemsFilter" aria-haspopup="menu" aria-expanded="false" aria-label="Filter items" title="Filter">
+                  <svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+                </button>
+              </section>
+            </div>
+            <section class="card list">
+              <div class="lines" id="itemsLines"><div class="band cols" id="itemsBand"></div><div id="itemsRows"></div></div>
+            </section>
+            <button class="fab" id="itemsAdd" aria-label="New item" title="New item"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+          </section>
+          <section class="editor" aria-label="Item editor">
+            <div class="e-top">
+              <button class="sq" id="itemBack" aria-label="Back to items" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <div class="acts">
+                <button class="act icon" id="itemMore" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">
+                  <svg class="ic" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
+                </button>
+                <button class="act primary" id="itemSave">Save</button>
+              </div>
+            </div>
+            <div class="form-scroll" id="itemForm"></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============================================
+           CUSTOMERS VIEW
+           ============================================ -->
+      <section class="view view-customers" data-view="customers">
+        <div class="orders-layout">
+          <div class="orders-col">
+            <div class="orders-search-row">
+              <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <line x1="4" y1="7" x2="20" y2="7"/>
+                  <line x1="4" y1="12" x2="20" y2="12"/>
+                  <line x1="4" y1="17" x2="20" y2="17"/>
+                </svg>
+              </button>
+              <div class="orders-search-wrap">
+                <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="7"/>
+                  <line x1="20" y1="20" x2="16.5" y2="16.5"/>
+                </svg>
+                <input type="text" id="customersSearch" placeholder="Search by name or customer" autocomplete="off" />
+              </div>
+              <button class="primary-btn small" id="newCustomerBtn" style="flex-shrink:0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                <span>Add</span>
+              </button>
+            </div>
+            <div class="orders-list" id="customersList"></div>
+          </div>
+          <div class="order-detail" id="customerDetail">
+            <div class="order-detail-empty">
+              <div class="empty-title">Select a customer</div>
+              <div class="empty-sub">Pick one from the list to view their details</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================
+           CHECKOUT VIEW — one page that moves forward (checkout-calm-lab.html).
+           The total never moves; under it: how they pay -> that method's one detail -> done.
+           The items column turns into the printed receipt once the sale is done.
+           ============================================ -->
+      <section class="view view-checkout" data-view="checkout">
+        <div class="co" id="checkoutApp">
+          <section class="co-pay" aria-label="Payment">
+            <header class="co-top">
+              <button type="button" class="co-cancel" id="checkoutCancelBtn">
+                <svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span id="checkoutBackText">Cancel</span>
+              </button>
+            </header>
+            <div class="co-stage">
+              <div class="co-col" id="checkoutSteps">
+                <div class="co-hero num" id="checkoutTotalDue">₱0.00</div>
+                <!-- Tiles are built from the back office's Payments settings on every render -->
+                <div class="co-step" data-step="method"><div class="co-tiles" id="checkoutMethods"></div></div>
+                <!-- Cash (and the cash half of a split): a tap on an amount finishes the sale -->
+                <div class="co-step" data-step="cash" hidden>
+                  <div class="co-tiles" id="checkoutQuick"></div>
+                  <div class="co-cash-in">
+                    <label class="co-field num"><span class="co-cur">₱</span><input type="text" id="checkoutTender" inputmode="decimal" autocomplete="off" placeholder="Other amount" aria-label="Cash received" /></label>
+                    <button type="button" class="co-btn primary" id="checkoutCompleteBtn" data-complete disabled>Complete sale</button>
+                  </div>
+                  <div class="co-change num" id="checkoutChange" aria-live="polite"></div>
+                </div>
+                <!-- GCash, QR, a custom name, Other or Account: nothing to count, one confirm -->
+                <div class="co-step" data-step="paid" hidden>
+                  <h2 class="co-ask" id="checkoutAsk"></h2>
+                  <input type="text" id="otherMethodInput" class="co-ref" placeholder="e.g. Maya, bank transfer" autocomplete="off" aria-label="Payment method name" />
+                  <button type="button" class="co-btn primary" data-complete>Complete sale</button>
+                </div>
+                <div class="co-error" id="checkoutError" hidden></div>
+              </div>
+              <div class="co-done" id="checkoutDone" aria-live="polite" hidden>
+                <div class="co-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="m-c" cx="32" cy="32" r="30"/><path class="m-k" d="M20 33l8 8 16-17"/></svg></div>
+                <h2 class="co-done-h" style="--i:1">Sale complete</h2>
+                <div class="co-done-chg" id="successChangeBlock" style="--i:2"><span>Change</span><span class="co-done-num num" id="successChange">₱0.00</span></div>
+                <div class="co-done-acts" style="--i:4">
+                  <button type="button" class="co-btn" id="successPrintBtn">Print receipt</button>
+                  <button type="button" class="co-btn primary" id="successNewSaleBtn">New sale</button>
+                </div>
+              </div>
+            </div>
+          </section>
+          <aside class="co-items" aria-label="Items">
+            <button type="button" class="co-cust" id="checkoutCustBtn" title="Change customer">
+              <svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg>
+              <span id="checkoutSub">Walk-in customer</span>
+              <svg class="co-ic co-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+            <div class="co-list">
+              <div class="co-head"><span>Item</span><span>Amount</span></div>
+              <div class="co-rows" id="checkoutCartList"></div>
+              <div class="co-sum">
+                <div class="co-disc" id="checkoutDiscountRow" hidden><span id="checkoutDiscountLabel">Discount</span><span class="num" id="checkoutDiscount"></span></div>
+                <div class="co-total"><span>Total<span class="rail-cnt num" id="checkoutCount"></span></span><span class="num" id="checkoutTotal">₱0.00</span></div>
+              </div>
+            </div>
+            <div class="co-rcpt" id="checkoutReceipt" aria-label="Receipt"></div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ============================================
+           REPORTS VIEW
+           ============================================ -->
+      <section class="view view-reports" data-view="reports">
+        <header class="view-head">
+          <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <line x1="4" y1="7" x2="20" y2="7"/>
+              <line x1="4" y1="12" x2="20" y2="12"/>
+              <line x1="4" y1="17" x2="20" y2="17"/>
+            </svg>
+          </button>
+          <div class="view-title-wrap">
+            <h1>Reports</h1>
+          </div>
+        </header>
+        <div class="page-pad reports-pad">
+          <div class="reports-stats">
+            <div class="report-stat">
+              <div class="report-stat-label">Today's net sales</div>
+              <div class="report-stat-value" id="statRevenue">₱0.00</div>
+            </div>
+            <div class="report-stat">
+              <div class="report-stat-label">Orders</div>
+              <div class="report-stat-value" id="statTxns">0</div>
+            </div>
+          </div>
+
+          <div class="reports-chart-box">
+            <div class="reports-chart-head">
+              <span>Payment methods · last 7 days</span>
+              <span class="muted" id="reportsRangeTotal">₱0.00</span>
+            </div>
+            <div class="reports-chart" id="reportsChart"></div>
+            <div class="reports-legend" id="reportsLegend"></div>
+          </div>
+
+          <div class="reports-tx-box">
+            <div class="reports-tx-head">
+              <span>Today's orders</span>
+              <span class="muted" id="reportsTxCount">0 orders</span>
+            </div>
+            <div class="reports-tx-list" id="reportsTxList"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================
+           SETTINGS VIEW — POS preferences
+           ============================================ -->
+      <section class="view view-settings" data-view="settings" hidden>
+        <header class="view-head">
+          <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <line x1="4" y1="7" x2="20" y2="7"/>
+              <line x1="4" y1="12" x2="20" y2="12"/>
+              <line x1="4" y1="17" x2="20" y2="17"/>
+            </svg>
+          </button>
+          <div class="view-title-wrap">
+            <h1>Settings</h1>
+            <span class="muted">POS preferences</span>
+          </div>
+        </header>
+        <div class="page-pad">
+          <div class="settings-grid">
+            <!-- Appearance Panel -->
+            <div class="panel">
+              <div class="panel-head"><div class="panel-title">Appearance</div></div>
+              <div class="setting-row">
+                <label>Sell-screen tile size
+                  <div class="muted" style="font-size:11px;margin-top:2px">S = 30/page, M = 20/page, L = 12/page</div>
+                </label>
+                <div class="bb-size-toggle" id="posSizeToggle" role="tablist">
+                  <button class="bb-size-btn" data-size="sm">S</button>
+                  <button class="bb-size-btn active" data-size="md">M</button>
+                  <button class="bb-size-btn" data-size="lg">L</button>
+                </div>
+              </div>
+              <div class="setting-row">
+                <label>Tile text size
+                  <div class="muted" style="font-size:11px;margin-top:2px">Resize the item name on tiles</div>
+                </label>
+                <div class="bb-size-toggle" id="posTextToggle" role="tablist">
+                  <button class="bb-size-btn" data-text="sm">S</button>
+                  <button class="bb-size-btn active" data-text="md">M</button>
+                  <button class="bb-size-btn" data-text="lg">L</button>
+                  <button class="bb-size-btn" data-text="xl">XL</button>
+                </div>
+              </div>
+              <div class="setting-row">
+                <label>Show price on tiles</label>
+                <input type="checkbox" id="posShowPrice">
+              </div>
+              <div class="setting-row">
+                <label>Theme</label>
+                <div class="bb-size-toggle" id="posThemeToggle" role="tablist">
+                  <button class="bb-size-btn active" data-theme="dark">Dark</button>
+                  <button class="bb-size-btn" data-theme="light">Light</button>
+                </div>
+              </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============== MODALS ============== -->
+
+    <!-- Customer picker -->
+    <div class="modal-backdrop" id="customerModal" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <h2>Select customer</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <button class="customer-row-btn" data-customer-id="walk-in">
+            <div class="cust-avatar">W</div>
+            <div class="cust-meta">
+              <div class="cust-name">Walk-in customer</div>
+              <div class="cust-sub">Cash / non-credit</div>
+            </div>
+          </button>
+          <div class="modal-divider"><span>Credit accounts</span></div>
+          <button class="customer-row-btn add-customer-row" id="pickerAddCustomerBtn">
+            <div class="cust-avatar add">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </div>
+            <div class="cust-meta">
+              <div class="cust-name">Add new customer</div>
+              <div class="cust-sub">Create a credit account</div>
+            </div>
+          </button>
+          <div id="customerList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment -->
+    <div class="modal-backdrop" id="paymentModal" hidden>
+      <div class="modal payment-modal">
+        <div class="modal-head">
+          <h2>Payment</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="pay-total">
+            <div class="pay-total-label">Total due</div>
+            <div class="pay-total-value" id="payTotalValue">₱0.00</div>
+            <div class="pay-customer" id="payCustomerLine">Walk-in customer</div>
+          </div>
+          <div class="seg-control">
+            <button class="seg active" data-method="cash">Cash</button>
+            <button class="seg" data-method="credit">Account</button>
+            <button class="seg" data-method="split">Split</button>
+          </div>
+          <div class="pay-fields" id="payFields">
+            <label class="pay-label">Amount tendered</label>
+            <input type="text" inputmode="decimal" id="tenderInput" placeholder="0.00" />
+            <div class="quick-cash">
+              <button data-cash="exact">Exact</button>
+              <button data-cash="100">₱100</button>
+              <button data-cash="200">₱200</button>
+              <button data-cash="500">₱500</button>
+              <button data-cash="1000">₱1000</button>
+            </div>
+            <div class="change-row">
+              <span>Change</span>
+              <span id="changeValue">₱0.00</span>
+            </div>
+          </div>
+          <div class="pay-actions">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="completeSaleBtn">Complete & print</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generic confirm modal -->
+    <div class="modal-backdrop" id="confirmModal" hidden>
+      <div class="modal small-modal confirm-modal">
+        <div class="modal-head">
+          <h2 id="confirmTitle">Are you sure?</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="confirm-message" id="confirmMessage"></div>
+          <div class="pay-actions" style="margin-top:18px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn danger" id="confirmOkBtn">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart-level discount picker -->
+    <div class="modal-backdrop" id="cartDiscountModal" hidden>
+      <div class="modal small-modal confirm-modal">
+        <div class="modal-head">
+          <h2>Receipt discount</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="discount-row">
+            <div class="seg-control small">
+              <button class="seg active" data-cd-type="amount"><span class="cur-sym">₱</span> Amount</button>
+              <button class="seg" data-cd-type="percent">% Percent</button>
+            </div>
+            <input type="number" id="cdInput" class="text-input" placeholder="0" min="0" step="0.01" inputmode="decimal" />
+          </div>
+          <div class="pay-actions" style="margin-top:18px">
+            <button class="secondary-btn" id="cdRemoveBtn">Remove</button>
+            <button class="primary-btn" id="cdApplyBtn">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Saved receipt name capture -->
+    <div class="modal-backdrop" id="saveReceiptModal" hidden>
+      <div class="modal small-modal confirm-modal">
+        <div class="modal-head">
+          <h2>Save receipt</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <label class="pay-label">Customer name</label>
+          <input type="text" id="saveReceiptNameInput" class="text-input" placeholder="Optional" autocomplete="off" />
+          <div class="pay-actions" style="margin-top:14px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="saveReceiptConfirmBtn">Save receipt</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delivery address capture -->
+    <div class="modal-backdrop" id="deliveryModal" hidden>
+      <div class="modal delivery-modal">
+        <div class="modal-head">
+          <h2>Delivery address</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <label class="pay-label">Where should this go?</label>
+          <textarea id="deliveryAddrInput" class="text-input" rows="4" placeholder="House #, Street, District, City"></textarea>
+          <div class="delivery-pin-row">
+            <button class="secondary-btn" id="deliveryPinBtn" type="button">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 21s7-5.1 7-11a7 7 0 1 0-14 0c0 5.9 7 11 7 11z"/>
+                <circle cx="12" cy="10" r="2.4"/>
+              </svg>
+              <span>Pin location</span>
+            </button>
+            <div class="delivery-pin-status" id="deliveryPinStatus">No pin set</div>
+          </div>
+          <div class="pay-actions" style="margin-top:14px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="deliverySaveBtn">Save address</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delivery map pin picker -->
+    <div class="modal-backdrop" id="deliveryMapModal" hidden>
+      <div class="modal delivery-map-modal">
+        <div class="modal-head">
+          <h2>Pin delivery location</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="delivery-map-toolbar">
+            <button class="ghost-icon" id="deliveryMapZoomOut" type="button" title="Zoom out" aria-label="Zoom out">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button class="ghost-icon" id="deliveryMapZoomIn" type="button" title="Zoom in" aria-label="Zoom in">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button class="secondary-btn" id="deliveryMapUseGps" type="button">Use device location</button>
+            <span class="delivery-map-note">Tap or drag map to place pin</span>
+          </div>
+          <div class="delivery-map" id="deliveryMapStage">
+            <div class="delivery-map-tiles" id="deliveryMapTiles"></div>
+            <div class="delivery-map-pin" id="deliveryMapPin" aria-hidden="true"></div>
+            <div class="delivery-map-loading" id="deliveryMapStatus">Road map loads when online</div>
+          </div>
+          <div class="delivery-map-footer">
+            <div class="delivery-map-coords" id="deliveryMapCoords">No pin selected</div>
+            <div class="pay-actions">
+              <button class="secondary-btn" id="deliveryMapClear" type="button">Clear pin</button>
+              <button class="primary-btn" id="deliveryMapSave" type="button">Use pin</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New customer modal (save name + address) -->
+    <div class="modal-backdrop" id="customerEditModal" hidden>
+      <div class="modal small-modal">
+        <div class="modal-head">
+          <h2 id="customerEditTitle">New customer</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div id="custFields"></div><!-- bo-model CUSTOMER_FIELDS, the same form as the back office -->
+          <div class="pay-actions" style="margin-top:14px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="custSaveBtn">Save customer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Customer detail modal (purchase history + metrics) -->
+    <div class="modal-backdrop" id="customerDetailModal" hidden>
+      <div class="modal wide-modal">
+        <div class="modal-head">
+          <h2 id="custDetailTitle">Customer</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="cust-detail-kpis" id="custDetailKpis"></div>
+          <div class="cust-detail-aging" id="custDetailAging"></div>
+          <div class="cust-detail-orders-title">Order history</div>
+          <div class="cust-detail-orders" id="custDetailOrders"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Camera barcode scanner -->
+    <div class="modal-backdrop" id="barcodeModal" hidden>
+      <div class="modal barcode-modal">
+        <div class="modal-head">
+          <h2>Scan barcode</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="barcode-stage">
+            <video id="barcodeVideo" playsinline muted></video>
+            <div class="barcode-frame" aria-hidden="true"></div>
+            <div class="barcode-status" id="barcodeStatus">Starting camera...</div>
+          </div>
+          <div class="barcode-manual">
+            <label class="pay-label" for="barcodeManualInput">Barcode or SKU</label>
+            <div class="barcode-manual-row">
+              <input type="text" id="barcodeManualInput" class="text-input" placeholder="Scan or type code" autocomplete="off" inputmode="numeric" />
+              <button class="primary-btn" id="barcodeManualBtn">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart item edit (tap a row in the receipt to change qty or remove) -->
+    <div class="modal-backdrop" id="cartItemModal" hidden>
+      <div class="modal cart-item-modal">
+        <div class="modal-head">
+          <h2 id="cimTitle">Item</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="cim-sub muted" id="cimSub">SKU · price</div>
+
+          <div class="variant-section-label" style="margin-top:16px">Quantity</div>
+          <div class="variant-qty-row">
+            <button class="vq-btn" data-act="dec" aria-label="Decrease">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <input type="number" id="cimQtyInput" class="vq-input" value="1" min="0" step="any" inputmode="decimal" />
+            <button class="vq-btn" data-act="inc" aria-label="Increase">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+
+          <div class="variant-section-label" style="margin-top:16px">Discount</div>
+          <div class="discount-row">
+            <div class="seg-control small">
+              <button class="seg active" data-cim-disc-type="amount"><span class="cur-sym">₱</span> Amount</button>
+              <button class="seg" data-cim-disc-type="percent">% Percent</button>
+            </div>
+            <input type="number" id="cimDiscInput" class="text-input" placeholder="0" min="0" step="0.01" inputmode="decimal" />
+          </div>
+
+          <div class="cim-line-total">
+            <span>Line total</span>
+            <span id="cimLineTotal">₱0.00</span>
+          </div>
+
+          <div class="pay-actions" style="margin-top:18px">
+            <button class="secondary-btn cim-remove" id="cimDeleteBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
+              <span>Remove</span>
+            </button>
+            <button class="primary-btn" id="cimSaveBtn">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Variant picker (for items with multiple SKUs / sizes / colors) -->
+    <div class="modal-backdrop variant-backdrop" id="variantModal" hidden>
+      <div class="modal variant-modal">
+        <div class="variant-head">
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+          <div class="variant-title">
+            <span id="variantTitle">Item</span>
+            <span class="variant-base-price" id="variantBasePrice"></span>
+          </div>
+          <button class="variant-add-btn" id="variantAddBtn">ADD</button>
+        </div>
+        <div class="variant-body">
+          <div class="variant-section-label">Variant</div>
+          <div class="variant-grid" id="variantGrid"></div>
+
+          <div class="variant-section-label">Quantity</div>
+          <div class="variant-qty-row">
+            <button class="vq-btn" data-act="dec" aria-label="Decrease">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <input type="number" id="variantQtyInput" class="vq-input" value="1" min="0" step="any" inputmode="decimal" />
+            <button class="vq-btn" data-act="inc" aria-label="Increase">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+
+          <div class="variant-section-label">Comment</div>
+          <input type="text" id="variantCommentInput" class="vc-input" placeholder="Enter comment" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Lost sale: the customer asked, we couldn't sell it -->
+    <div class="modal-backdrop" id="lostSaleModal" hidden>
+      <div class="modal small-modal confirm-modal lost-sale-modal">
+        <div class="modal-head">
+          <h2>Lost sale</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <label class="pay-label" for="lsItemInput">Asked for</label>
+          <input type="text" id="lsItemInput" class="text-input" placeholder="Search the catalog or type it" autocomplete="off" />
+          <div class="ls-matches" id="lsMatches"></div>
+          <label class="pay-label" for="lsQtyInput">Qty</label>
+          <input type="number" id="lsQtyInput" class="text-input" min="0" step="any" value="1" inputmode="decimal" />
+          <label class="pay-label">Why</label>
+          <div class="seg-control" id="lsReasons">
+            <button class="seg active" type="button" data-ls-reason="out-of-stock">Out of stock</button>
+            <button class="seg" type="button" data-ls-reason="not-carried">Not carried</button>
+            <button class="seg" type="button" data-ls-reason="too-expensive">Too expensive</button>
+            <button class="seg" type="button" data-ls-reason="other">Other</button>
+          </div>
+          <label class="pay-label" for="lsSubSelect">Bought instead</label>
+          <select id="lsSubSelect" class="text-input"></select>
+          <div class="pay-actions" style="margin-top:18px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="lsSaveBtn">Log lost sale</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order details -->
+    <div class="modal-backdrop" id="orderDetailModal" hidden>
+      <div class="modal order-detail-modal">
+        <div class="modal-head">
+          <div class="odm-title-wrap">
+            <h2 id="odmNumber">Order</h2>
+            <span class="odm-status" id="odmStatus"></span>
+          </div>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body" id="orderDetailModalBody"></div>
+      </div>
+    </div>
+
+    <!-- Manager PIN: approves a void, refund or over-limit charge (app.js gate) -->
+    <div class="modal-backdrop" id="pinModal" hidden>
+      <div class="modal small-modal confirm-modal">
+        <div class="modal-head">
+          <h2>Manager PIN</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="confirm-message" id="pinMessage"></div>
+          <input type="password" id="pinInput" class="text-input" inputmode="numeric" maxlength="6" autocomplete="off" aria-labelledby="pinMessage" style="margin-top:14px" />
+          <div class="co-error" id="pinError" hidden></div>
+          <div class="pay-actions" style="margin-top:14px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="pinOkBtn">Approve</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+  </div>
+
+  <script src="sales-math.js?v=19"></script>
+  <script src="data-store.js?v=50"></script>
+  <script src="data.js?v=27"></script>
+  <script src="bo-model.js?v=122"></script>
+  <script src="vendor/zxing-browser.min.js"></script>
+  <script src="printer.js?v=42"></script>
+  <script src="pos-core.js?v=2"></script>
+  <script src="pos-sell.js?v=1"></script>
+  <script src="pos-checkout.js?v=1"></script>
+  <script src="pos-orders.js?v=1"></script>
+  <script src="pos-items.js?v=2"></script>
+  <script src="pos-customers.js?v=1"></script>
+  <script src="pos-settings.js?v=1"></script>
+  <script src="app.js?v=93"></script>
+</body>
+</html>

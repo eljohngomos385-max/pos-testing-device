@@ -41,7 +41,7 @@ body.bo-light {
   --b-r-row:     7px;
   --b-pad:       16px;
   --b-gap:       14px;
-  --b-pop-w:     560px;           /* the Sales day/week pop-up */
+  --b-pop-w:     900px;           /* the Sales day/week pop-up: two columns of cards */
   --b-rail-w:    340px;
 }
 /* the view is the lab's whole page: no back-office gutter or width cap */
@@ -418,7 +418,14 @@ body.bo-light .calm-sales .c-aside .rows { padding: 0; }
 body.bo-light .calm-sales .c-aside .row, body.bo-light .calm-sales .c-aside .row:nth-child(odd) { background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); height: 34px; padding: 0 var(--b-pad); }
 body.bo-light .calm-sales .c-aside .hours { border-top: 1px solid var(--b-line); padding: 12px var(--b-pad) 0; }
 body.bo-light .calm-sales .c-aside .hours-x { padding: 4px var(--b-pad) 10px; }
-body.bo-light .calm-sales .c-aside .more { display: block; width: 100%; text-align: left; background: var(--b-raised); border-top: 1px solid var(--b-line); padding: 8px var(--b-pad); }
+/* two columns, By hour and Receipts across both (owner 2026-10-02: one column felt thin); one column on a phone */
+body.bo-light .calm-sales .c-aside .p-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--b-gap); align-items: start; }
+body.bo-light .calm-sales .c-aside .p-grid .wide { grid-column: 1 / -1; }
+@media (max-width: 760px) { body.bo-light .calm-sales .c-aside .p-grid { grid-template-columns: 1fr; } }
+body.bo-light .calm-sales .c-aside a.row { color: inherit; text-decoration: none; }
+body.bo-light .calm-sales .c-aside a.row:hover, body.bo-light .calm-sales .c-aside a.row:hover:nth-child(odd) { background: var(--b-track); }
+body.bo-light .calm-sales .c-aside .lbl .all { color: var(--b-ink-2); text-decoration: none; }
+body.bo-light .calm-sales .c-aside .lbl .all:hover { color: var(--b-ink); }
 body.bo-light .calm-sales .c-aside[hidden] { display: none; }
 body.bo-light .calm-sales .p-top { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
 body.bo-light .calm-sales .p-top h2 { font-size: 15px; font-weight: 600; margin: 0 auto 0 0; }
@@ -515,8 +522,10 @@ body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .menu button:hover { backgr
 body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
 body.bo-light .calm-tx .menu .clear { color: var(--b-data); }
 body.bo-light .calm-tx .menu .none { padding: 7px 10px; color: var(--b-ink-3); }
-body.bo-light .calm-tx .menu .ends { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 4px 5px 10px; color: var(--b-ink-2); }   /* app only: the lab has no Ends on */
-body.bo-light .calm-tx .menu .ends input { border: 1px solid var(--b-outline); border-radius: var(--b-r-row); padding: 3px 6px; background: var(--b-raised); }
+/* Pick a day (dayPickRow), the last row of every date menu; app only, the labs have none */
+body.bo-light :is(.calm-tx, .calm-dash, .calm-sales, .item-page) .menu .ends { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 4px 5px 10px; color: var(--b-ink-2); }
+body.bo-light .item-page .menu hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
+body.bo-light :is(.calm-tx, .calm-dash, .calm-sales, .item-page) .menu .ends input { border: 1px solid var(--b-outline); border-radius: var(--b-r-row); padding: 3px 6px; background: var(--b-raised); }
 body.bo-light .calm-tx .icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; padding: revert; }   /* the POS's .icon-btn zeroes it */
 body.bo-light .calm-tx .icon-btn:disabled { opacity: .35; cursor: default; }
 body.bo-light .calm-tx .note { font-size: var(--b-t-meta); color: var(--b-ink-3); margin: 0; }
@@ -575,6 +584,9 @@ body.bo-light .calm-tx .p-sub { color: var(--b-ink-3); font-size: var(--b-t-meta
 body.bo-light .calm-tx .p-sec { margin-top: 20px; }
 body.bo-light .calm-tx .p-sec > .lbl { font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
 body.bo-light .calm-tx .p-sec > .lbl span { color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); }
+/* Record payment: the account's unpaid orders, one tick each (backoffice.js openPaymentDialog) */
+body.bo-light .calm-cust .adj-field .bo-check { display: flex; align-items: center; gap: 8px; color: var(--b-ink); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-cust .adj-field .bo-check input { width: auto; margin: 0; }
 /* the blocks beside the table (transactions-compact-lab.html) */
 body.bo-light :is(.calm-tx, .calm-cust) { --b-rail-w: 288px; }
 body.bo-light :is(.calm-tx, .calm-cust) .dash { display: grid; grid-template-columns: minmax(0, 1fr) var(--b-rail-w); gap: 12px; align-items: start; }

@@ -6,32 +6,21 @@
 (function () {
   const root = () => document.getElementById('staffPane');
 
-  /* ---------- What each person rang up, last 30 days ----------
-     Not drawn here any more; kept for Sales › By staff and gated by scripts/staff-check.mjs.
-     Orders name the cashier, so the join is by name. Voids and refunds are counted, not
-     summed: for money they never happened. */
-  const DAYS = 30;
-  function salesByName(orders, now = Date.now()) {
-    const from = now - DAYS * 864e5, by = new Map();
-    for (const o of orders || []) {
-      if (!(o.ts >= from)) continue;
-      const r = by.get(o.cashier) || { revenue: 0, sales: 0, voids: 0, refunds: 0, last: 0 };
-      if (o.status === 'completed') { r.sales += 1; r.revenue += Number(o.total) || 0; r.last = Math.max(r.last, o.ts); }
-      else if (o.status === 'voided') r.voids += 1;
-      else if (o.status === 'refunded' || o.status === 'return') r.refunds += 1;
-      by.set(o.cashier, r);
-    }
-    return by;
-  }
+  // What a person rang up is Sales › By staff: summarize grouped by SalesMath.sellerOf.
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = { salesByName };
+  // One PIN, one person: it names who approved. Checked on the record they will HAVE (`after`, a
+  // blank PIN box keeps the old one) and whether they will be active, so restoring an archived
+  // person whose PIN someone took since can't make two people answer to one PIN.
+  const pinClash = (list, i, after) => after.active && isPin(after.pin) && list.some((u, k) => k !== i && u.active && u.pin === after.pin);
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = { pinClash };
   if (typeof document === 'undefined') return;   // Node loads this file for the maths only
 
   /* ---------- Page access ---------- */
-  const STORAGE_ACCESS = 'hwpos.access.v1';
+  const STORAGE_ACCESS = HWPOS_STORAGE_KEYS.access;
   // Keys, not labels: 'staff' is Settings › Staff & access, 'insights' is Analytics. Saved maps use these.
   const ACCESS_VIEWS = ['dashboard', 'sales', 'products', 'inventory', 'customers', 'suppliers', 'staff', 'insights', 'payments', 'settings'];
-  const PAGE_LABEL = { inventory: 'Stock history', insights: 'Analytics', staff: 'Staff & access' };
+  const PAGE_LABEL = { products: 'Items', inventory: 'Stock history', insights: 'Analytics', staff: 'Staff & access' };
   const pageLabel = (v) => PAGE_LABEL[v] || v[0].toUpperCase() + v.slice(1);
   const DEFAULT_ACCESS = {
     owner: ACCESS_VIEWS,
@@ -116,7 +105,7 @@
     const rows = Object.keys(STAFF_ROLES).map((role) => {
       const n = staff.filter((u) => u.active && u.role === role).length;
       return `<button type="button" class="setting-row" data-act="roleOpen" data-role="${role}">
-          <span class="set-lbl">${escapeHtml(roleName(role))}<span class="set-count">${n} ${n === 1 ? 'person' : 'people'}</span></span>
+          <span class="set-lbl">${escapeHtml(roleName(role))}<span class="set-count">${SalesMath.plural(n, 'person', 'people')}</span></span>
           <span class="set-val">${escapeHtml(pagesLine(role, access[role]))}</span><span class="set-chev" aria-hidden="true">›</span></button>`;
     }).join('');
 
@@ -124,19 +113,27 @@
         <section class="bo-card blk-table">
           <div class="bo-card-head">
             <span class="bo-card-label">Roles</span>
-            <span class="bo-card-sub">The pages each role opens</span>
+            <span class="bo-card-sub">The pages each role opens and what it does at the till</span>
           </div>
           <div class="bo-card-inset flush set-rows">${rows}</div>
         </section>`;
   }
 
   // Ticks save as they change (owner, 2026-09-24), so the dialog has Done, not Save.
+  // Below the pages: what the role does at the till without a manager's PIN (owner, 2026-10-02;
+  // bo-model TILL_ACTIONS). Off = the till asks a manager's PIN for it.
   function openRole(role) {
     const on = new Set(loadAccess()[role]);
+    const can = new Set(loadTillPerms()[role]);
     const locked = role === 'owner';
-    openSetDialog(`${escapeHtml(roleName(role))} can open`, ACCESS_VIEWS.map((v) => `<label class="bo-check"><input type="checkbox" data-act="access" data-role="${role}" data-page="${v}"${on.has(v) ? ' checked' : ''}${locked ? ' disabled' : ''}> ${escapeHtml(pageLabel(v))}</label>`).join('')
-      + `<p class="adj-note set-dlg-note">${locked ? 'Owner always opens everything: locking yourself out is not a setting.'
-        : "The sidebar hides what this role can't open. Until the Worker is deployed, nothing else stops it."}</p>`);
+    const box = (act, key, label, checked) => `<label class="bo-check"><input type="checkbox" data-act="${act}" data-role="${role}" data-page="${key}"${checked ? ' checked' : ''}${locked ? ' disabled' : ''}> ${escapeHtml(label)}</label>`;
+    const group = (label) => `<div class="adj-field adj-note"><span>${label}</span></div>`;
+    openSetDialog(`${escapeHtml(roleName(role))} can`, group('Open these pages')
+      + ACCESS_VIEWS.map((v) => box('access', v, pageLabel(v), on.has(v))).join('')
+      + group('At the till, without a manager’s PIN')
+      + Object.entries(TILL_ACTIONS).map(([a, label]) => box('till', a, label, can.has(a))).join('')
+      + `<p class="adj-note set-dlg-note">${locked ? 'Owner always can: locking yourself out is not a setting.'
+        : "The sidebar hides what this role can't open."}</p>`);
   }
 
   /* ---------- The person editor ---------- */
@@ -147,7 +144,7 @@
     const access = loadAccess()[u.role] || [];
 
     return head(isNew ? 'New staff' : escapeHtml(u.name), `<button class="link-btn" data-act="back">← Staff &amp; access</button>`,
-      `${isNew ? '' : `<button class="secondary-btn small" data-act="tx">View their transactions</button>
+      `${isNew ? '' : `<button class="secondary-btn small" data-act="tx">View their orders</button>
        <button class="secondary-btn small${u.active ? ' danger' : ''}" data-act="toggleActive">${u.active ? 'Archive' : 'Restore'}</button>`}
        <button class="primary-btn small" data-act="save">Save</button>`) + `
       <div class="set-col">
@@ -157,6 +154,9 @@
             ${field('Name', 'name', u.name)}
             <div class="setting-row"><label>Role</label>${roleSelect(u, 'data-field="role"')}</div>
             ${field('Email', 'email', u.email, 'email')}
+            <div class="setting-row"><label>Till PIN</label>
+              <input class="text-input" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" data-field="pin"
+                placeholder="${isPin(u.pin) ? 'Set. Type a new one to change it' : 'Not set. 4 to 6 digits'}" /></div>
             <div class="setting-row"><label>Can open</label>
               <span class="st-note">${escapeHtml(access.map(pageLabel).join(', ') || 'Nothing')} · set per role under Roles</span></div>
           </div>
@@ -189,7 +189,6 @@
 
   /* ---------- Events: one delegated listener per type ---------- */
   const owned = (e) => root() && root().contains(e.target) && !root().hidden && !root().closest('.view').hidden;
-  const stamp = () => new Date().toISOString();
 
   function persist(list, msg) {
     saveStaff(list);
@@ -201,7 +200,7 @@
     const r = root();
     const val = (f) => r.querySelector(`[data-field="${f}"]`)?.value.trim() || '';
     return {
-      name: val('name'), role: val('role'), email: val('email'),
+      name: val('name'), role: val('role'), email: val('email'), pin: val('pin'),
     };
   }
 
@@ -217,12 +216,21 @@
       showToast(`${roleName(el.dataset.role)} ${el.checked ? 'can' : 'can no longer'} open ${pageLabel(el.dataset.page)}`);
       return renderCurrentView();   // the role's line of pages, under the dialog
     }
+    if (el.dataset.act === 'till' && el.closest('#setDlg')) {
+      const map = loadTillPerms();
+      const set = new Set(map[el.dataset.role]);
+      if (el.checked) set.add(el.dataset.page); else set.delete(el.dataset.page);
+      map[el.dataset.role] = Object.keys(TILL_ACTIONS).filter((a) => set.has(a));
+      saveTillPerms(map);
+      const what = TILL_ACTIONS[el.dataset.page].toLowerCase();
+      return showToast(el.checked ? `${roleName(el.dataset.role)} can ${what}` : `${roleName(el.dataset.role)} needs a manager’s PIN to ${what}`);
+    }
     if (!owned(e)) return;
     if (el.dataset.act === 'role') {
       const list = loadStaff();
       const u = list.find((x) => x.id === el.closest('tr[data-id]').dataset.id);
       if (!u) return;
-      Object.assign(u, { role: el.value, updatedAt: stamp() });
+      stampRow(Object.assign(u, { role: el.value }));   // store id + updatedAt, like every record
       persist(list, `${u.name} is now ${roleName(u.role)}`);
       return renderCurrentView();   // the Roles card counts people per role
     }
@@ -246,7 +254,8 @@
     if (act === 'add') return goPerson('new');
     if (act === 'tx') {
       const u = loadStaff().find((x) => x.id === person());
-      return u && Router.go('transactions', '', { range: '30d', staff: u.name });
+      // The Orders staff filter is keyed by SalesMath.sellerOf(...).key: the staff id (a renamed person keeps their sales).
+      return u && Router.go('transactions', '', { range: '30d', staff: u.id });
     }
     if (act === 'exportCsv') {
       const rows = [['name', 'role', 'email', 'status']];
@@ -261,7 +270,14 @@
       const i = list.findIndex((u) => u.id === person());
       // Archive, never delete: an old sale names a cashier and that name has to resolve.
       if (act === 'toggleActive') form.active = !list[i].active;   // the button only shows on a saved person
-      form.updatedAt = stamp();
+      // A blank PIN box keeps the PIN they have (pinClash, above).
+      if (!form.pin) delete form.pin;
+      else if (!isPin(form.pin)) return showToast('A PIN is 4 to 6 digits');
+      const after = { ...STAFF_DEFAULTS, ...list[i], ...form };
+      if (pinClash(list, i, after)) {
+        return showToast(act === 'toggleActive' ? 'Someone else has their PIN now. Give them a new one first' : 'Someone else has that PIN');
+      }
+      stampRow(form);
       if (i < 0) {
         list.push({ ...STAFF_DEFAULTS, ...form, id: newId('u') });
       } else {
