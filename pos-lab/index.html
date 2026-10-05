@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=101" />
+  <link rel="stylesheet" href="styles.css?v=120" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -145,6 +145,7 @@
                   <input id="variantSearch" type="text" autocomplete="off" placeholder="Search variants" />
                 </div>
                 <button type="button" class="vs-chip" id="variantAvail" aria-pressed="false" hidden>Available</button>
+                <button type="button" class="vs-chip" id="custNew" hidden>New customer</button>
                 <button class="ghost-icon" id="scanBtn" title="Scan barcode">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
@@ -159,10 +160,13 @@
                  the sheet's own (menu -> X, Search variants takes the scan button's room). One card, its band naming the item -->
             <div class="vsheet" id="variantSheet" aria-label="Variants">
               <div class="vs-card">
-                <div class="vs-head"><span class="vs-title"><span id="variantTitle"></span><span class="vs-count num" id="variantCount"></span></span><span>Price</span></div>
+                <div class="vs-head"><span class="vs-title"><span id="variantTitle"></span><span class="vs-count num" id="variantCount"></span></span><span id="variantCol">Price</span></div>
                 <div class="vs-list" id="variantList"></div>
               </div>
             </div>
+            <!-- Edit sheet (popups-lab.html, Sheet C): the cart line, the receipt discount and the fulfilment open over
+                 the whole left side, top row too, with their own X. Drawn by pos-sell.js (drawEditSheet) -->
+            <div class="esheet" id="editSheet" role="dialog" aria-label="Edit"><div class="es-card" id="editSheetCard"></div></div>
           </div>
 
           <!-- The sale sidebar (cart-lab-stack-h.html): three slim cards -- who, the items, the money.
@@ -193,7 +197,7 @@
                   <svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
                 </button>
               </div>
-              <div>
+              <div class="tot">
                 <div class="break" id="totalsDetail"><div>
                   <p><span>Subtotal</span><span class="num" id="subtotal">₱0.00</span></p>
                   <p id="discountRow"><span>Discount</span><span class="num" id="discount">₱0.00</span></p>
@@ -204,8 +208,8 @@
                   <span class="v num" id="total">₱0.00</span>
                 </button>
               </div>
-              <button type="button" class="go" id="payBtn" disabled>Check out</button>
             </section>
+            <button type="button" class="go" id="payBtn" disabled>Check out</button>
           </aside>
         </div>
       </section>
@@ -608,34 +612,6 @@
       </div>
     </div>
 
-    <!-- Cart-level discount picker -->
-    <div class="modal-backdrop" id="cartDiscountModal" hidden>
-      <div class="modal small-modal confirm-modal">
-        <div class="modal-head">
-          <h2>Receipt discount</h2>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-              <line x1="6" y1="6" x2="18" y2="18"/>
-              <line x1="18" y1="6" x2="6" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="discount-row">
-            <div class="seg-control small">
-              <button class="seg active" data-cd-type="amount"><span class="cur-sym">₱</span> Amount</button>
-              <button class="seg" data-cd-type="percent">% Percent</button>
-            </div>
-            <input type="number" id="cdInput" class="text-input" placeholder="0" min="0" step="0.01" inputmode="decimal" />
-          </div>
-          <div class="pay-actions" style="margin-top:18px">
-            <button class="secondary-btn" id="cdRemoveBtn">Remove</button>
-            <button class="primary-btn" id="cdApplyBtn">Apply</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Saved receipt name capture -->
     <div class="modal-backdrop" id="saveReceiptModal" hidden>
       <div class="modal small-modal confirm-modal">
@@ -654,39 +630,6 @@
           <div class="pay-actions" style="margin-top:14px">
             <button class="secondary-btn" data-close-modal>Cancel</button>
             <button class="primary-btn" id="saveReceiptConfirmBtn">Save receipt</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Delivery address capture -->
-    <div class="modal-backdrop" id="deliveryModal" hidden>
-      <div class="modal delivery-modal">
-        <div class="modal-head">
-          <h2>Delivery address</h2>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-              <line x1="6" y1="6" x2="18" y2="18"/>
-              <line x1="18" y1="6" x2="6" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <label class="pay-label">Where should this go?</label>
-          <textarea id="deliveryAddrInput" class="text-input" rows="4" placeholder="House #, Street, District, City"></textarea>
-          <div class="delivery-pin-row">
-            <button class="secondary-btn" id="deliveryPinBtn" type="button">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 21s7-5.1 7-11a7 7 0 1 0-14 0c0 5.9 7 11 7 11z"/>
-                <circle cx="12" cy="10" r="2.4"/>
-              </svg>
-              <span>Pin location</span>
-            </button>
-            <div class="delivery-pin-status" id="deliveryPinStatus">No pin set</div>
-          </div>
-          <div class="pay-actions" style="margin-top:14px">
-            <button class="secondary-btn" data-close-modal>Cancel</button>
-            <button class="primary-btn" id="deliverySaveBtn">Save address</button>
           </div>
         </div>
       </div>
@@ -803,57 +746,6 @@
       </div>
     </div>
 
-    <!-- Cart item edit (tap a row in the receipt to change qty or remove) -->
-    <div class="modal-backdrop" id="cartItemModal" hidden>
-      <div class="modal cart-item-modal">
-        <div class="modal-head">
-          <h2 id="cimTitle">Item</h2>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-              <line x1="6" y1="6" x2="18" y2="18"/>
-              <line x1="18" y1="6" x2="6" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="cim-sub muted" id="cimSub">SKU · price</div>
-
-          <div class="variant-section-label" style="margin-top:16px">Quantity</div>
-          <div class="variant-qty-row">
-            <button class="vq-btn" data-act="dec" aria-label="Decrease">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-            <input type="number" id="cimQtyInput" class="vq-input" value="1" min="0" step="any" inputmode="decimal" />
-            <button class="vq-btn" data-act="inc" aria-label="Increase">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-          </div>
-
-          <div class="variant-section-label" style="margin-top:16px">Discount</div>
-          <div class="discount-row">
-            <div class="seg-control small">
-              <button class="seg active" data-cim-disc-type="amount"><span class="cur-sym">₱</span> Amount</button>
-              <button class="seg" data-cim-disc-type="percent">% Percent</button>
-            </div>
-            <input type="number" id="cimDiscInput" class="text-input" placeholder="0" min="0" step="0.01" inputmode="decimal" />
-          </div>
-
-          <div class="cim-line-total">
-            <span>Line total</span>
-            <span id="cimLineTotal">₱0.00</span>
-          </div>
-
-          <div class="pay-actions" style="margin-top:18px">
-            <button class="secondary-btn cim-remove" id="cimDeleteBtn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
-              <span>Remove</span>
-            </button>
-            <button class="primary-btn" id="cimSaveBtn">Save</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Variant picker (for items with multiple SKUs / sizes / colors) -->
     <!-- Lost sale: the customer asked, we couldn't sell it -->
     <div class="modal-backdrop" id="lostSaleModal" hidden>
@@ -942,13 +834,13 @@
   <script src="bo-model.js?v=122"></script>
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=42"></script>
-  <script src="pos-core.js?v=3"></script>
-  <script src="pos-sell.js?v=5"></script>
+  <script src="pos-core.js?v=7"></script>
+  <script src="pos-sell.js?v=21"></script>
   <script src="pos-checkout.js?v=1"></script>
   <script src="pos-orders.js?v=1"></script>
   <script src="pos-items.js?v=2"></script>
   <script src="pos-customers.js?v=1"></script>
   <script src="pos-settings.js?v=1"></script>
-  <script src="app.js?v=95"></script>
+  <script src="app.js?v=98"></script>
 </body>
 </html>

@@ -265,8 +265,8 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 /* Per-view hamburger — matches the ghost-icon on the Sell page exactly */
 .view-hamburger {
-  width: 48px;
-  height: 48px;
+  width: var(--bar-h);
+  height: var(--bar-h);
   border-radius: var(--rl-r);
   display: inline-flex;
   align-items: center;
@@ -346,11 +346,11 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 }
 #searchInput, #invSearchInput, #variantSearch {
   width: 100%;
-  height: 48px;
+  height: var(--bar-h);
   padding: 0 42px 0 42px;
   background: var(--rl-soft);
   border: none;
-  border-radius: var(--rl-r);   /* the customer card's corner; 48px tall like it */
+  border-radius: var(--rl-r);   /* the customer card's corner and height */
   font-size: 15px;
   letter-spacing: -0.15px;
   outline: none;
@@ -376,7 +376,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .search-clear:hover { background: var(--line-strong); color: var(--ink); }
 
 .ghost-icon {
-  width: 48px; height: 48px;
+  width: var(--bar-h); height: var(--bar-h);
   border-radius: var(--rl-r);
   background: var(--surface);
   border: none;
@@ -757,7 +757,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   padding: 0 18px;
   transition: background .12s, transform .08s;
 }
-#payBtn { justify-content: center; }
+#payBtn { justify-content: space-between; }   /* Check out ... the total */
 .primary-btn:hover:not(:disabled) { background: var(--accent-hover); }
 .primary-btn:active:not(:disabled) { transform: scale(0.99); background: var(--accent-pressed); }
 .primary-btn:disabled {
@@ -2343,9 +2343,7 @@ select.text-input {
    ============================================================ */
 @media (max-width: 1100px) {
   #app { grid-template-columns: 200px 1fr; }
-  .content-row { grid-template-columns: minmax(0, 1fr) 340px; }
   .view-head { padding-left: 22px; padding-right: 22px; }
-  .catalog-wrap { --cat-x: 22px; }
   .page-pad { padding: 16px 22px 32px; }
 }
 /* The POS till only: the back office is #app.bo-app too, and its sidebar keeps its labels at any width.
@@ -2356,7 +2354,18 @@ select.text-input {
   :where(#app:not(.bo-app)) .brand-mini span, :where(#app:not(.bo-app)) .side-link span, :where(#app:not(.bo-app)) .user-meta { display: none; }
   :where(#app:not(.bo-app)) .side-link { justify-content: center; padding: 0; width: 40px; height: 40px; }
   :where(#app:not(.bo-app)) .user-row { padding: 0; }
-  :where(#app:not(.bo-app)) .content-row { grid-template-columns: minmax(0, 1fr) 320px; }
+}
+/* Tablet and up: a fixed grid per tile size (getSellGridProfile sets --cat-w), the panel takes the width left over.
+   16 at every outer edge and in the middle, 8 between everything inside. */
+@media (min-width: 721px) {
+  .content-row { grid-template-columns: var(--cat-w, minmax(0, 1fr)) minmax(0, 1fr); gap: 8px; padding: 8px 16px 8px 8px; }
+  .catalog-wrap { --cat-x: 8px; }   /* + the row's 8 = 16 from the edge and in the middle */
+  .catalog { gap: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }   /* bottom level with Check out */
+  .search-row { gap: 8px; }
+  /* 12 under the search bar and the Walk-in card (--bar-h 44 + 12 = the old 48 + 8): tiles keep their size, level with the cart */
+  .catalog { row-gap: 12px; }
+  .rail-h:not(.co-mode) .who { margin-bottom: 4px; }   /* + the rail's 8 = 12 */
+  .product-grid[data-size] { --grid-gap: 8px; }   /* = the rail's --rl-gap */
 }
 @media (max-width: 720px) {
   .content-row { grid-template-columns: 1fr; gap: 0; padding: 0; }
@@ -2823,7 +2832,7 @@ a.secondary-btn { text-decoration: none; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 48px;
+  height: var(--bar-h);
   padding: 0 14px;
   border-radius: 6px;
   background: var(--surface);
@@ -3197,7 +3206,7 @@ a.secondary-btn { text-decoration: none; }
 }
 .orders-search-wrap input {
   width: 100%;
-  height: 48px;
+  height: var(--bar-h);
   background: var(--rl-soft);      /* Sell's search: the sidebar band, hairline ring, card corner */
   border: none;
   color: var(--ink);
@@ -3865,7 +3874,7 @@ a.secondary-btn { text-decoration: none; }
 .catalog-wrap:has(> .vsheet.open) #scanBtn { width: 0; margin-left: -7px; opacity: 0; overflow: hidden; pointer-events: none; }   /* -7px: the row's gap */
 .vs-chip {
   flex: none;
-  height: 48px;
+  height: var(--bar-h);
   padding: 0 16px;
   border: 0;
   border-radius: var(--rl-r);
@@ -3908,6 +3917,118 @@ a.secondary-btn { text-decoration: none; }
 .vs-row .amt { font-size: 14px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .vs-empty { padding: 28px var(--rl-m); text-align: center; font-size: 13px; color: var(--ink-tertiary); }
 @media (prefers-reduced-motion: reduce) { .vsheet, .vsheet.open { transition: none; } }
+
+/* ============================================================
+   Edit sheet (popups-lab.html, Sheet C): the cart line, the receipt discount and the fulfilment open over the whole
+   left side, the top row too, with their own X. One big number (or the type) in the middle, a calm list of boxes
+   under it; a number slides the keys in beside the list, Pickup a time, Delivery an address. The cart stays in
+   view and follows every tap. Picked = a deeper grey, never black; the row the keys type into = card + soft ring.
+   ============================================================ */
+.esheet {
+  --es-hover: var(--surface-hover);                         /* a tile's hover */
+  --es-btn: color-mix(in srgb, var(--ink) 8%, transparent); /* a bare button's hover */
+  --es-sel: color-mix(in srgb, var(--ink) 18%, transparent);
+  --es-r: 12px;                                             /* the owner's button corner (popups-lab) */
+  position: absolute;
+  inset: 0;
+  z-index: 6;   /* over the variant sheet */
+  display: flex;
+  flex-direction: column;
+  padding: 8px var(--cat-x) calc(8px + env(safe-area-inset-bottom, 0px));   /* as .vsheet */
+  background: var(--bg);
+  transform: translateY(100%);
+  visibility: hidden;
+  transition: transform .16s var(--rl-ease), visibility 0s .16s;
+}
+body.light-theme .esheet { --es-hover: var(--bg-soft); }
+.catalog-wrap:has(> .esheet.open) #sidebarToggle { visibility: hidden; }   /* z-index 96 floats it over the sheet; the sheet has its own X */
+.esheet.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
+.es-card { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+           border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); box-shadow: var(--rl-shadow);
+           container-type: size; }   /* cqh below = the card's height */
+.esheet button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+.esheet svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.esheet .es-x { position: absolute; z-index: 1; top: 12px; left: 12px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--es-r); color: var(--ink-secondary); }
+.esheet .es-x:hover { background: var(--es-btn); color: var(--ink); }
+/* the body: the big number sits at one spot, 40% down the card, on every sheet (a touch above centre reads as centre);
+   the list runs down from it, keys or a panel beside it. 56 = the name line 20 + gap 4 + half the hero 32 */
+.es-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(240px, 420px); grid-auto-columns: minmax(220px, 300px);   /* narrow: both give a little, the list never squeezes */ grid-auto-flow: column; justify-content: center;
+           align-content: start; align-items: center; column-gap: 40px; padding: max(24px, calc(40cqh - 56px)) 24px 24px; overflow-y: auto; }
+.es-head > .es-hero:first-child { margin-top: 24px; }   /* fulfilment has no name line: same spot for its hero */
+.es-col { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.es-head { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 8px; color: var(--ink-tertiary); font-size: 13px; font-weight: 500;
+           font-variant-numeric: tabular-nums; text-align: center; }
+.es-head p { margin: 0; }
+.es-hero { color: var(--ink); font-size: 52px; font-weight: 600; letter-spacing: -1.2px; line-height: 64px; font-variant-numeric: tabular-nums; }
+.es-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.esheet .es-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding: 0 12px 0 16px; border-radius: var(--es-r); background: var(--tile);
+                  font-size: 15px; font-weight: 500; text-align: left; transition: background-color .12s; }
+.esheet .es-row:hover:not(.on):not(.pick) { background: var(--es-hover); }
+.es-row > span:first-child { flex: 1; min-width: 0; }
+.esheet .es-row.on { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--es-sel); }   /* the one the keys type into */
+.esheet .es-row.pick { background: color-mix(in srgb, var(--ink) 10%, var(--tile)); font-weight: 600; }   /* picked: a deeper shade of its own grey */
+.es-row small { color: var(--ink-tertiary); font-size: 14px; font-variant-numeric: tabular-nums; }
+.es-row.pick small, .es-row.pick .es-n.v { color: var(--ink-secondary); }
+.es-row .ad { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.es-row .cv { flex: none; color: var(--ink-tertiary); }
+.esheet .es-stp { display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--es-r); color: var(--ink-secondary); }
+.esheet .es-stp:hover:not(:disabled) { background: var(--es-btn); color: var(--ink); }
+.esheet .es-stp:disabled { opacity: .35; cursor: default; }
+/* the number being typed: a fixed slot so nothing beside it moves, a caret, grey until the first key replaces it */
+.es-n { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.es-n.q { width: 56px; font-size: 16px; font-weight: 600; }
+.es-n.v { justify-content: flex-end; width: 110px; color: var(--ink-secondary); }
+.es-row.on .es-n.v { color: var(--ink); font-size: 17px; font-weight: 600; }
+.es-n.fresh span { color: var(--ink-tertiary); }
+.es-n.on::after { content: ""; width: 2px; height: .9em; margin-left: 2px; background: var(--ink); animation: es-blink 1s steps(1) infinite; }
+@keyframes es-blink { 50% { opacity: 0; } }
+/* the keys (or a panel) beside the list */
+/* height 0 + centre: the panel is centred on the list's column and spills evenly both ways, so it never moves the big number */
+.es-keys { height: 0; display: flex; flex-direction: column; justify-content: center; }
+.es-seg { display: flex; width: fit-content; margin: 0 auto 12px; padding: 2px; border-radius: 14px; background: var(--tile); }
+.es-seg.off { visibility: hidden; }   /* kept for quantity too, so the keys don't jump between the two */
+.esheet .es-seg button { height: 32px; padding: 0 16px; border-radius: var(--es-r); color: var(--ink-tertiary); font-size: 13px; font-weight: 600; }
+.esheet .es-seg button.on { background: var(--rl-card); color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(0,0,0,0.06); }
+.es-kp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.esheet .es-kp button { height: 56px; border-radius: var(--es-r); background: var(--tile); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums;
+                        transition: background-color .1s, transform .1s; }
+.esheet .es-kp button:hover { background: var(--es-hover); }
+.esheet .es-kp button:active { transform: scale(.97); }
+.esheet .es-kp svg { width: 22px; height: 22px; stroke-width: 1.6; }
+/* Pickup's time and Delivery's address take the keys' place, same width, so the same glide */
+.es-addr { gap: 12px; }
+.es-ah { display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 600; }
+.es-ah .es-seg { margin: 0; }
+.esheet .es-ah .es-seg button { height: 28px; padding: 0 12px; }
+.esheet .es-chip { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-radius: var(--es-r); color: var(--ink-secondary); font-size: 13px; font-weight: 500; }
+.esheet .es-chip:hover { background: var(--es-btn); color: var(--ink); }
+.es-ta { display: block; width: 100%; padding: 12px 16px; border: 0; border-radius: var(--es-r); outline: 0; background: var(--tile); color: var(--ink);
+         font: inherit; font-size: 15px; line-height: 1.45; resize: none; }
+.es-ta:focus { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--es-sel); }
+.es-times { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.esheet .es-times .es-row { justify-content: center; min-height: 48px; padding: 0; }
+/* the foot: a quiet one left, Done / Apply right */
+.es-ft { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; border-top: 1px solid var(--line); }
+.esheet .es-q { height: 40px; margin-left: -8px; padding: 0 8px; border-radius: var(--es-r); color: var(--ink-secondary); font-size: 14px; }
+.esheet .es-q:hover { background: var(--es-btn); color: var(--ink); }
+.esheet .es-q.rm { color: var(--danger); }
+.esheet .es-q.rm:hover { background: var(--danger-bg); }
+.esheet .es-ink { height: 40px; margin-left: auto; padding: 0 20px; border-radius: var(--es-r); background: var(--tile); font-size: 14px; font-weight: 590; }
+.esheet .es-ink:hover { background: var(--es-hover); }
+/* the list glides aside as the keys come in, and back when they go (170 = half of keys 300 + gap 40) */
+.es-body.in .es-col { animation: es-left .28s var(--rl-ease) both; }
+.es-body.out .es-col { animation: es-right .28s var(--rl-ease) both; }
+.es-keys.in { animation: es-side .28s var(--rl-ease) both; }
+@keyframes es-left { from { transform: translateX(170px); } }
+@keyframes es-right { from { transform: translateX(-170px); } }
+@keyframes es-side { from { opacity: 0; transform: translateX(24px); } }
+/* a card too narrow for list + panel side by side (548 = 240 + 40 + 220 + 48): the panel goes under the list, the list stays put */
+@container (max-width: 560px) {
+  .es-body { grid-auto-flow: row; grid-template-columns: minmax(0, 420px); row-gap: 24px; }
+  .es-keys { height: auto; }
+  .es-body.in .es-col, .es-body.out .es-col { animation: none; }
+}
+@media (prefers-reduced-motion: reduce) { .esheet, .esheet.open { transition: none; } .es-body .es-col, .es-keys { animation: none !important; } }
 
 /* Section label + quantity stepper: the cart line editor's (and the tier inputs') */
 .variant-section-label {
@@ -7388,6 +7509,7 @@ body {
   --rl-r: 14px;
   --rl-m: 20px;
   --rl-gap: 8px;
+  --bar-h: 44px;                                        /* every page's top bar: search, ☰, Walk-in card (= Check out) */
   --rl-ease: cubic-bezier(.2, .8, .2, 1);
 }
 body.light-theme {
@@ -7399,7 +7521,7 @@ body.light-theme {
   --rl-shadow: 0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05);
 }
 /* the one safe-area inset of the sell view's bottom edge (docs/design-pos.md) */
-.rail-h { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--rl-gap); min-width: 0; min-height: 0;
+.rail-h { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; gap: var(--rl-gap); min-width: 0; min-height: 0;
         margin: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px)); color: var(--ink); font-size: 13px; line-height: 1.4; }
 .rail-h button { font: inherit; color: inherit; touch-action: manipulation; cursor: pointer; }
 .rail-h .num { font-variant-numeric: tabular-nums; }
@@ -7410,6 +7532,7 @@ body.light-theme {
 /* who & how */
 .rail-h .who { z-index: 3; }
 .rail-h .c-row, .rail-h .f-row { display: flex; height: 46px; }
+.rail-h .c-row { height: calc(var(--bar-h) - 2px); }   /* + the card's borders = the search bar */
 .rail-h .f-row { border-top: 1px solid var(--line); }
 .rail-h .cust, .rail-h .pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 14px 0 var(--rl-m); border: 0; background: none; text-align: left;
                            font-size: 14px; font-weight: 560; transition: background-color .12s; }
@@ -7463,6 +7586,13 @@ body.light-theme {
 .rail-h .go:hover { background: var(--accent-hover); }
 .rail-h .go:active { background: var(--accent-pressed); }
 .rail-h .go:disabled { opacity: .3; pointer-events: none; }
+.rail-h .go { display: flex; align-items: center; height: 44px; padding: 0 16px; }
+.rail-h .go span:only-child { flex: 1; }
+.rail-h:not(.co-mode) .pay { padding-bottom: 0; }   /* Check out is its own island below; the card is just Walk-in | Discount */
+.rail-h:not(.co-mode) .opts { border-bottom-width: 0; }
+.rail-h:not(.co-mode) .tot { margin-top: calc(-1 * var(--rl-gap)); }   /* on the sale the button carries the total; the Total row is the checkout's */
+.rail-h:not(.co-mode) .sum { height: 0; opacity: 0; }
+.rail-h:not(.co-mode) .break.open { grid-template-rows: 0fr; }
 
 /* H: the customer row alone on top; Pickup | Discount share the money card's first row, true halves */
 .rail-h .opts { display: none; }
@@ -7474,7 +7604,6 @@ body.light-theme {
 .rail-h .opts .pick { font-weight: 500; border-radius: calc(var(--rl-r) - 1px) 0 0 0; }
 .rail-h .opts .d-row { height: auto; margin: 0; padding: 0 14px 0 16px; border-bottom: 0; border-left: 1px solid var(--line); border-radius: 0 calc(var(--rl-r) - 1px) 0 0; }
 .rail-h .opts .d-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rail-h .go { height: 44px; }
 
 /* the Item / Amount band off: the count sits beside Total (sidebar and checkout) */
 .rail-cnt { display: none; margin-left: 6px; color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
@@ -7496,7 +7625,7 @@ body.light-theme {
 
 /* Checkout keeps the rail (Simplified 2): it tucks away in place what paying does not need. co-anim is on only
    while tucking / untucking, so the rail's own hover transitions are untouched the rest of the time. */
-.co-anim .f-row, .co-anim .opts, .co-anim .more, .co-anim #cartDiscountBtn, .co-anim #payBtn, .co-anim .pay {
+.co-anim .f-row, .co-anim .opts, .co-anim .more, .co-anim #cartDiscountBtn, .co-anim #payBtn, .co-anim .pay, .co-anim .tot, .co-anim .sum {
   overflow: hidden; transition: height .26s var(--rl-ease), width .26s var(--rl-ease), margin .26s var(--rl-ease),
                                 border-width .26s var(--rl-ease), padding .26s var(--rl-ease), opacity .14s linear; }
 .co-mode .f-row { height: 0; opacity: 0; border-top-width: 0; }
@@ -7504,8 +7633,10 @@ body.light-theme {
 .co-mode #cartDiscountBtn { height: 0; opacity: 0; margin-bottom: calc(-1 * var(--rl-gap)); border-bottom-width: 0; }
 .co-mode #payBtn { height: 0; padding: 0; opacity: 0; margin-top: calc(-1 * var(--rl-gap)); border-width: 0; }
 .rail-h.co-mode .opts { height: 0; margin-bottom: calc(-1 * var(--rl-gap)); border-bottom-width: 0; }
-.co-mode .pay { padding-top: 6px; padding-bottom: 6px; }                   /* the Total row alone, centred in its card */
-.co-mode .cust .co-meta { flex: none; color: var(--ink-tertiary); font-weight: 500; animation: rail-fade .18s .1s both; }
+.co-mode .pay { padding-top: 6px; padding-bottom: 6px; margin-bottom: calc(-1 * var(--rl-gap)); }   /* the Total row alone, flush to the bottom (Check out is tucked) */
+.co-mode .cust { pointer-events: none; }   /* at the checkout the bar only shows who (app.js) */
+.co-mode .cust .chev { display: none; }
+.co-mode .cust .co-meta { flex: none; color: var(--ink-tertiary); font-weight: 500; animation: rail-fade .18s .1s both; }   /* the order type, right */
 .co-mode .lines > * { pointer-events: none; }
 .rail-rcpt { position: absolute; inset: 0; z-index: 2; overflow-y: auto; overscroll-behavior: contain; padding: 20px; border-radius: inherit;
              background: var(--surface); animation: rail-fade .25s both; }
@@ -7551,11 +7682,11 @@ body.light-theme {
 .lv .card { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); box-shadow: var(--rl-shadow); }
 
 /* ☰ + search + filter: the head both pages share */
-.lv .sq { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 48px; height: 48px; border: 1px solid var(--line);
+.lv .sq { display: inline-flex; align-items: center; justify-content: center; flex: none; width: var(--bar-h); height: var(--bar-h); border: 1px solid var(--line);
           border-radius: var(--rl-r); background: var(--rl-card); color: var(--ink-secondary); box-shadow: var(--rl-shadow); transition: background-color .12s, color .12s; }
 .lv .sq:hover { background: var(--rl-hover); color: var(--ink); }
 .lv .head { display: flex; gap: 7px; min-width: 0; }
-.lv .find { flex: 1; display: flex; height: 48px; }
+.lv .find { flex: 1; display: flex; height: var(--bar-h); }
 .lv .find label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 var(--rl-m); color: var(--ink-tertiary); cursor: text; }
 .lv .find input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; }
 .lv .find input::placeholder { color: var(--ink-tertiary); font-weight: 400; }
@@ -7592,7 +7723,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 @container pv (max-width: 1100px) { .lv .ov { grid-template-columns: 340px minmax(0,1fr); } }
 @container pv (max-width: 920px)  { .lv .ov { grid-template-columns: 320px minmax(0,1fr); } }
 .lv .o-main { display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); gap: 14px; min-width: 0; min-height: 0; padding: 8px 10px 0; }
-.lv .o-top { display: flex; align-items: center; gap: 7px; height: 48px; }
+.lv .o-top { display: flex; align-items: center; gap: 7px; height: var(--bar-h); }
 .lv .ttl { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; overflow: hidden; }
 .lv .ttl b { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
 .lv .ttl b.walk { color: var(--ink-secondary); font-weight: 500; }   /* no customer: said, not shouted */
@@ -7673,7 +7804,7 @@ body.light-theme .lv .thumb { background: hsl(var(--h) 50% 92%); color: hsl(var(
 .lv .iv.editing .editor { transform: none; visibility: visible; transition: transform .28s var(--rl-ease); }
 .lv .e-top { display: contents; }   /* wide: back and actions float in the margins beside the column */
 .lv .e-top > .sq { grid-area: 1 / 1; justify-self: start; align-self: start; z-index: 1; }
-.lv .e-top > .acts { grid-area: 1 / 3; justify-self: end; align-self: start; z-index: 1; margin-right: 18px; height: 48px; }
+.lv .e-top > .acts { grid-area: 1 / 3; justify-self: end; align-self: start; z-index: 1; margin-right: 18px; height: var(--bar-h); }
 .lv .form-scroll { grid-area: 1 / 1 / 2 / 4; display: grid; grid-template-columns: minmax(144px,1fr) minmax(0,720px) minmax(144px,1fr); align-content: start; scrollbar-gutter: stable both-edges;
                    min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .lv .form { grid-column: 2; display: grid; gap: 12px; min-width: 0; padding-bottom: 24px; }

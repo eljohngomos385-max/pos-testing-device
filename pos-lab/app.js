@@ -258,6 +258,7 @@ function attachEvents() {
   $('#variantList').addEventListener('click', (e) => {
     const row = e.target.closest('.vs-row');
     if (!row) return;
+    if (row.dataset.customerId) return selectCustomer(row.dataset.customerId);   // the customer picker (it closes the sheet)
     addToCart(row.dataset.variantId, 'variant');
     closeVariantSheet();
   });
@@ -382,57 +383,20 @@ function attachEvents() {
     else if (act === 'stock') showToast("Adjusting stock isn't connected yet");
   });
 
-  // ---- Cart row click → open edit modal ----
+  // ---- The edit sheet (pos-sell.js): a cart line, Discount and the fulfilment pill open it over the items ----
   $('#cartList').addEventListener('click', (e) => {
     const row = e.target.closest('[data-id]');
-    if (!row) return;
-    openCartItemModal(row.dataset.id);
+    if (row) openEditSheet('line', row.dataset.id);
   });
-
-  // ---- Cart item edit modal ----
-  $$('#cartItemModal .vq-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      changeCartItemModalQty(b.dataset.act === 'inc' ? 1 : -1);
-    });
+  $('#cartDiscountBtn')?.addEventListener('click', () => openEditSheet('rd'));
+  $('#fulRow').addEventListener('click', (e) => { if (e.target.closest('#fulPick')) openEditSheet('ful'); });   // delegated: the row is rebuilt on every cart render
+  $('#editSheet').addEventListener('click', editSheetClick);
+  $('#editSheet').addEventListener('input', (e) => {   // the address lands on the cart as it's typed
+    if (e.target.id !== 'esAddr') return;
+    state.deliveryAddress = e.target.value;
+    const ad = $('#editSheet [data-ful="delivery"] .ad');
+    if (ad) ad.textContent = e.target.value;
   });
-  $('#cimQtyInput')?.addEventListener('input', updateCartItemModalLineTotal);
-  $('#cimQtyInput')?.addEventListener('blur', (e) => {
-    const q = Math.max(1, parseInt(e.target.value, 10) || 1);
-    e.target.value = q;
-    updateCartItemModalLineTotal();
-  });
-  $('#cimSaveBtn')?.addEventListener('click', saveCartItemEdit);
-  $('#cimDeleteBtn')?.addEventListener('click', removeCartItemFromModal);
-  // Cart item modal: discount segment + input
-  $$('#cartItemModal [data-cim-disc-type]').forEach(b => {
-    b.addEventListener('click', () => {
-      $$('#cartItemModal [data-cim-disc-type]').forEach(x => x.classList.remove('active'));
-      b.classList.add('active');
-      updateCartItemModalLineTotal();
-    });
-  });
-  $('#cimDiscInput')?.addEventListener('input', updateCartItemModalLineTotal);
-
-  // Cart-level discount: open + apply + remove
-  $('#cartDiscountBtn')?.addEventListener('click', openCartDiscountModal);
-  $$('#cartDiscountModal [data-cd-type]').forEach(b => {
-    b.addEventListener('click', () => {
-      $$('#cartDiscountModal [data-cd-type]').forEach(x => x.classList.remove('active'));
-      b.classList.add('active');
-    });
-  });
-  $('#cdApplyBtn')?.addEventListener('click', applyCartDiscount);
-  $('#cdRemoveBtn')?.addEventListener('click', clearCartDiscount);
-
-  // Fulfilment -- delegated, the row is rebuilt on every cart render. The picker opens into the list, the current
-  // type bold in its own place.
-  $('#fulRow').addEventListener('click', (e) => {
-    const pick = e.target.closest('#fulPick');
-    if (pick) openMenu(pick, fulfilMethods(state.settings).map(m => ({ label: m.label, cur: m.key === state.fulfilment, run: () => setFulfilment(m.key) })));
-  });
-  // Delivery modal save
-  $('#deliverySaveBtn')?.addEventListener('click', saveDeliveryAddress);
-  $('#deliveryPinBtn')?.addEventListener('click', openDeliveryMap);
   $('#deliveryMapZoomOut')?.addEventListener('click', () => zoomDeliveryMap(-1));
   $('#deliveryMapZoomIn')?.addEventListener('click', () => zoomDeliveryMap(1));
   $('#deliveryMapUseGps')?.addEventListener('click', useDeviceDeliveryLocation);
@@ -492,11 +456,12 @@ function attachEvents() {
   });
   // "Add new customer" inside the Sell-page customer picker — reuse the same
   // create form, then auto-select the new customer for the current sale.
-  $('#pickerAddCustomerBtn')?.addEventListener('click', () => {
+  ['#pickerAddCustomerBtn', '#custNew'].forEach(sel => $(sel)?.addEventListener('click', () => {   // the old pop-up's row, the sheet's chip
     state.customerEditFromSale = true;
     $('#customerModal').hidden = true;
+    closeVariantSheet();
     openCustomerEditModal();
-  });
+  }));
   $('#customersList')?.addEventListener('click', (e) => {
     const detailBtn = e.target.closest('[data-act="view-customer-detail"]');
     if (detailBtn) {
@@ -581,7 +546,7 @@ function attachEvents() {
 
   // ---- Customer ----
   $('#customerBtn').addEventListener('click', () => {
-    if (state.view === 'checkout' && $('#checkoutApp').classList.contains('is-done')) return;   // the sale is done
+    if (state.view === 'checkout') return;   // the customer is set before Check out; at the checkout the bar only shows who
     openCustomerModal();
   });
   $('#customerModal').addEventListener('click', (e) => {
@@ -625,15 +590,17 @@ function attachEvents() {
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      const map = !$('#deliveryMapModal').hidden;   // Esc over the map closes the map, the sheet stays
       stopBarcodeScanner();
       closeModals();
       closeVariantSheet();
+      if (!map) closeEditSheet();
     }
   });
 
   // ---- Pay ----
   // An exchange in the cart (startExchange) finishes here; anything else goes to the checkout.
-  $('#payBtn').addEventListener('click', () => (state.exchange ? confirmExchange() : openPaymentModal()));
+  $('#payBtn').addEventListener('click', () => { closeEditSheet(); state.exchange ? confirmExchange() : openPaymentModal(); });
 
   // Payment-method selection
   function selectPayMethod(method, label = '') {

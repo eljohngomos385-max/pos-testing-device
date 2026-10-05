@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pop-ups</title>
+<link rel="icon" href="data:,">
+<style>
+/* Lab chrome only: the POS lab, full window, with the redone pop-ups (poplab.css + poplab.js) injected, so the
+   lab's own files stay as committed (ca26ee9). A few items go in the cart if it's empty. */
+html, body { margin: 0; height: 100%; background: #0A0A0A; }
+iframe { display: block; width: 100%; height: 100%; border: 0; }
+</style>
+</head>
+<body>
+<iframe id="f" title="POS lab"></iframe>
+<script>
+const f = document.getElementById('f'), stamp = Date.now();
+f.addEventListener('load', () => {
+  const doc = f.contentDocument;
+  const css = doc.createElement('link');
+  css.rel = 'stylesheet'; css.href = 'poplab.css?' + stamp;
+  doc.head.append(css);
+  const js = doc.createElement('script');
+  js.src = 'poplab.js?' + stamp;
+  js.onload = () => {
+    // inline, so it sees the till's own globals (state is a top-level let, not on window)
+    const seed = doc.createElement('script');
+    seed.textContent = `if (!state.cart.length) {
+      beginCart();
+      for (const [id, qty] of [['t004', 4], ['t001', 1], ['e001', 2.5]]) {
+        const p = state.products.find(x => x.id === id);
+        if (p) state.cart.push({ id: p.id, name: p.name, sku: p.sku, brand: p.brand, unit: p.unit, price: p.price, qty });
+      }
+      renderCart();
+    }`;
+    doc.body.append(seed);
+  };
+  doc.body.append(js);
+});
+f.src = 'index.html?' + stamp;
+</script>
+</body>
+</html>

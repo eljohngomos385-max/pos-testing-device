@@ -129,11 +129,11 @@ const state = {
   ordersQuery: '',
   ordersFilter: { range: 'week', staff: '', pay: '', status: '', fulfil: '' },   // ORDERS_FILTER_DEF
   variantModal: { groupId: null, query: '', available: false },
-  cartItemModal: { id: null },
   cart: [],
   cartDiscount: null,           // {type:'amount'|'percent', value:number}
   fulfilment: 'walkin',         // a FULFIL_BUILTINS key (bo-model) or the owner's own type
   deliveryAddress: '',
+  pickupTime: null,   // { day, time }: the fulfilment sheet shows it; not on the order yet
   deliveryLocation: null,
   deliveryMap: {
     centerLat: 14.2691,
@@ -271,7 +271,7 @@ function setAppViewportHeight() {
   }
   const stableHeight = setAppViewportHeight._height || measuredHeight;
   const keyboardShrink = editingText && measuredHeight < stableHeight - 80;
-  const nextHeight = keyboardShrink ? stableHeight : Math.max(stableHeight, measuredHeight);
+  const nextHeight = keyboardShrink ? stableHeight : measuredHeight;   // only the keyboard is held; a smaller window (Stage Manager) shrinks the app
 
   setAppViewportHeight._height = nextHeight;
   setAppViewportHeight._width = measuredWidth;

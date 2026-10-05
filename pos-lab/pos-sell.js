@@ -46,24 +46,21 @@ function getSellGridProfile() {
   const catalog = $('.catalog');
   const width = catalog?.clientWidth || window.innerWidth || 1200;
   const viewport = window.innerWidth || width;
-  const presets = (viewport <= 720 || width <= 520)
-    ? {
-        sm: { columns: 2, rows: 5 },
-        md: { columns: 2, rows: 4 },
-        lg: { columns: 1, rows: 4 },
-      }
-    : width <= 1100
-      ? {
-          sm: { columns: 5, rows: 6 },
-          md: { columns: 4, rows: 5 },
-          lg: { columns: 3, rows: 4 },
-        }
-      : {
-          sm: { columns: 6, rows: 5 },
-          md: { columns: 5, rows: 4 },
-          lg: { columns: 4, rows: 4 },
-        };
-  return presets[state.tileSize] || presets.md;
+  if (viewport > 720) {   // Loyverse-style fixed grid per size, the panel takes the rest
+    const row = $('.content-row'), rs = getComputedStyle(row), cs = getComputedStyle(catalog), gap = 8, catX = parseFloat(cs.paddingLeft);
+    const h = catalog.clientHeight - $('#catalogSearchRow').offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - parseFloat(cs.rowGap);
+    const w = row.clientWidth - parseFloat(rs.paddingLeft) - parseFloat(rs.paddingRight) - parseFloat(rs.columnGap) - 2 * catX;   // tiles + panel
+    const grids = { sm: [6, 5], md: [5, 4], lg: [4, 3] }, [cols, landRows] = grids[state.tileSize] || grids.md;   // = ITEMS_PER_PAGE 30 / 20 / 12
+    const portrait = innerHeight > innerWidth, columns = portrait ? cols - 2 : cols;   // portrait is too narrow for 5 across
+    const panel = Math.max(340, innerWidth * (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--side-vw')) || 26.5) / 100);   // 26.5%: Android 11" (1280) lands on 340
+    const widest = (w - panel - gap * (columns - 1)) / columns;
+    const rows = Math.max(portrait ? 2 : landRows, Math.round((h + gap) / (widest + gap)));   // the rows fill the height, as many as keep tiles nearest square: squarer screens (4:3 iPads) get 5x5
+    const size = portrait || rows > landRows ? widest : Math.min(widest, (h - gap * (rows - 1)) / rows);   // wide screens: square, the panel takes the rest. Extra rows keep the panel, so a switch moves nothing but the row count
+    row.style.setProperty('--cat-w', `${columns * size + (columns - 1) * gap + 2 * catX}px`);
+    return { columns, rows };
+  }
+  const phone = { sm: { columns: 2, rows: 5 }, md: { columns: 2, rows: 4 }, lg: { columns: 1, rows: 4 } };
+  return phone[state.tileSize] || phone.md;
 }
 
 function sellPageSize(profile = getSellGridProfile()) {
@@ -169,7 +166,7 @@ function syncSellGridMetrics() {
   if (!catalog || !grid || !search || state.view !== 'sell') return;
 
   const profile = getSellGridProfile();
-  const gap = parseFloat(getComputedStyle(grid).gap) || 6;
+  const gap = parseFloat(getComputedStyle(grid).getPropertyValue('--grid-gap')) || 6;   // the gap lives on .product-page; the grid only carries the variable
   const styles = getComputedStyle(catalog);
   const catalogRect = catalog.getBoundingClientRect();
   const searchRect = search.getBoundingClientRect();
@@ -177,9 +174,9 @@ function syncSellGridMetrics() {
   const rowGap = parseFloat(styles.gap || 0);
   const measuredHeight = catalogRect.bottom - paddingBottom - searchRect.bottom - rowGap;
   const fallbackHeight = catalog.clientHeight - search.offsetHeight - parseFloat(styles.paddingTop || 0) - paddingBottom - rowGap;
-  const available = Math.max(120, Math.floor(measuredHeight || fallbackHeight));
   const rows = profile.rows;
   const columns = profile.columns;
+  const available = Math.max(120, Math.floor(measuredHeight || fallbackHeight));
   const tileHeight = Math.max(1, (available - gap * (rows - 1)) / rows);
   // Tiles always fill the full column width so they align to the catalog edges
   const tileWidth = Math.max(1, (grid.clientWidth - gap * (columns - 1)) / columns);
@@ -197,8 +194,15 @@ function openVariantModal(groupId) {
   if (!g) return;
   if (!groupMembers(g.id).length) { showToast('No variants in this group'); return; }
   state.variantModal = { groupId: g.id, query: '', available: false };
-  $('#variantTitle').textContent = g.name;
+  openListSheet(g.name, 'Search variants', 'Price');
+}
+// The variant sheet is also the customer picker (openCustomerModal): same top row, same list
+function openListSheet(title, placeholder, col) {
+  $('#variantTitle').textContent = title;
+  $('#variantCol').textContent = col;
   $('#variantSearch').value = '';
+  $('#variantSearch').placeholder = placeholder;
+  $('#variantSheet').setAttribute('aria-label', title);
   renderVariantList();
   $('#variantList').scrollTop = 0;
   $('#variantSheet').classList.add('open');
@@ -212,6 +216,8 @@ function closeVariantSheet() {
 
 function renderVariantList() {
   const vm = state.variantModal;
+  $('#custNew').hidden = vm.kind !== 'cust';
+  if (vm.kind === 'cust') return renderCustomerSheet(vm);
   const members = groupMembers(vm.groupId);
   const q = vm.query.trim().toLowerCase();
   const words = members.map(p => p.name.split(' '));   // rows drop the words every variant shares: "White 1L", not "Latex Paint White 1L"
@@ -334,6 +340,7 @@ This item is ${product.archived ? 'archived' : 'hidden'}. Sell anyway?`)) return
 }
 
 function clearCart() {
+  closeEditSheet();   // first, so its events are the sheet's own changes
   state.exchange = null;   // clearing the cart calls an exchange off (startExchange)
   state.cart = [];
   state.cartId = '';
@@ -344,6 +351,7 @@ function clearCart() {
   state.fulfilment = (state.settings && state.settings.defaultFulfilment) || 'walkin';
   state.deliveryAddress = '';
   state.deliveryLocation = null;
+  state.pickupTime = null;
   renderCart();
   updateCustomerButton();
 }
@@ -623,113 +631,216 @@ function submitManualBarcode() {
   }
 }
 
-// ---------- Cart item edit modal ----------
-function openCartItemModal(id) {
-  const item = state.cart.find(i => i.id === id);
-  if (!item) return;
-  state.cartItemModal.id = id;
-  $('#cimTitle').textContent = item.name;
-  $('#cimSub').textContent = `${item.sku} · ${peso(item.price)} / ${item.unit}`;
-  $('#cimQtyInput').value = item.qty;
-  // Discount: prefill from existing item.discount
-  const disc = item.discount || { type: 'amount', value: 0 };
-  $$('#cartItemModal [data-cim-disc-type]').forEach(b =>
-    b.classList.toggle('active', b.dataset.cimDiscType === (disc.type || 'amount')));
-  $('#cimDiscInput').value = disc.value ? String(disc.value) : '';
-  updateCartItemModalLineTotal();
-  $('#cartItemModal').hidden = false;
-}
-function changeCartItemModalQty(delta) {
-  const input = $('#cimQtyInput');
-  const p = productOf(state.cart.find(i => i.id === state.cartItemModal.id) || {});
-  const q = qtyFrom(p, (parseFloat(input.value) || 0) + delta, stepFor(p));
-  input.value = q;
-  updateCartItemModalLineTotal();
-}
-function getCartItemModalDiscount() {
-  const typeBtn = document.querySelector('#cartItemModal [data-cim-disc-type].active');
-  const type = typeBtn ? typeBtn.dataset.cimDiscType : 'amount';
-  const value = parseFloat($('#cimDiscInput').value) || 0;
-  return value > 0 ? { type, value } : null;
-}
-function updateCartItemModalLineTotal() {
-  const item = state.cart.find(i => i.id === state.cartItemModal.id);
-  if (!item) return;
-  const q = qtyFrom(productOf(item), $('#cimQtyInput').value);
-  $('#cimLineTotal').textContent = peso(SalesMath.lineMoney(item.price, q, getCartItemModalDiscount(), state.settings.store?.currency).lineTotal);
-}
-function saveCartItemEdit() {
-  const item = state.cart.find(i => i.id === state.cartItemModal.id);
-  if (!item) return;
-  const q = qtyFrom(productOf(item), $('#cimQtyInput').value);
-  if (q !== item.qty) track('item_qty', { productId: item.id, from: item.qty, to: q });
-  item.qty = q;
-  const disc = getCartItemModalDiscount();
-  const was = item.discount || null;
-  if (JSON.stringify(disc) !== JSON.stringify(was)) {
-    track('discount', { scope: 'line', kind: (disc || was).type, value: disc ? disc.value : 0, productId: item.id });
+// ---------- Edit sheet (popups-lab.html, Sheet C) ----------
+// The cart line, the receipt discount and the fulfilment open over the whole left side, the cart stays in view and
+// follows every tap. Numbers are typed on our keys, never the tablet's. es = the open sheet: kind 'line' | 'rd' | 'ful';
+// q / d = the typed quantity / discount (strings, as typed), pct = Percent or Amount, f = what the keys (or a panel)
+// are open for, fresh = the first key replaces the number, anim = how the body moves on this draw.
+const ES_PRESETS = [['Staff', 15], ['Contractor', 10]];   // ponytail: placeholders; the store's own presets come later from the back office
+const ES_PANEL = { pickup: 't', delivery: 'a' };          // the types that ask for something: Pickup a time, Delivery an address
+const ES_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17].map(h => `${(h + 11) % 12 + 1}:00 ${h < 12 ? 'AM' : 'PM'}`);   // ponytail: fixed; the store's hours would set them
+const ES_IC = {
+  x: 'M6 6l12 12M18 6L6 18', less: 'M6 12h12', more: 'M12 6v12M6 12h12', chev: 'M9 6l6 6-6 6',
+  del: 'M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7zM13 10l4 4M17 10l-4 4',
+  pin: 'M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10zM12 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
+};
+const esSvg = (k, c = '') => `<svg${c ? ` class="${c}"` : ''} viewBox="0 0 24 24" aria-hidden="true"><path d="${ES_IC[k]}"/></svg>`;
+let es = null;
+
+const esItem = () => es && state.cart.find(i => i.id === es.id);
+const esDisc = (o) => (+o.d > 0 ? { type: o.pct ? 'percent' : 'amount', value: +o.d } : null);
+const esTyped = (o) => (o.pct ? `${o.d || 0}%` : SalesMath.currencySymbol(state.settings.store?.currency) + (o.d || 0));
+const esShown = (d) => (!d ? 'None' : d.type === 'percent' ? `${d.value}%` : peso(d.value));
+
+function openEditSheet(kind, id) {
+  if (kind !== 'ful' && !state.cart.length) { flashControl($('#cartDiscountBtn')); flashControl($('#side')); return; }
+  const was = !!es;
+  closeEditSheet(true);
+  closeVariantSheet();
+  if (kind === 'line') {
+    const item = state.cart.find(i => i.id === id);
+    if (!item) return;
+    const d = item.discount || null;
+    es = { kind, id, q: String(item.qty), d: d ? String(d.value) : '', pct: d ? d.type === 'percent' : true, before: { qty: item.qty, discount: d } };
+  } else if (kind === 'rd') {
+    const cd = state.cartDiscount && state.cartDiscount.value ? state.cartDiscount : null;
+    const i = cd && cd.type === 'percent' ? ES_PRESETS.findIndex(([, v]) => v === cd.value) : -1;
+    const pick = i >= 0 ? i : cd ? 'c' : null;
+    es = { kind, pick, d: pick === 'c' ? String(cd.value) : '', pct: cd ? cd.type === 'percent' : true, before: cd };
+  } else {
+    es = { kind, day: (state.pickupTime && state.pickupTime.day) || 'Today' };
   }
-  if (disc) item.discount = disc; else delete item.discount;
-  renderCart();
-  $('#cartItemModal').hidden = true;
-}
-function removeCartItemFromModal() {
-  const id = state.cartItemModal.id;
-  if (!id) return;
-  const gone = state.cart.find(i => i.id === id);
-  if (gone) track('item_remove', { productId: gone.id, qty: gone.qty, unitPrice: gone.price });
-  state.cart = state.cart.filter(i => i.id !== id);
-  renderCart();
-  $('#cartItemModal').hidden = true;
-  showToast('Item removed');
+  Object.assign(es, { f: null, anim: false });
+  drawEditSheet();
+  if (!was) $('#editSheet').classList.add('open');
 }
 
-// ---------- Cart-level discount modal ----------
-function openCartDiscountModal() {
-  if (state.cart.length === 0) {
-    flashControl($('#cartDiscountBtn'));
-    flashControl($('#side'));
-    return;
+// Closing keeps what's on the cart (it followed every tap) and sends the events the old Save sent, once per open.
+function closeEditSheet(swap) {
+  if (!es) return;
+  if (es.f) esSettle(es);
+  const o = es; es = null;
+  const item = o.kind === 'line' && state.cart.find(i => i.id === o.id);
+  if (item) {
+    if (item.qty !== o.before.qty) track('item_qty', { productId: item.id, from: o.before.qty, to: item.qty });
+    const d = item.discount || null;
+    if (JSON.stringify(d) !== JSON.stringify(o.before.discount)) track('discount', { scope: 'line', kind: (d || o.before.discount).type, value: d ? d.value : 0, productId: item.id });
+  } else if (o.kind === 'rd' && JSON.stringify(state.cartDiscount) !== JSON.stringify(o.before)) {
+    track('discount', { scope: 'cart', kind: (state.cartDiscount || o.before).type, value: state.cartDiscount ? state.cartDiscount.value : 0 });
+  } else if (o.kind === 'ful') {
+    state.deliveryAddress = (state.deliveryAddress || '').trim();
   }
-  const cd = state.cartDiscount || { type: 'amount', value: 0 };
-  $$('#cartDiscountModal [data-cd-type]').forEach(b =>
-    b.classList.toggle('active', b.dataset.cdType === (cd.type || 'amount')));
-  $('#cdInput').value = cd.value ? String(cd.value) : '';
-  $('#cartDiscountModal').hidden = false;
-  setTimeout(() => $('#cdInput').focus(), 50);
-}
-function applyCartDiscount() {
-  const typeBtn = document.querySelector('#cartDiscountModal [data-cd-type].active');
-  const type = typeBtn ? typeBtn.dataset.cdType : 'amount';
-  const value = parseFloat($('#cdInput').value) || 0;
-  state.cartDiscount = value > 0 ? { type, value } : null;
-  track('discount', { scope: 'cart', kind: type, value: value > 0 ? value : 0 });
+  if (!swap) $('#editSheet').classList.remove('open');
   renderCart();
-  $('#cartDiscountModal').hidden = true;
-}
-function clearCartDiscount() {
-  if (state.cartDiscount) track('discount', { scope: 'cart', kind: state.cartDiscount.type, value: 0 });
-  state.cartDiscount = null;
-  renderCart();
-  $('#cartDiscountModal').hidden = true;
-  flashControl($('#cartDiscountBtn'));
 }
 
-// ---------- Fulfilment (Walk-in / Pickup / Delivery / whatever the owner added) ----------
-function setFulfilment(mode) {
-  if (!fulfilMethods(state.settings).some(m => m.key === mode)) return;
-  if (mode === 'delivery') {
-    // Address is optional; prefill it when we already know one.
-    const addr = state.deliveryAddress || (state.customer && state.customer.address) || '';
-    $('#deliveryAddrInput').value = addr;
-    updateDeliveryPinStatus();
-    $('#deliveryModal').hidden = false;
+// Every tap lands on the cart at once; a 0 quantity keeps the last count until the keys go away.
+function esWrite() {
+  const item = esItem();
+  if (es.kind === 'line' && item) {
+    item.qty = qtyFrom(productOf(item), es.q, item.qty);
+    const d = esDisc(es);
+    if (d) item.discount = d; else delete item.discount;
+  } else if (es.kind === 'rd') {
+    const P = ES_PRESETS[es.pick];
+    state.cartDiscount = P ? { type: 'percent', value: P[1] } : es.pick === 'c' ? esDisc(es) : null;
+  }
+  renderCart();
+}
+
+// The keys go away: an emptied count goes back to the cart's, an emptied custom is no discount.
+function esSettle(o) {
+  const item = esItem();
+  if (o.kind === 'line' && item && !(+o.q > 0)) o.q = String(item.qty);
+  if (o.pick === 'c' && !(+o.d > 0)) o.pick = null;
+  Object.assign(o, { f: null, anim: 'out' });
+}
+
+// One key into a typed number: '.' once, two decimals, nothing over max, a lone 0 gives way.
+function esPress(v, k, dec, max) {
+  if (k === 'del') return v.slice(0, -1);
+  if (k === '.') return dec && !v.includes('.') ? (v || '0') + '.' : v;
+  if (/\.\d\d$/.test(v)) return v;
+  const n = (v === '0' ? '' : v) + k;
+  return +n > max ? v : n;
+}
+
+function drawEditSheet() {
+  const o = es, card = $('#editSheetCard');
+  if (!o) return;
+  const n = (f, text, cls) => `<span class="es-n${cls}${o.f === f ? ' on' + (o.fresh ? ' fresh' : '') : ''}"><span>${text}</span></span>`;
+  const stp = (s, dis) => `<button type="button" class="es-stp" data-sstep="${s}"${dis ? ' disabled' : ''} aria-label="${s < 0 ? 'Less' : 'More'}">${esSvg(s < 0 ? 'less' : 'more')}</button>`;
+  const seg = (on, off, cls = '') => `<span class="es-seg${cls}">${on}${off}</span>`;
+  const segBtn = (label, on, data) => `<button type="button"${on ? ' class="on"' : ''} ${data}>${label}</button>`;
+  const cv = (open) => (open ? '' : esSvg('chev', 'cv'));
+  let head, rows, side = '';
+  const kin = o.anim === true || o.anim === 'swap' ? ' in' : '';
+  if (o.kind === 'line') {
+    const item = esItem();
+    if (!item) return closeEditSheet();
+    const p = productOf(item), step = stepFor(p);
+    const m = SalesMath.lineMoney(item.price, item.qty, item.discount, state.settings.store?.currency);
+    head = `<p>${escapeHtml(item.name)}</p><div class="es-hero">${peso(m.lineTotal)}</div>
+      <p>${item.qty} × ${peso(item.price)}${m.lineDiscount ? ` · ${peso(-m.lineDiscount)}` : ''}</p>`;
+    rows = `<div class="es-row${o.f === 'q' ? ' on' : ''}"><span>Quantity</span>${stp(-1, item.qty <= step)}<button type="button" data-sf="q">${n('q', o.f === 'q' ? o.q || '0' : item.qty, ' q')}</button>${stp(1)}</div>
+      <div class="es-row${o.f === 'd' ? ' on' : ''}" data-sf="d"><span>Discount</span>${n('d', o.f === 'd' ? esTyped(o) : esShown(item.discount), ' v')}${cv(o.f === 'd')}</div>`;
+    if (o.f) side = `<div class="es-keys${kin}">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'), o.f === 'd' ? '' : ' off')}${esKeys(o.f === 'd' || step < 1)}</div>`;
+  } else if (o.kind === 'rd') {
+    const t = cartTotals();
+    head = `<p>Sale total</p><div class="es-hero">${peso(t.total)}</div><p>${t.discount ? `${peso(t.subtotal)} · ${peso(-t.discount)}` : 'No discount'}</p>`;
+    rows = ES_PRESETS.map(([name, pc], i) => `<button type="button" class="es-row${o.pick === i ? ' pick' : ''}" data-pick="${i}"><span>${escapeHtml(name)}</span><small>${pc}%</small></button>`).join('')
+      + `<div class="es-row${o.f === 'd' ? ' on' : o.pick === 'c' ? ' pick' : ''}" data-sf="d"><span>Custom</span>${n('d', o.pick === 'c' ? esTyped(o) : '', ' v')}${cv(o.f === 'd')}</div>`;
+    if (o.f) side = `<div class="es-keys${kin}">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'))}${esKeys(true)}</div>`;
+  } else {
+    const methods = fulfilMethods(state.settings), pt = state.pickupTime;
+    const say = { pickup: pt ? `${pt.day}, ${pt.time}` : '', delivery: state.deliveryAddress };
+    head = `<div class="es-hero">${escapeHtml((methods.find(m => m.key === state.fulfilment) || methods[0]).label)}</div>`;
+    rows = methods.map(m => `<button type="button" class="es-row${o.f && ES_PANEL[m.key] === o.f ? ' on' : state.fulfilment === m.key ? ' pick' : ''}" data-ful="${escapeHtml(m.key)}"><span>${escapeHtml(m.label)}</span>${
+      ES_PANEL[m.key] && !m.custom ? `<small class="ad">${escapeHtml(say[m.key] || '')}</small>${cv(ES_PANEL[m.key] === o.f)}` : ''}</button>`).join('');
+    if (o.f === 'a') side = `<div class="es-keys es-addr${kin}"><div class="es-ah">Deliver to<button type="button" class="es-chip" data-map>${esSvg('pin')}${state.deliveryLocation ? 'Pinned' : 'Map'}</button></div>
+      <textarea class="es-ta" id="esAddr" rows="6" placeholder="House #, street, barangay, city" aria-label="Address">${escapeHtml(state.deliveryAddress || '')}</textarea></div>`;
+    else if (o.f === 't') side = `<div class="es-keys es-addr${kin}"><div class="es-ah">Pick up${seg(...['Today', 'Tomorrow'].map(d => segBtn(d, o.day === d, `data-day="${d}"`)))}</div>
+      <div class="es-times">${ES_HOURS.map(h => `<button type="button" class="es-row${pt && pt.day === o.day && pt.time === h ? ' pick' : ''}" data-time="${h}">${h}</button>`).join('')}</div></div>`;
+  }
+  // bottom left follows what's being edited: the discount's keys -> clear it; nothing open -> remove the line
+  const left = o.kind === 'ful' ? ''
+    : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
+    : o.f ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q" data-sclr>Clear</button>' : '';
+  card.innerHTML = `<button type="button" class="es-x" data-close aria-label="Close">${esSvg('x')}</button>
+    <div class="es-body${o.anim === true ? ' in' : o.anim === 'out' ? ' out' : ''}"><div class="es-col"><div class="es-head">${head}</div><div class="es-list">${rows}</div></div>${side}</div>
+    <div class="es-ft">${left}${o.f ? '<button type="button" class="es-ink" data-apply>Apply</button>' : '<button type="button" class="es-ink" data-close>Done</button>'}</div>`;
+  o.anim = false;
+}
+const esKeys = (dec) => `<div class="es-kp">${[...'123456789', dec ? '.' : '', '0', 'del'].map(k => !k ? '<span></span>'
+  : `<button type="button" data-sk="${k}"${k === 'del' ? ' aria-label="Delete"' : ''}>${k === 'del' ? esSvg('del') : k}</button>`).join('')}</div>`;
+
+function editSheetClick(e) {
+  const o = es, el = (q) => e.target.closest(q);
+  if (!o) return;
+  if (el('[data-close]')) return closeEditSheet();
+  if (o.kind === 'ful') return esFulClick(el);
+  if (el('[data-remove]')) {
+    const gone = esItem();
+    es = null;
+    if (gone) track('item_remove', { productId: gone.id, qty: gone.qty, unitPrice: gone.price });
+    state.cart = state.cart.filter(i => i !== gone);
+    $('#editSheet').classList.remove('open');
+    renderCart();
+    showToast('Item removed');
     return;
   }
-  state.fulfilment = mode;
-  state.deliveryAddress = '';
-  state.deliveryLocation = null;
+  const item = esItem(), step = item ? stepFor(productOf(item)) : 1;
+  if (el('[data-sk]')) {
+    const qty = o.f === 'q';
+    o[o.f] = esPress(o.fresh ? '' : o[o.f], el('[data-sk]').dataset.sk, !qty || step < 1, qty ? 9999 : o.pct ? 100 : 99999);
+    o.fresh = false;
+  } else if (el('.es-seg button')) {
+    o.pct = 'pct' in el('.es-seg button').dataset;
+    if (o.pct && +o.d > 100) o.d = '100';
+  } else if (el('[data-sstep]')) {
+    if (o.f) esSettle(o);   // − + puts the keys away, keeping what was typed
+    o.q = String(roundQty(productOf(item), Math.max(step, item.qty + +el('[data-sstep]').dataset.sstep * step)));
+  } else if (el('[data-pick]')) {
+    if (o.f) esSettle(o);
+    const i = +el('[data-pick]').dataset.pick;
+    o.pick = o.pick === i ? null : i;
+  } else if (el('[data-sf]')) {
+    const f = el('[data-sf]').dataset.sf;
+    if (o.f === f) esSettle(o);
+    else {
+      Object.assign(o, { f, fresh: true, anim: !o.f });
+      if (o.kind === 'rd') o.pick = 'c';
+    }
+  } else if (el('[data-apply]')) esSettle(o);
+  else if (el('[data-sclr]')) {
+    o.d = '';
+    if (o.kind === 'rd') o.pick = null;
+    if (o.f) esSettle(o);
+  } else return;
+  esWrite();
+  drawEditSheet();
+}
+
+// Fulfilment: the types are the rows; leaving a type drops what it asked for, the same row again puts its panel away.
+function esFulClick(el) {
+  const o = es, k = el('[data-ful]')?.dataset.ful;
+  if (k) {
+    if (k !== state.fulfilment) {
+      state.fulfilment = k;
+      state.pickupTime = null;
+      state.deliveryAddress = k === 'delivery' ? (state.customer && state.customer.address) || '' : '';
+      state.deliveryLocation = null;
+    }
+    const f = ES_PANEL[k] && o.f !== ES_PANEL[k] ? ES_PANEL[k] : null;
+    Object.assign(o, { f, anim: f ? (o.f ? 'swap' : true) : o.f ? 'out' : false });
+  } else if (el('[data-day]')) o.day = el('[data-day]').dataset.day;
+  else if (el('[data-time]')) state.pickupTime = { day: o.day, time: el('[data-time]').dataset.time };   // shown only, not on the order yet
+  else if (el('[data-map]')) return openDeliveryMap();
+  else if (el('[data-apply]')) Object.assign(o, { f: null, anim: 'out' });
+  else return;
   renderCart();
+  drawEditSheet();
+  if (o.f === 'a') { const a = $('#esAddr'); a.focus(); a.selectionStart = a.value.length; }
 }
 
 // The types the owner configured (Walk-in can't be removed): one picker that opens into the list -- half a row has
@@ -742,7 +853,7 @@ function renderFulRow() {
   // A hidden or deleted type must not stay selected on the cart in front of the cashier.
   if (!methods.some(m => m.key === state.fulfilment)) state.fulfilment = 'walkin';
   const cur = methods.find(m => m.key === state.fulfilment) || methods[0];
-  row.innerHTML = `<button type="button" class="pick" id="fulPick" aria-haspopup="menu" aria-expanded="false"><span>${escapeHtml(cur.label)}</span>${RAIL_UPDOWN}</button>`;
+  row.innerHTML = `<button type="button" class="pick" id="fulPick" aria-haspopup="dialog"><span>${escapeHtml(cur.label)}</span>${RAIL_UPDOWN}</button>`;
 }
 const fulfilLabel = () => orderFulfilLabel({ fulfilment: state.fulfilment });
 
@@ -798,24 +909,8 @@ function closeMenu() {
   m.animate([{ clipPath: to }, { clipPath: from, opacity: 0, transform: 'scale(.96)' }], { duration: calmMs(90), easing: 'cubic-bezier(.4,0,1,1)' }).onfinish = () => veil.remove();
 }
 
-function saveDeliveryAddress() {
-  const addr = $('#deliveryAddrInput').value.trim();
-  state.fulfilment = 'delivery';
-  state.deliveryAddress = addr;
-  $('#deliveryModal').hidden = true;
-  renderCart();
-  flashControl($('#fulRow'));
-}
-
-function deliveryPinLabel(location = state.deliveryLocation) {
-  const loc = normalizeDeliveryLocation(location);
-  if (!loc) return 'No pin set';
-  return `Pinned map location (${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)})`;
-}
-
-function updateDeliveryPinStatus() {
-  const el = $('#deliveryPinStatus');
-  if (el) el.textContent = deliveryPinLabel();
+function updateDeliveryPinStatus() {   // the fulfilment sheet's Map chip reads Pinned
+  if (es && es.kind === 'ful') drawEditSheet();
 }
 
 function setDeliveryMapFromLocation(location = state.deliveryLocation) {
@@ -1095,7 +1190,7 @@ function renderCart() {
   $('#vatLabel').parentElement.style.display = t.vatRate && !t.scPwd ? '' : 'none';   // a non-VAT store, or a VAT-exempt (SC/PWD) sale, has no tax row: the slips' rule (totalRows)
   $('#total').textContent = peso(t.total);
   $('#payBtn').disabled = n === 0;
-  $('#payBtn').textContent = state.exchange ? 'Exchange' : 'Check out';   // startExchange
+  $('#payBtn').innerHTML = `<span>${state.exchange ? 'Exchange' : 'Check out'}</span>${n ? `<span class="num">${peso(t.total)}</span>` : ''}`;   // startExchange; the total rides in the button, the Total row is the checkout's
   $('#side').classList.toggle('empty-cart', n === 0);
 
   renderFulRow();
@@ -1113,7 +1208,7 @@ function updateCustomerButton() {
   const label = $('#customerLabel');
   if (state.customer) {
     btn.classList.add('has-customer');
-    label.textContent = `${state.customer.name} · ${peso(accountBalance(state.customer.id))}`;
+    label.textContent = state.customer.name;   // no balance on the bar (owner, 2026-10-05)
   } else {
     btn.classList.remove('has-customer');
     label.textContent = 'Walk-in customer';
@@ -1135,7 +1230,22 @@ function renderCustomerPicker() {
 }
 function openCustomerModal() {
   if (state.exchange) { showToast('An exchange stays with the original sale’s customer'); return; }   // exchangeOrder
-  renderCustomerPicker(); $('#customerModal').hidden = false;
+  if (state.view !== 'sell') { renderCustomerPicker(); $('#customerModal').hidden = false; return; }   // ponytail: the checkout pane covers the sheet, so it keeps the old pop-up
+  closeEditSheet();
+  state.variantModal = { kind: 'cust', query: '' };
+  openListSheet('Customers', 'Search name, phone or address', '');
+}
+// Rows like the variant list: the name, phone and address under it. No balance here (owner, 2026-10-05).
+function renderCustomerSheet(vm) {
+  const q = vm.query.trim().toLowerCase();
+  const all = allCustomerRecords();
+  const shown = all.filter(c => !q || [c.name, c.phone, c.address].some(s => String(s || '').toLowerCase().includes(q)));
+  const row = (id, name, sub) => `<button type="button" class="vs-row" data-customer-id="${escapeHtml(id)}"><span class="nm">${escapeHtml(name)}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</span></button>`;
+  $('#variantAvail').hidden = true;
+  $('#variantCount').textContent = `${shown.length} of ${all.length}`;
+  $('#variantList').innerHTML = (q ? '' : row('walk-in', 'Walk-in customer', ''))
+    + shown.map(c => row(c.id, c.name, [c.phone, c.address].filter(Boolean).join(' · '))).join('')
+    + (q && !shown.length ? '<div class="vs-empty">No customers match</div>' : '');
 }
 function selectCustomer(id) {
   const prev = state.customer;
@@ -1153,6 +1263,7 @@ function selectCustomer(id) {
   state.cartDiscount = null;
   updateCustomerButton();
   $('#customerModal').hidden = true;
+  closeVariantSheet();
   renderCart();
   if (state.view === 'checkout') renderCheckout();
 }

@@ -15,7 +15,11 @@ button { font: inherit; cursor: pointer; }
 .labbar div { display: flex; gap: 2px; }
 .labbar button { height: 28px; padding: 0 10px; white-space: nowrap; border: 0; border-radius: 7px; background: none; color: rgba(255,255,255,.6); }
 .labbar button.cur { background: #333; color: #fff; }
-.stage { position: fixed; inset: 50px 0 0; display: grid; place-items: center; }
+.labbar.two { top: 46px; align-items: center; color: rgba(255,255,255,.6); }
+.labbar label { display: flex; align-items: center; gap: 6px; padding: 0 8px; white-space: nowrap; }
+.labbar input[type=range] { width: 110px; accent-color: #fff; }
+.labbar output { min-width: 92px; color: #fff; font-variant-numeric: tabular-nums; }
+.stage { position: fixed; inset: 86px 0 0; display: grid; place-items: center; }
 .dev { position: relative; flex: none; overflow: hidden; transform-origin: center; border-radius: 18px;
        box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px rgba(0,0,0,.5); }
 .dev.fit { border-radius: 0; }
@@ -28,16 +32,24 @@ iframe { display: block; width: 100%; height: 100%; border: 0; }
 <body>
 <div class="labbar">
   <div id="devPick">
-    <button data-dev="land" class="cur">Tablet landscape</button>
+    <button data-dev="land">Tablet landscape</button>
     <button data-dev="port">Tablet portrait</button>
+    <button data-dev="pro13">iPad Pro 13</button>
+    <button data-dev="android">Android 11"</button>
+    <button data-dev="mini">iPad mini</button>
     <button data-dev="phone">Phone</button>
-    <button data-dev="free" id="free">Resizable</button>
+    <button data-dev="free" id="free" class="cur">Resizable</button>
     <button data-dev="fit">Fit window</button>
   </div>
   <div id="themePick">
     <button data-theme="dark">Dark</button>
     <button data-theme="light">Light</button>
   </div>
+</div>
+
+<div class="labbar two" id="sizeBar">
+  <label>Panel min <input type="range" id="sidePct" min="22" max="36" step=".5" value="26.5"><output id="sideOut"></output></label>
+  <label>Tile <output id="tileOut"></output></label>
 </div>
 
 <div class="stage">
@@ -47,8 +59,8 @@ iframe { display: block; width: 100%; height: 100%; border: 0; }
 <script>
 const $ = (id) => document.getElementById(id);
 const dev = $('dev'), f = $('f'), stage = document.querySelector('.stage');
-const DEVS = { land: [1180, 820], port: [820, 1180], phone: [390, 844] };
-let devKey = 'land', fresh = true, light = null;   // light: null = whatever the POS's own Settings say
+const DEVS = { land: [1180, 820], port: [820, 1180], pro13: [1376, 1032], android: [1280, 800], mini: [1133, 744], phone: [390, 844] };   // CSS px the browser lays out in, not screen pixels
+let devKey = 'free', fresh = true, light = null;   // light: null = whatever the POS's own Settings say
 
 function fitDev() {
   const st = stage.getBoundingClientRect();
@@ -88,7 +100,20 @@ $('themePick').onclick = (e) => {
   for (const x of $('themePick').children) x.classList.toggle('cur', x === b);
   applyTheme();
 };
-f.addEventListener('load', applyTheme);
+// Sizing (pos-sell getSellGridProfile): S 6x5 / M 5x4 / L 4x3 fixed, the rows fill the height; the panel = max(340, Panel min % of the width), more on wide screens
+function applySizing() {
+  const d = f.contentDocument?.documentElement, w = f.contentWindow;
+  if (!d || !w.renderProducts) return;
+  d.style.setProperty('--side-vw', $('sidePct').value);
+  w.renderProducts();
+  requestAnimationFrame(() => {
+    const side = f.contentDocument.getElementById('side'), card = f.contentDocument.querySelector('.product-card');
+    $('sideOut').textContent = `${$('sidePct').value}% · ${side?.offsetWidth || 0}px`;
+    $('tileOut').textContent = card ? `${card.offsetWidth}×${card.offsetHeight}` : '';
+  });
+}
+$('sidePct').oninput = applySizing;
+f.addEventListener('load', () => { applyTheme(); applySizing(); f.contentWindow.addEventListener('resize', () => requestAnimationFrame(applySizing)); });
 f.src = 'index.html?' + Date.now();   // the browser kept serving a stale index.html inside the frame; the files it loads carry ?v= already
 addEventListener('resize', fitDev);
 new ResizeObserver(() => { if (devKey === 'free') $('free').textContent = `Resizable · ${dev.offsetWidth}×${dev.offsetHeight}`; }).observe(dev);
