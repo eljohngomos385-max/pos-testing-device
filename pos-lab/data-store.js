@@ -49,12 +49,17 @@
     staff:     'hwpos.staff.v1',
     tillPerms: 'hwpos.tillPerms.v1',
     adjustments: 'hwpos.adjustments.v1',
+    // Saved carts and quotes (pos-checkout.js): drafts, not orders -- no number, no stock, no money; deletable.
+    savedCarts: 'hwpos.savedCarts.v1',
     // Event logs, append-only (bo-model.js EVENT_LOGS).
     priceLog:  'hwpos.priceLog.v1',
     lostDemand: 'hwpos.lostDemand.v1',
     deliveryEvents: 'hwpos.deliveryEvents.v1',
     supplierMessages: 'hwpos.supplierMessages.v1',
     decisions: 'hwpos.decisions.v1',
+    pinLockouts: 'hwpos.pinLockouts.v1',
+    // The till's shift, append-only (pos-shift.js): shift_open, cash_move, shift_close rows.
+    shifts:    'hwpos.shifts.v1',
     // Till event stream lives in IndexedDB 'hwpos-events'; these two only catch it when IDB can't.
     tillEventsFallback: 'hwpos.tillEvents.fallback.v1',
     tillEventsDropped: 'hwpos.tillEvents.dropped.v1',
@@ -620,6 +625,8 @@
     orders:    makeCollection(KEYS.orders,    'orders:changed'),
     customers: makeCollection(KEYS.customers, 'customers:changed'),
     customerLedger: makeCollection(KEYS.customerLedger, 'customerLedger:changed'),
+    savedCarts: makeCollection(KEYS.savedCarts, 'savedCarts:changed'),
+    shifts:    makeCollection(KEYS.shifts,    'shifts:changed'),
     settings: {
       get: async () => readKey(KEYS.settings, {}),
       set: async (patch) => {
@@ -721,7 +728,7 @@
   const DICTIONARY_URL = 'docs/data-dictionary.md';
   // Array collections read straight from storage.
   const LIST_COLLECTIONS = ['stockMovements', 'purchaseOrders', 'suppliers', 'modifiers', 'staff', 'adjustments',
-    'priceLog', 'lostDemand', 'deliveryEvents', 'supplierMessages', 'decisions'];
+    'priceLog', 'lostDemand', 'deliveryEvents', 'supplierMessages', 'decisions', 'shifts'];
   const COLLECTIONS = ['products', 'folders', 'groups', 'orders', 'customers', 'customerLedger',
     'settings', ...LIST_COLLECTIONS];
   const pick = (snapshot) => Object.fromEntries(COLLECTIONS.map((name) => [name, snapshot[name]]));

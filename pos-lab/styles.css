@@ -5,6 +5,7 @@
    ============================================================ */
 
 :root {
+  --rl-ease: cubic-bezier(.2, .8, .2, 1);               /* on :root so the view-transition layers reach it */
   --bg: #121212;
   --bg-soft: #1C1C1C;
   --bg-softer: #232323;
@@ -1186,292 +1187,6 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .cust-badges { display: flex; gap: 4px; align-items: center; }
 .or-total.cust-bal-has { color: var(--warn); }
 
-.cd-inner { gap: 18px; }
-.cd-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--line);
-}
-.cd-avatar {
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  background: var(--bg-soft);
-  color: var(--ink);
-  font-weight: 590;
-  font-size: 14px;
-  letter-spacing: 0.3px;
-  display: grid; place-items: center;
-  flex-shrink: 0;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
-}
-.cd-header-info { flex: 1; min-width: 0; }
-.cd-name { font-size: 16px; font-weight: 590; letter-spacing: -0.2px; color: var(--ink); line-height: 1.3; }
-.cd-phone { font-size: 12px; color: var(--ink-tertiary); margin-top: 2px; }
-
-.cd-kpis {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-.cd-kpi-box {
-  background: var(--bg-soft);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px;
-  text-align: center;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
-}
-.cd-kpi-label {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--ink-tertiary);
-  font-weight: 510;
-}
-.cd-kpi-value {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-  margin-top: 3px;
-}
-.cd-kpi-value-sm { font-size: 13px; font-weight: 590; }
-
-.cd-section-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--ink-tertiary);
-  margin-top: 4px;
-}
-
-.cd-aging-row {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-.cd-aging-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.cd-aging-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--ink-tertiary);
-  font-weight: 510;
-}
-.cd-aging-value {
-  font-size: 14px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-}
-
-.cd-orders-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  max-height: 280px;
-  overflow-y: auto;
-}
-.cd-order-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  width: 100%;
-  text-align: left;
-  color: var(--ink);
-  cursor: pointer;
-  transition: background .12s, border-color .12s;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
-  margin-bottom: 4px;
-}
-.cd-order-row:hover { background: var(--surface-hover); border-color: var(--line-strong); }
-.cd-order-date {
-  font-size: 11px;
-  color: var(--ink-tertiary);
-  width: 80px;
-  flex-shrink: 0;
-}
-.cd-order-info { flex: 1; min-width: 0; }
-.cd-order-name {
-  font-size: 13px;
-  font-weight: 510;
-  letter-spacing: -0.15px;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.cd-order-sub {
-  font-size: 11px;
-  color: var(--ink-tertiary);
-  margin-top: 1px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.cd-order-method {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--ink-secondary);
-  flex-shrink: 0;
-}
-.cd-order-total {
-  font-size: 14px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-  flex-shrink: 0;
-  margin-left: 8px;
-}
-.cd-empty {
-  text-align: center;
-  padding: 24px;
-  color: var(--ink-tertiary);
-  font-size: 13px;
-}
-.cd-more-orders {
-  text-align: center;
-  padding: 8px;
-  font-size: 11px;
-  color: var(--ink-tertiary);
-}
-.cd-details-btn { margin-right: 8px; }
-.cd-pay-btn { background: var(--surface); }
-.cd-pay-btn:hover { background: var(--surface-hover); }
-
-/* Customer detail modal (popup) */
-.wide-modal { width: min(720px, 100%); }
-.cust-detail-kpis {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 16px;
-}
-.cust-kpi-box {
-  background: var(--bg-soft);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 12px;
-  text-align: center;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
-}
-.cust-kpi-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--ink-tertiary);
-  font-weight: 510;
-}
-.cust-kpi-value {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-  margin-top: 4px;
-}
-.cust-kpi-value-sm { font-size: 14px; font-weight: 590; }
-.cust-detail-aging {
-  background: var(--bg-soft);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 16px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
-}
-.cust-aging-title {
-  font-size: 13px;
-  font-weight: 590;
-  color: var(--ink);
-  margin-bottom: 10px;
-}
-.cust-aging-buckets { display: flex; gap: 12px; flex-wrap: wrap; }
-.cust-aging-bucket { display: flex; flex-direction: column; gap: 2px; }
-.cust-aging-bucket-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--ink-tertiary);
-  font-weight: 510;
-}
-.cust-aging-bucket-value {
-  font-size: 14px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-}
-.cust-aging-bucket-value.warn { color: var(--warn); }
-.cust-aging-bucket-value.danger { color: var(--danger); }
-.cust-detail-orders-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--ink-tertiary);
-  font-weight: 510;
-  margin-bottom: 8px;
-}
-.cust-detail-orders {
-  max-height: 320px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.cust-detail-empty {
-  text-align: center;
-  padding: 24px;
-  color: var(--ink-tertiary);
-  font-size: 13px;
-}
-.cust-order-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: transparent;
-  border: none;
-  width: 100%;
-  text-align: left;
-  color: var(--ink);
-  cursor: pointer;
-  transition: background .12s;
-}
-.cust-order-row:hover { background: var(--bg-soft); }
-.cust-order-date { font-size: 11px; color: var(--ink-tertiary); width: 90px; flex-shrink: 0; }
-.cust-order-items { flex: 1; min-width: 0; }
-.cust-order-items-main {
-  font-size: 13px; font-weight: 510; letter-spacing: -0.15px; color: var(--ink);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.cust-order-items-sub {
-  font-size: 11px; color: var(--ink-tertiary); margin-top: 1px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.cust-order-method {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 11px; color: var(--ink-secondary); flex-shrink: 0;
-}
-.cust-order-total {
-  font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums;
-  color: var(--ink); flex-shrink: 0; margin-left: 8px;
-}
-
 .tier-input { width: 80px; text-align: right; }
 
 .stat-grid {
@@ -2348,13 +2063,6 @@ select.text-input {
 }
 /* The POS till only: the back office is #app.bo-app too, and its sidebar keeps its labels at any width.
    :where() keeps each rule's specificity what it was, so the till's cascade is unchanged. */
-@media (max-width: 920px) {
-  #app:not(.bo-app) { grid-template-columns: 64px 1fr; }
-  :where(#app:not(.bo-app)) .sidebar { padding: 12px 8px; align-items: center; }
-  :where(#app:not(.bo-app)) .brand-mini span, :where(#app:not(.bo-app)) .side-link span, :where(#app:not(.bo-app)) .user-meta { display: none; }
-  :where(#app:not(.bo-app)) .side-link { justify-content: center; padding: 0; width: 40px; height: 40px; }
-  :where(#app:not(.bo-app)) .user-row { padding: 0; }
-}
 /* Tablet and up: a fixed grid per tile size (getSellGridProfile sets --cat-w), the panel takes the width left over.
    16 at every outer edge and in the middle, 8 between everything inside. */
 @media (min-width: 721px) {
@@ -2725,7 +2433,8 @@ select.text-input {
   accent-color: var(--ink);
   justify-self: start;
 }
-.setting-row .bb-size-toggle { justify-self: start; }
+.setting-row .bb-size-toggle,
+.setting-row .secondary-btn { justify-self: start; }
 
 /* ---- Printer discovery (Settings > Printing) ---- */
 .setting-row.full { grid-template-columns: 1fr; }
@@ -4024,7 +3733,8 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 @keyframes es-side { from { opacity: 0; transform: translateX(24px); } }
 /* a card too narrow for list + panel side by side (548 = 240 + 40 + 220 + 48): the panel goes under the list, the list stays put */
 @container (max-width: 560px) {
-  .es-body { grid-auto-flow: row; grid-template-columns: minmax(0, 420px); row-gap: 24px; }
+  .es-body { grid-auto-flow: row; grid-template-columns: minmax(0, 420px); row-gap: 24px;
+             margin-top: 64px; padding-top: max(0px, calc(40cqh - 120px)); }   /* scrolls below the X, never under it; same start spot */
   .es-keys { height: auto; }
   .es-body.in .es-col, .es-body.out .es-col { animation: none; }
 }
@@ -7532,7 +7242,6 @@ body {
   --rl-m: 20px;
   --rl-gap: 8px;
   --bar-h: 44px;                                        /* every page's top bar: search, ☰, Walk-in card (= Check out) */
-  --rl-ease: cubic-bezier(.2, .8, .2, 1);
 }
 body.light-theme {
   --rl-soft: var(--surface);
@@ -7763,23 +7472,23 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .o-rail { order: -1; display: grid; grid-template-rows: auto minmax(0,1fr); gap: var(--rl-gap); min-width: 0; min-height: 0; margin: 8px 0; }
 .lv .o-rail .list { border-bottom: 1px solid var(--line); border-radius: var(--rl-r); }   /* ends 16px above the screen edge, closed like the lab at 673495f */
 .lv .o-rail .band { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 var(--rl-m); }
-.lv .o-rail .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; padding: 9px var(--rl-m); background: none; text-align: left; transition: background-color .12s; }
+.lv :is(.o-rail, .c-ord) .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; padding: 9px var(--rl-m); background: none; text-align: left; transition: background-color .12s; }
 /* a line under every row, the last too, so a short list ends instead of floating; the scroller tucks 1px under the card's floor
    so a full list scrolled to the end doesn't draw two lines */
-.lv .o-rail .row { border-bottom: 1px solid var(--line); }
+.lv :is(.o-rail, .c-ord) .row { border-bottom: 1px solid var(--line); }
 .lv .o-rail .lines { margin-bottom: -1px; }
-.lv .o-rail .row:hover { background: var(--rl-hover); }
-.lv .o-rail .row.cur { background: var(--rl-track); }
-.lv .o-rail .row .nm, .lv .o-rail .row .rt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.lv .o-rail .row .nm { flex: 1; }
-.lv .o-rail .row .rt { flex: none; align-items: flex-end; }
-.lv .o-rail .row .nm span { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv .o-rail .row small { display: flex; align-items: center; gap: 6px; color: var(--ink-tertiary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv .o-rail .row .amt { font-size: 14px; font-weight: 600; white-space: nowrap; }
-.lv .o-rail .row .st { font-weight: 500; color: var(--danger); }
-.lv .o-rail .row .st.warn { color: var(--warn); }
-.lv .o-rail .row.void .nm span, .lv .o-rail .row.void .amt { color: var(--ink-tertiary); }
-.lv .o-rail .row.void .amt { text-decoration: line-through; font-weight: 500; }
+.lv :is(.o-rail, .c-ord) .row:hover { background: var(--rl-hover); }
+.lv :is(.o-rail, .c-ord) .row.cur { background: var(--rl-track); }
+.lv :is(.o-rail, .c-ord) .row .nm, .lv :is(.o-rail, .c-ord) .row .rt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lv :is(.o-rail, .c-ord) .row .nm { flex: 1; }
+.lv :is(.o-rail, .c-ord) .row .rt { flex: none; align-items: flex-end; }
+.lv :is(.o-rail, .c-ord) .row .nm span { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv :is(.o-rail, .c-ord) .row small { display: flex; align-items: center; gap: 6px; color: var(--ink-tertiary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv :is(.o-rail, .c-ord) .row .amt { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.lv :is(.o-rail, .c-ord) .row .st { font-weight: 500; color: var(--danger); }
+.lv :is(.o-rail, .c-ord) .row .st.warn { color: var(--warn); }
+.lv :is(.o-rail, .c-ord) .row.void .nm span, .lv :is(.o-rail, .c-ord) .row.void .amt { color: var(--ink-tertiary); }
+.lv :is(.o-rail, .c-ord) .row.void .amt { text-decoration: line-through; font-weight: 500; }
 
 /* phone: the list is the page; a tapped order slides its receipt over it */
 .lv .o-top .back { display: none; }
@@ -7789,8 +7498,21 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
   .lv .o-main { position: absolute; inset: 0; z-index: 5; padding: 16px 12px 0; background: var(--bg); transform: translateX(100%); transition: transform .28s var(--rl-ease); }
   .lv .ov.reading .o-main { transform: none; }
   .lv .o-top .back { display: inline-flex; }
-  .view-customers #customerDetail { display: none; }   /* a tapped customer opens the pop-up */
 }
+
+/* ---------- Customers: the Orders shape; the facts in the item editor's cards, read-only, values right ---------- */
+.lv .c-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 21px; scrollbar-width: thin; }
+.lv .c-body { display: grid; gap: 12px; }
+.lv .c-body { width: min(100%, 600px); margin-inline: auto; }   /* a short page: centred like the receipt paper; the top bar stays full width like Orders */
+.lv .c-body .fr { grid-template-columns: auto minmax(0,1fr); gap: 16px; min-height: 46px; padding: 6px 16px; }   /* label left, value right at every width */
+.lv .c-body .fr:first-child { border-top: 0; }
+.lv .c-body .fr > .v { min-width: 0; text-align: right; overflow-wrap: anywhere; }
+.lv .c-body .fr > .v.over { color: var(--danger); }
+.lv .c-body .fr small { color: var(--ink-tertiary); font-size: inherit; }
+.lv .c-ord { overflow: hidden; }
+.lv .c-ord .row { border-top: 1px solid var(--line); border-bottom: 0; padding: 9px 16px; }
+.lv .c-ord h3 + :is(.row, .note) { border-top: 0; }
+@container pv (max-width: 720px) { .view-customers .o-top .act span { display: none; } .view-customers .o-top .act { padding: 0; } }   /* phone: icons, the name keeps the room */
 
 /* ---------- Items: the list fills the screen; the editor slides over it ---------- */
 .lv .iv { position: relative; height: 100%; }
@@ -7831,6 +7553,39 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 body.light-theme .lv .thumb { background: hsl(var(--h) 50% 92%); color: hsl(var(--h) 40% 34%); }
 .lv .thumb img { width: 100%; height: 100%; object-fit: cover; }
 .lv .thumb.big { width: 64px; height: 64px; border-radius: 8px; font-size: 20px; }
+
+/* An order as its lines (Orders + See all): the sale sidebar's rows with a tick each, the totals in a card under them */
+.lv .oi .meta { margin: 0; padding: 0 4px; color: var(--ink-tertiary); font-size: 12px; }
+.lv .ol { overflow: clip; }
+.lv .ol .band { display: flex; align-items: center; gap: 12px; padding: 0 var(--rl-m); }
+.lv .ol .band > span:first-of-type { flex: 1; }
+.lv .ol .all { display: grid; }
+.lv .ol .line + .line { border-top: 1px solid var(--line); }
+.lv .ol .line:has([aria-checked="true"]) { background: var(--rl-track); }
+.lv .ol .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px var(--rl-m); border: 0; background: none; text-align: left; transition: background-color .12s; }
+.lv .ol .row:not(:disabled):hover { background: var(--rl-hover); }
+.lv .ol .row .nm { flex: 1; display: grid; min-width: 0; font-size: 14px; line-height: 1.3; }
+.lv .ol .row .nm small { color: var(--ink-tertiary); font-size: 12px; }
+.lv .ol .row .amt { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.lv .ol .line.done .row { color: var(--ink-tertiary); }
+.lv .ol .line.done .box { visibility: hidden; }   /* all of it already went back: no tick, the row keeps its place */
+.lv .ol .box { display: grid; place-items: center; flex: none; width: 20px; height: 20px; border: 1.5px solid var(--ink-quaternary); border-radius: 6px; transition: background-color .12s, border-color .12s; }
+.lv .ol .box svg { width: 14px; height: 14px; fill: none; stroke: var(--accent-ink); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.lv .ol [aria-checked="true"] .box { border-color: var(--accent); background: var(--accent); }
+.lv .ol [aria-checked="true"] .box svg { opacity: 1; }
+.lv .ol .step { display: flex; align-items: center; gap: 10px; padding: 0 var(--rl-m) 10px calc(var(--rl-m) + 32px); color: var(--ink-secondary); }
+.lv .ol .step span { flex: 1; white-space: nowrap; }
+.lv .ol .step button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-input); background: var(--rl-card); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); font-size: 17px; }
+.lv .ol .step button:hover { background: var(--rl-hover); }
+.lv .ol .step b { min-width: 24px; text-align: center; font-size: 14px; font-weight: 600; }
+.lv .ol .step small { min-width: 44px; color: var(--ink-tertiary); font-size: 12px; }
+.lv .acts > [hidden] { display: none; }
+#ordersView:not(.for-cust) .cust-back, #ordersView.for-cust [data-act="open-sidebar"] { display: none; }   /* a customer's orders: back, not ☰ */
+.lv .paper-scroll .oi { width: min(400px, 100%); }   /* the list as wide as the receipt, so one turns into the other */
+#orderDetail :is(.rp-paper, .ol) { view-transition-name: order-sheet; }
+::view-transition-group(order-sheet) { overflow: clip; animation-duration: .32s; animation-timing-function: var(--rl-ease); }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }   /* only the sheet morphs: a faded list ghosts its rows onto their neighbours */
+.lv .rp-item.out { text-decoration: line-through; opacity: .45; }   /* refunded in full: struck, still on the slip */
 
 .lv .fab { position: absolute; right: 34px; bottom: 32px; z-index: 2; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
            background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-raised); transition: transform .12s; }
@@ -7930,3 +7685,118 @@ body.light-theme .lv .sw { background: var(--bg-soft); }
 .rail-menu.fp .fp-seg button.cur .pm { outline: 1.5px solid var(--accent-ink); }
 .rail-menu.fp .reset { width: fit-content; height: 32px; margin: 12px 0 0 auto; padding: 0 10px; color: var(--ink-tertiary); font-size: 13px; }
 .rail-menu.fp .reset:disabled { visibility: hidden; }
+
+
+/* ==== batch 2026-10-07: saved carts + quotes ==== */
+
+/* ==== batch 2026-10-07: SC/PWD ==== */
+/* the Senior / PWD panel (pos-sell esScApply): the address field's look as one-line fields, a row's height; an empty
+   required one is ringed until something is typed */
+input.es-ta { height: 56px; }
+.es-ta.bad:placeholder-shown { box-shadow: inset 0 0 0 1.5px var(--danger); }
+
+/* ==== batch 2026-10-07: record payment + low stock ==== */
+/* Record payment (openPaySheet): a card that grows out of its button (growFrom), in a .rail-veil like the ⋯ menu */
+.pay-sheet { position: absolute; display: flex; flex-direction: column; gap: 14px; max-height: calc(100vh - 16px); overflow-y: auto; overscroll-behavior: contain;
+             margin: 0; padding: 16px; border-radius: var(--rl-r); background: var(--rl-card); color: var(--ink); font-size: 13px;
+             box-shadow: var(--shadow-raised), 0 0 0 1px var(--line); }
+.pay-sheet .num { font-variant-numeric: tabular-nums; }
+.pay-sheet .primary-btn { text-transform: none; letter-spacing: normal; }
+.pay-sheet .ph { display: grid; gap: 2px; }
+.pay-sheet .ph b { font-size: 15px; font-weight: 600; }
+.pay-sheet .ph small, .pay-sheet .lb { color: var(--ink-tertiary); font-size: 12px; }
+.pay-sheet .pf { display: grid; gap: 6px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.pay-sheet legend.lb { padding: 0; margin-bottom: 2px; }
+.pay-sheet .pa { position: relative; display: block; }
+.pay-sheet .pa input { padding-right: 104px; }
+.pay-sheet .pa button { position: absolute; top: 4px; right: 4px; bottom: 4px; padding: 0 10px; border: 0; border-radius: 6px; background: none;
+                        color: var(--ink-secondary); font: inherit; font-weight: 500; cursor: pointer; }
+.pay-sheet .pa button:hover { background: var(--rl-hover); color: var(--ink); }
+.pay-sheet .pr { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 40px; border-top: 1px solid var(--line); cursor: pointer; }
+.pay-sheet .pr:last-child { border-bottom: 1px solid var(--line); }
+.pay-sheet .pr input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.pay-sheet .pr small { flex: 1; color: var(--ink-tertiary); font-size: 12px; white-space: nowrap; }
+.pay-sheet .pr input + span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pay-sheet .pb { display: flex; justify-content: flex-end; gap: 8px; }
+.pay-sheet :focus-visible { outline: 2px solid var(--rl-on); outline-offset: 2px; }
+/* Low stock: the cart line's quiet word (cartStockNote) and the tiles' Low / Out mark (tileMark, off by default) */
+.rail-h .row .nm small.left { color: var(--warn); }
+.rail-h .row .nm small.left.out { color: var(--danger); }
+.pc-mark { position: absolute; top: 6px; left: 8px; display: inline-flex; align-items: center; gap: 4px; color: var(--ink-tertiary); font-size: 10px; font-weight: 600; }
+.pc-mark::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
+.pc-mark.out::before { background: var(--danger); }
+
+/* ==== batch 2026-10-07: shift + sync mark ==== */
+/* Shift (pos-shift.js): the Customers cards, centred. Cash in / out is one line of amount, note, two buttons. */
+.lv .sh-ctl { display: inline-flex; justify-content: flex-end; gap: 8px; }
+.lv .sh-pay { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 16px 12px; }
+.lv .sh-pay .in:not(.short) { flex: 1 1 140px; width: auto; }
+.lv .sh-move { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 46px; padding: 6px 16px; border-top: 1px solid var(--line); }
+.lv .sh-move .nm { display: grid; min-width: 0; overflow-wrap: anywhere; }
+.lv .sh-move small { color: var(--ink-tertiary); font-size: 12px; }
+.lv .sh-move .out { color: var(--ink-secondary); }
+.lv .sh-move > .num { flex: none; white-space: nowrap; }   /* a long note never pushes the sign onto its own line */
+.lv .sh-last { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0 0; color: var(--ink-tertiary); }
+.lv .sh-slip { margin: 0; white-space: pre; overflow-x: auto; font-size: 11px; line-height: 1.45; }
+.lv .paper-scroll .rp-paper.sh-slip { width: fit-content; max-width: 100%; padding: 20px; font-size: 11px; }
+@container pv (max-width: 720px) {
+  .lv .sh-pay { display: grid; grid-template-columns: 1fr 1fr; }   /* phone: amount + note, then the two buttons */
+  .lv .sh-pay .in.short { width: auto; }
+}
+/* The ☰ drawer's sync line, under the signed-in person: quiet, the user row's left edge. */
+.sync-mark { padding: 6px 8px 0; color: var(--ink-tertiary); font-size: 12px; line-height: 1.2; }
+.sync-mark:empty { display: none; }
+
+/* ==== batch 2026-10-07: PIN screen + settings ==== */
+/* The PIN pad (pos-pin.js). Sign-in (.pin-lock): Loyverse's lock screen -- the plain page, store name
+   and place, a lock + "Enter PIN", the dots, round grey keys three across. A manager's approval: the
+   same pad on a card over the page, with Cancel. */
+#pinModal { --pk: clamp(56px, 10.5dvh, 76px); }
+#pinModal.pin-lock { background: var(--bg); z-index: 1000; overflow: auto; animation: none; } /* covers the till at once, no fade-in peek */
+.pin-pad { display: flex; flex-direction: column; align-items: center; text-align: center; width: min(360px, 100%);
+  padding: 24px 22px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-modal);
+  box-shadow: var(--shadow-modal); animation: pop .18s ease; }
+.pin-lock .pin-pad { padding: 12px 0; background: none; border: 0; box-shadow: none; animation: none;
+  grid-row: 2; }
+#pinModal.pin-lock { grid-template-rows: 1fr auto 2fr; }   /* optical centre: dead centre reads low under the heavy keys, so a third of the spare height above, two thirds below; none spare = none added */
+.pin-title { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; color: var(--ink); overflow-wrap: anywhere; }
+.pin-lock .pin-title { font-size: 28px; }
+.pin-msg { margin: 6px 0 0; font-size: 14px; line-height: 1.45; color: var(--ink-secondary); }
+.pin-lock .pin-msg { margin-top: 4px; font-size: 15px; color: var(--ink-tertiary); }
+.pin-ask { display: flex; align-items: center; gap: 6px; margin-top: 22px; font-size: 14px; color: var(--ink-secondary); font-variant-numeric: tabular-nums; }
+.pin-lock .pin-ask { margin-top: clamp(24px, 6dvh, 48px); }
+.pin-ask svg { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pin-wait .pin-ask { color: var(--danger); }
+.pin-dots { display: flex; gap: 14px; height: 12px; margin: 16px 0 clamp(18px, 4dvh, 32px); }
+.pin-dots i { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--ink-tertiary); transition: background .1s, border-color .1s; }
+.pin-dots i.on { background: var(--ink); border-color: var(--ink); }
+.pin-dots.shake { animation: pin-shake .4s ease; }
+.pin-dots.shake i { border-color: var(--danger); }
+@keyframes pin-shake { 20%, 60% { transform: translateX(-9px); } 40%, 80% { transform: translateX(9px); } }
+.pin-keys { display: grid; grid-template-columns: repeat(3, var(--pk)); gap: calc(var(--pk) * .3) calc(var(--pk) * .4); }
+.pin-key { width: var(--pk); height: var(--pk); border-radius: 50%; background: var(--tile); color: var(--ink);
+  font-size: calc(var(--pk) * .37); font-weight: 400; font-variant-numeric: tabular-nums;
+  display: grid; place-items: center; transition: background .12s, transform .08s; touch-action: manipulation; }
+.pin-key:hover { background: var(--surface-hover); }
+.pin-key:active { transform: scale(.94); background: var(--bg-softer); }
+.pin-key:disabled { opacity: .4; pointer-events: none; }
+.pin-key svg { width: 40%; height: 40%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.pin-key:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* the card's keys sit on --surface: a step darker so they still read as keys */
+#pinModal:not(.pin-lock) .pin-key { background: var(--bg-soft); }
+#pinModal:not(.pin-lock) .pin-key:hover { background: var(--bg-softer); }
+.pin-cancel { margin-top: 14px; height: 44px; padding: 0 18px; font-size: 14px; font-weight: 500; color: var(--ink-secondary); border-radius: var(--r-button); }
+.pin-cancel:hover { color: var(--ink); background: var(--bg-soft); }
+.pin-lock .pin-cancel { display: none; }
+@media (prefers-reduced-motion: reduce) { .pin-dots.shake { animation: none; } }
+
+/* Settings: panels keep their own height (the short Store panel no longer stretches to Appearance's) */
+.settings-grid { align-items: start; }
+.setting-row select.text-input { appearance: auto; cursor: pointer; }
+.setting-row[hidden] { display: none; }   /* the printer rows that don't fit the picked printer (display: grid beat [hidden]) */
+/* The segmented toggles: a word ("Browser", "Wi-Fi") fits its button, and the picked one reads on the
+   accent in both themes (it was white text on the dark theme's white accent). */
+.bb-size-btn { width: auto; min-width: 30px; padding: 0 9px; white-space: nowrap; }
+/* A phone: the label over its control (as the back office does), so the printer toggle fits 390 */
+@media (max-width: 480px) { .setting-row { grid-template-columns: minmax(0, 1fr); gap: 8px; } }
+.bb-size-btn.active { color: var(--accent-ink); }

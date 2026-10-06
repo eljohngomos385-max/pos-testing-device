@@ -15,7 +15,8 @@ function renderSellHeader() {
 function getFilteredSellProducts() {
   let list = state.products.filter(onTill);
   if (state.query.trim()) {
-    list = state.fuse.search(state.query.trim()).map(r => r.item);
+    // The index holds copies made at load; map each hit to the live row so stock (tile marks) is current.
+    list = state.fuse.search(state.query.trim()).map(r => state.products.find(p => p.id === r.item.id)).filter(Boolean);
   }
   if (searchIntent && state.query.trim()) searchIntent.results = list.length;   // the count the cashier saw
   return list;
@@ -88,15 +89,21 @@ function renderSellCellHtml(cell) {
           </svg>
           <span>${cell.memberCount}</span>
         </div>
-        <div class="pc-name">${escapeHtml(g.name)}</div>
+        ${tileMark(() => familyLevel(groupMembers(g.id)))}<div class="pc-name">${escapeHtml(g.name)}</div>
       </div>`;
   }
   const p = cell.product;
   return `
     <div class="product-card" data-id="${p.id}">
-      <div class="pc-name">${escapeHtml(p.name)}</div>
+      ${tileMark(() => stockLevel(p))}<div class="pc-name">${escapeHtml(p.name)}</div>
       <div class="pc-price-mini">${peso(p.price)}</div>
     </div>`;
+}
+// Settings › Appearance › Stock marks on tiles: a small Low / Out in the tile's corner, from bo-model's stockLevel
+// (familyLevel for a group, Items' own words). Off: nothing is worked out.
+function tileMark(level) {
+  const lv = state.tileStock ? level() : '';
+  return lv === 'out' || lv === 'low' ? `<span class="pc-mark ${lv}">${lv === 'out' ? 'Out' : 'Low'}</span>` : '';
 }
 
 function updateProductTrackPosition() {
@@ -321,32 +328,36 @@ function addProductByCode(rawCode, { source = 'barcode' } = {}) {
     return false;
   }
   // Staff forget to unhide, so a hidden item asks rather than blocks -- like out of stock does.
-  if (!onTill(product) && !window.confirm(
-    `${product.name}
-
-This item is ${product.archived ? 'archived' : 'hidden'}. Sell anyway?`)) return false;
-  addToCart(product.id, 'scan');
-  const search = $('#searchInput');
-  const clear = $('#searchClear');
-  if (search) {
-    search.value = '';
-    state.query = '';
-  }
-  endSearch();
-  clear?.classList.remove('visible');
-  renderProducts();
-  if (source === 'camera') showBarcodeStatus(`Added ${product.name}`);
-  return true;
+  const add = () => {
+    addToCart(product.id, 'scan');
+    const search = $('#searchInput');
+    const clear = $('#searchClear');
+    if (search) {
+      search.value = '';
+      state.query = '';
+    }
+    endSearch();
+    clear?.classList.remove('visible');
+    renderProducts();
+    if (source === 'camera') showBarcodeStatus(`Added ${product.name}`);
+    return true;
+  };
+  if (onTill(product)) return add();
+  showConfirm({ title: product.name, message: `This item is ${product.archived ? 'archived' : 'hidden'}. Sell anyway?`,
+    okText: 'Sell anyway', danger: false, onConfirm: add });
+  return false;
 }
 
 function clearCart() {
   closeEditSheet();   // first, so its events are the sheet's own changes
   state.exchange = null;   // clearing the cart calls an exchange off (startExchange)
+  state.savedId = '';      // ...and lets go of the saved cart it was continuing (continueDraft); the draft stays
   state.cart = [];
   state.cartId = '';
   state.cartStartedAt = 0;
   state.customer = null;
   state.cartDiscount = null;
+  state.scPwd = null;
   state.paymentMethod = 'cash';
   state.fulfilment = (state.settings && state.settings.defaultFulfilment) || 'walkin';
   state.deliveryAddress = '';
@@ -638,6 +649,9 @@ function submitManualBarcode() {
 // are open for, fresh = the first key replaces the number, anim = how the body moves on this draw.
 const ES_PRESETS = [['Staff', 15], ['Contractor', 10]];   // ponytail: placeholders; the store's own presets come later from the back office
 const ES_PANEL = { pickup: 't', delivery: 'a' };          // the types that ask for something: Pickup a time, Delivery an address
+// Senior citizen / PWD (RA 9994 / RA 10754): SalesMath.orderTotals' scPwd, 20% off + VAT-exempt. Each asks for the card's
+// ID number and the name, both printed on the slip; it replaces any receipt discount (never both, the law's rule).
+const ES_SC = { senior: 'Senior', pwd: 'PWD' };
 const ES_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17].map(h => `${(h + 11) % 12 + 1}:00 ${h < 12 ? 'AM' : 'PM'}`);   // ponytail: fixed; the store's hours would set them
 const ES_IC = {
   x: 'M6 6l12 12M18 6L6 18', less: 'M6 12h12', more: 'M12 6v12M6 12h12', chev: 'M9 6l6 6-6 6',
@@ -665,8 +679,9 @@ function openEditSheet(kind, id) {
   } else if (kind === 'rd') {
     const cd = state.cartDiscount && state.cartDiscount.value ? state.cartDiscount : null;
     const i = cd && cd.type === 'percent' ? ES_PRESETS.findIndex(([, v]) => v === cd.value) : -1;
-    const pick = i >= 0 ? i : cd ? 'c' : null;
-    es = { kind, pick, d: pick === 'c' ? String(cd.value) : '', pct: cd ? cd.type === 'percent' : true, before: cd };
+    const sc = state.scPwd, pick = sc ? sc.kind : i >= 0 ? i : cd ? 'c' : null;
+    es = { kind, pick, d: pick === 'c' ? String(cd.value) : '', pct: cd ? cd.type === 'percent' : true, before: cd,
+      beforeSc: sc, sc: { idNo: sc ? sc.idNo : '', name: sc ? sc.name : '' } };
   } else {
     es = { kind, day: (state.pickupTime && state.pickupTime.day) || 'Today' };
   }
@@ -685,8 +700,10 @@ function closeEditSheet(swap) {
     if (item.qty !== o.before.qty) track('item_qty', { productId: item.id, from: o.before.qty, to: item.qty });
     const d = item.discount || null;
     if (JSON.stringify(d) !== JSON.stringify(o.before.discount)) track('discount', { scope: 'line', kind: (d || o.before.discount).type, value: d ? d.value : 0, productId: item.id });
-  } else if (o.kind === 'rd' && JSON.stringify(state.cartDiscount) !== JSON.stringify(o.before)) {
-    track('discount', { scope: 'cart', kind: (state.cartDiscount || o.before).type, value: state.cartDiscount ? state.cartDiscount.value : 0 });
+  } else if (o.kind === 'rd' && JSON.stringify([state.cartDiscount, state.scPwd]) !== JSON.stringify([o.before, o.beforeSc])) {
+    const sc = state.scPwd || (!state.cartDiscount && o.beforeSc);   // an SC/PWD put on, or taken off with nothing in its place
+    track('discount', sc ? { scope: 'cart', kind: sc.kind, value: state.scPwd ? 20 : 0 }
+      : { scope: 'cart', kind: (state.cartDiscount || o.before).type, value: state.cartDiscount ? state.cartDiscount.value : 0 });
   } else if (o.kind === 'ful') {
     state.deliveryAddress = (state.deliveryAddress || '').trim();
   }
@@ -704,6 +721,7 @@ function esWrite() {
   } else if (es.kind === 'rd') {
     const P = ES_PRESETS[es.pick];
     state.cartDiscount = P ? { type: 'percent', value: P[1] } : es.pick === 'c' ? esDisc(es) : null;
+    if (!ES_SC[es.pick]) state.scPwd = null;   // set by its panel's Apply (esScApply), dropped by any other pick
   }
   renderCart();
 }
@@ -739,9 +757,11 @@ function drawEditSheet() {
     const item = esItem();
     if (!item) return closeEditSheet();
     const p = productOf(item), step = stepFor(p);
-    const m = SalesMath.lineMoney(item.price, item.qty, item.discount, state.settings.store?.currency);
+    // SC/PWD replaces line discounts (never stacked), so under it the line shows gross and says why.
+    const sc = cartTotals().scPwd && state.scPwd;
+    const m = SalesMath.lineMoney(item.price, item.qty, sc ? null : item.discount, state.settings.store?.currency);
     head = `<p>${escapeHtml(item.name)}</p><div class="es-hero">${peso(m.lineTotal)}</div>
-      <p>${item.qty} × ${peso(item.price)}${m.lineDiscount ? ` · ${peso(-m.lineDiscount)}` : ''}</p>`;
+      <p>${item.qty} × ${peso(item.price)}${m.lineDiscount ? ` · ${peso(-m.lineDiscount)}` : sc && item.discount ? ` · ${ES_SC[sc.kind]} applies` : ''}</p>`;
     rows = `<div class="es-row${o.f === 'q' ? ' on' : ''}"><span>Quantity</span>${stp(-1, item.qty <= step)}<button type="button" data-sf="q">${n('q', o.f === 'q' ? o.q || '0' : item.qty, ' q')}</button>${stp(1)}</div>
       <div class="es-row${o.f === 'd' ? ' on' : ''}" data-sf="d"><span>Discount</span>${n('d', o.f === 'd' ? esTyped(o) : esShown(item.discount), ' v')}${cv(o.f === 'd')}</div>`;
     if (o.f) side = `<div class="es-keys${kin}">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'), o.f === 'd' ? '' : ' off')}${esKeys(o.f === 'd' || step < 1)}</div>`;
@@ -749,8 +769,12 @@ function drawEditSheet() {
     const t = cartTotals();
     head = `<p>Sale total</p><div class="es-hero">${peso(t.total)}</div><p>${t.discount ? `${peso(t.subtotal)} · ${peso(-t.discount)}` : 'No discount'}</p>`;
     rows = ES_PRESETS.map(([name, pc], i) => `<button type="button" class="es-row${o.pick === i ? ' pick' : ''}" data-pick="${i}"><span>${escapeHtml(name)}</span><small>${pc}%</small></button>`).join('')
+      + Object.entries(ES_SC).map(([k, name]) => `<button type="button" class="es-row${o.f === k ? ' on' : o.pick === k ? ' pick' : ''}" data-sc="${k}"><span>${name}</span><small class="ad">${
+        o.pick !== k || !state.scPwd ? '20%' : t.scPwd ? escapeHtml(state.scPwd.name) : 'Promo is bigger'}</small>${cv(o.f === k)}</button>`).join('')
       + `<div class="es-row${o.f === 'd' ? ' on' : o.pick === 'c' ? ' pick' : ''}" data-sf="d"><span>Custom</span>${n('d', o.pick === 'c' ? esTyped(o) : '', ' v')}${cv(o.f === 'd')}</div>`;
-    if (o.f) side = `<div class="es-keys${kin}">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'))}${esKeys(true)}</div>`;
+    const field = (f, label) => `<input class="es-ta${o.bad === f ? ' bad' : ''}" data-scf="${f}" value="${escapeHtml(o.sc[f])}" placeholder="${label}" aria-label="${label}" autocomplete="off"${o.bad === f ? ' aria-invalid="true"' : ''}>`;
+    if (ES_SC[o.f]) side = `<div class="es-keys es-addr${kin}"><div class="es-ah">${o.f === 'pwd' ? 'PWD' : 'Senior citizen'}</div>${field('idNo', 'ID number')}${field('name', 'Name')}</div>`;
+    else if (o.f) side = `<div class="es-keys${kin}">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'))}${esKeys(true)}</div>`;
   } else {
     const methods = fulfilMethods(state.settings), pt = state.pickupTime;
     const say = { pickup: pt ? `${pt.day}, ${pt.time}` : '', delivery: state.deliveryAddress };
@@ -779,6 +803,7 @@ function editSheetClick(e) {
   if (!o) return;
   if (el('[data-close]')) return closeEditSheet();
   if (o.kind === 'ful') return esFulClick(el);
+  if (ES_SC[o.f]) $$('#editSheet [data-scf]').forEach(i => { o.sc[i.dataset.scf] = i.value; });   // the typed ID and name survive the redraw
   if (el('[data-remove]')) {
     const gone = esItem();
     es = null;
@@ -811,14 +836,36 @@ function editSheetClick(e) {
       Object.assign(o, { f, fresh: true, anim: !o.f });
       if (o.kind === 'rd') o.pick = 'c';
     }
-  } else if (el('[data-apply]')) esSettle(o);
-  else if (el('[data-sclr]')) {
+  } else if (el('[data-sc]')) {   // Senior / PWD: its panel opens beside the list, the same row again puts it away
+    const k = el('[data-sc]').dataset.sc, was = o.f;
+    if (was === 'd') esSettle(o);
+    Object.assign(o, was === k ? { f: null, anim: 'out' } : { f: k, bad: null, anim: was ? 'swap' : true });
+  } else if (el('[data-apply]')) {
+    if (ES_SC[o.f] && !esScApply(o)) return;
+    esSettle(o);
+  } else if (el('[data-sclr]')) {
     o.d = '';
     if (o.kind === 'rd') o.pick = null;
     if (o.f) esSettle(o);
   } else return;
   esWrite();
   drawEditSheet();
+  if (ES_SC[o.f]) ($$('#editSheet [data-scf]').find(i => !i.value.trim()) || $('#editSheet [data-scf]')).focus();
+}
+
+// The SC/PWD panel's Apply: the ID number and the name, both, or nothing is applied; the first empty one is
+// ringed and takes the cursor. Applied, it is the sale's only receipt discount (esWrite drops the others).
+function esScApply(o) {
+  const sc = { idNo: o.sc.idNo.trim(), name: o.sc.name.trim() };
+  o.bad = !sc.idNo ? 'idNo' : !sc.name ? 'name' : null;
+  if (o.bad) {
+    drawEditSheet();
+    $(`#editSheet [data-scf="${o.bad}"]`).focus();
+    return false;
+  }
+  state.scPwd = { kind: o.f, ...sc };
+  o.pick = o.f;
+  return true;
 }
 
 // Fulfilment: the types are the rows; leaving a type drops what it asked for, the same row again puts its panel away.
@@ -883,12 +930,9 @@ function openMenu(trigger, items, opts = {}) {
   const left = Math.max(0, Math.min(innerWidth - w, opts.right ? r.right - w : r.left));
   const top = Math.max(8, Math.min(innerHeight - H - 8, r.top - anchor.offsetTop));
   m.style.left = left + 'px'; m.style.top = top + 'px';
-  const t = r.top - top, l = r.left - left;
-  const from = `inset(${t}px ${w - l - r.width}px ${H - t - r.height}px ${l}px round 10px)`, to = 'inset(-24px round 34px)';
-  m.style.transformOrigin = `${l + r.width / 2}px ${t + r.height / 2}px`;
-  m.animate([{ clipPath: from, transform: 'scale(.94)', boxShadow: 'none' }, { clipPath: to, transform: 'none' }], { duration: calmMs(180), easing: 'cubic-bezier(.3,1.45,.55,1)' });
+  const shrink = growFrom(m, r);
   trigger.setAttribute('aria-expanded', 'true');
-  railMenu = { veil, m, from, to, trigger };
+  railMenu = { veil, shrink, trigger };
   (m.querySelector('button:not(:disabled)') || anchor).focus({ preventScroll: true });
   veil.addEventListener('click', e => {
     const b = e.target.closest('[data-i]');
@@ -903,10 +947,19 @@ function openMenu(trigger, items, opts = {}) {
 }
 function closeMenu() {
   if (!railMenu) return;
-  const { veil, m, from, to, trigger } = railMenu; railMenu = null;
+  const { veil, shrink, trigger } = railMenu; railMenu = null;
   trigger.setAttribute('aria-expanded', 'false');
   veil.style.pointerEvents = 'none';
-  m.animate([{ clipPath: to }, { clipPath: from, opacity: 0, transform: 'scale(.96)' }], { duration: calmMs(90), easing: 'cubic-bezier(.4,0,1,1)' }).onfinish = () => veil.remove();
+  shrink(() => veil.remove());
+}
+// The morph (the ⋯ menu, the payment sheet): m, already placed, grows out of the trigger's box r with a little
+// overshoot. Returns shrink(done), which puts it back into that box.
+function growFrom(m, r) {
+  const w = m.offsetWidth, H = m.offsetHeight, t = r.top - m.offsetTop, l = r.left - m.offsetLeft;
+  const from = `inset(${t}px ${w - l - r.width}px ${H - t - r.height}px ${l}px round 10px)`, to = 'inset(-24px round 34px)';
+  m.style.transformOrigin = `${l + r.width / 2}px ${t + r.height / 2}px`;
+  m.animate([{ clipPath: from, transform: 'scale(.94)', boxShadow: 'none' }, { clipPath: to, transform: 'none' }], { duration: calmMs(180), easing: 'cubic-bezier(.3,1.45,.55,1)' });
+  return (done) => { m.animate([{ clipPath: to }, { clipPath: from, opacity: 0, transform: 'scale(.96)' }], { duration: calmMs(90), easing: 'cubic-bezier(.4,0,1,1)' }).onfinish = done; };
 }
 
 function updateDeliveryPinStatus() {   // the fulfilment sheet's Map chip reads Pinned
@@ -1122,35 +1175,38 @@ function useDeviceDeliveryLocation() {
 }
 
 // ---------- Saved customer modal ----------
-// The same fields, words and check as the back office's dialog (bo-model CUSTOMER_FIELDS).
-function openCustomerEditModal() {
-  $('#customerEditTitle').textContent = 'New customer';
-  $('#custFields').innerHTML = customerFieldsHtml({}, { cls: 'text-input', wrap: (f, control, i) =>
+// The same fields, words and check as the back office's dialog (bo-model CUSTOMER_FIELDS). `c` = edit that one.
+function openCustomerEditModal(c = null) {
+  state.customerEditing = c;
+  $('#customerEditTitle').textContent = c ? 'Edit customer' : 'New customer';
+  $('#custFields').innerHTML = customerFieldsHtml(c || {}, { cls: 'text-input', wrap: (f, control, i) =>
     `<label class="pay-label"${i ? ' style="margin-top:10px"' : ''}>${f.label}</label>${control}` })
     + '<div class="co-error" id="custDup" hidden></div>';
   $('#customerEditModal').hidden = false;
   setTimeout(() => $('#custFields [name="name"]').focus(), 50);
 }
-// Turning credit on at the till is a manager's call (TILL_ACTIONS.credit); `by` = who approved it.
+// Credit on/off and the limit are a manager's call (TILL_ACTIONS.credit, owner 2026-10-06); `by` = who approved it.
+// Only a change to them asks: fixing a phone number never needs a PIN.
 function saveSavedCustomerFromModal(by = '') {
+  const was = state.customerEditing;
   const values = Object.fromEntries($$('#custFields [name]').map(el => [el.name, el.value]));
-  const { customer, error, field } = customerFromForm(values);
+  const { customer, error, field } = customerFromForm(values, was);
   if (error) { showToast(error); $(`#custFields [name="${field}"]`).focus(); return; }
   // Someone else has this phone (bo-model phoneOwner): say so once and offer them; saving again adds anyway.
-  const dup = phoneOwner(customer.phone), warn = $('#custDup');
+  const dup = phoneOwner(customer.phone, was?.id), warn = $('#custDup');
   if (dup && warn.dataset.phone !== customer.phone) {
     warn.dataset.phone = customer.phone;
     warn.innerHTML = phoneOwnerNote(dup, `<button type="button" class="link-btn" data-open-cust="${escapeHtml(dup.id)}">Open ${escapeHtml(dup.name)}</button>`);
     warn.hidden = false;
     return;
   }
-  if (customer.creditOn && !by && !gate('credit', (b) => saveSavedCustomerFromModal(b))) return;
+  const credit = was ? was.creditOn !== customer.creditOn || was.creditLimit !== customer.creditLimit : customer.creditOn;
+  if (credit && !by && !gate('credit', (b) => saveSavedCustomerFromModal(b))) return;
   const c = saveCustomer(customer);
-  const name = c.name;
-  track('customer_create', { customerId: c.id });
+  if (!was) track('customer_create', { customerId: c.id });
   $('#customerEditModal').hidden = true;
   if (state.view === 'customers') renderCustomers();
-  showToast(`Added “${name}”`);
+  showToast(`${was ? 'Saved' : 'Added'} “${c.name}”`);
   // When created mid-sale from the Sell-page picker, attach the new customer to
   // the current receipt straight away (selectCustomer closes the picker too).
   if (state.customerEditFromSale) {
@@ -1159,9 +1215,25 @@ function saveSavedCustomerFromModal(by = '') {
   }
 }
 // The cart's money, from the one money module. The order and the receipts still name the tax VAT.
-function cartTotals() {
-  const t = SalesMath.orderTotals(state.cart, state.cartDiscount, taxOpts());
+// `cart`/`cartDiscount`: another list's money the same way (a saved cart or quote, draftAsOrder).
+// `scPwd`: the cart's SC/PWD cardholder (the edit sheet), never borrowed by another list.
+function cartTotals(cart = state.cart, cartDiscount = state.cartDiscount, scPwd = cart === state.cart ? state.scPwd : null) {
+  const t = SalesMath.orderTotals(cart, cartDiscount, { ...taxOpts(), scPwd: !!scPwd });
   return { ...t, vatRate: t.taxRate, vatAmount: t.tax, vatableSales: moneyValue(t.salesBeforeTax - t.vatExempt) };
+}
+
+// A cart line's quiet stock word once this sale takes the item to its low line (bo-model stockLevel on what the
+// shelf would hold after the cart): "3 left" · "Last one" · "Out of stock". Nothing when stock isn't tracked.
+function cartStockNote(item) {
+  const p = productOf(item);
+  if (!p) return '';
+  const want = state.cart.reduce((n, i) => (productOf(i) === p ? n + toNumber(i.qty, 0) : n), 0);
+  const left = roundQty(p, toNumber(p.stock, 0) - want), lv = stockLevel({ ...p, stock: left });
+  if (lv !== 'out' && lv !== 'low') return '';
+  const out = left < 0 || !(p.stock > 0);   // selling what isn't on the shelf (sell anyway)
+  const word = out ? 'Out of stock' : left > 0 ? `${SalesMath.qtyText(left)} left`
+    : want === 1 ? 'Last one' : `Last ${SalesMath.qtyText(want)}`;   // the cart takes what's left: never "0 left"
+  return `<small class="left${out ? ' out' : ''}">${word}</small>`;
 }
 
 function renderCart() {
@@ -1173,7 +1245,7 @@ function renderCart() {
   } else {
     list.innerHTML = state.cart.map(item => `
       <div class="line"><button type="button" class="row" data-id="${item.id}" title="Edit item">
-        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}</small></span>
+        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}</small>${cartStockNote(item)}</span>
         <span class="amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
       </button></div>`).join('');
     list.scrollTop = list.scrollHeight;
@@ -1197,8 +1269,9 @@ function renderCart() {
   const cd = state.cartDiscount && state.cartDiscount.value ? state.cartDiscount : null;
   const discBtn = $('#cartDiscountBtn');
   discBtn.disabled = n === 0;
-  discBtn.classList.toggle('on', !!cd);
-  $('#cartDiscountLabel').textContent = cd && cd.type === 'percent' ? `Discount ${cd.value}%` : 'Discount';
+  discBtn.classList.toggle('on', !!cd || t.scPwd);
+  // t.scPwd, not state.scPwd: a bigger line promo wins over SC/PWD (orderTotals), and then no ID goes on the sale
+  $('#cartDiscountLabel').textContent = t.scPwd ? ES_SC[state.scPwd.kind] : cd && cd.type === 'percent' ? `Discount ${cd.value}%` : 'Discount';
   $('#cartDiscountAmt').textContent = t.discount > 0 ? peso(-t.discount) : '';
 }
 

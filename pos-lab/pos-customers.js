@@ -1,110 +1,12 @@
 // Till › Customers, and the hidden Reports page.
 
 // ---------- Customers / Reports ----------
-// One customer's money rows, newest first (sales, voids, refunds; SalesMath.customerOrders, the back
-// office's), and their header from summarize over THE SAME rows, so the list and the numbers above it
-// never disagree: Total spent = netSales, Orders, Last purchase = the newest sale a void didn't cancel.
+// One customer's money rows, newest first (sales, voids, refunds; SalesMath.customerOrders, the back office's).
+// The till shows the last few; totals, averages and the balance by age are the back office's (owner 2026-10-06).
 const customerOrders = customerId => SalesMath.customerOrders(state.orders, customerId);
-function customerMetrics(customerId) {
-  const m = SalesMath.summarize(customerOrders(customerId));
-  if (m.orders <= 0) return { lifetimeValue: 0, avgOrderValue: 0, orderCount: 0, lastPurchaseTs: 0, daysSinceLastPurchase: null };
-  const daysSinceLastPurchase = daysAgo(m.lastSale);   // store days, the store's clock
-  return { lifetimeValue: m.netSales, avgOrderValue: m.averageSale, orderCount: m.orders, lastPurchaseTs: m.lastSale, daysSinceLastPurchase };
-}
-
-// Last purchase: the one 'N days ago' wording (SalesMath.agoText, as the back office), store days.
-const relativeTime = ts => SalesMath.agoText(ts, Date.now(), tillZone());
-
-
-function customerAging(customerId) {
-  // What each sale still owes, the same split the back office shows (bo-model accountDebts).
-  const debts = accountDebts(accountRows(customerId));
-  const buckets = { '0-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
-  for (const d of debts) {
-    if (d.left <= 0) continue;
-    const days = daysAgo(SalesMath.tsOf(d));   // any time format (ms or ISO), store days
-    const amt = d.left;
-    if (days <= 30) buckets['0-30'] += amt;
-    else if (days <= 60) buckets['31-60'] += amt;
-    else if (days <= 90) buckets['61-90'] += amt;
-    else buckets['90+'] += amt;
-  }
-  // ponytail: the sum only says whether there is anything to age; the Balance heading is the ledger's (c.currentBalance).
-  const total = moneyValue(Object.values(buckets).reduce((s, v) => s + v, 0));
-  return { buckets, total };
-}
 
 function fmtOrderDate(ts) {
   return tillDate(ts, 'dayYear');
-}
-
-function openCustomerDetail(customerId) {
-  const c = allCustomerRecords().find(x => x.id === customerId);
-  if (!c) return;
-  const orders = customerOrders(customerId);
-  const m = customerMetrics(customerId);
-  const aging = customerAging(customerId);
-  $('#custDetailTitle').textContent = c.name;
-
-  const kpisEl = $('#custDetailKpis');
-  kpisEl.innerHTML = `
-    <div class="cust-kpi-box">
-      <div class="cust-kpi-label">Total spent</div>
-      <div class="cust-kpi-value">${peso(m.lifetimeValue)}</div>
-    </div>
-    <div class="cust-kpi-box">
-      <div class="cust-kpi-label">Orders</div>
-      <div class="cust-kpi-value">${m.orderCount}</div>
-    </div>
-    <div class="cust-kpi-box">
-      <div class="cust-kpi-label">Average sale</div>
-      <div class="cust-kpi-value">${peso(m.avgOrderValue)}</div>
-    </div>
-    <div class="cust-kpi-box">
-      <div class="cust-kpi-label">Last purchase</div>
-      <div class="cust-kpi-value cust-kpi-value-sm">${relativeTime(m.lastPurchaseTs)}</div>
-    </div>`;
-
-  const agingEl = $('#custDetailAging');
-  if (aging.total > 0) {
-    const b = aging.buckets;
-    agingEl.innerHTML = `
-      <div class="cust-aging-title">Balance · ${peso(c.currentBalance)}</div>
-      <div class="cust-aging-buckets">
-        ${b['0-30'] > 0 ? `<div class="cust-aging-bucket"><span class="cust-aging-bucket-label">0–30 days</span><span class="cust-aging-bucket-value">${peso(b['0-30'])}</span></div>` : ''}
-        ${b['31-60'] > 0 ? `<div class="cust-aging-bucket"><span class="cust-aging-bucket-label">31–60 days</span><span class="cust-aging-bucket-value warn">${peso(b['31-60'])}</span></div>` : ''}
-        ${b['61-90'] > 0 ? `<div class="cust-aging-bucket"><span class="cust-aging-bucket-label">61–90 days</span><span class="cust-aging-bucket-value warn">${peso(b['61-90'])}</span></div>` : ''}
-        ${b['90+'] > 0 ? `<div class="cust-aging-bucket"><span class="cust-aging-bucket-label">90+ days</span><span class="cust-aging-bucket-value danger">${peso(b['90+'])}</span></div>` : ''}
-      </div>`;
-    agingEl.style.display = '';
-  } else {
-    agingEl.style.display = 'none';
-  }
-
-  const ordersEl = $('#custDetailOrders');
-  if (orders.length === 0) {
-    ordersEl.innerHTML = `<div class="cust-detail-empty">No orders yet</div>`;
-  } else {
-    ordersEl.innerHTML = orders.map(o => {
-      const itemCount = o.items.length;
-      const firstItems = o.items.slice(0, 2).map(i => i.name).join(', ');
-      const moreItems = o.items.length > 2 ? ` +${o.items.length - 2} more` : '';
-      return `
-        <button class="cust-order-row" data-order-id="${escapeHtml(o.id)}">
-          <div class="cust-order-date">${fmtOrderDate(o.ts)}</div>
-          <div class="cust-order-items">
-            <div class="cust-order-items-main">#${escapeHtml(o.number)} · ${SalesMath.plural(itemCount, 'item')}</div>
-            <div class="cust-order-items-sub">${escapeHtml(firstItems)}${moreItems}</div>
-          </div>
-          <span class="cust-order-method">
-            ${orderFlag(o, 'st')}<span class="rl-dot" style="background:${orderDot(o)}"></span>
-            ${escapeHtml(SalesMath.payWord(o))}
-          </span>
-          <div class="cust-order-total">${peso(SalesMath.rowAmount(o))}</div>
-        </button>`;
-    }).join('');
-  }
-  $('#customerDetailModal').hidden = false;
 }
 
 function renderCustomers() {
@@ -112,18 +14,12 @@ function renderCustomers() {
   const list = $('#customersList');
   const all = allCustomerRecords();
 
-  const metricsCache = new Map();
-  const agingCache = new Map();
-  for (const c of all) {
-    metricsCache.set(c.id, customerMetrics(c.id));
-    agingCache.set(c.id, customerAging(c.id));
-  }
-
   const q = (state.customersQuery || '').trim().toLowerCase();
   let filtered = q
     ? all.filter(c =>
         c.name.toLowerCase().includes(q) ||
-        (c.phone || '').toLowerCase().includes(q))
+        (c.phone || '').toLowerCase().includes(q) ||
+        (c.email || '').toLowerCase().includes(q))
     : all;
 
   if (filtered.length > 0 && !filtered.find(c => c.id === state.selectedCustomerId)) {
@@ -141,93 +37,130 @@ function renderCustomers() {
         ${(c.currentBalance || 0) > 0 ? `<div class="rt"><span class="amt num">${peso(c.currentBalance)}</span></div>` : ''}</button>`).join('');
   }
 
-  renderCustomerDetail(metricsCache, agingCache);
+  renderCustomerDetail();
 }
 
-function renderCustomerDetail(metricsCache, agingCache) {
-  const detail = $('#customerDetail');
-  if (!detail) return;
+// One customer, the Orders shape: the name (and Over limit) on top with Record payment and Edit beside it,
+// then who they are, their account, and the last 5 orders in the Orders rail's rows; See all opens the rest.
+function renderCustomerDetail() {
+  const body = $('#customerBody'), ttl = $('#customerTtl');
+  if (!body || !ttl) return;
   const c = allCustomerRecords().find(x => x.id === state.selectedCustomerId);
+  $('#customerEdit').disabled = !c;
+  $('#customerPay').disabled = !canRecordPayment(c);
   if (!c) {
-    detail.innerHTML = `
-      <div class="order-detail-empty">
-        <div class="empty-title">Select a customer</div>
-        <div class="empty-sub">Pick one from the list to view their details</div>
-      </div>`;
+    ttl.innerHTML = '';
+    body.innerHTML = '<div class="empty"><b>No customer selected</b><span>Pick one from the list to see their details.</span></div>';
     return;
   }
-
-  const m = (metricsCache || new Map()).get(c.id) || customerMetrics(c.id);
-  const aging = (agingCache || new Map()).get(c.id) || customerAging(c.id);
+  const status = accountStatus(c)[1], over = status === 'Over limit';
+  ttl.innerHTML = `<b>${escapeHtml(c.name)}</b>${over ? '<span>Over limit</span>' : status === 'Near limit' ? '<span class="warn">Near limit</span>' : ''}`;
+  const row = (lb, v, cls = '') => `<div class="fr"><span class="lb">${lb}</span><span class="v ${cls}">${v}</span></div>`;
+  const contact = [['Phone', c.phone, 'num'], ['Email', c.email], ['Address', c.address]]
+    .filter(f => f[1]).map(([lb, v, cls]) => row(lb, escapeHtml(v), cls)).join('');   // an empty one is left out, not "—"
   const orders = customerOrders(c.id);
-  const bal = c.currentBalance || 0;
-  const status = accountStatus(c)[1];
-  const balCls = !(bal > 0) ? '' : status === 'Over limit' ? 'over' : 'has';
+  const orderRow = o => {
+    const amt = SalesMath.rowAmount(o);
+    return `<button type="button" class="row${orderState(o) === 'voided' ? ' void' : ''}" data-order-id="${escapeHtml(o.id)}">
+      <div class="nm"><span class="num">#${escapeHtml(o.number)}</span><small class="num">${fmtOrderDate(o.ts)} · ${SalesMath.plural((o.items || []).length, 'item')}</small></div>
+      <div class="rt"><span class="amt num">${amt == null ? '—' : peso(amt)}</span><small>${orderFlag(o, 'st')}${escapeHtml(orderPayText(o))}</small></div></button>`;
+  };
+  body.innerHTML = `<div class="c-body">
+    ${contact ? `<section class="card fc">${contact}</section>` : ''}
+    <section class="card fc">
+      ${row('Balance', peso(c.currentBalance || 0), over ? 'num over' : 'num')}
+      ${row('Available credit', limitText(c) || `${peso(creditRoom(c))} <small>of ${peso(c.creditLimit)}</small>`, 'num')}</section>
+    <section class="card fc c-ord"><h3>Recent orders${orders.length > 10 ? `<button type="button" class="link" data-customer-detail>See all ${orders.length}</button>` : ''}</h3>
+      ${orders.length ? orders.slice(0, 10).map(orderRow).join('') : '<div class="note">No orders yet</div>'}</section>
+  </div>`;
+}
 
-  const agingParts = [];
-  if (aging.buckets['0-30'] > 0) agingParts.push(`<div class="cd-aging-item"><span class="cd-aging-label">0–30d</span><span class="cd-aging-value">${peso(aging.buckets['0-30'])}</span></div>`);
-  if (aging.buckets['31-60'] > 0) agingParts.push(`<div class="cd-aging-item"><span class="cd-aging-label">31–60d</span><span class="cd-aging-value aging-warn">${peso(aging.buckets['31-60'])}</span></div>`);
-  if (aging.buckets['61-90'] > 0) agingParts.push(`<div class="cd-aging-item"><span class="cd-aging-label">61–90d</span><span class="cd-aging-value aging-warn">${peso(aging.buckets['61-90'])}</span></div>`);
-  if (aging.buckets['90+'] > 0) agingParts.push(`<div class="cd-aging-item"><span class="cd-aging-label">90+d</span><span class="cd-aging-value aging-danger">${peso(aging.buckets['90+'])}</span></div>`);
-
-  const agingHtml = aging.total > 0 ? `
-    <div class="cd-section-label">Balance by age</div>
-    <div class="cd-aging-row">${agingParts.join('')}</div>` : '';
-
-  const orderRows = orders.length
-    ? orders.slice(0, 20).map(o => {
-        const itemCount = o.items.length;
-        const firstItems = o.items.slice(0, 2).map(i => i.name).join(', ');
-        const moreItems = o.items.length > 2 ? ` +${o.items.length - 2}` : '';
-        return `
-          <button class="cd-order-row" data-order-id="${escapeHtml(o.id)}">
-            <div class="cd-order-date">${fmtOrderDate(o.ts)}</div>
-            <div class="cd-order-info">
-              <div class="cd-order-name">#${escapeHtml(o.number)} · ${SalesMath.plural(itemCount, 'item')}</div>
-              <div class="cd-order-sub">${escapeHtml(firstItems)}${moreItems}</div>
-            </div>
-            <span class="cd-order-method">
-              ${orderFlag(o, 'st')}<span class="rl-dot" style="background:${orderDot(o)}"></span>
-              ${escapeHtml(SalesMath.payWord(o))}
-            </span>
-            <div class="cd-order-total">${peso(SalesMath.rowAmount(o))}</div>
-          </button>`;
-      }).join('')
-    : `<div class="cd-empty">No orders yet</div>`;
-
-  const moreOrders = orders.length > 20 ? `<div class="cd-more-orders">${SalesMath.plural(orders.length - 20, 'more receipt')} — open full history for all</div>` : '';
-
-  detail.innerHTML = `
-    <div class="od-scroll">
-      <div class="od-inner cd-inner">
-        <div class="cd-header">
-          <div class="cd-avatar">${escapeHtml(c.name.split(' ').map(w => w[0]).slice(0, 2).join(''))}</div>
-          <div class="cd-header-info">
-            <div class="cd-name">${escapeHtml(c.name)}</div>
-            <div class="cd-phone">${escapeHtml(c.phone || 'No phone')}</div>
-          </div>
-        </div>
-        <div class="cd-meta">
-          <div class="odm-meta-row"><span>Address</span><span>${escapeHtml(c.address || '—')}</span></div>
-          <div class="odm-meta-row"><span>Credit limit</span><span>${limitText(c) || peso(c.creditLimit)}</span></div>
-          <div class="odm-meta-row"><span>Balance</span><span class="cust-card-balance-value ${balCls}">${peso(bal)}${status === 'Over limit' ? ' · Over limit' : ''}</span></div>
-        </div>
-        <div class="cd-kpis">
-          <div class="cd-kpi-box"><div class="cd-kpi-label">Total spent</div><div class="cd-kpi-value">${peso(m.lifetimeValue)}</div></div>
-          <div class="cd-kpi-box"><div class="cd-kpi-label">Orders</div><div class="cd-kpi-value">${m.orderCount}</div></div>
-          <div class="cd-kpi-box"><div class="cd-kpi-label">Average sale</div><div class="cd-kpi-value">${peso(m.avgOrderValue)}</div></div>
-          <div class="cd-kpi-box"><div class="cd-kpi-label">Last purchase</div><div class="cd-kpi-value cd-kpi-value-sm">${relativeTime(m.lastPurchaseTs)}</div></div>
-        </div>
-        ${agingHtml}
-        <div class="cd-section-label">Recent orders</div>
-        <div class="cd-orders-list">${orderRows}</div>
-        ${moreOrders}
-      </div>
-    </div>
-    <div class="od-foot">
-      <button class="od-details-btn cd-details-btn" type="button" data-customer-detail="${escapeHtml(c.id)}">View full history</button>
-      ${canRecordPayment(c) ? `<button class="od-details-btn cd-pay-btn" type="button" data-customer-pay="${escapeHtml(c.id)}">Record payment</button>` : ''}
-    </div>`;
+// Record payment, the back office's (openPaymentDialog) on the till: a card that grows out of the button. The amount
+// (Full balance fills it), how they paid, the open receipts to tick (ticking fills the amount with what they owe),
+// a note. Nothing ticked, or money left over, pays the oldest debts first (bo-model recordPayment). More than the
+// balance is allowed, as in the back office: it waits on the account for the next charge.
+const PAY_BUILTINS = ['cash', 'gcash', 'qr'];   // the store's own names follow, then Other (the checkout's order)
+function openPaySheet(btn, c) {
+  if (!btn || !c) return;
+  const open = accountDebts(accountRows(c.id)).filter(d => d.orderId && d.left > 0);
+  const number = new Map(state.orders.map(o => [o.id, o.number]));
+  const pay = state.settings.payments || {}, off = new Set(pay.hidden || []);
+  const methods = PAY_BUILTINS.filter(m => m === 'cash' || !off.has(m)).map(m => [m, SalesMath.tenderLabel(m)])
+    .concat((pay.custom || []).map(n => [n, n]), [['other', SalesMath.tenderLabel('other')]]);
+  const veil = document.createElement('div');
+  veil.className = 'rail-veil';
+  veil.innerHTML = `<form class="pay-sheet" role="dialog" aria-label="Record payment" novalidate>
+    <div class="ph"><b>Record payment</b><small>${escapeHtml(c.name)} ${owedText(c.currentBalance, peso)}</small></div>
+    <label class="pf"><span class="lb">Amount</span><span class="pa"><input class="text-input num" name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">${
+      c.currentBalance > 0 ? '<button type="button" data-full>Full balance</button>' : ''}</span></label>
+    <label class="pf"><span class="lb">Method</span><select class="text-input" name="method">${methods.map(([v, l]) => `<option value="${escapeHtml(v)}">${escapeHtml(l)}</option>`).join('')}</select></label>
+    ${open.length ? `<fieldset class="pf"><legend class="lb">Receipts · none ticked pays the oldest first</legend>${open.map(d => `<label class="pr">
+      <input type="checkbox" name="order" value="${escapeHtml(d.orderId)}" data-left="${d.left}"><span class="num">#${escapeHtml(number.get(d.orderId) || d.orderId)}</span>
+      <small class="num">${fmtOrderDate(d.ts)}</small><span class="num">${peso(d.left)}</span></label>`).join('')}</fieldset>` : ''}
+    <label class="pf"><span class="lb">Note</span><input class="text-input" name="note" type="text" autocomplete="off"></label>
+    <div class="pb"><button type="button" class="secondary-btn small" data-cancel>Cancel</button><button type="submit" class="primary-btn small">Record payment</button></div>
+  </form>`;
+  const f = veil.firstChild, r = btn.getBoundingClientRect();
+  f.style.width = Math.min(380, innerWidth - 24) + 'px';
+  document.body.append(veil);
+  f.style.left = Math.max(12, Math.min(innerWidth - f.offsetWidth - 12, r.right - f.offsetWidth)) + 'px';
+  f.style.top = Math.max(8, Math.min(innerHeight - f.offsetHeight - 8, r.top)) + 'px';
+  const shrink = growFrom(f, r);
+  btn.setAttribute('aria-expanded', 'true');
+  // "1,000" and "₱ 1,000" read as 1000; "-50", "1e3" or "1.2.3" read as nothing. The button says what will be recorded
+  const amount = () => {
+    const s = f.amount.value.replace(/[,\s₱]/g, '');
+    return /^(\d+\.?\d*|\.\d+)$/.test(s) ? moneyValue(s) : 0;
+  };
+  const sync = () => {
+    const a = amount(), ok = f.querySelector('[type="submit"]');
+    ok.disabled = !(a > 0);
+    ok.textContent = a > 0 ? `Record ${peso(a)}` : 'Record payment';
+  };
+  // Keys go through the document while the sheet is open: Tab wraps inside it (focus can't reach the page under
+  // the veil) and Esc closes it wherever focus sits.
+  const onKey = (e) => {
+    if (e.key === 'Escape') { e.stopPropagation(); return close(); }
+    if (e.key !== 'Tab') return;
+    const els = [...f.elements].filter(x => x.tagName !== 'FIELDSET' && !x.disabled), i = els.indexOf(document.activeElement);
+    if (i < 0 || i === (e.shiftKey ? 0 : els.length - 1)) { e.preventDefault(); els[e.shiftKey ? els.length - 1 : 0].focus(); }
+  };
+  const close = () => {
+    document.removeEventListener('keydown', onKey, true);
+    btn.setAttribute('aria-expanded', 'false');
+    veil.style.pointerEvents = 'none';
+    shrink(() => veil.remove());
+    btn.focus({ preventScroll: true });
+  };
+  sync();
+  f.amount.focus({ preventScroll: true });
+  f.addEventListener('input', sync);
+  f.addEventListener('change', (e) => {   // ticking receipts fills the amount with what they owe
+    if (e.target.name !== 'order') return;
+    const n = [...f.querySelectorAll('[name="order"]:checked')].reduce((a, b) => a + Number(b.dataset.left), 0);
+    f.amount.value = n ? moneyValue(n).toFixed(2) : '';
+    sync();
+  });
+  veil.addEventListener('click', (e) => {
+    if (e.target === veil || e.target.closest('[data-cancel]')) return close();
+    if (e.target.closest('[data-full]')) {
+      f.querySelectorAll('[name="order"]').forEach(b => { b.checked = false; });
+      f.amount.value = moneyValue(Math.max(0, c.currentBalance || 0)).toFixed(2);
+      sync();
+    }
+  });
+  document.addEventListener('keydown', onKey, true);
+  f.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (veil.style.pointerEvents) return;   // closing already: a second Enter must not write a second payment
+    const a = amount(), m = f.method.value;
+    if (!(a > 0)) { showToast('Enter an amount above 0'); return f.amount.focus(); }
+    const [method, methodLabel] = PAY_BUILTINS.includes(m) || m === 'other' ? [m, ''] : ['other', m];   // a custom name is saved as its own label
+    if (!recordCreditPayment(c.id, a, { method, ...(methodLabel && { methodLabel }), note: f.note.value.trim(),
+      orderIds: [...f.querySelectorAll('[name="order"]:checked')].map(b => b.value) })) return;
+    close();
+    showToast(`${peso(a)} recorded`);
+  });
 }
 
 // Cheap change-detector so the live poll only re-renders when orders actually change.

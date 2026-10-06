@@ -153,6 +153,9 @@
       vatExempt,
       vatableSales: num(raw.vatableSales, U(vatable)),   // the receipt's VATable sales
       scPwdOff: num(raw.scPwdOff),
+      // The SC/PWD cardholder the sale was given it for: { kind: 'senior' | 'pwd', idNo, name }, else null.
+      scPwd: raw.scPwd && typeof raw.scPwd === 'object'
+        ? { kind: raw.scPwd.kind === 'pwd' ? 'pwd' : 'senior', idNo: String(raw.scPwd.idNo || ''), name: String(raw.scPwd.name || '') } : null,
       taxIncluded: raw.taxIncluded !== false,
       tendered: num(raw.tendered),
       change: num(raw.change),
@@ -613,25 +616,31 @@
   //   footer   the closing lines: a sale is the official receipt; a reversal is not, and never
   //            says goods cannot come back on the slip that took them back
   //   scPwd    the SC/PWD lines when the order carries them: [{ label, amount }]
+  //   scPwdId  the cardholder's [label, 'ID no. · Name'], or null
   const FOOTER = {
     // Lines can come back now (owner 2026-10-03: line refunds, exchanges), so the slip no longer says they can't.
     sale: ['This serves as your official receipt.', 'Keep for returns and exchanges.'],
     void: ['This sale is cancelled.', 'This is not an official receipt.'],
     refund: ['Money given back.', 'This is not an official receipt.'],
     saved: ['Not completed. This is not a receipt.'],
+    // A quote (the till's saved list, draft 'quote'): no number, no valid-until (owner 2026-10-07).
+    quote: ['This is not an official receipt.'],
   };
   function receiptParts(o, sale = null, rev = null) {
-    const kind = rowState(o, rev), back = isReversal(o);
+    const kind = rowState(o, rev), back = isReversal(o), quote = o.draft === 'quote';
     return {
       kind,
-      mark: back ? `${o.status === 'void' ? 'VOID' : 'REFUND'} of #${(sale && sale.number) || '—'}` : '',
+      mark: quote ? 'QUOTATION' : back ? `${o.status === 'void' ? 'VOID' : 'REFUND'} of #${(sale && sale.number) || '—'}` : '',
       paidWord: back ? 'Given back' : 'Paid',
       whoWord: o.status === 'void' ? 'Voided by' : o.status === 'refund' ? 'Refunded by' : 'Cashier',
       legs: paymentsOf(o),
-      footer: FOOTER[o.status] || FOOTER.sale,
+      footer: FOOTER[quote ? 'quote' : o.status] || FOOTER.sale,
       // The SC/PWD 20% is already inside Discount: 'Incl.' so the slip never reads as a second discount.
       scPwd: Number(o.scPwdOff) > 0
-        ? [{ label: 'Incl. SC/PWD discount', amount: U(C(o.scPwdOff)) }, { label: 'VAT-exempt sales', amount: U(C(o.vatExempt)) }] : [],
+        ? [{ label: 'Incl. SC/PWD discount', amount: U(C(o.scPwdOff)) }, ...(C(o.vatExempt) > 0 ? [{ label: 'VAT-exempt sales', amount: U(C(o.vatExempt)) }] : [])] : [],
+      // Who it was given to, printed under Customer: ['Senior citizen ID' | 'PWD ID', 'ID no. · Name'], or null.
+      scPwdId: Number(o.scPwdOff) > 0 && o.scPwd && o.scPwd.idNo
+        ? [`${o.scPwd.kind === 'pwd' ? 'PWD' : 'Senior citizen'} ID`, `${o.scPwd.idNo} · ${o.scPwd.name}`] : null,
     };
   }
   // The totals block above TOTAL, as [label, amount, small]: every slip, the paper, the till's order

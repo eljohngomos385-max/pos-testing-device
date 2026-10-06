@@ -72,15 +72,6 @@ function attachEvents() {
   // ---- Bottom bar: toggle price display on tiles ----
   $('#bbViewBtn')?.addEventListener('click', toggleShowPrice);
 
-  // ---- Save receipt (the cart's ⋯ menu): creates a not-completed saved receipt ----
-  $('#saveReceiptConfirmBtn')?.addEventListener('click', saveReceiptFromModal);
-  $('#saveReceiptNameInput')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      saveReceiptFromModal();
-    }
-  });
-
   // ---- Sell search ----
   const search = $('#searchInput'), clear = $('#searchClear');
   search.addEventListener('input', (e) => {
@@ -275,8 +266,19 @@ function attachEvents() {
     $('#ordersView').classList.add('reading');
   });
   $('#ordersBack')?.addEventListener('click', () => $('#ordersView').classList.remove('reading'));
-  const shownOrder = () => state.orders.find(x => x.id === state.selectedOrderId);
+  $('#ordersCustBack')?.addEventListener('click', () => switchView('customers'));
+  const shownOrder = () => findOrderRow(state.selectedOrderId);   // a sale, or a saved cart / quote
   $('#orderPrint')?.addEventListener('click', () => { const o = shownOrder(); if (o) printOrder(o); });
+  $('#orderContinue')?.addEventListener('click', () => { const o = shownOrder(); if (o?.draft) continueDraft(o.id); });
+  // Refund: the first press turns the receipt into ticks; the second gives the ticked lines back (asks once).
+  // The receipt and the tick list morph into each other (the browser's view transition; a plain swap without one).
+  const morph = (fn) => (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches ? document.startViewTransition(fn) : fn());
+  const refundTicked = (o) => {
+    if (!picking(o)) { orderPicks(o); orderPick.on = true; return morph(renderOrderDetail); }
+    const picks = orderPicks(o), part = picks.length && SalesMath.refundPart(o, reversalsOf(o), picks);
+    if (part) showConfirm({ title: `Refund ${SalesMath.plural(picks.length, 'item')} on #${o.number}?`, message: `${peso(part.total)} goes back to the customer.`,
+      okText: 'Refund', onConfirm: () => morph(() => recordReturn(o.id, 'Refund', picks)) });
+  };
   // Refund and Void always ask first, from the rail or the order's details.
   const askRefund = (o) => {
     // What is still left on it: a partly refunded sale gives back only the rest.
@@ -285,21 +287,23 @@ function attachEvents() {
     if (back) showConfirm({ title: `Refund #${o.number}?`, message: `${peso(back.total)} goes back to the customer.`, okText: 'Refund', onConfirm: () => refundOrder(o.id, 'Refund') });
   };
   const askVoid = (o) => showConfirm({ title: `Void #${o.number}?`, message: 'The sale stays on record, marked voided.', okText: 'Void sale', onConfirm: () => voidOrder(o.id, 'Void') });
-  $('#orderRefund')?.addEventListener('click', () => askRefund(shownOrder()));
+  $('#orderRefund')?.addEventListener('click', () => { const o = shownOrder(); if (o) refundTicked(o); });
+  $('#orderCancel')?.addEventListener('click', () => morph(() => { Object.assign(orderPick, { on: false, lines: {} }); renderOrderDetail(); }));
   // Refund items / Exchange: the customer's lines first (pickReturnLines), then the refund or the cart.
   const refundItems = (o) => pickReturnLines(o, { title: `Refund items on #${o.number}`, okText: 'Refund', onPick: (picks) => recordReturn(o.id, 'Refund', picks) });
   const exchangeItems = (o) => pickReturnLines(o, { title: `What comes back on #${o.number}?`, okText: 'Next', onPick: (picks) => startExchange(o.id, picks) });
-  $('#orderMore')?.addEventListener('click', (e) => {
-    const o = shownOrder();
-    if (!o) return;
-    const done = isCompletedSale(o);
-    openMenu(e.currentTarget, [
-      { label: 'Order details', run: () => openOrderDetailModal(o.id) },
-      { label: 'Refund items', off: !done, run: () => refundItems(o) },
-      { label: 'Exchange', off: !done, run: () => exchangeItems(o) },
-      '-',
-      { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o) },
-    ], { w: 200, right: true });
+  // ⋯: the ticks are the lines refunds and exchanges use, so "Refund items" is the list itself now.
+  const orderMenu = (btn, o) => openMenu(btn, [
+    { label: 'Order details', run: () => openOrderDetailModal(o.id) },
+    { label: 'Exchange', off: !isCompletedSale(o), run: () => { const picks = orderPicks(o); if (picks.length) startExchange(o.id, picks); else exchangeItems(o); } },
+    '-',
+    { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o) },
+  ], { w: 200, right: true });
+  $('#orderMore')?.addEventListener('click', (e) => { const o = shownOrder(); if (o) orderMenu(e.currentTarget, o); });
+  // A tick, tick-all or − / + on the lines: the same pick, whichever page shows the order.
+  $('#orderDetail')?.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-line], [data-all]'), o = shownOrder();
+    if (el && o && pickOrderLine(o, el)) renderOrderDetail();
   });
   $('#orderDetailModal')?.addEventListener('click', (e) => {
     const trip = e.target.closest('[data-delivery-event]');
@@ -319,7 +323,7 @@ function attachEvents() {
     ['When', 'range', ORDER_RANGES.map(([v, l]) => [v, l])],
     ['Staff', 'staff', [['', 'Anyone'], ...[...new Set(state.orders.map(orderSeller).filter(Boolean))].sort().map(c => [c, c])]],
     ['Payment', 'pay', [['', 'Any'], ...PAY_KEYS.map(k => [k, SalesMath.tenderLabel(k), payColor(k)])]],
-    ['Status', 'status', [['', 'Any'], ...['sale', 'saved', 'part', 'refunded', 'voided', 'refund', 'void'].map(k => [k, SalesMath.ROW_LABEL[k]])]],
+    ['Status', 'status', [['', 'Any'], ...['sale', 'saved', 'quote', 'part', 'refunded', 'voided', 'refund', 'void'].map(k => [k, DRAFT_LABEL[k] || SalesMath.ROW_LABEL[k]])]],
     // Each type a row can read (orderFulfilLabel), the owner's own ones included, so a 'Tricycle' row is found as itself.
     ['Fulfilment', 'fulfil', [['', 'Any'], ...[...new Set([...FULFIL_BUILTINS.map(([k]) => k), ...state.orders.map(o => o.fulfilment)])]
       .map(k => [k, orderFulfilLabel({ fulfilment: k })])]],
@@ -401,6 +405,11 @@ function attachEvents() {
   $('#cartDiscountBtn')?.addEventListener('click', () => openEditSheet('rd'));
   $('#fulRow').addEventListener('click', (e) => { if (e.target.closest('#fulPick')) openEditSheet('ful'); });   // delegated: the row is rebuilt on every cart render
   $('#editSheet').addEventListener('click', editSheetClick);
+  $('#editSheet').addEventListener('keydown', (e) => {   // Enter in the SC/PWD ID or Name is its Apply
+    if (e.key !== 'Enter' || !e.target.closest('[data-scf]')) return;
+    e.preventDefault();
+    editSheetClick({ target: $('#editSheet [data-apply]') });
+  });
   $('#editSheet').addEventListener('input', (e) => {   // the address lands on the cart as it's typed
     if (e.target.id !== 'esAddr') return;
     state.deliveryAddress = e.target.value;
@@ -477,43 +486,27 @@ function attachEvents() {
     if (!row) return;
     state.selectedCustomerId = row.dataset.customerId;
     renderCustomers();
-    if (!$('#customerDetail').offsetParent) openCustomerDetail(row.dataset.customerId);   // phone: no detail column, the pop-up
+    $('#customerBody').scrollTop = 0;
+    $('#customersView').classList.add('reading');   // phone: the customer slides over the list, as an order does
   });
-  $('#customerDetail')?.addEventListener('click', (e) => {
-    const historyBtn = e.target.closest('[data-customer-detail]');
-    if (historyBtn) {
-      openCustomerDetail(historyBtn.dataset.customerDetail);
-      return;
-    }
-    const payBtn = e.target.closest('[data-customer-pay]');
-    if (payBtn) {
-      // ponytail: a prompt until the till has a payment screen. "1,000" and "₱ 1,000" read as 1000.
-      const c = allCustomerRecords().find(x => x.id === payBtn.dataset.customerPay);
-      if (!c) return;
-      const amount = moneyValue(parseFloat(String(prompt(`Payment amount — ${c.name} ${owedText(c.currentBalance, peso)}`) || '').replace(/[^\d.]/g, '')) || 0);
-      if (amount > 0 && c && window.confirm(`Record ${peso(amount)} cash from ${c.name}?`)) recordCreditPayment(c.id, amount);
-      return;
-    }
-    const orderRow = e.target.closest('.cd-order-row');
-    if (orderRow?.dataset.orderId) {
-      openOrderDetailModal(orderRow.dataset.orderId);
-    }
+  const shownCustomer = () => allCustomerRecords().find(x => x.id === state.selectedCustomerId);
+  $('#customersBack')?.addEventListener('click', () => $('#customersView').classList.remove('reading'));
+  $('#customerEdit')?.addEventListener('click', () => { const c = shownCustomer(); if (c) { state.customerEditFromSale = false; openCustomerEditModal(c); } });
+  $('#customerPay')?.addEventListener('click', (e) => openPaySheet(e.currentTarget, shownCustomer()));   // pos-customers.js
+  $('#customerBody')?.addEventListener('click', (e) => {
+    const id = e.target.closest('[data-order-id]')?.dataset.orderId;
+    if (id || e.target.closest('[data-customer-detail]')) { ordersFor(state.selectedCustomerId, id); switchView('orders'); }
   });
   wireFind('#customersFind', '#customersSearch', '#customersSearchX', (q) => { state.customersQuery = q; state.selectedCustomerId = null; renderCustomers(); });
-  $('#customerDetailModal')?.addEventListener('click', (e) => {
-    const row = e.target.closest('.cust-order-row');
-    if (row?.dataset.orderId) {
-      $('#customerDetailModal').hidden = true;
-      openOrderDetailModal(row.dataset.orderId);
-    }
-  });
+  ['click', 'input', 'keydown'].forEach(t => $('#shiftBody')?.addEventListener(t, onShiftEvent));   // pos-shift.js
+  wireFind('#shiftFind', '#shiftSearch', '#shiftSearchX', (q) => { shiftDraft.q = q; renderShift(); });
   $('#custSaveBtn')?.addEventListener('click', () => saveSavedCustomerFromModal());
   // "Open Ana" on the duplicate-phone note: mid-sale she goes on the receipt, else her page opens.
   $('#custFields')?.addEventListener('click', (e) => {
     const id = e.target.closest('[data-open-cust]')?.dataset.openCust;
     if (!id) return;
     $('#customerEditModal').hidden = true;
-    if (state.customerEditFromSale) { state.customerEditFromSale = false; selectCustomer(id); } else openCustomerDetail(id);
+    if (state.customerEditFromSale) { state.customerEditFromSale = false; selectCustomer(id); } else { state.selectedCustomerId = id; switchView('customers'); }
   });
 
   // Total opens its breakdown (Subtotal, Discount, VAT) above it
@@ -540,7 +533,10 @@ function attachEvents() {
   $('#cartMoreBtn').addEventListener('click', (e) => {
     const empty = state.cart.length === 0;
     openMenu(e.currentTarget, [
-      { label: 'Save receipt', run: openSaveReceiptModal, off: empty }, { label: 'Lost sale', run: () => openLostSale() }, '-',
+      // A saved cart / quote is a draft beside the orders (pos-checkout saveDraft); an exchange can't be parked.
+      { label: 'Save cart', run: () => openSaveReceiptModal('saved'), off: empty || !!state.exchange },
+      { label: 'Print quote', run: () => openSaveReceiptModal('quote'), off: empty || !!state.exchange },
+      { label: 'Lost sale', run: () => openLostSale() }, '-',
       { label: 'Clear sale', run: confirmClearCart, red: true, off: empty },
     ], { w: 200, right: true });
   });
@@ -672,10 +668,7 @@ function attachEvents() {
     });
   });
   $('#completeSaleBtn')?.addEventListener('click', () => completeSale());
-  $('#pinOkBtn')?.addEventListener('click', approveWithPin);
-  // Switch person: the name in the sidebar locks the till for the next one (only once PINs exist).
-  $('.user-row')?.addEventListener('click', () => { if (tillPins()) lockTill(); });
-  $('#pinInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') approveWithPin(); });
+  bindPinPad();   // the sign-in and the manager's PIN (pos-pin.js)
 
   // ---- POS Settings ----
   $$('#posSizeToggle .bb-size-btn').forEach(b => {
@@ -694,6 +687,11 @@ function attachEvents() {
     state.showPrice = e.target.checked;
     storageSet(STORAGE_SHOW_PRICE, state.showPrice ? '1' : '0');
     renderPosSettings();
+    renderProducts();
+  });
+  $('#posTileStock')?.addEventListener('change', (e) => {   // this till's own choice, like the Item / Amount band
+    state.tileStock = e.target.checked;
+    HWPOS_STORE.ui.set('tileStock', state.tileStock ? '1' : '0');
     renderProducts();
   });
   $$('#posThemeToggle .bb-size-btn').forEach(b => {
@@ -716,6 +714,7 @@ function attachEvents() {
   $('#posPrintCut')?.addEventListener('change', persistPosSettings);
   $('#posPrintMap')?.addEventListener('change', persistPosSettings);
   $('#posPrinterIp')?.addEventListener('change', persistPosSettings);
+  $('#posTimeZone')?.addEventListener('change', persistPosSettings);
   $$('#posDriverToggle .bb-size-btn').forEach(b => {
     b.addEventListener('click', () => {
       state.settings.printing = { ...printerConfig(), driver: b.dataset.driver };
@@ -817,13 +816,17 @@ function init() {
   updateCustomerButton();
   applyRoleGating();
   renderRoleSwitcher();
+  renderSyncMark();
+  setInterval(renderSyncMark, 30000);   // "2 min ago" keeps moving while the ☰ is open
   attachEvents();
   track('app_open');
+  // ponytail: lab only. ?pins gives the demo staff real PINs (1111 owner, 2222 manager, 3333 and 4444 cashiers)
+  if (new URLSearchParams(location.search).has('pins')) saveStaff(loadStaff().map((u, i) => ({ ...u, pin: String(i + 1).repeat(4) })));
   if (tillPins()) lockTill();
   const openHashView = () => {
     const hash = (location.hash || '').replace('#', '').trim();
     const target = hash.split(/[/?&:]/)[0];
-    const valid = ['sell', 'orders', 'inventory', 'customers', 'reports'];
+    const valid = ['sell', 'orders', 'inventory', 'customers', 'shift', 'reports'];
     if (valid.includes(target) && canAccess(target)) switchView(target);
   };
   openHashView();
@@ -917,6 +920,30 @@ function init() {
     const row = e.target.closest('.report-tx');
     if (row?.dataset.orderId) openOrderDetailModal(row.dataset.orderId);
   });
+  if (new URLSearchParams(location.search).has('demo-orders')) seedDemoOrders();
+}
+
+// ponytail: lab only. ?demo-orders rings example sales to the seeded customers through the real
+// order builder, oldest first, then drops the flag so a refresh doesn't ring them again.
+function seedDemoOrders() {
+  history.replaceState(null, '', location.pathname);
+  if (allCustomerRecords().slice(0, 4).some(c => customerOrders(c.id).length)) return;   // once: the link opened again adds nothing
+  const counts = [23, 12, 6, 3], methods = ['cash', 'cash', 'gcash', 'qr'], day = 864e5;
+  const goods = state.products.filter(p => onTill(p) && p.price > 0);
+  allCustomerRecords().slice(0, counts.length).forEach((c, ci) => {
+    for (let i = counts[ci] - 1; i >= 0; i--) {
+      const lines = 1 + (i * 7 + ci) % 4;
+      state.cart = Array.from({ length: lines }, (_, k) => goods[(i * 5 + k * 11 + ci * 3) % goods.length])
+        .filter((p, k, a) => a.indexOf(p) === k)
+        .map((p, k) => ({ id: p.id, name: p.name, sku: p.sku, brand: p.brand, unit: p.unit, price: p.price, qty: 1 + (i + k) % 5 }));
+      state.customer = c;
+      const o = buildOrderRecord({ paymentMethod: methods[(i + ci) % 4], tendered: cartTotals().total });
+      persistOrder({ ...o, ts: Date.now() - (i * 2.5 + ci * 0.3) * day - 3600e3 });
+    }
+  });
+  clearCart();
+  renderCustomers();
+  showToast('Example orders added');
 }
 // Sales live in IndexedDB: open it before the first read (data-store.js ready()).
 document.addEventListener('DOMContentLoaded', () => (window.HWPOS_STORE?.ready?.() || Promise.resolve()).then(init));

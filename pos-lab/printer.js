@@ -76,6 +76,38 @@
 
   // ---------- layout: receipt view model -> op list ----------
 
+  // The top of every slip: the store's name (double width = half the columns), address, phone, TIN, a rule.
+  function storeHead(st, cols, ops) {
+    const text = s => ops.push({ op: 'text', v: ascii(s) });
+    ops.push({ op: 'align', v: 'center' }, { op: 'bold', v: true }, { op: 'big', v: true });
+    wrap(st.name || '', Math.floor(cols / 2)).forEach(text);
+    ops.push({ op: 'big', v: false }, { op: 'bold', v: false });
+    if (st.address) wrap(st.address, cols).forEach(text);
+    if (st.phone) text('Tel: ' + st.phone);
+    if (st.tin) text('TIN: ' + st.tin);
+    ops.push({ op: 'align', v: 'left' }, { op: 'text', v: '-'.repeat(cols) });
+  }
+
+  // A plain slip that is not a sale (the shift summary, pos-shift.js): the store's head, a bold
+  // title, then rows. A row is [label, value, bold?] -- a number prints as money, a string as is --
+  // or '-' / '=' for a rule, or [text] for a wrapped line.
+  function slipLayout(s, opts) {
+    const o = opts || {}, cols = colsFor(o.width), ops = [], st = s.store || {};
+    storeHead(st, cols, ops);
+    if (s.title) ops.push({ op: 'align', v: 'center' }, { op: 'bold', v: true }, { op: 'text', v: ascii(s.title) }, { op: 'bold', v: false }, { op: 'align', v: 'left' });
+    for (const r of s.rows || []) {
+      if (r === '-' || r === '=') { ops.push({ op: 'text', v: r.repeat(cols) }); continue; }
+      if (r.length === 1) { wrap(r[0], cols).forEach(t => ops.push({ op: 'text', v: t })); continue; }
+      const v = typeof r[1] === 'number' ? money(r[1], st.currency) : String(r[1] == null ? '' : r[1]);
+      if (r[2]) ops.push({ op: 'bold', v: true });
+      ops.push({ op: 'text', v: pad(r[0], v, cols) });
+      if (r[2]) ops.push({ op: 'bold', v: false });
+    }
+    ops.push({ op: 'feed', v: 4 });
+    if (o.cut !== false) ops.push({ op: 'cut' });
+    return ops;
+  }
+
   function layout(vm, opts) {
     const o = opts || {};
     const cols = colsFor(o.width);
@@ -98,24 +130,17 @@
     const st = vm.store || {};
     const cash = n => money(n, st.currency);
 
-    align('center');
-    bold(true); big(true);
-    // Double-width glyphs = half the columns.
-    wrap(st.name || '', Math.floor(cols / 2)).forEach(text);
-    big(false); bold(false);
-    if (st.address) wrap(st.address, cols).forEach(text);
-    if (st.phone) text('Tel: ' + st.phone);
-    if (st.tin) text('TIN: ' + st.tin);
-    align('left');
-    rule();
+    storeHead(st, cols, ops);
 
     if (vm.mark) { align('center'); bold(true); text(vm.mark); bold(false); align('left'); }
-    row('Receipt #', vm.number || '');
+    if (vm.number) row('Receipt #', vm.number);   // a saved cart or quote has none: it is not a receipt
     row('Date', vm.dateText || '');
     row(vm.whoWord || 'Cashier', vm.cashier || '');   // a void or refund names who pressed it
     row('Register', vm.register || '1');
 
     if (vm.customer && vm.customer.name) text('Customer: ' + vm.customer.name);
+    // SalesMath.receiptParts: the SC/PWD cardholder, the ID on one line and the name under it (never split mid-way)
+    if (vm.scPwdId) vm.scPwdId.join(': ').split(' · ').forEach(s => wrap(s, cols).forEach(text));
 
     // The word is the till's (bo-model orderFulfilLabel, upper-cased): Walk-in, Pickup, Delivery or a store's own type.
     const fulfil = String(vm.fulfilmentLabel || '').split(' · ')[0];
@@ -142,7 +167,7 @@
     big(false); bold(false);
 
     if (vm.status === 'saved') {
-      row('STATUS', 'NOT COMPLETED');
+      if (!vm.mark) row('STATUS', 'NOT COMPLETED');   // a quote says QUOTATION at the top instead
     } else {
       payRows(vm).forEach(([l, n]) => row(l, cash(n)));
     }
@@ -544,11 +569,25 @@
         mapImage.caption = vm.deliveryMapCaption || 'Delivery location';
       } catch (e) { mapImage = null; }
     }
-    const ops = layout(vm, { width: c.width, cut: c.cut, mapImage });
+    return send(layout(vm, { width: c.width, cut: c.cut, mapImage }), c);
+  }
+  // Laid-out ops to the paired printer: the one transport switch every slip goes through.
+  function send(ops, c) {
     if (c.driver === 'network') return printNetwork(ops, c);
     if (c.driver === 'bluetooth') return printBluetooth(ops, c);
     throw new Error('Printer driver is set to Browser');
   }
+  const printSlip = (s, cfg) => { const c = cfg || {}; return send(slipLayout(s, { width: c.width, cut: c.cut }), c); };
+  // The slip as plain text: the screen and the browser pop-up show exactly what the paper prints.
+  const slipText = (s, cfg) => {
+    const cols = colsFor((cfg || {}).width), out = [];
+    let mid = false;   // the head and title print centred
+    for (const o of slipLayout(s, { width: (cfg || {}).width })) {
+      if (o.op === 'align') mid = o.v === 'center';
+      else if (o.op === 'text') out.push(mid ? ' '.repeat(Math.max(0, (cols - o.v.length) >> 1)) + o.v : o.v);
+    }
+    return out.join('\n');
+  };
 
   // Plain-text render of the same layout — used by the Test print preview.
   function preview(vm, cfg) {
@@ -559,7 +598,7 @@
       .join('\n');
   }
 
-  const API = { print, preview, pairBluetooth, scanNetwork, probe, layout, escpos, eposXml, eposUrl, mapRaster, packMono, levels, stretch, colsFor, pad, wrap, money, ascii, payRows, totalRows };
+  const API = { print, preview, printSlip, slipText, slipLayout, pairBluetooth, scanNetwork, probe, layout, escpos, eposXml, eposUrl, mapRaster, packMono, levels, stretch, colsFor, pad, wrap, money, ascii, payRows, totalRows };
   g.HWPOS_PRINTER = API;
   if (typeof module === 'object' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

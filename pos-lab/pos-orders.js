@@ -23,7 +23,9 @@ function orderState(o) {
   return SalesMath.rowState(o, orderReversals());
 }
 // What the row SHOWS (label, flag, Status filter): orderState, with 'part' for a partly refunded sale.
-const orderStatus = o => SalesMath.statusOf(o, orderReversals());
+// A saved cart or quote (draftAsOrder) reads as its draft kind: 'saved' (the old saved orders' status too) or 'quote'.
+const orderStatus = o => o.draft || SalesMath.statusOf(o, orderReversals());
+const DRAFT_LABEL = { saved: 'Saved', quote: 'Quote' };
 function isSavedOrder(o) {
   return orderState(o) === 'saved';
 }
@@ -35,7 +37,7 @@ function isCompletedSale(o) {
 const canVoid = o => isCompletedSale(o) && daysAgo(o.ts) === 0 && !reversalsOf(o).length;
 
 function orderStatusLabel(o) {
-  return SalesMath.ROW_LABEL[orderStatus(o)];
+  return (o.draft && DRAFT_LABEL[o.draft]) || SalesMath.ROW_LABEL[orderStatus(o)];
 }
 
 function buildMapThumb(location, className = 'rp-map-thumb') {
@@ -67,18 +69,20 @@ function buildMapThumb(location, className = 'rp-map-thumb') {
 // both on-screen slips show the same rows. Every page loads printer.js before app.js; the node till
 // harness does not, and gets no rows (ponytail: nothing there reads a slip).
 const slipRows = (fn, vm) => (globalThis.HWPOS_PRINTER ? HWPOS_PRINTER[fn](vm) : []);
-function buildReceiptPreview(order) {
+// `back`: how much of each line was refunded (Orders); all of it = struck through, part = a small line under it.
+function buildReceiptPreview(order, back = []) {
   const receipt = toReceiptViewModel(order);
-  const lines = receipt.items.map(i => `
-    <div class="rp-item">
+  const lines = receipt.items.map((i, k) => `
+    <div class="rp-item${back[k] >= i.qty ? ' out' : ''}">
       <div class="rp-item-name">${escapeHtml(i.name)}</div>
       <div class="rp-row rp-item-line">
         <span>${i.qty} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
         <span>${peso(i.amount)}</span>
       </div>
+      ${back[k] > 0 && back[k] < i.qty ? `<div class="rp-small">${SalesMath.qtyText(back[k])} refunded</div>` : ''}
     </div>`).join('');
   const payRows = receipt.status === 'saved'
-    ? `<div class="rp-status saved">NOT COMPLETED</div>`
+    ? (receipt.mark ? '' : `<div class="rp-status saved">NOT COMPLETED</div>`)   // a quote: QUOTATION at the top says it
     : slipRows('payRows', receipt).map(([k, v]) => `<div class="rp-row"><span>${escapeHtml(k)}</span><span>${peso(v)}</span></div>`).join('');
   return `
     <div class="receipt-preview">
@@ -89,11 +93,12 @@ function buildReceiptPreview(order) {
         ${receipt.store.tin ? `<div class="rp-center rp-small">TIN: ${escapeHtml(receipt.store.tin)}</div>` : ''}
         <div class="rp-rule"></div>
         ${receipt.mark ? `<div class="rp-status saved">${escapeHtml(receipt.mark)}</div>` : ''}
-        <div class="rp-row"><span>Receipt #</span><span>${escapeHtml(receipt.number)}</span></div>
+        ${receipt.number ? `<div class="rp-row"><span>Receipt #</span><span>${escapeHtml(receipt.number)}</span></div>` : ''}
         <div class="rp-row"><span>Date</span><span>${receipt.dateText}</span></div>
         <div class="rp-row"><span>${receipt.whoWord}</span><span>${escapeHtml(receipt.cashier || '')}</span></div>
         <div class="rp-row"><span>Register</span><span>${escapeHtml(receipt.register || '1')}</span></div>
         ${receipt.customer ? `<div class="rp-small">Customer: ${escapeHtml(receipt.customer.name)}</div>` : ''}
+        ${receipt.scPwdId ? `<div class="rp-small">${escapeHtml(receipt.scPwdId.join(': '))}</div>` : ''}
         <div class="rp-small"><strong>${escapeHtml(receipt.fulfilmentLabel)}</strong></div>
         ${buildMapThumb(receipt.deliveryLocation)}
         <div class="rp-rule"></div>
@@ -129,27 +134,45 @@ function orderSeller(o) {
   if (sellerOrders !== state.orders) { sellerOrders = state.orders; sellerFor = SalesMath.sellerOf(state.orders); }
   return sellerFor(o).name;
 }
-const ORDER_FLAG_TONE = { voided: '', part: 'warn', refunded: 'warn', void: '', refund: 'warn', saved: 'warn' };
+const ORDER_FLAG_TONE = { voided: '', part: 'warn', refunded: 'warn', void: '', refund: 'warn', saved: 'warn', quote: 'warn' };
 function orderFlag(o, cls) {
   const st = orderStatus(o);
-  return st in ORDER_FLAG_TONE ? `<span class="${cls} ${ORDER_FLAG_TONE[st]}">${SalesMath.ROW_LABEL[st]}</span>` : '';
+  return st in ORDER_FLAG_TONE ? `<span class="${cls} ${ORDER_FLAG_TONE[st]}">${orderStatusLabel(o)}</span>` : '';
 }
+// Every row the Orders page lists: the sales, then the saved carts and quotes (pos-checkout draftOrders).
+const orderRows = () => state.orders.concat(draftOrders());
+const findOrderRow = id => orderRows().find(x => x.id === id);
 const ordersFiltered = () => Object.keys(ORDERS_FILTER_DEF).some(k => state.ordersFilter[k] !== ORDERS_FILTER_DEF[k]);
 
 function ordersShown() {
   const F = state.ordersFilter;
   const q = (state.ordersQuery || '').trim().toLowerCase().replace(/^#/, '');
   const maxAgo = ORDER_RANGES.find(r => r[0] === F.range)[2];
-  return state.orders.filter(o => {
+  return orderRows().filter(o => {
     const ago = daysAgo(o.ts);
     if (F.range === 'yday' ? ago !== 1 : ago > maxAgo) return false;
     if (F.staff && orderSeller(o) !== F.staff) return false;
     if (F.pay && !orderTenderKeys(o).some(k => payBucket(k) === F.pay)) return false;
     if (F.status && orderStatus(o) !== F.status) return false;
     if (F.fulfil && o.fulfilment !== F.fulfil) return false;
-    return !q || [o.number, o.customer ? o.customer.name : 'walk-in', SalesMath.payWord(o), orderStatusLabel(o), tillDate(o.ts, 'slip'),
+    if (state.ordersCustomer && SalesMath.customerIdOf(o) !== state.ordersCustomer) return false;
+    return !q || [o.number, o.name, o.customer ? o.customer.name : 'walk-in', SalesMath.payWord(o), orderStatusLabel(o), tillDate(o.ts, 'slip'),
       ...(o.items || []).flatMap(i => [i.name, i.sku])].some(v => String(v || '').toLowerCase().includes(q));
   }).sort(SalesMath.newestFirst);
+}
+
+// A customer's "See all" (owner 2026-10-07): the Orders page itself, only their orders, every date, and ☰ turns
+// into a back to the customer. '' = the whole store again. Leaving the page any other way ends it (switchView).
+function ordersFor(customerId, orderId = '') {
+  state.ordersCustomer = customerId;
+  state.ordersFilter = { ...ORDERS_FILTER_DEF, range: customerId ? 'all' : ORDERS_FILTER_DEF.range };
+  state.ordersQuery = '';
+  $('#ordersSearch').value = '';
+  $('#ordersFind').classList.remove('typed');
+  $('#ordersSearch').placeholder = customerId ? 'Search # or item' : 'Search # or customer';
+  $('#ordersView').classList.toggle('for-cust', !!customerId);
+  $('#ordersView').classList.toggle('reading', !!orderId);   // phone: a tapped order opens on its receipt
+  if (orderId) state.selectedOrderId = orderId;
 }
 
 function renderOrders() {
@@ -168,11 +191,11 @@ function renderOrders() {
   for (const [day, rows] of SalesMath.groupByDay(shown, tillZone())) {
     html += `<div class="band"><span>${orderDayName(day)} <span class="num">· ${rows.length}</span></span>${totals ? `<span class="num">${peso(SalesMath.summarize(rows).collected)}</span>` : ''}</div>`;
     for (const o of rows) {
-      const time = tillDate(o.ts, 'time'), amt = SalesMath.rowAmount(o);
+      const time = tillDate(o.ts, 'time'), amt = o.draft ? o.total : SalesMath.rowAmount(o);   // a draft shows what it adds up to; the band still leaves it out
       html += `<button type="button" class="row${orderState(o) === 'voided' ? ' void' : ''}${o.id === state.selectedOrderId ? ' cur' : ''}" data-order-id="${o.id}">
-        <div class="nm"><span class="num">#${escapeHtml(o.number)}</span>
+        <div class="nm">${o.draft ? `<span>${escapeHtml([orderStatusLabel(o), o.name].filter(Boolean).join(' · '))}</span>` : `<span class="num">#${escapeHtml(o.number)}</span>`}
           <small class="num">${escapeHtml(orderFulfilLabel(o))} · ${time} · ${escapeHtml(orderSeller(o) || '—')}</small></div>
-        <div class="rt"><span class="amt num">${amt == null ? '—' : peso(amt)}</span><small>${orderFlag(o, 'st')}${escapeHtml(orderPayText(o))}</small></div></button>`;
+        <div class="rt"><span class="amt num">${amt == null ? '—' : peso(amt)}</span><small>${o.draft ? '' : orderFlag(o, 'st')}${escapeHtml(orderPayText(o))}</small></div></button>`;
     }
   }
   list.innerHTML = html || (state.orders.length
@@ -185,8 +208,8 @@ function renderOrders() {
 function renderOrderDetail() {
   const detail = $('#orderDetail'), ttl = $('#orderTtl');
   if (!detail || !ttl) return;
-  const o = state.orders.find(x => x.id === state.selectedOrderId);
-  $('#orderPrint').disabled = $('#orderMore').disabled = !o;
+  const o = findOrderRow(state.selectedOrderId);
+  $('#orderPrint').disabled = $('#orderMore').disabled = $('#orderContinue').disabled = !o;
   $('#orderRefund').disabled = !o || !isCompletedSale(o);
   if (!o) {
     ttl.innerHTML = '';
@@ -194,12 +217,77 @@ function renderOrderDetail() {
     return;
   }
   ttl.innerHTML = `<b class="${o.customer ? '' : 'walk'}">${escapeHtml(o.customer ? o.customer.name : 'Walk-in customer')}</b>${orderFlag(o, 'flag')}`;
-  detail.innerHTML = buildReceiptPreview(o);
-  if (orderState(o) === 'voided') {
-    const paper = detail.querySelector('.rp-paper');
-    paper.classList.add('void');
-    paper.insertAdjacentHTML('afterbegin', '<div class="stamp">VOIDED</div>');
-  }
+  detail.innerHTML = orderBodyHtml(o);
+  refundAct($('#orderRefund'), o);
+}
+
+// An order shows as its receipt, refunded lines struck through. Refund turns the receipt into its lines with
+// a tick each (the sale sidebar's rows); Refund ₱X gives them back and the receipt returns (owner 2026-10-07).
+// Orders and the customer's "See all" show the same thing.
+// One pick at a time: the order on screen, whether it is picking, and its lines { lineNo: qty }.
+const orderPick = { id: '', on: false, lines: {} };
+const picking = o => orderPick.on && orderPick.id === o.id;
+function orderBodyHtml(o) {
+  if (picking(o)) return orderLinesHtml(o);
+  const left = SalesMath.isSale(o) && orderState(o) !== 'voided' ? SalesMath.qtyLeft(o, reversalsOf(o)) : null;
+  const html = buildReceiptPreview(o, left ? o.items.map((i, k) => i.qty - left[k]) : []);
+  return orderState(o) === 'voided' ? html.replace('<div class="rp-paper">', '<div class="rp-paper void"><div class="stamp">VOIDED</div>') : html;
+}
+function orderPicks(o) {
+  if (orderPick.id !== o.id) Object.assign(orderPick, { id: o.id, on: false, lines: {} });
+  return Object.entries(orderPick.lines).map(([k, qty]) => ({ lineNo: Number(k), qty }));
+}
+const TICK = '<span class="box"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>';
+function orderLinesHtml(o) {
+  const r = toReceiptViewModel(o), sale = isCompletedSale(o);
+  const left = SalesMath.isSale(o) ? SalesMath.qtyLeft(o, reversalsOf(o)) : [];
+  orderPicks(o);
+  const L = orderPick.lines, can = k => sale && left[k] > 0, open = r.items.map((_, k) => k).filter(can);
+  const all = open.length && open.every(k => L[k] === left[k]);
+  const lines = r.items.map((i, k) => {
+    const back = SalesMath.isSale(o) && orderState(o) !== 'voided' ? i.qty - left[k] : 0;
+    return `<div class="line${can(k) || !sale ? '' : ' done'}">
+      <button type="button" class="row" ${can(k) ? `role="checkbox" aria-checked="${k in L}" data-line="${k}"` : 'disabled'}>${sale ? TICK : ''}
+        <span class="nm"><span>${escapeHtml(i.name)}</span><small class="num">${SalesMath.qtyText(i.qty)} × ${peso(i.price)}${back > 0 ? ` · ${SalesMath.qtyText(back)} refunded` : ''}</small></span>
+        <span class="amt num">${peso(i.amount)}</span></button>
+      ${k in L && left[k] > 1 ? `<div class="step"><span>Coming back</span>
+        <button type="button" data-step="-1" data-line="${k}" aria-label="One less">−</button><b class="num">${SalesMath.qtyText(L[k])}</b>
+        <button type="button" data-step="1" data-line="${k}" aria-label="One more">+</button><small class="num">of ${SalesMath.qtyText(left[k])}</small></div>` : ''}</div>`;
+  }).join('');
+  return `<div class="c-body oi">
+    <p class="meta">Tick what comes back.</p>
+    <section class="card ol">
+      <div class="band">${sale ? `<button type="button" class="all" role="checkbox" aria-checked="${!!all}" aria-label="Tick every item" data-all${open.length ? '' : ' disabled'}>${TICK}</button>` : ''}
+        <span>${SalesMath.plural(r.items.length, 'item')}</span><span>Amount</span></div>${lines}</section>
+  </div>`;
+}
+// A tick, the band's tick-all, or a − / + on a ticked line. True when the pick changed.
+function pickOrderLine(o, el) {
+  const left = SalesMath.qtyLeft(o, reversalsOf(o)), k = el.dataset.line;
+  orderPicks(o);
+  const L = orderPick.lines;
+  if ('all' in el.dataset) {
+    const on = el.getAttribute('aria-checked') !== 'true';
+    orderPick.lines = {};
+    if (on) left.forEach((q, n) => { if (q > 0) orderPick.lines[n] = q; });
+  } else if (el.dataset.step) L[k] = Math.min(left[k], Math.max(Math.min(1, left[k]), Math.round((L[k] + Number(el.dataset.step)) * 1000) / 1000));
+  else if (k != null) { if (k in L) delete L[k]; else L[k] = left[k]; }
+  else return false;
+  return true;
+}
+// The bar: Print receipt, Refund, ⋯ — or, while picking, Cancel and Refund ₱X (live once something is ticked).
+// A saved cart or quote: Print and Continue, where a sale has Refund (owner 2026-10-07).
+function refundAct(btn, o) {
+  const picks = orderPicks(o), part = picks.length && SalesMath.refundPart(o, reversalsOf(o), picks), on = picking(o), dr = !!o.draft;
+  btn.disabled = !isCompletedSale(o) || (on && !part);
+  btn.hidden = dr;
+  btn.classList.toggle('primary', on);
+  btn.querySelector('span').textContent = part ? `Refund ${peso(part.total)}` : 'Refund';
+  const pr = $('#orderPrint'), word = dr ? 'Print' : 'Print receipt';   // a draft's slip is not a receipt
+  if (pr) { pr.title = word; pr.querySelector('span').textContent = word; }
+  btn.parentElement.querySelectorAll('.act').forEach(b => {
+    if (b !== btn) b.hidden = b.id === 'orderContinue' ? !dr : (dr && b.id === 'orderMore') || on !== b.classList.contains('cancel');
+  });
 }
 
 // The filter sheet (both labs): every choice on one sheet; a tap applies at once and the sheet stays open.
@@ -263,6 +351,7 @@ function openOrderDetailModal(orderId) {
     ['Staff', orderSeller(o) || '—'],   // the seller; a void or refund also names who pressed it
     ...(r.mark ? [[r.whoWord, o.cashier || '—']] : []),
     ['Customer', o.customer ? o.customer.name : 'Walk-in'],
+    ...(r.scPwdId ? [r.scPwdId] : []),
     ['Payment', SalesMath.payWord(o)],
     ['Fulfilment', o.fulfilment === 'delivery' ? (o.deliveryAddress || orderFulfilLabel(o)) : orderFulfilLabel(o)],
   ].map(([k, v]) => `<div class="odm-meta-row"><span>${k}</span><span>${escapeHtml(String(v))}</span></div>`).join('');
@@ -419,6 +508,7 @@ function recordDeliveryEvent(orderId, event) {
 // ---------- 80mm thermal receipt ----------
 function buildReceiptHtml(order) {
   const receipt = toReceiptViewModel(order);
+  const paper = printerConfig().width === '58mm' ? '58mm' : '80mm';   // Settings › Printing › Paper width
   const lines = receipt.items.map(i => `
     <div class="r-item">
       <div class="r-item-name">${escapeHtml(i.name)}</div>
@@ -431,6 +521,7 @@ function buildReceiptHtml(order) {
   const cust = receipt.customer
     ? `<div class="r-cust">Customer: ${escapeHtml(receipt.customer.name)}</div>`
     : '';
+  const scId = receipt.scPwdId ? `<div class="r-cust">${escapeHtml(receipt.scPwdId.join(': '))}</div>` : '';
   const fulfilParts = receipt.fulfilmentLabel.split(' · ');
   const fulfil = fulfilParts[0] === 'DELIVERY'
     ? `
@@ -440,16 +531,16 @@ function buildReceiptHtml(order) {
   const deliveryMap = receipt.deliveryLocation ? buildMapThumb(receipt.deliveryLocation, 'r-map-thumb') : '';
   const totalRows = slipRows('totalRows', receipt).map(([k, v]) => `<div class="r-row"><span>${escapeHtml(k)}</span><span>${peso(v)}</span></div>`).join('');
   const payRows = receipt.status === 'saved'
-    ? `<div class="r-row"><span>STATUS</span><span>NOT COMPLETED</span></div>`
+    ? (receipt.mark ? '' : `<div class="r-row"><span>STATUS</span><span>NOT COMPLETED</span></div>`)
     : slipRows('payRows', receipt).map(([k, v]) => `<div class="r-row"><span>${escapeHtml(k)}</span><span>${peso(v)}</span></div>`).join('');
 
   return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
-<title>Receipt ${escapeHtml(receipt.number)}</title>
+<title>${escapeHtml(receipt.number ? `Receipt ${receipt.number}` : (receipt.mark ? 'Quotation' : 'Saved cart'))}</title>
 <style>
-  @page { size: 80mm auto; margin: 0; }
+  @page { size: ${paper} auto; margin: 0; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #fff; color: #000; }
   body {
@@ -458,7 +549,7 @@ function buildReceiptHtml(order) {
     line-height: 1.35;
   }
   .r-paper {
-    width: 80mm;
+    width: ${paper};
     padding: 4mm 4mm 6mm;
     background: #fff;
   }
@@ -478,7 +569,7 @@ function buildReceiptHtml(order) {
       box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 4px 12px rgba(0,0,0,0.3);
       padding: 8mm 6mm 10mm;
     }
-    .r-actions { width: 80mm; }
+    .r-actions { width: ${paper}; }
   }
   .r-center { text-align: center; }
   .r-store { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
@@ -533,12 +624,12 @@ function buildReceiptHtml(order) {
 
   ${receipt.mark ? `<div class="r-center"><strong>${escapeHtml(receipt.mark)}</strong></div>` : ''}
   <div class="r-meta">
-    <div><span>Receipt #</span><span>${escapeHtml(receipt.number)}</span></div>
+    ${receipt.number ? `<div><span>Receipt #</span><span>${escapeHtml(receipt.number)}</span></div>` : ''}
     <div><span>Date</span><span>${receipt.dateText}</span></div>
     <div><span>${receipt.whoWord}</span><span>${escapeHtml(receipt.cashier || '')}</span></div>
     <div><span>Register</span><span>${escapeHtml(receipt.register || '1')}</span></div>
   </div>
-  ${cust}
+  ${cust}${scId}
   ${fulfil}
   ${deliveryMap}
 
@@ -665,6 +756,7 @@ function reverseSale(orderId, kind, reason, { by = '', again, whole = false, pic
     ].map(p => ({ ...p, tendered: 0, change: 0, ref: order.number })),   // each leg keeps its tender's name
   });
   state.selectedOrderId = order.id;   // the sale stays on screen, now stamped
+  if (orderPick.id === order.id) Object.assign(orderPick, { on: false, lines: {} });   // back to the receipt, now struck
   track(kind, kind === 'void' ? { orderId, reason } : { orderId, amount: row.total, reason });
   return row;
 }
@@ -756,7 +848,7 @@ function confirmExchange() {
 
 // `picks`: what comes back, as refundOrder; none = the whole sale. `replacementItems` = state.cart rings
 // the cart as it stands (startExchange); any other list is a plain cart of those items.
-function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange', by = '', picks = null) {
+function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange', by = '', picks = null, okOver = false) {
   const fromCart = replacementItems === state.cart;
   const replacements = fromCart ? state.cart : (replacementItems || [])
     .map(item => {
@@ -787,7 +879,7 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange', by =
   // The new sale is built like any other (buildOrderRecord: the same VAT, SC/PWD and payments) from a
   // cart. From the cart it is the cart as the cashier set it up (line and cart discounts, sale type); the
   // customer stays the original's either way (openCustomerModal refuses a change mid-exchange).
-  const swap = fromCart ? { customer: order.customer } : { cart: replacements, customer: order.customer, cartDiscount: null,
+  const swap = fromCart ? { customer: order.customer } : { cart: replacements, customer: order.customer, cartDiscount: null, scPwd: null,
     fulfilment: order.fulfilment, deliveryAddress: order.deliveryAddress || '', deliveryLocation: order.deliveryLocation || null };
   const kept = Object.fromEntries(Object.keys(swap).map(k => [k, state[k]]));
   Object.assign(state, swap);
@@ -800,8 +892,13 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange', by =
     // The refund takes `credit` off the balance first; the replacement charges onAccount against what is left.
     const overBy = creditOverBy({ ...c, currentBalance: moneyValue(c.currentBalance - credit) }, onAccount);
     // ponytail: one approval covers the exchange; the refund's own gate is skipped once `by` is set.
-    if (overBy > 0 && !by && (!gate('overLimit', again, { customerId: c.id, overBy })
-      || !window.confirm(`${c.name} would be ${peso(overBy)} over their ${peso(c.creditLimit)} credit limit.\n\nExchange anyway?`))) return null;
+    // `okOver`: answered Yes in the app's own pop-up, so the re-run goes past the limit.
+    if (overBy > 0 && !by && !okOver) {
+      if (gate('overLimit', again, { customerId: c.id, overBy })) showConfirm({ title: 'Over the credit limit',
+        message: `${c.name} would be ${peso(overBy)} over their ${peso(c.creditLimit)} credit limit.`, okText: 'Exchange anyway',
+        onConfirm: () => exchangeOrder(orderId, replacementItems, reason, '', picks, true) });
+      return null;
+    }
   }
 
   // The exchange is a refund row for what came back, then a fresh sale for what goes out.

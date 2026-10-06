@@ -89,6 +89,8 @@ function track(type, data) {
 // A cart is born when its first line lands and keeps its id until the sale or the clear.
 function beginCart() {
   if (state.cart.length) return;
+  state.scPwd = null;   // a fresh cart never carries the last cardholder (lines removed one by one, not cleared)
+  state.savedId = '';   // ...nor the saved cart the emptied one was continuing (continueDraft sets it after this)
   state.cartId = newId('cart');
   state.cartStartedAt = Date.now();
   track('cart_start');
@@ -127,10 +129,12 @@ const state = {
   orders: [],
   selectedOrderId: null,
   ordersQuery: '',
+  ordersCustomer: '',   // a customer's "See all": Orders shows only theirs (ordersFor)
   ordersFilter: { range: 'week', staff: '', pay: '', status: '', fulfil: '' },   // ORDERS_FILTER_DEF
   variantModal: { groupId: null, query: '', available: false },
   cart: [],
   cartDiscount: null,           // {type:'amount'|'percent', value:number}
+  scPwd: null,                  // {kind:'senior'|'pwd', idNo, name}: the cart's SC/PWD discount (edit sheet); replaces cartDiscount
   fulfilment: 'walkin',         // a FULFIL_BUILTINS key (bo-model) or the owner's own type
   deliveryAddress: '',
   pickupTime: null,   // { day, time }: the fulfilment sheet shows it; not on the order yet
@@ -156,6 +160,7 @@ const state = {
   showPrice: storageGet(STORAGE_SHOW_PRICE, '0') === '1',
   theme: (storageGet(STORAGE_THEME, 'dark') || 'dark'),
   cartHead: window.HWPOS_STORE?.ui.get('cartHead', '1') !== '0',               // the Item / Amount band
+  tileStock: window.HWPOS_STORE?.ui.get('tileStock', '0') === '1',             // Low / Out marks on the tiles (tileMark)
   customersQuery: '',
   selectedCustomerId: null,
   lostSale: { productId: '', reason: 'out-of-stock' },
@@ -178,7 +183,7 @@ const barcodeScanner = {
 
 // ---------- Helpers ----------
 const peso = (n) => SalesMath.formatMoney(n, state.settings?.store?.currency);
-// The till's tax setup, for SalesMath.orderTotals ("VAT registered" off = no tax).
+// The till's tax setup, for SalesMath.orderTotals ("VAT registered" off = no tax). The cart's SC/PWD: cartTotals.
 const taxOpts = () => SalesMath.taxOpts(state.settings);
 // "VAT (12% incl.)" / "Tax (8%)": the store's tax name and rate.
 const taxLabel = (rate, included) => `${SalesMath.taxName({ ...state.settings, taxOnTop: !included })} (${SalesMath.ratePct(rate)}${included ? ' incl.' : ''})`;
@@ -292,7 +297,8 @@ function setCheckoutError(message = '') {
 }
 
 // `html`: markup for the message (the refund line picker), built by the caller with escapeHtml.
-function showConfirm({ title = 'Are you sure?', message = '', html = '', okText = 'Confirm', cancelText = 'Cancel', danger = true, onConfirm } = {}) {
+// `onCancel`: runs on the Cancel button only (ponytail: not on Esc/backdrop; add if a caller needs it).
+function showConfirm({ title = 'Are you sure?', message = '', html = '', okText = 'Confirm', cancelText = 'Cancel', danger = true, onConfirm, onCancel } = {}) {
   const modal = $('#confirmModal');
   if (!modal) return;
   const titleEl = $('#confirmTitle');
@@ -305,7 +311,7 @@ function showConfirm({ title = 'Are you sure?', message = '', html = '', okText 
     okBtn.textContent = okText;
     okBtn.classList.toggle('danger', !!danger);
   }
-  if (cancelBtn) cancelBtn.textContent = cancelText;
+  if (cancelBtn) { cancelBtn.textContent = cancelText; cancelBtn.onclick = onCancel || null; }
 
   // Replace the OK button to drop any prior click handlers
   if (okBtn) {
@@ -594,6 +600,7 @@ function normalizeOrderRecord(raw = {}) {
     vatableSales: moneyValue(o.vatableSales),
     vatExempt: moneyValue(o.vatExempt),
     scPwdOff: moneyValue(o.scPwdOff),
+    scPwd: o.scPwd,   // the SC/PWD cardholder (readOrder), or null
     taxIncluded: o.taxIncluded,
     fulfilment,
     deliveryAddress: fulfilment === 'delivery' ? String(raw.deliveryAddress || '') : '',
@@ -612,10 +619,11 @@ function toReceiptViewModel(order) {
   // The slip's words come from the row's state, one place for the screen, the pop-up and the printer:
   // mark, Paid / Given back, Cashier / Voided by / Refunded by, the tenders by name, the footer, SC/PWD.
   const orders = Array.isArray(state.orders) ? state.orders : [];
-  const parts = SalesMath.receiptParts(o, orders.find(x => x.id === o.originalOrderId) || null, orderReversals());
+  // A saved cart or quote (draftAsOrder) has no receipt number; a quote's slip is headed QUOTATION.
+  const parts = SalesMath.receiptParts({ ...o, draft: order.draft }, orders.find(x => x.id === o.originalOrderId) || null, orderReversals());
   return {
     store: currentStoreInfo(),
-    number: o.number,
+    number: order.draft ? '' : o.number,
     ts: o.ts,
     dateText: tillDate(o.ts, 'slip'),
     cashier: o.cashier,
@@ -710,8 +718,8 @@ function folderName(id) {
 
 // ---------- Roles ----------
 const ROLE_ALLOWED = {
-  cashier: new Set(['sell', 'orders', 'items', 'settings', 'checkout']),
-  manager: new Set(['sell', 'orders', 'items', 'customers', 'back-office', 'settings', 'checkout']),   // ponytail: Reports hidden for now; add 'reports' back to bring it back
+  cashier: new Set(['sell', 'orders', 'items', 'shift', 'settings', 'checkout']),
+  manager: new Set(['sell', 'orders', 'items', 'customers', 'shift', 'back-office', 'settings', 'checkout']),   // ponytail: Reports hidden for now; add 'reports' back to bring it back
 };
 ROLE_ALLOWED.owner = ROLE_ALLOWED.manager;   // the till's pages; the back office has its own page access
 ROLE_ALLOWED.stock = ROLE_ALLOWED.cashier;
@@ -746,6 +754,7 @@ function switchView(view) {
     return;
   }
   const fromCheckout = state.view === 'checkout';
+  if (view !== 'orders' && state.ordersCustomer) ordersFor('');
   state.view = view;
   $$('.side-link').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === view));
@@ -759,8 +768,10 @@ function switchView(view) {
     state.orders = loadOrders();
     renderOrders();
   }
+  if (view === 'sell') renderProducts();   // stock may have moved elsewhere (void, refund) — tile marks read it
   if (view === 'items') renderItems();
   if (view === 'customers') renderCustomers();
+  if (view === 'shift') renderShift();
   if (view === 'reports') renderReports();
   if (view === 'checkout') renderCheckout();
 }

@@ -767,6 +767,7 @@ const EVENT_LOGS = {
   deliveryEvents:   storeKey('deliveryEvents'),   // orderId, event, driver, lat, lng
   supplierMessages: storeKey('supplierMessages'), // supplierId, poId, direction, channel, text
   decisions:        storeKey('decisions'),        // kind, subjectId, inputs, rule, choice, actor
+  pinLockouts:      storeKey('pinLockouts'),      // kind (signIn | the gated action), tries, strike, waitSec, register (pos-pin.js)
 };
 
 // ts epoch ms like every other row (2026-10-03; older rows hold ISO text -- read through SalesMath.tsOf).
@@ -821,6 +822,7 @@ function saveCatalog(list, meta) {
 const CUSTOMER_FIELDS = [
   { name: 'name', label: 'Name', type: 'text', attrs: ' required' },
   { name: 'phone', label: 'Phone', type: 'tel' },
+  { name: 'email', label: 'Email', type: 'email' },
   { name: 'address', label: 'Address', type: 'text', wide: true },
   { name: 'creditOn', label: 'Credit', type: 'select', options: [['', 'Off'], ['on', 'On']] },
   { name: 'creditLimit', label: 'Credit limit', type: 'number', attrs: ' min="0" step="0.01" placeholder="No limit"' },
@@ -838,6 +840,7 @@ function normalizeCustomer(raw) {
     id: String(c.id || ''),
     name: String(c.name || '').trim(),
     phone: String(c.phone || '').trim(),
+    email: String(c.email || '').trim(),
     address: String(c.address || '').trim(),
     creditOn: on,
     creditLimit: on ? limit : null,   // null = no limit; credit off carries none, so it is never Over limit

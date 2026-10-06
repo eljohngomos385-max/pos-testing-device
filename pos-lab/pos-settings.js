@@ -11,6 +11,8 @@ function renderPosSettings() {
   });
   const showCb = $('#posShowPrice');
   if (showCb) showCb.checked = state.showPrice;
+  const stockCb = $('#posTileStock');
+  if (stockCb) stockCb.checked = state.tileStock;
   const currentTheme = state.theme || 'dark';
   $$('#posThemeToggle .bb-size-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.theme === currentTheme);
@@ -47,6 +49,14 @@ function renderPosSettings() {
   if (btStatus) btStatus.textContent = p.btName ? 'Paired: ' + p.btName : 'Not paired';
   const churnInput = $('#posChurnDays');
   if (churnInput) churnInput.value = state.settings.churnThresholdDays || 30;
+  const tz = $('#posTimeZone');
+  if (tz) {
+    const zone = SalesMath.storeZone(state.settings);
+    // The browser's own zone list, filled once; ponytail: a browser without it offers the saved zone and Manila only.
+    if (!tz.options.length) tz.innerHTML = [...new Set([zone, 'Asia/Manila', ...(Intl.supportedValuesOf?.('timeZone') || [])])].sort()
+      .map(z => `<option value="${escapeHtml(z)}">${escapeHtml(z.replace(/_/g, ' '))}</option>`).join('');
+    tz.value = zone;
+  }
 }
 
 function applyTheme(theme) {
@@ -66,7 +76,12 @@ function persistPosSettings() {
     mapOnReceipt: !!$('#posPrintMap')?.checked,
     netUrl: ($('#posPrinterIp')?.value || '').trim(),
   };
-  state.settings.churnThresholdDays = Math.max(1, parseInt($('#posChurnDays')?.value || '30', 10) || 30);
+  // No churn box on the till today: without this guard every printer save reset the back office's days to 30.
+  const churn = $('#posChurnDays');
+  if (churn) state.settings.churnThresholdDays = Math.max(1, parseInt(churn.value || '30', 10) || 30);
+  // The store's clock (SalesMath.storeZone): days, bands and reports all turn over in this zone.
+  const zone = $('#posTimeZone')?.value;
+  if (zone) state.settings.store = { ...state.settings.store, timeZone: zone };
   saveSettings();
 }
 
@@ -76,18 +91,26 @@ function persistPosSettings() {
 // customer-ledger-check and till-run call it as the till's own cash count.
 function buildCashDrawerSummary(date = new Date()) {
   const z = tillZone(), key = tillDay(+date);
-  const from = SalesMath.dayStartMs(key, z), to = SalesMath.dayStartMs(SalesMath.addDays(key, 1), z);
+  const d = drawerCash(SalesMath.dayStartMs(key, z), SalesMath.dayStartMs(SalesMath.addDays(key, 1), z));
+  return {
+    date: key,
+    expectedCash: moneyValue(unc(cent(d.sales) - cent(d.back) + cent(d.onAccount))),
+    cashSales: d.rows.filter(o => SalesMath.isSale(o) && (o.payments || []).some(p => p.method === 'cash' && p.amount > 0)).length,
+    adjustments: d.rows.filter(SalesMath.isReversal).length,
+  };
+}
+
+// THIS register's cash over [from, to), the one sum the day count above and the shift close
+// (pos-shift.js) both read: cash taken on sales, cash handed back (a void or refund row pays out the
+// way the sale came in), and cash paid on account at this till (customers bug 9; a back-office
+// payment has no register). Pesos, unsigned.
+function drawerCash(from, to = Infinity) {
   const reg = String(currentStoreInfo().registerNo);
-  const day = loadOrders().filter(o => String(o.register) === reg && o.ts >= from && o.ts < to);
-  // Plus cash paid on account at this till today (customers bug 9); a back-office payment has no register.
+  const rows = loadOrders().filter(o => String(o.register) === reg && o.ts >= from && o.ts < to);
+  const cash = list => SalesMath.tenders(list).get('cash') || 0;
   const ledger = loadCustomerLedger(), undone = undoneIds(ledger);
   const onAccount = ledger.filter(r => r.type === 'payment' && r.method === 'cash' && String(r.register) === reg && !undone.has(r.id)
     && SalesMath.tsOf(r) >= from && SalesMath.tsOf(r) < to).reduce((n, r) => n + cent(r.amount), 0);
-  return {
-    date: key,
-    expectedCash: moneyValue((SalesMath.tenders(day).get('cash') || 0) + unc(onAccount)),
-    cashSales: day.filter(o => SalesMath.isSale(o) && (o.payments || []).some(p => p.method === 'cash' && p.amount > 0)).length,
-    adjustments: day.filter(SalesMath.isReversal).length,
-  };
+  return { rows, sales: cash(rows.filter(SalesMath.isSale)), back: -cash(rows.filter(SalesMath.isReversal)) || 0, onAccount: unc(onAccount) };
 }
 

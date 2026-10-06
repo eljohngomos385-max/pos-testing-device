@@ -308,11 +308,15 @@ function saveKind() {
 function dropKind() {
   const K = kindEdit, at = new Date().toISOString();
   if (K.kind === 'cats') {
-    if (!window.confirm(`Delete “${K.name}”? Its items stay; they only leave this category.`)) return;
-    tagItems('cats', K.id, new Set(), at);
-    state.folders = state.folders.filter(f => f.id !== K.id);
-    writeJsonStorage(STORAGE_FOLDERS, state.folders);
-  } else saveModifiers(loadModifiers().map(m => (m.id === K.id ? stampRow({ ...m, archived: true }) : m)));
-  closeKindEditor(K.kind === 'cats' ? 'Deleted' : 'Archived');
+    return showConfirm({ title: `Delete “${K.name}”?`, message: 'Its items stay; they only leave this category.', okText: 'Delete',
+      onConfirm: () => {
+        tagItems('cats', K.id, new Set(), at);
+        state.folders = state.folders.filter(f => f.id !== K.id);
+        writeJsonStorage(STORAGE_FOLDERS, state.folders);
+        closeKindEditor('Deleted');
+      } });
+  }
+  saveModifiers(loadModifiers().map(m => (m.id === K.id ? stampRow({ ...m, archived: true }) : m)));
+  closeKindEditor('Archived');
 }
 function closeKindEditor(msg) { closeItemEditor(); renderItems(); showToast(msg); }

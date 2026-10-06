@@ -208,6 +208,7 @@ function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentM
     vatableSales: totals.vatableSales,
     vatExempt: totals.vatExempt,
     scPwdOff: totals.scPwdOff,
+    scPwd: sc && state.scPwd ? { ...state.scPwd } : null,   // the cardholder, for the slip (receiptParts.scPwdId)
     taxIncluded: totals.taxIncluded,
     fulfilment: state.fulfilment || 'walkin',
     deliveryAddress: state.fulfilment === 'delivery' ? state.deliveryAddress : '',
@@ -511,41 +512,144 @@ function draftReceiptCustomerFromName(name) {
   };
 }
 
-function openSaveReceiptModal() {
-  if (state.cart.length === 0) return;
-  const input = $('#saveReceiptNameInput');
-  if (input) {
-    input.value = state.customer?.name || '';
-  }
-  const modal = $('#saveReceiptModal');
-  if (modal) modal.hidden = false;
+// ---------- Saved carts and quotes (owner 2026-10-07) ----------
+// A saved cart is a draft, not an order: no receipt number, no stock, no money. It lives in its own list
+// (HWPOS_STORE.savedCarts) and Orders lists it beside the sales. A quote is a saved list that printed a
+// QUOTATION slip. Continue loads it back at TODAY's prices; the sale that completes it deletes it.
+// Old lab orders saved with status 'saved' stay as they are.
+const STORAGE_SAVED_CARTS = storeKey('savedCarts');
+function loadSavedCarts() {
+  const list = readJsonStorage(STORAGE_SAVED_CARTS, []);
+  return Array.isArray(list) ? list.filter(d => d && d.id) : [];
+}
+// One draft read as an order, so the Orders rail, its slip and the printer show it like any row:
+// status 'saved' (no money, no stock: SalesMath.rowState), no number, `draft` = its kind.
+function draftAsOrder(d) {
+  const t = cartTotals(d.items || [], d.cartDiscount, d.scPwd);
+  const money = Object.fromEntries(['subtotal', 'discount', 'total', 'vatRate', 'vatAmount', 'vatableSales', 'vatExempt', 'scPwdOff', 'taxIncluded'].map(k => [k, t[k]]));
+  return { ...normalizeOrderRecord({ ...d, ...money, status: 'saved', paymentMethod: 'unpaid' }), number: '', draft: d.kind === 'quote' ? 'quote' : 'saved', name: d.name || '' };
+}
+const draftOrders = () => loadSavedCarts().map(draftAsOrder);
+
+// The cart as a draft. Saving again (after Continue) updates the same entry of the same kind; a continued quote
+// saved as a cart (or the reverse) is a new entry, so the quote stays as printed. Throws when it did not land.
+function saveDraft(kind, name) {
+  const store = currentStoreInfo(), prev = state.savedId && loadSavedCarts().find(d => d.id === state.savedId && d.kind === kind);
+  // The customer on the cart, else the typed name as one (draftReceiptCustomerFromName) so the slip names them.
+  const c = state.customer || draftReceiptCustomerFromName(name);
+  const row = stampRow({
+    id: prev ? prev.id : newId(),
+    kind,
+    name: String(name || '').trim(),
+    customer: c ? { id: c.id, name: c.name, phone: c.phone || '', address: c.address || '' } : null,
+    items: state.cart.map(i => ({ ...i })),
+    cartDiscount: state.cartDiscount ? { ...state.cartDiscount } : null,
+    scPwd: state.scPwd ? { ...state.scPwd } : null,   // the SC/PWD cardholder: the quote prints the SC price, Continue brings it back
+    fulfilment: state.fulfilment || 'walkin',
+    deliveryAddress: state.fulfilment === 'delivery' ? state.deliveryAddress : '',
+    deliveryLocation: state.fulfilment === 'delivery' ? state.deliveryLocation : null,
+    ts: Date.now(),
+    cashier: store.cashier,
+    staffId: state.user?.id || '',
+    register: store.registerNo,
+  });
+  HWPOS_STORE.savedCarts.put(row.id, row);   // runs to the write before its promise; read back to know it landed
+  if (!loadSavedCarts().some(d => d.id === row.id && d.updatedAt === row.updatedAt)) throw new Error('Saved cart could not be saved.');
+  return row;
+}
+// The sale that completes a continued draft, or a draft nobody needs: gone (a draft is not a ledger).
+function dropDraft(id) {
+  if (id) HWPOS_STORE.savedCarts.remove(id);
+  state.savedId = '';
 }
 
-function saveReceiptFromModal() {
-  const input = $('#saveReceiptNameInput');
-  const customerOverride = draftReceiptCustomerFromName(input?.value || '');
-  const modal = $('#saveReceiptModal');
-  if (modal) modal.hidden = true;
-  saveCurrentReceipt(customerOverride);
+// "Save cart" and "Print quote" (the cart ⋯): one name sheet that grows out of the ⋯ and shrinks back into it
+// (the pay sheet's veil + card, growFrom).
+function openSaveReceiptModal(kind = 'saved') {
+  const btn = $('#cartMoreBtn');
+  if (state.cart.length === 0 || !btn) return;
+  const word = kind === 'quote' ? 'Print quote' : 'Save cart';
+  const name = (state.savedId && loadSavedCarts().find(d => d.id === state.savedId)?.name) || state.customer?.name || '';
+  const veil = document.createElement('div');
+  veil.className = 'rail-veil';
+  veil.innerHTML = `<form class="pay-sheet" role="dialog" aria-label="${word}" novalidate>
+    <div class="ph"><b>${word}</b></div>
+    <label class="pf"><span class="lb">Customer name</span><input class="text-input" name="who" type="text" autocomplete="off" placeholder="Optional" value="${escapeHtml(name)}"></label>
+    <div class="pb"><button type="button" class="secondary-btn small" data-cancel>Cancel</button><button type="submit" class="primary-btn small">${word}</button></div>
+  </form>`;
+  const f = veil.firstChild, r = btn.getBoundingClientRect();
+  f.style.width = Math.min(340, innerWidth - 24) + 'px';
+  document.body.append(veil);
+  f.style.left = Math.max(12, Math.min(innerWidth - f.offsetWidth - 12, r.right - f.offsetWidth)) + 'px';
+  f.style.top = Math.max(8, Math.min(innerHeight - f.offsetHeight - 8, r.top)) + 'px';
+  const shrink = growFrom(f, r);
+  const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+  const close = () => {
+    document.removeEventListener('keydown', onKey, true);
+    veil.style.pointerEvents = 'none';
+    shrink(() => veil.remove());
+  };
+  document.addEventListener('keydown', onKey, true);
+  veil.addEventListener('click', (e) => { if (e.target === veil || e.target.closest('[data-cancel]')) close(); });
+  f.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (veil.style.pointerEvents) return;   // closing already: a second Enter must not save twice
+    close();
+    saveCurrentReceipt(f.who.value, kind);   // in the tap's gesture: a quote's print pop-up needs it
+  });
+  f.who.focus({ preventScroll: true });
 }
 
-function saveCurrentReceipt(customerOverride = null) {
+function saveCurrentReceipt(name = '', kind = 'saved') {
   if (state.cart.length === 0) return;
   try {
-    const order = persistOrder(buildOrderRecord({
-      status: 'saved',
-      paymentMethod: 'unpaid',
-      tendered: 0,
-      change: 0,
-      customerOverride,
-    }));
-    track('cart_hold', { lines: order.items.length });
+    const order = draftAsOrder(saveDraft(kind, name));
+    track('cart_hold', { lines: order.items.length, kind });
+    if (kind === 'quote') printOrder(order);   // first: the browser pop-up needs the tap's gesture
     showOrderAfterCartClears(order);
   } catch (err) {
     console.error(err);
-    showToast('Receipt was not saved. Check browser storage.');
+    showToast('Cart was not saved. Check browser storage.');
     flashControl($('#cartMoreBtn'));
   }
+}
+
+// Continue (Orders): the draft's lines back in the cart at today's prices, by product id. Qty and the line and
+// cart discounts stay (a price-match is a discount). A deleted item is skipped, with a toast; with nothing left to
+// sell the cart stays as it is. A hidden or archived one asks "Sell anyway?" first, like a scan does (addProductByCode).
+function continueDraft(id) {
+  const d = loadSavedCarts().find(x => x.id === id);
+  if (!d) return;
+  const gone = [], off = [], lines = [];
+  for (const i of d.items || []) {
+    const p = state.products.find(x => x.id === (i.productId || i.id));
+    if (!p) { gone.push(i.name); continue; }
+    if (!onTill(p)) off.push(`${p.name} is ${p.archived ? 'archived' : 'hidden'}.`);
+    lines.push({ ...i, id: p.id, name: p.name, sku: p.sku, brand: p.brand, unit: p.unit, price: p.price });
+  }
+  if (!lines.length) return showToast(`Nothing to continue · ${gone.join(', ')} no longer sold`);
+  const load = () => {
+    clearCart();
+    beginCart();
+    state.cart = lines;
+    state.cartDiscount = d.cartDiscount ? { ...d.cartDiscount } : null;
+    state.scPwd = d.scPwd ? { ...d.scPwd } : null;
+    state.customer = (d.customer && allCustomerRecords().find(c => c.id === d.customer.id)) || null;
+    state.fulfilment = d.fulfilment || state.fulfilment;
+    state.deliveryAddress = d.deliveryAddress || '';
+    state.deliveryLocation = d.deliveryLocation || null;
+    state.savedId = d.id;
+    renderCart();
+    updateCustomerButton();
+    switchView('sell');
+    renderProducts();
+    if (gone.length) showToast(`Skipped ${gone.join(', ')} · no longer sold`);
+  };
+  const replace = () => state.cart.length
+    ? showConfirm({ title: 'Replace the cart?', message: 'The items in the cart now are removed.', okText: 'Replace', onConfirm: load })
+    : load();
+  if (!off.length) return replace();
+  showConfirm({ title: 'Sell anyway?', message: off.join(' '), okText: 'Sell anyway', danger: false, onConfirm: replace });
 }
 
 // Credit off = Account and Split are not offered (owner 2026-10-02). Read fresh: the back office
@@ -585,12 +689,15 @@ function stockShortfall(cart = state.cart) {
 }
 
 // postToAccount, the one writer for an account, is in bo-model.js so the back office uses it too.
-// A payment at the till is cash into this register's drawer (buildCashDrawerSummary counts it).
-function recordCreditPayment(customerId, amount, note = '') {
+// A cash payment at the till goes into this register's drawer (buildCashDrawerSummary counts it).
+// opts: { method (cash by default), methodLabel, note, orderIds } -- openPaySheet's, the back office's recordPayment
+// call; a plain string is the note (the scripts' old call).
+function recordCreditPayment(customerId, amount, opts = {}) {
+  const { note = '', ...pay } = typeof opts === 'string' ? { note: opts } : opts;
   const store = currentStoreInfo();
   const c = allCustomerRecords().find(x => x.id === customerId);
   const row = c && recordPayment(c, amount,
-    { note: note || 'Customer payment', method: 'cash', register: store.registerNo, staff: store.cashier });
+    { method: 'cash', ...pay, note: note || 'Customer payment', register: store.registerNo, staff: store.cashier });
   if (!row) return null;
   renderCustomers();
   updateCustomerButton();
@@ -613,72 +720,11 @@ function reverseOrderCredit(order, reason, whole = false, credit = SalesMath.cre
   return moneyValue(credit - take);
 }
 
-// Void, refund and selling past a credit limit (owner, 2026-10-02, features/staff-permissions). A
-// role whose switch is on (bo-model TILL_ACTIONS, set in the back office) goes ahead: true. Anyone
-// else gets the PIN pop-up and false; a manager's PIN, checked on this till with no internet, logs
-// the approval with their staff id and runs `again(staffId)` -- the same action, approved.
-// `note`: what the manager is approving, said first ("Mara would go ₱300.00 over …").
-let pinAsk = null;
-function gate(action, again, data = {}, note = '') {
-  if (roleCan(state.role, action)) return true;
-  pinAsk = { action, again, data };
-  showPin('Manager PIN', `${note ? note + ' ' : ''}To ${TILL_ACTIONS[action].toLowerCase()}, a manager enters their PIN.`, 'Approve');
-  pinError(loadStaff().some(u => u.active && isPin(u.pin) && roleCan(u.role, action)) ? ''
-    : 'No one who can approve this has a PIN yet. Set one in the back office, Staff & access.');
-  return false;
-}
-// One pop-up for both: a manager's approval (Cancel, close) and the sign-in (`lock`: nothing closes it).
-function showPin(title, msg, ok, lock = false) {
-  $('#pinModal h2').textContent = title;
-  $('#pinMessage').textContent = msg;
-  $('#pinOkBtn').textContent = ok;
-  $$('#pinModal [data-close-modal]').forEach(b => { b.style.display = lock ? 'none' : ''; });
-  $('#pinModal').classList.toggle('pin-lock', lock);
-  $('#pinInput').value = '';
-  pinError('');
-  $('#pinModal').hidden = false;
-  $('#pinInput').focus();
-}
-function pinError(msg) { const e = $('#pinError'); e.textContent = msg; e.hidden = !msg; }
-
-// Who is at the till (lead default 2026-10-02, features/staff-permissions). Once anyone active has
-// a till PIN the till opens on the sign-in and runs as that person: their role picks the pages and
-// the PIN gates, their name and id go on every order. No PINs yet = the owner, as before.
-// ponytail: the person lives in memory -- a reload asks for the PIN again, which a till can afford.
-const tillPins = () => loadStaff().some(u => u.active && isPin(u.pin));
-function lockTill() {
-  state.user = null;
-  pinAsk = { signIn: true };
-  showPin('Sign in', 'Enter your PIN.', 'Sign in', true);
-}
-function signIn(u) {
-  state.user = { id: u.id, name: u.name, role: u.role };
-  state.role = u.role;
-  applyRoleGating();
-  renderRoleSwitcher();
-  track('sign_in', { staffId: u.id });
-}
-
-function approveWithPin() {
-  if (!pinAsk) return;
-  if (pinAsk.signIn) {
-    const who = staffByPin($('#pinInput').value.trim());
-    if (!who) { $('#pinInput').value = ''; $('#pinInput').focus(); return pinError('Wrong PIN.'); }
-    pinAsk = null;
-    $('#pinModal').hidden = true;
-    return signIn(who);
-  }
-  const u = approverFor($('#pinInput').value.trim(), pinAsk.action);
-  if (!u) { $('#pinInput').value = ''; $('#pinInput').focus(); return pinError('Wrong PIN, or that person can’t approve this.'); }
-  const { action, again, data } = pinAsk;
-  pinAsk = null;
-  $('#pinModal').hidden = true;
-  track('approval', { action, staffId: u.id, ...data });
-  again(u.id);
-}
+// The manager's approval (gate), the sign-in (lockTill / signIn) and the PIN pad live in pos-pin.js.
 
 // `approvedBy`: the manager whose PIN let this charge go past the credit limit (gate re-runs it).
-function completeSale(approvedBy = '') {
+// `ok`: questions already answered Yes in the app's own pop-up ({ limit, stock }), so the re-run skips them.
+function completeSale(approvedBy = '', ok = {}) {
   const totals = cartTotals();
   const total = moneyValue(totals.total);
   let tendered = total, change = 0;
@@ -719,17 +765,23 @@ function completeSale(approvedBy = '') {
   const overBy = creditOverLimit(tendered);
   const acct = state.customer && allCustomerRecords().find(x => x.id === state.customer.id);   // fresh, as creditOverLimit reads it
   const overMsg = `${acct?.name} would go ${peso(overBy)} over their ${peso(toNumber(acct?.creditLimit, 0))} credit limit.`;
-  if (overBy > 0 && !approvedBy && (!gate('overLimit', (by) => completeSale(by), { customerId: state.customer.id, overBy }, overMsg)
-    || !window.confirm(`${overMsg}\n\nCharge anyway?`))) {
-    setCheckoutError('Charge would exceed the credit limit.');
+  if (overBy > 0 && !approvedBy && !ok.limit) {
+    if (!gate('overLimit', (by) => completeSale(by, ok), { customerId: state.customer.id, overBy }, overMsg)) {
+      setCheckoutError('Charge would exceed the credit limit.');
+    } else showConfirm({ title: 'Over the credit limit', message: overMsg, okText: 'Charge anyway',
+      onConfirm: () => completeSale(approvedBy, { ...ok, limit: true }) });
     return;
   }
   const short = stockShortfall();
-  if (short.length && !window.confirm(
-    `Not enough stock on hand:\n\n${short.map(s => `${s.name} — short ${s.short} ${s.unit}`).join('\n')}\n\nSell anyway?`)) {
-    setCheckoutError(`Not enough ${short[0].name} in stock.`);
-    // The customer walks out without it -- the exact moment demand used to leave no record.
-    openLostSale({ product: state.products.find(p => p.id === short[0].id), qty: short[0].short });
+  if (short.length && !ok.stock) {
+    showConfirm({ title: 'Not enough stock', okText: 'Sell anyway', cancelText: 'Don’t sell',
+      html: short.map(s => `${escapeHtml(s.name)} — short ${s.short} ${escapeHtml(s.unit)}`).join('<br>'),
+      onConfirm: () => completeSale(approvedBy, { ...ok, stock: true }),
+      // The customer walks out without it -- the exact moment demand used to leave no record.
+      onCancel: () => {
+        setCheckoutError(`Not enough ${short[0].name} in stock.`);
+        openLostSale({ product: state.products.find(p => p.id === short[0].id), qty: short[0].short });
+      } });
     return;
   }
   const actualMethod = state.paymentMethod === 'other'
@@ -750,6 +802,7 @@ function completeSale(approvedBy = '') {
     return;
   }
 
+  dropDraft(state.savedId);   // a continued saved cart or quote is now this sale
   moveStock(order.items, { reason: 'sale', refId: order.id });
   postToAccount(order.customer, 'charge', SalesMath.creditPart(order), { orderId: order.id, note: `Charge from receipt ${order.number}` });
   track('sale_complete', {
