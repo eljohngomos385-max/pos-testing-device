@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=120" />
+  <link rel="stylesheet" href="styles.css?v=132" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -263,6 +263,12 @@
               <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
               </button>
+              <!-- which list: search and + follow it; on a phone it drops under the search -->
+              <section class="card kinds" id="itemsKinds" role="tablist" aria-label="Show">
+                <button type="button" role="tab" class="cur" aria-selected="true" data-kind="items">Items</button>
+                <button type="button" role="tab" aria-selected="false" data-kind="cats">Categories</button>
+                <button type="button" role="tab" aria-selected="false" data-kind="mods">Modifiers</button>
+              </section>
               <section class="card find" id="itemsFind">
                 <label>
                   <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
@@ -297,40 +303,33 @@
       <!-- ============================================
            CUSTOMERS VIEW
            ============================================ -->
-      <section class="view view-customers" data-view="customers">
-        <div class="orders-layout">
-          <div class="orders-col">
-            <div class="orders-search-row">
-              <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                  <line x1="4" y1="7" x2="20" y2="7"/>
-                  <line x1="4" y1="12" x2="20" y2="12"/>
-                  <line x1="4" y1="17" x2="20" y2="17"/>
-                </svg>
-              </button>
-              <div class="orders-search-wrap">
-                <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="11" cy="11" r="7"/>
-                  <line x1="20" y1="20" x2="16.5" y2="16.5"/>
-                </svg>
-                <input type="text" id="customersSearch" placeholder="Search by name or customer" autocomplete="off" />
-              </div>
-              <button class="primary-btn small" id="newCustomerBtn" style="flex-shrink:0">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                  <line x1="12" y1="5" x2="12" y2="19"/>
-                  <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                <span>Add</span>
-              </button>
-            </div>
-            <div class="orders-list" id="customersList"></div>
-          </div>
+      <section class="view view-customers lv" data-view="customers">
+        <div class="ov">
           <div class="order-detail" id="customerDetail">
             <div class="order-detail-empty">
               <div class="empty-title">Select a customer</div>
               <div class="empty-sub">Pick one from the list to view their details</div>
             </div>
           </div>
+          <!-- the Orders rail: menu, search with + where Orders has Filter, one card of rows -->
+          <aside class="o-rail" aria-label="Customers">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+              </button>
+              <section class="card find" id="customersFind">
+                <label>
+                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <input id="customersSearch" type="text" placeholder="Search name or phone" autocomplete="off">
+                  <button class="x" id="customersSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                </label>
+                <button class="more" id="newCustomerBtn" aria-label="Add customer" title="Add customer">
+                  <svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+              </section>
+            </div>
+            <section class="card list"><div class="lines" id="customersList"></div></section>
+          </aside>
         </div>
       </section>
 
@@ -352,14 +351,19 @@
                 <div class="co-hero num" id="checkoutTotalDue">₱0.00</div>
                 <!-- Tiles are built from the back office's Payments settings on every render -->
                 <div class="co-step" data-step="method"><div class="co-tiles" id="checkoutMethods"></div></div>
-                <!-- Cash (and the cash half of a split): a tap on an amount finishes the sale -->
+                <!-- Cash (and the cash half of a split): a tap on an amount finishes the sale; Custom swaps the row for the
+                     figures (left) and our keypad (right), cash-custom-lab.html take C -->
                 <div class="co-step" data-step="cash" hidden>
                   <div class="co-tiles" id="checkoutQuick"></div>
-                  <div class="co-cash-in">
-                    <label class="co-field num"><span class="co-cur">₱</span><input type="text" id="checkoutTender" inputmode="decimal" autocomplete="off" placeholder="Other amount" aria-label="Cash received" /></label>
+                  <div class="co-keyin" id="checkoutKeyIn" hidden>
+                    <input type="hidden" id="checkoutTender" />
+                    <div class="co-read">
+                      <div><span class="co-lbl">Cash received</span><b class="co-fig num" id="checkoutCash"></b></div>
+                      <div><span class="co-lbl" id="checkoutChangeLbl">Change</span><b class="co-fig num" id="checkoutChange" aria-live="polite"></b></div>
+                    </div>
+                    <div id="checkoutKeys"></div>
                     <button type="button" class="co-btn primary" id="checkoutCompleteBtn" data-complete disabled>Complete sale</button>
                   </div>
-                  <div class="co-change num" id="checkoutChange" aria-live="polite"></div>
                 </div>
                 <!-- GCash, QR, a custom name, Other or Account: nothing to count, one confirm -->
                 <div class="co-step" data-step="paid" hidden>
@@ -831,16 +835,16 @@
   <script src="sales-math.js?v=19"></script>
   <script src="data-store.js?v=50"></script>
   <script src="data.js?v=28"></script>
-  <script src="bo-model.js?v=122"></script>
+  <script src="bo-model.js?v=123"></script>
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=42"></script>
   <script src="pos-core.js?v=7"></script>
   <script src="pos-sell.js?v=21"></script>
-  <script src="pos-checkout.js?v=1"></script>
-  <script src="pos-orders.js?v=1"></script>
-  <script src="pos-items.js?v=2"></script>
-  <script src="pos-customers.js?v=1"></script>
+  <script src="pos-checkout.js?v=3"></script>
+  <script src="pos-orders.js?v=3"></script>
+  <script src="pos-items.js?v=6"></script>
+  <script src="pos-customers.js?v=2"></script>
   <script src="pos-settings.js?v=1"></script>
-  <script src="app.js?v=98"></script>
+  <script src="app.js?v=105"></script>
 </body>
 </html>

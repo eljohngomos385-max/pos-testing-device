@@ -326,12 +326,18 @@ function attachEvents() {
   ], state.ordersFilter, ORDERS_FILTER_DEF, renderOrders));
 
   // ---- Items (list + editor; Save is not connected yet) ----
-  $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) openItemEditor(row.dataset.id); });
-  $('#itemsAdd')?.addEventListener('click', () => openItemEditor(null));
+  // The switch picks the list (items, categories, modifiers); a row and + open that kind's editor.
+  const openKind = id => (itemsKind === 'items' ? openItemEditor(id) : openKindEditor(itemsKind, id));
+  $('#itemsKinds')?.addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (b) setItemsKind(b.dataset.kind); });
+  new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#itemsKinds'));   // tabs moved: the pill re-places on the next switch
+  $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) openKind(row.dataset.id); });
+  $('#itemsAdd')?.addEventListener('click', () => openKind(null));
   $('#itemBack')?.addEventListener('click', closeItemEditor);
-  $('#itemSave')?.addEventListener('click', saveItem);
+  $('#itemSave')?.addEventListener('click', () => (kindEdit ? saveKind() : saveItem()));
   const notYet = what => () => showToast(`${what} isn't connected yet`);
-  $('#itemMore')?.addEventListener('click', (e) => openMenu(e.currentTarget, itemIsNew
+  $('#itemMore')?.addEventListener('click', (e) => openMenu(e.currentTarget, kindEdit
+    ? [kindEdit.id ? { label: kindEdit.kind === 'cats' ? 'Delete' : 'Archive', red: true, run: dropKind } : { label: 'Discard', red: true, run: closeItemEditor }]
+    : itemIsNew
     ? [{ label: 'Discard', red: true, run: closeItemEditor }]
     : [{ label: 'Print labels', run: notYet('Printing labels') }, { label: 'Duplicate', run: notYet('Duplicate') }, '-', { label: 'Archive', red: true, run: notYet('Archive') }],
     { w: 200, right: true }));
@@ -341,7 +347,11 @@ function attachEvents() {
     ['Stock', 'stock', [['', 'Any'], ['low', 'Low'], ['out', 'Out']]],
   ], itemsFilter, ITEMS_FILTER_DEF, renderItems));
   const itemForm = $('#itemForm');
+  // the category / modifier editor's fields (pos-items kindInput); the item editor's handlers below skip it
+  itemForm?.addEventListener('input', (e) => { if (kindEdit) kindInput(e.target); });
+  itemForm?.addEventListener('click', (e) => { const b = kindEdit && e.target.closest('[data-ka]'); if (b) kindClick(b); });
   itemForm?.addEventListener('input', (e) => {
+    if (kindEdit) return;
     const E = itemEdit, t = e.target, f = t.dataset.f, num = () => Number(t.value) || 0;
     if (t.dataset.v) {   // a variant row
       const v = E.variants.find(x => x.id === t.closest('.vt').dataset.vid);
@@ -362,7 +372,7 @@ function attachEvents() {
     if (t.id === 'itemImg' && t.files[0]) { itemEdit.img = URL.createObjectURL(t.files[0]); renderItemForm(); }
   });
   itemForm?.addEventListener('click', (e) => {
-    const E = itemEdit, b = e.target.closest('button');
+    const E = itemEdit, b = !kindEdit && e.target.closest('button');
     if (!b) return;
     const pills = b.closest('[data-pills]'), multi = b.closest('[data-multi]'), act = b.dataset.act;
     if (pills) {
@@ -463,16 +473,11 @@ function attachEvents() {
     openCustomerEditModal();
   }));
   $('#customersList')?.addEventListener('click', (e) => {
-    const detailBtn = e.target.closest('[data-act="view-customer-detail"]');
-    if (detailBtn) {
-      e.stopPropagation();
-      openCustomerDetail(detailBtn.dataset.customerId);
-      return;
-    }
     const row = e.target.closest('[data-customer-id]');
     if (!row) return;
     state.selectedCustomerId = row.dataset.customerId;
     renderCustomers();
+    if (!$('#customerDetail').offsetParent) openCustomerDetail(row.dataset.customerId);   // phone: no detail column, the pop-up
   });
   $('#customerDetail')?.addEventListener('click', (e) => {
     const historyBtn = e.target.closest('[data-customer-detail]');
@@ -494,11 +499,7 @@ function attachEvents() {
       openOrderDetailModal(orderRow.dataset.orderId);
     }
   });
-  $('#customersSearch')?.addEventListener('input', (e) => {
-    state.customersQuery = e.target.value;
-    state.selectedCustomerId = null;
-    renderCustomers();
-  });
+  wireFind('#customersFind', '#customersSearch', '#customersSearchX', (q) => { state.customersQuery = q; state.selectedCustomerId = null; renderCustomers(); });
   $('#customerDetailModal')?.addEventListener('click', (e) => {
     const row = e.target.closest('.cust-order-row');
     if (row?.dataset.orderId) {
@@ -612,9 +613,7 @@ function attachEvents() {
     $('#checkoutTender').value = '';
     track('payment_method', { method });
     showPayStep();
-    // No autofocus on cash: a tablet keyboard would cover the amounts.
-    if (method === 'split') setTimeout(() => $('#checkoutTender')?.focus(), 60);
-    else if (method === 'other' && !label) setTimeout(() => $('#otherMethodInput')?.focus(), 60);
+    if (method === 'other' && !label) setTimeout(() => $('#otherMethodInput')?.focus(), 60);
   }
   // Delegated: the tiles are rebuilt from settings on every checkout render.
   $('#checkoutMethods')?.addEventListener('click', (e) => {
@@ -625,7 +624,8 @@ function attachEvents() {
   // Back: a method's detail -> the method tiles; the tiles -> the cart.
   $('#checkoutCancelBtn')?.addEventListener('click', () => {
     if ($('#checkoutApp').classList.contains('is-done')) return;
-    if (state.paymentMethodChosen) {
+    if (state.paymentMethod === 'cash' && !$('#checkoutKeyIn').hidden) showCashKeys(false);   // the keys -> the quick amounts
+    else if (state.paymentMethodChosen) {
       state.paymentMethodChosen = false;
       state.paymentMethod = 'cash';
       state.paymentLabel = '';
@@ -637,18 +637,20 @@ function attachEvents() {
     }
   });
   $('#checkoutCustBtn')?.addEventListener('click', openCustomerModal);
-  $('#checkoutTender')?.addEventListener('input', (e) => {
-    // Digits and one point, two decimals.
-    const v = e.target.value.replace(/[^\d.]/g, '').replace(/(\.\d{0,2}).*$/, '$1');
-    if (v !== e.target.value) e.target.value = v;
-    updateChange();
-  });
-  $('#checkoutTender')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !$('#checkoutCompleteBtn').disabled) completeSale();
+  // Our keypad, never the tablet's: taps, or a desk keyboard's digits / . / Backspace / Enter.
+  const cashKey = (k) => { const t = $('#checkoutTender'); t.value = esPress(t.value, k, true, 9999999); updateChange(); };
+  $('#checkoutKeys')?.addEventListener('click', (e) => { const b = e.target.closest('[data-sk]'); if (b) cashKey(b.dataset.sk); });
+  document.addEventListener('keydown', (e) => {
+    if (state.view !== 'checkout' || $('#checkoutKeyIn').hidden || $('[data-step="cash"]').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!/^[\d.]$|^Backspace$|^Enter$/.test(e.key)) return;
+    e.preventDefault();   // Enter on a focused key would press it again
+    if (e.key === 'Enter') { if (!$('#checkoutCompleteBtn').disabled) completeSale(); }
+    else cashKey(e.key === 'Backspace' ? 'del' : e.key);
   });
   $('#otherMethodInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') completeSale(); });
   // A cash amount is the decision: the tap finishes the sale.
   $('#checkoutQuick')?.addEventListener('click', (e) => {
+    if (e.target.closest('[data-co-custom]')) return showCashKeys(true);
     const b = e.target.closest('[data-co-cash]');
     if (!b) return;
     $('#checkoutTender').value = b.dataset.coCash;

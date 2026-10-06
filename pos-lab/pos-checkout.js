@@ -91,10 +91,8 @@ function showPayStep() {
   const step = !state.paymentMethodChosen ? 'method' : (m === 'cash' || m === 'split') ? 'cash' : 'paid';
   $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== step; });
   const backText = $('#checkoutBackText'); if (backText) backText.textContent = step === 'method' ? 'Cancel' : 'Back';
-  // On a split the field means the opposite thing: what they pay now, the rest goes on the account.
-  const quick = $('#checkoutQuick'); if (quick) quick.hidden = m === 'split';
-  const tender = $('#checkoutTender');
-  if (tender) tender.placeholder = m === 'split' ? 'Cash now' : 'Other amount';
+  // Cash opens on the quick amounts; a split goes straight to the keypad (what they pay now, the rest on the account).
+  showCashKeys(m === 'split');
   const typing = m === 'other' && !state.paymentLabel;
   const other = $('#otherMethodInput'); if (other) other.hidden = !typing;
   const ask = $('#checkoutAsk');
@@ -126,35 +124,54 @@ function updateChange() {
   const split = state.paymentMethod === 'split';
   const d = moneyValue(tender - total);
   const ok = split ? tender > 0 && d < 0 : d >= 0;
-  const el = $('#checkoutChange');
-  if (el) {
-    el.textContent = !raw ? ''
-      : split ? (d < 0 ? `On account ${peso(-d)}` : 'Use Cash for the full amount')
-      : d < 0 ? `Short ${peso(-d)}` : d > 0 ? `Change ${peso(d)}` : 'No change';
-    el.className = 'co-change num' + (!raw ? '' : !ok ? ' down' : split ? '' : ' up');
-  }
+  // Label above, figure under it, the figure shrinks to its row (--n = its length): ₫ millions and long words never squeeze.
+  const fig = (el, html, cls) => { if (!el) return; el.innerHTML = html; el.style.setProperty('--n', el.textContent.length); el.className = 'co-fig num ' + cls; };
+  const zero = SalesMath.formatMoney(0, state.settings?.store?.currency, { whole: true });
+  fig($('#checkoutCash'), (raw ? typedCash(raw) : zero).replace(/(\d[.,]?)(?!.*\d)/, '$1<span class="co-caret"></span>'), raw ? '' : 'ph');
+  const lbl = $('#checkoutChangeLbl');
+  if (lbl) lbl.textContent = split ? (raw && d >= 0 ? 'Use Cash for the full amount' : 'On account') : raw && d < 0 ? 'Short' : 'Change';
+  fig($('#checkoutChange'), !raw ? zero : peso(split ? Math.max(0, -d) : Math.abs(d)), !raw ? 'ph' : !ok ? 'down' : split ? '' : 'up');
   const go = $('#checkoutCompleteBtn'); if (go) go.disabled = !raw || !ok;
   setCheckoutError('');
 }
 
-// Quick cash: Exact, then the next ₱500 / ₱1,000 / ₱5,000 / ₱10,000 above the total -- three of them, never below it.
-function quickTenders(total) {
-  const c = Math.round(total * 100);
-  const above = m => (Math.floor(c / m) + 1) * m / 100;
-  return [c / 100, ...new Set([50000, 100000, 500000, 1000000].map(above))].slice(0, 4);
+// What's typed, in the store's format, decimals as typed: "1250.5" -> "₱1,250.5"
+function typedCash(raw) {
+  const [i, d] = raw.split('.'), s = SalesMath.formatMoney(+i || 0, state.settings?.store?.currency, { whole: true });
+  return d === undefined ? s : s.replace(/(\d)(?!.*\d)/, `$1${peso(0).match(/0(\D)0/)?.[1] || '.'}${d}`);
 }
-console.assert(quickTenders(437.5).join() === '437.5,500,1000,5000' && quickTenders(24318.75).join() === '24318.75,24500,25000,30000'
-  && quickTenders(500).join() === '500,1000,5000,10000', 'quickTenders');
+
+// Quick cash: Exact, then the next of each step above the total (the notes people hand over), never below it.
+// ponytail: three markets; add a currency here when a store uses it, PHP's steps otherwise
+const CASH_STEPS = { PHP: [100, 500, 1000], USD: [5, 10, 20], JPY: [1000, 5000, 10000] };
+function quickTenders(total, currency) {
+  const c = Math.round(total * 100);
+  const above = m => (Math.floor(c / (m * 100)) + 1) * m;
+  return [c / 100, ...new Set((CASH_STEPS[currency] || CASH_STEPS.PHP).map(above))];
+}
+console.assert(quickTenders(245).join() === '245,300,500,1000' && quickTenders(950).join() === '950,1000'
+  && quickTenders(24318.75).join() === '24318.75,24400,24500,25000' && quickTenders(7.43, 'USD').join() === '7.43,10,20', 'quickTenders');
+
+// The quick row and the keypad take turns: Custom opens the keys, Back closes them.
+function showCashKeys(on) {
+  const quick = $('#checkoutQuick'), keys = $('#checkoutKeyIn');
+  if (!quick || !keys) return;
+  quick.hidden = on; keys.hidden = !on;
+  $('#checkoutTender').value = '';
+  updateChange();
+}
 
 function renderQuickCashOptions(total) {
   const wrap = $('#checkoutQuick');
   if (!wrap) return;
-  const q = quickTenders(total);
+  const q = quickTenders(total, state.settings?.store?.currency);
   const short = v => peso(v).replace(/\.00$/, '');
-  wrap.parentElement.style.setProperty('--cols', q.length); // the tiles and the cash row below share one width
+  wrap.style.setProperty('--cols', q.length + 1);   // one line: the amounts + Custom
   wrap.innerHTML = q.map((v, i) => `<button type="button" class="co-tile" data-co-cash="${v}">${i === 0
     ? '<span class="co-big">Exact</span><small>No change</small>'
-    : `<span class="co-big num">${short(v)}</span><small class="up num">Change ${peso(moneyValue(v - total))}</small>`}</button>`).join('');
+    : `<span class="co-big num">${short(v)}</span><small class="up num">Change ${peso(moneyValue(v - total))}</small>`}</button>`).join('')
+    + '<button type="button" class="co-tile" data-co-custom><span class="co-big">Custom</span><small>Any amount</small></button>';
+  $('#checkoutKeys').innerHTML ||= esKeys(true);   // the edit sheet's keys (pos-sell)
 }
 
 // `approvedBy`: the manager whose PIN let this sale past a gate (the credit limit), else ''.

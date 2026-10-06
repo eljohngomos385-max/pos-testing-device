@@ -712,7 +712,8 @@ const staffIdOf = (name, staff = loadStaff()) => (name && (staff.find((u) => u.n
    on the spot. Set in Back office › Staff & access › Roles, read by the till (app.js `gate`).
    Owner is always on, like page access. */
 // `credit`: turning credit on for a customer made at the till (lead default 2026-10-02, customers).
-const TILL_ACTIONS = { void: 'Void a sale', refund: 'Refund a sale', overLimit: 'Sell past a credit limit', credit: 'Turn on credit for a customer' };
+// dayTotals isn't PIN-gated: off just hides the day's total on the Orders bands (owner 2026-10-06: a cashier shouldn't see it).
+const TILL_ACTIONS = { void: 'Void a sale', refund: 'Refund a sale', overLimit: 'Sell past a credit limit', credit: 'Turn on credit for a customer', dayTotals: "See the day's totals" };
 const STORAGE_TILL_PERMS = storeKey('tillPerms');
 const TILL_PERMS_DEFAULT = { manager: Object.keys(TILL_ACTIONS), cashier: [], stock: [] };
 function loadTillPerms(raw = readJsonStorage(STORAGE_TILL_PERMS, null) || {}) {

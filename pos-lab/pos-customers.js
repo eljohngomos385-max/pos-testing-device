@@ -130,55 +130,15 @@ function renderCustomers() {
     state.selectedCustomerId = filtered[0].id;
   }
 
+  // The Orders rail: a band (how many, what they owe), then name + phone, the balance only when owed.
   if (list) {
-    if (filtered.length === 0) {
-      list.innerHTML = `
-        <div class="orders-empty">
-          <div class="empty-glyph">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-          </div>
-          <div class="empty-title">${q ? 'No matches' : 'No customers yet'}</div>
-          <div class="empty-sub">${q ? 'Try a different name or phone' : 'Add your first customer to get started'}</div>
-        </div>`;
-    } else {
-      list.innerHTML = filtered.map(c => {
-        const active = state.selectedCustomerId === c.id ? 'active' : '';
-        const m = metricsCache.get(c.id);
-        const aging = agingCache.get(c.id);
-        const bal = c.currentBalance || 0;
-        const balCls = bal > 0 ? 'cust-bal-has' : '';
-        const overBadge = accountStatus(c)[1] === 'Over limit' ? '<span class="cust-churn-badge churn-danger">Over limit</span>' : '';
-        const threshold = state.settings.churnThresholdDays || 30;
-        let churnBadge = '';
-        if (m.daysSinceLastPurchase !== null && m.daysSinceLastPurchase >= threshold) {
-          const churnCls = m.daysSinceLastPurchase >= 90 ? 'danger' : 'warn';
-          churnBadge = `<span class="cust-churn-badge churn-${churnCls}">${m.daysSinceLastPurchase}d</span>`;
-        }
-        const lastOrder = m.lastPurchaseTs ? fmtOrderDate(m.lastPurchaseTs) : 'Never';
-        return `
-          <div class="order-row ${active}" data-customer-id="${escapeHtml(c.id)}">
-            <div class="or-body">
-              <div class="or-head">
-                <span class="or-number">${escapeHtml(c.name)}</span>
-                <span class="or-total ${balCls}">${peso(bal)}</span>
-              </div>
-              <div class="or-sub">
-                <span class="or-sub-time">${escapeHtml(c.phone || 'No phone')} · ${SalesMath.plural(m.orderCount, 'order')} · Last ${lastOrder}</span>
-                <span class="or-status cust-badges">${overBadge}${churnBadge}</span>
-              </div>
-            </div>
-            <button class="or-receipt-btn" data-act="view-customer-detail" data-customer-id="${escapeHtml(c.id)}" title="View details">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            </button>
-          </div>`;
-      }).join('');
-    }
+    const owed = moneyValue(filtered.reduce((t, c) => t + Math.max(0, c.currentBalance || 0), 0));
+    list.innerHTML = !filtered.length
+      ? `<div class="empty"><b>${q ? 'No matches' : 'No customers yet'}</b><span>${q ? 'Try a different name or phone.' : 'Tap + to add your first customer.'}</span></div>`
+      : `<div class="band"><span class="num">${SalesMath.plural(filtered.length, 'customer')}</span>${owed > 0 ? `<span class="num">${peso(owed)} owed</span>` : ''}</div>`
+        + filtered.map(c => `<button type="button" class="row${c.id === state.selectedCustomerId ? ' cur' : ''}" data-customer-id="${escapeHtml(c.id)}">
+        <div class="nm"><span>${escapeHtml(c.name)}</span><small class="num">${escapeHtml(c.phone || 'No phone')}</small></div>
+        ${(c.currentBalance || 0) > 0 ? `<div class="rt"><span class="amt num">${peso(c.currentBalance)}</span></div>` : ''}</button>`).join('');
   }
 
   renderCustomerDetail(metricsCache, agingCache);

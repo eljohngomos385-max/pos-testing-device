@@ -118,10 +118,7 @@ const tillZone = () => SalesMath.storeZone(state.settings);
 const tillDay = ts => SalesMath.dayKey(ts, tillZone());
 const daysAgo = ts => SalesMath.daysAgo(ts, Date.now(), tillZone());
 const tillDate = (ts, kind) => SalesMath.dateText(ts, tillZone(), kind);
-function orderDayName(ts) {
-  const ago = daysAgo(ts);
-  return ago === 0 ? 'Today' : ago === 1 ? 'Yesterday' : tillDate(ts, 'weekdayDay');
-}
+const orderDayName = ts => tillDate(ts, 'dayYear');   // every band the same: Oct 6, 2026 (owner: no Today / weekday words)
 function orderPayText(o) {
   return isSavedOrder(o) ? '' : SalesMath.payWord(o);
 }
@@ -167,8 +164,9 @@ function renderOrders() {
   // they add up to (summarize().collected = each row's signed total; a parked cart is not money), so a
   // Status filter never reads a negative or zero count. Summing the whole list per band froze the till.
   let html = '';
+  const totals = roleCan(state.role, 'dayTotals');   // the role's switch (Staff & access); off = count only
   for (const [day, rows] of SalesMath.groupByDay(shown, tillZone())) {
-    html += `<div class="band"><span>${orderDayName(day)} <span class="num">· ${rows.length}</span></span><span class="num">${peso(SalesMath.summarize(rows).collected)}</span></div>`;
+    html += `<div class="band"><span>${orderDayName(day)} <span class="num">· ${rows.length}</span></span>${totals ? `<span class="num">${peso(SalesMath.summarize(rows).collected)}</span>` : ''}</div>`;
     for (const o of rows) {
       const time = tillDate(o.ts, 'time'), amt = SalesMath.rowAmount(o);
       html += `<button type="button" class="row${orderState(o) === 'voided' ? ' void' : ''}${o.id === state.selectedOrderId ? ' cur' : ''}" data-order-id="${o.id}">
@@ -247,7 +245,7 @@ function openOrderDetailModal(orderId) {
   const o = state.orders.find(x => x.id === orderId);
   if (!o) return;
   const r = toReceiptViewModel(o);
-  const dateStr = tillDate(o.ts, 'weekdayDayYear');   // the store's clock
+  const dateStr = tillDate(o.ts, 'dayYear');   // the store's clock; no weekday, like the bands
   const timeStr = tillDate(o.ts, 'time');
   const statusCls = isSavedOrder(o) ? 'saved' : (isCompletedSale(o) ? 'done' : 'voided');
 

@@ -49,6 +49,8 @@ const itemSuppliers = () => posSuppliers().filter(s => !s.archived && s.name).ma
 function renderItems() {
   const rows = $('#itemsRows');
   if (!rows) return;
+  if (itemsKind !== 'items') return renderKindRows();
+  $('#itemsBand').classList.remove('k2');
   const q = itemsFilter.q.trim().toLowerCase();
   const list = catalogItems().filter(it => {
     if (itemsFilter.cat && !it.cats.includes(itemsFilter.cat)) return false;
@@ -74,7 +76,7 @@ const blankVariant = () => ({ id: newId(), name: '', sku: '', barcode: '', cost:
 
 function openItemEditor(id) {
   const it = id ? catalogItems().find(x => x.id === id) : null;
-  itemIsNew = !it;
+  itemIsNew = !it; kindEdit = null;
   itemEdit = it || { id: newId(), name: '', cat: '', hue: 220, unit: 'pc', soldBy: 'each', brand: '', img: '', marginMode: 'percent', reorder: 0, sellOut: false,
     supplier: '', alt: [], weight: '', size: '', length: '', variants: [blankVariant()], since: tillDay(Date.now()) };
   const v0 = itemEdit.variants[0];
@@ -178,3 +180,139 @@ function saveItem() {
   showToast("Saving isn't connected yet");   // ponytail: design only until the back office owns catalog writes
 }
 
+// ---------- Categories and Modifiers (the back office's bo-catalog.js, on the till) ----------
+// The top bar's switch picks the list; search and + follow it. A category or a modifier opens in the item editor's
+// slide-over: its name, a modifier's options, and ticks for the items it's on. These Saves write (folders, modifiers,
+// the items' folders / modifierIds); the item editor's Save is still design only.
+let itemsKind = 'items', kindEdit = null;
+const KIND = { items: ['item', 'Search items, SKU or barcode'], cats: ['category', 'Search categories'], mods: ['modifier', 'Search modifiers'] };
+const kindCats = () => state.folders.filter(f => f.id !== 'all');
+const kindList = kind => (kind === 'cats' ? kindCats() : loadModifiers().filter(m => !m.archived));
+const isOn = { cats: (p, id) => foldersOf(p).includes(id), mods: (p, id) => (p.modifierIds || []).includes(id) };
+const itemsWith = (kind, id, all = catalogItems()) => all.filter(it => it.members.some(m => isOn[kind](m, id)));
+const modSummary = m => m.options.map(o => `${escapeHtml(o.name)} +${peso(o.price)}`).join(' · ');
+
+function setItemsKind(kind) {
+  // The pill slides from the old tab to the new one: a ::before placed by --x / --w. Until the first switch (and after a
+  // resize, which moves the tabs) the current tab paints its own background instead.
+  const box = $('#itemsKinds'), place = b => { box.style.setProperty('--x', `${b.offsetLeft}px`); box.style.setProperty('--w', `${b.offsetWidth}px`); };
+  if (!box.classList.contains('slid')) { place(box.querySelector('.cur')); box.classList.add('slid'); box.offsetWidth; }   // start where it is, then move
+  itemsKind = kind;
+  $$('#itemsKinds [data-kind]').forEach(b => { b.classList.toggle('cur', b.dataset.kind === kind); b.setAttribute('aria-selected', b.dataset.kind === kind); });
+  place(box.querySelector('.cur'));
+  $('#itemsSearch').placeholder = KIND[kind][1];
+  $('#itemsFilter').hidden = kind !== 'items';   // category and stock filter items only
+  $('#itemsAdd').title = $('#itemsAdd').ariaLabel = `New ${KIND[kind][0]}`;
+  renderItems();
+}
+
+function renderKindRows() {
+  const q = itemsFilter.q.trim().toLowerCase(), all = catalogItems(), cats = itemsKind === 'cats';
+  const list = kindList(itemsKind).filter(x => !q || [x.name, ...(x.options || []).map(o => o.name)].some(n => n.toLowerCase().includes(q)));
+  $('#itemsBand').classList.add('k2');
+  $('#itemsBand').innerHTML = `<span>${cats ? 'Category' : 'Modifier'} <span class="num">· ${list.length}</span></span><span>Items</span>`;
+  $('#itemsRows').innerHTML = list.map(x => `<button type="button" class="row cols k2" data-id="${escapeHtml(x.id)}">
+      <span class="nm">${cats ? itemThumb({ hue: itemHue(x.id), name: x.name }) : ''}<span class="tx"><b>${escapeHtml(x.name)}</b>${cats ? '' : `<small>${modSummary(x) || 'No options yet'}</small>`}</span></span>
+      <span class="num">${itemsWith(itemsKind, x.id, all).length}</span></button>`).join('')
+    || `<div class="empty"><b>${q ? 'No matches' : `No ${cats ? 'categories' : 'modifiers'} yet`}</b><span>${q ? 'Try a different name.'
+      : cats ? 'Tap + to add one, then tick its items.' : `A modifier is a list of choices sold with an item, like Cut to length +${peso(20)}. Tap + to add one.`}</span></div>`;
+}
+
+function openKindEditor(kind, id) {
+  const was = kindList(kind).find(x => x.id === id);
+  const picked = new Set(was ? itemsWith(kind, was.id).map(it => it.id) : []);
+  kindEdit = { kind, id: was ? was.id : '', name: was ? was.name : '', picked, first: new Set(picked),
+    options: was ? structuredClone(was.options || []) : kind === 'mods' ? [{ id: newId(), name: '', price: '' }] : [] };
+  itemEdit = null;
+  renderKindForm();
+  $('#itemsView').classList.add('editing');
+  $('#itemForm').scrollTop = 0;
+  if (!was) setTimeout(() => $('#itemForm [data-k=name]')?.focus(), 300);
+}
+
+function renderKindForm() {
+  const K = kindEdit, cats = K.kind === 'cats';
+  // What it's on now comes first, so the ticks you'd change are at the top; the order holds while you tick.
+  const items = catalogItems().sort((a, b) => (K.first.has(b.id) - K.first.has(a.id)) || a.name.localeCompare(b.name));
+  const opt = (o, i) => `<div class="opt" data-i="${i}">
+      <input class="in" data-o="name" value="${escapeHtml(o.name)}" placeholder="Option, like Cut to length">
+      <input class="in n num" data-o="price" value="${escapeHtml(o.price)}" ${IMONEY} placeholder="0.00" aria-label="Price">
+      <button type="button" class="del" data-ka="opt-del" aria-label="Remove option" title="Remove option"><svg class="ic" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
+  $('#itemForm').innerHTML = `<div class="form">
+    ${icard('Details', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="${cats ? 'Plumbing' : 'Cutting'}">`))}
+    ${cats ? '' : icard('Options', `<div>${K.options.map(opt).join('')}</div>
+        <div class="foot"><span>The price is added to the item's.</span><button type="button" class="act" data-ka="opt-add">Add option</button></div>`)}
+    ${icard('Items', `<div class="pick-find"><input class="in" data-k="q" placeholder="Search items" autocomplete="off"></div>
+        <div class="picks">${items.map(it => `<label class="pick" data-find="${escapeHtml(it.name.toLowerCase())}"><input type="checkbox" data-pick="${escapeHtml(it.id)}"${K.picked.has(it.id) ? ' checked' : ''}>
+          ${itemThumb(it)}<span>${escapeHtml(it.name)}</span></label>`).join('')}</div>`, SalesMath.plural(K.picked.size, 'item'))}
+  </div>`;
+}
+
+function kindInput(t) {
+  const K = kindEdit;
+  if (t.dataset.k === 'name') K.name = t.value;
+  else if (t.dataset.o) K.options[Number(t.closest('.opt').dataset.i)][t.dataset.o] = t.value;
+  else if (t.dataset.pick) {
+    K.picked[t.checked ? 'add' : 'delete'](t.dataset.pick);
+    t.closest('.fc').querySelector('h3 span').textContent = SalesMath.plural(K.picked.size, 'item');
+  } else if (t.dataset.k === 'q') {   // filters the ticks in place, so the box keeps its focus
+    const q = t.value.trim().toLowerCase();
+    $$('#itemForm .pick').forEach(r => { r.hidden = !!q && !r.dataset.find.includes(q); });
+  }
+}
+function kindClick(b) {
+  const K = kindEdit;
+  if (b.dataset.ka === 'opt-add') { K.options.push({ id: newId(), name: '', price: '' }); renderKindForm(); $('#itemForm .opt:last-child [data-o=name]').focus(); }
+  if (b.dataset.ka === 'opt-del') { K.options.splice(Number(b.closest('.opt').dataset.i), 1); renderKindForm(); }
+}
+
+// Puts the category / modifier on every variant of the ticked items and takes it off the rest (bo-catalog setCats):
+// folder stays folders[0], and a family's own folder follows it. Archived items keep theirs.
+function tagItems(kind, id, keys, at) {
+  const on = new Set(catalogItems().filter(it => keys.has(it.id)).flatMap(it => it.members.map(m => m.id))), firstOf = new Map();
+  state.products = state.products.map(p => {
+    if (p.archived || isOn[kind](p, id) === on.has(p.id)) return p;   // untouched rows keep their stamp
+    if (kind === 'mods') { const ids = p.modifierIds || []; return { ...p, modifierIds: on.has(p.id) ? ids.concat(id) : ids.filter(x => x !== id), updatedAt: at }; }
+    const folders = on.has(p.id) ? foldersOf(p).concat(id) : foldersOf(p).filter(x => x !== id);
+    if (p.groupId) firstOf.set(p.groupId, folders[0] || '');
+    return { ...p, folders, folder: folders[0] || '', updatedAt: at };
+  });
+  saveProducts();
+  if (!firstOf.size) return;
+  state.groups = state.groups.map(g => (firstOf.has(g.id) ? { ...g, folder: firstOf.get(g.id), updatedAt: at } : g));
+  saveGroups();
+}
+
+function saveKind() {
+  const K = kindEdit, word = KIND[K.kind][0], name = K.name.trim(), at = new Date().toISOString();
+  if (!name) { showToast(`Give the ${word} a name`); $('#itemForm [data-k=name]').focus(); return; }
+  if (kindList(K.kind).some(x => x.id !== K.id && x.name.toLowerCase() === name.toLowerCase())) { showToast(`A ${word} has that name already`); return; }
+  const id = K.id || newId();
+  if (K.kind === 'cats') {
+    const row = stampRow({ builtin: false, ...state.folders.find(f => f.id === id), id, name });
+    state.folders = K.id ? state.folders.map(f => (f.id === id ? row : f)) : state.folders.concat(row);
+    writeJsonStorage(STORAGE_FOLDERS, state.folders);
+  } else {
+    const named = K.options.filter(o => String(o.name).trim());
+    if (named.some(o => !(Number(o.price) >= 0))) { showToast('A price must be 0 or more'); return; }
+    const list = loadModifiers();
+    const row = stampRow({ ...MODIFIER_DEFAULTS, ...list.find(m => m.id === id), id, name,
+      options: named.map(o => ({ id: o.id, name: String(o.name).trim(), price: round2(o.price) })) });
+    saveModifiers(K.id ? list.map(m => (m.id === id ? row : m)) : list.concat(row));
+  }
+  tagItems(K.kind, id, K.picked, at);
+  closeKindEditor('Saved');
+}
+
+// A category goes (its items stay, they only leave it); a modifier is archived, as in the back office.
+function dropKind() {
+  const K = kindEdit, at = new Date().toISOString();
+  if (K.kind === 'cats') {
+    if (!window.confirm(`Delete “${K.name}”? Its items stay; they only leave this category.`)) return;
+    tagItems('cats', K.id, new Set(), at);
+    state.folders = state.folders.filter(f => f.id !== K.id);
+    writeJsonStorage(STORAGE_FOLDERS, state.folders);
+  } else saveModifiers(loadModifiers().map(m => (m.id === K.id ? stampRow({ ...m, archived: true }) : m)));
+  closeKindEditor(K.kind === 'cats' ? 'Deleted' : 'Archived');
+}
+function closeKindEditor(msg) { closeItemEditor(); renderItems(); showToast(msg); }
