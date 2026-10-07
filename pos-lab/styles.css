@@ -68,6 +68,12 @@ html, body {
   -webkit-tap-highlight-color: transparent;
   overflow: hidden;
 }
+/* A till, not a page: on touch a long press must not pick up words or open the copy callout (owner 2026-10-08).
+   iOS Safari reads only the -webkit- forms. Fields stay selectable; a mouse on the PC still selects text. */
+@media (hover: none) {
+  body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  body :is(input, textarea, [contenteditable]) { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+}
 
 button { font-family: inherit; border: none; background: none; cursor: pointer; color: inherit; padding: 0; }
 input, select { font-family: inherit; color: inherit; }
