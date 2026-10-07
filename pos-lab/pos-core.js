@@ -179,6 +179,8 @@ const barcodeScanner = {
   lastSeenAt: 0,
   recent: new Map(),
   cooldownMs: 1400,
+  facing: 'environment',   // the flip button swaps it
+  run: 0,                  // every stop bumps it: a camera asked for before a close or a flip is let go when it arrives
 };
 
 // ---------- Helpers ----------
@@ -784,6 +786,7 @@ function switchView(view) {
   const fromCheckout = state.view === 'checkout';
   if (view !== 'orders' && state.ordersCustomer) ordersFor('');
   state.view = view;
+  if (view !== 'sell') closeBarcodeScanner();   // the tablet's ☰ and Check out stay in reach while it scans
   $$('.side-link').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === view));
   if (view === 'checkout') railCheckout(true);

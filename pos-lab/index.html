@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=192" />
+  <link rel="stylesheet" href="styles.css?v=199" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -170,6 +170,21 @@
               <div class="vs-card">
                 <div class="vs-head"><span class="vs-title"><span id="variantTitle"></span><span class="vs-count num" id="variantCount"></span></span><span id="variantCol">Price</span></div>
                 <div class="vs-list" id="variantList"></div>
+              </div>
+            </div>
+            <!-- Scanner (owner 2026-10-08, Shopify POS): the phone's own page, the tablet's sheet in the variant sheet's
+                 bounds. A read adds at once and #scanCard shows that line until the next; nothing found turns the corners red.
+                 No typing box: a barcode or SKU goes in the search. Drawn by pos-sell.js (openBarcodeScanner) -->
+            <div class="scan-sheet" id="scanSheet" aria-label="Scan barcode">
+              <div class="scan-cam">
+                <video id="barcodeVideo" playsinline muted></video>
+                <div class="scan-aim">
+                  <div class="scan-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                  <div class="scan-status" id="barcodeStatus" role="status">Starting camera...</div>
+                </div>
+                <button type="button" class="scan-btn" id="scanClose" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                <button type="button" class="scan-btn" id="scanFlip" aria-label="Flip camera" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3M4 4v4h4M20 20v-4h-4"/></svg></button>
+                <div class="scan-card" id="scanCard" hidden></div>
               </div>
             </div>
             <!-- Edit sheet (popups-lab.html, Sheet C): the cart line, the receipt discount and the fulfilment open over
@@ -699,35 +714,6 @@
       </div>
     </div>
 
-    <!-- Camera barcode scanner -->
-    <div class="modal-backdrop" id="barcodeModal" hidden>
-      <div class="modal barcode-modal">
-        <div class="modal-head">
-          <h2>Scan barcode</h2>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-              <line x1="6" y1="6" x2="18" y2="18"/>
-              <line x1="18" y1="6" x2="6" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="barcode-stage">
-            <video id="barcodeVideo" playsinline muted></video>
-            <div class="barcode-frame" aria-hidden="true"></div>
-            <div class="barcode-status" id="barcodeStatus">Starting camera...</div>
-          </div>
-          <div class="barcode-manual">
-            <label class="pay-label" for="barcodeManualInput">Barcode or SKU</label>
-            <div class="barcode-manual-row">
-              <input type="text" id="barcodeManualInput" class="text-input" placeholder="Scan or type code" autocomplete="off" inputmode="numeric" />
-              <button class="primary-btn" id="barcodeManualBtn">Add</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Variant picker (for items with multiple SKUs / sizes / colors) -->
     <!-- Lost sale: the customer asked, we couldn't sell it -->
     <div class="modal-backdrop" id="lostSaleModal" hidden>
@@ -809,15 +795,15 @@
   <script src="bo-model.js?v=126"></script>
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=45"></script>
-  <script src="pos-core.js?v=12"></script>
-  <script src="pos-sell.js?v=31"></script>
+  <script src="pos-core.js?v=13"></script>
+  <script src="pos-sell.js?v=37"></script>
   <script src="pos-checkout.js?v=7"></script>
   <script src="pos-orders.js?v=16"></script>
   <script src="pos-items.js?v=8"></script>
   <script src="pos-customers.js?v=12"></script>
   <script src="pos-settings.js?v=4"></script>
-  <script src="pos-pin.js?v=2"></script>
+  <script src="pos-pin.js?v=3"></script>
   <script src="pos-shift.js?v=2"></script>
-  <script src="app.js?v=129"></script>
+  <script src="app.js?v=133"></script>
 </body>
 </html>

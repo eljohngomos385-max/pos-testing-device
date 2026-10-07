@@ -327,7 +327,7 @@ function stockOnAdd(p, want, add, { cancel } = {}) {
   else if (tracked && left > 0 && stockLevel({ ...p, stock: left }) === 'low') showToast(`Only ${SalesMath.qtyText(left)} left`);
 }
 
-function addToCart(productId, via = 'other') {
+function addToCart(productId, via = 'other', fromScanCard = false) {
   const p = state.products.find(x => x.id === productId);
   if (!p) return;
   stockOnAdd(p, cartWant(p) + 1, () => {
@@ -340,7 +340,8 @@ function addToCart(productId, via = 'other') {
     });
     trackItemAdd(p, 1, via);
     renderCart();
-    showToast(`Added · ${p.name}`);
+    if (scanOpen()) scanHit(p.id, fromScanCard);   // the scanner's card says it: camera, search or a USB scanner
+    else showToast(`Added · ${p.name}`);
   });
 }
 
@@ -362,6 +363,7 @@ function addProductByCode(rawCode, { source = 'barcode' } = {}) {
   const product = findProductByCode(code);
   track('scan', { code, found: !!product, productId: product ? product.id : '' });
   if (!product) {
+    if (source === 'camera' && scanOpen()) { scanMiss(); return false; }
     const message = source === 'camera'
       ? `No item found for ${code}`
       : 'No item found for that barcode or SKU';
@@ -381,7 +383,6 @@ function addProductByCode(rawCode, { source = 'barcode' } = {}) {
     endSearch();
     clear?.classList.remove('visible');
     renderProducts();
-    if (source === 'camera') showBarcodeStatus(`Added ${product.name}`);
     return true;
   };
   if (onTill(product)) return add();
@@ -446,15 +447,11 @@ function handleScannedBarcode(rawCode, { source = 'camera', requireVisibleReset 
     }
   }
 
-  const product = findProductByCode(code);
-  const added = addProductByCode(code, { source });
-  if (added && source === 'camera') {
-    showBarcodeStatus(`Added ${product?.name || code}. Scan next item.`);
-  }
-  return added;
+  return addProductByCode(code, { source });
 }
 
 function stopBarcodeScanner() {
+  barcodeScanner.run++;
   barcodeScanner.active = false;
   barcodeScanner.detector = null;
   resetBarcodeDuplicateGuard();
@@ -506,7 +503,7 @@ function scheduleBarcodeScan(video) {
       }
     } catch (err) {
       console.warn('Barcode scan failed', err);
-      showBarcodeStatus('Camera is open, but barcode decoding failed. Type the code below.');
+      showBarcodeStatus("Can't read barcodes here. Type the code in search.");
     }
     scheduleBarcodeScan(video);
   }, 180);
@@ -537,7 +534,6 @@ function startZxingBarcodeScan(video) {
         barcodeScanner.lastValue = '';
       }
     });
-    showBarcodeStatus('Scanning...');
     return true;
   } catch (err) {
     console.warn('ZXing barcode scan failed to start', err);
@@ -551,36 +547,36 @@ async function startBarcodeCamera() {
   const video = $('#barcodeVideo');
   if (!video) return;
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-    showBarcodeStatus('Camera scanning needs HTTPS. Type the barcode or SKU below.');
+    showBarcodeStatus('Camera needs HTTPS. Type the code in search.');
     return;
   }
+  const run = barcodeScanner.run;
   try {
-    showBarcodeStatus('Allow camera access, then point at the barcode.');
+    showBarcodeStatus('Starting camera...');
     const detector = await createBarcodeDetector();
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: {
-        facingMode: { ideal: 'environment' },
+        facingMode: { ideal: barcodeScanner.facing },
         width: { ideal: 1280 },
         height: { ideal: 720 },
       },
     });
+    if (run !== barcodeScanner.run) { stream.getTracks().forEach(t => t.stop()); return; }   // closed or flipped while it was asked for
     barcodeScanner.stream = stream;
     barcodeScanner.detector = detector;
     barcodeScanner.active = true;
     video.srcObject = stream;
     await video.play();
-    if (detector) {
-      showBarcodeStatus('Scanning...');
-      scheduleBarcodeScan(video);
-    } else if (startZxingBarcodeScan(video)) {
-      showBarcodeStatus('Scanning...');
-    } else {
-      showBarcodeStatus('Camera is open. Barcode decoder unavailable, so type the barcode below.');
-    }
+    if (run !== barcodeScanner.run) return;
+    navigator.mediaDevices.enumerateDevices?.().then(d => { $('#scanFlip').hidden = d.filter(x => x.kind === 'videoinput').length < 2; }).catch(() => {});
+    if (detector) scheduleBarcodeScan(video);
+    else if (!startZxingBarcodeScan(video)) return showBarcodeStatus("Can't read barcodes here. Type the code in search.");
+    showBarcodeStatus('');
   } catch (err) {
+    if (run !== barcodeScanner.run) return;   // its play() was cut off by a close or a flip: the new start owns the camera
     console.warn('Camera unavailable', err);
-    showBarcodeStatus('Camera was blocked or unavailable. Type the barcode or SKU below.');
+    showBarcodeStatus('Camera blocked. Type the code in search.');
     stopBarcodeScanner();
   }
 }
@@ -650,38 +646,65 @@ async function scanWithCapacitorBarcodePlugin() {
     return true;
   } catch (err) {
     console.warn('Native barcode scan failed', err);
-    showToast('Barcode scanner unavailable. Use manual entry.');
+    showToast('Barcode scanner unavailable. Type the code in search.');
     return false;
   }
 }
 
 async function openBarcodeScanner() {
   if (await scanWithCapacitorBarcodePlugin()) return;
-  const modal = $('#barcodeModal');
-  const input = $('#barcodeManualInput');
-  if (!modal) return;
-  stopBarcodeScanner();
-  if (input) input.value = '';
-  showBarcodeStatus('Starting camera...');
-  modal.hidden = false;
+  closeBarcodeScanner();   // a clean start: no camera, card or flash left over
+  $('#scanSheet').classList.add('open');
   startBarcodeCamera();
   flashControl($('#scanBtn'));
 }
 
-function submitManualBarcode() {
-  const input = $('#barcodeManualInput');
-  const code = input?.value || '';
-  if (addProductByCode(code, { source: 'manual' })) {
-    const product = findProductByCode(code);
-    showBarcodeStatus(`Added ${product?.name || 'item'}. Scan or type next item.`);
-    if (input) {
-      input.value = '';
-      input.focus({ preventScroll: true });
-    }
-  } else {
-    input?.focus({ preventScroll: true });
-    input?.select();
-  }
+function closeBarcodeScanner() {
+  stopBarcodeScanner();
+  clearTimeout(scanFlashTimer);
+  $('#scanSheet').classList.remove('open', 'miss', 'hit');
+  scanCardId = '';
+  drawScanCard();
+}
+
+function flipBarcodeCamera() {
+  barcodeScanner.facing = barcodeScanner.facing === 'user' ? 'environment' : 'user';
+  stopBarcodeScanner();
+  startBarcodeCamera();
+}
+
+// The scanner's card (owner 2026-10-08): the line the last read added -- bin or -, qty, + -- until the next read or a
+// swipe down. + goes through addToCart, so the stock ask still holds. A line that left the cart takes the card with it.
+let scanCardId = '', scanFlashTimer = 0;
+const scanOpen = () => $('#scanSheet').classList.contains('open');
+function drawScanCard() {
+  const card = $('#scanCard'), item = scanCardId && state.cart.find(i => i.id === scanCardId);
+  card.hidden = !item;
+  card.style.transform = card.style.opacity = '';
+  card.innerHTML = item ? `<div class="sc-txt"><b>${escapeHtml(item.name)}</b><span class="num">${peso(item.price)}</span></div>
+    <div class="sc-q"><button type="button" data-sq="-1" aria-label="${item.qty > 1 ? 'Less' : 'Remove'}">${esSvg(item.qty > 1 ? 'less' : 'trash')}</button><span class="num">${SalesMath.qtyText(item.qty)}</span><button type="button" data-sq="1" aria-label="More">${esSvg('more')}</button></div>` : '';
+}
+function scanHit(id, fromScanCard) {
+  scanCardId = id;
+  drawScanCard();
+  if (fromScanCard) return;   // its own + only changes the number
+  scanFlash('hit', 300, '');   // a quick green flash (owner 2026-10-08); the buzz comes with Capacitor
+  const card = $('#scanCard');
+  card.classList.remove('pop');
+  void card.offsetWidth;   // restart: a second read of the same item comes in again
+  card.classList.add('pop');
+}
+const scanMiss = () => scanFlash('miss', 1500, 'Item not found');
+function scanFlash(kind, ms, words) {
+  const sheet = $('#scanSheet');
+  clearTimeout(scanFlashTimer);
+  sheet.classList.remove('hit', 'miss');
+  sheet.classList.add(kind);
+  showBarcodeStatus(words);
+  scanFlashTimer = setTimeout(() => {
+    sheet.classList.remove(kind);
+    if (words && $('#barcodeStatus').textContent === words) showBarcodeStatus('');   // only its own words: not a later "Camera blocked"
+  }, ms);
 }
 
 // ---------- Edit sheet (popups-lab.html, Sheet C) ----------
@@ -1328,6 +1351,7 @@ function renderCart() {
   $('#cartBar').disabled = n === 0;   // phone: what is in the cart, not Check out
   $('#cartBar').innerHTML = n ? `<span>${SalesMath.plural(n, 'item')}</span><span class="num">${peso(t.total)}</span>` : '<span>No items</span>';
   if (!n) $('#app').classList.remove('ph-cart');
+  if (scanCardId) drawScanCard();
 
   renderFulRow();
   const cd = state.cartDiscount && state.cartDiscount.value ? state.cartDiscount : null;

@@ -1526,7 +1526,6 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   font-size: 15px;
   font-weight: 600;
 }
-.barcode-modal { width: min(520px, 100%); }
 .delivery-map-modal { width: min(720px, calc(100vw - 28px)); }
 
 /* Confirm modal */
@@ -1585,70 +1584,6 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 }
 .close-x:hover { background: var(--bg-soft); color: var(--ink); border: none; }
 .modal-body { padding: 6px 20px 20px; overflow-y: auto; }
-
-.barcode-stage {
-  position: relative;
-  height: min(58vh, 360px);
-  min-height: 240px;
-  overflow: hidden;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  background: #080808;
-}
-.barcode-stage video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.barcode-frame {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: min(78%, 360px);
-  height: 36%;
-  transform: translate(-50%, -50%);
-  border: 2px solid rgba(255,255,255,0.85);
-  border-radius: 6px;
-  box-shadow: 0 0 0 999px rgba(0,0,0,0.32);
-}
-.barcode-frame::after {
-  content: '';
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  top: 50%;
-  border-top: 1px solid rgba(59,122,79,0.95);
-}
-.barcode-status {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 7px 10px;
-  border-radius: 4px;
-  background: rgba(0,0,0,0.72);
-  color: #fff;
-  font-size: 12px;
-  text-align: center;
-}
-.barcode-manual {
-  margin-top: 14px;
-}
-.barcode-manual-row {
-  display: grid;
-  grid-template-columns: 1fr 108px;
-  gap: 8px;
-}
-.barcode-manual-row .primary-btn {
-  height: 42px;
-  border-radius: 4px;
-  justify-content: center;
-}
 
 .delivery-pin-row {
   display: grid;
@@ -3566,6 +3501,48 @@ a.secondary-btn { text-decoration: none; }
 .catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(2) { opacity: 0; }
 .catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3) { transform: rotate(-45deg) translateY(-5px); }
 .vs-search, .vs-chip { display: none; }
+/* SCANNER (owner 2026-10-08, Shopify POS): the camera in one rounded card in the edit sheet's frame, over the top row
+   (Discount, Fulfilment; owner: "so it covers the hamburger"); the phone gives
+   it the whole screen (phone block). Corner brackets, ✕ and flip on the camera, the last read's line at its foot.
+   A read flashes the corners green, nothing found turns them red; outside the box is dimmed (Shopify). The camera is black in both themes: it is a picture, not the page */
+.scan-sheet { --scan-bg: #000; --scan-ink: #fff; --scan-veil: rgba(0, 0, 0, .45); --scan-hit: #34C759; }   /* hit: --ok is too dark on a camera */
+.scan-cam { position: relative; flex: 1; min-height: 0; overflow: hidden; border-radius: var(--rl-r); background: var(--scan-bg); }
+.scan-cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.scan-aim { position: absolute; left: 50%; top: 42%; display: grid; justify-items: center; gap: 18px; width: min(78%, 320px); transform: translate(-50%, -50%); }
+/* The box dims everything around it with its own shadow (Shopify), so the clear hole is the box and the corners sit
+   on its edge. .scan-cam's overflow: hidden (there for the video's rounded corners) keeps the dim inside the camera */
+.scan-corners { --c: var(--scan-ink); --r: 20px; position: relative; width: 100%; aspect-ratio: 1; border-radius: var(--r);
+                box-shadow: 0 0 0 100vmax var(--scan-veil); }
+.scan-corners i { position: absolute; width: 40px; height: 40px; border: 4px solid var(--c); transition: border-color .15s; }
+.scan-corners i:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; border-top-left-radius: var(--r); }
+.scan-corners i:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; border-top-right-radius: var(--r); }
+.scan-corners i:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; border-bottom-left-radius: var(--r); }
+.scan-corners i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; border-bottom-right-radius: var(--r); }
+.scan-sheet.miss .scan-corners { --c: var(--danger); }
+.scan-sheet.hit .scan-corners { --c: var(--scan-hit); }
+.scan-sheet.hit .scan-corners i { transition: none; }   /* snaps green, fades back: a flash */
+.scan-status { padding: 6px 14px; border-radius: 999px; background: var(--scan-veil); color: var(--scan-ink); font-size: 14px; font-weight: 560; text-align: center; transition: background-color .15s; }
+.scan-sheet.miss .scan-status { background: var(--danger); }
+.scan-status:empty { display: none; }   /* while it scans there is nothing to say */
+.scan-btn { position: absolute; top: 12px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
+            background: var(--scan-veil); color: var(--scan-ink); cursor: pointer; touch-action: manipulation; }
+.scan-btn[hidden] { display: none; }
+.scan-btn svg, .sc-q svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#scanClose { left: 12px; }
+#scanFlip { right: 12px; }
+.scan-card { position: absolute; inset: auto 12px 12px; max-width: 440px; margin-inline: auto; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px;
+             border-radius: var(--rl-r); background: var(--rl-card); color: var(--ink); box-shadow: var(--rl-shadow); touch-action: none; will-change: transform; transition: transform .2s var(--rl-ease), opacity .2s; }
+.scan-card[hidden] { display: none; }
+/* every read brings the card in like an iPhone notification: up from below, a small overshoot (owner 2026-10-08) */
+.scan-card.pop { animation: scan-in .42s cubic-bezier(.3, 1.35, .5, 1); }
+@keyframes scan-in { from { transform: translate3d(0, calc(100% + 24px), 0); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .scan-card.pop { animation: none; } }
+.sc-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.sc-txt b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 600; }
+.sc-txt span { color: var(--ink-secondary); font-size: 13px; }
+.sc-q { flex: none; display: flex; align-items: center; border-radius: var(--r-input); background: var(--rl-soft); }
+.sc-q button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer; touch-action: manipulation; }
+.sc-q .num { min-width: 24px; text-align: center; font-weight: 600; }
 .catalog-wrap:has(> .vsheet.open) .search-wrap:not(.vs-search) { display: none; }
 .catalog-wrap:has(> .vsheet.open) .vs-search { display: flex; }
 .catalog-wrap:has(> .vsheet.open) .vs-chip:not([hidden]) { display: block; }
@@ -3625,7 +3602,7 @@ a.secondary-btn { text-decoration: none; }
    under it; a number slides the keys in beside the list, Pickup a time, Delivery an address. The cart stays in
    view and follows every tap. Picked = a deeper grey, never black; the row the keys type into = card + soft ring.
    ============================================================ */
-.esheet {
+.esheet, .scan-sheet {   /* the scanner shares the frame only; the --es-* are unused there */
   --es-hover: var(--surface-hover);                         /* a tile's hover */
   --es-btn: color-mix(in srgb, var(--ink) 8%, transparent); /* a bare button's hover */
   --es-sel: color-mix(in srgb, var(--ink) 18%, transparent);
@@ -3642,8 +3619,8 @@ a.secondary-btn { text-decoration: none; }
   transition: transform .16s var(--rl-ease), visibility 0s .16s;
 }
 body.light-theme .esheet { --es-hover: var(--bg-soft); }
-.catalog-wrap:has(> .esheet.open) #sidebarToggle { visibility: hidden; }   /* z-index 96 floats it over the sheet; the sheet has its own X */
-.esheet.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
+.catalog-wrap:has(> :is(.esheet, .scan-sheet).open) #sidebarToggle { visibility: hidden; }   /* z-index 96 floats it over the sheet; the sheet has its own X */
+.esheet.open, .scan-sheet.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
 .es-card { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
            border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); box-shadow: var(--rl-shadow);
            container-type: size; }   /* cqh below = the card's height */
@@ -3742,7 +3719,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
   .es-body.fill:has(> .es-keys) :is(.es-col, .es-list, .es-scroll) { flex: none; min-height: auto; overflow: visible; }
   .es-body.fill:has(> .es-keys) :is(.es-scroll, .es-list) > :not(.on):not(:has(.on)) { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { .esheet, .esheet.open { transition: none; } .es-body .es-col, .es-keys { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .esheet, .esheet.open, .scan-sheet, .scan-sheet.open { transition: none; } .es-body .es-col, .es-keys { animation: none !important; } }
 
 /* Section label + quantity stepper: the cart line editor's (and the tier inputs') */
 .variant-section-label {
@@ -7469,6 +7446,12 @@ body.light-theme {
   .toast { bottom: calc(var(--bar-h) + 16px + var(--ph-b)); }   /* clear of the bar and Check out */
   body:has(#app.ph-cart) .toast { bottom: calc(var(--bar-h) + 68px + var(--ph-b)); }   /* over Walk-in | Discount */
   .catalog-wrap:has(> .vsheet.open) { z-index: 98; background: var(--bg); }   /* the customer list (and variants) opened from the cart page come over it */
+  /* The scanner is its own page: the camera to every edge, the cart bar lifted over it as the summary */
+  .scan-sheet { position: fixed; inset: 0; z-index: 99; padding: 0; background: var(--scan-bg); }
+  .scan-cam { border-radius: 0; }
+  .scan-card { bottom: calc(var(--bar-h) + var(--ph-b) + 12px); }
+  body:has(#scanSheet.open) #cartBar { position: relative; z-index: 100; }
+  body:has(#scanSheet.open) .toast { bottom: calc(var(--bar-h) + var(--ph-b) + 88px); }   /* over the card */
   .es-body:has(> .es-keys) { margin-top: 56px; padding-top: 0; }   /* keys or a panel: the head goes up by the X so they fit */
   .product-grid[data-size="sm"] .pc-group .pc-name { padding-top: 14px; }   /* 4 across: clear of the folder badge */
 }

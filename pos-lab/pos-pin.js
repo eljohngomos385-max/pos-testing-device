@@ -126,6 +126,7 @@ const tillPins = () => loadStaff().some(u => u.active && isPin(u.pin));
 // no role, so the least pages and no till action -- until a PIN signs someone in.
 const pinCover = (on) => $$('#app > :not(#pinModal):not(.toast)').forEach(el => { el.inert = on; });
 function lockTill() {
+  closeBarcodeScanner();   // the tablet's ☰ stays in reach while it scans: no camera adding behind the PIN
   state.user = null;
   state.role = '';
   applyRoleGating();

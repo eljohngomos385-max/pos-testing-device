@@ -120,13 +120,44 @@ function attachEvents() {
     search.focus({ preventScroll: true });
   });
   $('#scanBtn').addEventListener('click', openBarcodeScanner);
-  $('#barcodeManualBtn')?.addEventListener('click', submitManualBarcode);
-  $('#barcodeManualInput')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      submitManualBarcode();
-    }
+  $('#scanClose').addEventListener('click', closeBarcodeScanner);
+  $('#scanFlip').addEventListener('click', flipBarcodeCamera);
+  // The scanner's card: - / bin / +, and a swipe down puts it away (owner 2026-10-08). Touch only, as the line swipe.
+  const scanCard = $('#scanCard');
+  let cardSwipe = null;
+  scanCard.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sq]'), item = state.cart.find(i => i.id === scanCardId);
+    if (!b || !item) return;
+    if (+b.dataset.sq > 0) addToCart(item.id, 'scan', true);
+    else if (item.qty > 1) { item.qty = roundQty(productOf(item), item.qty - 1); renderCart(); }
+    else removeLine(item);
   });
+  scanCard.addEventListener('pointerdown', (e) => { cardSwipe = e.pointerType === 'touch' && !e.target.closest('button') ? { y: e.clientY, id: e.pointerId, dy: 0, v: 0, t: e.timeStamp } : null; if (cardSwipe) scanCard.classList.remove('pop'); });   // the finger beats the entrance
+  scanCard.addEventListener('pointermove', (e) => {
+    const s = cardSwipe;
+    if (!s || s.id !== e.pointerId) return;
+    const dy = Math.max(0, e.clientY - s.y);
+    s.v = (dy - s.dy) / Math.max(1, e.timeStamp - s.t);   // px/ms, for a flick
+    s.t = e.timeStamp;
+    s.dy = dy;
+    scanCard.style.transition = 'none';
+    scanCard.style.transform = `translate3d(0, ${s.dy}px, 0)`;
+  });
+  const endCardSwipe = (e) => {
+    const s = cardSwipe;
+    if (!s || s.id !== e.pointerId) return;
+    cardSwipe = null;
+    scanCard.style.transition = '';
+    const flick = s.v > .5 && e.timeStamp - s.t < 100;
+    if (e.type !== 'pointerup' || (s.dy < 40 && !flick)) { scanCard.style.transform = ''; return; }
+    // carries on from the finger, a full card further, and fades: no jump back, no pop
+    scanCardId = '';   // let go now, so a renderCart meanwhile can't bring it back
+    scanCard.style.transform = `translate3d(0, ${s.dy + scanCard.offsetHeight}px, 0)`;
+    scanCard.style.opacity = '0';
+    setTimeout(() => { if (!scanCardId) drawScanCard(); }, 200);   // a read in between keeps its card
+  };
+  scanCard.addEventListener('pointerup', endCardSwipe);
+  scanCard.addEventListener('pointercancel', endCardSwipe);
 
   // ---- Product grid (Sell) — real swipe gestures ----
   const productGrid = $('#productGrid');
@@ -617,14 +648,12 @@ function attachEvents() {
   const closeModals = () => $$('.modal-backdrop').forEach(m => { if (!(m.id === 'pinModal' && pinAsk?.signIn)) m.hidden = true; });
   $$('[data-close-modal]').forEach(b => {
     b.addEventListener('click', () => {
-      if (b.closest('#barcodeModal')) stopBarcodeScanner();
       closeModals();
     });
   });
   $$('.modal-backdrop').forEach(bd => {
     bd.addEventListener('click', (e) => {
       if (e.target !== bd || (bd.id === 'pinModal' && pinAsk?.signIn)) return;
-      if (bd.id === 'barcodeModal') stopBarcodeScanner();
       bd.hidden = true;
     });
   });
@@ -632,7 +661,7 @@ function attachEvents() {
     if (e.key === 'Escape') {
       const map = !$('#deliveryMapModal').hidden;   // Esc over the map closes the map, the sheet stays
       const list = $('#variantSheet').classList.contains('open');   // Esc over the customer list closes the list, the cart page stays
-      stopBarcodeScanner();
+      closeBarcodeScanner();
       closeModals();
       closeVariantSheet();
       if (!map && !es && !list) $('#app').classList.remove('ph-cart');   // phone: Esc with nothing over the cart closes it
@@ -643,7 +672,7 @@ function attachEvents() {
   // ---- Pay ----
   // An exchange in the cart (startExchange) finishes here; anything else goes to the checkout.
   const phCart = (on) => { on ? closeVariantSheet() : closeEditSheet(); $('#app').classList.toggle('ph-cart', on); };   // phone: the cart page; the variant sheet sits over it (z 98), so it closes on the way in
-  $('#cartBar').addEventListener('click', () => phCart(true));
+  $('#cartBar').addEventListener('click', () => { closeBarcodeScanner(); phCart(true); });   // also the scanner's summary: the camera goes, the cart comes
   $('#cartBack').addEventListener('click', () => phCart(false));
   $('#payBtn').addEventListener('click', () => { closeEditSheet(); state.exchange ? confirmExchange() : openPaymentModal(); });
 
