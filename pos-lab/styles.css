@@ -428,18 +428,18 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 }
 
 .product-card {
-  background: var(--rl-soft);                    /* the sidebar's band + hairline, like the top bar */
-  box-shadow: inset 0 0 0 1px var(--rl-hair);    /* inset: the grid's overflow can't clip it */
+  background: var(--tile);
   border: none;
-  border-radius: var(--r-input);
-  padding: 14px 12px 18px;
+  border-radius: calc(var(--rl-r) + 2px);   /* owner 2026-10-07: cards on a soft page, the name low and left (Shopify POS / Apple Store) */
+  padding: 12px;
   cursor: pointer;
   transition: background .12s, transform .08s;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 2px;
+  text-align: left;
   height: 100%;
   min-height: 0;
   position: relative;
@@ -450,11 +450,11 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 .pc-name {
   font-size: var(--pc-name-size, 13px);
-  font-weight: 500;                              /* names as typed, both themes */
-  letter-spacing: -0.1px;
-  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  line-height: 1.3;
   color: rgba(255,255,255,0.92);
-  text-align: center;
+  text-align: left;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -467,16 +467,11 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .product-grid[data-text="lg"] { --pc-name-size: 15px; }
 .product-grid[data-text="xl"] { --pc-name-size: 18px; }
 
-/* Optional price strip at bottom of card — hidden by default, toggle via .show-price on grid */
+/* Optional price under the name — hidden by default, toggle via .show-price on grid */
 .pc-price-mini {
-  position: absolute;
-  bottom: 6px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.55);
+  font-size: calc(var(--pc-name-size, 13px) - 1px);
+  font-weight: 500;
+  color: var(--ink-secondary);
   font-variant-numeric: tabular-nums;
   display: none;
 }
@@ -487,7 +482,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 /* ---- Group parent tile (drill-in) — identical color to product tiles,
         only the folder badge in the corner signals it's a group. ---- */
-.product-card.pc-group { background: var(--rl-soft); }
+.product-card.pc-group { background: var(--tile); }
 .product-card.pc-group:hover { background: var(--surface-hover); }
 .pc-group .pc-name { color: rgba(255,255,255,0.92); }
 .pc-group-badge {
@@ -4884,6 +4879,7 @@ body.light-theme {
   --line: #E1E1E1;           /* --blk-outline */
   --line-strong: #D4D4D4;    /* --btn-line */
   --tile: #F3F3F3;           /* soft grey tile, same as the checkout lab's payment tiles */
+  --canvas: #F2F2F2;         /* the Sell page under white cards (Shopify POS / Apple grouped background) */
   --ink: #303030;
   --ink-secondary: #616161;
   --ink-tertiary: #8C8C8C;
@@ -4941,17 +4937,20 @@ body.light-theme .orders-search-wrap input:focus {
 /* Product tiles — names were hardcoded white */
 /* Back-office blocks: the F9 fill with a hairline ring, drawn inset so the grid's overflow can't clip it;
    shape and type live on the base rules so both themes match */
+body.light-theme .view-sell .content-row,
+body.light-theme:has(.view-sell.active) { background: var(--canvas); }   /* the body too: Safari tints the status bar with it */
+body.light-theme #catalogSearchRow { --rl-soft: var(--surface-2); }   /* ☰, search, scan: white like the cards on the grey page */
 body.light-theme .product-card,
-body.light-theme .product-card.pc-group { background: var(--surface); box-shadow: inset 0 0 0 1px var(--rl-hair); }
+body.light-theme .product-card.pc-group { background: var(--surface-2); }
 body.light-theme .product-card:hover,
-body.light-theme .product-card.pc-group:hover { background: var(--tile); }
-body.light-theme .product-card:active { background: var(--bg-soft); }
+body.light-theme .product-card.pc-group:hover { background: var(--surface); }
+body.light-theme .product-card:active { background: var(--surface-hover); }
 body.light-theme .co-tile:hover { background: var(--bg-soft); }
 body.light-theme .co-tile:active { background: var(--bg-softer); }
 body.light-theme .pc-name,
 body.light-theme .pc-group .pc-name { color: var(--ink); }
-body.light-theme .pc-price-mini { color: var(--ink-tertiary); }
-body.light-theme .pc-group-badge { background: var(--surface-2); color: var(--ink-secondary); }
+body.light-theme .pc-price-mini { color: var(--ink-secondary); }
+body.light-theme .pc-group-badge { background: var(--canvas); color: var(--ink-secondary); }
 body.light-theme .pc-group-badge svg { stroke: var(--ink-secondary); }
 
 /* Active / primary = dark #303030 fill, white text (back office primary button) */
