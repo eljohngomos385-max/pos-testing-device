@@ -660,6 +660,14 @@ function attachEvents() {
   window.addEventListener('resize', () => { fitCheckout(); centreCheckout(); });
   $('#successPrintBtn')?.addEventListener('click', printSuccessReceipt);
   $('#successNewSaleBtn')?.addEventListener('click', startNewSaleFromSuccess);
+  // Phone: the receipt sheet; the paper prints in again each time it comes up
+  $('#checkoutRcptBtn')?.addEventListener('click', () => {
+    const paper = $('#checkoutReceipt .rp-paper');
+    if (paper) { paper.style.animation = 'none'; paper.offsetWidth; paper.style.animation = ''; }
+    $('#checkoutReceipt').scrollTop = 0;
+    $('.co-items').classList.add('open');
+  });
+  $('#checkoutRcptClose')?.addEventListener('click', () => $('.co-items').classList.remove('open'));
 
   // Legacy modal (kept for back-compat if anything still triggers it)
   $('#tenderInput')?.addEventListener('input', updateChange);
@@ -822,6 +830,7 @@ function init() {
   window.addEventListener('resize', () => refitSellSurface({ resetPage: true }));
   window.visualViewport?.addEventListener('resize', () => refitSellSurface());
   window.visualViewport?.addEventListener('scroll', () => refitSellSurface());
+  new ResizeObserver(() => refitSellSurface()).observe($('.catalog'));   // iPhone Safari: hiding the toolbar moves the safe area (the bar's gap) with no resize event; the tiles were cut off by 10pt
 
   // Sync persisted UI state on first paint
   $('#bbViewBtn')?.classList.toggle('active', state.showPrice);

@@ -43,6 +43,7 @@ function renderCheckout() {
   renderQuickCashOptions(total);
   if (!state.paymentMethodChosen) state.paymentMethod = 'cash';
   $('#checkoutApp')?.classList.remove('is-done');
+  $('.co-items')?.classList.remove('open');   // phone: the receipt sheet
   const steps = $('#checkoutSteps'); if (steps) steps.hidden = false;
   const done = $('#checkoutDone'); if (done) done.hidden = true;
   const tender = $('#checkoutTender'); if (tender) tender.value = '';

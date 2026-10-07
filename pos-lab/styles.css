@@ -3971,9 +3971,29 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 @media (prefers-reduced-motion: reduce) {
   .co *, .co *::before { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
 }
+.co-rcpt-btn, .co-rcpt-x { display: none; }
+/* Phone (owner 2026-10-07): no customer row or item list under the payment (the cart page has them, and the
+   tablet's can't be changed here either). Methods and cash amounts are one row each, as the Discount list, so the
+   change shows; after the sale, Show receipt (where Check out sits) brings the receipt up as a sheet. */
 @media (max-width: 720px) {
-  .co { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
-  .co-items { max-height: 40vh; border-left: 0; border-top: 1px solid var(--line); }
+  .co { grid-template-columns: 1fr; }
+  #checkoutMethods, #checkoutQuick { grid-template-columns: minmax(0, 1fr); max-width: 440px; gap: 8px; }
+  #checkoutMethods .co-tile, #checkoutQuick .co-tile { flex-direction: row; justify-content: flex-start; gap: 12px; height: auto; min-height: 56px;
+                                                       padding: 0 16px; border-radius: calc(var(--r-input) + 2px); font-size: 15px; font-weight: 500; text-align: left; }
+  #checkoutMethods .co-ic { width: 20px; height: 20px; }
+  #checkoutQuick .co-big { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; letter-spacing: 0; text-align: left; }
+  #checkoutQuick small { display: block; flex: none; font-size: 14px; }
+  .co-items { position: fixed; inset: 0; z-index: 99; display: block; border: 0; background: var(--surface);
+              transform: translateY(100%); visibility: hidden; transition: transform .16s var(--rl-ease), visibility 0s .16s; }
+  .co-items.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
+  .co-cust, .co-list { display: none; }
+  .co-rcpt { inset: 0; padding: 64px 16px calc(16px + var(--ph-safe)); }   /* --surface, as the tablet's: the paper keeps its edge in light */
+  .co-rcpt-x { position: absolute; z-index: 1; top: 12px; left: 12px; display: grid; place-items: center; width: 40px; height: 40px;
+               border-radius: var(--r-input); color: var(--ink-secondary); }
+  .co-rcpt-x:active { background: var(--surface-hover); }
+  .is-done .co-rcpt-btn { display: flex; justify-self: center; min-width: 140px; max-width: calc(100% - 48px); height: var(--bar-h); margin-bottom: var(--ph-b);
+                          border-radius: calc(var(--rl-r) + 2px); }   /* the label's width, so a longer word in another language just grows it */
+  .co-rcpt-btn span { overflow: hidden; text-overflow: ellipsis; }
 }
 
 /* Role switcher in sidebar footer */
@@ -7387,52 +7407,36 @@ body.light-theme {
   #app.co-side .co { grid-template-columns: minmax(0, 1fr); }
   #app.co-side .co-items { display: none; }
 }
-.ph-bar, .rail-h .ph-back, .ph-tabs { display: none; }
+.ph-bar, .rail-h .ph-back { display: none; }
 /* Phone: the products fill the screen; the bar under them opens the sale sidebar as its own page (owner
    2026-10-07: the page, not a sheet). The edit sheet covers that page, top row too, as on the tablet */
 @media (max-width: 720px) {
   /* iPhone: the rounded bottom keeps 34px for the home bar. The bar and Check out float as a narrow pill, low over
      it, like Safari's address bar (owner 2026-10-07: a wide bar clashed with the corners, edge to edge was fat). devices.html sets --ph-safe on the Phone preset so the preview matches */
-  :root { --ph-safe: env(safe-area-inset-bottom, 0px); --ph-b: max(10px, calc(var(--ph-safe) - 14px)); --ph-tab-h: calc(50px + var(--ph-safe)); }   /* 20px on iPhone: lower runs into the home-bar swipe */
+  :root { --ph-safe: env(safe-area-inset-bottom, 0px); --ph-b: max(10px, calc(var(--ph-safe) - 14px)); }   /* 20px on iPhone: lower runs into the home-bar swipe */
   .content-row { grid-template-rows: minmax(0, 1fr) auto; }
-  .catalog { min-height: 0; padding-bottom: 8px; }
+  .catalog { min-height: 0; gap: 14px; padding-bottom: 14px; }   /* the same space above and below the tiles (owner 2026-10-07: 8 below felt tighter than 14 above; tried 14/14, then 12/12) */
   .product-grid[data-size] { --grid-gap: 8px; }
-  .ph-bar { display: flex; align-items: center; justify-content: center; gap: 8px; height: var(--bar-h); margin: 0 8px 8px;
-            padding: 0 20px; border: 0; border-radius: var(--rl-r); background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 15px; font-weight: 600;
+  .ph-bar { display: flex; align-items: center; justify-content: center; gap: 8px; width: min(100% - 48px, 320px); height: var(--bar-h); margin: 0 auto var(--ph-b);
+            padding: 0 20px; border: 0; border-radius: calc(var(--rl-r) + 2px); background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 15px; font-weight: 600;
             cursor: pointer; touch-action: manipulation; transition: opacity .2s; }
   .ph-bar:active { background: var(--accent-pressed); }
   .ph-bar:disabled { opacity: .3; pointer-events: none; }
   .ph-bar span + span::before, .rail-h .go span + span::before { content: '·'; margin-right: 8px; }   /* 2 items · ₱157.00, centred */
   .rail-h { position: fixed; inset: 0; z-index: 97; max-height: none; margin: 0; padding: 8px 8px var(--ph-b); background: var(--bg);
             transform: translateX(100%); visibility: hidden; transition: transform .3s var(--rl-ease), visibility 0s .3s; }
-  .rail-h .go, .rail-h #payBtn { justify-self: center; justify-content: center; gap: 8px; width: min(100% - 40px, 320px); height: var(--bar-h); border: 0; border-radius: var(--rl-r); }   /* as the bar */
-  .co-sum { padding-bottom: calc(16px + var(--ph-safe)); }   /* the checkout's Total clear of the home bar */
+  .rail-h .go, .rail-h #payBtn { justify-self: center; justify-content: center; gap: 8px; width: min(100% - 40px, 320px); height: var(--bar-h); border: 0; border-radius: calc(var(--rl-r) + 2px); }   /* as the bar */
   #app.ph-cart .rail-h { transform: none; visibility: visible; transition: transform .3s var(--rl-ease); }
   .rail-h .ph-back { display: grid; place-items: center; flex: none; width: 48px; border: 0; border-right: 1px solid var(--line); border-radius: calc(var(--rl-r) - 1px) 0 0 calc(var(--rl-r) - 1px);
                      background: none; color: var(--ink-secondary); }
   .rail-h .ph-back:active { background: var(--rl-hover); }
   .rail-h .c-row .cust { border-radius: 0; padding-left: 14px; }
   .esheet { position: fixed; z-index: 98; padding-inline: 8px; }
-  .toast { bottom: calc(var(--bar-h) + 16px + var(--ph-tab-h)); }   /* clear of the bar and the tabs */
-  #checkoutQuick { grid-template-columns: repeat(3, minmax(0, 1fr)); }   /* 5 in a row was cramped: 3 + 2 */
+  .toast { bottom: calc(var(--bar-h) + 16px + var(--ph-b)); }   /* clear of the bar and Check out */
   body:has(#app.ph-cart) .toast { bottom: calc(var(--bar-h) + 68px + var(--ph-b)); }   /* over Walk-in | Discount */
   .catalog-wrap:has(> .vsheet.open) { z-index: 98; background: var(--bg); }   /* the customer list (and variants) opened from the cart page come over it */
   .es-body:has(> .es-keys) { margin-top: 56px; padding-top: 0; }   /* keys or a panel: the head goes up by the X so they fit */
   .product-grid[data-size="sm"] .pc-group .pc-name { padding-top: 14px; }   /* 4 across: clear of the folder badge */
-  /* Shopify/Twitter-style tabs (owner 2026-10-07, after the pill): the menu moves to the bottom as More; the bar rides over the tabs.
-     The pill is saved at git tag phone-pill */
-  .ph-tabs { display: flex; flex: none; height: var(--ph-tab-h); padding-bottom: var(--ph-safe); border-top: 1px solid var(--line); background: var(--bg); }
-  .main:has(> .view-checkout.active) .ph-tabs { display: none; }
-  /* Icons only, centred in the 50pt over the home bar: 58pt up, as Shopify and X (measured 2026-10-07). #app: a tap's sticky :hover
-     (body.light-theme .side-link:hover) painted a grey block */
-  #app .ph-tabs .ph-tab { display: grid; place-items: center; flex: 1; height: auto; padding: 0; border-radius: 0; background: none; color: var(--ink-tertiary); }
-  #app .ph-tabs .ph-tab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; color: inherit; }
-  #app .ph-tabs .ph-tab.active { color: var(--ink); }
-  #app .ph-tabs .ph-tab.active svg { fill: currentColor; }   /* X: the open page's icon fills */
-  #app .ph-tabs .ph-tab.active svg .k { stroke: var(--bg); }
-  #app .ph-tabs .ph-tab.active svg .hole { fill: var(--bg); stroke: none; }
-  .catalog-wrap:not(:has(> .vsheet.open)) #sidebarToggle, #app .view [data-act="open-sidebar"] { display: none; }   /* the menu is More now; it stays the variant sheet's X */
-  .sidebar .side-link:is([data-view="sell"], [data-view="orders"], [data-view="items"], [data-view="customers"]) { display: none; }   /* on the tabs */
 }
 
 /* ============================================================
