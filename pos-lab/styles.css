@@ -7387,17 +7387,17 @@ body.light-theme {
   #app.co-side .co { grid-template-columns: minmax(0, 1fr); }
   #app.co-side .co-items { display: none; }
 }
-.ph-bar, .rail-h .ph-back { display: none; }
+.ph-bar, .rail-h .ph-back, .ph-tabs { display: none; }
 /* Phone: the products fill the screen; the bar under them opens the sale sidebar as its own page (owner
    2026-10-07: the page, not a sheet). The edit sheet covers that page, top row too, as on the tablet */
 @media (max-width: 720px) {
   /* iPhone: the rounded bottom keeps 34px for the home bar. The bar and Check out float as a narrow pill, low over
      it, like Safari's address bar (owner 2026-10-07: a wide bar clashed with the corners, edge to edge was fat). devices.html sets --ph-safe on the Phone preset so the preview matches */
-  :root { --ph-safe: env(safe-area-inset-bottom, 0px); --ph-b: max(10px, calc(var(--ph-safe) - 14px)); }   /* 20px on iPhone: lower runs into the home-bar swipe */
+  :root { --ph-safe: env(safe-area-inset-bottom, 0px); --ph-b: max(10px, calc(var(--ph-safe) - 14px)); --ph-tab-h: calc(50px + var(--ph-safe)); }   /* 20px on iPhone: lower runs into the home-bar swipe */
   .content-row { grid-template-rows: minmax(0, 1fr) auto; }
   .catalog { min-height: 0; padding-bottom: 8px; }
   .product-grid[data-size] { --grid-gap: 8px; }
-  .ph-bar { display: flex; align-items: center; justify-content: center; gap: 8px; width: min(100% - 48px, 320px); height: var(--bar-h); margin: 0 auto var(--ph-b);
+  .ph-bar { display: flex; align-items: center; justify-content: center; gap: 8px; height: var(--bar-h); margin: 0 8px 8px;
             padding: 0 20px; border: 0; border-radius: var(--rl-r); background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 15px; font-weight: 600;
             cursor: pointer; touch-action: manipulation; transition: opacity .2s; }
   .ph-bar:active { background: var(--accent-pressed); }
@@ -7413,12 +7413,26 @@ body.light-theme {
   .rail-h .ph-back:active { background: var(--rl-hover); }
   .rail-h .c-row .cust { border-radius: 0; padding-left: 14px; }
   .esheet { position: fixed; z-index: 98; padding-inline: 8px; }
-  .toast { bottom: calc(var(--bar-h) + 16px + var(--ph-b)); }   /* clear of the bar and Check out */
+  .toast { bottom: calc(var(--bar-h) + 16px + var(--ph-tab-h)); }   /* clear of the bar and the tabs */
   #checkoutQuick { grid-template-columns: repeat(3, minmax(0, 1fr)); }   /* 5 in a row was cramped: 3 + 2 */
   body:has(#app.ph-cart) .toast { bottom: calc(var(--bar-h) + 68px + var(--ph-b)); }   /* over Walk-in | Discount */
   .catalog-wrap:has(> .vsheet.open) { z-index: 98; background: var(--bg); }   /* the customer list (and variants) opened from the cart page come over it */
   .es-body:has(> .es-keys) { margin-top: 56px; padding-top: 0; }   /* keys or a panel: the head goes up by the X so they fit */
   .product-grid[data-size="sm"] .pc-group .pc-name { padding-top: 14px; }   /* 4 across: clear of the folder badge */
+  /* Shopify/Twitter-style tabs (owner 2026-10-07, after the pill): the menu moves to the bottom as More; the bar rides over the tabs.
+     The pill is saved at git tag phone-pill */
+  .ph-tabs { display: flex; flex: none; height: var(--ph-tab-h); padding-bottom: var(--ph-safe); border-top: 1px solid var(--line); background: var(--bg); }
+  .main:has(> .view-checkout.active) .ph-tabs { display: none; }
+  /* Icons only, centred in the 50pt over the home bar: 58pt up, as Shopify and X (measured 2026-10-07). #app: a tap's sticky :hover
+     (body.light-theme .side-link:hover) painted a grey block */
+  #app .ph-tabs .ph-tab { display: grid; place-items: center; flex: 1; height: auto; padding: 0; border-radius: 0; background: none; color: var(--ink-tertiary); }
+  #app .ph-tabs .ph-tab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; color: inherit; }
+  #app .ph-tabs .ph-tab.active { color: var(--ink); }
+  #app .ph-tabs .ph-tab.active svg { fill: currentColor; }   /* X: the open page's icon fills */
+  #app .ph-tabs .ph-tab.active svg .k { stroke: var(--bg); }
+  #app .ph-tabs .ph-tab.active svg .hole { fill: var(--bg); stroke: none; }
+  .catalog-wrap:not(:has(> .vsheet.open)) #sidebarToggle, #app .view [data-act="open-sidebar"] { display: none; }   /* the menu is More now; it stays the variant sheet's X */
+  .sidebar .side-link:is([data-view="sell"], [data-view="orders"], [data-view="items"], [data-view="customers"]) { display: none; }   /* on the tabs */
 }
 
 /* ============================================================

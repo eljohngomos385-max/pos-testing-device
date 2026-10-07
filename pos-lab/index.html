@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=170" />
+  <link rel="stylesheet" href="styles.css?v=173" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -545,6 +545,15 @@
           </section>
         </div>
       </section>
+
+      <!-- Phone (≤720): Shopify/Twitter-style icon tabs, no words; the open page's icon fills. More opens the drawer with the rest. side-link = the drawer's own switchView + role gating -->
+      <nav class="ph-tabs" aria-label="Pages">
+        <button class="side-link ph-tab active" data-view="sell" aria-label="Sell"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/></svg></button>
+        <button class="side-link ph-tab" data-view="orders" aria-label="Orders"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path class="k" d="M14 2v6h6M8 13h8M8 17h8"/></svg></button>
+        <button class="side-link ph-tab" data-view="items" aria-label="Items"><svg viewBox="0 0 24 24"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle class="hole" cx="7.5" cy="7.5" r="1.5"/></svg></button>
+        <button class="side-link ph-tab" data-view="customers" aria-label="Customers"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></button>
+        <button class="ph-tab" data-act="open-sidebar" aria-label="More"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      </nav>
     </div>
 
     <!-- ============== MODALS ============== -->
