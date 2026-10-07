@@ -64,9 +64,6 @@ function attachEvents() {
 
   // ---- Bottom bar: pagination ----
 
-  // ---- Bottom bar: toggle price display on tiles ----
-  $('#bbViewBtn')?.addEventListener('click', toggleShowPrice);
-
   // ---- Sell search ----
   const search = $('#searchInput'), clear = $('#searchClear');
   search.addEventListener('input', (e) => {
@@ -238,13 +235,14 @@ function attachEvents() {
     // Group parent tile → open the variant picker modal
     if (card.dataset.groupId) { openVariantModal(card.dataset.groupId); return; }
     // Regular product
-    addToCart(card.dataset.id, 'tile', card);
+    addToCart(card.dataset.id, 'tile');
   });
 
   // ---- Variant sheet ----
   $('#variantList').addEventListener('click', (e) => {
     const row = e.target.closest('.vs-row');
     if (!row) return;
+    if (row.hasAttribute('data-cust-new')) return addCustomerFromSale();
     if (row.dataset.customerId) return selectCustomer(row.dataset.customerId);   // the customer picker (it closes the sheet)
     addToCart(row.dataset.variantId, 'variant');
     closeVariantSheet();
@@ -396,7 +394,52 @@ function attachEvents() {
   });
 
   // ---- The edit sheet (pos-sell.js): a cart line, Discount and the fulfilment pill open it over the items ----
-  $('#cartList').addEventListener('click', (e) => {
+  // Swipe a line left and Delete waits under it (owner 2026-10-08). Touch only: a mouse still just opens the editor.
+  // A tap, or swiping another line, closes it; a tap on a line while one is open only closes, like iOS Mail.
+  const cartList = $('#cartList'), DEL_W = 88;
+  let lineSwipe = null, swipedLine = null, suppressCartClick = false;
+  const shutLine = () => { const was = swipedLine?.isConnected; swipedLine?.classList.remove('open'); swipedLine = null; return was; };
+  cartList.addEventListener('pointerdown', (e) => {
+    const line = e.pointerType === 'touch' && !e.target.closest('.sw-del') && e.target.closest('.line');
+    lineSwipe = line ? { line, row: line.querySelector('.row'), x: e.clientX, y: e.clientY, id: e.pointerId, base: line.classList.contains('open') ? -DEL_W : 0, dx: 0, on: false } : null;
+  });
+  cartList.addEventListener('pointermove', (e) => {
+    const s = lineSwipe;
+    if (!s || s.id !== e.pointerId) return;
+    const dx = e.clientX - s.x, dy = e.clientY - s.y;
+    if (!s.on) {
+      if (Math.abs(dy) > 8 && Math.abs(dy) >= Math.abs(dx)) { lineSwipe = null; return; }   // it's a scroll
+      if (Math.abs(dx) <= 4 || Math.abs(dx) <= Math.abs(dy)) return;
+      s.on = true;
+      if (swipedLine !== s.line) shutLine();
+      s.line.classList.add('swiping');
+    }
+    s.dx = Math.min(0, Math.max(-DEL_W * 1.25, s.base + dx));
+    s.row.style.transform = `translate3d(${s.dx}px, 0, 0)`;
+  });
+  const endLineSwipe = (e) => {
+    const s = lineSwipe;
+    if (!s || s.id !== e.pointerId) return;
+    lineSwipe = null;
+    if (!s.on) return;
+    const open = e.type === 'pointerup' ? s.dx < -DEL_W / 2 : s.base < 0;
+    s.line.classList.remove('swiping');
+    s.row.style.transform = '';
+    s.line.classList.toggle('open', open);
+    swipedLine = open ? s.line : null;
+    suppressCartClick = true;
+    setTimeout(() => { suppressCartClick = false; }, 260);
+  };
+  cartList.addEventListener('pointerup', endLineSwipe);
+  cartList.addEventListener('pointercancel', endLineSwipe);
+  document.addEventListener('pointerdown', (e) => { if (swipedLine && !cartList.contains(e.target)) shutLine(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') shutLine(); });
+  cartList.addEventListener('click', (e) => {
+    if (suppressCartClick) return;
+    const del = e.target.closest('[data-del]');
+    const item = del && state.cart.find(i => i.id === del.dataset.del);
+    if (item) { swipedLine = null; return removeLine(item); }
+    if (shutLine()) return;
     const row = e.target.closest('[data-id]');
     if (row) openEditSheet('line', row.dataset.id);
   });
@@ -473,12 +516,13 @@ function attachEvents() {
   });
   // "Add new customer" inside the Sell-page customer picker — reuse the same
   // create form, then auto-select the new customer for the current sale.
-  ['#pickerAddCustomerBtn', '#custNew'].forEach(sel => $(sel)?.addEventListener('click', () => {   // the old pop-up's row, the sheet's chip
+  function addCustomerFromSale() {   // the old pop-up's row, the sheet's first row
     state.customerEditFromSale = true;
     $('#customerModal').hidden = true;
     closeVariantSheet();
     openCustomerEditModal();
-  }));
+  }
+  $('#pickerAddCustomerBtn')?.addEventListener('click', addCustomerFromSale);
   $('#customersList')?.addEventListener('click', (e) => {
     const row = e.target.closest('[data-customer-id]');
     if (!row) return;
@@ -587,17 +631,18 @@ function attachEvents() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       const map = !$('#deliveryMapModal').hidden;   // Esc over the map closes the map, the sheet stays
+      const list = $('#variantSheet').classList.contains('open');   // Esc over the customer list closes the list, the cart page stays
       stopBarcodeScanner();
       closeModals();
       closeVariantSheet();
-      if (!map && !es) $('#app').classList.remove('ph-cart');   // phone: Esc with nothing over the cart closes it
+      if (!map && !es && !list) $('#app').classList.remove('ph-cart');   // phone: Esc with nothing over the cart closes it
       if (!map) closeEditSheet();
     }
   });
 
   // ---- Pay ----
   // An exchange in the cart (startExchange) finishes here; anything else goes to the checkout.
-  const phCart = (on) => { if (!on) closeEditSheet(); $('#app').classList.toggle('ph-cart', on); };   // phone: the cart page
+  const phCart = (on) => { on ? closeVariantSheet() : closeEditSheet(); $('#app').classList.toggle('ph-cart', on); };   // phone: the cart page; the variant sheet sits over it (z 98), so it closes on the way in
   $('#cartBar').addEventListener('click', () => phCart(true));
   $('#cartBack').addEventListener('click', () => phCart(false));
   $('#payBtn').addEventListener('click', () => { closeEditSheet(); state.exchange ? confirmExchange() : openPaymentModal(); });
@@ -685,17 +730,6 @@ function attachEvents() {
   $('#settingsView')?.addEventListener('click', (e) => {   // tile size, text size, theme, printer, paper width
     const b = e.target.closest('[data-pick]');
     if (b) openSettingMenu(b);
-  });
-  $('#posShowPrice')?.addEventListener('change', (e) => {
-    state.showPrice = e.target.checked;
-    storageSet(STORAGE_SHOW_PRICE, state.showPrice ? '1' : '0');
-    renderPosSettings(false);
-    renderProducts();
-  });
-  $('#posTileStock')?.addEventListener('change', (e) => {   // this till's own choice, like the Item / Amount band
-    state.tileStock = e.target.checked;
-    HWPOS_STORE.ui.set('tileStock', state.tileStock ? '1' : '0');
-    renderProducts();
   });
   $('#posCartHead')?.addEventListener('change', (e) => {
     HWPOS_STORE.ui.set('cartHead', e.target.checked ? '1' : '0');
@@ -832,9 +866,6 @@ function init() {
   window.visualViewport?.addEventListener('scroll', () => refitSellSurface());
   new ResizeObserver(() => refitSellSurface()).observe($('.catalog'));   // iPhone Safari: hiding the toolbar moves the safe area (the bar's gap) with no resize event; the tiles were cut off by 10pt
 
-  // Sync persisted UI state on first paint
-  $('#bbViewBtn')?.classList.toggle('active', state.showPrice);
-
   // Pick up appearance changes pushed from the back-office tab.
   window.addEventListener('storage', (e) => {
     if (e.key === STORAGE_TILE_SIZE && e.newValue && ITEMS_PER_PAGE[e.newValue]) {
@@ -842,9 +873,11 @@ function init() {
       state.page = 1;
       renderProducts();
     }
-    if (e.key === STORAGE_SHOW_PRICE) {
-      state.showPrice = e.newValue === '1';
+    if (e.key === STORAGE_SHOW_PRICE || e.key === 'hwpos.ui.tileStock') {   // Tiles show, picked in another tab
+      state.showPrice = storageGet(STORAGE_SHOW_PRICE, '0') === '1';
+      state.tileStock = HWPOS_STORE.ui.get('tileStock', '0') === '1';
       renderProducts();
+      renderPosSettings(false);
     }
     if (e.key === STORAGE_THEME && e.newValue) {
       state.theme = e.newValue;
@@ -881,10 +914,10 @@ function init() {
     if (document.hidden) { endSearch(true); track('app_hidden'); return; }
     track('app_visible');
     const newSize = storageGet(STORAGE_TILE_SIZE, 'md') || 'md';
-    const newShow = storageGet(STORAGE_SHOW_PRICE, '0') === '1';
+    const newShow = storageGet(STORAGE_SHOW_PRICE, '0') === '1', newStock = HWPOS_STORE.ui.get('tileStock', '0') === '1';
     let changed = false;
     if (newSize !== state.tileSize && ITEMS_PER_PAGE[newSize]) { state.tileSize = newSize; state.page = 1; changed = true; }
-    if (newShow !== state.showPrice) { state.showPrice = newShow; changed = true; }
+    if (newShow !== state.showPrice || newStock !== state.tileStock) { state.showPrice = newShow; state.tileStock = newStock; changed = true; }
     const was = currentStoreInfo().cashier;
     state.settings = loadSettings();
     if (currentStoreInfo().cashier !== was) track('cashier_switch', { from: was, to: currentStoreInfo().cashier });

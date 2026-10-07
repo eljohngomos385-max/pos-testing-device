@@ -467,15 +467,13 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .product-grid[data-text="lg"] { --pc-name-size: 15px; }
 .product-grid[data-text="xl"] { --pc-name-size: 18px; }
 
-/* Optional price under the name — hidden by default, toggle via .show-price on grid */
+/* The one line under the name: price or stock (Settings › Tiles show; tileLine draws it only when on) */
 .pc-price-mini {
   font-size: calc(var(--pc-name-size, 13px) - 1px);
   font-weight: 500;
   color: var(--ink-secondary);
   font-variant-numeric: tabular-nums;
-  display: none;
 }
-.product-grid.show-price .pc-price-mini { display: block; }
 
 /* Hidden — kept so legacy elsewhere doesn't break */
 .pc-head, .pc-brand, .pc-sku, .pc-foot, .pc-price, .pc-stock, .stock-dot { display: none; }
@@ -3609,6 +3607,8 @@ a.secondary-btn { text-decoration: none; }
 .vs-row .nm { flex: 1; min-width: 0; font-size: 14px; font-weight: 510; line-height: 1.3; overflow-wrap: anywhere; }
 .vs-row small { display: block; font-size: 12px; font-weight: 400; color: var(--ink-tertiary); font-variant-numeric: tabular-nums; }
 .vs-row small b { font-weight: inherit; color: var(--danger); }
+.vs-new { color: var(--rl-on); }   /* New customer: first row, + and label in the app's blue (owner 2026-10-07: a filled circle drew too much, plain ink too little) */
+.vs-plus { display: grid; flex: none; margin-right: -2px; }
 .vs-row .amt { font-size: 14px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .vs-empty { padding: 28px var(--rl-m); text-align: center; font-size: 13px; color: var(--ink-tertiary); }
 @media (prefers-reduced-motion: reduce) { .vsheet, .vsheet.open { transition: none; } }
@@ -3645,6 +3645,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .esheet svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .esheet .es-x { position: absolute; z-index: 1; top: 12px; left: 12px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--es-r); color: var(--ink-secondary); }
 .esheet .es-x:hover { background: var(--es-btn); color: var(--ink); }
+.esheet .es-x :is(.ib, .xl) { display: none; }   /* the phone's ‹ Back */
 /* the body: the big number sits at one spot, 40% down the card, on every sheet (a touch above centre reads as centre);
    the list runs down from it, keys or a panel beside it. 56 = the name line 20 + gap 4 + half the hero 32 */
 .es-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(240px, 420px); grid-auto-columns: minmax(220px, 300px);   /* narrow: both give a little, the list never squeezes */ grid-auto-flow: column; justify-content: center;
@@ -4950,6 +4951,9 @@ body.light-theme .co-tile:active { background: var(--bg-softer); }
 body.light-theme .pc-name,
 body.light-theme .pc-group .pc-name { color: var(--ink); }
 body.light-theme .pc-price-mini { color: var(--ink-secondary); }
+.product-card .pc-price-mini.low { color: var(--warn); }   /* beats body.light-theme .pc-price-mini */
+.product-card .pc-price-mini.out { color: var(--danger); }
+.pc-price-mini .from { display: none; }   /* a group's range; the phone's tile has room for "from ₱14.50" only, like the Items list */
 body.light-theme .pc-group-badge { background: var(--canvas); color: var(--ink-secondary); }
 body.light-theme .pc-group-badge svg { stroke: var(--ink-secondary); }
 
@@ -7303,6 +7307,16 @@ body.light-theme {
 .rail-h .line + .line { border-top: 1px solid var(--line); }
 .rail-h .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 45px; padding: 7px var(--rl-m); border: 0; background: none; text-align: left; transition: background-color .12s; }
 .rail-h .row:hover { background: var(--rl-hover); }
+/* a line swiped left (app.js, touch only): the row slides over the card and Delete waits under it, the editor's Remove item colours */
+.rail-h .line { position: relative; overflow: hidden; }
+.rail-h .line .row { position: relative; z-index: 1; touch-action: pan-y; transition: background-color .12s, transform .2s var(--rl-ease); }
+.rail-h .line:is(.swiping, .open) .row { background: var(--rl-card); }
+.rail-h .line.swiping .row { transition: none; }
+.rail-h .line.open .row { transform: translate3d(-88px, 0, 0); }
+.rail-h .line .row:focus-visible { outline-offset: -2px; }   /* the line clips anything outside it */
+.rail-h .sw-del { position: absolute; inset: 4px 8px 4px auto; width: 72px; display: grid; place-items: center; border: 0; border-radius: var(--r-input); background: var(--danger-bg); color: var(--danger); visibility: hidden; }
+.rail-h .sw-del svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rail-h .line:is(.swiping, .open) .sw-del { visibility: visible; }
 .rail-h .row .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
 .rail-h .row .nm span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .rail-h .row .nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
@@ -7430,7 +7444,22 @@ body.light-theme {
                      background: none; color: var(--ink-secondary); }
   .rail-h .ph-back:active { background: var(--rl-hover); }
   .rail-h .c-row .cust { border-radius: 0; padding-left: 14px; }
-  .esheet { position: fixed; z-index: 98; padding-inline: 8px; }
+  /* Phone insets: only var(--ph-safe), never raw env() -- devices.html can set the variable, not env(), so a rule on env()
+     looks right in the preview and wrong on the iPhone (the variant sheet stopped 34px short of the bar, owner 2026-10-08) */
+  .vsheet { padding-bottom: 8px; }
+  .pc-price-mini .from { display: inline; }
+  .pc-price-mini .hi { display: none; }   /* the bar under it already clears the home bar */
+  /* Walk-in / Discount / a cart line: a full page like checkout's (owner 2026-10-08), no frame, no lines; ‹ Back where
+     checkout has ‹ Cancel. A lone Done only closed, as Back does, so it goes; Apply / Clear / Remove item keep the foot */
+  .esheet { position: fixed; z-index: 98; padding: 0 0 var(--ph-safe); }
+  .es-card { border: 0; border-radius: 0; box-shadow: none; background: var(--bg); }
+  .es-ft { border-top: 0; }
+  .es-body:not(.fill) { padding-top: max(0px, calc(30cqh - 120px)); }   /* the hero where checkout's sits */
+  .esheet .es-x { top: 3.25px; left: 6px; display: inline-flex; align-items: center; gap: 4px; width: auto; min-width: 92px; height: 44px; padding: 0 12px 0 8px;
+                  border-radius: var(--r-input); color: var(--ink); font-size: 15px; font-weight: 560; }   /* = .co-cancel */
+  .esheet .es-x .ix { display: none; }
+  .esheet .es-x :is(.ib, .xl) { display: block; }
+  .esheet .es-x .ib { stroke-width: 2; color: var(--ink-secondary); }
   .toast { bottom: calc(var(--bar-h) + 16px + var(--ph-b)); }   /* clear of the bar and Check out */
   body:has(#app.ph-cart) .toast { bottom: calc(var(--bar-h) + 68px + var(--ph-b)); }   /* over Walk-in | Discount */
   .catalog-wrap:has(> .vsheet.open) { z-index: 98; background: var(--bg); }   /* the customer list (and variants) opened from the cart page come over it */
@@ -7553,14 +7582,18 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .o-top .back { display: none; }
 @container pv (max-width: 720px) {
   .lv .ov { grid-template-columns: 1fr; padding: 0 12px; }
-  .lv .o-rail { margin: 8px 0 12px; }
+  /* the list runs off the bottom edge like Items (owner 2026-10-08: a closed floor over the home bar looked cut off) */
+  .lv .o-rail { margin: 8px 0 0; }
+  .lv .o-rail .list { border-bottom: 0; border-radius: var(--rl-r) var(--rl-r) 0 0; }
+  .lv .o-rail .lines { margin-bottom: 0; padding-bottom: var(--ph-safe, 0px); }
+  .lv .paper-scroll { padding-bottom: calc(21px + var(--ph-safe, 0px)); }
   .lv .o-main { position: absolute; inset: 0; z-index: 5; padding: 16px 12px 0; background: var(--bg); transform: translateX(100%); transition: transform .28s var(--rl-ease); }
   .lv .ov.reading .o-main { transform: none; }
   .lv .o-top .back { display: inline-flex; }
 }
 
 /* ---------- Customers: the Orders shape; the facts in the item editor's cards, read-only, values right ---------- */
-.lv .c-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 21px; scrollbar-width: thin; }
+.lv .c-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(21px + var(--ph-safe, 0px)); scrollbar-width: thin; }
 .lv .c-body { display: grid; gap: 12px; }
 .lv .c-body { width: min(100%, 600px); margin-inline: auto; }   /* a short page: centred like the receipt paper; the top bar stays full width like Orders */
 .lv .c-body .fr { grid-template-columns: auto minmax(0,1fr); gap: 16px; min-height: 46px; padding: 6px 16px; }   /* label left, value right at every width */
@@ -7787,10 +7820,6 @@ input.es-ta { height: 56px; }
 .cf-sheet .primary-btn.small, .cf-sheet .secondary-btn.small { height: 36px; padding: 0 14px; font-size: 13px; font-weight: 590; text-transform: none; letter-spacing: normal; }
 .cf-sheet .primary-btn.danger { background: var(--danger-bg); color: var(--danger); }
 .cf-sheet .primary-btn.danger:hover:not(:disabled) { background: var(--danger-bg); box-shadow: inset 0 0 0 1px var(--danger); }
-/* Low stock: the tiles' Low / Out mark (tileMark, off by default). The cart says it on add (stockOnAdd). */
-.pc-mark { position: absolute; top: 6px; left: 8px; display: inline-flex; align-items: center; gap: 4px; color: var(--ink-tertiary); font-size: 10px; font-weight: 600; }
-.pc-mark::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
-.pc-mark.out::before { background: var(--danger); }
 
 /* ==== batch 2026-10-07: shift + sync mark ==== */
 /* Shift (pos-shift.js): the Customers cards, centred. Cash in / out is one line of amount, note, two buttons. */

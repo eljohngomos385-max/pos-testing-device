@@ -92,21 +92,41 @@ function renderSellCellHtml(cell) {
           </svg>
           <span>${cell.memberCount}</span>
         </div>
-        ${tileMark(() => familyLevel(groupMembers(g.id)))}<div class="pc-name">${escapeHtml(g.name)}</div>
+        <div class="pc-name">${escapeHtml(g.name)}</div>${tileLine(groupMembers(g.id))}
       </div>`;
   }
   const p = cell.product;
   return `
     <div class="product-card" data-id="${p.id}">
-      ${tileMark(() => stockLevel(p))}<div class="pc-name">${escapeHtml(p.name)}</div>
-      <div class="pc-price-mini">${peso(p.price)}</div>
+      <div class="pc-name">${escapeHtml(p.name)}</div>${tileLine([p])}
     </div>`;
 }
-// Settings › Appearance › Stock marks on tiles: a small Low / Out in the tile's corner, from bo-model's stockLevel
-// (familyLevel for a group, Items' own words). Off: nothing is worked out.
-function tileMark(level) {
-  const lv = state.tileStock ? level() : '';
-  return lv === 'out' || lv === 'low' ? `<span class="pc-mark ${lv}">${lv === 'out' ? 'Out' : 'Low'}</span>` : '';
+// Settings › Tiles show is the two keys there already were: showPrice (shared with the back office's switch) and this
+// till's tileStock. Stock wins when both are on, so the back office turning price on can't hide this till's counts.
+function setTileShow(v) {
+  if (v !== 'stock') {   // Stock wins anyway: picking it leaves the shared price key alone for the back office and the other tills
+    state.showPrice = v === 'price';
+    storageSet(STORAGE_SHOW_PRICE, state.showPrice ? '1' : '0');
+  }
+  state.tileStock = v === 'stock';
+  HWPOS_STORE.ui.set('tileStock', state.tileStock ? '1' : '0');
+  renderProducts();
+}
+// Settings › Tiles show (owner 2026-10-08): the one small line under the name, the same for an item and a variant
+// group. Price: the price, a group its range. Stock: the count (a group's total, the variant sheet splits it), in
+// the warn colour when low (familyLevel, Items' own words), "Out" when out; nothing when untracked.
+const tileUnit = (n, u = 'pc') => /^(pc|bag|roll|pair|box|set|pack)$/.test(u) ? SalesMath.pluralWord(n, u, u === 'box' ? 'boxes' : u + 's') : u;
+function tileLine(ps) {
+  if (state.tileStock) {
+    const counted = ps.filter(m => m.trackStock !== false);
+    if (!counted.length) return '';
+    const lv = familyLevel(counted), n = counted.reduce((s, m) => s + Math.max(0, toNumber(m.stock, 0)), 0);
+    const u = counted.every(m => (m.unit || 'pc') === (counted[0].unit || 'pc')) ? ' ' + tileUnit(n, counted[0].unit || 'pc') : '';
+    return `<div class="pc-price-mini${lv === 'out' || lv === 'low' ? ' ' + lv : ''}">${lv === 'out' ? 'Out' : SalesMath.qtyText(n) + u}</div>`;
+  }
+  if (!state.showPrice || !ps.length) return '';
+  const lo = Math.min(...ps.map(m => toNumber(m.price, 0))), hi = Math.max(...ps.map(m => toNumber(m.price, 0)));
+  return `<div class="pc-price-mini">${lo === hi ? peso(lo) : `<span class="from">from </span>${peso(lo)}<span class="hi">–${peso(hi)}</span>`}</div>`;   // the Items list's range (itemPriceText)
 }
 
 function updateProductTrackPosition() {
@@ -128,7 +148,6 @@ function renderProducts() {
   // Set size + price-display attrs on the grid
   grid.dataset.size = state.tileSize;
   grid.dataset.text = state.tileText;
-  grid.classList.toggle('show-price', state.showPrice);
   grid.style.setProperty('--grid-cols', profile.columns);
   grid.style.setProperty('--grid-rows', profile.rows);
 
@@ -226,7 +245,6 @@ function closeVariantSheet() {
 
 function renderVariantList() {
   const vm = state.variantModal;
-  $('#custNew').hidden = vm.kind !== 'cust';
   if (vm.kind === 'cust') return renderCustomerSheet(vm);
   const members = groupMembers(vm.groupId);
   const q = vm.query.trim().toLowerCase();
@@ -270,13 +288,6 @@ function setTileText(size) {
   renderProducts();
 }
 
-function toggleShowPrice() {
-  state.showPrice = !state.showPrice;
-  storageSet(STORAGE_SHOW_PRICE, state.showPrice ? '1' : '0');
-  $('#bbViewBtn')?.classList.toggle('active', state.showPrice);
-  renderProducts();
-}
-
 // ---------- Cart ----------
 // Every quantity typed anywhere in the POS comes through here. `parseInt` used to live at
 // each of these inputs, which sold 2 metres of the 2.5 the customer asked for; `roundQty`
@@ -292,15 +303,16 @@ function qtyFrom(product, value, fallback = 1) {
 // Stock on add (owner, 2026-10-07): every add -- tile, scan, search, variant (addToCart) and the edit sheet's quantity
 // (esWrite) -- comes through here. `want`: what the cart holds of p after the add, all its lines. Past the shelf asks
 // "Out of stock" first, once per item per cart; into the low line (bo-model stockLevel) says so in the toast. Untracked
-// and sell-out-of-stock items never ask. add(later): later = it ran after the question; `from`: what was tapped, the
-// question grows out of it. Checkout no longer asks.
+// and sell-out-of-stock items never ask. add(later): later = it ran after the question. The question
+// opens centred, whatever was tapped (owner 2026-10-08: a tile's grew from its edge, a variant's from the middle).
+// Checkout no longer asks.
 const oosAsked = { cart: '', ids: new Set() };
 const cartWant = (p) => state.cart.reduce((n, i) => (productOf(i) === p ? n + toNumber(i.qty, 0) : n), 0);
-function stockOnAdd(p, want, add, { cancel, from } = {}) {
+function stockOnAdd(p, want, add, { cancel } = {}) {
   const left = roundQty(p, toNumber(p.stock, 0) - want), tracked = p.trackStock !== false;
   const asked = state.cart.length && oosAsked.cart === state.cartId && oosAsked.ids.has(p.id);
   if (tracked && left < 0 && !p.sellOutOfStock && !asked) {
-    return showConfirm({ title: 'Out of stock', message: p.name, okText: 'Sell anyway', from,
+    return showConfirm({ title: 'Out of stock', message: p.name, okText: 'Sell anyway',
       onConfirm: () => {
         add(true);
         if (oosAsked.cart !== state.cartId) Object.assign(oosAsked, { cart: state.cartId, ids: new Set() });
@@ -315,7 +327,7 @@ function stockOnAdd(p, want, add, { cancel, from } = {}) {
   else if (tracked && left > 0 && stockLevel({ ...p, stock: left }) === 'low') showToast(`Only ${SalesMath.qtyText(left)} left`);
 }
 
-function addToCart(productId, via = 'other', from = null) {
+function addToCart(productId, via = 'other') {
   const p = state.products.find(x => x.id === productId);
   if (!p) return;
   stockOnAdd(p, cartWant(p) + 1, () => {
@@ -329,7 +341,7 @@ function addToCart(productId, via = 'other', from = null) {
     trackItemAdd(p, 1, via);
     renderCart();
     showToast(`Added · ${p.name}`);
-  }, { from });
+  });
 }
 
 function findProductByCode(rawCode) {
@@ -686,7 +698,7 @@ const ES_PANEL = { pickup: 't', delivery: 'a' };          // the types that ask 
 const ES_SC = { senior: 'Senior', pwd: 'PWD' };
 const ES_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17].map(h => `${(h + 11) % 12 + 1}:00 ${h < 12 ? 'AM' : 'PM'}`);   // ponytail: fixed; the store's hours would set them
 const ES_IC = {
-  x: 'M6 6l12 12M18 6L6 18', less: 'M6 12h12', more: 'M12 6v12M6 12h12', chev: 'M9 6l6 6-6 6',
+  x: 'M6 6l12 12M18 6L6 18', trash: 'M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12', back: 'M15 5l-7 7 7 7', less: 'M6 12h12', more: 'M12 6v12M6 12h12', chev: 'M9 6l6 6-6 6',
   del: 'M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7zM13 10l4 4M17 10l-4 4',
   pin: 'M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10zM12 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
 };
@@ -722,6 +734,18 @@ function openEditSheet(kind, id) {
   Object.assign(es, { f: null, anim: false, opened: true });
   drawEditSheet();
   if (!was) $('#editSheet').classList.add('open');
+}
+
+// The one way a cart line leaves: the editor's Remove item and the swiped line's Delete (owner 2026-10-08).
+function removeLine(item) {
+  if (es && es.kind === 'line' && es.id === item.id) { es = null; $('#editSheet').classList.remove('open'); }   // the tablet's sheet can be open on it
+  track('item_remove', { productId: item.id, qty: item.qty, unitPrice: item.price });
+  state.cart = state.cart.filter(i => i !== item);
+  const list = $('#cartList'), top = list.scrollTop;
+  renderCart();
+  list.scrollTop = top;   // renderCart jumps to the newest line; a removal keeps the cashier's place
+  if (es) state.cart.length ? drawEditSheet() : closeEditSheet();   // Discount / Walk-in open beside the rail: its totals follow
+  showToast('Item removed');
 }
 
 // Closing keeps what's on the cart (it followed every tap) and sends the events the old Save sent, once per open.
@@ -761,7 +785,7 @@ function esWrite() {
         stockOnAdd(p, cartWant(p) - was + qty, (later) => {
           item.qty = qty;
           if (later) { renderCart(); if (es === o) drawEditSheet(); }
-        }, { from: $('#editSheet [data-sf="q"]'),
+        }, {
           cancel: () => { Object.assign(o, { q: String(was), fresh: true }); renderCart(); if (es === o) drawEditSheet(); } });
       } else item.qty = qty;
     }
@@ -842,7 +866,7 @@ function drawEditSheet() {
     : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
     : o.f ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q" data-sclr>Clear</button>' : '';
   const top = card.querySelector('.es-scroll')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
-  card.innerHTML = `<button type="button" class="es-x" data-close aria-label="Close">${esSvg('x')}</button>
+  card.innerHTML = `<button type="button" class="es-x" data-close aria-label="Close">${esSvg('x', 'ix')}${esSvg('back', 'ib')}<span class="xl">Back</span></button>
     <div class="es-body${o.kind === 'rd' ? ' fill' : ''}${o.anim === true ? ' in' : o.anim === 'out' ? ' out' : ''}"><div class="es-col"><div class="es-head">${head}</div><div class="es-list">${rows}</div></div>${side}</div>
     <div class="es-ft">${left}${o.f ? '<button type="button" class="es-ink" data-apply>Apply</button>' : '<button type="button" class="es-ink" data-close>Done</button>'}</div>`;
   const list = card.querySelector('.es-scroll');
@@ -862,12 +886,8 @@ function editSheetClick(e) {
   if (el('[data-remove]')) {
     const gone = esItem();
     es = null;
-    if (gone) track('item_remove', { productId: gone.id, qty: gone.qty, unitPrice: gone.price });
-    state.cart = state.cart.filter(i => i !== gone);
     $('#editSheet').classList.remove('open');
-    renderCart();
-    showToast('Item removed');
-    return;
+    return gone ? removeLine(gone) : renderCart();
   }
   const item = esItem(), step = item ? stepFor(productOf(item)) : 1;
   if (el('[data-sk]')) {
@@ -1288,7 +1308,7 @@ function renderCart() {
       <div class="line"><button type="button" class="row" data-id="${item.id}" title="Edit item">
         <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}</small></span>
         <span class="amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
-      </button></div>`).join('');
+      </button><button type="button" class="sw-del" data-del="${item.id}" tabindex="-1" aria-label="Delete">${esSvg('trash')}</button></div>`).join('');
     list.scrollTop = list.scrollHeight;
   }
 
@@ -1361,7 +1381,8 @@ function renderCustomerSheet(vm) {
   const row = (id, name, sub) => `<button type="button" class="vs-row" data-customer-id="${escapeHtml(id)}"><span class="nm">${escapeHtml(name)}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</span></button>`;
   $('#variantAvail').hidden = true;
   $('#variantCount').textContent = `${shown.length} of ${all.length}`;
-  $('#variantList').innerHTML = (q ? '' : row('walk-in', 'Walk-in customer', ''))
+  $('#variantList').innerHTML = '<button type="button" class="vs-row vs-new" data-cust-new><span class="vs-plus"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><span class="nm">New customer</span></button>'   // first, searching too: a name that isn't there is the moment to add it
+    + (q ? '' : row('walk-in', 'Walk-in customer', ''))
     + shown.map(c => row(c.id, c.name, [c.phone, c.address].filter(Boolean).join(' · '))).join('')
     + (q && !shown.length ? '<div class="vs-empty">No customers match</div>' : '');
 }

@@ -6,6 +6,7 @@ const savePrinting = (patch) => { state.settings.printing = { ...printerConfig()
 const SETTING_PICKS = {
   tileSize: { opts: [['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large']], now: () => state.tileSize || 'md', set: setTileSize },
   tileText: { opts: [['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large'], ['xl', 'Extra large']], now: () => state.tileText || 'md', set: setTileText },
+  tileShow: { opts: [['price', 'Price'], ['stock', 'Stock'], ['name', 'Name only']], now: () => state.tileStock ? 'stock' : state.showPrice ? 'price' : 'name', set: setTileShow },
   theme: { opts: [['dark', 'Dark'], ['light', 'Light']], now: () => state.theme || 'dark', set: applyTheme },
   driver: { opts: [['browser', 'Browser'], ['network', 'Wi-Fi'], ['bluetooth', 'Bluetooth']], now: () => printerConfig().driver || 'browser', set: v => savePrinting({ driver: v }) },
   width: { opts: [['58mm', '58 mm'], ['80mm', '80 mm']], now: () => printerConfig().width || '80mm', set: v => savePrinting({ width: v }) },
@@ -24,10 +25,6 @@ function renderPosSettings(printer = true) {
     b.firstElementChild.textContent = val;
     b.setAttribute('aria-label', b.closest('.fr').querySelector('.lb').textContent + ', ' + val);   // "Tile size, Medium", not just "Medium"
   });
-  const showCb = $('#posShowPrice');
-  if (showCb) showCb.checked = state.showPrice;
-  const stockCb = $('#posTileStock');
-  if (stockCb) stockCb.checked = state.tileStock;
   const headCb = $('#posCartHead');
   if (headCb) headCb.checked = state.cartHead;
   const p = printerConfig();

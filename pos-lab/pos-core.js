@@ -160,7 +160,7 @@ const state = {
   showPrice: storageGet(STORAGE_SHOW_PRICE, '0') === '1',
   theme: (storageGet(STORAGE_THEME, 'dark') || 'dark'),
   cartHead: window.HWPOS_STORE?.ui.get('cartHead', '1') !== '0',               // the Item / Amount band
-  tileStock: window.HWPOS_STORE?.ui.get('tileStock', '0') === '1',             // Low / Out marks on the tiles (tileMark)
+  tileStock: window.HWPOS_STORE?.ui.get('tileStock', '0') === '1',             // Settings › Tiles show = Stock (tileLine)
   customersQuery: '',
   selectedCustomerId: null,
   lostSale: { productId: '', reason: 'out-of-stock' },
