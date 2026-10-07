@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=199" />
+  <link rel="stylesheet" href="styles.css?v=203" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -190,6 +190,13 @@
             <!-- Edit sheet (popups-lab.html, Sheet C): the cart line, the receipt discount and the fulfilment open over
                  the whole left side, top row too, with their own X. Drawn by pos-sell.js (drawEditSheet) -->
             <div class="esheet" id="editSheet" role="dialog" aria-label="Edit"><div class="es-card" id="editSheetCard"></div></div>
+            <!-- New / Edit customer: the edit sheet's frame on the tablet, a page on the phone (owner 2026-10-08). The Customers
+                 page moves it into its own pane (openCustomerEditModal) -->
+            <div class="esheet cust-sheet" id="customerEditModal" role="dialog" aria-labelledby="customerEditTitle"><div class="es-card">
+              <button type="button" class="es-x" data-cust-close aria-label="Close"><svg class="ix" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><svg class="ib" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span class="xl">Back</span></button>
+              <div class="cs-body"><div class="cs-in"><h2 class="cs-h" id="customerEditTitle">New customer</h2><div id="custFields"></div></div></div><!-- bo-model CUSTOMER_FIELDS, the same form as the back office -->
+              <div class="es-ft"><button type="button" class="es-ink" id="custSaveBtn">Save</button></div>
+            </div></div>
           </div>
 
           <!-- Phone (≤720): the sale sidebar is its own page; this bar opens it. Not Check out -->
@@ -692,28 +699,6 @@
       </div>
     </div>
 
-    <!-- New customer modal (save name + address) -->
-    <div class="modal-backdrop" id="customerEditModal" hidden>
-      <div class="modal small-modal">
-        <div class="modal-head">
-          <h2 id="customerEditTitle">New customer</h2>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-              <line x1="6" y1="6" x2="18" y2="18"/>
-              <line x1="18" y1="6" x2="6" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div id="custFields"></div><!-- bo-model CUSTOMER_FIELDS, the same form as the back office -->
-          <div class="pay-actions" style="margin-top:14px">
-            <button class="secondary-btn" data-close-modal>Cancel</button>
-            <button class="primary-btn" id="custSaveBtn">Save</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Variant picker (for items with multiple SKUs / sizes / colors) -->
     <!-- Lost sale: the customer asked, we couldn't sell it -->
     <div class="modal-backdrop" id="lostSaleModal" hidden>
@@ -796,14 +781,14 @@
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=45"></script>
   <script src="pos-core.js?v=13"></script>
-  <script src="pos-sell.js?v=37"></script>
-  <script src="pos-checkout.js?v=7"></script>
+  <script src="pos-sell.js?v=38"></script>
+  <script src="pos-checkout.js?v=8"></script>
   <script src="pos-orders.js?v=16"></script>
   <script src="pos-items.js?v=8"></script>
   <script src="pos-customers.js?v=12"></script>
   <script src="pos-settings.js?v=4"></script>
   <script src="pos-pin.js?v=3"></script>
   <script src="pos-shift.js?v=2"></script>
-  <script src="app.js?v=133"></script>
+  <script src="app.js?v=134"></script>
 </body>
 </html>

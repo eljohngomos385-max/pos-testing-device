@@ -3025,14 +3025,6 @@ a.secondary-btn { text-decoration: none; }
   flex-direction: column;
   gap: 16px;
 }
-.od-clickable { cursor: pointer; }
-.od-clickable .rp-paper {
-  transition: transform .14s ease, box-shadow .14s ease;
-}
-.od-clickable:hover .rp-paper {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 44px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.25);
-}
 .od-details-btn {
   width: auto;
   height: 46px;
@@ -3400,22 +3392,24 @@ a.secondary-btn { text-decoration: none; }
   text-transform: uppercase;
   color: var(--ink-tertiary);
 }
+/* The one receipt paper: Orders, Show receipt and the tablet rail all use it (owner 2026-10-08) */
 .rp-paper {
-  width: min(460px, 100%);
+  position: relative;
+  width: min(400px, 100%);
   flex: 0 0 auto;
   margin: auto auto;
   background: #fff;
   color: #111;
-  border-radius: 4px;
-  padding: 28px 28px 32px;
+  border-radius: 1px;
+  padding: 24px 24px 28px;
   font-family: "SF Mono", "Menlo", "Consolas", "Courier New", monospace;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.42;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.18);
-  border: none;
+  box-shadow: var(--paper-shadow);
 }
+@media (max-width: 720px) { .rp-paper { padding: 20px 18px 24px; font-size: 12px; } }
 .rp-center { text-align: center; }
-.rp-store { font-size: 18px; font-weight: 800; letter-spacing: 0.4px; }
+.rp-store { font-size: 16px; font-weight: 800; letter-spacing: 0.4px; }
 .rp-small { font-size: 12px; }
 .rp-rule { border-top: 1px dashed #111; margin: 11px 0; }
 .rp-row {
@@ -3719,6 +3713,16 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
   .es-body.fill:has(> .es-keys) :is(.es-col, .es-list, .es-scroll) { flex: none; min-height: auto; overflow: visible; }
   .es-body.fill:has(> .es-keys) :is(.es-scroll, .es-list) > :not(.on):not(:has(.on)) { display: none; }
 }
+/* New / Edit customer: the frame, a title and the back office's fields, Save where Done is */
+#customersView { position: relative; }
+@media (min-width: 721px) { #customersView > .cust-sheet { grid-area: 1 / 2 / 2 / 3; padding: 8px 0; } }   /* every line named: an auto end is the padding edge */   /* the Customers page: over the customer pane, the list stays */
+.cs-body { flex: 1; min-height: 0; display: flex; overflow-y: auto; padding: 64px 24px 24px; }
+.cs-in { width: min(420px, 100%); margin: auto; }   /* centred, and scrolls from the top when taller than the card */
+.cs-h { margin: 0 0 20px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; text-align: center; }
+#custFields { display: flex; flex-direction: column; gap: 12px; }
+.cs-f { display: flex; flex-direction: column; gap: 6px; color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
+.cs-f .es-ta { height: 48px; padding-block: 0; color: var(--ink); }
+.cs-f .es-ta:focus-visible { outline: 0; }   /* the soft ring is the focus; .lv's blue one doubled it on the Customers page */
 @media (prefers-reduced-motion: reduce) { .esheet, .esheet.open, .scan-sheet, .scan-sheet.open { transition: none; } .es-body .es-col, .es-keys { animation: none !important; } }
 
 /* Section label + quantity stepper: the cart line editor's (and the tier inputs') */
@@ -3919,10 +3923,10 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
            visibility: hidden; opacity: 0; transition: opacity .25s, visibility 0s .25s; }
 .is-done .co-rcpt { visibility: visible; opacity: 1; transition: opacity .25s; }
 .co-rcpt .receipt-preview { max-height: none; overflow: visible; padding: 0; }
-.co-rcpt .rp-paper { margin: 0 auto; animation: co-print .9s var(--co-ease) both; }
+.co-rcpt .rp-paper { margin: 0 auto; animation: co-print .9s var(--co-ease) backwards; }   /* not both: a kept clip-path cut the paper's edge off */
 
 /* sale complete: the moment sits in the middle of the column */
-.is-done .co-stage { display: grid; align-content: center; }
+.is-done .co-stage { display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; }   /* the column never grows past the screen with a long number */
 .co-done { display: grid; justify-items: center; gap: 4px; padding: 24px 0 4px; text-align: center; }
 .co-done > :not(.co-mark) { animation: co-rise .45s var(--co-ease) both; animation-delay: calc(var(--i, 0) * 70ms + 160ms); }
 .co-mark { position: relative; width: 72px; height: 72px; margin-bottom: 14px; animation: co-pop .42s var(--co-ease) both; }
@@ -3936,7 +3940,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 /* the one number here is the change to hand back, said in one line */
 .co-done-chg { display: flex; align-items: baseline; justify-content: center; gap: 14px; margin-top: 6px; }
 .co-done-chg > :first-child { color: var(--ink-secondary); font-size: 22px; font-weight: 560; }
-.co-done-num { margin-right: -.035em; font-size: 64px; font-weight: 600; letter-spacing: -.035em; line-height: 1.1; transition: color .4s; }
+.co-done-num { margin-right: -.035em; font-size: var(--fit, 64px); white-space: nowrap; font-weight: 600; letter-spacing: -.035em; line-height: 1.1; transition: color .4s; }
 .co-done-num.settled { color: var(--ok); }
 .co-done-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 380px; margin-top: 28px; }
 .co-done-acts .co-btn { height: 50px; }
@@ -3966,7 +3970,9 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
               transform: translateY(100%); visibility: hidden; transition: transform .16s var(--rl-ease), visibility 0s .16s; }
   .co-items.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
   .co-cust, .co-list { display: none; }
-  .co-rcpt { inset: 0; padding: 64px 16px calc(16px + var(--ph-safe)); }   /* --surface, as the tablet's: the paper keeps its edge in light */
+  .co-done-chg { flex-direction: column-reverse; align-items: center; gap: 2px; }
+  .co-done-chg > :first-child { font-size: 17px; }
+  .co-rcpt { inset: 0; padding: 64px 16px calc(16px + var(--ph-safe)); background: var(--bg); }   /* the Orders page's backdrop: grey hid the paper's edge (owner 2026-10-08) */
   .co-rcpt-x { position: absolute; z-index: 1; top: 12px; left: 12px; display: grid; place-items: center; width: 40px; height: 40px;
                border-radius: var(--r-input); color: var(--ink-secondary); }
   .co-rcpt-x:active { background: var(--surface-hover); }
@@ -7388,7 +7394,7 @@ body.light-theme {
 .rail-rcpt { position: absolute; inset: 0; z-index: 2; overflow-y: auto; overscroll-behavior: contain; padding: 20px; border-radius: inherit;
              background: var(--surface); animation: rail-fade .25s both; }
 .rail-rcpt .receipt-preview { max-height: none; overflow: visible; padding: 0; }
-.rail-rcpt .rp-paper { margin: 0 auto; animation: co-print .9s var(--rl-ease) both; }
+.rail-rcpt .rp-paper { margin: 0 auto; animation: co-print .9s var(--rl-ease) backwards; }
 @keyframes rail-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .rail-h *, .rail-rcpt * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -7443,6 +7449,9 @@ body.light-theme {
   .esheet .es-x .ix { display: none; }
   .esheet .es-x :is(.ib, .xl) { display: block; }
   .esheet .es-x .ib { stroke-width: 2; color: var(--ink-secondary); }
+  .cust-sheet .es-ft { position: absolute; z-index: 1; top: 5.25px; right: 10px; padding: 0; }   /* the phone: Save at the top, across from Back */
+  .cs-body { padding: 56px 16px 24px; }
+  .cs-in { margin-top: 0; }
   .toast { bottom: calc(var(--bar-h) + 16px + var(--ph-b)); }   /* clear of the bar and Check out */
   body:has(#app.ph-cart) .toast { bottom: calc(var(--bar-h) + 68px + var(--ph-b)); }   /* over Walk-in | Discount */
   .catalog-wrap:has(> .vsheet.open) { z-index: 98; background: var(--bg); }   /* the customer list (and variants) opened from the cart page come over it */
@@ -7539,9 +7548,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .o-back .lb small { font-size: 12px; font-weight: 400; color: var(--ink-secondary); }
 .lv .o-back .v { font-weight: 600; }
 .lv .o-back .link { padding: 12px 0 12px 8px; margin: -12px 0; }   /* a ~40px tap target, same look */
-.lv .paper-scroll .rp-paper { position: relative; width: min(400px, 100%); margin: 0 auto; padding: 24px 24px 28px; border-radius: 1px; font-size: 13px; box-shadow: var(--paper-shadow); }
-.lv .paper-scroll .rp-store { font-size: 16px; }
-@container pv (max-width: 920px) { .lv .paper-scroll .rp-paper { padding: 20px 18px 24px; font-size: 12px; } }
+.lv .paper-scroll .rp-paper { margin: 0 auto; }
 .lv .rp-paper.void > :not(.stamp) { opacity: .45; }
 .lv .rp-paper .stamp { position: absolute; top: 150px; left: 50%; transform: translateX(-50%) rotate(-12deg); padding: 4px 16px; border: 3px solid #C62828; border-radius: 6px;
                        color: #C62828; font: 800 28px/1.2 var(--font, inherit); letter-spacing: .12em; pointer-events: none; }
@@ -7575,7 +7582,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
   .lv .o-rail { margin: 8px 0 0; }
   .lv .o-rail .list { border-bottom: 0; border-radius: var(--rl-r) var(--rl-r) 0 0; }
   .lv .o-rail .lines { margin-bottom: 0; padding-bottom: var(--ph-safe, 0px); }
-  .lv .paper-scroll { padding-bottom: calc(21px + var(--ph-safe, 0px)); }
+  .lv .paper-scroll { padding: 1px 4px calc(21px + var(--ph-safe, 0px)); }   /* 16px in with .o-main's 12, as the Show receipt sheet: the edge shows */
   .lv .o-main { position: absolute; inset: 0; z-index: 5; padding: 16px 12px 0; background: var(--bg); transform: translateX(100%); transition: transform .28s var(--rl-ease); }
   .lv .ov.reading .o-main { transform: none; }
   .lv .o-top .back { display: inline-flex; }

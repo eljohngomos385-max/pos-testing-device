@@ -1277,12 +1277,16 @@ function useDeviceDeliveryLocation() {
 function openCustomerEditModal(c = null) {
   state.customerEditing = c;
   $('#customerEditTitle').textContent = c ? 'Edit customer' : 'New customer';
-  $('#custFields').innerHTML = customerFieldsHtml(c || {}, { cls: 'text-input', wrap: (f, control, i) =>
-    `<label class="pay-label"${i ? ' style="margin-top:10px"' : ''}>${f.label}</label>${control}` })
+  $('#custFields').innerHTML = customerFieldsHtml(c || {}, { cls: 'es-ta', wrap: (f, control) => `<label class="cs-f"><span>${f.label}</span>${control}</label>` })
     + '<div class="co-error" id="custDup" hidden></div>';
-  $('#customerEditModal').hidden = false;
+  // the tablet: over the page's main pane, as the edit sheet is on Sell; the phone: a full page wherever it sits
+  // ponytail: Sell (its picker) and Customers are the only ways in
+  const sh = $('#customerEditModal'), frame = state.view === 'customers' ? $('#customersView') : $('.catalog-wrap');
+  if (sh.parentNode !== frame) { frame.append(sh); void sh.offsetWidth; }   // moved: settle first, so it still slides up
+  sh.classList.add('open');
   setTimeout(() => $('#custFields [name="name"]').focus(), 50);
 }
+function closeCustomerEditModal() { $('#customerEditModal').classList.remove('open'); }
 // Credit on/off and the limit are a manager's call (TILL_ACTIONS.credit, owner 2026-10-06); `by` = who approved it.
 // Only a change to them asks: fixing a phone number never needs a PIN.
 function saveSavedCustomerFromModal(by = '') {
@@ -1302,7 +1306,7 @@ function saveSavedCustomerFromModal(by = '') {
   if (credit && !by && !gate('credit', (b) => saveSavedCustomerFromModal(b))) return;
   const c = saveCustomer(customer);
   if (!was) track('customer_create', { customerId: c.id });
-  $('#customerEditModal').hidden = true;
+  closeCustomerEditModal();
   if (state.view === 'customers') renderCustomers();
   showToast(`${was ? 'Saved' : 'Added'} “${c.name}”`);
   // When created mid-sale from the Sell-page picker, attach the new customer to

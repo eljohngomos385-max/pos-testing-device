@@ -574,11 +574,12 @@ function attachEvents() {
   ['click', 'input', 'keydown'].forEach(t => $('#shiftBody')?.addEventListener(t, onShiftEvent));   // pos-shift.js
   wireFind('#shiftFind', '#shiftSearch', '#shiftSearchX', (q) => { shiftDraft.q = q; renderShift(); });
   $('#custSaveBtn')?.addEventListener('click', () => saveSavedCustomerFromModal());
+  $('#customerEditModal [data-cust-close]').addEventListener('click', closeCustomerEditModal);
   // "Open Ana" on the duplicate-phone note: mid-sale she goes on the receipt, else her page opens.
   $('#custFields')?.addEventListener('click', (e) => {
     const id = e.target.closest('[data-open-cust]')?.dataset.openCust;
     if (!id) return;
-    $('#customerEditModal').hidden = true;
+    closeCustomerEditModal();
     if (state.customerEditFromSale) { state.customerEditFromSale = false; selectCustomer(id); } else { state.selectedCustomerId = id; switchView('customers'); }
   });
 
@@ -661,10 +662,12 @@ function attachEvents() {
     if (e.key === 'Escape') {
       const map = !$('#deliveryMapModal').hidden;   // Esc over the map closes the map, the sheet stays
       const list = $('#variantSheet').classList.contains('open');   // Esc over the customer list closes the list, the cart page stays
+      const cust = $('#customerEditModal').classList.contains('open');   // and over New customer, the same
       closeBarcodeScanner();
+      closeCustomerEditModal();
       closeModals();
       closeVariantSheet();
-      if (!map && !es && !list) $('#app').classList.remove('ph-cart');   // phone: Esc with nothing over the cart closes it
+      if (!map && !es && !list && !cust) $('#app').classList.remove('ph-cart');   // phone: Esc with nothing over the cart closes it
       if (!map) closeEditSheet();
     }
   });

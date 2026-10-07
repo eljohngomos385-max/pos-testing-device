@@ -295,6 +295,12 @@ function showCheckoutSuccess(order) {
   }
   if (changeEl && change > 0) {
     changeEl.classList.remove('settled');
+    // a big change shrinks to the column, sized on the final figure so the count-up doesn't jump
+    // ponytail: sized once; a tablet turned mid-moment keeps it
+    changeEl.style.removeProperty('--fit');
+    changeEl.textContent = peso(change);
+    const room = $('#checkoutDone').clientWidth, w = changeBlock.scrollWidth;
+    if (w > room) changeEl.style.setProperty('--fit', `${Math.floor(64 * room / w)}px`);
     changeEl.textContent = peso(0);
     const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     clearTimeout(showCheckoutSuccess._t);
