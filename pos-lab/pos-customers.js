@@ -58,12 +58,12 @@ function renderCustomerDetail() {
   const row = (lb, v, cls = '') => `<div class="fr"><span class="lb">${lb}</span><span class="v ${cls}">${v}</span></div>`;
   const contact = [['Phone', c.phone, 'num'], ['Email', c.email], ['Address', c.address]]
     .filter(f => f[1]).map(([lb, v, cls]) => row(lb, escapeHtml(v), cls)).join('');   // an empty one is left out, not "—"
-  const orders = customerOrders(c.id);
+  const orders = customerOrders(c.id).filter(o => !SalesMath.isReversal(o));   // one row per sale, as in Orders
   const orderRow = o => {
-    const amt = SalesMath.rowAmount(o);
-    return `<button type="button" class="row${orderState(o) === 'voided' ? ' void' : ''}" data-order-id="${escapeHtml(o.id)}">
-      <div class="nm"><span class="num">#${escapeHtml(o.number)}</span><small class="num">${fmtOrderDate(o.ts)} · ${SalesMath.plural((o.items || []).length, 'item')}</small></div>
-      <div class="rt"><span class="amt num">${amt == null ? '—' : peso(amt)}</span><small>${orderFlag(o, 'st')}${escapeHtml(orderPayText(o))}</small></div></button>`;
+    const amt = orderRowAmt(o, reversalsOf(o));   // as Orders shows it
+    return `<button type="button" class="row${orderStruck(o) ? ' void' : ''}" data-order-id="${escapeHtml(o.id)}">
+      <div class="nm">${orderTitleHtml(o)}<small class="num">${fmtOrderDate(o.ts)} · ${SalesMath.plural((o.items || []).length, 'item')}</small></div>
+      <div class="rt"><span class="amt num">${amt == null ? '—' : peso(amt)}</span><small>${escapeHtml(orderPayText(o))}</small></div></button>`;
   };
   body.innerHTML = `<div class="c-body">
     ${contact ? `<section class="card fc">${contact}</section>` : ''}

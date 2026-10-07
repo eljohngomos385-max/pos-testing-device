@@ -185,9 +185,11 @@ function saveItem() {
 // slide-over: its name, a modifier's options, and ticks for the items it's on. These Saves write (folders, modifiers,
 // the items' folders / modifierIds); the item editor's Save is still design only.
 let itemsKind = 'items', kindEdit = null;
-const KIND = { items: ['item', 'Search items, SKU or barcode'], cats: ['category', 'Search categories'], mods: ['modifier', 'Search modifiers'] };
+const KIND = { items: ['item', 'Search items, SKU or barcode'], cats: ['category', 'Search categories'], mods: ['modifier', 'Search modifiers'],
+  discs: ['discount', 'Search discounts'] };
 const kindCats = () => state.folders.filter(f => f.id !== 'all');
-const kindList = kind => (kind === 'cats' ? kindCats() : loadModifiers().filter(m => !m.archived));
+// Discounts (bo-model loadDiscounts): a name and a % or amount, picked in the cart's Discount sheet. Senior / PWD are built in.
+const kindList = kind => (kind === 'cats' ? kindCats() : kind === 'discs' ? liveDiscounts() : loadModifiers().filter(m => !m.archived));
 const isOn = { cats: (p, id) => foldersOf(p).includes(id), mods: (p, id) => (p.modifierIds || []).includes(id) };
 const itemsWith = (kind, id, all = catalogItems()) => all.filter(it => it.members.some(m => isOn[kind](m, id)));
 const modSummary = m => m.options.map(o => `${escapeHtml(o.name)} +${peso(o.price)}`).join(' · ');
@@ -209,19 +211,22 @@ function setItemsKind(kind) {
 function renderKindRows() {
   const q = itemsFilter.q.trim().toLowerCase(), all = catalogItems(), cats = itemsKind === 'cats';
   const list = kindList(itemsKind).filter(x => !q || [x.name, ...(x.options || []).map(o => o.name)].some(n => n.toLowerCase().includes(q)));
+  const discs = itemsKind === 'discs';
   $('#itemsBand').classList.add('k2');
-  $('#itemsBand').innerHTML = `<span>${cats ? 'Category' : 'Modifier'} <span class="num">· ${list.length}</span></span><span>Items</span>`;
+  $('#itemsBand').innerHTML = `<span>${KIND[itemsKind][0].replace(/^./, c => c.toUpperCase())} <span class="num">· ${list.length}</span></span><span>${discs ? 'Value' : 'Items'}</span>`;
   $('#itemsRows').innerHTML = list.map(x => `<button type="button" class="row cols k2" data-id="${escapeHtml(x.id)}">
-      <span class="nm">${cats ? itemThumb({ hue: itemHue(x.id), name: x.name }) : ''}<span class="tx"><b>${escapeHtml(x.name)}</b>${cats ? '' : `<small>${modSummary(x) || 'No options yet'}</small>`}</span></span>
-      <span class="num">${itemsWith(itemsKind, x.id, all).length}</span></button>`).join('')
+      <span class="nm">${cats ? itemThumb({ hue: itemHue(x.id), name: x.name }) : ''}<span class="tx"><b>${escapeHtml(x.name)}</b>${
+        discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? '' : `<small>${modSummary(x) || 'No options yet'}</small>`}</span></span>
+      <span class="num">${discs ? esShown(x) : itemsWith(itemsKind, x.id, all).length}</span></button>`).join('')
     || `<div class="empty"><b>${q ? 'No matches' : `No ${cats ? 'categories' : 'modifiers'} yet`}</b><span>${q ? 'Try a different name.'
       : cats ? 'Tap + to add one, then tick its items.' : `A modifier is a list of choices sold with an item, like Cut to length +${peso(20)}. Tap + to add one.`}</span></div>`;
 }
 
 function openKindEditor(kind, id) {
   const was = kindList(kind).find(x => x.id === id);
-  const picked = new Set(was ? itemsWith(kind, was.id).map(it => it.id) : []);
+  const picked = new Set(was && isOn[kind] ? itemsWith(kind, was.id).map(it => it.id) : []);   // a discount isn't on items
   kindEdit = { kind, id: was ? was.id : '', name: was ? was.name : '', picked, first: new Set(picked),
+    type: was?.type || 'percent', value: was ? String(was.value) : '', builtin: was?.builtin || '',
     options: was ? structuredClone(was.options || []) : kind === 'mods' ? [{ id: newId(), name: '', price: '' }] : [] };
   itemEdit = null;
   renderKindForm();
@@ -232,6 +237,15 @@ function openKindEditor(kind, id) {
 
 function renderKindForm() {
   const K = kindEdit, cats = K.kind === 'cats';
+  if (K.kind === 'discs') {   // name, % or amount (a dropdown, the ⋯ menu's morph), value; Senior / PWD keep their name and stay %
+    const pct = K.type === 'percent', unit = pct ? '%' : SalesMath.currencySymbol(state.settings.store?.currency);
+    $('#itemForm').innerHTML = `<div class="form">${icard('Details', [
+      ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Summer sale"${K.builtin ? ' disabled' : ''}>`),
+      K.builtin ? '' : ifr('Type', `<button type="button" class="act st-pick" data-ka="type" aria-haspopup="menu" aria-expanded="false"><span>${pct ? 'Percent' : 'Amount'}</span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button>`),
+      ifr(`Value (${unit})`, `<input class="in short num" data-k="value" value="${escapeHtml(K.value)}" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0">`),
+    ].join('') + (K.builtin ? '<div class="note">Built in. The till asks for the ID number and name, and the rate comes off the price before VAT.</div>' : ''))}</div>`;
+    return;
+  }
   // What it's on now comes first, so the ticks you'd change are at the top; the order holds while you tick.
   const items = catalogItems().sort((a, b) => (K.first.has(b.id) - K.first.has(a.id)) || a.name.localeCompare(b.name));
   const opt = (o, i) => `<div class="opt" data-i="${i}">
@@ -251,6 +265,7 @@ function renderKindForm() {
 function kindInput(t) {
   const K = kindEdit;
   if (t.dataset.k === 'name') K.name = t.value;
+  else if (t.dataset.k === 'value') K.value = t.value;
   else if (t.dataset.o) K.options[Number(t.closest('.opt').dataset.i)][t.dataset.o] = t.value;
   else if (t.dataset.pick) {
     K.picked[t.checked ? 'add' : 'delete'](t.dataset.pick);
@@ -264,6 +279,8 @@ function kindClick(b) {
   const K = kindEdit;
   if (b.dataset.ka === 'opt-add') { K.options.push({ id: newId(), name: '', price: '' }); renderKindForm(); $('#itemForm .opt:last-child [data-o=name]').focus(); }
   if (b.dataset.ka === 'opt-del') { K.options.splice(Number(b.closest('.opt').dataset.i), 1); renderKindForm(); }
+  if (b.dataset.ka === 'type') openMenu(b, [['percent', 'Percent'], ['amount', 'Amount']].map(([k, label]) => ({ label, cur: K.type === k,
+    run: () => { K.type = k; renderKindForm(); $('#itemForm [data-k=value]').focus(); } })));
 }
 
 // Puts the category / modifier on every variant of the ticked items and takes it off the rest (bo-catalog setCats):
@@ -288,6 +305,14 @@ function saveKind() {
   if (!name) { showToast(`Give the ${word} a name`); $('#itemForm [data-k=name]').focus(); return; }
   if (kindList(K.kind).some(x => x.id !== K.id && x.name.toLowerCase() === name.toLowerCase())) { showToast(`A ${word} has that name already`); return; }
   const id = K.id || newId();
+  if (K.kind === 'discs') {
+    const v = round2(Number(K.value)), pct = K.builtin || K.type === 'percent';   // checked as it will be stored
+    if (!(v >= 0.01) || (pct && v > 100)) { showToast(pct ? 'Use a percent from 0.01 to 100' : 'Use an amount above 0'); $('#itemForm [data-k=value]').focus(); return; }
+    const list = loadDiscounts();
+    const row = stampRow({ ...DISCOUNT_DEFAULTS, ...list.find(d => d.id === id), id, name, type: pct ? 'percent' : 'amount', value: v });
+    saveDiscounts(K.id ? list.map(d => (d.id === id ? row : d)) : list.concat(row));
+    return closeKindEditor('Saved');
+  }
   if (K.kind === 'cats') {
     const row = stampRow({ builtin: false, ...state.folders.find(f => f.id === id), id, name });
     state.folders = K.id ? state.folders.map(f => (f.id === id ? row : f)) : state.folders.concat(row);
@@ -308,13 +333,17 @@ function saveKind() {
 function dropKind() {
   const K = kindEdit, at = new Date().toISOString();
   if (K.kind === 'cats') {
-    return showConfirm({ title: `Delete “${K.name}”?`, message: 'Its items stay; they only leave this category.', okText: 'Delete',
+    return showConfirm({ title: `Delete “${K.name}”?`, message: 'Its items stay; they only leave this category.', okText: 'Delete', danger: true, from: $('#itemMore'),
       onConfirm: () => {
         tagItems('cats', K.id, new Set(), at);
         state.folders = state.folders.filter(f => f.id !== K.id);
         writeJsonStorage(STORAGE_FOLDERS, state.folders);
         closeKindEditor('Deleted');
       } });
+  }
+  if (K.kind === 'discs') {   // archived, not removed: old sales keep its name, and a sync never brings it back
+    return showConfirm({ title: `Delete “${K.name}”?`, message: 'Sales that used it keep it on their receipt.', okText: 'Delete', danger: true, from: $('#itemMore'),
+      onConfirm: () => { saveDiscounts(loadDiscounts().map(d => (d.id === K.id ? stampRow({ ...d, archived: true }) : d))); closeKindEditor('Deleted'); } });
   }
   saveModifiers(loadModifiers().map(m => (m.id === K.id ? stampRow({ ...m, archived: true }) : m)));
   closeKindEditor('Archived');

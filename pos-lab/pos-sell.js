@@ -257,7 +257,6 @@ function setTileSize(size) {
   state.tileSize = size;
   state.page = 1;
   storageSet(STORAGE_TILE_SIZE, size);
-  $$('.bb-size-btn[data-size]').forEach(b => b.classList.toggle('active', b.dataset.size === size));
   renderProducts();
 }
 
@@ -287,19 +286,47 @@ function qtyFrom(product, value, fallback = 1) {
   return n > 0 ? n : fallback;
 }
 
-function addToCart(productId, via = 'other') {
+// Stock on add (owner, 2026-10-07): every add -- tile, scan, search, variant (addToCart) and the edit sheet's quantity
+// (esWrite) -- comes through here. `want`: what the cart holds of p after the add, all its lines. Past the shelf asks
+// "Out of stock" first, once per item per cart; into the low line (bo-model stockLevel) says so in the toast. Untracked
+// and sell-out-of-stock items never ask. add(later): later = it ran after the question; `from`: what was tapped, the
+// question grows out of it. Checkout no longer asks.
+const oosAsked = { cart: '', ids: new Set() };
+const cartWant = (p) => state.cart.reduce((n, i) => (productOf(i) === p ? n + toNumber(i.qty, 0) : n), 0);
+function stockOnAdd(p, want, add, { cancel, from } = {}) {
+  const left = roundQty(p, toNumber(p.stock, 0) - want), tracked = p.trackStock !== false;
+  const asked = state.cart.length && oosAsked.cart === state.cartId && oosAsked.ids.has(p.id);
+  if (tracked && left < 0 && !p.sellOutOfStock && !asked) {
+    return showConfirm({ title: 'Out of stock', message: p.name, okText: 'Sell anyway', from,
+      onConfirm: () => {
+        add(true);
+        if (oosAsked.cart !== state.cartId) Object.assign(oosAsked, { cart: state.cartId, ids: new Set() });
+        oosAsked.ids.add(p.id);
+      },
+      // ponytail: Cancel logs the tap as demand (oos_tap, as trackItemAdd does), not a Lost sale -- the old checkout
+      // "Don't sell" opened that form; a cancel here is often just the cashier checking. Lost sale stays on search.
+      onCancel: () => { if (!(p.stock > 0)) track('oos_tap', { productId: p.id, stockOnHand: toNumber(p.stock, 0) }); if (cancel) cancel(); } });
+  }
+  add(false);
+  if (tracked && left === 0) showToast(want === 1 ? 'Last one' : `Last ${SalesMath.qtyText(want)}`);   // the cart took what's left: never "0 left"
+  else if (tracked && left > 0 && stockLevel({ ...p, stock: left }) === 'low') showToast(`Only ${SalesMath.qtyText(left)} left`);
+}
+
+function addToCart(productId, via = 'other', from = null) {
   const p = state.products.find(x => x.id === productId);
   if (!p) return;
-  beginCart();
-  const existing = state.cart.find(i => i.id === productId);
-  if (existing) existing.qty += 1;
-  else state.cart.push({
-    id: p.id, name: p.name, sku: p.sku, brand: p.brand,
-    unit: p.unit, price: p.price, qty: 1,
-  });
-  trackItemAdd(p, 1, via);
-  renderCart();
-  showToast(`Added · ${p.name}`);
+  stockOnAdd(p, cartWant(p) + 1, () => {
+    beginCart();
+    const existing = state.cart.find(i => i.id === productId);
+    if (existing) existing.qty += 1;
+    else state.cart.push({
+      id: p.id, name: p.name, sku: p.sku, brand: p.brand,
+      unit: p.unit, price: p.price, qty: 1,
+    });
+    trackItemAdd(p, 1, via);
+    renderCart();
+    showToast(`Added · ${p.name}`);
+  }, { from });
 }
 
 function findProductByCode(rawCode) {
@@ -647,9 +674,11 @@ function submitManualBarcode() {
 // follows every tap. Numbers are typed on our keys, never the tablet's. es = the open sheet: kind 'line' | 'rd' | 'ful';
 // q / d = the typed quantity / discount (strings, as typed), pct = Percent or Amount, f = what the keys (or a panel)
 // are open for, fresh = the first key replaces the number, anim = how the body moves on this draw.
-const ES_PRESETS = [['Staff', 15], ['Contractor', 10]];   // ponytail: placeholders; the store's own presets come later from the back office
+// The saved discounts (Items › Discounts, bo-model liveDiscounts) minus Senior / PWD, which keep their own rows below.
+const esPresets = () => liveDiscounts().filter(d => !d.builtin && d.value > 0);
+const esScRow = k => loadDiscounts().find(d => d.builtin === k) || { type: 'percent', value: 20 };
 const ES_PANEL = { pickup: 't', delivery: 'a' };          // the types that ask for something: Pickup a time, Delivery an address
-// Senior citizen / PWD (RA 9994 / RA 10754): SalesMath.orderTotals' scPwd, 20% off + VAT-exempt. Each asks for the card's
+// Senior citizen / PWD (RA 9994 / RA 10754): SalesMath.orderTotals' scPwd, 20% (the built-in row's) off + VAT-exempt. Each asks for the card's
 // ID number and the name, both printed on the slip; it replaces any receipt discount (never both, the law's rule).
 const ES_SC = { senior: 'Senior', pwd: 'PWD' };
 const ES_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17].map(h => `${(h + 11) % 12 + 1}:00 ${h < 12 ? 'AM' : 'PM'}`);   // ponytail: fixed; the store's hours would set them
@@ -677,15 +706,17 @@ function openEditSheet(kind, id) {
     const d = item.discount || null;
     es = { kind, id, q: String(item.qty), d: d ? String(d.value) : '', pct: d ? d.type === 'percent' : true, before: { qty: item.qty, discount: d } };
   } else if (kind === 'rd') {
-    const cd = state.cartDiscount && state.cartDiscount.value ? state.cartDiscount : null;
-    const i = cd && cd.type === 'percent' ? ES_PRESETS.findIndex(([, v]) => v === cd.value) : -1;
-    const sc = state.scPwd, pick = sc ? sc.kind : i >= 0 ? i : cd ? 'c' : null;
+    let cd = state.cartDiscount && state.cartDiscount.value ? state.cartDiscount : null;
+    const saved = cd && cd.id && esPresets().some(d => d.id === cd.id && d.type === cd.type && d.value === cd.value);
+    // its saved row was edited or archived since (a restored saved cart, continueDraft): the sale keeps what it was given, as Custom
+    if (cd && cd.id && !saved) { cd = state.cartDiscount = { type: cd.type, value: cd.value }; renderCart(); }
+    const sc = state.scPwd, pick = sc ? sc.kind : saved ? cd.id : cd ? 'c' : null;
     es = { kind, pick, d: pick === 'c' ? String(cd.value) : '', pct: cd ? cd.type === 'percent' : true, before: cd,
       beforeSc: sc, sc: { idNo: sc ? sc.idNo : '', name: sc ? sc.name : '' } };
   } else {
     es = { kind, day: (state.pickupTime && state.pickupTime.day) || 'Today' };
   }
-  Object.assign(es, { f: null, anim: false });
+  Object.assign(es, { f: null, anim: false, opened: true });
   drawEditSheet();
   if (!was) $('#editSheet').classList.add('open');
 }
@@ -693,7 +724,9 @@ function openEditSheet(kind, id) {
 // Closing keeps what's on the cart (it followed every tap) and sends the events the old Save sent, once per open.
 function closeEditSheet(swap) {
   if (!es) return;
+  const typing = es.f === 'q';
   if (es.f) esSettle(es);
+  if (typing) esWrite();   // a typed count is asked about as the sheet goes
   const o = es; es = null;
   const item = o.kind === 'line' && state.cart.find(i => i.id === o.id);
   if (item) {
@@ -702,7 +735,7 @@ function closeEditSheet(swap) {
     if (JSON.stringify(d) !== JSON.stringify(o.before.discount)) track('discount', { scope: 'line', kind: (d || o.before.discount).type, value: d ? d.value : 0, productId: item.id });
   } else if (o.kind === 'rd' && JSON.stringify([state.cartDiscount, state.scPwd]) !== JSON.stringify([o.before, o.beforeSc])) {
     const sc = state.scPwd || (!state.cartDiscount && o.beforeSc);   // an SC/PWD put on, or taken off with nothing in its place
-    track('discount', sc ? { scope: 'cart', kind: sc.kind, value: state.scPwd ? 20 : 0 }
+    track('discount', sc ? { scope: 'cart', kind: sc.kind, value: state.scPwd ? esScRow(sc.kind).value : 0 }
       : { scope: 'cart', kind: (state.cartDiscount || o.before).type, value: state.cartDiscount ? state.cartDiscount.value : 0 });
   } else if (o.kind === 'ful') {
     state.deliveryAddress = (state.deliveryAddress || '').trim();
@@ -715,12 +748,26 @@ function closeEditSheet(swap) {
 function esWrite() {
   const item = esItem();
   if (es.kind === 'line' && item) {
-    item.qty = qtyFrom(productOf(item), es.q, item.qty);
+    const o = es, p = productOf(item), qty = qtyFrom(p, es.q, item.qty);
+    if (o.f === 'q') { o.qAt ??= item.qty; item.qty = qty; }   // typing lands at once; the stock question waits for the keys to close
+    else {
+      const was = o.qAt ?? item.qty;   // the count before the keys opened
+      o.qAt = null;
+      if (p && qty > was) {   // more of it: the stock question / low toast (stockOnAdd); Cancel puts the count back
+        item.qty = was;
+        stockOnAdd(p, cartWant(p) - was + qty, (later) => {
+          item.qty = qty;
+          if (later) { renderCart(); if (es === o) drawEditSheet(); }
+        }, { from: $('#editSheet [data-sf="q"]'),
+          cancel: () => { Object.assign(o, { q: String(was), fresh: true }); renderCart(); if (es === o) drawEditSheet(); } });
+      } else item.qty = qty;
+    }
     const d = esDisc(es);
     if (d) item.discount = d; else delete item.discount;
   } else if (es.kind === 'rd') {
-    const P = ES_PRESETS[es.pick];
-    state.cartDiscount = P ? { type: 'percent', value: P[1] } : es.pick === 'c' ? esDisc(es) : null;
+    // A saved one carries its name (the receipt's Discount word, SalesMath.receiptParts) and id; ₱ ones come off as a fixed amount.
+    const P = esPresets().find(d => d.id === es.pick);
+    state.cartDiscount = P ? { type: P.type, value: P.value, name: P.name, id: P.id } : es.pick === 'c' ? esDisc(es) : null;
     if (!ES_SC[es.pick]) state.scPwd = null;   // set by its panel's Apply (esScApply), dropped by any other pick
   }
   renderCart();
@@ -768,9 +815,10 @@ function drawEditSheet() {
   } else if (o.kind === 'rd') {
     const t = cartTotals();
     head = `<p>Sale total</p><div class="es-hero">${peso(t.total)}</div><p>${t.discount ? `${peso(t.subtotal)} · ${peso(-t.discount)}` : 'No discount'}</p>`;
-    rows = ES_PRESETS.map(([name, pc], i) => `<button type="button" class="es-row${o.pick === i ? ' pick' : ''}" data-pick="${i}"><span>${escapeHtml(name)}</span><small>${pc}%</small></button>`).join('')
-      + Object.entries(ES_SC).map(([k, name]) => `<button type="button" class="es-row${o.f === k ? ' on' : o.pick === k ? ' pick' : ''}" data-sc="${k}"><span>${name}</span><small class="ad">${
-        o.pick !== k || !state.scPwd ? '20%' : t.scPwd ? escapeHtml(state.scPwd.name) : 'Promo is bigger'}</small>${cv(o.f === k)}</button>`).join('')
+    // Senior / PWD, then the saved ones, scroll under the total (any number of them); Custom stays put below.
+    rows = `<div class="es-scroll">${Object.entries(ES_SC).map(([k, name]) => `<button type="button" class="es-row${o.f === k ? ' on' : o.pick === k ? ' pick' : ''}" data-sc="${k}"><span>${name}</span><small class="ad">${
+        o.pick !== k || !state.scPwd ? esShown(esScRow(k)) : t.scPwd ? escapeHtml(state.scPwd.name) : 'Promo is bigger'}</small>${cv(o.f === k)}</button>`).join('')
+      + esPresets().map(d => `<button type="button" class="es-row${o.pick === d.id ? ' pick' : ''}" data-pick="${escapeHtml(d.id)}"><span>${escapeHtml(d.name)}</span><small>${esShown(d)}</small></button>`).join('')}</div>`
       + `<div class="es-row${o.f === 'd' ? ' on' : o.pick === 'c' ? ' pick' : ''}" data-sf="d"><span>Custom</span>${n('d', o.pick === 'c' ? esTyped(o) : '', ' v')}${cv(o.f === 'd')}</div>`;
     const field = (f, label) => `<input class="es-ta${o.bad === f ? ' bad' : ''}" data-scf="${f}" value="${escapeHtml(o.sc[f])}" placeholder="${label}" aria-label="${label}" autocomplete="off"${o.bad === f ? ' aria-invalid="true"' : ''}>`;
     if (ES_SC[o.f]) side = `<div class="es-keys es-addr${kin}"><div class="es-ah">${o.f === 'pwd' ? 'PWD' : 'Senior citizen'}</div>${field('idNo', 'ID number')}${field('name', 'Name')}</div>`;
@@ -790,10 +838,14 @@ function drawEditSheet() {
   const left = o.kind === 'ful' ? ''
     : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
     : o.f ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q" data-sclr>Clear</button>' : '';
+  const top = card.querySelector('.es-scroll')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
   card.innerHTML = `<button type="button" class="es-x" data-close aria-label="Close">${esSvg('x')}</button>
-    <div class="es-body${o.anim === true ? ' in' : o.anim === 'out' ? ' out' : ''}"><div class="es-col"><div class="es-head">${head}</div><div class="es-list">${rows}</div></div>${side}</div>
+    <div class="es-body${o.kind === 'rd' ? ' fill' : ''}${o.anim === true ? ' in' : o.anim === 'out' ? ' out' : ''}"><div class="es-col"><div class="es-head">${head}</div><div class="es-list">${rows}</div></div>${side}</div>
     <div class="es-ft">${left}${o.f ? '<button type="button" class="es-ink" data-apply>Apply</button>' : '<button type="button" class="es-ink" data-close>Done</button>'}</div>`;
-  o.anim = false;
+  const list = card.querySelector('.es-scroll');
+  if (list && o.opened) list.querySelector('.pick')?.scrollIntoView({ block: 'nearest' });   // just opened: the one on the sale in view
+  else if (list) list.scrollTop = top;
+  o.anim = o.opened = false;
 }
 const esKeys = (dec) => `<div class="es-kp">${[...'123456789', dec ? '.' : '', '0', 'del'].map(k => !k ? '<span></span>'
   : `<button type="button" data-sk="${k}"${k === 'del' ? ' aria-label="Delete"' : ''}>${k === 'del' ? esSvg('del') : k}</button>`).join('')}</div>`;
@@ -827,7 +879,7 @@ function editSheetClick(e) {
     o.q = String(roundQty(productOf(item), Math.max(step, item.qty + +el('[data-sstep]').dataset.sstep * step)));
   } else if (el('[data-pick]')) {
     if (o.f) esSettle(o);
-    const i = +el('[data-pick]').dataset.pick;
+    const i = el('[data-pick]').dataset.pick;   // the saved discount's id
     o.pick = o.pick === i ? null : i;
   } else if (el('[data-sf]')) {
     const f = el('[data-sf]').dataset.sf;
@@ -1218,22 +1270,8 @@ function saveSavedCustomerFromModal(by = '') {
 // `cart`/`cartDiscount`: another list's money the same way (a saved cart or quote, draftAsOrder).
 // `scPwd`: the cart's SC/PWD cardholder (the edit sheet), never borrowed by another list.
 function cartTotals(cart = state.cart, cartDiscount = state.cartDiscount, scPwd = cart === state.cart ? state.scPwd : null) {
-  const t = SalesMath.orderTotals(cart, cartDiscount, { ...taxOpts(), scPwd: !!scPwd });
+  const t = SalesMath.orderTotals(cart, cartDiscount, { ...taxOpts(), scPwd: !!scPwd, scRate: scPwd ? scRateOf(scPwd.kind) : 0.2 });
   return { ...t, vatRate: t.taxRate, vatAmount: t.tax, vatableSales: moneyValue(t.salesBeforeTax - t.vatExempt) };
-}
-
-// A cart line's quiet stock word once this sale takes the item to its low line (bo-model stockLevel on what the
-// shelf would hold after the cart): "3 left" · "Last one" · "Out of stock". Nothing when stock isn't tracked.
-function cartStockNote(item) {
-  const p = productOf(item);
-  if (!p) return '';
-  const want = state.cart.reduce((n, i) => (productOf(i) === p ? n + toNumber(i.qty, 0) : n), 0);
-  const left = roundQty(p, toNumber(p.stock, 0) - want), lv = stockLevel({ ...p, stock: left });
-  if (lv !== 'out' && lv !== 'low') return '';
-  const out = left < 0 || !(p.stock > 0);   // selling what isn't on the shelf (sell anyway)
-  const word = out ? 'Out of stock' : left > 0 ? `${SalesMath.qtyText(left)} left`
-    : want === 1 ? 'Last one' : `Last ${SalesMath.qtyText(want)}`;   // the cart takes what's left: never "0 left"
-  return `<small class="left${out ? ' out' : ''}">${word}</small>`;
 }
 
 function renderCart() {
@@ -1245,7 +1283,7 @@ function renderCart() {
   } else {
     list.innerHTML = state.cart.map(item => `
       <div class="line"><button type="button" class="row" data-id="${item.id}" title="Edit item">
-        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}</small>${cartStockNote(item)}</span>
+        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}</small></span>
         <span class="amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
       </button></div>`).join('');
     list.scrollTop = list.scrollHeight;
@@ -1271,7 +1309,8 @@ function renderCart() {
   discBtn.disabled = n === 0;
   discBtn.classList.toggle('on', !!cd || t.scPwd);
   // t.scPwd, not state.scPwd: a bigger line promo wins over SC/PWD (orderTotals), and then no ID goes on the sale
-  $('#cartDiscountLabel').textContent = t.scPwd ? ES_SC[state.scPwd.kind] : cd && cd.type === 'percent' ? `Discount ${cd.value}%` : 'Discount';
+  $('#cartDiscountLabel').textContent = t.scPwd ? ES_SC[state.scPwd.kind] : cd && cd.name ? cd.name : cd && cd.type === 'percent' ? `Discount ${cd.value}%` : 'Discount';
+  $('#discountRow > span').textContent = SalesMath.discountName({ cartDiscount: cd, items: state.cart }) || 'Discount';   // the receipt's word (receiptParts)
   $('#cartDiscountAmt').textContent = t.discount > 0 ? peso(-t.discount) : '';
 }
 

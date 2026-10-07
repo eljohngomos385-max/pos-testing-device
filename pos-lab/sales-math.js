@@ -147,6 +147,8 @@
       items,
       subtotal: num(raw.subtotal, gross),
       discount: num(raw.discount),
+      // The receipt-wide discount as rung up ({ type, value, name, id }): its name is the slip's Discount word (receiptParts).
+      cartDiscount: raw.cartDiscount && typeof raw.cartDiscount === 'object' ? { ...raw.cartDiscount } : null,
       total,
       vatRate,
       vatAmount,
@@ -269,10 +271,10 @@
     return r ? (r.status === 'void' ? 'voided' : 'refunded') : 'sale';
   }
   // The status a screen SHOWS (pill, label, Status filter): rowState, except a sale some but not all of which
-  // came back reads 'part' (owner 2026-10-03: "Part refunded"). rowState keeps calling it 'sale' -- it still
+  // came back reads 'part' (owner 2026-10-03; worded "Partly refunded" 2026-10-07). rowState keeps calling it 'sale' -- it still
   // stands, so the money, stock and account rules that ask "is it a sale?" do not move.
   const statusOf = (o, rev) => { const s = rowState(o, rev); return s === 'sale' && rev && rev.part && rev.part.has(o.id) ? 'part' : s; };
-  const ROW_LABEL = { sale: 'Completed', part: 'Part refunded', voided: 'Voided', refunded: 'Refunded', void: 'Void', refund: 'Refund', saved: 'Not completed' };
+  const ROW_LABEL = { sale: 'Completed', part: 'Partly refunded', voided: 'Voided', refunded: 'Refunded', void: 'Void', refund: 'Refund', saved: 'Not completed' };
 
   /* ---------------- Building an order (the till) ---------------- */
 
@@ -308,7 +310,8 @@
   // VAT taken out + the 20%), Net sales = 80, all of it VAT-exempt (a sub-breakdown of Sales before
   // VAT). The law allows no double discount: the customer gets whichever is higher — SC/PWD or the
   // store's own discounts — never both (lead 2026-10-02). `scPwd: true` on the result = SC/PWD won.
-  function orderTotals(lines, cartDiscount, { rate = 0, included = true, currency, scPwd = false } = {}) {
+  // `scRate`: the SC/PWD rate as a fraction, the store's built-in Senior / PWD discount (bo-model scRateOf); the law's 0.2 by default.
+  function orderTotals(lines, cartDiscount, { rate = 0, included = true, currency, scPwd = false, scRate = 0.2 } = {}) {
     const step = coin(currency);
     let g = 0, ld = 0;
     for (const l of lines || []) {
@@ -328,7 +331,7 @@
     const plain = pack(net, bp > 0 ? roundTo(net * bp, included ? 10000 + bp : 10000, step) : 0, ld, cd, 0, false);
     if (!scPwd) return plain;
     const exVat = included && bp > 0 ? roundTo(g * 10000, 10000 + bp, step) : g;
-    const scOff = roundTo(exVat * 2000, 10000, step);
+    const scOff = roundTo(exVat * Math.round((Number(scRate) || 0) * 10000), 10000, step);
     const sc = pack(exVat - scOff, 0, 0, 0, scOff, true);
     return sc.total < plain.total ? sc : plain;
   }
@@ -641,10 +644,17 @@
       // Who it was given to, printed under Customer: ['Senior citizen ID' | 'PWD ID', 'ID no. · Name'], or null.
       scPwdId: Number(o.scPwdOff) > 0 && o.scPwd && o.scPwd.idNo
         ? [`${o.scPwd.kind === 'pwd' ? 'PWD' : 'Senior citizen'} ID`, `${o.scPwd.idNo} · ${o.scPwd.name}`] : null,
+      discountName: discountName(o),
     };
   }
+  // The Discount row's word: the saved discount's name ('Summer sale') when it is the sale's whole discount, else ''
+  // (a line discount beside it makes the row a mix, so it stays 'Discount'). An order, or the cart { cartDiscount, items }.
+  const discountName = (o) => {
+    const name = String((o && o.cartDiscount && o.cartDiscount.name) || '').trim();
+    return name && !((o.items || []).some((l) => l && l.discount && Number(l.discount.value) > 0)) ? name : '';
+  };
   // The totals block above TOTAL, as [label, amount, small]: every slip, the paper, the till's order
-  // pop-up and the back office's receipt list the same rows. `vm` = { totals, scPwd, taxName }: the
+  // pop-up and the back office's receipt list the same rows. `vm` = { totals, scPwd, taxName, discountName }: the
   // till's receipt view model, or from a read order { totals: o, scPwd: receiptParts(o).scPwd,
   // taxName: taxName({ ...settings, taxOnTop: !o.taxIncluded }) }. Only Discount comes off (signed);
   // SC/PWD, VATable sales and VAT are information lines, unsigned (`small` on screen). VATable sales
@@ -652,7 +662,7 @@
   function totalRows(vm) {
     const t = (vm && vm.totals) || {};
     return [['Subtotal', t.subtotal],
-      ...(t.discount > 0 ? [['Discount', -t.discount]] : []),
+      ...(t.discount > 0 ? [[(vm && vm.discountName) || 'Discount', -t.discount]] : []),
       ...((vm && vm.scPwd) || []).map((r) => [r.label, r.amount, true]),
       ...(t.vatAmount > 0 ? [
         ...(t.taxIncluded !== false ? [['VATable sales', t.vatableSales, true]] : []),
@@ -878,7 +888,7 @@
 
   const api = {
     sign, isSale, isReversal, ORDER_VERSION, upgradeOrders, readOrder, reversals, reversalOf, qtyLeft, refundPart, rowState, statusOf, ROW_LABEL,
-    coin, discountCents, lineMoney, taxOpts, taxName, orderTotals, split, orderLines,
+    coin, discountCents, lineMoney, taxOpts, taxName, orderTotals, split, orderLines, discountName,
     summarize, tenders, currencyCode, formatMoney, currencySymbol,
     tsOf, TENDER_LABEL, tenderKey, tenderLabel, paymentsOf, saleTender, payWord, tenderedOf, creditPart, customerIdOf, customerOrders, sellerOf,
     itemKey, itemsSold, share, unitMargin, ratePct, receiptLines, receiptParts, totalRows, paidOf, lastSale,

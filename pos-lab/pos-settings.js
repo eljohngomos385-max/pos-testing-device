@@ -1,28 +1,38 @@
 // Till › Settings, and the cash drawer count.
 
-function renderPosSettings() {
-  const currentSize = state.tileSize || 'md';
-  $$('#posSizeToggle .bb-size-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.size === currentSize);
-  });
-  const currentText = state.tileText || 'md';
-  $$('#posTextToggle .bb-size-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.text === currentText);
+// The page's dropdowns ([data-pick] buttons): the choices in the order they always show, what is on now, and the
+// setter each one already had. A pick runs the setter, then the page redraws from state.
+const savePrinting = (patch) => { state.settings.printing = { ...printerConfig(), ...patch }; saveSettings(); };
+const SETTING_PICKS = {
+  tileSize: { opts: [['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large']], now: () => state.tileSize || 'md', set: setTileSize },
+  tileText: { opts: [['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large'], ['xl', 'Extra large']], now: () => state.tileText || 'md', set: setTileText },
+  theme: { opts: [['dark', 'Dark'], ['light', 'Light']], now: () => state.theme || 'dark', set: applyTheme },
+  driver: { opts: [['browser', 'Browser'], ['network', 'Wi-Fi'], ['bluetooth', 'Bluetooth']], now: () => printerConfig().driver || 'browser', set: v => savePrinting({ driver: v }) },
+  width: { opts: [['58mm', '58 mm'], ['80mm', '80 mm']], now: () => printerConfig().width || '80mm', set: v => savePrinting({ width: v }) },
+};
+function openSettingMenu(btn) {
+  const pk = SETTING_PICKS[btn.dataset.pick], now = pk.now();
+  openMenu(btn, pk.opts.map(([v, label]) => ({ label, cur: v === now, run: () => { pk.set(v); renderPosSettings(btn.dataset.pick === 'driver'); } })));
+}
+
+// printer = false: redraw labels and which rows show, but leave the printer list, a running scan's progress
+// line and the probe alone (a theme or paper pick has nothing to do with them).
+function renderPosSettings(printer = true) {
+  $$('#settingsView [data-pick]').forEach(b => {
+    const pk = SETTING_PICKS[b.dataset.pick], now = pk.now();
+    const val = (pk.opts.find(o => o[0] === now) || pk.opts[0])[1];
+    b.firstElementChild.textContent = val;
+    b.setAttribute('aria-label', b.closest('.fr').querySelector('.lb').textContent + ', ' + val);   // "Tile size, Medium", not just "Medium"
   });
   const showCb = $('#posShowPrice');
   if (showCb) showCb.checked = state.showPrice;
   const stockCb = $('#posTileStock');
   if (stockCb) stockCb.checked = state.tileStock;
-  const currentTheme = state.theme || 'dark';
-  $$('#posThemeToggle .bb-size-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.theme === currentTheme);
-  });
   const headCb = $('#posCartHead');
   if (headCb) headCb.checked = state.cartHead;
   const p = printerConfig();
-  $$('#posWidthToggle .bb-size-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.width === (p.width || '80mm'));
-  });
+  const saleRow = $('#posPrintOnSaleRow');   // the browser's own dialog can't print by itself (checkout's printOnSale gate)
+  if (saleRow) saleRow.hidden = p.driver !== 'network' && p.driver !== 'bluetooth';
   const po = $('#posPrintOnSale');
   if (po) po.checked = !!p.printOnSale;
   const pc = $('#posPrintCut');
@@ -31,18 +41,17 @@ function renderPosSettings() {
   if (pm) pm.checked = p.mapOnReceipt !== false;
   const ip = $('#posPrinterIp');
   if (ip) ip.value = p.netUrl || '';
-  $$('#posDriverToggle .bb-size-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.driver === (p.driver || 'browser'));
-  });
   const netRow = $('#posNetRow');
   if (netRow) netRow.hidden = p.driver !== 'network';
   const scanRow = $('#posScanRow');
   if (scanRow) scanRow.hidden = p.driver !== 'network';
   const listRow = $('#posPrinterListRow');
   if (listRow) listRow.hidden = p.driver !== 'network';
-  renderPrinterList();
-  setScanStatus('');
-  refreshPrinterStatus();
+  if (printer) {
+    renderPrinterList();
+    setScanStatus('');
+    refreshPrinterStatus();
+  }
   const btRow = $('#posBtRow');
   if (btRow) btRow.hidden = p.driver !== 'bluetooth';
   const btStatus = $('#posBtStatus');
@@ -63,9 +72,6 @@ function applyTheme(theme) {
   state.theme = theme;
   storageSet(STORAGE_THEME, theme);
   document.body.classList.toggle('light-theme', theme === 'light');
-  $$('#posThemeToggle .bb-size-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.theme === theme);
-  });
 }
 
 function persistPosSettings() {

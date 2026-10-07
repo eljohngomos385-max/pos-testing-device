@@ -296,33 +296,61 @@ function setCheckoutError(message = '') {
   flashControl(el);
 }
 
-// `html`: markup for the message (the refund line picker), built by the caller with escapeHtml.
-// `onCancel`: runs on the Cancel button only (ponytail: not on Esc/backdrop; add if a caller needs it).
-function showConfirm({ title = 'Are you sure?', message = '', html = '', okText = 'Confirm', cancelText = 'Cancel', danger = true, onConfirm, onCancel } = {}) {
-  const modal = $('#confirmModal');
-  if (!modal) return;
-  const titleEl = $('#confirmTitle');
-  const msgEl = $('#confirmMessage');
-  const okBtn = $('#confirmOkBtn');
-  const cancelBtn = modal.querySelector('.secondary-btn[data-close-modal]');
-  if (titleEl) titleEl.textContent = title;
-  if (msgEl) { if (html) msgEl.innerHTML = html; else msgEl.textContent = message; }
-  if (okBtn) {
-    okBtn.textContent = okText;
-    okBtn.classList.toggle('danger', !!danger);
-  }
-  if (cancelBtn) { cancelBtn.textContent = cancelText; cancelBtn.onclick = onCancel || null; }
-
-  // Replace the OK button to drop any prior click handlers
-  if (okBtn) {
-    const fresh = okBtn.cloneNode(true);
-    okBtn.parentNode.replaceChild(fresh, okBtn);
-    fresh.addEventListener('click', () => {
-      modal.hidden = true;
-      if (typeof onConfirm === 'function') onConfirm();
-    });
-  }
-  modal.hidden = false;
+// The app's own "are you sure?": a small card like Record payment (.pay-sheet) in a .rail-veil -- a title, one quiet
+// line, Cancel and OK. `from`: the button that asked; the card grows out of it (growFrom). None, or one not on
+// screen = centred. `danger`: OK in the tinted red, for a delete only; everything else is the till's normal primary.
+// `html`: markup for the message (the refund line picker, which reads #confirmMessage), built with escapeHtml.
+// Enter = OK, Esc / a tap outside / Cancel = cancel, Tab stays inside. `onCancel` runs on every close that isn't OK
+// (stockOnAdd puts the edit sheet's quantity back), but not when a new ask replaces this one.
+let confirmSheet = null;
+function showConfirm({ title = 'Are you sure?', message = '', html = '', okText = 'Confirm', cancelText = 'Cancel', danger = false, from = null, onConfirm, onCancel } = {}) {
+  confirmSheet?.(true);   // one at a time
+  $$('.cf-sheet [id]').forEach(el => el.removeAttribute('id'));   // one still shrinking away: #confirmMessage is the new one's
+  const veil = document.createElement('div');
+  veil.className = 'rail-veil';
+  veil.innerHTML = `<form class="pay-sheet cf-sheet" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage" novalidate>
+    <div class="ph"><b id="confirmTitle"></b><div class="cf-msg" id="confirmMessage"></div></div>
+    <div class="pb"><button type="button" class="secondary-btn small" data-cancel></button><button type="submit" class="primary-btn small${danger ? ' danger' : ''}"></button></div>
+  </form>`;
+  const f = veil.firstChild, msg = f.querySelector('#confirmMessage'), ok = f.querySelector('[type="submit"]');
+  f.querySelector('#confirmTitle').textContent = title;
+  if (html) msg.innerHTML = html; else msg.textContent = message;
+  msg.hidden = !html && !message;
+  ok.textContent = okText;
+  f.querySelector('[data-cancel]').textContent = cancelText;
+  f.style.width = Math.min(340, innerWidth - 24) + 'px';
+  document.body.append(veil);
+  const r = from?.isConnected && from.getBoundingClientRect();
+  const W = f.offsetWidth, H = f.offsetHeight, clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  f.style.left = clamp(r?.width ? r.right - W : (innerWidth - W) / 2, 12, innerWidth - W - 12) + 'px';
+  f.style.top = clamp(r?.width ? r.top : (innerHeight - H) / 2, 8, innerHeight - H - 8) + 'px';
+  const shrink = r?.width ? growFrom(f, r)
+    : (f.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: calmMs(140), easing: 'ease-out' }),
+      (done) => { f.animate([{ opacity: 1 }, { opacity: 0, transform: 'scale(.98)' }], { duration: calmMs(90) }).onfinish = done; });
+  const back = document.activeElement;
+  const onKey = (e) => {
+    if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); return close(); }
+    if (e.key !== 'Tab') return;
+    const els = [...f.querySelectorAll('input, select, textarea, button')].filter(x => !x.disabled), i = els.indexOf(document.activeElement);
+    if (i < 0 || i === (e.shiftKey ? 0 : els.length - 1)) { e.preventDefault(); els[e.shiftKey ? els.length - 1 : 0].focus(); }
+  };
+  // Closes first, then the answer runs (its own pop-up or focus wins); the card keeps its ids while it shrinks, so
+  // onConfirm can still read #confirmMessage. `how`: true = replaced by a new ask before any answer, 'ok' = OK.
+  const close = (how) => {
+    if (confirmSheet !== close) return;
+    confirmSheet = null;
+    document.removeEventListener('keydown', onKey, true);
+    if (how === true) return veil.remove();
+    veil.style.pointerEvents = 'none';
+    shrink(() => veil.remove());
+    if (back?.isConnected) back.focus({ preventScroll: true });
+    if (how !== 'ok' && typeof onCancel === 'function') onCancel();
+  };
+  confirmSheet = close;
+  document.addEventListener('keydown', onKey, true);
+  f.addEventListener('submit', (e) => { e.preventDefault(); close('ok'); if (typeof onConfirm === 'function') onConfirm(); });
+  veil.addEventListener('click', (e) => { if (e.target === veil || e.target.closest('[data-cancel]')) close(); });
+  (msg.querySelector('input') || ok).focus({ preventScroll: true });
 }
 
 // ---------- Persistence ----------

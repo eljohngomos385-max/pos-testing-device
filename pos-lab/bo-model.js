@@ -631,6 +631,10 @@ const STORAGE_STAFF = storeKey('staff');
 // Modifier lists (owner, 2026-10-01): a named list of options, each a name and a price, switched
 // on per item (product.modifierIds). No stock. Back office only for now; the POS reads it later.
 const STORAGE_MODIFIERS = storeKey('modifiers');
+// Saved discounts (owner, 2026-10-07): a name and how much (% or a fixed amount), picked from the cart's
+// Discount sheet; the name rides on the sale's cartDiscount to the receipt. Senior / PWD are built in (`builtin`
+// = the SC/PWD kind): never deleted or renamed, still ask for the ID, their % is SalesMath.orderTotals' scRate.
+const STORAGE_DISCOUNTS = storeKey('discounts');
 
 /* ---------- Paging ----------
    Every list in the back office stops at PAGE_ROWS and walks with real page numbers on
@@ -745,6 +749,21 @@ const MODIFIER_DEFAULTS = { id: '', name: '', options: [], archived: false, upda
 const loadModifiers = () => loadList(STORAGE_MODIFIERS).map((m) => ({ ...MODIFIER_DEFAULTS, ...m,
   options: (Array.isArray(m.options) ? m.options : []).map((o) => ({ id: String(o.id || ''), name: String(o.name || ''), price: round2(o.price) })) }));
 const saveModifiers = (list) => saveList(STORAGE_MODIFIERS, list);
+const DISCOUNT_DEFAULTS = { id: '', name: '', type: 'percent', value: 0, builtin: '', archived: false, updatedAt: '' };
+// Fixed ids and one fixed stamp, not fresh ones: every till seeds the same four, so syncing two tills never doubles
+// them, and any edit (stampRow) is newer than the seed.
+const SEED_DISCOUNTS = [
+  { id: 'disc-staff', name: 'Staff', value: 15 }, { id: 'disc-contractor', name: 'Contractor', value: 10 },
+  { id: 'senior', name: 'Senior', value: 20, builtin: 'senior' }, { id: 'pwd', name: 'PWD', value: 20, builtin: 'pwd' },
+].map((d) => ({ ...d, updatedAt: '2026-01-01T00:00:00.000Z' }));   // in the past, so a till's first edit always wins
+const loadDiscounts = () => loadList(STORAGE_DISCOUNTS, SEED_DISCOUNTS).map((d) => ({ ...DISCOUNT_DEFAULTS, ...d,
+  type: d.type === 'amount' && !d.builtin ? 'amount' : 'percent', value: round2(d.value) }));
+const saveDiscounts = (list) => saveList(STORAGE_DISCOUNTS, list);
+// The list as both till screens show it (Items › Discounts, the cart's sheet): Senior / PWD first, then A–Z.
+const liveDiscounts = (list = loadDiscounts()) => list.filter((d) => !d.archived)
+  .sort((a, b) => b.builtin.localeCompare(a.builtin) || a.name.localeCompare(b.name, undefined, { numeric: true }));   // 'senior' > 'pwd' > ''
+// The SC/PWD rate as a fraction (0.2) for orderTotals' scRate: the built-in row's %, else the law's 20%.
+const scRateOf = (kind, list = loadDiscounts()) => ((list.find((d) => d.builtin === kind) || {}).value ?? 20) / 100;
 
 // Movements are append-only: a correction is another row, never an edit.
 // ponytail: newest first and capped at `limit` at the call site, because the log is
@@ -1513,7 +1532,7 @@ if (typeof module !== 'undefined' && require.main === module) {
   // Fix round 1b: every key here is data-store's (KEYS), name for name.
   const dsText = require('fs').readFileSync(require('path').join(__dirname, 'data-store.js'), 'utf8');
   for (const [name, key] of Object.entries({ suppliers: STORAGE_SUPPLIERS, purchaseOrders: STORAGE_PURCHASE_ORDERS,
-    stockMovements: STORAGE_STOCK_MOVEMENTS, staff: STORAGE_STAFF, modifiers: STORAGE_MODIFIERS, tillPerms: STORAGE_TILL_PERMS, ...EVENT_LOGS })) {
+    stockMovements: STORAGE_STOCK_MOVEMENTS, staff: STORAGE_STAFF, modifiers: STORAGE_MODIFIERS, discounts: STORAGE_DISCOUNTS, tillPerms: STORAGE_TILL_PERMS, ...EVENT_LOGS })) {
     assert.ok(new RegExp(`\\b${name}:\\s*'${key.replace(/\./g, '\\.')}'`).test(dsText), `data-store KEYS.${name} is ${key}`);
   }
   // saveList gives a record without one the store's id, and leaves updatedAt alone.

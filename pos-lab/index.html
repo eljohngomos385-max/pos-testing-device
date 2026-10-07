@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=154" />
+  <link rel="stylesheet" href="styles.css?v=161" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -280,6 +280,7 @@
                 <button type="button" role="tab" class="cur" aria-selected="true" data-kind="items">Items</button>
                 <button type="button" role="tab" aria-selected="false" data-kind="cats">Categories</button>
                 <button type="button" role="tab" aria-selected="false" data-kind="mods">Modifiers</button>
+                <button type="button" role="tab" aria-selected="false" data-kind="discs">Discounts</button>
               </section>
               <section class="card find" id="itemsFind">
                 <label>
@@ -492,138 +493,51 @@
       <!-- ============================================
            SETTINGS VIEW — POS preferences
            ============================================ -->
-      <section class="view view-settings" data-view="settings" hidden>
-        <header class="view-head">
-          <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-              <line x1="4" y1="7" x2="20" y2="7"/>
-              <line x1="4" y1="12" x2="20" y2="12"/>
-              <line x1="4" y1="17" x2="20" y2="17"/>
-            </svg>
-          </button>
-          <div class="view-title-wrap">
-            <h1>Settings</h1>
-            <span class="muted">POS preferences</span>
-          </div>
-        </header>
-        <div class="page-pad">
-          <div class="settings-grid">
-            <!-- Appearance Panel -->
-            <div class="panel">
-              <div class="panel-head"><div class="panel-title">Appearance</div></div>
-              <div class="setting-row">
-                <label>Sell-screen tile size
-                  <div class="muted" style="font-size:11px;margin-top:2px">S = 30/page, M = 20/page, L = 12/page</div>
-                </label>
-                <div class="bb-size-toggle" id="posSizeToggle" role="tablist">
-                  <button class="bb-size-btn" data-size="sm">S</button>
-                  <button class="bb-size-btn active" data-size="md">M</button>
-                  <button class="bb-size-btn" data-size="lg">L</button>
-                </div>
-              </div>
-              <div class="setting-row">
-                <label>Tile text size
-                  <div class="muted" style="font-size:11px;margin-top:2px">Resize the item name on tiles</div>
-                </label>
-                <div class="bb-size-toggle" id="posTextToggle" role="tablist">
-                  <button class="bb-size-btn" data-text="sm">S</button>
-                  <button class="bb-size-btn active" data-text="md">M</button>
-                  <button class="bb-size-btn" data-text="lg">L</button>
-                  <button class="bb-size-btn" data-text="xl">XL</button>
-                </div>
-              </div>
-              <div class="setting-row">
-                <label>Show price on tiles</label>
-                <input type="checkbox" id="posShowPrice">
-              </div>
-              <div class="setting-row">
-                <label for="posTileStock">Stock marks on tiles</label>
-                <input type="checkbox" id="posTileStock">
-              </div>
-              <div class="setting-row">
-                <label>Theme</label>
-                <div class="bb-size-toggle" id="posThemeToggle" role="tablist">
-                  <button class="bb-size-btn active" data-theme="dark">Dark</button>
-                  <button class="bb-size-btn" data-theme="light">Light</button>
-                </div>
-              </div>
-        </div>
-
-            <!-- Store Panel -->
-            <div class="panel">
-              <div class="panel-head"><div class="panel-title">Store</div></div>
-              <div class="setting-row">
-                <label for="posTimeZone">Time zone
-                  <div class="muted" style="font-size:11px;margin-top:2px">Where the store's day starts and ends</div>
-                </label>
-                <select class="text-input" id="posTimeZone"></select>
+      <!-- One column like Shift: ☰ + title, then calm cards of rows, label left, control right. Every choice is a
+           dropdown (data-pick → openSettingMenu, pos-settings.js); the time zone list is too long for one, so a styled select. -->
+      <section class="view view-settings lv" data-view="settings" hidden>
+        <div class="iv">
+          <section class="page st-page" aria-label="Settings">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+              </button>
+              <h1 class="st-ttl">Settings</h1>
+            </div>
+            <div class="c-scroll" id="settingsView">
+              <div class="c-body">
+                <section class="card fc">
+                  <h3>Appearance</h3>
+                  <div class="fr"><span class="lb">Tile size</span><span class="v"><button type="button" class="act st-pick" data-pick="tileSize" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                  <div class="fr"><span class="lb">Tile text size</span><span class="v"><button type="button" class="act st-pick" data-pick="tileText" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                  <label class="fr"><span class="lb">Show price on tiles</span><span class="v"><input type="checkbox" class="sw" id="posShowPrice"></span></label>
+                  <label class="fr"><span class="lb">Stock marks on tiles</span><span class="v"><input type="checkbox" class="sw" id="posTileStock"></span></label>
+                  <div class="fr"><span class="lb">Theme</span><span class="v"><button type="button" class="act st-pick" data-pick="theme" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                </section>
+                <!-- handlers: app.js attachEvents, pos-settings.js, pos-checkout.js Printing -->
+                <section class="card fc">
+                  <h3>Printing</h3>
+                  <div class="fr"><span class="lb">Printer</span><span class="v"><button type="button" class="act st-pick" data-pick="driver" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                  <div class="fr" id="posScanRow" hidden><span class="lb">Find printer</span><span class="v"><button type="button" class="act" id="posScanBtn">Scan</button></span></div>
+                  <div class="st-prn" id="posPrinterListRow" hidden>
+                    <div class="prn-list" id="posPrinterList"></div>
+                    <div class="prn-scan-status" id="posScanStatus" hidden></div>
+                  </div>
+                  <label class="fr" id="posNetRow" hidden><span class="lb">Printer IP<small>On the printer's status sheet</small></span><span class="v"><input class="in st-ip" id="posPrinterIp" inputmode="decimal" autocomplete="off" placeholder="192.168.1.50"></span></label>
+                  <div class="fr" id="posBtRow" hidden><span class="lb">Bluetooth printer<small id="posBtStatus">Not paired</small></span><span class="v"><button type="button" class="act" id="posBtPairBtn">Pair</button></span></div>
+                  <div class="fr"><span class="lb">Paper width</span><span class="v"><button type="button" class="act st-pick" data-pick="width" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                  <label class="fr"><span class="lb">Auto-cut paper</span><span class="v"><input type="checkbox" class="sw" id="posPrintCut"></span></label>
+                  <label class="fr"><span class="lb">Print delivery map</span><span class="v"><input type="checkbox" class="sw" id="posPrintMap"></span></label>
+                  <label class="fr" id="posPrintOnSaleRow" hidden><span class="lb">Print on sale</span><span class="v"><input type="checkbox" class="sw" id="posPrintOnSale"></span></label>
+                  <div class="fr"><span class="lb">Test print</span><span class="v"><button type="button" class="act" id="posTestPrintBtn">Print</button></span></div>
+                </section>
+                <section class="card fc">
+                  <h3>Store</h3>
+                  <label class="fr"><span class="lb">Time zone</span><span class="v"><span class="act st-pick st-sel"><select id="posTimeZone"></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
+                </section>
               </div>
             </div>
-
-            <!-- Printing Panel (handlers: app.js attachEvents, pos-settings.js, pos-checkout.js Printing) -->
-            <div class="panel">
-              <div class="panel-head"><div class="panel-title">Printing</div></div>
-              <div class="setting-row">
-                <label>Printer
-                  <div class="muted" style="font-size:11px;margin-top:2px">Browser = pop-up print dialog</div>
-                </label>
-                <div class="bb-size-toggle" id="posDriverToggle" role="tablist">
-                  <button class="bb-size-btn active" data-driver="browser">Browser</button>
-                  <button class="bb-size-btn" data-driver="network">Wi-Fi</button>
-                  <button class="bb-size-btn" data-driver="bluetooth">Bluetooth</button>
-                </div>
-              </div>
-              <div class="setting-row" id="posScanRow" hidden>
-                <label>Find printer
-                  <div class="muted" style="font-size:11px;margin-top:2px">Searches your Wi-Fi for Epson printers</div>
-                </label>
-                <button class="secondary-btn small" id="posScanBtn">Scan for printers</button>
-              </div>
-              <div class="setting-row full" id="posPrinterListRow" hidden>
-                <div class="prn-list" id="posPrinterList"></div>
-                <div class="prn-scan-status" id="posScanStatus" hidden></div>
-              </div>
-              <div class="setting-row" id="posNetRow" hidden>
-                <label for="posPrinterIp">Printer IP
-                  <div class="muted" style="font-size:11px;margin-top:2px">Print the printer's status sheet to see it</div>
-                </label>
-                <input class="text-input" id="posPrinterIp" inputmode="decimal" autocomplete="off" placeholder="192.168.1.50">
-              </div>
-              <div class="setting-row" id="posBtRow" hidden>
-                <label>Bluetooth printer
-                  <div class="muted" style="font-size:11px;margin-top:2px" id="posBtStatus">Not paired</div>
-                </label>
-                <button class="secondary-btn small" id="posBtPairBtn">Pair</button>
-              </div>
-              <div class="setting-row">
-                <label>Paper width</label>
-                <div class="bb-size-toggle" id="posWidthToggle" role="tablist">
-                  <button class="bb-size-btn" data-width="58mm">58mm</button>
-                  <button class="bb-size-btn active" data-width="80mm">80mm</button>
-                </div>
-              </div>
-              <div class="setting-row">
-                <label for="posPrintCut">Auto-cut paper</label>
-                <input type="checkbox" id="posPrintCut">
-              </div>
-              <div class="setting-row">
-                <label for="posPrintMap">Print delivery map
-                  <div class="muted" style="font-size:11px;margin-top:2px">Adds the pinned location to delivery receipts</div>
-                </label>
-                <input type="checkbox" id="posPrintMap">
-              </div>
-              <div class="setting-row">
-                <label for="posPrintOnSale">Print on sale
-                  <div class="muted" style="font-size:11px;margin-top:2px">Wi-Fi / Bluetooth printers only</div>
-                </label>
-                <input type="checkbox" id="posPrintOnSale">
-              </div>
-              <div class="setting-row">
-                <label>Test print</label>
-                <button class="secondary-btn small" id="posTestPrintBtn">Print test receipt</button>
-              </div>
-            </div>
-          </div>
+          </section>
         </div>
       </section>
     </div>
@@ -714,28 +628,7 @@
       </div>
     </div>
 
-    <!-- Generic confirm modal -->
-    <div class="modal-backdrop" id="confirmModal" hidden>
-      <div class="modal small-modal confirm-modal">
-        <div class="modal-head">
-          <h2 id="confirmTitle">Are you sure?</h2>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-              <line x1="6" y1="6" x2="18" y2="18"/>
-              <line x1="18" y1="6" x2="6" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="confirm-message" id="confirmMessage"></div>
-          <div class="pay-actions" style="margin-top:18px">
-            <button class="secondary-btn" data-close-modal>Cancel</button>
-            <button class="primary-btn danger" id="confirmOkBtn">Confirm</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    <!-- The confirm pop-up is built by showConfirm (pos-core.js) -->
 
     <!-- Delivery map pin picker -->
     <div class="modal-backdrop" id="deliveryMapModal" hidden>
@@ -902,21 +795,21 @@
     <div class="toast" id="toast" hidden></div>
   </div>
 
-  <script src="sales-math.js?v=21"></script>
-  <script src="data-store.js?v=51"></script>
+  <script src="sales-math.js?v=22"></script>
+  <script src="data-store.js?v=52"></script>
   <script src="data.js?v=28"></script>
-  <script src="bo-model.js?v=125"></script>
+  <script src="bo-model.js?v=126"></script>
   <script src="vendor/zxing-browser.min.js"></script>
-  <script src="printer.js?v=44"></script>
-  <script src="pos-core.js?v=10"></script>
-  <script src="pos-sell.js?v=24"></script>
-  <script src="pos-checkout.js?v=5"></script>
-  <script src="pos-orders.js?v=11"></script>
-  <script src="pos-items.js?v=7"></script>
-  <script src="pos-customers.js?v=9"></script>
-  <script src="pos-settings.js?v=2"></script>
+  <script src="printer.js?v=45"></script>
+  <script src="pos-core.js?v=11"></script>
+  <script src="pos-sell.js?v=25"></script>
+  <script src="pos-checkout.js?v=6"></script>
+  <script src="pos-orders.js?v=16"></script>
+  <script src="pos-items.js?v=8"></script>
+  <script src="pos-customers.js?v=12"></script>
+  <script src="pos-settings.js?v=3"></script>
   <script src="pos-pin.js?v=2"></script>
   <script src="pos-shift.js?v=2"></script>
-  <script src="app.js?v=119"></script>
+  <script src="app.js?v=121"></script>
 </body>
 </html>

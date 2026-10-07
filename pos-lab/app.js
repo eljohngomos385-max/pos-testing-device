@@ -64,11 +64,6 @@ function attachEvents() {
 
   // ---- Bottom bar: pagination ----
 
-  // ---- Bottom bar: tile size toggle (S / M / L) ----
-  $$('.bb-size-btn').forEach(btn => {
-    btn.addEventListener('click', () => setTileSize(btn.dataset.size));
-  });
-
   // ---- Bottom bar: toggle price display on tiles ----
   $('#bbViewBtn')?.addEventListener('click', toggleShowPrice);
 
@@ -84,7 +79,8 @@ function attachEvents() {
     renderProducts();
   });
   search.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !confirmSheet) {   // an "Out of stock" ask is up: nothing lands behind it
+      e.preventDefault();   // this Enter must not also press the ask's Sell anyway once it takes the focus
       const raw = search.value.trim();
       if (!raw) return;
       if (findProductByCode(raw)) {
@@ -93,7 +89,7 @@ function attachEvents() {
         search.value = ''; state.query = '';
         clear.classList.remove('visible');
         renderProducts();
-        search.focus();
+        if (!confirmSheet) search.focus();   // the ask keeps the keys (Enter = Sell anyway); it hands them back on close
         return;
       }
       // 3. Fall back to single fuzzy match
@@ -103,7 +99,7 @@ function attachEvents() {
         search.value = ''; state.query = '';
         clear.classList.remove('visible');
         renderProducts();
-        search.focus();
+        if (!confirmSheet) search.focus();
       }
     }
   });
@@ -122,7 +118,7 @@ function attachEvents() {
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     // Don't hijack modal context
-    if (document.querySelector('.modal-backdrop:not([hidden])')) return;
+    if (document.querySelector('.modal-backdrop:not([hidden]), .rail-veil')) return;   // a sheet, menu or confirm is up
     if (e.key === 'Enter') return;
     search.focus({ preventScroll: true });
   });
@@ -242,7 +238,7 @@ function attachEvents() {
     // Group parent tile → open the variant picker modal
     if (card.dataset.groupId) { openVariantModal(card.dataset.groupId); return; }
     // Regular product
-    addToCart(card.dataset.id, 'tile');
+    addToCart(card.dataset.id, 'tile', card);
   });
 
   // ---- Variant sheet ----
@@ -277,7 +273,7 @@ function attachEvents() {
     if (!picking(o)) { orderPicks(o); orderPick.on = true; return morph(renderOrderDetail); }
     const picks = orderPicks(o), part = picks.length && SalesMath.refundPart(o, reversalsOf(o), picks);
     if (part) showConfirm({ title: `Refund ${SalesMath.plural(picks.length, 'item')} on #${o.number}?`, message: `${peso(part.total)} goes back to the customer.`,
-      okText: 'Refund', onConfirm: () => morph(() => recordReturn(o.id, 'Refund', picks)) });
+      okText: 'Refund', from: $('#orderRefund'), onConfirm: () => morph(() => recordReturn(o.id, 'Refund', picks)) });
   };
   // Refund and Void always ask first, from the rail or the order's details.
   const askRefund = (o) => {
@@ -286,7 +282,7 @@ function attachEvents() {
     const back = o && SalesMath.refundPart(o, reversalsOf(o), left);
     if (back) showConfirm({ title: `Refund #${o.number}?`, message: `${peso(back.total)} goes back to the customer.`, okText: 'Refund', onConfirm: () => refundOrder(o.id, 'Refund') });
   };
-  const askVoid = (o) => showConfirm({ title: `Void #${o.number}?`, message: 'The sale stays on record, marked voided.', okText: 'Void sale', onConfirm: () => voidOrder(o.id, 'Void') });
+  const askVoid = (o, from) => showConfirm({ title: `Void #${o.number}?`, message: 'The sale stays on record, marked voided.', okText: 'Void sale', from, onConfirm: () => voidOrder(o.id, 'Void') });
   $('#orderRefund')?.addEventListener('click', () => { const o = shownOrder(); if (o) refundTicked(o); });
   $('#orderCancel')?.addEventListener('click', () => morph(() => { Object.assign(orderPick, { on: false, lines: {} }); renderOrderDetail(); }));
   // Refund items / Exchange: the customer's lines first (pickReturnLines), then the refund or the cart.
@@ -297,11 +293,13 @@ function attachEvents() {
     { label: 'Order details', run: () => openOrderDetailModal(o.id) },
     { label: 'Exchange', off: !isCompletedSale(o), run: () => { const picks = orderPicks(o); if (picks.length) startExchange(o.id, picks); else exchangeItems(o); } },
     '-',
-    { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o) },
+    { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o, btn) },
   ], { w: 200, right: true });
   $('#orderMore')?.addEventListener('click', (e) => { const o = shownOrder(); if (o) orderMenu(e.currentTarget, o); });
   // A tick, tick-all or − / + on the lines: the same pick, whichever page shows the order.
   $('#orderDetail')?.addEventListener('click', (e) => {
+    const back = e.target.closest('[data-print-back]');
+    if (back) { const r = state.orders.find(x => x.id === back.dataset.printBack); if (r) printOrder(r); return; }
     const el = e.target.closest('[data-line], [data-all]'), o = shownOrder();
     if (el && o && pickOrderLine(o, el)) renderOrderDetail();
   });
@@ -323,7 +321,7 @@ function attachEvents() {
     ['When', 'range', ORDER_RANGES.map(([v, l]) => [v, l])],
     ['Staff', 'staff', [['', 'Anyone'], ...[...new Set(state.orders.map(orderSeller).filter(Boolean))].sort().map(c => [c, c])]],
     ['Payment', 'pay', [['', 'Any'], ...PAY_KEYS.map(k => [k, SalesMath.tenderLabel(k), payColor(k)])]],
-    ['Status', 'status', [['', 'Any'], ...['sale', 'saved', 'quote', 'part', 'refunded', 'voided', 'refund', 'void'].map(k => [k, DRAFT_LABEL[k] || SalesMath.ROW_LABEL[k]])]],
+    ['Status', 'status', [['', 'Any'], ...['sale', 'saved', 'quote', 'part', 'refunded', 'voided'].map(k => [k, DRAFT_LABEL[k] || SalesMath.ROW_LABEL[k]])]],
     // Each type a row can read (orderFulfilLabel), the owner's own ones included, so a 'Tricycle' row is found as itself.
     ['Fulfilment', 'fulfil', [['', 'Any'], ...[...new Set([...FULFIL_BUILTINS.map(([k]) => k), ...state.orders.map(o => o.fulfilment)])]
       .map(k => [k, orderFulfilLabel({ fulfilment: k })])]],
@@ -340,7 +338,7 @@ function attachEvents() {
   $('#itemSave')?.addEventListener('click', () => (kindEdit ? saveKind() : saveItem()));
   const notYet = what => () => showToast(`${what} isn't connected yet`);
   $('#itemMore')?.addEventListener('click', (e) => openMenu(e.currentTarget, kindEdit
-    ? [kindEdit.id ? { label: kindEdit.kind === 'cats' ? 'Delete' : 'Archive', red: true, run: dropKind } : { label: 'Discard', red: true, run: closeItemEditor }]
+    ? [kindEdit.id ? { label: kindEdit.kind === 'mods' ? 'Archive' : 'Delete', red: true, off: !!kindEdit.builtin, run: dropKind } : { label: 'Discard', red: true, run: closeItemEditor }]
     : itemIsNew
     ? [{ label: 'Discard', red: true, run: closeItemEditor }]
     : [{ label: 'Print labels', run: notYet('Printing labels') }, { label: 'Duplicate', run: notYet('Duplicate') }, '-', { label: 'Archive', red: true, run: notYet('Archive') }],
@@ -518,11 +516,12 @@ function attachEvents() {
   function confirmClearCart() {
     if (state.cart.length === 0) return;
     showConfirm({
-      title: 'Clear receipt?',
-      message: 'All items in the current receipt will be removed. This cannot be undone.',
-      okText: 'Yes, clear',
+      title: 'Clear the sale?',
+      message: 'Every item comes off the cart.',
+      okText: 'Clear',
       cancelText: 'Cancel',
       danger: true,
+      from: $('#cartMoreBtn'),
       onConfirm: () => {
         track('cart_clear', { lines: state.cart.length, subtotal: cartTotals().subtotal });
         clearCart();
@@ -671,22 +670,14 @@ function attachEvents() {
   bindPinPad();   // the sign-in and the manager's PIN (pos-pin.js)
 
   // ---- POS Settings ----
-  $$('#posSizeToggle .bb-size-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      setTileSize(b.dataset.size);
-      renderPosSettings();
-    });
-  });
-  $$('#posTextToggle .bb-size-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      setTileText(b.dataset.text);
-      renderPosSettings();
-    });
+  $('#settingsView')?.addEventListener('click', (e) => {   // tile size, text size, theme, printer, paper width
+    const b = e.target.closest('[data-pick]');
+    if (b) openSettingMenu(b);
   });
   $('#posShowPrice')?.addEventListener('change', (e) => {
     state.showPrice = e.target.checked;
     storageSet(STORAGE_SHOW_PRICE, state.showPrice ? '1' : '0');
-    renderPosSettings();
+    renderPosSettings(false);
     renderProducts();
   });
   $('#posTileStock')?.addEventListener('change', (e) => {   // this till's own choice, like the Item / Amount band
@@ -694,34 +685,15 @@ function attachEvents() {
     HWPOS_STORE.ui.set('tileStock', state.tileStock ? '1' : '0');
     renderProducts();
   });
-  $$('#posThemeToggle .bb-size-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      applyTheme(b.dataset.theme);
-    });
-  });
   $('#posCartHead')?.addEventListener('change', (e) => {
     HWPOS_STORE.ui.set('cartHead', e.target.checked ? '1' : '0');
     applyCartHead(e.target.checked);
   });
   $('#posPrintOnSale')?.addEventListener('change', persistPosSettings);
-  $$('#posWidthToggle .bb-size-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      state.settings.printing = { ...printerConfig(), width: b.dataset.width };
-      saveSettings();
-      renderPosSettings();
-    });
-  });
   $('#posPrintCut')?.addEventListener('change', persistPosSettings);
   $('#posPrintMap')?.addEventListener('change', persistPosSettings);
-  $('#posPrinterIp')?.addEventListener('change', persistPosSettings);
+  $('#posPrinterIp')?.addEventListener('change', () => { persistPosSettings(); renderPrinterList(); refreshPrinterStatus(); });   // the list above shows the typed printer
   $('#posTimeZone')?.addEventListener('change', persistPosSettings);
-  $$('#posDriverToggle .bb-size-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      state.settings.printing = { ...printerConfig(), driver: b.dataset.driver };
-      saveSettings();
-      renderPosSettings();
-    });
-  });
   $('#posBtPairBtn')?.addEventListener('click', async () => {
     try {
       const dev = await window.HWPOS_PRINTER.pairBluetooth();
@@ -761,7 +733,7 @@ function attachEvents() {
       setScanStatus(e.message || 'Scan failed');
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Scan for printers';
+      btn.textContent = 'Scan';
     }
   });
   $('#posPrinterList')?.addEventListener('click', (e) => {
@@ -848,7 +820,6 @@ function init() {
   window.visualViewport?.addEventListener('scroll', () => refitSellSurface());
 
   // Sync persisted UI state on first paint
-  $$('.bb-size-btn[data-size]').forEach(b => b.classList.toggle('active', b.dataset.size === state.tileSize));
   $('#bbViewBtn')?.classList.toggle('active', state.showPrice);
 
   // Pick up appearance changes pushed from the back-office tab.

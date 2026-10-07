@@ -3136,21 +3136,12 @@ a.secondary-btn { text-decoration: none; }
 .order-detail-modal { width: min(805px, 100%); }
 .odm-title-wrap {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
 }
-.odm-status {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.06);
-  color: var(--ink-secondary);
-}
-.odm-status.done { background: rgba(255,255,255,0.06); color: var(--ink-secondary); }
-.odm-status.saved { background: var(--warn-bg); color: var(--warn); }
-.odm-status.voided { background: var(--danger-bg); color: var(--danger); }
+.odm-status { font-size: 16px; font-weight: 400; color: var(--ink-secondary); }   /* muted, like the Orders title: "Order #1-044 · Refunded" */
 .odm-meta {
   display: flex;
   flex-direction: column;
@@ -3716,6 +3707,11 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-ta:focus { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--es-sel); }
 .es-times { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .esheet .es-times .es-row { justify-content: center; min-height: 48px; padding: 0; }
+/* the receipt discount: any number of saved ones. The total keeps its spot, the list scrolls under it, Custom stays below it */
+.es-body.fill { grid-template-rows: minmax(0, 1fr); align-items: stretch; overflow: hidden; padding-top: max(24px, calc(24cqh - 56px)); }   /* higher than 40%: the list needs the room (owner 2026-10-07: "sitting lower") */
+.es-body.fill .es-col, .es-body.fill .es-list { min-height: 0; }
+.es-body.fill > .es-keys { height: auto; align-self: center; }
+.es-scroll { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 /* the foot: a quiet one left, Done / Apply right */
 .es-ft { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; border-top: 1px solid var(--line); }
 .esheet .es-q { height: 40px; margin-left: -8px; padding: 0 8px; border-radius: var(--es-r); color: var(--ink-secondary); font-size: 14px; }
@@ -3737,6 +3733,12 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
              margin-top: 64px; padding-top: max(0px, calc(40cqh - 120px)); }   /* scrolls below the X, never under it; same start spot */
   .es-keys { height: auto; }
   .es-body.in .es-col, .es-body.out .es-col { animation: none; }
+  /* a phone's card is short: the head sits by the X, and the list never squeezes under 3¼ rows (the cut one says there's
+     more); a shorter card scrolls the body instead. 410 = head 128 + gap 16 + list 210 (3 × 64 + 18) + 8 + Custom 56 */
+  .es-body.fill { margin-top: 20px; padding-bottom: 8px; padding-top: max(0px, calc(24cqh - 120px)); grid-template-rows: minmax(410px, 1fr); overflow-y: auto; }
+  .es-body.fill:has(> .es-keys) { grid-template-rows: none; }   /* keys or ID under the list: only the row they're for stays */
+  .es-body.fill:has(> .es-keys) :is(.es-col, .es-list, .es-scroll) { flex: none; min-height: auto; overflow: visible; }
+  .es-body.fill:has(> .es-keys) :is(.es-scroll, .es-list) > :not(.on):not(:has(.on)) { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .esheet, .esheet.open { transition: none; } .es-body .es-col, .es-keys { animation: none !important; } }
 
@@ -4962,8 +4964,6 @@ body.light-theme .text-btn:hover,
 body.light-theme .or-status.done,
 body.light-theme .bb-page-pill,
 body.light-theme .bb-size-toggle,
-body.light-theme .odm-status,
-body.light-theme .odm-status.done,
 body.light-theme .order-state.done,
 body.light-theme .data-table tbody tr.selected { background: rgba(0,0,0,0.04); }
 body.light-theme .side-link.active,
@@ -7460,8 +7460,20 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .ttl b.walk { color: var(--ink-secondary); font-weight: 500; }   /* no customer: said, not shouted */
 .lv .ttl span { flex: none; font-size: 13px; font-weight: 500; color: var(--danger); }
 .lv .ttl span.warn { color: var(--warn); }
+.lv .ttl span.st { margin-left: -8px; font-weight: 400; color: var(--ink-secondary); white-space: pre; }   /* an order's state: "Walk-in customer · Refunded" */
+/* Money that went back reads red, a part refund amber (owner 2026-10-07). Text only, no chip. */
+.lv span.st:is([data-s="refunded"], [data-s="voided"], [data-s="refund"], [data-s="void"]) { color: color-mix(in srgb, var(--danger) 65%, var(--ink-secondary)); }   /* a softer red: a word, not an alarm */
+.lv span.st[data-s="part"] { color: color-mix(in srgb, var(--warn) 65%, var(--ink-secondary)); }
 .lv .paper-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1px 0 21px; scrollbar-width: thin; }   /* 1px: the light ring sits outside the paper */
 .lv .paper-scroll .receipt-preview { max-height: none; overflow: visible; padding: 0; }
+/* What went back on a sale, above its receipt and as wide: "Refunded  Oct 7, 3:10 PM · Cash · #1-045   −₱90.00  Print" */
+.lv .o-back { width: min(400px, 100%); margin: 0 auto 12px; border: 1px solid var(--line); border-radius: var(--r-input); background: var(--surface); }
+.lv .o-back .fr { display: flex; align-items: center; gap: 12px; padding: 10px 12px; font-size: 13px; }
+.lv .o-back .fr + .fr { border-top: 1px solid var(--line); }
+.lv .o-back .lb { flex: 1; min-width: 0; display: grid; gap: 2px; font-weight: 500; color: color-mix(in srgb, var(--danger) 65%, var(--ink-secondary)); }
+.lv .o-back .lb small { font-size: 12px; font-weight: 400; color: var(--ink-secondary); }
+.lv .o-back .v { font-weight: 600; }
+.lv .o-back .link { padding: 12px 0 12px 8px; margin: -12px 0; }   /* a ~40px tap target, same look */
 .lv .paper-scroll .rp-paper { position: relative; width: min(400px, 100%); margin: 0 auto; padding: 24px 24px 28px; border-radius: 1px; font-size: 13px; box-shadow: var(--paper-shadow); }
 .lv .paper-scroll .rp-store { font-size: 16px; }
 @container pv (max-width: 920px) { .lv .paper-scroll .rp-paper { padding: 20px 18px 24px; font-size: 12px; } }
@@ -7485,9 +7497,9 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv :is(.o-rail, .c-ord) .row .nm span { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lv :is(.o-rail, .c-ord) .row small { display: flex; align-items: center; gap: 6px; color: var(--ink-tertiary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lv :is(.o-rail, .c-ord) .row .amt { font-size: 14px; font-weight: 600; white-space: nowrap; }
-.lv :is(.o-rail, .c-ord) .row .st { font-weight: 500; color: var(--danger); }
-.lv :is(.o-rail, .c-ord) .row .st.warn { color: var(--warn); }
+.lv :is(.o-rail, .c-ord) .row .nm .st { font-weight: 400; }   /* "#1-023 · Refunded": its colour is the state's (span.st[data-s]) */
 .lv :is(.o-rail, .c-ord) .row.void .nm span, .lv :is(.o-rail, .c-ord) .row.void .amt { color: var(--ink-tertiary); }
+.lv :is(.o-rail, .c-ord) .row.void .nm .st { color: color-mix(in srgb, var(--danger) 65%, var(--ink-secondary)); }   /* the row greys out, its "Voided" / "Refunded" stays red */
 .lv :is(.o-rail, .c-ord) .row.void .amt { text-decoration: line-through; font-weight: 500; }
 
 /* phone: the list is the page; a tapped order slides its receipt over it */
@@ -7512,7 +7524,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .c-ord { overflow: hidden; }
 .lv .c-ord .row { border-top: 1px solid var(--line); border-bottom: 0; padding: 9px 16px; }
 .lv .c-ord h3 + :is(.row, .note) { border-top: 0; }
-@container pv (max-width: 720px) { .view-customers .o-top .act span { display: none; } .view-customers .o-top .act { padding: 0; } }   /* phone: icons, the name keeps the room */
+@container pv (max-width: 720px) { :is(.view-customers, .view-orders) .o-top .act span { display: none; } :is(.view-customers, .view-orders) .o-top .act { padding: 0; } }   /* phone: icons (each has a title), the name and the order's state keep the room */
 
 /* ---------- Items: the list fills the screen; the editor slides over it ---------- */
 .lv .iv { position: relative; height: 100%; }
@@ -7626,7 +7638,7 @@ body.light-theme .lv .in[type=date] { color-scheme: light; }
 .lv .pills button { height: 32px; padding: 0 12px; border-radius: 8px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); color: var(--ink-secondary); font-size: 13px; font-weight: 500; }
 .lv .pills button.cur { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
 .lv .sw { appearance: none; position: relative; flex: none; width: 40px; height: 24px; margin: 0; border-radius: 12px; background: var(--surface-hover); cursor: pointer; transition: background-color .15s; }
-body.light-theme .lv .sw { background: var(--bg-soft); }
+body.light-theme .lv .sw:not(:checked) { background: var(--bg-soft); }   /* :not -- it outranked :checked, so an on switch stayed grey */
 .lv .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s var(--rl-ease); }
 .lv .sw:checked { background: var(--rl-on); }
 .lv .sw:checked::after { transform: translateX(16px); }
@@ -7719,9 +7731,16 @@ input.es-ta { height: 56px; }
 .pay-sheet .pr input + span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pay-sheet .pb { display: flex; justify-content: flex-end; gap: 8px; }
 .pay-sheet :focus-visible { outline: 2px solid var(--rl-on); outline-offset: 2px; }
-/* Low stock: the cart line's quiet word (cartStockNote) and the tiles' Low / Out mark (tileMark, off by default) */
-.rail-h .row .nm small.left { color: var(--warn); }
-.rail-h .row .nm small.left.out { color: var(--danger); }
+/* The app's confirm (showConfirm): the same card, a title, one quiet line, Cancel + OK. OK is the till's normal
+   primary; .danger (a delete) is the tinted red, never a saturated fill. */
+.cf-sheet { overflow: hidden; }   /* only the message scrolls (40 refund lines): the title and buttons stay */
+.cf-sheet .ph { gap: 4px; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
+.cf-sheet .cf-msg { color: var(--ink-secondary); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; overflow-y: auto; overscroll-behavior: contain; }
+.cf-sheet .pb { margin-top: 2px; }
+.cf-sheet .primary-btn.small, .cf-sheet .secondary-btn.small { height: 36px; padding: 0 14px; font-size: 13px; font-weight: 590; text-transform: none; letter-spacing: normal; }
+.cf-sheet .primary-btn.danger { background: var(--danger-bg); color: var(--danger); }
+.cf-sheet .primary-btn.danger:hover:not(:disabled) { background: var(--danger-bg); box-shadow: inset 0 0 0 1px var(--danger); }
+/* Low stock: the tiles' Low / Out mark (tileMark, off by default). The cart says it on add (stockOnAdd). */
 .pc-mark { position: absolute; top: 6px; left: 8px; display: inline-flex; align-items: center; gap: 4px; color: var(--ink-tertiary); font-size: 10px; font-weight: 600; }
 .pc-mark::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
 .pc-mark.out::before { background: var(--danger); }
@@ -7790,13 +7809,33 @@ input.es-ta { height: 56px; }
 .pin-lock .pin-cancel { display: none; }
 @media (prefers-reduced-motion: reduce) { .pin-dots.shake { animation: none; } }
 
-/* Settings: panels keep their own height (the short Store panel no longer stretches to Appearance's) */
-.settings-grid { align-items: start; }
-.setting-row select.text-input { appearance: auto; cursor: pointer; }
-.setting-row[hidden] { display: none; }   /* the printer rows that don't fit the picked printer (display: grid beat [hidden]) */
-/* The segmented toggles: a word ("Browser", "Wi-Fi") fits its button, and the picked one reads on the
-   accent in both themes (it was white text on the dark theme's white accent). */
-.bb-size-btn { width: auto; min-width: 30px; padding: 0 9px; white-space: nowrap; }
-/* A phone: the label over its control (as the back office does), so the printer toggle fits 390 */
-@media (max-width: 480px) { .setting-row { grid-template-columns: minmax(0, 1fr); gap: 8px; } }
-.bb-size-btn.active { color: var(--accent-ink); }
+/* Settings (pos-settings.js): Shift's one centred column of cards, ☰ + the title on top. A row is the label
+   left, its control right at every width: a choice is a dropdown (.st-pick opens the ⋯ menu's morph), a yes/no
+   the item editor's switch (.sw). The rows a printer doesn't use are [hidden]. */
+.st-page .head { align-items: center; }
+.st-ttl { margin: 0 0 0 8px; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.st-page .fr[hidden], .st-prn[hidden] { display: none; }
+.lv .st-page .fr { min-height: 48px; }   /* a switch row as tall as a dropdown row */
+.st-page label.fr { cursor: pointer; }
+.st-page .fr .lb { display: grid; gap: 2px; }
+.st-page .fr .lb small { font-size: 12px; }
+.st-page .fr > .v { display: flex; justify-content: flex-end; min-width: 0; }
+.lv .st-pick { justify-content: space-between; gap: 10px; min-width: 150px; max-width: 100%; padding: 0 8px 0 12px; color: var(--ink); }
+.st-pick > span { overflow: hidden; text-overflow: ellipsis; }
+.st-pick .ic { color: var(--ink-tertiary); }
+.lv .st-sel { position: relative; width: 240px; padding: 0; }   /* the time zone: hundreds of zones, so the browser's own list */
+.st-sel select { appearance: none; width: 100%; height: 100%; padding: 0 32px 0 12px; border: 0; outline: 0; background: none; color: inherit;
+                 font: inherit; text-overflow: ellipsis; cursor: pointer; color-scheme: dark; }
+body.light-theme .st-sel select { color-scheme: light; }
+.st-sel .ic { position: absolute; right: 8px; pointer-events: none; }
+.st-sel:has(select:focus-visible) { outline: 2px solid var(--rl-on); outline-offset: 2px; }
+.lv .st-ip { width: 170px; height: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+.st-prn { display: grid; gap: 6px; padding: 0 16px 12px; }   /* what Scan found, under its row */
+.st-prn .prn-item { border: 0; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); }
+.st-prn .prn-item:hover { background: var(--rl-hover); }
+.st-prn .prn-empty { padding: 0; }
+/* Connected / Offline: a dot and the word, no chip. The dot carries the state; Offline is a warning, not red. */
+.st-prn .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 0; background: none; color: var(--ink-secondary); }
+.st-prn .status-pill .dot { display: inline-block; }
+.st-prn .status-pill.out .dot { background: var(--warn); }
+.st-prn .prn-scan-status { margin: 0; font-size: 12px; }

@@ -14,6 +14,7 @@
   const ASCII_MAP = { '₱': 'P', '×': 'x', '·': '-', '–': '-', '—': '-', '“': '"', '”': '"', '‘': "'", '’': "'", '…': '...' };
   function ascii(s) {
     return String(s == null ? '' : s)
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')   // accents come off, the letter stays: Año -> Ano
       .replace(/[₱×·–—“”‘’…]/g, ch => ASCII_MAP[ch])
       .replace(/[^\x20-\x7E\n]/g, '');
   }
@@ -72,7 +73,8 @@
 
   // The totals block above TOTAL is SalesMath.totalRows, the one list every slip, the paper and the
   // back office receipt share.
-  const totalRows = vm => SM().totalRows(vm);
+  // A saved discount's name the paper can't print at all (all CJK) prints as the plain word.
+  const totalRows = vm => SM().totalRows(vm && vm.discountName && !ascii(vm.discountName).trim() ? { ...vm, discountName: '' } : vm);
 
   // ---------- layout: receipt view model -> op list ----------
 

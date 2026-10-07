@@ -26,6 +26,10 @@ function orderState(o) {
 // A saved cart or quote (draftAsOrder) reads as its draft kind: 'saved' (the old saved orders' status too) or 'quote'.
 const orderStatus = o => o.draft || SalesMath.statusOf(o, orderReversals());
 const DRAFT_LABEL = { saved: 'Saved', quote: 'Quote' };
+// A listed sale's figure (one row per sale): Voided / Refunded show the full amount struck (it no longer counts),
+// Partly refunded what is left -- so a day's rows add up to its band. `back` = the sale's void / refund rows.
+const orderStruck = o => ['voided', 'refunded'].includes(orderState(o));
+const orderRowAmt = (o, back) => orderStatus(o) === 'part' ? SalesMath.summarize([o, ...back]).collected : SalesMath.rowAmount(o);
 function isSavedOrder(o) {
   return orderState(o) === 'saved';
 }
@@ -134,11 +138,15 @@ function orderSeller(o) {
   if (sellerOrders !== state.orders) { sellerOrders = state.orders; sellerFor = SalesMath.sellerOf(state.orders); }
   return sellerFor(o).name;
 }
-const ORDER_FLAG_TONE = { voided: '', part: 'warn', refunded: 'warn', void: '', refund: 'warn', saved: 'warn', quote: 'warn' };
-function orderFlag(o, cls) {
-  const st = orderStatus(o);
-  return st in ORDER_FLAG_TONE ? `<span class="${cls} ${ORDER_FLAG_TONE[st]}">${orderStatusLabel(o)}</span>` : '';
+// A row's state rides its title, muted, the way a draft reads "Saved · Nice" (owner 2026-10-07):
+// "#1-023 · Refunded" / "· Partly refunded" (SalesMath.statusOf). A plain sale says nothing.
+function orderFlag(o) {
+  const s = orderStatus(o);   // the word takes its state's colour (styles.css span.st[data-s])
+  return s === 'sale' ? '' : `<span class="st" data-s="${s}"> · ${escapeHtml(orderStatusLabel(o))}</span>`;
 }
+const orderTitleHtml = o => o.draft
+  ? `<span>${escapeHtml([orderStatusLabel(o), o.name].filter(Boolean).join(' · '))}</span>`
+  : `<span><span class="num">#${escapeHtml(o.number)}</span>${orderFlag(o)}</span>`;
 // Every row the Orders page lists: the sales, then the saved carts and quotes (pos-checkout draftOrders).
 const orderRows = () => state.orders.concat(draftOrders());
 const findOrderRow = id => orderRows().find(x => x.id === id);
@@ -148,15 +156,18 @@ function ordersShown() {
   const F = state.ordersFilter;
   const q = (state.ordersQuery || '').trim().toLowerCase().replace(/^#/, '');
   const maxAgo = ORDER_RANGES.find(r => r[0] === F.range)[2];
+  // A void / refund row isn't listed (renderOrders), so its number finds the sale it belongs to.
+  const backNums = new Map();
+  if (q) for (const r of state.orders) if (SalesMath.isReversal(r)) backNums.set(r.originalOrderId, (backNums.get(r.originalOrderId) || []).concat(r.number));
   return orderRows().filter(o => {
-    const ago = daysAgo(o.ts);
-    if (F.range === 'yday' ? ago !== 1 : ago > maxAgo) return false;
+    const ago = daysAgo(o.ts), hitBack = (backNums.get(o.id) || []).some(n => String(n).toLowerCase().includes(q));
+    if (!hitBack && (F.range === 'yday' ? ago !== 1 : ago > maxAgo)) return false;
     if (F.staff && orderSeller(o) !== F.staff) return false;
     if (F.pay && !orderTenderKeys(o).some(k => payBucket(k) === F.pay)) return false;
     if (F.status && orderStatus(o) !== F.status) return false;
     if (F.fulfil && o.fulfilment !== F.fulfil) return false;
     if (state.ordersCustomer && SalesMath.customerIdOf(o) !== state.ordersCustomer) return false;
-    return !q || [o.number, o.name, o.customer ? o.customer.name : 'walk-in', SalesMath.payWord(o), orderStatusLabel(o), tillDate(o.ts, 'slip'),
+    return !q || [o.number, ...(backNums.get(o.id) || []), o.name, o.customer ? o.customer.name : 'walk-in', SalesMath.payWord(o), orderStatusLabel(o), tillDate(o.ts, 'slip'),
       ...(o.items || []).flatMap(i => [i.name, i.sku])].some(v => String(v || '').toLowerCase().includes(q));
   }).sort(SalesMath.newestFirst);
 }
@@ -180,7 +191,11 @@ function renderOrders() {
   if (!list) return;
   // Defensive: make sure state.orders is an array (and refresh from storage).
   if (!Array.isArray(state.orders)) state.orders = loadOrders();
-  const shown = ordersShown();
+  // One row per sale (owner 2026-10-07): a void or refund stays its own record (BIR, the drawer, sync) but isn't
+  // listed -- its sale reads Voided / Refunded / Partly refunded, and shows it inside (orderBackHtml).
+  const shown = ordersShown().filter(o => !SalesMath.isReversal(o));
+  const sel = state.orders.find(o => o.id === state.selectedOrderId);
+  if (sel && SalesMath.isReversal(sel)) state.selectedOrderId = sel.originalOrderId;   // a link to a refund opens its sale
   if (!shown.some(o => o.id === state.selectedOrderId)) state.selectedOrderId = shown[0] ? shown[0].id : null;
 
   // One pass into store days (SalesMath.groupByDay). The band is its rows: how many are listed and what
@@ -188,14 +203,19 @@ function renderOrders() {
   // Status filter never reads a negative or zero count. Summing the whole list per band froze the till.
   let html = '';
   const totals = roleCan(state.role, 'dayTotals');   // the role's switch (Staff & access); off = count only
+  // A band adds up what its sales are worth now: each with the money that went back on it, whatever day that was.
+  // The drawer's day (money out today for an older sale) is the Shift page's and Reports', not this list's.
+  const backOf = new Map();
+  for (const r of state.orders) if (SalesMath.isReversal(r)) backOf.set(r.originalOrderId, (backOf.get(r.originalOrderId) || []).concat(r));
   for (const [day, rows] of SalesMath.groupByDay(shown, tillZone())) {
-    html += `<div class="band"><span>${orderDayName(day)} <span class="num">· ${rows.length}</span></span>${totals ? `<span class="num">${peso(SalesMath.summarize(rows).collected)}</span>` : ''}</div>`;
+    const worth = rows.flatMap(o => [o, ...(backOf.get(o.id) || [])]);
+    html += `<div class="band"><span>${orderDayName(day)} <span class="num">· ${rows.length}</span></span>${totals ? `<span class="num">${peso(SalesMath.summarize(worth).collected)}</span>` : ''}</div>`;
     for (const o of rows) {
-      const time = tillDate(o.ts, 'time'), amt = o.draft ? o.total : SalesMath.rowAmount(o);   // a draft shows what it adds up to; the band still leaves it out
-      html += `<button type="button" class="row${orderState(o) === 'voided' ? ' void' : ''}${o.id === state.selectedOrderId ? ' cur' : ''}" data-order-id="${o.id}">
-        <div class="nm">${o.draft ? `<span>${escapeHtml([orderStatusLabel(o), o.name].filter(Boolean).join(' · '))}</span>` : `<span class="num">#${escapeHtml(o.number)}</span>`}
+      const time = tillDate(o.ts, 'time'), amt = o.draft ? o.total : orderRowAmt(o, backOf.get(o.id) || []);   // a draft shows what it adds up to; the band still leaves it out
+      html += `<button type="button" class="row${orderStruck(o) ? ' void' : ''}${o.id === state.selectedOrderId ? ' cur' : ''}" data-order-id="${o.id}">
+        <div class="nm">${orderTitleHtml(o)}
           <small class="num">${escapeHtml(orderFulfilLabel(o))} · ${time} · ${escapeHtml(orderSeller(o) || '—')}</small></div>
-        <div class="rt"><span class="amt num">${amt == null ? '—' : peso(amt)}</span><small>${o.draft ? '' : orderFlag(o, 'st')}${escapeHtml(orderPayText(o))}</small></div></button>`;
+        <div class="rt"><span class="amt num">${amt == null ? '—' : peso(amt)}</span><small>${escapeHtml(orderPayText(o))}</small></div></button>`;
     }
   }
   list.innerHTML = html || (state.orders.length
@@ -216,7 +236,7 @@ function renderOrderDetail() {
     detail.innerHTML = '<div class="empty"><b>No order selected</b><span>Pick one from the list to see its receipt.</span></div>';
     return;
   }
-  ttl.innerHTML = `<b class="${o.customer ? '' : 'walk'}">${escapeHtml(o.customer ? o.customer.name : 'Walk-in customer')}</b>${orderFlag(o, 'flag')}`;
+  ttl.innerHTML = `<b class="${o.customer ? '' : 'walk'}">${escapeHtml(o.customer ? o.customer.name : 'Walk-in customer')}</b>${orderFlag(o)}`;
   detail.innerHTML = orderBodyHtml(o);
   refundAct($('#orderRefund'), o);
 }
@@ -227,10 +247,20 @@ function renderOrderDetail() {
 // One pick at a time: the order on screen, whether it is picking, and its lines { lineNo: qty }.
 const orderPick = { id: '', on: false, lines: {} };
 const picking = o => orderPick.on && orderPick.id === o.id;
+// The money that went back on a sale, oldest first, above its receipt: when, how much, how, and the slip's number.
+// Each prints its own slip (the refund or void receipt the customer and BIR keep).
+function orderBackHtml(o) {
+  const rows = SalesMath.isSale(o) ? reversalsOf(o).sort((a, b) => SalesMath.newestFirst(b, a)) : [];
+  const swap = state.orders.find(x => SalesMath.isSale(x) && x.originalOrderId === o.id);   // the exchange's new sale
+  return rows.length ? `<section class="o-back">${rows.map(r => `<div class="fr">
+    <span class="lb">${r.status === 'void' ? 'Voided' : r.reason === 'Exchange' ? 'Exchanged' : 'Refunded'} <small class="num">${tillDate(r.ts, 'dayTime')} · ${escapeHtml(SalesMath.payWord(r))} · #${escapeHtml(r.number)}${r.reason === 'Exchange' && swap ? ` · for #${escapeHtml(swap.number)}` : ''}</small></span>
+    <span class="v num">${peso(SalesMath.rowAmount(r))}</span>
+    <button type="button" class="link" data-print-back="${escapeHtml(r.id)}">Print</button></div>`).join('')}</section>` : '';
+}
 function orderBodyHtml(o) {
   if (picking(o)) return orderLinesHtml(o);
   const left = SalesMath.isSale(o) && orderState(o) !== 'voided' ? SalesMath.qtyLeft(o, reversalsOf(o)) : null;
-  const html = buildReceiptPreview(o, left ? o.items.map((i, k) => i.qty - left[k]) : []);
+  const html = orderBackHtml(o) + buildReceiptPreview(o, left ? o.items.map((i, k) => i.qty - left[k]) : []);
   return orderState(o) === 'voided' ? html.replace('<div class="rp-paper">', '<div class="rp-paper void"><div class="stamp">VOIDED</div>') : html;
 }
 function orderPicks(o) {
@@ -335,15 +365,11 @@ function openOrderDetailModal(orderId) {
   const r = toReceiptViewModel(o);
   const dateStr = tillDate(o.ts, 'dayYear');   // the store's clock; no weekday, like the bands
   const timeStr = tillDate(o.ts, 'time');
-  const statusCls = isSavedOrder(o) ? 'saved' : (isCompletedSale(o) ? 'done' : 'voided');
 
   const numEl = $('#odmNumber');
   if (numEl) numEl.textContent = `Order #${o.number}`;
-  const statusEl = $('#odmStatus');
-  if (statusEl) {
-    statusEl.textContent = orderStatusLabel(o);
-    statusEl.className = `odm-status ${statusCls}`;
-  }
+  const statusEl = $('#odmStatus');   // same state word as the Orders title (orderFlag); a plain sale says nothing
+  if (statusEl) statusEl.textContent = orderStatus(o) === 'sale' ? '' : `· ${orderStatusLabel(o)}`;
 
   const metaRows = [
     ['Date', dateStr],

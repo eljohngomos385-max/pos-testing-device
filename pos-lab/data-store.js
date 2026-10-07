@@ -46,6 +46,8 @@
     purchaseOrders: 'hwpos.purchaseOrders.v1',
     suppliers: 'hwpos.suppliers.v1',
     modifiers: 'hwpos.modifiers.v1',
+    // Saved discounts (Items › Discounts; the cart's Discount sheet lists them). Senior / PWD are built-in rows.
+    discounts: 'hwpos.discounts.v1',
     staff:     'hwpos.staff.v1',
     tillPerms: 'hwpos.tillPerms.v1',
     adjustments: 'hwpos.adjustments.v1',
@@ -727,7 +729,7 @@
   // ---- Read-only AI/data API ----
   const DICTIONARY_URL = 'docs/data-dictionary.md';
   // Array collections read straight from storage.
-  const LIST_COLLECTIONS = ['stockMovements', 'purchaseOrders', 'suppliers', 'modifiers', 'staff', 'adjustments',
+  const LIST_COLLECTIONS = ['stockMovements', 'purchaseOrders', 'suppliers', 'modifiers', 'discounts', 'staff', 'adjustments',
     'priceLog', 'lostDemand', 'deliveryEvents', 'supplierMessages', 'decisions', 'shifts'];
   const COLLECTIONS = ['products', 'folders', 'groups', 'orders', 'customers', 'customerLedger',
     'settings', ...LIST_COLLECTIONS];

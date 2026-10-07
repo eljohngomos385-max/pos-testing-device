@@ -27,7 +27,7 @@ function renderCheckout() {
   const discEl = $('#checkoutDiscount');
   if (discEl) discEl.textContent = peso(-t.discount);
   const discLabel = $('#checkoutDiscountLabel');
-  if (discLabel) discLabel.textContent = 'Discount';
+  if (discLabel) discLabel.textContent = SalesMath.discountName({ cartDiscount: t.scPwd ? null : state.cartDiscount, items: state.cart }) || 'Discount';   // the receipt's word
   const totalEl = $('#checkoutTotal');
   if (totalEl) totalEl.textContent = peso(total);
   $('#checkoutCount').textContent = $('#railCount').textContent;
@@ -646,10 +646,10 @@ function continueDraft(id) {
     if (gone.length) showToast(`Skipped ${gone.join(', ')} · no longer sold`);
   };
   const replace = () => state.cart.length
-    ? showConfirm({ title: 'Replace the cart?', message: 'The items in the cart now are removed.', okText: 'Replace', onConfirm: load })
+    ? showConfirm({ title: 'Replace the cart?', message: 'The items in the cart now are removed.', okText: 'Replace', from: $('#orderContinue'), onConfirm: load })
     : load();
   if (!off.length) return replace();
-  showConfirm({ title: 'Sell anyway?', message: off.join(' '), okText: 'Sell anyway', danger: false, onConfirm: replace });
+  showConfirm({ title: 'Sell anyway?', message: off.join(' '), okText: 'Sell anyway', from: $('#orderContinue'), onConfirm: replace });
 }
 
 // Credit off = Account and Split are not offered (owner 2026-10-02). Read fresh: the back office
@@ -667,26 +667,7 @@ function creditOverLimit(tendered = 0) {
   return creditOverBy(c, charge);   // bo-model: the balance after the charge vs the limit, the Over limit test
 }
 
-// What the cart is asking for that the shelf does not have. `sellOutOfStock` was stored on
-// every product, shown in the editor, mapped in the CSV and in schema.sql -- and read by no
-// code path, so a cart could drive Portland Cement to -218 bags and Inventory to a negative
-// value at cost. Checked once here because every way of adding to the cart ends at checkout;
-// a guard per entry point is four guards and three of them go stale.
-// A manager can still override: on a shop floor the count is usually what is wrong, and
-// refusing the sale outright would send a paying customer away over a bookkeeping error.
-// Per item, not per line: two lines of the same item (a different note) draw on one shelf.
-function stockShortfall(cart = state.cart) {
-  const want = new Map();
-  for (const item of cart || []) {
-    const p = productOf(item);
-    if (!p || p.sellOutOfStock || p.trackStock === false) continue;
-    want.set(p, (want.get(p) || 0) + toNumber(item.qty, 0));
-  }
-  return [...want].map(([p, qty]) => {
-    const short = roundQty(p, qty - toNumber(p.stock, 0));
-    return short > 0 ? { id: p.id, name: p.name, short, unit: p.unit || 'pc' } : null;
-  }).filter(Boolean);
-}
+// Out of stock is asked when the item goes into the cart (stockOnAdd, pos-sell.js), not here.
 
 // postToAccount, the one writer for an account, is in bo-model.js so the back office uses it too.
 // A cash payment at the till goes into this register's drawer (buildCashDrawerSummary counts it).
@@ -723,7 +704,7 @@ function reverseOrderCredit(order, reason, whole = false, credit = SalesMath.cre
 // The manager's approval (gate), the sign-in (lockTill / signIn) and the PIN pad live in pos-pin.js.
 
 // `approvedBy`: the manager whose PIN let this charge go past the credit limit (gate re-runs it).
-// `ok`: questions already answered Yes in the app's own pop-up ({ limit, stock }), so the re-run skips them.
+// `ok`: questions already answered Yes in the app's own pop-up ({ limit }), so the re-run skips them.
 function completeSale(approvedBy = '', ok = {}) {
   const totals = cartTotals();
   const total = moneyValue(totals.total);
@@ -770,18 +751,6 @@ function completeSale(approvedBy = '', ok = {}) {
       setCheckoutError('Charge would exceed the credit limit.');
     } else showConfirm({ title: 'Over the credit limit', message: overMsg, okText: 'Charge anyway',
       onConfirm: () => completeSale(approvedBy, { ...ok, limit: true }) });
-    return;
-  }
-  const short = stockShortfall();
-  if (short.length && !ok.stock) {
-    showConfirm({ title: 'Not enough stock', okText: 'Sell anyway', cancelText: 'Don’t sell',
-      html: short.map(s => `${escapeHtml(s.name)} — short ${s.short} ${escapeHtml(s.unit)}`).join('<br>'),
-      onConfirm: () => completeSale(approvedBy, { ...ok, stock: true }),
-      // The customer walks out without it -- the exact moment demand used to leave no record.
-      onCancel: () => {
-        setCheckoutError(`Not enough ${short[0].name} in stock.`);
-        openLostSale({ product: state.products.find(p => p.id === short[0].id), qty: short[0].short });
-      } });
     return;
   }
   const actualMethod = state.paymentMethod === 'other'
