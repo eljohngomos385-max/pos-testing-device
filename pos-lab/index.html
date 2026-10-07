@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=161" />
+  <link rel="stylesheet" href="styles.css?v=170" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -178,11 +178,16 @@
             <div class="esheet" id="editSheet" role="dialog" aria-label="Edit"><div class="es-card" id="editSheetCard"></div></div>
           </div>
 
+          <!-- Phone (≤720): the sale sidebar is its own page; this bar opens it. Not Check out -->
+          <button type="button" class="ph-bar" id="cartBar" disabled><span id="cartBarCount">No items</span></button>
           <!-- The sale sidebar (cart-lab-stack-h.html): three slim cards -- who, the items, the money.
                Fulfilment and Discount share the money card's first row, half and half. -->
           <aside class="rail rail-h" id="side" aria-label="Receipt">
             <section class="card who">
               <div class="c-row">
+                <button type="button" class="ph-back" id="cartBack" aria-label="Back to items">
+                  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+                </button>
                 <button type="button" class="cust" id="customerBtn" title="Change customer">
                   <span id="customerLabel">Walk-in customer</span>
                   <svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
@@ -802,7 +807,7 @@
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=45"></script>
   <script src="pos-core.js?v=11"></script>
-  <script src="pos-sell.js?v=25"></script>
+  <script src="pos-sell.js?v=26"></script>
   <script src="pos-checkout.js?v=6"></script>
   <script src="pos-orders.js?v=16"></script>
   <script src="pos-items.js?v=8"></script>
@@ -810,6 +815,6 @@
   <script src="pos-settings.js?v=3"></script>
   <script src="pos-pin.js?v=2"></script>
   <script src="pos-shift.js?v=2"></script>
-  <script src="app.js?v=121"></script>
+  <script src="app.js?v=124"></script>
 </body>
 </html>

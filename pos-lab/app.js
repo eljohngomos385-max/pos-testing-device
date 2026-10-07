@@ -590,12 +590,16 @@ function attachEvents() {
       stopBarcodeScanner();
       closeModals();
       closeVariantSheet();
+      if (!map && !es) $('#app').classList.remove('ph-cart');   // phone: Esc with nothing over the cart closes it
       if (!map) closeEditSheet();
     }
   });
 
   // ---- Pay ----
   // An exchange in the cart (startExchange) finishes here; anything else goes to the checkout.
+  const phCart = (on) => { if (!on) closeEditSheet(); $('#app').classList.toggle('ph-cart', on); };   // phone: the cart page
+  $('#cartBar').addEventListener('click', () => phCart(true));
+  $('#cartBack').addEventListener('click', () => phCart(false));
   $('#payBtn').addEventListener('click', () => { closeEditSheet(); state.exchange ? confirmExchange() : openPaymentModal(); });
 
   // Payment-method selection

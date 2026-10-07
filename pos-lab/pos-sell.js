@@ -60,8 +60,11 @@ function getSellGridProfile() {
     row.style.setProperty('--cat-w', `${columns * size + (columns - 1) * gap + 2 * catX}px`);
     return { columns, rows };
   }
-  const phone = { sm: { columns: 2, rows: 5 }, md: { columns: 2, rows: 4 }, lg: { columns: 1, rows: 4 } };
-  return phone[state.tileSize] || phone.md;
+  // phone: Loyverse-style square tiles, 3 across (S 4, L 2); as many rows as keep them nearest square
+  const columns = { sm: 4, md: 3, lg: 2 }[state.tileSize] || 3, gap = 8, cs = getComputedStyle(catalog);
+  const h = catalog.clientHeight - $('#catalogSearchRow').offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - parseFloat(cs.rowGap);
+  const size = (width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - gap * (columns - 1)) / columns;
+  return { columns, rows: Math.max(2, Math.round((h + gap) / (size + gap))) };
 }
 
 function sellPageSize(profile = getSellGridProfile()) {
@@ -1302,6 +1305,9 @@ function renderCart() {
   $('#payBtn').disabled = n === 0;
   $('#payBtn').innerHTML = `<span>${state.exchange ? 'Exchange' : 'Check out'}</span>${n ? `<span class="num">${peso(t.total)}</span>` : ''}`;   // startExchange; the total rides in the button, the Total row is the checkout's
   $('#side').classList.toggle('empty-cart', n === 0);
+  $('#cartBar').disabled = n === 0;   // phone: what is in the cart, not Check out
+  $('#cartBar').innerHTML = n ? `<span>${SalesMath.plural(n, 'item')}</span><span class="num">${peso(t.total)}</span>` : '<span>No items</span>';
+  if (!n) $('#app').classList.remove('ph-cart');
 
   renderFulRow();
   const cd = state.cartDiscount && state.cartDiscount.value ? state.cartDiscount : null;

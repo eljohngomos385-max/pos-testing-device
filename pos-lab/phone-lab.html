@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phone Sell Lab</title>
+<!-- Phone Sell lab (owner 2026-10-07): three bars only -- head, tiles 3 across, Check out. The cart is its own
+     place. A = cart page, B = cart sheet, C = split bar. Standalone: the till's tokens copied, nothing linked. -->
+<style>
+:root {
+  --rl-ease: cubic-bezier(.2, .8, .2, 1);
+  --bg: #121212; --bg-soft: #1C1C1C; --bg-softer: #232323; --surface: #2A2A2A; --surface-hover: #333333; --surface-2: #1F1F1F;
+  --line: rgba(255,255,255,.08); --line-strong: rgba(255,255,255,.14);
+  --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45); --ink-quaternary: rgba(255,255,255,.28);
+  --accent: #FFFFFF; --accent-hover: #F0F0F0; --accent-pressed: #E2E2E2; --accent-ink: #121212;
+  --ok: #3B7A4F; --ok-bg: rgba(59,122,79,.14);
+  --r-input: 10px;
+  --shadow-raised: 0 4px 12px rgba(0,0,0,.4); --shadow-modal: 0 20px 50px rgba(0,0,0,.6), 0 8px 20px rgba(0,0,0,.3);
+  --rl-card: var(--surface-2); --rl-soft: var(--bg-softer); --rl-hover: var(--surface); --rl-on: #8AB4F8;
+  --rl-hair: rgba(255,255,255,.03); --rl-r: 14px; --rl-m: 16px; --rl-gap: 8px;
+  --veil: rgba(0,0,0,.5);
+  --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+.light-theme {
+  --bg: #FFFFFF; --bg-soft: #EDEDED; --bg-softer: #E4E4E4; --surface: #F9F9F9; --surface-hover: #F6F6F6; --surface-2: #FFFFFF;
+  --line: #E1E1E1; --line-strong: #D4D4D4;
+  --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C; --ink-quaternary: #B5B5B5;
+  --accent: #303030; --accent-hover: #1A1A1A; --accent-pressed: #000000; --accent-ink: #FFFFFF;
+  --ok: #047B5D; --ok-bg: #D3ECDD;
+  --shadow-raised: 0 4px 16px rgba(0,0,0,.12), 0 1px 4px rgba(0,0,0,.08); --shadow-modal: 0 20px 50px rgba(0,0,0,.15), 0 8px 20px rgba(0,0,0,.08);
+  --rl-card: var(--surface-2); --rl-soft: var(--surface); --rl-hover: var(--surface-hover); --rl-on: #1F5FB8; --rl-hair: #EBEBEB;
+  --veil: rgba(0,0,0,.25);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font-stack); letter-spacing: -.15px;
+  -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; touch-action: manipulation; }
+input { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+.ic { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- compare page (desktop): the three side by side ---- */
+.cmp { min-height: 100%; padding: 16px 24px 20px; background: var(--bg-soft); }
+.cmp-top { display: flex; justify-content: center; gap: 6px; margin-bottom: 18px; }
+.cmp-top button { height: 32px; padding: 0 14px; border-radius: 9999px; color: var(--ink-secondary); font-size: 13px; font-weight: 510; }
+.cmp-top button.on { background: var(--accent); color: var(--accent-ink); }
+.cmp-row { display: flex; justify-content: center; gap: 28px; flex-wrap: wrap; }
+.cmp figure { margin: 0; display: grid; gap: 10px; justify-items: center; }
+.cmp iframe { width: 390px; height: 844px; border: 1px solid var(--line-strong); border-radius: 28px; background: var(--bg); box-shadow: var(--shadow-raised); }
+.cmp figcaption { max-width: 390px; text-align: center; color: var(--ink-secondary); font-size: 13px; font-weight: 510; }
+.cmp figcaption b { color: var(--ink); font-weight: 590; }
+
+/* ---- the phone ---- */
+.phone { position: relative; height: 100dvh; overflow: hidden; background: var(--bg); }
+.scr { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
+
+/* bar 1: the head -- [☰][search · scan], the till's shape */
+.head { display: flex; gap: 7px; padding: 12px 12px 0; }
+.sq { display: grid; place-items: center; flex: none; width: 48px; height: 48px; border-radius: var(--rl-r); background: var(--rl-soft);
+  box-shadow: inset 0 0 0 1px var(--rl-hair); color: var(--ink-secondary); }
+.sq:active { background: var(--rl-hover); }
+.find { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 48px; padding-left: 14px; border-radius: var(--rl-r);
+  background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); color: var(--ink-tertiary); }
+.find input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: 0; font-size: 15px; color: var(--ink); }
+.find input::placeholder { color: var(--ink-tertiary); }
+.find .scan { display: grid; place-items: center; width: 48px; height: 48px; color: var(--ink-secondary); }
+
+/* bar 2: the tiles, three across */
+.grid { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start; gap: 8px; padding: 12px 12px 16px; }
+.tile { position: relative; aspect-ratio: 1 / 1; display: flex; flex-direction: column; justify-content: space-between; gap: 4px; padding: 10px;
+  border-radius: 12px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); text-align: left; transition: transform .08s, box-shadow .12s; }
+.tile:active { transform: scale(.97); }
+.tile .nm { font-size: 13px; font-weight: 590; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.tile .pr { color: var(--ink-tertiary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile.in { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.tile.in .pr { padding-right: 26px; }
+.tile .q { position: absolute; right: 9px; bottom: 9px; font-size: 12px; font-weight: 650; }
+.nothing { grid-column: 1 / -1; overflow-wrap: anywhere; padding: 48px 0; color: var(--ink-tertiary); text-align: center; }
+
+/* bar 3: Check out */
+.bar { display: flex; gap: 8px; padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px)); }
+.go { flex: 1; display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 18px; border-radius: 12px; background: var(--accent); color: var(--accent-ink);
+  font-size: 15px; font-weight: 590; transition: background-color .12s, opacity .2s; }
+.go:active { background: var(--accent-pressed); }
+.go:disabled { opacity: .3; pointer-events: none; }
+.go .l { flex: 1; text-align: left; }
+.go .l:only-child { text-align: center; }
+.go .n { opacity: .6; font-weight: 510; }
+.go2 { display: flex; align-items: center; gap: 6px; height: 52px; padding: 0 16px; border-radius: 12px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 15px; font-weight: 590; }
+.go2:disabled { color: var(--ink-quaternary); }
+
+/* the cart: the tablet sidebar, whole screen (A), or a sheet over the tiles (B) */
+.cart { transform: translateX(100%); transition: transform .26s var(--rl-ease); z-index: 10; padding-bottom: env(safe-area-inset-bottom, 0px); }
+.cart.open { transform: none; }
+.v-b .cart { top: 44px; border-radius: 18px 18px 0 0; transform: translateY(100%); box-shadow: var(--shadow-modal); }
+.v-b .cart.open { transform: none; }
+.v-b .cart .grab { display: block; }
+.v-b .cart > .grab { touch-action: none; width: 100%; height: 21px; margin: 0 auto; background: linear-gradient(var(--line-strong), var(--line-strong)) center 8px / 36px 5px no-repeat; }
+.grab { display: none; width: 36px; height: 5px; margin: 8px auto 0; border-radius: 9999px; background: var(--line-strong); }
+.card { border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); }
+.c-row { display: flex; gap: 7px; padding: 12px 12px 0; }
+.v-b .c-row { padding-top: 8px; }
+.who { flex: 1; min-width: 0; display: flex; height: 48px; }
+.who .cust { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 var(--rl-m); font-size: 14px; font-weight: 560; text-align: left; border-radius: var(--rl-r) 0 0 var(--rl-r); }
+.who .cust span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who .more { display: grid; place-items: center; width: 48px; border-left: 1px solid var(--line); color: var(--ink-secondary); border-radius: 0 var(--rl-r) var(--rl-r) 0; }
+.chev { width: 16px; height: 16px; color: var(--ink-tertiary); }
+.items { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 8px 12px 0; overflow: hidden; }
+.i-head { display: flex; justify-content: space-between; padding: 10px var(--rl-m); background: var(--rl-soft); border-bottom: 1px solid var(--line);
+  color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
+.lines { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.line { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px var(--rl-m); text-align: left; }
+.line + .line { border-top: 1px solid var(--line); }
+.line:active { background: var(--rl-hover); }
+.line .nm { flex: 1; min-width: 0; font-size: 14px; line-height: 1.3; }
+.line .nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
+.line .amt { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.empty { display: grid; place-content: center; justify-items: center; gap: 4px; height: 100%; padding: 24px; text-align: center; }
+.empty b { font-weight: 600; }
+.empty span { color: var(--ink-tertiary); }
+.money { margin: 8px 12px 0; }
+.opts { display: flex; height: 44px; }
+.opts > button { flex: 0 0 50%; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 14px 0 var(--rl-m); text-align: left; font-weight: 500; color: var(--ink-secondary); }
+.opts > button span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opts > button:first-child { color: var(--ink); }
+.opts > button + button { border-left: 1px solid var(--line); }
+.opts .on { color: var(--rl-on) !important; }
+.cart .bar { padding-top: 8px; }
+
+/* pay: the big total stays put, the step below it changes */
+.pay { transform: translateX(100%); transition: transform .26s var(--rl-ease); z-index: 20; }
+.pay.open { transform: none; }
+.pay .top { padding: 12px 12px 0; }
+.hero { padding: 28px 16px 20px; text-align: center; }
+.hero .t { font-size: 40px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; }
+.hero .s { margin-top: 6px; color: var(--ink-tertiary); font-size: 13px; }
+.hero .s button { color: var(--ink-secondary); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
+.step { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 0 12px; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ptile { height: 96px; border-radius: 12px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); font-size: 15px; font-weight: 590; }
+.ptile:active { background: var(--rl-hover); }
+.quick { display: flex; gap: 8px; }
+.quick button { flex: 1; height: 52px; border-radius: 12px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); font-weight: 590; font-size: 14px; }
+.quick button.on { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.typed { display: flex; align-items: center; height: 52px; padding: 0 16px; border-radius: 12px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); }
+.typed span { color: var(--ink-tertiary); }
+.typed input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: 0; text-align: right; font-size: 17px; font-weight: 650; }
+.chg { display: flex; justify-content: space-between; padding: 4px 4px 0; color: var(--ink-secondary); }
+.chg b { color: var(--ink); font-weight: 650; }
+.done { flex: 1; display: grid; place-content: center; justify-items: center; gap: 8px; padding: 24px; text-align: center; }
+.done svg { width: 64px; height: 64px; color: var(--ok); }
+.done svg path { stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw .5s .1s var(--rl-ease) forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.done .w { font-size: 17px; font-weight: 650; }
+.done .c { font-size: 28px; font-weight: 700; letter-spacing: -.02em; }
+.after { display: flex; gap: 8px; }
+
+/* ☰ drawer */
+.veil { position: absolute; inset: 0; z-index: 30; background: var(--veil); opacity: 0; pointer-events: none; transition: opacity .2s; }
+.veil.on { opacity: 1; pointer-events: auto; }
+.drawer { position: absolute; top: 0; bottom: 0; left: 0; z-index: 31; width: 82%; max-width: 320px; display: flex; flex-direction: column; background: var(--surface-2);
+  box-shadow: var(--shadow-modal); transform: translateX(-102%); transition: transform .24s var(--rl-ease); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.drawer.open { transform: none; }
+.drawer .me { padding: 24px 20px 16px; border-bottom: 1px solid var(--line); }
+.drawer .me b { display: block; font-size: 15px; font-weight: 590; }
+.drawer .me span { color: var(--ink-tertiary); font-size: 13px; }
+.drawer nav { flex: 1; padding: 8px; }
+.drawer nav button { display: flex; align-items: center; gap: 14px; width: 100%; height: 48px; padding: 0 12px; border-radius: var(--r-input); font-size: 15px; font-weight: 510; color: var(--ink-secondary); }
+.drawer nav button.cur { background: var(--rl-soft); color: var(--ink); }
+.drawer .foot { display: grid; gap: 10px; padding: 14px 20px 18px; border-top: 1px solid var(--line); color: var(--ink-tertiary); font-size: 12px; }
+.drawer .lab { display: flex; gap: 6px; }
+.drawer .lab button { height: 30px; padding: 0 12px; border-radius: 9999px; background: var(--rl-soft); color: var(--ink-secondary); font-size: 12px; font-weight: 510; }
+.drawer .lab button.on { background: var(--accent); color: var(--accent-ink); }
+
+/* bottom sheet (options, qty, customer, discount) */
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 41; max-height: 80%; display: flex; flex-direction: column; border-radius: 18px 18px 0 0;
+  background: var(--surface-2); box-shadow: var(--shadow-modal); transform: translateY(102%); transition: transform .24s var(--rl-ease);
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+.sheet.open { transform: none; }
+.veil.s { z-index: 40; }
+.veil.c { z-index: 9; }
+.sheet h3 { margin: 0; padding: 4px 20px 8px; font-size: 15px; font-weight: 590; }
+.sheet .list { overflow-y: auto; padding: 0 8px; }
+.opt { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 0 12px; border-radius: var(--r-input); text-align: left; font-size: 15px; }
+.opt:active { background: var(--rl-soft); }
+.opt span { flex: 1; }
+.opt small { color: var(--ink-tertiary); font-size: 14px; }
+.opt.cur { font-weight: 650; }
+.sheet .find { margin: 0 12px 8px; height: 44px; }
+.qty { display: flex; align-items: center; justify-content: center; gap: 24px; padding: 12px 0 20px; }
+.qty button { width: 56px; height: 56px; border-radius: 9999px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--line); font-size: 24px; }
+.qty b { min-width: 64px; text-align: center; font-size: 28px; font-weight: 700; }
+.sheet .acts { display: flex; gap: 8px; padding: 0 12px; }
+.sheet .acts .go { justify-content: center; }
+.link { color: var(--ink-secondary); font-weight: 510; padding: 0 12px; }
+
+/* the morph menu: grows out of its trigger and covers it */
+.menu { position: absolute; z-index: 51; min-width: 200px; padding: 4px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line);
+  box-shadow: var(--shadow-raised); transform-origin: var(--ox, 50%) var(--oy, 50%); animation: grow .18s cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes grow { from { transform: scale(.94); opacity: 0; } }
+.menu.out { animation: shrink .09s ease-in forwards; }
+@keyframes shrink { to { transform: scale(.96); opacity: 0; } }
+.menu button { display: flex; align-items: center; width: 100%; height: 44px; padding: 0 12px; border-radius: 8px; text-align: left; font-size: 15px; }
+.menu button:active { background: var(--rl-soft); }
+.menu button.cur { font-weight: 650; }
+.mveil { position: absolute; inset: 0; z-index: 50; }
+
+.toast { position: absolute; left: 50%; bottom: 84px; z-index: 60; padding: 10px 14px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line);
+  box-shadow: var(--shadow-raised); font-size: 13px; white-space: nowrap; transform: translateX(-50%); animation: grow .18s var(--rl-ease); }
+@media (prefers-reduced-motion: reduce) { * { transition-duration: 0s !important; animation-duration: 0s !important; } }
+</style>
+</head>
+<body class="light-theme">
+<script>
+const P = new URLSearchParams(location.search);
+const THEME = P.get('theme') || 'light', V = (P.get('v') || 'a').toLowerCase();
+document.body.classList.toggle('light-theme', THEME !== 'dark');
+document.documentElement.classList.toggle('light-theme', THEME !== 'dark');
+const NAMES = { a: 'Cart page', b: 'Cart sheet', c: 'Split bar' };
+const NOTES = { a: 'Check out opens the cart as its own page', b: 'Check out pulls the cart up over the tiles', c: 'Cart and Check out side by side; Check out goes straight to pay' };
+const url = (o) => '?' + new URLSearchParams({ v: V, theme: THEME, ...(P.has('frame') ? { frame: 1 } : {}), ...o });
+
+if (!P.has('frame') && innerWidth >= 900) {
+  // Desktop: the three side by side, same theme.
+  document.write(`<div class="cmp"><div class="cmp-top">${['light', 'dark'].map(t => `<button class="${t === THEME ? 'on' : ''}" onclick="location.search='?theme=${t}'">${t[0].toUpperCase() + t.slice(1)}</button>`).join('')}</div>
+    <div class="cmp-row">${'abc'.split('').map(k => `<figure><iframe src="?v=${k}&theme=${THEME}&frame=1" title="${NAMES[k]}"></iframe>
+      <figcaption><b>${k.toUpperCase()} · ${NAMES[k]}</b> — ${NOTES[k]}</figcaption></figure>`).join('')}</div></div>`);
+} else {
+  document.write('<div class="phone v-' + V + '" id="phone"></div>');
+}
+</script>
+<script>
+if (document.getElementById('phone')) (() => {
+const $ = (s, r = document) => r.querySelector(s);
+const peso = (n) => '₱' + (Math.round(n * 100) / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const IC = {
+  menu: 'M4 7h16M4 12h16M4 17h16', search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4',
+  scan: 'M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M8 9v6M11 9v6M14 9v6M17 9v6',
+  back: 'M15 18l-6-6 6-6', down: 'M6 9l6 6 6-6', right: 'M9 18l6-6-6-6', more: 'M5 12h.01M12 12h.01M19 12h.01', updown: 'M8 9.5l4-4 4 4M8 14.5l4 4 4-4',
+};
+const svg = (k, c = 'ic') => `<svg class="${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[k]}"/></svg>`;
+
+// A hardware store's tiles: some are one item, some open their options (sizes, colours).
+const ITEMS = [
+  { n: 'PVC Elbows', o: [['1/2"', 18], ['3/4"', 24], ['1"', 32]] }, { n: 'PVC Pipes & Tees', o: [['Pipe 1/2" × 10 ft', 145], ['Tee 1/2"', 22]] },
+  { n: 'THHN Wire', o: [['#14 per meter', 18], ['#12 per meter', 26]] }, { n: 'Common Wire Nails', o: [['2" per kg', 85], ['3" per kg', 90]] },
+  { n: 'Boysen Latex Paint', o: [['White 4L', 980], ['White 1L', 320], ['Cream 1L', 320], ['Sky Blue 1L', 335], ['Gray 1L', 320], ['Black 1L', 320]] },
+  { n: 'Brass Faucet 1/2"', p: 185 }, { n: 'Teflon Tape 1/2"', p: 25 }, { n: 'LED Bulb 9W Daylight', p: 89 }, { n: 'Hacksaw Blade 12"', p: 45 },
+  { n: 'Electrical Tape', p: 35 }, { n: 'Sandpaper #100', p: 12 }, { n: 'Portland Cement 40kg', p: 265 }, { n: 'Marine Plywood 1/4"', p: 485 },
+  { n: 'GI Wire #16 per kg', p: 95 }, { n: 'Masking Tape 1"', p: 48 }, { n: 'Paint Brush 2"', p: 55 }, { n: 'Rugby Contact Cement', p: 75 },
+  { n: 'Wood Screw 1" (box)', p: 60 }, { n: 'Padlock 40mm', p: 210 }, { n: 'Extension Cord 4-gang', p: 395 }, { n: 'Claw Hammer 16oz', p: 280 },
+  { n: 'Measuring Tape 5m', p: 150 }, { n: 'Round Shovel', p: 320 }, { n: 'Cable Tie 8" (100s)', p: 65 },
+];
+const CUSTOMERS = ['Engr. Cruz (Residential)', 'Marie Variety Store', 'Juan Dela Cruz', 'RJ Construction', 'Ana Santos'];
+const FULS = ['Walk-in', 'Pickup', 'Delivery'];
+const DISCS = [['None', 0], ['5%', 5], ['10%', 10], ['Senior', 20], ['PWD', 20]];
+const S = { cart: [], q: '', cust: '', ful: 'Walk-in', disc: 0, discName: 'None', method: '', got: null };
+
+const fresh = () => { Object.assign(S, { cart: [], q: '', cust: '', ful: 'Walk-in', disc: 0, discName: 'None', got: null }); const q = document.getElementById('q'); if (q) q.value = ''; };
+const sub = () => S.cart.reduce((t, l) => t + l.p * l.qty, 0);
+const total = () => Math.round(sub() * (100 - S.disc)) / 100;
+const count = () => S.cart.reduce((t, l) => t + l.qty, 0);
+const inCart = (it) => S.cart.filter(l => l.item === it.n).reduce((t, l) => t + l.qty, 0);
+const qtyText = (n) => (Number.isInteger(n) ? n : n.toFixed(2));
+
+const phone = $('#phone');
+phone.innerHTML = `
+<section class="scr home">
+  <div class="head"><button class="sq" data-act="menu" aria-label="Menu">${svg('menu')}</button>
+    <label class="find">${svg('search')}<input id="q" placeholder="Search items" autocomplete="off"><button class="scan" data-act="scan" aria-label="Scan">${svg('scan')}</button></label></div>
+  <div class="grid" id="grid"></div>
+  <div class="bar" id="bar"></div>
+</section>
+<section class="scr cart" id="cart">
+  <i class="grab"></i>
+  <div class="c-row"><button class="sq" data-act="close-cart" aria-label="Back">${svg(V === 'b' ? 'down' : 'back')}</button>
+    <div class="card who"><button class="cust" data-act="cust"><span id="custName"></span>${svg('right', 'ic chev')}</button><button class="more" data-act="more" aria-label="More">${svg('more')}</button></div></div>
+  <div class="card items"><div class="i-head"><span>Item</span><span>Amount</span></div><div class="lines" id="lines"></div></div>
+  <div class="card money"><div class="opts"><button data-act="ful"><span id="ful"></span>${svg('updown', 'ic chev')}</button><button data-act="disc" id="discBtn"><span id="disc"></span>${svg('right', 'ic chev')}</button></div></div>
+  <div class="bar"><button class="go" data-act="pay" id="cartGo"></button></div>
+</section>
+<div class="veil c" id="cveil" data-act="close-cart"></div>
+<section class="scr pay" id="pay"></section>
+<div class="veil" id="veil" data-act="close-drawer"></div>
+<aside class="drawer" id="drawer">
+  <div class="me"><b>El John · Owner</b><span>POS 1 · Main Store, Laguna</span></div>
+  <nav>${['Sell', 'Orders', 'Items', 'Customers', 'Shift', 'Settings'].map((n, i) => `<button class="${i ? '' : 'cur'}" data-act="close-drawer">${n}</button>`).join('')}</nav>
+  <div class="foot"><span>Synced · 2 min ago</span>
+    <div class="lab">${'abc'.split('').map(k => `<button class="${k === V ? 'on' : ''}" data-go="${url({ v: k })}">${k.toUpperCase()}</button>`).join('')}
+      <button data-go="${url({ theme: THEME === 'dark' ? 'light' : 'dark' })}">${THEME === 'dark' ? 'Light' : 'Dark'}</button></div></div>
+</aside>
+<div class="veil s" id="sveil" data-act="close-sheet"></div>
+<div class="sheet" id="sheet"></div>`;
+
+function renderGrid() {
+  const q = S.q.trim().toLowerCase();
+  const list = ITEMS.filter(it => !q || it.n.toLowerCase().includes(q) || (it.o || []).some(o => o[0].toLowerCase().includes(q)));
+  $('#grid').innerHTML = list.map(it => {
+    const n = inCart(it), i = ITEMS.indexOf(it);
+    const pr = it.o ? 'from ' + peso(Math.min(...it.o.map(o => o[1]))) : peso(it.p);
+    return `<button class="tile${n ? ' in' : ''}" data-tile="${i}"><span class="nm">${it.n}</span><span class="pr num">${pr}</span>${n ? `<b class="q num">×${qtyText(n)}</b>` : ''}</button>`;
+  }).join('');
+  if (!list.length) $('#grid').append(Object.assign(document.createElement('div'), { className: 'nothing', textContent: `No items match “${S.q}”` }));
+}
+function renderBar() {
+  const n = count(), none = !n;
+  const goTxt = `<span class="l">Check out${V === 'c' ? '' : n ? ` <span class="n">· ${n}</span>` : ''}</span>${none ? '' : `<span class="num">${peso(total())}</span>`}`;
+  $('#bar').innerHTML = V === 'c'
+    ? `<button class="go2" data-act="open-cart" ${none ? 'disabled' : ''}>Cart <span class="num">${n || ''}</span></button><button class="go" data-act="pay" ${none ? 'disabled' : ''}>${goTxt}</button>`
+    : `<button class="go" data-act="open-cart" ${none ? 'disabled' : ''}>${goTxt}</button>`;
+}
+function renderCart() {
+  $('#custName').textContent = S.cust || 'Walk-in customer';
+  $('#ful').textContent = S.ful;
+  $('#disc').textContent = !S.disc ? 'Discount' : S.discName.endsWith('%') ? S.discName : `${S.discName} ${S.disc}%`;
+  $('#discBtn').classList.toggle('on', !!S.disc);
+  $('#lines').innerHTML = S.cart.length ? S.cart.map((l, i) => `<button class="line" data-line="${i}"><span class="nm">${l.name}<small class="num">${qtyText(l.qty)} × ${peso(l.p)}</small></span><span class="amt num">${peso(l.p * l.qty)}</span></button>`).join('')
+    : '<div class="empty"><b>No items yet</b><span>Tap an item to add it.</span></div>';
+  $('#cartGo').disabled = !S.cart.length;
+  $('#cartGo').innerHTML = `<span class="l">Check out</span>${S.cart.length ? `<span class="num">${peso(total())}</span>` : ''}`;
+}
+function render() { renderGrid(); renderBar(); renderCart(); }
+
+function add(name, p, item) {
+  const l = S.cart.find(x => x.name === name);
+  if (l) l.qty++; else S.cart.push({ name, p, item, qty: 1 });
+  render();
+}
+
+// pay: total on top, then method -> cash amount -> done
+function renderPay(step = 'method') {
+  const t = total(), n = count();
+  const hero = step === 'done' ? '' : `<div class="top"><button class="sq" data-act="${step === 'method' ? 'close-pay' : 'pay'}" aria-label="Back">${svg('back')}</button></div>
+    <div class="hero"><div class="t num">${peso(t)}</div><div class="s"><button data-act="open-cart">${n} ${n === 1 ? 'item' : 'items'}</button> · ${S.cust || 'Walk-in customer'}</div></div>`;
+  let body = '';
+  if (step === 'method') body = `<div class="step"><div class="tiles">${['Cash', 'GCash', 'Card', 'QR'].map(m => `<button class="ptile" data-method="${m}">${m}</button>`).join('')}</div></div>`;
+  if (step === 'cash') {
+    const quick = [...new Set([100, 500, 1000].map(s => Math.ceil(t / s) * s).filter(v => v > t))].slice(0, 3);
+    const got = S.got ?? t;
+    body = `<div class="step"><div class="quick">${[['Exact', t], ...quick.map(v => [peso(v).replace('.00', ''), v])].map(([lb, v]) => `<button class="num${got === v ? ' on' : ''}" data-got="${v}">${lb}</button>`).join('')}</div>
+      <label class="typed"><span>Cash received</span><input id="typed" class="num" inputmode="decimal" value="${got}"></label>
+      <div class="chg"><span>Change</span><b class="num" id="chg">${peso(Math.max(0, got - t))}</b></div></div>
+      <div class="bar"><button class="go" data-act="complete" ${got < t ? 'disabled' : ''}><span class="l">Complete</span></button></div>`;
+  }
+  if (step === 'other') body = `<div class="step"><div class="chg"><span>Take ${peso(t)} by ${S.method}, then complete.</span></div></div>
+      <div class="bar"><button class="go" data-act="complete"><span class="l">Complete</span></button></div>`;
+  if (step === 'done') {
+    const change = S.method === 'Cash' ? Math.max(0, (S.got ?? t) - t) : 0;
+    body = `<div class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+      <div class="w">Sale complete</div>${change ? `<div class="c num">Change ${peso(change)}</div>` : ''}</div>
+      <div class="bar after"><button class="go2" data-act="toast" data-msg="Printing receipt…">Print receipt</button><button class="go" data-act="new"><span class="l">New sale</span></button></div>`;
+  }
+  $('#pay').innerHTML = hero + body;
+  if (step === 'method') $('#pay').insertAdjacentHTML('beforeend', '<div style="flex:1"></div>');
+  const typed = $('#typed');
+  if (typed) typed.addEventListener('input', () => {
+    S.got = Math.min(+typed.value.replace(/,/g, '') || 0, 1e8); // ponytail: lab cap
+    $('#chg').textContent = peso(Math.max(0, S.got - total()));
+    $('#pay [data-act="complete"]').disabled = S.got < total();
+    document.querySelectorAll('#pay [data-got]').forEach(b => b.classList.toggle('on', +b.dataset.got === S.got));
+  });
+}
+
+// sheets + menus
+function sheet(html) { $('#sheet').innerHTML = '<i class="grab" style="display:block"></i>' + html; $('#sheet').classList.add('open'); $('#sveil').classList.add('on'); }
+function closeSheet() { $('#sheet').classList.remove('open'); $('#sveil').classList.remove('on'); }
+function menu(trigger, items, cur, onPick) {
+  const pr = phone.getBoundingClientRect(), r = trigger.getBoundingClientRect();
+  const veil = Object.assign(document.createElement('div'), { className: 'mveil' });
+  const m = Object.assign(document.createElement('div'), { className: 'menu' });
+  m.innerHTML = items.map(t => `<button class="${t === cur ? 'cur' : ''}">${t}</button>`).join('');
+  phone.append(veil, m);
+  const h = m.offsetHeight, w = Math.max(r.width, 200);
+  const left = Math.min(r.left - pr.left, pr.width - w - 12), top = Math.max(12, Math.min(r.top - pr.top, pr.height - h - 12));
+  Object.assign(m.style, { left: left + 'px', top: top + 'px', width: w + 'px', '--ox': (r.left - pr.left - left + r.width / 2) + 'px', '--oy': (r.top - pr.top - top + r.height / 2) + 'px' });
+  const close = () => { m.classList.add('out'); veil.remove(); setTimeout(() => m.remove(), 90); };
+  veil.onclick = close;
+  m.onclick = (e) => { const b = e.target.closest('button'); if (b) { close(); onPick(b.textContent); } };
+}
+function toast(msg) {
+  phone.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = Object.assign(document.createElement('div'), { className: 'toast', textContent: msg });
+  phone.append(t); setTimeout(() => t.remove(), 1800);
+}
+let lineI = -1;
+const lineSheet = (i) => {
+  const l = S.cart[i];
+  sheet(`<h3>${l.name}</h3><div class="qty"><button data-q="-1">−</button><b class="num">${qtyText(l.qty)}</b><button data-q="1">+</button></div>
+    <div class="acts"><button class="link" data-act="remove" data-i="${i}">Remove</button><button class="go" data-act="close-sheet"><span class="l">Done</span></button></div>`);
+  lineI = i;
+};
+
+const cartOpen = (on) => { $('#cart').classList.toggle('open', on); if (V === 'b') $('#cveil').classList.toggle('on', on); };
+
+phone.addEventListener('click', (e) => {
+  const go = e.target.closest('[data-go]'); if (go) { location.search = go.dataset.go; return; }
+  const tile = e.target.closest('[data-tile]');
+  if (tile) {
+    const it = ITEMS[+tile.dataset.tile];
+    if (!it.o) return add(it.n, it.p, it.n);
+    return sheet(`<h3>${it.n}</h3><div class="list">${it.o.map(([o, p], k) => `<button class="opt" data-pick="${tile.dataset.tile}|${k}"><span>${o}</span><small class="num">${peso(p)}</small></button>`).join('')}</div>`);
+  }
+  const pick = e.target.closest('[data-pick]');
+  if (pick) { const [i, o] = pick.dataset.pick.split('|'), it = ITEMS[+i]; const [on, op] = it.o[+o]; add(`${it.n} ${on}`, op, it.n); return closeSheet(); }
+  const line = e.target.closest('[data-line]'); if (line) return lineSheet(+line.dataset.line);
+  const q = e.target.closest('[data-q]');
+  if (q) { const i = lineI, l = S.cart[i]; l.qty = Math.max(1, l.qty + +q.dataset.q); render(); return lineSheet(i); }
+  const m = e.target.closest('[data-method]');
+  if (m) { S.method = m.dataset.method; S.got = null; return renderPay(S.method === 'Cash' ? 'cash' : 'other'); }
+  const g = e.target.closest('[data-got]'); if (g) { S.got = +g.dataset.got; return renderPay('cash'); }
+  const c = e.target.closest('[data-cust]'); if (c) { S.cust = c.dataset.cust; renderCart(); return closeSheet(); }
+  const d = e.target.closest('[data-disc]'); if (d) { const [nm, v] = DISCS[+d.dataset.disc]; S.disc = v; S.discName = nm; render(); return closeSheet(); }
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  const act = a.dataset.act;
+  if (act === 'menu') { $('#drawer').classList.add('open'); $('#veil').classList.add('on'); }
+  if (act === 'close-drawer') { $('#drawer').classList.remove('open'); $('#veil').classList.remove('on'); }
+  if (act === 'scan') toast('Camera scanner opens here');
+  if (act === 'open-cart') { $('#pay').classList.remove('open'); cartOpen(true); }
+  if (act === 'close-cart') cartOpen(false);
+  if (act === 'pay') { renderPay(); $('#pay').classList.add('open'); }
+  if (act === 'close-pay') $('#pay').classList.remove('open');
+  if (act === 'complete') renderPay('done');
+  if (act === 'new') { fresh(); $('#pay').classList.remove('open'); cartOpen(false); render(); }
+  if (act === 'close-sheet') closeSheet();
+  if (act === 'remove') { S.cart.splice(+a.dataset.i, 1); render(); closeSheet(); }
+  if (act === 'toast') toast(a.dataset.msg);
+  if (act === 'ful') menu(a, FULS, S.ful, (v) => { S.ful = v; renderCart(); });
+  if (act === 'more') menu(a, ['Save cart', 'Print quote', 'Lost sale', 'Clear sale'], '', (v) => {
+    if (v === 'Clear sale') { fresh(); render(); } else toast(v);
+  });
+  if (act === 'cust') sheet(`<label class="find">${svg('search')}<input id="cq" placeholder="Search customers" autocomplete="off"></label><div class="list">
+    <button class="opt${S.cust ? '' : ' cur'}" data-cust=""><span>Walk-in customer</span></button>
+    ${CUSTOMERS.map(n => `<button class="opt${S.cust === n ? ' cur' : ''}" data-cust="${n}"><span>${n}</span></button>`).join('')}</div>`);
+  if (act === 'disc') sheet(`<div class="list">${DISCS.map(([nm, v], i) => `<button class="opt${S.discName === nm ? ' cur' : ''}" data-disc="${i}"><span>${nm}</span><small class="num">${v ? v + '%' : ''}</small></button>`).join('')}</div>`);
+});
+$('#q').addEventListener('input', (e) => { S.q = e.target.value; renderGrid(); });
+$('#sheet').addEventListener('input', (e) => { if (e.target.id !== 'cq') return; const q = e.target.value.trim().toLowerCase();
+  $('#sheet').querySelectorAll('[data-cust]').forEach(b => { b.style.display = q && !b.textContent.toLowerCase().includes(q) ? 'none' : ''; }); });
+
+// B: drag the sheet's grab bar down to close it
+if (V === 'b') {
+  const cart = $('#cart'); let y0 = null;
+  cart.addEventListener('pointerdown', (e) => { if (e.clientY - cart.getBoundingClientRect().top < 28) { y0 = e.clientY; cart.style.transition = 'none'; } });
+  addEventListener('pointermove', (e) => { if (y0 != null) cart.style.transform = `translateY(${Math.max(0, e.clientY - y0)}px)`; });
+  const end = (e) => { if (y0 == null) return; const dy = e.type === 'pointercancel' ? 0 : e.clientY - y0; y0 = null; cart.style.transition = cart.style.transform = ''; if (dy > 80) cartOpen(false); };
+  addEventListener('pointerup', end); addEventListener('pointercancel', end);
+}
+render();
+})();
+</script>
+</body>
+</html>
