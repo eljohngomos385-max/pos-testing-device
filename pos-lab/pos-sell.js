@@ -1276,12 +1276,12 @@ function useDeviceDeliveryLocation() {
 // The same fields, words and check as the back office's dialog (bo-model CUSTOMER_FIELDS). `c` = edit that one.
 function openCustomerEditModal(c = null) {
   state.customerEditing = c;
-  // Apple's contact card (owner 2026-10-08): blocks of fields, the words inside the boxes, credit a switch whose limit shows when on
+  // blocks of fields, each word at the side of its box (owner 2026-10-08); credit a switch whose limit shows when on
   const F = {};
-  customerFieldsHtml(c || {}, { cls: 'cs-i', wrap: (f, control) => { F[f.name] = f.name === 'creditLimit' ? control : control.replace('<input ', `<input placeholder="${f.label}" aria-label="${f.label}" `); return ''; } });
+  customerFieldsHtml(c || {}, { cls: 'cs-i', wrap: (f, control) => { F[f.name] = `<label class="cs-row${f.name === 'creditLimit' ? ' cs-lim' : ''}"><span>${f.label}</span>${f.name === 'creditLimit' ? control : control.replace('<input ', `<input placeholder="Add ${f.label.toLowerCase()}" `)}</label>`; return ''; } });
   $('#custFields').innerHTML = `<div class="cs-grp">${F.name}${F.phone}${F.email}</div><div class="cs-grp">${F.address}</div>
     <div class="cs-grp"><label class="cs-row"><span>Credit</span><input type="checkbox" class="sw" name="creditOn"${normalizeCustomer(c || {}).creditOn ? ' checked' : ''}></label>
-    <label class="cs-row cs-lim"><span>Credit limit</span>${F.creditLimit}</label></div><div class="co-error" id="custDup" hidden></div>`;
+    ${F.creditLimit}</div><div class="co-error" id="custDup" hidden></div>`;
   const name = $('#custFields [name="name"]'), title = () => { $('#customerEditTitle').textContent = name.value.trim() || (c ? 'Edit customer' : 'New customer'); };
   name.addEventListener('input', title); title();   // the title types along with the name
   // the tablet: over the page's main pane, as the edit sheet is on Sell; the phone: a full page wherever it sits

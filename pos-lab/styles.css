@@ -3724,10 +3724,11 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 /* a block: one soft card, its fields split by an inset hairline (Apple's contact card) */
 .cs-grp { overflow: hidden; border-radius: var(--es-r); background: var(--tile); }
 .cs-i { display: block; width: 100%; height: 52px; padding: 0 16px; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 15px; }
-.cs-i::placeholder { color: var(--ink-tertiary); }
+.cs-i::placeholder { color: var(--ink-quaternary); }   /* a faint hint, lighter than the word at the side */
 .cs-grp .cs-i:focus-visible { outline: 0; }   /* the caret is the focus, as in Contacts; .lv's blue ring boxed one line of the block */
 .cs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 16px; color: var(--ink); font-size: 15px; cursor: pointer; }
-.cs-row .cs-i { flex: 1; min-width: 0; padding: 0; text-align: right; appearance: textfield; }
+.cs-row > span { flex: 0 0 96px; color: var(--ink-tertiary); }   /* the word at the side, values line up after it */
+.cs-row .cs-i { flex: 1; min-width: 0; padding: 0; appearance: textfield; }
 .cs-row .cs-i::-webkit-inner-spin-button, .cs-row .cs-i::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .cs-grp > * + * { background: linear-gradient(var(--line), var(--line)) 16px 0 / 100% 1px no-repeat; }
 .cs-grp:has(.sw:not(:checked)) .cs-lim { display: none; }   /* the limit only when credit is on */
