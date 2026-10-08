@@ -3719,10 +3719,18 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .cs-body { flex: 1; min-height: 0; display: flex; overflow-y: auto; padding: 64px 24px 24px; }
 .cs-in { width: min(420px, 100%); margin: auto; }   /* centred, and scrolls from the top when taller than the card */
 .cs-h { margin: 0 0 20px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; text-align: center; }
-#custFields { display: flex; flex-direction: column; gap: 12px; }
-.cs-f { display: flex; flex-direction: column; gap: 6px; color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
-.cs-f .es-ta { height: 48px; padding-block: 0; color: var(--ink); }
-.cs-f .es-ta:focus-visible { outline: 0; }   /* the soft ring is the focus; .lv's blue one doubled it on the Customers page */
+#custFields { display: flex; flex-direction: column; gap: 16px; }
+.cs-h { overflow-wrap: anywhere; }   /* it types the name along */
+/* a block: one soft card, its fields split by an inset hairline (Apple's contact card) */
+.cs-grp { overflow: hidden; border-radius: var(--es-r); background: var(--tile); }
+.cs-i { display: block; width: 100%; height: 52px; padding: 0 16px; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 15px; }
+.cs-i::placeholder { color: var(--ink-tertiary); }
+.cs-grp .cs-i:focus-visible { outline: 0; }   /* the caret is the focus, as in Contacts; .lv's blue ring boxed one line of the block */
+.cs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 16px; color: var(--ink); font-size: 15px; cursor: pointer; }
+.cs-row .cs-i { flex: 1; min-width: 0; padding: 0; text-align: right; appearance: textfield; }
+.cs-row .cs-i::-webkit-inner-spin-button, .cs-row .cs-i::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.cs-grp > * + * { background: linear-gradient(var(--line), var(--line)) 16px 0 / 100% 1px no-repeat; }
+.cs-grp:has(.sw:not(:checked)) .cs-lim { display: none; }   /* the limit only when credit is on */
 @media (prefers-reduced-motion: reduce) { .esheet, .esheet.open, .scan-sheet, .scan-sheet.open { transition: none; } .es-body .es-col, .es-keys { animation: none !important; } }
 
 /* Section label + quantity stepper: the cart line editor's (and the tier inputs') */
@@ -7713,11 +7721,12 @@ body.light-theme .lv .in[type=date] { color-scheme: light; }
 .lv .pills { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
 .lv .pills button { height: 32px; padding: 0 12px; border-radius: 8px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); color: var(--ink-secondary); font-size: 13px; font-weight: 500; }
 .lv .pills button.cur { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
-.lv .sw { appearance: none; position: relative; flex: none; width: 40px; height: 24px; margin: 0; border-radius: 12px; background: var(--surface-hover); cursor: pointer; transition: background-color .15s; }
-body.light-theme .lv .sw:not(:checked) { background: var(--bg-soft); }   /* :not -- it outranked :checked, so an on switch stayed grey */
-.lv .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s var(--rl-ease); }
-.lv .sw:checked { background: var(--rl-on); }
-.lv .sw:checked::after { transform: translateX(16px); }
+:is(.lv, .cust-sheet) .sw { appearance: none; position: relative; flex: none; width: 40px; height: 24px; margin: 0; border-radius: 12px; background: var(--surface-hover); cursor: pointer; transition: background-color .15s; }
+body.light-theme :is(.lv, .cust-sheet) .sw:not(:checked) { background: var(--bg-soft); }   /* :not -- it outranked :checked, so an on switch stayed grey */
+body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }   /* on the grey block the usual off track vanished */
+:is(.lv, .cust-sheet) .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s var(--rl-ease); }
+:is(.lv, .cust-sheet) .sw:checked { background: var(--rl-on); }
+:is(.lv, .cust-sheet) .sw:checked::after { transform: translateX(16px); }
 /* the variants: a table of inputs, as in the back office family editor */
 .lv .vt-wrap { overflow-x: auto; }
 .lv .vt { display: grid; grid-template-columns: minmax(110px,1fr) 120px 110px 76px 76px 44px 60px 28px; align-items: center; gap: 8px; min-width: 686px; padding: 6px 16px; border-top: 1px solid var(--line); }

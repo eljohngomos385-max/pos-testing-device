@@ -1276,22 +1276,28 @@ function useDeviceDeliveryLocation() {
 // The same fields, words and check as the back office's dialog (bo-model CUSTOMER_FIELDS). `c` = edit that one.
 function openCustomerEditModal(c = null) {
   state.customerEditing = c;
-  $('#customerEditTitle').textContent = c ? 'Edit customer' : 'New customer';
-  $('#custFields').innerHTML = customerFieldsHtml(c || {}, { cls: 'es-ta', wrap: (f, control) => `<label class="cs-f"><span>${f.label}</span>${control}</label>` })
-    + '<div class="co-error" id="custDup" hidden></div>';
+  // Apple's contact card (owner 2026-10-08): blocks of fields, the words inside the boxes, credit a switch whose limit shows when on
+  const F = {};
+  customerFieldsHtml(c || {}, { cls: 'cs-i', wrap: (f, control) => { F[f.name] = f.name === 'creditLimit' ? control : control.replace('<input ', `<input placeholder="${f.label}" aria-label="${f.label}" `); return ''; } });
+  $('#custFields').innerHTML = `<div class="cs-grp">${F.name}${F.phone}${F.email}</div><div class="cs-grp">${F.address}</div>
+    <div class="cs-grp"><label class="cs-row"><span>Credit</span><input type="checkbox" class="sw" name="creditOn"${normalizeCustomer(c || {}).creditOn ? ' checked' : ''}></label>
+    <label class="cs-row cs-lim"><span>Credit limit</span>${F.creditLimit}</label></div><div class="co-error" id="custDup" hidden></div>`;
+  const name = $('#custFields [name="name"]'), title = () => { $('#customerEditTitle').textContent = name.value.trim() || (c ? 'Edit customer' : 'New customer'); };
+  name.addEventListener('input', title); title();   // the title types along with the name
   // the tablet: over the page's main pane, as the edit sheet is on Sell; the phone: a full page wherever it sits
   // ponytail: Sell (its picker) and Customers are the only ways in
   const sh = $('#customerEditModal'), frame = state.view === 'customers' ? $('#customersView') : $('.catalog-wrap');
   if (sh.parentNode !== frame) { frame.append(sh); void sh.offsetWidth; }   // moved: settle first, so it still slides up
   sh.classList.add('open');
-  setTimeout(() => $('#custFields [name="name"]').focus(), 50);
+  setTimeout(() => name.focus(), 50);
 }
 function closeCustomerEditModal() { $('#customerEditModal').classList.remove('open'); }
 // Credit on/off and the limit are a manager's call (TILL_ACTIONS.credit, owner 2026-10-06); `by` = who approved it.
 // Only a change to them asks: fixing a phone number never needs a PIN.
 function saveSavedCustomerFromModal(by = '') {
   const was = state.customerEditing;
-  const values = Object.fromEntries($$('#custFields [name]').map(el => [el.name, el.value]));
+  const values = Object.fromEntries($$('#custFields [name]').map(el => [el.name, el.type === 'checkbox' ? (el.checked ? 'on' : '') : el.value]));
+  if (!values.creditOn) values.creditLimit = '';   // credit off hides the limit: a stale one there can't block Save
   const { customer, error, field } = customerFromForm(values, was);
   if (error) { showToast(error); $(`#custFields [name="${field}"]`).focus(); return; }
   // Someone else has this phone (bo-model phoneOwner): say so once and offer them; saving again adds anyway.
