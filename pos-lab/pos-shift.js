@@ -89,7 +89,8 @@ function renderShift() {
   if (!s) {
     const last = shiftOf(true);
     body.innerHTML = `<div class="c-body">
-      ${icard('', field('Start cash', num('start')) + '<button type="button" class="fr add" data-sh="open">Open shift</button>', 'The cash in the drawer before the first sale.')}
+      ${icard('', field('Start cash', num('start')), 'The cash in the drawer before the first sale.', ' r')}
+      ${icard('', '<button type="button" class="fr add" data-sh="open">Open shift</button>')}
       ${last ? `<div class="sh-last"><span>Last close · ${escapeHtml(fmtOrderTime(last.close.ts))}</span><button type="button" class="act" data-sh="reprint">Print again</button></div>
         <div class="paper-scroll"><pre class="rp-paper sh-slip">${escapeHtml(HWPOS_PRINTER.slipText(shiftSlip(last), printerConfig()))}</pre></div>` : ''}
     </div>`;
@@ -109,12 +110,12 @@ function renderShift() {
       f.cashIn ? row('Cash in', peso(f.cashIn)) : '',
       f.cashOut ? row('Cash out', peso(-f.cashOut)) : '',
       row('<b>Expected</b>', `<b>${peso(f.expected)}</b>`),
-    ].join(''))}
+    ].join(''), '', ' r')}
     ${roleCan(state.role, 'dayTotals') ? shiftSalesCard(s, row) : ''}
     ${icard('Cash in / out', field('Amount', num('amt')) + field('Note', `<input class="in" data-f="note" value="${escapeHtml(shiftDraft.note)}" placeholder="Add a note" maxlength="80" autocomplete="off">`)
-      + '<button type="button" class="fr add" data-sh="in">Cash in</button><button type="button" class="fr add" data-sh="out">Cash out</button>')}
+      + '<button type="button" class="fr add" data-sh="in">Cash in</button><button type="button" class="fr add" data-sh="out">Cash out</button>', '', ' r')}
     ${moves ? icard('', moves) : ''}
-    ${icard('Close', field('Counted', num('counted')) + '<div class="fr"><span class="lb">Over / short</span><span class="v num" id="shiftDiff"></span></div>' + '<button type="button" class="fr add" data-sh="close">Close shift</button>')}
+    ${icard('Close', field('Counted', num('counted')) + '<div class="fr"><span class="lb">Over / short</span><span class="v num" id="shiftDiff"></span></div>' + '<button type="button" class="fr add" data-sh="close">Close shift</button>', '', ' r')}
   </div>`;
   paintShiftDiff(f.expected);
 }
@@ -130,7 +131,7 @@ function shiftSalesCard(s, row) {
     row(`Refunds${count(t.refundCount)}`, neg(t.refunds)),
     row(`Voids${count(t.voidCount)}`, neg(t.voids)),
     row('Discounts', neg(t.discounts)),
-  ].join(''), 'This till since the shift opened.');
+  ].join(''), 'This till since the shift opened.', ' r');
 }
 
 // The live Over / short under Counted: empty until a count (0 or more) is typed; short in red.

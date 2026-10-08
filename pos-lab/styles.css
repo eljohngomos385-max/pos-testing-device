@@ -3716,21 +3716,23 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 /* New / Edit customer: the frame, a title and the back office's fields, Save where Done is */
 #customersView { position: relative; }
 @media (min-width: 721px) { #customersView > .cust-sheet { grid-area: 1 / 2 / 2 / 3; padding: 8px 0; } }   /* every line named: an auto end is the padding edge */   /* the Customers page: over the customer pane, the list stays */
-.cs-body { flex: 1; min-height: 0; display: flex; overflow-y: auto; padding: 64px 24px 24px; }
-.cs-in { width: min(420px, 100%); margin: auto; }   /* centred, and scrolls from the top when taller than the card */
-.cs-h { margin: 0 0 20px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; text-align: center; }
-#custFields { display: flex; flex-direction: column; gap: 16px; }
-.cs-h { overflow-wrap: anywhere; }   /* it types the name along */
+.cs-body { flex: 1; min-height: 0; display: flex; overflow-y: auto; padding: 78px 24px 24px; }   /* 26 under the bar, as the item editor's */
+.cs-in { width: min(420px, 100%); margin: 0 auto; }   /* from the top, as the item editor's */
+/* the title small and centred in the top bar, between ✕ / ‹ and Save (the item editor's .fm-h) */
+.cs-h { position: absolute; z-index: 1; top: 12px; inset-inline: 0; margin: 0; padding-inline: 64px; pointer-events: none; color: var(--ink);
+        font-size: 16px; font-weight: 600; line-height: 40px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#custFields { display: flex; flex-direction: column; gap: 12px; }
 /* a block: one soft card, its fields split by an inset hairline (Apple's contact card) */
-.cs-grp { overflow: hidden; border-radius: var(--es-r); background: var(--tile); }
+.cust-sheet, .cust-sheet .es-card { background: var(--canvas, var(--bg)); }
+.cs-grp { overflow: hidden; border-radius: var(--rl-r); background: var(--rl-card); }
 .cs-i { display: block; width: 100%; height: 52px; padding: 0 16px; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 15px; }
 .cs-i::placeholder { color: var(--ink-quaternary); }   /* a faint hint, lighter than the word at the side */
 .cs-grp .cs-i:focus-visible { outline: 0; }   /* the caret is the focus, as in Contacts; .lv's blue ring boxed one line of the block */
-.cs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 16px; color: var(--ink); font-size: 15px; cursor: pointer; }
-.cs-row > span { flex: 0 0 96px; color: var(--ink-tertiary); }   /* the word at the side, values line up after it */
-.cs-row .cs-i { flex: 1; min-width: 0; padding: 0; appearance: textfield; }
+.cs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 0 16px; color: var(--ink); font-size: 15px; cursor: pointer; }
+.cs-row > span { flex: none; color: var(--ink-secondary); }   /* the word grey at the side, its value on the right edge (the item editor's) */
+.cs-row .cs-i { flex: 1; min-width: 0; height: 48px; padding: 0; appearance: textfield; text-align: right; }
 .cs-row .cs-i::-webkit-inner-spin-button, .cs-row .cs-i::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.cs-grp > * + * { background: linear-gradient(var(--line), var(--line)) 16px 0 / 100% 1px no-repeat; }
+.cs-grp > * + * { background: linear-gradient(var(--rl-div), var(--rl-div)) 16px 0 / 100% 1px no-repeat; }
 .cs-grp:has(.sw:not(:checked)) .cs-lim { display: none; }   /* the limit only when credit is on */
 @media (prefers-reduced-motion: reduce) { .esheet, .esheet.open, .scan-sheet, .scan-sheet.open { transition: none; } .es-body .es-col, .es-keys { animation: none !important; } }
 
@@ -4937,7 +4939,7 @@ body.light-theme .orders-search-wrap input:focus {
 /* Back-office blocks: the F9 fill with a hairline ring, drawn inset so the grid's overflow can't clip it;
    shape and type live on the base rules so both themes match */
 body.light-theme .view-sell .content-row,
-body.light-theme:has(.view-sell.active) { background: var(--canvas); }   /* the body too: Safari tints the status bar with it */
+body.light-theme:has(:is(.view-sell, .view-settings, .view-shift, .view-customers).active) { background: var(--canvas); }   /* the body too: Safari tints the status bar with it */
 body.light-theme #catalogSearchRow { --rl-soft: var(--surface-2); }   /* ☰, search, scan: white like the cards on the grey page */
 body.light-theme .product-card,
 body.light-theme .product-card.pc-group { background: var(--surface-2); }
@@ -7460,9 +7462,13 @@ body.light-theme {
   .esheet .es-x .ix { display: none; }
   .esheet .es-x :is(.ib, .xl) { display: block; }
   .esheet .es-x .ib { stroke-width: 2; color: var(--ink-secondary); }
-  .cust-sheet .es-ft { position: absolute; z-index: 1; top: 5.25px; right: 10px; padding: 0; }   /* the phone: Save at the top, across from Back */
-  .cs-body { padding: 56px 16px 24px; }
-  .cs-in { margin-top: 0; }
+  .cust-sheet .es-ft { position: absolute; z-index: 1; top: 8px; right: 10px; padding: 0; }
+  .cust-sheet .es-ink { height: var(--bar-h); padding: 0 6px; background: none; font-size: 15px; font-weight: 600; }   /* bare words, the item editor's Save */   /* the phone: Save at the top, across from Back */
+  .cs-body { padding: 78px 16px 24px; }
+  .cust-sheet .es-x { top: 8px; left: 4px; width: 32px; min-width: 0; padding: 0; justify-content: center; }   /* the item editor's ‹ (.sq.back) */
+  .cust-sheet .es-x .xl { display: none; }
+  .cust-sheet .es-x .ib { width: 24px; height: 24px; stroke-width: 1.8; color: var(--ink); }
+  .cs-h { top: 8px; padding-inline: 80px; font-size: 15px; line-height: 44px; }   /* 80 = Save (~70) + its 10 from the edge */
   .toast { bottom: calc(var(--bar-h) + 16px + var(--ph-b)); }   /* clear of the bar and Check out */
   body:has(#app.ph-cart) .toast { bottom: calc(var(--bar-h) + 68px + var(--ph-b)); }   /* over Walk-in | Discount */
   .catalog-wrap:has(> .vsheet.open) { z-index: 98; background: var(--bg); }   /* the customer list (and variants) opened from the cart page come over it */
@@ -7600,20 +7606,19 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
   .lv .o-rail .list { border-bottom: 0; border-radius: var(--rl-r) var(--rl-r) 0 0; }
   .lv .o-rail .lines { margin-bottom: 0; padding-bottom: var(--ph-safe, 0px); }
   .lv .paper-scroll { padding: 1px 4px calc(21px + var(--ph-safe, 0px)); }   /* 16px in with .o-main's 12, as the Show receipt sheet: the edge shows */
-  .lv .o-main { position: absolute; inset: 0; z-index: 5; padding: 16px 12px 0; background: var(--bg); transform: translateX(100%); transition: transform .28s var(--rl-ease); }
+  .lv .o-main { position: absolute; inset: 0; z-index: 5; padding: 16px 12px 0; background: var(--canvas, var(--bg)); transform: translateX(100%); transition: transform .28s var(--rl-ease); }
   .lv .ov.reading .o-main { transform: none; }
   .lv .o-top .back { display: inline-flex; }
 }
 
 /* ---------- Customers: the Orders shape; the facts in the item editor's cards, read-only, values right ---------- */
 .lv .c-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(21px + var(--ph-safe, 0px)); scrollbar-width: thin; }
-.lv .c-body { display: grid; gap: 20px; }
+:is(.view-settings, .view-shift, .view-customers).lv { background: var(--canvas, var(--bg)); }   /* the item editor's page: white blocks on grey (owner 2026-10-09) */
+.lv .c-body { display: grid; gap: 12px; }
 .lv .c-body { width: min(100%, 600px); margin-inline: auto; padding-top: 16px; }   /* a short page: centred like the receipt paper; the top bar stays full width like Orders */
 .lv .c-body .fr { grid-template-columns: auto minmax(0,1fr); gap: 16px; min-height: 46px; padding: 6px 16px; }   /* label left, value right at every width */
 .lv .c-body .fr > .v { min-width: 0; text-align: right; overflow-wrap: anywhere; }
 .lv .c-body .fr > .v.over { color: var(--danger); }
-#customerBody .fr { grid-template-columns: 120px minmax(0,1fr); }   /* rednote: the word in a column, its value just after it */
-#customerBody .fr > .v { text-align: left; }
 .lv .c-body .fr .lim { color: var(--danger); font-size: 13px; font-weight: 500; }
 .lv .c-body .fr .lim.warn { color: var(--warn); }
 .lv .c-body .fr small { color: var(--ink-tertiary); font-size: inherit; }
@@ -7721,7 +7726,7 @@ body.light-theme .lv .thumb { background: hsl(var(--h) 50% 92%); color: hsl(var(
 /* an action on a tile is blue words, no box (Apple's) */
 .lv :is(.fc, .fc-t) .link { color: var(--ink); text-decoration: none; }
 body .lv .fc .fr .act:not(.st-pick) { min-width: 0; padding: 0; background: none; box-shadow: none; color: var(--ink); font-size: 15px; font-weight: 500; }
-.lv .fc .st-sel select { padding: 0 24px 0 0; text-align-last: left; color: var(--ink-tertiary); }
+.lv .fc .st-sel select { padding: 0 22px 0 0; text-align-last: right; color: var(--ink); }   /* the time zone reads like the other dropdowns */
 .lv .fc .st-sel .ic { right: 0; }
 .lv .editor.sub .e-top > .acts { visibility: hidden; }
 /* the title: small, centred in the top bar, the name repeated but quiet (rednote's Edit profile, Apple's) */
@@ -7975,7 +7980,8 @@ input.es-ta { height: 56px; }
    left, its control right at every width: a choice is a dropdown (.st-pick opens the ⋯ menu's morph), a yes/no
    the item editor's switch (.sw). The rows a printer doesn't use are [hidden]. */
 .st-page .head { align-items: center; }
-.st-ttl { margin: 0 0 0 8px; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.st-page .head { position: relative; }
+.st-ttl { position: absolute; inset: 0; display: grid; place-content: center; margin: 0; pointer-events: none; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }   /* centred on the page, ☰ beside it (owner 2026-10-09) */
 .st-page .fr[hidden], .st-prn[hidden] { display: none; }
 .lv .st-page .fr { min-height: 48px; }   /* a switch row as tall as a dropdown row */
 .st-page label.fr { cursor: pointer; }

@@ -67,8 +67,8 @@ function renderCustomerDetail() {
       <div class="rt"><span class="amt num">${amt == null ? '—' : peso(amt)}</span><small>${escapeHtml(orderPayText(o))}</small></div></button>`;
   };
   body.innerHTML = `<div class="c-body">
-    <section class="card fc">${contact}</section>
-    <section class="card fc">
+    <section class="card fc r">${contact}</section>
+    <section class="card fc r">
       ${row('Balance', peso(c.currentBalance || 0), over ? 'num over' : 'num')}
       ${row('Available credit', limitText(c) || `${peso(creditRoom(c))} <small>of ${peso(c.creditLimit)}</small>`, 'num')}</section>
     <h3 class="fc-t">Recent orders${orders.length > 10 ? `<button type="button" class="link" data-customer-detail>See all ${orders.length}</button>` : ''}</h3><section class="card fc c-ord">

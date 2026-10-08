@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=224" />
+  <link rel="stylesheet" href="styles.css?v=229" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -194,7 +194,8 @@
                  page moves it into its own pane (openCustomerEditModal) -->
             <div class="esheet cust-sheet" id="customerEditModal" role="dialog" aria-labelledby="customerEditTitle"><div class="es-card">
               <button type="button" class="es-x" data-cust-close aria-label="Close"><svg class="ix" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><svg class="ib" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span class="xl">Back</span></button>
-              <div class="cs-body"><div class="cs-in"><h2 class="cs-h" id="customerEditTitle">New customer</h2><div id="custFields"></div></div></div><!-- bo-model CUSTOMER_FIELDS, the same form as the back office -->
+              <h2 class="cs-h" id="customerEditTitle">New customer</h2>
+              <div class="cs-body"><div class="cs-in"><div id="custFields"></div></div></div><!-- bo-model CUSTOMER_FIELDS, the same form as the back office -->
               <div class="es-ft"><button type="button" class="es-ink" id="custSaveBtn">Save</button></div>
             </div></div>
           </div>
@@ -782,14 +783,14 @@
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=45"></script>
   <script src="pos-core.js?v=13"></script>
-  <script src="pos-sell.js?v=41"></script>
+  <script src="pos-sell.js?v=42"></script>
   <script src="pos-checkout.js?v=8"></script>
   <script src="pos-orders.js?v=16"></script>
   <script src="pos-items.js?v=19"></script>
-  <script src="pos-customers.js?v=14"></script>
+  <script src="pos-customers.js?v=15"></script>
   <script src="pos-settings.js?v=4"></script>
   <script src="pos-pin.js?v=3"></script>
-  <script src="pos-shift.js?v=3"></script>
+  <script src="pos-shift.js?v=4"></script>
   <script src="app.js?v=140"></script>
 </body>
 </html>

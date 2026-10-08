@@ -1282,8 +1282,8 @@ function openCustomerEditModal(c = null) {
   $('#custFields').innerHTML = `<div class="cs-grp">${F.name}${F.phone}${F.email}</div><div class="cs-grp">${F.address}</div>
     <div class="cs-grp"><label class="cs-row"><span>Credit</span><input type="checkbox" class="sw" name="creditOn"${normalizeCustomer(c || {}).creditOn ? ' checked' : ''}></label>
     ${F.creditLimit}</div><div class="co-error" id="custDup" hidden></div>`;
-  const name = $('#custFields [name="name"]'), title = () => { $('#customerEditTitle').textContent = name.value.trim() || (c ? 'Edit customer' : 'New customer'); };
-  name.addEventListener('input', title); title();   // the title types along with the name
+  const name = $('#custFields [name="name"]');
+  $('#customerEditTitle').textContent = c ? 'Edit customer' : 'New customer';   // a fixed title in the bar (owner 2026-10-09), the Name row shows the name
   // the tablet: over the page's main pane, as the edit sheet is on Sell; the phone: a full page wherever it sits
   // ponytail: Sell (its picker) and Customers are the only ways in
   const sh = $('#customerEditModal'), frame = state.view === 'customers' ? $('#customersView') : $('.catalog-wrap');
