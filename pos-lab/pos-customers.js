@@ -26,13 +26,11 @@ function renderCustomers() {
     state.selectedCustomerId = filtered[0].id;
   }
 
-  // The Orders rail: a band (how many, what they owe), then name + phone, the balance only when owed.
+  // The Orders rail with no head (owner 2026-10-09): name + phone, the balance only when owed.
   if (list) {
-    const owed = moneyValue(filtered.reduce((t, c) => t + Math.max(0, c.currentBalance || 0), 0));
     list.innerHTML = !filtered.length
       ? `<div class="empty"><b>${q ? 'No matches' : 'No customers yet'}</b><span>${q ? 'Try a different name or phone.' : 'Tap + to add your first customer.'}</span></div>`
-      : `<div class="band"><span class="num">${SalesMath.plural(filtered.length, 'customer')}</span>${owed > 0 ? `<span class="num">${peso(owed)} owed</span>` : ''}</div>`
-        + filtered.map(c => `<button type="button" class="row${c.id === state.selectedCustomerId ? ' cur' : ''}" data-customer-id="${escapeHtml(c.id)}">
+      : filtered.map(c => `<button type="button" class="row${c.id === state.selectedCustomerId ? ' cur' : ''}" data-customer-id="${escapeHtml(c.id)}">
         <div class="nm"><span>${escapeHtml(c.name)}</span><small class="num">${escapeHtml(c.phone || 'No phone')}</small></div>
         ${(c.currentBalance || 0) > 0 ? `<div class="rt"><span class="amt num">${peso(c.currentBalance)}</span></div>` : ''}</button>`).join('');
   }

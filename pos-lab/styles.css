@@ -7657,6 +7657,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 @media (prefers-reduced-motion: reduce) { .lv .kinds.slid::before { transition: none; } }
 .lv .more[hidden] { display: none; }
 .lv .cols.k2 { grid-template-columns: minmax(0,1fr) 110px; }
+.lv .band.k2 { display: none; }   /* Categories, Modifiers, Discounts: no head, the rows say it (owner 2026-10-09) */
 .lv .cols.k2 > :last-child { display: block; text-align: right; }   /* the phone hides a column 2; here it is the count */
 .lv .cols.k2 .tx small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lv .stk-low { color: var(--warn) !important; }
@@ -8014,30 +8015,30 @@ body.light-theme .st-sel select { color-scheme: light; }
 /* ===== Orders on the item editor's pattern (owner 2026-10-09, from orders-lab.html) =====
    Grey page; each day is its own block headed by the grey date strip; hairlines between orders; bare bar actions.
    Scoped to .view-orders (Customers shares .o-rail) and kept last so it outranks the .lv .o-rail rules above. */
-.view-orders.lv { background: var(--canvas, var(--bg)); }
-body.light-theme:has(.view-orders.active) { background: var(--canvas); }
+:is(.view-orders, .view-items).lv { background: var(--canvas, var(--bg)); }
+body.light-theme:has(:is(.view-orders, .view-items).active) { background: var(--canvas); }
 
-/* the list: no outer card; each day = its own block, headed by today's grey date strip.
+/* the list: no outer card; each day = its own block, headed by today's grey date strip. Customers and Items too, Apple's
+   grouped list: the block ends at its last row, never runs to the bottom (owner 2026-10-09).
    Each row rings itself (the Sell search bar's ring + shadow); neighbours' rings overlap into one full-width hairline.
    The head is sticky: its canvas square hides rows scrolling under it, the rounded strip + ring sit on ::before (z -1 inside the band) */
-.view-orders .o-rail .list { border: 0; border-radius: 0; background: none; box-shadow: none; }
-.view-orders .o-rail .lines { margin-bottom: 0; padding-inline: 1px; padding-bottom: calc(16px + var(--ph-safe, 0px)); }
-.view-orders .o-rail .band { height: 36px; margin-top: 16px; padding: 0 16px; border: 0; background: var(--canvas, var(--bg));
+:is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .list { border: 0; border-radius: 0; background: none; box-shadow: none; }
+:is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .lines { margin-bottom: 0; padding-inline: 1px; padding-bottom: calc(16px + var(--ph-safe, 0px)); }
+.view-items .page .lines { padding-bottom: 88px; }   /* room under the last row for + */
+.view-items .band:has(+ #itemsRows > .empty) { display: none; }   /* no rows: no head hanging over nothing */
+:is(.view-orders .o-rail, .view-items .page) .band { height: 36px; margin-top: 16px; padding: 0 16px; border: 0; background: var(--canvas, var(--bg));
                              box-shadow: 0 0 0 1px var(--canvas, var(--bg)); }   /* also hides the rows' 1px ring passing beside it */
-.view-orders .o-rail .band:first-child { margin-top: 8px; }
-.view-orders .o-rail .band::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: var(--rl-r) var(--rl-r) 0 0;
+:is(.view-orders .o-rail, .view-items .page) .band:first-child { margin-top: 8px; }
+:is(.view-orders .o-rail, .view-items .page) .band::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: var(--rl-r) var(--rl-r) 0 0;
                                      background: var(--rl-soft); box-shadow: 0 0 0 1px var(--line); }
-.view-orders .o-rail .row { padding-inline: 16px; border: 0; background-color: var(--rl-card); box-shadow: 0 0 0 1px var(--line); }
-body.light-theme .view-orders .o-rail .row { box-shadow: 0 0 0 1px var(--line), var(--shadow-card); }   /* dark's --shadow-card is none, which would void the pair */
-.view-orders .o-rail .row:is(:has(+ .band), :last-child) { border-bottom-left-radius: var(--rl-r); border-bottom-right-radius: var(--rl-r); }
-.view-orders .o-rail .row:hover { background-color: var(--rl-hover); }
-.view-orders .o-rail .row.cur { background-color: var(--rl-track); }
-
-/* the receipt's bar: bare icons and words, no boxes (the item editor's Save / ⋯) */
-body .view-orders .o-top .acts .act { background: none; box-shadow: none; color: var(--ink); }
-.view-orders .o-top .acts .act:hover { background: var(--rl-hover); }
-.view-orders .o-top .act .ic { width: 20px; height: 20px; }
-.view-orders .o-top .act span { font-size: 15px; }
+body.light-theme :is(.view-orders .o-rail, .view-items .page) .band::before { background: var(--canvas); }   /* owner 2026-10-09: a shade darker than #F9F9F9 */
+:is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row { padding-inline: 16px; border: 0; background-color: var(--rl-card); box-shadow: 0 0 0 1px var(--line); }
+body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row { box-shadow: 0 0 0 1px var(--line), var(--shadow-card); }   /* dark's --shadow-card is none, which would void the pair */
+:is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row:is(:has(+ .band), :last-child) { border-bottom-left-radius: var(--rl-r); border-bottom-right-radius: var(--rl-r); }
+:is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row:hover { background-color: var(--rl-hover); }
+:is(.view-orders .o-rail, .view-customers .o-rail) .row.cur { background-color: var(--rl-track); }
+/* no head (Customers; Categories, Modifiers, Discounts): the first row opens the block */
+:is(.view-customers .o-rail .row, .view-items .band.k2 + #itemsRows > .row):first-child { margin-top: 8px; border-top-left-radius: var(--rl-r); border-top-right-radius: var(--rl-r); }
 
 /* the paper on grey needs no ring */
 body.light-theme .view-orders .rp-paper { box-shadow: none; }

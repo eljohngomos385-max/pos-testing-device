@@ -285,12 +285,11 @@ function renderKindRows() {
   const q = itemsFilter.q.trim().toLowerCase(), all = catalogItems(), cats = itemsKind === 'cats';
   const list = kindList(itemsKind).filter(x => !q || [x.name, ...(x.options || []).map(o => o.name)].some(n => n.toLowerCase().includes(q)));
   const discs = itemsKind === 'discs';
-  $('#itemsBand').classList.add('k2');
-  $('#itemsBand').innerHTML = `<span>${KIND[itemsKind][0].replace(/^./, c => c.toUpperCase())} <span class="num">· ${list.length}</span></span><span>${discs ? 'Value' : 'Items'}</span>`;
+  $('#itemsBand').classList.add('k2');   // k2 hides the head: the rows say it (owner 2026-10-09)
   $('#itemsRows').innerHTML = list.map(x => `<button type="button" class="row cols k2" data-id="${escapeHtml(x.id)}">
       <span class="nm">${cats ? itemThumb({ hue: itemHue(x.id), name: x.name }) : ''}<span class="tx"><b>${escapeHtml(x.name)}</b>${
         discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? '' : `<small>${modSummary(x) || 'No options yet'}</small>`}</span></span>
-      <span class="num">${discs ? esShown(x) : itemsWith(itemsKind, x.id, all).length}</span></button>`).join('')
+      <span class="num">${discs ? esShown(x) : SalesMath.plural(itemsWith(itemsKind, x.id, all).length, 'item')}</span></button>`).join('')
     || `<div class="empty"><b>${q ? 'No matches' : `No ${cats ? 'categories' : 'modifiers'} yet`}</b><span>${q ? 'Try a different name.'
       : cats ? 'Tap + to add one, then tick its items.' : `A modifier is a list of choices sold with an item, like Cut to length +${peso(20)}. Tap + to add one.`}</span></div>`;
 }
