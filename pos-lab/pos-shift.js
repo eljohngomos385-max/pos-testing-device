@@ -75,11 +75,13 @@ function printShiftSlip(s) {
   w.document.close();
 }
 
+// Apple Settings blocks like the item editor (owner 2026-10-08): the drawer, the shift's sales, cash in / out, the close.
 function renderShift() {
   const body = $('#shiftBody');
   if (!body) return;
-  const s = shiftOf(), num = (f, ph = '0.00') => `<input class="in short num" data-f="${f}" value="${escapeHtml(shiftDraft[f])}" ${IMONEY} placeholder="${ph}">`;
+  const s = shiftOf(), num = (f, ph = '0.00') => `<input class="in num" data-f="${f}" value="${escapeHtml(shiftDraft[f])}" ${IMONEY} placeholder="${ph}">`;
   const row = (lb, v, cls = '') => `<div class="fr"><span class="lb">${lb}</span><span class="v num ${cls}">${v}</span></div>`;
+  const field = (lb, ctl) => `<label class="fr"><span class="lb">${lb}</span><span class="v">${ctl}</span></label>`;
   // the head's search looks through this shift's cash in / out; with no shift open there is nothing to search
   const find = $('#shiftSearch');
   if (find && !s && find.value) { find.value = shiftDraft.q = ''; $('#shiftFind').classList.remove('typed'); }
@@ -87,8 +89,7 @@ function renderShift() {
   if (!s) {
     const last = shiftOf(true);
     body.innerHTML = `<div class="c-body">
-      <section class="card fc"><div class="fr"><span class="lb">Start cash</span><span class="v sh-ctl">${num('start')}
-        <button type="button" class="act primary" data-sh="open">Open shift</button></span></div></section>
+      ${icard('', field('Start cash', num('start')) + '<button type="button" class="fr add" data-sh="open">Open shift</button>', 'The cash in the drawer before the first sale.')}
       ${last ? `<div class="sh-last"><span>Last close · ${escapeHtml(fmtOrderTime(last.close.ts))}</span><button type="button" class="act" data-sh="reprint">Print again</button></div>
         <div class="paper-scroll"><pre class="rp-paper sh-slip">${escapeHtml(HWPOS_PRINTER.slipText(shiftSlip(last), printerConfig()))}</pre></div>` : ''}
     </div>`;
@@ -99,28 +100,37 @@ function renderShift() {
   const moves = s.moves.filter(m => !q || `${m.note} ${m.staff} ${peso(Math.abs(m.amount))}`.toLowerCase().includes(q)).reverse().map(m => `<div class="sh-move"><span class="nm">${escapeHtml(m.note)}<small>${escapeHtml(fmtOrderTime(m.ts))} · ${escapeHtml(m.staff)}</small></span>
     <span class="num${m.amount < 0 ? ' out' : ''}">${overShortText(m.amount)}</span></div>`).join('');
   body.innerHTML = `<div class="c-body">
-    <section class="card fc">
-      ${row('Opened', `${escapeHtml(fmtOrderTime(s.open.ts))} <small>· ${escapeHtml(s.open.staff)}</small>`)}
-      ${row('Start cash', peso(f.start))}
-      ${row('Cash sales', peso(f.sales))}
-      ${f.back ? row('Cash refunds', peso(-f.back)) : ''}
-      ${f.onAccount ? row('Paid on account', peso(f.onAccount)) : ''}
-      ${f.cashIn ? row('Cash in', peso(f.cashIn)) : ''}
-      ${f.cashOut ? row('Cash out', peso(-f.cashOut)) : ''}
-      ${row('<b>Expected</b>', `<b>${peso(f.expected)}</b>`)}
-    </section>
-    <section class="card fc"><h3>Cash in / out</h3>
-      <div class="sh-pay">${num('amt')}<input class="in" data-f="note" value="${escapeHtml(shiftDraft.note)}" placeholder="Note" maxlength="80" autocomplete="off">
-        <button type="button" class="act" data-sh="in">Cash in</button><button type="button" class="act" data-sh="out">Cash out</button></div>
-      ${moves}
-    </section>
-    <section class="card fc">
-      <div class="fr"><span class="lb">Counted</span><span class="v">${num('counted')}</span></div>
-      <div class="fr"><span class="lb">Over / short</span><span class="v num" id="shiftDiff"></span></div>
-      <div class="foot"><span></span><button type="button" class="act primary" data-sh="close">Close shift</button></div>
-    </section>
+    ${icard('Cash drawer', [
+      row('Opened', `${escapeHtml(fmtOrderTime(s.open.ts))} <small>· ${escapeHtml(s.open.staff)}</small>`),
+      row('Start cash', peso(f.start)),
+      row('Cash sales', peso(f.sales)),
+      f.back ? row('Cash refunds', peso(-f.back)) : '',
+      f.onAccount ? row('Paid on account', peso(f.onAccount)) : '',
+      f.cashIn ? row('Cash in', peso(f.cashIn)) : '',
+      f.cashOut ? row('Cash out', peso(-f.cashOut)) : '',
+      row('<b>Expected</b>', `<b>${peso(f.expected)}</b>`),
+    ].join(''))}
+    ${roleCan(state.role, 'dayTotals') ? shiftSalesCard(s, row) : ''}
+    ${icard('Cash in / out', field('Amount', num('amt')) + field('Note', `<input class="in" data-f="note" value="${escapeHtml(shiftDraft.note)}" placeholder="Add a note" maxlength="80" autocomplete="off">`)
+      + '<button type="button" class="fr add" data-sh="in">Cash in</button><button type="button" class="fr add" data-sh="out">Cash out</button>')}
+    ${moves ? icard('', moves) : ''}
+    ${icard('Close', field('Counted', num('counted')) + '<div class="fr"><span class="lb">Over / short</span><span class="v num" id="shiftDiff"></span></div>' + '<button type="button" class="fr add" data-sh="close">Close shift</button>')}
   </div>`;
   paintShiftDiff(f.expected);
+}
+
+// What this till sold since open, by how it was paid, and what came off it. Only for a role that sees the
+// day's totals (Staff & access, TILL_ACTIONS.dayTotals), as Orders' day bands. Net of voids and refunds.
+function shiftSalesCard(s, row) {
+  const rows = drawerCash(s.open.ts).rows, t = SalesMath.summarize(rows), by = SalesMath.tenders(rows);
+  const neg = n => peso(n ? -n : 0), count = n => (n ? ` <small>· ${n}</small>` : '');
+  return icard('Sales', [
+    ...[...by].map(([k, n]) => row(escapeHtml(SalesMath.tenderLabel(k)), peso(n))),
+    by.size ? '' : row('By method', '—'),
+    row(`Refunds${count(t.refundCount)}`, neg(t.refunds)),
+    row(`Voids${count(t.voidCount)}`, neg(t.voids)),
+    row('Discounts', neg(t.discounts)),
+  ].join(''), 'This till since the shift opened.');
 }
 
 // The live Over / short under Counted: empty until a count (0 or more) is typed; short in red.

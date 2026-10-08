@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=207" />
+  <link rel="stylesheet" href="styles.css?v=224" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -276,7 +276,7 @@
               <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
               </button>
-              <button class="sq cust-back" id="ordersCustBack" aria-label="Back to the customer" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cust-back" id="ordersCustBack" aria-label="Back to the customer" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <section class="card find" id="ordersFind">
                 <label>
                   <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
@@ -326,7 +326,8 @@
           </section>
           <section class="editor" aria-label="Item editor">
             <div class="e-top">
-              <button class="sq" id="itemBack" aria-label="Back to items" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back" id="itemBack" aria-label="Back to items" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h2 class="fm-h" id="itemTitle"></h2>
               <div class="acts">
                 <button class="act icon" id="itemMore" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">
                   <svg class="ic" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
@@ -537,16 +538,16 @@
             </div>
             <div class="c-scroll" id="settingsView">
               <div class="c-body">
+                <h3 class="fc-t">Appearance</h3>
                 <section class="card fc">
-                  <h3>Appearance</h3>
                   <div class="fr"><span class="lb">Tile size</span><span class="v"><button type="button" class="act st-pick" data-pick="tileSize" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
                   <div class="fr"><span class="lb">Tile text size</span><span class="v"><button type="button" class="act st-pick" data-pick="tileText" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
                   <div class="fr"><span class="lb">Tiles show</span><span class="v"><button type="button" class="act st-pick" data-pick="tileShow" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
                   <div class="fr"><span class="lb">Theme</span><span class="v"><button type="button" class="act st-pick" data-pick="theme" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
                 </section>
                 <!-- handlers: app.js attachEvents, pos-settings.js, pos-checkout.js Printing -->
+                <h3 class="fc-t">Printing</h3>
                 <section class="card fc">
-                  <h3>Printing</h3>
                   <div class="fr"><span class="lb">Printer</span><span class="v"><button type="button" class="act st-pick" data-pick="driver" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
                   <div class="fr" id="posScanRow" hidden><span class="lb">Find printer</span><span class="v"><button type="button" class="act" id="posScanBtn">Scan</button></span></div>
                   <div class="st-prn" id="posPrinterListRow" hidden>
@@ -561,8 +562,8 @@
                   <label class="fr" id="posPrintOnSaleRow" hidden><span class="lb">Print on sale</span><span class="v"><input type="checkbox" class="sw" id="posPrintOnSale"></span></label>
                   <div class="fr"><span class="lb">Test print</span><span class="v"><button type="button" class="act" id="posTestPrintBtn">Print</button></span></div>
                 </section>
+                <h3 class="fc-t">Store</h3>
                 <section class="card fc">
-                  <h3>Store</h3>
                   <label class="fr"><span class="lb">Time zone</span><span class="v"><span class="act st-pick st-sel"><select id="posTimeZone"></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
                 </section>
               </div>
@@ -784,11 +785,11 @@
   <script src="pos-sell.js?v=41"></script>
   <script src="pos-checkout.js?v=8"></script>
   <script src="pos-orders.js?v=16"></script>
-  <script src="pos-items.js?v=8"></script>
-  <script src="pos-customers.js?v=12"></script>
+  <script src="pos-items.js?v=19"></script>
+  <script src="pos-customers.js?v=14"></script>
   <script src="pos-settings.js?v=4"></script>
   <script src="pos-pin.js?v=3"></script>
-  <script src="pos-shift.js?v=2"></script>
-  <script src="app.js?v=134"></script>
+  <script src="pos-shift.js?v=3"></script>
+  <script src="app.js?v=140"></script>
 </body>
 </html>

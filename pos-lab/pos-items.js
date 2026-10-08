@@ -8,7 +8,7 @@ const itemsFilter = { q: '', ...ITEMS_FILTER_DEF };
 const itemHue = s => [...String(s || '')].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const itemQty = SalesMath.qtyText;   // the one quantity format, the back office's too
 const itemInitials = s => s.replace(/[^A-Za-z ]/g, ' ').split(/\s+/).filter(w => w.length > 1).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '+';
-const itemThumb = (it, big) => `<span class="thumb${big ? ' big' : ''}" style="--h:${it.hue}" aria-hidden="true">${it.img ? `<img src="${it.img}" alt="">` : itemInitials(it.name)}</span>`;
+const itemThumb = (it, big) => `<span class="thumb${big ? ' big' : ''}" style="--h:${it.hue}" aria-hidden="true">${it.img ? `<img src="${escapeHtml(it.img)}" alt="">` : itemInitials(it.name)}</span>`;
 // The family's level is bo-model familyLevel, the same one the back office's Items list and item
 // page show (one size out of three = Low, all out = Out). No sale clock here: the till has no Dead filter.
 const itemStk = it => ({ out: 'stk-out', low: 'stk-low' })[familyLevel(it.members, null, Date.now(), tillZone())] || '';
@@ -22,16 +22,19 @@ function itemPriceText(it) {
 }
 
 function catalogItems() {
-  const byKey = new Map(), sup = new Map(posSuppliers().map(s => [s.id, s.name]));
+  const byKey = new Map();
   state.products.forEach(p => {
     if (p.archived) return;   // archived is gone; hidden is still listed here, only off the tiles
     const g = p.groupId ? groupById(p.groupId) : null, key = g ? g.id : p.id;
     let it = byKey.get(key);
     if (!it) {
-      const folder = (g && g.folder) || p.folder;
-      it = { id: key, name: g ? g.name : p.name, cat: folderName(folder), cats: foldersOf(p).map(folderName), hue: itemHue(folder), unit: p.unit || 'pc',
-        soldBy: p.soldBy === 'measure' ? 'measure' : 'each', brand: p.brand || '', img: '', marginMode: 'percent',
-        reorder: p.reorderPoint || 0, track: p.trackStock !== false, sellOut: false, supplier: sup.get(p.supplierId) || '', alt: (p.altSupplierIds || []).map(id => sup.get(id)).filter(Boolean), weight: '', size: '', length: '', variants: [], members: [] };
+      // a family's name, photo and description are its group's; the rest its first member's, as the back office's item page reads them
+      const folder = (g && g.folder) || p.folder, catIds = foldersOf(p);
+      it = { id: key, name: g ? g.name : p.name, cat: folderName(folder), cats: catIds.map(folderName), catIds, hue: itemHue(folder), unit: p.unit || 'pc',
+        soldBy: p.soldBy === 'measure' ? 'measure' : 'each', img: (g ? g.imageUrl : p.imageUrl) || '', desc: (g ? g.description : p.description) || '',
+        hidden: !!p.hidden, marginMode: p.marginMode === 'flat' ? 'flat' : 'percent', reorder: p.reorderPoint || 0, track: p.trackStock !== false,
+        sellOut: !!p.sellOutOfStock, sups: supplierIdsOf(p), main: p.supplierId || '', mods: [...(p.modifierIds || [])],
+        weight: p.weight || '', size: p.size || '', length: p.length || '', variants: [], members: [] };
       byKey.set(key, it);
     }
     it.members.push(p);
@@ -41,10 +44,8 @@ function catalogItems() {
   return [...byKey.values()];
 }
 const itemCategories = () => state.folders.filter(f => f.id !== 'all').map(f => f.name);
-// Items keep supplier ids (supplierId + altSupplierIds, bo-model.js); this form shows the names.
 // ponytail: read straight off the back office's list each time; the POS keeps no copy of its own.
 const posSuppliers = () => readJsonStorage(STORAGE_SUPPLIERS, []) || [];
-const itemSuppliers = () => posSuppliers().filter(s => !s.archived && s.name).map(s => s.name).sort();
 
 function renderItems() {
   const rows = $('#itemsRows');
@@ -71,14 +72,19 @@ function renderItems() {
 }
 
 // The editor: a working copy E of the item. Nothing here writes to the catalog.
-let itemEdit = null, itemIsNew = false;
+// Apple Settings (owner 2026-10-08): blocks of rows, each word at the side of its field like the customer form; a long
+// list (categories, modifiers, suppliers, one variant) is a row with its value and ›, opening its own page.
+let itemEdit = null, itemIsNew = false, itemSub = '', itemMainScroll = 0;   // itemSub: '' = the item, else 'cats' | 'mods' | 'sups' | a variant's id
 const blankVariant = () => ({ id: newId(), name: '', sku: '', barcode: '', cost: 0, price: 0, stock: 0, fresh: true });
+// Sold per: bo-products UNITS, its soldByFor. A measured unit sells in decimals; a unit typed elsewhere keeps what it was.
+const ITEM_UNITS = [['pc', 'box', 'bag', 'set', 'pair', 'roll', 'sheet', 'can'], ['m', 'ft', 'kg', 'L', 'gal']];
+const soldByFor = (unit, was) => (ITEM_UNITS[1].includes(unit) ? 'measure' : ITEM_UNITS[0].includes(unit) ? 'each' : was || 'each');
 
 function openItemEditor(id) {
   const it = id ? catalogItems().find(x => x.id === id) : null;
-  itemIsNew = !it; kindEdit = null;
-  itemEdit = it || { id: newId(), name: '', cat: '', hue: 220, unit: 'pc', soldBy: 'each', brand: '', img: '', marginMode: 'percent', reorder: 0, sellOut: false,
-    supplier: '', alt: [], weight: '', size: '', length: '', variants: [blankVariant()], since: tillDay(Date.now()) };
+  itemIsNew = !it; kindEdit = null; itemSub = '';
+  itemEdit = it || { id: newId(), name: '', desc: '', cat: '', catIds: [], hue: 220, unit: 'pc', soldBy: 'each', img: '', hidden: false, marginMode: 'percent',
+    reorder: 0, track: true, sellOut: false, sups: [], main: '', mods: [], weight: '', size: '', length: '', variants: [blankVariant()], since: tillDay(Date.now()) };
   const v0 = itemEdit.variants[0];
   itemEdit.marginValue = marginFromPrice(v0.cost, v0.price, itemEdit.marginMode);
   renderItemForm();
@@ -86,83 +92,147 @@ function openItemEditor(id) {
   $('#itemForm').scrollTop = 0;
 }
 const closeItemEditor = () => $('#itemsView').classList.remove('editing');
-
-const ifr = (label, ctl) => `<div class="fr"><span class="lb">${label}</span><div class="ctl">${ctl}</div></div>`;
-const iinp = (f, v, attrs = '') => `<input class="in" data-f="${f}" value="${escapeHtml(v)}" ${attrs}>`;
-const IMONEY = 'type="number" step="0.01" min="0" inputmode="decimal"';
-const ipills = (f, cur, opts) => `<div class="pills" data-pills="${f}">${opts.map(([k, l]) => `<button type="button" class="${cur === k ? 'cur' : ''}" data-v="${escapeHtml(k)}">${l}</button>`).join('')}</div>`;
-const icard = (title, body, sub = '') => `<section class="card fc"><h3>${title}${sub ? `<span>${sub}</span>` : ''}</h3>${body}</section>`;
-const imarginNote = v => { const m = itemMargin(v); return `<b>${peso(m.profit)}</b> gross profit on each · <b>${itemPct(m.markup)}</b> markup on cost · <b>${itemPct(m.margin)}</b> margin`; };
-
-function itemVariantRow(v) {
-  const E = itemEdit;
-  return `<div class="vt" data-vid="${escapeHtml(v.id)}">
-    <input class="in" data-v="name" value="${escapeHtml(v.name)}" placeholder="e.g. Red, 2 inch">
-    <input class="in" data-v="sku" value="${escapeHtml(v.sku)}">
-    <input class="in" data-v="barcode" value="${escapeHtml(v.barcode)}" inputmode="numeric">
-    <input class="in n" data-v="cost" value="${v.cost || ''}" ${IMONEY}>
-    <input class="in n" data-v="price" value="${v.price || ''}" ${IMONEY}>
-    <span class="mg num">${itemMarkupText(v.cost, v.price)}</span>
-    ${v.fresh ? `<input class="in n" data-v="stock" value="${v.stock || ''}" type="number" step="${E.soldBy === 'measure' ? .01 : 1}" min="0" placeholder="0">`
-      : `<span class="st num ${v.stock <= 0 ? 'stk-out' : ''}">${itemQty(v.stock)} ${escapeHtml(E.unit)}</span>`}
-    <button type="button" class="del" data-act="del-variant" aria-label="Remove variant" title="Remove variant"><svg class="ic" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-  </div>`;
+// a subpage slides in over the item; '' slides back to where the item was scrolled
+function itemGo(sub) {
+  const f = $('#itemForm');
+  if (sub) itemMainScroll = f.scrollTop;
+  itemSub = sub;
+  renderItemForm(sub ? 'push' : 'pop');
+  f.scrollTop = sub ? 0 : itemMainScroll;
 }
 
-function renderItemForm() {
-  const E = itemEdit, fam = E.variants.length > 1, v0 = E.variants[0], shared = fam ? 'Shared by every variant' : '';
-  const sups = itemSuppliers();
-  const details = icard('Details', [
-    ifr('Name', iinp('name', E.name, 'placeholder="Portland Cement 40kg"')),
-    ifr('Brand', iinp('brand', E.brand)),
-    ifr('Image', `${itemThumb(E, true)}<label class="act">Upload<input type="file" accept="image/*" id="itemImg" hidden></label>${E.img ? '<button type="button" class="link" data-act="img-clear">Remove</button>' : ''}`),
-  ].join(''), shared);
-  const soldAs = icard('Sold as', [
-    ifr('How it is sold', ipills('soldBy', E.soldBy, [['each', 'Each'], ['measure', 'By measure']])),
-    ifr('Unit', iinp('unit', E.unit, 'placeholder="pc" style="width:150px"')),
-  ].join(''), shared);
-  const pricing = fam ? '' : icard('Pricing', [
-    ifr('Cost', `<input class="in short num" data-f="cost" value="${v0.cost || ''}" ${IMONEY}>`),
-    ifr('Markup', ipills('marginMode', E.marginMode, [['flat', 'Flat'], ['percent', 'Percent']])),
-    ifr(E.marginMode === 'percent' ? 'Markup on cost (%)' : 'Markup per unit', `<input class="in short num" data-f="marginValue" value="${E.marginValue || ''}" type="number" step="0.01" inputmode="decimal">`),
-    ifr('Price', `<input class="in short num" data-f="price" value="${v0.price || ''}" ${IMONEY}>`),
-  ].join('') + `<div class="note num" id="itemMarginNote">${imarginNote(v0)}</div>`);
-  const inventory = icard('Inventory', [
-    fam ? '' : itemIsNew ? ifr('Opening quantity', `<input class="in short num" data-f="stock" value="${v0.stock || ''}" type="number" step="${E.soldBy === 'measure' ? .01 : 1}" min="0" placeholder="0">`)
-      : ifr('In stock', `<input class="in short num" value="${itemQty(v0.stock)} ${escapeHtml(E.unit)}" disabled><button type="button" class="link" data-act="stock">Adjust stock</button>`),
-    itemIsNew ? ifr('In store since', `<input class="in short" type="date" data-f="since" value="${E.since}">`) : '',
-    ifr('Danger level', `<input class="in short num" data-f="reorder" value="${E.reorder}" type="number" step="1" min="0" inputmode="numeric">`),
-    ifr('Sell when out of stock', `<input type="checkbox" class="sw" data-f="sellOut" ${E.sellOut ? 'checked' : ''} aria-label="Sell when out of stock">`),
-    fam ? '' : ifr('SKU', iinp('sku', v0.sku)),
-    fam ? '' : ifr('Barcode', iinp('barcode', v0.barcode, 'inputmode="numeric"')),
-  ].join(''), shared);
-  const variants = fam
-    ? icard('Variants', `<div class="vt-wrap"><div class="vt th"><span>Variant</span><span>SKU</span><span>Barcode</span><span>Cost</span><span>Price</span><span>Markup</span><span>Stock</span><span></span></div>
-        <div>${E.variants.map(itemVariantRow).join('')}</div></div>
-        <div class="foot"><span>Stock on a variant that exists is moved with Adjust stock.</span><button type="button" class="act" data-act="add-variant">Add variant</button></div>`,
-        `${E.variants.length} in this item`)
-    : icard('Variants', `<div class="blurb">Sold in sizes or colours? Add a variant. Each one gets its own SKU, barcode, price and stock.</div>
-        <div class="foot" style="justify-content:flex-end"><button type="button" class="act" data-act="add-variant">Add variant</button></div>`);
-  const org = icard('Organization', [
-    ifr('Category', `<input class="in" data-f="cat" value="${escapeHtml(E.cat)}" list="itemCatList" placeholder="Uncategorized">`),
-    ifr('Supplier', `<input class="in" data-f="supplier" value="${escapeHtml(E.supplier)}" list="itemSupList" placeholder="No supplier">`),
-    sups.length ? ifr('Also stocked by', `<div class="pills" data-multi="alt">${sups.filter(s => s !== E.supplier).map(s => `<button type="button" class="${E.alt.includes(s) ? 'cur' : ''}" data-v="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')}</div>`) : '',
+// the rows: a field, a switch, a dropdown, a › to a subpage, a blue action
+const ICHEV = '<svg class="ic chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
+const IUPDOWN = '<svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>';
+const ifr = (label, ctl, end) => `<div class="fr"><span class="lb">${label}</span><div class="ctl${end ? ' end' : ''}">${ctl}</div></div>`;
+const iinp = (f, v, attrs = '') => `<input class="in" data-f="${f}" value="${escapeHtml(v)}" ${attrs}>`;
+const IMONEY = 'type="number" step="0.01" min="0" inputmode="decimal"';
+const isw = (label, f, on) => `<label class="fr"><span class="lb">${label}</span><span class="ctl end"><input type="checkbox" class="sw" data-f="${f}"${on ? ' checked' : ''}></span></label>`;
+const ipick = (act, text) => `<button type="button" class="act st-pick" data-act="${act}" aria-haspopup="menu" aria-expanded="false"><span>${text}</span>${IUPDOWN}</button>`;
+const inav = (label, value, sub) => `<button type="button" class="fr nav" data-sub="${escapeHtml(sub)}"><span class="lb">${label}</span><span class="ctl end"><span class="vv${value === 'None' ? ' ph' : ''}">${value}</span>${ICHEV}</span></button>`;   // nothing set reads as a hint, like rednote's "Edit birthday"
+const iadd = (act, text, cls = '') => `<button type="button" class="fr add${cls}" data-act="${act}">${text}</button>`;
+// a block: a small grey title above, the rows on one tile, a footnote under; ' r' = values to the right edge (rednote's settings)
+const icard = (title, body, foot = '', cls = '') => `${title ? `<h3 class="fc-t">${title}</h3>` : ''}<section class="card fc${cls}">${body}</section>${foot ? `<p class="fc-n">${foot}</p>` : ''}`;
+const imarginNote = v => { const m = itemMargin(v); return `${peso(m.profit)} · ${itemPct(m.margin)} margin`; };
+const iprofit = v => `Profit <span class="num" id="itemMarginNote">${imarginNote(v)}</span>`;   // the Price block's footnote
+const istep = () => (itemEdit.soldBy === 'measure' ? .01 : 1);
+const iqty = (attr, v) => `<input class="in num" ${attr} value="${v || ''}" type="number" step="${istep()}" min="0" inputmode="decimal" placeholder="0">`;
+const ionHand = v => `<span class="vv num${v.stock <= 0 ? ' stk-out' : ''}">${itemQty(v.stock)} ${escapeHtml(itemEdit.unit)}</span><button type="button" class="link" data-act="stock">Adjust</button>`;
+const ilist = a => (a.length ? escapeHtml(a.length > 2 ? `${a[0]}, ${a[1]} +${a.length - 2}` : a.join(', ')) : 'None');
+const supName = id => (posSuppliers().find(s => s.id === id) || {}).name || '';
+const icurrency = () => SalesMath.currencySymbol(state.settings.store?.currency);
+
+function renderItemForm(dir) {
+  const E = itemEdit, v = E.variants.find(x => x.id === itemSub);
+  const [title, html] = itemSub === 'cats' ? ['Categories', itemTickPage('catIds', kindCats().map(c => [c.id, c.name]), 'No categories yet. Add them under Categories.')]
+    : itemSub === 'mods' ? ['Modifiers', itemTickPage('mods', kindList('mods').map(m => [m.id, m.name, modSummary(m)]), 'No modifiers yet. Add them under Modifiers.')]
+    : itemSub === 'sups' ? ['Suppliers', itemSupsPage()]
+    : itemSub === 'specs' ? ['Specs', itemSpecsPage()]
+    : v ? [v.fresh ? 'Add variant' : 'Edit variant', itemVariantPage(v)] : [E.name || 'New item', itemMainPage()];   // a fixed title: typing a variant's name doesn't echo up there
+  $('#itemForm').closest('.editor').classList.toggle('sub', !!itemSub);   // a subpage has only Back, as in Apple Settings
+  $('#itemMore').hidden = true;   // the item has no ⋯ (owner 2026-10-09): Archive is the last block, Back discards a new one
+  $('#itemForm').innerHTML = `<div class="form${dir ? ' ' + dir : ''}">${html}</div>`;
+  $('#itemTitle').textContent = title;   // small, in the top bar beside Back (rednote's Edit profile)
+}
+
+// rednote's Edit profile (owner 2026-10-09): the photo centred on top, white blocks on the grey page, the word in a
+// column on the left and its value just after it (not pushed right); Status worded as the back office's; the
+// description its own block under Name and Status (rednote's Bio), growing as it is typed.
+const ICAM = '<svg class="ic" viewBox="0 0 24 24"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.2"/></svg>';
+function itemMainPage() {
+  const E = itemEdit, fam = E.variants.length > 1, v0 = E.variants[0], T = E.track;
+  const photo = `<div class="fphoto"><label for="itemImg" aria-label="${E.img ? 'Change photo' : 'Add photo'}">${itemThumb(E, true)}<span class="cam">${ICAM}</span>
+    <input type="file" accept="image/*" id="itemImg" hidden></label>${E.img ? '<button type="button" class="link" data-act="img-clear">Remove photo</button>' : ''}</div>`;
+  const about = icard('', [
+    ifr('Name', iinp('name', E.name, 'placeholder="Add name"')),
+    ifr('Status', ipick('status', E.hidden ? 'Hidden' : 'Active'), true),
+  ].join(''), '', ' r');
+  const desc = icard('', ifr('Description', `<textarea class="in" data-f="desc" rows="1" placeholder="Add description">${escapeHtml(E.desc)}</textarea>`), '', ' r');
+  const vrow = v => `<button type="button" class="fr nav wide" data-sub="${escapeHtml(v.id)}"><span class="lb${v.name ? '' : ' ph'}">${escapeHtml(v.name || 'No name')}</span>
+    <span class="ctl end"><span class="vv num">${peso(v.price)}${T ? ` · ${itemQty(v.stock)} ${escapeHtml(E.unit)}` : ''}</span>${ICHEV}</span></button>`;
+  // small blocks, one job each (rednote's Account security): one item = [Price, Cost, Markup, profit under it] [Add variant];
+  // a family = its variants and Add variant on one block, each variant's numbers on its own page
+  const price = fam ? icard('', E.variants.map(vrow).join('') + iadd('add-variant', 'Add variant'))
+    : icard('', [
+      ifr('Price', `<input class="in num" data-f="price" value="${v0.price || ''}" ${IMONEY} placeholder="0.00">`),
+      ifr('Cost', `<input class="in num" data-f="cost" value="${v0.cost || ''}" ${IMONEY} placeholder="0.00">`),
+      ifr('Markup', `<input class="in num" data-f="marginValue" value="${E.marginValue || ''}" type="number" step="0.01" inputmode="decimal" placeholder="0">${ipick('mmode', E.marginMode === 'percent' ? '%' : icurrency())}`),
+    ].join(''), iprofit(v0), ' r')
+    + icard('', iadd('add-variant', 'Add variant'));
+  // stock out on the page, not behind a › (owner 2026-10-09); a family counts per variant, on each variant's page
+  const stock = icard('', [
+    isw('Track stock', 'track', T),
+    !T || fam ? '' : itemIsNew ? ifr('Opening stock', iqty('data-f="stock"', v0.stock)) : ifr('In stock', ionHand(v0), true),
+    T ? ifr('Low stock at', iqty('data-f="reorder"', E.reorder)) : '',
+    T && !fam && itemIsNew ? ifr('In store since', `<input class="in" type="date" data-f="since" value="${E.since}">`) : '',
+    T ? isw('Sell when out of stock', 'sellOut', E.sellOut) : '',
+  ].join(''), T ? '' : 'Not counted: never low, never out.', ' r');
+  const codes = icard('', [   // how it's sold and scanned; a family's SKU and barcode are per variant
+    ifr('Sold per', ipick('unit', escapeHtml(E.unit)), true),
+    fam ? '' : ifr('SKU', iinp('sku', v0.sku, 'placeholder="Add SKU"')),
+    fam ? '' : ifr('Barcode', iinp('barcode', v0.barcode, 'inputmode="numeric" placeholder="Add barcode"')),
+  ].join(''), '', ' r');
+  const mods = new Map(kindList('mods').map(m => [m.id, m.name]));
+  const more = icard('', [
+    inav('Categories', ilist(E.catIds.map(folderName).filter(Boolean)), 'cats'),
+    inav('Modifiers', ilist(E.mods.map(id => mods.get(id)).filter(Boolean)), 'mods'),
+    inav('Suppliers', ilist([E.main, ...E.sups.filter(id => id !== E.main)].filter(Boolean).map(supName).filter(Boolean)), 'sups'),
+    inav('Specs', escapeHtml([E.weight, E.size, E.length].filter(Boolean).join(' · ')) || 'None', 'specs'),
+  ].join(''), '', ' r');
+  const archive = itemIsNew ? '' : icard('', iadd('archive', 'Archive item', ' red'));   // the ⋯ menu's last action, now the last block
+  return photo + about + desc + price + stock + codes + more + archive;
+}
+function itemSpecsPage() {
+  const E = itemEdit;
+  return icard('', [
+    ifr('Weight', iinp('weight', E.weight, 'placeholder="Add weight"')),
+    ifr('Size', iinp('size', E.size, 'placeholder="Add size"')),
+    ifr('Length', iinp('length', E.length, 'placeholder="Add length"')),
   ].join(''));
-  const specs = icard('Specs', [
-    ifr('Weight', iinp('weight', E.weight, 'placeholder="2.5 kg"')),
-    ifr('Size', iinp('size', E.size, 'placeholder="3/4 in"')),
-    ifr('Length', iinp('length', E.length, 'placeholder="8 ft"')),
-  ].join(''), 'Free text');
-  $('#itemForm').innerHTML = `<div class="form">
-    ${details}${soldAs}${pricing}${inventory}${variants}${org}${specs}
-    <datalist id="itemCatList">${itemCategories().map(c => `<option value="${escapeHtml(c)}">`).join('')}</datalist>
-    <datalist id="itemSupList">${sups.map(c => `<option value="${escapeHtml(c)}">`).join('')}</datalist>
-  </div>`;
+}
+
+// a subpage's ticks: search above (a store runs to 50-100 categories), the list on one tile
+function itemTickPage(key, rows, empty) {
+  const on = itemEdit[key];
+  return icard('', (rows.length > 8 ? IFIND : '') + rows.map(([id, name, sub]) => `<label class="pick" data-find="${escapeHtml(name.toLowerCase())}"><input type="checkbox" data-tick="${key}" value="${escapeHtml(id)}"${on.includes(id) ? ' checked' : ''}>
+      <span class="tx">${escapeHtml(name)}${sub ? `<small>${sub}</small>` : ''}</span></label>`).join('') || `<div class="pick">${empty}</div>`);
+}
+function itemSupsPage() {
+  const E = itemEdit, rows = posSuppliers().filter(s => !s.archived && s.name).sort((a, b) => a.name.localeCompare(b.name)).map(s => [s.id, s.name]);
+  return icard('', ifr('Main supplier', ipick('main', escapeHtml(supName(E.main) || 'None')), true), 'Purchase orders go to the main supplier.')
+    + itemTickPage('sups', rows, 'No suppliers yet. Add them in the back office.');
+}
+function itemVariantPage(v) {
+  const E = itemEdit;
+  const vin = (k, attrs = '') => `<input class="in" data-v="${k}" value="${escapeHtml(v[k])}" ${attrs}>`;
+  return icard('', ifr('Name', vin('name', 'placeholder="Add name, like Red or 2 inch"')), '', ' r')
+    + icard('', ifr('Price', `<input class="in num" data-v="price" value="${v.price || ''}" ${IMONEY} placeholder="0.00">`)
+      + ifr('Cost', `<input class="in num" data-v="cost" value="${v.cost || ''}" ${IMONEY} placeholder="0.00">`), iprofit(v), ' r')
+    + icard('', [
+      !E.track ? '' : v.fresh ? ifr('Opening stock', iqty('data-v="stock"', v.stock)) : ifr('In stock', ionHand(v), true),
+      ifr('SKU', vin('sku', 'placeholder="Add SKU"')),
+      ifr('Barcode', vin('barcode', 'inputmode="numeric" placeholder="Add barcode"')),
+    ].join(''), '', ' r')
+    + (E.variants.length > 1 ? icard('', iadd('del-variant', 'Remove variant', ' red')) : '');
+}
+
+// the dropdowns, the ⋯ menu's morph as in Settings
+function itemPick(b) {
+  const E = itemEdit, v0 = E.variants[0], act = b.dataset.act;
+  const opt = (k, label, cur, run) => ({ label, cur, run });
+  const items = act === 'status' ? [opt('', 'Active', !E.hidden, () => { E.hidden = false; renderItemForm(); }), opt('', 'Hidden', E.hidden, () => { E.hidden = true; renderItemForm(); })]
+    : act === 'mmode' ? [['percent', 'Percent (%)'], ['flat', `Flat (${icurrency()})`]].map(([k, label]) => opt(k, label, E.marginMode === k,
+      () => { E.marginMode = k; E.marginValue = marginFromPrice(v0.cost, v0.price, k); renderItemForm(); }))
+    : act === 'unit' ? [...(ITEM_UNITS.flat().includes(E.unit) ? [] : [E.unit]), ...ITEM_UNITS[0], '-', ...ITEM_UNITS[1]].map(u => (u === '-' ? u
+      : opt(u, u, E.unit === u, () => { E.soldBy = soldByFor(u, E.soldBy); E.unit = u; renderItemForm(); })))
+    : act === 'main' ? ['', ...E.sups].map(id => opt(id, id ? supName(id) : 'None', E.main === id, () => { E.main = id; b.firstChild.textContent = supName(id) || 'None'; }))
+    : null;
+  if (items) openMenu(b, items, { w: 200, right: true });
 }
 
 // cost / margin / price: any two drive the third (the back office's three-way binding)
 function itemReprice(from) {
-  const E = itemEdit, v0 = E.variants[0], pct = E.marginMode === 'percent', f = $('#itemForm');
+  const E = itemEdit, v0 = E.variants[0], f = $('#itemForm');
   if (from === 'price') {
     E.marginValue = marginFromPrice(v0.cost, v0.price, E.marginMode);
     f.querySelector('[data-f=marginValue]').value = E.marginValue || '';
@@ -172,10 +242,13 @@ function itemReprice(from) {
   }
   $('#itemMarginNote').innerHTML = imarginNote(v0);
 }
+// a tick list's search: hides the rows in place, so the box keeps its focus
+const IFIND = '<div class="pick-find"><input class="in" data-k="q" type="search" placeholder="Search" autocomplete="off"></div>';
+const filterPicks = q => { q = q.trim().toLowerCase(); $$('#itemForm .pick[data-find]').forEach(r => { r.hidden = !!q && !r.dataset.find.includes(q); }); };
 
 function saveItem() {
   const E = itemEdit;
-  if (!E.name.trim()) { showToast('Give the item a name'); $('#itemForm').querySelector('[data-f=name]').focus(); return; }
+  if (!E.name.trim()) { if (itemSub) itemGo(''); showToast('Give the item a name'); $('#itemForm').querySelector('[data-f=name]').focus(); return; }
   if (E.variants.length > 1 && E.variants.some(v => !v.name.trim())) { showToast('Name every variant'); return; }
   showToast("Saving isn't connected yet");   // ponytail: design only until the back office owns catalog writes
 }
@@ -236,51 +309,49 @@ function openKindEditor(kind, id) {
 }
 
 function renderKindForm() {
-  const K = kindEdit, cats = K.kind === 'cats';
+  $('#itemForm').closest('.editor').classList.remove('sub');
+  const K = kindEdit, cats = K.kind === 'cats', head = '';
+  $('#itemTitle').textContent = K.name || `New ${KIND[K.kind][0]}`;
+  $('#itemMore').hidden = false;   // a category's Delete, a modifier's Archive
   if (K.kind === 'discs') {   // name, % or amount (a dropdown, the ⋯ menu's morph), value; Senior / PWD keep their name and stay %
-    const pct = K.type === 'percent', unit = pct ? '%' : SalesMath.currencySymbol(state.settings.store?.currency);
-    $('#itemForm').innerHTML = `<div class="form">${icard('Details', [
-      ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Summer sale"${K.builtin ? ' disabled' : ''}>`),
-      K.builtin ? '' : ifr('Type', `<button type="button" class="act st-pick" data-ka="type" aria-haspopup="menu" aria-expanded="false"><span>${pct ? 'Percent' : 'Amount'}</span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button>`),
-      ifr(`Value (${unit})`, `<input class="in short num" data-k="value" value="${escapeHtml(K.value)}" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0">`),
-    ].join('') + (K.builtin ? '<div class="note">Built in. The till asks for the ID number and name, and the rate comes off the price before VAT.</div>' : ''))}</div>`;
+    const pct = K.type === 'percent', unit = pct ? '%' : icurrency();
+    $('#itemForm').innerHTML = `<div class="form">${head}${icard('', [
+      ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like Summer sale"${K.builtin ? ' disabled' : ''}>`),
+      K.builtin ? '' : ifr('Type', `<button type="button" class="act st-pick" data-ka="type" aria-haspopup="menu" aria-expanded="false"><span>${pct ? 'Percent' : 'Amount'}</span>${IUPDOWN}</button>`, true),
+      ifr(`Value (${unit})`, `<input class="in num" data-k="value" value="${escapeHtml(K.value)}" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0">`),
+    ].join(''), K.builtin ? 'Built in. The till asks for the ID number and name, and the rate comes off the price before VAT.' : '')}</div>`;
     return;
   }
   // What it's on now comes first, so the ticks you'd change are at the top; the order holds while you tick.
   const items = catalogItems().sort((a, b) => (K.first.has(b.id) - K.first.has(a.id)) || a.name.localeCompare(b.name));
   const opt = (o, i) => `<div class="opt" data-i="${i}">
-      <input class="in" data-o="name" value="${escapeHtml(o.name)}" placeholder="Option, like Cut to length">
-      <input class="in n num" data-o="price" value="${escapeHtml(o.price)}" ${IMONEY} placeholder="0.00" aria-label="Price">
+      <input class="in" data-o="name" value="${escapeHtml(o.name)}" placeholder="Option name">
+      <input class="in num" data-o="price" value="${escapeHtml(o.price)}" ${IMONEY} placeholder="0.00" aria-label="Price">
       <button type="button" class="del" data-ka="opt-del" aria-label="Remove option" title="Remove option"><svg class="ic" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
-  $('#itemForm').innerHTML = `<div class="form">
-    ${icard('Details', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="${cats ? 'Plumbing' : 'Cutting'}">`))}
-    ${cats ? '' : icard('Options', `<div>${K.options.map(opt).join('')}</div>
-        <div class="foot"><span>The price is added to the item's.</span><button type="button" class="act" data-ka="opt-add">Add option</button></div>`)}
-    ${icard('Items', `<div class="pick-find"><input class="in" data-k="q" placeholder="Search items" autocomplete="off"></div>
-        <div class="picks">${items.map(it => `<label class="pick" data-find="${escapeHtml(it.name.toLowerCase())}"><input type="checkbox" data-pick="${escapeHtml(it.id)}"${K.picked.has(it.id) ? ' checked' : ''}>
-          ${itemThumb(it)}<span>${escapeHtml(it.name)}</span></label>`).join('')}</div>`, SalesMath.plural(K.picked.size, 'item'))}
+  $('#itemForm').innerHTML = `<div class="form">${head}
+    ${icard('', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like ${cats ? 'Plumbing' : 'Cutting'}">`))}
+    ${cats ? '' : icard('Options', K.options.map(opt).join('') + '<button type="button" class="fr add" data-ka="opt-add">Add option</button>', "The price is added to the item's.")}
+    ${icard(`Items <span class="num" id="kindCount">· ${K.picked.size}</span>`, (items.length > 8 ? IFIND : '') + items.map(it => `<label class="pick" data-find="${escapeHtml(it.name.toLowerCase())}"><input type="checkbox" data-pick="${escapeHtml(it.id)}"${K.picked.has(it.id) ? ' checked' : ''}>
+          ${itemThumb(it)}<span class="tx">${escapeHtml(it.name)}</span></label>`).join(''))}
   </div>`;
 }
 
 function kindInput(t) {
   const K = kindEdit;
-  if (t.dataset.k === 'name') K.name = t.value;
+  if (t.dataset.k === 'name') { K.name = t.value; $('#itemTitle').textContent = K.name || `New ${KIND[K.kind][0]}`; }
   else if (t.dataset.k === 'value') K.value = t.value;
   else if (t.dataset.o) K.options[Number(t.closest('.opt').dataset.i)][t.dataset.o] = t.value;
   else if (t.dataset.pick) {
     K.picked[t.checked ? 'add' : 'delete'](t.dataset.pick);
-    t.closest('.fc').querySelector('h3 span').textContent = SalesMath.plural(K.picked.size, 'item');
-  } else if (t.dataset.k === 'q') {   // filters the ticks in place, so the box keeps its focus
-    const q = t.value.trim().toLowerCase();
-    $$('#itemForm .pick').forEach(r => { r.hidden = !!q && !r.dataset.find.includes(q); });
+    $('#kindCount').textContent = `· ${K.picked.size}`;
   }
 }
 function kindClick(b) {
   const K = kindEdit;
-  if (b.dataset.ka === 'opt-add') { K.options.push({ id: newId(), name: '', price: '' }); renderKindForm(); $('#itemForm .opt:last-child [data-o=name]').focus(); }
+  if (b.dataset.ka === 'opt-add') { K.options.push({ id: newId(), name: '', price: '' }); renderKindForm(); $$('#itemForm .opt [data-o=name]').pop().focus(); }
   if (b.dataset.ka === 'opt-del') { K.options.splice(Number(b.closest('.opt').dataset.i), 1); renderKindForm(); }
   if (b.dataset.ka === 'type') openMenu(b, [['percent', 'Percent'], ['amount', 'Amount']].map(([k, label]) => ({ label, cur: K.type === k,
-    run: () => { K.type = k; renderKindForm(); $('#itemForm [data-k=value]').focus(); } })));
+    run: () => { K.type = k; renderKindForm(); $('#itemForm [data-k=value]').focus(); } })), { w: 200, right: true });
 }
 
 // Puts the category / modifier on every variant of the ticked items and takes it off the rest (bo-catalog setCats):

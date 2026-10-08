@@ -54,9 +54,10 @@ function renderCustomerDetail() {
     return;
   }
   const status = accountStatus(c)[1], over = status === 'Over limit';
-  ttl.innerHTML = `<b>${escapeHtml(c.name)}</b>${over ? '<span>Over limit</span>' : status === 'Near limit' ? '<span class="warn">Near limit</span>' : ''}`;
+  ttl.innerHTML = '';   // the name is the card's first row (owner 2026-10-09): the top bar keeps only Back and the actions
   const row = (lb, v, cls = '') => `<div class="fr"><span class="lb">${lb}</span><span class="v ${cls}">${v}</span></div>`;
-  const contact = [['Phone', c.phone, 'num'], ['Email', c.email], ['Address', c.address]]
+  const lim = over ? ' <span class="lim">Over limit</span>' : status === 'Near limit' ? ' <span class="lim warn">Near limit</span>' : '';
+  const contact = row('Name', escapeHtml(c.name) + lim) + [['Phone', c.phone, 'num'], ['Email', c.email], ['Address', c.address]]
     .filter(f => f[1]).map(([lb, v, cls]) => row(lb, escapeHtml(v), cls)).join('');   // an empty one is left out, not "—"
   const orders = customerOrders(c.id).filter(o => !SalesMath.isReversal(o));   // one row per sale, as in Orders
   const orderRow = o => {
@@ -66,11 +67,11 @@ function renderCustomerDetail() {
       <div class="rt"><span class="amt num">${amt == null ? '—' : peso(amt)}</span><small>${escapeHtml(orderPayText(o))}</small></div></button>`;
   };
   body.innerHTML = `<div class="c-body">
-    ${contact ? `<section class="card fc">${contact}</section>` : ''}
+    <section class="card fc">${contact}</section>
     <section class="card fc">
       ${row('Balance', peso(c.currentBalance || 0), over ? 'num over' : 'num')}
       ${row('Available credit', limitText(c) || `${peso(creditRoom(c))} <small>of ${peso(c.creditLimit)}</small>`, 'num')}</section>
-    <section class="card fc c-ord"><h3>Recent orders${orders.length > 10 ? `<button type="button" class="link" data-customer-detail>See all ${orders.length}</button>` : ''}</h3>
+    <h3 class="fc-t">Recent orders${orders.length > 10 ? `<button type="button" class="link" data-customer-detail>See all ${orders.length}</button>` : ''}</h3><section class="card fc c-ord">
       ${orders.length ? orders.slice(0, 10).map(orderRow).join('') : '<div class="note">No orders yet</div>'}</section>
   </div>`;
 }

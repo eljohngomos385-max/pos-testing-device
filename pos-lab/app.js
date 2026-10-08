@@ -363,14 +363,11 @@ function attachEvents() {
   new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#itemsKinds'));   // tabs moved: the pill re-places on the next switch
   $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) openKind(row.dataset.id); });
   $('#itemsAdd')?.addEventListener('click', () => openKind(null));
-  $('#itemBack')?.addEventListener('click', closeItemEditor);
   $('#itemSave')?.addEventListener('click', () => (kindEdit ? saveKind() : saveItem()));
   const notYet = what => () => showToast(`${what} isn't connected yet`);
   $('#itemMore')?.addEventListener('click', (e) => openMenu(e.currentTarget, kindEdit
     ? [kindEdit.id ? { label: kindEdit.kind === 'mods' ? 'Archive' : 'Delete', red: true, off: !!kindEdit.builtin, run: dropKind } : { label: 'Discard', red: true, run: closeItemEditor }]
-    : itemIsNew
-    ? [{ label: 'Discard', red: true, run: closeItemEditor }]
-    : [{ label: 'Print labels', run: notYet('Printing labels') }, { label: 'Duplicate', run: notYet('Duplicate') }, '-', { label: 'Archive', red: true, run: notYet('Archive') }],
+    : [],   // ponytail: the item has no ⋯ (renderItemForm hides it); Print labels and Duplicate come back when they work
     { w: 200, right: true }));
   wireFind('#itemsFind', '#itemsSearch', '#itemsSearchX', (q) => { itemsFilter.q = q; renderItems(); });
   $('#itemsFilter')?.addEventListener('click', (e) => openFilterSheet(e.currentTarget, () => [
@@ -378,16 +375,19 @@ function attachEvents() {
     ['Stock', 'stock', [['', 'Any'], ['low', 'Low'], ['out', 'Out']]],
   ], itemsFilter, ITEMS_FILTER_DEF, renderItems));
   const itemForm = $('#itemForm');
-  // the category / modifier editor's fields (pos-items kindInput); the item editor's handlers below skip it
-  itemForm?.addEventListener('input', (e) => { if (kindEdit) kindInput(e.target); });
+  // back from a subpage first (pos-items itemGo), then out of the editor
+  $('#itemBack')?.addEventListener('click', () => (itemEdit && itemSub ? itemGo('') : closeItemEditor()));
+  // the category / modifier editor's fields (pos-items kindInput); the item editor's below
   itemForm?.addEventListener('click', (e) => { const b = kindEdit && e.target.closest('[data-ka]'); if (b) kindClick(b); });
   itemForm?.addEventListener('input', (e) => {
-    if (kindEdit) return;
-    const E = itemEdit, t = e.target, f = t.dataset.f, num = () => Number(t.value) || 0;
-    if (t.dataset.v) {   // a variant row
-      const v = E.variants.find(x => x.id === t.closest('.vt').dataset.vid);
+    const t = e.target;
+    if (t.dataset.k === 'q') return filterPicks(t.value);   // a tick list's search, both editors
+    if (kindEdit) return kindInput(t);
+    const E = itemEdit, f = t.dataset.f, num = () => Number(t.value) || 0, head = $('#itemTitle');
+    if (t.dataset.v) {   // the variant's page
+      const v = E.variants.find(x => x.id === itemSub);
       v[t.dataset.v] = t.type === 'number' ? num() : t.value;
-      if (t.dataset.v === 'cost' || t.dataset.v === 'price') t.closest('.vt').querySelector('.mg').textContent = itemMarkupText(v.cost, v.price);
+      if (t.dataset.v === 'cost' || t.dataset.v === 'price') $('#itemMarginNote').innerHTML = imarginNote(v);
       return;
     }
     if (!f || t.type === 'checkbox') return;
@@ -395,33 +395,34 @@ function attachEvents() {
     else E[f] = f === 'marginValue' || f === 'reorder' ? num() : t.value;
     if (f === 'cost' || f === 'marginValue') itemReprice('cost');
     if (f === 'price') itemReprice('price');
-    if (f === 'name') itemForm.querySelector('.thumb.big').outerHTML = itemThumb(E, true);
+    if (f === 'name') head.textContent = E.name || 'New item';
   });
   itemForm?.addEventListener('change', (e) => {
-    const t = e.target;
-    if (t.dataset.f === 'sellOut') itemEdit.sellOut = t.checked;
-    if (t.id === 'itemImg' && t.files[0]) { itemEdit.img = URL.createObjectURL(t.files[0]); renderItemForm(); }
+    const t = e.target, E = itemEdit, k = t.dataset.tick;
+    if (kindEdit || !E) return;
+    if (t.dataset.f === 'sellOut') E.sellOut = t.checked;
+    if (t.dataset.f === 'track') { E.track = t.checked; renderItemForm(); }   // Low stock and Sell when out come and go with it
+    if (k) {   // a tick on a subpage; unticking the main supplier leaves none
+      E[k] = t.checked ? [...E[k], t.value] : E[k].filter(x => x !== t.value);
+      if (k === 'sups' && !E.sups.includes(E.main)) { E.main = ''; itemForm.querySelector('[data-act=main] span').textContent = 'None'; }
+    }
+    if (t.id === 'itemImg' && t.files[0]) { E.img = URL.createObjectURL(t.files[0]); renderItemForm(); }
   });
   itemForm?.addEventListener('click', (e) => {
     const E = itemEdit, b = !kindEdit && e.target.closest('button');
     if (!b) return;
-    const pills = b.closest('[data-pills]'), multi = b.closest('[data-multi]'), act = b.dataset.act;
-    if (pills) {
-      E[pills.dataset.pills] = b.dataset.v;
-      if (pills.dataset.pills === 'marginMode') { const v0 = E.variants[0]; E.marginValue = marginFromPrice(v0.cost, v0.price, b.dataset.v); }
-      renderItemForm();
-    } else if (multi) {
-      E.alt = E.alt.includes(b.dataset.v) ? E.alt.filter(s => s !== b.dataset.v) : [...E.alt, b.dataset.v];
-      b.classList.toggle('cur');
-    } else if (act === 'add-variant') {
-      E.variants.push(blankVariant());
-      renderItemForm();
-      itemForm.querySelector('.vt:last-child [data-v=name]')?.focus();
-    } else if (act === 'del-variant') {
-      E.variants = E.variants.filter(v => v.id !== b.closest('.vt').dataset.vid);
-      renderItemForm();
-    } else if (act === 'img-clear') { E.img = ''; renderItemForm(); }
+    const act = b.dataset.act;
+    if (b.dataset.sub) itemGo(b.dataset.sub);
+    else if (act === 'add-variant') { const v = blankVariant(); E.variants.push(v); itemGo(v.id); itemForm.querySelector('[data-v=name]').focus({ preventScroll: true }); }
+    else if (act === 'del-variant') {
+      E.variants = E.variants.filter(v => v.id !== itemSub);
+      E.marginValue = marginFromPrice(E.variants[0].cost, E.variants[0].price, E.marginMode);   // Markup is back when one is left
+      itemGo('');
+    }
+    else if (act === 'img-clear') { E.img = ''; renderItemForm(); }
     else if (act === 'stock') showToast("Adjusting stock isn't connected yet");
+    else if (act === 'archive') notYet('Archiving')();   // ponytail: as Save, design only until the back office owns catalog writes
+    else if (act) itemPick(b);   // status, markup kind, sold per, main supplier
   });
 
   // ---- The edit sheet (pos-sell.js): a cart line, Discount and the fulfilment pill open it over the items ----

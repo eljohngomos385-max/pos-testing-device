@@ -13,6 +13,7 @@
   --surface-hover: #333333;
   --surface-2: #1F1F1F;
   --tile: #2A2A2A;
+  --es-r: 12px;                                             /* the owner's button corner (popups-lab); every grey block */
 
   --line: rgba(255, 255, 255, 0.08);
   --line-strong: rgba(255, 255, 255, 0.14);
@@ -3600,7 +3601,6 @@ a.secondary-btn { text-decoration: none; }
   --es-hover: var(--surface-hover);                         /* a tile's hover */
   --es-btn: color-mix(in srgb, var(--ink) 8%, transparent); /* a bare button's hover */
   --es-sel: color-mix(in srgb, var(--ink) 18%, transparent);
-  --es-r: 12px;                                             /* the owner's button corner (popups-lab) */
   position: absolute;
   inset: 0;
   z-index: 6;   /* over the variant sheet */
@@ -7259,6 +7259,7 @@ body {
   --rl-on: #8AB4F8;                                     /* a discount is on */
   --rl-shadow: none;                                    /* the border alone; an inset top highlight doubled it */
   --rl-hair: rgba(255, 255, 255, 0.03);                 /* the top bar's and product tiles' ring, softer than --line */
+  --rl-div: rgba(255, 255, 255, 0.06);                  /* a row divider inside a card: there, but quiet (rednote's) */
   --rl-r: 14px;
   --rl-m: 20px;
   --rl-gap: 8px;
@@ -7270,6 +7271,7 @@ body.light-theme {
   --rl-hover: var(--surface-hover);
   --rl-on: #1F5FB8;
   --rl-hair: #EBEBEB;
+  --rl-div: #EFEFEF;
   --rl-shadow: 0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05);
 }
 /* the one safe-area inset of the sell view's bottom edge (docs/design-pos.md) */
@@ -7499,6 +7501,12 @@ body.light-theme {
 .lv .sq { display: inline-flex; align-items: center; justify-content: center; flex: none; width: var(--bar-h); height: var(--bar-h); border: 1px solid var(--line);
           border-radius: var(--rl-r); background: var(--rl-card); color: var(--ink-secondary); box-shadow: var(--rl-shadow); transition: background-color .12s, color .12s; }
 .lv .sq:hover { background: var(--rl-hover); color: var(--ink); }
+.lv .sq.back { width: 32px; margin-left: -8px; border: 0; background: none; box-shadow: none; color: var(--ink); }   /* Back is a bare chevron, no box (rednote's) */
+.lv .sq.back .ic { width: 24px; height: 24px; stroke-width: 1.8; }
+/* the editor's bar: Save and ⋯ are bare words and icons like Back, Save the title's size (rednote's Edit birthday) */
+body .lv .e-top .acts .act { background: none; box-shadow: none; color: var(--ink); }   /* outranks the light theme's ring */
+.lv .e-top .act.primary { min-width: 0; padding: 0 6px; font-size: 15px; font-weight: 600; }
+.lv .e-top .act.icon .ic { width: 20px; height: 20px; }
 .lv .head { display: flex; gap: 7px; min-width: 0; }
 .lv .find { flex: 1; display: flex; height: var(--bar-h); }
 .lv .find label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 var(--rl-m); color: var(--ink-tertiary); cursor: text; }
@@ -7599,16 +7607,18 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 
 /* ---------- Customers: the Orders shape; the facts in the item editor's cards, read-only, values right ---------- */
 .lv .c-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(21px + var(--ph-safe, 0px)); scrollbar-width: thin; }
-.lv .c-body { display: grid; gap: 12px; }
-.lv .c-body { width: min(100%, 600px); margin-inline: auto; }   /* a short page: centred like the receipt paper; the top bar stays full width like Orders */
+.lv .c-body { display: grid; gap: 20px; }
+.lv .c-body { width: min(100%, 600px); margin-inline: auto; padding-top: 16px; }   /* a short page: centred like the receipt paper; the top bar stays full width like Orders */
 .lv .c-body .fr { grid-template-columns: auto minmax(0,1fr); gap: 16px; min-height: 46px; padding: 6px 16px; }   /* label left, value right at every width */
-.lv .c-body .fr:first-child { border-top: 0; }
 .lv .c-body .fr > .v { min-width: 0; text-align: right; overflow-wrap: anywhere; }
 .lv .c-body .fr > .v.over { color: var(--danger); }
+#customerBody .fr { grid-template-columns: 120px minmax(0,1fr); }   /* rednote: the word in a column, its value just after it */
+#customerBody .fr > .v { text-align: left; }
+.lv .c-body .fr .lim { color: var(--danger); font-size: 13px; font-weight: 500; }
+.lv .c-body .fr .lim.warn { color: var(--warn); }
 .lv .c-body .fr small { color: var(--ink-tertiary); font-size: inherit; }
 .lv .c-ord { overflow: hidden; }
-.lv .c-ord .row { border-top: 1px solid var(--line); border-bottom: 0; padding: 9px 16px; }
-.lv .c-ord h3 + :is(.row, .note) { border-top: 0; }
+.lv .c-ord .row { border-bottom: 0; padding: 9px 16px; }
 @container pv (max-width: 720px) { :is(.view-customers, .view-orders) .o-top .act span { display: none; } :is(.view-customers, .view-orders) .o-top .act { padding: 0; } }   /* phone: icons (each has a title), the name and the order's state keep the room */
 
 /* ---------- Items: the list fills the screen; the editor slides over it ---------- */
@@ -7691,7 +7701,7 @@ body.light-theme .lv .thumb { background: hsl(var(--h) 50% 92%); color: hsl(var(
 
 /* the editor: full screen, the back office's cards and fields */
 .lv .editor { position: absolute; inset: 0; z-index: 5; display: grid; grid-template-columns: minmax(128px,1fr) minmax(0,720px) minmax(128px,1fr); grid-template-rows: minmax(0,1fr);
-              gap: 0 16px; padding: 16px 18px 0; background: var(--bg);
+              gap: 0 16px; padding: 16px 18px 0; background: var(--canvas, var(--bg));
               transform: translateX(100%); visibility: hidden; transition: transform .28s var(--rl-ease), visibility 0s .28s; }
 .lv .iv.editing .editor { transform: none; visibility: visible; transition: transform .28s var(--rl-ease); }
 .lv .e-top { display: contents; }   /* wide: back and actions float in the margins beside the column */
@@ -7700,12 +7710,70 @@ body.light-theme .lv .thumb { background: hsl(var(--h) 50% 92%); color: hsl(var(
 .lv .form-scroll { grid-area: 1 / 1 / 2 / 4; display: grid; grid-template-columns: minmax(144px,1fr) minmax(0,720px) minmax(144px,1fr); align-content: start; scrollbar-gutter: stable both-edges;
                    min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .lv .form { grid-column: 2; display: grid; gap: 12px; min-width: 0; padding-bottom: 24px; }
-.lv .fc h3 { display: flex; justify-content: space-between; gap: 12px; margin: 0; padding: 12px 16px 6px; color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
-.lv .fc h3 span { color: var(--ink-tertiary); font-weight: 400; }
-.lv .fr { display: grid; grid-template-columns: 150px minmax(0,1fr); align-items: center; gap: 12px; min-height: 50px; padding: 6px 16px; border-top: 1px solid var(--line); }
-.lv .fc h3 + .fr { border-top: 0; }
-.lv .fr > .lb { color: var(--ink-secondary); }
+/* Apple Settings blocks (owner 2026-10-08), the customer form's (.cs-grp): a small grey title above, the rows on
+   one grey tile with inset hairlines, the word at the side of its value, a footnote under */
+.lv .card.fc { overflow: hidden; border-color: transparent; box-shadow: none; }   /* our card: white on the grey page, no outline, no shadow (rednote's) */
+.lv .fc > * + * { background-image: linear-gradient(var(--rl-div), var(--rl-div)); background-position: 16px 0; background-size: 100% 1px; background-repeat: no-repeat; }   /* from the text to the right edge */
+.lv .fc-t { display: flex; align-items: baseline; gap: 4px; margin: 4px 16px -6px; color: var(--ink-tertiary); font-size: 12px; font-weight: 500; }
+.lv .fc-n { margin: -6px 16px 4px; color: var(--ink-tertiary); font-size: 12px; overflow-wrap: anywhere; }
+.lv .fc-n b { color: var(--ink-secondary); font-weight: 600; }
+.lv .fc-t .link { margin-left: auto; }
+/* an action on a tile is blue words, no box (Apple's) */
+.lv :is(.fc, .fc-t) .link { color: var(--ink); text-decoration: none; }
+body .lv .fc .fr .act:not(.st-pick) { min-width: 0; padding: 0; background: none; box-shadow: none; color: var(--ink); font-size: 15px; font-weight: 500; }
+.lv .fc .st-sel select { padding: 0 24px 0 0; text-align-last: left; color: var(--ink-tertiary); }
+.lv .fc .st-sel .ic { right: 0; }
+.lv .editor.sub .e-top > .acts { visibility: hidden; }
+/* the title: small, centred in the top bar, the name repeated but quiet (rednote's Edit profile, Apple's) */
+.lv .fm-h { grid-area: 1 / 2; align-self: start; z-index: 1; min-width: 0; margin: 0; pointer-events: none; overflow: hidden; color: var(--ink); font-size: 16px; font-weight: 600;
+            line-height: var(--bar-h); text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.lv .form { padding-top: calc(var(--bar-h) + 12px); }   /* wide: the form starts under the title */
+.lv .fr { display: grid; grid-template-columns: 120px minmax(0,1fr); align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 6px 16px; color: var(--ink); font-size: 15px; text-align: left; }
+.lv .fr:is(.wide, :has(> .ctl.end > .sw)) { grid-template-columns: minmax(0,1fr) auto; }   /* a switch, a variant's row: the word takes the room */
+.lv .fr > .lb { color: var(--ink-secondary); }   /* rednote: the word grey on the left, its value dark on the right */
+.lv .fr > .lb.ph { color: var(--ink-quaternary); }
 .lv .fr .ctl { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lv .fr:is(.wide, :has(> .ctl.end > .sw)) .ctl.end { justify-content: flex-end; }
+.lv .fr .ctl > :is(.chev, .link:last-child) { margin-left: auto; }   /* the value after the word, the › and Adjust at the far right */
+.lv .fc .ctl.end > .st-pick { flex: none; gap: 6px; margin-left: auto; }   /* value beside its arrows, on the right edge */
+.lv .fr .vv { min-width: 0; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lv .fr .vv.ph { color: var(--ink-quaternary); }   /* None: the hint colour, as an empty field's */
+/* .fc.r: the value on the right edge, beside its control (rednote's settings); the word takes what it needs */
+.lv .fc.r .fr { grid-template-columns: auto minmax(0,1fr); }
+.lv .fc.r .fr .ctl { justify-content: flex-end; }
+.lv .fc.r .fr .ctl > :is(.chev, .link:last-child) { margin-left: 0; }
+.lv .fc.r .fr .in { text-align: right; }
+.lv .fc.r .fr textarea.in:not(:placeholder-shown) { text-align: left; }   /* a written description reads from the left; its hint sits right */
+.lv .fc.r .fr .in::-webkit-date-and-time-value { text-align: right; }   /* iOS draws the date in its own box */
+.lv .fr .chev { flex: none; width: 16px; height: 16px; color: var(--ink-quaternary); }
+.lv .fr.nav.wide > .lb { color: var(--ink-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (hover: hover) { .lv .fr.nav:hover, .lv .fr.add:hover { background-color: var(--rl-hover); } }   /* a touch left the next page's row grey */
+.lv .fr.add { display: flex; color: var(--ink); font-weight: 500; }
+.lv .fr.add.red { justify-content: center; color: var(--danger); }
+.lv label.fr { cursor: pointer; }
+/* on a tile a field is bare: no box, no ring; the caret says where you are */
+.lv .fc :is(.fr, .opt, .pick-find) .in { height: 36px; padding: 0; border-radius: 0; background: none; box-shadow: none; font-size: 15px; }
+.lv .fc .fr textarea.in { height: auto; min-height: 36px; padding: 8px 0; resize: none; field-sizing: content; line-height: 1.35; }
+.lv .fc .in:focus-visible { outline: 0; }
+.lv .fc .fr .in { color: var(--ink); text-align: left; }   /* rednote: the value just after its word */
+/* the photo: centred above the blocks, a camera on its corner (rednote's avatar) */
+.lv .fphoto { display: grid; justify-items: center; gap: 6px; margin-bottom: 16px; }   /* centred between the title and the first block (rednote) */
+.lv .fphoto label { position: relative; cursor: pointer; }
+.lv .fphoto .thumb { width: 80px; height: 80px; border-radius: var(--rl-r); font-size: 24px; }
+.lv .fphoto .cam { position: absolute; right: -6px; bottom: -6px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+                   background: var(--accent); color: var(--accent-ink); box-shadow: 0 0 0 3px var(--canvas, var(--bg)); }
+.lv .fphoto .cam .ic { width: 16px; height: 16px; }
+.lv .fphoto .link { text-decoration: none; }
+.lv #itemMarginNote { color: var(--ink-tertiary); }   /* worked out, not typed */
+body .lv .fc .act.st-pick { min-width: 0; height: 36px; padding: 0; background: none; box-shadow: none; color: var(--ink); font-size: 15px; font-weight: 400; }
+.lv .fc .st-pick:hover, .lv .fc .st-pick[aria-expanded="true"] { background: none; color: var(--ink); }
+body .lv .fc .sw:not(:checked) { background: var(--line-strong); }   /* on the grey tile the usual off track vanished */
+/* a › opens a subpage that slides in from the right, Back slides it out (pos-items itemGo) */
+.lv .form.push { animation: fm-push .28s var(--rl-ease); }
+.lv .form.pop { animation: fm-pop .28s var(--rl-ease); }
+@keyframes fm-push { from { opacity: 0; transform: translateX(40px); } }
+@keyframes fm-pop { from { opacity: 0; transform: translateX(-40px); } }
+@media (prefers-reduced-motion: reduce) { .lv .form.push, .lv .form.pop { animation: none; } }
 .lv .in { width: 100%; height: 38px; min-width: 0; padding: 0 12px; border: 0; border-radius: var(--r-input); outline: 0; background: var(--rl-soft); color: var(--ink);
           box-shadow: inset 0 0 0 1px var(--rl-hair); font: inherit; font-size: 14px; }
 body.light-theme .lv .in { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-strong); }
@@ -7717,7 +7785,7 @@ body.light-theme .lv .in { background: var(--surface-2); box-shadow: inset 0 0 0
 body.light-theme .lv .in[type=date] { color-scheme: light; }
 .lv .link { flex: none; color: var(--ink-secondary); font-size: 13px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
 .lv .link:hover { color: var(--ink); }
-.lv .note { padding: 10px 16px 14px; border-top: 1px solid var(--line); color: var(--ink-tertiary); }
+.lv .note { padding: 14px 16px; color: var(--ink-tertiary); }
 .lv .note b { color: var(--ink); font-weight: 600; }
 .lv .pills { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
 .lv .pills button { height: 32px; padding: 0 12px; border-radius: 8px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); color: var(--ink-secondary); font-size: 13px; font-weight: 500; }
@@ -7740,21 +7808,38 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv .vt .del:hover, .lv .opt .del:hover { background: var(--danger-bg); color: var(--danger); }
 .lv .fc .foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px 12px; border-top: 1px solid var(--line); color: var(--ink-tertiary); }
 /* the category / modifier editor: option rows, then a tick for each item it's on */
-.lv .opt { display: grid; grid-template-columns: minmax(0,1fr) 140px 28px; align-items: center; gap: 8px; padding: 6px 16px; border-top: 1px solid var(--line); }
-.lv .opt:first-child { border-top: 0; }
-.lv .pick-find { padding: 2px 16px 10px; }
+.lv .opt { display: grid; grid-template-columns: minmax(0,1fr) 110px 28px; align-items: center; gap: 8px; min-height: 52px; padding: 6px 8px 6px 16px; }
+.lv .opt .in.num { text-align: right; }
+.lv .pick-find { padding: 4px 16px; }
 .lv .picks { max-height: 440px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
-.lv .pick { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 16px; border-top: 1px solid var(--line); cursor: pointer; }
+.lv .pick { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 16px; font-size: 15px; cursor: pointer; }
+.lv .pick .tx { display: grid; min-width: 0; }
+/* a tick is Apple's: a blue check at the right, nothing when off */
+.lv .fc .pick input { order: 9; margin-left: auto; appearance: none; background: none; }
+.lv .fc .pick input:checked { background: var(--ink); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat; }
+.lv .fc .pick:has(input:focus-visible) { background-color: var(--rl-hover); }
+.lv .fc .fr:focus-visible { outline-offset: -2px; }   /* the tile clips its edges: the ring sits inside the row */
+.lv .pick:not(:has(input)) { color: var(--ink-tertiary); cursor: default; }
+.lv .pick .tx small { color: var(--ink-tertiary); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lv .pick[hidden] { display: none; }
 .lv .pick input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
 .lv .fc .blurb { padding: 4px 16px 14px; color: var(--ink-tertiary); }
 
 @container pv (max-width: 920px) {
   .lv .cols { grid-template-columns: minmax(0,1fr) 130px 170px 90px; }
-  .lv .editor { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); gap: 12px; }
+  .lv .editor { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr); gap: 0; }   /* the page cuts right under the bar */
   .lv .form-scroll { grid-template-columns: minmax(0,1fr) minmax(0,720px) minmax(0,1fr); }
-  .lv .e-top { display: flex; justify-content: space-between; }
-  .lv .e-top > .sq, .lv .e-top > .acts, .lv .form-scroll { grid-area: auto; }
+  .lv .e-top { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; min-width: 0; }
+  .lv .e-top > .sq { grid-area: 1 / 1; }
+  .lv .e-top > .acts { grid-area: 1 / 3; }
+  .lv .form-scroll { grid-area: auto; }
+  /* the title spans the bar and keeps clear of both sides by the same amount, so it sits on the screen's centre
+     ponytail: 96px = the actions (⋯ 36 + 6 + Save ~46) + a gap; a long name ends in … (the Name row shows it whole) */
+  .lv .e-top > .fm-h { grid-area: 1 / 1 / 2 / 4; padding-inline: 96px; font-size: 15px; }
+  .lv .e-top:has(#itemMore[hidden]) > .fm-h { padding-inline: 56px; }   /* the item: Save alone (~46) + a gap */
+  .lv .editor.sub .e-top > .fm-h { padding-inline: 40px; }   /* a subpage has only Back */
+  .lv .form { padding-top: 26px; }   /* the old 12px gap + 14: the first block stays where it was */
+  .lv .fphoto { margin-top: -6px; }   /* 42 under the title's middle, 28 over the first block, as rednote's */
   .lv .e-top > .acts { margin-right: 0; }
 }
 /* phone: category folds away; the editor's labels sit above their fields */
@@ -7769,7 +7854,6 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
   .lv .page .row .hi { display: none; }
   .lv .fab { right: 24px; bottom: 24px; }
   .lv .editor { padding: 8px 12px 0; }
-  .lv .fr { grid-template-columns: 1fr; gap: 6px; padding: 10px 16px; }
 }
 
 /* the filter sheet (both pages): every choice on one sheet, a tap applies at once; lives in .rail-veil */
@@ -7830,9 +7914,7 @@ input.es-ta { height: 56px; }
 /* ==== batch 2026-10-07: shift + sync mark ==== */
 /* Shift (pos-shift.js): the Customers cards, centred. Cash in / out is one line of amount, note, two buttons. */
 .lv .sh-ctl { display: inline-flex; justify-content: flex-end; gap: 8px; }
-.lv .sh-pay { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 16px 12px; }
-.lv .sh-pay .in:not(.short) { flex: 1 1 140px; width: auto; }
-.lv .sh-move { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 46px; padding: 6px 16px; border-top: 1px solid var(--line); }
+.lv .sh-move { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 6px 16px; }
 .lv .sh-move .nm { display: grid; min-width: 0; overflow-wrap: anywhere; }
 .lv .sh-move small { color: var(--ink-tertiary); font-size: 12px; }
 .lv .sh-move .out { color: var(--ink-secondary); }
@@ -7841,8 +7923,6 @@ input.es-ta { height: 56px; }
 .lv .sh-slip { margin: 0; white-space: pre; overflow-x: auto; font-size: 11px; line-height: 1.45; }
 .lv .paper-scroll .rp-paper.sh-slip { width: fit-content; max-width: 100%; padding: 20px; font-size: 11px; }
 @container pv (max-width: 720px) {
-  .lv .sh-pay { display: grid; grid-template-columns: 1fr 1fr; }   /* phone: amount + note, then the two buttons */
-  .lv .sh-pay .in.short { width: auto; }
 }
 /* The ☰ drawer's sync line, under the signed-in person: quiet, the user row's left edge. */
 .sync-mark { padding: 6px 8px 0; color: var(--ink-tertiary); font-size: 12px; line-height: 1.2; }
