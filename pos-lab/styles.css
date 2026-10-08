@@ -8010,3 +8010,44 @@ body.light-theme .st-sel select { color-scheme: light; }
 .st-prn .status-pill .dot { display: inline-block; }
 .st-prn .status-pill.out .dot { background: var(--warn); }
 .st-prn .prn-scan-status { margin: 0; font-size: 12px; }
+
+/* ===== Orders on the item editor's pattern (owner 2026-10-09, from orders-lab.html) =====
+   Grey page; each day is its own block headed by the grey date strip; hairlines between orders; bare bar actions.
+   Scoped to .view-orders (Customers shares .o-rail) and kept last so it outranks the .lv .o-rail rules above. */
+.view-orders.lv { background: var(--canvas, var(--bg)); }
+body.light-theme:has(.view-orders.active) { background: var(--canvas); }
+
+/* the list: no outer card; each day = its own block, headed by today's grey date strip.
+   Each row rings itself (the Sell search bar's ring + shadow); neighbours' rings overlap into one full-width hairline.
+   The head is sticky: its canvas square hides rows scrolling under it, the rounded strip + ring sit on ::before (z -1 inside the band) */
+.view-orders .o-rail .list { border: 0; border-radius: 0; background: none; box-shadow: none; }
+.view-orders .o-rail .lines { margin-bottom: 0; padding-inline: 1px; padding-bottom: calc(16px + var(--ph-safe, 0px)); }
+.view-orders .o-rail .band { height: 36px; margin-top: 16px; padding: 0 16px; border: 0; background: var(--canvas, var(--bg));
+                             box-shadow: 0 0 0 1px var(--canvas, var(--bg)); }   /* also hides the rows' 1px ring passing beside it */
+.view-orders .o-rail .band:first-child { margin-top: 8px; }
+.view-orders .o-rail .band::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: var(--rl-r) var(--rl-r) 0 0;
+                                     background: var(--rl-soft); box-shadow: 0 0 0 1px var(--line); }
+.view-orders .o-rail .row { padding-inline: 16px; border: 0; background-color: var(--rl-card); box-shadow: 0 0 0 1px var(--line); }
+body.light-theme .view-orders .o-rail .row { box-shadow: 0 0 0 1px var(--line), var(--shadow-card); }   /* dark's --shadow-card is none, which would void the pair */
+.view-orders .o-rail .row:is(:has(+ .band), :last-child) { border-bottom-left-radius: var(--rl-r); border-bottom-right-radius: var(--rl-r); }
+.view-orders .o-rail .row:hover { background-color: var(--rl-hover); }
+.view-orders .o-rail .row.cur { background-color: var(--rl-track); }
+
+/* the receipt's bar: bare icons and words, no boxes (the item editor's Save / ⋯) */
+body .view-orders .o-top .acts .act { background: none; box-shadow: none; color: var(--ink); }
+.view-orders .o-top .acts .act:hover { background: var(--rl-hover); }
+.view-orders .o-top .act .ic { width: 20px; height: 20px; }
+.view-orders .o-top .act span { font-size: 15px; }
+
+/* the paper on grey needs no ring */
+body.light-theme .view-orders .rp-paper { box-shadow: none; }
+
+/* what went back on a sale: a white block, inset hairlines */
+.view-orders .o-back { border: 0; border-radius: var(--rl-r); background: var(--rl-card); overflow: hidden; }
+.view-orders .o-back .fr { padding: 10px 16px; }
+.view-orders .o-back .fr + .fr { border-top: 0; background: linear-gradient(var(--rl-div), var(--rl-div)) 16px 0 / 100% 1px no-repeat; }
+
+/* Refund's tick list: the same white block */
+.view-orders .card.ol { border-color: transparent; box-shadow: none; }
+.view-orders .ol .band { border-bottom: 0; background: none; color: var(--ink-tertiary); }
+.view-orders .ol .line + .line { border-top: 0; background: linear-gradient(var(--rl-div), var(--rl-div)) 16px 0 / 100% 1px no-repeat; }
