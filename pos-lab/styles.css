@@ -396,6 +396,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .ghost-icon:hover { background: var(--surface-hover); color: var(--ink); }
 .search-row .ghost-icon { background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); }   /* like .view-hamburger */
 .search-row .ghost-icon:hover { background: var(--surface-hover); }
+/* Sell's ☰ bare like rednote's back chevron (owner 2026-10-09): no box, bigger glyph ~18px in from the screen like rednote's; search takes the room */
+.search-row #sidebarToggle, body.light-theme .search-row #sidebarToggle { width: 32px; margin-left: 2px; background: none; box-shadow: none; color: var(--ink); }
+#sidebarToggle svg { width: 24px; height: 24px; }
 
 /* Product grid — Loyverse-style flat tiles (1-to-1 with reference) */
 .product-grid {
@@ -3492,9 +3495,9 @@ a.secondary-btn { text-decoration: none; }
 .vsheet.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
 /* the top row while it's open: menu -> X, catalog search -> Search variants, scan button folds away */
 #sidebarToggle line { transform-origin: 12px 12px; transition: transform .24s var(--rl-ease), opacity .16s; }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(1) { transform: rotate(45deg) translateY(5px); }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(1) { transform: rotate(45deg) translateY(6px); }
 .catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(2) { opacity: 0; }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3) { transform: rotate(-45deg) translateY(-5px); }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3) { transform: rotate(-45deg) translateY(-6px); }
 .vs-search, .vs-chip { display: none; }
 /* SCANNER (owner 2026-10-08, Shopify POS): the camera in one rounded card in the edit sheet's frame, over the top row
    (Discount, Fulfilment; owner: "so it covers the hamburger"); the phone gives
@@ -7512,6 +7515,9 @@ body.light-theme {
 .lv .sq:hover { background: var(--rl-hover); color: var(--ink); }
 .lv .sq.back { width: 32px; margin-left: -8px; border: 0; background: none; box-shadow: none; color: var(--ink); }   /* Back is a bare chevron, no box (rednote's) */
 .lv .sq.back .ic { width: 24px; height: 24px; stroke-width: 1.8; }
+/* ☰ bare like Sell's (owner 2026-10-09): rednote's size and spot, search takes the room */
+.lv .sq[data-act="open-sidebar"] { width: 32px; border: 0; background: none; box-shadow: none; color: var(--ink); }
+.lv .sq[data-act="open-sidebar"] svg { width: 24px; height: 24px; }
 /* the editor's bar: Save and ⋯ are bare words and icons like Back, Save the title's size (rednote's Edit birthday) */
 body .lv .e-top .acts .act { background: none; box-shadow: none; color: var(--ink); }   /* outranks the light theme's ring */
 .lv .e-top .act.primary { min-width: 0; padding: 0 6px; font-size: 15px; font-weight: 600; }
