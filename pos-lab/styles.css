@@ -3719,7 +3719,10 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .cs-body { flex: 1; min-height: 0; display: flex; overflow-y: auto; padding: 78px 24px 24px; }   /* 26 under the bar, as the item editor's */
 .cs-in { width: min(420px, 100%); margin: 0 auto; }   /* from the top, as the item editor's */
 /* the title small and centred in the top bar, between ✕ / ‹ and Save (the item editor's .fm-h) */
-.cs-h { position: absolute; z-index: 1; top: 12px; inset-inline: 0; margin: 0; padding-inline: 64px; pointer-events: none; color: var(--ink);
+.cust-sheet .es-ft { position: absolute; z-index: 1; top: 12px; right: 12px; padding: 0; border: 0; }   /* Save at the top, across from ✕ / ‹ (the item editor's) */
+.cust-sheet .es-ink { height: 40px; padding: 0 10px; background: none; font-size: 15px; font-weight: 600; }   /* bare words */
+.cust-sheet .es-ink:hover { background: var(--es-btn); }
+.cs-h { position: absolute; z-index: 1; top: 12px; inset-inline: 0; margin: 0; padding-inline: 80px; pointer-events: none; color: var(--ink);
         font-size: 16px; font-weight: 600; line-height: 40px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #custFields { display: flex; flex-direction: column; gap: 12px; }
 /* a block: one soft card, its fields split by an inset hairline (Apple's contact card) */
@@ -7462,8 +7465,8 @@ body.light-theme {
   .esheet .es-x .ix { display: none; }
   .esheet .es-x :is(.ib, .xl) { display: block; }
   .esheet .es-x .ib { stroke-width: 2; color: var(--ink-secondary); }
-  .cust-sheet .es-ft { position: absolute; z-index: 1; top: 8px; right: 10px; padding: 0; }
-  .cust-sheet .es-ink { height: var(--bar-h); padding: 0 6px; background: none; font-size: 15px; font-weight: 600; }   /* bare words, the item editor's Save */   /* the phone: Save at the top, across from Back */
+  .cust-sheet .es-ft { top: 8px; right: 10px; }
+  .cust-sheet .es-ink { height: var(--bar-h); padding: 0 6px; }   /* the phone: Save at the top, across from Back */
   .cs-body { padding: 78px 16px 24px; }
   .cust-sheet .es-x { top: 8px; left: 4px; width: 32px; min-width: 0; padding: 0; justify-content: center; }   /* the item editor's ‹ (.sq.back) */
   .cust-sheet .es-x .xl { display: none; }
