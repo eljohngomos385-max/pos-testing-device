@@ -875,6 +875,7 @@ function init() {
   renderRoleSwitcher();
   renderSyncMark();
   setInterval(renderSyncMark, 30000);   // "2 min ago" keeps moving while the ☰ is open
+  $('#syncMark')?.addEventListener('click', (e) => { e.stopPropagation(); showToast(e.currentTarget.title); });   // not the row's lock
   attachEvents();
   track('app_open');
   // ponytail: lab only. ?pins gives the demo staff real PINs (1111 owner, 2222 manager, 3333 and 4444 cashiers)

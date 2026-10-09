@@ -217,21 +217,19 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 :where(#app:not(.bo-app)) .side-link.active svg { color: var(--ink); }
 :where(#app:not(.bo-app)) .side-link[hidden] { display: none; }   /* applyRoleGating: a page this role can't open */
 
-:where(#app:not(.bo-app)) .side-footer {
-  margin-top: auto;
-  padding-top: 24px;
-  border-top: 1px solid var(--line);
-}
+/* Who, as what, where, and synced or not: one more card at the foot, the name at the icons' x. */
+:where(#app:not(.bo-app)) .side-footer { margin-top: auto; padding-top: 9px; }
 :where(#app:not(.bo-app)) .user-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: 12px 8px 12px 17px;
+  border-radius: var(--es-r);
+  background: var(--surface-2);
   cursor: pointer;
-  transition: background .12s;
 }
-:where(#app:not(.bo-app)) .user-row:hover { background: rgba(255,255,255,0.05); }
+:where(#app:not(.bo-app)) .user-meta { flex: 1; min-width: 0; display: grid; gap: 3px; }
+:where(#app:not(.bo-app)) .sync-mark { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; color: var(--ink-tertiary); }
 .user-avatar {
   width: 32px; height: 32px;
   border-radius: 50%;
@@ -244,6 +242,8 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 }
 .user-name { font-size: 13px; font-weight: 510; line-height: 1.2; color: var(--ink); }
 .user-sub { font-size: 12px; color: var(--ink-tertiary); line-height: 1.2; }
+:where(#app:not(.bo-app)) .user-name { font-size: 14px; font-weight: 590; }
+:where(#app:not(.bo-app)) .user-sub { font-size: 13px; color: var(--ink-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ============================================================
    MAIN
@@ -4988,7 +4988,6 @@ body.light-theme .cart-actions .charge-btn:disabled {
 
 /* Hover/tint fills that were white-on-dark become black-on-light */
 body.light-theme .side-link:hover,
-body.light-theme .user-row:hover,
 body.light-theme .cart .text-btn:hover,
 body.light-theme .text-btn:hover,
 body.light-theme .or-status.done,
@@ -7956,8 +7955,6 @@ input.es-ta { height: 56px; }
 @container pv (max-width: 720px) {
 }
 /* The ☰ drawer's sync line, under the signed-in person: quiet, the user row's left edge. */
-.sync-mark { padding: 6px 8px 0; color: var(--ink-tertiary); font-size: 12px; line-height: 1.2; }
-.sync-mark:empty { display: none; }
 
 /* ==== batch 2026-10-07: PIN screen + settings ==== */
 /* The PIN pad (pos-pin.js). Sign-in (.pin-lock): Loyverse's lock screen -- the plain page, store name

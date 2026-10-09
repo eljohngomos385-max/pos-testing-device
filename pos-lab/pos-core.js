@@ -773,7 +773,7 @@ function renderRoleSwitcher() {
   if (!userMeta) return;
   const sub = userMeta.querySelector('.user-sub');
   if (!sub) return;
-  sub.textContent = `${STAFF_ROLES[state.role] || 'Staff'} · Main store`;
+  sub.textContent = `${STAFF_ROLES[state.role] || 'Staff'} · ${currentStoreInfo().name}`;
   if (state.user) userMeta.querySelector('.user-name').textContent = state.user.name;
 }
 
