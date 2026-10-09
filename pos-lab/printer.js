@@ -153,6 +153,7 @@
     const delivery = fulfil === 'DELIVERY';
     if (fulfil) { bold(true); text(fulfil); bold(false); }
     if (delivery && vm.deliveryAddress) wrap(vm.deliveryAddress, cols).forEach(text);
+    if (vm.note) wrap('Note: ' + vm.note, cols).forEach(text);   // the order's note (cart ⋯ Add note)
 
     rule();
 
@@ -162,6 +163,7 @@
       wrap(i.name, cols).forEach(text);
       const qty = ('  ' + i.qty + ' ' + (i.unit || '')).replace(/\s+$/, '') + ' x ' + cash(i.price);
       row(qty, cash(amount));
+      if (i.note) wrap(i.note, cols - 2).forEach(s => text('  ' + s));   // the line's note, under it like its qty
     });
 
     rule();

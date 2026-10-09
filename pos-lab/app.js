@@ -388,7 +388,9 @@ function attachEvents() {
     const t = e.target;
     if (t.dataset.k === 'q') return filterPicks(t.value);   // a tick list's search, both editors
     if (kindEdit) return kindInput(t);
-    const E = itemEdit, f = t.dataset.f, num = () => Number(t.value) || 0, head = $('#itemTitle');
+    const E = itemEdit, f = t.dataset.f, head = $('#itemTitle');
+    // a blank Price stays blank (asked at sale), not 0, and so does the Markup that follows it
+    const num = () => (t.value === '' && ['price', 'marginValue'].includes(f || t.dataset.v) ? null : Number(t.value) || 0);
     if (t.dataset.v) {   // the variant's page
       const v = E.variants.find(x => x.id === itemSub);
       v[t.dataset.v] = t.type === 'number' ? num() : t.value;
@@ -421,7 +423,7 @@ function attachEvents() {
     else if (act === 'add-variant') { const v = blankVariant(); E.variants.push(v); itemGo(v.id); itemForm.querySelector('[data-v=name]').focus({ preventScroll: true }); }
     else if (act === 'del-variant') {
       E.variants = E.variants.filter(v => v.id !== itemSub);
-      E.marginValue = marginFromPrice(E.variants[0].cost, E.variants[0].price, E.marginMode);   // Markup is back when one is left
+      E.marginValue = itemMarkupOf(E.variants[0], E.marginMode);   // Markup is back when one is left
       itemGo('');
     }
     else if (act === 'img-clear') { E.img = ''; renderItemForm(); }
@@ -483,12 +485,18 @@ function attachEvents() {
   $('#cartDiscountBtn')?.addEventListener('click', () => openEditSheet('rd'));
   $('#fulRow').addEventListener('click', (e) => { if (e.target.closest('#fulPick')) openEditSheet('ful'); });   // delegated: the row is rebuilt on every cart render
   $('#editSheet').addEventListener('click', editSheetClick);
-  $('#editSheet').addEventListener('keydown', (e) => {   // Enter in the SC/PWD ID or Name is its Apply
-    if (e.key !== 'Enter' || !e.target.closest('[data-scf]')) return;
+  $('#editSheet').addEventListener('keydown', (e) => {   // Enter in the SC/PWD ID or Name, or a line's note, is its Apply
+    if (e.key !== 'Enter' || !e.target.closest('[data-scf], #esNote')) return;
     e.preventDefault();
     editSheetClick({ target: $('#editSheet [data-apply]') });
   });
-  $('#editSheet').addEventListener('input', (e) => {   // the address lands on the cart as it's typed
+  $('#editSheet').addEventListener('input', (e) => {   // the address, and a line's note, land on the cart as they're typed
+    const line = e.target.id === 'esNote' && esItem();
+    if (line) {
+      line.note = e.target.value.replace(/\s+/g, ' ').trim();   // one line on the slip
+      $('#editSheet [data-sf="n"] .ad').textContent = line.note;
+      return;
+    }
     if (e.target.id !== 'esAddr') return;
     state.deliveryAddress = e.target.value;
     const ad = $('#editSheet [data-ful="delivery"] .ad');
@@ -615,6 +623,7 @@ function attachEvents() {
   $('#cartMoreBtn').addEventListener('click', (e) => {
     const empty = state.cart.length === 0;
     openMenu(e.currentTarget, [
+      { label: state.orderNote ? 'Edit note' : 'Add note', run: openOrderNote, off: empty },
       // A saved cart / quote is a draft beside the orders (pos-checkout saveDraft); an exchange can't be parked.
       { label: 'Save cart', run: () => openSaveReceiptModal('saved'), off: empty || !!state.exchange },
       { label: 'Print quote', run: () => openSaveReceiptModal('quote'), off: empty || !!state.exchange },

@@ -219,6 +219,7 @@ function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentM
     fulfilment: state.fulfilment || 'walkin',
     deliveryAddress: state.fulfilment === 'delivery' ? state.deliveryAddress : '',
     deliveryLocation: state.fulfilment === 'delivery' ? state.deliveryLocation : null,
+    note: state.orderNote || '',
   });
 }
 
@@ -563,6 +564,7 @@ function saveDraft(kind, name) {
     fulfilment: state.fulfilment || 'walkin',
     deliveryAddress: state.fulfilment === 'delivery' ? state.deliveryAddress : '',
     deliveryLocation: state.fulfilment === 'delivery' ? state.deliveryLocation : null,
+    note: state.orderNote || '',
     ts: Date.now(),
     cashier: store.cashier,
     staffId: state.user?.id || '',
@@ -578,19 +580,30 @@ function dropDraft(id) {
   state.savedId = '';
 }
 
-// "Save cart" and "Print quote" (the cart ⋯): one name sheet that grows out of the ⋯ and shrinks back into it
-// (the pay sheet's veil + card, growFrom).
+// "Save cart" and "Print quote" (the cart ⋯): one name sheet (openCartForm).
 function openSaveReceiptModal(kind = 'saved') {
-  const btn = $('#cartMoreBtn');
-  if (state.cart.length === 0 || !btn) return;
+  if (state.cart.length === 0) return;
   const word = kind === 'quote' ? 'Print quote' : 'Save cart';
   const name = (state.savedId && loadSavedCarts().find(d => d.id === state.savedId)?.name) || state.customer?.name || '';
+  openCartForm(word, `<label class="pf"><span class="lb">Customer name</span><input class="text-input" name="who" type="text" autocomplete="off" placeholder="Optional" value="${escapeHtml(name)}"></label>`,
+    word, f => saveCurrentReceipt(f.who.value, kind));
+}
+// The order's note (owner 2026-10-09): under who it's for on the cart, on the order, its slip and Orders. Empty = none.
+function openOrderNote() {
+  openCartForm(state.orderNote ? 'Edit note' : 'Add note', `<label class="pf"><span class="lb">Note</span><input class="text-input" name="note" type="text" maxlength="120" autocomplete="off" placeholder="For this order" value="${escapeHtml(state.orderNote || '')}"></label>`,
+    'Save', f => { state.orderNote = f.note.value.replace(/\s+/g, ' ').trim(); renderCart(); });
+}
+// The cart ⋯'s small form: grows out of the ⋯ and shrinks back into it (the pay sheet's veil + card, growFrom).
+// `field`: its one labelled input; onSubmit(form) runs in the tap's gesture (a quote's print pop-up needs it).
+function openCartForm(title, field, ok, onSubmit) {
+  const btn = $('#cartMoreBtn');
+  if (!btn) return;
   const veil = document.createElement('div');
   veil.className = 'rail-veil';
-  veil.innerHTML = `<form class="pay-sheet" role="dialog" aria-label="${word}" novalidate>
-    <div class="ph"><b>${word}</b></div>
-    <label class="pf"><span class="lb">Customer name</span><input class="text-input" name="who" type="text" autocomplete="off" placeholder="Optional" value="${escapeHtml(name)}"></label>
-    <div class="pb"><button type="button" class="secondary-btn small" data-cancel>Cancel</button><button type="submit" class="primary-btn small">${word}</button></div>
+  veil.innerHTML = `<form class="pay-sheet" role="dialog" aria-label="${title}" novalidate>
+    <div class="ph"><b>${title}</b></div>
+    ${field}
+    <div class="pb"><button type="button" class="secondary-btn small" data-cancel>Cancel</button><button type="submit" class="primary-btn small">${ok}</button></div>
   </form>`;
   const f = veil.firstChild, r = btn.getBoundingClientRect();
   f.style.width = Math.min(340, innerWidth - 24) + 'px';
@@ -610,9 +623,9 @@ function openSaveReceiptModal(kind = 'saved') {
     e.preventDefault();
     if (veil.style.pointerEvents) return;   // closing already: a second Enter must not save twice
     close();
-    saveCurrentReceipt(f.who.value, kind);   // in the tap's gesture: a quote's print pop-up needs it
+    onSubmit(f);
   });
-  f.who.focus({ preventScroll: true });
+  f.querySelector('input').focus({ preventScroll: true });
 }
 
 function saveCurrentReceipt(name = '', kind = 'saved') {
@@ -640,7 +653,9 @@ function continueDraft(id) {
     const p = state.products.find(x => x.id === (i.productId || i.id));
     if (!p) { gone.push(i.name); continue; }
     if (!onTill(p)) off.push(`${p.name} is ${p.archived ? 'archived' : 'hidden'}.`);
-    lines.push({ ...i, id: p.id, name: p.name, sku: p.sku, brand: p.brand, unit: p.unit, price: p.price });
+    // a price asked at sale (askedPrice) keeps the line's own id and the price it was given
+    const typed = i.productId && i.id !== i.productId;
+    lines.push({ ...i, id: typed ? i.id : p.id, name: p.name, sku: p.sku, brand: p.brand, unit: p.unit, price: typed || askedPrice(p) ? i.price : p.price });
   }
   if (!lines.length) return showToast(`Nothing to continue · ${gone.join(', ')} no longer sold`);
   const load = () => {
@@ -653,6 +668,7 @@ function continueDraft(id) {
     state.fulfilment = d.fulfilment || state.fulfilment;
     state.deliveryAddress = d.deliveryAddress || '';
     state.deliveryLocation = d.deliveryLocation || null;
+    state.orderNote = d.note || '';
     state.savedId = d.id;
     renderCart();
     updateCustomerButton();
