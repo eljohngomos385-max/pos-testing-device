@@ -491,47 +491,24 @@
       <!-- ============================================
            REPORTS VIEW
            ============================================ -->
-      <section class="view view-reports" data-view="reports">
-        <header class="view-head">
-          <button class="view-hamburger" data-act="open-sidebar" aria-label="Menu" title="Menu">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-              <line x1="4" y1="7" x2="20" y2="7"/>
-              <line x1="4" y1="12" x2="20" y2="12"/>
-              <line x1="4" y1="17" x2="20" y2="17"/>
-            </svg>
-          </button>
-          <div class="view-title-wrap">
-            <h1>Reports</h1>
-          </div>
-        </header>
-        <div class="page-pad reports-pad">
-          <div class="reports-stats">
-            <div class="report-stat">
-              <div class="report-stat-label">Today's net sales</div>
-              <div class="report-stat-value" id="statRevenue">₱0.00</div>
+      <section class="view view-reports lv" data-view="reports">
+        <div class="iv">
+          <section class="page" aria-label="Reports">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+              </button>
+              <section class="card find" id="reportsFind">
+                <label>
+                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <input id="reportsSearch" type="text" placeholder="Search items" autocomplete="off">
+                  <button class="x" id="reportsSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                </label>
+                <button class="more per" id="reportsPeriod" aria-haspopup="menu" aria-expanded="false" aria-label="Period"><span>Day</span><svg class="ic" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+              </section>
             </div>
-            <div class="report-stat">
-              <div class="report-stat-label">Orders</div>
-              <div class="report-stat-value" id="statTxns">0</div>
-            </div>
-          </div>
-
-          <div class="reports-chart-box">
-            <div class="reports-chart-head">
-              <span>Payment methods · last 7 days</span>
-              <span class="muted" id="reportsRangeTotal">₱0.00</span>
-            </div>
-            <div class="reports-chart" id="reportsChart"></div>
-            <div class="reports-legend" id="reportsLegend"></div>
-          </div>
-
-          <div class="reports-tx-box">
-            <div class="reports-tx-head">
-              <span>Today's orders</span>
-              <span class="muted" id="reportsTxCount">0 orders</span>
-            </div>
-            <div class="reports-tx-list" id="reportsTxList"></div>
-          </div>
+            <div class="c-scroll" id="reportsBody"></div>
+          </section>
         </div>
       </section>
 
