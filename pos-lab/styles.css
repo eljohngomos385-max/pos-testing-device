@@ -145,11 +145,12 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   top: 0;
   left: 0;
   bottom: 0;
+  --sidebar-w: 308px;   /* rednote's drawer, measured (owner 2026-10-09); the back office keeps :root's */
   width: var(--sidebar-w);
-  background: var(--surface-2);
+  background: var(--bg);
   display: flex;
   flex-direction: column;
-  padding: 18px 16px 16px;
+  padding: 22px 16px 16px;
   border-right: none;
   overflow-y: auto;
   overflow-x: hidden;
@@ -165,12 +166,6 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 #app.sidebar-collapsed .sidebar {
   transform: translateX(-100%);
   box-shadow: none;
-}
-:where(#app:not(.bo-app)) .side-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 8px 18px;
 }
 :where(#app:not(.bo-app)) .brand-mini {
   display: flex;
@@ -190,26 +185,30 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 :where(#app:not(.bo-app)) .side-nav {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 9px;
 }
+/* rednote's drawer (owner 2026-10-09): the links in white cards on a near-white page, 48px rows, 24px icons,
+   every row the one dark ink; the active row a fill inset 4px, its corner concentric with the card's. */
+:where(#app:not(.bo-app)) .side-grp { display: flex; flex-direction: column; gap: 3px; padding: 4px; border-radius: var(--es-r); background: var(--surface-2); }
+:where(#app:not(.bo-app)) .side-grp:not(:has(.side-link:not([hidden]))) { display: none; }   /* every page in it gated off */
 :where(#app:not(.bo-app)) .side-link {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 11px;
   width: 100%;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 6px;
-  font-size: 15px;
-  font-weight: 510;
+  height: 48px;
+  padding: 0 13px;
+  border-radius: calc(var(--es-r) - 4px);
+  font-size: 14px;
+  font-weight: 400;
   letter-spacing: -0.15px;
-  color: var(--ink-secondary);
+  color: var(--ink);
   text-align: left;
   transition: background .12s, color .12s;
 }
-:where(#app:not(.bo-app)) .side-link svg { color: var(--ink-tertiary); flex-shrink: 0; width: 20px; height: 20px; }
+:where(#app:not(.bo-app)) .side-link svg { color: var(--ink); flex-shrink: 0; width: 24px; height: 24px; }
+:where(#app:not(.bo-app)) .side-link svg.ext { width: 18px; height: 18px; color: var(--ink-tertiary); }
 :where(#app:not(.bo-app)) .side-link:hover { background: rgba(255,255,255,0.05); color: var(--ink); }
-:where(#app:not(.bo-app)) .side-link:hover svg { color: var(--ink-secondary); }
 :where(#app:not(.bo-app)) .side-link.active {
   background: rgba(255,255,255,0.08);
   color: var(--ink);
@@ -5010,6 +5009,7 @@ body.light-theme .bb-settings-link:hover,
 body.light-theme .co-back-btn:hover { background: rgba(0,0,0,0.06); }
 body.light-theme .side-link.active,
 body.light-theme .side-link.active svg { color: var(--ink); }
+body.light-theme :where(#app:not(.bo-app)) .sidebar { background: var(--surface); }   /* rednote's #FAFAFA under the white cards */
 body.light-theme .bb-pagedot { background: rgba(0,0,0,0.25); }
 body.light-theme .bb-collapse-handle { background: rgba(0,0,0,0.18); }
 body.light-theme ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); }
