@@ -712,7 +712,18 @@ function attachEvents() {
   // Delegated: the tiles are rebuilt from settings on every checkout render.
   $('#checkoutMethods')?.addEventListener('click', (e) => {
     const card = e.target.closest('[data-co-method]');
-    if (card) selectPayMethod(card.dataset.method, card.dataset.label || '');
+    if (!card) return;
+    if (card.dataset.method === 'split') setSplitPicks([]);
+    if (state.paymentMethod !== 'split' || !state.paymentMethodChosen) return selectPayMethod(card.dataset.method, card.dataset.label || '');
+    // Two methods: a tap lights a tile, a lit one tapped again drops it; a third pick replaces the older one.
+    const k = card.dataset.label || card.dataset.method, picks = state.splitPay.picks;
+    setSplitPicks(picks.includes(k) ? picks.filter(m => m !== k) : [...picks, k].slice(-2));
+    showPayStep();
+  });
+  // Two methods: the amount or Given, whichever row was tapped, takes the keys.
+  $('#checkoutKeyIn')?.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-field]');
+    if (row && state.paymentMethod === 'split') { state.splitPay.field = row.dataset.field; updateChange(); }
   });
 
   // Back: a method's detail -> the method tiles; the tiles -> the cart.
@@ -732,7 +743,11 @@ function attachEvents() {
   });
   $('#checkoutCustBtn')?.addEventListener('click', openCustomerModal);
   // Our keypad, never the tablet's: taps, or a desk keyboard's digits / . / Backspace / Enter.
-  const cashKey = (k) => { const t = $('#checkoutTender'); t.value = esPress(t.value, k, true, 9999999); updateChange(); };
+  const cashKey = (k) => {
+    const s = state.paymentMethod === 'split' && state.splitPay, t = $('#checkoutTender');
+    if (s?.field === 'given') s.given = esPress(s.given, k, true, 9999999); else t.value = esPress(t.value, k, true, 9999999);
+    updateChange();
+  };
   $('#checkoutKeys')?.addEventListener('click', (e) => { const b = e.target.closest('[data-sk]'); if (b) cashKey(b.dataset.sk); });
   document.addEventListener('keydown', (e) => {
     if (state.view !== 'checkout' || $('#checkoutKeyIn').hidden || $('[data-step="cash"]').hidden || e.ctrlKey || e.metaKey || e.altKey) return;

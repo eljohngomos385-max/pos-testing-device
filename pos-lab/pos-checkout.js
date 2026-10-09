@@ -7,6 +7,7 @@ function openPaymentModal() {
   if (needShift(openPaymentModal, $('#payBtn'))) return;   // no shift open: "Start cash?" first (pos-shift.js)
   state.prevView = state.view;
   state.paymentMethodChosen = false;
+  state.splitPay = null;   // a new checkout starts with no two methods picked
   track('checkout_open', { lines: state.cart.length, subtotal: cartTotals().subtotal });
   switchView('checkout');
   renderCheckout();
@@ -41,9 +42,8 @@ function renderCheckout() {
 
   setCheckoutError('');
   const charge = canCharge() && !state.exchange;
-  if (!charge && (state.paymentMethod === 'credit' || state.paymentMethod === 'split')) {
-    state.paymentMethod = 'cash';
-  }
+  if (!charge && state.paymentMethod === 'credit') state.paymentMethod = 'cash';
+  if (state.splitPay) setSplitPicks(state.splitPay.picks.filter(m => charge || m !== 'credit'));   // a customer change: Account may go
   // You can only charge a named account with credit on, so the two credit tiles appear with it.
   applyPayMethods(charge);
   renderQuickCashOptions(total);
@@ -76,12 +76,11 @@ function applyPayMethods(canCharge) {
   const pay = state.settings.payments || {};
   const off = new Set(pay.hidden || []);
   const needsAccount = m => m === 'credit' || m === 'split';
-  const shown = PAY_TILES.filter(([m]) => m === 'cash' || (!off.has(m) && (canCharge || !needsAccount(m))));
+  // Split is two methods now, Account only one choice in it; an exchange still offers neither.
+  const shown = PAY_TILES.filter(([m]) => m === 'cash' || (!off.has(m) && (m === 'split' ? !state.exchange : canCharge || m !== 'credit')));
   const custom = (pay.custom || []).map(name => ['other', name, CUSTOM_PAY_ICON, name]);
   const at = shown.findIndex(([m]) => needsAccount(m));
   const tiles = at < 0 ? [...shown, ...custom] : [...shown.slice(0, at), ...custom, ...shown.slice(at)];
-  // How many across the count wants: 4 -> 2x2, 6 -> 3x2, 8 -> 4x2. One tile size at any count.
-  grid.style.setProperty('--cols', tiles.length <= 4 ? 2 : tiles.length <= 6 ? 3 : 4);
   grid.innerHTML = tiles.map(([m, label, icon, name]) =>
     `<button type="button" class="co-tile" data-co-method data-method="${m}"${name ? ` data-label="${escapeHtml(name)}"` : ''}>${icon}<span>${escapeHtml(label)}</span></button>`).join('');
 }
@@ -95,11 +94,24 @@ function renderCheckoutSub() {
 // Under the fixed total: the method tiles, or the chosen method's one detail.
 function showPayStep() {
   const m = state.paymentMethod;
-  const step = !state.paymentMethodChosen ? 'method' : (m === 'cash' || m === 'split') ? 'cash' : 'paid';
-  $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== step; });
+  const split = state.paymentMethodChosen && m === 'split', two = split && state.splitPay.picks.length === 2;
+  const step = !state.paymentMethodChosen ? 'method' : m === 'cash' ? 'cash' : 'paid';
+  // Two methods: the tiles stay (lit = picked), and once two are lit the keypad comes up under them.
+  $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = split ? el.dataset.step === 'paid' || (el.dataset.step === 'cash' && !two) : el.dataset.step !== step; });
+  const tiles = $$('#checkoutMethods .co-tile');
+  tiles.forEach(t => {
+    const k = t.dataset.label || t.dataset.method;
+    t.hidden = split && (k === 'split' || k === 'other');   // ponytail: no typed-name Other in a split; a store's own method is a tile
+    t.classList.toggle('on', split && state.splitPay.picks.includes(k));
+  });
+  // How many across the count wants: 4 -> 2x2, 6 -> 3x2, 8 -> 4x2. One tile size at any count.
+  const n = tiles.filter(t => !t.hidden).length, grid = $('#checkoutMethods');
+  grid?.classList.toggle('two', two);   // both picked: one short row (styles.css)
+  grid?.style.setProperty('--cols', two ? Math.min(n, 4) : n <= 4 ? 2 : n <= 6 ? 3 : 4);
+  $('#checkoutKeyIn')?.classList.toggle('split', split);
   const backText = $('#checkoutBackText'); if (backText) backText.textContent = step === 'method' ? 'Cancel' : 'Back';
-  // Cash opens on the quick amounts; a split goes straight to the keypad (what they pay now, the rest on the account).
-  showCashKeys(m === 'split');
+  showCashKeys(split);
+  if (two) $('#checkoutCompleteBtn')?.scrollIntoView({ block: 'nearest' });   // phone: the keypad and Complete in reach
   const typing = m === 'other' && !state.paymentLabel;
   const other = $('#otherMethodInput'); if (other) other.hidden = !typing;
   const ask = $('#checkoutAsk');
@@ -128,18 +140,51 @@ function updateChange() {
   const total = dueNow();
   const raw = ($('#checkoutTender')?.value || '').trim();
   const tender = moneyValue(parseFloat(raw) || 0);
-  const split = state.paymentMethod === 'split';
   const d = moneyValue(tender - total);
-  const ok = split ? tender > 0 && d < 0 : d >= 0;
   // Label above, figure under it, the figure shrinks to its row (--n = its length): ₫ millions and long words never squeeze.
   const fig = (el, html, cls) => { if (!el) return; el.innerHTML = html; el.style.setProperty('--n', el.textContent.length); el.className = 'co-fig num ' + cls; };
   const zero = SalesMath.formatMoney(0, state.settings?.store?.currency, { whole: true });
-  fig($('#checkoutCash'), (raw ? typedCash(raw) : zero).replace(/(\d[.,]?)(?!.*\d)/, '$1<span class="co-caret"></span>'), raw ? '' : 'ph');
-  const lbl = $('#checkoutChangeLbl');
-  if (lbl) lbl.textContent = split ? (raw && d >= 0 ? 'Use Cash for the full amount' : 'On account') : raw && d < 0 ? 'Short' : 'Change';
-  fig($('#checkoutChange'), !raw ? zero : peso(split ? Math.max(0, -d) : Math.abs(d)), !raw ? 'ph' : !ok ? 'down' : split ? '' : 'up');
-  const go = $('#checkoutCompleteBtn'); if (go) go.disabled = !raw || !ok;
+  const caret = (html, on = true) => (on ? html.replace(/(\d[.,]?)(?!.*\d)/, '$1<span class="co-caret"></span>') : html);
+  const typed = (r, on) => caret(r ? typedCash(r) : zero, on);
+  const lbl = $('#checkoutChangeLbl'), lbl0 = $('#checkoutCashLbl'), go = $('#checkoutCompleteBtn');
+  const sp = state.paymentMethod === 'split' && splitPlan(), givenRow = $('#checkoutGivenRow');
+  if (givenRow) givenRow.hidden = !sp?.cash;
   setCheckoutError('');
+  if (sp) {   // two methods: the typed one, the rest, and Given / change when Cash is one of them
+    const s = state.splitPay || {}, [a, b] = sp.pair, bad = raw && !(sp.first > 0 && sp.rest > 0);
+    if (lbl0) lbl0.textContent = bad ? `${SalesMath.tenderLabel(a)} · less than ${peso(total)}` : SalesMath.tenderLabel(a);
+    fig($('#checkoutCash'), typed(raw, s.field !== 'given'), bad ? 'down' : raw ? '' : 'ph');
+    if (lbl) lbl.textContent = `${SalesMath.tenderLabel(b)} · the rest`;
+    fig($('#checkoutChange'), peso(Math.max(0, sp.rest)), raw && !bad ? '' : 'ph');
+    if (sp.cash) {
+      const short = sp.change < 0;
+      $('#checkoutGivenLbl').textContent = !s.given ? 'Given' : `Given · ${short ? 'Short' : 'Change'} ${peso(Math.abs(sp.change))}`;
+      fig($('#checkoutGiven'), caret(s.given ? typedCash(s.given) : peso(sp.cash), s.field === 'given'), short ? 'down' : s.given ? '' : 'ph');   // empty = exact
+    }
+    if (go) go.disabled = !sp.ok;
+    return;
+  }
+  const ok = d >= 0;
+  if (lbl0) lbl0.textContent = 'Cash received';
+  fig($('#checkoutCash'), typed(raw), raw ? '' : 'ph');
+  if (lbl) lbl.textContent = raw && d < 0 ? 'Short' : 'Change';
+  fig($('#checkoutChange'), !raw ? zero : peso(Math.abs(d)), !raw ? 'ph' : !ok ? 'down' : 'up');
+  if (go) go.disabled = !raw || !ok;
+}
+
+// Two methods (owner 2026-10-09): the Split tile. Pick two tiles, type one amount, the other takes the rest --
+// Account when it is one of them (as the old split), else Cash (its Given / change), else the second pick.
+// `state.splitPay` = { picks, given, field }; the typed amount is #checkoutTender, as for cash. None set = the old
+// split call (method 'split' + a tender): cash now, the rest on account.
+const setSplitPicks = picks => { state.splitPay = { picks, given: '', field: 'amt' }; };
+function splitPlan() {
+  const s = state.splitPay || { picks: ['cash', 'credit'] };
+  if (s.picks.length !== 2) return null;
+  const b = ['credit', 'cash'].find(m => s.picks.includes(m)) || s.picks[1], a = s.picks.find(m => m !== b);
+  const total = moneyValue(dueNow()), first = moneyValue(parseFloat($('#checkoutTender')?.value) || 0), rest = moneyValue(total - first);
+  const cash = a === 'cash' ? first : b === 'cash' ? rest : 0;
+  const given = s.given ? moneyValue(parseFloat(s.given) || 0) : cash;
+  return { pair: [a, b], first, rest, cash, given, change: moneyValue(given - cash), ok: first > 0 && rest > 0 && given >= cash };
 }
 
 // What's typed, in the store's format, decimals as typed: "1250.5" -> "₱1,250.5"
@@ -182,7 +227,7 @@ function renderQuickCashOptions(total) {
 }
 
 // `approvedBy`: the manager whose PIN let this sale past a gate (the credit limit), else ''.
-function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentMethod, tendered = 0, change = 0, customerOverride, approvedBy = '' } = {}) {
+function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentMethod, tendered = 0, change = 0, customerOverride, approvedBy = '', split = null } = {}) {
   const totals = cartTotals();
   const store = currentStoreInfo();
   const customer = customerOverride === undefined ? state.customer : customerOverride;
@@ -209,7 +254,7 @@ function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentM
     total: totals.total,
     tendered,
     change,
-    payments: buildOrderPayments({ status, paymentMethod, total: totals.total, tendered, change }),
+    payments: buildOrderPayments({ status, paymentMethod, total: totals.total, tendered, change, split }),
     vatRate: totals.vatRate,
     vatAmount: totals.vatAmount,
     vatableSales: totals.vatableSales,
@@ -691,11 +736,11 @@ const canCharge = () => !!state.customer && !!allCustomerRecords().find(c => c.i
 // How far past the customer's limit this sale would push them, in pesos. 0 = fine. The limit is
 // read fresh too: one lowered in the back office after the pick still holds. `buildOrderPayments`
 // is what actually goes on account, so the tender is split the same way it is charged.
-function creditOverLimit(tendered = 0) {
+function creditOverLimit(tendered = 0, split = null) {
   const c = state.customer && allCustomerRecords().find(x => x.id === state.customer.id);
   if (!c) return 0;
   const { total } = cartTotals();
-  const charge = SalesMath.creditPart({ payments: buildOrderPayments({ status: 'completed', paymentMethod: state.paymentMethod, total, tendered }) });
+  const charge = SalesMath.creditPart({ payments: buildOrderPayments({ status: 'completed', paymentMethod: state.paymentMethod, total, tendered, split }) });
   return creditOverBy(c, charge);   // bo-model: the balance after the charge vs the limit, the Over limit test
 }
 
@@ -739,25 +784,23 @@ function reverseOrderCredit(order, reason, whole = false, credit = SalesMath.cre
 // `ok`: questions already answered Yes in the app's own pop-up ({ limit }), so the re-run skips them.
 function completeSale(approvedBy = '', ok = {}) {
   const total = moneyValue(dueNow());
-  let tendered = total, change = 0;
-  const isSplit = state.paymentMethod === 'split';
-  const cashLike = ['cash', 'gcash', 'qr', 'other', 'split'].includes(state.paymentMethod);
-  if (cashLike) {
+  let tendered = total, change = 0, split = null;
+  const sp = state.paymentMethod === 'split' && splitPlan();   // two methods: the cash leg's Given / change, if any
+  if (sp) {
+    if (!sp.ok) return setCheckoutError(sp.given < sp.cash ? 'Cash given is less than the cash part.'
+      : `${SalesMath.tenderLabel(sp.pair[0])} must be more than ${peso(0)} and less than ${peso(total)}.`);
+    ({ given: tendered, change } = sp);
+    split = { pair: sp.pair, first: sp.first };
+  } else if (state.paymentMethod === 'split') return setCheckoutError('Pick two ways to pay.');
+  else if (['cash', 'gcash', 'qr', 'other'].includes(state.paymentMethod)) {
     const tenderRaw = ($('#checkoutTender')?.value || $('#tenderInput')?.value || '').trim();
     tendered = tenderRaw ? moneyValue(parseFloat(tenderRaw) || 0) : total;
-    // A short tender is the whole point of a split -- the rest goes on the account.
-    // Demanding the full amount here made "Split" mean "cash", so it never left a balance.
-    if (tendered < total && !isSplit) {
+    if (tendered < total) {
       setCheckoutError('Tendered amount is below the total.');
       $('#checkoutTender')?.focus();
       return;
     }
     change = moneyValue(Math.max(0, tendered - total));
-  }
-  if (isSplit && tendered >= total) {
-    setCheckoutError('A split needs a cash amount below the total. Use Cash for the full amount.');
-    $('#checkoutTender')?.focus();
-    return;
   }
   if (state.paymentMethod === 'other') {
     const otherName = $('#otherMethodInput')?.value?.trim();
@@ -767,7 +810,7 @@ function completeSale(approvedBy = '', ok = {}) {
       return;
     }
   }
-  if ((state.paymentMethod === 'credit' || isSplit) && !canCharge()) {
+  if ((state.paymentMethod === 'credit' || split?.pair.includes('credit')) && !canCharge()) {
     setCheckoutError(state.customer ? `${state.customer.name} has credit off.` : 'Select a customer before charging to account.');
     return;
   }
@@ -782,7 +825,7 @@ function completeSale(approvedBy = '', ok = {}) {
   // The limit was stored, shown on the customer card, and enforced nowhere -- a ₱5,000
   // account would take a ₱50,000 charge. A role allowed past it confirms; anyone else needs a
   // manager's PIN, which carries straight on with the sale.
-  const overBy = creditOverLimit(tendered);
+  const overBy = creditOverLimit(tendered, split);
   const acct = state.customer && allCustomerRecords().find(x => x.id === state.customer.id);   // fresh, as creditOverLimit reads it
   const overMsg = `${acct?.name} would go ${peso(overBy)} over their ${peso(toNumber(acct?.creditLimit, 0))} credit limit.`;
   if (overBy > 0 && !approvedBy && !ok.limit) {
@@ -800,6 +843,7 @@ function completeSale(approvedBy = '', ok = {}) {
       tendered,
       change,
       approvedBy,
+      split,
     }));
   } catch (err) {
     console.error(err);

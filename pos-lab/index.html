@@ -432,15 +432,17 @@
                 <div class="co-hero num" id="checkoutTotalDue">₱0.00</div>
                 <!-- Tiles are built from the back office's Payments settings on every render -->
                 <div class="co-step" data-step="method"><div class="co-tiles" id="checkoutMethods"></div></div>
-                <!-- Cash (and the cash half of a split): a tap on an amount finishes the sale; Custom swaps the row for the
+                <!-- Cash (and the amounts of a two-method split): a tap on an amount finishes the sale; Custom swaps the row for the
                      figures (left) and our keypad (right), cash-custom-lab.html take C -->
                 <div class="co-step" data-step="cash" hidden>
                   <div class="co-tiles" id="checkoutQuick"></div>
                   <div class="co-keyin" id="checkoutKeyIn" hidden>
                     <input type="hidden" id="checkoutTender" />
                     <div class="co-read">
-                      <div><span class="co-lbl">Cash received</span><b class="co-fig num" id="checkoutCash"></b></div>
+                      <div data-field="amt"><span class="co-lbl" id="checkoutCashLbl">Cash received</span><b class="co-fig num" id="checkoutCash"></b></div>
                       <div><span class="co-lbl" id="checkoutChangeLbl">Change</span><b class="co-fig num" id="checkoutChange" aria-live="polite"></b></div>
+                      <!-- Two methods with Cash: what they hand over; a tap here (or on the amount above) picks what the keys type -->
+                      <div data-field="given" id="checkoutGivenRow" hidden><span class="co-lbl" id="checkoutGivenLbl">Given</span><b class="co-fig num" id="checkoutGiven"></b></div>
                     </div>
                     <div id="checkoutKeys"></div>
                     <button type="button" class="co-btn primary" id="checkoutCompleteBtn" data-complete disabled>Complete sale</button>

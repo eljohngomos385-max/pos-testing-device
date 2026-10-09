@@ -1003,9 +1003,15 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange', by =
   // The new sale's legs: the account part and the swap on the original's tender (a GCash sale stays GCash), both
   // with the ref, so they cancel the refund's; what was collected is a leg of its own, without one.
   const collect = Math.max(0, net), swapPart = moneyValue(total - onAccount - collect);
+  // The swap rides the tenders the refund gave back on, in the same shares (a GCash + cash sale swaps on both),
+  // so each one evens out; all on the first tender moved the cash part into GCash.
+  const back = refund.payments.filter(p => p.ref && p.method !== 'credit');
+  const swapLegs = !(swapPart > 0) ? [] : back.length
+    ? SalesMath.split(cent(swapPart), back.map(p => cent(p.amount))).map((c, i) => ({ ...back[i], amount: unc(c), tendered: unc(c), change: 0 })).filter(p => p.amount)
+    : buildOrderPayments({ paymentMethod: tender, total: swapPart, tendered: swapPart });
   const payments = [
     ...(onAccount > 0 ? buildOrderPayments({ paymentMethod: 'credit', total: onAccount }) : []),
-    ...(swapPart > 0 ? buildOrderPayments({ paymentMethod: tender, total: swapPart, tendered: swapPart }) : []),
+    ...swapLegs,
   ].map(p => ({ ...p, ref: order.number }))
     .concat(collect > 0 ? buildOrderPayments({ paymentMethod: via, total: collect, tendered: pay?.tendered || collect, change: pay?.change || 0 }) : []);
   // Whatever the cashier had in the cart is put back after.
