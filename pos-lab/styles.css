@@ -3480,7 +3480,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .esheet .es-chip { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-radius: var(--es-r); color: var(--ink-secondary); font-size: 13px; font-weight: 500; }
 .esheet .es-chip:hover { background: var(--es-btn); color: var(--ink); }
 .es-ta { display: block; width: 100%; padding: 12px 16px; border: 0; border-radius: var(--es-r); outline: 0; background: var(--tile); color: var(--ink);
-         font: inherit; font-size: 15px; line-height: 1.45; resize: none; }
+         font: inherit; font-size: 15px; line-height: 1.45; resize: none; flex: none; }   /* flex: none -- the tablet's panel is 0 tall, and shrinking squashed the box to one line */
 .es-ta:focus { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--es-sel); }
 .es-times { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .esheet .es-times .es-row { justify-content: center; min-height: 48px; padding: 0; }
@@ -3496,7 +3496,8 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .esheet .es-q.rm { color: var(--danger); }
 .esheet .es-q.rm:hover { background: var(--danger-bg); }
 .esheet .es-ink { height: 40px; margin-left: auto; padding: 0 20px; border-radius: var(--es-r); background: var(--tile); font-size: 14px; font-weight: 590; }
-.esheet .es-ink:hover { background: var(--es-hover); }
+.esheet .es-ink:hover:not(:disabled) { background: var(--es-hover); }
+.esheet .es-ink:disabled { opacity: .35; cursor: default; }   /* the price ask's Add, till a price is typed */
 /* the list glides aside as the keys come in, and back when they go (170 = half of keys 300 + gap 40) */
 .es-body.in .es-col { animation: es-left .28s var(--rl-ease) both; }
 .es-body.out .es-col { animation: es-right .28s var(--rl-ease) both; }
@@ -7108,6 +7109,7 @@ body.light-theme {
 .rail-h .more { display: grid; place-items: center; flex: none; width: 52px; border: 0; border-left: 1px solid var(--line); border-top-right-radius: calc(var(--rl-r) - 1px);
               background: none; color: var(--ink-secondary); transition: background-color .12s, color .12s; }
 .rail-h .more:hover, .rail-h .more[aria-expanded="true"] { background: var(--rl-hover); color: var(--ink); }
+.rail-h .o-note { margin: 0; padding: 9px var(--rl-m); border-top: 1px solid var(--line); color: var(--ink-tertiary); font-size: 12px; line-height: 1.3; overflow-wrap: anywhere; }   /* the order's note (cart ⋯ Add note) */
 
 /* items */
 .rail-h .items { display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
@@ -7130,6 +7132,7 @@ body.light-theme {
 .rail-h .row .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
 .rail-h .row .nm span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .rail-h .row .nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
+.rail-h .row .nm .note { overflow-wrap: anywhere; }   /* the line's note (its editor's Note) */
 .rail-h .row .amt { font-size: 13px; font-weight: 600; white-space: nowrap; }
 .rail-h .empty { display: grid; place-content: center; justify-items: center; gap: 4px; height: 100%; padding: 24px; text-align: center; }
 .rail-h .empty b { font-size: 14px; font-weight: 600; }
@@ -7297,6 +7300,7 @@ body.light-theme {
   .scan-cam { border-radius: 0; }
   .scan-card { bottom: calc(var(--bar-h) + var(--ph-b) + 12px); }
   body:has(#scanSheet.open) #cartBar { position: relative; z-index: 100; }
+  body:has(#scanSheet.open) .esheet { z-index: 101; }   /* a scanned item with no set price asks it over the camera */
   body:has(#scanSheet.open) .toast { bottom: calc(var(--bar-h) + var(--ph-b) + 88px); }   /* over the card */
   .es-body:has(> .es-keys) { margin-top: 56px; padding-top: 0; }   /* keys or a panel: the head goes up by the X so they fit */
   .product-grid[data-size="sm"] .pc-group .pc-name { padding-top: 14px; }   /* 4 across: clear of the folder badge */

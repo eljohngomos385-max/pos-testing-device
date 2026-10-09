@@ -91,6 +91,7 @@ function buildReceiptPreview(order, back = [], said = []) {
         <span>${i.qty} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
         <span>${peso(i.amount)}</span>
       </div>
+      ${i.note ? `<div class="rp-small">${escapeHtml(i.note)}</div>` : ''}
       ${back[k] > 0 && back[k] < i.qty ? `<div class="rp-small">${escapeHtml(said[k] || '')}</div>` : ''}
     </div>`).join('');
   const payRows = receipt.status === 'saved'
@@ -112,6 +113,7 @@ function buildReceiptPreview(order, back = [], said = []) {
         ${receipt.customer ? `<div class="rp-small">Customer: ${escapeHtml(receipt.customer.name)}</div>` : ''}
         ${receipt.scPwdId ? `<div class="rp-small">${escapeHtml(receipt.scPwdId.join(': '))}</div>` : ''}
         <div class="rp-small"><strong>${escapeHtml(receipt.fulfilmentLabel)}</strong></div>
+        ${receipt.note ? `<div class="rp-small">Note: ${escapeHtml(receipt.note)}</div>` : ''}
         ${buildMapThumb(receipt.deliveryLocation)}
         <div class="rp-rule"></div>
         ${lines}
@@ -399,6 +401,7 @@ function openOrderDetailModal(orderId) {
     ...(r.scPwdId ? [r.scPwdId] : []),
     ['Payment', SalesMath.payWord(o)],
     ['Fulfilment', o.fulfilment === 'delivery' ? (o.deliveryAddress || orderFulfilLabel(o)) : orderFulfilLabel(o)],
+    ...(r.note ? [['Note', r.note]] : []),
   ].map(([k, v]) => `<div class="odm-meta-row"><span>${k}</span><span>${escapeHtml(String(v))}</span></div>`).join('');
 
   const itemRows = r.items.map(i => `
@@ -406,6 +409,7 @@ function openOrderDetailModal(orderId) {
       <div class="odm-item-info">
         <div class="odm-item-name">${escapeHtml(i.name)}</div>
         <div class="odm-item-sub">${i.qty} ${escapeHtml(i.unit || 'pc')} × ${peso(i.price)}</div>
+        ${i.note ? `<div class="odm-item-sub">${escapeHtml(i.note)}</div>` : ''}
       </div>
       <div class="odm-item-amt">${peso(i.amount)}</div>
     </div>`).join('');
@@ -561,6 +565,7 @@ function buildReceiptHtml(order) {
         <span>${i.qty} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
         <span>${peso(i.amount)}</span>
       </div>
+      ${i.note ? `<div class="r-item-row">${escapeHtml(i.note)}</div>` : ''}
     </div>`).join('');
 
   const cust = receipt.customer
@@ -676,6 +681,7 @@ function buildReceiptHtml(order) {
   </div>
   ${cust}${scId}
   ${fulfil}
+  ${receipt.note ? `<div class="r-cust">Note: ${escapeHtml(receipt.note)}</div>` : ''}
   ${deliveryMap}
 
   <div class="r-rule"></div>

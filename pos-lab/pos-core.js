@@ -452,6 +452,10 @@ function currentStoreInfo() {
   return { ...DEFAULT_SETTINGS.store, ...(state.settings?.store || {}), ...(state.user ? { cashier: state.user.name } : {}) };
 }
 
+// A blank Price (Items) means the price is asked at sale (owner 2026-10-09): null, never 0 -- a ₱0 typed on
+// purpose is a real ₱0. The sale's line carries the typed price (addToCart).
+const askedPrice = (p) => p.price == null || p.price === '';
+
 // ---------- Order format layer ----------
 function normalizeOrderItem(item = {}) {
   // Floor at 0, not 1: a hardware store sells 2.5 m of wire and 0.75 kg of nails,
@@ -482,6 +486,7 @@ function normalizeOrderItem(item = {}) {
     cost: Number.isFinite(cost) ? moneyValue(cost) : null,
     // A refund's line: its place on the sale (SalesMath.refundPart), so later refunds know what is left.
     ...(item.lineNo != null ? { lineNo: Math.max(0, Math.floor(toNumber(item.lineNo, 0))) } : {}),
+    ...(item.note ? { note: String(item.note) } : {}),   // the line's note (the cart line's Note), on the slip under it
   };
 }
 
@@ -636,6 +641,7 @@ function normalizeOrderRecord(raw = {}) {
     fulfilment,
     deliveryAddress: fulfilment === 'delivery' ? String(raw.deliveryAddress || '') : '',
     deliveryLocation: fulfilment === 'delivery' ? normalizeDeliveryLocation(raw.deliveryLocation) : null,
+    ...(raw.note ? { note: String(raw.note) } : {}),   // the order's note (cart ⋯ Add note)
     meta: {
       source: raw.meta?.source || 'pos-app',
       replaceableFormat: true,
@@ -662,6 +668,7 @@ function toReceiptViewModel(order) {
     customer: o.customer,
     deliveryAddress: o.deliveryAddress,
     deliveryLocation: o.deliveryLocation,
+    note: o.note || '',
     fulfilmentLabel,
     // Each line's `amount` is its price × qty before discount, fitted to the Subtotal (SalesMath.receiptLines):
     // the lines add up to the Subtotal, the discount shows once below it, like the cart.

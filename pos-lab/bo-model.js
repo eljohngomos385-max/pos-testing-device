@@ -77,7 +77,7 @@ const foldersOf = (p) => [...new Set([p && p.folder, ...((p && Array.isArray(p.f
 function normalizeProduct(raw) {
   const p = { ...PRODUCT_DEFAULTS, ...(raw || {}) };
   p.cost = round2(p.cost);
-  p.price = round2(p.price);
+  p.price = p.price == null || p.price === '' ? null : round2(p.price);   // blank = asked at sale (the POS's askedPrice), never 0
   p.stock = Number(p.stock) || 0;
   p.reorderPoint = Number(p.reorderPoint) || 0;
   p.sellOutOfStock = !!p.sellOutOfStock;
@@ -97,7 +97,7 @@ function normalizeProduct(raw) {
   if (!SOLD_BY[p.soldBy]) p.soldBy = 'each';
   // A product saved before margins existed still has a cost and a price, and
   // those two already imply the margin. Derive it rather than showing zero.
-  if (!Number(p.marginValue) && p.price !== p.cost) {
+  if (!Number(p.marginValue) && p.price != null && p.price !== p.cost) {
     p.marginValue = marginFromPrice(p.cost, p.price, p.marginMode);
   }
   return p;
@@ -1267,6 +1267,10 @@ if (typeof module !== 'undefined' && require.main === module) {
   assert.equal(mc.folder, 'cat_a');
   assert.deepEqual(normalizeProduct({ folders: ['cat_b'] }).folder, 'cat_b');
   assert.deepEqual(foldersOf({ folder: 'all' }), []);
+  // A blank price is asked at sale: it stays blank (no markup from it); a ₱0 typed on purpose stays 0.
+  assert.equal(normalizeProduct({ cost: 50, price: null }).price, null);
+  assert.equal(normalizeProduct({ cost: 50, price: '' }).marginValue, 0);
+  assert.equal(normalizeProduct({ cost: 50, price: 0 }).price, 0);
   assert.equal(marginFromPrice(100, 125, 'percent'), 25);
   assert.equal(marginFromPrice(100, 125, 'flat'), 25);
   assert.equal(priceFromMargin(100, 'flat', 25), 125);

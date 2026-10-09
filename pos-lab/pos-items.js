@@ -17,7 +17,8 @@ const itemMargin = v => SalesMath.unitMargin(v.cost, v.price, state.settings);
 const itemPct = (n, dp) => SalesMath.pctText(n / 100, 1, dp);   // unitMargin gives percent points (the back office's pct)
 const itemMarkupText = (cost, price) => itemPct(itemMargin({ cost, price }).markup, 0);
 function itemPriceText(it) {
-  const ps = it.variants.map(v => v.price), lo = Math.min(...ps), hi = Math.max(...ps);
+  const ps = it.variants.filter(v => !askedPrice(v)).map(v => v.price), lo = Math.min(...ps), hi = Math.max(...ps);
+  if (!ps.length) return '—';   // every variant's price is asked at sale
   return lo === hi ? peso(lo) : `<small class="from">from </small>${peso(lo)}<span class="hi">–${peso(hi)}</span>`;
 }
 
@@ -39,7 +40,7 @@ function catalogItems() {
     }
     it.members.push(p);
     const vn = g && p.name.startsWith(g.name) ? p.name.slice(g.name.length).trim() : p.name;   // 'Common Wire Nails 2"' -> '2"'
-    it.variants.push({ id: p.id, name: g ? vn : '', sku: p.sku || '', barcode: p.barcode || '', cost: p.cost || 0, price: p.price || 0, stock: p.stock || 0 });
+    it.variants.push({ id: p.id, name: g ? vn : '', sku: p.sku || '', barcode: p.barcode || '', cost: p.cost || 0, price: askedPrice(p) ? null : p.price, stock: p.stock || 0 });
   });
   return [...byKey.values()];
 }
@@ -75,7 +76,7 @@ function renderItems() {
 // Apple Settings (owner 2026-10-08): blocks of rows, each word at the side of its field like the customer form; a long
 // list (categories, modifiers, suppliers, one variant) is a row with its value and ›, opening its own page.
 let itemEdit = null, itemIsNew = false, itemSub = '', itemMainScroll = 0;   // itemSub: '' = the item, else 'cats' | 'mods' | 'sups' | a variant's id
-const blankVariant = () => ({ id: newId(), name: '', sku: '', barcode: '', cost: 0, price: 0, stock: 0, fresh: true });
+const blankVariant = () => ({ id: newId(), name: '', sku: '', barcode: '', cost: 0, price: null, stock: 0, fresh: true });
 // Sold per: bo-products UNITS, its soldByFor. A measured unit sells in decimals; a unit typed elsewhere keeps what it was.
 const ITEM_UNITS = [['pc', 'box', 'bag', 'set', 'pair', 'roll', 'sheet', 'can'], ['m', 'ft', 'kg', 'L', 'gal']];
 const soldByFor = (unit, was) => (ITEM_UNITS[1].includes(unit) ? 'measure' : ITEM_UNITS[0].includes(unit) ? 'each' : was || 'each');
@@ -86,7 +87,7 @@ function openItemEditor(id) {
   itemEdit = it || { id: newId(), name: '', desc: '', cat: '', catIds: [], hue: 220, unit: 'pc', soldBy: 'each', img: '', hidden: false, marginMode: 'percent',
     reorder: 0, track: true, sellOut: false, sups: [], main: '', mods: [], weight: '', size: '', length: '', variants: [blankVariant()], since: tillDay(Date.now()) };
   const v0 = itemEdit.variants[0];
-  itemEdit.marginValue = marginFromPrice(v0.cost, v0.price, itemEdit.marginMode);
+  itemEdit.marginValue = itemMarkupOf(v0, itemEdit.marginMode);
   renderItemForm();
   $('#itemsView').classList.add('editing');
   $('#itemForm').scrollTop = 0;
@@ -113,7 +114,9 @@ const inav = (label, value, sub) => `<button type="button" class="fr nav" data-s
 const iadd = (act, text, cls = '') => `<button type="button" class="fr add${cls}" data-act="${act}">${text}</button>`;
 // a block: a small grey title above, the rows on one tile, a footnote under; ' r' = values to the right edge (rednote's settings)
 const icard = (title, body, foot = '', cls = '') => `${title ? `<h3 class="fc-t">${title}</h3>` : ''}<section class="card fc${cls}">${body}</section>${foot ? `<p class="fc-n">${foot}</p>` : ''}`;
-const imarginNote = v => { const m = itemMargin(v); return `${peso(m.profit)} · ${itemPct(m.margin)} margin`; };
+// a blank Price is asked at sale (askedPrice): no markup, no profit to show
+const itemMarkupOf = (v, mode) => (askedPrice(v) ? null : marginFromPrice(v.cost, v.price, mode));
+const imarginNote = v => { if (askedPrice(v)) return '—'; const m = itemMargin(v); return `${peso(m.profit)} · ${itemPct(m.margin)} margin`; };
 const iprofit = v => `Profit <span class="num" id="itemMarginNote">${imarginNote(v)}</span>`;   // the Price block's footnote
 const istep = () => (itemEdit.soldBy === 'measure' ? .01 : 1);
 const iqty = (attr, v) => `<input class="in num" ${attr} value="${v || ''}" type="number" step="${istep()}" min="0" inputmode="decimal" placeholder="0">`;
@@ -149,12 +152,12 @@ function itemMainPage() {
   ].join(''), '', ' r');
   const desc = icard('', ifr('Description', `<textarea class="in" data-f="desc" rows="1" placeholder="Add description">${escapeHtml(E.desc)}</textarea>`), '', ' r');
   const vrow = v => `<button type="button" class="fr nav wide" data-sub="${escapeHtml(v.id)}"><span class="lb${v.name ? '' : ' ph'}">${escapeHtml(v.name || 'No name')}</span>
-    <span class="ctl end"><span class="vv num">${peso(v.price)}${T ? ` · ${itemQty(v.stock)} ${escapeHtml(E.unit)}` : ''}</span>${ICHEV}</span></button>`;
+    <span class="ctl end"><span class="vv num">${askedPrice(v) ? '—' : peso(v.price)}${T ? ` · ${itemQty(v.stock)} ${escapeHtml(E.unit)}` : ''}</span>${ICHEV}</span></button>`;
   // small blocks, one job each (rednote's Account security): one item = [Price, Cost, Markup, profit under it] [Add variant];
   // a family = its variants and Add variant on one block, each variant's numbers on its own page
   const price = fam ? icard('', E.variants.map(vrow).join('') + iadd('add-variant', 'Add variant'))
     : icard('', [
-      ifr('Price', `<input class="in num" data-f="price" value="${v0.price || ''}" ${IMONEY} placeholder="0.00">`),
+      ifr('Price', `<input class="in num" data-f="price" value="${v0.price ?? ''}" ${IMONEY} placeholder="Asked at sale">`),
       ifr('Cost', `<input class="in num" data-f="cost" value="${v0.cost || ''}" ${IMONEY} placeholder="0.00">`),
       ifr('Markup', `<input class="in num" data-f="marginValue" value="${E.marginValue || ''}" type="number" step="0.01" inputmode="decimal" placeholder="0">${ipick('mmode', E.marginMode === 'percent' ? '%' : icurrency())}`),
     ].join(''), iprofit(v0), ' r')
@@ -206,7 +209,7 @@ function itemVariantPage(v) {
   const E = itemEdit;
   const vin = (k, attrs = '') => `<input class="in" data-v="${k}" value="${escapeHtml(v[k])}" ${attrs}>`;
   return icard('', ifr('Name', vin('name', 'placeholder="Add name, like Red or 2 inch"')), '', ' r')
-    + icard('', ifr('Price', `<input class="in num" data-v="price" value="${v.price || ''}" ${IMONEY} placeholder="0.00">`)
+    + icard('', ifr('Price', `<input class="in num" data-v="price" value="${v.price ?? ''}" ${IMONEY} placeholder="Asked at sale">`)
       + ifr('Cost', `<input class="in num" data-v="cost" value="${v.cost || ''}" ${IMONEY} placeholder="0.00">`), iprofit(v), ' r')
     + icard('', [
       !E.track ? '' : v.fresh ? ifr('Opening stock', iqty('data-v="stock"', v.stock)) : ifr('In stock', ionHand(v), true),
@@ -222,7 +225,7 @@ function itemPick(b) {
   const opt = (k, label, cur, run) => ({ label, cur, run });
   const items = act === 'status' ? [opt('', 'Active', !E.hidden, () => { E.hidden = false; renderItemForm(); }), opt('', 'Hidden', E.hidden, () => { E.hidden = true; renderItemForm(); })]
     : act === 'mmode' ? [['percent', 'Percent (%)'], ['flat', `Flat (${icurrency()})`]].map(([k, label]) => opt(k, label, E.marginMode === k,
-      () => { E.marginMode = k; E.marginValue = marginFromPrice(v0.cost, v0.price, k); renderItemForm(); }))
+      () => { E.marginMode = k; E.marginValue = itemMarkupOf(v0, k); renderItemForm(); }))
     : act === 'unit' ? [...(ITEM_UNITS.flat().includes(E.unit) ? [] : [E.unit]), ...ITEM_UNITS[0], '-', ...ITEM_UNITS[1]].map(u => (u === '-' ? u
       : opt(u, u, E.unit === u, () => { E.soldBy = soldByFor(u, E.soldBy); E.unit = u; renderItemForm(); })))
     : act === 'main' ? ['', ...E.sups].map(id => opt(id, id ? supName(id) : 'None', E.main === id, () => { E.main = id; b.firstChild.textContent = supName(id) || 'None'; }))
@@ -234,11 +237,11 @@ function itemPick(b) {
 function itemReprice(from) {
   const E = itemEdit, v0 = E.variants[0], f = $('#itemForm');
   if (from === 'price') {
-    E.marginValue = marginFromPrice(v0.cost, v0.price, E.marginMode);
+    E.marginValue = itemMarkupOf(v0, E.marginMode);
     f.querySelector('[data-f=marginValue]').value = E.marginValue || '';
-  } else {
+  } else if (E.marginValue != null) {   // no markup typed: the price stays as it is (blank = asked at sale)
     v0.price = priceFromMargin(v0.cost, E.marginMode, E.marginValue);   // bo-model's, as the back office editor
-    f.querySelector('[data-f=price]').value = v0.price || '';
+    f.querySelector('[data-f=price]').value = v0.price;
   }
   $('#itemMarginNote').innerHTML = imarginNote(v0);
 }
