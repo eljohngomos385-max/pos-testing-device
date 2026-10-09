@@ -775,7 +775,7 @@ function renderRoleSwitcher() {
   if (!sub) return;
   const store = currentStoreInfo();
   sub.textContent = STAFF_ROLES[state.role] || 'Staff';
-  userMeta.querySelector('.user-store').innerHTML = `<span>${escapeHtml(store.name)}</span>&nbsp;· POS ${escapeHtml(store.registerNo || '1')}`;
+  $('.user-store').innerHTML = `<span>${escapeHtml(store.name)}</span>&nbsp;· POS ${escapeHtml(store.registerNo || '1')}`;
   if (state.user) userMeta.querySelector('.user-name').textContent = state.user.name;
 }
 
