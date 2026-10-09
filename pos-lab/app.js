@@ -875,6 +875,7 @@ function init() {
   updateCustomerButton();
   applyRoleGating();
   renderRoleSwitcher();
+  closeDays();   // a new day's first load makes the past days' Z (pos-shift.js)
   renderSyncMark();
   setInterval(renderSyncMark, 30000);   // "2 min ago" keeps moving while the ☰ is open
   $('#syncMark')?.addEventListener('click', (e) => { e.stopPropagation(); showToast(e.currentTarget.title); });   // not the row's lock
