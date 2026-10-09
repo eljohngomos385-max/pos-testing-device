@@ -228,8 +228,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   background: var(--surface-2);
   cursor: pointer;
 }
-:where(#app:not(.bo-app)) .user-meta { flex: 1; min-width: 0; display: grid; gap: 3px; }
+:where(#app:not(.bo-app)) .user-meta { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; }
 :where(#app:not(.bo-app)) .sync-mark { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; color: var(--ink-tertiary); }
+:where(#app:not(.bo-app)) .sync-mark.stale { color: var(--warn); }
 .user-avatar {
   width: 32px; height: 32px;
   border-radius: 50%;
@@ -243,7 +244,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .user-name { font-size: 13px; font-weight: 510; line-height: 1.2; color: var(--ink); }
 .user-sub { font-size: 12px; color: var(--ink-tertiary); line-height: 1.2; }
 :where(#app:not(.bo-app)) .user-name { font-size: 14px; font-weight: 590; }
-:where(#app:not(.bo-app)) .user-sub { font-size: 13px; color: var(--ink-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where(#app:not(.bo-app)) .user-sub { font-size: 13px; color: var(--ink-secondary); }
+:where(#app:not(.bo-app)) .user-store { display: flex; font-size: 13px; color: var(--ink-tertiary); white-space: nowrap; }   /* a long store name ends in …, the POS number stays */
+:where(#app:not(.bo-app)) .user-store span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* ============================================================
    MAIN

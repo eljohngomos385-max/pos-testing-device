@@ -230,7 +230,7 @@ function onShiftEvent(e) {
 }
 
 // The cloud beside the signed-in person in the ☰ drawer: ticked once synced, struck through until then
-// (nothing syncs yet). The words ride on its label; a tap says them.
+// (nothing syncs yet), amber when the last sync is over an hour old. The words ride on its label; a tap says them.
 const SYNC_ICON = {
   on: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m9.5 14.5 2 2 3.5-3.5"/>',
   off: '<path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/>',
@@ -240,9 +240,10 @@ function renderSyncMark() {
   if (!el) return;
   const raw = HWPOS_STORE.ui.get('lastSync'), ts = /^\d+$/.test(raw || '') ? +raw : Date.parse(raw || '');
   const min = Math.floor((Date.now() - ts) / 60000);
-  const words = !(ts > 0) ? 'Saved on this till · not synced yet'
-    : 'Synced · ' + (min < 1 ? 'just now' : min < 60 ? `${min} min ago` : min < 24 * 60 ? `${Math.floor(min / 60)} h ago` : SalesMath.agoText(ts, Date.now(), tillZone()).toLowerCase());
+  const words = !(ts > 0) ? 'Saved on this POS · not synced yet'
+    : (min >= 60 ? 'Last synced · ' : 'Synced · ') + (min < 1 ? 'just now' : min < 60 ? `${min} min ago` : min < 24 * 60 ? `${Math.floor(min / 60)} h ago` : SalesMath.agoText(ts, Date.now(), tillZone()).toLowerCase());
   el.title = words;
   el.setAttribute('aria-label', words);
+  el.classList.toggle('stale', min >= 60);   // synced once, but over an hour ago: worth a look
   el.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${SYNC_ICON[ts > 0 ? 'on' : 'off']}</svg>`;
 }
