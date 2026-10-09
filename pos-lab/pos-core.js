@@ -749,11 +749,12 @@ function folderName(id) {
 // ---------- Roles ----------
 const ROLE_ALLOWED = {
   cashier: new Set(['sell', 'orders', 'items', 'shift', 'settings', 'checkout']),
-  manager: new Set(['sell', 'orders', 'items', 'customers', 'shift', 'back-office', 'settings', 'checkout']),   // ponytail: Reports hidden for now; add 'reports' back to bring it back
+  manager: new Set(['sell', 'orders', 'items', 'customers', 'shift', 'back-office', 'settings', 'checkout']),
 };
 ROLE_ALLOWED.owner = ROLE_ALLOWED.manager;   // the till's pages; the back office has its own page access
 ROLE_ALLOWED.stock = ROLE_ALLOWED.cashier;
 function canAccess(view) {
+  if (view === 'reports') return roleCan(state.role, 'dayTotals');   // whoever may "See the day's totals" (Staff & access)
   const allowed = ROLE_ALLOWED[state.role] || ROLE_ALLOWED.cashier;   // an unknown role gets the least
   return allowed.has(view);
 }

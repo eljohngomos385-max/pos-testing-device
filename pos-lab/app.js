@@ -972,10 +972,19 @@ function init() {
   // Live transaction feed for the Reports page (multi-cashier real-time).
   setInterval(reportsLive, 4000);
 
-  // Tap a transaction row to open its full order details.
-  $('#reportsTxList')?.addEventListener('click', (e) => {
-    const row = e.target.closest('.report-tx');
-    if (row?.dataset.orderId) openOrderDetailModal(row.dataset.orderId);
+  // Reports (pos-customers.js): the search finds an item among the period's sales; Day ▾ picks the period, ‹ › and a
+  // sideways swipe step through it (a swipe right goes back, like turning a page back).
+  wireFind('#reportsFind', '#reportsSearch', '#reportsSearchX', (q) => { reportsView.q = q; renderReports(); });
+  $('#reportsPeriod')?.addEventListener('click', (e) => openMenu(e.currentTarget,
+    REPORT_UNITS.map(([k, label]) => ({ label, cur: k === reportsView.unit, run: () => reportsStep(0, k) })), { w: 160, right: true }));
+  const rpBody = $('#reportsBody');
+  rpBody?.addEventListener('click', (e) => { const b = e.target.closest('[data-rp]'); if (b) reportsStep(+b.dataset.rp); });
+  let rpX = null;
+  rpBody?.addEventListener('touchstart', (e) => { rpX = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
+  rpBody?.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0], dx = rpX ? t.clientX - rpX[0] : 0, dy = rpX ? t.clientY - rpX[1] : 0;
+    rpX = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > 2 * Math.abs(dy) && (dx > 0 || reportsView.back)) reportsStep(dx > 0 ? -1 : 1);
   });
   if (new URLSearchParams(location.search).has('demo-orders')) seedDemoOrders();
 }

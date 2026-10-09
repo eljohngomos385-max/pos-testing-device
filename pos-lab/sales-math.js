@@ -596,6 +596,21 @@
   // Any share (an item's, a category's): part ÷ the PERIOD'S netSales, 0..1. A part that lost
   // money has a negative share; the parts sum to 1 when each line has one key.
   const share = (part, whole) => (Number(whole) > 0 ? (Number(part) || 0) / Number(whole) : 0);
+  // The items sold in [from, to) (a unit or more, net of voids and refunds), biggest Net sales first: the
+  // back office's renderSales.topItems (bo-sales.js agg) without its product lookup, so the POS and the BO
+  // rank alike. → [{ key, name, ...ladder, share }]; name = the line's name. ponytail: the BO names an item
+  // by its product today; a renamed item reads its old name here until the port shares productFor.
+  function topItems(orders, { from, to, limit = Infinity, costOf } = {}) {
+    const names = new Map();
+    const t = summarize(orders, { from, to, costOf, by: (o, i) => {
+      if (!(o.items || []).length) return null;
+      const k = itemKey(i);
+      names.set(k, i.name);
+      return k;
+    } });
+    return [...t.groups].map(([key, g]) => ({ key, name: names.get(key), ...g, share: share(g.netSales, t.netSales) }))
+      .filter((r) => r.unitsSold > 0).sort((a, b) => b.netSales - a.netSales).slice(0, limit);
+  }
 
   // One unit's money on its price tag, the ladder's way: the tax comes out of the price first
   // (taxOpts(settings)), so margin = profit ÷ price before tax. Markup is on cost, on the shelf
@@ -907,6 +922,7 @@
     summarize, tenders, currencyCode, formatMoney, currencySymbol,
     tsOf, TENDER_LABEL, tenderKey, tenderLabel, paymentsOf, saleTender, payWord, tenderedOf, creditPart, customerIdOf, customerOrders, sellerOf,
     itemKey, itemsSold, share, unitMargin, ratePct, receiptLines, receiptParts, isExchange, totalRows, paidOf, lastSale,
+    topItems,
     storeZone, dayKey, dayStartMs, addDays, rangeWindow, daysOpen, daysOpenBy, dateParts, dateText, groupByDay, chartTime, daysAgo, agoText,
     rowAmount, newestFirst, plural, pluralWord, qtyText, pctText, change, changeText, changeTone, bestDay,
     round2, cent: C, unc: U,
