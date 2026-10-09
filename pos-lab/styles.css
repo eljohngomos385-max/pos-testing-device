@@ -7954,9 +7954,17 @@ input.es-ta { height: 56px; }
 .lv .sh-move small { color: var(--ink-tertiary); font-size: 12px; }
 .lv .sh-move .out { color: var(--ink-secondary); }
 .lv .sh-move > .num { flex: none; white-space: nowrap; }   /* a long note never pushes the sign onto its own line */
-.lv .sh-last { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0 0; color: var(--ink-tertiary); }
-.lv .sh-slip { margin: 0; white-space: pre; overflow-x: auto; font-size: 11px; line-height: 1.45; }
-.lv .paper-scroll .rp-paper.sh-slip { width: fit-content; max-width: 100%; padding: 20px; font-size: 11px; }
+.lv button.sh-move { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }   /* a past shift / day: the row opens its paper */
+.lv button.sh-move:hover { background: var(--surface-hover); }
+/* The amount sheets (start cash, the count) and the papers, in the app's confirm card (showConfirm). */
+.cf-sheet .sh-amt { width: 100%; margin: 6px 0 10px; text-align: right; font-size: 28px; font-weight: 600; color: var(--ink); }
+.cf-sheet .es-kp button { height: 52px; border-radius: var(--r-input); background: var(--tile); color: var(--ink); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.cf-sheet .es-kp button:hover { background: var(--surface-hover); }
+.cf-sheet .es-kp svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.cf-sheet .sh-fr { display: flex; align-items: center; gap: 8px; min-height: 32px; color: var(--ink); font-size: 14px; }
+.cf-sheet .sh-fr > span { flex: 1; color: var(--ink-secondary); }
+.cf-sheet .sh-note { width: 100%; margin-top: 8px; }
+.cf-sheet .sh-slip { width: 100%; margin: 4px 0; padding: 14px 12px; white-space: pre; overflow-x: auto; font-size: 10px; line-height: 1.4; }
 @container pv (max-width: 720px) {
 }
 /* The ☰ drawer's sync line, under the signed-in person: quiet, the user row's left edge. */

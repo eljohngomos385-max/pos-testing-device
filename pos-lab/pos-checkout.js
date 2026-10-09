@@ -4,6 +4,7 @@
 // ---------- Payment (full-page Checkout view) ----------
 function openPaymentModal() {
   if (state.cart.length === 0) return;
+  if (needShift(openPaymentModal, $('#payBtn'))) return;   // no shift open: "Start cash?" first (pos-shift.js)
   state.prevView = state.view;
   state.paymentMethodChosen = false;
   track('checkout_open', { lines: state.cart.length, subtotal: cartTotals().subtotal });
