@@ -10,7 +10,14 @@ const SETTING_PICKS = {
   theme: { opts: [['dark', 'Dark'], ['light', 'Light']], now: () => state.theme || 'dark', set: applyTheme },
   driver: { opts: [['browser', 'Browser'], ['network', 'Wi-Fi'], ['bluetooth', 'Bluetooth']], now: () => printerConfig().driver || 'browser', set: v => savePrinting({ driver: v }) },
   width: { opts: [['58mm', '58 mm'], ['80mm', '80 mm']], now: () => printerConfig().width || '80mm', set: v => savePrinting({ width: v }) },
+  discountLimit: { opts: [10, 15, 20, 25, 30, 50].map(n => [n, `${n}%`]).concat([[null, 'Never ask']]), now: () => loadTillPerms().discountLimit, set: setDiscountLimit },
 };
+// The discount limit (owner 2026-10-09): one value, kept with the till perms, that Back office › Staff & access shows too.
+// Settings is open to a cashier, so changing it is a big-discount call of its own.
+function setDiscountLimit(v) {
+  const put = () => { saveTillPerms({ ...loadTillPerms(), discountLimit: v }); renderPosSettings(false); };
+  if (gate('discount', put, { discountLimit: v }, 'Changing when a manager is asked.')) put();
+}
 function openSettingMenu(btn) {
   const pk = SETTING_PICKS[btn.dataset.pick], now = pk.now();
   openMenu(btn, pk.opts.map(([v, label]) => ({ label, cur: v === now, run: () => { pk.set(v); renderPosSettings(btn.dataset.pick === 'driver'); } })));

@@ -90,6 +90,7 @@ function track(type, data) {
 function beginCart() {
   if (state.cart.length) return;
   state.scPwd = null;   // a fresh cart never carries the last cardholder (lines removed one by one, not cleared)
+  state.discountOk = null;   // ...nor a manager's yes to the last one's discount (discountOk)
   state.savedId = '';   // ...nor the saved cart the emptied one was continuing (continueDraft sets it after this)
   state.cartId = newId('cart');
   state.cartStartedAt = Date.now();

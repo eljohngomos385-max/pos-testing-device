@@ -8016,6 +8016,7 @@ input.es-ta { height: 56px; }
 .st-page .fr .lb { display: grid; gap: 2px; }
 .st-page .fr .lb small { font-size: 12px; }
 .st-page .fr > .v { display: flex; justify-content: flex-end; min-width: 0; }
+.lv .st-page .fr:has(> .v > .st-pick) { grid-template-columns: minmax(0,1fr) auto; }   /* a long label wraps; the pick is never cut ("Never ask" on a phone) */
 .lv .st-pick { justify-content: space-between; gap: 10px; min-width: 150px; max-width: 100%; padding: 0 8px 0 12px; color: var(--ink); }
 .st-pick > span { overflow: hidden; text-overflow: ellipsis; }
 .st-pick .ic { color: var(--ink-tertiary); }

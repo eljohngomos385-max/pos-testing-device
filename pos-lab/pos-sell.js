@@ -392,7 +392,8 @@ function addProductByCode(rawCode, { source = 'barcode' } = {}) {
 }
 
 function clearCart() {
-  closeEditSheet();   // first, so its events are the sheet's own changes
+  closeEditSheet(false, true);   // first, so its events are the sheet's own changes (and no PIN for a cart going away)
+  state.discountOk = null;
   state.exchange = null;   // clearing the cart calls an exchange off (startExchange)
   state.savedId = '';      // ...and lets go of the saved cart it was continuing (continueDraft); the draft stays
   state.cart = [];
@@ -733,6 +734,28 @@ const esDisc = (o) => (+o.d > 0 ? { type: o.pct ? 'percent' : 'amount', value: +
 const esTyped = (o) => (o.pct ? `${o.d || 0}%` : SalesMath.currencySymbol(state.settings.store?.currency) + (o.d || 0));
 const esShown = (d) => (!d ? 'None' : d.type === 'percent' ? `${d.value}%` : peso(d.value));
 
+// Big discounts (owner 2026-10-09). The sale's line + sale discounts added up, as a % of the sale before them;
+// SC/PWD is the law's and never counts (when it wins, orderTotals gives no other discount).
+const discountPct = (t = cartTotals()) => (t.scPwd || !t.subtotal ? 0 : SalesMath.round2(t.discount / t.subtotal * 100));
+// The cart's discounts now (and their %), to put back when a manager says no.
+const discSnap = () => ({ lines: state.cart.map(i => [i, i.discount]), cd: state.cartDiscount, sc: state.scPwd, pct: discountPct() });
+const discPut = (s) => { s.lines.forEach(([i, d]) => { if (d) i.discount = d; else delete i.discount; }); state.cartDiscount = s.cd; state.scPwd = s.sc; };
+// Past "Ask a manager for discounts over N%" (POS › Settings, bo-model discountLimit), past what a manager already
+// approved on this sale and past `back` (the sheet's last state that passed), a role without "Give big discounts"
+// gets the PIN pad: true = fine. Else `back` goes on the cart at once (Cancel leaves it), and the PIN puts this
+// one on again, approved (state.discountOk -> the order's approvedBy), then runs `then`. No `back` (Check out): nothing moves.
+function discountOk(back, then) {
+  const lim = loadTillPerms().discountLimit, pct = discountPct();
+  if (lim == null || pct <= Math.max(lim, state.discountOk?.pct || 0, back?.pct || 0)) return true;
+  const now = discSnap();
+  if (gate('discount', (by) => { discPut(now); state.discountOk = { pct, by }; esFresh(); renderCart(); then?.(); },
+    { pct }, `${pct}% off is over the ${lim}% limit.`)) return true;
+  if (back) { discPut(back); esFresh(); renderCart(); }
+  return false;
+}
+// The open sheet drawn again from the cart (its typed numbers were put back, or approved).
+const esFresh = () => { if (es) { const { kind, id } = es; es = null; openEditSheet(kind, id); } };
+
 function openEditSheet(kind, id) {
   if (kind !== 'ful' && !state.cart.length) { flashControl($('#cartDiscountBtn')); flashControl($('#side')); return; }
   const was = !!es;
@@ -754,7 +777,7 @@ function openEditSheet(kind, id) {
   } else {
     es = { kind, day: (state.pickupTime && state.pickupTime.day) || 'Today' };
   }
-  Object.assign(es, { f: null, anim: false, opened: true });
+  Object.assign(es, { f: null, anim: false, opened: true, ok: discSnap() });   // ok: what a manager's "no" puts back (discountOk)
   drawEditSheet();
   if (!was) $('#editSheet').classList.add('open');
 }
@@ -772,12 +795,14 @@ function removeLine(item) {
 }
 
 // Closing keeps what's on the cart (it followed every tap) and sends the events the old Save sent, once per open.
-function closeEditSheet(swap) {
+// `dropping`: the cart is being cleared, so a big discount isn't asked about. false = it asked (discountOk).
+function closeEditSheet(swap, dropping) {
   if (!es) return;
   const typing = es.f === 'q';
   if (es.f) esSettle(es);
   if (typing) esWrite();   // a typed count is asked about as the sheet goes
   const o = es; es = null;
+  const ok = dropping || discountOk(o.ok);   // before the events: a "no" puts the discount back, so none is sent
   const item = o.kind === 'line' && state.cart.find(i => i.id === o.id);
   if (item) {
     if (item.qty !== o.before.qty) track('item_qty', { productId: item.id, from: o.before.qty, to: item.qty });
@@ -792,6 +817,7 @@ function closeEditSheet(swap) {
   }
   if (!swap) $('#editSheet').classList.remove('open');
   renderCart();
+  return ok;
 }
 
 // Every tap lands on the cart at once; a 0 quantity keeps the last count until the keys go away.
@@ -946,8 +972,10 @@ function editSheetClick(e) {
     if (o.kind === 'rd') o.pick = null;
     if (o.f) esSettle(o);
   } else return;
+  const typing = el('[data-sk]') || el('.es-seg button');   // the keys, Percent / Amount: shown, not put on yet
   esWrite();
   drawEditSheet();
+  if (!typing && discountOk(o.ok)) o.ok = discSnap();   // anything else puts it on: past the limit, a manager is asked
   if (ES_SC[o.f]) ($$('#editSheet [data-scf]').find(i => !i.value.trim()) || $('#editSheet [data-scf]')).focus();
 }
 
