@@ -11,6 +11,7 @@ function attachEvents() {
   // ---- Top bar: sidebar toggle ----
   $('#sidebarToggle')?.addEventListener('click', () => {
     if ($('#variantSheet').classList.contains('open')) return closeVariantSheet();   // it is the variant sheet's X while that is open
+    if (state.exchange) return leaveExchange();   // and the exchange's (startExchange)
     $('#app').classList.toggle('sidebar-collapsed');
   });
   // Per-view hamburger buttons (one in each view's header)
@@ -299,8 +300,9 @@ function attachEvents() {
   // The receipt and the tick list morph into each other (the browser's view transition; a plain swap without one).
   const morph = (fn) => (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches ? document.startViewTransition(fn) : fn());
   const refundTicked = (o) => {
-    if (!picking(o)) { orderPicks(o); orderPick.on = true; return morph(renderOrderDetail); }
+    if (!picking(o)) { orderPicks(o); Object.assign(orderPick, { on: true, mode: 'refund' }); return morph(renderOrderDetail); }
     const picks = orderPicks(o), part = picks.length && SalesMath.refundPart(o, reversalsOf(o), picks);
+    if (part && orderPick.mode === 'exchange') return startExchange(o.id, picks);
     if (part) showConfirm({ title: `Refund ${SalesMath.plural(picks.length, 'item')} on #${o.number}?`, message: `${peso(part.total)} goes back to the customer.`,
       okText: 'Refund', from: $('#orderRefund'), onConfirm: () => morph(() => recordReturn(o.id, 'Refund', picks)) });
   };
@@ -314,13 +316,16 @@ function attachEvents() {
   const askVoid = (o, from) => showConfirm({ title: `Void #${o.number}?`, message: 'The sale stays on record, marked voided.', okText: 'Void sale', from, onConfirm: () => voidOrder(o.id, 'Void') });
   $('#orderRefund')?.addEventListener('click', () => { const o = shownOrder(); if (o) refundTicked(o); });
   $('#orderCancel')?.addEventListener('click', () => morph(() => { Object.assign(orderPick, { on: false, lines: {} }); renderOrderDetail(); }));
-  // Refund items / Exchange: the customer's lines first (pickReturnLines), then the refund or the cart.
+  // Refund items: the customer's lines first (pickReturnLines), then the refund.
   const refundItems = (o) => pickReturnLines(o, { title: `Refund items on #${o.number}`, okText: 'Refund', onPick: (picks) => recordReturn(o.id, 'Refund', picks) });
-  const exchangeItems = (o) => pickReturnLines(o, { title: `What comes back on #${o.number}?`, okText: 'Next', onPick: (picks) => startExchange(o.id, picks) });
+  // Exchange ticks what comes back the way Refund does (owner 2026-10-09); the bar's button then reads Exchange ₱X.
+  const exchangeItems = (o) => {
+    if (state.view !== 'orders') { switchView('orders'); $('#ordersView').classList.add('reading'); }   // the details pop-up opens from Reports too
+    orderPicks(o); Object.assign(orderPick, { on: true, mode: 'exchange' }); state.selectedOrderId = o.id; morph(renderOrderDetail); };
   // ⋯: the ticks are the lines refunds and exchanges use, so "Refund items" is the list itself now.
   const orderMenu = (btn, o) => openMenu(btn, [
     { label: 'Order details', run: () => openOrderDetailModal(o.id) },
-    { label: 'Exchange', off: !isCompletedSale(o), run: () => { const picks = orderPicks(o); if (picks.length) startExchange(o.id, picks); else exchangeItems(o); } },
+    { label: 'Exchange', off: !isCompletedSale(o), run: () => exchangeItems(o) },
     '-',
     { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o, btn) },
   ], { w: 200, right: true });
@@ -350,7 +355,7 @@ function attachEvents() {
     ['When', 'range', ORDER_RANGES.map(([v, l]) => [v, l])],
     ['Staff', 'staff', [['', 'Anyone'], ...[...new Set(state.orders.map(orderSeller).filter(Boolean))].sort().map(c => [c, c])]],
     ['Payment', 'pay', [['', 'Any'], ...PAY_KEYS.map(k => [k, SalesMath.tenderLabel(k), payColor(k)])]],
-    ['Status', 'status', [['', 'Any'], ...['sale', 'saved', 'quote', 'part', 'refunded', 'voided'].map(k => [k, DRAFT_LABEL[k] || SalesMath.ROW_LABEL[k]])]],
+    ['Status', 'status', [['', 'Any'], ...['sale', 'saved', 'quote', 'part', 'refunded', 'voided'].map(k => [k, DRAFT_LABEL[k] || SalesMath.ROW_LABEL[k]]), ['xchg', 'Exchanged']]],
     // Each type a row can read (orderFulfilLabel), the owner's own ones included, so a 'Tricycle' row is found as itself.
     ['Fulfilment', 'fulfil', [['', 'Any'], ...[...new Set([...FULFIL_BUILTINS.map(([k]) => k), ...state.orders.map(o => o.fulfilment)])]
       .map(k => [k, orderFulfilLabel({ fulfilment: k })])]],
@@ -601,6 +606,7 @@ function attachEvents() {
       from: $('#cartMoreBtn'),
       onConfirm: () => {
         track('cart_clear', { lines: state.cart.length, subtotal: cartTotals().subtotal });
+        if (state.exchange) { state.cart = []; renderCart(); return showToast('Cart cleared'); }   // the exchange stays; ✕ leaves it
         clearCart();
         showToast('Cart cleared');
       }
@@ -612,7 +618,7 @@ function attachEvents() {
       // A saved cart / quote is a draft beside the orders (pos-checkout saveDraft); an exchange can't be parked.
       { label: 'Save cart', run: () => openSaveReceiptModal('saved'), off: empty || !!state.exchange },
       { label: 'Print quote', run: () => openSaveReceiptModal('quote'), off: empty || !!state.exchange },
-      { label: 'Lost sale', run: () => openLostSale() }, '-',
+      { label: 'Lost sale', run: () => openLostSale(), off: !!state.exchange }, '-',
       { label: 'Clear sale', run: confirmClearCart, red: true, off: empty },
     ], { w: 200, right: true });
   });

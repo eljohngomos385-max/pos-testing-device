@@ -213,13 +213,15 @@
       if (isReversal(o)) (back.get(o.originalOrderId) || back.set(o.originalOrderId, []).get(o.originalOrderId)).push(o);
       else if (isSale(o)) sales.set(o.id, o);
     }
-    const out = new Map(), part = new Set();
+    const out = new Map(), part = new Set(), swap = new Set();
     for (const [id, rows] of back) {
       const whole = rows.find(isWhole), sale = sales.get(id);
       if (whole || (sale && leftMilli(sale, rows).every((m) => m <= 0))) out.set(id, whole || rows[0]);
       else part.add(id);
+      if (rows.some((r) => r.reason === 'Exchange')) swap.add(id);
     }
     out.part = part;   // the partly refunded sales; ponytail: rides on the Map so every `rev` passed around carries it (statusOf)
+    out.swap = swap;   // the sales goods came back from in an exchange (the till's "Exchanged" word)
     return out;
   }
   const reversalOf = (orders, saleId) => reversals(orders).get(saleId) || null;
@@ -501,9 +503,14 @@
   // the leg's label. A split sale is its legs (cash + credit), never a 'split' bucket.
   // `split` is never a key: it is payWord's name for an order paid more than one way.
   const TENDER_LABEL = { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Account', unpaid: 'Not completed', other: 'Other', split: 'Split payment' };
+  // An exchange row can hold two 'other' tenders (a GCash swap and a QR difference), so a leg's own name wins
+  // when it has one; 'Void' / 'Refund' / 'other' are no names.
   function tenderKey(o, p) {
     const m = p && p.method;
     if (m && m !== 'other') return m;
+    const own = String((p && p.label) || '');
+    if (own === 'GCash' || own === 'QR') return own.toLowerCase();
+    if (own && !['other', 'Other', 'Void', 'Refund', 'Split payment'].includes(own)) return own;
     const k = o && o.paymentKind;
     if (k === 'gcash' || k === 'qr') return k;
     return (o && k === 'other' && o.paymentMethodLabel) || 'other';
@@ -625,19 +632,26 @@
     sale: ['This serves as your official receipt.', 'Keep for returns and exchanges.'],
     void: ['This sale is cancelled.', 'This is not an official receipt.'],
     refund: ['Money given back.', 'This is not an official receipt.'],
+    exchange: ['Goods taken back in an exchange.', 'This is not an official receipt.'],
     saved: ['Not completed. This is not a receipt.'],
     // A quote (the till's saved list, draft 'quote'): no number, no valid-until (owner 2026-10-07).
     quote: ['This is not an official receipt.'],
   };
+  // An exchange's two rows (exchangeOrder): the refund of what came back (reason 'Exchange') and the new sale pointing
+  // at the same sale. Legs with a ref are the swap; a leg without one is money that changed hands.
+  const isExchange = (o) => !!o && !!o.originalOrderId && (isSale(o) || o.reason === 'Exchange');
+  const swapOf = (o) => (isExchange(o) ? U(((o.payments) || []).filter((p) => p && p.ref).reduce((s, p) => s + C(p.amount), 0)) : 0);
   function receiptParts(o, sale = null, rev = null) {
-    const kind = rowState(o, rev), back = isReversal(o), quote = o.draft === 'quote';
+    const kind = rowState(o, rev), back = isReversal(o), quote = o.draft === 'quote', x = isExchange(o);
     return {
       kind,
-      mark: quote ? 'QUOTATION' : back ? `${o.status === 'void' ? 'VOID' : 'REFUND'} of #${(sale && sale.number) || '—'}` : '',
+      mark: quote ? 'QUOTATION' : x ? `EXCHANGE ${back ? 'of' : 'for'} #${(sale && sale.number) || '—'}`
+        : back ? `${o.status === 'void' ? 'VOID' : 'REFUND'} of #${(sale && sale.number) || '—'}` : '',
       paidWord: back ? 'Given back' : 'Paid',
-      whoWord: o.status === 'void' ? 'Voided by' : o.status === 'refund' ? 'Refunded by' : 'Cashier',
+      whoWord: o.status === 'void' ? 'Voided by' : o.status === 'refund' ? (x ? 'Exchanged by' : 'Refunded by') : 'Cashier',
       legs: paymentsOf(o),
-      footer: FOOTER[quote ? 'quote' : o.status] || FOOTER.sale,
+      swapped: swapOf(o),   // the part that swapped goods for goods (printer payRows' EXCHANGE row)
+      footer: x && back ? FOOTER.exchange : FOOTER[quote ? 'quote' : o.status] || FOOTER.sale,
       // The SC/PWD 20% is already inside Discount: 'Incl.' so the slip never reads as a second discount.
       scPwd: Number(o.scPwdOff) > 0
         ? [{ label: 'Incl. SC/PWD discount', amount: U(C(o.scPwdOff)) }, ...(C(o.vatExempt) > 0 ? [{ label: 'VAT-exempt sales', amount: U(C(o.vatExempt)) }] : [])] : [],
@@ -674,10 +688,11 @@
   // (it went back onto the account) -- the legs printer.js payRows lists. change = the cash legs' change.
   function paidOf(o) {
     if (!sign(o)) return null;
-    const back = isReversal(o);
+    const back = isReversal(o), x = isExchange(o);
     let paid = 0, change = 0;
     for (const p of (o && o.payments) || []) {
       if (!back && tenderKey(o, p) === 'credit') continue;
+      if (x && p.ref) continue;   // an exchange's swap: no money changed hands for it
       paid += C(!back && p.method === 'cash' ? tenderedOf(p) : p.amount);
       if (p.method === 'cash') change += C(p.change);
     }
@@ -891,7 +906,7 @@
     coin, discountCents, lineMoney, taxOpts, taxName, orderTotals, split, orderLines, discountName,
     summarize, tenders, currencyCode, formatMoney, currencySymbol,
     tsOf, TENDER_LABEL, tenderKey, tenderLabel, paymentsOf, saleTender, payWord, tenderedOf, creditPart, customerIdOf, customerOrders, sellerOf,
-    itemKey, itemsSold, share, unitMargin, ratePct, receiptLines, receiptParts, totalRows, paidOf, lastSale,
+    itemKey, itemsSold, share, unitMargin, ratePct, receiptLines, receiptParts, isExchange, totalRows, paidOf, lastSale,
     storeZone, dayKey, dayStartMs, addDays, rangeWindow, daysOpen, daysOpenBy, dateParts, dateText, groupByDay, chartTime, daysAgo, agoText,
     rowAmount, newestFirst, plural, pluralWord, qtyText, pctText, change, changeText, changeTone, bestDay,
     round2, cent: C, unc: U,

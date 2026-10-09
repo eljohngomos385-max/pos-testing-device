@@ -10,13 +10,17 @@ function openPaymentModal() {
   switchView('checkout');
   renderCheckout();
 }
+// What the checkout collects: the cart's total, or in an exchange only the difference (confirmExchange sends it here
+// when the customer pays more). The account part is already settled by exchangeMoney, so Account and Split stay off.
+const dueNow = () => (state.exchange ? Math.max(0, exchangeNow()?.net || 0) : cartTotals().total);
 function renderCheckout() {
   const t = cartTotals();
-  const total = t.total;
+  const total = dueNow(), x = state.exchange && exchangeNow();
 
   const cartList = $('#checkoutCartList');
   if (cartList) {
-    cartList.innerHTML = state.cart.map(item => `
+    cartList.innerHTML = (x ? `<div class="co-row"><span class="co-nm">Coming back · #${escapeHtml(x.o.number)}</span><span class="co-amt num">${peso(-x.part.total)}</span></div>` : '')
+      + state.cart.map(item => `
       <div class="co-row">
         <span class="co-nm">${escapeHtml(item.name)}<small class="num">${item.qty} × ${peso(item.price)}</small></span>
         <span class="co-amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
@@ -35,11 +39,12 @@ function renderCheckout() {
   if (totalDue) totalDue.textContent = peso(total);
 
   setCheckoutError('');
-  if (!canCharge() && (state.paymentMethod === 'credit' || state.paymentMethod === 'split')) {
+  const charge = canCharge() && !state.exchange;
+  if (!charge && (state.paymentMethod === 'credit' || state.paymentMethod === 'split')) {
     state.paymentMethod = 'cash';
   }
   // You can only charge a named account with credit on, so the two credit tiles appear with it.
-  applyPayMethods(canCharge());
+  applyPayMethods(charge);
   renderQuickCashOptions(total);
   if (!state.paymentMethodChosen) state.paymentMethod = 'cash';
   $('#checkoutApp')?.classList.remove('is-done');
@@ -119,7 +124,7 @@ function centreCheckout() {
 }
 
 function updateChange() {
-  const { total } = cartTotals();
+  const total = dueNow();
   const raw = ($('#checkoutTender')?.value || '').trim();
   const tender = moneyValue(parseFloat(raw) || 0);
   const split = state.paymentMethod === 'split';
@@ -270,14 +275,17 @@ function showOrderAfterCartClears(order) {
   renderOrders();
 }
 
-function showCheckoutSuccess(order) {
+// `handBack`: an exchange's money going back (exchangeOrder) -- the big number then reads Hand back, not Change.
+function showCheckoutSuccess(order, handBack = 0) {
   clearCart();
   const back = $('#paymentModal'); if (back) back.hidden = true;
   if (state.view !== 'checkout') switchView('checkout');
   // The only big number is the change to hand back; method, cash and total are on the receipt.
-  const change = moneyValue(order.change || 0);
+  const change = moneyValue(handBack || order.change || 0);
   const changeBlock = $('#successChangeBlock');
   if (changeBlock) changeBlock.hidden = !(change > 0);
+  if (changeBlock) changeBlock.firstElementChild.textContent = handBack ? 'Hand back' : 'Change';
+  $('#checkoutDone .co-done-h').textContent = SalesMath.isExchange(order) ? 'Exchange complete' : 'Sale complete';
   const changeEl = $('#successChange');
   $('#checkoutSteps').hidden = true;
   $('#checkoutDone').hidden = false; // un-hiding replays the check and the rise
@@ -713,8 +721,7 @@ function reverseOrderCredit(order, reason, whole = false, credit = SalesMath.cre
 // `approvedBy`: the manager whose PIN let this charge go past the credit limit (gate re-runs it).
 // `ok`: questions already answered Yes in the app's own pop-up ({ limit }), so the re-run skips them.
 function completeSale(approvedBy = '', ok = {}) {
-  const totals = cartTotals();
-  const total = moneyValue(totals.total);
+  const total = moneyValue(dueNow());
   let tendered = total, change = 0;
   const isSplit = state.paymentMethod === 'split';
   const cashLike = ['cash', 'gcash', 'qr', 'other', 'split'].includes(state.paymentMethod);
@@ -747,6 +754,14 @@ function completeSale(approvedBy = '', ok = {}) {
     setCheckoutError(state.customer ? `${state.customer.name} has credit off.` : 'Select a customer before charging to account.');
     return;
   }
+  const actualMethod = state.paymentMethod === 'other'
+    ? ($('#otherMethodInput')?.value?.trim() || 'Other')
+    : state.paymentMethod;
+  // An exchange collects only the difference here; exchangeOrder rings both rows and shows this page's done step.
+  if (state.exchange) {
+    const { orderId, picks } = state.exchange;
+    return void exchangeOrder(orderId, state.cart, 'Exchange', '', picks, false, { method: actualMethod, tendered, change });
+  }
   // The limit was stored, shown on the customer card, and enforced nowhere -- a ₱5,000
   // account would take a ₱50,000 charge. A role allowed past it confirms; anyone else needs a
   // manager's PIN, which carries straight on with the sale.
@@ -760,9 +775,6 @@ function completeSale(approvedBy = '', ok = {}) {
       onConfirm: () => completeSale(approvedBy, { ...ok, limit: true }) });
     return;
   }
-  const actualMethod = state.paymentMethod === 'other'
-    ? ($('#otherMethodInput')?.value?.trim() || 'Other')
-    : state.paymentMethod;
   let order;
   try {
     order = persistOrder(buildOrderRecord({

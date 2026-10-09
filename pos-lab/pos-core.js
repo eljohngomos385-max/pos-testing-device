@@ -783,6 +783,8 @@ function switchView(view) {
     showToast('You do not have permission for that page');
     return;
   }
+  // An exchange holds Sell and the checkout until it is rung or ✕'d (startExchange / leaveExchange).
+  if (state.exchange && view !== 'sell' && view !== 'checkout') { showToast('Finish or cancel the exchange first'); return; }
   const fromCheckout = state.view === 'checkout';
   if (view !== 'orders' && state.ordersCustomer) ordersFor('');
   state.view = view;

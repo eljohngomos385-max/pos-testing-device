@@ -1330,14 +1330,22 @@ function cartTotals(cart = state.cart, cartDiscount = state.cartDiscount, scPwd 
   return { ...t, vatRate: t.taxRate, vatAmount: t.tax, vatableSales: moneyValue(t.salesBeforeTax - t.vatExempt) };
 }
 
+const XCHG_ICON = '<svg class="ic xi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h15l-4-4M20 16H5l4 4"/></svg>';   // ⇄
 function renderCart() {
   const list = $('#cartList');
   const t = cartTotals();
   const n = state.cart.length;
+  // An exchange (startExchange): what comes back sits above the new items in the exchange colour (--xchg, the pay
+  // button's), minus amounts, its sale's number; the money words say the difference.
+  const x = state.exchange && exchangeNow();
+  $('#app').classList.toggle('xchg', !!state.exchange);
+  const back = x ? `<div class="xb">${x.part.items.map(i => `<div class="row"><span class="nm"><span>${escapeHtml(i.name)}</span><small class="num">${SalesMath.qtyText(i.qty)} × ${peso(i.price)} · #${escapeHtml(x.o.number)}</small></span>
+      <span class="amt num">${peso(-normalizeOrderItem(i).lineTotal)}</span></div>`).join('')}</div>` : '';
   if (n === 0) {
-    list.innerHTML = '<div class="empty"><b>No items yet</b><span>Tap an item to add it.</span></div>';
+    list.innerHTML = back + (x ? '<div class="empty"><b>Add what they take instead</b><span>Tap an item to add it.</span></div>'
+      : '<div class="empty"><b>No items yet</b><span>Tap an item to add it.</span></div>');
   } else {
-    list.innerHTML = state.cart.map(item => `
+    list.innerHTML = back + state.cart.map(item => `
       <div class="line"><button type="button" class="row" data-id="${item.id}" title="Edit item">
         <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}</small></span>
         <span class="amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
@@ -1354,13 +1362,22 @@ function renderCart() {
   $('#vatAmount').textContent = peso(t.vatAmount);
   $('#vatLabel').textContent = taxLabel(t.vatRate, t.taxIncluded);
   $('#vatLabel').parentElement.style.display = t.vatRate && !t.scPwd ? '' : 'none';   // a non-VAT store, or a VAT-exempt (SC/PWD) sale, has no tax row: the slips' rule (totalRows)
-  $('#total').textContent = peso(t.total);
+  // [word, amount]: Collect ₱12 / Hand back ₱8 / Swap; the Total row says it the customer's way.
+  // `off`: an account sale's swap for less -- no cash moves, the difference comes off the account (exchangeMoney).
+  const off = x && !x.net ? moneyValue(x.credit - x.onAccount) : 0;
+  const owe = x && (x.net > 0 ? ['Collect', 'Customer pays', x.net] : x.net < 0 ? ['Hand back', 'Hand back', -x.net] : ['Swap', off ? 'Off account' : 'Even swap', 0]);
+  $('#total').textContent = owe ? (owe[2] ? peso(owe[2]) : off ? peso(off) : '') : peso(t.total);
+  $('#totalRow .l').firstChild.nodeValue = owe ? owe[1] : 'Total';
+  $('#backRow').style.display = x ? '' : 'none';
+  if (x) $('#backAmt').textContent = peso(-x.part.total);
   $('#payBtn').disabled = n === 0;
-  $('#payBtn').innerHTML = `<span>${state.exchange ? 'Exchange' : 'Check out'}</span>${n ? `<span class="num">${peso(t.total)}</span>` : ''}`;   // startExchange; the total rides in the button, the Total row is the checkout's
-  $('#side').classList.toggle('empty-cart', n === 0);
-  $('#cartBar').disabled = n === 0;   // phone: what is in the cart, not Check out
-  $('#cartBar').innerHTML = n ? `<span>${SalesMath.plural(n, 'item')}</span><span class="num">${peso(t.total)}</span>` : '<span>No items</span>';
-  if (!n) $('#app').classList.remove('ph-cart');
+  $('#payBtn').innerHTML = owe ? (n ? `<span>${owe[0]}</span>${owe[2] ? `<span class="num">${peso(owe[2])}</span>` : ''}` : '<span>Exchange</span>')
+    : `<span>Check out</span>${n ? `<span class="num">${peso(t.total)}</span>` : ''}`;   // the total rides in the button, the Total row is the checkout's
+  $('#side').classList.toggle('empty-cart', n === 0 && !x);
+  $('#cartBar').disabled = n === 0 && !x;   // phone: what is in the cart, not Check out; an exchange opens it to see what comes back
+  $('#cartBar').innerHTML = x ? `<span>${XCHG_ICON}Exchange</span><span class="num">${n ? (owe[2] ? `${owe[0]} ${peso(owe[2])}` : off ? `${peso(off)} off account` : 'Even swap') : `#${escapeHtml(x.o.number)}`}</span>`
+    : n ? `<span>${SalesMath.plural(n, 'item')}</span><span class="num">${peso(t.total)}</span>` : '<span>No items</span>';
+  if (!n && !x) $('#app').classList.remove('ph-cart');
   if (scanCardId) drawScanCard();
 
   renderFulRow();

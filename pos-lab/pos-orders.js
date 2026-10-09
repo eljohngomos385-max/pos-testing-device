@@ -40,8 +40,15 @@ function isCompletedSale(o) {
 // A void cancels a whole sale rung today, nothing refunded yet; anything else is a refund (reverseSale refuses the rest).
 const canVoid = o => isCompletedSale(o) && daysAgo(o.ts) === 0 && !reversalsOf(o).length;
 
+// An exchange says so (owner 2026-10-09): the sale goods came back from reads Exchanged / Partly exchanged, the new
+// sale Exchange. The Status filter's Exchanged finds all three, and Refunded / Completed no longer do (owner 2026-10-09).
+function orderXchg(o) {
+  const s = orderStatus(o);
+  if (s === 'sale') return SalesMath.isExchange(o) ? 'Exchange' : '';
+  return (orderReversals().swap.has(o.id) && { part: 'Partly exchanged', refunded: 'Exchanged' }[s]) || '';
+}
 function orderStatusLabel(o) {
-  return (o.draft && DRAFT_LABEL[o.draft]) || SalesMath.ROW_LABEL[orderStatus(o)];
+  return (o.draft && DRAFT_LABEL[o.draft]) || orderXchg(o) || SalesMath.ROW_LABEL[orderStatus(o)];
 }
 
 function buildMapThumb(location, className = 'rp-map-thumb') {
@@ -73,8 +80,9 @@ function buildMapThumb(location, className = 'rp-map-thumb') {
 // both on-screen slips show the same rows. Every page loads printer.js before app.js; the node till
 // harness does not, and gets no rows (ponytail: nothing there reads a slip).
 const slipRows = (fn, vm) => (globalThis.HWPOS_PRINTER ? HWPOS_PRINTER[fn](vm) : []);
-// `back`: how much of each line was refunded (Orders); all of it = struck through, part = a small line under it.
-function buildReceiptPreview(order, back = []) {
+// `back`: how much of each line came back (Orders); all of it = struck through, part = a small line under it,
+// worded by `said` (backSaid).
+function buildReceiptPreview(order, back = [], said = []) {
   const receipt = toReceiptViewModel(order);
   const lines = receipt.items.map((i, k) => `
     <div class="rp-item${back[k] >= i.qty ? ' out' : ''}">
@@ -83,7 +91,7 @@ function buildReceiptPreview(order, back = []) {
         <span>${i.qty} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
         <span>${peso(i.amount)}</span>
       </div>
-      ${back[k] > 0 && back[k] < i.qty ? `<div class="rp-small">${SalesMath.qtyText(back[k])} refunded</div>` : ''}
+      ${back[k] > 0 && back[k] < i.qty ? `<div class="rp-small">${escapeHtml(said[k] || '')}</div>` : ''}
     </div>`).join('');
   const payRows = receipt.status === 'saved'
     ? (receipt.mark ? '' : `<div class="rp-status saved">NOT COMPLETED</div>`)   // a quote: QUOTATION at the top says it
@@ -141,8 +149,8 @@ function orderSeller(o) {
 // A row's state rides its title, muted, the way a draft reads "Saved · Nice" (owner 2026-10-07):
 // "#1-023 · Refunded" / "· Partly refunded" (SalesMath.statusOf). A plain sale says nothing.
 function orderFlag(o) {
-  const s = orderStatus(o);   // the word takes its state's colour (styles.css span.st[data-s])
-  return s === 'sale' ? '' : `<span class="st" data-s="${s}"> · ${escapeHtml(orderStatusLabel(o))}</span>`;
+  const s = orderStatus(o), x = orderXchg(o);   // the word takes its state's colour (styles.css span.st[data-s])
+  return s === 'sale' && !x ? '' : `<span class="st" data-s="${x ? 'xchg' : s}"> · ${escapeHtml(orderStatusLabel(o))}</span>`;
 }
 const orderTitleHtml = o => o.draft
   ? `<span>${escapeHtml([orderStatusLabel(o), o.name].filter(Boolean).join(' · '))}</span>`
@@ -164,7 +172,7 @@ function ordersShown() {
     if (!hitBack && (F.range === 'yday' ? ago !== 1 : ago > maxAgo)) return false;
     if (F.staff && orderSeller(o) !== F.staff) return false;
     if (F.pay && !orderTenderKeys(o).some(k => payBucket(k) === F.pay)) return false;
-    if (F.status && orderStatus(o) !== F.status) return false;
+    if (F.status && (F.status === 'xchg' ? !orderXchg(o) : orderStatus(o) !== F.status || orderXchg(o))) return false;
     if (F.fulfil && o.fulfilment !== F.fulfil) return false;
     if (state.ordersCustomer && SalesMath.customerIdOf(o) !== state.ordersCustomer) return false;
     return !q || [o.number, ...(backNums.get(o.id) || []), o.name, o.customer ? o.customer.name : 'walk-in', SalesMath.payWord(o), orderStatusLabel(o), tillDate(o.ts, 'slip'),
@@ -245,7 +253,8 @@ function renderOrderDetail() {
 // a tick each (the sale sidebar's rows); Refund ₱X gives them back and the receipt returns (owner 2026-10-07).
 // Orders and the customer's "See all" show the same thing.
 // One pick at a time: the order on screen, whether it is picking, and its lines { lineNo: qty }.
-const orderPick = { id: '', on: false, lines: {} };
+// `mode`: what the ticks are for -- 'refund', or 'exchange' (⋯ Exchange; the bar's button then reads Exchange ₱X).
+const orderPick = { id: '', on: false, lines: {}, mode: 'refund' };
 const picking = o => orderPick.on && orderPick.id === o.id;
 // The money that went back on a sale, oldest first, above its receipt: when, how much, how, and the slip's number.
 // Each prints its own slip (the refund or void receipt the customer and BIR keep).
@@ -257,10 +266,19 @@ function orderBackHtml(o) {
     <span class="v num">${peso(SalesMath.rowAmount(r))}</span>
     <button type="button" class="link" data-print-back="${escapeHtml(r.id)}">Print</button></div>`).join('')}</section>` : '';
 }
+// What came back of each line, by how (owner 2026-10-09): "1 exchanged", "2 refunded", or both. `left` = SalesMath.qtyLeft.
+function backSaid(o, left) {
+  const x = {};
+  for (const r of reversalsOf(o)) if (r.reason === 'Exchange') for (const i of r.items || []) x[i.lineNo] = (x[i.lineNo] || 0) + i.qty;
+  return o.items.map((i, k) => {
+    const back = i.qty - left[k], sw = Math.min(back, x[k] || 0), rf = Math.round((back - sw) * 1000) / 1000;
+    return [sw > 0 && `${SalesMath.qtyText(sw)} exchanged`, rf > 0 && `${SalesMath.qtyText(rf)} refunded`].filter(Boolean).join(' · ');
+  });
+}
 function orderBodyHtml(o) {
   if (picking(o)) return orderLinesHtml(o);
   const left = SalesMath.isSale(o) && orderState(o) !== 'voided' ? SalesMath.qtyLeft(o, reversalsOf(o)) : null;
-  const html = orderBackHtml(o) + buildReceiptPreview(o, left ? o.items.map((i, k) => i.qty - left[k]) : []);
+  const html = orderBackHtml(o) + buildReceiptPreview(o, left ? o.items.map((i, k) => i.qty - left[k]) : [], left ? backSaid(o, left) : []);
   return orderState(o) === 'voided' ? html.replace('<div class="rp-paper">', '<div class="rp-paper void"><div class="stamp">VOIDED</div>') : html;
 }
 function orderPicks(o) {
@@ -272,13 +290,13 @@ function orderLinesHtml(o) {
   const r = toReceiptViewModel(o), sale = isCompletedSale(o);
   const left = SalesMath.isSale(o) ? SalesMath.qtyLeft(o, reversalsOf(o)) : [];
   orderPicks(o);
-  const L = orderPick.lines, can = k => sale && left[k] > 0, open = r.items.map((_, k) => k).filter(can);
+  const L = orderPick.lines, can = k => sale && left[k] > 0, open = r.items.map((_, k) => k).filter(can), said = SalesMath.isSale(o) ? backSaid(o, left) : [];
   const all = open.length && open.every(k => L[k] === left[k]);
   const lines = r.items.map((i, k) => {
     const back = SalesMath.isSale(o) && orderState(o) !== 'voided' ? i.qty - left[k] : 0;
     return `<div class="line${can(k) || !sale ? '' : ' done'}">
       <button type="button" class="row" ${can(k) ? `role="checkbox" aria-checked="${k in L}" data-line="${k}"` : 'disabled'}>${sale ? TICK : ''}
-        <span class="nm"><span>${escapeHtml(i.name)}</span><small class="num">${SalesMath.qtyText(i.qty)} × ${peso(i.price)}${back > 0 ? ` · ${SalesMath.qtyText(back)} refunded` : ''}</small></span>
+        <span class="nm"><span>${escapeHtml(i.name)}</span><small class="num">${SalesMath.qtyText(i.qty)} × ${peso(i.price)}${back > 0 ? ` · ${escapeHtml(said[k])}` : ''}</small></span>
         <span class="amt num">${peso(i.amount)}</span></button>
       ${k in L && left[k] > 1 ? `<div class="step"><span>Coming back</span>
         <button type="button" data-step="-1" data-line="${k}" aria-label="One less">−</button><b class="num">${SalesMath.qtyText(L[k])}</b>
@@ -312,7 +330,8 @@ function refundAct(btn, o) {
   btn.disabled = !isCompletedSale(o) || (on && !part);
   btn.hidden = dr;
   btn.classList.toggle('primary', on);
-  btn.querySelector('span').textContent = part ? `Refund ${peso(part.total)}` : 'Refund';
+  const verb = on && orderPick.mode === 'exchange' ? 'Exchange' : 'Refund';
+  btn.querySelector('span').textContent = part ? `${verb} ${peso(part.total)}` : verb;
   const pr = $('#orderPrint'), word = dr ? 'Print' : 'Print receipt';   // a draft's slip is not a receipt
   if (pr) { pr.title = word; pr.querySelector('span').textContent = word; }
   btn.parentElement.querySelectorAll('.act').forEach(b => {
@@ -369,7 +388,7 @@ function openOrderDetailModal(orderId) {
   const numEl = $('#odmNumber');
   if (numEl) numEl.textContent = `Order #${o.number}`;
   const statusEl = $('#odmStatus');   // same state word as the Orders title (orderFlag); a plain sale says nothing
-  if (statusEl) statusEl.textContent = orderStatus(o) === 'sale' ? '' : `· ${orderStatusLabel(o)}`;
+  if (statusEl) statusEl.textContent = orderStatus(o) === 'sale' && !orderXchg(o) ? '' : `· ${orderStatusLabel(o)}`;
 
   const metaRows = [
     ['Date', dateStr],
@@ -727,7 +746,9 @@ function refundPlan(order, picks, all = loadOrders()) {
 // sold (refundPlan), so the goods go back on the shelf and the money goes back once.
 // A void cancels a whole sale rung today; anything older is a refund, counted on the day it happens.
 // `by` = the approving manager's staff id once a PIN has approved it; `again(by)` re-runs the caller.
-function reverseSale(orderId, kind, reason, { by = '', again, whole = false, picks = null } = {}) {
+// `backVia` { method, amount }: an exchange's hand back (exchangeOrder). That much comes off the money legs, in
+// order, and goes out on `method` as a leg without a ref; the legs that keep the ref are the swap (SalesMath.isExchange).
+function reverseSale(orderId, kind, reason, { by = '', again, whole = false, picks = null, backVia = null } = {}) {
   const all = loadOrders();
   const order = all.find(o => o.id === orderId);
   if (!order || !SalesMath.isSale(order)) return null;
@@ -755,6 +776,18 @@ function reverseSale(orderId, kind, reason, { by = '', again, whole = false, pic
     left = moneyValue(left - off);
     return { ...p, amount: moneyValue(toNumber(p.amount, 0) - off) };
   }).filter(p => p.method !== 'credit' || p.amount > 0);
+  let legs = [...payments, ...(cashBack ? [{ method: 'cash', amount: cashBack }] : [])]
+    .map(p => ({ ...p, tendered: 0, change: 0, ref: order.number }));   // each leg keeps its tender's name
+  if (backVia) {
+    let h = backVia.amount;
+    legs = legs.map(p => {
+      if (p.method === 'credit' || !h) return p;
+      const off = Math.min(h, toNumber(p.amount, 0));
+      h = moneyValue(h - off);
+      return { ...p, amount: moneyValue(toNumber(p.amount, 0) - off) };
+    }).filter(p => p.amount > 0)
+      .concat(buildOrderPayments({ paymentMethod: backVia.method, total: backVia.amount }).map(p => ({ ...p, tendered: 0, change: 0 })));
+  }
   const store = currentStoreInfo();
   const row = persistOrder({
     ...order,
@@ -776,10 +809,7 @@ function reverseSale(orderId, kind, reason, { by = '', again, whole = false, pic
     register: store.registerNo,
     tendered: 0,
     change: 0,
-    payments: [
-      ...payments,
-      ...(cashBack ? [{ method: 'cash', amount: cashBack }] : []),
-    ].map(p => ({ ...p, tendered: 0, change: 0, ref: order.number })),   // each leg keeps its tender's name
+    payments: legs,
   });
   state.selectedOrderId = order.id;   // the sale stays on screen, now stamped
   if (orderPick.id === order.id) Object.assign(orderPick, { on: false, lines: {} });   // back to the receipt, now struck
@@ -830,9 +860,9 @@ function pickReturnLines(o, { title, okText, onPick }) {
 }
 
 // An exchange rings the customer's own picks (owner 2026-10-03) in the sell screen's cart: what comes
-// back is picked first, then the cart's Check out reads Exchange and finishes it (exchangeOrder). The
-// new sale is the presser's; the refund still counts against the original seller (SalesMath.sellerOf).
-// Clearing the cart calls it off.
+// back is ticked in Orders like a refund, then Sell is locked to it (owner 2026-10-09): ☰ is ✕ (leaveExchange),
+// the cart shows what comes back above the new items, and the pay button says the difference (confirmExchange).
+// The new sale is the presser's; the refund still counts against the original seller (SalesMath.sellerOf).
 function startExchange(orderId, picks) {
   const o = state.orders.find(x => x.id === orderId);
   if (!o || !refundPlan(o, picks)) return;
@@ -840,10 +870,32 @@ function startExchange(orderId, picks) {
   clearCart();
   state.customer = o.customer ? (allCustomerRecords().find(c => c.id === o.customer.id) || o.customer) : null;
   state.exchange = { orderId, picks };
+  state.fulfilment = 'walkin';   // a swap at the counter: Walk-in is hidden in an exchange (owner 2026-10-09)
+  Object.assign(orderPick, { on: false, lines: {}, mode: 'refund' });
+  $('#app').classList.add('sidebar-collapsed');   // the ✕ shows only where the ☰ does
   switchView('sell');
   renderCart();
   updateCustomerButton();
-  showToast(`Exchange on #${o.number}: add what the customer picks, then press Exchange`);
+}
+
+// The exchange as the cart stands: the sale, what comes back (part), the new items' total and exchangeMoney's
+// split -- net > 0 the cashier collects it, < 0 hands it back. null when there is no exchange.
+function exchangeNow() {
+  const x = state.exchange, o = x && state.orders.find(r => r.id === x.orderId);
+  const part = o && SalesMath.refundPart(o, reversalsOf(o), x.picks);
+  if (!part) return null;
+  const total = cartTotals().total;
+  return { o, part, total, ...exchangeMoney(o, part, total) };
+}
+
+// The ✕ that stands in for ☰ in an exchange: back to the sale in Orders, nothing saved. Asks only when new items
+// would come off the cart.
+function leaveExchange() {
+  const id = state.exchange?.orderId;
+  const go = () => { clearCart(); state.selectedOrderId = id; switchView('orders'); renderOrders(); };
+  if (!state.cart.length) return go();
+  showConfirm({ title: 'Cancel exchange?', message: 'The new items come off the cart. Nothing is saved.',
+    okText: 'Cancel exchange', cancelText: 'Keep going', danger: false, onConfirm: go });   // centred: it leaves the whole exchange (owner 2026-10-09)
 }
 
 // The money of an exchange before it is rung: what the customer's account takes (onAccount, credit) and
@@ -855,26 +907,35 @@ function exchangeMoney(order, part, total) {
   const onAccount = moneyValue(Math.min(credit, total));
   return { credit, onAccount, net: moneyValue(total - onAccount - (part.total - credit)) };
 }
-const exchangeWord = (net, tender) => (net > 0 ? `Collect ${peso(net)} (${SalesMath.tenderLabel(tender)})`
-  : net < 0 ? `Hand back ${peso(-net)} (${SalesMath.tenderLabel(tender)})` : 'Even swap, no money changes hands');
 
-// The cart's Exchange button (startExchange): says what comes back, what goes out and the difference to
-// collect or hand back, then rings it. The cart is the new sale as it stands -- its discounts and sale type.
+// The cart's pay button in an exchange (renderCart words it): Collect = the real checkout for just the difference
+// (completeSale rings it); Hand back = which way the money goes out, starting on how they paid; even = one Swap.
+// The cart is the new sale as it stands -- its discounts and sale type.
 function confirmExchange() {
+  if (!state.cart.length) return;
+  const x = exchangeNow();
+  if (!x) { const o = state.orders.find(r => r.id === state.exchange?.orderId); if (o) refundPlan(o, state.exchange.picks); return; }   // its toast says why
   const { orderId, picks } = state.exchange;
-  const o = state.orders.find(x => x.id === orderId);
-  const plan = o && refundPlan(o, picks);
-  if (!plan) return;
-  const total = cartTotals().total;
-  const { net } = exchangeMoney(o, plan.part, total);
-  showConfirm({ title: `Exchange on #${o.number}`, okText: 'Exchange', danger: false,
-    message: `Coming back ${peso(plan.part.total)} · Going out ${peso(total)}. ${exchangeWord(net, SalesMath.saleTender(o))}.`,
-    onConfirm: () => exchangeOrder(orderId, state.cart, 'Exchange', '', picks) });
+  if (x.net > 0) return openPaymentModal();
+  const from = $('#payBtn')?.offsetParent ? $('#payBtn') : $('#cartBar');
+  const acct = moneyValue(x.credit - x.onAccount);   // an account sale's swap for less: that much comes off the account
+  if (!x.net) return showConfirm({ title: `${acct ? 'Swap' : 'Even swap'} on #${x.o.number}`, okText: 'Swap',
+    message: acct ? `${peso(acct)} comes off ${x.o.customer?.name || 'the customer'}’s account. No cash changes hands.` : 'No money changes hands.',
+    danger: false, from, onConfirm: () => exchangeOrder(orderId, state.cart, 'Exchange', '', picks) });
+  // The tenders the checkout shows (Manage -> Payments), with the one they paid on even if hidden since.
+  const pay = state.settings.payments || {}, off = new Set(pay.hidden || []), was = SalesMath.saleTender(x.o);
+  const keys = [...new Set([...PAY_BUILTINS.filter(m => m === 'cash' || !off.has(m)), ...(pay.custom || []), was])];
+  showConfirm({ title: `Hand back ${peso(-x.net)}`, okText: `Hand back ${peso(-x.net)}`, danger: false, from,
+    html: `<label class="pf"><span class="lb">Hand back with</span><select class="text-input" id="xbMethod">${keys.map(k =>
+      `<option value="${escapeHtml(k)}"${k === was ? ' selected' : ''}>${escapeHtml(SalesMath.tenderLabel(k))}</option>`).join('')}</select></label>`,
+    onConfirm: () => { const method = $('#xbMethod')?.value || was; exchangeOrder(orderId, state.cart, 'Exchange', '', picks, false, { method }); } });
 }
 
 // `picks`: what comes back, as refundOrder; none = the whole sale. `replacementItems` = state.cart rings
 // the cart as it stands (startExchange); any other list is a plain cart of those items.
-function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange', by = '', picks = null, okOver = false) {
+// `pay` { method, tendered, change }: how the difference changed hands (completeSale collects it, confirmExchange
+// hands it back); none = on the original's tender.
+function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange', by = '', picks = null, okOver = false, pay = null) {
   const fromCart = replacementItems === state.cart;
   const replacements = fromCart ? state.cart : (replacementItems || [])
     .map(item => {
@@ -898,7 +959,7 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange', by =
   if (!order) return null;
   const plan = refundPlan(order, picks);
   if (!plan) return null;
-  const again = (b) => exchangeOrder(orderId, replacementItems, reason, b, picks);
+  const again = (b) => exchangeOrder(orderId, replacementItems, reason, b, picks, okOver, pay);
   // An account sale's exchange stays on the account (customers bug 10): the refund takes the whole
   // account part of what came back with no cash out, the new sale charges up to that much, anything
   // above is cash. A like-for-like swap then leaves the drawer and the balance as they were, paid or not.
@@ -922,25 +983,34 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange', by =
     if (overBy > 0 && !by && !okOver) {
       if (gate('overLimit', again, { customerId: c.id, overBy })) showConfirm({ title: 'Over the credit limit',
         message: `${c.name} would be ${peso(overBy)} over their ${peso(c.creditLimit)} credit limit.`, okText: 'Exchange anyway',
-        onConfirm: () => exchangeOrder(orderId, replacementItems, reason, '', picks, true) });
+        onConfirm: () => exchangeOrder(orderId, replacementItems, reason, '', picks, true, pay) });
       return null;
     }
   }
 
   // The exchange is a refund row for what came back, then a fresh sale for what goes out.
-  const refund = reverseSale(orderId, 'refund', reason, { by, again, picks, whole: onAccount > 0 });
+  // A hand back goes out on `pay.method`; the rest of what came back is the swap.
+  const tender = SalesMath.saleTender(order), via = pay?.method || tender;
+  const refund = reverseSale(orderId, 'refund', reason, { by, again, picks, whole: onAccount > 0,
+    backVia: net < 0 ? { method: via, amount: -net } : null });
   if (!refund) return null;
+  // The new sale's legs: the account part and the swap on the original's tender (a GCash sale stays GCash), both
+  // with the ref, so they cancel the refund's; what was collected is a leg of its own, without one.
+  const collect = Math.max(0, net), swapPart = moneyValue(total - onAccount - collect);
+  const payments = [
+    ...(onAccount > 0 ? buildOrderPayments({ paymentMethod: 'credit', total: onAccount }) : []),
+    ...(swapPart > 0 ? buildOrderPayments({ paymentMethod: tender, total: swapPart, tendered: swapPart }) : []),
+  ].map(p => ({ ...p, ref: order.number }))
+    .concat(collect > 0 ? buildOrderPayments({ paymentMethod: via, total: collect, tendered: pay?.tendered || collect, change: pay?.change || 0 }) : []);
   // Whatever the cashier had in the cart is put back after.
   let exchangeSale;
   try {
     Object.assign(state, swap);
     const rec = buildOrderRecord({
-      // The new sale's money comes in on the original's tender (a GCash sale stays GCash), so a swap moves no cash.
-      paymentMethod: onAccount >= total ? 'credit' : onAccount > 0 ? 'split' : SalesMath.saleTender(order),
-      tendered: onAccount > 0 && onAccount < total ? moneyValue(total - onAccount) : total,
+      paymentMethod: onAccount >= total ? 'credit' : onAccount > 0 ? 'split' : tender,
+      tendered: pay?.tendered || collect, change: pay?.change || 0,
     });
-    exchangeSale = persistOrder({ ...rec, originalOrderId: order.id, reason, ...(by ? { approvedBy: by } : {}),
-      payments: rec.payments.map(p => ({ ...p, ref: order.number })) });
+    exchangeSale = persistOrder({ ...rec, originalOrderId: order.id, reason, ...(by ? { approvedBy: by } : {}), payments });
   } finally {
     Object.assign(state, kept);
   }
@@ -952,9 +1022,8 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange', by =
     fulfilment: exchangeSale.fulfilment, customerId: exchangeSale.customer ? exchangeSale.customer.id : '',
     msSinceCartStart: null,
   });
-  if (fromCart) {   // rung from the cart (startExchange): the new sale on screen and on paper, like a checkout
-    showOrderAfterCartClears(exchangeSale);
-    showToast(`Exchanged · ${exchangeWord(net, SalesMath.saleTender(order))}`);
+  if (fromCart) {   // rung from the cart (startExchange): the checkout's done page and the slip, like any sale
+    showCheckoutSuccess(exchangeSale, Math.max(0, -net));
     autoPrint(exchangeSale);
   }
   renderOrders();

@@ -31,6 +31,7 @@
 
   --warn: #FFB74D;
   --warn-bg: rgba(255, 183, 77, 0.12);
+  --xchg: var(--warn);   /* an exchange: its pay button, phone bar, the goods coming back, the Orders word */
   --danger: #EF5350;
   --danger-bg: rgba(239, 83, 80, 0.14);
   --ok: #3B7A4F;
@@ -3495,9 +3496,9 @@ a.secondary-btn { text-decoration: none; }
 .vsheet.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
 /* the top row while it's open: menu -> X, catalog search -> Search variants, scan button folds away */
 #sidebarToggle line { transform-origin: 12px 12px; transition: transform .24s var(--rl-ease), opacity .16s; }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(1) { transform: rotate(45deg) translateY(6px); }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(2) { opacity: 0; }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3) { transform: rotate(-45deg) translateY(-6px); }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(1), #app.xchg #sidebarToggle line:nth-child(1) { transform: rotate(45deg) translateY(6px); }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(2), #app.xchg #sidebarToggle line:nth-child(2) { opacity: 0; }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3), #app.xchg #sidebarToggle line:nth-child(3) { transform: rotate(-45deg) translateY(-6px); }   /* an exchange's ✕ too (leaveExchange) */
 .vs-search, .vs-chip { display: none; }
 /* SCANNER (owner 2026-10-08, Shopify POS): the camera in one rounded card in the edit sheet's frame, over the top row
    (Discount, Fulfilment; owner: "so it covers the hamburger"); the phone gives
@@ -4898,6 +4899,7 @@ body.light-theme {
   --accent-ink: #FFFFFF;
   --warn: #7A5B00;
   --warn-bg: #FCEFC7;
+  --xchg: var(--warn);
   --danger: #D72C0D;         /* --trend-down */
   --danger-bg: #F8D8D0;
   --ok: #047B5D;             /* --trend-up */
@@ -7360,6 +7362,17 @@ body.light-theme {
 .rail-h .go:disabled { opacity: .3; pointer-events: none; }
 .rail-h .go { display: flex; align-items: center; height: 44px; padding: 0 16px; }
 .rail-h .go span:only-child { flex: 1; }
+/* an exchange (startExchange): what comes back is tinted with --xchg, the colour of the pay button and the phone's bar,
+   so the mode can't be missed and one token changes them all (owner 2026-10-09). Walk-in is hidden: a swap at the counter. */
+.rail-h .xb { background: color-mix(in srgb, var(--xchg) 14%, transparent); }
+.rail-h .xb .row { cursor: default; }
+.rail-h .xb .row:hover { background: none; }
+.rail-h .xb .row + .row { border-top: 1px solid var(--line); }
+.rail-h .xb + .empty { height: auto; }
+#app.xchg .rail-h .go, #app.xchg .ph-bar { border-color: var(--xchg); background: var(--xchg); color: var(--bg); }
+#app.xchg .rail-h .opts > .f-row { display: none; }
+#app.xchg .rail-h .opts > .d-row { flex-basis: 100%; border-left: 0; border-top-left-radius: calc(var(--rl-r) - 1px); }
+.ph-bar .xi { width: 18px; height: 18px; margin-right: 6px; vertical-align: -4px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .rail-h:not(.co-mode) .pay { padding-bottom: 0; }   /* Check out is its own island below; the card is just Walk-in | Discount */
 .rail-h:not(.co-mode) .opts { border-bottom-width: 0; }
 .rail-h:not(.co-mode) .tot { margin-top: calc(-1 * var(--rl-gap)); }   /* on the sale the button carries the total; the Total row is the checkout's */
@@ -7451,6 +7464,7 @@ body.light-theme {
   .rail-h .ph-back { display: grid; place-items: center; flex: none; width: 48px; border: 0; border-right: 1px solid var(--line); border-radius: calc(var(--rl-r) - 1px) 0 0 calc(var(--rl-r) - 1px);
                      background: none; color: var(--ink-secondary); }
   .rail-h .ph-back:active { background: var(--rl-hover); }
+  .rail-h .ph-back .ic { width: 24px; height: 24px; stroke-width: 1.8; }   /* every ‹ the ☰'s size (.lv .sq.back) */
   .rail-h .c-row .cust { border-radius: 0; padding-left: 14px; }
   /* Phone insets: only var(--ph-safe), never raw env() -- devices.html can set the variable, not env(), so a rule on env()
      looks right in the preview and wrong on the iPhone (the variant sheet stopped 34px short of the bar, owner 2026-10-08) */
@@ -7570,6 +7584,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 /* Money that went back reads red, a part refund amber (owner 2026-10-07). Text only, no chip. */
 .lv span.st:is([data-s="refunded"], [data-s="voided"], [data-s="refund"], [data-s="void"]) { color: color-mix(in srgb, var(--danger) 65%, var(--ink-secondary)); }   /* a softer red: a word, not an alarm */
 .lv span.st[data-s="part"] { color: color-mix(in srgb, var(--warn) 65%, var(--ink-secondary)); }
+.lv span.st[data-s="xchg"] { color: var(--xchg); }   /* Exchanged / Exchange: the till's exchange colour */
 .lv .paper-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1px 0 21px; scrollbar-width: thin; }   /* 1px: the light ring sits outside the paper */
 .lv .paper-scroll .receipt-preview { max-height: none; overflow: visible; padding: 0; }
 /* What went back on a sale, above its receipt and as wide: "Refunded  Oct 7, 3:10 PM · Cash · #1-045   −₱90.00  Print" */
@@ -7604,6 +7619,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv :is(.o-rail, .c-ord) .row .nm .st { font-weight: 400; }   /* "#1-023 · Refunded": its colour is the state's (span.st[data-s]) */
 .lv :is(.o-rail, .c-ord) .row.void .nm span, .lv :is(.o-rail, .c-ord) .row.void .amt { color: var(--ink-tertiary); }
 .lv :is(.o-rail, .c-ord) .row.void .nm .st { color: color-mix(in srgb, var(--danger) 65%, var(--ink-secondary)); }   /* the row greys out, its "Voided" / "Refunded" stays red */
+.lv :is(.o-rail, .c-ord) .row.void .nm .st[data-s="xchg"] { color: var(--xchg); }   /* ...and "Exchanged" its exchange colour */
 .lv :is(.o-rail, .c-ord) .row.void .amt { text-decoration: line-through; font-weight: 500; }
 
 /* phone: the list is the page; a tapped order slides its receipt over it */

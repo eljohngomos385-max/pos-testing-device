@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=242" />
+  <link rel="stylesheet" href="styles.css?v=244" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -238,6 +238,7 @@
                   <p><span>Subtotal</span><span class="num" id="subtotal">₱0.00</span></p>
                   <p id="discountRow"><span>Discount</span><span class="num" id="discount">₱0.00</span></p>
                   <p class="dim"><span id="vatLabel">VAT (12% incl.)</span><span class="num" id="vatAmount">₱0.00</span></p>
+                  <p id="backRow" style="display:none"><span>Returned</span><span class="num" id="backAmt"></span></p>
                 </div></div>
                 <button type="button" class="sum" id="totalRow" aria-expanded="false">
                   <span class="l">Total<span class="rail-cnt num" id="railCount"></span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
@@ -776,21 +777,21 @@
     <div class="toast" id="toast" hidden></div>
   </div>
 
-  <script src="sales-math.js?v=22"></script>
+  <script src="sales-math.js?v=24"></script>
   <script src="data-store.js?v=52"></script>
   <script src="data.js?v=28"></script>
   <script src="bo-model.js?v=126"></script>
   <script src="vendor/zxing-browser.min.js"></script>
-  <script src="printer.js?v=45"></script>
-  <script src="pos-core.js?v=13"></script>
-  <script src="pos-sell.js?v=42"></script>
-  <script src="pos-checkout.js?v=8"></script>
-  <script src="pos-orders.js?v=16"></script>
+  <script src="printer.js?v=46"></script>
+  <script src="pos-core.js?v=14"></script>
+  <script src="pos-sell.js?v=44"></script>
+  <script src="pos-checkout.js?v=9"></script>
+  <script src="pos-orders.js?v=20"></script>
   <script src="pos-items.js?v=20"></script>
   <script src="pos-customers.js?v=16"></script>
   <script src="pos-settings.js?v=4"></script>
   <script src="pos-pin.js?v=3"></script>
   <script src="pos-shift.js?v=4"></script>
-  <script src="app.js?v=140"></script>
+  <script src="app.js?v=142"></script>
 </body>
 </html>

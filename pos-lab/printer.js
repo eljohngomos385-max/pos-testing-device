@@ -61,14 +61,18 @@
   // A sale names each tender (vm.legs, SalesMath.paymentsOf: 'GCash', never 'Refund'); CASH is what was
   // handed over, then CHANGE. A void or refund is money going back: GIVEN BACK and the tender, never
   // 'CASH 237.86' as if it came in. A parked cart has none.
+  // An exchange (vm.swapped, SalesMath.receiptParts) prints its swap once as EXCHANGE; only the money that changed
+  // hands follows it.
   function payRows(vm) {
     if (!vm || vm.status === 'saved') return [];
     const legs = vm.legs || [];
     const name = (p, i) => String((legs[i] && legs[i].label) || p.label || p.method).toUpperCase();
-    if (vm.paidWord === 'Given back') return (vm.payments || []).map((p, i) => ['GIVEN BACK · ' + name(p, i), Number(p.amount) || 0]);
-    return (vm.payments || []).flatMap((p, i) => (p.method === 'cash'
+    const swap = Number(vm.swapped) > 0 ? [['EXCHANGE', Number(vm.swapped)]] : [];
+    const money = (vm.payments || []).map((p, i) => [p, i]).filter(([p]) => !(swap.length && p.ref));
+    if (vm.paidWord === 'Given back') return swap.concat(money.map(([p, i]) => ['GIVEN BACK · ' + name(p, i), Number(p.amount) || 0]));
+    return swap.concat(money.flatMap(([p, i]) => (p.method === 'cash'
       ? [['CASH', SM().tenderedOf(p)], ...(p.change > 0 ? [['CHANGE', p.change]] : [])]
-      : [[name(p, i), Number(p.amount) || 0]]));
+      : [[name(p, i), Number(p.amount) || 0]])));
   }
 
   // The totals block above TOTAL is SalesMath.totalRows, the one list every slip, the paper and the
