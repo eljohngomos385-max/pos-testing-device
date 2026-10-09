@@ -717,15 +717,21 @@ const staffIdOf = (name, staff = loadStaff()) => (name && (staff.find((u) => u.n
    Owner is always on, like page access. */
 // `credit`: turning credit on for a customer made at the till (lead default 2026-10-02, customers).
 // dayTotals isn't PIN-gated: off just hides the day's total on the Orders bands (owner 2026-10-06: a cashier shouldn't see it).
-const TILL_ACTIONS = { void: 'Void a sale', refund: 'Refund a sale', overLimit: 'Sell past a credit limit', credit: 'Turn on credit for a customer', dayTotals: "See the day's totals" };
+// `discount` (owner 2026-10-09): a sale's discounts past `discountLimit` % (pos-sell discountOk); SC/PWD never counts.
+const TILL_ACTIONS = { void: 'Void a sale', refund: 'Refund a sale', overLimit: 'Sell past a credit limit', credit: 'Turn on credit for a customer', dayTotals: "See the day's totals", discount: 'Give big discounts' };
 const STORAGE_TILL_PERMS = storeKey('tillPerms');
 const TILL_PERMS_DEFAULT = { manager: Object.keys(TILL_ACTIONS), cashier: [], stock: [] };
+// The map also carries `discountLimit`: "Ask a manager for discounts over N%", one value shown in POS › Settings and
+// Back office › Staff & access. 20 by default; null = Never ask. A map saved before it (no key) knew no `discount`
+// switch either: that role gets its default for it (on for a manager), not off.
 function loadTillPerms(raw = readJsonStorage(STORAGE_TILL_PERMS, null) || {}) {
-  const out = {};
+  const out = {}, knew = 'discountLimit' in raw;
   for (const role of Object.keys(STAFF_ROLES)) {
+    const def = TILL_PERMS_DEFAULT[role] || [];
     out[role] = role === 'owner' ? Object.keys(TILL_ACTIONS)
-      : (Array.isArray(raw[role]) ? raw[role] : TILL_PERMS_DEFAULT[role] || []).filter((a) => a in TILL_ACTIONS);
+      : (Array.isArray(raw[role]) ? raw[role].concat(knew ? [] : def.filter((a) => a === 'discount')) : def).filter((a) => a in TILL_ACTIONS);
   }
+  out.discountLimit = !knew ? 20 : raw.discountLimit > 0 ? Number(raw.discountLimit) : null;
   return out;
 }
 const saveTillPerms = (map) => storageSet(STORAGE_TILL_PERMS, JSON.stringify(map));
@@ -1535,6 +1541,10 @@ if (typeof module !== 'undefined' && require.main === module) {
     stockMovements: STORAGE_STOCK_MOVEMENTS, staff: STORAGE_STAFF, modifiers: STORAGE_MODIFIERS, discounts: STORAGE_DISCOUNTS, tillPerms: STORAGE_TILL_PERMS, ...EVENT_LOGS })) {
     assert.ok(new RegExp(`\\b${name}:\\s*'${key.replace(/\./g, '\\.')}'`).test(dsText), `data-store KEYS.${name} is ${key}`);
   }
+  // Big discounts (2026-10-09): a map saved before `discount` gives a manager its default (on), 20%; a map saved since keeps what it says.
+  const tp = (raw) => { const p = loadTillPerms(raw); return [p.manager.includes('discount'), p.cashier.includes('discount'), p.discountLimit]; };
+  assert.deepEqual([tp({}), tp({ manager: ['void'], cashier: [] }), tp({ manager: ['void'], cashier: [], discountLimit: null }), tp({ cashier: ['discount'], discountLimit: 30 })],
+    [[true, false, 20], [true, false, 20], [false, false, null], [true, true, 30]]);
   // saveList gives a record without one the store's id, and leaves updatedAt alone.
   const saved = new Map();
   globalThis.storageSet = (k, v) => saved.set(k, v);

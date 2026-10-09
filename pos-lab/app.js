@@ -684,7 +684,9 @@ function attachEvents() {
   const phCart = (on) => { on ? closeVariantSheet() : closeEditSheet(); $('#app').classList.toggle('ph-cart', on); };   // phone: the cart page; the variant sheet sits over it (z 98), so it closes on the way in
   $('#cartBar').addEventListener('click', () => { closeBarcodeScanner(); phCart(true); });   // also the scanner's summary: the camera goes, the cart comes
   $('#cartBack').addEventListener('click', () => phCart(false));
-  $('#payBtn').addEventListener('click', () => { closeEditSheet(); state.exchange ? confirmExchange() : openPaymentModal(); });
+  // A big discount the sheet didn't ask about (items taken off since, a saved cart continued) is asked here (discountOk).
+  const toPay = () => (state.exchange ? confirmExchange() : openPaymentModal());
+  $('#payBtn').addEventListener('click', () => { if (closeEditSheet() !== false && discountOk(null, toPay)) toPay(); });
 
   // Payment-method selection
   function selectPayMethod(method, label = '') {

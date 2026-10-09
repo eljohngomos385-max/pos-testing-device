@@ -194,7 +194,7 @@ function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentM
     status,
     cashier: store.cashier,
     staffId: state.user?.id || '',
-    approvedBy,
+    approvedBy: approvedBy || state.discountOk?.by || '',   // else the manager who let a big discount through (discountOk)
     register: store.registerNo,
     // Each line keeps what it cost us now (step 2.2); reading an order never fills it in later.
     items: state.cart.map(i => ({ ...i, cost: i.cost ?? productOf(i)?.cost ?? null, ...(sc ? { discount: null } : {}) })),
