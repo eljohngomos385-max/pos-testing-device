@@ -11,16 +11,36 @@ const SETTING_PICKS = {
   driver: { opts: [['browser', 'Browser'], ['network', 'Wi-Fi'], ['bluetooth', 'Bluetooth']], now: () => printerConfig().driver || 'browser', set: v => savePrinting({ driver: v }) },
   width: { opts: [['58mm', '58 mm'], ['80mm', '80 mm']], now: () => printerConfig().width || '80mm', set: v => savePrinting({ width: v }) },
   discountLimit: { opts: [10, 15, 20, 25, 30, 50].map(n => [n, `${n}%`]).concat([[null, 'Never ask']]), now: () => loadTillPerms().discountLimit, set: setDiscountLimit },
+  refundPin: { opts: [['ask', 'Ask a manager'], ['any', 'Anyone can']], now: () => roleCan('cashier', 'refund') ? 'any' : 'ask', set: setRefundPin },
+  startCash: { opts: [['ask', 'Ask every shift'], ['float', 'Keep a float']], now: () => state.settings.startCash, set: v => setShiftPick({ startCash: v }) },
+  // ponytail: 12–6 AM only; widen it when a store runs past 6 AM
+  autoClose: { opts: [0, 1, 2, 3, 4, 5, 6].map(h => [h, `${h || 12} AM`]), now: () => state.settings.autoClose, set: v => setShiftPick({ autoClose: v }) },
 };
+// Refunds and exchanges (owner 2026-10-09): the cashier role's "Refund a sale" switch (Back office › Staff & access),
+// here so a store can turn the manager's PIN off for a day with no manager in. Changing it is a refund call of its own.
+function setRefundPin(v) {
+  const put = () => {
+    const p = loadTillPerms();
+    saveTillPerms({ ...p, cashier: p.cashier.filter(a => a !== 'refund').concat(v === 'any' ? ['refund'] : []) });
+    renderPosSettings(false);
+  };
+  if (gate('refund', put, { refundPin: v }, 'Changing who may refund.')) put();
+}
 // The discount limit (owner 2026-10-09): one value, kept with the till perms, that Back office › Staff & access shows too.
 // Settings is open to a cashier, so changing it is a big-discount call of its own.
 function setDiscountLimit(v) {
   const put = () => { saveTillPerms({ ...loadTillPerms(), discountLimit: v }); renderPosSettings(false); };
   if (gate('discount', put, { discountLimit: v }, 'Changing when a manager is asked.')) put();
 }
+// Shift (owner 2026-10-10): how a shift starts and when one nobody closed closes itself. Settings is open to a
+// cashier: a shift call of its own.
+function setShiftPick(patch) {
+  const put = () => { Object.assign(state.settings, patch); saveSettings(); renderPosSettings(false); };
+  if (gate('shift', put, patch, 'Changing how shifts work.')) put();
+}
 function openSettingMenu(btn) {
   const pk = SETTING_PICKS[btn.dataset.pick], now = pk.now();
-  openMenu(btn, pk.opts.map(([v, label]) => ({ label, cur: v === now, run: () => { pk.set(v); renderPosSettings(btn.dataset.pick === 'driver'); } })));
+  openMenu(btn, pk.opts.map(([v, label]) => ({ label, cur: v === now, run: () => { if (v !== now) pk.set(v); renderPosSettings(btn.dataset.pick === 'driver'); } })));
 }
 
 // printer = false: redraw labels and which rows show, but leave the printer list, a running scan's progress
@@ -110,16 +130,16 @@ function buildCashDrawerSummary(date = new Date()) {
   };
 }
 
-// THIS register's cash over [from, to), the one sum the day count above and the shift close
-// (pos-shift.js) both read: cash taken on sales, cash handed back (a void or refund row pays out the
-// way the sale came in), and cash paid on account at this till (customers bug 9; a back-office
-// payment has no register). Pesos, unsigned.
-function drawerCash(from, to = Infinity) {
-  const reg = String(currentStoreInfo().registerNo);
-  const rows = loadOrders().filter(o => String(o.register) === reg && o.ts >= from && o.ts < to);
+// A register's cash over [from, to), or the whole store's (reg null: every POS, the one drawer a shift counts) --
+// the one sum the day count above and the shift (pos-shift.js) both read: cash taken on sales, cash handed back
+// (a void or refund row pays out the way the sale came in), and cash paid on account at a POS (customers bug 9;
+// a back-office payment has no register). Pesos, unsigned.
+function drawerCash(from, to = Infinity, reg = String(currentStoreInfo().registerNo)) {
+  const here = r => (reg === null ? r.register != null : String(r.register) === reg);
+  const rows = loadOrders().filter(o => here(o) && o.ts >= from && o.ts < to);
   const cash = list => SalesMath.tenders(list).get('cash') || 0;
   const ledger = loadCustomerLedger(), undone = undoneIds(ledger);
-  const onAccount = ledger.filter(r => r.type === 'payment' && r.method === 'cash' && String(r.register) === reg && !undone.has(r.id)
+  const onAccount = ledger.filter(r => r.type === 'payment' && r.method === 'cash' && here(r) && !undone.has(r.id)
     && SalesMath.tsOf(r) >= from && SalesMath.tsOf(r) < to).reduce((n, r) => n + cent(r.amount), 0);
   return { rows, sales: cash(rows.filter(SalesMath.isSale)), back: -cash(rows.filter(SalesMath.isReversal)) || 0, onAccount: unc(onAccount) };
 }

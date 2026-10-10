@@ -141,7 +141,11 @@ function signIn(u) {
   pinCover(false);
   applyRoleGating();
   renderRoleSwitcher();
-  if (state.view === 'orders') renderOrders();   // the day totals follow the role's switch
+  // Reports starts the next person on Today (owner 2026-10-09): the last one's week isn't theirs
+  Object.assign(reportsView, { unit: 'day', back: 0 });
+  slidePill($('#reportsUnits'), 'unit', 'day');
+  closeShiftSheet();   // a new person mid-count starts over
+  ({ orders: renderOrders, shift: renderShift, reports: renderReports })[state.view]?.();   // what's drawn follows the new role (Shift's Expected, the day totals)
   track('sign_in', { staffId: u.id });
 }
 

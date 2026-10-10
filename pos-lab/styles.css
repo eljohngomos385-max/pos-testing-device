@@ -3210,6 +3210,7 @@ a.secondary-btn { text-decoration: none; }
   font-family: "SF Mono", "Menlo", "Consolas", "Courier New", monospace;
   font-size: 13px;
   line-height: 1.42;
+  overflow-wrap: anywhere;   /* a long unbroken note stays on the paper */
   box-shadow: var(--paper-shadow);
 }
 @media (max-width: 720px) { .rp-paper { padding: 20px 18px 24px; font-size: 12px; } }
@@ -3410,7 +3411,7 @@ a.secondary-btn { text-decoration: none; }
   z-index: 6;   /* over the variant sheet */
   display: flex;
   flex-direction: column;
-  padding: 8px var(--cat-x) calc(8px + env(safe-area-inset-bottom, 0px));   /* as .vsheet */
+  padding: 8px var(--cat-x, 10px) calc(8px + env(safe-area-inset-bottom, 0px));   /* as .vsheet; 10px off the catalog (Shift) */
   background: var(--bg);
   transform: translateY(100%);
   visibility: hidden;
@@ -4756,7 +4757,7 @@ body.light-theme .orders-search-wrap input:focus {
 /* Back-office blocks: the F9 fill with a hairline ring, drawn inset so the grid's overflow can't clip it;
    shape and type live on the base rules so both themes match */
 body.light-theme .view-sell .content-row,
-body.light-theme:has(:is(.view-sell, .view-settings, .view-shift, .view-customers).active) { background: var(--canvas); }   /* the body too: Safari tints the status bar with it */
+body.light-theme:has(:is(.view-sell, .view-settings, .view-shift, .view-customers, .view-reports).active) { background: var(--canvas); }   /* the body too: Safari tints the status bar with it */
 body.light-theme #catalogSearchRow { --rl-soft: var(--surface-2); }   /* ☰, search, scan: white like the cards on the grey page */
 body.light-theme .product-card,
 body.light-theme .product-card.pc-group { background: var(--surface-2); }
@@ -7450,7 +7451,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 
 /* ---------- Customers: the Orders shape; the facts in the item editor's cards, read-only, values right ---------- */
 .lv .c-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(21px + var(--ph-safe, 0px)); scrollbar-width: thin; }
-:is(.view-settings, .view-shift, .view-customers).lv { background: var(--canvas, var(--bg)); }   /* the item editor's page: white blocks on grey (owner 2026-10-09) */
+:is(.view-settings, .view-shift, .view-customers, .view-reports).lv { background: var(--canvas, var(--bg)); }   /* the item editor's page: white blocks on grey (owner 2026-10-09) */
 .lv .c-body { display: grid; gap: 12px; }
 .lv .c-body { width: min(100%, 600px); margin-inline: auto; padding-top: 16px; }   /* a short page: centred like the receipt paper; the top bar stays full width like Orders */
 .lv .c-body .fr { grid-template-columns: auto minmax(0,1fr); gap: 16px; min-height: 46px; padding: 6px 16px; }   /* label left, value right at every width */
@@ -7756,36 +7757,29 @@ input.es-ta { height: 56px; }
 
 /* ==== batch 2026-10-07: shift + sync mark ==== */
 /* Shift (pos-shift.js): the Customers cards, centred. Cash in / out is one line of amount, note, two buttons. */
-.lv .sh-ctl { display: inline-flex; justify-content: flex-end; gap: 8px; }
 .lv .sh-move { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 6px 16px; }
 .lv .sh-move .nm { display: grid; min-width: 0; overflow-wrap: anywhere; }
 .lv .sh-move small { color: var(--ink-tertiary); font-size: 12px; }
 .lv .sh-move .out { color: var(--ink-secondary); }
 .lv .sh-move > .num { flex: none; white-space: nowrap; }   /* a long note never pushes the sign onto its own line */
-.lv .more.per { width: auto; display: flex; align-items: center; gap: 4px; padding: 0 12px 0 14px; color: var(--ink); font-size: 14px; font-weight: 500; }   /* Reports' Day ▾: the period, a word not an icon */
-.lv .more.per .ic { width: 15px; height: 15px; color: var(--ink-tertiary); }
-.lv .rp-step { display: flex; align-items: center; justify-content: center; gap: 8px; }   /* ‹ Today, Oct 9 › */
-.lv .rp-step b { min-width: 150px; text-align: center; font-size: 15px; font-weight: 590; }
-.lv .rp-step button { display: grid; place-items: center; width: var(--bar-h); height: var(--bar-h); border-radius: var(--r-input); color: var(--ink); }
+/* Reports, iOS Screen Time's look (owner 2026-10-10): Day | Week | Month across the top, then the Sales card -- the period
+   small with ‹ › at its right, the sales big under it */
+.lv .rp-units { order: 0; width: 100%; }   /* on top on a phone too (the Items one drops under its search) */
+.lv .rp-units button { flex: 1; padding: 0 8px; }
+.lv .rp-body { display: contents; }   /* its cards sit in the c-body grid, its gap between them */
+.lv .rp-hero { padding: 12px 16px 14px; }
+.lv .rp-when { display: flex; align-items: center; min-height: 36px; color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
+.lv .rp-when .rp-step { display: flex; margin: 0 -10px 0 auto; }
+.lv .rp-big { display: block; color: var(--ink); font-size: 32px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+.lv .rp-step button { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-input); color: var(--ink); }
 .lv .rp-step button:disabled { color: var(--ink-quaternary); }
 @media (hover: hover) { .lv .rp-step button:not(:disabled):hover { background: var(--rl-hover); } }
-.lv .rp-stats { display: grid; grid-template-columns: 1fr 1fr; }   /* Sales Profit / Margin Orders */
-.lv .rp-stats > div { display: grid; gap: 2px; min-width: 0; padding: 12px 16px; }
-.lv .rp-stats span { color: var(--ink-tertiary); font-size: 12px; }
-.lv .rp-stats b { overflow-wrap: anywhere; font-size: 22px; font-weight: 650; }
 .lv .rp-list .fr { grid-template-columns: minmax(0,1fr) auto; }   /* a long item name gives way, the amount never wraps */
 .lv .rp-list .fr > .lb { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
 .lv .rp-list .fr > .lb.ph { color: var(--ink-tertiary); }
 .lv button.sh-move { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }   /* a past shift / day: the row opens its paper */
 .lv button.sh-move:hover { background: var(--surface-hover); }
-/* The amount sheets (start cash, the count) and the papers, in the app's confirm card (showConfirm). */
-.cf-sheet .sh-amt { width: 100%; margin: 6px 0 10px; text-align: right; font-size: 28px; font-weight: 600; color: var(--ink); }
-.cf-sheet .es-kp button { height: 52px; border-radius: var(--r-input); background: var(--tile); color: var(--ink); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
-.cf-sheet .es-kp button:hover { background: var(--surface-hover); }
-.cf-sheet .es-kp svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.cf-sheet .sh-fr { display: flex; align-items: center; gap: 8px; min-height: 32px; color: var(--ink); font-size: 14px; }
-.cf-sheet .sh-fr > span { flex: 1; color: var(--ink-secondary); }
-.cf-sheet .sh-note { width: 100%; margin-top: 8px; }
+/* The papers, in the app's confirm card (showConfirm). */
 .cf-sheet .sh-slip { width: 100%; margin: 4px 0; padding: 14px 12px; white-space: pre; overflow-x: auto; font-size: 10px; line-height: 1.4; }
 @container pv (max-width: 720px) {
 }
@@ -7837,8 +7831,7 @@ input.es-ta { height: 56px; }
 /* Settings (pos-settings.js): Shift's one centred column of cards, ☰ + the title on top. A row is the label
    left, its control right at every width: a choice is a dropdown (.st-pick opens the ⋯ menu's morph), a yes/no
    the item editor's switch (.sw). The rows a printer doesn't use are [hidden]. */
-.st-page .head { align-items: center; }
-.st-page .head { position: relative; }
+.lv .head:has(> .st-ttl) { position: relative; align-items: center; }   /* Settings, Shift, Reports: a title, no search (owner 2026-10-10) */
 .st-ttl { position: absolute; inset: 0; display: grid; place-content: center; margin: 0; pointer-events: none; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }   /* centred on the page, ☰ beside it (owner 2026-10-09) */
 .st-page .fr[hidden], .st-prn[hidden] { display: none; }
 .lv .st-page .fr { min-height: 48px; }   /* a switch row as tall as a dropdown row */

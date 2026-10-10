@@ -923,15 +923,14 @@ function confirmExchange() {
   if (!x) { const o = state.orders.find(r => r.id === state.exchange?.orderId); if (o) refundPlan(o, state.exchange.picks); return; }   // its toast says why
   const { orderId, picks } = state.exchange;
   if (x.net > 0) return openPaymentModal();
-  const from = $('#payBtn')?.offsetParent ? $('#payBtn') : $('#cartBar');
   const acct = moneyValue(x.credit - x.onAccount);   // an account sale's swap for less: that much comes off the account
   if (!x.net) return showConfirm({ title: `${acct ? 'Swap' : 'Even swap'} on #${x.o.number}`, okText: 'Swap',
     message: acct ? `${peso(acct)} comes off ${x.o.customer?.name || 'the customer'}’s account. No cash changes hands.` : 'No money changes hands.',
-    danger: false, from, onConfirm: () => exchangeOrder(orderId, state.cart, 'Exchange', '', picks) });
+    danger: false, onConfirm: () => exchangeOrder(orderId, state.cart, 'Exchange', '', picks) });
   // The tenders the checkout shows (Manage -> Payments), with the one they paid on even if hidden since.
   const pay = state.settings.payments || {}, off = new Set(pay.hidden || []), was = SalesMath.saleTender(x.o);
   const keys = [...new Set([...PAY_BUILTINS.filter(m => m === 'cash' || !off.has(m)), ...(pay.custom || []), was])];
-  showConfirm({ title: `Hand back ${peso(-x.net)}`, okText: `Hand back ${peso(-x.net)}`, danger: false, from,
+  showConfirm({ title: `Hand back ${peso(-x.net)}`, okText: `Hand back ${peso(-x.net)}`, danger: false,
     html: `<label class="pf"><span class="lb">Hand back with</span><select class="text-input" id="xbMethod">${keys.map(k =>
       `<option value="${escapeHtml(k)}"${k === was ? ' selected' : ''}>${escapeHtml(SalesMath.tenderLabel(k))}</option>`).join('')}</select></label>`,
     onConfirm: () => { const method = $('#xbMethod')?.value || was; exchangeOrder(orderId, state.cart, 'Exchange', '', picks, false, { method }); } });

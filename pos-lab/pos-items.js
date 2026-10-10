@@ -270,14 +270,20 @@ const isOn = { cats: (p, id) => foldersOf(p).includes(id), mods: (p, id) => (p.m
 const itemsWith = (kind, id, all = catalogItems()) => all.filter(it => it.members.some(m => isOn[kind](m, id)));
 const modSummary = m => m.options.map(o => `${escapeHtml(o.name)} +${peso(o.price)}`).join(' · ');
 
+// A .kinds switch: the pill slides from the old tab to `key`'s, a ::before placed by --x / --w. Until the first switch (and
+// after a resize, which moves the tabs) the current tab paints its own background instead. Items and Reports use it.
+function slidePill(box, attr, key) {
+  const place = b => { box.style.setProperty('--x', `${b.offsetLeft}px`); box.style.setProperty('--w', `${b.offsetWidth}px`); };
+  const shown = box.offsetWidth > 0;   // on a hidden page nothing can be measured: the tab paints itself
+  if (!shown) box.classList.remove('slid');
+  else if (!box.classList.contains('slid')) { place(box.querySelector('.cur')); box.classList.add('slid'); box.offsetWidth; }   // start where it is, then move
+  box.querySelectorAll(`[data-${attr}]`).forEach(b => { b.classList.toggle('cur', b.dataset[attr] === key); b.setAttribute('aria-selected', b.dataset[attr] === key); });
+  if (shown) place(box.querySelector('.cur'));
+}
+
 function setItemsKind(kind) {
-  // The pill slides from the old tab to the new one: a ::before placed by --x / --w. Until the first switch (and after a
-  // resize, which moves the tabs) the current tab paints its own background instead.
-  const box = $('#itemsKinds'), place = b => { box.style.setProperty('--x', `${b.offsetLeft}px`); box.style.setProperty('--w', `${b.offsetWidth}px`); };
-  if (!box.classList.contains('slid')) { place(box.querySelector('.cur')); box.classList.add('slid'); box.offsetWidth; }   // start where it is, then move
   itemsKind = kind;
-  $$('#itemsKinds [data-kind]').forEach(b => { b.classList.toggle('cur', b.dataset.kind === kind); b.setAttribute('aria-selected', b.dataset.kind === kind); });
-  place(box.querySelector('.cur'));
+  slidePill($('#itemsKinds'), 'kind', kind);
   $('#itemsSearch').placeholder = KIND[kind][1];
   $('#itemsFilter').hidden = kind !== 'items';   // category and stock filter items only
   $('#itemsAdd').title = $('#itemsAdd').ariaLabel = `New ${KIND[kind][0]}`;
@@ -381,10 +387,15 @@ function saveKind() {
   if (K.kind === 'discs') {
     const v = round2(Number(K.value)), pct = K.builtin || K.type === 'percent';   // checked as it will be stored
     if (!(v >= 0.01) || (pct && v > 100)) { showToast(pct ? 'Use a percent from 0.01 to 100' : 'Use an amount above 0'); $('#itemForm [data-k=value]').focus(); return; }
-    const list = loadDiscounts();
-    const row = stampRow({ ...DISCOUNT_DEFAULTS, ...list.find(d => d.id === id), id, name, type: pct ? 'percent' : 'amount', value: v });
-    saveDiscounts(K.id ? list.map(d => (d.id === id ? row : d)) : list.concat(row));
-    return closeKindEditor('Saved');
+    const put = () => {
+      const list = loadDiscounts();
+      const row = stampRow({ ...DISCOUNT_DEFAULTS, ...list.find(d => d.id === id), id, name, type: pct ? 'percent' : 'amount', value: v });
+      saveDiscounts(K.id ? list.map(d => (d.id === id ? row : d)) : list.concat(row));
+      closeKindEditor('Saved');
+    };
+    // a discount's size is a manager's (else a cashier sets Senior to 100%, which never asks at the sale)
+    if (gate('discount', put, {}, 'Changing a discount.')) put();
+    return;
   }
   if (K.kind === 'cats') {
     const row = stampRow({ builtin: false, ...state.folders.find(f => f.id === id), id, name });
@@ -406,7 +417,7 @@ function saveKind() {
 function dropKind() {
   const K = kindEdit, at = new Date().toISOString();
   if (K.kind === 'cats') {
-    return showConfirm({ title: `Delete “${K.name}”?`, message: 'Its items stay; they only leave this category.', okText: 'Delete', danger: true, from: $('#itemMore'),
+    return showConfirm({ title: `Delete “${K.name}”?`, message: 'Its items stay; they only leave this category.', okText: 'Delete', danger: true,
       onConfirm: () => {
         tagItems('cats', K.id, new Set(), at);
         state.folders = state.folders.filter(f => f.id !== K.id);
@@ -415,7 +426,7 @@ function dropKind() {
       } });
   }
   if (K.kind === 'discs') {   // archived, not removed: old sales keep its name, and a sync never brings it back
-    return showConfirm({ title: `Delete “${K.name}”?`, message: 'Sales that used it keep it on their receipt.', okText: 'Delete', danger: true, from: $('#itemMore'),
+    return showConfirm({ title: `Delete “${K.name}”?`, message: 'Sales that used it keep it on their receipt.', okText: 'Delete', danger: true,
       onConfirm: () => { saveDiscounts(loadDiscounts().map(d => (d.id === K.id ? stampRow({ ...d, archived: true }) : d))); closeKindEditor('Deleted'); } });
   }
   saveModifiers(loadModifiers().map(m => (m.id === K.id ? stampRow({ ...m, archived: true }) : m)));

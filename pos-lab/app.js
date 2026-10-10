@@ -304,7 +304,7 @@ function attachEvents() {
     const picks = orderPicks(o), part = picks.length && SalesMath.refundPart(o, reversalsOf(o), picks);
     if (part && orderPick.mode === 'exchange') return startExchange(o.id, picks);
     if (part) showConfirm({ title: `Refund ${SalesMath.plural(picks.length, 'item')} on #${o.number}?`, message: `${peso(part.total)} goes back to the customer.`,
-      okText: 'Refund', from: $('#orderRefund'), onConfirm: () => morph(() => recordReturn(o.id, 'Refund', picks)) });
+      okText: 'Refund', onConfirm: () => morph(() => recordReturn(o.id, 'Refund', picks)) });
   };
   // Refund and Void always ask first, from the rail or the order's details.
   const askRefund = (o) => {
@@ -313,7 +313,7 @@ function attachEvents() {
     const back = o && SalesMath.refundPart(o, reversalsOf(o), left);
     if (back) showConfirm({ title: `Refund #${o.number}?`, message: `${peso(back.total)} goes back to the customer.`, okText: 'Refund', onConfirm: () => refundOrder(o.id, 'Refund') });
   };
-  const askVoid = (o, from) => showConfirm({ title: `Void #${o.number}?`, message: 'The sale stays on record, marked voided.', okText: 'Void sale', from, onConfirm: () => voidOrder(o.id, 'Void') });
+  const askVoid = (o) => showConfirm({ title: `Void #${o.number}?`, message: 'The sale stays on record, marked voided.', okText: 'Void sale', onConfirm: () => voidOrder(o.id, 'Void') });
   $('#orderRefund')?.addEventListener('click', () => { const o = shownOrder(); if (o) refundTicked(o); });
   $('#orderCancel')?.addEventListener('click', () => morph(() => { Object.assign(orderPick, { on: false, lines: {} }); renderOrderDetail(); }));
   // Refund items: the customer's lines first (pickReturnLines), then the refund.
@@ -327,7 +327,7 @@ function attachEvents() {
     { label: 'Order details', run: () => openOrderDetailModal(o.id) },
     { label: 'Exchange', off: !isCompletedSale(o), run: () => exchangeItems(o) },
     '-',
-    { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o, btn) },
+    { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o) },
   ], { w: 200, right: true });
   $('#orderMore')?.addEventListener('click', (e) => { const o = shownOrder(); if (o) orderMenu(e.currentTarget, o); });
   // A tick, tick-all or − / + on the lines: the same pick, whichever page shows the order.
@@ -495,10 +495,11 @@ function attachEvents() {
     if (line) {
       line.note = e.target.value.replace(/\s+/g, ' ').trim();   // one line on the slip
       $('#editSheet [data-sf="n"] .ad').textContent = line.note;
-      return;
+      return keepCart();   // kept as typed: a reload before the sheet closes keeps it
     }
     if (e.target.id !== 'esAddr') return;
     state.deliveryAddress = e.target.value;
+    keepCart();
     const ad = $('#editSheet [data-ful="delivery"] .ad');
     if (ad) ad.textContent = e.target.value;
   });
@@ -585,8 +586,9 @@ function attachEvents() {
     if (id || e.target.closest('[data-customer-detail]')) { ordersFor(state.selectedCustomerId, id); switchView('orders'); }
   });
   wireFind('#customersFind', '#customersSearch', '#customersSearchX', (q) => { state.customersQuery = q; state.selectedCustomerId = null; renderCustomers(); });
-  ['click', 'input', 'keydown'].forEach(t => $('#shiftBody')?.addEventListener(t, onShiftEvent));   // pos-shift.js
-  wireFind('#shiftFind', '#shiftSearch', '#shiftSearchX', (q) => { shiftDraft.q = q; renderShift(); });
+  ['click', 'input'].forEach(t => $('#shiftBody')?.addEventListener(t, onShiftEvent));   // pos-shift.js
+  $('#shiftSheet').addEventListener('click', shiftSheetClick);
+  document.addEventListener('keydown', shiftKey);
   $('#custSaveBtn')?.addEventListener('click', () => saveSavedCustomerFromModal());
   $('#customerEditModal [data-cust-close]').addEventListener('click', closeCustomerEditModal);
   // "Open Ana" on the duplicate-phone note: mid-sale she goes on the receipt, else her page opens.
@@ -611,7 +613,6 @@ function attachEvents() {
       okText: 'Clear',
       cancelText: 'Cancel',
       danger: true,
-      from: $('#cartMoreBtn'),
       onConfirm: () => {
         track('cart_clear', { lines: state.cart.length, subtotal: cartTotals().subtotal });
         if (state.exchange) { state.cart = []; renderCart(); return showToast('Cart cleared'); }   // the exchange stays; ✕ leaves it
@@ -683,6 +684,7 @@ function attachEvents() {
       closeCustomerEditModal();
       closeModals();
       closeVariantSheet();
+      closeShiftSheet();
       if (!map && !es && !list && !cust) $('#app').classList.remove('ph-cart');   // phone: Esc with nothing over the cart closes it
       if (!map) closeEditSheet();
     }
@@ -745,12 +747,12 @@ function attachEvents() {
   // Our keypad, never the tablet's: taps, or a desk keyboard's digits / . / Backspace / Enter.
   const cashKey = (k) => {
     const s = state.paymentMethod === 'split' && state.splitPay, t = $('#checkoutTender');
-    if (s?.field === 'given') s.given = esPress(s.given, k, true, 9999999); else t.value = esPress(t.value, k, true, 9999999);
+    if (s?.field === 'given') s.given = esPress(s.given, k, true, CASH_MAX); else t.value = esPress(t.value, k, true, CASH_MAX);
     updateChange();
   };
   $('#checkoutKeys')?.addEventListener('click', (e) => { const b = e.target.closest('[data-sk]'); if (b) cashKey(b.dataset.sk); });
   document.addEventListener('keydown', (e) => {
-    if (state.view !== 'checkout' || $('#checkoutKeyIn').hidden || $('[data-step="cash"]').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (state.view !== 'checkout' || $('#checkoutKeyIn').hidden || $('[data-step="cash"]').hidden || $('#checkoutApp').classList.contains('is-done') || e.ctrlKey || e.metaKey || e.altKey) return;
     if (!/^[\d.]$|^Backspace$|^Enter$/.test(e.key)) return;
     e.preventDefault();   // Enter on a focused key would press it again
     if (e.key === 'Enter') { if (!$('#checkoutCompleteBtn').disabled) completeSale(); }
@@ -877,6 +879,7 @@ function init() {
   document.querySelectorAll('.cur-sym').forEach(e => { e.textContent = SalesMath.currencySymbol(state.settings.store?.currency); });
   migrateCustomers();   // once: stored balances become opening rows (bo-model)
   state.fulfilment = state.settings.defaultFulfilment || 'walkin';
+  restoreCart();   // the sale that was open when the POS reloaded
   // Apply saved theme
   if (state.theme === 'light') document.body.classList.add('light-theme');
   // Back-fill groupId on products coming from older localStorage that predates groups.
@@ -997,13 +1000,12 @@ function init() {
   });
 
   // Live transaction feed for the Reports page (multi-cashier real-time).
-  setInterval(reportsLive, 4000);
+  setInterval(() => { reportsLive(); shiftLive(); }, 4000);
 
-  // Reports (pos-customers.js): the search finds an item among the period's sales; Day ▾ picks the period, ‹ › and a
-  // sideways swipe step through it (a swipe right goes back, like turning a page back).
-  wireFind('#reportsFind', '#reportsSearch', '#reportsSearchX', (q) => { reportsView.q = q; renderReports(); });
-  $('#reportsPeriod')?.addEventListener('click', (e) => openMenu(e.currentTarget,
-    REPORT_UNITS.map(([k, label]) => ({ label, cur: k === reportsView.unit, run: () => reportsStep(0, k) })), { w: 160, right: true }));
+  // Reports (pos-customers.js): Day | Week | Month picks the period, ‹ › and a sideways swipe step through it (a swipe
+  // right goes back, like turning a page back).
+  $('#reportsUnits')?.addEventListener('click', (e) => { const b = e.target.closest('[data-unit]'); if (b && b.dataset.unit !== reportsView.unit) reportsStep(0, b.dataset.unit); });
+  new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#reportsUnits'));   // tabs moved: the pill re-places on the next switch
   const rpBody = $('#reportsBody');
   rpBody?.addEventListener('click', (e) => { const b = e.target.closest('[data-rp]'); if (b) reportsStep(+b.dataset.rp); });
   let rpX = null;

@@ -517,12 +517,13 @@
   }
   const tenderLabel = (key) => TENDER_LABEL[key] || String(key || 'Other');
   // An order's legs as [{ key, label, amount }], unsigned. A row saved with no legs paid its total
-  // by its paymentKind (a split with no legs reads as one 'other' leg: nothing says how it split).
+  // by its paymentKind (a split with no legs reads as one 'other' leg: nothing says how it split; a ₱0 one,
+  // a split sale's ₱0 refund, says Split payment: no money, so no tender bucket).
   function paymentsOf(o) {
     let legs = (o && o.payments) || [];
     if (!legs.length && o) {
       const k = o.paymentKind || o.paymentMethod || 'cash';
-      legs = [{ method: ['cash', 'credit', 'gcash', 'qr', 'unpaid'].includes(k) ? k : 'other', amount: o.total }];
+      legs = [{ method: ['cash', 'credit', 'gcash', 'qr', 'unpaid'].includes(k) || (k === 'split' && !C(o.total)) ? k : 'other', amount: o.total }];
     }
     return legs.map((p) => { const key = tenderKey(o, p); return { key, label: tenderLabel(key), amount: U(C(p.amount)) }; });
   }
@@ -736,14 +737,14 @@
     const p = {}; for (const x of zoneFmt(zone, 't').formatToParts(ms)) p[x.type] = +x.value;
     return Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute, p.second) - Math.floor(ms / 1000) * 1000;
   };
-  // Epoch ms of the store-local midnight that starts `key`. Twice round the offset: DST-safe.
-  // Remembered per zone and day: a list cut into day bands asks for the same few days thousands of times.
+  // Epoch ms of the store-local midnight that starts `key` (or its hour h: the shift's auto-close turn). Twice round
+  // the offset: DST-safe. Remembered per zone and day: a list cut into day bands asks for the same few days thousands of times.
   // ponytail: one entry per day ever asked (~365 a year), never cleared.
   const dsm = new Map();
-  function dayStartMs(key, zone = 'Asia/Manila') {
-    const k = zone + '|' + key;
+  function dayStartMs(key, zone = 'Asia/Manila', h = 0) {
+    const k = zone + '|' + key + '|' + h;
     if (dsm.has(k)) return dsm.get(k);
-    const [y, m, d] = String(key).split('-').map(Number), wall = Date.UTC(y, m - 1, d);
+    const [y, m, d] = String(key).split('-').map(Number), wall = Date.UTC(y, m - 1, d, h);
     const ms = wall - offsetAt(wall - offsetAt(wall, zone), zone);
     dsm.set(k, ms);
     return ms;

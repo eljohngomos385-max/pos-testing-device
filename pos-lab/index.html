@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=250" />
+  <link rel="stylesheet" href="styles.css?v=257" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -393,7 +393,7 @@
         </div>
       </section>
 
-      <!-- Shift: this till's drawer from open to close (pos-shift.js); one column like a customer's page -->
+      <!-- Shift: the store's drawer (pos-shift.js); one column like a customer's page. Start / Close open the edit sheet's frame over the page -->
       <section class="view view-shift lv" data-view="shift">
         <div class="iv">
           <section class="page sh-page" aria-label="Shift">
@@ -401,17 +401,12 @@
               <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
-              <section class="card find" id="shiftFind">
-                <label>
-                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-                  <input id="shiftSearch" type="text" placeholder="Search cash in / out" autocomplete="off">
-                  <button class="x" id="shiftSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-                </label>
-              </section>
+              <h1 class="st-ttl">Shift</h1>
             </div>
             <div class="c-scroll" id="shiftBody"></div>
           </section>
         </div>
+        <div class="esheet" id="shiftSheet" role="dialog" aria-label="Shift"><div class="es-card" id="shiftSheetCard"></div></div>
       </section>
 
       <!-- ============================================
@@ -501,16 +496,17 @@
               <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
-              <section class="card find" id="reportsFind">
-                <label>
-                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-                  <input id="reportsSearch" type="text" placeholder="Search items" autocomplete="off">
-                  <button class="x" id="reportsSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-                </label>
-                <button class="more per" id="reportsPeriod" aria-haspopup="menu" aria-expanded="false" aria-label="Period"><span>Day</span><svg class="ic" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
-              </section>
+              <h1 class="st-ttl">Reports</h1>
             </div>
-            <div class="c-scroll" id="reportsBody"></div>
+            <!-- Day | Week | Month as iOS Screen Time's switch (owner 2026-10-10); the pill slides (slidePill, pos-items.js) -->
+            <div class="c-scroll"><div class="c-body">
+              <section class="card kinds rp-units" id="reportsUnits" role="tablist" aria-label="Period">
+                <button type="button" role="tab" data-unit="day" class="cur" aria-selected="true">Day</button>
+                <button type="button" role="tab" data-unit="week" aria-selected="false">Week</button>
+                <button type="button" role="tab" data-unit="month" aria-selected="false">Month</button>
+              </section>
+              <div class="rp-body" id="reportsBody"></div>
+            </div></div>
           </section>
         </div>
       </section>
@@ -559,6 +555,12 @@
                 <section class="card fc">
                   <label class="fr"><span class="lb">Time zone</span><span class="v"><span class="act st-pick st-sel"><select id="posTimeZone"></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
                   <div class="fr"><span class="lb">Ask a manager for discounts over</span><span class="v"><button type="button" class="act st-pick" data-pick="discountLimit" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                  <div class="fr"><span class="lb">Refunds and exchanges</span><span class="v"><button type="button" class="act st-pick" data-pick="refundPin" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                </section>
+                <h3 class="fc-t">Shift</h3>
+                <section class="card fc">
+                  <div class="fr"><span class="lb">Starting cash</span><span class="v"><button type="button" class="act st-pick" data-pick="startCash" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                  <div class="fr"><span class="lb">Auto-close at</span><span class="v"><button type="button" class="act st-pick" data-pick="autoClose" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
                 </section>
               </div>
             </div>
@@ -769,21 +771,21 @@
     <div class="toast" id="toast" hidden></div>
   </div>
 
-  <script src="sales-math.js?v=24"></script>
-  <script src="data-store.js?v=52"></script>
+  <script src="sales-math.js?v=27"></script>
+  <script src="data-store.js?v=53"></script>
   <script src="data.js?v=28"></script>
-  <script src="bo-model.js?v=126"></script>
+  <script src="bo-model.js?v=128"></script>
   <script src="vendor/zxing-browser.min.js"></script>
-  <script src="printer.js?v=46"></script>
-  <script src="pos-core.js?v=18"></script>
-  <script src="pos-sell.js?v=44"></script>
-  <script src="pos-checkout.js?v=9"></script>
-  <script src="pos-orders.js?v=20"></script>
-  <script src="pos-items.js?v=20"></script>
-  <script src="pos-customers.js?v=16"></script>
-  <script src="pos-settings.js?v=4"></script>
-  <script src="pos-pin.js?v=3"></script>
-  <script src="pos-shift.js?v=6"></script>
-  <script src="app.js?v=143"></script>
+  <script src="printer.js?v=47"></script>
+  <script src="pos-core.js?v=23"></script>
+  <script src="pos-sell.js?v=53"></script>
+  <script src="pos-checkout.js?v=14"></script>
+  <script src="pos-orders.js?v=22"></script>
+  <script src="pos-items.js?v=23"></script>
+  <script src="pos-customers.js?v=20"></script>
+  <script src="pos-settings.js?v=8"></script>
+  <script src="pos-pin.js?v=7"></script>
+  <script src="pos-shift.js?v=18"></script>
+  <script src="app.js?v=151"></script>
 </body>
 </html>

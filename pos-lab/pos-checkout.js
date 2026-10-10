@@ -4,7 +4,6 @@
 // ---------- Payment (full-page Checkout view) ----------
 function openPaymentModal() {
   if (state.cart.length === 0) return;
-  if (needShift(openPaymentModal, $('#payBtn'))) return;   // no shift open: "Start cash?" first (pos-shift.js)
   state.prevView = state.view;
   state.paymentMethodChosen = false;
   state.splitPay = null;   // a new checkout starts with no two methods picked
@@ -148,7 +147,10 @@ function updateChange() {
   const typed = (r, on) => caret(r ? typedCash(r) : zero, on);
   const lbl = $('#checkoutChangeLbl'), lbl0 = $('#checkoutCashLbl'), go = $('#checkoutCompleteBtn');
   const sp = state.paymentMethod === 'split' && splitPlan(), givenRow = $('#checkoutGivenRow');
-  if (givenRow) givenRow.hidden = !sp?.cash;
+  if (givenRow && givenRow.hidden !== !sp?.cash) {
+    givenRow.hidden = !sp?.cash;
+    if (sp?.cash) go?.scrollIntoView({ block: 'nearest' });   // phone: the Given row came in and pushed Complete down
+  }
   setCheckoutError('');
   if (sp) {   // two methods: the typed one, the rest, and Given / change when Cash is one of them
     const s = state.splitPay || {}, [a, b] = sp.pair, bad = raw && !(sp.first > 0 && sp.rest > 0);
@@ -241,6 +243,7 @@ function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentM
     cashier: store.cashier,
     staffId: state.user?.id || '',
     approvedBy: approvedBy || state.discountOk?.by || '',   // else the manager who let a big discount through (discountOk)
+    discountApprovedBy: state.discountOk?.by || '',          // kept on its own: a credit-limit yes above takes approvedBy
     register: store.registerNo,
     // Each line keeps what it cost us now (step 2.2); reading an order never fills it in later.
     items: state.cart.map(i => ({ ...i, cost: i.cost ?? productOf(i)?.cost ?? null, ...(sc ? { discount: null } : {}) })),
@@ -639,11 +642,9 @@ function openOrderNote() {
   openCartForm(state.orderNote ? 'Edit note' : 'Add note', `<label class="pf"><span class="lb">Note</span><input class="text-input" name="note" type="text" maxlength="120" autocomplete="off" placeholder="For this order" value="${escapeHtml(state.orderNote || '')}"></label>`,
     'Save', f => { state.orderNote = f.note.value.replace(/\s+/g, ' ').trim(); renderCart(); });
 }
-// The cart ⋯'s small form: grows out of the ⋯ and shrinks back into it (the pay sheet's veil + card, growFrom).
+// The cart ⋯'s small form, in the middle of the screen (the pay sheet's veil + card, centreSheet).
 // `field`: its one labelled input; onSubmit(form) runs in the tap's gesture (a quote's print pop-up needs it).
 function openCartForm(title, field, ok, onSubmit) {
-  const btn = $('#cartMoreBtn');
-  if (!btn) return;
   const veil = document.createElement('div');
   veil.className = 'rail-veil';
   veil.innerHTML = `<form class="pay-sheet" role="dialog" aria-label="${title}" novalidate>
@@ -651,12 +652,10 @@ function openCartForm(title, field, ok, onSubmit) {
     ${field}
     <div class="pb"><button type="button" class="secondary-btn small" data-cancel>Cancel</button><button type="submit" class="primary-btn small">${ok}</button></div>
   </form>`;
-  const f = veil.firstChild, r = btn.getBoundingClientRect();
+  const f = veil.firstChild;
   f.style.width = Math.min(340, innerWidth - 24) + 'px';
   document.body.append(veil);
-  f.style.left = Math.max(12, Math.min(innerWidth - f.offsetWidth - 12, r.right - f.offsetWidth)) + 'px';
-  f.style.top = Math.max(8, Math.min(innerHeight - f.offsetHeight - 8, r.top)) + 'px';
-  const shrink = growFrom(f, r);
+  const shrink = centreSheet(f);
   const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
   const close = () => {
     document.removeEventListener('keydown', onKey, true);
@@ -691,18 +690,24 @@ function saveCurrentReceipt(name = '', kind = 'saved') {
 // Continue (Orders): the draft's lines back in the cart at today's prices, by product id. Qty and the line and
 // cart discounts stay (a price-match is a discount). A deleted item is skipped, with a toast; with nothing left to
 // sell the cart stays as it is. A hidden or archived one asks "Sell anyway?" first, like a scan does (addProductByCode).
-function continueDraft(id) {
-  const d = loadSavedCarts().find(x => x.id === id);
-  if (!d) return;
+// Kept lines at today's prices (a saved cart, the cart kept over a reload): { lines, gone, off }. Anything not a line
+// of an item still on file is gone.
+function todayLines(items) {
   const gone = [], off = [], lines = [];
-  for (const i of d.items || []) {
-    const p = state.products.find(x => x.id === (i.productId || i.id));
-    if (!p) { gone.push(i.name); continue; }
+  for (const i of Array.isArray(items) ? items : []) {
+    const p = i && typeof i === 'object' && state.products.find(x => x.id === (i.productId || i.id));
+    if (!p) { if (i?.name) gone.push(i.name); continue; }
     if (!onTill(p)) off.push(`${p.name} is ${p.archived ? 'archived' : 'hidden'}.`);
     // a price asked at sale (askedPrice) keeps the line's own id and the price it was given
     const typed = i.productId && i.id !== i.productId;
     lines.push({ ...i, id: typed ? i.id : p.id, name: p.name, sku: p.sku, brand: p.brand, unit: p.unit, price: typed || askedPrice(p) ? i.price : p.price });
   }
+  return { lines, gone, off };
+}
+function continueDraft(id) {
+  const d = loadSavedCarts().find(x => x.id === id);
+  if (!d) return;
+  const { lines, gone, off } = todayLines(d.items);
   if (!lines.length) return showToast(`Nothing to continue · ${gone.join(', ')} no longer sold`);
   const load = () => {
     clearCart();
@@ -723,10 +728,10 @@ function continueDraft(id) {
     if (gone.length) showToast(`Skipped ${gone.join(', ')} · no longer sold`);
   };
   const replace = () => state.cart.length
-    ? showConfirm({ title: 'Replace the cart?', message: 'The items in the cart now are removed.', okText: 'Replace', from: $('#orderContinue'), onConfirm: load })
+    ? showConfirm({ title: 'Replace the cart?', message: 'The items in the cart now are removed.', okText: 'Replace', onConfirm: load })
     : load();
   if (!off.length) return replace();
-  showConfirm({ title: 'Sell anyway?', message: off.join(' '), okText: 'Sell anyway', from: $('#orderContinue'), onConfirm: replace });
+  showConfirm({ title: 'Sell anyway?', message: off.join(' '), okText: 'Sell anyway', onConfirm: replace });
 }
 
 // Credit off = Account and Split are not offered (owner 2026-10-02). Read fresh: the back office
@@ -783,6 +788,7 @@ function reverseOrderCredit(order, reason, whole = false, credit = SalesMath.cre
 // `approvedBy`: the manager whose PIN let this charge go past the credit limit (gate re-runs it).
 // `ok`: questions already answered Yes in the app's own pop-up ({ limit }), so the re-run skips them.
 function completeSale(approvedBy = '', ok = {}) {
+  if (!state.cart.length && !state.exchange) return;   // Sale complete is up (the cart is spent): an Enter or a scan there rang ₱0 orders
   const total = moneyValue(dueNow());
   let tendered = total, change = 0, split = null;
   const sp = state.paymentMethod === 'split' && splitPlan();   // two methods: the cash leg's Given / change, if any

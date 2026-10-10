@@ -74,7 +74,7 @@ function renderCustomerDetail() {
   </div>`;
 }
 
-// Record payment, the back office's (openPaymentDialog) on the till: a card that grows out of the button. The amount
+// Record payment, the back office's (openPaymentDialog) on the till: a card in the middle of the screen. The amount
 // (Full balance fills it), how they paid, the open receipts to tick (ticking fills the amount with what they owe),
 // a note. Nothing ticked, or money left over, pays the oldest debts first (bo-model recordPayment). More than the
 // balance is allowed, as in the back office: it waits on the account for the next charge.
@@ -99,12 +99,10 @@ function openPaySheet(btn, c) {
     <label class="pf"><span class="lb">Note</span><input class="text-input" name="note" type="text" autocomplete="off"></label>
     <div class="pb"><button type="button" class="secondary-btn small" data-cancel>Cancel</button><button type="submit" class="primary-btn small">Record payment</button></div>
   </form>`;
-  const f = veil.firstChild, r = btn.getBoundingClientRect();
+  const f = veil.firstChild;
   f.style.width = Math.min(380, innerWidth - 24) + 'px';
   document.body.append(veil);
-  f.style.left = Math.max(12, Math.min(innerWidth - f.offsetWidth - 12, r.right - f.offsetWidth)) + 'px';
-  f.style.top = Math.max(8, Math.min(innerHeight - f.offsetHeight - 8, r.top)) + 'px';
-  const shrink = growFrom(f, r);
+  const shrink = centreSheet(f);
   btn.setAttribute('aria-expanded', 'true');
   // "1,000" and "₱ 1,000" read as 1000; "-50", "1e3" or "1.2.3" read as nothing. The button says what will be recorded
   const amount = () => {
@@ -185,7 +183,7 @@ const orderTenderKeys = o => SalesMath.paymentsOf(o).map(p => p.key);
 // back. Only for whoever may "See the day's totals" (canAccess). Every figure is SalesMath's, the back
 // office's: summarize (net of voids and refunds), topItems, tenders, on the store's days (tillDay).
 const REPORT_UNITS = [['day', 'Day'], ['week', 'Week'], ['month', 'Month']];
-const reportsView = { unit: 'day', back: 0, q: '' };   // back = periods before the current one; q = the head's search
+const reportsView = { unit: 'day', back: 0 };   // back = periods before the current one
 
 // The period `back` steps before this one: [a, b) as store days, and its words. A week starts on Monday,
 // as the back office's calendar does.
@@ -196,9 +194,9 @@ function reportsPeriod() {
     : unit === 'week' ? add(today, -((SalesMath.dateParts(today).weekday + 6) % 7) - 7 * back)
     : iso(y, m - 1 - back);
   const b = unit === 'day' ? add(a, 1) : unit === 'week' ? add(a, 7) : iso(+a.slice(0, 4), +a.slice(5, 7));
-  const last = add(b, -1), yr = a.slice(0, 4) !== today.slice(0, 4);   // another year says so
+  const last = add(b, -1), yr = a.slice(0, 4) !== today.slice(0, 4);   // another year says so (a week: the year it ends in)
   const label = unit === 'day' ? (back === 0 ? `Today, ${tillDate(a, 'day')}` : back === 1 ? 'Yesterday' : tillDate(a, yr ? 'weekdayDayYear' : 'weekdayDay'))
-    : unit === 'week' ? (back === 0 ? 'This week' : `${tillDate(a, 'day')} – ${a.slice(5, 7) === last.slice(5, 7) ? +last.slice(8) : tillDate(last, 'day')}${yr ? ', ' + a.slice(0, 4) : ''}`)
+    : unit === 'week' ? (back === 0 ? 'This week' : `${tillDate(a, 'day')} – ${a.slice(5, 7) === last.slice(5, 7) ? +last.slice(8) : tillDate(last, 'day')}${yr || last.slice(0, 4) !== today.slice(0, 4) ? ', ' + last.slice(0, 4) : ''}`)
     : back === 0 ? 'This month' : new Date(a + 'T00:00:00Z').toLocaleString('en-US', { month: 'long', timeZone: 'UTC', ...(yr && { year: 'numeric' }) });
   return { from: SalesMath.dayStartMs(a, tillZone()), to: SalesMath.dayStartMs(b, tillZone()), label };
 }
@@ -211,36 +209,36 @@ function renderReports() {
   reportsLive._day = tillDay(Date.now());
   const p = reportsPeriod(), win = { from: p.from, to: p.to };
   const costOf = i => productOf(i)?.cost;   // a line sold before cost was stamped on it: the item's cost now (the BO's costOf)
-  const m = SalesMath.summarize(state.orders, { ...win, costOf });
-  const q = reportsView.q.trim().toLowerCase();
-  const top = SalesMath.topItems(state.orders, { ...win, costOf }).filter(r => !q || String(r.name).toLowerCase().includes(q)).slice(0, 5);
+  // Two groups on the one pass (owner 2026-10-09): 'c' = the lines with a cost on file (a cost of ₱0 is on file), so profit
+  // and margin leave out what has no cost rather than count it at ₱0; 'n' = the orders, an exchange's new sale (and its
+  // void) not one -- the customer swapped, they didn't buy again. No costed line: profit and margin say '—'.
+  const swaps = new Set(state.orders.filter(SalesMath.isExchange).map(o => o.id));
+  const m = SalesMath.summarize(state.orders, { ...win, costOf, by: (o, i) => [(i.cost ?? costOf(i)) != null ? 'c' : null,
+    swaps.has(o.id) || (o.status === 'void' && swaps.has(o.originalOrderId)) ? null : 'n'] });
+  const c = m.groups.get('c'), orders = m.groups.get('n')?.orders || 0;
+  const top = SalesMath.topItems(state.orders, { ...win, costOf }).slice(0, 5).map(r => ({ ...r, name: productOf({ id: r.key })?.name || r.name }));   // a renamed item: its name now
   const by = [...SalesMath.tenders(state.orders, win)].sort((x, y) => payRank(x[0]) - payRank(y[0]));
-  // No cost on file for anything sold: profit would read as the whole sale, so it says '—', as margin
-  // does with nothing sold (pctText). ponytail: a period where only some items have a cost still counts the rest at ₱0.
-  const known = m.costOfGoods !== 0;
   const row = (lb, v) => `<div class="fr"><span class="lb">${lb}</span><span class="v num">${v}</span></div>`;
   const none = words => `<div class="fr"><span class="lb ph">${words}</span></div>`;
-  const stat = (lb, v) => `<div><span>${lb}</span><b class="num">${v}</b></div>`;
   const step = (d, words, path, off) => `<button type="button" data-rp="${d}" aria-label="${words}"${off ? ' disabled' : ''}><svg class="ic" viewBox="0 0 24 24"><path d="${path}"/></svg></button>`;
-  $('#reportsPeriod span').textContent = REPORT_UNITS.find(u => u[0] === reportsView.unit)[1];
-  body.innerHTML = `<div class="c-body">
-    <div class="rp-step">${step(-1, 'Earlier', 'M15 6l-6 6 6 6')}<b>${escapeHtml(p.label)}</b>${step(1, 'Later', 'M9 6l6 6-6 6', !reportsView.back)}</div>
-    ${icard('', `<div class="rp-stats">${stat('Sales', peso(m.netSales))}${stat('Profit', known ? peso(m.grossProfit) : '—')}
-      ${stat('Margin', known ? SalesMath.pctText(m.margin, m.salesBeforeTax, 0) : '—')}${stat('Orders', SalesMath.qtyText(m.orders))}</div>`)}
-    ${icard('Top items', top.map(r => row(escapeHtml(r.name), peso(r.netSales))).join('') || none(q ? 'No items match' : 'No sales'), '', ' rp-list')}
-    ${icard('By method', by.map(([k, n]) => row(escapeHtml(SalesMath.tenderLabel(k)), peso(n))).join('') || none('No sales'), '', ' rp-list')}
-  </div>`;
+  // Screen Time's card: the period small with ‹ › at its right, the sales big under it, then word / value rows
+  body.innerHTML = `${icard('Sales', `<div class="rp-hero"><div class="rp-when">${escapeHtml(p.label)}<span class="rp-step">${step(-1, 'Earlier', 'M15 6l-6 6 6 6')}${step(1, 'Later', 'M9 6l6 6-6 6', !reportsView.back)}</span></div>
+      <b class="rp-big num">${peso(m.netSales)}</b></div>`
+      + row('Profit', c ? peso(c.grossProfit) : '—') + row('Margin', c ? SalesMath.pctText(c.margin, c.salesBeforeTax, 0) : '—') + row('Orders', SalesMath.qtyText(orders)))}
+    ${icard('Top items', top.map(r => row(escapeHtml(r.name), peso(r.netSales))).join('') || none('No sales'), '', ' rp-list')}
+    ${icard('By method', by.map(([k, n]) => row(escapeHtml(SalesMath.tenderLabel(k)), peso(n))).join('') || none('No sales'), '', ' rp-list')}`;
 }
 
-// ‹ (d −1, earlier) / › (d +1, later); a unit picked from Day ▾ starts at the current period.
+// ‹ (d −1, earlier) / › (d +1, later); a unit picked on Day | Week | Month starts at the current period.
 function reportsStep(d, unit) {
-  if (unit) { reportsView.unit = unit; reportsView.back = 0; } else reportsView.back = Math.max(0, reportsView.back - d);
+  if (unit) { reportsView.unit = unit; reportsView.back = 0; slidePill($('#reportsUnits'), 'unit', unit); } else reportsView.back = Math.max(0, reportsView.back - d);
   renderReports();
 }
 
 // Live updates while Reports is open: the orders changed (another tab, a sync), or the store's day turned over.
 function reportsLive() {
   if (state.view !== 'reports') return;
+  if (!canAccess('reports')) return applyRoleGating();   // "See the day's totals" taken away meanwhile: back to Sell
   if (reportsSignature() !== reportsLive._sig || tillDay(Date.now()) !== reportsLive._day) renderReports();
 }
 reportsLive._sig = '';

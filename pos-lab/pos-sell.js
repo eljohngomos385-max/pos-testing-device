@@ -397,8 +397,8 @@ function addProductByCode(rawCode, { source = 'barcode' } = {}) {
   return false;
 }
 
-function clearCart() {
-  closeEditSheet(false, true);   // first, so its events are the sheet's own changes (and no PIN for a cart going away)
+function clearCart(keepPrice) {
+  if (!keepPrice) closeEditSheet(false, true);   // first, so its events are the sheet's own changes (and no PIN for a cart going away)
   state.discountOk = null;
   state.exchange = null;   // clearing the cart calls an exchange off (startExchange)
   state.savedId = '';      // ...and lets go of the saved cart it was continuing (continueDraft); the draft stays
@@ -416,6 +416,19 @@ function clearCart() {
   state.orderNote = '';
   renderCart();
   updateCustomerButton();
+}
+
+// The open sale survives a reload or a crash (owner 2026-10-09): every renderCart keeps it, init puts it back.
+// Never an exchange (a reload starts it clean) nor a manager's yes (discountOk): a restored big discount asks again.
+const CART_KEPT = ['cart', 'cartDiscount', 'scPwd', 'customer', 'orderNote', 'fulfilment', 'deliveryAddress', 'deliveryLocation', 'cartId', 'cartStartedAt', 'savedId'];
+const keepCart = () => writeJsonStorage(STORAGE_CART, state.exchange ? null : Object.fromEntries(CART_KEPT.map(key => [key, state[key]])));
+// At today's prices, a deleted item skipped, as Continue on a saved cart (todayLines): it can be days old.
+function restoreCart() {
+  const k = readJsonStorage(STORAGE_CART, null), { lines, gone } = todayLines(k?.cart);
+  if (!lines.length) return;   // nothing left, or nothing readable: an empty POS, never a broken one
+  Object.assign(state, Object.fromEntries(CART_KEPT.map(key => [key, k[key] ?? state[key]])), { cart: lines });
+  state.customer = (k.customer && allCustomerRecords().find(c => c.id === k.customer.id)) || null;   // today's balance, as continueDraft
+  if (gone.length) showToast(`Skipped ${gone.join(', ')} · no longer sold`);
 }
 
 function showBarcodeStatus(message) {
@@ -745,17 +758,24 @@ const esShown = (d) => (!d ? 'None' : d.type === 'percent' ? `${d.value}%` : pes
 // SC/PWD is the law's and never counts (when it wins, orderTotals gives no other discount).
 const discountPct = (t = cartTotals()) => (t.scPwd || !t.subtotal ? 0 : SalesMath.round2(t.discount / t.subtotal * 100));
 // The cart's discounts now (and their %), to put back when a manager says no.
-const discSnap = () => ({ lines: state.cart.map(i => [i, i.discount]), cd: state.cartDiscount, sc: state.scPwd, pct: discountPct() });
+const discSnap = (t = cartTotals()) => ({ lines: state.cart.map(i => [i, i.discount]), cd: state.cartDiscount, sc: state.scPwd, pct: discountPct(t), amt: discAmt(t) });
+const discAmt = t => (t.scPwd ? 0 : t.discount);   // the pesos discountPct counts
 const discPut = (s) => { s.lines.forEach(([i, d]) => { if (d) i.discount = d; else delete i.discount; }); state.cartDiscount = s.cd; state.scPwd = s.sc; };
 // Past "Ask a manager for discounts over N%" (POS › Settings, bo-model discountLimit), past what a manager already
 // approved on this sale and past `back` (the sheet's last state that passed), a role without "Give big discounts"
 // gets the PIN pad: true = fine. Else `back` goes on the cart at once (Cancel leaves it), and the PIN puts this
 // one on again, approved (state.discountOk -> the order's approvedBy), then runs `then`. No `back` (Check out): nothing moves.
 function discountOk(back, then) {
-  const lim = loadTillPerms().discountLimit, pct = discountPct();
-  if (lim == null || pct <= Math.max(lim, state.discountOk?.pct || 0, back?.pct || 0)) return true;
-  const now = discSnap();
-  if (gate('discount', (by) => { discPut(now); state.discountOk = { pct, by }; esFresh(); renderCart(); then?.(); },
+  const lim = loadTillPerms().discountLimit, now = discSnap(), { pct, amt } = now;
+  // what passed covers no more than it was, in % AND in pesos: a yes to 100% off ₱1.50 isn't 100% off a ₱385 line too
+  const within = s => s && pct <= s.pct && amt <= s.amt;
+  if (lim == null || pct <= lim || within(state.discountOk) || within(back)) return true;
+  // An exchange: the sale's own yes stands for its swap up to the % it was (owner 2026-10-09), on pricier items too
+  // (a collect); a bigger % asks again.
+  const o = state.exchange && state.orders.find(r => r.id === state.exchange.orderId);
+  const was = o && o.discountApprovedBy && { pct: discountPct(o), amt: Infinity, by: o.discountApprovedBy };
+  if (within(was)) { state.discountOk = was; return true; }
+  if (gate('discount', (by) => { discPut(now); state.discountOk = { pct, amt, by }; esFresh(); renderCart(); then?.(); },
     { pct }, `${pct}% off is over the ${lim}% limit.`)) return true;
   if (back) { discPut(back); esFresh(); renderCart(); }
   return false;
@@ -796,6 +816,8 @@ function removeLine(item) {
   if (es && es.kind === 'line' && es.id === item.id) { es = null; $('#editSheet').classList.remove('open'); }   // the tablet's sheet can be open on it
   track('item_remove', { productId: item.productId || item.id, qty: item.qty, unitPrice: item.price });
   state.cart = state.cart.filter(i => i !== item);
+  // the last line gone is a fresh sale, as Clear cart (owner 2026-10-09): no note, no nothing; a price being typed stays up
+  if (!state.cart.length && !state.exchange) { clearCart(es?.kind === 'price'); if (es) drawEditSheet(); return; }
   const list = $('#cartList'), top = list.scrollTop;
   renderCart();
   list.scrollTop = top;   // renderCart jumps to the newest line; a removal keeps the cashier's place
@@ -867,6 +889,7 @@ function esSettle(o) {
 }
 
 // One key into a typed number: '.' once, two decimals, nothing over max, a lone 0 gives way.
+const CASH_MAX = 9999999;   // the most any cash keypad takes (checkout, a price asked at sale, the shift, cash in / out)
 function esPress(v, k, dec, max) {
   if (k === 'del') return v.slice(0, -1);
   if (k === '.') return dec && !v.includes('.') ? (v || '0') + '.' : v;
@@ -932,15 +955,18 @@ function drawEditSheet() {
     : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
     : o.f ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q" data-sclr>Clear</button>' : '';
   const top = card.querySelector('.es-scroll')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
-  card.innerHTML = `<button type="button" class="es-x" data-close aria-label="Close">${esSvg('x', 'ix')}${esSvg('back', 'ib')}<span class="xl">Back</span></button>
-    <div class="es-body${o.kind === 'rd' ? ' fill' : ''}${o.anim === true ? ' in' : o.anim === 'out' ? ' out' : ''}"><div class="es-col"><div class="es-head">${head}</div><div class="es-list">${rows}</div></div>${side}</div>
-    <div class="es-ft">${left}${o.kind === 'price' ? `<button type="button" class="es-ink" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
-      : o.f ? '<button type="button" class="es-ink" data-apply>Apply</button>' : '<button type="button" class="es-ink" data-close>Done</button>'}</div>`;
+  card.innerHTML = esFrame(head, rows, side, left + (o.kind === 'price' ? `<button type="button" class="es-ink" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
+    : o.f ? '<button type="button" class="es-ink" data-apply>Apply</button>' : '<button type="button" class="es-ink" data-close>Done</button>'),
+  `${o.kind === 'rd' ? ' fill' : ''}${o.anim === true ? ' in' : o.anim === 'out' ? ' out' : ''}`);
   const list = card.querySelector('.es-scroll');
   if (list && o.opened) list.querySelector('.pick')?.scrollIntoView({ block: 'nearest' });   // just opened: the one on the sale in view
   else if (list) list.scrollTop = top;
   o.anim = o.opened = false;
 }
+// The panel's frame: ✕ / Back, the head over its list, the side (keys or a field), the foot. The shift's panel wears it too.
+const esFrame = (head, rows, side, foot, cls = '') => `<button type="button" class="es-x" data-close aria-label="Close">${esSvg('x', 'ix')}${esSvg('back', 'ib')}<span class="xl">Back</span></button>
+    <div class="es-body${cls}"><div class="es-col"><div class="es-head">${head}</div><div class="es-list">${rows}</div></div>${side}</div>
+    <div class="es-ft">${foot}</div>`;
 const esKeys = (dec) => `<div class="es-kp">${[...'123456789', dec ? '.' : '', '0', 'del'].map(k => !k ? '<span></span>'
   : `<button type="button" data-sk="${k}"${k === 'del' ? ' aria-label="Delete"' : ''}>${k === 'del' ? esSvg('del') : k}</button>`).join('')}</div>`;
 
@@ -950,7 +976,7 @@ function editSheetClick(e) {
   if (el('[data-close]')) return closeEditSheet();
   if (o.kind === 'ful') return esFulClick(el);
   if (o.kind === 'price') {   // our keys type it; Add puts the line on the cart at it, ✕ adds nothing
-    if (el('[data-sk]')) { o.d = esPress(o.d, el('[data-sk]').dataset.sk, true, 9999999); return drawEditSheet(); }
+    if (el('[data-sk]')) { o.d = esPress(o.d, el('[data-sk]').dataset.sk, true, CASH_MAX); return drawEditSheet(); }
     if (!el('[data-apply]') || !(+o.d > 0)) return;
     closeEditSheet();
     return addToCart(o.id, o.via, false, moneyValue(o.d));
@@ -1104,7 +1130,7 @@ function closeMenu() {
   veil.style.pointerEvents = 'none';
   shrink(() => veil.remove());
 }
-// The morph (the ⋯ menu, the payment sheet): m, already placed, grows out of the trigger's box r with a little
+// The morph (the menus): m, already placed, grows out of the trigger's box r with a little
 // overshoot. Returns shrink(done), which puts it back into that box.
 function growFrom(m, r) {
   const w = m.offsetWidth, H = m.offsetHeight, t = r.top - m.offsetTop, l = r.left - m.offsetLeft;
@@ -1386,6 +1412,7 @@ function cartTotals(cart = state.cart, cartDiscount = state.cartDiscount, scPwd 
 
 const XCHG_ICON = '<svg class="ic xi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h15l-4-4M20 16H5l4 4"/></svg>';   // ⇄
 function renderCart() {
+  keepCart();
   const list = $('#cartList');
   const t = cartTotals();
   const n = state.cart.length;
@@ -1507,7 +1534,7 @@ function selectCustomer(id) {
   const next = state.customer;
   if (prev && prev.id !== (next && next.id)) track('customer_detach', { customerId: prev.id });
   if (next && next.id !== (prev && prev.id)) track('customer_attach', { customerId: next.id });
-  state.cartDiscount = null;
+  if ((prev && prev.id) !== (next && next.id)) state.scPwd = null;   // the sale's discount stays; SC/PWD is the person's (owner 2026-10-09)
   updateCustomerButton();
   $('#customerModal').hidden = true;
   closeVariantSheet();

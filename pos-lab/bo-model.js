@@ -718,23 +718,26 @@ const staffIdOf = (name, staff = loadStaff()) => (name && (staff.find((u) => u.n
 // `credit`: turning credit on for a customer made at the till (lead default 2026-10-02, customers).
 // dayTotals isn't PIN-gated: off just hides the day's total on the Orders bands (owner 2026-10-06: a cashier shouldn't see it).
 // `discount` (owner 2026-10-09): a sale's discounts past `discountLimit` % (pos-sell discountOk); SC/PWD never counts.
-const TILL_ACTIONS = { void: 'Void a sale', refund: 'Refund a sale', overLimit: 'Sell past a credit limit', credit: 'Turn on credit for a customer', dayTotals: "See the day's totals", discount: 'Give big discounts' };
+// `shift` (owner 2026-10-10): who sees the Shift page and starts / closes it. Anyone sells.
+const TILL_ACTIONS = { void: 'Void a sale', refund: 'Refund a sale', overLimit: 'Sell past a credit limit', credit: 'Turn on credit for a customer', dayTotals: "See the day's totals", discount: 'Give big discounts', shift: 'Start and close shifts' };
 const STORAGE_TILL_PERMS = storeKey('tillPerms');
 const TILL_PERMS_DEFAULT = { manager: Object.keys(TILL_ACTIONS), cashier: [], stock: [] };
+const TILL_ACTIONS_V1 = ['void', 'refund', 'overLimit', 'credit', 'dayTotals'];   // what a map saved with no `known` list knew
 // The map also carries `discountLimit`: "Ask a manager for discounts over N%", one value shown in POS › Settings and
-// Back office › Staff & access. 20 by default; null = Never ask. A map saved before it (no key) knew no `discount`
-// switch either: that role gets its default for it (on for a manager), not off.
+// Back office › Staff & access. 20 by default; null = Never ask. `known` lists the switches the map was saved with:
+// a switch it didn't know yet gets the role's default (on for a manager), not off. A map with no `known` knew
+// TILL_ACTIONS_V1, plus `discount` if it carries `discountLimit`.
 function loadTillPerms(raw = readJsonStorage(STORAGE_TILL_PERMS, null) || {}) {
-  const out = {}, knew = 'discountLimit' in raw;
+  const out = {}, knew = 'discountLimit' in raw, known = raw.known || TILL_ACTIONS_V1.concat(knew ? ['discount'] : []);
   for (const role of Object.keys(STAFF_ROLES)) {
     const def = TILL_PERMS_DEFAULT[role] || [];
     out[role] = role === 'owner' ? Object.keys(TILL_ACTIONS)
-      : (Array.isArray(raw[role]) ? raw[role].concat(knew ? [] : def.filter((a) => a === 'discount')) : def).filter((a) => a in TILL_ACTIONS);
+      : (Array.isArray(raw[role]) ? raw[role].concat(def.filter((a) => !known.includes(a))) : def).filter((a) => a in TILL_ACTIONS);
   }
   out.discountLimit = !knew ? 20 : raw.discountLimit > 0 ? Number(raw.discountLimit) : null;
   return out;
 }
-const saveTillPerms = (map) => storageSet(STORAGE_TILL_PERMS, JSON.stringify(map));
+const saveTillPerms = (map) => storageSet(STORAGE_TILL_PERMS, JSON.stringify({ ...map, known: Object.keys(TILL_ACTIONS) }));
 const roleCan = (role, action, perms = loadTillPerms()) => (perms[role] || []).includes(action);
 // A PIN is 4–6 digits. The seed's '••••' is a placeholder, not a PIN.
 const isPin = (pin) => /^\d{4,6}$/.test(String(pin || ''));
@@ -1549,6 +1552,11 @@ if (typeof module !== 'undefined' && require.main === module) {
   const tp = (raw) => { const p = loadTillPerms(raw); return [p.manager.includes('discount'), p.cashier.includes('discount'), p.discountLimit]; };
   assert.deepEqual([tp({}), tp({ manager: ['void'], cashier: [] }), tp({ manager: ['void'], cashier: [], discountLimit: null }), tp({ cashier: ['discount'], discountLimit: 30 })],
     [[true, false, 20], [true, false, 20], [false, false, null], [true, true, 30]]);
+  // Shifts (2026-10-10): a map with no `known` list gives a manager `shift`; one saved since keeps what it says.
+  const sp = (raw) => { const p = loadTillPerms(raw); return [p.manager.includes('shift'), p.cashier.includes('shift')]; };
+  assert.deepEqual([sp({}), sp({ manager: ['void'], cashier: [], discountLimit: 20 }),
+    sp({ manager: ['void'], cashier: [], discountLimit: 20, known: Object.keys(TILL_ACTIONS) }), sp({ ...loadTillPerms({}), cashier: ['shift'], known: Object.keys(TILL_ACTIONS) })],
+    [[true, false], [true, false], [false, false], [true, true]]);
   // saveList gives a record without one the store's id, and leaves updatedAt alone.
   const saved = new Map();
   globalThis.storageSet = (k, v) => saved.set(k, v);

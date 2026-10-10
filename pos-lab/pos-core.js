@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS = (globalThis.HWPOS_STORE && HWPOS_STORE.defaults)
 const STORAGE_TILE_SIZE = storeKey('tileSize');
 const STORAGE_SHOW_PRICE = storeKey('showPrice');
 const STORAGE_TILE_TEXT = 'hwpos.tileText';   // this till's own text size; not synced, not in the shared list
+const STORAGE_CART = 'hwpos.cart';   // this till's open sale (keepCart, pos-sell); not synced either
 const TILE_TEXT_SIZES = ['sm', 'md', 'lg', 'xl'];
 const STORAGE_THEME = storeKey('theme');
 
@@ -300,13 +301,21 @@ function setCheckoutError(message = '') {
 }
 
 // The app's own "are you sure?": a small card like Record payment (.pay-sheet) in a .rail-veil -- a title, one quiet
-// line, Cancel and OK. `from`: the button that asked; the card grows out of it (growFrom). None, or one not on
-// screen = centred. `danger`: OK in the tinted red, for a delete only; everything else is the till's normal primary.
+// line, Cancel and OK, in the middle of the screen (centreSheet). `danger`: OK in the tinted red, for a delete only;
+// everything else is the till's normal primary.
 // `html`: markup for the message (the refund line picker, which reads #confirmMessage), built with escapeHtml.
 // Enter = OK, Esc / a tap outside / Cancel = cancel, Tab stays inside. `onCancel` runs on every close that isn't OK
 // (stockOnAdd puts the edit sheet's quantity back), but not when a new ask replaces this one.
+// Every pop-up card sits in the middle of the screen, never at the button that opened it (owner 2026-10-10): f, already
+// in its veil, is centred and fades up. Returns shrink(done), which fades it out. Menus (openMenu) still drop from their button.
+function centreSheet(f) {
+  f.style.left = Math.max(12, (innerWidth - f.offsetWidth) / 2) + 'px';
+  f.style.top = Math.max(8, (innerHeight - f.offsetHeight) / 2) + 'px';
+  f.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: calmMs(140), easing: 'ease-out' });
+  return (done) => { f.animate([{ opacity: 1 }, { opacity: 0, transform: 'scale(.98)' }], { duration: calmMs(90) }).onfinish = done; };
+}
 let confirmSheet = null;
-function showConfirm({ title = 'Are you sure?', message = '', html = '', okText = 'Confirm', cancelText = 'Cancel', danger = false, from = null, onConfirm, onCancel } = {}) {
+function showConfirm({ title = 'Are you sure?', message = '', html = '', okText = 'Confirm', cancelText = 'Cancel', danger = false, onConfirm, onCancel } = {}) {
   confirmSheet?.(true);   // one at a time
   $$('.cf-sheet [id]').forEach(el => el.removeAttribute('id'));   // one still shrinking away: #confirmMessage is the new one's
   const veil = document.createElement('div');
@@ -323,13 +332,7 @@ function showConfirm({ title = 'Are you sure?', message = '', html = '', okText 
   f.querySelector('[data-cancel]').textContent = cancelText;
   f.style.width = Math.min(340, innerWidth - 24) + 'px';
   document.body.append(veil);
-  const r = from?.isConnected && from.getBoundingClientRect();
-  const W = f.offsetWidth, H = f.offsetHeight, clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-  f.style.left = clamp(r?.width ? r.right - W : (innerWidth - W) / 2, 12, innerWidth - W - 12) + 'px';
-  f.style.top = clamp(r?.width ? r.top : (innerHeight - H) / 2, 8, innerHeight - H - 8) + 'px';
-  const shrink = r?.width ? growFrom(f, r)
-    : (f.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: calmMs(140), easing: 'ease-out' }),
-      (done) => { f.animate([{ opacity: 1 }, { opacity: 0, transform: 'scale(.98)' }], { duration: calmMs(90) }).onfinish = done; });
+  const shrink = centreSheet(f);
   const back = document.activeElement;
   const onKey = (e) => {
     if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); return close(); }
@@ -352,7 +355,10 @@ function showConfirm({ title = 'Are you sure?', message = '', html = '', okText 
   confirmSheet = close;
   document.addEventListener('keydown', onKey, true);
   f.addEventListener('submit', (e) => { e.preventDefault(); close('ok'); if (typeof onConfirm === 'function') onConfirm(); });
-  veil.addEventListener('click', (e) => { if (e.target === veil || e.target.closest('[data-cancel]')) close(); });
+  // A double tap's second tap lands on the new card (an ask opened from the last one's OK, or over its trigger): ignored
+  const born = performance.now(), early = () => performance.now() - born < 350;
+  ok.addEventListener('click', (e) => { if (early()) e.preventDefault(); });
+  veil.addEventListener('click', (e) => { if (!early() && (e.target === veil || e.target.closest('[data-cancel]'))) close(); });
   (msg.querySelector('input') || ok).focus({ preventScroll: true });
 }
 
@@ -578,7 +584,8 @@ function normalizeOrderRecord(raw = {}) {
     paymentKind = 'cash'; paymentMethodLabel = 'Cash';
   }
   const total = moneyValue(o.total);
-  const payments = o.payments.length
+  // a ₱0 refund / void moved no money: no legs (rebuilt, a split one became a "Cash ₱0" leg)
+  const payments = o.payments.length || (!total && (status === 'refund' || status === 'void'))
     ? o.payments.map(normalizePayment)
     : buildOrderPayments({
         status,
@@ -608,6 +615,7 @@ function normalizeOrderRecord(raw = {}) {
     cashier: String(raw.cashier || store.cashier),
     staffId: String(raw.staffId || ''),         // who rang it (the till's sign-in)
     approvedBy: String(raw.approvedBy || ''),   // the manager whose PIN let it through, if one had to
+    discountApprovedBy: String(raw.discountApprovedBy || ''),   // the one who let a big discount through (discountOk)
     register: String(raw.register || store.registerNo),
     storeId: String(raw.storeId || ''),         // the sync fields ride along (persistOrder stamps new rows)
     updatedAt: raw.updatedAt ? String(raw.updatedAt) : '',
@@ -757,13 +765,14 @@ function folderName(id) {
 
 // ---------- Roles ----------
 const ROLE_ALLOWED = {
-  cashier: new Set(['sell', 'orders', 'items', 'shift', 'settings', 'checkout']),
-  manager: new Set(['sell', 'orders', 'items', 'customers', 'shift', 'back-office', 'settings', 'checkout']),
+  cashier: new Set(['sell', 'orders', 'items', 'settings', 'checkout']),
+  manager: new Set(['sell', 'orders', 'items', 'customers', 'back-office', 'settings', 'checkout']),
 };
 ROLE_ALLOWED.owner = ROLE_ALLOWED.manager;   // the till's pages; the back office has its own page access
 ROLE_ALLOWED.stock = ROLE_ALLOWED.cashier;
+const VIEW_SWITCH = { reports: 'dayTotals', shift: 'shift' };   // pages a Staff & access switch opens
 function canAccess(view) {
-  if (view === 'reports') return roleCan(state.role, 'dayTotals');   // whoever may "See the day's totals" (Staff & access)
+  if (VIEW_SWITCH[view]) return roleCan(state.role, VIEW_SWITCH[view]);
   const allowed = ROLE_ALLOWED[state.role] || ROLE_ALLOWED.cashier;   // an unknown role gets the least
   return allowed.has(view);
 }
@@ -797,6 +806,7 @@ function switchView(view) {
   }
   // An exchange holds Sell and the checkout until it is rung or ✕'d (startExchange / leaveExchange).
   if (state.exchange && view !== 'sell' && view !== 'checkout') { showToast('Finish or cancel the exchange first'); return; }
+  closeShiftSheet();   // leaving mid-count throws the count away
   const fromCheckout = state.view === 'checkout';
   if (view !== 'orders' && state.ordersCustomer) ordersFor('');
   state.view = view;
