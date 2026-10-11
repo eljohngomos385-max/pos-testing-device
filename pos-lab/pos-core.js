@@ -512,8 +512,8 @@ function normalizePayment(payment = {}) {
 
 const KNOWN_METHOD_LABELS = { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'Account', split: 'Split payment', unpaid: 'Not completed' };
 
-// `split` { pair: [a, b], first }: two methods (owner 2026-10-09) -- a takes `first`, b the rest, each leg built as a
-// one-method sale (GCash stays 'other' + 'GCash'); only a cash leg carries what was handed over (tendered, change).
+// `split` { legs: [{ key, amount, given?, change?, ref? }] }: one row per part (owner 2026-10-10), each built as a
+// one-method sale (GCash stays 'other' + 'GCash'); a cash part carries what was handed over, the others their ref no.
 // No `split` = the old call: cash now (tendered), the rest on account -- old rows rebuild exactly as they were.
 function buildOrderPayments({ status, paymentMethod, total, tendered = 0, change = 0, split = null }) {
   if (status === 'saved' || paymentMethod === 'unpaid') {
@@ -523,10 +523,10 @@ function buildOrderPayments({ status, paymentMethod, total, tendered = 0, change
     return [{ method: 'credit', label: 'Account', amount: moneyValue(total), tendered: 0, change: 0, ref: '' }];
   }
   if (paymentMethod === 'split') {
-    const { pair: [a, b] = ['cash', 'credit'], first = tendered } = split || {};
-    const fa = Math.min(moneyValue(first), moneyValue(total));
-    const leg = (m, amount) => buildOrderPayments({ status, paymentMethod: m, total: amount, ...(m === 'cash' ? { tendered, change } : { tendered: amount }) })[0];
-    return [leg(a, fa), leg(b, moneyValue(total - fa))].filter((p, i) => !i || p.amount > 0);
+    const leg = (m, amount, x) => buildOrderPayments({ status, paymentMethod: m, total: amount, tendered: amount, ...x })[0];
+    if (split?.legs) return split.legs.map(l => ({ ...leg(l.key, l.amount, { tendered: l.given ?? l.amount, change: l.change || 0 }), ref: l.ref || '' }));
+    const fa = Math.min(moneyValue(tendered), moneyValue(total));
+    return [leg('cash', fa, { tendered, change }), leg('credit', moneyValue(total - fa))].filter((p, i) => !i || p.amount > 0);
   }
   // Only cash lands in the drawer. GCash, QR and custom names ("Maya") arrive here as their own
   // method string and used to fall through to a cash row -- so every one of them printed CASH on

@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=257" />
+  <link rel="stylesheet" href="styles.css?v=258" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -425,9 +425,10 @@
             <div class="co-stage">
               <div class="co-col" id="checkoutSteps">
                 <div class="co-hero num" id="checkoutTotalDue">₱0.00</div>
+                <p class="sp-paid" id="spPaid" hidden></p>
                 <!-- Tiles are built from the back office's Payments settings on every render -->
-                <div class="co-step" data-step="method"><div class="co-tiles" id="checkoutMethods"></div></div>
-                <!-- Cash (and the amounts of a two-method split): a tap on an amount finishes the sale; Custom swaps the row for the
+                <div class="co-step" data-step="method"><p class="co-ask" id="spAsk" hidden></p><div class="co-tiles" id="checkoutMethods"></div></div>
+                <!-- Cash (and each part of a split): a tap on an amount finishes the sale; Custom swaps the row for the
                      figures (left) and our keypad (right), cash-custom-lab.html take C -->
                 <div class="co-step" data-step="cash" hidden>
                   <div class="co-tiles" id="checkoutQuick"></div>
@@ -436,9 +437,9 @@
                     <div class="co-read">
                       <div data-field="amt"><span class="co-lbl" id="checkoutCashLbl">Cash received</span><b class="co-fig num" id="checkoutCash"></b></div>
                       <div><span class="co-lbl" id="checkoutChangeLbl">Change</span><b class="co-fig num" id="checkoutChange" aria-live="polite"></b></div>
-                      <!-- Two methods with Cash: what they hand over; a tap here (or on the amount above) picks what the keys type -->
-                      <div data-field="given" id="checkoutGivenRow" hidden><span class="co-lbl" id="checkoutGivenLbl">Given</span><b class="co-fig num" id="checkoutGiven"></b></div>
                     </div>
+                    <!-- Split: a GCash / QR / store method's reference no. (letters too), typed on the device's keyboard -->
+                    <label class="sp-box" id="spRefBox" hidden><input id="spRef" type="text" maxlength="30" autocomplete="off" autocapitalize="characters" spellcheck="false" /></label>
                     <div id="checkoutKeys"></div>
                     <button type="button" class="co-btn primary" id="checkoutCompleteBtn" data-complete disabled>Complete sale</button>
                   </div>
@@ -777,15 +778,15 @@
   <script src="bo-model.js?v=128"></script>
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=47"></script>
-  <script src="pos-core.js?v=23"></script>
+  <script src="pos-core.js?v=24"></script>
   <script src="pos-sell.js?v=53"></script>
-  <script src="pos-checkout.js?v=14"></script>
+  <script src="pos-checkout.js?v=15"></script>
   <script src="pos-orders.js?v=22"></script>
   <script src="pos-items.js?v=23"></script>
   <script src="pos-customers.js?v=20"></script>
   <script src="pos-settings.js?v=8"></script>
   <script src="pos-pin.js?v=7"></script>
   <script src="pos-shift.js?v=18"></script>
-  <script src="app.js?v=151"></script>
+  <script src="app.js?v=152"></script>
 </body>
 </html>

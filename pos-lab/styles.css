@@ -3666,12 +3666,6 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-big { font-size: 20px; font-weight: 600; letter-spacing: -.02em; line-height: 1.15; }
 .co-tile small { color: var(--ink-tertiary); font-size: 12.5px; font-weight: 400; }
 .co-tile small.up { color: var(--ok); font-weight: 500; }
-/* two methods: a picked tile is inverted, like any active member of a group */
-.co .co-tile.on, .co .co-tile.on .co-ic { background: var(--accent); color: var(--accent-ink); }
-/* both picked: the tiles fold into one short row of names over the amounts, so the keypad fits under them */
-#checkoutMethods.two { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); max-width: 720px; }
-#checkoutMethods.two .co-tile { height: 48px; min-height: 0; padding: 0 8px; justify-content: center; }
-#checkoutMethods.two .co-ic { display: none; }
 
 /* cash: the quick amounts are one line; Custom swaps it for the figures + Complete (left) and our keypad (right) */
 #checkoutQuick { max-width: none; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); }
@@ -3691,13 +3685,31 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-keyin > .co-btn { grid-area: go; }
 /* Each figure gets its own row, label above, and shrinks to fit (Inter's tabular digits ~.6em) */
 .co-read { grid-area: read; container-type: inline-size; display: grid; grid-auto-rows: 1fr; min-width: 0; }
-.co-keyin.split [data-field] { cursor: pointer; }
-.co-keyin.split { margin-top: 12px; }
 .co-read > div { display: grid; align-content: center; gap: 2px; padding: 8px 0; }
 .co-read > div + div { border-top: 1px solid var(--line); }
 .co-lbl { color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
 .co-fig { display: block; font-size: min(38px, 100cqi / (var(--n) * .6)); font-weight: 600; letter-spacing: -.03em; line-height: 1.15; white-space: nowrap; }
 .co-fig.ph { color: var(--ink-quaternary); }
+/* Split (.co.sp): "Split payment" in the header, the parts paid under the total, the figure in a box, the keys right
+   under; the reference no. is a text box in place of the figures and keys. The total stays where the checkout puts it. */
+.sp-paid { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 10px; margin: calc(-1 * clamp(8px, 2vh, 20px)) 0 clamp(14px, 3vh, 24px);
+           color: var(--ink-tertiary); font-size: 14px; font-weight: 500; }
+.co.sp .co-read { grid-auto-rows: auto; align-content: start; gap: 8px; }
+.co.sp .co-read > div, .sp-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 60px; padding: 0 18px;
+           border-radius: 14px; background: var(--tile); }
+.sp-box { grid-area: read; }
+.co.sp .co-read > div + div { border-top: 0; }
+.co.sp .co-read > [data-field="amt"], .sp-box { box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.co.sp .co-lbl { color: var(--ink-secondary); font-size: 15px; font-weight: 500; white-space: nowrap; }
+.co.sp .co-fig { font-size: 22px; letter-spacing: -.02em; }
+.sp-box input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; color: var(--ink); font-size: 17px; font-weight: 600; }
+.sp-box input::placeholder { color: var(--ink-quaternary); font-weight: 500; }
+.co.sp .co-top { position: relative; }
+.co.sp .co-top::after { content: 'Split payment'; position: absolute; left: 50%; bottom: 0; translate: -50% 0; line-height: 44px;
+           color: var(--ink); font-size: 15px; font-weight: 600; white-space: nowrap; animation: co-in .3s var(--co-ease) both; }
+.co-keyin.sp-txt { grid-template: "read" "go" / minmax(0, 1fr); max-width: 440px; }
+.sp-paid b { color: var(--ink-secondary); font-weight: 600; }
+.sp-paid span { color: var(--ink-quaternary); }
 .co-fig.up { color: var(--ok); }
 .co-fig.down { color: var(--danger); }
 .co-caret { display: inline-block; width: 2px; height: .9em; margin-left: 2px; background: var(--ink); vertical-align: -.08em; animation: co-blink 1.1s steps(1) infinite; }

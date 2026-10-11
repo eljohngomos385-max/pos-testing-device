@@ -715,23 +715,16 @@ function attachEvents() {
   $('#checkoutMethods')?.addEventListener('click', (e) => {
     const card = e.target.closest('[data-co-method]');
     if (!card) return;
-    if (card.dataset.method === 'split') setSplitPicks([]);
-    if (state.paymentMethod !== 'split' || !state.paymentMethodChosen) return selectPayMethod(card.dataset.method, card.dataset.label || '');
-    // Two methods: a tap lights a tile, a lit one tapped again drops it; a third pick replaces the older one.
-    const k = card.dataset.label || card.dataset.method, picks = state.splitPay.picks;
-    setSplitPicks(picks.includes(k) ? picks.filter(m => m !== k) : [...picks, k].slice(-2));
-    showPayStep();
-  });
-  // Two methods: the amount or Given, whichever row was tapped, takes the keys.
-  $('#checkoutKeyIn')?.addEventListener('click', (e) => {
-    const row = e.target.closest('[data-field]');
-    if (row && state.paymentMethod === 'split') { state.splitPay.field = row.dataset.field; updateChange(); }
+    if (SP) { SP.leg = { key: card.dataset.label || card.dataset.method, label: card.textContent.trim() }; return spAmt(); }   // split: this part's method
+    if (card.dataset.method === 'split') return spOpen();
+    selectPayMethod(card.dataset.method, card.dataset.label || '');
   });
 
   // Back: a method's detail -> the method tiles; the tiles -> the cart.
   $('#checkoutCancelBtn')?.addEventListener('click', () => {
     if ($('#checkoutApp').classList.contains('is-done')) return;
-    if (state.paymentMethod === 'cash' && !$('#checkoutKeyIn').hidden) showCashKeys(false);   // the keys -> the quick amounts
+    if (SP) spBack();   // split: one step back, the last part comes back to be typed again
+    else if (state.paymentMethod === 'cash' && !$('#checkoutKeyIn').hidden) showCashKeys(false);   // the keys -> the quick amounts
     else if (state.paymentMethodChosen) {
       state.paymentMethodChosen = false;
       state.paymentMethod = 'cash';
@@ -746,29 +739,34 @@ function attachEvents() {
   $('#checkoutCustBtn')?.addEventListener('click', openCustomerModal);
   // Our keypad, never the tablet's: taps, or a desk keyboard's digits / . / Backspace / Enter.
   const cashKey = (k) => {
-    const s = state.paymentMethod === 'split' && state.splitPay, t = $('#checkoutTender');
-    if (s?.field === 'given') s.given = esPress(s.given, k, true, CASH_MAX); else t.value = esPress(t.value, k, true, CASH_MAX);
+    if (SP) return spKey(k);
+    const t = $('#checkoutTender');
+    t.value = esPress(t.value, k, true, CASH_MAX);
     updateChange();
   };
   $('#checkoutKeys')?.addEventListener('click', (e) => { const b = e.target.closest('[data-sk]'); if (b) cashKey(b.dataset.sk); });
   document.addEventListener('keydown', (e) => {
-    if (state.view !== 'checkout' || $('#checkoutKeyIn').hidden || $('[data-step="cash"]').hidden || $('#checkoutApp').classList.contains('is-done') || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (state.view !== 'checkout' || e.target.id === 'spRef' || $('#checkoutKeyIn').hidden || $('[data-step="cash"]').hidden || $('#checkoutApp').classList.contains('is-done') || e.ctrlKey || e.metaKey || e.altKey) return;
     if (!/^[\d.]$|^Backspace$|^Enter$/.test(e.key)) return;
     e.preventDefault();   // Enter on a focused key would press it again
-    if (e.key === 'Enter') { if (!$('#checkoutCompleteBtn').disabled) completeSale(); }
+    if (e.key === 'Enter') { if (!$('#checkoutCompleteBtn').disabled) (SP ? spNext : completeSale)(); }
     else cashKey(e.key === 'Backspace' ? 'del' : e.key);
   });
   $('#otherMethodInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') completeSale(); });
+  // Split's reference no.: the device's own keyboard types it; Enter is Next
+  $('#spRef')?.addEventListener('input', (e) => { if (SP) SP.raw = e.target.value; });
+  $('#spRef')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && SP) { e.preventDefault(); spNext(); } });
   // A cash amount is the decision: the tap finishes the sale.
   $('#checkoutQuick')?.addEventListener('click', (e) => {
-    if (e.target.closest('[data-co-custom]')) return showCashKeys(true);
+    if (e.target.closest('[data-co-custom]')) return SP ? spGo('typed') : showCashKeys(true);
     const b = e.target.closest('[data-co-cash]');
     if (!b) return;
+    if (SP) { Object.assign(SP.leg, { given: moneyValue(+b.dataset.coCash), change: moneyValue(+b.dataset.coCash - SP.leg.amount) }); return spFinish(); }   // split: the cash that pays the rest
     $('#checkoutTender').value = b.dataset.coCash;
     updateChange();
     completeSale();
   });
-  $('#checkoutSteps')?.addEventListener('click', (e) => { if (e.target.closest('[data-complete]')) completeSale(); });
+  $('#checkoutSteps')?.addEventListener('click', (e) => { if (e.target.closest('[data-complete]')) (SP ? spNext : completeSale)(); });
   window.addEventListener('resize', () => { fitCheckout(); centreCheckout(); });
   $('#successPrintBtn')?.addEventListener('click', printSuccessReceipt);
   $('#successNewSaleBtn')?.addEventListener('click', startNewSaleFromSuccess);
