@@ -7704,6 +7704,13 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
   .lv .page .head { flex-wrap: wrap; }
   .lv .kinds { order: 1; flex-basis: 100%; }   /* under the search, the width of the screen */
   .lv .kinds button { flex: 1; padding: 0 8px; }
+  /* X's tabs -- bare words, a line under the one you're on (owner 2026-10-13: the box takes too much room) */
+  /* the hairline runs to the screen's edges (out through the page's 12px), the words stay in line with the search */
+  .lv .kinds { flex-basis: calc(100% + 24px); margin: 0 -12px; justify-content: space-between; height: 34px; padding: 0 16px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; }
+  .lv .kinds button { flex: none; border-radius: 0; color: var(--ink-tertiary); font-weight: 600; }
+  .lv .kinds button.cur { color: var(--ink); background: linear-gradient(var(--ink), var(--ink)) bottom / 100% 3px no-repeat; }
+  .lv .kinds.slid button.cur { background: none; }
+  .lv .kinds.slid::before { top: auto; bottom: -1px; height: 3px; width: calc(var(--w) + 4px); transform: translateX(calc(var(--x) - 2px)); border-radius: 99px; background: var(--ink); }
   .lv .cols { grid-template-columns: minmax(0,1fr) auto 64px; }
   .lv .cols > :nth-child(2) { display: none; }
   .lv .page .row .from { display: inline; }

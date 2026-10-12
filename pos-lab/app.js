@@ -366,6 +366,17 @@ function attachEvents() {
   const openKind = id => (itemsKind === 'items' ? openItemEditor(id) : openKindEditor(itemsKind, id));
   $('#itemsKinds')?.addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (b) setItemsKind(b.dataset.kind); });
   new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#itemsKinds'));   // tabs moved: the pill re-places on the next switch
+  // swipe the list left / right for the next / previous tab (the Reports swipe); not in Quick stock, which hides the tabs
+  let ivX = null;
+  const ivList = $('.view-items .list');
+  ivList?.addEventListener('touchstart', (e) => { ivX = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
+  ivList?.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0], dx = ivX ? t.clientX - ivX[0] : 0, dy = ivX ? t.clientY - ivX[1] : 0;
+    ivX = null;
+    if (QS.on || Math.abs(dx) < 50 || Math.abs(dx) < 2 * Math.abs(dy)) return;
+    const kinds = [...$('#itemsKinds').querySelectorAll('[data-kind]')].map(b => b.dataset.kind), next = kinds[kinds.indexOf(itemsKind) + (dx < 0 ? 1 : -1)];
+    if (next) setItemsKind(next);
+  });
   $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) (QS.on ? qsPickRow : openKind)(row.dataset.id); });
   // Items +: Add item / Quick stock (pos-stock.js); the other kinds add straight away
   $('#itemsAdd')?.addEventListener('click', (e) => (itemsKind !== 'items' ? openKind(null) : openMenu(e.currentTarget, [
