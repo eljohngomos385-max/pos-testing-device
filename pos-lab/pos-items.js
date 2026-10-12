@@ -70,6 +70,7 @@ function renderItems() {
       <span class="num ${itemStk(it)}">${itemQty(onHandOf(it.members))} ${escapeHtml(it.unit)}</span></button>`;
   }).join('') || '<div class="empty"><b>No items</b><span>Nothing matches this search or filter.</span></div>';
   $('#itemsFilter')?.classList.toggle('on', Object.keys(ITEMS_FILTER_DEF).some(k => itemsFilter[k] !== ITEMS_FILTER_DEF[k]));
+  qsMarkRows(); qsTickbar();   // quick stock (pos-stock.js): the dots, the phone's Review bar
 }
 
 // The editor: a working copy E of the item. Nothing here writes to the catalog.

@@ -366,8 +366,12 @@ function attachEvents() {
   const openKind = id => (itemsKind === 'items' ? openItemEditor(id) : openKindEditor(itemsKind, id));
   $('#itemsKinds')?.addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (b) setItemsKind(b.dataset.kind); });
   new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#itemsKinds'));   // tabs moved: the pill re-places on the next switch
-  $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) openKind(row.dataset.id); });
-  $('#itemsAdd')?.addEventListener('click', () => openKind(null));
+  $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) (QS.on ? qsPickRow : openKind)(row.dataset.id); });
+  // Items +: Add item / Quick stock (pos-stock.js); the other kinds add straight away
+  $('#itemsAdd')?.addEventListener('click', (e) => (itemsKind !== 'items' ? openKind(null) : openMenu(e.currentTarget, [
+    { label: 'Add item', run: () => openItemEditor(null) },
+    { label: 'Quick stock', run: qsStart },
+  ], { w: 180, right: true })));
   $('#itemSave')?.addEventListener('click', () => (kindEdit ? saveKind() : saveItem()));
   const notYet = what => () => showToast(`${what} isn't connected yet`);
   $('#itemMore')?.addEventListener('click', (e) => openMenu(e.currentTarget, kindEdit
@@ -908,6 +912,7 @@ function init() {
   track('app_open');
   // ponytail: lab only. ?pins gives the demo staff real PINs (1111 owner, 2222 manager, 3333 and 4444 cashiers)
   if (new URLSearchParams(location.search).has('pins')) saveStaff(loadStaff().map((u, i) => ({ ...u, pin: String(i + 1).repeat(4) })));
+  initQuickStock();   // before the lock, so a resumed draft is under it
   if (tillPins()) lockTill();
   const openHashView = () => {
     const hash = (location.hash || '').replace('#', '').trim();
@@ -1014,6 +1019,8 @@ function init() {
     if (Math.abs(dx) > 50 && Math.abs(dx) > 2 * Math.abs(dy) && (dx > 0 || reportsView.back)) reportsStep(dx > 0 ? -1 : 1);
   });
   if (new URLSearchParams(location.search).has('demo-orders')) seedDemoOrders();
+  // ponytail: lab only. ?price-ask opens the ask-the-price screen on the first item to look at it; nothing is saved
+  if (new URLSearchParams(location.search).has('price-ask')) openEditSheet('price', state.products[0].id);
 }
 
 // ponytail: lab only. ?demo-orders rings example sales to the seeded customers through the real

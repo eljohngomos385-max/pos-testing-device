@@ -130,7 +130,7 @@ function applySizing() {
 }
 $('sidePct').oninput = applySizing;
 f.addEventListener('load', () => { phoneSafe(); applyTheme(); applySizing(); f.contentWindow.addEventListener('resize', () => requestAnimationFrame(applySizing)); });
-const page = new URLSearchParams(location.search).get('page');   // devices.html?page=quick-stock.html: another lab copy in the frame
+const page = new URLSearchParams(location.search).get('page');   // devices.html?page=x.html: another lab copy in the frame
 f.src = (/^[\w-]+\.html$/.test(page || '') ? page : 'index.html') + '?' + Date.now();   // the browser kept serving a stale index.html inside the frame; the files it loads carry ?v= already
 addEventListener('resize', fitDev);
 new ResizeObserver(() => { if (devKey === 'free') $('free').textContent = `Resizable · ${dev.offsetWidth}×${dev.offsetHeight}`; }).observe(dev);
