@@ -1,0 +1,72 @@
+/* Quick stock lab (quick-stock.html). The page is the item editor's (.lv .editor, .card.fc, .fr from styles.css). */
+
+/* the flow switcher: lab only */
+.qs-flow { position: fixed; z-index: 140; top: 2px; left: 50%; transform: translateX(-50%); height: 22px; padding: 0 10px; border: 1px solid var(--line-strong);
+           border-radius: 11px; background: var(--bg-soft); color: var(--ink-tertiary); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; opacity: .85; }
+.qs-flow:hover { color: var(--ink); opacity: 1; }
+
+/* a page over the app (B's Next, C's phone or full screen), or docked beside the Items list (C on a tablet); its own pv container
+   so the editor's phone rules follow its width */
+.qs-pg { position: fixed; z-index: 99; inset: 0; container: pv / size; background: var(--canvas, var(--bg)); color: var(--ink); font-size: 13px; line-height: 1.4; }
+.qs-pg[hidden] { display: none; }
+.qs-pg.dock { z-index: 20; left: auto; width: 400px; border-left: 1px solid var(--line); }
+body.qs-c .view-items { padding-right: 400px; }
+body.qs-c:has(#qs[hidden]) .view-items { padding-right: 0; }
+
+/* the title is the mode: tap it for the others (Shift's centred title, with the dropdown's arrows) */
+.qs-pg .fm-h { pointer-events: none; }
+.qs-mode { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: var(--bar-h); padding: 0 10px; border: 0; border-radius: var(--r-input);
+           background: none; color: inherit; font: inherit; pointer-events: auto; cursor: pointer; }
+.qs-mode:hover:not(:disabled) { background: var(--rl-hover); }
+.qs-mode:disabled { cursor: default; }
+.qs-mode span { overflow: hidden; text-overflow: ellipsis; }
+.qs-mode .ic { flex: none; width: 16px; height: 16px; color: var(--ink-tertiary); }
+.qs-mode:disabled .ic { display: none; }
+.qs-pg .act.primary:disabled { color: var(--ink-quaternary); }
+
+/* the blocks: an item's name above, one row per variant; the name dark, what it does to the shelf grey under it */
+.qs-list { display: grid; gap: 12px; }
+.qs-pg .qs-ln { min-height: 56px; padding-right: 2px; }
+.qs-pg .qs-ln > .lb { display: grid; min-width: 0; line-height: 1.3; }
+.qs-nm { overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
+.qs-ln small { color: var(--ink-tertiary); font-size: 12px; }
+.qs-pg .fc .fr.qs-ln .ctl { gap: 0; flex: none; }
+.qs-pm { flex: none; width: 30px; height: 36px; border: 0; border-radius: var(--r-input); background: none; color: var(--ink-secondary); font-size: 20px; line-height: 1; }
+.qs-pm:hover { background: var(--rl-hover); color: var(--ink); }
+.qs-pg .fc .fr .qs-amt.in { flex: none; width: 52px; height: 36px; padding: 0 6px; border-radius: var(--r-input); background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair);
+                     font-size: 15px; font-weight: 600; text-align: center; }
+.qs-pg .fc .fr .qs-amt.in:focus { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.qs-amt::placeholder { color: var(--ink-quaternary); font-weight: 400; }
+.qs-to { color: var(--ink-secondary); white-space: nowrap; }
+.qs-to b { color: var(--ink); font-weight: 600; }
+.qs-empty { margin: 8px 16px; color: var(--ink-tertiary); font-size: 13px; text-align: center; }
+
+
+/* B and C on the Items list: only items (no Categories / Modifiers / Discounts, no +); a row is ticked (B) or in the list (C) */
+body.qs-on:is(.qs-b, .qs-c) :is(#itemsAdd, #itemsKinds, .view-items .head [data-act="open-sidebar"]) { display: none; }
+.lv .qs-close { display: none; border: 0; background: none; box-shadow: none; color: var(--ink); }   /* the ☰'s place, bare like it */
+body.qs-on:is(.qs-b, .qs-c) .lv .qs-close { display: inline-flex; }
+.qs-close .ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.qs-pg.dock #qsBack { visibility: hidden; }   /* beside the list, the list's × closes */
+/* ...and no Price: picking is by name, and the count is what stock needs (owner 2026-10-13: less to read) */
+body.qs-on:is(.qs-b, .qs-c) .view-items .cols { grid-template-columns: minmax(0,1fr) 170px 110px; }
+body.qs-on:is(.qs-b, .qs-c) .view-items .cols > :nth-child(3) { display: none; }
+@container pv (max-width: 720px) { body.qs-on:is(.qs-b, .qs-c) .view-items .cols { grid-template-columns: minmax(0,1fr) 90px; } }
+#itemsRows .row.qs-tick .nm { position: relative; padding-left: 34px; }
+#itemsRows .row.qs-tick .nm::before { content: ''; position: absolute; left: 0; top: 50%; width: 20px; height: 20px; margin-top: -10px; border: 1.5px solid var(--ink-quaternary); border-radius: 6px; }
+#itemsRows .row.qs-in .nm::before { border-color: var(--accent); background: var(--accent); }
+#itemsRows .row.qs-in .nm::after { content: ''; position: absolute; left: 3px; top: 50%; width: 14px; height: 14px; margin-top: -7px; background: var(--accent-ink);   /* the tick takes the theme's ink */
+  --qs-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E");
+  -webkit-mask: var(--qs-tick) center / contain no-repeat; mask: var(--qs-tick) center / contain no-repeat; }
+body.qs-c #itemsRows .row.qs-tick .nm::before { border-radius: 50%; }   /* C: a dot says "in the list" */
+
+.qs-tickbar { position: fixed; z-index: 30; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; gap: 8px;
+              width: min(100% - 32px, 440px); }
+.qs-tickbar[hidden] { display: none; }
+.qs-tickbar button { height: var(--bar-h); border: 1px solid var(--line-strong); border-radius: calc(var(--rl-r) + 2px); background: var(--bg-soft); color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.qs-tickbar .qs-all { flex: none; padding: 0 16px; }
+.qs-tickbar .qs-all[hidden] { display: none; }
+.qs-tickbar .qs-next { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.qs-tickbar .qs-next:disabled { border-color: var(--line-strong); background: var(--bg-soft); color: var(--ink-tertiary); }
+.qs-tickbar .qs-next span + span::before { content: '·'; margin-right: 8px; }
+@media (max-width: 720px) { .qs-tickbar { bottom: var(--ph-b); } }
