@@ -28,7 +28,7 @@ const STORAGE_CART = 'hwpos.cart';   // this till's open sale (keepCart, pos-sel
 const TILE_TEXT_SIZES = ['sm', 'md', 'lg', 'xl'];
 const STORAGE_THEME = storeKey('theme');
 
-const ITEMS_PER_PAGE = { sm: 30, md: 20, lg: 12 };
+const ITEMS_PER_PAGE = { sm: 30, md: 20, wide: 20, lg: 12 };   // wide: the phone's 2 across at Medium's height; a tablet shows it as Medium
 const ORDER_SCHEMA_VERSION = SalesMath.ORDER_VERSION;   // 2: 'walkin' is the counter sale (SalesMath.readOrder)
 const ORDER_FORMAT_KEY = 'hwpos.order.v1';
 

@@ -4,7 +4,9 @@
 // setter each one already had. A pick runs the setter, then the page redraws from state.
 const savePrinting = (patch) => { state.settings.printing = { ...printerConfig(), ...patch }; saveSettings(); };
 const SETTING_PICKS = {
-  tileSize: { opts: [['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large']], now: () => state.tileSize || 'md', set: setTileSize },
+  // Wide is the phone's (2 across at Medium's height, owner 2026-10-13); a tablet runs it as Medium (getSellGridProfile), so it reads Medium there
+  tileSize: { get opts() { return [['sm', 'Small'], ['md', 'Medium'], ...(innerWidth > 720 ? [] : [['wide', 'Wide']]), ['lg', 'Large']]; },
+    now: () => (state.tileSize === 'wide' && innerWidth > 720 ? 'md' : state.tileSize) || 'md', set: setTileSize },
   tileText: { opts: [['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large'], ['xl', 'Extra large']], now: () => state.tileText || 'md', set: setTileText },
   tileShow: { opts: [['price', 'Price'], ['stock', 'Stock'], ['name', 'Name only']], now: () => state.tileStock ? 'stock' : state.showPrice ? 'price' : 'name', set: setTileShow },
   theme: { opts: [['dark', 'Dark'], ['light', 'Light']], now: () => state.theme || 'dark', set: applyTheme },

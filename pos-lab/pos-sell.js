@@ -60,10 +60,12 @@ function getSellGridProfile() {
     row.style.setProperty('--cat-w', `${columns * size + (columns - 1) * gap + 2 * catX}px`);
     return { columns, rows };
   }
-  // phone: Loyverse-style square tiles, 3 across (S 4, L 2); as many rows as keep them nearest square
-  const columns = { sm: 4, md: 3, lg: 2 }[state.tileSize] || 3, gap = 8, cs = getComputedStyle(catalog);
+  // phone: Loyverse-style square tiles, 3 across (S 4, L 2); as many rows as keep them nearest square.
+  // Wide: 2 across, rows as Medium's, so the tiles are Medium's height and wider (owner 2026-10-13)
+  const columns = { sm: 4, md: 3, wide: 2, lg: 2 }[state.tileSize] || 3, gap = 8, cs = getComputedStyle(catalog);
+  const sq = state.tileSize === 'wide' ? 3 : columns;
   const h = catalog.clientHeight - $('#catalogSearchRow').offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - parseFloat(cs.rowGap);
-  const size = (width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - gap * (columns - 1)) / columns;
+  const size = (width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - gap * (sq - 1)) / sq;
   return { columns, rows: Math.max(2, Math.round((h + gap) / (size + gap))) };
 }
 
