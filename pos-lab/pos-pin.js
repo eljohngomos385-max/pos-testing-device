@@ -198,6 +198,6 @@ function bindPinPad() {
     e.stopPropagation();
     pinKey(e.key === 'Backspace' ? 'del' : e.key === 'Enter' ? 'go' : /\d/.test(e.key) ? e.key : 'scan');
   }, true);
-  // Switch person: the name in the sidebar locks the till for the next one (only once PINs exist).
-  $('.user-row')?.addEventListener('click', () => { if (tillPins()) lockTill(); });
+  // Switch person: the name in the sidebar locks the till for the next one; with no PIN yet there's no lock screen to go to, so it says so
+  $('.user-row')?.addEventListener('click', () => tillPins() ? lockTill() : showToast('No PIN set up yet, so this POS can’t lock'));
 }

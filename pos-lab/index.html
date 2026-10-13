@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=271" />
+  <link rel="stylesheet" href="styles.css?v=272" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -115,12 +115,13 @@
       </nav>
 
       <div class="side-footer">
-        <div class="user-row">
-          <div class="user-meta">
-            <div class="user-name">El John</div>
-            <div class="user-sub">Staff</div>
-          </div>
-        </div>
+        <button type="button" class="user-row" title="Lock POS">
+          <span class="user-meta">
+            <span class="user-name">El John</span>
+            <span class="user-sub">Staff</span>
+          </span>
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        </button>
         <div class="store-row">
           <div class="user-store"><span>EJ Hardware</span>&nbsp;· POS 1</div>
           <button class="sync-mark" id="syncMark" type="button"></button>
@@ -785,7 +786,7 @@
   <script src="pos-items.js?v=25"></script>
   <script src="pos-customers.js?v=21"></script>
   <script src="pos-settings.js?v=10"></script>
-  <script src="pos-pin.js?v=8"></script>
+  <script src="pos-pin.js?v=9"></script>
   <script src="pos-shift.js?v=20"></script>
   <script src="pos-stock.js?v=4"></script>
   <script src="app.js?v=161"></script>

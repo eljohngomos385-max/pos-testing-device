@@ -228,7 +228,8 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   border-radius: var(--es-r);
   background: var(--surface-2);
 }
-:where(#app:not(.bo-app)) .user-row { padding-block: 12px; cursor: pointer; }
+:where(#app:not(.bo-app)) .user-row { width: 100%; padding-block: 12px; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }   /* a button: the tap locks the POS (pos-pin.js) */
+:where(#app:not(.bo-app)) .user-row .ic { width: 18px; height: 18px; margin-right: 11px; flex-shrink: 0; fill: none; stroke: var(--ink-tertiary); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }   /* 11 = centred where the sync cloud's 40px box is */
 :where(#app:not(.bo-app)) .store-row { height: 56px; }
 :where(#app:not(.bo-app)) .user-meta { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; }
 :where(#app:not(.bo-app)) .sync-mark { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; color: var(--ink-tertiary); }
