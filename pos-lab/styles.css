@@ -3491,6 +3491,10 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-body.fill { grid-template-rows: minmax(0, 1fr); align-items: stretch; overflow: hidden; padding-top: max(24px, calc(24cqh - 56px)); }   /* higher than 40%: the list needs the room (owner 2026-10-07: "sitting lower") */
 .es-body.fill .es-col, .es-body.fill .es-list { min-height: 0; }
 .es-body.fill > .es-keys { height: auto; align-self: center; }
+/* the asked price (an item with no set price): the number over its keys, in the upper middle, tablet and phone alike (owner 2026-10-13) */
+.esheet .es-body.ask { grid-auto-flow: row; grid-template-columns: minmax(0, 360px); row-gap: 24px; margin-top: 0; padding-top: max(56px, calc(42cqh - 180px)); }
+.esheet .es-body.ask > .es-keys { height: auto; }
+.esheet .es-body.ask .es-col { animation: none; }
 .es-scroll { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 /* the foot: a quiet one left, Done / Apply right */
 .es-ft { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; border-top: 1px solid var(--line); }

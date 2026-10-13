@@ -373,7 +373,10 @@ function loadFolders() {
 }
 // On hand = the movement log's sum (bo-model withStock).
 function loadProducts() {
-  return withStock(readJsonStorage(STORAGE_PRODUCTS, null) || PRODUCTS.map(p => ({ ...p })));
+  const saved = readJsonStorage(STORAGE_PRODUCTS, null);
+  // ponytail: lab only -- the seed's no-price item on a POS whose catalog was saved before it (2026-10-13); drop with the seed
+  if (saved && !saved.some(p => p.id === 'p900')) saved.unshift({ ...PRODUCTS[0] });
+  return withStock(saved || PRODUCTS.map(p => ({ ...p })));
 }
 // The one catalog write both apps share (bo-model saveCatalog), so price history logs the same way.
 function saveProducts() {

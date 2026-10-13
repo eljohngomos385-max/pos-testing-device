@@ -17,6 +17,10 @@ const SEED_FOLDERS = [
 
 const PRODUCTS = [
   // ---- Plumbing ----
+  // no price: asked at the sale (askedPrice), the job decides it; a service, so no count
+  { id: 'p900', sku: 'SVC-PIPE-CUT', barcode: '', name: 'Pipe Cutting & Threading', brand: '', folder: 'plumbing', unit: 'pc',
+    price: null, cost: 0, stock: 0, reorderPoint: 0, trackStock: false,
+    aliases: ['cut pipe', 'thread', 'putol tubo'] },
   { id: 'p001', sku: 'PVC-ELB-12', barcode: '4801234500011', name: 'PVC Elbow 1/2"', brand: 'Atlanta', folder: 'plumbing', unit: 'pc',
     price: 12.00, cost: 7.50, stock: 240, reorderPoint: 50,
     aliases: ['elbow half', '1/2 elbow', 'half elbow', 'pvc elbow'] },

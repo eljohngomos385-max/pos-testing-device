@@ -964,7 +964,7 @@ function drawEditSheet() {
   const top = card.querySelector('.es-scroll')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
   card.innerHTML = esFrame(head, rows, side, left + (o.kind === 'price' ? `<button type="button" class="es-ink" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
     : o.f ? '<button type="button" class="es-ink" data-apply>Apply</button>' : '<button type="button" class="es-ink" data-close>Done</button>'),
-  `${o.kind === 'rd' ? ' fill' : ''}${o.anim === true ? ' in' : o.anim === 'out' ? ' out' : ''}`);
+  `${o.kind === 'rd' ? ' fill' : o.kind === 'price' ? ' ask' : ''}${o.anim === true ? ' in' : o.anim === 'out' ? ' out' : ''}`);
   const list = card.querySelector('.es-scroll');
   if (list && o.opened) list.querySelector('.pick')?.scrollIntoView({ block: 'nearest' });   // just opened: the one on the sale in view
   else if (list) list.scrollTop = top;
