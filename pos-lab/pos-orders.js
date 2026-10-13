@@ -942,7 +942,7 @@ function confirmExchange() {
     danger: false, onConfirm: () => exchangeOrder(orderId, state.cart, 'Exchange', '', picks) });
   // The tenders the checkout shows (Manage -> Payments), with the one they paid on even if hidden since.
   const pay = state.settings.payments || {}, off = new Set(pay.hidden || []), was = SalesMath.saleTender(x.o);
-  const keys = [...new Set([...PAY_BUILTINS.filter(m => m === 'cash' || !off.has(m)), ...(pay.custom || []), was])];
+  const keys = [...new Set([...PAY_BUILTINS.filter(m => m === 'cash' || !off.has(m)), ...payCustomOn(), was])];
   showConfirm({ title: `Hand back ${peso(-x.net)}`, okText: `Hand back ${peso(-x.net)}`, danger: false,
     html: `<label class="pf"><span class="lb">Hand back with</span><select class="text-input" id="xbMethod">${keys.map(k =>
       `<option value="${escapeHtml(k)}"${k === was ? ' selected' : ''}>${escapeHtml(SalesMath.tenderLabel(k))}</option>`).join('')}</select></label>`,

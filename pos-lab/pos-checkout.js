@@ -76,7 +76,7 @@ function applyPayMethods(canCharge) {
   const needsAccount = m => m === 'credit' || m === 'split';
   // Split is one part per method, Account (pay later) one of them; an exchange offers neither.
   const shown = PAY_TILES.filter(([m]) => m === 'cash' || (!off.has(m) && (m === 'split' ? !state.exchange : canCharge || m !== 'credit')));
-  const custom = (pay.custom || []).map(name => ['other', name, CUSTOM_PAY_ICON, name]);
+  const custom = payCustomOn().map(name => ['other', name, CUSTOM_PAY_ICON, name]);
   const at = shown.findIndex(([m]) => needsAccount(m));
   const tiles = at < 0 ? [...shown, ...custom] : [...shown.slice(0, at), ...custom, ...shown.slice(at)];
   grid.innerHTML = tiles.map(([m, label, icon, name]) =>

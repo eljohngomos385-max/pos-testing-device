@@ -186,6 +186,8 @@ const barcodeScanner = {
 
 // ---------- Helpers ----------
 const peso = (n) => SalesMath.formatMoney(n, state.settings?.store?.currency);
+// The store's own payment names that are on: Settings › Payment types switches one off by putting its name in hidden, as a built-in's kind
+const payCustomOn = () => { const p = state.settings.payments || {}, off = new Set(p.hidden || []); return (p.custom || []).filter(n => !off.has(n)); };
 // The till's tax setup, for SalesMath.orderTotals ("VAT registered" off = no tax). The cart's SC/PWD: cartTotals.
 const taxOpts = () => SalesMath.taxOpts(state.settings);
 // "VAT (12% incl.)" / "Tax (8%)": the store's tax name and rate.

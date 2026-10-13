@@ -85,7 +85,7 @@ function openPaySheet(btn, c) {
   const number = new Map(state.orders.map(o => [o.id, o.number]));
   const pay = state.settings.payments || {}, off = new Set(pay.hidden || []);
   const methods = PAY_BUILTINS.filter(m => m === 'cash' || !off.has(m)).map(m => [m, SalesMath.tenderLabel(m)])
-    .concat((pay.custom || []).map(n => [n, n]), [['other', SalesMath.tenderLabel('other')]]);
+    .concat(payCustomOn().map(n => [n, n]), [['other', SalesMath.tenderLabel('other')]]);
   const veil = document.createElement('div');
   veil.className = 'rail-veil';
   veil.innerHTML = `<form class="pay-sheet" role="dialog" aria-label="Record payment" novalidate>

@@ -80,6 +80,10 @@ function renderPosSettings(printer = true) {
   if (btRow) btRow.hidden = p.driver !== 'bluetooth';
   const btStatus = $('#posBtStatus');
   if (btStatus) btStatus.textContent = p.btName ? 'Paired: ' + p.btName : 'Not paired';
+  const ptNow = $('#posPayTypesNow');
+  if (ptNow) ptNow.textContent = `${payTypesOn()} on`;
+  const acct = $('#posAcctEmail');
+  if (acct) acct.textContent = loadStaff().find(u => u.role === 'owner')?.email || 'Account';
   const churnInput = $('#posChurnDays');
   if (churnInput) churnInput.value = state.settings.churnThresholdDays || 30;
   const tz = $('#posTimeZone');
@@ -90,6 +94,73 @@ function renderPosSettings(printer = true) {
       .map(z => `<option value="${escapeHtml(z)}">${escapeHtml(z.replace(/_/g, ' '))}</option>`).join('');
     tz.value = zone;
   }
+}
+
+// Settings › Payment types (owner 2026-10-13): its own page. Each type's switch says if the checkout shows it, and the store
+// adds its own names. The same { hidden, custom } as Back office › Payments; one of your own switched off goes in hidden too.
+// ponytail: no manager PIN to change these, and no rename (delete and add again); add both if a store asks.
+const PAY_TYPES = [['cash', 'Cash', 'Always on. The cash drawer counts it.'], ['gcash', 'GCash', ''], ['qr', 'QR', 'Any QR wallet'],
+  ['other', 'Other', 'Staff type the name at checkout'], ['credit', 'Account', 'Pay later. Shows once a customer is picked.'], ['split', 'Split', 'Part one way, the rest another']];
+const payTypes = () => ({ hidden: [], custom: [], ...state.settings.payments });
+const payTypesOn = () => { const { hidden, custom } = payTypes(); return [...PAY_TYPES.map(t => t[0]), ...custom].filter(k => k === 'cash' || !hidden.includes(k)).length; };
+function openPayTypes(open) {
+  $('#settingsPage').hidden = open;
+  $('#payTypesPage').hidden = !open;
+  if (open) renderPayTypes(); else renderPosSettings(false);
+}
+function renderPayTypes() {
+  const { hidden, custom } = payTypes();
+  // the label is for= its switch: without it a tap on the name went to the row's first control, a custom type's Delete
+  const row = (key, label, note, mine) => `<label class="fr" for="pt-${escapeHtml(key)}"><span class="lb">${escapeHtml(label)}${note ? `<small>${escapeHtml(note)}</small>` : ''}</span><span class="v">${mine
+    ? `<button type="button" class="act icon" data-pt-del="${escapeHtml(key)}" aria-label="Delete ${escapeHtml(label)}" title="Delete"><svg class="ic" viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg></button>` : ''}<input type="checkbox" class="sw" id="pt-${escapeHtml(key)}" data-pt="${escapeHtml(key)}" aria-label="Show ${escapeHtml(label)} at checkout"${key === 'cash' || !hidden.includes(key) ? ' checked' : ''}${key === 'cash' ? ' disabled' : ''}></span></label>`;
+  $('#payTypesList').innerHTML = PAY_TYPES.map(([k, l, n]) => row(k, l, n)).join('') + custom.map(n => row(n, n, '', true)).join('')
+    + '<button type="button" class="fr add" data-pt-add>Add payment type</button>';
+}
+function savePayTypes(patch) {
+  state.settings.payments = { ...payTypes(), ...patch };
+  saveSettings();
+}
+function addPayType() {
+  showConfirm({ title: 'Add a payment type', okText: 'Add',
+    html: '<label class="pf"><span class="lb">Name</span><input class="text-input" id="ptName" maxlength="24" placeholder="e.g. Maya or Card" autocomplete="off"></label>',
+    onConfirm: () => {
+      const name = ($('#ptName')?.value || '').trim(), { custom } = payTypes();
+      if (!name) return;
+      // a custom name is saved as the sale's method, so the words the sale maths already reads (unpaid = no money taken) are taken too
+      const taken = [...PAY_TYPES.flatMap(([k, l]) => [k, l]), ...Object.entries(SalesMath.TENDER_LABEL).flat(), 'Void', 'Refund', ...custom];
+      if (taken.some(n => n.toLowerCase() === name.toLowerCase())) return showToast(`${name} is taken. Pick another name`);
+      savePayTypes({ custom: [...custom, name] });
+      renderPayTypes();
+    } });
+}
+function bindPayTypes() {
+  $('#posPayTypesRow')?.addEventListener('click', () => openPayTypes(true));
+  $('#payTypesBack')?.addEventListener('click', () => openPayTypes(false));
+  const list = $('#payTypesList');
+  list?.addEventListener('change', (e) => {
+    const k = e.target.dataset.pt, { hidden } = payTypes();
+    if (k) savePayTypes({ hidden: e.target.checked ? hidden.filter(h => h !== k) : [...hidden, k] });   // no re-render: the switch keeps focus
+  });
+  list?.addEventListener('click', (e) => {
+    if (e.target.closest('[data-pt-add]')) return addPayType();
+    const del = e.target.closest('[data-pt-del]')?.dataset.ptDel;
+    if (!del) return;
+    showConfirm({ title: `Delete ${del}?`, message: 'Past sales paid with it keep the name.', okText: 'Delete', danger: true,
+      onConfirm: () => { const { hidden, custom } = payTypes(); savePayTypes({ hidden: hidden.filter(h => h !== del), custom: custom.filter(n => n !== del) }); renderPayTypes(); } });
+  });
+}
+
+// Log out of the account (owner 2026-10-13): front end only for now, the sign-in page is a placeholder until accounts exist.
+// ponytail: nothing is signed out or remembered; Sign in returns to the POS (its PIN screen once PINs are set up).
+// While it's up the POS behind is inert, like the PIN screen's pinCover: no Tab, tap or scanner reaches it.
+function signInCover(on) {
+  $$('#app > :not(#signInScreen):not(.toast)').forEach(el => { el.inert = on; });
+  $('#signInScreen').hidden = !on;
+  if (on) { $('#signInForm').reset(); $('#signInForm .si-in').focus(); }
+}
+function logOut() {
+  showConfirm({ title: 'Log out of this POS?', message: 'Signing back in needs the account’s email and password.', okText: 'Log out',
+    onConfirm: () => signInCover(true) });
 }
 
 function applyTheme(theme) {

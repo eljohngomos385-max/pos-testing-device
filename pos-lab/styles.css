@@ -3292,7 +3292,7 @@ a.secondary-btn { text-decoration: none; }
   flex-direction: column;
   /* the card lands level with the cart's items card (8 + 48 + 8) and its bottom with the money card's */
   padding: 4px var(--cat-x) calc(8px + env(safe-area-inset-bottom, 0px));
-  background: var(--bg);   /* covers the grid: no edge of the card sits on a tile's, so no hairline bleeds through */
+  background: var(--canvas, var(--bg));   /* the page's own colour; covers the grid, so no tile's hairline bleeds through */
   transform: translateY(100%);
   visibility: hidden;
   transition: transform .16s var(--rl-ease), visibility 0s .16s;
@@ -3415,7 +3415,7 @@ a.secondary-btn { text-decoration: none; }
   display: flex;
   flex-direction: column;
   padding: 8px var(--cat-x, 10px) calc(8px + env(safe-area-inset-bottom, 0px));   /* as .vsheet; 10px off the catalog (Shift) */
-  background: var(--bg);
+  background: var(--canvas, var(--bg));   /* the page's grey round the white card */
   transform: translateY(100%);
   visibility: hidden;
   transition: transform .16s var(--rl-ease), visibility 0s .16s;
@@ -7270,7 +7270,9 @@ body.light-theme {
     position: absolute; top: 0; bottom: 0; left: 0; right: var(--co-right, 0px); z-index: 5; display: flex; background: var(--bg); }
   #app.co-side .co { grid-template-columns: minmax(0, 1fr); }
   #app.co-side .co-items { display: none; }
+  body.light-theme #app.co-side .view-sell .content-row { background: var(--bg); }   /* one colour: the cart's side goes white with the pane */
 }
+body.light-theme .view-sell .content-row { transition: background-color .2s ease-out; }   /* fades with the checkout pane, both ways */
 .ph-bar, .rail-h .ph-back { display: none; }
 /* Phone: the products fill the screen; the bar under them opens the sale sidebar as its own page (owner
    2026-10-07: the page, not a sheet). The edit sheet covers that page, top row too, as on the tablet */
@@ -7287,7 +7289,7 @@ body.light-theme {
   .ph-bar:active { background: var(--accent-pressed); }
   .ph-bar:disabled { opacity: .3; pointer-events: none; }
   .ph-bar span + span::before, .rail-h .go span + span::before { content: '·'; margin-right: 8px; }   /* 2 items · ₱157.00, centred */
-  .rail-h { position: fixed; inset: 0; z-index: 97; max-height: none; margin: 0; padding: 8px 8px var(--ph-b); background: var(--bg);
+  .rail-h { position: fixed; inset: 0; z-index: 97; max-height: none; margin: 0; padding: 8px 8px var(--ph-b); background: var(--canvas, var(--bg));
             transform: translateX(100%); visibility: hidden; transition: transform .3s var(--rl-ease), visibility 0s .3s; }
   .rail-h .go, .rail-h #payBtn { justify-self: center; justify-content: center; gap: 8px; width: min(100% - 40px, 320px); height: var(--bar-h); border: 0; border-radius: calc(var(--rl-r) + 2px); }   /* as the bar */
   #app.ph-cart .rail-h { transform: none; visibility: visible; transition: transform .3s var(--rl-ease); }
@@ -7305,6 +7307,7 @@ body.light-theme {
      checkout has ‹ Cancel. A lone Done only closed, as Back does, so it goes; Apply / Clear / Remove item keep the foot */
   .esheet { position: fixed; z-index: 98; padding: 0 0 var(--ph-safe); }
   .es-card { border: 0; border-radius: 0; box-shadow: none; background: var(--bg); }
+  body.light-theme:has(.esheet.open:not(.cust-sheet)) { background: var(--bg); }   /* the page is white; the status bar with it */
   .es-ft { border-top: 0; }
   .es-body:not(.fill) { padding-top: max(0px, calc(30cqh - 120px)); }   /* the hero where checkout's sits */
   .esheet .es-x { top: 3.25px; left: 6px; display: inline-flex; align-items: center; gap: 4px; width: auto; min-width: 92px; height: 44px; padding: 0 12px 0 8px;
@@ -7321,7 +7324,7 @@ body.light-theme {
   .cs-h { top: 8px; padding-inline: 80px; font-size: 15px; line-height: 44px; }   /* 80 = Save (~70) + its 10 from the edge */
   .toast { bottom: calc(var(--bar-h) + 16px + var(--ph-b)); }   /* clear of the bar and Check out */
   body:has(#app.ph-cart) .toast { bottom: calc(var(--bar-h) + 68px + var(--ph-b)); }   /* over Walk-in | Discount */
-  .catalog-wrap:has(> .vsheet.open) { z-index: 98; background: var(--bg); }   /* the customer list (and variants) opened from the cart page come over it */
+  .catalog-wrap:has(> .vsheet.open) { z-index: 98; background: var(--canvas, var(--bg)); }   /* the customer list (and variants) opened from the cart page come over it */
   /* The scanner is its own page: the camera to every edge, the cart bar lifted over it as the summary */
   .scan-sheet { position: fixed; inset: 0; z-index: 99; padding: 0; background: var(--scan-bg); }
   .scan-cam { border-radius: 0; }
@@ -7853,13 +7856,26 @@ input.es-ta { height: 56px; }
 .pin-cancel:hover { color: var(--ink); background: var(--bg-soft); }
 .pin-lock .pin-cancel { display: none; }
 @media (prefers-reduced-motion: reduce) { .pin-dots.shake { animation: none; } }
+/* The account's sign-in (Settings › Log out, owner 2026-10-13): the lock screen's plain page and optical centre, email + password, one button */
+.si-screen { position: fixed; inset: 0; z-index: 1000; display: grid; grid-template-rows: 1fr auto 2fr; justify-items: center; padding: 16px; background: var(--bg); overflow: auto; }
+.si-screen[hidden] { display: none; }
+.si-card { grid-row: 2; display: flex; flex-direction: column; gap: 12px; width: min(360px, 100%); text-align: center; }
+.si-card h2 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.3px; color: var(--ink); }
+.si-card p { margin: -8px 0 20px; font-size: 15px; color: var(--ink-tertiary); }
+.si-in { height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-input); outline: 0; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }   /* 16px: iOS doesn't zoom in on it */
+.si-in:focus { border-color: var(--ink-tertiary); }
+.si-card .primary-btn { margin-top: 8px; }
 
 /* Settings (pos-settings.js): Shift's one centred column of cards, ☰ + the title on top. A row is the label
    left, its control right at every width: a choice is a dropdown (.st-pick opens the ⋯ menu's morph), a yes/no
    the item editor's switch (.sw). The rows a printer doesn't use are [hidden]. */
 .lv .head:has(> .st-ttl) { position: relative; align-items: center; }   /* Settings, Shift, Reports: a title, no search (owner 2026-10-10) */
 .st-ttl { position: absolute; inset: 0; display: grid; place-content: center; margin: 0; pointer-events: none; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }   /* centred on the page, ☰ beside it (owner 2026-10-09) */
-.st-page .fr[hidden], .st-prn[hidden] { display: none; }
+.st-page .fr[hidden], .st-prn[hidden], .lv .st-page[hidden] { display: none; }   /* .st-page: Settings or its Payment types page */
+.lv .st-page .fr.nav { grid-template-columns: minmax(0,1fr) auto; }
+.st-page .fr.nav .vv { color: var(--ink-secondary); }
+.st-page .fr > .v:has(> .sw) { align-items: center; gap: 12px; }
+body .lv .fc .fr .act.icon[data-pt-del] { width: 40px; margin-right: -12px; }   /* Payment types' Delete: a 40px tap, the icon still 12px from the switch */
 .lv .st-page .fr { min-height: 48px; }   /* a switch row as tall as a dropdown row */
 .st-page label.fr { cursor: pointer; }
 .st-page .fr .lb { display: grid; gap: 2px; }

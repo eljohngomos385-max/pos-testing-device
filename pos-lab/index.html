@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=272" />
+  <link rel="stylesheet" href="styles.css?v=276" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -115,12 +115,12 @@
       </nav>
 
       <div class="side-footer">
-        <button type="button" class="user-row" title="Lock POS">
+        <button type="button" class="user-row" title="Log out">
           <span class="user-meta">
             <span class="user-name">El John</span>
             <span class="user-sub">Staff</span>
           </span>
-          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
         </button>
         <div class="store-row">
           <div class="user-store"><span>EJ Hardware</span>&nbsp;· POS 1</div>
@@ -520,7 +520,7 @@
            dropdown (data-pick → openSettingMenu, pos-settings.js); the time zone list is too long for one, so a styled select. -->
       <section class="view view-settings lv" data-view="settings" hidden>
         <div class="iv">
-          <section class="page st-page" aria-label="Settings">
+          <section class="page st-page" id="settingsPage" aria-label="Settings">
             <div class="head">
               <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
@@ -555,6 +555,7 @@
                 </section>
                 <h3 class="fc-t">Store</h3>
                 <section class="card fc">
+                  <button type="button" class="fr nav" id="posPayTypesRow"><span class="lb">Payment types</span><span class="v"><span class="vv" id="posPayTypesNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <label class="fr"><span class="lb">Time zone</span><span class="v"><span class="act st-pick st-sel"><select id="posTimeZone"></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
                   <div class="fr"><span class="lb">Ask a manager for discounts over</span><span class="v"><button type="button" class="act st-pick" data-pick="discountLimit" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
                   <div class="fr"><span class="lb">Refunds and exchanges</span><span class="v"><button type="button" class="act st-pick" data-pick="refundPin" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
@@ -564,6 +565,24 @@
                   <div class="fr"><span class="lb">Starting cash</span><span class="v"><button type="button" class="act st-pick" data-pick="startCash" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
                   <div class="fr"><span class="lb">Auto-close at</span><span class="v"><button type="button" class="act st-pick" data-pick="autoClose" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
                 </section>
+                <!-- The account this POS is signed in with (owner 2026-10-13): Log out opens the sign-in page. Front end only for now -->
+                <h3 class="fc-t">Account</h3>
+                <section class="card fc">
+                  <div class="fr"><span class="lb" id="posAcctEmail">Account</span><span class="v"><button type="button" class="act" id="posLogOutBtn">Log out</button></span></div>
+                </section>
+              </div>
+            </div>
+          </section>
+          <!-- Settings › Payment types (owner 2026-10-13): its own page. A switch per type says if the checkout shows it (pos-settings.js) -->
+          <section class="page st-page" id="payTypesPage" aria-label="Payment types" hidden>
+            <div class="head">
+              <button class="sq back" id="payTypesBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl">Payment types</h1>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <h3 class="fc-t">Shown at checkout</h3>
+                <section class="card fc" id="payTypesList"></section>
               </div>
             </div>
           </section>
@@ -770,6 +789,17 @@
       </div>
     </div>
 
+    <!-- The account's sign-in (Settings › Log out). ponytail: front end only, no accounts yet -- Sign in just goes back to the POS -->
+    <div class="si-screen" id="signInScreen" hidden>
+      <form class="si-card" id="signInForm" novalidate>
+        <h2>Sign in</h2>
+        <p>Your store’s account</p>
+        <input class="si-in" type="email" autocomplete="username" placeholder="Email" aria-label="Email">
+        <input class="si-in" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password">
+        <button type="submit" class="primary-btn">Sign in</button>
+      </form>
+    </div>
+
     <div class="toast" id="toast" hidden></div>
   </div>
 
@@ -779,16 +809,16 @@
   <script src="bo-model.js?v=129"></script>
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=47"></script>
-  <script src="pos-core.js?v=28"></script>
+  <script src="pos-core.js?v=29"></script>
   <script src="pos-sell.js?v=58"></script>
-  <script src="pos-checkout.js?v=16"></script>
-  <script src="pos-orders.js?v=23"></script>
+  <script src="pos-checkout.js?v=17"></script>
+  <script src="pos-orders.js?v=24"></script>
   <script src="pos-items.js?v=25"></script>
-  <script src="pos-customers.js?v=21"></script>
-  <script src="pos-settings.js?v=10"></script>
+  <script src="pos-customers.js?v=22"></script>
+  <script src="pos-settings.js?v=14"></script>
   <script src="pos-pin.js?v=9"></script>
   <script src="pos-shift.js?v=20"></script>
   <script src="pos-stock.js?v=4"></script>
-  <script src="app.js?v=161"></script>
+  <script src="app.js?v=164"></script>
 </body>
 </html>

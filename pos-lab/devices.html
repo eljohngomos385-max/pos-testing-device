@@ -129,7 +129,9 @@ function applySizing() {
   });
 }
 $('sidePct').oninput = applySizing;
-f.addEventListener('load', () => { phoneSafe(); applyTheme(); applySizing(); f.contentWindow.addEventListener('resize', () => requestAnimationFrame(applySizing)); });
+f.addEventListener('load', () => { phoneSafe(); applyTheme(); applySizing();
+  new MutationObserver(() => { dev.style.background = getComputedStyle(f.contentDocument.body).backgroundColor; })
+    .observe(f.contentDocument.body, { subtree: true, attributes: true, attributeFilter: ['class'] }); f.contentWindow.addEventListener('resize', () => requestAnimationFrame(applySizing)); });
 const page = new URLSearchParams(location.search).get('page');   // devices.html?page=x.html: another lab copy in the frame
 f.src = (/^[\w-]+\.html$/.test(page || '') ? page : 'index.html') + '?' + Date.now();   // the browser kept serving a stale index.html inside the frame; the files it loads carry ?v= already
 addEventListener('resize', fitDev);

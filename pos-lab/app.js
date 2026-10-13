@@ -867,6 +867,9 @@ function attachEvents() {
     const item = e.target.closest('.prn-item');
     if (item) connectPrinter(item.dataset.ip);
   });
+  bindPayTypes();   // Settings › Payment types (pos-settings.js)
+  $('#posLogOutBtn')?.addEventListener('click', logOut);
+  $('#signInForm')?.addEventListener('submit', (e) => { e.preventDefault(); signInCover(false); if (tillPins()) lockTill(); });
   $('#posTestPrintBtn')?.addEventListener('click', () => {
     persistPosSettings();
     printOrder(sampleTestOrder());
