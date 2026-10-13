@@ -160,7 +160,10 @@ const orderTitleHtml = o => o.draft
 // Every row the Orders page lists: the sales, then the saved carts and quotes (pos-checkout draftOrders).
 const orderRows = () => state.orders.concat(draftOrders());
 const findOrderRow = id => orderRows().find(x => x.id === id);
-const ordersFiltered = () => Object.keys(ORDERS_FILTER_DEF).some(k => state.ordersFilter[k] !== ORDERS_FILTER_DEF[k]);
+// a customer's "See all" starts on every date, so that's its reset and its unlit filter
+const ordersDef = () => (state.ordersCustomer ? { ...ORDERS_FILTER_DEF, range: 'all' } : ORDERS_FILTER_DEF);
+const ordersFiltered = () => Object.keys(ORDERS_FILTER_DEF).some(k => state.ordersFilter[k] !== ordersDef()[k]);
+let ordersStay = '';   // the sale just refunded or voided: it stays on screen when the filter no longer lists it
 
 function ordersShown() {
   const F = state.ordersFilter;
@@ -185,8 +188,8 @@ function ordersShown() {
 // A customer's "See all" (owner 2026-10-07): the Orders page itself, only their orders, every date, and ☰ turns
 // into a back to the customer. '' = the whole store again. Leaving the page any other way ends it (switchView).
 function ordersFor(customerId, orderId = '') {
-  state.ordersCustomer = customerId;
-  state.ordersFilter = { ...ORDERS_FILTER_DEF, range: customerId ? 'all' : ORDERS_FILTER_DEF.range };
+  state.ordersCustomer = customerId; ordersStay = '';
+  state.ordersFilter = { ...ordersDef() };
   state.ordersQuery = '';
   $('#ordersSearch').value = '';
   $('#ordersFind').classList.remove('typed');
@@ -206,7 +209,7 @@ function renderOrders() {
   const shown = ordersShown().filter(o => !SalesMath.isReversal(o));
   const sel = state.orders.find(o => o.id === state.selectedOrderId);
   if (sel && SalesMath.isReversal(sel)) state.selectedOrderId = sel.originalOrderId;   // a link to a refund opens its sale
-  if (!shown.some(o => o.id === state.selectedOrderId)) state.selectedOrderId = shown[0] ? shown[0].id : null;
+  if (state.selectedOrderId !== ordersStay && !shown.some(o => o.id === state.selectedOrderId)) state.selectedOrderId = shown[0] ? shown[0].id : null;
 
   // One pass into store days (SalesMath.groupByDay). The band is its rows: how many are listed and what
   // they add up to (summarize().collected = each row's signed total; a parked cart is not money), so a
@@ -242,6 +245,7 @@ function renderOrderDetail() {
   $('#orderPrint').disabled = $('#orderMore').disabled = $('#orderContinue').disabled = !o;
   $('#orderRefund').disabled = !o || !isCompletedSale(o);
   if (!o) {
+    $('#orderCancel').hidden = true; $('#orderPrint').hidden = $('#orderMore').hidden = false;
     ttl.innerHTML = '';
     detail.innerHTML = '<div class="empty"><b>No order selected</b><span>Pick one from the list to see its receipt.</span></div>';
     return;
@@ -287,6 +291,8 @@ function orderPicks(o) {
   if (orderPick.id !== o.id) Object.assign(orderPick, { id: o.id, on: false, lines: {} });
   return Object.entries(orderPick.lines).map(([k, qty]) => ({ lineNo: Number(k), qty }));
 }
+// the least a line can give back: 1, or what's under 1 of a measured line (1.5 m -> 0.5)
+const pickLow = q => (Math.round(q * 1000) % 1000) / 1000 || Math.min(1, q);
 const TICK = '<span class="box"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>';
 function orderLinesHtml(o) {
   const r = toReceiptViewModel(o), sale = isCompletedSale(o);
@@ -320,7 +326,7 @@ function pickOrderLine(o, el) {
     const on = el.getAttribute('aria-checked') !== 'true';
     orderPick.lines = {};
     if (on) left.forEach((q, n) => { if (q > 0) orderPick.lines[n] = q; });
-  } else if (el.dataset.step) L[k] = Math.min(left[k], Math.max(Math.min(1, left[k]), Math.round((L[k] + Number(el.dataset.step)) * 1000) / 1000));
+  } else if (el.dataset.step) L[k] = Math.min(left[k], Math.max(pickLow(left[k]), Math.round((L[k] + Number(el.dataset.step)) * 1000) / 1000));
   else if (k != null) { if (k in L) delete L[k]; else L[k] = left[k]; }
   else return false;
   return true;
@@ -333,7 +339,7 @@ function refundAct(btn, o) {
   btn.hidden = dr;
   btn.classList.toggle('primary', on);
   const verb = on && orderPick.mode === 'exchange' ? 'Exchange' : 'Refund';
-  btn.querySelector('span').textContent = part ? `${verb} ${peso(part.total)}` : verb;
+  btn.title = btn.querySelector('span').textContent = part ? `${verb} ${peso(part.total)}` : verb;
   const pr = $('#orderPrint'), word = dr ? 'Print' : 'Print receipt';   // a draft's slip is not a receipt
   if (pr) { pr.title = word; pr.querySelector('span').textContent = word; }
   btn.parentElement.querySelectorAll('.act').forEach(b => {
@@ -817,7 +823,7 @@ function reverseSale(orderId, kind, reason, { by = '', again, whole = false, pic
     change: 0,
     payments: legs,
   });
-  state.selectedOrderId = order.id;   // the sale stays on screen, now stamped
+  state.selectedOrderId = ordersStay = order.id;   // the sale stays on screen, now stamped, even if the filter drops it
   if (orderPick.id === order.id) Object.assign(orderPick, { on: false, lines: {} });   // back to the receipt, now struck
   track(kind, kind === 'void' ? { orderId, reason } : { orderId, amount: row.total, reason });
   return row;
@@ -829,10 +835,17 @@ function voidOrder(orderId, reason = 'Voided by manager', by = '') {
   return row;
 }
 
+// Where a refund's money goes: what was charged to the customer's account comes off it (no cash leaves the drawer),
+// the rest goes back to the customer. `part` = SalesMath.refundPart before, or the refund row after.
+function moneyBackSaid(o, part) {
+  const credit = o.customer ? SalesMath.creditPart(part) : 0, rest = moneyValue(Math.abs(part.total) - credit);
+  return [credit && `${peso(credit)} comes off ${o.customer.name}'s account`, (rest || !credit) && `${peso(rest)} back to the customer`].filter(Boolean).join(' · ');
+}
+
 // `picks` = [{ lineNo, qty }] for a line refund; none = everything still left on the sale.
 function refundOrder(orderId, reason = 'Refunded by manager', by = '', picks = null) {
   const row = reverseSale(orderId, 'refund', reason, { by, picks, again: (b) => refundOrder(orderId, reason, b, picks) });
-  if (row) { renderOrders(); renderReports(); showToast(`Refunded · ${peso(row.total)} back to the customer`); }
+  if (row) { renderOrders(); renderReports(); showToast(`Refunded · ${moneyBackSaid(findOrderRow(orderId), row)}`); }
   return row;
 }
 

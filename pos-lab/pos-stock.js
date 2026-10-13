@@ -25,7 +25,7 @@ const qsLine = id => QS.lines.find(l => l.id === id);
 const qsQty = n => SalesMath.qtyText(n);
 const qsDec = p => p.soldBy === 'measure';
 // a line is saved once it has a number; 0 only counts for a count (0 on the shelf is a real count)
-const qsLive = () => QS.lines.filter(l => l.n !== '' && (QS.reason === 'count' || Number(l.n) > 0) && qsProd(l.id));
+const qsLive = () => QS.lines.filter(l => !isNaN(parseFloat(l.n)) && (QS.reason === 'count' || Number(l.n) > 0) && qsProd(l.id));
 const qsAfter = (p, n) => (QS.reason === 'count' ? n : (Number(p.stock) || 0) + QS_REASONS[QS.reason][1] * n);
 const qsFamily = p => (p.groupId && groupById(p.groupId)) || null;
 const qsVarName = p => { const g = qsFamily(p); return g && p.name.startsWith(g.name) ? p.name.slice(g.name.length).trim() || p.name : p.name; };
@@ -51,7 +51,6 @@ function qsCap(p, n) {
 // ---------- drawing ----------
 const QS_IC = {
   back: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
-  x: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   updown: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>',
 };
 function qsBuild() {
@@ -67,14 +66,13 @@ function qsBuild() {
       </div></div></section>
     </div></section>
     <div class="qs-tickbar" id="qsTickbar" hidden><button type="button" class="qs-next" id="qsTickNext" disabled></button></div>`);
-  // picking: the list's ☰ becomes × (close quick stock), the one way out
-  document.querySelector('.view-items .head [data-act="open-sidebar"]').insertAdjacentHTML('afterend',
-    `<button type="button" class="sq qs-close" id="qsListX" aria-label="Close quick stock" title="Close quick stock">${QS_IC.x}</button>`);
 }
 
 function qsRender() {
   qsKeep();
   document.body.classList.toggle('qs-on', QS.on);
+  const menu = $('.view-items .head [data-act="open-sidebar"]');   // picking: the ☰ is ✕ (app.js), the one way out
+  menu.title = menu.ariaLabel = QS.on ? 'Close quick stock' : 'Menu';
   const pg = $('#qs');
   pg.hidden = !QS.on || !qsMode;
   pg.classList.toggle('dock', qsMode === 'dock');
@@ -160,7 +158,7 @@ function qsTickbar() {
 // the Items list rows: a dot when the item is in the list
 function qsMarkRows() {
   if (!QS.on || itemsKind !== 'items') return;
-  const inList = new Set(QS.lines.map(l => { const p = qsProd(l.id); return p && (p.groupId || p.id); }));
+  const inList = new Set(QS.lines.map(l => { const p = qsProd(l.id); return p && (qsFamily(p)?.id || p.id); }));
   $$('#itemsRows .row[data-id]').forEach(r => {
     r.classList.add('qs-tick');
     r.classList.toggle('qs-in', inList.has(r.dataset.id));
@@ -262,9 +260,25 @@ function qsDoneSaved() {
   qsRender(); renderItems();
 }
 
+// the item editor's Adjust: quick stock with this item on the list, its amounts open
+function qsAdjust(itemId) {
+  if (!QS.on) qsStart();
+  const first = qsAddFamily(itemId);
+  if (!qsMode) qsMode = 'page';
+  qsRender(); renderItems();
+  if (first) qsShow(first);
+}
+
 // ---------- wiring ----------
-// a row tapped on the Items list while quick stock is on (app.js): the item's variants join the list
+// a row tapped on the Items list while quick stock is on (app.js): the item's variants join the list; tapped again
+// (the ticked dot), they leave it -- asking first if an amount was typed
 function qsPickRow(itemId) {
+  const ids = new Set((catalogItems().find(x => x.id === itemId)?.members || []).map(p => p.id)), mine = QS.lines.filter(l => ids.has(l.id));
+  if (mine.length) {
+    const drop = () => { QS.lines = QS.lines.filter(l => !ids.has(l.id)); qsRender(); qsMarkRows(); };
+    if (!mine.some(l => l.n !== '')) return drop();
+    return showConfirm({ title: 'Take it off the list?', message: 'The amount you typed is cleared.', okText: 'Take off', onConfirm: drop });
+  }
   qsSaved = null;   // a new item after a save: the saved summary gives way to the list
   const first = qsAddFamily(itemId);
   qsRender(); qsMarkRows();
@@ -280,7 +294,6 @@ function initQuickStock() {
 }
 function qsWire() {
   $('#qsTickNext').addEventListener('click', () => { qsMode = 'page'; qsRender(); });
-  $('#qsListX').addEventListener('click', qsAskLeave);
 
   $('#qsBack').addEventListener('click', qsBack);
   // the title's menu: the mode, and on a tablet the page's place (beside the list or full screen)
@@ -295,8 +308,9 @@ function qsWire() {
     if (e.target.closest('#qsUndo')) return qsUndo();
     const row = e.target.closest('.qs-ln[data-qs]'), l = row && qsLine(row.dataset.qs);
     if (!l) return;
-    if (e.target.closest('[data-qs-p]')) qsSet(row, (Number(l.n) || 0) + 1);
-    else if (e.target.closest('[data-qs-m]')) qsSet(row, Math.max(0, (Number(l.n) || 0) - 1));
+    const step = d => qsSet(row, Math.max(0, Math.round(((Number(l.n) || 0) + d) * 1000) / 1000));
+    if (e.target.closest('[data-qs-p]')) step(1);
+    else if (e.target.closest('[data-qs-m]')) step(-1);
   });
   list.addEventListener('input', e => { const row = e.target.closest('.qs-ln[data-qs]'); if (row && e.target.matches('[data-qs-n]')) qsSet(row, e.target.value); });
   // the keyboard's Next / Enter: the next amount down
@@ -308,5 +322,5 @@ function qsWire() {
   });
   list.addEventListener('focusin', e => { if (e.target.matches('[data-qs-n]')) e.target.select(); });
 
-  addEventListener('resize', () => { if (QS.on && qsMode !== 'page') { qsMode = qsListMode(); qsRender(); } });
+  addEventListener('resize', () => { const m = qsListMode(); if (QS.on && qsMode !== 'page' && m !== qsMode) { qsMode = m; qsRender(); } });
 }

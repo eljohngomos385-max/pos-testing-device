@@ -19,6 +19,7 @@ function attachEvents() {
     const btn = e.target.closest('[data-act="open-sidebar"]');
     if (!btn) return;
     e.stopPropagation();
+    if (QS.on && btn.closest('.view-items')) return qsAskLeave();   // quick stock's ✕ (pos-stock.js)
     $('#app').classList.toggle('sidebar-collapsed');
   });
 
@@ -303,7 +304,7 @@ function attachEvents() {
     if (!picking(o)) { orderPicks(o); Object.assign(orderPick, { on: true, mode: 'refund' }); return morph(renderOrderDetail); }
     const picks = orderPicks(o), part = picks.length && SalesMath.refundPart(o, reversalsOf(o), picks);
     if (part && orderPick.mode === 'exchange') return startExchange(o.id, picks);
-    if (part) showConfirm({ title: `Refund ${SalesMath.plural(picks.length, 'item')} on #${o.number}?`, message: `${peso(part.total)} goes back to the customer.`,
+    if (part) showConfirm({ title: `Refund ${SalesMath.plural(picks.length, 'item')} on #${o.number}?`, message: `${moneyBackSaid(o, part)}.`,
       okText: 'Refund', onConfirm: () => morph(() => recordReturn(o.id, 'Refund', picks)) });
   };
   // Refund and Void always ask first, from the rail or the order's details.
@@ -311,7 +312,7 @@ function attachEvents() {
     // What is still left on it: a partly refunded sale gives back only the rest.
     const left = o && SalesMath.qtyLeft(o, reversalsOf(o)).map((qty, lineNo) => ({ lineNo, qty }));
     const back = o && SalesMath.refundPart(o, reversalsOf(o), left);
-    if (back) showConfirm({ title: `Refund #${o.number}?`, message: `${peso(back.total)} goes back to the customer.`, okText: 'Refund', onConfirm: () => refundOrder(o.id, 'Refund') });
+    if (back) showConfirm({ title: `Refund #${o.number}?`, message: `${moneyBackSaid(o, back)}.`, okText: 'Refund', onConfirm: () => refundOrder(o.id, 'Refund') });
   };
   const askVoid = (o) => showConfirm({ title: `Void #${o.number}?`, message: 'The sale stays on record, marked voided.', okText: 'Void sale', onConfirm: () => voidOrder(o.id, 'Void') });
   $('#orderRefund')?.addEventListener('click', () => { const o = shownOrder(); if (o) refundTicked(o); });
@@ -327,7 +328,9 @@ function attachEvents() {
     { label: 'Order details', run: () => openOrderDetailModal(o.id) },
     { label: 'Exchange', off: !isCompletedSale(o), run: () => exchangeItems(o) },
     '-',
-    { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o) },
+    o.draft ? { label: 'Delete', red: true, run: () => showConfirm({ title: `Delete “${o.name || orderStatusLabel(o)}”?`, okText: 'Delete', danger: true,
+      onConfirm: () => { HWPOS_STORE.savedCarts.remove(o.id); if (state.savedId === o.id) state.savedId = ''; renderOrders(); showToast('Deleted'); } }) }
+      : { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o) },
   ], { w: 200, right: true });
   $('#orderMore')?.addEventListener('click', (e) => { const o = shownOrder(); if (o) orderMenu(e.currentTarget, o); });
   // A tick, tick-all or − / + on the lines: the same pick, whichever page shows the order.
@@ -359,7 +362,7 @@ function attachEvents() {
     // Each type a row can read (orderFulfilLabel), the owner's own ones included, so a 'Tricycle' row is found as itself.
     ['Fulfilment', 'fulfil', [['', 'Any'], ...[...new Set([...FULFIL_BUILTINS.map(([k]) => k), ...state.orders.map(o => o.fulfilment)])]
       .map(k => [k, orderFulfilLabel({ fulfilment: k })])]],
-  ], state.ordersFilter, ORDERS_FILTER_DEF, renderOrders));
+  ], state.ordersFilter, ordersDef(), renderOrders));
 
   // ---- Items (list + editor; Save is not connected yet) ----
   // The switch picks the list (items, categories, modifiers); a row and + open that kind's editor.
@@ -442,7 +445,7 @@ function attachEvents() {
       itemGo('');
     }
     else if (act === 'img-clear') { E.img = ''; renderItemForm(); }
-    else if (act === 'stock') showToast("Adjusting stock isn't connected yet");
+    else if (act === 'stock') { if (itemIsNew) showToast('Save the item first'); else qsAdjust(E.id); }   // Quick stock (pos-stock.js)
     else if (act === 'archive') notYet('Archiving')();   // ponytail: as Save, design only until the back office owns catalog writes
     else if (act) itemPick(b);   // status, markup kind, sold per, main supplier
   });
@@ -608,6 +611,7 @@ function attachEvents() {
   $('#customerEditModal [data-cust-close]').addEventListener('click', closeCustomerEditModal);
   // "Open Ana" on the duplicate-phone note: mid-sale she goes on the receipt, else her page opens.
   $('#custFields')?.addEventListener('click', (e) => {
+    if (e.target.closest('[data-cust-del]')) return deleteCustomer();
     const id = e.target.closest('[data-open-cust]')?.dataset.openCust;
     if (!id) return;
     closeCustomerEditModal();
@@ -692,6 +696,7 @@ function attachEvents() {
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (!$('#pinModal').hidden) { if (!pinAsk?.signIn) $('#pinModal').hidden = true; return; }
       const map = !$('#deliveryMapModal').hidden;   // Esc over the map closes the map, the sheet stays
       const list = $('#variantSheet').classList.contains('open');   // Esc over the customer list closes the list, the cart page stays
       const cust = $('#customerEditModal').classList.contains('open');   // and over New customer, the same
@@ -712,7 +717,7 @@ function attachEvents() {
   $('#cartBack').addEventListener('click', () => phCart(false));
   // A big discount the sheet didn't ask about (items taken off since, a saved cart continued) is asked here (discountOk).
   const toPay = () => (state.exchange ? confirmExchange() : openPaymentModal());
-  $('#payBtn').addEventListener('click', () => { if (closeEditSheet() !== false && discountOk(null, toPay)) toPay(); });
+  $('#payBtn').addEventListener('click', () => { if (closeEditSheet() !== false && !confirmSheet && discountOk(null, toPay)) toPay(); });
 
   // Payment-method selection
   function selectPayMethod(method, label = '') {
@@ -811,10 +816,6 @@ function attachEvents() {
     const b = e.target.closest('[data-pick]');
     if (b) openSettingMenu(b);
   });
-  $('#posCartHead')?.addEventListener('change', (e) => {
-    HWPOS_STORE.ui.set('cartHead', e.target.checked ? '1' : '0');
-    applyCartHead(e.target.checked);
-  });
   $('#posPrintOnSale')?.addEventListener('change', persistPosSettings);
   $('#posPrintCut')?.addEventListener('change', persistPosSettings);
   $('#posPrintMap')?.addEventListener('change', persistPosSettings);
@@ -910,7 +911,6 @@ function init() {
 
   renderSellHeader();
   renderProducts();
-  applyCartHead(state.cartHead);
   renderCart();
   updateCustomerButton();
   applyRoleGating();

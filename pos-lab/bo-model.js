@@ -903,7 +903,7 @@ const phoneKey = (p) => String(p || '').replace(/\D/g, '').replace(/^(63|0)/, ''
 // Another customer (not `selfId`) who already has this phone, or null.
 function phoneOwner(phone, selfId = '') {
   const k = phoneKey(phone);
-  return (k && freshList(STORAGE_CUSTOMERS).map(normalizeCustomer).find((c) => c.id !== selfId && phoneKey(c.phone) === k)) || null;
+  return (k && freshList(STORAGE_CUSTOMERS).filter((c) => !c.deleted).map(normalizeCustomer).find((c) => c.id !== selfId && phoneKey(c.phone) === k)) || null;
 }
 // The one sentence both forms show for it; each app passes its own link to `dup` (button or anchor).
 const phoneOwnerNote = (dup, open) => `${escapeHtml(dup.name)} already has this number. ${open} or save again to add anyway.`;
@@ -923,6 +923,11 @@ function freshList(key) {
 function loadCustomerLedger() { return freshList(STORAGE_CUSTOMER_LEDGER); }
 const accountRows = (id) => loadCustomerLedger().filter((r) => r.customerId === id);   // one account's ledger
 
+// Delete: the row stays as a tombstone (`deleted`), so a POS that syncs later can't bring it back; Undo clears it.
+// Past sales keep the name they were rung with.
+function setCustomerDeleted(id, deleted) {
+  saveList(STORAGE_CUSTOMERS, loadList(STORAGE_CUSTOMERS).map((x) => (x.id === id ? stampRow({ ...x, deleted }) : x)));
+}
 function saveCustomer(c) {
   const rec = stampRow({ ...normalizeCustomer(c), id: c.id || newId() });
   const list = loadList(STORAGE_CUSTOMERS).filter((x) => x.id !== rec.id);
@@ -959,7 +964,7 @@ const accountBalance = (id) => balancesOf(loadCustomerLedger()).get(id) || 0;
 // Every customer, with `currentBalance` worked out from the ledger on the way out -- never stored.
 function allCustomerRecords() {
   const bal = balancesOf(loadCustomerLedger());
-  return freshList(STORAGE_CUSTOMERS).map((c) => ({ ...normalizeCustomer(c), currentBalance: bal.get(c.id) || 0 }));
+  return freshList(STORAGE_CUSTOMERS).filter((c) => !c.deleted).map((c) => ({ ...normalizeCustomer(c), currentBalance: bal.get(c.id) || 0 }));
 }
 
 // Clear, the settled state, is muted; past the limit is Over limit (owner 2026-10-02). A negative
@@ -1656,7 +1661,7 @@ if (typeof module !== 'undefined') {
     EVENT_LOGS, makeEvent, priceChanges, latestEvents,
     FULFIL_BUILTINS, orderFulfilLabel, fulfilMethods,
     CUSTOMER_FIELDS, normalizeCustomer, customerFromForm, phoneKey, phoneOwnerNote, LEDGER_SIGN, LEDGER_LABEL, kindOf, ledgerDelta, undoneIds,
-    balancesOf, accountDebts, accountStatus, ACCOUNT_STATUSES, canRecordPayment, owedText, recordPayment, undoPayment,
+    setCustomerDeleted, balancesOf, accountDebts, accountStatus, ACCOUNT_STATUSES, canRecordPayment, owedText, recordPayment, undoPayment,
     poLineUnit, poLineQty, movementCents, familyRows, creditRoom, creditOverBy, creditPool, accountStatement, stockFlow, lotWalk, limitText,
     staffNameOf, staffIdOf,
   };

@@ -70,7 +70,7 @@ function renderItems() {
       <span class="num ${itemStk(it)}">${itemQty(onHandOf(it.members))} ${escapeHtml(it.unit)}</span></button>`;
   }).join('') || '<div class="empty"><b>No items</b><span>Nothing matches this search or filter.</span></div>';
   $('#itemsFilter')?.classList.toggle('on', Object.keys(ITEMS_FILTER_DEF).some(k => itemsFilter[k] !== ITEMS_FILTER_DEF[k]));
-  qsMarkRows(); qsTickbar();   // quick stock (pos-stock.js): the dots, the phone's Review bar
+  qsMarkRows(); if ($('#qs') && !$('#qs').contains(document.activeElement)) qsRender(); else qsTickbar();   // quick stock (pos-stock.js): the dots, the phone's Review bar
 }
 
 // The editor: a working copy E of the item. Nothing here writes to the catalog.
@@ -430,7 +430,10 @@ function dropKind() {
     return showConfirm({ title: `Delete “${K.name}”?`, message: 'Sales that used it keep it on their receipt.', okText: 'Delete', danger: true,
       onConfirm: () => { saveDiscounts(loadDiscounts().map(d => (d.id === K.id ? stampRow({ ...d, archived: true }) : d))); closeKindEditor('Deleted'); } });
   }
-  saveModifiers(loadModifiers().map(m => (m.id === K.id ? stampRow({ ...m, archived: true }) : m)));
-  closeKindEditor('Archived');
+  showConfirm({ title: `Archive “${K.name}”?`, message: 'It leaves the POS; sales that used it keep it on their receipt.', okText: 'Archive',
+    onConfirm: () => { saveModifiers(loadModifiers().map(m => (m.id === K.id ? stampRow({ ...m, archived: true }) : m))); closeKindEditor('Archived'); } });
 }
-function closeKindEditor(msg) { closeItemEditor(); renderItems(); showToast(msg); }
+function closeKindEditor(msg) {
+  if (itemsFilter.cat && !state.folders.some(f => f.name === itemsFilter.cat)) itemsFilter.cat = '';   // its category was renamed or deleted
+  closeItemEditor(); renderItems(); showToast(msg);
+}

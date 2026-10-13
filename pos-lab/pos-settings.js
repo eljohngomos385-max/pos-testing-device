@@ -52,8 +52,6 @@ function renderPosSettings(printer = true) {
     b.firstElementChild.textContent = val;
     b.setAttribute('aria-label', b.closest('.fr').querySelector('.lb').textContent + ', ' + val);   // "Tile size, Medium", not just "Medium"
   });
-  const headCb = $('#posCartHead');
-  if (headCb) headCb.checked = state.cartHead;
   const p = printerConfig();
   const saleRow = $('#posPrintOnSaleRow');   // the browser's own dialog can't print by itself (checkout's printOnSale gate)
   if (saleRow) saleRow.hidden = p.driver !== 'network' && p.driver !== 'bluetooth';

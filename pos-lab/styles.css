@@ -1783,6 +1783,8 @@ select.text-input {
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast[hidden] { display: none; }
+.toast.has-undo:not([hidden]) { display: flex; align-items: center; gap: 16px; pointer-events: auto; }
+.toast-undo { background: none; border: 0; padding: 0; color: var(--ink); font: inherit; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 .control-flash {
   animation: controlFlash .46s ease;
@@ -3296,10 +3298,10 @@ a.secondary-btn { text-decoration: none; }
 }
 .vsheet.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
 /* the top row while it's open: menu -> X, catalog search -> Search variants, scan button folds away */
-#sidebarToggle line { transform-origin: 12px 12px; transition: transform .24s var(--rl-ease), opacity .16s; }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(1), #app.xchg #sidebarToggle line:nth-child(1) { transform: rotate(45deg) translateY(6px); }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(2), #app.xchg #sidebarToggle line:nth-child(2) { opacity: 0; }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3), #app.xchg #sidebarToggle line:nth-child(3) { transform: rotate(-45deg) translateY(-6px); }   /* an exchange's ✕ too (leaveExchange) */
+:is(#sidebarToggle, .view-items .head [data-act="open-sidebar"]) line { transform-origin: 12px 12px; transition: transform .24s var(--rl-ease), opacity .16s; }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(1), #app.xchg #sidebarToggle line:nth-child(1), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(1) { transform: rotate(45deg) translateY(6px); }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(2), #app.xchg #sidebarToggle line:nth-child(2), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(2) { opacity: 0; }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3), #app.xchg #sidebarToggle line:nth-child(3), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(3) { transform: rotate(-45deg) translateY(-6px); }   /* an exchange's ✕ too (leaveExchange), and quick stock's */
 .vs-search, .vs-chip { display: none; }
 /* SCANNER (owner 2026-10-08, Shopify POS): the camera in one rounded card in the edit sheet's frame, over the top row
    (Discount, Fulfilment; owner: "so it covers the hamburger"); the phone gives
@@ -3538,6 +3540,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .cs-i::placeholder { color: var(--ink-quaternary); }   /* a faint hint, lighter than the word at the side */
 .cs-grp .cs-i:focus-visible { outline: 0; }   /* the caret is the focus, as in Contacts; .lv's blue ring boxed one line of the block */
 .cs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 0 16px; color: var(--ink); font-size: 15px; cursor: pointer; }
+.cs-grp .cs-del { width: 100%; justify-content: center; border: 0; background: none; color: var(--danger); font-size: 15px; }   /* over .esheet button */
 .cs-row > span { flex: none; color: var(--ink-secondary); }   /* the word grey at the side, its value on the right edge (the item editor's) */
 .cs-row .cs-i { flex: 1; min-width: 0; height: 48px; padding: 0; appearance: textfield; text-align: right; }
 .cs-row .cs-i::-webkit-inner-spin-button, .cs-row .cs-i::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -7216,8 +7219,6 @@ body.light-theme {
 
 /* the Item / Amount band off: the count sits beside Total (sidebar and checkout) */
 .rail-cnt { display: none; margin-left: 6px; color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
-.rail-nohead .rail-cnt { display: inline; }
-.rail-nohead .rail-h .i-head, .rail-nohead .co-head { display: none; }
 
 /* the morph menu: grows out of its trigger's box (app.js openMenu); the veil catches the outside tap */
 .rail-veil { position: fixed; inset: 0; z-index: 150; }
@@ -7474,7 +7475,8 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .c-body .fr small { color: var(--ink-tertiary); font-size: inherit; }
 .lv .c-ord { overflow: hidden; }
 .lv .c-ord .row { border-bottom: 0; padding: 9px 16px; }
-@container pv (max-width: 720px) { :is(.view-customers, .view-orders) .o-top .act span { display: none; } :is(.view-customers, .view-orders) .o-top .act { padding: 0; } }   /* phone: icons (each has a title), the name and the order's state keep the room */
+@container pv (max-width: 720px) { :is(.view-customers, .view-orders) .o-top .act span { display: none; } :is(.view-customers, .view-orders) .o-top .act { padding: 0; }
+  .view-orders .o-top #orderRefund.primary span { display: inline; } .view-orders .o-top #orderRefund.primary { padding: 0 12px; } }   /* picking: Refund ₱X keeps its words, the amount is the check   /* phone: icons (each has a title), the name and the order's state keep the room */
 
 /* ---------- Items: the list fills the screen; the editor slides over it ---------- */
 .lv .iv { position: relative; height: 100%; }
@@ -7960,10 +7962,7 @@ body.qs-on:not(:has(.view-items.active)) :is(#qs, #qsTickbar) { display: none; }
 .qs-empty { margin: 8px 16px; color: var(--ink-tertiary); font-size: 13px; text-align: center; }
 
 /* the Items list while on: only items (no Categories / Modifiers / Discounts, no +), the ☰ becomes × */
-body.qs-on :is(#itemsAdd, #itemsKinds, .view-items .head [data-act="open-sidebar"]) { display: none; }
-.lv .qs-close { display: none; border: 0; background: none; box-shadow: none; color: var(--ink); }   /* the ☰'s place, bare like it */
-body.qs-on .lv .qs-close { display: inline-flex; }
-.qs-close .ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+body.qs-on :is(#itemsAdd, #itemsKinds) { display: none; }
 .qs-pg.dock #qsBack { visibility: hidden; }   /* beside the list, the list's × closes */
 /* ...and no Price: picking is by name, and the count is what stock needs (owner 2026-10-13: less to read) */
 body.qs-on .view-items .cols { grid-template-columns: minmax(0,1fr) 170px 110px; }
@@ -7985,4 +7984,5 @@ body.qs-on .view-items .cols > :nth-child(3) { display: none; }
 .qs-tickbar .qs-next { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
 .qs-tickbar .qs-next:disabled { border-color: var(--line-strong); background: var(--bg-soft); color: var(--ink-tertiary); }
 .qs-tickbar .qs-next span + span::before { content: '·'; margin-right: 8px; }
-@media (max-width: 720px) { .qs-tickbar { bottom: var(--ph-b); } }
+/* the Sell bar's size (.ph-bar), so the two read as one thing (owner 2026-10-13) */
+@media (max-width: 720px) { .qs-tickbar { bottom: var(--ph-b); width: min(100% - 48px, 320px); } .qs-tickbar button { font-size: 15px; } }

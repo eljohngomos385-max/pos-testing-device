@@ -160,7 +160,7 @@ function renderProducts() {
           <circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/>
         </svg>
         <div class="nr-title">No items found</div>
-        <div class="nr-sub">Try a different keyword or pick another category</div>
+        <div class="nr-sub">Try a different word or scan it</div>
         ${state.query.trim() ? `<button class="text-btn nr-lost" type="button" data-act="lost-sale">Log “${escapeHtml(state.query.trim())}” as a lost sale</button>` : ''}
       </div>`;
     renderSellHeader();
@@ -815,14 +815,21 @@ function openEditSheet(kind, id, via) {
 function removeLine(item) {
   if (es && es.kind === 'line' && es.id === item.id) { es = null; $('#editSheet').classList.remove('open'); }   // the tablet's sheet can be open on it
   track('item_remove', { productId: item.productId || item.id, qty: item.qty, unitPrice: item.price });
+  const at = state.cart.indexOf(item), was = Object.fromEntries(CART_KEPT.map(k => [k, state[k]]));
+  const undo = () => {
+    if (state.cart.includes(item)) return;
+    if (!state.cart.length && !state.exchange) Object.assign(state, was);
+    else state.cart.splice(Math.min(at, state.cart.length), 0, item);
+    renderCart(); updateCustomerButton();
+  };
   state.cart = state.cart.filter(i => i !== item);
   // the last line gone is a fresh sale, as Clear cart (owner 2026-10-09): no note, no nothing; a price being typed stays up
-  if (!state.cart.length && !state.exchange) { clearCart(es?.kind === 'price'); if (es) drawEditSheet(); return; }
+  if (!state.cart.length && !state.exchange) { clearCart(es?.kind === 'price'); if (es) drawEditSheet(); return showToast('Item removed', undo); }
   const list = $('#cartList'), top = list.scrollTop;
   renderCart();
   list.scrollTop = top;   // renderCart jumps to the newest line; a removal keeps the cashier's place
   if (es) state.cart.length || es.kind === 'price' ? drawEditSheet() : closeEditSheet();   // Discount / Walk-in open beside the rail: its totals follow
-  showToast('Item removed');
+  showToast('Item removed', undo);
 }
 
 // Closing keeps what's on the cart (it followed every tap) and sends the events the old Save sent, once per open.
@@ -993,6 +1000,7 @@ function editSheetClick(e) {
     const qty = o.f === 'q';
     o[o.f] = esPress(o.fresh ? '' : o[o.f], el('[data-sk]').dataset.sk, !qty || step < 1, qty ? 9999 : o.pct ? 100 : 99999);
     o.fresh = false;
+    if (o.kind === 'rd' && o.f === 'd') o.pick = 'c';
   } else if (el('.es-seg button')) {
     o.pct = 'pct' in el('.es-seg button').dataset;
     if (o.pct && +o.d > 100) o.d = '100';
@@ -1008,7 +1016,6 @@ function editSheetClick(e) {
     if (o.f === f) esSettle(o);
     else {
       Object.assign(o, { f, fresh: true, anim: !o.f });
-      if (o.kind === 'rd') o.pick = 'c';
     }
   } else if (el('[data-sc]')) {   // Senior / PWD: its panel opens beside the list, the same row again puts it away
     const k = el('[data-sc]').dataset.sc, was = o.f;
@@ -1082,12 +1089,6 @@ function renderFulRow() {
 }
 const fulfilLabel = () => orderFulfilLabel({ fulfilment: state.fulfilment });
 
-// Settings -> Item / Amount header. Off: the rows explain themselves and the count moves beside Total.
-function applyCartHead(on) {
-  state.cartHead = on;
-  document.body.classList.toggle('rail-nohead', !on);
-  const cb = $('#posCartHead'); if (cb) cb.checked = on;
-}
 
 // ---------- The morph menu (cart-lab-stack-c.html) ----------
 // The menu grows out of its trigger's own box, each item the trigger's height, always in the same order (the hand
@@ -1361,7 +1362,7 @@ function openCustomerEditModal(c = null) {
   customerFieldsHtml(c || {}, { cls: 'cs-i', wrap: (f, control) => { F[f.name] = `<label class="cs-row${f.name === 'creditLimit' ? ' cs-lim' : ''}"><span>${f.label}</span>${f.name === 'creditLimit' ? control : control.replace('<input ', `<input placeholder="Add ${f.label.toLowerCase()}" `)}</label>`; return ''; } });
   $('#custFields').innerHTML = `<div class="cs-grp">${F.name}${F.phone}${F.email}</div><div class="cs-grp">${F.address}</div>
     <div class="cs-grp"><label class="cs-row"><span>Credit</span><input type="checkbox" class="sw" name="creditOn"${normalizeCustomer(c || {}).creditOn ? ' checked' : ''}></label>
-    ${F.creditLimit}</div><div class="co-error" id="custDup" hidden></div>`;
+    ${F.creditLimit}</div><div class="co-error" id="custDup" hidden></div>${c ? '<div class="cs-grp"><button type="button" class="cs-row cs-del" data-cust-del>Delete customer</button></div>' : ''}`;
   const name = $('#custFields [name="name"]');
   $('#customerEditTitle').textContent = c ? 'Edit customer' : 'New customer';   // a fixed title in the bar (owner 2026-10-09), the Name row shows the name
   // the tablet: over the page's main pane, as the edit sheet is on Sell; the phone: a full page wherever it sits
@@ -1372,6 +1373,19 @@ function openCustomerEditModal(c = null) {
   setTimeout(() => name.focus(), 50);
 }
 function closeCustomerEditModal() { $('#customerEditModal').classList.remove('open'); }
+// Not while they owe or are owed: the balance would go with them.
+function deleteCustomer() {
+  const c = allCustomerRecords().find(x => x.id === state.customerEditing?.id);
+  if (!c) return;
+  if (c.currentBalance) return showToast(`Settle the ${peso(Math.abs(c.currentBalance))} balance first`);
+  showConfirm({ title: `Delete “${c.name}”?`, message: 'Their past sales keep the name.', okText: 'Delete', danger: true, onConfirm: () => {
+    setCustomerDeleted(c.id, true);
+    if (state.customer?.id === c.id) selectCustomer('walk-in');
+    closeCustomerEditModal();
+    renderCustomers();
+    showToast('Customer deleted', () => { setCustomerDeleted(c.id, false); state.selectedCustomerId = c.id; renderCustomers(); });
+  } });
+}
 // Credit on/off and the limit are a manager's call (TILL_ACTIONS.credit, owner 2026-10-06); `by` = who approved it.
 // Only a change to them asks: fixing a phone number never needs a PIN.
 function saveSavedCustomerFromModal(by = '') {
@@ -1393,6 +1407,7 @@ function saveSavedCustomerFromModal(by = '') {
   const c = saveCustomer(customer);
   if (!was) track('customer_create', { customerId: c.id });
   closeCustomerEditModal();
+  if (!was) state.selectedCustomerId = c.id;
   if (state.view === 'customers') renderCustomers();
   showToast(`${was ? 'Saved' : 'Added'} “${c.name}”`);
   // When created mid-sale from the Sell-page picker, attach the new customer to
@@ -1428,7 +1443,7 @@ function renderCart() {
   } else {
     list.innerHTML = back + state.cart.map(item => `
       <div class="line"><button type="button" class="row" data-id="${item.id}" title="Edit item">
-        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}</small>${item.note ? `<small class="note">${escapeHtml(item.note)}</small>` : ''}</span>
+        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}${item.discount ? ` · ${peso(-normalizeOrderItem(item).lineDiscount)}` : ''}</small>${item.note ? `<small class="note">${escapeHtml(item.note)}</small>` : ''}</span>
         <span class="amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
       </button><button type="button" class="sw-del" data-del="${item.id}" tabindex="-1" aria-label="Delete">${esSvg('trash')}</button></div>`).join('');
     list.scrollTop = list.scrollHeight;
@@ -1527,11 +1542,9 @@ function selectCustomer(id) {
     state.customer = null;
   } else {
     state.customer = allCustomerRecords().find(c => c.id === id) || null;
-    if (state.customer && state.customer.address && state.fulfilment === 'delivery') {
-      state.deliveryAddress = state.customer.address;
-    }
   }
   const next = state.customer;
+  if (state.fulfilment === 'delivery' && (prev && prev.id) !== (next && next.id)) state.deliveryAddress = (next && next.address) || '';
   if (prev && prev.id !== (next && next.id)) track('customer_detach', { customerId: prev.id });
   if (next && next.id !== (prev && prev.id)) track('customer_attach', { customerId: next.id });
   if ((prev && prev.id) !== (next && next.id)) state.scPwd = null;   // the sale's discount stays; SC/PWD is the person's (owner 2026-10-09)

@@ -41,7 +41,7 @@ function renderCheckout() {
 
   setCheckoutError('');
   const charge = canCharge() && !state.exchange;
-  if (!charge && state.paymentMethod === 'credit') state.paymentMethod = 'cash';
+  if (!charge && state.paymentMethod === 'credit') Object.assign(state, { paymentMethod: 'cash', paymentMethodChosen: false });
   // You can only charge a named account with credit on, so the two credit tiles appear with it.
   applyPayMethods(charge);
   renderQuickCashOptions(total);
@@ -184,12 +184,13 @@ const spText = on => {   // the reference's text box in place of the figures and
   $('#spRefBox').hidden = !on; $('.co-read').hidden = $('#checkoutKeys').hidden = on;
   $('#checkoutKeyIn').classList.toggle('sp-txt', on);
 };
+const spCan = (t, but = '') => { const key = t.dataset.label || t.dataset.method;
+  return !(key === 'split' || (key === 'other' && !t.dataset.label) || key === but || SP.legs.some(l => l.key === key)); };
 function spGo(k, raw = '', fresh = false) { Object.assign(SP, { k, raw, fresh }); spRender(); }
 const spRaw = v => v.toFixed(2).replace(/\.00$/, '');   // 21.5 -> "21.50", 750 -> "750", as it would be typed
-function spAmt() { const l = SP.legs.length; spGo('amt', l ? spRaw(spLeft()) : SP.leg.amount ? spRaw(SP.leg.amount) : '', !!l); }
+function spAmt() { const raw = SP.leg.amount ? spRaw(SP.leg.amount) : SP.legs.length ? spRaw(spLeft()) : ''; spGo('amt', raw, !!raw); }
 function spFinish() {   // this part is paid: the next, or the sale
-  SP.legs.push(SP.leg); SP.leg = null;
-  if (spLeft() > 0) return spGo('pick');
+  if (moneyValue(spLeft() - SP.leg.amount) > 0) { SP.legs.push(SP.leg); SP.leg = null; return spGo('pick'); }
   $('#checkoutTender').value = '';
   completeSale();
 }
@@ -209,10 +210,7 @@ function spRender() {
     const ask = $('#spAsk');
     ask.hidden = false; ask.textContent = legs.length ? 'Pay the rest with' : 'Pay first with';
     const tiles = $$('#checkoutMethods .co-tile');
-    tiles.forEach(t => {
-      const key = t.dataset.label || t.dataset.method;
-      t.hidden = key === 'split' || (key === 'other' && !t.dataset.label) || legs.some(l => l.key === key);
-    });
+    tiles.forEach(t => { t.hidden = !spCan(t); });
     const n = tiles.filter(t => !t.hidden).length, grid = $('#checkoutMethods');
     grid.style.setProperty('--cols', n <= 4 ? 2 : n <= 6 ? 3 : 4);
     return;
@@ -247,7 +245,7 @@ function spRender() {
     ok = ok && !!raw;
     btn.textContent = 'Complete sale';
   } else {   // amt: just the method's name and the number; the keys never go past what's left (spKey)
-    ok = v > 0;
+    ok = v > 0 && (v === left || $$('#checkoutMethods .co-tile').some(t => spCan(t, leg.key)));
     lbl = leg.label;
     fig($('#checkoutCash'), money(raw) + caret, raw ? '' : 'ph');
     btn.textContent = !spTail(leg, v) && v === left ? 'Complete sale' : 'Next';
@@ -887,9 +885,10 @@ function completeSale(approvedBy = '', ok = {}) {
   const total = moneyValue(dueNow());
   let tendered = total, change = 0, split = null;
   if (SP) {   // split: the parts as paid; tendered / change are the cash parts' (what went in and out of the drawer)
-    const cash = SP.legs.filter(l => l.key === 'cash'), sum = f => moneyValue(cash.reduce((s, l) => s + (l[f] || 0), 0));
+    const legs = SP.legs.concat(SP.leg || []), cash = legs.filter(l => l.key === 'cash'), sum = f => moneyValue(cash.reduce((s, l) => s + (l[f] || 0), 0));
+    if (moneyValue(legs.reduce((s, l) => s + l.amount, 0)) !== total) return setCheckoutError("The parts don't add up to the total.");
     tendered = sum('given'); change = sum('change');
-    split = { legs: SP.legs };
+    split = { legs };
   } else if (['cash', 'gcash', 'qr', 'other'].includes(state.paymentMethod)) {
     const tenderRaw = ($('#checkoutTender')?.value || $('#tenderInput')?.value || '').trim();
     tendered = tenderRaw ? moneyValue(parseFloat(tenderRaw) || 0) : total;

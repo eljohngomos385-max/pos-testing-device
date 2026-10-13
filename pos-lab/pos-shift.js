@@ -3,7 +3,7 @@
 // asked anything while selling. The cash is counted once, at close, blind. Rows are append-only in HWPOS_STORE 'shifts':
 //   shift_open  { amount: start cash, cutoff: the auto-close hour it opened under, float: true when left at the last close }
 //   cash_move   { amount: + cash in / − cash out, note } -- with or without a shift open
-//   shift_close { amount: counted (0 = not counted), counts: every count typed, note }
+//   shift_close { amount: counted (0 = an empty drawer), counts: every count typed, note, skipped: true when not counted }
 //   day_close   { amount: the day's net, day, summary: its reading, grandBefore, grandAfter, zNo } -- the Z, per register, made by closeDays
 // Every row: id, type, shiftId, register, staff, staffId, amount, note, ts, storeId, updatedAt.
 // Shifts are derived (storeShifts), never written: walked in time, an open inside a running shift joins it (the earlier
@@ -31,7 +31,10 @@ function addShiftRow(type, shiftId, amount, extra) {
 }
 
 const storeRows = () => shiftRows().filter(r => r.type !== 'day_close').sort((a, b) => a.ts - b.ts);   // the store's drawer rows, every POS
-const movesIn = (rows, from, to) => rows.filter(m => m.type === 'cash_move' && m.ts >= from && m.ts < to);
+const movesIn = (rows, from, to) => {
+  const undone = new Set(rows.map(r => r.reverses).filter(Boolean));
+  return rows.filter(m => m.type === 'cash_move' && !m.reverses && !undone.has(m.id) && m.ts >= from && m.ts < to);
+};
 // The auto-close turn (Settings › Shift › Auto-close at, store clock): the last at or before ts, and the first after.
 // A wall-clock hour in the store's zone: on a DST-change day it is still 4 AM.
 const cutAt = (day, h) => SalesMath.dayStartMs(day, tillZone(), h);
@@ -79,13 +82,13 @@ const shiftOf = (all = storeShifts(), now = Date.now()) => all.filter(s => !shif
 
 // The drawer over the shift: start + cash sales − cash handed back + cash paid on account ± petty cash, every POS.
 // Cash sales / back / on account are drawerCash's (pos-settings.js), the same sum the day count reads. diff: over /
-// short against the saved count, live (a late sale moves it); null when not counted (0 typed, or closed by itself).
+// short against the saved count, live (a late sale moves it); null when not counted (Skip, or closed by itself).
 function shiftFigures(s) {
   const d = drawerCash(s.open.ts, s.end, null);
   const sum = sign => unc(s.moves.reduce((n, m) => n + (Math.sign(m.amount) === sign ? cent(Math.abs(m.amount)) : 0), 0));
   const f = { start: moneyValue(s.open.amount), sales: d.sales, back: d.back, onAccount: d.onAccount, cashIn: sum(1), cashOut: sum(-1), rows: d.rows };
   f.expected = unc(cent(f.start) + cent(f.sales) - cent(f.back) + cent(f.onAccount) + cent(f.cashIn) - cent(f.cashOut));
-  f.diff = s.close?.amount ? shiftDiff(s.close.amount, f.expected) : null;
+  f.diff = s.close && !s.close.skipped ? shiftDiff(s.close.amount, f.expected) : null;   // ₱0 counted is a count; Skip is not
   return f;
 }
 const shiftDiff = (counted, expected) => unc(cent(counted) - cent(expected));
@@ -209,7 +212,7 @@ function openShift(start, extra) {
 // Start / Close shift: a full panel in the edit sheet's frame (its keys, hero and foot), 0 typed so one tap goes on.
 // Start asks the start cash. Close counts blind (no Expected while counting), then Expected / Counted / Over or short,
 // a note, one Recount; in float mode (Settings › Shift › Starting cash) what stays in the drawer starts the next
-// shift. A count of 0 is Not counted. ✕ / Back / Esc / leaving the page at any step: nothing saved (owner 2026-10-10).
+// shift. ₱0 is a count (an empty drawer); Skip on the count is Not counted. ✕ / Back / Esc / leaving the page at any step: nothing saved (owner 2026-10-10).
 let shSheet = null;   // { step: 'start' | 'count' | 'result' | 'leave', v: typed, counts, shiftId, note, born }
 function openShiftSheet(step) {
   shSheet = { step, v: '0', counts: [], shiftId: shiftOf()?.id || null, note: '', born: performance.now() };
@@ -219,7 +222,7 @@ function openShiftSheet(step) {
 function closeShiftSheet() { if (!shSheet) return; shSheet = null; $('#shiftSheet').classList.remove('open'); }
 const SH_ASK = { start: ['Starting cash?', 'Start shift'], count: ['Count the cash in the drawer', 'Next'], leave: ['Leave in drawer?', 'Close shift'] };
 const shCounted = () => shSheet.counts[shSheet.counts.length - 1];
-const shLeave = () => state.settings.startCash === 'float' && shCounted();   // a float only from a counted drawer
+const shLeave = () => state.settings.startCash === 'float' && shCounted() > 0;   // a float only from a counted drawer
 function drawShiftSheet() {
   const o = shSheet, ask = SH_ASK[o.step];
   let head, rows = '', left = '', ink;
@@ -227,12 +230,13 @@ function drawShiftSheet() {
   else {   // the figures as this draws (the close stores none: a sale after it moves them on the paper and the list)
     const f = shiftFigures(storeShifts().find(x => x.ids.has(o.shiftId))), counted = shCounted();
     const row = (lb, v) => `<div class="es-row"><span>${lb}</span><small class="num">${v}</small></div>`;
-    head = `<p>Over / short</p><div class="es-hero">${counted ? overShortText(shiftDiff(counted, f.expected)) : 'Not counted'}</div>`;
-    rows = row('Expected', peso(f.expected)) + row('Counted', counted ? peso(counted) : 'Not counted')
+    head = `<p>Over / short</p><div class="es-hero">${counted !== undefined ? overShortText(shiftDiff(counted, f.expected)) : 'Not counted'}</div>`;
+    rows = row('Expected', peso(f.expected)) + row('Counted', counted !== undefined ? peso(counted) : 'Not counted')
       + `<textarea class="es-ta" id="shNote" rows="2" maxlength="80" placeholder="Add a note" aria-label="Note">${escapeHtml(o.note)}</textarea>`;
     if (o.counts.length < 2) left = '<button type="button" class="es-q" data-recount>Recount</button>';
     ink = shLeave() ? 'Next' : 'Close shift';
   }
+  if (o.step === 'count') left = '<button type="button" class="es-q" data-skip>Skip</button>';
   $('#shiftSheetCard').innerHTML = esFrame(head, rows, ask ? `<div class="es-keys">${esKeys(true)}</div>` : '', `${left}<button type="button" class="es-ink" data-apply>${ink}</button>`);
   if (ask) $('#shiftSheet .es-ink').focus({ preventScroll: true });   // off the page's button: a key can't fire it again
 }
@@ -244,6 +248,7 @@ function shiftSheetClick(e) {
   if (el('[data-close]')) return closeShiftSheet();
   if (k) { o.v = esPress(o.v, k.dataset.sk, true, CASH_MAX); return drawShiftSheet(); }
   if (el('[data-recount]') && !shEarly()) { o.note = $('#shNote').value; return shStep('count'); }
+  if (el('[data-skip]') && !shEarly()) return shStep('result');   // no count: Not counted
   if (el('[data-apply]') && !shEarly()) shiftApply();
 }
 // A double tap: Start shift / Close shift on the page and the panel's button sit in one spot (as showConfirm's early()).
@@ -265,7 +270,7 @@ function finishClose(leave) {
   const s = shiftOf(), o = shSheet;
   closeShiftSheet();
   if (!s?.ids.has(o.shiftId)) { showToast('The shift was already closed'); return renderShift(); }   // another POS / tab, or the cutoff passed
-  const c = addShiftRow('shift_close', s.open.id, o.counts[o.counts.length - 1], { note: o.note.trim(), counts: [...o.counts] });
+  const n = o.counts.length, c = addShiftRow('shift_close', s.open.id, n ? o.counts[n - 1] : 0, { note: o.note.trim(), counts: [...o.counts], ...(!n && { skipped: true }) });
   if (leave > 0) openShift(leave, { float: true, ts: c.ts });   // the same ms: no sale falls between the two
   renderShift();
   printPaper(xPaper(storeShifts().find(x => x.id === s.id)));
@@ -392,8 +397,9 @@ function shiftAction(act) {
     const amt = moneyValue(shiftDraft.amt), note = shiftDraft.note.trim();
     if (!(amt > 0 && amt <= CASH_MAX)) return showToast('Type an amount');
     if (!note) return showToast('Add a note');
-    addShiftRow('cash_move', s?.open.id, act === 'in' ? amt : -amt, { note });
+    const row = addShiftRow('cash_move', s?.open.id, act === 'in' ? amt : -amt, { note });
     shiftDraft.amt = shiftDraft.note = '';
+    showToast(`Cash ${act} ${peso(amt)}`, () => { addShiftRow('cash_move', row.shiftId, -row.amount, { note, reverses: row.id }); renderShift(); showToast('Undone'); });
   }
   renderShift();
 }

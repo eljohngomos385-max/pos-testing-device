@@ -153,10 +153,15 @@ function openPaySheet(btn, c) {
     const a = amount(), m = f.method.value;
     if (!(a > 0)) { showToast('Enter an amount above 0'); return f.amount.focus(); }
     const [method, methodLabel] = PAY_BUILTINS.includes(m) || m === 'other' ? [m, ''] : ['other', m];   // a custom name is saved as its own label
-    if (!recordCreditPayment(c.id, a, { method, ...(methodLabel && { methodLabel }), note: f.note.value.trim(),
-      orderIds: [...f.querySelectorAll('[name="order"]:checked')].map(b => b.value) })) return;
+    const row = recordCreditPayment(c.id, a, { method, ...(methodLabel && { methodLabel }), note: f.note.value.trim(),
+      orderIds: [...f.querySelectorAll('[name="order"]:checked')].map(b => b.value) });
+    if (!row) return;
     close();
-    showToast(`${peso(a)} recorded`);
+    showToast(`${peso(a)} recorded`, () => {
+      const store = currentStoreInfo();
+      undoPayment(row, { register: store.registerNo, staff: store.cashier });
+      renderCustomers(); updateCustomerButton(); showToast('Payment undone');
+    });
   });
 }
 

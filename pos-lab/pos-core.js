@@ -161,7 +161,6 @@ const state = {
   tileText: (storageGet(STORAGE_TILE_TEXT, 'md') || 'md'),
   showPrice: storageGet(STORAGE_SHOW_PRICE, '0') === '1',
   theme: (storageGet(STORAGE_THEME, 'dark') || 'dark'),
-  cartHead: window.HWPOS_STORE?.ui.get('cartHead', '1') !== '0',               // the Item / Amount band
   tileStock: window.HWPOS_STORE?.ui.get('tileStock', '0') === '1',             // Settings › Tiles show = Stock (tileLine)
   customersQuery: '',
   selectedCustomerId: null,
@@ -203,16 +202,22 @@ function escapeHtml(s) {
   }[c]));
 }
 
-function showToast(msg) {
+// `undo`: an Undo button on the toast, which then stays up longer; it runs once
+function showToast(msg, undo) {
   const el = $('#toast');
+  const hide = () => { el.classList.remove('show'); setTimeout(() => { el.hidden = true; }, 220); };
   el.textContent = msg;
+  el.classList.toggle('has-undo', !!undo);
+  if (undo) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'toast-undo'; b.textContent = 'Undo';
+    b.onclick = () => { b.onclick = null; clearTimeout(showToast._t); hide(); undo(); };
+    el.append(b);
+  }
   el.hidden = false;
   requestAnimationFrame(() => el.classList.add('show'));
   clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => {
-    el.classList.remove('show');
-    setTimeout(() => { el.hidden = true; }, 220);
-  }, 2000);
+  showToast._t = setTimeout(hide, undo ? 5000 : 2000);
 }
 
 function flashControl(el) {
