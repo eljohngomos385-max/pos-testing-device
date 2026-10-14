@@ -4811,6 +4811,8 @@ body.light-theme .product-card.pc-tc, body.light-theme .product-card.pc-tc:hover
 :is(.rail-h .row, .co-row) .pic { flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: var(--r-card-lg); background: var(--rl-soft, var(--surface)); }
 :is(.rail-h .row, .co-row) .pic[style] { background: hsl(var(--tc) 45% 32%); }
 body.light-theme :is(.rail-h .row, .co-row) .pic[style] { background: hsl(var(--tc) 75% 86%); }
+:is(.rail-h .row, .co-row) .pic[data-s="md"] { width: 44px; height: 44px; border-radius: var(--r-input); }
+:is(.rail-h .row, .co-row) .pic[data-s="lg"] { width: 56px; height: 56px; border-radius: var(--r-input); }   /* Grab's order summary */
 :is(.rail-h .row, .co-row) .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 :is(.rail-h .row, .co-row) .pic:has(img) { background: none; }   /* a see-through PNG shows no box in the cart */
 

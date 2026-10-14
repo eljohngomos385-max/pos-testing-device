@@ -163,7 +163,7 @@ const state = {
   theme: (storageGet(STORAGE_THEME, 'dark') || 'dark'),
   tileStock: window.HWPOS_STORE?.ui.get('tileStock', '0') === '1',             // Settings › Tiles show = Stock (tileLine)
   tilePics: window.HWPOS_STORE?.ui.get('tilePics', 'off') || 'off',              // Settings › Tile pictures: off | top | fill (tileArt)
-  cartPics: window.HWPOS_STORE?.ui.get('cartPics', 'off') === 'on',             // Settings › Cart pictures (linePic)
+  cartPics: (v => v === 'on' ? 'sm' : v || 'off')(window.HWPOS_STORE?.ui.get('cartPics', 'off')),   // Settings › Cart pictures: off | sm | md | lg (linePic); 'on' was Small
   customersQuery: '',
   selectedCustomerId: null,
   lostSale: { productId: '', reason: 'out-of-stock' },

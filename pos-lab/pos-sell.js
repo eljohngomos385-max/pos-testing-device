@@ -125,12 +125,12 @@ function tileArt(row) {
   if (img && state.tilePics !== 'off') return { cls: ' pc-pic', style: '', html: `<span class="pc-img"><img src="${escapeHtml(img)}" alt="" draggable="false"></span>` };
   return hue == null ? { cls: '', style: '', html: '' } : { cls: ' pc-tc', style: ` style="--tc:${hue}"`, html: '' };
 }
-// Settings › Cart pictures: the photo before a line's name (the cart and the checkout's list); no photo = the tile
-// colour or a blank square, so the names still line up.
+// Settings › Cart pictures: the photo before a line's name (the cart and the checkout's list), Small / Medium / Large
+// (owner 2026-10-14, Grab's order summary for Large); no photo = the tile colour or a blank square, so the names still line up.
 function linePic(item) {
-  if (!state.cartPics) return '';
+  if (state.cartPics === 'off') return '';
   const p = productOf(item), { img, hue } = p ? itemLook(p) : {};
-  return `<span class="pic"${hue == null || img ? '' : ` style="--tc:${hue}"`}>${img ? `<img src="${escapeHtml(img)}" alt="">` : ''}</span>`;
+  return `<span class="pic" data-s="${state.cartPics}"${hue == null || img ? '' : ` style="--tc:${hue}"`}>${img ? `<img src="${escapeHtml(img)}" alt="">` : ''}</span>`;
 }
 function tileLine(ps) {
   if (state.tileStock) {
@@ -302,7 +302,7 @@ function setTileSize(size) {
 
 // Settings › Tile pictures and Cart pictures (owner 2026-10-14): this POS's own, like Tile size
 function setTilePics(v) { state.tilePics = v; HWPOS_STORE.ui.set('tilePics', v); renderProducts(); }
-function setCartPics(v) { state.cartPics = v === 'on'; HWPOS_STORE.ui.set('cartPics', v); renderCart(); }
+function setCartPics(v) { state.cartPics = v; HWPOS_STORE.ui.set('cartPics', v); renderCart(); }
 function setTileText(size) {
   if (!TILE_TEXT_SIZES.includes(size)) return;
   state.tileText = size;
