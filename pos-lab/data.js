@@ -200,7 +200,7 @@ const SEED_GROUPS = [
   { id: 'grp_pvc_pipe',  name: 'PVC Pipes & Tees',   folder: 'plumbing'   },
   { id: 'grp_thhn',      name: 'THHN Wire',          folder: 'electrical' },
   { id: 'grp_nails',     name: 'Common Wire Nails',  folder: 'fasteners'  },
-  { id: 'grp_latex',     name: 'Boysen Latex Paint', folder: 'paint'      },
+  { id: 'grp_latex',     name: 'Boysen Latex Paint', folder: 'paint', imageUrl: './img/boysen.webp' },
 ];
 
 // Attach groupIds to existing seed products so groups have members.
@@ -217,3 +217,19 @@ const _GROUP_MEMBERSHIP = {
   pt001: 'grp_latex', pt101: 'grp_latex', pt102: 'grp_latex', pt103: 'grp_latex', pt104: 'grp_latex', pt105: 'grp_latex',
 };
 PRODUCTS.forEach(p => { if (_GROUP_MEMBERSHIP[p.id]) p.groupId = _GROUP_MEMBERSHIP[p.id]; });
+
+// Lab only: free photos from Wikimedia Commons (img/CREDITS.txt) and a few tile colours, so the picture settings show something.
+// Some items keep neither, to show the plain tile.
+const _SEED_PHOTOS = {
+  t001: 'claw-hammer', t002: 'screwdriver', t003: 'pliers', t004: 'tape-measure', t005: 'hacksaw', t006: 'level',
+  pt004: 'paint-roller', pt005: 'thinner', p005: 'faucet', p006: 'teflon-tape',
+  e003: 'led-bulb', e004: 'outlet', e005: 'switch', e006: 'electrical-tape', e007: 'breaker',
+  f003: 'wood-screw', f004: 'hex-bolt', f005: 'washer',
+  c001: 'cement', c002: 'sand', c003: 'gravel', c004: 'hollow-block',
+  s001: 'gloves', s002: 'goggles', s003: 'n95', s004: 'hard-hat', a004: 'sealant',
+};
+const _SEED_COLORS = { p900: 'teal', a001: 'red', a002: 'yellow', a003: 'blue' };
+PRODUCTS.forEach(p => {
+  if (_SEED_PHOTOS[p.id]) p.imageUrl = `./img/${_SEED_PHOTOS[p.id]}.webp`;
+  if (_SEED_COLORS[p.id]) p.color = _SEED_COLORS[p.id];
+});

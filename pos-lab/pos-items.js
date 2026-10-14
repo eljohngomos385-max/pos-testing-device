@@ -31,11 +31,12 @@ function catalogItems() {
     if (!it) {
       // a family's name, photo and description are its group's; the rest its first member's, as the back office's item page reads them
       const folder = (g && g.folder) || p.folder, catIds = foldersOf(p);
-      it = { id: key, name: g ? g.name : p.name, cat: folderName(folder), cats: catIds.map(folderName), catIds, hue: itemHue(folder), unit: p.unit || 'pc',
-        soldBy: p.soldBy === 'measure' ? 'measure' : 'each', img: (g ? g.imageUrl : p.imageUrl) || '', desc: (g ? g.description : p.description) || '',
+      it = { id: key, name: g ? g.name : p.name, cat: folderName(folder), cats: catIds.map(folderName), catIds, unit: p.unit || 'pc',
+        soldBy: p.soldBy === 'measure' ? 'measure' : 'each', img: (g ? g.imageUrl : p.imageUrl) || '', color: (g ? g.color : p.color) || '', desc: (g ? g.description : p.description) || '',
         hidden: !!p.hidden, marginMode: p.marginMode === 'flat' ? 'flat' : 'percent', reorder: p.reorderPoint || 0, track: p.trackStock !== false,
         sellOut: !!p.sellOutOfStock, sups: supplierIdsOf(p), main: p.supplierId || '', mods: [...(p.modifierIds || [])],
         weight: p.weight || '', size: p.size || '', length: p.length || '', variants: [], members: [] };
+      it.hue = TILE_COLORS[it.color] ?? itemHue(folder);   // the thumb wears the tile colour when there is one
       byKey.set(key, it);
     }
     it.members.push(p);
@@ -85,7 +86,7 @@ const soldByFor = (unit, was) => (ITEM_UNITS[1].includes(unit) ? 'measure' : ITE
 function openItemEditor(id) {
   const it = id ? catalogItems().find(x => x.id === id) : null;
   itemIsNew = !it; kindEdit = null; itemSub = '';
-  itemEdit = it || { id: newId(), name: '', desc: '', cat: '', catIds: [], hue: 220, unit: 'pc', soldBy: 'each', img: '', hidden: false, marginMode: 'percent',
+  itemEdit = it || { id: newId(), name: '', desc: '', cat: '', catIds: [], hue: 220, unit: 'pc', soldBy: 'each', img: '', color: '', hidden: false, marginMode: 'percent',
     reorder: 0, track: true, sellOut: false, sups: [], main: '', mods: [], weight: '', size: '', length: '', variants: [blankVariant()], since: tillDay(Date.now()) };
   const v0 = itemEdit.variants[0];
   itemEdit.marginValue = itemMarkupOf(v0, itemEdit.marginMode);
@@ -146,7 +147,7 @@ const ICAM = '<svg class="ic" viewBox="0 0 24 24"><path d="M4 8.5A1.5 1.5 0 0 1 
 function itemMainPage() {
   const E = itemEdit, fam = E.variants.length > 1, v0 = E.variants[0], T = E.track;
   const photo = `<div class="fphoto"><label for="itemImg" aria-label="${E.img ? 'Change photo' : 'Add photo'}">${itemThumb(E, true)}<span class="cam">${ICAM}</span>
-    <input type="file" accept="image/*" id="itemImg" hidden></label>${E.img ? '<button type="button" class="link" data-act="img-clear">Remove photo</button>' : ''}</div>`;
+    <input type="file" accept="image/*" id="itemImg" hidden></label>${E.img ? '<button type="button" class="link" data-act="img-clear">Remove photo</button>' : ''}${tileSwatches(E)}</div>`;
   const about = icard('', [
     ifr('Name', iinp('name', E.name, 'placeholder="Add name"')),
     ifr('Status', ipick('status', E.hidden ? 'Hidden' : 'Active'), true),
@@ -250,6 +251,25 @@ function itemReprice(from) {
 const IFIND = '<div class="pick-find"><input class="in" data-k="q" type="search" placeholder="Search" autocomplete="off"></div>';
 const filterPicks = q => { q = q.trim().toLowerCase(); $$('#itemForm .pick[data-find]').forEach(r => { r.hidden = !!q && !r.dataset.find.includes(q); }); };
 
+// The tile's colour (owner 2026-10-14): the sell tile wears it when there is no photo; the first, empty swatch = the plain tile.
+const tileSwatches = E => `<div class="tcolors" role="group" aria-label="Tile colour">${['', ...Object.keys(TILE_COLORS)].map(k =>
+  `<button type="button" class="tc${k ? '' : ' none'}${(E.color || '') === k ? ' on' : ''}" data-act="tile-color" data-c="${k}"${k ? ` style="--tc:${TILE_COLORS[k]}"` : ''}
+    aria-label="${k || 'No colour'}" aria-pressed="${(E.color || '') === k}"></button>`).join('')}</div>`;
+// The photo and the tile colour save on the spot (owner 2026-10-14), onto the family's group or the lone product, so the
+// tiles, the cart and every POS show them; the rest of the editor's Save is still design only. A new item keeps them
+// with the form until its Save works.
+function setItemLook(patch) {
+  const E = itemEdit, row = { updatedAt: new Date().toISOString() };
+  if ('img' in patch) row.imageUrl = E.img = patch.img;
+  if ('color' in patch) row.color = E.color = patch.color;
+  if (catalogItems().some(it => it.id === E.id)) {
+    const put = rows => rows.map(r => (r.id === E.id ? { ...r, ...row } : r));
+    if (groupById(E.id)) { state.groups = put(state.groups); saveGroups(); } else { state.products = put(state.products); saveProducts(); }
+    renderItems(); renderProducts(); renderCart();
+  }
+  E.hue = catalogItems().find(it => it.id === E.id)?.hue ?? TILE_COLORS[E.color] ?? 220;
+  renderItemForm();
+}
 function saveItem() {
   const E = itemEdit;
   if (!E.name.trim()) { if (itemSub) itemGo(''); showToast('Give the item a name'); $('#itemForm').querySelector('[data-f=name]').focus(); return; }

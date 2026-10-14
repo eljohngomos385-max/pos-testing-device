@@ -431,7 +431,7 @@ function attachEvents() {
       E[k] = t.checked ? [...E[k], t.value] : E[k].filter(x => x !== t.value);
       if (k === 'sups' && !E.sups.includes(E.main)) { E.main = ''; itemForm.querySelector('[data-act=main] span').textContent = 'None'; }
     }
-    if (t.id === 'itemImg' && t.files[0]) { E.img = URL.createObjectURL(t.files[0]); renderItemForm(); }
+    if (t.id === 'itemImg' && t.files[0]) shrinkPhoto(t.files[0]).then(img => setItemLook({ img }), () => showToast('That file isn’t a photo'));
   });
   itemForm?.addEventListener('click', (e) => {
     const E = itemEdit, b = !kindEdit && e.target.closest('button');
@@ -444,7 +444,8 @@ function attachEvents() {
       E.marginValue = itemMarkupOf(E.variants[0], E.marginMode);   // Markup is back when one is left
       itemGo('');
     }
-    else if (act === 'img-clear') { E.img = ''; renderItemForm(); }
+    else if (act === 'img-clear') setItemLook({ img: '' });
+    else if (act === 'tile-color') setItemLook({ color: b.dataset.c });
     else if (act === 'stock') { if (itemIsNew) showToast('Save the item first'); else qsAdjust(E.id); }   // Quick stock (pos-stock.js)
     else if (act === 'archive') notYet('Archiving')();   // ponytail: as Save, design only until the back office owns catalog writes
     else if (act) itemPick(b);   // status, markup kind, sold per, main supplier

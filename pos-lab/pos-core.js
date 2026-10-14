@@ -162,6 +162,8 @@ const state = {
   showPrice: storageGet(STORAGE_SHOW_PRICE, '0') === '1',
   theme: (storageGet(STORAGE_THEME, 'dark') || 'dark'),
   tileStock: window.HWPOS_STORE?.ui.get('tileStock', '0') === '1',             // Settings › Tiles show = Stock (tileLine)
+  tilePics: window.HWPOS_STORE?.ui.get('tilePics', 'off') || 'off',              // Settings › Tile pictures: off | top | fill (tileArt)
+  cartPics: window.HWPOS_STORE?.ui.get('cartPics', 'off') === 'on',             // Settings › Cart pictures (linePic)
   customersQuery: '',
   selectedCustomerId: null,
   lostSale: { productId: '', reason: 'out-of-stock' },
@@ -378,20 +380,39 @@ function loadProducts() {
   const saved = readJsonStorage(STORAGE_PRODUCTS, null);
   // ponytail: lab only -- the seed's no-price item on a POS whose catalog was saved before it (2026-10-13); drop with the seed
   if (saved && !saved.some(p => p.id === 'p900')) saved.unshift({ ...PRODUCTS[0] });
-  return withStock(saved || PRODUCTS.map(p => ({ ...p })));
+  return withStock(seedLooks(saved, PRODUCTS, STORAGE_PRODUCTS) || PRODUCTS.map(p => ({ ...p })));
+}
+// ponytail: lab only -- the seed's photos and tile colours onto a catalog saved before them (2026-10-14). Once a device,
+// so a photo cleared afterwards stays cleared; drop with the seed.
+function seedLooks(saved, seed, key) {
+  if (!saved || HWPOS_STORE.ui.get('seedLooks.' + key)) return saved;
+  const bySeed = new Map(seed.map(s => [s.id, s]));
+  saved.forEach(r => {
+    const s = bySeed.get(r.id);
+    if (s?.imageUrl && !r.imageUrl) r.imageUrl = s.imageUrl;
+    if (s?.color && !r.color) r.color = s.color;
+  });
+  writeJsonStorage(key, saved);
+  HWPOS_STORE.ui.set('seedLooks.' + key, 1);
+  return saved;
 }
 // The one catalog write both apps share (bo-model saveCatalog), so price history logs the same way.
 function saveProducts() {
   return saveCatalog(state.products, { source: 'pos', staff: currentStoreInfo().cashier });
 }
 function loadGroups() {
-  return readJsonStorage(STORAGE_GROUPS, null)
+  return seedLooks(readJsonStorage(STORAGE_GROUPS, null), SEED_GROUPS, STORAGE_GROUPS)
     || ((typeof SEED_GROUPS !== 'undefined') ? SEED_GROUPS.map(g => ({ ...g })) : []);
 }
 function saveGroups() {
   return writeJsonStorage(STORAGE_GROUPS, state.groups);
 }
 function groupById(id) { return state.groups.find(g => g.id === id) || null; }
+// An item's photo and tile colour: its own, else its variant group's (bo-model imageFor). A group row passes itself.
+function itemLook(row) {
+  const g = row.groupId ? groupById(row.groupId) : null;
+  return { img: imageFor(row, state.groups), hue: TILE_COLORS[row.color || (g && g.color)] };
+}
 // On the till = a tile and a search hit. Archived is gone; hidden is kept in the back office but
 // off the till (owner, 2026-10-01) -- a scan still finds both and asks (addProductByCode).
 const onTill = p => !p.archived && !p.hidden;

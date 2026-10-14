@@ -9,6 +9,8 @@ const SETTING_PICKS = {
     now: () => (state.tileSize === 'wide' && innerWidth > 720 ? 'md' : state.tileSize) || 'md', set: setTileSize },
   tileText: { opts: [['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large'], ['xl', 'Extra large']], now: () => state.tileText || 'md', set: setTileText },
   tileShow: { opts: [['price', 'Price'], ['stock', 'Stock'], ['name', 'Name only']], now: () => state.tileStock ? 'stock' : state.showPrice ? 'price' : 'name', set: setTileShow },
+  tilePics: { opts: [['off', 'Off'], ['top', 'Photo top'], ['fill', 'Photo fills']], now: () => state.tilePics, set: setTilePics },
+  cartPics: { opts: [['off', 'Off'], ['on', 'On']], now: () => (state.cartPics ? 'on' : 'off'), set: setCartPics },
   theme: { opts: [['dark', 'Dark'], ['light', 'Light']], now: () => state.theme || 'dark', set: applyTheme },
   driver: { opts: [['browser', 'Browser'], ['network', 'Wi-Fi'], ['bluetooth', 'Bluetooth']], now: () => printerConfig().driver || 'browser', set: v => savePrinting({ driver: v }) },
   width: { opts: [['58mm', '58 mm'], ['80mm', '80 mm']], now: () => printerConfig().width || '80mm', set: v => savePrinting({ width: v }) },

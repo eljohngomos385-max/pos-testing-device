@@ -59,7 +59,7 @@ const PRODUCT_DEFAULTS = {
   folder: '', folders: [], unit: 'pc', soldBy: 'each',
   cost: 0, price: 0, marginMode: 'percent', marginValue: 0,
   stock: 0, reorderPoint: 0, sellOutOfStock: false,
-  supplierId: '', altSupplierIds: [], groupId: '', imageUrl: '',
+  supplierId: '', altSupplierIds: [], groupId: '', imageUrl: '', color: '',
   weight: '', size: '', length: '', description: '',
   // hidden: kept and listed here, but off the till's tiles and search (owner, 2026-10-01).
   // trackStock false: no counts and never an out-of-stock prompt (a service, a cut).
@@ -141,7 +141,7 @@ const stampRow = (row) => (globalThis.HWPOS_STORE && HWPOS_STORE.stamp ? HWPOS_S
    — a variant has to be sellable, countable and orderable, which is to say it
    has to be a product. The group carries the shared picture and category.     */
 
-const GROUP_DEFAULTS = { id: '', name: '', folder: '', imageUrl: '', description: '' };
+const GROUP_DEFAULTS = { id: '', name: '', folder: '', imageUrl: '', color: '', description: '' };
 
 const groupOf = (product, groups) =>
   (product && product.groupId && groups.find((g) => g.id === product.groupId)) || null;
@@ -155,6 +155,27 @@ const imageFor = (product, groups) => {
   const g = groupOf(product, groups);
   return product.imageUrl || (g && g.imageUrl) || '';
 };
+
+// A tile's colour (`color`, set in the POS item editor, owner 2026-10-14): a name stored, its hue drawn by the theme.
+const TILE_COLORS = { red: 4, orange: 28, yellow: 48, green: 140, teal: 178, blue: 214, purple: 268, pink: 330 };
+
+// An item photo: shrunk to 256px WebP and kept as a data: URL in image_url, so it rides the catalog sync, works
+// offline and goes with the item (docs/architecture.md). bo-products.js still has its own copy until the lab is ported.
+const PHOTO_MAX = 256;
+const shrinkPhoto = (file) => new Promise((resolve, reject) => {
+  const img = new Image();
+  const done = (fn, arg) => { URL.revokeObjectURL(img.src); fn(arg); };
+  img.onload = () => {
+    const s = Math.min(PHOTO_MAX / img.width, PHOTO_MAX / img.height, 1);
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.width * s));
+    c.height = Math.max(1, Math.round(img.height * s));
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    done(resolve, c.toDataURL('image/webp', 0.8));   // Safari < 16 has no webp encoder and hands back a PNG; both are fine
+  };
+  img.onerror = () => done(reject, new Error('Not an image'));
+  img.src = URL.createObjectURL(file);
+});
 
 
 /* ---------- Stock movements: the log the number comes from ---------- */

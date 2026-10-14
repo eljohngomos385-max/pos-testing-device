@@ -85,9 +85,9 @@ function clampPage(cells = getSellCells()) {
 
 function renderSellCellHtml(cell) {
   if (cell.kind === 'group') {
-    const g = cell.group;
+    const g = cell.group, art = tileArt(g);
     return `
-      <div class="product-card pc-group" data-group-id="${g.id}" title="${escapeHtml(g.name)}">
+      <div class="product-card pc-group${art.cls}" data-group-id="${g.id}" title="${escapeHtml(g.name)}"${art.style}>${art.html}
         <div class="pc-group-badge">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -97,9 +97,9 @@ function renderSellCellHtml(cell) {
         <div class="pc-name">${escapeHtml(g.name)}</div>${tileLine(groupMembers(g.id))}
       </div>`;
   }
-  const p = cell.product;
+  const p = cell.product, art = tileArt(p);
   return `
-    <div class="product-card" data-id="${p.id}">
+    <div class="product-card${art.cls}" data-id="${p.id}"${art.style}>${art.html}
       <div class="pc-name">${escapeHtml(p.name)}</div>${tileLine([p])}
     </div>`;
 }
@@ -118,6 +118,20 @@ function setTileShow(v) {
 // group. Price: the price, a group its range. Stock: the count (a group's total, the variant sheet splits it), in
 // the warn colour when low (familyLevel, Items' own words), "Out" when out; nothing when untracked.
 const tileUnit = (n, u = 'pc') => /^(pc|bag|roll|pair|box|set|pack)$/.test(u) ? SalesMath.pluralWord(n, u, u === 'box' ? 'boxes' : u + 's') : u;
+// Settings › Tile pictures (owner 2026-10-14): Photo top / Photo fills draws the item's photo; with no photo (or pictures
+// off) the tile colour set in the item editor paints the tile, else it is the plain tile.
+function tileArt(row) {
+  const { img, hue } = itemLook(row);
+  if (img && state.tilePics !== 'off') return { cls: ' pc-pic', style: '', html: `<span class="pc-img"><img src="${escapeHtml(img)}" alt="" draggable="false"></span>` };
+  return hue == null ? { cls: '', style: '', html: '' } : { cls: ' pc-tc', style: ` style="--tc:${hue}"`, html: '' };
+}
+// Settings › Cart pictures: the photo before a line's name (the cart and the checkout's list); no photo = the tile
+// colour or a blank square, so the names still line up.
+function linePic(item) {
+  if (!state.cartPics) return '';
+  const p = productOf(item), { img, hue } = p ? itemLook(p) : {};
+  return `<span class="pic"${hue == null || img ? '' : ` style="--tc:${hue}"`}>${img ? `<img src="${escapeHtml(img)}" alt="">` : ''}</span>`;
+}
 function tileLine(ps) {
   if (state.tileStock) {
     const counted = ps.filter(m => m.trackStock !== false);
@@ -152,6 +166,7 @@ function renderProducts() {
   // Set size + price-display attrs on the grid
   grid.dataset.size = state.tileSize;
   grid.dataset.text = state.tileText;
+  grid.dataset.pics = state.tilePics;
   grid.style.setProperty('--grid-cols', profile.columns);
   grid.style.setProperty('--grid-rows', profile.rows);
 
@@ -285,6 +300,9 @@ function setTileSize(size) {
   renderProducts();
 }
 
+// Settings › Tile pictures and Cart pictures (owner 2026-10-14): this POS's own, like Tile size
+function setTilePics(v) { state.tilePics = v; HWPOS_STORE.ui.set('tilePics', v); renderProducts(); }
+function setCartPics(v) { state.cartPics = v === 'on'; HWPOS_STORE.ui.set('cartPics', v); renderCart(); }
 function setTileText(size) {
   if (!TILE_TEXT_SIZES.includes(size)) return;
   state.tileText = size;
@@ -1444,7 +1462,7 @@ function renderCart() {
       : '<div class="empty"><b>No items yet</b><span>Tap an item to add it.</span></div>');
   } else {
     list.innerHTML = back + state.cart.map(item => `
-      <div class="line"><button type="button" class="row" data-id="${item.id}" title="Edit item">
+      <div class="line"><button type="button" class="row" data-id="${item.id}" title="Edit item">${linePic(item)}
         <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}${item.discount ? ` · ${peso(-normalizeOrderItem(item).lineDiscount)}` : ''}</small>${item.note ? `<small class="note">${escapeHtml(item.note)}</small>` : ''}</span>
         <span class="amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
       </button><button type="button" class="sw-del" data-del="${item.id}" tabindex="-1" aria-label="Delete">${esSvg('trash')}</button></div>`).join('');

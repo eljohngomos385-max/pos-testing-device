@@ -4794,6 +4794,25 @@ body.light-theme .pc-price-mini { color: var(--ink-secondary); }
 .pc-price-mini .from { display: none; }   /* a group's range; the phone's tile has room for "from ₱14.50" only, like the Items list */
 body.light-theme .pc-group-badge { background: var(--canvas); color: var(--ink-secondary); }
 body.light-theme .pc-group-badge svg { stroke: var(--ink-secondary); }
+/* A tile colour (item editor) when no photo shows; the same hue on the Items thumb and the cart's square */
+.product-card.pc-tc, .product-card.pc-tc:hover { background: hsl(var(--tc) 45% 32%); }
+body.light-theme .product-card.pc-tc, body.light-theme .product-card.pc-tc:hover { background: hsl(var(--tc) 75% 86%); }
+.product-card.pc-tc:hover { filter: brightness(1.08); }
+/* Settings › Tile pictures (tileArt): top = the photo over the name, out to the tile's edges; fill = the photo is the
+   tile, its words on a shade at the bottom */
+.pc-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.product-grid[data-pics="top"] .pc-img { flex: 1 1 0; min-height: 0; margin: -12px -12px 4px; overflow: hidden; }
+.product-grid[data-pics="top"] .pc-pic .pc-name { -webkit-line-clamp: 2; }
+.product-grid[data-pics="fill"] .pc-img { position: absolute; inset: 0; }
+.product-grid[data-pics="fill"] .pc-img::after { content: ''; position: absolute; inset: 40% 0 0; background: linear-gradient(transparent, rgb(0 0 0 / .72)); }
+.product-grid[data-pics="fill"] .pc-pic :is(.pc-name, .pc-price-mini) { position: relative; }
+.product-grid[data-pics="fill"] .pc-pic :is(.pc-name, .pc-price-mini:not(.low, .out)) { color: #fff; }   /* on the shade in either theme */
+/* Settings › Cart pictures (linePic): a small square before the name */
+:is(.rail-h .row, .co-row) .pic { flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: var(--r-card-lg); background: var(--rl-soft, var(--surface)); }
+:is(.rail-h .row, .co-row) .pic[style] { background: hsl(var(--tc) 45% 32%); }
+body.light-theme :is(.rail-h .row, .co-row) .pic[style] { background: hsl(var(--tc) 75% 86%); }
+:is(.rail-h .row, .co-row) .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+:is(.rail-h .row, .co-row) .pic:has(img) { background: none; }   /* a see-through PNG shows no box in the cart */
 
 /* Active / primary = dark #303030 fill, white text (back office primary button) */
 body.light-theme .fulfil-pill.active,
@@ -7290,14 +7309,29 @@ body.light-theme .view-sell .content-row { transition: background-color .2s ease
   .ph-bar:disabled { opacity: .3; pointer-events: none; }
   .ph-bar span + span::before, .rail-h .go span + span::before { content: '·'; margin-right: 8px; }   /* 2 items · ₱157.00, centred */
   .rail-h { position: fixed; inset: 0; z-index: 97; max-height: none; margin: 0; padding: 8px 8px var(--ph-b); background: var(--canvas, var(--bg));
-            transform: translateX(100%); visibility: hidden; transition: transform .3s var(--rl-ease), visibility 0s .3s; }
+            transform: translateX(100%); visibility: hidden; transition: transform .3s var(--rl-ease), visibility 0s .3s; }   /* out: the plain slide, the whole page to the right */
   .rail-h .go, .rail-h #payBtn { justify-self: center; justify-content: center; gap: 8px; width: min(100% - 40px, 320px); height: var(--bar-h); border: 0; border-radius: calc(var(--rl-r) + 2px); }   /* as the bar */
-  #app.ph-cart .rail-h { transform: none; visibility: visible; transition: transform .3s var(--rl-ease); }
-  .rail-h .ph-back { display: grid; place-items: center; flex: none; width: 48px; border: 0; border-right: 1px solid var(--line); border-radius: calc(var(--rl-r) - 1px) 0 0 calc(var(--rl-r) - 1px);
-                     background: none; color: var(--ink-secondary); }
+  #app.ph-cart .rail-h { transform: none; visibility: visible; transition: none; animation: ph-cart-bg .36s var(--rl-ease); }   /* in: the keyframes below, not the slide */
+  /* ‹ inside the box (owner 2026-10-13), its cell sized so the icon sits exactly on the ☰'s spot (the rail's 8 + the box's 1 + 19 = 28 = the
+     ☰'s centre): items -> cart it only turns, never shifts. --ink like the ☰, so it doesn't dim as it turns */
+  .rail-h .ph-back { display: grid; place-items: center; flex: none; width: 39px; border: 0; border-right: 1px solid var(--line); border-radius: calc(var(--rl-r) - 1px) 0 0 calc(var(--rl-r) - 1px);
+                     background: none; color: var(--ink); }
   .rail-h .ph-back:active { background: var(--rl-hover); }
   .rail-h .ph-back .ic { width: 24px; height: 24px; stroke-width: 1.8; }   /* every ‹ the ☰'s size (.lv .sq.back) */
   .rail-h .c-row .cust { border-radius: 0; padding-left: 14px; }
+  /* Items <-> cart page (owner 2026-10-13): the live page, no snapshots. The cart's grey fades in over the items; the items and Walk-in |
+     Discount cards slide 60px and fade, from the right. Going in only: keyframes, so coming
+     out is the plain slide above (owner 2026-10-13: the reversed fade looked bad). The customer box only fades, so its ‹ fades in on the
+     ☰'s pixel. No fade between Check out and the bar: it showed two ₱ amounts and looked like a jump */
+  #app.ph-cart .rail-h > .card { animation: ph-cart-in .36s var(--rl-ease) both; }
+  #app.ph-cart .rail-h > .who { animation-name: ph-cart-fade; }
+  @keyframes ph-cart-bg { from { background-color: transparent; } }
+  @keyframes ph-cart-in { from { opacity: 0; transform: translateX(60px); } }
+  @keyframes ph-cart-fade { from { opacity: 0; } }
+  /* ☰ <-> ‹, a small morph (owner 2026-10-13: the full line turn looked weird): the one shrinks a little as the other grows in on the same spot.
+     Not while the customer list is open over the cart page: its ✕ stays full size */
+  #sidebarToggle svg, .rail-h #cartBack svg { transition: transform .24s var(--rl-ease); }
+  #app.ph-cart .catalog-wrap:not(:has(> .vsheet.open)) #sidebarToggle svg, #app:not(.ph-cart) .rail-h #cartBack svg { transform: scale(.7); }
   /* Phone insets: only var(--ph-safe), never raw env() -- devices.html can set the variable, not env(), so a rule on env()
      looks right in the preview and wrong on the iPhone (the variant sheet stopped 34px short of the bar, owner 2026-10-08) */
   .vsheet { padding-bottom: 8px; }
@@ -7306,6 +7340,7 @@ body.light-theme .view-sell .content-row { transition: background-color .2s ease
   /* Walk-in / Discount / a cart line: a full page like checkout's (owner 2026-10-08), no frame, no lines; ‹ Back where
      checkout has ‹ Cancel. A lone Done only closed, as Back does, so it goes; Apply / Clear / Remove item keep the foot */
   .esheet { position: fixed; z-index: 98; padding: 0 0 var(--ph-safe); }
+  .esheet:not(.cust-sheet) { background: var(--bg); }   /* a white page: the strip under the card (the home bar's) white too, not the tablet frame's grey */
   .es-card { border: 0; border-radius: 0; box-shadow: none; background: var(--bg); }
   body.light-theme:has(.esheet.open:not(.cust-sheet)) { background: var(--bg); }   /* the page is white; the status bar with it */
   .es-ft { border-top: 0; }
@@ -7630,6 +7665,11 @@ body .lv .fc .fr .act:not(.st-pick) { min-width: 0; padding: 0; background: none
                    background: var(--accent); color: var(--accent-ink); box-shadow: 0 0 0 3px var(--canvas, var(--bg)); }
 .lv .fphoto .cam .ic { width: 16px; height: 16px; }
 .lv .fphoto .link { text-decoration: none; }
+.lv .tcolors { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 4px; }   /* the tile colour (tileSwatches) */
+.lv .tcolors .tc { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: hsl(var(--tc) 45% 32%); cursor: pointer; }
+body.light-theme .lv .tcolors .tc { background: hsl(var(--tc) 75% 86%); }
+.lv .tcolors .tc.none, body.light-theme .lv .tcolors .tc.none { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.lv .tcolors .tc.on, body.light-theme .lv .tcolors .tc.on { box-shadow: 0 0 0 2px var(--canvas, var(--bg)), 0 0 0 4px var(--ink); }
 .lv #itemMarginNote { color: var(--ink-tertiary); }   /* worked out, not typed */
 body .lv .fc .act.st-pick { min-width: 0; height: 36px; padding: 0; background: none; box-shadow: none; color: var(--ink); font-size: 15px; font-weight: 400; }
 .lv .fc .st-pick:hover, .lv .fc .st-pick[aria-expanded="true"] { background: none; color: var(--ink); }
@@ -7929,6 +7969,11 @@ body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items 
 :is(.view-orders .o-rail, .view-customers .o-rail) .row.cur { background-color: var(--rl-track); }
 /* no head (Customers; Categories, Modifiers, Discounts): the first row opens the block */
 :is(.view-customers .o-rail .row, .view-items .band.k2 + #itemsRows > .row):first-child { margin-top: 8px; border-top-left-radius: var(--rl-r); border-top-right-radius: var(--rl-r); }
+/* phone: the rows' sides 4px nearer the screen's edges -- the photo out left, the price out right (owner 2026-10-14) */
+@media (max-width: 720px) {
+  :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) :is(.band, .row) { padding-inline: 12px; }
+  .rail-h { --rl-m: 16px; }
+}
 
 /* the paper on grey needs no ring */
 body.light-theme .view-orders .rp-paper { box-shadow: none; }
