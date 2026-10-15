@@ -7554,6 +7554,13 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 @media (prefers-reduced-motion: reduce) { .lv .kinds.slid::before { transition: none; } }
 .lv .more[hidden] { display: none; }
 .lv .cols.k2 { grid-template-columns: minmax(0,1fr) 110px; }
+/* Items' sideways swipe (app.js): the list rides the finger with the next tab's list beside it, the Sell grid's feel.
+   While it moves the list stops clipping, so the rows run to the screen's edges as Sell's tiles do. */
+.view-items .list.swiping { overflow: visible; }
+.view-items .list.swiping > .lines, .view-items .list > .peek { transform: translateX(var(--dx, 0px)); }   /* .swiping only: a transform at rest traps anything fixed */
+.view-items .list > .peek { position: absolute; inset: 0; translate: calc(var(--at) * (100% + 2 * var(--rl-gap))) 0; pointer-events: none; }
+.view-items .list.going > * { transition: transform .28s var(--rl-ease); }
+.lv .kinds.held::before { transition: none; }   /* the pill rides the finger too */
 .lv .band.k2 { display: none; }   /* Categories, Modifiers, Discounts: no head, the rows say it (owner 2026-10-09) */
 .lv .cols.k2 > :last-child { display: block; text-align: right; }   /* the phone hides a column 2; here it is the count */
 .lv .cols.k2 .tx small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -7760,13 +7767,14 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
   .lv .page .head { flex-wrap: wrap; }
   .lv .kinds { order: 1; flex-basis: 100%; }   /* under the search, the width of the screen */
   .lv .kinds button { flex: 1; padding: 0 8px; }
-  /* X's tabs -- bare words, a line under the one you're on (owner 2026-10-13: the box takes too much room) */
-  /* the hairline runs to the screen's edges (out through the page's 12px), the words stay in line with the search */
-  .lv .kinds { flex-basis: calc(100% + 24px); margin: 0 -12px; justify-content: space-between; height: 34px; padding: 0 16px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; }
-  .lv .kinds button { flex: none; border-radius: 0; color: var(--ink-tertiary); font-weight: 600; }
-  .lv .kinds button.cur { color: var(--ink); background: linear-gradient(var(--ink), var(--ink)) bottom / 100% 3px no-repeat; }
-  .lv .kinds.slid button.cur { background: none; }
-  .lv .kinds.slid::before { top: auto; bottom: -1px; height: 3px; width: calc(var(--w) + 4px); transform: translateX(calc(var(--x) - 2px)); border-radius: 99px; background: var(--ink); }
+  /* Reports' Day | Week | Month capsule (owner 2026-10-16, replaces X's underline tabs): full width under the search */
+  .lv .kinds { --seg: rgb(118 118 128 / .24); --seg-on: var(--surface-hover);   /* iOS's fill, as .rp-units */
+    height: 30px; padding: 2px; gap: 0; border: 0; border-radius: 999px; background: var(--seg); box-shadow: none; }
+  body.light-theme .lv .kinds { --seg: rgb(118 118 128 / .12); --seg-on: var(--surface-2); }
+  .lv .kinds button { border-radius: 999px; color: var(--ink); font-size: 13px; font-weight: 590; }
+  .lv .kinds button.cur { background: var(--seg-on); }
+  .lv .kinds.slid button.cur { background: none; box-shadow: none; }
+  .lv .kinds.slid::before { top: 2px; bottom: 2px; border-radius: 999px; background: var(--seg-on); }
   .lv .cols { grid-template-columns: minmax(0,1fr) auto 64px; }
   .lv .cols > :nth-child(2) { display: none; }
   .lv .page .row .from { display: inline; }
@@ -7846,14 +7854,14 @@ input.es-ta { height: 56px; }
   border: 0; border-radius: 999px; background: var(--seg); box-shadow: none; }
 body.light-theme .lv .kinds.rp-units { --seg: rgb(118 118 128 / .12); --seg-on: var(--surface-2); }
 .lv .kinds.rp-units button { flex: 1; padding: 0 8px; border-radius: 999px; color: var(--ink); font-size: 13px; font-weight: 590; }
-.lv .kinds.rp-units button.cur { background: var(--seg-on); box-shadow: 0 2px 6px rgb(0 0 0 / .1); }
+.lv .kinds.rp-units button.cur { background: var(--seg-on); }
 .lv .kinds.rp-units.slid button.cur { background: none; box-shadow: none; }
-.lv .kinds.rp-units.slid::before { top: 2px; bottom: 2px; height: auto; width: var(--w); transform: translateX(var(--x)); border-radius: 999px; background: var(--seg-on); box-shadow: 0 2px 6px rgb(0 0 0 / .1); }
+.lv .kinds.rp-units.slid::before { top: 2px; bottom: 2px; height: auto; width: var(--w); transform: translateX(var(--x)); border-radius: 999px; background: var(--seg-on); }
 /* the period over the number (Screen Time's, "Apple v3" owner 2026-10-15); a tap on the date comes back to now */
-.lv .rp-per { display: flex; margin-bottom: 2px; }
+.lv .rp-per { display: flex; margin-bottom: 4px; }   /* "Sales" to the number reads 14px apart, ink to ink (owner 2026-10-16) */
 /* the header on a past period: Show Today top-right; the ‹ date › bar (the blue rounds) that pins under it once the date
    scrolls away (reportsPin) */
-.lv .head .rp-now { margin-left: auto; height: 36px; padding: 0 4px; color: var(--rl-on); font-size: 15px; font-weight: 510; }
+.lv .head .rp-now { margin-left: auto; height: 36px; padding: 0 4px; color: var(--rl-bar); font-size: 15px; font-weight: 510; }
 .lv .rp-pin { position: absolute; z-index: 5; top: 100%; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 8px; height: 44px;
   border-bottom: 1px solid var(--line); background: var(--canvas, var(--bg)); opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s; }
 .lv .rp-pin.on { opacity: 1; visibility: visible; }
@@ -7870,14 +7878,22 @@ body.light-theme .lv .kinds.rp-units { --seg: rgb(118 118 128 / .12); --seg-on: 
 .lv .rp-ttl { display: flex; align-items: baseline; gap: 8px; color: var(--ink-tertiary); font-size: 13px; }
 .lv .rp-ttl > b { flex: none; color: var(--ink-secondary); font-weight: 590; }
 .lv .rp-ttl .rp-pl { text-align: right; }
-/* the number keeps 32px; past what the card holds (--n characters) it steps down, never wraps or spills */
-.lv .rp-big b { font-size: min(32px, 100cqi / var(--n, 10) / .6); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; white-space: nowrap; }
-.lv .rp-chart { position: relative; margin-top: 12px; }
-.lv .rp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 10px 0; text-align: center; }
-.lv .rp-stats div { padding: 0 6px; container-type: inline-size; }
-.lv .rp-stats div + div { border-left: 1px solid var(--rl-div); }
-.lv .rp-stats span { display: block; color: var(--ink-tertiary); font-size: 12px; }
-.lv .rp-stats b { display: block; margin-top: 1px; font-size: min(15px, 13.5cqi); font-weight: 650; white-space: nowrap; }   /* ₱999,999.99 still fits a third of a 320px phone */
+/* the number: Screen Time's Daily Average -- big but light (owner 2026-10-16: 700 read too thick); past what the card holds
+   (--n characters) it steps down, never wraps or spills */
+.lv .rp-big b { font-size: min(34px, 100cqi / var(--n, 10) / .58); font-weight: 500; letter-spacing: -.02em; line-height: 1.15; white-space: nowrap; }
+.lv .rp-chart { position: relative; touch-action: pan-y; }
+/* a swipe (app.js): the chart moves, the neighbour period's beside it, cut at the card's edge (the chart is pan-y: app.js holds the page still under a swipe) */
+.lv .rp-chart.swiping { overflow: hidden; }
+.lv .rp-slide { position: relative; }
+.lv .rp-near { position: absolute; top: 0; width: 100%; }
+.lv .rp-near .rp-col i, .lv .rp-body.rp-still .rp-col i { animation: none; }
+/* Profit · Orders · Margin under the chart, Screen Time's Social / Other / Entertainment: edge to edge, the last one
+   right-aligned, apart by space alone (owner 2026-10-16: no divider). Sizes follow the card (cqi of .rp-ov) so
+   ₱999,999.99 · 99,999 · 100% still fit a 320px phone */
+.lv .rp-stats { display: flex; justify-content: space-between; gap: 12px; margin-top: 20px; }
+.lv .rp-stats div:last-child { text-align: right; }
+.lv .rp-stats span { display: block; color: var(--ink-tertiary); font-size: min(15px, 5.2cqi); }
+.lv .rp-stats b { display: block; margin-top: 2px; font-size: min(16px, 5.5cqi); font-weight: 500; white-space: nowrap; }
 /* Target: the back office's block -- sold / goal, the share (green once hit), an 8px meter, what is left */
 .lv .rp-tg { padding: 12px 16px; container-type: inline-size; }
 .lv .rp-tl { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 2px; }
@@ -7891,16 +7907,18 @@ body.light-theme .lv .kinds.rp-units { --seg: rgb(118 118 128 / .12); --seg-on: 
 @keyframes rp-grow-x { from { transform: scaleX(0); } }
 .lv .rp-left { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; color: var(--ink-tertiary); font-size: 13px; }
 .lv .rp-left b { color: var(--ink-secondary); font-weight: 510; }
-/* the bars on a dashed grid, its scale on the right -- tap or drag along them for the number; the top padding is the tip's room */
-.lv .rp-bars { position: relative; padding-top: 32px; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+/* the bars on a dashed grid, its scale on the right -- tap or drag along them for the number; a tall bar's tip may sit over
+   the number above (Screen Time's gap, owner 2026-10-16) */
+.lv .rp-bars { position: relative; padding-top: 20px; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 /* Screen Time's frame: solid lines across, a dotted one down the right edge and up from each label */
 .lv .rp-cols, .lv .rp-xax { --dots: linear-gradient(var(--line) 50%, transparent 0); }
 .lv .rp-cols { position: relative; display: flex; height: 118px; margin-right: var(--yw, 38px); background: var(--dots) right top / 1px 4px repeat-y; }
 .lv .rp-gl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--rl-div); pointer-events: none; }
 .lv .rp-gl span { position: absolute; left: calc(100% + 5px); top: -7px; line-height: 14px; color: var(--ink-quaternary); font-size: 11px; white-space: nowrap; }
-.lv .rp-col { position: relative; flex: 1; display: flex; align-items: flex-end; justify-content: center; min-width: 0; }
+.lv .rp-col { position: relative; flex: 1; display: flex; align-items: flex-end; justify-content: center; min-width: 0; container-type: inline-size; }
 .lv .rp-col.tk, .lv .rp-xax .tk { background: var(--dots) left top / 1px 4px repeat-y; }
-.lv .rp-col i { width: min(100% - 3px, 24px); border-radius: 3px 3px 0 0; background: var(--rl-bar); transform-origin: bottom; animation: rp-grow .45s var(--rl-ease) backwards; transition: opacity .15s; }
+.lv .rp-col i { --bw: min(100cqi - 3px, 24px); --br: max(1px, var(--bw) / 8); width: var(--bw); border-radius: var(--br) var(--br) 0 0;   /* the corner is an eighth of the bar, so Day, Week and Month read the same shape (owner 2026-10-16) */
+   background: var(--rl-bar); transform-origin: bottom; animation: rp-grow .45s var(--rl-ease) backwards; transition: opacity .15s; }
 .lv .rp-col:disabled { cursor: default; }
 .lv .rp-bars.picked .rp-col i { opacity: .35; }
 .lv .rp-bars.picked .rp-col.on i { opacity: 1; }
@@ -7910,6 +7928,7 @@ body.light-theme .lv .kinds.rp-units { --seg: rgb(118 118 128 / .12); --seg-on: 
 .lv .rp-xax .tk { padding-left: 4px; text-align: left; }   /* the label starts at its line and may run on into the empty slots */
 .lv .rp-xax .cur { color: var(--ink); font-weight: 650; }
 .lv .rp-msg { position: absolute; inset: auto 0 40px; color: var(--ink-tertiary); text-align: center; }
+.lv .rp-cols:has(.rp-msg) { margin-right: 0; background: none; }   /* no scale, so no dotted edge for one */
 .lv .rp-tip { position: absolute; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 8px; background: var(--ink); color: var(--surface-2);
   font-size: 12px; white-space: nowrap; pointer-events: none; }
 .lv .rp-tip span { opacity: .65; }
@@ -7940,11 +7959,11 @@ body.light-theme .lv .kinds.rp-units { --seg: rgb(118 118 128 / .12); --seg-on: 
 @media (prefers-reduced-motion: reduce) { .lv .rp-body, .lv .rp-col i, .lv .rp-meter i { animation: none !important; } }
 .lv button.sh-move { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }   /* a past shift / day: the row opens its paper */
 .lv button.sh-move:hover { background: var(--surface-hover); }
-/* Shift (owner 2026-10-15): since when, a line under the title (the Claude app's); Start / Close shift floats bottom right
-   like Items' +; Cash management and Past shifts are rows at the bottom; Past shifts is its own page */
+/* Shift (owner 2026-10-15): the title where every page has it, since when right under it (hung below, so the title
+   doesn't move); Start / Close shift floats bottom right like Items' +; Cash management and Past shifts are rows at the
+   bottom; Past shifts is its own page */
 .lv .sh-page[hidden] { display: none; }
-.lv .sh-page .st-ttl { justify-items: center; line-height: 1.25; }
-.lv .sh-page .st-ttl small { color: var(--ink-tertiary); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+.lv .sh-page .st-ttl small { position: absolute; top: calc(50% + 10px); inset-inline: 0; text-align: center; color: var(--ink-tertiary); font-size: 12px; font-weight: 500; letter-spacing: 0; }
 .lv .sh-fab { width: auto; height: 48px; padding: 0 22px; border-radius: 24px; font-size: 15px; font-weight: 600; }
 .lv #shiftBody { padding-bottom: calc(88px + var(--ph-safe, 0px)); }   /* the last row clears the button */
 .lv .fr.add > .chev { margin-left: auto; }
@@ -8072,7 +8091,7 @@ body.light-theme:has(:is(.view-orders, .view-items).active) { background: var(--
 :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .list { border: 0; border-radius: 0; background: none; box-shadow: none; }
 :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .lines { margin-bottom: 0; padding-inline: 1px; padding-bottom: calc(16px + var(--ph-safe, 0px)); }
 .view-items .page .lines { padding-bottom: 88px; }   /* room under the last row for + */
-.view-items .band:has(+ #itemsRows > .empty) { display: none; }   /* no rows: no head hanging over nothing */
+.view-items .band:has(+ div > .empty) { display: none; }   /* no rows: no head hanging over nothing */
 :is(.view-orders .o-rail, .view-items .page) .band { height: 36px; margin-top: 16px; padding: 0 16px; border: 0; background: var(--canvas, var(--bg));
                              box-shadow: 0 0 0 1px var(--canvas, var(--bg)); }   /* also hides the rows' 1px ring passing beside it */
 :is(.view-orders .o-rail, .view-items .page) .band:first-child { margin-top: 8px; }
@@ -8085,10 +8104,11 @@ body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items 
 :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row:hover { background-color: var(--rl-hover); }
 :is(.view-orders .o-rail, .view-customers .o-rail) .row.cur { background-color: var(--rl-track); }
 /* no head (Customers; Categories, Modifiers, Discounts): the first row opens the block */
-:is(.view-customers .o-rail .row, .view-items .band.k2 + #itemsRows > .row):first-child { margin-top: 8px; border-top-left-radius: var(--rl-r); border-top-right-radius: var(--rl-r); }
+:is(.view-customers .o-rail .row, .view-items .band.k2 + div > .row):first-child { margin-top: 8px; border-top-left-radius: var(--rl-r); border-top-right-radius: var(--rl-r); }
 /* phone: the rows' sides 4px nearer the screen's edges -- the photo out left, the price out right (owner 2026-10-14) */
 @media (max-width: 720px) {
   :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) :is(.band, .row) { padding-inline: 12px; }
+  .view-items .page :is(.band:first-child, .band.k2 + div > .row:first-child) { margin-top: 6px; }   /* capsule to list 14, not 16 (owner 2026-10-16) */
   .rail-h { --rl-m: 16px; }
 }
 

@@ -369,17 +369,66 @@ function attachEvents() {
   const openKind = id => (itemsKind === 'items' ? openItemEditor(id) : openKindEditor(itemsKind, id));
   $('#itemsKinds')?.addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (b) setItemsKind(b.dataset.kind); });
   new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#itemsKinds'));   // tabs moved: the pill re-places on the next switch
-  // swipe the list left / right for the next / previous tab (the Reports swipe); not in Quick stock, which hides the tabs
+  // swipe the list left / right for the next / previous tab: the list rides the finger with the tab beside it showing,
+  // like the Sell grid's pages (owner 2026-10-16); not in Quick stock, which hides the tabs
   let ivX = null;
   const ivList = $('.view-items .list');
-  ivList?.addEventListener('touchstart', (e) => { ivX = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
-  ivList?.addEventListener('touchend', (e) => {
-    const t = e.changedTouches[0], dx = ivX ? t.clientX - ivX[0] : 0, dy = ivX ? t.clientY - ivX[1] : 0;
-    ivX = null;
-    if (QS.on || Math.abs(dx) < 50 || Math.abs(dx) < 2 * Math.abs(dy)) return;
-    const kinds = [...$('#itemsKinds').querySelectorAll('[data-kind]')].map(b => b.dataset.kind), next = kinds[kinds.indexOf(itemsKind) + (dx < 0 ? 1 : -1)];
-    if (next) setItemsKind(next);
-  });
+  const ivKinds = () => [...$('#itemsKinds').querySelectorAll('[data-kind]')].map(b => b.dataset.kind);
+  const ivPeek = (kind, at) => {   // the tab beside, drawn once per swipe, a copy with no ids, at that tab's place
+    const p = document.createElement('div');
+    p.className = 'lines peek'; p.style.setProperty('--at', at); p.innerHTML = '<div class="band cols"></div><div></div>';
+    fillItemsPane(kind, p.firstChild, p.lastChild);
+    ivList.append(p); p.scrollTop = itemsTop[kind] || 0;
+  };
+  // the capsule's pill follows the finger: f of the way from the current tab to `to`'s
+  const ivPill = (to, f) => {
+    const box = $('#itemsKinds'), a = box.querySelector('.cur'), b = box.querySelector(`[data-kind="${to}"]`) || a;
+    box.classList.add('slid');
+    box.style.setProperty('--x', `${a.offsetLeft + (b.offsetLeft - a.offsetLeft) * f}px`);
+    box.style.setProperty('--w', `${a.offsetWidth + (b.offsetWidth - a.offsetWidth) * f}px`);
+  };
+  const ivDone = () => { ivList.classList.remove('swiping', 'going'); ivList.style.removeProperty('--dx'); ivList.querySelectorAll('.peek').forEach(p => p.remove()); };
+  ivList?.addEventListener('touchstart', (e) => {
+    if (ivList.classList.contains('going')) return (ivX = null);
+    ivX = e.touches.length === 1 && !QS.on ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, dx: 0, on: null } : null;
+  }, { passive: true });
+  ivList?.addEventListener('touchmove', (e) => {
+    if (!ivX) return;
+    const t = e.touches[0], dx = t.clientX - ivX.x, dy = t.clientY - ivX.y;
+    if (ivX.on === null) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      ivX.on = Math.abs(dx) > Math.abs(dy);
+      if (!ivX.on) return (ivX = null);   // a scroll: leave it to the list
+      const ks = ivKinds(), i = ks.indexOf(itemsKind);
+      ivX.prev = ks[i - 1]; ivX.next = ks[i + 1];
+      if (ivX.prev) ivPeek(ivX.prev, -1);
+      if (ivX.next) ivPeek(ivX.next, 1);
+      ivList.classList.add('swiping'); $('#itemsKinds').classList.add('held');
+    }
+    e.preventDefault();
+    ivX.dx = dx;
+    const to = dx < 0 ? ivX.next : ivX.prev;   // nothing that way: it gives, the Sell grid's rubber band
+    ivList.style.setProperty('--dx', `${to ? dx : dx * 0.25}px`);
+    if (to) ivPill(to, Math.min(1, Math.abs(dx) / ivList.clientWidth));
+  }, { passive: false });
+  const ivEnd = (e) => {
+    const s = ivX; ivX = null;
+    if (!s?.on) return;
+    const lines = $('#itemsLines'), peek = ivList.querySelector('.peek');
+    const step = peek ? Math.abs(peek.getBoundingClientRect().left - lines.getBoundingClientRect().left) : 0;   // a page + the gap
+    const dx = s.dx, fast = e.timeStamp - s.t < 300 && Math.abs(dx) > 30;
+    const to = e.type === 'touchend' && (Math.abs(dx) > ivList.clientWidth * 0.25 || fast) ? (dx < 0 ? s.next : s.prev) : null;
+    $('#itemsKinds').classList.remove('held');
+    ivPill(to, 1);   // the pill finishes with the list, both .28s
+    ivList.classList.add('going');
+    ivList.style.setProperty('--dx', to ? `${dx < 0 ? -step : step}px` : '0px');
+    setTimeout(() => {   // ponytail: the .28s slide's length, not transitionend (no event when --dx doesn't change)
+      if (to) setItemsKind(to);   // the live list takes the peek's place, at the same scroll
+      ivDone();
+    }, 290);
+  };
+  ivList?.addEventListener('touchend', ivEnd);
+  ivList?.addEventListener('touchcancel', ivEnd);
   $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) (QS.on ? qsPickRow : openKind)(row.dataset.id); });
   // Items +: Add item / Quick stock (pos-stock.js); the other kinds add straight away
   $('#itemsAdd')?.addEventListener('click', (e) => (itemsKind !== 'items' ? openKind(null) : openMenu(e.currentTarget, [
@@ -1022,7 +1071,7 @@ function init() {
   // Live transaction feed for the Reports page (multi-cashier real-time).
   setInterval(() => { reportsLive(); shiftLive(); }, 4000);
 
-  // Reports (pos-customers.js): Day | Week | Month picks the period; the pinned bar's ‹ › and a sideways swipe step through
+  // Reports (pos-customers.js): Day | Week | Month picks the period; the pinned bar's ‹ › and a swipe on the chart step through
   // it (a swipe right goes back, like turning a page back), a date or Show Today comes back to now. Tap or drag along the
   // bars for a number; a day's tip, a second tap on its bar, or a calendar day opens that day.
   $('#reportsUnits')?.addEventListener('click', (e) => { const b = e.target.closest('[data-unit]'); if (b && b.dataset.unit !== reportsView.unit) reportsGo(b.dataset.unit, 0); });
@@ -1030,7 +1079,7 @@ function init() {
   const rpBody = $('#reportsBody'), rpDay = () => reportsView.bars[reportsView.pick]?.day;
   // rpWas = the pick before this touch: a day opens only on a finished tap (a scroll never clicks) on a bar already
   // picked or its tip -- a first tap whose click lands on the new tip doesn't
-  let rpScrub = false, rpWas = null, rpX = null;
+  let rpScrub = false, rpWas = null, rpSw = null;
   $('.view-reports .c-scroll')?.addEventListener('scroll', reportsPin, { passive: true });
   rpBody?.closest('.page').addEventListener('click', (e) => {   // the page, so the header's pinned bar and Show Today come here too
     const s = e.target.closest('[data-rp]:not(:disabled)'), cc = e.target.closest('.rp-cc:not(:disabled)'), hit = e.target.closest('.rp-tip.go, .rp-bars [data-i]');
@@ -1040,25 +1089,78 @@ function init() {
     else if (hit && rpWas != null && rpWas === reportsView.pick && rpDay() && (hit.matches('.rp-tip') || +hit.dataset.i === rpWas)) reportsOpenDay(rpDay());
     else if (!e.target.closest('.rp-bars')) reportsPick(null);   // a mouse drag along the bars ends in a click on them
   });
+  // A finger on the chart swipes (Screen Time's, owner 2026-10-16): only the chart follows it, the next period's chart
+  // beside it; let go past ~50px (or flicked) and it snaps there, then the rest of the page changes. The chart is the
+  // swipe's zone: the first few px decide -- steeper than 60° is the page's scroll, anything flatter (a diagonal too) is
+  // the swipe and the page holds still. A finger held still on a bar for a moment drags along the bars; a mouse always does.
+  const RP_GAP = 20, RP_SNAP = 50;   // between the two charts mid-swipe; how far a drag must go to snap over
   rpBody?.addEventListener('pointerdown', (e) => {
     rpWas = reportsView.pick;
-    const b = e.target.closest('.rp-bars [data-i]');
-    if (!b || b.disabled) return;
-    rpScrub = true;
-    reportsPick(+b.dataset.i);
+    const b = e.target.closest('.rp-bars [data-i]'), bar = b && !b.disabled;
+    if (bar) reportsPick(+b.dataset.i);
+    if (e.pointerType === 'mouse') { rpScrub = bar; return; }
+    if (!e.isPrimary || !e.target.closest('.rp-chart') || rpSw?.end) return;
+    rpSw = { x: e.clientX, y: e.clientY, dx: 0, pts: [{ t: e.timeStamp, dx: 0 }], hold: bar && setTimeout(() => { if (rpSw && !rpSw.on) { rpScrub = true; rpSw = null; } }, 250) };
   });
+  // the first 4px of a move: the page's (steep) or the swipe's (lock); touchmove and pointermove both ask, whichever is first
+  const rpLock = (dx, dy) => {
+    if (rpSw.lock != null || Math.abs(dx) + Math.abs(dy) < 4) return;
+    rpSw.lock = Math.abs(dy) <= Math.abs(dx) * 1.73;
+    if (!rpSw.lock) { clearTimeout(rpSw.hold); rpSw = null; }
+  };
+  rpBody?.addEventListener('touchmove', (e) => {
+    if (rpSw && !rpSw.end) rpLock(e.touches[0].clientX - rpSw.x, e.touches[0].clientY - rpSw.y);
+    if (rpScrub || rpSw?.lock) e.preventDefault();   // the page stays put under a swipe or a drag along the bars
+  }, { passive: false });
+  const rpSwipeStart = () => {
+    const ch = rpBody.querySelector('.rp-chart'), sl = ch.firstElementChild, near = d => `<div class="rp-near" style="left:calc(${d * 100}% + ${d * RP_GAP}px)">${reportsNear(d)}</div>`;
+    reportsPick(null);
+    ch.classList.add('swiping');
+    sl.insertAdjacentHTML('beforeend', near(-1) + (reportsView.back ? near(1) : ''));
+    Object.assign(rpSw, { on: true, sl, w: ch.clientWidth + RP_GAP });
+  };
+  const rpSwipeEnd = (go) => {
+    const s = rpSw, dir = go && (s.dx > 0 ? -1 : 1);   // −1 earlier, +1 later
+    s.end = true;
+    s.sl.style.transition = 'transform .3s var(--rl-ease)';
+    s.sl.style.transform = `translateX(${-dir * s.w}px)`;
+    let done = false;
+    const settle = () => {
+      if (done) return;
+      done = true;
+      rpSw = null;
+      if (dir) reportsGo(reportsView.unit, reportsView.back - dir, 'still');
+      else { s.sl.removeAttribute('style'); s.sl.ontransitionend = null; s.sl.querySelectorAll('.rp-near').forEach(n => n.remove()); s.sl.parentNode.classList.remove('swiping'); }
+    };
+    s.sl.ontransitionend = (e) => e.target === s.sl && settle();   // its own slide only: the bars' fade back (a tip was up) bubbles here too and cut the glide short
+    setTimeout(settle, 360);   // no transitionend when it was already there
+  };
   // the bar under the finger by x alone: the tip and the day names sit over and under the bars
   addEventListener('pointermove', (e) => {
     const b = rpScrub && [...rpBody.querySelectorAll('.rp-bars [data-i]')].find(el => { const r = el.getBoundingClientRect(); return e.clientX >= r.left && e.clientX < r.right; });
     if (b && !b.disabled && +b.dataset.i !== reportsView.pick) reportsPick(+b.dataset.i);
+    if (!rpSw || rpSw.end || !e.isPrimary) return;
+    const dx = e.clientX - rpSw.x;
+    rpLock(dx, e.clientY - rpSw.y);
+    if (!rpSw?.lock) return;
+    if (!rpSw.on) {
+      if (Math.abs(dx) < 6) return;   // a held finger's wobble stays a hold
+      clearTimeout(rpSw.hold);
+      rpSwipeStart();
+    }
+    rpSw.dx = dx;
+    rpSw.pts = [...rpSw.pts.filter(p => e.timeStamp - p.t < 100), { t: e.timeStamp, dx }];   // the flick's speed: the last 100ms
+    rpSw.sl.style.transform = `translateX(${dx < 0 && !reportsView.back ? 0 : dx}px)`;   // nothing later than now: the chart stays put (owner 2026-10-16: no blank gap)
   });
-  for (const t of ['pointerup', 'pointercancel']) addEventListener(t, () => { rpScrub = false; });
-  rpBody?.addEventListener('touchstart', (e) => { rpX = e.touches.length === 1 && !e.target.closest('.rp-bars') ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
-  rpBody?.addEventListener('touchend', (e) => {
-    const t = e.changedTouches[0], dx = rpX ? t.clientX - rpX[0] : 0, dy = rpX ? t.clientY - rpX[1] : 0;
-    rpX = null;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > 2 * Math.abs(dy) && (dx > 0 || reportsView.back)) reportsGo(reportsView.unit, reportsView.back + (dx > 0 ? 1 : -1), dx > 0 ? -1 : 1);
+  addEventListener('pointerup', (e) => {
+    rpScrub = false;
+    if (!rpSw || rpSw.end || !e.isPrimary) return;
+    clearTimeout(rpSw.hold);
+    if (!rpSw.on) { rpSw = null; return; }
+    const { dx, pts } = rpSw, p = pts[0], v = p && e.timeStamp > p.t ? (dx - p.dx) / (e.timeStamp - p.t) : 0;   // px/ms
+    rpSwipeEnd((dx > 0 || reportsView.back) && (Math.abs(dx) > RP_SNAP || (Math.abs(v) > .2 && Math.sign(v) === Math.sign(dx))));
   });
+  addEventListener('pointercancel', () => { rpScrub = false; if (rpSw?.on && !rpSw.end) rpSwipeEnd(false); else if (rpSw && !rpSw.end) { clearTimeout(rpSw.hold); rpSw = null; } });
   // ponytail: lab only. ?price-ask opens the ask-the-price screen on the first item to look at it; nothing is saved
   if (new URLSearchParams(location.search).has('price-ask')) openEditSheet('price', state.products[0].id);
 }

@@ -52,8 +52,16 @@ const posSuppliers = () => readJsonStorage(STORAGE_SUPPLIERS, []) || [];
 function renderItems() {
   const rows = $('#itemsRows');
   if (!rows) return;
-  if (itemsKind !== 'items') return renderKindRows();
-  $('#itemsBand').classList.remove('k2');
+  fillItemsPane(itemsKind, $('#itemsBand'), rows);
+  if (itemsKind !== 'items') return;
+  $('#itemsFilter')?.classList.toggle('on', Object.keys(ITEMS_FILTER_DEF).some(k => itemsFilter[k] !== ITEMS_FILTER_DEF[k]));
+  qsMarkRows(); if ($('#qs') && !$('#qs').contains(document.activeElement)) qsRender(); else qsTickbar();   // quick stock (pos-stock.js): the dots, the phone's Review bar
+}
+
+// One kind's list into a band + rows: the live list, or the swipe's peek at the tab beside it (app.js).
+function fillItemsPane(kind, band, rows) {
+  if (kind !== 'items') return renderKindRows(kind, band, rows);
+  band.classList.remove('k2');
   const q = itemsFilter.q.trim().toLowerCase();
   const list = catalogItems().filter(it => {
     if (itemsFilter.cat && !it.cats.includes(itemsFilter.cat)) return false;
@@ -61,7 +69,7 @@ function renderItems() {
     if (itemsFilter.stock === 'out' && itemStk(it) !== 'stk-out') return false;
     return !q || it.name.toLowerCase().includes(q) || it.variants.some(v => [v.name, v.sku, v.barcode].some(x => x.toLowerCase().includes(q)));
   }).sort((a, b) => a.name.localeCompare(b.name));
-  $('#itemsBand').innerHTML = `<span>Item <span class="num">· ${list.length}</span></span><span>Category</span><span>Price</span><span>In stock</span>`;
+  band.innerHTML = `<span>Item <span class="num">· ${list.length}</span></span><span>Category</span><span>Price</span><span>In stock</span>`;
   rows.innerHTML = list.map(it => {
     const vn = it.variants.length;
     return `<button type="button" class="row cols" data-id="${escapeHtml(it.id)}">
@@ -70,8 +78,6 @@ function renderItems() {
       <span class="pr num">${itemPriceText(it)}</span>
       <span class="num ${itemStk(it)}">${itemQty(onHandOf(it.members))} ${escapeHtml(it.unit)}</span></button>`;
   }).join('') || '<div class="empty"><b>No items</b><span>Nothing matches this search or filter.</span></div>';
-  $('#itemsFilter')?.classList.toggle('on', Object.keys(ITEMS_FILTER_DEF).some(k => itemsFilter[k] !== ITEMS_FILTER_DEF[k]));
-  qsMarkRows(); if ($('#qs') && !$('#qs').contains(document.activeElement)) qsRender(); else qsTickbar();   // quick stock (pos-stock.js): the dots, the phone's Review bar
 }
 
 // The editor: a working copy E of the item. Nothing here writes to the catalog.
@@ -302,24 +308,27 @@ function slidePill(box, attr, key) {
   if (shown) place(box.querySelector('.cur'));
 }
 
+const itemsTop = {};   // each tab keeps its place in the list, as an iPhone's tabs do (owner asked 2026-10-16)
 function setItemsKind(kind) {
+  itemsTop[itemsKind] = $('#itemsLines').scrollTop;
   itemsKind = kind;
   slidePill($('#itemsKinds'), 'kind', kind);
   $('#itemsSearch').placeholder = KIND[kind][1];
   $('#itemsFilter').hidden = kind !== 'items';   // category and stock filter items only
   $('#itemsAdd').title = $('#itemsAdd').ariaLabel = `New ${KIND[kind][0]}`;
   renderItems();
+  $('#itemsLines').scrollTop = itemsTop[kind] || 0;
 }
 
-function renderKindRows() {
-  const q = itemsFilter.q.trim().toLowerCase(), all = catalogItems(), cats = itemsKind === 'cats';
-  const list = kindList(itemsKind).filter(x => !q || [x.name, ...(x.options || []).map(o => o.name)].some(n => n.toLowerCase().includes(q)));
-  const discs = itemsKind === 'discs';
-  $('#itemsBand').classList.add('k2');   // k2 hides the head: the rows say it (owner 2026-10-09)
-  $('#itemsRows').innerHTML = list.map(x => `<button type="button" class="row cols k2" data-id="${escapeHtml(x.id)}">
+function renderKindRows(kind, band, rows) {
+  const q = itemsFilter.q.trim().toLowerCase(), all = catalogItems(), cats = kind === 'cats';
+  const list = kindList(kind).filter(x => !q || [x.name, ...(x.options || []).map(o => o.name)].some(n => n.toLowerCase().includes(q)));
+  const discs = kind === 'discs';
+  band.classList.add('k2');   // k2 hides the head: the rows say it (owner 2026-10-09)
+  rows.innerHTML = list.map(x => `<button type="button" class="row cols k2" data-id="${escapeHtml(x.id)}">
       <span class="nm">${cats ? itemThumb({ hue: itemHue(x.id), name: x.name }) : ''}<span class="tx"><b>${escapeHtml(x.name)}</b>${
         discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? '' : `<small>${modSummary(x) || 'No options yet'}</small>`}</span></span>
-      <span class="num">${discs ? esShown(x) : SalesMath.plural(itemsWith(itemsKind, x.id, all).length, 'item')}</span></button>`).join('')
+      <span class="num">${discs ? esShown(x) : SalesMath.plural(itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
     || `<div class="empty"><b>${q ? 'No matches' : `No ${cats ? 'categories' : 'modifiers'} yet`}</b><span>${q ? 'Try a different name.'
       : cats ? 'Tap + to add one, then tick its items.' : `A modifier is a list of choices sold with an item, like Cut to length +${peso(20)}. Tap + to add one.`}</span></div>`;
 }

@@ -208,14 +208,9 @@ function reportsPeriod(unit = reportsView.unit, back = reportsView.back) {
   return { a, b, from: SalesMath.dayStartMs(a, tillZone()), to: SalesMath.dayStartMs(b, tillZone()), label };
 }
 
-// slide: +1 the figures come in from the right (a later period), −1 from the left
-function renderReports(slide) {
-  const body = $('#reportsBody');
-  if (!body) return;
-  state.orders = loadOrders();
-  reportsLive._sig = reportsSignature();
-  const today = reportsLive._day = tillDay(Date.now());
-  const { unit, back } = reportsView, p = reportsPeriod(), win = { from: p.from, to: p.to }, live = !back, zone = tillZone();
+// A period's figures: the summary (m), its groups (g) and the chart's bars -- the page's, and a swipe's neighbour chart.
+function reportsFigures(unit = reportsView.unit, back = reportsView.back) {
+  const today = tillDay(Date.now()), p = reportsPeriod(unit, back), win = { from: p.from, to: p.to }, live = !back, zone = tillZone();
   const costOf = i => productOf(i)?.cost;   // a line sold before cost was stamped on it: the item's cost now (the BO's costOf)
   // One pass, four keys a line (owner 2026-10-09): 'c' = the lines with a cost on file (a cost of ₱0 is on file), so profit
   // and margin leave out what has no cost rather than count it at ₱0; 'n' = the orders, an exchange's new sale (and its
@@ -238,6 +233,21 @@ function renderReports(slide) {
     }
   } else for (let d = p.a; d < p.b; d = SalesMath.addDays(d, 1)) bars.push({ k: d, day: d, x: unit === 'week' ? tillDate(d, 'weekday') : +d.slice(8) % 7 === 1 ? +d.slice(8) : '', tip: tillDate(d, 'weekdayDay'), fut: d > today, cur: d === today });   // a month: the 1st, 8th, 15th, 22nd, 29th
   for (const b of bars) b.v = g.get(b.k)?.netSales || 0;
+  return { today, p, win, live, zone, costOf, m, g, c, orders, bars };
+}
+// The chart a swipe pulls in: `dir` +1 the later period, −1 the earlier one
+const reportsNear = dir => { const f = reportsFigures(reportsView.unit, reportsView.back - dir); return reportsChart(f.bars, reportsView.unit, f.live); };
+
+// slide: +1 the figures come in from the right (a later period), −1 from the left; 'still' = a swipe already brought the
+// chart in, so nothing slides or grows
+function renderReports(slide) {
+  const body = $('#reportsBody');
+  if (!body) return;
+  state.orders = loadOrders();
+  reportsLive._sig = reportsSignature();
+  reportsLive._day = tillDay(Date.now());
+  const { unit, back } = reportsView, { today, p, win, live, zone, costOf, m, g, c, orders, bars } = reportsFigures();
+  body.classList.toggle('rp-still', slide === 'still');
   Object.assign(reportsView, { bars, pick: null });
   const chart = reportsChart(bars, unit, live), cur = state.settings?.store?.currency, short = n => SalesMath.formatMoney(n, cur, { compact: true });
   // Target (the back office's block, owner 2026-10-15): today on Day, this month on Month; a past period or a week has none
@@ -277,8 +287,8 @@ function renderReports(slide) {
   // to now. The number keeps 32px and steps down only when its characters would run past the card (--n).
   body.innerHTML = `<section class="card fc"><div class="rp-ov"><div class="rp-per rp-ttl"><b>Sales</b><button type="button" class="rp-pl">${p.label}</button></div>
       <div class="rp-big"><b class="num" style="--n:${peso(m.netSales).length}">${peso(m.netSales)}</b></div>
-      <div class="rp-chart">${chart}</div></div></section>`
-    + `<section class="card fc"><div class="rp-stats num">${stat('Profit', !c ? '—' : Math.abs(c.grossProfit) < 1e6 ? peso(c.grossProfit) : short(c.grossProfit))}${stat('Orders', SalesMath.qtyText(orders))}${stat('Margin', c ? SalesMath.pctText(c.margin, c.salesBeforeTax, 0) : '—')}</div></section>`
+      <div class="rp-chart"><div class="rp-slide">${chart}</div></div>
+      <div class="rp-stats num">${stat('Profit', !c ? '—' : Math.abs(c.grossProfit) < 1e6 ? peso(c.grossProfit) : short(c.grossProfit))}${stat('Orders', SalesMath.qtyText(orders))}${stat('Margin', c ? SalesMath.pctText(c.margin, c.salesBeforeTax, 0) : '—')}</div></div></section>`
     + target
     + icard('Top items', tops || none)
     + icard('Top categories', cats || none)
@@ -292,7 +302,7 @@ function renderReports(slide) {
   $('#reportsPin').innerHTML = `${arw(-1, 'Earlier', 'M15 18l-6-6 6-6')}<button type="button" class="rp-pl">${p.label}</button>${arw(1, 'Later', 'M9 18l6-6-6-6', live)}`;
   reportsPin();
   body.classList.remove('slide-l', 'slide-r');
-  if (slide) { void body.offsetWidth; body.classList.add(slide > 0 ? 'slide-l' : 'slide-r'); }   // restart the slide
+  if (slide === 1 || slide === -1) { void body.offsetWidth; body.classList.add(slide > 0 ? 'slide-l' : 'slide-r'); }   // restart the slide
 }
 
 // The Sales chart, Screen Time's (owner 2026-10-15): lines at 0 and three round steps (1, 2, 5 × 10ⁿ, never under 1), short
@@ -380,6 +390,7 @@ const reportsOpenDay = day => reportsGo('day', Math.round((Date.parse(tillDay(Da
 function reportsLive() {
   if (state.view !== 'reports') return;
   if (!canAccess('reports')) return applyRoleGating();   // "See the day's totals" taken away meanwhile: back to Sell
+  if ($('#reportsBody .swiping')) return;   // mid-swipe: the next tick redraws
   if (reportsSignature() !== reportsLive._sig || tillDay(Date.now()) !== reportsLive._day) renderReports();
 }
 reportsLive._sig = '';
