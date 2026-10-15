@@ -308,6 +308,43 @@ function slidePill(box, attr, key) {
   if (shown) place(box.querySelector('.cur'));
 }
 
+// Apple's segmented control on a .kinds switch: press the pill (it shrinks a touch) and it rides the finger 1:1, its width
+// blending between the tabs it passes; let go and it settles on the nearest tab, picked through that tab's own click.
+// A tap on another tab is still a plain click.
+function wireSegDrag(box, attr) {
+  let drag = null;
+  const tabs = () => [...box.querySelectorAll(`[data-${attr}]`)];
+  const mid = b => b.offsetLeft + b.offsetWidth / 2;
+  const nearest = c => tabs().reduce((a, b) => (Math.abs(mid(b) - c) < Math.abs(mid(a) - c) ? b : a));
+  box.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest(`[data-${attr}]`);
+    if (e.button || !b?.classList.contains('cur')) return;
+    slidePill(box, attr, b.dataset[attr]);   // the pill as a ::before, placed on its tab
+    drag = { id: e.pointerId, grab: e.clientX - mid(b), c: mid(b) };   // finger to the pill's centre, in the box's px
+    box.setPointerCapture(e.pointerId);
+    box.classList.add('press');
+  });
+  box.addEventListener('pointermove', (e) => {
+    if (drag?.id !== e.pointerId) return;
+    const bs = tabs(), cs = bs.map(mid);
+    const c = drag.c = Math.min(Math.max(e.clientX - drag.grab, cs[0]), cs.at(-1));
+    const i = Math.max(0, cs.findIndex((m, j) => c <= cs[j + 1]));
+    const t = cs[i + 1] === undefined ? 0 : (c - cs[i]) / (cs[i + 1] - cs[i]);
+    const w = bs[i].offsetWidth + t * ((bs[i + 1] || bs[i]).offsetWidth - bs[i].offsetWidth);
+    box.classList.add('held');
+    box.style.setProperty('--x', `${c - w / 2}px`); box.style.setProperty('--w', `${w}px`);
+  });
+  const end = (e) => {
+    if (drag?.id !== e.pointerId) return;
+    const b = nearest(drag.c); drag = null;
+    box.classList.remove('press', 'held');
+    if (e.type === 'pointerup' && !b.classList.contains('cur')) b.click();
+    else slidePill(box, attr, box.querySelector('.cur').dataset[attr]);   // let go on its own tab, or cancelled: home
+  };
+  box.addEventListener('pointerup', end);
+  box.addEventListener('pointercancel', end);
+}
+
 const itemsTop = {};   // each tab keeps its place in the list, as an iPhone's tabs do (owner asked 2026-10-16)
 function setItemsKind(kind) {
   itemsTop[itemsKind] = $('#itemsLines').scrollTop;

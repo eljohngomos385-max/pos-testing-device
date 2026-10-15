@@ -7550,7 +7550,9 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .kinds button { position: relative; z-index: 1; }
 .lv .kinds.slid button.cur { background: none; }
 .lv .kinds.slid::before { content: ''; position: absolute; top: 4px; bottom: 4px; left: 0; width: var(--w); transform: translateX(var(--x));
-                          border-radius: calc(var(--rl-r) - 5px); background: var(--rl-track); transition: transform .28s var(--rl-ease), width .28s var(--rl-ease); }
+                          border-radius: calc(var(--rl-r) - 5px); background: var(--rl-track); transition: transform .28s var(--rl-ease), width .28s var(--rl-ease), scale .2s var(--rl-ease); }
+.lv .kinds { touch-action: pan-y; }   /* a sideways drag is the pill's (wireSegDrag), not the page's */
+.lv .kinds.press::before { scale: .95; }   /* held, as iOS's thumb */
 @media (prefers-reduced-motion: reduce) { .lv .kinds.slid::before { transition: none; } }
 .lv .more[hidden] { display: none; }
 .lv .cols.k2 { grid-template-columns: minmax(0,1fr) 110px; }
@@ -7561,6 +7563,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .view-items .list > .peek { position: absolute; inset: 0; translate: calc(var(--at) * (100% + 2 * var(--rl-gap))) 0; pointer-events: none; }
 .view-items .list.going > * { transition: transform .28s var(--rl-ease); }
 .lv .kinds.held::before { transition: none; }   /* the pill rides the finger too */
+.lv .kinds.press.held::before { transition: scale .2s var(--rl-ease); }   /* dragged: 1:1 with the finger, still shrinks in */
 .lv .band.k2 { display: none; }   /* Categories, Modifiers, Discounts: no head, the rows say it (owner 2026-10-09) */
 .lv .cols.k2 > :last-child { display: block; text-align: right; }   /* the phone hides a column 2; here it is the count */
 .lv .cols.k2 .tx small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

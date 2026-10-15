@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pos-static",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8642",
+        "--bind",
+        "127.0.0.1"
+      ],
+      "port": 8642
+    },
+    {
+      "name": "pos-static-2",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8655",
+        "--bind",
+        "127.0.0.1"
+      ],
+      "port": 8655
+    }
+  ]
+}

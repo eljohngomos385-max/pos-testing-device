@@ -390,8 +390,7 @@ function renderShift() {
   $('#shiftSub').textContent = s ? `Started ${fmtOrderTime(s.open.ts)} · ${s.open.staff}` : `Since ${fmtOrderTime(from)}`;
   Object.assign($('#shiftFab'), { textContent: s ? 'Close shift' : 'Start shift' }).dataset.sh = s ? 'close' : 'open';
   // the cash sales and Expected only for a role that sees the day's totals: the close is a blind count
-  body.innerHTML = `<div class="c-body">
-    ${icard(s ? 'Cash drawer<button type="button" class="link" data-sh="report">Print report</button>' : 'Cash drawer', [
+  body.innerHTML = `<div class="c-body">    ${icard(s ? 'Cash drawer<button type="button" class="link" data-sh="report">Print report</button>' : 'Cash drawer', [
       s ? row('Start cash', peso(f.start)) : '',
       row('Cash sales', peso(f.sales)),
       f.back ? row('Cash refunds', peso(minus(f.back))) : '',

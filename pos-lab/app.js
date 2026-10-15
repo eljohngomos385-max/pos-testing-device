@@ -369,6 +369,7 @@ function attachEvents() {
   const openKind = id => (itemsKind === 'items' ? openItemEditor(id) : openKindEditor(itemsKind, id));
   $('#itemsKinds')?.addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (b) setItemsKind(b.dataset.kind); });
   new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#itemsKinds'));   // tabs moved: the pill re-places on the next switch
+  wireSegDrag($('#itemsKinds'), 'kind');   // press the pill and slide it, as iOS's
   // swipe the list left / right for the next / previous tab: the list rides the finger with the tab beside it showing,
   // like the Sell grid's pages (owner 2026-10-16); not in Quick stock, which hides the tabs
   let ivX = null;
@@ -1076,6 +1077,7 @@ function init() {
   // bars for a number; a day's tip, a second tap on its bar, or a calendar day opens that day.
   $('#reportsUnits')?.addEventListener('click', (e) => { const b = e.target.closest('[data-unit]'); if (b && b.dataset.unit !== reportsView.unit) reportsGo(b.dataset.unit, 0); });
   new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#reportsUnits'));   // tabs moved: the pill re-places on the next switch
+  wireSegDrag($('#reportsUnits'), 'unit');   // press the pill and slide it, as iOS's
   const rpBody = $('#reportsBody'), rpDay = () => reportsView.bars[reportsView.pick]?.day;
   // rpWas = the pick before this touch: a day opens only on a finished tap (a scroll never clicks) on a bar already
   // picked or its tip -- a first tap whose click lands on the new tip doesn't
