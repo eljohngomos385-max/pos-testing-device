@@ -234,15 +234,20 @@ function renderReports(slide) {
     const hrs = [...g.keys()].filter(k => typeof k === 'number'), hNow = live ? SalesMath.dateParts(Date.now(), zone).hour : 24;
     for (let h = Math.min(7, ...hrs); h <= Math.max(20, ...hrs); h++) {
       const h12 = h % 12 || 12, am = h < 12;
-      bars.push({ k: h, x: h % 3 === 1 ? h12 + (am ? 'a' : 'p') : '', tip: `${h12} ${am ? 'AM' : 'PM'}`, fut: h > hNow, cur: h === hNow });
+      bars.push({ k: h, x: h % 3 === 1 ? `${h12} ${am ? 'AM' : 'PM'}` : '', tip: `${h12} ${am ? 'AM' : 'PM'}`, fut: h > hNow, cur: h === hNow });
     }
   } else for (let d = p.a; d < p.b; d = SalesMath.addDays(d, 1)) bars.push({ k: d, day: d, x: unit === 'week' ? tillDate(d, 'weekday') : +d.slice(8) % 7 === 1 ? +d.slice(8) : '', tip: tillDate(d, 'weekdayDay'), fut: d > today, cur: d === today });   // a month: the 1st, 8th, 15th, 22nd, 29th
   for (const b of bars) b.v = g.get(b.k)?.netSales || 0;
   Object.assign(reportsView, { bars, pick: null });
-  const top = Math.max(0, ...bars.map(b => b.v)) || 1;
-  const chart = !bars.some(b => b.v) ? `<div class="rp-cols"><div class="rp-msg">${live ? 'No sales yet' : 'No sales'}</div></div>`
-    : `<div class="rp-bars"><div class="rp-cols">${bars.map((b, i) => `<button type="button" class="rp-col" data-i="${i}"${b.fut ? ' disabled' : ''} aria-label="${b.tip}"><i style="height:${Math.max(0, b.v) / top * 100}%;animation-delay:${i * 18}ms"></i></button>`).join('')}</div>
-       <div class="rp-xax">${bars.map(b => `<span${b.cur ? ' class="cur"' : ''}>${b.x}</span>`).join('')}</div></div>`;
+  const chart = reportsChart(bars, unit, live), cur = state.settings?.store?.currency, short = n => SalesMath.formatMoney(n, cur, { compact: true });
+  // Target (the back office's block, owner 2026-10-15): today on Day, this month on Month; a past period or a week has none
+  const tg = live && unit !== 'week' && reportsTarget(today, zone), goal = tg && (unit === 'day' ? tg.day : tg.month);
+  const whole = n => (Math.abs(n) < 1e6 ? peso(Math.round(n)).replace(/\.0+$/, '') : short(n));   // ₱25,946 / ₱30,000; a million on, ₱1.2M
+  const sold = whole(m.netSales), of = whole(goal), pct = goal && SalesMath.pctText(SalesMath.share(m.netSales, goal), goal, 0), up = m.netSales >= goal;
+  const target = !goal ? '' : `<section class="card fc"><div class="rp-tg"><div class="rp-ttl"><b>Target</b></div>
+      <div class="rp-tl"><span class="num" style="--n:${(sold + of + pct).length + 4}">${sold}<small>/ ${of}</small></span><b class="num${up ? ' up' : ''}">${pct}</b></div>
+      <div class="rp-meter"><i class="${up ? 'up' : ''}" style="width:${Math.min(1, m.netSales / goal) * 100}%"></i></div>
+      <div class="rp-left"><span>${up ? 'Target hit, over by' : `Left to sell ${unit === 'day' ? 'today' : 'this month'}`}</span><b class="num">${peso(Math.abs(goal - m.netSales))}</b></div></div></section>`;
   // a row, the Items page's: the picture, the name over a grey line, the amount
   const li = (thumb, name, sub, v) => `<div class="rp-li">${thumb}<div class="rp-tm"><div class="rp-tn">${escapeHtml(name)}</div><div class="rp-ts num">${sub}</div></div><b class="rp-tv num">${peso(v)}</b></div>`;
   // The five best (the full lists are the back office's job); a renamed item: its name now
@@ -267,12 +272,14 @@ function renderReports(slide) {
     + step('Refunds' + nOf(m.refundCount), -m.refunds) + step('Discounts', -m.discounts) + step('Net sales', m.netSales, ' rp-sum') : none;
   const arw = (s, label, path, off) => `<button type="button" class="rp-arw" data-rp="${s}" aria-label="${label}"${off ? ' disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg></button>`;
   // ponytail: a third of a phone fits ₱999,999.99; a profit of a million or more reads ₱1.23M (the Sales number stays exact)
-  const stat = (k, v) => `<section class="card fc"><div><span>${k}</span><b>${v}</b></div></section>`;
-  // the date over the number, Screen Time's (owner 2026-10-15, "Apple v3"): a tap on it comes back to now
-  body.innerHTML = icard('Sales', `<div class="rp-ov"><div class="rp-per"><button type="button" class="rp-pl">${p.label}</button></div>
-      <div class="rp-big"><b class="num">${peso(m.netSales)}</b></div>
-      <div class="rp-chart">${chart}</div></div>`)
-    + `<div class="rp-stats num">${stat('Profit', !c ? '—' : Math.abs(c.grossProfit) < 1e6 ? peso(c.grossProfit) : SalesMath.formatMoney(c.grossProfit, state.settings?.store?.currency, { compact: true }))}${stat('Orders', SalesMath.qtyText(orders))}${stat('Margin', c ? SalesMath.pctText(c.margin, c.salesBeforeTax, 0) : '—')}</div>`
+  const stat = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
+  // "Sales" inside the card, the date on its right (reports-top-lab option 1, owner 2026-10-15); a tap on the date comes back
+  // to now. The number keeps 32px and steps down only when its characters would run past the card (--n).
+  body.innerHTML = `<section class="card fc"><div class="rp-ov"><div class="rp-per rp-ttl"><b>Sales</b><button type="button" class="rp-pl">${p.label}</button></div>
+      <div class="rp-big"><b class="num" style="--n:${peso(m.netSales).length}">${peso(m.netSales)}</b></div>
+      <div class="rp-chart">${chart}</div></div></section>`
+    + `<section class="card fc"><div class="rp-stats num">${stat('Profit', !c ? '—' : Math.abs(c.grossProfit) < 1e6 ? peso(c.grossProfit) : short(c.grossProfit))}${stat('Orders', SalesMath.qtyText(orders))}${stat('Margin', c ? SalesMath.pctText(c.margin, c.salesBeforeTax, 0) : '—')}</div></section>`
+    + target
     + icard('Top items', tops || none)
     + icard('Top categories', cats || none)
     // a plain ranking: the method, its money, its share -- no bar, no colours (owner 2026-10-15)
@@ -286,6 +293,41 @@ function renderReports(slide) {
   reportsPin();
   body.classList.remove('slide-l', 'slide-r');
   if (slide) { void body.offsetWidth; body.classList.add(slide > 0 ? 'slide-l' : 'slide-r'); }   // restart the slide
+}
+
+// The Sales chart, Screen Time's (owner 2026-10-15): lines at 0 and three round steps (1, 2, 5 × 10ⁿ, never under 1), short
+// labels right of the plot; a dotted line up from each labelled hour or day, its label just right of it (a week labels every
+// day: no lines). bars = [{ v, x, tip, fut, cur }]. chart-labels-lab.html draws it in every currency.
+function reportsChart(bars, unit, live) {
+  if (!bars.some(b => b.v)) return `<div class="rp-cols"><div class="rp-msg">${live ? 'No sales yet' : 'No sales'}</div></div>`;
+  const cur = state.settings?.store?.currency, short = n => SalesMath.formatMoney(n, cur, { compact: true });
+  const top = Math.max(0, ...bars.map(b => b.v)), mag = 10 ** Math.max(0, Math.floor(Math.log10(top / 3)));
+  const step = [1, 2, 5, 10].map(s => s * mag).find(s => s * 3 >= top), max = 3 * step;
+  // compact money starts at 10k; 1k-9.5k are ours, so ₱1,500 reads ₱1.5k (not ₱2k). No spaces: "Rp 500" would sit over "Rp1k"
+  const ax = n => (n >= 1e3 && n < 1e4 ? SalesMath.currencySymbol(cur) + n / 1e3 + 'k' : short(n)).replace(/\s/g, '');
+  const tk = b => (b.x !== '' && unit !== 'week' ? ' tk' : '');
+  // the labels' gutter: the longest one's real width (₱, $, ¥, RM, AED all differ) + the 5px gap
+  const yl = ['0', ax(step), ax(2 * step), ax(max)], yw = Math.max(...yl.map(rpTextW)) + 5;
+  return `<div class="rp-bars" style="--yw:${yw}px"><div class="rp-cols">${yl.map((l, j) => `<div class="rp-gl" style="bottom:${j / 3 * 100}%"><span class="num">${l}</span></div>`).join('')}${bars.map((b, i) => `<button type="button" class="rp-col${tk(b)}" data-i="${i}"${b.fut ? ' disabled' : ''} aria-label="${b.tip}"><i style="height:${Math.max(0, b.v) / max * 100}%;animation-delay:${i * 18}ms"></i></button>`).join('')}</div>
+       <div class="rp-xax">${bars.map(b => `<span class="${tk(b)}${b.cur ? ' cur' : ''}">${b.x}</span>`).join('')}</div></div>`;
+}
+// a label's width in the chart's 11px type; +2 for tabular digits, which canvas can't set. ponytail: measured in the page's
+// font, so a web font still loading on the very first draw measures a hair off
+function rpTextW(t) {
+  const c = rpTextW.c ||= document.createElement('canvas').getContext('2d');
+  c.font = `11px ${getComputedStyle(document.body).fontFamily}`;
+  return Math.ceil(c.measureText(t).width) + 2;
+}
+
+// Today's target, the back office's (dashTargets): the owner's month target; today's share is what is left of it spread over
+// the days left, today included, rounded to ₱10 -- unless an override names today. null with no month target.
+function reportsTarget(today, zone) {
+  const t = state.settings?.targets || {}, month = Number(t.month) || 0;
+  if (!month) return null;
+  const d = SalesMath.dateParts(Date.now(), zone), days = new Date(Date.UTC(d.year, d.month, 0)).getUTCDate();
+  const before = SalesMath.summarize(state.orders, { from: SalesMath.dayStartMs(today.slice(0, 8) + '01', zone), to: SalesMath.dayStartMs(today, zone) }).netSales;
+  const auto = Math.max(0, Math.round((month - before) / (days - d.day + 1) / 10) * 10);
+  return { month, day: (t.override?.date === today && Number(t.override.amount)) || auto };
 }
 
 // The ‹ date › bar under the title (Screen Time's): on once the date over the number has scrolled under it

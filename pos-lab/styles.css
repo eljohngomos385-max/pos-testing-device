@@ -7119,6 +7119,7 @@ body {
   --rl-track: var(--surface-hover);                     /* the chosen fulfilment cell */
   --rl-hover: var(--surface);
   --rl-on: #8AB4F8;                                     /* a discount is on */
+  --rl-bar: #0A84FF;                                    /* a chart's bars: iOS's system blue (Screen Time's) */
   --rl-shadow: none;                                    /* the border alone; an inset top highlight doubled it */
   --rl-hair: rgba(255, 255, 255, 0.03);                 /* the top bar's and product tiles' ring, softer than --line */
   --rl-div: rgba(255, 255, 255, 0.06);                  /* a row divider inside a card: there, but quiet (rednote's) */
@@ -7132,6 +7133,7 @@ body.light-theme {
   --rl-track: var(--bg-soft);
   --rl-hover: var(--surface-hover);
   --rl-on: #1F5FB8;
+  --rl-bar: #007AFF;
   --rl-hair: #EBEBEB;
   --rl-div: #EFEFEF;
   --rl-shadow: 0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05);
@@ -7861,26 +7863,51 @@ body.light-theme .lv .kinds.rp-units { --seg: rgb(118 118 128 / .12); --seg-on: 
 .lv .rp-pl { flex: 1; min-width: 0; overflow: hidden; color: var(--ink-tertiary); font-size: 13px; text-align: left; white-space: nowrap; text-overflow: ellipsis; }
 .lv .rp-body { display: grid; gap: 12px; min-width: 0; }
 .lv .rp-none { padding: 16px; color: var(--ink-tertiary); text-align: center; }
-/* Sales: the number, the period, the chart; Profit / Orders / Margin under it, a small card each */
-.lv .rp-ov { padding: 16px; }
-.lv .rp-big b { font-size: 32px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+/* Sales = reports-top-lab option 1 (owner 2026-10-15): "Sales" inside the card with the date on its right, the number, the
+   chart; Profit · Orders · Margin in one card split by hairlines; Target (the back office's meter) under it */
+.lv .rp-ov { padding: 16px; container-type: inline-size; }
+.lv .rp-body > :first-child { margin-top: 34px; }   /* the room the "Sales" heading over the card took, kept now it sits inside (owner) */
+.lv .rp-ttl { display: flex; align-items: baseline; gap: 8px; color: var(--ink-tertiary); font-size: 13px; }
+.lv .rp-ttl > b { flex: none; color: var(--ink-secondary); font-weight: 590; }
+.lv .rp-ttl .rp-pl { text-align: right; }
+/* the number keeps 32px; past what the card holds (--n characters) it steps down, never wraps or spills */
+.lv .rp-big b { font-size: min(32px, 100cqi / var(--n, 10) / .6); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; white-space: nowrap; }
 .lv .rp-chart { position: relative; margin-top: 12px; }
-.lv .rp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; text-align: center; }
-.lv .rp-stats div { padding: 10px 4px 12px; }
+.lv .rp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 10px 0; text-align: center; }
+.lv .rp-stats div { padding: 0 6px; container-type: inline-size; }
+.lv .rp-stats div + div { border-left: 1px solid var(--rl-div); }
 .lv .rp-stats span { display: block; color: var(--ink-tertiary); font-size: 12px; }
-.lv .rp-stats .fc { container-type: inline-size; }
-.lv .rp-stats b { display: block; margin-top: 2px; font-size: min(15px, 13.5cqi); font-weight: 600; }   /* ₱999,999.99 still fits a third of a 320px phone */
-/* the bars: no axis -- tap or drag along them for the number; the top padding is the tip's room */
-.lv .rp-bars { position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
-.lv .rp-cols { position: relative; display: flex; height: 150px; padding-top: 32px; border-bottom: 1px solid var(--rl-hair); }
-.lv .rp-col { flex: 1; display: flex; align-items: flex-end; justify-content: center; min-width: 0; }
-.lv .rp-col i { width: min(60%, 22px); border-radius: 5px 5px 0 0; background: var(--rl-on); transform-origin: bottom; animation: rp-grow .45s var(--rl-ease) backwards; transition: opacity .15s; }
+.lv .rp-stats b { display: block; margin-top: 1px; font-size: min(15px, 13.5cqi); font-weight: 650; white-space: nowrap; }   /* ₱999,999.99 still fits a third of a 320px phone */
+/* Target: the back office's block -- sold / goal, the share (green once hit), an 8px meter, what is left */
+.lv .rp-tg { padding: 12px 16px; container-type: inline-size; }
+.lv .rp-tl { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.lv .rp-tl span { font-size: min(20px, 100cqi / var(--n, 20) / .6); font-weight: 650; letter-spacing: -.02em; white-space: nowrap; }
+.lv .rp-tl small { margin-left: 3px; color: var(--ink-tertiary); font-size: 13px; font-weight: 400; letter-spacing: 0; }
+.lv .rp-tl > b { font-size: 13px; font-weight: 590; }
+.lv .rp-tl > b.up { color: var(--ok); }
+.lv .rp-meter { height: 8px; margin-top: 10px; border-radius: 999px; overflow: hidden; background: var(--canvas, var(--bg)); }
+.lv .rp-meter i { display: block; height: 100%; border-radius: 999px; background: var(--rl-on); transform-origin: left; animation: rp-grow-x .6s var(--rl-ease) backwards; }
+.lv .rp-meter i.up { background: var(--ok); }
+@keyframes rp-grow-x { from { transform: scaleX(0); } }
+.lv .rp-left { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; color: var(--ink-tertiary); font-size: 13px; }
+.lv .rp-left b { color: var(--ink-secondary); font-weight: 510; }
+/* the bars on a dashed grid, its scale on the right -- tap or drag along them for the number; the top padding is the tip's room */
+.lv .rp-bars { position: relative; padding-top: 32px; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+/* Screen Time's frame: solid lines across, a dotted one down the right edge and up from each label */
+.lv .rp-cols, .lv .rp-xax { --dots: linear-gradient(var(--line) 50%, transparent 0); }
+.lv .rp-cols { position: relative; display: flex; height: 118px; margin-right: var(--yw, 38px); background: var(--dots) right top / 1px 4px repeat-y; }
+.lv .rp-gl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--rl-div); pointer-events: none; }
+.lv .rp-gl span { position: absolute; left: calc(100% + 5px); top: -7px; line-height: 14px; color: var(--ink-quaternary); font-size: 11px; white-space: nowrap; }
+.lv .rp-col { position: relative; flex: 1; display: flex; align-items: flex-end; justify-content: center; min-width: 0; }
+.lv .rp-col.tk, .lv .rp-xax .tk { background: var(--dots) left top / 1px 4px repeat-y; }
+.lv .rp-col i { width: min(100% - 3px, 24px); border-radius: 3px 3px 0 0; background: var(--rl-bar); transform-origin: bottom; animation: rp-grow .45s var(--rl-ease) backwards; transition: opacity .15s; }
 .lv .rp-col:disabled { cursor: default; }
 .lv .rp-bars.picked .rp-col i { opacity: .35; }
 .lv .rp-bars.picked .rp-col.on i { opacity: 1; }
 @keyframes rp-grow { from { transform: scaleY(0); } }
-.lv .rp-xax { display: flex; margin-top: 6px; color: var(--ink-quaternary); font-size: 12px; }
+.lv .rp-xax { display: flex; margin-right: var(--yw, 38px); padding-top: 6px; background: var(--dots) right top / 1px 4px repeat-y; color: var(--ink-quaternary); font-size: 12px; }
 .lv .rp-xax span { flex: 1; min-width: 0; text-align: center; white-space: nowrap; }
+.lv .rp-xax .tk { padding-left: 4px; text-align: left; }   /* the label starts at its line and may run on into the empty slots */
 .lv .rp-xax .cur { color: var(--ink); font-weight: 650; }
 .lv .rp-msg { position: absolute; inset: auto 0 40px; color: var(--ink-tertiary); text-align: center; }
 .lv .rp-tip { position: absolute; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 8px; background: var(--ink); color: var(--surface-2);
@@ -7910,7 +7937,7 @@ body.light-theme .lv .kinds.rp-units { --seg: rgb(118 118 128 / .12); --seg-on: 
 .lv .rp-body.slide-r { animation: rp-sr .28s ease; }
 @keyframes rp-sl { from { opacity: 0; transform: translateX(28px); } }
 @keyframes rp-sr { from { opacity: 0; transform: translateX(-28px); } }
-@media (prefers-reduced-motion: reduce) { .lv .rp-body, .lv .rp-col i { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .lv .rp-body, .lv .rp-col i, .lv .rp-meter i { animation: none !important; } }
 .lv button.sh-move { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }   /* a past shift / day: the row opens its paper */
 .lv button.sh-move:hover { background: var(--surface-hover); }
 /* Shift (owner 2026-10-15): since when, a line under the title (the Claude app's); Start / Close shift floats bottom right
