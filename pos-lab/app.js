@@ -656,6 +656,8 @@ function attachEvents() {
   });
   wireFind('#customersFind', '#customersSearch', '#customersSearchX', (q) => { state.customersQuery = q; state.selectedCustomerId = null; renderCustomers(); });
   $('#shiftView')?.addEventListener('click', onShiftEvent);   // pos-shift.js: both its pages
+  new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#shiftTabs'));   // as Reports' pill
+  wireSegDrag($('#shiftTabs'), 'shtab');
   $('#shiftSheet').addEventListener('click', shiftSheetClick);
   document.addEventListener('keydown', shiftKey);
   $('#custSaveBtn')?.addEventListener('click', () => saveSavedCustomerFromModal());

@@ -249,14 +249,10 @@ function drawCashSheet() {
   $('#shiftSheetCard').innerHTML = esFrame('',
     `<button type="button" class="es-row${o.on ? ' on' : ''}" data-amt><span>Amount</span><span class="es-n v${o.on ? ` on${o.v === '0' ? ' fresh' : ''}` : ''}"><span>${typedCash(o.v)}</span></span></button>
     <input class="es-ta" id="shNote" maxlength="80" placeholder="Add a note" aria-label="Note" autocomplete="off" value="${escapeHtml(o.note)}">
-    <button type="button" class="es-row sh-cm" data-cm="in">Cash in</button><button type="button" class="es-row sh-cm" data-cm="out">Cash out</button>
-    <div class="sh-mvs" id="shMoves"></div>`, o.on ? `<div class="es-keys${o.anim ? ' es-in' : ''}">${esKeys(true)}</div>` : '',
+    <button type="button" class="es-row sh-cm" data-cm="in">Cash in</button><button type="button" class="es-row sh-cm" data-cm="out">Cash out</button>`, o.on ? `<div class="es-keys${o.anim ? ' es-in' : ''}">${esKeys(true)}</div>` : '',
     '<button type="button" class="es-ink" data-close>Done</button>', ` cm${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}`);
   o.anim = false;
-  shMoves();
 }
-const shMoves = () => $('#shMoves').innerHTML = shiftDrawer().d.moves.slice().reverse().map(m => `<div class="sh-move"><span class="nm">${escapeHtml(m.note)}<small>${escapeHtml(fmtOrderTime(m.ts))} · ${escapeHtml(m.staff)}</small></span>
-  <span class="num${m.amount < 0 ? ' out' : ''}">${overShortText(m.amount)}</span></div>`).join('');
 const shStep = step => { Object.assign(shSheet, { step, v: '0', born: performance.now() }); drawShiftSheet(); };
 function shiftSheetClick(e) {
   const o = shSheet, el = q => e.target.closest(q);
@@ -298,7 +294,6 @@ function shiftMove(dir) {
   renderShift();
   showToast(`Cash ${dir} ${peso(amt)}`, () => {
     addShiftRow('cash_move', row.shiftId, -row.amount, { note, reverses: row.id });
-    if (shSheet?.step === 'cash') shMoves();
     renderShift();
     showToast('Undone');
   });
@@ -371,8 +366,17 @@ function shiftDrawer(all = storeShifts(), now = Date.now()) {
   return { s, from, d: s || { open: { ts: from, amount: 0 }, close: null, end: Infinity, moves: movesIn(storeRows(), from, Infinity) } };
 }
 
-// Apple Settings blocks like the item editor (owner 2026-10-08): the drawer and the sales since the line under the title
-// (owner 2026-10-15), then Cash management (the sheet) and Past shifts (a page), each its own card; Start / Close shift floats bottom right.
+// The app's cards (owner 2026-10-16, after a try with titles inside: "not the design we use"): each title over its card,
+// its one action at the title's right (Customers' See all), rows split by hairlines. Under the drawer, in a few words,
+// since when it counts and that it closes / starts over by itself (owner: "Since yesterday, 9:36" never said it was
+// automatic). Shift | Cash (owner 2026-10-16), Reports' pill: Shift is the drawer and By method, Cash every cash in and out,
+// newest first. The button bottom right follows the tab: Start / Close shift, or Cash in / out (the sheet). Past shifts
+// is the clock top right, Calculator's history.
+let shTab = 'shift';
+const shLink = (sh, word) => `<button type="button" class="link" data-sh="${sh}">${word}</button>`;
+const shWhen = ts => fmtOrderTime(ts).replace(/^Today, /, '').replace(/^Yesterday/, 'yesterday');
+const moveRow = m => `<div class="sh-move"><span class="nm">${escapeHtml(m.note)}<small>${escapeHtml(fmtOrderTime(m.ts))} · ${escapeHtml(m.staff)}</small></span>
+  <span class="num${m.amount < 0 ? ' out' : ''}">${overShortText(m.amount)}</span></div>`;
 function renderShift() {
   const body = $('#shiftBody');
   if (!body) return;
@@ -387,10 +391,17 @@ function renderShift() {
       ? `<span class="nm">${escapeHtml(fmtOrderTime(p.at))}<small>Shift · ${escapeHtml(p.s.open.staff)}</small></span><span class="num${diff < 0 ? ' out' : ''}">${diff === null ? 'Not counted' : overShortText(diff)}</span>`
       : `<span class="nm">${escapeHtml(tillDate(p.d.day, 'dayYear'))}<small>Day</small></span><span class="num">${peso(p.d.amount)}</span>`}</button>`;
   }).join('');
-  $('#shiftSub').textContent = s ? `Started ${fmtOrderTime(s.open.ts)} · ${s.open.staff}` : `Since ${fmtOrderTime(from)}`;
-  Object.assign($('#shiftFab'), { textContent: s ? 'Close shift' : 'Start shift' }).dataset.sh = s ? 'close' : 'open';
+  const auto = `${(s ? s.open.cutoff ?? state.settings.autoClose : state.settings.autoClose) || 12} AM`;
+  const foot = s ? `Started ${escapeHtml(shWhen(s.open.ts))} · auto-closes ${auto}`
+    : from === cutBefore() ? `Auto-reset at ${auto} · ${shLink('settings', 'Change')}`
+    : `Since last close · ${escapeHtml(shWhen(from))}`;
+  const mv = d.moves.slice().reverse();
+  const [fab, act] = shTab === 'cash' ? ['Cash in / out', 'cash'] : s ? ['Close shift', 'close'] : ['Start shift', 'open'];
+  Object.assign($('#shiftFab'), { textContent: fab }).dataset.sh = act;
   // the cash sales and Expected only for a role that sees the day's totals: the close is a blind count
-  body.innerHTML = `<div class="c-body">    ${icard(s ? 'Cash drawer<button type="button" class="link" data-sh="report">Print report</button>' : 'Cash drawer', [
+  body.innerHTML = shTab === 'cash'
+    ? (mv.length ? icard(s ? 'This shift' : 'Today', mv.map(moveRow).join('')) : '<p class="sh-none">No cash in or out yet</p>')
+    : `${icard(`Cash drawer${s ? shLink('report', 'Print report') : ''}`, [
       s ? row('Start cash', peso(f.start)) : '',
       row('Cash sales', peso(f.sales)),
       f.back ? row('Cash refunds', peso(minus(f.back))) : '',
@@ -398,11 +409,8 @@ function renderShift() {
       row('Cash in', peso(f.cashIn)),
       row('Cash out', peso(minus(f.cashOut))),
       row('<b>Expected cash</b>', `<b>${peso(f.expected)}</b>`),
-    ].join(''), '', ' r')}
-    ${shiftSalesCard(f.rows, row)}
-    ${icard('', `<button type="button" class="fr add" data-sh="cash">Cash management${ICHEV}</button>`)}
-    ${icard('', `<button type="button" class="fr add" data-sh="past">Past shifts${ICHEV}</button>`)}
-  </div>`;
+    ].join(''), foot, ' r')}
+    ${shiftSalesCard(f.rows, row)}`;
   $('#shiftPastBody').innerHTML = `<div class="c-body">${past ? icard('', past) : '<p class="sh-none">No past shifts yet</p>'}</div>`;
 }
 
@@ -413,21 +421,22 @@ function shiftPast(open) {
   renderShift();
 }
 
-// What the store sold over the shift (or since the turn with none open), by how it was paid, and what came off it.
-// Net of voids and refunds.
+// What the store sold over the shift (or since the turn with none open), by how it was paid, and what came off it
+// (only what did, owner 2026-10-16). Net of voids and refunds.
 function shiftSalesCard(rows, row) {
   const t = SalesMath.summarize(rows), by = SalesMath.tenders(rows);
   const neg = n => peso(minus(n)), count = n => (n ? ` <small>· ${n}</small>` : '');
-  return icard('Sales', [
+  return icard('By method', [
     ...[...by].sort(([a], [b]) => (b === 'cash') - (a === 'cash')).map(([k, n]) => row(escapeHtml(SalesMath.tenderLabel(k)), peso(n))),   // a method once it's used, Cash on top
-    row(`Refunds${count(t.refundCount)}`, neg(t.refunds)),
-    row(`Voids${count(t.voidCount)}`, neg(t.voids)),
-    row('Discounts', neg(t.discounts)),
-  ].join(''), '', ' r');
+    t.refunds ? row(`Refunds${count(t.refundCount)}`, neg(t.refunds)) : '',
+    t.voids ? row(`Voids${count(t.voidCount)}`, neg(t.voids)) : '',
+    t.discounts ? row('Discounts', neg(t.discounts)) : '',
+  ].join('') || '<div class="note">No sales yet</div>', '', ' r');
 }
 
 function shiftAction(act) {
   if (act === 'past' || act === 'back') return shiftPast(act === 'past');
+  if (act === 'settings') { switchView('settings'); return openPick('autoClose'); }   // the footer's Change the time
   if (!canAccess('shift')) return;   // the page is hidden without the switch; this keeps the console out too
   const s = shiftOf();
   if (act === 'cash') return openShiftSheet('cash');
@@ -438,8 +447,9 @@ function shiftAction(act) {
 }
 
 function onShiftEvent(e) {
-  const btn = e.target.closest('[data-sh]'), past = e.target.closest('[data-past]');
-  if (btn) shiftAction(btn.dataset.sh);
+  const btn = e.target.closest('[data-sh]'), past = e.target.closest('[data-past]'), tab = e.target.closest('[data-shtab]');
+  if (tab && tab.dataset.shtab !== shTab) { shTab = tab.dataset.shtab; slidePill($('#shiftTabs'), 'shtab', shTab); renderShift(); }
+  else if (btn) shiftAction(btn.dataset.sh);
   else if (past) openPast(past.dataset.past);
 }
 

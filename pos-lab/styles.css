@@ -7404,7 +7404,7 @@ body.light-theme {
 .lv .sq.back { width: 32px; margin-left: -8px; border: 0; background: none; box-shadow: none; color: var(--ink); }   /* Back is a bare chevron, no box (rednote's) */
 .lv .sq.back .ic { width: 24px; height: 24px; stroke-width: 1.8; }
 /* ☰ bare like Sell's (owner 2026-10-09): rednote's size and spot, search takes the room */
-.lv .sq[data-act="open-sidebar"] { width: 32px; border: 0; background: none; box-shadow: none; color: var(--ink); }
+.lv .sq:is([data-act="open-sidebar"], .sh-hist) { width: 32px; border: 0; background: none; box-shadow: none; color: var(--ink); }
 .lv .sq[data-act="open-sidebar"] svg { width: 24px; height: 24px; }
 /* the editor's bar: Save and ⋯ are bare words and icons like Back, Save the title's size (rednote's Edit birthday) */
 body .lv .e-top .acts .act { background: none; box-shadow: none; color: var(--ink); }   /* outranks the light theme's ring */
@@ -7630,7 +7630,7 @@ body.light-theme .lv .thumb { background: hsl(var(--h) 50% 92%); color: hsl(var(
    one grey tile with inset hairlines, the word at the side of its value, a footnote under */
 .lv .card.fc { overflow: hidden; border-color: transparent; box-shadow: none; }   /* our card: white on the grey page, no outline, no shadow (rednote's) */
 .lv .fc > * + * { background-image: linear-gradient(var(--rl-div), var(--rl-div)); background-position: 16px 0; background-size: 100% 1px; background-repeat: no-repeat; }   /* from the text to the right edge */
-.lv .fc-t { display: flex; align-items: baseline; gap: 4px; margin: 4px 17px -2px; color: var(--ink-tertiary); font-size: 14px; font-weight: 400; }   /* rednote's: 15 from the baseline to the tile; 17 = the tile's 1px edge + its 16 inset, so it lines up with the words */
+.lv .fc-t { display: flex; align-items: baseline; gap: 4px; margin: 4px 17px -6px 13px; color: var(--ink-tertiary); font-size: 14px; font-weight: 400; }   /* 8 from the words to the tile, 4 left of the rows' words (owner 2026-10-16) */
 .lv :is(.fc, .fc-n) + .fc-t { margin-top: 12px; }   /* 27 from a tile to the next title, as rednote's */
 .lv .fc-n { margin: -6px 17px 4px; color: var(--ink-tertiary); font-size: 12px; overflow-wrap: anywhere; }
 .lv .fc-n b { color: var(--ink-secondary); font-weight: 600; }
@@ -7962,27 +7962,23 @@ body.light-theme .lv .kinds.rp-units { --seg: rgb(118 118 128 / .12); --seg-on: 
 @media (prefers-reduced-motion: reduce) { .lv .rp-body, .lv .rp-col i, .lv .rp-meter i { animation: none !important; } }
 .lv button.sh-move { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }   /* a past shift / day: the row opens its paper */
 .lv button.sh-move:hover { background: var(--surface-hover); }
-/* Shift (owner 2026-10-15): the title where every page has it, since when right under it (hung below, so the title
-   doesn't move); Start / Close shift floats bottom right like Items' +; Cash management and Past shifts are rows at the
-   bottom; Past shifts is its own page */
+/* Shift (owner 2026-10-15): Start / Close shift floats bottom right like Items' +; Past shifts is its own page, from the clock */
 .lv .sh-page[hidden] { display: none; }
-.lv .sh-page .st-ttl small { position: absolute; top: calc(50% + 10px); inset-inline: 0; text-align: center; color: var(--ink-tertiary); font-size: 12px; font-weight: 500; letter-spacing: 0; }
 .lv .sh-fab { width: auto; height: 48px; padding: 0 22px; border-radius: 24px; font-size: 15px; font-weight: 600; }
-.lv #shiftBody { padding-bottom: calc(88px + var(--ph-safe, 0px)); }   /* the last row clears the button */
+.lv #shiftBody { display: grid; gap: 12px; padding-bottom: calc(88px + var(--ph-safe, 0px)); }   /* the last row clears the button */
 .lv .fr.add > .chev { margin-left: auto; }
 .lv .sh-none { margin: 24px 16px; color: var(--ink-tertiary); font-size: 14px; text-align: center; }
 /* Cash management in the shift's sheet: an Amount row (its keys beside it when tapped, under the tiles on a phone), a
    note, Cash in / Cash out stacked like the cart Discount's tiles, then the moves on one tile */
 .esheet .es-body.cm { padding-top: max(24px, calc(24cqh - 56px)); }
-.es-body.cm .es-head:empty, .esheet .sh-mvs:empty { display: none; }
+.es-body.cm .es-head:empty { display: none; }
 .es-body.cm > .es-keys { height: auto; align-self: start; }   /* level with Amount, however long the moves list */
 .esheet .sh-cm { justify-content: center; font-weight: 600; }
-.esheet .sh-mvs { margin-top: 16px; border-radius: var(--es-r); background: var(--tile); }
-.esheet .sh-mvs > * + * { border-top: 1px solid var(--line); }
 @container (max-width: 560px) {
   .esheet .es-body.cm { margin-top: 56px; padding-top: 0; }   /* right under ‹ Back, the same spot with the keys up or down */
-  .es-body.cm:has(> .es-keys) .sh-mvs { display: none; }   /* keys up: the moves step aside for them */
 }
+.lv .head > .sh-hist { margin-left: auto; }
+.lv .sh-hist svg { width: 22px; height: 22px; }   /* Past shifts: the clock top right, Calculator's history (owner 2026-10-16) */
 /* The papers, in the app's confirm card (showConfirm). */
 .cf-sheet .sh-slip { width: 100%; margin: 4px 0; padding: 14px 12px; white-space: pre; overflow-x: auto; font-size: 10px; line-height: 1.4; }
 @container pv (max-width: 720px) {
@@ -8111,7 +8107,8 @@ body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items 
 /* phone: the rows' sides 4px nearer the screen's edges -- the photo out left, the price out right (owner 2026-10-14) */
 @media (max-width: 720px) {
   :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) :is(.band, .row) { padding-inline: 12px; }
-  .view-items .page :is(.band:first-child, .band.k2 + div > .row:first-child) { margin-top: 6px; }   /* capsule to list 14, not 16 (owner 2026-10-16) */
+  .view-items .band { display: none; }   /* phone Items: no head on any tab, the rows say it (owner 2026-10-16) */
+  .view-items .band + div > .row:first-child { margin-top: 6px; border-top-left-radius: var(--rl-r); border-top-right-radius: var(--rl-r); }   /* capsule to list 14 (owner 2026-10-16) */
   .rail-h { --rl-m: 16px; }
 }
 
@@ -8148,7 +8145,7 @@ body.qs-on:not(:has(.view-items.active)) :is(#qs, #qsTickbar) { display: none; }
 .qs-mode span { overflow: hidden; text-overflow: ellipsis; }
 .qs-mode .ic { flex: none; width: 16px; height: 16px; color: var(--ink-tertiary); }
 .qs-mode:disabled .ic { display: none; }
-.qs-pg .act.primary:disabled { color: var(--ink-quaternary); }
+body .qs-pg .e-top .act.primary:disabled { color: var(--ink-quaternary); }
 
 /* the blocks: a family's name above, one row per variant; the name dark, what it does to the shelf grey under it */
 .qs-list { display: grid; gap: 12px; }

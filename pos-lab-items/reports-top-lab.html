@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reports Top Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<!-- Reports, the top of the page only (owner 2026-10-15): Sales + Profit / Orders / Margin, thinner, a nicer chart,
+     and the back office's Target under it (value / goal, %, the meter, what's left). Four options; the switch on top
+     (and devices.html?page=reports-top-lab.html's, via window.labOpts) picks one. Static sample day, nothing saved. -->
+<style>
+  :root {   /* the app's light theme (styles.css body.light-theme) */
+    --canvas: #F2F2F2; --card: #FFFFFF; --line: #E1E1E1; --hair: #EBEBEB;
+    --ink: #303030; --ink-2: #616161; --ink-3: #8C8C8C; --ink-4: #B5B5B5;
+    --on: #1F5FB8; --track: #EDF1F7; --ok: #047B5D; --r: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--canvas); color: var(--ink); font: 14px/1.4 Inter, system-ui, sans-serif; letter-spacing: -.15px; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+  .num { font-variant-numeric: tabular-nums; }
+  .page { max-width: 430px; margin: 0 auto; padding: 12px 16px 40px; }
+
+  /* the lab's own option switch (the plain link on a phone has no devices.html around it) */
+  .opts { display: flex; gap: 4px; overflow-x: auto; margin: 0 -16px 14px; padding: 0 16px; scrollbar-width: none; }
+  .opts button { flex: none; height: 30px; padding: 0 12px; border-radius: 999px; background: #E4E4E4; color: var(--ink-2); font-size: 13px; font-weight: 510; }
+  .opts button.cur { background: var(--ink); color: #fff; }
+  .opts[hidden] { display: none; }
+
+  /* the page head as the app has it: ☰, the title, Day | Week | Month */
+  .head { position: relative; display: flex; align-items: center; justify-content: center; height: 44px; font-size: 17px; font-weight: 590; }
+  .head svg { position: absolute; left: 4px; }
+  .units { display: flex; width: 300px; max-width: 100%; height: 32px; margin: 8px auto 18px; padding: 2px; border-radius: 999px; background: rgb(118 118 128 / .12); }
+  .units span { flex: 1; display: grid; place-items: center; border-radius: 999px; font-size: 13px; font-weight: 590; }
+  .units .cur { background: #fff; box-shadow: 0 2px 6px rgb(0 0 0 / .1); }
+
+  .name { margin: 0 4px 6px; color: var(--ink-3); font-size: 13px; }
+  .card { background: var(--card); border-radius: var(--r); }
+  .gap { height: 12px; }
+  .date { color: var(--ink-3); font-size: 13px; }
+  /* the card's own name inside it (owner 2026-10-15: "Sales" out above the card looked loose) -- name left, date right */
+  .ttl { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: var(--ink-3); font-size: 13px; }
+  .ttl b { color: var(--ink-2); font-weight: 590; }
+  /* a figure never breaks the card: --n = its characters, the size steps down so it always fits the width */
+  .card, .pill > div { container-type: inline-size; }
+  .fit { white-space: nowrap; font-size: min(var(--max), 100cqi / var(--n) / .6) !important; }
+  .big { font-size: 30px; font-weight: 700; letter-spacing: -.03em; line-height: 1.15; }
+  .big small, .val small { font-size: .55em; font-weight: 600; letter-spacing: 0; }
+  .cur-sm { font-size: .6em; font-weight: 600; margin-right: 1px; vertical-align: .32em; }
+
+  /* ---- the chart: thin bars on a dashed grid, the scale on the right (Spending overview's) ---- */
+  .ch { position: relative; margin-top: 14px; }
+  .ch .plot { position: relative; display: flex; height: 120px; margin-right: 34px; border-bottom: 1px solid var(--hair); }
+  .ch .gl { position: absolute; left: 0; right: -34px; border-top: 1px dashed var(--hair); }
+  .ch .gl span { position: absolute; right: 0; top: -8px; color: var(--ink-4); font-size: 11px; background: var(--card); padding-left: 4px; }
+  .ch .col { position: relative; flex: 1; display: flex; align-items: flex-end; justify-content: center; }
+  .ch .col i { width: min(45%, 9px); border-radius: 3px 3px 0 0; background: var(--on); transform-origin: bottom; animation: grow .5s cubic-bezier(.2,.8,.2,1) backwards; }
+  .ch .xs { display: flex; margin: 6px 34px 0 0; color: var(--ink-4); font-size: 11px; }
+  .ch .xs span { flex: 1; text-align: center; white-space: nowrap; }
+  .ch .xs .now { color: var(--ink); font-weight: 650; }
+  /* the target as a line on the chart: the hour's share of today's target, dashed green */
+  .ch .tl { position: absolute; left: 0; right: -34px; border-top: 1.5px dashed var(--ok); }
+  .ch .tl span { position: absolute; right: 0; top: -8px; color: var(--ok); font-size: 11px; font-weight: 590; background: var(--card); padding-left: 4px; }
+  @keyframes grow { from { transform: scaleY(0); } }
+
+  /* capsules (option 3): every hour a pale track, the sales fill it from the bottom */
+  .ch.cap .plot { height: 110px; margin-right: 0; border: 0; }
+  .ch.cap .col i.t { position: relative; width: min(55%, 10px); height: 100%; border-radius: 999px; background: var(--track); animation: none; overflow: hidden; }
+  .ch.cap .col i.t b { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 999px; background: var(--on); transform-origin: bottom; animation: grow .5s cubic-bezier(.2,.8,.2,1) backwards; }
+  .ch.cap .col.fut i.t { opacity: .5; }
+  .ch.cap .xs { margin-right: 0; }
+
+  /* ---- Profit / Orders / Margin ---- */
+  /* one pill: three thirds split by hairlines */
+  .pill { display: grid; grid-template-columns: repeat(3, 1fr); padding: 10px 0; text-align: center; }
+  .pill > div { padding: 0 8px; }
+  .pill > div + div { border-left: 1px solid var(--hair); }
+  .lbl { color: var(--ink-3); font-size: 12px; }
+  .val { margin-top: 1px; font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+  /* the metrics grid (Daily Metrics'): label top-left, the number centred, small cents */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid .card { padding: 10px 14px 12px; }
+  .grid .val { margin-top: 4px; text-align: center; font-size: 22px; font-weight: 700; }
+  .grid .val .of { font-size: 12px; font-weight: 500; color: var(--ink-3); }
+  /* a row inside a card */
+  .in { display: grid; grid-template-columns: repeat(3, 1fr); margin: 14px -16px 0; padding: 10px 0 0; border-top: 1px solid var(--hair); text-align: center; }
+  .in > div + div { border-left: 1px solid var(--hair); }
+
+  /* ---- Target: the back office's block H -- the sold amount over its goal, the %, the meter, what's left ---- */
+  .tg { padding: 12px 16px; }
+  .tg .line { margin-top: 2px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .tg .v { font-size: 20px; font-weight: 650; letter-spacing: -.02em; }
+  .tg .of { margin-left: 2px; color: var(--ink-3); font-size: 13px; font-weight: 400; letter-spacing: 0; }
+  .tg .pct { font-size: 13px; font-weight: 590; }
+  .tg .pct.up { color: var(--ok); }
+  .meter { height: 8px; margin-top: 10px; border-radius: 999px; overflow: hidden; background: var(--track); }
+  .meter i { display: block; height: 100%; border-radius: 999px; background: var(--on); transform-origin: left; animation: grow-x .7s cubic-bezier(.2,.8,.2,1) backwards; }
+  .meter i.up { background: var(--ok); }
+  .tg .left { display: flex; justify-content: space-between; margin-top: 10px; color: var(--ink-3); font-size: 13px; }
+  .tg .left b { color: var(--ink-2); font-weight: 510; }
+  @keyframes grow-x { from { transform: scaleX(0); } }
+  .mini { height: 6px; margin-top: 8px; }
+
+  /* the inline target (option 3): one line under the number, inside the Sales card */
+  .tin { display: flex; align-items: center; gap: 10px; margin-top: 8px; color: var(--ink-3); font-size: 12px; }
+  .tin .meter { flex: 1; height: 6px; margin: 0; }
+
+  /* Spending overview's head (option 4): a calendar glyph by the date */
+  .dh { display: flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: 13px; }
+
+  .tgl { margin: 14px 4px 0; display: flex; justify-content: center; gap: 8px; color: var(--ink-3); font-size: 12px; }
+  .tgl button { text-decoration: underline; color: var(--on); }
+</style>
+</head>
+<body>
+<div class="page">
+  <nav class="opts" id="opts"></nav>
+  <div class="head"><svg width="20" height="16" viewBox="0 0 20 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 2h18M1 8h18M1 14h18"/></svg>Reports</div>
+  <div class="units"><span class="cur">Day</span><span>Week</span><span>Month</span></div>
+  <main id="top"></main>
+  <div class="tgl">Target: <button type="button" id="tgOn">on</button><button type="button" id="tgOff">not set</button><button type="button" id="tgHit">hit</button></div>
+  <div class="tgl">Numbers: <button type="button" id="nNorm">normal</button><button type="button" id="nHuge">huge</button></div>
+</div>
+<script>
+// A sample day: the store's hours 7 AM–8 PM, now 7 PM (8 PM still to come). Sums to the screenshot's ₱25,946.
+const DAY = [0, 2700, 1450, 2900, 5300, 0, 480, 2350, 780, 0, 4700, 0, 5286, 0];
+const NOW = 12, MARGIN = 19;
+let HOURS, SALES, PROFIT, ORDERS, goal = 30000, target, opt = 0;
+// x = 1 the sample day; x = 10000 a huge one (₱259 million) to show nothing breaks
+const size = x => { HOURS = DAY.map(v => v * x); SALES = 25946 * x; PROFIT = 4347.28 * x; ORDERS = 16 * x; target = goal && goal * x; };
+size(1);
+
+const money = n => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const split = n => { const [w, c] = money(n).split('.'); return `${w}<small>.${c}</small>`; };   // small cents (Daily Metrics')
+const k = n => { const [d, u] = n >= 1e9 ? [1e9, 'B'] : n >= 1e6 ? [1e6, 'M'] : n >= 1e3 ? [1e3, 'k'] : [1, '']; return '₱' + +(n / d).toFixed(1) + u; };
+// a figure that fits its box: max = the design size; it steps down only when its characters would run past the width
+const fit = (html, text, max) => `<span class="fit" style="--n:${text.length};--max:${max}px">${html}</span>`;
+const xl = h => (h % 3 === 0 ?((h + 7) % 12 || 12) + (h + 7 < 12 ? 'a' : 'p') : '');   // 7a, 10a, 1p, 4p, 7p
+const label = (l, v) => `<div><div class="lbl">${l}</div><div class="val num">${fit(v, String(v), 15)}</div></div>`;
+// the pill shortens from a million (₱43.5M, 1.2M) so its three stay one size; under that, exact (owner 2026-10-15)
+const stats = () => label('Profit', PROFIT >= 1e6 ? k(PROFIT) : money(PROFIT))
+  + label('Orders', ORDERS >= 1e6 ? k(ORDERS).slice(1) : ORDERS.toLocaleString('en-PH')) + label('Margin', MARGIN + '%');
+
+// the scale: three dashed lines at round steps (1, 2, 2.5, 5 × 10ⁿ); tline = the target spread over the open hours, as a line
+function chart({ cap = false, tline = false } = {}) {
+  const top = Math.max(...HOURS), mag = 10 ** Math.floor(Math.log10(top / 3));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s * 3 >= top), max = step * 3;
+  const per = target / HOURS.length;
+  const cols = HOURS.map((v, i) => cap
+    ? `<div class="col${i > NOW ? ' fut' : ''}"><i class="t"><b style="height:${v / top * 100}%;animation-delay:${i * 25}ms"></b></i></div>`
+    : `<div class="col">${v ? `<i style="height:${v / max * 100}%;animation-delay:${i * 25}ms"></i>` : ''}</div>`).join('');
+  const grid = cap ? '' : [1, 2, 3].map(j => `<div class="gl" style="bottom:${j / 3 * 100}%"><span>${k(step * j)}</span></div>`).join('');
+  const tl = tline && target && !cap ? `<div class="tl" style="bottom:${Math.min(per / max, 1) * 100}%"><span>Goal</span></div>` : '';
+  return `<div class="ch${cap ? ' cap' : ''}"><div class="plot">${grid}${tl}${cols}</div>
+    <div class="xs">${HOURS.map((_, i) => `<span${i === NOW ? ' class="now"' : ''}>${xl(i)}</span>`).join('')}</div></div>`;
+}
+
+// the back office's target block: "₱25,946 / ₱30,000", the %, the meter, "Left to sell today"
+function targetCard(name = true) {
+  if (!target) return '';
+  const r = SALES / target, left = target - SALES, up = r >= 1;
+  const sold = money(SALES).replace(/\.\d+$/, ''), of = money(target).replace(/\.\d+$/, ''), pct = Math.round(r * 100) + '%';
+  // name = the label inside the card, as the back office's "Daily sales target" (option 1); the value shares its row with the %
+  return `<div class="gap"></div><section class="card tg">${name ? '<div class="ttl"><b>Target</b></div>' : ''}
+    <div class="line"><span class="v num">${fit(`${sold}<span class="of">/ ${of}</span>`, `${sold}  / ${of}  ${pct}`, 20)}</span><span class="pct num${up ? ' up' : ''}">${pct}</span></div>
+    <div class="meter"><i class="${up ? 'up' : ''}" style="width:${Math.min(r, 1) * 100}%"></i></div>
+    <div class="left"><span>${up ? 'Target hit, over by' : 'Left to sell today'}</span><b class="num">${money(Math.abs(left))}</b></div></section>`;
+}
+
+const OPTS = [
+  // 1 — One pill: the Sales card, thinner; Profit · Orders · Margin in one white pill; Target under it
+  ['1 One pill', () => `<section class="card" style="padding:14px 16px 12px">
+      <div class="ttl"><b>Sales</b><span>Today, October 15</span></div><div class="big num">${fit(money(SALES), money(SALES), 30)}</div>${chart()}</section>
+    <div class="gap"></div><section class="card pill">${stats()}</section>${targetCard()}`],
+  // 2 — Metrics grid (Daily Metrics'): small cents, four cards two by two; Target is the fourth, with a small meter
+  ['2 Grid', () => `<div class="name">Sales</div><section class="card" style="padding:14px 16px 12px">
+      <div class="date">Today, October 15</div><div class="big num">${split(SALES)}</div>${chart()}</section>
+    <div class="gap"></div><div class="grid">
+      <section class="card"><div class="lbl">Profit</div><div class="val num">${split(PROFIT)}</div></section>
+      <section class="card"><div class="lbl">Orders</div><div class="val num">${ORDERS}</div></section>
+      <section class="card"><div class="lbl">Margin</div><div class="val num">${MARGIN}%</div></section>
+      ${target ? `<section class="card"><div class="lbl">Target</div><div class="val num">${Math.round(SALES / target * 100)}%<span class="of"> of ${k(target)}</span></div><div class="meter mini"><i class="${SALES >= target ? 'up' : ''}" style="width:${Math.min(SALES / target, 1) * 100}%"></i></div></section>`
+        : `<section class="card"><div class="lbl">Avg. order</div><div class="val num">${split(SALES / ORDERS)}</div></section>`}
+    </div>`],
+  // 3 — All in one: one card holds it all -- number, the target as a meter under it, capsule bars, the three stats
+  ['3 One card', () => `<div class="name">Sales</div><section class="card" style="padding:14px 16px 12px">
+      <div class="date">Today, October 15</div><div class="big num">${split(SALES)}</div>
+      ${target ? `<div class="tin"><div class="meter"><i class="${SALES >= target ? 'up' : ''}" style="width:${Math.min(SALES / target, 1) * 100}%"></i></div><span class="num">${Math.round(SALES / target * 100)}% of ${k(target)}</span></div>` : ''}
+      ${chart({ cap: true })}<div class="in">${stats()}</div></section>`],
+  // 4 — Spending overview's: a calendar glyph by the date, a small ₱, the goal drawn on the chart; one pill; Target
+  ['4 Overview', () => `<section class="card" style="padding:14px 16px 12px">
+      <div class="dh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Today, October 15</div>
+      <div class="big num" style="margin-top:4px"><span class="cur-sm">₱</span>${money(SALES).slice(1).replace(/(\.\d+)$/, '<small>$1</small>')}</div>
+      ${chart({ tline: true })}<div class="in">${stats()}</div></section>${targetCard(false)}`],
+];
+
+function draw() {
+  document.getElementById('top').innerHTML = OPTS[opt][1]();
+  document.querySelectorAll('#opts button').forEach((b, i) => b.classList.toggle('cur', i === opt));
+}
+const bar = document.getElementById('opts');
+bar.innerHTML = OPTS.map(([n], i) => `<button type="button">${n}</button>`).join('');
+bar.onclick = e => { const b = e.target.closest('button'); if (b) { opt = [...bar.children].indexOf(b); draw(); } };
+window.labOpts = { names: OPTS.map(o => o[0]), set(i) { opt = i; bar.hidden = true; draw(); } };   // devices.html draws its own switch
+let x = 1;
+const on = (id, f) => document.getElementById(id).onclick = () => { f(); size(x); draw(); };
+on('tgOn', () => goal = 30000); on('tgOff', () => goal = 0); on('tgHit', () => goal = 24000);
+on('nNorm', () => x = 1); on('nHuge', () => x = 10000);
+draw();
+</script>
+</body>
+</html>

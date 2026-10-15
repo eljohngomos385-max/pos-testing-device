@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=329" />
+  <link rel="stylesheet" href="styles.css?v=338" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -394,7 +394,8 @@
         </div>
       </section>
 
-      <!-- Shift: the store's drawer (pos-shift.js); one column like a customer's page, Past shifts its own page. Start / Close and Cash management open the edit sheet's frame over the page -->
+      <!-- Shift: the store's drawer (pos-shift.js); one column like a customer's page, Past shifts its own page (the clock). Shift | Cash is Reports' pill;
+           the button bottom right is Start / Close shift on Shift, Cash in / out on Cash; each opens the edit sheet's frame over the page -->
       <section class="view view-shift lv" data-view="shift">
         <div class="iv" id="shiftView">
           <section class="page sh-page" id="shiftPage" aria-label="Shift">
@@ -402,9 +403,18 @@
               <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
-              <h1 class="st-ttl">Shift<small id="shiftSub"></small></h1>
+              <h1 class="st-ttl">Shift</h1>
+              <button class="sq sh-hist" data-sh="past" aria-label="Past shifts" title="Past shifts">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+              </button>
             </div>
-            <div class="c-scroll" id="shiftBody"></div>
+            <div class="c-scroll"><div class="c-body">
+              <section class="kinds rp-units" id="shiftTabs" role="tablist" aria-label="Shift or cash">
+                <button type="button" role="tab" data-shtab="shift" class="cur" aria-selected="true">Shift</button>
+                <button type="button" role="tab" data-shtab="cash" aria-selected="false">Cash in &amp; out</button>
+              </section>
+              <div id="shiftBody"></div>
+            </div></div>
             <button type="button" class="fab sh-fab" id="shiftFab"></button>
           </section>
           <section class="page sh-page" id="shiftPastPage" aria-label="Past shifts" hidden>
@@ -857,8 +867,8 @@
   <script src="pos-customers.js?v=35"></script>
   <script src="pos-settings.js?v=17"></script>
   <script src="pos-pin.js?v=10"></script>
-  <script src="pos-shift.js?v=29"></script>
+  <script src="pos-shift.js?v=35"></script>
   <script src="pos-stock.js?v=4"></script>
-  <script src="app.js?v=183"></script>
+  <script src="app.js?v=184"></script>
 </body>
 </html>
