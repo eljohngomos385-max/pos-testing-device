@@ -8206,7 +8206,8 @@ body.qs-on .view-items .cols > :nth-child(3) { display: none; }
   .view-items .page .row .rt { display: grid; flex: none; justify-items: end; gap: 2px; font-size: 15px; font-weight: 600; white-space: nowrap; }
   .view-items .page .row .rt small { color: var(--ink-secondary); font-size: 13px; font-weight: 400; }
   .view-items .page .row .rt .vn { font-weight: 400; }
-  .view-items .page .row .sub .hp { color: var(--ink); font-size: 14px; font-weight: 600; }   /* H: the price leads the grey line */   /* E: "6 variants" where the price would be, not bold */
+  .view-items .page .row .rt { font-variant-numeric: tabular-nums; }   /* prices line up digit under digit */
+  body[data-rowd="g2"] .view-items .page .row .rt { font-weight: 500; }   /* G2: calmer, as Loyverse's */   /* E: "6 variants" where the price would be, not bold */
   .dlab { position: absolute; left: 16px; bottom: 34px; z-index: 5; display: flex; padding: 2px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-card), 0 0 0 1px var(--line); }
   .dlab button { width: 36px; height: 32px; border-radius: 999px; color: var(--ink-secondary); font-size: 13px; font-weight: 600; }
   .dlab button.cur { background: var(--ink); color: var(--surface); }

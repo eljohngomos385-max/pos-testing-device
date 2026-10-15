@@ -337,7 +337,7 @@
             <section class="card list">
               <div class="lines" id="itemsLines"><div class="band cols" id="itemsBand"></div><div id="itemsRows"></div></div>
             </section>
-            <div class="dlab" id="dlab" aria-label="Row design"><button data-d="c">C</button><button data-d="e">E</button><button class="cur" data-d="f">F</button><button data-d="g">G</button><button data-d="h">H</button></div>
+            <div class="dlab" id="dlab" aria-label="Row design"><button data-d="e">E</button><button data-d="f">F</button><button data-d="g">G</button><button class="cur" data-d="g2">G2</button></div>
             <button class="fab" id="itemsAdd" aria-label="New item" title="New item"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
           </section>
           <section class="editor" aria-label="Item editor">
@@ -864,13 +864,13 @@
   <script src="pos-sell.js?v=63"></script>
   <script src="pos-checkout.js?v=18"></script>
   <script src="pos-orders.js?v=24"></script>
-  <script src="pos-items.js?v=30"></script>
+  <script src="pos-items.js?v=32"></script>
   <script src="pos-customers.js?v=35"></script>
   <script src="pos-settings.js?v=17"></script>
   <script src="pos-pin.js?v=10"></script>
   <script src="pos-shift.js?v=35"></script>
   <script src="pos-stock.js?v=4"></script>
-  <script>document.addEventListener('click', (e) => { const b = e.target.closest('#dlab [data-d]'); if (!b) return; document.body.dataset.rowd = b.dataset.d; document.querySelectorAll('#dlab button').forEach(x => x.classList.toggle('cur', x === b)); renderItems(); });</script>
+  <script>document.body.dataset.rowd = 'g2'; document.addEventListener('click', (e) => { const b = e.target.closest('#dlab [data-d]'); if (!b) return; document.body.dataset.rowd = b.dataset.d; document.querySelectorAll('#dlab button').forEach(x => x.classList.toggle('cur', x === b)); renderItems(); });</script>
   <script src="app.js?v=184"></script>
 </body>
 </html>

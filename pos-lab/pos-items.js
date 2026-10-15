@@ -12,6 +12,7 @@ const itemThumb = (it, big) => `<span class="thumb${big ? ' big' : ''}" style="-
 // The family's level is bo-model familyLevel, the same one the back office's Items list and item
 // page show (one size out of three = Low, all out = Out). No sale clock here: the till has no Dead filter.
 const itemStk = it => ({ out: 'stk-out', low: 'stk-low' })[familyLevel(it.members, null, Date.now(), tillZone())] || '';
+const itemOnHand = it => (it.track ? `${itemQty(onHandOf(it.members))} ${escapeHtml(it.unit)}` : '');   // stock off: no count, never "0"
 // Markup and margin are SalesMath.unitMargin's, the back office's: margin takes the tax out of the price first.
 const itemMargin = v => SalesMath.unitMargin(v.cost, v.price, state.settings);
 const itemPct = (n, dp) => SalesMath.pctText(n / 100, 1, dp);   // unitMargin gives percent points (the back office's pct)
@@ -71,12 +72,18 @@ function fillItemsPane(kind, band, rows) {
   }).sort((a, b) => a.name.localeCompare(b.name));
   band.innerHTML = `<span>Item <span class="num">· ${list.length}</span></span><span>Category</span><span>Price</span><span>In stock</span>`;
   rows.innerHTML = list.map(it => {
-    const vn = it.variants.length;
+    const vn = it.variants.length, vs = vn > 1 ? `${vn} variants` : '', oh = itemOnHand(it);
+    // phone (G2, owner 2026-10-16): stock · variants under the name, the price or a short range always right
+    const ps = it.variants.filter(v => !askedPrice(v)).map(v => v.price), lo = Math.min(...ps), hi = Math.max(...ps);
+    const cut = x => peso(x).replace(/\.00$/, '');   // ponytail: a range drops whole-peso .00 to stay short
+    const rng = !ps.length ? '—' : lo === hi ? peso(lo) : `${cut(lo)}-${cut(hi)}`;
+    const stk = !oh ? '' : itemStk(it) === 'stk-out' ? '<span class="stk-out">Out of stock</span>' : `<span class="${itemStk(it)}">${oh} in stock</span>`;
+    const line = [stk, vs].filter(Boolean).join(' · ');
     return `<button type="button" class="row cols" data-id="${escapeHtml(it.id)}">
-      <span class="nm">${itemThumb(it)}<span class="tx"><b>${escapeHtml(it.name)}</b>${vn > 1 ? `<small>${vn} variants</small>` : ''}</span></span>
+      <span class="nm">${itemThumb(it)}<span class="tx"><b>${escapeHtml(it.name)}</b>${vs ? `<small class="v0">${vs}</small>` : ''}${line ? `<small class="sub">${line}</small>` : ''}</span><span class="rt">${rng}</span></span>
       <span class="cat">${escapeHtml(it.cat)}</span>
       <span class="pr num">${itemPriceText(it)}</span>
-      <span class="num ${itemStk(it)}">${itemQty(onHandOf(it.members))} ${escapeHtml(it.unit)}</span></button>`;
+      <span class="num ${itemStk(it)}">${itemOnHand(it) || '—'}</span></button>`;
   }).join('') || '<div class="empty"><b>No items</b><span>Nothing matches this search or filter.</span></div>';
 }
 

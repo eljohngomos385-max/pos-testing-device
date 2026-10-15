@@ -8111,6 +8111,18 @@ body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items 
   .view-items .band + div > .row:first-child { margin-top: 6px; border-top-left-radius: var(--rl-r); border-top-right-radius: var(--rl-r); }   /* capsule to list 14 (owner 2026-10-16) */
   .rail-h { --rl-m: 16px; }
 }
+/* phone Items rows (G2, owner 2026-10-16): stock · variants under the name, the price or a short range always right.
+   Price and stock sit in the same place on every row. Quick stock keeps its own grid. */
+.lv .page .row :is(.sub, .rt) { display: none; }
+@container pv (max-width: 720px) {
+  body:not(.qs-on) .view-items .page .row.cols:not(.k2) { display: flex; align-items: center; min-height: 56px; padding-block: 8px; }
+  body:not(.qs-on) .view-items .page .row.cols:not(.k2) > :not(.nm), body:not(.qs-on) .view-items .page .row .v0 { display: none; }
+  body:not(.qs-on) .view-items .page .row.cols:not(.k2) .nm { flex: 1; gap: 12px; }
+  body:not(.qs-on) .view-items .page .row.cols:not(.k2) .thumb { width: 40px; height: 40px; border-radius: 8px; font-size: 14px; }
+  body:not(.qs-on) .view-items .page .row.cols:not(.k2) .tx { flex: 1; gap: 2px; }
+  body:not(.qs-on) .view-items .page .row .sub { display: block; overflow: hidden; color: var(--ink-secondary); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+  body:not(.qs-on) .view-items .page .row .rt { display: block; flex: none; font-weight: 510; font-variant-numeric: tabular-nums; white-space: nowrap; }
+}
 
 /* the paper on grey needs no ring */
 body.light-theme .view-orders .rp-paper { box-shadow: none; }

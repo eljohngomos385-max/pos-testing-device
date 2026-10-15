@@ -12,6 +12,7 @@ const itemThumb = (it, big) => `<span class="thumb${big ? ' big' : ''}" style="-
 // The family's level is bo-model familyLevel, the same one the back office's Items list and item
 // page show (one size out of three = Low, all out = Out). No sale clock here: the till has no Dead filter.
 const itemStk = it => ({ out: 'stk-out', low: 'stk-low' })[familyLevel(it.members, null, Date.now(), tillZone())] || '';
+const itemOnHand = it => (it.track ? `${itemQty(onHandOf(it.members))} ${escapeHtml(it.unit)}` : '');   // stock off: no count, never "0"
 // Markup and margin are SalesMath.unitMargin's, the back office's: margin takes the tax out of the price first.
 const itemMargin = v => SalesMath.unitMargin(v.cost, v.price, state.settings);
 const itemPct = (n, dp) => SalesMath.pctText(n / 100, 1, dp);   // unitMargin gives percent points (the back office's pct)
@@ -70,10 +71,10 @@ function fillItemsPane(kind, band, rows) {
     return !q || it.name.toLowerCase().includes(q) || it.variants.some(v => [v.name, v.sku, v.barcode].some(x => x.toLowerCase().includes(q)));
   }).sort((a, b) => a.name.localeCompare(b.name));
   band.innerHTML = `<span>Item <span class="num">· ${list.length}</span></span><span>Category</span><span>Price</span><span>In stock</span>`;
-  const D = document.body.dataset.rowd || 'f';   // lab: the phone row design under test (the switch on the page)
+  const D = document.body.dataset.rowd || 'g2';   // lab: the phone row design under test (the switch on the page)
   rows.innerHTML = list.map(it => {
     const vn = it.variants.length, vs = vn > 1 ? `${vn} variants` : '';
-    const pr = `<span class="sp">${itemPriceText(it)}</span>`, st = `<span class="${itemStk(it)}">${itemQty(onHandOf(it.members))} ${escapeHtml(it.unit)}</span>`, sti = `<span class="${itemStk(it)}">${itemQty(onHandOf(it.members))} ${escapeHtml(it.unit)} in stock</span>`;
+    const pr = `<span class="sp">${itemPriceText(it)}</span>`, oh = itemOnHand(it), st = oh && `<span class="${itemStk(it)}">${oh}</span>`, sti = oh && `<span class="${itemStk(it)}">${oh} in stock</span>`;
     const ps = it.variants.filter(v => !askedPrice(v)).map(v => v.price), lo = Math.min(...ps), hi = Math.max(...ps);
     const cut = x => peso(x).replace(/\.00$/, '');   // ponytail: a range drops whole-peso .00 to stay short
     const low = ps.length ? peso(lo) : '—', rng = !ps.length ? '—' : lo === hi ? peso(lo) : `${cut(lo)}–${cut(hi)}`;
@@ -82,14 +83,14 @@ function fillItemsPane(kind, band, rows) {
       e: [[sti], vn > 1 ? `<span class="vn">${vs}</span>` : pr],   // Loyverse: stock always under, price or "N variants" right
       f: [[sti, vs], low],                                 // stock + variants under, the lowest price always right
       g: [[sti, vs], rng],                                 // stock + variants under, price or a short range always right
-      h: [[`<b class="hp">${rng}</b>`, sti], ''],          // price then stock, always under the name
+      g2: [[!oh ? '' : onHandOf(it.members) > 0 ? sti : '<span class="stk-out">Out of stock</span>', vs], rng],   // G, calmer: out of stock in words
     }[D];
     const line = sub.filter(Boolean).join(' · ');
     return `<button type="button" class="row cols" data-id="${escapeHtml(it.id)}">
       <span class="nm">${itemThumb(it)}<span class="tx"><b>${escapeHtml(it.name)}</b>${vs ? `<small class="v0">${vs}</small>` : ''}${line ? `<small class="sub">${line}</small>` : ''}</span>${rt ? `<span class="rt">${rt}</span>` : ''}</span>
       <span class="cat">${escapeHtml(it.cat)}</span>
       <span class="pr num">${itemPriceText(it)}</span>
-      <span class="num ${itemStk(it)}">${itemQty(onHandOf(it.members))} ${escapeHtml(it.unit)}</span></button>`;
+      <span class="num ${itemStk(it)}">${itemOnHand(it) || '—'}</span></button>`;
   }).join('') || '<div class="empty"><b>No items</b><span>Nothing matches this search or filter.</span></div>';
 }
 
