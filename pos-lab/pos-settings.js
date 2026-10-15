@@ -1,7 +1,7 @@
 // Till › Settings, and the cash drawer count.
 
-// The page's dropdowns ([data-pick] buttons): the choices in the order they always show, what is on now, and the
-// setter each one already had. A pick runs the setter, then the page redraws from state.
+// The page's choices ([data-pick] rows, each opening its own page of ticks): the choices in the order they always
+// show, what is on now, and the setter each one already had. A pick runs the setter, then the page redraws from state.
 const savePrinting = (patch) => { state.settings.printing = { ...printerConfig(), ...patch }; saveSettings(); };
 const SETTING_PICKS = {
   // Wide is the phone's (2 across at Medium's height, owner 2026-10-13); a tablet runs it as Medium (getSellGridProfile), so it reads Medium there
@@ -11,7 +11,7 @@ const SETTING_PICKS = {
   tileShow: { opts: [['price', 'Price'], ['stock', 'Stock'], ['name', 'Name only']], now: () => state.tileStock ? 'stock' : state.showPrice ? 'price' : 'name', set: setTileShow },
   tilePics: { opts: [['off', 'Off'], ['top', 'Photo top'], ['fill', 'Photo fills']], now: () => state.tilePics, set: setTilePics },
   cartPics: { opts: [['off', 'Off'], ['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large']], now: () => state.cartPics, set: setCartPics },
-  theme: { opts: [['dark', 'Dark'], ['light', 'Light']], now: () => state.theme || 'dark', set: applyTheme },
+  theme: { opts: [['dark', 'Dark'], ['light', 'Light'], ['system', 'System']], now: () => state.theme || 'dark', set: applyTheme },
   driver: { opts: [['browser', 'Browser'], ['network', 'Wi-Fi'], ['bluetooth', 'Bluetooth']], now: () => printerConfig().driver || 'browser', set: v => savePrinting({ driver: v }) },
   width: { opts: [['58mm', '58 mm'], ['80mm', '80 mm']], now: () => printerConfig().width || '80mm', set: v => savePrinting({ width: v }) },
   discountLimit: { opts: [10, 15, 20, 25, 30, 50].map(n => [n, `${n}%`]).concat([[null, 'Never ask']]), now: () => loadTillPerms().discountLimit, set: setDiscountLimit },
@@ -42,9 +42,31 @@ function setShiftPick(patch) {
   const put = () => { Object.assign(state.settings, patch); saveSettings(); renderPosSettings(false); };
   if (gate('shift', put, patch, 'Changing how shifts work.')) put();
 }
-function openSettingMenu(btn) {
-  const pk = SETTING_PICKS[btn.dataset.pick], now = pk.now();
-  openMenu(btn, pk.opts.map(([v, label]) => ({ label, cur: v === now, run: () => { if (v !== now) pk.set(v); renderPosSettings(btn.dataset.pick === 'driver'); } })));
+// Settings is a stack of pages in one view: the list, Payment types (and its Add), and one choice's ticks.
+function showStPage(id) { $$('.view-settings .st-page').forEach(p => { p.hidden = p.id !== id; }); }
+// One choice as its own page (owner 2026-10-15, "the Facebook route", no pop-ups): the row's word on top, a tick
+// per choice. A tick sets it and the page stays, like iPhone Settings.
+let stPick = '';
+function openPick(key) {
+  const pk = SETTING_PICKS[key];
+  stPick = key;
+  $('#pickTitle').textContent = $(`#settingsView [data-pick="${key}"] .lb`).textContent;
+  $('#pickList').innerHTML = pk.opts.map(([, label], i) => `<label class="pick"><input type="radio" name="stPick" value="${i}"><span class="tx">${escapeHtml(label)}</span></label>`).join('');
+  showStPage('pickPage');
+  renderPick();
+}
+// The ticks follow state: a gated setter (a manager's PIN) that was cancelled leaves the old one ticked.
+function renderPick() {
+  const pk = SETTING_PICKS[stPick];
+  if (pk) { const now = pk.now(); $$('#pickList input').forEach(r => { r.checked = pk.opts[r.value][0] === now; }); }
+}
+function bindPick() {
+  $('#pickBack').addEventListener('click', () => { stPick = ''; showStPage('settingsPage'); });
+  $('#pickList').addEventListener('change', (e) => {
+    const key = stPick;
+    SETTING_PICKS[key].set(SETTING_PICKS[key].opts[e.target.value][0]);
+    renderPosSettings(key === 'driver');
+  });
 }
 
 // printer = false: redraw labels and which rows show, but leave the printer list, a running scan's progress
@@ -53,9 +75,10 @@ function renderPosSettings(printer = true) {
   $$('#settingsView [data-pick]').forEach(b => {
     const pk = SETTING_PICKS[b.dataset.pick], now = pk.now();
     const val = (pk.opts.find(o => o[0] === now) || pk.opts[0])[1];
-    b.firstElementChild.textContent = val;
-    b.setAttribute('aria-label', b.closest('.fr').querySelector('.lb').textContent + ', ' + val);   // "Tile size, Medium", not just "Medium"
+    b.querySelector('.vv').textContent = val;
+    b.setAttribute('aria-label', b.querySelector('.lb').textContent + ', ' + val);   // "Tile size, Medium", not just "Medium"
   });
+  renderPick();
   const p = printerConfig();
   const saleRow = $('#posPrintOnSaleRow');   // the browser's own dialog can't print by itself (checkout's printOnSale gate)
   if (saleRow) saleRow.hidden = p.driver !== 'network' && p.driver !== 'bluetooth';
@@ -106,8 +129,7 @@ const PAY_TYPES = [['cash', 'Cash', 'Always on. The cash drawer counts it.'], ['
 const payTypes = () => ({ hidden: [], custom: [], ...state.settings.payments });
 const payTypesOn = () => { const { hidden, custom } = payTypes(); return [...PAY_TYPES.map(t => t[0]), ...custom].filter(k => k === 'cash' || !hidden.includes(k)).length; };
 function openPayTypes(open) {
-  $('#settingsPage').hidden = open;
-  $('#payTypesPage').hidden = !open;
+  showStPage(open ? 'payTypesPage' : 'settingsPage');
   if (open) renderPayTypes(); else renderPosSettings(false);
 }
 function renderPayTypes() {
@@ -122,22 +144,27 @@ function savePayTypes(patch) {
   state.settings.payments = { ...payTypes(), ...patch };
   saveSettings();
 }
+// Add a payment type (owner 2026-10-15): its own page, a Name and Save; Save goes back to the list.
 function addPayType() {
-  showConfirm({ title: 'Add a payment type', okText: 'Add',
-    html: '<label class="pf"><span class="lb">Name</span><input class="text-input" id="ptName" maxlength="24" placeholder="e.g. Maya or Card" autocomplete="off"></label>',
-    onConfirm: () => {
-      const name = ($('#ptName')?.value || '').trim(), { custom } = payTypes();
-      if (!name) return;
-      // a custom name is saved as the sale's method, so the words the sale maths already reads (unpaid = no money taken) are taken too
-      const taken = [...PAY_TYPES.flatMap(([k, l]) => [k, l]), ...Object.entries(SalesMath.TENDER_LABEL).flat(), 'Void', 'Refund', ...custom];
-      if (taken.some(n => n.toLowerCase() === name.toLowerCase())) return showToast(`${name} is taken. Pick another name`);
-      savePayTypes({ custom: [...custom, name] });
-      renderPayTypes();
-    } });
+  $('#payTypeAddForm').reset();
+  showStPage('payTypeAddPage');
+  $('#ptName').focus();
+}
+function savePayTypeAdd() {
+  const name = $('#ptName').value.trim(), { custom } = payTypes();
+  if (!name) return $('#ptName').focus();
+  // a custom name is saved as the sale's method, so the words the sale maths already reads (unpaid = no money taken) are taken too
+  const taken = [...PAY_TYPES.flatMap(([k, l]) => [k, l]), ...Object.entries(SalesMath.TENDER_LABEL).flat(), 'Void', 'Refund', ...custom];
+  if (taken.some(n => n.toLowerCase() === name.toLowerCase())) return showToast(`${name} is taken. Pick another name`);
+  savePayTypes({ custom: [...custom, name] });
+  openPayTypes(true);
 }
 function bindPayTypes() {
   $('#posPayTypesRow')?.addEventListener('click', () => openPayTypes(true));
   $('#payTypesBack')?.addEventListener('click', () => openPayTypes(false));
+  $('#payTypeAddBack').addEventListener('click', () => openPayTypes(true));
+  $('#payTypeAddSave').addEventListener('click', savePayTypeAdd);
+  $('#payTypeAddForm').addEventListener('submit', (e) => { e.preventDefault(); savePayTypeAdd(); });   // Return on the keyboard
   const list = $('#payTypesList');
   list?.addEventListener('change', (e) => {
     const k = e.target.dataset.pt, { hidden } = payTypes();
@@ -168,8 +195,12 @@ function logOut() {
 function applyTheme(theme) {
   state.theme = theme;
   storageSet(STORAGE_THEME, theme);
-  document.body.classList.toggle('light-theme', theme === 'light');
+  paintTheme();
 }
+// System (owner 2026-10-15) follows the device's light or dark mode, and changes with it.
+const sysLight = matchMedia('(prefers-color-scheme: light)');
+function paintTheme() { document.body.classList.toggle('light-theme', state.theme === 'light' || (state.theme === 'system' && sysLight.matches)); }
+sysLight.addEventListener('change', paintTheme);
 
 function persistPosSettings() {
   state.settings.printing = {

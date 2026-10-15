@@ -3506,10 +3506,11 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .esheet .es-ink { height: 40px; margin-left: auto; padding: 0 20px; border-radius: var(--es-r); background: var(--tile); font-size: 14px; font-weight: 590; }
 .esheet .es-ink:hover:not(:disabled) { background: var(--es-hover); }
 .esheet .es-ink:disabled { opacity: .35; cursor: default; }   /* the price ask's Add, till a price is typed */
-/* the list glides aside as the keys come in, and back when they go (170 = half of keys 300 + gap 40) */
-.es-body.in .es-col { animation: es-left .28s var(--rl-ease) both; }
-.es-body.out .es-col { animation: es-right .28s var(--rl-ease) both; }
-.es-keys.in { animation: es-side .28s var(--rl-ease) both; }
+/* the list glides aside as the keys come in, and back when they go (170 = half of keys 300 + gap 40). es-in / es-out,
+   never in / out: inside a .lv page (the Shift sheet) '.lv .in' is the text-field style */
+.es-body.es-in .es-col { animation: es-left .28s var(--rl-ease) both; }
+.es-body.es-out .es-col { animation: es-right .28s var(--rl-ease) both; }
+.es-keys.es-in { animation: es-side .28s var(--rl-ease) both; }
 @keyframes es-left { from { transform: translateX(170px); } }
 @keyframes es-right { from { transform: translateX(-170px); } }
 @keyframes es-side { from { opacity: 0; transform: translateX(24px); } }
@@ -3518,7 +3519,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
   .es-body { grid-auto-flow: row; grid-template-columns: minmax(0, 420px); row-gap: 24px;
              margin-top: 64px; padding-top: max(0px, calc(40cqh - 120px)); }   /* scrolls below the X, never under it; same start spot */
   .es-keys { height: auto; }
-  .es-body.in .es-col, .es-body.out .es-col { animation: none; }
+  .es-body.es-in .es-col, .es-body.es-out .es-col { animation: none; }
   /* a phone's card is short: the head sits by the X, and the list never squeezes under 3¼ rows (the cut one says there's
      more); a shorter card scrolls the body instead. 410 = head 128 + gap 16 + list 210 (3 × 64 + 18) + 8 + Custom 56 */
   .es-body.fill { margin-top: 20px; padding-bottom: 8px; padding-top: max(0px, calc(24cqh - 120px)); grid-template-rows: minmax(410px, 1fr); overflow-y: auto; }
@@ -7617,8 +7618,9 @@ body.light-theme .lv .thumb { background: hsl(var(--h) 50% 92%); color: hsl(var(
    one grey tile with inset hairlines, the word at the side of its value, a footnote under */
 .lv .card.fc { overflow: hidden; border-color: transparent; box-shadow: none; }   /* our card: white on the grey page, no outline, no shadow (rednote's) */
 .lv .fc > * + * { background-image: linear-gradient(var(--rl-div), var(--rl-div)); background-position: 16px 0; background-size: 100% 1px; background-repeat: no-repeat; }   /* from the text to the right edge */
-.lv .fc-t { display: flex; align-items: baseline; gap: 4px; margin: 4px 16px -6px; color: var(--ink-tertiary); font-size: 12px; font-weight: 500; }
-.lv .fc-n { margin: -6px 16px 4px; color: var(--ink-tertiary); font-size: 12px; overflow-wrap: anywhere; }
+.lv .fc-t { display: flex; align-items: baseline; gap: 4px; margin: 4px 17px -2px; color: var(--ink-tertiary); font-size: 14px; font-weight: 400; }   /* rednote's: 15 from the baseline to the tile; 17 = the tile's 1px edge + its 16 inset, so it lines up with the words */
+.lv :is(.fc, .fc-n) + .fc-t { margin-top: 12px; }   /* 27 from a tile to the next title, as rednote's */
+.lv .fc-n { margin: -6px 17px 4px; color: var(--ink-tertiary); font-size: 12px; overflow-wrap: anywhere; }
 .lv .fc-n b { color: var(--ink-secondary); font-weight: 600; }
 .lv .fc-t .link { margin-left: auto; }
 /* an action on a tile is blue words, no box (Apple's) */
@@ -7631,7 +7633,7 @@ body .lv .fc .fr .act:not(.st-pick) { min-width: 0; padding: 0; background: none
 .lv .fm-h { grid-area: 1 / 2; align-self: start; z-index: 1; min-width: 0; margin: 0; pointer-events: none; overflow: hidden; color: var(--ink); font-size: 16px; font-weight: 600;
             line-height: var(--bar-h); text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .lv .form { padding-top: calc(var(--bar-h) + 12px); }   /* wide: the form starts under the title */
-.lv .fr { display: grid; grid-template-columns: 120px minmax(0,1fr); align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 6px 16px; color: var(--ink); font-size: 15px; text-align: left; }
+.lv .fr { display: grid; grid-template-columns: 120px minmax(0,1fr); align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 6px 16px; color: var(--ink); font-size: 16px; text-align: left; }
 .lv .fr:is(.wide, :has(> .ctl.end > .sw)) { grid-template-columns: minmax(0,1fr) auto; }   /* a switch, a variant's row: the word takes the room */
 .lv .fr > .lb { color: var(--ink-secondary); }   /* rednote: the word grey on the left, its value dark on the right */
 .lv .fr > .lb.ph { color: var(--ink-quaternary); }
@@ -7655,7 +7657,7 @@ body .lv .fc .fr .act:not(.st-pick) { min-width: 0; padding: 0; background: none
 .lv .fr.add.red { justify-content: center; color: var(--danger); }
 .lv label.fr { cursor: pointer; }
 /* on a tile a field is bare: no box, no ring; the caret says where you are */
-.lv .fc :is(.fr, .opt, .pick-find) .in { height: 36px; padding: 0; border-radius: 0; background: none; box-shadow: none; font-size: 15px; }
+.lv .fc :is(.fr, .opt, .pick-find) .in { height: 36px; padding: 0; border-radius: 0; background: none; box-shadow: none; font-size: 16px; }
 .lv .fc .fr textarea.in { height: auto; min-height: 36px; padding: 8px 0; resize: none; field-sizing: content; line-height: 1.35; }
 .lv .fc .in:focus-visible { outline: 0; }
 .lv .fc .fr .in { color: var(--ink); text-align: left; }   /* rednote: the value just after its word */
@@ -7720,7 +7722,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv .opt .in.num { text-align: right; }
 .lv .pick-find { padding: 4px 16px; }
 .lv .picks { max-height: 440px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
-.lv .pick { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 16px; font-size: 15px; cursor: pointer; }
+.lv .pick { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 16px; font-size: 16px; cursor: pointer; }
 .lv .pick .tx { display: grid; min-width: 0; }
 /* a tick is Apple's: a blue check at the right, nothing when off */
 .lv .fc .pick input { order: 9; margin-left: auto; appearance: none; background: none; }
@@ -7833,23 +7835,105 @@ input.es-ta { height: 56px; }
 .lv .sh-move small { color: var(--ink-tertiary); font-size: 12px; }
 .lv .sh-move .out { color: var(--ink-secondary); }
 .lv .sh-move > .num { flex: none; white-space: nowrap; }   /* a long note never pushes the sign onto its own line */
-/* Reports, iOS Screen Time's look (owner 2026-10-10): Day | Week | Month across the top, then the Sales card -- the period
-   small with ‹ › at its right, the sales big under it */
-.lv .rp-units { order: 0; width: 100%; }   /* on top on a phone too (the Items one drops under its search) */
-.lv .rp-units button { flex: 1; padding: 0 8px; }
-.lv .rp-body { display: contents; }   /* its cards sit in the c-body grid, its gap between them */
-.lv .rp-hero { padding: 12px 16px 14px; }
-.lv .rp-when { display: flex; align-items: center; min-height: 36px; color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
-.lv .rp-when .rp-step { display: flex; margin: 0 -10px 0 auto; }
-.lv .rp-big { display: block; color: var(--ink); font-size: 32px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
-.lv .rp-step button { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-input); color: var(--ink); }
-.lv .rp-step button:disabled { color: var(--ink-quaternary); }
-@media (hover: hover) { .lv .rp-step button:not(:disabled):hover { background: var(--rl-hover); } }
-.lv .rp-list .fr { grid-template-columns: minmax(0,1fr) auto; }   /* a long item name gives way, the amount never wraps */
-.lv .rp-list .fr > .lb { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
-.lv .rp-list .fr > .lb.ph { color: var(--ink-tertiary); }
+/* Reports = reports-lab.html v5 (owner 2026-10-15): Screen Time's layout, our look. Health's Day | Week | Month capsule, then
+   Settings blocks: Sales (the number, the period with ‹ › under it, the chart), Profit / Orders / Margin as three small cards,
+   Top items and Top categories (the Items page's rows), By method (one bar split by share, four rows at most), Breakdown. */
+.lv .kinds.rp-units { --seg: rgb(118 118 128 / .24); --seg-on: var(--surface-hover);   /* iOS's fill; no theme token names it */
+  position: relative; order: 0; flex-basis: auto; width: min(100%, 300px); justify-self: center;   /* "Apple v3": centred, 300 at most (owner 2026-10-15) */
+  height: 30px; margin: 0; padding: 2px; gap: 0; justify-content: normal;
+  border: 0; border-radius: 999px; background: var(--seg); box-shadow: none; }
+body.light-theme .lv .kinds.rp-units { --seg: rgb(118 118 128 / .12); --seg-on: var(--surface-2); }
+.lv .kinds.rp-units button { flex: 1; padding: 0 8px; border-radius: 999px; color: var(--ink); font-size: 13px; font-weight: 590; }
+.lv .kinds.rp-units button.cur { background: var(--seg-on); box-shadow: 0 2px 6px rgb(0 0 0 / .1); }
+.lv .kinds.rp-units.slid button.cur { background: none; box-shadow: none; }
+.lv .kinds.rp-units.slid::before { top: 2px; bottom: 2px; height: auto; width: var(--w); transform: translateX(var(--x)); border-radius: 999px; background: var(--seg-on); box-shadow: 0 2px 6px rgb(0 0 0 / .1); }
+/* the period over the number (Screen Time's, "Apple v3" owner 2026-10-15); a tap on the date comes back to now */
+.lv .rp-per { display: flex; margin-bottom: 2px; }
+/* the header on a past period: Show Today top-right; the ‹ date › bar (the blue rounds) that pins under it once the date
+   scrolls away (reportsPin) */
+.lv .head .rp-now { margin-left: auto; height: 36px; padding: 0 4px; color: var(--rl-on); font-size: 15px; font-weight: 510; }
+.lv .rp-pin { position: absolute; z-index: 5; top: 100%; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 8px; height: 44px;
+  border-bottom: 1px solid var(--line); background: var(--canvas, var(--bg)); opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s; }
+.lv .rp-pin.on { opacity: 1; visibility: visible; }
+.lv .rp-pin .rp-pl { flex: none; min-width: 200px; color: var(--ink); font-size: 15px; font-weight: 590; text-align: center; }   /* one width, so the ‹ › stay put */
+.lv .rp-arw { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--rl-on); color: var(--surface-2); }
+.lv .rp-arw:disabled { background: var(--ink-quaternary); cursor: default; }
+.lv .rp-pl { flex: 1; min-width: 0; overflow: hidden; color: var(--ink-tertiary); font-size: 13px; text-align: left; white-space: nowrap; text-overflow: ellipsis; }
+.lv .rp-body { display: grid; gap: 12px; min-width: 0; }
+.lv .rp-none { padding: 16px; color: var(--ink-tertiary); text-align: center; }
+/* Sales: the number, the period, the chart; Profit / Orders / Margin under it, a small card each */
+.lv .rp-ov { padding: 16px; }
+.lv .rp-big b { font-size: 32px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+.lv .rp-chart { position: relative; margin-top: 12px; }
+.lv .rp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; text-align: center; }
+.lv .rp-stats div { padding: 10px 4px 12px; }
+.lv .rp-stats span { display: block; color: var(--ink-tertiary); font-size: 12px; }
+.lv .rp-stats .fc { container-type: inline-size; }
+.lv .rp-stats b { display: block; margin-top: 2px; font-size: min(15px, 13.5cqi); font-weight: 600; }   /* ₱999,999.99 still fits a third of a 320px phone */
+/* the bars: no axis -- tap or drag along them for the number; the top padding is the tip's room */
+.lv .rp-bars { position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.lv .rp-cols { position: relative; display: flex; height: 150px; padding-top: 32px; border-bottom: 1px solid var(--rl-hair); }
+.lv .rp-col { flex: 1; display: flex; align-items: flex-end; justify-content: center; min-width: 0; }
+.lv .rp-col i { width: min(60%, 22px); border-radius: 5px 5px 0 0; background: var(--rl-on); transform-origin: bottom; animation: rp-grow .45s var(--rl-ease) backwards; transition: opacity .15s; }
+.lv .rp-col:disabled { cursor: default; }
+.lv .rp-bars.picked .rp-col i { opacity: .35; }
+.lv .rp-bars.picked .rp-col.on i { opacity: 1; }
+@keyframes rp-grow { from { transform: scaleY(0); } }
+.lv .rp-xax { display: flex; margin-top: 6px; color: var(--ink-quaternary); font-size: 12px; }
+.lv .rp-xax span { flex: 1; min-width: 0; text-align: center; white-space: nowrap; }
+.lv .rp-xax .cur { color: var(--ink); font-weight: 650; }
+.lv .rp-msg { position: absolute; inset: auto 0 40px; color: var(--ink-tertiary); text-align: center; }
+.lv .rp-tip { position: absolute; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 8px; background: var(--ink); color: var(--surface-2);
+  font-size: 12px; white-space: nowrap; pointer-events: none; }
+.lv .rp-tip span { opacity: .65; }
+.lv .rp-tip.go { pointer-events: auto; cursor: pointer; }
+/* Month: a calendar -- grey rounds, the day's sales under its date; a tap opens the day */
+.lv .rp-cw, .lv .rp-cg { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.lv .rp-cw span { padding-bottom: 4px; color: var(--ink-quaternary); font-size: 12px; text-align: center; }
+.lv .rp-cc { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; height: 48px; border-radius: 10px; background: var(--canvas, var(--bg)); }
+.lv .rp-cc b { font-size: 14px; font-weight: 400; }
+.lv .rp-cc span { color: var(--ok); font-size: 10px; font-weight: 510; letter-spacing: -.02em; white-space: nowrap; }
+.lv .rp-cc:disabled { background: none; cursor: default; }
+.lv .rp-cc:disabled b { color: var(--ink-quaternary); }
+.lv .rp-cc.now b { color: var(--rl-on); }
+/* rows: the Items page's -- 48px, the square picture, the name 14/500 over a grey line, the amount 14/600 */
+.lv .rp-li { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 16px; font-size: 14px; }
+.lv .rp-tm { flex: 1; min-width: 0; }
+.lv .rp-tn { overflow: hidden; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
+.lv .rp-ts { color: var(--ink-tertiary); font-size: 12px; }
+.lv .rp-tv { flex: none; font-weight: 600; }
+.lv .rp-sum { font-weight: 600; }   /* Breakdown's Net sales */
+/* By method: one bar split by share (it takes any number of methods), the rows under it with no line between */
+.lv .rp-tp { flex: none; width: 32px; color: var(--ink-tertiary); font-size: 12px; text-align: right; }
+/* a period step slides the figures in from the side it came from */
+.lv .rp-body.slide-l { animation: rp-sl .28s ease; }
+.lv .rp-body.slide-r { animation: rp-sr .28s ease; }
+@keyframes rp-sl { from { opacity: 0; transform: translateX(28px); } }
+@keyframes rp-sr { from { opacity: 0; transform: translateX(-28px); } }
+@media (prefers-reduced-motion: reduce) { .lv .rp-body, .lv .rp-col i { animation: none !important; } }
 .lv button.sh-move { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }   /* a past shift / day: the row opens its paper */
 .lv button.sh-move:hover { background: var(--surface-hover); }
+/* Shift (owner 2026-10-15): since when, a line under the title (the Claude app's); Start / Close shift floats bottom right
+   like Items' +; Cash management and Past shifts are rows at the bottom; Past shifts is its own page */
+.lv .sh-page[hidden] { display: none; }
+.lv .sh-page .st-ttl { justify-items: center; line-height: 1.25; }
+.lv .sh-page .st-ttl small { color: var(--ink-tertiary); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+.lv .sh-fab { width: auto; height: 48px; padding: 0 22px; border-radius: 24px; font-size: 15px; font-weight: 600; }
+.lv #shiftBody { padding-bottom: calc(88px + var(--ph-safe, 0px)); }   /* the last row clears the button */
+.lv .fr.add > .chev { margin-left: auto; }
+.lv .sh-none { margin: 24px 16px; color: var(--ink-tertiary); font-size: 14px; text-align: center; }
+/* Cash management in the shift's sheet: an Amount row (its keys beside it when tapped, under the tiles on a phone), a
+   note, Cash in / Cash out stacked like the cart Discount's tiles, then the moves on one tile */
+.esheet .es-body.cm { padding-top: max(24px, calc(24cqh - 56px)); }
+.es-body.cm .es-head:empty, .esheet .sh-mvs:empty { display: none; }
+.es-body.cm > .es-keys { height: auto; align-self: start; }   /* level with Amount, however long the moves list */
+.esheet .sh-cm { justify-content: center; font-weight: 600; }
+.esheet .sh-mvs { margin-top: 16px; border-radius: var(--es-r); background: var(--tile); }
+.esheet .sh-mvs > * + * { border-top: 1px solid var(--line); }
+@container (max-width: 560px) {
+  .esheet .es-body.cm { margin-top: 56px; padding-top: 0; }   /* right under ‹ Back, the same spot with the keys up or down */
+  .es-body.cm:has(> .es-keys) .sh-mvs { display: none; }   /* keys up: the moves step aside for them */
+}
 /* The papers, in the app's confirm card (showConfirm). */
 .cf-sheet .sh-slip { width: 100%; margin: 4px 0; padding: 14px 12px; white-space: pre; overflow-x: auto; font-size: 10px; line-height: 1.4; }
 @container pv (max-width: 720px) {
@@ -7912,18 +7996,22 @@ input.es-ta { height: 56px; }
    left, its control right at every width: a choice is a dropdown (.st-pick opens the ⋯ menu's morph), a yes/no
    the item editor's switch (.sw). The rows a printer doesn't use are [hidden]. */
 .lv .head:has(> .st-ttl) { position: relative; align-items: center; }   /* Settings, Shift, Reports: a title, no search (owner 2026-10-10) */
-.st-ttl { position: absolute; inset: 0; display: grid; place-content: center; margin: 0; pointer-events: none; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }   /* centred on the page, ☰ beside it (owner 2026-10-09) */
-.st-page .fr[hidden], .st-prn[hidden], .lv .st-page[hidden] { display: none; }   /* .st-page: Settings or its Payment types page */
+.st-ttl { position: absolute; inset: 0; display: grid; place-content: center; margin: 0; pointer-events: none; font-size: 16px; font-weight: 500; letter-spacing: -.01em; }   /* centred on the page, ☰ beside it (owner 2026-10-09) */
+.st-page .fr[hidden], .st-prn[hidden], .lv .st-page[hidden] { display: none; }   /* .st-page: Settings, Payment types (+ Add), one choice's ticks */
 .lv .st-page .fr.nav { grid-template-columns: minmax(0,1fr) auto; }
+.st-save { position: relative; margin-left: auto; }   /* Add payment type's Save: right of the centred title, above it */
 .st-page .fr.nav .vv { color: var(--ink-secondary); }
 .st-page .fr > .v:has(> .sw) { align-items: center; gap: 12px; }
 body .lv .fc .fr .act.icon[data-pt-del] { width: 40px; margin-right: -12px; }   /* Payment types' Delete: a 40px tap, the icon still 12px from the switch */
 .lv .st-page .fr { min-height: 48px; }   /* a switch row as tall as a dropdown row */
 .st-page label.fr { cursor: pointer; }
-.st-page .fr .lb { display: grid; gap: 2px; }
+.st-page .fr .lb { display: grid; gap: 2px; color: var(--ink); }   /* rednote's settings: the word dark, its value grey */
+.lv .st-page .c-body { padding-top: 2px; }   /* the bigger titles' room taken from the top: the first title stays where it was */
+@container pv (max-width: 720px) { .lv .st-page { padding-inline: 16px; } }   /* rednote's 16 gutter */
 .st-page .fr .lb small { font-size: 12px; }
-.st-page .fr > .v { display: flex; justify-content: flex-end; min-width: 0; }
-.lv .st-page .fr:has(> .v > .st-pick) { grid-template-columns: minmax(0,1fr) auto; }   /* a long label wraps; the pick is never cut ("Never ask" on a phone) */
+.st-page .fr > .v { display: flex; align-items: center; justify-content: flex-end; min-width: 0; }   /* the › on the middle of its word, as rednote's */
+.lv .st-page .fr:has(> .v > .st-pick) { grid-template-columns: minmax(0,1fr) auto; }
+.lv .st-page .fr:has(> .v > .st-sel) { grid-template-columns: auto minmax(0,1fr); }   /* Time zone: its word on one line, the long zone name gives way */   /* a long label wraps; the pick is never cut ("Never ask" on a phone) */
 .lv .st-pick { justify-content: space-between; gap: 10px; min-width: 150px; max-width: 100%; padding: 0 8px 0 12px; color: var(--ink); }
 .st-pick > span { overflow: hidden; text-overflow: ellipsis; }
 .st-pick .ic { color: var(--ink-tertiary); }

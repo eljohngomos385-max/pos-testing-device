@@ -177,68 +177,162 @@ function reportsSignature() {
 // Payments by method are SalesMath's tenders (the back office's): a split sale is its legs (cash +
 // account), GCash/QR/a store's own method ("Maya") are named from the order, words from tenderLabel.
 // Colours are the --pm-* tokens (the Orders Payment filter; a deliberate data-viz exception to the
-// monochrome theme); a store's own method wears Other's. payRank: the one order methods are listed in.
+// monochrome theme); a store's own method wears Other's.
 const PAY_KEYS = ['cash', 'gcash', 'qr', 'credit', 'other'];
 const payBucket = k => (PAY_KEYS.includes(k) ? k : 'other');
 const payColor = k => `var(--pm-${payBucket(k)})`;
-const payRank = k => PAY_KEYS.indexOf(payBucket(k));
 const orderTenderKeys = o => SalesMath.paymentsOf(o).map(p => p.key);
 
-// Reports (owner 2026-10-09): how the store is doing over a day, week or month; ‹ › (or a swipe) steps
-// back. Only for whoever may "See the day's totals" (canAccess). Every figure is SalesMath's, the back
-// office's: summarize (net of voids and refunds), topItems, tenders, on the store's days (tillDay).
-const REPORT_UNITS = [['day', 'Day'], ['week', 'Week'], ['month', 'Month']];
-const reportsView = { unit: 'day', back: 0 };   // back = periods before the current one
+// Reports (owner 2026-10-09; the look and layout = reports-lab.html v5, owner 2026-10-15): how the store is doing over a
+// day, week or month -- the sales with a chart, Profit · Orders · Margin, the five best items and categories, the methods,
+// the breakdown; no comparing, that is the back office's (owner 2026-10-15). The date sits over the number, a ‹ date › bar
+// pins under the title once it scrolls away, a past period has Show Today top-right ("Apple v3", owner 2026-10-15); a swipe steps.
+// Only for whoever may "See the day's totals" (canAccess). Every figure is SalesMath's, the back office's: summarize (net
+// of voids and refunds), topItems, tenders, on the store's days (tillDay).
+const reportsView = { unit: 'day', back: 0, bars: [], pick: null };   // back = periods before the current one; bars = the chart's
 
-// The period `back` steps before this one: [a, b) as store days, and its words. A week starts on Monday,
-// as the back office's calendar does.
-function reportsPeriod() {
-  const { unit, back } = reportsView, today = tillDay(Date.now()), add = SalesMath.addDays;
+// The period `back` steps before the current one: [a, b) as store days, in ms, and its words (Screen Time's: "Today,
+// October 15", "Last week", "September 2026"). A week starts on Monday, as the back office's calendar does.
+function reportsPeriod(unit = reportsView.unit, back = reportsView.back) {
+  const today = tillDay(Date.now()), add = SalesMath.addDays;
   const [y, m] = today.split('-').map(Number), iso = (yy, mm) => new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 10);
   const a = unit === 'day' ? add(today, -back)
     : unit === 'week' ? add(today, -((SalesMath.dateParts(today).weekday + 6) % 7) - 7 * back)
     : iso(y, m - 1 - back);
   const b = unit === 'day' ? add(a, 1) : unit === 'week' ? add(a, 7) : iso(+a.slice(0, 4), +a.slice(5, 7));
   const last = add(b, -1), yr = a.slice(0, 4) !== today.slice(0, 4);   // another year says so (a week: the year it ends in)
-  const label = unit === 'day' ? (back === 0 ? `Today, ${tillDate(a, 'day')}` : back === 1 ? 'Yesterday' : tillDate(a, yr ? 'weekdayDayYear' : 'weekdayDay'))
-    : unit === 'week' ? (back === 0 ? 'This week' : `${tillDate(a, 'day')} – ${a.slice(5, 7) === last.slice(5, 7) ? +last.slice(8) : tillDate(last, 'day')}${yr || last.slice(0, 4) !== today.slice(0, 4) ? ', ' + last.slice(0, 4) : ''}`)
-    : back === 0 ? 'This month' : new Date(a + 'T00:00:00Z').toLocaleString('en-US', { month: 'long', timeZone: 'UTC', ...(yr && { year: 'numeric' }) });
-  return { from: SalesMath.dayStartMs(a, tillZone()), to: SalesMath.dayStartMs(b, tillZone()), label };
+  const long = o => new Date(a + 'T00:00:00Z').toLocaleString('en-US', { timeZone: 'UTC', ...o });
+  const label = unit === 'day' ? `${back === 0 ? 'Today' : back === 1 ? 'Yesterday' : long({ weekday: 'long' })}, ${long({ month: 'long', day: 'numeric', ...(yr && { year: 'numeric' }) })}`
+    : unit === 'week' ? (back === 0 ? 'This week' : back === 1 ? 'Last week' : `${tillDate(a, 'day')}${a.slice(0, 4) !== last.slice(0, 4) ? ', ' + a.slice(0, 4) : ''} – ${a.slice(5, 7) === last.slice(5, 7) ? +last.slice(8) : tillDate(last, 'day')}${yr || last.slice(0, 4) !== today.slice(0, 4) ? ', ' + last.slice(0, 4) : ''}`)
+    : long({ month: 'long', year: 'numeric' });
+  return { a, b, from: SalesMath.dayStartMs(a, tillZone()), to: SalesMath.dayStartMs(b, tillZone()), label };
 }
 
-function renderReports() {
+// slide: +1 the figures come in from the right (a later period), −1 from the left
+function renderReports(slide) {
   const body = $('#reportsBody');
   if (!body) return;
   state.orders = loadOrders();
   reportsLive._sig = reportsSignature();
-  reportsLive._day = tillDay(Date.now());
-  const p = reportsPeriod(), win = { from: p.from, to: p.to };
+  const today = reportsLive._day = tillDay(Date.now());
+  const { unit, back } = reportsView, p = reportsPeriod(), win = { from: p.from, to: p.to }, live = !back, zone = tillZone();
   const costOf = i => productOf(i)?.cost;   // a line sold before cost was stamped on it: the item's cost now (the BO's costOf)
-  // Two groups on the one pass (owner 2026-10-09): 'c' = the lines with a cost on file (a cost of ₱0 is on file), so profit
+  // One pass, four keys a line (owner 2026-10-09): 'c' = the lines with a cost on file (a cost of ₱0 is on file), so profit
   // and margin leave out what has no cost rather than count it at ₱0; 'n' = the orders, an exchange's new sale (and its
-  // void) not one -- the customer swapped, they didn't buy again. No costed line: profit and margin say '—'.
+  // void) not one -- the customer swapped, they didn't buy again; the chart's bar: the hour (a number) or the day; 'g:' =
+  // the item's first category (categoryOf), the back office's Top categories, so the rows add up to Net sales.
   const swaps = new Set(state.orders.filter(SalesMath.isExchange).map(o => o.id));
+  // an hour: the back office's rule (chartTime) -- a void on its sale's day sits in the sale's hour, so the two cancel there
+  const saleTs = new Map(state.orders.map(o => [o.id, o.ts]));
+  const barOf = unit === 'day' ? o => SalesMath.dateParts(SalesMath.chartTime(o, saleTs, zone), zone).hour : o => tillDay(o.ts);
   const m = SalesMath.summarize(state.orders, { ...win, costOf, by: (o, i) => [(i.cost ?? costOf(i)) != null ? 'c' : null,
-    swaps.has(o.id) || (o.status === 'void' && swaps.has(o.originalOrderId)) ? null : 'n'] });
-  const c = m.groups.get('c'), orders = m.groups.get('n')?.orders || 0;
-  const top = SalesMath.topItems(state.orders, { ...win, costOf }).slice(0, 5).map(r => ({ ...r, name: productOf({ id: r.key })?.name || r.name }));   // a renamed item: its name now
-  const by = [...SalesMath.tenders(state.orders, win)].sort((x, y) => payRank(x[0]) - payRank(y[0]));
-  const row = (lb, v) => `<div class="fr"><span class="lb">${lb}</span><span class="v num">${v}</span></div>`;
-  const none = words => `<div class="fr"><span class="lb ph">${words}</span></div>`;
-  const step = (d, words, path, off) => `<button type="button" data-rp="${d}" aria-label="${words}"${off ? ' disabled' : ''}><svg class="ic" viewBox="0 0 24 24"><path d="${path}"/></svg></button>`;
-  // Screen Time's card: the period small with ‹ › at its right, the sales big under it, then word / value rows
-  body.innerHTML = `${icard('Sales', `<div class="rp-hero"><div class="rp-when">${escapeHtml(p.label)}<span class="rp-step">${step(-1, 'Earlier', 'M15 6l-6 6 6 6')}${step(1, 'Later', 'M9 6l6 6-6 6', !reportsView.back)}</span></div>
-      <b class="rp-big num">${peso(m.netSales)}</b></div>`
-      + row('Profit', c ? peso(c.grossProfit) : '—') + row('Margin', c ? SalesMath.pctText(c.margin, c.salesBeforeTax, 0) : '—') + row('Orders', SalesMath.qtyText(orders)))}
-    ${icard('Top items', top.map(r => row(escapeHtml(r.name), peso(r.netSales))).join('') || none('No sales'), '', ' rp-list')}
-    ${icard('By method', by.map(([k, n]) => row(escapeHtml(SalesMath.tenderLabel(k)), peso(n))).join('') || none('No sales'), '', ' rp-list')}`;
+    swaps.has(o.id) || (o.status === 'void' && swaps.has(o.originalOrderId)) ? null : 'n', barOf(o), 'g:' + categoryOf(productOf(i))] });
+  const g = m.groups, c = g.get('c'), orders = g.get('n')?.orders || 0;
+  // The bars: the store's hours (7 AM to 8 PM, wider when a sale fell outside), the week's days, the month's days
+  const bars = [];
+  if (unit === 'day') {
+    const hrs = [...g.keys()].filter(k => typeof k === 'number'), hNow = live ? SalesMath.dateParts(Date.now(), zone).hour : 24;
+    for (let h = Math.min(7, ...hrs); h <= Math.max(20, ...hrs); h++) {
+      const h12 = h % 12 || 12, am = h < 12;
+      bars.push({ k: h, x: h % 3 === 1 ? h12 + (am ? 'a' : 'p') : '', tip: `${h12} ${am ? 'AM' : 'PM'}`, fut: h > hNow, cur: h === hNow });
+    }
+  } else for (let d = p.a; d < p.b; d = SalesMath.addDays(d, 1)) bars.push({ k: d, day: d, x: unit === 'week' ? tillDate(d, 'weekday') : +d.slice(8) % 7 === 1 ? +d.slice(8) : '', tip: tillDate(d, 'weekdayDay'), fut: d > today, cur: d === today });   // a month: the 1st, 8th, 15th, 22nd, 29th
+  for (const b of bars) b.v = g.get(b.k)?.netSales || 0;
+  Object.assign(reportsView, { bars, pick: null });
+  const top = Math.max(0, ...bars.map(b => b.v)) || 1;
+  const chart = !bars.some(b => b.v) ? `<div class="rp-cols"><div class="rp-msg">${live ? 'No sales yet' : 'No sales'}</div></div>`
+    : `<div class="rp-bars"><div class="rp-cols">${bars.map((b, i) => `<button type="button" class="rp-col" data-i="${i}"${b.fut ? ' disabled' : ''} aria-label="${b.tip}"><i style="height:${Math.max(0, b.v) / top * 100}%;animation-delay:${i * 18}ms"></i></button>`).join('')}</div>
+       <div class="rp-xax">${bars.map(b => `<span${b.cur ? ' class="cur"' : ''}>${b.x}</span>`).join('')}</div></div>`;
+  // a row, the Items page's: the picture, the name over a grey line, the amount
+  const li = (thumb, name, sub, v) => `<div class="rp-li">${thumb}<div class="rp-tm"><div class="rp-tn">${escapeHtml(name)}</div><div class="rp-ts num">${sub}</div></div><b class="rp-tv num">${peso(v)}</b></div>`;
+  // The five best (the full lists are the back office's job); a renamed item: its name now
+  const tops = SalesMath.topItems(state.orders, { ...win, costOf }).slice(0, 5).map(r => {
+    const it = productOf({ id: r.key }), name = it?.name || r.name || '', look = it ? itemLook(it) : {};
+    return li(itemThumb({ name, img: look.img, hue: look.hue ?? itemHue(it?.folder) }), name, `${SalesMath.qtyText(r.unitsSold)} sold`, r.netSales);
+  }).join('');
+  // categories as the back office ranks them (Top categories): by Net sales, each its share of the period's
+  // ponytail: kept when the category sold a unit net; the BO's when one of its items did -- they differ only when returns
+  // outnumber sales in a category; add per-item keys if that ever shows
+  const cats = [...g].filter(([k, x]) => String(k).startsWith('g:') && x.unitsSold > 0).sort((x, y) => y[1].netSales - x[1].netSales).slice(0, 5).map(([k, x]) => {
+    const id = k.slice(2), name = folderName(id);
+    return li(itemThumb({ name, hue: itemHue(id) }), name, `${SalesMath.pctText(SalesMath.share(x.netSales, m.netSales), m.netSales, 0)} of sales`, x.netSales);
+  }).join('');
+  // By method, biggest first: four rows at most -- past four, the top three and the rest as Other (the full split is the BO's)
+  let pays = [...SalesMath.tenders(state.orders, win)].map(([k, v]) => ({ k, v })).sort((x, y) => y.v - x.v);
+  if (pays.length > 4) { const keep = pays.filter(r => r.k !== 'other').slice(0, 3); pays = [...keep, { k: 'other', v: pays.filter(r => !keep.includes(r)).reduce((n, r) => n + r.v, 0) }]; }
+  const all = pays.reduce((n, r) => n + r.v, 0), none = '<div class="rp-none">No sales</div>';
+  // Breakdown: the back office's ladder (sales-terms) -- Gross sales less voids, refunds and discounts is Net sales
+  const nOf = n => (n ? ` (${n})` : ''), step = (nm, v, cls = '') => `<div class="rp-li${cls}"><span class="rp-tm">${nm}</span><b class="rp-tv num">${peso(v)}</b></div>`;
+  const ladder = m.grossSales || m.voids || m.refunds ? step('Gross sales', m.grossSales) + step('Voids' + nOf(m.voidCount), -m.voids)
+    + step('Refunds' + nOf(m.refundCount), -m.refunds) + step('Discounts', -m.discounts) + step('Net sales', m.netSales, ' rp-sum') : none;
+  const arw = (s, label, path, off) => `<button type="button" class="rp-arw" data-rp="${s}" aria-label="${label}"${off ? ' disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg></button>`;
+  // ponytail: a third of a phone fits ₱999,999.99; a profit of a million or more reads ₱1.23M (the Sales number stays exact)
+  const stat = (k, v) => `<section class="card fc"><div><span>${k}</span><b>${v}</b></div></section>`;
+  // the date over the number, Screen Time's (owner 2026-10-15, "Apple v3"): a tap on it comes back to now
+  body.innerHTML = icard('Sales', `<div class="rp-ov"><div class="rp-per"><button type="button" class="rp-pl">${p.label}</button></div>
+      <div class="rp-big"><b class="num">${peso(m.netSales)}</b></div>
+      <div class="rp-chart">${chart}</div></div>`)
+    + `<div class="rp-stats num">${stat('Profit', !c ? '—' : Math.abs(c.grossProfit) < 1e6 ? peso(c.grossProfit) : SalesMath.formatMoney(c.grossProfit, state.settings?.store?.currency, { compact: true }))}${stat('Orders', SalesMath.qtyText(orders))}${stat('Margin', c ? SalesMath.pctText(c.margin, c.salesBeforeTax, 0) : '—')}</div>`
+    + icard('Top items', tops || none)
+    + icard('Top categories', cats || none)
+    // a plain ranking: the method, its money, its share -- no bar, no colours (owner 2026-10-15)
+    + icard('By method', pays.length ? pays.map(r => `<div class="rp-li"><span class="rp-tm rp-tn">${escapeHtml(SalesMath.tenderLabel(r.k))}</span><b class="rp-tv num">${peso(r.v)}</b><span class="rp-tp num">${SalesMath.pctText(SalesMath.share(r.v, all), all, 0)}</span></div>`).join('') : none)
+    + icard('Breakdown', ladder);
+  // the header: Show Today on a past period; the ‹ date › bar that pins under it once the date scrolls away (reportsPin)
+  const now = $('.view-reports .rp-now');
+  now.hidden = live;
+  now.textContent = `Show ${{ day: 'Today', week: 'This Week', month: 'This Month' }[unit]}`;
+  $('#reportsPin').innerHTML = `${arw(-1, 'Earlier', 'M15 18l-6-6 6-6')}<button type="button" class="rp-pl">${p.label}</button>${arw(1, 'Later', 'M9 18l6-6-6-6', live)}`;
+  reportsPin();
+  body.classList.remove('slide-l', 'slide-r');
+  if (slide) { void body.offsetWidth; body.classList.add(slide > 0 ? 'slide-l' : 'slide-r'); }   // restart the slide
 }
 
-// ‹ (d −1, earlier) / › (d +1, later); a unit picked on Day | Week | Month starts at the current period.
-function reportsStep(d, unit) {
-  if (unit) { reportsView.unit = unit; reportsView.back = 0; slidePill($('#reportsUnits'), 'unit', unit); } else reportsView.back = Math.max(0, reportsView.back - d);
-  renderReports();
+// The ‹ date › bar under the title (Screen Time's): on once the date over the number has scrolled under it
+function reportsPin() {
+  const pin = $('#reportsPin'), per = $('#reportsBody .rp-per');
+  pin.classList.toggle('on', !!per && per.getBoundingClientRect().bottom < pin.getBoundingClientRect().bottom);
 }
+
+// Month as a calendar (reports-lab v5): not drawn -- Month shows daily bars for now; the owner said keep it (2026-10-15).
+// ponytail: dead code on purpose; renderReports' chart takes `reportsCalendar(bars, p.a)` to bring it back.
+function reportsCalendar(bars, a) {
+  const short = n => SalesMath.formatMoney(n, state.settings?.store?.currency, { compact: true });
+  return `<div class="rp-cw">${[...'MTWTFSS'].map(d => `<span>${d}</span>`).join('')}</div>
+    <div class="rp-cg">${'<span></span>'.repeat((SalesMath.dateParts(a).weekday + 6) % 7)}${bars.map((b, i) => `<button type="button" class="rp-cc${b.cur ? ' now' : ''}" data-i="${i}"${b.fut ? ' disabled' : ''} aria-label="${b.tip}"><b>${+b.day.slice(8)}</b><span class="num">${b.v ? short(b.v) : '&nbsp;'}</span></button>`).join('')}</div>`;
+}
+
+// A tapped (or dragged-to) bar: the others dim, its number in a tip over it; a day's tip has a › and opens that day.
+function reportsPick(i) {
+  const host = $('#reportsBody .rp-bars');
+  if (!host) return;
+  reportsView.pick = i;
+  host.classList.toggle('picked', i != null);
+  host.querySelector('.rp-tip')?.remove();
+  host.querySelectorAll('[data-i]').forEach(el => el.classList.toggle('on', +el.dataset.i === i));
+  if (i == null) return;
+  const b = reportsView.bars[i], bar = host.querySelector(`[data-i="${i}"] i`), tip = document.createElement('div');
+  tip.className = 'rp-tip' + (b.day ? ' go' : '');
+  tip.innerHTML = `<span>${b.tip}</span><b class="num">${peso(b.v)}</b>${b.day ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>' : ''}`;
+  host.append(tip);
+  const pr = host.getBoundingClientRect(), r = bar.getBoundingClientRect();
+  tip.style.left = Math.max(0, Math.min(pr.width - tip.offsetWidth, r.left - pr.left + r.width / 2 - tip.offsetWidth / 2)) + 'px';
+  tip.style.top = (r.top - pr.top - tip.offsetHeight - 6) + 'px';   // .rp-cols' top padding keeps the tallest bar's tip inside
+}
+
+// Day | Week | Month starts at the current period, ‹ › step one, a day on the chart opens as its own Day.
+// The page keeps its place (owner 2026-10-15): a shorter period clamps the scroll, so `y` keeps where the reader was and
+// the next longer one comes back to it -- Today › Yesterday › Today lands where it started.
+function reportsGo(unit, back, slide) {
+  if (unit !== reportsView.unit) slidePill($('#reportsUnits'), 'unit', unit);
+  const sc = $('.view-reports .c-scroll');
+  if (sc.scrollTop < sc.scrollHeight - sc.clientHeight - 1 || !(reportsView.y > sc.scrollTop)) reportsView.y = sc.scrollTop;   // not clamped: the reader's own place
+  Object.assign(reportsView, { unit, back: Math.max(0, back) });
+  renderReports(slide);
+  sc.scrollTop = reportsView.y;
+  reportsPin();
+}
+const reportsOpenDay = day => reportsGo('day', Math.round((Date.parse(tillDay(Date.now())) - Date.parse(day)) / 864e5), 1);
 
 // Live updates while Reports is open: the orders changed (another tab, a sync), or the store's day turned over.
 function reportsLive() {

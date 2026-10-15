@@ -934,16 +934,16 @@ function drawEditSheet() {
   const segBtn = (label, on, data) => `<button type="button"${on ? ' class="on"' : ''} ${data}>${label}</button>`;
   const cv = (open) => (open ? '' : esSvg('chev', 'cv'));
   let head, rows, side = '';
-  const kin = o.anim === true || o.anim === 'swap' ? ' in' : '';
+  const kin = o.anim === true || o.anim === 'swap' ? ' es-in' : '';
   if (o.kind === 'line') {
     const item = esItem();
     if (!item) return closeEditSheet();
     const p = productOf(item), step = stepFor(p);
-    // SC/PWD replaces line discounts (never stacked), so under it the line shows gross and says why.
+    // SC/PWD replaces line discounts (never stacked), so under it the line shows gross and says why. No "2 × ₱245" under
+    // the total: the Quantity box says it (owner 2026-10-14)
     const sc = cartTotals().scPwd && state.scPwd;
     const m = SalesMath.lineMoney(item.price, item.qty, sc ? null : item.discount, state.settings.store?.currency);
-    head = `<p>${escapeHtml(item.name)}</p><div class="es-hero">${peso(m.lineTotal)}</div>
-      <p>${item.qty} × ${peso(item.price)}${m.lineDiscount ? ` · ${peso(-m.lineDiscount)}` : sc && item.discount ? ` · ${ES_SC[sc.kind]} applies` : ''}</p>`;
+    head = `<p>${escapeHtml(item.name)}</p><div class="es-hero">${peso(m.lineTotal)}</div>${sc && item.discount ? `<p>${ES_SC[sc.kind]} applies</p>` : ''}`;
     rows = `<div class="es-row${o.f === 'q' ? ' on' : ''}"><span>Quantity</span>${stp(-1, item.qty <= step)}<button type="button" data-sf="q">${n('q', o.f === 'q' ? o.q || '0' : item.qty, ' q')}</button>${stp(1)}</div>
       <div class="es-row${o.f === 'd' ? ' on' : ''}" data-sf="d"><span>Discount</span>${n('d', o.f === 'd' ? esTyped(o) : esShown(item.discount), ' v')}${cv(o.f === 'd')}</div>
       <div class="es-row${o.f === 'n' ? ' on' : ''}" data-sf="n"><span>Note</span><small class="ad">${escapeHtml(item.note || '')}</small>${cv(o.f === 'n')}</div>`;
@@ -984,7 +984,7 @@ function drawEditSheet() {
   const top = card.querySelector('.es-scroll')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
   card.innerHTML = esFrame(head, rows, side, left + (o.kind === 'price' ? `<button type="button" class="es-ink" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
     : o.f ? '<button type="button" class="es-ink" data-apply>Apply</button>' : '<button type="button" class="es-ink" data-close>Done</button>'),
-  `${o.kind === 'rd' ? ' fill' : o.kind === 'price' ? ' ask' : ''}${o.anim === true ? ' in' : o.anim === 'out' ? ' out' : ''}`);
+  `${o.kind === 'rd' ? ' fill' : o.kind === 'price' ? ' ask' : ''}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}`);
   const list = card.querySelector('.es-scroll');
   if (list && o.opened) list.querySelector('.pick')?.scrollIntoView({ block: 'nearest' });   // just opened: the one on the sale in view
   else if (list) list.scrollTop = top;

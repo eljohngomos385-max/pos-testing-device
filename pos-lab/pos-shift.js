@@ -11,7 +11,6 @@
 // shift's figures are always counted live from the rows: a sale synced late updates a closed shift's Expected.
 
 const STORAGE_SHIFTS = storeKey('shifts');
-const shiftDraft = { amt: '', note: '' };   // the page's cash in / out: typed text survives a re-render
 // ponytail: the counts of a close live in the sheet (shSheet); a reload starts the blind count again.
 
 const shiftRows = () => loadList(STORAGE_SHIFTS);
@@ -213,7 +212,7 @@ function openShift(start, extra) {
 // Start asks the start cash. Close counts blind (no Expected while counting), then Expected / Counted / Over or short,
 // a note, one Recount; in float mode (Settings › Shift › Starting cash) what stays in the drawer starts the next
 // shift. ₱0 is a count (an empty drawer); Skip on the count is Not counted. ✕ / Back / Esc / leaving the page at any step: nothing saved (owner 2026-10-10).
-let shSheet = null;   // { step: 'start' | 'count' | 'result' | 'leave', v: typed, counts, shiftId, note, born }
+let shSheet = null;   // { step: 'start' | 'count' | 'result' | 'leave' | 'cash', v: typed, counts, shiftId, note, born, on: Cash management's keys up }
 function openShiftSheet(step) {
   shSheet = { step, v: '0', counts: [], shiftId: shiftOf()?.id || null, note: '', born: performance.now() };
   drawShiftSheet();
@@ -224,6 +223,7 @@ const SH_ASK = { start: ['Starting cash?', 'Start shift'], count: ['Count the ca
 const shCounted = () => shSheet.counts[shSheet.counts.length - 1];
 const shLeave = () => state.settings.startCash === 'float' && shCounted() > 0;   // a float only from a counted drawer
 function drawShiftSheet() {
+  if (shSheet.step === 'cash') return drawCashSheet();
   const o = shSheet, ask = SH_ASK[o.step];
   let head, rows = '', left = '', ink;
   if (ask) [head, ink] = [`<p>${ask[0]}</p><div class="es-hero">${typedCash(o.v)}</div>`, ask[1]];
@@ -240,14 +240,34 @@ function drawShiftSheet() {
   $('#shiftSheetCard').innerHTML = esFrame(head, rows, ask ? `<div class="es-keys">${esKeys(true)}</div>` : '', `${left}<button type="button" class="es-ink" data-apply>${ink}</button>`);
   if (ask) $('#shiftSheet .es-ink').focus({ preventScroll: true });   // off the page's button: a key can't fire it again
 }
+// Cash management (Loyverse's, in the cart Discount's look; owner 2026-10-15): an Amount row whose keys come only when
+// it's tapped (no numpad on the screen, owner 2026-10-15; never the OS number keyboard, which covers the sheet, owner
+// 2026-10-05), a note, Cash in or Cash out as two stacked tiles, then what went in and out since the drawer's start.
+// With or without a shift (owner 2026-10-10 #3).
+function drawCashSheet() {
+  const o = shSheet;
+  $('#shiftSheetCard').innerHTML = esFrame('',
+    `<button type="button" class="es-row${o.on ? ' on' : ''}" data-amt><span>Amount</span><span class="es-n v${o.on ? ` on${o.v === '0' ? ' fresh' : ''}` : ''}"><span>${typedCash(o.v)}</span></span></button>
+    <input class="es-ta" id="shNote" maxlength="80" placeholder="Add a note" aria-label="Note" autocomplete="off" value="${escapeHtml(o.note)}">
+    <button type="button" class="es-row sh-cm" data-cm="in">Cash in</button><button type="button" class="es-row sh-cm" data-cm="out">Cash out</button>
+    <div class="sh-mvs" id="shMoves"></div>`, o.on ? `<div class="es-keys${o.anim ? ' es-in' : ''}">${esKeys(true)}</div>` : '',
+    '<button type="button" class="es-ink" data-close>Done</button>', ` cm${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}`);
+  o.anim = false;
+  shMoves();
+}
+const shMoves = () => $('#shMoves').innerHTML = shiftDrawer().d.moves.slice().reverse().map(m => `<div class="sh-move"><span class="nm">${escapeHtml(m.note)}<small>${escapeHtml(fmtOrderTime(m.ts))} · ${escapeHtml(m.staff)}</small></span>
+  <span class="num${m.amount < 0 ? ' out' : ''}">${overShortText(m.amount)}</span></div>`).join('');
 const shStep = step => { Object.assign(shSheet, { step, v: '0', born: performance.now() }); drawShiftSheet(); };
 function shiftSheetClick(e) {
   const o = shSheet, el = q => e.target.closest(q);
   if (!o || !e.target) return;   // a desk key with no key for it on this step
+  o.note = $('#shNote')?.value ?? o.note;   // the note survives a redraw
   const k = el('[data-sk]');
   if (el('[data-close]')) return closeShiftSheet();
   if (k) { o.v = esPress(o.v, k.dataset.sk, true, CASH_MAX); return drawShiftSheet(); }
-  if (el('[data-recount]') && !shEarly()) { o.note = $('#shNote').value; return shStep('count'); }
+  if (el('[data-amt]')) { Object.assign(o, { anim: o.on ? 'out' : true, on: !o.on }); return drawShiftSheet(); }   // the keys come and go
+  if (el('[data-recount]') && !shEarly()) return shStep('count');
+  if (el('[data-cm]') && !shEarly()) return shiftMove(el('[data-cm]').dataset.cm);
   if (el('[data-skip]') && !shEarly()) return shStep('result');   // no count: Not counted
   if (el('[data-apply]') && !shEarly()) shiftApply();
 }
@@ -266,6 +286,23 @@ function shiftApply() {
   if (n > shCounted()) return showToast('More than counted');
   finishClose(n);
 }
+// A cash in / out: the typed amount and its note, then the sheet starts over for the next one
+function shiftMove(dir) {
+  const o = shSheet, amt = moneyValue(o.v), note = o.note.trim();
+  if (!canAccess('shift')) return closeShiftSheet();
+  if (!(amt > 0 && amt <= CASH_MAX)) return showToast('Type an amount');
+  if (!note) return showToast('Add a note');
+  const row = addShiftRow('cash_move', shiftOf()?.open.id, dir === 'in' ? amt : -amt, { note });
+  Object.assign(o, { v: '0', note: '', anim: o.on && 'out', on: false });
+  drawShiftSheet();
+  renderShift();
+  showToast(`Cash ${dir} ${peso(amt)}`, () => {
+    addShiftRow('cash_move', row.shiftId, -row.amount, { note, reverses: row.id });
+    if (shSheet?.step === 'cash') shMoves();
+    renderShift();
+    showToast('Undone');
+  });
+}
 function finishClose(leave) {
   const s = shiftOf(), o = shSheet;
   closeShiftSheet();
@@ -276,9 +313,9 @@ function finishClose(leave) {
   printPaper(xPaper(storeShifts().find(x => x.id === s.id)));
 }
 // The desk keyboard on the panel: digits, Backspace, Enter, as taps on its keys (not on the result: the note is there,
-// and a bounce must not close unseen). Handled keys are kept from the page, so a focused page button can't fire again.
+// and a bounce must not close unseen; on Cash management only while its keys are up). Handled keys are kept from the page, so a focused page button can't fire again.
 function shiftKey(e) {
-  if (!shSheet || !SH_ASK[shSheet.step] || e.ctrlKey || e.metaKey || e.altKey || e.target.matches('input, textarea')) return;
+  if (!shSheet || shSheet.step === 'result' || (shSheet.step === 'cash' && !shSheet.on) || e.ctrlKey || e.metaKey || e.altKey || e.target.matches('input, textarea')) return;
   const k = e.key === 'Backspace' ? 'del' : e.key, q = k === 'Enter' ? '[data-apply]' : /^([\d.]|del)$/.test(k) && `[data-sk="${k}"]`;
   if (!q) return;
   e.preventDefault();
@@ -318,29 +355,31 @@ function openPast(id) {
 }
 
 // Live like Reports (owner 2026-10-09): a sale, a cash move or a close (another tab, a sync), the role, the day turning,
-// the auto-close turn. Not while an amount or note is being typed on the page or a card is up over it (a clicked button
-// keeps focus: not that). The Start / Close panel is its own element: a redraw under it is harmless.
+// the auto-close turn. Not while a card is up over it. The shift's panel is its own element: a redraw under it is harmless.
 const shiftSig = () => [tillDay(Date.now()), cutBefore(), reportsSignature(), storageGet(STORAGE_SHIFTS, ''), storageGet(STORAGE_CUSTOMER_LEDGER, '')].join('|');
 function shiftLive() {
   if (state.view !== 'shift') return;
   if (!canAccess('shift')) { closeShiftSheet(); return applyRoleGating(); }   // the switch was taken away
-  if (confirmSheet || document.activeElement?.matches('#shiftBody input')) return;
+  if (confirmSheet) return;
   if (shiftSig() !== shiftLive._sig) renderShift();
 }
 
-// Apple Settings blocks like the item editor (owner 2026-10-08): the drawer, the sales, cash in / out, Start or
-// Print report + Close, then the past papers. With no shift open the drawer counts from today's auto-close turn
-// (owner 2026-10-10 #3), or from today's last close (its cash was counted then): the same page, start cash 0, and Start shift the only button.
+// The drawer as it stands: the open shift, or with none open since today's auto-close turn (owner 2026-10-10 #3) or
+// today's last close (its cash was counted then), start cash 0.
+function shiftDrawer(all = storeShifts(), now = Date.now()) {
+  const s = shiftOf(all), from = Math.max(cutBefore(now), ...all.filter(x => shiftDone(x, now)).map(x => x.end));
+  return { s, from, d: s || { open: { ts: from, amount: 0 }, close: null, end: Infinity, moves: movesIn(storeRows(), from, Infinity) } };
+}
+
+// Apple Settings blocks like the item editor (owner 2026-10-08): the drawer and the sales since the line under the title
+// (owner 2026-10-15), then Cash management (the sheet) and Past shifts (a page), each its own card; Start / Close shift floats bottom right.
 function renderShift() {
   const body = $('#shiftBody');
   if (!body) return;
   closeDays();   // a POS left on overnight makes yesterday's Z when the page draws
   shiftLive._sig = shiftSig();
-  const all = storeShifts(), s = shiftOf(all), now = Date.now();
-  const from = Math.max(cutBefore(now), ...all.filter(x => shiftDone(x, now)).map(x => x.end));   // none open: since the turn, or today's last close
-  const d = s || { open: { ts: from, amount: 0 }, close: null, end: Infinity, moves: movesIn(storeRows(), from, Infinity) }, f = shiftFigures(d);
+  const all = storeShifts(), { s, from, d } = shiftDrawer(all), f = shiftFigures(d);
   const row = (lb, v) => `<div class="fr"><span class="lb">${lb}</span><span class="v num">${v}</span></div>`;
-  const field = (lb, ctl) => `<label class="fr"><span class="lb">${lb}</span><span class="v">${ctl}</span></label>`;
   // a past shift: when it ended, who started it, over / short or Not counted; a day: its date and net
   const past = pastPapers(all).map(p => {
     const diff = p.s && shiftFigures(p.s).diff;   // live: a late sale moves it
@@ -348,66 +387,58 @@ function renderShift() {
       ? `<span class="nm">${escapeHtml(fmtOrderTime(p.at))}<small>Shift · ${escapeHtml(p.s.open.staff)}</small></span><span class="num${diff < 0 ? ' out' : ''}">${diff === null ? 'Not counted' : overShortText(diff)}</span>`
       : `<span class="nm">${escapeHtml(tillDate(p.d.day, 'dayYear'))}<small>Day</small></span><span class="num">${peso(p.d.amount)}</span>`}</button>`;
   }).join('');
-  const pastCard = past ? icard('Past shifts and days', past) : '';
-  const moves = d.moves.slice().reverse().map(m => `<div class="sh-move"><span class="nm">${escapeHtml(m.note)}<small>${escapeHtml(fmtOrderTime(m.ts))} · ${escapeHtml(m.staff)}</small></span>
-    <span class="num${m.amount < 0 ? ' out' : ''}">${overShortText(m.amount)}</span></div>`).join('');
+  $('#shiftSub').textContent = s ? `Started ${fmtOrderTime(s.open.ts)} · ${s.open.staff}` : `Since ${fmtOrderTime(from)}`;
+  Object.assign($('#shiftFab'), { textContent: s ? 'Close shift' : 'Start shift' }).dataset.sh = s ? 'close' : 'open';
   // the cash sales and Expected only for a role that sees the day's totals: the close is a blind count
   body.innerHTML = `<div class="c-body">
-    ${icard('Cash drawer', [
-      s ? row('Started', `${escapeHtml(fmtOrderTime(s.open.ts))} <small>· ${escapeHtml(s.open.staff)}</small>`) + row('Start cash', peso(f.start))
-        : row('Since', escapeHtml(fmtOrderTime(from))),
+    ${icard(s ? 'Cash drawer<button type="button" class="link" data-sh="report">Print report</button>' : 'Cash drawer', [
+      s ? row('Start cash', peso(f.start)) : '',
       row('Cash sales', peso(f.sales)),
       f.back ? row('Cash refunds', peso(minus(f.back))) : '',
       f.onAccount ? row('Paid on account', peso(f.onAccount)) : '',
       row('Cash in', peso(f.cashIn)),
       row('Cash out', peso(minus(f.cashOut))),
-      row('<b>Expected</b>', `<b>${peso(f.expected)}</b>`),
+      row('<b>Expected cash</b>', `<b>${peso(f.expected)}</b>`),
     ].join(''), '', ' r')}
-    ${shiftSalesCard(f.rows, row, s ? 'Since the shift started.' : `Since ${fmtOrderTime(from)}.`)}
-    ${icard('Cash in / out', field('Amount', `<input class="in num" data-f="amt" value="${escapeHtml(shiftDraft.amt)}" ${IMONEY} placeholder="0.00">`) + field('Note', `<input class="in" data-f="note" value="${escapeHtml(shiftDraft.note)}" placeholder="Add a note" maxlength="80" autocomplete="off">`)
-      + '<button type="button" class="fr add" data-sh="in">Cash in</button><button type="button" class="fr add" data-sh="out">Cash out</button>', '', ' r')}
-    ${moves ? icard('', moves) : ''}
-    ${icard('', s ? '<button type="button" class="fr add" data-sh="report">Print report</button><button type="button" class="fr add" data-sh="close">Close shift</button>'
-      : '<button type="button" class="fr add" data-sh="open">Start shift</button>')}
-    ${pastCard}
+    ${shiftSalesCard(f.rows, row)}
+    ${icard('', `<button type="button" class="fr add" data-sh="cash">Cash management${ICHEV}</button>`)}
+    ${icard('', `<button type="button" class="fr add" data-sh="past">Past shifts${ICHEV}</button>`)}
   </div>`;
+  $('#shiftPastBody').innerHTML = `<div class="c-body">${past ? icard('', past) : '<p class="sh-none">No past shifts yet</p>'}</div>`;
+}
+
+// Past shifts is its own page over the drawer (owner 2026-10-15); the view opens on the drawer.
+function shiftPast(open) {
+  $('#shiftPage').hidden = open;
+  $('#shiftPastPage').hidden = !open;
+  renderShift();
 }
 
 // What the store sold over the shift (or since the turn with none open), by how it was paid, and what came off it.
 // Net of voids and refunds.
-function shiftSalesCard(rows, row, since) {
+function shiftSalesCard(rows, row) {
   const t = SalesMath.summarize(rows), by = SalesMath.tenders(rows);
   const neg = n => peso(minus(n)), count = n => (n ? ` <small>· ${n}</small>` : '');
   return icard('Sales', [
-    ...[...by].map(([k, n]) => row(escapeHtml(SalesMath.tenderLabel(k)), peso(n))),
-    by.size ? '' : row('By method', '—'),
+    ...[...by].sort(([a], [b]) => (b === 'cash') - (a === 'cash')).map(([k, n]) => row(escapeHtml(SalesMath.tenderLabel(k)), peso(n))),   // a method once it's used, Cash on top
     row(`Refunds${count(t.refundCount)}`, neg(t.refunds)),
     row(`Voids${count(t.voidCount)}`, neg(t.voids)),
     row('Discounts', neg(t.discounts)),
-  ].join(''), since, ' r');
+  ].join(''), '', ' r');
 }
 
 function shiftAction(act) {
+  if (act === 'past' || act === 'back') return shiftPast(act === 'past');
   if (!canAccess('shift')) return;   // the page is hidden without the switch; this keeps the console out too
   const s = shiftOf();
+  if (act === 'cash') return openShiftSheet('cash');
   if (act === 'open' && !s) return openShiftSheet('start');
   if (act === 'close' && s) return openShiftSheet('count');
   if (act === 'report' && s) return printPaper(xPaper(s));   // changes nothing
-  if (act === 'in' || act === 'out') {   // with or without a shift open (owner 2026-10-10 #3)
-    const amt = moneyValue(shiftDraft.amt), note = shiftDraft.note.trim();
-    if (!(amt > 0 && amt <= CASH_MAX)) return showToast('Type an amount');
-    if (!note) return showToast('Add a note');
-    const row = addShiftRow('cash_move', s?.open.id, act === 'in' ? amt : -amt, { note });
-    shiftDraft.amt = shiftDraft.note = '';
-    showToast(`Cash ${act} ${peso(amt)}`, () => { addShiftRow('cash_move', row.shiftId, -row.amount, { note, reverses: row.id }); renderShift(); showToast('Undone'); });
-  }
   renderShift();
 }
 
 function onShiftEvent(e) {
-  const inp = e.target.closest('[data-f]');
-  if (e.type === 'input' && inp) { shiftDraft[inp.dataset.f] = inp.value; return; }
-  if (e.type !== 'click') return;
   const btn = e.target.closest('[data-sh]'), past = e.target.closest('[data-past]');
   if (btn) shiftAction(btn.dataset.sh);
   else if (past) openPast(past.dataset.past);

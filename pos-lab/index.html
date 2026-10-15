@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=289" />
+  <link rel="stylesheet" href="styles.css?v=307" />
 </head>
 <body>
   <div id="app" class="sidebar-collapsed">
@@ -394,17 +394,25 @@
         </div>
       </section>
 
-      <!-- Shift: the store's drawer (pos-shift.js); one column like a customer's page. Start / Close open the edit sheet's frame over the page -->
+      <!-- Shift: the store's drawer (pos-shift.js); one column like a customer's page, Past shifts its own page. Start / Close and Cash management open the edit sheet's frame over the page -->
       <section class="view view-shift lv" data-view="shift">
-        <div class="iv">
-          <section class="page sh-page" aria-label="Shift">
+        <div class="iv" id="shiftView">
+          <section class="page sh-page" id="shiftPage" aria-label="Shift">
             <div class="head">
               <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
-              <h1 class="st-ttl">Shift</h1>
+              <h1 class="st-ttl">Shift<small id="shiftSub"></small></h1>
             </div>
             <div class="c-scroll" id="shiftBody"></div>
+            <button type="button" class="fab sh-fab" id="shiftFab"></button>
+          </section>
+          <section class="page sh-page" id="shiftPastPage" aria-label="Past shifts" hidden>
+            <div class="head">
+              <button class="sq back" data-sh="back" aria-label="Back to the shift" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl">Past shifts</h1>
+            </div>
+            <div class="c-scroll" id="shiftPastBody"></div>
           </section>
         </div>
         <div class="esheet" id="shiftSheet" role="dialog" aria-label="Shift"><div class="es-card" id="shiftSheetCard"></div></div>
@@ -499,10 +507,13 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
               <h1 class="st-ttl">Reports</h1>
+              <button type="button" class="rp-now" hidden></button>
+              <div class="rp-pin" id="reportsPin"></div>
             </div>
-            <!-- Day | Week | Month as iOS Screen Time's switch (owner 2026-10-10); the pill slides (slidePill, pos-items.js) -->
+            <!-- reports-step-lab.html "Apple v3" (owner 2026-10-15): the Day | Week | Month capsule, centred (the pill slides,
+                 slidePill); the period sits over the Sales number, Show Today and the pinned ‹ date › bar fill the header (renderReports) -->
             <div class="c-scroll"><div class="c-body">
-              <section class="card kinds rp-units" id="reportsUnits" role="tablist" aria-label="Period">
+              <section class="kinds rp-units" id="reportsUnits" role="tablist" aria-label="Period">
                 <button type="button" role="tab" data-unit="day" class="cur" aria-selected="true">Day</button>
                 <button type="button" role="tab" data-unit="week" aria-selected="false">Week</button>
                 <button type="button" role="tab" data-unit="month" aria-selected="false">Month</button>
@@ -517,7 +528,7 @@
            SETTINGS VIEW — POS preferences
            ============================================ -->
       <!-- One column like Shift: ☰ + title, then calm cards of rows, label left, control right. Every choice is a
-           dropdown (data-pick → openSettingMenu, pos-settings.js); the time zone list is too long for one, so a styled select. -->
+           › row opening its own page of ticks (data-pick → openPick, pos-settings.js); the time zone stays a styled select for now. -->
       <section class="view view-settings lv" data-view="settings" hidden>
         <div class="iv">
           <section class="page st-page" id="settingsPage" aria-label="Settings">
@@ -531,17 +542,17 @@
               <div class="c-body">
                 <h3 class="fc-t">Appearance</h3>
                 <section class="card fc">
-                  <div class="fr"><span class="lb">Tile size</span><span class="v"><button type="button" class="act st-pick" data-pick="tileSize" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
-                  <div class="fr"><span class="lb">Tile text size</span><span class="v"><button type="button" class="act st-pick" data-pick="tileText" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
-                  <div class="fr"><span class="lb">Tiles show</span><span class="v"><button type="button" class="act st-pick" data-pick="tileShow" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
-                  <div class="fr"><span class="lb">Tile pictures</span><span class="v"><button type="button" class="act st-pick" data-pick="tilePics" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
-                  <div class="fr"><span class="lb">Cart pictures</span><span class="v"><button type="button" class="act st-pick" data-pick="cartPics" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
-                  <div class="fr"><span class="lb">Theme</span><span class="v"><button type="button" class="act st-pick" data-pick="theme" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                  <button type="button" class="fr nav" data-pick="tileSize"><span class="lb">Tile size</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="tileText"><span class="lb">Tile text size</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="tileShow"><span class="lb">Tiles show</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="tilePics"><span class="lb">Tile pictures</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="cartPics"><span class="lb">Cart pictures</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="theme"><span class="lb">Theme</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                 </section>
                 <!-- handlers: app.js attachEvents, pos-settings.js, pos-checkout.js Printing -->
                 <h3 class="fc-t">Printing</h3>
                 <section class="card fc">
-                  <div class="fr"><span class="lb">Printer</span><span class="v"><button type="button" class="act st-pick" data-pick="driver" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                  <button type="button" class="fr nav" data-pick="driver"><span class="lb">Printer</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <div class="fr" id="posScanRow" hidden><span class="lb">Find printer</span><span class="v"><button type="button" class="act" id="posScanBtn">Scan</button></span></div>
                   <div class="st-prn" id="posPrinterListRow" hidden>
                     <div class="prn-list" id="posPrinterList"></div>
@@ -549,7 +560,7 @@
                   </div>
                   <label class="fr" id="posNetRow" hidden><span class="lb">Printer IP<small>On the printer's status sheet</small></span><span class="v"><input class="in st-ip" id="posPrinterIp" inputmode="decimal" autocomplete="off" placeholder="192.168.1.50"></span></label>
                   <div class="fr" id="posBtRow" hidden><span class="lb">Bluetooth printer<small id="posBtStatus">Not paired</small></span><span class="v"><button type="button" class="act" id="posBtPairBtn">Pair</button></span></div>
-                  <div class="fr"><span class="lb">Paper width</span><span class="v"><button type="button" class="act st-pick" data-pick="width" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                  <button type="button" class="fr nav" data-pick="width"><span class="lb">Paper width</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <label class="fr"><span class="lb">Auto-cut paper</span><span class="v"><input type="checkbox" class="sw" id="posPrintCut"></span></label>
                   <label class="fr"><span class="lb">Print delivery map</span><span class="v"><input type="checkbox" class="sw" id="posPrintMap"></span></label>
                   <label class="fr" id="posPrintOnSaleRow" hidden><span class="lb">Print on sale</span><span class="v"><input type="checkbox" class="sw" id="posPrintOnSale"></span></label>
@@ -559,13 +570,13 @@
                 <section class="card fc">
                   <button type="button" class="fr nav" id="posPayTypesRow"><span class="lb">Payment types</span><span class="v"><span class="vv" id="posPayTypesNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <label class="fr"><span class="lb">Time zone</span><span class="v"><span class="act st-pick st-sel"><select id="posTimeZone"></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
-                  <div class="fr"><span class="lb">Ask a manager for discounts over</span><span class="v"><button type="button" class="act st-pick" data-pick="discountLimit" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
-                  <div class="fr"><span class="lb">Refunds and exchanges</span><span class="v"><button type="button" class="act st-pick" data-pick="refundPin" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                  <button type="button" class="fr nav" data-pick="discountLimit"><span class="lb">Ask a manager for discounts over</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="refundPin"><span class="lb">Refunds and exchanges</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                 </section>
                 <h3 class="fc-t">Shift</h3>
                 <section class="card fc">
-                  <div class="fr"><span class="lb">Starting cash</span><span class="v"><button type="button" class="act st-pick" data-pick="startCash" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
-                  <div class="fr"><span class="lb">Auto-close at</span><span class="v"><button type="button" class="act st-pick" data-pick="autoClose" aria-haspopup="menu" aria-expanded="false"><span></span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></button></span></div>
+                  <button type="button" class="fr nav" data-pick="startCash"><span class="lb">Starting cash</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="autoClose"><span class="lb">Auto-close at</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                 </section>
                 <!-- The account this POS is signed in with (owner 2026-10-13): Log out opens the sign-in page. Front end only for now -->
                 <h3 class="fc-t">Account</h3>
@@ -585,6 +596,33 @@
               <div class="c-body">
                 <h3 class="fc-t">Shown at checkout</h3>
                 <section class="card fc" id="payTypesList"></section>
+              </div>
+            </div>
+          </section>
+          <!-- Payment types › Add (owner 2026-10-15): a page, not a pop-up -->
+          <section class="page st-page" id="payTypeAddPage" aria-label="Add payment type" hidden>
+            <div class="head">
+              <button class="sq back" id="payTypeAddBack" aria-label="Back to payment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl">Add payment type</h1>
+              <button type="button" class="act primary st-save" id="payTypeAddSave">Save</button>
+            </div>
+            <div class="c-scroll">
+              <form class="c-body" id="payTypeAddForm">
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Name</span><span class="v"><input class="in" id="ptName" maxlength="24" placeholder="e.g. Maya or Card" autocomplete="off"></span></label>
+                </section>
+              </form>
+            </div>
+          </section>
+          <!-- Settings › one choice (owner 2026-10-15, "the Facebook route"): the row's word on top, its choices as ticks (pos-settings.js openPick) -->
+          <section class="page st-page" id="pickPage" hidden>
+            <div class="head">
+              <button class="sq back" id="pickBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl" id="pickTitle"></h1>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <section class="card fc" id="pickList" role="radiogroup" aria-labelledby="pickTitle"></section>
               </div>
             </div>
           </section>
@@ -811,16 +849,16 @@
   <script src="bo-model.js?v=130"></script>
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=47"></script>
-  <script src="pos-core.js?v=32"></script>
-  <script src="pos-sell.js?v=61"></script>
+  <script src="pos-core.js?v=36"></script>
+  <script src="pos-sell.js?v=63"></script>
   <script src="pos-checkout.js?v=18"></script>
   <script src="pos-orders.js?v=24"></script>
   <script src="pos-items.js?v=26"></script>
-  <script src="pos-customers.js?v=22"></script>
-  <script src="pos-settings.js?v=16"></script>
-  <script src="pos-pin.js?v=9"></script>
-  <script src="pos-shift.js?v=20"></script>
+  <script src="pos-customers.js?v=27"></script>
+  <script src="pos-settings.js?v=17"></script>
+  <script src="pos-pin.js?v=10"></script>
+  <script src="pos-shift.js?v=27"></script>
   <script src="pos-stock.js?v=4"></script>
-  <script src="app.js?v=167"></script>
+  <script src="app.js?v=175"></script>
 </body>
 </html>

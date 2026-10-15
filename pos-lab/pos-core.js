@@ -847,7 +847,7 @@ function switchView(view) {
   if (view === 'checkout') railCheckout(true);
   else if (fromCheckout) railCheckout(false, view === 'sell');
   if (view === 'back-office') { window.open('backoffice.html', '_blank', 'noopener'); return; }
-  if (view === 'settings') { renderPosSettings(); return; }
+  if (view === 'settings') { showStPage('settingsPage'); renderPosSettings(); return; }
   if (view === 'orders') {
     // Always pull the latest from localStorage so a sale made in another tab
     // (or any state drift) shows up immediately.
@@ -857,7 +857,7 @@ function switchView(view) {
   if (view === 'sell') renderProducts();   // stock may have moved elsewhere (void, refund) — tile marks read it
   if (view === 'items') renderItems();
   if (view === 'customers') renderCustomers();
-  if (view === 'shift') renderShift();
+  if (view === 'shift') shiftPast(false);   // opens on the drawer, not Past shifts
   if (view === 'reports') renderReports();
   if (view === 'checkout') renderCheckout();
 }

@@ -605,7 +605,7 @@ function attachEvents() {
     if (id || e.target.closest('[data-customer-detail]')) { ordersFor(state.selectedCustomerId, id); switchView('orders'); }
   });
   wireFind('#customersFind', '#customersSearch', '#customersSearchX', (q) => { state.customersQuery = q; state.selectedCustomerId = null; renderCustomers(); });
-  ['click', 'input'].forEach(t => $('#shiftBody')?.addEventListener(t, onShiftEvent));   // pos-shift.js
+  $('#shiftView')?.addEventListener('click', onShiftEvent);   // pos-shift.js: both its pages
   $('#shiftSheet').addEventListener('click', shiftSheetClick);
   document.addEventListener('keydown', shiftKey);
   $('#custSaveBtn')?.addEventListener('click', () => saveSavedCustomerFromModal());
@@ -813,9 +813,9 @@ function attachEvents() {
   bindPinPad();   // the sign-in and the manager's PIN (pos-pin.js)
 
   // ---- POS Settings ----
-  $('#settingsView')?.addEventListener('click', (e) => {   // tile size, text size, theme, printer, paper width
+  $('#settingsView')?.addEventListener('click', (e) => {   // a choice row opens its page of ticks
     const b = e.target.closest('[data-pick]');
-    if (b) openSettingMenu(b);
+    if (b) openPick(b.dataset.pick);
   });
   $('#posPrintOnSale')?.addEventListener('change', persistPosSettings);
   $('#posPrintCut')?.addEventListener('change', persistPosSettings);
@@ -869,6 +869,7 @@ function attachEvents() {
     if (item) connectPrinter(item.dataset.ip);
   });
   bindPayTypes();   // Settings › Payment types (pos-settings.js)
+  bindPick();   // Settings › one choice's page
   $('#posLogOutBtn')?.addEventListener('click', logOut);
   $('#signInForm')?.addEventListener('submit', (e) => { e.preventDefault(); signInCover(false); if (tillPins()) lockTill(); });
   $('#posTestPrintBtn')?.addEventListener('click', () => {
@@ -897,9 +898,10 @@ function init() {
   document.querySelectorAll('.cur-sym').forEach(e => { e.textContent = SalesMath.currencySymbol(state.settings.store?.currency); });
   migrateCustomers();   // once: stored balances become opening rows (bo-model)
   state.fulfilment = state.settings.defaultFulfilment || 'walkin';
+  seedLabDays();   // lab only: a new device opens on two months of days
   restoreCart();   // the sale that was open when the POS reloaded
   // Apply saved theme
-  if (state.theme === 'light') document.body.classList.add('light-theme');
+  paintTheme();
   // Back-fill groupId on products coming from older localStorage that predates groups.
   if (typeof _GROUP_MEMBERSHIP !== 'undefined') {
     let touched = false;
@@ -969,7 +971,7 @@ function init() {
     }
     if (e.key === STORAGE_THEME && e.newValue) {
       state.theme = e.newValue;
-      document.body.classList.toggle('light-theme', e.newValue === 'light');
+      paintTheme();
     }
     // Sales made in another tab (e.g. second POS instance) — refresh orders list.
     if (e.key === STORAGE_ORDERS) {
@@ -1020,45 +1022,105 @@ function init() {
   // Live transaction feed for the Reports page (multi-cashier real-time).
   setInterval(() => { reportsLive(); shiftLive(); }, 4000);
 
-  // Reports (pos-customers.js): Day | Week | Month picks the period, ‹ › and a sideways swipe step through it (a swipe
-  // right goes back, like turning a page back).
-  $('#reportsUnits')?.addEventListener('click', (e) => { const b = e.target.closest('[data-unit]'); if (b && b.dataset.unit !== reportsView.unit) reportsStep(0, b.dataset.unit); });
+  // Reports (pos-customers.js): Day | Week | Month picks the period; the pinned bar's ‹ › and a sideways swipe step through
+  // it (a swipe right goes back, like turning a page back), a date or Show Today comes back to now. Tap or drag along the
+  // bars for a number; a day's tip, a second tap on its bar, or a calendar day opens that day.
+  $('#reportsUnits')?.addEventListener('click', (e) => { const b = e.target.closest('[data-unit]'); if (b && b.dataset.unit !== reportsView.unit) reportsGo(b.dataset.unit, 0); });
   new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#reportsUnits'));   // tabs moved: the pill re-places on the next switch
-  const rpBody = $('#reportsBody');
-  rpBody?.addEventListener('click', (e) => { const b = e.target.closest('[data-rp]'); if (b) reportsStep(+b.dataset.rp); });
-  let rpX = null;
-  rpBody?.addEventListener('touchstart', (e) => { rpX = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
+  const rpBody = $('#reportsBody'), rpDay = () => reportsView.bars[reportsView.pick]?.day;
+  // rpWas = the pick before this touch: a day opens only on a finished tap (a scroll never clicks) on a bar already
+  // picked or its tip -- a first tap whose click lands on the new tip doesn't
+  let rpScrub = false, rpWas = null, rpX = null;
+  $('.view-reports .c-scroll')?.addEventListener('scroll', reportsPin, { passive: true });
+  rpBody?.closest('.page').addEventListener('click', (e) => {   // the page, so the header's pinned bar and Show Today come here too
+    const s = e.target.closest('[data-rp]:not(:disabled)'), cc = e.target.closest('.rp-cc:not(:disabled)'), hit = e.target.closest('.rp-tip.go, .rp-bars [data-i]');
+    if (s) reportsGo(reportsView.unit, reportsView.back - s.dataset.rp, +s.dataset.rp);
+    else if (e.target.closest('.rp-pl, .rp-now')) { if (reportsView.back) reportsGo(reportsView.unit, 0, 1); }
+    else if (cc) reportsOpenDay(reportsView.bars[cc.dataset.i].day);
+    else if (hit && rpWas != null && rpWas === reportsView.pick && rpDay() && (hit.matches('.rp-tip') || +hit.dataset.i === rpWas)) reportsOpenDay(rpDay());
+    else if (!e.target.closest('.rp-bars')) reportsPick(null);   // a mouse drag along the bars ends in a click on them
+  });
+  rpBody?.addEventListener('pointerdown', (e) => {
+    rpWas = reportsView.pick;
+    const b = e.target.closest('.rp-bars [data-i]');
+    if (!b || b.disabled) return;
+    rpScrub = true;
+    reportsPick(+b.dataset.i);
+  });
+  // the bar under the finger by x alone: the tip and the day names sit over and under the bars
+  addEventListener('pointermove', (e) => {
+    const b = rpScrub && [...rpBody.querySelectorAll('.rp-bars [data-i]')].find(el => { const r = el.getBoundingClientRect(); return e.clientX >= r.left && e.clientX < r.right; });
+    if (b && !b.disabled && +b.dataset.i !== reportsView.pick) reportsPick(+b.dataset.i);
+  });
+  for (const t of ['pointerup', 'pointercancel']) addEventListener(t, () => { rpScrub = false; });
+  rpBody?.addEventListener('touchstart', (e) => { rpX = e.touches.length === 1 && !e.target.closest('.rp-bars') ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
   rpBody?.addEventListener('touchend', (e) => {
     const t = e.changedTouches[0], dx = rpX ? t.clientX - rpX[0] : 0, dy = rpX ? t.clientY - rpX[1] : 0;
     rpX = null;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > 2 * Math.abs(dy) && (dx > 0 || reportsView.back)) reportsStep(dx > 0 ? -1 : 1);
+    if (Math.abs(dx) > 50 && Math.abs(dx) > 2 * Math.abs(dy) && (dx > 0 || reportsView.back)) reportsGo(reportsView.unit, reportsView.back + (dx > 0 ? 1 : -1), dx > 0 ? -1 : 1);
   });
-  if (new URLSearchParams(location.search).has('demo-orders')) seedDemoOrders();
   // ponytail: lab only. ?price-ask opens the ask-the-price screen on the first item to look at it; nothing is saved
   if (new URLSearchParams(location.search).has('price-ask')) openEditSheet('price', state.products[0].id);
 }
 
-// ponytail: lab only. ?demo-orders rings example sales to the seeded customers through the real
-// order builder, oldest first, then drops the flag so a refresh doesn't ring them again.
-function seedDemoOrders() {
-  history.replaceState(null, '', location.pathname);
-  if (allCustomerRecords().slice(0, 4).some(c => customerOrders(c.id).length)) return;   // once: the link opened again adds nothing
-  const counts = [23, 12, 6, 3], methods = ['cash', 'cash', 'gcash', 'qr'], day = 864e5;
-  const goods = state.products.filter(p => onTill(p) && p.price > 0);
-  allCustomerRecords().slice(0, counts.length).forEach((c, ci) => {
-    for (let i = counts[ci] - 1; i >= 0; i--) {
-      const lines = 1 + (i * 7 + ci) % 4;
-      state.cart = Array.from({ length: lines }, (_, k) => goods[(i * 5 + k * 11 + ci * 3) % goods.length])
-        .filter((p, k, a) => a.indexOf(p) === k)
-        .map((p, k) => ({ id: p.id, name: p.name, sku: p.sku, brand: p.brand, unit: p.unit, price: p.price, qty: 1 + (i + k) % 5 }));
-      state.customer = c;
-      const o = buildOrderRecord({ paymentMethod: methods[(i + ci) % 4], tendered: cartTotals().total });
-      persistOrder({ ...o, ts: Date.now() - (i * 2.5 + ci * 0.3) * day - 3600e3 });
+// ponytail: lab only. A new device opens on two months of a store's days (owner 2026-10-15: the link on a phone showed
+// nothing): sales through the real order builder (some to the customers), a few refunds and voids, a shift a day with
+// petty cash, counted at close; closeDays then makes the Zs. Once per device; the sales don't move stock.
+function seedLabDays() {
+  if (HWPOS_STORE.ui.get('labSeed')) return;
+  HWPOS_STORE.ui.set('labSeed', 1);
+  const goods = state.products.filter(p => onTill(p) && p.price > 0), staff = loadStaff().filter(u => u.active);
+  if (!goods.length || !staff.length) return;
+  const custs = allCustomerRecords().slice(0, 6), now = Date.now(), today = tillDay(now), hr = 36e5, min = 6e4;
+  const r = n => Math.floor(Math.random() * n), pick = a => a[r(a.length)];
+  const was = { cart: state.cart, customer: state.customer }, ev = [], shifts = [];
+  for (let back = 59; back >= 0; back--) {
+    const day = SalesMath.addDays(today, -back), at = SalesMath.dayStartMs(day, tillZone(), 0);
+    if (at + 8.5 * hr > now) break;
+    const who = staff[back % staff.length], who2 = staff[(back + 1) % staff.length], last = Math.min(at + 19.75 * hr, now - 5 * min);
+    shifts.push({ day, at, who });
+    const wd = new Date(at + 12 * hr).getUTCDay(), n = 10 + r(8) + (wd === 6 ? 5 : wd === 0 ? -4 : 0);
+    for (let i = 0; i < n; i++) {
+      const ts = at + 8.25 * hr + r(last - at - 8.25 * hr), sale = { ts, by: ts < at + 14 * hr ? who : who2 };
+      ev.push(sale);
+      if (!r(70) && back > 1) ev.push({ ts: ts + (1 + r(2)) * 24 * hr, by: who, back: sale, kind: 'refund', reason: pick(['Damaged item', 'Wrong size', 'Changed mind']) });
+      else if (!r(80)) ev.push({ ts: ts + (2 + r(8)) * min, by: sale.by, back: sale, kind: 'void', reason: 'Wrong item rung' });
     }
-  });
-  clearCart();
-  renderCustomers();
-  showToast('Example orders added');
+  }
+  const orders = [];
+  for (const e of ev.filter(e => e.ts < now).sort((a, b) => a.ts - b.ts)) {
+    const extra = { ts: e.ts, cashier: e.by.name, staffId: e.by.id };
+    if (e.back) {   // as reverseSale writes it: the lines that came back, the money back the way it came
+      const o = e.back.o, { part } = refundPlan(o, null, []);
+      orders.push(normalizeOrderRecord({ ...o, ...part, ...extra, cartDiscount: null, id: newId(), number: nextOrderNumber(), status: e.kind,
+        originalOrderId: o.id, reason: e.reason, register: o.register, tendered: 0, change: 0, payments: part.payments.map(p => ({ ...p, tendered: 0, change: 0, ref: o.number })) }));
+      continue;
+    }
+    state.cart = [...new Set(Array.from({ length: 1 + r(4) }, () => pick(goods)))]
+      .map(p => ({ id: p.id, name: p.name, sku: p.sku, brand: p.brand, unit: p.unit, price: p.price, qty: 1 + (r(4) ? r(3) : r(10)) }));
+    state.customer = custs.length && !r(5) ? pick(custs) : null;
+    const total = cartTotals().total, method = pick(['cash', 'cash', 'cash', 'cash', 'gcash', 'gcash', 'qr']);
+    const tendered = method === 'cash' ? Math.ceil(total / 100) * 100 : total;
+    e.o = normalizeOrderRecord({ ...buildOrderRecord({ paymentMethod: method, tendered, change: moneyValue(tendered - total) }), ...extra });
+    orders.push(e.o);
+  }
+  Object.assign(state, was);
+  orders.forEach(stampRow);
+  saveOrdersList([...readJsonStorage(STORAGE_ORDERS, []), ...orders.reverse()]);   // newest first, under the device's own
+  state.orders = loadOrders();
+  // A shift a day: 2,000 to start, some petty cash, counted at 8 PM (mostly even); today's stays open.
+  const as = (who, ts) => ({ staff: who.name, staffId: who.id, ts });
+  for (const { at, who } of shifts) {
+    addShiftRow('shift_open', null, 2000, { cutoff: state.settings.autoClose, ...as(who, at + 8 * hr - r(15) * min) });
+    if (!r(3)) addShiftRow('cash_move', null, -pick([50, 80, 120, 150, 200, 350]), { note: pick(['Ice', 'Lunch', 'Delivery fee', 'Cleaning supplies']), ...as(who, at + (10 + r(8)) * hr) });
+    if (!r(10)) addShiftRow('cash_move', null, 1000, { note: 'Change from bank', ...as(who, at + 9 * hr) });
+  }
+  for (const s of storeShifts()) {
+    const day = shifts.find(x => x.at <= s.open.ts && s.open.ts < x.at + 24 * hr);
+    if (!day || day.day === today || s.close) continue;
+    const counted = unc(cent(shiftFigures(s).expected) + cent(pick([0, 0, 0, 0, 0, 0, -20, 10, -5, -50])));
+    addShiftRow('shift_close', s.open.id, counted, { counts: [counted], ...as(day.who, day.at + 20 * hr + r(20) * min) });
+  }
 }
 // Sales live in IndexedDB: open it before the first read (data-store.js ready()).
 document.addEventListener('DOMContentLoaded', () => (window.HWPOS_STORE?.ready?.() || Promise.resolve()).then(init));
