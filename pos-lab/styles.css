@@ -7873,6 +7873,7 @@ body.light-theme .lv .kinds.rp-units { --seg: rgb(118 118 128 / .12); --seg-on: 
 .lv .rp-arw:disabled { background: var(--ink-quaternary); cursor: default; }
 .lv .rp-pl { flex: 1; min-width: 0; overflow: hidden; color: var(--ink-tertiary); font-size: 13px; text-align: left; white-space: nowrap; text-overflow: ellipsis; }
 .lv .rp-body { display: grid; gap: 12px; min-width: 0; }
+body.hairlines .lv :is(.rp-body, #shiftBody, #shiftPastBody) .card.fc { border-color: var(--line); }   /* the switch: <body class="hairlines"> in index.html (owner try 2026-10-16), the item rows' hairline, no shadow */
 .lv .rp-none { padding: 16px; color: var(--ink-tertiary); text-align: center; }
 /* Sales = reports-top-lab option 1 (owner 2026-10-15): "Sales" inside the card with the date on its right, the number, the
    chart; Profit · Orders · Margin in one card split by hairlines; Target (the back office's meter) under it */
