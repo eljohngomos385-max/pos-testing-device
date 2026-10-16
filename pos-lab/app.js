@@ -431,11 +431,13 @@ function attachEvents() {
   ivList?.addEventListener('touchend', ivEnd);
   ivList?.addEventListener('touchcancel', ivEnd);
   $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) (QS.on ? qsPickRow : openKind)(row.dataset.id); });
-  // Items +: Add item / Quick stock (pos-stock.js); the other kinds add straight away
-  $('#itemsAdd')?.addEventListener('click', (e) => (itemsKind !== 'items' ? openKind(null) : openMenu(e.currentTarget, [
-    { label: 'Add item', run: () => openItemEditor(null) },
-    { label: 'Quick stock', run: qsStart },
-  ], { w: 180, right: true })));
+  // Items +: the blurred stack, Change price / Quick stock (pos-stock.js) / Add item; the other kinds add straight away
+  const fabIc = d => `<svg class="ic" viewBox="0 0 24 24">${d}</svg>`;
+  $('#itemsAdd')?.addEventListener('click', (e) => (itemsKind !== 'items' ? openKind(null) : openFabMenu(e.currentTarget, [
+    { label: 'Change price', ic: fabIc('<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/>'), run: () => qsStart('price') },
+    { label: 'Quick stock', ic: fabIc('<path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9"/>'), run: () => qsStart() },
+    { label: 'Add item', ic: fabIc('<path d="M12 5v14M5 12h14"/>'), run: () => openItemEditor(null) },
+  ])));
   $('#itemSave')?.addEventListener('click', () => (kindEdit ? saveKind() : saveItem()));
   const notYet = what => () => showToast(`${what} isn't connected yet`);
   $('#itemMore')?.addEventListener('click', (e) => openMenu(e.currentTarget, kindEdit

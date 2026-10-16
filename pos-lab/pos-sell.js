@@ -1122,6 +1122,46 @@ function renderFulRow() {
 const fulfilLabel = () => orderFulfilLabel({ fulfilment: state.fulfilment });
 
 
+// ---------- The + stack (Items +, owner 2026-10-17, Phantom's) ----------
+// The page blurs, the choices stand over the + as a label and a round button, the + turns into ✕. A pick, a tap
+// anywhere or Esc closes it. items: [{label, ic, run}], top to bottom (the last one sits nearest the thumb).
+function openFabMenu(fab, items) {
+  if (document.querySelector('.fab-veil:not(.out)')) return;   // one menu; a closing one may still fade
+  const r = fab.getBoundingClientRect(), veil = document.createElement('div');
+  veil.className = 'fab-veil';
+  veil.style.cssText = `--fr:${innerWidth - r.right}px;--fb:${innerHeight - r.bottom}px;--fs:${r.width}px`;
+  veil.innerHTML = `<div class="fab-stack" role="menu">${items.map((it, i) => `<button type="button" role="menuitem" data-i="${i}" style="--d:${(items.length - 1 - i) * 35}ms">
+      <span>${escapeHtml(it.label)}</span><i>${it.ic}</i></button>`).join('')}</div>
+    <button type="button" class="fab-x" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>`;
+  document.body.append(veil);
+  fab.setAttribute('aria-expanded', 'true');
+  fab.style.visibility = 'hidden';   // the ✕ stands in for it; no blurred + glowing round the ✕
+  veil.querySelector('.fab-x').focus({ preventScroll: true });   // a stray Enter (a scanner's) only closes it
+  const close = () => {
+    if (veil.classList.contains('out')) return false;
+    veil.classList.add('out');
+    fab.setAttribute('aria-expanded', 'false');
+    fab.style.visibility = '';
+    fab.focus({ preventScroll: true });
+    removeEventListener('resize', moved);
+    setTimeout(() => veil.remove(), calmMs(180));
+    return true;
+  };
+  veil.close = close;   // lockTill: no menu waiting for the next person
+  const w = innerWidth, moved = () => innerWidth !== w && close();   // a rotate moves the +; the ✕ was measured in px (iOS bars only change the height)
+  addEventListener('resize', moved);
+  veil.addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (close() && b) items[b.dataset.i].run(); });
+  veil.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.stopPropagation(); close(); }
+    else if (e.repeat) e.preventDefault();   // a held Enter that opened the menu must not pick from it
+    else if (e.key === 'Tab') {   // focus stays in the menu
+      const all = [...veil.querySelectorAll('button')], i = all.indexOf(document.activeElement);
+      e.preventDefault();
+      all[(i + (e.shiftKey ? -1 : 1) + all.length) % all.length].focus();
+    }
+  });
+}
+
 // ---------- The morph menu (cart-lab-stack-c.html) ----------
 // The menu grows out of its trigger's own box, each item the trigger's height, always in the same order (the hand
 // learns where each choice is); the current one is only bold. A pick, a tap outside or Esc shrinks it back.

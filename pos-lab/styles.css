@@ -7600,6 +7600,27 @@ body.light-theme .lv .thumb { background: hsl(var(--h) 50% 92%); color: hsl(var(
 .lv .rp-item.out { text-decoration: line-through; opacity: .45; }   /* refunded in full: struck, still on the slip */
 
 .lv .fab { position: absolute; right: 34px; bottom: 32px; z-index: 2; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+/* the + stack (openFabMenu, pos-sell.js): the page blurred, label + round button over the +, the + turned ✕ */
+.fab-veil { --fab-dim: rgba(0, 0, 0, .45); position: fixed; inset: 0; z-index: 150; background: var(--fab-dim); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: fab-veil .2s var(--rl-ease) both; }
+body.light-theme .fab-veil { --fab-dim: rgba(255, 255, 255, .45); }
+.fab-veil.out { animation: fab-gone .18s var(--rl-ease) both; }
+.fab-veil .ic { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fab-stack { position: absolute; right: var(--fr); bottom: calc(var(--fb) + var(--fs) + 18px); display: flex; flex-direction: column; align-items: flex-end; gap: 16px; }
+.fab-stack button { display: flex; align-items: center; gap: 16px; padding: 0; border: 0; background: none; color: var(--ink); font-size: 20px; font-weight: 650; letter-spacing: -0.3px;
+                    animation: fab-in .26s var(--rl-ease) var(--d) both; }
+.fab-stack i { display: grid; place-items: center; width: var(--fs); height: var(--fs); border-radius: 50%; background: var(--accent); color: var(--accent-ink); transition: transform .12s; }
+.fab-stack button:active i { transform: scale(.94); }
+.fab-stack button:focus-visible { outline: none; }
+.fab-stack button:focus-visible i, .fab-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.fab-veil.out .fab-stack button { animation: fab-down .16s var(--rl-ease) both; }
+.fab-x { position: absolute; right: var(--fr); bottom: var(--fb); display: grid; place-items: center; width: var(--fs); height: var(--fs); border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink); }
+.fab-x .ic { transform: rotate(45deg); animation: fab-turn .26s var(--rl-ease) both; }
+@keyframes fab-veil { from { opacity: 0; } }
+@keyframes fab-in { from { opacity: 0; transform: translateY(14px) scale(.9); } }
+@keyframes fab-turn { from { transform: rotate(0); } }
+@keyframes fab-gone { to { opacity: 0; } }
+@keyframes fab-down { to { opacity: 0; transform: translateY(14px) scale(.9); } }
+@media (prefers-reduced-motion: reduce) { .fab-veil, .fab-veil *, .fab-veil .ic { animation: none !important; } }
            background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-raised); transition: transform .12s; }
 .lv .fab:active { transform: scale(.94); }
 .lv .fab .ic { width: 24px; height: 24px; stroke-width: 2; }
@@ -8164,6 +8185,7 @@ body .qs-pg .e-top .act.primary:disabled { color: var(--ink-quaternary); }
 .qs-pm { flex: none; width: 30px; height: 36px; border: 0; border-radius: var(--r-input); background: none; color: var(--ink-secondary); font-size: 20px; line-height: 1; }
 .qs-pm:hover { background: var(--rl-hover); color: var(--ink); }
 .qs-pg .fc .fr .qs-amt.in { flex: none; width: 52px; height: 36px; padding: 0 6px; border-radius: var(--r-input); background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair);
+.qs-pg.price .fc .fr .qs-amt.in { width: 96px; }   /* Change price: room for 9,999.99 */
                      font-size: 15px; font-weight: 600; text-align: center; }
 .qs-pg .fc .fr .qs-amt.in:focus { box-shadow: inset 0 0 0 1.5px var(--ink); }
 .qs-amt::placeholder { color: var(--ink-quaternary); font-weight: 400; }
@@ -8174,6 +8196,8 @@ body .qs-pg .e-top .act.primary:disabled { color: var(--ink-quaternary); }
 /* the Items list while on: only items (no Categories / Modifiers / Discounts, no +), the ☰ becomes × */
 body.qs-on :is(#itemsAdd, #itemsKinds) { display: none; }
 .qs-pg.dock #qsBack { visibility: hidden; }   /* beside the list, the list's × closes */
+body.qs-on.qs-price .view-items .cols > :nth-child(3) { display: revert; }   /* Change price: the price, not the stock */
+body.qs-on.qs-price .view-items .cols > :nth-child(4) { display: none; }
 /* ...and no Price: picking is by name, and the count is what stock needs (owner 2026-10-13: less to read) */
 body.qs-on .view-items .cols { grid-template-columns: minmax(0,1fr) 170px 110px; }
 body.qs-on .view-items .cols > :nth-child(3) { display: none; }

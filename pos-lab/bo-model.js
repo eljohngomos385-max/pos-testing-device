@@ -847,8 +847,9 @@ function priceChanges(before, after, { source = '', reason = '', staff = '' } = 
   (after || []).forEach((p) => {
     const was = old.get(p.id);
     ['price', 'cost'].forEach((field) => {
-      const from = was ? round2(was[field]) : null;
-      const to = round2(p[field]);
+      const r = (v) => (v == null || v === '' ? null : round2(v));   // null = asked at sale, not free
+      const from = was ? r(was[field]) : null;
+      const to = r(p[field]);
       if (from === to || (from == null && !to)) return;
       rows.push(makeEvent({ productId: p.id, field, old: from, new: to, reason, source }, staff));
     });

@@ -5,6 +5,8 @@
 // The page is the item editor's (owner 2026-10-13): ‹ / title / Save on top, Settings blocks under it, one block per
 // item with its name above, the device's own keyboard (no keypad of ours), − / + for small changes.
 // ponytail: it borrows .lv .editor / .card.fc / .fr from styles.css instead of new card styles.
+// Change price (Items + -> Change price, owner 2026-10-17): the same page and flow, the number is the new price. Its Save
+// writes the products' price (no movement); Undo puts the old prices back.
 
 const QS_KEY = 'hwpos.quickStock';
 // mode -> [title, sign, movement reason]; count has no sign: it saves counted - expected
@@ -13,19 +15,22 @@ const QS_REASONS = {
   remove: ['Remove stock', -1, 'adjustment'],
   damaged: ['Damaged', -1, 'damage'],
   count: ['Count stock', 0, 'count'],
+  price: ['Change price', 0, ''],   // not a stock reason: qsPrice() branches
 };
 
 // full: on a tablet, one page over the list (the phone's way) instead of docked beside it
-let QS = { on: false, reason: 'add', lines: [], full: false };
+let QS = { on: false, reason: 'add', lines: [], full: false, stock: 'add' };   // stock: the last stock mode, for Quick stock after Change price
 let qsMode = '', qsSaved = null;   // qsMode: '' (the Items list) | 'dock' | 'page'
 
-const qsKeep = () => writeJsonStorage(QS_KEY, { on: QS.on, reason: QS.reason, lines: QS.lines, full: QS.full });
+const qsKeep = () => writeJsonStorage(QS_KEY, { on: QS.on, reason: QS.reason, lines: QS.lines, full: QS.full, stock: QS.stock });
 const qsProd = id => state.products.find(p => p.id === id);
 const qsLine = id => QS.lines.find(l => l.id === id);
 const qsQty = n => SalesMath.qtyText(n);
-const qsDec = p => p.soldBy === 'measure';
+const qsPrice = () => QS.reason === 'price';
+const qsDec = p => qsPrice() || p.soldBy === 'measure';
+const qsMoney = v => (v == null || v === '' ? 'Asked at sale' : peso(v));
 // a line is saved once it has a number; 0 only counts for a count (0 on the shelf is a real count)
-const qsLive = () => QS.lines.filter(l => !isNaN(parseFloat(l.n)) && (QS.reason === 'count' || Number(l.n) > 0) && qsProd(l.id));
+const qsLive = () => QS.lines.filter(l => !isNaN(parseFloat(l.n)) && (QS.reason === 'count' || (qsPrice() ? Number(l.n) !== qsProd(l.id)?.price : Number(l.n) > 0)) && qsProd(l.id));   // a price typed the same is no change
 const qsAfter = (p, n) => (QS.reason === 'count' ? n : (Number(p.stock) || 0) + QS_REASONS[QS.reason][1] * n);
 const qsFamily = p => (p.groupId && groupById(p.groupId)) || null;
 const qsVarName = p => { const g = qsFamily(p); return g && p.name.startsWith(g.name) ? p.name.slice(g.name.length).trim() || p.name : p.name; };
@@ -36,7 +41,7 @@ const qsOnHand = p => Math.max(0, Number(p.stock) || 0);
 function qsAddFamily(itemId) {
   const it = catalogItems().find(x => x.id === itemId);
   if (!it) return '';
-  const ps = it.members.filter(p => p.trackStock !== false);
+  const ps = it.members.filter(p => qsPrice() || p.trackStock !== false);
   if (!ps.length) { showToast(`${it.name} doesn't track stock`); return ''; }
   ps.forEach(p => { if (!qsLine(p.id)) QS.lines.push({ id: p.id, n: '' }); });
   return ps[0].id;
@@ -71,15 +76,17 @@ function qsBuild() {
 function qsRender() {
   qsKeep();
   document.body.classList.toggle('qs-on', QS.on);
+  document.body.classList.toggle('qs-price', QS.on && qsPrice());
   const menu = $('.view-items .head [data-act="open-sidebar"]');   // picking: the ☰ is ✕ (app.js), the one way out
-  menu.title = menu.ariaLabel = QS.on ? 'Close quick stock' : 'Menu';
+  menu.title = menu.ariaLabel = QS.on ? (qsPrice() ? 'Close change price' : 'Close quick stock') : 'Menu';
   const pg = $('#qs');
   pg.hidden = !QS.on || !qsMode;
   pg.classList.toggle('dock', qsMode === 'dock');
+  pg.classList.toggle('price', qsPrice());
   qsTickbar();
   if (!QS.on) return;
   if (qsSaved) return qsRenderSaved();
-  $('#qsReason').disabled = false;
+  $('#qsReason').disabled = qsPrice() && innerWidth <= 720;   // a price has no other mode; the tablet keeps the layout pick
   $('#qsReason span').textContent = QS_REASONS[QS.reason][0];
   $('#qsSave').textContent = 'Save';
   qsSaveState();
@@ -87,7 +94,7 @@ function qsRender() {
   $('#qsList').innerHTML = qsRows() || qsEmpty();
   sc.scrollTop = y;
 }
-const qsEmpty = () => '<p class="qs-empty">Tap the items on the left to add them.</p>';
+const qsEmpty = () => '<p class="qs-empty">Tap the items on the left to add them.</p>';   // ponytail: the dock's words; the phone shows its Review bar
 const qsSaveState = () => { $('#qsSave').disabled = !qsLive().length; };
 
 // blocks in the order tapped: a family is one block, where its first variant was tapped, with its name above (Settings'
@@ -105,10 +112,11 @@ function qsRows() {
   return fams.map(f => icard(f.name ? escapeHtml(f.name) : '', f.ls.map(([l, p]) => `<div class="fr wide qs-ln" data-qs="${escapeHtml(l.id)}">
       <span class="lb"><span class="qs-nm">${escapeHtml(f.name ? qsVarName(p) : p.name)}</span><small class="num" data-qs-sub>${qsSub(l, p)}</small></span>
       <span class="ctl end"><button type="button" class="qs-pm" data-qs-m aria-label="One less">−</button>
-        <input class="in num qs-amt" data-qs-n value="${escapeHtml(String(l.n))}" type="text" inputmode="${qsDec(p) ? 'decimal' : 'numeric'}" enterkeyhint="next" placeholder="0" autocomplete="off" aria-label="Amount">
+        <input class="in num qs-amt" data-qs-n value="${escapeHtml(String(l.n))}" type="text" inputmode="${qsDec(p) ? 'decimal' : 'numeric'}" enterkeyhint="next" placeholder="${qsPrice() && !askedPrice(p) ? escapeHtml(String(p.price)) : 0}" autocomplete="off" aria-label="Amount">
         <button type="button" class="qs-pm" data-qs-p aria-label="One more">+</button></span></div>`).join(''))).join('');
 }
 function qsSub(l, p) {
+  if (qsPrice()) return !isNaN(parseFloat(l.n)) ? `${qsMoney(p.price)} → ${peso(Number(l.n))}` : qsMoney(p.price);
   const has = l.n !== '', n = Number(l.n) || 0, was = Number(p.stock) || 0, unit = escapeHtml(p.unit || 'pc');
   if (QS.reason === 'count') {
     const d = n - was;
@@ -120,7 +128,8 @@ function qsSub(l, p) {
 function qsSet(row, s) {
   const l = qsLine(row.dataset.qs), p = l && qsProd(l.id);
   if (!p) return;
-  s = String(s).replace(qsDec(p) ? /[^0-9.]/g : /[^0-9]/g, '').replace(/(\..*)\./g, '$1').slice(0, 7);
+  if (qsPrice()) s = /^\d{0,7}(\.\d{0,2})?$/.test(s = String(s).trim()) ? s : l.n;   // a price: up to 9,999,999.99; a typo keeps the last good price
+  else s = String(s).replace(qsDec(p) ? /[^0-9.]/g : /[^0-9]/g, '').replace(/(\..*)\./g, '$1').slice(0, 7);
   if (s !== '' && !s.endsWith('.')) { const n = Number(s), c = qsCap(p, n); if (c !== n) s = String(c); }
   l.n = s;
   const inp = row.querySelector('[data-qs-n]');
@@ -141,9 +150,11 @@ function qsRenderSaved() {
   $('#qsSave').disabled = false;
   $('#qsList').innerHTML = icard(`${QS_REASONS[done[0].reason][0]} · ${SalesMath.plural(done.length, 'item')}`, done.map(d => `<div class="fr wide qs-ln">
       <span class="lb"><span class="qs-nm">${escapeHtml(d.name)}</span>${d.reason === 'count' ? `<small class="num">${d.delta ? (d.delta > 0 ? '+' : '−') + qsQty(Math.abs(d.delta)) : 'matches'}</small>` : ''}</span>
-      <span class="ctl end"><span class="qs-to num">${undone ? qsQty(d.now) : `${qsQty(d.was)} → <b>${qsQty(d.now)}</b>`}</span></span></div>`).join(''))
+      <span class="ctl end"><span class="qs-to num">${undone ? qsShow2(d.now) : `${qsShow2(d.was)} → <b>${qsShow2(d.now)}</b>`}</span></span></div>`).join(''))
     + (undone ? '' : icard('', '<button type="button" class="fr add" id="qsUndo">Undo</button>'));
 }
+
+const qsShow2 = v => (qsPrice() ? qsMoney(v) : qsQty(v));
 
 // the bar under the list on the phone, where the page is its own (N lines · Review)
 function qsTickbar() {
@@ -153,7 +164,7 @@ function qsTickbar() {
   if (bar.hidden) return;
   const n = QS.lines.length;
   $('#qsTickNext').disabled = !n;
-  $('#qsTickNext').innerHTML = n ? `<span>${SalesMath.plural(n, 'line')}</span><span>Review</span>` : '<span>Tap the items to stock</span>';
+  $('#qsTickNext').innerHTML = n ? `<span>${SalesMath.plural(n, 'line')}</span><span>Review</span>` : `<span>Tap the items to ${qsPrice() ? 'price' : 'stock'}</span>`;
 }
 // the Items list rows: a dot when the item is in the list
 function qsMarkRows() {
@@ -184,6 +195,7 @@ function qsPickReason(r) {
 function qsSave() {
   const live = qsLive();
   if (!live.length) return;
+  if (qsPrice()) return qsSavePrices(live);
   const [, sign, reason] = QS_REASONS[QS.reason], batch = newId(), who = currentStoreInfo().cashier, staffId = state.user?.id || '';
   const rows = [], done = [];
   live.forEach(l => {
@@ -196,6 +208,20 @@ function qsSave() {
     done.push({ id: p.id, name: p.name, was, now: p.stock, delta: mv.qty, reason: QS.reason });
   });
   appendMovements(rows);
+  qsDone(done, rows, batch);
+}
+// Change price: the new prices onto the products, the old ones kept for Undo
+// saveProducts -> saveCatalog logs each change in priceLog (bo-model.js)
+function qsSavePrices(live) {
+  const at = new Date().toISOString();
+  const done = live.map(l => {
+    const p = qsProd(l.id), was = askedPrice(p) ? null : p.price;
+    Object.assign(p, { price: round2(Number(l.n)), updatedAt: at });
+    return { id: p.id, name: p.name, was, now: p.price, reason: 'price' };
+  });
+  qsDone(done, []);
+}
+function qsDone(done, rows, batch = '') {
   saveProducts();
   qsSaved = { rows, done, batch };
   QS.lines = [];
@@ -205,6 +231,7 @@ function qsSave() {
 }
 // reversing rows, never an edit: the log keeps both
 function qsUndo() {
+  if (qsPrice()) return qsUndoPrices();
   const { rows, done, batch } = qsSaved, who = currentStoreInfo().cashier, staffId = state.user?.id || '';
   const back = rows.map(r => {
     const p = qsProd(r.productId);
@@ -217,16 +244,37 @@ function qsUndo() {
   }).filter(Boolean);
   appendMovements(back);
   saveProducts();
+  qsUndone();
+}
+function qsUndoPrices() {
+  const at = new Date().toISOString();
+  qsSaved.done.forEach(d => { const p = qsProd(d.id); if (p) { Object.assign(p, { price: d.was, updatedAt: at }); d.now = d.was; } });
+  saveProducts();
+  qsUndone();
+}
+function qsUndone() {
   qsSaved.undone = true;
   qsRefresh();
   qsRender();
   showToast('Undone');
 }
-const qsRefresh = () => { if (state.view === 'items') renderItems(); };
+// the Sell tiles show the price; the open cart takes the new one too (owner 2026-10-17: change it and everything
+// changes -- finished sales keep theirs, priceLog keeps the old). In place: discount undo holds the line objects.
+function qsRefresh() {
+  if (state.view === 'items') renderItems();
+  renderProducts();
+  if (!state.cart.length) return;
+  const { lines } = todayLines(state.cart);
+  state.cart.forEach(i => { i.price = lines.find(l => l.id === i.id)?.price ?? i.price; });
+  renderCart();
+}
 
 // ---------- start, leave ----------
 const qsListMode = () => (innerWidth > 720 && !QS.full ? 'dock' : '');
-function qsStart() {
+// reason: 'price' for Change price; Quick stock keeps its last stock mode
+function qsStart(reason) {
+  if (reason === 'price' && !qsPrice()) QS.stock = QS.reason;
+  if (reason) QS.reason = reason; else if (qsPrice()) QS.reason = QS.stock || 'add';
   QS.on = true; qsSaved = null;
   switchView('items');
   if (itemsKind !== 'items') setItemsKind('items');
@@ -243,7 +291,7 @@ function qsLeave() {
 function qsAskLeave() {
   const n = qsLive().length;
   if (!n || qsSaved) return qsLeave();
-  showConfirm({ title: 'Leave quick stock?', message: `${SalesMath.plural(n, 'amount')} not saved yet.`, okText: 'Leave', cancelText: 'Keep going', onConfirm: qsLeave });
+  showConfirm({ title: qsPrice() ? 'Leave change price?' : 'Leave quick stock?', message: `${SalesMath.plural(n, qsPrice() ? 'price' : 'amount')} not saved yet.`, okText: 'Leave', cancelText: 'Keep going', onConfirm: qsLeave });
 }
 // ‹: the page goes back to the list (the amounts stay); after a save it leaves (the dock has no ‹: the list's × closes)
 function qsBack() {
@@ -290,7 +338,7 @@ function initQuickStock() {
   QS = Object.assign(QS, readJsonStorage(QS_KEY, {}));
   qsBuild();
   qsWire();
-  if (QS.on) qsStart(); else qsRender();
+  if (QS.on) qsStart(QS.reason); else qsRender();   // the draft's own mode: a price draft must not come back as stock
 }
 function qsWire() {
   $('#qsTickNext').addEventListener('click', () => { qsMode = 'page'; qsRender(); });
@@ -298,7 +346,7 @@ function qsWire() {
   $('#qsBack').addEventListener('click', qsBack);
   // the title's menu: the mode, and on a tablet the page's place (beside the list or full screen)
   $('#qsReason').addEventListener('click', e => openMenu(e.currentTarget, [
-    ...Object.keys(QS_REASONS).map(r => ({ label: QS_REASONS[r][0], cur: r === QS.reason, run: () => qsPickReason(r) })),
+    ...Object.keys(QS_REASONS).filter(r => (r === 'price') === qsPrice()).map(r => ({ label: QS_REASONS[r][0], cur: r === QS.reason, run: () => qsPickReason(r) })),
     ...(innerWidth > 720 ? ['-', { label: qsMode === 'dock' ? 'Full screen' : 'Beside the list', run: qsToggleFull }] : []),
   ], { w: 200 }));
   $('#qsSave').addEventListener('click', () => (qsSaved ? qsDoneSaved() : qsSave()));
@@ -308,7 +356,8 @@ function qsWire() {
     if (e.target.closest('#qsUndo')) return qsUndo();
     const row = e.target.closest('.qs-ln[data-qs]'), l = row && qsLine(row.dataset.qs);
     if (!l) return;
-    const step = d => qsSet(row, Math.max(0, Math.round(((Number(l.n) || 0) + d) * 1000) / 1000));
+    const from = isNaN(parseFloat(l.n)) && qsPrice() && !askedPrice(qsProd(l.id)) ? qsProd(l.id).price : Number(l.n) || 0;   // a price steps from the one it has
+    const step = d => qsSet(row, Math.max(0, Math.round((Number(from) + d) * 1000) / 1000));
     if (e.target.closest('[data-qs-p]')) step(1);
     else if (e.target.closest('[data-qs-m]')) step(-1);
   });
