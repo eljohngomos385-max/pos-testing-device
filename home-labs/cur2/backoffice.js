@@ -1035,11 +1035,12 @@ function dashRail(W, on) {
     const n = stockCounts(live, null, Date.now(), boZone()), count = n.out + n.low;
     const low = live.filter(p => ['out', 'low'].includes(stockLevel(p, null, Date.now(), boZone()))).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock)
       .filter(p => !seen.has(fam(p)) && seen.add(fam(p)));
-    const level = p => familyLevel(live.filter(x => fam(x) === fam(p)), null, Date.now(), boZone());
+    // cur2: the pill judges the size the row names, so its colour and its count always agree.
+    const isOut = p => stockLevel(p, null, Date.now(), boZone()) === 'out';
     return head('Out or low stock', count ? String(count) : `0<span class="of"> all stocked</span>`, '',
         count ? `<a href="${Router.href('products', '', { view: 'stock', level: 'out,low' })}">View all ›</a>` : '')
-      + (low.length ? `<div class="rows">${low.slice(0, 5).map(p => `<div class="row">${thumb(p)}<span class="nm">${escapeHtml(p.name)}</span>`
-        + `<span class="pill ${level(p) === 'out' ? 'down' : 'warn'}" style="margin:0">${level(p) === 'out' ? 'Out' : 'Low'}</span></div>`).join('')}</div>` : '');
+      + (low.length ? `<div class="rows">${low.slice(0, 5).map(p => `<div class="row"><span class="nm">${thumb(p)}${escapeHtml(p.name)}</span>`
+        + `<span class="pill ${isOut(p) ? 'down' : 'warn'}" style="margin:0">${isOut(p) ? 'Out' : `${SalesMath.qtyText(p.stock)} left`}</span></div>`).join('')}</div>` : '');
   };
 
   // Payment methods, for the range: the only rail card that follows it.
@@ -1052,7 +1053,7 @@ function dashRail(W, on) {
   // Top sellers and the Sales breakdown follow the range too: Sales' own top items and ladder rows.
   const band = lbl => `<div class="top band"><span>${lbl}</span></div>`, none = '<p class="note" style="margin:10px 0 0">No sales in this range.</p>';
   out.top = () => { const its = renderSales.topItems(W.rows).slice(0, 5);
-    return band('Top sellers') + (its.length ? `<div class="rows">${its.map(r => calmRow(thumb(state.products.find(x => x.id === r.key), r.name) + escapeHtml(r.name), pesoShort(r.netSales))).join('')}</div>` : none); };
+    return band('Top sellers') + (its.length ? `<div class="rows">${its.map(r => calmRow(thumb(state.products.find(x => x.id === r.key), r.name) + `<span class="tx">${escapeHtml(r.name)}<small>${SalesMath.qtyText(r.unitsSold)} sold</small></span>`, pesoShort(r.netSales))).join('')}</div>` : none); };
   out.break = () => band('Sales breakdown') + (W.rows.length ? renderSales.breakdownRows(ladder(W.rows)) : none);
   return on.map(id => `<section class="card w" data-rail="${id}">${out[id]()}</section>`).join('');
 }

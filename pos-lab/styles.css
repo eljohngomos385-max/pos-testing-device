@@ -7885,7 +7885,7 @@ body.hairlines .lv :is(.rp-body, #shiftBody, #shiftPastBody) .card.fc { border-c
 /* Sales = reports-top-lab option 1 (owner 2026-10-15): "Sales" inside the card with the date on its right, the number, the
    chart; Profit · Orders · Margin in one card split by hairlines; Target (the back office's meter) under it */
 .lv .rp-ov { padding: 16px; container-type: inline-size; }
-.lv .rp-body > :first-child { margin-top: 34px; }   /* the room the "Sales" heading over the card took, kept now it sits inside (owner) */
+.lv .rp-body > :first-child { margin-top: 32px; }   /* the room the "Sales" heading over the card took, kept now it sits inside (owner) */
 .lv .rp-ttl { display: flex; align-items: baseline; gap: 8px; color: var(--ink-tertiary); font-size: 13px; }
 .lv .rp-ttl > b { flex: none; color: var(--ink-secondary); font-weight: 590; }
 .lv .rp-ttl .rp-pl { text-align: right; }

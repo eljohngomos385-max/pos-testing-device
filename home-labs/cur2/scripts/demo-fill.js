@@ -163,7 +163,71 @@
       });
     });
   }
+  // home-labs: a real photo per kind of item (Wikipedia / Commons thumbs, linked, not copied) so the
+  // Home photo rows can be judged; the longest matching name wins, kinds with no good photo keep the letter.
+  const PHOTOS = [
+    ["Adjustable Wrench", "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/44/Adjustablewrenches.jpg/250px-Adjustablewrenches.jpg"],
+    ["Circuit Breaker", "https://upload.wikimedia.org/wikipedia/commons/f/fd/Jtecul.jpg"],
+    ["Electrical Tape", "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d0/Electrical-tape_black.jpg/250px-Electrical-tape_black.jpg"],
+    ["Extension Cord", "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8c/Extension_cord.JPG/250px-Extension_cord.JPG"],
+    ["Contact Cement", "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/Contact-cement_000000.jpg/250px-Contact-cement_000000.jpg"],
+    ["Flexible Hose", "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e7/Druckschlauch_Schmutzwasserkreiselpumpe.jpg/250px-Druckschlauch_Schmutzwasserkreiselpumpe.jpg"],
+    ["Concrete Nail", "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0c/Clou_127.jpg/250px-Clou_127.jpg"],
+    ["Umbrella Nail", "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0c/Clou_127.jpg/250px-Clou_127.jpg"],
+    ["PVC Coupling", "https://upload.wikimedia.org/wikipedia/commons/2/2a/1-1111_CU-solderfitting-type_5270.jpg"],
+    ["Brass Faucet", "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/73/Wasserhahn.jpg/250px-Wasserhahn.jpg"],
+    ["Deformed Bar", "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fe/A_bunch_of_rebar.jpg/250px-A_bunch_of_rebar.jpg"],
+    ["Tape Measure", "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/03/Tape_Measure_25%27_Klein_Tools.jpg/250px-Tape_Measure_25%27_Klein_Tools.jpg"],
+    ["Cutting Disc", "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/db/AngleGrinder.jpg/250px-AngleGrinder.jpg"],
+    ["Paint Roller", "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/Farbroller.jpg/250px-Farbroller.jpg"],
+    ["Hollow Block", "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Concreteblocks.jpg/250px-Concreteblocks.jpg"],
+    ["Rubber Boots", "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Sievi_Boots_%282%29.jpg/250px-Sievi_Boots_%282%29.jpg"],
+    ["PVC Conduit", "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4e/Conduit_firestop_us.jpg/250px-Conduit_firestop_us.jpg"],
+    ["Floor Drain", "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1b/-42_drain.jpg/250px--42_drain.jpg"],
+    ["Teflon Tape", "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b6/%E3%82%B7%E3%83%BC%E3%83%AB%E3%83%86%E3%83%BC%E3%83%97%E6%96%BD%E5%B7%A5.jpg/250px-%E3%82%B7%E3%83%BC%E3%83%AB%E3%83%86%E3%83%BC%E3%83%97%E6%96%BD%E5%B7%A5.jpg"],
+    ["Utility Box", "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Sockets.jpg/250px-Sockets.jpg"],
+    ["Flat Washer", "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2f/Washers.agr.jpg/250px-Washers.agr.jpg"],
+    ["Claw Hammer", "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/84/Claw-hammer.jpg/250px-Claw-hammer.jpg"],
+    ["Screwdriver", "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1c/Screw_Driver_display.jpg/250px-Screw_Driver_display.jpg"],
+    ["Wheelbarrow", "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1f/2008-07-15_Construction_wheelbarrow_at_Duke.jpg/250px-2008-07-15_Construction_wheelbarrow_at_Duke.jpg"],
+    ["Latex Paint", "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Multicolored_tempera_paints.jpg/250px-Multicolored_tempera_paints.jpg"],
+    ["Paint Brush", "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/39/Paintbrushes.jpg/250px-Paintbrushes.jpg"],
+    ["Gate Valve", "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Water_valves_with_spigots.jpg/250px-Water_valves_with_spigots.jpg"],
+    ["Wood Screw", "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4c/Screws.jpg/250px-Screws.jpg"],
+    ["Tile Grout", "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/de/Applying_grout.jpg/250px-Applying_grout.jpg"],
+    ["PVC Elbow", "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b8/Kupferfittings_4062.jpg/250px-Kupferfittings_4062.jpg"],
+    ["Wire Nail", "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0c/Clou_127.jpg/250px-Clou_127.jpg"],
+    ["Tek Screw", "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/Schroef.jpg/250px-Schroef.jpg"],
+    ["Drill Bit", "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c3/Drillbits.jpg/250px-Drillbits.jpg"],
+    ["Sandpaper", "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/90/Schleifpapier_verschiedene_Sorten.jpg/250px-Schleifpapier_verschiedene_Sorten.jpg"],
+    ["Dust Mask", "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c0/1512-Cropped.jpg/250px-1512-Cropped.jpg"],
+    ["PVC Pipe", "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/ca/Polyethylene_Pipe_lengths.jpg/250px-Polyethylene_Pipe_lengths.jpg"],
+    ["LED Bulb", "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e1/Led-lampa.jpg/250px-Led-lampa.jpg"],
+    ["LED Tube", "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/51/Fluorescent_lamps_artistic.jpg/250px-Fluorescent_lamps_artistic.jpg"],
+    ["Hex Bolt", "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/47/Bolt-with-nut.jpg/250px-Bolt-with-nut.jpg"],
+    ["Tox Plug", "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4f/Wall_plugs_plastic_%28cropped%29.jpg/250px-Wall_plugs_plastic_%28cropped%29.jpg"],
+    ["Hard Hat", "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b6/Cologne_Germany_Industrial-work-with-Personal-Protective-Equipment-04.jpg/250px-Cologne_Germany_Industrial-work-with-Personal-Protective-Equipment-04.jpg"],
+    ["Silicone", "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9e/Liquid-silicon-rubber-crop.jpg/250px-Liquid-silicon-rubber-crop.jpg"],
+    ["PVC Tee", "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cc/Pipes_various.jpg/250px-Pipes_various.jpg"],
+    ["Hex Nut", "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2f/M4_Inbusschraube_focusstacked.jpg/250px-M4_Inbusschraube_focusstacked.jpg"],
+    ["Hacksaw", "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9b/Hacksaw.jpg/250px-Hacksaw.jpg"],
+    ["P-Trap", "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/86/Annotated_plumbing_trap.jpg/250px-Annotated_plumbing_trap.jpg"],
+    ["Outlet", "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/French-power-socket.jpg/250px-French-power-socket.jpg"],
+    ["Switch", "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fb/Opened_light_switch.JPG/250px-Opened_light_switch.JPG"],
+    ["Pliers", "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Klein_lineman%27s_pliers.jpg/250px-Klein_lineman%27s_pliers.jpg"],
+    ["Enamel", "https://upload.wikimedia.org/wikipedia/commons/b/b3/Paint-can.jpg"],
+    ["Primer", "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/03/White_primer_bucket.jpg/250px-White_primer_bucket.jpg"],
+    ["Cement", "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a4/USMC-110806-M-IX060-148.jpg/250px-USMC-110806-M-IX060-148.jpg"],
+    ["Gravel", "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Varieties_of_Gravel_in_different_shapes_and_size._01.jpg/250px-Varieties_of_Gravel_in_different_shapes_and_size._01.jpg"],
+    ["Gloves", "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/01/Centre_de_Documentaci%C3%B3_Museu_T%C3%A8xtil_de_Terrassa-_Reserves-_Teixits-_Guants002.JPG/250px-Centre_de_Documentaci%C3%B3_Museu_T%C3%A8xtil_de_Terrassa-_Reserves-_Teixits-_Guants002.JPG"],
+    ["Level", "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/ba/DetalleNivelDeBurbuja.jpg/250px-DetalleNivelDeBurbuja.jpg"],
+    ["Epoxy", "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/21/Aerospace_epoxy_resin.jpg/250px-Aerospace_epoxy_resin.jpg"],
+    ["Tint", "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e0/Multicolored_tempera_paints.jpg/250px-Multicolored_tempera_paints.jpg"],
+    ["Sand", "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c4/Limestone_processing_plant%2C_Tennessee.jpg/250px-Limestone_processing_plant%2C_Tennessee.jpg"],
+  ];
+  const photoFor = (name) => (PHOTOS.find(([k]) => name.includes(k)) || [])[1] || '';
   products.forEach((p, i) => {
+    p.imageUrl = photoFor(p.name);
     p.cost = r2(p.cost || p.price * (0.6 + rnd() * 0.18));
     if (i % 2 === 0) { p.marginMode = 'percent'; p.marginValue = Math.round(((p.price - p.cost) / p.cost) * 100); }
     else { p.marginMode = 'flat'; p.marginValue = r2(p.price - p.cost); }

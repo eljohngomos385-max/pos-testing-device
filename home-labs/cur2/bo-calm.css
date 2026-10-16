@@ -993,5 +993,5 @@ body.bo-light .view .rp-date-row { margin: 4px -4px 0; padding: 8px 14px 4px; bo
 /* cur2: Top sellers + Out or low stock carry the item's photo before the name (owner 2026-10-17). */
 body.bo-light .calm-dash .w .row:has(.th) { min-height: 42px; }
 body.bo-light .calm-dash .w .nm:has(.th) { display: flex; align-items: center; gap: 10px; min-width: 0; }
-body.bo-light .calm-dash .w .th { flex: none; width: 28px; height: 28px; margin-right: 10px; border-radius: 7px; background: var(--b-track) center / cover; display: grid; place-items: center; color: var(--b-ink-3); font-size: var(--b-t-meta); font-weight: 600; }
-body.bo-light .calm-dash .w .nm .th { margin-right: 0; }
+body.bo-light .calm-dash .w .th { flex: none; width: 28px; height: 28px; border-radius: 7px; background: var(--b-track) center / cover; display: grid; place-items: center; color: var(--b-ink-3); font-size: var(--b-t-meta); font-weight: 600; }
+body.bo-light .calm-dash .w .nm .tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* name + its 'N sold' line under it */
