@@ -274,6 +274,7 @@ function renderFulTypes() {
 function saveFulTypes(patch) {
   state.settings.fulfilment = { ...fulTypes(), ...patch };
   saveSettings();
+  renderFulRow();   // a type switched off or deleted must not stay picked on the open cart
 }
 function addFulType() {
   if (fulTypes().custom.length >= OWN_TYPES_MAX) return showToast(`${OWN_TYPES_MAX} is the most. Delete one first`);

@@ -8077,6 +8077,7 @@ body.hairlines .lv :is(.rp-body, #shiftBody, #shiftPastBody) .card.fc { border-c
 .ty-bar .ty-go:not(:disabled) { border-color: var(--danger); background: var(--danger); color: var(--danger-ink); }
 .lv .sq.ty-edit-btn { margin-right: -8px; }   /* the trash: a bare icon, its edge on the cards like Back's on the left */
 .ty-edit-btn[hidden] { display: none; }
+.st-page.ty-edit .c-scroll { padding-bottom: calc(var(--bar-h) + 32px + var(--ph-b, 0px)); }   /* the last row clears the fixed bar */
 .lv .st-page .fr { min-height: 48px; }   /* a switch row as tall as a dropdown row */
 .st-page label.fr { cursor: pointer; }
 .st-page .fr .lb { display: grid; gap: 2px; color: var(--ink); }   /* rednote's settings: the word dark, its value grey */
