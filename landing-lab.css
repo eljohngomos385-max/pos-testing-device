@@ -1,0 +1,167 @@
+/* Landing lab, light only (owner 2026-10-16). Type = cursor.com (Geist, every weight 400). Buttons = feldar.com's 34px pills.
+   Hero = cluely.com's sky: one full-bleed box, sky underneath, an ellipse that fades it to white (their exact radial numbers),
+   but a plain Apple-blue sky with grain instead of their mountains and sun. Feature grid + white bleeding panels = feldar.com.
+   Frames are the live lab app, forced to its light theme. "Counter" is a stand-in name. */
+:root {
+  --bg: #FFFFFF; --card: #F6F6F6; --line: #E1E1E1;           /* back office --po-* */
+  --ink: #303030; --ink2: #6B6B6B; --ink3: #8A8A8A;
+  --blue: #0071E3; --blue-hover: #0077ED;                    /* Apple blue */
+  --sky: linear-gradient(#3880DB, #61A3ED 35%, #CCE3FA 80%);   /* only shows if WebGL is off; the moving sky is the shader below */
+  --tint: #DDE8F8;                                             /* cluely.com's footer #DDE2EE, bluer */
+  --ok: #22C55E;
+  interpolate-size: allow-keywords;
+  --lift: 0 3px 4px rgba(0,0,0,.06), 0 4px 24px rgba(0,0,0,.04), 0 0 0 .5px rgba(0,0,0,.06);   /* feldar.com's panel */
+  --r: 10px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/24px Geist, system-ui, "Helvetica Neue", Arial, sans-serif;
+       -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+h1, h2, h3, p, blockquote { margin: 0; font-weight: 400; }
+.wrap { width: min(1300px, 100% - 40px); margin: 0 auto; }
+
+/* header — cursor.com's 52px; white on the sky, frosted white once scrolled */
+header { position: sticky; top: 0; z-index: 10; color: #fff; transition: background .2s, color .2s, box-shadow .2s; }
+header.solid { color: var(--ink); background: rgba(255,255,255,.8); backdrop-filter: saturate(1.8) blur(16px); box-shadow: 0 1px 0 var(--line); }
+header .wrap { height: 52px; display: flex; align-items: center; justify-content: space-between; position: relative; }
+.logo { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.logo svg { width: 18px; height: 18px; }
+.nav { position: absolute; left: 50%; transform: translateX(-50%); display: flex; }
+.nav a { font-size: 14px; line-height: 21px; padding: 5.6px 15px; opacity: .85; }
+.nav a:hover { opacity: 1; }
+.right { display: flex; align-items: center; gap: 8px; }
+.right .text { font-size: 14px; line-height: 21px; padding: 4px; }
+.sm { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 14px; white-space: nowrap;
+      background: #fff; color: var(--blue); }
+header.solid .sm { background: var(--blue); color: #fff; }
+
+/* buttons — feldar.com's 34px pill */
+.btn { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 999px; font-size: 15px; white-space: nowrap;
+       background: var(--blue); color: #fff; transition: background .15s; }
+.btn:hover { background: var(--blue-hover); }
+.btn.white { background: #fff; color: var(--blue); box-shadow: var(--lift); }
+.btn.glass { background: rgba(255,255,255,.16); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
+
+/* sky — cluely.com: ellipse at 50% 9%, clear to 41%, white by 72%, over feldar.com's moving shader (.gl) */
+.sky { position: relative; isolation: isolate; margin-top: -52px; padding: 52px 0 96px; color: #fff; background: var(--sky); }
+.sky::before { content: ""; position: absolute; inset: 0; z-index: -1;
+               background: radial-gradient(87.76% 87.72% at 50% 9.2%, rgba(255,255,255,0) 41.36%, #fff 71.93%); }
+.sky > .gl { z-index: -2; }
+.gl { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.hero { padding-top: 112px; }
+h1 { font-size: 26px; line-height: 32.5px; letter-spacing: -.325px; max-width: 560px; text-wrap: balance; }
+.ctas { display: flex; gap: 10px; margin-top: 22px; }
+.tabs { display: flex; gap: 2px; width: fit-content; margin: 57px auto 0; padding: 3px; border-radius: 999px;   /* elevenlabs.io's switch */
+        background: rgba(255,255,255,.16); box-shadow: inset 0 0 0 1px rgba(255,255,255,.3); backdrop-filter: blur(12px); }
+.tabs button { height: 28px; padding: 0 12px; border-radius: 999px; font-size: 14px; color: rgba(255,255,255,.85); white-space: nowrap; }
+.tabs button.on { background: #fff; color: var(--ink); }
+.stage { max-width: 1152px; aspect-ratio: 1280 / 804; margin: 20px auto 0; display: grid; grid-template-rows: minmax(0, 1fr); justify-items: center; }
+.stage .screen { height: 100%; aspect-ratio: 1280 / 804;   /* a frosted bezel + a deep shadow keep the frame off the sky and the white */
+                 box-shadow: 0 0 0 1px rgba(255,255,255,.7), 0 0 0 9px rgba(255,255,255,.32), 0 0 0 10px rgba(11,60,140,.06),
+                             0 24px 48px rgba(11,60,140,.16), 0 60px 120px rgba(11,60,140,.22); }
+.stage .screen.phone { aspect-ratio: 393 / 852; border-radius: 40px; }
+
+/* a live frame: the iframe keeps its device size and is scaled to the box (fit() below) */
+.screen { position: relative; overflow: hidden; border-radius: var(--r); background: #fff; }
+.screen iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; opacity: 0; transition: opacity .3s; }
+.screen iframe.ready { opacity: 1; }   /* shown once dressed, so the POS's dark theme never flashes */
+
+/* made for — cursor.com's logo row */
+.made h2 { font-size: 14px; line-height: 21px; color: var(--ink2); }
+.types { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin-top: 22px; }
+.types div { height: 100px; display: grid; place-items: center; border-radius: var(--r); background: var(--card); color: var(--ink2); }
+
+/* feature groups — feldar.com: h2 36/43.2 with a grey second sentence, 40 to the grid, 2 big + 3 small, gap 16 */
+.group { padding-top: 140px; }
+.group h2, .quotes h2 { font-size: 36px; line-height: 43.2px; letter-spacing: -.72px; max-width: 780px; text-wrap: pretty; }
+h2 span { color: var(--ink3); }
+.grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-top: 40px; }
+.card { --fade: var(--card); position: relative; overflow: hidden; grid-column: span 2; aspect-ratio: 382 / 316; border-radius: var(--r);
+        background: var(--card); border: 1px solid var(--line); }
+.card.big { grid-column: span 3; aspect-ratio: 582 / 616; }
+.card.deep { background: var(--sky); border-color: transparent; }   /* feldar.com's sky card: deep blue up top, pale where the words sit */
+.txt { position: absolute; inset: auto 0 0; z-index: 1; padding: 56px 32px 26px; background: linear-gradient(transparent, var(--fade) 46%); }
+.deep .txt { background: none; }
+.txt h3, .txt p { font-size: 16px; line-height: 25px; }
+.txt p { color: var(--ink2); }
+.screen.cover { position: absolute; top: 32px; left: 32px; right: -1px; bottom: 132px; border-radius: var(--r) 0 0 var(--r); box-shadow: var(--lift); }
+.screen.handset { position: absolute; top: 40px; left: 50%; width: 46%; aspect-ratio: 393 / 852; transform: translateX(-50%); border-radius: 40px;
+                  box-shadow: var(--lift), 0 0 0 6px #fff; }
+.panel { position: absolute; top: 32px; left: 32px; right: -1px; display: grid; gap: 8px; padding: 16px; border-radius: 16px 0 0 16px;
+         background: #fff; box-shadow: var(--lift); font-size: 14px; line-height: 21px; }
+.chip { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 8px; background: var(--card); }
+.chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); }
+.chip i.off { background: var(--ink3); }
+.chip span { margin-left: auto; color: var(--ink2); }
+.bar { height: 8px; border-radius: 4px; background: var(--card); }
+.dots { display: flex; gap: 14px; justify-content: center; padding: 18px 0; }
+.dots b { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--ink3); }
+.dots b.on { background: var(--blue); border-color: var(--blue); }
+
+/* quotes — cursor.com's centred h2 + 3 cards */
+.quotes { padding-top: 140px; }
+.quotes h2 { margin: 0 auto; text-align: center; }
+.qcards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 56px; }
+.qcards article { display: grid; gap: 40px; padding: 24px 32px 26px; border-radius: var(--r); background: var(--card); border: 1px solid var(--line); }
+.qcards cite { font-style: normal; font-size: 14px; line-height: 21px; color: var(--ink2); align-self: end; }
+
+/* FAQ — cluely.com: left h2, ruled rows, a chevron that flips */
+.faq { padding-top: 140px; }
+.faq h2 { font-size: 36px; line-height: 43.2px; letter-spacing: -.72px; margin-bottom: 24px; }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 0; list-style: none; cursor: pointer;
+               font-size: 20px; line-height: 28px; letter-spacing: -.2px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: ""; flex: none; width: 9px; height: 9px; border: solid var(--ink2); border-width: 0 1.5px 1.5px 0;
+                      transform: translateY(-3px) rotate(45deg); transition: transform .25s; }
+.faq details[open] summary::after { transform: translateY(2px) rotate(-135deg); }
+.faq details::details-content { block-size: 0; overflow: hidden; transition: block-size .25s, content-visibility .25s allow-discrete; }
+.faq details[open]::details-content { block-size: auto; }
+.faq details p { max-width: 680px; padding-bottom: 22px; color: var(--ink2); }
+
+/* footer — cluely.com: white fading into a tint, the last ask, then the links on the tint */
+footer { margin-top: 40px; padding: 240px 0 20px; background: linear-gradient(#fff, var(--tint) 140px); }
+.end { padding-bottom: 200px; }
+.end h3, .end p { font-size: 28px; line-height: 35px; letter-spacing: -.84px; }
+.end p { width: fit-content; color: transparent; -webkit-background-clip: text; background-clip: text;   /* cluely.com's sheen, in our blue-greys */
+         background-image: linear-gradient(96.56deg, #5B7CA8 21%, #9DB5D6 34.6%, #5B7CA8 47.6%, #5B7CA8 69.3%, #9DB5D6 79.8%, #5B7CA8 90.4%); }
+.end .btn { margin-top: 32px; }
+.cols { display: grid; grid-template-columns: 2fr repeat(4, 1fr); gap: 24px; padding-top: 44px; border-top: 1px solid rgba(48,48,48,.1); }
+.cols h3 { font-size: 16px; line-height: 24px; padding-bottom: 8px; }
+.cols a:not(.logo) { display: block; width: fit-content; padding: 4px 0; color: var(--ink2); }
+.cols a:hover { color: var(--ink); }
+.cols .logo { align-self: start; font-size: 20px; }
+.cols .logo svg { width: 22px; height: 22px; }
+.status { display: inline-flex; align-items: center; gap: 8px; height: 32px; margin-top: 56px; padding: 0 12px; border-radius: 6px;
+          background: rgba(255,255,255,.45); box-shadow: inset 0 0 0 1px rgba(48,48,48,.08); font-size: 14px; color: var(--ink2); }
+.status i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+.base { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; padding-top: 24px; border-top: 1px solid rgba(48,48,48,.1);
+        font-size: 14px; line-height: 20px; color: var(--ink2); }
+.social { display: flex; gap: 18px; }
+.social svg { width: 18px; height: 18px; fill: var(--ink); }
+
+@media (max-width: 767px) {
+  .nav, .right .text { display: none; }
+  .hero { padding-top: 64px; }
+  .tabs { margin-top: 40px; }
+  .stage:has(.phone) { aspect-ratio: 3 / 4; }
+  .types { grid-template-columns: repeat(4, 1fr); }
+  .types div { height: 72px; font-size: 14px; }
+  .group, .quotes { padding-top: 96px; }
+  .group h2, .quotes h2 { font-size: 26px; line-height: 32.5px; letter-spacing: -.325px; }
+  .grid { grid-template-columns: 1fr; }
+  .card, .card.big { grid-column: auto; }
+  .card.big { aspect-ratio: 4 / 4.6; }
+  .qcards { grid-template-columns: 1fr; }
+  .faq { padding-top: 96px; }
+  .faq h2 { font-size: 26px; line-height: 32.5px; letter-spacing: -.325px; }
+  .faq summary { font-size: 17px; line-height: 24px; }
+  footer { padding-top: 180px; }
+  .end { padding-bottom: 120px; }
+  .end h3, .end p { font-size: 22px; line-height: 28px; letter-spacing: -.5px; }
+  .cols { grid-template-columns: 1fr 1fr; row-gap: 32px; }
+  .cols .logo { grid-column: span 2; }
+}

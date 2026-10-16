@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Counter — Landing lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="landing-lab.css">
+</head>
+<body>
+
+<header><div class="wrap">
+  <a class="logo" href="#"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="14" height="10" rx="2"/><path d="M5 5V3h8v2"/></svg>Counter</a>
+  <nav class="nav"><a href="#sell">Features</a><a href="#stores">Stores</a><a href="#quotes">Why</a><a href="pricing-lab.html">Pricing</a><a href="#get">Download</a></nav>
+  <div class="right"><a class="text" href="backoffice.html">Log in</a><a class="sm" href="#get">Get started</a></div>
+</div></header>
+
+<main>
+  <section class="sky">
+    <div class="hero wrap">
+      <h1>Your counter, stock and sales in one simple POS.</h1>
+      <div class="ctas"><a class="btn white" href="#get">Get started — it's free</a><a class="btn glass" href="#get">Download</a></div>
+      <div class="tabs" role="tablist">
+        <button class="on" data-src="pos-lab/index.html#sell" data-w="1280" data-h="804">POS</button>
+        <button data-src="pos-lab/index.html#sell" data-w="393" data-h="852" data-phone>Phone</button>
+        <button data-src="backoffice.html#/products" data-w="1280" data-h="804">Back office</button>
+      </div>
+      <div class="stage"><div class="screen" id="heroScreen"><iframe src="pos-lab/index.html#sell" width="1280" height="804" title="POS"></iframe></div></div>
+    </div>
+  </section>
+
+  <section class="made wrap">
+    <h2>Made for every kind of counter</h2>
+    <div class="types"><div>Hardware</div><div>Café</div><div>Bakery</div><div>Grocery</div><div>Pharmacy</div><div>Boutique</div><div>Restaurant</div><div>Market</div></div>
+  </section>
+
+  <section class="group wrap" id="sell">
+    <h2>Sell in a few taps. <span>The cart stays in view, online or not.</span></h2>
+    <div class="grid">
+      <article class="card big deep"><div class="screen cover"><iframe loading="lazy" src="pos-lab/index.html#sell" width="1024" height="768" title="Sell"></iframe></div>
+        <div class="txt"><h3>Ring up a sale in seconds</h3><p>Tap items, take cash or card, done.</p></div></article>
+      <article class="card big"><div class="screen cover"><iframe loading="lazy" src="pos-lab/index.html#items" width="1024" height="768" title="Items"></iframe></div>
+        <div class="txt"><h3>Items and stock in one list</h3><p>Prices, variants and photos. Stock goes down as you sell.</p></div></article>
+      <article class="card"><div class="panel"><div class="chip"><i class="off"></i>Offline<span>3 sales waiting</span></div><div class="chip"><i></i>Back online<span>Synced</span></div></div>
+        <div class="txt"><h3>Works offline</h3><p>No internet? Keep selling. It syncs when you're back.</p></div></article>
+      <article class="card"><div class="panel"><div class="chip">Receipt<span>Print · Skip</span></div><div class="bar" style="width:80%"></div><div class="bar" style="width:60%"></div></div>
+        <div class="txt"><h3>Receipts</h3><p>Print one, or skip it. The sale is saved either way.</p></div></article>
+      <article class="card"><div class="panel"><div class="dots"><b class="on"></b><b class="on"></b><b></b><b></b></div></div>
+        <div class="txt"><h3>Staff PINs</h3><p>Each cashier signs in with a PIN. Voids need a manager.</p></div></article>
+    </div>
+  </section>
+
+  <section class="group wrap" id="numbers">
+    <h2>Know how the day went. <span>Sales, shifts and stock, without a spreadsheet.</span></h2>
+    <div class="grid">
+      <article class="card big deep"><div class="screen cover"><iframe loading="lazy" src="pos-lab/index.html#reports" width="1024" height="768" title="Reports"></iframe></div>
+        <div class="txt"><h3>Reports</h3><p>Sales, best sellers and payment methods for any day.</p></div></article>
+      <article class="card big"><div class="screen cover"><iframe loading="lazy" src="pos-lab/index.html#orders" width="1024" height="768" title="Orders"></iframe></div>
+        <div class="txt"><h3>Every sale in one list</h3><p>Search, reprint or refund. Refunds are kept apart from sales.</p></div></article>
+      <article class="card"><div class="panel"><div class="chip"><i></i>Drawer open<span>8:00 AM</span></div><div class="chip">Counted at close<span>Matches</span></div></div>
+        <div class="txt"><h3>Shift</h3><p>Log cash in and out. Close knowing it matches.</p></div></article>
+      <article class="card"><div class="panel"><div class="chip">Regular buyer<span>Unpaid</span></div><div class="chip">Walk-in<span>Paid</span></div></div>
+        <div class="txt"><h3>Customers</h3><p>Let regulars buy on account and see who still owes.</p></div></article>
+      <article class="card"><div class="panel"><div class="chip">Running low<span>4 items</span></div><div class="bar" style="width:30%"></div><div class="bar" style="width:55%"></div></div>
+        <div class="txt"><h3>Stock</h3><p>See what is running low before the shelf is empty.</p></div></article>
+    </div>
+  </section>
+
+  <section class="group wrap" id="stores">
+    <h2>Every store, one place. <span>Every POS syncs into one back office.</span></h2>
+    <div class="grid">
+      <article class="card big deep"><div class="screen cover"><iframe loading="lazy" src="backoffice.html#/products" width="1280" height="960" title="Back office"></iframe></div>
+        <div class="txt"><h3>Back office</h3><p>Open it from anywhere. Every store, every POS.</p></div></article>
+      <article class="card big"><div class="screen handset"><iframe loading="lazy" src="pos-lab/index.html#sell" width="393" height="852" title="Phone"></iframe></div>
+        <div class="txt"><h3>The same POS on a phone</h3><p>For a stall or a busy day. It lands in the same place.</p></div></article>
+      <article class="card"><div class="panel"><div class="chip"><i></i>POS 1<span>Synced</span></div><div class="chip"><i></i>POS 2<span>Synced</span></div><div class="chip"><i class="off"></i>POS 3<span>Offline</span></div></div>
+        <div class="txt"><h3>Several POS</h3><p>One per counter, one set of items.</p></div></article>
+      <article class="card"><div class="panel"><div class="chip">Owner<span>Everything</span></div><div class="chip">Manager<span>Voids, refunds</span></div><div class="chip">Cashier<span>Sell</span></div></div>
+        <div class="txt"><h3>Roles</h3><p>Decide who can void, refund or see the numbers.</p></div></article>
+      <article class="card"><div class="panel"><div class="chip">Food<span>Café, bakery</span></div><div class="chip">Retail<span>Hardware, grocery</span></div></div>
+        <div class="txt"><h3>Your kind of store</h3><p>Only the parts your business needs.</p></div></article>
+    </div>
+  </section>
+
+  <section class="quotes wrap" id="quotes">
+    <h2>The simple way to run a counter.</h2>
+    <div class="qcards">
+      <article><blockquote>Ring up a sale in three taps, even when the internet is down.</blockquote><cite>Selling</cite></article>
+      <article><blockquote>Close the day knowing the drawer matches the sales.</blockquote><cite>Shift</cite></article>
+      <article><blockquote>Every POS in every store, in one back office.</blockquote><cite>Stores</cite></article>
+    </div>
+  </section>
+
+  <section class="faq wrap" id="faq">
+    <h2>Frequently asked questions</h2>
+    <details><summary>Do I need internet to sell?</summary><p>No. The POS keeps selling offline and syncs your sales when you're back online.</p></details>
+    <details><summary>What do I need to start?</summary><p>A tablet, phone or computer with a browser. A receipt printer and a cash drawer are optional.</p></details>
+    <details><summary>What kind of store is it for?</summary><p>Hardware, grocery, cafés, bakeries and more. It only shows the parts your business needs.</p></details>
+    <details><summary>Can I run more than one store?</summary><p>Yes. Every POS in every store syncs into one back office.</p></details>
+    <details><summary>Can my staff use it without training?</summary><p>Yes. Each cashier signs in with a PIN and only sees what their role allows.</p></details>
+    <details><summary>Can I bring my items from another POS?</summary><p>Yes. Import a CSV in the back office and your items, prices and stock come with it.</p></details>
+  </section>
+</main>
+
+<footer id="get"><div class="wrap">
+  <div class="end">
+    <h3>A simple POS for every counter.</h3>
+    <p>Try Counter at your counter today.</p>
+    <a class="btn" href="pos-lab/index.html">Get started — it's free</a>
+  </div>
+  <div class="cols">
+    <a class="logo" href="#"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="14" height="10" rx="2"/><path d="M5 5V3h8v2"/></svg>Counter</a>
+    <div><h3>Product</h3><a href="#sell">Features</a><a href="#stores">Stores</a><a href="pos-lab/devices.html">Devices</a><a href="pricing-lab.html">Pricing</a><a href="#get">Download</a></div>
+    <div><h3>Company</h3><a href="#">About</a><a href="#">Blog</a><a href="#">Careers</a></div>
+    <div><h3>Support</h3><a href="#faq">FAQ</a><a href="#">Help</a><a href="#">Contact</a></div>
+    <div><h3>Legal</h3><a href="#">Terms</a><a href="#">Privacy</a></div>
+  </div>
+  <span class="status"><i></i>Works offline</span>
+  <div class="base"><span>© 2026 Counter. All rights reserved.</span>
+    <span class="social">
+      <a href="#" aria-label="X"><svg viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></a>
+      <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"/></svg></a>
+    </span></div>
+</div></footer>
+
+<script>
+// Every .screen scales its iframe (kept at device size, so the POS's own layout rules see a tablet or phone).
+// .cover fills its box and crops right/bottom (feldar.com's bleeding panel); the rest fit inside it.
+const fit = () => document.querySelectorAll('.screen').forEach((box) => {
+  const f = box.firstElementChild, w = box.clientWidth / f.width, h = box.clientHeight / f.height;
+  f.style.transform = `scale(${box.classList.contains('cover') ? Math.max(w, h) : Math.min(w, h)})`;
+});
+new ResizeObserver(fit).observe(document.body);
+
+// Dress each POS frame: light theme, a sale in the cart, Reports on the month. In memory only -- the frames share this
+// browser's lab data, so nothing here is saved (the cart write is skipped; the Month tab isn't remembered by the app).
+// ponytail: lab-only overrides of paintTheme / writeJsonStorage (global functions); a storage event would otherwise repaint them dark.
+const SALE = [[0, 2], [3, 1], [5, 3], [8, 1]];   // [nth priced item, qty]
+const dress = (f) => {
+  const w = f.contentWindow, view = f.src.split('#')[1];
+  if (!f.src.includes('pos-lab/')) return f.classList.toggle('ready', w?.document.readyState === 'complete');
+  if (!w?.paintTheme) return;   // still loading; the load event dresses it
+  w.paintTheme = () => w.document.body.classList.add('light-theme');
+  w.paintTheme();
+  if (view === 'sell') {
+    const save = w.writeJsonStorage, s = w.eval('state'), goods = s.products.filter((p) => p.price > 0);
+    w.writeJsonStorage = (k, v) => k === 'hwpos.cart' || save(k, v);
+    s.cart = SALE.filter(([i]) => goods[i]).map(([i, qty]) => {
+      const p = goods[i];
+      return { id: p.id, name: p.name, sku: p.sku, brand: p.brand, unit: p.unit, price: p.price, qty };
+    });
+    w.renderCart();
+    s.tilePics = 'on'; w.renderProducts();   // photos on the tiles, whatever this device has picked
+  }
+  f.classList.add('ready');
+  if (view === 'reports') w.document.querySelector('#reportsUnits [data-unit="month"]')?.click();
+};
+document.querySelectorAll('.screen iframe').forEach((f) => { f.addEventListener('load', () => dress(f)); dress(f); });
+
+// Hero tabs (elevenlabs.io): swap what the frame shows.
+const hero = document.getElementById('heroScreen');
+document.querySelector('.tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b || b.classList.contains('on')) return;
+  document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === b));
+  const f = hero.firstElementChild;
+  f.classList.remove('ready'); f.width = b.dataset.w; f.height = b.dataset.h; f.src = b.dataset.src;
+  hero.classList.toggle('phone', 'phone' in b.dataset);
+  fit();
+});
+
+// Moving sky: feldar.com's footer shader, their GLSL as is, our blues. Drawn ~30fps and only while on screen;
+// one still frame for reduced motion. Without WebGL the canvas goes and the CSS --sky shows instead.
+const SKY = { top: [0.80, 0.89, 0.98], mid: [0.56, 0.75, 0.95], base: [0.38, 0.64, 0.93],
+              deep: [0.22, 0.50, 0.86], accent: [0.66, 0.76, 0.97], pale: [0.93, 0.97, 1.0] };
+const VERT = 'attribute vec2 a_position;varying vec2 v_uv;void main(){v_uv=a_position*0.5+0.5;gl_Position=vec4(a_position,0.0,1.0);}';
+const FRAG = `precision mediump float;
+uniform vec2 u_resolution;uniform float u_time;uniform vec3 u_color_top,u_color_mid,u_color_base,u_color_deep,u_color_accent,u_color_pale;
+varying vec2 v_uv;
+float hash(vec2 p){vec3 p3=fract(vec3(p.xyx)*0.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1.0,0.0)),u.x),mix(hash(i+vec2(0.0,1.0)),hash(i+vec2(1.0,1.0)),u.x),u.y);}
+mat2 rotate2d(float a){float s=sin(a),c=cos(a);return mat2(c,-s,s,c);}
+float fbm(vec2 p){float v=0.0,a=0.5;mat2 m=mat2(0.82,-0.57,0.57,0.82);for(int i=0;i<4;i++){v+=a*noise(p);p=m*p*2.02+11.7;a*=0.5;}return v;}
+float lobe(vec2 p,vec2 c,vec2 r,float a){vec2 d=rotate2d(a)*(p-c);d/=r;return exp(-dot(d,d));}
+void main(){
+  vec2 uv=v_uv,p=(uv-0.5)*vec2(u_resolution.x/u_resolution.y,1.0);float t=u_time*0.045;
+  vec2 flow=vec2(fbm(p*1.18+vec2(t*0.42,-t*0.18)),fbm(p*1.05+vec2(-t*0.22,t*0.34)))-0.5;
+  vec2 q=p+flow*0.28;q.x+=sin(p.y*3.0+t*1.25)*0.025;q.y+=cos(p.x*2.4-t*1.05)*0.020;
+  float vertical=smoothstep(0.0,1.0,uv.y);
+  vec3 color=mix(u_color_top,u_color_base,smoothstep(0.10,0.64,vertical));
+  color=mix(color,u_color_deep,smoothstep(0.55,1.0,vertical)*0.82);
+  color=mix(color,u_color_mid,lobe(q,vec2(0.0,-0.05),vec2(1.28,0.34),0.0)*0.24);
+  color=mix(color,u_color_accent,lobe(q,vec2(-0.30,-0.36),vec2(0.70,0.32),-0.08)*0.20);
+  color=mix(color,u_color_pale,lobe(q,vec2(0.28,-0.18),vec2(0.82,0.26),0.12)*0.18);
+  float tex=fbm(q*vec2(7.0,2.3)+vec2(t*0.52,-t*0.28))*0.55+fbm(q*vec2(2.2,8.4)+vec2(-t*0.36,t*0.30))*0.45;
+  color+=(tex-0.5)*0.075;
+  color+=(hash(gl_FragCoord.xy+floor(u_time*18.0))-0.5)*0.045;
+  color=mix(color,u_color_pale,(1.0-smoothstep(0.02,0.56,uv.y))*0.22);
+  color=mix(color*0.86,color,smoothstep(1.28,0.25,length(p*vec2(0.72,1.10))));
+  gl_FragColor=vec4(clamp(color,0.0,1.0),1.0);
+}`;
+const still = matchMedia('(prefers-reduced-motion: reduce)');
+const skyGL = (box) => {
+  const c = box.insertBefore(document.createElement('canvas'), box.firstChild);
+  c.className = 'gl'; c.setAttribute('aria-hidden', 'true');
+  const gl = c.getContext('webgl', { antialias: false, depth: false, stencil: false, alpha: false, powerPreference: 'low-power' });
+  const prog = gl?.createProgram();
+  if (!prog) return c.remove();
+  [[gl.VERTEX_SHADER, VERT], [gl.FRAGMENT_SHADER, FRAG]].forEach(([type, src]) => {
+    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); gl.attachShader(prog, s);
+  });
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return c.remove();
+  gl.useProgram(prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(prog, 'a_position');
+  gl.enableVertexAttribArray(pos); gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  Object.entries(SKY).forEach(([k, v]) => gl.uniform3fv(gl.getUniformLocation(prog, 'u_color_' + k), v));
+  const res = gl.getUniformLocation(prog, 'u_resolution'), time = gl.getUniformLocation(prog, 'u_time'), t0 = performance.now();
+  const draw = (now) => {
+    const k = Math.min(devicePixelRatio || 1, 1.25), w = Math.max(1, Math.floor(c.clientWidth * k)), h = Math.max(1, Math.floor(c.clientHeight * k));
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; gl.viewport(0, 0, w, h); }
+    gl.uniform2f(res, w, h); gl.uniform1f(time, (now - t0) / 1000); gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+  let on = false, raf = 0, last = 0;
+  const tick = (now) => {
+    raf = on ? requestAnimationFrame(tick) : 0;
+    if (on && now - last >= 33) { draw(now); last = now; }
+  };
+  new IntersectionObserver(([e]) => {
+    on = e.isIntersecting;
+    if (on && still.matches) draw(performance.now());
+    else if (on && !raf) raf = requestAnimationFrame(tick);
+  }, { rootMargin: '160px 0px' }).observe(box);
+};
+document.querySelectorAll('.sky, .card.deep').forEach(skyGL);
+
+// Header: white on the sky, frosted once the sky has scrolled under it.
+const head = document.querySelector('header');
+const paintHead = () => head.classList.toggle('solid', scrollY > 40);
+addEventListener('scroll', paintHead, { passive: true });
+paintHead();
+</script>
+</body>
+</html>
