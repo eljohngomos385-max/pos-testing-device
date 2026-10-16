@@ -66,7 +66,9 @@ function getSellGridProfile() {
   const sq = state.tileSize === 'wide' ? 3 : columns;
   const h = catalog.clientHeight - $('#catalogSearchRow').offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - parseFloat(cs.rowGap);
   const size = (width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - gap * (sq - 1)) / sq;
-  return { columns, rows: Math.max(2, Math.round((h + gap) / (size + gap))) };
+  const show = tileShowNow(), lines = show === 'name' ? 0 : show === 'both' ? 2 : 1;   // rows beside the name
+  const tall = state.tilePics === 'top' ? 1 + 0.2 * lines : 1;   // ponytail: each line needs ~20% more height so the photo keeps its size; measure if a size clips
+  return { columns, rows: Math.max(2, Math.round((h + gap) / (size * tall + gap))) };
 }
 
 function sellPageSize(profile = getSellGridProfile()) {
@@ -88,35 +90,46 @@ function renderSellCellHtml(cell) {
     const g = cell.group, art = tileArt(g);
     return `
       <div class="product-card pc-group${art.cls}" data-group-id="${g.id}" title="${escapeHtml(g.name)}"${art.style}>${art.html}
-        <div class="pc-group-badge">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-          </svg>
-          <span>${cell.memberCount}</span>
-        </div>
-        <div class="pc-name">${escapeHtml(g.name)}</div>${tileLine(groupMembers(g.id))}
+        <div class="pc-name">${escapeHtml(g.name)}</div>${tileMeta(groupMembers(g.id), cell.memberCount)}
       </div>`;
   }
   const p = cell.product, art = tileArt(p);
   return `
     <div class="product-card${art.cls}" data-id="${p.id}"${art.style}>${art.html}
-      <div class="pc-name">${escapeHtml(p.name)}</div>${tileLine([p])}
+      <div class="pc-name">${escapeHtml(p.name)}</div>${tileMeta([p], 1)}
     </div>`;
 }
 // Settings › Tiles show is the two keys there already were: showPrice (shared with the back office's switch) and this
-// till's tileStock. Stock wins when both are on, so the back office turning price on can't hide this till's counts.
+// till's tileStock. Both on = Price and stock, so the back office turning price on never hides this till's counts.
+const tileShowNow = () => state.tileStock && state.showPrice ? 'both' : state.tileStock ? 'stock' : state.showPrice ? 'price' : 'name';
 function setTileShow(v) {
-  if (v !== 'stock') {   // Stock wins anyway: picking it leaves the shared price key alone for the back office and the other tills
-    state.showPrice = v === 'price';
-    storageSet(STORAGE_SHOW_PRICE, state.showPrice ? '1' : '0');
-  }
-  state.tileStock = v === 'stock';
+  state.showPrice = v === 'price' || v === 'both';
+  storageSet(STORAGE_SHOW_PRICE, state.showPrice ? '1' : '0');
+  state.tileStock = v === 'stock' || v === 'both';
   HWPOS_STORE.ui.set('tileStock', state.tileStock ? '1' : '0');
   renderProducts();
 }
-// Settings › Tiles show (owner 2026-10-08): the one small line under the name, the same for an item and a variant
-// group. Price: the price, a group its range. Stock: the count (a group's total, the variant sheet splits it), in
-// the warn colour when low (familyLevel, Items' own words), "Out" when out; nothing when untracked.
+// The tile (owner 2026-10-17, the Items list's phone row in a square): stock top-left ("420 pcs", warn when low,
+// "Out"), the variant count badge always top-right, the name low, the price (a group's range) right under it.
+function tileMeta(ps, vn) {
+  const show = tileShowNow(), top = [];
+  let pr = '';
+  if (show === 'stock' || show === 'both') {
+    const counted = ps.filter(m => m.trackStock !== false);
+    if (counted.length) {
+      const lv = familyLevel(counted), n = counted.reduce((s, m) => s + Math.max(0, toNumber(m.stock, 0)), 0);
+      const u = counted.every(m => (m.unit || 'pc') === (counted[0].unit || 'pc')) ? ' ' + tileUnit(n, counted[0].unit || 'pc') : '';
+      top.push(`<span class="pc-stk ${lv}">${lv === 'out' ? 'Out' : SalesMath.qtyText(n) + u}</span>`);
+    }
+  }
+  if (vn > 1) top.push(`<span class="pc-var" aria-label="${vn} variants">${vn}</span>`);
+  if (show === 'price' || show === 'both') {   // a price asked at sale has none to show: "—", never ₱0.00
+    const ps2 = ps.filter(m => !askedPrice(m)).map(m => toNumber(m.price, 0)), lo = Math.min(...ps2), hi = Math.max(...ps2);
+    const cut = x => peso(x).replace(/\.00$/, '');   // a range drops whole-peso .00 to stay short, as Items does
+    pr = `<span class="pc-pr">${!ps2.length ? '—' : lo === hi ? peso(lo) : `${cut(lo)}-${cut(hi)}`}</span>`;
+  }
+  return (top.length ? `<span class="pc-top">${top.join('')}</span>` : '') + pr;
+}
 const tileUnit = (n, u = 'pc') => /^(pc|bag|roll|pair|box|set|pack)$/.test(u) ? SalesMath.pluralWord(n, u, u === 'box' ? 'boxes' : u + 's') : u;
 // Settings › Tile pictures (owner 2026-10-14): Photo top / Photo fills draws the item's photo; with no photo (or pictures
 // off) the tile colour set in the item editor paints the tile, else it is the plain tile.
@@ -131,20 +144,6 @@ function linePic(item) {
   if (state.cartPics === 'off') return '';
   const p = productOf(item), { img, hue } = p ? itemLook(p) : {};
   return `<span class="pic" data-s="${state.cartPics}"${hue == null || img ? '' : ` style="--tc:${hue}"`}>${img ? `<img src="${escapeHtml(img)}" alt="">` : ''}</span>`;
-}
-function tileLine(ps) {
-  if (state.tileStock) {
-    const counted = ps.filter(m => m.trackStock !== false);
-    if (!counted.length) return '';
-    const lv = familyLevel(counted), n = counted.reduce((s, m) => s + Math.max(0, toNumber(m.stock, 0)), 0);
-    const u = counted.every(m => (m.unit || 'pc') === (counted[0].unit || 'pc')) ? ' ' + tileUnit(n, counted[0].unit || 'pc') : '';
-    return `<div class="pc-price-mini${lv === 'out' || lv === 'low' ? ' ' + lv : ''}">${lv === 'out' ? 'Out' : SalesMath.qtyText(n) + u}</div>`;
-  }
-  if (!state.showPrice || !ps.length) return '';
-  const priced = ps.filter(m => !askedPrice(m));   // a price asked at sale has none to show: "—", never ₱0.00
-  if (!priced.length) return '<div class="pc-price-mini">—</div>';
-  const lo = Math.min(...priced.map(m => toNumber(m.price, 0))), hi = Math.max(...priced.map(m => toNumber(m.price, 0)));
-  return `<div class="pc-price-mini">${lo === hi ? peso(lo) : `<span class="from">from </span>${peso(lo)}<span class="hi">–${peso(hi)}</span>`}</div>`;   // the Items list's range (itemPriceText)
 }
 
 function updateProductTrackPosition() {

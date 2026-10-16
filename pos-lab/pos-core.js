@@ -161,7 +161,7 @@ const state = {
   tileText: (storageGet(STORAGE_TILE_TEXT, 'md') || 'md'),
   showPrice: storageGet(STORAGE_SHOW_PRICE, '0') === '1',
   theme: (storageGet(STORAGE_THEME, 'dark') || 'dark'),
-  tileStock: window.HWPOS_STORE?.ui.get('tileStock', '0') === '1',             // Settings › Tiles show = Stock (tileLine)
+  tileStock: window.HWPOS_STORE?.ui.get('tileStock', '0') === '1',             // Settings › Tiles show: Stock, or both with showPrice (tileShowNow)
   tilePics: window.HWPOS_STORE?.ui.get('tilePics', 'off') || 'off',              // Settings › Tile pictures: off | top | fill (tileArt)
   cartPics: (v => v === 'on' ? 'sm' : v || 'off')(window.HWPOS_STORE?.ui.get('cartPics', 'off')),   // Settings › Cart pictures: off | sm | md | lg (linePic); 'on' was Small
   customersQuery: '',

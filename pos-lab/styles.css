@@ -473,9 +473,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .product-card:active { transform: scale(0.985); }
 
 .pc-name {
-  font-size: var(--pc-name-size, 13px);
-  font-weight: 600;
-  letter-spacing: -0.2px;
+  font-size: var(--pc-name-size, 14px);
+  font-weight: 500;   /* the Items row's name (.lv .page .row .nm b) */
+  letter-spacing: 0;
   line-height: 1.3;
   color: rgba(255,255,255,0.92);
   text-align: left;
@@ -487,17 +487,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 }
 /* Independent tile text-size setting (Settings → Appearance) */
 .product-grid[data-text="sm"] { --pc-name-size: 11px; }
-.product-grid[data-text="md"] { --pc-name-size: 13px; }
+.product-grid[data-text="md"] { --pc-name-size: 14px; }
 .product-grid[data-text="lg"] { --pc-name-size: 15px; }
 .product-grid[data-text="xl"] { --pc-name-size: 18px; }
-
-/* The one line under the name: price or stock (Settings › Tiles show; tileLine draws it only when on) */
-.pc-price-mini {
-  font-size: calc(var(--pc-name-size, 13px) - 1px);
-  font-weight: 500;
-  color: var(--ink-secondary);
-  font-variant-numeric: tabular-nums;
-}
 
 /* Hidden — kept so legacy elsewhere doesn't break */
 .pc-head, .pc-brand, .pc-sku, .pc-foot, .pc-price, .pc-stock, .stock-dot { display: none; }
@@ -507,23 +499,6 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .product-card.pc-group { background: var(--tile); }
 .product-card.pc-group:hover { background: var(--surface-hover); }
 .pc-group .pc-name { color: rgba(255,255,255,0.92); }
-.pc-group-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: rgba(0,0,0,0.35);
-  color: rgba(255,255,255,0.70);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  font-variant-numeric: tabular-nums;
-}
-.pc-group-badge svg { stroke: rgba(255,255,255,0.70); }
 
 .no-results {
   grid-column: 1 / -1;
@@ -4808,12 +4783,6 @@ body.light-theme .co-tile:hover { background: var(--bg-soft); }
 body.light-theme .co-tile:active { background: var(--bg-softer); }
 body.light-theme .pc-name,
 body.light-theme .pc-group .pc-name { color: var(--ink); }
-body.light-theme .pc-price-mini { color: var(--ink-secondary); }
-.product-card .pc-price-mini.low { color: var(--warn); }   /* beats body.light-theme .pc-price-mini */
-.product-card .pc-price-mini.out { color: var(--danger); }
-.pc-price-mini .from { display: none; }   /* a group's range; the phone's tile has room for "from ₱14.50" only, like the Items list */
-body.light-theme .pc-group-badge { background: var(--canvas); color: var(--ink-secondary); }
-body.light-theme .pc-group-badge svg { stroke: var(--ink-secondary); }
 /* A tile colour (item editor) when no photo shows; the same hue on the Items thumb and the cart's square */
 .product-card.pc-tc, .product-card.pc-tc:hover { background: hsl(var(--tc) 45% 32%); }
 body.light-theme .product-card.pc-tc, body.light-theme .product-card.pc-tc:hover { background: hsl(var(--tc) 75% 86%); }
@@ -4825,8 +4794,7 @@ body.light-theme .product-card.pc-tc, body.light-theme .product-card.pc-tc:hover
 .product-grid[data-pics="top"] .pc-pic .pc-name { -webkit-line-clamp: 2; }
 .product-grid[data-pics="fill"] .pc-img { position: absolute; inset: 0; }
 .product-grid[data-pics="fill"] .pc-img::after { content: ''; position: absolute; inset: 40% 0 0; background: linear-gradient(transparent, rgb(0 0 0 / .72)); }
-.product-grid[data-pics="fill"] .pc-pic :is(.pc-name, .pc-price-mini) { position: relative; }
-.product-grid[data-pics="fill"] .pc-pic :is(.pc-name, .pc-price-mini:not(.low, .out)) { color: #fff; }   /* on the shade in either theme */
+.product-grid[data-pics="fill"] .pc-pic .pc-name { position: relative; color: #fff; }   /* on the shade in either theme */
 /* Settings › Cart pictures (linePic): a small square before the name */
 :is(.rail-h .row, .co-row) .pic { flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: var(--r-card-lg); background: var(--rl-soft, var(--surface)); }
 :is(.rail-h .row, .co-row) .pic[style] { background: hsl(var(--tc) 45% 32%); }
@@ -7360,8 +7328,6 @@ body.light-theme .view-sell .content-row { transition: background-color .2s ease
   /* Phone insets: only var(--ph-safe), never raw env() -- devices.html can set the variable, not env(), so a rule on env()
      looks right in the preview and wrong on the iPhone (the variant sheet stopped 34px short of the bar, owner 2026-10-08) */
   .vsheet { padding-bottom: 8px; }
-  .pc-price-mini .from { display: inline; }
-  .pc-price-mini .hi { display: none; }   /* the bar under it already clears the home bar */
   /* Walk-in / Discount / a cart line: a full page like checkout's (owner 2026-10-08), no frame, no lines; ‹ Back where
      checkout has ‹ Cancel. A lone Done only closed, as Back does, so it goes; Apply / Clear / Remove item keep the foot */
   .esheet { position: fixed; z-index: 98; padding: 0 0 var(--ph-safe); }
@@ -7397,7 +7363,6 @@ body.light-theme .view-sell .content-row { transition: background-color .2s ease
   body:has(#scanSheet.open) #cartBar { position: relative; z-index: 100; }
   body:has(#scanSheet.open) .esheet { z-index: 101; }   /* a scanned item with no set price asks it over the camera */
   body:has(#scanSheet.open) .toast { bottom: calc(var(--bar-h) + var(--ph-b) + 88px); }   /* over the card */
-  .product-grid[data-size="sm"] .pc-group .pc-name { padding-top: 14px; }   /* 4 across: clear of the folder badge */
 }
 
 /* ============================================================
@@ -8238,4 +8203,37 @@ body.qs-on .view-items .cols > :nth-child(3) { display: none; }
 @media (hover: hover) { .view-qr .qr-row:hover { background-color: var(--rl-hover); } }
 .view-qr .qr-art { display: grid; place-items: center; padding: 8px 16px 20px; }   /* the white tile alone on the page, no card (owner 2026-10-16) */
 .view-qr .qr-art svg { width: 200px; height: 200px; border-radius: var(--r-input); background: #fff; }   /* a QR needs a white tile in dark mode too */
+
+/* ============================================================
+   SELL TILES (owner 2026-10-17, from tiles-pos-lab): the Items list's phone row in a square, no badges.
+   Stock top-left, variants always top-right; the name low, the price right under it.
+   Items' type: name 14/500 (.nm b); stock and price in its grey line (.sub), 2px under the name so Tile text size
+   moves them (Medium 12px for the compact tile, Large 13px = the Items page's own), never under 11px.
+   ============================================================ */
+.product-grid .product-card { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 2px;
+  grid-template-areas: "img" "top" "." "name" "pr"; grid-template-rows: auto auto minmax(0, 1fr) auto auto; }
+.product-grid .pc-img { grid-area: img; }
+.product-grid .pc-name { grid-area: name; -webkit-line-clamp: 2; }   /* 3 lines + the corners overrun a square */
+.pc-top { grid-area: top; display: flex; align-items: center; justify-content: space-between; column-gap: 4px; min-width: 0;
+          color: var(--ink-secondary); font-size: var(--pc-line-size); line-height: 1.3; font-variant-numeric: tabular-nums; }
+.pc-top > span { white-space: nowrap; }
+.pc-stk { min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* the badge never moves: a long count gives way first */
+/* variants: the count badge (owner 2026-10-17, picked from 6) -- the number in a solid round chip, on photos too.
+   Sits 8px in from the tile's corner, so its radius is the tile's minus 8 (concentric) */
+.pc-var { flex: none; margin: -4px -4px -4px auto; display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px;
+          border-radius: 10px; background: var(--canvas, var(--bg)); color: var(--ink); font-size: 12px; font-weight: 600; }
+.product-grid[data-pics="fill"] .pc-pic .pc-var { color: var(--ink); text-shadow: none; }
+.product-card .pc-stk.low { color: var(--warn); }
+.product-card .pc-stk.out { color: var(--danger); }
+.product-grid { --pc-line-size: max(11px, calc(var(--pc-name-size, 14px) - 2px)); }
+.pc-pr { grid-area: pr; color: var(--ink-secondary); font-size: var(--pc-line-size); line-height: 1.3;
+         font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* photo top keeps its size (the tile grows, tall in getSellGridProfile); photo fills: shade top and bottom, white words */
+.product-grid[data-pics="top"] .pc-pic .pc-img { aspect-ratio: 16 / 11; margin-bottom: 6px; }
+.product-grid[data-pics="fill"] .pc-img { grid-area: auto; z-index: 0; }   /* over the whole tile, not the img row; z 0 keeps its shades under the words */
+.product-grid[data-pics="fill"] .pc-img::after { inset: 25% 0 0; background: linear-gradient(transparent, rgb(0 0 0 / .55) 45%, rgb(0 0 0 / .85)); }
+.product-grid[data-pics="fill"] .pc-pic :is(.pc-name, .pc-top, .pc-pr) { text-shadow: 0 1px 2px rgb(0 0 0 / .45); }   /* bright photos (white screws) */
+.product-grid[data-pics="fill"] .pc-pic :is(.pc-top, .pc-pr) { position: relative; color: #fff; }
+.product-grid[data-pics="fill"] .pc-pic .pc-img::before { content: ''; position: absolute; inset: 0 0 55%; background: linear-gradient(rgb(0 0 0 / .7), transparent); }
 .view-qr .fr.qr-mid { justify-content: center; }
