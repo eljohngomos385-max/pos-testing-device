@@ -546,7 +546,7 @@ const KNOWN_METHOD_LABELS = { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'A
 // `split` { legs: [{ key, amount, given?, change?, ref? }] }: one row per part (owner 2026-10-10), each built as a
 // one-method sale (GCash stays 'other' + 'GCash'); a cash part carries what was handed over, the others their ref no.
 // No `split` = the old call: cash now (tendered), the rest on account -- old rows rebuild exactly as they were.
-function buildOrderPayments({ status, paymentMethod, total, tendered = 0, change = 0, split = null }) {
+function buildOrderPayments({ status, paymentMethod, total, tendered = 0, change = 0, split = null, ref = '' }) {
   if (status === 'saved' || paymentMethod === 'unpaid') {
     return [{ method: 'unpaid', label: 'Not completed', amount: 0, tendered: 0, change: 0, ref: '' }];
   }
@@ -564,7 +564,7 @@ function buildOrderPayments({ status, paymentMethod, total, tendered = 0, change
   // the receipt and `buildCashDrawerSummary` expected money that never went in the till.
   if (paymentMethod && paymentMethod !== 'cash') {
     return [{ method: 'other', label: KNOWN_METHOD_LABELS[paymentMethod] || String(paymentMethod),
-              amount: moneyValue(total), tendered: moneyValue(tendered), change: moneyValue(change), ref: '' }];
+              amount: moneyValue(total), tendered: moneyValue(tendered), change: moneyValue(change), ref: String(ref) }];   // ref: the customer's, when its type asks
   }
   return [{ method: 'cash', label: 'Cash', amount: moneyValue(total), tendered: moneyValue(tendered), change: moneyValue(change), ref: '' }];
 }

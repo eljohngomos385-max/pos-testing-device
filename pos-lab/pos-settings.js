@@ -191,7 +191,11 @@ function bindTypeEdit(kind) {
 const addedOff = (name) => showToast(`${name} added, switched off. ${TYPES_ON_MAX} can be on at once`);
 const PAY_TYPES = [['cash', 'Cash', 'Always on. The cash drawer counts it.'], ['gcash', 'GCash', ''], ['qr', 'QR', 'Any QR wallet'],
   ['other', 'Other', 'Staff type the name at checkout'], ['credit', 'Account', 'Pay later. Shows once a customer is picked.'], ['split', 'Split', 'Part one way, the rest another']];
-const payTypes = () => ({ hidden: [], custom: [], ...state.settings.payments });
+const payTypes = () => ({ hidden: [], custom: [], ref: ['gcash', 'qr'], ...state.settings.payments });
+// Ask for reference no. (owner 2026-10-17): per type, set on its own page; on = an optional box at checkout (and split)
+const payRefOn = (k) => payTypes().ref.includes(k);
+const PAY_REFABLE = ['gcash', 'qr'];   // and every one of your own; Cash, Other, Account and Split have no page
+let ptOpen = '';
 const payTypesOn = () => { const { hidden, custom } = payTypes(); return [...PAY_TYPES.map(t => t[0]), ...custom].filter(k => k === 'cash' || !hidden.includes(k)).length; };
 function openPayTypes(open) {
   showStPage(open ? 'payTypesPage' : 'settingsPage');
@@ -201,7 +205,8 @@ function openPayTypes(open) {
 function renderPayTypes() {
   const { hidden, custom } = payTypes();
   // the label is for= its switch: without it a tap on the name went to the row's first control, a custom type's Delete
-  const row = (key, label, note, mine) => `<label class="fr" for="pt-${escapeHtml(key)}"><span class="lb">${mine ? tickBtn(escapeHtml(key), escapeHtml(label)) : ''}${escapeHtml(label)}${note ? `<small>${escapeHtml(note)}</small>` : ''}</span><span class="v"><input type="checkbox" class="sw" id="pt-${escapeHtml(key)}" data-pt="${escapeHtml(key)}" aria-label="Show ${escapeHtml(label)} at checkout"${key === 'cash' || !hidden.includes(key) ? ' checked' : ''}${key === 'cash' ? ' disabled' : ''}></span></label>`;
+  // GCash, QR and your own: the switch shows it, the rest of the row (name, gap, ›) opens its page, like QR codes' rows
+  const row = (key, label, note, mine) => `<label class="fr${mine || PAY_REFABLE.includes(key) ? ` qr-row" data-pt-open="${escapeHtml(key)}` : ''}" for="pt-${escapeHtml(key)}"><span class="lb">${mine ? tickBtn(escapeHtml(key), escapeHtml(label)) : ''}${escapeHtml(label)}${note ? `<small>${escapeHtml(note)}</small>` : ''}</span><span class="v"><input type="checkbox" class="sw" id="pt-${escapeHtml(key)}" data-pt="${escapeHtml(key)}" aria-label="Show ${escapeHtml(label)} at checkout"${key === 'cash' || !hidden.includes(key) ? ' checked' : ''}${key === 'cash' ? ' disabled' : ''}>${mine || PAY_REFABLE.includes(key) ? `<button type="button" class="pt-go" aria-label="${escapeHtml(label)} settings">${QR_CHEV}</button>` : ''}</span></label>`;   // the › is a button: a keyboard reaches the page too
   $('#payTypesList').innerHTML = PAY_TYPES.map(([k, l, n]) => row(k, l, n)).join('') + custom.map(n => row(n, n, '', true)).join('')
     + '<button type="button" class="fr add" data-pt-add>Add payment type</button>';
   syncTypeEdit('pt', $('#payTypesPage').classList.contains('ty-edit'));
@@ -224,11 +229,28 @@ function savePayTypeAdd() {
   const taken = [...PAY_TYPES.flatMap(([k, l]) => [k, l]), ...Object.entries(SalesMath.TENDER_LABEL).flat(), 'Void', 'Refund', ...custom];
   if (taken.some(n => n.toLowerCase() === name.toLowerCase())) return showToast(`${name} is taken. Pick another name`);
   const { hidden } = payTypes(), full = payTypesOn() >= TYPES_ON_MAX;   // with the list full, a new one starts off
-  savePayTypes({ custom: [...custom, name], hidden: full ? [...hidden, name] : hidden });
+  savePayTypes({ custom: [...custom, name], hidden: full ? [...hidden, name] : hidden, ref: payTypes().ref.filter(n => n !== name) });   // a new one asks no ref
   openPayTypes(true);
   if (full) addedOff(name);
 }
+// one type's page: its name on top, Show at checkout and Ask for reference no.
+function openPayType(key) {
+  ptOpen = key;
+  showStPage('payTypePage');
+  $('#ptTitle').textContent = PAY_TYPES.find(t => t[0] === key)?.[1] || key;
+  $('#ptOn').checked = !payTypes().hidden.includes(key);
+  $('#ptRef').checked = payRefOn(key);
+}
+// a type's switch, from the list or its page; the cap turns a switch on back off
+function setPayOn(k, input) {
+  const { hidden } = payTypes();
+  if (input.checked && payTypesOn() >= TYPES_ON_MAX) { input.checked = false; return tooMany(); }
+  savePayTypes({ hidden: input.checked ? hidden.filter(h => h !== k) : [...hidden, k] });
+}
 function bindPayTypes() {
+  $('#payTypeBack').addEventListener('click', () => openPayTypes(true));
+  $('#ptOn').addEventListener('change', (e) => setPayOn(ptOpen, e.target));
+  $('#ptRef').addEventListener('change', (e) => { const { ref } = payTypes(); savePayTypes({ ref: e.target.checked ? [...ref, ptOpen] : ref.filter(r => r !== ptOpen) }); });
   $('#posPayTypesRow')?.addEventListener('click', () => openPayTypes(true));
   $('#payTypesBack')?.addEventListener('click', () => openPayTypes(false));
   $('#payTypeAddBack').addEventListener('click', () => openPayTypes(true));
@@ -236,12 +258,12 @@ function bindPayTypes() {
   $('#payTypeAddForm').addEventListener('submit', (e) => { e.preventDefault(); savePayTypeAdd(); });   // Return on the keyboard
   const list = $('#payTypesList');
   list?.addEventListener('change', (e) => {
-    const k = e.target.dataset.pt, { hidden } = payTypes();
-    if (k && e.target.checked && payTypesOn() >= TYPES_ON_MAX) { e.target.checked = false; return tooMany(); }
-    if (k) savePayTypes({ hidden: e.target.checked ? hidden.filter(h => h !== k) : [...hidden, k] });   // no re-render: the switch keeps focus
+    if (e.target.dataset.pt) setPayOn(e.target.dataset.pt, e.target);   // no re-render: the switch keeps focus
   });
   list?.addEventListener('click', (e) => {
-    if (e.target.closest('[data-pt-add]')) addPayType();
+    if (e.target.closest('[data-pt-add]')) return addPayType();
+    const open = !$('#payTypesPage').classList.contains('ty-edit') && !e.target.closest('.sw') && e.target.closest('[data-pt-open]');
+    if (open) { e.preventDefault(); openPayType(open.dataset.ptOpen); }   // the row opens its page; only the switch flips
   });
   bindTypeEdit('pt');
 }

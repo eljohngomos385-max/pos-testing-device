@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en" class="bo">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#F7F6F3" />
+  <title>EJ Hardware — Back office</title>
+  <link rel="icon" href="data:," />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Geist:wght@400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=155" />
+  <link rel="stylesheet" href="/bo-products.css?v=122" />
+  <link rel="stylesheet" href="/bo-item.css?v=12" />
+  <link rel="stylesheet" href="/bo-inventory.css?v=105" />
+  <link rel="stylesheet" href="/bo-sales.css?v=98" />
+  <link rel="stylesheet" href="/bo-suppliers.css?v=97" />
+  <link rel="stylesheet" href="/bo-staff.css?v=98" />
+  <link rel="stylesheet" href="/bo-insights.css?v=4" />
+  <link rel="stylesheet" href="/bo-blocks.css?v=64" />
+  <link rel="stylesheet" href="/bo-calm.css?v=63" />
+  <link rel="stylesheet" href="/bo-shopify.css?v=10" />
+</head>
+<body class="bo-body bo-light">
+  <div id="app" class="bo-app">
+
+    <!-- ============== TOPBAR (black strip) ============== -->
+    <!-- ponytail: no topbar. The hamburger only matters below 1024px, where the
+         sidebar overlays; CSS hides it on desktop. -->
+    <button id="boSidebarToggle" class="bo-hamburger" aria-label="Toggle menu" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+
+    <!-- ============== SIDEBAR ============== -->
+    <aside class="sidebar bo-sidebar">
+      <div class="side-resizer" id="sideResizer" title="Drag to resize · double-click to reset"></div>
+      <!-- Shopify-style top (bo-test): glyph, Back in Settings, the collapse button (Ctrl+B), then Search. -->
+      <div class="side-switch-wrap side-top">
+        <span class="side-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"/><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"/><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"/></svg></span>
+        <button class="side-link" type="button" data-set-back hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+          <span>Back</span>
+        </button>
+        <button class="side-rail-btn" id="sideRailBtn" type="button" aria-label="Fold sidebar" aria-expanded="true"><svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4.75 4.747v6.503"></path><rect width="12.5" height="12.5" x="1.75" y="1.75" rx="3"></rect></svg><span class="side-tip"><span class="tl">Collapse navigation</span><kbd>Ctrl</kbd><kbd>B</kbd></span></button>
+      </div>
+      <!-- ponytail: looks only, no search behind it yet -->
+      <button class="side-search" type="button"><svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M10.71 10.71a5.247 5.247 0 0 1-8.96-3.71 5.25 5.25 0 1 1 10.5 0c0 1.45-.59 2.75-1.54 3.71m0 0 3.54 3.54"></path></svg><span>Search</span><span class="side-kbd">Ctrl K</span></button>
+
+      <nav class="side-nav">
+        <div class="side-fold"><div class="side-fold-in">
+          <button class="side-link active" data-view="dashboard">
+            <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M6.362 2.246a3 3 0 0 1 3.277 0l2.749 1.79a3 3 0 0 1 1.362 2.514v5.094c0 .96-.683 1.783-1.634 1.911-1.107.149-2.634.307-4.116.307s-3.008-.158-4.116-.307c-.951-.128-1.634-.95-1.634-1.91v-5.091a3 3 0 0 1 1.36-2.513z"></path><path d="M5.276 10.319s1.67.312 2.748.312 2.752-.312 2.752-.312"></path></svg>
+            <span>Home</span>
+          </button>
+          <button class="side-link" data-view="sales">
+            <svg class="sp f" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M7.952 1.5h.096c.182 0 .371 0 .543.034.695.138 1.237.68 1.375 1.375.035.172.034.361.034.543v9.096c0 .182 0 .371-.034.543a1.75 1.75 0 0 1-1.375 1.375c-.172.035-.361.034-.543.034h-.096c-.182 0-.371 0-.543-.034a1.75 1.75 0 0 1-1.375-1.375c-.035-.172-.034-.361-.034-.543v-9.096c0-.182 0-.371.034-.543a1.75 1.75 0 0 1 1.375-1.375c.172-.035.361-.034.543-.034m-.253 1.505a.25.25 0 0 0-.194.194l-.003.053c-.002.055-.002.127-.002.248v9c0 .121 0 .193.002.248l.003.053a.25.25 0 0 0 .194.194l.053.003c.055.002.127.002.248.002s.193 0 .248-.002l.053-.003a.25.25 0 0 0 .194-.194l.003-.053c.002-.055.002-.127.002-.248v-9c0-.121 0-.193-.002-.248l-.003-.053a.25.25 0 0 0-.194-.194l-.053-.003c-.055-.002-.127-.002-.248-.002s-.193 0-.248.002z"></path><path fill-rule="evenodd" d="M3.452 7h.096c.182 0 .371 0 .543.034.695.138 1.237.68 1.375 1.375.035.172.034.361.034.543v3.596c0 .182 0 .371-.034.543a1.75 1.75 0 0 1-1.375 1.375c-.172.035-.361.034-.543.034h-.096c-.182 0-.371 0-.543-.034a1.75 1.75 0 0 1-1.375-1.375c-.035-.172-.034-.361-.034-.543v-3.596c0-.182 0-.371.034-.543a1.75 1.75 0 0 1 1.375-1.375c.172-.035.361-.034.543-.034m-.253 1.505a.25.25 0 0 0-.194.194l-.003.053c-.002.055-.002.127-.002.248v3.5c0 .121 0 .193.002.248l.003.053a.25.25 0 0 0 .194.194l.053.003c.055.002.127.002.248.002s.193 0 .248-.002l.053-.003a.25.25 0 0 0 .194-.194l.003-.053c.002-.055.002-.127.002-.248v-3.5c0-.121 0-.193-.002-.248l-.003-.053a.25.25 0 0 0-.194-.194l-.053-.003c-.055-.002-.127-.002-.248-.002s-.193 0-.248.002z"></path><path fill-rule="evenodd" d="M12.5 4h-.048c-.182 0-.371 0-.543.034a1.75 1.75 0 0 0-1.375 1.375c-.035.172-.034.361-.034.543v6.596c0 .182 0 .371.034.543.138.695.68 1.237 1.375 1.375.172.035.361.034.543.034h.096c.182 0 .371 0 .543-.034a1.75 1.75 0 0 0 1.375-1.375c.035-.172.034-.361.034-.543v-6.596c0-.182 0-.371-.034-.543a1.75 1.75 0 0 0-1.375-1.375c-.172-.035-.361-.034-.543-.034zm-.495 1.7a.25.25 0 0 1 .194-.195l.053-.003c.054-.002.127-.002.248-.002s.193 0 .248.002l.053.003a.25.25 0 0 1 .194.194l.003.053c.002.055.002.127.002.248v6.5c0 .121 0 .193-.002.248l-.003.053a.25.25 0 0 1-.194.194l-.053.003c-.055.002-.127.002-.248.002s-.194 0-.248-.002l-.053-.003a.25.25 0 0 1-.194-.194l-.003-.053c-.002-.055-.002-.127-.002-.248v-6.5c0-.121 0-.193.002-.248l.003-.053zv-.002Z"></path></svg>
+            <span>Sales</span>
+          </button>
+          <button class="side-link" data-view="transactions">
+            <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.75 8.75v3c0 .83.67 1.5 1.5 1.5h9.5c.83 0 1.5-.67 1.5-1.5v-3l-1.9-5.34a.99.99 0 0 0-.95-.66h-6.79c-.42 0-.8.25-.94.66zm12.5 0h-3.25c-.41 0-.75.34-.75.75s-.34.75-.75.75h-3c-.41 0-.75-.34-.75-.75s-.34-.75-.75-.75h-3.25"></path></svg>
+            <span>Orders</span>
+          </button>
+          <button class="side-link has-sub" data-view="products">
+            <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="m13.042 6.067-1.596-3.451a1.5 1.5 0 0 0-1.644-.844l-3.734.717a1.5 1.5 0 0 0-1.052.789l-3.075 5.995a1.5 1.5 0 0 0 .647 2.018l5.333 2.748a1.5 1.5 0 0 0 2.022-.65l3.073-6.01a1.5 1.5 0 0 0 .026-1.312"></path><circle cx="9" cy="5.5" r="1" fill="currentColor"></circle><path d="m14.248 10.19-.383 2.768a1.5 1.5 0 0 1-1.69 1.28l-.083-.01"></path></svg>
+            <span>Items</span><svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="side-sub" data-view="inventory"><div class="side-fold-in"><button class="side-sublink" type="button" data-view="products">Item list</button><button class="side-sublink" type="button" data-view="categories">Categories</button><button class="side-sublink" type="button" data-view="modifiers">Modifiers</button><button class="side-sublink" type="button" data-sub="overview">Stock history</button></div></div>
+          <button class="side-link" data-view="customers">
+            <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 6.72a2.497 2.497 0 1 0 0-4.993 2.497 2.497 0 0 0 0 4.993"></path><path d="M12.233 13.665c.764-.22 1.166-.987.842-1.653-.863-1.77-2.808-3.007-5.075-3.007s-4.212 1.236-5.075 3.007c-.324.667.078 1.434.842 1.653a15.37 15.37 0 0 0 8.466 0"></path></svg>
+            <span>Customers</span>
+          </button>
+        </div></div>
+        <button class="side-label" type="button" data-fold="stock" aria-expanded="true">Stock<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="side-fold"><div class="side-fold-in">
+          <button class="side-link" data-view="suppliers" data-sub="suppliers orders incoming">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+            <span>Suppliers</span>
+          </button>
+        </div></div>
+      </nav>
+
+      <!-- Settings swaps the sidebar for its own sections (owner, 2026-09-26, Shopify-style). paint() shows
+           this nav on the settings and payments views; ← Back, in the switcher slot above, returns to the last page outside them. -->
+      <nav class="side-nav side-setnav" hidden>
+        <div class="side-label">Settings</div>
+        <button class="side-link" type="button" data-set="store">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 11h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path class="f" d="M2 8l2-5h16l2 5a3 3 0 0 1-5 2.2 3 3 0 0 1-5 0 3 3 0 0 1-5 0A3 3 0 0 1 2 8z"/></svg>
+          <span>Store</span>
+        </button>
+        <button class="side-link" type="button" data-set="tax">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="7" cy="7" r="3"/><circle class="f" cx="17" cy="17" r="3"/><path d="M19 5 5 19"/></svg>
+          <span>Tax</span>
+        </button>
+        <button class="side-link" type="button" data-set="payments">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="f" width="20" height="14" x="2" y="5" rx="2"/><path class="k" d="M2 10h20M6 14h2"/></svg>
+          <span>Payments</span>
+        </button>
+        <button class="side-link" type="button" data-set="receipt">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"/><path class="k" d="M14 8H8M16 12H8M13 16H8"/></svg>
+          <span>Receipt &amp; printing</span>
+        </button>
+        <button class="side-link" type="button" data-set="staff">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="10" cy="8" r="5"/><path class="f" d="M18 21a8 8 0 0 0-16 0"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>
+          <span>Staff &amp; access</span>
+        </button>
+        <button class="side-link" type="button" data-set="appearance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="12" cy="12" r="10"/><circle class="hole" cx="8" cy="10" r="1.5"/><circle class="hole" cx="12" cy="7" r="1.5"/><circle class="hole" cx="16" cy="10" r="1.5"/></svg>
+          <span>Appearance</span>
+        </button>
+        <button class="side-link" type="button" data-set="data">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse class="f" cx="12" cy="5" rx="9" ry="3"/><path class="f" d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path class="k" d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>
+          <span>Data</span>
+        </button>
+      </nav>
+
+      <div class="side-footer">
+        <!-- Settings sits at the bottom, over the account; opening it swaps the nav above for .side-setnav and hides this row (paint()). -->
+        <button class="side-link" data-view="settings">
+          <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 10.25c1.25 0 2.25-1 2.25-2.25s-1-2.25-2.25-2.25-2.25 1-2.25 2.25 1 2.25 2.25 2.25"></path><path d="m13.32 6.5-.82-.29c-.06-.21-.17-.46-.29-.67a4.4 4.4 0 0 0-.42-.61l.21-.84c.06-.59-.21-1.18-.72-1.47l-.28-.18c-.54-.3-1.18-.24-1.62.15l-.63.55q-.75-.105-1.5 0l-.63-.55a1.4 1.4 0 0 0-1.62-.15l-.28.18c-.51.29-.78.88-.72 1.47l.21.84c-.32.39-.56.82-.74 1.28l-.8.29c-.55.2-.92.75-.92 1.32v.36c0 .57.37 1.12.92 1.32l.8.29c.09.21.19.46.32.67.12.21.27.42.42.61l-.21.84c-.06.59.21 1.18.72 1.47l.28.18c.53.3 1.17.24 1.62-.15l.63-.55q.75.105 1.5 0l.62.55c.45.39 1.09.45 1.63.15l.28-.18c.51-.29.72-.88.72-1.47l-.21-.84c.31-.39.56-.82.74-1.28l.79-.29c.56-.2.93-.75.93-1.32v-.36c0-.57-.37-1.12-.93-1.32"></path></svg>
+          <span>Settings</span>
+        </button>
+        <!-- Shopify foot row (bo-test): store switcher left, account badge right (the bell's spot). -->
+        <div class="side-store">
+          <div class="side-switch-wrap">
+            <button class="side-switch" id="locBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+              <span class="ss-mark" id="locMark">MS</span>
+              <span class="ss-text"><span class="ss-label" id="locBiz">EJ Hardware</span><span class="ss-name" id="locName">Main Store</span></span>
+            </button>
+            <div class="side-menu up" id="locMenu" role="menu" hidden></div>
+          </div>
+          <div class="side-switch-wrap">
+            <button class="side-switch acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+              <span class="ss-mark" id="acctMark">EJ</span>
+              <span class="ss-text"><span class="ss-name" id="acctName">El John</span><span class="ss-label" id="acctRole">Owner</span></span>
+            </button>
+            <div class="side-menu up" id="acctMenu" role="menu" hidden></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============== MAIN ============== -->
+    <div class="main bo-main">
+
+      <!-- ============================================
+           DASHBOARD
+           ============================================ -->
+      <!-- The calm Dashboard (dashboard-calm-lab.html, ported as is; styles in bo-calm.css).
+           Left: the four KPIs as folder tabs over the bars, then recent transactions.
+           Right: daily target, monthly target, low stock, payment methods, each on or off from the Widgets menu. backoffice.js → renderDashboard. -->
+      <section class="view view-dashboard calm-dash active" data-view="dashboard">
+        <div class="c-main">
+          <div class="bar">
+            <h1 id="dashGreeting">Welcome back</h1>
+            <button class="pick" id="dashWBtn" popovertarget="dashW">Widgets</button>
+            <div class="menu" id="dashW" popover role="menu"></div>
+            <button class="pick" id="dashPick" popovertarget="dashRange"></button>
+            <div class="menu" id="dashRange" popover role="menu"></div>
+          </div>
+          <div class="dash" id="dashGrid">
+            <div class="col">
+              <section class="card trend">
+                <div class="strip" id="dashStrip" role="tablist" aria-label="Chart shows"></div>
+                <div class="panel"><div class="plot" id="dashPlot"></div></div>
+              </section>
+              <section class="card txcard">
+                <div class="head"><span class="lbl">Recent orders</span><a id="dashTxAll" href="/admin/transactions">View all ›</a></div>
+                <div id="dashTx"></div>
+              </section>
+            </div>
+            <div class="rail" id="dashRail"></div>
+          </div>
+        </div>
+        <dialog id="dashPop"><div class="pop" id="dashPopIn"></div></dialog>
+      </section>
+
+      <!-- Sales: markup lives in bo-sales.js -->
+      <section class="view view-sales" data-view="sales" hidden></section>
+
+      <!-- Transactions: markup lives in bo-transactions.js -->
+      <section class="view view-tx calm-tx" data-view="transactions" hidden></section>
+
+      <!-- Products: markup lives in bo-products.js -->
+      <section class="view view-products" data-view="products" hidden></section>
+      <section class="view view-categories" data-view="categories" hidden></section>
+      <section class="view view-modifiers" data-view="modifiers" hidden></section>
+
+      <!-- Inventory: markup lives in bo-inventory.js -->
+      <section class="view view-inv" data-view="inventory" hidden></section>
+
+      <!-- ============================================
+           CUSTOMERS
+           ============================================ -->
+      <section class="view view-customers calm-cust" data-view="customers" hidden>
+        <header class="view-head">
+          <div class="view-title-wrap">
+            <span id="custBack" hidden></span>
+            <h1 id="custTitle">Customers</h1>
+          </div>
+          <div class="view-actions">
+            <button class="primary-btn small" id="custAddBtn">Add customer</button>
+          </div>
+        </header>
+
+        <div id="custList">
+          <div class="w cust-strip" id="custStrip"></div>
+          <div class="list-filters">
+            <input class="search-input small q-input" id="custSearch" placeholder="Search customers..." />
+            <select class="bo-select" data-cust="status" aria-label="Balance status"><option value="">Any balance</option><option value="Clear">Clear</option><option value="Active">Active</option><option value="In use">In use</option><option value="Near limit">Near limit</option><option value="Over limit">Over limit</option></select>
+            <select class="bo-select" data-cust="last" aria-label="Last order"><option value="">Any last order</option><option value="7">Bought in last 7 days</option><option value="30">Bought in last 30 days</option><option value="90">Bought in last 90 days</option><option value="-90">No order in 90+ days</option></select>
+          </div>
+          <section class="bo-card blk-table">
+            <div class="bo-card-head">
+              <span class="bo-card-label">All accounts</span>
+            </div>
+            <div class="bo-card-inset flush">
+              <div class="table-wrap">
+                <table class="data-table cust-table" id="custTable">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th class="num">Orders</th>
+                      <th class="num">Total spent</th>
+                      <th>Last order</th>
+                      <th class="num">Balance</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div id="custPager"></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- The account screen: its figures sit in its first card (the list's are in #custStrip). -->
+        <div id="custDetail" hidden></div>
+        <dialog id="custDlg" class="bo-dialog adj-dlg"></dialog>
+      </section>
+
+      <!-- Suppliers: markup lives in bo-suppliers.js -->
+      <section class="view view-suppliers" data-view="suppliers" hidden></section>
+
+      <!-- Insights: markup lives in bo-insights.js -->
+      <section class="view view-insights" data-view="insights" hidden></section>
+
+      <!-- ============================================
+           SETTINGS
+           ============================================ -->
+      <section class="view" data-view="payments" hidden></section>
+
+      <!-- Settings: one section per URL (/admin/settings/<section>), one column of cards.
+           Typed values read as rows (label, value, ›); a row opens its card's fields in #setDlg.
+           On/off and pick-one settings save the moment they change, like Appearance (per device)
+           and Staff & access (bo-staff.js). No Save bar. -->
+      <section class="view view-settings" data-view="settings" hidden>
+        <div class="set-pane" data-pane="store" hidden>
+          <header class="view-head"><div class="view-title-wrap"><h1>Store</h1></div></header>
+          <div class="set-col">
+            <section class="bo-card blk-table">
+              <div class="bo-card-head"><span class="bo-card-label">Store details</span></div>
+              <div class="bo-card-inset flush set-rows" data-set-rows="store"></div>
+            </section>
+          </div>
+        </div>
+
+        <div class="set-pane" data-pane="tax" hidden>
+          <header class="view-head"><div class="view-title-wrap"><h1>Tax</h1></div></header>
+          <div class="set-col">
+            <section class="bo-card blk-table">
+              <div class="bo-card-head"><span class="bo-card-label">VAT</span></div>
+              <div class="bo-card-inset flush set-rows">
+                <div class="setting-row"><label for="setVatRegistered">VAT registered</label><input type="checkbox" id="setVatRegistered" data-set-now></div>
+                <div class="setting-row"><label for="setTaxOnTop">Tax added on top of prices</label><input type="checkbox" id="setTaxOnTop" data-set-now></div>
+                <div class="setting-row"><label for="setScPwd">SC/PWD discount</label><input type="checkbox" id="setScPwd" data-set-now></div>
+                <div data-set-rows="tax"></div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div class="set-pane" data-pane="receipt" hidden>
+          <header class="view-head"><div class="view-title-wrap"><h1>Receipt &amp; printing</h1></div></header>
+          <div class="set-col">
+            <section class="bo-card blk-table">
+              <div class="bo-card-head"><span class="bo-card-label">Printing</span></div>
+              <div class="bo-card-inset flush set-rows">
+                <div class="setting-row"><label for="setPrinterWidth">Printer width</label>
+                  <select class="bo-select" id="setPrinterWidth" data-set-now><option value="58mm">58 mm</option><option value="80mm">80 mm</option></select></div>
+                <div class="setting-row"><label for="setPrintOnSale">Print on sale</label><input type="checkbox" id="setPrintOnSale" data-set-now></div>
+                <div class="setting-row"><label for="setLogoOnReceipt">Logo on receipt</label><input type="checkbox" id="setLogoOnReceipt" data-set-now></div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- Staff & access: bo-staff.js renders into this pane. -->
+        <div class="set-pane" data-pane="staff" id="staffPane" hidden></div>
+
+        <div class="set-pane" data-pane="appearance" hidden>
+          <header class="view-head"><div class="view-title-wrap"><h1>Appearance</h1></div></header>
+          <div class="set-col">
+            <section class="bo-card blk-table">
+              <div class="bo-card-head"><span class="bo-card-label">This device</span><span class="bo-card-sub">Applies as you pick</span></div>
+              <div class="bo-card-inset flush set-rows">
+                <div class="setting-row">
+                  <label for="settingsChartHue">Chart colours
+                    <small>The second line on the sales chart (gross profit).</small>
+                  </label>
+                  <select class="bo-select" id="settingsChartHue"><option value="violet">Blue + violet</option><option value="blues">Two blues</option></select>
+                </div>
+                <div class="setting-row">
+                  <label for="settingsChartStyle">Chart style
+                    <small>Lines or bars on every sales chart.</small>
+                  </label>
+                  <select class="bo-select" id="settingsChartStyle"><option value="line">Line</option><option value="bars">Bars</option></select>
+                </div>
+                <div class="setting-row">
+                  <label for="settingsDensityToggle">Back office row size
+                    <small>Height and text size of every list. Larger is easier on the eyes.</small>
+                  </label>
+                  <select class="bo-select" id="settingsDensityToggle"><option value="sm">Small</option><option value="md">Medium</option><option value="lg">Large</option></select>
+                </div>
+                <div class="setting-row">
+                  <label for="settingsSizeToggle">Sell-screen tile size
+                    <small>The POS Sell grid: Small 30 a page, Medium 20, Large 12.</small>
+                  </label>
+                  <select class="bo-select" id="settingsSizeToggle"><option value="sm">Small</option><option value="md">Medium</option><option value="lg">Large</option></select>
+                </div>
+                <div class="setting-row">
+                  <label for="settingsShowPrice">Show price on tiles</label>
+                  <input type="checkbox" id="settingsShowPrice">
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div class="set-pane" data-pane="data" hidden>
+          <header class="view-head"><div class="view-title-wrap"><h1>Data</h1></div></header>
+          <div class="set-col">
+            <section class="bo-card blk-table">
+              <div class="bo-card-head"><span class="bo-card-label">Backup</span></div>
+              <div class="bo-card-inset flush set-rows">
+                <div class="setting-row">
+                  <label>Full local backup
+                    <small>Saves everything on this device: items, stock, orders, customers, suppliers and settings.</small>
+                  </label>
+                  <button class="secondary-btn small" id="backupExportBtn">Export backup</button>
+                </div>
+                <div class="setting-row">
+                  <label>Restore backup
+                    <small>Replaces this browser/device data with a Hardware POS backup file.</small>
+                  </label>
+                  <button class="secondary-btn small" id="backupImportBtn">Restore backup</button>
+                  <input type="file" id="backupImportFile" accept="application/json,.json" hidden>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <dialog id="orderDlg" class="bo-dialog"></dialog>
+  <!-- Outside the views: a dialog in a hidden section never shows. Targets opens from the dashboard and Sales. -->
+  <dialog id="targetDlg" class="bo-dialog adj-dlg"></dialog>
+  <!-- Settings: a card's typed values (Store details, VAT, a role's pages, a new payment method). -->
+  <dialog id="setDlg" class="bo-dialog adj-dlg"></dialog>
+  <!-- Stock adjust: bo-inventory.js fills it; any [data-adjust-open] on any page opens it. -->
+  <dialog id="adjustDlg" class="bo-dialog adj-dlg"></dialog>
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="/sales-math.js?v=20"></script>
+  <script src="/data-store.js?v=50"></script>
+  <script src="/data.js?v=27"></script>
+  <script src="/bo-model.js?v=123"></script>
+  <script src="/router.js?v=62"></script>
+  <script src="/backoffice.js?v=224"></script>
+  <script src="/bo-products.js?v=117"></script>
+  <script src="/bo-catalog.js?v=9"></script>
+  <script src="/bo-item.js?v=21"></script>
+  <script src="/bo-insights.js?v=50"></script>
+  <script src="/bo-inventory.js?v=127"></script>
+  <script src="/bo-sales.js?v=143"></script>
+  <script src="/bo-transactions.js?v=23"></script>
+  <script src="/bo-suppliers.js?v=115"></script>
+  <script src="/bo-staff.js?v=116"></script>
+  <script>
+    // ---- Back office: sidebar state (see "Sidebar state" in docs/backoffice.md) ----
+    // 1024px+ : the sidebar is always there, full or the icon rail (.side-rail, a saved per-device pref).
+    // Under it: an overlay, shut unless .side-open -- in memory only, dropped on every crossing of 1024px.
+    (function () {
+      var app = document.getElementById('app');
+      var btn = document.getElementById('boSidebarToggle');
+      if (!app) return;
+      var wide = window.matchMedia('(min-width: 1024px)');
+      function setOpen(on) { app.classList.toggle('side-open', !!on && !wide.matches); }
+      wide.addEventListener('change', function () { setOpen(false); });
+      btn.addEventListener('click', function () { setOpen(!app.classList.contains('side-open')); });
+      document.addEventListener('click', function (e) {
+        if (!app.classList.contains('side-open')) return;
+        var t = e.target;
+        if (btn.contains(t)) return;
+        // Picking a page shuts it (peeking a tree with the chevron doesn't); so does a tap on the backdrop.
+        if (t.closest('.bo-sidebar') ? t.closest('.side-link, .side-sublink') && !t.closest('.side-chev') : true) setOpen(false);
+      });
+
+      // Drag the sidebar's right edge to resize (desktop only); the width is a per-device pref.
+      var grip = document.getElementById('sideResizer');
+      // Dragged left of FOLD_AT it previews the icon rail; back past OPEN_AT (hysteresis, so it
+      // doesn't flicker on the line) it opens again. Only letting go commits the fold.
+      var MIN_W = 168, MAX_W = 320, FOLD_AT = 96, OPEN_AT = 128;
+      var dragFromW = '', foldedAt = 0;
+      function setSideW(w) { document.body.style.setProperty('--po-sidebar-w', w + 'px'); }
+      var savedW = +HWPOS_STORE.ui.get('sidebarW');
+      if (savedW >= MIN_W && savedW <= MAX_W) {
+        // Apply with transitions off so the page doesn't slide in from the default width on load.
+        app.classList.add('side-resizing');
+        setSideW(savedW);
+        void app.offsetWidth;
+        app.classList.remove('side-resizing');
+      }
+      if (grip) {
+        grip.addEventListener('pointerdown', function (e) {
+          e.preventDefault();
+          grip.setPointerCapture(e.pointerId);
+          app.classList.add('side-resizing');
+          dragFromW = document.body.style.getPropertyValue('--po-sidebar-w');
+        });
+        // One width change per frame: every change re-lays out the page beside it, and a mouse can
+        // fire several moves a frame.
+        var dragX = null;
+        grip.addEventListener('pointermove', function (e) {
+          if (!grip.hasPointerCapture(e.pointerId)) return;
+          if (dragX === null) requestAnimationFrame(dragTo);
+          dragX = e.clientX;
+        });
+        function dragTo() {
+          var x = dragX;
+          dragX = null;
+          if (x === null) return;   // let go before this frame
+          var railed = app.classList.contains('side-rail');
+          if (railed ? x <= OPEN_AT : x < FOLD_AT) {
+            if (!railed) {   // transitions back on, so the preview folds in its one motion
+              app.classList.remove('side-resizing');
+              setRail(true);
+              foldedAt = Date.now();
+            }
+            return;
+          }
+          // Under MIN_W the edge still follows, at half speed, so it leans into the fold rather than
+          // stopping dead at 168 and then jumping; letting go there springs back to MIN_W.
+          setSideW(Math.round(x < MIN_W ? MIN_W - (MIN_W - x) / 2 : Math.min(MAX_W, x)));
+          if (railed) { setRail(false); foldedAt = Date.now(); }
+          // Let an open/fold finish its .24s slide before the drag goes back to tracking 1:1.
+          if (Date.now() - foldedAt > 240) app.classList.add('side-resizing');
+        }
+        grip.addEventListener('lostpointercapture', function () {
+          dragTo();   // a flick let go before its frame still lands where it was let go
+          app.classList.remove('side-resizing');
+          if (app.classList.contains('side-rail')) {
+            // Folded: keep the width it had before the drag for when it unfolds.
+            if (dragFromW) document.body.style.setProperty('--po-sidebar-w', dragFromW);
+            else document.body.style.removeProperty('--po-sidebar-w');
+            setRail(true, true);
+          } else if (parseInt(document.body.style.getPropertyValue('--po-sidebar-w'), 10) < MIN_W) {
+            setSideW(MIN_W);
+          }
+          HWPOS_STORE.ui.set('sidebarW', parseInt(document.body.style.getPropertyValue('--po-sidebar-w'), 10) || '');
+        });
+        grip.addEventListener('dblclick', function () {
+          document.body.style.removeProperty('--po-sidebar-w');
+          HWPOS_STORE.ui.set('sidebarW', '');
+        });
+      }
+
+      // Fold to an icon rail (desktop only -- CSS ignores .side-rail below 1024px, where the
+      // overlay's .side-open rules). A per-device pref, like the width.
+      var railBtn = document.getElementById('sideRailBtn');
+      function setRail(on, save) {
+        app.classList.toggle('side-rail', on);
+        railBtn.setAttribute('aria-expanded', String(!on));
+        railBtn.querySelector('.tl').textContent = on ? 'Expand navigation' : 'Collapse navigation';
+        document.querySelectorAll('.bo-sidebar .side-link').forEach(function (l) {
+          var t = l.querySelector('span');
+          if (on && t) l.title = t.textContent.trim(); else l.removeAttribute('title');
+        });
+        if (save) HWPOS_STORE.ui.set('sidebarRail', on ? '1' : '');
+      }
+      if (HWPOS_STORE.ui.get('sidebarRail') === '1') {
+        app.classList.add('side-resizing');   // no slide on load, as with the saved width
+        setRail(true);
+        void app.offsetWidth;
+        app.classList.remove('side-resizing');
+      }
+      document.addEventListener('keydown', function (e) {
+        if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'b' && wide.matches) { e.preventDefault(); railBtn.click(); }
+      });
+      railBtn.addEventListener('click', function () {
+        if (typeof closeSideMenus === 'function') closeSideMenus();
+        setRail(!app.classList.contains('side-rail'), true);
+      });
+      // The store and account menus need the full width, so a badge clicked on the rail unfolds first.
+      document.querySelectorAll('.bo-sidebar .side-switch').forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (app.classList.contains('side-rail') && wide.matches) setRail(false, true);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

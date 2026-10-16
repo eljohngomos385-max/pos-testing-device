@@ -782,6 +782,7 @@ function attachEvents() {
     state.paymentMethodChosen = true;
     // A custom card fills the Other name itself, so completeSale records it unchanged.
     $('#otherMethodInput').value = method === 'other' ? label : '';
+    $('#payRefInput').value = '';
     $('#checkoutTender').value = '';
     track('payment_method', { method });
     showPayStep();
@@ -791,7 +792,7 @@ function attachEvents() {
   $('#checkoutMethods')?.addEventListener('click', (e) => {
     const card = e.target.closest('[data-co-method]');
     if (!card) return;
-    if (SP) { SP.leg = { key: card.dataset.label || card.dataset.method, label: card.textContent.trim() }; return spAmt(); }   // split: this part's method
+    if (SP) { const key = spKeyOf(card); SP.leg = SP.legs.find(l => l.key === key) || { key, label: card.querySelector('span').textContent.trim() }; return spAmt(); }   // split: this method's how-much page
     if (card.dataset.method === 'split') return spOpen();
     selectPayMethod(card.dataset.method, card.dataset.label || '');
   });
@@ -799,7 +800,7 @@ function attachEvents() {
   // Back: a method's detail -> the method tiles; the tiles -> the cart.
   $('#checkoutCancelBtn')?.addEventListener('click', () => {
     if ($('#checkoutApp').classList.contains('is-done')) return;
-    if (SP) spBack();   // split: one step back, the last part comes back to be typed again
+    if (SP) spBack();   // split: one page back
     else if (state.paymentMethod === 'cash' && !$('#checkoutKeyIn').hidden) showCashKeys(false);   // the keys -> the quick amounts
     else if (state.paymentMethodChosen) {
       state.paymentMethodChosen = false;
@@ -822,22 +823,20 @@ function attachEvents() {
   };
   $('#checkoutKeys')?.addEventListener('click', (e) => { const b = e.target.closest('[data-sk]'); if (b) cashKey(b.dataset.sk); });
   document.addEventListener('keydown', (e) => {
-    if (state.view !== 'checkout' || e.target.id === 'spRef' || $('#checkoutKeyIn').hidden || $('[data-step="cash"]').hidden || $('#checkoutApp').classList.contains('is-done') || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (state.view !== 'checkout' || $('#checkoutKeyIn').hidden || $('[data-step="cash"]').hidden || $('#checkoutApp').classList.contains('is-done') || e.ctrlKey || e.metaKey || e.altKey) return;
     if (!/^[\d.]$|^Backspace$|^Enter$/.test(e.key)) return;
     e.preventDefault();   // Enter on a focused key would press it again
     if (e.key === 'Enter') { if (!$('#checkoutCompleteBtn').disabled) (SP ? spNext : completeSale)(); }
     else cashKey(e.key === 'Backspace' ? 'del' : e.key);
   });
   $('#otherMethodInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') completeSale(); });
-  // Split's reference no.: the device's own keyboard types it; Enter is Next
-  $('#spRef')?.addEventListener('input', (e) => { if (SP) SP.raw = e.target.value; });
-  $('#spRef')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' && SP) { e.preventDefault(); spNext(); } });
+  $('#payRefInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) (SP ? spNext : completeSale)(); });
   // A cash amount is the decision: the tap finishes the sale.
   $('#checkoutQuick')?.addEventListener('click', (e) => {
     if (e.target.closest('[data-co-custom]')) return SP ? spGo('typed') : showCashKeys(true);
     const b = e.target.closest('[data-co-cash]');
     if (!b) return;
-    if (SP) { Object.assign(SP.leg, { given: moneyValue(+b.dataset.coCash), change: moneyValue(+b.dataset.coCash - SP.leg.amount) }); return spFinish(); }   // split: the cash that pays the rest
+    if (SP) { Object.assign(SP.leg, { given: moneyValue(+b.dataset.coCash), change: moneyValue(+b.dataset.coCash - SP.leg.amount) }); return completeSale(); }   // split: the cash part, handed over
     $('#checkoutTender').value = b.dataset.coCash;
     updateChange();
     completeSale();

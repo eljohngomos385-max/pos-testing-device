@@ -2,6 +2,15 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "pos-serve",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "scripts/serve.py",
+        "8765"
+      ],
+      "port": 8765
+    },
+    {
       "name": "pos-static",
       "runtimeExecutable": "py",
       "runtimeArgs": [
@@ -24,6 +33,177 @@
         "127.0.0.1"
       ],
       "port": 8655
+    },
+    {
+      "name": "bo-test",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "bo-test/scripts/serve.py",
+        "8766"
+      ],
+      "port": 8766
+    },
+    {
+      "name": "bo-test-2",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "bo-test-2/scripts/serve.py",
+        "8767"
+      ],
+      "port": 8767
+    },
+    {
+      "name": "gemini-pos-lab",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "gemini-pos-lab/scripts/serve.py",
+        "8768"
+      ],
+      "port": 8768
+    },
+    {
+      "name": "home-a",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/a/scripts/serve.py",
+        "8771"
+      ],
+      "port": 8771
+    },
+    {
+      "name": "home-b",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/b/scripts/serve.py",
+        "8772"
+      ],
+      "port": 8772
+    },
+    {
+      "name": "home-c",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/c/scripts/serve.py",
+        "8773"
+      ],
+      "port": 8773
+    },
+    {
+      "name": "home-d",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/d/scripts/serve.py",
+        "8774"
+      ],
+      "port": 8774
+    },
+    {
+      "name": "home-e",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/e/scripts/serve.py",
+        "8775"
+      ],
+      "port": 8775
+    },
+    {
+      "name": "home-f",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/f/scripts/serve.py",
+        "8776"
+      ],
+      "port": 8776
+    },
+    {
+      "name": "home-g",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/g/scripts/serve.py",
+        "8777"
+      ],
+      "port": 8777
+    },
+    {
+      "name": "home-h",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/h/scripts/serve.py",
+        "8778"
+      ],
+      "port": 8778
+    },
+    {
+      "name": "home-i",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/i/scripts/serve.py",
+        "8779"
+      ],
+      "port": 8779
+    },
+    {
+      "name": "home-j",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/j/scripts/serve.py",
+        "8780"
+      ],
+      "port": 8780
+    },
+    {
+      "name": "home-k",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/k/scripts/serve.py",
+        "8781"
+      ],
+      "port": 8781
+    },
+    {
+      "name": "home-l",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/l/scripts/serve.py",
+        "8782"
+      ],
+      "port": 8782
+    },
+    {
+      "name": "home-f2",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/f2/scripts/serve.py",
+        "8783"
+      ],
+      "port": 8783
+    },
+    {
+      "name": "home-k2",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/k2/scripts/serve.py",
+        "8784"
+      ],
+      "port": 8784
+    },
+    {
+      "name": "home-cur",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/cur/scripts/serve.py",
+        "8785"
+      ],
+      "port": 8785
+    },
+    {
+      "name": "home-cur2",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "home-labs/cur2/scripts/serve.py",
+        "8786"
+      ],
+      "port": 8786
     }
   ]
 }

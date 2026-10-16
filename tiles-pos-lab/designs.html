@@ -1,0 +1,42 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tile Designs</title>
+<style>
+body { margin: 0; padding: 16px; background: #e9e9ee; color: #111; font: 14px -apple-system, system-ui, sans-serif; }
+header { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
+header b { font-size: 17px; margin-right: 6px; }
+select { font: inherit; padding: 6px 10px; border-radius: 10px; border: 1px solid #ccc; background: #fff; }
+.row { display: flex; flex-wrap: wrap; gap: 20px; padding-bottom: 12px; }
+figure { margin: 0; flex: none; }
+figcaption { font-weight: 600; margin: 0 0 8px 8px; }
+iframe { width: 402px; height: 874px; border: 0; border-radius: 28px; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.12); }
+</style></head><body>
+<header><b>Tile designs</b>
+  <select id="size"><option value="md">3 across</option><option value="wide">2 across</option></select>
+  <select id="show"><option value="both">Price + stock</option><option value="price">Price</option><option value="stock">Stock</option><option value="name">Name only</option></select>
+  <select id="pics"><option value="">Pictures: as pos-lab</option><option value="off">Pictures off</option><option value="top">Photo top</option><option value="fill">Photo fills</option></select>
+  <select id="theme"><option value="">Theme: as pos-lab</option><option value="dark">Dark</option><option value="light">Light</option></select>
+</header>
+<div class="row" id="row"></div>
+<script>
+// ponytail: each frame is the real tiles lab; settings are set in memory only, nothing is saved
+const designs = [['1', 'Now'], ['items', 'Items page variant']];
+const size = document.getElementById('size'), show = document.getElementById('show'), pics = document.getElementById('pics'), theme = document.getElementById('theme');
+// blank = pos-lab's own saved setting, so the frames start as the owner's real Sell screen
+const apply = f => f.contentWindow.eval(`document.getElementById('tlLab').style.display = 'none';
+  state.tileDesign = '${f.dataset.v}'; state.tileSize = '${size.value}'; state.tileShowLab = '${show.value}';
+  state.tilePics = '${pics.value}' || HWPOS_STORE.ui.get('tilePics', 'off') || 'off';
+  window.__theme ??= state.theme; state.theme = '${theme.value}' || window.__theme;
+  paintTheme(); renderProducts();`);
+const ready = f => { try { return f.contentWindow.document.querySelector('.product-card'); } catch (e) { return null; } };
+const frames = designs.map(([v, name]) => {
+  const fig = document.createElement('figure');
+  fig.innerHTML = `<figcaption>${name}</figcaption><iframe src="index.html" data-v="${v}"></iframe>`;
+  document.getElementById('row').append(fig);
+  const f = fig.querySelector('iframe');
+  f.onload = () => { const t = setInterval(() => { if (ready(f)) { clearInterval(t); apply(f); } }, 100); };
+  return f;
+});
+size.onchange = show.onchange = pics.onchange = theme.onchange = () => frames.forEach(f => ready(f) && apply(f));
+</script>
+</body></html>

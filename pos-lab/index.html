@@ -453,7 +453,8 @@
                 <div class="co-hero num" id="checkoutTotalDue">₱0.00</div>
                 <p class="sp-paid" id="spPaid" hidden></p>
                 <!-- Tiles are built from the back office's Payments settings on every render -->
-                <div class="co-step" data-step="method"><p class="co-ask" id="spAsk" hidden></p><div class="co-tiles" id="checkoutMethods"></div></div>
+                <div class="co-step" data-step="method"><div class="co-tiles" id="checkoutMethods"></div>
+                  <button type="button" class="co-btn primary" id="spDone" data-complete hidden>Complete sale</button></div>
                 <!-- Cash (and each part of a split): a tap on an amount finishes the sale; Custom swaps the row for the
                      figures (left) and our keypad (right), cash-custom-lab.html take C -->
                 <div class="co-step" data-step="cash" hidden>
@@ -464,8 +465,6 @@
                       <div data-field="amt"><span class="co-lbl" id="checkoutCashLbl">Cash received</span><b class="co-fig num" id="checkoutCash"></b></div>
                       <div><span class="co-lbl" id="checkoutChangeLbl">Change</span><b class="co-fig num" id="checkoutChange" aria-live="polite"></b></div>
                     </div>
-                    <!-- Split: a GCash / QR / store method's reference no. (letters too), typed on the device's keyboard -->
-                    <label class="sp-box" id="spRefBox" hidden><input id="spRef" type="text" maxlength="30" autocomplete="off" autocapitalize="characters" spellcheck="false" /></label>
                     <div id="checkoutKeys"></div>
                     <button type="button" class="co-btn primary" id="checkoutCompleteBtn" data-complete disabled>Complete sale</button>
                   </div>
@@ -474,6 +473,8 @@
                 <div class="co-step" data-step="paid" hidden>
                   <h2 class="co-ask" id="checkoutAsk"></h2>
                   <input type="text" id="otherMethodInput" class="co-ref" placeholder="e.g. Maya, bank transfer" autocomplete="off" aria-label="Payment method name" />
+                  <!-- Settings › Payment types › a type › Ask for reference no.: letters too, the device's own keyboard -->
+                  <input type="text" id="payRefInput" class="co-ref" maxlength="40" placeholder="Reference no. (optional)" autocomplete="off" aria-label="Reference number (optional)" hidden />
                   <button type="button" class="co-btn primary" data-complete>Complete sale</button>
                 </div>
                 <div class="co-error" id="checkoutError" hidden></div>
@@ -661,6 +662,21 @@
               </div>
             </div>
             <div class="qs-tickbar ty-bar" hidden><button type="button" class="qs-next ty-go" disabled></button></div>
+          </section>
+          <!-- One payment type's page (owner 2026-10-17, like a QR table's): show it, and ask its reference no. -->
+          <section class="page st-page" id="payTypePage" aria-label="Payment type" hidden>
+            <div class="head">
+              <button class="sq back" id="payTypeBack" aria-label="Back to payment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl" id="ptTitle"></h1>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Show at checkout</span><span class="v"><input type="checkbox" class="sw" id="ptOn"></span></label>
+                  <label class="fr"><span class="lb">Ask for reference no.<small>An optional box after it's picked</small></span><span class="v"><input type="checkbox" class="sw" id="ptRef"></span></label>
+                </section>
+              </div>
+            </div>
           </section>
           <!-- Payment types › Add (owner 2026-10-15): a page, not a pop-up -->
           <section class="page st-page" id="payTypeAddPage" aria-label="Add payment type" hidden>
@@ -944,11 +960,11 @@
   <script src="data.js?v=30"></script>
   <script src="bo-model.js?v=134"></script>
   <script src="vendor/zxing-browser.min.js"></script>
-  <script src="printer.js?v=47"></script>
+  <script src="printer.js?v=50"></script>
   <script src="pos-core.js?v=43"></script>
   <script src="pos-sell.js?v=73"></script>
-  <script src="pos-checkout.js?v=19"></script>
-  <script src="pos-orders.js?v=24"></script>
+  <script src="pos-checkout.js?v=23"></script>
+  <script src="pos-orders.js?v=27"></script>
   <script src="pos-items.js?v=35"></script>
   <script src="pos-customers.js?v=35"></script>
   <script src="pos-settings.js?v=33"></script>

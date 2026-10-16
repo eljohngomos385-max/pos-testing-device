@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home compare</title>
+<!-- home-labs 2026-10-17: one link for the owner — pick the design, the amount of data and one or side by side;
+     each frame loads that lab's own data route -->
+<style>
+  :root { --bg: #f5f5f7; --card: #fff; --line: #e5e5ea; --ink: #1d1d1f; --ink-3: #86868b; }
+  html, body { margin: 0; height: 100%; background: var(--bg); font: 13px/1.3 Inter, system-ui, sans-serif; color: var(--ink); }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
+  label { display: flex; align-items: center; gap: 8px; color: var(--ink-3); }
+  label[hidden] { display: none; }
+  select { font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; }
+  main { flex: 1; display: flex; gap: 1px; background: var(--line); min-height: 0; }
+  .pane { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--card); }
+  .pane span { padding: 4px 12px; color: var(--ink-3); font-size: 11px; border-bottom: 1px solid var(--line); }
+  .pane div { flex: 1; overflow: hidden; }
+  .pane iframe { border: 0; transform-origin: 0 0; }
+</style>
+</head>
+<body>
+<header>
+  <label>View <select id="view">
+    <option value="one">One design</option>
+    <option value="two">Beside current</option>
+    <option value="all">All three</option>
+  </select></label>
+  <label id="designBox">Design <select id="design">
+    <option value="cur">Current</option>
+    <option value="cur2">Current + charts</option>
+    <option value="f2" selected>F v2</option>
+    <option value="k2">K v2</option>
+  </select></label>
+  <label>Data <select id="data">
+    <option value="normal">Normal</option>
+    <option value="pay3">3 payment methods</option>
+    <option value="low2">2 low stock</option>
+    <option value="low0">0 low stock</option>
+    <option value="top4">4 top sellers</option>
+    <option value="short">Short breakdown</option>
+    <option value="notarget">No target</option>
+    <option value="new">New store</option>
+    <option value="all">Everything thin</option>
+  </select></label>
+</header>
+<main id="main"></main>
+<script>
+  // Each lab keeps its own data switch: Current + F2 the /sparse/<state> route, K2 ?sparse=<state> (its server is always the demo).
+  // All open on the last 30 days so the designs show the same numbers.
+  const st = d => d === 'normal' ? 'off' : d;
+  const LAB = {
+    cur: { name: 'Current', url: d => `http://localhost:8785/sparse/${st(d)}` },
+    cur2: { name: 'Current + charts', url: d => `http://localhost:8786/sparse/${st(d)}` },
+    f2: { name: 'F v2', url: d => `http://localhost:8783/sparse/${st(d)}` },
+    k2: { name: 'K v2', url: d => `http://localhost:8784/admin/?sparse=${st(d)}&range=30d` },
+  };
+  const W = 1440;   // side by side, every frame lays out as a 1440-wide screen and is scaled down to fit its pane
+  const $ = id => document.getElementById(id), main = $('main');
+  const fit = () => main.querySelectorAll('.pane').forEach(p => {
+    const box = p.querySelector('div'), f = box.firstChild, s = Math.min(1, box.clientWidth / W);
+    Object.assign(f.style, { width: `${box.clientWidth / s}px`, height: `${box.clientHeight / s}px`, transform: `scale(${s})` });
+  });
+  const show = () => {
+    const v = $('view').value, picked = $('design').value;
+    $('designBox').hidden = v === 'all';
+    const labs = v === 'one' ? [picked] : v === 'all' ? ['cur', 'f2', 'k2'] : ['cur', picked === 'cur' ? 'f2' : picked];
+    main.innerHTML = labs.map(k => `<div class="pane">${labs.length > 1 ? `<span>${LAB[k].name}</span>` : ''}<div><iframe title="${LAB[k].name}"></iframe></div></div>`).join('');
+    main.querySelectorAll('iframe').forEach((f, i) => { f.src = LAB[labs[i]].url($('data').value); });
+    fit();
+  };
+  ['view', 'design', 'data'].forEach(id => { $(id).onchange = show; });
+  addEventListener('resize', fit);
+  show();
+</script>
+</body>
+</html>

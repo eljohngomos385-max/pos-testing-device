@@ -3210,6 +3210,7 @@ a.secondary-btn { text-decoration: none; }
   gap: 12px;
   font-variant-numeric: tabular-nums;
 }
+.rp-row > span:first-child { flex-shrink: 0; max-width: 60%; }   /* a long ref no. wraps in the value, never squeezes the label */
 .rp-item { margin: 9px 0; }
 .rp-item-name { font-weight: 800; }
 .rp-item-line { font-size: 12px; }
@@ -3699,26 +3700,22 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-lbl { color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
 .co-fig { display: block; font-size: min(38px, 100cqi / (var(--n) * .6)); font-weight: 600; letter-spacing: -.03em; line-height: 1.15; white-space: nowrap; }
 .co-fig.ph { color: var(--ink-quaternary); }
-/* Split (.co.sp): "Split payment" in the header, the parts paid under the total, the figure in a box, the keys right
-   under; the reference no. is a text box in place of the figures and keys. The total stays where the checkout puts it. */
-.sp-paid { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 10px; margin: calc(-1 * clamp(8px, 2vh, 20px)) 0 clamp(14px, 3vh, 24px);
-           color: var(--ink-tertiary); font-size: 14px; font-weight: 500; }
+/* Split (.co.sp): "Split payment" in the header; under the countdown, the total it counts down from, in the hero's gap so
+   the tiles never move (as Discount's .es-off); a part's tile carries its amount; the how-much figure in a box, the keys under */
+.sp-paid { height: 24px; margin: calc(-1 * var(--hero-gap)) 0 calc(var(--hero-gap) - 24px); padding-top: 4px; line-height: 20px;
+           color: var(--ink-tertiary); font-size: 13px; font-weight: 500; text-align: center; font-variant-numeric: tabular-nums; }
+#checkoutMethods .co-tile small { margin-left: auto; color: var(--ink-secondary); font-size: 14px; font-weight: 590; }
+#checkoutMethods .co-tile.pick { background: color-mix(in srgb, var(--ink) 10%, var(--tile)); font-weight: 590; }   /* as a picked .es-row */
 .co.sp .co-read { grid-auto-rows: auto; align-content: start; gap: 8px; }
-.co.sp .co-read > div, .sp-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 60px; padding: 0 18px;
+.co.sp .co-read > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 60px; padding: 0 18px;
            border-radius: 14px; background: var(--tile); }
-.sp-box { grid-area: read; }
 .co.sp .co-read > div + div { border-top: 0; }
-.co.sp .co-read > [data-field="amt"], .sp-box { box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+.co.sp .co-read > [data-field="amt"] { box-shadow: inset 0 0 0 1.5px var(--line-strong); }
 .co.sp .co-lbl { color: var(--ink-secondary); font-size: 15px; font-weight: 500; white-space: nowrap; }
 .co.sp .co-fig { font-size: 22px; letter-spacing: -.02em; }
-.sp-box input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; color: var(--ink); font-size: 17px; font-weight: 600; }
-.sp-box input::placeholder { color: var(--ink-quaternary); font-weight: 500; }
 .co.sp .co-top { position: relative; }
 .co.sp .co-top::after { content: 'Split payment'; position: absolute; left: 50%; bottom: 0; translate: -50% 0; line-height: 44px;
            color: var(--ink); font-size: 15px; font-weight: 600; white-space: nowrap; animation: co-in .3s var(--co-ease) both; }
-.co-keyin.sp-txt { grid-template: "read" "go" / minmax(0, 1fr); max-width: 440px; }
-.sp-paid b { color: var(--ink-secondary); font-weight: 600; }
-.sp-paid span { color: var(--ink-quaternary); }
 .co-fig.up { color: var(--ok); }
 .co-fig.down { color: var(--danger); }
 .co-caret { display: inline-block; width: 2px; height: .9em; margin-left: 2px; background: var(--ink); vertical-align: -.08em; animation: co-blink 1.1s steps(1) infinite; }
@@ -7600,6 +7597,9 @@ body.light-theme .lv .thumb { background: hsl(var(--h) 50% 92%); color: hsl(var(
 .lv .rp-item.out { text-decoration: line-through; opacity: .45; }   /* refunded in full: struck, still on the slip */
 
 .lv .fab { position: absolute; right: 34px; bottom: 32px; z-index: 2; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+           background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-raised); transition: transform .12s; }
+.lv .fab:active { transform: scale(.94); }
+.lv .fab .ic { width: 24px; height: 24px; stroke-width: 2; }
 /* the + stack (openFabMenu, pos-sell.js): the page blurred, label + round button over the +, the + turned ✕ */
 .fab-veil { --fab-dim: rgba(0, 0, 0, .45); position: fixed; inset: 0; z-index: 150; background: var(--fab-dim); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: fab-veil .2s var(--rl-ease) both; }
 body.light-theme .fab-veil { --fab-dim: rgba(255, 255, 255, .45); }
@@ -7621,9 +7621,6 @@ body.light-theme .fab-veil { --fab-dim: rgba(255, 255, 255, .45); }
 @keyframes fab-gone { to { opacity: 0; } }
 @keyframes fab-down { to { opacity: 0; transform: translateY(14px) scale(.9); } }
 @media (prefers-reduced-motion: reduce) { .fab-veil, .fab-veil *, .fab-veil .ic { animation: none !important; } }
-           background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-raised); transition: transform .12s; }
-.lv .fab:active { transform: scale(.94); }
-.lv .fab .ic { width: 24px; height: 24px; stroke-width: 2; }
 
 /* the editor: full screen, the back office's cards and fields */
 .lv .editor { position: absolute; inset: 0; z-index: 5; display: grid; grid-template-columns: minmax(128px,1fr) minmax(0,720px) minmax(128px,1fr); grid-template-rows: minmax(0,1fr);
@@ -7863,7 +7860,7 @@ input.es-ta { height: 56px; }
    Top items and Top categories (the Items page's rows), By method (one bar split by share, four rows at most), Breakdown. */
 .lv .kinds.rp-units { --seg: rgb(118 118 128 / .24); --seg-on: var(--surface-hover);   /* iOS's fill; no theme token names it */
   position: relative; order: 0; flex-basis: auto; width: min(100%, 300px); justify-self: center;   /* "Apple v3": centred, 300 at most (owner 2026-10-15) */
-  height: 30px; margin: 0; padding: 2px; gap: 0; justify-content: normal;
+  height: 30px; margin: -3px 0 0; padding: 2px; gap: 0; justify-content: normal;   /* Reports + Shift sit 3px higher, on one line (owner 2026-10-17) */
   border: 0; border-radius: 999px; background: var(--seg); box-shadow: none; }
 body.light-theme .lv .kinds.rp-units { --seg: rgb(118 118 128 / .12); --seg-on: var(--surface-2); }
 .lv .kinds.rp-units button { flex: 1; padding: 0 8px; border-radius: 999px; color: var(--ink); font-size: 13px; font-weight: 590; }
@@ -8185,10 +8182,10 @@ body .qs-pg .e-top .act.primary:disabled { color: var(--ink-quaternary); }
 .qs-pm { flex: none; width: 30px; height: 36px; border: 0; border-radius: var(--r-input); background: none; color: var(--ink-secondary); font-size: 20px; line-height: 1; }
 .qs-pm:hover { background: var(--rl-hover); color: var(--ink); }
 .qs-pg .fc .fr .qs-amt.in { flex: none; width: 52px; height: 36px; padding: 0 6px; border-radius: var(--r-input); background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair);
-.qs-pg.price .fc .fr .qs-amt.in { width: 96px; }   /* Change price: room for 9,999.99 */
                      font-size: 15px; font-weight: 600; text-align: center; }
 .qs-pg .fc .fr .qs-amt.in:focus { box-shadow: inset 0 0 0 1.5px var(--ink); }
 .qs-amt::placeholder { color: var(--ink-quaternary); font-weight: 400; }
+.qs-pg.price .fc .fr .qs-amt.in { width: 96px; }   /* Change price: room for 9,999.99 */
 .qs-to { color: var(--ink-secondary); white-space: nowrap; }
 .qs-to b { color: var(--ink); font-weight: 600; }
 .qs-empty { margin: 8px 16px; color: var(--ink-tertiary); font-size: 13px; text-align: center; }
@@ -8196,11 +8193,11 @@ body .qs-pg .e-top .act.primary:disabled { color: var(--ink-quaternary); }
 /* the Items list while on: only items (no Categories / Modifiers / Discounts, no +), the ☰ becomes × */
 body.qs-on :is(#itemsAdd, #itemsKinds) { display: none; }
 .qs-pg.dock #qsBack { visibility: hidden; }   /* beside the list, the list's × closes */
-body.qs-on.qs-price .view-items .cols > :nth-child(3) { display: revert; }   /* Change price: the price, not the stock */
-body.qs-on.qs-price .view-items .cols > :nth-child(4) { display: none; }
 /* ...and no Price: picking is by name, and the count is what stock needs (owner 2026-10-13: less to read) */
 body.qs-on .view-items .cols { grid-template-columns: minmax(0,1fr) 170px 110px; }
 body.qs-on .view-items .cols > :nth-child(3) { display: none; }
+body.qs-on.qs-price .view-items .cols > :nth-child(3) { display: revert; }   /* Change price: the price, not the stock */
+body.qs-on.qs-price .view-items .cols > :nth-child(4) { display: none; }
 @container pv (max-width: 720px) { body.qs-on .view-items .cols { grid-template-columns: minmax(0,1fr) 90px; } }
 /* a dot says "in the list" */
 #itemsRows .row.qs-tick .nm { position: relative; padding-left: 34px; }
@@ -8222,11 +8219,14 @@ body.qs-on .view-items .cols > :nth-child(3) { display: none; }
 
 /* QR codes (pos-qr.js, from qr-lab): Fulfilment types' rows; the name opens the table, the switch stays a switch */
 #qrPage .c-body { padding-top: 32px; }   /* the list stays where it sat under its old "3 of 8" line (owner 2026-10-17) */
-.view-qr .qr-row { cursor: pointer; }
+.view-qr .qr-row, #payTypesList .qr-row { cursor: pointer; }   /* Payment types' GCash, QR and your own open their page too */
 .view-qr .qr-row > .lb { all: unset; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (hover: hover) { .view-qr .qr-row:hover { background-color: var(--rl-hover); } }
+@media (hover: hover) { .view-qr .qr-row:hover, #payTypesPage:not(.ty-edit) .qr-row:hover { background-color: var(--rl-hover); } }
+#payTypesList .pt-go { display: flex; padding: 0; border: 0; background: none; color: inherit; }
+#payTypesList .fr:not(.qr-row, .add) .v::after { content: ''; width: 16px; }   /* a row with no page keeps a chevron's room: the switches line up */
 .view-qr .qr-art { display: grid; place-items: center; padding: 8px 16px 20px; }   /* the white tile alone on the page, no card (owner 2026-10-16) */
 .view-qr .qr-art svg { width: 200px; height: 200px; border-radius: var(--r-input); background: #fff; }   /* a QR needs a white tile in dark mode too */
+.view-qr .fr.qr-mid { justify-content: center; }
 
 /* ============================================================
    SELL TILES (owner 2026-10-17, from tiles-pos-lab): the Items list's phone row in a square, no badges.
@@ -8260,4 +8260,3 @@ body.qs-on .view-items .cols > :nth-child(3) { display: none; }
 .product-grid[data-pics="fill"] .pc-pic :is(.pc-name, .pc-top, .pc-pr) { text-shadow: 0 1px 2px rgb(0 0 0 / .45); }   /* bright photos (white screws) */
 .product-grid[data-pics="fill"] .pc-pic :is(.pc-top, .pc-pr) { position: relative; color: #fff; }
 .product-grid[data-pics="fill"] .pc-pic .pc-img::before { content: ''; position: absolute; inset: 0 0 55%; background: linear-gradient(rgb(0 0 0 / .7), transparent); }
-.view-qr .fr.qr-mid { justify-content: center; }

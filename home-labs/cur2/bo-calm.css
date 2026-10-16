@@ -1,0 +1,997 @@
+/* ===========================================================================
+   Calm pages — the Dashboard, Sales › Summary and Sales › Transactions, ported
+   1:1 from dashboard-calm-lab.html, sales-calendar-lab.html and
+   transactions-compact-lab.html. Rules are the labs' own, scoped under .calm-dash /
+   .calm-sales / .calm-tx (lab `main` → .c-main, `aside`
+   → .c-aside). scripts/design-check.mjs holds the two in step.
+   =========================================================================== */
+body.bo-light {
+  --b-font:      var(--po-font);
+  --b-page:      var(--po-surface);
+  --b-card:      var(--blk-bg);
+  --b-raised:    var(--blk-raised);
+  --b-line:      #ECECEC;          /* the labs' hairline; no --po/--blk token is this light */
+  --b-outline:   var(--blk-outline);
+  --b-track:     var(--meter-track);
+  --b-ink:       var(--blk-ink);
+  --b-ink-2:     var(--blk-ink-2);
+  --b-ink-3:     var(--blk-ink-3);
+  --b-up:        var(--trend-up);
+  --b-down:      var(--trend-down);
+  --b-up-tint:   var(--trend-up-tint);
+  --b-down-tint: var(--trend-down-tint);
+  --b-up-soft:   #EAF6EF;          /* a good day's cell */
+  --b-heat:      #1FA855;          /* a day over target */
+  --b-down-soft: #FCEDE9;
+  --b-data:      var(--chart-1);
+  --b-data-1:    var(--data-1);
+  --b-data-tint: #DCE9FB;
+  --b-data-ink:  #1F5FB8;
+  --b-warn-tint: #FCEFC7;
+  --b-warn:      #7A5B00;
+  --b-violet-tint: var(--po-pill-owner);   --b-violet: var(--po-pill-owner-ink);
+  --b-teal-tint: #D2EFEA;  --b-teal: #0B6B5E;     /* payment pills only: QR */
+  --b-rose-tint: #FADCE7;  --b-rose: #9E2A5A;     /* payment pills only: card */
+  --b-t-value:   27px;
+  --b-t-label:   var(--blk-t-label);
+  --b-t-meta:    var(--blk-t-meta);
+  --b-t-micro:   var(--blk-t-micro);
+  --b-r-card:    14px;
+  --b-r-cell:    10px;
+  --b-r-row:     7px;
+  --b-pad:       16px;
+  --b-gap:       14px;
+  --b-pop-w:     900px;           /* the Sales day/week pop-up: two columns of cards */
+  --b-rail-w:    340px;
+}
+/* the view is the lab's whole page: no back-office gutter or width cap */
+body.bo-light .view.calm-dash, body.bo-light .view.calm-sales, body.bo-light .view.calm-tx { padding: 0; max-width: none; min-height: 100vh; min-height: 100dvh; }
+body.bo-light .view.calm-dash.active, body.bo-light .view.calm-sales.active, body.bo-light .view.calm-tx.active { display: block; }   /* the lab body is a block; in a flex column .c-main's auto margins shrink it */
+
+/* ---------------------------------------------------------------- Dashboard */
+body.bo-light .calm-dash {
+  margin: 0; background: var(--b-page); color: var(--b-ink);
+  font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--b-t-label); -webkit-font-smoothing: antialiased;
+  line-height: normal;   /* the labs never set one; the back office's body is 1.5 */
+}
+body.bo-light .calm-dash button { font: inherit; color: inherit; }
+body.bo-light .calm-dash a { color: var(--b-ink-2); font-weight: 500; text-decoration: none; }
+body.bo-light .calm-dash a:hover { color: var(--b-ink); }
+
+body.bo-light .calm-dash .c-main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--b-rail-w)); margin: 0 auto; container-type: inline-size; }   /* one frame for Dashboard and Transactions: the page edges line up (Sales keeps its narrower 1180). Folds by the page, not the window: the sidebar takes 240px at 1024 */
+
+body.bo-light .calm-dash .bar { display: flex; align-items: center; min-height: 32px; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+body.bo-light .calm-dash .bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
+body.bo-light .calm-dash .pick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 10px 5px 12px; cursor: pointer; font-weight: 500; }
+body.bo-light :is(.calm-dash, .calm-sales) .pick .vs { font-weight: 400; color: var(--b-ink-3); }
+body.bo-light .calm-dash .pick::after { content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
+body.bo-light .calm-dash .menu { margin: 0; inset: auto; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); padding: 4px; min-width: 200px; color: var(--b-ink); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+body.bo-light :is(.calm-dash, .calm-sales) .menu h3 { margin: 0; padding: 8px 10px 4px; font-size: var(--b-t-micro); font-weight: 500; color: var(--b-ink-3); }
+body.bo-light .calm-dash .menu hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
+body.bo-light .calm-dash .menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: var(--b-r-row); cursor: pointer; }
+body.bo-light .calm-dash .menu button:hover { background: var(--b-card); }
+body.bo-light .calm-dash .menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
+body.bo-light .calm-dash .icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; padding: revert; }   /* the POS's .icon-btn zeroes it */
+body.bo-light .calm-dash .icon-btn:disabled { opacity: .35; cursor: default; }
+
+/* ---------- the layout: main column + widget rail, as the real Dashboard ---------- */
+body.bo-light .calm-dash .dash { display: grid; grid-template-columns: minmax(0, 1fr) var(--b-rail-w); gap: 12px; align-items: start; }
+body.bo-light .calm-dash .col, body.bo-light .calm-dash .rail { display: grid; gap: 12px; min-width: 0; }
+body.bo-light .calm-dash .card { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); box-shadow: var(--card-shadow); }   /* the one card shadow, bo-blocks.css */
+
+/* ---------- KPIs over the bars: one card, folder tabs. The bars sit on a white panel; the picked KPI is white too
+   and has no line under it, so it opens into the panel. The rest stay on the grey. ---------- */
+body.bo-light .calm-dash .trend { padding: 0; display: block; font: inherit; color: inherit; white-space: normal; transform: none; }   /* undo bo-blocks' .trend chip */
+body.bo-light .calm-dash .strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--b-line); }
+body.bo-light .calm-dash .stat { position: relative; min-width: 0; width: 100%; padding: 10px 20px 14px; border: 0; border-left: 1px solid var(--b-line);
+        background: none; text-align: left; cursor: pointer; }
+body.bo-light .calm-dash .stat:first-child { border-left: 0; border-top-left-radius: calc(var(--b-r-card) - 1px); }
+body.bo-light .calm-dash .stat:last-child { border-top-right-radius: calc(var(--b-r-card) - 1px); }
+body.bo-light .calm-dash .stat:hover { background: color-mix(in srgb, var(--b-raised) 50%, var(--b-card)); }
+body.bo-light .calm-dash .stat[aria-selected="true"] { background: var(--b-raised); cursor: default; }
+body.bo-light .calm-dash .stat[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--b-raised); }   /* covers the hairline */
+body.bo-light .calm-dash .panel { background: var(--b-raised); padding: 36px 20px 14px 18px; border-radius: 0 0 calc(var(--b-r-card) - 1px) calc(var(--b-r-card) - 1px); box-shadow: none; }
+body.bo-light .calm-dash .stat .lbl { color: var(--b-ink-2); }
+body.bo-light .calm-dash .stat[aria-selected="true"] .lbl { color: var(--b-ink); font-weight: 500; }
+body.bo-light .calm-dash .stat .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 7px; }   /* label and number on the same lines as the target cards beside them */
+body.bo-light .calm-dash .stat .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .chip { font-size: var(--b-t-meta); font-weight: 500; padding: 2px 8px; border-radius: 999px; background: var(--b-track);
+        color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .chip.up { background: var(--b-up-tint); color: var(--b-up); }
+body.bo-light .calm-dash .chip.down { background: var(--b-down-tint); color: var(--b-down); }
+/* The chip stays beside its number (owner): the strip folds by its own card, sidebar open or not. A stat needs
+   ~236px for "₱1,477,772 −4.5%", so four go two by two under 944px of card; on a phone the Sales strip's
+   tighter stat keeps two a row. Stock history's strip is this one too. */
+body.bo-light .calm-dash .card:has(> .strip) { container: strip / inline-size; }
+@container strip (max-width: 944px) {
+  body.bo-light .calm-dash .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.bo-light .calm-dash .strip .stat:nth-child(odd) { border-left: 0; }
+  body.bo-light .calm-dash .strip .stat:nth-child(n+3) { border-top: 1px solid var(--b-line); }
+  body.bo-light .calm-dash .strip .stat:last-child { border-top-right-radius: 0; }
+  body.bo-light .calm-dash .strip .stat:nth-child(2) { border-top-right-radius: calc(var(--b-r-card) - 1px); }
+  body.bo-light .calm-dash .strip .stat:nth-child(-n+2)::after { content: none; }
+}
+@container strip (max-width: 520px) {
+  body.bo-light .calm-dash .stat { padding: 10px 8px 12px; }
+  body.bo-light .calm-dash .stat .line { gap: 6px; }
+  body.bo-light .calm-dash .stat .val { font-size: clamp(15px, 4.4cqi, 20px); }   /* "₱1,553,477 +14.8%" in half a 358px card, a few px to spare */
+}
+
+body.bo-light .calm-dash .plot { position: relative; height: 300px; }
+body.bo-light .calm-dash .grid, body.bo-light .calm-dash .cols { position: absolute; left: 32px; right: 0; top: 0; bottom: 20px; }
+body.bo-light .calm-dash .grid { border-left: 1px solid #D6D6D6; }                                                    /* the y axis, same ink as the ₱0 line */
+body.bo-light .calm-dash .gl { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--b-outline); }
+body.bo-light .calm-dash .gl span { position: absolute; right: calc(100% + 6px); bottom: 1px; font-size: 10px; color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .gl.zero { border-top-color: #D6D6D6; border-top-style: solid; }
+body.bo-light .calm-dash .cols { display: grid; }
+body.bo-light .calm-dash .b { position: relative; height: 100%; border: 0; background: none; padding: 0; display: flex; align-items: flex-end; justify-content: center; cursor: pointer; }
+body.bo-light .calm-dash .b i { position: relative; width: min(62%, 28px); background: var(--b-data); border-radius: 4px 4px 0 0; }
+body.bo-light .calm-dash .b .x { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-size: var(--b-t-micro); color: var(--b-ink-3); white-space: nowrap; }
+body.bo-light .calm-dash .b .x.now { color: var(--b-ink); font-weight: 600; }
+body.bo-light .calm-dash .b .tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); display: none; z-index: 2;
+          background: var(--b-ink); color: #fff; font-size: var(--b-t-meta); font-weight: 500; padding: 6px 10px; border-radius: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .b .tip b { display: block; font-weight: 600; margin-bottom: 3px; }
+body.bo-light .calm-dash .b .tip span { display: flex; justify-content: space-between; gap: 16px; opacity: .65; }
+body.bo-light .calm-dash .b .tip span.on { opacity: 1; }
+body.bo-light .calm-dash .b .tip, body.bo-light .calm-dash .b .tip em { font-style: normal; }                                           /* the tip sits inside the bar's <i> */
+body.bo-light .calm-dash .cols .b:nth-child(-n+3) .tip { left: 0; transform: none; }                           /* edge bars: keep the tip inside the card */
+body.bo-light .calm-dash .cols .b:nth-last-child(-n+3) .tip { left: auto; right: 0; transform: none; }
+body.bo-light .calm-dash .cols:hover .b i { opacity: .4; }
+body.bo-light .calm-dash .cols .b:hover i, body.bo-light .calm-dash .cols .b:focus-visible i { opacity: 1; }
+body.bo-light .calm-dash .b:hover .tip, body.bo-light .calm-dash .b:focus-visible .tip { display: block; }
+body.bo-light .calm-dash .b.future { cursor: default; }
+body.bo-light .calm-dash .b.future .x { color: #C2C2C2; }
+
+/* ---------- recent transactions ---------- */
+body.bo-light .calm-dash .head { display: flex; align-items: center; gap: 10px; min-height: 36px; line-height: 18px; }
+body.bo-light .calm-dash .head .lbl { font-weight: 500; margin-right: auto; }
+body.bo-light .calm-dash .head a { font-size: var(--b-t-meta); }
+/* Out of room, a card head wraps whole items, as .bo-card-head (bo-blocks.css): nothing breaks mid-phrase */
+body.bo-light :is(.calm-dash, .calm-tx) .head { flex-wrap: wrap; row-gap: 6px; padding-block: 3px; }
+body.bo-light :is(.calm-dash, .calm-tx) .head > * { white-space: nowrap; }
+body.bo-light .calm-dash .txcard { padding-top: 0; padding-bottom: 0; overflow: hidden; container-type: inline-size; }
+body.bo-light .calm-dash .flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
+body.bo-light .calm-dash .tx { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .tx th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 10px; border-top: 1px solid var(--b-line); }
+body.bo-light .calm-dash .tx td { height: 34px; padding: 0 10px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
+body.bo-light .calm-dash .tx th:first-child, body.bo-light .calm-dash .tx td:first-child { padding-left: var(--b-pad); }
+body.bo-light .calm-dash .tx th:last-child, body.bo-light .calm-dash .tx td:last-child { padding-right: var(--b-pad); }
+body.bo-light .calm-dash .tx tr[data-receipt] { cursor: pointer; }
+body.bo-light .calm-dash .tx tr[data-receipt]:hover td { background: #F6F6F6; }
+body.bo-light .calm-dash .tx .id { font-weight: 600; }
+body.bo-light .calm-dash .tx tr.dim .id { font-weight: 400; }
+body.bo-light .calm-dash .tx .pill { margin: 0; font-size: 11.5px; font-weight: 500; padding: 2px 9px; }
+body.bo-light .calm-dash .tx tr.dim td { color: var(--b-ink-3); }
+body.bo-light .calm-dash .tx tr.dim .amt { text-decoration: line-through; }
+body.bo-light .calm-dash .tx .t { color: var(--b-ink-2); }
+body.bo-light .calm-dash .tx .cust { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+/* Eight columns in the card beside the rail (Fulfilment back, owner 2026-09-26): 10px cells and a 150px
+   customer fit the 798px card at 1440 wide. Narrower (1280 wide: 606px inside the card) Customer gives way
+   -- mostly "—", Account on the pill says a customer bought, Transactions has the name -- rather than
+   cutting every name to a few letters. */
+@container (max-width: 700px) {
+  body.bo-light .calm-dash .tx .cust { display: none; }
+  body.bo-light .calm-dash .tx :is(th, td) { padding-inline: 8px; }
+}
+body.bo-light .calm-dash .tx .mut { color: var(--b-ink-3); }
+body.bo-light .calm-dash .tx .n { text-align: right; }
+body.bo-light .calm-dash .tx td.amt { font-weight: 600; }
+
+/* ---------- the rail's widgets ---------- */
+body.bo-light .calm-dash .w .top { display: flex; justify-content: space-between; align-items: baseline; color: var(--b-ink-2); }
+body.bo-light .calm-dash .w .top a { font-size: var(--b-t-meta); }
+body.bo-light .calm-dash .w .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+body.bo-light .calm-dash .w .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .w .of { font-size: var(--b-t-label); font-weight: 400; letter-spacing: 0; color: var(--b-ink-3); margin-left: 2px; }
+body.bo-light .calm-dash .w .pct { color: var(--b-ink-2); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .w .pct.up { color: var(--b-up); }
+body.bo-light .calm-dash .w { overflow: hidden; }
+body.bo-light .calm-dash .w .rows { margin: 16px calc(-1 * var(--b-pad)) calc(-1 * var(--b-pad)); border-radius: 0; }
+body.bo-light .calm-dash .w .row, body.bo-light .calm-dash .w .row:nth-child(odd) { background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); min-height: 34px; padding: 0 var(--b-pad); }
+body.bo-light .calm-dash .w .top.band { margin-top: calc(-1 * var(--b-pad)); min-height: 37px; align-items: center; }
+body.bo-light .calm-dash .w .top.band + .rows { margin-top: 0; }
+body.bo-light .calm-dash .w:has(.line) { padding-top: 10px; }   /* label + number cards: every gap is 14 of ink — edge, label, number, line, row, edge */
+body.bo-light .calm-dash .w:has(.line) .line { margin-top: 7px; }
+body.bo-light .calm-dash .w .line + .rows { margin-top: 9px; }
+body.bo-light .calm-dash .w .rows.foot .row { min-height: 37px; }
+body.bo-light .calm-dash .w .rows.foot .amt { font-weight: 400; color: var(--b-ink-2); }   /* one bold number per target card: the sold amount */
+body.bo-light .calm-dash .w .set { margin-top: 10px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 12px; cursor: pointer; }
+
+/* ---------- rows, shared by the rail and the pop-up ---------- */
+body.bo-light .calm-dash .rows { border-radius: 10px; }
+body.bo-light .calm-dash .row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px; border-radius: var(--b-r-row); }
+body.bo-light .calm-dash .row:nth-child(odd) { background: var(--b-raised); }
+body.bo-light .calm-dash button.row { width: 100%; border: 0; text-align: left; cursor: pointer; background: none; }
+body.bo-light .calm-dash button.row:nth-child(odd) { background: var(--b-raised); }
+body.bo-light .calm-dash button.row:hover { background: #F1F1F1; }
+body.bo-light .calm-dash .row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-dash .row .nm small { display: block; color: var(--b-ink-3); font-size: var(--b-t-micro); margin-top: -2px; }
+body.bo-light .calm-dash .row .amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+body.bo-light .calm-dash .row .cmp { width: 46px; text-align: right; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .row .cmp.up { color: var(--b-up); }
+body.bo-light .calm-dash .row .cmp.down { color: var(--b-down); }
+body.bo-light .calm-dash .row .t { width: 64px; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .row.total .nm, body.bo-light .calm-dash .row.total .amt { font-weight: 600; }
+body.bo-light .calm-dash .row.dim .nm, body.bo-light .calm-dash .row.dim .amt { color: var(--b-ink-3); text-decoration: line-through; }
+body.bo-light .calm-dash .pill { font-size: 10.5px; padding: 1px 7px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); margin-left: 6px; text-decoration: none; display: inline-block; }
+body.bo-light .calm-dash .pill.warn { background: var(--b-warn-tint); color: var(--b-warn); }
+body.bo-light .calm-dash .pill.up { background: var(--b-up-tint); color: var(--b-up); }
+body.bo-light .calm-dash .pill.data { background: var(--b-data-tint); color: var(--b-data-ink); }
+body.bo-light .calm-dash .pill.down { background: var(--b-down-tint); color: var(--b-down); }
+
+/* ---------- the pop-up: one bar, or one receipt ---------- */
+body.bo-light .calm-dash dialog { border: 0; padding: 0; border-radius: var(--b-r-card); width: min(560px, calc(100vw - 32px)); max-height: 86vh; color: var(--b-ink); }
+body.bo-light .calm-dash dialog::backdrop { background: rgba(0,0,0,.28); }
+body.bo-light .calm-dash .pop { padding: 18px 20px 22px; }
+body.bo-light .calm-dash .pop .rows { background: var(--b-card); padding: 4px; }
+body.bo-light .calm-dash .p-top { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+body.bo-light .calm-dash .p-top h2 { font-size: 15px; font-weight: 600; margin: 0 auto 0 0; }
+body.bo-light .calm-dash .p-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.bo-light .calm-dash .p-head .val { font-size: var(--b-t-value); font-weight: 560; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .p-sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 4px 0 0; }
+body.bo-light .calm-dash .p-sec { margin-top: 20px; }
+body.bo-light .calm-dash .p-sec > .lbl { font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
+body.bo-light .calm-dash .p-sec > .lbl span { color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); }
+
+@container (max-width: 1000px) {
+  body.bo-light .calm-dash .dash { grid-template-columns: minmax(0, 1fr); }
+  body.bo-light .calm-dash .rail { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+@media (max-width: 760px) {
+  body.bo-light .calm-dash .c-main { padding: 16px; }
+  body.bo-light .calm-dash .panel { padding: 18px 12px 10px 16px; }
+  body.bo-light .calm-dash .plot { height: 190px; }
+  body.bo-light .calm-dash .cols.many .b:nth-child(even) .x { visibility: hidden; }
+}
+
+/* ---------------------------------------------------------------- Sales › Summary */
+body.bo-light .calm-sales {
+  margin: 0; background: var(--b-page); color: var(--b-ink);
+  font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--b-t-label); -webkit-font-smoothing: antialiased;
+  line-height: normal;   /* the labs never set one; the back office's body is 1.5 */
+}
+body.bo-light .calm-sales button { font: inherit; color: inherit; }
+body.bo-light .calm-sales .num { font-variant-numeric: tabular-nums; }
+
+/* ---------- page: the day/week opens as a pop-up over it (owner 2026-09-26), so the calendar keeps its width ---------- */
+body.bo-light .calm-sales .shell { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
+body.bo-light .calm-sales .shell.open::after { content: ""; position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.18); }   /* the backdrop; a click on it closes */
+body.bo-light .calm-sales .c-main { padding: 20px 24px 40px; max-width: 1180px; width: 100%; margin: 0 auto; container-type: inline-size; }
+
+body.bo-light .calm-sales .note { font-size: var(--b-t-meta); color: var(--b-ink-3); margin: 0 0 14px; }
+body.bo-light .calm-sales .note b { color: var(--b-ink-2); font-weight: 500; }
+
+/* ---------- top bar ---------- */
+body.bo-light .calm-sales .c-main > .bar { display: flex; align-items: center; min-height: 32px; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+body.bo-light .calm-sales .c-main > .bar h1 { font-size: 18px; font-weight: 600; margin: 0 auto 0 0; }
+body.bo-light .calm-sales .icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; padding: revert; }   /* the POS's .icon-btn zeroes it */
+body.bo-light .calm-sales .icon-btn:disabled { opacity: .35; cursor: default; }
+/* ‹ [period ▾] › is one control (owner 2026-09-26): the three share their borders; the pick's width is
+   fixed-ish so ‹ doesn't slide out from under the pointer as the month name changes */
+body.bo-light .calm-sales .nav { display: inline-flex; }
+body.bo-light .calm-sales .nav > button { height: 30px; border-radius: 0; margin-left: -1px; }
+body.bo-light .calm-sales .nav > button:first-child { margin-left: 0; border-radius: 8px 0 0 8px; }
+body.bo-light .calm-sales .nav > button:last-child { border-radius: 0 8px 8px 0; }
+body.bo-light .calm-sales .nav > .pick { min-width: 152px; justify-content: center; }
+/* Summary | Items (owner 2026-09-27): Products' .pd-switch, leading the bar with no title (2026-09-28). It takes the
+   auto margin and Items' Export sits left of ‹ period ›, so the picker doesn't move on a switch. margin-right only:
+   the left is the phone hamburger's inset (styles.css). */
+body.bo-light .calm-sales .c-main > .bar > .pd-switch { margin-right: auto; }
+/* Items' line (~610px with the phone's 46px hamburger inset) wraps where Summary's doesn't, so under 640px of page
+   ‹ period › always starts the second line and Export follows it: the picker keeps one spot on both views. */
+@container (max-width: 640px) {
+  body.bo-light .calm-sales .c-main > .bar { row-gap: 0; }
+  body.bo-light .calm-sales .c-main > .bar::after { content: ""; flex-basis: 100%; order: 1; }   /* the line break */
+  body.bo-light .calm-sales .c-main > .bar > :is(.nav, .btn) { order: 2; margin-top: 12px; }
+  body.bo-light .calm-sales .c-main > .bar > .btn { order: 3; }
+}
+
+/* ---------- 1 + 2 · one card (sales-calendar-tabs-lab.html): the strip is its folder tabs, like the Dashboard's; the calendar
+   its white panel. The picked tab is white with no line under it, so it opens into the panel; the rest stay on the grey. ---------- */
+body.bo-light .calm-sales .card { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); }
+body.bo-light .calm-sales .strip { display: grid; grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr)); border-bottom: 1px solid var(--b-line); }
+body.bo-light .calm-sales .stat { position: relative; min-width: 0; width: 100%; padding: 10px 16px 12px; border: 0; border-left: 1px solid var(--b-line); border-radius: 0;
+         background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-start; }
+body.bo-light .calm-sales .stat:first-child { border-left: 0; border-top-left-radius: calc(var(--b-r-card) - 1px); }
+body.bo-light .calm-sales .stat:last-child { border-top-right-radius: calc(var(--b-r-card) - 1px); }
+body.bo-light .calm-sales .stat:hover { background: color-mix(in srgb, var(--b-raised) 50%, var(--b-card)); }
+body.bo-light .calm-sales .stat[aria-selected="true"] { background: var(--b-raised); cursor: default; }
+body.bo-light .calm-sales .stat[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--b-raised); }   /* covers the hairline */
+body.bo-light .calm-sales .stat[aria-selected="true"] .lbl { color: var(--b-ink); font-weight: 500; }
+body.bo-light .calm-sales .card > .panel { background: var(--b-raised); padding: var(--b-pad); border-radius: 0 0 calc(var(--b-r-card) - 1px) calc(var(--b-r-card) - 1px); box-shadow: none; }
+body.bo-light .calm-sales .stat .lbl { color: var(--b-ink-2); }
+body.bo-light .calm-sales .stat .line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 6px; }
+body.bo-light .calm-sales .stat .val { font-size: 22px; font-weight: 560; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .stat .sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-sales .stat .val.up { color: var(--b-up); }
+body.bo-light .calm-sales .stat .val.down { color: var(--b-down); }
+body.bo-light .calm-sales .chip { font-size: var(--b-t-meta); font-weight: 500; padding: 2px 8px; border-radius: 999px; background: var(--b-track);
+        color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .chip.up { background: var(--b-up-tint); color: var(--b-up); }
+body.bo-light .calm-sales .chip.down { background: var(--b-down-tint); color: var(--b-down); }
+/* Best and Target sit after the tabs: not a measure, so a click opens the day / the target editor instead */
+body.bo-light .calm-sales .stat.act:hover .lbl { color: var(--b-data); }
+body.bo-light .calm-sales .stat .pct { font-size: var(--b-t-meta); font-weight: 600; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .stat .set { color: var(--b-data); font-size: var(--b-t-meta); }
+body.bo-light .calm-sales dialog.tdlg { border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); width: min(340px, calc(100vw - 32px));
+              background: var(--b-raised); color: var(--b-ink); box-shadow: 0 12px 32px rgba(0,0,0,.14); }
+body.bo-light .calm-sales dialog.tdlg::backdrop { background: rgba(0,0,0,.18); }
+body.bo-light .calm-sales .tdlg h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+body.bo-light .calm-sales .tdlg label { display: block; color: var(--b-ink-2); }
+body.bo-light .calm-sales .tdlg input { display: block; width: 100%; margin-top: 6px; font: inherit; font-size: 15px; padding: 7px 10px; border: 1px solid var(--b-outline);
+              border-radius: var(--b-r-row); font-variant-numeric: tabular-nums; color: revert; box-shadow: none; }   /* the lab's is a bare UA input */
+body.bo-light .calm-sales .tdlg p { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 8px 0 0; }
+body.bo-light .calm-sales .tdlg .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+body.bo-light .calm-sales .tdlg button { font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--b-outline); background: var(--b-raised); cursor: pointer; }
+body.bo-light .calm-sales .tdlg button[type="submit"] { background: var(--b-data); border-color: var(--b-data); color: #fff; font-weight: 500; }
+
+/* ---------- 2 · the calendar ---------- */
+body.bo-light .calm-sales .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.15fr); gap: 8px; }
+body.bo-light .calm-sales .cal .dow { text-align: center; color: var(--b-ink-3); font-size: var(--b-t-meta); padding-bottom: 2px; }
+body.bo-light .calm-sales .cell { min-height: 92px; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised);
+        padding: 9px 10px; text-align: left; display: flex; flex-direction: column; gap: 3px; min-width: 0; cursor: pointer; }
+body.bo-light .calm-sales button.cell:hover { border-color: #C9C9C9; }
+body.bo-light .calm-sales .cell .d { font-size: var(--b-t-meta); color: var(--b-ink-2); font-weight: 500; }
+body.bo-light .calm-sales .cell .v { font-size: 15px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; margin-top: auto; white-space: nowrap; }
+body.bo-light .calm-sales .cell .m { font-size: var(--b-t-micro); color: var(--b-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-sales .cell .v .sm { display: none; }   /* phone swaps in the short figure */
+body.bo-light .calm-sales .cell.good { background: var(--b-up-soft); border-color: #CFE7D9; }
+body.bo-light .calm-sales .cell.good .v { color: var(--b-up); }
+body.bo-light .calm-sales .cell.loss { background: var(--b-down-soft); border-color: #F2D3CB; }
+body.bo-light .calm-sales .cell.loss .v { color: var(--b-down); }
+body.bo-light .calm-sales .cell { position: relative; }
+body.bo-light .calm-sales .cell .tag { position: absolute; top: 8px; right: 8px; padding: 1px 7px; border-radius: 99px; background: var(--b-raised); color: var(--b-up); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b-up) 30%, transparent); font-size: var(--b-t-micro); font-weight: 600; }   /* best (slowest) day or month: its own colour, plus a white tag in the corner that names it */
+body.bo-light .calm-sales .cell .tag.slow { color: var(--b-down); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b-down) 30%, transparent); }
+body.bo-light .calm-sales .cell.shut, body.bo-light .calm-sales .cell.future { background: transparent; cursor: default; }
+body.bo-light .calm-sales .cell.shut .m, body.bo-light .calm-sales .cell.future .d { color: #B5B5B5; }
+body.bo-light .calm-sales .cell.pad { visibility: hidden; }
+body.bo-light .calm-sales .cell.today { box-shadow: inset 0 0 0 1.5px var(--b-ink); }
+body.bo-light .calm-sales .cell.sel { box-shadow: inset 0 0 0 2px var(--b-data); }
+body.bo-light .calm-sales .cell.week { background: var(--b-card); }
+body.bo-light .calm-sales .cell.week .d { color: var(--b-ink-3); }
+body.bo-light .calm-sales .legend { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 12px; color: var(--b-ink-3); font-size: var(--b-t-meta); }
+body.bo-light .calm-sales .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--b-line); }
+body.bo-light .calm-sales .legend .g { background: var(--b-up-soft); border-color: #CFE7D9; }
+body.bo-light .calm-sales .legend .r { background: var(--b-down-soft); border-color: #F2D3CB; }
+/* heat: green above the daily bar, red below, strongest at the month's best and worst day */
+body.bo-light .calm-sales .cell.heat { background: var(--heat); border-color: color-mix(in srgb, var(--heat) 85%, var(--b-ink)); }
+body.bo-light .calm-sales .cell.heat .d, body.bo-light .calm-sales .cell.heat .m { color: rgba(0,0,0,.55); }   /* grey meta vanishes on a tint; darken the ink instead */
+body.bo-light .calm-sales .legend .scale { width: 64px; height: 8px; border: 0; border-radius: 99px; margin: 0 8px; vertical-align: 0;
+                 background: linear-gradient(90deg, color-mix(in srgb, var(--b-heat) 12%, white), color-mix(in srgb, var(--b-heat) 55%, white)); }
+
+/* year: twelve tiles, same cell */
+body.bo-light .calm-sales .months { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+body.bo-light .calm-sales .months .cell { min-height: 110px; }
+body.bo-light .calm-sales .months .cell .d { font-size: var(--b-t-label); }
+body.bo-light .calm-sales .months .cell .v { font-size: 18px; }
+
+
+/* ---------- 4 · top 10 ---------- */
+body.bo-light .calm-sales .top { margin-top: 12px; background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: 0 var(--b-pad); overflow: hidden; }
+body.bo-light .calm-sales section.top { box-shadow: var(--card-shadow); }   /* the card only: the side panel's peak hour bar is an i.top */
+body.bo-light .calm-sales .flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
+body.bo-light .calm-sales .top table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .top th { white-space: nowrap; text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; }
+body.bo-light .calm-sales .top td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
+body.bo-light .calm-sales .top th:first-child, body.bo-light .calm-sales .top td:first-child { padding-left: var(--b-pad); }
+body.bo-light .calm-sales .top th:last-child, body.bo-light .calm-sales .top td:last-child { padding-right: var(--b-pad); }
+body.bo-light .calm-sales .top .empty { margin: 0; padding: 12px 0; }
+/* See all is the table's last row: a link where a footer would be, only for items and categories */
+body.bo-light .calm-sales .top .all { display: flex; align-items: center; height: 34px; padding-left: 24px; border-top: 1px solid var(--b-line); background: var(--b-raised);
+            color: var(--b-data); text-decoration: none; font-size: var(--b-t-meta); }
+body.bo-light .calm-sales .top .all:hover { background: #F6F6F6; }
+/* the name column's header is the rank-by dropdown: Items / Categories / Day / Time, same row height */
+body.bo-light .calm-sales .top th.sw { padding: 4px 12px 4px 10px; }
+body.bo-light .calm-sales .top td.nm { padding-left: 24px; }   /* names start where the dropdown's text does: 10 + 1 border + 13 padding */
+body.bo-light .calm-sales .top th .pick { padding-left: 13px; }
+body.bo-light .calm-sales .top .nm { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-sales :is(.top, .row) .nm small { color: var(--b-ink-3); font-size: var(--b-t-meta); margin-left: 8px; }
+body.bo-light .calm-sales .top .n { text-align: right; }
+body.bo-light .calm-sales .top td.amt { font-weight: 600; }
+body.bo-light .calm-sales .top .sh { width: 150px; }
+body.bo-light .calm-sales .top .sh span { display: inline-block; width: 90px; height: 6px; background: var(--b-track); border-radius: 99px; overflow: hidden; vertical-align: middle; margin-right: 8px; }
+body.bo-light .calm-sales .top .sh i { display: block; height: 100%; background: var(--b-data); border-radius: 99px; }
+body.bo-light .calm-sales .top .cmp { color: var(--b-ink-3); font-size: var(--b-t-meta); width: 64px; }
+body.bo-light .calm-sales .top .cmp.up { color: var(--b-up); }
+body.bo-light .calm-sales .top .cmp.down { color: var(--b-down); }
+
+/* ---------- 5 · payments, breakdown, staff: three equal cards, the dashboard rail's widget look ---------- */
+body.bo-light .calm-sales .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; align-items: start; }
+body.bo-light .calm-sales .w { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); padding: var(--b-pad); min-width: 0; overflow: hidden; }
+body.bo-light .calm-sales .w .band { display: flex; justify-content: space-between; align-items: center; min-height: 32px; margin-top: calc(-1 * var(--b-pad)); color: var(--b-ink-2); }
+body.bo-light .calm-sales .w .band span { color: var(--b-ink-3); font-size: var(--b-t-meta); }
+body.bo-light .calm-sales .w .rows { margin: 0 calc(-1 * var(--b-pad)) calc(-1 * var(--b-pad)); padding: 0; background: none; border-radius: 0; }
+body.bo-light .calm-sales .w .row, body.bo-light .calm-sales .w .row:nth-child(odd) { background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); min-height: 34px; padding: 0 var(--b-pad); }
+body.bo-light .calm-sales .w .empty { margin: 0; padding-bottom: 4px; }
+
+/* ---------- the day/week pop-up: centred, its sections are the dashboard's widget cards ---------- */
+body.bo-light .calm-sales .c-aside { position: fixed; z-index: 21; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: min(var(--b-pop-w), calc(100vw - 32px)); max-height: calc(100vh - 64px); max-height: calc(100dvh - 64px); overflow-y: auto; overscroll-behavior: contain;
+        background: var(--b-page); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: 0 12px 32px rgba(0,0,0,.14); padding: 18px 20px 20px; }
+body.bo-light .calm-sales .c-aside .p-sec { margin-top: 12px; background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+body.bo-light .calm-sales .c-aside .p-head { margin-top: 2px; }
+body.bo-light .calm-sales .c-aside .p-sec > .lbl { margin: 0; padding: 10px var(--b-pad); }
+body.bo-light .calm-sales .c-aside :is(.rows, .hours, .hours-x) { background: var(--b-raised); border-radius: 0; }
+body.bo-light .calm-sales .c-aside .rows { padding: 0; }
+body.bo-light .calm-sales .c-aside .row, body.bo-light .calm-sales .c-aside .row:nth-child(odd) { background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); height: 34px; padding: 0 var(--b-pad); }
+body.bo-light .calm-sales .c-aside .hours { border-top: 1px solid var(--b-line); padding: 12px var(--b-pad) 0; }
+body.bo-light .calm-sales .c-aside .hours-x { padding: 4px var(--b-pad) 10px; }
+/* two columns, By hour and Receipts across both (owner 2026-10-02: one column felt thin); one column on a phone */
+body.bo-light .calm-sales .c-aside .p-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--b-gap); align-items: start; }
+body.bo-light .calm-sales .c-aside .p-grid .wide { grid-column: 1 / -1; }
+@media (max-width: 760px) { body.bo-light .calm-sales .c-aside .p-grid { grid-template-columns: 1fr; } }
+body.bo-light .calm-sales .c-aside a.row { color: inherit; text-decoration: none; }
+body.bo-light .calm-sales .c-aside a.row:hover, body.bo-light .calm-sales .c-aside a.row:hover:nth-child(odd) { background: var(--b-track); }
+body.bo-light .calm-sales .c-aside .lbl .all { color: var(--b-ink-2); text-decoration: none; }
+body.bo-light .calm-sales .c-aside .lbl .all:hover { color: var(--b-ink); }
+body.bo-light .calm-sales .c-aside[hidden] { display: none; }
+body.bo-light .calm-sales .p-top { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+body.bo-light .calm-sales .p-top h2 { font-size: 15px; font-weight: 600; margin: 0 auto 0 0; }
+body.bo-light .calm-sales .p-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.bo-light .calm-sales .p-head .val { font-size: var(--b-t-value); font-weight: 560; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .p-sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 4px 0 0; }
+body.bo-light .calm-sales .p-sec { margin-top: 20px; }
+body.bo-light .calm-sales .p-sec > .lbl { font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
+body.bo-light .calm-sales .p-sec > .lbl span { color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); }
+body.bo-light .calm-sales .rows { background: var(--b-card); border-radius: 10px; padding: 4px; }
+body.bo-light .calm-sales .row { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: var(--b-r-row); }
+body.bo-light .calm-sales .row:nth-child(odd) { background: var(--b-raised); }
+body.bo-light .calm-sales .row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-sales .row .amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+body.bo-light .calm-sales .row .cmp { width: 46px; text-align: right; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .row .t { width: 64px; color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .row.total .nm, body.bo-light .calm-sales .row.total .amt { font-weight: 600; }
+body.bo-light .calm-sales .row.dim .nm, body.bo-light .calm-sales .row.dim .amt { color: var(--b-ink-3); text-decoration: line-through; }
+body.bo-light .calm-sales .pill { font-size: 10.5px; padding: 1px 7px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); margin-left: 6px; }
+body.bo-light .calm-sales .pill.warn { background: #FCEFC7; color: #7A5B00; }
+body.bo-light .calm-sales .pill.down { background: var(--b-down-tint); color: var(--b-down); }
+body.bo-light .calm-sales .hours { display: flex; align-items: flex-end; gap: 3px; height: 96px; background: var(--b-card); border-radius: 10px; padding: 10px 10px 0; }
+body.bo-light .calm-sales .hours div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+body.bo-light .calm-sales .hours i { display: block; background: var(--b-data-1); border-radius: 3px 3px 0 0; min-height: 2px; }
+body.bo-light .calm-sales .hours i.top { background: var(--b-data); }
+body.bo-light .calm-sales .hours-x { display: flex; gap: 3px; padding: 4px 10px 0; color: var(--b-ink-3); font-size: 10.5px; }
+body.bo-light .calm-sales .hours-x span { flex: 1; text-align: center; white-space: nowrap; }
+body.bo-light .calm-sales .more { border: 0; background: none; color: var(--b-data); cursor: pointer; padding: 8px 10px 2px; font-size: var(--b-t-meta); }
+
+/* a stat needs ~195px: month's five wrap into rows of three, year's four into two by two */
+@container (max-width: 1000px) {
+  body.bo-light .calm-sales .strip.n5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body.bo-light .calm-sales .strip.n5 .stat:nth-child(n+4) { border-top: 1px solid var(--b-line); }   /* wrapped tabs: a hairline between the rows, no gap */
+  body.bo-light .calm-sales .strip.n5 .stat:nth-child(3n+1) { border-left: 0; }
+  body.bo-light .calm-sales .strip.n5 .stat:last-child { border-top-right-radius: 0; }
+  body.bo-light .calm-sales .strip.n5 .stat:nth-child(3) { border-top-right-radius: calc(var(--b-r-card) - 1px); }   /* the tab really at the top right */
+  body.bo-light .calm-sales .strip.n5 .stat:nth-child(-n+3)::after { content: none; }   /* only the bottom row sits on the panel */
+}
+@container (max-width: 800px) {
+  body.bo-light .calm-sales .strip.n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.bo-light .calm-sales .strip.n4 .stat:nth-child(n+3) { border-top: 1px solid var(--b-line); }
+  body.bo-light .calm-sales .strip.n4 .stat:nth-child(odd) { border-left: 0; }
+  body.bo-light .calm-sales .strip.n4 .stat:last-child { border-top-right-radius: 0; }
+  body.bo-light .calm-sales .strip.n4 .stat:nth-child(2) { border-top-right-radius: calc(var(--b-r-card) - 1px); }
+  body.bo-light .calm-sales .strip.n4 .stat:nth-child(-n+2)::after { content: none; }
+}
+@container (max-width: 760px) {
+  body.bo-light .calm-sales .trio { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  body.bo-light .calm-sales .c-main { padding: 16px; }
+  body.bo-light .calm-sales .strip.n5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }   /* year's four are two by two already */
+  body.bo-light .calm-sales .strip.n5 .stat:nth-child(odd) { border-left: 0; }
+  body.bo-light .calm-sales .strip.n5 .stat:nth-child(even) { border-left: 1px solid var(--b-line); }
+  body.bo-light .calm-sales .strip.n5 .stat:nth-child(n+3) { border-top: 1px solid var(--b-line); }
+  body.bo-light .calm-sales .strip.n5 .stat:nth-child(3) { border-top-right-radius: 0; }
+  body.bo-light .calm-sales .strip.n5 .stat:nth-child(2) { border-top-right-radius: calc(var(--b-r-card) - 1px); }
+  body.bo-light .calm-sales .strip.n5 .stat:nth-child(-n+4)::after { content: none; }
+  body.bo-light .calm-sales .strip.n5 .stat:last-child { grid-column: 1 / -1; }   /* Target takes the whole last row, no blank half */
+  body.bo-light .calm-sales .stat { padding: 10px 10px 12px; }   /* half a phone: "₱321.4k +14.7%" needs the room, chip stays beside */
+  body.bo-light .calm-sales .stat .line { gap: 6px; }
+  body.bo-light .calm-sales .stat .val { font-size: clamp(17px, 5vw, 20px); }
+  body.bo-light .calm-sales .cal .cell .tag { top: 6px; right: 6px; width: 6px; height: 6px; padding: 0; font-size: 0; box-shadow: none; background: var(--b-up); }   /* no room for the word: a dot in the corner */
+  body.bo-light .calm-sales .cal .cell .tag.slow { background: var(--b-down); }
+  body.bo-light .calm-sales .cal { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  body.bo-light .calm-sales .cal .wk, body.bo-light .calm-sales .cal .dow.wk { display: none; }
+  body.bo-light .calm-sales .cell { min-height: 56px; padding: 6px; }
+  body.bo-light .calm-sales .cell .v { font-size: 11px; }
+  body.bo-light .calm-sales .cell .m, body.bo-light .calm-sales .cell .v .full { display: none; }
+  body.bo-light .calm-sales .cell .v .sm { display: inline; }
+  body.bo-light .calm-sales .months { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.bo-light .calm-sales .top .sh, body.bo-light .calm-sales .top .qty, body.bo-light .calm-sales .top .nm small { display: none; }
+  body.bo-light .calm-sales .top .avg .qty { display: table-cell; }   /* days and hours rank by the average: show it, not the total */
+  body.bo-light .calm-sales .top .avg .amt { display: none; }
+}
+
+/* ---------------------------------------------------------------- Sales › Transactions */
+body.bo-light .calm-tx { margin: 0; background: var(--b-page); color: var(--b-ink); font-family: var(--b-font), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: var(--b-t-label); -webkit-font-smoothing: antialiased; line-height: normal; }   /* the labs never set one; the back office's body is 1.5 */
+body.bo-light .calm-tx button, body.bo-light .calm-tx input { font: inherit; color: inherit; }
+body.bo-light .calm-tx a { color: var(--b-data); text-decoration: none; }
+body.bo-light .calm-tx .c-main { padding: 20px 24px 40px; max-width: calc(1180px + 12px + var(--b-rail-w)); margin: 0 auto; }
+body.bo-light .calm-tx .bar { display: flex; align-items: center; min-height: 32px; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+body.bo-light .calm-tx .bar > .pd-switch { margin-right: auto; }   /* List | Breakdown leads; Export sits left of the range, so the range holds still */
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .pick { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 10px 5px 12px; cursor: pointer; font-weight: 500; white-space: nowrap; }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .pick::after { content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
+body.bo-light .calm-tx .pick.on { background: var(--b-data-tint); border-color: var(--b-data-1); color: var(--b-data-ink); }
+body.bo-light .calm-tx .pick.on::after { border-color: var(--b-data-ink); }
+body.bo-light :is(.calm-tx, .calm-sales) .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--b-ink); background: var(--b-ink); color: #fff; border-radius: 8px; padding: 5px 12px; cursor: pointer; font-weight: 500; box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.2); }
+body.bo-light :is(.calm-tx, .calm-sales) .btn:hover { background: #1F1F1F; }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .menu { margin: 0; inset: auto; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); padding: 4px; min-width: 200px; max-height: 60vh; overflow-y: auto; color: var(--b-ink); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .menu hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .menu button { display: flex; justify-content: space-between; gap: 16px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: var(--b-r-row); cursor: pointer; }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .menu button:hover { background: var(--b-card); }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-sales) .menu button[aria-checked="true"]::after { content: "✓"; color: var(--b-data); }
+body.bo-light .calm-tx .menu .clear { color: var(--b-data); }
+body.bo-light .calm-tx .menu .none { padding: 7px 10px; color: var(--b-ink-3); }
+/* Pick a day (dayPickRow), the last row of every date menu; app only, the labs have none */
+body.bo-light :is(.calm-tx, .calm-dash, .calm-sales, .item-page) .menu .ends { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 4px 5px 10px; color: var(--b-ink-2); }
+body.bo-light .item-page .menu hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
+body.bo-light :is(.calm-tx, .calm-dash, .calm-sales, .item-page) .menu .ends input { border: 1px solid var(--b-outline); border-radius: var(--b-r-row); padding: 3px 6px; background: var(--b-raised); }
+body.bo-light .calm-tx .icon-btn { border: 1px solid var(--b-outline); background: var(--b-raised); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; padding: revert; }   /* the POS's .icon-btn zeroes it */
+body.bo-light .calm-tx .icon-btn:disabled { opacity: .35; cursor: default; }
+body.bo-light .calm-tx .note { font-size: var(--b-t-meta); color: var(--b-ink-3); margin: 0; }
+body.bo-light .calm-tx .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+body.bo-light .calm-tx .q { flex: 1; min-width: 220px; border: 1px solid var(--b-outline); background: var(--b-raised); border-radius: 8px; padding: 5px 12px; box-shadow: none; }   /* the back office's inputs carry an inset shadow */
+body.bo-light .calm-tx .q:focus { outline: 2px solid var(--b-data-1); outline-offset: -1px; }
+body.bo-light .calm-tx .card, body.bo-light .calm-cust .w { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); padding: 0 var(--b-pad); overflow: hidden; }
+body.bo-light .calm-tx .head { display: flex; align-items: center; gap: 10px; min-height: 36px; line-height: 18px; }
+body.bo-light .calm-tx .head .lbl { font-weight: 500; margin-right: auto; }
+body.bo-light .calm-tx .head .sum { margin-left: 6px; color: var(--b-ink-3); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-tx .head a { font-size: var(--b-t-meta); cursor: pointer; }
+body.bo-light .calm-tx .flush { margin: 0 calc(-1 * var(--b-pad)); overflow-x: auto; }
+body.bo-light .calm-tx .tx { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-tx .tx th { text-align: left; font-weight: 500; color: var(--b-ink-2); font-size: var(--b-t-meta); padding: 7px 12px; border-top: 1px solid var(--b-line); }
+body.bo-light .calm-tx .tx th .sort { border: 0; background: none; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+body.bo-light .calm-tx .tx td { height: 34px; padding: 0 12px; white-space: nowrap; background: var(--b-raised); border-top: 1px solid var(--b-line); }
+body.bo-light .calm-tx .tx th:first-child, body.bo-light .calm-tx .tx td:first-child { padding-left: var(--b-pad); }
+body.bo-light .calm-tx .tx th:last-child, body.bo-light .calm-tx .tx td:last-child { padding-right: var(--b-pad); }
+body.bo-light .calm-tx .tx tr[data-receipt] { cursor: pointer; }
+body.bo-light .calm-tx .tx tr[data-receipt]:hover td { background: #F6F6F6; }
+body.bo-light .calm-tx .tx .id { font-weight: 600; }
+body.bo-light .calm-tx .tx tr.dim .id { font-weight: 400; }
+body.bo-light .calm-tx .tx .pill { margin: 0; font-size: 11.5px; font-weight: 500; padding: 2px 9px; }
+body.bo-light .calm-tx .tx tr.dim td { color: var(--b-ink-3); }
+body.bo-light .calm-tx .tx tr.dim .amt { text-decoration: line-through; }
+body.bo-light .calm-tx .tx .t { color: var(--b-ink-2); }
+body.bo-light .calm-tx .tx .cust { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-tx .tx .mut { color: var(--b-ink-3); }
+body.bo-light .calm-tx .tx .n { text-align: right; }
+body.bo-light .calm-tx .tx td.amt { font-weight: 600; }
+body.bo-light .calm-tx .pager { display: flex; align-items: center; gap: 4px; min-height: 34px; margin: 0 calc(-1 * var(--b-pad)); padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); background: var(--b-raised); color: var(--b-ink-3); font-size: var(--b-t-meta); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-tx .pager span { margin-right: auto; }
+body.bo-light .calm-tx .pager .icon-btn { width: 24px; height: 24px; border-radius: 6px; }
+body.bo-light .calm-tx .card > .note { padding: 6px 0 16px; }
+body.bo-light .calm-tx .rows { border-radius: 10px; }
+body.bo-light .calm-tx .row { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px; border-radius: var(--b-r-row); }
+body.bo-light .calm-tx .row:nth-child(odd) { background: var(--b-raised); }
+body.bo-light .calm-tx .row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-tx .row .nm small { display: block; color: var(--b-ink-3); font-size: var(--b-t-micro); margin-top: -2px; }
+body.bo-light .calm-tx .row .amt { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+body.bo-light .calm-tx .row.total .nm, body.bo-light .calm-tx .row.total .amt { font-weight: 600; }
+body.bo-light .calm-tx .pill { font-size: 10.5px; padding: 1px 7px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); margin-left: 6px; text-decoration: none; display: inline-block; }
+body.bo-light .calm-tx .pill.warn { background: var(--b-warn-tint); color: var(--b-warn); }
+body.bo-light .calm-tx .pill.up { background: var(--b-up-tint); color: var(--b-up); }
+body.bo-light .calm-tx .pill.data { background: var(--b-data-tint); color: var(--b-data-ink); }
+body.bo-light .calm-tx .pill.down { background: var(--b-down-tint); color: var(--b-down); }
+body.bo-light .calm-tx dialog { border: 0; padding: 0; border-radius: var(--b-r-card); width: min(560px, calc(100vw - 32px)); max-height: 86vh; color: var(--b-ink); }
+body.bo-light .calm-tx dialog::backdrop { background: rgba(0,0,0,.28); }
+body.bo-light .calm-tx .pop { padding: 18px 20px 22px; }
+body.bo-light .calm-tx .pop .rows { background: var(--b-card); padding: 4px; }
+body.bo-light .calm-tx .p-top { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+body.bo-light .calm-tx .p-top h2 { font-size: 15px; font-weight: 600; margin: 0 auto 0 0; }
+body.bo-light .calm-tx .p-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+body.bo-light .calm-tx .p-head .val { font-size: var(--b-t-value); font-weight: 560; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-tx .p-sub { color: var(--b-ink-3); font-size: var(--b-t-meta); margin: 4px 0 0; }
+body.bo-light .calm-tx .p-sec { margin-top: 20px; }
+body.bo-light .calm-tx .p-sec > .lbl { font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
+body.bo-light .calm-tx .p-sec > .lbl span { color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); }
+/* Record payment: the account's unpaid orders, one tick each (backoffice.js openPaymentDialog) */
+body.bo-light .calm-cust .adj-field .bo-check { display: flex; align-items: center; gap: 8px; color: var(--b-ink); font-variant-numeric: tabular-nums; }
+body.bo-light .calm-cust .adj-field .bo-check input { width: auto; margin: 0; }
+/* the blocks beside the table (transactions-compact-lab.html) */
+body.bo-light :is(.calm-tx, .calm-cust) { --b-rail-w: 288px; }
+body.bo-light :is(.calm-tx, .calm-cust) .dash { display: grid; grid-template-columns: minmax(0, 1fr) var(--b-rail-w); gap: 12px; align-items: start; }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-dash) .dash.solo { grid-template-columns: minmax(0, 1fr); }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-dash) .menu .all { display: flex; gap: 4px; }
+body.bo-light :is(.calm-tx, .calm-cust, .calm-dash) .menu .all button { justify-content: center; color: var(--b-ink-2); }
+body.bo-light :is(.calm-tx, .calm-cust) .rail { display: grid; gap: 8px; min-width: 0; }
+body.bo-light :is(.calm-tx, .calm-cust) .w { padding: var(--b-pad); overflow: hidden; }
+body.bo-light :is(.calm-tx, .calm-cust) .w .top { display: flex; justify-content: space-between; align-items: baseline; color: var(--b-ink-2); }
+body.bo-light .calm-tx .w .top a { font-size: var(--b-t-meta); cursor: pointer; }
+body.bo-light .calm-tx .w .rows { margin: 0 calc(-1 * var(--b-pad)) calc(-1 * var(--b-pad)); border-radius: 0; }
+body.bo-light .calm-tx .w .row, body.bo-light .calm-tx .w .row:nth-child(odd) { background: var(--b-raised); border-radius: 0; border-top: 1px solid var(--b-line); min-height: 34px; padding: 0 var(--b-pad); }
+body.bo-light :is(.calm-tx, .calm-cust) .w .top.band { margin-top: calc(-1 * var(--b-pad)); min-height: 30px; align-items: center; }
+body.bo-light .calm-tx .w .top.band { min-height: 32px; }   /* the Sales page's band over 34px rows; Customers keeps 30 */
+body.bo-light :is(.calm-tx, .calm-cust) .w.one { padding-block: 0; }
+body.bo-light :is(.calm-tx, .calm-cust) .w .top.one { margin: 0; min-height: 40px; }
+body.bo-light :is(.calm-tx, .calm-cust) .w .nv { font-size: 16px; font-weight: 600; color: var(--b-ink); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+body.bo-light :is(.calm-tx, .calm-cust) .w .cnt { color: var(--b-ink-3); font-variant-numeric: tabular-nums; }
+@media (hover: hover) { body.bo-light :is(.calm-tx, .calm-cust) .w .cnt { opacity: 0; transition: opacity .12s; } body.bo-light :is(.calm-tx, .calm-cust) .w:hover .cnt { opacity: 1; } }   /* the second number, when you point at the block */
+body.bo-light .calm-tx .w .row[data-f] { cursor: pointer; }
+body.bo-light .calm-tx .w .row[data-f]:hover { background: #F6F6F6; }
+body.bo-light .calm-tx .w .row.on, body.bo-light .calm-tx .w .row.on:hover { background: var(--b-data-tint); }
+body.bo-light .calm-tx .w .row.on .nm { color: var(--b-data-ink); font-weight: 500; }
+body.bo-light :is(.calm-tx, .calm-cust) .w .acts { display: flex; align-items: center; gap: 8px; align-self: center; }
+/* Breakdown (?view=breakdown, owner 2026-09-28): the blocks under the filters, full width. Net sales is one line across,
+   Payment · Fulfilment · Staff side by side, both numbers always showing (no hover fade here). */
+body.bo-light .calm-tx .rail.bd { display: flex; flex-wrap: wrap; align-items: flex-start; }   /* flex, not grid: Net sales across made auto-fit keep an empty 4th column */
+body.bo-light .calm-tx .rail.bd .w { flex: 1 1 260px; min-width: 0; }
+body.bo-light .calm-tx .rail.bd .w.one { flex-basis: 100%; }
+body.bo-light .calm-tx .rail.bd .w .cnt { opacity: 1; }
+@media (max-width: 1100px) {
+  body.bo-light :is(.calm-tx, .calm-cust) .dash { grid-template-columns: minmax(0, 1fr); }
+  body.bo-light :is(.calm-tx, .calm-cust) .rail { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+@media (max-width: 760px) {
+  body.bo-light .calm-tx .c-main { padding: 16px; }
+  body.bo-light .calm-tx .q { flex-basis: 100%; }
+  body.bo-light .calm-tx .bar > .btn { order: 1; }   /* Export wraps under, after the range, so List | Breakdown and the range share row one on both views */
+}
+/* The receipts table, Dashboard card and Transactions page alike, folds by its card, not the window
+   (sidebar open or not): 8px cells under 800px of card, the optional columns out under 640px, so
+   Total stays in view on a phone. */
+body.bo-light .calm-tx .card { container-type: inline-size; }
+@container (max-width: 800px) { body.bo-light .calm-tx .tx :is(th, td) { padding-inline: 8px; } }
+@container (max-width: 640px) { body.bo-light :is(.calm-dash, .calm-tx) .tx .opt { display: none; } }
+/* Customers: its four figures are one thin strip over the filters (owner 2026-09-28; a Widgets rail before), built from
+   the rail's one-line block (the .calm-cust half of each :is() above). Always on, so the table keeps its full width.
+   Only that: its table stays a .blk-table card and its text the back office's own, so no root font here. */
+body.bo-light .calm-cust .cust-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0; margin-bottom: 12px;
+  font-size: var(--b-t-label); line-height: normal; }
+body.bo-light .calm-cust .cust-strip .top.one { align-items: center; padding: 0 var(--b-pad); border: 0; border-left: 1px solid var(--b-line); min-width: 0; }
+body.bo-light .calm-cust .cust-strip .top.one:first-child { border-left: 0; }
+body.bo-light .calm-cust .cust-strip button.top { width: 100%; background: none; font: inherit; color: var(--b-ink-2); text-align: left; cursor: pointer; }
+body.bo-light .calm-cust .cust-strip button.top:hover { background: color-mix(in srgb, var(--b-raised) 50%, var(--b-card)); }
+body.bo-light .calm-cust .cust-strip button.top[aria-pressed="true"] { background: var(--b-data-tint); color: var(--b-data-ink); }
+@media (hover: hover) { body.bo-light .calm-cust .cust-strip:hover .cnt { opacity: 0; } body.bo-light .calm-cust .cust-strip .top:hover .cnt { opacity: 1; } }   /* one figure's note at a time */
+@media (max-width: 900px) {   /* two by two */
+  body.bo-light .calm-cust .cust-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.bo-light .calm-cust .cust-strip .top.one:nth-child(odd) { border-left: 0; }
+  body.bo-light .calm-cust .cust-strip .top.one:nth-child(n+3) { border-top: 1px solid var(--b-line); }
+}
+@media (max-width: 560px) {   /* a phone's half can't hold label and number on one line: label over number, no note */
+  body.bo-light .calm-cust .cust-strip .top.one { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 8px 12px; }
+  body.bo-light .calm-cust .cust-strip .top.one > span:first-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  body.bo-light .calm-cust .cust-strip .cnt { display: none; }
+  body.bo-light .calm-cust .cust-strip .acts { align-self: flex-start; }
+}
+body.bo-light .calm-cust .w .cnt.down { color: var(--b-down); }   /* Near limit, when anyone is */
+/* A quarter of the strip can't always hold "Outstanding credit · 20 active debtors · ₱133,377": the label never wraps,
+   the note gives way with an ellipsis, and the cell's title carries it whole. */
+body.bo-light .calm-cust .w .top > span:first-child { white-space: nowrap; }
+body.bo-light .calm-cust .w .acts { min-width: 0; }
+body.bo-light .calm-cust .w .cnt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A customer's Transactions share the Transactions page's cells (txPayStatus): same pill, same muted Completed.
+   Active, the everyday owing state, is blue; Clear stays muted text. */
+body.bo-light .calm-cust .pill { display: inline-block; font-size: 11.5px; font-weight: 500; padding: 2px 9px; border-radius: 99px; background: var(--b-track); color: var(--b-ink-2); }
+body.bo-light .calm-cust .pill.warn { background: var(--b-warn-tint); color: var(--b-warn); }
+body.bo-light .calm-cust .pill.down { background: var(--b-down-tint); color: var(--b-down); }
+body.bo-light .calm-cust .mut { color: var(--b-ink-3); }
+body.bo-light .calm-cust .status-pill.info { background: var(--b-data-tint); color: var(--b-data-ink); }
+
+/* Payment pills (owner, 2026-09-26: "someone pays cash, someone pays through a different method" at a
+   glance). One soft hue per method, the Low/Out pills' tint + deep ink; split and custom stay grey.
+   A voided or saved row's pill goes grey with the row, so its Status pill is the only colour left. */
+body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-cash   { background: var(--b-up-tint);     color: var(--b-up); }
+body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-gcash  { background: var(--b-data-tint);   color: var(--b-data-ink); }
+body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-maya   { background: var(--b-violet-tint); color: var(--b-violet); }
+body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-qr     { background: var(--b-teal-tint);   color: var(--b-teal); }
+body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-card   { background: var(--b-rose-tint);   color: var(--b-rose); }
+body.bo-light :is(.calm-dash, .calm-tx, .calm-cust) .pill.pay-credit { background: var(--b-warn-tint);   color: var(--b-warn); }
+body.bo-light :is(.calm-dash, .calm-tx) .tx tr.dim .pill[class*="pay-"] { background: var(--b-track); color: var(--b-ink-3); }
+
+/* ---------------------------------------------------------------- Sales › Items (sales-items-lab-3.html, 2026-09-30)
+   The Summary's month in charts: a strip, Categories, Top 10 items, What moved (comparing only), Bought together.
+   Each card picks its view from the app's .pick dropdown on its band; the comparison is the Summary's Compare to. Scoped to .si,
+   so the Summary's .card / .strip / .chip / .row keep their own look. */
+body.bo-light .calm-sales .si {
+  /* one hue, dark → light, for the donut's top 5 (palette steps 550 → 250); Other is grey */
+  --s1: #1C5CAB; --s2: #256ABF; --s3: var(--b-data); --s4: #5598E7; --s5: #86B6EF; --s-other: #D4D4D4;
+}
+body.bo-light .calm-sales .si .stack { display: grid; gap: 12px; }
+body.bo-light .calm-sales .si .card { background: var(--b-raised); overflow: hidden; }
+body.bo-light .calm-sales .si .band { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-2); font-weight: 500; }
+body.bo-light .calm-sales .si .band .r { margin-left: auto; color: var(--b-ink-3); font-weight: 400; font-size: var(--b-t-meta); display: inline-flex; align-items: center; gap: 12px; }
+/* the card's view dropdown: the app's .pick, sized to the band */
+body.bo-light .calm-sales .si .band .pick { margin-left: auto; padding: 3px 8px 3px 10px; font-size: var(--b-t-meta); color: var(--b-ink); }
+body.bo-light .calm-sales .si .band .r + .pick { margin-left: 6px; }
+body.bo-light .calm-sales .si .band .menu { min-width: 140px; }
+body.bo-light .calm-sales .si .cut { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--b-data-tint); color: var(--b-data-ink); border: 0; font-size: var(--b-t-meta); cursor: pointer; }
+body.bo-light .calm-sales .si .key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+body.bo-light .calm-sales .si .foot { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 var(--b-pad); border-top: 1px solid var(--b-line); }
+body.bo-light .calm-sales .si .link { color: var(--b-data); font-weight: 500; text-decoration: none; }
+body.bo-light .calm-sales .si .link:hover { text-decoration: underline; }
+body.bo-light .calm-sales .si .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+body.bo-light .calm-sales .si .up { color: var(--b-up); }
+body.bo-light .calm-sales .si .down { color: var(--b-down); }
+body.bo-light .calm-sales .si .new, body.bo-light .calm-sales .si .muted { color: var(--b-ink-3); }
+body.bo-light .calm-sales .si p.empty { margin: 0; padding: 14px var(--b-pad); color: var(--b-ink-3); }
+
+/* the strip: the Summary's joined strip, number left, chip right on the same line; a count links to its list */
+body.bo-light .calm-sales .si .strip { grid-template-columns: repeat(5, minmax(0, 1fr)); }   /* the strip is the card here: keep its bottom hairline */
+body.bo-light .calm-sales .si .strip > * { padding: 14px var(--b-pad); color: inherit; text-decoration: none; }
+body.bo-light .calm-sales .si .strip > * + * { box-shadow: inset 1px 0 0 var(--b-line); }
+body.bo-light .calm-sales .si .strip a { transition: background .12s; }
+body.bo-light .calm-sales .si .strip a:hover { background: #FAFAFA; }
+body.bo-light .calm-sales .si .strip a .l::after { content: " ›"; color: var(--b-ink-3); opacity: 0; transition: opacity .12s; }
+body.bo-light .calm-sales .si .strip a:hover .l::after { opacity: 1; }
+body.bo-light .calm-sales .si .strip .l { color: var(--b-ink-2); font-weight: 500; }
+body.bo-light .calm-sales .si .strip .v { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+body.bo-light .calm-sales .si .strip .v small { font-size: var(--b-t-meta); font-weight: 400; color: var(--b-ink-3); letter-spacing: 0; }
+body.bo-light .calm-sales .si .chip { font-size: var(--b-t-micro); font-weight: 600; padding: 2px 6px; border-radius: 6px; letter-spacing: 0; }
+body.bo-light .calm-sales .si .chip.flat { background: var(--b-track); color: var(--b-ink-2); }
+
+/* tables */
+body.bo-light .calm-sales .si table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-sales .si th { height: 32px; padding: 0 var(--b-pad); background: var(--b-card); border-bottom: 1px solid var(--b-line); color: var(--b-ink-2); font-weight: 500; text-align: left; white-space: nowrap; }
+body.bo-light .calm-sales .si th[data-act] { cursor: pointer; }
+body.bo-light .calm-sales .si th[data-act]:hover, body.bo-light .calm-sales .si th[aria-sort] { color: var(--b-ink); }
+body.bo-light .calm-sales .si td { height: 34px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); }
+body.bo-light .calm-sales .si tr:last-child td { border-bottom: 0; }
+body.bo-light .calm-sales .si tbody tr:hover td { background: #FAFAFA; }
+body.bo-light .calm-sales .si tbody tr.on td { background: var(--b-data-tint); }
+body.bo-light .calm-sales .si [data-ct] { cursor: pointer; }
+body.bo-light .calm-sales .si :is(th[data-act], [data-ct][tabindex]):focus-visible { outline: 2px solid var(--b-data-1); outline-offset: -2px; }
+body.bo-light .calm-sales .si .nm small { margin-left: 8px; color: var(--b-ink-3); font-size: var(--b-t-meta); }
+body.bo-light .calm-sales .si .ib { display: inline-block; width: 36px; height: 6px; border-radius: 3px; background: var(--b-track); margin-right: 12px; vertical-align: 1px; overflow: hidden; }
+body.bo-light .calm-sales .si .ib i { display: block; height: 100%; border-radius: 3px; background: var(--b-data); }
+body.bo-light .calm-sales .si td.empty { height: 64px; text-align: center; color: var(--b-ink-3); }
+body.bo-light .calm-sales .si .pairs td .to, body.bo-light .calm-sales .si .ring td .to { margin: 0 8px; color: var(--b-ink-3); }
+body.bo-light .calm-sales .si .bo-pager { border-top: 1px solid var(--b-line); }
+
+/* donut: top 5 + Other, the legend is the ranked list beside it */
+body.bo-light .calm-sales .si .donut { display: grid; grid-template-columns: 240px minmax(0, 1fr); align-items: center; }
+body.bo-light .calm-sales .si .donut .pie { display: grid; place-items: center; padding: 18px 0; border-right: 1px solid var(--b-line); position: relative; }
+body.bo-light .calm-sales .si .donut .pie .mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+body.bo-light .calm-sales .si .donut .pie .mid b { font-size: 18px; font-weight: 600; }
+body.bo-light .calm-sales .si .donut path { cursor: pointer; stroke: #fff; stroke-width: 2; transition: opacity .15s; }
+body.bo-light .calm-sales .si .donut.hl path:not(.hot), body.bo-light .calm-sales .si .donut.hov path:not(.lit) { opacity: .35; }
+body.bo-light .calm-sales .si .donut tr.lit td { background: #FAFAFA; }
+body.bo-light .calm-sales .si .donut td:first-child { width: 20px; padding-right: 0; }
+body.bo-light .calm-sales .si .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; }
+body.bo-light .calm-sales .si tr.other td { color: var(--b-ink-2); }
+
+/* map: size = revenue, colour = vs the period before (or the margin, comparison off) */
+body.bo-light .calm-sales .si .tmap { position: relative; margin: 10px; }
+body.bo-light .calm-sales .si .tmap button { position: absolute; border: 0; border-radius: 6px; padding: 8px 10px; text-align: left; overflow: hidden; display: flex; flex-direction: column; gap: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.04); transition: filter .12s; cursor: pointer; }
+body.bo-light .calm-sales .si .tmap button:hover { filter: brightness(.96); }
+body.bo-light .calm-sales .si .tmap button.on { box-shadow: inset 0 0 0 2px var(--b-data); }
+body.bo-light .calm-sales .si .tmap b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+body.bo-light .calm-sales .si .tmap span { color: var(--b-ink-2); font-size: var(--b-t-meta); white-space: nowrap; }
+body.bo-light .calm-sales .si .tmap em { font-style: normal; font-size: var(--b-t-micro); font-weight: 600; }
+body.bo-light .calm-sales .si .tmap .sm :is(span, em), body.bo-light .calm-sales .si .tmap .xs b { display: none; }
+body.bo-light .calm-sales .si .scale { display: inline-flex; align-items: center; gap: 6px; }
+body.bo-light .calm-sales .si .scale i { width: 44px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, #F2B4A5, var(--b-track), #9FD6B9); }
+body.bo-light .calm-sales .si .scale.m i { background: linear-gradient(90deg, color-mix(in srgb, var(--b-data-1) 15%, #F7F7F7), var(--b-data-1)); }
+
+/* bars: profit (deep) inside revenue (light), one pesos axis. Not the Summary's striped .row. */
+body.bo-light .calm-sales .si .bars .row { display: grid; grid-template-columns: 24px minmax(160px, 260px) minmax(0, 1fr) 92px 64px 64px; align-items: center; gap: 0 12px; height: 38px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); border-radius: 0; background: none; }
+body.bo-light .calm-sales .si .bars.flat .row { grid-template-columns: 24px minmax(160px, 260px) minmax(0, 1fr) 92px 64px; }
+body.bo-light .calm-sales .si .bars .row:hover { background: #FAFAFA; }
+body.bo-light .calm-sales .si .bars .row.on { background: var(--b-data-tint); }
+body.bo-light .calm-sales .si .bars .row:nth-last-child(2) { border-bottom: 0; }   /* the last row, before the foot */
+body.bo-light .calm-sales .si .bars .hd { height: 32px; background: var(--b-card); color: var(--b-ink-2); font-weight: 500; }
+body.bo-light .calm-sales .si .bars .hd:hover { background: var(--b-card); }
+body.bo-light .calm-sales .si .bars .rk { color: var(--b-ink-3); font-size: var(--b-t-meta); text-align: right; }
+body.bo-light .calm-sales .si .bars .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-sales .si .bars .nm small { margin-left: 0; }
+body.bo-light .calm-sales .si .bars .trk { position: relative; height: 14px; }
+body.bo-light .calm-sales .si .bars :is(.rev, .pf) { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; }
+body.bo-light .calm-sales .si .bars .rev { background: var(--b-data-1); }
+body.bo-light .calm-sales .si .bars .pf { background: var(--b-data); }
+body.bo-light .calm-sales .si .bars .v { font-weight: 600; }
+
+/* what moved: slope, split, lists */
+body.bo-light .calm-sales .si .slope .pad { padding: 12px var(--b-pad) 8px; }
+body.bo-light .calm-sales .si .slope svg { display: block; width: 100%; height: auto; overflow: visible; }
+body.bo-light .calm-sales .si .slope text { font-size: 12px; fill: var(--b-ink); }
+body.bo-light .calm-sales .si .slope .ax { fill: var(--b-ink-2); font-weight: 500; }
+body.bo-light .calm-sales .si .slope .muted { fill: var(--b-ink-3); }
+body.bo-light .calm-sales .si .slope tspan.up { fill: var(--b-up); font-weight: 600; }
+body.bo-light .calm-sales .si .slope tspan.down { fill: var(--b-down); font-weight: 600; }
+body.bo-light .calm-sales .si .slope .axl { stroke: var(--b-line); stroke-width: 1; }
+body.bo-light .calm-sales .si .slope .ln { stroke-width: 2; }
+body.bo-light .calm-sales .si .slope .ln.up { stroke: #5BB88A; }
+body.bo-light .calm-sales .si .slope .ln.down { stroke: #E88A74; }
+body.bo-light .calm-sales .si .slope .ln.same { stroke: #B5B5B5; }
+body.bo-light .calm-sales .si .slope .hit { stroke: transparent; stroke-width: 12; cursor: pointer; }
+body.bo-light .calm-sales .si .slope circle.was { fill: #B5B5B5; }
+body.bo-light .calm-sales .si .slope circle.up { fill: var(--b-up); }
+body.bo-light .calm-sales .si .slope circle.down { fill: var(--b-down); }
+body.bo-light .calm-sales .si .slope g:hover .ln { stroke-width: 3; }
+body.bo-light .calm-sales .si .rank g { cursor: pointer; }
+body.bo-light .calm-sales .si .slope .two { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+body.bo-light .calm-sales .si h4 { margin: 0 0 4px; font-size: var(--b-t-label); font-weight: 600; }
+body.bo-light .calm-sales .si .mvs { display: grid; grid-template-columns: 1fr 1fr; }
+body.bo-light .calm-sales .si .mvs > div + div { box-shadow: inset 1px 0 0 var(--b-line); }
+body.bo-light .calm-sales .si .mvs h4 { margin: 0; padding: 10px var(--b-pad) 8px; border-bottom: 1px solid var(--b-line); }
+body.bo-light .calm-sales .si .mv { display: flex; align-items: center; height: 34px; padding: 0 var(--b-pad); border-bottom: 1px solid var(--b-line); gap: 10px; }
+body.bo-light .calm-sales .si .mv:last-child { border-bottom: 0; }
+body.bo-light .calm-sales .si .mv .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-sales .si .mv .cmp { width: 52px; text-align: right; }
+
+/* bought together: network, ring, table */
+body.bo-light .calm-sales .si .net { padding: 8px var(--b-pad); }
+body.bo-light .calm-sales .si :is(.net, .ring) svg { display: block; width: 100%; height: auto; overflow: visible; }
+body.bo-light .calm-sales .si :is(.eg, .ch) { stroke: var(--b-data); fill: none; stroke-linecap: round; cursor: pointer; }
+body.bo-light .calm-sales .si .net .hit { stroke: transparent; stroke-width: 14; cursor: pointer; }
+body.bo-light .calm-sales .si .el { font-size: 10.5px; font-weight: 600; fill: var(--b-ink-2); paint-order: stroke; stroke: #fff; stroke-width: 3px; pointer-events: none; opacity: 0; }
+body.bo-light .calm-sales .si .hkhl .el.lit { opacity: 1; }
+body.bo-light .calm-sales .si :is(.net, .ring) circle { fill: var(--b-data-1); stroke: #fff; stroke-width: 2; cursor: pointer; }
+body.bo-light .calm-sales .si .nl { font-size: 11px; fill: var(--b-ink); paint-order: stroke; stroke: #fff; stroke-width: 3px; }
+body.bo-light .calm-sales .si .nl.hb { font-weight: 600; }
+body.bo-light .calm-sales .si .ring { display: grid; grid-template-columns: 540px minmax(0, 1fr); }
+body.bo-light .calm-sales .si .ring .pic { padding: 8px; }
+body.bo-light .calm-sales .si .ring svg text { font-size: 11px; fill: var(--b-ink); }
+body.bo-light .calm-sales .si .ring > div + div { border-left: 1px solid var(--b-line); display: flex; align-items: center; }
+body.bo-light .calm-sales .si .ring td:nth-child(3) { display: none; }
+body.bo-light .calm-sales .si :is(.net, .ring) [data-hk] { transition: opacity .12s; }
+body.bo-light .calm-sales .si .hkhl :is(.net, .ring) [data-hk]:not(.lit) { opacity: .12; }
+body.bo-light .calm-sales .si .hkhl .ring tr.lit td { background: #FAFAFA; }
+
+/* the pages behind Show all: Items › Title, a search */
+body.bo-light .calm-sales .si > .bar h1 { display: flex; align-items: baseline; gap: 8px; }
+body.bo-light .calm-sales .si > .bar h1 .sl { color: var(--b-ink-3); font-weight: 400; }
+body.bo-light .calm-sales .si > .bar h1 small { margin-left: 4px; font-size: var(--b-t-meta); font-weight: 400; color: var(--b-ink-3); }
+body.bo-light .calm-sales .si .filters { display: flex; gap: 8px; margin-bottom: 12px; }
+body.bo-light .calm-sales .si .search { flex: 1; max-width: 360px; height: 32px; padding: 0 12px; border: 1px solid var(--b-outline); border-radius: 8px; background: var(--b-raised); font: inherit; color: var(--b-ink); outline: 0; }
+body.bo-light .calm-sales .si .search:focus { border-color: var(--b-data); box-shadow: 0 0 0 3px var(--b-data-tint); }
+
+/* Compare with {prev}: an on/off switch in the bar, the height of the period picker */
+
+/* the hover tip: every mark carries its numbers */
+body.bo-light .calm-sales .si-tip { position: fixed; z-index: 30; pointer-events: none; opacity: 0; background: var(--b-raised); border: 1px solid var(--b-outline); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.08); padding: 8px 10px; font-size: var(--b-t-meta); min-width: 160px; }
+body.bo-light .calm-sales .si-tip b { display: block; margin-bottom: 4px; font-weight: 600; }
+body.bo-light .calm-sales .si-tip div { display: flex; justify-content: space-between; gap: 16px; color: var(--b-ink-2); }
+body.bo-light .calm-sales .si-tip em { font-style: normal; color: var(--b-ink); font-weight: 600; }
+
+@container (max-width: 860px) {
+  body.bo-light .calm-sales .si .strip { grid-template-columns: repeat(2, 1fr); }
+  body.bo-light .calm-sales .si .strip > :nth-child(odd) { box-shadow: none; }
+  body.bo-light .calm-sales .si .strip > :nth-child(n+3) { border-top: 1px solid var(--b-line); }
+}
+@container (max-width: 760px) {
+  body.bo-light .calm-sales .si .band:has(.pick) { flex-wrap: wrap; row-gap: 2px; padding-top: 6px; padding-bottom: 6px; }
+  body.bo-light .calm-sales .si .band:has(.pick) .r { order: 2; flex-basis: 100%; margin-left: 0; }
+  body.bo-light .calm-sales .si .band:has(.pick) .pick { margin-left: auto; }
+  body.bo-light .calm-sales .si .donut { grid-template-columns: 1fr; }
+  body.bo-light .calm-sales .si .donut .pie { border-right: 0; border-bottom: 1px solid var(--b-line); }
+  body.bo-light .calm-sales .si .donut :is(th, td):nth-child(4), body.bo-light .calm-sales .si .pairs td:nth-child(3), body.bo-light .calm-sales .si .pairs .ib { display: none; }
+  body.bo-light .calm-sales .si .bars .row { grid-template-columns: 20px minmax(0, 1fr) 80px 52px; }
+  body.bo-light .calm-sales .si .bars .row > :is(:nth-child(3), :nth-child(5)) { display: none; }
+  body.bo-light .calm-sales .si .bars.flat .row { grid-template-columns: 20px minmax(0, 1fr) 80px; }
+  /* the items table keeps Item, Revenue and Trend */
+  body.bo-light .calm-sales .si table.it :is(th, td):is(:nth-child(2), :nth-child(4), :nth-child(5)), body.bo-light .calm-sales .si table.it .ib { display: none; }
+  body.bo-light .calm-sales .si table:is(.it, .ct, .us) :is(th, td) { padding: 0 10px; }
+  body.bo-light .calm-sales .si table.ct :is(th, td):nth-child(4) { display: none; }
+  body.bo-light .calm-sales .si table.ct .ib { display: none; }
+  body.bo-light .calm-sales .si .nm small { display: none; }
+  body.bo-light .calm-sales .si .slope .two, body.bo-light .calm-sales .si .mvs { grid-template-columns: 1fr; }
+  body.bo-light .calm-sales .si .mvs > div + div { box-shadow: inset 0 1px 0 var(--b-line); }
+  body.bo-light .calm-sales .si .ring { grid-template-columns: 1fr; }
+  body.bo-light .calm-sales .si .ring > div + div { border-left: 0; border-top: 1px solid var(--b-line); }
+  /* wide charts keep readable text and scroll inside their card */
+  body.bo-light .calm-sales .si :is(.slope .pad, .net) { overflow-x: auto; }
+  body.bo-light .calm-sales .si :is(.slope, .net) svg { min-width: 760px; }
+  body.bo-light .calm-sales .si > .bar h1 { flex-basis: 100%; flex-wrap: wrap; }
+}
+/* Items' pages: Items › Title, Items a link back */
+body.bo-light .view[data-view="sales"] h1 .crumb { color: var(--b-ink-3); font-weight: 500; text-decoration: none; }
+body.bo-light .view[data-view="sales"] h1 .crumb:hover { color: var(--b-ink); }
+
+/* A joined KPI strip: one card, a hairline between the figures — the Dashboard's strip without its
+   tabs (Supplier and Customer pages, 2026-09-26). `<div class="kpi-row joined">` around kpi()s. */
+body.bo-light .kpi-row.joined { gap: 0; grid-template-columns: repeat(auto-fit, minmax(min(216px, 100%), 1fr));   /* 216: "Sep 20, 2026 ₱7,375.19" keeps its note beside */
+  background: var(--blk-bg); box-shadow: inset 0 0 0 1px var(--blk-outline), var(--card-shadow); border-radius: var(--blk-r); }
+body.bo-light .kpi-row.joined > .blk-kpi { background: none; box-shadow: none; border-radius: 0; }
+body.bo-light .kpi-row.joined > .blk-kpi + .blk-kpi { box-shadow: inset 1px 0 0 var(--blk-outline); }
+/* The customer's account card (owner 2026-09-26): one Dashboard card — head band (status, Edit), the joined
+   strip laid flat inside it, a hairline, the facts. Replaces the separate strip + Details card. */
+body.bo-light .view-customers .cust-sum { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+body.bo-light .view-customers .cust-sum > .bo-card-head { padding: 0 var(--b-pad); min-height: 44px; align-items: center; }
+body.bo-light .view-customers .cust-sum > .kpi-row.joined { margin: 0; background: none; box-shadow: none; border-radius: 0; border-block: 1px solid var(--b-line); }
+body.bo-light .view-customers .cust-sum > .cust-facts { margin: 0; padding: 12px var(--b-pad) 14px; }
+/* Customers list: fits beside the rail; if a long name still outgrows it, the card scrolls rather than clipping Status. */
+body.bo-light .calm-cust .cust-table { min-width: 0; }
+/* Seven columns beside the rail: a name truncates at 160px (full name in title, like the Dashboard's Customer
+   cell); under 880px of card (1440 wide) Phone steps out -- it is on the account page and in search; under
+   760px (1280 wide) Orders too, Spent carries the volume. */
+body.bo-light .calm-cust .cust-table td:first-child { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+body.bo-light .calm-cust #custList .blk-table { container-type: inline-size; }
+@container (max-width: 880px) { body.bo-light .calm-cust .cust-table :is(th, td):nth-child(2) { display: none; } }
+@container (max-width: 760px) { body.bo-light .calm-cust .cust-table :is(th, td):nth-child(3) { display: none; } }
+body.bo-light .calm-cust #custList .table-wrap { overflow-x: auto; }
+/* The statement's range sits together after its count, Export at the far end — not spread by space-between. */
+body.bo-light .view-customers .st-head { justify-content: flex-start; gap: 8px; }
+body.bo-light .view-customers .st-head > .bo-date { height: 26px; font-size: var(--blk-t-meta); }
+body.bo-light .view-customers .st-head > .bo-card-sub { margin-right: 0; }
+body.bo-light .view-customers .st-head > .bo-date:first-of-type { margin-left: auto; }
+
+/* ================================================================== ONE DROPDOWN LANGUAGE (owner 2026-09-26)
+   Every filter, check-menu, range menu and <select> wears the Dashboard's .pick + .menu (above): a hairline
+   28px button with the drawn chevron; a white card, --b-r-cell radius, the soft drop, 4px inset; 7px 10px rows,
+   grey hover, a blue ✓ on the right for what's picked. A set filter or a toggle that's on takes the
+   Transactions .pick.on tint. Written once here for every page; the calm pages keep their own copies above. */
+body.bo-light { --b-pop-shadow: 0 8px 24px rgba(0,0,0,.08); }   /* the Dashboard menu's drop */
+/* closed */
+body.bo-light .view :is(.list-filters .bo-select:not([multiple]), .ms-pick > summary, .pd-cols > summary, .range-btn, .list-filters > .bo-check) {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; box-sizing: border-box;
+  height: var(--btn-h); margin: 0; padding: 0 10px 0 12px;
+  border: 1px solid var(--b-outline); border-radius: var(--btn-r); background: var(--b-raised); box-shadow: none;
+  font: inherit; font-size: var(--b-t-label); font-weight: 500; line-height: normal; color: var(--b-ink);
+  white-space: nowrap; cursor: pointer; list-style: none; user-select: none;
+}
+body.bo-light .view .list-filters > .bo-check { padding-right: 12px; }
+body.bo-light .view .list-filters > .bo-check > svg { flex: none; color: var(--b-ink-3); }
+body.bo-light .view .list-filters > .bo-check > input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+body.bo-light .view :is(.ms-pick > summary, .pd-cols > summary)::-webkit-details-marker { display: none; }
+body.bo-light .view :is(.ms-pick > summary, .pd-cols > summary, .range-btn)::after {
+  content: ""; flex: none; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0;
+  transform: translateY(-2px) rotate(45deg); margin-left: 2px;
+}
+body.bo-light .view .range-btn > svg { display: none; }   /* the drawn chevron replaces its icon */
+body.bo-light .view .range-btn .rp-date { padding: 0; border: 0; font: inherit; font-weight: 400; color: var(--b-ink-3); }   /* like the Dashboard's "vs …" */
+body.bo-light .view :is(.list-filters .bo-select, .ms-pick > summary, .pd-cols > summary, .range-btn):focus-visible,
+body.bo-light .view .list-filters > .bo-check:has(input:focus-visible) { outline: 2px solid var(--b-data-1); outline-offset: -1px; }
+/* on: a filter is set, a toggle is on */
+body.bo-light .view :is(.list-filters .bo-select:not([multiple]):has(option:checked:not([value=""])), .ms-pick:has(input:checked) > summary,
+  .list-filters > .bo-check:has(input:checked)) { background: var(--b-data-tint); border-color: var(--b-data-1); color: var(--b-data-ink); }
+body.bo-light .view .ms-pick:has(input:checked) > summary::after { border-color: var(--b-data-ink); }
+body.bo-light .view .list-filters > .bo-check:has(input:checked) > svg { color: var(--b-data-ink); }
+
+/* open: the card. <details> menus hang from the button's left edge; backoffice.js adds .flip (right edge)
+   when that would run off the page. The range menu keeps its own right-edge placement. */
+body.bo-light .view :is(.ms-pick, .pd-cols) { position: relative; }
+body.bo-light .view :is(.ms-menu, .pd-cols-menu, .rp-menu) {
+  min-width: 200px; max-height: 60vh; overflow-y: auto; padding: 4px;
+  background: var(--b-raised); border: 1px solid var(--b-line); border-radius: var(--b-r-cell); box-shadow: var(--b-pop-shadow);
+  color: var(--b-ink); font-size: var(--b-t-label); font-weight: 400; line-height: normal;
+}
+body.bo-light .view :is(.ms-menu, .pd-cols-menu) {
+  position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; right: auto;
+  display: flex; flex-direction: column; gap: 0; transform-origin: top left;
+}
+body.bo-light .view :is(.ms-menu, .pd-cols-menu).flip { left: auto; right: 0; transform-origin: top right; }
+body.bo-light .view :is(.ms-menu, .pd-cols-menu) hr { border: 0; border-top: 1px solid var(--b-line); margin: 4px -4px; }
+/* rows */
+body.bo-light .view :is(.check-menu .bo-check, .rp-opt, .ms-menu .ms-clear) {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%;
+  padding: 7px 10px; border: 0; border-radius: var(--b-r-row); background: none;
+  font: inherit; font-size: var(--b-t-label); font-weight: 400; color: var(--b-ink); text-align: left; white-space: nowrap; cursor: pointer;
+}
+body.bo-light .view :is(.check-menu .bo-check, .rp-opt, .ms-menu .ms-clear):hover { background: var(--b-card); }
+body.bo-light .view :is(.check-menu .bo-check, .rp-opt.on)::after { content: ""; color: var(--b-data); font-weight: 400; }
+body.bo-light .view :is(.check-menu .bo-check:has(input:checked), .rp-opt.on)::after { content: "✓"; }
+body.bo-light .view .rp-opt.on { background: none; color: var(--b-ink); }
+body.bo-light .view .rp-opt.on:hover { background: var(--b-card); }
+body.bo-light .view .check-menu .bo-check:has(input:focus-visible) { outline: 2px solid var(--b-data-1); outline-offset: -2px; }
+body.bo-light .view .ms-menu .ms-clear { margin-top: 9px; color: var(--b-data); }
+body.bo-light .view .ms-menu .ms-clear::before { content: ""; position: absolute; left: -4px; right: -4px; top: -5px; border-top: 1px solid var(--b-line); }
+body.bo-light .view .ms-menu .ms-empty { padding: 7px 10px; color: var(--b-ink-3); white-space: nowrap; }
+body.bo-light .view .rp-date-row { margin: 4px -4px 0; padding: 8px 14px 4px; border-top: 1px solid var(--b-line); color: var(--b-ink-3); font-size: var(--b-t-meta); }
+
+/* <select>: the closed field keeps its width in forms, but every one gets the drawn chevron, and
+   the open list is the same card (customizable select; older browsers keep the native list). */
+@supports (appearance: base-select) {
+  body.bo-light .bo-select::picker-icon {
+    content: ""; width: 6px; height: 6px; border: solid var(--b-ink-3); border-width: 0 1.5px 1.5px 0;
+    transform: translateY(-2px) rotate(45deg); margin: 0 2px 0 auto; font-size: 0;
+  }
+  body.bo-light .list-filters .bo-select::picker-icon { margin-left: 2px; }
+  body.bo-light .list-filters .bo-select:has(option:checked:not([value=""]))::picker-icon { border-color: var(--b-data-ink); }
+  body.bo-light .bo-select::picker(select) {
+    margin-top: 6px; padding: 4px; min-width: max(200px, anchor-size(width)); max-height: 60vh;
+    background: var(--b-raised); border: 1px solid var(--b-line); border-radius: var(--b-r-cell); box-shadow: var(--b-pop-shadow);
+  }
+  body.bo-light .bo-select option {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 7px 10px; border-radius: var(--b-r-row); font-size: var(--b-t-label); font-weight: 400; color: var(--b-ink);
+  }
+  body.bo-light .bo-select option::checkmark { display: block; order: 1; content: "✓"; color: var(--b-data); }
+  body.bo-light .bo-select option:checked { background: none; color: var(--b-ink); }
+  body.bo-light .bo-select option:is(:hover, :focus-visible) { background: var(--b-card); outline: 0; }
+}
+/* cur2: Top sellers + Out or low stock carry the item's photo before the name (owner 2026-10-17). */
+body.bo-light .calm-dash .w .row:has(.th) { min-height: 42px; }
+body.bo-light .calm-dash .w .nm:has(.th) { display: flex; align-items: center; gap: 10px; min-width: 0; }
+body.bo-light .calm-dash .w .th { flex: none; width: 28px; height: 28px; margin-right: 10px; border-radius: 7px; background: var(--b-track) center / cover; display: grid; place-items: center; color: var(--b-ink-3); font-size: var(--b-t-meta); font-weight: 600; }
+body.bo-light .calm-dash .w .nm .th { margin-right: 0; }

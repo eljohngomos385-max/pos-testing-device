@@ -1,0 +1,133 @@
+/* bo-test only: Shopify admin's black sidebar (values measured off admin.shopify.com, see shopify-lab.html).
+   Restyles the existing sidebar; the markup hooks and JS (routing, trees, rail, switchers) are unchanged. */
+body.bo-light {
+  --po-sidebar-w: 220px;
+  --po-sidebar-bg: rgb(10,10,10);
+  --po-sidebar-hover: rgb(25,25,25);    /* white 6% on the black, solid so icon cut-outs (--knock) match */
+  --po-sidebar-active: rgb(37,37,37);   /* white 11% */
+  --po-sidebar-ink: rgb(220,220,220);
+  --po-sidebar-ink-hi: rgb(252,252,252);
+  --po-sidebar-icon: rgb(140,140,140);
+  --po-sidebar-dim: rgb(166,166,166);
+  --sh-pill: rgba(255,255,255,.02) 0 0 0 1px inset, rgba(255,255,255,.06) 0 1px 1px 0 inset, rgba(255,255,255,.06) 0 0 12px 1px inset, rgba(0,0,0,.1) 0 1px 2px 0, rgba(0,0,0,.1) 0 0 0 1px;
+  --sh-tip: rgba(220,220,220,.18) 0 0 0 1px, rgba(0,0,0,.15) 0 1px 2px 0, rgba(0,0,0,.15) 0 3px 6px -5px, rgba(0,0,0,.84) 0 8px 24px -8px;
+}
+body.bo-light .bo-sidebar { font-family: "Inter", -apple-system, "Segoe UI", sans-serif; letter-spacing: -.13px; color: var(--po-sidebar-ink); border-right: 0; }
+/* resize: drag the sidebar edge (the existing grip), no line, just the cursor like Shopify */
+body.bo-light .bo-sidebar .side-resizer { width: 6px; right: 0; background: none !important; }
+
+/* the page: a white sheet with round corners on the black, 4px in (Shopify's .main) */
+@media (min-width: 1024px) {
+  body.bo-light { background: var(--po-sidebar-bg); } /* the 4px frame round the sheet: top, right, bottom */
+  body.bo-light .bo-sidebar { transform: none; } /* lets the fixed tooltip out past the sidebar edge */
+  body.bo-light .main.bo-main {
+    margin: 4px 4px 4px var(--po-sidebar-w);
+    height: calc(100vh - 8px); height: calc(100dvh - 8px);
+    border-radius: 16px; box-shadow: none;
+  }
+}
+
+/* top: glyph left, collapse button right */
+body.bo-light .bo-sidebar > .side-top { position: relative; flex: none; height: 52px; padding: 12px 8px 0 14px; display: flex; align-items: center; gap: 4px; }
+body.bo-light .bo-sidebar .side-glyph { width: 22px; height: 22px; margin: 0 0 0 4px; border-radius: 6px; display: grid; place-items: center; flex: none; background: var(--po-sidebar-brand); color: #fff; transition: opacity .15s; }
+body.bo-light .bo-sidebar .side-glyph svg { width: 13px; height: 13px; }
+body.bo-light .bo-sidebar .side-top [data-set-back]:not([hidden]) ~ .side-rail-btn,
+body.bo-light .bo-sidebar .side-top:has([data-set-back]:not([hidden])) .side-glyph { display: none; }
+body.bo-light .bo-sidebar .side-rail-btn { top: 17px; right: 8px; width: 32px; height: 30px; border-radius: 12px; color: rgb(220,220,220); opacity: .7; }
+body.bo-light .bo-sidebar .side-rail-btn:hover { background: var(--po-sidebar-hover); color: rgb(220,220,220); opacity: 1; }
+body.bo-light .bo-sidebar svg.sp { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5px; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+body.bo-light .bo-sidebar svg.sp.f { fill: currentColor; stroke: none; }
+
+/* the collapse button's tooltip (Shopify's: black, CTRL B keys) */
+body.bo-light .bo-sidebar .side-tip {
+  display: none; position: fixed; left: 97px; top: 55px; z-index: 70; /* fixed: the sidebar clips overflow */
+  align-items: center; gap: 8px; height: 30px; padding: 0 6px 0 8px; white-space: nowrap;
+  background: rgb(10,10,10); color: rgb(238,238,238); border-radius: 10px; box-shadow: var(--sh-tip);
+  font-size: 13px; font-weight: 450; line-height: 18px;
+}
+body.bo-light .bo-sidebar .side-tip kbd { font: 500 10px/16px inherit; font-family: inherit; padding: 2px 4px; border-radius: 5px; background: rgb(47,47,47); color: rgb(170,170,170); }
+body.bo-light .bo-sidebar .side-tip kbd + kbd { margin-left: -4px; }
+body.bo-light .bo-sidebar .side-rail-btn:hover .side-tip { display: flex; }
+
+/* search pill */
+body.bo-light .bo-sidebar .side-search {
+  position: relative; flex: none; display: flex; align-items: center; gap: 6px;
+  height: 29px; margin: 6px 14px 13px; padding: 0 8px; border: 0; border-radius: 13px;
+  background: rgba(255,255,255,.19); box-shadow: var(--sh-pill);
+  color: var(--po-sidebar-dim); font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+body.bo-light .bo-sidebar .side-search > span { white-space: nowrap; transition: opacity .18s; }
+body.bo-light .bo-sidebar .side-kbd { margin-left: auto; }
+
+/* rows: 30px, 13px/450, 16px grey icons, the active row a lit pill */
+body.bo-light .bo-sidebar .side-nav { padding: 0 12px 8px; }
+body.bo-light .bo-sidebar .side-link,
+body.bo-light .bo-sidebar .side-sublink,
+body.bo-light .bo-sidebar .side-grouphead {
+  height: 30px; padding: 0 4px 0 8px; gap: 6px; border: 0; border-radius: 12px;
+  font-size: 13px; font-weight: 450; letter-spacing: -.13px; color: var(--po-sidebar-ink);
+}
+body.bo-light .bo-sidebar .side-link > svg:first-child { margin: 0 2px; width: 16px; height: 16px; color: var(--po-sidebar-icon); }
+body.bo-light .bo-sidebar .side-link:hover,
+body.bo-light .bo-sidebar .side-sublink:hover { background: var(--po-sidebar-hover); color: var(--po-sidebar-ink); }
+body.bo-light .bo-sidebar .side-link:hover > svg:first-child { color: var(--po-sidebar-icon); }
+body.bo-light .bo-sidebar .side-link.active {
+  background: var(--po-sidebar-active); box-shadow: var(--sh-pill);
+  color: var(--po-sidebar-ink-hi); font-weight: 500;
+}
+body.bo-light .bo-sidebar .side-link.active > svg:first-child { color: var(--po-sidebar-ink-hi); }
+/* a page lit through its tree: the parent stays plain, the leaf carries the light */
+body.bo-light .bo-sidebar .side-link.active:not(.folded):has(+ .side-sub .side-sublink.active) { background: none; box-shadow: none; }
+body.bo-light .bo-sidebar .side-sublink,
+body.bo-light .bo-sidebar .side-grouphead { padding-left: 34px; color: var(--po-sidebar-dim); }
+body.bo-light .bo-sidebar .side-groupbody .side-sublink { padding-left: 46px; }
+body.bo-light .bo-sidebar .side-sublink.active { background: var(--po-sidebar-active); box-shadow: var(--sh-pill); color: var(--po-sidebar-ink-hi); font-weight: 500; }
+body.bo-light .bo-sidebar .side-sublink.active::before { display: none; }
+body.bo-light .bo-sidebar .side-chev { color: var(--po-sidebar-icon); }
+
+/* section header ("Stock"): Shopify's 12px/500 grey label */
+body.bo-light .bo-sidebar .side-label,
+body.bo-light .bo-sidebar .side-nav .side-label:not(:first-child) {
+  height: 24px; margin: 12px 0 2px; padding: 4px 3px 4px 8px; border: 0; border-radius: 8px;
+  font-size: 12px; font-weight: 500; line-height: 16px; letter-spacing: normal; color: var(--po-sidebar-dim);
+}
+body.bo-light .bo-sidebar .side-label:hover { color: var(--po-sidebar-ink); }
+
+/* foot: Settings, then store badge + name left and the account badge right */
+body.bo-light .bo-sidebar .side-footer { padding: 8px 12px 15px; }
+body.bo-light .bo-sidebar .side-store { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 0; }
+body.bo-light .bo-sidebar .side-footer .side-store .side-switch-wrap { position: relative; margin: 0; padding: 0; border: 0; min-width: 0; }
+body.bo-light .bo-sidebar .side-store .side-switch { height: 30px; padding: 4px 6px 4px 6px; gap: 6px; border: 0; border-radius: 12px; background: none; box-shadow: none; font: inherit; }
+body.bo-light .bo-sidebar .side-store .side-switch:hover { background: var(--po-sidebar-hover); }
+body.bo-light .bo-sidebar .side-store .ss-mark {
+  width: 20px; height: 20px; margin: 0; border-radius: 6px; display: grid; place-items: center;
+  background: rgb(37,232,43); color: rgb(3,61,5); font-size: 8px; font-weight: 500; letter-spacing: 0;
+}
+body.bo-light .bo-sidebar .side-store .acct .ss-mark { border-radius: 9999px; background: var(--po-sidebar-me); color: #fff; }
+body.bo-light .bo-sidebar .side-store .ss-label { display: none; }
+body.bo-light .bo-sidebar .side-store .ss-name { font-size: 13px; font-weight: 450; color: var(--po-sidebar-ink); }
+body.bo-light .bo-sidebar .side-store .acct { width: 32px; padding: 0 6px; }
+body.bo-light .bo-sidebar .side-store .acct .ss-text { display: none; }
+body.bo-light .bo-sidebar .side-store .side-menu { width: 196px; left: 0; right: auto; }
+body.bo-light .bo-sidebar .side-store .side-switch-wrap + .side-switch-wrap .side-menu { left: auto; right: 0; }
+
+/* collapsed (the 60px rail): icons only, the glyph swaps for the button on hover, headers turn to hairlines */
+@media (min-width: 1024px) {
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-rail-btn { right: 14px; opacity: 0; }
+  body.bo-light .bo-app.side-rail .bo-sidebar > .side-top:is(:hover, :focus-within) .side-rail-btn { opacity: .87; }
+  body.bo-light .bo-app.side-rail .bo-sidebar > .side-top:is(:hover, :focus-within) .side-glyph { opacity: 0; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-tip { left: 55px; top: 17px; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-search { background: none; box-shadow: none; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-search > span { opacity: 0; }
+  body.bo-light .bo-app.side-rail .bo-sidebar :is(.side-link, .side-switch) { padding-left: 8px; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-label { position: relative; font-size: 0; color: transparent; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-label::before { content: ''; position: absolute; left: 10px; top: 12px; width: 16px; height: 1px; background: rgba(255,255,255,.11); }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-store { flex-direction: column-reverse; align-items: flex-start; gap: 6px; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-store .side-switch { padding-left: 6px; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-link.active:not(.folded):has(+ .side-sub .side-sublink.active) { background: var(--po-sidebar-active); box-shadow: var(--sh-pill); }
+}
+
+/* phone/tablet overlay: the hamburger sits where the glyph is */
+@media (max-width: 1023px) {
+  body.bo-light .bo-sidebar .side-glyph { visibility: hidden; }
+}

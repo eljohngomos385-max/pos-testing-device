@@ -102,6 +102,9 @@ function showPayStep() {
   showCashKeys(false);
   const typing = m === 'other' && !state.paymentLabel;
   const other = $('#otherMethodInput'); if (other) other.hidden = !typing;
+  // Settings › Payment types › Ask for reference no.; an exchange has none: payment.ref there marks the swap rows (sales-math paidOf)
+  $('#payRefInput').hidden = step !== 'paid' || !!state.exchange || !payRefOn(state.paymentLabel || m);
+  $('[data-step="paid"] [data-complete]').textContent = 'Complete sale';
   const ask = $('#checkoutAsk');
   if (ask) ask.textContent = m === 'credit' ? `Charge to ${state.customer?.name || 'account'}`
     : typing ? 'Paid with' : `Paid with ${state.paymentLabel || KNOWN_METHOD_LABELS[m] || m}`;
@@ -129,16 +132,16 @@ function updateChange() {
   if (go) go.disabled = !raw || !ok;
 }
 
-// Split (owner 2026-10-10): one part at a time. Split -> tap Cash -> how much? -> the methods again, the paid part gone and
-// what's left on top -> tap GCash -> it comes filled with what's left (type less and the methods come back again: 3+ parts,
-// Account = pay later) -> its reference no. (a text box: letters too) -> done. Only cash that pays the rest asks Cash given;
-// a cash part typed earlier is handed over as typed. The tiles, quick cash, figures, keypad and Complete are the checkout's
-// own; app.js sends their taps here while SP is set. The sale records one payment row per part (buildOrderPayments).
-let SP = null;   // { legs: [{ key, label, amount, given?, change?, ref? }], leg, k: 'pick' | 'amt' | 'given' | 'typed' | 'ref', raw, fresh }
+// Split (owner 2026-10-17, split-carry-lab.html): two pages. The Split page is the checkout's own method tiles (no Split,
+// no typed Other); tap one -> its "how much" page (the figure + keypad) -> Done -> back, that tile now carrying its amount
+// (nothing typed = that method off the split). The big number counts down once money is in, the total moving to the small
+// line under it. Complete sale when nothing is left; a cash part then asks what was handed over (quick cash). The tiles,
+// quick cash, figures, keypad and buttons are the checkout's own; app.js sends their taps here while SP is set.
+// The sale records one payment row per part (buildOrderPayments).
+let SP = null;   // { legs: [{ key, label, amount, given?, change?, ref? }], leg, k: 'pick' | 'amt' | 'ref' | 'given' | 'typed', raw, fresh }
 
-const spLeft = () => moneyValue(dueNow() - SP.legs.reduce((s, l) => s + l.amount, 0));
-// what comes after the amount: cash that pays the rest asks what was handed over; GCash / QR / a store's own method its reference
-const spTail = (leg, v) => (leg.key === 'cash' ? (v === spLeft() ? 'given' : null) : leg.key === 'credit' ? null : 'ref');
+// what's left to pay; `but` = the part being typed, so its own amount doesn't count against it
+const spLeft = (but) => moneyValue(dueNow() - SP.legs.reduce((s, l) => s + (l === but ? 0 : l.amount), 0));
 
 function spOpen() {
   SP = { legs: [], leg: null, k: 'pick', raw: '', fresh: false };
@@ -158,111 +161,108 @@ function spClose() {   // back to the plain method tiles
 }
 function spOff() {   // what split adds comes off (also when a sale ends or a new checkout opens)
   $('#checkoutApp').classList.remove('sp');
-  $('#spPaid').hidden = $('#spAsk').hidden = true;
-  $$('#checkoutMethods .co-tile').forEach(t => { t.hidden = false; });
+  $('#spPaid').hidden = $('#spDone').hidden = true;
+  $$('#checkoutMethods .co-tile').forEach(t => { t.hidden = false; t.classList.remove('pick'); t.querySelector('small')?.remove(); });
   $('#checkoutCompleteBtn').textContent = 'Complete sale';
   $('#checkoutChangeLbl').parentElement.hidden = false;
-  spText(false);
 }
-const spText = on => {   // the reference's text box in place of the figures and the keys
-  $('#spRefBox').hidden = !on; $('.co-read').hidden = $('#checkoutKeys').hidden = on;
-  $('#checkoutKeyIn').classList.toggle('sp-txt', on);
-};
-const spCan = (t, but = '') => { const key = t.dataset.label || t.dataset.method;
-  return !(key === 'split' || (key === 'other' && !t.dataset.label) || key === but || SP.legs.some(l => l.key === key)); };
+const spKeyOf = t => t.dataset.label || t.dataset.method;
+const spCan = t => !(t.dataset.method === 'split' || (t.dataset.method === 'other' && !t.dataset.label));
 function spGo(k, raw = '', fresh = false) { Object.assign(SP, { k, raw, fresh }); spRender(); }
 const spRaw = v => v.toFixed(2).replace(/\.00$/, '');   // 21.5 -> "21.50", 750 -> "750", as it would be typed
-function spAmt() { const raw = SP.leg.amount ? spRaw(SP.leg.amount) : SP.legs.length ? spRaw(spLeft()) : ''; spGo('amt', raw, !!raw); }
-function spFinish() {   // this part is paid: the next, or the sale
-  if (moneyValue(spLeft() - SP.leg.amount) > 0) { SP.legs.push(SP.leg); SP.leg = null; return spGo('pick'); }
-  $('#checkoutTender').value = '';
-  completeSale();
-}
+// a method's page opens with its amount, or with what's left once another part is in (grey till the first key replaces it)
+function spAmt() { const v = SP.leg.amount || (SP.legs.length ? spLeft() : 0); spGo('amt', v ? spRaw(v) : '', !!v); }
 
 function spRender() {
-  const { k, leg, legs } = SP, left = spLeft();
+  // a part whose tile went (customer changed, credit off, a method hidden) comes off: no tile, no way to change it
+  const shown = new Set($$('#checkoutMethods .co-tile').map(spKeyOf));
+  SP.legs = SP.legs.filter(l => shown.has(l.key));
+  if (SP.leg && !shown.has(SP.leg.key)) Object.assign(SP, { leg: null, k: 'pick', raw: '', fresh: false });
+  const { k, leg, legs } = SP, due = moneyValue(dueNow()), left = spLeft(k === 'pick' || k === 'ref' ? null : leg);   // the ref page: that part is in
   setCheckoutError('');
   $('#checkoutTotalDue').textContent = peso(left);
-  const paid = $('#spPaid');
-  paid.hidden = !legs.length;
-  paid.innerHTML = legs.map(l => `✓ ${escapeHtml(l.label)} <b class="num">${peso(l.amount)}</b>`).join('<span>·</span>');
-  $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== (k === 'pick' ? 'method' : 'cash'); });
+  const paid = $('#spPaid');   // the countdown's small line: the total it counts down from
+  paid.hidden = left === due;
+  paid.textContent = left > 0 ? `left of ${peso(due)}` : 'Paid in full';
+  $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== (k === 'pick' ? 'method' : k === 'ref' ? 'paid' : 'cash'); });
   $('#checkoutBackText').textContent = 'Back';
   $('#otherMethodInput').hidden = true;
+  $('#payRefInput').hidden = k !== 'ref';
+  if (k === 'ref') {   // a part whose type asks: the plain checkout's own box, Done back to the Split page
+    $('#checkoutAsk').textContent = `Paid with ${leg.label}`;
+    return void ($('[data-step="paid"] [data-complete]').textContent = 'Done');
+  }
 
-  if (k === 'pick') {   // the checkout's own tiles, without Split, a typed Other, and what already paid
-    const ask = $('#spAsk');
-    ask.hidden = false; ask.textContent = legs.length ? 'Pay the rest with' : 'Pay first with';
-    const tiles = $$('#checkoutMethods .co-tile');
-    tiles.forEach(t => { t.hidden = !spCan(t); });
-    const n = tiles.filter(t => !t.hidden).length, grid = $('#checkoutMethods');
-    grid.style.setProperty('--cols', n <= 4 ? 2 : n <= 6 ? 3 : 4);
+  if (k === 'pick') {   // the Split page: a part's tile carries its amount; Complete sale once nothing is left
+    $$('#checkoutMethods .co-tile').forEach(t => {
+      const l = legs.find(x => x.key === spKeyOf(t));
+      t.hidden = !spCan(t);
+      t.classList.toggle('pick', !!l);
+      t.querySelector('small')?.remove();
+      if (l) t.insertAdjacentHTML('beforeend', `<small class="num">${peso(l.amount)}</small>`);
+    });
+    const done = $('#spDone');
+    done.hidden = false;
+    done.disabled = !legs.length || left !== 0;
     return;
   }
   const keys = k !== 'given';
   $('#checkoutQuick').hidden = keys; $('#checkoutKeyIn').hidden = !keys;
-  if (!keys) return renderQuickCashOptions(leg.amount);   // Exact / the notes / Custom, for the cash that pays the rest
+  if (!keys) return renderQuickCashOptions(leg.amount);   // Exact / the notes / Custom, for the cash part
   const btn = $('#checkoutCompleteBtn');
-  spText(k === 'ref');
-  if (k === 'ref') {   // letters and numbers: the phone's own keyboard
-    const box = $('#spRef');
-    box.placeholder = `${leg.label} reference no. (optional)`;
-    if (box.value !== SP.raw) box.value = SP.raw;
-    if (document.activeElement !== box) box.focus();
-    btn.textContent = left - leg.amount > 0 ? 'Next' : 'Complete sale';
-    return void (btn.disabled = false);
-  }
 
-  // One figure (two for a typed Cash given: Given and the change), the keypad, Next or Complete sale
+  // One figure (two for a typed Cash given: Given and the change), the keypad, Done or Complete sale
   const fig = (el, html, cls) => { el.innerHTML = html; el.style.setProperty('--n', el.textContent.length); el.className = 'co-fig num ' + cls; };
   const caret = '<span class="co-caret"></span>', v = moneyValue(parseFloat(SP.raw) || 0), raw = SP.raw;
   const money = r => (r ? typedCash(r) : peso(0));
-  const chg = $('#checkoutChangeLbl').parentElement;
-  chg.hidden = k !== 'typed';
-  let ok = true, lbl = '';
+  $('#checkoutChangeLbl').parentElement.hidden = k !== 'typed';
+  let ok = true;
+  fig($('#checkoutCash'), money(raw) + caret, raw && !SP.fresh ? '' : 'ph');
   if (k === 'typed') {
-    ok = v >= leg.amount;
-    lbl = 'Cash given';
-    fig($('#checkoutCash'), money(raw) + caret, raw ? '' : 'ph');
-    $('#checkoutChangeLbl').textContent = raw && !ok ? 'Short' : 'Change';
-    fig($('#checkoutChange'), peso(raw ? Math.abs(v - leg.amount) : 0), !raw ? 'ph' : ok ? 'up' : 'down');
-    ok = ok && !!raw;
+    ok = !!raw && v >= leg.amount;
+    $('#checkoutChangeLbl').textContent = raw && v < leg.amount ? 'Short' : 'Change';
+    fig($('#checkoutChange'), peso(raw ? Math.abs(v - leg.amount) : 0), !raw ? 'ph' : v >= leg.amount ? 'up' : 'down');
     btn.textContent = 'Complete sale';
-  } else {   // amt: just the method's name and the number; the keys never go past what's left (spKey)
-    ok = v > 0 && (v === left || $$('#checkoutMethods .co-tile').some(t => spCan(t, leg.key)));
-    lbl = leg.label;
-    fig($('#checkoutCash'), money(raw) + caret, raw ? '' : 'ph');
-    btn.textContent = !spTail(leg, v) && v === left ? 'Complete sale' : 'Next';
-  }
-  $('#checkoutCashLbl').textContent = lbl;
+  } else btn.textContent = 'Done';   // amt: the method's name and the number; the keys never go past what's left (spKey)
+  $('#checkoutCashLbl').textContent = k === 'typed' ? 'Cash given' : leg.label;
   btn.disabled = !ok;
 }
 
-function spNext() {   // Next / Complete sale on a keypad screen
-  const { k, leg } = SP, v = moneyValue(parseFloat(SP.raw) || 0);
-  if (k === 'ref') { leg.ref = SP.raw.trim(); return spFinish(); }
-  if (k === 'typed') { Object.assign(leg, { given: v, change: moneyValue(v - leg.amount) }); return spFinish(); }
-  leg.amount = v;
-  const t = spTail(leg, v);
-  if (leg.key === 'cash' && !t) Object.assign(leg, { given: v, change: 0 });
-  if (!t) return spFinish();
-  spGo(t, t === 'ref' ? leg.ref || '' : '');
+function spNext() {   // Complete sale on the Split page, Done / Complete sale on a keypad page
+  const { k, leg, legs } = SP, v = moneyValue(parseFloat(SP.raw) || 0);
+  if (k === 'pick') {   // a cash part asks what was handed over; no cash, the sale is done
+    const cash = legs.find(l => l.key === 'cash');
+    if (!cash) return completeSale();
+    SP.leg = cash;
+    return spGo('given');
+  }
+  if (k === 'typed') { Object.assign(leg, { given: v, change: moneyValue(v - leg.amount) }); return completeSale(); }
+  if (k === 'ref') { leg.ref = $('#payRefInput').value.trim(); SP.leg = null; return spGo('pick'); }
+  // amt -> Done: this method's part in its place on the Split page, or off it when nothing was typed
+  const i = legs.indexOf(leg);
+  if (i >= 0) legs.splice(i, 1);
+  delete leg.given; delete leg.change;
+  if (v > 0) legs.splice(i >= 0 ? i : legs.length, 0, Object.assign(leg, { amount: v }));
+  if (v > 0 && payRefOn(leg.key)) {   // its type asks for a reference no.: that page next
+    $('#payRefInput').value = leg.ref || '';
+    spGo('ref');
+    return setTimeout(() => $('#payRefInput').focus(), 60);
+  }
+  SP.leg = null;
+  spGo('pick');
 }
 
 function spKey(key) {
-  SP.raw = esPress(SP.fresh && key !== 'del' ? '' : SP.raw, key, true, SP.k === 'amt' ? spLeft() : CASH_MAX);
+  SP.raw = esPress(SP.fresh && key !== 'del' ? '' : SP.raw, key, true, SP.k === 'amt' ? spLeft(SP.leg) : CASH_MAX);
   SP.fresh = false;
   spRender();
 }
 
-function spBack() {
-  const { k } = SP;
-  if (k === 'typed') return spGo('given');
-  if (k === 'given' || k === 'ref') return spAmt();
-  if (k === 'amt') { SP.leg = null; return spGo('pick'); }
-  if (!SP.legs.length) return spClose();
-  SP.leg = SP.legs.pop(); delete SP.leg.given; delete SP.leg.change;   // the last part comes back to be typed again
-  spGo('amt', spRaw(SP.leg.amount));
+function spBack() {   // typed cash -> the notes; a keypad page or the notes -> the Split page as it was; the Split page -> the tiles
+  if (SP.k === 'typed') return spGo('given');
+  if (SP.k === 'pick') return spClose();
+  SP.leg = null;
+  spGo('pick');
 }
 
 // What's typed, in the store's format, decimals as typed: "1250.5" -> "₱1,250.5"
@@ -305,7 +305,7 @@ function renderQuickCashOptions(total) {
 }
 
 // `approvedBy`: the manager whose PIN let this sale past a gate (the credit limit), else ''.
-function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentMethod, tendered = 0, change = 0, customerOverride, approvedBy = '', split = null } = {}) {
+function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentMethod, tendered = 0, change = 0, customerOverride, approvedBy = '', split = null, ref = '' } = {}) {
   const totals = cartTotals();
   const store = currentStoreInfo();
   const customer = customerOverride === undefined ? state.customer : customerOverride;
@@ -333,7 +333,7 @@ function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentM
     total: totals.total,
     tendered,
     change,
-    payments: buildOrderPayments({ status, paymentMethod, total: totals.total, tendered, change, split }),
+    payments: buildOrderPayments({ status, paymentMethod, total: totals.total, tendered, change, split, ref }),
     vatRate: totals.vatRate,
     vatAmount: totals.vatAmount,
     vatableSales: totals.vatableSales,
@@ -869,8 +869,9 @@ function completeSale(approvedBy = '', ok = {}) {
   const total = moneyValue(dueNow());
   let tendered = total, change = 0, split = null;
   if (SP) {   // split: the parts as paid; tendered / change are the cash parts' (what went in and out of the drawer)
-    const legs = SP.legs.concat(SP.leg || []), cash = legs.filter(l => l.key === 'cash'), sum = f => moneyValue(cash.reduce((s, l) => s + (l[f] || 0), 0));
+    const legs = SP.legs, cash = legs.filter(l => l.key === 'cash'), sum = f => moneyValue(cash.reduce((s, l) => s + (l[f] || 0), 0));
     if (moneyValue(legs.reduce((s, l) => s + l.amount, 0)) !== total) return setCheckoutError("The parts don't add up to the total.");
+    if (cash.some(l => (l.given ?? 0) < l.amount)) return setCheckoutError('The cash given is below the cash part.');
     tendered = sum('given'); change = sum('change');
     split = { legs };
   } else if (['cash', 'gcash', 'qr', 'other'].includes(state.paymentMethod)) {
@@ -925,6 +926,7 @@ function completeSale(approvedBy = '', ok = {}) {
       change,
       approvedBy,
       split,
+      ref: $('#payRefInput').hidden ? '' : $('#payRefInput').value.trim(),
     }));
   } catch (err) {
     console.error(err);

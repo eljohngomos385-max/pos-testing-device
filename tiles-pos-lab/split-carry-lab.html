@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Split payment lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=370">
+<style>
+  /* lab only: the Discount / price-ask parts (es-*) as they are; a title over them, a pre-filled amount in grey */
+  .sl-t { position: absolute; z-index: 1; top: 8px; left: 50%; translate: -50% 0; margin: 0; line-height: 44px; font-size: 15px; font-weight: 600; }
+  .es-hero.fresh { color: var(--ink-tertiary); }
+</style>
+</head>
+<body class="hairlines">
+<div class="esheet open"><div class="es-card" id="card"></div></div>
+<script>
+// Split payment (owner 2026-10-17, round 3): the Split page lists the methods. Tap one -> its own "how much" page
+// (the price-ask page), type, Done -> back to the Split page, that method's row now carrying its amount.
+const TOTAL = 1556, METHODS = ['Cash', 'GCash', 'QR', 'Maya'];
+const peso = n => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const grp = v => { const [i, d] = String(v || 0).split('.'); return (+i).toLocaleString('en-PH') + (d !== undefined ? '.' + d : ''); };   // typed digits, grouped
+const r2 = n => Math.round(n * 100) / 100;
+const IC = { back: 'M15 5l-7 7 7 7', chev: 'M9 6l6 6-6 6', del: 'M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7zM13 10l4 4M17 10l-4 4' };
+const svg = (k, c = '') => `<svg${c ? ` class="${c}"` : ''} viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[k]}"/></svg>`;
+const keys = `<div class="es-kp">${[...'123456789', '.', '0', 'del'].map(k =>
+  `<button type="button" data-sk="${k}"${k === 'del' ? ' aria-label="Delete"' : ''}>${k === 'del' ? svg('del') : k}</button>`).join('')}</div>`;
+
+// page: 'pay' (checkout) | 'split' (the list) | 'ask' (one method's how much)
+// ponytail: opens on the Split page (what's under test); Back shows the checkout list it came from
+const S = { page: 'split', parts: {}, on: null, v: '', fresh: false, pick: null };
+const paid = (but) => r2(METHODS.reduce((a, m) => a + (m === but ? 0 : +S.parts[m] || 0), 0));
+const left = () => r2(TOTAL - paid());
+
+function draw() {
+  const L = left(), P = S.page;
+  let title = '', head, rows = '', side = '', foot = '', cls = '';
+  if (P === 'ask') {
+    head = `<p>How much by ${S.on}?</p><div class="es-hero${S.fresh ? ' fresh' : ''}">₱${grp(S.v)}</div>`;
+    side = `<div class="es-keys">${keys}</div>`;
+    foot = `<span></span><button type="button" class="es-ink" data-done>Done</button>`;
+    cls = ' ask';
+  } else {
+    // the Split page counts down once money is in; the total moves to the small line (owner 2026-10-17)
+    const down = P === 'split' && paid() > 0;
+    head = `<div class="es-hero">${peso(down ? L : TOTAL)}</div>${down ? `<p class="es-off">${L > 0 ? `left of ${peso(TOTAL)}` : 'Paid in full'}</p>` : ''}`;
+    rows = (P === 'split' ? METHODS : [...METHODS, 'Other', 'Split']).map(m => {
+      const v = P === 'split' && +S.parts[m];
+      return `<button type="button" class="es-row${v || (P === 'pay' && S.pick === m) ? ' pick' : ''}" data-m="${m}"><span>${m}</span>${v ? `<small>${peso(v)}</small>` : ''}${P === 'split' ? svg('chev', 'cv') : ''}</button>`;
+    }).join('');
+    if (P === 'split') {
+      title = 'Split payment';
+      foot = (paid() > 0 ? '<button type="button" class="es-q" data-clear>Clear</button>' : '<span></span>')
+        + `<button type="button" class="es-ink" data-sale${L > 0 ? ' disabled' : ''}>Complete sale</button>`;
+    }
+  }
+  document.getElementById('card').innerHTML = `${title ? `<p class="sl-t">${title}</p>` : ''}
+    ${P === 'pay' ? '' : `<button type="button" class="es-x" data-back>${svg('back', 'ib')}<span class="xl">Back</span></button>`}
+    <div class="es-body${cls}"><div class="es-col"><div class="es-head">${head}</div><div class="es-list">${rows}</div></div>${side}</div>
+    <div class="es-ft">${foot}</div>`;
+}
+// ponytail: plain page swap; a view transition here blocked clicks while it ran and stalled in some browsers
+const go = (o) => { Object.assign(S, o); draw(); };
+// a method tapped: its page opens with its amount, or with what's left (grey till the first key replaces it)
+function open(m) {
+  const v = S.parts[m] || (paid() > 0 && left() > 0 ? String(left()) : '');
+  go({ page: 'ask', on: m, v, fresh: !!v });
+}
+function press(k) {
+  const room = r2(TOTAL - paid(S.on));
+  let v = S.fresh ? '' : S.v; S.fresh = false;
+  if (k === 'del') v = v.slice(0, -1);
+  else if (k === '.') { if (!v.includes('.')) v = (v || '0') + '.'; }
+  else if (!/\.\d\d$/.test(v) && +((v === '0' ? '' : v) + k) <= room) v = (v === '0' ? '' : v) + k;   // the keys never go past what's left
+  S.v = v; draw();
+}
+document.getElementById('card').addEventListener('click', e => {
+  const t = q => e.target.closest(q);
+  if (t('[data-back]')) return go(S.page === 'ask' ? { page: 'split' } : { page: 'pay', parts: {}, pick: null });
+  const m = t('[data-m]')?.dataset.m;
+  if (m === 'Split') return go({ page: 'split' });
+  if (m && S.page === 'split') return open(m);
+  if (m) return go({ pick: m });   // the checkout list: a method picks, as at the real checkout
+  const k = t('[data-sk]')?.dataset.sk;
+  if (k) return press(k);
+  if (t('[data-done]')) { S.parts[S.on] = +S.v > 0 ? S.v : ''; return go({ page: 'split' }); }   // nothing typed = that method off the split
+  if (t('[data-clear]')) { S.parts = {}; return draw(); }
+  if (t('[data-sale]')) return go({ page: 'pay', parts: {}, pick: null });
+});
+// a keyboard types too: digits, '.', Backspace; Enter = Done, Esc = Back
+addEventListener('keydown', e => {
+  const k = /^[\d.]$/.test(e.key) ? e.key : e.key === 'Backspace' ? 'del' : null;
+  if (S.page === 'ask' && k) press(k);
+  else if (S.page === 'ask' && e.key === 'Enter') document.querySelector('[data-done]').click();
+  else if (e.key === 'Escape') document.querySelector('[data-back]')?.click();
+});
+if (matchMedia('(prefers-color-scheme: light)').matches) document.body.classList.add('light-theme');
+draw();
+</script>
+</body>
+</html>

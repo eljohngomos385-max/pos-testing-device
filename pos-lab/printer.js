@@ -44,12 +44,12 @@
     return out.length ? out : [''];
   }
 
-  // label left, value right — the receipt's repeating unit. Overflow drops the value to its own right-aligned line.
+  // label left, value right — the receipt's repeating unit. Overflow drops the value to its own right-aligned line(s).
   function pad(l, r, cols) {
     const a = ascii(l), b = ascii(r);
     const gap = cols - a.length - b.length;
     if (gap >= 1) return a + ' '.repeat(gap) + b;
-    return a + '\n' + ' '.repeat(Math.max(0, cols - b.length)) + b;
+    return [...(a.length > cols ? wrap(a, cols) : [a]), ...(b ? wrap(b, cols) : []).map(x => ' '.repeat(cols - x.length) + x)].join('\n');   // a value wider than the paper (a long ref no.) wraps
   }
 
   function colsFor(width) {
@@ -70,9 +70,11 @@
     const swap = Number(vm.swapped) > 0 ? [['EXCHANGE', Number(vm.swapped)]] : [];
     const money = (vm.payments || []).map((p, i) => [p, i]).filter(([p]) => !(swap.length && p.ref));
     if (vm.paidWord === 'Given back') return swap.concat(money.map(([p, i]) => ['GIVEN BACK · ' + name(p, i), Number(p.amount) || 0]));
+    // a sale's reference no. (Settings > Payment types) under its tender, as text; an exchange's or refund's ref is a marker, never printed
+    const ref = p => (!swap.length && p.ref ? [['REF NO.', String(p.ref)]] : []);
     return swap.concat(money.flatMap(([p, i]) => (p.method === 'cash'
       ? [['CASH', SM().tenderedOf(p)], ...(p.change > 0 ? [['CHANGE', p.change]] : [])]
-      : [[name(p, i), Number(p.amount) || 0]])));
+      : [[name(p, i), Number(p.amount) || 0], ...ref(p)])));
   }
 
   // The totals block above TOTAL is SalesMath.totalRows, the one list every slip, the paper and the
@@ -177,7 +179,7 @@
     if (vm.status === 'saved') {
       if (!vm.mark) row('STATUS', 'NOT COMPLETED');   // a quote says QUOTATION at the top instead
     } else {
-      payRows(vm).forEach(([l, n]) => row(l, cash(n)));
+      payRows(vm).forEach(([l, n]) => typeof n !== 'string' ? row(l, cash(n)) : ascii(n).trim() && row(l, n));   // REF NO. is text; one the paper can't spell (all CJK / emoji) stays on screen only
     }
 
     rule();

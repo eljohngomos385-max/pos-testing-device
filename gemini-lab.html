@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gemini Copy</title>
+<!-- Near-1:1 copy of Gemini, signed-out, light, sidebar opens and closes (gemini.google.com/app, 2026-10-16). Values measured off the live page;
+     fonts are Gemini's own (Google Sans Flex + the Luminous Symbols kit), the glow is its .lm-glow with glow_mask.svg inlined (gstatic sends no CORS). -->
+<style>
+@font-face { font-family: "Google Sans Flex"; font-style: oblique 0deg 10deg; font-weight: 280 540; font-stretch: 92% 100%; font-display: swap; src: url("https://fonts.gstatic.com/s/googlesansflex/v11/t5tQIQcYNIWbFgDgAAzZ34auoVyXkJCOvp3SFWJbN5hF8Ju1x4d-JwN2l9sIKwpINJwakXdYAZzz0jbnDfmtsQbx.woff2") format("woff2"); unicode-range: U+2003, U+3000, U+3002, U+4E00, U+FE12, U+16FE1, U+1B170-1B2FB; }
+@font-face { font-family: "Google Sans Flex"; font-style: oblique 0deg 10deg; font-weight: 280 540; font-stretch: 92% 100%; font-display: swap; src: url("https://fonts.gstatic.com/s/googlesansflex/v11/t5tQIQcYNIWbFgDgAAzZ34auoVyXkJCOvp3SFWJbN5hF8Ju1x4d-JwN2l9sIKwpINJwakXdYAZzz0jbnDYitsQbx.woff2") format("woff2"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC, U+2CE-2D7, U+2DD-2FF, U+304, U+308, U+329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Google Sans Flex"; font-style: oblique 0deg 10deg; font-weight: 280 540; font-stretch: 92% 100%; font-display: swap; src: url("https://fonts.gstatic.com/s/googlesansflex/v11/t5tQIQcYNIWbFgDgAAzZ34auoVyXkJCOvp3SFWJbN5hF8Ju1x4d-JwN2l9sIKwpINJwakXdYAZzz0jbnDYatsQ.woff2") format("woff2"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+304, U+308, U+329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Google Symbols"; font-style: normal; font-weight: 100 700; font-display: block; src: url("https://fonts.gstatic.com/l/font?kit=Hhy3U5Ak9u-oMExPeInvcuEmPosC9zS3FYkFU68cPrjdKM1XMoDZlWmzc_IiQP9Pl2qlTD28M00Ic5PBvgjUKh-hL5SsUfna8181gW5cw07ABjrw0mOKbD6GPxon5_oEbH-5h7ZDXXSzrmdLquZDyYdbcnRxX8R_Jk7Wnvy4KFiF4l54OAA-poP6DaOAUZ6yWZdixX9ST7Ai9SFrm0au3PL7JiG7SgjWBVrgE2Qbugihb8M_UaZter0JDFmplCBPDG07EUF8uNNQq96yjbMYWFkuLdzVv86MRn3PmqpMmbYdcVzRmGd9Z9gR4EAtSkjfR4iH1btZiLCKSblNyqVVHsOHnS4C8sQY_1XXfqhxi_hS6blLJqYDf8d6lidwWavdZWnWkr3u68N1ZCc95DORRybHlC-r93-aaj3hBeuIWE6Ji9oACr2qivlajSGzXYgxWzf1QC2psNkXmqZ6MOYGxRaVbq2BtkbA9jVwWfRpoaTpCYHcbNLa6S21M5sqjq5uFJmbI9IPHxw86HMcviFW0E87uOwCJYSBlkus1oGahrns7MlJ_fC46t7eLbg-R-45UkhBMLVYBOfsnFSH3-04qhnKugk0VuYPes3IHc_vHJpgZktY3toyjCc1GzXu5MOKtw1u-qEPAIfXJXCXSttQgn4jy4UXEKyGTrwONW8A&skey=f8ec4d50247dc1c1&v=v464") format("woff2"); }
+@font-face { font-family: "Luminous Symbols"; font-style: normal; font-weight: 100 700; font-display: block; src: url("https://fonts.gstatic.com/l/font?kit=daaOSSYgOGmYaRLpq55MPuzv2kUKwTXcoFHm2zCWlB3F1WQIV8dopohwcDXo4e5J9gZ4U7xddImhtPzJSRMEUEFF28EYvUA_HmCX6JsV62nvNY5B7Zb2DEN0u7HtcyIJa6MpU-mRiQvk8hioe9bRBpwDj-Net6Qz88vxP9Cqx-u6g1pZbNFxBJDx8vnqOf1hK5Vpc4UiLdZ11VMZrxx3y94nl24e89Q3AKwhln5EhoOazIkgIbS-mPwcSorkG54c9hl-B4fv6NL_j9sYyL9PqeZvC1hCZzJpEjqMD9yN89I15yDiZFHOBURG9Kzje7Ymj_kPGQnFGtXfY4LcoVj_xRsHEfgYbnw7CD6xVE8DpEJQ-atKnba0nA7OK9_OBdYIZQHLaBSrlpF85CUrgA3R6vY&skey=bef131c18897d264&v=v62"); }
+:root { --glow-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%221484%22%20height%3D%222070%22%20viewBox%3D%220%200%201484%202070%22%3E%3Csvg%20y%3D%220%22%20width%3D%221484%22%20height%3D%221035%22%20viewBox%3D%22-125%20-125%201484%201035%22%3E%3Cfilter%20id%3D%22b%22%20x%3D%22-125%22%20y%3D%22-125%22%20width%3D%221484%22%20height%3D%221035%22%20filterUnits%3D%22userSpaceOnUse%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeGaussianBlur%20stdDeviation%3D%22125%22/%3E%3C/filter%3E%3Cpath%20d%3D%22M984%20371.5C984%20438.603%20929.603%20493%20862.5%20493L757.001%20493C737.446%20518.534%20706.646%20535%20672%20535L530%20535C482.421%20535%20442.096%20503.945%20428.187%20461L333%20461C287.16%20461%20250%20423.84%20250%20378C250%20332.16%20287.16%20295%20333%20295L436%20295C461.803%20295%20484.856%20306.774%20500.079%20325.242C509.574%20322.482%20519.614%20321%20530%20321L594.963%20321C614.133%20279.107%20656.416%20250%20705.5%20250L862.5%20250C929.603%20250%20984%20304.397%20984%20371.5Z%22%20fill%3D%22%23fff%22%20filter%3D%22url%28%23b%29%22/%3E%3C/svg%3E%3Csvg%20y%3D%221035%22%20width%3D%221484%22%20height%3D%221035%22%20viewBox%3D%22-125%20-125%201484%201035%22%3E%3Cfilter%20id%3D%22l%22%20x%3D%2298.091%22%20y%3D%22-60.0699%22%20width%3D%22996.375%22%20height%3D%22638.3739%22%20filterUnits%3D%22userSpaceOnUse%22%20color-interpolation-filters%3D%22sRGB%22%3E%3CfeGaussianBlur%20stdDeviation%3D%2250%22/%3E%3C/filter%3E%3Cpath%20d%3D%22M937.763%20365.306C931.06%20403.1%20894.988%20428.304%20857.194%20421.601L593.312%20374.801C580.83%20372.587%20569.723%20367.169%20560.684%20359.545C536.389%20372.614%20507.684%20377.898%20478.412%20372.707L363.21%20352.276C294.148%20340.027%20248.091%20274.111%20260.339%20205.049C272.588%20135.987%20338.503%2089.9301%20407.565%20102.178L522.768%20122.61C581.653%20133.053%20623.814%20182.513%20627.368%20239.672L881.467%20284.737C919.261%20291.44%20944.466%20327.512%20937.763%20365.306Z%22%20fill%3D%22%23fff%22%20filter%3D%22url%28%23l%29%22/%3E%3C/svg%3E%3C/svg%3E"); }
+</style>
+<style>
+/* light theme, measured off gemini.google.com with prefers-color-scheme: light */
+:root { --bg: rgb(250,249,249); --side: rgb(255,255,255); --ink: rgb(31,31,31); --icon: rgb(0,0,0); --dim: rgb(68,71,70); --link: rgb(11,87,208); --hover: rgba(0,0,0,.08);
+  --side-w: 52px; --ease: cubic-bezier(.2,0,0,1); }
+body.open { --side-w: 288px; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: "Google Sans Flex", "Google Sans", Helvetica, Arial, sans-serif; overflow: hidden; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+.ic { font-family: "Luminous Symbols"; font-weight: normal; font-style: normal; font-size: 20px; line-height: 1; letter-spacing: normal; text-transform: none; white-space: nowrap; direction: ltr; -webkit-font-feature-settings: "liga"; font-feature-settings: "liga";
+  font-variation-settings: "FILL" 0, "GRAD" 0, "ROND" 100, "opsz" 20, "wght" 320; display: inline-block; width: 1em; height: 1em; overflow: hidden; flex: none; }
+.ic.l { font-size: 24px; font-variation-settings: "FILL" 0, "GRAD" 0, "ROND" 100, "opsz" 24, "wght" 300; }
+.t13 { font-size: 13px; line-height: 17px; font-variation-settings: "wdth" 92, "wght" 400; }
+
+/* sidebar: 52px rail (page grey) <-> 288px panel (white), 300ms */
+.side { position: fixed; left: 0; top: 0; bottom: 0; width: var(--side-w); background: var(--bg); z-index: 2; overflow: hidden;
+  transition: width .3s var(--ease), background-color .3s var(--ease); }
+body.open .side { background: var(--side); }
+.head { position: absolute; left: 0; top: 0; right: 0; height: 52px; }
+.logo-btn { position: absolute; left: 8px; top: 10px; width: 36px; height: 36px; border-radius: 9999px; display: grid; place-items: center; }
+.logo-btn img { width: 22px; height: 22px; }
+.logo-btn .ic { display: none; color: rgba(0,0,0,.55); }
+.logo-btn:hover { background: var(--hover); }
+body:not(.open) .logo-btn:hover img { display: none; }
+body:not(.open) .logo-btn:hover .ic { display: inline-block; }
+body.open .logo-btn { pointer-events: none; }
+.word { position: absolute; left: 46px; top: 16px; font-size: 17px; line-height: 24px; color: #000; font-variation-settings: "ROND" 20, "wdth" 94, "wght" 470; }
+.close { position: absolute; left: 244px; top: 8px; width: 36px; height: 36px; border-radius: 9999px; display: grid; place-items: center; color: rgba(0,0,0,.55); }
+.close:hover { background: var(--hover); }
+/* labels fade out first, fade in after the slide (Gemini: 150ms, 100ms delay) */
+.lbl { opacity: 1; visibility: visible; white-space: nowrap; transition: opacity 150ms linear 100ms, visibility 0s; }
+body:not(.open) .lbl { opacity: 0; visibility: hidden; transition: opacity 100ms linear, visibility 0s 100ms; }
+
+.item { position: absolute; left: 8px; width: 272px; height: 32px; padding: 0 8px; border-radius: 9999px; display: flex; align-items: center; gap: 12px; color: #000; }
+body:not(.open) .item { left: 10px; width: 32px; }
+.item:hover { background: var(--hover); }
+.item.off { cursor: default; background: none; }
+.item.off > * { opacity: .38; }
+.note { position: absolute; left: 18px; top: 144px; display: flex; align-items: center; gap: 8px; color: #000; }
+.note a { text-decoration: underline 1.04px dotted; }
+
+.foot-sign { position: absolute; left: 16px; bottom: 14px; height: 36px; padding: 0 12px; border-radius: 9999px; background: rgb(242,240,240); color: #000; font-size: 15px; line-height: 20px; font-variation-settings: "wdth" 92, "wght" 400; }
+.foot-sign:hover { background: rgb(230,228,228); }
+.acct { position: absolute; left: 14px; bottom: 12px; width: 32px; height: 32px; border-radius: 9999px; display: grid; place-items: center; color: #000; }
+.gear { position: absolute; left: 8px; bottom: 50px; width: 36px; height: 36px; border-radius: 9999px; display: grid; place-items: center; color: #000; transition: left .3s var(--ease), bottom .3s var(--ease); }
+body.open .gear { left: 244px; bottom: 14px; }
+.acct:hover, .gear:hover { background: var(--hover); }
+body.open .acct, body:not(.open) .foot-sign { opacity: 0; visibility: hidden; }
+
+/* top right */
+.top { position: fixed; top: 12px; right: 12px; display: flex; align-items: center; gap: 8px; z-index: 2; }
+.tb { height: 40px; padding: 0 12px; border-radius: 9999px; display: flex; align-items: center; color: var(--link); font-size: 14px; font-weight: 500; font-variation-settings: "wdth" 92, "wght" 370; }
+.tb:hover { background: rgba(11,87,208,.08); }
+.signin { height: 40px; padding: 0 16px; border-radius: 9999px; background: rgb(194,231,255); color: rgb(0,74,119); font-size: 14px; font-weight: 500; }
+.signin:hover { background: rgb(180,220,250); }
+
+/* everything right of the sidebar follows its width */
+.stage, main, footer { position: fixed; left: var(--side-w); right: 0; transition: left .3s var(--ease); }
+/* the glow: Gemini's .lm-glow (light-blue body, white bloom, both through glow_mask.svg) */
+.stage { top: 70px; bottom: 0; overflow: clip; z-index: 0; pointer-events: none; }
+.stage::before, .stage::after { content: ""; position: absolute; left: 50%; top: calc(50% + 15px); width: 202.18%; max-width: 1601.27px; aspect-ratio: 1.4338 / 1; transform: translate(-50%, -50%);
+  mask-image: var(--glow-mask); mask-size: 100% 200%; mask-repeat: no-repeat; -webkit-mask-image: var(--glow-mask); -webkit-mask-size: 100% 200%; -webkit-mask-repeat: no-repeat; }
+.stage::before { background: radial-gradient(ellipse 42% 100% at 66% 81%, #9dd2ff 0, #9dd2ff 50%, #9dd2ff 100%); mask-position: 0 0; -webkit-mask-position: 0 0; }
+.stage::after { background: #fff; opacity: .5; mask-position: 0 100%; -webkit-mask-position: 0 100%; }
+
+/* centre column: headline 236, CTA 304, input 398 at 860 tall */
+main { top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; padding-top: calc(50vh - 194px); z-index: 1; }
+h1 { margin: 0; font-size: 36px; line-height: 44px; font-weight: 320; font-variation-settings: "ROND" 100, "wdth" 100, "wght" 320; color: var(--ink); text-align: center; }
+.cta-wrap { position: relative; margin-top: 24px; display: inline-flex; border-radius: 9999px; isolation: isolate; }
+.cta-halo { position: absolute; inset: -2px; border-radius: 9999px; pointer-events: none; opacity: .24; filter: blur(7px);
+  background: conic-gradient(from var(--a, 0deg), rgb(66,133,244), rgb(155,114,203), rgb(217,101,112), rgb(255,182,131), rgb(128,218,136), rgb(161,201,255), rgb(66,133,244));
+  transition: opacity .24s var(--ease), filter .24s var(--ease); }
+@property --a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes spin { to { --a: 360deg; } }
+.cta-wrap:hover .cta-halo { opacity: .48; filter: blur(8px); animation: spin 2.4s linear infinite; }
+.cta { position: relative; z-index: 1; height: 38px; padding: 0 12px; border: 1px solid rgba(255,255,255,.92); border-radius: 9999px; background: #fff; color: #000;
+  font-size: 15px; line-height: 20px; font-variation-settings: "wdth" 92, "wght" 400; transition: border-color .2s; }
+.cta:hover { border-color: #fff; }
+
+.input { margin-top: 56px; width: 660px; max-width: calc(100% - 32px); height: 64px; border-radius: 32px; background: #fff; box-shadow: rgba(0,0,0,.16) 0 2px 8px -2px;
+  display: flex; align-items: center; padding: 0 16px 0 20px; }
+.ibtn { width: 32px; height: 32px; border-radius: 9999px; display: grid; place-items: center; color: var(--icon); flex: none; }
+.ibtn:hover, .model:hover { background: var(--hover); }
+.editor { flex: 1; min-width: 0; height: 24px; padding: 0; margin-left: 8px; border: 0; outline: 0; background: none; color: var(--ink); font: inherit; font-size: 17px; line-height: 24px; font-variation-settings: "wdth" 92, "wght" 400; }
+.editor::placeholder { color: rgb(95,99,104); }
+.model { height: 40px; padding: 0 16px; margin-right: 17px; border-radius: 9999px; display: flex; align-items: center; gap: 4px; color: var(--dim); font-size: 14px; font-weight: 500; flex: none; }
+
+footer { bottom: 0; z-index: 1; text-align: center; }
+footer p { margin: 16px 0; font-size: 13px; line-height: 17px; color: var(--dim); font-variation-settings: "wdth" 92, "wght" 400; }
+footer a { color: var(--dim); text-decoration: underline 1.04px dotted; white-space: nowrap; }
+</style></head><body class="open">
+<nav class="side" aria-label="Sidebar">
+  <div class="head">
+    <button class="logo-btn" id="openSide" type="button" aria-label="Open sidebar"><img src="https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg" alt=""><span class="ic">side_nav</span></button>
+    <span class="word lbl">Gemini</span>
+    <button class="close lbl" id="closeSide" type="button" aria-label="Close sidebar"><span class="ic">side_nav</span></button>
+  </div>
+  <a class="item off" style="top:60px" aria-disabled="true"><span class="ic">gemini_chat</span><span class="lbl t13">New chat</span></a>
+  <a class="item" style="top:92px" href="#"><span class="ic">image_create</span><span class="lbl t13">Images</span></a>
+  <div class="note lbl t13"><span class="ic">info</span><span><a href="#">Sign in</a> to save activity</span></div>
+  <button class="foot-sign" type="button">Sign in</button>
+  <button class="acct" type="button" aria-label="Sign in"><span class="ic">account_circle</span></button>
+  <button class="gear" type="button" aria-label="Settings &amp; help"><span class="ic">settings</span></button>
+</nav>
+
+<div class="top">
+  <a class="tb" href="https://gemini.google/about/" target="_blank" rel="noopener">About Gemini</a>
+  <a class="tb" href="https://gemini.google/app-download/" target="_blank" rel="noopener">Get Gemini App</a>
+  <a class="tb" href="https://gemini.google/subscriptions/" target="_blank" rel="noopener">Subscriptions</a>
+  <a class="tb" href="https://workspace.google.com/solutions/ai/" target="_blank" rel="noopener">For Business</a>
+  <button class="signin" type="button">Sign in</button>
+</div>
+
+<div class="stage" aria-hidden="true"></div>
+
+<main>
+  <h1>Look what you can do with Gemini 4</h1>
+  <div class="cta-wrap"><span class="cta-halo"></span><button class="cta" type="button">Let's go</button></div>
+  <div class="input">
+    <button class="ibtn" type="button" aria-label="Open upload file menu"><span class="ic l">plus</span></button>
+    <input class="editor" placeholder="Ask Gemini" aria-label="Enter a prompt for Gemini">
+    <button class="model" type="button">Flash-Lite <span class="ic l">keyboard_arrow_down</span></button>
+    <button class="ibtn" type="button" aria-label="Microphone"><span class="ic l">mic</span></button>
+  </div>
+</main>
+
+<footer><p><a href="https://policies.google.com/terms" target="_blank" rel="noopener">Google Terms</a> and the <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a> apply. Gemini is AI and can make mistakes.</p></footer>
+<script>
+  document.getElementById('openSide').onclick = () => document.body.classList.add('open');
+  document.getElementById('closeSide').onclick = () => document.body.classList.remove('open');
+</script>
+</body></html>

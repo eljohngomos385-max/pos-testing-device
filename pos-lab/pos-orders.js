@@ -96,7 +96,7 @@ function buildReceiptPreview(order, back = [], said = []) {
     </div>`).join('');
   const payRows = receipt.status === 'saved'
     ? (receipt.mark ? '' : `<div class="rp-status saved">NOT COMPLETED</div>`)   // a quote: QUOTATION at the top says it
-    : slipRows('payRows', receipt).map(([k, v]) => `<div class="rp-row"><span>${escapeHtml(k)}</span><span>${peso(v)}</span></div>`).join('');
+    : slipRows('payRows', receipt).map(([k, v]) => `<div class="rp-row"><span>${escapeHtml(k)}</span><span>${typeof v === 'string' ? escapeHtml(v) : peso(v)}</span></div>`).join('');
   return `
     <div class="receipt-preview">
       <div class="rp-paper">
@@ -588,7 +588,7 @@ function buildReceiptHtml(order) {
   const totalRows = slipRows('totalRows', receipt).map(([k, v]) => `<div class="r-row"><span>${escapeHtml(k)}</span><span>${peso(v)}</span></div>`).join('');
   const payRows = receipt.status === 'saved'
     ? (receipt.mark ? '' : `<div class="r-row"><span>STATUS</span><span>NOT COMPLETED</span></div>`)
-    : slipRows('payRows', receipt).map(([k, v]) => `<div class="r-row"><span>${escapeHtml(k)}</span><span>${peso(v)}</span></div>`).join('');
+    : slipRows('payRows', receipt).map(([k, v]) => `<div class="r-row"><span>${escapeHtml(k)}</span><span>${typeof v === 'string' ? escapeHtml(v) : peso(v)}</span></div>`).join('');
 
   return `<!doctype html>
 <html>
@@ -637,7 +637,9 @@ function buildReceiptHtml(order) {
   .r-item { margin: 4px 0; }
   .r-item-name { font-weight: 700; }
   .r-item-row { display: flex; justify-content: space-between; font-size: 11px; }
-  .r-row { display: flex; justify-content: space-between; }
+  .r-row { display: flex; justify-content: space-between; gap: 12px; }
+  .r-row > span:first-child { flex-shrink: 0; max-width: 60%; }   /* a long ref no. wraps in the value, never squeezes the label */
+  .r-row > span:last-child { min-width: 0; text-align: right; overflow-wrap: anywhere; }
   .r-total { font-size: 14px; font-weight: 700; }
   .r-foot { font-size: 11px; margin-top: 6px; }
   .r-cust { font-size: 11px; margin: 2px 0; }

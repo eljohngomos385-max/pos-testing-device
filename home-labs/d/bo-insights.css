@@ -1,0 +1,16 @@
+/* Back office — Insights. Layout only: the blocks (card, table, input, pill) come from bo-blocks.css. */
+/* Rows never wrap: the reason is cut to one line, the full text is on hover (title). */
+body.bo-light .view-insights .ins-reason {
+  display: inline-block;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+/* The Day spine's typed-note inputs fit the row at every density. */
+body.bo-light .view-insights .data-table .text-input.mini {
+  width: 150px;
+  height: calc(var(--po-row-h) - 8px);
+}
+/* An item name opens its item page (the variants); it reads as the row's text, not a button. */
+body.bo-light .view-insights .data-table .link-btn { font-weight: inherit; }

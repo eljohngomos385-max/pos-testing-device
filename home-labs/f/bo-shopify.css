@@ -1,0 +1,141 @@
+/* bo-test-2 only: Gemini's light sidebar (values measured off gemini.google.com signed in, see gemini-signed-lab.html),
+   with bo-test's inset sheet kept: the frame round the page is the sidebar's grey, the sheet white with a soft shadow.
+   Restyles the existing sidebar; the markup hooks and JS (routing, trees, rail, switchers) are unchanged. */
+body.bo-light {
+  --po-sidebar-w: 288px;
+  --po-sidebar-bg: rgb(240,239,239);   /* a step under Gemini's page grey, so the white sheet reads */
+  --po-sidebar-hover: rgba(0,0,0,.06);
+  --po-sidebar-active: rgb(225,223,223);
+  --po-sidebar-ink: #000;
+  --po-sidebar-ink-hi: #000;
+  --po-sidebar-icon: #000;
+  --po-sidebar-dim: rgba(0,0,0,.55);
+  --gm-sheet: #fff;
+  --gm-inset: 8px;
+  --gm-shadow: 0 0 0 1px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.06);
+  --gm-ease: cubic-bezier(.2,0,0,1);
+}
+body.bo-light .bo-sidebar {
+  font-family: "Inter", -apple-system, "Segoe UI", sans-serif; letter-spacing: normal; /* our font; Gemini's sizes and spacing */
+  color: var(--po-sidebar-ink); border-right: 0; -webkit-font-smoothing: antialiased;
+}
+body.bo-light .bo-sidebar .side-resizer { width: 6px; right: 0; background: none !important; }
+
+/* the page: a white sheet with round corners and a soft shadow, 8px in, on the sidebar's grey */
+@media (min-width: 1024px) {
+  body.bo-light, body.bo-light .bo-app { background: var(--po-sidebar-bg); } /* the 4px frame: top, right, bottom */
+  body.bo-light .bo-sidebar { transform: none; transition: width .3s var(--gm-ease); } /* no transform: lets the fixed tooltip out */
+  body.bo-light .main.bo-main {
+    margin: var(--gm-inset) var(--gm-inset) var(--gm-inset) var(--po-sidebar-w);
+    height: calc(100vh - 2 * var(--gm-inset)); height: calc(100dvh - 2 * var(--gm-inset));
+    border-radius: 16px; box-shadow: var(--gm-shadow); background: var(--gm-sheet);
+    transition: margin-left .3s var(--gm-ease);
+    scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.2) transparent; /* a slim thumb, no track, inside the sheet */
+  }
+}
+
+/* head: 52px, glyph where Gemini's logo sits (15,17), the round close button 8px in from the right */
+body.bo-light .bo-sidebar > .side-top { position: relative; flex: none; height: 52px; padding: 4px 8px 0 15px; display: flex; align-items: center; gap: 4px; }
+body.bo-light .bo-sidebar .side-glyph { width: 22px; height: 22px; margin: 0; border-radius: 9999px; display: grid; place-items: center; flex: none; background: var(--po-sidebar-brand); color: #fff; transition: opacity .15s; }
+body.bo-light .bo-sidebar .side-glyph svg { width: 13px; height: 13px; }
+body.bo-light .bo-sidebar .side-top [data-set-back]:not([hidden]) ~ .side-rail-btn,
+body.bo-light .bo-sidebar .side-top:has([data-set-back]:not([hidden])) .side-glyph { display: none; }
+body.bo-light .bo-sidebar .side-rail-btn { top: 8px; right: 8px; width: 36px; height: 36px; border-radius: 9999px; display: grid; place-items: center; color: var(--po-sidebar-dim); opacity: 1; }
+body.bo-light .bo-sidebar .side-rail-btn:hover { background: var(--po-sidebar-hover); color: var(--po-sidebar-dim); }
+body.bo-light .bo-sidebar svg.sp { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.25px; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+body.bo-light .bo-sidebar svg.sp.f { fill: currentColor; stroke: none; }
+
+/* the close button's tooltip: Google's dark plain tooltip */
+body.bo-light .bo-sidebar .side-tip {
+  display: none; position: fixed; left: 250px; top: 50px; z-index: 70; /* fixed: the sidebar clips overflow */
+  align-items: center; gap: 8px; height: 28px; padding: 0 8px; white-space: nowrap;
+  background: rgb(31,31,31); color: #fff; border-radius: 8px; box-shadow: none;
+  font-size: 12px; line-height: 16px;
+}
+body.bo-light .bo-sidebar .side-tip kbd { font: inherit; font-size: 11px; padding: 0 4px; border-radius: 4px; background: rgba(255,255,255,.16); color: rgba(255,255,255,.8); }
+body.bo-light .bo-sidebar .side-tip kbd + kbd { margin-left: -4px; }
+body.bo-light .bo-sidebar .side-rail-btn:hover .side-tip { display: flex; }
+
+/* search: a Gemini row, no pill box */
+body.bo-light .bo-sidebar .side-search {
+  position: relative; flex: none; display: flex; align-items: center; gap: 12px;
+  height: 32px; margin: 8px 8px 0; padding: 0 8px; border: 0; border-radius: 9999px;
+  background: none; box-shadow: none;
+  color: var(--po-sidebar-ink); font: inherit; font-size: 13px; line-height: 17px; text-align: left; cursor: pointer;
+}
+body.bo-light .bo-sidebar .side-search:hover { background: var(--po-sidebar-hover); }
+body.bo-light .bo-sidebar .side-search > span { white-space: nowrap; transition: opacity 150ms linear 100ms; }
+body.bo-light .bo-sidebar .side-kbd { margin-left: auto; color: var(--po-sidebar-dim); font-size: 12px; }
+
+/* rows: 32px pills, 20px black icons, 13px/17px labels at x 48; the current row a tonal pill */
+body.bo-light .bo-sidebar .side-nav { padding: 0 8px 8px; }
+body.bo-light .bo-sidebar .side-link,
+body.bo-light .bo-sidebar .side-sublink,
+body.bo-light .bo-sidebar .side-grouphead {
+  height: 32px; padding: 0 8px; gap: 12px; border: 0; border-radius: 9999px;
+  font-size: 13px; line-height: 17px; font-weight: 400; letter-spacing: normal; color: var(--po-sidebar-ink);
+}
+body.bo-light .bo-sidebar .side-link > span { transition: opacity 150ms linear 100ms; }
+body.bo-light .bo-sidebar .side-link > svg:first-child { margin: 0; width: 20px; height: 20px; color: var(--po-sidebar-icon); }
+body.bo-light .bo-sidebar .side-link > svg:first-child:not(.sp) { stroke-width: 1.6; }
+body.bo-light .bo-sidebar .side-link:hover,
+body.bo-light .bo-sidebar .side-sublink:hover { background: var(--po-sidebar-hover); color: var(--po-sidebar-ink); }
+body.bo-light .bo-sidebar .side-link:hover > svg:first-child { color: var(--po-sidebar-icon); }
+body.bo-light .bo-sidebar .side-link.active { background: var(--po-sidebar-active); box-shadow: none; color: var(--po-sidebar-ink-hi); font-weight: 540; }
+body.bo-light .bo-sidebar .side-link.active > svg:first-child { color: var(--po-sidebar-ink-hi); }
+/* a page lit through its tree: the parent stays plain, the leaf carries the pill */
+body.bo-light .bo-sidebar .side-link.active:not(.folded):has(+ .side-sub .side-sublink.active) { background: none; font-weight: 400; }
+body.bo-light .bo-sidebar .side-sublink,
+body.bo-light .bo-sidebar .side-grouphead { padding-left: 40px; }
+body.bo-light .bo-sidebar .side-groupbody .side-sublink { padding-left: 52px; }
+body.bo-light .bo-sidebar .side-sublink.active { background: var(--po-sidebar-active); box-shadow: none; color: var(--po-sidebar-ink-hi); font-weight: 540; }
+body.bo-light .bo-sidebar .side-sublink.active::before { display: none; }
+body.bo-light .bo-sidebar .side-chev { color: var(--po-sidebar-dim); }
+
+/* section header ("Stock"): Gemini's grey 13px header, its chevron shows on hover */
+body.bo-light .bo-sidebar .side-label,
+body.bo-light .bo-sidebar .side-nav .side-label:not(:first-child) {
+  height: 32px; margin: 12px 0 0; padding: 1px 6px 1px 16px; border: 0; border-radius: 9999px;
+  font-size: 13px; font-weight: 400; line-height: 17px; letter-spacing: normal; color: var(--po-sidebar-dim);
+}
+body.bo-light .bo-sidebar .side-label .side-chev { width: 16px; height: 16px; margin-left: 4px; opacity: 0; transition: opacity .15s; }
+body.bo-light .bo-sidebar .side-label:is(:hover, :focus-visible) .side-chev { opacity: 1; }
+
+/* foot: Settings, then the store and the account (Gemini's 28px round avatar) */
+body.bo-light .bo-sidebar .side-footer { padding: 8px 8px 12px; border-top: 0; }
+body.bo-light .bo-sidebar .side-store { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 4px; }
+body.bo-light .bo-sidebar .side-footer .side-store .side-switch-wrap { position: relative; margin: 0; padding: 0; border: 0; min-width: 0; }
+body.bo-light .bo-sidebar .side-store .side-switch { height: 36px; padding: 0 8px 0 5px; gap: 8px; border: 0; border-radius: 9999px; background: none; box-shadow: none; font: inherit; }
+body.bo-light .bo-sidebar .side-store .side-switch:hover { background: var(--po-sidebar-hover); }
+body.bo-light .bo-sidebar .side-store .ss-mark {
+  width: 28px; height: 28px; margin: 0; border-radius: 9999px; display: grid; place-items: center;
+  background: var(--po-sidebar-brand); color: #fff; font-size: 11px; font-weight: 500; letter-spacing: 0;
+}
+body.bo-light .bo-sidebar .side-store .acct .ss-mark { background: var(--po-sidebar-me); }
+body.bo-light .bo-sidebar .side-store .ss-label { display: none; }
+body.bo-light .bo-sidebar .side-store .ss-name { font-size: 15px; line-height: 20px; font-weight: 400; color: var(--po-sidebar-ink); }
+body.bo-light .bo-sidebar .side-store .acct { width: 36px; padding: 0 4px; }
+body.bo-light .bo-sidebar .side-store .acct .ss-text { display: none; }
+body.bo-light .bo-sidebar .side-store .side-menu { width: 196px; left: 0; right: auto; }
+body.bo-light .bo-sidebar .side-store .side-switch-wrap + .side-switch-wrap .side-menu { left: auto; right: 0; }
+
+/* collapsed (Gemini's 52px rail): icons only, the glyph swaps for the button on hover, headers turn to hairlines */
+@media (min-width: 1024px) {
+  body.bo-light .bo-app.side-rail { --po-sidebar-w: 52px; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-rail-btn { right: 8px; opacity: 0; }
+  body.bo-light .bo-app.side-rail .bo-sidebar > .side-top:is(:hover, :focus-within) .side-rail-btn { opacity: 1; }
+  body.bo-light .bo-app.side-rail .bo-sidebar > .side-top:is(:hover, :focus-within) .side-glyph { opacity: 0; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-tip { left: 50px; top: 50px; }
+  body.bo-light .bo-app.side-rail .bo-sidebar :is(.side-search, .side-link) > span { opacity: 0; transition: opacity 100ms linear; }
+  body.bo-light .bo-app.side-rail .bo-sidebar :is(.side-link, .side-switch) { padding-left: 8px; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-label { position: relative; font-size: 0; color: transparent; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-label::before { content: ""; position: absolute; left: 10px; top: 16px; width: 16px; height: 1px; background: rgba(0,0,0,.12); }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-store { flex-direction: column-reverse; align-items: flex-start; gap: 6px; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-store .side-switch { padding-left: 4px; }
+  body.bo-light .bo-app.side-rail .bo-sidebar .side-link.active:not(.folded):has(+ .side-sub .side-sublink.active) { background: var(--po-sidebar-active); }
+}
+
+/* phone/tablet overlay: the hamburger sits where the glyph is */
+@media (max-width: 1023px) {
+  body.bo-light .bo-sidebar .side-glyph { visibility: hidden; }
+}
