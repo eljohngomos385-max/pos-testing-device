@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=346" />
+  <link rel="stylesheet" href="styles.css?v=367" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
   <div id="app" class="sidebar-collapsed">
@@ -579,6 +579,7 @@
                 <h3 class="fc-t">Store</h3>
                 <section class="card fc">
                   <button type="button" class="fr nav" id="posPayTypesRow"><span class="lb">Payment types</span><span class="v"><span class="vv" id="posPayTypesNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" id="posFulTypesRow"><span class="lb">Fulfilment types</span><span class="v"><span class="vv" id="posFulTypesNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <label class="fr"><span class="lb">Time zone</span><span class="v"><span class="act st-pick st-sel"><select id="posTimeZone"></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
                   <button type="button" class="fr nav" data-pick="discountLimit"><span class="lb">Ask a manager for discounts over</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <button type="button" class="fr nav" data-pick="refundPin"><span class="lb">Refunds and exchanges</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
@@ -601,6 +602,7 @@
             <div class="head">
               <button class="sq back" id="payTypesBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl">Payment types</h1>
+              <button type="button" class="sq st-save ty-edit-btn" hidden></button>
             </div>
             <div class="c-scroll">
               <div class="c-body">
@@ -608,6 +610,7 @@
                 <section class="card fc" id="payTypesList"></section>
               </div>
             </div>
+            <div class="qs-tickbar ty-bar" hidden><button type="button" class="qs-next ty-go" disabled></button></div>
           </section>
           <!-- Payment types › Add (owner 2026-10-15): a page, not a pop-up -->
           <section class="page st-page" id="payTypeAddPage" aria-label="Add payment type" hidden>
@@ -620,6 +623,39 @@
               <form class="c-body" id="payTypeAddForm">
                 <section class="card fc">
                   <label class="fr"><span class="lb">Name</span><span class="v"><input class="in" id="ptName" maxlength="24" placeholder="e.g. Maya or Card" autocomplete="off"></span></label>
+                </section>
+              </form>
+            </div>
+          </section>
+          <!-- Settings › Fulfilment types (owner 2026-10-16): Payment types' twin, plus the primary a sale starts on (pos-settings.js) -->
+          <section class="page st-page" id="fulTypesPage" aria-label="Fulfilment types" hidden>
+            <div class="head">
+              <button class="sq back" id="fulTypesBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl">Fulfilment types</h1>
+              <button type="button" class="sq st-save ty-edit-btn" hidden></button>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <h3 class="fc-t">Primary</h3>
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Sales start on</span><span class="v"><span class="act st-pick st-sel"><select id="fulPrimary"></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
+                </section>
+                <h3 class="fc-t">Shown on the sale</h3>
+                <section class="card fc" id="fulTypesList"></section>
+              </div>
+            </div>
+            <div class="qs-tickbar ty-bar" hidden><button type="button" class="qs-next ty-go" disabled></button></div>
+          </section>
+          <section class="page st-page" id="fulTypeAddPage" aria-label="Add fulfilment type" hidden>
+            <div class="head">
+              <button class="sq back" id="fulTypeAddBack" aria-label="Back to fulfilment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl">Add fulfilment type</h1>
+              <button type="button" class="act primary st-save" id="fulTypeAddSave">Save</button>
+            </div>
+            <div class="c-scroll">
+              <form class="c-body" id="fulTypeAddForm">
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Name</span><span class="v"><input class="in" id="ftName" maxlength="24" placeholder="e.g. Grab or Tricycle" autocomplete="off"></span></label>
                 </section>
               </form>
             </div>
@@ -854,21 +890,21 @@
   </div>
 
   <script src="sales-math.js?v=27"></script>
-  <script src="data-store.js?v=53"></script>
+  <script src="data-store.js?v=54"></script>
   <script src="data.js?v=30"></script>
-  <script src="bo-model.js?v=130"></script>
+  <script src="bo-model.js?v=133"></script>
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=47"></script>
-  <script src="pos-core.js?v=36"></script>
-  <script src="pos-sell.js?v=63"></script>
-  <script src="pos-checkout.js?v=18"></script>
+  <script src="pos-core.js?v=38"></script>
+  <script src="pos-sell.js?v=68"></script>
+  <script src="pos-checkout.js?v=19"></script>
   <script src="pos-orders.js?v=24"></script>
-  <script src="pos-items.js?v=34"></script>
+  <script src="pos-items.js?v=35"></script>
   <script src="pos-customers.js?v=35"></script>
-  <script src="pos-settings.js?v=17"></script>
-  <script src="pos-pin.js?v=10"></script>
-  <script src="pos-shift.js?v=35"></script>
+  <script src="pos-settings.js?v=26"></script>
+  <script src="pos-pin.js?v=12"></script>
+  <script src="pos-shift.js?v=36"></script>
   <script src="pos-stock.js?v=4"></script>
-  <script src="app.js?v=184"></script>
+  <script src="app.js?v=192"></script>
 </body>
 </html>

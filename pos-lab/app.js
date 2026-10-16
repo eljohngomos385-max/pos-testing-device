@@ -474,6 +474,7 @@ function attachEvents() {
   });
   itemForm?.addEventListener('change', (e) => {
     const t = e.target, E = itemEdit, k = t.dataset.tick;
+    if (t.id === 'kindImg' && t.files[0]) return shrinkPhoto(t.files[0]).then(img => { kindEdit.img = img; renderKindForm(); }, () => showToast('That file isn’t a photo'));
     if (kindEdit || !E) return;
     if (t.dataset.f === 'sellOut') E.sellOut = t.checked;
     if (t.dataset.f === 'track') { E.track = t.checked; renderItemForm(); }   // Low stock and Sell when out come and go with it
@@ -840,7 +841,7 @@ function attachEvents() {
     completeSale();
   });
   $('#checkoutSteps')?.addEventListener('click', (e) => { if (e.target.closest('[data-complete]')) (SP ? spNext : completeSale)(); });
-  window.addEventListener('resize', () => { fitCheckout(); centreCheckout(); });
+  window.addEventListener('resize', fitCheckout);
   $('#successPrintBtn')?.addEventListener('click', printSuccessReceipt);
   $('#successNewSaleBtn')?.addEventListener('click', startNewSaleFromSuccess);
   // Phone: the receipt sheet; the paper prints in again each time it comes up
@@ -921,6 +922,7 @@ function attachEvents() {
     if (item) connectPrinter(item.dataset.ip);
   });
   bindPayTypes();   // Settings › Payment types (pos-settings.js)
+  bindFulTypes();   // Settings › Fulfilment types (pos-settings.js)
   bindPick();   // Settings › one choice's page
   $('#posLogOutBtn')?.addEventListener('click', logOut);
   $('#signInForm')?.addEventListener('submit', (e) => { e.preventDefault(); signInCover(false); if (tillPins()) lockTill(); });
@@ -986,7 +988,7 @@ function init() {
   const openHashView = () => {
     const hash = (location.hash || '').replace('#', '').trim();
     const target = hash.split(/[/?&:]/)[0];
-    const valid = ['sell', 'orders', 'inventory', 'customers', 'shift', 'reports'];
+    const valid = ['sell', 'orders', 'items', 'customers', 'shift', 'reports'];
     if (valid.includes(target) && canAccess(target)) switchView(target);
   };
   openHashView();

@@ -764,10 +764,12 @@
     vatInclusive: true,
     // 2 = 2026-10-03: 'walkin' is the counter sale (SalesMath.ORDER_VERSION). Every save writes this whole
     // object, so a store that saves after today is v2 and its 'pickup' really means Pickup (readSettings).
-    schemaVersion: 2,
-    defaultFulfilment: 'walkin', // a FULFIL_BUILTINS key (bo-model): walkin | pickup | delivery
-    // Which fulfilment pills the checkout shows. { hidden: [builtin key], custom: [name] }
-    fulfilment: { hidden: [], custom: [] },
+    // 3 = 2026-10-16: Dine-in and Take-out built-ins, off for a store that saved before them.
+    schemaVersion: 3,
+    defaultFulfilment: 'walkin', // the primary type: what a sale starts on, always on. A FULFIL_BUILTINS key (bo-model) or an own type
+    // Which fulfilment types the sale offers. { hidden: [builtin key or own name], custom: [name] }. A new store = Retail's set.
+    // ponytail: Food's set (Dine-in, Take-out, Pickup, Delivery) waits for onboarding, the only place a preset is picked.
+    fulfilment: { hidden: ['dinein', 'takeout'], custom: [] },
     store: {
       id: '',
       name: 'EJ Hardware',
@@ -807,6 +809,11 @@
       if (out.defaultFulfilment === 'pickup') out.defaultFulfilment = 'walkin';
       out.fulfilment.hidden = [...new Set([...(out.fulfilment.hidden || []), 'pickup'])];
     }
+    // Settings from before v3 never saw Dine-in or Take-out: they start off, like a new store's.
+    if (!(Number(saved.schemaVersion) >= 3) && Object.keys(saved).length) {
+      out.fulfilment.hidden = [...new Set([...(out.fulfilment.hidden || []), 'dinein', 'takeout'])];
+    }
+    out.schemaVersion = base.schemaVersion;   // read once: the next save is this version, so turning Dine-in on sticks
     return out;
   }
   const readSettingsForApi = () => readSettings();

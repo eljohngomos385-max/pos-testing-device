@@ -828,7 +828,7 @@ function openEditSheet(kind, id, via) {
   }
   Object.assign(es, { f: null, anim: false, opened: true, ok: discSnap() });   // ok: what a manager's "no" puts back (discountOk)
   drawEditSheet();
-  if (!was) $('#editSheet').classList.add('open');
+  if (!was) { $('#editSheet').classList.add('open'); esLine($('#editSheet')); }
 }
 
 // The one way a cart line leaves: the editor's Remove item and the swiped line's Delete (owner 2026-10-08).
@@ -956,13 +956,15 @@ function drawEditSheet() {
     rows = '';
     side = `<div class="es-keys">${esKeys(true)}</div>`;
   } else if (o.kind === 'rd') {
-    const t = cartTotals();
-    head = `<p>Sale total</p><div class="es-hero">${peso(t.total)}</div><p>${t.discount ? `${peso(t.subtotal)} · ${peso(-t.discount)}` : 'No discount'}</p>`;
+    // what they pay, and while a discount is on, how much it takes off what: "₱13.00 off ₱65.00" (owner 2026-10-16).
+    // Before = the sale with no sale discount and no Senior / PWD, so the VAT the exemption drops counts as off too.
+    const t = cartTotals(), was = cartTotals(state.cart, null, null).total, off = moneyValue(was - t.total);
+    head = `<div class="es-hero">${peso(t.total)}</div>${off > 0 ? `<p class="es-off"><b>${peso(off)}</b> off ${peso(was)}</p>` : ''}`;
     // Senior / PWD, then the saved ones, scroll under the total (any number of them); Custom stays put below.
-    rows = `<div class="es-scroll">${Object.entries(ES_SC).map(([k, name]) => `<button type="button" class="es-row${o.f === k ? ' on' : o.pick === k ? ' pick' : ''}" data-sc="${k}"><span>${name}</span><small class="ad">${
+    rows = `<div class="es-scroll">${Object.entries(ES_SC).map(([k, name]) => `<button type="button" class="es-row${o.f === k ? ' on' : o.pick === k ? ' pick' : ''}" data-sc="${k}" style="view-transition-name:es-${k}"><span>${name}</span><small class="ad">${
         o.pick !== k || !state.scPwd ? esShown(esScRow(k)) : t.scPwd ? escapeHtml(state.scPwd.name) : 'Promo is bigger'}</small>${cv(o.f === k)}</button>`).join('')
-      + esPresets().map(d => `<button type="button" class="es-row${o.pick === d.id ? ' pick' : ''}" data-pick="${escapeHtml(d.id)}"><span>${escapeHtml(d.name)}</span><small>${esShown(d)}</small></button>`).join('')}</div>`
-      + `<div class="es-row${o.f === 'd' ? ' on' : o.pick === 'c' ? ' pick' : ''}" data-sf="d"><span>Custom</span>${n('d', o.pick === 'c' ? esTyped(o) : '', ' v')}${cv(o.f === 'd')}</div>`;
+      + esPresets().map((d, i) => `<button type="button" class="es-row${o.pick === d.id ? ' pick' : ''}" data-pick="${escapeHtml(d.id)}" style="view-transition-name:es-p${i}"><span>${escapeHtml(d.name)}</span><small>${esShown(d)}</small></button>`).join('')}</div>`
+      + `<div class="es-row${o.f === 'd' ? ' on' : o.pick === 'c' ? ' pick' : ''}" data-sf="d" style="view-transition-name:es-c"><span>Custom</span>${n('d', o.pick === 'c' ? esTyped(o) : '', ' v')}${cv(o.f === 'd')}</div>`;
     const field = (f, label) => `<input class="es-ta${o.bad === f ? ' bad' : ''}" data-scf="${f}" value="${escapeHtml(o.sc[f])}" placeholder="${label}" aria-label="${label}" autocomplete="off"${o.bad === f ? ' aria-invalid="true"' : ''}>`;
     if (ES_SC[o.f]) side = `<div class="es-keys es-addr${kin}"><div class="es-ah">${o.f === 'pwd' ? 'PWD' : 'Senior citizen'}</div>${field('idNo', 'ID number')}${field('name', 'Name')}</div>`;
     else if (o.f) side = `<div class="es-keys${kin}">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'))}${esKeys(true)}</div>`;
@@ -990,6 +992,14 @@ function drawEditSheet() {
   else if (list) list.scrollTop = top;
   o.anim = o.opened = false;
 }
+// The hero line (owner 2026-10-16): every amount's top sits --hero-y from the top of the screen, checkout's included.
+// The card starts lower on a tablet (the sheet's frame), so it says where: its inside's top, the slide-up ignored.
+function esLine(sh) {
+  const c = sh.querySelector('.es-card'), p = sh.offsetParent;
+  const top = (p ? p.getBoundingClientRect().top + p.clientTop : 0) + sh.offsetTop + sh.clientTop + c.offsetTop + c.clientTop;
+  sh.style.setProperty('--es-y', `${Math.round(top)}px`);
+}
+addEventListener('resize', () => $$('.esheet.open').forEach(esLine));
 // The panel's frame: ✕ / Back, the head over its list, the side (keys or a field), the foot. The shift's panel wears it too.
 const esFrame = (head, rows, side, foot, cls = '') => `<button type="button" class="es-x" data-close aria-label="Close">${esSvg('x', 'ix')}${esSvg('back', 'ib')}<span class="xl">Back</span></button>
     <div class="es-body${cls}"><div class="es-col"><div class="es-head">${head}</div><div class="es-list">${rows}</div></div>${side}</div>
@@ -1015,7 +1025,7 @@ function editSheetClick(e) {
     $('#editSheet').classList.remove('open');
     return gone ? removeLine(gone) : renderCart();
   }
-  const item = esItem(), step = item ? stepFor(productOf(item)) : 1;
+  const item = esItem(), step = item ? stepFor(productOf(item)) : 1, f0 = o.f;
   if (el('[data-sk]')) {
     const qty = o.f === 'q';
     o[o.f] = esPress(o.fresh ? '' : o[o.f], el('[data-sk]').dataset.sk, !qty || step < 1, qty ? 9999 : o.pct ? 100 : 99999);
@@ -1051,9 +1061,12 @@ function editSheetClick(e) {
   } else return;
   const typing = el('[data-sk]') || el('.es-seg button');   // the keys, Percent / Amount: shown, not put on yet
   esWrite();
-  drawEditSheet();
+  const draw = () => { drawEditSheet(); if (ES_SC[o.f]) ($$('#editSheet [data-scf]').find(i => !i.value.trim()) || $('#editSheet [data-scf]')).focus(); };
+  // A phone's Discount (owner 2026-10-16): only the row tapped stays, so it glides into the first row's place and the
+  // others fade (the browser's view transition, each row named in drawEditSheet); the number never moves. A plain swap without one.
+  const glide = o.kind === 'rd' && !f0 !== !o.f && $('#editSheetCard').clientWidth <= 560 && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (glide) document.startViewTransition(draw); else draw();
   if (!typing && discountOk(o.ok)) o.ok = discSnap();   // anything else puts it on: past the limit, a manager is asked
-  if (ES_SC[o.f]) ($$('#editSheet [data-scf]').find(i => !i.value.trim()) || $('#editSheet [data-scf]')).focus();
   const note = $('#esNote');   // preventScroll: the panel slides in, and a plain focus scrolls the catalog under it
   if (note) { note.focus({ preventScroll: true }); note.selectionStart = note.value.length; }
 }
@@ -1103,7 +1116,7 @@ function renderFulRow() {
   if (!row) return;
   const methods = fulfilMethods(state.settings);
   // A hidden or deleted type must not stay selected on the cart in front of the cashier.
-  if (!methods.some(m => m.key === state.fulfilment)) state.fulfilment = 'walkin';
+  if (!methods.some(m => m.key === state.fulfilment)) state.fulfilment = state.settings.defaultFulfilment || 'walkin';
   const cur = methods.find(m => m.key === state.fulfilment) || methods[0];
   row.innerHTML = `<button type="button" class="pick" id="fulPick" aria-haspopup="dialog"><span>${escapeHtml(cur.label)}</span>${RAIL_UPDOWN}</button>`;
 }
@@ -1463,7 +1476,7 @@ function renderCart() {
   } else {
     list.innerHTML = back + state.cart.map(item => `
       <div class="line"><button type="button" class="row" data-id="${item.id}" title="Edit item">${linePic(item)}
-        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}${item.discount ? ` · ${peso(-normalizeOrderItem(item).lineDiscount)}` : ''}</small>${item.note ? `<small class="note">${escapeHtml(item.note)}</small>` : ''}</span>
+        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}${item.discount ? ` · <span class="off">${peso(-normalizeOrderItem(item).lineDiscount)}</span>` : ''}</small>${item.note ? `<small class="note">${escapeHtml(item.note)}</small>` : ''}</span>
         <span class="amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
       </button><button type="button" class="sw-del" data-del="${item.id}" tabindex="-1" aria-label="Delete">${esSvg('trash')}</button></div>`).join('');
     list.scrollTop = list.scrollHeight;

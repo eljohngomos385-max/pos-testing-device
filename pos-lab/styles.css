@@ -5,6 +5,7 @@
    ============================================================ */
 
 :root {
+  --qs-tick-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E");   /* the tick of a ticked dot (Quick stock, types delete) */
   --rl-ease: cubic-bezier(.2, .8, .2, 1);               /* on :root so the view-transition layers reach it */
   --bg: #121212;
   --bg-soft: #1C1C1C;
@@ -14,6 +15,12 @@
   --surface-2: #1F1F1F;
   --tile: #2A2A2A;
   --es-r: 12px;                                             /* the owner's button corner (popups-lab); every grey block */
+  /* THE HERO LINE (owner 2026-10-16): every page with one big amount -- checkout, Walk-in, Discount, a cart line, the
+     price ask, Start / Close shift, Cash in / out -- puts the amount's top --hero-y from the top of the screen, its list
+     or keys --hero-gap under it, at one size. Checkout's line is the reference. A new hero page uses these, never its own spot */
+  --hero-y: clamp(140px, 22.8dvh, 300px);
+  --hero-gap: clamp(20px, 4vh, 36px);
+  --hero-fs: clamp(54px, 5.4vw, 72px);
 
   --line: rgba(255, 255, 255, 0.08);
   --line-strong: rgba(255, 255, 255, 0.14);
@@ -32,8 +39,9 @@
   --warn: #FFB74D;
   --warn-bg: rgba(255, 183, 77, 0.12);
   --xchg: var(--warn);   /* an exchange: its pay button, phone bar, the goods coming back, the Orders word */
-  --danger: #EF5350;
-  --danger-bg: rgba(239, 83, 80, 0.14);
+  --danger: #FF453A;   /* iOS system red (owner 2026-10-16: the old one read orange) */
+  --danger-bg: rgba(255, 69, 58, 0.14);
+  --danger-ink: #FFFFFF;   /* words on a red fill, both themes */
   --ok: #3B7A4F;
   --ok-bg: rgba(59, 122, 79, 0.14);
 
@@ -3431,17 +3439,28 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .esheet .es-x { position: absolute; z-index: 1; top: 12px; left: 12px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--es-r); color: var(--ink-secondary); }
 .esheet .es-x:hover { background: var(--es-btn); color: var(--ink); }
 .esheet .es-x :is(.ib, .xl) { display: none; }   /* the phone's ‹ Back */
-/* the body: the big number sits at one spot, 40% down the card, on every sheet (a touch above centre reads as centre);
-   the list runs down from it, keys or a panel beside it. 56 = the name line 20 + gap 4 + half the hero 32 */
+@media (min-width: 721px) {   /* the tablet's too: checkout's ‹ Cancel, word and all (owner 2026-10-16) */
+  .esheet:not(.cust-sheet) .es-x { top: 8px; left: 8px; display: inline-flex; gap: 4px; width: auto; height: 44px; padding: 0 12px 0 8px; border-radius: var(--r-input);
+                                   color: var(--ink); font-size: 15px; font-weight: 560; }
+  .esheet:not(.cust-sheet) .es-x .ib { display: block; width: 18px; height: 18px; stroke-width: 2; color: var(--ink-secondary); }
+  .esheet:not(.cust-sheet) .es-x .xl { display: block; }
+  .esheet:not(.cust-sheet) .es-x .ix { display: none; }
+}
+/* the body: the big number on the hero line (--hero-y, :root), the list running down from it, keys or a panel beside it.
+   --es-y = where the card's inside starts on the screen (esLine); 24 = the name line 20 + gap 4, kept when there's no name */
 .es-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(240px, 420px); grid-auto-columns: minmax(220px, 300px);   /* narrow: both give a little, the list never squeezes */ grid-auto-flow: column; justify-content: center;
-           align-content: start; align-items: center; column-gap: 40px; padding: max(24px, calc(40cqh - 56px)) 24px 24px; overflow-y: auto; }
+           align-content: start; align-items: center; column-gap: 40px; padding: max(0px, calc(var(--hero-y) - var(--es-y, 0px) - 24px)) 24px 24px; overflow-y: auto; }
 .es-head > .es-hero:first-child { margin-top: 24px; }   /* fulfilment has no name line: same spot for its hero */
 .es-col { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 16px; }
-.es-head { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 8px; color: var(--ink-tertiary); font-size: 13px; font-weight: 500;
-           font-variant-numeric: tabular-nums; text-align: center; }
-.es-head p { margin: 0; }
-.es-hero { color: var(--ink); font-size: 52px; font-weight: 600; letter-spacing: -1.2px; line-height: 64px; font-variant-numeric: tabular-nums; }
+.es-head { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: calc(var(--hero-gap) - 16px); color: var(--ink-tertiary); font-size: 13px; font-weight: 500;
+           font-variant-numeric: tabular-nums; text-align: center; }   /* + the column's 16 = checkout's gap to the first row */
+.es-head p { max-width: 100%; margin: 0; overflow: hidden; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }   /* one line: a long name never moves the amount */
+.es-head { position: relative; }
+.es-head .es-off { position: absolute; top: calc(100% + 4px); }   /* "₱13.00 off ₱65.00" under the cart Discount's total, in the gap: the rows never move */
+.es-head .es-off b { color: var(--rl-on); font-weight: inherit; }   /* what's taken off, in the discount blue */
+.es-hero { color: var(--ink); font-size: var(--hero-fs); font-weight: 600; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }   /* checkout's */
 .es-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.es-list:empty { display: none; }
 .esheet .es-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding: 0 12px 0 16px; border-radius: var(--es-r); background: var(--tile);
                   font-size: 15px; font-weight: 500; text-align: left; transition: background-color .12s; }
 .esheet .es-row:hover:not(.on):not(.pick) { background: var(--es-hover); }
@@ -3489,11 +3508,11 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-times { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .esheet .es-times .es-row { justify-content: center; min-height: 48px; padding: 0; }
 /* the receipt discount: any number of saved ones. The total keeps its spot, the list scrolls under it, Custom stays below it */
-.es-body.fill { grid-template-rows: minmax(0, 1fr); align-items: stretch; overflow: hidden; padding-top: max(24px, calc(24cqh - 56px)); }   /* higher than 40%: the list needs the room (owner 2026-10-07: "sitting lower") */
+.es-body.fill { grid-template-rows: minmax(0, 1fr); align-items: stretch; overflow: hidden; }
 .es-body.fill .es-col, .es-body.fill .es-list { min-height: 0; }
 .es-body.fill > .es-keys { height: auto; align-self: center; }
-/* the asked price (an item with no set price): the number over its keys, in the upper middle, tablet and phone alike (owner 2026-10-13) */
-.esheet .es-body.ask { grid-auto-flow: row; grid-template-columns: minmax(0, 360px); row-gap: 24px; margin-top: 0; padding-top: max(56px, calc(42cqh - 180px)); }
+/* the number over its keys, tablet and phone alike: the asked price (owner 2026-10-13), Start / Close shift, Cash in / out (owner 2026-10-16) */
+.esheet .es-body.ask { grid-auto-flow: row; grid-template-columns: minmax(0, 360px); row-gap: 16px; }
 .esheet .es-body.ask > .es-keys { height: auto; }
 .esheet .es-body.ask .es-col { animation: none; }
 .es-scroll { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
@@ -3506,6 +3525,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .esheet .es-ink { height: 40px; margin-left: auto; padding: 0 20px; border-radius: var(--es-r); background: var(--tile); font-size: 14px; font-weight: 590; }
 .esheet .es-ink:hover:not(:disabled) { background: var(--es-hover); }
 .esheet .es-ink:disabled { opacity: .35; cursor: default; }   /* the price ask's Add, till a price is typed */
+.esheet .es-ink + .es-ink { margin-left: 0; }   /* a pair (Cash out | Cash in) stays together on the right */
 /* the list glides aside as the keys come in, and back when they go (170 = half of keys 300 + gap 40). es-in / es-out,
    never in / out: inside a .lv page (the Shift sheet) '.lv .in' is the text-field style */
 .es-body.es-in .es-col { animation: es-left .28s var(--rl-ease) both; }
@@ -3514,15 +3534,17 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 @keyframes es-left { from { transform: translateX(170px); } }
 @keyframes es-right { from { transform: translateX(-170px); } }
 @keyframes es-side { from { opacity: 0; transform: translateX(24px); } }
+.esheet .es-row { view-transition-class: es-row; }   /* a phone's Discount: the tapped row's glide, the others' fade (editSheetClick) */
+::view-transition-group(*.es-row), ::view-transition-old(*.es-row), ::view-transition-new(*.es-row) { animation-duration: .3s; animation-timing-function: var(--rl-ease); }
 /* a card too narrow for list + panel side by side (548 = 240 + 40 + 220 + 48): the panel goes under the list, the list stays put */
 @container (max-width: 560px) {
-  .es-body { grid-auto-flow: row; grid-template-columns: minmax(0, 420px); row-gap: 24px;
-             margin-top: 64px; padding-top: max(0px, calc(40cqh - 120px)); }   /* scrolls below the X, never under it; same start spot */
+  .es-body { grid-auto-flow: row; grid-template-columns: minmax(0, 420px); row-gap: 24px; }
   .es-keys { height: auto; }
   .es-body.es-in .es-col, .es-body.es-out .es-col { animation: none; }
+  .es-keys.es-in { animation: co-in .3s var(--rl-ease) both; }   /* the panel comes in under the list as checkout's Cash step does (owner 2026-10-16) */
   /* a phone's card is short: the head sits by the X, and the list never squeezes under 3¼ rows (the cut one says there's
      more); a shorter card scrolls the body instead. 410 = head 128 + gap 16 + list 210 (3 × 64 + 18) + 8 + Custom 56 */
-  .es-body.fill { margin-top: 20px; padding-bottom: 8px; padding-top: max(0px, calc(24cqh - 120px)); grid-template-rows: minmax(410px, 1fr); overflow-y: auto; }
+  .es-body.fill { padding-bottom: 8px; grid-template-rows: minmax(410px, 1fr); overflow-y: auto; }
   .es-body.fill:has(> .es-keys) { grid-template-rows: none; }   /* keys or ID under the list: only the row they're for stays */
   .es-body.fill:has(> .es-keys) :is(.es-col, .es-list, .es-scroll) { flex: none; min-height: auto; overflow: visible; }
   .es-body.fill:has(> .es-keys) :is(.es-scroll, .es-list) > :not(.on):not(:has(.on)) { display: none; }
@@ -3655,9 +3677,9 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-cancel .co-ic { width: 18px; height: 18px; stroke-width: 2; color: var(--ink-secondary); }
 .is-done .co-cancel { opacity: 0; pointer-events: none; }
 .co-stage { overflow: auto; padding: 0 var(--co-m) 56px; }
-/* --lift centres the total + method tiles once per size (centreCheckout), never per step */
-.co-col { display: grid; width: 100%; max-width: 820px; margin: 0 auto; padding-top: var(--lift, 0px); }
-.co-hero { padding: clamp(16px, 4vh, 40px) 0 clamp(20px, 4vh, 36px); text-align: center; font-size: clamp(54px, 5.4vw, 72px); font-weight: 600;
+/* the total on the hero line (--hero-y, :root): the line less the Cancel bar over the column */
+.co-col { --co-top-h: calc(var(--co-m) - 16.75px + 44px); display: grid; width: 100%; max-width: 820px; margin: 0 auto; padding-top: max(0px, calc(var(--hero-y) - var(--co-top-h))); }
+.co-hero { padding: 0 0 var(--hero-gap); text-align: center; font-size: var(--hero-fs); font-weight: 600;
            letter-spacing: -.04em; line-height: 1; }
 
 .co-step { display: grid; gap: 12px; animation: co-in .3s var(--co-ease) both; }
@@ -3681,10 +3703,13 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 #checkoutQuick .co-tile { padding: 0 6px; }
 #checkoutQuick { container-type: inline-size; }
 #checkoutQuick small { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-@container (max-width: 600px) {   /* a narrow column (portrait, phone): the amounts alone, still one line */
-  #checkoutQuick small { display: none; }
-  #checkoutQuick .co-big { font-size: 17px; }
-}
+/* methods and cash amounts: one row each, as Walk-in and Discount, tablet and phone (owner 2026-10-07 phone, 2026-10-16 tablet) */
+#checkoutMethods, #checkoutQuick { grid-template-columns: minmax(0, 1fr); max-width: 420px; gap: 8px; }
+#checkoutMethods .co-tile, #checkoutQuick .co-tile { flex-direction: row; justify-content: flex-start; gap: 12px; height: auto; min-height: 56px;
+                                                     padding: 0 16px; border-radius: calc(var(--r-input) + 2px); font-size: 15px; font-weight: 500; text-align: left; }
+#checkoutMethods .co-ic { width: 20px; height: 20px; }
+#checkoutQuick .co-big { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; letter-spacing: 0; text-align: left; }
+#checkoutQuick small { flex: none; font-size: 14px; }
 .co-keyin { display: grid; grid-template: "read keys" minmax(0, 1fr) "go keys" auto / minmax(0, 1fr) 312px; gap: var(--co-gap) 32px;
             animation: co-in .3s var(--co-ease) both; }
 .co-step > .co-keyin { max-width: 720px; }
@@ -3809,12 +3834,6 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
    change shows; after the sale, Show receipt (where Check out sits) brings the receipt up as a sheet. */
 @media (max-width: 720px) {
   .co { grid-template-columns: 1fr; }
-  #checkoutMethods, #checkoutQuick { grid-template-columns: minmax(0, 1fr); max-width: 440px; gap: 8px; }
-  #checkoutMethods .co-tile, #checkoutQuick .co-tile { flex-direction: row; justify-content: flex-start; gap: 12px; height: auto; min-height: 56px;
-                                                       padding: 0 16px; border-radius: calc(var(--r-input) + 2px); font-size: 15px; font-weight: 500; text-align: left; }
-  #checkoutMethods .co-ic { width: 20px; height: 20px; }
-  #checkoutQuick .co-big { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; letter-spacing: 0; text-align: left; }
-  #checkoutQuick small { display: block; flex: none; font-size: 14px; }
   .co-items { position: fixed; inset: 0; z-index: 99; display: block; border: 0; background: var(--surface);
               transform: translateY(100%); visibility: hidden; transition: transform .16s var(--rl-ease), visibility 0s .16s; }
   .co-items.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
@@ -4731,8 +4750,8 @@ body.light-theme {
   --warn: #7A5B00;
   --warn-bg: #FCEFC7;
   --xchg: var(--warn);
-  --danger: #D72C0D;         /* --trend-down */
-  --danger-bg: #F8D8D0;
+  --danger: #FF3B30;         /* iOS system red, like --rl-bar is its blue */
+  --danger-bg: #FFE0DE;
   --ok: #047B5D;             /* --trend-up */
   --ok-bg: #D3ECDD;
   --shadow-card: 0 1px 2px -1px rgb(26 26 26 / .07);   /* --card-shadow */
@@ -7185,6 +7204,7 @@ body.light-theme {
 .rail-h .row .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
 .rail-h .row .nm span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .rail-h .row .nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
+.rail-h .row .nm small .off { color: var(--rl-on); }   /* a line's discount reads at a glance: the app's discount blue */
 .rail-h .row .nm .note { overflow-wrap: anywhere; }   /* the line's note (its editor's Note) */
 .rail-h .row .amt { font-size: 13px; font-weight: 600; white-space: nowrap; }
 .rail-h .empty { display: grid; place-content: center; justify-items: center; gap: 4px; height: 100%; padding: 24px; text-align: center; }
@@ -7349,12 +7369,17 @@ body.light-theme .view-sell .content-row { transition: background-color .2s ease
   .es-card { border: 0; border-radius: 0; box-shadow: none; background: var(--bg); }
   body.light-theme:has(.esheet.open:not(.cust-sheet)) { background: var(--bg); }   /* the page is white; the status bar with it */
   .es-ft { border-top: 0; }
-  .es-body:not(.fill) { padding-top: max(0px, calc(30cqh - 120px)); }   /* the hero where checkout's sits */
-  .esheet .es-x { top: 3.25px; left: 6px; display: inline-flex; align-items: center; gap: 4px; width: auto; min-width: 92px; height: 44px; padding: 0 12px 0 8px;
-                  border-radius: var(--r-input); color: var(--ink); font-size: 15px; font-weight: 560; }   /* = .co-cancel */
+  .es-body { padding-inline: 20px; }   /* checkout's inset */
+  /* Every phone ‹ Back / ‹ Cancel = checkout's Cancel scaled up to the ☰ (owner 2026-10-16): the box at 12,8, 44 tall,
+     a 24 grey chevron at x 16 like the ☰'s icon, then the word */
+  .co-top { padding: 8px var(--co-m) 0 12px; }
+  .co-col { --co-top-h: 52px; }   /* 8 + the 44 box */
+  .esheet .es-x { top: 8px; left: 12px; width: auto; height: 44px; }
+  :is(.co-cancel, .esheet .es-x) { display: inline-flex; align-items: center; gap: 5px; min-width: 0; padding: 0 12px 0 4px;
+                                   border-radius: var(--r-input); color: var(--ink); font-size: 17px; font-weight: 560; line-height: 20px; }
+  :is(.co-cancel .co-ic, .esheet .es-x .ib) { width: 24px; height: 24px; stroke-width: 2; color: var(--ink-secondary); }
   .esheet .es-x .ix { display: none; }
   .esheet .es-x :is(.ib, .xl) { display: block; }
-  .esheet .es-x .ib { stroke-width: 2; color: var(--ink-secondary); }
   .cust-sheet .es-ft { top: 8px; right: 10px; }
   .cust-sheet .es-ink { height: var(--bar-h); padding: 0 6px; }   /* the phone: Save at the top, across from Back */
   .cs-body { padding: 78px 16px 24px; }
@@ -7372,7 +7397,6 @@ body.light-theme .view-sell .content-row { transition: background-color .2s ease
   body:has(#scanSheet.open) #cartBar { position: relative; z-index: 100; }
   body:has(#scanSheet.open) .esheet { z-index: 101; }   /* a scanned item with no set price asks it over the camera */
   body:has(#scanSheet.open) .toast { bottom: calc(var(--bar-h) + var(--ph-b) + 88px); }   /* over the card */
-  .es-body:has(> .es-keys) { margin-top: 56px; padding-top: 0; }   /* keys or a panel: the head goes up by the X so they fit */
   .product-grid[data-size="sm"] .pc-group .pc-name { padding-top: 14px; }   /* 4 across: clear of the folder badge */
 }
 
@@ -7402,9 +7426,9 @@ body.light-theme {
           border-radius: var(--rl-r); background: var(--rl-card); color: var(--ink-secondary); box-shadow: var(--rl-shadow); transition: background-color .12s, color .12s; }
 .lv .sq:hover { background: var(--rl-hover); color: var(--ink); }
 .lv .sq.back { width: 32px; margin-left: -8px; border: 0; background: none; box-shadow: none; color: var(--ink); }   /* Back is a bare chevron, no box (rednote's) */
-.lv .sq.back .ic { width: 24px; height: 24px; stroke-width: 1.8; }
+.lv .sq:is(.back, .ty-edit-btn) .ic { width: 24px; height: 24px; stroke-width: 1.8; }   /* the trash drawn like Back's ‹ */
 /* ☰ bare like Sell's (owner 2026-10-09): rednote's size and spot, search takes the room */
-.lv .sq:is([data-act="open-sidebar"], .sh-hist) { width: 32px; border: 0; background: none; box-shadow: none; color: var(--ink); }
+.lv .sq:is([data-act="open-sidebar"], .sh-hist, .ty-edit-btn) { width: 32px; border: 0; background: none; box-shadow: none; color: var(--ink); }
 .lv .sq[data-act="open-sidebar"] svg { width: 24px; height: 24px; }
 /* the editor's bar: Save and ⋯ are bare words and icons like Back, Save the title's size (rednote's Edit birthday) */
 body .lv .e-top .acts .act { background: none; box-shadow: none; color: var(--ink); }   /* outranks the light theme's ring */
@@ -7716,7 +7740,7 @@ body.light-theme .lv .in[type=date] { color-scheme: light; }
 body.light-theme :is(.lv, .cust-sheet) .sw:not(:checked) { background: var(--bg-soft); }   /* :not -- it outranked :checked, so an on switch stayed grey */
 body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }   /* on the grey block the usual off track vanished */
 :is(.lv, .cust-sheet) .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s var(--rl-ease); }
-:is(.lv, .cust-sheet) .sw:checked { background: var(--rl-on); }
+:is(.lv, .cust-sheet) .sw:checked { background: var(--rl-bar); }   /* the Reports blue (owner 2026-10-16) */
 :is(.lv, .cust-sheet) .sw:checked::after { transform: translateX(16px); }
 /* the variants: a table of inputs, as in the back office family editor */
 .lv .vt-wrap { overflow-x: auto; }
@@ -7969,15 +7993,6 @@ body.hairlines .lv :is(.rp-body, #shiftBody, #shiftPastBody) .card.fc { border-c
 .lv #shiftBody { display: grid; gap: 12px; padding-bottom: calc(88px + var(--ph-safe, 0px)); }   /* the last row clears the button */
 .lv .fr.add > .chev { margin-left: auto; }
 .lv .sh-none { margin: 24px 16px; color: var(--ink-tertiary); font-size: 14px; text-align: center; }
-/* Cash management in the shift's sheet: an Amount row (its keys beside it when tapped, under the tiles on a phone), a
-   note, Cash in / Cash out stacked like the cart Discount's tiles, then the moves on one tile */
-.esheet .es-body.cm { padding-top: max(24px, calc(24cqh - 56px)); }
-.es-body.cm .es-head:empty { display: none; }
-.es-body.cm > .es-keys { height: auto; align-self: start; }   /* level with Amount, however long the moves list */
-.esheet .sh-cm { justify-content: center; font-weight: 600; }
-@container (max-width: 560px) {
-  .esheet .es-body.cm { margin-top: 56px; padding-top: 0; }   /* right under ‹ Back, the same spot with the keys up or down */
-}
 .lv .head > .sh-hist { margin-left: auto; }
 .lv .sh-hist svg { width: 22px; height: 22px; }   /* Past shifts: the clock top right, Calculator's history (owner 2026-10-16) */
 /* The papers, in the app's confirm card (showConfirm). */
@@ -8048,7 +8063,20 @@ body.hairlines .lv :is(.rp-body, #shiftBody, #shiftPastBody) .card.fc { border-c
 .st-save { position: relative; margin-left: auto; }   /* Add payment type's Save: right of the centred title, above it */
 .st-page .fr.nav .vv { color: var(--ink-secondary); }
 .st-page .fr > .v:has(> .sw) { align-items: center; gap: 12px; }
-body .lv .fc .fr .act.icon[data-pt-del] { width: 40px; margin-right: -12px; }   /* Payment types' Delete: a 40px tap, the icon still 12px from the switch */
+/* Payment / Fulfilment types' delete (Quick stock's way): a ring before each of your own types, the tick in Quick stock's
+   accent; what can't be ticked dims and the switches step aside while ticking */
+.lv .fc .fr .ty-tick { display: none; position: relative; flex: none; width: 20px; height: 20px; margin-right: 14px; padding: 0; border: 1.5px solid var(--ink-quaternary); border-radius: 50%; background: none; }
+.lv .fc .fr .ty-tick::before { content: ''; position: absolute; inset: -10px; }   /* a 40px tap */
+.lv .fc .fr .ty-tick[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); }
+.lv .fc .fr .ty-tick[aria-pressed="true"]::after { content: ''; position: absolute; inset: 1.5px; background: var(--accent-ink);
+  -webkit-mask: var(--qs-tick-ic) center / contain no-repeat; mask: var(--qs-tick-ic) center / contain no-repeat; }
+.ty-edit .fc .fr .ty-tick { display: block; }
+.st-page.ty-edit .fr .lb:has(.ty-tick) { display: flex; align-items: center; }   /* own types have no note line */
+.ty-edit .fr > .v:has(> .sw), .ty-edit .fr.add { display: none; }
+.ty-edit .fr:not(:has(.ty-tick)) { opacity: .4; pointer-events: none; }
+.ty-bar .ty-go:not(:disabled) { border-color: var(--danger); background: var(--danger); color: var(--danger-ink); }
+.lv .sq.ty-edit-btn { margin-right: -8px; }   /* the trash: a bare icon, its edge on the cards like Back's on the left */
+.ty-edit-btn[hidden] { display: none; }
 .lv .st-page .fr { min-height: 48px; }   /* a switch row as tall as a dropdown row */
 .st-page label.fr { cursor: pointer; }
 .st-page .fr .lb { display: grid; gap: 2px; color: var(--ink); }   /* rednote's settings: the word dark, its value grey */
@@ -8189,8 +8217,7 @@ body.qs-on .view-items .cols > :nth-child(3) { display: none; }
 #itemsRows .row.qs-tick .nm::before { content: ''; position: absolute; left: 0; top: 50%; width: 20px; height: 20px; margin-top: -10px; border: 1.5px solid var(--ink-quaternary); border-radius: 50%; }
 #itemsRows .row.qs-in .nm::before { border-color: var(--accent); background: var(--accent); }
 #itemsRows .row.qs-in .nm::after { content: ''; position: absolute; left: 3px; top: 50%; width: 14px; height: 14px; margin-top: -7px; background: var(--accent-ink);   /* the tick takes the theme's ink */
-  --qs-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E");
-  -webkit-mask: var(--qs-tick) center / contain no-repeat; mask: var(--qs-tick) center / contain no-repeat; }
+  -webkit-mask: var(--qs-tick-ic) center / contain no-repeat; mask: var(--qs-tick-ic) center / contain no-repeat; }
 
 /* the phone's bar under the list: N lines · Review */
 .qs-tickbar { position: fixed; z-index: 30; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; gap: 8px;

@@ -58,6 +58,19 @@ The layout reads as a **grid of aligned edges and shared baselines**. When you p
 
 ---
 
+## The hero line — one spot for every big amount (owner 2026-10-16)
+
+Every page whose subject is **one big amount** — checkout pay and cash, Walk-in, Discount, a cart line, the price
+ask, Start shift, Close shift (count), Cash in / out, and any new one — puts that amount in **the same place**:
+
+- **Top of the amount = `--hero-y`** from the top of the screen. **Its list or keys start `--hero-gap` under it.** Size = `--hero-fs`. All three live on `:root` in `styles.css`. Checkout pay is the reference.
+- A small grey line above the amount (the item name, "Starting cash?") sits *above* the line, it never pushes the amount down. Discount's "₱13.00 off ₱65.00" sits in the gap, absolute: the rows never move.
+- **Lists:** one column of 56px rows, max 420 wide (checkout's methods and cash amounts too, tablet included). **Keypads:** the amount over the keys (`.es-body.ask`), never beside them.
+- Back is `‹ Back` (checkout: `‹ Cancel`) top-left on phone *and* tablet; no ✕ on these pages.
+- Sheets get there by CSS: `.es-body` padding = `--hero-y` − `--es-y` (where the card's inside starts, set by `esLine()` in pos-sell.js on open/resize) − 24 (the name line slot). Checkout subtracts its Cancel bar (`--co-top-h`). **A new hero page uses `esFrame` + these tokens; never its own padding, cqh offset or JS centring.**
+- **Panels never move the amount** (phone, owner 2026-10-16): Pickup / Delivery / Senior / Custom open *under* the rows with checkout Cash's fade + rise (`co-in`). Walk-in keeps all its rows; Discount keeps only the tapped row, which glides into the first row's slot (view transition) while the others fade.
+- Check: scout every hero page on phone 393×852 and tablet 1180×820 — the amount's box top must be equal on all of them.
+
 ## Layout grammar (applies to every view)
 
 - **Hamburger is anchored in the same spot on every page: 16px from the top of the content area, 48×48px.** When switching views it must not move.

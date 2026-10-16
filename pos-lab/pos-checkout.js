@@ -106,22 +106,6 @@ function showPayStep() {
   if (ask) ask.textContent = m === 'credit' ? `Charge to ${state.customer?.name || 'account'}`
     : typing ? 'Paid with' : `Paid with ${state.paymentLabel || KNOWN_METHOD_LABELS[m] || m}`;
   updateChange();
-  if (step === 'method') centreCheckout();
-}
-
-// Centre what you see -- the top of the total's digits to the bottom of the method tiles -- 3% above
-// the middle of the payment column (dead centre reads low). Set from the method step only, so later
-// steps grow downward and the total never moves.
-function centreCheckout() {
-  const steps = $('#checkoutSteps'), hero = $('#checkoutTotalDue');
-  const method = $('#checkoutSteps [data-step="method"]'), col = $('.co-pay');
-  if (!steps || !hero || !method || method.hidden || state.view !== 'checkout') return;
-  steps.style.setProperty('--lift', '0px');
-  const cs = getComputedStyle(hero);
-  const inkTop = hero.getBoundingClientRect().top + parseFloat(cs.paddingTop) + parseFloat(cs.fontSize) * 0.14; // Inter digits start ~.14em into a line-height:1 box
-  const box = col.getBoundingClientRect();
-  const lift = box.top + box.height * 0.47 - (inkTop + method.getBoundingClientRect().bottom) / 2;
-  steps.style.setProperty('--lift', `${Math.max(0, Math.round(lift))}px`);
 }
 
 function updateChange() {

@@ -212,11 +212,12 @@ function openShift(start, extra) {
 // Start asks the start cash. Close counts blind (no Expected while counting), then Expected / Counted / Over or short,
 // a note, one Recount; in float mode (Settings › Shift › Starting cash) what stays in the drawer starts the next
 // shift. ₱0 is a count (an empty drawer); Skip on the count is Not counted. ✕ / Back / Esc / leaving the page at any step: nothing saved (owner 2026-10-10).
-let shSheet = null;   // { step: 'start' | 'count' | 'result' | 'leave' | 'cash', v: typed, counts, shiftId, note, born, on: Cash management's keys up }
+let shSheet = null;   // { step: 'start' | 'count' | 'result' | 'leave' | 'cash', v: typed, counts, shiftId, note, born }
 function openShiftSheet(step) {
   shSheet = { step, v: '0', counts: [], shiftId: shiftOf()?.id || null, note: '', born: performance.now() };
   drawShiftSheet();
   $('#shiftSheet').classList.add('open');
+  esLine($('#shiftSheet'));
 }
 function closeShiftSheet() { if (!shSheet) return; shSheet = null; $('#shiftSheet').classList.remove('open'); }
 const SH_ASK = { start: ['Starting cash?', 'Start shift'], count: ['Count the cash in the drawer', 'Next'], leave: ['Leave in drawer?', 'Close shift'] };
@@ -237,21 +238,18 @@ function drawShiftSheet() {
     ink = shLeave() ? 'Next' : 'Close shift';
   }
   if (o.step === 'count') left = '<button type="button" class="es-q" data-skip>Skip</button>';
-  $('#shiftSheetCard').innerHTML = esFrame(head, rows, ask ? `<div class="es-keys">${esKeys(true)}</div>` : '', `${left}<button type="button" class="es-ink" data-apply>${ink}</button>`);
+  $('#shiftSheetCard').innerHTML = esFrame(head, rows, ask ? `<div class="es-keys">${esKeys(true)}</div>` : '', `${left}<button type="button" class="es-ink" data-apply>${ink}</button>`, ask ? ' ask' : '');
   if (ask) $('#shiftSheet .es-ink').focus({ preventScroll: true });   // off the page's button: a key can't fire it again
 }
-// Cash management (Loyverse's, in the cart Discount's look; owner 2026-10-15): an Amount row whose keys come only when
-// it's tapped (no numpad on the screen, owner 2026-10-15; never the OS number keyboard, which covers the sheet, owner
-// 2026-10-05), a note, Cash in or Cash out as two stacked tiles, then what went in and out since the drawer's start.
-// With or without a shift (owner 2026-10-10 #3).
+// Cash management (Loyverse's): the price ask's look, the amount over its keys on the hero line, a note under the
+// amount, Cash out | Cash in at the foot (owner 2026-10-16, over 2026-10-15's keys-on-tap; never the OS number
+// keyboard, which covers the sheet, owner 2026-10-05). With or without a shift (owner 2026-10-10 #3).
 function drawCashSheet() {
   const o = shSheet;
-  $('#shiftSheetCard').innerHTML = esFrame('',
-    `<button type="button" class="es-row${o.on ? ' on' : ''}" data-amt><span>Amount</span><span class="es-n v${o.on ? ` on${o.v === '0' ? ' fresh' : ''}` : ''}"><span>${typedCash(o.v)}</span></span></button>
-    <input class="es-ta" id="shNote" maxlength="80" placeholder="Add a note" aria-label="Note" autocomplete="off" value="${escapeHtml(o.note)}">
-    <button type="button" class="es-row sh-cm" data-cm="in">Cash in</button><button type="button" class="es-row sh-cm" data-cm="out">Cash out</button>`, o.on ? `<div class="es-keys${o.anim ? ' es-in' : ''}">${esKeys(true)}</div>` : '',
-    '<button type="button" class="es-ink" data-close>Done</button>', ` cm${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}`);
-  o.anim = false;
+  $('#shiftSheetCard').innerHTML = esFrame(`<div class="es-hero">${typedCash(o.v)}</div>`,
+    `<input class="es-ta" id="shNote" maxlength="80" placeholder="Add a note" aria-label="Note" autocomplete="off" value="${escapeHtml(o.note)}">`,
+    `<div class="es-keys">${esKeys(true)}</div>`,
+    '<button type="button" class="es-ink" data-cm="out">Cash out</button><button type="button" class="es-ink" data-cm="in">Cash in</button>', ' ask');
 }
 const shStep = step => { Object.assign(shSheet, { step, v: '0', born: performance.now() }); drawShiftSheet(); };
 function shiftSheetClick(e) {
@@ -261,7 +259,6 @@ function shiftSheetClick(e) {
   const k = el('[data-sk]');
   if (el('[data-close]')) return closeShiftSheet();
   if (k) { o.v = esPress(o.v, k.dataset.sk, true, CASH_MAX); return drawShiftSheet(); }
-  if (el('[data-amt]')) { Object.assign(o, { anim: o.on ? 'out' : true, on: !o.on }); return drawShiftSheet(); }   // the keys come and go
   if (el('[data-recount]') && !shEarly()) return shStep('count');
   if (el('[data-cm]') && !shEarly()) return shiftMove(el('[data-cm]').dataset.cm);
   if (el('[data-skip]') && !shEarly()) return shStep('result');   // no count: Not counted
@@ -289,7 +286,7 @@ function shiftMove(dir) {
   if (!(amt > 0 && amt <= CASH_MAX)) return showToast('Type an amount');
   if (!note) return showToast('Add a note');
   const row = addShiftRow('cash_move', shiftOf()?.open.id, dir === 'in' ? amt : -amt, { note });
-  Object.assign(o, { v: '0', note: '', anim: o.on && 'out', on: false });
+  Object.assign(o, { v: '0', note: '' });
   drawShiftSheet();
   renderShift();
   showToast(`Cash ${dir} ${peso(amt)}`, () => {
@@ -308,9 +305,9 @@ function finishClose(leave) {
   printPaper(xPaper(storeShifts().find(x => x.id === s.id)));
 }
 // The desk keyboard on the panel: digits, Backspace, Enter, as taps on its keys (not on the result: the note is there,
-// and a bounce must not close unseen; on Cash management only while its keys are up). Handled keys are kept from the page, so a focused page button can't fire again.
+// and a bounce must not close unseen). Handled keys are kept from the page, so a focused page button can't fire again.
 function shiftKey(e) {
-  if (!shSheet || shSheet.step === 'result' || (shSheet.step === 'cash' && !shSheet.on) || e.ctrlKey || e.metaKey || e.altKey || e.target.matches('input, textarea')) return;
+  if (!shSheet || shSheet.step === 'result' || e.ctrlKey || e.metaKey || e.altKey || e.target.matches('input, textarea')) return;
   const k = e.key === 'Backspace' ? 'del' : e.key, q = k === 'Enter' ? '[data-apply]' : /^([\d.]|del)$/.test(k) && `[data-sk="${k}"]`;
   if (!q) return;
   e.preventDefault();

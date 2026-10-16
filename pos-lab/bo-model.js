@@ -1194,26 +1194,32 @@ function migrateCustomers() {
    Settings and is stored in the same `fulfilment` column as its own name. That is why a removed type
    never rewrites past sales -- the order already carries its label, exactly like a custom payment method.
    Only 'delivery' means an address. Rows from before v2 said 'pickup' for the counter sale:
-   SalesMath.readOrder / upgradeOrders read those as 'walkin'. */
-const FULFIL_BUILTINS = [
-  ['walkin', 'Walk-in', 'Always on. The counter sale.'],
-  ['pickup', 'Pickup', 'Bought ahead, collected later.'],
-  ['delivery', 'Delivery', 'Asks for an address and a map pin.'],
-];
+   SalesMath.readOrder / upgradeOrders read those as 'walkin'.
+   Dine-in and Take-out joined 2026-10-16 (owner: one list, mix and match; a new store starts with Walk-in,
+   Pickup and Delivery on). The primary type (settings.defaultFulfilment) is what a sale starts on and is always on. */
+// No descriptions (owner 2026-10-16): the names say it, and which one sales start on is the store's call, not a note.
+const FULFIL_BUILTINS = [['walkin', 'Walk-in'], ['pickup', 'Pickup'], ['delivery', 'Delivery'], ['dinein', 'Dine-in'], ['takeout', 'Take-out']];
+// Caps for Payment types and Fulfilment types, each list (owner 2026-10-16): 8 on at once, 10 of the store's own. Here so
+// the POS and the back office refuse the same numbers; the server does too (pos-vault features/database.md types_ok).
+const TYPES_ON_MAX = 8, OWN_TYPES_MAX = 10;
+// A type's name as saved: tabs, pasted line breaks and runs of spaces become one space, so "Grab  Food" can't sit beside
+// "Grab Food" and nothing invisible reaches a receipt or report.
+const typeName = (s) => String(s || '').replace(/[\s\p{Cc}]+/gu, ' ').trim();
 // THE word for a row's fulfilment, on every screen, filter, slip and export.
 function orderFulfilLabel(order) {
   const f = String((order && order.fulfilment) || 'walkin');
   const b = FULFIL_BUILTINS.find(([k]) => k === f);
   return b ? b[1] : f;
 }
-// The POS pill list: built-ins the owner kept, then the ones they added.
+// The POS pill list: built-ins the owner kept, then the ones they added. The primary is on whatever hidden says.
 function fulfilMethods(settings) {
   const cfg = (settings && settings.fulfilment) || {};
-  const off = new Set(cfg.hidden || []);
+  const primary = (settings && settings.defaultFulfilment) || 'walkin';
+  const on = (k) => k === primary || !(cfg.hidden || []).includes(k);
   return FULFIL_BUILTINS
-    .filter(([k]) => k === 'walkin' || !off.has(k))
     .map(([key, label]) => ({ key, label, custom: false }))
-    .concat((cfg.custom || []).map((name) => ({ key: name, label: name, custom: true })));
+    .concat((cfg.custom || []).map((name) => ({ key: name, label: name, custom: true })))
+    .filter((m) => on(m.key));
 }
 
 /* ---------- CSV: one column table, used for both directions ----------
@@ -1429,9 +1435,15 @@ if (typeof module !== 'undefined' && require.main === module) {
   assert.equal(orderFulfilLabel({ fulfilment: 'pickup' }), 'Pickup');
   assert.equal(orderFulfilLabel({ fulfilment: 'delivery' }), 'Delivery');
   assert.equal(orderFulfilLabel({ fulfilment: 'Tricycle' }), 'Tricycle');
-  assert.deepEqual(fulfilMethods({ fulfilment: { hidden: ['delivery'], custom: ['Tricycle'] } }).map((m) => m.key),
+  assert.deepEqual(fulfilMethods({ fulfilment: { hidden: ['delivery', 'dinein', 'takeout'], custom: ['Tricycle'] } }).map((m) => m.key),
     ['walkin', 'pickup', 'Tricycle']);
-  assert.deepEqual(fulfilMethods({ fulfilment: { hidden: ['walkin', 'pickup'] } }).map((m) => m.key), ['walkin', 'delivery']);
+  assert.deepEqual(fulfilMethods({ fulfilment: { hidden: ['walkin', 'pickup', 'dinein', 'takeout'] } }).map((m) => m.key), ['walkin', 'delivery']);
+  // the primary is on even when hidden; Walk-in is then a type like any other, and an own type can be primary
+  assert.equal(typeName('  Grab \t\u0007 Food\n'), 'Grab Food');
+  assert.deepEqual(fulfilMethods({ defaultFulfilment: 'dinein', fulfilment: { hidden: ['walkin', 'dinein', 'Grab'], custom: ['Grab'] } }).map((m) => m.key),
+    ['pickup', 'delivery', 'dinein', 'takeout']);
+  assert.deepEqual(fulfilMethods({ defaultFulfilment: 'Grab', fulfilment: { hidden: ['Grab', 'pickup', 'delivery', 'dinein', 'takeout'], custom: ['Grab'] } }).map((m) => m.key),
+    ['walkin', 'Grab']);
 
   // Dead is 90 days since the last sale, or since the first movement when it never sold.
   const day = 86400000, t0 = Date.parse('2026-01-01T00:00:00Z');
@@ -1680,7 +1692,7 @@ if (typeof module !== 'undefined') {
     SUPPLIER_DEFAULTS, STAFF_DEFAULTS, STAFF_ROLES, STOCK_REASONS, SOLD_BY, MARGIN_MODES,
     GROUP_DEFAULTS, SEED_STAFF, TILL_ACTIONS, loadTillPerms, roleCan, isPin, staffByPin, approverFor, PAGE_ROWS, DETAIL_ROWS, paginate, pageNumbers,
     EVENT_LOGS, makeEvent, priceChanges, latestEvents,
-    FULFIL_BUILTINS, orderFulfilLabel, fulfilMethods,
+    FULFIL_BUILTINS, orderFulfilLabel, fulfilMethods, TYPES_ON_MAX, OWN_TYPES_MAX, typeName,
     CUSTOMER_FIELDS, normalizeCustomer, customerFromForm, phoneKey, phoneOwnerNote, LEDGER_SIGN, LEDGER_LABEL, kindOf, ledgerDelta, undoneIds,
     setCustomerDeleted, balancesOf, accountDebts, accountStatus, ACCOUNT_STATUSES, canRecordPayment, owedText, recordPayment, undoPayment,
     poLineUnit, poLineQty, movementCents, familyRows, creditRoom, creditOverBy, creditPool, accountStatement, stockFlow, lotWalk, limitText,

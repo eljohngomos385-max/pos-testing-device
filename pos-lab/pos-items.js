@@ -159,8 +159,7 @@ function renderItemForm(dir) {
 const ICAM = '<svg class="ic" viewBox="0 0 24 24"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.2"/></svg>';
 function itemMainPage() {
   const E = itemEdit, fam = E.variants.length > 1, v0 = E.variants[0], T = E.track;
-  const photo = `<div class="fphoto"><label for="itemImg" aria-label="${E.img ? 'Change photo' : 'Add photo'}">${itemThumb(E, true)}<span class="cam">${ICAM}</span>
-    <input type="file" accept="image/*" id="itemImg" hidden></label>${E.img ? '<button type="button" class="link" data-act="img-clear">Remove photo</button>' : ''}${tileSwatches(E)}</div>`;
+  const photo = lookBlock(E, 'act', 'itemImg');
   const about = icard('', [
     ifr('Name', iinp('name', E.name, 'placeholder="Add name"')),
     ifr('Status', ipick('status', E.hidden ? 'Hidden' : 'Active'), true),
@@ -265,9 +264,14 @@ const IFIND = '<div class="pick-find"><input class="in" data-k="q" type="search"
 const filterPicks = q => { q = q.trim().toLowerCase(); $$('#itemForm .pick[data-find]').forEach(r => { r.hidden = !!q && !r.dataset.find.includes(q); }); };
 
 // The tile's colour (owner 2026-10-14): the sell tile wears it when there is no photo; the first, empty swatch = the plain tile.
-const tileSwatches = E => `<div class="tcolors" role="group" aria-label="Tile colour">${['', ...Object.keys(TILE_COLORS)].map(k =>
-  `<button type="button" class="tc${k ? '' : ' none'}${(E.color || '') === k ? ' on' : ''}" data-act="tile-color" data-c="${k}"${k ? ` style="--tc:${TILE_COLORS[k]}"` : ''}
+const tileSwatches = (E, a) => `<div class="tcolors" role="group" aria-label="Tile colour">${['', ...Object.keys(TILE_COLORS)].map(k =>
+  `<button type="button" class="tc${k ? '' : ' none'}${(E.color || '') === k ? ' on' : ''}" data-${a}="tile-color" data-c="${k}"${k ? ` style="--tc:${TILE_COLORS[k]}"` : ''}
     aria-label="${k || 'No colour'}" aria-pressed="${(E.color || '') === k}"></button>`).join('')}</div>`;
+// The photo, Remove photo and the colours on top of the item's editor and the category's (owner 2026-10-16); a = the data- word its clicks use.
+const lookBlock = (E, a, id) => `<div class="fphoto"><label for="${id}" aria-label="${E.img ? 'Change photo' : 'Add photo'}">${itemThumb(E, true)}<span class="cam">${ICAM}</span>
+    <input type="file" accept="image/*" id="${id}" hidden></label>${E.img ? `<button type="button" class="link" data-${a}="img-clear">Remove photo</button>` : ''}${tileSwatches(E, a)}</div>`;
+// A category's thumb: its photo, else its colour, else a hue from its id (as before)
+const catLook = x => ({ name: x.name, color: x.color, img: x.img ?? x.imageUrl ?? '', hue: TILE_COLORS[x.color] ?? itemHue(x.id) });
 // The photo and the tile colour save on the spot (owner 2026-10-14), onto the family's group or the lone product, so the
 // tiles, the cart and every POS show them; the rest of the editor's Save is still design only. A new item keeps them
 // with the form until its Save works.
@@ -370,7 +374,7 @@ function renderKindRows(kind, band, rows) {
   const discs = kind === 'discs';
   band.classList.add('k2');   // k2 hides the head: the rows say it (owner 2026-10-09)
   rows.innerHTML = list.map(x => `<button type="button" class="row cols k2" data-id="${escapeHtml(x.id)}">
-      <span class="nm">${cats ? itemThumb({ hue: itemHue(x.id), name: x.name }) : ''}<span class="tx"><b>${escapeHtml(x.name)}</b>${
+      <span class="nm">${cats ? itemThumb(catLook(x)) : ''}<span class="tx"><b>${escapeHtml(x.name)}</b>${
         discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? '' : `<small>${modSummary(x) || 'No options yet'}</small>`}</span></span>
       <span class="num">${discs ? esShown(x) : SalesMath.plural(itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
     || `<div class="empty"><b>${q ? 'No matches' : `No ${cats ? 'categories' : 'modifiers'} yet`}</b><span>${q ? 'Try a different name.'
@@ -381,7 +385,7 @@ function openKindEditor(kind, id) {
   const was = kindList(kind).find(x => x.id === id);
   const picked = new Set(was && isOn[kind] ? itemsWith(kind, was.id).map(it => it.id) : []);   // a discount isn't on items
   kindEdit = { kind, id: was ? was.id : '', name: was ? was.name : '', picked, first: new Set(picked),
-    type: was?.type || 'percent', value: was ? String(was.value) : '', builtin: was?.builtin || '',
+    img: was?.imageUrl || '', color: was?.color || '', type: was?.type || 'percent', value: was ? String(was.value) : '', builtin: was?.builtin || '',
     options: was ? structuredClone(was.options || []) : kind === 'mods' ? [{ id: newId(), name: '', price: '' }] : [] };
   itemEdit = null;
   renderKindForm();
@@ -392,7 +396,7 @@ function openKindEditor(kind, id) {
 
 function renderKindForm() {
   $('#itemForm').closest('.editor').classList.remove('sub');
-  const K = kindEdit, cats = K.kind === 'cats', head = '';
+  const K = kindEdit, cats = K.kind === 'cats', head = cats ? lookBlock(catLook(K), 'ka', 'kindImg') : '';   // a category's photo + colour go with its Save
   $('#itemTitle').textContent = K.name || `New ${KIND[K.kind][0]}`;
   $('#itemMore').hidden = false;   // a category's Delete, a modifier's Archive
   if (K.kind === 'discs') {   // name, % or amount (a dropdown, the ⋯ menu's morph), value; Senior / PWD keep their name and stay %
@@ -431,6 +435,8 @@ function kindInput(t) {
 function kindClick(b) {
   const K = kindEdit;
   if (b.dataset.ka === 'opt-add') { K.options.push({ id: newId(), name: '', price: '' }); renderKindForm(); $$('#itemForm .opt [data-o=name]').pop().focus(); }
+  if (b.dataset.ka === 'img-clear') { K.img = ''; renderKindForm(); }
+  if (b.dataset.ka === 'tile-color') { K.color = b.dataset.c; renderKindForm(); }
   if (b.dataset.ka === 'opt-del') { K.options.splice(Number(b.closest('.opt').dataset.i), 1); renderKindForm(); }
   if (b.dataset.ka === 'type') openMenu(b, [['percent', 'Percent'], ['amount', 'Amount']].map(([k, label]) => ({ label, cur: K.type === k,
     run: () => { K.type = k; renderKindForm(); $('#itemForm [data-k=value]').focus(); } })), { w: 200, right: true });
@@ -472,7 +478,7 @@ function saveKind() {
     return;
   }
   if (K.kind === 'cats') {
-    const row = stampRow({ builtin: false, ...state.folders.find(f => f.id === id), id, name });
+    const row = stampRow({ builtin: false, ...state.folders.find(f => f.id === id), id, name, imageUrl: K.img, color: K.color });
     state.folders = K.id ? state.folders.map(f => (f.id === id ? row : f)) : state.folders.concat(row);
     writeJsonStorage(STORAGE_FOLDERS, state.folders);
   } else {
