@@ -4797,7 +4797,7 @@ body.light-theme .orders-search-wrap input:focus {
 /* Back-office blocks: the F9 fill with a hairline ring, drawn inset so the grid's overflow can't clip it;
    shape and type live on the base rules so both themes match */
 body.light-theme .view-sell .content-row,
-body.light-theme:has(:is(.view-sell, .view-settings, .view-shift, .view-customers, .view-reports).active) { background: var(--canvas); }   /* the body too: Safari tints the status bar with it */
+body.light-theme:has(:is(.view-sell, .view-settings, .view-qr, .view-shift, .view-customers, .view-reports).active) { background: var(--canvas); }   /* the body too: Safari tints the status bar with it */
 body.light-theme #catalogSearchRow { --rl-soft: var(--surface-2); }   /* ☰, search, scan: white like the cards on the grey page */
 body.light-theme .product-card,
 body.light-theme .product-card.pc-group { background: var(--surface-2); }
@@ -7536,7 +7536,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 
 /* ---------- Customers: the Orders shape; the facts in the item editor's cards, read-only, values right ---------- */
 .lv .c-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(21px + var(--ph-safe, 0px)); scrollbar-width: thin; }
-:is(.view-settings, .view-shift, .view-customers, .view-reports).lv { background: var(--canvas, var(--bg)); }   /* the item editor's page: white blocks on grey (owner 2026-10-09) */
+:is(.view-settings, .view-qr, .view-shift, .view-customers, .view-reports).lv { background: var(--canvas, var(--bg)); }   /* the item editor's page: white blocks on grey (owner 2026-10-09) */
 .lv .c-body { display: grid; gap: 12px; }
 .lv .c-body { width: min(100%, 600px); margin-inline: auto; padding-top: 16px; }   /* a short page: centred like the receipt paper; the top bar stays full width like Orders */
 .lv .c-body .fr { grid-template-columns: auto minmax(0,1fr); gap: 16px; min-height: 46px; padding: 6px 16px; }   /* label left, value right at every width */
@@ -8230,3 +8230,12 @@ body.qs-on .view-items .cols > :nth-child(3) { display: none; }
 .qs-tickbar .qs-next span + span::before { content: '·'; margin-right: 8px; }
 /* the Sell bar's size (.ph-bar), so the two read as one thing (owner 2026-10-13) */
 @media (max-width: 720px) { .qs-tickbar { bottom: var(--ph-b); width: min(100% - 48px, 320px); } .qs-tickbar button { font-size: 15px; } }
+
+/* QR codes (pos-qr.js, from qr-lab): Fulfilment types' rows; the name opens the table, the switch stays a switch */
+#qrPage .c-body { padding-top: 32px; }   /* the list stays where it sat under its old "3 of 8" line (owner 2026-10-17) */
+.view-qr .qr-row { cursor: pointer; }
+.view-qr .qr-row > .lb { all: unset; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (hover: hover) { .view-qr .qr-row:hover { background-color: var(--rl-hover); } }
+.view-qr .qr-art { display: grid; place-items: center; padding: 8px 16px 20px; }   /* the white tile alone on the page, no card (owner 2026-10-16) */
+.view-qr .qr-art svg { width: 200px; height: 200px; border-radius: var(--r-input); background: #fff; }   /* a QR needs a white tile in dark mode too */
+.view-qr .fr.qr-mid { justify-content: center; }

@@ -796,8 +796,8 @@ function folderName(id) {
 
 // ---------- Roles ----------
 const ROLE_ALLOWED = {
-  cashier: new Set(['sell', 'orders', 'items', 'settings', 'checkout']),
-  manager: new Set(['sell', 'orders', 'items', 'customers', 'back-office', 'settings', 'checkout']),
+  cashier: new Set(['sell', 'orders', 'qr', 'items', 'settings', 'checkout']),
+  manager: new Set(['sell', 'orders', 'qr', 'items', 'customers', 'back-office', 'settings', 'checkout']),
 };
 ROLE_ALLOWED.owner = ROLE_ALLOWED.manager;   // the till's pages; the back office has its own page access
 ROLE_ALLOWED.stock = ROLE_ALLOWED.cashier;
@@ -856,6 +856,7 @@ function switchView(view) {
   }
   if (view === 'sell') renderProducts();   // stock may have moved elsewhere (void, refund) — tile marks read it
   if (view === 'items') renderItems();
+  if (view === 'qr') renderQr();
   if (view === 'customers') renderCustomers();
   if (view === 'shift') shiftPast(false);   // opens on the drawer, not Past shifts
   if (view === 'reports') renderReports();

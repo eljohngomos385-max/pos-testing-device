@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=368" />
+  <link rel="stylesheet" href="styles.css?v=370" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
   <div id="app" class="sidebar-collapsed">
@@ -52,6 +52,13 @@
             <line x1="8" y1="17" x2="16" y2="17"/>
           </svg>
           <span>Orders</span>
+        </button>
+        <button class="side-link" data-view="qr">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>
+            <path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4M20 17v3"/>
+          </svg>
+          <span>QR codes</span>
         </button>
         </div>
         <div class="side-grp">
@@ -537,6 +544,49 @@
       <!-- ============================================
            SETTINGS VIEW — POS preferences
            ============================================ -->
+      <!-- QR codes (owner 2026-10-16, from qr-lab): one printed QR per table, a switch says if it takes orders. Fulfilment
+           types' page: ☰ + title, one card of rows. Tap a table → its page: the QR, Print, name, New QR, Delete (pos-qr.js) -->
+      <section class="view view-qr lv" data-view="qr">
+        <div class="iv">
+          <section class="page st-page" id="qrPage" aria-label="QR codes">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+              </button>
+              <h1 class="st-ttl">QR codes</h1>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <section class="card fc" id="qrList"></section>
+              </div>
+            </div>
+          </section>
+          <section class="page st-page" id="qrTablePage" aria-label="Table" hidden>
+            <div class="head">
+              <button class="sq back" id="qrBack" aria-label="Back to QR codes" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl" id="qrTitle"></h1>
+              <button type="button" class="sq st-save ty-edit-btn" id="qrPrint" aria-label="Print QR" title="Print"><svg class="ic" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg></button>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <div class="qr-art" id="qrArt"></div>
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Name</span><span class="v"><input class="in" id="qrName" maxlength="24" autocomplete="off"></span></label>
+                  <label class="fr"><span class="lb">Taking orders</span><span class="v"><input type="checkbox" class="sw" id="qrOn"></span></label>
+                </section>
+                <section class="card fc">
+                  <button type="button" class="fr add qr-mid" id="qrNew">New QR</button>
+                </section>
+                <p class="fc-n">Old photos of this table's QR stop working. Print the new one.</p>
+                <section class="card fc">
+                  <button type="button" class="fr add red" id="qrDelete">Delete table</button>
+                </section>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
       <!-- One column like Shift: ☰ + title, then calm cards of rows, label left, control right. Every choice is a
            › row opening its own page of ticks (data-pick → openPick, pos-settings.js); the time zone stays a styled select for now. -->
       <section class="view view-settings lv" data-view="settings" hidden>
@@ -895,7 +945,7 @@
   <script src="bo-model.js?v=133"></script>
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=47"></script>
-  <script src="pos-core.js?v=38"></script>
+  <script src="pos-core.js?v=39"></script>
   <script src="pos-sell.js?v=68"></script>
   <script src="pos-checkout.js?v=19"></script>
   <script src="pos-orders.js?v=24"></script>
@@ -905,6 +955,7 @@
   <script src="pos-pin.js?v=12"></script>
   <script src="pos-shift.js?v=36"></script>
   <script src="pos-stock.js?v=4"></script>
-  <script src="app.js?v=192"></script>
+  <script src="pos-qr.js?v=2"></script>
+  <script src="app.js?v=193"></script>
 </body>
 </html>

@@ -923,6 +923,7 @@ function attachEvents() {
   });
   bindPayTypes();   // Settings › Payment types (pos-settings.js)
   bindFulTypes();   // Settings › Fulfilment types (pos-settings.js)
+  bindQr();   // QR codes (pos-qr.js)
   bindPick();   // Settings › one choice's page
   $('#posLogOutBtn')?.addEventListener('click', logOut);
   $('#signInForm')?.addEventListener('submit', (e) => { e.preventDefault(); signInCover(false); if (tillPins()) lockTill(); });
