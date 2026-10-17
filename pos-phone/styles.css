@@ -7863,16 +7863,16 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
    spacing and slide sideways inside the bar, the edges fading, as Safari's tab groups (owner's photo). #itemsBar is the glass,
    #itemsKinds the row that slides. iPad: in the top row beside ☰. Phone: its own row under the search */
 .lv #itemsView .head { flex-wrap: wrap; row-gap: 10px; }
-.lv #itemsBar { order: 1; flex: 1 0 100%; min-width: 0; height: 44px; border-radius: 999px; overflow: hidden;
+.lv #itemsBar { order: 1; flex: 1 0 100%; min-width: 0; height: 40px; border-radius: 999px; overflow: hidden;
   background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
-.lv #itemsKinds { position: relative; display: flex; height: 44px; padding: 4px; gap: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+.lv #itemsKinds { position: relative; display: flex; height: 40px; padding: 4px; gap: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
   overflow-x: auto; scrollbar-width: none; touch-action: pan-x;   /* a sideways drag scrolls the row; on the pill it drags the pill */
   --fl: 0px; --fr: 0px; -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent);
   mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
 .lv #itemsKinds::-webkit-scrollbar { display: none; }
 .lv #itemsKinds.fade-l { --fl: 28px; }   /* more words that way (app.js sets .fade-l / .fade-r; not .fl/.fr: .fr is the form row) */
 .lv #itemsKinds.fade-r { --fr: 28px; }
-.lv #itemsKinds button { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; gap: 4px; height: 36px; padding: 0 6px;   /* 6: English still fits a 375 iPhone */
+.lv #itemsKinds button { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; gap: 4px; height: 32px; padding: 0 6px;   /* 6: English still fits a 375 iPhone */
  
   border-radius: 999px; background: none; color: var(--ink-secondary); font-size: 13px; font-weight: 600; white-space: nowrap; transition: color .2s; }
 .lv #itemsKinds button.cur { color: var(--ink); background: var(--rl-track); box-shadow: var(--glass-ring); touch-action: none; }   /* before the first slide */
