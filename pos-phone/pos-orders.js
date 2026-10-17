@@ -193,7 +193,7 @@ function ordersFor(customerId, orderId = '') {
   state.ordersQuery = '';
   $('#ordersSearch').value = '';
   $('#ordersFind').classList.remove('typed');
-  $('#ordersSearch').placeholder = customerId ? 'Search # or item' : 'Search # or customer';
+  $('#ordersSearch').placeholder = 'Search';   // phone copy: the title names the list, as iOS (owner 2026-10-17)
   $('#ordersView').classList.toggle('for-cust', !!customerId);
   $('#ordersView').classList.toggle('reading', !!orderId);   // phone: a tapped order opens on its receipt
   if (orderId) state.selectedOrderId = orderId;

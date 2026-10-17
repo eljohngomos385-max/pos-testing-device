@@ -420,6 +420,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   display: block;
   padding-bottom: 0;
   overflow: hidden;
+  overflow: clip visible;   /* only the side pages are hidden; the last row ends on the grid's edge and its drop (v449) would be cut flat */
   touch-action: pan-y;
   user-select: none;
 }
@@ -449,6 +450,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   justify-content: center;
   align-content: stretch;
   overflow: hidden;
+  overflow: clip visible;   /* as the grid: the last row's drop shows */
 }
 
 .product-card {
@@ -4773,10 +4775,15 @@ body.light-theme .view-sell .content-row,
 body.light-theme:has(:is(.view-sell, .view-settings, .view-qr, .view-shift, .view-customers, .view-reports).active) { background: var(--canvas); }   /* the body too: Safari tints the status bar with it */
 body.light-theme #catalogSearchRow { --rl-soft: var(--surface-2); }   /* ☰, search, scan: white like the cards on the grey page */
 body.light-theme .product-card,
-body.light-theme .product-card.pc-group { background: var(--surface-2); }
+body.light-theme .product-card.pc-group { background: var(--surface); }   /* owner 2026-10-18: nearer the search glass (251) than pure white */
 body.light-theme .product-card:hover,
-body.light-theme .product-card.pc-group:hover { background: var(--surface); }
+body.light-theme .product-card.pc-group:hover { background: var(--surface-hover); }
 body.light-theme .product-card:active { background: var(--surface-hover); }
+/* owner 2026-10-18: tiles were "the boring part", but ring + lit edge + drop (v447) was "too much attention"; a
+   hairline only, drawn inset so the grid's overflow can't clip it */
+.product-card { box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .08); }
+.product-card, .product-card.pc-group { background: var(--surface-2); }   /* owner 2026-10-18: dark tiles nearer the search glass (#121212); --tile stays for the sheets */
+body.light-theme .product-card { box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .08), 0 1px 2px rgb(0 0 0 / .05); }   /* white on the grey page: a touch of drop so it lifts (v448 ring alone read flat) */
 body.light-theme .co-tile:hover { background: var(--bg-soft); }
 body.light-theme .co-tile:active { background: var(--bg-softer); }
 body.light-theme .pc-name,
@@ -7277,7 +7284,7 @@ body.light-theme {
   #app.co-side .view-sell { display: flex; }
   #app.co-side #sidebarToggle { visibility: hidden; }             /* z-index 96, above the pane; hidden with the sell view otherwise */
   #app.co-side .view-checkout.active, #app.co-side .view-checkout.co-leaving {
-    position: absolute; top: 0; bottom: 0; left: 0; right: var(--co-right, 0px); z-index: 5; display: flex; background: var(--bg); }
+    position: absolute; top: 0; bottom: 0; left: 0; right: calc(var(--co-right, 0px) + 1px); z-index: 5; display: flex; background: var(--bg); }   /* +1px: the rail's boxes draw their hairline just outside their edge, the pane covered it (owner 2026-10-18: "cut off on the side") */
   #app.co-side .co { grid-template-columns: minmax(0, 1fr); }
   #app.co-side .co-items { display: none; }
   body.light-theme #app.co-side .view-sell .content-row { background: var(--bg); }   /* one colour: the cart's side goes white with the pane */
@@ -7292,16 +7299,16 @@ body.light-theme .view-sell .content-row { transition: background-color .2s ease
   :root { --ph-safe: env(safe-area-inset-bottom, 0px); --ph-b: max(10px, calc(var(--ph-safe) - 14px)); }   /* 20px on iPhone: lower runs into the home-bar swipe */
   .content-row { grid-template-rows: minmax(0, 1fr) auto; }
   .catalog { min-height: 0; gap: 14px; padding-bottom: 14px; }   /* the same space above and below the tiles (owner 2026-10-07: 8 below felt tighter than 14 above; tried 14/14, then 12/12) */
-  .product-grid[data-size] { --grid-gap: 8px; }
-  .ph-bar { display: flex; align-items: center; justify-content: center; gap: 8px; width: min(100% - 48px, 320px); height: var(--bar-h); margin: 0 auto var(--ph-b);
+  .product-grid[data-size] { --grid-gap: 6px; }   /* owner 2026-10-18: "slightly tighter" than 8, with the v449 lift the tiles read as one set */
+  .ph-bar { display: flex; align-items: center; justify-content: center; gap: 8px; width: min(100% - 48px, 260px); height: var(--bar-h); margin: 0 auto var(--ph-b);
             padding: 0 20px; border: 0; border-radius: calc(var(--rl-r) + 2px); background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 15px; font-weight: 600;
             cursor: pointer; touch-action: manipulation; transition: opacity .2s; }
   .ph-bar:active { background: var(--accent-pressed); }
   .ph-bar:disabled { opacity: .3; pointer-events: none; }
   .ph-bar span + span::before, .rail-h .go span + span::before { content: '·'; margin-right: 8px; }   /* 2 items · ₱157.00, centred */
-  .rail-h { position: fixed; inset: 0; z-index: 97; max-height: none; margin: 0; padding: 8px 8px var(--ph-b); background: var(--canvas, var(--bg));
+  .rail-h { position: fixed; inset: 0; z-index: 97; max-height: none; margin: 0; padding: calc(8px + env(safe-area-inset-top, 0px)) 8px var(--ph-b); background: var(--canvas, var(--bg));
             transform: translateX(100%); visibility: hidden; transition: transform .3s var(--rl-ease), visibility 0s .3s; }   /* out: the plain slide, the whole page to the right */
-  .rail-h .go, .rail-h #payBtn { justify-self: center; justify-content: center; gap: 8px; width: min(100% - 40px, 320px); height: var(--bar-h); border: 0; border-radius: calc(var(--rl-r) + 2px); }   /* as the bar */
+  .rail-h .go, .rail-h #payBtn { justify-self: center; justify-content: center; gap: 8px; width: min(100% - 48px, 260px); height: var(--bar-h); border: 0; border-radius: calc(var(--rl-r) + 2px); }   /* as the bar; both 260 wide (owner 2026-10-18: "less wide", then "a little bit wider ... 260") */
   #app.ph-cart .rail-h { transform: none; visibility: visible; transition: none; animation: ph-cart-bg .36s var(--rl-ease); }   /* in: the keyframes below, not the slide */
   /* ‹ inside the box (owner 2026-10-13), its cell sized so the icon sits exactly on the ☰'s spot (the rail's 8 + the box's 1 + 19 = 28 = the
      ☰'s centre): items -> cart it only turns, never shifts. --ink like the ☰, so it doesn't dim as it turns */
@@ -7797,6 +7804,108 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
   .lv .fab { right: 24px; bottom: 24px; }
   .lv .editor { padding: 8px 12px 0; }
 }
+.head > .ph-ttl { display: none; }   /* off-list pages keep [☰][search]; the lists show it in the block below */
+/* The phone copy's own looks, on phones and tablets alike (owner 2026-10-17: "apply the new designs to the iPad"; they were phone-only) */
+/* Items' list switch (owner 2026-10-17, phone copy): plain words you tap, as Shopify's All | Active | Draft - no track, no sliding pill */
+.lv #itemsKinds { height: 34px; padding: 0; gap: 4px; background: none; }   /* left, not centred (owner: not yet) */
+.lv #itemsKinds::before { top: 0; bottom: 0; }   /* the picked word sits in a pill (owner 2026-10-17); no track behind the rest */
+.lv #itemsKinds button { flex: none; padding: 0 12px; color: var(--ink-secondary); font-size: 15px; font-weight: 400; }
+.lv #itemsKinds button.cur { color: var(--ink); font-weight: 600; }
+/* the lists keep their boxes on phone and tablet (owner 2026-10-17: "without its container ... it just looks bad ... add it back", phone too); the boxless iOS rows are gone */
+/* iOS 26 Contacts (owner 2026-10-17, phone copy): ☰ a round glass button, the list's name centred, search a glass pill
+   at the bottom with + a glass circle beside it; the kinds switch is gone, the Items title opens it as a menu */
+.lv .head > .sq[data-act="open-sidebar"], .lv .find::before, .lv :is(#itemsAdd, #newCustomerBtn) {
+  border: 0; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+.lv .head > .sq[data-act="open-sidebar"] { width: 44px; height: 44px; border-radius: 50%; }
+.lv .page, .lv .o-rail { padding-top: 0; margin-top: 0; }   /* the head right under the status bar, as iOS */
+.lv #itemsKinds { display: none; }
+.lv .head:has(> .ph-ttl.st-ttl) { position: static; align-items: center; }
+.lv .head > .ph-ttl { display: block; position: static; flex: 1; margin-right: 51px; pointer-events: auto; text-align: center; }   /* 51 = ☰ + gap: the word sits on the screen's middle */
+#itemsTtl { display: inline-flex; align-items: center; gap: 2px; height: 44px; padding: 0 8px; color: var(--ink); font: inherit; }
+#itemsTtl .ic { width: 16px; height: 16px; stroke-width: 2; color: var(--ink-secondary); }
+.lv :is(.iv, .ov) { position: relative; }
+.lv .head > .find { position: absolute; z-index: 3; left: 28px; right: 28px; bottom: var(--pill-b); height: 48px; border: 0; border-radius: 999px; background: none; box-shadow: none; }
+.lv .find::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; }   /* the glass on a layer: a blurred box blurs nothing inside it, and + sits inside */
+.lv .find input { font-size: 16px; }
+.lv .find .more { width: 44px; border: 0; border-radius: 999px; }
+.lv :is(#itemsFind, #customersFind) { right: 87px; }   /* + beside it, 11 apart */
+.lv :is(#itemsAdd, #newCustomerBtn) { position: absolute; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: var(--ink); }
+.lv #itemsAdd { right: 28px; bottom: var(--pill-b); }
+.lv #newCustomerBtn { top: 0; right: -59px; }
+.lv :is(.page, .o-rail) .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* the last row clears the pill */
+/* the other try-out (compare.html's right phone): search stays on top under the title, a rounder glass pill; + floats bottom right on Items */
+.search-top .lv .head:has(> .ph-ttl) { flex-wrap: wrap; row-gap: 8px; }
+.search-top .lv .head > .find:is(#itemsFind, #customersFind, #ordersFind) { position: relative; inset: auto; order: 1; flex-basis: 100%; height: 44px; }
+.search-top .lv #newCustomerBtn { position: static; width: 44px; height: 44px; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.search-top .lv .o-rail .lines { padding-bottom: var(--ph-safe, 0px); }
+/* tablets: one row at the top, ☰ and search side by side, + a glass circle beside it; no title (owner 2026-10-17: "for the tablet, move
+   the search bar at the top", then "a stack like this looks weird ... side by side, remove the customer's name"). Items shows its
+   kinds words, as the title that opened them is gone */
+@media (min-width: 721px) {
+  .lv .head > .ph-ttl { display: none; }
+  .lv .head { align-items: center; }
+  .lv #itemsKinds { display: flex; }
+  .lv .head > .find:is(#itemsFind, #customersFind, #ordersFind) { position: relative; inset: auto; flex: 1; height: 44px; }
+  .lv #customersFind { margin-right: 55px; }
+  .lv #newCustomerBtn { top: -2px; right: -55px; }
+  .lv #newCustomerBtn .ic { width: 24px; height: 24px; stroke-width: 2; }   /* the same + as Items' */
+  .lv :is(.page, .o-rail) .lines { padding-bottom: var(--ph-safe, 0px); }
+  .lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* Items' + floats bottom right, as before (owner 2026-10-17: "keep it below"); the last row clears it */
+  /* the kinds switch is the head's third glass piece, 44 high as ☰ and search, the picked word in a round pill (owner 2026-10-17: the short boxed strip "is ugly") */
+  .lv #itemsKinds { height: 44px; padding: 4px; border: 0; border-radius: 999px; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+  .lv #itemsKinds::before { top: 4px; bottom: 4px; border-radius: 999px; }
+  .lv #itemsKinds button { border-radius: 999px; padding: 0 14px; }
+}
+/* the phone's glass (set here: .lv is the pv container, so its own @container block can't reach it) */
+.lv, #catalogSearchRow, #side { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
+      --glass-ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
+      --float: 0 4px 12px -4px rgb(0 0 0 / .45); }   /* falls only down and to the sides (blur/2 < spread + offset upward); owner 2026-10-18: 10/30 "floats too much" */   /* owner 2026-10-17: the 8/24 drop read as floating; glass sits close */
+body.light-theme :is(.lv, #catalogSearchRow, #side) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+  --float: 0 4px 12px -4px rgb(0 0 0 / .08); }
+/* the sale side, Apple-fied (owner 2026-10-17: "the walk-in customer a pill, like the search bar ... check out a pill, walk-in and discount
+   each its own pill"): the same three pieces, the who and money cards drop their box and what is in them becomes glass, as Sell's search row.
+   The items card keeps its box. At the checkout (co-mode) the money card is the Total again, so it keeps its box there */
+.rail-h .who, .rail-h:not(.co-mode) .pay { border: 0; background: none; box-shadow: none; }
+.rail-h:not(.co-mode) .pay { padding: 0; }   /* the two pills run edge to edge with the cart and Check out (owner 2026-10-17: "the edges ... aligned to the edges of the cart") */
+.rail-h .c-row { gap: 8px; height: 44px; }
+.rail-h .c-row > :is(.cust, .more, .ph-back), .rail-h:not(.co-mode) .opts > :is(.f-row, .d-row), .rail-h .items {
+  border: 0; border-radius: 999px; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+.rail-h .c-row > :is(.more, .ph-back) { width: 44px; }
+.rail-h.co-mode .c-row { gap: 0; }
+.rail-h.co-mode .c-row > .more { width: 0; }   /* at the checkout ⋯ tucks away as before; the who pill takes the row */
+.rail-h.co-mode .pay { border: 0; border-radius: 999px; }   /* the checkout's Total box wears the cart's material (below); a pill as the who pill above (owner 2026-10-18) */
+.rail-h.co-mode .pay:has(#totalsDetail.open) { border-radius: var(--rl-r); }   /* opened, Subtotal and VAT show: a pill that tall reads as a stadium */
+.rail-h .o-note { border-top: 0; }
+.rail-h:not(.co-mode) .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: 44px; margin: 0; border-bottom: 0; }   /* true halves: a flex basis of 0 still added Discount's padding (owner: "not equal size") */
+.rail-h .opts .pick { border-radius: 999px; }
+.rail-h .go, .rail-h #payBtn, .ph-bar { border-radius: 999px; }
+/* the cart: a clean list in the same glass, no Item / Amount band (owner 2026-10-17: "remove the two items and amount ... the same material") */
+.rail-h .items { border-radius: var(--rl-r); }
+.rail-h .i-head { display: none; }
+/* Check out as iOS 26's filled capsule (owner's "Add item" photo): the words centred, the total after a dot, the glass rim's light edge on top */
+.rail-h .go, .rail-h #payBtn, .ph-bar { justify-content: center; gap: 8px; border: 0; background-image: linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px rgb(255 255 255 / .12), 0 2px 8px -2px rgb(0 0 0 / .3); }   /* the shine on top, as the photo; the phone keeps its old width (owner 2026-10-17: "keep the same size button as before") */   /* Sell's items bar too (owner 2026-10-18: "the same design as the current checkout button") */
+/* the lists float a little over the grey page (owner 2026-10-17: "add a shadow so it kind of floats"): the cart, and the
+   Orders / Items / Customers rows (no outer card there, each row rings itself). --float casts no shadow upward, so each row's
+   drop hides under the next row and a day's block lifts as one (the rows' rules below) */
+/* the cart and the checkout's Total box (owner 2026-10-18: "no hairline on the side", "a shadow underneath the total", dark glass
+   "equal ... just transparent"): one even hairline all round, no top highlight, no drop spilling under Total; dark is see-through */
+.rail-h .items, .rail-h.co-mode .pay { background: var(--glass); box-shadow: var(--glass-ring);   /* as Walk-in and the pills around it; --shadow-card's -1px spread left the sides flat (owner 2026-10-18) */
+  -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+body:not(.light-theme) .rail-h .items, body:not(.light-theme) .rail-h.co-mode .pay { background: transparent; box-shadow: 0 0 0 .5px rgb(255 255 255 / .2); -webkit-backdrop-filter: none; backdrop-filter: none; }   /* dark --line (.08) vanishes on black; .5px as the pills', thinner (owner 2026-10-18) */
+.rail-h .go span + span::before { content: '·'; margin-right: 8px; }
+.rail-h .go span:only-child { flex: none; }   /* empty cart: Check out centred too */
+/* Sell (owner 2026-10-17, phone copy): [☰][search bar] in glass, the bar always open with scan inside it at the right end
+   ("make the search bar open and combine these two buttons"); typing swaps scan for the clear X. Phone and tablets */
+#catalogSearchRow > #sidebarToggle, #catalogSearchRow :is(#searchInput, #variantSearch) {
+  background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+#catalogSearchRow > :is(#sidebarToggle, #scanBtn) { height: 44px; border-radius: 50%; color: var(--ink); }
+#catalogSearchRow > #sidebarToggle { width: 44px; margin-left: 0; }
+#catalogSearchRow :is(#searchInput, #variantSearch) { min-width: 0; height: 44px; border-radius: 999px; font-size: 16px; }   /* 16: iOS zooms into anything smaller */
+#catalogSearchRow .search-icon { z-index: 1; }   /* the glass input is its own layer: it painted over the icon */
+#catalogSearchRow > .search-wrap { min-width: 0; }
+#catalogSearchRow > #scanBtn { position: absolute; right: 0; z-index: 1; width: 44px; background: none; box-shadow: none; color: var(--ink-secondary); }
+#catalogSearchRow:has(#searchInput:not(:placeholder-shown)) > #scanBtn { display: none; }   /* the clear X takes the end */
 
 /* the filter sheet (both pages): every choice on one sheet, a tap applies at once; lives in .rail-veil */
 .rail-menu.fp { width: 320px; max-height: calc(100vh - 24px); overflow-y: auto; padding: 6px 12px 12px; animation: fp-pop .16s var(--rl-ease); transform-origin: top right; }
@@ -8096,8 +8205,8 @@ body.light-theme:has(:is(.view-orders, .view-items).active) { background: var(--
    grouped list: the block ends at its last row, never runs to the bottom (owner 2026-10-09).
    Each row rings itself (the Sell search bar's ring + shadow); neighbours' rings overlap into one full-width hairline.
    The head is sticky: its canvas square hides rows scrolling under it, the rounded strip + ring sit on ::before (z -1 inside the band) */
-:is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .list { border: 0; border-radius: 0; background: none; box-shadow: none; }
-:is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .lines { margin-bottom: 0; padding-inline: 1px; padding-bottom: calc(16px + var(--ph-safe, 0px)); }
+:is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .list { overflow: visible; border: 0; border-radius: 0; background: none; box-shadow: none; }
+:is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .lines { margin: 0 -12px; padding-inline: 13px; padding-bottom: calc(16px + var(--ph-safe, 0px)); }
 .view-items .page .lines { padding-bottom: 88px; }   /* room under the last row for + */
 .view-items .band:has(+ div > .empty) { display: none; }   /* no rows: no head hanging over nothing */
 :is(.view-orders .o-rail, .view-items .page) .band { height: 36px; margin-top: 16px; padding: 0 16px; border: 0; background: var(--canvas, var(--bg));
@@ -8106,17 +8215,17 @@ body.light-theme:has(:is(.view-orders, .view-items).active) { background: var(--
 :is(.view-orders .o-rail, .view-items .page) .band::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: var(--rl-r) var(--rl-r) 0 0;
                                      background: var(--rl-soft); box-shadow: 0 0 0 1px var(--line); }
 body.light-theme :is(.view-orders .o-rail, .view-items .page) .band::before { background: var(--canvas); }   /* owner 2026-10-09: a shade darker than #F9F9F9 */
-:is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row { padding-inline: 16px; border: 0; background-color: var(--rl-card); box-shadow: 0 0 0 1px var(--line); }
-body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row { box-shadow: 0 0 0 1px var(--line), var(--shadow-card); }   /* dark's --shadow-card is none, which would void the pair */
+:is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row { padding-inline: 16px; border: 0; background-color: var(--rl-card); box-shadow: 0 0 0 1px var(--line), var(--float); }   /* --float: the list floats (owner 2026-10-17) */
+body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row { box-shadow: 0 0 0 1px var(--line), var(--shadow-card), var(--float); }   /* dark's --shadow-card is none, which would void the pair */
 :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row:is(:has(+ .band), :last-child) { border-bottom-left-radius: var(--rl-r); border-bottom-right-radius: var(--rl-r); }
 :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row:hover { background-color: var(--rl-hover); }
 :is(.view-orders .o-rail, .view-customers .o-rail) .row.cur { background-color: var(--rl-track); }
 /* no head (Customers; Categories, Modifiers, Discounts): the first row opens the block */
-:is(.view-customers .o-rail .row, .view-items .band.k2 + div > .row):first-child { margin-top: 8px; border-top-left-radius: var(--rl-r); border-top-right-radius: var(--rl-r); }
+.view-items .band { display: none; }   /* Items: no head on any tab, the rows say it (phone 2026-10-16; iPad too, owner 2026-10-18) */
+:is(.view-customers .o-rail .row, .view-items .band + div > .row):first-child { margin-top: 8px; border-top-left-radius: var(--rl-r); border-top-right-radius: var(--rl-r); }
 /* phone: the rows' sides 4px nearer the screen's edges -- the photo out left, the price out right (owner 2026-10-14) */
 @media (max-width: 720px) {
   :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) :is(.band, .row) { padding-inline: 12px; }
-  .view-items .band { display: none; }   /* phone Items: no head on any tab, the rows say it (owner 2026-10-16) */
   .view-items .band + div > .row:first-child { margin-top: 6px; border-top-left-radius: var(--rl-r); border-top-right-radius: var(--rl-r); }   /* capsule to list 14 (owner 2026-10-16) */
   .rail-h { --rl-m: 16px; }
 }
@@ -8256,3 +8365,66 @@ body.qs-on.qs-price .view-items .cols > :nth-child(4) { display: none; }
 .product-grid[data-pics="fill"] .pc-pic :is(.pc-name, .pc-top, .pc-pr) { text-shadow: 0 1px 2px rgb(0 0 0 / .45); }   /* bright photos (white screws) */
 .product-grid[data-pics="fill"] .pc-pic :is(.pc-top, .pc-pr) { position: relative; color: #fff; }
 .product-grid[data-pics="fill"] .pc-pic .pc-img::before { content: ''; position: absolute; inset: 0 0 55%; background: linear-gradient(rgb(0 0 0 / .7), transparent); }
+
+/* Phone and tablet: the Gemini drawer (owner 2026-10-17, from pos-lab/gemini-sidebar-lab.html; tablets too, owner: "the tablets should be using the phone version"). ☰ slides the sidebar in over the
+   whole screen and pushes the page out right, on iOS's sheet curve; ✕, a row or a swipe left slides it back.
+   Rows 44 with no cards, the open page a round grey pill inset 8, glyphs filled when open. Numbers in pt off the lab. */
+.side-top { display: none; }
+:root { --side-pill: var(--surface); }
+body.light-theme { --side-pill: var(--canvas); }   /* Gemini's #F2F0F0 on #FAF9F9 */
+#app::before { display: none; }   /* nothing left beside it to dim */
+:where(#app:not(.bo-app)) .sidebar { --sidebar-w: 100%; padding: 0 0 calc(8px + var(--ph-safe, 0px)); transition: transform .45s cubic-bezier(.32, .72, 0, 1); }
+.main { transition: transform .45s cubic-bezier(.32, .72, 0, 1); }
+#app:not(.sidebar-collapsed) .main { transform: translateX(100%); }
+#app:not(.sidebar-collapsed) #sidebarToggle { opacity: 1; visibility: visible; }   /* it rides out with the page */
+.side-top { display: flex; align-items: center; flex: none; height: 68px; padding: 3.2px 16px 0 25px; }   /* the lab's: title and ✕ centred 93.6 down the screen, the list at 126 */
+.side-ttl { flex: 1; font-size: 20px; font-weight: 590; letter-spacing: -.2px; color: var(--ink); }
+.side-x { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: var(--ink);
+          background: var(--surface-2); box-shadow: 0 4px 24px rgb(0 0 0 / .07); }
+.side-x svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+:where(#app:not(.bo-app)) :is(.side-nav, .side-grp) { gap: 0; padding: 0; border-radius: 0; background: none; }
+:where(#app:not(.bo-app)) .side-link { width: auto; height: 44px; margin: 0 8px; padding: 0 0 0 17.3px; gap: 15px; border-radius: 999px;
+                                       font-size: 16.5px; letter-spacing: -.1px; }
+:where(#app:not(.bo-app)) .side-link.active { background: var(--side-pill); font-weight: 400; }
+:where(#app:not(.bo-app)) .side-link:hover:not(.active) { background: none; }
+:where(#app:not(.bo-app)) .side-link svg { width: 25px; height: 25px; stroke-width: 1.45; }
+:where(#app:not(.bo-app)) .side-link svg.ext { width: 14px; height: 14px; margin-left: -11px; stroke-width: 2; color: var(--ink-tertiary); }
+/* the foot is Gemini's one account row (lab --foot-cy 785.8 = 727.8 here): avatar, name over store · POS, the gear on
+   the right. The row stays the log-out button; Settings' row becomes the gear (gated as before); sync shows only when behind */
+:where(#app:not(.bo-app)) .sidebar { padding-bottom: calc(4px + var(--ph-safe, 0px)); }
+:where(#app:not(.bo-app)) .side-footer { position: relative; display: block; padding: 0; }
+:where(#app:not(.bo-app)) :is(.user-row, .store-row) { border-radius: 0; background: none; }
+:where(#app:not(.bo-app)) .user-row { height: 56px; padding: 0 0 0 16.8px; gap: 8.5px; }
+:where(#app:not(.bo-app)) :is(.user-row .ic, .user-sub) { display: none; }
+:where(#app:not(.bo-app)) .user-meta { align-self: flex-start; padding-top: 7px; }   /* name on the top line, store under it */
+:where(#app:not(.bo-app)) .store-row { position: absolute; left: 65.3px; right: 64px; top: 29px; height: 18px; padding: 0; gap: 6px; pointer-events: none;
+                                        font-size: 14px; line-height: 18px; color: var(--ink-tertiary); }
+:where(#app:not(.bo-app)) .user-store span { color: inherit; }
+:where(#app:not(.bo-app)) .sync-mark { width: 18px; height: 18px; pointer-events: auto; }
+:where(#app:not(.bo-app)) .sync-mark:not(.stale) { display: none; }
+:where(#app:not(.bo-app)) .side-link[data-view="settings"] { position: absolute; right: 20px; bottom: calc(12px + var(--ph-safe, 0px)); z-index: 1;
+                                                            width: 40px; height: 40px; margin: 0; padding: 0; justify-content: center; background: none; }
+:where(#app:not(.bo-app)) .side-link[data-view="settings"] span { display: none; }
+:where(#app:not(.bo-app)) .side-link[data-view="settings"] svg { width: 26px; height: 26px; stroke-width: 1.5; }
+:where(#app:not(.bo-app)) .side-link[data-view="settings"] svg :is(.f, .d) { fill: none; stroke: currentColor; stroke-width: 1.5; }   /* the lab's gear stays a line */
+.user-avatar { width: 40px; height: 40px; flex: none; font-size: 17px; font-weight: 400; }
+.user-name { font-size: 16.5px; font-weight: 400; line-height: 22px; }
+.user-avatar { color: var(--bg); }
+.side-link.active .f { fill: currentColor; }
+.side-link.active .d { stroke: var(--side-pill); stroke-width: 1.8; }   /* inner lines cut out of the filled glyph */
+.side-link .dot { fill: currentColor; stroke: none; }
+/* The half-screen drawer, chat-app style (owner 2026-10-17, ChatGPT / Claude iOS): the page stays as a rounded card
+   pushed out right, a tap on it closes. Switched by html.side-half (compare.html's / devices-all.html's Sidebar dropdown); full page
+   stays the default. Phone: the card peeks 76 in; tablet: a short drawer and the page moves aside by that much (owner) */
+html.side-half { --ph-top: env(safe-area-inset-top, 0px); }   /* plain in a phone browser the card runs up behind the clock too; the device frames set it inline (0 while shut) */
+html.side-half #app { --half-w: calc(100vw - 76px); --half-r: 47px; --half-r-se: 88px; }   /* the card takes the screen's own corner, as phone.html's */
+@media (min-width: 721px) { html.side-half #app { --half-w: 320px; --half-r: 18px; --half-r-se: 29px; } }   /* the iPad's 18pt, x1.6 as devices-all.html */
+html.side-half :where(#app:not(.bo-app)) .sidebar { --sidebar-w: var(--half-w); }
+html.side-half #app { background: var(--canvas, var(--bg)); }   /* the corners of the card show the drawer's colour */   /* light too: a white drawer turned the status bar white on open (owner 2026-10-17: "why is the top changing to become whiter?") */
+html.side-half .side-x { display: none; }   /* the peeking page is the close */
+html.side-half .main { transition: transform .45s cubic-bezier(.32, .72, 0, 1), border-radius .45s; }
+html.side-half :where(#app:not(.bo-app)) .sidebar { padding-top: var(--ph-top, 0px); background: none; }   /* see-through: an opaque drawer hid the card's shadow, which then leaked out only at its corners; #app is the drawer's colour. --ph-top: the frame's clock strip, while the card runs up behind it */
+html.side-half .main { padding-top: var(--ph-top, 0px); background-image: linear-gradient(var(--canvas, var(--bg)) 0 0); background-size: 100% var(--ph-top, 0px); background-repeat: no-repeat; }   /* the strip behind the status bar is the page grey, not the white card: it turned the iPad top white on open (owner 2026-10-17) */
+html.side-half #app:not(.sidebar-collapsed) .main { transform: translateX(var(--half-w)); border-radius: var(--half-r); box-shadow: 0 0 0 .5px var(--line), -6px 0 28px rgb(0 0 0 / .12); }
+@supports (corner-shape: superellipse(2)) { html.side-half #app:not(.sidebar-collapsed) .main { border-radius: var(--half-r-se); corner-shape: superellipse(1.8); } }
+html.side-half body:not(.light-theme) #app:not(.sidebar-collapsed) .main { box-shadow: 0 0 0 1px var(--line-strong); }   /* black on black: a shadow can't show, an edge does */

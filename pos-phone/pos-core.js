@@ -267,7 +267,7 @@ function osmTileUrl(x, y, zoom) {
 }
 
 function setAppViewportHeight() {
-  const measuredHeight = Math.floor(
+  let measuredHeight = Math.floor(
     window.visualViewport?.height ||
     window.innerHeight ||
     document.documentElement.clientHeight ||
@@ -280,6 +280,11 @@ function setAppViewportHeight() {
     0
   );
   if (measuredHeight <= 0) return;
+  // iPhone Home Screen app drawn under the clock (black-translucent): iOS reports the height minus the status bar, so the
+  // app stopped a band short of the bottom (addon/push-menu, 2026-10-07). There the app is always the whole screen; iOS keeps
+  // screen.width/height in portrait terms, so take the side that matches the window
+  const fullScreen = navigator.standalone ? (measuredWidth < measuredHeight ? screen.height : screen.width) : 0;
+  if (fullScreen > measuredHeight && !document.activeElement?.matches?.('input, textarea, select')) measuredHeight = fullScreen;
 
   const activeTag = document.activeElement?.tagName;
   const editingText = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
@@ -827,6 +832,8 @@ function renderRoleSwitcher() {
   sub.textContent = STAFF_ROLES[state.role] || 'Staff';
   $('.user-store').innerHTML = `<span>${escapeHtml(store.name)}</span>&nbsp;· POS ${escapeHtml(store.registerNo || '1')}`;
   if (state.user) userMeta.querySelector('.user-name').textContent = state.user.name;
+  $('.user-avatar').textContent = (state.user?.name || 'E')[0];
+  $('.side-ttl').textContent = store.name;
 }
 
 // ---------- View switching ----------

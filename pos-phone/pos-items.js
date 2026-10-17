@@ -299,8 +299,8 @@ function saveItem() {
 // slide-over: its name, a modifier's options, and ticks for the items it's on. These Saves write (folders, modifiers,
 // the items' folders / modifierIds); the item editor's Save is still design only.
 let itemsKind = 'items', kindEdit = null;
-const KIND = { items: ['item', 'Search items, SKU or barcode'], cats: ['category', 'Search categories'], mods: ['modifier', 'Search modifiers'],
-  discs: ['discount', 'Search discounts'] };
+const KIND = { items: ['item', 'Search'], cats: ['category', 'Search'], mods: ['modifier', 'Search'],
+  discs: ['discount', 'Search'] };
 const kindCats = () => state.folders.filter(f => f.id !== 'all');
 // Discounts (bo-model loadDiscounts): a name and a % or amount, picked in the cart's Discount sheet. Senior / PWD are built in.
 const kindList = kind => (kind === 'cats' ? kindCats() : kind === 'discs' ? liveDiscounts() : loadModifiers().filter(m => !m.archived));
@@ -361,6 +361,7 @@ function setItemsKind(kind) {
   itemsTop[itemsKind] = $('#itemsLines').scrollTop;
   itemsKind = kind;
   slidePill($('#itemsKinds'), 'kind', kind);
+  $('#itemsTtl span').textContent = $(`#itemsKinds [data-kind="${kind}"]`).textContent;   // the phone's title names the list
   $('#itemsSearch').placeholder = KIND[kind][1];
   $('#itemsFilter').hidden = kind !== 'items';   // category and stock filter items only
   $('#itemsAdd').title = $('#itemsAdd').ariaLabel = `New ${KIND[kind][0]}`;

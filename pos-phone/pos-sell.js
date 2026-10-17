@@ -1165,7 +1165,7 @@ function openFabMenu(fab, items) {
 // ---------- The morph menu (cart-lab-stack-c.html) ----------
 // The menu grows out of its trigger's own box, each item the trigger's height, always in the same order (the hand
 // learns where each choice is); the current one is only bold. A pick, a tap outside or Esc shrinks it back.
-// items: [{label, run, cur, red, off}] or '-' for a divider. opts.w: width (default the trigger's), opts.right: right-align.
+// items: [{label, run, cur, red, off}] or '-' for a divider. opts.w: width (default the trigger's), opts.right: right-align, opts.mid: centre.
 const calmMs = ms => matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : ms;
 let railMenu = null;
 function openMenu(trigger, items, opts = {}) {
@@ -1178,7 +1178,7 @@ function openMenu(trigger, items, opts = {}) {
   m.style.cssText = `width:${w}px;--pl:${Math.max(12, parseFloat(cs.paddingLeft) - pad)}px;--pr:${Math.max(8, parseFloat(cs.paddingRight) - pad)}px`;
   document.body.append(veil);
   const anchor = m.querySelector('button'), H = m.offsetHeight;
-  const left = Math.max(0, Math.min(innerWidth - w, opts.right ? r.right - w : r.left));
+  const left = Math.max(0, Math.min(innerWidth - w, opts.mid ? r.left + (r.width - w) / 2 : opts.right ? r.right - w : r.left));   // opts.mid: under a centred title
   const top = Math.max(8, Math.min(innerHeight - H - 8, r.top - anchor.offsetTop));
   m.style.left = left + 'px'; m.style.top = top + 'px';
   const shrink = growFrom(m, r);

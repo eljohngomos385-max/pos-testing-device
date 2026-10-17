@@ -63,6 +63,11 @@ function attachEvents() {
   $$('.side-link').forEach(t => t.addEventListener('click', () => {
     $('#app').classList.add('sidebar-collapsed');
   }));
+  // phone: the full-page drawer's ✕, and a swipe left closes it (owner 2026-10-17). ponytail: a flick, not a finger-following drag
+  $('.side-x').addEventListener('click', () => $('#app').classList.add('sidebar-collapsed'));
+  let sideX0 = 0;
+  $('.sidebar').addEventListener('touchstart', e => { sideX0 = e.touches[0].clientX; }, { passive: true });
+  $('.sidebar').addEventListener('touchend', e => { if (e.changedTouches[0].clientX - sideX0 < -50) $('#app').classList.add('sidebar-collapsed'); }, { passive: true });
 
   // ---- Bottom bar: pagination ----
 
@@ -369,7 +374,9 @@ function attachEvents() {
   const openKind = id => (itemsKind === 'items' ? openItemEditor(id) : openKindEditor(itemsKind, id));
   $('#itemsKinds')?.addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (b) setItemsKind(b.dataset.kind); });
   new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#itemsKinds'));   // tabs moved: the pill re-places on the next switch
-  wireSegDrag($('#itemsKinds'), 'kind');   // press the pill and slide it, as iOS's
+  wireSegDrag($('#itemsKinds'), 'kind');
+  $('#itemsTtl')?.addEventListener('click', (e) => openMenu(e.currentTarget, [...$('#itemsKinds').children].map(b =>
+    ({ label: b.textContent, cur: b.dataset.kind === itemsKind, run: () => setItemsKind(b.dataset.kind) })), { w: 200, mid: true }));   // phone: the title is the kinds menu   // press the pill and slide it, as iOS's
   // swipe the list left / right for the next / previous tab: the list rides the finger with the tab beside it showing,
   // like the Sell grid's pages (owner 2026-10-16); not in Quick stock, which hides the tabs
   let ivX = null;
@@ -1232,5 +1239,13 @@ function seedLabDays() {
     addShiftRow('shift_close', s.open.id, counted, { counts: [counted], ...as(day.who, day.at + 20 * hr + r(20) * min) });
   }
 }
+// The phone browser's strip behind the clock takes the colour of the page under it, as devices-all.html's frame does: Safari
+// tints it from theme-color or the root's background. ponytail: polled, as the frame does; every page and sheet changes it
+const themeMeta = document.querySelector('meta[name=theme-color]');
+setInterval(() => {
+  let e = document.elementFromPoint(innerWidth / 2, 1), bg = '';
+  for (; e && !bg; e = e.parentElement) { const c = getComputedStyle(e).backgroundColor; if (!/rgba\(.*, 0\)$|transparent/.test(c)) bg = c; }
+  if (bg && themeMeta.content !== bg) { themeMeta.content = bg; document.documentElement.style.backgroundColor = bg; }
+}, 300);
 // Sales live in IndexedDB: open it before the first read (data-store.js ready()).
 document.addEventListener('DOMContentLoaded', () => (window.HWPOS_STORE?.ready?.() || Promise.resolve()).then(init));
