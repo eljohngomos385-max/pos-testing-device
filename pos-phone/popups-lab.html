@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pop-ups</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* The till pop-ups on their own, no sell page, for redesigning. Open the file directly (no server).
+   Tokens copied from pos-lab/styles.css (:root, body.light-theme, the rail's --rl-*, the checkout's --tile). */
+:root {
+  --bg: #121212; --bg-soft: #1C1C1C; --bg-softer: #232323; --surface: #2A2A2A; --surface-2: #1F1F1F; --surface-hover: #333333;
+  --line: rgba(255,255,255,0.08);
+  --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,0.70); --ink-tertiary: rgba(255,255,255,0.45);
+  --accent: #FFFFFF; --accent-hover: #F0F0F0; --accent-ink: #121212;
+  --danger: #EF5350; --danger-bg: rgba(239,83,80,0.14);
+  --r-input: 10px;
+  --shadow-raised: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-modal: 0 20px 50px rgba(0,0,0,0.6), 0 8px 20px rgba(0,0,0,0.3);
+  --btn-hover: rgba(255,255,255,0.08);
+}
+/* on body, like the till, so they pick up the light theme's --surface-2 etc. */
+body { --rl-card: var(--surface-2); --rl-soft: var(--bg-softer); --rl-hover: var(--surface);
+       --rl-hair: rgba(255,255,255,0.03); --rl-r: 14px; --rl-m: var(--sX, 16px); --in: calc(var(--rl-m) - 4px);   /* sides: text inset, and the inset for buttons, tiles and keys */
+       --tile: #2A2A2A; --tile-hover: var(--surface-hover); --key: var(--tile); --sel: color-mix(in srgb, var(--ink) 18%, transparent); }
+body.light-theme {
+  --bg: #FFFFFF; --bg-soft: #EDEDED; --bg-softer: #E4E4E4; --surface: #F9F9F9; --surface-2: #FFFFFF; --surface-hover: #F6F6F6;
+  --line: #E1E1E1;
+  --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C;
+  --accent: #303030; --accent-hover: #1A1A1A; --accent-ink: #FFFFFF;
+  --danger: #D72C0D; --danger-bg: #F8D8D0;
+  --shadow-raised: 0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
+  --shadow-modal: 0 20px 50px rgba(0,0,0,0.15), 0 8px 20px rgba(0,0,0,0.08);
+  --btn-hover: rgba(0,0,0,0.06);
+  --rl-soft: var(--surface); --rl-hover: var(--surface-hover); --rl-hair: #EBEBEB;
+  --tile: #F3F3F3; --tile-hover: var(--bg-soft); --key: var(--surface-2);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font: 14px/1.5 "Inter", -apple-system, "Segoe UI", Arial, sans-serif;
+       letter-spacing: -0.15px; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+button:disabled { opacity: .35; cursor: default; }
+textarea { font: inherit; color: var(--ink); border: 0; background: none; outline: 0; }
+::placeholder { color: var(--ink-tertiary); }
+svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* page */
+.top { display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; }
+.top h1 { margin: 0; font-size: 15px; font-weight: 590; }
+/* lab controls: head / foot padding sliders, stepper look, which presets, how they're laid out */
+.lab { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 0 32px; padding: 10px 14px; border-radius: var(--rl-r); background: var(--rl-soft);
+       color: var(--ink-secondary); font-size: 12px; }
+.lab label { display: flex; align-items: center; gap: 8px; }
+.lab input { width: 110px; accent-color: var(--ink); }
+.lab output { width: 30px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.sw { display: flex; align-items: center; gap: 2px; }
+.sw > span { margin-right: 6px; }
+.sw button { height: 26px; padding: 0 9px; border-radius: 7px; color: var(--ink-secondary); }
+.sw button:hover { color: var(--ink); }
+.sw button.on { background: var(--rl-card); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
+.theme { height: 32px; padding: 0 12px; border-radius: var(--r-input); background: var(--rl-soft); color: var(--ink-secondary); font-size: 13px; }
+.grp { margin: 16px 32px 0; color: var(--ink-secondary); font-size: 13px; font-weight: 590; }
+.board { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 48px 40px; padding: 16px 32px 40px; }
+.cap { margin: 0 0 12px; color: var(--ink-tertiary); font-size: 12px; }
+
+/* ---- One card for everything: a head over a hairline, quiet rows with the control on the right, a foot with one small action.
+        The whole card is built off its 10px corner, on a 4px grid:
+          card 10 · inner corners 6 (buttons, tiles, keys, fields; 10 less the 4px they sit in) · rings 8 (pill, ₱|%: 6 + their 2px inset)
+          one control height, 32 (pill, ₱|%, field, Done) · rows 48 · tiles 44 · keys 48
+          text 16 from the edge, controls 12 · title 15 · text 14, labels 13 ---- */
+body { --ctl: 32px; --ring: calc(var(--bR, 12px) + 2px); }
+.card { width: 400px; max-width: calc(100vw - 32px); overflow: hidden; border-radius: var(--cR, 10px); background: var(--rl-card);
+        box-shadow: var(--shadow-raised), 0 0 0 1px var(--line); transition: opacity .18s ease, transform .18s ease; }
+.card.bye { opacity: 0; transform: scale(.97); }   /* lab: Done closed it; it comes back so you can try again */
+.card.pop { width: 340px; box-shadow: var(--shadow-modal), 0 0 0 1px var(--line); }
+/* head = what it is, and the one number it comes to (it moves as you change things, so no "4 × ₱195" under it) */
+.hd { display: flex; align-items: center; gap: 12px; padding: var(--hdY, 12px) var(--rl-m); border-bottom: 1px solid var(--line); }
+.hd h2 { flex: 1; min-width: 0; margin: 0; overflow: hidden; font-size: var(--tS, 15px); font-weight: 600; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.hd .amt { padding: 0; font-size: var(--tS, 15px); line-height: 1.4; }
+.nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
+.nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
+.amt { font-size: 13px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.aside { color: var(--ink-tertiary); font-size: 13px; font-variant-numeric: tabular-nums; }
+.chip { display: flex; align-items: center; gap: 6px; height: 28px; margin: -4px -8px -4px 0; padding: 0 8px; border-radius: var(--bR, 12px); color: var(--ink-secondary); font-size: 13px; }
+.chip:hover { background: var(--btn-hover); color: var(--ink); }
+
+.opt { display: flex; align-items: center; gap: 4px; width: 100%; min-height: 48px; padding: 0 var(--in) 0 var(--rl-m); text-align: left; }
+.opt > span:first-child { flex: 1; color: var(--ink-secondary); font-size: calc(var(--fS, 14px) - 1px); }
+/* presets: flat grey tiles, name over a quiet fact; the picked one is filled */
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 12px var(--in); }
+.tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; height: 56px; border-radius: var(--bR, 12px);
+        background: var(--tile); font-size: var(--fS, 14px); font-weight: 590; transition: background-color .12s, transform .1s; }
+.tile:hover:not(.on) { background: var(--tile-hover); }
+button.tile:active { transform: scale(.98); }
+.tile small { color: var(--ink-tertiary); font-size: 12px; font-weight: 450; font-variant-numeric: tabular-nums; }
+.tile.on { background: var(--accent); color: var(--accent-ink); }   /* picked = filled, like a selected chip */
+.tile.on small { color: inherit; opacity: .6; }
+.tiles > :last-child:nth-child(odd) { grid-column: 1 / -1; }   /* Custom left alone on its row takes the whole row (2, 4, 6 presets) */
+.tiles.stack, .tiles.grouped { grid-template-columns: 1fr; }
+.stack .tile, .grouped .tile { flex-direction: row; justify-content: space-between; height: 44px; padding: 0 12px; }
+.stack .tile small, .grouped .tile small { font-size: 13px; }
+.tiles.grouped { gap: 0; margin: 12px var(--in); padding: 0; overflow: hidden; border-radius: var(--bR, 12px); background: var(--tile); }
+.grouped .tile { border-radius: 0; }
+.grouped .tile + .tile { box-shadow: inset 0 1px 0 var(--line); }
+
+.stp { display: grid; place-items: center; color: var(--ink); }
+/* the tappable number; typing = a soft field with a caret (a waiting value is dimmed, the first key replaces it) */
+.num { display: flex; align-items: center; justify-content: center; min-width: 48px; height: var(--ctl); padding: 0 10px; border-radius: var(--bR, 12px);
+       font-size: 16px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.num:hover { background: var(--btn-hover); }
+.num.on, .num.on:hover { background: var(--tile); }
+.pill .num.on { background: var(--rl-card); }   /* inside the grey pill the field shows white */
+body.bare .num.on { background: none; }
+.opt > .num { width: 112px; justify-content: flex-end; }   /* a typed amount has a fixed field (fits ₱99999.99), so ₱|% never moves as it grows */
+.num.on.fresh span { color: var(--ink-tertiary); }
+.num.on::after { content: ""; width: 1.5px; height: 18px; margin-left: 1px; background: var(--ink); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.num i { margin-left: 3px; color: var(--ink-tertiary); font-style: normal; font-weight: 500; }
+.go { display: flex; align-items: center; gap: 2px; height: var(--ctl); padding: 0 4px 0 8px; border-radius: var(--bR, 12px); color: var(--ink-tertiary); font-size: var(--fS, 14px); }
+.go:hover { background: var(--btn-hover); color: var(--ink); }
+.go.set { color: var(--ink); font-weight: 600; }
+.seg { display: flex; padding: 2px; border-radius: var(--ring); background: var(--tile); }
+.seg button { width: 32px; height: calc(var(--ctl) - 4px); border-radius: var(--bR, 12px); color: var(--ink-tertiary); font-size: 13px; font-weight: 600; }
+.seg button.on { background: var(--rl-card); color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(0,0,0,0.06); }
+.clr { display: grid; place-items: center; width: var(--ctl); height: var(--ctl); color: var(--ink-tertiary); }   /* ⊗ takes a set discount off */
+.clr:hover { color: var(--ink); }
+.clr svg { width: 18px; height: 18px; }
+
+/* the keys fold open under their row and fold away on close (grid rows 0fr <-> 1fr, so no fixed height) */
+.kpw { display: grid; grid-template-rows: 1fr; }
+.kpw > div { min-height: 0; overflow: hidden; }
+.kpw.in { animation: kp-open .26s cubic-bezier(.2, .8, .2, 1); }
+.kpw.out { animation: kp-shut .18s ease-in forwards; }
+@keyframes kp-open { from { grid-template-rows: 0fr; opacity: 0; } }
+@keyframes kp-shut { to { grid-template-rows: 0fr; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .kpw { animation: none !important; } }
+.kp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px var(--in) 12px; }
+.kp button { display: grid; place-items: center; height: 48px; border-radius: var(--bR, 12px); background: var(--tile); font-size: 20px; font-weight: 500;
+             font-variant-numeric: tabular-nums; transition: background-color .1s, transform .1s; }
+.kp button:hover { background: var(--tile-hover); }
+.kp button:active { transform: scale(.97); }
+/* lab switch Keys: Bare = bare digits, a soft key only on press */
+body.bare-keys .kp { gap: 0; }
+body.bare-keys .kp button { background: none; font-size: 22px; font-weight: 400; }
+body.bare-keys .kp button:hover { background: var(--btn-hover); }
+body.bare-keys .kp button:active { background: var(--tile); transform: none; }
+.kp svg { width: 20px; height: 20px; stroke-width: 1.6; }
+
+/* foot, the same on every pop-up: a quiet thing on the left (Remove, Clear, the price per kg), the one small action bottom right */
+.ft { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: var(--ftY, 8px) var(--in) var(--ftY, 8px) var(--rl-m); border-top: 1px solid var(--line);
+      color: var(--ink-tertiary); font-size: calc(var(--fS, 14px) - 1px); font-variant-numeric: tabular-nums; }
+.ft .q { height: var(--ctl); margin-left: -8px; padding: 0 8px; border-radius: var(--bR, 12px); color: var(--ink-secondary); font-size: var(--fS, 14px); }
+.ft .q:hover { background: var(--btn-hover); color: var(--ink); }
+.ft .q.rm { color: var(--danger); }
+.ft .q.rm:hover { background: var(--danger-bg); }
+.ink { height: var(--ctl); margin-left: auto; padding: 0 14px; border-radius: var(--bR, 12px); background: var(--tile); color: var(--ink); font-size: var(--fS, 14px); font-weight: 590; }
+.ink:hover:not(:disabled) { background: var(--tile-hover); }
+.note { display: block; width: 100%; padding: 12px var(--rl-m); font-size: 14px; line-height: 1.45; resize: none; }
+
+/* ---- Cart line, opens in the list (like Shopify): the tapped line grows a − n + pill and Details ---- */
+.mc { box-shadow: 0 0 0 1px var(--line); }
+.mc-head { display: flex; justify-content: space-between; gap: 12px; padding: 12px var(--rl-m); background: var(--rl-soft); border-bottom: 1px solid var(--line);
+           color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
+.mc-line + .mc-line { border-top: 1px solid var(--line); }
+.mc-line.open { background: var(--rl-soft); }
+.mc-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 8px var(--rl-m); text-align: left; transition: background-color .12s; }
+.mc-line:not(.open) .mc-row:hover { background: var(--rl-hover); }
+.xp { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--rl-m) 12px; }
+.mc-line .kp { padding: 0 var(--rl-m) 12px; }
+.pill { display: flex; align-items: center; height: 40px; border-radius: var(--ring); background: var(--rl-card); box-shadow: 0 0 0 1px var(--line); }
+.pill .stp { width: 40px; height: 40px; color: var(--ink-secondary); }
+.pill .stp:hover { color: var(--ink); }
+.pill .stp.del { color: var(--danger); }
+.pill .num { min-width: 40px; height: calc(100% - 4px); padding: 0 8px; }
+/* in a card row the pill is one control high, grey; the number keeps a fixed slot (fits 9999) so − and + don't move */
+.opt .pill { height: var(--ctl); background: var(--tile); box-shadow: none; }
+.opt .pill .stp { width: var(--ctl); height: var(--ctl); }
+.opt .pill .num { min-width: 64px; }
+body.plain .opt .pill { background: none; }
+.vd { display: flex; align-items: center; gap: 2px; height: 40px; color: var(--ink-secondary); font-size: 13px; }
+.vd:hover { color: var(--ink); }
+/* ---- Sheets: the edit takes the variant sheet's place over the items, laid out like checkout: one big number in the middle,
+        big tiles under it, and the keys only while a number is being typed. Three ways to bring the keys in:
+        A steps forward to a keys screen (checkout's method -> amount), B swaps the tiles for the keys,
+        C keeps a calm list and slides the keys in beside it. ---- */
+.card.sheet { position: relative; display: flex; flex-direction: column; width: 840px; height: 600px; box-shadow: 0 0 0 1px var(--line); }
+.sx { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; }
+.sx-head { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 8px; color: var(--ink-tertiary); font-size: 13px; font-weight: 500;
+           font-variant-numeric: tabular-nums; }
+.sx-head p { margin: 0; }
+.sx-hero { display: flex; align-items: center; gap: 16px; color: var(--ink); font-size: 52px; font-weight: 600; letter-spacing: -1.2px; line-height: 64px; }
+.sx-head .seg { margin: 8px 0 4px; }
+.sx .seg button { width: auto; height: 32px; padding: 0 16px; }
+.sx .stp { width: 48px; height: 48px; border-radius: var(--bR, 12px); color: var(--ink-secondary); }
+.sx .stp:hover:not(:disabled) { background: var(--btn-hover); color: var(--ink); }
+.sx-hero .stp { width: 56px; height: 56px; background: var(--tile); }
+.sx-hero .stp:hover:not(:disabled) { background: var(--tile-hover); }
+.sx-hero .stp svg { width: 22px; height: 22px; }
+.sx-hero .sh-n.q { width: 160px; }
+.sx-back { position: absolute; z-index: 1; top: 12px; left: 12px; display: flex; align-items: center; gap: 2px; height: 32px; padding: 0 10px 0 4px; border-radius: var(--bR, 12px);
+           font-size: 14px; font-weight: 590; }
+.sx-back svg { width: 18px; height: 18px; transform: scaleX(-1); }
+.sx-back:hover { background: var(--btn-hover); }
+/* tiles, as checkout's: what it is big, what it does small under it; a picked one is filled */
+.sx-tiles { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 8px; width: 496px; }
+.sx-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 96px; padding: 0 8px; border-radius: var(--bR, 12px);
+           background: var(--tile); transition: background-color .12s; }
+.sx-tile:hover:not(.pick) { background: var(--tile-hover); }
+.sx-tile b { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sx-tile small { color: var(--ink-tertiary); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sx-tile.pick { background: var(--accent); color: var(--accent-ink); }
+.sx-qt { flex-direction: row; justify-content: space-between; padding: 0 8px; }   /* quantity: − + on the tile itself, the number steps forward to type */
+.sx-qt:hover:not(.pick) { background: var(--tile); }
+.sx-qn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 48px; border-radius: var(--bR, 12px); }
+.sx-qt .sx-qn { flex: 1; height: 72px; }
+.sx-qt .sx-qn:hover { background: var(--btn-hover); }
+.sx-tile.pick small { color: inherit; opacity: .6; }
+/* the number being typed: a fixed slot so nothing beside it moves, a caret, grey until the first key replaces it */
+.sh-n { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sh-n.fresh span { color: var(--ink-tertiary); }
+.sh-n.on::after { content: ""; width: 2px; height: .9em; margin-left: 2px; background: var(--ink); animation: blink 1s steps(1) infinite; }
+.sh-kp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 336px; }
+.sh-kp button { height: 48px; border-radius: var(--bR, 12px); background: var(--tile); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums;
+                transition: background-color .1s, transform .1s; }
+.sh-kp button:hover { background: var(--tile-hover); }
+.sh-kp button:active { transform: scale(.97); }
+.sh-kp svg { width: 22px; height: 22px; stroke-width: 1.6; }
+.sx.in, .sx-keys.in { animation: sx-in .2s ease both; }
+.sx.c .sx-keys.in { animation: sx-side .28s cubic-bezier(.2, .8, .2, 1) both; }
+.sx.c.in { animation: none; }   /* in C only the list and the keys move */
+/* C: the list glides aside as the keys come in, and back when they go (170 = half of keys 300 + gap 40) */
+.sx.c.in .sx-col { animation: sx-left .28s cubic-bezier(.2, .8, .2, 1) both; }
+.sx.c.out .sx-col { animation: sx-right .28s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes sx-left { from { transform: translateX(170px); } }
+@keyframes sx-right { from { transform: translateX(-170px); } }
+@keyframes sx-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes sx-side { from { opacity: 0; transform: translateX(24px); } }
+/* C: rows as separate boxes (values grey, the picked one filled); the keys come in on the right */
+.sx.c { flex-direction: row; gap: 40px; }
+.sx-col { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 420px; }
+.sx-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.sx-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding: 0 12px 0 16px; font-size: 15px; font-weight: 500; text-align: left; cursor: pointer;
+          border-radius: var(--bR, 12px); background: var(--tile); }
+.sx-row > span:first-child { flex: 1; }
+.sx-row.on { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--sel); }   /* the one the keys type into: a soft ring, the caret says the rest */
+.sx-row small { color: var(--ink-tertiary); font-size: 14px; font-variant-numeric: tabular-nums; }
+.sx-row .stp { width: 40px; height: 40px; }
+.sx-row .seg button { height: 28px; padding: 0 12px; }
+.sx-row .sh-n.q { width: 48px; font-size: 16px; font-weight: 600; }
+.sx-row .sh-n.v { justify-content: flex-end; width: 110px; color: var(--ink-secondary); }
+.sx-row.on .sh-n.v { color: var(--ink); font-size: 17px; font-weight: 600; }
+.sx-row .cv, .sx-row .ck { display: block; width: 18px; height: 18px; color: var(--ink-tertiary); }
+.sx-row.pick { background: color-mix(in srgb, var(--ink) 10%, var(--tile)); font-weight: 600; }   /* the picked preset: a deeper shade of its own grey, never black; the typed-into one is white with a ring */
+.sx-row.pick small, .sx-row.pick .sh-n.v { color: var(--ink-secondary); }
+.sx.c .sh-kp { width: 300px; }
+.sx-keys > .seg { width: fit-content; margin: 0 auto 12px; }   /* Percent | Amount sits on the keys it belongs to, A's size */
+.sx-keys > .seg.off { visibility: hidden; }   /* kept for quantity too, so the keys don't jump between the two */
+.sx.c .sh-kp button { height: 56px; }
+body:not(.show-a) .sa { display: none; }   /* lab switch: Sheet A parked */
+/* fulfilment: the address takes the keys' place beside the list (same 300 wide, so the same glide) */
+.sx-addr { display: flex; flex-direction: column; gap: 12px; width: 300px; }
+.sx-ah { display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 600; }
+.sx-ah .chip { margin: 0; }
+.sx-ta { display: block; width: 100%; padding: 12px 16px; border-radius: var(--bR, 12px); background: var(--tile); font-size: 15px; line-height: 1.45; resize: none; }
+.sx-ta:focus { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--sel); }
+.sx-times { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sx-times .sx-row { justify-content: center; min-height: 48px; padding: 0; font-variant-numeric: tabular-nums; }
+.sx-ah .seg button { height: 28px; padding: 0 12px; }
+.sx-row .ad { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet .ft { padding: 12px 24px; }
+.sheet .sx { padding-top: 89px; }   /* centred on the whole card, not on the space above the foot: 24 + the foot's 65 */
+.sheet .ft .q, .sheet .ink { height: 40px; }
+.sheet .ink { padding: 0 20px; }
+</style>
+</head>
+<body>
+<header class="top"><h1>Pop-ups</h1><button type="button" class="theme" id="theme">Light</button></header>
+<div class="lab">
+  <label>Head <input type="range" id="hdY" min="4" max="20" value="12"><output>12</output></label>
+  <label>Foot <input type="range" id="ftY" min="4" max="20" value="8"><output>8</output></label>
+  <label>Sides <input type="range" id="sX" min="12" max="32" value="16"><output>16</output></label>
+  <label>Card corners <input type="range" id="cR" min="0" max="28" value="10"><output>10</output></label>
+  <label>Button corners <input type="range" id="bR" min="0" max="20" value="12"><output>12</output></label>
+  <label>Title <input type="range" id="tS" min="13" max="22" value="15"><output>15</output></label>
+  <label>Text <input type="range" id="fS" min="12" max="18" value="14"><output>14</output></label>
+  <span class="sw" data-sw="step"><span>Stepper</span><button type="button" data-v="pill" class="on" data-def>Pill</button><button type="button" data-v="plain">Plain</button></span>
+  <span class="sw" data-sw="keys"><span>Keys</span><button type="button" data-v="box" class="on" data-def>Box</button><button type="button" data-v="bare">Bare</button></span>
+  <span class="sw" data-sw="field"><span>Typing</span><button type="button" data-v="box" class="on" data-def>Box</button><button type="button" data-v="bare">Bare</button></span>
+  <span class="sw" data-sw="ps"><span>Presets</span><button type="button" data-v="1">PWD</button><button type="button" data-v="2" class="on" data-def>PWD, Staff</button><button type="button" data-v="4">Four</button></span>
+  <span class="sw" data-sw="lay"><span>Layout</span><button type="button" data-v="stack" class="on" data-def>Stack</button><button type="button" data-v="grouped">Grouped</button><button type="button" data-v="grid">Grid</button></span>
+  <span class="sw" data-sw="sa"><span>Sheet A</span><button type="button" data-v="hide" class="on" data-def>Hide</button><button type="button" data-v="show">Show</button></span>
+  <button type="button" class="theme" id="reset">Reset</button>
+</div>
+
+<h2 class="grp">Cart line</h2>
+<main class="board">
+  <section><p class="cap">Now · a card over the tapped line</p><div class="card" id="now"></div></section>
+  <section><p class="cap">Opens in the list · like Shopify</p>
+    <div class="card mc"><div class="mc-head"><span id="mcCount"></span><span>Amount</span></div><div id="mcLines"></div></div></section>
+  <section><p class="cap">Pop-up in the middle · the same card</p><div class="card pop" id="mid"></div></section>
+</main>
+
+<h2 class="grp">Pop-ups · tap a number for the keys, Apply to fold them, Done to close</h2>
+<main class="board">
+  <section><p class="cap">Receipt discount</p><div class="card pop" id="rd"></div></section>
+  <section><p class="cap">How much?</p><div class="card pop" id="hm"></div></section>
+  <section><p class="cap">Delivery address · words, so the keyboard</p>
+    <div class="card pop">
+      <div class="hd"><h2>Deliver to</h2>
+        <button type="button" class="chip"><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></svg>Map</button></div>
+      <textarea class="note" rows="4" placeholder="House #, street, barangay, city" aria-label="Address"></textarea>
+      <div class="ft"><button type="button" class="ink" data-done>Save</button></div>
+    </div></section>
+</main>
+
+<h2 class="grp sa">Sheet A · like checkout: tiles first; tap a number and it steps forward to its own keys screen</h2>
+<main class="board sa">
+  <section><p class="cap">Cart line</p><div class="card sheet" id="s-al" data-sh="al"></div></section>
+  <section><p class="cap">Receipt discount</p><div class="card sheet" id="s-ar" data-sh="ar"></div></section>
+</main>
+
+<h2 class="grp">Sheet C · a calm list; the keys slide in beside it</h2>
+<main class="board">
+  <section><p class="cap">Cart line</p><div class="card sheet" id="s-cl" data-sh="cl"></div></section>
+  <section><p class="cap">Receipt discount</p><div class="card sheet" id="s-cr" data-sh="cr"></div></section>
+  <section><p class="cap">Fulfilment · the types are the sheet; Delivery slides the address in</p><div class="card sheet" id="s-cf" data-sh="cf"></div></section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const peso = (n) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const svg = (d, c = '') => `<svg${c ? ` class="${c}"` : ''} viewBox="0 0 24 24"><path d="${d}"/></svg>`;
+const IC = { less: 'M6 12h12', more: 'M12 6v12M6 12h12', trash: 'M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12', chev: 'M9 6l6 6-6 6',
+             del: 'M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7zM13 10l4 4M17 10l-4 4', clr: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5l5 5M14.5 9.5l-5 5' };
+const PRICE = 195, SUB = 2450, PER_KG = 90;
+const KG_STEP = 0.5;   // ponytail: one step for the lab; the product's unit would set it (0.5 kg, 1 m)
+// the store sets its presets in the back office; the lab bar switches between a few likely sets and layouts
+const SETS = { 1: [['PWD', 5]], 2: [['PWD', 5], ['Staff', 15]], 4: [['Senior', 5], ['PWD', 5], ['Contractor', 10], ['Staff', 15]] };
+const lab = { ps: '2', lay: 'stack' };
+
+// Numbers are kept as typed strings. ed = the number the keys type into (null = keys closed).
+const st = { now: { q: '4', d: '', pct: false }, mid: { q: '4', d: '', pct: false }, rd: { pick: null, v: '', pct: true }, hm: { q: '2.5' } };
+const cart = [{ n: 'Claw Hammer 16oz', p: 350, q: '1' }, { n: 'Tape Measure 5m', p: 195, q: '1' }, { n: 'Paint Brush 2"', p: 85, q: '2' }];
+let openI = 1, ed = null;
+const obj = (k) => (k === 'cart' ? cart[openI] : st[k]);
+const isEd = (o, f) => ed?.o === o && ed.f === f;
+const off = (o, v, base) => Math.min(base, o.pct ? base * (+v || 0) / 100 : +v || 0);   // what a ₱ | % number takes off base
+
+// One key into a typed number: '.' once, two decimals, nothing over max, a lone 0 gives way.
+function press(v, k, dec, max) {
+  if (k === 'del') return v.slice(0, -1);
+  if (k === '.') return dec && !v.includes('.') ? (v || '0') + '.' : v;
+  if (/\.\d\d$/.test(v)) return v;
+  const n = (v === '0' ? '' : v) + k;
+  return +n > max ? v : n;
+}
+function closeEd() {
+  if (!ed) return;
+  if (ed.f === 'q' && !(+ed.o.q > 0)) ed.o.q = ed.was;                        // a count can't be left at 0
+  if (ed.o === st.rd && st.rd.pick === 'c' && !+st.rd.v) st.rd.pick = null;    // an emptied custom is no discount
+  ed = null;
+}
+
+// pieces
+const pad = (dec, row = '') => `<div class="kpw${ed.anim ? ' in' : ''}"><div>${row}<div class="kp">${[...'123456789', dec ? '.' : '', '0', 'del'].map((k) => !k ? '<span></span>'
+  : `<button type="button" data-k="${k}"${k === 'del' ? ' aria-label="Delete"' : ''}>${k === 'del' ? svg(IC.del) : k}</button>`).join('')}</div></div></div>`;
+const num = (o, f, key, text) => `<button type="button" class="num${isEd(o, f) ? ' on' + (ed.fresh ? ' fresh' : '') : ''}" data-e="${key}.${f}"><span>${text}</span></button>`;
+const stp = (key, d, dis, cls = '') => `<button type="button" class="stp${cls}" data-step="${key}:${d}"${dis ? ' disabled' : ''} aria-label="${d < 0 ? 'Less' : 'More'}">${svg(cls ? IC.trash : d < 0 ? IC.less : IC.more)}</button>`;
+const clr = (k) => `<button type="button" class="clr" data-clr="${k}" aria-label="No discount">${svg(IC.clr)}</button>`;
+const seg = (o) => `<span class="seg"><button type="button"${o.pct ? '' : ' class="on"'}>₱</button><button type="button" data-pct${o.pct ? ' class="on"' : ''}>%</button></span>`;
+const act = (open) => (open ? '<button type="button" class="ink">Apply</button>' : '<button type="button" class="ink" data-done>Done</button>');
+const typed = (o, v) => (o.pct ? `${v || 0}%` : `₱${v || 0}`);
+const shown = (o, v) => (o.pct ? `${v}%` : peso(+v));
+
+// Cart line card (Now and the middle one). The head is the name and what the line comes to now; ⊗ takes the discount off.
+function lineCard(k) {
+  const o = st[k], q = +o.q || 0, gross = q * PRICE, d = isEd(o, 'd');
+  return `<div class="hd"><h2>Tape Measure 5m</h2><span class="amt">${peso(gross - off(o, o.d, gross))}</span></div>
+    <div class="opt"><span>Quantity</span><span class="pill">${stp(k, -1, q <= 1)}${num(o, 'q', k, o.q || '0')}${stp(k, 1)}</span></div>
+    ${isEd(o, 'q') ? pad(false) : ''}
+    <div class="opt"><span>Discount</span>${d ? seg(o) + num(o, 'd', k, typed(o, o.d))
+      : `<button type="button" class="go${+o.d ? ' set' : ''}" data-e="${k}.d">${+o.d ? shown(o, o.d) : `None${svg(IC.chev)}`}</button>`}${+o.d && !d ? clr(k) : ''}</div>
+    ${d ? pad(true) : ''}
+    <div class="ft"><button type="button" class="q rm">Remove</button>${act(ed?.o === o)}</div>`;
+}
+
+// Opens in the list: tap a line to open it, again to close. At 1 the minus is a bin. Tap the number for the keys.
+function drawCart() {
+  $('#mcCount').textContent = `${cart.length} item${cart.length === 1 ? '' : 's'}`;
+  $('#mcLines').innerHTML = cart.map((it, i) => `<div class="mc-line${i === openI ? ' open' : ''}">
+    <button type="button" class="mc-row" data-i="${i}"><span class="nm">${it.n}<small>${+it.q || 0} × ${peso(it.p)}</small></span><span class="amt">${peso((+it.q || 0) * it.p)}</span></button>
+    ${i !== openI ? '' : `<div class="xp"><span class="pill">${stp('cart', -1, false, +it.q <= 1 ? ' del' : '')}${num(it, 'q', 'cart', it.q || '0')}${stp('cart', 1)}</span>
+      <button type="button" class="vd">Details${svg(IC.chev)}</button></div>${isEd(it, 'q') ? pad(false) : ''}`}</div>`).join('');
+}
+
+// Receipt discount: preset tiles; tap one to apply it, again (or Clear) to take it off. Custom opens ₱|% and the keys under the tiles.
+function drawRd() {
+  const R = st.rd, c = isEd(R, 'v');
+  const P = SETS[lab.ps], o = R.pick === null ? 0 : R.pick === 'c' ? off(R, R.v, SUB) : SUB * P[R.pick][1] / 100;
+  $('#rd').innerHTML = `<div class="hd"><h2>Discount</h2>${o ? `<span class="aside">−${peso(o)}</span>` : ''}<span class="amt">${peso(SUB - o)}</span></div>
+    <div class="tiles ${lab.lay}">
+      ${P.map(([n, p], i) => `<button type="button" class="tile${R.pick === i ? ' on' : ''}" data-pick="${i}">${n}<small>${p}%</small></button>`).join('')}
+      <button type="button" class="tile${R.pick === 'c' ? ' on' : ''}" data-e="rd.v">Custom<small>${R.pick === 'c' ? shown(R, R.v) : '₱ or %'}</small></button>
+    </div>
+    ${c ? pad(true, `<div class="opt"><span>Amount</span>${seg(R)}${num(R, 'v', 'rd', typed(R, R.v))}</div>`) : ''}
+    <div class="ft">${R.pick !== null ? '<button type="button" class="q" data-clr="rd">Clear</button>' : ''}${act(ed?.o === R)}</div>`;
+}
+
+// How much: − n + in half kilos, or tap the number and key it in.
+function drawHm() {
+  const v = st.hm.q, kg = +v || 0;
+  $('#hm').innerHTML = `<div class="hd"><h2>Common Wire Nail 3"</h2><span class="amt">${peso(Math.round(kg * PER_KG * 100) / 100)}</span></div>
+    <div class="opt"><span>Weight</span><span class="pill">${stp('hm', -1, kg <= KG_STEP)}${num(st.hm, 'q', 'hm', `${v || '0'}<i>kg</i>`)}${stp('hm', 1)}</span></div>
+    ${isEd(st.hm, 'q') ? pad(true) : ''}
+    <div class="ft"><span>${peso(PER_KG)} / kg</span><button type="button" class="ink" id="hmAdd" data-done${kg ? '' : ' disabled'}>Add</button></div>`;
+}
+
+// Sheets. f = the number the keys type into (null = no keys); a fresh focus is replaced by the first key; was = how it stood before the keys came out.
+const S = {};
+for (const v of 'ac') {
+  S[v + 'l'] = { v, kind: 'line', q: '4', d: '10', pct: true, f: null };
+  S[v + 'r'] = { v, kind: 'rd', pick: null, d: '', pct: true, f: null };
+}
+const skeys = (dec) => `<div class="sh-kp">${[...'123456789', dec ? '.' : '', '0', 'del'].map((k) => !k ? '<span></span>'
+  : `<button type="button" data-sk="${k}"${k === 'del' ? ' aria-label="Delete"' : ''}>${k === 'del' ? svg(IC.del) : k}</button>`).join('')}</div>`;
+const sseg = (o) => `<span class="seg"><button type="button"${o.pct ? ' class="on"' : ''} data-pct>Percent</button><button type="button"${o.pct ? '' : ' class="on"'}>Amount</button></span>`;
+const sn = (o, f, text, cls = '') => {
+  const on = o.f === f && (o.pick === undefined || o.pick === 'c');
+  return `<span class="sh-n${cls}${on ? ' on' + (o.fresh ? ' fresh' : '') : ''}"><span>${text}</span></span>`;
+};
+const sBase = (o) => (o.kind === 'line' ? (+o.q || 0) * PRICE : SUB);
+const sCut = (o) => (o.kind === 'line' ? off(o, o.d, sBase(o)) : o.pick === null ? 0 : o.pick === 'c' ? off(o, o.d, SUB) : SUB * SETS[lab.ps][o.pick][1] / 100);
+const sTot = (o) => sBase(o) - sCut(o);
+const dv = (o) => (+o.d ? typed(o, o.d) : 'None');
+const sstp = (s, dis) => `<button type="button" class="stp" data-sstep="${s}"${dis ? ' disabled' : ''} aria-label="${s < 0 ? 'Less' : 'More'}">${svg(s < 0 ? IC.less : IC.more)}</button>`;
+const sgrid = (t, cls = '') => `<div class="sx-tiles${cls}" style="--n:${t.length > 4 ? 3 : t.length}">${t.join('')}</div>`;
+const skp = (o) => `<div class="sx-keys${o.anim === true ? ' in' : ''}">${sseg(o).replace('"seg"', o.f === 'd' ? '"seg"' : '"seg off"')}${skeys(o.f === 'd')}</div>`;
+function sHead(o) {
+  const c = sCut(o), line = o.kind === 'line';
+  return `<div class="sx-head"><p>${line ? 'Tape Measure 5m' : 'Sale total'}</p><div class="sx-hero">${peso(sTot(o))}</div>
+    <p>${line ? `${+o.q || 0} × ${peso(PRICE)}${c ? ` · −${peso(c)}` : ''}` : c ? `${peso(SUB)} · −${peso(c)}` : 'No discount'}</p></div>`;
+}
+// A: tiles; a number steps forward to a screen of its own with the keys, Back to undo, Apply to keep
+function sxA(o) {
+  if (o.f) return `<button type="button" class="sx-back" data-back>${svg(IC.chev)}Back</button>
+    <div class="sx${o.anim === true ? ' in' : ''}"><div class="sx-head"><p>${o.f === 'q' ? 'Quantity' : 'Discount'}</p>
+      <div class="sx-hero">${o.f === 'q' ? `${sstp(-1, +o.q <= 1)}${sn(o, 'q', o.q || '0', ' q')}${sstp(1)}` : sn(o, 'd', typed(o, o.d))}</div>
+      ${o.f === 'd' ? sseg(o) : ''}<p>Total ${peso(sTot(o))}</p></div>${skeys(o.f === 'd')}</div>`;
+  const c = sCut(o);
+  const tiles = o.kind === 'line'
+    ? [`<div class="sx-tile sx-qt">${sstp(-1, +o.q <= 1)}<button type="button" class="sx-qn" data-sf="q"><b>${+o.q || 0}</b><small>Quantity</small></button>${sstp(1)}</div>`,
+       `<button type="button" class="sx-tile" data-sf="d"><b>${dv(o)}</b><small>Discount${c ? ` · −${peso(c)}` : ''}</small></button>`]
+    : [...SETS[lab.ps].map(([n, pc], i) => `<button type="button" class="sx-tile${o.pick === i ? ' pick' : ''}" data-pick="${i}"><b>${n}</b><small>${pc}% · −${peso(SUB * pc / 100)}</small></button>`),
+       `<button type="button" class="sx-tile${o.pick === 'c' ? ' pick' : ''}" data-sf="d"><b>${o.pick === 'c' ? typed(o, o.d) : 'Custom'}</b><small>${o.pick === 'c' ? '−' + peso(c) : 'Percent or amount'}</small></button>`];
+  return `<div class="sx">${sHead(o)}${sgrid(tiles)}</div>`;
+}
+// C: one list under the number; tapping a number slides the keys in on the right
+function sxC(o) {
+  const rows = o.kind === 'line'
+    ? `<div class="sx-row${o.f === 'q' ? ' on' : ''}"><span>Quantity</span>${sstp(-1, +o.q <= 1)}<button type="button" class="sx-qn" data-sf="q">${sn(o, 'q', o.q || '0', ' q')}</button>${sstp(1)}</div>
+       <div class="sx-row${o.f === 'd' ? ' on' : ''}" data-sf="d"><span>Discount</span>${sn(o, 'd', o.f === 'd' ? typed(o, o.d) : dv(o), ' v')}${o.f === 'd' ? '' : svg(IC.chev, 'cv')}</div>`
+    : SETS[lab.ps].map(([n, pc], i) => `<button type="button" class="sx-row${o.pick === i ? ' pick' : ''}" data-pick="${i}"><span>${n}</span><small>${pc}%</small><i class="ck"></i></button>`).join('')
+      + `<div class="sx-row${o.f === 'd' ? ' on' : o.pick === 'c' ? ' pick' : ''}" data-sf="d"><span>Custom</span>${sn(o, 'd', o.pick === 'c' ? typed(o, o.d) : '', ' v')}${o.f === 'd' ? '' : svg(IC.chev, 'cv')}</div>`;
+  return `<div class="sx c${o.anim === true ? ' in' : o.anim === 'out' ? ' out' : ''}"><div class="sx-col">${sHead(o)}<div class="sx-list">${rows}</div></div>${o.f ? skp(o) : ''}</div>`;
+}
+// Fulfilment: the types are the rows (the store's own ones would follow); Delivery slides the address in beside them, the keyboard is for words
+S.cf = { v: 'f', kind: 'ful', pick: 'walkin', addr: '', day: 'Today', time: null, f: null };
+const FUL = [['walkin', 'Walk-in'], ['pickup', 'Pickup'], ['delivery', 'Delivery']];
+const PANEL = { pickup: 't', delivery: 'a' };   // the types that ask for something: Pickup a time, Delivery an address
+const HOURS = ['9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'];   // ponytail: fixed for the lab; the store's hours would set them
+const esc = (t) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+const PIN = 'M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10zM12 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4z';
+function sxF(o) {
+  const say = { pickup: o.time ? `${o.day}, ${o.time}` : '', delivery: o.addr };
+  const rows = FUL.map(([k, n]) => `<button type="button" class="sx-row${o.f && PANEL[k] === o.f ? ' on' : o.pick === k ? ' pick' : ''}" data-ful="${k}"><span>${n}</span>${
+    PANEL[k] ? `<small class="ad">${esc(say[k])}</small>${PANEL[k] === o.f ? '' : svg(IC.chev, 'cv')}` : ''}</button>`).join('');
+  const kin = o.anim === true || o.anim === 'swap' ? ' in' : '';
+  const panel = o.f === 'a'
+    ? `<div class="sx-keys sx-addr${kin}"><div class="sx-ah">Deliver to<button type="button" class="chip">${svg(PIN)}Map</button></div>
+      <textarea class="sx-ta" rows="6" placeholder="House #, street, barangay, city" aria-label="Address">${esc(o.addr)}</textarea></div>`
+    : o.f === 't'
+    ? `<div class="sx-keys sx-addr${kin}"><div class="sx-ah">Pick up<span class="seg">${['Today', 'Tomorrow'].map((d) => `<button type="button"${o.day === d ? ' class="on"' : ''} data-day="${d}">${d}</button>`).join('')}</span></div>
+      <div class="sx-times">${HOURS.map((h) => `<button type="button" class="sx-row${o.time === h ? ' pick' : ''}" data-time="${h}">${h}</button>`).join('')}</div></div>` : '';
+  return `<div class="sx c${o.anim === true ? ' in' : o.anim === 'out' ? ' out' : ''}"><div class="sx-col"><div class="sx-head"><div class="sx-hero">${FUL.find(([k]) => k === o.pick)[1]}</div></div><div class="sx-list">${rows}</div></div>${panel}</div>`;
+}
+function fulClick(t, o) {
+  const el = (q) => t.closest(q), k = el('[data-ful]')?.dataset.ful;
+  if (k) {
+    if (k !== o.pick) Object.assign(o, { addr: '', time: null });   // as the till: leaving a type drops what it asked for
+    const f = PANEL[k] && o.f !== PANEL[k] ? PANEL[k] : null;      // the same row again puts its panel away
+    Object.assign(o, { pick: k, f, anim: f ? (o.f ? 'swap' : true) : o.f ? 'out' : false });
+  } else if (el('[data-day]')) o.day = el('[data-day]').dataset.day;
+  else if (el('[data-time]')) o.time = el('[data-time]').dataset.time;
+  else if (el('[data-apply]')) Object.assign(o, { f: null, anim: 'out' });
+  else return;
+  drawSheets();
+  if (o.f === 'a') $('#s-cf .sx-ta').focus();
+}
+document.addEventListener('input', (e) => { if (e.target.matches('.sx-ta')) S.cf.addr = e.target.value; });
+const SX = { a: sxA, c: sxC, f: sxF };
+// bottom left follows what's being edited: the discount's keys → clear it; nothing open → remove the line (a receipt has no line, so Clear)
+const sFoot = (o) => `<div class="ft">${o.kind === 'ful' ? '' : o.f === 'd' ? (+o.d ? `<button type="button" class="q" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
+  : o.f ? '' : o.kind === 'line' ? '<button type="button" class="q rm" data-done>Remove item</button>' : o.pick !== null ? '<button type="button" class="q" data-sclr>Clear</button>' : ''}${
+  o.f ? '<button type="button" class="ink" data-apply>Apply</button>' : '<button type="button" class="ink" data-done>Done</button>'}</div>`;
+function drawSheets() {
+  for (const [id, o] of Object.entries(S)) { $('#s-' + id).innerHTML = SX[o.v](o) + sFoot(o); o.anim = false; }
+}
+function settle(o) {   // the keys go away: a count can't be left at 0, an emptied custom is no discount
+  if (o.kind === 'line' && !(+o.q > 0)) o.q = o.was.q;
+  if (o.pick === 'c' && !+o.d) o.pick = null;
+  Object.assign(o, { f: null, anim: 'out' });
+}
+function sheetClick(t, o) {
+  if (o.kind === 'ful') return fulClick(t, o);
+  const el = (q) => t.closest(q);
+  if (el('[data-sk]')) {
+    o[o.f] = press(o.fresh ? '' : o[o.f], el('[data-sk]').dataset.sk, o.f === 'd', o.f === 'q' ? 9999 : o.pct ? 100 : 99999);
+    o.fresh = false;
+  } else if (el('.seg button')) {
+    o.pct = 'pct' in el('.seg button').dataset;
+    if (o.pct && +o.d > 100) o.d = '100';
+  } else if (el('[data-sstep]')) {
+    if (o.f && o.v === 'c') settle(o);   // − + in the list puts the keys away, keeping what was typed (A's keys screen has its own − +)
+    o.q = String(Math.max(1, (+o.q || 0) + +el('[data-sstep]').dataset.sstep));
+    if (o.f === 'q') o.fresh = true;
+  } else if (el('[data-pick]')) {
+    const i = el('[data-pick]').dataset.pick;
+    if (o.f) settle(o);
+    o.pick = i === '' || o.pick === +i ? null : +i;
+  } else if (el('[data-sf]')) {
+    const f = el('[data-sf]').dataset.sf;
+    if (o.f === f) settle(o);
+    else {
+      if (!o.f) o.was = { q: o.q, d: o.d, pct: o.pct, pick: o.pick };
+      Object.assign(o, { f, fresh: true, anim: !o.f });
+      if (o.kind === 'rd') o.pick = 'c';
+    }
+  } else if (el('[data-apply]')) settle(o);
+  else if (el('[data-back]')) Object.assign(o, o.was, { f: null });
+  else if (el('[data-sclr]')) {
+    o.d = '';
+    if (o.kind === 'rd') o.pick = null;
+    if (o.f) settle(o);
+  }
+  else return;
+  drawSheets();
+}
+function draw() {
+  $('#now').innerHTML = lineCard('now');
+  $('#mid').innerHTML = lineCard('mid');
+  drawCart(); drawRd(); drawHm(); drawSheets();
+  if (ed) ed.anim = false;   // the keys only fold open the first time they're drawn
+}
+// Closing on its own (tap the number again, or outside): the keys fold away first, then the cards redraw.
+function shut() {
+  const w = document.querySelector('.kpw');
+  closeEd();
+  if (!w) return draw();
+  w.classList.remove('in');
+  w.classList.add('out');
+  setTimeout(draw, 180);
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target;
+  const sw = t.closest('.sw button');
+  if (sw) {
+    const g = sw.parentElement;
+    g.querySelector('.on').classList.remove('on');
+    sw.classList.add('on');
+    if (g.dataset.sw === 'step') document.body.classList.toggle('plain', sw.dataset.v === 'plain');
+    else if (g.dataset.sw === 'field') document.body.classList.toggle('bare', sw.dataset.v === 'bare');
+    else if (g.dataset.sw === 'sa') document.body.classList.toggle('show-a', sw.dataset.v === 'show');
+    else if (g.dataset.sw === 'keys') document.body.classList.toggle('bare-keys', sw.dataset.v === 'bare');
+    else { lab[g.dataset.sw] = sw.dataset.v; if (st.rd.pick !== 'c') st.rd.pick = null; for (const o of Object.values(S)) if (typeof o.pick === 'number') o.pick = null; }
+    return draw();
+  }
+  if (t.closest('#theme, textarea, .lab')) return;
+  const dn = t.closest('[data-done]:not(:disabled)')?.closest('.card');
+  if (dn) {
+    closeEd();
+    dn.classList.add('bye');
+    return setTimeout(() => { dn.classList.remove('bye'); draw(); }, 700);
+  }
+  const sht = t.closest('.sheet');
+  if (sht) return sheetClick(t, S[sht.dataset.sh]);
+  const k = t.closest('.kp button')?.dataset.k;
+  if (k) {
+    const max = ed.f === 'q' ? 9999 : ed.o.pct ? 100 : 99999;
+    ed.o[ed.f] = press(ed.fresh ? '' : ed.o[ed.f], k, ed.dec, max);
+    ed.fresh = false;
+    if (ed.o === st.rd) st.rd.pick = 'c';
+    return draw();
+  }
+  const sg = t.closest('.seg button');
+  if (sg) {
+    ed.o.pct = 'pct' in sg.dataset;
+    if (ed.o.pct && +ed.o[ed.f] > 100) ed.o[ed.f] = '100';
+    return draw();
+  }
+  const cl = t.closest('[data-clr]')?.dataset.clr;
+  if (cl) {
+    closeEd();
+    if (cl === 'rd') Object.assign(st.rd, { pick: null, v: '' }); else st[cl].d = '';
+    return draw();
+  }
+  const en = t.closest('[data-e]');
+  if (en) {
+    const [key, f] = en.dataset.e.split('.'), o = obj(key), same = isEd(o, f);
+    if (same) return shut();
+    closeEd();
+    ed = { o, f, dec: f !== 'q' || key === 'hm', fresh: true, was: o[f], anim: true };
+    return draw();
+  }
+  const sp = t.closest('[data-step]');
+  if (sp) {
+    const [key, d] = sp.dataset.step.split(':'), o = obj(key), s = key === 'hm' ? KG_STEP : 1;
+    if (isEd(o, 'q')) ed.fresh = true; else closeEd();
+    const n = Math.round((+o.q + d * s) * 100) / 100;
+    if (key === 'cart' && n < 1) { cart.splice(openI, 1); openI = -1; ed = null; } else o.q = String(Math.max(s, n));
+    return draw();
+  }
+  const row = t.closest('.mc-row'), pk = t.closest('[data-pick]');
+  if (!row && !pk) return shut();   // anything else closes the keys (Done too; in the app it closes the pop-up)
+  closeEd();
+  if (row) openI = +row.dataset.i === openI ? -1 : +row.dataset.i;
+  if (pk) st.rd.pick = st.rd.pick === +pk.dataset.pick ? null : +pk.dataset.pick;
+  draw();
+});
+draw();
+
+document.querySelectorAll('.lab input').forEach((r) => r.addEventListener('input', () => {
+  document.body.style.setProperty(`--${r.id}`, r.value + 'px');
+  r.nextElementSibling.textContent = r.value;
+}));
+// Reset: every slider back to where it started, every switch to its default
+$('#reset').addEventListener('click', () => {
+  document.querySelectorAll('.lab input').forEach((r) => { r.value = r.defaultValue; r.dispatchEvent(new Event('input')); });
+  document.querySelectorAll('.sw [data-def]').forEach((b) => b.click());
+});
+$('#theme').addEventListener('click', (e) => {
+  const light = document.body.classList.toggle('light-theme');
+  e.target.textContent = light ? 'Dark' : 'Light';
+});
+</script>
+</body>
+</html>
