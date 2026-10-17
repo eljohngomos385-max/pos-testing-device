@@ -97,7 +97,7 @@ body.bo-light .view-inv.calm-dash :is(.primary-btn, .secondary-btn) { height: 30
 body.bo-light .view-inv.calm-dash .primary-btn { color: var(--b-raised); }
 /* The bars only show; nothing opens on a click. */
 body.bo-light .view-inv.calm-dash .b { cursor: default; }
-body.bo-light .view-inv.calm-dash .plot .none { position: absolute; inset: 0 0 20px; display: grid; place-items: center; margin: 0; color: var(--b-ink-3); }
+body.bo-light .view-inv.calm-dash .plot .none { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: var(--b-ink-3); }
 /* A card's head: its name, a quiet count or why it is empty, a small type pick, View all. */
 body.bo-light .view-inv.calm-dash .head .sub { margin-left: 8px; font-weight: 400; color: var(--b-ink-3); font-size: var(--b-t-meta); }
 body.bo-light .view-inv.calm-dash .head .pick { padding: 3px 8px 3px 10px; font-size: var(--b-t-meta); }

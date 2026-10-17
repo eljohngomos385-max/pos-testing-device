@@ -170,22 +170,99 @@ function switchSettle() {
 }
 
 // ---------- Widgets menus ----------
-// Dashboard, Customers and Sales › Transactions each tick rail cards on and off from a Widgets menu. The rail
-// shows them in tick order (owner 2026-09-28): a tick puts the card last, Show all adds the rest in menu order.
-// The menu keeps its fixed order so ticks don't jump. Which are on, in order, is this device's choice
-// (HWPOS_STORE.ui `<page>Show`); until the first tick the old hide list `<page>Hide` sets it, in menu order.
+// Home ticks rail cards on and off from a Widgets menu, and both the menu rows and the cards drag into a new
+// order (owner 2026-10-17; the tick-order rule of 2026-09-28 came from a menu that couldn't move). One order,
+// hidden ones too, is this device's choice (HWPOS_STORE.ui `<page>Order`); the rail shows the ticked ones in it
+// (`<page>Show`). Until the first tick the old hide list `<page>Hide` sets what is on.
 function widgetsOn(page, W) {
   const ids = Object.keys(W), saved = HWPOS_STORE.ui.get(page + 'Show', null);
   if (saved == null) { const off = String(HWPOS_STORE.ui.get(page + 'Hide', '') || '').split(','); return ids.filter(id => !off.includes(id)); }
   return String(saved).split(',').filter(id => ids.includes(id));
 }
-const widgetsMenu = (W, on) => `<div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr>${Object.entries(W).map(([id, n]) => `<button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}">${n}</button>`).join('')}`;
-// A tick on `el` in a Widgets menu: store the new order, then redraw through slideRender().
+// Until the first move: the shown ones in their order, then the rest in menu order.
+const widgetsOrder = (page, W) => [...new Set([...String(HWPOS_STORE.ui.get(page + 'Order', '') || '').split(','), ...widgetsOn(page, W), ...Object.keys(W)])].filter(id => id in W);
+// Show all / Hide all sit under the rows (owner 2026-10-17).
+const widgetsMenu = (W, on, order) => `${order.map(id => `<button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}"><span class="grip" aria-hidden="true"></span>${W[id]}</button>`).join('')}<hr><div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div>`;
+function widgetsSave(page, order, on) {
+  HWPOS_STORE.ui.set(page + 'Order', order.join(','));
+  HWPOS_STORE.ui.set(page + 'Show', order.filter(x => on.includes(x)).join(','));
+}
+// A tick on `el` in a Widgets menu: the card shows at its place in the order, then redraw through slideRender().
 function widgetsTick(page, W, el, render) {
-  const on = widgetsOn(page, W), id = el.dataset.w, all = el.dataset.wAll;
-  HWPOS_STORE.ui.set(page + 'Show', (all ? (all === 'on' ? [...on, ...Object.keys(W).filter(x => !on.includes(x))] : [])
-    : on.includes(id) ? on.filter(x => x !== id) : [...on, id]).join(','));
+  const order = widgetsOrder(page, W), on = widgetsOn(page, W), id = el.dataset.w, all = el.dataset.wAll;
+  widgetsSave(page, order, all ? (all === 'on' ? order : []) : on.includes(id) ? on.filter(x => x !== id) : [...on, id]);
   slideRender(render);
+}
+// `ids` in their new order (the rail's cards, or every menu row): they take the places they held in the order.
+function widgetsMove(page, W, ids) {
+  const q = [...ids];
+  widgetsSave(page, widgetsOrder(page, W).map(x => ids.includes(x) ? q.shift() : x), widgetsOn(page, W));
+}
+// Hold an item (`sel`, a child of `box`) to lift it, drag it, let go to drop it (owner 2026-10-17: "long press the
+// widget and drag it up and down"); a `.grip` inside the item lifts it at once. The others glide out of the way and
+// a dashed slot shows where it will land;
+// `drop` gets the items in their new order; `upDown` keeps a list (a menu) from sliding sideways. A move before
+// the hold ends is a scroll, so it lets go.
+function holdDrag(box, sel, drop, upDown = false) {
+  const items = () => [...box.querySelectorAll(':scope > ' + sel)];
+  box.addEventListener('pointerdown', (e) => {
+    const c = !e.button && e.target.closest(sel);
+    if (!c || c.parentNode !== box) return;
+    const x0 = e.clientX, y0 = e.clientY, t = { duration: 200, easing: 'cubic-bezier(.2, 0, 0, 1)' };
+    let on = false, gx, gy, ph;
+    // Where the item would sit with no lift; the pointer is then read in the items' own offset frame (transforms
+    // aside), so an item still gliding never counts as under the finger. The slot sits in that frame too.
+    const slot = () => { const k = c.style.transform; c.style.transform = ''; const b = c.getBoundingClientRect(); c.style.transform = k; return b; };
+    const place = (x, y) => {
+      const b = slot(); if (upDown) x = b.left + gx; c.style.transform = `translate(${x - gx - b.left}px, ${y - gy - b.top}px) scale(1.02)`;
+      Object.assign(ph.style, { left: c.offsetLeft + 'px', top: c.offsetTop + 'px', width: c.offsetWidth + 'px', height: c.offsetHeight + 'px' });
+      return b;
+    };
+    const follow = (x, y) => {
+      const b = place(x, y), px = upDown ? c.offsetLeft + 1 : x - b.left + c.offsetLeft, py = y - b.top + c.offsetTop;
+      const kids = items(), i = kids.indexOf(c);
+      // Past the middle of a neighbour, in the direction of travel (by x when it shares c's row), so a tall
+      // card swapped in never sits under the finger again.
+      const o = kids.find((o, j) => {
+        if (o === c || px < o.offsetLeft || px > o.offsetLeft + o.offsetWidth || py < o.offsetTop || py > o.offsetTop + o.offsetHeight) return false;
+        const row = o.offsetTop === c.offsetTop, mid = row ? o.offsetLeft + o.offsetWidth / 2 : o.offsetTop + o.offsetHeight / 2, p = row ? px : py;
+        return j < i ? p < mid : p > mid;
+      });
+      if (!o) return;
+      const was = new Map(kids.map(k => [k, k.getBoundingClientRect()]));
+      box.insertBefore(c, kids.indexOf(o) < i ? o : o.nextSibling);
+      for (const k of kids) if (k !== c) {
+        const a = was.get(k), n = k.getBoundingClientRect();
+        if (a.left !== n.left || a.top !== n.top) k.animate([{ transform: `translate(${a.left - n.left}px, ${a.top - n.top}px)` }, { transform: 'none' }], t);
+      }
+      place(x, y);
+    };
+    const lift = () => {
+      const b = c.getBoundingClientRect(); gx = x0 - b.left; gy = y0 - b.top; on = true;
+      ph = document.createElement('div'); ph.className = 'drop-slot'; box.append(ph);
+      c.classList.add('lifted'); place(x0, y0); navigator.vibrate?.(10);
+    };
+    const hold = e.target.closest('.grip') ? lift() : setTimeout(lift, 400);
+    const move = (ev) => { if (on) follow(ev.clientX, ev.clientY); else if (Math.hypot(ev.clientX - x0, ev.clientY - y0) > 8) done(); };
+    const block = (ev) => { if (on) ev.preventDefault(); };   // a lifted item drags, the page doesn't scroll
+    const done = () => {
+      clearTimeout(hold);
+      document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', done);
+      document.removeEventListener('pointercancel', done); document.removeEventListener('touchmove', block);
+      if (!on) return;
+      const k = c.style.transform; c.style.transform = ''; c.classList.remove('lifted'); ph.remove();
+      c.animate([{ transform: k }, { transform: 'none' }], t);
+      // The press ends in a click on whatever is under it (a tick, View all, Set target): a drop is not a click.
+      const eat = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+      window.addEventListener('click', eat, { capture: true, once: true });
+      setTimeout(() => window.removeEventListener('click', eat, true));
+      drop(items());
+    };
+    document.addEventListener('pointermove', move); document.addEventListener('pointerup', done);
+    document.addEventListener('pointercancel', done); document.addEventListener('touchmove', block, { passive: false });
+  });
+  // A long touch is the lift, not the phone's menu.
+  box.addEventListener('contextmenu', (e) => { if (e.target.closest(sel) && e.pointerType !== 'mouse') e.preventDefault(); });
 }
 
 function showToast(msg) {
@@ -774,6 +851,8 @@ function rangeWindows(range = state.range) {
 // Ported from dashboard-calm-lab.html / sales-calendar-lab.html; both read these.
 // ₱12.3k / ₱1.23M for headline figures, whole pesos under ₱10k.
 const pesoK = (n) => SalesMath.formatMoney(n, storeCurrency(), { compact: true });
+// The bar charts' scale, as POS Reports writes it: compact money starts at 10k, so 1k-9.5k are ours (₱8k, not ₱8,000).
+const pesoAxis = (n) => (n >= 1e3 && n < 1e4 ? SalesMath.currencySymbol(storeCurrency()) + n / 1e3 + 'k' : pesoK(n));
 const hourShort = (h) => (h % 12 || 12) + (h < 12 ? 'a' : 'p');
 // "+4.2%" beside a number (SalesMath.changeText); nothing when there is nothing to compare with.
 const calmChip = (cur, prev, title) => {
@@ -901,11 +980,13 @@ function dashWindow(range, vs) {
     const h0 = seen.length ? Math.min(...seen) : 7, h1 = seen.length ? Math.max(...seen) : 18;
     const lastWd = dashDate(shiftDays(today, -7), { weekday: 'long' });
     w.buckets = [];
-    for (let h = h0; h <= h1; h++) w.buckets.push({ key: String(h), x: hourShort(h), title: `${hourLong(h)} – ${hourLong(h + 1)}`,
+    for (let h = h0; h <= h1; h++) w.buckets.push({ key: String(h), x: h % 3 === 1 ? hourLong(h) : '', title: `${hourLong(h)} – ${hourLong(h + 1)}`,
       start: today + h * 36e5, end: today + (h + 1) * 36e5, backName: `the same hour last ${lastWd}` });
   } else {
     w.buckets = Array.from({ length: n }, (_, i) => { const t = shiftDays(start, i);
-      return { key: isoDate(t), x: n > 7 ? String(SalesMath.dateParts(t, boZone()).day) : dashDate(t, { weekday: 'short' }),
+      const day = SalesMath.dateParts(t, boZone()).day;
+      // Every 7th day back from today, so a month turn never puts "29" and "1" side by side (POS Reports: 1, 8, 15...).
+      return { key: isoDate(t), x: n > 7 ? ((n - 1 - i) % 7 ? '' : String(day)) : dashDate(t, { weekday: 'short' }),
         title: dashDate(t, { weekday: 'long', month: 'long', day: 'numeric' }), start: t, end: shiftDays(t, 1),
         backName: dashDate(shiftDays(t, -7), { weekday: 'long', month: 'short', day: 'numeric' }) }; });
   }
@@ -924,8 +1005,8 @@ function dashWindow(range, vs) {
 // the bars can show. of() reads a ladder(). The ?chart= keys stay as they were so old links still open.
 const dashMargin = (x) => x.margin * 100;
 const DASH_KPI = {
-  rev: { lbl: 'Net sales',    of: x => x.netSales,    fmt: pesoShort,                      axis: pesoK,              floor: 100 },
-  gp:  { lbl: 'Gross profit', of: x => x.grossProfit, fmt: pesoShort,                      axis: pesoK,              floor: 100 },
+  rev: { lbl: 'Net sales',    of: x => x.netSales,    fmt: pesoShort,                      axis: pesoAxis,           floor: 100 },
+  gp:  { lbl: 'Gross profit', of: x => x.grossProfit, fmt: pesoShort,                      axis: pesoAxis,           floor: 100 },
   n:   { lbl: 'Orders',       of: x => x.orders,      fmt: v => v.toLocaleString('en-PH'), axis: v => +v.toFixed(1), floor: 5 },
   mg:  { lbl: 'Margin',       of: dashMargin,         fmt: v => SalesMath.pctText(v / 100),       axis: v => v + '%',       floor: 10 },
 };
@@ -939,24 +1020,35 @@ function dashStrip(W, chart) {
     + stat('mg', SalesMath.pctText(m.margin, m.salesBeforeTax), marginChip(m, p, W.vs));
 }
 
-// The bars: the picked KPI per hour (today) or per day.
-function niceStep(v) { const e = Math.pow(10, Math.floor(Math.log10(v))), f = v / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e; }
+// The bars, POS Reports' chart (reportsChart in pos-lab/pos-customers.js; owner 2026-10-17: "copy it so they look the same"):
+// lines at 0 and three round steps (1, 2, 5 × 10ⁿ), short labels right of the plot, a dotted line down the right edge and up
+// from each labelled bar, its label just right of it -- unless every bar has a label (a week). A bucket's x is its label, ''
+// for none. bar(b, h, tk) draws one bar h% tall. Stock history draws with it too.
+function calmPlot(bs, val, axis, floor, bar) {
+  const peak = Math.max(floor, ...bs.map(val)), mag = 10 ** Math.max(0, Math.floor(Math.log10(peak / 3)));
+  // 3, 4, 6, 8 too (owner 2026-10-17): with only 1-2-5 a ₱85k peak topped out at ₱150k, half the chart empty.
+  const step = [1, 2, 3, 4, 5, 6, 8, 10].map(s => s * mag).find(s => s * 3 >= peak), top = 3 * step;
+  const yl = ['0', axis(step), axis(2 * step), axis(top)].map(l => String(l).replace(/\s/g, '')), yw = Math.max(...yl.map(calmTextW)) + 5;
+  const tk = bs.some(b => !b.x) ? b => (b.x ? ' tk' : '') : () => '';
+  return `<div class="cols" style="--yw:${yw}px">${yl.map((l, j) => `<div class="gl" style="bottom:${j / 3 * 100}%"><span>${l}</span></div>`).join('')}`
+    + `${bs.map(b => bar(b, Math.max(0, val(b)) / top * 100, tk(b))).join('')}</div>`
+    + `<div class="xax" style="--yw:${yw}px">${bs.map(b => `<span class="${tk(b)}${b.now && b.x ? ' now' : ''}">${b.x}</span>`).join('')}</div>`;
+}
+// a scale label's width in the chart's 11px type, +2 for tabular digits (POS rpTextW). ponytail: a web font still loading on
+// the first draw measures a hair off
+function calmTextW(t) {
+  const c = calmTextW.c ||= document.createElement('canvas').getContext('2d');
+  c.font = `11px ${getComputedStyle(document.body).fontFamily}`;
+  return Math.ceil(c.measureText(t).width) + 2;
+}
+// The Home bars: the picked KPI per hour (today) or per day.
 function dashPlot(W, chart) {
   const K = DASH_KPI[chart], val = b => K.of(b.m);
-  const bs = W.buckets, peak = Math.max(K.floor, ...bs.map(val));
-  const step = niceStep(peak / 3), top = Math.ceil(peak * 1.1 / step) * step;   // ≥10% headroom: the tallest bar never touches the top line
-  const every = Math.ceil(bs.length / 12);                                   // a label every few bars on 30 days, counted back from today
-  let grid = '';
-  for (let v = 0; v <= top + 1e-6; v += step) grid += `<div class="gl${v ? '' : ' zero'}" style="bottom:${v / top * 100}%"><span>${K.axis(v)}</span></div>`;
-  const cols = bs.map((b, i) => b.future
-    ? `<div class="b future"><span class="x">${(bs.length - 1 - i) % every ? '' : b.x}</span></div>`
-    : `<button class="b" data-at="${b.key}" aria-label="${escapeHtml(b.title)}: ${K.fmt(val(b))}">`
-      + `<i style="height:${Math.max(0, val(b)) / top * 100}%"><span class="tip"><b>${escapeHtml(b.title)}</b>`
+  return calmPlot(W.buckets, val, K.axis, K.floor, (b, h, tk) => b.future ? `<div class="b future${tk}"></div>`
+    : `<button class="b${tk}" data-at="${b.key}" aria-label="${escapeHtml(b.title)}: ${K.fmt(val(b))}">`
+      + `<i style="height:${h}%"><span class="tip"><b>${escapeHtml(b.title)}</b>`
       + Object.entries(DASH_KPI).map(([k, x]) => `<span class="${k === chart ? 'on' : ''}">${x.lbl}<em>${b.m.salesBeforeTax || k !== 'mg' ? x.fmt(x.of(b.m)) : '—'}</em></span>`).join('')
-      + `</span></i>`
-      + `<span class="x${b.now ? ' now' : ''}">${(bs.length - 1 - i) % every && !b.now ? '' : b.x}</span></button>`).join('');
-  return `<div class="grid">${grid}</div>`
-    + `<div class="cols${bs.length > 8 ? ' many' : ''}" style="grid-template-columns:repeat(${bs.length},minmax(0,1fr))">${cols}</div>`;
+      + `</span></i></button>`);
 }
 
 // Recent transactions: the latest 20 in the range, every status, so voids and refunds show.
@@ -1143,7 +1235,7 @@ function renderDashboard() {
   $('#dashTx').innerHTML = dashTx(W);
   $('#dashTxAll').href = Router.href('transactions', '', { range: P.range || '', date: P.date || '' });
   const on = widgetsOn('dash', DASH_W);
-  $('#dashW').innerHTML = widgetsMenu(DASH_W, on);
+  $('#dashW').innerHTML = widgetsMenu(DASH_W, on, widgetsOrder('dash', DASH_W));
   $('#dashGrid').classList.toggle('solo', !on.length);
   $('#dashRail').innerHTML = dashRail(W, on);
 
@@ -1186,6 +1278,10 @@ function initDashboard() {
   $('#dashPlot').addEventListener('click', (e) => { const c = e.target.closest('[data-at]'); if (c) open({ at: c.dataset.at }); });
   $('#dashTx').addEventListener('click', (e) => { const r = e.target.closest('[data-receipt]'); if (r) open({ receipt: r.dataset.receipt }); });
   $('#dashRail').addEventListener('click', (e) => { if (e.target.closest('.set')) openTargetDialog(); });
+  // Drag a card: the menu follows. Drag a menu row: the rail glides to match.
+  holdDrag($('#dashRail'), '[data-rail]', (els) => { widgetsMove('dash', DASH_W, els.map(k => k.dataset.rail));
+    $('#dashW').innerHTML = widgetsMenu(DASH_W, widgetsOn('dash', DASH_W), widgetsOrder('dash', DASH_W)); });
+  holdDrag($('#dashW'), '[data-w]', (els) => { widgetsMove('dash', DASH_W, els.map(k => k.dataset.w)); slideRender(renderDashboard); }, true);
   // Widgets: a menu tick — the main column glides to its new width (slideRender).
   $('#dashW').addEventListener('click', (e) => {
     const w = e.target.closest('[data-w], [data-w-all]');

@@ -37,6 +37,20 @@ Ported 1:1 from the owner-approved labs: **`dashboard-calm-lab.html` is the Dash
   pop-ups are `#dashPop`. State is all in the URL: `range`, `vs` (''/day/none), `chart` (rev/gp/n/mg),
   `at` (hour or ISO day), `receipt`, `date` (Pick a day). **Gone:** Edit (custom rail), the % toggle, Export CSV.
   "Set target" opens the same `openTargetDialog()`.
+  Hold a rail card or a Widgets menu row ~0.4s to lift it and drag it (`holdDrag()`, owner 2026-10-17: not grips).
+  A blue dashed slot shows where it lands; menu rows move up and down only, and their three-line `.grip` left of
+  the name drags at once (no hold). The rail follows on drop, not live. A move before the hold is a scroll.
+  One order, hidden widgets too, is `dashOrder`; the rail shows the ticked ones in it (`dashShow`), so a tick
+  shows a card at its menu place (the old "tick puts it last" rule came from a menu that couldn't move).
+  The bars are POS Reports' chart 1:1 (owner 2026-10-17; `reportsChart` + `.rp-*` in pos-lab): `calmPlot()` in
+  backoffice.js draws Home and Stock history. Lines at 0 and three round steps (1, 2, 3, 4, 5, 6, 8 or 10 x a power of
+  ten, so the top sits just over the peak: ₱85k tops at ₱90k, not ₱150k), scale on the right in `pesoAxis` (₱8k, not
+  ₱8,000; no spaces, gutter measured), solid `--b-line` gridlines, a dotted right edge and a dotted line up from each labelled slot,
+  bars `--b-bar` (#007AFF) with bw/10 corners (POS' bw/8 felt too round, bw/16 flat; owner), the POS width (`min(slot - 3px, 24px)`) or 56% of the slot (at most 32px) when
+  that is wider (a phone slot is ~43px, so 24px is 56% there: a wide card keeps the POS block look, not thin sticks).
+  The plot is 340px tall (270px at 1100px or narrower, 190px on a phone), labels `--b-ink-4` with the current one bold (`.now`,
+  not `.cur`: that is the peso sign's 0.78em class). Labels: every 3rd hour (7 AM, 10 AM...), every weekday on
+  7 days, every 7th day back from today on 15/30 days (a month turn never puts "29" beside "1").
 - **Sales › Summary** (`bo-sales.js`, `calendar()`): month or year calendar with its own window — it
   ignores the range picker and filters (the other tabs keep them). **One period control** (owner 2026-09-26, replaces the Month/Year segment + stepper): `‹ [September 2026 ▾] ›` joined into one group, its `.pick` menu (`#calRange`) This month · Last month · This year · Last year, then **Compare to**: Previous month · Same month last year · No comparison (a year: Previous year · No comparison). **No comparison is the default**: no strip chips, no Top 10 Trend column, no chip in the day/week pop-up; comparing puts "vs August" on the button. A finished period compares with the whole one before; the one you're in, with the same days so far (`calCompare()`, tested in `scripts/sales-check.mjs`). No Trend column when the compared period sold nothing. URL: `view` (year), `month`, `vs` (''/prev/year),
   `day` / `week` (a centred pop-up over the calendar since 2026-09-26, not a side panel; its sections are widget cards; backdrop, ✕ and Esc close it), `top` (the Top 10 card's `.pick` menu `#calTop`, not a `<select>`; its See all opens the Items tab). Sales stays in its own 1180px frame, narrower than Dashboard/Transactions. **Gone:** the Summary blocks grid, `#staffDlg`, the Summary CSV. Strip (owner 2026-09-26, to read like the
@@ -119,7 +133,7 @@ a fixed main column plus a widget rail `--rail-w` wide. **Its rules are scoped t
 - **Main is fixed.** It is the same in every store and nobody edits it:
   - the KPI strip + bars of the calm Dashboard (top of this file): Net sales · Gross profit · Orders · Margin
     (`DASH_KPI`). The old `#dashTrend` line card is gone from the JS (only its `#dashKpis` CSS is left in `bo-blocks.css`).
-  - Recent transactions: the newest `RECENT_TX` (20). The Customer cell truncates at 160px (full name in `title`), and the table drops the global 860px `min-width` so it fits the column.
+  - Recent transactions: the newest `RECENT_TX` (20). Columns hug or stretch (owner 2026-10-17, the Shopify pattern): Total takes only its own width (`width: 1px`); Order 10% and Time 12% (room for a day later); Customer, Staff, Fulfilment, Payment and Status split the rest evenly (15.6% headers), Customer ending in "…" (`max-width: 0`, full name in `title`). Under 760px inside the card Customer hides. The table drops the global 860px `min-width` so it fits the column.
 - **The rail is the owner's.** `DASH_W` in `backoffice.js` holds the cards (`daily`, `monthly`, `low`, `pay`, all on by default; the rail follows tick order), one card wide, so widgets only ever stack.
   - The same engine as Sales › Transactions (owner 2026-09-26): a **Widgets** `.pick` left of the range, Show all · Hide all then one tick per card, no × on the cards. Which are on, in tick order, is per device in `HWPOS_STORE.ui` `dashShow`; all off drops `#dashGrid` to one column (`.solo`), redrawn through `slideRender()`.
   - Low stock lives in the rail, not the KPIs: a bare count, the 5 that run out soonest, each with an Out or Low `.status-pill`, with a quiet "View all ›" to Products → Stock filtered to Out + Low (`?view=stock&level=out,low`) top right, across from the label. Recent transactions uses the same `.link-btn.view-all`.

@@ -785,12 +785,12 @@
       const hrs = movements.filter((m) => inWin(whenOf(m), [a, b])).map((m) => storeHour(whenOf(m)));
       const h0 = Math.min(7, ...hrs), h1 = Math.max(18, ...hrs), now = storeHour(b - 1);
       return { of: storeHour, list: Array.from({ length: h1 - h0 + 1 }, (_, i) =>
-        ({ key: h0 + i, x: hourShort(h0 + i), title: `${hourLong(h0 + i)} – ${hourLong(h0 + i + 1)}`, future: h0 + i > now })) };
+        ({ key: h0 + i, x: (h0 + i) % 3 === 1 ? hourLong(h0 + i) : '', title: `${hourLong(h0 + i)} – ${hourLong(h0 + i + 1)}`, future: h0 + i > now })) };
     }
     const n = Number(key);
     return { of: storeDay, list: Array.from({ length: n }, (_, i) => {
       const k = SalesMath.addDays(storeDay(a), i), t = SalesMath.dayStartMs(k, zone()) + 12 * 36e5;   // noon labels the right date
-      return { key: k, x: n > 7 ? String(Number(k.slice(8))) : dashDate(t, { weekday: 'short' }),
+      return { key: k, x: n > 7 ? ((n - 1 - i) % 7 ? '' : String(Number(k.slice(8)))) : dashDate(t, { weekday: 'short' }),
         title: dashDate(t, { weekday: 'long', month: 'long', day: 'numeric' }) };
     }) };
   }
@@ -804,11 +804,11 @@
   const count = SalesMath.qtyText;
   const money = (v) => (v >= 1e6 ? pesoK(v) : pesoShort(v));   // ₱1.25M: seven digits and a chip overran a tab
   const SH_KPI = {
-    in:   { lbl: 'Came in', fmt: money, axis: pesoK, floor: 100,
+    in:   { lbl: 'Came in', fmt: money, axis: pesoAxis, floor: 100,
       tip: 'Stock that came in: deliveries and transfers in. At cost.' },
-    out:  { lbl: 'Went out', fmt: money, axis: pesoK, floor: 100,
+    out:  { lbl: 'Went out', fmt: money, axis: pesoAxis, floor: 100,
       tip: 'Stock that left: sold (less what came back on a void, a refund or a customer return), used, transferred out, stolen, broken or written off. At cost.' },
-    lost: { lbl: 'Lost', fmt: money, axis: pesoK, floor: 100, bad: true,
+    lost: { lbl: 'Lost', fmt: money, axis: pesoAxis, floor: 100, bad: true,
       tip: 'Stolen, broken, written off, or short on a shelf count. At cost.' },
     adj:  { lbl: 'Adjustments', fmt: count, axis: (v) => +v.toFixed(1), floor: 3,
       tip: 'How many changes were typed in by hand: shelf counts, adjustments and losses. A count, not money.' },
@@ -825,24 +825,16 @@
   // The Dashboard's bars (dashPlot): the picked KPI, one series, from zero up.
   function shPlot(bs, f, chart) {
     const K = SH_KPI[chart], at = (b) => f.buckets.get(b.key) || { in: 0, out: 0, lost: 0, adj: 0 };
-    const peak = Math.max(K.floor, ...bs.map((b) => at(b)[chart]));
-    const step = niceStep(peak / 3), top = Math.ceil(peak * 1.1 / step) * step;
-    const every = Math.ceil(bs.length / 12);   // a label every few bars on 30 days, counted back from today
-    let grid = '';
-    for (let v = 0; v <= top + 1e-6; v += step) grid += `<div class="gl${v ? '' : ' zero'}" style="bottom:${v / top * 100}%"><span>${K.axis(v)}</span></div>`;
-    const cols = bs.map((b, i) => {
-      const x = `<span class="x">${(bs.length - 1 - i) % every ? '' : b.x}</span>`;
-      if (b.future) return `<div class="b future">${x}</div>`;
+    return calmPlot(bs, (b) => at(b)[chart], K.axis, K.floor, (b, h, tk) => {
+      if (b.future) return `<div class="b future${tk}"></div>`;
       const v = at(b);
-      return `<div class="b" tabindex="0" aria-label="${escapeHtml(b.title)}: ${K.lbl} ${K.fmt(v[chart])}">`
+      return `<div class="b${tk}" tabindex="0" aria-label="${escapeHtml(b.title)}: ${K.lbl} ${K.fmt(v[chart])}">`
         // A bar starts at zero: a bucket that took back more than it sold (a refund of an earlier
         // day's sale, bo-model stockFlow) is net negative -- its tip says so, the bar stays empty.
-        + `<i style="height:${Math.max(0, v[chart]) / top * 100}%"><span class="tip"><b>${escapeHtml(b.title)}</b>`
+        + `<i style="height:${h}%"><span class="tip"><b>${escapeHtml(b.title)}</b>`
         + Object.entries(SH_KPI).map(([k, X]) => `<span class="${k === chart ? 'on' : ''}">${X.lbl}<em>${X.fmt(v[k])}</em></span>`).join('')
-        + `</span></i>${x}</div>`;
-    }).join('');
-    return `<div class="grid">${grid}</div>`
-      + `<div class="cols${bs.length > 8 ? ' many' : ''}" style="grid-template-columns:repeat(${bs.length},minmax(0,1fr))">${cols}</div>`;
+        + `</span></i></div>`;
+    });
   }
 
   const viewAll = (tab, params = {}) => `<a href="${Router.href(VIEW, '', { tab, ...params })}">View all ›</a>`;

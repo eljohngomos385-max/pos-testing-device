@@ -24,6 +24,8 @@ body.bo-light {
   --b-heat:      #1FA855;          /* a day over target */
   --b-down-soft: #FCEDE9;
   --b-data:      var(--chart-1);
+  --b-bar:       #007AFF;          /* the Home and Stock history bars: POS Reports' blue (--rl-bar, owner 2026-10-17) */
+  --b-ink-4:     #B5B5B5;          /* those charts' scale and labels: POS --ink-quaternary */
   --b-data-1:    var(--data-1);
   --b-data-tint: #DCE9FB;
   --b-data-ink:  #1F5FB8;
@@ -79,6 +81,25 @@ body.bo-light .calm-dash .icon-btn:disabled { opacity: .35; cursor: default; }
 body.bo-light .calm-dash .dash { display: grid; grid-template-columns: minmax(0, 1fr) var(--b-rail-w); gap: 12px; align-items: start; }
 body.bo-light .calm-dash .col, body.bo-light .calm-dash .rail { display: grid; gap: 12px; min-width: 0; }
 body.bo-light .calm-dash .card { background: var(--b-card); border: 1px solid var(--b-line); border-radius: var(--b-r-card); padding: var(--b-pad); box-shadow: var(--card-shadow); }   /* the one card shadow, bo-blocks.css */
+/* Hold a rail card or a Widgets row to drag it (holdDrag): no text selection or iOS callout on the press; the lifted
+   one floats over a dashed slot where it will land. The rail is the slot's frame (offsets), the popover already is. */
+body.bo-light .calm-dash .rail { position: relative; }
+body.bo-light .calm-dash :is(.rail > [data-rail], .menu [data-w]) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+body.bo-light .calm-dash :is(.rail, .menu) > .lifted { position: relative; z-index: 5; cursor: grabbing; box-shadow: 0 12px 32px rgba(0,0,0,.14); }
+body.bo-light .calm-dash .menu > .lifted { background: var(--b-raised); }
+body.bo-light .calm-dash .menu:has(> .lifted) { overflow: visible; }   /* the popover scrolls; a lifted row's shadow shouldn't */
+body.bo-light .calm-dash .drop-slot { position: absolute; box-sizing: border-box; border: 1.5px dashed color-mix(in srgb, var(--b-data) 55%, transparent); border-radius: var(--b-r-card);
+        background: color-mix(in srgb, var(--b-data) 6%, transparent); pointer-events: none;
+        transition: left .2s cubic-bezier(.2, 0, 0, 1), top .2s cubic-bezier(.2, 0, 0, 1); }
+body.bo-light .calm-dash .menu > .drop-slot { border-radius: var(--b-r-row); }
+/* The Widgets rows' grip, on the left of the name (cur2's three lines): grab it and the row moves at once. Its hit area
+   is 8px wider each way; touch-action none so a finger on it drags, not scrolls. */
+body.bo-light .calm-dash .menu [data-w] { justify-content: flex-start; gap: 10px; }
+body.bo-light .calm-dash .menu [data-w]::after { margin-left: auto; }
+body.bo-light .calm-dash .menu .grip { position: relative; flex: none; align-self: center; width: 12px; height: 9px; color: var(--b-ink-4); cursor: grab; touch-action: none;
+        background: linear-gradient(currentColor 0 0) top / 100% 1.5px no-repeat, linear-gradient(currentColor 0 0) center / 100% 1.5px no-repeat, linear-gradient(currentColor 0 0) bottom / 100% 1.5px no-repeat; }
+body.bo-light .calm-dash .menu .grip::before { content: ""; position: absolute; inset: -8px; }
+body.bo-light .calm-dash .menu .lifted .grip { cursor: grabbing; }
 
 /* ---------- KPIs over the bars: one card, folder tabs. The bars sit on a white panel; the picked KPI is white too
    and has no line under it, so it opens into the panel. The rest stay on the grey. ---------- */
@@ -126,31 +147,37 @@ body.bo-light .calm-dash .card:has(> .strip) { container: strip / inline-size; }
   body.bo-light .calm-dash .stat .val { font-size: clamp(15px, 4.4cqi, 20px); }   /* "₱1,553,477 +14.8%" in half a 358px card, a few px to spare */
 }
 
-body.bo-light .calm-dash .plot { position: relative; height: 300px; }
-@media (max-width: 1100px) { body.bo-light .calm-dash .plot { height: 240px; } }   /* a tablet: less chart, more orders (owner 2026-10-17) */
-body.bo-light .calm-dash .grid, body.bo-light .calm-dash .cols { position: absolute; left: 32px; right: 0; top: 0; bottom: 20px; }
-body.bo-light .calm-dash .grid { border-left: 1px solid #D6D6D6; }                                                    /* the y axis, same ink as the ₱0 line */
-body.bo-light .calm-dash .gl { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--b-outline); }
-body.bo-light .calm-dash .gl span { position: absolute; right: calc(100% + 6px); bottom: 1px; font-size: 10px; color: var(--b-ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
-body.bo-light .calm-dash .gl.zero { border-top-color: #D6D6D6; border-top-style: solid; }
-body.bo-light .calm-dash .cols { display: grid; }
-body.bo-light .calm-dash .b { position: relative; height: 100%; border: 0; background: none; padding: 0; display: flex; align-items: flex-end; justify-content: center; cursor: pointer; }
-body.bo-light .calm-dash .b i { position: relative; width: min(62%, 28px); background: var(--b-data); border-radius: 4px 4px 0 0; }
-body.bo-light .calm-dash .b .x { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-size: var(--b-t-micro); color: var(--b-ink-3); white-space: nowrap; }
-body.bo-light .calm-dash .b .x.now { color: var(--b-ink); font-weight: 600; }
+/* The bars: POS Reports' chart 1:1 (pos-lab/styles.css .rp-*, owner 2026-10-17). Screen Time's frame: solid lines across, the
+   scale right of the plot, a dotted line down the right edge and up from each labelled bar (.tk), its label just right of it. */
+body.bo-light .calm-dash .plot { position: relative; height: 340px; display: flex; flex-direction: column; }   /* 300 felt short (owner 2026-10-17) */
+@media (max-width: 1100px) { body.bo-light .calm-dash .plot { height: 270px; } }   /* a tablet: less chart, more orders (owner 2026-10-17) */
+body.bo-light .calm-dash :is(.cols, .xax) { --dots: linear-gradient(var(--b-outline) 50%, transparent 0); margin-right: var(--yw, 38px); background: var(--dots) right top / 1px 4px repeat-y; }
+body.bo-light .calm-dash .cols { position: relative; flex: 1; display: flex; }
+body.bo-light .calm-dash .gl { position: absolute; left: 0; right: 0; border-top: 1px solid var(--b-line); pointer-events: none; }
+body.bo-light .calm-dash .gl span { position: absolute; left: calc(100% + 5px); top: -7px; line-height: 14px; font-size: var(--b-t-micro); color: var(--b-ink-4); white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.bo-light .calm-dash .b { position: relative; flex: 1; min-width: 0; border: 0; background: none; padding: 0; display: flex; align-items: flex-end; justify-content: center; cursor: pointer; container-type: inline-size; }
+body.bo-light .calm-dash :is(.b, .xax span).tk { background: var(--dots) left top / 1px 4px repeat-y; }
+/* POS Reports caps a bar at 24px because a phone slot is ~43px: 56% of it. A wide card keeps that share (owner 2026-10-17:
+   "looks better like a block"), up to 32px (85px, then 40px, were "too fat"); small slots still use the POS rule.
+   Corners a tenth: an eighth felt too round, a sixteenth not round at all. */
+body.bo-light .calm-dash .b i { --bw: min(max(min(100cqi - 3px, 24px), 56cqi), 32px); --br: max(1px, var(--bw) / 10); position: relative; width: var(--bw); border-radius: var(--br) var(--br) 0 0;   /* the corner is a tenth of the bar */
+          background: var(--b-bar); transition: opacity .15s; }
+body.bo-light .calm-dash .xax { display: flex; padding-top: 6px; font-size: 12px; color: var(--b-ink-4); }
+body.bo-light .calm-dash .xax span { flex: 1; min-width: 0; text-align: center; white-space: nowrap; }
+body.bo-light .calm-dash .xax .tk { padding-left: 4px; text-align: left; }   /* the label starts at its line and may run on into the empty slots */
+body.bo-light .calm-dash .xax .now { color: var(--b-ink); font-weight: 650; }
 body.bo-light .calm-dash .b .tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); display: none; z-index: 2;
           background: var(--b-ink); color: #fff; font-size: var(--b-t-meta); font-weight: 500; padding: 6px 10px; border-radius: 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 body.bo-light .calm-dash .b .tip b { display: block; font-weight: 600; margin-bottom: 3px; }
 body.bo-light .calm-dash .b .tip span { display: flex; justify-content: space-between; gap: 16px; opacity: .65; }
 body.bo-light .calm-dash .b .tip span.on { opacity: 1; }
 body.bo-light .calm-dash .b .tip, body.bo-light .calm-dash .b .tip em { font-style: normal; }                                           /* the tip sits inside the bar's <i> */
-body.bo-light .calm-dash .cols .b:nth-child(-n+3) .tip { left: 0; transform: none; }                           /* edge bars: keep the tip inside the card */
+body.bo-light .calm-dash .cols .b:nth-child(-n+3 of .b) .tip { left: 0; transform: none; }                      /* edge bars: keep the tip inside the card */
 body.bo-light .calm-dash .cols .b:nth-last-child(-n+3) .tip { left: auto; right: 0; transform: none; }
-body.bo-light .calm-dash .cols:hover .b i { opacity: .4; }
+body.bo-light .calm-dash .cols:hover .b i { opacity: .35; }
 body.bo-light .calm-dash .cols .b:hover i, body.bo-light .calm-dash .cols .b:focus-visible i { opacity: 1; }
 body.bo-light .calm-dash .b:hover .tip, body.bo-light .calm-dash .b:focus-visible .tip { display: block; }
 body.bo-light .calm-dash .b.future { cursor: default; }
-body.bo-light .calm-dash .b.future .x { color: #C2C2C2; }
 
 /* ---------- recent transactions ---------- */
 body.bo-light .calm-dash .head { display: flex; align-items: center; gap: 10px; min-height: 36px; line-height: 18px; }
@@ -174,13 +201,19 @@ body.bo-light .calm-dash .tx .pill { margin: 0; font-size: 11.5px; font-weight: 
 body.bo-light .calm-dash .tx tr.dim td { color: var(--b-ink-3); }
 body.bo-light .calm-dash .tx tr.dim .amt { text-decoration: line-through; }
 body.bo-light .calm-dash .tx .t { color: var(--b-ink-2); }
-/* Every column hugs its text; Customer takes what is left over (owner 2026-10-17: a wide card spread ~20px
-   of air into every gap). max-width: 0 keeps a long name from widening the table: it ends in "...". */
-body.bo-light .calm-dash .tx th.cust { width: 100%; }
+/* Shares of the row, like Shopify's order list (owner 2026-10-17): Total hugs its amount (width: 1px = as narrow as
+   the content allows); Order and Time get a small share (they felt cramped, and Time may carry a day later);
+   Customer, Staff, Fulfilment, Payment and Status split the rest evenly. A narrow card falls back to each
+   column's content, and a pill like "Split payment" still widens its own column.
+   max-width: 0 stops a long name widening the table; it ends in "..." and the title shows it all. */
+body.bo-light .calm-dash .tx:has(th.cust) :is(th, td):last-child { width: 1px; }
+body.bo-light .calm-dash .tx:has(th.cust) th:nth-child(1) { width: 10%; }
+body.bo-light .calm-dash .tx:has(th.cust) th:nth-child(2) { width: 12%; }
+body.bo-light .calm-dash .tx:has(th.cust) th:nth-child(n+3):not(:last-child) { width: 15.6%; }
 body.bo-light .calm-dash .tx td.cust { max-width: 0; overflow: hidden; text-overflow: ellipsis; }
-/* The other seven need ~655px, so under ~750px of card (720 inside it) Customer gives way -- mostly "—", Account on the
-   pill says a customer bought, Transactions has the name -- rather than cutting every name to a few letters. */
-@container (max-width: 720px) {
+/* The other seven need ~655px, so under 760px inside the card Customer (by then a few letters) gives way -- mostly
+   "—", Account on the pill says a customer bought, Transactions has the name. */
+@container (max-width: 760px) {
   body.bo-light .calm-dash .tx .cust { display: none; }
   body.bo-light .calm-dash .tx :is(th, td) { padding-inline: 8px; }
 }
@@ -252,7 +285,6 @@ body.bo-light .calm-dash .p-sec > .lbl span { color: var(--b-ink-3); font-weight
   body.bo-light .calm-dash .c-main { padding: 16px; }
   body.bo-light .calm-dash .panel { padding: 18px 12px 10px 16px; }
   body.bo-light .calm-dash .plot { height: 190px; }
-  body.bo-light .calm-dash .cols.many .b:nth-child(even) .x { visibility: hidden; }
 }
 
 /* ---------------------------------------------------------------- Sales › Summary */

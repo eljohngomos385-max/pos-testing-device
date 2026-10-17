@@ -300,11 +300,12 @@ body.bo-light .view-products .pd-filters .search-input:focus { outline: 2px soli
    block at the end of bo-calm.css (the Dashboard's .pick + .menu), not a Products copy. */
 
 /* Pictures (the image toggle in the filter row, the store's setting): off, no column and the 34px row; on,
-   a 48px thumb and the row grows around it. A product with no photo keeps the grey square. */
+   Home's Top sellers size (owner 2026-10-17: 48px was too big): a 28px thumb, 7px corners, a 42px row.
+   A product with no photo keeps the grey square. */
 body.bo-light .view-products #pdTable:not(.pics) [data-col="img"] { display: none; }
-body.bo-light .view-products #pdTable.pics .pd-img-col { width: 48px; padding-inline: 10px 0; }
-body.bo-light .view-products #pdTable.pics td { height: auto; padding-block: 6px; }
-body.bo-light .view-products #pdTable.pics .pd-thumb { width: 48px; height: 48px; border-radius: var(--po-r-inner); display: block; background-color: var(--b-card); border-color: var(--b-line); }
+body.bo-light .view-products #pdTable.pics .pd-img-col { width: 28px; padding-inline: 10px 0; }
+body.bo-light .view-products #pdTable.pics td { height: 42px; padding-block: 0; }
+body.bo-light .view-products #pdTable.pics .pd-thumb { width: 28px; height: 28px; border-radius: 7px; display: block; background-color: var(--b-card); border-color: var(--b-line); }
 /* SKU is a label, not code: the mono face made it the widest column on the card. */
 body.bo-light .view-products #pdTable td.mono { font-family: inherit; font-variant-numeric: normal; color: var(--po-ink-secondary); }/* Edit / Adjust on every row are quiet text, not 50 outlined buttons (2026-09-26): the row
    already opens the item page, the word is only the shortcut. */
@@ -314,5 +315,7 @@ body.bo-light .view-products #pdTable .pd-act .secondary-btn {
 }
 body.bo-light .view-products #pdTable .pd-act .secondary-btn:hover,
 body.bo-light .view-products #pdTable .pd-act .secondary-btn:focus-visible { color: var(--b-ink); background: none; }
-/* With pictures on the row is tall anyway: the variant count sits under the name. */
-body.bo-light .view-products #pdTable.pics .pd-vcount { display: block; margin: 2px 0 0; }
+/* With pictures on, the variant count sits under the name, stacked like Home's Top sellers (normal line
+   height, the count tucked 2px up) so the pair is the photo's height and centred on it, not the whole row. */
+body.bo-light .view-products #pdTable.pics td:has(> .pd-vcount) { line-height: normal; }
+body.bo-light .view-products #pdTable.pics .pd-vcount { display: block; margin: -2px 0 0; font-size: var(--b-t-micro); }
