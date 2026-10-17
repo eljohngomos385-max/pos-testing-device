@@ -18,7 +18,8 @@
   <link rel="stylesheet" href="/bo-staff.css?v=98" />
   <link rel="stylesheet" href="/bo-insights.css?v=4" />
   <link rel="stylesheet" href="/bo-blocks.css?v=64" />
-  <link rel="stylesheet" href="/bo-calm.css?v=56" />
+  <link rel="stylesheet" href="/bo-calm.css?v=58" />
+  <link rel="stylesheet" href="/bo-sidebar.css?v=1" />
 </head>
 <body class="bo-body bo-light">
   <div id="app" class="bo-app">
@@ -35,54 +36,46 @@
     <!-- ============== SIDEBAR ============== -->
     <aside class="sidebar bo-sidebar">
       <div class="side-resizer" id="sideResizer" title="Drag to resize · double-click to reset"></div>
-      <!-- Location switcher: a store badge, the location you switch, and a ⌄ beside it. -->
-      <div class="side-switch-wrap">
-        <!-- In Settings, ← Back takes the switcher's slot (owner, 2026-09-27); paint() swaps the two. Before #locBtn: its menu must stay its nextElementSibling. -->
+      <!-- Sidebar top: glyph, Back in Settings, the collapse button (Ctrl+B), then Search. -->
+      <div class="side-switch-wrap side-top">
+        <span class="side-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"/><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"/><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"/></svg></span>
         <button class="side-link" type="button" data-set-back hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
           <span>Back</span>
         </button>
-        <button class="side-switch" id="locBtn" type="button" aria-haspopup="menu" aria-expanded="false">
-          <span class="ss-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"/><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"/><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"/></svg></span>
-          <span class="ss-text"><span class="ss-label" id="locBiz">EJ Hardware</span><span class="ss-name" id="locName">Main Store</span></span>
-          <svg class="ss-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-        </button>
-        <div class="side-menu" id="locMenu" role="menu" hidden></div>
-        <!-- Folds the sidebar to an icon rail (desktop). After the menu: wireSwitchers() opens a switch's nextElementSibling. -->
-        <button class="side-rail-btn" id="sideRailBtn" type="button" aria-label="Fold sidebar" aria-expanded="true">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 5a2 2 0 0 1 2-2h4v18H5a2 2 0 0 1-2-2z" fill="currentColor"/></svg>
-        </button>
+        <button class="side-rail-btn" id="sideRailBtn" type="button" aria-label="Fold sidebar" aria-expanded="true"><svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4.75 4.747v6.503"></path><rect width="12.5" height="12.5" x="1.75" y="1.75" rx="3"></rect></svg><span class="side-tip"><span class="tl">Collapse navigation</span><kbd>Ctrl</kbd><kbd>B</kbd></span></button>
       </div>
+      <!-- ponytail: looks only, no search behind it yet -->
+      <button class="side-search" type="button"><svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M10.71 10.71a5.247 5.247 0 0 1-8.96-3.71 5.25 5.25 0 1 1 10.5 0c0 1.45-.59 2.75-1.54 3.71m0 0 3.54 3.54"></path></svg><span>Search</span><span class="side-kbd">Ctrl K</span></button>
 
       <nav class="side-nav">
-        <button class="side-label" type="button" data-fold="main-menu" aria-expanded="true">Main menu<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="side-fold"><div class="side-fold-in">
           <button class="side-link active" data-view="dashboard">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect class="f" width="7" height="9" x="3" y="3" rx="1"/><rect class="f" width="7" height="5" x="14" y="3" rx="1"/><rect class="f" width="7" height="9" x="14" y="12" rx="1"/><rect class="f" width="7" height="5" x="3" y="16" rx="1"/></svg>
-            <span>Dashboard</span>
+            <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M6.362 2.246a3 3 0 0 1 3.277 0l2.749 1.79a3 3 0 0 1 1.362 2.514v5.094c0 .96-.683 1.783-1.634 1.911-1.107.149-2.634.307-4.116.307s-3.008-.158-4.116-.307c-.951-.128-1.634-.95-1.634-1.91v-5.091a3 3 0 0 1 1.36-2.513z"></path><path d="M5.276 10.319s1.67.312 2.748.312 2.752-.312 2.752-.312"></path></svg>
+            <span>Home</span>
           </button>
           <button class="side-link" data-view="sales">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><rect class="f" x="15" y="5" width="4" height="12" rx="1"/><rect class="f" x="7" y="8" width="4" height="9" rx="1"/></svg>
+            <svg class="sp f" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M7.952 1.5h.096c.182 0 .371 0 .543.034.695.138 1.237.68 1.375 1.375.035.172.034.361.034.543v9.096c0 .182 0 .371-.034.543a1.75 1.75 0 0 1-1.375 1.375c-.172.035-.361.034-.543.034h-.096c-.182 0-.371 0-.543-.034a1.75 1.75 0 0 1-1.375-1.375c-.035-.172-.034-.361-.034-.543v-9.096c0-.182 0-.371.034-.543a1.75 1.75 0 0 1 1.375-1.375c.172-.035.361-.034.543-.034m-.253 1.505a.25.25 0 0 0-.194.194l-.003.053c-.002.055-.002.127-.002.248v9c0 .121 0 .193.002.248l.003.053a.25.25 0 0 0 .194.194l.053.003c.055.002.127.002.248.002s.193 0 .248-.002l.053-.003a.25.25 0 0 0 .194-.194l.003-.053c.002-.055.002-.127.002-.248v-9c0-.121 0-.193-.002-.248l-.003-.053a.25.25 0 0 0-.194-.194l-.053-.003c-.055-.002-.127-.002-.248-.002s-.193 0-.248.002z"></path><path fill-rule="evenodd" d="M3.452 7h.096c.182 0 .371 0 .543.034.695.138 1.237.68 1.375 1.375.035.172.034.361.034.543v3.596c0 .182 0 .371-.034.543a1.75 1.75 0 0 1-1.375 1.375c-.172.035-.361.034-.543.034h-.096c-.182 0-.371 0-.543-.034a1.75 1.75 0 0 1-1.375-1.375c-.035-.172-.034-.361-.034-.543v-3.596c0-.182 0-.371.034-.543a1.75 1.75 0 0 1 1.375-1.375c.172-.035.361-.034.543-.034m-.253 1.505a.25.25 0 0 0-.194.194l-.003.053c-.002.055-.002.127-.002.248v3.5c0 .121 0 .193.002.248l.003.053a.25.25 0 0 0 .194.194l.053.003c.055.002.127.002.248.002s.193 0 .248-.002l.053-.003a.25.25 0 0 0 .194-.194l.003-.053c.002-.055.002-.127.002-.248v-3.5c0-.121 0-.193-.002-.248l-.003-.053a.25.25 0 0 0-.194-.194l-.053-.003c-.055-.002-.127-.002-.248-.002s-.193 0-.248.002z"></path><path fill-rule="evenodd" d="M12.5 4h-.048c-.182 0-.371 0-.543.034a1.75 1.75 0 0 0-1.375 1.375c-.035.172-.034.361-.034.543v6.596c0 .182 0 .371.034.543.138.695.68 1.237 1.375 1.375.172.035.361.034.543.034h.096c.182 0 .371 0 .543-.034a1.75 1.75 0 0 0 1.375-1.375c.035-.172.034-.361.034-.543v-6.596c0-.182 0-.371-.034-.543a1.75 1.75 0 0 0-1.375-1.375c-.172-.035-.361-.034-.543-.034zm-.495 1.7a.25.25 0 0 1 .194-.195l.053-.003c.054-.002.127-.002.248-.002s.193 0 .248.002l.053.003a.25.25 0 0 1 .194.194l.003.053c.002.055.002.127.002.248v6.5c0 .121 0 .193-.002.248l-.003.053a.25.25 0 0 1-.194.194l-.053.003c-.055.002-.127.002-.248.002s-.194 0-.248-.002l-.053-.003a.25.25 0 0 1-.194-.194l-.003-.053c-.002-.055-.002-.127-.002-.248v-6.5c0-.121 0-.193.002-.248l.003-.053zv-.002Z"></path></svg>
             <span>Sales</span>
           </button>
           <button class="side-link" data-view="transactions">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"/><path class="k" d="M14 8H8M16 12H8M13 16H8"/></svg>
+            <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.75 8.75v3c0 .83.67 1.5 1.5 1.5h9.5c.83 0 1.5-.67 1.5-1.5v-3l-1.9-5.34a.99.99 0 0 0-.95-.66h-6.79c-.42 0-.8.25-.94.66zm12.5 0h-3.25c-.41 0-.75.34-.75.75s-.34.75-.75.75h-3c-.41 0-.75-.34-.75-.75s-.34-.75-.75-.75h-3.25"></path></svg>
             <span>Orders</span>
           </button>
           <button class="side-link has-sub" data-view="products">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" transform="matrix(-1 0 0 1 24 0)" d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle class="hole" cx="16.5" cy="7.5" r="1.5"/></svg>
+            <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="m13.042 6.067-1.596-3.451a1.5 1.5 0 0 0-1.644-.844l-3.734.717a1.5 1.5 0 0 0-1.052.789l-3.075 5.995a1.5 1.5 0 0 0 .647 2.018l5.333 2.748a1.5 1.5 0 0 0 2.022-.65l3.073-6.01a1.5 1.5 0 0 0 .026-1.312"></path><circle cx="9" cy="5.5" r="1" fill="currentColor"></circle><path d="m14.248 10.19-.383 2.768a1.5 1.5 0 0 1-1.69 1.28l-.083-.01"></path></svg>
             <span>Items</span><svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
           </button>
           <div class="side-sub" data-view="inventory"><div class="side-fold-in"><button class="side-sublink" type="button" data-view="products">Item list</button><button class="side-sublink" type="button" data-view="categories">Categories</button><button class="side-sublink" type="button" data-view="modifiers">Modifiers</button><button class="side-sublink" type="button" data-sub="overview">Stock history</button></div></div>
           <button class="side-link" data-view="customers">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="12" cy="8" r="5"/><path class="f" d="M20 21a8 8 0 0 0-16 0"/></svg>
+            <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 6.72a2.497 2.497 0 1 0 0-4.993 2.497 2.497 0 0 0 0 4.993"></path><path d="M12.233 13.665c.764-.22 1.166-.987.842-1.653-.863-1.77-2.808-3.007-5.075-3.007s-4.212 1.236-5.075 3.007c-.324.667.078 1.434.842 1.653a15.37 15.37 0 0 0 8.466 0"></path></svg>
             <span>Customers</span>
           </button>
         </div></div>
         <button class="side-label" type="button" data-fold="stock" aria-expanded="true">Stock<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="side-fold"><div class="side-fold-in">
           <button class="side-link" data-view="suppliers" data-sub="suppliers orders incoming">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path class="f" d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle class="f k" cx="17" cy="18" r="2"/><circle class="f k" cx="7" cy="18" r="2"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
             <span>Suppliers</span>
           </button>
         </div></div>
@@ -125,16 +118,25 @@
       <div class="side-footer">
         <!-- Settings sits at the bottom, over the account; opening it swaps the nav above for .side-setnav and hides this row (paint()). -->
         <button class="side-link" data-view="settings">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle class="hole" cx="12" cy="12" r="3"/></svg>
+          <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 10.25c1.25 0 2.25-1 2.25-2.25s-1-2.25-2.25-2.25-2.25 1-2.25 2.25 1 2.25 2.25 2.25"></path><path d="m13.32 6.5-.82-.29c-.06-.21-.17-.46-.29-.67a4.4 4.4 0 0 0-.42-.61l.21-.84c.06-.59-.21-1.18-.72-1.47l-.28-.18c-.54-.3-1.18-.24-1.62.15l-.63.55q-.75-.105-1.5 0l-.63-.55a1.4 1.4 0 0 0-1.62-.15l-.28.18c-.51.29-.78.88-.72 1.47l.21.84c-.32.39-.56.82-.74 1.28l-.8.29c-.55.2-.92.75-.92 1.32v.36c0 .57.37 1.12.92 1.32l.8.29c.09.21.19.46.32.67.12.21.27.42.42.61l-.21.84c-.06.59.21 1.18.72 1.47l.28.18c.53.3 1.17.24 1.62-.15l.63-.55q.75.105 1.5 0l.62.55c.45.39 1.09.45 1.63.15l.28-.18c.51-.29.72-.88.72-1.47l-.21-.84c.31-.39.56-.82.74-1.28l.79-.29c.56-.2.93-.75.93-1.32v-.36c0-.57-.37-1.12-.93-1.32"></path></svg>
           <span>Settings</span>
         </button>
-        <!-- Account switcher: a user badge, name + role. No chevron; only the store gets one. -->
-        <div class="side-switch-wrap">
-          <button class="side-switch acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false">
-            <span class="ss-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span>
-            <span class="ss-text"><span class="ss-name" id="acctName">El John</span><span class="ss-label" id="acctRole">Owner</span></span>
-          </button>
-          <div class="side-menu up" id="acctMenu" role="menu" hidden></div>
+        <!-- Sidebar foot row: store switcher left, account badge right (the bell's spot). -->
+        <div class="side-store">
+          <div class="side-switch-wrap">
+            <button class="side-switch" id="locBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+              <span class="ss-mark" id="locMark">MS</span>
+              <span class="ss-text"><span class="ss-label" id="locBiz">EJ Hardware</span><span class="ss-name" id="locName">Main Store</span></span>
+            </button>
+            <div class="side-menu up" id="locMenu" role="menu" hidden></div>
+          </div>
+          <div class="side-switch-wrap">
+            <button class="side-switch acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+              <span class="ss-mark" id="acctMark">EJ</span>
+              <span class="ss-text"><span class="ss-name" id="acctName">El John</span><span class="ss-label" id="acctRole">Owner</span></span>
+            </button>
+            <div class="side-menu up" id="acctMenu" role="menu" hidden></div>
+          </div>
         </div>
       </div>
     </aside>
@@ -380,7 +382,7 @@
   <script src="/data.js?v=27"></script>
   <script src="/bo-model.js?v=123"></script>
   <script src="/router.js?v=62"></script>
-  <script src="/backoffice.js?v=219"></script>
+  <script src="/backoffice.js?v=220"></script>
   <script src="/bo-products.js?v=117"></script>
   <script src="/bo-catalog.js?v=9"></script>
   <script src="/bo-item.js?v=21"></script>
@@ -485,6 +487,7 @@
       function setRail(on, save) {
         app.classList.toggle('side-rail', on);
         railBtn.setAttribute('aria-expanded', String(!on));
+        railBtn.querySelector('.tl').textContent = on ? 'Expand navigation' : 'Collapse navigation';
         document.querySelectorAll('.bo-sidebar .side-link').forEach(function (l) {
           var t = l.querySelector('span');
           if (on && t) l.title = t.textContent.trim(); else l.removeAttribute('title');
@@ -497,6 +500,9 @@
         void app.offsetWidth;
         app.classList.remove('side-resizing');
       }
+      document.addEventListener('keydown', function (e) {
+        if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'b' && wide.matches) { e.preventDefault(); railBtn.click(); }
+      });
       railBtn.addEventListener('click', function () {
         if (typeof closeSideMenus === 'function') closeSideMenus();
         setRail(!app.classList.contains('side-rail'), true);

@@ -446,7 +446,7 @@ const orderPaymentLabel = (o) => SalesMath.payWord(o);
 // One list: the label the nav and <title> use, and the function that paints the view.
 // Adding a view is an entry here plus the .side-link / .view markup -- never a second list.
 const VIEWS = {
-  dashboard: { label: 'Dashboard', render: () => renderDashboard() },
+  dashboard: { label: 'Home', render: () => renderDashboard() },
   sales:     { label: 'Sales',     render: () => renderSales() },
   transactions: { label: 'Orders', render: () => renderTransactions() },
   products:  { label: 'Items',  render: () => renderProducts() },
@@ -565,6 +565,10 @@ function renderSwitchers() {
   const loc = String(store.address || '').split(',')[0].trim() || 'Main Store';
   $('#locBiz').textContent = store.name;
   $('#locName').textContent = loc;
+  // Sidebar badges: two initials, "Main Store" → MS.
+  const ini = (s) => String(s || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+  $('#locMark').textContent = ini(loc);
+  $('#acctMark').textContent = ini(store.cashier);
   $('#locMenu').innerHTML = `
     <div class="sm-head">Locations</div>
     <button class="sm-opt on" type="button" role="menuitem"><span class="sm-text">${escapeHtml(loc)}</span>${CHECK_SVG}</button>
@@ -995,8 +999,11 @@ function dashTx(W) {
 const calmRow = (nm, amt, cmp = null, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span><span class="amt">${amt}</span>${cmp !== null ? `<span class="cmp ${cls}">${cmp}</span>` : ''}</div>`;
 // The rail's cards. The Widgets menu shows and hides them, like Sales › Transactions; which are off is this
 // device's choice, in tick order (widgetsOn 'dash').
-const DASH_W = { daily: 'Daily sales target', monthly: 'Monthly sales target', low: 'Out or low stock', pay: 'Payment methods' };
+const DASH_W = { daily: 'Daily sales target', monthly: 'Monthly sales target', top: 'Top sellers', low: 'Out or low stock', pay: 'Payment methods' };
 
+// An item's photo (bo-model imageFor), or its first letter on grey when it has none.
+const thumb = (p, name = p?.name || '') => { const u = p ? imageFor(p, loadGroups()) : '';
+  return `<span class="th"${u ? ` style="background-image:url('${escapeHtml(u)}')"` : ''}>${u ? '' : escapeHtml(name.trim()[0] || '')}</span>`; };
 function dashRail(W, on) {
   const t = dashTargets();   // the real today, not a picked day
   const head = (lbl, val, side = '', link = '') => `<div class="top"><span>${lbl}</span>${link}</div><div class="line"><span class="val">${val}</span>${side}</div>`;
@@ -1027,11 +1034,12 @@ function dashRail(W, on) {
     const n = stockCounts(live, null, Date.now(), boZone()), count = n.out + n.low;
     const low = live.filter(p => ['out', 'low'].includes(stockLevel(p, null, Date.now(), boZone()))).sort((a, b) => daysLeft(a) - daysLeft(b) || a.stock - b.stock)
       .filter(p => !seen.has(fam(p)) && seen.add(fam(p)));
-    const level = p => familyLevel(live.filter(x => fam(x) === fam(p)), null, Date.now(), boZone());
+    // The pill judges the size the row names, so its colour and its count always agree.
+    const isOut = p => stockLevel(p, null, Date.now(), boZone()) === 'out';
     return head('Out or low stock', count ? String(count) : `0<span class="of"> all stocked</span>`, '',
         count ? `<a href="${Router.href('products', '', { view: 'stock', level: 'out,low' })}">View all ›</a>` : '')
-      + (low.length ? `<div class="rows">${low.slice(0, 5).map(p => `<div class="row"><span class="nm">${escapeHtml(p.name)}</span>`
-        + `<span class="pill ${level(p) === 'out' ? 'down' : 'warn'}" style="margin:0">${level(p) === 'out' ? 'Out' : 'Low'}</span></div>`).join('')}</div>` : '');
+      + (low.length ? `<div class="rows">${low.slice(0, 5).map(p => `<div class="row"><span class="nm">${thumb(p)}${escapeHtml(p.name)}</span>`
+        + `<span class="pill ${isOut(p) ? 'down' : 'warn'}" style="margin:0">${isOut(p) ? 'Out' : `${SalesMath.qtyText(p.stock)} left`}</span></div>`).join('')}</div>` : '');
   };
 
   // Payment methods, for the range: the only rail card that follows it.
@@ -1041,6 +1049,10 @@ function dashRail(W, on) {
       ? `<div class="rows">${payRows.map(([k, v]) => calmRow(escapeHtml(k), pesoShort(v))).join('')}${calmRow('Total', pesoShort(payRows.reduce((s, p) => s + p[1], 0)), null, 'total')}</div>`
       : '<p class="note" style="margin:10px 0 0">No sales in this range.</p>');
   };
+  // Top sellers follows the range too: Sales' own top items.
+  const band = lbl => `<div class="top band"><span>${lbl}</span></div>`, none = '<p class="note" style="margin:10px 0 0">No sales in this range.</p>';
+  out.top = () => { const its = renderSales.topItems(W.rows).slice(0, 5);
+    return band('Top sellers') + (its.length ? `<div class="rows">${its.map(r => calmRow(thumb(state.products.find(x => x.id === r.key), r.name) + `<span class="tx">${escapeHtml(r.name)}<small>${SalesMath.qtyText(r.unitsSold)} sold</small></span>`, pesoShort(r.netSales))).join('')}</div>` : none); };
   return on.map(id => `<section class="card w" data-rail="${id}">${out[id]()}</section>`).join('');
 }
 

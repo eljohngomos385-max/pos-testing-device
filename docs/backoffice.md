@@ -176,6 +176,7 @@ Pull the token, don't type `8px`.
   Headings and values go `#1A1A1A`.
 - Semantic pairs, always tint-bg + dark text: `--po-success`, `--po-warn`, `--po-danger`.
   `--po-accent-link #1F5199` is the *only* blue — links/`.link-btn` only, never a button fill.
+- **Sidebar + inset sheet (2026-10-17, owner, ported from home-labs/cur2):** `bo-sidebar.css` (loaded after bo-calm.css) restyles the sidebar below and wins where they differ: 288px grey sidebar (`--po-sidebar-bg`), the page a white rounded sheet 8px in (`--gm-inset`, `--gm-shadow`), 52px rail on Ctrl+B or the fold button, Search row under the top row, store switcher + account initials (MS / EJ) at the foot, 16px line icons, the Dashboard link is called Home. Restyle it there, not in styles.css.
 - Chrome: `--po-sidebar-w 240px` (v35, 2026-09-26; 192px since v29; one grey fill for the active row — a lit sub-link leaves its parent unfilled, no hook line). The look is the Notion lab's
   (`SIDEBAR + SHEET (v35)`): an off-white `--po-sidebar-bg #F6F6F6` sidebar sitting under a white
   sheet. `.bo-main` scrolls on its own with a straight left edge (no rounded corners, owner 2026-09-26) and `--po-sheet-shadow`, and goes
@@ -237,8 +238,8 @@ Inter. 17px/700 page title · 13.5px/650 panel title · 13px/500 body & rows · 
   - **Sales bar**: under 640px of page, `‹ period ›` always starts the second line and Export follows,
     so the picker sits on the same spot in Summary and Items (their first lines differ in length).
   - **KPI strip** (`.calm-dash .strip`, Dashboard and Stock history): folds by its own card
-    (`container: strip`) — 2×2 under 944px of card, which is what "₱1,477,772 −4.5%" needs a stat
-    wide; on a phone the value shrinks with `cqi`. **The chip stays right of its number, same row,
+    (`container: strip`) — four across down to 704px of card (under 944px the sides and the value
+    shrink with `cqi`, owner 2026-10-17), 2×2 under that; on a phone the value shrinks with `cqi`. **The chip stays right of its number, same row,
     never under or over it** (owner). The Products stock tiles do the same by the page (`container: pd`,
     2×2 under 600px). `.kpi-row.joined` tiles are at least 216px.
   - **Card heads** (`.bo-card-head`, the calm `.head`): wrap whole items; a label or button never

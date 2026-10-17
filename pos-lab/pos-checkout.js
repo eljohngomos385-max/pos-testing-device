@@ -160,7 +160,7 @@ function spClose() {   // back to the plain method tiles
   showPayStep();
 }
 function spOff() {   // what split adds comes off (also when a sale ends or a new checkout opens)
-  $('#checkoutApp').classList.remove('sp');
+  $('#checkoutApp').classList.remove('sp', 'sp-cash');
   $('#spPaid').hidden = $('#spDone').hidden = true;
   $$('#checkoutMethods .co-tile').forEach(t => { t.hidden = false; t.classList.remove('pick'); t.querySelector('small')?.remove(); });
   $('#checkoutCompleteBtn').textContent = 'Complete sale';
@@ -181,8 +181,10 @@ function spRender() {
   const { k, leg, legs } = SP, due = moneyValue(dueNow()), left = spLeft(k === 'pick' || k === 'ref' ? null : leg);   // the ref page: that part is in
   setCheckoutError('');
   $('#checkoutTotalDue').textContent = peso(left);
+  const cash = k === 'given' || k === 'typed';   // the cash part's change: its own title, no countdown line (owner 2026-10-17)
+  $('#checkoutApp').classList.toggle('sp-cash', cash);
   const paid = $('#spPaid');   // the countdown's small line: the total it counts down from
-  paid.hidden = left === due;
+  paid.hidden = cash || left === due;
   paid.textContent = left > 0 ? `left of ${peso(due)}` : 'Paid in full';
   $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== (k === 'pick' ? 'method' : k === 'ref' ? 'paid' : 'cash'); });
   $('#checkoutBackText').textContent = 'Back';

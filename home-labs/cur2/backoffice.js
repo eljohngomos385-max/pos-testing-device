@@ -174,18 +174,58 @@ function switchSettle() {
 // shows them in tick order (owner 2026-09-28): a tick puts the card last, Show all adds the rest in menu order.
 // The menu keeps its fixed order so ticks don't jump. Which are on, in order, is this device's choice
 // (HWPOS_STORE.ui `<page>Show`); until the first tick the old hide list `<page>Hide` sets it, in menu order.
-function widgetsOn(page, W) {
+function widgetsShown(page, W) {
   const ids = Object.keys(W), saved = HWPOS_STORE.ui.get(page + 'Show', null);
   if (saved == null) { const off = String(HWPOS_STORE.ui.get(page + 'Hide', '') || '').split(','); return ids.filter(id => !off.includes(id)); }
   return String(saved).split(',').filter(id => ids.includes(id));
 }
-const widgetsMenu = (W, on) => `<div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr>${Object.entries(W).map(([id, n]) => `<button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}">${n}</button>`).join('')}`;
-// A tick on `el` in a Widgets menu: store the new order, then redraw through slideRender().
+// cur2 (owner 2026-10-17): the menu's rows can be dragged by their grip; the rail follows the menu's order
+// (HWPOS_STORE.ui `<page>Order`, every widget, on or off). Until the first drag or tick, the tick order leads.
+function widgetsOrder(page, W) {
+  const ids = Object.keys(W), saved = String(HWPOS_STORE.ui.get(page + 'Order', '') || '').split(',').filter(id => ids.includes(id));
+  const lead = saved.length ? saved : widgetsShown(page, W);
+  return [...lead, ...ids.filter(id => !lead.includes(id))];
+}
+function widgetsOn(page, W) { const shown = widgetsShown(page, W); return widgetsOrder(page, W).filter(id => shown.includes(id)); }
+const widgetsMenu = (W, on, order = Object.keys(W)) => `<div class="all"><button data-w-all="on">Show all</button><button data-w-all="off">Hide all</button></div><hr>${order.map(id =>
+  `<div class="wr" data-id="${id}"><button class="grip" aria-label="Move ${W[id]} (arrow keys)"></button><button role="menuitemcheckbox" data-w="${id}" aria-checked="${on.includes(id)}">${W[id]}</button></div>`).join('')}`;
+// A tick on `el` in a Widgets menu: store which are on (the order stays put), then redraw through slideRender().
 function widgetsTick(page, W, el, render) {
-  const on = widgetsOn(page, W), id = el.dataset.w, all = el.dataset.wAll;
-  HWPOS_STORE.ui.set(page + 'Show', (all ? (all === 'on' ? [...on, ...Object.keys(W).filter(x => !on.includes(x))] : [])
-    : on.includes(id) ? on.filter(x => x !== id) : [...on, id]).join(','));
+  const order = widgetsOrder(page, W), on = widgetsOn(page, W), id = el.dataset.w, all = el.dataset.wAll;
+  HWPOS_STORE.ui.set(page + 'Order', order.join(','));
+  HWPOS_STORE.ui.set(page + 'Show', (all ? (all === 'on' ? order : []) : on.includes(id) ? on.filter(x => x !== id) : [...on, id]).join(','));
   slideRender(render);
+}
+// Drag a row by its grip (mouse or finger), or move it with the arrow keys; the new order is saved on drop.
+function widgetsDrag(menu, page, render) {
+  const save = (id) => {
+    HWPOS_STORE.ui.set(page + 'Order', [...menu.querySelectorAll('.wr')].map(r => r.dataset.id).join(','));
+    slideRender(render);
+    if (id) menu.querySelector(`.wr[data-id="${id}"] .grip`)?.focus();
+  };
+  menu.addEventListener('pointerdown', (e) => {
+    const g = e.target.closest('.grip'); if (!g) return;
+    e.preventDefault(); g.setPointerCapture(e.pointerId);
+    const row = g.closest('.wr'); row.classList.add('drag');
+    const move = (ev) => {
+      const rest = [...menu.querySelectorAll('.wr')].filter(r => r !== row);
+      const next = rest.find(r => { const b = r.getBoundingClientRect(); return ev.clientY < b.top + b.height / 2; });
+      if (next) { if (row.nextElementSibling !== next) next.before(row); } else if (rest.at(-1)?.nextElementSibling !== row) rest.at(-1)?.after(row);
+    };
+    // On the document, not the grip: a fast drag or a lost capture still ends the drag and saves.
+    const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up); row.classList.remove('drag'); save(); };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+  });
+  menu.addEventListener('keydown', (e) => {
+    const g = e.target.closest('.grip'); if (!g || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    e.preventDefault();
+    const row = g.closest('.wr'), to = e.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
+    if (!to?.matches('.wr')) return;
+    if (e.key === 'ArrowUp') to.before(row); else to.after(row);
+    save(row.dataset.id);
+  });
 }
 
 function showToast(msg) {
@@ -1145,7 +1185,7 @@ function renderDashboard() {
   $('#dashTx').innerHTML = dashTx(W);
   $('#dashTxAll').href = Router.href('transactions', '', { range: P.range || '', date: P.date || '' });
   const on = widgetsOn('dash', DASH_W);
-  $('#dashW').innerHTML = widgetsMenu(DASH_W, on);
+  $('#dashW').innerHTML = widgetsMenu(DASH_W, on, widgetsOrder('dash', DASH_W));
   $('#dashGrid').classList.toggle('solo', !on.length);
   $('#dashRail').innerHTML = dashRail(W, on);
 
@@ -1193,6 +1233,7 @@ function initDashboard() {
     const w = e.target.closest('[data-w], [data-w-all]');
     if (w) widgetsTick('dash', DASH_W, w, renderDashboard);
   });
+  widgetsDrag($('#dashW'), 'dash', renderDashboard);
   $('#dashW').addEventListener('toggle', (e) => {   // hang it under its button, right edges flush
     if (e.newState !== 'open') return;
     const m = e.currentTarget, r = $('#dashWBtn').getBoundingClientRect();

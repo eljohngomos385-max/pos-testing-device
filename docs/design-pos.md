@@ -50,13 +50,41 @@ The layout reads as a **grid of aligned edges and shared baselines**. When you p
 - **Anchors stay put across views.** The hamburger is the canonical example: identical position (16px from top, 48px) on every page so it never jumps when navigating. Treat persistent controls as fixed anchors.
 - **Paired columns share a top edge.** Left list and right detail begin at the same Y: Sell's search row ↔ the sale sidebar's customer card; Orders' `.o-rail` head ↔ `.o-top`. A column that fills height also shares its **bottom** edge with its neighbor (Customers' list box bottom ↔ detail scroll bottom; the floating action button rides that shared bottom).
 - **Title + subtitle align on the baseline**, not the box (`align-items: baseline` in `.view-title-wrap`). A label and its count/sub sit on one line, sub in tertiary ink.
-- **Row = label left, value right, space-between.** This is the repeating unit (totals, meta rows, cart items, settings rows): `display:flex; justify-content:space-between`. Label is muted/tertiary, value is primary ink + tabular-nums, hugging the right edge. Numbers in a stack must right-align to each other.
+- **Row = label left, value right, space-between.** This is the repeating unit (totals, meta rows, cart items, settings rows): `display:flex; justify-content:space-between`. Value is tabular-nums, hugging the right edge; which side is dark follows **Rows** below. Numbers in a stack must right-align to each other.
 - **Groups are one segmented control, one active member.** Payment methods, Settings size toggles: equal-width siblings in a track; exactly one is inverted-white (active), the rest sit on the grey ladder. Selection is shown by inversion, never by an outline-only change. (Walk-in/Pickup/Delivery is no longer a group: it is one `.pick` dropdown in `.f-row`, opening a `.rail-menu`, sharing the `.opts` row with Discount.)
 - **Consistent gutters build the rhythm.** Spacing comes from a small set of steps — 4 / 6 / 7 / 8 / 12 / 14 / 16 / 18 / 24 / 28px. Reach for an existing step; don't introduce a 13px or 21px one-off. Edge padding for page content is 28px; the hamburger row gap is 7px.
 - **Things that belong together touch; things that don't get a gutter or a hairline.** Separators (`--line`) appear only to divide genuinely distinct groups — and prefer *space* over a line. (E.g. no divider above collapsed totals; the line only animates in when the section expands.)
 - **Symmetry by default.** Equal left/right padding, centered receipts (`max-width` + auto-center), mirrored button pairs. Asymmetry should be intentional (label/value rows), never accidental drift.
 
 ---
+
+## Rows — two kinds for every table and form (owner 2026-10-17)
+
+Every list or form on a POS page uses **one of these two rows**, phone and tablet, dark and light. A new page
+or table picks one and reuses its class; it never gets its own heights, sizes or inks. Measurements and the
+build plan: `pos-vault/plans/uniform-lists.md`.
+
+**List row = Orders' `.lv .row`.** A record you tap to open: an order, customer, cash move or shift.
+- 58px tall; padding 9px 12px on phone, 9px 16px on tablet.
+- Left: title 14/500 `--ink` (receipt no., name, note), and under it a sub line 12/400 `--ink-tertiary` ("Walk-in · 2:15 PM · Ana").
+- Right: money **on the title's line** (never centred alone), 14px tabular via `peso()`, in Items' price weight (510); its meta (method) is under it at 12 tertiary.
+- Grouped under Orders' grey band: the plain date or group name + count on the left, the total on the right.
+- On: Orders, Customers, Customer › Recent orders, Cash in & out, Past shifts.
+
+**Setting row = `.fr`.** A word and its value, or one thing with a switch or ›.
+- 48px tall, padding 6px 16px, 16/400, letter-spacing −0.15px; word and value centred top to bottom.
+- The word starts 16px from the left. The value ends 16px from the right (32px when a › follows). Typed values (inputs) are right-aligned too.
+- Lives in a `.card.fc` (`--rl-r`). The block title sits outside, above it (`h3.fc-t`, 14/400 `--ink-tertiary`), with any footnote at 12 tertiary and a link (Print report, See all) at the title's right.
+- A two-line row (name + grey sub + stepper, Quick stock) is 56px; a growing text box (Description) may grow.
+
+**Dark ink = what the page is about.** One side is `--ink`, the other `--ink-secondary`:
+- Facts and forms (Item edit, Customer info, Shift): what was typed or counted is the point, so the word is grey and the value dark. This is the default (`.lv .fr > .lb`).
+- Settings and choices (Settings + its sub pages, QR, QR table's switch rows): the setting is the point, so the word is dark and the value grey with ›. Use `.st-page .fr .lb`.
+- A row that is just a name (a table, an item, "Payment types ›") shows the name dark.
+
+**Kept different on purpose:** the Items list (phone: name + stock line; tablet: a column table), which the owner likes as it is, and Quick stock's 56px stepper rows. In light theme, list pages sit on a white canvas and setting pages on a grey canvas with white cards (2026-10-09).
+
+**Don't copy** `.lv .sh-move` (52px, 13px type, money centred in grey): it is the drift this rule replaces and goes when Cash in & out and Past shifts move to the list row.
 
 ## The hero line — one spot for every big amount (owner 2026-10-16)
 

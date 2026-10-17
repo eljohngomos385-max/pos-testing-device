@@ -995,3 +995,11 @@ body.bo-light .calm-dash .w .row:has(.th) { min-height: 42px; }
 body.bo-light .calm-dash .w .nm:has(.th) { display: flex; align-items: center; gap: 10px; min-width: 0; }
 body.bo-light .calm-dash .w .th { flex: none; width: 28px; height: 28px; border-radius: 7px; background: var(--b-track) center / cover; display: grid; place-items: center; color: var(--b-ink-3); font-size: var(--b-t-meta); font-weight: 600; }
 body.bo-light .calm-dash .w .nm .tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* name + its 'N sold' line under it */
+/* cur2: Widgets menu rows carry a grip on the left (the iOS reorder mark, three lines); drag it up or down. */
+body.bo-light .calm-dash .menu .wr { display: flex; align-items: center; border-radius: var(--b-r-row); }
+body.bo-light .calm-dash .menu .wr > [data-w] { flex: 1; padding-left: 4px; }
+body.bo-light .calm-dash .menu .wr .grip { flex: none; width: 28px; align-self: stretch; padding: 0; justify-content: center; align-items: center; color: var(--b-ink-3); cursor: grab; touch-action: none; }
+body.bo-light .calm-dash .menu .wr .grip::before { content: ""; width: 12px; height: 9px; background: linear-gradient(currentColor 0 0) top / 100% 1.5px no-repeat, linear-gradient(currentColor 0 0) center / 100% 1.5px no-repeat, linear-gradient(currentColor 0 0) bottom / 100% 1.5px no-repeat; }
+body.bo-light .calm-dash .menu .wr .grip:hover { color: var(--b-ink-2); }
+body.bo-light .calm-dash .menu .wr.drag { background: var(--b-card); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+body.bo-light .calm-dash .menu .wr.drag .grip { cursor: grabbing; }

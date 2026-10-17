@@ -101,10 +101,18 @@ body.bo-light .calm-dash .chip { font-size: var(--b-t-meta); font-weight: 500; p
 body.bo-light .calm-dash .chip.up { background: var(--b-up-tint); color: var(--b-up); }
 body.bo-light .calm-dash .chip.down { background: var(--b-down-tint); color: var(--b-down); }
 /* The chip stays beside its number (owner): the strip folds by its own card, sidebar open or not. A stat needs
-   ~236px for "₱1,477,772 −4.5%", so four go two by two under 944px of card; on a phone the Sales strip's
-   tighter stat keeps two a row. Stock history's strip is this one too. */
+   ~236px for "₱1,477,772 −14.8%" at 22px with 20px sides. Under 944px of card the four stay one row (owner
+   2026-10-17, a portrait tablet had room): the sides and the number shrink with the card, down to 16px and
+   8px sides at 704px (89 + 6 + 65 + 16 = 176 a stat); under that, two by two. Stock history's strip is this one too. */
 body.bo-light .calm-dash .card:has(> .strip) { container: strip / inline-size; }
 @container strip (max-width: 944px) {
+  body.bo-light .calm-dash .stat { padding-inline: clamp(8px, 2.5cqi - 10px, 20px); }
+  body.bo-light .calm-dash .stat .line { gap: 6px; }
+  body.bo-light .calm-dash .stat .val { font-size: clamp(16px, 4.4cqi - 16px, 22px); }
+}
+@container strip (max-width: 703px) {
+  body.bo-light .calm-dash .stat { padding-inline: 20px; }   /* two a row: each half has room again */
+  body.bo-light .calm-dash .stat .val { font-size: 22px; }
   body.bo-light .calm-dash .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   body.bo-light .calm-dash .strip .stat:nth-child(odd) { border-left: 0; }
   body.bo-light .calm-dash .strip .stat:nth-child(n+3) { border-top: 1px solid var(--b-line); }
@@ -119,6 +127,7 @@ body.bo-light .calm-dash .card:has(> .strip) { container: strip / inline-size; }
 }
 
 body.bo-light .calm-dash .plot { position: relative; height: 300px; }
+@media (max-width: 1100px) { body.bo-light .calm-dash .plot { height: 240px; } }   /* a tablet: less chart, more orders (owner 2026-10-17) */
 body.bo-light .calm-dash .grid, body.bo-light .calm-dash .cols { position: absolute; left: 32px; right: 0; top: 0; bottom: 20px; }
 body.bo-light .calm-dash .grid { border-left: 1px solid #D6D6D6; }                                                    /* the y axis, same ink as the ₱0 line */
 body.bo-light .calm-dash .gl { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--b-outline); }
@@ -165,12 +174,13 @@ body.bo-light .calm-dash .tx .pill { margin: 0; font-size: 11.5px; font-weight: 
 body.bo-light .calm-dash .tx tr.dim td { color: var(--b-ink-3); }
 body.bo-light .calm-dash .tx tr.dim .amt { text-decoration: line-through; }
 body.bo-light .calm-dash .tx .t { color: var(--b-ink-2); }
-body.bo-light .calm-dash .tx .cust { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
-/* Eight columns in the card beside the rail (Fulfilment back, owner 2026-09-26): 10px cells and a 150px
-   customer fit the 798px card at 1440 wide. Narrower (1280 wide: 606px inside the card) Customer gives way
-   -- mostly "—", Account on the pill says a customer bought, Transactions has the name -- rather than
-   cutting every name to a few letters. */
-@container (max-width: 700px) {
+/* Every column hugs its text; Customer takes what is left over (owner 2026-10-17: a wide card spread ~20px
+   of air into every gap). max-width: 0 keeps a long name from widening the table: it ends in "...". */
+body.bo-light .calm-dash .tx th.cust { width: 100%; }
+body.bo-light .calm-dash .tx td.cust { max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* The other seven need ~655px, so under ~750px of card (720 inside it) Customer gives way -- mostly "—", Account on the
+   pill says a customer bought, Transactions has the name -- rather than cutting every name to a few letters. */
+@container (max-width: 720px) {
   body.bo-light .calm-dash .tx .cust { display: none; }
   body.bo-light .calm-dash .tx :is(th, td) { padding-inline: 8px; }
 }
@@ -472,7 +482,7 @@ body.bo-light .calm-sales .more { border: 0; background: none; color: var(--b-da
   body.bo-light .calm-sales .strip.n4 .stat:nth-child(2) { border-top-right-radius: calc(var(--b-r-card) - 1px); }
   body.bo-light .calm-sales .strip.n4 .stat:nth-child(-n+2)::after { content: none; }
 }
-@container (max-width: 760px) {
+@container (max-width: 720px) {
   body.bo-light .calm-sales .trio { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 760px) {
@@ -849,7 +859,7 @@ body.bo-light .calm-sales .si-tip em { font-style: normal; color: var(--b-ink); 
   body.bo-light .calm-sales .si .strip > :nth-child(odd) { box-shadow: none; }
   body.bo-light .calm-sales .si .strip > :nth-child(n+3) { border-top: 1px solid var(--b-line); }
 }
-@container (max-width: 760px) {
+@container (max-width: 720px) {
   body.bo-light .calm-sales .si .band:has(.pick) { flex-wrap: wrap; row-gap: 2px; padding-top: 6px; padding-bottom: 6px; }
   body.bo-light .calm-sales .si .band:has(.pick) .r { order: 2; flex-basis: 100%; margin-left: 0; }
   body.bo-light .calm-sales .si .band:has(.pick) .pick { margin-left: auto; }
@@ -898,7 +908,7 @@ body.bo-light .calm-cust .cust-table { min-width: 0; }
 body.bo-light .calm-cust .cust-table td:first-child { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
 body.bo-light .calm-cust #custList .blk-table { container-type: inline-size; }
 @container (max-width: 880px) { body.bo-light .calm-cust .cust-table :is(th, td):nth-child(2) { display: none; } }
-@container (max-width: 760px) { body.bo-light .calm-cust .cust-table :is(th, td):nth-child(3) { display: none; } }
+@container (max-width: 720px) { body.bo-light .calm-cust .cust-table :is(th, td):nth-child(3) { display: none; } }
 body.bo-light .calm-cust #custList .table-wrap { overflow-x: auto; }
 /* The statement's range sits together after its count, Export at the far end — not spread by space-between. */
 body.bo-light .view-customers .st-head { justify-content: flex-start; gap: 8px; }
@@ -990,3 +1000,8 @@ body.bo-light .view .rp-date-row { margin: 4px -4px 0; padding: 8px 14px 4px; bo
   body.bo-light .bo-select option:checked { background: none; color: var(--b-ink); }
   body.bo-light .bo-select option:is(:hover, :focus-visible) { background: var(--b-card); outline: 0; }
 }
+/* Home: Top sellers + Out or low stock carry the item's photo before the name (owner 2026-10-17). */
+body.bo-light .calm-dash .w .row:has(.th) { min-height: 42px; }
+body.bo-light .calm-dash .w .nm:has(.th) { display: flex; align-items: center; gap: 10px; min-width: 0; }
+body.bo-light .calm-dash .w .th { flex: none; width: 28px; height: 28px; border-radius: 7px; background: var(--b-track) center / cover; display: grid; place-items: center; color: var(--b-ink-3); font-size: var(--b-t-meta); font-weight: 600; }
+body.bo-light .calm-dash .w .nm .tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; }   /* name + its 'N sold' line under it */

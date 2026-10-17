@@ -3716,6 +3716,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co.sp .co-top { position: relative; }
 .co.sp .co-top::after { content: 'Split payment'; position: absolute; left: 50%; bottom: 0; translate: -50% 0; line-height: 44px;
            color: var(--ink); font-size: 15px; font-weight: 600; white-space: nowrap; animation: co-in .3s var(--co-ease) both; }
+.co.sp.sp-cash .co-top::after { content: 'Cash change'; }   /* the cash part's notes / Custom: what the page is for */
 .co-fig.up { color: var(--ok); }
 .co-fig.down { color: var(--danger); }
 .co-caret { display: inline-block; width: 2px; height: .9em; margin-left: 2px; background: var(--ink); vertical-align: -.08em; animation: co-blink 1.1s steps(1) infinite; }
