@@ -7607,7 +7607,7 @@ body.light-theme .fab-veil { --fab-dim: rgba(255, 255, 255, .45); }
 .fab-veil .ic { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .fab-stack { position: absolute; right: var(--fr); bottom: calc(var(--fb) + var(--fs) + 18px); display: flex; flex-direction: column; align-items: flex-end; gap: 16px; }
 .fab-stack button { display: flex; align-items: center; gap: 16px; padding: 0; border: 0; background: none; color: var(--ink); font-size: 20px; font-weight: 650; letter-spacing: -0.3px;
-                    animation: fab-in .26s var(--rl-ease) var(--d) both; }
+                    transform-origin: calc(100% - var(--fs) / 2) 50%; animation: fab-in .26s var(--rl-ease) var(--d) both; }   /* grow from the circle, so it only rises */
 .fab-stack i { display: grid; place-items: center; width: var(--fs); height: var(--fs); border-radius: 50%; background: var(--accent); color: var(--accent-ink); transition: transform .12s; }
 .fab-stack button:active i { transform: scale(.94); }
 .fab-stack button:focus-visible { outline: none; }
