@@ -33,7 +33,7 @@ iframe { position: absolute; inset: var(--top) 0 0; display: block; width: 100%;
 .bat::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 21%; background: #E84B4B; }   /* 20%, red: low */
 .bat span { position: relative; }
 .nub { left: 360.6px; top: 27.2px; width: 2px; height: 4px; border-radius: 0 1px 1px 0; background: #A9A9A9; }
-.home { position: absolute; left: 126.8px; bottom: 8px; width: 139.6px; height: 5px; border-radius: 3px; background: #434343; z-index: 2; pointer-events: none; }
+.home { position: absolute; left: 126.8px; bottom: 8px; width: 139.6px; height: 5px; border-radius: 3px; background: var(--sb-ink); opacity: .74; z-index: 2; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -58,6 +58,14 @@ f.src = 'index.html?' + Date.now() + (location.hash || '#items');   // the brows
 f.addEventListener('load', () => f.contentDocument.documentElement.style.setProperty('--ph-safe', '34px'));
 function fit() { dev.style.transform = `scale(${Math.min(1, (innerWidth - 24) / 393, (innerHeight - 24) / 852)})`; }
 fit(); addEventListener('resize', fit);
+// the strip takes the colour of the page under it, as Safari does; the ink flips to stay readable
+setInterval(() => {
+  const d = f.contentDocument; let e = d && d.elementFromPoint(196, 2), bg = '';
+  for (; e && !bg; e = e.parentElement) { const c = getComputedStyle(e).backgroundColor; if (!/rgba\(.*, 0\)$/.test(c)) bg = c; }
+  if (!bg) return;
+  const [r, g, b] = bg.match(/\d+/g).map(Number);
+  dev.style.setProperty('--sb-bg', bg); dev.style.setProperty('--sb-ink', r * .3 + g * .59 + b * .11 > 128 ? '#000' : '#fff');
+}, 300);
 const clock = document.getElementById('clock');
 if (!new URLSearchParams(location.search).has('still')) {   // ?still keeps 8:51 for the measuring script
   const tick = () => { const d = new Date(); clock.textContent = `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`; };

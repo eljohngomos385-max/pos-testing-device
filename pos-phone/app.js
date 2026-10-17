@@ -371,12 +371,15 @@ function attachEvents() {
 
   // ---- Items (list + editor; Save is not connected yet) ----
   // The switch picks the list (items, categories, modifiers); a row and + open that kind's editor.
-  const openKind = id => (itemsKind === 'items' ? openItemEditor(id) : openKindEditor(itemsKind, id));
+  const openKind = (id, k = itemsKind) => (k === 'items' ? openItemEditor(id) : openKindEditor(k, id));
   $('#itemsKinds')?.addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (b) setItemsKind(b.dataset.kind); });
-  new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#itemsKinds'));   // tabs moved: the pill re-places on the next switch
+  const kb = $('#itemsKinds'), kbFade = () => {   // fade an edge only while more words hide past it, as Safari's tab groups
+    kb.classList.toggle('fade-l', kb.scrollLeft > 1); kb.classList.toggle('fade-r', kb.scrollLeft + kb.clientWidth < kb.scrollWidth - 1);
+  };
+  kb.addEventListener('scroll', kbFade, { passive: true });
+  const kbRO = new ResizeObserver(() => { kb.classList.remove('slid'); kbFade(); });   // tabs moved: the pill re-places on the next switch
+  [kb, ...kb.children].forEach(el => kbRO.observe(el));   // the words too: a late font or another language widens them
   wireSegDrag($('#itemsKinds'), 'kind');
-  $('#itemsTtl')?.addEventListener('click', (e) => openMenu(e.currentTarget, [...$('#itemsKinds').children].map(b =>
-    ({ label: b.textContent, cur: b.dataset.kind === itemsKind, run: () => setItemsKind(b.dataset.kind) })), { w: 200, mid: true }));   // phone: the title is the kinds menu   // press the pill and slide it, as iOS's
   // swipe the list left / right for the next / previous tab: the list rides the finger with the tab beside it showing,
   // like the Sell grid's pages (owner 2026-10-16); not in Quick stock, which hides the tabs
   let ivX = null;
@@ -398,7 +401,7 @@ function attachEvents() {
   const ivDone = () => { ivList.classList.remove('swiping', 'going'); ivList.style.removeProperty('--dx'); ivList.querySelectorAll('.peek').forEach(p => p.remove()); };
   ivList?.addEventListener('touchstart', (e) => {
     if (ivList.classList.contains('going')) return (ivX = null);
-    ivX = e.touches.length === 1 && !QS.on ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, dx: 0, on: null } : null;
+    ivX = e.touches.length === 1 && !QS.on && $('#itemsKinds').offsetWidth ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, dx: 0, on: null } : null;
   }, { passive: true });
   ivList?.addEventListener('touchmove', (e) => {
     if (!ivX) return;
@@ -437,10 +440,11 @@ function attachEvents() {
   };
   ivList?.addEventListener('touchend', ivEnd);
   ivList?.addEventListener('touchcancel', ivEnd);
-  $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) (QS.on ? qsPickRow : openKind)(row.dataset.id); });
+  $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) row.dataset.hub ? setItemsKind(row.dataset.hub) : QS.on ? qsPickRow(row.dataset.id) : openKind(row.dataset.id); });
+  $('#itemsBack')?.addEventListener('click', () => setItemsKind('hub'));
   // Items +: the blurred stack, Change price / Quick stock (pos-stock.js) / Add item; the other kinds add straight away
   const fabIc = d => `<svg class="ic" viewBox="0 0 24 24">${d}</svg>`;
-  $('#itemsAdd')?.addEventListener('click', (e) => (itemsKind !== 'items' ? openKind(null) : openFabMenu(e.currentTarget, [
+  $('#itemsAdd')?.addEventListener('click', (e) => (itemsKind === 'addons' ? showToast("Add-ons aren't connected yet") : itemsKind !== 'items' ? openKind(null) : openFabMenu(e.currentTarget, [
     { label: 'Change price', ic: fabIc('<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/>'), run: () => qsStart('price') },
     { label: 'Quick stock', ic: fabIc('<path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9"/>'), run: () => qsStart() },
     { label: 'Add item', ic: fabIc('<path d="M12 5v14M5 12h14"/>'), run: () => openItemEditor(null) },

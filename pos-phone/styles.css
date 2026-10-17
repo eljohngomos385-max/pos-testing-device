@@ -7814,11 +7814,10 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 /* the lists keep their boxes on phone and tablet (owner 2026-10-17: "without its container ... it just looks bad ... add it back", phone too); the boxless iOS rows are gone */
 /* iOS 26 Contacts (owner 2026-10-17, phone copy): ☰ a round glass button, the list's name centred, search a glass pill
    at the bottom with + a glass circle beside it; the kinds switch is gone, the Items title opens it as a menu */
-.lv .head > .sq[data-act="open-sidebar"], .lv .find::before, .lv :is(#itemsAdd, #newCustomerBtn) {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv .find::before, .lv :is(#itemsAdd, #newCustomerBtn) {
   border: 0; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
-.lv .head > .sq[data-act="open-sidebar"] { width: 44px; height: 44px; border-radius: 50%; }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack) { width: 44px; height: 44px; border-radius: 50%; }
 .lv .page, .lv .o-rail { padding-top: 0; margin-top: 0; }   /* the head right under the status bar, as iOS */
-.lv #itemsKinds { display: none; }
 .lv .head:has(> .ph-ttl.st-ttl) { position: static; align-items: center; }
 .lv .head > .ph-ttl { display: block; position: static; flex: 1; margin-right: 51px; pointer-events: auto; text-align: center; }   /* 51 = ☰ + gap: the word sits on the screen's middle */
 #itemsTtl { display: inline-flex; align-items: center; gap: 2px; height: 44px; padding: 0 8px; color: var(--ink); font: inherit; }
@@ -7844,23 +7843,55 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 @media (min-width: 721px) {
   .lv .head > .ph-ttl { display: none; }
   .lv .head { align-items: center; }
-  .lv #itemsKinds { display: flex; }
   .lv .head > .find:is(#itemsFind, #customersFind, #ordersFind) { position: relative; inset: auto; flex: 1; height: 44px; }
   .lv #customersFind { margin-right: 55px; }
   .lv #newCustomerBtn { top: -2px; right: -55px; }
   .lv #newCustomerBtn .ic { width: 24px; height: 24px; stroke-width: 2; }   /* the same + as Items' */
   .lv :is(.page, .o-rail) .lines { padding-bottom: var(--ph-safe, 0px); }
   .lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* Items' + floats bottom right, as before (owner 2026-10-17: "keep it below"); the last row clears it */
-  /* the kinds switch is the head's third glass piece, 44 high as ☰ and search, the picked word in a round pill (owner 2026-10-17: the short boxed strip "is ugly") */
-  .lv #itemsKinds { height: 44px; padding: 4px; border: 0; border-radius: 999px; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
-  .lv #itemsKinds::before { top: 4px; bottom: 4px; border-radius: 999px; }
-  .lv #itemsKinds button { border-radius: 999px; padding: 0 14px; }
 }
+/* Items' hub (owner 2026-10-18, Mail's Mailboxes): [☰] Items over five equal rows; a list is [‹][search] with + bottom right.
+   The bottom icon bar (three icons, then Options merging three kinds) lost on finding it and on "equal respect" */
+.lv .head > .find#itemsFind { position: relative; inset: auto; flex: 1; height: 44px; }   /* search up top, full width beside ‹ */
+.lv.view-items .head > .ph-ttl { display: none; }
+#itemsBack, #itemsView.hub :is(#itemsFind, #itemsAdd, #itemsBar) { display: none; }   /* the hub is parked behind the pills: nothing opens it now */
+#itemsView.hub .head > .ph-ttl { display: block; }
+.lv #itemsAdd { right: 20px; }
+.lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* the last row clears + */
+/* The list bar (owner 2026-10-18): one glass bar of words; the picked one sits under a glass pill that slides between them
+   (slidePill / wireSegDrag). Words never cut: when they run out of room (another language, a small phone) they keep their
+   spacing and slide sideways inside the bar, the edges fading, as Safari's tab groups (owner's photo). #itemsBar is the glass,
+   #itemsKinds the row that slides. iPad: in the top row beside ☰. Phone: its own row under the search */
+.lv #itemsView .head { flex-wrap: wrap; row-gap: 10px; }
+.lv #itemsBar { order: 1; flex: 1 0 100%; min-width: 0; height: 44px; border-radius: 999px; overflow: hidden;
+  background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+.lv #itemsKinds { position: relative; display: flex; height: 44px; padding: 4px; gap: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+  overflow-x: auto; scrollbar-width: none; touch-action: pan-x;   /* a sideways drag scrolls the row; on the pill it drags the pill */
+  --fl: 0px; --fr: 0px; -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
+.lv #itemsKinds::-webkit-scrollbar { display: none; }
+.lv #itemsKinds.fade-l { --fl: 28px; }   /* more words that way (app.js sets .fade-l / .fade-r; not .fl/.fr: .fr is the form row) */
+.lv #itemsKinds.fade-r { --fr: 28px; }
+.lv #itemsKinds button { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; gap: 4px; height: 36px; padding: 0 6px;   /* 6: English still fits a 375 iPhone */
+ 
+  border-radius: 999px; background: none; color: var(--ink-secondary); font-size: 13px; font-weight: 600; white-space: nowrap; transition: color .2s; }
+.lv #itemsKinds button.cur { color: var(--ink); background: var(--rl-track); box-shadow: var(--glass-ring); touch-action: none; }   /* before the first slide */
+.lv #itemsKinds.slid button.cur { background: none; box-shadow: none; }
+.lv #itemsKinds.slid::before { top: 4px; bottom: 4px; border-radius: 999px; background: var(--rl-track); box-shadow: var(--glass-ring); }   /* the glass pill */
+.lv #itemsKinds .ic { display: none; }   /* words only, phone and iPad (owner 2026-10-18: "for the iPad one, just remove the icon as well"); the icons stay in the markup for an icons-first try */
+@media (min-width: 721px) {
+  .lv #itemsView .head { flex-wrap: nowrap; }
+  .lv #itemsBar { order: 0; flex: 0 1 auto; }   /* gives way to the search before the search gets too short */
+  .lv #itemsFind { min-width: 240px; }
+  .lv #itemsKinds button { flex: none; padding: 0 12px; font-size: 14px; }
+}
+@media (min-width: 721px) and (max-width: 900px) { .lv #itemsKinds button { padding: 0 9px; } }   /* iPad upright: "Search discounts" still fits */
+#itemsRows .row .chev { width: 16px; height: 16px; margin-left: 6px; vertical-align: -3px; color: var(--ink-tertiary); }
 /* the phone's glass (set here: .lv is the pv container, so its own @container block can't reach it) */
-.lv, #catalogSearchRow, #side { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
+.lv, #catalogSearchRow, #side, .cust-sheet { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
       --glass-ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
       --float: 0 4px 12px -4px rgb(0 0 0 / .45); }   /* falls only down and to the sides (blur/2 < spread + offset upward); owner 2026-10-18: 10/30 "floats too much" */   /* owner 2026-10-17: the 8/24 drop read as floating; glass sits close */
-body.light-theme :is(.lv, #catalogSearchRow, #side) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
   --float: 0 4px 12px -4px rgb(0 0 0 / .08); }
 /* the sale side, Apple-fied (owner 2026-10-17: "the walk-in customer a pill, like the search bar ... check out a pill, walk-in and discount
    each its own pill"): the same three pieces, the who and money cards drop their box and what is in them becomes glass, as Sell's search row.
@@ -8220,6 +8251,25 @@ body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items 
 :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row:is(:has(+ .band), :last-child) { border-bottom-left-radius: var(--rl-r); border-bottom-right-radius: var(--rl-r); }
 :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row:hover { background-color: var(--rl-hover); }
 :is(.view-orders .o-rail, .view-customers .o-rail) .row.cur { background-color: var(--rl-track); }
+/* Orders, Customers and Items in the search bar's glass (owner 2026-10-18); hover and the open row keep their fill (their rules outrank this) */
+:is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row { background-color: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) .row { box-shadow: var(--glass-ring); }   /* Items too (owner 2026-10-18) */
+/* the Orders date strip: glass, its lit top edge at half (owner 2026-10-18: full v457 "too glass-like", plain v458 "needs a little oomph");
+   the glass's 1/4 drop made too deep a dip onto the first row (owner 2026-10-18): a 1px fall only */
+.view-orders .o-rail .band::before { box-shadow: 0 .5px 1px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1); }
+body.light-theme .view-orders .o-rail .band::before { box-shadow: 0 .5px 1px rgb(0 0 0 / .05), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .45); }
+/* QR codes, the customer's page and Reports in the lists' glass (owner 2026-10-18); Reports keeps its hairline, so only the drop and the lit edge */
+.lv:is(.view-qr, .view-reports) .card, #customerBody .card { border-color: transparent; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+body.hairlines .lv.view-reports .card { border-color: var(--line); box-shadow: 0 1px 4px rgb(0 0 0 / .3), inset 0 1px 0 rgb(255 255 255 / .1); }
+body.hairlines.light-theme .lv.view-reports .card { box-shadow: 0 1px 4px rgb(0 0 0 / .06), inset 0 1px 0 rgb(255 255 255 / .8); }
+/* every ‹ and everything top right sits in the ☰'s glass circle, words in a glass pill (owner 2026-10-18) */
+.lv .sq:is(.back, .ty-edit-btn), .lv .head > .sh-print, body .lv .e-top .acts .act, body .lv .o-top .act:not(.primary), .cust-sheet .es-x, .cust-sheet .es-ink {
+  width: 44px; min-width: 44px; height: 44px; padding: 0; border: 0; border-radius: 999px; color: var(--ink);
+  background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+.lv .head > .sh-print, body .lv .e-top .acts .act.primary, .cust-sheet .es-ink { width: auto; padding: 0 16px; }
+.lv .sq.back { margin-left: 0; } .lv .sq.ty-edit-btn { margin-right: 0; }   /* a circle sits on the edge line, no longer overhangs it */
+body .lv .o-top .act:not(.primary, .icon) { width: auto; padding: 0 14px; }   /* iPad: the pill keeps its word */
+@container pv (max-width: 720px) { body .lv .o-top .act:not(.primary) { width: 44px; padding: 0; } }   /* phone: icons, so circles */
 /* no head (Customers; Categories, Modifiers, Discounts): the first row opens the block */
 .view-items .band { display: none; }   /* Items: no head on any tab, the rows say it (phone 2026-10-16; iPad too, owner 2026-10-18) */
 :is(.view-customers .o-rail .row, .view-items .band + div > .row):first-child { margin-top: 8px; border-top-left-radius: var(--rl-r); border-top-right-radius: var(--rl-r); }
@@ -8296,7 +8346,7 @@ body .qs-pg .e-top .act.primary:disabled { color: var(--ink-quaternary); }
 .qs-empty { margin: 8px 16px; color: var(--ink-tertiary); font-size: 13px; text-align: center; }
 
 /* the Items list while on: only items (no Categories / Modifiers / Discounts, no +), the ☰ becomes × */
-body.qs-on :is(#itemsAdd, #itemsKinds) { display: none; }
+body.qs-on :is(#itemsAdd, #itemsBar) { display: none; }
 .qs-pg.dock #qsBack { visibility: hidden; }   /* beside the list, the list's × closes */
 /* ...and no Price: picking is by name, and the count is what stock needs (owner 2026-10-13: less to read) */
 body.qs-on .view-items .cols { grid-template-columns: minmax(0,1fr) 170px 110px; }
