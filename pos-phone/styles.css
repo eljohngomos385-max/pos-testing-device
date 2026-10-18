@@ -4781,9 +4781,9 @@ body.light-theme .product-card.pc-group:hover { background: var(--surface-hover)
 body.light-theme .product-card:active { background: var(--surface-hover); }
 /* owner 2026-10-18: tiles were "the boring part", but ring + lit edge + drop (v447) was "too much attention"; a
    hairline only, drawn inset so the grid's overflow can't clip it */
-.product-card { box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .08); }
+.product-card { box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .08), 0 1px 2px -1px rgb(0 0 0 / .3); }
 .product-card, .product-card.pc-group { background: var(--surface-2); }   /* owner 2026-10-18: dark tiles nearer the search glass (#121212); --tile stays for the sheets */
-body.light-theme .product-card { box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .08), 0 1px 2px rgb(0 0 0 / .05); }   /* white on the grey page: a touch of drop so it lifts (v448 ring alone read flat) */
+body.light-theme .product-card { box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06); }   /* owner: --rl-shadow read "a bit strong" on white */   /* white on the grey page: a touch of drop so it lifts (v448 ring alone read flat) */
 body.light-theme .co-tile:hover { background: var(--bg-soft); }
 body.light-theme .co-tile:active { background: var(--bg-softer); }
 body.light-theme .pc-name,
@@ -7862,6 +7862,19 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab) { background: var(--accent) linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%); color: var(--accent-ink);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px rgb(255 255 255 / .12), 0 2px 8px -2px rgb(0 0 0 / .3); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab):active { background-color: var(--accent-pressed); }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab) {   /* liquid glass press, app.js sets --lg-* */
+  touch-action: none; transition: transform .9s var(--lg-spring), background-color .2s;
+  /* one transform at rest and pressed, the drag's angle kept after release: the spring wobbles along the way it was pulled (owner 2026-10-18) */
+  transform: translate(var(--lg-x, 0px), var(--lg-y, 0px)) rotate(var(--lg-a, 0rad)) scale(calc(1 + var(--lg-p, 0) + var(--lg-s, 0)), calc(1 + var(--lg-p, 0) - var(--lg-s, 0) / 2)) rotate(calc(-1 * var(--lg-a, 0rad)));
+  --lg-spring: linear(0, .076, .268, .521, .786, 1.021, 1.199, 1.307, 1.346, 1.326, 1.263, 1.177, 1.085, 1.002, .937, .897, .881, .886, .906, .935, .967, .996, 1.019, 1.034, 1.041, 1.04, 1.034, 1.024, 1.013, 1.002, .994, .989, .986, .986, .988, .991, 1); }   /* a damped spring: lets go with a small jiggle (owner 2026-10-18) */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack) > *, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
+:where(.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)) { position: relative; z-index: 1; }   /* swells over the search, not under it (owner 2026-10-18) */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)::after, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab)::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .4s;
+  background: radial-gradient(circle at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .35), rgb(255 255 255 / 0) 70%); }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab).lg-on {
+  transition-duration: .15s; transition-timing-function: ease-out; --lg-p: .08; }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on::after, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab).lg-on::after { opacity: 1; transition-duration: .1s; }
 .lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* the last row clears + */
 /* the list runs up under the search, the bar and the clock, a frost on top fading down into it (owner 2026-10-18, iOS 26's scroll edge,
    the Claude app's top); at rest the first row still starts under the bar. --head-h: the head's height, set by app.js */
@@ -7943,6 +7956,18 @@ body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet) { --glass-ring:
 body:not(.light-theme) .rail-h .items, body:not(.light-theme) .rail-h.co-mode .pay { background: transparent; box-shadow: 0 0 0 .5px rgb(255 255 255 / .2); -webkit-backdrop-filter: none; backdrop-filter: none; }   /* dark --line (.08) vanishes on black; .5px as the pills', thinner (owner 2026-10-18) */
 .rail-h .go span + span::before { content: '·'; margin-right: 8px; }
 .rail-h .go span:only-child { flex: none; }   /* empty cart: Check out centred too */
+/* phone cart (owner 2026-10-18, option B): the list runs down under Walk-in | Discount and Check out, a frost behind them fading up into it,
+   as Items' top; the pills stay one tap away. Not at the checkout: there the money card is the Total */
+@media (max-width: 720px) {
+  .rail-h:not(.co-mode) > * { grid-column: 1; }   /* the overlap below would otherwise open a second column */
+  .rail-h:not(.co-mode) .items { grid-row: 2 / -1; margin-bottom: calc(-1 * var(--ph-b)); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .rail-h:not(.co-mode) .pay { grid-row: 3; z-index: 2; }
+  .rail-h:not(.co-mode) .go { grid-row: 4; z-index: 2; }
+  .rail-h:not(.co-mode) .lines { padding-bottom: calc(44px + var(--bar-h) + 2 * var(--rl-gap) + var(--ph-b)); }   /* the last line scrolls clear of Check out */
+  .rail-h:not(.co-mode)::after { content: ''; position: absolute; z-index: 1; inset: auto 0 0; height: calc(44px + var(--bar-h) + var(--rl-gap) + var(--ph-b) + 36px); pointer-events: none;
+    background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    -webkit-mask-image: linear-gradient(transparent, #000 48px); mask-image: linear-gradient(transparent, #000 48px); }
+}
 /* Sell (owner 2026-10-17, phone copy): [☰][search bar] in glass, the bar always open with scan inside it at the right end
    ("make the search bar open and combine these two buttons"); typing swaps scan for the clear X. Phone and tablets */
 #catalogSearchRow > #sidebarToggle, #catalogSearchRow :is(#searchInput, #variantSearch) {
@@ -8430,10 +8455,12 @@ body.qs-on.qs-price .view-items .cols > :nth-child(4) { display: none; }
 /* photo top keeps its size (the tile grows, tall in getSellGridProfile); photo fills: shade top and bottom, white words */
 .product-grid[data-pics="top"] .pc-pic .pc-img { aspect-ratio: 16 / 11; margin-bottom: 6px; }
 .product-grid[data-pics="fill"] .pc-img { grid-area: auto; z-index: 0; }   /* over the whole tile, not the img row; z 0 keeps its shades under the words */
-.product-grid[data-pics="fill"] .pc-img::after { inset: 25% 0 0; background: linear-gradient(transparent, rgb(0 0 0 / .55) 45%, rgb(0 0 0 / .85)); }
-.product-grid[data-pics="fill"] .pc-pic :is(.pc-name, .pc-top, .pc-pr) { text-shadow: 0 1px 2px rgb(0 0 0 / .45); }   /* bright photos (white screws) */
+.product-grid[data-pics="fill"] .pc-img::after { inset: 50% 0 0; background: linear-gradient(transparent, rgb(0 0 0 / .45)); }   /* owner 2026-10-18: the heavy shades top and bottom were "ugly", "overdone" */
+.product-grid[data-pics="fill"] .pc-pic :is(.pc-name, .pc-top, .pc-pr) { text-shadow: 0 1px 2px rgb(0 0 0 / .35); }   /* bright photos (white screws) */
 .product-grid[data-pics="fill"] .pc-pic :is(.pc-top, .pc-pr) { position: relative; color: #fff; }
-.product-grid[data-pics="fill"] .pc-pic .pc-img::before { content: ''; position: absolute; inset: 0 0 55%; background: linear-gradient(rgb(0 0 0 / .7), transparent); }
+.product-grid[data-pics="fill"] .pc-pic:has(.pc-stk) .pc-img::before { content: ''; position: absolute; inset: 0 0 75%; background: linear-gradient(rgb(0 0 0 / .3), transparent); }   /* only under a stock count */
+.product-grid[data-pics="fill"] .pc-pic .pc-stk { color: #fff; }   /* low/out tints were unreadable on photos */
+.product-grid[data-pics="fill"] .pc-pic::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inherit; pointer-events: none; }   /* the boxes' hairline over the photo */
 
 /* Phone and tablet: the Gemini drawer (owner 2026-10-17, from pos-lab/gemini-sidebar-lab.html; tablets too, owner: "the tablets should be using the phone version"). ☰ slides the sidebar in over the
    whole screen and pushes the page out right, on iOS's sheet curve; ✕, a row or a swipe left slides it back.

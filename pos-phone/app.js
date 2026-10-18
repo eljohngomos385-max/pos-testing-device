@@ -381,6 +381,24 @@ function attachEvents() {
   [kb, ...kb.children].forEach(el => kbRO.observe(el));   // the words too: a late font or another language widens them
   wireSegDrag($('#itemsKinds'), 'kind');
   new ResizeObserver(([e]) => $('#itemsView').style.setProperty('--head-h', e.target.offsetHeight + 'px')).observe($('#itemsView .head'), { box: 'border-box' });   // the list starts under it, the frost covers it
+  // Liquid glass press (owner 2026-10-18): the button swells and shines under the finger, leans and stretches toward a drag, springs back on release
+  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab)';
+  document.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest(LG);
+    if (!b || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const x0 = e.clientX, y0 = e.clientY, pull = (d, c, k) => c * d / (d + k);   // rubber band: follows, then resists
+    const shine = (ev) => { const r = b.getBoundingClientRect(), at = (v, n) => Math.min(Math.max(v, 0), n) / n * 100 + '%';   // the light stays on the glass
+      b.style.setProperty('--lg-px', at(ev.clientX - r.left, r.width)); b.style.setProperty('--lg-py', at(ev.clientY - r.top, r.height)); };
+    const move = (ev) => {
+      const dx = ev.clientX - x0, dy = ev.clientY - y0, d = Math.hypot(dx, dy), m = pull(d, 10, 40) / (d || 1);
+      b.style.setProperty('--lg-x', dx * m + 'px'); b.style.setProperty('--lg-y', dy * m + 'px');
+      b.style.setProperty('--lg-a', Math.atan2(dy, dx) + 'rad'); b.style.setProperty('--lg-s', pull(d, .2, 60));
+      shine(ev);
+    };
+    const end = () => { b.classList.remove('lg-on'); ['--lg-x', '--lg-y', '--lg-s'].forEach(v => b.style.removeProperty(v));   /* --lg-a stays: the spring wobbles along the pull */ removeEventListener('pointermove', move); removeEventListener('pointerup', end); removeEventListener('pointercancel', end); };
+    shine(e); b.classList.add('lg-on');
+    addEventListener('pointermove', move); addEventListener('pointerup', end); addEventListener('pointercancel', end);
+  });
   // swipe the list left / right for the next / previous tab: the list rides the finger with the tab beside it showing,
   // like the Sell grid's pages (owner 2026-10-16); not in Quick stock, which hides the tabs
   let ivX = null;

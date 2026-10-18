@@ -1127,7 +1127,9 @@ const fulfilLabel = () => orderFulfilLabel({ fulfilment: state.fulfilment });
 // anywhere or Esc closes it. items: [{label, ic, run}], top to bottom (the last one sits nearest the thumb).
 function openFabMenu(fab, items) {
   if (document.querySelector('.fab-veil:not(.out)')) return;   // one menu; a closing one may still fade
+  fab.style.transition = 'none';   // measured at rest, not mid liquid-glass spring (app.js)
   const r = fab.getBoundingClientRect(), veil = document.createElement('div');
+  fab.style.transition = '';
   veil.className = 'fab-veil';
   veil.style.cssText = `--fr:${innerWidth - r.right}px;--fb:${innerHeight - r.bottom}px;--fs:${r.width}px`;
   veil.innerHTML = `<div class="fab-stack" role="menu">${items.map((it, i) => `<button type="button" role="menuitem" data-i="${i}" style="--d:${(items.length - 1 - i) * 35}ms">
