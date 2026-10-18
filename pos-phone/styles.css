@@ -7857,6 +7857,12 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 #itemsBack, #itemsView.hub :is(#itemsFind, #itemsAdd, #itemsBar) { display: none; }   /* the hub is parked behind the pills: nothing opens it now */
 #itemsView.hub .head > .ph-ttl { display: block; }
 .lv #itemsAdd { right: 20px; }
+/* + is the checkout bar's black capsule again, lab size (owner 2026-10-18: "it was black before ... bigger ... the same kind of design" as the items bar) */
+.lv #itemsAdd { width: 56px; height: 56px; }
+/* Start shift wears it too (owner 2026-10-18: "roughly around the same treatment") */
+.lv :is(#itemsAdd, #shiftFab) { background: var(--accent) linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%); color: var(--accent-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px rgb(255 255 255 / .12), 0 2px 8px -2px rgb(0 0 0 / .3); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.lv :is(#itemsAdd, #shiftFab):active { background-color: var(--accent-pressed); }
 .lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* the last row clears + */
 /* The list bar (owner 2026-10-18): one glass bar of words; the picked one sits under a glass pill that slides between them
    (slidePill / wireSegDrag). Words never cut: when they run out of room (another language, a small phone) they keep their
@@ -7875,9 +7881,9 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv #itemsKinds button { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; gap: 4px; height: 32px; padding: 0 6px;   /* 6: English still fits a 375 iPhone */
  
   border-radius: 999px; background: none; color: var(--ink-secondary); font-size: 13px; font-weight: 600; white-space: nowrap; transition: color .2s; }
-.lv #itemsKinds button.cur { color: var(--ink); background: var(--rl-track); box-shadow: var(--glass-ring); touch-action: none; }   /* before the first slide */
+.lv #itemsKinds button.cur { color: var(--ink); background: var(--rl-track); box-shadow: var(--pill-ring); touch-action: none; }   /* before the first slide */
 .lv #itemsKinds.slid button.cur { background: none; box-shadow: none; }
-.lv #itemsKinds.slid::before { top: 4px; bottom: 4px; border-radius: 999px; background: var(--rl-track); box-shadow: var(--glass-ring); }   /* the glass pill */
+.lv #itemsKinds.slid::before { top: 4px; bottom: 4px; border-radius: 999px; background: var(--rl-track); box-shadow: var(--pill-ring); }   /* the glass pill */
 .lv #itemsKinds .ic { display: none; }   /* words only, phone and iPad (owner 2026-10-18: "for the iPad one, just remove the icon as well"); the icons stay in the markup for an icons-first try */
 @media (min-width: 721px) {
   .lv #itemsView .head { flex-wrap: nowrap; }
@@ -7890,8 +7896,10 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 /* the phone's glass (set here: .lv is the pv container, so its own @container block can't reach it) */
 .lv, #catalogSearchRow, #side, .cust-sheet { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
       --glass-ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
+      --pill-ring: 0 1px 2px rgb(0 0 0 / .15), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .05);   /* a pill inside a glass bar: half the ring's shadow and shine (owner 2026-10-18) */
       --float: 0 4px 12px -4px rgb(0 0 0 / .45); }   /* falls only down and to the sides (blur/2 < spread + offset upward); owner 2026-10-18: 10/30 "floats too much" */   /* owner 2026-10-17: the 8/24 drop read as floating; glass sits close */
 body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+  --pill-ring: 0 1px 2px rgb(0 0 0 / .03), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .4);
   --float: 0 4px 12px -4px rgb(0 0 0 / .08); }
 /* the sale side, Apple-fied (owner 2026-10-17: "the walk-in customer a pill, like the search bar ... check out a pill, walk-in and discount
    each its own pill"): the same three pieces, the who and money cards drop their box and what is in them becomes glass, as Sell's search row.
@@ -8001,12 +8009,10 @@ input.es-ta { height: 56px; }
 /* the look is the Items list bar's (owner 2026-10-18): glass bar 36, wide; the pill fills it closer (2px, 32 tall), words get room,
    and the pill's top shine and shadow are half the glass ring's (owner: "reduce the shine, keep it"; "reduce the shadow of the pill") */
 .lv .kinds.rp-units { position: relative; order: 0; flex-basis: auto; width: fit-content; max-width: 100%; justify-self: center;   /* centred ("Apple v3", owner 2026-10-15); hugs its words (owner 2026-10-18) */
-  --pill-ring: 0 1px 2px rgb(0 0 0 / .15), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .05);
   height: 36px; margin: -3px 0 0; padding: 2px; gap: 0; justify-content: normal;   /* Reports + Shift sit 3px higher, on one line (owner 2026-10-17) */
   display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;   /* every option the widest word's width, so the middle one sits dead centre (owner 2026-10-18) */
   border: 0; border-radius: 999px; background: var(--glass); box-shadow: var(--glass-ring);
   -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
-body.light-theme .lv .kinds.rp-units { --pill-ring: 0 1px 2px rgb(0 0 0 / .03), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .4); }
 .lv .kinds.rp-units button { flex: none; padding: 0 28px; border-radius: 999px; color: var(--ink-secondary); font-size: 13px; font-weight: 600; transition: color .2s; }
 .lv .kinds.rp-units button.cur { color: var(--ink); background: var(--rl-track); box-shadow: var(--pill-ring); }
 .lv .kinds.rp-units.slid button.cur { background: none; box-shadow: none; }
