@@ -7998,15 +7998,19 @@ input.es-ta { height: 56px; }
 /* Reports = reports-lab.html v5 (owner 2026-10-15): Screen Time's layout, our look. Health's Day | Week | Month capsule, then
    Settings blocks: Sales (the number, the period with ‹ › under it, the chart), Profit / Orders / Margin as three small cards,
    Top items and Top categories (the Items page's rows), By method (one bar split by share, four rows at most), Breakdown. */
-.lv .kinds.rp-units { --seg: rgb(118 118 128 / .24); --seg-on: var(--surface-hover);   /* iOS's fill; no theme token names it */
-  position: relative; order: 0; flex-basis: auto; width: min(100%, 300px); justify-self: center;   /* "Apple v3": centred, 300 at most (owner 2026-10-15) */
-  height: 30px; margin: -3px 0 0; padding: 2px; gap: 0; justify-content: normal;   /* Reports + Shift sit 3px higher, on one line (owner 2026-10-17) */
-  border: 0; border-radius: 999px; background: var(--seg); box-shadow: none; }
-body.light-theme .lv .kinds.rp-units { --seg: rgb(118 118 128 / .12); --seg-on: var(--surface-2); }
-.lv .kinds.rp-units button { flex: 1; padding: 0 8px; border-radius: 999px; color: var(--ink); font-size: 13px; font-weight: 590; }
-.lv .kinds.rp-units button.cur { background: var(--seg-on); }
+/* the look is the Items list bar's (owner 2026-10-18): glass bar 36, wide; the pill fills it closer (2px, 32 tall), words get room,
+   and the pill's top shine and shadow are half the glass ring's (owner: "reduce the shine, keep it"; "reduce the shadow of the pill") */
+.lv .kinds.rp-units { position: relative; order: 0; flex-basis: auto; width: fit-content; max-width: 100%; justify-self: center;   /* centred ("Apple v3", owner 2026-10-15); hugs its words (owner 2026-10-18) */
+  --pill-ring: 0 1px 2px rgb(0 0 0 / .15), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .05);
+  height: 36px; margin: -3px 0 0; padding: 2px; gap: 0; justify-content: normal;   /* Reports + Shift sit 3px higher, on one line (owner 2026-10-17) */
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;   /* every option the widest word's width, so the middle one sits dead centre (owner 2026-10-18) */
+  border: 0; border-radius: 999px; background: var(--glass); box-shadow: var(--glass-ring);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+body.light-theme .lv .kinds.rp-units { --pill-ring: 0 1px 2px rgb(0 0 0 / .03), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .4); }
+.lv .kinds.rp-units button { flex: none; padding: 0 28px; border-radius: 999px; color: var(--ink-secondary); font-size: 13px; font-weight: 600; transition: color .2s; }
+.lv .kinds.rp-units button.cur { color: var(--ink); background: var(--rl-track); box-shadow: var(--pill-ring); }
 .lv .kinds.rp-units.slid button.cur { background: none; box-shadow: none; }
-.lv .kinds.rp-units.slid::before { top: 2px; bottom: 2px; height: auto; width: var(--w); transform: translateX(var(--x)); border-radius: 999px; background: var(--seg-on); }
+.lv .kinds.rp-units.slid::before { top: 2px; bottom: 2px; height: auto; width: var(--w); transform: translateX(var(--x)); border-radius: 999px; background: var(--rl-track); box-shadow: var(--pill-ring); }
 /* the period over the number (Screen Time's, "Apple v3" owner 2026-10-15); a tap on the date comes back to now */
 .lv .rp-per { display: flex; margin-bottom: 4px; }   /* "Sales" to the number reads 14px apart, ink to ink (owner 2026-10-16) */
 /* the header on a past period: Show Today top-right; the ‹ date › bar (the blue rounds) that pins under it once the date
