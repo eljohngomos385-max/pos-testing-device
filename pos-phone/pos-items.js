@@ -65,9 +65,8 @@ function fillItemsPane(kind, band, rows) {
   band.classList.remove('k2');
   const q = itemsFilter.q.trim().toLowerCase();
   const list = catalogItems().filter(it => {
-    if (itemsFilter.cat && !it.cats.includes(itemsFilter.cat)) return false;
-    if (itemsFilter.stock === 'low' && itemStk(it) !== 'stk-low') return false;
-    if (itemsFilter.stock === 'out' && itemStk(it) !== 'stk-out') return false;
+    if (itemsFilter.cat && !itemsFilter.cat.some(c => it.cats.includes(c))) return false;   // '' = any, else the picks (openFilterSheet)
+    if (itemsFilter.stock && !itemsFilter.stock.some(s => itemStk(it) === 'stk-' + s)) return false;
     return !q || it.name.toLowerCase().includes(q) || it.variants.some(v => [v.name, v.sku, v.barcode].some(x => x.toLowerCase().includes(q)));
   }).sort((a, b) => a.name.localeCompare(b.name));
   band.innerHTML = `<span>Item <span class="num">· ${list.length}</span></span><span>Category</span><span>Price</span><span>In stock</span>`;
@@ -526,6 +525,9 @@ function dropKind() {
     onConfirm: () => { saveModifiers(loadModifiers().map(m => (m.id === K.id ? stampRow({ ...m, archived: true }) : m))); closeKindEditor('Archived'); } });
 }
 function closeKindEditor(msg) {
-  if (itemsFilter.cat && !state.folders.some(f => f.name === itemsFilter.cat)) itemsFilter.cat = '';   // its category was renamed or deleted
+  if (itemsFilter.cat) {   // a picked category was renamed or deleted: it lets go
+    const cat = itemsFilter.cat.filter(c => state.folders.some(f => f.name === c));
+    itemsFilter.cat = cat.length ? cat : '';
+  }
   closeItemEditor(); renderItems(); showToast(msg);
 }

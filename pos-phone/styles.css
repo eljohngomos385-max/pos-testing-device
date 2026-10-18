@@ -4772,10 +4772,11 @@ body.light-theme .orders-search-wrap input:focus {
 /* Back-office blocks: the F9 fill with a hairline ring, drawn inset so the grid's overflow can't clip it;
    shape and type live on the base rules so both themes match */
 body.light-theme .view-sell .content-row,
-body.light-theme:has(:is(.view-sell, .view-settings, .view-qr, .view-shift, .view-customers, .view-reports).active) { background: var(--canvas); }   /* the body too: Safari tints the status bar with it */
+body.light-theme .view-checkout,
+body.light-theme:has(:is(.view-sell, .view-checkout, .view-settings, .view-qr, .view-shift, .view-customers, .view-reports).active) { background: var(--canvas); }   /* the body too: Safari tints the status bar with it */
 body.light-theme #catalogSearchRow { --rl-soft: var(--surface-2); }   /* ☰, search, scan: white like the cards on the grey page */
 body.light-theme .product-card,
-body.light-theme .product-card.pc-group { background: var(--surface); }   /* owner 2026-10-18: nearer the search glass (251) than pure white */
+body.light-theme .product-card.pc-group, body.light-theme .co-tile { background: var(--surface); }   /* owner 2026-10-18: nearer the search glass (251) than pure white */
 body.light-theme .product-card:hover,
 body.light-theme .product-card.pc-group:hover { background: var(--surface-hover); }
 body.light-theme .product-card:active { background: var(--surface-hover); }
@@ -4783,7 +4784,7 @@ body.light-theme .product-card:active { background: var(--surface-hover); }
    hairline only, drawn inset so the grid's overflow can't clip it */
 .product-card { box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .08), 0 1px 2px -1px rgb(0 0 0 / .3); }
 .product-card, .product-card.pc-group { background: var(--surface-2); }   /* owner 2026-10-18: dark tiles nearer the search glass (#121212); --tile stays for the sheets */
-body.light-theme .product-card { box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06); }   /* owner: --rl-shadow read "a bit strong" on white */   /* white on the grey page: a touch of drop so it lifts (v448 ring alone read flat) */
+body.light-theme :is(.product-card, .co-tile) { box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06); }   /* owner: --rl-shadow read "a bit strong" on white */   /* white on the grey page: a touch of drop so it lifts (v448 ring alone read flat) */
 body.light-theme .co-tile:hover { background: var(--bg-soft); }
 body.light-theme .co-tile:active { background: var(--bg-softer); }
 body.light-theme .pc-name,
@@ -7284,12 +7285,10 @@ body.light-theme {
   #app.co-side .view-sell { display: flex; }
   #app.co-side #sidebarToggle { visibility: hidden; }             /* z-index 96, above the pane; hidden with the sell view otherwise */
   #app.co-side .view-checkout.active, #app.co-side .view-checkout.co-leaving {
-    position: absolute; top: 0; bottom: 0; left: 0; right: calc(var(--co-right, 0px) + 1px); z-index: 5; display: flex; background: var(--bg); }   /* +1px: the rail's boxes draw their hairline just outside their edge, the pane covered it (owner 2026-10-18: "cut off on the side") */
+    position: absolute; top: 0; bottom: 0; left: 0; right: calc(var(--co-right, 0px) + 1px); z-index: 5; display: flex; background: var(--canvas, var(--bg)); }   /* +1px: the rail's boxes draw their hairline just outside their edge, the pane covered it (owner 2026-10-18: "cut off on the side") */
   #app.co-side .co { grid-template-columns: minmax(0, 1fr); }
   #app.co-side .co-items { display: none; }
-  body.light-theme #app.co-side .view-sell .content-row { background: var(--bg); }   /* one colour: the cart's side goes white with the pane */
 }
-body.light-theme .view-sell .content-row { transition: background-color .2s ease-out; }   /* fades with the checkout pane, both ways */
 .ph-bar, .rail-h .ph-back { display: none; }
 /* Phone: the products fill the screen; the bar under them opens the sale sidebar as its own page (owner
    2026-10-07: the page, not a sheet). The edit sheet covers that page, top row too, as on the tablet */
@@ -7335,7 +7334,7 @@ body.light-theme .view-sell .content-row { transition: background-color .2s ease
   .vsheet { padding-bottom: 8px; }
   /* Walk-in / Discount / a cart line: a full page like checkout's (owner 2026-10-08), no frame, no lines; ‹ Back where
      checkout has ‹ Cancel. A lone Done only closed, as Back does, so it goes; Apply / Clear / Remove item keep the foot */
-  .esheet { position: fixed; z-index: 98; padding: 0 0 var(--ph-safe); }
+  .esheet { position: fixed; z-index: 98; padding: var(--ph-top, 0px) 0 var(--ph-safe); }   /* the page starts under the clock, its ‹ on Sell's ☰ line */
   .esheet:not(.cust-sheet) { background: var(--bg); }   /* a white page: the strip under the card (the home bar's) white too, not the tablet frame's grey */
   .es-card { border: 0; border-radius: 0; box-shadow: none; background: var(--bg); }
   body.light-theme:has(.esheet.open:not(.cust-sheet)) { background: var(--bg); }   /* the page is white; the status bar with it */
@@ -7499,7 +7498,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
   .lv .o-rail .list { border-bottom: 0; border-radius: var(--rl-r) var(--rl-r) 0 0; }
   .lv .o-rail .lines { margin-bottom: 0; padding-bottom: var(--ph-safe, 0px); }
   .lv .paper-scroll { padding: 1px 4px calc(21px + var(--ph-safe, 0px)); }   /* 16px in with .o-main's 12, as the Show receipt sheet: the edge shows */
-  .lv .o-main { position: absolute; inset: 0; z-index: 5; padding: 16px 12px 0; background: var(--canvas, var(--bg)); transform: translateX(100%); transition: transform .28s var(--rl-ease); }
+  .lv .o-main { position: absolute; inset: 0; z-index: 5; padding: 8px 12px 0; background: var(--canvas, var(--bg)); transform: translateX(100%); transition: transform .28s var(--rl-ease); }
   .lv .ov.reading .o-main { transform: none; }
   .lv .o-top .back { display: inline-flex; }
 }
@@ -7817,7 +7816,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv .find::before, .lv :is(#itemsAdd, #newCustomerBtn) {
   border: 0; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
 .lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack) { width: 44px; height: 44px; border-radius: 50%; }
-.lv .page, .lv .o-rail { padding-top: 0; margin-top: 0; }   /* the head right under the status bar, as iOS */
+.lv .page, .lv .o-rail { padding-top: 8px; margin-top: 0; }   /* the head 8 under the clock: Sell's ☰ line (.catalog's 8), every page's ☰ / ‹ in the same spot (owner 2026-10-18) */
 .lv .head:has(> .ph-ttl.st-ttl) { position: static; align-items: center; }
 .lv .head > .ph-ttl { display: block; position: static; flex: 1; margin-right: 51px; pointer-events: auto; text-align: center; }   /* 51 = ☰ + gap: the word sits on the screen's middle */
 #itemsTtl { display: inline-flex; align-items: center; gap: 2px; height: 44px; padding: 0 8px; color: var(--ink); font: inherit; }
@@ -7862,24 +7861,28 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab) { background: var(--accent) linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%); color: var(--accent-ink);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px rgb(255 255 255 / .12), 0 2px 8px -2px rgb(0 0 0 / .3); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab):active { background-color: var(--accent-pressed); }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab) {   /* liquid glass press, app.js sets --lg-* */
-  touch-action: none; transition: transform .9s var(--lg-spring), background-color .2s;
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn) {   /* liquid glass press, app.js sets --lg-* */
+  touch-action: none; transition: transform .9s var(--lg-spring), background-color .2s, opacity .18s;   /* opacity: Sell's ☰ fades with the drawer */
   /* one transform at rest and pressed, the drag's angle kept after release: the spring wobbles along the way it was pulled (owner 2026-10-18) */
   transform: translate(var(--lg-x, 0px), var(--lg-y, 0px)) rotate(var(--lg-a, 0rad)) scale(calc(1 + var(--lg-p, 0) + var(--lg-s, 0)), calc(1 + var(--lg-p, 0) - var(--lg-s, 0) / 2)) rotate(calc(-1 * var(--lg-a, 0rad)));
   --lg-spring: linear(0, .076, .268, .521, .786, 1.021, 1.199, 1.307, 1.346, 1.326, 1.263, 1.177, 1.085, 1.002, .937, .897, .881, .886, .906, .935, .967, .996, 1.019, 1.034, 1.041, 1.04, 1.034, 1.024, 1.013, 1.002, .994, .989, .986, .986, .988, .991, 1); }   /* a damped spring: lets go with a small jiggle (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack) > *, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack) > *, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab) > *, #catalogSearchRow > #sidebarToggle > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
 :where(.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)) { position: relative; z-index: 1; }   /* swells over the search, not under it (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)::after, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab)::after {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)::after, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .4s;
   background: radial-gradient(circle at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .35), rgb(255 255 255 / 0) 70%); }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab).lg-on {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on {
   transition-duration: .15s; transition-timing-function: ease-out; --lg-p: .08; }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on::after, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab).lg-on::after { opacity: 1; transition-duration: .1s; }
+#catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on { --lg-p: .01; }   /* the search swells 3px, as Messages' (owner 2026-10-18 photos) */
+#catalogSearchRow > .search-wrap:not(.vs-search)::after { z-index: 1; border-radius: 999px; background: radial-gradient(circle 40px at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .3), rgb(255 255 255 / 0)); }   /* a hand-sized light, not one as wide as the bar */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on::after, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after { opacity: 1; transition-duration: .1s; }
 .lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* the last row clears + */
 /* the list runs up under the search, the bar and the clock, a frost on top fading down into it (owner 2026-10-18, iOS 26's scroll edge,
    the Claude app's top); at rest the first row still starts under the bar. --head-h: the head's height, set by app.js */
 .main > .view-items { margin-top: calc(-1 * var(--ph-top, 0px)); }   /* up into .main's clock strip */
-#itemsView .head { grid-area: 1 / 1; z-index: 2; padding-top: var(--ph-top, 0px); }   /* a grid item: z works unpositioned, so + keeps the page as its box */
+.main > .view-items .editor { border-top: var(--ph-top, 0px) solid transparent; }   /* ponytail: the item / category editor fills that same box, so it steps back down below the clock; a see-through border, not padding, so the phone and wide paddings stay as they are and the page grey still fills the strip */
+#itemsView .head { grid-area: 1 / 1; z-index: 2; padding-top: calc(8px + var(--ph-top, 0px)); }
+.main > .view-items .page { padding-top: 0; }   /* Items runs up under the clock: its head carries the 8 instead, so the list still slides under the frost */   /* a grid item: z works unpositioned, so + keeps the page as its box */
 #itemsView .list { grid-area: 1 / 1 / -1; }
 #itemsView .lines { padding-top: calc(var(--head-h, 0px) + var(--rl-gap)); }
 #itemsView .band { top: calc(var(--head-h, 0px) + var(--rl-gap)); }
@@ -7916,11 +7919,11 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 @media (min-width: 721px) and (max-width: 900px) { .lv #itemsKinds button { padding: 0 9px; } }   /* iPad upright: "Search discounts" still fits */
 #itemsRows .row .chev { width: 16px; height: 16px; margin-left: 6px; vertical-align: -3px; color: var(--ink-tertiary); }
 /* the phone's glass (set here: .lv is the pv container, so its own @container block can't reach it) */
-.lv, #catalogSearchRow, #side, .cust-sheet { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
+.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
       --glass-ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
       --pill-ring: 0 1px 2px rgb(0 0 0 / .15), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .05);   /* a pill inside a glass bar: half the ring's shadow and shine (owner 2026-10-18) */
       --float: 0 4px 12px -4px rgb(0 0 0 / .45); }   /* falls only down and to the sides (blur/2 < spread + offset upward); owner 2026-10-18: 10/30 "floats too much" */   /* owner 2026-10-17: the 8/24 drop read as floating; glass sits close */
-body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
   --pill-ring: 0 1px 2px rgb(0 0 0 / .03), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .4);
   --float: 0 4px 12px -4px rgb(0 0 0 / .08); }
 /* the sale side, Apple-fied (owner 2026-10-17: "the walk-in customer a pill, like the search bar ... check out a pill, walk-in and discount
@@ -7979,18 +7982,39 @@ body:not(.light-theme) .rail-h .items, body:not(.light-theme) .rail-h.co-mode .p
 #catalogSearchRow > .search-wrap { min-width: 0; }
 #catalogSearchRow > #scanBtn { position: absolute; right: 0; z-index: 1; width: 44px; background: none; box-shadow: none; color: var(--ink-secondary); }
 #catalogSearchRow:has(#searchInput:not(:placeholder-shown)) > #scanBtn { display: none; }   /* the clear X takes the end */
+/* Messages' glass (owner 2026-10-18 photo): a lighter fill and a lit rim, so it reads as glass on the plain dark page. One even .5px
+   hairline (owner: "the hairline is too thick") */
+body:not(.light-theme) #catalogSearchRow { --glass: color-mix(in srgb, var(--ink) 14%, color-mix(in srgb, var(--bg) 75%, transparent));
+  --glass-ring: 0 1px 4px rgb(0 0 0 / .3), inset 0 0 0 .5px rgb(255 255 255 / .2); }
 
-/* the filter sheet (both pages): every choice on one sheet, a tap applies at once; lives in .rail-veil */
-.rail-menu.fp { width: 320px; max-height: calc(100vh - 24px); overflow-y: auto; padding: 6px 12px 12px; animation: fp-pop .16s var(--rl-ease); transform-origin: top right; }
-@keyframes fp-pop { from { opacity: 0; transform: scale(.96); } }
-.rail-menu.fp h6 { margin: 0; padding: 10px 0 6px; color: var(--ink-tertiary); font-size: 11px; font-weight: 600; letter-spacing: .02em; }
-.rail-menu.fp .fp-seg { display: flex; flex-wrap: wrap; gap: 6px; }
-.rail-menu.fp .fp-seg button { width: auto; height: 32px; padding: 0 11px; gap: 6px; border-radius: 8px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); font-size: 13px; }
-.rail-menu.fp .fp-seg button.cur { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
-.rail-menu.fp .pm { width: 7px; height: 7px; flex: none; border-radius: 2px; }
-.rail-menu.fp .fp-seg button.cur .pm { outline: 1.5px solid var(--accent-ink); }
-.rail-menu.fp .reset { width: fit-content; height: 32px; margin: 12px 0 0 auto; padding: 0 10px; color: var(--ink-tertiary); font-size: 13px; }
-.rail-menu.fp .reset:disabled { visibility: hidden; }
+/* the filter sheet (both pages), Apple Maps' Filters (owner 2026-10-18): slides up over the page, the page dimmed behind;
+   ✕ / Filters / ✓ on top, each group a grey caption over a white card of pills, Clear Filters a glass pill floating at the foot */
+.fs-veil { position: fixed; inset: 0; z-index: 150; background: rgb(0 0 0 / 0); transition: background .24s var(--rl-ease); }
+.fs-veil.open { background: rgb(0 0 0 / .3); }
+.fsheet { position: absolute; inset: calc(10px + var(--ph-top, 0px)) 0 0; width: min(100%, 640px); margin-inline: auto; display: flex; flex-direction: column; overflow: hidden; outline: 0;
+          border-radius: 32px 32px 0 0; background: var(--canvas, var(--bg)); transform: translateY(100%); transition: transform .24s var(--rl-ease); }
+.fs-veil.open .fsheet { transform: none; }
+.fsheet button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+.fsheet svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+/* the head floats: the cards scroll up under a frost behind ✕ Filters ✓ (Items' head; Maps' see-through top) */
+.fs-top { position: absolute; z-index: 1; inset: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 18px 12px 12px; touch-action: none; }   /* the finger pulls the sheet, never scrolls the page */
+.fs-top::before { content: ''; position: absolute; z-index: -1; inset: 0 0 -28px; pointer-events: none;
+  background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 48px), transparent); mask-image: linear-gradient(#000 calc(100% - 48px), transparent); }
+/* the pull tab (Apple's sheet grabber): part of the head, so it rides the same layer as the sheet (owner saw it lag as .fsheet::before) */
+.fs-top::after { content: ''; position: absolute; top: 6px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 999px; background: var(--ink-quaternary); pointer-events: none; }
+.fs-top h2 { margin: 0; color: var(--ink); font-size: 17px; font-weight: 600; }
+.fsheet .fs-x, .fsheet .fs-ok { display: grid; place-items: center; }
+.fsheet .fs-ok:disabled { color: var(--ink-quaternary); cursor: default; }
+.fsheet .fs-ok:not(:disabled) { background: var(--accent); color: var(--accent-ink); }   /* lit once something changed (Maps' blue, our ink) */
+.fs-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 66px 16px calc(var(--bar-h) + 32px + var(--ph-safe, 0px)); }   /* the last card clears Clear Filters */
+.fs-body h6 { margin: 0; padding: 20px 4px 8px; color: var(--ink-tertiary); font-size: 14px; font-weight: 400; }   /* Settings' group title (.fc-t) */
+.fs-grp { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px; border-radius: var(--rl-r); background: var(--rl-card); }
+.fsheet .fs-grp button { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--tile); color: var(--ink); font-size: 15px; font-weight: 500; }
+.fsheet .fs-grp button.cur { background: var(--accent); color: var(--accent-ink); }
+.fsheet .fs-clear { position: absolute; bottom: calc(var(--pill-b) + 8px); left: 50%; transform: translateX(-50%); height: var(--bar-h); font-size: 15px; font-weight: 600; }
+.fsheet .fs-clear[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .fs-veil, .fsheet { transition: none; } }
 
 
 /* ==== batch 2026-10-07: saved carts + quotes ==== */
@@ -8307,10 +8331,10 @@ body.light-theme .view-orders .o-rail .band::before { box-shadow: 0 .5px 1px rgb
 body.hairlines .lv.view-reports .card { border-color: var(--line); box-shadow: 0 1px 4px rgb(0 0 0 / .3), inset 0 1px 0 rgb(255 255 255 / .1); }
 body.hairlines.light-theme .lv.view-reports .card { box-shadow: 0 1px 4px rgb(0 0 0 / .06), inset 0 1px 0 rgb(255 255 255 / .8); }
 /* every ‹ and everything top right sits in the ☰'s glass circle, words in a glass pill (owner 2026-10-18) */
-.lv .sq:is(.back, .ty-edit-btn), .lv .head > .sh-print, body .lv .e-top .acts .act, body .lv .o-top .act:not(.primary), .cust-sheet .es-x, .cust-sheet .es-ink {
+.lv .sq:is(.back, .ty-edit-btn), .lv .head > .sh-print, body .lv .e-top .acts .act, body .lv .o-top .act:not(.primary), .cust-sheet .es-x, .cust-sheet .es-ink, .fsheet :is(.fs-x, .fs-ok, .fs-clear) {
   width: 44px; min-width: 44px; height: 44px; padding: 0; border: 0; border-radius: 999px; color: var(--ink);
   background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
-.lv .head > .sh-print, body .lv .e-top .acts .act.primary, .cust-sheet .es-ink { width: auto; padding: 0 16px; }
+.lv .head > .sh-print, body .lv .e-top .acts .act.primary, .cust-sheet .es-ink, .fsheet .fs-clear { width: auto; padding: 0 16px; }
 .lv .sq.back { margin-left: 0; } .lv .sq.ty-edit-btn { margin-right: 0; }   /* a circle sits on the edge line, no longer overhangs it */
 body .lv .o-top .act:not(.primary, .icon) { width: auto; padding: 0 14px; }   /* iPad: the pill keeps its word */
 @container pv (max-width: 720px) { body .lv .o-top .act:not(.primary) { width: 44px; padding: 0; } }   /* phone: icons, so circles */

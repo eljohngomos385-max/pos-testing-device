@@ -362,7 +362,7 @@ function attachEvents() {
   $('#ordersFilter')?.addEventListener('click', (e) => openFilterSheet(e.currentTarget, () => [
     ['When', 'range', ORDER_RANGES.map(([v, l]) => [v, l])],
     ['Staff', 'staff', [['', 'Anyone'], ...[...new Set(state.orders.map(orderSeller).filter(Boolean))].sort().map(c => [c, c])]],
-    ['Payment', 'pay', [['', 'Any'], ...PAY_KEYS.map(k => [k, SalesMath.tenderLabel(k), payColor(k)])]],
+    ['Payment', 'pay', [['', 'Any'], ...PAY_KEYS.map(k => [k, SalesMath.tenderLabel(k)])]],
     ['Status', 'status', [['', 'Any'], ...['sale', 'saved', 'quote', 'part', 'refunded', 'voided'].map(k => [k, DRAFT_LABEL[k] || SalesMath.ROW_LABEL[k]]), ['xchg', 'Exchanged']]],
     // Each type a row can read (orderFulfilLabel), the owner's own ones included, so a 'Tricycle' row is found as itself.
     ['Fulfilment', 'fulfil', [['', 'Any'], ...[...new Set([...FULFIL_BUILTINS.map(([k]) => k), ...state.orders.map(o => o.fulfilment)])]
@@ -382,21 +382,24 @@ function attachEvents() {
   wireSegDrag($('#itemsKinds'), 'kind');
   new ResizeObserver(([e]) => $('#itemsView').style.setProperty('--head-h', e.target.offsetHeight + 'px')).observe($('#itemsView .head'), { box: 'border-box' });   // the list starts under it, the frost covers it
   // Liquid glass press (owner 2026-10-18): the button swells and shines under the finger, leans and stretches toward a drag, springs back on release
-  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab)';
+  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search)';
   document.addEventListener('pointerdown', (e) => {
     const b = e.target.closest(LG);
     if (!b || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const x0 = e.clientX, y0 = e.clientY, pull = (d, c, k) => c * d / (d + k);   // rubber band: follows, then resists
+    const all = b.matches('.search-wrap') ? [b, $('#scanBtn')] : [b], k = Math.min(1, (all[1] ? 20 : 44) / b.offsetWidth), cap = all[1] ? 3 : 10;   // Sell's search: scan moves with it; it moves 3px and stretches 4, as Messages' (owner 2026-10-18 photos)
+    if (all[1]) { const w = b.getBoundingClientRect(), s = all[1].getBoundingClientRect(); all[1].style.transformOrigin = `${w.left + w.width / 2 - s.left}px ${w.top + w.height / 2 - s.top}px`; }   // scan turns about the bar's middle
+    const set = (v, x) => all.forEach(t => t.style.setProperty(v, x));
     const shine = (ev) => { const r = b.getBoundingClientRect(), at = (v, n) => Math.min(Math.max(v, 0), n) / n * 100 + '%';   // the light stays on the glass
       b.style.setProperty('--lg-px', at(ev.clientX - r.left, r.width)); b.style.setProperty('--lg-py', at(ev.clientY - r.top, r.height)); };
     const move = (ev) => {
-      const dx = ev.clientX - x0, dy = ev.clientY - y0, d = Math.hypot(dx, dy), m = pull(d, 10, 40) / (d || 1);
-      b.style.setProperty('--lg-x', dx * m + 'px'); b.style.setProperty('--lg-y', dy * m + 'px');
-      b.style.setProperty('--lg-a', Math.atan2(dy, dx) + 'rad'); b.style.setProperty('--lg-s', pull(d, .2, 60));
+      const dx = ev.clientX - x0, dy = ev.clientY - y0, d = Math.hypot(dx, dy), m = pull(d, cap, 40) / (d || 1);
+      set('--lg-x', dx * m + 'px'); set('--lg-y', dy * m + 'px');
+      set('--lg-a', Math.atan2(dy, dx) + 'rad'); set('--lg-s', pull(d, .2, 60) * k);
       shine(ev);
     };
-    const end = () => { b.classList.remove('lg-on'); ['--lg-x', '--lg-y', '--lg-s'].forEach(v => b.style.removeProperty(v));   /* --lg-a stays: the spring wobbles along the pull */ removeEventListener('pointermove', move); removeEventListener('pointerup', end); removeEventListener('pointercancel', end); };
-    shine(e); b.classList.add('lg-on');
+    const end = () => { all.forEach(t => { t.classList.remove('lg-on'); ['--lg-x', '--lg-y', '--lg-s'].forEach(v => t.style.removeProperty(v)); });   /* --lg-a stays: the spring wobbles along the pull */ removeEventListener('pointermove', move); removeEventListener('pointerup', end); removeEventListener('pointercancel', end); };
+    shine(e); all.forEach(t => t.classList.add('lg-on'));
     addEventListener('pointermove', move); addEventListener('pointerup', end); addEventListener('pointercancel', end);
   });
   // swipe the list left / right for the next / previous tab: the list rides the finger with the tab beside it showing,
