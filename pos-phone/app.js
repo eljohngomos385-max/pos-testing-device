@@ -380,6 +380,7 @@ function attachEvents() {
   const kbRO = new ResizeObserver(() => { kb.classList.remove('slid'); kbFade(); });   // tabs moved: the pill re-places on the next switch
   [kb, ...kb.children].forEach(el => kbRO.observe(el));   // the words too: a late font or another language widens them
   wireSegDrag($('#itemsKinds'), 'kind');
+  new ResizeObserver(([e]) => $('#itemsView').style.setProperty('--head-h', e.target.offsetHeight + 'px')).observe($('#itemsView .head'), { box: 'border-box' });   // the list starts under it, the frost covers it
   // swipe the list left / right for the next / previous tab: the list rides the finger with the tab beside it showing,
   // like the Sell grid's pages (owner 2026-10-16); not in Quick stock, which hides the tabs
   let ivX = null;
