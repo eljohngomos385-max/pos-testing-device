@@ -165,6 +165,11 @@ const PRODUCTS = [
   { id: 'pt104', sku: 'PAINT-LATEX-1L-GRN', barcode: '4801234900132', name: 'Latex Paint Green 1L', brand: 'Boysen', folder: 'paint', unit: 'L', price: 285.00, cost: 210.00, stock: 6, reorderPoint: 4 },
   { id: 'pt105', sku: 'PAINT-LATEX-4L-WHT', barcode: '4801234900149', name: 'Latex Paint White 4L', brand: 'Boysen', folder: 'paint', unit: 'L', price: 980.00, cost: 760.00, stock: 3, reorderPoint: 2 },
 ];
+// Lab only: 30 more colours so the variant list is long enough to scroll (owner 2026-10-20). Ids pt106+.
+['Ivory', 'Cream', 'Beige', 'Sand', 'Peach', 'Coral', 'Salmon', 'Orange', 'Mustard', 'Lemon', 'Lime', 'Mint', 'Olive', 'Forest Green', 'Teal',
+ 'Aqua', 'Sky Blue', 'Navy', 'Royal Blue', 'Lavender', 'Violet', 'Plum', 'Pink', 'Rose', 'Maroon', 'Brown', 'Tan', 'Light Grey', 'Charcoal', 'Black']
+  .forEach((c, i) => PRODUCTS.push({ id: 'pt' + (106 + i), sku: 'PAINT-LATEX-1L-' + c.toUpperCase().replace(/ /g, ''), barcode: '4801234901' + (106 + i),
+    name: 'Latex Paint ' + c + ' 1L', brand: 'Boysen', folder: 'paint', unit: 'L', price: 285.00, cost: 210.00, stock: [12, 0, 3, 8, 1, 15][i % 6], reorderPoint: 4, groupId: 'grp_latex' }));
 
 const CUSTOMERS = [
   { id: 'c-001', name: 'Ricardo Construction', phone: '0917-823-4501', address: 'San Pedro, Laguna',
@@ -178,6 +183,11 @@ const CUSTOMERS = [
   { id: 'c-005', name: 'Lopez Hardware (Wholesale)', phone: '0908-661-9001', address: 'Sta. Rosa, Laguna',
     type: 'wholesale', isCreditCustomer: true, creditLimit: 100000, currentBalance: 0.00 },
 ];
+// Lab only: 25 more walk-up customers so the customer list is long enough to scroll (owner 2026-10-20). Ids c-006+.
+['Ana Santos', 'Ben Dizon', 'Carla Reyes', 'Dante Villanueva', 'Elena Bautista', 'Felix Ramos', 'Gina Mendoza', 'Hector Aquino', 'Iris Navarro',
+ 'Jun Castillo', 'Karen Flores', 'Leo Garcia', 'Mila Torres', 'Nestor Cruz', 'Olive Pascual', 'Paolo Domingo', 'Queenie Lim', 'Rey Salazar',
+ 'Susan Tan', 'Tomas Herrera', 'Ursula Gomez', 'Vic Manalo', 'Wena Ocampo', 'Xander Yap', 'Yolly Fernandez']
+  .forEach((name, i) => CUSTOMERS.push({ id: 'c-' + String(6 + i).padStart(3, '0'), name, phone: '0917-555-' + String(1006 + i), address: 'Laguna', type: 'retail' }));
 
 const RECENT_SALES = [
   { id: 'TX-1042', time: '14:32', method: 'cash',   amount: 1245.00 },

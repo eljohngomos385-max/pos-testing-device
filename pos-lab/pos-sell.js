@@ -250,6 +250,7 @@ function openListSheet(title, placeholder, col) {
   $('#variantSearch').value = '';
   $('#variantSearch').placeholder = placeholder;
   $('#variantSheet').setAttribute('aria-label', title);
+  $('#variantSheet').classList.toggle('cust', state.variantModal.kind === 'cust');   // phone: New customer moves to the bar (styles.css)
   renderVariantList();
   $('#variantList').scrollTop = 0;
   $('#variantSheet').classList.add('open');

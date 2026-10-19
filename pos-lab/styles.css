@@ -3372,16 +3372,20 @@ a.secondary-btn { text-decoration: none; }
 }
 .vs-chip:hover { background: var(--surface-hover); color: var(--ink); }
 .vs-chip.active { background: var(--accent); color: var(--accent-ink); }
-/* the lists in the Customers page's treatment (owner 2026-10-19): no box, a strip on top, glass rows, only as tall as its rows */
-.vs-card { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.vs-head { display: flex; justify-content: space-between; gap: 12px; margin-inline: 2px; padding: 11px 16px; border-radius: var(--rl-r) var(--rl-r) 0 0; background: var(--rl-soft);
+/* the lists in the Customers page's treatment (owner 2026-10-19): no box, a strip on top, glass rows; the glass runs to the sheet's foot as before (owner 2026-10-19: "see the version that's longer") */
+/* the rows scroll up under the strip, a frost (owner 2026-10-20: "the top part where it's a little transparent", as Items' top): strip and list share one cell */
+.vs-card { flex: 1; min-height: 0; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+.vs-card > * { grid-area: 1 / 1; }
+.vs-head { position: relative; z-index: 1; align-self: start; display: flex; justify-content: space-between; gap: 12px; margin-inline: 2px; padding: 11px 16px; border-radius: var(--rl-r) var(--rl-r) 0 0;
+           background: color-mix(in srgb, var(--rl-soft) 72%, transparent); -webkit-backdrop-filter: blur(6px) saturate(1.8); backdrop-filter: blur(6px) saturate(1.8);   /* 6: the rows still read through it; 20 smeared them to a solid strip */
            box-shadow: 0 .5px 1px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
            color: var(--ink-secondary); font-size: 12px; font-weight: 500; line-height: 1.4; }   /* .rail-h .i-head */
 .vs-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; color: var(--ink); font-weight: 550; }   /* not a button: band text, ink so it reads first */
 .vs-title #variantTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vs-count { flex: none; font-weight: 500; color: var(--ink-tertiary); }
-.vs-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 2px 6px; }   /* room for the rows' ring */
-body.light-theme .vs-head { background: var(--canvas); box-shadow: 0 .5px 1px rgb(0 0 0 / .05), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .45); }   /* the Orders date strip */
+.vs-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 2px 6px; padding-top: 39px; border-radius: var(--rl-r);   /* 39: the strip (11 + 12 x 1.4 + 11) */
+           background-color: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }   /* 2px/6px: room for its ring */
+body.light-theme .vs-head { background: color-mix(in srgb, var(--canvas) 78%, transparent); box-shadow: 0 .5px 1px rgb(0 0 0 / .05), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .45); }   /* the Orders date strip */
 .vs-row {
   display: flex;
   align-items: center;
@@ -3390,16 +3394,13 @@ body.light-theme .vs-head { background: var(--canvas); box-shadow: 0 .5px 1px rg
   min-height: 56px;
   padding: 8px 16px;
   border: 0;
-  background-color: var(--glass);
-  box-shadow: var(--glass-ring);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  backdrop-filter: blur(20px) saturate(1.8);
+  background-color: transparent;   /* the list is the glass */
   color: var(--ink);
   font: inherit;
   text-align: left;
   transition: background-color .12s;
 }
-.vs-row:last-child { border-radius: 0 0 var(--rl-r) var(--rl-r); }
+.vs-row + .vs-row { border-top: 1px solid var(--line); }   /* a plain hairline: the rows' glass ring drew uneven shaded lines on the iPhone (owner 2026-10-19: "broken") */
 @media (hover: hover) { .vs-row:hover { background-color: var(--rl-hover); } }
 .vs-row .nm { flex: 1; min-width: 0; font-size: 14px; font-weight: 510; line-height: 1.3; overflow-wrap: anywhere; }
 .vs-row small { display: block; font-size: 12px; font-weight: 400; color: var(--ink-tertiary); font-variant-numeric: tabular-nums; }
@@ -7372,7 +7373,17 @@ body.light-theme {
   #app.ph-cart .catalog-wrap:not(:has(> .vsheet.open)) #sidebarToggle svg, #app:not(.ph-cart) .rail-h #cartBack svg { transform: scale(.7); }
   /* Phone insets: only var(--ph-safe), never raw env() -- devices.html can set the variable, not env(), so a rule on env()
      looks right in the preview and wrong on the iPhone (the variant sheet stopped 34px short of the bar, owner 2026-10-08) */
-  .vsheet { padding-bottom: 8px; }
+  /* the list runs down under the cart bar, the phone cart's frost behind the bar fading up into it (owner 2026-10-19: "reuse that one") */
+  .vsheet { bottom: calc(-1 * (var(--bar-h) + var(--ph-b))); padding-bottom: 0; }
+  .vsheet::after { content: ''; position: absolute; z-index: 1; inset: auto 0 0; height: calc(var(--bar-h) + var(--ph-b) + 64px); pointer-events: none;   /* a longer fade than the cart's (owner 2026-10-20: "cut off too harshly") */
+    background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    -webkit-mask-image: linear-gradient(transparent, #000 88px); mask-image: linear-gradient(transparent, #000 88px); }
+  .vs-list { margin-bottom: 0; border-radius: var(--rl-r) var(--rl-r) 0 0; padding-bottom: calc(var(--bar-h) + var(--ph-b) + 16px); }   /* the last row scrolls clear of the bar */
+  .catalog-wrap:has(> .vsheet.open) ~ #cartBar { position: relative; z-index: 99; }   /* over the sheet, which now reaches under it */
+  /* the customer list: the bar is New customer, not the cart, and the list's own row goes (owner 2026-10-20) */
+  #custNewBar, .vsheet.cust .vs-new, .catalog-wrap:has(> .vsheet.open.cust) ~ #cartBar { display: none; }
+  .catalog-wrap:has(> .vsheet.open.cust) ~ #custNewBar { display: flex; position: relative; z-index: 99; }
+  .catalog-wrap:has(> .vsheet.open) { overflow: visible; }   /* its hidden overflow cut the list at the bar's top edge, a hard line before the fade (owner 2026-10-20: "a cutoff, not a graceful fade") */
   :is(.vs-head, .vs-row) { padding-inline: 12px; }   /* as the Customers rows */
   /* Walk-in / Discount / a cart line: a full page like checkout's (owner 2026-10-08), no frame, no lines; ‹ Back where
      checkout has ‹ Cancel. A lone Done only closed, as Back does, so it goes; Apply / Clear / Remove item keep the foot */

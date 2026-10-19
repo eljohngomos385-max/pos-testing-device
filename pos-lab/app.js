@@ -668,6 +668,7 @@ function attachEvents() {
     openCustomerEditModal();
   }
   $('#pickerAddCustomerBtn')?.addEventListener('click', addCustomerFromSale);
+  $('#custNewBar').addEventListener('click', addCustomerFromSale);
   $('#customersList')?.addEventListener('click', (e) => {
     const row = e.target.closest('[data-customer-id]');
     if (!row) return;
@@ -980,6 +981,7 @@ function init() {
   state.orders = loadOrders();
   document.querySelectorAll('.cur-sym').forEach(e => { e.textContent = SalesMath.currencySymbol(state.settings.store?.currency); });
   migrateCustomers();   // once: stored balances become opening rows (bo-model)
+  seedLabExtras();
   state.fulfilment = state.settings.defaultFulfilment || 'walkin';
   seedLabDays();   // lab only: a new device opens on two months of days
   restoreCart();   // the sale that was open when the POS reloaded
@@ -1203,6 +1205,23 @@ function init() {
 // ponytail: lab only. A new device opens on two months of a store's days (owner 2026-10-15: the link on a phone showed
 // nothing): sales through the real order builder (some to the customers), a few refunds and voids, a shift a day with
 // petty cash, counted at close; closeDays then makes the Zs. Once per device; the sales don't move stock.
+// ponytail: lab only -- the long paint list (pt106+) and the extra customers (data.js) onto a POS that saved its data
+// before them (2026-10-20); once a device, so ones deleted afterwards stay deleted. Drop with the seed.
+function seedLabExtras() {
+  if (HWPOS_STORE.ui.get('labExtras') || HWPOS_STORE.pending?.()) return;
+  HWPOS_STORE.ui.set('labExtras', 1);
+  const have = new Set(state.products.map(p => p.id));
+  const add = PRODUCTS.filter(p => /^pt\d+$/.test(p.id) && +p.id.slice(2) >= 106 && !have.has(p.id)).map(p => ({ ...p }));
+  if (add.length) {
+    appendMovements(openingRows(add, loadMovements()));   // stock is the log's sum: give them their opening count
+    state.products.push(...add);
+    saveProducts();
+    withStock(state.products);
+  }
+  const cs = loadList(STORAGE_CUSTOMERS), ids = new Set(cs.map(c => c.id));
+  const newC = CUSTOMERS.filter(c => !ids.has(c.id));
+  if (cs.length && newC.length) saveList(STORAGE_CUSTOMERS, cs.concat(newC.map(c => stampRow(normalizeCustomer(c)))));
+}
 function seedLabDays() {
   if (HWPOS_STORE.ui.get('labSeed')) return;
   HWPOS_STORE.ui.set('labSeed', 1);
