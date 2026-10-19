@@ -7276,6 +7276,8 @@ body.light-theme {
 .rail-h .opts .pick { font-weight: 500; border-radius: calc(var(--rl-r) - 1px) 0 0 0; }
 .rail-h .opts .d-row { height: auto; margin: 0; padding: 0 14px 0 16px; border-bottom: 0; border-left: 1px solid var(--line); border-radius: 0 calc(var(--rl-r) - 1px) 0 0; }
 .rail-h .opts .d-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-h .d-row.amt #cartDiscountLabel { display: none; }   /* a discount on: the amount alone, left like Walk-in (renderCart) */
+.rail-h .d-row.amt #cartDiscountAmt { flex: 1; }
 
 /* the Item / Amount band off: the count sits beside Total (sidebar and checkout) */
 .rail-cnt { display: none; margin-left: 6px; color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
@@ -7382,8 +7384,9 @@ body.light-theme {
   .co-top { padding: 8px var(--co-m) 0 12px; }
   .co-col { --co-top-h: 52px; }   /* 8 + the 44 box */
   .esheet .es-x { top: 8px; left: 12px; width: auto; height: 44px; }
-  :is(.co-cancel, .esheet .es-x) { display: inline-flex; align-items: center; gap: 5px; min-width: 0; padding: 0 12px 0 4px;
-                                   border-radius: var(--r-input); color: var(--ink); font-size: 17px; font-weight: 560; line-height: 20px; }
+  :is(.co-cancel, .esheet .es-x) { display: inline-flex; align-items: center; gap: 5px; min-width: 0; padding: 0 16px 0 10px;
+                                   border-radius: 999px; color: var(--ink); font-size: 17px; font-weight: 560; line-height: 20px;
+                                   background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }   /* in the ☰'s glass, a pill for the word (owner 2026-10-19) */
   :is(.co-cancel .co-ic, .esheet .es-x .ib) { width: 24px; height: 24px; stroke-width: 2; color: var(--ink-secondary); }
   .esheet .es-x .ix { display: none; }
   .esheet .es-x :is(.ib, .xl) { display: block; }
@@ -7961,11 +7964,11 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 @media (min-width: 721px) and (max-width: 900px) { .lv #itemsKinds button { padding: 0 9px; } }   /* iPad upright: "Search discounts" still fits */
 #itemsRows .row .chev { width: 16px; height: 16px; margin-left: 6px; vertical-align: -3px; color: var(--ink-tertiary); }
 /* the phone's glass (set here: .lv is the pv container, so its own @container block can't reach it) */
-.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
+.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
       --glass-ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
       --pill-ring: 0 1px 2px rgb(0 0 0 / .15), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .05);   /* a pill inside a glass bar: half the ring's shadow and shine (owner 2026-10-18) */
       --float: 0 4px 12px -4px rgb(0 0 0 / .45); }   /* falls only down and to the sides (blur/2 < spread + offset upward); owner 2026-10-18: 10/30 "floats too much" */   /* owner 2026-10-17: the 8/24 drop read as floating; glass sits close */
-body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
   --pill-ring: 0 1px 2px rgb(0 0 0 / .03), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .4);
   --float: 0 4px 12px -4px rgb(0 0 0 / .08); }
 /* the sale side, Apple-fied (owner 2026-10-17: "the walk-in customer a pill, like the search bar ... check out a pill, walk-in and discount

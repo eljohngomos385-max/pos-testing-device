@@ -1568,9 +1568,13 @@ function renderCart() {
   discBtn.disabled = n === 0;
   discBtn.classList.toggle('on', !!cd || t.scPwd);
   // t.scPwd, not state.scPwd: a bigger line promo wins over SC/PWD (orderTotals), and then no ID goes on the sale
-  $('#cartDiscountLabel').textContent = t.scPwd ? ES_SC[state.scPwd.kind] : cd && cd.name ? cd.name : cd && cd.type === 'percent' ? `Discount ${cd.value}%` : 'Discount';
+  const dWord = t.scPwd ? ES_SC[state.scPwd.kind] : cd && cd.name ? cd.name : cd && cd.type === 'percent' ? `Discount ${cd.value}%` : 'Discount';
+  $('#cartDiscountLabel').textContent = dWord;
   $('#discountRow > span').textContent = SalesMath.discountName({ cartDiscount: cd, items: state.cart }) || 'Discount';   // the receipt's word (receiptParts)
   $('#cartDiscountAmt').textContent = t.discount > 0 ? peso(-t.discount) : '';
+  // a discount on: the pill shows only its amount, the same every time; the words are for a screen reader (owner 2026-10-19)
+  discBtn.classList.toggle('amt', t.discount > 0);
+  if (t.discount > 0) discBtn.setAttribute('aria-label', `${dWord} ${peso(-t.discount)}`); else discBtn.removeAttribute('aria-label');
 }
 
 // ---------- Customer ----------
