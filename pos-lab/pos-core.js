@@ -861,6 +861,7 @@ function switchView(view) {
   closeShiftSheet();   // leaving mid-count throws the count away
   const fromCheckout = state.view === 'checkout';
   if (view !== 'orders' && state.ordersCustomer) ordersFor('');
+  if (state.view === 'reports' && view !== 'reports') $('.view-reports .c-scroll').scrollTop = 0;   // while still shown: Safari puts a hidden scroller's place back on show, over the reset below (owner 2026-10-19)
   state.view = view;
   if (view !== 'sell') closeBarcodeScanner();   // the tablet's ☰ and Check out stay in reach while it scans
   $$('.side-link').forEach(t => t.classList.toggle('active', t.dataset.view === view));

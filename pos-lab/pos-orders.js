@@ -726,7 +726,7 @@ function buildReceiptHtml(order) {
   .r-thanks { margin-top: 8px; font-weight: 700; }
   .r-actions { margin-top: 16px; display: flex; gap: 8px; }
   .r-actions button {
-    flex: 1; font-family: inherit; font-size: 13px; font-weight: 600; padding: 12px;
+    flex: 1; font-family: inherit; font-size: 13px; font-weight: 550; padding: 12px;
     border: none; border-radius: 10px; background: #333; color: #fff; cursor: pointer;
   }
   .r-actions button.primary { background: #fff; color: #121212; }
