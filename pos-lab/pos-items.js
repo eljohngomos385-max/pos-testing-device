@@ -65,9 +65,8 @@ function fillItemsPane(kind, band, rows) {
   band.classList.remove('k2');
   const q = itemsFilter.q.trim().toLowerCase();
   const list = catalogItems().filter(it => {
-    if (itemsFilter.cat && !it.cats.includes(itemsFilter.cat)) return false;
-    if (itemsFilter.stock === 'low' && itemStk(it) !== 'stk-low') return false;
-    if (itemsFilter.stock === 'out' && itemStk(it) !== 'stk-out') return false;
+    if (itemsFilter.cat && !itemsFilter.cat.some(c => it.cats.includes(c))) return false;   // '' = any, else the picks (openFilterSheet)
+    if (itemsFilter.stock && !itemsFilter.stock.some(s => itemStk(it) === 'stk-' + s)) return false;
     return !q || it.name.toLowerCase().includes(q) || it.variants.some(v => [v.name, v.sku, v.barcode].some(x => x.toLowerCase().includes(q)));
   }).sort((a, b) => a.name.localeCompare(b.name));
   band.innerHTML = `<span>Item <span class="num">· ${list.length}</span></span><span>Category</span><span>Price</span><span>In stock</span>`;
@@ -299,11 +298,14 @@ function saveItem() {
 // slide-over: its name, a modifier's options, and ticks for the items it's on. These Saves write (folders, modifiers,
 // the items' folders / modifierIds); the item editor's Save is still design only.
 let itemsKind = 'items', kindEdit = null;
-const KIND = { items: ['item', 'Search items, SKU or barcode'], cats: ['category', 'Search categories'], mods: ['modifier', 'Search modifiers'],
-  discs: ['discount', 'Search discounts'] };
+const KIND = { items: ['item', 'Search'], cats: ['category', 'Search categories'], mods: ['modifier', 'Search modifiers'],
+  discs: ['discount', 'Search discounts'], addons: ['add-on', 'Search add-ons'], hub: ['', 'Search'] };   // a list's search says which list it is
+// The hub (owner 2026-10-18, Mail's Mailboxes): the five lists as equal rows; Items opens the last one, ‹ comes back here
+const HUB = [['items', 'Items'], ['cats', 'Categories'], ['mods', 'Modifiers'], ['addons', 'Add-ons'], ['discs', 'Discounts']];
 const kindCats = () => state.folders.filter(f => f.id !== 'all');
 // Discounts (bo-model loadDiscounts): a name and a % or amount, picked in the cart's Discount sheet. Senior / PWD are built in.
-const kindList = kind => (kind === 'cats' ? kindCats() : kind === 'discs' ? liveDiscounts() : loadModifiers().filter(m => !m.archived));
+const kindList = kind => (kind === 'cats' ? kindCats() : kind === 'discs' ? liveDiscounts() : kind === 'addons' ? [] :   // ponytail: Add-ons is a word only (owner try-out 2026-10-18), no data yet
+   loadModifiers().filter(m => !m.archived));
 const isOn = { cats: (p, id) => foldersOf(p).includes(id), mods: (p, id) => (p.modifierIds || []).includes(id) };
 const itemsWith = (kind, id, all = catalogItems()) => all.filter(it => it.members.some(m => isOn[kind](m, id)));
 const modSummary = m => m.options.map(o => `${escapeHtml(o.name)} +${peso(o.price)}`).join(' · ');
@@ -360,7 +362,11 @@ const itemsTop = {};   // each tab keeps its place in the list, as an iPhone's t
 function setItemsKind(kind) {
   itemsTop[itemsKind] = $('#itemsLines').scrollTop;
   itemsKind = kind;
-  slidePill($('#itemsKinds'), 'kind', kind);
+  const kb = $('#itemsKinds'), cur = kb.querySelector(`[data-kind="${kind}"]`);
+  slidePill(kb, 'kind', kind);
+  if (kb.offsetWidth && cur) kb.scrollTo({ behavior: 'smooth',   // the picked word slides fully into view, clear of the faded edge
+    left: Math.min(Math.max(kb.scrollLeft, cur.offsetLeft + cur.offsetWidth + 28 - kb.clientWidth), cur.offsetLeft - 28) });
+  $('#itemsView').classList.toggle('hub', kind === 'hub');
   $('#itemsSearch').placeholder = KIND[kind][1];
   $('#itemsFilter').hidden = kind !== 'items';   // category and stock filter items only
   $('#itemsAdd').title = $('#itemsAdd').ariaLabel = `New ${KIND[kind][0]}`;
@@ -369,6 +375,12 @@ function setItemsKind(kind) {
 }
 
 function renderKindRows(kind, band, rows) {
+  if (kind === 'hub') {
+    band.classList.add('k2');
+    rows.innerHTML = HUB.map(([k, word]) => `<button type="button" class="row cols k2" data-hub="${k}"><span class="nm"><span class="tx"><b>${word}</b></span></span>
+      <span class="num">${k === 'items' ? catalogItems().length : kindList(k).length}${ICHEV}</span></button>`).join('');
+    return;
+  }
   const q = itemsFilter.q.trim().toLowerCase(), all = catalogItems(), cats = kind === 'cats';
   const list = kindList(kind).filter(x => !q || [x.name, ...(x.options || []).map(o => o.name)].some(n => n.toLowerCase().includes(q)));
   const discs = kind === 'discs';
@@ -377,7 +389,7 @@ function renderKindRows(kind, band, rows) {
       <span class="nm">${cats ? itemThumb(catLook(x)) : ''}<span class="tx"><b>${escapeHtml(x.name)}</b>${
         discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? '' : `<small>${modSummary(x) || 'No options yet'}</small>`}</span></span>
       <span class="num">${discs ? esShown(x) : SalesMath.plural(itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
-    || `<div class="empty"><b>${q ? 'No matches' : `No ${cats ? 'categories' : 'modifiers'} yet`}</b><span>${q ? 'Try a different name.'
+    || `<div class="empty"><b>${q ? 'No matches' : `No ${cats ? 'categories' : kind === 'addons' ? 'add-ons' : 'modifiers'} yet`}</b><span>${q ? 'Try a different name.' : kind === 'addons' ? ''
       : cats ? 'Tap + to add one, then tick its items.' : `A modifier is a list of choices sold with an item, like Cut to length +${peso(20)}. Tap + to add one.`}</span></div>`;
 }
 
@@ -513,6 +525,9 @@ function dropKind() {
     onConfirm: () => { saveModifiers(loadModifiers().map(m => (m.id === K.id ? stampRow({ ...m, archived: true }) : m))); closeKindEditor('Archived'); } });
 }
 function closeKindEditor(msg) {
-  if (itemsFilter.cat && !state.folders.some(f => f.name === itemsFilter.cat)) itemsFilter.cat = '';   // its category was renamed or deleted
-  closeItemEditor(); renderItems(); showToast(msg);
+  if (itemsFilter.cat) {   // a picked category was renamed or deleted: it lets go
+    const cat = itemsFilter.cat.filter(c => state.folders.some(f => f.name === c));
+    itemsFilter.cat = cat.length ? cat : '';
+  }
+  closeItemEditor(); renderItems(); showDone(msg);
 }

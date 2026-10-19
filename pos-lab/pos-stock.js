@@ -256,7 +256,7 @@ function qsUndone() {
   qsSaved.undone = true;
   qsRefresh();
   qsRender();
-  showToast('Undone');
+  showDone('Undone');
 }
 // the Sell tiles show the price; the open cart takes the new one too (owner 2026-10-17: change it and everything
 // changes -- finished sales keep theirs, priceLog keeps the old). In place: discount undo holds the line objects.

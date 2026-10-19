@@ -170,8 +170,8 @@ const spKeyOf = t => t.dataset.label || t.dataset.method;
 const spCan = t => !(t.dataset.method === 'split' || (t.dataset.method === 'other' && !t.dataset.label));
 function spGo(k, raw = '', fresh = false) { Object.assign(SP, { k, raw, fresh }); spRender(); }
 const spRaw = v => v.toFixed(2).replace(/\.00$/, '');   // 21.5 -> "21.50", 750 -> "750", as it would be typed
-// a method's page opens with its amount, or with what's left once another part is in (grey till the first key replaces it)
-function spAmt() { const v = SP.leg.amount || (SP.legs.length ? spLeft() : 0); spGo('amt', v ? spRaw(v) : '', !!v); }
+// a method's page opens with its amount, or with what's left, the first part too (owner 2026-10-17): grey till the first key replaces it
+function spAmt() { const v = SP.leg.amount || spLeft(SP.leg); spGo('amt', v ? spRaw(v) : '', !!v); }
 
 function spRender() {
   // a part whose tile went (customer changed, credit off, a method hidden) comes off: no tile, no way to change it
@@ -180,12 +180,13 @@ function spRender() {
   if (SP.leg && !shown.has(SP.leg.key)) Object.assign(SP, { leg: null, k: 'pick', raw: '', fresh: false });
   const { k, leg, legs } = SP, due = moneyValue(dueNow()), left = spLeft(k === 'pick' || k === 'ref' ? null : leg);   // the ref page: that part is in
   setCheckoutError('');
-  $('#checkoutTotalDue').textContent = peso(left);
   const cash = k === 'given' || k === 'typed';   // the cash part's change: its own title, no countdown line (owner 2026-10-17)
+  const full = !cash && left === 0 && left !== due;   // nothing left: the words take the number's place, no line under (owner 2026-10-17)
+  $('#checkoutTotalDue').textContent = full ? 'Paid in full' : peso(left);
   $('#checkoutApp').classList.toggle('sp-cash', cash);
   const paid = $('#spPaid');   // the countdown's small line: the total it counts down from
-  paid.hidden = cash || left === due;
-  paid.textContent = left > 0 ? `left of ${peso(due)}` : 'Paid in full';
+  paid.hidden = cash || full || left === due;
+  paid.textContent = `left of ${peso(due)}`;
   $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== (k === 'pick' ? 'method' : k === 'ref' ? 'paid' : 'cash'); });
   $('#checkoutBackText').textContent = 'Back';
   $('#otherMethodInput').hidden = true;
@@ -255,9 +256,18 @@ function spNext() {   // Complete sale on the Split page, Done / Complete sale o
 }
 
 function spKey(key) {
-  SP.raw = esPress(SP.fresh && key !== 'del' ? '' : SP.raw, key, true, SP.k === 'amt' ? spLeft(SP.leg) : CASH_MAX);
-  SP.fresh = false;
-  spRender();
+  const amt = SP.k === 'amt', max = amt ? spLeft(SP.leg) : CASH_MAX;
+  if (amt && key === 'del' && SP.fresh) return;   // the grey amount stays (owner 2026-10-17); 0 then Done takes this method off
+  const base = SP.fresh && key !== 'del' ? '' : SP.raw, raw = esPress(base, key, true, max);
+  const over = amt && raw === base && /\d/.test(key) && !/\.\d\d$/.test(base) && !(base === '0' && key === '0');   // 0 on a 0 is a no-op, not too much; 5 on a 0 with ₱0.50 left is
+  if (amt && !raw && base) return spAmt();   // deleted back to nothing: what's left comes back, grey
+  if (!over) { Object.assign(SP, { raw, fresh: false }); spRender(); }   // refused: the grey amount stays grey; '' kept here dropped the part on Done (review 2026-10-19)
+  else {   // a key past what's left: the number shakes (co-shake), never a dead key (owner 2026-10-17)
+    const el = $('#checkoutCash');
+    el.style.animation = 'none'; void el.offsetWidth; el.style.animation = 'co-shake .4s ease';
+    const off = () => { el.style.animation = ''; };   // left on, the next page would shake as it shows
+    el.addEventListener('animationend', off, { once: true }); el.addEventListener('animationcancel', off, { once: true });   // cancel: Done / Back mid-shake hides the step
+  }
 }
 
 function spBack() {   // typed cash -> the notes; a keypad page or the notes -> the Split page as it was; the Split page -> the tiles
@@ -567,7 +577,7 @@ async function connectPrinter(ip) {
     if (!printerFound.includes(ip)) printerFound.push(ip);
     renderPrinterList();
     setScanStatus('Connected to ' + ip);
-    showToast('Printer connected');
+    showDone('Printer connected');
     return true;
   } finally {
     printerBusy = false;
@@ -620,7 +630,7 @@ async function printOrder(order, opts = {}) {
   try {
     await window.HWPOS_PRINTER.print(toReceiptViewModel(order), cfg);
     track('receipt_print', { orderId: order.id, ok: true });
-    if (!opts.silent) showToast('Receipt printed');
+    if (!opts.silent) showDone('Receipt printed');
     return true;
   } catch (e) {
     track('receipt_print', { orderId: order.id, ok: false });

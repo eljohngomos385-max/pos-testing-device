@@ -188,7 +188,7 @@ function bindTypeEdit(kind) {
       } });
   });
 }
-const addedOff = (name) => showToast(`${name} added, switched off. ${TYPES_ON_MAX} can be on at once`);
+const addedOff = (name) => showDone(`${name} added, switched off. ${TYPES_ON_MAX} can be on at once`);
 const PAY_TYPES = [['cash', 'Cash', 'Always on. The cash drawer counts it.'], ['gcash', 'GCash', ''], ['qr', 'QR', 'Any QR wallet'],
   ['other', 'Other', 'Staff type the name at checkout'], ['credit', 'Account', 'Pay later. Shows once a customer is picked.'], ['split', 'Split', 'Part one way, the rest another']];
 const payTypes = () => ({ hidden: [], custom: [], ref: ['gcash', 'qr'], ...state.settings.payments });

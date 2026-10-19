@@ -67,9 +67,9 @@ function renderCustomerDetail() {
   body.innerHTML = `<div class="c-body">
     <section class="card fc r">${contact}</section>
     <section class="card fc r">
-      ${row('Balance', peso(c.currentBalance || 0), over ? 'num over' : 'num')}
-      ${row('Available credit', limitText(c) || `${peso(creditRoom(c))} <small>of ${peso(c.creditLimit)}</small>`, 'num')}</section>
-    <h3 class="fc-t">Recent orders${orders.length > 10 ? `<button type="button" class="link" data-customer-detail>See all ${orders.length}</button>` : ''}</h3><section class="card fc c-ord">
+      ${row('Balance', peso(c.currentBalance || 0), over ? 'num amt over' : 'num amt')}
+      ${row('Available credit', limitText(c) || `${peso(creditRoom(c))} <small>of ${peso(c.creditLimit)}</small>`, 'num amt')}</section>
+    <h3 class="fc-t">Recent orders${orders.length > 10 ? `<button type="button" class="link" data-customer-detail>See all ${orders.length}</button>` : ''}</h3><section class="card fc fc-rows">
       ${orders.length ? orders.slice(0, 10).map(orderRow).join('') : '<div class="note">No orders yet</div>'}</section>
   </div>`;
 }
@@ -157,10 +157,10 @@ function openPaySheet(btn, c) {
       orderIds: [...f.querySelectorAll('[name="order"]:checked')].map(b => b.value) });
     if (!row) return;
     close();
-    showToast(`${peso(a)} recorded`, () => {
+    showDone(`${peso(a)} recorded`, () => {
       const store = currentStoreInfo();
       undoPayment(row, { register: store.registerNo, staff: store.cashier });
-      renderCustomers(); updateCustomerButton(); showToast('Payment undone');
+      renderCustomers(); updateCustomerButton(); showDone('Payment undone');
     });
   });
 }
@@ -276,10 +276,12 @@ function renderReports(slide) {
   let pays = [...SalesMath.tenders(state.orders, win)].map(([k, v]) => ({ k, v })).sort((x, y) => y.v - x.v);
   if (pays.length > 4) { const keep = pays.filter(r => r.k !== 'other').slice(0, 3); pays = [...keep, { k: 'other', v: pays.filter(r => !keep.includes(r)).reduce((n, r) => n + r.v, 0) }]; }
   const all = pays.reduce((n, r) => n + r.v, 0), none = '<div class="rp-none">No sales</div>';
+  // By method + Breakdown: Shift's rows (owner 2026-10-17) -- the word grey, the money dark; every line, ₱0.00 too
+  const fr = (lb, v) => `<div class="fr"><span class="lb">${lb}</span><span class="v num amt">${v}</span></div>`;
   // Breakdown: the back office's ladder (sales-terms) -- Gross sales less voids, refunds and discounts is Net sales
-  const nOf = n => (n ? ` (${n})` : ''), step = (nm, v, cls = '') => `<div class="rp-li${cls}"><span class="rp-tm">${nm}</span><b class="rp-tv num">${peso(v)}</b></div>`;
-  const ladder = m.grossSales || m.voids || m.refunds ? step('Gross sales', m.grossSales) + step('Voids' + nOf(m.voidCount), -m.voids)
-    + step('Refunds' + nOf(m.refundCount), -m.refunds) + step('Discounts', -m.discounts) + step('Net sales', m.netSales, ' rp-sum') : none;
+  const nOf = n => (n ? ` <small>· ${n}</small>` : '');
+  const ladder = m.grossSales || m.voids || m.refunds ? fr('Gross sales', peso(m.grossSales)) + fr('Voids' + nOf(m.voidCount), peso(-m.voids))
+    + fr('Refunds' + nOf(m.refundCount), peso(-m.refunds)) + fr('Discounts', peso(-m.discounts)) + fr('<b>Net sales</b>', `<b>${peso(m.netSales)}</b>`) : none;
   const arw = (s, label, path, off) => `<button type="button" class="rp-arw" data-rp="${s}" aria-label="${label}"${off ? ' disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg></button>`;
   // ponytail: a third of a phone fits ₱999,999.99; a profit of a million or more reads ₱1.23M (the Sales number stays exact)
   const stat = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
@@ -293,8 +295,8 @@ function renderReports(slide) {
     + icard('Top items', tops || none)
     + icard('Top categories', cats || none)
     // a plain ranking: the method, its money, its share -- no bar, no colours (owner 2026-10-15)
-    + icard('By method', pays.length ? pays.map(r => `<div class="rp-li"><span class="rp-tm rp-tn">${escapeHtml(SalesMath.tenderLabel(r.k))}</span><b class="rp-tv num">${peso(r.v)}</b><span class="rp-tp num">${SalesMath.pctText(SalesMath.share(r.v, all), all, 0)}</span></div>`).join('') : none)
-    + icard('Breakdown', ladder);
+    + icard('By method', pays.length ? pays.map(r => fr(escapeHtml(SalesMath.tenderLabel(r.k)), `${peso(r.v)} <small class="rp-tp">${SalesMath.pctText(SalesMath.share(r.v, all), all, 0)}</small>`)).join('') : none, '', ' r')
+    + icard('Breakdown', ladder, '', ' r');
   // the header: Show Today on a past period; the ‹ date › bar that pins under it once the date scrolls away (reportsPin)
   const now = $('.view-reports .rp-now');
   now.hidden = live;
@@ -312,7 +314,8 @@ function reportsChart(bars, unit, live) {
   if (!bars.some(b => b.v)) return `<div class="rp-cols"><div class="rp-msg">${live ? 'No sales yet' : 'No sales'}</div></div>`;
   const cur = state.settings?.store?.currency, short = n => SalesMath.formatMoney(n, cur, { compact: true });
   const top = Math.max(0, ...bars.map(b => b.v)), mag = 10 ** Math.max(0, Math.floor(Math.log10(top / 3)));
-  const step = [1, 2, 5, 10].map(s => s * mag).find(s => s * 3 >= top), max = 3 * step;
+  // 3, 4, 6, 8 too (owner 2026-10-17): with only 1-2-5 a ₱85k peak topped out at ₱150k, half the chart empty.
+  const step = [1, 2, 3, 4, 5, 6, 8, 10].map(s => s * mag).find(s => s * 3 >= top), max = 3 * step;
   // compact money starts at 10k; 1k-9.5k are ours, so ₱1,500 reads ₱1.5k (not ₱2k). No spaces: "Rp 500" would sit over "Rp1k"
   const ax = n => (n >= 1e3 && n < 1e4 ? SalesMath.currencySymbol(cur) + n / 1e3 + 'k' : short(n)).replace(/\s/g, '');
   const tk = b => (b.x !== '' && unit !== 'week' ? ' tk' : '');

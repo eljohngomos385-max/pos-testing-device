@@ -82,7 +82,7 @@ function bindQr() {
       title: `New QR for ${t.name}?`,
       message: 'Old photos and the sticker on the table stop working. Print the new one.',
       okText: 'New QR',
-      onConfirm: () => { t.token = qrToken(); qrSave(t); openQrTable(t.id); showToast('New QR made'); },
+      onConfirm: () => { t.token = qrToken(); qrSave(t); openQrTable(t.id); showDone('New QR made'); },
     });
   });
   $('#qrDelete').addEventListener('click', () => {
@@ -93,7 +93,7 @@ function bindQr() {
       message: 'Its QR stops working.',
       okText: 'Delete',
       danger: true,
-      onConfirm: () => { state.settings.qrTables = qrTables().filter(x => x.id !== t.id); saveSettings(); renderQr(); showToast(`${t.name} deleted`); },
+      onConfirm: () => { state.settings.qrTables = qrTables().filter(x => x.id !== t.id); saveSettings(); renderQr(); showDone(`${t.name} deleted`); },
     });
   });
 }

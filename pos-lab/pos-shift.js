@@ -205,7 +205,7 @@ function closeDays() {
 
 function openShift(start, extra) {
   addShiftRow('shift_open', null, start, { cutoff: state.settings.autoClose, ...extra });
-  showToast(`Shift started · ${peso(start)}`);
+  showDone(`Shift started · ${peso(start)}`);
 }
 
 // Start / Close shift: a full panel in the edit sheet's frame (its keys, hero and foot), 0 typed so one tap goes on.
@@ -289,10 +289,10 @@ function shiftMove(dir) {
   Object.assign(o, { v: '0', note: '' });
   drawShiftSheet();
   renderShift();
-  showToast(`Cash ${dir} ${peso(amt)}`, () => {
+  showDone(`Cash ${dir} ${peso(amt)}`, () => {
     addShiftRow('cash_move', row.shiftId, -row.amount, { note, reverses: row.id });
     renderShift();
-    showToast('Undone');
+    showDone('Undone');
   });
 }
 function finishClose(leave) {
@@ -367,48 +367,79 @@ function shiftDrawer(all = storeShifts(), now = Date.now()) {
 // its one action at the title's right (Customers' See all), rows split by hairlines. Under the drawer, in a few words,
 // since when it counts and that it closes / starts over by itself (owner: "Since yesterday, 9:36" never said it was
 // automatic). Shift | Cash (owner 2026-10-16), Reports' pill: Shift is the drawer and By method, Cash every cash in and out,
-// newest first. The button bottom right follows the tab: Start / Close shift, or Cash in / out (the sheet). Past shifts
-// is the clock top right, Calculator's history.
+// newest first. The button bottom right follows the tab: Start / Close shift, or Cash in / out (the sheet). The drawer
+// has no title (owner 2026-10-17: "Cash drawer" sat too close under the pill); Print, the X report, is the word top right
+// while a shift is open, and Past shifts a › row under the drawer.
 let shTab = 'shift';
 const shLink = (sh, word) => `<button type="button" class="link" data-sh="${sh}">${word}</button>`;
 const shWhen = ts => fmtOrderTime(ts).replace(/^Today, /, '').replace(/^Yesterday/, 'yesterday');
-const moveRow = m => `<div class="sh-move"><span class="nm">${escapeHtml(m.note)}<small>${escapeHtml(fmtOrderTime(m.ts))} · ${escapeHtml(m.staff)}</small></span>
-  <span class="num${m.amount < 0 ? ' out' : ''}">${overShortText(m.amount)}</span></div>`;
+// Cash in & out and Past shifts are Orders' rows (docs/design-pos.md › Rows, owner 2026-10-17): title + grey sub left,
+// the money top right; a card per group, its count and total on the grey title like Orders' band.
+const listRow = (tag, attr, title, sub, amt) => `<${tag} class="row"${attr}><div class="nm"><span>${title}</span><small class="num">${sub}</small></div>
+  <div class="rt"><span class="amt num">${amt}</span></div></${tag}>`;
+const moveRow = m => listRow('div', '', escapeHtml(m.note), `${escapeHtml(fmtOrderTime(m.ts))} · ${escapeHtml(m.staff)}`, overShortText(m.amount));
+// The button's words change in place (owner 2026-10-17): its width glides at the Shift | Cash pill's pace while the old
+// words shrink out and the new grow in on the same spot, like ☰ <-> ‹. Only on a real change: the page redraws every 4s.
+function shiftFabSay(text) {
+  const b = $('#shiftFab'), was = b.querySelector('span:not(.out)');
+  if (was?.textContent === text) return;
+  const w0 = b.offsetWidth;   // 0 on a hidden page: nothing to glide from
+  b.querySelector('.out')?.remove();   // a tap mid-morph: the new one starts from where this one is
+  was?.classList.add('out');
+  b.appendChild(document.createElement('span')).textContent = text;
+  if (!was) return;
+  if (!w0) return was.remove();
+  const o = { duration: calmMs(280), easing: 'cubic-bezier(.2, .8, .2, 1)' };   // --rl-ease
+  b.animate({ width: [`${w0}px`, `${b.offsetWidth}px`] }, o);
+  b.lastChild.animate({ opacity: [0, 1], transform: ['scale(.7)', 'none'] }, o);
+  was.animate({ opacity: [1, 0], transform: ['none', 'scale(.7)'] }, o).onfinish = () => was.remove();
+}
 function renderShift() {
   const body = $('#shiftBody');
   if (!body) return;
   closeDays();   // a POS left on overnight makes yesterday's Z when the page draws
   shiftLive._sig = shiftSig();
   const all = storeShifts(), { s, from, d } = shiftDrawer(all), f = shiftFigures(d);
-  const row = (lb, v) => `<div class="fr"><span class="lb">${lb}</span><span class="v num">${v}</span></div>`;
-  // a past shift: when it ended, who started it, over / short or Not counted; a day: its date and net
-  const past = pastPapers(all).map(p => {
-    const diff = p.s && shiftFigures(p.s).diff;   // live: a late sale moves it
-    return `<button type="button" class="sh-move" data-past="${escapeHtml(p.id)}">${p.s
-      ? `<span class="nm">${escapeHtml(fmtOrderTime(p.at))}<small>Shift · ${escapeHtml(p.s.open.staff)}</small></span><span class="num${diff < 0 ? ' out' : ''}">${diff === null ? 'Not counted' : overShortText(diff)}</span>`
-      : `<span class="nm">${escapeHtml(tillDate(p.d.day, 'dayYear'))}<small>Day</small></span><span class="num">${peso(p.d.amount)}</span>`}</button>`;
-  }).join('');
+  const row = (lb, v) => `<div class="fr"><span class="lb">${lb}</span><span class="v num amt">${v}</span></div>`;
+  // past shifts by day, newest first: the day's date · shifts on the title, its Z net at the right (opens the day's paper);
+  // a shift row: its hours, who started it, over / short or Not counted
+  const days = new Map();
+  for (const p of pastPapers(all)) {
+    const k = p.s ? tillDay(p.at) : p.d.day;
+    if (!days.has(k)) days.set(k, { z: null, rows: [] });
+    if (p.s) days.get(k).rows.push(p); else days.get(k).z = p;
+  }
+  const past = [...days].map(([day, { z, rows }]) => icard(`${orderDayName(day)} <span class="num">· ${rows.length}</span>${z
+    ? `<button type="button" class="link num" data-past="${escapeHtml(z.id)}">${peso(z.d.amount)}</button>` : ''}`, rows.map(p => {
+    const diff = shiftFigures(p.s).diff;   // live: a late sale moves it
+    return listRow('button', ` type="button" data-past="${escapeHtml(p.id)}"`, `${tillDate(p.s.open.ts, 'time')} – ${tillDate(p.at, 'time')}`,
+      escapeHtml(p.s.open.staff), diff === null ? 'Not counted' : overShortText(diff));
+  }).join('') || '<div class="note">No shifts</div>', '', ' fc-rows')).join('');
   const auto = `${(s ? s.open.cutoff ?? state.settings.autoClose : state.settings.autoClose) || 12} AM`;
   const foot = s ? `Started ${escapeHtml(shWhen(s.open.ts))} · auto-closes ${auto}`
     : from === cutBefore() ? `Auto-reset at ${auto} · ${shLink('settings', 'Change')}`
     : `Since last close · ${escapeHtml(shWhen(from))}`;
   const mv = d.moves.slice().reverse();
   const [fab, act] = shTab === 'cash' ? ['Cash in / out', 'cash'] : s ? ['Close shift', 'close'] : ['Start shift', 'open'];
-  Object.assign($('#shiftFab'), { textContent: fab }).dataset.sh = act;
+  shiftFabSay(fab);
+  $('#shiftFab').dataset.sh = act;
+  $('#shiftPrint').hidden = !s;
   // the cash sales and Expected only for a role that sees the day's totals: the close is a blind count
   body.innerHTML = shTab === 'cash'
-    ? (mv.length ? icard(s ? 'This shift' : 'Today', mv.map(moveRow).join('')) : '<p class="sh-none">No cash in or out yet</p>')
-    : `${icard(`Cash drawer${s ? shLink('report', 'Print report') : ''}`, [
+    ? (mv.length ? icard(`${s ? 'This shift' : 'Today'} <span class="num">· ${mv.length}</span><span class="tot num">${overShortText(mv.reduce((t, m) => t + m.amount, 0))}</span>`,
+      mv.map(moveRow).join(''), '', ' fc-rows') : '<p class="sh-none">No cash in or out yet</p>')
+    : `${icard('', [
       s ? row('Start cash', peso(f.start)) : '',
       row('Cash sales', peso(f.sales)),
-      f.back ? row('Cash refunds', peso(minus(f.back))) : '',
+      row('Cash refunds', peso(minus(f.back))),   // ₱0.00 too: a quiet day says so (owner 2026-10-17)
       f.onAccount ? row('Paid on account', peso(f.onAccount)) : '',
       row('Cash in', peso(f.cashIn)),
       row('Cash out', peso(minus(f.cashOut))),
       row('<b>Expected cash</b>', `<b>${peso(f.expected)}</b>`),
     ].join(''), foot, ' r')}
+    ${icard('', `<button type="button" class="fr nav" data-sh="past"><span class="lb">Past shifts</span><span class="ctl end">${ICHEV}</span></button>`)}
     ${shiftSalesCard(f.rows, row)}`;
-  $('#shiftPastBody').innerHTML = `<div class="c-body">${past ? icard('', past) : '<p class="sh-none">No past shifts yet</p>'}</div>`;
+  $('#shiftPastBody').innerHTML = `<div class="c-body">${past || '<p class="sh-none">No past shifts yet</p>'}</div>`;
 }
 
 // Past shifts is its own page over the drawer (owner 2026-10-15); the view opens on the drawer.
@@ -419,16 +450,16 @@ function shiftPast(open) {
 }
 
 // What the store sold over the shift (or since the turn with none open), by how it was paid, and what came off it
-// (only what did, owner 2026-10-16). Net of voids and refunds.
+// (every line, ₱0.00 too, owner 2026-10-17 -- it was "only what did" on 10-16). Net of voids and refunds.
 function shiftSalesCard(rows, row) {
   const t = SalesMath.summarize(rows), by = SalesMath.tenders(rows);
   const neg = n => peso(minus(n)), count = n => (n ? ` <small>· ${n}</small>` : '');
-  return icard('By method', [
+  return icard('By method', by.size || t.refunds || t.voids ? [
     ...[...by].sort(([a], [b]) => (b === 'cash') - (a === 'cash')).map(([k, n]) => row(escapeHtml(SalesMath.tenderLabel(k)), peso(n))),   // a method once it's used, Cash on top
-    t.refunds ? row(`Refunds${count(t.refundCount)}`, neg(t.refunds)) : '',
-    t.voids ? row(`Voids${count(t.voidCount)}`, neg(t.voids)) : '',
-    t.discounts ? row('Discounts', neg(t.discounts)) : '',
-  ].join('') || '<div class="note">No sales yet</div>', '', ' r');
+    row(`Refunds${count(t.refundCount)}`, neg(t.refunds)),
+    row(`Voids${count(t.voidCount)}`, neg(t.voids)),
+    row('Discounts', neg(t.discounts)),
+  ].join('') : '<div class="note">No sales yet</div>', '', ' r');
 }
 
 function shiftAction(act) {

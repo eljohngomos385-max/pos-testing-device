@@ -152,7 +152,7 @@ function orderSeller(o) {
 // "#1-023 · Refunded" / "· Partly refunded" (SalesMath.statusOf). A plain sale says nothing.
 function orderFlag(o) {
   const s = orderStatus(o), x = orderXchg(o);   // the word takes its state's colour (styles.css span.st[data-s])
-  return s === 'sale' && !x ? '' : `<span class="st" data-s="${x ? 'xchg' : s}"> · ${escapeHtml(orderStatusLabel(o))}</span>`;
+  return s === 'sale' && !x ? '' : `<span class="st" data-s="${x ? 'xchg' : s}"><i> · </i>${escapeHtml(orderStatusLabel(o))}</span>`;   // <i>: the phone title drops the dot
 }
 const orderTitleHtml = o => o.draft
   ? `<span>${escapeHtml([orderStatusLabel(o), o.name].filter(Boolean).join(' · '))}</span>`
@@ -175,10 +175,11 @@ function ordersShown() {
   return orderRows().filter(o => {
     const ago = daysAgo(o.ts), hitBack = (backNums.get(o.id) || []).some(n => String(n).toLowerCase().includes(q));
     if (!hitBack && (F.range === 'yday' ? ago !== 1 : ago > maxAgo)) return false;
-    if (F.staff && orderSeller(o) !== F.staff) return false;
-    if (F.pay && !orderTenderKeys(o).some(k => payBucket(k) === F.pay)) return false;
-    if (F.status && (F.status === 'xchg' ? !orderXchg(o) : orderStatus(o) !== F.status || orderXchg(o))) return false;
-    if (F.fulfil && o.fulfilment !== F.fulfil) return false;
+    // staff / pay / status / fulfil: '' = any, else a list of picks (openFilterSheet), any one of them matches
+    if (F.staff && !F.staff.includes(orderSeller(o))) return false;
+    if (F.pay && !orderTenderKeys(o).some(k => F.pay.includes(payBucket(k)))) return false;
+    if (F.status && !F.status.some(s => (s === 'xchg' ? orderXchg(o) : orderStatus(o) === s && !orderXchg(o)))) return false;
+    if (F.fulfil && !F.fulfil.includes(o.fulfilment)) return false;
     if (state.ordersCustomer && SalesMath.customerIdOf(o) !== state.ordersCustomer) return false;
     return !q || [o.number, ...(backNums.get(o.id) || []), o.name, o.customer ? o.customer.name : 'walk-in', SalesMath.payWord(o), orderStatusLabel(o), tillDate(o.ts, 'slip'),
       ...(o.items || []).flatMap(i => [i.name, i.sku])].some(v => String(v || '').toLowerCase().includes(q));
@@ -193,7 +194,7 @@ function ordersFor(customerId, orderId = '') {
   state.ordersQuery = '';
   $('#ordersSearch').value = '';
   $('#ordersFind').classList.remove('typed');
-  $('#ordersSearch').placeholder = customerId ? 'Search # or item' : 'Search # or customer';
+  $('#ordersSearch').placeholder = 'Search';   // phone copy: the title names the list, as iOS (owner 2026-10-17)
   $('#ordersView').classList.toggle('for-cust', !!customerId);
   $('#ordersView').classList.toggle('reading', !!orderId);   // phone: a tapped order opens on its receipt
   if (orderId) state.selectedOrderId = orderId;
@@ -269,7 +270,7 @@ function orderBackHtml(o) {
   const swap = state.orders.find(x => SalesMath.isSale(x) && x.originalOrderId === o.id);   // the exchange's new sale
   return rows.length ? `<section class="o-back">${rows.map(r => `<div class="fr">
     <span class="lb">${r.status === 'void' ? 'Voided' : r.reason === 'Exchange' ? 'Exchanged' : 'Refunded'} <small class="num">${tillDate(r.ts, 'dayTime')} · ${escapeHtml(SalesMath.payWord(r))} · #${escapeHtml(r.number)}${r.reason === 'Exchange' && swap ? ` · for #${escapeHtml(swap.number)}` : ''}</small></span>
-    <span class="v num">${peso(SalesMath.rowAmount(r))}</span>
+    <span class="v num amt">${peso(SalesMath.rowAmount(r))}</span>
     <button type="button" class="link" data-print-back="${escapeHtml(r.id)}">Print</button></div>`).join('')}</section>` : '';
 }
 // What came back of each line, by how (owner 2026-10-09): "1 exchanged", "2 refunded", or both. `left` = SalesMath.qtyLeft.
@@ -347,35 +348,107 @@ function refundAct(btn, o) {
   });
 }
 
-// The filter sheet (both labs): every choice on one sheet; a tap applies at once and the sheet stays open.
-// groups() -> [[heading, key, [[value, label, dotColour?]]]]; cur is the live filter object, def its defaults.
+// The filter sheet (both pages), Apple Maps' Filters (owner 2026-10-18): it slides up over the page; ✕ drops the picks,
+// ✓ (lit once something changed) applies them. A group with an '' (any) choice takes several picks, kept as a list, ''
+// while none (owner 2026-10-18: "Payment and Status multi-select"); a group without one (When) always keeps one pick.
+// Clear Filters (while anything is picked) puts the defaults back. No colour dots: plain words (owner 2026-10-18).
+// groups() -> [[heading, key, [[value, label]]]]; cur is the live filter object, def its defaults.
 function openFilterSheet(btn, groups, cur, def, apply) {
-  const veil = document.createElement('div');
-  veil.className = 'rail-veil';
-  veil.innerHTML = '<div class="rail-menu fp" role="dialog" aria-label="Filters"></div>';
-  const m = veil.firstChild;
+  const pick = { ...cur }, { veil, m, close } = openSheet(btn, `<div class="fs-top">
+    <button type="button" class="fs-x" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 id="fsTitle">Filters</h2>
+    <button type="button" class="fs-ok" aria-label="Apply filters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></button>
+    </div><div class="fs-body"></div><button type="button" class="fs-clear">Clear Filters</button>`), body = m.querySelector('.fs-body');
+  const same = (x, y) => JSON.stringify([].concat(x).sort()) === JSON.stringify([].concat(y).sort());   // a list's order never counts
+  const differs = (a, b) => Object.keys(def).some(k => !same(a[k], b[k]));
   const draw = () => {
-    m.innerHTML = groups().map(([h, key, opts]) => `<h6>${h}</h6><div class="fp-seg">${opts.map(([v, l, dot]) =>
-      `<button type="button" class="${cur[key] === v ? 'cur' : ''}" data-k="${key}" data-v="${escapeHtml(v)}">${dot ? `<i class="pm" style="background:${dot}"></i>` : ''}${escapeHtml(l)}</button>`).join('')}</div>`).join('')
-      + `<button type="button" class="reset"${Object.keys(def).some(k => cur[k] !== def[k]) ? '' : ' disabled'}>Reset filters</button>`;
+    body.innerHTML = groups().map(([h, key, opts]) => `<h6>${h}</h6><div class="fs-grp"${opts.some(([v]) => v === '') ? ' data-free' : ''}>${opts.filter(([v]) => v !== '').map(([v, l]) => {
+      const on = [].concat(pick[key]).includes(v);
+      return `<button type="button" class="${on ? 'cur' : ''}" aria-pressed="${on}" data-k="${key}" data-v="${escapeHtml(v)}">${escapeHtml(l)}</button>`;
+    }).join('')}</div>`).join('');
+    m.querySelector('.fs-ok').disabled = !differs(pick, cur);
+    m.querySelector('.fs-clear').hidden = !differs(pick, def);
   };
   draw();
-  document.body.append(veil);
-  const r = btn.getBoundingClientRect();
-  m.style.top = Math.max(12, Math.min(r.bottom + 6, innerHeight - m.offsetHeight - 12)) + 'px';
-  m.style.left = Math.max(12, Math.min(r.right - m.offsetWidth, innerWidth - m.offsetWidth - 12)) + 'px';
-  btn.setAttribute('aria-expanded', 'true');
-  const close = () => { veil.remove(); btn.setAttribute('aria-expanded', 'false'); };
   veil.addEventListener('click', e => {
-    if (e.target === veil) { close(); return; }
-    const b = e.target.closest('button');
-    if (!b) return;
-    Object.assign(cur, b.classList.contains('reset') ? def : { [b.dataset.k]: b.dataset.v });
-    apply();
-    draw();
+    if (e.target === veil || e.target.closest('.fs-x')) return;   // openSheet's
+    if (e.target.closest('.fs-ok')) { Object.assign(cur, pick); apply(); return close(); }
+    if (e.target.closest('.fs-clear')) Object.assign(pick, def);
+    const b = e.target.closest('[data-k]');
+    if (b && 'free' in b.parentElement.dataset) {
+      const k = b.dataset.k, was = [].concat(pick[k] || []), on = was.filter(v => v !== b.dataset.v);
+      if (on.length === was.length) on.push(b.dataset.v);
+      pick[k] = on.length ? on : '';
+    } else if (b) pick[b.dataset.k] = b.dataset.v;
+    draw();   // the redraw drops the tapped pill, and focus with it: back onto its new copy (or the sheet) so Escape still reaches us
+    (b && body.querySelector(`[data-k="${b.dataset.k}"][data-v="${CSS.escape(b.dataset.v)}"]`) || m).focus({ preventScroll: true });
   });
-  veil.addEventListener('keydown', e => { if (e.key === 'Escape') { close(); btn.focus(); } });
-  m.querySelector('button')?.focus({ preventScroll: true });
+}
+
+// The phone's ⋯ (owner 2026-10-19, Claude's Select model sheet): a half sheet of rows in place of the morph menu, which
+// needs room the bar no longer has. items as openMenu's: [{label, run, red, off}], '-' starts a new card.
+function openActionSheet(btn, title, items) {
+  const cards = [[]];
+  items.forEach((it, i) => it === '-' ? cards.push([]) : cards.at(-1).push(`<button type="button" data-i="${i}" class="${it.red ? 'red' : ''}"${it.off ? ' disabled' : ''}>${escapeHtml(it.label)}</button>`));
+  const { veil, close } = openSheet(btn, `<div class="fs-top">
+    <button type="button" class="fs-x" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 id="fsTitle">${escapeHtml(title)}</h2><i></i></div><div class="fs-body">${cards.filter(c => c.length).map(c => `<div class="fs-rows">${c.join('')}</div>`).join('')}</div>`, 'half');
+  veil.addEventListener('click', e => {
+    const b = e.target.closest('[data-i]');
+    if (b) { close(); items[b.dataset.i].run(); }
+  });
+}
+
+// A sheet that slides up over the page (the filter and action sheets): ✕, a tap on the dim, Escape or pulling its head
+// down closes it. html is its inside, the head a .fs-top. Returns { veil, m, close }.
+function openSheet(btn, html, cls = '') {
+  const veil = document.createElement('div');
+  veil.className = 'fs-veil';
+  veil.innerHTML = `<div class="fsheet ${cls}" role="dialog" aria-modal="true" aria-labelledby="fsTitle" tabindex="-1">${html}</div>`;
+  const m = veil.firstChild;
+  document.body.append(veil);
+  btn.setAttribute('aria-expanded', 'true');
+  requestAnimationFrame(() => requestAnimationFrame(() => veil.classList.add('open')));   // a frame shut first, so it slides
+  m.focus({ preventScroll: true });
+  const opened = performance.now();
+  const close = () => {
+    veil.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.focus({ preventScroll: true });
+    setTimeout(() => veil.remove(), 300);   // ponytail: the slide's .24s plus slack, not a transitionend that reduced motion never fires
+  };
+  // pull the head (pull tab, title) down to close; let go short and it springs back (the scan card's swipe; owner 2026-10-18)
+  const head = m.querySelector('.fs-top');
+  let drag = null;
+  head.addEventListener('pointerdown', e => {
+    if (e.target.closest('button')) return;
+    drag = { y: e.clientY, dy: 0, v: 0, t: e.timeStamp };
+    head.setPointerCapture(e.pointerId);
+    m.style.transition = 'none';
+  });
+  head.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dy = Math.max(0, e.clientY - drag.y);
+    drag.v = (dy - drag.dy) / Math.max(1, e.timeStamp - drag.t);   // px/ms, for a flick
+    drag.t = e.timeStamp;
+    drag.dy = dy;
+    m.style.transform = `translateY(${dy}px)`;
+  });
+  const drop = e => {
+    const d = drag;
+    if (!d) return;
+    drag = null;
+    m.style.transition = m.style.transform = '';   // slides on from where the finger left it: down and out, or back up
+    if (e.type === 'pointerup' && (d.dy > 80 || (d.v > .5 && e.timeStamp - d.t < 100))) close();
+  };
+  head.addEventListener('pointerup', drop);
+  head.addEventListener('pointercancel', drop);
+  veil.addEventListener('click', e => {
+    if (e.target === veil && performance.now() - opened < 400) return;   // a double tap on the trigger: its second tap lands on the veil mid-slide
+    if (e.target === veil || e.target.closest('.fs-x')) close();
+  });
+  veil.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  return { veil, m, close };
 }
 
 // The search card both pages share: typing shows the ×, the × clears and keeps focus.
@@ -443,13 +516,6 @@ function openOrderDetailModal(orderId) {
     ${owed === 'Unpaid' || owed === 'Part paid' ? `<div class="odm-total-row"><span>On account</span><span>${owed}</span></div>` : ''}
     ${pay && pay.change > 0 ? `<div class="odm-total-row"><span>Change</span><span>${peso(pay.change)}</span></div>` : ''}`;
 
-  const actions = isCompletedSale(o) ? `
-    <div class="odm-actions">
-      ${canVoid(o) ? `<button class="secondary-btn danger" data-order-op="void" data-order-id="${o.id}">Void</button>` : ''}
-      <button class="secondary-btn" data-order-op="refund" data-order-id="${o.id}">Refund</button>
-      <button class="secondary-btn" data-order-op="return" data-order-id="${o.id}">Refund items</button>
-      <button class="secondary-btn" data-order-op="exchange" data-order-id="${o.id}">Exchange</button>
-    </div>` : '';
 
   const itemCount = (o.items || []).length;
   const body = $('#orderDetailModalBody');
@@ -465,7 +531,7 @@ function openOrderDetailModal(orderId) {
         <div class="odm-items-inner">${itemRows}</div>
       </div>
       <div class="odm-totals">${totalRows}</div>
-      ${actions}`;
+`;
 
     const toggle = body.querySelector('#odmItemsToggle');
     const detail = body.querySelector('#odmItemsDetail');
@@ -555,7 +621,7 @@ function recordDeliveryEvent(orderId, event) {
   const saved = appendEvents('deliveryEvents', [makeEvent({
     orderId, event, driver, lat: null, lng: null, note: '', terminal: String(store.registerNo || ''),
   }, store.cashier)]);
-  showToast(saved ? `${DELIVERY_EVENT_META[event].label} · ${driver}` : 'Could not save: storage is full');
+  showToast(saved ? `${DELIVERY_EVENT_META[event].label} · ${driver}` : 'Could not save: storage is full', null, saved);
   openOrderDetailModal(orderId);
   renderOrders();
 }
@@ -847,37 +913,13 @@ function moneyBackSaid(o, part) {
 // `picks` = [{ lineNo, qty }] for a line refund; none = everything still left on the sale.
 function refundOrder(orderId, reason = 'Refunded by manager', by = '', picks = null) {
   const row = reverseSale(orderId, 'refund', reason, { by, picks, again: (b) => refundOrder(orderId, reason, b, picks) });
-  if (row) { renderOrders(); renderReports(); showToast(`Refunded · ${moneyBackSaid(findOrderRow(orderId), row)}`); }
+  if (row) { renderOrders(); renderReports(); showDone(`Refunded · ${moneyBackSaid(findOrderRow(orderId), row)}`); }
   return row;
 }
 
 // A return is a refund with the reason the goods came back.
 function recordReturn(orderId, reason = 'Refunded items', picks = null) {
   return refundOrder(orderId, reason, '', picks);
-}
-
-// Which lines come back, and how many: one row per line with something left, a number to type
-// (0 = not this one), and under them what that gives back (SalesMath.refundPart, the refund's own
-// figure, discounts and all). onPick gets [{ lineNo, qty }].
-// ponytail: reuses the order pop-up's .odm-item row and the qty field's .vq-input; .tier-input is the one
-// existing narrow-input width until the till restyle gives the picker its own class.
-function pickReturnLines(o, { title, okText, onPick }) {
-  const prior = reversalsOf(o), left = SalesMath.qtyLeft(o, prior);
-  const rows = (o.items || []).map((i, k) => (left[k] > 0 ? `
-    <div class="odm-item">
-      <div class="odm-item-info">
-        <div class="odm-item-name">${escapeHtml(i.name)}</div>
-        <div class="odm-item-sub">${SalesMath.qtyText(left[k])} ${escapeHtml(i.unit || 'pc')} left · ${peso(i.price)} each</div>
-      </div>
-      <input type="number" class="vq-input tier-input" data-line="${k}" value="0" min="0" max="${left[k]}" step="any" inputmode="decimal" aria-label="${escapeHtml(i.name)} coming back" />
-    </div>` : '')).join('');
-  const picked = () => $$('#confirmMessage [data-line]').map(el => ({ lineNo: Number(el.dataset.line), qty: toNumber(el.value, 0) }));
-  showConfirm({ title, okText, danger: false, onConfirm: () => onPick(picked()),
-    html: `${rows}<div class="odm-total-row"><span>Coming back</span><span class="odm-item-amt" id="pickBack">${peso(0)}</span></div>` });
-  $('#confirmMessage').oninput = () => {
-    const part = SalesMath.refundPart(o, prior, picked());
-    $('#pickBack').textContent = part ? peso(part.total) : picked().some(p => p.qty > 0) ? 'More than is left' : peso(0);
-  };
 }
 
 // An exchange rings the customer's own picks (owner 2026-10-03) in the sell screen's cart: what comes

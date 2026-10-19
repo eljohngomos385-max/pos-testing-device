@@ -206,22 +206,36 @@ function escapeHtml(s) {
   }[c]));
 }
 
-// `undo`: an Undo button on the toast, which then stays up longer; it runs once
-function showToast(msg, undo) {
+// Every toast is the "Added" chip (owner's pick from toast-lab.html, 2026-10-19; all toasts 2026-10-19): a small white
+// pill that rises in like a notification. `done`: the filled tick, for something that worked (showDone); without it, a
+// notice. `undo`: an Undo button, which then stays up longer; it runs once. `note`: a quiet tail that never gets cut ("16 left").
+// Up for 1.2s + 40ms a letter, so a long warning stays long enough to read.
+function showToast(msg, undo, done, note) {
   const el = $('#toast');
-  const hide = () => { el.classList.remove('show'); setTimeout(() => { el.hidden = true; }, 220); };
-  el.textContent = msg;
-  el.classList.toggle('has-undo', !!undo);
+  el.className = 'toast' + (done ? ' done' : '');
+  el.innerHTML = (done ? '<span class="mk"><svg viewBox="0 0 24 24"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>' : '')
+    + `<em>${escapeHtml(msg)}</em>` + (note ? `<i>${escapeHtml(note)}</i>` : '');
   if (undo) {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'toast-undo'; b.textContent = 'Undo';
-    b.onclick = () => { b.onclick = null; clearTimeout(showToast._t); hide(); undo(); };
+    b.onclick = () => { b.onclick = null; hideToast(); undo(); };
     el.append(b);
   }
   el.hidden = false;
-  requestAnimationFrame(() => el.classList.add('show'));
+  el.classList.add('show');
+  // the rise, played from script: iPhone Safari kept the CSS one that was already done and skipped it when a toast
+  // replaced one still up (owner 2026-10-19); el.animate starts over every time
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches)
+    el.animate([{ transform: 'translateY(8px) scale(.94)', opacity: 0 }, { opacity: 1, offset: .3 }, { transform: 'none', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(.3, 1.35, .45, 1)' });
   clearTimeout(showToast._t);
-  showToast._t = setTimeout(hide, undo ? 5000 : 2000);
+  showToast._t = setTimeout(hideToast, undo ? 5000 : 1200 + (msg.length + (note || '').length) * 40);
+}
+const showDone = (msg, undo, note) => showToast(msg, undo, true, note);
+function hideToast() {
+  const el = $('#toast');
+  clearTimeout(showToast._t);
+  el.classList.remove('show');
+  setTimeout(() => { if (!el.classList.contains('show')) el.hidden = true; }, 220);
 }
 
 function flashControl(el) {
@@ -267,7 +281,7 @@ function osmTileUrl(x, y, zoom) {
 }
 
 function setAppViewportHeight() {
-  const measuredHeight = Math.floor(
+  let measuredHeight = Math.floor(
     window.visualViewport?.height ||
     window.innerHeight ||
     document.documentElement.clientHeight ||
@@ -280,6 +294,11 @@ function setAppViewportHeight() {
     0
   );
   if (measuredHeight <= 0) return;
+  // iPhone Home Screen app drawn under the clock (black-translucent): iOS reports the height minus the status bar, so the
+  // app stopped a band short of the bottom (addon/push-menu, 2026-10-07). There the app is always the whole screen; iOS keeps
+  // screen.width/height in portrait terms, so take the side that matches the window
+  const fullScreen = navigator.standalone ? (measuredWidth < measuredHeight ? screen.height : screen.width) : 0;
+  if (fullScreen > measuredHeight && !document.activeElement?.matches?.('input, textarea, select')) measuredHeight = fullScreen;
 
   const activeTag = document.activeElement?.tagName;
   const editingText = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
@@ -827,6 +846,8 @@ function renderRoleSwitcher() {
   sub.textContent = STAFF_ROLES[state.role] || 'Staff';
   $('.user-store').innerHTML = `<span>${escapeHtml(store.name)}</span>&nbsp;· POS ${escapeHtml(store.registerNo || '1')}`;
   if (state.user) userMeta.querySelector('.user-name').textContent = state.user.name;
+  $('.user-avatar').textContent = (state.user?.name || 'E')[0];
+  $('.side-ttl').textContent = store.name;
 }
 
 // ---------- View switching ----------
@@ -859,7 +880,7 @@ function switchView(view) {
   if (view === 'qr') renderQr();
   if (view === 'customers') renderCustomers();
   if (view === 'shift') shiftPast(false);   // opens on the drawer, not Past shifts
-  if (view === 'reports') renderReports();
+  if (view === 'reports') { $('.view-reports .c-scroll').scrollTop = reportsView.y = 0; renderReports(); }   // opens at the top; Day | Week | Month keeps the place (reportsGo)
   if (view === 'checkout') renderCheckout();
 }
 

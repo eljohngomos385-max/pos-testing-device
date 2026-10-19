@@ -63,6 +63,11 @@ function attachEvents() {
   $$('.side-link').forEach(t => t.addEventListener('click', () => {
     $('#app').classList.add('sidebar-collapsed');
   }));
+  // phone: the full-page drawer's ✕, and a swipe left closes it (owner 2026-10-17). ponytail: a flick, not a finger-following drag
+  $('.side-x').addEventListener('click', () => $('#app').classList.add('sidebar-collapsed'));
+  let sideX0 = 0;
+  $('.sidebar').addEventListener('touchstart', e => { sideX0 = e.touches[0].clientX; }, { passive: true });
+  $('.sidebar').addEventListener('touchend', e => { if (e.changedTouches[0].clientX - sideX0 < -50) $('#app').classList.add('sidebar-collapsed'); }, { passive: true });
 
   // ---- Bottom bar: pagination ----
 
@@ -307,18 +312,9 @@ function attachEvents() {
     if (part) showConfirm({ title: `Refund ${SalesMath.plural(picks.length, 'item')} on #${o.number}?`, message: `${moneyBackSaid(o, part)}.`,
       okText: 'Refund', onConfirm: () => morph(() => recordReturn(o.id, 'Refund', picks)) });
   };
-  // Refund and Void always ask first, from the rail or the order's details.
-  const askRefund = (o) => {
-    // What is still left on it: a partly refunded sale gives back only the rest.
-    const left = o && SalesMath.qtyLeft(o, reversalsOf(o)).map((qty, lineNo) => ({ lineNo, qty }));
-    const back = o && SalesMath.refundPart(o, reversalsOf(o), left);
-    if (back) showConfirm({ title: `Refund #${o.number}?`, message: `${moneyBackSaid(o, back)}.`, okText: 'Refund', onConfirm: () => refundOrder(o.id, 'Refund') });
-  };
   const askVoid = (o) => showConfirm({ title: `Void #${o.number}?`, message: 'The sale stays on record, marked voided.', okText: 'Void sale', onConfirm: () => voidOrder(o.id, 'Void') });
   $('#orderRefund')?.addEventListener('click', () => { const o = shownOrder(); if (o) refundTicked(o); });
   $('#orderCancel')?.addEventListener('click', () => morph(() => { Object.assign(orderPick, { on: false, lines: {} }); renderOrderDetail(); }));
-  // Refund items: the customer's lines first (pickReturnLines), then the refund.
-  const refundItems = (o) => pickReturnLines(o, { title: `Refund items on #${o.number}`, okText: 'Refund', onPick: (picks) => recordReturn(o.id, 'Refund', picks) });
   // Exchange ticks what comes back the way Refund does (owner 2026-10-09); the bar's button then reads Exchange ₱X.
   const exchangeItems = (o) => {
     if (state.view !== 'orders') { switchView('orders'); $('#ordersView').classList.add('reading'); }   // the details pop-up opens from Reports too
@@ -329,10 +325,21 @@ function attachEvents() {
     { label: 'Exchange', off: !isCompletedSale(o), run: () => exchangeItems(o) },
     '-',
     o.draft ? { label: 'Delete', red: true, run: () => showConfirm({ title: `Delete “${o.name || orderStatusLabel(o)}”?`, okText: 'Delete', danger: true,
-      onConfirm: () => { HWPOS_STORE.savedCarts.remove(o.id); if (state.savedId === o.id) state.savedId = ''; renderOrders(); showToast('Deleted'); } }) }
+      onConfirm: () => { HWPOS_STORE.savedCarts.remove(o.id); if (state.savedId === o.id) state.savedId = ''; renderOrders(); showDone('Deleted'); } }) }
       : { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o) },
   ], { w: 200, right: true });
-  $('#orderMore')?.addEventListener('click', (e) => { const o = shownOrder(); if (o) orderMenu(e.currentTarget, o); });
+  // phone: the bar keeps ‹ and ⋯ only, so ⋯'s sheet carries Print receipt and Refund too (owner 2026-10-19).
+  // A draft hides ⋯ (refundAct), so the sheet only ever sees a sale.
+  $('#orderMore')?.addEventListener('click', (e) => { const o = shownOrder(); if (!o) return;
+    if ($('#orderPrint').offsetParent) return orderMenu(e.currentTarget, o);   // Print on the bar: the layout's own phone test (styles.css)
+    openActionSheet(e.currentTarget, `#${o.number}`, [
+      { label: 'Print receipt', run: () => printOrder(o) },
+      { label: 'Refund', off: !isCompletedSale(o), run: () => refundTicked(o) },
+      { label: 'Exchange', off: !isCompletedSale(o), run: () => exchangeItems(o) },
+      ...(o.fulfilment === 'delivery' ? [{ label: 'Order details', run: () => openOrderDetailModal(o.id) }] : []),
+      '-',
+      { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o) },
+    ]); });
   // A tick, tick-all or − / + on the lines: the same pick, whichever page shows the order.
   $('#orderDetail')?.addEventListener('click', (e) => {
     const back = e.target.closest('[data-print-back]');
@@ -342,22 +349,13 @@ function attachEvents() {
   });
   $('#orderDetailModal')?.addEventListener('click', (e) => {
     const trip = e.target.closest('[data-delivery-event]');
-    if (trip) { recordDeliveryEvent(trip.dataset.orderId, trip.dataset.deliveryEvent); return; }
-    const btn = e.target.closest('[data-order-op]');
-    if (!btn) return;
-    const o = state.orders.find(x => x.id === btn.dataset.orderId);
-    $('#orderDetailModal').hidden = true;
-    if (o && btn.dataset.orderOp === 'void') askVoid(o);
-    if (o && btn.dataset.orderOp === 'refund') askRefund(o);
-    if (o && btn.dataset.orderOp === 'return') refundItems(o);
-    if (o && btn.dataset.orderOp === 'exchange') exchangeItems(o);
-    renderOrders();
+    if (trip) recordDeliveryEvent(trip.dataset.orderId, trip.dataset.deliveryEvent);
   });
   wireFind('#ordersFind', '#ordersSearch', '#ordersSearchX', (q) => { state.ordersQuery = q; renderOrders(); });
   $('#ordersFilter')?.addEventListener('click', (e) => openFilterSheet(e.currentTarget, () => [
     ['When', 'range', ORDER_RANGES.map(([v, l]) => [v, l])],
     ['Staff', 'staff', [['', 'Anyone'], ...[...new Set(state.orders.map(orderSeller).filter(Boolean))].sort().map(c => [c, c])]],
-    ['Payment', 'pay', [['', 'Any'], ...PAY_KEYS.map(k => [k, SalesMath.tenderLabel(k), payColor(k)])]],
+    ['Payment', 'pay', [['', 'Any'], ...PAY_KEYS.map(k => [k, SalesMath.tenderLabel(k)])]],
     ['Status', 'status', [['', 'Any'], ...['sale', 'saved', 'quote', 'part', 'refunded', 'voided'].map(k => [k, DRAFT_LABEL[k] || SalesMath.ROW_LABEL[k]]), ['xchg', 'Exchanged']]],
     // Each type a row can read (orderFulfilLabel), the owner's own ones included, so a 'Tricycle' row is found as itself.
     ['Fulfilment', 'fulfil', [['', 'Any'], ...[...new Set([...FULFIL_BUILTINS.map(([k]) => k), ...state.orders.map(o => o.fulfilment)])]
@@ -366,10 +364,38 @@ function attachEvents() {
 
   // ---- Items (list + editor; Save is not connected yet) ----
   // The switch picks the list (items, categories, modifiers); a row and + open that kind's editor.
-  const openKind = id => (itemsKind === 'items' ? openItemEditor(id) : openKindEditor(itemsKind, id));
+  const openKind = (id, k = itemsKind) => (k === 'items' ? openItemEditor(id) : openKindEditor(k, id));
   $('#itemsKinds')?.addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (b) setItemsKind(b.dataset.kind); });
-  new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#itemsKinds'));   // tabs moved: the pill re-places on the next switch
-  wireSegDrag($('#itemsKinds'), 'kind');   // press the pill and slide it, as iOS's
+  const kb = $('#itemsKinds'), kbFade = () => {   // fade an edge only while more words hide past it, as Safari's tab groups
+    kb.classList.toggle('fade-l', kb.scrollLeft > 1); kb.classList.toggle('fade-r', kb.scrollLeft + kb.clientWidth < kb.scrollWidth - 1);
+  };
+  kb.addEventListener('scroll', kbFade, { passive: true });
+  const kbRO = new ResizeObserver(() => { kb.classList.remove('slid'); kbFade(); });   // tabs moved: the pill re-places on the next switch
+  [kb, ...kb.children].forEach(el => kbRO.observe(el));   // the words too: a late font or another language widens them
+  wireSegDrag($('#itemsKinds'), 'kind');
+  [['#itemsView', '#itemsView .head'], ['.view-reports .iv', '.view-reports .head']].forEach(([v, h]) =>   // Items, Reports: the page starts under the head, the frost covers it
+    new ResizeObserver(([e]) => $(v).style.setProperty('--head-h', e.target.offsetHeight + 'px')).observe($(h), { box: 'border-box' }));
+  // Liquid glass press (owner 2026-10-18): the button swells and shines under the finger, leans and stretches toward a drag, springs back on release
+  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search)';
+  document.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest(LG);
+    if (!b || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const x0 = e.clientX, y0 = e.clientY, pull = (d, c, k) => c * d / (d + k);   // rubber band: follows, then resists
+    const all = b.matches('.search-wrap') ? [b, $('#scanBtn')] : [b], k = Math.min(1, (all[1] ? 20 : 44) / b.offsetWidth), cap = all[1] ? 3 : 10;   // Sell's search: scan moves with it; it moves 3px and stretches 4, as Messages' (owner 2026-10-18 photos)
+    if (all[1]) { const w = b.getBoundingClientRect(), s = all[1].getBoundingClientRect(); all[1].style.transformOrigin = `${w.left + w.width / 2 - s.left}px ${w.top + w.height / 2 - s.top}px`; }   // scan turns about the bar's middle
+    const set = (v, x) => all.forEach(t => t.style.setProperty(v, x));
+    const shine = (ev) => { const r = b.getBoundingClientRect(), at = (v, n) => Math.min(Math.max(v, 0), n) / n * 100 + '%';   // the light stays on the glass
+      b.style.setProperty('--lg-px', at(ev.clientX - r.left, r.width)); b.style.setProperty('--lg-py', at(ev.clientY - r.top, r.height)); };
+    const move = (ev) => {
+      const dx = ev.clientX - x0, dy = ev.clientY - y0, d = Math.hypot(dx, dy), m = pull(d, cap, 40) / (d || 1);
+      set('--lg-x', dx * m + 'px'); set('--lg-y', dy * m + 'px');
+      set('--lg-a', Math.atan2(dy, dx) + 'rad'); set('--lg-s', pull(d, .2, 60) * k);
+      shine(ev);
+    };
+    const end = () => { all.forEach(t => { t.classList.remove('lg-on'); ['--lg-x', '--lg-y', '--lg-s'].forEach(v => t.style.removeProperty(v)); });   /* --lg-a stays: the spring wobbles along the pull */ removeEventListener('pointermove', move); removeEventListener('pointerup', end); removeEventListener('pointercancel', end); };
+    shine(e); all.forEach(t => t.classList.add('lg-on'));
+    addEventListener('pointermove', move); addEventListener('pointerup', end); addEventListener('pointercancel', end);
+  });
   // swipe the list left / right for the next / previous tab: the list rides the finger with the tab beside it showing,
   // like the Sell grid's pages (owner 2026-10-16); not in Quick stock, which hides the tabs
   let ivX = null;
@@ -391,7 +417,7 @@ function attachEvents() {
   const ivDone = () => { ivList.classList.remove('swiping', 'going'); ivList.style.removeProperty('--dx'); ivList.querySelectorAll('.peek').forEach(p => p.remove()); };
   ivList?.addEventListener('touchstart', (e) => {
     if (ivList.classList.contains('going')) return (ivX = null);
-    ivX = e.touches.length === 1 && !QS.on ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, dx: 0, on: null } : null;
+    ivX = e.touches.length === 1 && !QS.on && $('#itemsKinds').offsetWidth ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, dx: 0, on: null } : null;
   }, { passive: true });
   ivList?.addEventListener('touchmove', (e) => {
     if (!ivX) return;
@@ -430,10 +456,11 @@ function attachEvents() {
   };
   ivList?.addEventListener('touchend', ivEnd);
   ivList?.addEventListener('touchcancel', ivEnd);
-  $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) (QS.on ? qsPickRow : openKind)(row.dataset.id); });
+  $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) row.dataset.hub ? setItemsKind(row.dataset.hub) : QS.on ? qsPickRow(row.dataset.id) : openKind(row.dataset.id); });
+  $('#itemsBack')?.addEventListener('click', () => setItemsKind('hub'));
   // Items +: the blurred stack, Change price / Quick stock (pos-stock.js) / Add item; the other kinds add straight away
   const fabIc = d => `<svg class="ic" viewBox="0 0 24 24">${d}</svg>`;
-  $('#itemsAdd')?.addEventListener('click', (e) => (itemsKind !== 'items' ? openKind(null) : openFabMenu(e.currentTarget, [
+  $('#itemsAdd')?.addEventListener('click', (e) => (itemsKind === 'addons' ? showToast("Add-ons aren't connected yet") : itemsKind !== 'items' ? openKind(null) : openFabMenu(e.currentTarget, [
     { label: 'Change price', ic: fabIc('<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/>'), run: () => qsStart('price') },
     { label: 'Quick stock', ic: fabIc('<path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9"/>'), run: () => qsStart() },
     { label: 'Add item', ic: fabIc('<path d="M12 5v14M5 12h14"/>'), run: () => openItemEditor(null) },
@@ -690,9 +717,9 @@ function attachEvents() {
       danger: true,
       onConfirm: () => {
         track('cart_clear', { lines: state.cart.length, subtotal: cartTotals().subtotal });
-        if (state.exchange) { state.cart = []; renderCart(); return showToast('Cart cleared'); }   // the exchange stays; ✕ leaves it
+        if (state.exchange) { state.cart = []; renderCart(); return showDone('Cart cleared'); }   // the exchange stays; ✕ leaves it
         clearCart();
-        showToast('Cart cleared');
+        showDone('Cart cleared');
       }
     });
   }
@@ -768,7 +795,7 @@ function attachEvents() {
 
   // ---- Pay ----
   // An exchange in the cart (startExchange) finishes here; anything else goes to the checkout.
-  const phCart = (on) => { on ? closeVariantSheet() : closeEditSheet(); $('#app').classList.toggle('ph-cart', on); };   // phone: the cart page; the variant sheet sits over it (z 98), so it closes on the way in
+  const phCart = (on) => { on ? (closeVariantSheet(), hideToast()) : closeEditSheet(); $('#app').classList.toggle('ph-cart', on); };   // phone: the cart page; the variant sheet sits over it (z 98), so it closes on the way in
   $('#cartBar').addEventListener('click', () => { closeBarcodeScanner(); phCart(true); });   // also the scanner's summary: the camera goes, the cart comes
   $('#cartBack').addEventListener('click', () => phCart(false));
   // A big discount the sheet didn't ask about (items taken off since, a saved cart continued) is asked here (discountOk).
@@ -882,7 +909,7 @@ function attachEvents() {
       state.settings.printing = { ...printerConfig(), btName: dev.name, btId: dev.id };
       saveSettings();
       renderPosSettings();
-      showToast('Paired ' + dev.name);
+      showDone('Paired ' + dev.name);
     } catch (e) {
       if (e.name !== 'NotFoundError') showToast(e.message || 'Pairing failed');
     }
@@ -941,7 +968,7 @@ function attachEvents() {
 function init() {
   setAppViewportHeight();
   // A sale that IndexedDB refused is kept in localStorage instead (data-store.js); say so once.
-  window.HWPOS_STORE?.events.on('save:failed', () => showToast('This device had a problem saving sales. Call support before closing the till.'));
+  window.HWPOS_STORE?.events.on('save:failed', () => showToast('Sales did not save on this POS. Call support before closing.'));
   state.folders = loadFolders();
   // Ensure "all" exists
   if (!state.folders.find(f => f.id === 'all')) {
@@ -1232,5 +1259,13 @@ function seedLabDays() {
     addShiftRow('shift_close', s.open.id, counted, { counts: [counted], ...as(day.who, day.at + 20 * hr + r(20) * min) });
   }
 }
+// The phone browser's strip behind the clock takes the colour of the page under it, as devices-all.html's frame does: Safari
+// tints it from theme-color or the root's background. ponytail: polled, as the frame does; every page and sheet changes it
+const themeMeta = document.querySelector('meta[name=theme-color]');
+setInterval(() => {
+  let e = document.elementFromPoint(innerWidth / 2, 1), bg = '';
+  for (; e && !bg; e = e.parentElement) { const c = getComputedStyle(e).backgroundColor; if (!/rgba\(.*, 0\)$|transparent/.test(c)) bg = c; }
+  if (bg && themeMeta.content !== bg) { themeMeta.content = bg; document.documentElement.style.backgroundColor = bg; }
+}, 300);
 // Sales live in IndexedDB: open it before the first read (data-store.js ready()).
 document.addEventListener('DOMContentLoaded', () => (window.HWPOS_STORE?.ready?.() || Promise.resolve()).then(init));

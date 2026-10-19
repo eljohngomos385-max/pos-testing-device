@@ -344,8 +344,8 @@ function stockOnAdd(p, want, add, { cancel } = {}) {
       onCancel: () => { if (!(p.stock > 0)) track('oos_tap', { productId: p.id, stockOnHand: toNumber(p.stock, 0) }); if (cancel) cancel(); } });
   }
   add(false);
-  if (tracked && left === 0) showToast(want === 1 ? 'Last one' : `Last ${SalesMath.qtyText(want)}`);   // the cart took what's left: never "0 left"
-  else if (tracked && left > 0 && stockLevel({ ...p, stock: left }) === 'low') showToast(`Only ${SalesMath.qtyText(left)} left`);
+  if (tracked && left === 0) showDone(p.name, null, want === 1 ? 'Last one' : `Last ${SalesMath.qtyText(want)}`);   // the cart took what's left: never "0 left"
+  else if (tracked && left > 0 && stockLevel({ ...p, stock: left }) === 'low') showDone(p.name, null, `${SalesMath.qtyText(left)} left`);   // the Added chip, with the count
 }
 
 // An item with no set price (askedPrice) asks for it first (the edit sheet's 'price'), then comes back with `price`:
@@ -366,7 +366,7 @@ function addToCart(productId, via = 'other', fromScanCard = false, price) {
     trackItemAdd({ ...p, price: it.price }, 1, via);
     renderCart();
     if (scanOpen()) scanHit(it.id, fromScanCard);   // the scanner's card says it: camera, search or a USB scanner
-    else showToast(`Added · ${p.name}`);
+    else showDone(p.name);
   });
 }
 
@@ -843,12 +843,12 @@ function removeLine(item) {
   };
   state.cart = state.cart.filter(i => i !== item);
   // the last line gone is a fresh sale, as Clear cart (owner 2026-10-09): no note, no nothing; a price being typed stays up
-  if (!state.cart.length && !state.exchange) { clearCart(es?.kind === 'price'); if (es) drawEditSheet(); return showToast('Item removed', undo); }
+  if (!state.cart.length && !state.exchange) { clearCart(es?.kind === 'price'); if (es) drawEditSheet(); return showDone('Item removed', undo); }
   const list = $('#cartList'), top = list.scrollTop;
   renderCart();
   list.scrollTop = top;   // renderCart jumps to the newest line; a removal keeps the cashier's place
   if (es) state.cart.length || es.kind === 'price' ? drawEditSheet() : closeEditSheet();   // Discount / Walk-in open beside the rail: its totals follow
-  showToast('Item removed', undo);
+  showDone('Item removed', undo);
 }
 
 // Closing keeps what's on the cart (it followed every tap) and sends the events the old Save sent, once per open.
@@ -1127,7 +1127,9 @@ const fulfilLabel = () => orderFulfilLabel({ fulfilment: state.fulfilment });
 // anywhere or Esc closes it. items: [{label, ic, run}], top to bottom (the last one sits nearest the thumb).
 function openFabMenu(fab, items) {
   if (document.querySelector('.fab-veil:not(.out)')) return;   // one menu; a closing one may still fade
+  fab.style.transition = 'none';   // measured at rest, not mid liquid-glass spring (app.js)
   const r = fab.getBoundingClientRect(), veil = document.createElement('div');
+  fab.style.transition = '';
   veil.className = 'fab-veil';
   veil.style.cssText = `--fr:${innerWidth - r.right}px;--fb:${innerHeight - r.bottom}px;--fs:${r.width}px`;
   veil.innerHTML = `<div class="fab-stack" role="menu">${items.map((it, i) => `<button type="button" role="menuitem" data-i="${i}" style="--d:${(items.length - 1 - i) * 35}ms">
@@ -1165,7 +1167,7 @@ function openFabMenu(fab, items) {
 // ---------- The morph menu (cart-lab-stack-c.html) ----------
 // The menu grows out of its trigger's own box, each item the trigger's height, always in the same order (the hand
 // learns where each choice is); the current one is only bold. A pick, a tap outside or Esc shrinks it back.
-// items: [{label, run, cur, red, off}] or '-' for a divider. opts.w: width (default the trigger's), opts.right: right-align.
+// items: [{label, run, cur, red, off}] or '-' for a divider. opts.w: width (default the trigger's), opts.right: right-align, opts.mid: centre.
 const calmMs = ms => matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : ms;
 let railMenu = null;
 function openMenu(trigger, items, opts = {}) {
@@ -1178,7 +1180,7 @@ function openMenu(trigger, items, opts = {}) {
   m.style.cssText = `width:${w}px;--pl:${Math.max(12, parseFloat(cs.paddingLeft) - pad)}px;--pr:${Math.max(8, parseFloat(cs.paddingRight) - pad)}px`;
   document.body.append(veil);
   const anchor = m.querySelector('button'), H = m.offsetHeight;
-  const left = Math.max(0, Math.min(innerWidth - w, opts.right ? r.right - w : r.left));
+  const left = Math.max(0, Math.min(innerWidth - w, opts.mid ? r.left + (r.width - w) / 2 : opts.right ? r.right - w : r.left));   // opts.mid: under a centred title
   const top = Math.max(8, Math.min(innerHeight - H - 8, r.top - anchor.offsetTop));
   m.style.left = left + 'px'; m.style.top = top + 'px';
   const shrink = growFrom(m, r);
@@ -1455,7 +1457,7 @@ function deleteCustomer() {
     if (state.customer?.id === c.id) selectCustomer('walk-in');
     closeCustomerEditModal();
     renderCustomers();
-    showToast('Customer deleted', () => { setCustomerDeleted(c.id, false); state.selectedCustomerId = c.id; renderCustomers(); });
+    showDone('Customer deleted', () => { setCustomerDeleted(c.id, false); state.selectedCustomerId = c.id; renderCustomers(); });
   } });
 }
 // Credit on/off and the limit are a manager's call (TILL_ACTIONS.credit, owner 2026-10-06); `by` = who approved it.
@@ -1481,7 +1483,7 @@ function saveSavedCustomerFromModal(by = '') {
   closeCustomerEditModal();
   if (!was) state.selectedCustomerId = c.id;
   if (state.view === 'customers') renderCustomers();
-  showToast(`${was ? 'Saved' : 'Added'} “${c.name}”`);
+  showDone(`${was ? 'Saved' : 'Added'} “${c.name}”`);
   // When created mid-sale from the Sell-page picker, attach the new customer to
   // the current receipt straight away (selectCustomer closes the picker too).
   if (state.customerEditFromSale) {
@@ -1498,6 +1500,13 @@ function cartTotals(cart = state.cart, cartDiscount = state.cartDiscount, scPwd 
 }
 
 const XCHG_ICON = '<svg class="ic xi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h15l-4-4M20 16H5l4 4"/></svg>';   // ⇄
+// Blur swap (owner's pick, toast-lab.html 2026-10-19): lined up from the right, only the characters that changed
+// melt from the old one into the new one; --k is the place from the right, for a 25ms stagger.
+function blurSwap(now, before) {
+  return [...now].map((c, k) => { const o = before[k - now.length + before.length];
+    return o === c ? c : `<b class="nd" style="--k:${now.length - 1 - k}"><s aria-hidden="true">${o ?? ''}</s><u>${c}</u></b>`; }).join('');
+}
+
 function renderCart() {
   keepCart();
   const list = $('#cartList');
@@ -1545,9 +1554,11 @@ function renderCart() {
   $('#payBtn').innerHTML = owe ? (n ? `<span>${owe[0]}</span>${owe[2] ? `<span class="num">${peso(owe[2])}</span>` : ''}` : '<span>Exchange</span>')
     : `<span>Check out</span>${n ? `<span class="num">${peso(t.total)}</span>` : ''}`;   // the total rides in the button, the Total row is the checkout's
   $('#side').classList.toggle('empty-cart', n === 0 && !x);
+  const last = $('#cartBar')._last, cnt = Number(n).toLocaleString('en-PH');   // the pill's last numbers, for the blur swap
   $('#cartBar').disabled = n === 0 && !x;   // phone: what is in the cart, not Check out; an exchange opens it to see what comes back
   $('#cartBar').innerHTML = x ? `<span>${XCHG_ICON}Exchange</span><span class="num">${n ? (owe[2] ? `${owe[0]} ${peso(owe[2])}` : off ? `${peso(off)} off account` : 'Even swap') : `#${escapeHtml(x.o.number)}`}</span>`
-    : n ? `<span>${SalesMath.plural(n, 'item')}</span><span class="num">${peso(t.total)}</span>` : '<span>No items</span>';
+    : n ? `<span>${blurSwap(cnt, last?.n ?? cnt)} ${SalesMath.pluralWord(n, 'item')}</span><span class="num">${blurSwap(peso(t.total), last?.t ?? peso(t.total))}</span>` : '<span>No items</span>';
+  $('#cartBar')._last = n && !x ? { n: cnt, t: peso(t.total) } : null;
   if (!n && !x) $('#app').classList.remove('ph-cart');
   if (scanCardId) drawScanCard();
 
@@ -1688,6 +1699,6 @@ function saveLostSale() {
     showToast('Could not save: storage is full'); return;
   }
   $('#lostSaleModal').hidden = true;
-  showToast(`Lost sale logged · ${fields.text}`);
+  showDone(`Lost sale logged · ${fields.text}`);
 }
 
