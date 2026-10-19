@@ -1,0 +1,353 @@
+/* Lab — Shopify's list table on our three lists (Orders, Items, Customers). Only backoffice-shopify.html
+   loads this, last; backoffice.html is the before. Same columns, same layout, Shopify's look
+   (shopify-orders.html / shopify-products.html are the reference, untouched):
+   ├─ filter row  → one white floating bar, borderless search + picks inside
+   ├─ card        → a white hairline container (owner 2026-10-17), title on white
+   ├─ header row  → the one grey fill: a 31px band edge to edge, square, no line under it
+   ├─ rows        → 33px rows, faint hairlines; the text follows the type roles (one rule per kind of column)
+   ├─ pills       → Polaris badges: grey by default; each payment method its own tint, status coloured
+   ├─ also        → Home's Recent orders (the Orders table) and Sales › Summary's Top items card, the same rules (owner 2026-10-17: every table, one page at a time)
+   └─ and         → Categories, Modifiers, Stock history's Movements and Price changes (cards and full lists), Suppliers: the same table, bar and buttons (owner 2026-10-19)
+   Shopify-only values live in --sh-*; everything else is our tokens. */
+body.bo-light {
+  --sh-ink: rgb(16,16,16); --sh-ink-2: rgb(74,74,74); --sh-ink-3: rgb(96,96,96);
+  --sh-head: rgb(247,247,247); --sh-line: rgb(242,242,242); --sh-fill: rgba(0,0,0,.05);
+  --sh-float: rgba(0,0,0,.24) 0 0 2px 0, rgba(0,0,0,.06) 0 1px 3px 0, rgba(0,0,0,.05) 0 3px 8px 0;   /* sits closer, a touch darker (owner 2026-10-20: "float a bit too much") */
+  --sh-card-soft: rgba(0,0,0,.035) 0 .5px 1px 0, rgba(0,0,0,.01) 0 .5px 3px 0;   /* every card: a soft lift under --sh-float, short drop so the bottom edge weighs no more than the top (owner: "slightly too much", then "imbalanced") */
+  --sh-box: rgba(0,0,0,.04) 0 2px 3px -1px, rgba(0,0,0,.04) 0 3px 4px -1.5px, rgba(0,0,0,.2) 0 0 0 1px;
+  --sh-ok: #b3f782; --sh-ok-ink: #0f2400; --sh-bad: #ffd0cc; --sh-bad-ink: #360200;
+  --sh-pay-cash: #cdf5d3; --sh-pay-cash-ink: #0c3b14; --sh-pay-gcash: #c8e5ff; --sh-pay-gcash-ink: #002e5c;
+  --sh-pay-maya: #e5dcff; --sh-pay-maya-ink: #2b1066; --sh-pay-qr: #c2f2ec; --sh-pay-qr-ink: #00332d;
+  --sh-pay-card: #ffd9e6; --sh-pay-card-ink: #4a0021; --sh-pay-split: #fff1b3; --sh-pay-split-ink: #3d3000;
+  --sh-warn: #ffbf80; --sh-warn-ink: #381600; --sh-info: #8ce1f8; --sh-info-ink: #002c38;
+  --sh-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='rgb(96,96,96)' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M10.71 10.71a5.247 5.247 0 0 1-8.96-3.71 5.25 5.25 0 1 1 10.5 0c0 1.45-.59 2.75-1.54 3.71m0 0 3.54 3.54'/%3E%3C/svg%3E");
+  --sh-chev-r: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 9' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.25 1 4.75 4.5 1.25 8'/%3E%3C/svg%3E");
+}
+
+/* ---- Page titles: one light style everywhere (owner 2026-10-19: "too thick", was 17/700 or 18/600) ---- */
+body.bo-light .view :is(.view-head, .item-head, .bar) h1 { font-size: 18px; font-weight: 500; letter-spacing: -0.01em; color: var(--sh-ink); }
+
+/* a record's page: the way back joins the title on one line, a path — ‹ Categories / Plumbing (owner 2026-10-19).
+   Customer, Stock history's full pages and Staff get .item-back from bo-shopify-copy.js */
+body.bo-light .view .item-head:has(> .item-back) { column-gap: 8px; }
+body.bo-light .view :is(.item-head, .view-title-wrap) .item-back { flex-basis: auto; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.01em; line-height: var(--btn-h); color: var(--sh-ink-2); text-decoration: none; }
+body.bo-light .view :is(.item-head, .view-title-wrap) .item-back::before { content: ""; width: 8px; height: 8px; margin-left: 3px; border: solid currentColor; border-width: 0 0 2px 2px; transform: rotate(45deg); }   /* bigger, thicker chevron (owner) */
+body.bo-light .view :is(.item-head, .view-title-wrap) .item-back::after { content: "/"; color: var(--po-ink-tertiary); font-weight: 400; }
+body.bo-light .view :is(.item-head, .view-title-wrap) .item-back:hover { color: var(--sh-ink); text-decoration: none; }
+
+/* a supplier's contact details: one Items-style table (bo-shopify-copy.js builds it); links read as plain text */
+/* Sales, Orders, Items: the name, then the view switch 16px after it (bo-shopify-copy.js adds the h1) */
+body.bo-light .view :is(.bar, .view-title-wrap) > h1:has(+ .pd-switch) { margin-right: 8px; }   /* + the row's 8px gap */
+body.bo-light .view-sales .bar > h1:has(+ .pd-switch) { margin-right: 4px; font-weight: 500; }                      /* Sales' bar gap is 12 */
+body.bo-light .view .bar > h1 + .pd-switch { margin-right: auto; }
+/* Customers and Suppliers › Breakdown: an empty page for now, only the title row (bo-shopify-copy.js sets .is-breakdown).
+   Export CSV is the list's, so it goes too, like Orders' Breakdown */
+body.bo-light .view.is-breakdown > :not(.view-head, dialog),
+body.bo-light .view.is-breakdown [data-act="export-suppliers"] { display: none; }
+body.bo-light .view-suppliers .sup-info { margin-bottom: 10px; }   /* the card gap the cards under it use */
+body.bo-light .view-suppliers .sup-info a { color: inherit; text-decoration: none; }
+body.bo-light .view-suppliers .sup-info a:hover { text-decoration: underline; }
+
+/* ---- Filter row: the floating bar ---- */
+body.bo-light :is(.view-tx .filters, .view-products .list-filters, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .list-filters) {
+  min-height: 36px; padding: 4px; gap: 2px; box-sizing: border-box; line-height: normal;
+  border-radius: 12px; background: var(--b-raised); box-shadow: var(--sh-float);
+}
+body.bo-light :is(.view-tx .filters .q, .view-products .list-filters > .search-input, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .list-filters > .search-input) {
+  height: 28px; padding: 0 8px 0 28px; border: 0; border-radius: 8px; box-shadow: none; outline: 0; line-height: normal;
+  background: transparent var(--sh-search) 6px center / 16px no-repeat; font-size: 13px; color: var(--sh-ink);
+}
+body.bo-light :is(.view-tx, .view-products, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers)) :is(.filters .pick, .list-filters .bo-select:not([multiple]), .list-filters .ms-pick > summary, .list-filters .pd-cols > summary, .list-filters > .bo-check, .list-filters > .bo-date) {
+  height: 28px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--sh-ink-3);
+}
+body.bo-light .view-tx .filters .pick { padding-block: 0; }
+body.bo-light :is(.view-tx, .view-products, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers)) :is(.filters .pick, .list-filters .bo-select:not([multiple]), .list-filters .ms-pick > summary, .list-filters .pd-cols > summary, .list-filters > .bo-check, .list-filters > .bo-date):hover { background: var(--sh-fill); }
+/* A set filter: Polaris's applied-filter chip, grey not blue. */
+body.bo-light :is(.view-tx, .view-products, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers)) :is(.filters .pick.on, .list-filters .bo-select:not([multiple]):has(option:checked:not([value=""])), .list-filters .ms-pick:has(input:checked) > summary, .list-filters > .bo-check:has(input:checked)) {
+  background: var(--sh-fill); color: var(--sh-ink);
+}
+body.bo-light :is(.view-tx, .view-products, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers)) :is(.filters .pick.on, .list-filters .ms-pick:has(input:checked) > summary)::after { border-color: var(--sh-ink-2); }
+body.bo-light .view .list-filters > .bo-check:has(input:checked) > svg { color: var(--sh-ink); }
+
+/* ---- Card: a white hairline container, a soft shadow under the search bar's; the header band runs edge to edge ---- */
+body.bo-light :is(.view-tx .card, .calm-dash .txcard, .view-products .blk-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .blk-table) {
+  background: var(--b-raised); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow);
+  padding: 0; overflow: hidden;
+}
+body.bo-light :is(.view-products, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers)) .blk-table::after { display: none; }
+body.bo-light :is(.view-tx .flush, .calm-dash .txcard .flush, .view-products .bo-card-inset.flush, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .bo-card-inset.flush) { margin: 0; background: transparent; }
+body.bo-light :is(.view-tx .head, .calm-dash .txcard .head, .view-products .blk-table .bo-card-head, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .blk-table .bo-card-head) { padding: 0 12px; }
+
+/* ---- The table ---- */
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table) {
+  border-collapse: separate; border-spacing: 0; font-size: 12px; line-height: 18px;
+}
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx th, .view-products .data-table th, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table th) {
+  height: 31px; padding: 0 8px; border: 0; background: var(--sh-head);
+}
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table) th:first-child { padding-left: 12px; }
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table) th:last-child { padding-right: 12px; }
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx td, .view-products .data-table td, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table td) {
+  height: 33px; padding: 0 8px; background: transparent; border-top: 1px solid var(--sh-line);
+}
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table) td:first-child { padding-left: 12px; }
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table) td:last-child { padding-right: 12px; }
+/* No line under the header band: the first row's hairline goes clear (Orders keeps its header inside tbody). */
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx tr:has(th) + tr td, .view-products .data-table tbody tr:first-child td, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table tbody tr:first-child td) { border-top-color: transparent; }
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx tr[data-receipt], .view-products .data-table tbody tr, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table tbody tr):hover td { background: var(--sh-head); }
+
+/* ---- Type roles: one rule per kind of column, on every table (owner 2026-10-17: "the name is this thick… cost always
+   this colour… that should always be the case in everything else"). Every cell is 13px, line height 1.45, -.06px.
+   ├─ header → 12px · 500 · --sh-ink-2, one line
+   ├─ plain  → 400 · --sh-ink-2   Category, Supplier, Cost, Margin, Stock, In stock, Units sold · Time, Customer, Staff, Fulfilment ·
+   │                              Phone, Orders, Last order, Balance · Units sold, Share
+   ├─ name   → 500 · --sh-ink     item name · order number · customer name · Top items name
+   ├─ money  → 500 · --sh-ink     Price · Stock value · Total · Total spent · Net sales
+   ├─ faint  → 400 · --po-ink-secondary   SKU, every empty dash, a quiet status word
+   ├─ note   → 11px · --po-ink-tertiary   the small word beside a name (variant count, category)
+   └─ figures→ plain in text columns, lined up in number columns
+   A new table joins by adding itself to the table list and its columns to the role lists, by meaning
+   (data-col, a class), never by position: Items' Stock view puts different columns in the same places.
+   Every role sits under the same table list, so a base sheet's own cell rule (Orders' Time grey) can't outrank it. */
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table, .calm-sales section.top table) th {
+  font-size: 12px; font-weight: 500; color: var(--sh-ink-2); line-height: normal; white-space: nowrap;
+}
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table, .calm-sales section.top table) :is(td, td.t) {
+  font-size: 13px; font-weight: 400; color: var(--sh-ink-2); line-height: 1.45; letter-spacing: -.06px; font-variant-numeric: normal;
+}
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table, .calm-sales section.top table) :is(td.n, td.num) { font-variant-numeric: tabular-nums; }
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table, .calm-sales section.top table) :is([data-pd-view="stock"] td.num > strong) { font-weight: 400; color: var(--sh-ink-2); }   /* In stock: plain, as Catalog Stock */
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table, .calm-sales section.top table) :is(td.id, td.nm, td.amt, :is(td[data-col="img"], [data-pd-view="stock"] td.pd-sel) + td, td[data-col="price"], td[data-col="price"] strong,
+  [data-pd-view="stock"] td:nth-child(5), .cust-table td > strong, .cust-table td:nth-child(4)) {
+  color: var(--sh-ink); font-weight: 500;
+}
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table, .calm-sales section.top table) :is(td.mono, td .mut, td .muted) { color: var(--po-ink-secondary); font-weight: 400; }
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table, .calm-sales section.top table) :is(.pd-vcount, .nm small, .row-sub) { margin-left: 6px; font-size: 11px; color: var(--po-ink-tertiary); }
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table, .calm-sales section.top table) tr.dim :is(td, td.id, td.amt, td .mut) { color: var(--b-ink-3); }   /* a voided or open sale's row stays one faint grey */
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .view-products .data-table, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table, .calm-sales section.top table) tr.dim td.id { font-weight: 400; }
+/* name role on the catalog lists (the first column) and Stock history's bold item names; Modifiers' options are faint */
+body.bo-light :is(.view-categories, .view-modifiers) .data-table tbody td:first-child:not(.bo-empty), body.bo-light :is(.view-inv, .view-suppliers) .data-table td strong { color: var(--sh-ink); font-weight: 500; }
+body.bo-light .view-modifiers .data-table tbody td.muted { color: var(--po-ink-secondary); }
+/* the catalog pages' title row sits on Items' line: same height and the same gap to the bar (owner: "spacing is too close") */
+body.bo-light :is(.view-categories, .view-modifiers) > .item-head { min-height: var(--po-head-h); margin-bottom: var(--po-head-gap); }
+
+/* ---- Chevrons: one drawn chevron at the text's cap height in place of the ‹ › glyphs (bo-shopify-copy.js chevrons, owner 2026-10-19 "C") ---- */
+body.bo-light svg.chev { width: .48em; height: .72em; margin-left: .15em; flex: none; vertical-align: 0; overflow: visible; }
+body.bo-light svg.chev.back { margin: 0; transform: scaleX(-1); }
+body.bo-light .calm-sales .si .strip a .l::after { content: ""; display: inline-block; width: .48em; height: .72em; margin-left: .3em; background: currentColor; -webkit-mask: var(--sh-chev-r) center / contain no-repeat; mask: var(--sh-chev-r) center / contain no-repeat; }
+
+/* ---- Badges ---- */
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx .pill, .calm-dash .rows .row > .pill, .view-products .data-table .status-pill, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table .status-pill) {
+  display: inline-flex; align-items: center; height: 20px; margin: 0; padding: 0 6px; border: 0; border-radius: 8px;
+  font-size: 12px; font-weight: 400; line-height: 18px; letter-spacing: -.13px;
+  background: var(--sh-fill); color: var(--sh-ink);
+}
+/* Payment method: each its own tint (owner 2026-10-17); Not completed and a voided sale's row stay grey. */
+body.bo-light :is(.view-tx, .calm-dash) table.tx .pill[class*="pay-"] { background: var(--sh-fill); color: var(--sh-ink); }
+body.bo-light :is(.view-tx, .calm-dash) table.tx .pill.pay-cash   { background: var(--sh-pay-cash);  color: var(--sh-pay-cash-ink); }
+body.bo-light :is(.view-tx, .calm-dash) table.tx .pill.pay-gcash  { background: var(--sh-pay-gcash); color: var(--sh-pay-gcash-ink); }
+body.bo-light :is(.view-tx, .calm-dash) table.tx .pill.pay-maya   { background: var(--sh-pay-maya);  color: var(--sh-pay-maya-ink); }
+body.bo-light :is(.view-tx, .calm-dash) table.tx .pill.pay-qr     { background: var(--sh-pay-qr);    color: var(--sh-pay-qr-ink); }
+body.bo-light :is(.view-tx, .calm-dash) table.tx .pill.pay-card   { background: var(--sh-pay-card);  color: var(--sh-pay-card-ink); }
+body.bo-light :is(.view-tx, .calm-dash) table.tx .pill.pay-credit { background: var(--sh-warn);      color: var(--sh-warn-ink); }
+body.bo-light :is(.view-tx, .calm-dash) table.tx .pill.pay-split  { background: var(--sh-pay-split); color: var(--sh-pay-split-ink); }
+body.bo-light :is(.view-tx, .calm-dash) table.tx tr.dim .pill[class*="pay-"] { background: var(--sh-fill); color: var(--sh-ink-3); }
+/* Status: Completed and In stock are green badges too, not grey text. Not on Home: there Completed is a grey pill (owner 2026-10-19, green "steals my eyes"). */
+body.bo-light :is(.view-tx table.tx td:has(> .pill[class*="pay-"]) + td, .view-products td[data-col="status"], .view-products [data-pd-view="stock"] .pd-row > td:nth-child(7)) > :is(.mut, .muted:not(.status-pill)) {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 8px;
+  font-size: 12px; line-height: 18px; letter-spacing: -.13px; background: var(--sh-ok); color: var(--sh-ok-ink);
+}
+/* Home: Completed is a quiet grey pill; Not completed is the one that should catch the eye, so it goes amber, and its empty
+   Payment cell goes hollow so it can't pass for a grey Completed (owner 2026-10-20: the two looked "almost the same") */
+body.bo-light .calm-dash table.tx td:has(> .pill[class*="pay-"]) + td > .mut {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 8px;
+  font-size: 12px; line-height: 18px; letter-spacing: -.13px; background: var(--sh-fill); color: var(--sh-ink);
+}
+body.bo-light .calm-dash table.tx td:has(> .pill[class*="pay-"]) + td > .pill:not(.down, .warn) { background: var(--sh-warn); color: var(--sh-warn-ink); }
+body.bo-light .calm-dash table.tx td:has(+ td > .pill:not(.down, .warn)) > .pill.pay-other { background: none; box-shadow: inset 0 0 0 1px var(--b-line); color: var(--sh-ink-3); }
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .calm-dash .rows .row) .pill.down,  body.bo-light :is(.view-products, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers)) .data-table .status-pill.danger { background: var(--sh-bad);  color: var(--sh-bad-ink); }
+body.bo-light :is(:is(.view-tx, .calm-dash) table.tx, .calm-dash .rows .row) .pill.warn,  body.bo-light :is(.view-products, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers)) .data-table .status-pill.warn   { background: var(--sh-warn); color: var(--sh-warn-ink); }
+body.bo-light :is(.view-products, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers)) .data-table .status-pill.ok { background: var(--sh-ok); color: var(--sh-ok-ink); }
+body.bo-light :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .data-table .status-pill.info { background: var(--sh-info); color: var(--sh-info-ink); }
+
+/* ---- Checkboxes and photos (photo size stays the owner's Top-sellers 28px) ---- */
+body.bo-light .view-products .pd-sel input { width: 14px; height: 14px; border: 0; border-radius: 4px; box-shadow: var(--sh-box); }
+body.bo-light .view-products .pd-sel input:is(:checked, :indeterminate) { background-color: var(--sh-ink); box-shadow: none; }
+body.bo-light .view-products #pdTable.pics .pd-thumb { border-radius: 8px; border-color: rgba(0,0,0,.08); }
+
+/* ---- Pager: plain, inside the container ---- */
+body.bo-light :is(.view-tx .pager, .view-products .bo-pager, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) .bo-pager) {
+  margin: 0; padding: 6px 12px; border-top: 0; background: transparent; color: var(--sh-ink-3); font-size: 12px;
+}
+/* Orders' prev/next buttons wear Items' page-button look (same tokens as .bo-page-btn): 24px, white, 1px line */
+body.bo-light .view-tx .pager .icon-btn {
+  width: auto; min-width: 24px; height: 24px; padding: 0 7px; box-shadow: none;
+  background: var(--po-surface); border: 1px solid var(--po-line-strong); border-radius: var(--po-r-button);
+  font-size: 12.5px; font-weight: 500; color: var(--po-ink);
+}
+body.bo-light .view-tx .pager .icon-btn:hover:not([disabled]) { background: var(--po-surface-hover); }
+body.bo-light .view-tx .pager .icon-btn[disabled] { opacity: .45; }
+
+/* ---- Page buttons (top right): our buttons, round, close to Shopify's feel (owner 2026-10-17: closer, not their skin).
+   ├─ size  → Shopify's: 12px, 12px sides, so they sit smaller than v14
+   ├─ light → a faint ring that floats on a wide soft shadow, no hard border
+   ├─ dark  → our ink, a soft light from the top centre, a short lift
+   └─ press → sinks 1px ---- */
+body.bo-light :is(.view-products .view-head .view-actions > :is(.secondary-btn, .primary-btn), :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) :is(.view-head .view-actions, .item-head .view-actions, .bar) > :is(.secondary-btn, .primary-btn), :is(.view-tx, .calm-sales) .bar > .btn) {
+  border: 0; border-radius: 9999px; padding-inline: 12px; font-size: 12px; font-weight: 500; letter-spacing: -.12px;
+  transition: background .12s, box-shadow .12s, transform .06s;
+}
+body.bo-light :is(.view-products .view-head .view-actions > .secondary-btn, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) :is(.view-head .view-actions, .item-head .view-actions, .bar) > .secondary-btn, :is(.view-tx, .calm-sales) .bar > .btn) {
+  background: var(--b-raised); color: var(--po-ink); box-shadow: var(--sh-btn);
+}
+body.bo-light :is(.view-products .view-head .view-actions > .primary-btn, :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) :is(.view-head .view-actions, .item-head .view-actions, .bar) > .primary-btn) {
+  background-image: radial-gradient(50% 60% at 50% 0%, rgba(255,255,255,.18), rgba(255,255,255,0));
+  box-shadow: inset 0 0 3px 1px rgba(255,255,255,.08), 0 1px 1px rgba(0,0,0,.14), 0 3px 6px -2px rgba(0,0,0,.18);
+}
+body.bo-light :is(.view-products .view-head .view-actions > :is(.secondary-btn, .primary-btn), :is(.view-customers, .view-categories, .view-modifiers, .view-inv, .view-suppliers) :is(.view-head .view-actions, .item-head .view-actions, .bar) > :is(.secondary-btn, .primary-btn), :is(.view-tx, .calm-sales) .bar > .btn, .view-tx .bar > .pick):active { transform: translateY(1px); }
+
+/* ---- Sales › Summary: the Top items card, the Items rules (owner 2026-10-17) ---- */
+body.bo-light .calm-sales section.top {
+  background: var(--b-raised); border: 1px solid var(--b-line); border-radius: var(--b-r-card); box-shadow: var(--card-shadow); padding: 0;
+}
+body.bo-light .calm-sales section.top table { border-collapse: separate; border-spacing: 0; font-size: 12px; line-height: 18px; }
+body.bo-light .calm-sales section.top th { height: 31px; padding-block: 0; background: var(--sh-head); }
+body.bo-light .calm-sales section.top .flush { margin: 0; }   /* the card lost its side padding, so the table no longer reaches out */
+body.bo-light .calm-sales section.top th.sw { padding-left: 4px; }
+body.bo-light .calm-sales section.top th .pick { height: 25px; padding-left: 7px; font-size: 12px; }   /* its text lines up with the names, 12px in */
+body.bo-light .calm-sales section.top :is(td.nm, .all) { padding-left: 12px; }
+body.bo-light .calm-sales section.top :is(th, td):last-child { padding-right: 12px; }
+body.bo-light .calm-sales section.top td { height: 33px; background: transparent; border-top: 1px solid var(--sh-line); }
+body.bo-light .calm-sales section.top tr:has(th) + tr td { border-top-color: transparent; }
+body.bo-light .calm-sales section.top tr:hover td { background: var(--sh-head); }
+body.bo-light .calm-sales section.top .all { height: 33px; background: transparent; border-top: 1px solid var(--sh-line); font-size: 12px; }
+body.bo-light .calm-sales section.top .all:hover { background: var(--sh-head); }
+
+/* ---- Orders laid out like Items (owner 2026-10-17: "orders just needs to look like items, but orders") ---- */
+body.bo-light .view-tx .c-main { max-width: 1560px; margin-inline: auto; padding-bottom: 48px; }   /* same width and side gutter as Items, was 18px narrower each side */
+body.bo-light .view-tx .bar > :is(.btn, .pick) { height: 28px; padding-block: 0; }   /* both 28px, as Items' buttons */
+body.bo-light .view-tx .bar > .btn:hover { background: var(--po-surface-hover); }
+body.bo-light .view-tx .head .sum { font-weight: 400; }   /* the total beside "All orders" is light, as "95 shown" is */
+body.bo-light .view-tx .pager { font-variant-numeric: normal; }   /* "1–50 of 70" in plain figures, as Items' count */
+
+/* ---- Orders › Breakdown: each block is a small table (owner 2026-10-17: "fix breakdown… redesign those").
+   ├─ block   → the list's card: white, hairline, the card shadow; no padding, so the band and rows sit edge to edge
+   ├─ band    → the header row: 31px grey, 12px · 500 · --sh-ink-2
+   ├─ rows    → 33px, faint hairlines, grey on hover; label and count plain, the amount money
+   └─ Net sales → one 40px line on white, its total the one big number ---- */
+body.bo-light .view-tx .rail.bd { gap: 12px; }
+body.bo-light .view-tx .rail.bd .w .top.band { margin: 0; min-height: 31px; padding: 0 12px; background: var(--sh-head);
+  font-size: 12px; font-weight: 500; color: var(--sh-ink-2); }
+body.bo-light .view-tx .rail.bd .w .top.one { min-height: 40px; background: transparent; font-size: 13px; font-weight: 400; }
+body.bo-light .view-tx .rail.bd .w .rows { margin: 0; }
+body.bo-light .view-tx .rail.bd .w .row, body.bo-light .view-tx .rail.bd .w .row:nth-child(odd) {
+  min-height: 33px; padding: 0 12px; background: transparent; border-top: 1px solid var(--sh-line);
+  font-size: 13px; line-height: 1.45; letter-spacing: -.06px; color: var(--sh-ink-2);
+}
+body.bo-light .view-tx .rail.bd .w .row:first-child { border-top-color: transparent; }
+body.bo-light .view-tx .rail.bd .w .row[data-f]:hover { background: var(--sh-head); }
+body.bo-light .view-tx .rail.bd .w .row.on, body.bo-light .view-tx .rail.bd .w .row.on:hover { background: var(--sh-fill); }
+body.bo-light .view-tx .rail.bd .w .row.on .nm { color: var(--sh-ink); }
+body.bo-light .view-tx .rail.bd .w :is(.row .nm, .row .cnt, .row .amt, .top.one .cnt) { font-weight: 400; color: var(--sh-ink-2); font-variant-numeric: tabular-nums; }
+/* the amount is money; Fulfilment's markup puts its amount in .cnt and its count in .amt */
+body.bo-light .view-tx .rail.bd .w:not([data-rail="ful"]) .row .amt, body.bo-light .view-tx .rail.bd .w[data-rail="ful"] .row .cnt,
+body.bo-light .view-tx .rail.bd .w .nv { font-weight: 500; color: var(--sh-ink); }
+
+/* ---- Every card on every page wears Home's soft shadow: blocks, tables, Breakdown, Top items (owner 2026-10-17: Home first,
+   then "add this to all of the items"; Sales and Items summary named) ---- */
+body.bo-light { --card-shadow: var(--sh-card-soft); }
+
+/* ---- Pickers: Shopify's pill (owner 2026-10-18, "our pills kind of look like this one, we want it like this"; values from
+   shopify-lab.html .pill). Date and view pickers only; actions (Export CSV, Add item) stay the white buttons above.
+   ├─ Home   → Widgets, Today vs …
+   ├─ Sales  → ‹ October 2026 › as one pill, both tabs
+   ├─ Orders → Today
+   ├─ cards  → Sales' view pickers (Donut, Bars, Network, Top items): the same pill at 24px, to sit in the band
+   └─ 28px, white with Export CSV's shadow (grey until 2026-10-20), round, 12px · 500, Shopify's 12px chevron; a date leads with Shopify's calendar ---- */
+body.bo-light {
+  --sh-pill: rgb(235,235,235);
+  --sh-btn: 0 0 0 1px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06), 0 2px 6px rgba(0,0,0,.05);   /* Import / Export CSV's white button; close and a touch dark, not floating (owner 2026-10-20) */
+  --sh-cal: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.252 2.75v-1'/%3E%3Cpath d='M10.748 2.75v-1'/%3E%3Cpath d='M3.026 6.25h9.99'/%3E%3Crect width='11.479' height='11' x='2.26' y='2.75' rx='3'/%3E%3C/svg%3E");
+  --sh-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.25 6.75-4.25 4.5-4.25-4.5'/%3E%3C/svg%3E");
+}
+body.bo-light :is(.calm-dash .bar > .pick, .view-tx .bar > .pick, .calm-sales .nav) {
+  height: 28px; border: 0; border-radius: 9999px; background: var(--b-raised); box-shadow: var(--sh-btn);   /* white like Export CSV, not flat grey (owner 2026-10-20) */
+  font-size: 12px; font-weight: 500; line-height: 16px; letter-spacing: -.12px; color: var(--po-ink); gap: 2px;
+}
+body.bo-light :is(.calm-dash .bar > .pick, .view-tx .bar > .pick):hover,
+body.bo-light .calm-sales .nav > button:not(:disabled):hover { background-color: color-mix(in srgb, var(--b-raised), #000 4%); }   /* ponytail: a shade darker; the live admin's own hover wasn't readable */
+body.bo-light :is(.calm-dash .bar > .pick, .view-tx .bar > .pick, .calm-sales .nav > .pick)::after {
+  width: 12px; height: 12px; margin: 0 -2px 0 4px; border: 0; transform: none; background: currentColor;
+  -webkit-mask: var(--sh-chev) center / 12px no-repeat; mask: var(--sh-chev) center / 12px no-repeat;
+}
+body.bo-light :is(.calm-dash .bar > .pick, .view-tx .bar > .pick) { padding: 0 10px 0 12px; }
+body.bo-light :is(#dashPick, .view-tx .bar > .pick, .calm-sales .nav > .pick) { padding-left: 6px; }
+body.bo-light :is(#dashPick, .view-tx .bar > .pick, .calm-sales .nav > .pick)::before {
+  content: ""; flex: none; width: 20px; height: 16px; background: currentColor;
+  -webkit-mask: var(--sh-cal) center / 16px no-repeat; mask: var(--sh-cal) center / 16px no-repeat;
+}
+body.bo-light .calm-sales :is(.si .band .pick, .top th .pick) {
+  height: 24px; padding: 0 6px 0 10px; border: 0; border-radius: 9999px; background: var(--sh-pill);
+  font-size: 12px; font-weight: 500; line-height: 16px; letter-spacing: -.12px; color: var(--sh-ink); gap: 2px;
+}
+body.bo-light .calm-sales :is(.si .band .pick, .top th .pick):hover { background-color: color-mix(in srgb, var(--sh-pill), #000 5%); }
+body.bo-light .calm-sales :is(.si .band .pick, .top th .pick)::after {
+  width: 12px; height: 12px; margin: 0 -2px 0 2px; border: 0; transform: none; background: currentColor;
+  -webkit-mask: var(--sh-chev) center / 12px no-repeat; mask: var(--sh-chev) center / 12px no-repeat;
+}
+body.bo-light .calm-dash .pick .vs { margin-left: 3px; color: var(--sh-ink-3); }
+/* Sales: the three buttons share the one pill, arrows at its round ends */
+body.bo-light .calm-sales .nav { padding: 0; overflow: hidden; }
+body.bo-light .calm-sales .nav > button { height: 28px; margin: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; }
+body.bo-light .calm-sales .nav > .icon-btn { width: 28px; padding: 0; font-size: 15px; }
+body.bo-light .calm-sales .nav > .pick { min-width: 0; padding-block: 0; padding-right: 6px; }
+
+/* Home's KPI tabs as the viz lab's N5-7 folder tab (owner 2026-10-19: the tabs only, the bars stay). No lines
+   under the tabs; the picked tab gets a --b-r-cell corner and a curved foot on each side that
+   doesn't touch the card's edge, and the card's top line goes lighter (--sh-line) over it. The lines between the
+   other tabs came back (owner 2026-10-19), never beside the folder. Four across only:
+   two by two keeps bo-calm's white tile, a folder can't open through the row below it. */
+body.bo-light :is(.calm-dash, .calm-sales) .card:has(> .strip) { border-top-color: transparent; }   /* the top line moves onto the tabs, so the picked one can soften it */
+body.bo-light :is(.calm-dash, .calm-sales) .stat { box-shadow: inset 0 1px 0 var(--b-line); }
+body.bo-light .calm-sales .card:has(> .strip) { container: strip / inline-size; }   /* Sales' calendar card folds by the same rule as Home's (owner 2026-10-20: "follow our home screen") */
+@container strip (max-width: 703px) {
+  body.bo-light :is(.calm-dash .strip .stat:nth-child(n+3), .calm-sales .strip.n5 .stat:nth-child(n+4)) { box-shadow: none; }   /* the second row has its own border-top */
+}
+@container strip (min-width: 704px) {
+  body.bo-light :is(.calm-dash, .calm-sales) .strip { border-bottom: 0; border-radius: calc(var(--b-r-card) - 1px) calc(var(--b-r-card) - 1px) 0 0;
+          box-shadow: inset 0 1px 0 var(--b-line); }   /* one straight top line, so it runs on over the folder's round corners (the tabs' own lines stop there) */
+  body.bo-light :is(.calm-dash, .calm-sales) .stat { border-left: 0; padding-bottom: 15px; }   /* +1px for the line that went */
+  /* Sales: five across down to the width Home keeps four (bo-calm wrapped them at 1000px, and a folder can't open through a row) */
+  body.bo-light .calm-sales .strip.n5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  body.bo-light .calm-sales .strip.n5 .stat:nth-child(n+4) { border-top: 0; }
+  body.bo-light .calm-sales .strip.n5 .stat:last-child { border-top-right-radius: calc(var(--b-r-card) - 1px); }
+  body.bo-light .calm-sales .strip.n5 .stat:nth-child(3):not([aria-selected="true"]) { border-top-right-radius: 0; }
+  body.bo-light .calm-sales .strip.n5 .stat[aria-selected="true"]:nth-child(-n+3) { border-top-right-radius: var(--b-r-cell); }
+  body.bo-light .calm-sales .strip.n5 .stat[aria-selected="true"]:nth-child(-n+3)::after { content: ""; }
+  /* the lines between tabs stay (owner 2026-10-19), drawn as a shadow so picking a tab moves no text; none either side of the folder */
+  body.bo-light :is(.calm-dash, .calm-sales) .stat + .stat:not([aria-selected="true"]) { box-shadow: inset 1px 0 0 var(--b-line), inset 0 1px 0 var(--b-line), inset 0 -1px 0 var(--b-line); }
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"] + .stat { box-shadow: inset 0 1px 0 var(--b-line), inset 0 -1px 0 var(--b-line); }
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"] { z-index: 1; border-radius: var(--b-r-cell) var(--b-r-cell) 0 0; box-shadow: none;
+          background: linear-gradient(var(--sh-line) 0 0) top / 100% 1px no-repeat, var(--b-raised); }   /* the lighter line is painted flat: an inset shadow would curve down the corners under the strip's line */
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]:first-child { border-top-left-radius: calc(var(--b-r-card) - 1px); }
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]:last-child { border-top-right-radius: calc(var(--b-r-card) - 1px); }
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]::before,
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]::after { content: ""; position: absolute; bottom: 0; width: var(--b-r-cell); height: var(--b-r-cell); }
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]::before { left: calc(-1 * var(--b-r-cell)); background: radial-gradient(circle at 0 0, transparent calc(var(--b-r-cell) - .5px), var(--b-raised) var(--b-r-cell)); }
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]::after { left: auto; right: calc(-1 * var(--b-r-cell)); background: radial-gradient(circle at 100% 0, transparent calc(var(--b-r-cell) - .5px), var(--b-raised) var(--b-r-cell)); }
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]:first-child::before,
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]:last-child::after { content: none; }
+  /* The folder's outline (owner 2026-10-19): one hairline up the picked tab's sides, round its feet and on along the
+     chart's top under the other tabs. The feet are 1px wider so their ring meets the side line (inside the tab) and
+     the strip's bottom line; below the curve they paint over the side line, so it flares out instead of running on. */
+  body.bo-light :is(.calm-dash, .calm-sales) .stat:first-child { box-shadow: inset 0 1px 0 var(--b-line), inset 0 -1px 0 var(--b-line); }   /* each grey tab carries its own lines, so hover can't cover them */
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"] { box-shadow: inset 1px 0 0 var(--b-line), inset -1px 0 0 var(--b-line); }
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]:first-child { box-shadow: inset -1px 0 0 var(--b-line); }   /* the card's own border is that side */
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]:last-child { box-shadow: inset 1px 0 0 var(--b-line); }
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]::before,
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]::after { width: calc(var(--b-r-cell) + 1px); }
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]::before { background: radial-gradient(circle at 0 -1px, transparent calc(var(--b-r-cell) - .5px),
+          var(--b-line) var(--b-r-cell) calc(var(--b-r-cell) + 1px), var(--b-raised) calc(var(--b-r-cell) + 1.5px)); }
+  body.bo-light :is(.calm-dash, .calm-sales) .stat[aria-selected="true"]::after { background: radial-gradient(circle at 100% -1px, transparent calc(var(--b-r-cell) - .5px),
+          var(--b-line) var(--b-r-cell) calc(var(--b-r-cell) + 1px), var(--b-raised) calc(var(--b-r-cell) + 1.5px)); }
+}
