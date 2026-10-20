@@ -477,14 +477,17 @@ function attachEvents() {
     ['Stock', 'stock', [['', 'Any'], ['low', 'Low'], ['out', 'Out']]],
   ], itemsFilter, ITEMS_FILTER_DEF, renderItems));
   const itemForm = $('#itemForm');
+  wireFind('#itemFind', '#itemFindQ', '#itemFindX', filterPicks);
+  itemForm?.addEventListener('scroll', () => itemForm.previousElementSibling.classList.toggle('tuck', itemForm.scrollTop > 24), { passive: true });   // Apple's: search tucks, the title shows
   // back from a subpage first (pos-items itemGo), then out of the editor
-  $('#itemBack')?.addEventListener('click', () => (itemEdit && itemSub ? itemGo('') : closeItemEditor()));
+  $('#itemBack')?.addEventListener('click', () => (itemEdit && itemSub ? itemGo(itemSub.startsWith('made:') && itemEdit.variants.length > 1 ? itemSub.slice(5) : '') : closeItemEditor()));   // a variant's Made from goes back to the variant
   // the category / modifier editor's fields (pos-items kindInput); the item editor's below
   itemForm?.addEventListener('click', (e) => { const b = kindEdit && e.target.closest('[data-ka]'); if (b) kindClick(b); });
   itemForm?.addEventListener('input', (e) => {
     const t = e.target;
     if (t.dataset.k === 'q') return filterPicks(t.value);   // a tick list's search, both editors
     if (kindEdit) return kindInput(t);
+    if (t.dataset.mq) return itemMadeSet(t);   // a Made from amount
     const E = itemEdit, f = t.dataset.f, head = $('#itemTitle');
     // a blank Price stays blank (asked at sale), not 0, and so does the Markup that follows it
     const num = () => (t.value === '' && ['price', 'marginValue'].includes(f || t.dataset.v) ? null : Number(t.value) || 0);
@@ -507,6 +510,8 @@ function attachEvents() {
     if (kindEdit || !E) return;
     if (t.dataset.f === 'sellOut') E.sellOut = t.checked;
     if (t.dataset.f === 'track') { E.track = t.checked; renderItemForm(); }   // Low stock and Sell when out come and go with it
+    if (t.dataset.f === 'component') { E.component = t.checked; renderItemForm(); }   // the short page or the full one
+    if (t.dataset.made) itemMadeSet(t);
     if (k) {   // a tick on a subpage; unticking the main supplier leaves none
       E[k] = t.checked ? [...E[k], t.value] : E[k].filter(x => x !== t.value);
       if (k === 'sups' && !E.sups.includes(E.main)) { E.main = ''; itemForm.querySelector('[data-act=main] span').textContent = 'None'; }
@@ -904,6 +909,7 @@ function attachEvents() {
   $('#posPrintMap')?.addEventListener('change', persistPosSettings);
   $('#posPrinterIp')?.addEventListener('change', () => { persistPosSettings(); renderPrinterList(); refreshPrinterStatus(); });   // the list above shows the typed printer
   $('#posTimeZone')?.addEventListener('change', persistPosSettings);
+  $('#posBizType')?.addEventListener('change', () => { persistPosSettings(); renderItems(); });   // the part's word: Ingredient / Component
   $('#posBtPairBtn')?.addEventListener('click', async () => {
     try {
       const dev = await window.HWPOS_PRINTER.pairBluetooth();

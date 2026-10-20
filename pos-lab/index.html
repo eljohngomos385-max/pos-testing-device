@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=570" />
+  <link rel="stylesheet" href="styles.css?v=572" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
   <div id="app" class="sidebar-collapsed">
@@ -329,6 +329,7 @@
             <div class="e-top">
               <button class="sq back" id="itemBack" aria-label="Back to items" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h2 class="fm-h" id="itemTitle"></h2>
+              <section class="card find" id="itemFind" hidden><label><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="itemFindQ" type="text" placeholder="Search" autocomplete="off"><button class="x" id="itemFindX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></label></section>   <!-- a long tick list's search, up in the bar beside ‹ (owner 2026-10-20) -->
               <div class="acts">
                 <button class="act icon" id="itemMore" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">
                   <svg class="ic" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
@@ -605,6 +606,7 @@
                 </section>
                 <h3 class="fc-t">Store</h3>
                 <section class="card fc">
+                  <label class="fr"><span class="lb">Business type</span><span class="v"><span class="act st-pick st-sel"><select id="posBizType"><option value="retail">Retail</option><option value="food">Food</option></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
                   <button type="button" class="fr nav" id="posPayTypesRow"><span class="lb">Payment types</span><span class="v"><span class="vv" id="posPayTypesNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <button type="button" class="fr nav" id="posFulTypesRow"><span class="lb">Fulfilment types</span><span class="v"><span class="vv" id="posFulTypesNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <label class="fr"><span class="lb">Time zone</span><span class="v"><span class="act st-pick st-sel"><select id="posTimeZone"></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
@@ -934,20 +936,20 @@
   <script src="sales-math.js?v=27"></script>
   <script src="data-store.js?v=54"></script>
   <script src="data.js?v=31"></script>
-  <script src="bo-model.js?v=134"></script>
+  <script src="bo-model.js?v=136"></script>
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=50"></script>
-  <script src="pos-core.js?v=52"></script>
-  <script src="pos-sell.js?v=81"></script>
-  <script src="pos-checkout.js?v=34"></script>
-  <script src="pos-orders.js?v=40"></script>
-  <script src="pos-items.js?v=47"></script>
+  <script src="pos-core.js?v=53"></script>
+  <script src="pos-sell.js?v=82"></script>
+  <script src="pos-checkout.js?v=37"></script>
+  <script src="pos-orders.js?v=41"></script>
+  <script src="pos-items.js?v=50"></script>
   <script src="pos-customers.js?v=40"></script>
-  <script src="pos-settings.js?v=34"></script>
+  <script src="pos-settings.js?v=35"></script>
   <script src="pos-pin.js?v=14"></script>
   <script src="pos-shift.js?v=44"></script>
-  <script src="pos-stock.js?v=12"></script>
+  <script src="pos-stock.js?v=13"></script>
   <script src="pos-qr.js?v=3"></script>
-  <script src="app.js?v=231"></script>
+  <script src="app.js?v=233"></script>
 </body>
 </html>

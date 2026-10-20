@@ -64,6 +64,9 @@ const PRODUCT_DEFAULTS = {
   // hidden: kept and listed here, but off the till's tiles and search (owner, 2026-10-01).
   // trackStock false: no counts and never an out-of-stock prompt (a service, a cut).
   hidden: false, trackStock: true, modifierIds: [],
+  // component: only used to make other items, never sold (a patty, a pen in a kit). madeFrom: [{ id, qty }] per 1
+  // sold -- a made item has no stock of its own; withMade derives it ("can make N") and its cost from the parts.
+  component: false, madeFrom: [],
   aliases: [], archived: false, updatedAt: '',
 };
 
@@ -87,6 +90,8 @@ function normalizeProduct(raw) {
   p.folder = p.folders[0] || '';
   p.hidden = !!p.hidden;
   p.trackStock = p.trackStock !== false;
+  p.component = !!p.component;
+  p.madeFrom = Array.isArray(p.madeFrom) ? p.madeFrom.map((m) => ({ id: String(m.id), qty: Number(m.qty) || 0 })) : [];   // own copy, never the defaults' []
   p.modifierIds = [...new Set((Array.isArray(p.modifierIds) ? p.modifierIds : []).map(String).filter(Boolean))];
   // Backup suppliers. `supplierId` stays the primary because a purchase order and a
   // reorder list each need one answer to "who do we buy this from"; the rest are who
@@ -110,9 +115,11 @@ const supplierIdsOf = (p) => [p.supplierId, ...(p.altSupplierIds || [])].filter(
 // A whole number of pieces, or a decimal length/weight — this is what the POS
 // keypad and every stock count key off, so it is a real switch, not a label.
 const stepFor = (product) => (product && product.soldBy === 'measure' ? 0.01 : 1);
-const roundQty = (product, qty) =>
-  product && product.soldBy === 'measure' ? Math.round(Number(qty || 0) * 100) / 100
-                                          : Math.round(Number(qty || 0));
+// Halves round away from zero, so a sale (-0.125) and its refund (+0.125) land on the same 0.13 (year-sim 2026-10-20)
+const roundQty = (product, qty) => {
+  const q = Number(qty || 0), f = product && product.soldBy === 'measure' ? 100 : 1;
+  return Math.sign(q) * Math.round(Math.abs(q) * f) / f;
+};
 
 // Every new record, on every till and back office: a v4 UUID, so rows from two tills never clash
 // when they sync. randomUUID needs https; a till on plain http (a LAN IP) builds the same thing from
@@ -266,9 +273,34 @@ const stockOnHand = (movements) => {
 // Until the log is readable and anchored here (data-store stockReady: the database still opening on a
 // first start), the saved snapshot is the best there is and stays as it is.
 function withStock(products, movements) {
-  if (globalThis.HWPOS_STORE?.stockReady?.() === false) return products;
+  if (globalThis.HWPOS_STORE?.stockReady?.() === false) return withMade(products);
   const sum = stockOnHand(movements || loadMovements());
   for (const p of products || []) p.stock = roundQty(p, sum.get(p.id) || 0);
+  return withMade(products);
+}
+/* Made items (plans/ingredients.md, owner 2026-10-20): a burger's madeFrom [{ id, qty }] lists its parts per 1 sold.
+   It keeps no stock of its own: it can make what its scarcest counted part allows, and costs its parts added up.
+   An untracked part never limits; a missing or archived part makes it 0. No recipes inside recipes (a made item is
+   never a part). THE formula for the editor, the tiles and the out ask. byId: product id -> product. */
+function madeOf(madeFrom, byId) {
+  let n = Infinity, cost = 0;
+  for (const m of madeFrom || []) {
+    const part = byId.get(m.id), q = Number(m.qty) || 0;
+    if (!part) { n = 0; continue; }
+    cost += cent(part.cost) * q;   // an archived part still costs what it did
+    if (part.archived) n = 0;
+    else if (part.trackStock !== false && q > 0) n = Math.min(n, Math.floor(Math.max(0, Number(part.stock) || 0) / q + 1e-9));
+  }
+  return { n: n === Infinity ? null : n, cost: unc(Math.round(cost)) };   // n null: nothing counted limits it
+}
+// Every made item's stock and cost from its parts' (after the parts' stock is set). trackStock follows: counted
+// when a counted part limits it.
+function withMade(products) {
+  const byId = new Map((products || []).map((p) => [p.id, p]));
+  for (const p of products || []) if (p.madeFrom?.length) {
+    const { n, cost } = madeOf(p.madeFrom, byId);
+    Object.assign(p, { stock: n ?? 0, trackStock: n != null, cost });
+  }
   return products;
 }
 // The missing opening rows: saved count − Σ log, per product that still lacks one. They are the START
@@ -278,7 +310,7 @@ function openingRows(products, movements) {
   const sum = stockOnHand(movements), has = new Set((movements || []).filter((m) => m.reason === 'opening').map((m) => m.productId));
   const out = [];
   for (const p of products || []) {
-    if (has.has(p.id)) continue;
+    if (has.has(p.id) || p.madeFrom?.length) continue;   // a made item's stock is its parts' (withMade), never logged
     const qty = roundQty(p, (Number(p.stock) || 0) - (sum.get(p.id) || 0));
     if (qty) out.push({ id: 'opening:' + p.id, ts: 0, productId: p.id, qty, reason: 'opening', refId: '', note: '', unitCost: null, staff: '' });
   }
@@ -1493,6 +1525,17 @@ if (typeof module !== 'undefined' && require.main === module) {
   assert.deepEqual([familyLevel(fam, new Map()), familyLevel([fam[0]], new Map()), familyLevel([], new Map())], ['low', 'out', 'out']);
   assert.deepEqual(stockCounts([...fam, { id: 'x', stock: 0, reorderPoint: 1 }, { id: 'y', stock: 0, archived: true }], new Map()),
     { out: 1, low: 1, dead: 0, ok: 0 });
+  // Made items: 3 patties at 1 each, 0.6 kg flour at 0.2 → 3 (no 2.999 float); cost adds up; untracked parts
+  // don't limit; an archived part makes 0; no counted part → not counted. No opening row for a made item.
+  const parts = [{ id: 'pat', stock: 3, cost: 25 }, { id: 'fl', stock: 0.6, cost: 50, soldBy: 'measure' }, { id: 'bag', stock: 0, cost: 1.5, trackStock: false },
+    { id: 'old', stock: 99, cost: 1, archived: true }];
+  const made = [{ id: 'bur', stock: 7, madeFrom: [{ id: 'pat', qty: 1 }, { id: 'fl', qty: 0.2 }, { id: 'bag', qty: 1 }] },
+    { id: 'kit', madeFrom: [{ id: 'pat', qty: 1 }, { id: 'old', qty: 1 }] }, { id: 'svc', madeFrom: [{ id: 'bag', qty: 2 }] }];
+  withMade([...parts, ...made]);
+  assert.deepEqual(made.map((p) => [p.stock, p.trackStock, p.cost]), [[3, true, 36.5], [0, true, 26], [0, false, 3]]);   // the archived part still costs
+  const kg = { soldBy: 'measure' };   // a sale and its refund round to the same size (half away from zero)
+  assert.deepEqual([roundQty(kg, -0.125), roundQty(kg, 0.125), roundQty({}, -0.4), roundQty({}, -2.5)], [-0.13, 0.13, -0, -3]);
+  assert.deepEqual(openingRows(made, []), []);
   // Loss: short counts are lost too; an over count and an opening row are not.
   assert.deepEqual([{ reason: 'damage', qty: -1 }, { reason: 'count', qty: -2 }, { reason: 'count', qty: 2 }, { reason: 'opening', qty: 5 }].map(isLoss),
     [true, true, false, false]);
@@ -1686,7 +1729,7 @@ if (typeof module !== 'undefined') {
     supplierIdsOf, foldersOf,
     makeMovement, applyMovement, isLow, stockValue, roundQty, stepFor, newId,
     DEAD_DAYS, STOCK_LEVEL, saleClock, stockLevel,
-    stockValueOf, onHandOf, stockOnHand, withStock, openingRows, runningBalances, isLoss, movedAt, categoryOf, familyLevel, stockCounts, debtStatusOf,
+    stockValueOf, onHandOf, stockOnHand, withStock, madeOf, withMade, openingRows, runningBalances, isLoss, movedAt, categoryOf, familyLevel, stockCounts, debtStatusOf,
     groupOf, variantsOf, imageFor,
     PO_DEFAULTS, PO_STATUS, PO_INCOMING, poLine, poTotal, poLineTotal, billedCost, poOutstanding, receivePo,
     lineSupplier, lineOut, deliverySupplier, poStatus, poOpenValue, onOrderQty, loadPurchaseOrders, savePurchaseOrders,

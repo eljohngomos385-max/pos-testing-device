@@ -416,7 +416,9 @@ function seedLooks(saved, seed, key) {
   return saved;
 }
 // The one catalog write both apps share (bo-model saveCatalog), so price history logs the same way.
+// Every catalog write recounts the made items first (bo-model withMade): a sale, a quick stock or a new cost moves a burger with its patties.
 function saveProducts() {
+  withMade(state.products);
   return saveCatalog(state.products, { source: 'pos', staff: currentStoreInfo().cashier });
 }
 function loadGroups() {
@@ -434,7 +436,11 @@ function itemLook(row) {
 }
 // On the till = a tile and a search hit. Archived is gone; hidden is kept in the back office but
 // off the till (owner, 2026-10-01) -- a scan still finds both and asks (addProductByCode).
-const onTill = p => !p.archived && !p.hidden;
+const onTill = p => !p.archived && !p.hidden && !p.component;
+// Settings › Business type (owner 2026-10-20): a food store's part is an Ingredient, any other store's a Component. One
+// flag in the data (product.component); only this word reads the type. Onboarding will ask the same question.
+const partWord = () => (state.settings.store?.businessType === 'food' ? 'Ingredient' : 'Component');
+const offWhy = p => (p.archived ? 'archived' : p.component ? (partWord() === 'Ingredient' ? 'an ingredient' : 'a component') : 'hidden');   // "… is hidden. Sell anyway?"
 function groupMembers(groupId) {
   return state.products.filter(p => p.groupId === groupId && onTill(p));
 }

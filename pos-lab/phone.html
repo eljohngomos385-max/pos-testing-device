@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POS Phone</title>
+<style>
+/* Phone copy of the POS lab (owner 2026-10-17): this folder is its own copy of pos-lab, shown in an iPhone 15/16 frame
+   (393x852pt). The status bar is copied off the owner's iPhone screenshot; every number below is in pt, measured with
+   scripts in the vault session 2026-10-17-2200-phone-copy. The app sits in an iframe so its phone rules see 393 wide. */
+:root { --w: 393px; --h: 852px; --top: 58px; --r: 47px; --sb-ink: #000; --sb-bg: #F2F2F2; }
+html, body { margin: 0; height: 100%; }
+body { display: grid; place-items: center; background: #0A0A0A; overflow: hidden; }
+.dev { position: relative; flex: none; width: var(--w); height: var(--h); overflow: hidden; border-radius: var(--r); background: var(--sb-bg);
+       box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px rgba(0,0,0,.5); transform-origin: center; }
+/* iPhone's screen corner is Apple's continuous 55pt curve, not a circle. Measured against it in Python:
+   88px + superellipse(1.8) is 0.11pt off on average (the plain 47px circle was 1.6pt off) */
+@supports (corner-shape: superellipse(2)) { .dev { border-radius: 88px; corner-shape: superellipse(1.8); } }
+iframe { position: absolute; inset: var(--top) 0 0; display: block; width: 100%; height: calc(100% - var(--top)); border: 0; }
+
+/* the status bar */
+.sb { position: absolute; inset: 0 0 auto; z-index: 2; height: var(--top); color: var(--sb-ink); pointer-events: none;
+      font: 600 17px/1 -apple-system, "SF Pro Text", "Segoe UI Variable Display", system-ui, sans-serif; letter-spacing: -.2px; font-size-adjust: cap-height .68; }   /* any font gets SF's cap height: Windows has no SF */
+.sb > * { position: absolute; }
+.time { left: 43px; top: 21px; width: 30.3px; text-align: center; font-variant-numeric: tabular-nums; }
+.island { left: 105.7px; top: 11px; width: 175px; height: 37.3px; border-radius: 18.65px; background: #000; }
+.island svg { position: absolute; left: 12.6px; top: 9.3px; width: 12.4px; height: 17.8px; }   /* the mic: the phone was listening */
+.dot { left: 287.8px; top: 23.85px; width: 11.7px; height: 11.7px; border-radius: 50%; background: #000; }
+.dot::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: #F0974A; }
+.wifi { left: 314.3px; top: 23.3px; width: 15.7px; height: 11.7px; }
+.bat { left: 336px; top: 22.8px; width: 23.7px; height: 12.8px; border-radius: 4.2px; overflow: hidden; background: #A9A9A9;
+       color: #fff; font: 700 11px/12.8px -apple-system, "SF Pro Text", system-ui, "Segoe UI", sans-serif; text-align: center; letter-spacing: 0; }
+.bat::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 21%; background: #E84B4B; }   /* 20%, red: low */
+.bat span { position: relative; }
+.nub { left: 360.6px; top: 27.2px; width: 2px; height: 4px; border-radius: 0 1px 1px 0; background: #A9A9A9; }
+.home { position: absolute; left: 126.8px; bottom: 8px; width: 139.6px; height: 5px; border-radius: 3px; background: var(--sb-ink); opacity: .74; z-index: 2; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="dev" id="dev">
+  <div class="sb">
+    <span class="time" id="clock">8:51</span>
+    <div class="island"><svg viewBox="0 0 12 16" fill="none" stroke="#F5A623" stroke-width="1.6" stroke-linecap="round"><rect x="3.3" y=".8" width="5.4" height="9.4" rx="2.7" fill="#F5A623" stroke="none"/><path d="M1 7.4a5 5 0 0 0 10 0M6 12.4v2.6M3.4 15.2h5.2"/></svg></div>
+    <i class="dot"></i>
+    <svg class="wifi" viewBox="0 0 15.7 11.7" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round">
+      <path d="M1.3 4.1a9.4 9.4 0 0 1 13.1 0M3.9 6.9a5.7 5.7 0 0 1 7.9 0"/><path d="M5.9 8.9 7.85 11 9.8 8.9a2.8 2.8 0 0 0-3.9 0Z" fill="currentColor" stroke-width="1"/>
+    </svg>
+    <div class="bat"><span>20</span></div>
+    <i class="nub"></i>
+  </div>
+  <iframe id="f" title="POS"></iframe>
+  <i class="home"></i>
+</div>
+<script>
+const dev = document.getElementById('dev'), f = document.getElementById('f');
+f.src = 'index.html?' + Date.now() + (location.hash || '#items');   // the browser kept serving a stale index.html inside a frame
+// an iframe gets no safe-area inset: fake the iPhone's 34pt home-bar strip, as devices.html does
+f.addEventListener('load', () => f.contentDocument.documentElement.style.setProperty('--ph-safe', '34px'));
+// the half drawer's page card runs up behind the clock, as an iOS app's does (owner 2026-10-17): while it is open the app
+// gets the whole screen and --ph-top tells it how far down the clock reaches. ponytail: only while open; a full-time
+// full-screen app would need every overlay to clear the clock first
+let bleedT;
+f.addEventListener('load', () => {
+  const d = f.contentDocument, app = d.getElementById('app');
+  const bleed = on => { f.style.inset = on ? '0' : ''; f.style.height = on ? '100%' : ''; d.documentElement.style.setProperty('--ph-top', on ? '58px' : '0px'); };
+  new MutationObserver(() => {
+    clearTimeout(bleedT);
+    if (!app.classList.contains('sidebar-collapsed') && d.documentElement.classList.contains('side-half')) bleed(true);
+    else bleedT = setTimeout(() => bleed(false), 450);   // after the card has slid home
+  }).observe(app, { attributes: true, attributeFilter: ['class'] });
+});
+function fit() { dev.style.transform = `scale(${Math.min(1, (innerWidth - 24) / 393, (innerHeight - 24) / 852)})`; }
+fit(); addEventListener('resize', fit);
+// the strip takes the colour of the page under it, as Safari does; the ink flips to stay readable
+setInterval(() => {
+  const d = f.contentDocument; let e = d && d.elementFromPoint(196, 2), bg = '';
+  for (; e && !bg; e = e.parentElement) { const c = getComputedStyle(e).backgroundColor; if (!/rgba\(.*, 0\)$/.test(c)) bg = c; }
+  if (!bg) return;
+  const [r, g, b] = bg.match(/\d+/g).map(Number);
+  dev.style.setProperty('--sb-bg', bg); dev.style.setProperty('--sb-ink', r * .3 + g * .59 + b * .11 > 128 ? '#000' : '#fff');
+}, 300);
+const clock = document.getElementById('clock');
+if (!new URLSearchParams(location.search).has('still')) {   // ?still keeps 8:51 for the measuring script
+  const tick = () => { const d = new Date(); clock.textContent = `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  tick(); setInterval(tick, 10000);
+}
+</script>
+</body>
+</html>

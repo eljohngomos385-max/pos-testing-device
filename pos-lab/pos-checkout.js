@@ -334,7 +334,8 @@ function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentM
     discountApprovedBy: state.discountOk?.by || '',          // kept on its own: a credit-limit yes above takes approvedBy
     register: store.registerNo,
     // Each line keeps what it cost us now (step 2.2); reading an order never fills it in later.
-    items: state.cart.map(i => ({ ...i, cost: i.cost ?? productOf(i)?.cost ?? null, ...(sc ? { discount: null } : {}) })),
+    // A made item's line keeps its recipe as sold (parts), so a refund after the recipe changed returns what was used.
+    items: state.cart.map(i => { const p = productOf(i); return { ...i, cost: i.cost ?? p?.cost ?? null, ...(p?.madeFrom?.length ? { parts: p.madeFrom.map(m => ({ ...m })) } : {}), ...(sc ? { discount: null } : {}) }; }),
     customer: customer
       ? { id: customer.id, name: customer.name, phone: customer.phone || '', address: customer.address || '' }
       : null,
@@ -381,15 +382,22 @@ function persistOrder(order) {
 
 // Every stock change is a movement row; on hand = its sum (bo-model withStock).
 // `unitCost` is the cost stamped on the line, not today's, for the same reason margins are.
+// A made item moves its parts, never itself (bo-model withMade): 2 burgers take 2 patties and 2 buns, a refund puts them back.
+// The line's own recipe (parts, stamped at the sale); an order from before that falls back to today's.
+const partsOf = item => (item.parts?.length ? item.parts : productOf(item)?.madeFrom) || [];
+const stockLines = items => (items || []).flatMap((item) => {
+  const p = productOf(item), parts = partsOf(item);
+  return parts.length ? parts.map(m => ({ productId: m.id, qty: toNumber(item.qty, 0) * (Number(m.qty) || 0), madeInto: p?.name || item.name || '' })) : [item];
+});
 function moveStock(items, { reason, refId = '', note = '', sign = -1 }) {
   const rows = [];
-  (items || []).forEach((item) => {
+  stockLines(items).forEach((item) => {
     const p = productOf(item);
     if (!p) return;
-    const qty = sign * toNumber(item.qty, 0);
+    const qty = roundQty(p, sign * toNumber(item.qty, 0));   // at the part's step first: 0.4 of a piece writes no row
     if (!qty) return;
     const mv = makeMovement({
-      productId: p.id, qty, reason, refId, note,
+      productId: p.id, qty, reason, refId, note: note || item.madeInto || '',
       unitCost: item.cost != null ? item.cost : p.cost,
       staff: currentStoreInfo().cashier, staffId: state.user?.id || '',
     });
@@ -401,8 +409,10 @@ function moveStock(items, { reason, refId = '', note = '', sign = -1 }) {
   saveProducts();
 }
 
-function restoreOrderStock(order, note = '') {
-  moveStock(order.items, { reason: 'return', refId: order.id, note, sign: 1 });
+// eaten (owner 2026-10-20): a Food store's refunded dish was made, so its ingredients stay used; a void (nothing was
+// made) and every Retail refund put the parts back. A plain item (a can of Coke) comes back either way.
+function restoreOrderStock(order, note = '', eaten = false) {
+  moveStock(eaten ? order.items.filter(i => !partsOf(i).length) : order.items, { reason: 'return', refId: order.id, note, sign: 1 });
 }
 
 function showOrderAfterCartClears(order) {
@@ -786,7 +796,7 @@ function todayLines(items) {
   for (const i of Array.isArray(items) ? items : []) {
     const p = i && typeof i === 'object' && state.products.find(x => x.id === (i.productId || i.id));
     if (!p) { if (i?.name) gone.push(i.name); continue; }
-    if (!onTill(p)) off.push(`${p.name} is ${p.archived ? 'archived' : 'hidden'}.`);
+    if (!onTill(p)) off.push(`${p.name} is ${offWhy(p)}.`);
     // a price asked at sale (askedPrice) keeps the line's own id and the price it was given
     const typed = i.productId && i.id !== i.productId;
     lines.push({ ...i, id: typed ? i.id : p.id, name: p.name, sku: p.sku, brand: p.brand, unit: p.unit, price: typed || askedPrice(p) ? i.price : p.price });

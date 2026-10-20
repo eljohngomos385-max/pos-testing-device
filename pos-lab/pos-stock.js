@@ -41,8 +41,8 @@ const qsOnHand = p => Math.max(0, Number(p.stock) || 0);
 function qsAddFamily(itemId) {
   const it = catalogItems().find(x => x.id === itemId);
   if (!it) return '';
-  const ps = it.members.filter(p => qsPrice() || p.trackStock !== false);
-  if (!ps.length) { showToast(`${it.name} doesn't track stock`); return ''; }
+  const ps = it.members.filter(p => qsPrice() || (p.trackStock !== false && !p.madeFrom?.length));   // a made item's stock is its parts'
+  if (!ps.length) { showToast(it.members.some(p => p.madeFrom?.length) ? `Count what ${it.name} is made from` : `${it.name} doesn't track stock`); return ''; }
   ps.forEach(p => { if (!qsLine(p.id)) QS.lines.push({ id: p.id, n: '' }); });
   return ps[0].id;
 }

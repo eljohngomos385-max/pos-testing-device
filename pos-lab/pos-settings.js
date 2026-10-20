@@ -113,6 +113,8 @@ function renderPosSettings(printer = true) {
   if (acct) acct.textContent = loadStaff().find(u => u.role === 'owner')?.email || 'Account';
   const churnInput = $('#posChurnDays');
   if (churnInput) churnInput.value = state.settings.churnThresholdDays || 30;
+  const biz = $('#posBizType');
+  if (biz) biz.value = state.settings.store?.businessType === 'food' ? 'food' : 'retail';
   const tz = $('#posTimeZone');
   if (tz) {
     const zone = SalesMath.storeZone(state.settings);
@@ -370,6 +372,8 @@ function persistPosSettings() {
   // The store's clock (SalesMath.storeZone): days, bands and reports all turn over in this zone.
   const zone = $('#posTimeZone')?.value;
   if (zone) state.settings.store = { ...state.settings.store, timeZone: zone };
+  const biz = $('#posBizType')?.value;   // Business type (owner 2026-10-20): onboarding will ask it too
+  if (biz) state.settings.store = { ...state.settings.store, businessType: biz };
   saveSettings();
 }
 

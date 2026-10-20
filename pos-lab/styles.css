@@ -7719,6 +7719,14 @@ body .lv .fc .fr .act:not(.st-pick) { min-width: 0; padding: 0; background: none
 .lv .fm-h { grid-area: 1 / 2; align-self: start; z-index: 1; min-width: 0; margin: 0; pointer-events: none; overflow: hidden; color: var(--ink); font-size: 16px; font-weight: 550;
             line-height: var(--bar-h); text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .lv .form { padding-top: calc(var(--bar-h) + 12px); }   /* wide: the form starts under the title */
+/* a long tick list's search (Made from, Categories, Modifiers) up in the bar where the title sits, the Items head's glass
+   pill (owner 2026-10-20: "move it where the made from is"); scrolled, it tucks away and the title fades in (Apple's) */
+.lv .e-top > #itemFind { grid-area: 1 / 2; align-self: start; z-index: 2; position: relative; height: 44px; border: 0; border-radius: 999px;
+                         background: none; box-shadow: none; transition: opacity .2s; }
+.lv .e-top > #itemFind[hidden] { display: none; }
+.lv .e-top > .fm-h { transition: opacity .2s; }
+.lv .e-top:has(> #itemFind:not([hidden])):not(.tuck) > .fm-h { opacity: 0; }
+.lv .e-top.tuck > #itemFind { opacity: 0; pointer-events: none; }
 .lv .fr { display: grid; grid-template-columns: 120px minmax(0,1fr); align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 6px 16px; color: var(--ink); font-size: 16px; letter-spacing: inherit; text-align: left; }   /* inherit: a <button> row (Settings, Item edit ›) dropped the app's -0.15 */
 .lv .fr:is(.wide, :has(> .ctl.end > .sw)) { grid-template-columns: minmax(0,1fr) auto; }   /* a switch, a variant's row: the word takes the room */
 .lv .fr > .lb { color: var(--ink-secondary); }   /* rednote: the word grey on the left, its value dark on the right */
@@ -7821,6 +7829,11 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv .pick[hidden] { display: none; }
 .lv .pick input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
 .lv .fc .blurb { padding: 4px 16px 14px; color: var(--ink-tertiary); }
+/* Made from (pos-items itemMadePage): a ticked part shows its amount per 1 sold left of the tick, the unit after it */
+.lv .fc .pick .mq { order: 8; margin-left: auto; display: flex; align-items: center; gap: 6px; color: var(--ink-tertiary); font-size: 14px; }
+.lv .fc .pick .mq[hidden] { display: none; }
+.lv .fc .pick .mq input { order: 0; width: 64px; height: 36px; margin: 0; padding: 0 10px; text-align: right; background: var(--rl-soft); }
+.lv .fc .pick:has(.mq:not([hidden])) > input { margin-left: 0; }
 
 @container pv (max-width: 920px) {
   .lv .cols { grid-template-columns: minmax(0,1fr) 130px 170px 90px; }
@@ -7835,6 +7848,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
   .lv .e-top > .fm-h { grid-area: 1 / 1 / 2 / 4; padding-inline: 96px; font-size: 15px; }
   .lv .e-top:has(#itemMore[hidden]) > .fm-h { padding-inline: 56px; }   /* the item: Save alone (~46) + a gap */
   .lv .editor.sub .e-top > .fm-h { padding-inline: 40px; }   /* a subpage has only Back */
+  .lv .e-top > #itemFind { grid-area: 1 / 2 / 2 / 4; margin-left: 7px; }   /* beside ‹ to the edge, the Items head's 7 apart */
   .lv .form { padding-top: 26px; }   /* the old 12px gap + 14: the first block stays where it was */
   .lv .fphoto { margin-top: -6px; }   /* 42 under the title's middle, 28 over the first block, as rednote's */
   .lv .e-top > .acts { margin-right: 0; }

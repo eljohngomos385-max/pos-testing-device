@@ -844,7 +844,7 @@ function reverseSale(orderId, kind, reason, { by = '', again, whole = false, pic
   }
   if (!by && !gate(kind, again, { orderId })) return null;
   const { part } = plan;
-  restoreOrderStock({ ...order, items: part.items }, reason);
+  restoreOrderStock({ ...order, items: part.items }, reason, kind !== 'void' && state.settings.store?.businessType === 'food');
   // The money goes back the way it came in. Forcing a cash leg here paid ₱185 out of the
   // drawer for a sale that was charged to an account -- `reverseOrderCredit` had already
   // taken it off the account. Only what the customer already paid off the charge is cash.

@@ -412,7 +412,7 @@ function addProductByCode(rawCode, { source = 'barcode' } = {}) {
     return true;
   };
   if (onTill(product)) return add();
-  showConfirm({ title: product.name, message: `This item is ${product.archived ? 'archived' : 'hidden'}. Sell anyway?`,
+  showConfirm({ title: product.name, message: `This item is ${offWhy(product)}. Sell anyway?`,
     okText: 'Sell anyway', danger: false, onConfirm: add });
   return false;
 }

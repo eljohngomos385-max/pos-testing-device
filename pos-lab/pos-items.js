@@ -1,8 +1,7 @@
 // Till › Items: the catalog list and the item editor.
 
 // ---------- Items view (pos-items-rail-lab.html) ----------
-// The catalog as items: a group's products are one item's variants. The editor works on a copy and Save is not
-// connected yet -- the catalog's writes wait for the back office + sync (ROADMAP.md), so Save only checks the form.
+// The catalog as items: a group's products are one item's variants. The editor works on a copy; Save writes it back.
 const ITEMS_FILTER_DEF = { cat: '', stock: '' };
 const itemsFilter = { q: '', ...ITEMS_FILTER_DEF };
 const itemHue = s => [...String(s || '')].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
@@ -36,13 +35,15 @@ function catalogItems() {
         soldBy: p.soldBy === 'measure' ? 'measure' : 'each', img: (g ? g.imageUrl : p.imageUrl) || '', color: (g ? g.color : p.color) || '', desc: (g ? g.description : p.description) || '',
         hidden: !!p.hidden, marginMode: p.marginMode === 'flat' ? 'flat' : 'percent', reorder: p.reorderPoint || 0, track: p.trackStock !== false,
         sellOut: !!p.sellOutOfStock, sups: supplierIdsOf(p), main: p.supplierId || '', mods: [...(p.modifierIds || [])],
-        weight: p.weight || '', size: p.size || '', length: p.length || '', variants: [], members: [] };
+        weight: p.weight || '', size: p.size || '', length: p.length || '', component: !!p.component, variants: [], members: [] };
       it.hue = TILE_COLORS[it.color] ?? itemHue(folder);   // the thumb wears the tile colour when there is one
       byKey.set(key, it);
     }
     it.members.push(p);
     const vn = g && p.name.startsWith(g.name) ? p.name.slice(g.name.length).trim() : p.name;   // 'Common Wire Nails 2"' -> '2"'
-    it.variants.push({ id: p.id, name: g ? vn : '', sku: p.sku || '', barcode: p.barcode || '', cost: p.cost || 0, price: askedPrice(p) ? null : p.price, stock: p.stock || 0 });
+    it.variants.push({ id: p.id, name: g ? vn : '', sku: p.sku || '', barcode: p.barcode || '', cost: p.cost || 0, price: askedPrice(p) ? null : p.price, stock: p.stock || 0,
+      madeFrom: (p.madeFrom || []).map(m => ({ ...m })) });
+    if (p.madeFrom?.length) it.made = true;
   });
   return [...byKey.values()];
 }
@@ -76,8 +77,8 @@ function fillItemsPane(kind, band, rows) {
     const ps = it.variants.filter(v => !askedPrice(v)).map(v => v.price), lo = Math.min(...ps), hi = Math.max(...ps);
     const cut = x => peso(x).replace(/\.00$/, '');   // ponytail: a range drops whole-peso .00 to stay short
     const rng = !ps.length ? '—' : lo === hi ? peso(lo) : `${cut(lo)}-${cut(hi)}`;
-    const stk = !oh ? '' : itemStk(it) === 'stk-out' ? '<span class="stk-out">Out of stock</span>' : `<span class="${itemStk(it)}">${oh} in stock</span>`;
-    const line = [stk, vs].filter(Boolean).join(' · ');
+    const stk = !oh ? '' : itemStk(it) === 'stk-out' ? '<span class="stk-out">Out of stock</span>' : `<span class="${itemStk(it)}">${it.made ? `Can make ${oh}` : `${oh} in stock`}</span>`;
+    const line = [stk, vs, it.component ? partWord() : ''].filter(Boolean).join(' · ');
     return `<button type="button" class="row cols" data-id="${escapeHtml(it.id)}">
       <span class="nm">${itemThumb(it)}<span class="tx"><b>${escapeHtml(it.name)}</b>${vs ? `<small class="v0">${vs}</small>` : ''}${line ? `<small class="sub">${line}</small>` : ''}</span><span class="rt">${rng}</span></span>
       <span class="cat">${escapeHtml(it.cat)}</span>
@@ -86,11 +87,11 @@ function fillItemsPane(kind, band, rows) {
   }).join('') || '<div class="empty"><b>No items</b><span>Nothing matches this search or filter.</span></div>';
 }
 
-// The editor: a working copy E of the item. Nothing here writes to the catalog.
+// The editor: a working copy E of the item. Only Save (and the photo / colour) write to the catalog.
 // Apple Settings (owner 2026-10-08): blocks of rows, each word at the side of its field like the customer form; a long
 // list (categories, modifiers, suppliers, one variant) is a row with its value and ›, opening its own page.
 let itemEdit = null, itemIsNew = false, itemSub = '', itemMainScroll = 0;   // itemSub: '' = the item, else 'cats' | 'mods' | 'sups' | a variant's id
-const blankVariant = () => ({ id: newId(), name: '', sku: '', barcode: '', cost: 0, price: null, stock: 0, fresh: true });
+const blankVariant = () => ({ id: newId(), name: '', sku: '', barcode: '', cost: 0, price: null, stock: 0, madeFrom: [], fresh: true });
 // Sold per: bo-products UNITS, its soldByFor. A measured unit sells in decimals; a unit typed elsewhere keeps what it was.
 const ITEM_UNITS = [['pc', 'box', 'bag', 'set', 'pair', 'roll', 'sheet', 'can'], ['m', 'ft', 'kg', 'L', 'gal']];
 const soldByFor = (unit, was) => (ITEM_UNITS[1].includes(unit) ? 'measure' : ITEM_UNITS[0].includes(unit) ? 'each' : was || 'each');
@@ -99,7 +100,7 @@ function openItemEditor(id) {
   const it = id ? catalogItems().find(x => x.id === id) : null;
   itemIsNew = !it; kindEdit = null; itemSub = '';
   itemEdit = it || { id: newId(), name: '', desc: '', cat: '', catIds: [], hue: 220, unit: 'pc', soldBy: 'each', img: '', color: '', hidden: false, marginMode: 'percent',
-    reorder: 0, track: true, sellOut: false, sups: [], main: '', mods: [], weight: '', size: '', length: '', variants: [blankVariant()], since: tillDay(Date.now()) };
+    reorder: 0, track: true, sellOut: false, sups: [], main: '', mods: [], weight: '', size: '', length: '', component: false, variants: [blankVariant()], since: tillDay(Date.now()) };
   const v0 = itemEdit.variants[0];
   itemEdit.marginValue = itemMarkupOf(v0, itemEdit.marginMode);
   renderItemForm();
@@ -110,7 +111,7 @@ const closeItemEditor = () => $('#itemsView').classList.remove('editing');
 // a subpage slides in over the item; '' slides back to where the item was scrolled
 function itemGo(sub) {
   const f = $('#itemForm');
-  if (sub) itemMainScroll = f.scrollTop;
+  if (sub && !itemSub) itemMainScroll = f.scrollTop;   // the item's place, not a subpage's (variant -> Made from)
   itemSub = sub;
   renderItemForm(sub ? 'push' : 'pop');
   f.scrollTop = sub ? 0 : itemMainScroll;
@@ -145,11 +146,16 @@ function renderItemForm(dir) {
     : itemSub === 'mods' ? ['Modifiers', itemTickPage('mods', kindList('mods').map(m => [m.id, m.name, modSummary(m)]), 'No modifiers yet. Add them under Modifiers.')]
     : itemSub === 'sups' ? ['Suppliers', itemSupsPage()]
     : itemSub === 'specs' ? ['Specs', itemSpecsPage()]
+    : itemSub.startsWith('made:') ? ['Made from', itemMadePage(E.variants.find(x => 'made:' + x.id === itemSub))]
     : v ? [v.fresh ? 'Add variant' : 'Edit variant', itemVariantPage(v)] : [E.name || 'New item', itemMainPage()];   // a fixed title: typing a variant's name doesn't echo up there
   $('#itemForm').closest('.editor').classList.toggle('sub', !!itemSub);   // a subpage has only Back, as in Apple Settings
   $('#itemMore').hidden = true;   // the item has no ⋯ (owner 2026-10-09): Archive is the last block, Back discards a new one
   $('#itemForm').innerHTML = `<div class="form${dir ? ' ' + dir : ''}">${html}</div>`;
   $('#itemTitle').textContent = title;   // small, in the top bar beside Back (rednote's Edit profile)
+  // a long tick list (Made from, Categories, Modifiers): search in the bar where the title was; the title fades back in on scroll
+  const find = $('#itemFind');
+  find.hidden = !itemSub || $$('#itemForm .pick[data-find]').length <= 8;
+  $('#itemFindQ').value = ''; find.classList.remove('typed');
 }
 
 // rednote's Edit profile (owner 2026-10-09): the photo centred on top, white blocks on the grey page, the word in a
@@ -158,11 +164,16 @@ function renderItemForm(dir) {
 const ICAM = '<svg class="ic" viewBox="0 0 24 24"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.2"/></svg>';
 function itemMainPage() {
   const E = itemEdit, fam = E.variants.length > 1, v0 = E.variants[0], T = E.track;
+  // A component / an ingredient (owner 2026-10-20): only what making things needs -- name, cost, stock, low stock at, unit.
+  // Never on Sell, always counted. A made item (v0.madeFrom) can't be one, nor can a family: parts don't nest.
+  const made = !fam && v0.madeFrom.length > 0;
+  if (E.component) return itemPartPage();
   const photo = lookBlock(E, 'act', 'itemImg');
   const about = icard('', [
     ifr('Name', iinp('name', E.name, 'placeholder="Add name"')),
     ifr('Status', ipick('status', E.hidden ? 'Hidden' : 'Active'), true),
-  ].join(''), '', ' r');
+    fam || made ? '' : isw(partWord(), 'component', false),
+  ].join(''), fam || made ? '' : IPART_NOTE, ' r');
   const desc = icard('', ifr('Description', `<textarea class="in" data-f="desc" rows="1" placeholder="Add description">${escapeHtml(E.desc)}</textarea>`), '', ' r');
   const vrow = v => `<button type="button" class="fr nav wide" data-sub="${escapeHtml(v.id)}"><span class="lb${v.name ? '' : ' ph'}">${escapeHtml(v.name || 'No name')}</span>
     <span class="ctl end"><span class="vv num">${askedPrice(v) ? '—' : peso(v.price)}${T ? ` · ${itemQty(v.stock)} ${escapeHtml(E.unit)}` : ''}</span>${ICHEV}</span></button>`;
@@ -171,12 +182,14 @@ function itemMainPage() {
   const price = fam ? icard('', E.variants.map(vrow).join('') + iadd('add-variant', 'Add variant'))
     : icard('', [
       ifr('Price', `<input class="in num" data-f="price" value="${v0.price ?? ''}" ${IMONEY} placeholder="Asked at sale">`),
-      ifr('Cost', `<input class="in num" data-f="cost" value="${v0.cost || ''}" ${IMONEY} placeholder="0.00">`),
+      made ? ifr('Cost', `<span class="vv num">${peso(v0.cost)}</span>`, true) : ifr('Cost', `<input class="in num" data-f="cost" value="${v0.cost || ''}" ${IMONEY} placeholder="0.00">`),
       ifr('Markup', `<input class="in num" data-f="marginValue" value="${E.marginValue || ''}" type="number" step="0.01" inputmode="decimal" placeholder="0">${ipick('mmode', E.marginMode === 'percent' ? '%' : icurrency())}`),
     ].join(''), iprofit(v0), ' r')
     + icard('', iadd('add-variant', 'Add variant'));
   // stock out on the page, not behind a › (owner 2026-10-09); a family counts per variant, on each variant's page
-  const stock = icard('', [
+  const stock = made ? icard('', [imadeRow(v0), ifr('Can make', icanMake(v0), true), isw('Sell when out of stock', 'sellOut', E.sellOut)].join(''), IMADE_NOTE, ' r')
+    : icard('', [
+    fam || itemUsed(v0.id) ? '' : imadeRow(v0),
     isw('Track stock', 'track', T),
     !T || fam ? '' : itemIsNew ? ifr('Opening stock', iqty('data-f="stock"', v0.stock)) : ifr('In stock', ionHand(v0), true),
     T ? ifr('Low stock at', iqty('data-f="reorder"', E.reorder)) : '',
@@ -198,6 +211,48 @@ function itemMainPage() {
   const archive = itemIsNew ? '' : icard('', iadd('archive', 'Archive item', ' red'));   // the ⋯ menu's last action, now the last block
   return photo + about + desc + price + stock + codes + more + archive;
 }
+// the component's short page: Name + the switch, Cost, its stock, Unit
+function itemPartPage() {
+  const E = itemEdit, v0 = E.variants[0];
+  return icard('', [ifr('Name', iinp('name', E.name, 'placeholder="Add name"')), isw(partWord(), 'component', true)].join(''), IPART_NOTE, ' r')
+    + icard('', ifr('Cost', `<input class="in num" data-f="cost" value="${v0.cost || ''}" ${IMONEY} placeholder="0.00">`), '', ' r')
+    + icard('', [
+      itemIsNew ? ifr('Opening stock', iqty('data-f="stock"', v0.stock)) : ifr('In stock', ionHand(v0), true),
+      ifr('Low stock at', iqty('data-f="reorder"', E.reorder)),
+      itemIsNew ? ifr('In store since', `<input class="in" type="date" data-f="since" value="${E.since}">`) : '',
+      ifr('Unit', ipick('unit', escapeHtml(E.unit)), true),
+    ].join(''), '', ' r')
+    + (itemIsNew ? '' : icard('', iadd('archive', 'Archive item', ' red')));
+}
+const IPART_NOTE = 'Used to make other items. Not sold on its own.';
+const IMADE_NOTE = 'Selling it takes these off stock.';
+// Made from: what 1 sold takes off stock. Parts are live products that aren't made themselves and aren't this item.
+const itemUsed = id => state.products.some(p => !p.archived && p.madeFrom?.some(m => m.id === id));   // a part can't be made: no nesting
+const iprods = () => new Map(state.products.map(p => [p.id, p]));
+const imadeRow = (v, by = iprods()) => inav('Made from', ilist(v.madeFrom.map(m => by.get(m.id)?.name).filter(Boolean)), 'made:' + v.id);
+const icanMake = v => { const { n } = madeOf(v.madeFrom, iprods()); return `<span class="vv num${n === 0 ? ' stk-out' : ''}">${n == null ? '—' : itemQty(n)}</span>`; };
+function itemMadePage(v) {
+  const E = itemEdit, own = new Set(E.variants.map(x => x.id)), on = new Map(v.madeFrom.map(m => [m.id, m.qty]));
+  const all = state.products.filter(p => !p.archived && !own.has(p.id) && !p.madeFrom?.length).sort((a, b) => a.name.localeCompare(b.name));
+  const row = p => `<label class="pick" data-find="${escapeHtml(p.name.toLowerCase())}"><input type="checkbox" data-made="${escapeHtml(p.id)}"${on.has(p.id) ? ' checked' : ''}>
+      <span class="tx">${escapeHtml(p.name)}<small>${p.trackStock === false ? 'Not counted' : `${itemQty(p.stock)} ${escapeHtml(p.unit || 'pc')} in stock`}</small></span>
+      <span class="mq"${on.has(p.id) ? '' : ' hidden'}><input class="in num" data-mq="${escapeHtml(p.id)}" value="${on.get(p.id) ?? 1}" type="number" step="${stepFor(p)}" min="0" inputmode="decimal" aria-label="Amount per 1 sold">${escapeHtml(p.unit || 'pc')}</span></label>`;
+  const parts = all.filter(p => p.component), rest = all.filter(p => !p.component);
+  return (parts.length ? icard(partWord() + 's', parts.map(row).join('')) : '')
+    + icard(parts.length ? 'Other items' : '', rest.map(row).join('') || '<div class="pick">No other items yet.</div>', 'Amount per 1 sold. ' + IMADE_NOTE);
+}
+// a Made from tick or amount onto the variant; its cost follows the parts, the price stays and the markup follows it
+function itemMadeSet(t) {
+  const E = itemEdit, v = E.variants.find(x => 'made:' + x.id === itemSub), id = t.dataset.made || t.dataset.mq;
+  if (t.dataset.made) {
+    v.madeFrom = t.checked ? [...v.madeFrom, { id, qty: 1 }] : v.madeFrom.filter(m => m.id !== id);
+    const mq = t.closest('.pick').querySelector('.mq'), box = mq.querySelector('input');
+    mq.hidden = !t.checked; box.value = 1;
+    if (t.checked) box.select();
+  } else { const m = v.madeFrom.find(x => x.id === id); if (m) m.qty = Number(t.value) || 0; }
+  if (v.madeFrom.length) v.cost = madeOf(v.madeFrom, iprods()).cost;
+  if (v === E.variants[0]) E.marginValue = itemMarkupOf(v, E.marginMode);
+}
 function itemSpecsPage() {
   const E = itemEdit;
   return icard('', [
@@ -207,10 +262,10 @@ function itemSpecsPage() {
   ].join(''));
 }
 
-// a subpage's ticks: search above (a store runs to 50-100 categories), the list on one tile
+// a subpage's ticks: search up in the bar (a store runs to 50-100 categories), the list on one tile
 function itemTickPage(key, rows, empty) {
   const on = itemEdit[key];
-  return icard('', (rows.length > 8 ? IFIND : '') + rows.map(([id, name, sub]) => `<label class="pick" data-find="${escapeHtml(name.toLowerCase())}"><input type="checkbox" data-tick="${key}" value="${escapeHtml(id)}"${on.includes(id) ? ' checked' : ''}>
+  return icard('', rows.map(([id, name, sub]) => `<label class="pick" data-find="${escapeHtml(name.toLowerCase())}"><input type="checkbox" data-tick="${key}" value="${escapeHtml(id)}"${on.includes(id) ? ' checked' : ''}>
       <span class="tx">${escapeHtml(name)}${sub ? `<small>${sub}</small>` : ''}</span></label>`).join('') || `<div class="pick">${empty}</div>`);
 }
 function itemSupsPage() {
@@ -219,13 +274,14 @@ function itemSupsPage() {
     + itemTickPage('sups', rows, 'No suppliers yet. Add them in the back office.');
 }
 function itemVariantPage(v) {
-  const E = itemEdit;
+  const E = itemEdit, made = v.madeFrom.length > 0;
   const vin = (k, attrs = '') => `<input class="in" data-v="${k}" value="${escapeHtml(v[k])}" ${attrs}>`;
   return icard('', ifr('Name', vin('name', 'placeholder="Add name, like Red or 2 inch"')), '', ' r')
     + icard('', ifr('Price', `<input class="in num" data-v="price" value="${v.price ?? ''}" ${IMONEY} placeholder="Asked at sale">`)
-      + ifr('Cost', `<input class="in num" data-v="cost" value="${v.cost || ''}" ${IMONEY} placeholder="0.00">`), iprofit(v), ' r')
+      + (made ? ifr('Cost', `<span class="vv num">${peso(v.cost)}</span>`, true) : ifr('Cost', `<input class="in num" data-v="cost" value="${v.cost || ''}" ${IMONEY} placeholder="0.00">`)), iprofit(v), ' r')
+    + (itemUsed(v.id) ? '' : icard('', imadeRow(v) + (made ? ifr('Can make', icanMake(v), true) : ''), made ? IMADE_NOTE : '', ' r'))
     + icard('', [
-      !E.track ? '' : v.fresh ? ifr('Opening stock', iqty('data-v="stock"', v.stock)) : ifr('In stock', ionHand(v), true),
+      !E.track || made ? '' : v.fresh ? ifr('Opening stock', iqty('data-v="stock"', v.stock)) : ifr('In stock', ionHand(v), true),
       ifr('SKU', vin('sku', 'placeholder="Add SKU"')),
       ifr('Barcode', vin('barcode', 'inputmode="numeric" placeholder="Add barcode"')),
     ].join(''), '', ' r')
@@ -249,6 +305,7 @@ function itemPick(b) {
 // cost / margin / price: any two drive the third (the back office's three-way binding)
 function itemReprice(from) {
   const E = itemEdit, v0 = E.variants[0], f = $('#itemForm');
+  if (!f.querySelector('[data-f=price]')) return;   // a component's page: Cost only, no price to follow
   if (from === 'price') {
     E.marginValue = itemMarkupOf(v0, E.marginMode);
     f.querySelector('[data-f=marginValue]').value = E.marginValue || '';
@@ -290,7 +347,40 @@ function saveItem() {
   const E = itemEdit;
   if (!E.name.trim()) { if (itemSub) itemGo(''); showToast('Give the item a name'); $('#itemForm').querySelector('[data-f=name]').focus(); return; }
   if (E.variants.length > 1 && E.variants.some(v => !v.name.trim())) { showToast('Name every variant'); return; }
-  showToast("Saving isn't connected yet");   // ponytail: design only until the back office owns catalog writes
+  // Item Save writes the catalog (owner's go for components, 2026-10-20): each variant is a product row, a family adds a
+  // group; a dropped variant is archived, never deleted; a new one's Opening stock is an 'opening' movement.
+  const name = E.name.trim(), fam = E.variants.length > 1, C = E.component && !fam;
+  const was = new Map(state.products.map(p => [p.id, p])), old = catalogItems().find(it => it.id === E.id);
+  const gid = fam ? (groupById(E.id) ? E.id : old?.members[0]?.groupId || newId()) : '';
+  const who = currentStoreInfo().cashier, staffId = state.user?.id || '', moves = [];
+  const rows = E.variants.map(v => {
+    const base = was.get(v.id) || {}, made = C ? [] : v.madeFrom.filter(m => was.has(m.id) && Number(m.qty) > 0)   // a 0 amount drops the part
+      .map(m => ({ id: m.id, qty: Math.max(stepFor(was.get(m.id)), roundQty(was.get(m.id), m.qty)) }));
+    const row = stampRow(normalizeProduct({ ...base, id: v.id, name: fam ? `${name} ${v.name.trim()}` : name, sku: v.sku.trim(), barcode: v.barcode.trim(),
+      cost: v.cost, price: C ? null : v.price, marginMode: E.marginMode, marginValue: (C ? 0 : itemMarkupOf(v, E.marginMode)) ?? 0,
+      groupId: fam ? gid : base.groupId || '', folders: E.catIds, folder: E.catIds[0] || '', unit: E.unit, soldBy: E.soldBy,
+      hidden: E.hidden, reorderPoint: E.reorder || 0, trackStock: C || E.track, sellOutOfStock: !C && E.sellOut,
+      supplierId: E.main, altSupplierIds: E.sups, modifierIds: E.mods, weight: E.weight, size: E.size, length: E.length,
+      description: fam ? base.description || '' : E.desc, imageUrl: fam ? base.imageUrl || '' : E.img, color: fam ? base.color || '' : E.color,
+      component: C, madeFrom: made }));
+    if (!was.has(v.id) && row.trackStock && !made.length && Number(v.stock)) {   // applied before it's appended (balanceAfter)
+      const mv = makeMovement({ productId: v.id, qty: v.stock, reason: 'opening', happenedOn: itemIsNew ? E.since : '', unitCost: row.cost, staff: who, staffId });
+      applyMovement(row, mv); moves.push(mv);
+    }
+    return row;
+  });
+  const ids = new Set(rows.map(r => r.id)), gone = new Set((old?.members || []).map(m => m.id).filter(id => !ids.has(id)));
+  state.products = state.products.map(p => (ids.has(p.id) ? rows.find(r => r.id === p.id) : gone.has(p.id) ? stampRow({ ...p, archived: true }) : p))
+    .concat(rows.filter(r => !was.has(r.id)));
+  if (fam) {
+    const g = stampRow({ ...groupById(gid), id: gid, name, folder: E.catIds[0] || '', imageUrl: E.img, color: E.color, description: E.desc });
+    state.groups = groupById(gid) ? state.groups.map(x => (x.id === gid ? g : x)) : state.groups.concat(g);
+    saveGroups();
+  }
+  if (moves.length) appendMovements(moves);
+  withStock(state.products);   // every count from the ledger again: a made item turned plain gets its own stock back
+  saveProducts();   // recounts every made item (withMade) and their cost
+  closeItemEditor(); renderItems(); renderProducts(); renderCart(); showDone('Saved');
 }
 
 // ---------- Categories and Modifiers (the back office's bo-catalog.js, on the till) ----------
@@ -408,6 +498,7 @@ function openKindEditor(kind, id) {
 
 function renderKindForm() {
   $('#itemForm').closest('.editor').classList.remove('sub');
+  $('#itemFind').hidden = true;   // its own search stays in the form
   const K = kindEdit, cats = K.kind === 'cats', head = cats ? lookBlock(catLook(K), 'ka', 'kindImg') : '';   // a category's photo + colour go with its Save
   $('#itemTitle').textContent = K.name || `New ${KIND[K.kind][0]}`;
   $('#itemMore').hidden = false;   // a category's Delete, a modifier's Archive
