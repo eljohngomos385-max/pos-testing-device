@@ -3080,7 +3080,7 @@ a.secondary-btn { text-decoration: none; }
 .ls-match:hover { background: var(--surface-hover); }
 .ls-match span:last-child,
 .ls-picked { color: var(--ink-tertiary); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.no-results .nr-lost { margin-top: 12px; }
+.no-results .nr-lost { margin-top: 12px; overflow-wrap: anywhere; }   /* a long word typed in the search wraps, not widens the page */
 .od-head {
   display: flex;
   gap: 10px;

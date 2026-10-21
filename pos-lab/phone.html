@@ -11,11 +11,15 @@
 :root { --w: 393px; --h: 852px; --top: 58px; --r: 47px; --sb-ink: #000; --sb-bg: #F2F2F2; }
 html, body { margin: 0; height: 100%; }
 body { display: grid; place-items: center; background: #0A0A0A; overflow: hidden; }
-.dev { position: relative; flex: none; width: var(--w); height: var(--h); overflow: hidden; border-radius: var(--r); background: var(--sb-bg);
-       box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px rgba(0,0,0,.5); transform-origin: center; }
+.dev { position: relative; flex: none; width: var(--w); height: var(--h); border-radius: var(--r); background: var(--sb-bg);
+       box-shadow: 0 0 0 1px rgba(255,255,255,.08);   /* no drop shadow: black on the black page barely showed, and it framed the corner cover in a square */ transform-origin: center; }
 /* iPhone's screen corner is Apple's continuous 55pt curve, not a circle. Measured against it in Python:
    88px + superellipse(1.8) is 0.11pt off on average (the plain 47px circle was 1.6pt off) */
 @supports (corner-shape: superellipse(2)) { .dev { border-radius: 88px; corner-shape: superellipse(1.8); } }
+.cap { position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit; corner-shape: inherit; clip-path: inset(-1px);
+       box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 0 0 99px #0A0A0A; }   /* the screen's corner: the page colour painted over the app outside
+   the frame's curve, not a clip. Chromium drops backdrop-filter (the glass buttons, the frost) inside an iframe under a rounded or polygon
+   clip, so the app is never clipped; the curve stays Apple's and is the same open and shut (owner 2026-10-22) */
 iframe { position: absolute; inset: var(--top) 0 0; display: block; width: 100%; height: calc(100% - var(--top)); border: 0; }
 
 /* the status bar */
@@ -49,6 +53,7 @@ iframe { position: absolute; inset: var(--top) 0 0; display: block; width: 100%;
     <i class="nub"></i>
   </div>
   <iframe id="f" title="POS"></iframe>
+  <i class="cap"></i>
   <i class="home"></i>
 </div>
 <script>

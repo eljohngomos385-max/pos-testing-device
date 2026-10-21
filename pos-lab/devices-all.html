@@ -17,12 +17,16 @@ button { font: inherit; cursor: pointer; }
 .bar button { height: 28px; padding: 0 10px; white-space: nowrap; border: 0; border-radius: 7px; background: none; color: rgba(255,255,255,.6); }
 .bar button.cur { background: #333; color: #fff; }
 .stage { position: fixed; inset: 50px 0 0; display: flex; align-items: center; justify-content: center; }   /* flex: a grid row grows to the unscaled frame and pushes it off the bottom */
-.dev { position: relative; flex: none; overflow: hidden; border-radius: var(--r); background: var(--sb-bg); transform-origin: center;
-       box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px rgba(0,0,0,.5); }
+.dev { position: relative; flex: none; border-radius: var(--r); background: var(--sb-bg); transform-origin: center;
+       box-shadow: 0 0 0 1px rgba(255,255,255,.08);   /* no drop shadow: black on the black page barely showed, and it framed the corner cover in a square */ }
+#ph { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }   /* phone.html fits its own frame to this */
 /* iPad corners are Apple's continuous curve, as the iPhone's: phone.html matched 55pt with 88px + superellipse(1.8) (x1.6), and the
    shape scales, so the iPad's 18pt is 18 x 1.6. Android's corner is a plain circle */
 @supports (corner-shape: superellipse(2)) { .dev:not(.android) { border-radius: calc(var(--r) * 1.6); corner-shape: superellipse(1.8); } }
-#ph { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }   /* phone.html fits its own frame to this */
+.cap { position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit; corner-shape: inherit; clip-path: inset(-1px);
+       box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 0 0 99px #0A0A0A; }   /* the screen's corner: the page colour painted over the app outside
+   the frame's curve, not a clip. Chromium drops backdrop-filter (the glass buttons, the frost) inside an iframe under a rounded or polygon
+   clip, so the app is never clipped; the curve stays Apple's and is the same open and shut (owner 2026-10-22) */
 #f { position: absolute; inset: var(--top) 0 var(--bot); display: block; width: 100%; height: calc(100% - var(--top) - var(--bot)); border: 0; }
 
 /* the status bar: iPadOS has the time and date left, wifi and battery right; Android the time left, icons right */
@@ -65,6 +69,7 @@ button { font: inherit; cursor: pointer; }
       </span>
     </div>
     <iframe id="f" title="POS"></iframe>
+    <i class="cap"></i>
     <i class="home"></i>
   </div>
 </div>
