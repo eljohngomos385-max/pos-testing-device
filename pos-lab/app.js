@@ -10,7 +10,7 @@ function attachEvents() {
 
   // ---- Top bar: sidebar toggle ----
   $('#sidebarToggle')?.addEventListener('click', () => {
-    if ($('#variantSheet').classList.contains('open')) return closeVariantSheet();   // it is the variant sheet's X while that is open
+    if ($('#variantSheet').classList.contains('open')) return backVariantSheet();   // it is the variant sheet's X while that is open (a category's variant list steps back)
     if (state.exchange) return leaveExchange();   // and the exchange's (startExchange)
     $('#app').classList.toggle('sidebar-collapsed');
   });
@@ -20,6 +20,7 @@ function attachEvents() {
     if (!btn) return;
     e.stopPropagation();
     if (QS.on && btn.closest('.view-items')) return qsAskLeave();   // quick stock's ✕ (pos-stock.js)
+    if (addPick && btn.closest('.view-items')) return switchView('sell');   // Add tile's ✕ (pos-sell.js)
     $('#app').classList.toggle('sidebar-collapsed');
   });
 
@@ -65,6 +66,17 @@ function attachEvents() {
   }));
   // phone: the full-page drawer's ✕, and a swipe left closes it (owner 2026-10-17). ponytail: a flick, not a finger-following drag
   $('.side-x').addEventListener('click', () => $('#app').classList.add('sidebar-collapsed'));
+  // Sell's My page / All items switch (owner 2026-10-21): flips the page, says where you landed, and shows Sell
+  $('#sellSwitch').addEventListener('click', () => {
+    if (state.view === 'sell') $('#app').classList.add('sidebar-collapsed'); else switchView('sell');
+    // the name sits mid-grid (the iPad's cart sits right): measured from the page, which may still be sliding home
+    const r = $('#productGrid').getBoundingClientRect(), x = $('.main').getBoundingClientRect().left, t = $('#toast');
+    setSellPage(state.sellPage === 'mine' ? 'all' : 'mine');
+    showToast(state.sellPage === 'mine' ? 'My page' : 'All items');
+    clearTimeout(showToast._t); showToast._t = setTimeout(hideToast, 700);   // the name runs on the page's blur clock (sp-swap), so they clear as one
+    t.getAnimations().forEach(a => a.cancel()); void t.offsetWidth;   // no rise of its own; the reflow restarts sp-name on a quick second tap
+    t.style.setProperty('--mid-l', r.left - x + 'px'); t.style.setProperty('--mid-r', innerWidth - r.right + x + 'px'); t.classList.add('mid');   // the next toast resets .mid
+  });
   let sideX0 = 0;
   $('.sidebar').addEventListener('touchstart', e => { sideX0 = e.touches[0].clientX; }, { passive: true });
   $('.sidebar').addEventListener('touchend', e => { if (e.changedTouches[0].clientX - sideX0 < -50) $('#app').classList.add('sidebar-collapsed'); }, { passive: true });
@@ -253,6 +265,83 @@ function attachEvents() {
     swipeStart = null;
   });
 
+  // ---- My page: hold a tile to lift it and drag it anywhere; held at the grid's edge it turns the page, past the last page it
+  // starts a new one. The order stays packed, so a page never has a gap (owner 2026-10-21). While editing, a tile drags at once ----
+  let hold = null, lifted = false;
+  productGrid.addEventListener('pointerdown', (e) => {
+    const card = e.target.closest('.product-card[data-at]');
+    if (!card || e.button > 0 || hold || e.target.closest('[data-remove]')) return;   // one finger at a time: a second would lift a copy no finger drops
+    hold = { at: +card.dataset.at, x: e.clientX, y: e.clientY, id: e.pointerId, t: setTimeout(lift, myEditing ? 150 : 400) };   // editing: a short still hold, so a flick still turns the page
+  });
+  productGrid.addEventListener('pointermove', (e) => {
+    if (!hold || lifted || hold.id !== e.pointerId || Math.hypot(e.clientX - hold.x, e.clientY - hold.y) < 8) return;
+    clearTimeout(hold.t); hold = null;   // moved before the hold: a swipe
+  });
+  const unhold = (e) => { if (hold && !lifted && hold.id === e.pointerId) { clearTimeout(hold.t); hold = null; } };
+  addEventListener('pointerup', unhold);   // anywhere: a mouse let go off the grid lifts nothing
+  addEventListener('pointercancel', unhold);
+  const noScroll = (e) => e.preventDefault();
+  function lift() {
+    if (lifted || !hold) return;
+    let i = hold.at, edge = 0, flip = 0, settle = 0, again = 0, at = null;
+    const { x: x0, y: y0, id } = hold, card = productGrid.querySelector(`[data-at="${i}"]`), r = card.getBoundingClientRect();
+    lifted = true;
+    swipeStart = null; $('#productTrack')?.classList.remove('dragging'); updateProductTrackPosition();
+    myEdit(true);
+    pinMyPages();
+    const snap = HWPOS_STORE.ui.get('myPage', '[]'), i0 = i;   // the pages at lift: each new spot replays one move on them,
+    const ghost = card.cloneNode(true);
+    ghost.classList.add('mp-ghost');
+    Object.assign(ghost.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+    productGrid.append(ghost);   // inside the grid, so its size and picture rules still apply
+    const place = (to) => {   // so a page the tile only passed over gets its tiles back
+      const was = HWPOS_STORE.ui.get('myPage', '[]'), o = j => { const k = j - (j > i ? 1 : 0); return k + (k >= i0 ? 1 : 0); };   // index now -> at lift
+      HWPOS_STORE.ui.set('myPage', snap);
+      myLifted = i = moveMyTile(i0, to === 'new' ? to : 'after' in to ? { after: o(to.after) } : { before: o(to.before) });
+      if (HWPOS_STORE.ui.get('myPage', '[]') !== was) renderProducts();
+    };
+    myLifted = i; renderProducts();
+    const turn = () => {   // held at an edge: the next / previous page; past the last, alone on a new one
+      if (edge > 0 && state.page >= totalPages()) { place('new'); state.page = totalPages(); updateProductTrackPosition(); return; }
+      changePage(edge); flip = setTimeout(turn, 800); settle = Date.now() + 350;   // the page under the finger is still sliding in: place once it is there
+      clearTimeout(again); again = setTimeout(() => at && move(at), 360);
+    };
+    const move = (ev) => {
+      if (ev.pointerId !== id) return;
+      at = ev;
+      ghost.style.translate = `${ev.clientX - x0}px ${ev.clientY - y0}px`;
+      const g = productGrid.getBoundingClientRect(), side = ev.clientX < g.left + 28 ? -1 : ev.clientX > g.right - 28 ? 1 : 0;
+      if (side !== edge) { edge = side; clearTimeout(flip); if (side) flip = setTimeout(turn, 500); }
+      if (side || Date.now() < settle) return;
+      const el = document.elementFromPoint(ev.clientX, ev.clientY), over = el?.closest('#productGrid .product-card:not(.mp-ghost)');
+      if (over?.dataset.at != null) { const j = +over.dataset.at; if (j !== i) place(j > i ? { after: j } : { before: j }); return; }
+      toEnd(over?.hasAttribute('data-add') ? over.parentElement : el?.closest('#productGrid .product-page'));   // a page's empty end: last on it
+    };
+    const toEnd = (pg) => {
+      const last = pg && [...pg.querySelectorAll('[data-at]')].at(-1);
+      if (last && +last.dataset.at !== i) place({ after: +last.dataset.at });
+      else if (pg && !last) place('new');   // a page with only Add tile on it: alone there
+    };
+    const drop = (ev) => {
+      if (ev?.pointerId != null && ev.pointerId !== id) return;
+      if (ev?.type === 'pointerup' && Date.now() < settle) toEnd(productGrid.querySelectorAll('.product-page')[state.page - 1]);   // let go as the page slid in: onto it
+      clearTimeout(flip); clearTimeout(again); ghost.remove(); myLifted = myDrop = null; renderProducts();
+      removeEventListener('pointermove', move); removeEventListener('pointerup', drop); removeEventListener('pointercancel', drop);
+      removeEventListener('touchmove', noScroll); removeEventListener('resize', drop);
+      hold = null; lifted = false;
+      suppressGridClick = true;   // the release is no tap
+      clearTimeout(productGrid._swipeClickTimer);
+      productGrid._swipeClickTimer = setTimeout(() => { suppressGridClick = false; }, 260);
+    };
+    addEventListener('pointermove', move); addEventListener('pointerup', drop); addEventListener('pointercancel', drop);
+    addEventListener('resize', drop); myDrop = drop;   // a turned screen drops it where it is: the lifted copy was the old size
+    addEventListener('touchmove', noScroll, { passive: false });   // the drag owns the finger
+  }
+  document.addEventListener('click', (e) => {   // a tap off the grid ends editing; Done (Check out's button) does only that
+    if (!myEditing || e.target.closest('#productGrid')) return;
+    if (e.target.closest('#cartBar, #payBtn')) { e.preventDefault(); e.stopPropagation(); }
+    myEdit(false);
+  }, true);
   productGrid.addEventListener('wheel', (e) => {
     if (Math.abs(e.deltaX) <= Math.abs(e.deltaY) || Math.abs(e.deltaX) < 24) return;
     e.preventDefault();
@@ -268,8 +357,15 @@ function attachEvents() {
       openLostSale({ text: state.query.trim(), reason: 'not-carried' });
       return;
     }
+    if (myEditing) {   // editing My page: × takes a tile off, any other tap ends it
+      const x = e.target.closest('[data-remove]');
+      if (x) removeMyTile(+x.closest('[data-at]').dataset.at); else myEdit(false);
+      return;
+    }
     const card = e.target.closest('.product-card');
     if (!card) return;
+    if (card.hasAttribute('data-add')) return openAddTile(card);
+    if (card.dataset.cat) return openCatSheet(card.dataset.cat);
     // Group parent tile → open the variant picker modal
     if (card.dataset.groupId) { openVariantModal(card.dataset.groupId); return; }
     // Regular product
@@ -282,6 +378,7 @@ function attachEvents() {
     if (!row) return;
     if (row.hasAttribute('data-cust-new')) return addCustomerFromSale();
     if (row.dataset.customerId) return selectCustomer(row.dataset.customerId);   // the customer picker (it closes the sheet)
+    if (row.dataset.openGroup) return openVariantModal(row.dataset.openGroup, state.variantModal);   // a category's item with variants: its list, X steps back
     addToCart(row.dataset.variantId, 'variant');
     closeVariantSheet();
   });
@@ -376,7 +473,7 @@ function attachEvents() {
   [['#itemsView', '#itemsView .head'], ['.view-reports .iv', '.view-reports .head']].forEach(([v, h]) =>   // Items, Reports: the page starts under the head, the frost covers it
     new ResizeObserver(([e]) => $(v).style.setProperty('--head-h', e.target.offsetHeight + 'px')).observe($(h), { box: 'border-box' }));
   // Liquid glass press (owner 2026-10-18): the button swells and shines under the finger, leans and stretches toward a drag, springs back on release
-  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search)';
+  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search), .side-top > #sellSwitch, #app .side-link[data-view="settings"]';
   document.addEventListener('pointerdown', (e) => {
     const b = e.target.closest(LG);
     if (!b || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -456,7 +553,7 @@ function attachEvents() {
   };
   ivList?.addEventListener('touchend', ivEnd);
   ivList?.addEventListener('touchcancel', ivEnd);
-  $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) row.dataset.hub ? setItemsKind(row.dataset.hub) : QS.on ? qsPickRow(row.dataset.id) : openKind(row.dataset.id); });
+  $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) row.dataset.hub ? setItemsKind(row.dataset.hub) : addPick ? addPickTap(row.dataset.id) : QS.on ? qsPickRow(row.dataset.id) : openKind(row.dataset.id); });
   $('#itemsBack')?.addEventListener('click', () => setItemsKind('hub'));
   // Items +: the blurred stack, Change price / Quick stock (pos-stock.js) / Add item; the other kinds add straight away
   const fabIc = d => `<svg class="ic" viewBox="0 0 24 24">${d}</svg>`;
@@ -1007,6 +1104,7 @@ function init() {
   rebuildFuse();
 
   renderSellHeader();
+  renderSellSwitch();
   renderProducts();
   renderCart();
   updateCustomerButton();

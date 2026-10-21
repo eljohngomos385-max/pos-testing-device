@@ -157,6 +157,7 @@ const state = {
   settings: { ...DEFAULT_SETTINGS },
   fuse: null,
   page: 1,
+  sellPage: window.HWPOS_STORE?.ui.get('sellPage', 'all') === 'mine' ? 'mine' : 'all',   // Sell's page: My page | All items (pos-sell.js setSellPage)
   tileSize: (storageGet(STORAGE_TILE_SIZE, 'md') || 'md'),
   tileText: (storageGet(STORAGE_TILE_TEXT, 'md') || 'md'),
   showPrice: storageGet(STORAGE_SHOW_PRICE, '0') === '1',
@@ -869,6 +870,7 @@ function switchView(view) {
   if (view !== 'orders' && state.ordersCustomer) ordersFor('');
   if (state.view === 'reports' && view !== 'reports') $('.view-reports .c-scroll').scrollTop = 0;   // while still shown: Safari puts a hidden scroller's place back on show, over the reset below (owner 2026-10-19)
   state.view = view;
+  if (view !== 'items') addPickOff();   // Add tile's list ends with the page
   if (view !== 'sell') closeBarcodeScanner();   // the tablet's ☰ and Check out stay in reach while it scans
   $$('.side-link').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === view));

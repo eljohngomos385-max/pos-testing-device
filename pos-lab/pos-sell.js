@@ -22,25 +22,111 @@ function getFilteredSellProducts() {
   return list;
 }
 
-// What the Sell grid actually renders: group tiles + loose products.
-// Returns an array of "cells" — each cell is { kind: 'group'|'product', ... }
+// What the Sell grid actually renders: My page's tiles, or (All items, or anything searched) group tiles + loose products.
+// Returns an array of "cells" — each cell is { kind: 'group'|'product'|'cat'|'add', ... }
 function getSellCells() {
-  const baseProducts = getFilteredSellProducts();
-  const cells = [];
-  const seenGroups = new Set();
-  // Determine which groups have at least one product in the filtered set.
-  baseProducts.forEach(p => { if (p.groupId) seenGroups.add(p.groupId); });
-  // Render group tiles in the order they appear in state.groups.
-  state.groups.forEach(g => {
-    if (!seenGroups.has(g.id)) return;
-    const memberCount = baseProducts.filter(p => p.groupId === g.id).length;
-    cells.push({ kind: 'group', group: g, memberCount });
-  });
-  // Then ungrouped products from the filtered set, in original order.
-  baseProducts.forEach(p => {
-    if (!p.groupId) cells.push({ kind: 'product', product: p });
-  });
+  if (state.sellPage === 'mine' && !state.query.trim()) { spillMyPages(); return myPageCells(); }   // a tile back on show (unarchived) pushes on, never alone
+  return toCells(getFilteredSellProducts());
+}
+// Group tiles in state.groups' order, then the loose products in theirs.
+function toCells(products) {
+  const cells = [], seen = new Set(products.map(p => p.groupId).filter(Boolean));
+  state.groups.forEach(g => { if (seen.has(g.id)) cells.push({ kind: 'group', group: g, memberCount: products.filter(p => p.groupId === g.id).length }); });
+  products.forEach(p => { if (!p.groupId) cells.push({ kind: 'product', product: p }); });
   return cells;
+}
+
+// ---------- My page (owner 2026-10-21): this POS's own tiles - items, variant items, categories - then Add tile ----------
+// One list in order; a tile marked br starts a new page (moved there on its own). So a page never has a gap, and any tile
+// size repacks the same order into its own pages. This POS's own, like Tile size. A move or a remove first marks every page's
+// first tile br, so a tile leaving a page closes the gap on that page only - the next page keeps its first tile (owner 2026-10-21).
+// The marks hold at the page size they were made at (myPageSize); another size (Tile size, a turned iPad) repacks by order.
+const myTiles = () => { try { const v = JSON.parse(HWPOS_STORE.ui.get('myPage', '[]')); return Array.isArray(v) ? v.filter(x => x && typeof x === 'object') : []; } catch { return []; } };
+const saveMyTiles = t => HWPOS_STORE.ui.set('myPage', JSON.stringify(t));
+const tileKey = t => t.cat ? 'c' + t.cat : t.g ? 'g' + t.g : 'p' + t.id;
+const liveFolders = () => state.folders.filter(f => f.id !== 'all' && !f.archived);
+const catProducts = id => state.products.filter(p => onTill(p) && (foldersOf(p).includes(id) || groupById(p.groupId)?.folder === id));
+function myPageCells() {
+  const keep = HWPOS_STORE.ui.get('myPageSize', '') === String(sellPageSize());   // page marks made at this size
+  let carry = false;   // a hidden tile's page mark goes to the next one on show: its page stays a page
+  const cells = myTiles().map((t, at) => {
+    let c = null;
+    if (t.cat) { const f = liveFolders().find(x => x.id === t.cat), n = f && toCells(catProducts(f.id)).length; if (n) c = { kind: 'cat', folder: f, n }; }
+    else if (t.g) { const g = groupById(t.g), n = g ? groupMembers(g.id).length : 0; if (n) c = { kind: 'group', group: g, memberCount: n }; }
+    else { const p = state.products.find(x => x.id === t.id); if (p && onTill(p)) c = { kind: 'product', product: p }; }
+    const br = keep && (!!t.br || carry);
+    carry = !c && br;
+    return c && Object.assign(c, { at, br });
+  }).filter(Boolean);
+  return [...cells, { kind: 'add' }];
+}
+// The pages: a new one when the last is full or a tile starts its own
+function sellPages(cells, size = sellPageSize()) {
+  const pages = [];
+  cells.forEach(c => { if (!pages.length || pages.at(-1).length >= size || c.br) pages.push([]); pages.at(-1).push(c); });
+  return pages;
+}
+const pageOfTile = at => sellPages(getSellCells()).findIndex(pg => pg.some(c => c.at === at)) + 1;
+function setSellPage(m) {
+  state.sellPage = m; HWPOS_STORE.ui.set('sellPage', m);
+  state.page = 1; myEdit(false);
+  renderSellSwitch(); renderProducts();
+  const g = $('.view-sell'); g.classList.remove('sp-swap'); void g.offsetWidth; g.classList.add('sp-swap');   // the whole Sell page blurs in, so a switch reads as a change
+  g.onanimationend = g.onanimationcancel = e => e.target === g && g.classList.remove('sp-swap');   // off once played: a class left on replays each time Sell shows again
+}
+const TRAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>';   // My page (owner 2026-10-21)
+const LAYERS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>';   // All items
+// The sidebar's switch: its icon is the page you are on
+function renderSellSwitch() {
+  const b = $('#sellSwitch'); if (!b) return;
+  const mine = state.sellPage === 'mine';
+  b.innerHTML = mine ? TRAY : LAYERS;
+  b.setAttribute('aria-label', mine ? 'My page, tap for All items' : 'All items, tap for My page');
+}
+// Move tile i to { before: j } or { after: j } (j = a tile's index now), or 'new': alone onto a new last page. Returns its new index.
+function moveMyTile(i, to) {
+  const t = pinMyPages(), it = t[i], r = t[to.before ?? to.after], nx = t[myPageCells().find(c => c.at > i)?.at];
+  if (r === it) return i;
+  t.splice(i, 1);
+  if (it.br && nx) nx.br = true;   // the next tile on show keeps its page (a hidden one in between holds none)   // the tile after it keeps its page
+  it.br = to === 'new';
+  if (to === 'new') t.push(it);
+  else if ('after' in to) t.splice(t.indexOf(r) + 1, 0, it);
+  else { if (r.br) { r.br = false; it.br = true; } t.splice(t.indexOf(r), 0, it); }   // it takes r's place, r's page too
+  saveMyTiles(t);
+  spillMyPages();
+  return t.indexOf(it);
+}
+// My page's tiles with every page's first marked br: the pages as they are now stay put
+function pinMyPages() {   // only those: a hidden tile holds no mark; saved with the page size they hold at
+  spillMyPages();   // a tile back on show that overfilled its page first pushes onto the next one
+  const t = myTiles();
+  t.forEach(x => delete x.br);
+  sellPages(myPageCells()).forEach((pg, n) => { if (n && pg[0].at != null) t[pg[0].at].br = true; });
+  saveMyTiles(t); HWPOS_STORE.ui.set('myPageSize', String(sellPageSize()));
+  return t;
+}
+// A full page that took one more pushes its last tile onto the front of the next page (iPhone home screen), not onto a page alone
+function spillMyPages() {
+  for (let n = 1, pages = sellPages(myPageCells()); n < pages.length - 1; n++) {
+    if (pages[n][0].br || !pages[n + 1][0].br) continue;   // a page started by a spill, then a pinned page: join them
+    const t = myTiles(); t[pages[n][0].at].br = true; t[pages[n + 1][0].at].br = false; saveMyTiles(t);
+    pages = sellPages(myPageCells()); n--;
+  }
+}
+function removeMyTile(i) {
+  const t = pinMyPages(), nx = t[myPageCells().find(c => c.at > i)?.at], [it] = t.splice(i, 1);
+  if (it?.br && nx) nx.br = true;
+  saveMyTiles(t); renderProducts();
+}
+// Long-press = edit: the tiles wiggle and wear an ×; Check out reads Done (owner 2026-10-21: a clear way out), a tap anywhere else ends it too
+let myEditing = false, myLifted = null, myDrop = null;   // myDrop: ends a drag in progress   // myLifted: the dragged tile's index, its slot drawn empty on every redraw
+function myEdit(on) {
+  if (myEditing === on) return;
+  myEditing = on;
+  $('#productGrid')?.classList.toggle('mp-edit', on);
+  if (!on) { myDrop?.(); myLifted = null; $$('#productGrid .mp-ghost').forEach(g => g.remove()); }   // fail-safe: a lifted copy never outlives editing
+  renderCart();
 }
 
 function getSellGridProfile() {
@@ -76,7 +162,7 @@ function sellPageSize(profile = getSellGridProfile()) {
 }
 
 function totalPages(cells = getSellCells()) {
-  return Math.max(1, Math.ceil(cells.length / sellPageSize()));
+  return Math.max(1, sellPages(cells).length);
 }
 
 function clampPage(cells = getSellCells()) {
@@ -86,16 +172,25 @@ function clampPage(cells = getSellCells()) {
 }
 
 function renderSellCellHtml(cell) {
+  if (cell.kind === 'add') return '<button type="button" class="product-card pc-add" data-add><b aria-hidden="true">+</b>Add tile</button>';
+  const at = cell.at == null ? '' : ` data-at="${cell.at}"${cell.at === myLifted ? ' data-lifted' : ''}`, x = at && '<button type="button" class="pc-x" data-remove aria-label="Remove from My page"></button>';
+  if (cell.kind === 'cat') {   // a category: its items open in the variant sheet (openCatSheet)
+    const f = cell.folder, art = tileArt(f);
+    return `
+      <div class="product-card pc-group pc-cat${art.cls}" data-cat="${f.id}"${at}${art.style}>${art.html}${x}
+        <span class="pc-top"><span>${SalesMath.plural(cell.n, 'item')}</span></span><div class="pc-name">${escapeHtml(f.name)}</div>
+      </div>`;
+  }
   if (cell.kind === 'group') {
     const g = cell.group, art = tileArt(g);
     return `
-      <div class="product-card pc-group${art.cls}" data-group-id="${g.id}" title="${escapeHtml(g.name)}"${art.style}>${art.html}
+      <div class="product-card pc-group${art.cls}" data-group-id="${g.id}"${at} title="${escapeHtml(g.name)}"${art.style}>${art.html}${x}
         <div class="pc-name">${escapeHtml(g.name)}</div>${tileMeta(groupMembers(g.id), cell.memberCount)}
       </div>`;
   }
   const p = cell.product, art = tileArt(p);
   return `
-    <div class="product-card${art.cls}" data-id="${p.id}"${art.style}>${art.html}
+    <div class="product-card${art.cls}" data-id="${p.id}"${at}${art.style}>${art.html}${x}
       <div class="pc-name">${escapeHtml(p.name)}</div>${tileMeta([p], 1)}
     </div>`;
 }
@@ -123,11 +218,7 @@ function tileMeta(ps, vn) {
     }
   }
   if (vn > 1) top.push(`<span class="pc-var" aria-label="${vn} variants">${vn}</span>`);
-  if (show === 'price' || show === 'both') {   // a price asked at sale has none to show: "—", never ₱0.00
-    const ps2 = ps.filter(m => !askedPrice(m)).map(m => toNumber(m.price, 0)), lo = Math.min(...ps2), hi = Math.max(...ps2);
-    const cut = x => peso(x).replace(/\.00$/, '');   // a range drops whole-peso .00 to stay short, as Items does
-    pr = `<span class="pc-pr">${!ps2.length ? '—' : lo === hi ? peso(lo) : `${cut(lo)}-${cut(hi)}`}</span>`;
-  }
+  if (show === 'price' || show === 'both') pr = `<span class="pc-pr">${priceRange(ps)}</span>`;
   return (top.length ? `<span class="pc-top">${top.join('')}</span>` : '') + pr;
 }
 const tileUnit = (n, u = 'pc') => /^(pc|bag|roll|pair|box|set|pack)$/.test(u) ? SalesMath.pluralWord(n, u, u === 'box' ? 'boxes' : u + 's') : u;
@@ -185,19 +276,15 @@ function renderProducts() {
   }
 
   clampPage(cells);
-  const pageSize = sellPageSize(profile);
-  const pages = [];
-  for (let i = 0; i < cells.length; i += pageSize) {
-    pages.push(cells.slice(i, i + pageSize));
-  }
+  const pages = sellPages(cells, sellPageSize(profile));
+  grid.classList.toggle('mp-edit', myEditing && cells.at(-1).kind === 'add');
 
-  grid.innerHTML = `
-    <div class="product-page-track" id="productTrack">
-      ${pages.map((pageCells, index) => `
+  // The track stays: a redraw on page 2 doesn't slide in from page 1, and My page's lifted tile (a sibling) survives it
+  if (!$('#productTrack')) grid.innerHTML = '<div class="product-page-track" id="productTrack"></div>';
+  $('#productTrack').innerHTML = pages.map((pageCells, index) => `
         <div class="product-page" data-page="${index + 1}">
           ${pageCells.map(renderSellCellHtml).join('')}
-        </div>`).join('')}
-    </div>`;
+        </div>`).join('');
 
   renderSellHeader();
   requestAnimationFrame(() => {
@@ -236,11 +323,11 @@ function syncSellGridMetrics() {
 }
 
 // ---------- Variant sheet (Shopify POS): slides up over the grid, the cart stays in view ----------
-function openVariantModal(groupId) {
+function openVariantModal(groupId, back) {   // back: the category list it was opened from (its X steps back)
   const g = groupById(groupId);
   if (!g) return;
   if (!groupMembers(g.id).length) { showToast('No variants in this group'); return; }
-  state.variantModal = { groupId: g.id, query: '', available: false };
+  state.variantModal = { groupId: g.id, query: '', available: false, back };
   openListSheet(g.name, 'Search variants', 'Price');
 }
 // The variant sheet is also the customer picker (openCustomerModal): same top row, same list
@@ -261,10 +348,134 @@ function closeVariantSheet() {
   $('#variantSheet')?.classList.remove('open');
   $('#sidebarToggle')?.setAttribute('aria-label', 'Menu');
 }
+// The X: a variant list opened from a category's list steps back to it; anything else closes
+function backVariantSheet() {
+  const back = state.variantModal.back;
+  if (!back) return closeVariantSheet();
+  state.variantModal = back;
+  openListSheet(back.title, 'Search items', 'Price');
+}
+
+// A My page category (owner 2026-10-21): its items in the variant sheet, an item with variants opens its own list
+function openCatSheet(id) {
+  const f = liveFolders().find(x => x.id === id); if (!f) return;
+  state.variantModal = { kind: 'cat', id, title: f.name, query: '' };
+  openListSheet(f.name, 'Search items', 'Price');
+}
+const priceRange = ps => {   // a price asked at sale has none to show: "—", never ₱0.00
+  const pr = ps.filter(m => !askedPrice(m)).map(m => toNumber(m.price, 0)), lo = Math.min(...pr), hi = Math.max(...pr);
+  const cut = x => peso(x).replace(/\.00$/, '');   // a range drops whole-peso .00 to stay short, as Items does
+  return !pr.length ? '—' : lo === hi ? peso(lo) : `${cut(lo)}-${cut(hi)}`;
+};
+// One row for a category, a variant item or an item: picture, name, what's in it, price. No stock (owner 2026-10-21)
+function cellRow(c, attrs) {
+  const r = c.kind === 'cat' ? c.folder : c.kind === 'group' ? c.group : c.product, { img, hue } = itemLook(r);
+  const sub = c.kind === 'cat' ? SalesMath.plural(c.n, 'item') : c.kind === 'group' ? `${c.memberCount} variants` : '';
+  const pr = c.kind === 'cat' ? '' : priceRange(c.kind === 'group' ? groupMembers(r.id) : [r]);
+  return `<button type="button" class="vs-row" ${attrs}><span class="pic"${hue == null || img ? '' : ` style="--tc:${hue}"`}>${img ? `<img src="${escapeHtml(img)}" alt="">` : ''}</span>
+    <span class="nm">${escapeHtml(r.name)}${sub ? `<small>${sub}</small>` : ''}</span><span class="amt num">${pr}</span></button>`;
+}
+const cellHit = (c, q) => !q || (c.kind === 'cat' ? c.folder : c.kind === 'group' ? c.group : c.product).name.toLowerCase().includes(q);
+function renderCatSheet(vm) {
+  const all = toCells(catProducts(vm.id)), q = vm.query.trim().toLowerCase(), shown = all.filter(c => cellHit(c, q));
+  $('#variantAvail').hidden = true;
+  $('#variantCount').textContent = `${shown.length} of ${all.length}`;
+  $('#variantList').innerHTML = shown.map(c => cellRow(c, c.kind === 'group' ? `data-open-group="${c.group.id}"` : `data-variant-id="${c.product.id}"`)).join('')
+    || '<div class="vs-empty">No items match</div>';
+}
+
+// Add tile (owner 2026-10-21): a half sheet asks Item or Category, then the Items page opens on that list as it is - its
+// search, its rows - with ✕ where ☰ is and no tabs, stock or price. A tap ticks a row (quick stock's tick), the bar at the foot
+// (quick stock's) adds the ticked ones; ✕ adds nothing. A row on My page when the list opened says "Already a tile" (owner 2026-10-21).
+let addPick = null;   // { pick: 'item' | 'cat', was: the Items tab to come back to, had: keys on My page, sel: keys ticked }
+function openAddTile(btn) {
+  const { veil, close } = openSheet(btn, `<div class="fs-top">
+    <button type="button" class="fs-x" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 id="fsTitle">Add tile</h2><i></i></div><div class="fs-body"><div class="fs-rows"><button type="button" data-pick="item">Item</button><button type="button" data-pick="cat">Category</button></div></div>`, 'half');
+  veil.addEventListener('click', e => {
+    const pick = e.target.closest('[data-pick]')?.dataset.pick, m = veil.firstChild;
+    if (!pick || m.classList.contains('grow')) return;
+    if (QS.on) { close(); return showToast('Finish quick stock first'); }   // one pick mode at a time on the Items page
+    // the sheet grows up to the full screen (owner 2026-10-21: "it goes up, it becomes a page"), then fades off the list under it
+    m.style.height = m.offsetHeight + 'px';
+    m.classList.add('grow');
+    requestAnimationFrame(() => { m.style.height = innerHeight + 'px'; });
+    setTimeout(() => { addPickStart(pick); close(); }, 300);
+  });
+}
+function addPickStart(pick) {
+  switchView('items');
+  if (state.view !== 'items') return;   // refused (an exchange)
+  addPick = { pick, was: itemsKind, q: itemsFilter.q, tops: { ...itemsTop, [itemsKind]: $('#itemsLines').scrollTop }, had: new Set(myTiles().map(tileKey)), sel: [] };
+  addPickMenu();
+  $('#itemsView').classList.remove('editing');
+  addPickSearch('');
+  setItemsKind(pick === 'cat' ? 'cats' : 'items');
+  $('#itemsLines').scrollTop = 0;
+}
+// switchView off the Items page (or its ✕): the Items page as it was - its tab, search and place
+function addPickOff() {
+  if (!addPick) return;
+  const { was, q, tops } = addPick;
+  addPick = null;
+  addPickMenu();
+  addPickSearch(q);
+  setItemsKind(was);
+  Object.assign(itemsTop, tops);
+  $('#itemsLines').scrollTop = tops[was] || 0;
+}
+const addPickSearch = q => { itemsFilter.q = $('#itemsSearch').value = q; $('#itemsFind').classList.toggle('typed', !!q); };
+function addPickMenu() {
+  document.body.classList.toggle('add-pick', !!addPick);
+  const menu = $('.view-items .head [data-act="open-sidebar"]');
+  menu.title = menu.ariaLabel = addPick ? 'Close' : 'Menu';
+  addPickBar();
+}
+function addPickBar() {   // Check out's pill (.ph-bar), as New customer's (owner 2026-10-21)
+  if (!$('#addPickBar')) {
+    $('#app').insertAdjacentHTML('beforeend', '<div id="addPickBar" hidden><button type="button" class="ph-bar" id="addPickGo"></button></div>');
+    $('#addPickGo').addEventListener('click', addPickAdd);
+  }
+  $('#addPickBar').hidden = !addPick;   // always there, as Check out is: nothing ticked reads as its empty cart (owner 2026-10-21)
+  if (!addPick) return;
+  const n = addPick.sel.length;
+  $('#addPickGo').disabled = !n;
+  $('#addPickGo').textContent = n ? `Add ${SalesMath.plural(n, 'tile')}` : addPick.pick === 'cat' ? 'No categories' : 'No items';
+}
+const addPickKey = id => addPick.pick === 'cat' ? 'c' + id : (groupById(id) ? 'g' : 'p') + id;   // an Items row's id is its family's, else its product's
+const addPickOn = id => !!addPick && addPick.had.has(addPickKey(id));
+function addPickMarkRows() {
+  if (!addPick) return;
+  $$('#itemsRows .row[data-id]').forEach(r => {
+    const k = addPickKey(r.dataset.id), had = addPick.had.has(k);
+    r.classList.add('qs-tick');
+    r.classList.toggle('qs-in', had || addPick.sel.includes(k));
+    r.classList.toggle('ap-had', had);
+  });
+}
+// A tap on the Add list ticks or unticks a row; one on My page already can't be added twice
+function addPickTap(id) {
+  const k = addPickKey(id), i = addPick.sel.indexOf(k);
+  if (addPick.had.has(k)) return showToast('Already a tile');
+  if (i >= 0) addPick.sel.splice(i, 1); else addPick.sel.push(k);
+  addPickMarkRows();
+  addPickBar();
+}
+// The bar's Add: the ticked rows go on the end of My page in the order tapped, Sell opens on the first one's page
+function addPickAdd() {
+  const t = myTiles(), at = t.length;
+  if (!addPick?.sel.length) return;
+  t.push(...addPick.sel.map(k => k[0] === 'c' ? { cat: k.slice(1) } : k[0] === 'g' ? { g: k.slice(1) } : { id: k.slice(1) }));
+  saveMyTiles(t);
+  switchView('sell');
+  state.page = pageOfTile(at);
+  updateProductTrackPosition();
+}
 
 function renderVariantList() {
   const vm = state.variantModal;
   if (vm.kind === 'cust') return renderCustomerSheet(vm);
+  if (vm.kind === 'cat') return renderCatSheet(vm);
   const members = groupMembers(vm.groupId);
   const q = vm.query.trim().toLowerCase();
   const words = members.map(p => p.name.split(' '));   // rows drop the words every variant shares: "White 1L", not "Latex Paint White 1L"
@@ -1561,6 +1772,7 @@ function renderCart() {
     : n ? `<span>${blurSwap(cnt, last?.n ?? cnt)} ${SalesMath.pluralWord(n, 'item')}</span><span class="num">${blurSwap(peso(t.total), last?.t ?? peso(t.total))}</span>` : '<span>No items</span>';
   $('#cartBar')._last = n && !x ? { n: cnt, t: peso(t.total) } : null;
   if (!n && !x) $('#app').classList.remove('ph-cart');
+  if (myEditing) for (const b of [$('#cartBar'), $('#payBtn')]) { b.disabled = false; b.innerHTML = '<span>Done</span>'; }   // app.js's capture click ends editing, nothing else
   if (scanCardId) drawScanCard();
 
   renderFulRow();

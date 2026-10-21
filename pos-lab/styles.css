@@ -3306,9 +3306,9 @@ a.secondary-btn { text-decoration: none; }
 .vsheet.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
 /* the top row while it's open: menu -> X, catalog search -> Search variants, scan button folds away */
 :is(#sidebarToggle, .view-items .head [data-act="open-sidebar"]) line { transform-origin: 12px 12px; transition: transform .24s var(--rl-ease), opacity .16s; }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(1), #app.xchg #sidebarToggle line:nth-child(1), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(1) { transform: rotate(45deg) translateY(6px); }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(2), #app.xchg #sidebarToggle line:nth-child(2), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(2) { opacity: 0; }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3), #app.xchg #sidebarToggle line:nth-child(3), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(3) { transform: rotate(-45deg) translateY(-6px); }   /* an exchange's ✕ too (leaveExchange), and quick stock's */
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(1), #app.xchg #sidebarToggle line:nth-child(1), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(1), body.add-pick .view-items .head [data-act="open-sidebar"] line:nth-child(1) { transform: rotate(45deg) translateY(6px); }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(2), #app.xchg #sidebarToggle line:nth-child(2), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(2), body.add-pick .view-items .head [data-act="open-sidebar"] line:nth-child(2) { opacity: 0; }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3), #app.xchg #sidebarToggle line:nth-child(3), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(3), body.add-pick .view-items .head [data-act="open-sidebar"] line:nth-child(3) { transform: rotate(-45deg) translateY(-6px); }   /* an exchange's ✕ too (leaveExchange), and quick stock's */
 .vs-search, .vs-chip { display: none; }
 /* SCANNER (owner 2026-10-08, Shopify POS): the camera in one rounded card in the edit sheet's frame, over the top row
    (Discount, Fulfilment; owner: "so it covers the hamburger"); the phone gives
@@ -7331,6 +7331,11 @@ body.light-theme {
   #app.co-side .co { grid-template-columns: minmax(0, 1fr); }
   #app.co-side .co-items { display: none; }
 }
+.ph-bar { align-items: center; justify-content: center; gap: 8px; width: min(100% - 48px, 260px); height: var(--bar-h);
+          padding: 0 20px; border: 0; border-radius: calc(var(--rl-r) + 2px); background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 15px; font-weight: 550;
+          cursor: pointer; touch-action: manipulation; transition: opacity .2s; font-variant-numeric: tabular-nums; }   /* same-width digits: the words hold still as the total changes (owner 2026-10-19: it wiggled) */
+.ph-bar:active { background: var(--accent-pressed); }
+.ph-bar:disabled { opacity: .3; pointer-events: none; }
 .ph-bar, .rail-h .ph-back { display: none; }
 /* Phone: the products fill the screen; the bar under them opens the sale sidebar as its own page (owner
    2026-10-07: the page, not a sheet). The edit sheet covers that page, top row too, as on the tablet */
@@ -7341,11 +7346,7 @@ body.light-theme {
   .content-row { grid-template-rows: minmax(0, 1fr) auto; }
   .catalog { min-height: 0; gap: 14px; padding-bottom: 14px; }   /* the same space above and below the tiles (owner 2026-10-07: 8 below felt tighter than 14 above; tried 14/14, then 12/12) */
   .product-grid[data-size] { --grid-gap: 6px; }   /* owner 2026-10-18: "slightly tighter" than 8, with the v449 lift the tiles read as one set */
-  .ph-bar { display: flex; align-items: center; justify-content: center; gap: 8px; width: min(100% - 48px, 260px); height: var(--bar-h); margin: 0 auto var(--ph-b);
-            padding: 0 20px; border: 0; border-radius: calc(var(--rl-r) + 2px); background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 15px; font-weight: 550;
-            cursor: pointer; touch-action: manipulation; transition: opacity .2s; font-variant-numeric: tabular-nums; }   /* same-width digits: the words hold still as the total changes (owner 2026-10-19: it wiggled) */
-  .ph-bar:active { background: var(--accent-pressed); }
-  .ph-bar:disabled { opacity: .3; pointer-events: none; }
+  .ph-bar { display: flex; margin: 0 auto var(--ph-b); }
   .ph-bar span + span::before, .rail-h .go span + span::before { content: '·'; margin-right: 8px; }   /* 2 items · ₱157.00, centred */
   .rail-h { position: fixed; inset: 0; z-index: 97; max-height: none; margin: 0; padding: calc(8px + env(safe-area-inset-top, 0px)) 8px var(--ph-b); background: var(--canvas, var(--bg));
             transform: translateX(100%); visibility: hidden; transition: transform .3s var(--rl-ease), visibility 0s .3s; }   /* out: the plain slide, the whole page to the right */
@@ -7934,21 +7935,21 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary) { background: var(--accent) linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%); color: var(--accent-ink);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px rgb(255 255 255 / .12), 0 2px 8px -2px rgb(0 0 0 / .3); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary):active { background-color: var(--accent-pressed); }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn) {   /* liquid glass press, app.js sets --lg-* */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn), :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) {   /* liquid glass press, app.js sets --lg-* */
   touch-action: none; transition: transform .9s var(--lg-spring), background-color .2s, opacity .18s;   /* opacity: Sell's ☰ fades with the drawer */
   /* one transform at rest and pressed, the drag's angle kept after release: the spring wobbles along the way it was pulled (owner 2026-10-18) */
   transform: translate(var(--lg-x, 0px), var(--lg-y, 0px)) rotate(var(--lg-a, 0rad)) scale(calc(1 + var(--lg-p, 0) + var(--lg-s, 0)), calc(1 + var(--lg-p, 0) - var(--lg-s, 0) / 2)) rotate(calc(-1 * var(--lg-a, 0rad)));
   --lg-spring: linear(0, .076, .268, .521, .786, 1.021, 1.199, 1.307, 1.346, 1.326, 1.263, 1.177, 1.085, 1.002, .937, .897, .881, .886, .906, .935, .967, .996, 1.019, 1.034, 1.041, 1.04, 1.034, 1.024, 1.013, 1.002, .994, .989, .986, .986, .988, .991, 1); }   /* a damped spring: lets go with a small jiggle (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack) > *, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary) > *, #catalogSearchRow > #sidebarToggle > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack) > *, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary) > *, #catalogSearchRow > #sidebarToggle > *, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
 :where(.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)) { position: relative; z-index: 1; }   /* swells over the search, not under it (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)::after, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)::after, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"])::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .4s;
   background: radial-gradient(circle at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .35), rgb(255 255 255 / 0) 70%); }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on {
   transition-duration: .15s; transition-timing-function: ease-out; --lg-p: .08; }
 #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on { --lg-p: .01; }   /* the search swells 3px, as Messages' (owner 2026-10-18 photos) */
 #catalogSearchRow > .search-wrap:not(.vs-search)::after { z-index: 1; border-radius: 999px; background: radial-gradient(circle 40px at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .3), rgb(255 255 255 / 0)); }   /* a hand-sized light, not one as wide as the bar */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on::after, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after { opacity: 1; transition-duration: .1s; }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on::after, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on::after { opacity: 1; transition-duration: .1s; }
 .lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* the last row clears + */
 /* the list runs up under the search, the bar and the clock, a frost on top fading down into it (owner 2026-10-18, iOS 26's scroll edge,
    the Claude app's top); at rest the first row still starts under the bar. --head-h: the head's height, set by app.js */
@@ -8536,6 +8537,22 @@ body .qs-pg .e-top .act.primary:disabled { color: var(--ink-quaternary); }
 
 /* the Items list while on: only items (no Categories / Modifiers / Discounts, no +), the ☰ becomes × */
 body.qs-on :is(#itemsAdd, #itemsBar) { display: none; }
+/* Add tile (My page): the Items page with no tabs, filter, +, price or stock */
+body.add-pick :is(#itemsAdd, #itemsBar, #itemsFilter, #itemsBack, .view-items .row .rt) { display: none; }
+body.add-pick .view-items .cols:not(.k2) { grid-template-columns: minmax(0,1fr) 170px; }
+body.add-pick .view-items .cols:not(.k2) > :nth-child(n+3) { display: none; }
+/* its bar: Check out's pill, low over the list on phone and tablet alike (owner 2026-10-21: "the same as the checkout button") */
+#addPickBar { position: fixed; z-index: 30; left: 0; right: 0; bottom: var(--ph-b, calc(16px + env(safe-area-inset-bottom, 0px))); display: flex; justify-content: center; pointer-events: none; }
+#addPickBar[hidden] { display: none; }
+#addPickBar .ph-bar { display: flex; margin: 0; pointer-events: auto; }
+#addPickBar::before { content: ''; position: fixed; z-index: -1; inset: auto 0 0; height: calc(var(--bar-h) + var(--ph-b, 16px) + 64px);   /* the rows fade out under it, as under the variants list's: the empty pill reads on the page, not over a row */
+  background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  -webkit-mask-image: linear-gradient(transparent, #000 88px); mask-image: linear-gradient(transparent, #000 88px); }
+/* Item / Category: the half sheet grows into the full screen, its words fade, then it fades off the list (pos-sell.js) */
+.fs-veil .fsheet.half.grow { transform: none; border-radius: 0; transition: height .3s var(--rl-ease), border-radius .3s var(--rl-ease), opacity .2s; }
+.fsheet.grow > * { opacity: 0; transition: opacity .15s; }
+.fs-veil:not(.open) .fsheet.grow { opacity: 0; }
+#itemsRows .row.qs-in.ap-had .nm::before { border-color: var(--ink-quaternary); background: var(--ink-quaternary); }   /* on My page already: a grey tick, not a pick */
 .qs-pg.dock #qsBack { visibility: hidden; }   /* beside the list, the list's × closes */
 /* ...and no Price: picking is by name, and the count is what stock needs (owner 2026-10-13: less to read) */
 body.qs-on .view-items .cols { grid-template-columns: minmax(0,1fr) 170px 110px; }
@@ -8619,7 +8636,7 @@ body.light-theme { --side-pill: var(--canvas); }   /* Gemini's #F2F0F0 on #FAF9F
 #app:not(.sidebar-collapsed) .main { transform: translateX(100%); }
 #app:not(.sidebar-collapsed) #sidebarToggle { opacity: 1; visibility: visible; }   /* it rides out with the page */
 .side-top { display: flex; align-items: center; flex: none; height: 68px; padding: 3.2px 16px 0 25px; }   /* the lab's: title and ✕ centred 93.6 down the screen, the list at 126 */
-.side-ttl { flex: 1; font-size: 20px; font-weight: 590; letter-spacing: -.2px; color: var(--ink); }
+.side-ttl { flex: 1; font-size: 20px; font-weight: 500; letter-spacing: -.2px; color: var(--ink); }
 .side-x { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: var(--ink);
           background: var(--surface-2); box-shadow: 0 4px 24px rgb(0 0 0 / .07); }
 .side-x svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
@@ -8643,11 +8660,28 @@ body.light-theme { --side-pill: var(--canvas); }   /* Gemini's #F2F0F0 on #FAF9F
 :where(#app:not(.bo-app)) .user-store span { color: inherit; }
 :where(#app:not(.bo-app)) .sync-mark { width: 18px; height: 18px; pointer-events: auto; }
 :where(#app:not(.bo-app)) .sync-mark:not(.stale) { display: none; }
-:where(#app:not(.bo-app)) .side-link[data-view="settings"] { position: absolute; right: 20px; bottom: calc(12px + var(--ph-safe, 0px)); z-index: 1;
-                                                            width: 40px; height: 40px; margin: 0; padding: 0; justify-content: center; background: none; }
+:where(#app:not(.bo-app)) .side-link[data-view="settings"] { position: absolute; right: 18px; bottom: calc(10px + var(--ph-safe, 0px)); z-index: 1;
+                                                            width: 44px; height: 44px; margin: 0; padding: 0; justify-content: center; border-radius: 50%; }   /* its centre stays 40 in from the corner */
 :where(#app:not(.bo-app)) .side-link[data-view="settings"] span { display: none; }
-:where(#app:not(.bo-app)) .side-link[data-view="settings"] svg { width: 26px; height: 26px; stroke-width: 1.5; }
-:where(#app:not(.bo-app)) .side-link[data-view="settings"] svg :is(.f, .d) { fill: none; stroke: currentColor; stroke-width: 1.5; }   /* the lab's gear stays a line */
+:where(#app:not(.bo-app)) .side-link[data-view="settings"] svg { width: 24px; height: 24px; stroke-width: 1.7; }
+:where(#app:not(.bo-app)) .side-link[data-view="settings"] svg :is(.f, .d) { fill: none; stroke: currentColor; stroke-width: 1.7; }
+/* Sell's My page / All items switch (owner 2026-10-21, pos-lab/try-switch.html) beside the title, and the gear: the ☰'s twin -
+   its 44 glass circle, ring and press (the liquid glass list above); .side-top is outside #catalogSearchRow, so the glass is set here */
+#app :is(.side-top > #sellSwitch, .side-link[data-view="settings"]) { color: var(--ink);
+  --glass: color-mix(in srgb, var(--bg) 70%, transparent); --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+  background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+body:not(.light-theme) #app :is(.side-top > #sellSwitch, .side-link[data-view="settings"]) { --glass: color-mix(in srgb, var(--ink) 14%, color-mix(in srgb, var(--bg) 75%, transparent)); --glass-ring: 0 1px 4px rgb(0 0 0 / .3), inset 0 0 0 .5px rgb(255 255 255 / .2); }
+.side-top > #sellSwitch { position: relative; top: -5.6px; flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; }   /* level with the ☰ (its centre 30 down on the phone, 38 on the iPad) */
+@media (min-width: 721px) { .side-top > #sellSwitch { top: 2.4px; } }
+.side-top > #sellSwitch svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; animation: sw-pop .32s cubic-bezier(.3, 1.5, .5, 1); }
+.view-sell.sp-swap { animation: sp-swap .7s ease-in-out; }   /* even both ends: ease-out raced, then crawled (owner 2026-10-21) */
+.toast.mid { animation: sp-name .7s ease-in-out forwards; }   /* the same clock: sharp while the grid is blurred, gone as it clears */
+@keyframes sp-name { 0%, 40% { opacity: 1; } to { opacity: 0; } }
+.toast.mid { top: 50%; bottom: auto !important; left: var(--mid-l); right: var(--mid-r); translate: 0 -50%;   /* the switch says where you are, mid-grid */
+  padding: 0; background: none; box-shadow: none; font-size: calc(var(--hero-fs) * .9); font-weight: var(--hero-fw); letter-spacing: -.04em; line-height: 1; }   /* plain text in the Walk-in sheet's hero type (.es-hero) */
+@keyframes sp-swap { 0%, 40% { opacity: .35; filter: blur(16px); } }   /* holds blurred while the page's name reads, then clears. No scale: a whole page shrunk shows its edges */
+@media (prefers-reduced-motion: reduce) { .view-sell.sp-swap { animation: fadeIn .3s; } }
+@keyframes sw-pop { from { opacity: 0; scale: .5; rotate: -30deg; } }   /* the lab's gear stays a line */
 .user-avatar { width: 40px; height: 40px; flex: none; font-size: 17px; font-weight: 400; }
 .user-name { font-size: 16.5px; font-weight: 400; line-height: 22px; }
 .user-avatar { color: var(--bg); }
@@ -8668,3 +8702,26 @@ html.side-half :where(#app:not(.bo-app)) .sidebar { padding-top: var(--ph-top, 0
 html.side-half .main { padding-top: var(--ph-top, 0px); background-image: linear-gradient(var(--canvas, var(--bg)) 0 0); background-size: 100% var(--ph-top, 0px); background-repeat: no-repeat; }   /* the strip behind the status bar is the page grey, not the white card: it turned the iPad top white on open (owner 2026-10-17) */
 html.side-half #app:not(.sidebar-collapsed) .main { transform: translateX(var(--half-w)); box-shadow: 0 0 0 1px rgb(16 24 40 / .07), -6px 0 28px rgb(0 0 0 / .12); }   /* the back office sheet's hairline (--po-sheet-shadow) + the drawer's own shadow back: the sheet's 3px one didn't show (owner 2026-10-19). Square edge, no corner: a web page can't read a phone's own corner (owner 2026-10-19) */
 html.side-half body:not(.light-theme) #app:not(.sidebar-collapsed) .main { box-shadow: 0 0 0 1px var(--line-strong); }   /* black on black: a shadow can't show, an edge does */
+
+/* ---- Sell's My page (owner 2026-10-21): Add tile, category tiles, editing (hold a tile: it wiggles, × takes it off, drag moves it) ---- */
+#productGrid .product-card.pc-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 0;
+  background: none; box-shadow: inset 0 0 0 1.5px var(--line); color: var(--ink-secondary); font: inherit; font-size: var(--pc-name-size, 14px); font-weight: 550; }
+#productGrid .pc-add b { font-size: 26px; font-weight: 400; line-height: 1; }
+#productGrid .product-card.pc-cat:not(.pc-pic, .pc-tc) { background: var(--rl-soft); }
+.product-grid:has(.pc-add) { touch-action: none; -webkit-touch-callout: none; }   /* My page: a hold lifts a tile, so the browser never takes the finger */
+.pc-x { display: none; }
+.mp-edit .pc-x { position: absolute; z-index: 2; top: 6px; left: 6px; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%;
+  background: var(--ink-secondary); color: var(--bg); cursor: pointer; }
+.mp-edit .pc-x::before { content: ''; width: 10px; height: 10px; background: linear-gradient(45deg, transparent 43%, currentColor 43% 57%, transparent 57%), linear-gradient(-45deg, transparent 43%, currentColor 43% 57%, transparent 57%); }
+.mp-edit [data-at] .pc-top { visibility: hidden; }   /* the × takes the corner */
+.mp-edit [data-at]:not(.mp-ghost) { animation: mp-wiggle .36s ease-in-out infinite alternate; }
+.mp-edit [data-at]:nth-child(2n):not(.mp-ghost) { animation-delay: -.18s; }
+@keyframes mp-wiggle { from { rotate: -.5deg; } to { rotate: .5deg; } }   /* subtle (owner 2026-10-21: 1.2deg "shakes too much") */
+@media (prefers-reduced-motion: reduce) { .mp-edit [data-at] { animation: none; } }
+.product-card[data-lifted]:not(.mp-ghost) { opacity: 0; animation: none; }   /* where the lifted tile will land */
+.product-card.mp-ghost { position: fixed; z-index: 30; margin: 0; pointer-events: none; scale: 1.08; opacity: .92; box-shadow: 0 12px 32px -8px rgb(0 0 0 / .45); transition: scale .15s; }
+/* Rows with a picture: a category's list in the variant sheet (My page) */
+.vs-row .pic { flex: none; width: 40px; height: 40px; overflow: hidden; border-radius: var(--r-input); background: var(--rl-soft, var(--surface)); }
+.vs-row .pic[style] { background: hsl(var(--tc) 45% 32%); }
+body.light-theme .vs-row .pic[style] { background: hsl(var(--tc) 75% 86%); }
+.vs-row .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }

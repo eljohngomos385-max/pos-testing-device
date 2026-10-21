@@ -55,6 +55,7 @@ function renderItems() {
   const rows = $('#itemsRows');
   if (!rows) return;
   fillItemsPane(itemsKind, $('#itemsBand'), rows);
+  addPickMarkRows();   // Add tile's ticks (pos-sell.js)
   if (itemsKind !== 'items') return;
   $('#itemsFilter')?.classList.toggle('on', Object.keys(ITEMS_FILTER_DEF).some(k => itemsFilter[k] !== ITEMS_FILTER_DEF[k]));
   qsMarkRows(); if ($('#qs') && !$('#qs').contains(document.activeElement)) qsRender(); else qsTickbar();   // quick stock (pos-stock.js): the dots, the phone's Review bar
@@ -66,8 +67,9 @@ function fillItemsPane(kind, band, rows) {
   band.classList.remove('k2');
   const q = itemsFilter.q.trim().toLowerCase();
   const list = catalogItems().filter(it => {
-    if (itemsFilter.cat && !itemsFilter.cat.some(c => it.cats.includes(c))) return false;   // '' = any, else the picks (openFilterSheet)
-    if (itemsFilter.stock && !itemsFilter.stock.some(s => itemStk(it) === 'stk-' + s)) return false;
+    if (addPick) { if (!it.members.some(onTill)) return false; }   // Add tile: what Sell can show, no filter (its button is hidden)
+    else if (itemsFilter.cat && !itemsFilter.cat.some(c => it.cats.includes(c))) return false;   // '' = any, else the picks (openFilterSheet)
+    if (!addPick && itemsFilter.stock && !itemsFilter.stock.some(s => itemStk(it) === 'stk-' + s)) return false;
     return !q || it.name.toLowerCase().includes(q) || it.variants.some(v => [v.name, v.sku, v.barcode].some(x => x.toLowerCase().includes(q)));
   }).sort((a, b) => a.name.localeCompare(b.name));
   band.innerHTML = `<span>Item <span class="num">· ${list.length}</span></span><span>Category</span><span>Price</span><span>In stock</span>`;
@@ -77,10 +79,11 @@ function fillItemsPane(kind, band, rows) {
     const ps = it.variants.filter(v => !askedPrice(v)).map(v => v.price), lo = Math.min(...ps), hi = Math.max(...ps);
     const cut = x => peso(x).replace(/\.00$/, '');   // ponytail: a range drops whole-peso .00 to stay short
     const rng = !ps.length ? '—' : lo === hi ? peso(lo) : `${cut(lo)}-${cut(hi)}`;
-    const stk = !oh ? '' : itemStk(it) === 'stk-out' ? '<span class="stk-out">Out of stock</span>' : `<span class="${itemStk(it)}">${it.made ? `Can make ${oh}` : `${oh} in stock`}</span>`;
-    const line = [stk, vs, it.component ? partWord() : ''].filter(Boolean).join(' · ');
+    const stk = !oh || addPick ? '' : itemStk(it) === 'stk-out' ? '<span class="stk-out">Out of stock</span>' : `<span class="${itemStk(it)}">${it.made ? `Can make ${oh}` : `${oh} in stock`}</span>`;
+    const tl = addPickOn(it.id) ? 'Already a tile' : '', v0 = [vs, tl].filter(Boolean).join(' · ');   // Add tile (pos-sell.js)
+    const line = [stk, vs, tl, it.component ? partWord() : ''].filter(Boolean).join(' · ');
     return `<button type="button" class="row cols" data-id="${escapeHtml(it.id)}">
-      <span class="nm">${itemThumb(it)}<span class="tx"><b>${escapeHtml(it.name)}</b>${vs ? `<small class="v0">${vs}</small>` : ''}${line ? `<small class="sub">${line}</small>` : ''}</span><span class="rt">${rng}</span></span>
+      <span class="nm">${itemThumb(it)}<span class="tx"><b>${escapeHtml(it.name)}</b>${v0 ? `<small class="v0">${v0}</small>` : ''}${line ? `<small class="sub">${line}</small>` : ''}</span><span class="rt">${rng}</span></span>
       <span class="cat">${escapeHtml(it.cat)}</span>
       <span class="pr num">${itemPriceText(it)}</span>
       <span class="num ${itemStk(it)}">${itemOnHand(it) || '—'}</span></button>`;
@@ -472,13 +475,13 @@ function renderKindRows(kind, band, rows) {
     return;
   }
   const q = itemsFilter.q.trim().toLowerCase(), all = catalogItems(), cats = kind === 'cats';
-  const list = kindList(kind).filter(x => !q || [x.name, ...(x.options || []).map(o => o.name)].some(n => n.toLowerCase().includes(q)));
+  const list = kindList(kind).filter(x => (!addPick || (!x.archived && toCells(catProducts(x.id)).length)) && (!q || [x.name, ...(x.options || []).map(o => o.name)].some(n => n.toLowerCase().includes(q))));   // Add tile: a category with nothing to sell makes no tile
   const discs = kind === 'discs';
   band.classList.add('k2');   // k2 hides the head: the rows say it (owner 2026-10-09)
   rows.innerHTML = list.map(x => `<button type="button" class="row cols k2" data-id="${escapeHtml(x.id)}">
       <span class="nm">${cats ? itemThumb(catLook(x)) : ''}<span class="tx"><b>${escapeHtml(x.name)}</b>${
-        discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? '' : `<small>${modSummary(x) || 'No options yet'}</small>`}</span></span>
-      <span class="num">${discs ? esShown(x) : SalesMath.plural(itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
+        discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? (addPickOn(x.id) ? '<small>Already a tile</small>' : '') : `<small>${modSummary(x) || 'No options yet'}</small>`}</span></span>
+      <span class="num">${discs ? esShown(x) : SalesMath.plural(addPick ? toCells(catProducts(x.id)).length : itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
     || `<div class="empty"><b>${q ? 'No matches' : `No ${cats ? 'categories' : kind === 'addons' ? 'add-ons' : 'modifiers'} yet`}</b><span>${q ? 'Try a different name.' : kind === 'addons' ? ''
       : cats ? 'Tap + to add one, then tick its items.' : `A modifier is a list of choices sold with an item, like Cut to length +${peso(20)}. Tap + to add one.`}</span></div>`;
 }

@@ -78,7 +78,7 @@ function qsRender() {
   document.body.classList.toggle('qs-on', QS.on);
   document.body.classList.toggle('qs-price', QS.on && qsPrice());
   const menu = $('.view-items .head [data-act="open-sidebar"]');   // picking: the ☰ is ✕ (app.js), the one way out
-  menu.title = menu.ariaLabel = QS.on ? (qsPrice() ? 'Close change price' : 'Close quick stock') : 'Menu';
+  menu.title = menu.ariaLabel = QS.on ? (qsPrice() ? 'Close change price' : 'Close quick stock') : addPick ? 'Close' : 'Menu';   // and Add tile's (pos-sell.js)
   const pg = $('#qs');
   pg.hidden = !QS.on || !qsMode;
   pg.classList.toggle('dock', qsMode === 'dock');
