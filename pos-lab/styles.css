@@ -52,6 +52,7 @@
   --r-card: 4px;
   --r-card-lg: 6px;
   --r-modal: 6px;
+  --r-pic: 5px;   /* every picture square but the Sell tiles: cart, item + category lists, not the editor's photo (Apple Music, owner 2026-10-22) */
 
   --shadow-card: none;
   --shadow-raised: 0 4px 12px rgba(0,0,0,0.4);
@@ -4844,11 +4845,11 @@ body.light-theme .product-card.pc-tc, body.light-theme .product-card.pc-tc:hover
 .product-grid[data-pics="fill"] .pc-img::after { content: ''; position: absolute; inset: 40% 0 0; background: linear-gradient(transparent, rgb(0 0 0 / .72)); }
 .product-grid[data-pics="fill"] .pc-pic .pc-name { position: relative; color: #fff; }   /* on the shade in either theme */
 /* Settings › Cart pictures (linePic): a small square before the name */
-:is(.rail-h .row, .co-row) .pic { flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: var(--r-card-lg); background: var(--rl-soft, var(--surface)); }
+:is(.rail-h .row, .co-row) .pic { flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: var(--r-pic); background: var(--rl-soft, var(--surface)); }
 :is(.rail-h .row, .co-row) .pic[style] { background: hsl(var(--tc) 45% 32%); }
 body.light-theme :is(.rail-h .row, .co-row) .pic[style] { background: hsl(var(--tc) 75% 86%); }
-:is(.rail-h .row, .co-row) .pic[data-s="md"] { width: 44px; height: 44px; border-radius: var(--r-input); }
-:is(.rail-h .row, .co-row) .pic[data-s="lg"] { width: 56px; height: 56px; border-radius: var(--r-input); }   /* Grab's order summary */
+:is(.rail-h .row, .co-row) .pic[data-s="md"] { width: 44px; height: 44px; }
+:is(.rail-h .row, .co-row) .pic[data-s="lg"] { width: 56px; height: 56px; }   /* Grab's order summary */
 :is(.rail-h .row, .co-row) .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 :is(.rail-h .row, .co-row) .pic:has(img) { background: none; }   /* a see-through PNG shows no box in the cart */
 
@@ -7625,7 +7626,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .stk-out { color: var(--danger) !important; }
 
 /* the picture: a photo when there is one, else the category's tint + initials (Loyverse's colour tile) */
-.lv .thumb { display: grid; place-items: center; flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: 5px; background: hsl(var(--h) 45% 32%); color: hsl(var(--h) 45% 82%);
+.lv .thumb { display: grid; place-items: center; flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: var(--r-pic); background: hsl(var(--h) 45% 32%); color: hsl(var(--h) 45% 82%);
              font-size: 11px; font-weight: 550; letter-spacing: .02em; }
 body.light-theme .lv .thumb { background: hsl(var(--h) 75% 86%); color: hsl(var(--h) 40% 34%); }   /* the Sell tile's shade (.pc-tc) */
 .lv .thumb:not([style]), body.light-theme .lv .thumb:not([style]) { background: var(--rl-soft, var(--surface)); color: var(--ink-secondary); }   /* no colour = the plain tile */
@@ -7763,7 +7764,7 @@ body .lv .fc .fr .act:not(.st-pick) { min-width: 0; padding: 0; background: none
 .lv .fc .fr .in { color: var(--ink); text-align: left; }   /* rednote: the value just after its word */
 /* the photo: centred above the blocks (rednote's avatar); it and Edit open Tile appearance */
 .lv .fphoto { display: grid; justify-items: center; gap: 6px; margin-bottom: 16px; }   /* centred between the title and the first block (rednote) */
-.lv .fphoto .thumb { width: 80px; height: 80px; border-radius: var(--rl-r); font-size: 24px; }
+.lv .fphoto .thumb { width: 80px; height: 80px; border-radius: var(--rl-r); font-size: 24px; }   /* the editor's photo keeps its own corner (owner 2026-10-22) */
 .lv .fphoto .link { text-decoration: none; }
 .lv .fphoto .fph { display: grid; justify-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }   /* the photo (+ Edit): one button (lookHead) */
 .lv .tcolors .tc:disabled { opacity: .3; cursor: default; }   /* a photo covers the colour (tileSwatches) */
@@ -8478,7 +8479,7 @@ span.st > i { font-style: normal; }
   body:not(.qs-on) .view-items .page .row.cols:not(.k2) { display: flex; align-items: center; min-height: 56px; padding-block: 8px; }
   body:not(.qs-on) .view-items .page .row.cols:not(.k2) > :not(.nm), body:not(.qs-on) .view-items .page .row .v0 { display: none; }
   body:not(.qs-on) .view-items .page .row.cols:not(.k2) .nm { flex: 1; gap: 12px; }
-  body:not(.qs-on) .view-items .page .row.cols:not(.k2) .thumb { width: 40px; height: 40px; border-radius: 8px; font-size: 14px; }
+  body:not(.qs-on) .view-items .page .row.cols:not(.k2) .thumb { width: 40px; height: 40px; font-size: 14px; }
   body:not(.qs-on) .view-items .page .row.cols:not(.k2) .tx { flex: 1; gap: 2px; }
   body:not(.qs-on) .view-items .page .row .sub { display: block; overflow: hidden; color: var(--ink-secondary); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
   body:not(.qs-on) .view-items .page .row .rt { display: block; flex: none; font-weight: 510; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -8746,7 +8747,7 @@ body.light-theme .pk-dim { background: rgb(0 0 0 / .3); }
 .pk-more { margin: -3px 0 0; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 500; cursor: pointer; }
 .pk-btn { position: fixed !important; z-index: 902; margin: 0 !important; }
 /* Rows with a picture: a category's list in the variant sheet (My page) */
-.vs-row .pic { flex: none; width: 40px; height: 40px; overflow: hidden; border-radius: var(--r-input); background: var(--rl-soft, var(--surface)); }
+.vs-row .pic { flex: none; width: 40px; height: 40px; overflow: hidden; border-radius: var(--r-pic); background: var(--rl-soft, var(--surface)); }
 .vs-row .pic[style] { background: hsl(var(--tc) 45% 32%); }
 body.light-theme .vs-row .pic[style] { background: hsl(var(--tc) 75% 86%); }
 .vs-row .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
