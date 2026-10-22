@@ -565,7 +565,7 @@
   // Sold per picks soldBy: a measured unit takes decimals. A unit you typed keeps what it was.
   const soldByFor = (unit, was) => (UNITS[1][1].includes(unit) ? 'measure' : UNITS[0][1].includes(unit) ? 'each' : was || 'each');
 
-  let P = null, openV = -1, dirty = false;
+  let P = null, openV = -1, dirty = false, heldM = null;   // heldM: the markup a cost change keeps, exact (the box shows it rounded)
 
   const val = (v) => (v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v));   // '' is no answer, not 0
   const markupOf = (c, p) => (val(c) && val(p) != null ? marginOf(c, p).markup : null);
@@ -727,6 +727,7 @@
   function renderEditor(id) {
     if (!P || P.key !== id || P.visit !== state.visit) {   // a re-render (sync, Adjust) keeps what is being typed
       P = loadP(id); openV = -1; dirty = false;
+      heldM = P && val(P.cost) && val(P.price) != null ? marginFromPrice(P.cost, P.price, 'percent', true) : null;
       if (P) P.visit = state.visit;
     }
     if (!P) {
@@ -851,15 +852,14 @@
       if (k === 'track') { P.track = t.checked; touch(); paintEditor(); return; }
       if (k === 'sellOut') P.sellOut = t.checked;
       else if (k === 'markup') {
-        const m = val(t.value), c = val(P.cost);
-        if (m != null && c != null) { P.price = priceFromMargin(c, 'percent', m); box('price').value = P.price; }
+        const m = heldM = val(t.value), c = val(P.cost);
+        if (m != null && c) { P.price = priceFromMargin(c, 'percent', m); box('price').value = P.price; }
       } else P[k] = t.value;
       // Cost moves the price at the same markup; a typed price moves the markup.
       if (k === 'cost') {
-        const m = val(box('markup') && box('markup').value);
-        if (m != null && val(P.cost) != null) { P.price = priceFromMargin(P.cost, 'percent', m); box('price').value = P.price; }
+        if (heldM != null && val(P.cost)) { P.price = priceFromMargin(P.cost, 'percent', heldM); box('price').value = P.price; }
       }
-      if (k === 'price' && box('markup')) box('markup').value = fmtPct(markupOf(P.cost, P.price));
+      if (k === 'price' && box('markup')) { heldM = val(P.cost) && val(P.price) != null ? marginFromPrice(P.cost, P.price, 'percent', true) : null; box('markup').value = fmtPct(heldM); }
       if (k === 'name') root().querySelector('.item-head h1').textContent = t.value || 'New item';
       const pl = root().querySelector('[data-profit]');
       if (pl) pl.innerHTML = profitLine(P.cost, P.price);

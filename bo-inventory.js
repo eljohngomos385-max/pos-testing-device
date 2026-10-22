@@ -134,7 +134,7 @@
   function heldPrice(p, paid) {
     const mode = p.marginMode === 'flat' ? 'flat' : 'percent';
     if (!(Number(p.cost) > 0) || !(Number(p.price) > 0)) return null;
-    return priceFromMargin(paid, mode, marginFromPrice(p.cost, p.price, mode));
+    return priceFromMargin(paid, mode, marginFromPrice(p.cost, p.price, mode, true));   // exact: paid = cost gives back the price
   }
 
   // Against the preferred supplier's last price when they have delivered, else the last
