@@ -7995,11 +7995,11 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 @media (min-width: 721px) and (max-width: 900px) { .lv #itemsKinds button { padding: 0 9px; } }   /* iPad upright: "Search discounts" still fits */
 #itemsRows .row .chev { width: 16px; height: 16px; margin-left: 6px; vertical-align: -3px; color: var(--ink-tertiary); }
 /* the phone's glass (set here: .lv is the pv container, so its own @container block can't reach it) */
-.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
+.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
       --glass-ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
       --pill-ring: 0 1px 2px rgb(0 0 0 / .15), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .05);   /* a pill inside a glass bar: half the ring's shadow and shine (owner 2026-10-18) */
       --float: 0 4px 12px -4px rgb(0 0 0 / .45); }   /* falls only down and to the sides (blur/2 < spread + offset upward); owner 2026-10-18: 10/30 "floats too much" */   /* owner 2026-10-17: the 8/24 drop read as floating; glass sits close */
-body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
   --pill-ring: 0 1px 2px rgb(0 0 0 / .03), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .4);
   --float: 0 4px 12px -4px rgb(0 0 0 / .08); }
 /* the sale side, Apple-fied (owner 2026-10-17: "the walk-in customer a pill, like the search bar ... check out a pill, walk-in and discount
@@ -8722,6 +8722,29 @@ html.side-half body:not(.light-theme) #app:not(.sidebar-collapsed) .main { box-s
 @media (prefers-reduced-motion: reduce) { .mp-edit [data-at] { animation: none; } }
 .product-card[data-lifted]:not(.mp-ghost) { opacity: 0; animation: none; }   /* where the lifted tile will land */
 .product-card.mp-ghost { position: fixed; z-index: 30; margin: 0; pointer-events: none; scale: 1.08; opacity: .92; box-shadow: 0 12px 32px -8px rgb(0 0 0 / .45); transition: scale .15s; }
+/* Peek (pos-sell.js openPeek, owner 2026-10-22): the variant sheet's strip on top, then the Orders list - every row its own glass, so each
+   divider is the ring's soft shadow - in a small card in the middle, fading in */
+.pk-dim { position: fixed; inset: 0; z-index: 900; background: rgb(0 0 0 / .42); }
+.pk-dim, .pk-btn { opacity: 0; transition: opacity .2s ease-in; }   /* closing: the opening curves played backwards (owner 2026-10-22: "the fade in reverse") */
+.pk-dim, .pk-btn, .pk-card { will-change: opacity, scale; }   /* kept on their own GPU layers the whole time: else the fade-out waits a frame or two to set them up, then jumps */
+.pk-on :is(.pk-dim, .pk-btn, .pk-card) { opacity: 1; scale: 1; transition: opacity .2s ease-out, scale .2s cubic-bezier(.2,.8,.2,1); }   /* opening */
+body.light-theme .pk-dim { background: rgb(0 0 0 / .3); }
+.pk-card { position: fixed; z-index: 902; left: 50%; top: 50%; width: min(340px, 100vw - 32px); max-height: min(380px, 100dvh - 260px);
+           display: flex; flex-direction: column; translate: -50% -50%;
+           opacity: 0; scale: .96; transition: opacity .2s ease-in, scale .2s cubic-bezier(.8,0,.8,.2); }   /* the fade: opacity + scale only (GPU), owner 2026-10-22 */
+.pk-card .vs-list { flex: 1; margin: 0; padding: 0; border-radius: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* the Orders page's own colour under the glass rows, as Orders has, so the tiles never show through; a plain colour, so the round clip costs no blur */
+.pk-card .vs-card { display: flex; flex-direction: column; overflow: hidden; border-radius: var(--rl-r); background: var(--bg); box-shadow: var(--glass-ring); }
+.pk-card .vs-head { flex: none; align-self: stretch; flex-wrap: wrap; row-gap: 3px; margin: 0; padding: 10px 14px; border-radius: 0; }   /* name, its count at the right, the description under: one strip */
+.pk-card .vs-title span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-card .vs-row { min-height: 44px; padding: 6px 14px; border-top: 0; background-color: var(--glass); box-shadow: var(--glass-ring); }   /* no backdrop blur: they sit on the card's plain colour, so it showed nothing and cost a blur per row per frame of the fade (owner 2026-10-22: the fade-out stepped) */
+@media (min-width: 768px) {   /* the tablet has the room: wider, taller rows */
+  .pk-card { width: min(520px, 100vw - 48px); max-height: min(560px, 100dvh - 200px); }
+  .pk-card .vs-head { padding: 14px 18px; } .pk-card .vs-row { min-height: 56px; padding: 8px 18px; } }
+.pk-desc { flex-basis: 100%; margin: 0; color: var(--ink-secondary); font-weight: 400; line-height: 1.35; }   /* the strip's own size */
+.pk-desc.clip { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }   /* a long one: two lines, then More */
+.pk-more { margin: -3px 0 0; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 500; cursor: pointer; }
+.pk-btn { position: fixed !important; z-index: 902; margin: 0 !important; }
 /* Rows with a picture: a category's list in the variant sheet (My page) */
 .vs-row .pic { flex: none; width: 40px; height: 40px; overflow: hidden; border-radius: var(--r-input); background: var(--rl-soft, var(--surface)); }
 .vs-row .pic[style] { background: hsl(var(--tc) 45% 32%); }

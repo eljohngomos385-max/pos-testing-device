@@ -17,6 +17,9 @@ const SETTING_PICKS = {
   discountLimit: { opts: [10, 15, 20, 25, 30, 50].map(n => [n, `${n}%`]).concat([[null, 'Never ask']]), now: () => loadTillPerms().discountLimit, set: setDiscountLimit },
   refundPin: { opts: [['ask', 'Ask a manager'], ['any', 'Anyone can']], now: () => roleCan('cashier', 'refund') ? 'any' : 'ask', set: setRefundPin },
   startCash: { opts: [['ask', 'Ask every shift'], ['float', 'Keep a float']], now: () => state.settings.startCash, set: v => setShiftPick({ startCash: v }) },
+  // Business type (owner 2026-10-22: its own page, not a pop-up): retail and food for now. A food store's part is an Ingredient (partWord)
+  bizType: { opts: [['retail', 'Retail'], ['food', 'Food']], now: () => (state.settings.store?.businessType === 'food' ? 'food' : 'retail'),
+    set: v => { state.settings.store = { ...state.settings.store, businessType: v }; saveSettings(); renderItems(); } },
   // ponytail: 12–6 AM only; widen it when a store runs past 6 AM
   autoClose: { opts: [0, 1, 2, 3, 4, 5, 6].map(h => [h, `${h || 12} AM`]), now: () => state.settings.autoClose, set: v => setShiftPick({ autoClose: v }) },
 };
@@ -113,8 +116,6 @@ function renderPosSettings(printer = true) {
   if (acct) acct.textContent = loadStaff().find(u => u.role === 'owner')?.email || 'Account';
   const churnInput = $('#posChurnDays');
   if (churnInput) churnInput.value = state.settings.churnThresholdDays || 30;
-  const biz = $('#posBizType');
-  if (biz) biz.value = state.settings.store?.businessType === 'food' ? 'food' : 'retail';
   const tz = $('#posTimeZone');
   if (tz) {
     const zone = SalesMath.storeZone(state.settings);
@@ -372,8 +373,6 @@ function persistPosSettings() {
   // The store's clock (SalesMath.storeZone): days, bands and reports all turn over in this zone.
   const zone = $('#posTimeZone')?.value;
   if (zone) state.settings.store = { ...state.settings.store, timeZone: zone };
-  const biz = $('#posBizType')?.value;   // Business type (owner 2026-10-20): onboarding will ask it too
-  if (biz) state.settings.store = { ...state.settings.store, businessType: biz };
   saveSettings();
 }
 

@@ -134,7 +134,7 @@ function attachEvents() {
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     // Don't hijack modal context
-    if (document.querySelector('.modal-backdrop:not([hidden]), .rail-veil')) return;   // a sheet, menu or confirm is up
+    if (document.querySelector('.modal-backdrop:not([hidden]), .rail-veil, .pk-dim')) return;   // a sheet, menu, confirm or peek is up
     if (e.key === 'Enter') return;
     search.focus({ preventScroll: true });
   });
@@ -267,17 +267,33 @@ function attachEvents() {
 
   // ---- My page: hold a tile to lift it and drag it anywhere; held at the grid's edge it turns the page, past the last page it
   // starts a new one. The order stays packed, so a page never has a gap (owner 2026-10-21). While editing, a tile drags at once ----
+  // Not editing, a still hold peeks instead (pos-sell.js openPeek, any tile); on My page the peek then moved = editing with the tile
+  // in hand, and a hold on an empty spot = editing at once (owner 2026-10-22)
   let hold = null, lifted = false;
   productGrid.addEventListener('pointerdown', (e) => {
-    const card = e.target.closest('.product-card[data-at]');
-    if (!card || e.button > 0 || hold || e.target.closest('[data-remove]')) return;   // one finger at a time: a second would lift a copy no finger drops
-    hold = { at: +card.dataset.at, x: e.clientX, y: e.clientY, id: e.pointerId, t: setTimeout(lift, myEditing ? 150 : 400) };   // editing: a short still hold, so a flick still turns the page
+    const card = e.target.closest('.product-card');
+    if (e.button > 0 || hold || peekOpen() || e.target.closest('[data-remove]')) return;   // one finger at a time: a second would lift a copy no finger drops
+    if (myEditing ? !card?.matches('[data-at]') : card ? card.matches('.pc-add, .mp-ghost') : !productGrid.querySelector('[data-at]')) return;   // All items: an empty spot does nothing
+    hold = { card, at: card ? +card.dataset.at : -1, x: e.clientX, y: e.clientY, id: e.pointerId, t: setTimeout(myEditing ? lift : card ? peekHold : wiggle, myEditing ? 150 : 380) };   // editing: a short still hold, so a flick still turns the page; 380 beats the old 400 ms lift
   });
-  productGrid.addEventListener('pointermove', (e) => {
+  addEventListener('pointermove', (e) => {   // anywhere: once the peek is up the finger is over its dim
     if (!hold || lifted || hold.id !== e.pointerId || Math.hypot(e.clientX - hold.x, e.clientY - hold.y) < 8) return;
-    clearTimeout(hold.t); hold = null;   // moved before the hold: a swipe
+    if (!hold.peek) { clearTimeout(hold.t); hold = null; return; }   // moved before the hold: a swipe
+    if (peekOpen() && hold.card?.dataset.at != null) { closePeek(true); lift(); }   // My page, held then moved: the tile follows the finger
   });
-  const unhold = (e) => { if (hold && !lifted && hold.id === e.pointerId) { clearTimeout(hold.t); hold = null; } };
+  const still = () => { swipeStart = null; $('#productTrack')?.classList.remove('dragging'); updateProductTrackPosition(); hold.peek = true; };   // the hold took the finger: no page swipe, the release is no tap
+  function peekHold() { still(); if (!openPeek(hold.card)) hold.card.dataset.at != null ? lift() : hold = null; }
+  function wiggle() { still(); myEdit(true); }
+  const unhold = (e) => {
+    if (!hold || lifted || hold.id !== e.pointerId) return;
+    clearTimeout(hold.t);
+    if (hold.peek) {   // the release is no tap - its click lands on the peek now over the tile (a row there would add), so eat it anywhere
+      const eat = (c) => { c.stopImmediatePropagation(); c.preventDefault(); };
+      addEventListener('click', eat, { capture: true, once: true }); setTimeout(() => removeEventListener('click', eat, true), 300);
+    }
+    hold = null;
+  };
+  productGrid.addEventListener('contextmenu', (e) => e.preventDefault());   // a long press is the peek, not the browser's menu
   addEventListener('pointerup', unhold);   // anywhere: a mouse let go off the grid lifts nothing
   addEventListener('pointercancel', unhold);
   const noScroll = (e) => e.preventDefault();
@@ -883,6 +899,7 @@ function attachEvents() {
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (peekOpen()) return closePeek();
       if (!$('#pinModal').hidden) { if (!pinAsk?.signIn) $('#pinModal').hidden = true; return; }
       // a form with changes only asks; the rest stays until Leave (owner 2026-10-22)
       if (customerEditChanged()) return leaveCustomerEdit();
@@ -1010,7 +1027,6 @@ function attachEvents() {
   $('#posPrintMap')?.addEventListener('change', persistPosSettings);
   $('#posPrinterIp')?.addEventListener('change', () => { persistPosSettings(); renderPrinterList(); refreshPrinterStatus(); });   // the list above shows the typed printer
   $('#posTimeZone')?.addEventListener('change', persistPosSettings);
-  $('#posBizType')?.addEventListener('change', () => { persistPosSettings(); renderItems(); });   // the part's word: Ingredient / Component
   $('#posBtPairBtn')?.addEventListener('click', async () => {
     try {
       const dev = await window.HWPOS_PRINTER.pairBluetooth();

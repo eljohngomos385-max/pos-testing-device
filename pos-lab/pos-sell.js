@@ -322,6 +322,70 @@ function syncSellGridMetrics() {
   grid.style.setProperty('--visible-rows', rows);
 }
 
+// ---------- Peek (owner 2026-10-22, from try-peek.html): hold a tile = a card fades in in the middle - name, count, description, every
+// variant (or item) with its stock and price; tap a row = add it. The screen dims, no blur. A fade, not a morph (owner: the morph lagged):
+// opacity + scale only, which the GPU plays, so it stays smooth at Low Power Mode's 30 fps.
+// My page: the bottom button reads Edit page meanwhile. The hold and the hold-then-move into editing are app.js's ----------
+let peek = null;
+const peekOpen = () => !!peek;
+function peekRow(p, name) {
+  const out = p.trackStock !== false && !(toNumber(p.stock, 0) > 0);
+  const stock = p.trackStock === false ? 'Not counted' : out ? 'Out of stock' : `${SalesMath.qtyText(p.stock)} ${escapeHtml(p.unit || 'pc')} in stock`;
+  return `<button type="button" class="vs-row" data-add="${p.id}">
+    <span class="nm">${name == null ? stock : `${escapeHtml(name)}<small>${out ? '<b>Out of stock</b>' : stock}</small>`}</span><span class="amt num">${askedPrice(p) ? '—' : peso(p.price)}</span></button>`;
+}
+function openPeek(card) {
+  const g = card.dataset.groupId && groupById(card.dataset.groupId), p = card.dataset.id && state.products.find(x => x.id === card.dataset.id);
+  const f = card.dataset.cat && liveFolders().find(x => x.id === card.dataset.cat);
+  const x = g || p || f; if (!x) return false;
+  let n = 1, rows;
+  if (g) {
+    const ms = groupMembers(g.id), words = ms.map(m => m.name.split(' '));   // rows drop the words every variant shares, as the variant sheet does
+    let cut = 0; while (words.length > 1 && words.every(w => w.length > cut + 1 && w[cut] === words[0][cut])) cut++;
+    n = ms.length;
+    rows = ms.map(m => peekRow(m, m.name.split(' ').slice(cut).join(' '))).join('');
+  } else if (p) rows = peekRow(p);   // one item: the row is its stock and price
+  else { const ps = catProducts(f.id); n = toCells(ps).length; rows = ps.map(m => peekRow(m, m.name)).join(''); }
+  const desc = (g || p)?.description;
+  const el = peek = document.createElement('div');
+  el.innerHTML = `<div class="pk-dim"></div>
+    <div class="pk-card" role="dialog" aria-label="${escapeHtml(x.name)}"><div class="vs-card">
+      <div class="vs-head"><span class="vs-title"><span>${escapeHtml(x.name)}</span></span>${n > 1 ? `<span class="vs-count num">${SalesMath.plural(n, f ? 'item' : 'variant')}</span>` : ''}
+        ${desc ? `<p class="pk-desc clip">${escapeHtml(desc)}</p><button type="button" class="pk-more" data-more hidden>More</button>` : ''}</div>
+      <div class="vs-list">${rows}</div></div></div>`;
+  if (card.dataset.at != null) for (const b of [$('#cartBar'), $('#payBtn')]) {   // My page: the bottom button reads Edit page
+    const br = b.getBoundingClientRect(); if (!br.width) continue;
+    const e = b.cloneNode(false); e.removeAttribute('id'); e.disabled = false; e.classList.add('pk-btn'); e.dataset.edit = '';
+    e.innerHTML = '<span>Edit page</span>';
+    b.style.transition = 'none'; const cs = getComputedStyle(b);   // its settled look: the tablet's Check out takes it from its id, which a copy drops
+    for (const k of ['backgroundColor', 'backgroundImage', 'color', 'border', 'borderRadius', 'boxShadow', 'font', 'display', 'alignItems', 'justifyContent']) e.style[k] = cs[k];
+    b.style.transition = '';
+    Object.assign(e.style, { left: br.left + 'px', top: br.top + 'px', width: br.width + 'px', height: br.height + 'px' });
+    el.append(e);
+  }
+  document.body.append(el); addEventListener('resize', () => peek === el && closePeek(true), { once: true });   // turned: the Edit page copy would sit off its button
+  const d = el.querySelector('.pk-desc'); if (d) el.querySelector('.pk-more').hidden = d.scrollHeight <= d.clientHeight;   // short: no More
+  void el.offsetWidth; el.classList.add('pk-on');   // fades in: styles.css .pk-on
+  el.addEventListener('click', (e) => {
+    if (e.target.closest('[data-more]')) { el.querySelector('.pk-desc').classList.remove('clip'); e.target.remove(); return; }
+    const add = e.target.closest('[data-add]'), edit = e.target.closest('[data-edit]');
+    if (!add && !edit && e.target.closest('.pk-card')) return;   // a tap on the card's words does nothing
+    closePeek();
+    if (add) addToCart(add.dataset.add, 'variant');
+    if (edit) myEdit(true);
+  });
+  return true;
+}
+function closePeek(now) {
+  const el = peek; peek = null; if (!el) return;
+  if (now) return el.remove();
+  el.classList.remove('pk-on'); el.style.pointerEvents = 'none';   // fades out; the screen is live again at once
+  // gone when the fade has really ended: the iPhone starts it a few frames late, so a 200 ms timer cut it off mid-fade (owner 2026-10-22:
+  // "hitches mid"). The timer only backs up a fade that never runs (a hidden tab)
+  el.querySelector('.pk-card').addEventListener('transitionend', (e) => e.propertyName === 'opacity' && el.remove());
+  setTimeout(() => el.remove(), 1000);
+}
+
 // ---------- Variant sheet (Shopify POS): slides up over the grid, the cart stays in view ----------
 function openVariantModal(groupId, back) {   // back: the category list it was opened from (its X steps back)
   const g = groupById(groupId);

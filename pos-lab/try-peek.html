@@ -1006,6 +1006,7 @@
                   [/paint|boysen/i, 'Water-based, low odour, for walls and ceilings inside or out. Dries to the touch in 30 minutes, recoat after 2 hours. One litre covers about 10 m² in two coats. Thin with up to 10% clean water; wash brushes with soap.'], [/./, 'Comes with a 1-year store warranty.']];   // in memory only
     [...state.groups, ...state.products.filter(p => !p.groupId)].forEach(x => { x.description ||= demo.find(([re]) => re.test(x.name))[1]; });
 
+    if (typeof openPeek === 'function') return;   // ported into the app (2026-10-22, as a fade): from here on its own peek runs here
     const grid = $('#productGrid');
     let press = null, peek = null, eatClick = 0, own = null;
     const cancelApp = (id) => grid.dispatchEvent(own = new PointerEvent('pointercancel', { pointerId: id, bubbles: true }));   // the app's own hold + swipe let go
