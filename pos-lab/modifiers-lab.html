@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Modifiers Flow Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Standalone mock-up. Values copied from the lab app's computed styles (2026-10-22), light from body.light-theme; the app is untouched. */
+:root {
+  --page: #0A0A0A; --bg: #121212; --card: #1F1F1F; --surface: #2A2A2A; --line: rgba(255,255,255,.08);
+  --ink: #fff; --ink-2: rgba(255,255,255,.7); --ink-3: rgba(255,255,255,.45);
+  --inv: #fff; --inv-ink: #000;          /* picked answer, bottom pill */
+  --sel: #3A3A3A; --dim: #3A3A3A;        /* picked tab, waiting pill */
+  --hair: rgba(255,255,255,.12); --edge: #2c2c2c; --tick-line: rgba(255,255,255,.3); --dot: rgba(255,255,255,.25);
+  --glass: rgba(18,18,18,.7); --toast: #2A2A2A; --amber: #E5B454; --tea: #5E8B4E; --r-card: 14px;
+  --mod-bg: rgba(120,170,255,.18); --mod-ink: #9EC3FF; --add-bg: rgba(190,150,255,.18); --add-ink: #CDB4FF;
+}
+body.light {
+  --page: #E2E2E2; --bg: #F2F2F2; --card: #FFFFFF; --surface: #EDEDED; --line: #E1E1E1;
+  --ink: #303030; --ink-2: #616161; --ink-3: #8C8C8C;
+  --inv: #303030; --inv-ink: #fff; --sel: #fff; --dim: #E4E4E4;
+  --hair: rgba(0,0,0,.08); --edge: #cfcfcf; --tick-line: rgba(0,0,0,.25); --dot: rgba(0,0,0,.18);
+  --glass: rgba(255,255,255,.75); --toast: #fff; --amber: #D9961A;
+  --mod-bg: #E3EDFF; --mod-ink: #2F5FB3; --add-bg: #EFE6FF; --add-ink: #6A3FB8;
+}
+body.light .card, body.light .sheet, body.light .tile:not(.c), body.light .bigrow:not(.on), body.light .fold, body.light .toast { box-shadow: 0 0 0 1px var(--line); }
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--page); color: var(--ink); font: 13px/1.35 Inter, -apple-system, "Segoe UI", sans-serif; padding: 28px 16px 80px; }
+svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.doc { max-width: 1500px; margin: 0 auto; }
+.doc > h1 { font-size: 26px; font-weight: 600; letter-spacing: -.01em; }
+.doc > p.lede { color: var(--ink-2); font-size: 15px; margin: 8px 0 0; max-width: 640px; }
+h2.ch { font-size: 18px; font-weight: 600; margin: 48px 0 4px; }
+h2.ch + p { color: var(--ink-3); font-size: 14px; margin-bottom: 18px; max-width: 640px; }
+.strip { display: flex; flex-wrap: wrap; gap: 26px 22px; }
+.step { width: calc(390px * var(--z)); --z: .78; }
+.step .cap { margin-top: 10px; font-size: 14px; color: var(--ink-2); }
+.step .cap b { color: var(--ink); font-weight: 600; }
+/* where you are, above each phone */
+.where { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; color: var(--ink-3); }
+.where b { min-width: 24px; height: 24px; padding: 0 6px; border-radius: 999px; background: var(--inv); color: var(--inv-ink); display: grid; place-items: center; font-size: 12px; flex: none; }
+.where i { font-style: normal; color: var(--ink); font-weight: 600; }
+h3.row { font-size: 15px; font-weight: 600; margin: 30px 0 12px; }
+.legend { display: inline-block; width: 14px; height: 14px; border-radius: 4px; box-shadow: inset 0 0 0 2px var(--amber); vertical-align: -2px; margin: 0 2px; }
+/* what you tap next */
+.tap { box-shadow: inset 0 0 0 2px var(--amber) !important; }
+.theme { position: fixed; top: 14px; right: 16px; z-index: 9; display: flex; padding: 3px; border-radius: 999px; background: var(--card); box-shadow: 0 0 0 1px var(--hair); }
+.theme button { border: 0; background: none; color: var(--ink-2); font: 600 13px Inter, sans-serif; padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+.theme button.on { background: var(--inv); color: var(--inv-ink); }
+@media (max-width: 520px) { .step { --z: 1; width: 100%; } .ph { margin: 0 auto; } }
+
+/* the phone */
+.ph { width: 390px; height: 844px; zoom: var(--z); background: var(--bg); border-radius: 46px; position: relative; overflow: hidden;
+  outline: 1px solid var(--edge); display: flex; flex-direction: column; }
+.ph .scroll { flex: 1; overflow-y: auto; scrollbar-width: none; padding-bottom: 80px; }
+.top { display: flex; align-items: center; gap: 8px; padding: 8px 10px; height: 60px; flex: none; }
+.gb { width: 44px; height: 44px; border-radius: 999px; background: var(--glass); display: grid; place-items: center; color: var(--ink); border: 0; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,.2), 0 0 0 .5px var(--hair); font: inherit; }
+.gb.txt { width: auto; padding: 0 16px; font-size: 15px; font-weight: 550; }
+.srch { flex: 1; height: 44px; border-radius: 999px; background: var(--card); display: flex; align-items: center; gap: 10px; padding: 0 16px;
+  color: var(--ink-3); font-size: 16px; box-shadow: 0 0 0 .5px var(--hair); }
+.srch svg { width: 16px; height: 16px; }
+.ttl { flex: 1; text-align: center; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tabs { display: flex; gap: 2px; margin: 2px 10px 6px; padding: 4px; border-radius: 999px; box-shadow: 0 0 0 .5px var(--hair); }
+.tabs span { flex: 1; text-align: center; padding: 7px 0; border-radius: 999px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+.tabs .on { background: var(--sel); color: var(--ink); box-shadow: 0 0 0 .5px var(--hair); }
+
+/* Apple-Settings blocks, as the item editor */
+.card { background: var(--card); border-radius: var(--r-card); margin: 0 12px; overflow: hidden; }
+.sec { color: var(--ink-3); font-size: 13px; padding: 0 28px; margin: 20px 0 8px; display: flex; justify-content: space-between; }
+.sec u { text-decoration: none; color: var(--ink); }
+.note { color: var(--ink-3); font-size: 12px; padding: 8px 28px 0; }
+.fr { min-height: 48px; padding: 6px 16px; display: flex; align-items: center; gap: 12px; font-size: 16px; position: relative; }
+.fr + .fr::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; border-top: 1px solid var(--line); }
+.fr .lb { color: var(--ink-2); }
+.fr .v { margin-left: auto; text-align: right; display: flex; align-items: center; gap: 6px; }
+.fr .v.dim, .fr .ph-txt { color: var(--ink-3); }
+.fr .chev { width: 16px; height: 16px; color: var(--ink-3); }
+.fr.act { color: var(--ink); font-weight: 600; }
+.fr .sub { display: block; font-size: 13px; color: var(--ink-3); margin-top: 1px; }
+.tick { width: 22px; height: 22px; border-radius: 999px; border: 1.5px solid var(--tick-line); display: grid; place-items: center; flex: none; }
+.tick.on { background: var(--inv); border-color: var(--inv); color: var(--inv-ink); }
+.tick svg { width: 14px; height: 14px; stroke-width: 2.6; }
+.thumb { width: 32px; height: 32px; border-radius: 8px; flex: none; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: rgba(0,0,0,.55); }
+.usual { font-size: 12px; font-weight: 600; color: var(--inv-ink); background: var(--inv); border-radius: 999px; padding: 2px 8px; }
+.sel { display: inline-flex; align-items: center; gap: 4px; }
+.sel svg { width: 14px; height: 14px; color: var(--ink-3); }
+.pv { width: 80px; height: 80px; border-radius: 16px; margin: 6px auto 4px; }
+.edit { text-align: center; color: var(--ink-2); font-size: 12px; margin-bottom: 16px; }
+
+/* list rows (Orders row) */
+.lr { padding: 12px 16px; display: flex; align-items: center; gap: 12px; position: relative; }
+.lr + .lr::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; border-top: 1px solid var(--line); }
+.lr b { font-size: 15px; font-weight: 600; display: block; }
+.lr span { font-size: 13px; color: var(--ink-3); }
+.fab { position: absolute; right: 20px; bottom: 14px; width: 56px; height: 56px; border-radius: 999px; background: var(--inv); color: var(--inv-ink); display: grid; place-items: center; }
+.fab svg { width: 24px; height: 24px; }
+
+/* Sell */
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 0 10px; }
+.tile { height: 113px; border-radius: 14px; background: var(--card); display: flex; align-items: flex-end; padding: 12px; font-size: 14px; font-weight: 600; line-height: 1.25; position: relative; }
+.tile.c { color: #fff; }
+.bar { position: absolute; left: 50%; transform: translateX(-50%); bottom: 10px; width: 260px; height: 44px; border-radius: 999px; background: var(--inv); color: var(--inv-ink);
+  display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 500; border: 0; font-family: inherit; cursor: pointer; }
+.bar.dim { background: var(--dim); color: var(--ink-2); }
+.bar .num { font-variant-numeric: tabular-nums; }
+
+/* the choices sheet */
+.sheet { background: var(--card); border-radius: var(--r-card); margin: 0 10px; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.band { padding: 12px 12px 10px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--line); flex: none; }
+.sheet .scroll { padding: 4px 0 90px; }
+.q { padding: 14px 12px 4px; display: flex; align-items: baseline; gap: 8px; }
+.q b { font-size: 16px; font-weight: 600; }
+.q span { font-size: 13px; color: var(--ink-3); }
+.q .need { color: var(--amber); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 12px 10px; }
+.chip { height: 40px; padding: 0 16px; border-radius: 999px; background: var(--surface); color: var(--ink); border: 0; font: 500 15px Inter, sans-serif;
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.chip i, .bigrow i { font-style: normal; opacity: .55; font-size: 13px; }
+.chip.on { background: var(--inv); color: var(--inv-ink); }
+.hr { height: 1px; background: var(--line); margin: 8px 12px; }
+.addon { display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
+.addon .nm { flex: 1; font-size: 15px; }
+.addon .nm span { display: block; font-size: 13px; color: var(--ink-3); }
+.stp { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.stp button { width: 36px; height: 36px; border-radius: 999px; border: 0; background: var(--surface); color: var(--ink); display: grid; place-items: center; cursor: pointer; }
+.stp button svg { width: 16px; height: 16px; }
+.stp .n { min-width: 22px; text-align: center; font-size: 15px; font-weight: 600; }
+.stp .n:empty, .stp:has(.n:empty) button:first-child { display: none; }
+
+/* radio rows */
+.rr { display: flex; align-items: center; min-height: 48px; padding: 0 12px; font-size: 16px; gap: 12px; position: relative; }
+.rr + .rr::before { content: ""; position: absolute; top: 0; left: 12px; right: 0; border-top: 1px solid var(--line); }
+.rr .p { margin-left: auto; color: var(--ink-3); font-size: 15px; }
+.rad { width: 22px; height: 22px; border-radius: 999px; border: 1.5px solid var(--tick-line); flex: none; }
+.rad.on { border: 7px solid var(--inv); }
+.box { width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--tick-line); flex: none; }
+.box.on { background: var(--inv); border-color: var(--inv); }
+
+/* one question per screen */
+.dots { display: flex; gap: 6px; justify-content: center; padding: 4px 0 0; flex: none; }
+.dots i { width: 6px; height: 6px; border-radius: 99px; background: var(--dot); transition: width .2s; }
+.dots i.done { background: var(--ink-3); }
+.dots i.on { background: var(--ink); width: 18px; }
+.sofar { text-align: center; color: var(--ink-3); font-size: 13px; min-height: 18px; margin-top: 10px; padding: 0 20px; }
+.big { font-size: 28px; font-weight: 600; padding: 14px 22px 4px; letter-spacing: -.01em; }
+.bigsub { color: var(--ink-3); font-size: 15px; padding: 0 22px 18px; }
+.bigrow { margin: 0 12px 8px; min-height: 60px; border-radius: 14px; background: var(--card); display: flex; align-items: center; gap: 12px; padding: 0 18px; font-size: 18px; font-weight: 500; cursor: pointer; }
+.bigrow .p { margin-left: auto; color: var(--ink-3); font-size: 15px; }
+.bigrow.on { background: var(--inv); color: var(--inv-ink); }
+.bigrow.on .p { color: inherit; opacity: .55; }
+.bigrow.add { padding: 0 12px 0 14px; cursor: default; }
+.bigrow.add .nm span { display: block; font-size: 13px; color: var(--ink-3); font-weight: 400; }
+
+/* Asked on: Items list with ticks, filter in the search bar, Done bottom right like Start shift */
+.srch input { flex: 1; min-width: 0; border: 0; background: none; color: var(--ink); font: inherit; outline: 0; }
+.srch input::placeholder { color: var(--ink-3); }
+.fbtn { border: 0; background: none; color: var(--ink-3); display: grid; place-items: center; width: 32px; height: 32px; margin-right: -8px; border-radius: 999px; cursor: pointer; position: relative; }
+.fbtn.on { color: var(--ink); }
+.fbar { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 10px 28px; font-size: 13px; color: var(--ink-3); flex: none; }
+.fbar u { text-decoration: none; color: var(--ink); font-weight: 600; font-size: 14px; padding: 6px 10px; border-radius: 999px; cursor: pointer; }
+.done { position: absolute; right: 24px; bottom: 24px; height: 48px; padding: 0 22px; border-radius: 24px; border: 0; background: var(--inv); color: var(--inv-ink); font: 550 15px Inter, sans-serif; box-shadow: 0 2px 8px -2px rgba(0,0,0,.3); cursor: pointer; }
+.fsheet { position: absolute; inset: 0; z-index: 3; background: var(--bg); display: flex; flex-direction: column; }
+.fsheet[hidden] { display: none; }
+.grab { width: 36px; height: 5px; border-radius: 99px; background: var(--dot); margin: 8px auto 0; flex: none; }
+.gb.ok.on { background: var(--inv); color: var(--inv-ink); }
+.chipbox { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; }
+.chipbox .chip { height: 36px; padding: 0 14px; font-weight: 600; }
+.card.menu { width: 220px; margin: 6px 10px 0 auto; box-shadow: 0 10px 30px -8px rgba(0,0,0,.45); }
+
+/* scroll and fill */
+.prog { height: 4px; margin: 6px 22px 0; border-radius: 99px; background: var(--dot); overflow: hidden; flex: none; }
+.prog i { display: block; height: 100%; background: var(--ink); border-radius: inherit; transition: width .3s; }
+.progtxt { text-align: center; font-size: 13px; color: var(--ink-3); margin-top: 8px; flex: none; }
+.steps { display: flex; gap: 6px; padding: 2px 10px 8px; overflow-x: auto; scrollbar-width: none; flex: none; }
+.steps button { flex: none; height: 34px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--surface); color: var(--ink-2); font: 500 14px Inter, sans-serif; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.steps button.on { background: var(--inv); color: var(--inv-ink); }
+.steps svg { width: 14px; height: 14px; stroke-width: 2.4; }
+.fs { position: relative; }
+.fs .big, .fold-open .big { font-size: 22px; padding-top: 18px; }
+.fold { margin: 0 12px 8px; min-height: 56px; border-radius: 14px; background: var(--card); display: flex; align-items: center; gap: 10px; padding: 0 18px; font-size: 16px; cursor: pointer; }
+.fold b { font-weight: 600; }
+.fold span { margin-left: auto; color: var(--ink-2); text-align: right; }
+.fold.later { opacity: .45; }
+.ghost { display: block; margin: 4px 12px 12px auto; height: 40px; padding: 0 20px; border-radius: 999px; border: 0; background: var(--surface); color: var(--ink); font: 600 15px Inter, sans-serif; cursor: pointer; }
+
+/* cart */
+.ci { padding: 10px 16px; position: relative; }
+.ci + .ci::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; border-top: 1px solid var(--line); }
+.ci .t { display: flex; font-size: 15px; font-weight: 600; }
+.ci .t span { margin-left: auto; }
+.ci .m { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+.ci .q2 { color: var(--ink-3); font-size: 13px; margin-top: 2px; }
+.pair { display: flex; gap: 8px; padding: 0 8px; position: absolute; left: 0; right: 0; bottom: 62px; }
+.pair div { flex: 1; height: 44px; border-radius: 999px; box-shadow: 0 0 0 .5px var(--hair); display: flex; align-items: center; padding: 0 16px; font-size: 15px; font-weight: 600; }
+.pair div:last-child { color: var(--ink-2); font-weight: 500; }
+.toast { position: absolute; left: 50%; transform: translateX(-50%); bottom: 62px; background: var(--toast); border-radius: 999px; padding: 8px 14px 8px 10px; font-size: 14px; font-weight: 600; display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+.toast svg { width: 18px; height: 18px; }
+.toast circle { fill: var(--inv); stroke: none; }
+.toast path { stroke: var(--inv-ink); stroke-width: 2.2; }
+
+/* receipt */
+.paper { background: #fff; color: #111; margin: 24px 26px; border-radius: 6px; padding: 22px 20px; font: 13px/1.5 "SF Mono", Consolas, monospace; box-shadow: 0 0 0 1px var(--line); }
+.paper .c { text-align: center; }
+.paper .r { display: flex; }
+.paper .r span { margin-left: auto; }
+.paper .ind { padding-left: 14px; color: #555; }
+.paper hr { border: 0; border-top: 1px dashed #999; margin: 10px 0; }
+.pick { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .02em; color: #000; background: var(--amber); border-radius: 999px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+
+/* step-by-step guide: the two words, scenarios, labels */
+.tag { display: inline-block; font-size: 11px; font-weight: 600; line-height: 1; padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+.tag.m { background: var(--mod-bg); color: var(--mod-ink); }
+.tag.a { background: var(--add-bg); color: var(--add-ink); }
+.where .tag { margin-left: auto; }
+.where b.ok { background: var(--tea); color: #fff; }
+.explain { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; max-width: 980px; }
+.xc { background: var(--card); border-radius: 18px; padding: 20px; }
+.xc h3 { font-size: 20px; font-weight: 600; margin: 12px 0 6px; }
+.xc > p { color: var(--ink-2); font-size: 14px; }
+.xc > p b { color: var(--ink); }
+.xc .eg { margin-top: 16px; }
+.xc .eg > b { display: block; font-size: 13px; font-weight: 600; color: var(--ink-3); margin-bottom: 8px; }
+.chips2 span { display: inline-block; padding: 6px 11px; border-radius: 999px; background: var(--surface); font-size: 13px; margin: 0 4px 6px 0; }
+.mini { background: #fff; color: #111; border-radius: 6px; padding: 12px 14px; font: 12px/1.6 "SF Mono", Consolas, monospace; margin-top: 16px; box-shadow: 0 0 0 1px var(--line); }
+.mini .r { display: flex; } .mini .r span { margin-left: auto; }
+.mini .ind { padding-left: 14px; color: #444; }
+.mini .hm { background: #E3EDFF; } .mini .ha { background: #EFE6FF; }
+.xc .foot { color: var(--ink-3); font-size: 12px; margin-top: 8px; }
+.rule { max-width: 980px; margin-top: 16px; font-size: 15px; color: var(--ink-2); }
+.rule b { color: var(--ink); }
+.toc { display: grid; gap: 6px; max-width: 640px; }
+.toc a { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; background: var(--card); color: var(--ink); text-decoration: none; font-size: 15px; font-weight: 500; }
+.toc a b { width: 24px; height: 24px; border-radius: 999px; background: var(--inv); color: var(--inv-ink); display: grid; place-items: center; font-size: 12px; flex: none; }
+.toc a .tag { margin-left: auto; }
+.hint { color: var(--ink-3); font-size: 14px; margin-top: 14px; }
+.scn { margin: 64px 0 20px; padding-top: 28px; border-top: 1px solid var(--hair); max-width: 760px; }
+.scn .no { font-size: 13px; font-weight: 600; color: var(--ink-3); }
+.scn h2 { font-size: 24px; font-weight: 600; margin: 4px 0 8px; display: flex; align-items: center; gap: 12px; }
+.scn p { color: var(--ink-2); font-size: 15px; }
+.scn ol { margin: 12px 0 0; padding-left: 22px; font-size: 15px; display: grid; gap: 4px; }
+.cap p + p { margin-top: 8px; }
+.cap .k { display: block; font-size: 11px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+<div class="theme"><button class="on" data-theme="">Dark</button><button data-theme="light">Light</button></div>
+<div class="doc">
+  <h1>Modifiers &amp; add-ons, step by step</h1>
+  <p class="lede">Everything a Gong cha store would set up for a Matcha Latte, done as real jobs. First the two words, then one scenario per job: what you want, every tap to set it up, and the POS screen you get at the end.</p>
+
+  <h2 class="ch">First, the two words</h2>
+  <div class="explain">
+    <div class="xc"><span class="tag m">Modifier</span>
+      <h3>A question about the drink</h3>
+      <p>The POS asks it every time you sell the drink. The answer is written <b>under the drink</b>, on the same line. It is not a new item.</p>
+      <div class="eg"><b>Each modifier is a set of choices. Example: Sweetness</b><div class="chips2"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div></div>
+      <div class="eg"><b>More examples</b><div class="chips2"><span>Size</span><span>Ice</span><span>Toppings +₱15</span></div></div>
+      <div class="mini"><div class="r">Matcha Latte Large<span>185.00</span></div><div class="ind hm">50% sugar</div><div class="ind hm">Less ice</div><div class="ind hm">Pearls +15.00</div></div>
+      <p class="foot">On the receipt: indented under the drink.</p>
+    </div>
+    <div class="xc"><span class="tag a">Add-on</span>
+      <h3>Another item, offered with the drink</h3>
+      <p>Something you already sell, like a snack. If the customer wants it, it goes on the order as <b>its own line</b>, with its own price, and it comes off its own stock.</p>
+      <div class="eg"><b>Put them in an add-on set. Example: Snacks</b><div class="chips2"><span>Egg pudding ₱45</span><span>Brown sugar cookie ₱35</span><span>Apple pie ₱55</span></div></div>
+      <div class="eg"><b>Or pick one just for a drink</b><div class="chips2"><span>Mango pudding ₱45</span></div></div>
+      <div class="mini"><div class="r">Matcha Latte Large<span>185.00</span></div><div class="r ha">Egg pudding<span>45.00</span></div></div>
+      <p class="foot">On the receipt: a line of its own.</p>
+    </div>
+  </div>
+  <p class="rule"><b>The quick test:</b> is it a choice about the drink (how sweet, how big)? It's a modifier. Is it a different thing the customer also buys? It's an add-on.</p>
+
+  <h2 class="ch">The scenarios</h2>
+  <div class="toc">
+    <a href="#s1"><b>1</b>Every milk tea asks how sweet<span class="tag m">Modifier</span></a>
+    <a href="#s2"><b>2</b>Toppings that cost extra, put on one drink<span class="tag m">Modifier</span></a>
+    <a href="#s3"><b>3</b>A Snacks set offered with 10 drinks<span class="tag a">Add-on</span></a>
+    <a href="#s4"><b>4</b>The Matcha Latte gets Snacks plus Mango pudding<span class="tag a">Add-on</span></a>
+    <a href="#s5"><b>5</b>Selling it: the whole sale, start to receipt</a>
+  </div>
+  <p class="hint">Above each phone: the step and where you are. The <span class="legend"></span> amber ring is what you tap next.</p>
+
+  <section class="scn" id="s1"><div class="no">Scenario 1</div><h2>Every milk tea asks how sweet<span class="tag m">Modifier</span></h2>
+    <p>You want the POS to ask "Sweetness?" on all 5 milk teas, with 50% already picked so a normal order is one tap.</p><ol><li>Make the modifier: name it, type its choices.</li><li>Say which drinks ask it: tick the milk teas.</li><li>Save. The POS now asks it.</li></ol></section>
+
+  <div class="strip">
+    <div class="step"><div class="where"><b>1</b>Items › <i>Modifiers tab</i><span class="tag m">Modifier</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+        <span class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search modifiers</span></div>
+      <div class="tabs"><span>Items</span><span>Categories</span><span class="on">Modifiers</span><span>Add-ons</span><span>Discounts</span></div>
+      <div class="scroll">
+        <div class="lr"><div><b>Ice</b><span>No ice, Less, Normal · 12 items</span></div></div>
+        <div class="lr"><div><b>Toppings</b><span>Pearls, Pudding, Foam · 12 items</span></div></div>
+        <div class="lr"><div><b>Spicy</b><span>Mild, Hot · 4 items</span></div></div>
+      </div>
+      <span class="fab tap"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
+    </div><div class="cap"><p><span class="k">You see</span>Every modifier you have made. Sweetness isn't there yet.</p><p><span class="k">You do</span><b>Tap +</b> (bottom right).</p></div></div>
+
+    <div class="step"><div class="where"><b>2</b>Items › Modifiers › <i>New</i><span class="tag m">Modifier</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></span><span class="ttl">New modifier</span><span class="gb txt" style="opacity:.4">Save</span></div>
+      <div class="scroll">
+        <div class="card" style="margin-top:12px">
+          <div class="fr tap"><span class="lb">Name</span><span class="v ph-txt">e.g. Sweetness</span></div>
+          <div class="fr"><span class="lb">Customer picks</span><span class="v sel">One<svg viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></div>
+        </div>
+        <div class="sec">Choices</div>
+        <div class="card"><div class="fr act">Add choice</div></div>
+        <div class="card" style="margin-top:20px">
+          <div class="fr"><span class="lb">Asked on</span><span class="v dim">No items<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        </div>
+      </div>
+    </div><div class="cap"><p><span class="k">You see</span>An empty modifier.</p><p><span class="k">You do</span>Type the name <b>Sweetness</b>. Leave "Customer picks" on <b>One</b>: a drink has one sweetness. Then type the 5 choices.</p></div></div>
+
+    <div class="step"><div class="where"><b>3</b>Items › Modifiers › <i>Sweetness</i><span class="tag m">Modifier</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></span><span class="ttl">Sweetness</span><span class="gb txt">Save</span></div>
+      <div class="scroll">
+        <div class="card" style="margin-top:12px">
+          <div class="fr"><span class="lb">Name</span><span class="v">Sweetness</span></div>
+          <div class="fr"><span class="lb">Customer picks</span><span class="v sel">One<svg viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></div>
+        </div>
+        <div class="sec">Choices</div>
+        <div class="card">
+          <div class="fr">0%<span class="v dim">₱0.00</span></div>
+          <div class="fr">25%<span class="v dim">₱0.00</span></div>
+          <div class="fr">50%<span class="v"><span class="usual">Usual</span><span style="color:var(--ink-3)">₱0.00</span></span></div>
+          <div class="fr">75%<span class="v dim">₱0.00</span></div>
+          <div class="fr">100%<span class="v dim">₱0.00</span></div>
+          <div class="fr act">Add choice</div>
+        </div>
+        <div class="note">Hold a choice to make it the usual. The usual is already picked on the POS.</div>
+        <div class="card" style="margin-top:20px">
+          <div class="fr tap"><span class="lb">Asked on</span><span class="v dim">No items<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        </div>
+      </div>
+    </div><div class="cap"><p><span class="k">You see</span>Sweetness with its set of 5 choices. 50% is marked <b>Usual</b> (hold a choice to make it the usual), so the POS starts on it.</p><p><span class="k">You do</span>Now pick which drinks ask it. <b>Tap Asked on.</b></p></div></div>
+
+    <div class="step"><div class="where"><b>4</b>… › Sweetness › <i>Asked on</i><span class="tag m">Modifier</span></div><div class="ph" data-pick="all"></div>
+      <div class="cap"><p><span class="k">You see</span>All your items, each with a tick. Ticked = this drink asks Sweetness.</p><p><span class="k">You do</span>Too many to scroll? <b>Tap the filter</b> in the search bar.</p></div></div>
+
+    <div class="step"><div class="where"><b>5</b>… › Asked on › <i>Filters</i><span class="tag m">Modifier</span></div><div class="ph" data-pick="sheet"></div>
+      <div class="cap"><p><span class="k">You see</span>The same Filters sheet as on every page.</p><p><span class="k">You do</span>Pick <b>Milk tea</b>, then <b>tap ✓</b>.</p></div></div>
+
+    <div class="step"><div class="where"><b>6</b>… › Asked on · <i>Milk tea</i><span class="tag m">Modifier</span></div><div class="ph" data-pick="cat"></div>
+      <div class="cap"><p><span class="k">You see</span>Only the milk teas. Some are ticked, some not.</p><p><span class="k">You do</span><b>Tap Tick all</b>: all 5 at once. Then <b>Done</b>, then <b>Save</b>.</p></div></div>
+
+    <div class="step"><div class="where"><b>7</b>Items › <i>Modifiers tab</i><span class="tag m">Modifier</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+        <span class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search modifiers</span></div>
+      <div class="tabs"><span>Items</span><span>Categories</span><span class="on">Modifiers</span><span>Add-ons</span><span>Discounts</span></div>
+      <div class="scroll">
+        <div class="lr"><div><b>Ice</b><span>No ice, Less, Normal · 12 items</span></div></div>
+        <div class="lr"><div><b>Sweetness</b><span>0% 25% 50% 75% 100% · 5 items</span></div></div>
+        <div class="lr"><div><b>Toppings</b><span>Pearls, Pudding, Foam · 12 items</span></div></div>
+        <div class="lr"><div><b>Spicy</b><span>Mild, Hot · 4 items</span></div></div>
+      </div>
+      <span class="fab"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
+    </div><div class="cap"><p><span class="k">You see</span>Sweetness is in the list: "Asked on 5 items".</p><p><span class="k">You do</span>Nothing. It's set up.</p></div></div>
+
+    <div class="step"><div class="where"><b class="ok">✓</b>On the POS · <i>Sell</i><span class="tag m">Modifier</span></div><div class="ph" data-q="1"></div>
+      <div class="cap"><p><span class="k">The result</span>Sell a milk tea and the POS asks <b>Sweetness?</b> with 50% already picked. Tap another level or Next.</p></div></div>
+  </div>
+
+  <section class="scn" id="s2"><div class="no">Scenario 2</div><h2>Toppings that cost extra, put on one drink<span class="tag m">Modifier</span></h2>
+    <p>Pearls +₱15, Pudding +₱20 and so on, and a customer can take more than one. This time you switch it on from the drink's own page, not from Asked on.</p><ol><li>Make the modifier, with a price on each choice and "Customer picks: Any".</li><li>Open the drink and tick the modifier.</li></ol></section>
+
+  <div class="strip">
+    <div class="step"><div class="where"><b>1</b>Items › Modifiers › <i>Toppings</i><span class="tag m">Modifier</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></span><span class="ttl">Toppings</span><span class="gb txt">Save</span></div>
+      <div class="scroll">
+        <div class="card" style="margin-top:12px">
+          <div class="fr"><span class="lb">Name</span><span class="v">Toppings</span></div>
+          <div class="fr tap"><span class="lb">Customer picks</span><span class="v sel">Any<svg viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></div>
+        </div>
+        <div class="sec">Choices</div>
+        <div class="card">
+          <div class="fr"><span class="thumb" style="background:#3B2A20;color:#d9b48f">PL</span><span>Pearls<span class="sub">From Items · stock 2.4 kg</span></span><span class="v dim">+₱15.00</span></div>
+          <div class="fr"><span class="thumb" style="background:#E9C46A">PD</span><span>Pudding<span class="sub">From Items · stock 40</span></span><span class="v dim">+₱20.00</span></div>
+          <div class="fr"><span class="thumb" style="background:#F1EDE4">CF</span><span>Cheese foam<span class="sub">From Items · stock 3 L</span></span><span class="v dim">+₱25.00</span></div>
+          <div class="fr">Extra shot<span class="v dim">+₱30.00</span></div>
+          <div class="fr act">Add choice</div>
+          <div class="fr act">Add from Items</div>
+        </div>
+        <div class="note">A choice from Items comes off stock when sold.</div>
+        <div class="card" style="margin-top:20px">
+          <div class="fr"><span class="lb">Asked on</span><span class="v">12 items<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        </div>
+      </div>
+    </div><div class="cap"><p><span class="k">You see</span>Made like Sweetness (steps 1–3 of scenario 1). Two differences: <b>Customer picks: Any</b>, and each choice has a price. A choice can be an item from Items, so it takes stock.</p><p><span class="k">You do</span><b>Save.</b> Don't tick anything yet.</p></div></div>
+
+    <div class="step"><div class="where"><b>2</b>Items › <i>Matcha Latte</i><span class="tag m">Modifier</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></span><span class="ttl">Matcha Latte</span><span class="gb txt">Save</span></div>
+      <div class="scroll">
+        <div class="pv" style="background:linear-gradient(160deg,#9CC97E,#5E8B4E)"></div><div class="edit">Edit</div>
+        <div class="card"><div class="fr"><span class="lb">Name</span><span class="v">Matcha Latte</span></div></div>
+        <div class="card" style="margin-top:12px">
+          <div class="fr">Medium<span class="v">₱150.00<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="fr">Large<span class="v">₱170.00<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="fr act">Add variant</div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <div class="fr"><span class="lb">Categories</span><span class="v">Milk tea<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="fr tap"><span class="lb">Modifiers</span><span class="v">Sweetness, Ice, Toppings<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="fr"><span class="lb">Add-ons</span><span class="v">Snacks + 1<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="fr"><span class="lb">Suppliers</span><span class="v dim">None<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        </div>
+      </div>
+    </div><div class="cap"><p><span class="k">You see</span>The drink's page. The Modifiers row lists what it asks.</p><p><span class="k">You do</span><b>Tap Modifiers.</b></p></div></div>
+
+    <div class="step"><div class="where"><b>3</b>Items › Matcha Latte › <i>Modifiers</i><span class="tag m">Modifier</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></span><span class="ttl">Modifiers</span><span class="gb txt">Done</span></div>
+      <div class="scroll">
+        <div class="card" style="margin-top:12px">
+          <div class="fr"><span class="tick on"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>Sweetness<span class="v dim">0–100%</span></div>
+          <div class="fr"><span class="tick on"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>Ice<span class="v dim">No ice, Less, Normal</span></div>
+          <div class="fr"><span class="tick on"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>Toppings<span class="v dim">Pearls, Pudding…</span></div>
+          <div class="fr"><span class="tick"></span>Spicy<span class="v dim">Mild, Hot</span></div>
+        </div>
+      </div>
+    </div><div class="cap"><p><span class="k">You see</span>Every modifier, ticked if this drink asks it.</p><p><span class="k">You do</span><b>Tick Toppings</b>, then <b>Done</b>. Same switch as Asked on, from the drink's side.</p></div></div>
+
+    <div class="step"><div class="where"><b class="ok">✓</b>On the POS · <i>Sell</i><span class="tag m">Modifier</span></div><div class="ph" data-q="3"></div>
+      <div class="cap"><p><span class="k">The result</span>The POS asks <b>Toppings?</b> Pick any, so it waits for Next. Each topping adds its price.</p></div></div>
+  </div>
+
+  <section class="scn" id="s3"><div class="no">Scenario 3</div><h2>A Snacks set offered with 10 drinks<span class="tag a">Add-on</span></h2>
+    <p>You want Egg pudding, Brown sugar cookie and Apple pie offered with every drink. Instead of adding 3 snacks to 10 drinks one by one (30 times), you make one set and put it on all 10.</p><ol><li>Make the set: name it, pick its items from Items.</li><li>Tick the drinks it's used on.</li><li>Save. Change the set later and all 10 drinks change.</li></ol></section>
+
+  <div class="strip">
+    <div class="step"><div class="where"><b>1</b>Items › <i>Add-ons tab</i><span class="tag a">Add-on</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+        <span class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search add-on sets</span></div>
+      <div class="tabs"><span>Items</span><span>Categories</span><span>Modifiers</span><span class="on">Add-ons</span><span>Discounts</span></div>
+      <div class="scroll">
+        <div class="lr"><div><b>Cakes</b><span>Matcha cake, Cheesecake · used on 10 items</span></div></div>
+        <div class="lr"><div><b>Cookie only</b><span>Brown sugar cookie · used on 4 items</span></div></div>
+      </div>
+      <span class="fab tap"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
+    </div><div class="cap"><p><span class="k">You see</span>Your add-on sets, next to Modifiers. A set can be a single item ("Cookie only").</p><p><span class="k">You do</span><b>Tap +.</b></p></div></div>
+
+    <div class="step"><div class="where"><b>2</b>Items › Add-ons › <i>New</i><span class="tag a">Add-on</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></span><span class="ttl">Snacks</span><span class="gb txt">Save</span></div>
+      <div class="scroll">
+        <div class="card" style="margin-top:12px"><div class="fr"><span class="lb">Name</span><span class="v">Snacks</span></div></div>
+        <div class="note">Only you see the name. The POS just says "Add-ons".</div>
+        <div class="sec">Items</div>
+        <div class="card">
+          <div class="fr act tap">Add from Items</div>
+        </div>
+        <div class="card" style="margin-top:20px">
+          <div class="fr"><span class="lb">Used on</span><span class="v dim">No items<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        </div>
+        
+      </div>
+    </div><div class="cap"><p><span class="k">You see</span>A new set.</p><p><span class="k">You do</span>Name it <b>Snacks</b> (only you see this name; the POS just says "Add-ons"). Then <b>tap Add from Items</b>.</p></div></div>
+
+    <div class="step"><div class="where"><b>3</b>… › Snacks › <i>Add from Items</i><span class="tag a">Add-on</span></div><div class="ph" data-pick="snacks"></div>
+      <div class="cap"><p><span class="k">You see</span>Your Items list with ticks, filtered to Snacks. Nothing new to type: the price and stock come from the item.</p><p><span class="k">You do</span>Tick <b>Egg pudding</b>, <b>Brown sugar cookie</b>, <b>Apple pie</b>. <b>Tap Done.</b></p></div></div>
+
+    <div class="step"><div class="where"><b>4</b>Items › Add-ons › <i>Snacks</i><span class="tag a">Add-on</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></span><span class="ttl">Snacks</span><span class="gb txt">Save</span></div>
+      <div class="scroll">
+        <div class="card" style="margin-top:12px"><div class="fr"><span class="lb">Name</span><span class="v">Snacks</span></div></div>
+        <div class="note">Only you see the name. The POS just says "Add-ons".</div>
+        <div class="sec">Items</div>
+        <div class="card">
+          <div class="fr"><span class="thumb" style="background:#E9C46A">EP</span><span>Egg pudding<span class="sub">Stock 40</span></span><span class="v dim">₱45.00</span></div>
+          <div class="fr"><span class="thumb" style="background:#B07A4A">CK</span><span>Brown sugar cookie<span class="sub">Stock 60</span></span><span class="v dim">₱35.00</span></div>
+          <div class="fr"><span class="thumb" style="background:#C9862B">AP</span><span>Apple pie<span class="sub">Stock 24</span></span><span class="v dim">₱55.00</span></div>
+          <div class="fr act">Add from Items</div>
+        </div>
+        <div class="card" style="margin-top:20px">
+          <div class="fr tap"><span class="lb">Used on</span><span class="v">10 items<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        </div>
+        <div class="note">Change this set and all 10 items change with it.</div>
+      </div>
+    </div><div class="cap"><p><span class="k">You see</span>The set with its 3 items, each showing its price and stock.</p><p><span class="k">You do</span><b>Tap Used on.</b></p></div></div>
+
+    <div class="step"><div class="where"><b>5</b>… › Snacks › <i>Used on</i><span class="tag a">Add-on</span></div><div class="ph" data-pick="used"></div>
+      <div class="cap"><p><span class="k">You see</span>The same tick list as Asked on. All 10 drinks ticked (Tick all works here too).</p><p><span class="k">You do</span><b>Tap Done</b>, then <b>Save</b>.</p></div></div>
+
+    <div class="step"><div class="where"><b class="ok">✓</b>On the POS · <i>Sell</i><span class="tag a">Add-on</span></div><div class="ph" data-q="4"></div>
+      <div class="cap"><p><span class="k">The result</span>Last screen of every one of those drinks: <b>Add-ons?</b> with the 3 snacks. (Mango pudding is the latte's own, scenario 4.)</p></div></div>
+  </div>
+
+  <section class="scn" id="s4"><div class="no">Scenario 4</div><h2>The Matcha Latte gets Snacks plus Mango pudding<span class="tag a">Add-on</span></h2>
+    <p>The latte should offer the Snacks set and also Mango pudding, which no other drink offers. A drink can have one set, plus extra items of its own.</p><ol><li>Open the drink, tap Add-ons.</li><li>Pick its set.</li><li>Add its own extra items from Items.</li></ol></section>
+
+  <div class="strip">
+    <div class="step"><div class="where"><b>1</b>Items › <i>Matcha Latte</i><span class="tag a">Add-on</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></span><span class="ttl">Matcha Latte</span><span class="gb txt">Save</span></div>
+      <div class="scroll">
+        <div class="pv" style="background:linear-gradient(160deg,#9CC97E,#5E8B4E)"></div><div class="edit">Edit</div>
+        <div class="card"><div class="fr"><span class="lb">Name</span><span class="v">Matcha Latte</span></div></div>
+        <div class="card" style="margin-top:12px">
+          <div class="fr">Medium<span class="v">₱150.00<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="fr">Large<span class="v">₱170.00<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="fr act">Add variant</div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <div class="fr"><span class="lb">Categories</span><span class="v">Milk tea<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="fr"><span class="lb">Modifiers</span><span class="v">Sweetness, Ice, Toppings<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="fr tap"><span class="lb">Add-ons</span><span class="v">Snacks + 1<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+          <div class="fr"><span class="lb">Suppliers</span><span class="v dim">None<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>
+        </div>
+      </div>
+    </div><div class="cap"><p><span class="k">You see</span>The drink's page. The Add-ons row says "Snacks + 1": the set and one extra.</p><p><span class="k">You do</span><b>Tap Add-ons.</b></p></div></div>
+
+    <div class="step"><div class="where"><b>2</b>… › Add-ons › <i>Set</i><span class="tag a">Add-on</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></span><span class="ttl">Add-ons</span><span class="gb txt">Done</span></div>
+      <div class="scroll">
+        <div class="card" style="margin-top:12px"><div class="fr"><span class="lb">Set</span><span class="v sel">Snacks<svg viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></div></div>
+        <div class="card menu">
+          <div class="fr">None</div>
+          <div class="fr">Snacks<span class="v"><svg class="chev" viewBox="0 0 24 24" style="color:var(--ink)"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span></div>
+          <div class="fr">Cakes</div>
+          <div class="fr">Cookie only</div>
+        </div>
+      </div>
+    </div><div class="cap"><p><span class="k">You see</span>The Set dropdown: your sets, or None. One set per drink.</p><p><span class="k">You do</span><b>Pick Snacks.</b></p></div></div>
+
+    <div class="step"><div class="where"><b>3</b>Items › Matcha Latte › <i>Add-ons</i><span class="tag a">Add-on</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></span><span class="ttl">Add-ons</span><span class="gb txt">Done</span></div>
+      <div class="scroll">
+        <div class="card" style="margin-top:12px"><div class="fr"><span class="lb">Set</span><span class="v sel">Snacks<svg viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></div></div>
+        <div class="note">One set per item.</div>
+        <div class="sec">From Snacks</div>
+        <div class="card">
+          <div class="fr"><span class="thumb" style="background:#E9C46A">EP</span>Egg pudding<span class="v dim">₱45.00</span></div>
+          <div class="fr"><span class="thumb" style="background:#B07A4A">CK</span>Brown sugar cookie<span class="v dim">₱35.00</span></div>
+          <div class="fr"><span class="thumb" style="background:#C9862B">AP</span>Apple pie<span class="v dim">₱55.00</span></div>
+        </div>
+        <div class="sec">Also add</div>
+        <div class="card">
+          <div class="fr"><span class="thumb" style="background:#F2B544">MP</span>Mango pudding<span class="v dim">₱45.00</span></div>
+          <div class="fr act tap">Add from Items</div>
+        </div>
+        <div class="note">Only on Matcha Latte.</div>
+      </div>
+    </div><div class="cap"><p><span class="k">You see</span>The Snacks items under "From Snacks". Below, "Also add" holds items for this drink only.</p><p><span class="k">You do</span><b>Tap Add from Items</b>, tick <b>Mango pudding</b>, Done.</p></div></div>
+
+    <div class="step"><div class="where"><b>4</b>Iced Americano › <i>Add-ons</i><span class="tag a">Add-on</span></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></span><span class="ttl">Add-ons</span><span class="gb txt">Done</span></div>
+      <div class="scroll">
+        <div class="card" style="margin-top:12px"><div class="fr"><span class="lb">Set</span><span class="v sel dim">None<svg viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></div></div>
+        <div class="note">One set per item.</div>
+        <div class="sec">Also add</div>
+        <div class="card">
+          <div class="fr"><span class="thumb" style="background:#B07A4A">CK</span>Brown sugar cookie<span class="v dim">₱35.00</span></div>
+          <div class="fr"><span class="thumb" style="background:#8DB36B">MC</span>Matcha cake<span class="v dim">₱95.00</span></div>
+          <div class="fr act tap">Add from Items</div>
+        </div>
+        <div class="note">Only on Iced Americano.</div>
+      </div>
+    </div><div class="cap"><p><span class="k">You see</span>Another drink, no set at all: Set is None.</p><p><span class="k">You do</span>Just <b>Add from Items</b>: a cookie and a cake, only on this drink.</p></div></div>
+
+    <div class="step"><div class="where"><b class="ok">✓</b>On the POS · <i>Sell</i><span class="tag a">Add-on</span></div><div class="ph" data-q="4"></div>
+      <div class="cap"><p><span class="k">The result</span>On the POS there's one heading, <b>Add-ons</b>: the Snacks items first, then Mango pudding.</p></div></div>
+  </div>
+
+  <section class="scn" id="s5"><div class="no">Scenario 5</div><h2>Selling it: the whole sale, start to receipt</h2>
+    <p>A customer orders a large Matcha Latte, 50% sugar, less ice, pearls, and an Egg pudding. One question per screen. The modifiers come first, then the add-ons last. Try the playable one (step 2).</p><ol><li>Tap the drink.</li><li>Answer each modifier question.</li><li>Pick add-ons, tap Add.</li><li>Check out: the cart and receipt show which is which.</li></ol></section>
+
+  <div class="strip">
+    <div class="step"><div class="where"><b>1</b><i>Sell</i></div><div class="ph"><div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span><span class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search</span></div>
+      <div class="grid" data-grid="tap"></div><button class="bar dim">No items</button>
+    </div><div class="cap"><p><span class="k">You see</span>The Sell tiles.</p><p><span class="k">You do</span><b>Tap Matcha Latte.</b></p></div></div>
+
+    <div class="step"><div class="where"><b>2</b>Sell › Matcha Latte · <i>try it</i></div><div class="ph" id="B"></div>
+      <div class="cap"><p><span class="k">You see</span>The real flow, playable.</p><p><span class="k">You do</span>Tap answers, Next, back, then Add.</p></div></div>
+
+    <div class="step"><div class="where"><b>3</b>Size?<span class="tag m">Modifier</span></div><div class="ph" data-q="0" data-ring="1"></div>
+      <div class="cap"><p><span class="k">You see</span>Question 1 of 5. Medium is the usual, so it starts picked.</p><p><span class="k">You do</span><b>Tap Large</b>. It moves on by itself.</p></div></div>
+
+    <div class="step"><div class="where"><b>4</b>Sweetness?<span class="tag m">Modifier</span></div><div class="ph" data-q="1" data-ring="2"></div>
+      <div class="cap"><p><span class="k">You see</span>"Large" at the top: what you picked so far. 50% is the usual.</p><p><span class="k">You do</span><b>Tap 50%</b>, or Next to keep it.</p></div></div>
+
+    <div class="step"><div class="where"><b>5</b>Ice?<span class="tag m">Modifier</span></div><div class="ph" data-q="2" data-ring="1"></div>
+      <div class="cap"><p><span class="k">You see</span>Same as before.</p><p><span class="k">You do</span><b>Tap Less.</b></p></div></div>
+
+    <div class="step"><div class="where"><b>6</b>Toppings?<span class="tag m">Modifier</span></div><div class="ph" data-q="3" data-ring="next"></div>
+      <div class="cap"><p><span class="k">You see</span>Pick any, so it doesn't jump.</p><p><span class="k">You do</span>Pearls ticked, <b>tap Next.</b></p></div></div>
+
+    <div class="step"><div class="where"><b>7</b>Add-ons?<span class="tag a">Add-on</span></div><div class="ph" data-q="4" data-ring="next"></div>
+      <div class="cap"><p><span class="k">You see</span>The add-ons, last: Snacks set, then the latte's own.</p><p><span class="k">You do</span><b>Tap + on Egg pudding</b>, then <b>Add</b>.</p></div></div>
+
+    <div class="step"><div class="where"><b>8</b><i>Sell</i></div><div class="ph"><div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span><span class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search</span></div>
+      <div class="grid" data-grid></div>
+      <div class="toast"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>Matcha Latte Large</div>
+      <button class="bar"><span>2 items</span><span>·</span><span class="num">₱230.00</span></button>
+    </div><div class="cap"><p><span class="k">You see</span>Back on the tiles. "Added" flashes.</p><p><span class="k">You do</span>Ring the next item, or open the cart.</p></div></div>
+
+    <div class="step"><div class="where"><b>9</b>Sell › <i>Cart</i></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></span>
+        <span class="srch" style="color:var(--ink);font-weight:600;font-size:15px;justify-content:space-between">Walk-in customer<svg viewBox="0 0 24 24" style="color:var(--ink-3)"><path d="M9 6l6 6-6 6"/></svg></span>
+        <span class="gb"><svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg></span></div>
+      <div class="sheet" style="margin:0 8px 116px">
+        <div class="ci"><div class="t">Matcha Latte Large<span>₱185.00</span></div><div class="m">50% · Less ice · Pearls +₱15</div><div class="q2">1 × ₱185.00</div></div>
+        <div class="ci"><div class="t">Egg pudding<span>₱45.00</span></div><div class="q2">1 × ₱45.00</div></div>
+      </div>
+      <div class="pair"><div>Walk-in</div><div>Discount</div></div>
+      <button class="bar"><span>Check out</span><span>·</span><span class="num">₱230.00</span></button>
+    </div><div class="cap"><p><span class="k">You see</span>The drink line with its answers underneath (modifiers). Egg pudding on its own line (add-on).</p><p><span class="k">You do</span>Tap the drink to change answers. <b>Check out.</b></p></div></div>
+
+    <div class="step"><div class="where"><b>10</b><i>Receipt</i></div><div class="ph">
+      <div class="top"></div>
+      <div class="paper">
+        <div class="c"><b>GONG CHA SM NORTH</b><br>Order #0142</div><hr>
+        <div class="r">Matcha Latte Large<span>185.00</span></div>
+        <div class="ind">50% sugar</div><div class="ind">Less ice</div><div class="ind">Pearls +15.00</div>
+        <div class="r">Egg pudding<span>45.00</span></div><hr>
+        <div class="r"><b>TOTAL</b><span><b>230.00</b></span></div>
+      </div>
+    </div><div class="cap"><p><span class="k">You see</span>Modifiers indented under the drink. The add-on as its own line with its own price.</p><p><span class="k">You do</span>Nothing. Done.</p></div></div>
+  </div>
+
+  <h2 class="ch">Other ways to sell, for comparing</h2>
+  <p>Not picked. One question per screen (scenario 5) is the one you liked. Kept so you can compare.</p>
+
+  <h3 class="row">One sheet</h3>
+  <div class="strip">
+    <div class="step"><div class="where"><b>B1</b><i>Sell</i></div><div class="ph"><div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span><span class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search</span></div>
+      <div class="grid" data-grid="tap"></div><button class="bar dim">No items</button>
+    </div><div class="cap"><b>Tap Matcha Latte.</b></div></div>
+
+    <div class="step"><div class="where"><b>B2</b>Sell › Matcha Latte · <i>try it</i></div><div class="ph" id="A">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span></div>
+      <div class="sheet">
+        <div class="band">Matcha Latte</div>
+        <div class="scroll">
+          <div class="q"><b>Size</b><span>Pick one</span></div>
+          <div class="chips" data-one><button class="chip on" data-p="0">Medium</button><button class="chip" data-p="20">Large <i>+₱20</i></button></div>
+          <div class="q"><b>Sweetness</b><span>Pick one</span></div>
+          <div class="chips" data-one><button class="chip">0%</button><button class="chip">25%</button><button class="chip on">50%</button><button class="chip">75%</button><button class="chip">100%</button></div>
+          <div class="q"><b>Ice</b><span>Pick one</span></div>
+          <div class="chips" data-one><button class="chip">No ice</button><button class="chip">Less</button><button class="chip on">Normal</button></div>
+          <div class="q"><b>Toppings</b><span>Pick any</span></div>
+          <div class="chips"><button class="chip" data-p="15">Pearls <i>+₱15</i></button><button class="chip" data-p="20">Pudding <i>+₱20</i></button><button class="chip" data-p="25">Cheese foam <i>+₱25</i></button><button class="chip" data-p="30">Extra shot <i>+₱30</i></button></div>
+          <div class="hr"></div>
+          <div class="q"><b>Add-ons</b></div>
+          <div class="addon" data-p="45"><span class="thumb" style="background:#E9C46A">EP</span><span class="nm">Egg pudding<span>₱45.00</span></span><span class="stp"><button data-d="-1"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><span class="n"></span><button data-d="1"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+          <div class="addon" data-p="35"><span class="thumb" style="background:#B07A4A">CK</span><span class="nm">Brown sugar cookie<span>₱35.00</span></span><span class="stp"><button data-d="-1"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><span class="n"></span><button data-d="1"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+          <div class="addon" data-p="55"><span class="thumb" style="background:#C9862B">AP</span><span class="nm">Apple pie<span>₱55.00</span></span><span class="stp"><button data-d="-1"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><span class="n"></span><button data-d="1"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+          <div class="addon" data-p="45"><span class="thumb" style="background:#F2B544">MP</span><span class="nm">Mango pudding<span>₱45.00</span></span><span class="stp"><button data-d="-1"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button><span class="n"></span><button data-d="1"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+        </div>
+      </div>
+      <button class="bar"><span>Add</span><span>·</span><span class="num" data-total>₱150.00</span></button>
+    </div><div class="cap">One sheet. Filled = picked. The bottom pill turns into <b>Add</b> and keeps the running price. Add-ons: the Snacks set first, then Mango pudding, the latte's own.</div></div>
+
+    <div class="step"><div class="where"><b>B3</b><i>Sell</i></div><div class="ph"><div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span><span class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Search</span></div>
+      <div class="grid" data-grid></div>
+      <div class="toast"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>Matcha Latte Large</div>
+      <button class="bar"><span>2 items</span><span>·</span><span class="num">₱230.00</span></button>
+    </div><div class="cap">Add. The sheet closes and you're back on the tiles, same as a variant. 5 taps custom, 2 plain.</div></div>
+  </div>
+
+  <h3 class="row">Scroll and fill</h3>
+  <div class="strip">
+    <div class="step"><div class="where"><b>S1</b>Sell › Matcha Latte · <i>progress bar</i></div><div class="ph" data-form="bar"></div>
+      <div class="cap">Scroll, or tap an answer and it slides to the next question. The bar and "2 of 5" show how far you are.</div></div>
+
+    <div class="step"><div class="where"><b>S2</b>Sell › Matcha Latte · <i>names on top</i></div><div class="ph" data-form="steps"></div>
+      <div class="cap">Same page, with the questions named on top. A tick means you're past it. Tap a name to jump to it.</div></div>
+
+    <div class="step"><div class="where"><b>S3</b>Sell › Matcha Latte · <i>folds as you go</i></div><div class="ph" data-form="fold"></div>
+      <div class="cap">Each answered question folds into one line showing the answer. Tap a line to change it. The ones still to come wait below, dimmed.</div></div>
+  </div>
+
+  <h3 class="row">Older ideas</h3>
+  <div class="strip">
+    <div class="step"><div class="where"><b>D1</b>Sell › Matcha Latte · <i>rows</i></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span></div>
+      <div class="sheet">
+        <div class="band">Matcha Latte</div>
+        <div class="scroll" style="padding-top:0">
+          <div class="q"><b>Size</b><span>Pick one</span></div>
+          <div class="rr"><span class="rad"></span>Medium</div><div class="rr"><span class="rad on"></span>Large<span class="p">+₱20</span></div>
+          <div class="q"><b>Sweetness</b><span>Pick one</span></div>
+          <div class="rr"><span class="rad"></span>0%</div><div class="rr"><span class="rad"></span>25%</div><div class="rr"><span class="rad on"></span>50%</div><div class="rr"><span class="rad"></span>75%</div><div class="rr"><span class="rad"></span>100%</div>
+          <div class="q"><b>Ice</b><span>Pick one</span></div>
+          <div class="rr"><span class="rad"></span>No ice</div><div class="rr"><span class="rad on"></span>Less</div><div class="rr"><span class="rad"></span>Normal</div>
+          <div class="q"><b>Toppings</b><span>Pick any</span></div>
+          <div class="rr"><span class="box on"></span>Pearls<span class="p">+₱15</span></div>
+        </div>
+      </div>
+      <button class="bar"><span>Add</span><span>·</span><span class="num">₱185.00</span></button>
+    </div><div class="cap">Rows like Grab: easy to read, but long, so the cashier scrolls on every drink.</div></div>
+
+    <div class="step"><div class="where"><b>D2</b>Sell › <i>McChicken Meal</i></div><div class="ph">
+      <div class="top"><span class="gb"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span></div>
+      <div class="sheet">
+        <div class="band">McChicken Meal</div>
+        <div class="scroll">
+          <div class="q"><b>Drink</b><span class="need">Pick one</span></div>
+          <div class="chips"><button class="chip">Coke</button><button class="chip">Sprite</button><button class="chip">Iced tea</button><button class="chip">Coke Zero</button></div>
+          <div class="q"><b>Fries</b><span>Pick one</span></div>
+          <div class="chips"><button class="chip on">Regular</button><button class="chip">Large <i>+₱20</i></button></div>
+          <div class="hr"></div>
+          <div class="q"><b>Add-ons</b></div>
+          <div class="addon"><span class="thumb" style="background:#C9862B">AP</span><span class="nm">Apple pie<span>₱45.00</span></span><span class="stp"><button><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+          <div class="addon"><span class="thumb" style="background:#EDE6DA">SU</span><span class="nm">Sundae<span>₱39.00</span></span><span class="stp"><button><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+        </div>
+      </div>
+      <button class="bar dim"><span>Pick a drink</span></button>
+    </div><div class="cap">No usual set for Drink: it shows <span class="pick">Pick one</span> in amber and Add waits. In way A, no row starts picked and Next waits the same way.</div></div>
+  </div>
+
+</div>
+
+<script>
+// ponytail: lab only, prices are display maths for the mock-up, not the sales module
+(() => {
+  const peso = n => '₱' + n.toFixed(2);
+  const back = '<svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>', x = '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  const plus = '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>', minus = '<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>';
+
+  // Theme
+  document.querySelector('.theme').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.body.classList.toggle('light', b.dataset.theme === 'light');
+    b.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  });
+
+  // Sell tiles, drawn once from one list
+  const TILES = [['Matcha Latte', 'var(--tea)'], ['Brown Sugar Milk Tea', '#6B4A33'], ['Taro Milk Tea', '#7A5C8E'], ['Pearl Milk Tea'], ['Wintermelon Tea'], ['Lemon Black Tea'],
+    ['Mango Green Tea'], ['Oolong Latte'], ['Earl Grey Milk Tea'], ['Egg Pudding', '#A2803F'], ['Brown Sugar Cookie'], ['Iced Americano']];
+  document.querySelectorAll('[data-grid]').forEach(g => g.innerHTML = TILES.map(([n, c], i) =>
+    `<div class="tile${c ? ' c' : ''}${i === 0 && g.dataset.grid === 'tap' ? ' tap' : ''}"${c ? ` style="background:${c}"` : ''}>${n}</div>`).join(''));
+
+  // Way A: one question per screen
+  const Q = [
+    { t: 'Size', one: 1, ch: [['Medium'], ['Large', 20]], u: [0] },
+    { t: 'Sweetness', one: 1, ch: [['0%'], ['25%'], ['50%'], ['75%'], ['100%']], u: [2] },
+    { t: 'Ice', one: 1, ch: [['No ice'], ['Less'], ['Normal']], u: [2] },
+    { t: 'Toppings', ch: [['Pearls', 15], ['Pudding', 20], ['Cheese foam', 25], ['Extra shot', 30]], u: [] },
+    { t: 'Add-ons', add: 1, ch: [['Egg pudding', 45, '#E9C46A', 'EP'], ['Brown sugar cookie', 35, '#B07A4A', 'CK'], ['Apple pie', 55, '#C9862B', 'AP'], ['Mango pudding', 45, '#F2B544', 'MP']] },
+  ];
+  const fresh = () => Q.map(q => q.add ? q.ch.map(() => 0) : [...q.u]);
+  const total = p => 150 + Q.reduce((t, q, k) => t + (q.add ? q.ch.reduce((s, c, j) => s + c[1] * p[k][j], 0) : p[k].reduce((s, j) => s + (q.ch[j][1] || 0), 0)), 0);
+  const tick = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
+  const sub = q => q.add ? 'Each one is its own line' : q.one ? 'Pick one' : 'Pick any';
+  const ans = (k, p) => (Q[k].add ? Q[k].ch.map((c, j) => p[k][j] ? (p[k][j] > 1 ? p[k][j] + '× ' : '') + c[0] : '').filter(Boolean)
+    : p[k].map(j => Q[k].ch[j][0])).join(', ');
+  const pick = (p, k, j, d) => {
+    if (d) p[k][j] = Math.max(0, p[k][j] + +d);
+    else if (Q[k].one) p[k] = [j];
+    else p[k] = p[k].includes(j) ? p[k].filter(v => v !== j) : [...p[k], j];
+  };
+  const rows = (i, p, ring) => Q[i].ch.map((c, j) => Q[i].add
+    ? `<div class="bigrow add"><span class="thumb" style="background:${c[2]}">${c[3]}</span><span class="nm">${c[0]}<span>${peso(c[1])}</span></span>
+       <span class="stp"><button data-j="${j}" data-d="-1">${minus}</button><span class="n">${p[i][j] || ''}</span><button data-j="${j}" data-d="1">${plus}</button></span></div>`
+    : `<div class="bigrow${p[i].includes(j) ? ' on' : ''}${ring === j ? ' tap' : ''}" data-j="${j}">${Q[i].one ? '' : `<span class="box${p[i].includes(j) ? ' on' : ''}" style="${p[i].includes(j) ? 'background:var(--inv-ink);border-color:var(--inv-ink)' : ''}"></span>`}${c[0]}${c[1] ? `<span class="p">+₱${c[1]}</span>` : ''}</div>`).join('');
+  const head = lead => `<div class="top"><span class="gb" data-back>${lead}</span><span class="ttl">Matcha Latte</span><span class="gb" style="visibility:hidden"></span></div>`;
+  const pill = (p, word = 'Add', ring) => `<button class="bar${ring ? ' tap' : ''}" data-next><span>${word}</span><span>·</span><span class="num">${peso(total(p))}</span></button>`;
+  const toast = (ph, p) => ph.insertAdjacentHTML('beforeend', `<div class="toast"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>Added · ${peso(total(p))}</div>`);
+
+  // Way A: one question per screen
+  const draw = (ph, i, p, ring) => {
+    const sofar = Q.slice(0, i).map((_, k) => ans(k, p)).filter(Boolean).join(' · ');
+    ph.innerHTML = head(i ? back : x) + `<div class="dots">${Q.map((_, k) => `<i class="${k === i ? 'on' : k < i ? 'done' : ''}"></i>`).join('')}</div>
+      <div class="sofar">${sofar}</div><div class="big">${Q[i].t}?</div><div class="bigsub">${sub(Q[i])}</div>${rows(i, p, ring)}
+      ${pill(p, i === Q.length - 1 ? 'Add' : 'Next', ring === 'next')}`;
+  };
+
+  // static screens: earlier answers as the walk-through picks them, the current one as shown
+  const PICKS = [[1], [2], [1], [0], [1, 0, 0, 0]];
+  document.querySelectorAll('.ph[data-q]').forEach(ph => {
+    const i = +ph.dataset.q, p = fresh();
+    for (let k = 0; k < i; k++) p[k] = PICKS[k];
+    if (!Q[i].one) p[i] = PICKS[i];
+    draw(ph, i, p, ph.dataset.ring === 'next' ? 'next' : +ph.dataset.ring);
+  });
+
+  // the playable one
+  const B = document.getElementById('B');
+  let i = 0, p = fresh(), busy = false;
+  const show = () => draw(B, i, p);
+  B.addEventListener('click', e => {
+    if (busy) return;
+    const t = e.target.closest('[data-j],[data-back],[data-next]'); if (!t) return;
+    if (t.dataset.j) {
+      pick(p, i, +t.dataset.j, t.dataset.d);
+      if (Q[i].one) { show(); busy = true; return setTimeout(() => { busy = false; i++; show(); }, 220); }
+    }
+    else if (t.hasAttribute('data-back')) { if (i) i--; else p = fresh(); }
+    else if (i < Q.length - 1) i++;
+    else { toast(B, p); busy = true; return setTimeout(() => { busy = false; i = 0; p = fresh(); show(); }, 1400); }
+    show();
+  });
+  show();
+
+  // Scroll and fill: S1 progress bar, S2 names on top (one long page each)
+  document.querySelectorAll('.ph[data-form="bar"], .ph[data-form="steps"]').forEach(ph => {
+    const bar = ph.dataset.form === 'bar';
+    let p = fresh();
+    ph.innerHTML = head(x) + (bar ? '<div class="prog"><i></i></div><div class="progtxt"></div>'
+      : `<div class="steps">${Q.map((q, k) => `<button data-go="${k}"></button>`).join('')}</div>`)
+      + `<div class="scroll fs">${Q.map((q, k) => `<section><div class="big">${q.t}</div><div class="bigsub">${sub(q)}</div><div class="rows"></div></section>`).join('')}</div>` + pill(p);
+    const sc = ph.querySelector('.fs'), secs = [...sc.children];
+    const fill = () => { secs.forEach((s, k) => s.querySelector('.rows').innerHTML = rows(k, p)); ph.querySelector('.num').textContent = peso(total(p)); };
+    const where = () => {
+      const k = sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4 ? Q.length - 1 : Math.max(0, secs.findLastIndex(s => s.offsetTop <= sc.scrollTop + 40));
+      if (bar) { ph.querySelector('.prog i').style.width = (k + 1) / Q.length * 100 + '%'; ph.querySelector('.progtxt').textContent = `${Q[k].t} · ${k + 1} of ${Q.length}`; }
+      else ph.querySelectorAll('[data-go]').forEach((b, n) => { b.classList.toggle('on', n === k); b.innerHTML = (n < k ? tick : '') + Q[n].t; });
+    };
+    const go = k => sc.scrollTo({ top: secs[k].offsetTop - 4, behavior: 'smooth' });
+    sc.addEventListener('scroll', where);
+    ph.addEventListener('click', e => {
+      const g = e.target.closest('[data-go]'); if (g) return go(+g.dataset.go);
+      if (e.target.closest('[data-next]')) { toast(ph, p); return setTimeout(() => { ph.querySelector('.toast')?.remove(); p = fresh(); fill(); sc.scrollTop = 0; }, 1400); }
+      const t = e.target.closest('[data-j]'); if (!t) return;
+      const k = secs.indexOf(t.closest('section'));
+      pick(p, k, +t.dataset.j, t.dataset.d); fill();
+      if (Q[k].one && k < Q.length - 1) setTimeout(() => go(k + 1), 200);
+    });
+    fill(); where();
+  });
+
+  // Scroll and fill: S3 folds as you go
+  document.querySelectorAll('.ph[data-form="fold"]').forEach(ph => {
+    let p = fresh(), open = 0, seen = 0;
+    const to = k => { open = k; seen = Math.max(seen, k); fold(); };
+    const fold = () => ph.innerHTML = head(x) + `<div class="dots">${Q.map((_, k) => `<i class="${k === open ? 'on' : k <= seen ? 'done' : ''}"></i>`).join('')}</div>
+      <div class="scroll" style="padding-top:14px">${Q.map((q, k) => k === open
+        ? `<div class="fold-open"><div class="big" style="padding-top:4px">${q.t}</div><div class="bigsub">${sub(q)}</div>${rows(k, p)}${!q.one && k < Q.length - 1 ? `<button class="ghost" data-open="${k + 1}">Next</button>` : ''}</div>`
+        : `<div class="fold${k > seen ? ' later' : ''}" data-open="${k}"><b>${q.t}</b><span>${ans(k, p) || 'None'}</span></div>`).join('')}</div>` + pill(p);
+    ph.addEventListener('click', e => {
+      const o = e.target.closest('[data-open]'); if (o) return to(+o.dataset.open);
+      if (e.target.closest('[data-next]')) { toast(ph, p); return setTimeout(() => { p = fresh(); seen = 0; to(0); }, 1400); }
+      const t = e.target.closest('[data-j]'); if (!t) return;
+      pick(p, open, +t.dataset.j, t.dataset.d); fold();
+      if (Q[open].one && open < Q.length - 1) setTimeout(() => to(open < seen ? seen : open + 1), 200);
+    });
+    fold();
+  });
+
+  // Asked on: the Items list with ticks; search, the Filters sheet from the search bar, Done bottom right
+  const ITEMS = [['Brown Sugar Cookie', 'Snacks'], ['Brown Sugar Milk Tea', 'Milk tea', 1], ['Earl Grey Milk Tea', 'Milk tea'], ['Egg Pudding', 'Snacks'], ['Apple Pie', 'Snacks'], ['Mango Pudding', 'Snacks'], ['Iced Americano', 'Coffee'],
+    ['Lemon Black Tea', 'Fruit tea'], ['Mango Green Tea', 'Fruit tea'], ['Matcha Latte', 'Milk tea', 1], ['Oolong Latte', ''], ['Pearl Milk Tea', 'Milk tea', 1], ['Taro Milk Tea', 'Milk tea', 1], ['Wintermelon Tea', 'Fruit tea', 1]];
+  const CATS = [...new Set(ITEMS.map(it => it[1]).filter(Boolean)), 'No category'];
+  const funnel = '<svg viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>';
+  document.querySelectorAll('.ph[data-pick]').forEach(ph => {
+    const mode = ph.dataset.pick, SNACKS = ['Egg Pudding', 'Brown Sugar Cookie', 'Apple Pie'];
+    const on = ITEMS.map(it => mode === 'snacks' ? SNACKS.includes(it[0]) : mode === 'used' ? it[1] !== 'Snacks' : !!it[2]);
+    let f = { show: '', cat: mode === 'cat' ? 'Milk tea' : mode === 'snacks' ? 'Snacks' : '' }, d = { show: '', cat: mode === 'sheet' ? 'Milk tea' : '' }, q = '', ring = mode === 'snacks' || mode === 'used' ? 'all' : mode;
+    ph.innerHTML = `<div class="top"><span class="gb">${back}</span><span class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input placeholder="Search items"><button class="fbtn">${funnel}</button></span></div>
+      <div class="fbar"></div><div class="scroll"><div class="card"></div></div><button class="done">Done</button>
+      <div class="fsheet"${mode === 'sheet' ? '' : ' hidden'}><div class="grab"></div><div class="top"><span class="gb" data-fx>${x}</span><span class="ttl">Filters</span><span class="gb ok" data-fok>${tick}</span></div><div class="scroll sh"></div></div>`;
+    const list = ph.querySelector('.card'), sheet = ph.querySelector('.fsheet');
+    const name = k => ITEMS[k][1] || 'No category';
+    const shown = () => ITEMS.map((_, k) => k).filter(k => (!f.show || (f.show === 'Ticked') === on[k]) && (!f.cat || name(k) === f.cat) && ITEMS[k][0].toLowerCase().includes(q));
+    const chips = (key, opts) => opts.map(o => `<button class="chip${d[key] === o ? ' on' : ''}" data-f="${key}" data-v="${o}">${o}</button>`).join('');
+    const paint = () => {
+      const ks = shown(), lbl = [f.show, f.cat].filter(Boolean).join(' · ');
+      ph.querySelector('.fbtn').classList.toggle('on', !!lbl);
+      ph.querySelector('.fbar').innerHTML = lbl ? `<span>${lbl} · ${ks.length}</span><u class="${ring === 'cat' ? 'tap' : ''}" data-all>${ks.length && ks.every(k => on[k]) ? 'Untick all' : 'Tick all'}</u>` : '';
+      ph.querySelector('.done').classList.toggle('tap', ring === 'all');
+      list.innerHTML = ks.map(k => `<div class="fr" data-k="${k}" style="cursor:pointer"><span class="tick${on[k] ? ' on' : ''}">${on[k] ? tick : ''}</span><span>${ITEMS[k][0]}<span class="sub">${name(k)}</span></span></div>`).join('')
+        || '<div class="fr" style="color:var(--ink-3)">No items</div>';
+      ph.querySelector('.sh').innerHTML = `<div class="sec">Show</div><div class="card chipbox">${chips('show', ['Ticked', 'Not ticked'])}</div>
+        <div class="sec">Category</div><div class="card chipbox">${chips('cat', CATS)}</div>`;
+      const ok = ph.querySelector('[data-fok]');
+      ok.classList.toggle('on', d.show !== f.show || d.cat !== f.cat); ok.classList.toggle('tap', ring === 'sheet');
+    };
+    ph.querySelector('input').oninput = e => { q = e.target.value.trim().toLowerCase(); paint(); };
+    ph.addEventListener('click', e => {
+      const t = e.target, c = t.closest('[data-f]'), r = t.closest('[data-k]');
+      if (t.closest('input')) return;
+      ring = '';
+      if (t.closest('.fbtn')) { d = { ...f }; sheet.hidden = false; }
+      else if (t.closest('[data-fx]')) sheet.hidden = true;
+      else if (t.closest('[data-fok]')) { f = { ...d }; sheet.hidden = true; }
+      else if (c) d[c.dataset.f] = d[c.dataset.f] === c.dataset.v ? '' : c.dataset.v;
+      else if (r) on[+r.dataset.k] = !on[+r.dataset.k];
+      else if (t.closest('[data-all]')) { const ks = shown(), all = ks.every(k => on[k]); ks.forEach(k => { on[k] = !all; }); }
+      paint();
+    });
+    paint();
+  });
+
+  // Way B: the sheet
+  const A = document.getElementById('A');
+  const sum = () => {
+    let t = 150;
+    A.querySelectorAll('.chip.on').forEach(c => t += +(c.dataset.p || 0));
+    A.querySelectorAll('.addon').forEach(a => t += (+a.querySelector('.n').textContent || 0) * +a.dataset.p);
+    A.querySelector('[data-total]').textContent = peso(t);
+  };
+  A.addEventListener('click', e => {
+    const c = e.target.closest('.chip');
+    if (c) {
+      const g = c.parentElement;
+      if (g.hasAttribute('data-one')) g.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === c));
+      else c.classList.toggle('on');
+    }
+    const b = e.target.closest('.stp button');
+    if (b) { const n = b.parentElement.querySelector('.n'); const v = Math.max(0, (+n.textContent || 0) + +b.dataset.d); n.textContent = v || ''; }
+    sum();
+  });
+})();
+</script>
+</body>
+</html>

@@ -4,10 +4,9 @@
 // The catalog as items: a group's products are one item's variants. The editor works on a copy; Save writes it back.
 const ITEMS_FILTER_DEF = { cat: '', stock: '' };
 const itemsFilter = { q: '', ...ITEMS_FILTER_DEF };
-const itemHue = s => [...String(s || '')].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const itemQty = SalesMath.qtyText;   // the one quantity format, the back office's too
 const itemInitials = s => s.replace(/[^A-Za-z ]/g, ' ').split(/\s+/).filter(w => w.length > 1).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '+';
-const itemThumb = (it, big) => `<span class="thumb${big ? ' big' : ''}" style="--h:${it.hue}" aria-hidden="true">${it.img ? `<img src="${escapeHtml(it.img)}" alt="">` : itemInitials(it.name)}</span>`;
+const itemThumb = (it, big) => `<span class="thumb${big ? ' big' : ''}"${it.hue == null ? '' : ` style="--h:${it.hue}"`} aria-hidden="true">${it.img ? `<img src="${escapeHtml(it.img)}" alt="">` : itemInitials(it.name)}</span>`;
 // The family's level is bo-model familyLevel, the same one the back office's Items list and item
 // page show (one size out of three = Low, all out = Out). No sale clock here: the till has no Dead filter.
 const itemStk = it => ({ out: 'stk-out', low: 'stk-low' })[familyLevel(it.members, null, Date.now(), tillZone())] || '';
@@ -36,7 +35,7 @@ function catalogItems() {
         hidden: !!p.hidden, marginMode: p.marginMode === 'flat' ? 'flat' : 'percent', reorder: p.reorderPoint || 0, track: p.trackStock !== false,
         sellOut: !!p.sellOutOfStock, sups: supplierIdsOf(p), main: p.supplierId || '', mods: [...(p.modifierIds || [])],
         weight: p.weight || '', size: p.size || '', length: p.length || '', component: !!p.component, variants: [], members: [] };
-      it.hue = TILE_COLORS[it.color] ?? itemHue(folder);   // the thumb wears the tile colour when there is one
+      it.hue = TILE_COLORS[it.color];   // the thumb is the Sell tile: its colour, or plain with none (owner 2026-10-22: no made-up hue)
       byKey.set(key, it);
     }
     it.members.push(p);
@@ -100,23 +99,31 @@ const ITEM_UNITS = [['pc', 'box', 'bag', 'set', 'pair', 'roll', 'sheet', 'can'],
 const soldByFor = (unit, was) => (ITEM_UNITS[1].includes(unit) ? 'measure' : ITEM_UNITS[0].includes(unit) ? 'each' : was || 'each');
 
 function openItemEditor(id) {
+  if (editorDirty()) return askLeave(true, () => { closeItemEditor(); openItemEditor(id); });   // another row on a tablet
   const it = id ? catalogItems().find(x => x.id === id) : null;
   itemIsNew = !it; kindEdit = null; itemSub = '';
-  itemEdit = it || { id: newId(), name: '', desc: '', cat: '', catIds: [], hue: 220, unit: 'pc', soldBy: 'each', img: '', color: '', hidden: false, marginMode: 'percent',
+  itemEdit = it || { id: newId(), name: '', desc: '', cat: '', catIds: [], unit: 'pc', soldBy: 'each', img: '', color: '', hidden: false, marginMode: 'percent',
     reorder: 0, track: true, sellOut: false, sups: [], main: '', mods: [], weight: '', size: '', length: '', component: false, variants: [blankVariant()], since: tillDay(Date.now()) };
   const v0 = itemEdit.variants[0];
   itemEdit.marginValue = itemMarkupOf(v0, itemEdit.marginMode);
   renderItemForm();
   $('#itemsView').classList.add('editing');
   $('#itemForm').scrollTop = 0;
+  editorFirst = editorSnap();
 }
 const closeItemEditor = () => $('#itemsView').classList.remove('editing');
-// a subpage slides in over the item; '' slides back to where the item was scrolled
+// What the open editor's Save would write, as text: leaving with it changed asks first (askLeave, owner 2026-10-22).
+// A saved item's photo + colour save on the spot, so they're left out; a new item's wait for Save, so they count.
+let editorFirst = '';
+const editorSnap = () => (kindEdit ? JSON.stringify({ ...kindEdit, sub: 0, first: 0, picked: [...kindEdit.picked].sort() })
+  : JSON.stringify({ ...itemEdit, hue: 0, ...(itemIsNew ? {} : { img: 0, color: 0 }) }));
+const editorDirty = () => $('#itemsView').classList.contains('editing') && editorSnap() !== editorFirst;
+// a subpage slides in over the item or the category; '' slides back to where the page was scrolled
 function itemGo(sub) {
-  const f = $('#itemForm');
-  if (sub && !itemSub) itemMainScroll = f.scrollTop;   // the item's place, not a subpage's (variant -> Made from)
-  itemSub = sub;
-  renderItemForm(sub ? 'push' : 'pop');
+  const f = $('#itemForm'), K = kindEdit;
+  if (sub && !(K ? K.sub : itemSub)) itemMainScroll = f.scrollTop;   // the page's place, not a subpage's (variant -> Made from)
+  if (K) K.sub = sub; else itemSub = sub;
+  (K ? renderKindForm : renderItemForm)(sub ? 'push' : 'pop');
   f.scrollTop = sub ? 0 : itemMainScroll;
 }
 
@@ -132,8 +139,10 @@ const inav = (label, value, sub) => `<button type="button" class="fr nav" data-s
 const iadd = (act, text, cls = '') => `<button type="button" class="fr add${cls}" data-act="${act}">${text}</button>`;
 // a block: a small grey title above, the rows on one tile, a footnote under; ' r' = values to the right edge (rednote's settings)
 const icard = (title, body, foot = '', cls = '') => `${title ? `<h3 class="fc-t">${title}</h3>` : ''}<section class="card fc${cls}">${body}</section>${foot ? `<p class="fc-n">${foot}</p>` : ''}`;
-// a blank Price is asked at sale (askedPrice): no markup, no profit to show
-const itemMarkupOf = (v, mode) => (askedPrice(v) ? null : marginFromPrice(v.cost, v.price, mode));
+// a blank Price is asked at sale (askedPrice) and no cost has no markup: nothing to hold, so a cost typed later
+// leaves the price alone. Kept exact (shown to 2 places): a rounded one walked the price off a centavo.
+const itemMarkupOf = (v, mode) => (askedPrice(v) || !Number(v.cost) ? null : marginFromPrice(v.cost, v.price, mode, true));
+const markupText = m => (m ? round2(m) : '');
 const imarginNote = v => { if (askedPrice(v)) return '—'; const m = itemMargin(v); return `${peso(m.profit)} · ${itemPct(m.margin)} margin`; };
 const iprofit = v => `Profit <span class="num" id="itemMarginNote">${imarginNote(v)}</span>`;   // the Price block's footnote
 const istep = () => (itemEdit.soldBy === 'measure' ? .01 : 1);
@@ -149,6 +158,7 @@ function renderItemForm(dir) {
     : itemSub === 'mods' ? ['Modifiers', itemTickPage('mods', kindList('mods').map(m => [m.id, m.name, modSummary(m)]), 'No modifiers yet. Add them under Modifiers.')]
     : itemSub === 'sups' ? ['Suppliers', itemSupsPage()]
     : itemSub === 'specs' ? ['Specs', itemSpecsPage()]
+    : itemSub === 'look' ? ['Tile appearance', lookPage(E)]
     : itemSub.startsWith('made:') ? ['Made from', itemMadePage(E.variants.find(x => 'made:' + x.id === itemSub))]
     : v ? [v.fresh ? 'Add variant' : 'Edit variant', itemVariantPage(v)] : [E.name || 'New item', itemMainPage()];   // a fixed title: typing a variant's name doesn't echo up there
   $('#itemForm').closest('.editor').classList.toggle('sub', !!itemSub);   // a subpage has only Back, as in Apple Settings
@@ -164,20 +174,21 @@ function renderItemForm(dir) {
 // rednote's Edit profile (owner 2026-10-09): the photo centred on top, white blocks on the grey page, the word in a
 // column on the left and its value just after it (not pushed right); Status worded as the back office's; the
 // description its own block under Name and Status (rednote's Bio), growing as it is typed.
-const ICAM = '<svg class="ic" viewBox="0 0 24 24"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.2"/></svg>';
 function itemMainPage() {
   const E = itemEdit, fam = E.variants.length > 1, v0 = E.variants[0], T = E.track;
   // A component / an ingredient (owner 2026-10-20): only what making things needs -- name, cost, stock, low stock at, unit.
   // Never on Sell, always counted. A made item (v0.madeFrom) can't be one, nor can a family: parts don't nest.
   const made = !fam && v0.madeFrom.length > 0;
   if (E.component) return itemPartPage();
-  const photo = lookBlock(E, 'act', 'itemImg');
+  // the photo stays on top as the tile's preview; it and Edit open the Tile appearance page (owner 2026-10-22, iPhone Contacts)
+  const photo = lookHead(E);
   const about = icard('', [
     ifr('Name', iinp('name', E.name, 'placeholder="Add name"')),
     ifr('Status', ipick('status', E.hidden ? 'Hidden' : 'Active'), true),
     fam || made ? '' : isw(partWord(), 'component', false),
   ].join(''), fam || made ? '' : IPART_NOTE, ' r');
-  const desc = icard('', ifr('Description', `<textarea class="in" data-f="desc" rows="1" placeholder="Add description">${escapeHtml(E.desc)}</textarea>`), '', ' r');
+  // the word on top, the text under it across the tile (iOS Notes' block, owner 2026-10-22)
+  const desc = icard('', `<label class="fr stk"><span class="lb">Description</span><textarea class="in" data-f="desc" rows="2" placeholder="Add description">${escapeHtml(E.desc)}</textarea></label>`);
   const vrow = v => `<button type="button" class="fr nav wide" data-sub="${escapeHtml(v.id)}"><span class="lb${v.name ? '' : ' ph'}">${escapeHtml(v.name || 'No name')}</span>
     <span class="ctl end"><span class="vv num">${askedPrice(v) ? '—' : peso(v.price)}${T ? ` · ${itemQty(v.stock)} ${escapeHtml(E.unit)}` : ''}</span>${ICHEV}</span></button>`;
   // small blocks, one job each (rednote's Account security): one item = [Price, Cost, Markup, profit under it] [Add variant];
@@ -186,7 +197,7 @@ function itemMainPage() {
     : icard('', [
       ifr('Price', `<input class="in num" data-f="price" value="${v0.price ?? ''}" ${IMONEY} placeholder="Asked at sale">`),
       made ? ifr('Cost', `<span class="vv num">${peso(v0.cost)}</span>`, true) : ifr('Cost', `<input class="in num" data-f="cost" value="${v0.cost || ''}" ${IMONEY} placeholder="0.00">`),
-      ifr('Markup', `<input class="in num" data-f="marginValue" value="${E.marginValue || ''}" type="number" step="0.01" inputmode="decimal" placeholder="0">${ipick('mmode', E.marginMode === 'percent' ? '%' : icurrency())}`),
+      ifr('Markup', `<input class="in num" data-f="marginValue" value="${markupText(E.marginValue)}" type="number" step="0.01" inputmode="decimal" placeholder="0">${ipick('mmode', E.marginMode === 'percent' ? '%' : icurrency())}`),
     ].join(''), iprofit(v0), ' r')
     + icard('', iadd('add-variant', 'Add variant'));
   // stock out on the page, not behind a › (owner 2026-10-09); a family counts per variant, on each variant's page
@@ -217,7 +228,8 @@ function itemMainPage() {
 // the component's short page: Name + the switch, Cost, its stock, Unit
 function itemPartPage() {
   const E = itemEdit, v0 = E.variants[0];
-  return icard('', [ifr('Name', iinp('name', E.name, 'placeholder="Add name"')), isw(partWord(), 'component', true)].join(''), IPART_NOTE, ' r')
+  // Status shows but can't change (owner 2026-10-22): a part is never on Sell
+  return icard('', [ifr('Name', iinp('name', E.name, 'placeholder="Add name"')), ifr('Status', '<span class="vv ph">Hidden</span>', true), isw(partWord(), 'component', true)].join(''), IPART_NOTE, ' r')
     + icard('', ifr('Cost', `<input class="in num" data-f="cost" value="${v0.cost || ''}" ${IMONEY} placeholder="0.00">`), '', ' r')
     + icard('', [
       itemIsNew ? ifr('Opening stock', iqty('data-f="stock"', v0.stock)) : ifr('In stock', ionHand(v0), true),
@@ -311,8 +323,8 @@ function itemReprice(from) {
   if (!f.querySelector('[data-f=price]')) return;   // a component's page: Cost only, no price to follow
   if (from === 'price') {
     E.marginValue = itemMarkupOf(v0, E.marginMode);
-    f.querySelector('[data-f=marginValue]').value = E.marginValue || '';
-  } else if (E.marginValue != null) {   // no markup typed: the price stays as it is (blank = asked at sale)
+    f.querySelector('[data-f=marginValue]').value = markupText(E.marginValue);
+  } else if (E.marginValue != null && Number(v0.cost)) {   // no markup, or no cost for it to sit on: the price stays (blank = asked at sale)
     v0.price = priceFromMargin(v0.cost, E.marginMode, E.marginValue);   // bo-model's, as the back office editor
     f.querySelector('[data-f=price]').value = v0.price;
   }
@@ -323,14 +335,36 @@ const IFIND = '<div class="pick-find"><input class="in" data-k="q" type="search"
 const filterPicks = q => { q = q.trim().toLowerCase(); $$('#itemForm .pick[data-find]').forEach(r => { r.hidden = !!q && !r.dataset.find.includes(q); }); };
 
 // The tile's colour (owner 2026-10-14): the sell tile wears it when there is no photo; the first, empty swatch = the plain tile.
-const tileSwatches = (E, a) => `<div class="tcolors" role="group" aria-label="Tile colour">${['', ...Object.keys(TILE_COLORS)].map(k =>
-  `<button type="button" class="tc${k ? '' : ' none'}${(E.color || '') === k ? ' on' : ''}" data-${a}="tile-color" data-c="${k}"${k ? ` style="--tc:${TILE_COLORS[k]}"` : ''}
-    aria-label="${k || 'No colour'}" aria-pressed="${(E.color || '') === k}"></button>`).join('')}</div>`;
-// The photo, Remove photo and the colours on top of the item's editor and the category's (owner 2026-10-16); a = the data- word its clicks use.
-const lookBlock = (E, a, id) => `<div class="fphoto"><label for="${id}" aria-label="${E.img ? 'Change photo' : 'Add photo'}">${itemThumb(E, true)}<span class="cam">${ICAM}</span>
-    <input type="file" accept="image/*" id="${id}" hidden></label>${E.img ? `<button type="button" class="link" data-${a}="img-clear">Remove photo</button>` : ''}${tileSwatches(E, a)}</div>`;
-// A category's thumb: its photo, else its colour, else a hue from its id (as before)
-const catLook = x => ({ name: x.name, color: x.color, img: x.img ?? x.imageUrl ?? '', hue: TILE_COLORS[x.color] ?? itemHue(x.id) });
+// A photo covers it, so with one the swatches are greyed and can't be tapped (owner 2026-10-22).
+const tileSwatches = E => `<div class="tcolors" role="group" aria-label="Tile colour">${['', ...Object.keys(TILE_COLORS)].map(k =>
+  `<button type="button" class="tc${k ? '' : ' none'}${(E.color || '') === k ? ' on' : ''}" data-look="color" data-c="${k}"${k ? ` style="--tc:${TILE_COLORS[k]}"` : ''}
+    aria-label="${k || 'No colour'}" aria-pressed="${(E.color || '') === k}"${E.img ? ' disabled' : ''}></button>`).join('')}</div>`;
+// The photo on top of the item's editor and the category's, the tile's preview: one button, it and Edit open Tile appearance
+// (owner 2026-10-22, iPhone Contacts). Its taps are lookClick's, the same for both editors.
+const lookHead = E => `<div class="fphoto"><button type="button" class="fph" data-look="open">${itemThumb(E, true)}<span class="link">Edit</span></button></div>`;
+// Tile appearance: the preview (a tap picks a photo too; the row is the one Tab reaches), the photo's rows, then the colours
+const lookPage = E => {
+  const word = E.img ? 'Change photo' : 'Add photo';
+  return `<div class="fphoto"><button type="button" class="fph" data-look="pick" tabindex="-1" aria-label="${word}">${itemThumb(E, true)}</button><input type="file" accept="image/*" id="lookImg" hidden></div>`
+    + icard('', `<button type="button" class="fr add" data-look="pick">${word}</button>${E.img ? '<button type="button" class="fr add red" data-look="clear">Remove photo</button>' : ''}`)
+    + icard('Colour', `<div class="fr">${tileSwatches(E)}</div>`, E.img ? 'Remove the photo to pick a colour.' : 'Shows on Sell when there is no photo.');
+};
+// An item's look saves on the spot (setItemLook); a category's waits for its Save
+const setLook = p => (kindEdit ? (Object.assign(kindEdit, p), renderKindForm()) : setItemLook(p));
+function lookClick(b) {
+  const L = b.dataset.look;
+  if (L === 'open') itemGo('look');
+  else if (L === 'pick') $('#lookImg').click();
+  else if (L === 'clear') setLook({ img: '' });
+  else setLook({ color: b.dataset.c });
+}
+// a photo still shrinking lands only while its editor is still on Tile appearance: not another item's, not a page it'd redraw
+function lookPhoto(file) {
+  const o = kindEdit || itemEdit, here = () => (kindEdit || itemEdit) === o && (kindEdit ? kindEdit.sub : itemSub) === 'look';
+  shrinkPhoto(file).then(img => here() && setLook({ img }), () => showToast('That file isn’t a photo'));
+}
+// A category's thumb: its photo, else its colour, else plain (as its Sell tile)
+const catLook = x => ({ name: x.name, color: x.color, img: x.img ?? x.imageUrl ?? '', hue: TILE_COLORS[x.color] });
 // The photo and the tile colour save on the spot (owner 2026-10-14), onto the family's group or the lone product, so the
 // tiles, the cart and every POS show them; the rest of the editor's Save is still design only. A new item keeps them
 // with the form until its Save works.
@@ -340,10 +374,13 @@ function setItemLook(patch) {
   if ('color' in patch) row.color = E.color = patch.color;
   if (catalogItems().some(it => it.id === E.id)) {
     const put = rows => rows.map(r => (r.id === E.id ? { ...r, ...row } : r));
-    if (groupById(E.id)) { state.groups = put(state.groups); saveGroups(); } else { state.products = put(state.products); saveProducts(); }
+    // a family's members get it too: a cart line reads a member's own photo first (itemLook), an old one would stay
+    if (groupById(E.id)) { state.groups = put(state.groups); saveGroups(); state.products = state.products.map(p => (p.groupId === E.id ? { ...p, ...row } : p)); }
+    else state.products = put(state.products);
+    saveProducts();
     renderItems(); renderProducts(); renderCart();
   }
-  E.hue = catalogItems().find(it => it.id === E.id)?.hue ?? TILE_COLORS[E.color] ?? 220;
+  E.hue = TILE_COLORS[E.color];
   renderItemForm();
 }
 function saveItem() {
@@ -360,11 +397,11 @@ function saveItem() {
     const base = was.get(v.id) || {}, made = C ? [] : v.madeFrom.filter(m => was.has(m.id) && Number(m.qty) > 0)   // a 0 amount drops the part
       .map(m => ({ id: m.id, qty: Math.max(stepFor(was.get(m.id)), roundQty(was.get(m.id), m.qty)) }));
     const row = stampRow(normalizeProduct({ ...base, id: v.id, name: fam ? `${name} ${v.name.trim()}` : name, sku: v.sku.trim(), barcode: v.barcode.trim(),
-      cost: v.cost, price: C ? null : v.price, marginMode: E.marginMode, marginValue: (C ? 0 : itemMarkupOf(v, E.marginMode)) ?? 0,
+      cost: v.cost, price: C ? null : v.price, marginMode: E.marginMode, marginValue: C || askedPrice(v) ? 0 : marginFromPrice(v.cost, v.price, E.marginMode),
       groupId: fam ? gid : base.groupId || '', folders: E.catIds, folder: E.catIds[0] || '', unit: E.unit, soldBy: E.soldBy,
       hidden: E.hidden, reorderPoint: E.reorder || 0, trackStock: C || E.track, sellOutOfStock: !C && E.sellOut,
       supplierId: E.main, altSupplierIds: E.sups, modifierIds: E.mods, weight: E.weight, size: E.size, length: E.length,
-      description: fam ? base.description || '' : E.desc, imageUrl: fam ? base.imageUrl || '' : E.img, color: fam ? base.color || '' : E.color,
+      description: fam ? base.description || '' : E.desc.trim(), imageUrl: fam ? base.imageUrl || '' : E.img, color: fam ? base.color || '' : E.color,
       component: C, madeFrom: made }));
     if (!was.has(v.id) && row.trackStock && !made.length && Number(v.stock)) {   // applied before it's appended (balanceAfter)
       const mv = makeMovement({ productId: v.id, qty: v.stock, reason: 'opening', happenedOn: itemIsNew ? E.since : '', unitCost: row.cost, staff: who, staffId });
@@ -376,7 +413,7 @@ function saveItem() {
   state.products = state.products.map(p => (ids.has(p.id) ? rows.find(r => r.id === p.id) : gone.has(p.id) ? stampRow({ ...p, archived: true }) : p))
     .concat(rows.filter(r => !was.has(r.id)));
   if (fam) {
-    const g = stampRow({ ...groupById(gid), id: gid, name, folder: E.catIds[0] || '', imageUrl: E.img, color: E.color, description: E.desc });
+    const g = stampRow({ ...groupById(gid), id: gid, name, folder: E.catIds[0] || '', imageUrl: E.img, color: E.color, description: E.desc.trim() });
     state.groups = groupById(gid) ? state.groups.map(x => (x.id === gid ? g : x)) : state.groups.concat(g);
     saveGroups();
   }
@@ -487,23 +524,26 @@ function renderKindRows(kind, band, rows) {
 }
 
 function openKindEditor(kind, id) {
+  if (editorDirty()) return askLeave(true, () => { closeItemEditor(); openKindEditor(kind, id); });
   const was = kindList(kind).find(x => x.id === id);
   const picked = new Set(was && isOn[kind] ? itemsWith(kind, was.id).map(it => it.id) : []);   // a discount isn't on items
   kindEdit = { kind, id: was ? was.id : '', name: was ? was.name : '', picked, first: new Set(picked),
     img: was?.imageUrl || '', color: was?.color || '', type: was?.type || 'percent', value: was ? String(was.value) : '', builtin: was?.builtin || '',
-    options: was ? structuredClone(was.options || []) : kind === 'mods' ? [{ id: newId(), name: '', price: '' }] : [] };
+    options: was ? (was.options || []).map(o => ({ ...o, price: String(o.price ?? '') })) : kind === 'mods' ? [{ id: newId(), name: '', price: '' }] : [] };
   itemEdit = null;
   renderKindForm();
   $('#itemsView').classList.add('editing');
   $('#itemForm').scrollTop = 0;
+  editorFirst = editorSnap();
   if (!was) setTimeout(() => $('#itemForm [data-k=name]')?.focus(), 300);
 }
 
-function renderKindForm() {
-  $('#itemForm').closest('.editor').classList.remove('sub');
+function renderKindForm(dir) {
+  const K = kindEdit, cats = K.kind === 'cats', head = cats ? lookHead(catLook(K)) : '';
+  $('#itemForm').closest('.editor').classList.toggle('sub', !!K.sub);   // a subpage has only Back
   $('#itemFind').hidden = true;   // its own search stays in the form
-  const K = kindEdit, cats = K.kind === 'cats', head = cats ? lookBlock(catLook(K), 'ka', 'kindImg') : '';   // a category's photo + colour go with its Save
-  $('#itemTitle').textContent = K.name || `New ${KIND[K.kind][0]}`;
+  $('#itemTitle').textContent = K.sub ? 'Tile appearance' : K.name || `New ${KIND[K.kind][0]}`;
+  if (K.sub) { $('#itemForm').innerHTML = `<div class="form ${dir || ''}">${lookPage(catLook(K))}</div>`; return; }
   $('#itemMore').hidden = false;   // a category's Delete, a modifier's Archive
   if (K.kind === 'discs') {   // name, % or amount (a dropdown, the ⋯ menu's morph), value; Senior / PWD keep their name and stay %
     const pct = K.type === 'percent', unit = pct ? '%' : icurrency();
@@ -520,7 +560,7 @@ function renderKindForm() {
       <input class="in" data-o="name" value="${escapeHtml(o.name)}" placeholder="Option name">
       <input class="in num" data-o="price" value="${escapeHtml(o.price)}" ${IMONEY} placeholder="0.00" aria-label="Price">
       <button type="button" class="del" data-ka="opt-del" aria-label="Remove option" title="Remove option"><svg class="ic" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
-  $('#itemForm').innerHTML = `<div class="form">${head}
+  $('#itemForm').innerHTML = `<div class="form ${dir || ''}">${head}
     ${icard('', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like ${cats ? 'Plumbing' : 'Cutting'}">`))}
     ${cats ? '' : icard('Options', K.options.map(opt).join('') + '<button type="button" class="fr add" data-ka="opt-add">Add option</button>', "The price is added to the item's.")}
     ${icard(`Items <span class="num" id="kindCount">· ${K.picked.size}</span>`, (items.length > 8 ? IFIND : '') + items.map(it => `<label class="pick" data-find="${escapeHtml(it.name.toLowerCase())}"><input type="checkbox" data-pick="${escapeHtml(it.id)}"${K.picked.has(it.id) ? ' checked' : ''}>
@@ -541,8 +581,6 @@ function kindInput(t) {
 function kindClick(b) {
   const K = kindEdit;
   if (b.dataset.ka === 'opt-add') { K.options.push({ id: newId(), name: '', price: '' }); renderKindForm(); $$('#itemForm .opt [data-o=name]').pop().focus(); }
-  if (b.dataset.ka === 'img-clear') { K.img = ''; renderKindForm(); }
-  if (b.dataset.ka === 'tile-color') { K.color = b.dataset.c; renderKindForm(); }
   if (b.dataset.ka === 'opt-del') { K.options.splice(Number(b.closest('.opt').dataset.i), 1); renderKindForm(); }
   if (b.dataset.ka === 'type') openMenu(b, [['percent', 'Percent'], ['amount', 'Amount']].map(([k, label]) => ({ label, cur: K.type === k,
     run: () => { K.type = k; renderKindForm(); $('#itemForm [data-k=value]').focus(); } })), { w: 200, right: true });

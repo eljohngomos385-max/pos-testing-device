@@ -343,6 +343,13 @@ function centreSheet(f) {
   f.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: calmMs(140), easing: 'ease-out' });
   return (done) => { f.animate([{ opacity: 1 }, { opacity: 0, transform: 'scale(.98)' }], { duration: calmMs(90) }).onfinish = done; };
 }
+// Leaving a form with changes not saved asks first, in quick stock's words (owner 2026-10-22); no changes leaves at once.
+function askLeave(changed, leave) {
+  if (!changed) return leave();
+  showConfirm({ title: 'Leave without saving?', message: 'Your changes aren’t saved yet.', okText: 'Leave', cancelText: 'Keep editing', onConfirm: leave });
+}
+// a sheet's way out: asks only when a field differs from when the form opened
+function leaveForm(f, close) { const snap = () => JSON.stringify([...new FormData(f)]), was = snap(); return () => askLeave(snap() !== was, close); }
 let confirmSheet = null;
 function showConfirm({ title = 'Are you sure?', message = '', html = '', okText = 'Confirm', cancelText = 'Cancel', danger = false, onConfirm, onCancel } = {}) {
   confirmSheet?.(true);   // one at a time

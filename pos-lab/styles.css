@@ -7625,9 +7625,10 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .stk-out { color: var(--danger) !important; }
 
 /* the picture: a photo when there is one, else the category's tint + initials (Loyverse's colour tile) */
-.lv .thumb { display: grid; place-items: center; flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: 5px; background: hsl(var(--h) 22% 24%); color: hsl(var(--h) 45% 78%);
+.lv .thumb { display: grid; place-items: center; flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: 5px; background: hsl(var(--h) 45% 32%); color: hsl(var(--h) 45% 82%);
              font-size: 11px; font-weight: 550; letter-spacing: .02em; }
-body.light-theme .lv .thumb { background: hsl(var(--h) 50% 92%); color: hsl(var(--h) 40% 34%); }
+body.light-theme .lv .thumb { background: hsl(var(--h) 75% 86%); color: hsl(var(--h) 40% 34%); }   /* the Sell tile's shade (.pc-tc) */
+.lv .thumb:not([style]), body.light-theme .lv .thumb:not([style]) { background: var(--rl-soft, var(--surface)); color: var(--ink-secondary); }   /* no colour = the plain tile */
 .lv .thumb img { width: 100%; height: 100%; object-fit: cover; }
 .lv .thumb.big { width: 64px; height: 64px; border-radius: 8px; font-size: 20px; }
 
@@ -7755,21 +7756,22 @@ body .lv .fc .fr .act:not(.st-pick) { min-width: 0; padding: 0; background: none
 /* on a tile a field is bare: no box, no ring; the caret says where you are */
 .lv .fc :is(.fr, .opt, .pick-find) .in { height: 36px; padding: 0; border-radius: 0; background: none; box-shadow: none; font-size: 16px; }
 .lv .fc .fr textarea.in { height: auto; min-height: 36px; padding: 8px 0; resize: none; field-sizing: content; line-height: 1.35; }
+.lv .fr.stk { grid-template-columns: minmax(0,1fr); align-items: start; gap: 2px; padding: 12px 16px; }   /* the word on top, the text full width under it */
+.lv .fr.stk > .lb { font-size: 13px; }   /* a small title over the text, as Notes' */
+.lv .fc .fr.stk textarea.in { min-height: calc(2lh + 16px); }   /* two lines to start; grows as it is typed */
 .lv .fc .in:focus-visible { outline: 0; }
 .lv .fc .fr .in { color: var(--ink); text-align: left; }   /* rednote: the value just after its word */
-/* the photo: centred above the blocks, a camera on its corner (rednote's avatar) */
+/* the photo: centred above the blocks (rednote's avatar); it and Edit open Tile appearance */
 .lv .fphoto { display: grid; justify-items: center; gap: 6px; margin-bottom: 16px; }   /* centred between the title and the first block (rednote) */
-.lv .fphoto label { position: relative; cursor: pointer; }
 .lv .fphoto .thumb { width: 80px; height: 80px; border-radius: var(--rl-r); font-size: 24px; }
-.lv .fphoto .cam { position: absolute; right: -6px; bottom: -6px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
-                   background: var(--accent); color: var(--accent-ink); box-shadow: 0 0 0 3px var(--canvas, var(--bg)); }
-.lv .fphoto .cam .ic { width: 16px; height: 16px; }
 .lv .fphoto .link { text-decoration: none; }
-.lv .tcolors { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 4px; }   /* the tile colour (tileSwatches) */
+.lv .fphoto .fph { display: grid; justify-items: center; gap: 6px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }   /* the photo (+ Edit): one button (lookHead) */
+.lv .tcolors .tc:disabled { opacity: .3; cursor: default; }   /* a photo covers the colour (tileSwatches) */
+.lv .tcolors { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }   /* the tile colours across their block (tileSwatches) */
 .lv .tcolors .tc { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: hsl(var(--tc) 45% 32%); cursor: pointer; }
 body.light-theme .lv .tcolors .tc { background: hsl(var(--tc) 75% 86%); }
 .lv .tcolors .tc.none, body.light-theme .lv .tcolors .tc.none { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-strong); }
-.lv .tcolors .tc.on, body.light-theme .lv .tcolors .tc.on { box-shadow: 0 0 0 2px var(--canvas, var(--bg)), 0 0 0 4px var(--ink); }
+body .lv .tcolors .tc.on, body.light-theme .lv .tcolors .tc.on { box-shadow: 0 0 0 2px var(--rl-card), 0 0 0 4px var(--ink); }   /* the ring's gap is the block's white */
 .lv #itemMarginNote { color: var(--ink-tertiary); }   /* worked out, not typed */
 body .lv .fc .act.st-pick { min-width: 0; height: 36px; padding: 0; background: none; box-shadow: none; color: var(--ink); font-size: 15px; font-weight: 400; }
 .lv .fc .st-pick:hover, .lv .fc .st-pick[aria-expanded="true"] { background: none; color: var(--ink); }

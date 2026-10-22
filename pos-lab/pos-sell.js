@@ -1656,9 +1656,16 @@ function openCustomerEditModal(c = null) {
   const sh = $('#customerEditModal'), frame = state.view === 'customers' ? $('#customersView') : $('.catalog-wrap');
   if (sh.parentNode !== frame) { frame.append(sh); void sh.offsetWidth; }   // moved: settle first, so it still slides up
   sh.classList.add('open');
+  custWas = JSON.stringify(custFormValues());
   setTimeout(() => name.focus(), 50);
 }
 function closeCustomerEditModal() { $('#customerEditModal').classList.remove('open'); }
+// The X, Esc and "Open Ana" ask first when a field changed (askLeave, owner 2026-10-22); Save and Delete close at once.
+let custWas = '';
+const custFormValues = () => Object.fromEntries($$('#custFields [name]').map(el => [el.name, el.type === 'checkbox' ? (el.checked ? 'on' : '') : el.value]));
+// on screen only: left open on a page switched away from, Esc elsewhere must not ask about a sheet no one sees
+const customerEditChanged = () => { const sh = $('#customerEditModal'); return sh.classList.contains('open') && sh.getClientRects().length > 0 && JSON.stringify(custFormValues()) !== custWas; };
+const leaveCustomerEdit = (then = closeCustomerEditModal) => askLeave(customerEditChanged(), then);
 // Not while they owe or are owed: the balance would go with them.
 function deleteCustomer() {
   const c = allCustomerRecords().find(x => x.id === state.customerEditing?.id);
@@ -1676,7 +1683,7 @@ function deleteCustomer() {
 // Only a change to them asks: fixing a phone number never needs a PIN.
 function saveSavedCustomerFromModal(by = '') {
   const was = state.customerEditing;
-  const values = Object.fromEntries($$('#custFields [name]').map(el => [el.name, el.type === 'checkbox' ? (el.checked ? 'on' : '') : el.value]));
+  const values = custFormValues();
   if (!values.creditOn) values.creditLimit = '';   // credit off hides the limit: a stale one there can't block Save
   const { customer, error, field } = customerFromForm(values, was);
   if (error) { showToast(error); $(`#custFields [name="${field}"]`).focus(); return; }
@@ -1885,8 +1892,13 @@ function openLostSale({ product = null, text = '', qty = 1, reason = 'out-of-sto
     .map(i => `<option value="${escapeHtml(i.id)}">${escapeHtml(i.name)}</option>`).join('');
   renderLostSale();
   $('#lostSaleModal').hidden = false;
+  lostSaleWas = lostSaleSnap();
   if (!product && !text) $('#lsItemInput').focus();
 }
+// Cancel, the X, a backdrop tap and Esc ask first when it changed (askLeave, owner 2026-10-22); Save closes at once.
+let lostSaleWas = '';
+const lostSaleSnap = () => JSON.stringify([$('#lsItemInput').value, $('#lsQtyInput').value, $('#lsSubSelect').value, state.lostSale?.reason, state.lostSale?.productId]);
+const lostSaleChanged = () => !$('#lostSaleModal').hidden && lostSaleSnap() !== lostSaleWas;
 
 function renderLostSale() {
   $$('[data-ls-reason]').forEach(b => b.classList.toggle('active', b.dataset.lsReason === state.lostSale.reason));

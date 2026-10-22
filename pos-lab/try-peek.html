@@ -985,6 +985,10 @@
     .pk-desc.clip { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }   /* a long one: two lines, then More (owner 2026-10-22) */
     .pk-more { margin: -3px 0 0; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 500; cursor: pointer; }
     .pk-btn { position: fixed !important; z-index: 902; margin: 0 !important; }
+    /* the ways in from peek-anim-lab.html (B-F): played by script on Apple-style springs, so the CSS fades stand down */
+    .pk-js .pk-card, .pk-js .pk-dim { opacity: 1; transition: none; }
+    .pk-ghost { position: absolute !important; left: 0; top: 0; transform-origin: 0 0; z-index: 3; display: block !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; opacity: 0; pointer-events: none; }
+    .pk-ghost .product-card { width: 100%; height: 100%; margin: 0; }
   </style>
   <script>
   addEventListener('load', () => {
@@ -1006,18 +1010,21 @@
     let press = null, peek = null, eatClick = 0, own = null;
     const cancelApp = (id) => grid.dispatchEvent(own = new PointerEvent('pointercancel', { pointerId: id, bubbles: true }));   // the app's own hold + swipe let go
     const mine = () => !!grid.querySelector('[data-at]');
+    const V = () => { try { return parent.PEEK_ANIM || 'a'; } catch { return 'a'; } };   // the way in, picked in peek-anim-lab.html; on its own = A
+    const unsq = (a) => { if (!a) return; a.reverse(); a.updatePlaybackRate(-2); a.onfinish = () => a.cancel(); };   // a press let go early springs back
 
     document.addEventListener('pointerdown', (e) => {
       if (e.button > 0 || myEditing || peek || press || !e.target.closest('#productGrid')) return;
       const card = e.target.closest('.product-card');
       if (card?.matches('.pc-add, .mp-ghost') || (!card && !mine())) return;   // All items: an empty spot does nothing
       press = { card, x: e.clientX, y: e.clientY, id: e.pointerId, t: setTimeout(card ? open : wiggle, 380) };   // before the app's 400 ms lift
+      if (card && V() === 'c') press.sq = card.animate({ scale: [1, .95] }, { duration: 380, easing: 'cubic-bezier(.3,0,.3,1)', fill: 'forwards' });   // C: the tile presses in as you hold
     }, true);
     document.addEventListener('pointermove', (e) => {
       if (!press || press.id !== e.pointerId) return;
       if (press.wait) { if (!grid.querySelector('.mp-ghost')) e.stopPropagation(); else press = null; return; }   // until the app has lifted the tile
       if (Math.hypot(e.clientX - press.x, e.clientY - press.y) < 10) return;
-      if (!peek) { clearTimeout(press.t); press = null; return; }   // moved before the hold: a swipe, as now
+      if (!peek) { clearTimeout(press.t); unsq(press.sq); press = null; return; }   // moved before the hold: a swipe, as now
       if (press.card.dataset.at == null) return;   // All items: nothing to move
       // My page, held then moved: the card goes, editing starts and the app's own drag takes the tile (a hold while editing = 150 ms)
       const { card, x, y, id } = press;
@@ -1028,6 +1035,7 @@
     const up = (e) => {
       if (e === own || !press || press.id !== e.pointerId) return;
       clearTimeout(press.t);
+      if (!peek && !press.wait) unsq(press.sq);
       if (peek && !press.wait) eatClick = Date.now() + 500;   // letting go of the hold is no tap on the tile
       press = null;
     };
@@ -1077,11 +1085,18 @@
       }
       document.body.append(peek);
       const d = peek.querySelector('.pk-desc'); if (d) peek.querySelector('.pk-more').hidden = d.scrollHeight <= d.clientHeight;   // short: no More
-      // the tile grows into the card: it starts on the tile and settles in the middle
-      const c = peek.querySelector('.pk-card'), cr = c.getBoundingClientRect();
-      c.style.transform = `translate(${r.left + r.width / 2 - (cr.left + cr.width / 2)}px, ${r.top + r.height / 2 - (cr.top + cr.height / 2)}px) scale(${Math.min(r.width / cr.width, r.height / cr.height)})`;
-      peek.tile = card; card.style.visibility = 'hidden';
-      void c.offsetWidth; peek.classList.add('pk-on');
+      const c = peek.querySelector('.pk-card'), cr = c.getBoundingClientRect(), v = peek.v = V();
+      const dx = r.left + r.width / 2 - (cr.left + cr.width / 2), dy = r.top + r.height / 2 - (cr.top + cr.height / 2);
+      peek.tile = card; peek.sq = press.sq;
+      if (v === 'a') {   // A: the tile grows into the card: it starts on the tile and settles in the middle
+        c.style.transform = `translate(${dx}px, ${dy}px) scale(${Math.min(r.width / cr.width, r.height / cr.height)})`;
+        card.style.visibility = 'hidden';
+        void c.offsetWidth; peek.classList.add('pk-on');
+      } else {
+        peek.classList.add('pk-js');
+        peek.out = WAYS[v]({ c, tile: card, r, cr, dx, dy });
+        for (const el of peek.querySelectorAll('.pk-dim, .pk-btn')) play(el, { opacity: [0, 1] }, { duration: 250, easing: 'ease-out' });
+      }
       peek.addEventListener('click', (e) => {
         if (e.target.closest('[data-more]')) { peek.querySelector('.pk-desc').classList.remove('clip'); e.target.remove(); return; }
         const add = e.target.closest('[data-add]'), edit = e.target.closest('[data-edit]');
@@ -1093,10 +1108,47 @@
     }
     function close(now) {
       const el = peek; peek = null; if (!el) return;
-      el.tile.style.visibility = '';
-      if (now) return el.remove();
-      el.classList.remove('pk-on'); setTimeout(() => el.remove(), 250);
+      const done = (now) => { if (!el.isConnected) return; if (peek?.tile !== el.tile) el.tile.style.visibility = '';   /* held again already: the new peek keeps it hidden */ now === true ? el.sq?.cancel() : unsq(el.sq); el.remove(); };   // a pressed tile settles back
+      if (now) return done(true);
+      if (el.v === 'a') { el.tile.style.visibility = ''; el.classList.remove('pk-on'); return setTimeout(() => el.remove(), 250); }
+      el.style.pointerEvents = 'none';   // closing: the screen is already live again
+      for (const d of el.querySelectorAll('.pk-dim, .pk-btn')) play(d, { opacity: [1, 0] }, { duration: 220, easing: 'ease-in' });
+      el.out().then(done, done); setTimeout(done, 700);   // a stalled animation (a hidden tab) never leaves the tile hidden
     }
+
+    // Apple's spring(duration, bounce) - SwiftUI's own maths - sampled into a CSS linear() easing
+    function spring(d, bounce) {
+      const z = 1 - bounce, w = 2 * Math.PI / d, wd = w * Math.sqrt(1 - z * z), T = d * 1.25, n = 60, pts = [];
+      for (let i = 0; i <= n; i++) {
+        const t = T * i / n, e = Math.exp(-z * w * t);
+        pts.push(i === n ? 1 : +(bounce ? 1 - e * (Math.cos(wd * t) + z * w / wd * Math.sin(wd * t)) : 1 - e * (1 + w * t)).toFixed(4));
+      }
+      return { duration: T * 1000, easing: `linear(${pts.join(', ')})` };
+    }
+    function play(el, kf, o) { return el.animate(kf, { fill: 'both', ...o }); }
+    // B-D: the tile itself turns into the card. The card starts as the tile's exact box - scaled down till one side fits the tile,
+    // the other side cut to it, the tile's corners - and opens out to full size in the middle, its top (the name) first.
+    // The tile's own look sits on it and fades as it grows. Closing runs it back into the tile.
+    function morph({ c, tile, r, cr }, go) {
+      const s = Math.max(r.width / cr.width, r.height / cr.height), R = getComputedStyle(c.firstElementChild).borderTopLeftRadius;
+      const kf = [{ transform: `translate(${r.left - cr.left}px, ${r.top - cr.top}px) scale(${s})`, clipPath: `inset(0 ${cr.width - r.width / s}px ${cr.height - r.height / s}px 0 round ${parseFloat(getComputedStyle(tile).borderTopLeftRadius) / s}px)` },
+                  { transform: 'none', clipPath: `inset(0 0 0 0 round ${R})` }];
+      const ghost = document.createElement('div');   // the tile's look, in the grid's own tile rules, sized to the tile then blown up to the card's scale
+      ghost.className = `${grid.className} pk-ghost`; Object.assign(ghost.dataset, grid.dataset);
+      Object.assign(ghost.style, { width: r.width + 'px', height: r.height + 'px', scale: 1 / s });
+      ghost.append(tile.cloneNode(true)); c.append(ghost); c.style.transformOrigin = '0 0'; tile.style.visibility = 'hidden';
+      const words = [...c.querySelectorAll('.vs-head, .vs-list')], d = go.duration;
+      play(c, kf, { ...go, fill: 'backwards' });   // backwards: once in, the card is plain again (no clip left on it)
+      play(ghost, { opacity: [1, 0] }, { duration: d * .35, delay: d * .05, easing: 'ease-out' });
+      for (const w of words) play(w, { opacity: [0, 1] }, { duration: d * .4, delay: d * .1, easing: 'ease-out', fill: 'backwards' });
+      return () => {
+        const back = { duration: 280, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' };
+        for (const w of words) play(w, { opacity: [1, 0] }, { duration: 120, easing: 'ease-in' });
+        play(ghost, { opacity: [0, 1] }, { ...back, duration: 160, delay: 90, easing: 'ease-in' });
+        return play(c, [...kf].reverse(), back).finished;
+      };
+    }
+    const WAYS = { b: o => morph(o, spring(.3, .12)), c: o => morph(o, spring(.32, .2)), d: o => morph(o, spring(.22, 0)) };
   });
   </script>
 </body>

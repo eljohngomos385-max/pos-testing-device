@@ -38,10 +38,12 @@ function priceFromMargin(cost, mode, value) {
   return unc(c + cent(value));
 }
 
-// The inverse: the user typed a price, so the margin has to follow.
-function marginFromPrice(cost, price, mode) {
+// The inverse: the user typed a price, so the margin has to follow. A percent is shown to 2 places;
+// exact keeps the rest, for whatever moves the cost under it: a rounded 30.61% put 320 back as
+// 319.99 when the cost went 245 -> 246 -> 245.
+function marginFromPrice(cost, price, mode, exact) {
   const c = cent(cost), p = cent(price);
-  if (mode === 'percent') return c ? round2(((p - c) / c) * 100) : 0;
+  if (mode === 'percent') return c ? (exact ? ((p - c) / c) * 100 : round2(((p - c) / c) * 100)) : 0;
   return unc(p - c);
 }
 
@@ -1359,6 +1361,11 @@ if (typeof module !== 'undefined' && require.main === module) {
   for (const [cost, pct] of [[100, 25], [80, 12.5], [19.2, 25], [1000, 33]]) {
     const price = priceFromMargin(cost, 'percent', pct);
     assert.equal(marginFromPrice(cost, price, 'percent'), pct, `${cost} @ ${pct}%`);
+  }
+  // A cost moved and put back gives back the same price, through the exact markup (2026-10-22)
+  for (let c = 1; c < 3000; c += 7) for (const p of [c * 1.3, c + 0.01, 320, 1450, 99.99]) {
+    const price = round2(p);
+    assert.equal(priceFromMargin(c, 'percent', marginFromPrice(c, price, 'percent', true)), price, `${c} -> ${price}`);
   }
   assert.equal(priceFromMargin(0, 'percent', 25), 0);        // free stays free
   assert.equal(marginFromPrice(0, 50, 'percent'), 0);        // no divide by zero

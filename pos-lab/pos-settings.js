@@ -255,7 +255,7 @@ function bindPayTypes() {
   $('#ptRef').addEventListener('change', (e) => { const { ref } = payTypes(); savePayTypes({ ref: e.target.checked ? [...ref, ptOpen] : ref.filter(r => r !== ptOpen) }); });
   $('#posPayTypesRow')?.addEventListener('click', () => openPayTypes(true));
   $('#payTypesBack')?.addEventListener('click', () => openPayTypes(false));
-  $('#payTypeAddBack').addEventListener('click', () => openPayTypes(true));
+  $('#payTypeAddBack').addEventListener('click', () => askLeave($('#ptName').value.trim(), () => openPayTypes(true)));   // a typed name asks first (owner 2026-10-22)
   $('#payTypeAddSave').addEventListener('click', savePayTypeAdd);
   $('#payTypeAddForm').addEventListener('submit', (e) => { e.preventDefault(); savePayTypeAdd(); });   // Return on the keyboard
   const list = $('#payTypesList');
@@ -319,7 +319,7 @@ function saveFulTypeAdd() {
 function bindFulTypes() {
   $('#posFulTypesRow').addEventListener('click', () => openFulTypes(true));
   $('#fulTypesBack').addEventListener('click', () => openFulTypes(false));
-  $('#fulTypeAddBack').addEventListener('click', () => openFulTypes(true));
+  $('#fulTypeAddBack').addEventListener('click', () => askLeave($('#ftName').value.trim(), () => openFulTypes(true)));   // as Payment types'
   $('#fulTypeAddSave').addEventListener('click', saveFulTypeAdd);
   $('#fulTypeAddForm').addEventListener('submit', (e) => { e.preventDefault(); saveFulTypeAdd(); });   // Return on the keyboard
   $('#fulPrimary').addEventListener('change', (e) => { state.settings.defaultFulfilment = e.target.value; saveSettings(); renderFulTypes(); });

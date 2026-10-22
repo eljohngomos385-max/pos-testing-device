@@ -755,14 +755,16 @@ function openCartForm(title, field, ok, onSubmit) {
   f.style.width = Math.min(340, innerWidth - 24) + 'px';
   document.body.append(veil);
   const shrink = centreSheet(f);
-  const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+  // Cancel, the veil and Esc ask first when the field changed (askLeave, owner 2026-10-22); its ask's own Esc wins.
+  const onKey = (e) => { if (e.key === 'Escape' && !confirmSheet) { e.stopPropagation(); leave(); } };
   const close = () => {
     document.removeEventListener('keydown', onKey, true);
     veil.style.pointerEvents = 'none';
     shrink(() => veil.remove());
   };
   document.addEventListener('keydown', onKey, true);
-  veil.addEventListener('click', (e) => { if (e.target === veil || e.target.closest('[data-cancel]')) close(); });
+  const leave = leaveForm(f, close);   // after close: leaveForm reads it now
+  veil.addEventListener('click', (e) => { if (e.target === veil || e.target.closest('[data-cancel]')) leave(); });
   f.addEventListener('submit', (e) => {
     e.preventDefault();
     if (veil.style.pointerEvents) return;   // closing already: a second Enter must not save twice

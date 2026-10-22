@@ -577,7 +577,9 @@ function attachEvents() {
   wireFind('#itemFind', '#itemFindQ', '#itemFindX', filterPicks);
   itemForm?.addEventListener('scroll', () => itemForm.previousElementSibling.classList.toggle('tuck', itemForm.scrollTop > 24), { passive: true });   // Apple's: search tucks, the title shows
   // back from a subpage first (pos-items itemGo), then out of the editor
-  $('#itemBack')?.addEventListener('click', () => (itemEdit && itemSub ? itemGo(itemSub.startsWith('made:') && itemEdit.variants.length > 1 ? itemSub.slice(5) : '') : closeItemEditor()));   // a variant's Made from goes back to the variant
+  $('#itemBack')?.addEventListener('click', () => (kindEdit?.sub ? itemGo('') : itemEdit && itemSub ? itemGo(itemSub.startsWith('made:') && itemEdit.variants.length > 1 ? itemSub.slice(5) : '')
+    : askLeave(editorDirty(), closeItemEditor)));   // a variant's Made from goes back to the variant; out of the editor with changes asks first
+  itemForm?.addEventListener('click', (e) => { const b = e.target.closest('[data-look]'); if (b) lookClick(b); });   // Tile appearance, both editors
   // the category / modifier editor's fields (pos-items kindInput); the item editor's below
   itemForm?.addEventListener('click', (e) => { const b = kindEdit && e.target.closest('[data-ka]'); if (b) kindClick(b); });
   itemForm?.addEventListener('input', (e) => {
@@ -603,7 +605,7 @@ function attachEvents() {
   });
   itemForm?.addEventListener('change', (e) => {
     const t = e.target, E = itemEdit, k = t.dataset.tick;
-    if (t.id === 'kindImg' && t.files[0]) return shrinkPhoto(t.files[0]).then(img => { kindEdit.img = img; renderKindForm(); }, () => showToast('That file isn’t a photo'));
+    if (t.id === 'lookImg' && t.files[0]) return lookPhoto(t.files[0]);
     if (kindEdit || !E) return;
     if (t.dataset.f === 'sellOut') E.sellOut = t.checked;
     if (t.dataset.f === 'track') { E.track = t.checked; renderItemForm(); }   // Low stock and Sell when out come and go with it
@@ -613,7 +615,6 @@ function attachEvents() {
       E[k] = t.checked ? [...E[k], t.value] : E[k].filter(x => x !== t.value);
       if (k === 'sups' && !E.sups.includes(E.main)) { E.main = ''; itemForm.querySelector('[data-act=main] span').textContent = 'None'; }
     }
-    if (t.id === 'itemImg' && t.files[0]) shrinkPhoto(t.files[0]).then(img => setItemLook({ img }), () => showToast('That file isn’t a photo'));
   });
   itemForm?.addEventListener('click', (e) => {
     const E = itemEdit, b = !kindEdit && e.target.closest('button');
@@ -626,9 +627,7 @@ function attachEvents() {
       E.marginValue = itemMarkupOf(E.variants[0], E.marginMode);   // Markup is back when one is left
       itemGo('');
     }
-    else if (act === 'img-clear') setItemLook({ img: '' });
-    else if (act === 'tile-color') setItemLook({ color: b.dataset.c });
-    else if (act === 'stock') { if (itemIsNew) showToast('Save the item first'); else qsAdjust(E.id); }   // Quick stock (pos-stock.js)
+    else if (act === 'stock') { if (itemIsNew) showToast('Save the item first'); else askLeave(editorDirty(), () => qsAdjust(E.id)); }   // Quick stock (pos-stock.js)
     else if (act === 'archive') notYet('Archiving')();   // ponytail: as Save, design only until the back office owns catalog writes
     else if (act) itemPick(b);   // status, markup kind, sold per, main supplier
   });
@@ -794,14 +793,16 @@ function attachEvents() {
   $('#shiftSheet').addEventListener('click', shiftSheetClick);
   document.addEventListener('keydown', shiftKey);
   $('#custSaveBtn')?.addEventListener('click', () => saveSavedCustomerFromModal());
-  $('#customerEditModal [data-cust-close]').addEventListener('click', closeCustomerEditModal);
+  $('#customerEditModal [data-cust-close]').addEventListener('click', () => leaveCustomerEdit());   // asks when changed
   // "Open Ana" on the duplicate-phone note: mid-sale she goes on the receipt, else her page opens.
   $('#custFields')?.addEventListener('click', (e) => {
     if (e.target.closest('[data-cust-del]')) return deleteCustomer();
     const id = e.target.closest('[data-open-cust]')?.dataset.openCust;
     if (!id) return;
-    closeCustomerEditModal();
-    if (state.customerEditFromSale) { state.customerEditFromSale = false; selectCustomer(id); } else { state.selectedCustomerId = id; switchView('customers'); }
+    leaveCustomerEdit(() => {
+      closeCustomerEditModal();
+      if (state.customerEditFromSale) { state.customerEditFromSale = false; selectCustomer(id); } else { state.selectedCustomerId = id; switchView('customers'); }
+    });
   });
 
   // Total opens its breakdown (Subtotal, Discount, VAT) above it
@@ -871,18 +872,21 @@ function attachEvents() {
   const closeModals = () => $$('.modal-backdrop').forEach(m => { if (!(m.id === 'pinModal' && pinAsk?.signIn)) m.hidden = true; });
   $$('[data-close-modal]').forEach(b => {
     b.addEventListener('click', () => {
-      closeModals();
+      askLeave(lostSaleChanged(), closeModals);   // only Lost sale asks (owner 2026-10-22); it is shut for the rest
     });
   });
   $$('.modal-backdrop').forEach(bd => {
     bd.addEventListener('click', (e) => {
       if (e.target !== bd || (bd.id === 'pinModal' && pinAsk?.signIn)) return;
-      bd.hidden = true;
+      askLeave(bd.id === 'lostSaleModal' && lostSaleChanged(), () => { bd.hidden = true; });
     });
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (!$('#pinModal').hidden) { if (!pinAsk?.signIn) $('#pinModal').hidden = true; return; }
+      // a form with changes only asks; the rest stays until Leave (owner 2026-10-22)
+      if (customerEditChanged()) return leaveCustomerEdit();
+      if (lostSaleChanged()) return askLeave(true, closeModals);
       const map = !$('#deliveryMapModal').hidden;   // Esc over the map closes the map, the sheet stays
       const list = $('#variantSheet').classList.contains('open');   // Esc over the customer list closes the list, the cart page stays
       const cust = $('#customerEditModal').classList.contains('open');   // and over New customer, the same

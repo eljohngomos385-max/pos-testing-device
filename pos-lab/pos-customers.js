@@ -116,8 +116,10 @@ function openPaySheet(btn, c) {
   };
   // Keys go through the document while the sheet is open: Tab wraps inside it (focus can't reach the page under
   // the veil) and Esc closes it wherever focus sits.
+  // Cancel, the veil and Esc ask first when anything changed (askLeave, owner 2026-10-22); while it asks, its own keys win.
   const onKey = (e) => {
-    if (e.key === 'Escape') { e.stopPropagation(); return close(); }
+    if (confirmSheet) return;
+    if (e.key === 'Escape') { e.stopPropagation(); return leave(); }
     if (e.key !== 'Tab') return;
     const els = [...f.elements].filter(x => x.tagName !== 'FIELDSET' && !x.disabled), i = els.indexOf(document.activeElement);
     if (i < 0 || i === (e.shiftKey ? 0 : els.length - 1)) { e.preventDefault(); els[e.shiftKey ? els.length - 1 : 0].focus(); }
@@ -129,6 +131,7 @@ function openPaySheet(btn, c) {
     shrink(() => veil.remove());
     btn.focus({ preventScroll: true });
   };
+  const leave = leaveForm(f, close);   // after close: leaveForm reads it now
   sync();
   f.amount.focus({ preventScroll: true });
   f.addEventListener('input', sync);
@@ -139,7 +142,7 @@ function openPaySheet(btn, c) {
     sync();
   });
   veil.addEventListener('click', (e) => {
-    if (e.target === veil || e.target.closest('[data-cancel]')) return close();
+    if (e.target === veil || e.target.closest('[data-cancel]')) return leave();
     if (e.target.closest('[data-full]')) {
       f.querySelectorAll('[name="order"]').forEach(b => { b.checked = false; });
       f.amount.value = moneyValue(Math.max(0, c.currentBalance || 0)).toFixed(2);
@@ -263,14 +266,14 @@ function renderReports(slide) {
   // The five best (the full lists are the back office's job); a renamed item: its name now
   const tops = SalesMath.topItems(state.orders, { ...win, costOf }).slice(0, 5).map(r => {
     const it = productOf({ id: r.key }), name = it?.name || r.name || '', look = it ? itemLook(it) : {};
-    return li(itemThumb({ name, img: look.img, hue: look.hue ?? itemHue(it?.folder) }), name, `${SalesMath.qtyText(r.unitsSold)} sold`, r.netSales);
+    return li(itemThumb({ name, img: look.img, hue: look.hue }), name, `${SalesMath.qtyText(r.unitsSold)} sold`, r.netSales);
   }).join('');
   // categories as the back office ranks them (Top categories): by Net sales, each its share of the period's
   // ponytail: kept when the category sold a unit net; the BO's when one of its items did -- they differ only when returns
   // outnumber sales in a category; add per-item keys if that ever shows
   const cats = [...g].filter(([k, x]) => String(k).startsWith('g:') && x.unitsSold > 0).sort((x, y) => y[1].netSales - x[1].netSales).slice(0, 5).map(([k, x]) => {
     const id = k.slice(2), name = folderName(id);
-    return li(itemThumb({ name, hue: itemHue(id) }), name, `${SalesMath.pctText(SalesMath.share(x.netSales, m.netSales), m.netSales, 0)} of sales`, x.netSales);
+    return li(itemThumb({ name, hue: TILE_COLORS[state.folders.find(f => f.id === id)?.color] }), name, `${SalesMath.pctText(SalesMath.share(x.netSales, m.netSales), m.netSales, 0)} of sales`, x.netSales);
   }).join('');
   // By method, biggest first: four rows at most -- past four, the top three and the rest as Other (the full split is the BO's)
   let pays = [...SalesMath.tenders(state.orders, win)].map(([k, v]) => ({ k, v })).sort((x, y) => y.v - x.v);
