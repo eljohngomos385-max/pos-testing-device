@@ -1,5 +1,7 @@
 # Comfa Hardware — Lapu-Lapu City, Cebu
 
+Official page of Comfa Hardware, kept up to date by the owner, Maria Corazon Gom-os.
+
 Hardware store: plumbing, electrical, fasteners, tools and building supplies.
 
 - **Owner:** Maria Corazon Gom-os
