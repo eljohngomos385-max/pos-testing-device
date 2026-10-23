@@ -9,7 +9,11 @@ const SETTING_PICKS = {
     now: () => (state.tileSize === 'wide' && innerWidth > 720 ? 'md' : state.tileSize) || 'md', set: setTileSize },
   tileText: { opts: [['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large'], ['xl', 'Extra large']], now: () => state.tileText || 'md', set: setTileText },
   tileShow: { opts: [['both', 'Price and stock'], ['price', 'Price'], ['stock', 'Stock'], ['name', 'Name only']], now: tileShowNow, set: setTileShow },
-  tilePics: { opts: [['off', 'Off'], ['top', 'Photo top'], ['fill', 'Photo fills']], now: () => state.tilePics, set: setTilePics },
+  sellLayout: { opts: [['grid', 'Grid'], ['list', 'List']], now: () => (state.sellLayout === 'grid' ? 'grid' : 'list'),
+    set: v => setSellLayout(v === 'grid' ? 'grid' : state.sellLayout === 'grid' ? 'list' : state.sellLayout) },   // List keeps Separate rows as it was
+  // List: the rows' pictures are on or off (Photo fills is a tile's); On keeps a tile's Photo fills
+  tilePics: { get opts() { return state.sellLayout === 'grid' ? [['off', 'Off'], ['top', 'Photo top'], ['fill', 'Photo fills']] : [['off', 'Off'], ['top', 'On']]; },
+    now: () => (state.sellLayout !== 'grid' && state.tilePics === 'fill' ? 'top' : state.tilePics), set: v => setTilePics(v === 'top' && state.tilePics === 'fill' ? 'fill' : v) },
   cartPics: { opts: [['off', 'Off'], ['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large']], now: () => state.cartPics, set: setCartPics },
   theme: { opts: [['dark', 'Dark'], ['light', 'Light'], ['system', 'System']], now: () => state.theme || 'dark', set: applyTheme },
   driver: { opts: [['browser', 'Browser'], ['network', 'Wi-Fi'], ['bluetooth', 'Bluetooth']], now: () => printerConfig().driver || 'browser', set: v => savePrinting({ driver: v }) },
@@ -82,6 +86,8 @@ function renderPosSettings(printer = true) {
     b.setAttribute('aria-label', b.querySelector('.lb').textContent + ', ' + val);   // "Tile size, Medium", not just "Medium"
   });
   renderPick();
+  $('#sellRowsRow').hidden = state.sellLayout === 'grid';   // Separate rows: List only
+  $('#sellRows').checked = state.sellLayout === 'rows';
   const p = printerConfig();
   const saleRow = $('#posPrintOnSaleRow');   // the browser's own dialog can't print by itself (checkout's printOnSale gate)
   if (saleRow) saleRow.hidden = p.driver !== 'network' && p.driver !== 'bluetooth';

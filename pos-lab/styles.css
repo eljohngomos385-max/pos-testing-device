@@ -52,6 +52,7 @@
   --r-card: 4px;
   --r-card-lg: 6px;
   --r-modal: 6px;
+  --row-h: 50px; --row-pic: 38px; --row-x: 16px;   /* the item row, one size: Sell list, Items (phone), cart, checkout (owner 2026-10-23); --row-x its sides, 12 on a phone as every list's */
   --r-pic: 5px;   /* every picture square but the Sell tiles: cart, item + category lists, not the editor's photo (Apple Music, owner 2026-10-22) */
 
   --shadow-card: none;
@@ -3785,11 +3786,11 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-head { display: flex; justify-content: space-between; gap: 12px; padding: 11px var(--co-m); background: var(--surface); border-bottom: 1px solid var(--line);
            color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
 .co-rows { overflow-y: auto; overscroll-behavior: contain; }
-.co-row { display: flex; align-items: center; gap: 12px; min-height: 45px; padding: 7px var(--co-m); }
+.co-row { display: flex; align-items: center; gap: 12px; min-height: var(--row-h); padding: 5px var(--row-x); }   /* the list's row (--row-h) */
 .co-row + .co-row { border-top: 1px solid var(--line); }
 .co-nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
-.co-nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
-.co-amt { font-size: 13px; font-weight: 550; white-space: nowrap; }
+.co-nm small { display: block; margin-top: 1px; color: var(--ink-tertiary); font-size: 12px; }
+.co-amt { font-size: 13px; font-weight: 510; white-space: nowrap; }
 .co-sum { padding: 14px var(--co-m) 16px; border-top: 1px solid var(--line); }
 .co-disc, .co-total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .co-disc { margin-bottom: 6px; color: var(--ink-secondary); font-size: 13px; }
@@ -4846,11 +4847,11 @@ body.light-theme .product-card.pc-tc, body.light-theme .product-card.pc-tc:hover
 .product-grid[data-pics="fill"] .pc-img::after { content: ''; position: absolute; inset: 40% 0 0; background: linear-gradient(transparent, rgb(0 0 0 / .72)); }
 .product-grid[data-pics="fill"] .pc-pic .pc-name { position: relative; color: #fff; }   /* on the shade in either theme */
 /* Settings › Cart pictures (linePic): a small square before the name */
-:is(.rail-h .row, .co-row) .pic { flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: var(--r-pic); background: var(--rl-soft, var(--surface)); }
+:is(.rail-h .row, .co-row) .pic { flex: none; width: var(--row-pic); height: var(--row-pic); overflow: hidden; border-radius: var(--r-pic); background: var(--rl-soft, var(--surface)); }
 :is(.rail-h .row, .co-row) .pic[style] { background: hsl(var(--tc) 45% 32%); }
 body.light-theme :is(.rail-h .row, .co-row) .pic[style] { background: hsl(var(--tc) 75% 86%); }
-:is(.rail-h .row, .co-row) .pic[data-s="md"] { width: 44px; height: 44px; }
-:is(.rail-h .row, .co-row) .pic[data-s="lg"] { width: 56px; height: 56px; }   /* Grab's order summary */
+:is(.rail-h .row, .co-row) .pic[data-s="md"] { width: 44px; height: 44px; font-size: 14px; }
+:is(.rail-h .row, .co-row) .pic[data-s="lg"] { width: 56px; height: 56px; font-size: 16px; }   /* Grab's order summary */
 :is(.rail-h .row, .co-row) .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 :is(.rail-h .row, .co-row) .pic:has(img) { background: none; }   /* a see-through PNG shows no box in the cart */
 
@@ -7205,7 +7206,7 @@ body.light-theme {
                 color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
 .rail-h .lines { grid-row: 2; overflow-y: auto; overscroll-behavior: contain; }   /* row 2 even with the band off, so it still scrolls */
 .rail-h .line + .line { border-top: 1px solid var(--line); }
-.rail-h .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 45px; padding: 7px var(--rl-m); border: 0; background: none; text-align: left; transition: background-color .12s; }
+.rail-h .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--row-h); padding: 5px var(--row-x); border: 0; background: none; text-align: left; transition: background-color .12s; }
 .rail-h .row:hover { background: var(--rl-hover); }
 /* a line swiped left (app.js, touch only): the row slides over the card and Delete waits under it, the editor's Remove item colours */
 .rail-h .line { position: relative; overflow: hidden; }
@@ -7219,10 +7220,10 @@ body.light-theme {
 .rail-h .line:is(.swiping, .open) .sw-del { visibility: visible; }
 .rail-h .row .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
 .rail-h .row .nm span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-.rail-h .row .nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
+.rail-h .row .nm small { display: block; margin-top: 1px; color: var(--ink-tertiary); font-size: 12px; }
 .rail-h .row .nm small .off { color: var(--rl-on); }   /* a line's discount reads at a glance: the app's discount blue */
 .rail-h .row .nm .note { overflow-wrap: anywhere; }   /* the line's note (its editor's Note) */
-.rail-h .row .amt { font-size: 13px; font-weight: 550; white-space: nowrap; }
+.rail-h .row .amt { font-size: 13px; font-weight: 510; white-space: nowrap; }
 .rail-h .empty { display: grid; place-content: center; justify-items: center; gap: 4px; height: 100%; padding: 24px; text-align: center; }
 .rail-h .empty b { font-size: 14px; font-weight: 550; }
 .rail-h .empty span { color: var(--ink-tertiary); }
@@ -7530,7 +7531,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .o-rail { order: -1; display: grid; grid-template-rows: auto minmax(0,1fr); gap: var(--rl-gap); min-width: 0; min-height: 0; margin: 8px 0; }
 .lv .o-rail .list { border-bottom: 1px solid var(--line); border-radius: var(--rl-r); }   /* ends 16px above the screen edge, closed like the lab at 673495f */
 .lv .o-rail .band { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 var(--rl-m); }
-.lv :is(.o-rail, .fc-rows) .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; padding: 9px var(--rl-m); background: none; text-align: left; transition: background-color .12s; }
+.lv :is(.o-rail, .fc-rows) .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 8px var(--rl-m); background: none; text-align: left; transition: background-color .12s; }
 /* a line under every row, the last too, so a short list ends instead of floating; the scroller tucks 1px under the card's floor
    so a full list scrolled to the end doesn't draw two lines */
 .lv :is(.o-rail, .fc-rows) .row { border-bottom: 1px solid var(--line); }
@@ -7540,9 +7541,9 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv :is(.o-rail, .fc-rows) .row .nm, .lv :is(.o-rail, .fc-rows) .row .rt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .lv :is(.o-rail, .fc-rows) .row .nm { flex: 1; }
 .lv :is(.o-rail, .fc-rows) .row .rt { flex: none; align-items: flex-end; }
-.lv :is(.o-rail, .fc-rows) .row .nm span { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv :is(.o-rail, .fc-rows) .row small { display: flex; align-items: center; gap: 6px; color: var(--ink-tertiary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lv :is(.o-rail, .fc-rows) .row .amt { font-size: 14px; font-weight: 510; white-space: nowrap; }
+.lv :is(.o-rail, .fc-rows) .row .nm span { font-size: 13px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv :is(.o-rail, .fc-rows) .row small { display: flex; align-items: center; gap: 6px; margin-top: 1px; color: var(--ink-tertiary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv :is(.o-rail, .fc-rows) .row .amt { font-size: 13px; font-weight: 510; white-space: nowrap; }
 .lv :is(.o-rail, .fc-rows) .row .nm .st { font-weight: 400; }   /* "#1-023 · Refunded": its colour is the state's (span.st[data-s]) */
 .lv :is(.o-rail, .fc-rows) .row.void .nm span, .lv :is(.o-rail, .fc-rows) .row.void .amt { color: var(--ink-tertiary); }
 .lv :is(.o-rail, .fc-rows) .row.void .nm .st { color: color-mix(in srgb, var(--danger) 65%, var(--ink-secondary)); }   /* the row greys out, its "Voided" / "Refunded" stays red */
@@ -7576,7 +7577,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .c-body .fr .lim.warn { color: var(--warn); }
 .lv .c-body .fr small { color: var(--ink-tertiary); font-size: inherit; }
 .lv .fc-rows { overflow: hidden; }
-.lv .fc-rows .row { border-bottom: 0; padding: 9px 16px; }
+.lv .fc-rows .row { border-bottom: 0; padding: 8px 16px; }
 .lv .fc-rows .row .rt { align-self: flex-start; }   /* the money on the title's line even with nothing under it (Cash in & out, Past shifts), as Orders */
 @container pv (max-width: 720px) { :is(.view-customers, .view-orders) .o-top .act span { display: none; } :is(.view-customers, .view-orders) .o-top .act { padding: 0; }
   .view-orders .o-top #orderRefund.primary span { display: inline; } .view-orders .o-top #orderRefund.primary { padding: 0 12px; } }   /* picking: Refund ₱X keeps its words, the amount is the check   /* phone: icons (each has a title), the name and the order's state keep the room */
@@ -8461,17 +8462,19 @@ span.st > i { font-style: normal; }
   :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page) :is(.band, .row) { padding-inline: 12px; }
   .view-items .band + div > .row:first-child { margin-top: 6px; border-top-left-radius: var(--rl-r); border-top-right-radius: var(--rl-r); }   /* capsule to list 14 (owner 2026-10-16) */
   .rail-h { --rl-m: 16px; }
+  :root { --row-x: 12px; }
 }
 /* phone Items rows (G2, owner 2026-10-16): stock · variants under the name, the price or a short range always right.
    Price and stock sit in the same place on every row. Quick stock keeps its own grid. */
 .lv .page .row:where(:not(.fc-rows > *)) :is(.sub, .rt) { display: none; }
 @container pv (max-width: 720px) {
-  body:not(.qs-on) .view-items .page .row.cols:not(.k2) { display: flex; align-items: center; min-height: 56px; padding-block: 8px; }
+  body:not(.qs-on) .view-items .page .row.cols:not(.k2) { display: flex; align-items: center; min-height: var(--row-h); padding-block: 5px; font-size: 13px; }   /* Sell's list row: 50 tall, 13 (owner 2026-10-23) */
   body:not(.qs-on) .view-items .page .row.cols:not(.k2) > :not(.nm), body:not(.qs-on) .view-items .page .row .v0 { display: none; }
   body:not(.qs-on) .view-items .page .row.cols:not(.k2) .nm { flex: 1; gap: 12px; }
-  body:not(.qs-on) .view-items .page .row.cols:not(.k2) .thumb { width: 40px; height: 40px; font-size: 14px; }
+  body:not(.qs-on) .view-items .page .row.cols:not(.k2) .thumb { width: var(--row-pic); height: var(--row-pic); font-size: 12px; }
+  body:not(.qs-on) .view-items .page .row.cols:not(.k2) .tx b { font-weight: 400; }
   body:not(.qs-on) .view-items .page .row.cols:not(.k2) .tx { flex: 1; gap: 2px; }
-  body:not(.qs-on) .view-items .page .row .sub { display: block; overflow: hidden; color: var(--ink-secondary); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+  body:not(.qs-on) .view-items .page .row .sub { display: block; overflow: hidden; margin-top: 1px; color: var(--ink-tertiary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
   body:not(.qs-on) .view-items .page .row .rt { display: block; flex: none; font-weight: 510; font-variant-numeric: tabular-nums; white-space: nowrap; }
 }
 
@@ -8764,3 +8767,47 @@ body.light-theme .vs-row .pic[style] { background: hsl(var(--tc) 75% 86%); }
 /* a confirm dims what's behind it, as the peek does (owner 2026-10-23: on iPad the card sat over live rows) */
 .rail-veil:has(> .cf-sheet) { background: rgb(0 0 0 / .42); animation: fadeIn .14s ease-out; }
 body.light-theme .rail-veil:has(> .cf-sheet) { background: rgb(0 0 0 / .3); }
+/* Categories: the 56 list row with Sell's 38 picture (owner 2026-10-23). Modifiers, Add-ons and Discounts stay as they are */
+.view-items .page .row.cols.k2:has(> .nm > .thumb) { min-height: 56px; padding-block: 8px; font-size: 13px; }
+.view-items .page .row.cols.k2:has(> .nm > .thumb) .thumb { width: 38px; height: 38px; font-size: 12px; }
+.view-items .page .row.cols.k2:has(> .nm > .thumb) .tx b { font-weight: 400; }
+
+/* ---------- Sell as a list (owner 2026-10-23, pos-list's "Thin list V3, amount 510"): Settings › View = List; pos-sell.js renderSellList.
+   The rows are the category sheet's .vs-row: 50 tall, picture 38, name 13/400, price 13/510, stock 12 grey. Tile text size scales the words ---------- */
+.product-grid.sl { --sl-fs: 13px; --sl-sub: 12px; overflow: hidden auto; overscroll-behavior: contain; scrollbar-width: none; padding: 1px 1px 16px; }   /* 1px: room for the card's ring */
+.product-grid.sl[data-text="sm"] { --sl-fs: 12px; --sl-sub: 11px; }
+.product-grid.sl[data-text="lg"] { --sl-fs: 15px; --sl-sub: 13px; }
+.product-grid.sl[data-text="xl"] { --sl-fs: 17px; --sl-sub: 15px; }
+.sl-card { overflow: hidden; border-radius: var(--rl-r); background: var(--rl-card); box-shadow: 0 0 0 1px var(--line); }
+body.light-theme .sl-card { box-shadow: 0 0 0 1px var(--line), var(--shadow-card); }
+.sl .vs-row { min-height: var(--row-h); padding-block: 5px; }
+.sl .vs-row + .vs-row { border-top-color: var(--rl-div); }
+.sl .vs-row :is(.nm, .amt) { font-size: var(--sl-fs); font-weight: 400; }
+.sl .vs-row .amt { font-weight: 510; }
+.sl .vs-row small { margin-top: 1px; font-size: var(--sl-sub); color: var(--ink-tertiary); }
+.sl .vs-row small .low { color: var(--warn); }
+:is(.sl .vs-row, .rail-h .row, .co-row) .pic { display: grid; place-items: center; width: var(--row-pic); height: var(--row-pic); color: var(--ink-secondary); font-size: 12px; font-weight: 500; }   /* no photo: its letters, the list's and the cart's alike */
+:is(.sl .vs-row, .rail-h .row, .co-row) .pic[style] { color: hsl(var(--tc) 45% 82%); }
+body.light-theme :is(.sl .vs-row, .rail-h .row, .co-row) .pic[style] { color: hsl(var(--tc) 40% 34%); }
+.product-grid.sl[data-pics="off"] .vs-row .pic { display: none; }   /* Tile pictures Off */
+/* Separate rows: each item its own card, a little apart, as the tiles */
+.product-grid[data-sl="rows"] .sl-card { display: grid; gap: 6px; overflow: visible; border-radius: 0; background: none; box-shadow: none; }
+.product-grid[data-sl="rows"] .vs-row { border: 0; border-radius: var(--rl-r); background: var(--rl-card); box-shadow: 0 0 0 1px var(--line); }
+body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px var(--line), var(--shadow-card); }
+/* phone: the list runs under the search bar and the cart pill, into a frost at each end, as the variants list does */
+@media (max-width: 720px) {
+  .catalog-wrap:has(.product-grid.sl), .catalog:has(> .product-grid.sl) { overflow: visible; padding-bottom: 0; }
+  .product-grid.sl { flex: 1 1 0; height: auto; min-height: 0; margin-bottom: calc(-1 * (var(--bar-h) + var(--ph-b))); padding-bottom: calc(var(--bar-h) + var(--ph-b) + 16px); }
+  .catalog-wrap:has(.product-grid.sl)::after { content: ''; position: absolute; z-index: 1; inset: auto 0 calc(-1 * (var(--bar-h) + var(--ph-b))); height: calc(var(--bar-h) + var(--ph-b) + 64px); pointer-events: none;
+    background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    -webkit-mask-image: linear-gradient(transparent, #000 88px); mask-image: linear-gradient(transparent, #000 88px); }
+  .catalog-wrap:has(.product-grid.sl) ~ #cartBar { position: relative; z-index: 2; }   /* over the frost (z 1), under the sheets and the phone cart page */
+  .product-grid.sl { margin-top: calc(-1 * (var(--bar-h) + 14px)); padding-top: calc(var(--bar-h) + 14px + 1px); }   /* 14: .catalog's phone gap */
+  .catalog:has(> .product-grid.sl) > .search-row { z-index: 2; }
+  .catalog:has(> .product-grid.sl) > .search-row::before { content: ''; position: absolute; z-index: -1; inset: -120px calc(-1 * var(--cat-x)) -28px; pointer-events: none;
+    background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    -webkit-mask-image: linear-gradient(#000 calc(100% - 28px), transparent); mask-image: linear-gradient(#000 calc(100% - 28px), transparent); }
+  .catalog-wrap:has(.product-grid.sl) ~ #cartBar:disabled { opacity: 1; background: var(--rl-card); color: var(--ink-tertiary); box-shadow: 0 0 0 1px var(--line), var(--shadow-card); }   /* No items: solid, not a faded Check out over the rows */
+}
+/* iPad: no pill under the list, so its bottom fades out */
+@media (min-width: 721px) { .product-grid.sl { -webkit-mask-image: linear-gradient(#000 calc(100% - 48px), transparent); mask-image: linear-gradient(#000 calc(100% - 48px), transparent); padding-bottom: 48px; } }

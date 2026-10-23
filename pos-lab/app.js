@@ -271,7 +271,7 @@ function attachEvents() {
   // in hand, and a hold on an empty spot = editing at once (owner 2026-10-22)
   let hold = null, lifted = false;
   productGrid.addEventListener('pointerdown', (e) => {
-    const card = e.target.closest('.product-card');
+    const card = e.target.closest('.product-card, .vs-row');   // .vs-row: All items as a list (pos-sell.js renderSellList)
     if (e.button > 0 || hold || peekOpen() || e.target.closest('[data-remove]')) return;   // one finger at a time: a second would lift a copy no finger drops
     if (myEditing ? !card?.matches('[data-at]') : card ? card.matches('.pc-add, .mp-ghost') : !productGrid.querySelector('[data-at]')) return;   // All items: an empty spot does nothing
     hold = { card, at: card ? +card.dataset.at : -1, x: e.clientX, y: e.clientY, id: e.pointerId, t: setTimeout(myEditing ? lift : card ? peekHold : wiggle, myEditing ? 150 : 380) };   // editing: a short still hold, so a flick still turns the page; 380 beats the old 400 ms lift
@@ -378,7 +378,7 @@ function attachEvents() {
       if (x) removeMyTile(+x.closest('[data-at]').dataset.at); else myEdit(false);
       return;
     }
-    const card = e.target.closest('.product-card');
+    const card = e.target.closest('.product-card, .vs-row');
     if (!card) return;
     if (card.hasAttribute('data-add')) return openAddTile(card);
     if (card.dataset.cat) return openCatSheet(card.dataset.cat);
@@ -1035,6 +1035,7 @@ function attachEvents() {
   });
   $('#posPrintOnSale')?.addEventListener('change', persistPosSettings);
   $('#posPrintCut')?.addEventListener('change', persistPosSettings);
+  $('#sellRows').addEventListener('change', (e) => setSellLayout(e.target.checked ? 'rows' : 'list'));
   $('#posPrintMap')?.addEventListener('change', persistPosSettings);
   $('#posPrinterIp')?.addEventListener('change', () => { persistPosSettings(); renderPrinterList(); refreshPrinterStatus(); });   // the list above shows the typed printer
   $('#posTimeZone')?.addEventListener('change', persistPosSettings);

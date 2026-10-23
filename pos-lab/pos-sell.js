@@ -234,7 +234,7 @@ function tileArt(row) {
 function linePic(item) {
   if (state.cartPics === 'off') return '';
   const p = productOf(item), { img, hue } = p ? itemLook(p) : {};
-  return `<span class="pic" data-s="${state.cartPics}"${hue == null || img ? '' : ` style="--tc:${hue}"`}>${img ? `<img src="${escapeHtml(img)}" alt="">` : ''}</span>`;
+  return `<span class="pic" data-s="${state.cartPics}"${hue == null || img ? '' : ` style="--tc:${hue}"`}>${img ? `<img src="${escapeHtml(img)}" alt="">` : itemInitials(p?.name || item.name)}</span>`;   // no photo: its letters, as the Sell list
 }
 
 function updateProductTrackPosition() {
@@ -259,6 +259,7 @@ function renderProducts() {
   grid.dataset.pics = state.tilePics;
   grid.style.setProperty('--grid-cols', profile.columns);
   grid.style.setProperty('--grid-rows', profile.rows);
+  if (!sellAsList()) { grid.classList.remove('sl'); delete grid.dataset.sl; delete grid.dataset.q; }
 
   if (cells.length === 0) {
     grid.innerHTML = `
@@ -275,6 +276,7 @@ function renderProducts() {
     return;
   }
 
+  if (sellAsList()) { renderSellList(grid, cells); return; }
   clampPage(cells);
   const pages = sellPages(cells, sellPageSize(profile));
   grid.classList.toggle('mp-edit', myEditing && cells.at(-1).kind === 'add');
@@ -291,6 +293,35 @@ function renderProducts() {
     syncSellGridMetrics();
     updateProductTrackPosition();
   });
+}
+
+// ---------- Sell as a list (owner 2026-10-23, pos-list's "Thin list V3, amount 510"): All items - and any search - as rows, A to Z;
+// My page stays tiles. Settings › View: grid | list | rows (each item its own card). The row is the category sheet's (.vs-row);
+// a tap adds, a hold peeks, as a tile. Tile pictures and Tile text size work on it too ----------
+const sellAsList = () => state.sellLayout !== 'grid' && !(state.sellPage === 'mine' && !state.query.trim());
+function setSellLayout(v) {
+  if (state.sellLayout === 'grid' && v !== 'grid' && state.tilePics === 'off') { state.tilePics = 'top'; HWPOS_STORE.ui.set('tilePics', 'top'); }   // List on turns the pictures on; they can go off again
+  state.sellLayout = v; HWPOS_STORE.ui.set('sellLayout', v); renderProducts();
+}
+function sellListRow(c) {
+  const g = c.kind === 'group' ? c.group : null, r = g || c.product, ps = g ? groupMembers(g.id) : [r], { img, hue } = itemLook(r);
+  const counted = ps.filter(m => m.trackStock !== false), lv = counted.length ? familyLevel(counted) : '';
+  const n = counted.reduce((s, m) => s + Math.max(0, toNumber(m.stock, 0)), 0), u = counted.every(m => (m.unit || 'pc') === (counted[0].unit || 'pc')) ? ' ' + escapeHtml(counted[0]?.unit || 'pc') : '';   // mixed units: no unit
+  const stk = !counted.length ? '' : lv === 'out' ? '<b>Out of stock</b>' : `<span class="${lv}">${SalesMath.qtyText(n)}${u} in stock</span>`;
+  const sub = [stk, g ? `${c.memberCount} variants` : ''].filter(Boolean).join(' · ');
+  return `<button type="button" class="vs-row" ${g ? `data-group-id="${g.id}"` : `data-id="${r.id}"`}><span class="pic"${hue == null || img ? '' : ` style="--tc:${hue}"`}>${img ? `<img src="${escapeHtml(img)}" alt="" draggable="false">` : itemInitials(r.name)}</span>
+    <span class="nm">${escapeHtml(r.name)}${sub ? `<small>${sub}</small>` : ''}</span><span class="amt num">${priceRange(ps)}</span></button>`;
+}
+let slHtml = '', slCard = null;   // the list last drawn
+function renderSellList(grid, cells) {
+  const name = c => (c.group || c.product).name;
+  if (!state.query.trim()) cells = [...cells].sort((a, b) => name(a).localeCompare(name(b)));   // a search keeps its best-match order
+  const html = `<div class="sl-card">${cells.map(sellListRow).join('')}</div>`;   // one A-Z list, never by category (owner 2026-10-22)
+  const shown = grid.firstElementChild === slCard, keep = shown && grid.dataset.q === state.query ? grid.scrollTop : 0;   // a redraw (a sale, stock) keeps the place; a new search starts at the top
+  grid.classList.add('sl'); grid.dataset.sl = state.sellLayout; grid.dataset.q = state.query;
+  if (!shown || slHtml !== html) { slHtml = html; grid.innerHTML = html; slCard = grid.firstElementChild; grid.scrollTop = keep; }   // a refit with nothing new: no rebuild, a flick keeps going
+  renderSellHeader();
+  requestAnimationFrame(syncSellGridMetrics);
 }
 
 function syncSellGridMetrics() {
@@ -560,6 +591,7 @@ function renderVariantList() {
 }
 
 function changePage(delta) {
+  if (sellAsList()) return;   // the list scrolls, it has no pages
   const t = totalPages();
   const prev = state.page;
   state.page = Math.min(t, Math.max(1, state.page + delta));
