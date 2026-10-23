@@ -71,9 +71,10 @@
     const money = (vm.payments || []).map((p, i) => [p, i]).filter(([p]) => !(swap.length && p.ref));
     if (vm.paidWord === 'Given back') return swap.concat(money.map(([p, i]) => ['GIVEN BACK · ' + name(p, i), Number(p.amount) || 0]));
     // a sale's reference no. (Settings > Payment types) under its tender, as text; an exchange's or refund's ref is a marker, never printed
-    const ref = p => (!swap.length && p.ref ? [['REF NO.', String(p.ref)]] : []);
+    // printed as the word it was asked as (refLabel: LAST 4 DIGITS); a cash ref comes after its change
+    const ref = p => (!swap.length && p.ref ? [[String(p.refLabel || 'Ref no.').toUpperCase(), String(p.ref)]] : []);
     return swap.concat(money.flatMap(([p, i]) => (p.method === 'cash'
-      ? [['CASH', SM().tenderedOf(p)], ...(p.change > 0 ? [['CHANGE', p.change]] : [])]
+      ? [['CASH', SM().tenderedOf(p)], ...(p.change > 0 ? [['CHANGE', p.change]] : []), ...ref(p)]
       : [[name(p, i), Number(p.amount) || 0], ...ref(p)])));
   }
 
@@ -375,6 +376,7 @@
           break;
         case 'feed': push([0x1B, 0x64, o.v & 0xFF]); break;
         case 'cut': push([0x1D, 0x56, 0x42, 0x00]); break;
+        case 'raw': push(o.bytes); break;   // a device command as is: drawer.js's kick
         case 'image': {
           const { w, h, bits } = o.v;
           const rowBytes = Math.ceil(w / 8);
@@ -407,6 +409,7 @@
         case 'text': body += '<text>' + xmlEsc(o.v) + '&#10;</text>'; break;
         case 'feed': body += '<feed line="' + o.v + '"/>'; break;
         case 'cut': body += '<cut type="feed"/>'; break;
+        case 'raw': body += o.xml; break;
         case 'image':
           body += '<image width="' + o.v.w + '" height="' + o.v.h + '" color="color_1" mode="mono">'
             + b64(o.v.bits) + '</image>';
@@ -608,7 +611,7 @@
       .join('\n');
   }
 
-  const API = { print, preview, printSlip, slipText, slipLayout, pairBluetooth, scanNetwork, probe, layout, escpos, eposXml, eposUrl, mapRaster, packMono, levels, stretch, colsFor, pad, wrap, money, ascii, payRows, totalRows };
+  const API = { print, send, preview, printSlip, slipText, slipLayout, pairBluetooth, scanNetwork, probe, layout, escpos, eposXml, eposUrl, mapRaster, packMono, levels, stretch, colsFor, pad, wrap, money, ascii, payRows, totalRows };
   g.HWPOS_PRINTER = API;
   if (typeof module === 'object' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -128,121 +128,147 @@ function renderPosSettings(printer = true) {
 
 // Settings › Payment types (owner 2026-10-13): its own page. Each type's switch says if the checkout shows it, and the store
 // adds its own names. The same { hidden, custom } as Back office › Payments; one of your own switched off goes in hidden too.
-// ponytail: no manager PIN to change these, and no rename (delete and add again); add both if a store asks.
+// ponytail: no manager PIN to change these; add one if a store asks. Your own types rename on their page.
 // Caps for both pages: TYPES_ON_MAX / OWN_TYPES_MAX (bo-model.js). Past 7 the sale's list scrolls on a phone, tolerated.
 const tooMany = () => showToast(`${TYPES_ON_MAX} can be on at once. Turn one off first`);
-// Delete (owner 2026-10-16, Quick stock's way): the trash top right lets you tick your own types, the bar at the bottom
-// deletes them after one confirm, and Back turns into × to leave ticking. Built-ins and the primary fulfilment type can't be ticked;
-// with none to tick there's no trash.
-const TRASH_IC = '<svg class="ic" viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>';
-const BACK_IC = '<svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>';
-const CLOSE_IC = '<svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-const TYPE_KINDS = {
-  pt: { get: () => payTypes(), save: (p) => savePayTypes(p), render: () => renderPayTypes(), page: 'payTypesPage', word: 'payment type' },
-  ft: { get: () => fulTypes(), save: (p) => saveFulTypes(p), render: () => renderFulTypes(), page: 'fulTypesPage', word: 'fulfilment type' },
-};
-const tickBtn = (k, l) => `<button type="button" class="ty-tick" data-del="${k}" aria-label="Select ${l}" aria-pressed="false"></button>`;
-// after each render (on = keep ticking); opening the page starts it off
-function syncTypeEdit(kind, on) {
-  const page = $(`#${TYPE_KINDS[kind].page}`), btn = page.querySelector('.ty-edit-btn'), back = page.querySelector('.back'), any = !!page.querySelector('[data-del]');
-  on = on && any;
-  page.classList.toggle('ty-edit', on);
-  btn.hidden = !any || on;   // ticking: the trash steps aside, Back becomes the ×
-  btn.innerHTML = TRASH_IC;
-  btn.title = 'Delete';
-  btn.setAttribute('aria-label', 'Delete');
-  back.innerHTML = on ? CLOSE_IC : BACK_IC;
-  back.title = on ? 'Cancel' : 'Back';
-  back.setAttribute('aria-label', on ? 'Cancel delete' : 'Back to settings');
-  if (!on) page.querySelectorAll('[data-del]').forEach(t => t.setAttribute('aria-pressed', 'false'));
-  typeBar(page);
-}
-// the bar under the list: N selected · Delete
-function typeBar(page) {
-  const n = page.querySelectorAll('[data-del][aria-pressed="true"]').length, go = page.querySelector('.ty-go');
-  page.querySelector('.ty-bar').hidden = !page.classList.contains('ty-edit');
-  go.disabled = !n;
-  go.innerHTML = n ? `<span>${n} selected</span><span>Delete</span>` : '<span>Tap the ones to delete</span>';
-}
-function bindTypeEdit(kind) {
-  const K = TYPE_KINDS[kind], page = $(`#${K.page}`);
-  page.querySelector('.ty-edit-btn').addEventListener('click', () => syncTypeEdit(kind, true));
-  // while ticking, Back's × only leaves ticking (capture: before Back's own handler)
-  page.addEventListener('click', (e) => {
-    if (!page.classList.contains('ty-edit') || !e.target.closest('.back')) return;
-    e.stopPropagation();
-    syncTypeEdit(kind, false);
-  }, true);
-  page.addEventListener('click', (e) => {
-    const row = e.target.closest('label.fr');
-    if (!row || !page.classList.contains('ty-edit')) return;
-    e.preventDefault();   // ticking: a tap on the row ticks it, never flips its switch
-    const t = row.querySelector('[data-del]');
-    if (t) { t.setAttribute('aria-pressed', t.getAttribute('aria-pressed') !== 'true'); typeBar(page); }
-  });
-  page.querySelector('.ty-go').addEventListener('click', () => {
-    const names = [...page.querySelectorAll('[data-del][aria-pressed="true"]')].map(t => t.dataset.del);
-    showConfirm({ title: names.length === 1 ? `Delete ${names[0]}?` : `Delete ${names.length} ${K.word}s?`, message: 'Past sales keep the name.', okText: 'Delete', danger: true,
-      onConfirm: () => {
-        const { hidden, custom } = K.get();
-        K.save({ hidden: hidden.filter(h => !names.includes(h)), custom: custom.filter(n => !names.includes(n)) });
-        page.classList.remove('ty-edit');
-        K.render();
-      } });
-  });
-}
-const addedOff = (name) => showDone(`${name} added, switched off. ${TYPES_ON_MAX} can be on at once`);
+// Delete (owner 2026-10-22): your own type's page ends in a red Delete, one confirm; past sales keep the name.
+// Built-ins and the primary fulfilment type have none.
+const addedOff = (name) => showToast(`${name} added, switched off. ${TYPES_ON_MAX} can be on at once`);   // a notice wraps; a done toast is cut to one line
 const PAY_TYPES = [['cash', 'Cash', 'Always on. The cash drawer counts it.'], ['gcash', 'GCash', ''], ['qr', 'QR', 'Any QR wallet'],
   ['other', 'Other', 'Staff type the name at checkout'], ['credit', 'Account', 'Pay later. Shows once a customer is picked.'], ['split', 'Split', 'Part one way, the rest another']];
-const payTypes = () => ({ hidden: [], custom: [], ref: ['gcash', 'qr'], ...state.settings.payments });
-// Ask for reference no. (owner 2026-10-17): per type, set on its own page; on = an optional box at checkout (and split)
+// qrCodes: a picture per type. ponytail: rides in settings as a data URL (HWPOS_STORE); with Supabase it goes to R2 and settings keep its address
+const payTypes = () => ({ hidden: [], custom: [], ref: ['gcash', 'qr'], opts: {}, qrCodes: {}, ...state.settings.payments });
+// Ask for (owner 2026-10-17, presets 2026-10-22): per type, on its own page; on = a box at checkout (and split), asked as its word
 const payRefOn = (k) => payTypes().ref.includes(k);
-const PAY_REFABLE = ['gcash', 'qr'];   // and every one of your own; Cash, Other, Account and Split have no page
+const PAY_REFABLE = ['cash', 'gcash', 'qr', 'other', 'credit'];   // and every one of your own: all but Split have a page (its parts follow their own types)
+const ASKS = ['Reference no.', 'Last 4 digits', 'Approval code', 'Cheque no.', 'Account no.', 'Name', 'Phone no.'];
+// A type's settings (owner 2026-10-22): its word to ask for, Must fill in, Opens cash drawer. The defaults are today's: only Cash opens the drawer.
+// No "Counts as cash": BIR's Z-reading (RMO 24-2023 Annex D-2) keeps Cash in drawer apart from cheque, card, gift cert.
+const opt = (k) => ({ ask: 'Reference no.', must: false, drawer: k === 'cash', ...payTypes().opts[k] });
+const askNow = (k) => (payRefOn(k) ? opt(k).ask : 'Nothing');
+const typeKey = (m) => (PAY_TYPES.some(t => t[0] === m) || payTypes().custom.includes(m) ? m : 'other');   // a typed Other name = Other
+// a sale's payment row -> its type: GCash, QR and your own are stored as 'other' + their word (buildOrderPayments)
+const payKey = (p) => (p.method === 'other' ? PAY_TYPES.find(t => t[1] === p.label)?.[0] || typeKey(p.label) : p.method);
+// a custom name is saved as the sale's method, so the words the sale maths already reads (unpaid = no money taken) are taken too
+const payNameTaken = (name, skip) => [...PAY_TYPES.flatMap(([k, l]) => [k, l]), ...Object.entries(SalesMath.TENDER_LABEL).flat(), 'Void', 'Refund',
+  ...payTypes().custom.filter(n => n !== skip)].some(n => n.toLowerCase() === name.toLowerCase());
+const fitName = (n) => (n.length > 24 ? n.slice(0, 23).trimEnd() + '…' : n);
 let ptOpen = '';
+const setOpt = (patch) => savePayTypes({ opts: { ...payTypes().opts, [ptOpen]: { ...opt(ptOpen), ...patch } } });
 const payTypesOn = () => { const { hidden, custom } = payTypes(); return [...PAY_TYPES.map(t => t[0]), ...custom].filter(k => k === 'cash' || !hidden.includes(k)).length; };
 function openPayTypes(open) {
   showStPage(open ? 'payTypesPage' : 'settingsPage');
-  $('#payTypesPage').classList.remove('ty-edit');
   if (open) renderPayTypes(); else renderPosSettings(false);
 }
 function renderPayTypes() {
   const { hidden, custom } = payTypes();
   // the label is for= its switch: without it a tap on the name went to the row's first control, a custom type's Delete
-  // GCash, QR and your own: the switch shows it, the rest of the row (name, gap, ›) opens its page, like QR codes' rows
-  const row = (key, label, note, mine) => `<label class="fr${mine || PAY_REFABLE.includes(key) ? ` qr-row" data-pt-open="${escapeHtml(key)}` : ''}" for="pt-${escapeHtml(key)}"><span class="lb">${mine ? tickBtn(escapeHtml(key), escapeHtml(label)) : ''}${escapeHtml(label)}${note ? `<small>${escapeHtml(note)}</small>` : ''}</span><span class="v"><input type="checkbox" class="sw" id="pt-${escapeHtml(key)}" data-pt="${escapeHtml(key)}" aria-label="Show ${escapeHtml(label)} at checkout"${key === 'cash' || !hidden.includes(key) ? ' checked' : ''}${key === 'cash' ? ' disabled' : ''}>${mine || PAY_REFABLE.includes(key) ? `<button type="button" class="pt-go" aria-label="${escapeHtml(label)} settings">${QR_CHEV}</button>` : ''}</span></label>`;   // the › is a button: a keyboard reaches the page too
+  // every type but Split: the switch shows it, the rest of the row (name, gap, ›) opens its page, like QR codes' rows
+  const row = (key, label, note, mine) => `<label class="fr${mine || PAY_REFABLE.includes(key) ? ` qr-row" data-pt-open="${escapeHtml(key)}` : ''}" for="pt-${escapeHtml(key)}"><span class="lb">${escapeHtml(label)}${note ? `<small>${escapeHtml(note)}</small>` : ''}</span><span class="v"><input type="checkbox" class="sw" id="pt-${escapeHtml(key)}" data-pt="${escapeHtml(key)}" aria-label="Show ${escapeHtml(label)} at checkout"${key === 'cash' || !hidden.includes(key) ? ' checked' : ''}${key === 'cash' ? ' disabled' : ''}>${mine || PAY_REFABLE.includes(key) ? `<button type="button" class="pt-go" aria-label="${escapeHtml(label)} settings">${QR_CHEV}</button>` : ''}</span></label>`;   // the › is a button: a keyboard reaches the page too
   $('#payTypesList').innerHTML = PAY_TYPES.map(([k, l, n]) => row(k, l, n)).join('') + custom.map(n => row(n, n, '', true)).join('')
     + '<button type="button" class="fr add" data-pt-add>Add payment type</button>';
-  syncTypeEdit('pt', $('#payTypesPage').classList.contains('ty-edit'));
 }
 function savePayTypes(patch) {
   state.settings.payments = { ...payTypes(), ...patch };
-  saveSettings();
+  return saveSettings();
 }
+const without = (o, k) => { const { [k]: _, ...rest } = o; return rest; };
 // Add a payment type (owner 2026-10-15): its own page, a Name and Save; Save goes back to the list.
 function addPayType() {
   if (payTypes().custom.length >= OWN_TYPES_MAX) return showToast(`${OWN_TYPES_MAX} is the most. Delete one first`);
   $('#payTypeAddForm').reset();
+  $('#payTypeAddSave').disabled = true;   // greyed until there's a name (blind test 2026-10-23)
   showStPage('payTypeAddPage');
   $('#ptName').focus();
 }
 function savePayTypeAdd() {
-  const name = typeName($('#ptName').value), { custom } = payTypes();
+  const name = fitName(typeName($('#ptName').value)), { custom } = payTypes();
   if (!name) return $('#ptName').focus();
-  // a custom name is saved as the sale's method, so the words the sale maths already reads (unpaid = no money taken) are taken too
-  const taken = [...PAY_TYPES.flatMap(([k, l]) => [k, l]), ...Object.entries(SalesMath.TENDER_LABEL).flat(), 'Void', 'Refund', ...custom];
-  if (taken.some(n => n.toLowerCase() === name.toLowerCase())) return showToast(`${name} is taken. Pick another name`);
+  if (payNameTaken(name)) return showToast(`${name} is taken. Pick another name`);
   const { hidden } = payTypes(), full = payTypesOn() >= TYPES_ON_MAX;   // with the list full, a new one starts off
-  savePayTypes({ custom: [...custom, name], hidden: full ? [...hidden, name] : hidden, ref: payTypes().ref.filter(n => n !== name) });   // a new one asks no ref
+  savePayTypes({ custom: [...custom, name], hidden: full ? [...hidden, name] : hidden, ref: payTypes().ref.filter(n => n !== name), opts: without(payTypes().opts, name), qrCodes: without(payTypes().qrCodes, name) });   // a new one asks no ref, starts clean
   openPayTypes(true);
   if (full) addedOff(name);
 }
-// one type's page: its name on top, Show at checkout and Ask for reference no.
+// One type's page (owner 2026-10-22), the same rows for every type in checkout's order: Name (your own) + Show at checkout |
+// Picture | Ask for › + Must fill in | Opens cash drawer | Delete (your own)
 function openPayType(key) {
   ptOpen = key;
   showStPage('payTypePage');
   $('#ptTitle').textContent = PAY_TYPES.find(t => t[0] === key)?.[1] || key;
-  $('#ptOn').checked = !payTypes().hidden.includes(key);
-  $('#ptRef').checked = payRefOn(key);
+  $('#ptOn').checked = key === 'cash' || !payTypes().hidden.includes(key);
+  $('#ptOn').disabled = key === 'cash';   // Cash is always on, as on the list
+  // ponytail: built-ins keep their name (it is the sale's method word); only your own can be renamed
+  $('#ptNameRow').hidden = $('#ptDelCard').hidden = !payTypes().custom.includes(key);
+  $('#ptRename').value = key;
+  $('#ptAskV').textContent = askNow(key);
+  $('#ptMust').closest('.fr').hidden = $('#ptMustNote').hidden = askNow(key) === 'Nothing';   // nothing asked = nothing to fill in
+  $('#qrPicIn').closest('.card').hidden = key === 'cash';   // Cash goes straight to its amounts: a picture would never show
+  $('#ptMust').checked = opt(key).must;
+  mustNote();
+  $('#ptDrawer').checked = opt(key).drawer;
+  qrRow();
+}
+// the note says what the switch does now
+const mustNote = () => { $('#ptMustNote').textContent = $('#ptMust').checked ? 'On: the sale can’t finish until it’s filled in.' : 'Off: staff can skip it.'; };
+// Picture: Add picture, or its thumb + Remove
+function qrRow() {
+  const pic = payTypes().qrCodes[ptOpen];
+  $('#qrThumb').hidden = $('#qrRm').hidden = !pic;
+  $('#qrAdd').hidden = !!pic;
+  if (pic) $('#qrThumb').src = pic;
+}
+function setPic(k, pic) {
+  const was = payTypes().qrCodes, rest = without(was, k);
+  if (savePayTypes({ qrCodes: pic ? { ...rest, [k]: pic } : rest })) return;
+  savePayTypes({ qrCodes: was });
+  showToast('Picture too big to save. Try a smaller one');
+}
+// a photo or screenshot of the store's QR, made 600px at most so settings stay small: a photo as JPEG (~40 KB, PNG ~400 KB), a flat QR as PNG
+function addPayPic(e) {
+  const f = e.target.files[0], k = ptOpen;
+  e.target.value = '';
+  if (!f) return;
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => {
+    const s = Math.min(1, 600 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);   // the card is white under it; JPEG would turn see-through black
+    g.drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    const png = c.toDataURL('image/png'), jpg = c.toDataURL('image/jpeg', 0.85);
+    setPic(k, jpg.length < png.length ? jpg : png);
+    if (ptOpen === k) qrRow();
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); showToast('That file is not a picture'); };
+  img.src = url;
+}
+function renderAsk() {
+  const now = askNow(ptOpen);
+  $$('#ptAskList input').forEach(r => { r.checked = r.value === now; });
+}
+// Rename your own type: every setting moves with it; past sales keep the name they were rung under
+function renamePayType(e) {
+  const from = ptOpen, name = fitName(typeName(e.target.value)), p = payTypes();
+  const back = (msg) => { e.target.value = from; msg ? showToast(msg) : hideToast(); };   // no message: an earlier "taken" goes too
+  if (!name || name === from) return back();
+  if (payNameTaken(name, from)) return back(`${name} is taken. Pick another name`);
+  const swap = (list) => list.map(n => (n === from ? name : n));
+  const move = (o) => { const { [from]: v, ...rest } = o, clean = without(rest, name); return v === undefined ? clean : { ...clean, [name]: v }; };
+  savePayTypes({ custom: swap(p.custom), hidden: swap(p.hidden), ref: swap(p.ref), opts: move(p.opts), qrCodes: move(p.qrCodes) });
+  ptOpen = name;
+  $('#ptTitle').textContent = e.target.value = name;
+}
+// Delete, like Settings › QR codes' Delete table: your own types only
+function deletePayType() {
+  const k = ptOpen, p = payTypes(), drop = (o) => without(o, k);
+  showConfirm({ title: `Delete ${k}?`, message: 'Past sales keep the name.', okText: 'Delete', danger: true,
+    onConfirm: () => {
+      savePayTypes({ custom: p.custom.filter(n => n !== k), hidden: p.hidden.filter(n => n !== k), ref: p.ref.filter(n => n !== k), opts: drop(p.opts), qrCodes: drop(p.qrCodes) });
+      openPayTypes(true);
+      showDone(`${k} deleted`);
+    } });
 }
 // a type's switch, from the list or its page; the cap turns a switch on back off
 function setPayOn(k, input) {
@@ -253,11 +279,28 @@ function setPayOn(k, input) {
 function bindPayTypes() {
   $('#payTypeBack').addEventListener('click', () => openPayTypes(true));
   $('#ptOn').addEventListener('change', (e) => setPayOn(ptOpen, e.target));
-  $('#ptRef').addEventListener('change', (e) => { const { ref } = payTypes(); savePayTypes({ ref: e.target.checked ? [...ref, ptOpen] : ref.filter(r => r !== ptOpen) }); });
+  // Ask for: its own page, like Settings' other choices (#pickPage): Nothing or a preset; on/off stays in payments.ref
+  $('#ptAskList').innerHTML = ['Nothing', ...ASKS].map(a => `<label class="pick"><input type="radio" name="ptAsk" value="${a}"><span class="tx">${a}</span></label>`).join('');
+  $('#ptAskRow').addEventListener('click', () => { showStPage('ptAskPage'); renderAsk(); });
+  $('#ptAskBack').addEventListener('click', () => openPayType(ptOpen));
+  $('#ptAskList').addEventListener('change', (e) => {
+    const v = e.target.value, ref = payTypes().ref.filter(r => r !== ptOpen);
+    savePayTypes({ ref: v === 'Nothing' ? ref : [...ref, ptOpen] });
+    if (v !== 'Nothing') setOpt({ ask: v });
+    renderAsk();
+  });
+  [['ptMust', 'must'], ['ptDrawer', 'drawer']].forEach(([id, k]) => $('#' + id).addEventListener('change', (e) => setOpt({ [k]: e.target.checked })));
+  $('#ptMust').addEventListener('change', mustNote);
+  $('#ptRename').addEventListener('change', renamePayType);
+  $('#ptRename').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
+  $('#qrPicIn').addEventListener('change', addPayPic);
+  $('#qrRm').addEventListener('click', (e) => { e.preventDefault(); setPic(ptOpen); qrRow(); });   // inside the row's label: not the file picker
+  $('#ptDel').addEventListener('click', deletePayType);
   $('#posPayTypesRow')?.addEventListener('click', () => openPayTypes(true));
   $('#payTypesBack')?.addEventListener('click', () => openPayTypes(false));
   $('#payTypeAddBack').addEventListener('click', () => askLeave($('#ptName').value.trim(), () => openPayTypes(true)));   // a typed name asks first (owner 2026-10-22)
   $('#payTypeAddSave').addEventListener('click', savePayTypeAdd);
+  $('#ptName').addEventListener('input', (e) => { $('#payTypeAddSave').disabled = !typeName(e.target.value); });
   $('#payTypeAddForm').addEventListener('submit', (e) => { e.preventDefault(); savePayTypeAdd(); });   // Return on the keyboard
   const list = $('#payTypesList');
   list?.addEventListener('change', (e) => {
@@ -265,20 +308,18 @@ function bindPayTypes() {
   });
   list?.addEventListener('click', (e) => {
     if (e.target.closest('[data-pt-add]')) return addPayType();
-    const open = !$('#payTypesPage').classList.contains('ty-edit') && !e.target.closest('.sw') && e.target.closest('[data-pt-open]');
+    const open = !e.target.closest('.sw') && e.target.closest('[data-pt-open]');
     if (open) { e.preventDefault(); openPayType(open.dataset.ptOpen); }   // the row opens its page; only the switch flips
   });
-  bindTypeEdit('pt');
 }
 
 // Settings › Fulfilment types (owner 2026-10-16): Payment types' twin. A switch per type says if the sale offers it, and the
 // store adds its own names. The primary is what a sale starts on: any type that's on, always on, so it has no switch or Delete.
-// ponytail: no rename (delete and add again), like Payment types.
+// Your own types open a page (owner 2026-10-22): Show on the sale and a red Delete. ponytail: no rename (delete and add again).
 const fulTypes = () => ({ hidden: [], custom: [], ...state.settings.fulfilment });
 const fulPrimary = () => state.settings.defaultFulfilment || 'walkin';
 function openFulTypes(open) {
   showStPage(open ? 'fulTypesPage' : 'settingsPage');
-  $('#fulTypesPage').classList.remove('ty-edit');
   if (open) renderFulTypes(); else renderPosSettings(false);
 }
 // The primary's choices = the types that are on (fulfilMethods); a switch redraws them.
@@ -289,12 +330,11 @@ function renderFulTypes() {
   const { hidden, custom } = fulTypes(), primary = fulPrimary();
   const row = (key, label, mine) => {
     const main = key === primary, k = escapeHtml(key), l = escapeHtml(label);
-    return `<label class="fr" for="ft-${k}"><span class="lb">${mine && !main ? tickBtn(k, l) : ''}${l}</span><span class="v"><input type="checkbox" class="sw" id="ft-${k}" data-ft="${k}" aria-label="Show ${l} on the sale"${main || !hidden.includes(key) ? ' checked' : ''}${main ? ' disabled' : ''}></span></label>`;
+    return `<label class="fr${mine ? ` qr-row" data-ft-open="${k}` : ''}" for="ft-${k}"><span class="lb">${l}</span><span class="v"><input type="checkbox" class="sw" id="ft-${k}" data-ft="${k}" aria-label="Show ${l} on the sale"${main || !hidden.includes(key) ? ' checked' : ''}${main ? ' disabled' : ''}>${mine ? `<button type="button" class="pt-go" aria-label="${l} settings">${QR_CHEV}</button>` : ''}</span></label>`;
   };
   $('#fulTypesList').innerHTML = FULFIL_BUILTINS.map(([k, l]) => row(k, l)).join('') + custom.map(n => row(n, n, true)).join('')
     + '<button type="button" class="fr add" data-ft-add>Add fulfilment type</button>';
   renderFulPrimary();
-  syncTypeEdit('ft', $('#fulTypesPage').classList.contains('ty-edit'));
 }
 function saveFulTypes(patch) {
   state.settings.fulfilment = { ...fulTypes(), ...patch };
@@ -317,6 +357,16 @@ function saveFulTypeAdd() {
   openFulTypes(true);
   if (full) addedOff(name);
 }
+let ftOpen = '';
+function openFtType(key) {
+  ftOpen = key;
+  showStPage('ftTypePage');
+  const main = key === fulPrimary();
+  $('#ftTitle').textContent = key;
+  $('#ftOn').checked = main || !fulTypes().hidden.includes(key);
+  $('#ftOn').disabled = main;
+  $('#ftDelCard').hidden = main;   // what sales start on can't go; pick another Primary first
+}
 function bindFulTypes() {
   $('#posFulTypesRow').addEventListener('click', () => openFulTypes(true));
   $('#fulTypesBack').addEventListener('click', () => openFulTypes(false));
@@ -331,9 +381,25 @@ function bindFulTypes() {
     if (k) { saveFulTypes({ hidden: e.target.checked ? hidden.filter(h => h !== k) : [...hidden, k] }); renderFulPrimary(); }   // the list stays: the switch keeps focus
   });
   list.addEventListener('click', (e) => {
-    if (e.target.closest('[data-ft-add]')) addFulType();
+    if (e.target.closest('[data-ft-add]')) return addFulType();
+    const open = !e.target.closest('.sw') && e.target.closest('[data-ft-open]');
+    if (open) { e.preventDefault(); openFtType(open.dataset.ftOpen); }   // the row opens its page; only the switch flips
   });
-  bindTypeEdit('ft');
+  $('#ftTypeBack').addEventListener('click', () => openFulTypes(true));
+  $('#ftOn').addEventListener('change', (e) => {
+    const { hidden } = fulTypes();
+    if (e.target.checked && fulfilMethods(state.settings).length >= TYPES_ON_MAX) { e.target.checked = false; return tooMany(); }
+    saveFulTypes({ hidden: e.target.checked ? hidden.filter(h => h !== ftOpen) : [...hidden, ftOpen] });
+  });
+  $('#ftDel').addEventListener('click', () => {
+    const k = ftOpen, f = fulTypes();
+    showConfirm({ title: `Delete ${k}?`, message: 'Past sales keep the name.', okText: 'Delete', danger: true,
+      onConfirm: () => {
+        saveFulTypes({ custom: f.custom.filter(n => n !== k), hidden: f.hidden.filter(n => n !== k) });
+        openFulTypes(true);
+        showDone(`${k} deleted`);
+      } });
+  });
 }
 
 // Log out of the account (owner 2026-10-13): front end only for now, the sign-in page is a placeholder until accounts exist.

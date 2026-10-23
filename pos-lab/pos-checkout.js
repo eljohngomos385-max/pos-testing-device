@@ -92,6 +92,7 @@ function renderCheckoutSub() {
 // Under the fixed total: the method tiles, or the chosen method's one detail.
 function showPayStep() {
   if (SP) return spRender();   // split: its own steps (a customer change re-renders the checkout)
+  cashOk = false;
   const m = state.paymentMethod;
   const step = !state.paymentMethodChosen ? 'method' : m === 'cash' ? 'cash' : 'paid';
   $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== step; });
@@ -102,13 +103,54 @@ function showPayStep() {
   showCashKeys(false);
   const typing = m === 'other' && !state.paymentLabel;
   const other = $('#otherMethodInput'); if (other) other.hidden = !typing;
-  // Settings › Payment types › Ask for reference no.; an exchange has none: payment.ref there marks the swap rows (sales-math paidOf)
+  // Settings › Payment types › Ask for; an exchange has none: payment.ref there marks the swap rows (sales-math paidOf)
   $('#payRefInput').hidden = step !== 'paid' || !!state.exchange || !payRefOn(state.paymentLabel || m);
-  $('[data-step="paid"] [data-complete]').textContent = 'Complete sale';
   const ask = $('#checkoutAsk');
   if (ask) ask.textContent = m === 'credit' ? `Charge to ${state.customer?.name || 'account'}`
     : typing ? 'Paid with' : `Paid with ${state.paymentLabel || KNOWN_METHOD_LABELS[m] || m}`;
   updateChange();
+  // A type with a picture (Settings › Payment types › Picture): the total slides up, its QR under it; Done -> the step above
+  if (!state.paymentMethodChosen) qrDone = '';
+  const paid = $('#checkoutSteps [data-step="paid"]'), pic = payTypes().qrCodes[keyNow()];
+  const qr = state.paymentMethodChosen && !paid.hidden && !!pic && qrDone !== keyNow();
+  $('#checkoutApp').classList.toggle('qr-up', qr);
+  $('#qrStep').hidden = !qr;
+  if (qr) {
+    paid.hidden = true;
+    $('#qrImg').src = pic;
+    $('#qrCap').textContent = `Scan with ${state.paymentLabel || KNOWN_METHOD_LABELS[m] || m}`;
+  }
+  askBox();
+}
+
+// The picture's type once its Done was tapped (Back on the next step = the picture again); Cash's ask step is up (cashAsk)
+let qrDone = '', cashOk = false;
+const keyNow = () => state.paymentLabel || state.paymentMethod;
+// The box asks the type's word (Settings › Payment types › Ask for); Must fill in holds Complete sale (or a split part's Done)
+const askKey = () => (SP ? SP.leg?.key : keyNow());
+const mustWait = () => !$('#payRefInput').hidden && opt(askKey()).must && !$('#payRefInput').value.trim();
+const askLow = () => opt(askKey()).ask.replace(/^\w/, c => c.toLowerCase());   // "Last 4 digits" -> "last 4 digits"
+function askBox() {
+  const o = opt(askKey()), box = $('#payRefInput');
+  box.placeholder = `${o.ask} (${o.must ? 'required' : 'optional'})`;
+  box.setAttribute('aria-label', box.placeholder);
+  mustBtn();
+}
+// Must fill in with the box empty: the button reads what's missing and stays tappable (app.js says it again), else Complete sale / a split part's Done
+function mustBtn() {
+  const btn = $('[data-step="paid"] [data-complete]'), wait = mustWait();
+  btn.textContent = wait ? `Enter ${askLow()}` : SP ? 'Done' : 'Complete sale';
+  btn.classList.toggle('wait', wait);
+}
+// Cash with Ask for on (owner 2026-10-22): the amount is in -> "Got ₱200.00 · Change ₱55.00", the box under it -> Complete sale
+function cashAsk(got, total) {
+  cashOk = true;
+  $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== 'paid'; });
+  $('#otherMethodInput').hidden = true;
+  $('#payRefInput').hidden = false; $('#payRefInput').value = '';
+  $('#checkoutAsk').textContent = `Got ${peso(got)} · Change ${peso(got - total)}`;
+  askBox();
+  setTimeout(() => $('#payRefInput').focus(), 60);
 }
 
 function updateChange() {
@@ -160,7 +202,7 @@ function spClose() {   // back to the plain method tiles
   showPayStep();
 }
 function spOff() {   // what split adds comes off (also when a sale ends or a new checkout opens)
-  $('#checkoutApp').classList.remove('sp', 'sp-cash');
+  $('#checkoutApp').classList.remove('sp', 'sp-cash', 'qr-up');
   $('#spPaid').hidden = $('#spDone').hidden = true;
   $$('#checkoutMethods .co-tile').forEach(t => { t.hidden = false; t.classList.remove('pick'); t.querySelector('small')?.remove(); });
   $('#checkoutCompleteBtn').textContent = 'Complete sale';
@@ -187,13 +229,21 @@ function spRender() {
   const paid = $('#spPaid');   // the countdown's small line: the total it counts down from
   paid.hidden = cash || full || left === due;
   paid.textContent = `left of ${peso(due)}`;
-  $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== (k === 'pick' ? 'method' : k === 'ref' ? 'paid' : 'cash'); });
+  $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== (k === 'pick' ? 'method' : k === 'ref' ? 'paid' : k === 'qr' ? 'qr' : 'cash'); });
+  $('#checkoutApp').classList.toggle('qr-up', k === 'qr');
   $('#checkoutBackText').textContent = 'Back';
   $('#otherMethodInput').hidden = true;
   $('#payRefInput').hidden = k !== 'ref';
+  if (k === 'qr') {   // a part whose type has a picture: that part's amount over its QR, Done -> its box or the Split page
+    $('#checkoutTotalDue').textContent = peso(leg.amount);
+    paid.hidden = true;
+    $('#qrImg').src = payTypes().qrCodes[leg.key];
+    $('#qrCap').textContent = `Scan with ${leg.label}`;
+    return;
+  }
   if (k === 'ref') {   // a part whose type asks: the plain checkout's own box, Done back to the Split page
     $('#checkoutAsk').textContent = `Paid with ${leg.label}`;
-    return void ($('[data-step="paid"] [data-complete]').textContent = 'Done');
+    return askBox();
   }
 
   if (k === 'pick') {   // the Split page: a part's tile carries its amount; Complete sale once nothing is left
@@ -233,7 +283,9 @@ function spRender() {
 
 function spNext() {   // Complete sale on the Split page, Done / Complete sale on a keypad page
   const { k, leg, legs } = SP, v = moneyValue(parseFloat(SP.raw) || 0);
-  if (k === 'pick') {   // a cash part asks what was handed over; no cash, the sale is done
+  if (k === 'pick') {   // a part's box left by Back first, then a cash part asks what was handed over; no cash, the sale is done
+    const need = legs.find(l => payRefOn(l.key) && opt(l.key).must && !l.ref);
+    if (need) { SP.leg = need; $('#payRefInput').value = ''; spGo('ref'); return setTimeout(() => $('#payRefInput').focus(), 60); }
     const cash = legs.find(l => l.key === 'cash');
     if (!cash) return completeSale();
     SP.leg = cash;
@@ -246,13 +298,16 @@ function spNext() {   // Complete sale on the Split page, Done / Complete sale o
   if (i >= 0) legs.splice(i, 1);
   delete leg.given; delete leg.change;
   if (v > 0) legs.splice(i >= 0 ? i : legs.length, 0, Object.assign(leg, { amount: v }));
-  if (v > 0 && payRefOn(leg.key)) {   // its type asks for a reference no.: that page next
-    $('#payRefInput').value = leg.ref || '';
-    spGo('ref');
-    return setTimeout(() => $('#payRefInput').focus(), 60);
-  }
+  if (v > 0 && leg.key !== 'cash' && payTypes().qrCodes[leg.key]) return spGo('qr');   // its picture first; Cash has none
+  if (v > 0) return spAsk(leg);
   SP.leg = null;
   spGo('pick');
+}
+function spAsk(leg) {   // its type asks (Ask for): that page next, else the Split page
+  if (!payRefOn(leg.key)) { SP.leg = null; return spGo('pick'); }
+  $('#payRefInput').value = leg.ref || '';
+  spGo('ref');
+  setTimeout(() => $('#payRefInput').focus(), 60);
 }
 
 function spKey(key) {
@@ -273,6 +328,7 @@ function spKey(key) {
 function spBack() {   // typed cash -> the notes; a keypad page or the notes -> the Split page as it was; the Split page -> the tiles
   if (SP.k === 'typed') return spGo('given');
   if (SP.k === 'pick') return spClose();
+  if (SP.k === 'qr') SP.legs.splice(SP.legs.indexOf(SP.leg), 1);   // its picture, not scanned: the part comes off
   SP.leg = null;
   spGo('pick');
 }
@@ -439,6 +495,7 @@ function showCheckoutSuccess(order, handBack = 0) {
   $('#checkoutSteps').hidden = true;
   $('#checkoutDone').hidden = false; // un-hiding replays the check and the rise
   $('#checkoutApp').classList.add('is-done');
+  hideToast();   // an "Enter the … first" from the step before is over (blind test 2026-10-23)
   const receipt = $('#checkoutReceipt');
   if (receipt) { receipt.innerHTML = buildReceiptPreview(order); receipt.scrollTop = 0; }
   if (receipt && $('#app').classList.contains('co-side')) {   // the receipt prints inside the sidebar's items card
@@ -891,6 +948,7 @@ function reverseOrderCredit(order, reason, whole = false, credit = SalesMath.cre
 function completeSale(approvedBy = '', ok = {}) {
   if (!state.cart.length && !state.exchange) return;   // Sale complete is up (the cart is spent): an Enter or a scan there rang ₱0 orders
   const total = moneyValue(dueNow());
+  if (!SP && mustWait()) return $('#payRefInput').focus();   // Must fill in (Settings › Payment types): the box first
   let tendered = total, change = 0, split = null;
   if (SP) {   // split: the parts as paid; tendered / change are the cash parts' (what went in and out of the drawer)
     const legs = SP.legs, cash = legs.filter(l => l.key === 'cash'), sum = f => moneyValue(cash.reduce((s, l) => s + (l[f] || 0), 0));
@@ -908,6 +966,7 @@ function completeSale(approvedBy = '', ok = {}) {
     }
     change = moneyValue(Math.max(0, tendered - total));
   }
+  if (!SP && !cashOk && !state.exchange && state.paymentMethod === 'cash' && payRefOn('cash')) return cashAsk(tendered, total);
   if (state.paymentMethod === 'other') {
     const otherName = $('#otherMethodInput')?.value?.trim();
     if (!otherName) {
@@ -971,12 +1030,23 @@ function completeSale(approvedBy = '', ok = {}) {
   autoPrint(order);
 }
 
-// A sale prints itself when the store says so (checkout, exchange).
+// A sale prints itself when the store says so (checkout, exchange); the drawer opens first, Print on sale or not.
 // ponytail: auto-print only for real printers. The browser driver would fire a pop-up on every sale.
-function autoPrint(order) {
+function autoPrint(order, moved = order.payments) {
   const pcfg = printerConfig();
-  if (pcfg.printOnSale && (pcfg.driver === 'network' || pcfg.driver === 'bluetooth')) {
-    printOrder(order, { silent: true });
-  }
+  kickFor(moved).then(() => {
+    if (pcfg.printOnSale && (pcfg.driver === 'network' || pcfg.driver === 'bluetooth')) printOrder(order, { silent: true });
+  });
+}
+// Settings › Payment types › Opens cash drawer (drawer.js): money in or out on such a type opens it. One rule for a sale,
+// a refund or void (voidOrder, refundOrder), an exchange (exchangeOrder) and Cash in / out (shiftMove). One job at a time: Bluetooth can't take two writes at once.
+let drawerJob = Promise.resolve();
+function kickFor(payments = []) {
+  const c = printerConfig();
+  // p.drawer: what the sale recorded (drawerOf); older rows have none and read the type's switch now
+  if ((c.driver !== 'network' && c.driver !== 'bluetooth') || !payments.some(p => moneyValue(p.amount) !== 0 && (p.drawer ?? opt(payKey(p)).drawer))) return drawerJob;
+  // ponytail: 10 s cap, Wi-Fi has its own 8 s; a hung Bluetooth connect would hold every later receipt behind it
+  const cap = new Promise((_, no) => setTimeout(() => no(new Error('the printer did not answer')), 10000));
+  return (drawerJob = drawerJob.then(() => Promise.race([HWPOS_DRAWER.open(c), cap])).catch(e => showToast('Drawer: ' + e.message)));
 }
 

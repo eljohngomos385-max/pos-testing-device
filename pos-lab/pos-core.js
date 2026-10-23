@@ -571,6 +571,8 @@ function normalizePayment(payment = {}) {
     tendered: moneyValue(payment.tendered ?? payment.amount),
     change: moneyValue(payment.change),
     ref: payment.ref ? String(payment.ref) : '',
+    ...(payment.ref && payment.refLabel ? { refLabel: String(payment.refLabel) } : {}),   // the word it was asked as (receipt: LAST 4 DIGITS)
+    ...(typeof payment.drawer === 'boolean' ? { drawer: payment.drawer } : {}),   // Opens cash drawer at the sale (drawerOf)
   };
 }
 
@@ -579,16 +581,20 @@ const KNOWN_METHOD_LABELS = { cash: 'Cash', gcash: 'GCash', qr: 'QR', credit: 'A
 // `split` { legs: [{ key, amount, given?, change?, ref? }] }: one row per part (owner 2026-10-10), each built as a
 // one-method sale (GCash stays 'other' + 'GCash'); a cash part carries what was handed over, the others their ref no.
 // No `split` = the old call: cash now (tendered), the rest on account -- old rows rebuild exactly as they were.
+// The ref's word (Settings › Payment types › Ask for), printed over it; a typed Other name counts as Other (typeKey).
+const refWord = (m, ref) => (ref ? { ref: String(ref), refLabel: opt(typeKey(m)).ask } : {});
+// Opens cash drawer as it was at the sale (owner 2026-10-23): its refund or void opens the drawer the same way, renamed or deleted since
+const drawerOf = (m) => ({ drawer: !!opt(typeKey(m)).drawer });
 function buildOrderPayments({ status, paymentMethod, total, tendered = 0, change = 0, split = null, ref = '' }) {
   if (status === 'saved' || paymentMethod === 'unpaid') {
     return [{ method: 'unpaid', label: 'Not completed', amount: 0, tendered: 0, change: 0, ref: '' }];
   }
   if (paymentMethod === 'credit') {
-    return [{ method: 'credit', label: 'Account', amount: moneyValue(total), tendered: 0, change: 0, ref: '' }];
+    return [{ method: 'credit', label: 'Account', amount: moneyValue(total), tendered: 0, change: 0, ref: '', ...refWord('credit', ref), ...drawerOf('credit') }];
   }
   if (paymentMethod === 'split') {
     const leg = (m, amount, x) => buildOrderPayments({ status, paymentMethod: m, total: amount, tendered: amount, ...x })[0];
-    if (split?.legs) return split.legs.map(l => ({ ...leg(l.key, l.amount, { tendered: l.given ?? l.amount, change: l.change || 0 }), ref: l.ref || '' }));
+    if (split?.legs) return split.legs.map(l => ({ ...leg(l.key, l.amount, { tendered: l.given ?? l.amount, change: l.change || 0 }), ref: l.ref || '', ...refWord(l.key, l.ref) }));
     const fa = Math.min(moneyValue(tendered), moneyValue(total));
     return [leg('cash', fa, { tendered, change }), leg('credit', moneyValue(total - fa))].filter((p, i) => !i || p.amount > 0);
   }
@@ -597,9 +603,9 @@ function buildOrderPayments({ status, paymentMethod, total, tendered = 0, change
   // the receipt and `buildCashDrawerSummary` expected money that never went in the till.
   if (paymentMethod && paymentMethod !== 'cash') {
     return [{ method: 'other', label: KNOWN_METHOD_LABELS[paymentMethod] || String(paymentMethod),
-              amount: moneyValue(total), tendered: moneyValue(tendered), change: moneyValue(change), ref: String(ref) }];   // ref: the customer's, when its type asks
+              amount: moneyValue(total), tendered: moneyValue(tendered), change: moneyValue(change), ref: String(ref), ...refWord(paymentMethod, ref), ...drawerOf(paymentMethod) }];   // ref: the customer's, when its type asks
   }
-  return [{ method: 'cash', label: 'Cash', amount: moneyValue(total), tendered: moneyValue(tendered), change: moneyValue(change), ref: '' }];
+  return [{ method: 'cash', label: 'Cash', amount: moneyValue(total), tendered: moneyValue(tendered), change: moneyValue(change), ref: '', ...refWord('cash', ref), ...drawerOf('cash') }];
 }
 
 function normalizeDeliveryLocation(raw = null) {

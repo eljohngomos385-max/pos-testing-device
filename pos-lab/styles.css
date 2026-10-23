@@ -3769,6 +3769,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-btn.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); box-shadow: var(--lt-primary-shadow, none); }
 .co-btn.primary:hover { background: var(--accent-hover); }
 .co-btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
+.co-btn.wait { opacity: .35; cursor: default; }   /* Must fill in, box empty: looks off, a tap says what's missing (app.js) */
 .co-step > .co-btn { height: 50px; margin-top: 6px; }
 
 /* items column: the list itself, head and Total pinned, only the rows scroll */
@@ -7805,6 +7806,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 :is(.lv, .cust-sheet) .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s var(--rl-ease); }
 :is(.lv, .cust-sheet) .sw:checked { background: var(--rl-bar); }   /* the Reports blue (owner 2026-10-16) */
 :is(.lv, .cust-sheet) .sw:checked::after { transform: translateX(16px); }
+:is(.lv, .cust-sheet) .sw:disabled { opacity: .4; cursor: default; }   /* always on (Cash's Show at checkout): reads as fixed, not as a switch (owner 2026-10-23) */
 /* the variants: a table of inputs, as in the back office family editor */
 .lv .vt-wrap { overflow-x: auto; }
 .lv .vt { display: grid; grid-template-columns: minmax(110px,1fr) 120px 110px 76px 76px 44px 60px 28px; align-items: center; gap: 8px; min-width: 686px; padding: 6px 16px; border-top: 1px solid var(--line); }
@@ -8353,23 +8355,11 @@ body.hairlines .lv :is(.rp-body, #shiftBody, #shiftPastBody) .card.fc { border-c
 .st-page .fr[hidden], .st-prn[hidden], .lv .st-page[hidden] { display: none; }   /* .st-page: Settings, Payment types (+ Add), one choice's ticks */
 .lv .st-page .fr.nav { grid-template-columns: minmax(0,1fr) auto; }
 .st-save { position: relative; margin-left: auto; }   /* Add payment type's Save: right of the centred title, above it */
+.st-save:disabled { opacity: .35; pointer-events: none; }   /* no name yet: greyed like checkout's Complete sale */
 .st-page .fr.nav .vv { color: var(--ink-tertiary); }   /* a step darker than its ›, as rednote's #999 + #CCC (owner 2026-10-17) */
 .st-page .fr > .v:has(> .sw) { align-items: center; }   /* QR, Payment types: the › 13pt from the switch too */
-/* Payment / Fulfilment types' delete (Quick stock's way): a ring before each of your own types, the tick in Quick stock's
-   accent; what can't be ticked dims and the switches step aside while ticking */
-.lv .fc .fr .ty-tick { display: none; position: relative; flex: none; width: 20px; height: 20px; margin-right: 14px; padding: 0; border: 1.5px solid var(--ink-quaternary); border-radius: 50%; background: none; }
-.lv .fc .fr .ty-tick::before { content: ''; position: absolute; inset: -10px; }   /* a 40px tap */
-.lv .fc .fr .ty-tick[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); }
-.lv .fc .fr .ty-tick[aria-pressed="true"]::after { content: ''; position: absolute; inset: 1.5px; background: var(--accent-ink);
-  -webkit-mask: var(--qs-tick-ic) center / contain no-repeat; mask: var(--qs-tick-ic) center / contain no-repeat; }
-.ty-edit .fc .fr .ty-tick { display: block; }
-.st-page.ty-edit .fr .lb:has(.ty-tick) { display: flex; align-items: center; }   /* own types have no note line */
-.ty-edit .fr > .v:has(> .sw), .ty-edit .fr.add { display: none; }
-.ty-edit .fr:not(:has(.ty-tick)) { opacity: .4; pointer-events: none; }
-.ty-bar .ty-go:not(:disabled) { border-color: var(--danger); background: var(--danger); color: var(--danger-ink); }
 .lv .sq.ty-edit-btn { margin-right: -8px; }   /* the trash: a bare icon, its edge on the cards like Back's on the left */
 .ty-edit-btn[hidden] { display: none; }
-.st-page.ty-edit .c-scroll { padding-bottom: calc(var(--bar-h) + 32px + var(--ph-b, 0px)); }   /* the last row clears the fixed bar */
 .lv .st-page .fr { min-height: 48px; }   /* a switch row as tall as a dropdown row */
 .st-page label.fr { cursor: pointer; }
 .st-page .fr .lb { display: grid; gap: 2px; color: var(--ink); }   /* rednote's settings: the word dark, its value grey */
@@ -8583,11 +8573,12 @@ body.qs-on.qs-price .view-items .cols > :nth-child(4) { display: none; }
 
 /* QR codes (pos-qr.js, from qr-lab): Fulfilment types' rows; the name opens the table, the switch stays a switch */
 #qrPage .c-body { padding-top: 32px; }   /* the list stays where it sat under its old "3 of 8" line (owner 2026-10-17) */
-.view-qr .qr-row, #payTypesList .qr-row { cursor: pointer; }   /* Payment types' GCash, QR and your own open their page too */
+.view-qr .qr-row, #payTypesList .qr-row, #fulTypesList .qr-row { cursor: pointer; }   /* Payment types' rows and your own fulfilment types open their page too */
 .view-qr .qr-row > .lb { all: unset; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (hover: hover) { .view-qr .qr-row:hover, #payTypesPage:not(.ty-edit) .qr-row:hover { background-color: var(--rl-hover); } }
-#payTypesList .pt-go { display: flex; padding: 0; border: 0; background: none; color: inherit; }
+@media (hover: hover) { .view-qr .qr-row:hover, #payTypesList .qr-row:hover, #fulTypesList .qr-row:hover { background-color: var(--rl-hover); } }
+#payTypesList .pt-go, #fulTypesList .pt-go { display: flex; padding: 0; border: 0; background: none; color: inherit; }
 #payTypesList .fr:not(.qr-row, .add) .v::after { content: ''; width: 18px; }   /* a row with no page keeps a chevron's room: the switches line up */
+#fulTypesList:has(.qr-row) .fr:not(.qr-row, .add):has(.sw) .v::after { content: ''; width: 18px; }   /* the same once one of your own types has a ›: Lalamove's switch lines up with Walk-in's */
 .view-qr .qr-art { display: grid; place-items: center; padding: 8px 16px 20px; }   /* the white tile alone on the page, no card (owner 2026-10-16) */
 .view-qr .qr-art svg { width: 200px; height: 200px; border-radius: var(--r-input); background: #fff; }   /* a QR needs a white tile in dark mode too */
 .view-qr .fr.qr-mid { justify-content: center; }
@@ -8751,3 +8742,25 @@ body.light-theme .pk-dim { background: rgb(0 0 0 / .3); }
 .vs-row .pic[style] { background: hsl(var(--tc) 45% 32%); }
 body.light-theme .vs-row .pic[style] { background: hsl(var(--tc) 75% 86%); }
 .vs-row .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* Payment types' page (owner 2026-10-22, try-pay-qr.html): a type with a picture shows it first at checkout (pos-checkout.js showPayStep) */
+.co-col { transition: padding-top .45s var(--co-ease); }
+.co-hero { transition: padding-bottom .45s var(--co-ease); }
+.qr-up .co-col { padding-top: max(16px, calc((var(--hero-y) - var(--co-top-h)) * .75)); }   /* a quarter up from the hero line: the QR fits, the stack sits mid-screen (owner 2026-10-22: half was too high) */
+.qr-up .co-hero { padding-bottom: 20px; }
+/* the picture as it is (a QR Ph card, a wallet screenshot), only made to fit; white under it, a wallet won't read a QR on dark */
+.co-step > .qr-card { width: min(330px, 100%); }
+.qr-card img { display: block; width: 100%; height: auto; max-height: max(240px, 100dvh - 400px); object-fit: contain; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1px var(--line); }
+.qr-pic-row .lb { min-width: 0; }
+.qr-pic-row .v { display: flex; flex: none; align-items: center; gap: 10px; color: var(--ink-tertiary); white-space: nowrap; }
+.qr-thumb { width: 36px; height: 36px; border-radius: 6px; object-fit: contain; background: #fff; box-shadow: 0 0 0 1px var(--line); }
+.qr-rm { color: var(--ink-secondary); font-size: 14px; font-weight: 500; }
+#ptNameRow .v { flex: 1; justify-content: flex-end; }
+#ptRename { width: 100%; text-align: right; color: var(--ink-tertiary); }   /* the value on the right, as Ask for's */
+#ptRename:focus { color: var(--ink); }
+
+/* a card's note sits under it, not in a row (owner 2026-10-23: Payment type › Must fill in) */
+.st-page .fc-note { margin: -6px 16px 0; color: var(--ink-tertiary); font-size: 12px; line-height: 1.35; }
+/* a confirm dims what's behind it, as the peek does (owner 2026-10-23: on iPad the card sat over live rows) */
+.rail-veil:has(> .cf-sheet) { background: rgb(0 0 0 / .42); animation: fadeIn .14s ease-out; }
+body.light-theme .rail-veil:has(> .cf-sheet) { background: rgb(0 0 0 / .3); }

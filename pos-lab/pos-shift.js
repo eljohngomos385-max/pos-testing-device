@@ -286,6 +286,7 @@ function shiftMove(dir) {
   if (!(amt > 0 && amt <= CASH_MAX)) return showToast('Type an amount');
   if (!note) return showToast('Add a note');
   const row = addShiftRow('cash_move', shiftOf()?.open.id, dir === 'in' ? amt : -amt, { note });
+  kickFor([{ method: 'cash', amount: row.amount, drawer: true }]);   // Cash in / out always opens the drawer (owner 2026-10-23), whatever Cash's switch says; its Undo doesn't
   Object.assign(o, { v: '0', note: '' });
   drawShiftSheet();
   renderShift();

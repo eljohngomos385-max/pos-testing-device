@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=607" />
+  <link rel="stylesheet" href="styles.css?v=611" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
   <div id="app" class="sidebar-collapsed">
@@ -454,6 +454,12 @@
                   <input type="text" id="payRefInput" class="co-ref" maxlength="40" placeholder="Reference no. (optional)" autocomplete="off" aria-label="Reference number (optional)" hidden />
                   <button type="button" class="co-btn primary" data-complete>Complete sale</button>
                 </div>
+                <!-- A type with a picture (Settings › Payment types › Picture): its QR first, Done = the step above (pos-checkout.js showPayStep) -->
+                <div class="co-step" data-step="qr" id="qrStep" hidden>
+                  <div class="qr-card"><img id="qrImg" alt="QR code to scan"></div>
+                  <p class="co-ask" id="qrCap"></p>
+                  <button type="button" class="co-btn primary" id="qrDoneBtn">Done</button>
+                </div>
                 <div class="co-error" id="checkoutError" hidden></div>
               </div>
               <div class="co-done" id="checkoutDone" aria-live="polite" hidden>
@@ -603,6 +609,7 @@
                   <label class="fr"><span class="lb">Print delivery map</span><span class="v"><input type="checkbox" class="sw" id="posPrintMap"></span></label>
                   <label class="fr" id="posPrintOnSaleRow" hidden><span class="lb">Print on sale</span><span class="v"><input type="checkbox" class="sw" id="posPrintOnSale"></span></label>
                   <div class="fr"><span class="lb">Test print</span><span class="v"><button type="button" class="act" id="posTestPrintBtn">Print</button></span></div>
+                  <div class="fr"><span class="lb">Test drawer</span><span class="v"><button type="button" class="act" id="posTestDrawerBtn">Open</button></span></div>
                 </section>
                 <h3 class="fc-t">Store</h3>
                 <section class="card fc">
@@ -631,7 +638,6 @@
             <div class="head">
               <button class="sq back" id="payTypesBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl">Payment types</h1>
-              <button type="button" class="sq st-save ty-edit-btn" hidden></button>
             </div>
             <div class="c-scroll">
               <div class="c-body">
@@ -639,9 +645,9 @@
                 <section class="card fc" id="payTypesList"></section>
               </div>
             </div>
-            <div class="qs-tickbar ty-bar" hidden><button type="button" class="qs-next ty-go" disabled></button></div>
           </section>
-          <!-- One payment type's page (owner 2026-10-17, like a QR table's): show it, and ask its reference no. -->
+          <!-- One payment type's page (owner 2026-10-22, every type but Split): Name (your own) + Show at checkout | Picture |
+               Ask for › + Must fill in | Opens cash drawer | Delete (your own) (pos-settings.js openPayType) -->
           <section class="page st-page" id="payTypePage" aria-label="Payment type" hidden>
             <div class="head">
               <button class="sq back" id="payTypeBack" aria-label="Back to payment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
@@ -650,9 +656,31 @@
             <div class="c-scroll">
               <div class="c-body">
                 <section class="card fc">
+                  <label class="fr" id="ptNameRow"><span class="lb">Name</span><span class="v"><input class="in" id="ptRename" maxlength="60" autocomplete="off" aria-label="Name"></span></label>
                   <label class="fr"><span class="lb">Show at checkout</span><span class="v"><input type="checkbox" class="sw" id="ptOn"></span></label>
-                  <label class="fr"><span class="lb">Ask for reference no.<small>An optional box after it's picked</small></span><span class="v"><input type="checkbox" class="sw" id="ptRef"></span></label>
                 </section>
+                <section class="card fc">
+                  <label class="fr qr-pic-row" for="qrPicIn"><span class="lb">Picture<small>Shows first, e.g. a QR</small></span><span class="v"><input type="file" id="qrPicIn" accept="image/*" hidden><img class="qr-thumb" id="qrThumb" alt="" hidden><button type="button" class="qr-rm" id="qrRm" hidden>Remove</button><span id="qrAdd">Add picture</span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></label>
+                </section>
+                <section class="card fc">
+                  <button type="button" class="fr nav" id="ptAskRow"><span class="lb">Ask for</span><span class="v"><span class="vv" id="ptAskV"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <label class="fr"><span class="lb">Must fill in</span><span class="v"><input type="checkbox" class="sw" id="ptMust"></span></label>
+                </section>
+                <p class="fc-note" id="ptMustNote"></p>
+                <section class="card fc"><label class="fr"><span class="lb">Opens cash drawer</span><span class="v"><input type="checkbox" class="sw" id="ptDrawer"></span></label></section>
+                <section class="card fc" id="ptDelCard"><button type="button" class="fr add red" id="ptDel">Delete payment type</button></section>
+              </div>
+            </div>
+          </section>
+          <!-- Ask for: its own page, like Settings' other choices: Nothing or a preset (pos-settings.js fills it from ASKS) -->
+          <section class="page st-page" id="ptAskPage" aria-label="Ask for" hidden>
+            <div class="head">
+              <button class="sq back" id="ptAskBack" aria-label="Back" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl" id="ptAskTitle">Ask for</h1>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <section class="card fc" id="ptAskList" role="radiogroup" aria-labelledby="ptAskTitle"></section>
               </div>
             </div>
           </section>
@@ -666,7 +694,7 @@
             <div class="c-scroll">
               <form class="c-body" id="payTypeAddForm">
                 <section class="card fc">
-                  <label class="fr"><span class="lb">Name</span><span class="v"><input class="in" id="ptName" maxlength="24" placeholder="e.g. Maya or Card" autocomplete="off"></span></label>
+                  <label class="fr"><span class="lb">Name</span><span class="v"><input class="in" id="ptName" maxlength="60" placeholder="e.g. Maya or Card" autocomplete="off"></span></label>
                 </section>
               </form>
             </div>
@@ -676,7 +704,6 @@
             <div class="head">
               <button class="sq back" id="fulTypesBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl">Fulfilment types</h1>
-              <button type="button" class="sq st-save ty-edit-btn" hidden></button>
             </div>
             <div class="c-scroll">
               <div class="c-body">
@@ -688,7 +715,19 @@
                 <section class="card fc" id="fulTypesList"></section>
               </div>
             </div>
-            <div class="qs-tickbar ty-bar" hidden><button type="button" class="qs-next ty-go" disabled></button></div>
+          </section>
+          <!-- One of your own fulfilment types (owner 2026-10-22): Show on the sale and a red Delete; the Primary has neither -->
+          <section class="page st-page" id="ftTypePage" aria-label="Fulfilment type" hidden>
+            <div class="head">
+              <button class="sq back" id="ftTypeBack" aria-label="Back to fulfilment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl" id="ftTitle"></h1>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <section class="card fc"><label class="fr"><span class="lb">Show on the sale</span><span class="v"><input type="checkbox" class="sw" id="ftOn"></span></label></section>
+                <section class="card fc" id="ftDelCard"><button type="button" class="fr add red" id="ftDel">Delete fulfilment type</button></section>
+              </div>
+            </div>
           </section>
           <section class="page st-page" id="fulTypeAddPage" aria-label="Add fulfilment type" hidden>
             <div class="head">
@@ -938,18 +977,19 @@
   <script src="data.js?v=31"></script>
   <script src="bo-model.js?v=137"></script>
   <script src="vendor/zxing-browser.min.js"></script>
-  <script src="printer.js?v=50"></script>
-  <script src="pos-core.js?v=57"></script>
+  <script src="printer.js?v=52"></script>
+  <script src="drawer.js?v=1"></script>
+  <script src="pos-core.js?v=59"></script>
   <script src="pos-sell.js?v=109"></script>
-  <script src="pos-checkout.js?v=40"></script>
-  <script src="pos-orders.js?v=41"></script>
+  <script src="pos-checkout.js?v=45"></script>
+  <script src="pos-orders.js?v=43"></script>
   <script src="pos-items.js?v=63"></script>
   <script src="pos-customers.js?v=44"></script>
-  <script src="pos-settings.js?v=37"></script>
+  <script src="pos-settings.js?v=42"></script>
   <script src="pos-pin.js?v=14"></script>
-  <script src="pos-shift.js?v=44"></script>
+  <script src="pos-shift.js?v=46"></script>
   <script src="pos-stock.js?v=14"></script>
   <script src="pos-qr.js?v=3"></script>
-  <script src="app.js?v=259"></script>
+  <script src="app.js?v=263"></script>
 </body>
 </html>

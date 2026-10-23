@@ -952,6 +952,8 @@ function attachEvents() {
   $('#checkoutCancelBtn')?.addEventListener('click', () => {
     if ($('#checkoutApp').classList.contains('is-done')) return;
     if (SP) spBack();   // split: one page back
+    else if (cashOk) showPayStep();   // Cash's ask step -> the amounts
+    else if (qrDone && qrDone === keyNow()) { qrDone = ''; showPayStep(); }   // the step after a picture -> the picture
     else if (state.paymentMethod === 'cash' && !$('#checkoutKeyIn').hidden) showCashKeys(false);   // the keys -> the quick amounts
     else if (state.paymentMethodChosen) {
       state.paymentMethodChosen = false;
@@ -980,8 +982,15 @@ function attachEvents() {
     if (e.key === 'Enter') { if (!$('#checkoutCompleteBtn').disabled) (SP ? spNext : completeSale)(); }
     else cashKey(e.key === 'Backspace' ? 'del' : e.key);
   });
-  $('#otherMethodInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') completeSale(); });
-  $('#payRefInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) (SP ? spNext : completeSale)(); });
+  // Complete sale / Done, by tap or Enter: Must fill in with the box empty says what's missing and focuses it
+  const finish = () => {
+    if (mustWait()) { showToast(`Enter the ${askLow()} first`); return $('#payRefInput').focus(); }
+    (SP ? spNext : completeSale)();
+  };
+  $('#otherMethodInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') finish(); });
+  $('#payRefInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) finish(); });
+  $('#payRefInput').addEventListener('input', (e) => { if (!e.target.value.trim()) e.target.value = ''; mustBtn(); });   // spaces alone: the box stays empty, "(required)" stays
+  $('#qrDoneBtn').addEventListener('click', () => { if (SP) return spAsk(SP.leg); qrDone = keyNow(); showPayStep(); });
   // A cash amount is the decision: the tap finishes the sale.
   $('#checkoutQuick')?.addEventListener('click', (e) => {
     if (e.target.closest('[data-co-custom]')) return SP ? spGo('typed') : showCashKeys(true);
@@ -992,7 +1001,9 @@ function attachEvents() {
     updateChange();
     completeSale();
   });
-  $('#checkoutSteps')?.addEventListener('click', (e) => { if (e.target.closest('[data-complete]')) (SP ? spNext : completeSale)(); });
+  $('#checkoutSteps')?.addEventListener('click', (e) => {
+    if (e.target.closest('[data-complete]')) finish();
+  });
   window.addEventListener('resize', fitCheckout);
   $('#successPrintBtn')?.addEventListener('click', printSuccessReceipt);
   $('#successNewSaleBtn')?.addEventListener('click', startNewSaleFromSuccess);
@@ -1082,6 +1093,10 @@ function attachEvents() {
   $('#posTestPrintBtn')?.addEventListener('click', () => {
     persistPosSettings();
     printOrder(sampleTestOrder());
+  });
+  $('#posTestDrawerBtn')?.addEventListener('click', () => {
+    persistPosSettings();
+    Promise.resolve().then(() => HWPOS_DRAWER.open(printerConfig())).then(showDone, (e) => showToast(e.message));
   });
 
   window.addEventListener('online', () => track('online'));

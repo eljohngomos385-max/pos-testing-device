@@ -857,7 +857,7 @@ function reverseSale(orderId, kind, reason, { by = '', again, whole = false, pic
     return { ...p, amount: moneyValue(toNumber(p.amount, 0) - off) };
   }).filter(p => p.method !== 'credit' || p.amount > 0);
   let legs = [...payments, ...(cashBack ? [{ method: 'cash', amount: cashBack }] : [])]
-    .map(p => ({ ...p, tendered: 0, change: 0, ref: order.number }));   // each leg keeps its tender's name
+    .map(({ refLabel, ...p }) => ({ ...p, tendered: 0, change: 0, ref: order.number }));   // each leg keeps its tender's name
   if (backVia) {
     let h = backVia.amount;
     legs = legs.map(p => {
@@ -899,7 +899,7 @@ function reverseSale(orderId, kind, reason, { by = '', again, whole = false, pic
 
 function voidOrder(orderId, reason = 'Voided by manager', by = '') {
   const row = reverseSale(orderId, 'void', reason, { by, again: (b) => voidOrder(orderId, reason, b) });
-  if (row) { renderOrders(); renderReports(); }
+  if (row) { kickFor(row.payments); renderOrders(); renderReports(); }   // money going back out: the drawer opens (Opens cash drawer)
   return row;
 }
 
@@ -913,7 +913,7 @@ function moneyBackSaid(o, part) {
 // `picks` = [{ lineNo, qty }] for a line refund; none = everything still left on the sale.
 function refundOrder(orderId, reason = 'Refunded by manager', by = '', picks = null) {
   const row = reverseSale(orderId, 'refund', reason, { by, picks, again: (b) => refundOrder(orderId, reason, b, picks) });
-  if (row) { renderOrders(); renderReports(); showDone(`Refunded · ${moneyBackSaid(findOrderRow(orderId), row)}`); }
+  if (row) { kickFor(row.payments); renderOrders(); renderReports(); showDone(`Refunded · ${moneyBackSaid(findOrderRow(orderId), row)}`); }
   return row;
 }
 
@@ -1068,7 +1068,7 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange', by =
   const payments = [
     ...(onAccount > 0 ? buildOrderPayments({ paymentMethod: 'credit', total: onAccount }) : []),
     ...swapLegs,
-  ].map(p => ({ ...p, ref: order.number }))
+  ].map(({ refLabel, ...p }) => ({ ...p, ref: order.number }))
     .concat(collect > 0 ? buildOrderPayments({ paymentMethod: via, total: collect, tendered: pay?.tendered || collect, change: pay?.change || 0 }) : []);
   // Whatever the cashier had in the cart is put back after.
   let exchangeSale;
@@ -1090,10 +1090,12 @@ function exchangeOrder(orderId, replacementItems = [], reason = 'Exchange', by =
     fulfilment: exchangeSale.fulfilment, customerId: exchangeSale.customer ? exchangeSale.customer.id : '',
     msSinceCartStart: null,
   });
+  // The swap legs carry the sale's number and cancel out: only the hand back and what was collected move money
+  const moved = [...refund.payments, ...exchangeSale.payments].filter(p => !p.ref);
   if (fromCart) {   // rung from the cart (startExchange): the checkout's done page and the slip, like any sale
     showCheckoutSuccess(exchangeSale, Math.max(0, -net));
-    autoPrint(exchangeSale);
-  }
+    autoPrint(exchangeSale, moved);
+  } else kickFor(moved);
   renderOrders();
   renderReports();
   return { refund, exchangeSale };
