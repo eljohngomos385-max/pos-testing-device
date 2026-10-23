@@ -1,13 +1,13 @@
 # Comfa Hardware — Lapu-Lapu City, Cebu
 
-Official page of Comfa Hardware, kept up to date by the owner, Maria Corazon Gom-os.
+Official page of Comfa Hardware, kept up to date by the owner, Eljohn Gom-os.
 
 Hardware store: plumbing, electrical, fasteners, tools and building supplies.
 
-- **Owner:** Maria Corazon Gom-os
+- **Owner:** Eljohn Gom-os
 - **Open:** 8:00 AM – 5:00 PM (Philippine time)
 - **Address:** Lapu-Lapu City, Cebu, Philippines
-- **Call / Viber / WhatsApp:** 0933 858 1544 (+63 933 858 1544) — [WhatsApp](https://wa.me/639338581544) · [Viber](viber://chat?number=%2B639338581544)
+- **Call / Viber / WhatsApp:** 0917 120 6687 (+63 917 120 6687) — [WhatsApp](https://wa.me/639171206687) · [Viber](viber://chat?number=%2B639171206687)
 - **Pay with:** cash, GCash, Maya, card
 - **Order ahead:** message the item name and quantity on WhatsApp or Viber; pick up at the counter.
 - **Prices and stock updated:** 2026-10-23
@@ -104,9 +104,9 @@ Hardware store: plumbing, electrical, fasteners, tools and building supplies.
  "name": "Comfa Hardware",
  "founder": {
   "@type": "Person",
-  "name": "Maria Corazon Gom-os"
+  "name": "Eljohn Gom-os"
  },
- "telephone": "+639338581544",
+ "telephone": "+639171206687",
  "address": {
   "@type": "PostalAddress",
   "addressLocality": "Lapu-Lapu City",
