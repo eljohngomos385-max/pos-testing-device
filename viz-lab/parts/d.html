@@ -1,0 +1,464 @@
+<style>
+/* part d — Items: Top items, Categories, Bought together. Every selector .pd-; colours, radii from viz.css tokens. */
+.pd-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: var(--row-h); padding: 0 var(--pad); border-top: 1px solid var(--row-line); font-size: 12px; color: var(--ink-4); }
+.pd-foot a { font-weight: 500; color: var(--ink); text-decoration: none; white-space: nowrap; }
+.pd-note { font-size: 12px; font-weight: 400; color: var(--ink-4); }
+.pd-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.pd-svg .gl { stroke: var(--grid); stroke-width: 1; }
+.pd-svg .lb { font-size: 12px; fill: var(--ink-2); }
+.pd-svg .v { font-size: 12px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.pd-svg .up { fill: var(--up); } .pd-svg .down { fill: var(--down); }
+.pd-t td.pd-rk, .pd-t th.pd-rk { width: 1%; color: var(--ink-4); padding-right: 0; font-variant-numeric: tabular-nums; }
+.pd-t td.pd-c { width: 1%; padding-left: 0; }
+.pd-t td.nm { white-space: nowrap; }
+.pd-t tr.pd-oth td { color: var(--ink-4); }
+.pd-t tr.pd-oth td.money { color: var(--ink-2); font-weight: 400; }
+.pd-t tr.pd-tot td { font-weight: 500; color: var(--ink); }
+.pd-it { display: flex; align-items: center; gap: 8px; }
+.pd-ph { flex: none; display: inline-block; width: 28px; height: 28px; border-radius: var(--r-row); background: var(--fill); }
+
+/* D2 ranked bars, name over the bar */
+.pd-rb { padding: 4px 0; }
+.pd-rb-r { padding: 6px var(--pad) 7px; }
+.pd-rb-r:hover { background: var(--band); }
+.pd-rb-l { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; font-size: 13px; }
+.pd-rb-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 500; }
+.pd-rb-n small, .pd-rw small { margin-left: 6px; font-size: 11px; font-weight: 400; color: var(--ink-4); }
+.pd-rb-b { height: 6px; border-radius: var(--r-pill); background: var(--bar); }
+
+/* D6 lollipop, D8 dumbbell, D12 bars: one row grid */
+.pd-g { display: grid; align-items: center; gap: 0 12px; min-height: 30px; padding: 0 var(--pad); font-size: 13px; }
+.pd-g:hover { background: var(--band); }
+.pd-g > .pd-rw { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 500; }
+.pd-g > .pd-r { display: flex; justify-content: flex-end; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.pd-trk { position: relative; height: 30px; }
+.pd-lp { position: absolute; left: 0; top: 50%; height: 1.5px; margin-top: -.75px; background: var(--d2); }
+.pd-lp::after { content: ""; position: absolute; right: -4px; top: -3.25px; width: 8px; height: 8px; border-radius: 50%; background: var(--bar); }
+.pd-db-l { position: absolute; top: 50%; height: 2px; margin-top: -1px; border-radius: var(--r-pill); }
+.pd-db-l.up { background: var(--up); } .pd-db-l.down { background: var(--down); }
+.pd-dot { position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; }
+.pd-dot.was { background: var(--raised); box-shadow: inset 0 0 0 1.5px var(--ink-5); }
+.pd-dot.now { background: var(--bar); }
+.pd-axis { position: relative; height: 22px; }
+.pd-axis span { position: absolute; top: 2px; transform: translateX(-50%); font-size: 11px; color: var(--ink-5); font-variant-numeric: tabular-nums; }
+.pd-hb { height: 8px; border-radius: var(--r-pill); background: var(--bar); }
+.pd-hb.oth { background: var(--s-other); }
+
+/* D9 podium */
+.pd-pod { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: var(--pad); }
+.pd-pod > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 10px; border-radius: var(--r-cell); background: var(--band); }
+.pd-pod .pd-pt { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.pd-pod .pd-pn { min-height: 38px; font-size: 13px; font-weight: 500; color: var(--ink); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pd-pod .pd-pv { display: flex; align-items: center; gap: 6px; }
+.pd-pod .kpi-value { font-size: 17px; }
+
+/* D5 scatter */
+.pd-sc circle.dot { fill: var(--s3); stroke: var(--raised); stroke-width: 1.5; transition: fill .12s; }
+.pd-sc circle.dot.on { fill: var(--s1); }
+.pd-sc text.no { font-size: 10px; font-weight: 600; fill: #fff; pointer-events: none; }
+.pd-sc-t tr.on td { background: var(--band); }
+
+/* D10 treemap */
+.pd-tm { position: relative; aspect-ratio: 640 / 250; margin: var(--pad); }
+.pd-tm > div { position: absolute; overflow: hidden; padding: 8px 9px; border-radius: var(--r-cell); font-size: 12px; line-height: 1.35; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pd-tm b { display: block; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pd-tm .w, .pd-tm .w b { color: #fff; }
+.pd-tm .w .cmp { color: inherit; }
+
+/* D11 100% bar */
+.pd-stk { display: flex; gap: 2px; height: 14px; margin: 14px var(--pad) 8px; }
+.pd-stk > i { border-radius: 4px; }
+.pd-sw { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 2px; }
+
+/* D14 butterfly */
+.pd-bf { display: grid; grid-template-columns: 1fr 104px 1fr; align-items: center; min-height: 30px; padding: 0 var(--pad); font-size: 12px; font-variant-numeric: tabular-nums; }
+.pd-bf:hover:not(.pd-bf-h) { background: var(--band); }
+.pd-bf-h { min-height: 31px; background: var(--band); color: var(--ink-2); font-weight: 500; margin-bottom: 4px; }
+.pd-bf > .c { text-align: center; font-size: 13px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px; }
+.pd-bf > .l, .pd-bf > .rr { display: flex; align-items: center; gap: 6px; color: var(--ink-3); }
+.pd-bf > .l { justify-content: flex-end; }
+.pd-bf .bar { height: 10px; border-radius: var(--r-pill); }
+.pd-bf .l .bar { background: var(--bar); } .pd-bf .rr .bar { background: var(--d1); }
+.pd-bf .oth .bar, .pd-bf.oth .bar { background: var(--s-other); }
+
+/* D16 matrix */
+.pd-mx { display: grid; gap: 3px; padding: var(--pad); font-size: 12px; font-variant-numeric: tabular-nums; }
+.pd-mx > span { min-height: 30px; display: flex; align-items: center; justify-content: center; border-radius: var(--r-row); }
+.pd-mx > span.e { background: var(--band); }
+.pd-mx > span.rl { justify-content: flex-start; gap: 6px; color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; min-width: 0; }
+.pd-mx > span.rl i, .pd-mx > span.ch { font-style: normal; color: var(--ink-4); font-weight: 400; }
+.pd-mx > span.ch { min-height: 20px; }
+
+/* D18 network */
+.pd-net { position: relative; height: 280px; margin: var(--pad); }
+.pd-net svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pd-net line { stroke: var(--d2); stroke-linecap: round; }
+.pd-net .nd { position: absolute; transform: translate(-50%, -50%); max-width: 118px; padding: 5px 9px; border-radius: var(--r-cell); background: var(--band); box-shadow: 0 0 0 1px var(--line); font-size: 12px; line-height: 1.3; font-weight: 500; color: var(--ink); text-align: center; }
+.pd-net .nd.hub { background: var(--data-tint); color: var(--data-ink); box-shadow: none; }
+.pd-net .el { position: absolute; transform: translate(-50%, -50%); padding: 0 5px; border-radius: var(--r-pill); background: var(--raised); font-size: 11px; font-weight: 500; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* D20 pair boxes */
+.pd-pg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: var(--pad); }
+.pd-pg > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px; border-radius: var(--r-cell); background: var(--band); }
+.pd-pg .a { font-size: 12px; font-weight: 500; color: var(--ink); line-height: 1.35; }
+.pd-pg .a i { font-style: normal; color: var(--ink-4); font-weight: 400; }
+.pd-pg .n { margin-top: 8px; font-size: 17px; font-weight: 500; color: var(--ink); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.pd-pg .n small { font-size: 12px; font-weight: 400; color: var(--ink-4); letter-spacing: 0; margin-left: 4px; }
+.pd-pg .lf { font-size: 12px; color: var(--ink-3); }
+</style>
+
+<section class="cat" id="d-top" data-nav="Top items">
+  <h2>Top items</h2>
+  <p class="why">The Top items table, grown a chart. Fixed top 10, then Other and See all — the same at 30 items or 3,000. The Share bar is gone; each column here earns its place.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>D1</b> Pareto · how much of the store the top 10 carry</div>
+      <div class="card"><div class="band">Top items <span class="pd-note" id="pd-1h"></span></div><div class="body" style="padding-bottom:4px"><svg class="pd-svg" id="pd-1s"></svg></div><div id="pd-1t"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D5</b> Net × margin scatter over the table · hover a row</div>
+      <div class="card"><div class="band">Top items · net sales and margin <span class="pd-note">Last 30 days</span></div><div class="body" style="padding-bottom:0"><svg class="pd-svg pd-sc" id="pd-5s"></svg></div><div id="pd-5t"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D3</b> Table · Share bar swapped for change vs before</div>
+      <div class="card"><div id="pd-3"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D4</b> Units with their word, and what one sells for</div>
+      <div class="card"><div id="pd-4"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D2</b> Ranked bars · name sits over its bar</div>
+      <div class="card"><div class="band">Top items <span class="pd-note">Net sales · last 30 days</span></div><div class="pd-rb" id="pd-2"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D6</b> Lollipop · a line and a dot, less ink than bars</div>
+      <div class="card"><div class="band">Top items <span class="pd-note">Net sales · last 30 days</span></div><div style="padding:4px 0" id="pd-6"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D7</b> Slope by rank · who climbed, who slipped</div>
+      <div class="card"><div class="band">Top items · rank then and now <span class="pd-note">Green climbed, red slipped</span></div><div class="body"><svg class="pd-svg" id="pd-7"></svg></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D8</b> Dumbbell · was → now, biggest movers first</div>
+      <div class="card"><div class="band">Top items · change <span class="pd-note"><span class="pd-dot was" style="position:relative;display:inline-block;margin:0 4px 0 0;top:0"></span>Before&nbsp;&nbsp;<span class="pd-dot now" style="position:relative;display:inline-block;margin:0 4px 0 0;top:0"></span>Last 30 days</span></div><div style="padding-top:4px" id="pd-8"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D9</b> Podium · top 3 in boxes, the rest a list</div>
+      <div class="card"><div class="band">Top items <span class="pd-note">Last 30 days</span></div><div id="pd-9"></div></div></div>
+  </div>
+</section>
+
+<section class="cat" id="d-cat" data-nav="Categories">
+  <h2>Categories</h2>
+  <p class="why">Top 6 categories + Other. A store with 80 categories still gets seven shapes, and the rest live one tap away.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>D10</b> Treemap · size = net sales, tint = change vs before</div>
+      <div class="card"><div class="band">Categories <span class="seg" id="pd-10seg"><button class="on" data-m="chg">Change</button><button data-m="share">Share</button></span></div><div class="pd-tm" id="pd-10"></div><div id="pd-10f"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D14</b> Where the money is vs where the shelf is</div>
+      <div class="card"><div id="pd-14"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D11</b> One 100% bar, the table under it is the legend</div>
+      <div class="card"><div class="band">Categories <span class="pd-note">Share of net sales</span></div><div id="pd-11"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D12</b> Bars with the change beside the number</div>
+      <div class="card"><div class="band">Categories <span class="pd-note">Net sales · last 30 days</span></div><div style="padding:4px 0" id="pd-12"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D13</b> Plain table · inline change, per-item sales</div>
+      <div class="card"><div id="pd-13"></div></div></div>
+  </div>
+</section>
+
+<section class="cat" id="d-pairs" data-nav="Bought together">
+  <h2>Bought together</h2>
+  <p class="why">Top 8 pairs. "More likely" = how many times more often two items land in one order than chance would put them there.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>D15</b> Pair rows · A + B, orders, how much more likely</div>
+      <div class="card"><div id="pd-15"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D19</b> For this item, also bought · tap the pill to change item</div>
+      <div class="card"><div class="band">Also bought with <button class="pick" id="pd-19p"></button></div><div class="rows" id="pd-19"></div><div id="pd-19f"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D18</b> Links · top 8 pairs, thicker = more orders</div>
+      <div class="card"><div class="band">Bought together <span class="pd-note">Top 8 pairs · last 30 days</span></div><div class="pd-net" id="pd-18"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D17</b> Arc diagram · items in a column, pairs as arcs</div>
+      <div class="card"><div class="band">Bought together <span class="pd-note">Orders with both</span></div><div class="body"><svg class="pd-svg" id="pd-17"></svg></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D16</b> Matrix · the 6 items in the most pairs</div>
+      <div class="card"><div class="band">Bought together <span class="pd-note">Orders with both · darker = more</span></div><div class="pd-mx" id="pd-16"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D20</b> Pair boxes · one rounded box per pair</div>
+      <div class="card"><div class="band">Bought together <span class="pd-note">Last 30 days</span></div><div class="pd-pg" id="pd-20"></div><div id="pd-20f"></div></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = window.VIZ; if (!V) return;
+  const P = V.peso, K = V.pesoK, $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const chg = (a, p) => (a - p) / p * 100;
+  const fc = c => (c > 0 ? '+' : c < 0 ? '−' : '') + Math.abs(c).toFixed(1) + '%';
+  const dir = c => c > 0 ? 'up' : c < 0 ? 'down' : 'flat';
+  const chip = c => `<span class="chip ${dir(c)}">${fc(c)}</span>`;
+  const cmp = c => `<span class="cmp ${dir(c)}">${fc(c)}</span>`;
+  const pc = (n, d = 1) => V.pct(n, d);
+  const cut = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+  const foot = (left = '', link = 'See all in Items →') => `<div class="pd-foot"><span>${left}</span><a href="#">${link}</a></div>`;
+  const band = (t, note = '') => `<div class="band">${t} <span class="pd-note">${note}</span></div>`;
+
+  // ---- data: top 10 items, top 6 categories + Other, all from VIZ ----
+  const T = V.topItems.slice().sort((a, b) => b.amt - a.amt);
+  const ALL = V.allItemsNet;
+  const topSum = T.reduce((s, i) => s + i.amt, 0);
+  const nItems = V.categories.reduce((s, c) => s + c.items, 0);
+  const othItems = `Other · ${(nItems - T.length).toLocaleString('en-PH')} items`, othAmt = ALL - topSum;
+  const unitWord = it => !it.unit ? '' : it.unit === 'bag' && it.units !== 1 ? 'bags' : it.unit;
+  const units = it => it.units.toLocaleString('en-PH') + (it.unit ? ' ' + unitWord(it) : '');
+  const nm = it => `${esc(it.name)}<small>${esc(it.cat)}</small>`;
+  T.forEach(it => it.c = chg(it.amt, it.prev));
+
+  const C = V.categories.slice().sort((a, b) => b.amt - a.amt);
+  const rest = C.slice(6);
+  const CO = C.slice(0, 6).concat([{ c: `Other · ${rest.length}`, oth: true, amt: rest.reduce((s, c) => s + c.amt, 0), prev: rest.reduce((s, c) => s + c.prev, 0), items: rest.reduce((s, c) => s + c.items, 0) }]);
+  CO.forEach(c => { c.ch = chg(c.amt, c.prev); c.sh = c.amt / ALL * 100; c.ish = c.items / nItems * 100; });
+  const RAMP = ['--s1', '--s2', '--s3', '--s4', '--s5', '--d1'];
+  const col = (c, i) => c.oth ? 'var(--s-other)' : `var(${RAMP[i]})`;
+
+  // ---- D1 Pareto: one axis (% of all net sales); bars = each item, line = running total ----
+  {
+    const W = 640, H = 150, x0 = 34, x1 = 636, y0 = 124, y1 = 8, top = 40, bw = (x1 - x0) / T.length;
+    const ys = v => y0 - v / top * (y0 - y1);
+    let s = '', run = 0; const pts = [];
+    [0, 10, 20, 30, 40].forEach(v => s += `<line class="gl" x1="${x0}" x2="${x1}" y1="${ys(v)}" y2="${ys(v)}"/><text class="ax" x="${x0 - 8}" y="${ys(v) + 4}" text-anchor="end">${v}%</text>`);
+    T.forEach((it, i) => {
+      const sh = it.amt / ALL * 100, cx = x0 + bw * (i + .5); run += sh;
+      s += `<rect x="${cx - bw * .3}" y="${ys(sh)}" width="${bw * .6}" height="${y0 - ys(sh)}" rx="2" style="fill:var(--d1)"><title>${esc(it.name)} · ${P(it.amt)} · ${pc(sh)} of net</title></rect>`;
+      s += `<text class="ax" x="${cx}" y="${y0 + 16}" text-anchor="middle">${i + 1}</text>`;
+      pts.push([cx, ys(run)]);
+    });
+    s += `<polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" style="stroke:var(--s1)" stroke-width="1.75" stroke-linejoin="round"/>`;
+    s += pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.75" style="fill:var(--s1)"/>`).join('');
+    const [lx, ly] = pts[pts.length - 1];
+    s += `<text class="v" x="${lx}" y="${ly - 9}" text-anchor="middle">${pc(run)}</text>`;
+    s += `<text class="ax" x="${x0 + 6}" y="${ys(top) + 14}">Running total, % of all net sales</text>`;
+    const svg = $('pd-1s'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = s;
+    $('pd-1h').textContent = `Top 10 = ${pc(topSum / ALL * 100)} of net sales`;
+    let r = 0;
+    $('pd-1t').innerHTML = `<table class="t pd-t"><thead><tr><th class="pd-rk">#</th><th>Item</th><th class="r">Net sales</th><th class="r">Running total</th></tr></thead><tbody>` +
+      T.map((it, i) => (r += it.amt, `<tr><td class="pd-rk">${i + 1}</td><td class="nm">${nm(it)}</td><td class="r money">${P(it.amt)}</td><td class="r">${pc(r / ALL * 100)}</td></tr>`)).join('') +
+      `<tr class="pd-oth"><td class="pd-rk"></td><td>${othItems}</td><td class="r money">${P(othAmt)}</td><td class="r">100%</td></tr></tbody></table>` + foot(`Net sales ${P(ALL)}`);
+  }
+
+  // ---- D5 scatter: x = net sales, y = margin; the store margin line splits it in two plain halves ----
+  {
+    const W = 640, H = 226, x0 = 36, x1 = 630, y0 = 196, y1 = 10, xa = 15000, xb = 90000, ya = 8, yb = 26;
+    const xs = v => x0 + (v - xa) / (xb - xa) * (x1 - x0), ys = v => y0 - (v - ya) / (yb - ya) * (y0 - y1);
+    const store = V.ladder.gp / V.ladder.net * 100;
+    let s = '';
+    [10, 15, 20, 25].forEach(v => s += `<line class="gl" x1="${x0}" x2="${x1}" y1="${ys(v)}" y2="${ys(v)}"/><text class="ax" x="${x0 - 8}" y="${ys(v) + 4}" text-anchor="end">${v}%</text>`);
+    [20000, 40000, 60000, 80000].forEach(v => s += `<text class="ax" x="${xs(v)}" y="${y0 + 18}" text-anchor="middle">${K(v)}</text>`);
+    s += `<line x1="${x0}" x2="${x1}" y1="${ys(store)}" y2="${ys(store)}" style="stroke:var(--ink-4)" stroke-dasharray="3 3"/>`;
+    s += `<text class="ax" x="${x1}" y="${ys(store) - 6}" text-anchor="end">Store margin ${pc(store)}</text>`;
+    s += `<text class="ax" x="${x1}" y="${ys(yb) + 4}" text-anchor="end">Earns more than the store</text><text class="ax" x="${x1}" y="${ys(ya) - 6}" text-anchor="end">Earns less</text>`;
+    T.forEach((it, i) => s += `<g data-i="${i}"><circle class="dot" cx="${xs(it.amt)}" cy="${ys(it.margin)}" r="8"><title>${esc(it.name)} · ${P(it.amt)} · ${pc(it.margin)} margin</title></circle><text class="no" x="${xs(it.amt)}" y="${ys(it.margin) + 3.5}" text-anchor="middle">${i + 1}</text></g>`);
+    const svg = $('pd-5s'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = s;
+    $('pd-5t').innerHTML = `<table class="t pd-t pd-sc-t"><thead><tr><th class="pd-rk">#</th><th>Item</th><th class="r">Net sales</th><th class="r">Margin</th></tr></thead><tbody>` +
+      T.map((it, i) => `<tr data-i="${i}"><td class="pd-rk">${i + 1}</td><td class="nm">${nm(it)}</td><td class="r money">${P(it.amt)}</td><td class="r">${pc(it.margin)}</td></tr>`).join('') + `</tbody></table>` + foot('Dots numbered as the rows');
+    const card = svg.closest('.card');
+    const hl = i => card.querySelectorAll('[data-i]').forEach(el => { const on = el.dataset.i === i; el.classList.toggle('on', on); el.querySelector('circle')?.classList.toggle('on', on); });
+    card.addEventListener('mouseover', e => { const g = e.target.closest('[data-i]'); hl(g ? g.dataset.i : null); });
+    card.addEventListener('mouseleave', () => hl(null));
+  }
+
+  // ---- D3 table: change vs before, chip right of the number ----
+  $('pd-3').innerHTML = band('Top items', 'Last 30 days vs 30 before') + `<table class="t pd-t"><thead><tr><th>Item</th><th class="r">Units sold</th><th class="r">Net sales</th><th></th></tr></thead><tbody>` +
+    T.map(it => `<tr><td class="nm"><span class="pd-it"><i class="pd-ph"></i><span>${nm(it)}</span></span></td><td class="r">${units(it)}</td><td class="r money">${P(it.amt)}</td><td class="pd-c">${chip(it.c)}</td></tr>`).join('') +
+    `<tr class="pd-oth"><td><span class="pd-it"><i class="pd-ph" style="visibility:hidden"></i>${othItems}</span></td><td class="r"></td><td class="r money">${P(othAmt)}</td><td class="pd-c"></td></tr></tbody></table>` + foot();
+
+  // ---- D4 units with their word, and net per unit ----
+  $('pd-4').innerHTML = band('Top items', 'Last 30 days') + `<table class="t pd-t"><thead><tr><th>Item</th><th class="r">Sold</th><th class="r">Per unit</th><th class="r">Net sales</th></tr></thead><tbody>` +
+    T.map(it => `<tr><td class="nm">${nm(it)}</td><td class="r">${units(it)}</td><td class="r">${P(it.amt / it.units)}<span style="color:var(--ink-4)"> ${it.unit ? '/ ' + it.unit : 'each'}</span></td><td class="r money">${P(it.amt)}</td></tr>`).join('') +
+    `<tr class="pd-oth"><td>${othItems}</td><td class="r"></td><td class="r"></td><td class="r money">${P(othAmt)}</td></tr></tbody></table>` + foot('Per unit = net sales ÷ units sold');
+
+  // ---- D2 ranked bars ----
+  {
+    const mx = T[0].amt;
+    $('pd-2').innerHTML = T.map(it => `<div class="pd-rb-r"><div class="pd-rb-l"><span class="pd-rb-n">${nm(it)}</span><span class="money">${P(it.amt)}</span></div><div class="pd-rb-b" style="width:${it.amt / mx * 100}%"></div></div>`).join('') +
+      `<div class="pd-rb-r"><div class="pd-rb-l" style="margin:0"><span class="pd-rb-n" style="color:var(--ink-4);font-weight:400">${othItems}</span><span class="cnt" style="color:var(--ink-2)">${P(othAmt)}</span></div></div>`;
+    $('pd-2').insertAdjacentHTML('afterend', foot());
+  }
+
+  // ---- D6 lollipop ----
+  {
+    const mx = T[0].amt, g = 'grid-template-columns:208px 1fr 72px';
+    $('pd-6').innerHTML = T.map(it => `<div class="pd-g" style="${g}"><span class="pd-rw" title="${esc(it.name)}">${esc(it.name)}</span><div class="pd-trk"><i class="pd-lp" style="width:${it.amt / mx * 100}%"></i></div><span class="pd-r money">${K(it.amt)}</span></div>`).join('') +
+      `<div class="pd-g" style="${g}"><span class="pd-rw" style="color:var(--ink-4);font-weight:400">${othItems}</span><span></span><span class="pd-r" style="color:var(--ink-2)">${K(othAmt)}</span></div>`;
+    $('pd-6').insertAdjacentHTML('afterend', foot());
+  }
+
+  // ---- D7 slope by rank (bump): rank before → rank now, so ten close amounts never pile up ----
+  {
+    const W = 640, rh = 27, top = 30, xl = 70, xr = 250, H = top + rh * T.length;
+    const was = T.slice().sort((p, q) => q.prev - p.prev);
+    const y = r => top + r * rh + 4;
+    let s = `<text class="ax" x="${xl}" y="12" text-anchor="middle">Before</text><text class="ax now" x="${xr}" y="12" text-anchor="middle">Last 30 days</text>`;
+    T.forEach((it, i) => {
+      const j = was.indexOf(it), moved = j - i, c = moved > 0 ? 'var(--up)' : moved < 0 ? 'var(--down)' : 'var(--ink-5)';
+      s += `<line x1="${xl}" y1="${y(j)}" x2="${xr}" y2="${y(i)}" style="stroke:${c}" stroke-width="${moved ? 1.75 : 1.25}"><title>${esc(it.name)}</title></line>`;
+      s += `<circle cx="${xl}" cy="${y(j)}" r="3.5" style="fill:${c}"/><circle cx="${xr}" cy="${y(i)}" r="3.5" style="fill:${c}"/>`;
+      s += `<text class="ax" x="${xl - 12}" y="${y(j) + 4}" text-anchor="end">${j + 1} · ${K(it.prev)}</text>`;
+      s += `<text x="${xr + 12}" y="${y(i) + 4}"><tspan class="ax">${i + 1}</tspan><tspan dx="8" class="v">${K(it.amt)}</tspan><tspan dx="6" class="ax ${dir(it.c)}" style="font-weight:500">${fc(it.c)}</tspan><tspan dx="8" class="lb">${esc(cut(it.name, 34))}</tspan></text>`;
+    });
+    const svg = $('pd-7'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = s;
+  }
+
+  // ---- D8 dumbbell, sorted by change ----
+  {
+    const a = 15000, b = 90000, x = v => (v - a) / (b - a) * 100, g = 'grid-template-columns:196px 1fr 132px';
+    const S = T.slice().sort((p, q) => q.c - p.c);
+    $('pd-8').innerHTML = S.map(it => {
+      const l = Math.min(x(it.prev), x(it.amt)), w = Math.abs(x(it.amt) - x(it.prev));
+      return `<div class="pd-g" style="${g}"><span class="pd-rw" title="${esc(it.name)}">${esc(it.name)}</span><div class="pd-trk"><i class="pd-db-l ${dir(it.c)}" style="left:${l}%;width:${w}%"></i><i class="pd-dot was" style="left:${x(it.prev)}%"></i><i class="pd-dot now" style="left:${x(it.amt)}%"></i></div><span class="pd-r"><span class="money">${K(it.amt)}</span>${chip(it.c)}</span></div>`;
+    }).join('') + `<div class="pd-g" style="${g};min-height:22px"><span></span><div class="pd-axis">${[20000, 40000, 60000, 80000].map(v => `<span style="left:${x(v)}%">${K(v)}</span>`).join('')}</div><span></span></div>`;
+    $('pd-8').insertAdjacentHTML('afterend', foot());
+  }
+
+  // ---- D9 podium ----
+  $('pd-9').innerHTML = `<div class="pd-pod">` + T.slice(0, 3).map((it, i) => `<div><div class="pd-pt"><i class="pd-ph"></i><span>#${i + 1} · ${esc(it.cat)}</span></div><div class="pd-pn">${esc(it.name)}</div><div class="pd-pv"><span class="kpi-value">${P(it.amt)}</span>${chip(it.c)}</div></div>`).join('') + `</div>` +
+    `<table class="t pd-t"><tbody>` + T.slice(3).map((it, i) => `<tr><td class="pd-rk">${i + 4}</td><td class="nm">${nm(it)}</td><td class="r money">${P(it.amt)}</td><td class="pd-c">${chip(it.c)}</td></tr>`).join('') +
+    `<tr class="pd-oth"><td class="pd-rk"></td><td>${othItems}</td><td class="r money">${P(othAmt)}</td><td class="pd-c"></td></tr></tbody></table>` + foot();
+
+  // ---- D10 treemap (squarified), Change / Share colouring ----
+  {
+    const W = 640, H = 250;
+    const squarify = (items, x, y, w, h) => {
+      const out = []; let left = items.slice();
+      while (left.length) {
+        const k = w * h / left.reduce((s, i) => s + i.amt, 0), short = Math.min(w, h);
+        let row = [], best = Infinity;
+        for (const it of left) {
+          const r = row.concat([it]), a = r.map(i => i.amt * k), sum = a.reduce((p, q) => p + q, 0);
+          const worst = Math.max(short * short * Math.max(...a) / (sum * sum), sum * sum / (short * short * Math.min(...a)));
+          if (worst > best) break; best = worst; row = r;
+        }
+        const thick = row.reduce((s, i) => s + i.amt * k, 0) / short; let off = 0;
+        row.forEach(it => { const len = it.amt * k / thick; out.push(w >= h ? { it, x, y: y + off, w: thick, h: len } : { it, x: x + off, y, w: len, h: thick }); off += len; });
+        if (w >= h) { x += thick; w -= thick; } else { y += thick; h -= thick; }
+        left = left.slice(row.length);
+      }
+      return out;
+    };
+    const cells = squarify(CO, 0, 0, W, H);
+    const tint = c => c.oth ? 'var(--band)' : c.ch >= 8 ? 'var(--up-tint)' : c.ch > 0 ? 'var(--up-soft)' : c.ch <= -8 ? 'var(--down-tint)' : 'var(--down-soft)';
+    const draw = m => $('pd-10').innerHTML = cells.map(({ it, x, y, w, h }) => {
+      const i = CO.indexOf(it), dark = m === 'share' && i < 4;
+      return `<div class="${dark ? 'w' : ''}" style="left:calc(${x / W * 100}% + 1.5px);top:calc(${y / H * 100}% + 1.5px);width:calc(${w / W * 100}% - 3px);height:calc(${h / H * 100}% - 3px);background:${m === 'share' ? col(it, i) : tint(it)}" title="${esc(it.c)} · ${P(it.amt)}"><b>${esc(it.c)}</b>${K(it.amt)}<br>${m === 'share' ? pc(it.sh) : it.oth ? fc(it.ch) : cmp(it.ch)}</div>`;
+    }).join('');
+    draw('chg');
+    $('pd-10seg').addEventListener('click', e => { const bt = e.target.closest('button'); if (!bt) return; $('pd-10seg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === bt)); draw(bt.dataset.m); });
+    $('pd-10f').innerHTML = foot('Darker tint = 8% or more change', 'See all in Categories →');
+  }
+
+  // ---- D14 butterfly: share of net sales vs share of items on the shelf, one scale ----
+  {
+    const mx = Math.max(...CO.map(c => Math.max(c.sh, c.ish)));
+    $('pd-14').innerHTML = band('Categories · sales vs shelf', `${nItems} items`) +
+      `<div class="pd-bf pd-bf-h"><span style="text-align:right">Share of net sales</span><span></span><span>Share of items</span></div>` +
+      CO.map(c => `<div class="pd-bf${c.oth ? ' oth' : ''}"><span class="l">${pc(c.sh, 0)}<i class="bar" style="width:${c.sh / mx * 82}%"></i></span><span class="c">${esc(c.c)}</span><span class="rr"><i class="bar" style="width:${c.ish / mx * 82}%"></i>${pc(c.ish, 0)}</span></div>`).join('') +
+      `<div style="height:4px"></div>` + foot('Cement: a third of sales from 5% of items', 'See all in Categories →');
+  }
+
+  // ---- D11 100% stacked bar + table legend ----
+  $('pd-11').innerHTML = `<div class="pd-stk">${CO.map((c, i) => `<i style="flex:${c.amt};background:${col(c, i)}" title="${esc(c.c)} · ${pc(c.sh)}"></i>`).join('')}</div>` +
+    `<table class="t pd-t"><tbody>` + CO.map((c, i) => `<tr class="${c.oth ? 'pd-oth' : ''}"><td class="${c.oth ? '' : 'nm'}"><span class="pd-it"><i class="pd-sw" style="background:${col(c, i)}"></i>${esc(c.c)}</span></td><td class="r money">${P(c.amt)}</td><td class="r">${pc(c.sh)}</td><td class="pd-c">${c.oth ? '' : chip(c.ch)}</td></tr>`).join('') + `</tbody></table>` + foot('', 'See all in Categories →');
+
+  // ---- D12 bars + change ----
+  {
+    const mx = CO[0].amt, g = 'grid-template-columns:96px 1fr 132px';
+    $('pd-12').innerHTML = CO.map((c, i) => `<div class="pd-g" style="${g}"><span class="pd-rw" style="${c.oth ? 'color:var(--ink-4);font-weight:400' : ''}">${esc(c.c)}</span><div><i class="pd-hb${c.oth ? ' oth' : ''}" style="display:block;width:${c.amt / mx * 100}%"></i></div><span class="pd-r"><span class="money">${K(c.amt)}</span>${c.oth ? '<span class="chip" style="visibility:hidden">+0.0%</span>' : chip(c.ch)}</span></div>`).join('');
+    $('pd-12').insertAdjacentHTML('afterend', foot('', 'See all in Categories →'));
+  }
+
+  // ---- D13 plain table ----
+  $('pd-13').innerHTML = band('Categories', 'Last 30 days vs 30 before') + `<table class="t pd-t"><thead><tr><th>Category</th><th class="r">Items</th><th class="r">Net sales</th><th class="r">vs before</th><th class="r">Per item</th></tr></thead><tbody>` +
+    CO.map(c => `<tr class="${c.oth ? 'pd-oth' : ''}"><td class="${c.oth ? '' : 'nm'}">${esc(c.c)}</td><td class="r">${c.items}</td><td class="r money">${P(c.amt)}</td><td class="r">${c.oth ? '' : cmp(c.ch)}</td><td class="r">${P(c.amt / c.items)}</td></tr>`).join('') +
+    `<tr class="pd-tot"><td>Total</td><td class="r">${nItems}</td><td class="r">${P(ALL)}</td><td class="r"></td><td class="r"></td></tr></tbody></table>` + foot('Per item = net sales ÷ items in the category', 'See all in Categories →');
+
+  // ---- Bought together ----
+  const B = V.boughtTogether.slice().sort((p, q) => q.n - p.n);
+  const lift = l => `${+l.toFixed(1)}× more likely`;
+  const ITEMS = []; B.forEach(p => [p.a, p.b].forEach(x => ITEMS.includes(x) || ITEMS.push(x)));
+  // pairs that share an item walk into one chain; neighbours then sit next to each other (D17, D18)
+  const deg = {}; B.forEach(p => { deg[p.a] = (deg[p.a] || 0) + 1; deg[p.b] = (deg[p.b] || 0) + 1; });
+  const linked = B.filter(p => deg[p.a] > 1 || deg[p.b] > 1), lone = B.filter(p => !linked.includes(p));
+  const chain = [], ends = ITEMS.filter(x => linked.some(p => p.a === x || p.b === x));
+  let cur = ends.find(x => linked.filter(p => p.a === x || p.b === x).length === 1) || ends[0];
+  while (cur && !chain.includes(cur)) { chain.push(cur); const nx = linked.find(p => (p.a === cur && !chain.includes(p.b)) || (p.b === cur && !chain.includes(p.a))); cur = nx ? (nx.a === cur ? nx.b : nx.a) : null; }
+  ends.forEach(x => chain.includes(x) || chain.push(x));   // ponytail: a branching cluster falls back to a row, fine for 8 pairs
+  const ORDER = chain.concat(lone.flatMap(p => [p.a, p.b]));
+  const plus = '<span style="color:var(--ink-4);font-weight:400;margin:0 6px">+</span>';
+
+  // D15 pair rows
+  $('pd-15').innerHTML = band('Bought together', 'Top 8 pairs · last 30 days') + `<table class="t pd-t"><thead><tr><th>Pair</th><th class="r">Orders</th><th class="r">vs chance</th></tr></thead><tbody>` +
+    B.map(p => `<tr><td class="nm">${esc(p.a)}${plus}${esc(p.b)}</td><td class="r money">${p.n}</td><td class="r">${lift(p.lift)}</td></tr>`).join('') + `</tbody></table>` + foot('Orders = orders with both items', 'See all pairs →');
+
+  // D19 for this item
+  {
+    let k = 0;
+    const show = () => {
+      const it = ITEMS[k], rows = B.filter(p => p.a === it || p.b === it);
+      $('pd-19p').textContent = it;
+      $('pd-19').innerHTML = rows.map(p => `<div class="row"><span class="pd-ph" style="width:24px;height:24px"></span><span class="nm" style="color:var(--ink);font-weight:500">${esc(p.a === it ? p.b : p.a)}</span><span class="cnt" style="color:var(--ink-2)">${p.n} orders</span><span class="pct" style="min-width:108px;text-align:right">${lift(p.lift)}</span></div>`).join('');
+      $('pd-19f').innerHTML = foot(`Item ${k + 1} of ${ITEMS.length}`, 'See all pairs →');
+    };
+    $('pd-19p').addEventListener('click', () => { k = (k + 1) % ITEMS.length; show(); });
+    show();
+  }
+
+  // D18 links: pairs that share an item sit in one row; lone pairs stand as columns under it
+  {
+    const W = 640, H = 280, pos = {};
+    chain.forEach((x, i) => pos[x] = [W * (i + .5) / chain.length, 30]);
+    lone.forEach((p, i) => { const x = W * (i + .5) / lone.length; pos[p.a] = [x, 148]; pos[p.b] = [x, 250]; });
+    const w = n => 1.5 + n / B[0].n * 4.5;
+    let lines = '', html = '';
+    B.forEach(p => {
+      const [ax, ay] = pos[p.a], [bx, by] = pos[p.b];
+      lines += `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke-width="${w(p.n)}"><title>${esc(p.a)} + ${esc(p.b)} · ${p.n} orders</title></line>`;
+      html += `<span class="el" style="left:${(ax + bx) / 2 / W * 100}%;top:${(ay + by) / 2}px">${p.n}</span>`;
+    });
+    html += Object.entries(pos).map(([x, [px, py]]) => `<span class="nd${deg[x] > 1 ? ' hub' : ''}" style="left:${px / W * 100}%;top:${py}px">${esc(x)}</span>`).join('');
+    $('pd-18').innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${lines}</svg>` + html;
+  }
+
+  // D17 arc diagram: items down the left in chain order, arcs bulge right, thicker = more orders
+  {
+    const rh = 22, top = 12, lx = 200, W = 640, H = top * 2 + rh * (ORDER.length - 1);
+    const y = x => top + ORDER.indexOf(x) * rh;
+    let s = '';
+    B.forEach(p => {
+      const ya = y(p.a), yb = y(p.b), r = Math.abs(yb - ya) / 2, w = 1.5 + p.n / B[0].n * 4.5;
+      s += `<path d="M${lx} ${Math.min(ya, yb)} A${r} ${r} 0 0 1 ${lx} ${Math.max(ya, yb)}" fill="none" style="stroke:var(--d2)" stroke-width="${w}" stroke-linecap="round"><title>${esc(p.a)} + ${esc(p.b)} · ${p.n} orders</title></path>`;
+      s += `<text class="v" x="${lx + r + w / 2 + 6}" y="${(ya + yb) / 2 + 4}">${p.n}<tspan class="ax" dx="5">${lift(p.lift)}</tspan></text>`;
+    });
+    ORDER.forEach(x => s += `<circle cx="${lx}" cy="${y(x)}" r="3" style="fill:var(--s1)"/><text class="lb" x="${lx - 10}" y="${y(x) + 4}" text-anchor="end">${esc(x)}</text>`);
+    const svg = $('pd-17'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = s;
+  }
+
+  // D16 matrix of the 6 items in the most pair orders
+  {
+    const score = {}; B.forEach(p => { score[p.a] = (score[p.a] || 0) + p.n; score[p.b] = (score[p.b] || 0) + p.n; });
+    const S = Object.keys(score).sort((p, q) => score[q] - score[p]).slice(0, 6);
+    const get = (a, b) => B.find(p => (p.a === a && p.b === b) || (p.a === b && p.b === a));
+    let h = `<span class="ch"></span>` + S.map((x, i) => `<span class="ch">${i + 1}</span>`).join('');
+    S.forEach((a, i) => {
+      h += `<span class="rl"><i>${i + 1}</i>${esc(cut(a, 24))}</span>`;
+      S.forEach((b, j) => {
+        if (j >= i) { h += `<span></span>`; return; }
+        const p = get(a, b);
+        if (!p) { h += `<span class="e"></span>`; return; }
+        const t = Math.round(20 + (p.n / B[0].n) ** 2 * 80);
+        h += `<span style="background:color-mix(in srgb, var(--bar) ${t}%, var(--raised));color:${t > 55 ? '#fff' : 'var(--ink)'};font-weight:500" title="${esc(a)} + ${esc(b)} · ${p.n} orders · ${lift(p.lift)}">${p.n}</span>`;
+      });
+    });
+    const el = $('pd-16'); el.style.gridTemplateColumns = `200px repeat(6, 1fr)`; el.innerHTML = h;
+    el.insertAdjacentHTML('afterend', foot('Grey = not one of the top 8 pairs', 'See all pairs →'));
+  }
+
+  // D20 pair boxes
+  $('pd-20').innerHTML = B.map(p => `<div><span class="a">${esc(p.a)}<br><i>+</i> ${esc(p.b)}</span><span class="n">${p.n}<small>orders</small></span><span class="lf">${lift(p.lift)}</span></div>`).join('');
+  $('pd-20f').innerHTML = foot('More likely = than chance', 'See all pairs →');
+})();</script>

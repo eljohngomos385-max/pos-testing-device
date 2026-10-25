@@ -23,6 +23,15 @@
       "port": 8642
     },
     {
+      "name": "pos-lab-ask",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "scripts/ask-serve.py",
+        "8642"
+      ],
+      "port": 8642
+    },
+    {
       "name": "pos-static-2",
       "runtimeExecutable": "py",
       "runtimeArgs": [
@@ -204,6 +213,20 @@
         "8786"
       ],
       "port": 8786
+    },
+    {
+      "name": "pos-phone",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8692",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "pos-phone"
+      ],
+      "port": 8692
     }
   ]
 }

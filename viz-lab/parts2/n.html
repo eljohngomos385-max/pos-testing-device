@@ -1,0 +1,38 @@
+<style>
+/* Part N5 — folder tab, round 5. Same A2 Home card (a.html draws it); only the picked tab's shape changes:
+   flush with the card's top and left, no top corner, no left foot — the right side is the only curve. */
+.vn-fold .va-tab { padding: 0; }
+.vn-fold .va-tab .va-k { border-radius: 0; }
+.vn-fold .va-tab .va-k:first-child { padding-left: var(--pad); }
+.vn-fold .va-tab .va-k.on::before { display: none; }
+
+/* N5-1: rounded corner + curved foot on every side that doesn't touch the card's edge
+   (first tab: right only · middle tabs: both · last tab: left only) */
+.vn-corner .va-tab .va-k.on { border-top-right-radius: var(--r-cell); }
+.vn-corner .va-tab .va-k.on:not(:first-child) { border-top-left-radius: var(--r-cell); }
+.vn-corner .va-tab .va-k.on:not(:first-child)::before { display: block; }
+.vn-corner .va-tab .va-k.on:last-child { border-top-right-radius: 0; }
+.vn-corner .va-tab .va-k.on:last-child::after { display: none; }
+
+/* N5-7: the card's top line moves into the band, so the picked tab can soften it */
+.vn-soft { border-top-color: transparent; }
+.vn-soft .va-tab { box-shadow: inset 0 1px 0 var(--line); }
+.vn-soft .va-tab .va-k.on { box-shadow: inset 0 1px 0 var(--row-line); }
+
+</style>
+
+<section class="cat" id="vn-fold" data-nav="N5 · Folder tab">
+  <h2>Folder tab: only the right side curves</h2>
+  <p class="why">The picked tab starts flush at the card's top and left edge. There's no grey strip above it and no top-left corner. Only its right side curves down into the white panel. Click a tab to see it move.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>N5-1</b> Flush · corner + foot on each inner side</div>
+      <div class="card va-home vn-fold vn-corner" data-cfg='{"tint":"t4","fixed":1}'></div></div>
+    <div class="spec"><div class="tag"><b>N5-7</b> N5-1 · the top line goes lighter over the tab</div>
+      <div class="card va-home vn-fold vn-corner vn-soft" data-cfg='{"tint":"t4","fixed":1,"series":"gp"}'></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  // ponytail: a.html draws every .va-home card on load + resize; these come after its script, so ask for one more draw
+  dispatchEvent(new Event('resize'));
+})();</script>

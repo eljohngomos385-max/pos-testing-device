@@ -1,0 +1,152 @@
+<style>
+/* part p (round 6) — H3-9 v2: stacked columns with the rows snug beside them, as tall as the plot; and the same card by time of day. Every selector .vp-. */
+.vp-q { color: var(--ink-4); font-weight: 400; }
+.vp-svg { display: block; overflow: visible; }
+.vp-svg text { font-family: var(--font); }
+.vp-tl { font-size: 12px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.vp-in { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.vp-svg [data-k] { cursor: pointer; }
+.vp-big { display: flex; align-items: center; gap: 8px; padding: 12px 12px 0; }
+.vp-big .kpi-value { font-size: 20px; }
+.vp-big .vp-q { font-size: 12px; }
+/* chart left, rows right; the rows take the plot's height and their columns shrink to the widest cell */
+.vp-split { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 16px; padding: 12px 4px 10px 12px; }
+.vp-plot { flex: 1 1 260px; min-width: 0; }
+.vp-rows { flex: none; display: grid; grid-template-columns: repeat(3, max-content); grid-auto-rows: 1fr; }
+.vp-rows > .row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; column-gap: 14px; min-height: 0; padding: 0 8px; }
+.vp-rows > .row .nm { overflow: visible; }
+.vp-rows .vp-a, .vp-rows .vp-p { text-align: right; }
+/* ticked row (C12): the picked one wears a --fill pill, the rest stay clickable */
+.vp-tick > .row { border-radius: var(--r-row); cursor: pointer; }
+.vp-tick > .row.total { cursor: default; }
+.vp-tick > .row:hover, .vp-tick > .row:hover + .row, .vp-tick > .row.on, .vp-tick > .row.on + .row { border-top-color: transparent; }
+.vp-tick > .row.on, .vp-tick > .row.on:hover { background: var(--fill); }
+.vp-tick > .row.on .nm { color: var(--ink); }
+</style>
+
+<section class="cat" id="vp-stack" data-nav="P6 · Weekday stacks v2">
+  <h2>Weekday stacks v2</h2>
+  <p class="why">H3-9 again: one column per week, stacked by weekday. The rows now sit right next to their numbers and run exactly as tall as the chart. Each column has a 2px gap between days and a rounded top only. Week totals are rounded to the thousand so they never touch; the rows and tooltips hold the exact amounts.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>P6-1</b> H3-9 v2 · rows snug, as tall as the chart, totals that never touch</div><div class="card" id="vp-1"></div></div>
+    <div class="spec"><div class="tag"><b>P6-2</b> Pick a weekday · it drops to the bottom and keeps its tint, the rest go grey, its 8 weeks on the columns</div><div class="card" id="vp-2"></div></div>
+    <div class="spec"><div class="tag"><b>P6-3</b> Big total + chip · week totals in a line under the dates</div><div class="card" id="vp-3"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vp-time" data-nav="P6 · Time of day">
+  <h2>Time of day</h2>
+  <p class="why">The same card sliced by time of day. The store is open 7 AM–7 PM, so there are four 3-hour bands. There are no pesos per hour, only orders counted by hour, so these cards count orders. Sunday is today and hasn't started yet. The 8-week version isn't here because there's no hourly data that goes back that far.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>P6-4</b> Each day of the last 7, stacked by time band · orders</div><div class="card" id="vp-4"></div></div>
+    <div class="spec"><div class="tag"><b>P6-5</b> Each hour, stacked by weekday · orders</div><div class="card" id="vp-5"></div></div>
+    <div class="spec"><div class="tag"><b>P6-6</b> Pick a time band · it drops to the bottom and keeps its tint, its count on each day</div><div class="card" id="vp-6"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('vp-' + n), P = V.peso, K = V.pesoK;
+  const kR = v => K(Math.round(v / 1000) * 1000); // ponytail: column labels round to the thousand so 8 fit side by side; exact in rows + tooltips
+  const sum = (a, f = x => x) => a.reduce((s, x) => s + f(x), 0);
+  const pc = (a, t, d = 1) => V.pct(a / t * 100, d);
+  const r1 = n => Math.round(n * 10) / 10;
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vp-q">${r}</span>`}</div>`;
+  const pill = (t, nm) => `<span class="badge ${t}">${esc(nm)}</span>`;
+  const row = (nm, cells, cls = '', k = '') => `<div class="row ${cls}"${k !== '' ? ` data-k="${k}"` : ''}><span class="nm">${nm}</span>${cells}</div>`;
+  const A = v => `<span class="amt vp-a">${v}</span>`, Pc = v => `<span class="pct vp-p">${v}</span>`, N = v => `<span class="amt vp-a">${v}</span>`;
+  const chip = c => `<span class="chip ${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%</span>`;
+  const big = (v, rest = '') => `<div class="vp-big"><span class="kpi-value">${v}</span>${rest}</div>`;
+  const nice = (max, steps) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const tx = (x, y, t, c = 'ax', an = 'middle', st = '') => `<text class="${c}" x="${r1(x)}" y="${r1(y)}" text-anchor="${an}"${st && ` style="${st}"`}>${t}</text>`;
+  const ROW = 33;
+
+  // a segment: plain rect, or rounded top corners only when it is the column's top
+  const seg = (x, y, w, h, top, fill, tip, k) => { const r = top ? Math.min(4, h, w / 2) : 0, b = y + h;
+    const d = r ? `M${r1(x)} ${r1(b)}V${r1(y + r)}Q${r1(x)} ${r1(y)} ${r1(x + r)} ${r1(y)}H${r1(x + w - r)}Q${r1(x + w)} ${r1(y)} ${r1(x + w)} ${r1(y + r)}V${r1(b)}Z`
+      : `M${r1(x)} ${r1(b)}V${r1(y)}H${r1(x + w)}V${r1(b)}Z`;
+    return `<path d="${d}" data-k="${k}" style="fill:${fill}"><title>${esc(tip)}</title></path>`; };
+
+  // groups: [{lab, tot, now, parts:[{k, t, v, tip}]}] stacked bottom-up with a 2px white gap, scale on the left (the rows sit on the right).
+  // pick = a key: that part goes to the bottom in its tint, the rest grey (C12), its value written on it.
+  const cols = (host, groups, H, o) => { const W = host.clientWidth, L = 36, T = 18, B = o.under ? 34 : 20, ch = H - T - B, cw0 = W - L;
+    const st = nice(Math.max(...groups.map(g => g.tot)), 4), top = st * 4, sl = cw0 / groups.length, cw = Math.min(40, sl * .62), pk = o.pick, fs = sl < 48 ? 'font-size:11px' : '';
+    let s = '';
+    for (let k = 0; k <= 4; k++) { const y = T + ch * (1 - k / 4); s += `<line x1="${L}" x2="${W}" y1="${r1(y)}" y2="${r1(y)}" style="stroke:var(--grid)"/>` + tx(L - 6, y + 4, k ? o.fAx(k * st) : '0', 'ax', 'end'); }
+    groups.forEach((g, i) => { const x = L + i * sl + (sl - cw) / 2, cx = x + cw / 2;
+      const ps = (pk == null ? g.parts : [...g.parts.filter(p => p.k === pk), ...g.parts.filter(p => p.k !== pk)]).filter(p => p.v > 0);
+      let yb = T + ch, pickTop = null;
+      ps.forEach((p, j) => { const h = p.v / top * ch, gap = j ? 2 : 0, hh = Math.max(h - gap, 1), on = pk == null || p.k === pk;
+        s += seg(x, yb - h, cw, hh, j === ps.length - 1, on ? `var(--${p.t})` : 'var(--pill)', p.tip, p.k);
+        if (p.k === pk) pickTop = [yb - h, h, p]; yb -= h; });
+      if (pk != null) { const p = g.parts.find(q => q.k === pk);
+        if (!g.tot) s += tx(cx, T + ch - 6, 'Today');
+        else if (pickTop && pickTop[1] >= 18) s += tx(cx, pickTop[0] + 14, o.fPick(p.v), 'vp-in', 'middle', `fill:var(--${p.t}-ink)`);
+        else s += tx(cx, (pickTop ? pickTop[0] : T + ch) - 5, p.v ? o.fPick(p.v) : p.lbl || '0', 'vp-in', 'middle', 'fill:var(--ink)'); }
+      else if (!o.under) s += g.tot ? tx(cx, yb - 6, o.fTop(g.tot), 'vp-tl', 'middle', fs) : tx(cx, T + ch - 6, 'Today');
+      else if (!g.tot) s += tx(cx, T + ch - 6, 'Today');
+      s += tx(cx, T + ch + 15, g.lab, g.now ? 'ax now' : 'ax');
+      if (o.under) s += tx(cx, T + ch + 30, g.tot ? o.fTop(g.tot) : '—', 'vp-tl', 'middle', 'font-size:11px'); });
+    host.innerHTML = `<svg class="vp-svg" width="${W}" height="${H}">${s}</svg>`; };
+
+  // a card: [big] + plot | rows. Rows split the plot's height evenly (≥ 33px each); a click on a row or a segment moves the pick.
+  const draws = [];
+  const card = (n, c) => { const el = $(n); let pick = c.pick;
+    const draw = () => { const rs = c.rows(pick), H = Math.max(c.minH || 0, rs.length * ROW);
+      el.innerHTML = band(c.title, c.period) + (c.big ? big(...c.big(pick)) : '')
+        + `<div class="vp-split"><div class="vp-plot"></div><div class="rows vp-rows${c.tick ? ' vp-tick' : ''}" style="height:${H}px">${rs.join('')}</div></div>`;
+      cols(el.querySelector('.vp-plot'), c.groups, H, { ...c.o, pick });
+      if (c.tick) el.onclick = e => { const t = e.target.closest('[data-k]'); if (!t) return; const k = +t.dataset.k; pick = pick === k ? null : k; draw(); }; };
+    draws.push(draw); draw(); };
+
+  // ================= Weekday stacks (8 weeks of the daily calendar) =================
+  // days with local dates (data.js keys by toISOString, which slips a day east of UTC); day 0 is a Monday
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const DAYS = V.days.map((d, i, a) => ({ ...d, dt: new Date(2026, 9, 18 - (a.length - 1 - i)), today: i === a.length - 1 }));
+  const md = dt => `${MON[dt.getMonth()]} ${dt.getDate()}`;
+  const WEEKS = []; for (let i = 0; i < DAYS.length; i += 7) WEEKS.push(DAYS.slice(i, i + 7));
+  const W8 = WEEKS.slice(-8), WT = ['t1', 't2', 't3', 't4', 't5', 't6', 't7']; // Sun t7, not grey: grey means "not picked" here
+  const byWd = WD.map((w, r) => ({ k: r, nm: w, t: WT[r], v: sum(W8, wk => wk[r].net) })), WTOT = sum(byWd, x => x.v);
+  const wkGroups = W8.map((wk, i) => ({ lab: i && wk[0].dt.getMonth() === W8[i - 1][0].dt.getMonth() ? String(wk[0].dt.getDate()) : md(wk[0].dt), tot: sum(wk, d => d.net), now: i === 7,
+    parts: wk.map((d, r) => ({ k: r, t: WT[r], v: d.net, lbl: d.today ? 'Today' : '0', tip: `${WD[r]} ${md(d.dt)} · ${d.today ? 'today' : P(d.net)}` })) }));
+  const wdRows = () => byWd.map(x => row(pill(x.t, x.nm), A(P(x.v)) + Pc(pc(x.v, WTOT)), '', x.k)).concat(row('Total', A(P(WTOT)) + Pc(''), 'total'));
+  const money = { fAx: K, fTop: kR, fPick: kR };
+
+  // P6-1 H3-9 v2
+  card(1, { title: 'Net sales by week', period: 'Last 8 weeks', groups: wkGroups, rows: wdRows, o: money });
+
+  // P6-2 pick a weekday; Friday (the biggest) picked to start
+  card(2, { title: 'Net sales by week', period: 'Last 8 weeks', groups: wkGroups, tick: true, pick: byWd.reduce((a, b) => b.v > a.v ? b : a).k, o: money,
+    big: k => k == null ? [P(WTOT), '<span class="vp-q">8 weeks · pick a weekday</span>'] : [P(byWd[k].v), `<span class="vp-q">${byWd[k].nm} · 8 weeks · ${pc(byWd[k].v, WTOT)} of net sales</span>`],
+    rows: k => byWd.map(x => row(pill(x.t, x.nm), A(P(x.v)) + Pc(pc(x.v, WTOT)), x.k === k ? 'on' : '', x.k)).concat(row('Total', A(P(WTOT)) + Pc(''), 'total')) });
+
+  // P6-3 big total + chip (last 4 weeks vs the 4 before), totals under the dates
+  { const a = sum(W8.slice(4), wk => sum(wk, d => d.net)), b = sum(W8.slice(0, 4), wk => sum(wk, d => d.net));
+    card(3, { title: 'Net sales by week', period: 'Last 8 weeks', groups: wkGroups, rows: wdRows, o: { ...money, under: true },
+      big: () => [P(WTOT), chip((a / b - 1) * 100) + '<span class="vp-q">last 4 weeks vs the 4 before</span>'] }); }
+
+  // ================= Time of day (orders by weekday × hour, VIZ.heat; slot "7a" = 7–8 AM) =================
+  const BANDS = [{ nm: 'Morning · 7–10', t: 't1', h: [0, 3] }, { nm: 'Midday · 10–1', t: 't2', h: [3, 6] }, { nm: 'Afternoon · 1–4', t: 't3', h: [6, 9] }, { nm: 'Late · 4–7', t: 't4', h: [9, 12] }];
+  const isNow = d => !!V.week.find(w => w.d === d && w.now);
+  const dayGroups = V.heat.map(d => { const parts = BANDS.map((b, k) => ({ k, t: b.t, v: sum(d.v.slice(...b.h)) })), tot = sum(parts, p => p.v);
+    parts.forEach(p => p.tip = `${d.d} · ${BANDS[p.k].nm} · ${p.v} orders`); return { lab: d.d, tot, now: isNow(d.d), parts }; });
+  const BT = BANDS.map((b, k) => ({ ...b, k, v: sum(dayGroups, g => g.parts[k].v) })), BN = sum(BT, b => b.v);
+  const bandRows = k => BT.map(b => row(pill(b.t, b.nm), N(b.v) + Pc(pc(b.v, BN)), b.k === k ? 'on' : '', b.k)).concat(row('Total', N(BN) + Pc(''), 'total'));
+  const count = { fAx: v => v, fTop: v => v, fPick: v => v };
+
+  // P6-4 each day by time band
+  card(4, { title: 'Orders by time of day', period: 'Order count · last 7 days', groups: dayGroups, rows: () => bandRows(), minH: 200, o: count });
+
+  // P6-5 each hour by weekday (Sunday is today: no orders yet, so it has no row)
+  { const open = V.heat.filter(d => !isNow(d.d)), ON = sum(open, d => sum(d.v));
+    const hrGroups = V.hours.map((h, j) => ({ lab: h, tot: sum(open, d => d.v[j]), parts: open.map((d, r) => ({ k: r, t: WT[r], v: d.v[j], tip: `${d.d} · ${h} · ${d.v[j]} orders` })) }));
+    card(5, { title: 'Orders by hour', period: 'Order count · last 7 days', groups: hrGroups, o: count,
+      rows: () => open.map((d, r) => row(pill(WT[r], d.d), N(sum(d.v)) + Pc(pc(sum(d.v), ON)))).concat(row('Total', N(ON) + Pc(''), 'total')) }); }
+
+  // P6-6 pick a time band; the biggest picked to start
+  card(6, { title: 'Orders by time of day', period: 'Order count · last 7 days', groups: dayGroups, rows: bandRows, minH: 200, tick: true, o: count,
+    pick: BT.reduce((a, b) => b.v > a.v ? b : a).k,
+    big: k => k == null ? [String(BN), '<span class="vp-q">orders · pick a time band</span>'] : [String(BT[k].v), `<span class="vp-q">orders · ${BT[k].nm} · ${pc(BT[k].v, BN)} of all</span>`] });
+
+  addEventListener('resize', () => draws.forEach(d => d()));
+})();</script>

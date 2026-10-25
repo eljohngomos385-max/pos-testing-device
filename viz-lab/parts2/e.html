@@ -1,0 +1,298 @@
+<style>
+/* part e (v2) — Stock history rail cards + where stock went + stock flow, in the pill tints. Every selector .ve-.
+   One tint per reason everywhere: Received t3 · Refunds in t2 · Sold t1 · Kept in stock t4 · Went out t6 ·
+   losses stay red-family (Damaged = --bad, Count fix = t7 pink). Same colours as the E18 pick. */
+.ve-q { color: var(--ink-4); font-weight: 400; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ve-a { flex: none; width: 84px; text-align: right; }
+.ve-p { flex: none; width: 46px; text-align: right; }
+.ve-sw { flex: none; width: 8px; height: 8px; border-radius: 2px; }
+.ve-pad { padding: 12px 12px 8px; }
+.ve-bar { display: flex; gap: 2px; height: 14px; border-radius: var(--r-pill); overflow: hidden; }
+.ve-bar > i { min-width: 3px; }
+/* fixed card bodies: five rows, or five rows under a bar strip — full or not */
+.ve-rail { height: calc(var(--row-h) * 5); }
+.ve-red { color: var(--down); } .ve-grn { color: var(--up); }
+.badge.ve-short { background: var(--down-tint); color: var(--down); }
+.badge.ve-over { background: var(--up-tint); color: var(--up); }
+.ve-sup { flex: none; max-width: 112px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; line-height: 20px; }
+.row .chip { flex: none; min-width: 50px; justify-content: center; }
+/* donut beside the rows */
+.ve-split { display: flex; align-items: center; padding: 6px 0 6px 12px; }
+.ve-split > svg { flex: none; display: block; overflow: visible; }
+.ve-split > .rows { flex: 1; min-width: 0; }
+.ve-split .rows > .row { padding: 0 12px 0 14px; }
+.ve-svg { display: block; overflow: visible; }
+.ve-svg text { font-family: var(--font); }
+.ve-c1 { font-size: 15px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.ve-c2 { font-size: 11px; fill: var(--ink-4); }
+.ve-tick .row { cursor: pointer; }
+.ve-tick .row.off .badge { background: var(--t8); color: var(--ink-4); }
+.ve-tick .row.off .amt { color: var(--ink-4); }
+/* ranked bars, value at the bar end */
+.ve-pl { flex: none; width: 112px; }
+.ve-rk { position: relative; flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 6px; }
+.ve-rk > i { flex: none; height: 14px; border-radius: 3px; min-width: 3px; }
+.ve-rk > b { font-size: 12px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ve-rk > span { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 11px; color: var(--ink-5); font-variant-numeric: tabular-nums; }
+.rows > .row.ve-scale { min-height: 24px; border-top-color: transparent; }
+.rows > .row.ve-scale:hover, .rows > .row.ve-slot:hover { background: none; }
+.rows > .row.ve-slot { border-top-color: transparent; }
+/* big number + one bar (B17) */
+.ve-big { display: flex; align-items: baseline; gap: 8px; padding: 12px 12px 10px; }
+.ve-big .kpi-value { font-size: 20px; }
+/* sankey: svg ribbons, html pill labels on top */
+.ve-sk { position: relative; margin: 16px 0 12px; }
+.ve-lb { position: absolute; display: flex; align-items: center; gap: 6px; transform: translateY(-50%); white-space: nowrap; font-size: 12px; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.ve-lb b { font-size: 13px; font-weight: 500; color: var(--ink); }
+.ve-lb.top { transform: translate(-50%, -100%); }
+/* in/out per day header */
+.ve-leg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 12px 12px 0; font-size: 13px; }
+.ve-leg > span { display: inline-flex; align-items: center; gap: 6px; }
+.ve-leg .amt { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ve-ax { font-size: 11px; fill: var(--ink-5); font-variant-numeric: tabular-nums; }
+.ve-ax.now { fill: var(--ink); font-weight: 600; }
+.ve-vl { font-size: 11px; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+</style>
+
+<section class="cat" id="ve-cards" data-nav="Stock cards v2">
+  <h2>Stock history · rail cards</h2>
+  <p class="why">Lost demand, counts off, supplier costs, where stock went — calm rows, one small tinted chart where it helps. Every card keeps its height, full or not.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>E2-1</b> Lost demand · plain rows, last ask quiet</div><div class="card" id="ve-1"></div></div>
+    <div class="spec"><div class="tag"><b>E2-2</b> Lost demand · 100% bar of asks, a tint per item</div><div class="card" id="ve-2"></div></div>
+    <div class="spec"><div class="tag"><b>E2-3</b> Counts off · system → shelf, % chip, value at cost</div><div class="card" id="ve-3"></div></div>
+    <div class="spec"><div class="tag"><b>E2-4</b> Counts off · short vs over, one 2-part bar</div><div class="card" id="ve-4"></div></div>
+    <div class="spec"><div class="tag"><b>E2-5</b> Supplier costs · supplier pill on each row</div><div class="card" id="ve-5"></div></div>
+    <div class="spec"><div class="tag"><b>E2-6</b> Supplier costs · by supplier, 100% bar of items</div><div class="card" id="ve-6"></div></div>
+    <div class="spec"><div class="tag"><b>E2-7</b> Where it went · B12 donut + pills</div><div class="card" id="ve-7"></div></div>
+    <div class="spec"><div class="tag"><b>E2-8</b> Where it went · B11 100% bar + pills</div><div class="card" id="ve-8"></div></div>
+    <div class="spec"><div class="tag"><b>E2-9</b> Where it went · B6 ranked tinted bars</div><div class="card" id="ve-9"></div></div>
+    <div class="spec"><div class="tag"><b>E2-10</b> Where it went · C12 donut, tap a row to keep its colour</div><div class="card" id="ve-10"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="ve-flow" data-nav="Stock flow v2">
+  <h2>Stock history · flow</h2>
+  <p class="why">The week at cost: ₱318,700 came in (received + refunds), ₱286,460 went out, +₱32,240 kept. Every card below nets to the same +₱32,240.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>E2-11</b> E18 in tints · came in → went out + kept, pill labels</div><div class="card" id="ve-11"></div></div>
+    <div class="spec"><div class="tag"><b>E2-12</b> E18 · one came-in bar fans out, no middle</div><div class="card" id="ve-12"></div></div>
+    <div class="spec"><div class="tag"><b>E2-13</b> E18 · losses as one Lost node</div><div class="card" id="ve-13"></div></div>
+    <div class="spec"><div class="tag"><b>E2-14</b> E18 · stock value: opening + came in → went out + closing</div><div class="card" id="ve-14"></div></div>
+  </div>
+  <div class="grid" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>E2-15</b> E18 compact · rows under are the legend</div><div class="card" id="ve-15"></div></div>
+    <div class="spec"><div class="tag"><b>E2-16</b> B17 · came in = went out + kept</div><div class="card" id="ve-16"></div></div>
+    <div class="spec"><div class="tag"><b>E2-17</b> B17 · closing = opening + kept, chip right</div><div class="card" id="ve-17"></div></div>
+    <div class="spec"><div class="tag"><b>E2-18</b> B17 · came in = received + refunds</div><div class="card" id="ve-18"></div></div>
+    <div class="spec"><div class="tag"><b>E2-19</b> B17 · lost = damaged + count fix</div><div class="card" id="ve-19"></div></div>
+  </div>
+  <div class="grid wide" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>E2-20</b> In and out per day · two tints side by side, light scale</div><div class="card" id="ve-20"></div></div>
+    <div class="spec"><div class="tag"><b>E2-21</b> In and out per day · kept up top, amounts on the bars</div><div class="card" id="ve-21"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, P = V.peso, M = '−', $ = n => document.getElementById('ve-' + n);
+  const sum = (a, f = x => x.v) => a.reduce((s, x) => s + f(x), 0);
+  const sP = (n, d = 0) => (n > 0 ? '+' : n < 0 ? M : '') + P(Math.abs(n), d);
+  const pct = (a, t) => V.pct(a / t * 100);
+  const nice = (max, steps = 3) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 2, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r}</div>`;
+  const quiet = t => `<span class="ve-q">${t}</span>`, more = '<a class="more" href="#">View all ›</a>';
+  const row = (inner, cls = '') => `<div class="row ${cls}">${inner}</div>`;
+  const slots = n => '<div class="row ve-slot"></div>'.repeat(Math.max(0, n));
+  const chip = (p, upIsGood = true) => `<span class="chip ${(p >= 0) === upIsGood ? 'up' : 'down'}">${p >= 0 ? '+' : M}${Math.abs(p).toFixed(1)}%</span>`;
+  const seg = parts => parts.map(p => `<i style="flex:${p.v};background:${p.fill}" title="${p.label} · ${P(p.v)}"></i>`).join('');
+
+  // one tint per reason, the same in every card (and in the E18 pick)
+  const R = {
+    received: ['Received', 't3'], refunds: ['Refunds in', 't2'], sold: ['Sold', 't1'], kept: ['Kept in stock', 't4'],
+    damaged: ['Damaged', 'bad'], countFix: ['Count fix', 't7'], lost: ['Lost', 'bad'], out: ['Went out', 't6'],
+    opening: ['Opening stock', 't8'], closing: ['Closing stock', 't8'],
+  };
+  const fill = k => `var(--${R[k][1]})`;
+  const pill = k => `<span class="badge ${R[k][1]}">${R[k][0]}</span>`;
+  const node = (k, v) => ({ k, v, label: R[k][0], fill: fill(k) });
+
+  // ---- the week's flow, all worked out from stockFlow ----
+  const F = V.stockFlow;
+  const lostFix = -F.countFix, kept = F.closing - F.opening;
+  const ins = [node('received', F.received), node('refunds', F.refundsIn)];
+  const outs = [node('sold', F.sold), node('damaged', F.damaged), node('countFix', lostFix), node('kept', kept)];
+  const IN = sum(ins), OUT = F.sold + F.damaged + lostFix;
+  const D = V.stockByDay, dIn = sum(D, d => d.in), dOut = sum(D, d => d.out);
+  // ponytail: the one check — every card here must net to the same kept figure; shot.mjs prints this if not
+  if (IN - OUT !== kept || dIn - dOut !== kept || dIn !== F.received || dOut !== OUT - F.refundsIn) console.error('ve: stock figures disagree', { IN, OUT, kept, dIn, dOut });
+
+  /* ================= rail cards ================= */
+
+  // E2-1 lost demand, plain
+  const LD = V.lostDemand, LDn = sum(LD, l => l.n);
+  $(1).innerHTML = band('Lost demand', more) + `<div class="rows ve-rail">${LD.slice(0, 5).map(l => row(
+    `<span class="nm" style="color:var(--ink)">${l.name}</span>${quiet('last ' + l.last)}<span class="amt" style="width:30px;text-align:right">${l.n}×</span>`)).join('')}${slots(5 - LD.length)}</div>`;
+
+  // E2-2 one 100% bar of asks, top 4 + Other (t8) when there are more than five
+  { const top = LD.length > 5 ? LD.slice(0, 4).concat({ name: `${LD.length - 4} more`, n: sum(LD.slice(4), l => l.n), other: 1 }) : LD;
+    const tint = (l, i) => `var(--t${l.other ? 8 : i + 1})`;
+    $(2).innerHTML = band('Lost demand', quiet(`${LDn} asks while out`))
+      + `<div class="ve-pad"><div class="ve-bar">${top.map((l, i) => `<i style="flex:${l.n};background:${tint(l, i)}" title="${l.name} · ${l.n}×"></i>`).join('')}</div></div>`
+      + `<div class="rows ve-rail">${top.map((l, i) => row(`<i class="ve-sw" style="background:${tint(l, i)}"></i><span class="nm">${l.name}</span>${quiet(l.other ? '' : l.last)}<span class="amt" style="width:30px;text-align:right">${l.n}×</span><span class="pct ve-p">${pct(l.n, LDn)}</span>`)).join('')}${slots(5 - top.length)}</div>`; }
+
+  // counts that didn't match: difference, its value at cost, % of what the system expected
+  const CM = V.countMismatch.map(c => { const d = Math.round((c.counted - c.expected) * 100) / 100; return { ...c, d, val: d * c.cost, p: d / c.expected * 100 }; });
+  const qty = n => Number.isInteger(n) ? n.toLocaleString('en-PH') : n.toFixed(2);
+
+  // E2-3 plain rows: system → shelf, % chip (red short / green over), value
+  $(3).innerHTML = band("Counts that didn't match", more) + `<div class="rows ve-rail">${CM.map(c => row(
+    `<span class="nm" style="color:var(--ink)">${c.name}</span>${quiet(qty(c.expected) + ' → ' + qty(c.counted))}${chip(c.p)}<span class="amt ${c.val < 0 ? 've-red' : 've-grn'}" style="width:52px;text-align:right">${sP(c.val)}</span>`)).join('')}${slots(5 - CM.length)}</div>`;
+
+  // E2-4 short vs over: one bar, each item a segment in its side's tint; pills say which side
+  { const sh = CM.filter(c => c.val < 0).sort((a, b) => a.val - b.val), ov = CM.filter(c => c.val > 0).sort((a, b) => b.val - a.val);
+    const side = c => c.val < 0 ? ['ve-short', 'Short', 'var(--down-tint)'] : ['ve-over', 'Over', 'var(--up-tint)'];
+    $(4).innerHTML = band("Counts that didn't match", quiet(`Short ${P(-sum(sh, c => c.val))} · Over ${P(sum(ov, c => c.val))}`))
+      + `<div class="ve-pad"><div class="ve-bar">${sh.concat(ov).map(c => `<i style="flex:${Math.abs(c.val)};background:${side(c)[2]}" title="${c.name} · ${sP(c.val, 2)}"></i>`).join('')}</div></div>`
+      + `<div class="rows ve-rail">${sh.concat(ov).map(c => row(`<span class="badge ${side(c)[0]}" style="flex:none;width:46px;justify-content:center">${side(c)[1]}</span><span class="nm" style="color:var(--ink)">${c.name}</span>${quiet(qty(c.expected) + ' → ' + qty(c.counted))}<span class="amt ${c.val < 0 ? 've-red' : 've-grn'}" style="width:52px;text-align:right">${sP(c.val)}</span>`)).join('')}${slots(5 - CM.length)}</div>`; }
+
+  // supplier costs: rises first (they cost money), then the biggest drops; cheaper = green chip
+  const CC = V.costChanges.map(c => ({ ...c, p: (c.to - c.from) / c.from * 100 })).sort((a, b) => (b.p > 0) - (a.p > 0) || Math.abs(b.p) - Math.abs(a.p));
+  const SUP = [...new Set(V.costChanges.map(c => c.supplier))];
+  const sTint = s => { const i = SUP.indexOf(s); return i < 7 ? 't' + (i + 1) : 't8'; };
+
+  // E2-5 one row per item, the supplier as its pill
+  $(5).innerHTML = band('Supplier costs changed', more) + `<div class="rows ve-rail">${CC.slice(0, 5).map(c => row(
+    `<span class="nm" style="color:var(--ink)">${c.name}</span><span class="badge ${sTint(c.supplier)} ve-sup">${c.supplier}</span><span class="amt" style="width:64px;text-align:right" title="was ${P(c.from, 2)}">${P(c.to, 2)}</span>${chip(c.p, false)}`)).join('')}</div>`;
+
+  // E2-6 grouped by supplier: one bar of changed items, rows = pill · items · average change
+  { const G = SUP.map(s => { const a = CC.filter(c => c.supplier === s); return { s, n: a.length, p: sum(a, c => c.p) / a.length }; }).sort((a, b) => b.n - a.n);
+    $(6).innerHTML = band('Supplier costs changed', quiet(`${CC.length} items · ${SUP.length} suppliers`))
+      + `<div class="ve-pad"><div class="ve-bar">${G.map(g => `<i style="flex:${g.n};background:var(--${sTint(g.s)})" title="${g.s} · ${g.n} items"></i>`).join('')}</div></div>`
+      + `<div class="rows ve-rail">${G.slice(0, 5).map(g => row(`<span class="nm"><span class="badge ${sTint(g.s)}">${g.s}</span></span>${quiet(g.n + (g.n === 1 ? ' item' : ' items'))}<span class="ve-q" style="width:34px;text-align:right">${g.n > 1 ? 'avg' : ''}</span>${chip(g.p, false)}`)).join('')}${slots(5 - G.length)}</div>`; }
+
+  /* ================= where it went ================= */
+  // whereItWent: Sold / Damaged / Count fix went out; Refunds came back in (shown under the total, never netted in)
+  const key = { 'Sold': 'sold', 'Refunded back in': 'refunds', 'Damaged': 'damaged', 'Count fix': 'countFix' };
+  const WO = V.whereItWent.filter(w => w.value > 0).sort((a, b) => b.value - a.value).map(w => node(key[w.r], w.value));
+  const WB = V.whereItWent.find(w => w.value < 0), WT = sum(WO);
+  if (WT !== OUT || -WB.value !== F.refundsIn) console.error('ve: whereItWent disagrees with stockFlow');
+  const back = row(`<span class="nm">${pill('refunds')}</span><span class="amt ve-a" style="color:var(--ink-3)">+${P(-WB.value)}</span><span class="pct ve-p"></span>`);
+  const whereRows = (cls = '') => `<div class="rows ${cls}">${WO.map(n => row(`<span class="nm">${pill(n.k)}</span><span class="amt ve-a">${P(n.v)}</span><span class="pct ve-p">${pct(n.v, WT)}</span>`)).join('')}`
+    + row(`<span class="nm">Went out</span><span class="amt ve-a">${P(WT)}</span><span class="pct ve-p"></span>`, 'total') + back + '</div>';
+  // arcs (0 = 3 o'clock, clockwise), as in B12
+  const pt = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const ring = (vals, cols, tips, cx = 62, cy = 62, r = 51, w = 18, gap = .025) => { let a = -Math.PI / 2; const t = vals.reduce((s, v) => s + v, 0);
+    return vals.map((v, i) => { const s = v / t * 2 * Math.PI, g = Math.min(gap, s / 3), a0 = a + g / 2, a1 = a + s - g / 2; a += s;
+      return `<path data-i="${i}" d="M${pt(cx, cy, r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a1)}" style="fill:none;stroke:${cols[i]};stroke-width:${w}"><title>${tips[i]}</title></path>`; }).join(''); };
+  const donut = () => `<svg class="ve-svg" width="124" height="124">${ring(WO.map(n => n.v), WO.map(n => n.fill), WO.map(n => `${n.label} · ${P(n.v)} · ${pct(n.v, WT)}`))}
+    <text class="ve-c1" x="62" y="64" text-anchor="middle">${V.pesoK(WT)}</text><text class="ve-c2" x="62" y="79" text-anchor="middle">went out</text></svg>`;
+
+  // E2-7 donut beside the rows
+  $(7).innerHTML = band('Where it went', quiet('Last 7 days')) + `<div class="ve-split">${donut()}${whereRows()}</div>`;
+  // E2-8 one 100% bar over the rows
+  $(8).innerHTML = band('Where it went', quiet('Last 7 days')) + `<div class="ve-pad"><div class="ve-bar">${seg(WO)}</div></div>` + whereRows();
+
+  // E2-9 ranked bars in their tints, value at the bar end, light scale under
+  { const st = nice(WO[0].v), top = st * 3, w = v => `calc((100% - 72px) * ${(v / top).toFixed(4)})`;
+    const scale = [0, 1, 2, 3].map(t => `<span style="left:${w(t * st)}">${t ? V.pesoK(t * st) : '0'}</span>`).join('');
+    $(9).innerHTML = band('Where it went', quiet('Last 7 days')) + `<div class="rows" style="padding-top:4px">${WO.map((n, i) => row(
+      `<span class="ve-pl">${pill(n.k)}</span><span class="ve-rk"><i style="width:${w(n.v)};background:${n.fill}" title="${n.label} · ${P(n.v)}"></i><b>${P(n.v)}</b></span><span class="pct ve-p">${pct(n.v, WT)}</span>`)).join('')}
+      ${row(`<span class="ve-pl"></span><span class="ve-rk">${scale}</span><span class="ve-p"></span>`, 've-scale')}
+      ${row(`<span class="nm">Went out</span><span class="amt ve-a">${P(WT)}</span><span class="pct ve-p"></span>`, 'total')}${back}</div>`; }
+
+  // E2-10 donut + rows: tap a row, it keeps its colour, the rest go grey (C12)
+  { const el = $(10);
+    el.innerHTML = band('Where it went', quiet('Last 7 days')) + `<div class="ve-split ve-tick">${donut()}${whereRows()}</div>`;
+    const rows = [...el.querySelectorAll('.rows > .row')].slice(0, WO.length), arcs = [...el.querySelectorAll('path[data-i]')];
+    let on = 1; // Damaged ticked to start: the 1% sliver is the one that matters
+    const paint = () => { arcs.forEach((a, i) => a.style.stroke = on < 0 || on === i ? WO[i].fill : 'var(--t8)'); rows.forEach((r, i) => r.classList.toggle('off', on >= 0 && on !== i)); };
+    rows.forEach((r, i) => r.onclick = () => { on = on === i ? -1 : i; paint(); });
+    paint(); }
+
+  /* ================= flow: sankey-lite ================= */
+  // Column of nodes, heights by value; small nodes get a minimum slot so their labels never touch.
+  const column = (nodes, top, h, minS, gap = 8) => {
+    let small = [], k = 0;
+    for (let i = 0; i < 4; i++) { k = (h - gap * (nodes.length - 1) - minS * small.length) / (sum(nodes) - sum(small)); small = nodes.filter(n => n.v * k < minS); }
+    let y = top; nodes.forEach(n => { const slot = Math.max(n.v * k, minS); n.h = Math.max(n.v * k, 3); n.y = y + (slot - n.h) / 2; y += slot + gap; });
+    return k;
+  };
+  const rib = (x0, a0, b0, x1, a1, b1, c, tip) => { const m = (x0 + x1) / 2;
+    return `<path d="M${x0} ${a0}C${m} ${a0} ${m} ${a1} ${x1} ${a1}L${x1} ${b1}C${m} ${b1} ${m} ${b0} ${x0} ${b0}Z" style="fill:${c};opacity:.62"><title>${tip}</title></path>`; };
+  const bar = (x, n, w) => `<rect x="${x}" y="${n.y}" width="${w}" height="${n.h}" rx="2" style="fill:${n.fill}"><title>${n.label} · ${P(n.v)}</title></rect>`;
+  const lab = (n, x, side, extra = '') => `<div class="ve-lb ${side}" style="${side === 'l' ? 'right' : 'left'}:${x}px;top:${n.y + n.h / 2}px">${pill(n.k)}<b>${P(n.v)}</b>${extra}</div>`;
+  // opts: mid = a grey "came in" node in the middle; labels = pills at both ends
+  const sankey = (el, L, Rn, { H = 200, mid = true, labels = true, padL = 196, padR = 208, midLabel = '' } = {}) => {
+    const W = el.clientWidth, nw = 14, T = 4, xL = labels ? padL : 12, xR = W - (labels ? padR : 12) - nw, tot = sum(L);
+    const kR = column(Rn, T, H - 2 * T, labels ? 28 : 5);
+    let s = '', html = '';
+    if (mid) {
+      column(L, T, H - 2 * T, labels ? 28 : 5);
+      const xM = Math.round((xL + xR) / 2), mh = (H - 2 * T) * .84, my = (H - mh) / 2, k = mh / tot;
+      let a = my; L.forEach(n => { const hh = n.v * k; s += rib(xL + nw, n.y, n.y + n.h, xM, a, a + hh, n.fill, `${n.label} · ${P(n.v)}`); a += hh; });
+      a = my; Rn.forEach(n => { const hh = n.v * k; s += rib(xM + nw, a, a + hh, xR, n.y, n.y + n.h, n.fill, `${n.label} · ${P(n.v)}`); a += hh; });
+      s += `<rect x="${xM}" y="${my}" width="${nw}" height="${mh}" rx="2" style="fill:var(--t8)"><title>Came in · ${P(tot)}</title></rect>`;
+      if (labels) html += `<div class="ve-lb top" style="left:${xM + nw / 2}px;top:${my - 4}px">${midLabel || 'Came in'} <b>${P(tot)}</b></div>`;
+      L.forEach(n => s += bar(xL, n, nw));
+    } else {
+      // one came-in bar, its parts stacked, ribbons fan straight to where it went
+      const bh = tot * kR, by = (H - bh) / 2; let a = by;
+      L.forEach(n => { n.y = a; n.h = n.v * kR; a += n.h; s += bar(xL, n, nw); });
+      a = by; Rn.forEach(n => { const hh = n.v * kR; s += rib(xL + nw, a, a + hh, xR, n.y, n.y + n.h, n.fill, `${n.label} · ${P(n.v)}`); a += hh; });
+    }
+    Rn.forEach(n => s += bar(xR, n, nw));
+    if (labels) html += L.map(n => lab(n, W - xL + 8, 'l')).join('') + Rn.map(n => lab(n, xR + nw + 8, 'r', n.note || '')).join('');
+    return `<div class="ve-sk" style="height:${H}px"><svg class="ve-svg" width="${W}" height="${H}">${s}</svg>${html}</div>`;
+  };
+  const fresh = a => a.map(n => ({ ...n }));
+  const flowCard = (n, title, f) => { const el = $(n); el.innerHTML = band(title, quiet('Last 7 days')); el.insertAdjacentHTML('beforeend', f(el)); };
+
+  // E2-11 the pick, in tints
+  flowCard(11, 'Came in → went out', el => sankey(el, fresh(ins), fresh(outs)));
+  // E2-12 no middle node: the came-in bar (received + refunds) fans straight out
+  flowCard(12, 'Came in → went out', el => sankey(el, fresh(ins), fresh(outs), { mid: false }));
+  // E2-13 damaged + count fix as one Lost node, its parts named beside it
+  flowCard(13, 'Came in → went out', el => sankey(el, fresh(ins), [node('sold', F.sold), { ...node('lost', F.damaged + lostFix), note: quiet(`damaged ${V.pesoK(F.damaged)} · count ${V.pesoK(lostFix)}`) }, node('kept', kept)], { padR: 300 }));
+  // E2-14 the whole shelf: opening + came in → went out + closing (opening dwarfs the week, so the week's ribbons are thin)
+  flowCard(14, 'Stock value · at cost', el => sankey(el, [node('opening', F.opening), ...fresh(ins)], [node('sold', F.sold), node('damaged', F.damaged), node('countFix', lostFix), node('closing', F.closing)], { H: 220, midLabel: 'Opening + came in' }));
+
+  // E2-15 compact: chart without labels, the rows under it are the legend
+  { const el = $(15); el.innerHTML = band('Came in → went out', quiet('Last 7 days'));
+    el.insertAdjacentHTML('beforeend', sankey(el, fresh(ins), fresh(outs), { H: 104, labels: false }));
+    const r = n => row(`<span class="nm">${pill(n.k)}</span><span class="amt ve-a">${P(n.v)}</span><span class="pct ve-p">${pct(n.v, IN)}</span>`);
+    el.insertAdjacentHTML('beforeend', `<div class="rows">${ins.map(r).join('')}${row(`<span class="nm">Came in</span><span class="amt ve-a">${P(IN)}</span><span class="pct ve-p"></span>`, 'total')}${outs.map(r).join('')}</div>`); }
+
+  /* ================= flow: big number + one bar (B17) ================= */
+  const stmt = (n, title, big, after, parts, tot) => {
+    $(n).innerHTML = band(title, quiet('Last 7 days')) + `<div class="ve-big"><span class="kpi-value">${big}</span>${after}</div>`
+      + `<div style="padding:0 12px 10px"><div class="ve-bar">${seg(parts)}</div></div>`
+      + `<div class="rows">${parts.map(p => row(`<span class="nm">${pill(p.k)}</span><span class="amt ve-a">${P(p.v)}</span><span class="pct ve-p">${pct(p.v, tot)}</span>`)).join('')}</div>`;
+  };
+  stmt(16, 'Came in → went out', P(IN), quiet('came in'), [node('out', OUT), node('kept', kept)], IN);
+  stmt(17, 'Stock value · at cost', P(F.closing), `<span class="chip up">+${(kept / F.opening * 100).toFixed(1)}%</span>${quiet('closing')}`, [node('opening', F.opening), node('kept', kept)], F.closing);
+  stmt(18, 'Came in', P(IN), quiet('received + refunds'), fresh(ins), IN);
+  stmt(19, 'Stock lost', P(F.damaged + lostFix), quiet(`at cost · ${pct(F.damaged + lostFix, OUT)} of what went out`), [node('damaged', F.damaged), node('countFix', lostFix)], F.damaged + lostFix);
+  $(17).querySelector('.rows .row:last-child .badge').textContent = 'Kept this week';
+
+  /* ================= in and out per day: plain bars, two tints, side by side ================= */
+  const perDay = (el, { H = 188, scale = true, values = false } = {}) => {
+    const W = el.clientWidth, L = scale ? 52 : 12, Rr = 12, T = values ? 18 : 8, B = 22, st = nice(Math.max(...D.map(d => Math.max(d.in, d.out)))), top = st * 3;
+    const y = v => T + (1 - v / top) * (H - T - B), slot = (W - L - Rr) / D.length, bw = Math.min(22, slot * .3);
+    let s = scale ? [1, 2, 3].map(t => `<line x1="${L}" x2="${W - Rr}" y1="${y(t * st)}" y2="${y(t * st)}" style="stroke:var(--grid)"/><text class="ve-ax" x="${L - 8}" y="${y(t * st) + 4}" text-anchor="end">${V.pesoK(t * st)}</text>`).join('') : '';
+    s += `<line x1="${L}" x2="${W - Rr}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--line)"/>`;
+    D.forEach((d, i) => { const cx = L + slot * (i + .5);
+      [['in', 'received', cx - bw - 1], ['out', 'out', cx + 1]].forEach(([f, k, x]) => { if (!d[f]) return;
+        s += `<rect x="${x}" y="${y(d[f])}" width="${bw}" height="${y(0) - y(d[f])}" rx="3" style="fill:${fill(k)}"><title>${d.d} · ${R[k][0]} ${P(d[f])}</title></rect>`;
+        if (values) s += `<text class="ve-vl" x="${x + bw / 2}" y="${y(d[f]) - 5}" text-anchor="middle">${'₱' + Math.round(d[f] / 1000)}k</text>`; });
+      s += `<text class="ve-ax${d.now ? ' now' : ''}" x="${cx}" y="${H - 5}" text-anchor="middle">${d.d}</text>`; });
+    return `<div style="padding:10px 0 4px"><svg class="ve-svg" width="${W}" height="${H}">${s}</svg></div>`;
+  };
+  const legend = `<span>${pill('received')}<span class="amt">${P(dIn)}</span></span><span>${pill('out')}<span class="amt">${P(dOut)}</span>${quiet('after refunds')}</span>`;
+
+  // E2-20 legend pills with the week totals, light ₱ scale
+  { const el = $(20); el.innerHTML = band('Stock in and out', quiet('Last 7 days')) + `<div class="ve-leg">${legend}<span style="margin-left:auto">${quiet('kept')}<span class="amt">${sP(kept)}</span></span></div>`;
+    el.insertAdjacentHTML('beforeend', perDay(el)); }
+  // E2-21 the kept figure is the headline; amounts sit on the bars, no scale
+  { const el = $(21); el.innerHTML = band('Stock in and out', quiet('Last 7 days')) + `<div class="ve-big" style="padding-bottom:0"><span class="kpi-value">${sP(kept)}</span>${quiet('kept in stock')}</div><div class="ve-leg" style="padding-top:8px">${legend}</div>`;
+    el.insertAdjacentHTML('beforeend', perDay(el, { scale: false, values: true })); }
+})();</script>

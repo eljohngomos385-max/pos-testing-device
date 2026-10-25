@@ -1,0 +1,239 @@
+<style>
+/* part i (round 3) — the owner's notes on the liked cards: B2-9 without the %, the donuts bigger, liked families on data they have not met. Every selector .vi-. */
+.vi-q { color: var(--ink-4); font-weight: 400; }
+.vi-svg { display: block; overflow: visible; margin: 0 auto; }
+.vi-svg text { font-family: var(--font); }
+.vi-c1 { font-size: 21px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.vi-c1.xl { font-size: 28px; }
+.vi-c2 { font-size: 12px; fill: var(--ink-4); }
+/* row cells: the rows are the legend */
+.vi-rows > .row .nm { display: flex; align-items: center; }
+.vi-n { flex: none; width: 34px; text-align: right; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vi-n.k { color: var(--ink); font-weight: 500; }
+.vi-a { flex: none; min-width: 76px; text-align: right; }
+.vi-a.w { min-width: 98px; }
+.vi-p { flex: none; width: 46px; text-align: right; }
+.row .vi-ch { flex: none; min-width: 56px; justify-content: center; }
+.vi-rows > .row.vi-hd { min-height: 28px; }
+.vi-rows > .row.vi-hd:hover { background: none; }
+.vi-c { flex: none; width: 58px; text-align: right; font-variant-numeric: tabular-nums; }
+/* one 100% bar, 14px */
+.vi-bar { display: flex; gap: 2px; height: 14px; border-radius: var(--r-pill); overflow: hidden; }
+.vi-bar > i { min-width: 2px; }
+.vi-bp { padding: 0 12px 10px; }
+/* big number, chip right of it */
+.vi-big { display: flex; align-items: center; gap: 8px; padding: 12px 12px 10px; }
+.vi-big .kpi-value { font-size: 20px; }
+.vi-big .vi-q { font-size: 12px; }
+/* ranked tint bars (B2-9): pill | bar + value at its end | right cell, light scale behind */
+.vi-rank { padding: 8px 0 2px; }
+.vi-rk { display: flex; align-items: center; height: 30px; padding: 0 12px; }
+.vi-rl { flex: none; }
+.vi-trk { position: relative; flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; padding-right: var(--vi-res);
+  background: linear-gradient(var(--grid), var(--grid)) right / 1px 100% no-repeat, linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 33.3333% 100% repeat-x;
+  background-origin: content-box; background-clip: content-box; }
+.vi-trk > i { flex: none; height: 16px; border-radius: 4px; min-width: 2px; }
+.vi-trk > b { flex: none; margin-left: 4px; padding: 0 2px; background: var(--raised); font-size: 12px; font-weight: 500; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vi-rk > .vi-r { flex: none; margin-left: 8px; display: flex; justify-content: flex-end; }
+.vi-rk.ax { height: 20px; }
+.vi-rk.ax > .vi-trk { background: none; }
+.vi-rk.ax .ax2 { position: absolute; top: 2px; transform: translateX(-50%); font-size: 11px; color: var(--ink-5); font-variant-numeric: tabular-nums; }
+/* donut beside the rows / above them */
+.vi-split { display: flex; align-items: center; padding: 12px 0 12px 14px; }
+.vi-split > svg { flex: none; margin: 0; }
+.vi-split > .rows { flex: 1; min-width: 0; }
+.vi-split .rows > .row { padding: 0 12px 0 16px; }
+.vi-under { padding: 18px 0 12px; }
+.vi-tick { padding: 4px 4px 4px 2px; }
+.vi-split .vi-tick > .row { padding: 0 8px; border-radius: var(--r-row); cursor: pointer; }
+.vi-tick > .row:hover, .vi-tick > .row:hover + .row, .vi-tick > .row.on + .row { border-top-color: transparent; }
+.vi-tick > .row.on, .vi-tick > .row.on:hover { background: var(--fill); border-top-color: transparent; }
+/* a little stacked bar inside a row */
+.vi-mini { flex: 1; min-width: 0; display: flex; gap: 2px; height: 12px; margin: 0 4px 0 12px; }
+.vi-mini > i { flex: none; border-radius: 3px; }
+/* foot: See all */
+.vi-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: var(--row-h); padding: 0 var(--pad); border-top: 1px solid var(--row-line); font-size: 12px; color: var(--ink-4); }
+.vi-foot a { font-weight: 500; color: var(--ink); text-decoration: none; white-space: nowrap; }
+.vi-foot b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+/* flow (D2-17) */
+.vi-flow { padding: 14px 12px 10px; }
+.vi-flow svg { display: block; width: 100%; height: auto; overflow: visible; }
+.vi-fl { font-size: 12px; fill: var(--ink-2); font-family: var(--font); }
+.vi-fl tspan.k { fill: var(--ink); font-weight: 500; }
+</style>
+
+<section class="cat" id="vi-bars" data-nav="B2-9 no %">
+  <h2>B2-9 without the percent</h2>
+  <p class="why">The owner's note: "B2-9 but without the percent". Ranked bars in tints, pill as the label, light scale behind. Some keep only the change chip, some drop it too. Staff has no week-before figures in the data, so staff gets no chip.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>I3-1</b> Payments · no chip, no % · value at the bar end</div><div class="card" id="vi-1"></div></div>
+    <div class="spec"><div class="tag"><b>I3-2</b> Payments · no chip · exact amount in the last column, Total row</div><div class="card" id="vi-2"></div></div>
+    <div class="spec"><div class="tag"><b>I3-3</b> Payments · chip only · exact amount at the bar end, Total with its chip</div><div class="card" id="vi-3"></div></div>
+    <div class="spec"><div class="tag"><b>I3-4</b> Categories · chip only · top 6 + Other · 2</div><div class="card" id="vi-4"></div></div>
+    <div class="spec"><div class="tag"><b>I3-5</b> Categories · no chip, no %</div><div class="card" id="vi-5"></div></div>
+    <div class="spec"><div class="tag"><b>I3-6</b> Staff · no chip, no % · orders beside</div><div class="card" id="vi-6"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vi-donuts" data-nav="Bigger donuts">
+  <h2>Bigger donuts</h2>
+  <p class="why">"The pie charts are really small… slightly bigger." The liked donuts again: full donuts 168px with a 20px ring, half donuts across most of the card with a 24px ring, the total big inside. Rows beside and rows under, for the same data, to compare.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>I3-7</b> Payments · half donut (B2-2), total in the arc, rows under</div><div class="card" id="vi-7"></div></div>
+    <div class="spec"><div class="tag"><b>I3-8</b> Payments · donut (B12), rows beside</div><div class="card" id="vi-8"></div></div>
+    <div class="spec"><div class="tag"><b>I3-9</b> Payments · donut, rows under · 30 days with chips</div><div class="card" id="vi-9"></div></div>
+    <div class="spec"><div class="tag"><b>I3-10</b> Payments · donut (C12) · tick a row, the rest go grey</div><div class="card" id="vi-10"></div></div>
+    <div class="spec"><div class="tag"><b>I3-11</b> Categories · half donut (D2-13), Other · 2 in grey</div><div class="card" id="vi-11"></div></div>
+    <div class="spec"><div class="tag"><b>I3-12</b> Categories · donut, rows beside</div><div class="card" id="vi-12"></div></div>
+    <div class="spec"><div class="tag"><b>I3-13</b> Staff · donut (C2-1), rows beside</div><div class="card" id="vi-13"></div></div>
+    <div class="spec"><div class="tag"><b>I3-14</b> Staff · half donut (C2-3), rows under</div><div class="card" id="vi-14"></div></div>
+    <div class="spec"><div class="tag"><b>I3-15</b> Fulfilment · half donut, orders and amount</div><div class="card" id="vi-15"></div></div>
+    <div class="spec"><div class="tag"><b>I3-16</b> Gross profit · half donut (B2-15), share of net in the arc</div><div class="card" id="vi-16"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vi-carry" data-nav="Liked, new data">
+  <h2>Liked looks on new data</h2>
+  <p class="why">C2-8, B2-12 and D2-17 carried to data they have not shown yet. Payments → fulfilment and other categories → their items are not here: the data has no payment × fulfilment split and items only for Cement and Fasteners.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>I3-17</b> Fulfilment as C2-8 · big count, one two-part bar</div><div class="card" id="vi-17"></div></div>
+    <div class="spec"><div class="tag"><b>I3-18</b> Voids and refunds by staff · C2-8, each person's own bar</div><div class="card" id="vi-18"></div></div>
+    <div class="spec"><div class="tag"><b>I3-19</b> Gross = cost + gross profit + taken off · B2-12</div><div class="card" id="vi-19"></div></div>
+    <div class="spec"><div class="tag"><b>I3-20</b> Categories as B2-12 · big total + chip, one bar</div><div class="card" id="vi-20"></div></div>
+  </div>
+  <div class="grid wide" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>I3-21</b> Flow (D2-17) · gross sales → net and taken off → where each went</div><div class="card" id="vi-21"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = window.VIZ; if (!V) return;
+  const $ = n => document.getElementById('vi-' + n);
+  const sum = (a, k = 'v') => a.reduce((s, x) => s + x[k], 0);
+  const pc = (a, t) => V.pct(Math.abs(a) / Math.abs(t) * 100);
+  const p2 = n => V.peso(n, 2);
+  const chg = (a, b) => { const c = (a / b - 1) * 100; return `<span class="chip vi-ch ${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%</span>`; };
+  const nice = (max, steps = 3) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vi-q">${r}</span>`}</div>`;
+  const foot = (link, left = '') => `<div class="vi-foot"><span>${left}</span><a href="#">${link}</a></div>`;
+  const tint = t => `var(--${/^t\d$/.test(t) ? t : 'pay-' + t})`;
+  const pill = x => `<span class="badge ${x.t}">${x.nm}</span>`;
+  const row = (nm, cells, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span>${cells}</div>`;
+  const rows = (list, cells, extra = '', cls = '') => `<div class="rows vi-rows ${cls}">` + list.map((x, i) => row(pill(x), cells(x, i), x.on ? 'on' : '')).join('') + extra + '</div>';
+  const totalRow = (cells, nm = 'Total') => row(nm, cells, 'total');
+  const tip = (x, t, f = V.peso) => `${x.nm} · ${f(x.v)} · ${pc(x.v, t)}`;
+  const bar = (list, t = sum(list), f) => `<div class="vi-bar">` + list.map(x => `<i style="width:${Math.abs(x.v) / Math.abs(t) * 100}%;background:${tint(x.t)}" title="${tip(x, t, f)}"></i>`).join('') + '</div>';
+  const big = (v, rest = '') => `<div class="vi-big"><span class="kpi-value">${v}</span>${rest}</div>`;
+  const amtPct = (x, t, f = V.peso) => `<span class="amt vi-a">${f(x.v)}</span><span class="pct vi-p">${pc(x.v, t)}</span>`;
+
+  // arcs: angle 0 = 3 o'clock, clockwise (as B2-2 / C2-1)
+  const pt = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const arc = (cx, cy, r, a0, a1) => `M${pt(cx, cy, r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a1)}`;
+  const ring = (cx, cy, r, w, list, f = V.peso, grey = -1, a0 = -Math.PI / 2, span = 2 * Math.PI, gap = .03) => {
+    const t = list.reduce((s, x) => s + Math.abs(x.v), 0); let a = a0;
+    return list.map((x, i) => { const s = Math.abs(x.v) / t * span, d = arc(cx, cy, r, a + gap / 2, a + Math.max(s - gap / 2, gap / 2 + .01)); a += s;
+      return `<path d="${d}" style="fill:none;stroke:${grey >= 0 && i !== grey ? 'var(--t8)' : tint(x.t)};stroke-width:${w}"><title>${tip(x, t, f)}</title></path>`; }).join('');
+  };
+  // the bigger sizes (owner 2026-10-18): full donut 168px / 20px ring; half donut ~72% of the card / 24px ring
+  const donut = (list, c1, c2, { f, grey = -1 } = {}) => { const S = 168, c = S / 2, w = 20;
+    return `<svg class="vi-svg" width="${S}" height="${S}">${ring(c, c, c - w / 2 - 1, w, list, f, grey)}<text class="vi-c1" x="${c}" y="${c + 4}" text-anchor="middle">${c1}</text><text class="vi-c2" x="${c}" y="${c + 22}" text-anchor="middle">${c2}</text></svg>`; };
+  const half = (el, list, c1, c2, f) => { const W = el.clientWidth, w = 24, r = Math.min(170, Math.round(W * .36)), cx = W / 2, cy = r + w / 2 + 16;
+    return `<svg class="vi-svg" width="${W}" height="${cy + 14}">${ring(cx, cy, r, w, list, f, -1, Math.PI, Math.PI, .02)}<text class="vi-c1 xl" x="${cx}" y="${cy - 26}" text-anchor="middle">${c1}</text><text class="vi-c2" x="${cx}" y="${cy - 6}" text-anchor="middle">${c2}</text></svg>`; };
+  const halfCard = (id, head, list, c1, c2, rowsHtml, f, after = '') => { const el = $(id); el.innerHTML = head + '<div></div>' + rowsHtml + after; el.children[1].innerHTML = half(el, list, c1, c2, f); };
+
+  // ranked tint bars (B2-9): lw = label width, lab = value at the bar end (null = none), right = last cell (rw wide)
+  const rank = (list, { lw = 84, lab = x => V.pesoK(x.v), right, rw = 56 } = {}) => {
+    const st = nice(Math.max(...list.map(x => x.v))), res = lab ? 84 : 8;
+    const R = x => right ? `<span class="vi-r" style="width:${rw}px">${x ? right(x) : ''}</span>` : '';
+    return `<div class="vi-rank" style="--vi-res:${res}px">` + list.map(x => `<div class="vi-rk"><span class="vi-rl" style="width:${lw}px">${pill(x)}</span><span class="vi-trk"><i style="width:${x.v / (st * 3) * 100}%;background:${tint(x.t)}" title="${x.nm} · ${V.peso(x.v)}"></i>${lab ? `<b>${lab(x)}</b>` : ''}</span>${R(x)}</div>`).join('')
+      + `<div class="vi-rk ax"><span class="vi-rl" style="width:${lw}px"></span><span class="vi-trk">${[0, 1, 2, 3].map(k => `<span class="ax2" style="left:calc((100% - ${res}px) * ${k / 3})">${k ? V.pesoK(k * st) : '0'}</span>`).join('')}</span>${R(null)}</div></div>`; };
+
+  // ---------- data, tints from the brief ----------
+  const P = V.payments.map(p => ({ nm: p.m, t: p.key, v: p.amt, n: p.n })), PT = sum(P), PN = sum(P, 'n');
+  const keyOf = Object.fromEntries(V.payments.map(p => [p.m, p.key]));
+  const Q = V.payments30.map(q => ({ nm: q.m, t: keyOf[q.m], v: q.amt, prev: q.prev })), QT = sum(Q), QP = sum(Q, 'prev');
+  // categories: top 6 by net (Cement t1 … Lumber t6) + Other · n in t8; 50–100 categories still give 7 rows
+  const CS = V.categories.slice().sort((a, b) => b.amt - a.amt), REST = CS.slice(6);
+  const C = CS.slice(0, 6).map((c, i) => ({ nm: c.c, t: 't' + (i + 1), v: c.amt, prev: c.prev }))
+    .concat({ nm: `Other · ${REST.length}`, t: 't8', v: sum(REST, 'amt'), prev: sum(REST, 'prev') });
+  const CT = sum(C), CP = sum(C, 'prev'), seeCats = foot(`See all ${CS.length} categories →`);
+  const S = V.staff.map((s, i) => ({ nm: s.name, t: 't' + (i + 1), v: s.amt, n: s.n, voids: s.voids, refunds: s.refunds })), ST = sum(S), SN = sum(S, 'n');
+  const F = V.fulfilment.map((f, i) => ({ nm: f.m, t: 't' + (i + 1), v: f.amt, n: f.n })), FT = sum(F), FN = sum(F, 'n');
+  // the ladder, one tint per word as B2-10…B2-16
+  const L = V.ladder, lp = (nm, v, t, n) => ({ nm, v, t, n });
+  const gp = lp('Gross profit', L.gp, 't4'), cost = lp('Cost of goods', L.cost, 't8'), net = lp('Net sales', L.net, 't3');
+  const off = [lp('Voids', -L.voids, 't7', L.voidsN), lp('Refunds', -L.refunds, 't2', L.refundsN), lp('Discounts', -L.discounts, 't6')];
+  const OT = sum(off);
+
+  const pay7 = band('Payment methods', 'Last 7 days'), pay30 = band('Payment methods', 'Last 30 days');
+  const catBand = band('Categories', 'Net sales · last 30 days'), catBand2 = band('Categories', 'Last 30 days vs 30 before');
+  const staffBand = band('Staff', 'Net sales · last 7 days');
+
+  // ---------- B2-9 without the percent ----------
+  $(1).innerHTML = pay30 + rank(Q);
+  $(2).innerHTML = pay30 + rank(Q, { lab: null, right: x => `<span class="money">${V.peso(x.v)}</span>`, rw: 76 })
+    + `<div class="rows vi-rows">${totalRow(`<span class="amt vi-a">${V.peso(QT)}</span>`)}</div>`;
+  $(3).innerHTML = band('Payment methods', 'Last 30 days vs 30 before') + rank(Q, { lab: x => V.peso(x.v), right: x => chg(x.v, x.prev) })
+    + `<div class="rows vi-rows">${totalRow(`<span class="amt vi-a">${V.peso(QT)}</span>${chg(QT, QP)}`)}</div>`;
+  $(4).innerHTML = catBand2 + rank(C, { lw: 92, right: x => chg(x.v, x.prev) }) + seeCats;
+  $(5).innerHTML = catBand + rank(C, { lw: 92 }) + seeCats;
+  $(6).innerHTML = staffBand + rank(S, { lw: 92, right: x => `<span class="cnt">${x.n} orders</span>`, rw: 70 });
+
+  // ---------- Bigger donuts ----------
+  const payTotal = totalRow(`<span class="amt vi-a">${V.peso(PT)}</span><span class="vi-p"></span>`);
+  halfCard(7, pay7, P, V.peso(PT), `Total · ${PN} payments`, rows(P, x => amtPct(x, PT), payTotal));
+  $(8).innerHTML = pay7 + `<div class="vi-split">${donut(P, V.peso(PT), `${PN} payments`)}${rows(P, x => amtPct(x, PT), payTotal)}</div>`;
+  $(9).innerHTML = band('Payment methods', 'Last 30 days vs 30 before') + `<div class="vi-under">${donut(Q, V.peso(QT), 'Total')}</div>`
+    + rows(Q, x => `<span class="amt vi-a">${V.peso(x.v)}</span>${chg(x.v, x.prev)}`, totalRow(`<span class="amt vi-a">${V.peso(QT)}</span>${chg(QT, QP)}`));
+  { const el = $(10), draw = on => { const T = P[on];
+      el.innerHTML = pay7 + `<div class="vi-split">${donut(P, pc(T.v, PT), T.nm, { grey: on })}`
+        + rows(P.map((x, i) => ({ ...x, on: i === on })), x => `<span class="vi-n">${x.n}</span><span class="amt vi-a">${V.peso(x.v)}</span>`, '', 'vi-tick') + '</div>';
+      el.querySelectorAll('.vi-tick > .row').forEach((r, i) => r.onclick = () => draw(i)); };
+    draw(2); }
+  const catTotal = totalRow(`<span class="amt vi-a">${V.peso(CT)}</span><span class="vi-p"></span>`);
+  halfCard(11, catBand, C, V.peso(CT), `Total · ${CS.length} categories`, rows(C, x => amtPct(x, CT), catTotal), V.peso, seeCats);
+  $(12).innerHTML = catBand + `<div class="vi-split">${donut(C, V.peso(CT), `${CS.length} categories`)}${rows(C, x => amtPct(x, CT), catTotal)}</div>` + seeCats;
+  const staffTotal = totalRow(`<span class="amt vi-a">${V.peso(ST)}</span><span class="vi-p"></span>`);
+  $(13).innerHTML = staffBand + `<div class="vi-split">${donut(S, V.peso(ST), 'Net sales')}${rows(S, x => amtPct(x, ST), staffTotal)}</div>`;
+  halfCard(14, staffBand, S, V.peso(ST), `Net sales · ${SN} orders`, rows(S, x => amtPct(x, ST), staffTotal));
+  halfCard(15, band('Fulfilment', 'Last 7 days'), F, V.peso(FT), `Total · ${FN} orders`,
+    rows(F, x => `<span class="vi-n">${x.n}</span>` + amtPct(x, FT), totalRow(`<span class="vi-n k">${FN}</span><span class="amt vi-a">${V.peso(FT)}</span><span class="vi-p"></span>`)));
+  halfCard(16, band('Gross profit', 'Last 30 days'), [gp, cost], p2(L.gp), `${pc(L.gp, L.net)} of net sales`,
+    rows([gp, cost], x => `<span class="amt vi-a w">${p2(x.v)}</span><span class="pct vi-p">${pc(x.v, L.net)}</span>`, totalRow(`<span class="amt vi-a w">${p2(L.net)}</span><span class="vi-p"></span>`, 'Net sales')), p2);
+
+  // ---------- Liked looks on new data ----------
+  // I3-17 C2-8 for fulfilment: count first, amount beside it
+  { const N = F.map(x => ({ ...x, v: x.n }));
+    $(17).innerHTML = band('Fulfilment', 'Last 7 days') + big(FN, `<span class="vi-q">orders · ${V.peso(FT)}</span>`) + `<div class="vi-bp">${bar(N, FN, n => n + ' orders')}</div>`
+      + rows(F, x => `<span class="vi-n k">${x.n}</span><span class="pct vi-p">${pc(x.n, FN)}</span><span class="amt vi-a">${V.peso(x.v)}</span>`); }
+  // I3-18 C2-8 for voids + refunds, then each person's own two-part bar on one scale (counts only: VIZ has no 7-day void amounts per person)
+  { const vd = sum(S, 'voids'), rf = sum(S, 'refunds'), parts = [{ nm: 'Voids', t: 't7', v: vd }, { nm: 'Refunds', t: 't2', v: rf }];
+    const mx = Math.max(...S.map(s => s.voids + s.refunds)), u = 100 / mx;
+    const mini = s => `<span class="vi-mini" title="${s.nm} · ${s.voids} voids · ${s.refunds} refunds"><i style="width:calc(${s.voids * u}% - 1px);background:var(--t7)"></i><i style="width:calc(${s.refunds * u}% - 1px);background:var(--t2)"></i></span>`;
+    $(18).innerHTML = band('Voids and refunds', 'Last 7 days') + big(vd + rf, `<span class="vi-q">of ${SN} orders · ${pc(vd + rf, SN)}</span>`) + `<div class="vi-bp">${bar(parts, vd + rf, n => n)}</div>`
+      + '<div class="rows vi-rows">' + row('', parts.map(p => `<span class="vi-c">${pill(p)}</span>`).join(''), 'vi-hd')
+      + S.map(s => `<div class="row"><span class="vi-rl" style="width:92px">${pill(s)}</span>${mini(s)}<span class="vi-c amt">${s.voids}</span><span class="vi-c amt">${s.refunds}</span></div>`).join('')
+      + totalRow(`<span class="vi-c amt">${vd}</span><span class="vi-c amt">${rf}</span>`) + '</div>'; }
+  // I3-19 B2-12 for gross: every gross peso is cost, profit or taken off
+  { const G = [cost, gp, ...off];
+    $(19).innerHTML = band('Gross sales', 'Last 30 days') + big(p2(L.gross), `<span class="vi-q">where it went</span>`) + `<div class="vi-bp">${bar(G, L.gross, p2)}</div>`
+      + rows(G, x => `<span class="amt vi-a w">${off.includes(x) ? '−' : ''}${p2(x.v)}</span><span class="pct vi-p">${pc(x.v, L.gross)}</span>`); }
+  // I3-20 B2-12 for categories, chip right of the big number
+  $(20).innerHTML = catBand2 + big(V.peso(CT), chg(CT, CP)) + `<div class="vi-bp">${bar(C, CT)}</div>` + rows(C, x => amtPct(x, CT)) + seeCats;
+
+  // I3-21 flow as D2-17: left nodes split into right nodes, links take the target's tint, same scale both sides
+  { const W = 640, H = 220, xL = 130, xR = 330, nw = 10, gap = 14;
+    const Ln = [{ ...net, kids: [cost, gp] }, { nm: 'Taken off', v: OT, t: 't8', kids: off }], Rn = Ln.flatMap(n => n.kids);
+    const k = (H - gap * (Rn.length - 1)) / L.gross;
+    const place = (ns, g) => { let y = (H - (sum(ns) * k + g * (ns.length - 1))) / 2; ns.forEach(n => { n.h = Math.max(n.v * k, 3); n.y = y; y += n.h + g; }); };
+    place(Rn, gap); Ln[0].h = Ln[0].v * k; Ln[0].y = 0;
+    { const o = Ln[1], a = off[0].y, b = off[2].y + off[2].h; o.h = Math.max(o.v * k, 3); o.y = (a + b - o.h) / 2; }
+    const m = (xL + nw + xR) / 2, lab = (n, x, a) => `<text class="vi-fl" x="${x}" y="${n.y + n.h / 2 + 4}" text-anchor="${a}">${n.nm} <tspan class="k">${p2(n.v)}</tspan></text>`;
+    let s = '';
+    Ln.forEach(n => { let o = n.y; n.kids.forEach(c => { const h = Math.max(c.v * k, 1.5), a = o, b = c.y; o += h;
+      s += `<path d="M${xL + nw} ${a}C${m} ${a} ${m} ${b} ${xR} ${b}L${xR} ${b + h}C${m} ${b + h} ${m} ${a + h} ${xL + nw} ${a + h}Z" style="fill:${tint(c.t)};opacity:.75"><title>${n.nm} → ${c.nm} · ${p2(c.v)}</title></path>`; }); });
+    s += Ln.map(n => `<rect x="${xL}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" style="fill:${tint(n.t)}"/>` + lab(n, xL - 8, 'end')).join('');
+    s += Rn.map(n => `<rect x="${xR}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" style="fill:${tint(n.t)}"/>` + lab(n, xR + nw + 8, 'start') + `<text class="vi-fl" x="${W - 4}" y="${n.y + n.h / 2 + 4}" text-anchor="end" style="fill:var(--ink-4)">${pc(n.v, L.gross)}</text>`).join('');
+    $(21).innerHTML = band('Where gross sales went', 'Last 30 days') + `<div class="vi-flow"><svg viewBox="0 0 ${W} ${H}">${s}</svg></div>`
+      + `<div class="vi-foot"><span>Gross sales <b>${p2(L.gross)}</b></span><a href="#">See Summary →</a></div>`; }
+})();</script>

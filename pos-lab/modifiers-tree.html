@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modifiers Tree</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Lab only: the whole modifiers model as one tree. Tokens copied from modifiers-lab.html. */
+:root { --page: #0A0A0A; --card: #1F1F1F; --line: rgba(255,255,255,.08); --ink: #fff; --ink-2: rgba(255,255,255,.7); --ink-3: rgba(255,255,255,.45);
+  --amber: #E5B454; --link: rgba(120,170,255,.45); --chip: rgba(120,170,255,.18); --chip-ink: #9EC3FF; }
+body.light { --page: #F2F2F2; --card: #fff; --line: #E1E1E1; --ink: #303030; --ink-2: #616161; --ink-3: #8C8C8C;
+  --amber: #D9961A; --link: #B9CDEA; --chip: #E3EDFF; --chip-ink: #2F5FB3; }
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--page); color: var(--ink); font: 14px/1.4 Inter, -apple-system, "Segoe UI", sans-serif; padding: 28px 16px 80px; }
+.theme { position: fixed; top: 14px; right: 14px; z-index: 5; display: flex; background: var(--card); border-radius: 999px; padding: 3px; box-shadow: 0 0 0 1px var(--line); }
+.theme button { border: 0; background: none; color: var(--ink-2); font: 500 12px Inter, sans-serif; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.theme button.on { background: var(--ink); color: var(--page); }
+h1 { font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
+.lede { color: var(--ink-2); font-size: 15px; max-width: 760px; margin-top: 8px; }
+.key { display: flex; flex-wrap: wrap; gap: 18px; margin: 18px 0 8px; color: var(--ink-2); font-size: 13px; }
+.key span { display: flex; align-items: center; gap: 7px; }
+.key i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.wrap { overflow-x: auto; background: var(--card); border-radius: 18px; box-shadow: 0 0 0 1px var(--line); margin-top: 10px; }
+svg text { font: 13.5px Inter, sans-serif; fill: var(--ink); }
+svg .halo { paint-order: stroke; stroke: var(--card); stroke-width: 5px; stroke-linejoin: round; }
+svg .park { fill: var(--ink-3); }
+svg .edge { fill: var(--chip-ink); font-weight: 600; }
+svg .qn { fill: #000; font-size: 11px; font-weight: 700; }
+svg .b1 { font-weight: 600; font-size: 15px; }
+.qs { max-width: 820px; margin-top: 36px; }
+.qs h2 { font-size: 20px; font-weight: 600; margin-bottom: 10px; }
+.qs ol { padding-left: 0; list-style: none; display: grid; gap: 8px; }
+.qs li { display: flex; gap: 10px; color: var(--ink-2); font-size: 15px; }
+.qs li b { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--amber); color: #000; font-size: 12px; display: grid; place-items: center; }
+</style>
+</head>
+<body>
+<div class="theme"><button class="on" data-theme="">Dark</button><button data-theme="light">Light</button></div>
+<h1>Modifiers, the whole tree</h1>
+<p class="lede">Left to right: from the words, to setting it up, to selling, to after the sale. Blue words on a branch are the answer that leads there. Numbered dots are the 9 questions you answered on 10-22 (your answers are under the tree).</p>
+<div class="key">
+  <span><i style="background:var(--ink)"></i>Decided by you</span>
+  <span><i style="background:var(--amber)"></i>Answered 10-22</span>
+  <span><i style="box-shadow:inset 0 0 0 2px var(--ink-3)"></i>Not now (later or parked)</span>
+</div>
+<div class="wrap"><svg id="t"></svg></div>
+
+<div class="qs"><h2>Your answers (10-22)</h2><ol>
+  <li><b>1</b>Each choice has its own price, and it is that price on any size (Pearls +₱15 on Medium and on Large). Price by size stays parked.</li>
+  <li><b>2</b>Yes: the last choice on an item can't be switched off.</li>
+  <li><b>3</b>Yes: a choice you add later (60%) shows on every item that asks Sweetness. The fix if one item shouldn't have it: switch it off on that item.</li>
+  <li><b>4</b>Yes, plus a Hidden page that lists everything hidden, item by item, with the switch to bring it back.</li>
+  <li><b>5</b>Behind a switch in Roles now, so a manager's PIN can be asked later with no new work.</li>
+  <li><b>6</b>Yes: tap the line to change its answers.</li>
+  <li><b>7</b>Yes: the drink and its modifiers are one thing, so a discount covers both. An add-on is its own item with its own discount.</li>
+  <li><b>8</b>The refund gives back the whole line's money, toppings included. Modifiers have no stock, so nothing goes back on a shelf. Food is gone; retail goes back like any item.</li>
+  <li><b>9</b>On the POS Reports page, a Modifiers part: what sold the most, how many times.</li>
+</ol></div>
+
+<script>
+// ponytail: hand-made tree layout (leaves stacked, parents centred, columns as wide as their longest label); no chart library for one picture
+// Each line: 2 spaces per level. "?N " = my pick N, "~" = not now, "[Yes] " = the answer on the branch into it.
+const SRC = `Modifiers
+  The three words
+    Variant · which item it is
+      Sizes and colours: Medium ₱140, Large ₱160
+      Its own price, stock and sales line
+      Searchable, and can be a tile
+    Modifier · a question about the item
+      Sweetness, Ice, Toppings
+      Each choice: a name, and a price or none
+      No stock, no picture
+      Never searchable, never a tile
+    ~Add-on · another item, offered at the end
+      ~Later, with QR ordering
+  Make a modifier
+    Its only home: Items › Modifiers tab
+      Empty: "No modifiers yet" + an example
+    Name it: Sweetness
+    Customer picks
+      [One] the cashier must pick exactly 1
+        Nothing starts picked (no usuals)
+      [Up to 2 / 3] optional, stops at the limit
+      [Any] optional, none or as many as they like
+    Add choice: one page each, like Add variant
+      Name: 0%
+      Price
+        [Empty] no extra
+        [₱15] added to the line
+      ?1 Same price on any size
+    Asked on: pick the items
+      Filters: category, selected or not
+  Put it on an item
+    Brown Sugar Milk Tea › Modifiers
+      Select the ones it asks
+      Drag ≡ to set the order the POS asks in
+      Every size of it asks the same ones
+    Hide a choice on this item?
+      [No] every choice shows
+      [Yes] tap Sweetness › switch 0% off
+        Gone on this item (not greyed)
+        Matcha Latte still shows 0%
+        The row reads "4 of 5 choices"
+        ?2 The last choice can't be switched off
+        ?3 A choice added later shows everywhere
+          Don't want it here? Switch it off on this item
+    Find it again
+      Modifiers search finds choices: "75%"
+      ?4 "Hidden on 3 items" under 0%
+        A Hidden page: everything hidden, item by item
+  A choice runs out
+    Make Pearls Unavailable
+      [In setup] Edit choice › Status
+      [On the POS] hold Pearls › Unavailable
+      Who can?
+        ?5 A switch in Roles, so a PIN can be asked later
+        Changed any time: Staff & access › Roles
+    What happens
+      Greyed on every item that asks Toppings
+      Stays off until someone turns it back on
+      Two separate lists with Pearls = two switches
+  Change or remove
+    Edit choice: name, price, status
+    Remove choice: gone from every item
+    Delete modifier: off every item
+    Old sales keep the old name and price
+  Sell it on the POS
+    Tap the Brown Sugar tile
+    Has sizes?
+      [Yes] pick Medium or Large
+      [No] straight to the questions
+    One question per screen, in the item's order
+      [Pick one] must answer, Add waits
+      [Up to / Any] skip or pick, Next top right
+    Add · goes to the cart
+      Brown Sugar Milk Tea Medium ₱140
+        Sweetness: 50%
+        Toppings: Pearls ₱15
+      ?6 Tap the line to change its answers
+      ?7 A discount covers the toppings too
+        An add-on line has its own discount
+  After the sale
+    Receipt: answers under the item
+    Kitchen slip: answers under the item
+    ?8 Refund: the line's money back, toppings included
+      Toppings have no stock: nothing to put back
+      [Food] the drink is gone
+      [Retail] the item goes back to stock
+    Report: what sold the most
+      Each choice: times sold, money
+      Pearls 312 times, ₱4,680
+      ?9 On the POS Reports page, a Modifiers part
+  ~Not now
+    ~Add-ons, with QR ordering first
+      ~A list at the end; tapping one acts like its tile
+      ~Remove the drink: the add-on stays
+    ~Meals and combos (upsize the fries and Coke)
+    ~Usuals (something starts picked)
+    ~Ready-made lists (a Sweetness preset)
+    ~Price by size (+₱15 Medium, +₱20 Large)
+    ~Stock on choices`;
+
+const root = { kids: [], d: -1 }, stack = [root];
+for (const line of SRC.split('\n')) {
+  const d = (line.length - line.trimStart().length) / 2;
+  let t = line.trim(), park = false, q = null, edge = '';
+  if (t[0] === '~') { park = true; t = t.slice(1); }
+  const qm = t.match(/^\?(\d+) /); if (qm) { q = qm[1]; t = t.slice(qm[0].length); }
+  const em = t.match(/^\[([^\]]+)\] /); if (em) { edge = em[1]; t = t.slice(em[0].length); }
+  const n = { t, park, q, edge, d, kids: [] };
+  while (stack[stack.length - 1].d >= d) stack.pop();
+  stack[stack.length - 1].kids.push(n); stack.push(n);
+}
+const tree = root.kids[0];
+
+const svg = document.getElementById('t'), NS = 'http://www.w3.org/2000/svg', ROW = 30, GAP = 70, PAD = 28;
+const ctx = document.createElement('canvas').getContext('2d');
+const w = (txt, font) => { ctx.font = font; return ctx.measureText(txt).width; };
+const lab = n => (n.q ? 26 : 0) + (n.edge ? w(n.edge, '600 13.5px Inter') + 8 : 0) + w(n.t, n.d === 0 ? '600 15px Inter' : '13.5px Inter');
+
+let leaf = 0; const all = [];
+(function place(n) { all.push(n); n.kids.forEach(place); n.y = n.kids.length ? (n.kids[0].y + n.kids.at(-1).y) / 2 : PAD + 10 + leaf++ * ROW; })(tree);
+let colW, colX;
+function layout() {   // column widths depend on the font, so rerun once Inter has loaded
+  colW = []; all.forEach(n => colW[n.d] = Math.max(colW[n.d] || 0, lab(n)));
+  colX = [PAD]; for (let d = 1; d < colW.length; d++) colX[d] = colX[d - 1] + 16 + colW[d - 1] + GAP;
+  all.forEach(n => n.x = colX[n.d]);
+}
+
+const el = (tag, a, txt) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; svg.appendChild(e); return e; };
+function draw() {
+  layout();
+  svg.innerHTML = '';
+  const v = k => getComputedStyle(document.body).getPropertyValue(k).trim();
+  svg.setAttribute('width', colX.at(-1) + colW.at(-1) + PAD + 30); svg.setAttribute('height', PAD * 2 + leaf * ROW);
+  all.forEach(n => n.kids.forEach(c => {           // links leave after the parent's label, land on the child's dot
+    const x0 = n.x + 16 + lab(n) + 6, mx = (x0 + c.x) / 2;
+    el('path', { d: `M${n.x + 5},${n.y}H${x0}C${mx},${n.y} ${mx},${c.y} ${c.x - 5},${c.y}`, fill: 'none', stroke: v('--link'), 'stroke-width': 1.5 });
+  }));
+  all.forEach(n => {
+    const col = n.park ? 'none' : n.q ? v('--amber') : v('--ink');
+    el('circle', { cx: n.x, cy: n.y, r: n.d === 0 ? 7 : 5, fill: col, stroke: n.park ? v('--ink-3') : 'none', 'stroke-width': 2 });
+    let x = n.x + 16;
+    if (n.q) { el('circle', { cx: x + 9, cy: n.y, r: 9, fill: v('--amber') }); el('text', { x: x + 9, y: n.y + 4, 'text-anchor': 'middle', class: 'qn' }, n.q); x += 26; }
+    if (n.edge) { el('text', { x, y: n.y + 5, class: 'edge halo' }, n.edge); x += w(n.edge, '600 13.5px Inter') + 8; }
+    el('text', { x, y: n.y + 5, class: 'halo' + (n.park ? ' park' : '') + (n.d === 0 ? ' b1' : '') }, n.t);
+  });
+}
+draw(); document.fonts.ready.then(draw);
+document.querySelector('.theme').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.body.classList.toggle('light', b.dataset.theme === 'light');
+  b.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  draw();
+});
+</script>
+</body>
+</html>

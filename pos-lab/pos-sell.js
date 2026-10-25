@@ -259,6 +259,8 @@ function renderProducts() {
   grid.dataset.pics = state.tilePics;
   grid.style.setProperty('--grid-cols', profile.columns);
   grid.style.setProperty('--grid-rows', profile.rows);
+  if (grid.classList.contains('sl') !== sellAsList())   // tiles <-> list (a search starts or ends): fade the new one in, not a cut
+    grid.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: calmMs(200), easing: 'ease-out' });
   if (!sellAsList()) { grid.classList.remove('sl'); delete grid.dataset.sl; delete grid.dataset.q; }
 
   if (cells.length === 0) {
@@ -298,7 +300,7 @@ function renderProducts() {
 // ---------- Sell as a list (owner 2026-10-23, pos-list's "Thin list V3, amount 510"): All items - and any search - as rows, A to Z;
 // My page stays tiles. Settings › View: grid | list | rows (each item its own card). The row is the category sheet's (.vs-row);
 // a tap adds, a hold peeks, as a tile. Tile pictures and Tile text size work on it too ----------
-const sellAsList = () => state.sellLayout !== 'grid' && !(state.sellPage === 'mine' && !state.query.trim());
+const sellAsList = () => !!state.query.trim() || (state.sellLayout !== 'grid' && state.sellPage !== 'mine');   // a search is always a list, Grid too (owner 2026-10-25)
 function setSellLayout(v) {
   if (state.sellLayout === 'grid' && v !== 'grid' && state.tilePics === 'off') { state.tilePics = 'top'; HWPOS_STORE.ui.set('tilePics', 'top'); }   // List on turns the pictures on; they can go off again
   state.sellLayout = v; HWPOS_STORE.ui.set('sellLayout', v); renderProducts();
@@ -491,6 +493,7 @@ function openAddTile(btn) {
     const pick = e.target.closest('[data-pick]')?.dataset.pick, m = veil.firstChild;
     if (!pick || m.classList.contains('grow')) return;
     if (QS.on) { close(); return showToast('Finish quick stock first'); }   // one pick mode at a time on the Items page
+    if (editorDirty()) { close(); return askLeave(true, () => addPickStart(pick)); }   // an item / modifier left open in Items with changes asks first
     // the sheet grows up to the full screen (owner 2026-10-21: "it goes up, it becomes a page"), then fades off the list under it
     m.style.height = m.offsetHeight + 'px';
     m.classList.add('grow');
@@ -576,16 +579,17 @@ function renderVariantList() {
   const words = members.map(p => p.name.split(' '));   // rows drop the words every variant shares: "White 1L", not "Latex Paint White 1L"
   let cut = 0;
   while (words.length > 1 && words.every(w => w.length > cut + 1 && w[cut] === words[0][cut])) cut++;
-  const shown = members.filter(p => (!vm.available || p.stock > 0)
+  const out = p => stockLevel(p) === 'out';   // untracked (a drink, a cut) is never sold out and has no count
+  const shown = members.filter(p => (!vm.available || !out(p))
     && (!q || [p.name, p.sku, p.barcode].some(s => String(s || '').toLowerCase().includes(q))));
   $('#variantCount').textContent = `${shown.length} of ${members.length}`;
   const avail = $('#variantAvail');
-  avail.hidden = members.every(p => p.stock > 0);   // nothing sold out = nothing to filter
+  avail.hidden = !members.some(out);   // nothing sold out = nothing to filter
   avail.classList.toggle('active', vm.available);
   avail.setAttribute('aria-pressed', String(vm.available));
   $('#variantList').innerHTML = shown.length ? shown.map(p => `
     <button type="button" class="vs-row" data-variant-id="${p.id}">
-      <span class="nm">${escapeHtml(p.name.split(' ').slice(cut).join(' '))}<small>${p.stock > 0 ? `${roundQty(p, p.stock)} available` : '<b>Sold out</b>'}</small></span>
+      <span class="nm">${escapeHtml(p.name.split(' ').slice(cut).join(' '))}${out(p) ? '<small><b>Sold out</b></small>' : p.trackStock === false ? '' : `<small>${roundQty(p, p.stock)} available</small>`}</span>
       <span class="amt num">${askedPrice(p) ? '—' : peso(p.price)}</span>
     </button>`).join('') : '<div class="vs-empty">No variants match</div>';
 }
@@ -659,17 +663,26 @@ function stockOnAdd(p, want, add, { cancel } = {}) {
 // An item with no set price (askedPrice) asks for it first (the edit sheet's 'price'), then comes back with `price`:
 // that line is its own, never merged (one cable at two prices is two lines), keyed by its own id + productId.
 // `productId` may be such a line's id: the scanner card's + on it, one more at its price.
-function addToCart(productId, via = 'other', fromScanCard = false, price) {
+// An item with modifiers (bo-model itemModifiers) asks them next (the edit sheet's 'mods'), then comes back with `answers`
+// (modifierAnswer snapshots) and `price` = its own + theirs. Such a line is its own too, and only the same answers at the
+// same price add to it: two teas with different sweetness are two lines.
+const answerKey = (as) => as.map(a => a.choiceId).join(',');
+function addToCart(productId, via = 'other', fromScanCard = false, price, answers) {
   const line = state.cart.find(i => i.id === productId && i.productId);
   const p = state.products.find(x => x.id === (line ? line.productId : productId));
   if (!p) return;
   const typed = price !== undefined;
   if (!line && !typed && askedPrice(p)) return openEditSheet('price', p.id, via);
+  if (!line && !answers && itemModifiers(p).length) {   // a tile or a size with lines of it on the cart: those first (openAgain)
+    if (!typed && (via === 'tile' || via === 'variant') && state.cart.some(i => (i.productId || i.id) === p.id)) return openAgain(p, via);
+    return openEditSheet('mods', p.id, { via, base: typed ? price : p.price });
+  }
   stockOnAdd(p, cartWant(p) + 1, () => {
     beginCart();
-    let it = line || (!typed && state.cart.find(i => i.id === p.id));
+    let it = line || (answers ? state.cart.find(i => i.productId === p.id && i.modifiers && answerKey(i.modifiers) === answerKey(answers) && i.price === price)
+      : !typed && state.cart.find(i => i.id === p.id));
     if (!it) state.cart.push(it = { id: typed ? newId() : p.id, ...(typed && { productId: p.id }), name: p.name, sku: p.sku, brand: p.brand,
-      unit: p.unit, price: typed ? price : p.price, qty: 0 });
+      unit: p.unit, price: typed ? price : p.price, ...(answers && { modifiers: answers }), qty: 0 });
     it.qty += 1;
     trackItemAdd({ ...p, price: it.price }, 1, via);
     renderCart();
@@ -1111,7 +1124,7 @@ function discountOk(back, then) {
 const esFresh = () => { if (es) { const { kind, id } = es; es = null; openEditSheet(kind, id); } };
 
 function openEditSheet(kind, id, via) {
-  if (kind !== 'ful' && kind !== 'price' && !state.cart.length) { flashControl($('#cartDiscountBtn')); flashControl($('#side')); return; }
+  if (kind !== 'ful' && kind !== 'price' && kind !== 'mods' && !state.cart.length) { flashControl($('#cartDiscountBtn')); flashControl($('#side')); return; }
   const was = !!es;
   closeEditSheet(true);
   closeVariantSheet();
@@ -1130,6 +1143,15 @@ function openEditSheet(kind, id, via) {
       beforeSc: sc, sc: { idNo: sc ? sc.idNo : '', name: sc ? sc.name : '' } };
   } else if (kind === 'price') {   // an item with no set price (addToCart): id = the product, d = the typed price
     es = { kind, id, via, d: '', pct: false };
+  } else if (kind === 'mods') {   // an item's modifiers (addToCart): id = the product, via = { via, base, line? } (esModsClick)
+    via ||= {};
+    const p = state.products.find(x => x.id === id), qs = p ? itemModifiers(p) : [], line = via.line && state.cart.find(i => i.id === via.line);
+    if (!qs.length) return;
+    // changing a cart line's answers (its sheet's Modifiers row): the same screens with its answers on, its price less theirs.
+    // Only answers still on offer (freshAnswers): a removed, hidden or Unavailable one is off, so a Pick one asks again
+    const had = line ? freshAnswers(p, line.modifiers, qs) : [];
+    const ans = Object.fromEntries(qs.map(q => [q.id, had.filter(a => a.modifierId === q.id).map(a => a.choiceId)]));
+    es = { kind, id, via: via.via, line: line ? line.id : null, base: moneyValue(line ? line.price - SalesMath.answersPrice(line) : via.base ?? p.price), qs, ans, at: 0 };
   } else {
     es = { kind, day: (state.pickupTime && state.pickupTime.day) || 'Today' };
   }
@@ -1253,7 +1275,9 @@ function drawEditSheet() {
     head = `<p>${escapeHtml(item.name)}</p><div class="es-hero">${peso(m.lineTotal)}</div>${sc && item.discount ? `<p>${ES_SC[sc.kind]} applies</p>` : ''}`;
     rows = `<div class="es-row${o.f === 'q' ? ' on' : ''}"><span>Quantity</span>${stp(-1, item.qty <= step)}<button type="button" data-sf="q">${n('q', o.f === 'q' ? o.q || '0' : item.qty, ' q')}</button>${stp(1)}</div>
       <div class="es-row${o.f === 'd' ? ' on' : ''}" data-sf="d"><span>Discount</span>${n('d', o.f === 'd' ? esTyped(o) : esShown(item.discount), ' v')}${cv(o.f === 'd')}</div>
-      <div class="es-row${o.f === 'n' ? ' on' : ''}" data-sf="n"><span>Note</span><small class="ad">${escapeHtml(item.note || '')}</small>${cv(o.f === 'n')}</div>`;
+      <div class="es-row${o.f === 'n' ? ' on' : ''}" data-sf="n"><span>Note</span><small class="ad">${escapeHtml(item.note || '')}</small>${cv(o.f === 'n')}</div>`
+      // its answers: the item's modifier screens again, with them on (esMods)
+      + (item.modifiers && p && itemModifiers(p).length ? `<button type="button" class="es-row" data-mods><span>Modifiers</span><small class="ad">${escapeHtml(item.modifiers.map(a => a.choice ?? a.choiceName).join(', '))}</small>${cv()}</button>` : '');
     // the note types into the cart line as it goes (app.js #esNote input), on the slip under the line
     if (o.f === 'n') side = `<div class="es-keys es-addr${kin}"><div class="es-ah">Note</div>
       <textarea class="es-ta" id="esNote" rows="3" maxlength="120" placeholder="Add a note" aria-label="Note">${escapeHtml(item.note || '')}</textarea></div>`;
@@ -1262,6 +1286,15 @@ function drawEditSheet() {
     head = `<p>Price for ${escapeHtml(state.products.find(p => p.id === o.id)?.name || 'item')}?</p><div class="es-hero">${esTyped(o)}</div>`;
     rows = '';
     side = `<div class="es-keys">${esKeys(true)}</div>`;
+  } else if (o.kind === 'mods') {
+    // one question per screen, in the item's order (modifiers-lab.html's POS screens): the item and what's picked so far, the
+    // question, how many; a choice greyed Unavailable can't be picked (it is set back in Items › Modifiers). The name as
+    // typed, never a "?" (owner 2026-10-24: "Toppings")
+    const q = o.qs[o.at], got = o.ans[q.id], so = o.qs.slice(0, o.at).flatMap(x => x.choices.filter(c => o.ans[x.id].includes(c.id)).map(c => c.name));
+    head = `<p>${escapeHtml([state.products.find(p => p.id === o.id)?.name || 'Item', ...so].join(' · '))}</p><div class="es-hero mq">${escapeHtml(q.name.replace(/\s*\?+\s*$/, ''))}</div>
+      <p class="es-off">Pick ${MODIFIER_PICKS[q.picks].toLowerCase()}</p>`;
+    rows = q.choices.map(c => `<button type="button" class="es-row${got.includes(c.id) ? ' pick' : ''}${c.unavailable ? ' out' : ''}" data-ch="${escapeHtml(c.id)}"${c.unavailable ? ' aria-disabled="true"' : ''}>
+      <span>${escapeHtml(c.name)}</span><small>${c.unavailable ? 'Unavailable' : c.price ? '+' + peso(c.price) : ''}</small></button>`).join('');
   } else if (o.kind === 'rd') {
     // what they pay, and while a discount is on, how much it takes off what: "₱13.00 off ₱65.00" (owner 2026-10-16).
     // Before = the sale with no sale discount and no Senior / PWD, so the VAT the exemption drops counts as off too.
@@ -1287,17 +1320,21 @@ function drawEditSheet() {
       <div class="es-times">${ES_HOURS.map(h => `<button type="button" class="es-row${pt && pt.day === o.day && pt.time === h ? ' pick' : ''}" data-time="${h}">${h}</button>`).join('')}</div></div>`;
   }
   // bottom left follows what's being edited: the discount's keys -> clear it; nothing open -> remove the line
-  const left = o.kind === 'ful' || o.kind === 'price' ? ''
+  const left = o.kind === 'ful' || o.kind === 'price' || o.kind === 'mods' ? ''
     : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
     : o.f ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q" data-sclr>Clear</button>' : '';
   const top = card.querySelector('.es-scroll')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
-  card.innerHTML = esFrame(head, rows, side, left + (o.kind === 'price' ? `<button type="button" class="es-ink" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
-    : o.f ? '<button type="button" class="es-ink" data-apply>Apply</button>' : '<button type="button" class="es-ink" data-close>Done</button>'),
-  `${o.kind === 'rd' ? ' fill' : o.kind === 'price' ? ' ask' : ''}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}`);
+  // the questions' progress: a line along the card's top, filled to this question, grown from where it was (o.w)
+  const w = o.kind === 'mods' && (o.at + 1) / o.qs.length, prog = w ? `<div class="es-prog" aria-hidden="true"><i style="--w:${w};--was:${o.w ?? w}"></i></div>` : '';
+  if (w) o.w = w;
+  card.innerHTML = prog + esFrame(head, rows, side, left + (o.kind === 'mods' ? esModsFoot(o)
+    : o.kind === 'price' ? `<button type="button" class="es-ink" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
+    : o.f ? `<button type="button" class="es-ink" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : '<button type="button" class="es-ink" data-close>Done</button>'),   // a 0 discount waits, as the price ask's Add does
+  `${o.kind === 'rd' ? ' fill' : o.kind === 'price' ? ' ask' : ''}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
   const list = card.querySelector('.es-scroll');
   if (list && o.opened) list.querySelector('.pick')?.scrollIntoView({ block: 'nearest' });   // just opened: the one on the sale in view
   else if (list) list.scrollTop = top;
-  o.anim = o.opened = false;
+  o.anim = o.opened = o.dir = false;   // dir: a question's slide, 'fwd' / 'bwd' (esModsClick)
 }
 // The hero line (owner 2026-10-16): every amount's top sits --hero-y from the top of the screen, checkout's included.
 // The card starts lower on a tablet (the sheet's frame), so it says where: its inside's top, the slide-up ignored.
@@ -1313,10 +1350,20 @@ const esFrame = (head, rows, side, foot, cls = '') => `<button type="button" cla
     <div class="es-ft">${foot}</div>`;
 const esKeys = (dec) => `<div class="es-kp">${[...'123456789', dec ? '.' : '', '0', 'del'].map(k => !k ? '<span></span>'
   : `<button type="button" data-sk="${k}"${k === 'del' ? ' aria-label="Delete"' : ''}>${k === 'del' ? esSvg('del') : k}</button>`).join('')}</div>`;
+// The desk keyboard on the sheet's keys, as the shift's (shiftKey) and checkout's: digits, '.', Backspace, Enter = Apply / Add
+function editKey(e) {
+  if (!es || e.ctrlKey || e.metaKey || e.altKey || e.target.matches('input, textarea') || !$('#editSheet [data-sk]')) return;
+  const k = e.key === 'Backspace' ? 'del' : e.key, q = k === 'Enter' ? '[data-apply]' : /^([\d.]|del)$/.test(k) && `[data-sk="${k}"]`, b = q && $(`#editSheet ${q}`);
+  if (!b) return;
+  e.preventDefault();   // a focused key would press itself again
+  if (!b.disabled) editSheetClick({ target: b });
+}
 
 function editSheetClick(e) {
   const o = es, el = (q) => e.target.closest(q);
   if (!o) return;
+  if (o.kind === 'mods') return esModsClick(el);
+  if (el('[data-mods]')) return openEditSheet('mods', esItem()?.productId, { line: o.id });
   if (el('[data-close]')) return closeEditSheet();
   if (o.kind === 'ful') return esFulClick(el);
   if (o.kind === 'price') {   // our keys type it; Add puts the line on the cart at it, ✕ adds nothing
@@ -1376,6 +1423,73 @@ function editSheetClick(e) {
   if (!typing && discountOk(o.ok)) o.ok = discSnap();   // anything else puts it on: past the limit, a manager is asked
   const note = $('#esNote');   // preventScroll: the panel slides in, and a plain focus scrolls the catalog under it
   if (note) { note.focus({ preventScroll: true }); note.selectionStart = note.value.length; }
+}
+
+// ---------- Modifiers at the sale (plans/modifiers-build.md) ----------
+// Nothing starts picked. A line along the top fills as the questions go (owner 2026-10-24). Pick one must be answered: a
+// tap on its choice goes on to the next question, and on the last one adds the item (or, changing a line, is its Done).
+// Up to N / Any may be skipped: a big Next at the bottom, Add · price (or Done) on the last. ‹ Back steps back a question,
+// at the first it closes (adding nothing), or goes back to the line's sheet when it was changing a line.
+const esAnswers = (o) => o.qs.flatMap(q => q.choices.filter(c => o.ans[q.id].includes(c.id)).map(c => modifierAnswer(q, c)));
+const esModsReady = (o) => o.qs.every(x => !x.required || o.ans[x.id].length);
+const esModsPrice = (o, answers = esAnswers(o)) => moneyValue(o.base + SalesMath.answersPrice({ modifiers: answers }));
+function esModsFoot(o) {
+  if (o.qs[o.at].required) return '';   // Pick one: its tap goes on (esModsClick). One with every choice Unavailable isn't required, so it gets Next
+  return o.at < o.qs.length - 1 ? '<button type="button" class="es-ink es-big" data-next>Next</button>'
+    : `<button type="button" class="es-ink es-big" data-apply${esModsReady(o) ? '' : ' disabled'}>${o.line ? 'Done' : `Add · ${peso(esModsPrice(o))}`}</button>`;   // a line's Done is the line sheet's Done; its total says the price
+}
+function esModsApply(o) {
+  if (!esModsReady(o)) return;
+  const answers = esAnswers(o), price = esModsPrice(o, answers);
+  const line = o.line && state.cart.find(i => i.id === o.line);
+  if (line) { Object.assign(line, { price, modifiers: answers }); return openEditSheet('line', line.id); }
+  closeEditSheet();
+  addToCart(o.id, o.via, false, price, answers);
+}
+function esModsClick(el) {
+  const o = es, q = o.qs[o.at], row = el('[data-ch]');
+  if (el('[data-close]')) {
+    if (o.at) { o.at--; o.dir = 'bwd'; return drawEditSheet(); }
+    return o.line ? openEditSheet('line', o.line) : closeEditSheet();
+  }
+  if (el('[data-next]')) { o.at++; o.dir = 'fwd'; return drawEditSheet(); }
+  if (el('[data-apply]')) return esModsApply(o);
+  if (!row || row.classList.contains('out')) return;   // Unavailable: greyed, no tap
+  const got = o.ans[q.id], id = row.dataset.ch, i = got.indexOf(id);
+  if (q.max === 1) o.ans[q.id] = [id];
+  else if (i >= 0) got.splice(i, 1);
+  else if (got.length >= q.max) return flashControl(row);   // Up to 2: a third waits for one to come off
+  else got.push(id);
+  drawEditSheet();
+  // Pick one: on once the tap has shown (modifiers-lab's 220 ms), to the next question or, on the last, the cart
+  if (q.required) setTimeout(() => {
+    if (es !== o || o.qs[o.at] !== q) return;   // a second fast tap, or Back meanwhile
+    if (o.at < o.qs.length - 1) { o.at++; o.dir = 'fwd'; drawEditSheet(); } else esModsApply(o);
+  }, 220);
+}
+
+// The same item again (owner 2026-10-24, finding 24): a tap on an item that asks modifiers, with lines of it on the cart
+// already (same product = same item and variant, never by SKU), shows those first in the peek's card (openPeek): each
+// line's answers, count and amount (a tap opens that line), and Make another for a new one. Outside / ✕ / Esc closes.
+function openAgain(p, via) {
+  const lines = state.cart.filter(i => (i.productId || i.id) === p.id);
+  const el = peek = document.createElement('div');
+  el.innerHTML = `<div class="pk-dim"></div>
+    <div class="pk-card" role="dialog" aria-label="${escapeHtml(p.name)}"><div class="vs-card">
+      <div class="vs-head"><span class="vs-title"><span>${escapeHtml(p.name)}</span></span><button type="button" class="pk-x" data-x aria-label="Close">${esSvg('x')}</button></div>
+      <div class="vs-list">${lines.map(i => `<button type="button" class="vs-row" data-line="${escapeHtml(i.id)}">
+        <span class="nm">${escapeHtml(SalesMath.answerLines(i, peso).join(', ') || i.name)}<small class="num">${i.qty} × ${peso(i.price)}</small></span>
+        <span class="amt num">${peso(normalizeOrderItem(i).lineGross)}</span></button>`).join('')}</div>
+      <div class="pk-ft"><button type="button" class="pk-go" data-another>Make another</button></div></div></div>`;
+  document.body.append(el);
+  void el.offsetWidth; el.classList.add('pk-on');   // the peek's fade in
+  el.addEventListener('click', (e) => {
+    const line = e.target.closest('[data-line]'), another = e.target.closest('[data-another]');
+    if (!line && !another && !e.target.closest('[data-x]') && e.target.closest('.pk-card')) return;   // a tap on the card's words does nothing
+    closePeek();
+    if (line) openEditSheet('line', line.dataset.line);
+    if (another) openEditSheet('mods', p.id, { via, base: p.price });
+  });
 }
 
 // The SC/PWD panel's Apply: the ID number and the name, both, or nothing is applied; the first empty one is
@@ -1839,7 +1953,8 @@ function renderCart() {
   } else {
     list.innerHTML = back + state.cart.map(item => `
       <div class="line"><button type="button" class="row" data-id="${item.id}" title="Edit item">${linePic(item)}
-        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}${item.discount ? ` · <span class="off">${peso(-normalizeOrderItem(item).lineDiscount)}</span>` : ''}</small>${item.note ? `<small class="note">${escapeHtml(item.note)}</small>` : ''}</span>
+        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}${item.discount ? ` · <span class="off">${peso(-normalizeOrderItem(item).lineDiscount)}</span>` : ''}</small>${
+          SalesMath.answerLines(item, peso).map(t => `<small class="note">${escapeHtml(t)}</small>`).join('')}${item.note ? `<small class="note">${escapeHtml(item.note)}</small>` : ''}</span>
         <span class="amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
       </button><button type="button" class="sw-del" data-del="${item.id}" tabindex="-1" aria-label="Delete">${esSvg('trash')}</button></div>`).join('');
     list.scrollTop = list.scrollHeight;

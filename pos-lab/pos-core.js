@@ -558,6 +558,9 @@ function normalizeOrderItem(item = {}) {
     // A refund's line: its place on the sale (SalesMath.refundPart), so later refunds know what is left.
     ...(item.lineNo != null ? { lineNo: Math.max(0, Math.floor(toNumber(item.lineNo, 0))) } : {}),
     ...(item.note ? { note: String(item.note) } : {}),   // the line's note (the cart line's Note), on the slip under it
+    // the line's modifier answers, a snapshot taken at the sale (plans/modifiers-build.md): kept as sold, so Reports'
+    // Modifiers part, the receipt and a refund read the words and prices it was rung with
+    ...(Array.isArray(item.modifiers) && item.modifiers.length ? { modifiers: item.modifiers.filter(a => a && typeof a === 'object').map(a => ({ ...a })) } : {}),
   };
 }
 

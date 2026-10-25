@@ -1,0 +1,322 @@
+<style>
+/* Part C2 — Staff, Orders › Breakdown, time patterns in the pill tints. Every selector .vc-; colours from viz.css tokens. */
+.vc-svg { display: block; overflow: visible; }
+.vc-svg text { font-family: var(--font); }
+.vc-c1 { font-size: 15px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.vc-c2 { font-size: 11px; fill: var(--ink-4); }
+.vc-lab { font-size: 13px; fill: var(--ink-2); }
+.vc-val { font-size: 12px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.vc-q { color: var(--ink-4); font-weight: 400; }
+.vc-hd { display: flex; gap: 8px; color: var(--ink-4); font-weight: 400; }
+/* fixed columns in a row */
+.vc-n { flex: none; width: 34px; text-align: right; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vc-a { flex: none; width: 76px; text-align: right; }
+.vc-w { flex: none; width: 46px; text-align: right; }
+.vc-nm { flex: none; width: 96px; overflow: hidden; }
+/* chart beside the rows */
+.vc-split { display: flex; align-items: center; padding: 6px 0 6px 12px; }
+.vc-split > svg { flex: none; }
+.vc-split > .rows { flex: 1; min-width: 0; }
+.vc-split .rows > .row { padding: 0 12px 0 14px; }
+/* one 100% bar: pastel needs body, 14px */
+.vc-bar { display: flex; gap: 2px; height: 14px; border-radius: var(--r-pill); overflow: hidden; }
+.vc-bar > i { min-width: 2px; }
+.vc-pad { padding: 12px 12px 8px; }
+/* two labelled 100% bars */
+.vc-two { display: grid; grid-template-columns: 48px 1fr 56px; gap: 8px 10px; align-items: center; padding: 12px 12px 8px; font-size: 12px; color: var(--ink-3); }
+.vc-two b { font-weight: 500; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+/* ranked bar with the value at its end */
+.vc-trk { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.vc-trk > i { flex: none; display: block; height: 12px; min-width: 2px; border-radius: 4px; }
+.vc-trk > b { font-size: 12px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+/* a clickable block: rows inset 4px so the ticked one wears a 7px --fill pill (C12) */
+.vc-tick { padding: 4px; }
+.vc-tick > .row { padding: 0 8px; border-radius: var(--r-row); cursor: pointer; }
+.vc-tick > .row:hover, .vc-tick > .row:hover + .row, .vc-tick > .row.on, .vc-tick > .row.on + .row { border-top-color: transparent; }
+.vc-tick > .row.on, .vc-tick > .row.on:hover { background: var(--fill); }
+.vc-tick > .row.on .nm { color: var(--ink); }
+/* big number (B17) */
+.vc-big { display: flex; align-items: baseline; gap: 8px; padding: 12px 12px 10px; }
+.vc-big .kpi-value { font-size: 20px; }
+.vc-big .vc-q { font-size: 12px; }
+.vc-bp { padding: 0 12px 10px; }
+/* tables */
+table.t.vc-pv td.vc-cell { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+table.t.vc-pv tr.vc-tot td { color: var(--ink); font-weight: 500; }
+table.t.vc-pv .vc-ib { display: inline-block; height: 12px; min-width: 2px; border-radius: 4px; vertical-align: -2px; margin-right: 8px; }
+/* the Orders › Breakdown page */
+.vc-page { display: grid; gap: 12px; }
+.vc-top { display: flex; align-items: center; gap: 8px; }
+.vc-top .pick { height: 28px; padding: 0 10px 0 12px; }
+.vc-search { display: flex; align-items: center; gap: 2px; min-height: 36px; padding: 4px; border-radius: 12px; background: var(--raised); box-shadow: rgba(0,0,0,.24) 0 0 2px 0, rgba(0,0,0,.02) 0 2px 12px 0; }
+.vc-search > span { flex: 1; padding: 0 8px; color: var(--ink-4); font-size: 13px; }
+.vc-search > button { height: 28px; padding: 0 8px; border: 0; border-radius: var(--r-badge); background: transparent; font: 400 13px var(--font); color: var(--ink-3); }
+.vc-line { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 var(--pad); font-size: 13px; }
+.vc-line .money { margin-left: auto; }
+.vc-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+/* calendars */
+.vc-legend { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--ink-4); }
+.vc-legend i { width: 11px; height: 11px; border-radius: 3px; }
+.vc-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 var(--pad) 10px; font-size: 12px; color: var(--ink-3); }
+.vc-foot b { font-weight: 500; color: var(--ink); }
+.vc-mon { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) 76px; gap: 4px; padding: 0 var(--pad) var(--pad); }
+.vc-mon > span { padding: 0 0 2px 2px; font-size: 11px; color: var(--ink-4); }
+.vc-mon > div { height: 50px; padding: 5px 7px; border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; font-variant-numeric: tabular-nums; }
+.vc-mon > div b { font-size: 12px; font-weight: 500; }
+.vc-mon > div.wk { background: none; align-items: flex-end; justify-content: center; color: var(--ink); }
+.vc-mon > div.today { box-shadow: inset 0 0 0 1px var(--ink-4); }
+.vc-wks { display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)) 72px; gap: 3px; align-items: center; padding: 10px var(--pad) var(--pad); font-size: 11px; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vc-wks > i { height: 20px; border-radius: 5px; }
+.vc-wks > i.today { box-shadow: inset 0 0 0 1px var(--ink-4); }
+.vc-wks > b { font-size: 12px; font-weight: 500; color: var(--ink); text-align: right; }
+.vc-wks > em { font-style: normal; text-align: center; }
+</style>
+
+<section class="cat" id="vc-staff" data-nav="Staff">
+  <h2>Staff</h2>
+  <p class="why">Last 7 days per person: orders, net sales, voids, refunds. Each person keeps one tint everywhere: Aldrin t1, Maricel t2, Joy t3, Liza t4 (past 7 people the rest fold into Other, t8).</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>C2-1</b> Donut + pill rows · total in the hole</div><div class="card" id="vc-1"></div></div>
+    <div class="spec"><div class="tag"><b>C2-2</b> One 100% bar over the pill rows · orders beside</div><div class="card" id="vc-2"></div></div>
+    <div class="spec"><div class="tag"><b>C2-3</b> Half donut · total in the arc, rows under</div><div class="card" id="vc-3"></div></div>
+    <div class="spec"><div class="tag"><b>C2-4</b> Ranked bars in each person's tint · value at the bar end, light scale</div><div class="card" id="vc-4"></div></div>
+    <div class="spec"><div class="tag"><b>C2-5</b> Ticked person keeps the tint, the rest go grey · click a row</div><div class="card" id="vc-5"></div></div>
+    <div class="spec"><div class="tag"><b>C2-6</b> Share of orders vs share of net · two 100% bars</div><div class="card" id="vc-6"></div></div>
+    <div class="spec"><div class="tag"><b>C2-7</b> Average sale · net ÷ orders, the store last in grey</div><div class="card" id="vc-7"></div></div>
+    <div class="spec"><div class="tag"><b>C2-8</b> Voids and refunds · big number, one two-part bar</div><div class="card" id="vc-8"></div></div>
+  </div>
+  <div class="grid wide" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>C2-9</b> Pivot staff × voids, refunds · tinted cells, totals on the edges</div><div class="card"><table class="t vc-pv" id="vc-9"></table></div></div>
+    <div class="spec"><div class="tag"><b>C2-10</b> Staff table · share bar in each person's tint</div><div class="card"><table class="t vc-pv" id="vc-10"></table></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vc-orders" data-nav="Orders breakdown">
+  <h2>Orders › Breakdown</h2>
+  <p class="why">The Breakdown view: one Net sales line, then Payment, Fulfilment, Staff. Payments keep their pill tints; fulfilment and staff take t1, t2… in order.</p>
+  <div class="grid full">
+    <div class="spec"><div class="tag"><b>C2-11</b> The page in tints · payment donut, fulfilment two-part bars, staff ranked bars</div>
+      <div class="vc-page">
+        <div class="vc-top"><div class="seg"><button>List</button><button class="on">Breakdown</button></div><span style="flex:1"></span><button class="pick">Last 7 days</button></div>
+        <div class="vc-search"><span>Search orders</span><button>Payment</button><button>Staff</button><button>Fulfilment</button></div>
+        <div class="card vc-line" id="vc-11n"></div>
+        <div class="vc-three">
+          <div class="card" id="vc-11p"></div>
+          <div class="card" id="vc-11f"></div>
+          <div class="card" id="vc-11s"></div>
+        </div>
+      </div></div>
+    <div class="spec"><div class="tag"><b>C2-12</b> Same page, every block one 100% bar over pill rows</div>
+      <div class="vc-page">
+        <div class="card vc-line" id="vc-12n"></div>
+        <div class="vc-three">
+          <div class="card" id="vc-12p"></div>
+          <div class="card" id="vc-12f"></div>
+          <div class="card" id="vc-12s"></div>
+        </div>
+      </div></div>
+  </div>
+  <div class="grid" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>C2-13</b> Fulfilment donut · ticked slice keeps the tint · click a row</div><div class="card" id="vc-13"></div></div>
+    <div class="spec"><div class="tag"><b>C2-14</b> Fulfilment · big number, one two-part bar, two rows</div><div class="card" id="vc-14"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vc-time" data-nav="Time patterns">
+  <h2>Time patterns</h2>
+  <p class="why">Daily net sales over 26 weeks (VIZ.days) and orders by weekday × hour (VIZ.heat). One tint per chart, light to deep.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>C2-15</b> Calendar · green tint (t1) deepening to --heat, Mon on top</div><div class="card" id="vc-15"></div></div>
+    <div class="spec"><div class="tag"><b>C2-16</b> Same calendar · GCash blue tint (t3) deepening to the chart blue</div><div class="card" id="vc-16"></div></div>
+    <div class="spec"><div class="tag"><b>C2-17</b> Month view · one month, amount in each day, week totals at the edge</div><div class="card" id="vc-17"></div></div>
+    <div class="spec"><div class="tag"><b>C2-18</b> Week rows · last 13 weeks, week total at the end</div><div class="card" id="vc-18"></div></div>
+    <div class="spec"><div class="tag"><b>C2-19</b> Weekday × hour heat · blue tint ramp, day totals at the edge</div><div class="card" id="vc-19"></div></div>
+    <div class="spec"><div class="tag"><b>C2-20</b> Weekday × hour pivot · orange tinted cells (C14), totals on both edges</div><div class="card"><table class="t vc-pv" id="vc-20"></table></div></div>
+    <div class="spec"><div class="tag"><b>C2-21</b> Average day · net per weekday over 26 weeks</div><div class="card" id="vc-21"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = id => document.getElementById(id), P = V.peso, K = V.pesoK;
+  const sum = (a, f) => a.reduce((t, x) => t + f(x), 0);
+  const pc = (v, t, d = 1) => (v / t * 100).toFixed(d) + '%';
+  // Tints: each set takes t1, t2… in order; past 7 the tail folds into "Other" (t8). Payments' order is cash, account, GCash, QR, Maya = t1..t5.
+  const fold = (a, n = 7) => a.length <= n ? a : [...a.slice(0, n - 1), ['n', 'amt', 'voids', 'refunds'].reduce((o, k) => (o[k] = sum(a.slice(n - 1), x => x[k] || 0), o), { name: 'Other', other: 1 })];
+  const tag = (a, nm) => a.map((x, i) => ({ ...x, nm: nm(x), t: x.other ? 8 : i + 1 }));
+  const S = tag(fold(V.staff), s => s.name), ST = sum(S, s => s.amt), SN = sum(S, s => s.n);
+  const PAY = tag(V.payments, p => p.m), PT = sum(PAY, p => p.amt), PN = sum(PAY, p => p.n);
+  const FUL = tag(V.fulfilment, f => f.m), FT = sum(FUL, f => f.amt), FN = sum(FUL, f => f.n);
+  const NET = V.kpis[0].value, ORD = V.kpis[2].value;
+  const fill = x => `var(--t${x.t})`, pill = x => `<span class="badge t${x.t}">${x.nm}</span>`;
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vc-q">${r}</span>`}</div>`;
+  const row = (inner, cls = '') => `<div class="row ${cls}">${inner}</div>`;
+  const svg = (w, h, s) => `<svg class="vc-svg" width="${w}" height="${h}">${s}</svg>`;
+  const tx = (x, y, t, cls = 'ax', a = 'start') => `<text class="${cls}" x="${x}" y="${y}" text-anchor="${a}">${t}</text>`;
+  const nice = m => { const p = 10 ** Math.floor(Math.log10(m / 3)); return [1, 2, 3, 4, 5, 6, 8, 10].find(k => k * p * 3 >= m) * p; };
+
+  // ring of arcs, angle 0 = 3 o'clock, clockwise; col(x, i) picks each slice's colour
+  const pt = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const ring = (c, r, w, list, val, col = fill, a0 = -Math.PI / 2, span = 2 * Math.PI, gap = .03, cy = c) => {
+    const t = sum(list, val); let a = a0;
+    return list.map((x, i) => { const s = val(x) / t * span, b = a + gap / 2, e = a + s - gap / 2; a += s;
+      return `<path d="M${pt(c, cy, r, b)}A${r} ${r} 0 ${e - b > Math.PI ? 1 : 0} 1 ${pt(c, cy, r, e)}" style="fill:none;stroke:${col(x, i)};stroke-width:${w}"><title>${x.nm} · ${pc(val(x), t)}</title></path>`; }).join('');
+  };
+  const donut = (size, list, val, mid, sub, col) => svg(size, size, ring(size / 2, size / 2 - 11, 18, list, val, col) + tx(size / 2, size / 2 + 2, mid, 'vc-c1', 'middle') + tx(size / 2, size / 2 + 17, sub, 'vc-c2', 'middle'));
+  const bar100 = (list, val, col = fill) => `<div class="vc-bar">${list.map((x, i) => `<i style="flex:${val(x)} 1 0;background:${col(x, i)}" title="${x.nm} · ${pc(val(x), sum(list, val))}"></i>`).join('')}</div>`;
+  // pill rows: name pill · [count] · amount · share, then Total
+  const listRows = (list, T, cnt) => '<div class="rows">' + list.map(x => row(`<span class="nm">${pill(x)}</span>${cnt ? `<span class="vc-n">${x.n}</span>` : ''}<span class="amt vc-a">${P(x.amt)}</span><span class="pct vc-w">${pc(x.amt, T)}</span>`)).join('')
+    + row(`<span class="nm">Total</span>${cnt ? `<span class="vc-n">${sum(list, x => x.n)}</span>` : ''}<span class="amt vc-a">${P(T)}</span><span class="pct vc-w"></span>`, 'total') + '</div>';
+  // ranked rows: pill · bar in the person's tint with the value at its end · extra cells
+  const rankRows = (list, val, fmt, extra = () => '', col = fill) => { const mx = Math.max(...list.map(val));
+    return list.map(x => row(`<span class="vc-nm">${pill(x)}</span><span class="vc-trk"><i style="width:calc((100% - 64px) * ${(val(x) / mx).toFixed(4)});background:${col(x)}"></i><b>${fmt(val(x))}</b></span>${extra(x)}`)).join(''); };
+
+  /* ---------- Staff ---------- */
+  // C2-1 donut + pill rows
+  $('vc-1').innerHTML = band('Staff', 'by net sales') + `<div class="vc-split">${donut(124, S, s => s.amt, K(ST), 'Net sales')}${listRows(S, ST)}</div>`;
+  // C2-2 100% bar + pill rows with orders
+  $('vc-2').innerHTML = band('Staff', '<span class="vc-hd">Orders · Net sales</span>') + `<div class="vc-pad">${bar100(S, s => s.amt)}</div>` + listRows(S, ST, 1);
+  // C2-3 half donut, total in the arc
+  { const el = $('vc-3'); el.innerHTML = band('Staff') + '<div></div>' + listRows(S, ST);
+    const W = el.clientWidth, c = W / 2, cy = 112;
+    el.children[1].innerHTML = svg(W, 126, ring(c, 88, 18, S, s => s.amt, fill, Math.PI, Math.PI, .025, cy)
+      + `<text class="vc-c1" x="${c}" y="${cy - 16}" text-anchor="middle" style="font-size:20px">${P(ST)}</text>` + tx(c, cy + 1, `Net sales · ${SN} orders`, 'vc-c2', 'middle')); }
+  // C2-4 ranked bars with a light scale (B6 in tints)
+  { const el = $('vc-4'); el.innerHTML = band('Staff', 'by net sales') + '<div></div>';
+    const W = el.clientWidth, L = 84, R = 104, pw = W - L - R, st = nice(S[0].amt), x = v => L + v / (st * 3) * pw, rh = 32, y0 = 8;
+    let s = '';
+    for (let k = 0; k <= 3; k++) s += `<line x1="${x(k * st)}" x2="${x(k * st)}" y1="${y0}" y2="${y0 + S.length * rh}" style="stroke:var(--row-line)"/>` + tx(x(k * st), y0 + S.length * rh + 14, k ? K(k * st) : '0', 'ax', 'middle');
+    S.forEach((p, i) => { const y = y0 + i * rh;
+      s += tx(12, y + 21, p.nm, 'vc-lab') + `<rect x="${L}" y="${y + 9}" width="${(x(p.amt) - L).toFixed(1)}" height="16" rx="4" style="fill:${fill(p)}"><title>${p.nm} · ${P(p.amt)}</title></rect>`
+        + tx(x(p.amt) + 6, y + 21, K(p.amt), 'vc-val') + tx(W - 12, y + 21, pc(p.amt, ST), 'ax', 'end'); });
+    el.children[1].innerHTML = svg(W, y0 + S.length * rh + 24, s); }
+  // C2-5 C12 for staff: ticked keeps its tint, the rest grey; click to move the tick
+  const tickCard = (id, title, list, val, rowCells, sub) => { const el = $(id);
+    const draw = on => { el.innerHTML = band(title, list[on].nm + ' ticked') + `<div class="vc-split">${donut(124, list, val, pc(val(list[on]), sum(list, val), 0), sub(list[on]), (x, i) => i === on ? fill(x) : 'var(--pill)')}<div class="rows vc-tick">`
+      + list.map((x, i) => row(`<span class="nm">${pill(x)}</span>${rowCells(x)}`, i === on ? 'on' : '')).join('') + '</div></div>';
+      el.querySelectorAll('.vc-tick > .row').forEach((r, i) => r.onclick = () => draw(i)); };
+    return draw; };
+  tickCard('vc-5', 'Staff', S, s => s.amt, s => `<span class="vc-n">${s.n}</span><span class="amt vc-a">${P(s.amt)}</span>`, s => 'of net')(1);
+  // C2-6 two 100% bars: share of orders vs share of net
+  $('vc-6').innerHTML = band('Staff', '<span class="vc-hd">Orders · Net sales</span>')
+    + `<div class="vc-two"><span>Orders</span>${bar100(S, s => s.n)}<b>${SN}</b><span>Net</span>${bar100(S, s => s.amt)}<b>${K(ST)}</b></div>`
+    + '<div class="rows">' + S.map(s => row(`<span class="nm">${pill(s)}</span><span class="vc-n" style="color:var(--ink-2)">${s.n}</span><span class="amt vc-a">${P(s.amt)}</span>`)).join('') + '</div>';
+  // C2-7 average sale, ranked; the store's average as the last, grey row
+  { const avg = s => s.amt / s.n, list = [...S].sort((a, b) => avg(b) - avg(a)), all = { nm: 'All staff', t: 8, amt: ST, n: SN };
+    $('vc-7').innerHTML = band('Average sale', 'net ÷ orders') + '<div class="rows">' + rankRows([...list, all], avg, v => P(v), s => `<span class="vc-n">${s.n}</span>`) + '</div>'; }
+  // C2-8 voids + refunds: big number, two-part bar, two rows (counts only: VIZ has no 7-day void amounts)
+  { const vd = sum(S, s => s.voids), rf = sum(S, s => s.refunds), parts = [{ nm: 'Voids', t: 2, n: vd }, { nm: 'Refunds', t: 7, n: rf }];
+    $('vc-8').innerHTML = band('Voids and refunds', 'Last 7 days') + `<div class="vc-big"><span class="kpi-value">${vd + rf}</span><span class="vc-q">of ${SN} orders · ${pc(vd + rf, SN)}</span></div>`
+      + `<div class="vc-bp">${bar100(parts, p => p.n)}</div><div class="rows">` + parts.map(p => row(`<span class="nm">${pill(p)}</span><span class="amt vc-n" style="color:var(--ink)">${p.n}</span><span class="pct vc-w">${pc(p.n, SN)}</span>`)).join('') + '</div>'; }
+  // C2-9 pivot staff × voids/refunds (real per-person counts), cells tinted by size
+  { const mv = Math.max(...S.map(s => s.voids)), mr = Math.max(...S.map(s => s.refunds)), vd = sum(S, s => s.voids), rf = sum(S, s => s.refunds);
+    const cell = (v, m, t) => `<td class="vc-cell" style="background:color-mix(in srgb, var(--t${t}) ${Math.round(v / m * 100)}%, var(--raised))">${v}</td>`;
+    $('vc-9').innerHTML = `<thead><tr><th>Staff</th><th class="r">Voids</th><th class="r">Refunds</th><th class="r">Total</th><th class="r">Orders</th><th class="r">Of orders</th></tr></thead><tbody>`
+      + S.map(s => `<tr><td class="nm">${s.nm}</td>${cell(s.voids, mv, 2)}${cell(s.refunds, mr, 7)}<td class="r money">${s.voids + s.refunds}</td><td class="r">${s.n}</td><td class="r">${pc(s.voids + s.refunds, s.n)}</td></tr>`).join('')
+      + `<tr class="vc-tot"><td>Total</td><td class="r">${vd}</td><td class="r">${rf}</td><td class="r">${vd + rf}</td><td class="r">${SN}</td><td class="r">${pc(vd + rf, SN)}</td></tr></tbody>`; }
+  // C2-10 the staff table, share bar in each person's tint
+  { const mx = Math.max(...S.map(s => s.amt));
+    $('vc-10').innerHTML = `<thead><tr><th>Staff</th><th class="r">Orders</th><th class="r">Net sales</th><th>Share</th><th class="r">Avg sale</th></tr></thead><tbody>`
+      + S.map(s => `<tr><td>${pill(s)}</td><td class="r">${s.n}</td><td class="r money">${P(s.amt)}</td><td><span class="vc-ib" style="width:${Math.round(s.amt / mx * 110)}px;background:${fill(s)}"></span>${pc(s.amt, ST)}</td><td class="r">${P(s.amt / s.n)}</td></tr>`).join('')
+      + `<tr class="vc-tot"><td>Total</td><td class="r">${SN}</td><td class="r">${P(ST)}</td><td>100%</td><td class="r">${P(ST / SN)}</td></tr></tbody>`; }
+
+  /* ---------- Orders › Breakdown ---------- */
+  const netLine = `<span>Net sales</span><span class="vc-q">${ORD} orders · avg ${P(NET / ORD)}</span><span class="money">${P(NET)}</span>`;
+  // C2-11 the page: donut, two-part bars, ranked bars
+  $('vc-11n').innerHTML = netLine;
+  $('vc-11p').innerHTML = band('Payment', `${PN} payments`) + `<div class="vc-split">${donut(112, PAY, p => p.amt, K(PT), 'Total')}<div class="rows">`
+    + PAY.map(p => row(`<span class="nm">${pill(p)}</span><span class="vc-n">${p.n}</span><span class="amt vc-a">${P(p.amt)}</span>`)).join('') + '</div></div>';
+  $('vc-11f').innerHTML = band('Fulfilment', `${FN} orders`) + `<div class="vc-two"><span>Orders</span>${bar100(FUL, f => f.n)}<b>${FN}</b><span>Net</span>${bar100(FUL, f => f.amt)}<b>${K(FT)}</b></div>`
+    + '<div class="rows">' + FUL.map(f => row(`<span class="nm">${pill(f)}</span><span class="vc-n">${f.n}</span><span class="amt vc-a">${P(f.amt)}</span><span class="pct vc-w">${pc(f.amt, FT)}</span>`)).join('')
+    + row(`<span class="nm vc-q">Avg sale</span><span class="cnt">Walk-in ${P(FUL[0].amt / FUL[0].n)} · Delivery ${P(FUL[1].amt / FUL[1].n)}</span>`) + '</div>';
+  $('vc-11s').innerHTML = band('Staff', '<span class="vc-hd">Net sales · Orders</span>') + '<div class="rows" style="padding-top:6px">' + rankRows(S, s => s.amt, K, s => `<span class="vc-n">${s.n}</span>`) + '</div>';
+  // C2-12 the page, every block a 100% bar
+  $('vc-12n').innerHTML = netLine;
+  [['p', 'Payment', PAY, PT], ['f', 'Fulfilment', FUL, FT], ['s', 'Staff', S, ST]].forEach(([k, t, list, T]) =>
+    $('vc-12' + k).innerHTML = band(t, '<span class="vc-hd">Orders · Net sales</span>') + `<div class="vc-pad">${bar100(list, x => x.amt)}</div>` + listRows(list, T, 1));
+  // C2-13 fulfilment donut, Delivery ticked
+  tickCard('vc-13', 'Fulfilment', FUL, f => f.amt, f => `<span class="vc-n">${f.n}</span><span class="amt vc-a">${P(f.amt)}</span>`, () => 'of net')(1);
+  // C2-14 fulfilment as B17: big number, one two-part bar, two rows
+  $('vc-14').innerHTML = band('Fulfilment', 'Last 7 days') + `<div class="vc-big"><span class="kpi-value">${P(FT)}</span><span class="vc-q">net · ${FN} orders</span></div><div class="vc-bp">${bar100(FUL, f => f.amt)}</div>`
+    + '<div class="rows">' + FUL.map(f => row(`<span class="nm">${pill(f)}</span><span class="cnt">${f.n} orders · avg ${P(f.amt / f.n)}</span><span class="amt vc-a">${P(f.amt)}</span><span class="pct vc-w">${pc(f.amt, FT)}</span>`)).join('') + '</div>';
+
+  /* ---------- Time patterns ---------- */
+  // one tint, light → deep: pastel over white, then towards its ink. t in 0..1; 0 = the grey band
+  // one tint, light → deep. Pastel half: the tint over white. Deep half: towards a vivid token (mixing towards the
+  // --tN-ink went muddy). No deep token = pastel only. t in 0..1; 0 = the grey band.
+  const ramp = (n, t, deep) => t <= 0 ? 'var(--band)' : !deep ? `color-mix(in srgb, var(--t${n}) ${Math.round(15 + t * 85)}%, var(--raised))`
+    : t < .5 ? `color-mix(in srgb, var(--t${n}) ${Math.round(40 + t * 120)}%, var(--raised))` : `color-mix(in oklch, ${deep} ${Math.round((t - .5) * 200)}%, var(--t${n}))`;
+  const inkOn = (n, t, deep) => deep && t > .8 ? 'var(--raised)' : `var(--t${n}-ink)`;
+  const legend = (n, deep) => `<span class="vc-legend">Less${[0, .25, .5, .75, 1].map(t => `<i style="background:${ramp(n, t, deep)}"></i>`).join('')}<span style="margin-left:4px">More</span></span>`;
+  // local dates (data.js keys by toISOString, which slips a day east of UTC); day 0 is a Monday
+  const DAYS = V.days.map((d, i, a) => ({ ...d, dt: new Date(2026, 9, 18 - (a.length - 1 - i)), today: i === a.length - 1 }));
+  const MX = Math.max(...DAYS.map(d => d.net)), lvl = v => v <= 0 ? 0 : Math.ceil(v / MX * 4) / 4; // 4 steps, like GitHub
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const dname = dt => `${WD[(dt.getDay() + 6) % 7]} ${MON[dt.getMonth()]} ${dt.getDate()}`;
+  const tip = d => `${dname(d.dt)} · ${d.today ? 'today' : P(d.net)}`;
+
+  // C2-15 / C2-16 the 26-week calendar in one tint
+  const calendar = (id, n, deep) => { const el = $(id); el.innerHTML = band('Net sales by day', 'Last 26 weeks') + '<div class="body"></div><div class="vc-foot"></div>';
+    const host = el.children[1], L = 30, Tp = 18, ncol = Math.ceil(DAYS.length / 7), cs = Math.min(20, Math.floor((host.clientWidth - 24 - L) / ncol) - 3), st = cs + 3;
+    let s = ''; const ml = [];
+    WD.forEach((t, r) => r % 2 === 0 && r < 6 && (s += tx(0, Tp + r * st + cs - 5, t)));
+    DAYS.forEach((d, i) => { const c = Math.floor(i / 7), r = i % 7;
+      if (r === 0 && d.dt.getDate() <= 7) ml.push([c, MON[d.dt.getMonth()]]);
+      s += `<rect x="${L + c * st}" y="${Tp + r * st}" width="${cs}" height="${cs}" rx="4" style="fill:${ramp(n, lvl(d.net), deep)}${d.today ? ';stroke:var(--ink-4)' : ''}"><title>${tip(d)}</title></rect>`; });
+    ml.forEach(([c, m]) => s += tx(L + c * st, 11, m));
+    host.innerHTML = svg(L + ncol * st, Tp + 7 * st, s);
+    el.children[2].innerHTML = `<span><b>${P(sum(DAYS, d => d.net))}</b> net in 26 weeks · Sundays mostly closed</span>${legend(n, deep)}`; };
+  const BLUE = 'var(--s2)';
+  calendar('vc-15', 1, 'var(--heat)'); calendar('vc-16', 3, BLUE);
+
+  // C2-17 month view: last full month, Mon-first, week totals on the right
+  { const m = 8, days = DAYS.filter(d => d.dt.getMonth() === m), lead = (days[0].dt.getDay() + 6) % 7, best = days.reduce((a, b) => b.net > a.net ? b : a);
+    let g = WD.map(w => `<span>${w}</span>`).join('') + '<span style="text-align:right">Week</span>';
+    const cells = [...Array(lead).fill(null), ...days]; while (cells.length % 7) cells.push(null);
+    for (let w = 0; w < cells.length / 7; w++) { const wk = cells.slice(w * 7, w * 7 + 7);
+      g += wk.map(d => { if (!d) return '<div></div>'; 
+        return `<div style="background:color-mix(in srgb, var(--t1) ${Math.round(d.net / MX * 100)}%, var(--raised));color:var(--t1-ink)" title="${tip(d)}"><span>${d.dt.getDate()}</span><b>${K(d.net)}</b></div>`; }).join('')
+        + `<div class="wk"><b>${K(sum(wk.filter(Boolean), d => d.net))}</b></div>`; }
+    $('vc-17').innerHTML = band('Net sales by day', '<button class="pick">Sep 2026</button>')
+      + `<div class="vc-big"><span class="kpi-value">${P(sum(days, d => d.net))}</span><span class="vc-q">net in September · best ${dname(best.dt)}, ${K(best.net)}</span></div><div class="vc-mon">${g}</div>`; }
+
+  // C2-18 week rows: last 13 Mon–Sun weeks, newest at the bottom
+  { const W = 13, from = DAYS.length - W * 7;
+    let g = '<span></span>' + WD.map(w => `<em>${w[0]}</em>`).join('') + '<em style="text-align:right">Week</em>';
+    for (let w = 0; w < W; w++) { const wk = DAYS.slice(from + w * 7, from + w * 7 + 7), d0 = wk[0].dt;
+      g += `<span>${MON[d0.getMonth()]} ${d0.getDate()}</span>` + wk.map(d => `<i class="${d.today ? 'today' : ''}" style="background:${ramp(3, lvl(d.net), BLUE)}" title="${tip(d)}"></i>`).join('') + `<b>${P(sum(wk, d => d.net))}</b>`; }
+    $('vc-18').innerHTML = band('Net sales by week', 'Last 13 weeks') + `<div class="vc-wks">${g}</div><div class="vc-foot"><span>Rows start on Monday · this week ends today</span>${legend(3, BLUE)}</div>`; }
+
+  // shared hour data: VIZ.heat, Mon–Sun × 7a–6p; edges are the cells' own sums
+  const HD = V.heat, HR = V.hours, HM = Math.max(...HD.flatMap(d => d.v)), DT = HD.map(d => sum(d.v, v => v)), HT = HR.map((_, h) => sum(HD, d => d.v[h]));
+  const peak = HT.indexOf(Math.max(...HT)), DTM = Math.max(...DT);
+
+  // C2-19 heat tiles, numbers inside, day totals at the right
+  { const el = $('vc-19'); el.innerHTML = band('Orders by hour', 'Last 7 days') + '<div class="body"></div><div class="vc-foot"></div>';
+    const host = el.children[1], w = host.clientWidth - 24, L = 34, R = 40, ch = 24, g = 3, cw = (w - L - R) / HR.length - g;
+    let s = '';
+    HD.forEach((d, r) => { const y = r * (ch + g); s += tx(0, y + ch / 2 + 4, d.d, 'vc-lab');
+      d.v.forEach((v, c) => { const x = L + c * (cw + g), t = v / HM;
+        s += `<rect x="${x}" y="${y}" width="${cw}" height="${ch}" rx="5" style="fill:${ramp(3, t, BLUE)}"><title>${d.d} ${HR[c]} · ${v} orders</title></rect>`;
+        if (v) s += `<text x="${x + cw / 2}" y="${y + ch / 2 + 4}" text-anchor="middle" style="font-size:11px;font-variant-numeric:tabular-nums;fill:${inkOn(3, t, BLUE)}">${v}</text>`; });
+      s += tx(w, y + ch / 2 + 4, DT[r] || '—', 'vc-val', 'end'); });
+    HR.forEach((h, c) => s += tx(L + c * (cw + g) + cw / 2, 7 * (ch + g) + 12, h, 'ax' + (c === peak ? ' now' : ''), 'middle'));
+    host.innerHTML = svg(w, 7 * (ch + g) + 16, s);
+    el.children[2].innerHTML = `<span>Busiest: <b>${HR[peak]}</b> · Sunday is today, not started</span>${legend(3, BLUE)}`; }
+
+  // C2-20 the same cells as a pivot table (C14 look): tinted cells, row and column totals
+  $('vc-20').innerHTML = `<thead><tr><th>Day</th>${HR.map(h => `<th class="r" style="padding:0 4px">${h}</th>`).join('')}<th class="r">Total</th></tr></thead><tbody>`
+    + HD.map((d, r) => `<tr><td class="nm">${d.d}</td>${d.v.map(v => `<td class="vc-cell" style="padding:0 4px;background:${v ? `color-mix(in srgb, var(--t2) ${Math.round(v / HM * 100)}%, var(--raised))` : 'transparent'}">${v || ''}</td>`).join('')}<td class="r money">${DT[r] || '—'}</td></tr>`).join('')
+    + `<tr class="vc-tot"><td>Total</td>${HT.map(v => `<td class="r" style="padding:0 4px">${v}</td>`).join('')}<td class="r">${sum(DT, v => v)}</td></tr></tbody>`;
+
+  // C2-21 average net per weekday over the 26 weeks (today left out: not started)
+  { const el = $('vc-21'); el.innerHTML = band('Average day', 'Last 26 weeks') + '<div class="body"></div>';
+    const avg = WD.map((_, r) => { const ds = DAYS.filter((d, i) => i % 7 === r && !d.today); return sum(ds, d => d.net) / ds.length; });
+    const host = el.children[1], w = host.clientWidth - 24, h = 170, R = 40, st = nice(Math.max(...avg)), top = st * 3, ph = h - 22 - 18, y = v => 18 + ph * (1 - v / top);
+    const slot = (w - R) / 7, bw = Math.min(40, slot * .56), best = avg.indexOf(Math.max(...avg));
+    let s = '';
+    for (let k = 0; k <= 3; k++) { const yy = Math.round(y(k * st)) + .5; s += `<line x1="0" x2="${w - R}" y1="${yy}" y2="${yy}" style="stroke:var(--row-line)"/>` + tx(w, yy + 4, k ? K(k * st) : '₱0', 'ax', 'end'); }
+    avg.forEach((v, i) => { const x = i * slot + (slot - bw) / 2, yy = y(v);
+      s += `<rect x="${x}" y="${yy}" width="${bw}" height="${y(0) - yy}" rx="4" style="fill:${ramp(3, i === best ? .8 : .5, BLUE)}"><title>${WD[i]} · avg ${P(v)}</title></rect>`
+        + tx(x + bw / 2, yy - 6, K(v), 'vc-val', 'middle') + tx(x + bw / 2, h - 6, WD[i], 'ax' + (i === best ? ' now' : ''), 'middle'); });
+    host.innerHTML = svg(w, h, s); }
+})();</script>

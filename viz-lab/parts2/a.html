@@ -1,0 +1,182 @@
+<style>
+/* Part A2 — Home KPI strip + week chart, round 2 (A8 / A1 iterations with colour). One renderer draws every
+   .va-home card from its data-cfg; .va-pay / .va-ful cards are the B11/B12/B17 breakdowns beside it. */
+.va-home { --va-panel: var(--raised); --va-c: var(--t3); --va-ci: var(--t3-ink); }
+.va-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.va-k { position: relative; min-width: 0; padding: 8px 12px 12px; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.va-l { display: flex; align-items: center; height: 20px; font-size: 12px; font-weight: 500; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
+.va-k.on .va-l { color: var(--ink); }
+.va-l .badge { margin-left: -6px; font-weight: 500; }
+.va-sq { flex: none; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; }
+.va-line { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; white-space: nowrap; }
+.va-v { font-size: 19px; font-weight: 550; color: var(--ink); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.va-line .chip { height: 18px; padding: 0 6px; font-size: 11.5px; }
+
+/* A8 folder tab: the picked tab rises into the panel on curved feet (round-1 pick) */
+.va-tab { background: var(--band); padding: 8px var(--r-cell) 0; }
+.va-tab .va-k { border-radius: var(--r-cell) var(--r-cell) 0 0; }
+.va-tab .va-k:not(.on) .va-v { color: var(--ink-3); }
+.va-tab .va-k:not(.on):hover .va-v { color: var(--ink); }
+.va-tab .va-k.on { background: var(--va-panel); }
+.va-tab .va-k.on::before, .va-tab .va-k.on::after { content: ""; position: absolute; bottom: 0; width: var(--r-cell); height: var(--r-cell); }
+.va-tab .va-k.on::before { left: calc(-1 * var(--r-cell)); background: radial-gradient(circle at 0 0, transparent calc(var(--r-cell) - .5px), var(--va-panel) var(--r-cell)); }
+.va-tab .va-k.on::after { right: calc(-1 * var(--r-cell)); background: radial-gradient(circle at 100% 0, transparent calc(var(--r-cell) - .5px), var(--va-panel) var(--r-cell)); }
+.va-tab.lab .va-k { padding: 7px 12px 8px; }
+/* A1 segmented band: white tile on the grey; .fill = the tile wears the KPI's tint */
+.va-seg { background: var(--band); padding: 6px; gap: 4px; }
+.va-seg .va-k { border-radius: var(--r-cell); padding: 6px 10px 8px; }
+.va-seg .va-k:not(.on):hover { background: var(--fill); }
+.va-seg .va-k.on { background: var(--raised); box-shadow: 0 0 0 1px var(--line), var(--card-shadow); }
+.va-seg.fill .va-k.on { background: var(--va-c); box-shadow: none; }
+.va-seg.fill .va-k.on :is(.va-l, .va-v) { color: var(--va-ci); }
+
+.va-body { background: var(--va-panel); }
+.va-big { display: flex; align-items: baseline; gap: 8px; padding: 14px 16px 0; }
+.va-big .va-v { font-size: 24px; }
+.va-plot { position: relative; padding: 16px 12px 8px 14px; }
+.va-plot svg { display: block; overflow: visible; }
+.va-gl { stroke: var(--grid); }
+.va-slot { cursor: pointer; }
+.va-val { font-size: 11px; font-weight: 500; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+.va-read { display: flex; align-items: center; gap: 8px; height: 22px; margin-bottom: 8px; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.va-read b { font-size: 15px; font-weight: 550; color: var(--ink); font-variant-numeric: tabular-nums; }
+/* GP / Margin: no per-day figures in the data, so the panel shows this 7 days vs the 7 before */
+.va-two { display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 0 2px; }
+.va-tr { display: flex; align-items: center; gap: 12px; }
+.va-tl { flex: none; width: 92px; font-size: 13px; color: var(--ink-2); }
+.va-track { flex: 1; height: 18px; }
+.va-track > i { display: block; height: 100%; border-radius: 4px; }
+.va-tv { flex: none; width: 76px; text-align: right; }
+/* payments 100% bar under the chart, the Orders pills as its key */
+.va-pf { padding: 4px 14px 14px; }
+.va-bar { display: flex; gap: 2px; height: 14px; border-radius: var(--r-pill); overflow: hidden; }
+.va-bar > i { min-width: 2px; }
+.va-leg { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 12px; }
+.va-leg > span { display: inline-flex; align-items: center; gap: 6px; }
+.va-leg b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.legend.va-foot { padding: 0 14px 12px; }
+/* breakdown cards beside the chart */
+.va-duo { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; }
+.va-duo > .card { display: flex; flex-direction: column; }
+.va-pay .va-pad { padding: 14px 12px 10px; }
+.va-split { display: flex; align-items: center; padding: 6px 0 6px 12px; }
+.va-split > svg { flex: none; }
+.va-split > .rows { flex: 1; min-width: 0; }
+.va-split .rows > .row { padding: 0 12px 0 14px; }
+.va-w { flex: none; width: 46px; text-align: right; }
+.va-c1 { font-size: 15px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.va-c2 { font-size: 11px; fill: var(--ink-4); }
+.va-q { color: var(--ink-4); font-weight: 400; }
+.va-ful .va-bigr { display: flex; align-items: baseline; gap: 8px; padding: 14px 12px 10px; }
+.va-ful .va-bigr .kpi-value { font-size: 20px; }
+/* one card: chart left, donut right, under the same tabs */
+.va-side { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: center; }
+.va-side > .va-split { border-left: 1px solid var(--row-line); margin: 12px 0; }
+</style>
+
+<script>(() => {
+  const V = VIZ, NICE = [1, 2, 3, 4, 5, 6, 8, 10];
+  const TINT = { net: 't3', gp: 't5', orders: 't2', margin: 't4' };   // the KPI set's own colours
+  const sum = (a, k) => a.reduce((s, x) => s + x[k], 0);
+  const P = V.payments, F = V.fulfilment, FT = sum(F, 'amt');
+  const kpi = id => V.kpis.find(k => k.id === id);
+  const step = max => { max = max || 1; const p = 10 ** Math.floor(Math.log10(max / 3)); return NICE.map(s => s * p).find(s => 3 * s >= max); };
+  const chip = c => `<span class="chip ${c < 0 ? 'down' : c > 0 ? 'up' : 'flat'}">${c < 0 ? '−' : '+'}${Math.abs(c).toFixed(1)}%</span>`;
+  const fmtV = (k, v) => (k.money ? V.peso(Math.round(v)) : k.pct ? v.toFixed(1) + '%' : Math.round(v).toLocaleString('en-PH'));
+  const fill = t => (t === 'bar' ? 'var(--bar)' : `var(--${t})`), ink = t => (t === 'bar' ? 'var(--ink)' : `var(--${t}-ink)`);
+  const pill = p => `<span class="badge ${p.key}">${p.m}</span>`;
+  const bar = (x, y, w, h, r, f, tip = '') => { if (h <= 0) return ''; r = Math.min(r, h, w / 2);
+    return `<path style="fill:${f}" d="M${x},${y + h}V${y + r}A${r},${r} 0 0 1 ${x + r},${y}H${x + w - r}A${r},${r} 0 0 1 ${x + w},${y + r}V${y + h}Z">${tip && `<title>${tip}</title>`}</path>`; };
+  // arcs: angle 0 = 3 o'clock, clockwise (B12's ring)
+  const pt = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const ring = (cx, cy, r, w, vals, cols, tips, gap = .03) => { const t = vals.reduce((s, v) => s + v, 0); let a = -Math.PI / 2;
+    return vals.map((v, i) => { const s = v / t * 2 * Math.PI, a0 = a + gap / 2, a1 = a + s - gap / 2; a += s;
+      return `<path d="M${pt(cx, cy, r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a1)}" style="fill:none;stroke:${cols[i]};stroke-width:${w}"><title>${tips[i]}</title></path>`; }).join(''); };
+
+  // ---- payments: amounts for every money tab, counts for Orders ----
+  const payData = m => { const vals = P.map(p => p[m]), tot = vals.reduce((s, v) => s + v, 0), f = m === 'amt' ? V.peso : n => n.toLocaleString('en-PH');
+    return { vals, tot, f, cols: P.map(p => `var(--pay-${p.key})`), tips: P.map((p, i) => `${p.m} · ${f(vals[i])} · ${V.pct(vals[i] / tot * 100)}`) }; };
+  const payRows = d => '<div class="rows">' + P.map((p, i) => `<div class="row"><span class="nm">${pill(p)}</span><span class="amt">${d.f(d.vals[i])}</span><span class="pct va-w">${V.pct(d.vals[i] / d.tot * 100)}</span></div>`).join('')
+    + `<div class="row total"><span class="nm">Total</span><span class="amt">${d.f(d.tot)}</span><span class="pct va-w"></span></div></div>`;
+  const donut = d => `<div class="va-split"><svg width="124" height="124">${ring(62, 62, 51, 18, d.vals, d.cols, d.tips)}
+    <text class="va-c1" x="62" y="64" text-anchor="middle">${d.f === V.peso ? V.pesoK(d.tot) : d.tot}</text><text class="va-c2" x="62" y="79" text-anchor="middle">${d.f === V.peso ? 'Total' : 'payments'}</text></svg>${payRows(d)}</div>`;
+  const barline = d => `<div class="va-bar">${d.vals.map((v, i) => `<i style="width:${v / d.tot * 100}%;background:${d.cols[i]}" title="${d.tips[i]}"></i>`).join('')}</div>`;
+  function payCard(el, m = 'amt') {
+    const o = JSON.parse(el.dataset.cfg || '{}'), d = payData(m);
+    el.innerHTML = `<div class="band"><span>Payment methods</span><span class="va-q">${m === 'amt' ? 'Last 7 days' : 'Count · last 7 days'}</span></div>`
+      + (o.kind === 'bar' ? `<div class="va-pad">${barline(d)}</div>${payRows(d)}` : donut(d));
+  }
+  const payFoot = () => { const d = payData('amt');
+    return `<div class="va-pf">${barline(d)}<div class="va-leg">${P.map((p, i) => `<span>${pill(p)}<b>${V.pesoK(d.vals[i])}</b></span>`).join('')}</div></div>`; };
+
+  // ---- the KPI strip ----
+  const strip = c => `<div class="va-strip ${c.strip === 'seg' ? 'va-seg' : 'va-tab'}${c.fill ? ' fill' : ''}${c.labels ? ' lab' : ''}">` + V.kpis.map(k => {
+    const on = k.id === c.series, t = TINT[k.id];
+    const lab = c.mark === 'pill' && on ? `<span class="badge ${t}">${k.label}</span>` : (c.mark === 'key' ? `<i class="va-sq" style="background:var(--${t})"></i>` : '') + k.label;
+    return `<button class="va-k${on ? ' on' : ''}" data-k="${k.id}"><span class="va-l">${lab}</span>`
+      + (c.labels ? '' : `<span class="va-line"><span class="va-v">${fmtV(k, k.value)}</span>${chip(k.change)}</span>`) + '</button>';
+  }).join('') + '</div>';
+
+  // ---- the chart ----
+  function plot(host, c, k, home) {
+    const W = host.clientWidth - 26, H = c.h || 200;
+    if (k.id === 'gp' || k.id === 'margin') {
+      // ponytail: VIZ keeps gross profit + margin as week totals only; the 7 before = value ÷ (1 + change).
+      const now = k.value, before = k.value / (1 + k.change / 100), max = Math.max(now, before);
+      host.innerHTML = `<div class="va-two" style="height:${H}px">` + [['This 7 days', now, 'var(--va-c)'], ['7 days before', before, 'var(--t8)']]
+        .map(([l, v, f]) => `<div class="va-tr"><span class="va-tl">${l}</span><span class="va-track"><i style="width:${v / max * 100}%;background:${f}"></i></span><span class="money va-tv">${fmtV(k, v)}</span></div>`).join('') + '</div>';
+      return;
+    }
+    const money = k.id === 'net', pair = c.cmp && money;   // last week per day exists for net sales only
+    const rows = V.week.map(w => ({ d: w.d, v: money ? w.net : w.orders, p: w.prev, w }));
+    const fmt = money ? n => (n ? V.pesoK(n) : '₱0') : String;
+    const L = 2, R = c.vals ? 2 : 42, T = c.vals ? 18 : 6, B = 24, pw = W - L - R, ph = H - T - B - (c.sel != null ? 30 : 0);
+    const max = Math.max(...rows.map(r => r.v), ...(pair ? rows.map(r => r.p) : [0])), st = step(max), y = v => T + ph * (1 - v / (3 * st));
+    const slot = pw / 7, cx = i => L + slot * (i + .5), bw = pair ? Math.min(slot * .28, 18) : Math.min(slot * .5, 32);
+    const HH = T + ph + B;
+    if (pw <= 0) return;   // hidden widget: no width yet, drawn when shown
+    let s = '';
+    if (c.vals) s += `<line class="va-gl" x1="${L}" x2="${L + pw}" y1="${y(0)}" y2="${y(0)}"/>`;
+    else for (let i = 0; i <= 3; i++) s += `<line class="va-gl" x1="${L}" x2="${L + pw}" y1="${y(st * i)}" y2="${y(st * i)}"/><text class="ax" x="${L + pw + 8}" y="${y(st * i) + 4}">${fmt(st * i)}</text>`;
+    rows.forEach((r, i) => {
+      const f = c.sel == null || c.sel === i ? 'var(--va-c)' : 'var(--row-line)', tip = `${r.d} · ${money ? V.peso(r.v) : r.v + ' orders'}`;
+      let g = pair ? bar(cx(i) - bw - 1.5, y(r.v), bw, y(0) - y(r.v), 3, f, tip) + bar(cx(i) + 1.5, y(r.p), bw, y(0) - y(r.p), 3, fill(c.cmp), `Last ${r.d} · ${V.peso(r.p)}`)
+        : bar(cx(i) - bw / 2, y(r.v), bw, y(0) - y(r.v), bw / 8, f, tip);
+      if (c.vals && r.v) g += `<text class="va-val" text-anchor="middle" x="${cx(i)}" y="${y(r.v) - 6}">${fmt(r.v)}</text>`;
+      s += `<g class="va-slot" data-i="${i}">${g}<rect x="${cx(i) - slot / 2}" y="0" width="${slot}" height="${HH}" fill="transparent"/></g>`
+        + `<text class="ax${r.w.now ? ' now' : ''}" text-anchor="middle" x="${cx(i)}" y="${HH - 6}">${r.d}</text>`;
+    });
+    let read = '';
+    if (c.sel != null) { const r = rows[c.sel];
+      read = `<div class="va-read"><span class="badge" style="background:var(--va-c);color:var(--va-ci)">${r.d}</span>`
+        + (r.w.now ? 'today · no sales yet' : money ? `<b>${V.peso(r.v)}</b>${chip((r.v - r.p) / r.p * 100)}vs last ${r.d} · ${r.w.orders} orders` : `<b>${r.v} orders</b>${V.peso(r.w.net)} net`) + '</div>'; }
+    host.innerHTML = read + `<svg width="${W}" height="${HH}">${s}</svg>`;
+    if (c.sel != null) host.onclick = e => { const g = e.target.closest('.va-slot'); if (g) { c.sel = +g.dataset.i; render(home); } };
+  }
+
+  function render(home) {
+    const c = home._c || (home._c = Object.assign({ series: 'net' }, JSON.parse(home.dataset.cfg || '{}')));
+    const k = kpi(c.series), t = c.fixed && c.tint ? c.tint : c.tint === 'bar' ? 'bar' : TINT[c.series];
+    home.style.setProperty('--va-c', fill(t)); home.style.setProperty('--va-ci', ink(t));
+    if (c.wash) home.style.setProperty('--va-panel', `color-mix(in srgb, var(--${TINT[c.series]}) 30%, var(--raised))`);
+    const legend = c.cmp && c.series === 'net' ? `<div class="legend va-foot"><span><i style="background:var(--va-c)"></i>This week</span><span><i style="background:${fill(c.cmp)}"></i>Last week</span></div>` : '';
+    home.innerHTML = (c.band ? '<div class="band"><span>Home</span><button class="pick">Last 7 days</button></div>' : '') + strip(c)
+      + '<div class="va-body">' + (c.labels ? `<div class="va-big"><span class="va-v">${fmtV(k, k.value)}</span>${chip(k.change)}</div>` : '')
+      + (c.side ? `<div class="va-side"><div class="va-plot"></div>${donut(payData(c.series === 'orders' ? 'n' : 'amt'))}</div>` : '<div class="va-plot"></div>')
+      + legend + (c.pay ? payFoot() : '') + '</div>';
+    home.querySelector('.va-strip').onclick = e => { const b = e.target.closest('.va-k'); if (b) { c.series = b.dataset.k; render(home); } };
+    plot(home.querySelector('.va-plot'), c, k, home);
+    if (c.link) payCard(home.parentElement.querySelector('.va-pay'), c.series === 'orders' ? 'n' : 'amt');
+  }
+
+  // B17-style walk-in vs delivery: big total, one two-part bar, two rows (set colours t1, t2 in order)
+  const ful = el => { const cols = ['var(--t1)', 'var(--t2)'];
+    el.innerHTML = `<div class="band"><span>Walk-in vs delivery</span><span class="va-q">Last 7 days</span></div><div class="va-bigr"><span class="kpi-value">${V.peso(FT)}</span><span class="va-q" style="font-size:12px">net sales</span></div>`
+      + `<div style="padding:0 12px 12px"><div class="va-bar">${F.map((f, i) => `<i style="width:${f.amt / FT * 100}%;background:${cols[i]}" title="${f.m} · ${V.peso(f.amt)}"></i>`).join('')}</div></div>`
+      + '<div class="rows">' + F.map((f, i) => `<div class="row"><span class="nm"><span class="badge t${i + 1}">${f.m}</span></span><span class="cnt">${f.n} orders</span><span class="amt" style="width:84px;text-align:right">${V.peso(f.amt)}</span><span class="pct va-w">${V.pct(f.amt / FT * 100)}</span></div>`).join('')
+      + `<div class="row total"><span class="nm">Total</span><span class="cnt">${sum(F, 'n')} orders</span><span class="amt" style="width:84px;text-align:right">${V.peso(FT)}</span><span class="pct va-w"></span></div></div>`; };
+
+  const draw = () => { document.querySelectorAll('.va-pay').forEach(el => payCard(el)); document.querySelectorAll('.va-ful').forEach(ful); document.querySelectorAll('.va-home').forEach(render); };
+  draw();
+  addEventListener('resize', draw);
+})();</script>

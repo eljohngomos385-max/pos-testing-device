@@ -540,4 +540,42 @@ assert.equal(M.currencySymbol('JPY'), '¥');
     legKey({ payments: [{ method: 'credit', amount: 9 }] }), legKey({ paymentKind: 'qr', total: 5 })], ['gcash', 'Maya', 'cash', 'qr']);
 }
 
+/* ---- topChoices (pos-lab copy): modifier choices from the lines' answer snapshots ---- */
+{
+  const L = createRequire(import.meta.url)('../pos-lab/sales-math.js');
+  const ans = (choiceId, choiceName, price, modifierName = 'Toppings') => ({ modifierId: 'm-' + modifierName, modifierName, choiceId, choiceName, price });
+  const tea = (qty, mods) => line('tea', qty, 100, 30, { modifiers: mods });
+  const a = sale('a', d1, [tea(2, [ans('c1', 'Pearls', 15), ans('c2', '50%', 0, 'Sweetness')])]);
+  const b = sale('b', d1 + 1, [tea(1, [ans('c1', 'Black pearls', 15)])]);   // renamed later: the newest sale's words
+  const c = sale('c', d1 + 2, [tea(1, [ans('c3', 'Pudding', 20)])]);
+  const back = reverse({ ...c }, 'refund', d1 + 3);                           // refunded: off the list
+  const r = L.topChoices([a, b, c, back, sale('x', d2, [tea(5, [ans('c1', 'Pearls', 15)])])], { from: d1, to: d2 });
+  assert.deepEqual(r.map(x => [x.key, x.name, x.times, x.money]), [['c1', 'Black pearls', 3, 45], ['c2', '50%', 2, 0]]);
+  assert.equal(r[1].modifier, 'Sweetness');
+  assert.deepEqual(L.topChoices([sale('w', d1, [line('wire', 2.5, 10, 1, { modifiers: [ans('c9', 'Cut', 1.1)] })])]).map(x => [x.times, x.money]), [[2.5, 2.75]]);
+  assert.deepEqual(L.topChoices([sale('p', d1, [line('nails', 1, 5, 1)])]), []);   // no answers: nothing
+  // bo-model's modifierAnswer spelling (modifier / choice) reads the same
+  const bo = { modifierId: 't', modifier: 'Toppings', choiceId: 'p', choice: 'Pearls', price: 15 };
+  assert.deepEqual(L.topChoices([sale('s', d1, [line('t', 1, 1, 1, { modifiers: [bo] })])]).map(x => [x.modifier, x.name, x.money]), [['Toppings', 'Pearls', 15]]);
+  // answerLines: the words under a line (cart, checkout, receipt, slip); a free choice shows no price
+  assert.deepEqual(L.answerLines({ modifiers: [bo, { ...bo, modifier: 'Sweetness', choice: '50%', price: 0 }] }, n => 'P' + n.toFixed(2)),
+    ['Toppings: Pearls P15.00', 'Sweetness: 50%']);
+  assert.deepEqual(L.answerLines({}, String), []);
+  // answersPrice: what the choices add to one unit, to the cent
+  assert.equal(L.answersPrice({ modifiers: [ans('a', 'Pearls', 15.1), ans('b', 'Nata', 0.2), ans('c', '50%', 0, 'Sweetness')] }), 15.3);
+  assert.equal(L.answersPrice({}), 0);
+  // A 10%-off drink refunded (blind test 2026-10-23, regressions/2026-10-23-refund-discount-breakdown.md): the customer gets
+  // what they paid (184.50); the ladder takes its list price off on Refunds and hands its 20.50 discount back, so Discounts
+  // reads only the kept sale's (features/sales-terms.md: Refunds = gross given back). Net = the kept drink, 155.
+  const disc = line('matcha', 1, 205, 60, { discount: { type: 'percent', value: 10 }, lineDiscount: 20.5, lineTotal: 184.5 });
+  const s = sale('d', d1, [disc, line('brown', 1, 155, 50)]);
+  assert.deepEqual([s.subtotal, s.discount, s.total], [360, 20.5, 339.5]);
+  const part = L.refundPart(s, [], [{ lineNo: 0, qty: 1 }]);
+  assert.deepEqual([part.subtotal, part.discount, part.total], [205, 20.5, 184.5]);
+  const row = { ...reverse(s, 'refund', d1 + 1), items: part.items, subtotal: part.subtotal, discount: part.discount, total: part.total, vatAmount: part.vatAmount, payments: part.payments };
+  const k = L.summarize([s, row]);
+  assert.deepEqual([k.grossSales, k.refunds, k.discounts, k.netSales], [360, 205, 0, 155]);
+  assert.equal(L.round2(k.grossSales - k.refunds - k.discounts), k.netSales, 'the ladder adds up');
+}
+
 console.log('sales-math: ok');

@@ -23,7 +23,8 @@ function renderCheckout() {
     cartList.innerHTML = (x ? `<div class="co-row"><span class="co-nm">Coming back · #${escapeHtml(x.o.number)}</span><span class="co-amt num">${peso(-x.part.total)}</span></div>` : '')
       + state.cart.map(item => `
       <div class="co-row">
-        ${linePic(item)}<span class="co-nm">${escapeHtml(item.name)}<small class="num">${item.qty} × ${peso(item.price)}</small></span>
+        ${linePic(item)}<span class="co-nm">${escapeHtml(item.name)}<small class="num">${item.qty} × ${peso(item.price)}</small>${
+          SalesMath.answerLines(item, peso).map(a => `<small>${escapeHtml(a)}</small>`).join('')}</span>
         <span class="co-amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
       </div>`).join('');
   }
@@ -857,8 +858,11 @@ function todayLines(items) {
     if (!p) { if (i?.name) gone.push(i.name); continue; }
     if (!onTill(p)) off.push(`${p.name} is ${offWhy(p)}.`);
     // a price asked at sale (askedPrice) keeps the line's own id and the price it was given
-    const typed = i.productId && i.id !== i.productId;
-    lines.push({ ...i, id: typed ? i.id : p.id, name: p.name, sku: p.sku, brand: p.brand, unit: p.unit, price: typed || askedPrice(p) ? i.price : p.price });
+    // a line with modifiers: its answers at today's prices (freshAnswers drops one no longer offered) on top of the base
+    const typed = i.productId && i.id !== i.productId, mods = Array.isArray(i.modifiers) ? freshAnswers(p, i.modifiers) : null;
+    const base = askedPrice(p) || (typed && !mods) ? moneyValue(i.price - SalesMath.answersPrice(i)) : p.price;
+    lines.push({ ...i, id: typed ? i.id : p.id, name: p.name, sku: p.sku, brand: p.brand, unit: p.unit,
+      ...(mods && { modifiers: mods }), price: mods ? moneyValue(base + SalesMath.answersPrice({ modifiers: mods })) : base });
   }
   return { lines, gone, off };
 }

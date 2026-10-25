@@ -1,0 +1,371 @@
+<style>
+/* part m (round 4) — Stock history in NEW FORMATS: reason lanes (gantt), per-item stock steps, horizontal + zoomed
+   waterfalls, receipt ledgers with a running column, gap lines for counts and costs, price ladders.
+   Reason tints: Delivery/Received t3 · Refund t2 · Void t7 · Count t5 · Damaged --bad · Sold t1 · Kept t4.
+   Red/green only for short vs over and price/cost down vs up. Every selector .vm-. */
+.vm-g { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1130px; align-items: start; }
+.vm-g.three { grid-template-columns: 1fr 1fr 1fr; }
+.vm-g > .spec.w { grid-column: 1 / -1; }
+.vm-q { color: var(--ink-4); font-weight: 400; font-variant-numeric: tabular-nums; }
+.vm-svg { display: block; overflow: visible; }
+.vm-svg text { font-family: var(--font); }
+.vm-ax { font-size: 11px; fill: var(--ink-5); font-variant-numeric: tabular-nums; }
+.vm-lab { font-size: 11px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.vm-big { display: flex; align-items: center; gap: 8px; padding: 12px 12px 4px; }
+.vm-big .kpi-value { font-size: 22px; }
+.vm-big .vm-q { font-size: 12px; }
+.vm-up { color: var(--up); } .vm-dn { color: var(--down); }
+.badge.vm-short { background: var(--down-tint); color: var(--down); }
+.badge.vm-over { background: var(--up-tint); color: var(--up); }
+.vm-rows > .row .nm { display: flex; align-items: center; gap: 6px; }
+.vm-a { flex: none; min-width: 84px; text-align: right; }
+.vm-n { flex: none; width: 70px; text-align: right; }
+.vm-rows > .row.vm-sub { min-height: 26px; font-size: 11px; color: var(--ink-4); }
+.vm-rows > .row.vm-sub:hover { background: none; }
+.vm-leg { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 8px 12px 12px; font-size: 11px; color: var(--ink-4); }
+.vm-leg > span { display: inline-flex; align-items: center; gap: 6px; }
+.vm-leg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.vm-leg i.tk { width: 2px; height: 12px; border-radius: 1px; }
+
+/* ---- lanes: two store days side by side (7 AM – 6 PM each), hour grid behind ---- */
+.vm-ln { display: flex; align-items: stretch; padding: 0 12px; }
+.vm-ln > .l { flex: none; width: 128px; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); overflow: hidden; }
+.vm-ln > .l .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vm-ln > .l small { font-size: 11px; color: var(--ink-4); }
+.vm-ln > .p { position: relative; flex: 1; min-width: 0; background: linear-gradient(90deg, var(--row-line) 1px, transparent 1px) 0 0 / calc(100% / 11) 100% repeat-x; }
+.vm-ln > .p + .p { margin-left: 10px; }
+.vm-ln > .p::after { content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 1px; background: var(--row-line); }
+.vm-ln > .r { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.vm-ln.body { height: 46px; border-top: 1px solid var(--row-line); }
+.vm-ln.body:hover { background: var(--band); }
+.vm-ln.hd { height: 26px; font-size: 11px; color: var(--ink-4); }
+.vm-ln.hd > .p, .vm-ln.ax > .p { background: none; }
+.vm-ln.hd > .p::after, .vm-ln.ax > .p::after { display: none; }
+.vm-ln.hd > .p { display: flex; align-items: flex-end; padding-bottom: 4px; color: var(--ink-3); font-weight: 500; font-size: 12px; }
+.vm-ln.ax { height: 22px; border-top: 1px solid var(--row-line); }
+.vm-ln.ax .t { position: absolute; top: 4px; transform: translateX(-50%); font-size: 11px; color: var(--ink-5); white-space: nowrap; }
+.vm-ln.ax .t:first-child { transform: none; }
+/* a window block (first → last move of a reason that day), one tick per move */
+.vm-blk { position: absolute; bottom: 8px; height: 16px; min-width: 16px; margin-left: -8px; border-radius: 6px; }
+.vm-blk.one { width: 16px; }
+.vm-tk { position: absolute; bottom: 8px; height: 16px; width: 2px; margin-left: -1px; border-radius: 1px; opacity: .55; }
+.vm-bl { position: absolute; top: 5px; font-size: 11px; color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; transform: translateX(-8px); }
+.vm-bl.end { transform: translateX(-100%); }
+/* one block per move, qty inside */
+.vm-mv { position: absolute; top: 50%; transform: translate(-50%, -50%); height: 20px; min-width: 42px; padding: 0 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.vm-ln.mv { height: 38px; }
+.vm-ln.mv > .l { width: 230px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; }
+.vm-ln.mv > .l .nm { max-width: 100%; font-weight: 500; }
+.vm-ln.mv > .rs { flex: none; width: 76px; display: flex; align-items: center; }
+
+/* ---- step tables ---- */
+table.vm-t td.vm-when { color: var(--ink-3); white-space: nowrap; }
+table.vm-t td.vm-st { width: 150px; padding-top: 4px; padding-bottom: 4px; }
+.vm-arrow { color: var(--ink-5); margin: 0 4px; }
+.vm-new { font-weight: 500; color: var(--ink); }
+.vm-sr { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-top: 1px solid var(--row-line); font-size: 13px; }
+.vm-sr:first-child { border-top-color: transparent; }
+.vm-sr > .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.vm-sr > svg { flex: none; }
+.vm-sr > .v { flex: none; width: 78px; text-align: right; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vm-sr.hd { height: 30px; background: var(--band); font-size: 12px; color: var(--ink-3); border-top-color: transparent; }
+
+/* ---- receipts: dotted leaders, dashed rules, a running column ---- */
+.vm-rc { padding: 10px 14px 12px; }
+.vm-rh { display: flex; justify-content: space-between; padding: 0 0 6px; font-size: 11px; color: var(--ink-4); }
+.vm-rh > span:last-child { display: flex; gap: 0; }
+.vm-rh .c { width: 86px; text-align: right; }
+.vm-li { padding: 6px 0 5px; }
+.vm-li > .top { display: flex; align-items: center; gap: 6px; height: 22px; font-size: 13px; }
+.vm-li .ld { flex: 1; align-self: center; height: 0; margin: 4px 2px 0; border-bottom: 1px dotted var(--ink-5); }
+.vm-li .a { flex: none; width: 86px; text-align: right; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.vm-li .b { flex: none; width: 86px; text-align: right; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vm-li > .tr { height: 5px; margin-top: 4px; border-radius: 3px; background: var(--row-line); }
+.vm-li > .tr > i { display: block; height: 100%; min-width: 3px; border-radius: 3px; }
+.vm-li.sub > .top { font-size: 12px; color: var(--ink-3); }
+.vm-li.sub .a { font-weight: 400; color: var(--ink-3); }
+.vm-cut { margin: 6px 0; border-top: 1px dashed var(--ink-5); }
+.vm-tot { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 0 0; }
+.vm-tot > span:first-child { font-size: 13px; font-weight: 500; color: var(--ink); }
+.vm-tot .kpi-value { font-size: 20px; }
+
+/* ---- gap lines: two ticks on one line, the gap shaded ---- */
+.vm-gr { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-top: 1px solid var(--row-line); font-size: 13px; }
+.vm-gr:first-child { border-top-color: transparent; }
+.vm-gr > .nm { flex: none; width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.vm-gr > .v { flex: none; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vm-gr > .v.w1 { width: 112px; color: var(--ink-3); }
+.vm-gr > .v.w2 { width: 64px; font-weight: 500; }
+.vm-gr > .chip { flex: none; min-width: 56px; justify-content: center; }
+.vm-gt { position: relative; flex: 1; min-width: 0; align-self: stretch;
+  background: linear-gradient(var(--line), var(--line)) 0 50% / 100% 2px no-repeat; }
+.vm-gt > .z { position: absolute; top: 4px; bottom: 4px; width: 1px; background: var(--row-line); }
+.vm-gt > .gap { position: absolute; top: 50%; height: 14px; transform: translateY(-50%); }
+.vm-gt > .tk { position: absolute; top: 50%; width: 2px; height: 22px; margin-left: -1px; transform: translateY(-50%); border-radius: 1px; }
+.vm-gt > .tl { position: absolute; top: 50%; transform: translateY(-50%); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vm-gr.ax { height: 22px; }
+.vm-gr.ax > .vm-gt { background: none; }
+.vm-gr.ax .t { position: absolute; top: 3px; transform: translateX(-50%); font-size: 11px; color: var(--ink-5); }
+.vm-gr.grp { height: 30px; background: var(--band); border-top-color: transparent; }
+
+/* ---- ladders: one column per item, rails, a rung per 1 % ---- */
+.vm-lad { display: flex; padding: 10px 6px 4px; }
+.vm-lad > div { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.vm-lad .nm { margin-top: 2px; padding: 0 4px; text-align: center; font-size: 12px; line-height: 15px; color: var(--ink); font-weight: 500; height: 30px; overflow: hidden; }
+.vm-lad .ds { margin: 4px 0 2px; font-size: 11px; color: var(--ink-4); white-space: nowrap; }
+.vm-lad .badge { margin-top: 4px; max-width: 92%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+</style>
+
+<section class="cat" id="vm-lanes" data-nav="Stock lanes v4">
+  <h2>Stock history · Lanes and steps</h2>
+  <p class="why">The newest 10 of 62 non-sale moves (Oct 15–16), on the two store days 7 AM – 6 PM. Lanes are reasons (or items); a block runs from a reason's first to last move that day, one tick per move. Steps: each item's stock before → after its move, on its own scale.</p>
+  <div class="vm-g">
+    <div class="spec w"><div class="tag"><b>M4-1</b> Reason lanes (gantt) · a block from first to last move each day, a tick per move</div><div class="card" id="vm-1"></div></div>
+    <div class="spec w"><div class="tag"><b>M4-2</b> Item lanes (gantt) · one row per move, the qty block on its time</div><div class="card" id="vm-2"></div></div>
+    <div class="spec w"><div class="tag"><b>M4-3</b> The table with a stock step · had (grey) → now (reason tint), own scale per row</div><div class="card" id="vm-3"></div></div>
+    <div class="spec"><div class="tag"><b>M4-4</b> Steps by reason · rail width, had → now last</div><div class="card" id="vm-4"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vm-water" data-nav="Stock waterfalls v4">
+  <h2>Stock history · Stock value waterfalls</h2>
+  <p class="why">Stock value at cost, 7 days (stockFlow, stockByDay). Opening + received − sold + refunds in − damaged − count fix = closing, to the peso. The scale starts at ₱1.8M (the break mark says so), so the bars show the moves, not the whole stock.</p>
+  <div class="vm-g">
+    <div class="spec"><div class="tag"><b>M4-5</b> Sideways waterfall · each line floats from where the last one ended</div><div class="card" id="vm-5"></div></div>
+    <div class="spec"><div class="tag"><b>M4-6</b> The small moves zoomed · refunds in, less damage and counts, net last</div><div class="card" id="vm-6"></div></div>
+    <div class="spec w"><div class="tag"><b>M4-7</b> Week waterfall · each day in (blue) then out (green), opening to closing</div><div class="card" id="vm-7"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vm-ledger" data-nav="Stock receipts v4">
+  <h2>Stock history · Receipt ledgers</h2>
+  <p class="why">Read top to bottom like a till receipt: dotted leader, the amount, then the running total. The thin bar under a line is its size against the biggest line.</p>
+  <div class="vm-g three">
+    <div class="spec"><div class="tag"><b>M4-8</b> Stock on hand · opening to closing, running balance</div><div class="card" id="vm-8"></div></div>
+    <div class="spec"><div class="tag"><b>M4-9</b> Moves by reason · running count to 62</div><div class="card" id="vm-9"></div></div>
+    <div class="spec"><div class="tag"><b>M4-10</b> Where it went · came in, then placed until nothing is left</div><div class="card" id="vm-10"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vm-gaps" data-nav="Stock gaps v4">
+  <h2>Stock history · Gaps and ladders</h2>
+  <p class="why">Gap line: the old number and the new number are two ticks on one line, the gap between them shaded red (short / dearer) or green (over / cheaper). Ladder: one column per item, a rung for every 1 % it moved, old price grey at the foot, new price at the top rung.</p>
+  <div class="vm-g">
+    <div class="spec"><div class="tag"><b>M4-11</b> Count gaps · expected and counted, % off on one scale</div><div class="card" id="vm-11"></div></div>
+    <div class="spec"><div class="tag"><b>M4-12</b> Supplier cost gaps · was and now, grouped by supplier</div><div class="card" id="vm-12"></div></div>
+    <div class="spec"><div class="tag"><b>M4-13</b> Price ladder · 30 days, a rung per 1 %</div><div class="card" id="vm-13"></div></div>
+    <div class="spec"><div class="tag"><b>M4-14</b> Supplier cost ladder · supplier as the pill</div><div class="card" id="vm-14"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('vm-' + n);
+  const sum = (a, k = 'v') => a.reduce((s, x) => s + x[k], 0);
+  const q = s => `<span class="vm-q">${s}</span>`;
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r}</div>`;
+  const all = '<a class="more" href="#">View all ›</a>', d7 = q('Last 7 days');
+  const T = { Delivery: 't3', Received: 't3', Refund: 't2', 'Refunds in': 't2', Void: 't7', Count: 't5', 'Count fix': 't5', Damaged: 'bad', Sold: 't1', Kept: 't4' };
+  const fill = t => `var(--${t})`, ink = t => `var(--${t}-ink)`;
+  const pill = (nm, t = T[nm]) => `<span class="badge ${t}">${nm}</span>`;
+  const sp = n => (n > 0 ? '+' : '') + V.peso(n);
+  const fq = n => Number.isInteger(n) ? n.toLocaleString('en-PH') : n.toFixed(2);
+  const sg = n => (n < 0 ? '−' : '+');
+  const chip = (p, good) => `<span class="chip ${good ? 'up' : 'down'}">${sg(p)}${Math.abs(p).toFixed(1)}%</span>`;
+
+  // ---------- time: two store days, 7 AM – 6 PM ----------
+  const M = V.movements.map(m => { const [, d, h, mi, ap] = m.when.match(/Oct (\d+), (\d+):(\d+) (AM|PM)/);
+    return { ...m, t: T[m.r], day: +d, h: (+h % 12) + (ap === 'PM' ? 12 : 0) + mi / 60, clock: `${h}:${mi}` + (ap === 'PM' ? ' PM' : ' AM') }; });
+  const DAYS = [15, 16], DN = { 15: 'Thu, Oct 15', 16: 'Fri, Oct 16' };
+  const x = h => (h - 7) / 11 * 100;
+  const hd = (l, r = '') => `<div class="vm-ln hd"><span class="l">${l}</span>${DAYS.map(d => `<span class="p">${DN[d]}</span>`).join('')}${r}</div>`;
+  const ax = (lw, r) => `<div class="vm-ln ax"><span class="l" style="width:${lw}px"></span>${DAYS.map(() => '<span class="p">' + ['7a', '9a', '11a', '1p', '3p', '5p'].map((s, i) => `<span class="t" style="left:${i * 2 / 11 * 100}%">${s}</span>`).join('') + '</span>').join('')}${r}</div>`;
+
+  // M4-1 reason lanes: block from first to last move of that reason that day, a tick per move
+  { const by = {}; M.forEach(m => (by[m.r] ||= []).push(m));
+    const week = Object.fromEntries(V.movesByReason.map(r => [r.r, r.n]));
+    const lanes = ['Delivery', 'Refund', 'Void'];
+    const rc = (a, b) => `<span class="r" style="width:150px"><span class="amt">${a}</span>${q(b)}</span>`;
+    $(1).innerHTML = band('Movements <span class="vm-q">latest 10 of ' + V.movesTotal + ' · by reason</span>', all)
+      + hd('Reason', `<span class="r" style="width:150px">Moves · 7 days</span>`)
+      + lanes.map(r => `<div class="vm-ln body"><span class="l">${pill(r)}</span>` + DAYS.map(d => {
+          const ms = by[r].filter(m => m.day === d); if (!ms.length) return '<span class="p"></span>';
+          const a = Math.min(...ms.map(m => m.h)), b = Math.max(...ms.map(m => m.h)), first = ms.find(m => m.h === a), last = ms.find(m => m.h === b);
+          const lab = ms.length > 1 ? `${first.clock.replace(/ (AM|PM)$/, a < 12 === b < 12 ? '' : ' $1')} – ${last.clock} · ${ms.length} moves` : first.clock;
+          return `<span class="p"><i class="vm-blk ${ms.length > 1 ? '' : 'one'}" style="left:${x(a)}%;width:calc(${x(b) - x(a)}% + 16px);background:${fill(T[r])}" title="${r} · ${lab}"></i>`
+            + ms.map(m => `<i class="vm-tk" style="left:${x(m.h)}%;background:${ink(T[r])}" title="${m.item} · +${fq(m.qty)}"></i>`).join('')
+            + `<span class="vm-bl ${x(a) > 70 ? 'end' : ''}" style="left:${x(a) > 70 ? `calc(${x(b)}% + 8px)` : x(a) + '%'}">${lab}</span></span>`; }).join('')
+        + rc(by[r].length, `of ${week[r]}`) + '</div>').join('')
+      + ax(128, '<span class="r" style="width:150px"></span>')
+      + `<div class="vm-leg">${q('Count (' + week.Count + ') and Damaged (' + week.Damaged + ') moves are older than these 10')}</div>`; }
+
+  // M4-2 item lanes: one row per move, newest first, qty block on its time
+  $(2).innerHTML = band('Movements <span class="vm-q">latest 10 of ' + V.movesTotal + '</span>', '<span style="display:inline-flex;gap:12px;align-items:center"><button class="pick">All but sales</button>' + all + '</span>')
+    + hd('Item', '<span class="r" style="width:76px">Balance</span>')
+    + M.map(m => `<div class="vm-ln body mv"><span class="l"><span class="nm">${m.item}</span>${m.note ? `<small>${m.note}</small>` : ''}</span>`
+      + DAYS.map(d => `<span class="p">${m.day === d ? `<span class="vm-mv" style="left:${x(m.h)}%;background:${fill(m.t)};color:${ink(m.t)}" title="${m.r} · ${m.clock}">+${fq(m.qty)}</span>` : ''}</span>`).join('')
+      + `<span class="r" style="width:76px" class="amt"><span class="amt">${fq(m.bal)}</span></span></div>`).join('')
+    + ax(230, '<span class="r" style="width:76px"></span>')
+    + `<div class="vm-leg">${['Delivery', 'Refund', 'Void'].map(r => `<span>${pill(r)} ${M.filter(m => m.r === r).length}</span>`).join('')}</div>`;
+
+  // stock step: had (grey) for the whole width, the jump to now in the reason tint, own scale 0 → now
+  const step = (m, W, H) => { const had = +(m.bal - m.qty).toFixed(2), y = v => (H - v / m.bal * H).toFixed(1), xs = (W * .5).toFixed(1);
+    return `<svg class="vm-svg" width="${W}" height="${H}"><title>had ${fq(had)} → now ${fq(m.bal)}</title><rect x="0" y="${y(had)}" width="${W}" height="${(had / m.bal * H).toFixed(1)}" rx="2" style="fill:var(--fill)"/>`
+      + `<rect x="${xs}" y="0" width="${W - xs}" height="${y(had)}" rx="2" style="fill:${fill(m.t)}"/><path d="M0 ${y(had)}H${xs}V0H${W}" style="fill:none;stroke:${ink(m.t)};stroke-width:1.5;stroke-opacity:.6"/></svg>`; };
+
+  // M4-3 the table with a step per row
+  $(3).innerHTML = band('Movements <span class="vm-q">latest 10 of ' + V.movesTotal + '</span>', '<span style="display:inline-flex;gap:12px;align-items:center"><button class="pick">All but sales</button>' + all + '</span>')
+    + '<table class="t vm-t"><thead><tr><th>When</th><th>Item</th><th>Reason</th><th>Stock</th><th class="r">Had → now</th><th class="r">Qty</th></tr></thead><tbody>'
+    + M.map(m => `<tr><td class="vm-when">${m.when}</td><td class="nm">${m.item}${m.note ? `<small>${m.note}</small>` : ''}</td><td>${pill(m.r)}</td><td class="vm-st">${step(m, 140, 22)}</td>`
+      + `<td class="r">${fq(+(m.bal - m.qty).toFixed(2))}<span class="vm-arrow">→</span><span class="vm-new">${fq(m.bal)}</span></td><td class="r">+${fq(m.qty)}</td></tr>`).join('') + '</tbody></table>';
+
+  // M4-4 steps grouped by reason, rail width
+  $(4).innerHTML = band('Movements <span class="vm-q">latest 10</span>', all)
+    + ['Void', 'Refund', 'Delivery'].map(r => { const ms = M.filter(m => m.r === r);
+      return `<div class="vm-sr hd">${pill(r)}<span class="nm" style="color:var(--ink-4)">${ms.length} ${ms.length > 1 ? 'moves' : 'move'}</span><span class="v">had → now</span></div>`
+        + ms.map(m => `<div class="vm-sr"><span class="nm">${m.item}</span>${step(m, 84, 22)}<span class="v">${fq(+(m.bal - m.qty).toFixed(2))} → <b class="vm-new">${fq(m.bal)}</b></span></div>`).join(''); }).join('');
+
+  // ---------- waterfalls ----------
+  const F = V.stockFlow;
+  const LINES = [
+    { nm: 'Opening', v: F.opening, total: true, t: 't8' },
+    { nm: 'Received', v: F.received }, { nm: 'Sold', v: -F.sold }, { nm: 'Refunds in', v: F.refundsIn },
+    { nm: 'Damaged', v: -F.damaged }, { nm: 'Count fix', v: F.countFix },
+    { nm: 'Closing', v: F.closing, total: true, t: 't4' }];
+
+  // M4-5 sideways waterfall
+  { const W = 534, L0 = 112, R0 = 96, lo = 1800000, hi = 2200000, RH = 33, top = 6, bh = 16, cw = W - L0 - R0;
+    const X = v => L0 + (v - lo) / (hi - lo) * cw; let run = 0, prev = null, out = '';
+    LINES.forEach((l, i) => { const y = top + i * RH + (RH - bh) / 2; let a, b;
+      if (l.total) { a = lo; b = l.v; run = l.v; } else { a = run; b = run + l.v; run = b; }
+      const x0 = X(Math.min(a, b)), w = Math.max(Math.abs(X(b) - X(a)), 3), t = l.t || T[l.nm];
+      if (prev != null) out += `<line x1="${X(prev)}" x2="${X(prev)}" y1="${y - RH + bh}" y2="${y}" style="stroke:var(--ink-5);stroke-dasharray:2 2"/>`;
+      out += l.total ? `<line x1="${L0}" x2="${X(l.v)}" y1="${y + bh / 2}" y2="${y + bh / 2}" style="stroke:var(--ink-5);stroke-dasharray:2 3"/><rect x="${X(l.v) - 2}" y="${y - 4}" width="4" height="${bh + 8}" rx="2" style="fill:${ink(t)}"><title>${l.nm} · ${V.peso(l.v)}</title></rect>`
+        : `<rect x="${x0}" y="${y}" width="${w}" height="${bh}" rx="3" style="fill:${fill(t)}"><title>${l.nm} · ${sp(l.v)}</title></rect>`;
+      out += `<foreignObject x="0" y="${y - 8}" width="${L0 - 8}" height="32"><div xmlns="http://www.w3.org/1999/xhtml" style="height:32px;display:flex;align-items:center">${l.total ? `<span style="font-size:13px;font-weight:500;color:var(--ink)">${l.nm}</span>` : pill(l.nm, t)}</div></foreignObject>`;
+      out += `<text class="vm-lab" x="${W}" y="${y + 12}" text-anchor="end" style="font-size:13px;${l.total ? '' : 'font-weight:400'}">${l.total ? V.peso(l.v) : sp(l.v)}</text>`;
+      prev = run;
+      if (i < LINES.length - 1) out += `<line x1="0" x2="${W}" y1="${top + (i + 1) * RH}" y2="${top + (i + 1) * RH}" style="stroke:var(--row-line)"/>`; });
+    const H = top + LINES.length * RH;
+    const ticks = [1800000, 2000000, 2200000].map(v => `<line x1="${X(v)}" x2="${X(v)}" y1="${top}" y2="${H}" style="stroke:var(--grid);stroke-dasharray:1 3"/><text class="vm-ax" x="${X(v)}" y="${H + 14}" text-anchor="middle">${V.peso(v)}</text>`).join('');
+    $(5).innerHTML = band('Stock on hand <span class="vm-q">at cost</span>', d7)
+      + `<div class="vm-big"><span class="kpi-value">${V.peso(F.closing)}</span>${chip((F.closing / F.opening - 1) * 100, true)}${q(sp(F.closing - F.opening) + ' on the week')}</div>`
+      + `<div style="padding:4px 12px 12px"><svg class="vm-svg" width="${W}" height="${H + 18}">${ticks}${out}</svg></div>`; }
+
+  // M4-6 the small moves zoomed: columns waterfall from 0
+  { const S = [{ nm: 'Refunds in', v: F.refundsIn }, { nm: 'Damaged', v: -F.damaged }, { nm: 'Count fix', v: F.countFix }];
+    const net = sum(S), W = 534, H = 170, L0 = 44, top = 18, bot = 22, hi = 8000, cw = (W - L0) / 4;
+    const Y = v => top + (hi - v) / hi * (H - top - bot); let run = 0, g = '';
+    for (let v = 0; v <= hi; v += 2000) g += `<line x1="${L0}" x2="${W}" y1="${Y(v)}" y2="${Y(v)}" style="stroke:var(--grid)"/><text class="vm-ax" x="${L0 - 6}" y="${Y(v) + 4}" text-anchor="end">${v ? V.pesoK(v) : '0'}</text>`;
+    const col = (i, a, b, t, lab, nm) => { const x0 = L0 + i * cw + cw * .2, w = cw * .6, y0 = Y(Math.max(a, b)), h = Math.abs(Y(a) - Y(b));
+      return `<rect x="${x0}" y="${y0}" width="${w}" height="${h}" rx="3" style="fill:${fill(t)}"><title>${nm} · ${lab}</title></rect><text class="vm-lab" x="${x0 + w / 2}" y="${y0 - 5}" text-anchor="middle">${lab}</text>`
+        + `<text class="vm-ax" x="${x0 + w / 2}" y="${H - 6}" text-anchor="middle" style="fill:var(--ink-3)">${nm}</text>`
+        + (i < 3 ? `<line x1="${x0 + w}" x2="${x0 + cw}" y1="${Y(b)}" y2="${Y(b)}" style="stroke:var(--ink-5);stroke-dasharray:2 2"/>` : ''); };
+    S.forEach((s, i) => { g += col(i, run, run + s.v, T[s.nm], sp(s.v), s.nm); run += s.v; });
+    g += col(3, 0, net, 't4', sp(net), 'Net');
+    $(6).innerHTML = band('Back in, less losses <span class="vm-q">at cost</span>', d7)
+      + `<div class="vm-big"><span class="kpi-value">${sp(net)}</span>${q('net of the small moves')}</div>`
+      + `<div style="padding:8px 12px 4px"><svg class="vm-svg" width="${W}" height="${H}">${g}</svg></div>`
+      + '<div class="rows vm-rows">' + S.map(s => `<div class="row"><span class="nm">${pill(s.nm)}</span><span class="amt vm-a">${sp(s.v)}</span></div>`).join('')
+      + `<div class="row total"><span class="nm">Net</span><span class="amt vm-a">${sp(net)}</span></div></div>`; }
+
+  // M4-7 week waterfall: opening, each day in then out, closing
+  { const D = V.stockByDay.filter(d => !d.now), cols = [{ nm: 'Opening', a: 1800000, b: F.opening, t: 't8', total: true, d: 'Open' }];
+    let run = F.opening;
+    D.forEach(d => { if (d.in) cols.push({ nm: 'In', a: run, b: (run += d.in), t: 't3', d: d.d, v: d.in });
+      if (d.out) cols.push({ nm: 'Out', a: run, b: (run -= d.out), t: 't1', d: d.d, v: -d.out }); });
+    cols.push({ nm: 'Closing', a: 1800000, b: F.closing, t: 't4', total: true, d: 'Close' });
+    const W = 1080, H = 250, L0 = 84, top = 22, bot = 40, lo = 1800000, hi = 2000000, cw = (W - L0) / cols.length;
+    const Y = v => top + (hi - v) / (hi - lo) * (H - top - bot); let g = '';
+    for (let v = lo; v <= hi; v += 50000) g += `<line x1="${L0}" x2="${W}" y1="${Y(v)}" y2="${Y(v)}" style="stroke:var(--grid)"/><text class="vm-ax" x="${L0 - 8}" y="${Y(v) + 4}" text-anchor="end">${V.peso(v)}</text>`;
+    cols.forEach((c, i) => { const x0 = L0 + i * cw + cw * .22, w = cw * .56, y0 = Y(Math.max(c.a, c.b)), h = Math.max(Math.abs(Y(c.a) - Y(c.b)), 2);
+      const lab = c.total ? V.peso(c.b) : sp(c.v);
+      g += `<rect x="${x0}" y="${y0}" width="${w}" height="${h}" rx="3" style="fill:${fill(c.t)}"><title>${c.d} · ${c.nm} · ${lab}</title></rect>` + (c.total ? `<path d="M${x0 - 2} ${H - bot - 10}L${x0 + w + 2} ${H - bot - 18}M${x0 - 2} ${H - bot - 4}L${x0 + w + 2} ${H - bot - 12}" style="stroke:var(--raised);stroke-width:2.5"/>` : '')
+        + `<text class="vm-lab" x="${x0 + w / 2}" y="${c.total || c.v > 0 ? y0 - 6 : y0 + h + 14}" text-anchor="middle" style="${c.total ? '' : 'font-weight:400;fill:var(--ink-2)'}">${lab}</text>`;
+      if (i < cols.length - 1) g += `<line x1="${x0 + w}" x2="${x0 + cw}" y1="${Y(c.b)}" y2="${Y(c.b)}" style="stroke:var(--ink-5);stroke-dasharray:2 2"/>`; });
+    // day labels under each day's pair
+    const groups = []; cols.forEach((c, i) => { const last = groups[groups.length - 1]; if (last && last.d === c.d) last.n++; else groups.push({ d: c.d, i, n: 1 }); });
+    g += groups.map(gr => `<text class="vm-ax" x="${L0 + (gr.i + gr.n / 2) * cw}" y="${H - bot + 18}" text-anchor="middle" style="fill:var(--ink-3);font-size:12px">${gr.d}</text>`
+      + (gr.n > 1 ? `<line x1="${L0 + gr.i * cw + 8}" x2="${L0 + (gr.i + gr.n) * cw - 8}" y1="${H - bot + 4}" y2="${H - bot + 4}" style="stroke:var(--line)"/>` : '')).join('');
+    $(7).innerHTML = band('Stock on hand <span class="vm-q">at cost · day by day</span>', d7)
+      + `<div class="vm-big"><span class="kpi-value">${V.peso(F.closing)}</span>${chip((F.closing / F.opening - 1) * 100, true)}${q(`in ${V.peso(sum(D, 'in'))} · out ${V.peso(sum(D, 'out'))}`)}</div>`
+      + `<div style="padding:10px 12px 0"><svg class="vm-svg" width="${W}" height="${H}">${g}</svg></div>`
+      + `<div class="vm-leg"><span><i style="background:var(--t8)"></i>Opening</span><span><i style="background:var(--t3)"></i>In · received</span><span><i style="background:var(--t1)"></i>Out · sold and losses, less refunds</span><span><i style="background:var(--t4)"></i>Closing</span></div>`; }
+
+  // ---------- receipts ----------
+  const receipt = (head, lines, foot) => { const top = Math.max(...lines.filter(l => !l.cut && !l.sub).map(l => Math.abs(l.v)));
+    return `<div class="vm-rc"><div class="vm-rh"><span>${head[0]}</span><span><span class="c">${head[1]}</span><span class="c">${head[2]}</span></span></div>`
+      + lines.map(l => l.cut ? '<div class="vm-cut"></div>' : `<div class="vm-li ${l.sub ? 'sub' : ''}"><div class="top">${l.sub ? l.nm : pill(l.nm, l.t)}<span class="ld"></span><span class="a">${l.a}</span><span class="b">${l.b}</span></div>`
+        + (l.sub ? '' : `<div class="tr"><i style="width:${Math.abs(l.v) / top * 100}%;background:${fill(l.t || T[l.nm])}"></i></div>`) + '</div>').join('')
+      + `<div class="vm-cut"></div><div class="vm-tot"><span>${foot[0]}</span><span class="kpi-value">${foot[1]}</span></div>${foot[2] ? `<div class="vm-rh" style="padding:2px 0 0;justify-content:flex-end">${foot[2]}</div>` : ''}</div>`; };
+
+  // M4-8 stock on hand receipt
+  { let run = F.opening; const L = LINES.slice(1, -1).map(l => ({ nm: l.nm, v: l.v, a: sp(l.v), b: V.peso(run += l.v) }));
+    $(8).innerHTML = band('Stock on hand <span class="vm-q">at cost</span>', d7)
+      + receipt(['Line', 'Amount', 'Balance'], [{ nm: 'Opening', sub: true, a: '', b: V.peso(F.opening) }, ...L], ['Closing', V.peso(F.closing), `${sp(F.closing - F.opening)} on the week`]); }
+
+  // M4-9 moves by reason receipt: value at cost, running count
+  { let run = 0; const L = V.movesByReason.map(r => ({ nm: r.r, v: r.n, a: r.n, b: (run += r.n) }));
+    $(9).innerHTML = band('Moves by reason', d7)
+      + receipt(['Reason', 'Moves', 'Running'], L, [`${V.movesTotal} moves`, V.peso(sum(V.movesByReason, 'value')), 'value at cost']); }
+
+  // M4-10 where it went: came in, then placed until nothing is left
+  { const IN = F.received + F.refundsIn; let run = 0;
+    const came = [{ nm: 'Received', v: F.received }, { nm: 'Refunds in', v: F.refundsIn }].map(l => ({ ...l, a: V.peso(l.v), b: V.peso(run += l.v) }));
+    const went = [{ nm: 'Sold', v: F.sold }, { nm: 'Damaged', v: F.damaged }, { nm: 'Count fix', v: -F.countFix }, { nm: 'Kept', v: F.closing - F.opening }].map(l => ({ ...l, a: '−' + V.peso(l.v), b: V.peso(run -= l.v) }));
+    $(10).innerHTML = band('Where it went <span class="vm-q">at cost</span>', d7)
+      + receipt(['Line', 'Amount', 'Left'], [{ nm: 'Came in', sub: true, a: '', b: '' }, ...came, { cut: true }, { nm: 'Went to', sub: true, a: '', b: V.peso(IN) }, ...went], ['Left to place', V.peso(run), `${V.peso(IN)} came in, all placed`]); }
+
+  // ---------- gap lines ----------
+  const gapLine = (p, lo, hi, good, labA, labB) => { const X = v => (v - lo) / (hi - lo) * 100, a = X(0), b = X(p), l = Math.min(a, b), c = good ? 'var(--up)' : 'var(--down)';
+    const outR = b > a, place = (s, at, right, col) => `<span class="tl" style="${right ? `left:calc(${at}% + 6px)` : `right:calc(${100 - at}% + 6px)`};color:${col}">${s}</span>`;
+    return `<span class="vm-gt"><span class="z" style="left:${a}%"></span><span class="gap" style="left:${l}%;width:${Math.abs(b - a)}%;background:${good ? 'var(--up-tint)' : 'var(--down-tint)'}"></span>`
+      + `<span class="tk" style="left:${a}%;background:var(--ink-4)"></span><span class="tk" style="left:${b}%;background:${c}"></span>`
+      + place(labA, a, !outR, 'var(--ink-4)') + place(labB, b, outR, c) + '</span>'; };
+  const gapAx = (lo, hi, ticks, f, lw, rw) => `<div class="vm-gr ax"><span class="nm" style="width:${lw}px"></span><span class="vm-gt">${ticks.map(t => `<span class="t" style="left:${(t - lo) / (hi - lo) * 100}%">${f(t)}</span>`).join('')}</span><span style="flex:none;width:${rw}px"></span></div>`;
+
+  // M4-11 count gaps on a % scale
+  { const C = V.countMismatch.map(c => { const d = +(c.counted - c.expected).toFixed(2); return { ...c, d, p: d / c.expected * 100, val: d * c.cost }; });
+    const net = sum(C, 'val'), lo = -16, hi = 12;
+    $(11).innerHTML = band('Counts that didn’t match', all)
+      + `<div class="vm-big"><span class="kpi-value ${net < 0 ? 'vm-dn' : 'vm-up'}">${sp(Math.round(net))}</span>${q(`at cost · ${C.length} counts`)}</div>`
+      + '<div style="padding-top:4px">' + C.map(c => `<div class="vm-gr"><span class="nm" title="${c.name}">${c.name}</span>${gapLine(c.p, lo, hi, c.d > 0, fq(c.expected), fq(c.counted))}`
+        + `<span class="v w2 ${c.d < 0 ? 'vm-dn' : 'vm-up'}">${sp(Math.round(c.val))}</span></div>`).join('')
+      + gapAx(lo, hi, [-15, -10, -5, 0, 5, 10], t => (t > 0 ? '+' : t < 0 ? '−' : '') + Math.abs(t) + '%', 150, 64) + '</div>'
+      + `<div class="vm-leg"><span><i class="tk" style="background:var(--ink-4)"></i>Expected</span><span><i class="tk" style="background:var(--down)"></i>Counted</span><span><i style="background:var(--down-tint)"></i>Short</span><span><i style="background:var(--up-tint)"></i>Over</span></div>`; }
+
+  // M4-12 supplier cost gaps, grouped by supplier
+  { const SUP = { 'Asia Fasteners': 't1', 'Ace Tools PH': 't2', 'Rizal Aggregates': 't3', 'Holcim Dealer': 't4' };
+    const K = V.costChanges.map(k => ({ ...k, p: (k.to / k.from - 1) * 100 })), lo = -14, hi = 8;
+    const p2 = n => V.peso(n, 2);
+    $(12).innerHTML = band('Supplier costs changed', all)
+      + Object.keys(SUP).map(s => `<div class="vm-gr grp">${pill(s, SUP[s])}</div>` + K.filter(k => k.supplier === s).map(k => `<div class="vm-gr"><span class="nm" title="${k.name}" style="width:140px">${k.name}</span>`
+        + gapLine(k.p, lo, hi, k.p < 0, p2(k.from), p2(k.to)) + chip(k.p, k.p < 0) + '</div>').join('')).join('')
+      + gapAx(lo, hi, [-10, -5, 0, 5], t => (t > 0 ? '+' : t < 0 ? '−' : '') + Math.abs(t) + '%', 140, 56)
+      + `<div class="vm-leg"><span><i class="tk" style="background:var(--ink-4)"></i>Was</span><span><i class="tk" style="background:var(--up)"></i>Now</span><span><i style="background:var(--up-tint)"></i>Cheaper</span><span><i style="background:var(--down-tint)"></i>Dearer</span></div>`; }
+
+  // ---------- ladders: rung per 1 %, shared % scale ----------
+  const ladder = (items, hiP, loP, k, colour) => { const H = (hiP - loP) * k + 40, y0 = 20 + hiP * k, CW = 96;
+    return '<div class="vm-lad">' + items.map(it => { const p = it.p, yN = y0 - p * k, up = p > 0, cx = CW / 2, rl = cx - 15, rr = cx + 15;
+      const col = colour(it), n = Math.floor(Math.abs(p)); let g = '';
+      g += `<line x1="${rl}" x2="${rl}" y1="${Math.min(y0, yN) - 6}" y2="${Math.max(y0, yN) + 6}" style="stroke:var(--line);stroke-width:2"/><line x1="${rr}" x2="${rr}" y1="${Math.min(y0, yN) - 6}" y2="${Math.max(y0, yN) + 6}" style="stroke:var(--line);stroke-width:2"/>`;
+      g += `<rect x="${rl}" y="${Math.min(y0, yN)}" width="${rr - rl}" height="${Math.abs(yN - y0)}" style="fill:${it.good ? 'var(--up-soft)' : 'var(--down-soft)'}"/>`;
+      for (let i = 1; i <= n; i++) if (i < Math.abs(p) - .25) g += `<line x1="${rl}" x2="${rr}" y1="${y0 - Math.sign(p) * i * k}" y2="${y0 - Math.sign(p) * i * k}" style="stroke:${it.good ? 'var(--up-tint)' : 'var(--down-tint)'};stroke-width:2"/>`;
+      g += `<line x1="${rl - 4}" x2="${rr + 4}" y1="${y0}" y2="${y0}" style="stroke:var(--ink-5);stroke-width:3;stroke-linecap:round"/>`;
+      g += `<line x1="${rl - 4}" x2="${rr + 4}" y1="${yN}" y2="${yN}" style="stroke:${col};stroke-width:4;stroke-linecap:round"/>`;
+      g += `<text class="vm-ax" x="${cx}" y="${up ? y0 + 16 : y0 - 8}" text-anchor="middle" style="fill:var(--ink-4)">${it.a}</text>`;
+      g += `<text class="vm-lab" x="${cx}" y="${up ? yN - 9 : yN + 18}" text-anchor="middle" style="font-size:12px">${it.b}</text>`;
+      return `<div><svg class="vm-svg" width="${CW}" height="${H}"><title>${it.nm} · ${it.a} → ${it.b}</title>${g}</svg><span class="nm">${it.nm}</span>${chip(p, it.good)}${it.foot}</div>`; }).join('') + '</div>'; };
+
+  // M4-13 price ladder (30 days)
+  { const P = V.priceChanges.map(c => { const p = (c.to / c.from - 1) * 100; return { nm: c.item, p, good: p > 0, a: V.peso(c.from, 2), b: V.peso(c.to, 2), foot: `<span class="ds">${c.when.replace(/,.*/, '')}</span>` }; });
+    $(13).innerHTML = band('Price changes <span class="vm-q">' + P.length + ' · last 30 days</span>', all)
+      + ladder(P, 9, -7, 13, it => it.good ? 'var(--up)' : 'var(--down)')
+      + `<div class="vm-leg"><span><i style="background:var(--ink-5);height:3px"></i>Old price</span><span><i style="background:var(--up);height:4px"></i>Raised</span><span><i style="background:var(--down);height:4px"></i>Lowered</span><span>a rung per 1 %</span></div>`; }
+
+  // M4-14 supplier cost ladder
+  { const SUP = { 'Asia Fasteners': 't1', 'Ace Tools PH': 't2', 'Rizal Aggregates': 't3', 'Holcim Dealer': 't4' };
+    const K = V.costChanges.map(c => { const p = (c.to / c.from - 1) * 100; return { nm: c.name, p, good: p < 0, a: V.peso(c.from, 2), b: V.peso(c.to, 2), t: SUP[c.supplier], foot: pill(c.supplier.split(' ')[0], SUP[c.supplier]) }; });
+    $(14).innerHTML = band('Supplier costs changed <span class="vm-q">' + K.length + ' items</span>', all)
+      + ladder(K, 6, -11, 11, it => it.good ? 'var(--up)' : 'var(--down)')
+      + `<div class="vm-leg"><span><i style="background:var(--ink-5);height:3px"></i>Was</span><span><i style="background:var(--up);height:4px"></i>Cheaper</span><span><i style="background:var(--down);height:4px"></i>Dearer</span>${Object.keys(SUP).map(n => pill(n, SUP[n])).join('')}</div>`; }
+})();</script>

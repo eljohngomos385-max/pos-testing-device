@@ -112,7 +112,7 @@ object; `HWPOS_AI.dictionaryUrl` points here.
 | customer | object\|null | | `{id,name,phone,address}` snapshot | |
 | paymentMethod | string | | drawer coercion: cash\|credit\|split\|unpaid | `cash` |
 | paymentKind / paymentMethodLabel | string | | the real tender: cash\|gcash\|qr\|credit\|split\|other / label | `gcash` / `GCash` |
-| payments[] | object[] | pesos | `{method,label,amount,tendered,change,ref}` | |
+| payments[] | object[] | pesos | `{method,label,amount,tendered,change,ref,refLabel?,drawer?}`. `drawer` (lab, 2026-10-23): whether the type opened the cash drawer at the sale (Settings › Payment types › Opens cash drawer); its void/refund opens the drawer the same way even after the type is renamed or deleted; rows without it read the type's switch now. `refLabel` (lab, 2026-10-22): the word the ref was asked as (Settings › Payment types › Ask for, e.g. `Last 4 digits`), printed over it on the receipt; only when there is a customer ref (a void/refund/exchange row's ref is the sale number and has none) | |
 | subtotal, discount, total | number | pesos | gross, discount, paid. Unsigned on every row: `status` carries the sign | |
 | cartDiscount | object\|null | | `{type:'percent'\|'amount', value}` | |
 | tendered, change | number | pesos | cash leg | |

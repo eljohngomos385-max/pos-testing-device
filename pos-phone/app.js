@@ -337,7 +337,18 @@ function attachEvents() {
       onConfirm: () => { HWPOS_STORE.savedCarts.remove(o.id); if (state.savedId === o.id) state.savedId = ''; renderOrders(); showToast('Deleted'); } }) }
       : { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o) },
   ], { w: 200, right: true });
-  $('#orderMore')?.addEventListener('click', (e) => { const o = shownOrder(); if (o) orderMenu(e.currentTarget, o); });
+  // phone: the bar keeps ‹ and ⋯ only, so ⋯'s sheet carries Print receipt and Refund too (owner 2026-10-19).
+  // A draft hides ⋯ (refundAct), so the sheet only ever sees a sale.
+  $('#orderMore')?.addEventListener('click', (e) => { const o = shownOrder(); if (!o) return;
+    if ($('#orderPrint').offsetParent) return orderMenu(e.currentTarget, o);   // Print on the bar: the layout's own phone test (styles.css)
+    openActionSheet(e.currentTarget, `#${o.number}`, [
+      { label: 'Print receipt', run: () => printOrder(o) },
+      { label: 'Refund', off: !isCompletedSale(o), run: () => refundTicked(o) },
+      { label: 'Exchange', off: !isCompletedSale(o), run: () => exchangeItems(o) },
+      { label: 'Order details', run: () => openOrderDetailModal(o.id) },
+      '-',
+      { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o) },
+    ]); });
   // A tick, tick-all or − / + on the lines: the same pick, whichever page shows the order.
   $('#orderDetail')?.addEventListener('click', (e) => {
     const back = e.target.closest('[data-print-back]');
@@ -380,9 +391,10 @@ function attachEvents() {
   const kbRO = new ResizeObserver(() => { kb.classList.remove('slid'); kbFade(); });   // tabs moved: the pill re-places on the next switch
   [kb, ...kb.children].forEach(el => kbRO.observe(el));   // the words too: a late font or another language widens them
   wireSegDrag($('#itemsKinds'), 'kind');
-  new ResizeObserver(([e]) => $('#itemsView').style.setProperty('--head-h', e.target.offsetHeight + 'px')).observe($('#itemsView .head'), { box: 'border-box' });   // the list starts under it, the frost covers it
+  [['#itemsView', '#itemsView .head'], ['.view-reports .iv', '.view-reports .head']].forEach(([v, h]) =>   // Items, Reports: the page starts under the head, the frost covers it
+    new ResizeObserver(([e]) => $(v).style.setProperty('--head-h', e.target.offsetHeight + 'px')).observe($(h), { box: 'border-box' }));
   // Liquid glass press (owner 2026-10-18): the button swells and shines under the finger, leans and stretches toward a drag, springs back on release
-  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search)';
+  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search)';
   document.addEventListener('pointerdown', (e) => {
     const b = e.target.closest(LG);
     if (!b || matchMedia('(prefers-reduced-motion: reduce)').matches) return;

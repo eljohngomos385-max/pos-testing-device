@@ -1,0 +1,284 @@
+<style>
+/* part b — Payment methods, Breakdown (the ladder), Fulfilment. Every selector .pb-. */
+.pb-q { color: var(--ink-4); font-weight: 400; }
+.pb-sw { flex: none; width: 8px; height: 8px; border-radius: 2px; }
+.pb-w { flex: none; width: 46px; text-align: right; }
+.pb-n { flex: none; width: 34px; text-align: right; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.pb-svg { display: block; overflow: visible; }
+.pb-svg text { font-family: var(--font); }
+.pb-c1 { font-size: 15px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.pb-c2 { font-size: 11px; fill: var(--ink-4); }
+.pb-lab { font-size: 13px; fill: var(--ink-2); }
+.pb-val { font-size: 11px; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+.pb-val.m { font-size: 13px; fill: var(--ink); font-weight: 500; }
+/* chart beside the rows */
+.pb-split { display: flex; align-items: center; padding: 6px 0 6px 12px; }
+.pb-split > svg { flex: none; }
+.pb-split > .rows { flex: 1; min-width: 0; }
+.pb-split .rows > .row { padding: 0 12px 0 14px; }
+/* one 100% bar */
+.pb-bar { display: flex; gap: 2px; height: 10px; border-radius: var(--r-pill); overflow: hidden; }
+.pb-bar > i { min-width: 2px; }
+.pb-bar.tall { height: 14px; }
+.pb-pad { padding: 12px 12px 8px; }
+/* share meter, ranked track, dumbbell track */
+.pb-meter { flex: none; width: 96px; height: 6px; border-radius: var(--r-pill); background: var(--fill); overflow: hidden; }
+.pb-meter > i { display: block; height: 100%; border-radius: inherit; background: var(--bar); }
+.pb-db { position: relative; flex: 1; min-width: 60px; height: 10px; }
+.pb-db > b { position: absolute; top: 4px; height: 2px; background: var(--d1); }
+.pb-db > i { position: absolute; top: 1px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; }
+.pb-db > i.was { background: var(--raised); box-shadow: inset 0 0 0 1.5px var(--ink-5); }
+.pb-db > i.now { background: var(--s2); }
+.pb-two { flex: 1; min-width: 60px; display: grid; gap: 3px; }
+.pb-two > i { display: block; height: 5px; border-radius: var(--r-pill); }
+.pb-two.dual > i { height: 4px; }
+.pb-nm { flex: none; width: 64px; }
+.row .chip { flex: none; min-width: 52px; justify-content: center; }
+.pb-leg { padding: 10px 12px 2px; }
+.pb-leg .o { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
+/* waffle */
+.pb-waf { flex: none; display: grid; grid-template-columns: repeat(10, 11px); gap: 2px; }
+.pb-waf > i { width: 11px; height: 11px; border-radius: 3px; }
+.pb-note { padding: 0 12px 10px; font-size: 11px; color: var(--ink-4); }
+/* big number + bar (statement cards) */
+.pb-big { display: flex; align-items: baseline; gap: 8px; padding: 12px 12px 10px; }
+.pb-big .kpi-value { font-size: 20px; }
+/* receipt-like statement */
+.pb-rc { padding: 6px 14px 12px; }
+.pb-rc .ln { padding-top: 7px; }
+.pb-rc .ln > div { display: flex; align-items: baseline; font-size: 13px; color: var(--ink-2); }
+.pb-rc .ln > div > span:last-child { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+.pb-rc .ln > div > em { flex: 1; margin: 0 6px; border-bottom: 1px dotted var(--ink-5); transform: translateY(-4px); }
+.pb-rc .ln > s { display: block; height: 2px; margin-top: 4px; border-radius: var(--r-pill); }
+.pb-rc .ln.sum { margin-top: 8px; padding-top: 9px; border-top: 1px solid var(--line); }
+.pb-rc .ln.sum > div { color: var(--ink); font-weight: 500; }
+/* step-down ladder rows: bars start past zero, so the cut edge fades */
+.pb-step { position: relative; flex: none; width: 112px; height: 8px; }
+.pb-step > i { position: absolute; top: 0; height: 8px; border-radius: 2px; }
+.pb-step > i.cut { border-radius: 0 2px 2px 0; -webkit-mask: linear-gradient(90deg, transparent, #000 8px); mask: linear-gradient(90deg, transparent, #000 8px); }
+/* fulfilment tiles: rounded inner boxes, never a split card */
+.pb-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+.pb-tile { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-cell); }
+.pb-tile .kpi-label { display: block; margin-bottom: 2px; }
+.pb-tile .money { font-size: 17px; letter-spacing: -.02em; }
+.pb-tile p { margin: 2px 0 0; font-size: 12px; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.pb-sbar { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 26px; font-size: 12px; color: var(--ink-3); }
+.pb-sbar > span { flex: none; width: 50px; }
+.pb-sbar > .pb-bar { flex: 1; height: 16px; border-radius: var(--r-pill); }
+.pb-sbar > .pb-bar > i { display: flex; align-items: center; padding: 0 7px; font-size: 11px; font-weight: 500; font-style: normal; color: #fff; font-variant-numeric: tabular-nums; }
+.pb-sbar > .pb-bar > i.lt { color: var(--ink); }
+</style>
+
+<section class="cat" id="b-pay" data-nav="Payment methods">
+  <h2>Payment methods</h2>
+  <p class="why">Home rail (5 methods + Total, 7 days) and Sales › Summary (amount + share %). Every chart keeps the numbers beside it.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>B1</b> Donut beside list · total in the hole</div><div class="card" id="pb-1"></div></div>
+    <div class="spec"><div class="tag"><b>B2</b> Half donut · gauge on top, rows under</div><div class="card" id="pb-2"></div></div>
+    <div class="spec"><div class="tag"><b>B3</b> Pie · same list, solid slices</div><div class="card" id="pb-3"></div></div>
+    <div class="spec"><div class="tag"><b>B4</b> One 100% bar · over the rows</div><div class="card" id="pb-4"></div></div>
+    <div class="spec"><div class="tag"><b>B5</b> Share meter · replaces the % column</div><div class="card" id="pb-5"></div></div>
+    <div class="spec"><div class="tag"><b>B6</b> Ranked bars · scale on the axis</div><div class="card" id="pb-6"></div></div>
+    <div class="spec"><div class="tag"><b>B7</b> Waffle · 1 square = 1%</div><div class="card" id="pb-7"></div></div>
+    <div class="spec"><div class="tag"><b>B8</b> Payments vs pesos · two shares per method</div><div class="card" id="pb-8"></div></div>
+    <div class="spec"><div class="tag"><b>B9</b> Average payment · lollipop vs the all-method line</div><div class="card" id="pb-9"></div></div>
+    <div class="spec"><div class="tag"><b>B10</b> Dumbbell · 30 days vs the 30 before</div><div class="card" id="pb-10"></div></div>
+    <div class="spec"><div class="tag"><b>B11</b> Pay tints · 100% bar + the Orders pills (colour exception)</div><div class="card" id="pb-11"></div></div>
+    <div class="spec"><div class="tag"><b>B12</b> Pay tints · donut + the Orders pills (colour exception)</div><div class="card" id="pb-12"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="b-ladder" data-nav="Breakdown">
+  <h2>Breakdown</h2>
+  <p class="why">Sales › Summary's ladder, 30 days: Gross sales · Voids · Refunds · Discounts · Net sales, then VAT included + Sales before VAT.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>B13</b> Waterfall · axis from ₱980k so the steps show</div><div class="card" id="pb-13"></div></div>
+    <div class="spec"><div class="tag"><b>B14</b> Waterfall at true scale · Net splits into VAT</div><div class="card" id="pb-14"></div></div>
+    <div class="spec"><div class="tag"><b>B15</b> Step-down ladder · each row its floating bar</div><div class="card" id="pb-15"></div></div>
+    <div class="spec"><div class="tag"><b>B16</b> Statement · a thin bar per line, share of gross</div><div class="card" id="pb-16"></div></div>
+    <div class="spec"><div class="tag"><b>B17</b> Net = Before VAT + VAT · one stacked bar</div><div class="card" id="pb-17"></div></div>
+    <div class="spec"><div class="tag"><b>B18</b> Gross profit inside net · cost vs GP</div><div class="card" id="pb-18"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="b-ful" data-nav="Fulfilment">
+  <h2>Fulfilment</h2>
+  <p class="why">Walk-in vs Delivery, 7 days. Count first, the amount always beside it.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>B19</b> Split bars · share of pesos vs share of orders</div><div class="card" id="pb-19"></div></div>
+    <div class="spec"><div class="tag"><b>B20</b> Two tiles · rounded inner boxes</div><div class="card" id="pb-20"></div></div>
+    <div class="spec"><div class="tag"><b>B21</b> Mini donut · beside the two rows</div><div class="card" id="pb-21"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('pb-' + n);
+  const sum = (a, k = 'amt') => a.reduce((s, x) => s + x[k], 0);
+  const C = [1, 2, 3, 4, 5].map(i => `var(--s${i})`);
+  const P = V.payments, PT = sum(P), PN = sum(P, 'n');
+  const share = (a, t) => V.pct(a / t * 100);
+  const k = n => (n < 0 ? '−' : '') + '₱' + (Math.abs(n) / 1000).toLocaleString('en-PH', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k';
+  const axK = n => n >= 1e6 ? '₱' + +(n / 1e6).toFixed(2) + 'M' : V.pesoK(n);
+  const chg = (a, b) => { const c = (a / b - 1) * 100; return `<span class="chip ${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%</span>`; };
+  const nice = (max, steps = 3) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 2, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="pb-q">${r}</span>`}</div>`;
+  const sw = c => `<i class="pb-sw" style="background:${c}"></i>`;
+  const row = (lead, nm, cells, cls = '') => `<div class="row ${cls}">${lead}<span class="nm">${nm}</span>${cells}</div>`;
+  const amtPct = (a, t, f = V.peso) => `<span class="amt">${f(a)}</span><span class="pct pb-w">${share(a, t)}</span>`;
+  const payRows = (lead = i => sw(C[i]), nm = p => p.m) => '<div class="rows">' + P.map((p, i) => row(lead ? lead(i, p) : '', nm(p), amtPct(p.amt, PT))).join('')
+    + row(lead === null ? '' : sw('transparent'), 'Total', `<span class="amt">${V.peso(PT)}</span><span class="pct pb-w"></span>`, 'total') + '</div>';
+  const seg = (vals, cols, t = vals.reduce((s, v) => s + v, 0), tip = () => '') => vals.map((v, i) => `<i style="width:${v / t * 100}%;background:${cols[i]}" title="${tip(i)}"></i>`).join('');
+  // arcs: angle 0 = 3 o'clock, clockwise
+  const pt = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const arc = (cx, cy, r, a0, a1) => `M${pt(cx, cy, r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a1)}`;
+  const ring = (cx, cy, r, w, vals, cols, tips, a0 = -Math.PI / 2, span = 2 * Math.PI, gap = .03) => {
+    const t = vals.reduce((s, v) => s + v, 0); let a = a0;
+    return vals.map((v, i) => { const s = v / t * span, d = arc(cx, cy, r, a + gap / 2, a + s - gap / 2); a += s;
+      return `<path d="${d}" style="fill:none;stroke:${cols[i]};stroke-width:${w}"><title>${tips[i]}</title></path>`; }).join('');
+  };
+  const payTips = P.map(p => `${p.m} · ${V.peso(p.amt)} · ${share(p.amt, PT)}`);
+  const amts = P.map(p => p.amt);
+
+  // B1 donut beside the list
+  $(1).innerHTML = band('Payment methods') + `<div class="pb-split"><svg class="pb-svg" width="124" height="124">${ring(62, 62, 52, 14, amts, C, payTips)}
+    <text class="pb-c1" x="62" y="64" text-anchor="middle">${V.pesoK(PT)}</text><text class="pb-c2" x="62" y="79" text-anchor="middle">Total</text></svg>${payRows()}</div>`;
+
+  // B2 half donut on top
+  { const el = $(2); el.innerHTML = band('Payment methods') + '<div class="pb-g"></div>' + payRows();
+    const W = el.clientWidth, cx = W / 2, cy = 112, r = 88;
+    el.querySelector('.pb-g').innerHTML = `<svg class="pb-svg" width="${W}" height="128">${ring(cx, cy, r, 18, amts, C, payTips, Math.PI, Math.PI, .025)}
+      <text class="pb-c1" x="${cx}" y="${cy - 16}" text-anchor="middle" style="font-size:20px">${V.peso(PT)}</text><text class="pb-c2" x="${cx}" y="${cy + 1}" text-anchor="middle">Total · ${PN} payments</text></svg>`; }
+
+  // B3 pie
+  { let a = -Math.PI / 2; const cx = 58, cy = 58, r = 54;
+    const wedges = P.map((p, i) => { const s = p.amt / PT * 2 * Math.PI, d = `M${cx} ${cy}L${pt(cx, cy, r, a)}A${r} ${r} 0 ${s > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a + s)}Z`; a += s;
+      return `<path d="${d}" style="fill:${C[i]};stroke:var(--raised);stroke-width:1.5;stroke-linejoin:round"><title>${payTips[i]}</title></path>`; }).join('');
+    $(3).innerHTML = band('Payment methods') + `<div class="pb-split"><svg class="pb-svg" width="116" height="116">${wedges}</svg>${payRows()}</div>`; }
+
+  // B4 one 100% bar over the rows
+  $(4).innerHTML = band('Payment methods') + `<div class="pb-pad"><div class="pb-bar">${seg(amts, C, PT, i => payTips[i])}</div></div>` + payRows();
+
+  // B5 share meter in place of the % column
+  $(5).innerHTML = band('Payment methods') + '<div class="rows">' + P.map(p => row('', p.m, `<span class="pb-meter" title="${share(p.amt, PT)}"><i style="width:${p.amt / PT * 100}%"></i></span><span class="amt pb-amt">${V.peso(p.amt)}</span>`)).join('')
+    + row('', 'Total', `<span class="amt">${V.peso(PT)}</span>`, 'total') + '</div>';
+  $(5).querySelectorAll('.pb-amt').forEach(e => { e.style.width = '76px'; e.style.textAlign = 'right'; });
+
+  // B6 ranked horizontal bars, scale on the axis
+  { const el = $(6); el.innerHTML = band('Payment methods', 'by net sales') + '<div class="pb-g"></div>';
+    const W = el.clientWidth, L = 76, R = 100, pw = W - L - R, st = nice(P[0].amt), top = st * 3, x = v => L + v / top * pw, rh = 30, y0 = 10;
+    let s = '';
+    for (let t = 0; t <= 3; t++) s += `<line x1="${x(t * st)}" x2="${x(t * st)}" y1="${y0 - 4}" y2="${y0 + P.length * rh}" style="stroke:var(--grid)"/><text class="ax" x="${x(t * st)}" y="${y0 + P.length * rh + 14}" text-anchor="middle">${t ? V.pesoK(t * st) : '0'}</text>`;
+    P.forEach((p, i) => { const y = y0 + i * rh;
+      s += `<text class="pb-lab" x="12" y="${y + 19}">${p.m}</text><rect x="${L}" y="${y + 6}" width="${(x(p.amt) - L).toFixed(1)}" height="16" rx="2" style="fill:var(--bar)"><title>${payTips[i]}</title></rect>
+        <text class="pb-val m" x="${x(p.amt) + 6}" y="${y + 18}">${V.pesoK(p.amt)}</text><text class="pb-val" x="${W - 12}" y="${y + 18}" text-anchor="end">${share(p.amt, PT)}</text>`; });
+    el.querySelector('.pb-g').innerHTML = `<svg class="pb-svg" width="${W}" height="${y0 + P.length * rh + 26}">${s}</svg>`; }
+
+  // B7 waffle, largest remainder so the squares make exactly 100
+  { const raw = amts.map(v => v / PT * 100), f = raw.map(Math.floor);
+    raw.map((r, i) => [r - f[i], i]).sort((a, b) => b[0] - a[0]).slice(0, 100 - f.reduce((s, v) => s + v, 0)).forEach(([, i]) => f[i]++);
+    const cells = f.flatMap((n, i) => Array(n).fill(`<i style="background:${C[i]}" title="${payTips[i]}"></i>`)).join('');
+    $(7).innerHTML = band('Payment methods') + `<div class="pb-split" style="padding:12px 0 12px 12px"><div class="pb-waf">${cells}</div>${payRows()}</div>`; }
+
+  // B8 share of payments vs share of pesos
+  { const tone = ['var(--d1)', 'var(--s2)'];
+    $(8).innerHTML = band('Payment methods') + `<div class="legend pb-leg"><span><i style="background:${tone[0]}"></i>Share of payments</span><span><i style="background:${tone[1]}"></i>Share of pesos</span></div>`
+      + '<div class="rows">' + P.map(p => row('', `<span class="pb-nm">${p.m}</span>`, `<span class="pb-two dual"><i style="width:${p.n / PN * 100}%;background:${tone[0]}" title="${p.n} of ${PN} payments"></i><i style="width:${p.amt / PT * 100}%;background:${tone[1]}" title="${V.peso(p.amt)}"></i></span>
+        <span class="pct pb-w">${share(p.n, PN)}</span><span class="pct pb-w" style="color:var(--ink);font-weight:500">${share(p.amt, PT)}</span>`)).join('') + '</div>';
+    $(8).querySelectorAll('.row .nm').forEach(e => { e.style.flex = 'none'; }); }
+
+  // B9 average payment per method, lollipop with the all-method average
+  { const el = $(9); el.innerHTML = band('Average payment', 'amount ÷ payments') + '<div class="pb-g"></div>';
+    const avg = P.map(p => p.amt / p.n), all = PT / PN, W = el.clientWidth, L = 76, R = 112, pw = W - L - R, st = nice(Math.max(...avg), 5), top = st * 5, x = v => L + v / top * pw, rh = 33, y0 = 22;
+    let s = `<line x1="${x(all)}" x2="${x(all)}" y1="${y0 - 6}" y2="${y0 + P.length * rh}" style="stroke:var(--ink-5);stroke-dasharray:2 2"/><text class="pb-c2" x="${x(all)}" y="${y0 - 10}" text-anchor="middle">All ${V.peso(all)}</text>`;
+    P.forEach((p, i) => { const y = y0 + i * rh + 16;
+      if (i) s += `<line x1="0" x2="${W}" y1="${y - 16}" y2="${y - 16}" style="stroke:var(--row-line)"/>`;
+      s += `<text class="pb-lab" x="12" y="${y + 4}">${p.m}</text><line x1="${L}" x2="${x(avg[i])}" y1="${y}" y2="${y}" style="stroke:var(--d1);stroke-width:2"/><circle cx="${x(avg[i])}" cy="${y}" r="4.5" style="fill:var(--s2)"><title>${p.m} · ${V.peso(avg[i])} a payment · ${p.n} payments</title></circle>
+        <text class="pb-val m" x="${W - 52}" y="${y + 4}" text-anchor="end">${V.peso(avg[i])}</text><text class="pb-val" x="${W - 12}" y="${y + 4}" text-anchor="end" style="font-size:12px;fill:var(--ink-4)">${p.n}×</text>`; });
+    for (let t = 0; t <= 5; t++) s += `<text class="ax" x="${x(t * st)}" y="${y0 + P.length * rh + 14}" text-anchor="middle">${t ? V.pesoK(t * st) : '0'}</text>`;
+    el.querySelector('.pb-g').innerHTML = `<svg class="pb-svg" width="${W}" height="${y0 + P.length * rh + 24}">${s}</svg>`; }
+
+  // B10 dumbbell, last 30 days vs the 30 before
+  { const Q = V.payments30, top = nice(Math.max(...Q.flatMap(q => [q.amt, q.prev])), 4) * 4, x = v => (v / top * 100).toFixed(2) + '%';
+    const QT = sum(Q), QP = sum(Q, 'prev');
+    $(10).innerHTML = band('Payment methods', 'Last 30 days') + `<div class="legend pb-leg"><span><i class="o" style="box-shadow:inset 0 0 0 1.5px var(--ink-5)"></i>30 days before</span><span><i class="o" style="background:var(--s2)"></i>Last 30 days</span></div>`
+      + '<div class="rows">' + Q.map(q => row('', `<span class="pb-nm">${q.m}</span>`, `<span class="pb-db" title="${V.peso(q.prev)} → ${V.peso(q.amt)}"><b style="left:${x(Math.min(q.amt, q.prev))};width:${((Math.abs(q.amt - q.prev)) / top * 100).toFixed(2)}%"></b><i class="was" style="left:${x(q.prev)}"></i><i class="now" style="left:${x(q.amt)}"></i></span>
+        <span class="amt pb-amt">${V.peso(q.amt)}</span>${chg(q.amt, q.prev)}`)).join('')
+      + row('', `<span class="pb-nm">Total</span>`, `<span style="flex:1"></span><span class="amt pb-amt">${V.peso(QT)}</span>${chg(QT, QP)}`, 'total') + '</div>';
+    $(10).querySelectorAll('.row .nm').forEach(e => { e.style.flex = 'none'; });
+    $(10).querySelectorAll('.pb-amt').forEach(e => { e.style.width = '70px'; e.style.textAlign = 'right'; }); }
+
+  // B11 + B12 the Orders table's payment pills own these tints
+  { const T = P.map(p => `var(--pay-${p.key})`), pill = p => `<span class="badge ${p.key}">${p.m}</span>`;
+    $(11).innerHTML = band('Payment methods') + `<div class="pb-pad"><div class="pb-bar tall">${seg(amts, T, PT, i => payTips[i])}</div></div>` + payRows(null, pill);
+    $(12).innerHTML = band('Payment methods') + `<div class="pb-split"><svg class="pb-svg" width="124" height="124">${ring(62, 62, 51, 18, amts, T, payTips)}
+      <text class="pb-c1" x="62" y="64" text-anchor="middle">${V.pesoK(PT)}</text><text class="pb-c2" x="62" y="79" text-anchor="middle">Total</text></svg>${payRows(null, pill)}</div>`; }
+
+  // ---- Breakdown: the ladder ----
+  const L = V.ladder, p2 = n => V.peso(n, 2);
+  const steps = [['Gross sales', L.gross], [`Voids (${L.voidsN})`, L.voids], [`Refunds (${L.refundsN})`, L.refunds], ['Discounts', L.discounts]];
+  const vatRows = `${row('', 'VAT included', `<span class="amt">${p2(L.vat)}</span>`)}${row('', 'Sales before VAT', `<span class="amt">${p2(L.beforeVat)}</span>`)}`;
+  const ladderRows = '<div class="rows">' + steps.map(([n, v]) => row('', n, `<span class="amt">${p2(v)}</span>`)).join('') + row('', 'Net sales', `<span class="amt">${p2(L.net)}</span>`, 'total') + vatRows + '</div>';
+  // a vertical waterfall: cols = [{lab, from, to, fill}] on domain lo..hi with given ticks; returns svg
+  const fall = (W, cols, lo, hi, ticks, H = 170, cut = false) => {
+    const T = 20, B = H - 22, R = 44, pw = W - 12 - R, slot = pw / cols.length, bw = Math.min(slot * .56, 32), y = v => B - (v - lo) / (hi - lo) * (B - T);
+    let s = ticks.map(t => `<line x1="12" x2="${12 + pw}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--grid)"/><text class="ax" x="${W - 12}" y="${y(t) + 4}" text-anchor="end">${axK(t)}</text>`).join('');
+    cols.forEach((c, i) => { const cx = 12 + slot * (i + .5), x0 = cx - bw / 2;
+      c.segs.forEach(([a, b, fill, tip]) => { a = Math.max(a, lo); b = Math.max(b, lo); const y1 = y(Math.max(a, b)), h = Math.max(1.5, Math.abs(y(a) - y(b)));
+        s += `<rect x="${x0}" y="${y1}" width="${bw}" height="${h}" rx="${Math.min(bw / 10, h / 2)}" style="fill:${fill}"><title>${tip}</title></rect>`; });
+      if (cut && c.total) s += `<path d="M${x0 - 1} ${B - 9}L${x0 + bw + 1} ${B - 13}V${B - 10}L${x0 - 1} ${B - 6}Z" style="fill:var(--raised)"/>`;
+      if (i < cols.length - 1) s += `<line x1="${x0 + bw}" x2="${x0 + slot}" y1="${y(c.end)}" y2="${y(c.end)}" style="stroke:var(--ink-5);stroke-dasharray:2 2"/>`;
+      s += `<text class="pb-val${c.total ? ' m' : ''}" x="${cx}" y="${y(c.top) - 6}" text-anchor="middle" style="font-size:11px">${k(c.val)}</text><text class="ax" x="${cx}" y="${H - 6}" text-anchor="middle">${c.lab}</text>`; });
+    return `<svg class="pb-svg" width="${W}" height="${H}">${s}</svg>`;
+  };
+  const fallCols = netSegs => { let run = L.gross; const cols = [{ lab: 'Gross', val: L.gross, top: L.gross, end: L.gross, total: 1, segs: [[0, L.gross, 'var(--s2)', 'Gross sales ' + p2(L.gross)]] }];
+    steps.slice(1).forEach(([n, v]) => { cols.push({ lab: n.replace(/ \(.*/, ''), val: v, top: run, end: run + v, segs: [[run, run + v, 'var(--d2)', n + ' ' + p2(v)]] }); run += v; });
+    cols.push({ lab: 'Net', val: L.net, top: L.net, end: L.net, total: 1, segs: netSegs }); return cols; };
+
+  // B13 zoomed waterfall + the VAT rows
+  { const el = $(13); el.innerHTML = band('Breakdown', 'axis from ₱980k') + '<div class="pb-g" style="padding-top:6px"></div><div class="rows">' + row('', 'Net sales', `<span class="amt">${p2(L.net)}</span>`, 'total') + vatRows + '</div>';
+    el.querySelector('.pb-g').innerHTML = fall(el.clientWidth, fallCols([[0, L.net, 'var(--s2)', 'Net sales ' + p2(L.net)]]), 980000, 1010000, [980000, 990000, 1000000, 1010000], 170, true); }
+
+  // B14 true scale: the deductions are slivers, Net splits into before VAT + VAT
+  { const el = $(14); el.innerHTML = band('Breakdown') + '<div class="pb-g" style="padding-top:6px"></div>'
+      + `<div class="legend pb-leg" style="padding:2px 12px 10px"><span><i style="background:var(--s2)"></i>Sales before VAT</span><span><i style="background:var(--d1)"></i>VAT included</span><span><i style="background:var(--d2)"></i>Taken off gross</span></div>`;
+    const st = nice(L.gross, 3);
+    el.querySelector('.pb-g').innerHTML = fall(el.clientWidth, fallCols([[0, L.beforeVat, 'var(--s2)', 'Sales before VAT ' + p2(L.beforeVat)], [L.beforeVat, L.net, 'var(--d1)', 'VAT included ' + p2(L.vat)]]), 0, st * 3, [0, st, st * 2, st * 3], 190); }
+
+  // B15 step-down ladder rows: each row its floating bar, track from ₱980k
+  { const lo = 980000, hi = 1005000, x = v => ((v - lo) / (hi - lo) * 100).toFixed(2) + '%', bar = (a, b, fill, cut) => `<span class="pb-step"><i class="${cut ? 'cut' : ''}" style="left:${x(Math.min(a, b))};width:${(Math.abs(b - a) / (hi - lo) * 100).toFixed(2)}%;background:${fill};min-width:2px"></i></span>`;
+    let run = L.gross;
+    const rows = [row('', 'Gross sales', bar(lo, L.gross, 'var(--s2)', 1) + `<span class="amt pb-amt">${p2(L.gross)}</span>`)]
+      .concat(steps.slice(1).map(([n, v]) => { const r = row('', n, bar(run + v, run, 'var(--d2)') + `<span class="amt pb-amt">${p2(v)}</span>`); run += v; return r; }))
+      .concat(row('', 'Net sales', bar(lo, L.net, 'var(--s2)', 1) + `<span class="amt pb-amt">${p2(L.net)}</span>`, 'total'));
+    $(15).innerHTML = band('Breakdown', 'bars from ₱980k') + '<div class="rows">' + rows.join('') + row('', 'VAT included', `<span class="pb-step"></span><span class="amt pb-amt">${p2(L.vat)}</span>`) + row('', 'Sales before VAT', `<span class="pb-step"></span><span class="amt pb-amt">${p2(L.beforeVat)}</span>`) + '</div>';
+    $(15).querySelectorAll('.pb-amt').forEach(e => { e.style.width = '92px'; e.style.textAlign = 'right'; }); }
+
+  // B16 receipt-like statement, a thin bar per line (share of gross, true scale)
+  { const ln = (n, v, fill, cls = '') => `<div class="ln ${cls}" title="${V.pct(Math.abs(v) / L.gross * 100)} of gross"><div><span>${n}</span><em></em><span>${p2(v)}</span></div><s style="width:max(2px, ${(Math.abs(v) / L.gross * 100).toFixed(2)}%);background:${fill}"></s></div>`;
+    $(16).innerHTML = band('Breakdown', 'Last 30 days') + '<div class="pb-rc">' + steps.map(([n, v], i) => ln(n, v, i ? 'var(--d2)' : 'var(--s2)')).join('')
+      + ln('Net sales', L.net, 'var(--s2)', 'sum') + ln('VAT included', L.vat, 'var(--d1)') + ln('Sales before VAT', L.beforeVat, 'var(--s2)') + '</div>'; }
+
+  // B17 Net = Before VAT + VAT, B18 Net = Cost + Gross profit
+  const statement = (n, title, parts, extra = '') => { $(n).innerHTML = band(title, 'Last 30 days') + `<div class="pb-big"><span class="kpi-value">${p2(L.net)}</span><span class="pb-q" style="font-size:12px">net sales</span></div>`
+      + `<div style="padding:0 12px 10px"><div class="pb-bar tall">${seg(parts.map(p => p[1]), parts.map(p => p[2]), L.net, i => parts[i][0] + ' ' + p2(parts[i][1]))}</div></div>`
+      + '<div class="rows">' + parts.map(([nm, v, c]) => row(sw(c), nm, amtPct(v, L.net, p2).replace('class="amt"', 'class="amt" style="width:96px;text-align:right"'))).join('') + extra + '</div>'; };
+  statement(17, 'Net sales', [['Sales before VAT', L.beforeVat, 'var(--s2)'], ['VAT included', L.vat, 'var(--d1)']]);
+  statement(18, 'Gross profit', [['Gross profit', L.gp, 'var(--s2)'], ['Cost of goods', L.cost, 'var(--s-other)']]);
+
+  // ---- Fulfilment ----
+  const F = V.fulfilment, FT = sum(F), FN = sum(F, 'n'), FC = ['var(--s2)', 'var(--d2)'];
+  const fulRows = '<div class="rows">' + F.map((f, i) => row(sw(FC[i]), f.m, `<span class="pb-n">${f.n}</span><span class="amt" style="width:76px;text-align:right">${V.peso(f.amt)}</span>`)).join('')
+    + row(sw('transparent'), 'Total', `<span class="pb-n" style="color:inherit">${FN}</span><span class="amt" style="width:76px;text-align:right">${V.peso(FT)}</span>`, 'total') + '</div>';
+
+  // B19 two split bars
+  { const bar = (lab, key, t) => `<div class="pb-sbar"><span>${lab}</span><div class="pb-bar">${F.map((f, i) => `<i class="${i ? 'lt' : ''}" style="width:${f[key] / t * 100}%;background:${FC[i]}" title="${f.m} ${key === 'n' ? f.n + ' orders' : V.peso(f.amt)}">${Math.round(f[key] / t * 100)}%</i>`).join('')}</div></div>`;
+    $(19).innerHTML = band('Fulfilment') + `<div style="padding:10px 0 8px">${bar('Orders', 'n', FN)}${bar('Pesos', 'amt', FT)}</div>` + fulRows; }
+
+  // B20 two tiles
+  $(20).innerHTML = band('Fulfilment') + '<div class="pb-tiles">' + F.map(f => `<div class="pb-tile"><span class="kpi-label">${f.m}</span><span class="money">${V.peso(f.amt)}</span>
+    <p>${f.n} orders · ${V.peso(f.amt / f.n)} avg</p><p>${share(f.amt, FT)} of sales</p></div>`).join('') + '</div>';
+
+  // B21 mini donut beside the rows
+  $(21).innerHTML = band('Fulfilment') + `<div class="pb-split"><svg class="pb-svg" width="84" height="84">${ring(42, 42, 35, 9, F.map(f => f.amt), FC, F.map(f => `${f.m} · ${V.peso(f.amt)} · ${share(f.amt, FT)}`))}
+    <text class="pb-c1" x="42" y="47" text-anchor="middle" style="font-size:11.5px">${V.pesoK(FT)}</text></svg>${fulRows}</div>`;
+})();</script>

@@ -1,0 +1,301 @@
+<style>
+/* part k (round 4) — new part-to-whole and link formats: mekko, circle packing, funnel, chord / arcs / network. Every selector .vk-. */
+.vk-q { color: var(--ink-4); font-weight: 400; }
+.vk-svg { display: block; overflow: visible; }
+.vk-svg text { font-family: var(--font); }
+.vk-in { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.vk-sm { font-size: 11px; font-variant-numeric: tabular-nums; }
+.vk-chart { padding: 14px 12px 6px; }
+/* rows: the rows are the legend */
+.vk-rows > .row .nm { display: flex; align-items: center; gap: 6px; }
+.vk-n { flex: none; width: 52px; text-align: right; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vk-a { flex: none; min-width: 76px; text-align: right; }
+.vk-a.w { min-width: 98px; }
+.vk-p { flex: none; width: 46px; text-align: right; }
+.vk-rows > .row.vk-hd { min-height: 22px; font-size: 11px; color: var(--ink-4); }
+.vk-rows > .row.vk-hd:hover { background: none; }
+.vk-plus { color: var(--ink-5); }
+.vk-foot { display: flex; justify-content: flex-end; align-items: center; min-height: var(--row-h); padding: 0 var(--pad); border-top: 1px solid var(--row-line); font-size: 12px; }
+.vk-foot a { font-weight: 500; color: var(--ink); text-decoration: none; }
+/* two row blocks side by side (nested pack) */
+.vk-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-top: 1px solid var(--row-line); }
+.vk-two > .rows + .rows { border-left: 1px solid var(--row-line); }
+.vk-two .nm { min-width: 0; overflow: hidden; }
+</style>
+
+<section class="cat" id="vk-mekko" data-nav="K4 · Mekko">
+  <h2>Mekko: width and height both mean something</h2>
+  <p class="why">Each column is as wide as its count and as tall as its average, so its area is its pesos. A narrow tall block = few, big sales. The rows hold the exact numbers.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>K4-1</b> Payment methods · wide = payments, tall = average payment</div><div class="card" id="vk-1"></div></div>
+    <div class="spec"><div class="tag"><b>K4-2</b> Staff · wide = orders, tall = average sale</div><div class="card" id="vk-2"></div></div>
+    <div class="spec"><div class="tag"><b>K4-3</b> Fulfilment · wide = orders, tall = average ticket</div><div class="card" id="vk-3"></div></div>
+    <div class="spec"><div class="tag"><b>K4-4</b> Voids and refunds · wide = orders, tall = share voided or refunded</div><div class="card" id="vk-4"></div></div>
+    <div class="spec"><div class="tag"><b>K4-5</b> Categories · wide = items carried, tall = sales per item</div><div class="card" id="vk-5"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vk-pack" data-nav="K4 · Bubbles">
+  <h2>Circle packing</h2>
+  <p class="why">One bubble per part, area = its share. Name and amount sit inside when they fit; the rows always carry them.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>K4-6</b> Categories · top 6 + Other, 30 days</div><div class="card" id="vk-6"></div></div>
+    <div class="spec"><div class="tag"><b>K4-7</b> Stock moves by reason · count, 7 days</div><div class="card" id="vk-7"></div></div>
+    <div class="spec"><div class="tag"><b>K4-8</b> Payment methods · pesos, 7 days</div><div class="card" id="vk-8"></div></div>
+  </div>
+  <div class="grid wide" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>K4-9</b> Nested bubbles · Cement and Fasteners open into their top items</div><div class="card" id="vk-9"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vk-funnel" data-nav="K4 · Funnels">
+  <h2>Funnels</h2>
+  <p class="why">The ladder from the top line down, each step as wide as its amount. What drops out between two steps is written in the gap. 30 days.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>K4-10</b> Gross → net → before VAT → gross profit · % of gross</div><div class="card" id="vk-10"></div></div>
+    <div class="spec"><div class="tag"><b>K4-11</b> Gross → net → gross profit · what drops out in the gaps</div><div class="card" id="vk-11"></div></div>
+    <div class="spec"><div class="tag"><b>K4-12</b> Gross → net → before VAT · taken off, then VAT</div><div class="card" id="vk-12"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vk-links" data-nav="K4 · Links">
+  <h2>Bought together: links</h2>
+  <p class="why">Items as nodes, a link for each pair, as thick as the orders that had both. Last 30 days. Item colour = its category.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>K4-13</b> Chord · every pair around one ring</div><div class="card" id="vk-13"></div></div>
+  </div>
+  <div class="grid" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>K4-14</b> Network · the Cement basket</div><div class="card" id="vk-14"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('vk-' + n);
+  const sum = (a, k = 'v') => a.reduce((s, x) => s + x[k], 0);
+  const pc = (a, t) => V.pct(Math.abs(a) / Math.abs(t) * 100);
+  const p2 = n => V.peso(n, 2);
+  const nice = (max, steps = 3) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 2, 2.5, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  // a tint key: 't1'…'t8', 'bad', or a pay key ('cash' …)
+  const fill = t => /^t\d$/.test(t) ? `var(--${t})` : t === 'bad' ? 'var(--bad)' : `var(--pay-${t})`;
+  const ink = t => /^t\d$/.test(t) ? `var(--${t}-ink)` : t === 'bad' ? 'var(--bad-ink)' : `var(--pay-${t}-ink)`;
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vk-q">${r}</span>`}</div>`;
+  const pill = x => `<span class="badge ${x.t}">${x.nm}</span>`;
+  const row = (nm, cells, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span>${cells}</div>`;
+  const rows = (list, cells, extra = '', head = '') => '<div class="rows vk-rows">' + head + list.map(x => row(pill(x), cells(x))).join('') + extra + '</div>';
+  const hd = cells => row('', cells, 'vk-hd');
+  const total = (cells, nm = 'Total') => row(nm, cells, 'total');
+  const foot = t => `<div class="vk-foot"><a href="#">${t} →</a></div>`;
+  const W = el => el.clientWidth - 24;
+  const n_ = (v, cls = 'vk-n') => `<span class="${cls}">${v}</span>`;
+  const a_ = (v, w = '') => `<span class="amt vk-a ${w}">${v}</span>`;
+  const p_ = v => `<span class="pct vk-p">${v}</span>`;
+  const tw = (s, px = 12) => s.length * px * .56;   // ponytail: text width guess, fine for fit-or-hide labels
+
+  // ================= Mekko =================
+  // variable-width columns: width = x.n share, height = x.a (an average or a rate), so area = the total.
+  // x.parts [{a,t}] stacks the column; a label that would hit another is dropped (the rows carry it).
+  const mekko = (w, list, { H = 150, fmt = V.pesoK, tick = V.pesoK, under = (x, m, y) => `<text class="ax" x="${m}" y="${y + 15}" text-anchor="middle">${x.n}</text>`, ub = 22 } = {}) => {
+    const L = 40, N = sum(list, 'n'), gap = 2, room = w - L - gap * (list.length - 1), T = 18;
+    const maxA = Math.max(...list.map(x => x.a)), st = nice(maxA), top = maxA * 1.08, boxes = [];
+    let s = '', cx = L;
+    for (let k = 0; k * st <= top; k++) { const y = T + H - k * st / top * H;
+      s += `<line x1="${L}" x2="${w}" y1="${y}" y2="${y}" stroke="var(--grid)"/><text class="ax" x="${L - 6}" y="${y + 4}" text-anchor="end">${k ? tick(k * st) : '0'}</text>`; }
+    list.forEach(x => { const cw = x.n / N * room, h = x.a / top * H, m = cx + cw / 2, lab = fmt(x.a), lw = tw(lab) / 2 + 3, ly = T + H - h - 6;
+      let y = T + H;
+      (x.parts || [{ a: x.a, t: x.t }]).forEach(p => { const ph = p.a / top * H; y -= ph;
+        s += `<rect x="${cx}" y="${y}" width="${cw}" height="${Math.max(ph - (x.parts ? 1 : 0), 1)}" rx="3" fill="${fill(p.t)}"><title>${x.nm} · ${x.tip || lab}</title></rect>`; });
+      if (!boxes.some(b => m - lw < b[1] && m + lw > b[0] && Math.abs(ly - b[2]) < 14)) { boxes.push([m - lw, m + lw, ly]);
+        s += `<text class="vk-in" x="${m}" y="${ly}" text-anchor="middle" fill="var(--ink)">${lab}</text>`; }
+      s += under(x, m, T + H, cw);
+      cx += cw + gap; });
+    return `<div class="vk-chart"><svg class="vk-svg" width="${w}" height="${T + H + ub}">${s}</svg></div>`;
+  };
+  const mekkoCard = (id, title, right, list, cnt, avgWord, H) => {
+    const el = $(id), N = sum(list, 'n'), T = sum(list);
+    el.innerHTML = band(title, right) + '<div class="vk-g"></div>'
+      + rows(list, x => n_(x.n) + a_(V.peso(x.v / x.n)) + a_(V.peso(x.v), 'w'), total(n_(N, 'vk-n" style="color:inherit') + a_(V.peso(T / N)) + a_(V.peso(T), 'w')),
+        hd(n_(cnt) + a_(avgWord) + a_('Net sales', 'w')));
+    el.querySelector('.vk-g').outerHTML = mekko(W(el), list.map(x => ({ ...x, a: x.v / x.n, tip: `${x.n} · ${V.peso(x.v / x.n)} average · ${V.peso(x.v)}` })), { H });
+  };
+
+  const P = V.payments.map(p => ({ nm: p.m, t: p.key, v: p.amt, n: p.n }));
+  mekkoCard(1, 'Payment methods', 'Last 7 days', P, 'Payments', 'Average', 150);
+
+  const S = V.staff.map((s, i) => ({ nm: s.name, t: 't' + (i + 1), v: s.amt, n: s.n, voids: s.voids, refunds: s.refunds }));
+  mekkoCard(2, 'Staff', 'Last 7 days', S, 'Orders', 'Average', 150);
+
+  const F = V.fulfilment.map((f, i) => ({ nm: f.m, t: 't' + (i + 1), v: f.amt, n: f.n }));
+  mekkoCard(3, 'Fulfilment', 'Last 7 days', F, 'Orders', 'Average', 150);
+
+  // K4-4 width = orders, height = share voided or refunded (voids t7 under refunds t2), so area = the voids + refunds count
+  { const el = $(4), N = sum(S, 'n'), VR = sum(S, 'voids'), RR = sum(S, 'refunds');
+    const list = S.map(x => ({ ...x, a: (x.voids + x.refunds) / x.n * 100, parts: [{ a: x.voids / x.n * 100, t: 't7' }, { a: x.refunds / x.n * 100, t: 't2' }], tip: `${x.voids} voids · ${x.refunds} refunds of ${x.n} orders` }));
+    el.innerHTML = band('Voids and refunds by staff', 'Last 7 days') + mekko(W(el), list, { H: 140, fmt: a => V.pct(a), tick: k => k + '%', ub: 32,
+        under: (x, m, y, cw) => `<foreignObject x="${m - cw / 2}" y="${y + 6}" width="${cw}" height="22"><div style="display:flex;justify-content:center">${pill(x)}</div></foreignObject>` })
+      + rows(S, x => n_(x.n) + n_(x.voids) + n_(x.refunds) + p_(pc(x.voids + x.refunds, x.n)),
+        total(n_(N, 'vk-n" style="color:inherit') + n_(VR, 'vk-n" style="color:inherit') + n_(RR, 'vk-n" style="color:inherit') + p_(pc(VR + RR, N))),
+        hd(n_('Orders') + n_('<span class="badge t7">Voids</span>') + n_('<span class="badge t2">Refunds</span>') + p_('')));
+  }
+
+  // K4-5 categories: width = items carried, height = sales per item
+  { const C = V.categories.map((c, i) => ({ nm: c.c, t: 't' + (i + 1), v: c.amt, n: c.items }));
+    const el = $(5), N = sum(C, 'n'), T = sum(C);
+    el.innerHTML = band('Categories', 'Net sales · last 30 days') + '<div class="vk-g"></div>'
+      + rows(C, x => n_(x.n) + a_(V.peso(x.v / x.n)) + a_(V.peso(x.v), 'w'), total(n_(N, 'vk-n" style="color:inherit') + a_(V.peso(T / N)) + a_(V.peso(T), 'w')),
+        hd(n_('Items') + a_('Per item') + a_('Net sales', 'w')));
+    el.querySelector('.vk-g').outerHTML = mekko(W(el), C.map(x => ({ ...x, a: x.v / x.n, tip: `${x.n} items · ${V.peso(x.v / x.n)} per item · ${V.peso(x.v)}` })), { H: 160 }); }
+
+  // ================= Circle packing =================
+  // ponytail: greedy front pack (each circle tangent to two placed ones, nearest the middle); fine to ~30 circles, d3.pack if it ever needs more
+  const pack = (raw, pad = 3, ax = 1.5) => {
+    const mr = Math.max(...raw), rs = raw.map(r => r / mr * 100), P = [];   // pad is in a world where the biggest radius is 100
+    rs.map((r, i) => i).sort((a, b) => rs[b] - rs[a]).forEach((i, k) => {
+      const r = rs[i];
+      if (k === 0) return P.push({ i, r, x: 0, y: 0 });
+      if (k === 1) return P.push({ i, r, x: P[0].r + r + pad, y: 0 });
+      let best = null;
+      for (let a = 0; a < P.length; a++) for (let b = a + 1; b < P.length; b++) {
+        const A = P[a], B = P[b], da = A.r + r + pad, db = B.r + r + pad, dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy);
+        if (!d || d > da + db || d < Math.abs(da - db)) continue;
+        const l = (da * da - db * db + d * d) / (2 * d), h = Math.sqrt(Math.max(0, da * da - l * l)), mx = A.x + l * dx / d, my = A.y + l * dy / d;
+        for (const sg of [1, -1]) { const x = mx - sg * h * dy / d, y = my + sg * h * dx / d;
+          if (P.every(C => Math.hypot(C.x - x, C.y - y) >= C.r + r + pad - 1e-6)) { const sc = Math.hypot(x / ax, y); if (!best || sc < best.sc) best = { x, y, sc }; } }
+      }
+      P.push({ i, r, x: best.x, y: best.y });
+    });
+    return P.sort((a, b) => a.i - b.i).map(c => ({ ...c, x: c.x * mr / 100, y: c.y * mr / 100, r: c.r * mr / 100 }));
+  };
+  // fit packed circles into w×h (centred); returns the scale and the moved circles
+  const fit = (P, w, h) => {
+    const x0 = Math.min(...P.map(c => c.x - c.r)), x1 = Math.max(...P.map(c => c.x + c.r)), y0 = Math.min(...P.map(c => c.y - c.r)), y1 = Math.max(...P.map(c => c.y + c.r));
+    const k = Math.min(w / (x1 - x0), h / (y1 - y0)), ox = (w - (x1 - x0) * k) / 2 - x0 * k, oy = (h - (y1 - y0) * k) / 2 - y0 * k;
+    return P.map(c => ({ ...c, x: c.x * k + ox, y: c.y * k + oy, r: c.r * k }));
+  };
+  // a bubble: tint fill, name + amount inside when they fit
+  const bubble = (c, x, top, sub, tip, paint = `fill="${fill(x.t)}"`) => {
+    if (sub && !(tw(top, 12) < c.r * 2 - 10 && c.r > 15)) [top, sub] = [sub, ''];   // name too long: the amount alone
+    const fitT = tw(top, 12) < c.r * 2 - 10 && c.r > 15, fitS = sub && tw(sub, 11) < c.r * 2 - 14 && c.r > 24;
+    return `<circle cx="${c.x}" cy="${c.y}" r="${c.r}" ${paint}><title>${tip}</title></circle>`
+      + (fitT ? `<text class="vk-in" x="${c.x}" y="${c.y + (fitS ? -2 : 4)}" text-anchor="middle" fill="${ink(x.t)}">${top}</text>` : '')
+      + (fitT && fitS ? `<text class="vk-sm" x="${c.x}" y="${c.y + 13}" text-anchor="middle" fill="${ink(x.t)}" opacity=".75">${sub}</text>` : '');
+  };
+  const packSvg = (list, w, h, top, sub) => {
+    const B = fit(pack(list.map(x => Math.sqrt(Math.abs(x.v)))), w, h);
+    return `<div class="vk-chart"><svg class="vk-svg" width="${w}" height="${h}">${B.map((c, i) => bubble(c, list[i], top(list[i]), sub(list[i]), `${list[i].nm} · ${sub(list[i]) || top(list[i])}`)).join('')}</svg></div>`;
+  };
+
+  // K4-6 categories, top 6 + Other · 2
+  const CS = V.categories, CT = sum(CS, 'amt');
+  const C6 = CS.slice(0, 6).map((c, i) => ({ nm: c.c, t: 't' + (i + 1), v: c.amt })).concat([{ nm: `Other · ${CS.length - 6}`, t: 't8', v: sum(CS.slice(6), 'amt') }]);
+  { const el = $(6); el.innerHTML = band('Categories', 'Net sales · last 30 days') + '<div class="vk-g"></div>'
+      + rows(C6, x => a_(V.peso(x.v)) + p_(pc(x.v, CT)), total(a_(V.peso(CT)) + p_(''))) + foot(`See all ${CS.length} categories`);
+    el.querySelector('.vk-g').outerHTML = packSvg(C6, W(el), 210, x => x.nm.replace(/ · \d+$/, ''), x => V.pesoK(x.v)); }
+
+  // K4-7 stock moves by reason (count)
+  { const RT = { Delivery: 't3', Refund: 't2', Void: 't7', Count: 't5', Damaged: 'bad' };
+    const M = V.movesByReason.map(m => ({ nm: m.r, t: RT[m.r], v: m.n, val: m.value })), el = $(7);
+    el.innerHTML = band('Stock moves by reason', 'Last 7 days · not sales') + '<div class="vk-g"></div>'
+      + rows(M, x => n_(x.v) + a_(V.peso(x.val), 'w'), total(n_(V.movesTotal, 'vk-n" style="color:inherit') + a_(V.peso(sum(M, 'val')), 'w')), hd(n_('Moves') + a_('Value at cost', 'w')));
+    el.querySelector('.vk-g').outerHTML = packSvg(M, W(el), 190, x => String(x.v), x => x.nm); }
+
+  // K4-8 payments, pesos
+  { const el = $(8), PT = sum(P);
+    el.innerHTML = band('Payment methods', 'Last 7 days') + '<div class="vk-g"></div>' + rows(P, x => a_(V.peso(x.v)) + p_(pc(x.v, PT)), total(a_(V.peso(PT)) + p_('')));
+    el.querySelector('.vk-g').outerHTML = packSvg(P, W(el), 190, x => x.nm, x => V.pesoK(x.v)); }
+
+  // K4-9 nested: Cement and Fasteners hold their top items + the rest; the other 6 categories are plain bubbles. Leaves sized by pesos, parents wrap them (like d3.pack).
+  { const el = $(9), w = W(el), h = 300;
+    const groups = CS.map((c, i) => ({ nm: c.c, t: 't' + (i + 1), v: c.amt }));
+    const kids = g => { const its = V.topItems.filter(t => t.cat === g.nm).map(t => ({ nm: t.name, t: g.t, v: t.amt }));
+      return its.length ? its.concat([{ nm: 'Rest of ' + g.nm, t: 't8', v: g.v - sum(its), rest: true }]) : null; };
+    const pad = 2, nodes = groups.map(g => { const ch = kids(g); if (!ch) return { g, r: Math.sqrt(g.v) };
+      const P = pack(ch.map(x => Math.sqrt(x.v)), pad, 1), cx = (Math.min(...P.map(c => c.x - c.r)) + Math.max(...P.map(c => c.x + c.r))) / 2, cy = (Math.min(...P.map(c => c.y - c.r)) + Math.max(...P.map(c => c.y + c.r))) / 2;
+      const kp = P.map(c => ({ ...c, x: c.x - cx, y: c.y - cy })), r = Math.max(...kp.map(c => Math.hypot(c.x, c.y) + c.r)) + 10;
+      return { g, r, ch, kp }; });
+    const top = pack(nodes.map(n => n.r), 4), xs = top.map(c => [c.x - c.r, c.x + c.r]).flat(), ys = top.map(c => [c.y - c.r, c.y + c.r]).flat();
+    const k = Math.min(w / (Math.max(...xs) - Math.min(...xs)), h / (Math.max(...ys) - Math.min(...ys)));
+    const ox = (w - (Math.max(...xs) - Math.min(...xs)) * k) / 2 - Math.min(...xs) * k, oy = (h - (Math.max(...ys) - Math.min(...ys)) * k) / 2 - Math.min(...ys) * k;
+    let s = '';
+    nodes.forEach((n, i) => { const c = { x: top[i].x * k + ox, y: top[i].y * k + oy, r: n.r * k };
+      if (!n.ch) return s += bubble(c, n.g, n.g.nm, V.pesoK(n.g.v), `${n.g.nm} · ${V.peso(n.g.v)}`);
+      s += `<circle cx="${c.x}" cy="${c.y}" r="${c.r}" fill="none" stroke="${fill(n.g.t)}" stroke-width="2"><title>${n.g.nm} · ${V.peso(n.g.v)}</title></circle>`;
+      // the rest of a category: dashed outline in its tint, not filled
+      n.ch.forEach((x, j) => s += bubble({ x: c.x + n.kp[j].x * k, y: c.y + n.kp[j].y * k, r: n.kp[j].r * k }, { ...x, t: n.g.t }, V.pesoK(x.v), x.rest ? 'the rest' : '', `${x.nm} · ${V.peso(x.v)}`,
+        x.rest ? `fill="var(--raised)" stroke="${fill(n.g.t)}" stroke-width="2" stroke-dasharray="4 3"` : undefined)); });
+    const block = n => '<div class="rows vk-rows">' + total(a_(V.peso(n.g.v)) + p_(''), pill(n.g)) + n.ch.map(x => row(`<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x.nm}</span>`, a_(V.peso(x.v)) + p_(pc(x.v, n.g.v)))).join('') + '</div>';
+    el.innerHTML = band('Top items by category', 'Net sales · last 30 days') + `<div class="vk-chart" style="padding-top:26px"><svg class="vk-svg" width="${w}" height="${h}">${s}</svg></div>`
+      + `<div class="vk-two">${block(nodes[0])}${block(nodes[1])}</div>` + foot('See all in Items'); }
+
+  // ================= Funnels =================
+  // levels [{nm,t,v}], gaps[i] = what drops out between level i and i+1 (text, or '')
+  const funnel = (w, lv, gaps, base = lv[0].v) => {
+    const bh = 34, gh = 30; let s = '', y = 0;
+    lv.forEach((x, i) => { const bw = x.v / base * w, x0 = (w - bw) / 2;
+      if (i) { const p = lv[i - 1], pw = p.v / base * w, px = (w - pw) / 2;
+        s += `<path d="M${px} ${y - gh}H${px + pw}L${x0 + bw} ${y}H${x0}Z" fill="${fill(x.t)}" opacity=".4"/>`;
+        if (gaps[i - 1]) s += `<text class="vk-sm" x="${w / 2}" y="${y - gh / 2 + 4}" text-anchor="middle" fill="var(--ink-3)">${gaps[i - 1]}</text>`; }
+      const lab = `${x.nm} · ${pc(x.v, base)}`, inside = tw(lab, 12) + 16 < bw;
+      s += `<rect x="${x0}" y="${y}" width="${bw}" height="${bh}" rx="6" fill="${fill(x.t)}"><title>${x.nm} · ${p2(x.v)}</title></rect>`
+        + `<text class="vk-in" x="${inside ? w / 2 : x0 + bw + 8}" y="${y + bh / 2 + 4}" text-anchor="${inside ? 'middle' : 'start'}" fill="${inside ? ink(x.t) : 'var(--ink)'}">${lab}</text>`;
+      y += bh + gh; });
+    return `<div class="vk-chart" style="padding-top:12px"><svg class="vk-svg" width="${w}" height="${y - gh}">${s}</svg></div>`;
+  };
+  const L = V.ladder, lv = (nm, v, t) => ({ nm, v, t });
+  const gross = lv('Gross sales', L.gross, 't6'), net = lv('Net sales', L.net, 't3'), bef = lv('Sales before VAT', L.beforeVat, 't5'), gp = lv('Gross profit', L.gp, 't4');
+  const fRows = (list, extra = '') => rows(list, x => a_(p2(x.v), 'w') + p_(pc(x.v, L.gross)), extra, hd(a_('', 'w') + p_('of gross')));
+  const off = -(L.voids + L.refunds + L.discounts);
+
+  { const el = $(10), list = [gross, net, bef, gp];
+    el.innerHTML = band('From gross to profit', 'Last 30 days') + '<div class="vk-g"></div>' + fRows(list);
+    el.querySelector('.vk-g').outerHTML = funnel(W(el), list, ['', '', '']); }
+  { const el = $(11), list = [gross, net, gp], cost = lv('Cost of goods', L.cost, 't8');
+    el.innerHTML = band('From gross to profit', 'Last 30 days') + '<div class="vk-g"></div>'
+      + fRows(list.slice(0, 2).concat([cost, gp]).map(x => x === cost ? { ...x, nm: 'Cost of goods' } : x));
+    el.querySelector('.vk-g').outerHTML = funnel(W(el), list, [`− ${p2(off)} taken off`, `− ${p2(L.cost)} cost of goods`]); }
+  { const el = $(12), list = [gross, net, bef], vat = lv('VAT included', L.vat, 't8'), tk = lv('Taken off', off, 't7');
+    el.innerHTML = band('From gross to before VAT', 'Last 30 days') + '<div class="vk-g"></div>' + fRows([gross, tk, net, vat, bef]);
+    el.querySelector('.vk-g').outerHTML = funnel(W(el), list, [`− ${p2(off)} taken off`, `− ${p2(L.vat)} VAT`]); }
+
+  // ================= Links: bought together =================
+  // ponytail: boughtTogether carries no category; these come from the item names (topItems has the Cement / bar ones)
+  const CAT = { 'Portland Cement 40kg': 't1', 'Washed Sand (per cu.m)': 't1', 'Hollow Block 4" · Local': 't1', 'Gravel 3/4"': 't1', 'Deformed Bar 10mm': 't2', 'Tie Wire #16': 't2', 'Wood Screw #8': 't2',
+    'THHN Stranded #12': 't3', 'Electrical Tape': 't3', 'PVC Pipe 1/2"': 't4', 'PVC Elbow 1/2"': 't4', 'Paint Brush 3"': 't5', 'Boysen Latex White 4L': 't5', 'Marine plywood 3/4"': 't6' };
+  const BT = V.boughtTogether;
+  const pairRows = (list = BT) => '<div class="rows vk-rows">' + hd(n_('Orders'))
+    + list.map(p => row(`${pill({ nm: p.a, t: CAT[p.a] })}<span class="vk-plus">+</span>${pill({ nm: p.b, t: CAT[p.b] })}`, n_(p.n, 'amt vk-n'))).join('') + '</div>';
+  const deg = n => sum(BT.filter(p => p.a === n || p.b === n), 'n');
+  const pt = (r, a) => `${(r * Math.cos(a)).toFixed(2)} ${(r * Math.sin(a)).toFixed(2)}`;
+
+  // K4-13 chord: node arc = orders it shares, ribbon width = orders with both. Pair ends sit on opposite sides so every ribbon crosses the ring.
+  { const el = $(13), w = W(el), R = 118, ring = 14, g = .035, big = .2, H = 2 * R + 60;
+    const SIDE = [['Hollow Block 4" · Local', 'Washed Sand (per cu.m)', 'Tie Wire #16', 'PVC Elbow 1/2"', 'Electrical Tape', 'Boysen Latex White 4L', 'Marine plywood 3/4"'],
+      ['Wood Screw #8', 'Paint Brush 3"', 'THHN Stranded #12', 'PVC Pipe 1/2"', 'Deformed Bar 10mm', 'Gravel 3/4"', 'Portland Cement 40kg']];
+    const tot = 2 * sum(BT, 'n'), span = 2 * Math.PI - 2 * big - g * 12;   // 12 gaps between the 7 + 7 nodes, big gaps top and bottom
+    const node = {}, labs = [[], []]; let s = '';
+    SIDE.forEach((side, k) => { let a = -Math.PI / 2 + k * Math.PI + big / 2;
+      side.forEach(n => { const sp = deg(n) / tot * span; node[n] = { a0: a, a1: a + sp, cur: a }; a += sp + g; }); });
+    SIDE.forEach((side, k) => side.forEach(n => { const { a0, a1 } = node[n], m = (a0 + a1) / 2;
+      s += `<path d="M${pt(R + ring / 2, a0)}A${R + ring / 2} ${R + ring / 2} 0 0 1 ${pt(R + ring / 2, a1)}" fill="none" stroke="${fill(CAT[n])}" stroke-width="${ring}"><title>${n} · ${deg(n)} orders in pairs</title></path>`;
+      labs[k].push({ n, x: (R + ring + 8) * Math.cos(m), y: (R + ring + 8) * Math.sin(m) + 4 }); }));
+    // push each side's labels apart, at least 15px
+    const lab = labs.map((L, k) => { L.sort((p, q) => p.y - q.y); for (let i = 1; i < L.length; i++) L[i].y = Math.max(L[i].y, L[i - 1].y + 15);
+      return L.map(p => `<text class="vk-sm" x="${p.x.toFixed(1)}" y="${p.y.toFixed(1)}" text-anchor="${k ? 'end' : 'start'}" fill="var(--ink-2)">${p.n}</text>`).join(''); }).join('');
+    BT.forEach(p => { const A = node[p.a], B = node[p.b], sp = p.n / tot * span;
+      const a0 = A.cur, a1 = A.cur + sp, b0 = B.cur, b1 = B.cur + sp; A.cur += sp; B.cur += sp;
+      s += `<path d="M${pt(R, a0)}A${R} ${R} 0 0 1 ${pt(R, a1)}Q0 0 ${pt(R, b0)}A${R} ${R} 0 0 1 ${pt(R, b1)}Q0 0 ${pt(R, a0)}Z" fill="${fill(CAT[p.a])}" opacity=".85" stroke="var(--raised)" stroke-width="1"><title>${p.a} + ${p.b} · ${p.n} orders</title></path>`; });
+    el.innerHTML = band('Bought together', 'Orders with both · last 30 days')
+      + `<div class="vk-chart"><svg class="vk-svg" width="${w}" height="${H}"><g transform="translate(${w / 2} ${H / 2})">${s}${lab}</g></svg></div>` + pairRows(); }
+
+  // K4-14 network: the Cement chain, nodes as pills, links as thick as the orders with both
+  { const el = $(14), w = W(el), h = 150, cem = BT.filter(p => CAT[p.a] === 't1' && CAT[p.b] === 't1');
+    const pos = { 'Hollow Block 4" · Local': [.2, 0], 'Portland Cement 40kg': [.42, 1], 'Washed Sand (per cu.m)': [.68, 0], 'Gravel 3/4"': [.86, 1] };
+    const xy = n => [pos[n][0] * w, 16 + pos[n][1] * (h - 32)], mx = Math.max(...cem.map(p => p.n));
+    let s = '', chips = '', nodes = '';
+    cem.forEach(p => { const [x0, y0] = xy(p.a), [x1, y1] = xy(p.b), sw = 4 + p.n / mx * 14;
+      s += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(--t1)" stroke-width="${sw}" stroke-linecap="round"><title>${p.a} + ${p.b} · ${p.n} orders</title></line>`;
+      chips += `<span class="vk-q" style="position:absolute;left:${(x0 + x1) / 2}px;top:${(y0 + y1) / 2}px;transform:translate(-50%,-50%);padding:0 5px;border-radius:var(--r-badge);background:var(--raised);font-size:12px;font-weight:500;color:var(--ink)">${p.n}</span>`; });
+    Object.keys(pos).forEach(n => { const [x, y] = xy(n); nodes += `<span style="position:absolute;left:${x}px;top:${y}px;transform:translate(-50%,-50%);white-space:nowrap">${pill({ nm: n, t: 't1' })}</span>`; });
+    el.innerHTML = band('Bought together · Cement', 'Orders with both · last 30 days')
+      + `<div class="vk-chart"><div style="position:relative;height:${h}px"><svg class="vk-svg" width="${w}" height="${h}">${s}</svg>${chips}${nodes}</div></div>`
+      + pairRows(cem.sort((a, b) => b.n - a.n)); }
+})();</script>

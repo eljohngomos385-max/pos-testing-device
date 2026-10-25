@@ -1,0 +1,229 @@
+<style>
+/* part b (round 2) — Payment methods, Breakdown (the ladder), Fulfilment, in the Orders pill tints. Every selector .vb-. */
+.vb-q { color: var(--ink-4); font-weight: 400; }
+.vb-svg { display: block; overflow: visible; }
+.vb-svg text { font-family: var(--font); }
+.vb-c1 { font-size: 15px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.vb-c2 { font-size: 11px; fill: var(--ink-4); }
+/* row cells: the rows are the legend */
+.vb-rows > .row .nm { display: flex; align-items: center; }
+.vb-n { flex: none; width: 34px; text-align: right; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vb-a { flex: none; min-width: 72px; text-align: right; }
+.vb-a.w { min-width: 98px; }
+.vb-p { flex: none; width: 46px; text-align: right; }
+.row .vb-ch { flex: none; min-width: 56px; justify-content: center; }
+.vb-rows > .row.vb-hd { min-height: 22px; font-size: 11px; color: var(--ink-4); }
+.vb-rows > .row.vb-hd:hover { background: none; }
+/* one 100% bar: pastel parts need body, so 14px */
+.vb-bar { display: flex; gap: 2px; height: 14px; border-radius: var(--r-pill); overflow: hidden; }
+.vb-bar > i { min-width: 2px; }
+.vb-pad { padding: 12px 12px 8px; }
+/* labelled bars (two 100% bars in one card) */
+.vb-lbs { padding: 10px 0 6px; }
+.vb-lb { display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px; font-size: 12px; color: var(--ink-3); }
+.vb-lb > span { flex: none; width: 62px; }
+.vb-lb > .vb-bar { flex: 1; }
+/* donut beside the rows */
+.vb-split { display: flex; align-items: center; padding: 6px 0 6px 12px; }
+.vb-split > svg { flex: none; }
+.vb-split > .rows { flex: 1; min-width: 0; }
+.vb-split .rows > .row { padding: 0 12px 0 14px; }
+.vb-tick { padding: 4px 4px 4px 2px; }
+.vb-split .vb-tick > .row { padding: 0 8px; border-radius: var(--r-row); cursor: pointer; }
+.vb-tick > .row:hover, .vb-tick > .row:hover + .row, .vb-tick > .row.on + .row { border-top-color: transparent; }
+.vb-tick > .row.on, .vb-tick > .row.on:hover { background: var(--fill); border-top-color: transparent; }
+/* big number, chip right of it */
+.vb-big { display: flex; align-items: center; gap: 8px; padding: 12px 12px 10px; }
+.vb-big .kpi-value { font-size: 20px; }
+/* ranked bars in tints: pill | bar + value at its end | right cell, light scale behind */
+.vb-rank { padding: 8px 0 2px; }
+.vb-rk { display: flex; align-items: center; height: 30px; padding: 0 12px; }
+.vb-rl { flex: none; width: 84px; }
+.vb-trk { position: relative; flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; padding-right: 76px;
+  background: linear-gradient(var(--grid), var(--grid)) right / 1px 100% no-repeat, linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 33.3333% 100% repeat-x;
+  background-origin: content-box; background-clip: content-box; }
+.vb-trk > i { flex: none; height: 16px; border-radius: 4px; min-width: 2px; }
+.vb-trk > b { flex: none; margin-left: 4px; padding: 0 2px; background: var(--raised); font-size: 12px; font-weight: 500; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vb-rk > .vb-p, .vb-rk > .vb-ch { margin-left: 8px; }
+.vb-rk.ax { height: 20px; }
+.vb-rk.ax > .vb-trk { background: none; }
+.vb-rk.ax .ax2 { position: absolute; top: 2px; transform: translateX(-50%); font-size: 11px; color: var(--ink-5); font-variant-numeric: tabular-nums; }
+/* Summary: the ladder stacked, one bar per split */
+.vb-sum > .row.total .vb-a { font-weight: 500; }
+.vb-sb { padding: 2px 12px 8px; }
+.vb-sum > .row.sub { padding-left: 24px; }
+</style>
+
+<section class="cat" id="vb-pay" data-nav="Payments v2">
+  <h2>Payment methods</h2>
+  <p class="why">The B11/B12 family: pay tints (Cash green, Account orange, GCash blue, QR teal, Maya lavender), the pill is the row label. 7 days unless the band says 30.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>B2-1</b> Donut · ticked slice keeps its tint, the rest go grey (click a row)</div><div class="card" id="vb-1"></div></div>
+    <div class="spec"><div class="tag"><b>B2-2</b> Half donut in tints · total in the arc, pill rows under</div><div class="card" id="vb-2"></div></div>
+    <div class="spec"><div class="tag"><b>B2-3</b> Ranked bars in tints · pill labels, value at the bar end</div><div class="card" id="vb-3"></div></div>
+    <div class="spec"><div class="tag"><b>B2-4</b> Two 100% bars · payments vs pesos</div><div class="card" id="vb-4"></div></div>
+    <div class="spec"><div class="tag"><b>B2-5</b> Two 100% bars · last 7 days vs last 30 days</div><div class="card" id="vb-5"></div></div>
+    <div class="spec"><div class="tag"><b>B2-6</b> 100% bar · 30 days, change chip beside each amount</div><div class="card" id="vb-6"></div></div>
+    <div class="spec"><div class="tag"><b>B2-7</b> Donut · 30 days, change chip beside each amount</div><div class="card" id="vb-7"></div></div>
+    <div class="spec"><div class="tag"><b>B2-8</b> Big total + chip · one tinted bar, pill rows</div><div class="card" id="vb-8"></div></div>
+    <div class="spec"><div class="tag"><b>B2-9</b> Ranked bars in tints · 30 days, chip in the last column</div><div class="card" id="vb-9"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vb-ladder" data-nav="Breakdown v2">
+  <h2>Breakdown</h2>
+  <p class="why">Sales › Summary's ladder, 30 days, every split as B17/B18: big number, one bar, the rows. One tint per word across all cards: Net + Sales before VAT blue, VAT lavender, Gross profit teal, Cost grey, Voids pink, Refunds orange, Discounts yellow.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>B2-10</b> Net = Sales before VAT + VAT</div><div class="card" id="vb-10"></div></div>
+    <div class="spec"><div class="tag"><b>B2-11</b> Net = Cost of goods + Gross profit</div><div class="card" id="vb-11"></div></div>
+    <div class="spec"><div class="tag"><b>B2-12</b> Gross = Net + what was taken off</div><div class="card" id="vb-12"></div></div>
+    <div class="spec"><div class="tag"><b>B2-13</b> Taken off · voids, refunds, discounts</div><div class="card" id="vb-13"></div></div>
+    <div class="spec"><div class="tag"><b>B2-14</b> Summary · the ladder stacked, one bar per split</div><div class="card" id="vb-14"></div></div>
+    <div class="spec"><div class="tag"><b>B2-15</b> Half donut · gross profit in the arc</div><div class="card" id="vb-15"></div></div>
+    <div class="spec"><div class="tag"><b>B2-16</b> Donut · taken off, total in the hole</div><div class="card" id="vb-16"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vb-ful" data-nav="Fulfilment v2">
+  <h2>Fulfilment</h2>
+  <p class="why">Walk-in vs Delivery, 7 days. Walk-in t1, Delivery t2. Count first, the amount always beside it.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>B2-17</b> Big total · one two-part bar, two rows</div><div class="card" id="vb-17"></div></div>
+    <div class="spec"><div class="tag"><b>B2-18</b> Two 100% bars · orders vs pesos</div><div class="card" id="vb-18"></div></div>
+    <div class="spec"><div class="tag"><b>B2-19</b> Donut · total in the hole, pill rows</div><div class="card" id="vb-19"></div></div>
+    <div class="spec"><div class="tag"><b>B2-20</b> Half donut · total in the arc</div><div class="card" id="vb-20"></div></div>
+    <div class="spec"><div class="tag"><b>B2-21</b> Average ticket · ranked tint bars</div><div class="card" id="vb-21"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('vb-' + n);
+  const sum = (a, k = 'v') => a.reduce((s, x) => s + x[k], 0);
+  const pc = (a, t) => V.pct(Math.abs(a) / Math.abs(t) * 100);
+  const p2 = n => V.peso(n, 2);
+  const chg = (a, b) => { const c = (a / b - 1) * 100; return `<span class="chip vb-ch ${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%</span>`; };
+  const nice = (max, steps = 3) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 2, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vb-q">${r}</span>`}</div>`;
+  // a tint key: 'cash'/'acct'/… → --pay-*, 't1'…'t8' → --tN
+  const tint = t => `var(--${/^t\d$/.test(t) ? t : 'pay-' + t})`;
+  const pill = x => `<span class="badge ${x.t}">${x.nm}</span>`;
+  const row = (nm, cells, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span>${cells}</div>`;
+  const rows = (list, cells, extra = '', cls = '') => `<div class="rows vb-rows ${cls}">` + list.map((x, i) => row(pill(x), cells(x, i), x.on ? 'on' : '')).join('') + extra + '</div>';
+  const tip = (x, t, f = V.peso) => `${x.nm} · ${f(x.v)} · ${pc(x.v, t)}`;
+  const bar = (list, t = sum(list), f) => `<div class="vb-bar">` + list.map(x => `<i style="width:${Math.abs(x.v) / Math.abs(t) * 100}%;background:${tint(x.t)}" title="${tip(x, t, f)}"></i>`).join('') + '</div>';
+  const big = (v, rest = '') => `<div class="vb-big"><span class="kpi-value">${v}</span>${rest}</div>`;
+  // arcs: angle 0 = 3 o'clock, clockwise
+  const pt = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const arc = (cx, cy, r, a0, a1) => `M${pt(cx, cy, r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a1)}`;
+  const ring = (cx, cy, r, w, list, f, grey = -1, a0 = -Math.PI / 2, span = 2 * Math.PI, gap = .035) => {
+    const t = list.reduce((s, x) => s + Math.abs(x.v), 0); let a = a0;
+    return list.map((x, i) => { const s = Math.abs(x.v) / t * span, d = arc(cx, cy, r, a + gap / 2, a + Math.max(s - gap / 2, gap / 2 + .01)); a += s;
+      return `<path d="${d}" style="fill:none;stroke:${grey >= 0 && i !== grey ? 'var(--t8)' : tint(x.t)};stroke-width:${w}"><title>${tip(x, t, f)}</title></path>`; }).join('');
+  };
+  const donut = (list, c1, c2, f, grey) => `<svg class="vb-svg" width="124" height="124">${ring(62, 62, 52, 16, list, f, grey)}<text class="vb-c1" x="62" y="64" text-anchor="middle">${c1}</text><text class="vb-c2" x="62" y="79" text-anchor="middle">${c2}</text></svg>`;
+  const half = (el, list, c1, c2, f) => { const W = el.clientWidth, cx = W / 2, cy = 112;
+    return `<svg class="vb-svg" width="${W}" height="128">${ring(cx, cy, 88, 20, list, f, -1, Math.PI, Math.PI, .03)}<text class="vb-c1" x="${cx}" y="${cy - 16}" text-anchor="middle" style="font-size:20px">${c1}</text><text class="vb-c2" x="${cx}" y="${cy + 1}" text-anchor="middle">${c2}</text></svg>`; };
+  // ranked tint bars: pill | bar with its value at the end | right cell, light scale (0, ⅓, ⅔, top)
+  const rank = (list, val, right) => { const st = nice(Math.max(...list.map(x => x.v))), top = st * 3;
+    return '<div class="vb-rank">' + [...list].sort((a, b) => b.v - a.v).map(x => `<div class="vb-rk"><span class="vb-rl">${pill(x)}</span><span class="vb-trk"><i style="width:${x.v / top * 100}%;background:${tint(x.t)}" title="${x.nm} · ${V.peso(x.v)}"></i><b>${val(x)}</b></span>${right(x)}</div>`).join('')
+      + `<div class="vb-rk ax"><span class="vb-rl"></span><span class="vb-trk">${[0, 1, 2, 3].map(k => `<span class="ax2" style="left:calc((100% - 76px) * ${k / 3})">${k ? V.pesoK(k * st) : '0'}</span>`).join('')}</span>${right(null)}</div></div>`; };
+  const totalRow = (cells, nm = 'Total') => row(nm, cells, 'total');
+
+  // ---------- Payment methods ----------
+  const P = V.payments.map(p => ({ nm: p.m, t: p.key, v: p.amt, n: p.n })), PT = sum(P), PN = sum(P, 'n');
+  const keyOf = Object.fromEntries(V.payments.map(p => [p.m, p.key]));
+  const Q = V.payments30.map(q => ({ nm: q.m, t: keyOf[q.m], v: q.amt, prev: q.prev })), QT = sum(Q), QP = sum(Q, 'prev');
+  const amtPct = (x, t) => `<span class="amt vb-a">${V.peso(x.v)}</span><span class="pct vb-p">${pc(x.v, t)}</span>`;
+
+  // B2-1 donut, ticked slice keeps its tint; click a row to move the tick
+  { const el = $(1), draw = on => {
+      const T = P[on];
+      el.innerHTML = band('Payment methods', 'Last 7 days') + `<div class="vb-split">${donut(P, pc(T.v, PT), T.nm, V.peso, on)}`
+        + rows(P.map((x, i) => ({ ...x, on: i === on })), x => `<span class="vb-n">${x.n}</span><span class="amt vb-a">${V.peso(x.v)}</span>`, '', 'vb-tick') + '</div>';
+      el.querySelectorAll('.vb-tick > .row').forEach((r, i) => r.onclick = () => draw(i));
+    };
+    draw(2); }
+
+  // B2-2 half donut in tints
+  { const el = $(2); el.innerHTML = band('Payment methods', 'Last 7 days') + '<div class="vb-g"></div>' + rows(P, x => amtPct(x, PT), totalRow(`<span class="amt vb-a">${V.peso(PT)}</span><span class="vb-p"></span>`));
+    el.querySelector('.vb-g').innerHTML = half(el, P, V.peso(PT), `Total · ${PN} payments`); }
+
+  // B2-3 ranked bars in tints
+  $(3).innerHTML = band('Payment methods', 'Last 7 days') + rank(P, x => V.pesoK(x.v), x => `<span class="pct vb-p">${x ? pc(x.v, PT) : ''}</span>`);
+
+  // B2-4 payments (count) vs pesos, two 100% bars
+  { const N = P.map(x => ({ ...x, v: x.n }));
+    $(4).innerHTML = band('Payment methods', 'Last 7 days') + `<div class="vb-lbs"><div class="vb-lb"><span>Payments</span>${bar(N, PN, n => n + ' payments')}</div><div class="vb-lb"><span>Pesos</span>${bar(P, PT)}</div></div>`
+      + rows(P, x => `<span class="vb-n">${x.n}</span><span class="pct vb-p">${pc(x.n, PN)}</span><span class="amt vb-a">${V.peso(x.v)}</span><span class="pct vb-p">${pc(x.v, PT)}</span>`,
+        totalRow(`<span class="vb-n" style="color:inherit">${PN}</span><span class="vb-p"></span><span class="amt vb-a">${V.peso(PT)}</span><span class="vb-p"></span>`)); }
+
+  // B2-5 last 7 days vs last 30 days, two 100% bars (share of pesos)
+  $(5).innerHTML = band('Payment methods', 'share of net sales') + `<div class="vb-lbs"><div class="vb-lb"><span>7 days</span>${bar(P, PT)}</div><div class="vb-lb"><span>30 days</span>${bar(Q, QT)}</div></div>`
+    + `<div class="rows vb-rows">${row('', '<span class="vb-a">7 days</span><span class="vb-a">30 days</span>', 'vb-hd')}` + P.map((x, i) => row(pill(x), `<span class="vb-a">${pc(x.v, PT)}</span><span class="vb-a">${pc(Q[i].v, QT)}</span>`)).join('')
+    + totalRow(`<span class="amt vb-a">${V.peso(PT)}</span><span class="amt vb-a">${V.peso(QT)}</span>`) + '</div>';
+
+  // B2-6 30 days, 100% bar, change chip beside each amount
+  $(6).innerHTML = band('Payment methods', 'Last 30 days') + `<div class="vb-pad">${bar(Q, QT)}</div>`
+    + rows(Q, x => `<span class="amt vb-a">${V.peso(x.v)}</span>${chg(x.v, x.prev)}`, totalRow(`<span class="amt vb-a">${V.peso(QT)}</span>${chg(QT, QP)}`));
+
+  // B2-7 30 days donut, change chips
+  $(7).innerHTML = band('Payment methods', 'Last 30 days') + `<div class="vb-split">${donut(Q, V.pesoK(QT), 'Total')}`
+    + rows(Q, x => `<span class="amt vb-a">${V.peso(x.v)}</span>${chg(x.v, x.prev)}`, totalRow(`<span class="amt vb-a">${V.peso(QT)}</span>${chg(QT, QP)}`)) + '</div>';
+
+  // B2-8 big total + chip, one tinted bar, pill rows
+  $(8).innerHTML = band('Payment methods', 'Last 30 days') + big(V.peso(QT), chg(QT, QP)) + `<div style="padding:0 12px 10px">${bar(Q, QT)}</div>` + rows(Q, x => amtPct(x, QT));
+
+  // B2-9 ranked tint bars, 30 days, chip last
+  $(9).innerHTML = band('Payment methods', 'Last 30 days') + rank(Q, x => V.pesoK(x.v), x => x ? chg(x.v, x.prev) : '<span class="vb-ch" style="display:inline-block"></span>');
+
+  // ---------- Breakdown (the ladder, 30 days) ----------
+  // ponytail: one tint per ladder word (not t1, t2… per card) so the Summary stack reads as one key
+  const L = V.ladder, T = { net: 't3', before: 't3', vat: 't5', gp: 't4', cost: 't8', voids: 't7', refunds: 't2', discounts: 't6' };
+  const lp = (nm, v, t, n) => ({ nm, v, t, n });
+  const before = lp('Sales before VAT', L.beforeVat, T.before), vat = lp('VAT included', L.vat, T.vat);
+  const gp = lp('Gross profit', L.gp, T.gp), cost = lp('Cost of goods', L.cost, T.cost);
+  const net = lp('Net sales', L.net, T.net);
+  const off = [lp('Voids', L.voids, T.voids, L.voidsN), lp('Refunds', L.refunds, T.refunds, L.refundsN), lp('Discounts', L.discounts, T.discounts, '')];
+  const OT = sum(off);
+  const lRows = (list, t, n, extra) => rows(list, x => (n ? `<span class="vb-n">${x.n}</span>` : '') + `<span class="amt vb-a w">${p2(x.v)}</span><span class="pct vb-p">${pc(x.v, t)}</span>`, extra);
+  const statement = (id, title, v, sub, list, t, n) => { $(id).innerHTML = band(title, 'Last 30 days') + big(p2(v), `<span class="vb-q" style="font-size:12px">${sub}</span>`)
+      + `<div style="padding:0 12px 10px">${bar(list, t, p2)}</div>` + lRows(list, t, n); };
+
+  statement(10, 'Net sales', L.net, '', [before, vat], L.net);
+  statement(11, 'Gross profit', L.gp, `${pc(L.gp, L.net)} of net sales`, [gp, cost], L.net);
+  statement(12, 'Gross sales', L.gross, '', [net, ...off], L.gross);
+  statement(13, 'Taken off', OT, `${pc(OT, L.gross)} of gross sales`, off, OT, true);
+
+  // B2-14 Summary: the ladder top to bottom, each split its own bar with its parts under it
+  { const blk = (head, v, list, t) => totalRow(`<span class="amt vb-a w">${p2(v)}</span><span class="vb-p"></span>`, head) + `<div class="vb-sb">${bar(list, t, p2)}</div>`
+      + list.map(x => row(pill(x), `<span class="amt vb-a w">${p2(x.v)}</span><span class="pct vb-p">${pc(x.v, t)}</span>`)).join('');
+    $(14).innerHTML = band('Summary', 'Last 30 days') + '<div class="rows vb-rows vb-sum">' + blk('Gross sales', L.gross, [net, ...off], L.gross)
+      + blk('Net sales', L.net, [before, vat], L.net) + blk('Gross profit', L.gp, [cost, gp], L.net) + '</div>'; }
+
+  // B2-15 half donut, gross profit in the arc
+  { const el = $(15); el.innerHTML = band('Gross profit', 'Last 30 days') + '<div class="vb-g"></div>' + lRows([gp, cost], L.net, false, totalRow(`<span class="amt vb-a w">${p2(L.net)}</span><span class="vb-p"></span>`, 'Net sales'));
+    el.querySelector('.vb-g').innerHTML = half(el, [gp, cost], p2(L.gp), `${pc(L.gp, L.net)} of net sales`, p2); }
+
+  // B2-16 taken-off donut
+  $(16).innerHTML = band('Taken off', 'Last 30 days') + `<div class="vb-split">${donut(off, V.pesoK(-OT), 'Taken off', p2)}`
+    + rows(off, x => `<span class="vb-n">${x.n}</span><span class="amt vb-a w">${p2(x.v)}</span>`, totalRow(`<span class="vb-n"></span><span class="amt vb-a w">${p2(OT)}</span>`)) + '</div>';
+
+  // ---------- Fulfilment (7 days) ----------
+  const F = V.fulfilment.map((f, i) => ({ nm: f.m, t: 't' + (i + 1), v: f.amt, n: f.n })), FT = sum(F), FN = sum(F, 'n');
+  const fCells = x => `<span class="vb-n">${x.n}</span><span class="amt vb-a">${V.peso(x.v)}</span><span class="pct vb-p">${pc(x.v, FT)}</span>`;
+  const fTotal = totalRow(`<span class="vb-n" style="color:inherit">${FN}</span><span class="amt vb-a">${V.peso(FT)}</span><span class="vb-p"></span>`);
+
+  $(17).innerHTML = band('Fulfilment', 'Last 7 days') + big(V.peso(FT), `<span class="vb-q" style="font-size:12px">${FN} orders</span>`) + `<div style="padding:0 12px 10px">${bar(F, FT)}</div>` + rows(F, fCells);
+
+  { const N = F.map(x => ({ ...x, v: x.n }));
+    $(18).innerHTML = band('Fulfilment', 'Last 7 days') + `<div class="vb-lbs"><div class="vb-lb"><span>Orders</span>${bar(N, FN, n => n + ' orders')}</div><div class="vb-lb"><span>Pesos</span>${bar(F, FT)}</div></div>`
+      + rows(F, x => `<span class="vb-n">${x.n}</span><span class="pct vb-p">${pc(x.n, FN)}</span><span class="amt vb-a">${V.peso(x.v)}</span><span class="pct vb-p">${pc(x.v, FT)}</span>`); }
+
+  $(19).innerHTML = band('Fulfilment', 'Last 7 days') + `<div class="vb-split">${donut(F, V.pesoK(FT), FN + ' orders')}` + rows(F, fCells, fTotal) + '</div>';
+
+  { const el = $(20); el.innerHTML = band('Fulfilment', 'Last 7 days') + '<div class="vb-g"></div>' + rows(F, fCells, fTotal);
+    el.querySelector('.vb-g').innerHTML = half(el, F, V.peso(FT), `Total · ${FN} orders`); }
+
+  { const A = F.map(x => ({ ...x, v: x.v / x.n }));
+    $(21).innerHTML = band('Average ticket', 'net ÷ orders') + rank(A, x => V.peso(x.v), () => ''); }
+})();</script>

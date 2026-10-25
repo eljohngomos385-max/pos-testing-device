@@ -279,6 +279,11 @@ function renderReports(slide) {
   let pays = [...SalesMath.tenders(state.orders, win)].map(([k, v]) => ({ k, v })).sort((x, y) => y.v - x.v);
   if (pays.length > 4) { const keep = pays.filter(r => r.k !== 'other').slice(0, 3); pays = [...keep, { k: 'other', v: pays.filter(r => !keep.includes(r)).reduce((n, r) => n + r.v, 0) }]; }
   const all = pays.reduce((n, r) => n + r.v, 0), none = '<div class="rp-none">No sales</div>';
+  // Modifiers (owner 10-22): every choice sold, most times first, from the lines' answer snapshots (SalesMath.topChoices,
+  // refunds off); the Items rows without a picture -- a choice has none. Only for a store that has modifiers or sold one.
+  const chosen = SalesMath.topChoices(state.orders, win);
+  const mods = chosen.length || loadModifiers().some(x => !x.archived)
+    ? icard('Modifiers', chosen.map(r => li('', r.name, `${escapeHtml(r.modifier)} · ${SalesMath.qtyText(r.times)} sold`, r.money)).join('') || none) : '';
   // By method + Breakdown: Shift's rows (owner 2026-10-17) -- the word grey, the money dark; every line, ₱0.00 too
   const fr = (lb, v) => `<div class="fr"><span class="lb">${lb}</span><span class="v num amt">${v}</span></div>`;
   // Breakdown: the back office's ladder (sales-terms) -- Gross sales less voids, refunds and discounts is Net sales
@@ -297,6 +302,7 @@ function renderReports(slide) {
     + target
     + icard('Top items', tops || none)
     + icard('Top categories', cats || none)
+    + mods
     // a plain ranking: the method, its money, its share -- no bar, no colours (owner 2026-10-15)
     + icard('By method', pays.length ? pays.map(r => fr(escapeHtml(SalesMath.tenderLabel(r.k)), `${peso(r.v)} <small class="rp-tp">${SalesMath.pctText(SalesMath.share(r.v, all), all, 0)}</small>`)).join('') : none, '', ' r')
     + icard('Breakdown', ladder, '', ' r');

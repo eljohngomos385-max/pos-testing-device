@@ -33,7 +33,7 @@ function catalogItems() {
       it = { id: key, name: g ? g.name : p.name, cat: folderName(folder), cats: catIds.map(folderName), catIds, unit: p.unit || 'pc',
         soldBy: p.soldBy === 'measure' ? 'measure' : 'each', img: (g ? g.imageUrl : p.imageUrl) || '', color: (g ? g.color : p.color) || '', desc: (g ? g.description : p.description) || '',
         hidden: !!p.hidden, marginMode: p.marginMode === 'flat' ? 'flat' : 'percent', reorder: p.reorderPoint || 0, track: p.trackStock !== false,
-        sellOut: !!p.sellOutOfStock, sups: supplierIdsOf(p), main: p.supplierId || '', mods: [...(p.modifierIds || [])],
+        sellOut: !!p.sellOutOfStock, sups: supplierIdsOf(p), main: p.supplierId || '', mods: [...(p.modifierIds || [])], hideCh: [...(p.hiddenChoiceIds || [])].sort(),
         weight: p.weight || '', size: p.size || '', length: p.length || '', component: !!p.component, variants: [], members: [] };
       it.hue = TILE_COLORS[it.color];   // the thumb is the Sell tile: its colour, or plain with none (owner 2026-10-22: no made-up hue)
       byKey.set(key, it);
@@ -103,7 +103,7 @@ function openItemEditor(id) {
   const it = id ? catalogItems().find(x => x.id === id) : null;
   itemIsNew = !it; kindEdit = null; itemSub = '';
   itemEdit = it || { id: newId(), name: '', desc: '', cat: '', catIds: [], unit: 'pc', soldBy: 'each', img: '', color: '', hidden: false, marginMode: 'percent',
-    reorder: 0, track: true, sellOut: false, sups: [], main: '', mods: [], weight: '', size: '', length: '', component: false, variants: [blankVariant()], since: tillDay(Date.now()) };
+    reorder: 0, track: true, sellOut: false, sups: [], main: '', mods: [], hideCh: [], weight: '', size: '', length: '', component: false, variants: [blankVariant()], since: tillDay(Date.now()) };
   const v0 = itemEdit.variants[0];
   itemEdit.marginValue = itemMarkupOf(v0, itemEdit.marginMode);
   renderItemForm();
@@ -115,17 +115,19 @@ const closeItemEditor = () => $('#itemsView').classList.remove('editing');
 // What the open editor's Save would write, as text: leaving with it changed asks first (askLeave, owner 2026-10-22).
 // A saved item's photo + colour save on the spot, so they're left out; a new item's wait for Save, so they count.
 let editorFirst = '';
-const editorSnap = () => (kindEdit ? JSON.stringify({ ...kindEdit, sub: 0, first: 0, picked: [...kindEdit.picked].sort() })
+const editorSnap = () => (kindEdit ? JSON.stringify({ ...kindEdit, sub: 0, first: 0, af: 0, picked: [...kindEdit.picked].sort() })
   : JSON.stringify({ ...itemEdit, hue: 0, ...(itemIsNew ? {} : { img: 0, color: 0 }) }));
 const editorDirty = () => $('#itemsView').classList.contains('editing') && editorSnap() !== editorFirst;
 // a subpage slides in over the item or the category; '' slides back to where the page was scrolled
-function itemGo(sub) {
+function itemGo(sub, back) {
   const f = $('#itemForm'), K = kindEdit;
   if (sub && !(K ? K.sub : itemSub)) itemMainScroll = f.scrollTop;   // the page's place, not a subpage's (variant -> Made from)
   if (K) K.sub = sub; else itemSub = sub;
-  (K ? renderKindForm : renderItemForm)(sub ? 'push' : 'pop');
+  (K ? renderKindForm : renderItemForm)(sub && !back ? 'push' : 'pop');
   f.scrollTop = sub ? 0 : itemMainScroll;
 }
+// Back from a subpage (app.js #itemBack): a variant's Made from to the variant, a modifier's choices to Modifiers, else the item
+const itemParent = s => (s.startsWith('made:') && itemEdit.variants.length > 1 ? s.slice(5) : s.startsWith('modch:') ? 'mods' : '');
 
 // the rows: a field, a switch, a dropdown, a › to a subpage, a blue action
 const ICHEV = '<svg class="ic chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
@@ -155,13 +157,14 @@ const icurrency = () => SalesMath.currencySymbol(state.settings.store?.currency)
 function renderItemForm(dir) {
   const E = itemEdit, v = E.variants.find(x => x.id === itemSub);
   const [title, html] = itemSub === 'cats' ? ['Categories', itemTickPage('catIds', kindCats().map(c => [c.id, c.name]), 'No categories yet. Add them under Categories.')]
-    : itemSub === 'mods' ? ['Modifiers', itemTickPage('mods', kindList('mods').map(m => [m.id, m.name, modSummary(m)]), 'No modifiers yet. Add them under Modifiers.')]
+    : itemSub === 'mods' ? ['Modifiers', itemModsPage()]
+    : itemSub.startsWith('modch:') ? itemChoicePage(itemSub.slice(6))
     : itemSub === 'sups' ? ['Suppliers', itemSupsPage()]
     : itemSub === 'specs' ? ['Specs', itemSpecsPage()]
     : itemSub === 'look' ? ['Tile appearance', lookPage(E)]
     : itemSub.startsWith('made:') ? ['Made from', itemMadePage(E.variants.find(x => 'made:' + x.id === itemSub))]
     : v ? [v.fresh ? 'Add variant' : 'Edit variant', itemVariantPage(v)] : [E.name || 'New item', itemMainPage()];   // a fixed title: typing a variant's name doesn't echo up there
-  $('#itemForm').closest('.editor').classList.toggle('sub', !!itemSub);   // a subpage has only Back, as in Apple Settings
+  $('#itemForm').closest('.editor').classList.toggle('sub', !!itemSub && itemSub !== 'mods' && !itemSub.startsWith('modch:'));   // a subpage has only Back, as in Apple Settings; Modifiers keeps Save (owner 2026-10-24)
   $('#itemMore').hidden = true;   // the item has no ⋯ (owner 2026-10-09): Archive is the last block, Back discards a new one
   $('#itemForm').innerHTML = `<div class="form${dir ? ' ' + dir : ''}">${html}</div>`;
   $('#itemTitle').textContent = title;   // small, in the top bar beside Back (rednote's Edit profile)
@@ -215,10 +218,10 @@ function itemMainPage() {
     fam ? '' : ifr('SKU', iinp('sku', v0.sku, 'placeholder="Add SKU"')),
     fam ? '' : ifr('Barcode', iinp('barcode', v0.barcode, 'inputmode="numeric" placeholder="Add barcode"')),
   ].join(''), '', ' r');
-  const mods = new Map(kindList('mods').map(m => [m.id, m.name]));
+  const by = modsById(), modName = m => { const all = liveChoices(m), n = all.filter(o => !E.hideCh.includes(o.id)).length; return n < all.length ? `${m.name} (${n} of ${all.length})` : m.name; };
   const more = icard('', [
     inav('Categories', ilist(E.catIds.map(folderName).filter(Boolean)), 'cats'),
-    inav('Modifiers', ilist(E.mods.map(id => mods.get(id)).filter(Boolean)), 'mods'),
+    inav('Modifiers', ilist(E.mods.filter(id => by.has(id)).map(id => modName(by.get(id)))), 'mods'),   // hidden choices read (shown of total)
     inav('Suppliers', ilist([E.main, ...E.sups.filter(id => id !== E.main)].filter(Boolean).map(supName).filter(Boolean)), 'sups'),
     inav('Specs', escapeHtml([E.weight, E.size, E.length].filter(Boolean).join(' · ')) || 'None', 'specs'),
   ].join(''), '', ' r');
@@ -288,6 +291,84 @@ function itemSupsPage() {
   return icard('', ifr('Main supplier', ipick('main', escapeHtml(supName(E.main) || 'None')), true), 'Purchase orders go to the main supplier.')
     + itemTickPage('sups', rows, 'No suppliers yet. Add them in the back office.');
 }
+
+// ---------- An item's modifiers (plans/modifiers-build.md): which it asks, in what order, which choices it offers ----------
+// The link lives on the item's products: modifierIds in asking order, hiddenChoiceIds = choices this item never offers.
+// A choice added later shows on every item until hidden; nothing starts picked at the sale (bo-model itemModifiers).
+const modsById = () => new Map(kindList('mods').map(m => [m.id, m]));
+// a modifier's choices on one line, as modifiers-lab.html draws it: "Fresh milk, Oat +₱30.00"
+const choiceList = (m, name = escapeHtml) => liveChoices(m).map(o => [name(o.name), modPrice(o.price)].filter(Boolean).join(' ')).join(', ');
+const choicesText = (m, hidden) => {
+  const all = liveChoices(m), n = all.filter(o => !hidden.includes(o.id)).length;
+  return n < all.length ? `${n} of ${all.length} choices` : all.length === 1 ? '1 choice' : `All ${all.length} choices`;
+};
+// what Save writes: the hidden choices of the modifiers the item still asks, still live
+const itemHidden = (E, by = modsById()) => {
+  const ok = new Set(E.mods.flatMap(id => (by.has(id) ? liveChoices(by.get(id)).map(o => o.id) : [])));
+  return E.hideCh.filter(id => ok.has(id));
+};
+const IGRIP = '<span class="grip" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></svg></span>';
+const modFind = m => escapeHtml([m.name, ...liveChoices(m).map(o => o.name)].join(' ').toLowerCase());
+// the ones it asks on top, in order (≡ drags them); a tap on the name picks which choices it offers
+function itemModsPage() {
+  const E = itemEdit, by = modsById(), on = E.mods.filter(id => by.has(id)).map(id => by.get(id));
+  const rest = [...by.values()].filter(m => !E.mods.includes(m.id)).sort((a, b) => a.name.localeCompare(b.name));
+  const tick = (m, c) => `<input type="checkbox" data-tick="mods" value="${escapeHtml(m.id)}"${c ? ' checked' : ''} aria-label="${escapeHtml(m.name)}">`;
+  const sel = on.map(m => `<div class="pick mod-on" data-mod="${escapeHtml(m.id)}" data-find="${modFind(m)}">
+      <button type="button" class="tx" data-sub="modch:${escapeHtml(m.id)}">${escapeHtml(m.name)}<small>${choicesText(m, E.hideCh)}</small></button>${tick(m, true)}${IGRIP}</div>`).join('');
+  const off = rest.map(m => `<label class="pick" data-find="${modFind(m)}">${tick(m)}<span class="tx">${escapeHtml(m.name)}<small>${choiceList(m)}</small></span></label>`).join('');
+  if (!sel && !off) return icard('', '<div class="pick">No modifiers yet. Add them on the Modifiers tab.</div>');
+  return icard('', sel + off, sel ? 'Tap a name to choose which of its choices this item offers. Drag ≡ to change the order.' : '');
+}
+// one modifier on this item: a switch per choice; the last one on stays on (a question with no answer can't be asked)
+function itemChoicePage(mid) {
+  const E = itemEdit, m = modsById().get(mid);
+  if (!m) return ['Modifiers', itemModsPage()];
+  const all = liveChoices(m), left = all.filter(o => !E.hideCh.includes(o.id)).length;
+  const rows = all.map(o => {
+    const on = !E.hideCh.includes(o.id), sub = [o.price ? `+${peso(o.price)}` : '', o.unavailable ? 'Unavailable' : ''].filter(Boolean).join(' · ');
+    return `<label class="fr"><span class="lb">${escapeHtml(o.name)}${sub ? `<small>${sub}</small>` : ''}</span><span class="ctl end"><input type="checkbox" class="sw" data-ch="${escapeHtml(o.id)}"${on ? ' checked' : ''}${on && left === 1 ? ' disabled' : ''}></span></label>`;
+  }).join('');
+  return [m.name, icard(`On ${escapeHtml(E.name.trim() || 'this item')}`, rows, `Off = this item never offers it. Other items still do. To rename or add choices, open ${escapeHtml(m.name)} on the Modifiers tab.`)];
+}
+function itemChoiceSet(t) {
+  const E = itemEdit, id = t.dataset.ch;
+  E.hideCh = t.checked ? E.hideCh.filter(x => x !== id) : [...E.hideCh, id].sort();
+  renderItemForm();
+}
+// a modifier ticked off takes its hidden choices with it; the list re-sorts (picked on top) unless a search is typed
+function itemModTick(t) {
+  const E = itemEdit, m = modsById().get(t.value);
+  if (!t.checked && m) { const ids = new Set(m.options.map(o => o.id)); E.hideCh = E.hideCh.filter(x => !ids.has(x)); }
+  if ($('#itemFindQ').value.trim()) return;
+  const f = $('#itemForm'), y = f.scrollTop;
+  renderItemForm(); f.scrollTop = y;
+}
+// ≡ drag: the row rides the finger, the others step aside; let go and the asking order is the new one
+function modGrip(e) {
+  const g = e.target.closest('#itemForm .pick.mod-on .grip');
+  if (!g || e.button) return;
+  const row = g.closest('.pick'), rows = [...row.parentElement.querySelectorAll('.pick.mod-on:not([hidden])')], i0 = rows.indexOf(row);
+  const h = row.offsetHeight, y0 = e.clientY;
+  let to = i0;
+  e.preventDefault(); g.setPointerCapture(e.pointerId); row.classList.add('dragging');
+  const move = (ev) => {
+    const dy = Math.min(Math.max(ev.clientY - y0, -i0 * h), (rows.length - 1 - i0) * h);
+    to = Math.round(i0 + dy / h);
+    row.style.transform = `translateY(${dy}px)`;
+    rows.forEach((r, i) => { if (r !== row) r.style.transform = i > i0 && i <= to ? `translateY(${-h}px)` : i < i0 && i >= to ? `translateY(${h}px)` : ''; });
+  };
+  const end = (ev) => {
+    ['pointermove', 'pointerup', 'pointercancel'].forEach((k, i) => g.removeEventListener(k, i ? end : move));
+    if (ev.type === 'pointercancel') to = i0;
+    const ids = rows.map(r => r.dataset.mod), was = new Set(ids), E = itemEdit;
+    ids.splice(to, 0, ...ids.splice(i0, 1));
+    let k = 0;
+    E.mods = E.mods.map(id => (was.has(id) ? ids[k++] : id));   // the shown rows swap places; the rest keep theirs
+    renderItemForm();
+  };
+  g.addEventListener('pointermove', move); g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+}
 function itemVariantPage(v) {
   const E = itemEdit, made = v.madeFrom.length > 0;
   const vin = (k, attrs = '') => `<input class="in" data-v="${k}" value="${escapeHtml(v[k])}" ${attrs}>`;
@@ -332,7 +413,7 @@ function itemReprice(from) {
 }
 // a tick list's search: hides the rows in place, so the box keeps its focus
 const IFIND = '<div class="pick-find"><input class="in" data-k="q" type="search" placeholder="Search" autocomplete="off"></div>';
-const filterPicks = q => { q = q.trim().toLowerCase(); $$('#itemForm .pick[data-find]').forEach(r => { r.hidden = !!q && !r.dataset.find.includes(q); }); };
+const filterPicks = q => { q = q.trim().toLowerCase(); $$('#itemForm .pick[data-find]').forEach(r => { r.hidden = !!q && !r.dataset.find.includes(q); }); modAllLabel(); };
 
 // The tile's colour (owner 2026-10-14): the sell tile wears it when there is no photo; the first, empty swatch = the plain tile.
 // A photo covers it, so with one the swatches are greyed and can't be tapped (owner 2026-10-22).
@@ -400,7 +481,7 @@ function saveItem() {
       cost: v.cost, price: C ? null : v.price, marginMode: E.marginMode, marginValue: C || askedPrice(v) ? 0 : marginFromPrice(v.cost, v.price, E.marginMode),
       groupId: fam ? gid : base.groupId || '', folders: E.catIds, folder: E.catIds[0] || '', unit: E.unit, soldBy: E.soldBy,
       hidden: E.hidden, reorderPoint: E.reorder || 0, trackStock: C || E.track, sellOutOfStock: !C && E.sellOut,
-      supplierId: E.main, altSupplierIds: E.sups, modifierIds: E.mods, weight: E.weight, size: E.size, length: E.length,
+      supplierId: E.main, altSupplierIds: E.sups, modifierIds: E.mods, hiddenChoiceIds: itemHidden(E), weight: E.weight, size: E.size, length: E.length,
       description: fam ? base.description || '' : E.desc.trim(), imageUrl: fam ? base.imageUrl || '' : E.img, color: fam ? base.color || '' : E.color,
       component: C, madeFrom: made }));
     if (!was.has(v.id) && row.trackStock && !made.length && Number(v.stock)) {   // applied before it's appended (balanceAfter)
@@ -438,7 +519,6 @@ const kindList = kind => (kind === 'cats' ? kindCats() : kind === 'discs' ? live
    loadModifiers().filter(m => !m.archived));
 const isOn = { cats: (p, id) => foldersOf(p).includes(id), mods: (p, id) => (p.modifierIds || []).includes(id) };
 const itemsWith = (kind, id, all = catalogItems()) => all.filter(it => it.members.some(m => isOn[kind](m, id)));
-const modSummary = m => m.options.map(o => `${escapeHtml(o.name)} +${peso(o.price)}`).join(' · ');
 
 // A .kinds switch: the pill slides from the old tab to `key`'s, a ::before placed by --x / --w. Until the first switch (and
 // after a resize, which moves the tabs) the current tab paints its own background instead. Items and Reports use it.
@@ -511,25 +591,32 @@ function renderKindRows(kind, band, rows) {
       <span class="num">${k === 'items' ? catalogItems().length : kindList(k).length}${ICHEV}</span></button>`).join('');
     return;
   }
-  const q = itemsFilter.q.trim().toLowerCase(), all = catalogItems(), cats = kind === 'cats';
-  const list = kindList(kind).filter(x => (!addPick || (!x.archived && toCells(catProducts(x.id)).length)) && (!q || [x.name, ...(x.options || []).map(o => o.name)].some(n => n.toLowerCase().includes(q))));   // Add tile: a category with nothing to sell makes no tile
+  const q = itemsFilter.q.trim().toLowerCase(), all = catalogItems(), cats = kind === 'cats', mods = kind === 'mods';
+  // a modifier is found by its choices too (Sweetness by "50%"); the choice that matched reads darker
+  const list = kindList(kind).filter(x => (!addPick || (!x.archived && toCells(catProducts(x.id)).length)) && (!q || [x.name, ...(mods ? liveChoices(x) : []).map(o => o.name)].some(n => n.toLowerCase().includes(q))));   // Add tile: a category with nothing to sell makes no tile
   const discs = kind === 'discs';
+  const hit = s => (q && s.toLowerCase().includes(q) ? `<b class="hit">${escapeHtml(s)}</b>` : escapeHtml(s));
   band.classList.add('k2');   // k2 hides the head: the rows say it (owner 2026-10-09)
   rows.innerHTML = list.map(x => `<button type="button" class="row cols k2" data-id="${escapeHtml(x.id)}">
       <span class="nm">${cats ? itemThumb(catLook(x)) : ''}<span class="tx"><b>${escapeHtml(x.name)}</b>${
-        discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? (addPickOn(x.id) ? '<small>Already a tile</small>' : '') : `<small>${modSummary(x) || 'No options yet'}</small>`}</span></span>
-      <span class="num">${discs ? esShown(x) : SalesMath.plural(addPick ? toCells(catProducts(x.id)).length : itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
+        discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? (addPickOn(x.id) ? '<small>Already a tile</small>' : '')
+        : `<small class="mline"><span class="ch">${choiceList(x, hit)}</span><span>&nbsp;· ${SalesMath.plural(itemsWith(kind, x.id, all).length, 'item')}</span></small>`}</span></span>
+      <span class="num">${discs ? esShown(x) : mods ? '' : SalesMath.plural(addPick ? toCells(catProducts(x.id)).length : itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
     || `<div class="empty"><b>${q ? 'No matches' : `No ${cats ? 'categories' : kind === 'addons' ? 'add-ons' : 'modifiers'} yet`}</b><span>${q ? 'Try a different name.' : kind === 'addons' ? ''
-      : cats ? 'Tap + to add one, then tick its items.' : `A modifier is a list of choices sold with an item, like Cut to length +${peso(20)}. Tap + to add one.`}</span></div>`;
+      : cats ? 'Tap + to add one, then tick its items.' : 'A question the POS asks when you sell an item, like Gift wrap or Assembly.'}</span></div>`;
 }
 
 function openKindEditor(kind, id) {
   if (editorDirty()) return askLeave(true, () => { closeItemEditor(); openKindEditor(kind, id); });
   const was = kindList(kind).find(x => x.id === id);
   const picked = new Set(was && isOn[kind] ? itemsWith(kind, was.id).map(it => it.id) : []);   // a discount isn't on items
-  kindEdit = { kind, id: was ? was.id : '', name: was ? was.name : '', picked, first: new Set(picked),
-    img: was?.imageUrl || '', color: was?.color || '', type: was?.type || 'percent', value: was ? String(was.value) : '', builtin: was?.builtin || '',
-    options: was ? (was.options || []).map(o => ({ ...o, price: String(o.price ?? '') })) : kind === 'mods' ? [{ id: newId(), name: '', price: '' }] : [] };
+  kindEdit = { kind, id: was ? was.id : '', sub: '', name: was ? was.name : '', picked, first: new Set(picked),
+    img: was?.imageUrl || '', color: was?.color || '', type: was?.type || 'percent', value: was ? String(was.value) : '', builtin: was?.builtin || '' };
+  if (kind === 'mods') {   // every choice, removed ones too (they stay as tombstones); a price is text while typed, '' = no extra
+    Object.assign(kindEdit, { picks: was?.picks || 'one', options: (was?.options || []).map(o => ({ ...o, price: o.price ? String(o.price) : '' })),
+      u0: Object.fromEntries((was?.options || []).map(o => [o.id, !!o.unavailable])),   // Status as it opened (saveKind)
+      hide: modHideOf(was), af: { ...MOD_AF_DEF } });
+  }
   itemEdit = null;
   renderKindForm();
   $('#itemsView').classList.add('editing');
@@ -539,12 +626,13 @@ function openKindEditor(kind, id) {
 }
 
 function renderKindForm(dir) {
+  if (kindEdit.kind === 'mods') return renderModForm(dir);
   const K = kindEdit, cats = K.kind === 'cats', head = cats ? lookHead(catLook(K)) : '';
   $('#itemForm').closest('.editor').classList.toggle('sub', !!K.sub);   // a subpage has only Back
   $('#itemFind').hidden = true;   // its own search stays in the form
   $('#itemTitle').textContent = K.sub ? 'Tile appearance' : K.name || `New ${KIND[K.kind][0]}`;
   if (K.sub) { $('#itemForm').innerHTML = `<div class="form ${dir || ''}">${lookPage(catLook(K))}</div>`; return; }
-  $('#itemMore').hidden = false;   // a category's Delete, a modifier's Archive
+  $('#itemMore').hidden = false;   // a category's or a discount's Delete
   if (K.kind === 'discs') {   // name, % or amount (a dropdown, the ⋯ menu's morph), value; Senior / PWD keep their name and stay %
     const pct = K.type === 'percent', unit = pct ? '%' : icurrency();
     $('#itemForm').innerHTML = `<div class="form">${head}${icard('', [
@@ -556,13 +644,8 @@ function renderKindForm(dir) {
   }
   // What it's on now comes first, so the ticks you'd change are at the top; the order holds while you tick.
   const items = catalogItems().sort((a, b) => (K.first.has(b.id) - K.first.has(a.id)) || a.name.localeCompare(b.name));
-  const opt = (o, i) => `<div class="opt" data-i="${i}">
-      <input class="in" data-o="name" value="${escapeHtml(o.name)}" placeholder="Option name">
-      <input class="in num" data-o="price" value="${escapeHtml(o.price)}" ${IMONEY} placeholder="0.00" aria-label="Price">
-      <button type="button" class="del" data-ka="opt-del" aria-label="Remove option" title="Remove option"><svg class="ic" viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
   $('#itemForm').innerHTML = `<div class="form ${dir || ''}">${head}
-    ${icard('', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like ${cats ? 'Plumbing' : 'Cutting'}">`))}
-    ${cats ? '' : icard('Options', K.options.map(opt).join('') + '<button type="button" class="fr add" data-ka="opt-add">Add option</button>', "The price is added to the item's.")}
+    ${icard('', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like Plumbing">`))}
     ${icard(`Items <span class="num" id="kindCount">· ${K.picked.size}</span>`, (items.length > 8 ? IFIND : '') + items.map(it => `<label class="pick" data-find="${escapeHtml(it.name.toLowerCase())}"><input type="checkbox" data-pick="${escapeHtml(it.id)}"${K.picked.has(it.id) ? ' checked' : ''}>
           ${itemThumb(it)}<span class="tx">${escapeHtml(it.name)}</span></label>`).join(''))}
   </div>`;
@@ -572,18 +655,140 @@ function kindInput(t) {
   const K = kindEdit;
   if (t.dataset.k === 'name') { K.name = t.value; $('#itemTitle').textContent = K.name || `New ${KIND[K.kind][0]}`; }
   else if (t.dataset.k === 'value') K.value = t.value;
-  else if (t.dataset.o) K.options[Number(t.closest('.opt').dataset.i)][t.dataset.o] = t.value;
+  else if (t.dataset.c) modCur()[t.dataset.c] = t.value;   // a choice's Name / Price
+  else if (t.dataset.hon) modHonSet(t);
   else if (t.dataset.pick) {
     K.picked[t.checked ? 'add' : 'delete'](t.dataset.pick);
     $('#kindCount').textContent = `· ${K.picked.size}`;
+    modAllLabel();
   }
 }
 function kindClick(b) {
-  const K = kindEdit;
-  if (b.dataset.ka === 'opt-add') { K.options.push({ id: newId(), name: '', price: '' }); renderKindForm(); $$('#itemForm .opt [data-o=name]').pop().focus(); }
-  if (b.dataset.ka === 'opt-del') { K.options.splice(Number(b.closest('.opt').dataset.i), 1); renderKindForm(); }
-  if (b.dataset.ka === 'type') openMenu(b, [['percent', 'Percent'], ['amount', 'Amount']].map(([k, label]) => ({ label, cur: K.type === k,
-    run: () => { K.type = k; renderKindForm(); $('#itemForm [data-k=value]').focus(); } })), { w: 200, right: true });
+  const K = kindEdit, ka = b.dataset.ka, menu = (opts, cur, run) => openMenu(b, opts.map(([k, label]) => ({ label, cur: cur === k, run: () => run(k) })), { w: 200, right: true });
+  if (b.dataset.sub) return itemGo(b.dataset.sub);   // a modifier's subpages
+  if (ka === 'type') menu([['percent', 'Percent'], ['amount', 'Amount']], K.type, k => { K.type = k; renderKindForm(); $('#itemForm [data-k=value]').focus(); });
+  if (ka === 'picks') menu(Object.entries(MODIFIER_PICKS), K.picks, k => { K.picks = k; renderKindForm(); });
+  if (ka === 'status') menu([[false, 'Available'], [true, 'Unavailable']], !!modCur().unavailable, v => { modCur().unavailable = v; renderKindForm(); });
+  if (ka === 'choice-add') {
+    const o = { id: newId(), name: '', price: '', unavailable: false, removed: false, fresh: true };
+    K.options.push(o); itemGo('choice:' + o.id);
+    $('#itemForm [data-c=name]').focus({ preventScroll: true });
+  }
+  if (ka === 'choice-del') {   // a saved choice stays as a tombstone (removed) so a sync never brings it back; off every item on Save
+    const o = modCur();
+    if (o.fresh) K.options.splice(K.options.indexOf(o), 1); else o.removed = true;
+    delete K.hide[o.id];
+    itemGo('', true);
+  }
+  if (ka === 'drop') dropKind();
+  if (ka === 'ask-filter') openFilterSheet(b, () => [
+    ['Category', 'cat', [['', 'All'], ...itemCategories().map(c => [c, c])]],
+    ['Show', 'on', [['', 'All'], ['sel', 'Selected'], ['not', 'Not selected']]],
+  ], K.af, MOD_AF_DEF, () => renderKindForm());
+  if (ka === 'ask-all') {   // the rows on screen (filter and search applied): all on, or all off when they already are
+    const box = $$('#itemForm .pick:not([hidden]) [data-pick]'), on = !box.every(x => x.checked);
+    box.forEach(x => { x.checked = on; K.picked[on ? 'add' : 'delete'](x.dataset.pick); });
+    $('#kindCount').textContent = `· ${K.picked.size}`;
+    modAllLabel();
+  }
+}
+
+// ---------- A modifier's pages: the modifier, a choice, which items ask it, what is hidden where ----------
+// K.sub: '' | 'choice:<id>' (Add / Edit choice) | 'items' (Asked on) | 'hidden'. Save on any of them writes it all (owner 2026-10-24).
+const MOD_AF_DEF = { cat: '', on: '' };
+const PICKS_NOTE = { one: 'Exactly one', upto2: 'None, one or two', upto3: 'None, or up to three', any: 'None, one, or as many as they like' };
+const modCur = () => kindEdit.options.find(o => o.id === kindEdit.sub.slice(kindEdit.sub.indexOf(':') + 1));
+// { choiceId: [item ids it's hidden on] }, from the items that ask this modifier
+function modHideOf(m) {
+  const ids = new Set((m?.options || []).map(o => o.id)), out = {};
+  if (m) itemsWith('mods', m.id).forEach(it => it.hideCh.forEach(c => { if (ids.has(c)) (out[c] ||= []).push(it.id); }));
+  Object.values(out).forEach(a => a.sort());
+  return out;
+}
+const modAllLabel = () => { const a = $('#itemForm [data-ka=ask-all]'); if (a) a.textContent = $$('#itemForm .pick:not([hidden]) [data-pick]').every(x => x.checked) ? 'Select none' : 'Select all'; };
+const modPickBtn = (ka, text) => `<button type="button" class="act st-pick" data-ka="${ka}" aria-haspopup="menu" aria-expanded="false"><span>${text}</span>${IUPDOWN}</button>`;
+const modPrice = p => (Number(p) > 0 ? `+${peso(round2(Number(p)))}` : '');
+// the items a choice is hidden on, of those still asked (Save writes only those, modWriteHidden)
+const modHidOn = (K, o) => (K.hide[o.id] || []).filter(id => K.picked.has(id));
+
+function renderModForm(dir) {
+  const K = kindEdit, s = K.sub, o = s.includes(':') ? modCur() : null;
+  const [title, html] = s === 'items' ? ['Asked on', modItemsPage()]
+    : s === 'hidden' ? ['Hidden', modHiddenPage()]
+    : o ? [o.fresh ? 'Add choice' : 'Edit choice', modChoicePage(o)]
+    : [K.name || 'New modifier', modMainPage()];
+  $('#itemForm').closest('.editor').classList.remove('sub');   // every subpage keeps Save too (owner 2026-10-24)
+  $('#itemMore').hidden = true;   // Delete modifier is the page's last block, as the item's Archive
+  $('#itemFind').hidden = true;
+  $('#itemTitle').textContent = title;
+  $('#itemForm').innerHTML = `<div class="form ${dir || ''}">${html}</div>`;
+}
+function modMainPage() {
+  const K = kindEdit, nHid = K.options.filter(o => !o.removed).reduce((n, o) => n + modHidOn(K, o).length, 0);
+  const crow = o => {
+    const n = modHidOn(K, o).length, sub = [o.unavailable ? 'Unavailable' : '', n ? `Hidden on ${SalesMath.plural(n, 'item')}` : ''].filter(Boolean).join(' · ');
+    return `<button type="button" class="fr nav" data-sub="choice:${escapeHtml(o.id)}"><span class="lb">${escapeHtml(o.name)}${sub ? `<small>${sub}</small>` : ''}</span>
+      <span class="ctl end"><span class="vv num">${modPrice(o.price)}</span>${ICHEV}</span></button>`;
+  };
+  return icard('', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like Gift wrap">`), '', ' r')
+    + icard('', ifr('Customer picks', modPickBtn('picks', MODIFIER_PICKS[K.picks]), true), PICKS_NOTE[K.picks], ' r')
+    + icard('Choices', K.options.filter(o => !o.removed).map(crow).join('') + '<button type="button" class="fr add" data-ka="choice-add">Add choice</button>', '', ' r')
+    + icard('', inav('Asked on', K.picked.size ? SalesMath.plural(K.picked.size, 'item') : 'None', 'items')
+      + (nHid ? inav('Hidden', String(nHid), 'hidden') : ''), '', ' r')
+    + (K.id ? icard('', '<button type="button" class="fr add red" data-ka="drop">Delete modifier</button>') : '');
+}
+function modChoicePage(o) {
+  return icard('', ifr('Name', `<input class="in" data-c="name" value="${escapeHtml(o.name)}" placeholder="Add name, like Large">`)
+      + ifr('Price', `<input class="in num" data-c="price" value="${escapeHtml(o.price)}" ${IMONEY} placeholder="No extra">`), 'Added to the item’s price. Empty = no extra.', ' r')
+    + (o.fresh ? '' : icard('', ifr('Status', modPickBtn('status', o.unavailable ? 'Unavailable' : 'Available'), true),
+        'Unavailable: greyed on the POS, on every item. Set it back to Available when it’s in. To hide it on one item, open the item.', ' r')
+      + icard('', '<button type="button" class="fr add red" data-ka="choice-del">Remove choice</button>'));
+}
+// Hidden: every choice hidden somewhere, a block per choice, an on/off per item; on = offered again and it leaves the
+// list. All on one page, as Quick stock (owner 2026-10-24). A draft like the rest: Save writes it.
+function modHiddenPage() {
+  const K = kindEdit, by = new Map(catalogItems().map(it => [it.id, it]));
+  const sw = (o, it) => `<label class="fr"><span class="lb">${escapeHtml(it.name)}</span><span class="ctl end"><input type="checkbox" class="sw" data-hon="${escapeHtml(it.id)}" data-uc="${escapeHtml(o.id)}"></span></label>`;
+  const secs = K.options.filter(o => !o.removed).map(o => [o, modHidOn(K, o).map(id => by.get(id)).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name))])
+    .filter(([, its]) => its.length).map(([o, its], i, all) => icard(escapeHtml(o.name), its.map(it => sw(o, it)).join(''), i === all.length - 1 ? 'Turn one on to offer it on that item again.' : ''));
+  return secs.join('') || icard('', '<div class="pick">Nothing is hidden.</div>');
+}
+function modHonSet(t) {
+  const K = kindEdit, c = t.dataset.uc;
+  K.hide[c] = (K.hide[c] || []).filter(x => x !== t.dataset.hon);
+  if (!K.hide[c].length) delete K.hide[c];
+  renderKindForm();
+}
+// Asked on: Filters (category, selected or not), then the items with Select all; what it's on now comes first
+function modItemsPage() {
+  const K = kindEdit, f = K.af, on = Object.keys(MOD_AF_DEF).some(k => f[k] !== MOD_AF_DEF[k]);
+  const vis = catalogItems().filter(it => !it.component   // a part is never sold, so never asked
+      && (!f.cat || f.cat.some(c => it.cats.includes(c))) && (!f.on || f.on.includes(K.picked.has(it.id) ? 'sel' : 'not')))
+    .sort((a, b) => (K.first.has(b.id) - K.first.has(a.id)) || a.name.localeCompare(b.name));
+  const all = vis.length && vis.every(it => K.picked.has(it.id));
+  return icard('', `<button type="button" class="fr nav" data-ka="ask-filter"><span class="lb">Filters</span><span class="ctl end"><span class="vv${on ? '' : ' ph'}">${on ? 'On' : 'None'}</span>${ICHEV}</span></button>`, '', ' r')
+    + icard(`Items <span class="num" id="kindCount">· ${K.picked.size}</span>${vis.length ? `<button type="button" class="link" data-ka="ask-all">${all ? 'Select none' : 'Select all'}</button>` : ''}`,
+      (vis.length > 8 ? IFIND : '') + (vis.map(it => `<label class="pick" data-find="${escapeHtml(it.name.toLowerCase())}"><input type="checkbox" data-pick="${escapeHtml(it.id)}"${K.picked.has(it.id) ? ' checked' : ''}>
+          ${itemThumb(it)}<span class="tx">${escapeHtml(it.name)}</span></label>`).join('') || '<div class="pick">No items match.</div>'));
+}
+// Back on a modifier's subpage: a new choice left blank goes; else the modifier
+function kindBack() {
+  const K = kindEdit, o = K.kind === 'mods' && K.sub.includes(':') ? modCur() : null;
+  if (o?.fresh) { if (String(o.name).trim()) delete o.fresh; else K.options.splice(K.options.indexOf(o), 1); }
+  itemGo('', true);
+}
+// What was hidden where, onto the items that ask it: only live choices, never all of them (then none is hidden)
+function modWriteHidden(K, at) {
+  const mine = new Set(K.options.map(o => o.id)), live = K.options.filter(o => !o.removed);
+  const keyOf = p => (p.groupId && groupById(p.groupId) ? p.groupId : p.id);
+  state.products = state.products.map(p => {
+    if (p.archived) return p;
+    const key = keyOf(p), now = (p.hiddenChoiceIds || []).filter(c => !mine.has(c));
+    let add = K.picked.has(key) ? live.filter(o => (K.hide[o.id] || []).includes(key)).map(o => o.id) : [];
+    if (add.length === live.length) add = [];
+    const next = [...now, ...add].sort();
+    return JSON.stringify(next) === JSON.stringify([...(p.hiddenChoiceIds || [])].sort()) ? p : { ...p, hiddenChoiceIds: next, updatedAt: at };
+  });
 }
 
 // Puts the category / modifier on every variant of the ticked items and takes it off the rest (bo-catalog setCats):
@@ -605,7 +810,7 @@ function tagItems(kind, id, keys, at) {
 
 function saveKind() {
   const K = kindEdit, word = KIND[K.kind][0], name = K.name.trim(), at = new Date().toISOString();
-  if (!name) { showToast(`Give the ${word} a name`); $('#itemForm [data-k=name]').focus(); return; }
+  if (!name) { if (K.sub) kindBack(); showToast(`Give the ${word} a name`); $('#itemForm [data-k=name]').focus(); return; }
   if (kindList(K.kind).some(x => x.id !== K.id && x.name.toLowerCase() === name.toLowerCase())) { showToast(`A ${word} has that name already`); return; }
   const id = K.id || newId();
   if (K.kind === 'discs') {
@@ -626,12 +831,18 @@ function saveKind() {
     state.folders = K.id ? state.folders.map(f => (f.id === id ? row : f)) : state.folders.concat(row);
     writeJsonStorage(STORAGE_FOLDERS, state.folders);
   } else {
-    const named = K.options.filter(o => String(o.name).trim());
-    if (named.some(o => !(Number(o.price) >= 0))) { showToast('A price must be 0 or more'); return; }
-    const list = loadModifiers();
-    const row = stampRow({ ...MODIFIER_DEFAULTS, ...list.find(m => m.id === id), id, name,
-      options: named.map(o => ({ id: o.id, name: String(o.name).trim(), price: round2(o.price) })) });
+    const live = K.options.filter(o => !o.removed), names = live.map(o => String(o.name).trim().toLowerCase());
+    if (!live.length) { showToast('Add a choice'); return; }
+    if (names.some(n => !n)) { showToast('Name every choice'); return; }
+    if (new Set(names).size < names.length) { showToast('Two choices have the same name'); return; }
+    if (live.some(o => !(Number(o.price || 0) >= 0))) { showToast('A price must be 0 or more'); return; }
+    const list = loadModifiers(), now = new Map((list.find(m => m.id === id)?.options || []).map(o => [o.id, o]));
+    // Status as stored now unless this page changed it (a POS may have set Unavailable while it was open); removed stays removed
+    const unav = o => (!!o.unavailable !== !!K.u0[o.id] ? !!o.unavailable : !!now.get(o.id)?.unavailable);
+    const row = stampRow({ ...MODIFIER_DEFAULTS, ...list.find(m => m.id === id), id, name, picks: K.picks,   // prices round2 pesos, as products'
+      options: K.options.map(o => ({ id: o.id, name: String(o.name).trim(), price: round2(Number(o.price) || 0), unavailable: unav(o), removed: !!o.removed || !!now.get(o.id)?.removed })) });
     saveModifiers(K.id ? list.map(m => (m.id === id ? row : m)) : list.concat(row));
+    modWriteHidden({ ...K, id }, at);   // tagItems below saves the products
   }
   tagItems(K.kind, id, K.picked, at);
   closeKindEditor('Saved');
@@ -653,8 +864,15 @@ function dropKind() {
     return showConfirm({ title: `Delete “${K.name}”?`, message: 'Sales that used it keep it on their receipt.', okText: 'Delete', danger: true,
       onConfirm: () => { saveDiscounts(loadDiscounts().map(d => (d.id === K.id ? stampRow({ ...d, archived: true }) : d))); closeKindEditor('Deleted'); } });
   }
-  showConfirm({ title: `Archive “${K.name}”?`, message: 'It leaves the POS; sales that used it keep it on their receipt.', okText: 'Archive',
-    onConfirm: () => { saveModifiers(loadModifiers().map(m => (m.id === K.id ? stampRow({ ...m, archived: true }) : m))); closeKindEditor('Archived'); } });
+  // a modifier: off every item (its hidden choices too), the row archived so old sales and a sync still know it
+  showConfirm({ title: `Delete “${K.name}”?`, message: 'It comes off every item. Sales that used it keep it on their receipt.', okText: 'Delete', danger: true,
+    onConfirm: () => {
+      const list = loadModifiers(), ids = new Set((list.find(m => m.id === K.id)?.options || []).map(o => o.id));
+      state.products = state.products.map(p => ((p.hiddenChoiceIds || []).some(c => ids.has(c)) ? { ...p, hiddenChoiceIds: p.hiddenChoiceIds.filter(c => !ids.has(c)), updatedAt: at } : p));
+      tagItems('mods', K.id, new Set(), at);
+      saveModifiers(list.map(m => (m.id === K.id ? stampRow({ ...m, archived: true }) : m)));
+      closeKindEditor('Deleted');
+    } });
 }
 function closeKindEditor(msg) {
   if (itemsFilter.cat) {   // a picked category was renamed or deleted: it lets go

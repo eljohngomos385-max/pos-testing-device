@@ -166,7 +166,9 @@
       wrap(i.name, cols).forEach(text);
       const qty = ('  ' + i.qty + ' ' + (i.unit || '')).replace(/\s+$/, '') + ' x ' + cash(i.price);
       row(qty, cash(amount));
-      if (i.note) wrap(i.note, cols - 2).forEach(s => text('  ' + s));   // the line's note, under it like its qty
+      // its modifier answers ('Sweetness: 50%'), then its note, under it like its qty
+      SM().answerLines(i, cash).forEach(a => wrap(a, cols - 2).forEach(s => text('  ' + s)));
+      if (i.note) wrap(i.note, cols - 2).forEach(s => text('  ' + s));
     });
 
     rule();

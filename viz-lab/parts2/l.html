@@ -1,0 +1,269 @@
+<style>
+/* part l (round 4) — distribution and time formats on VIZ.days / VIZ.heat. Every selector .vl-. */
+.vl-q { color: var(--ink-4); font-weight: 400; }
+.vl-svg { display: block; overflow: visible; }
+.vl-svg text { font-family: var(--font); }
+.vl-ax { font-size: 11px; fill: var(--ink-5); font-variant-numeric: tabular-nums; }
+.vl-tg { font-size: 11px; font-weight: 500; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+.vl-ct { font-size: 11px; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+.vl-pad { padding: 8px 12px 6px; }
+.vl-big { display: flex; align-items: baseline; gap: 8px; padding: 12px 12px 4px; }
+.vl-big .kpi-value { font-size: 20px; }
+.vl-big .vl-q { font-size: 12px; }
+/* rows: the rows are the legend */
+.vl-rows > .row .nm { display: flex; align-items: center; gap: 8px; }
+.vl-d { color: var(--ink-4); font-size: 12px; font-variant-numeric: tabular-nums; }
+.vl-a { flex: none; min-width: 84px; text-align: right; }
+.vl-p { flex: none; width: 46px; text-align: right; }
+.vl-n.w { width: 92px; }
+.vl-hd { white-space: nowrap; }
+.vl-n { flex: none; width: 68px; white-space: nowrap; text-align: right; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vl-rows > .row.vl-hd, .vl-lanes > .vl-ln.vl-hd { min-height: 22px; font-size: 11px; color: var(--ink-4); }
+.vl-rows > .row.vl-hd:hover { background: none; }
+.badge.vl-up { background: var(--up-tint); color: var(--up); }
+/* lanes: pill | chart | exact cells, one lane per weekday / month */
+.vl-lanes { padding: 4px 0; }
+.vl-ln { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-top: 1px solid var(--row-line); }
+.vl-ln:first-child, .vl-ln.vl-hd + .vl-ln, .vl-ln.vl-axl { border-top-color: transparent; }
+.vl-ln > .vl-l { flex: none; width: 52px; }
+.vl-ln > .vl-c { flex: 1; min-width: 0; align-self: stretch; }
+.vl-ln > .vl-c > svg { height: 100%; }
+.vl-ln .vl-a, .vl-ln .vl-n { font-size: 13px; }
+.vl-ln .vl-a { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.vl-ln.vl-hd .vl-a { font-weight: 400; color: var(--ink-4); font-size: 11px; }
+.vl-ln.vl-axl { height: 20px; }
+</style>
+
+<section class="cat" id="vl-hist" data-nav="Spread v4">
+  <h2>How the days spread</h2>
+  <p class="why">Histograms: every open day (Mon–Sat, last 26 weeks) dropped into a ₱ bucket, the ₱60k daily target marked. Green = at or over target, grey = under. Rows give the count, best, typical and worst.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>L4-1</b> Histogram · 156 days in ₱5k buckets, good days in green</div><div class="card" id="vl-1"></div></div>
+    <div class="spec"><div class="tag"><b>L4-2</b> Histogram · 72 open hours by how many orders each brought</div><div class="card" id="vl-2"></div></div>
+    <div class="spec"><div class="tag"><b>L4-3</b> Dot histogram · one dot per day, tinted by weekday</div><div class="card" id="vl-3"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vl-dots" data-nav="Dots v4">
+  <h2>Every day as a dot</h2>
+  <p class="why">Beeswarms and friendly range rows: one dot per day, one lane per weekday or month. Worst · Typical · Best in plain columns beside each lane.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>L4-4</b> Beeswarm by weekday · 26 dots a lane, typical beside</div><div class="card" id="vl-4"></div></div>
+    <div class="spec"><div class="tag"><b>L4-5</b> Range rows by weekday · worst → best, middle half solid</div><div class="card" id="vl-5"></div></div>
+    <div class="spec"><div class="tag"><b>L4-6</b> One swarm · last 4 weeks in blue against the 22 before</div><div class="card" id="vl-6"></div></div>
+    <div class="spec"><div class="tag"><b>L4-7</b> Range rows by month · worst → best, middle half solid</div><div class="card" id="vl-7"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vl-ridge" data-nav="Ridges v4">
+  <h2>Ridgelines</h2>
+  <p class="why">One soft hill per weekday, stacked like mountain ranges. Hours of the day (orders, 7 days) and how each weekday's sales spread (26 weeks).</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>L4-8</b> Ridgeline · orders by hour, one hill per weekday</div><div class="card" id="vl-8"></div></div>
+    <div class="spec"><div class="tag"><b>L4-9</b> Ridgeline · how each weekday's sales spread</div><div class="card" id="vl-9"></div></div>
+    <div class="spec"><div class="tag"><b>L4-10</b> Ridgeline · spread per month, target marked</div><div class="card" id="vl-10"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vl-stream" data-nav="26 weeks v4">
+  <h2>26 weeks</h2>
+  <p class="why">Streamgraphs (one soft band per weekday, the rows are the key) and a day barcode, one stripe per day.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>L4-11</b> Streamgraph · one stream per weekday, 26 weeks</div><div class="card" id="vl-11"></div></div>
+    <div class="spec"><div class="tag"><b>L4-12</b> Streamgraph · the day's orders, one stream per weekday</div><div class="card" id="vl-12"></div></div>
+    <div class="spec"><div class="tag"><b>L4-13</b> Day barcode · 182 days, green = target met</div><div class="card" id="vl-13"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('vl-' + n), T = V.dailyTarget;
+  const sum = a => a.reduce((s, x) => s + x, 0);
+  const pc = (a, t) => V.pct(a / t * 100);
+  const q = (a, p) => { const s = [...a].sort((x, y) => x - y), i = (s.length - 1) * p, lo = Math.floor(i); return s[lo] + (s[Math.ceil(i)] - s[lo]) * (i - lo); };
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vl-q">${r}</span>`}</div>`;
+  const pill = (nm, t) => `<span class="badge ${t}">${nm}</span>`;
+  const row = (nm, cells, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span>${cells}</div>`;
+  const rows = r => `<div class="rows vl-rows">${r.join('')}</div>`;
+  const amt = v => `<span class="amt vl-a">${V.peso(v)}</span>`;
+  const cnt = (n, of) => `<span class="vl-n">${of ? n + ' of ' + of : n}</span>`;
+  const big = (v, sub) => `<div class="vl-big"><span class="kpi-value">${v}</span><span class="vl-q">${sub}</span></div>`;
+  const fill = (el, sel, f) => { const c = el.querySelector(sel); const cs = getComputedStyle(c); c.innerHTML = f(c.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)); };
+
+  // days: VIZ.days is 26 Mon–Sun weeks ending today (Sun, not started). Dates rebuilt from the index (the ISO string shifts in UTC+8).
+  const DAYS = V.days.map((d, i) => ({ ...d, i, wk: Math.floor(i / 7), dt: new Date(2026, 9, 18 - (V.days.length - 1 - i)) }));
+  const OPEN = DAYS.filter(d => d.dow), SUN = DAYS.filter(d => !d.dow && d.net);
+  const fd = d => d.dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const md = dt => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((nm, k) => ({ nm, t: 't' + (k + 1), dow: k + 1 }));
+  WD.forEach(w => { w.days = OPEN.filter(d => d.dow === w.dow); w.v = w.days.map(d => d.net); });
+  const best = a => a.reduce((m, d) => d.net > m.net ? d : m), worst = a => a.reduce((m, d) => d.net < m.net ? d : m);
+  const good = a => a.filter(d => d.net >= T).length;
+  const LO = 30000, HI = 90000;   // every open day sits between ₱32k and ₱89k
+  const ticks = (lo, hi, st) => { const r = []; for (let v = lo; v <= hi; v += st) r.push(v); return r; };
+
+  // smooth line through points (Catmull-Rom → Bézier), y clamped so a hill never dips under its base
+  const smooth = (P, base) => P.map((p, i) => { if (!i) return `M${p[0].toFixed(1)} ${p[1].toFixed(1)}`;
+    const a = P[i - 2] || P[i - 1], b = P[i - 1], c = p, d = P[i + 1] || p, cl = y => base == null ? y : Math.min(y, base);
+    return `C${(b[0] + (c[0] - a[0]) / 6).toFixed(1)} ${cl(b[1] + (c[1] - a[1]) / 6).toFixed(1)} ${(c[0] - (d[0] - b[0]) / 6).toFixed(1)} ${cl(c[1] - (d[1] - b[1]) / 6).toFixed(1)} ${c[0].toFixed(1)} ${c[1].toFixed(1)}`; }).join('');
+  // a smooth density of values over [lo, hi] (Gaussian, bandwidth bw) — the ridge shape of a spread
+  const dens = (vals, lo, hi, bw, n = 60) => Array.from({ length: n + 1 }, (_, k) => { const x = lo + (hi - lo) * k / n;
+    return [x, sum(vals.map(v => Math.exp(-(((x - v) / bw) ** 2) / 2))) / vals.length]; });
+  // beeswarm: each dot goes to the nearest free height on its x
+  const swarm = (pts, r) => { const placed = [];
+    pts.sort((a, b) => a.x - b.x).forEach(p => { for (let k = 0; k < 200; k++) { const y = (k % 2 ? 1 : -1) * Math.ceil(k / 2);
+      if (placed.every(o => Math.abs(o.x - p.x) >= 2 * r || (o.x - p.x) ** 2 + (o.y - y) ** 2 >= (2 * r) ** 2)) { p.y = y; break; } } placed.push(p); });
+    return pts; };
+  // lanes: one per item — pill | chart | right cells. draw(item, w, h) returns svg body for the chart cell.
+  const lanes = (el, list, h, draw, right, head = '', axis) => {
+    const ln = (l, r, cls = '', hh) => `<div class="vl-ln ${cls}"${hh ? ` style="height:${hh}px"` : ''}><span class="vl-l">${l}</span><span class="vl-c"></span>${r}</div>`;
+    el.insertAdjacentHTML('beforeend', `<div class="vl-lanes">${head ? ln('', head, 'vl-hd', 22) : ''}${list.map(x => ln(pill(x.nm, x.t), right(x), '', x.h || h)).join('')}${axis ? ln('', right(null), 'vl-axl') : ''}</div>`);
+    const cells = [...el.querySelectorAll('.vl-ln:not(.vl-hd) > .vl-c')], w = cells[0].clientWidth;
+    list.forEach((x, k) => cells[k].innerHTML = `<svg class="vl-svg" width="${w}" height="${x.h || h}">${draw(x, w, x.h || h)}</svg>`);
+    if (axis) cells[list.length].innerHTML = `<svg class="vl-svg" width="${w}" height="20">${axis(w)}</svg>`;
+  };
+  const xs = (lo, hi, w, pad = 6) => v => pad + (v - lo) / (hi - lo) * (w - 2 * pad);
+  const pesoAxis = (lo, hi, st) => w => { const x = xs(lo, hi, w); return ticks(lo, hi, st).map(v => `<text class="vl-ax" x="${x(v)}" y="14" text-anchor="middle">${V.pesoK(v)}</text>`).join(''); };
+  const tline = (x, h, y0 = 0) => `<line x1="${x}" x2="${x}" y1="${y0}" y2="${h}" style="stroke:var(--ink-4);stroke-dasharray:3 3"/>`;
+
+  // histogram: buckets of width st over [lo, hi), green from the target up, count over each bar
+  const hist = (w, vals, lo, hi, st, tgt, tlabel, unit) => { const H = unit ? 154 : 140, top = 16, bot = unit ? 34 : 20, n = (hi - lo) / st, x = xs(lo, hi, w, 4);
+    const c = Array(n).fill(0); vals.forEach(v => c[Math.min(n - 1, Math.floor((v - lo) / st))]++);
+    const m = Math.max(...c), y = k => top + (H - top - bot) * (1 - k / m);
+    const bars = c.map((k, i) => { const a = lo + i * st, x0 = x(a) + 1.5, bw = x(a + st) - x(a) - 3;
+      return (k ? `<rect x="${x0}" y="${y(k)}" width="${bw}" height="${H - bot - y(k)}" rx="3" style="fill:var(--${tgt == null ? 't3' : a >= tgt ? 'up-tint' : 't8'})"><title>${unit ? a + ' ' + unit + ' · ' + k + ' hours' : V.pesoK(a) + '–' + V.pesoK(a + st) + ' · ' + k + ' days'}</title></rect>` : '')
+        + (k ? `<text class="vl-ct" x="${x0 + bw / 2}" y="${y(k) - 4}" text-anchor="middle">${k}${unit ? ' h' : ''}</text>` : ''); }).join('');
+    const ax = unit ? c.map((_, i) => `<text class="vl-ax" x="${x(lo + (i + .5) * st)}" y="${H - 18}" text-anchor="middle">${lo + i * st}</text>`).join('') + `<text class="vl-ax" x="${w / 2}" y="${H - 3}" text-anchor="middle">${unit}</text>`
+      : ticks(lo, hi, st * 2).map(v => `<text class="vl-ax" x="${x(v)}" y="${H - 4}" text-anchor="middle">${V.pesoK(v)}</text>`).join('');
+    return `<svg class="vl-svg" width="${w}" height="${H}"><line x1="0" x2="${w}" y1="${H - bot}" y2="${H - bot}" style="stroke:var(--grid)"/>${bars}${tgt == null ? '' : tline(x(tgt), H - bot, 2) + `<text class="vl-tg" x="${x(tgt) + 5}" y="10">${tlabel}</text>`}${ax}</svg>`; };
+  const bwRows = (list, unit) => { const b = best(list), w = worst(list), m = q(list.map(d => d.net), .5);
+    return [row(`Best ${unit} <span class="vl-d">${unit === 'day' ? fd(b) : 'week of ' + md(b.dt)}</span>`, amt(b.net)),
+      row(`Typical ${unit} <span class="vl-d">half above, half below</span>`, amt(Math.round(m))),
+      row(`Worst ${unit} <span class="vl-d">${unit === 'day' ? fd(w) : 'week of ' + md(w.dt)}</span>`, amt(w.net))]; };
+
+  // ---------- How the days spread ----------
+  { const el = $(1), G = good(OPEN), N = OPEN.length;
+    el.innerHTML = band('Daily net sales', 'Mon–Sat · last 26 weeks') + big(`${G} good days`, `of ${N} · ${pc(G, N)} hit ₱60k`) + '<div class="vl-pad vl-h"></div>'
+      + rows([row(pill('₱60k and over', 'vl-up'), cnt(G) + `<span class="pct vl-p">${pc(G, N)}</span>`), row(pill('Under ₱60k', 't8'), cnt(N - G) + `<span class="pct vl-p">${pc(N - G, N)}</span>`), ...bwRows(OPEN, 'day')]);
+    fill(el, '.vl-h', w => hist(w, OPEN.map(d => d.net), LO, HI, 5000, T, 'Target ₱60k')); }
+
+  // L4-2 the 72 open hours of the week (VIZ.heat, Mon–Sat × 7 AM–6 PM) by orders in the hour
+  { const el = $(2), S = V.heat.filter(h => h.d !== 'Sun').flatMap(h => h.v.map((n, k) => ({ d: h.d, h: V.hours[k].replace('a', ' AM').replace('p', ' PM'), n })));
+    const ns = S.map(x => x.n), hi = Math.max(...ns), lo = Math.min(...ns), m = q(ns, .5), typ = m % 1 ? `${Math.floor(m)}–${Math.ceil(m)}` : m, at = v => S.filter(x => x.n === v), nm = l => l.slice(0, 2).map(x => x.d + ' ' + x.h).join(', ') + (l.length > 2 ? ` +${l.length - 2} more` : '');
+    el.innerHTML = band('Orders in an hour', 'Last 7 days · Mon–Sat, 7 AM–6 PM') + big(`${typ} orders`, `in a typical hour · ${S.length} open hours`) + '<div class="vl-pad vl-h"></div>'
+      + rows([row(`Busiest <span class="vl-d">${nm(at(hi))}</span>`, `<span class="amt vl-a">${hi} orders</span>`), row(`Typical hour <span class="vl-d">half above, half below</span>`, `<span class="amt vl-a">${typ} orders</span>`),
+        row(`Quietest <span class="vl-d">${nm(at(lo))}</span>`, `<span class="amt vl-a">${lo} order${lo === 1 ? '' : 's'}</span>`)]);
+    fill(el, '.vl-h', w => hist(w, ns, lo, hi + 1, 1, null, '', 'orders in the hour · h = hours')); }
+
+  // L4-3 dot histogram: ₱2.5k buckets, each day a 12px dot in its weekday tint, stacked
+  { const el = $(3), st = 2500, r = 6;
+    el.innerHTML = band('Daily net sales', 'Mon–Sat · last 26 weeks') + '<div class="vl-pad vl-h"></div>'
+      + rows([row('', '<span class="vl-n">Good days</span><span class="vl-a">Typical</span>', 'vl-hd'), ...WD.map(w => row(pill(w.nm, w.t), cnt(good(w.days), 26) + amt(Math.round(q(w.v, .5)))))]);
+    fill(el, '.vl-h', w => { const x = xs(LO, HI, w, 4), col = {}; let top = 0;
+      const dots = [...OPEN].sort((a, b) => a.dow - b.dow).map(d => { const k = Math.floor((d.net - LO) / st), j = col[k] = (col[k] || 0) + 1; top = Math.max(top, j); return { d, k, j }; });
+      const H = top * (2 * r + 1) + 40, base = H - 22;
+      return `<svg class="vl-svg" width="${w}" height="${H}"><line x1="0" x2="${w}" y1="${base + 1}" y2="${base + 1}" style="stroke:var(--grid)"/>`
+        + dots.map(({ d, k, j }) => `<circle cx="${x(LO + (k + .5) * st)}" cy="${base - (j - .5) * (2 * r + 1)}" r="${r}" style="fill:var(--t${d.dow})"><title>${fd(d)} · ${V.peso(d.net)}</title></circle>`).join('')
+        + tline(x(T), base, 12) + `<text class="vl-tg" x="${x(T) + 5}" y="10">Target ₱60k</text>`
+        + ticks(LO, HI, 10000).map(v => `<text class="vl-ax" x="${x(v)}" y="${H - 4}" text-anchor="middle">${V.pesoK(v)}</text>`).join('') + '</svg>'; }); }
+
+  // ---------- Every day as a dot ----------
+  const heads = '<span class="vl-a">Worst</span><span class="vl-a">Typical</span><span class="vl-a">Best</span>';
+  const wtb = x => x ? amt(Math.min(...x.v)) + amt(Math.round(q(x.v, .5))) + amt(Math.max(...x.v)) : '<span class="vl-a"></span>'.repeat(3);
+
+  // L4-4 beeswarm per weekday
+  { const el = $(4); el.innerHTML = band('Daily net sales by weekday', 'last 26 weeks');
+    lanes(el, WD, 44, (x, w, h) => { const X = xs(LO, HI, w), r = 6;
+      const pts = swarm(x.days.map(d => ({ d, x: X(d.net) })), r);
+      return tline(X(T), h) + pts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${h / 2 + p.y}" r="${r}" style="fill:var(--${x.t});stroke:var(--raised);stroke-width:1"><title>${fd(p.d)} · ${V.peso(p.d.net)}</title></circle>`).join(''); },
+      x => x ? cnt(good(x.days), 26) + amt(Math.round(q(x.v, .5))) : '<span class="vl-n"></span><span class="vl-a"></span>', '<span class="vl-n">Good days</span><span class="vl-a">Typical</span>', pesoAxis(LO, HI, 10000)); }
+
+  // range rows: thin line worst → best, solid bar = the middle half of days, dark tick = typical
+  const range = (x, w, h) => { const X = xs(LO, HI, w), c = h / 2, v = x.v;
+    return tline(X(T), h) + `<line x1="${X(Math.min(...v))}" x2="${X(Math.max(...v))}" y1="${c}" y2="${c}" style="stroke:var(--${x.t}-ink);stroke-width:1.5;opacity:.35"/>`
+      + `<rect x="${X(q(v, .25))}" y="${c - 7}" width="${X(q(v, .75)) - X(q(v, .25))}" height="14" rx="4" style="fill:var(--${x.t})"><title>${x.nm} · middle half ${V.peso(q(v, .25))} – ${V.peso(q(v, .75))}</title></rect>`
+      + `<line x1="${X(q(v, .5))}" x2="${X(q(v, .5))}" y1="${c - 9}" y2="${c + 9}" style="stroke:var(--${x.t}-ink);stroke-width:2"/>`; };
+  { const el = $(5); el.innerHTML = band('Daily net sales by weekday', 'last 26 weeks'); lanes(el, WD, 33, range, wtb, heads, pesoAxis(LO, HI, 10000)); }
+
+  // L4-6 one swarm: the last 4 weeks (24 open days) in blue, the 22 weeks before in grey
+  { const el = $(6), cut = DAYS.length - 28, NEW = OPEN.filter(d => d.i >= cut), OLD = OPEN.filter(d => d.i < cut);
+    const mN = q(NEW.map(d => d.net), .5), mO = q(OLD.map(d => d.net), .5), ch = (mN / mO - 1) * 100;
+    el.innerHTML = band('Daily net sales', 'Mon–Sat') + big(V.peso(Math.round(mN)), `typical day, last 4 weeks <span class="chip ${ch >= 0 ? 'up' : 'down'}" style="margin-left:4px">${ch >= 0 ? '+' : '−'}${Math.abs(ch).toFixed(1)}%</span>`)
+      + '<div class="vl-pad vl-h"></div>' + rows([row('', '<span class="vl-n">Good days</span><span class="vl-a">Typical</span>', 'vl-hd'),
+        row(pill('Last 4 weeks', 't3'), cnt(good(NEW), NEW.length) + amt(Math.round(mN))), row(pill('22 weeks before', 't8'), cnt(good(OLD), OLD.length) + amt(Math.round(mO)))]);
+    fill(el, '.vl-h', w => { const X = xs(LO, HI, w), r = 6, pts = swarm(OPEN.map(d => ({ d, x: X(d.net) })), r), m = Math.max(...pts.map(p => Math.abs(p.y))), H = 2 * m + 2 * r + 36, c = m + r + 14;
+      return `<svg class="vl-svg" width="${w}" height="${H}">${tline(X(T), H - 22, 12)}<text class="vl-tg" x="${X(T) + 5}" y="10">Target ₱60k</text>`
+        + pts.sort((a, b) => (a.d.i >= cut) - (b.d.i >= cut)).map(p => `<circle cx="${p.x.toFixed(1)}" cy="${c + p.y}" r="${r}" style="fill:var(--${p.d.i >= cut ? 't3' : 't8'});stroke:var(--raised);stroke-width:1"><title>${fd(p.d)} · ${V.peso(p.d.net)}</title></circle>`).join('')
+        + ticks(LO, HI, 10000).map(v => `<text class="vl-ax" x="${X(v)}" y="${H - 4}" text-anchor="middle">${V.pesoK(v)}</text>`).join('') + '</svg>'; }); }
+
+  // months: Apr (from the 20th) to Oct (to the 17th), tints in order
+  const MO = []; OPEN.forEach(d => { const nm = d.dt.toLocaleDateString('en-US', { month: 'short' }); let m = MO.find(x => x.nm === nm); if (!m) MO.push(m = { nm, t: 't' + (MO.length + 1), days: [] }); m.days.push(d); });
+  MO.forEach(m => m.v = m.days.map(d => d.net));
+  { const el = $(7); el.innerHTML = band('Daily net sales by month', 'Mon–Sat · Apr 20 – Oct 17'); lanes(el, MO, 33, range, wtb, heads, pesoAxis(LO, HI, 10000)); }
+
+  // ---------- Ridgelines ----------
+  // ridge: hills overlap the lane above by `lift` px; drawn in one svg so the overlap shows
+  const ridges = (el, list, pts, right, head, axis, lane = 30, lift = 22) => {
+    const ln = (l, r, cls = '', hh = lane) => `<div class="vl-ln ${cls}" style="height:${hh}px"><span class="vl-l">${l}</span><span class="vl-c"></span>${r}</div>`;
+    el.insertAdjacentHTML('beforeend', `<div class="vl-lanes" style="position:relative">${ln('', head, 'vl-hd', 22)}${list.map(x => ln(pill(x.nm, x.t), right(x))).join('')}${ln('', right(null), 'vl-axl', 20)}</div>`);
+    const c = el.querySelectorAll('.vl-ln > .vl-c'), w = c[1].clientWidth, H = list.length * lane;
+    const all = list.map(x => pts(x, w)), m = Math.max(...all.flat().map(p => p[1]));
+    c[1].innerHTML = `<svg class="vl-svg" width="${w}" height="${lane}" style="position:relative;z-index:1">` + list.map((x, k) => { const base = (k + 1) * lane - 6;
+      const P = all[k].map(p => [p[0], base - p[1] / m * (lane + lift - 4)]);
+      return `<path d="${smooth(P, base)}V${base}H${P[0][0]}Z" style="fill:var(--${x.t});stroke:var(--${x.t}-ink);stroke-opacity:.45;stroke-width:1"/>`
+        + `<line x1="0" x2="${w}" y1="${base}" y2="${base}" style="stroke:var(--${x.t}-ink);stroke-opacity:.2"/>`; }).join('') + (axis.extra ? axis.extra(w, H) : '') + '</svg>';
+    c[1].firstChild.style.height = H + 'px'; c[1].firstChild.setAttribute('height', H);
+    c[list.length + 1].innerHTML = `<svg class="vl-svg" width="${w}" height="20">${axis(w)}</svg>`;
+  };
+
+  // L4-8 orders by hour per weekday (VIZ.heat, 7 days; Sunday had none)
+  { const el = $(8), HR = WD.map(w => { const v = V.heat.find(h => h.d === w.nm).v; return { ...w, hv: v, n: sum(v), pk: V.hours[v.indexOf(Math.max(...v))] }; });
+    const X = w => xs(0, V.hours.length - 1, w, 10);
+    el.innerHTML = band('Orders by hour', `Last 7 days · ${sum(HR.map(x => x.n))} orders, Sunday none`);
+    const ax = w => V.hours.map((h, k) => k % 2 ? '' : `<text class="vl-ax" x="${X(w)(k)}" y="14" text-anchor="middle">${h}</text>`).join('');
+    ridges(el, HR, (x, w) => x.hv.map((v, k) => [X(w)(k), v]), x => x ? cnt(x.n) + `<span class="amt vl-a">${x.pk.replace('a', ' AM').replace('p', ' PM')}</span>` : '<span class="vl-n"></span><span class="vl-a"></span>',
+      '<span class="vl-n">Orders</span><span class="vl-a">Busiest</span>', ax); }
+
+  // L4-9 spread of each weekday's 26 days
+  { const el = $(9); el.innerHTML = band('How each weekday sells', 'Mon–Sat · last 26 weeks');
+    const ax = w => pesoAxis(LO, HI, 15000)(w); ax.extra = (w, H) => tline(xs(LO, HI, w)(T), H, -22);
+    ridges(el, WD, (x, w) => dens(x.v, LO, HI, 4000).map(p => [xs(LO, HI, w)(p[0]), p[1]]), x => x ? cnt(good(x.days), 26) + amt(Math.round(q(x.v, .5))) : '<span class="vl-n"></span><span class="vl-a"></span>',
+      '<span class="vl-n">Good days</span><span class="vl-a">Typical</span>', ax); }
+
+  // L4-10 spread per month
+  { const el = $(10); el.innerHTML = band('How each month sells', 'Mon–Sat · Apr 20 – Oct 17');
+    const ax = w => pesoAxis(LO, HI, 15000)(w); ax.extra = (w, H) => tline(xs(LO, HI, w)(T), H, -22);
+    ridges(el, MO, (x, w) => dens(x.v, LO, HI, 4000).map(p => [xs(LO, HI, w)(p[0]), p[1]]), x => x ? cnt(good(x.days), x.days.length) + amt(Math.round(q(x.v, .5))) : '<span class="vl-n"></span><span class="vl-a"></span>',
+      '<span class="vl-n">Good days</span><span class="vl-a">Typical</span>', ax); }
+
+  // ---------- 26 weeks ----------
+  const WKS = Array.from({ length: 26 }, (_, k) => DAYS.slice(k * 7, k * 7 + 7));
+  const monthTicks = (x, y) => WKS.map((ds, k) => { const f = ds.find(d => d.dt.getDate() <= 7 && d.dow === 1); return f ? `<text class="vl-ax" x="${x(k)}" y="${y}" text-anchor="middle">${f.dt.toLocaleDateString('en-US', { month: 'short' })}</text>` : ''; }).join('');
+  // stream: layers stacked around a middle line, smooth between week centres
+  const stream = (w, L, ax) => { const H = 170, bot = 20, n = L[0].w.length, x = xs(0, n - 1, w, 8), tot = L[0].w.map((_, k) => sum(L.map(l => l.w[k]))), m = Math.max(...tot), s = (H - bot - 8) / m, mid = (H - bot) / 2;
+    let lo = tot.map(t => mid + t * s / 2);
+    return `<svg class="vl-svg" width="${w}" height="${H}">` + L.map(l => { const hi = lo.map((y, k) => y - l.w[k] * s), up = hi.map((y, k) => [x(k), y]), dn = lo.map((y, k) => [x(k), y]).reverse();
+      const d = smooth(up) + 'L' + smooth(dn).slice(1) + 'Z'; lo = hi; return `<path d="${d}" style="fill:var(--${l.t});stroke:var(--raised);stroke-width:1"><title>${l.nm} · ${V.peso(sum(l.w))}</title></path>`; }).join('')
+      + ax(x, H - 4) + '</svg>'; };
+  const sRows = (L, all, f = amt, per = l => `<span class="vl-n w">${V.pesoK(sum(l) / 26)} a week</span>`) => rows([...L.map(l => row(pill(l.nm, l.t), per(l.w) + f(sum(l.w)) + `<span class="pct vl-p">${pc(sum(l.w), all)}</span>`)),
+    row('Total', per(L.reduce((t, l) => t.map((v, k) => v + l.w[k]), L[0].w.map(() => 0))) + f(all) + '<span class="vl-p"></span>', 'total')]);
+  const ALL = sum(DAYS.map(d => d.net));
+  { const el = $(11), L = [...WD].reverse().map(x => ({ ...x, w: WKS.map(ds => ds.find(d => d.dow === x.dow).net) }));
+    el.innerHTML = band('Net sales by week and weekday', 'last 26 weeks') + '<div class="vl-pad vl-h"></div>' + sRows(WD.map(x => L.find(l => l.nm === x.nm)), ALL - sum(SUN.map(d => d.net)));
+    fill(el, '.vl-h', w => stream(w, L, monthTicks)); }
+  // L4-12 the day's orders (VIZ.heat, 7 days): one stream per weekday across the hours
+  { const el = $(12), L = [...WD].reverse().map(x => ({ ...x, w: V.heat.find(h => h.d === x.nm).v })), N = sum(L.flatMap(l => l.w));
+    const hr = h => h.replace('a', ' AM').replace('p', ' PM'), pk = l => hr(V.hours[l.indexOf(Math.max(...l))]), all = V.hours.map((_, k) => sum(L.map(l => l.w[k])));
+    el.innerHTML = band('Orders through the day', 'Last 7 days · Sunday none') + big(`${N} orders`, `busiest hour ${pk(all)} · ${Math.max(...all)} orders`) + '<div class="vl-pad vl-h"></div>'
+      + sRows(WD.map(x => L.find(l => l.nm === x.nm)), N, n => `<span class="amt vl-a">${n}</span>`, l => `<span class="vl-n w">busiest ${pk(l)}</span>`);
+    fill(el, '.vl-h', w => stream(w, L, (x, y) => V.hours.map((h, k) => `<text class="vl-ax" x="${x(k)}" y="${y}" text-anchor="middle">${h}</text>`).join(''))); }
+
+  // L4-13 day barcode: 182 stripes, Sunday a gap, green = ₱60k met; longest good run in the rows
+  { const el = $(13), G = good(OPEN); let run = 0, top = { n: 0 }, s;
+    OPEN.forEach(d => { if (d.net >= T) { if (!run) s = d; run++; if (run > top.n) top = { n: run, a: s, b: d }; } else run = 0; });
+    el.innerHTML = band('Days that hit ₱60k', 'Mon–Sat · last 26 weeks · Sundays left out') + big(`${G} of ${OPEN.length}`, `days hit target · ${pc(G, OPEN.length)}`) + '<div class="vl-pad vl-h"></div>'
+      + rows([row(pill('₱60k and over', 'ok'), cnt(G) + `<span class="pct vl-p">${pc(G, OPEN.length)}</span>`), row(pill('Under ₱60k', 't8'), cnt(OPEN.length - G) + `<span class="pct vl-p">${pc(OPEN.length - G, OPEN.length)}</span>`),
+        row(`Longest run over target <span class="vl-d">${md(top.a.dt)} – ${md(top.b.dt)}</span>`, `<span class="amt vl-a">${top.n} days</span><span class="vl-p"></span>`)]);
+    fill(el, '.vl-h', w => { const H = 64, x = xs(0, DAYS.length, w, 0), bw = x(1) - x(0);
+      return `<svg class="vl-svg" width="${w}" height="${H}">` + OPEN.map(d => `<rect x="${x(d.i) + .5}" y="0" width="${bw - 1}" height="${H - 20}" style="fill:var(--${d.net >= T ? 'ok' : 't8'})"><title>${fd(d)} · ${V.peso(d.net)}</title></rect>`).join('')
+        + monthTicks(k => x(k * 7 + 3.5), H - 4) + '</svg>'; }); }
+})();</script>

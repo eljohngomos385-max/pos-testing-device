@@ -1,0 +1,271 @@
+<style>
+/* part u (round 8) — Customers and Suppliers in the kit: donut, side bars, funnel, sankey only. People and suppliers wear one grey
+   (the --t8 of "Other"); customer types and categories keep their tints. Every selector .vu-. */
+.vu-q { color: var(--ink-4); font-weight: 400; }
+.vu-full { grid-column: 1 / -1; }
+.vu-svg { display: block; overflow: visible; }
+.vu-svg text { font-family: var(--font); }
+.vu-c1 { font-size: 21px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.vu-c2 { font-size: 12px; fill: var(--ink-4); }
+.vu-in { font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.vu-sm { font-size: 11px; font-variant-numeric: tabular-nums; }
+.vu-sm.b { font-weight: 500; fill: var(--ink-2); }
+/* rows: the rows are the legend; the name cell keeps its full width so a pill is never cut */
+.vu-rows > .row .nm { display: flex; align-items: center; gap: 6px; flex: 1 0 auto; overflow: visible; }
+.vu-a { flex: none; min-width: 76px; text-align: right; }
+.vu-a.w { min-width: 98px; }
+.vu-a.drop { font-weight: 400; color: var(--ink-3); }
+.vu-p { flex: none; width: 46px; text-align: right; }
+.vu-n { flex: none; min-width: 40px; text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+.vu-rows .chip { flex: none; min-width: 64px; justify-content: center; }
+.vu-rows > .row.vu-hd { min-height: 22px; font-size: 11px; color: var(--ink-4); }
+.vu-rows > .row.vu-hd:hover { background: none; }
+.vu-rows > .row.sub { min-height: 28px; padding-left: 24px; font-size: 12px; border-top-color: transparent; }
+/* small pill: a customer's type or a supplier's category beside the plain name */
+.badge.vu-s { height: 18px; padding: 0 5px; font-size: 11px; line-height: 16px; }
+/* donut beside the rows; a narrow card drops the rows under it */
+.vu-split { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; row-gap: 8px; padding: 12px 0 12px 14px; }
+.vu-split > svg { flex: none; }
+.vu-split > .rows { flex: 1 1 280px; min-width: 0; }
+.vu-split .rows > .row { padding: 0 12px 0 16px; }
+/* side bars: name | small pill | grey bar with its value at the end | last cell. Columns fit their widest cell, the track takes the rest */
+.vu-rank { display: grid; column-gap: 10px; padding: 8px 12px 2px; }
+.vu-rk { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; height: 30px; }
+.vu-rk > .vu-l { display: flex; align-items: center; white-space: nowrap; color: var(--ink); }
+.vu-rk > .vu-r { display: flex; justify-content: flex-end; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink-4); }
+.vu-rk .chip { min-width: 64px; justify-content: center; }
+.vu-trk { position: relative; align-self: stretch; display: flex; align-items: center; min-width: 0; padding-right: var(--res);
+}
+.vu-trk > i { flex: none; height: 16px; border-radius: 4px; min-width: 2px; }
+.vu-trk > b { flex: none; margin-left: 4px; padding: 0 2px; background: var(--raised); font-size: 12px; font-weight: 500; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vu-rk.ax, .vu-rk.hd { height: 20px; }
+.vu-rk.ax > .vu-trk, .vu-rk.hd > .vu-trk { background: none; }
+.vu-rk.hd > .vu-r { font-size: 11px; }
+.vu-ax { position: absolute; top: 2px; transform: translateX(-50%); font-size: 11px; color: var(--ink-5); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vu-tot { margin-top: 6px; border-top: 1px solid var(--row-line); }
+.vu-tot > .row { border-top: 0; }
+/* side funnel (O6): rows left at their own width, funnel right; a narrow card drops the funnel under the rows */
+.vu-fsplit { display: flex; flex-wrap: wrap; align-items: center; container-type: inline-size; }
+.vu-fsplit > .rows { flex: 0 0 auto; padding: 6px 0; }
+.vu-fun { flex: 1 1 220px; min-width: 220px; padding: 14px 16px 10px 8px; }
+@container (max-width: 520px) { .vu-fsplit > .rows { flex-basis: 100%; } .vu-fun { padding: 4px 12px 12px; } }
+.vu-chart { padding: 14px 12px 6px; }
+/* sankey (E2-11): svg ribbons, html labels on top */
+.vu-sk { position: relative; margin: 18px 12px 16px; }
+.vu-lb { position: absolute; display: flex; align-items: center; gap: 6px; transform: translateY(-50%); white-space: nowrap; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.vu-lb b { font-weight: 500; }
+.vu-lb .pct { font-size: 12px; color: var(--ink-4); }
+.vu-lb.m { padding: 2px 8px 2px 2px; border-radius: var(--r-badge); background: color-mix(in srgb, var(--raised) 82%, transparent); }
+</style>
+
+<section class="cat" id="vu-cust" data-nav="U8 · Customers">
+  <h2>Customer breakdown in the kit</h2>
+  <p class="why">Net sales, last 30 days, in the four shapes. Customer types keep a tint; the customers themselves are plain names on grey. Named customers + walk-in = net sales; owed 30 days ago + charged − paid back = owed now.</p>
+  <div class="grid wide">
+    <div class="spec vu-full"><div class="tag"><b>U8-1</b> Sankey · net sales → walk-in and each customer type → each customer</div><div class="card" id="vu-1"></div></div>
+    <div class="spec"><div class="tag"><b>U8-2</b> Donut · spend by customer type and walk-in, rows beside</div><div class="card" id="vu-2"></div></div>
+    <div class="spec"><div class="tag"><b>U8-3</b> Side bars · top customers, type as a small pill, chip vs the 30 days before</div><div class="card" id="vu-3"></div></div>
+    <div class="spec"><div class="tag"><b>U8-4</b> Side funnel · owed 30 days ago + charged → paid back → owed now</div><div class="card" id="vu-4"></div></div>
+    <div class="spec"><div class="tag"><b>U8-5</b> Side bars · owed per customer, past 30 days in red</div><div class="card" id="vu-5"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vu-supp" data-nav="U8 · Suppliers">
+  <h2>Supplier breakdown in the kit</h2>
+  <p class="why">Bought = received at cost, last 30 days. Categories keep their tints (Cement, Fasteners, Electrical, Paint as everywhere; Tools t7); suppliers are plain names on grey.</p>
+  <div class="grid wide">
+    <div class="spec vu-full"><div class="tag"><b>U8-6</b> Sankey · bought → category → supplier</div><div class="card" id="vu-6"></div></div>
+    <div class="spec"><div class="tag"><b>U8-7</b> Donut · bought by category, rows beside</div><div class="card" id="vu-7"></div></div>
+    <div class="spec"><div class="tag"><b>U8-8</b> Side bars · bought per supplier, chip vs the 30 days before</div><div class="card" id="vu-8"></div></div>
+    <div class="spec"><div class="tag"><b>U8-9</b> Side bars · what we owe per supplier, overdue in red, due date beside</div><div class="card" id="vu-9"></div></div>
+    <div class="spec"><div class="tag"><b>U8-10</b> Funnel · POs delivered → on time, the late ones named</div><div class="card" id="vu-10"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('vu-' + n), P = V.peso, K = V.pesoK, p2 = n => V.peso(n, 2);
+  const sum = (a, f = x => x.v) => a.reduce((s, x) => s + f(x), 0);
+  const pc = (a, t) => V.pct(Math.abs(a) / Math.abs(t) * 100);
+  const r1 = n => Math.round(n * 10) / 10;
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const fill = t => t === 'bad' ? 'var(--bad)' : `var(--${t})`, ink = t => t === 'bad' ? 'var(--bad-ink)' : `var(--${t}-ink)`;
+  const GREY = 'var(--t8)'; // people and suppliers: the grey of "Other", never a colour of their own
+  const nice = (max, steps) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vu-q">${r}</span>`}</div>`;
+  const pill = (t, nm, cls = '') => `<span class="badge ${t} ${cls}">${esc(nm)}</span>`;
+  const row = (nm, cells, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span>${cells}</div>`;
+  const rows = (list, cls = '') => `<div class="rows vu-rows ${cls}">${list.join('')}</div>`;
+  const A = (v, w = '') => `<span class="amt vu-a ${w}">${v}</span>`, Pc = v => `<span class="pct vu-p">${v}</span>`;
+  const chip = (a, b) => { const c = (a / b - 1) * 100; return `<span class="chip ${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%</span>`; };
+  const tx = (x, y, t, c = 'ax', an = 'middle', st = '') => `<text class="${c}" x="${r1(x)}" y="${r1(y)}" text-anchor="${an}"${st && ` style="${st}"`}>${t}</text>`;
+  const draws = [];
+
+  // ---------- donut (I3-8 / I3-12): 168px, 20px ring, total in the hole ----------
+  const pt = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const arc = (cx, cy, r, a0, a1) => `M${pt(cx, cy, r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a1)}`;
+  const donut = (list, c1, c2) => { const S = 168, c = S / 2, w = 20, r = c - w / 2 - 1, t = sum(list), gap = .03; let a = -Math.PI / 2;
+    const s = list.map(x => { const sp = x.v / t * 2 * Math.PI, d = arc(c, c, r, a + gap / 2, a + Math.max(sp - gap / 2, gap / 2 + .01)); a += sp;
+      return `<path d="${d}" style="fill:none;stroke:${fill(x.t)};stroke-width:${w}"><title>${esc(x.nm)} · ${P(x.v)} · ${pc(x.v, t)}</title></path>`; }).join('');
+    return `<svg class="vu-svg" width="${S}" height="${S}">${s}${tx(c, c + 4, c1, 'vu-c1')}${tx(c, c + 22, c2, 'vu-c2')}</svg>`; };
+  const donutCard = (el, title, right, list, c1, c2) => { const t = sum(list);
+    el.innerHTML = band(title, right) + `<div class="vu-split">${donut(list, c1, c2)}`
+      + rows(list.map(x => row(pill(x.t, x.nm), A(P(x.v)) + Pc(pc(x.v, t)))).concat(row('Total', A(P(t)) + Pc(''), 'total'))) + '</div>'; };
+
+  // ---------- side bars (B2-9 / I3-3): grey by default, value at the bar end, light scale 0 · ⅓ · ⅔ · top ----------
+  // cells(x) = label cells left of the bar; right(x) = last cell; head = text over the last column
+  const bars = (list, { cells, val, right, color = () => GREY, head = '', res = 76 }) => {
+    const st = nice(Math.max(...list.map(x => x.v)), 3), top = st * 3, nc = cells(list[0]).length, emp = '<span></span>'.repeat(nc), last = right ? '<span class="vu-r"></span>' : '';
+    const cols = `repeat(${nc}, max-content) minmax(90px, 1fr)${right ? ' max-content' : ''}`;
+    return `<div class="vu-rank" style="grid-template-columns:${cols};--res:${res}px">`
+      + (head ? `<div class="vu-rk hd">${emp}<span class="vu-trk"></span><span class="vu-r">${head}</span></div>` : '')
+      + list.map(x => `<div class="vu-rk" title="${esc(x.nm)} · ${val(x)}">${cells(x).map(c => `<span class="vu-l">${c}</span>`).join('')}<span class="vu-trk"><i style="width:${x.v / top * 100}%;background:${color(x)}"></i><b>${val(x)}</b></span>${right ? `<span class="vu-r">${right(x)}</span>` : ''}</div>`).join('')
+      + '</div>'; }; // no axis: the ticks ran together on narrow cards, the exact value sits at each bar end
+  const totalRow = cells => `<div class="rows vu-rows vu-tot">${row('Total', cells, 'total')}</div>`;
+
+  // ---------- side funnel (O6): steps [{nm,t,v,parts?}], gaps[i] = [amount, words] for the link after step i ----------
+  const tw = (s, px = 11) => s.length * px * .58; // ponytail: text width guess, only used to wrap the link words
+  const wrap = (s, w) => s.split(' ').reduce((ls, wd) => { const l = ls[ls.length - 1]; if (l && tw(l + ' ' + wd) <= w) ls[ls.length - 1] = l + ' ' + wd; else ls.push(wd); return ls; }, []);
+  const sideFunnel = (w, steps, gaps, base = steps[0].v) => {
+    const H = 150, T = 4, n = steps.length, bw = Math.max(24, Math.min(40, w * .09)), lw = (w - n * bw) / (n - 1);
+    const geo = steps.map((x, i) => { const h = Math.max(x.v / base * H, 4); return { x: i * (bw + lw), y: T + (H - h) / 2, h }; });
+    let s = '';
+    steps.forEach((x, i) => { const g = geo[i];
+      if (i) { const a = geo[i - 1], x1 = a.x + bw, x2 = g.x, m = (x1 + x2) / 2;
+        s += `<path d="M${r1(x1)} ${r1(a.y)}C${r1(m)} ${r1(a.y)} ${r1(m)} ${r1(g.y)} ${r1(x2)} ${r1(g.y)}V${r1(g.y + g.h)}C${r1(m)} ${r1(g.y + g.h)} ${r1(m)} ${r1(a.y + a.h)} ${r1(x1)} ${r1(a.y + a.h)}Z" fill="${fill(x.t)}" opacity=".4"/>`;
+        const [amt, words] = gaps[i - 1], ls = [amt].concat(wrap(words, lw - 8)), y0 = T + H / 2 - (ls.length - 1) * 7 + 4;
+        ls.forEach((l, k) => s += tx(m, y0 + k * 14, l, k ? 'vu-sm' : 'vu-sm b', 'middle', k ? 'fill:var(--ink-4)' : '')); }
+      let y = g.y + g.h;
+      (x.parts || [x]).forEach((p, k, all) => { const ph = p.v / x.v * g.h; y -= ph;
+        s += `<rect x="${r1(g.x)}" y="${r1(y)}" width="${r1(bw)}" height="${r1(Math.max(ph - (all.length > 1 && k ? 1 : 0), 1))}" rx="5" fill="${fill(p.t)}"><title>${esc(p.nm)} · ${p2(p.v)}</title></rect>`; });
+      s += tx(g.x + bw / 2, T + H + 16, pc(x.v, base), 'ax', i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle', `transform:translateX(${i === 0 ? -bw / 2 : i === n - 1 ? bw / 2 : 0}px)`); });
+    return `<svg class="vu-svg" width="${r1(w)}" height="${T + H + 20}">${s}</svg>`; };
+
+  // ---------- top-down funnel (K4): levels [{nm,t,v,lab}], gaps[i] = [text, colour] between level i and i+1 ----------
+  const downFunnel = (w, lv, gaps, base = lv[0].v) => { const bh = 34, gh = 30; let s = '', y = 0;
+    lv.forEach((x, i) => { const bw = x.v / base * w, x0 = (w - bw) / 2;
+      if (i) { const p = lv[i - 1], pw = p.v / base * w, px = (w - pw) / 2;
+        s += `<path d="M${r1(px)} ${y - gh}H${r1(px + pw)}L${r1(x0 + bw)} ${y}H${r1(x0)}Z" fill="${fill(x.t)}" opacity=".4"/>` + tx(w / 2, y - gh / 2 + 4, gaps[i - 1][0], 'vu-sm b', 'middle', `fill:${gaps[i - 1][1]}`); }
+      const inside = tw(x.lab, 12) + 16 < bw;
+      s += `<rect x="${r1(x0)}" y="${y}" width="${r1(bw)}" height="${bh}" rx="6" fill="${fill(x.t)}"><title>${esc(x.lab)}</title></rect>`
+        + tx(inside ? w / 2 : x0 + bw + 8, y + bh / 2 + 4, x.lab, 'vu-in', inside ? 'middle' : 'start', `fill:${inside ? ink(x.t) : 'var(--ink)'}`);
+      y += bh + gh; });
+    return `<svg class="vu-svg" width="${r1(w)}" height="${y - gh}">${s}</svg>`; };
+
+  // ---------- sankey (E2-11): columns of nodes on ONE scale, so a ribbon keeps its width end to end ----------
+  // nodes {nm,v,c(fill),lab(html)}; links {s,t,v,c} in drawing order. align[j] = 'top' pins a column to the top.
+  const sankey = (W, cols, links, { pad = [150, 210], mid = .45, align = [], minS = 26, gap = 6, Hb = 210, nw = 14 } = {}) => {
+    const k = Hb / sum(cols[0]), x0 = pad[0], x2 = W - pad[1] - nw, xs = cols.length === 3 ? [x0, x0 + (x2 - x0) * mid, x2] : [x0, x2];
+    const ext = cols.map(c => c.reduce((s, n) => s + Math.max(n.v * k, minS), 0) + gap * (c.length - 1)), H = Math.max(...ext);
+    cols.forEach((c, j) => { let y = align[j] === 'top' ? 0 : (H - ext[j]) / 2;
+      c.forEach(n => { const sl = Math.max(n.v * k, minS); n.h = Math.max(n.v * k, 2); n.y = y + (sl - n.h) / 2; n.x = xs[j]; n.j = j; n.o = n.i = 0; y += sl + gap; }); });
+    let s = '', html = '';
+    links.forEach(l => { const h = l.v * k, a0 = l.s.y + l.s.o, b0 = l.t.y + l.t.i, xa = l.s.x + nw, xb = l.t.x, m = (xa + xb) / 2; l.s.o += h; l.t.i += h;
+      s += `<path d="M${r1(xa)} ${r1(a0)}C${r1(m)} ${r1(a0)} ${r1(m)} ${r1(b0)} ${r1(xb)} ${r1(b0)}V${r1(b0 + h)}C${r1(m)} ${r1(b0 + h)} ${r1(m)} ${r1(a0 + h)} ${r1(xa)} ${r1(a0 + h)}Z" style="fill:${l.c};opacity:.55"><title>${esc(l.s.nm)} → ${esc(l.t.nm)} · ${P(l.v)}</title></path>`; });
+    cols.forEach(c => c.forEach(n => { s += `<rect x="${r1(n.x)}" y="${r1(n.y)}" width="${nw}" height="${r1(n.h)}" rx="2" style="fill:${n.c}"><title>${esc(n.nm)} · ${P(n.v)}</title></rect>`;
+      const side = n.j ? `left:${r1(n.x + nw + 6)}px` : `right:${r1(W - n.x + 8)}px`;
+      html += `<div class="vu-lb${n.j && n.j < cols.length - 1 ? ' m' : ''}" style="${side};top:${r1(n.y + n.h / 2)}px">${n.lab}</div>`; }));
+    return `<div class="vu-sk" style="height:${r1(H)}px"><svg class="vu-svg" width="${W}" height="${r1(H)}">${s}</svg>${html}</div>`; };
+  const skCard = (el, head, build) => { const draw = () => { if (el.clientWidth <= 24) return; el.innerHTML = head; el.insertAdjacentHTML('beforeend', build(el.clientWidth - 24)); }; draws.push(draw); };
+  const amtLab = (v, t) => `<b>${P(v)}</b><span class="pct">${pc(v, t)}</span>`;
+
+  // =================== customers ===================
+  // ponytail: five named customers fit whole; at 50+ keep the top 5 per type and fold the rest into "Other customers" + See all
+  const C = [...V.customers].sort((a, b) => b.amt - a.amt).map(c => ({ ...c, nm: c.name, v: c.amt }));
+  const NT = sum(C), NP = sum(C, c => c.prev), NET = NT + V.walkIn; // = ladder.net, to the peso
+  if (Math.round(NET) !== Math.round(V.ladder.net)) console.error(`U8: named + walk-in ${NET} ≠ ladder.net ${V.ladder.net}`);
+  // types in spend order take t1, t2, t3, t4; walk-in is grey like Other
+  const TY = []; C.forEach(c => { let g = TY.find(t => t.nm === c.type); if (!g) TY.push(g = { nm: c.type, v: 0, who: [] }); g.v += c.v; g.who.push(c); });
+  TY.sort((a, b) => b.v - a.v).forEach((g, i) => { g.t = 't' + (i + 1); g.who.forEach(c => c.tt = g.t); });
+  const WALK = { nm: 'Walk-in', t: 't8', v: V.walkIn };
+  const tyPill = c => pill(c.tt, c.type, 'vu-s');
+
+  // U8-1 sankey: net sales → walk-in + each type → each customer. Walk-in ends in the middle.
+  skCard($(1), band('Net sales by customer', 'Last 30 days'), w => {
+    const root = { nm: 'Net sales', v: NET, c: GREY, lab: `<span class="vu-q">Net sales</span><b>${P(NET)}</b>` };
+    const mids = TY.map(g => ({ ...g, c: fill(g.t), lab: pill(g.t, g.nm) + amtLab(g.v, NET) })).concat({ ...WALK, c: GREY, lab: pill('t8', 'Walk-in') + amtLab(WALK.v, NET) });
+    const leaves = TY.flatMap(g => g.who).map(c => ({ ...c, c: GREY, lab: `${esc(c.nm)}<b>${P(c.v)}</b>` }));
+    const links = mids.map(m => ({ s: root, t: m, v: m.v, c: m.c }))
+      .concat(leaves.map(l => { const m = mids.find(x => x.nm === l.type); return { s: m, t: l, v: l.v, c: m.c }; }));
+    return sankey(w, [[root], mids, leaves], links, { align: [, , 'top'] }); });
+
+  // U8-2 donut: types + walk-in
+  donutCard($(2), 'Spend by customer type', 'Last 30 days', [...TY, WALK], P(NET), 'Net sales');
+
+  // U8-3 top customers: plain names, one grey, type as a small pill, chip vs the 30 days before
+  $(3).innerHTML = band('Top customers', 'Last 30 days vs 30 before')
+    + bars(C, { cells: c => [esc(c.nm), tyPill(c)], val: c => P(c.v), right: c => chip(c.v, c.prev) })
+    + totalRow(A(P(NT)) + chip(NT, NP));
+
+  // U8-4 account money: owed 30 days ago + charged → − paid back → owed now (= the sum of the balances)
+  { const AC = V.accounts, IN = AC.opening + AC.charged, el = $(4);
+    if (Math.abs(IN - AC.paid - AC.closing) > .005 || Math.abs(sum(C, c => c.balance) - AC.closing) > .005) console.error('U8-4: account money does not add up');
+    const open = { nm: 'Owed 30 days ago', t: 't8', v: AC.opening }, ch = { nm: 'Charged to account', t: 't2', v: AC.charged };
+    const paid = { nm: 'Paid back', t: 't1', v: AC.paid }, now = { nm: 'Owed now', t: 't5', v: AC.closing };
+    const draw = () => {
+      el.innerHTML = band('Account money', 'Last 30 days') + '<div class="vu-fsplit">' + rows([
+        row('', A('', 'w') + Pc('of total'), 'vu-hd'),
+        row(pill(open.t, open.nm), A(p2(open.v), 'w') + Pc(pc(open.v, IN))),
+        row(pill(ch.t, ch.nm), A('+' + p2(ch.v), 'w drop') + Pc(pc(ch.v, IN))),
+        row(paid.nm, A('−' + p2(paid.v), 'w drop') + Pc(pc(paid.v, IN))),
+        row(pill(now.t, now.nm), A(p2(now.v), 'w') + Pc(pc(now.v, IN)), 'total')]) + '<div class="vu-fun"></div></div>';
+      const f = el.querySelector('.vu-fun'), cs = getComputedStyle(f);
+      f.innerHTML = sideFunnel(f.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+        [{ nm: 'Owed + charged', t: 't2', v: IN, parts: [open, ch] }, now], [['− ' + P(paid.v), 'paid back']]); };
+    draws.push(draw); }
+
+  // U8-5 owed per customer: grey bars, anything past 30 days in red, the age of the oldest charge beside
+  { const OD = V.accounts.overdueDays, OW = C.filter(c => c.balance > 0).map(c => ({ ...c, v: c.balance })).sort((a, b) => b.v - a.v);
+    $(5).innerHTML = band('Owed per customer', 'Now')
+      + bars(OW, { cells: c => [esc(c.nm)], val: c => p2(c.v), res: 84, head: 'Oldest', color: c => c.oldest > OD ? fill('bad') : GREY,
+        right: c => c.oldest > OD ? pill('bad', c.oldest + ' days') : c.oldest + ' days' })
+      + totalRow(A(p2(V.accounts.closing), 'w')); }
+
+  // =================== suppliers ===================
+  // categories keep the brief's tints; Tools has no slot below 7, so it takes t7 (as in the all-8 set)
+  const CT = { Cement: 't1', Fasteners: 't2', Electrical: 't3', Plumbing: 't4', Paint: 't5', Lumber: 't6', Tools: 't7', Roofing: 't8' };
+  const S = V.suppliers.map(s => ({ ...s, nm: s.name, v: s.amt30, tt: CT[s.cat] || 't8' })).sort((a, b) => b.v - a.v);
+  const BT = sum(S), BP = sum(S, s => s.prev30);
+  const CG = []; S.forEach(s => { let g = CG.find(c => c.nm === s.cat); if (!g) CG.push(g = { nm: s.cat, t: s.tt, v: 0, who: [] }); g.v += s.v; g.who.push(s); });
+  CG.sort((a, b) => b.v - a.v);
+  const catPill = s => pill(s.tt, s.cat, 'vu-s');
+
+  // U8-6 sankey: bought → category → supplier
+  skCard($(6), band('Bought by category and supplier', 'Last 30 days'), w => {
+    const root = { nm: 'Bought', v: BT, c: GREY, lab: `<span class="vu-q">Bought</span><b>${P(BT)}</b>` };
+    const mids = CG.map(g => ({ ...g, c: fill(g.t), lab: pill(g.t, g.nm) + amtLab(g.v, BT) }));
+    const leaves = CG.flatMap(g => g.who).map(s => ({ ...s, c: GREY, lab: `${esc(s.nm)}<b>${P(s.v)}</b>` }));
+    const links = mids.map(m => ({ s: root, t: m, v: m.v, c: m.c })).concat(leaves.map(l => { const m = mids.find(x => x.nm === l.cat); return { s: m, t: l, v: l.v, c: m.c }; }));
+    return sankey(w, [[root], mids, leaves], links); });
+
+  // U8-7 donut: bought by category
+  donutCard($(7), 'Bought by category', 'Last 30 days', CG, P(BT), `${CG.length} categories`);
+
+  // U8-8 bought per supplier: plain names, grey, category as a small pill, chip
+  $(8).innerHTML = band('Bought per supplier', 'Last 30 days vs 30 before')
+    + bars(S, { cells: s => [esc(s.nm), catPill(s)], val: s => P(s.v), right: s => chip(s.v, s.prev30) })
+    + totalRow(A(P(BT)) + chip(BT, BP));
+
+  // U8-9 what we owe: grey, overdue in red, due date beside
+  { const OW = S.filter(s => s.owed > 0).map(s => ({ ...s, v: s.owed })).sort((a, b) => b.v - a.v);
+    $(9).innerHTML = band('Money we owe suppliers', 'Unpaid today')
+      + bars(OW, { cells: s => [esc(s.nm)], val: s => P(s.v), head: 'Due', color: s => s.overdue ? fill('bad') : GREY,
+        right: s => s.overdue ? pill('bad', 'Overdue · ' + s.due) : s.due })
+      + totalRow(A(P(sum(OW)))); }
+
+  // U8-10 POs delivered → on time (K4 top-down). The late ones named under it.
+  { const PO = sum(S, s => s.pos), ON = sum(S, s => s.onTime), LATE = S.filter(s => s.pos > s.onTime).sort((a, b) => (b.pos - b.onTime) - (a.pos - a.onTime)), el = $(10);
+    const lv = [{ t: 't3', v: PO, lab: `Delivered · ${PO} POs` }, { t: 't4', v: ON, lab: `On time · ${ON} POs · ${pc(ON, PO)}` }];
+    const N = v => `<span class="vu-n">${v}</span>`;
+    const draw = () => {
+      el.innerHTML = band('Purchase orders', 'Last 30 days') + '<div class="vu-chart"></div>' + rows([
+        row('', N('POs') + Pc('of all'), 'vu-hd'),
+        row(pill('t3', 'Delivered'), N(PO) + Pc(pc(PO, PO))),
+        row(pill('t4', 'On time'), N(ON) + Pc(pc(ON, PO))),
+        row(pill('bad', 'Late'), N(PO - ON) + Pc(pc(PO - ON, PO)))]
+        .concat(LATE.map(s => row(esc(s.nm), N(s.pos - s.onTime) + Pc(''), 'sub'))));
+      if (el.clientWidth > 24) el.querySelector('.vu-chart').innerHTML = downFunnel(el.clientWidth - 24, lv, [[`− ${PO - ON} late`, 'var(--down)']]); };
+    draws.push(draw); }
+
+  draws.forEach(d => d());
+  addEventListener('resize', () => draws.forEach(d => d()));
+})();</script>

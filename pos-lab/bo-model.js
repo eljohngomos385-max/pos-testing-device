@@ -65,7 +65,7 @@ const PRODUCT_DEFAULTS = {
   weight: '', size: '', length: '', description: '',
   // hidden: kept and listed here, but off the till's tiles and search (owner, 2026-10-01).
   // trackStock false: no counts and never an out-of-stock prompt (a service, a cut).
-  hidden: false, trackStock: true, modifierIds: [],
+  hidden: false, trackStock: true, modifierIds: [], hiddenChoiceIds: [],
   // component: only used to make other items, never sold (a patty, a pen in a kit). madeFrom: [{ id, qty }] per 1
   // sold -- a made item has no stock of its own; withMade derives it ("can make N") and its cost from the parts.
   component: false, madeFrom: [],
@@ -94,7 +94,8 @@ function normalizeProduct(raw) {
   p.trackStock = p.trackStock !== false;
   p.component = !!p.component;
   p.madeFrom = Array.isArray(p.madeFrom) ? p.madeFrom.map((m) => ({ id: String(m.id), qty: Number(m.qty) || 0 })) : [];   // own copy, never the defaults' []
-  p.modifierIds = [...new Set((Array.isArray(p.modifierIds) ? p.modifierIds : []).map(String).filter(Boolean))];
+  p.modifierIds = [...new Set((Array.isArray(p.modifierIds) ? p.modifierIds : []).map(String).filter(Boolean))];   // in order: the order the POS asks them
+  p.hiddenChoiceIds = [...new Set((Array.isArray(p.hiddenChoiceIds) ? p.hiddenChoiceIds : []).map(String).filter(Boolean))];
   // Backup suppliers. `supplierId` stays the primary because a purchase order and a
   // reorder list each need one answer to "who do we buy this from"; the rest are who
   // else stocks it when that one cannot deliver. Never repeats the primary.
@@ -774,6 +775,7 @@ const staffIdOf = (name, staff = loadStaff()) => (name && (staff.find((u) => u.n
 // dayTotals isn't PIN-gated: off just hides the day's total on the Orders bands (owner 2026-10-06: a cashier shouldn't see it).
 // `discount` (owner 2026-10-09): a sale's discounts past `discountLimit` % (pos-sell discountOk); SC/PWD never counts.
 // `shift` (owner 2026-10-10): who sees the Shift page and starts / closes it. Anyone sells.
+// No `unavailable` (owner 2026-10-24): a choice is held only in Items › Modifiers › its Status; a map saved with it drops it.
 const TILL_ACTIONS = { void: 'Void a sale', refund: 'Refund a sale', overLimit: 'Sell past a credit limit', credit: 'Turn on credit for a customer', dayTotals: "See the day's totals", discount: 'Give big discounts', shift: 'Start and close shifts' };
 const STORAGE_TILL_PERMS = storeKey('tillPerms');
 const TILL_PERMS_DEFAULT = { manager: Object.keys(TILL_ACTIONS), cashier: [], stock: [] };
@@ -809,10 +811,47 @@ const approverFor = (pin, action, staff = loadStaff(), perms = loadTillPerms()) 
   const u = staffByPin(pin, staff);
   return u && roleCan(u.role, action, perms) ? u : null;
 };
-const MODIFIER_DEFAULTS = { id: '', name: '', options: [], archived: false, updatedAt: '' };
-const loadModifiers = () => loadList(STORAGE_MODIFIERS).map((m) => ({ ...MODIFIER_DEFAULTS, ...m,
-  options: (Array.isArray(m.options) ? m.options : []).map((o) => ({ id: String(o.id || ''), name: String(o.name || ''), price: round2(o.price) })) }));
+// Modifiers (owner 2026-10-23, plans/modifiers-build.md): a question the POS asks when an item sells, like Sweetness.
+// picks: how many choices the customer takes. 'one' must be answered; the rest may be skipped. Nothing starts picked.
+// options = the choices, in their order (UI word: "Choices"). price: pesos, round2 like a product's (the Worker keeps
+// centavos). unavailable: greyed on every POS until set back. removed: a tombstone so a sync never brings it back;
+// gone from every screen. The item side sits on the product: modifierIds in that item's own order, hiddenChoiceIds =
+// the choices that item never offers (choice ids are UUIDs, so one flat list covers every modifier on it).
+const MODIFIER_PICKS = { one: 'One', upto2: 'Up to 2', upto3: 'Up to 3', any: 'Any' };
+const PICKS_MAX = { one: 1, upto2: 2, upto3: 3, any: Infinity };
+const MODIFIER_DEFAULTS = { id: '', name: '', picks: 'one', options: [], archived: false, updatedAt: '' };
+const normalizeModifier = (m) => ({ ...MODIFIER_DEFAULTS, ...m, picks: MODIFIER_PICKS[m.picks] ? m.picks : 'one',
+  options: (Array.isArray(m.options) ? m.options : []).map((o) => ({ id: String(o.id || ''), name: String(o.name || ''), price: round2(o.price),
+    unavailable: !!o.unavailable, removed: !!o.removed })) });
+const loadModifiers = () => loadList(STORAGE_MODIFIERS).map(normalizeModifier);
 const saveModifiers = (list) => saveList(STORAGE_MODIFIERS, list);
+const liveChoices = (m) => m.options.filter((o) => !o.removed);
+// One item's questions, in its order: archived modifiers and removed or hidden choices out, unavailable ones kept but
+// flagged (the POS greys them). A modifier left with no choice for this item is not asked. p: any product of the item.
+// ponytail: a hidden id whose choice was removed just matches nothing; no cleanup pass needed.
+function itemModifiers(p, mods = loadModifiers()) {
+  const by = new Map(mods.filter((m) => !m.archived).map((m) => [m.id, m])), hid = new Set((p && p.hiddenChoiceIds) || []);
+  // a Pick one whose every choice is Unavailable can't be answered, so it is skipped this time, never a dead end
+  return ((p && p.modifierIds) || []).map((id) => by.get(id)).filter(Boolean).map((m) => {
+    const choices = liveChoices(m).filter((o) => !hid.has(o.id)).map((o) => ({ id: o.id, name: o.name, price: o.price, unavailable: o.unavailable }));
+    return { id: m.id, name: m.name, picks: m.picks, max: PICKS_MAX[m.picks], required: m.picks === 'one' && choices.some((o) => !o.unavailable), choices };
+  }).filter((m) => m.choices.length);
+}
+// What an order line keeps of one answer (append-only: a later rename or price change never reaches an old sale).
+const modifierAnswer = (m, o) => ({ modifierId: m.id, modifier: m.name, choiceId: o.id, choice: o.name, price: round2(o.price) });
+// A cart line's answers (not yet sold) at today's words and prices, by choice id: a choice since removed, hidden,
+// archived or Unavailable falls off. The kept cart, a continued draft and the line's Modifiers screens all read it.
+const freshAnswers = (p, answers, qs = itemModifiers(p)) => (answers || []).flatMap((a) => {
+  const q = qs.find((x) => x.id === a.modifierId), o = q && q.choices.find((x) => x.id === a.choiceId && !x.unavailable);
+  return o ? [modifierAnswer(q, o)] : [];
+});
+// The POS's "out of pearls": one choice greyed on every item, or back. Returns the saved list.
+function setChoiceUnavailable(modId, choiceId, on, list = loadModifiers()) {
+  const at = new Date().toISOString();
+  const next = list.map((m) => (m.id !== modId ? m : { ...m, updatedAt: at, options: m.options.map((o) => (o.id === choiceId ? { ...o, unavailable: !!on } : o)) }));
+  saveModifiers(next);
+  return next;
+}
 const DISCOUNT_DEFAULTS = { id: '', name: '', type: 'percent', value: 0, builtin: '', archived: false, updatedAt: '' };
 // Fixed ids and one fixed stamp, not fresh ones: every till seeds the same four, so syncing two tills never doubles
 // them, and any edit (stampRow) is newer than the seed.
@@ -1646,6 +1685,9 @@ if (typeof module !== 'undefined' && require.main === module) {
   assert.deepEqual([sp({}), sp({ manager: ['void'], cashier: [], discountLimit: 20 }),
     sp({ manager: ['void'], cashier: [], discountLimit: 20, known: Object.keys(TILL_ACTIONS) }), sp({ ...loadTillPerms({}), cashier: ['shift'], known: Object.keys(TILL_ACTIONS) })],
     [[true, false], [true, false], [false, false], [true, true]]);
+  // Unavailable choices (switch removed 2026-10-24): a map saved with `unavailable` loads with it dropped.
+  const old = loadTillPerms({ manager: ['void', 'unavailable'], cashier: ['unavailable'], stock: ['unavailable'], discountLimit: 20, known: [...Object.keys(TILL_ACTIONS), 'unavailable'] });
+  assert.deepEqual([old.manager, old.cashier, old.stock], [['void'], [], []]);
   // saveList gives a record without one the store's id, and leaves updatedAt alone.
   const saved = new Map();
   globalThis.storageSet = (k, v) => saved.set(k, v);
@@ -1726,6 +1768,20 @@ if (typeof module !== 'undefined' && require.main === module) {
   assert.deepEqual([familyLevel(zp, zc, zn), familyLevel(zp, zc, zn, 'America/Los_Angeles'),
     stockCounts(zp, zc, zn).dead, stockCounts(zp, zc, zn, 'America/Los_Angeles').dead], ['dead', 'ok', 1, 0]);
 
+  // Modifiers: the item's order, hidden and removed choices out, unavailable flagged, archived and emptied ones not asked.
+  const md = [normalizeModifier({ id: 's', name: 'Sweetness', options: [{ id: 'a', name: '0%' }, { id: 'b', name: '50%', unavailable: 1 }, { id: 'c', name: 'x', removed: 1 }] }),
+    normalizeModifier({ id: 't', name: 'Toppings', picks: 'upto3', options: [{ id: 'p', name: 'Pearls', price: '15' }] }),
+    normalizeModifier({ id: 'z', name: 'Old', archived: true, options: [{ id: 'q', name: 'Q' }] }),
+    normalizeModifier({ id: 'h', name: 'Ice', picks: 'bogus', options: [{ id: 'i', name: 'No ice' }] })];
+  const mq = itemModifiers(normalizeProduct({ modifierIds: ['t', 'z', 's', 'h'], hiddenChoiceIds: ['a', 'i', 'gone'] }), md);
+  assert.deepEqual(mq.map((m) => [m.id, m.picks, m.required, m.max, m.choices.map((o) => o.id + (o.unavailable ? '!' : ''))]),
+    [['t', 'upto3', false, 3, ['p']], ['s', 'one', false, 1, ['b!']]]);   // every choice Unavailable: Pick one is skipped
+  assert.equal(md[3].picks, 'one');
+  assert.deepEqual(modifierAnswer(mq[0], mq[0].choices[0]), { modifierId: 't', modifier: 'Toppings', choiceId: 'p', choice: 'Pearls', price: 15 });
+  // a kept line at today's price; Unavailable (b), hidden (a) and gone (x) answers fall off
+  assert.deepEqual(freshAnswers(null, [{ modifierId: 't', choiceId: 'p', price: 10 }, { modifierId: 's', choiceId: 'b' }, { modifierId: 's', choiceId: 'a' }, { modifierId: 'x', choiceId: 'y' }], mq),
+    [modifierAnswer(mq[0], mq[0].choices[0])]);
+
   console.log('bo-model: ok');
 }
 
@@ -1748,5 +1804,6 @@ if (typeof module !== 'undefined') {
     setCustomerDeleted, balancesOf, accountDebts, accountStatus, ACCOUNT_STATUSES, canRecordPayment, owedText, recordPayment, undoPayment,
     poLineUnit, poLineQty, movementCents, familyRows, creditRoom, creditOverBy, creditPool, accountStatement, stockFlow, lotWalk, limitText,
     staffNameOf, staffIdOf,
+    MODIFIER_PICKS, PICKS_MAX, MODIFIER_DEFAULTS, normalizeModifier, liveChoices, itemModifiers, modifierAnswer, freshAnswers,
   };
 }

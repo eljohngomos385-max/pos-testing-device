@@ -1,0 +1,215 @@
+<style>
+/* part o (round 6) — a side funnel (K4-12 laid on its side, rows left) and targets v2 (H3-18/19 redone). Every selector .vo-. */
+.vo-q { color: var(--ink-4); font-weight: 400; }
+.vo-svg { display: block; overflow: visible; }
+.vo-svg text { font-family: var(--font); }
+.vo-sm { font-size: 11px; font-variant-numeric: tabular-nums; }
+.vo-sm.b { font-weight: 500; fill: var(--ink-2); }
+/* rows: the rows are the legend. Pill names never cut: the name cell keeps its full width. */
+.vo-rows > .row .nm { display: flex; align-items: center; gap: 6px; flex: 1 0 auto; overflow: visible; }
+.vo-a { flex: none; min-width: 76px; text-align: right; }
+.vo-a.w { min-width: 98px; }
+.vo-a.drop { font-weight: 400; color: var(--ink-3); }
+.vo-p { flex: none; width: 46px; text-align: right; }
+.vo-n { flex: none; min-width: 48px; text-align: right; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vo-rows .chip { flex: none; min-width: 70px; justify-content: center; }
+.vo-rows > .row.vo-hd { min-height: 22px; font-size: 11px; color: var(--ink-4); }
+.vo-rows > .row.vo-hd:hover { background: none; }
+/* side funnel: rows left at their own width, funnel right; a narrow card drops the funnel under the rows */
+.vo-split { display: flex; flex-wrap: wrap; align-items: center; container-type: inline-size; }
+.vo-split > .rows { flex: 0 0 auto; padding: 6px 0; }
+.vo-fun { flex: 1 1 240px; min-width: 240px; padding: 14px 16px 10px 8px; }
+@container (max-width: 540px) {
+  .vo-split > .rows { flex-basis: 100%; }
+  .vo-fun { padding: 4px 12px 12px; }
+}
+/* big number + chip on its right */
+.vo-big { display: flex; align-items: center; gap: 8px; padding: 12px 12px 4px; flex-wrap: wrap; }
+.vo-big .kpi-value { font-size: 20px; }
+.vo-big .vo-q { font-size: 12px; }
+.vo-plot { padding: 8px 12px 6px; }
+/* key swatches for the target marks */
+.vo-over { background: var(--vo-over); color: var(--t3-ink); }
+.vo-short { background: transparent; color: var(--down); outline: 1px dashed var(--vo-short); outline-offset: -1px; }
+.vo-sw { display: inline-block; width: 18px; height: 0; border-top: 2px dashed var(--ink-4); }
+.vo-tgt { --vo-over: color-mix(in srgb, var(--t3), var(--t3-ink) 28%); --vo-short: color-mix(in srgb, var(--down), #fff 45%); }
+/* daily rows (O6-5): day · track · amount · chip */
+.vo-dr { display: flex; align-items: center; gap: 10px; min-height: var(--row-h); padding: 0 12px; border-top: 1px solid var(--row-line); font-size: 13px; }
+.vo-dr:first-child, .vo-dr.ax { border-top-color: transparent; }
+.vo-dr > span:first-child { flex: none; width: 30px; color: var(--ink-3); }
+.vo-dr > b { flex: none; min-width: 64px; text-align: right; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.vo-dr > .chip { flex: none; width: 70px; justify-content: center; }
+.vo-dr.ax { min-height: 18px; }
+.vo-tk { position: relative; flex: 1; height: 14px; }
+.vo-tk > i, .vo-tk > u { position: absolute; top: 0; bottom: 0; }
+.vo-tk > i { background: var(--t3); border-radius: 4px 0 0 4px; }
+.vo-tk > i.all { border-radius: 4px; }
+.vo-tk > i.ov { background: var(--vo-over); border-radius: 0 4px 4px 0; }
+.vo-tk > u { border: 1px dashed var(--vo-short); border-left: 0; border-radius: 0 4px 4px 0; }
+.vo-tk > s { position: absolute; top: -10px; bottom: -10px; width: 2px; margin-left: -1px; background: var(--ink-2); }
+.vo-dr.ax .vo-tk > em { position: absolute; bottom: 0; transform: translateX(-50%); font-style: normal; font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+</style>
+
+<section class="cat" id="vo-funnel" data-nav="O6 · Side funnel">
+  <h2>Side funnel</h2>
+  <p class="why">K4-12 on its side: the rows stay left, the funnel runs left to right. Each step is as tall as its amount; what drops out is written in the link.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>O6-1</b> Gross → net → before VAT · taken off, then VAT</div><div class="card" id="vo-1"></div></div>
+    <div class="spec"><div class="tag"><b>O6-2</b> Gross → net → gross profit · taken off, then cost of goods</div><div class="card" id="vo-2"></div></div>
+    <div class="spec"><div class="tag"><b>O6-3</b> Stock · opening + received → after sales → kept</div><div class="card" id="vo-3"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vo-target" data-nav="O6 · Targets v2">
+  <h2>Against a target, v2</h2>
+  <p class="why">H3-18 and H3-19 redone, same data and targets. Over the target in deep blue, short of it as a dashed outline up to the mark.</p>
+  <div class="grid wide vo-tgt">
+    <div class="spec"><div class="tag"><b>O6-4</b> Month · running total against an even-pace line to the goal</div><div class="card" id="vo-4"></div></div>
+    <div class="spec"><div class="tag"><b>O6-5</b> Daily · a bar per day, over in deep blue, short as a dashed outline</div><div class="card" id="vo-5"></div></div>
+    <div class="spec"><div class="tag"><b>O6-6</b> Daily · a column per day against the ₱60k line</div><div class="card" id="vo-6"></div></div>
+    <div class="spec"><div class="tag"><b>O6-7</b> Week · over or under ₱60k, bars from a zero line</div><div class="card" id="vo-7"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('vo-' + n), P = V.peso, K = V.pesoK, p2 = n => V.peso(n, 2);
+  const sum = (a, f = x => x) => a.reduce((s, x) => s + f(x), 0);
+  const pc = (a, t) => V.pct(Math.abs(a) / Math.abs(t) * 100);
+  const r1 = n => Math.round(n * 10) / 10;
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const fill = t => /^t\d$/.test(t) ? `var(--${t})` : t === 'bad' ? 'var(--bad)' : `var(--pay-${t})`;
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vo-q">${r}</span>`}</div>`;
+  const pill = (t, nm, cls = '') => `<span class="badge ${t} ${cls}">${esc(nm)}</span>`;
+  const row = (nm, cells, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span>${cells}</div>`;
+  const A = (v, w = '') => `<span class="amt vo-a ${w}">${v}</span>`;
+  const Pc = v => `<span class="pct vo-p">${v}</span>`;
+  const N = v => `<span class="vo-n">${v}</span>`;
+  const chip = (d, txt) => `<span class="chip ${d >= 0 ? 'up' : 'down'}">${txt}</span>`;
+  const dK = d => chip(d, (d >= 0 ? '+' : '−') + K(Math.abs(d)));
+  const sP = d => (d >= 0 ? '+' : '−') + P(Math.abs(d));
+  const big = (v, rest = '') => `<div class="vo-big"><span class="kpi-value">${v}</span>${rest}</div>`;
+  const tx = (x, y, t, c = 'ax', an = 'middle', st = '') => `<text class="${c}" x="${r1(x)}" y="${r1(y)}" text-anchor="${an}"${st && ` style="${st}"`}>${t}</text>`;
+  const tw = (s, px = 11) => s.length * px * .58;   // ponytail: text width guess, only used to wrap the link words
+  const wrap = (s, w) => s.split(' ').reduce((ls, wd) => { const l = ls[ls.length - 1]; if (l && tw(l + ' ' + wd) <= w) ls[ls.length - 1] = l + ' ' + wd; else ls.push(wd); return ls; }, []);
+  const nice = (max, steps) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+
+  // ================= Side funnel =================
+  // steps [{nm,t,v, parts?:[{v,t}] stacked bottom-up}], gaps[i] = [amount text, words] for the link after step i
+  const funnel = (w, steps, gaps, base = steps[0].v) => {
+    const H = 160, T = 4, n = steps.length, bw = Math.max(24, Math.min(40, w * .09)), lw = (w - n * bw) / (n - 1);
+    const geo = steps.map((x, i) => { const h = Math.max(x.v / base * H, 4); return { x: i * (bw + lw), y: T + (H - h) / 2, h }; });
+    let s = '';
+    steps.forEach((x, i) => { const g = geo[i];
+      if (i) { const a = geo[i - 1], x1 = a.x + bw, x2 = g.x, m = (x1 + x2) / 2;
+        s += `<path d="M${r1(x1)} ${r1(a.y)}C${r1(m)} ${r1(a.y)} ${r1(m)} ${r1(g.y)} ${r1(x2)} ${r1(g.y)}V${r1(g.y + g.h)}C${r1(m)} ${r1(g.y + g.h)} ${r1(m)} ${r1(a.y + a.h)} ${r1(x1)} ${r1(a.y + a.h)}Z" fill="${fill(x.t)}" opacity=".4"/>`;
+        const [amt, words] = gaps[i - 1], ls = [amt].concat(wrap(words, lw - 8)), y0 = T + H / 2 - (ls.length - 1) * 7 + 4;
+        ls.forEach((l, k) => s += tx(m, y0 + k * 14, l, k ? 'vo-sm' : 'vo-sm b', 'middle', k ? 'fill:var(--ink-4)' : '')); }
+      let y = g.y + g.h;
+      (x.parts || [{ v: x.v, t: x.t }]).forEach((p, k, all) => { const ph = p.v / x.v * g.h; y -= ph;
+        s += `<rect x="${r1(g.x)}" y="${r1(y)}" width="${r1(bw)}" height="${r1(Math.max(ph - (all.length > 1 && k ? 1 : 0), 1))}" rx="5" fill="${fill(p.t)}"><title>${esc(p.nm || x.nm)} · ${p2(p.v)}</title></rect>`; });
+      s += tx(g.x + bw / 2, T + H + 16, pc(x.v, base), i ? 'ax' : 'ax now', i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle', `transform:translateX(${i === 0 ? -bw / 2 : i === n - 1 ? bw / 2 : 0}px)`); });
+    return `<svg class="vo-svg" width="${r1(w)}" height="${T + H + 20}">${s}</svg>`;
+  };
+  // list = table rows [{nm,t,v,drop?,sign?}]; step rows feed the funnel
+  const sideCard = (id, title, right, list, steps, gaps, of) => {
+    const el = $(id), base = steps[0].v;
+    el.innerHTML = band(title, right) + '<div class="vo-split"><div class="rows vo-rows">'
+      + row('', A('', 'w') + Pc(of), 'vo-hd')
+      + list.map(x => row(pill(x.t, x.nm), A(x.drop ? (x.sign || '−') + p2(x.v) : p2(x.v), 'w' + (x.drop ? ' drop' : '')) + Pc(pc(x.v, base)))).join('')
+      + '</div><div class="vo-fun"></div></div>';
+    const f = el.querySelector('.vo-fun'), cs = getComputedStyle(f);
+    f.innerHTML = funnel(f.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), steps, gaps);
+  };
+
+  const L = V.ladder, off = -(L.voids + L.refunds + L.discounts);
+  const gross = { nm: 'Gross sales', t: 't6', v: L.gross }, net = { nm: 'Net sales', t: 't3', v: L.net }, bef = { nm: 'Sales before VAT', t: 't5', v: L.beforeVat }, gp = { nm: 'Gross profit', t: 't4', v: L.gp };
+  const tk = { nm: 'Taken off', t: 't7', v: off, drop: 1 };
+
+  // O6-1 K4-12 on its side
+  sideCard(1, 'From gross to before VAT', 'Last 30 days', [gross, tk, net, { nm: 'VAT included', t: 't8', v: L.vat, drop: 1 }, bef], [gross, net, bef],
+    [['− ' + P(off), 'taken off'], ['− ' + P(L.vat), 'VAT']], 'of gross');
+  // O6-2 to gross profit (gross profit = net − cost of goods, as K4-11)
+  sideCard(2, 'From gross to profit', 'Last 30 days', [gross, tk, net, { nm: 'Cost of goods', t: 't8', v: L.cost, drop: 1 }, gp], [gross, net, gp],
+    [['− ' + P(off), 'taken off'], ['− ' + P(L.cost), 'cost of goods']], 'of gross');
+  // O6-3 stock at cost, 7 days: closing = opening + received − sold + refunds back in − damaged + count fix
+  { const S = V.stockFlow, start = S.opening + S.received, afterSales = start - S.sold + S.refundsIn, lost = S.damaged - S.countFix;
+    const kept = { nm: 'Kept', t: 't4', v: S.closing };
+    sideCard(3, 'Stock at cost', 'Last 7 days', [
+      { nm: 'Opening', t: 't8', v: S.opening }, { nm: 'Received', t: 't3', v: S.received },
+      { nm: 'Sold', t: 't1', v: S.sold, drop: 1 }, { nm: 'Refunds back in', t: 't2', v: S.refundsIn, drop: 1, sign: '+' },
+      { nm: 'Damaged', t: 'bad', v: S.damaged, drop: 1 }, { nm: 'Count fix', t: 't5', v: -S.countFix, drop: 1 }, kept],
+      [{ nm: 'Opening + received', t: 't8', v: start, parts: [{ nm: 'Opening', v: S.opening, t: 't8' }, { nm: 'Received', v: S.received, t: 't3' }] },
+       { nm: 'After sales', t: 't4', v: afterSales }, kept],
+      [['− ' + P(S.sold - S.refundsIn), 'sold, net'], ['− ' + P(lost), 'damaged, count']], 'of start'); }
+
+  // ================= Targets v2 =================
+  const TG = V.dailyTarget, WK = V.week.filter(w => !w.now), TW = sum(WK, w => w.net), WT = TG * WK.length;
+  const OV = WK.filter(w => w.net >= TG), SH = WK.filter(w => w.net < TG);
+  const weekBig = big(P(TW), dK(TW - WT) + `<span class="vo-q">of ${P(WT)}</span>`);
+  const keyRows = () => '<div class="rows vo-rows">'
+    + row(pill('', 'Over', 'vo-over'), N(OV.length + ' days') + A(sP(sum(OV, w => w.net - TG))))
+    + row(pill('', 'Short', 'vo-short'), N(SH.length + ' days') + A(sP(sum(SH, w => w.net - TG))))
+    + row('Week', N(WK.length + ' days') + A(sP(TW - WT)), 'total') + '</div>';
+  const plotW = el => { const p = el.querySelector('.vo-plot'); return p.clientWidth - 24; };
+
+  // O6-4 month: running total vs a straight even-pace line to the goal. Day-by-day is known for this week only
+  // (V.week, Oct 12–17); Oct 1–11 is one known total, drawn as a straight dashed stretch.
+  { const M = V.monthTarget, thru = 17, days = 31, pace = M.goal * thru / days, left = days - thru;
+    const c11 = M.done - TW, pts = [[0, 0], [thru - WK.length, c11]]; let c = c11;
+    WK.forEach((w, i) => pts.push([thru - WK.length + i + 1, c += w.net]));
+    const el = $(4), ahead = M.done - pace;
+    el.innerHTML = band('Month target', 'October') + big(P(M.done), chip(ahead, `${ahead >= 0 ? '' : '−'}${K(Math.abs(ahead))} ${ahead >= 0 ? 'ahead' : 'behind'}`) + `<span class="vo-q">of ${P(M.goal)}</span>`)
+      + '<div class="vo-plot"></div><div class="rows vo-rows">'
+      + row(pill('t3', 'Done'), A(P(M.done), 'w') + Pc(pc(M.done, M.goal)))
+      + row(`<i class="vo-sw"></i>Even pace by Oct ${thru}`, A(P(pace), 'w') + Pc(pc(pace, M.goal)))
+      + row(pill('t8', 'Still to go'), A(P(M.goal - M.done), 'w') + Pc(pc(M.goal - M.done, M.goal)))
+      + row(`<span class="vo-q" style="color:inherit">Needed a day · ${left} days left</span>`, A(P((M.goal - M.done) / left), 'w') + Pc(''))
+      + row('Goal', A(P(M.goal), 'w') + Pc(''), 'total') + '</div>';
+    const w = plotW(el), H = 150, T = 16, Lx = 44, top = M.goal * 1.06;
+    const X = d => Lx + d / days * (w - Lx), Y = v => T + H - v / top * H, ed = 'color-mix(in srgb, var(--t3), var(--t3-ink) 35%)';
+    let s = '';
+    [0, 500000, 1000000, 1500000].forEach(v => s += `<line x1="${Lx}" x2="${r1(w)}" y1="${r1(Y(v))}" y2="${r1(Y(v))}" stroke="var(--grid)"/>` + tx(Lx - 6, Y(v) + 4, v >= 1e6 ? '₱' + v / 1e6 + 'M' : v ? K(v) : '0', 'ax', 'end'));
+    const area = (ps, op, tip) => `<path d="M${ps.map(p => r1(X(p[0])) + ' ' + r1(Y(p[1]))).join('L')}V${r1(Y(0))}H${r1(X(ps[0][0]))}Z" fill="var(--t3)" opacity="${op}"><title>${tip}</title></path>`;
+    s += area(pts.slice(0, 2), .5, `Oct 1–11 · ${P(c11)}`) + area(pts.slice(1), 1, `Oct 12–17 · ${P(TW)}`);
+    s += `<path d="M${pts.slice(1).map(p => r1(X(p[0])) + ' ' + r1(Y(p[1]))).join('L')}" fill="none" stroke="${ed}" stroke-width="2" stroke-linejoin="round"/>`;
+    s += `<line x1="${X(0)}" y1="${r1(Y(0))}" x2="${r1(X(days))}" y2="${r1(Y(M.goal))}" stroke="var(--ink-4)" stroke-width="1.5" stroke-dasharray="5 4"><title>Even pace · ${P(M.goal)} by Oct 31</title></line>`;
+    s += `<line x1="${r1(X(thru))}" x2="${r1(X(thru))}" y1="${T - 4}" y2="${T + H}" stroke="var(--ink-2)"/>` + tx(X(thru), T - 8, 'Today', 'ax now');
+    s += `<line x1="${r1(X(thru))}" x2="${r1(X(thru))}" y1="${r1(Y(pace))}" y2="${r1(Y(M.done))}" stroke="var(--up)" stroke-width="3" stroke-linecap="round"/>`;
+    s += `<circle cx="${r1(X(thru))}" cy="${r1(Y(M.done))}" r="4" fill="${ed}"/><circle cx="${r1(X(thru))}" cy="${r1(Y(pace))}" r="3" fill="var(--ink-4)"/>`;
+    s += tx(X(0), T + H + 15, 'Oct 1', 'ax', 'start') + tx(X(days), T + H + 15, 'Oct 31', 'ax', 'end');
+    el.querySelector('.vo-plot').innerHTML = `<svg class="vo-svg" width="${r1(w)}" height="${T + H + 20}">${s}</svg>`; }
+
+  // O6-5 daily rows: up to ₱60k in blue, past it deep blue, short as a dashed outline up to the mark. Today (Sun) not started: left out.
+  { const top = nice(Math.max(...WK.map(w => w.net)), 4) * 4, m = TG / top * 100, pct = v => r1(v / top * 100);
+    $(5).innerHTML = band('Daily target', `${K(TG)} a day · Mon–Sat`) + weekBig + '<div style="padding-top:6px">'
+      + `<div class="vo-dr ax"><span></span><span class="vo-tk"><em style="left:${m}%">${K(TG)}</em></span><b></b><span class="chip" style="visibility:hidden"></span></div>`
+      + WK.map(w => { const over = w.net >= TG;
+        return `<div class="vo-dr" title="${w.d} · ${P(w.net)}"><span>${w.d}</span><span class="vo-tk">`
+          + (over ? `<i style="width:${m}%"></i><i class="ov" style="left:${m}%;width:${pct(w.net - TG)}%"></i>` : `<i class="all" style="width:${pct(w.net)}%"></i><u style="left:${pct(w.net)}%;width:${pct(TG - w.net)}%"></u>`)
+          + `<s style="left:${m}%"></s></span><b>${P(w.net)}</b>${dK(w.net - TG)}</div>`; }).join('') + '</div>' + keyRows(); }
+
+  // O6-6 daily columns against the ₱60k line
+  { const el = $(6); el.innerHTML = band('Daily target', `${K(TG)} a day · Mon–Sat`) + weekBig + '<div class="vo-plot"></div>' + keyRows();
+    const w = plotW(el), H = 150, T = 18, G = 36, top = nice(Math.max(...WK.map(w => w.net)), 4) * 4, Y = v => T + H - v / top * H, slot = (w - G) / WK.length, cw = Math.min(44, slot * .5);
+    let s = '';
+    WK.forEach((d, i) => { const x = G + i * slot + (slot - cw) / 2, cx = x + cw / 2, lo = Math.min(d.net, TG);
+      s += `<rect x="${r1(x)}" y="${r1(Y(lo))}" width="${r1(cw)}" height="${r1(Y(0) - Y(lo))}" rx="4" fill="var(--t3)"><title>${d.d} · ${P(d.net)}</title></rect>`;
+      if (d.net >= TG) s += `<rect x="${r1(x)}" y="${r1(Y(d.net))}" width="${r1(cw)}" height="${r1(Y(TG) - Y(d.net))}" rx="4" fill="var(--vo-over)"><title>${d.d} · ${sP(d.net - TG)} over</title></rect>`
+        + `<rect x="${r1(x)}" y="${r1(Y(TG) - 4)}" width="${r1(cw)}" height="8" fill="var(--vo-over)"/>`;
+      else s += `<rect x="${r1(x + .5)}" y="${r1(Y(TG) + .5)}" width="${r1(cw - 1)}" height="${r1(Y(d.net) - Y(TG) - 1)}" rx="4" fill="none" stroke="var(--vo-short)" stroke-dasharray="3 3"><title>${d.d} · ${sP(d.net - TG)} short</title></rect>`;
+      s += tx(cx, Y(Math.max(d.net, TG)) - 6, P(d.net), 'vo-sm b') + tx(cx, T + H + 15, d.d, 'ax'); });
+    s = `<line x1="${G}" x2="${r1(w)}" y1="${r1(Y(0))}" y2="${r1(Y(0))}" stroke="var(--grid)"/>` + s
+      + `<line x1="${G}" x2="${r1(w)}" y1="${r1(Y(TG))}" y2="${r1(Y(TG))}" stroke="var(--ink-2)" stroke-width="1.5"/>` + tx(G - 6, Y(TG) + 4, K(TG), 'ax', 'end');
+    el.querySelector('.vo-plot').innerHTML = `<svg class="vo-svg" width="${r1(w)}" height="${T + H + 20}">${s}</svg>`; }
+
+  // O6-7 over / under ₱60k per day, bars from a zero line (zero = the target)
+  { const el = $(7); el.innerHTML = band('Daily target', `${K(TG)} a day · Mon–Sat`) + weekBig + '<div class="vo-plot"></div>' + keyRows();
+    const D = WK.map(w => ({ d: w.d, v: w.net - TG })), up = Math.max(...D.map(x => x.v), 0), dn = -Math.min(...D.map(x => x.v), 0);
+    const w = plotW(el), H = 150, T = 18, k = H / (up + dn), Y0 = T + up * k, G = 36, slot = (w - G) / D.length, cw = Math.min(44, slot * .5);
+    let s = `<line x1="${G}" x2="${r1(w)}" y1="${r1(Y0)}" y2="${r1(Y0)}" stroke="var(--ink-2)" stroke-width="1.5"/>` + tx(G - 6, Y0 + 4, K(TG), 'ax', 'end');
+    D.forEach((x, i) => { const bx = G + i * slot + (slot - cw) / 2, cx = bx + cw / 2, h = Math.abs(x.v) * k, pos = x.v >= 0;
+      s += `<rect x="${r1(bx)}" y="${r1(pos ? Y0 - h : Y0)}" width="${r1(cw)}" height="${r1(h)}" rx="4" fill="var(--${pos ? 'up' : 'down'}-tint)"><title>${x.d} · ${sP(x.v)}</title></rect>`
+        + tx(cx, pos ? Y0 - h - 6 : Y0 + h + 14, sP(x.v), 'vo-sm b', 'middle', `fill:var(--${pos ? 'up' : 'down'})`)
+        + tx(cx, pos ? Y0 + 14 : Y0 - 6, x.d, 'ax'); });
+    el.querySelector('.vo-plot').innerHTML = `<svg class="vo-svg" width="${r1(w)}" height="${T + H + 20}">${s}</svg>`; }
+})();</script>

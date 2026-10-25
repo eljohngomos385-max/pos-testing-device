@@ -1,0 +1,2032 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back office viz lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* Viz lab — the shared look every component in viz-lab/ draws from. Values copied from the live
+   back office (bo-blocks.css, bo-calm.css, bo-shopify-tables.css) so a component here looks like it
+   belongs on backoffice-shopify.html. Components never type a colour these tokens already name. */
+:root {
+  --font: "Inter", system-ui, sans-serif;
+  /* surfaces */
+  --page: #FFFFFF;          /* the inset sheet the cards sit on */
+  --canvas: #F6F6F6;        /* the grey behind the sheet */
+  --raised: #FFFFFF;        /* card body */
+  --band: rgb(247,247,247); /* card header band / table head (--sh-head) */
+  --fill: rgba(0,0,0,.05);  /* hover/selected on grey, grey pill */
+  --pill: rgb(235,235,235); /* picker pill (--sh-pill) */
+  --line: #ECECEC;          /* card hairline (--b-line) */
+  --row-line: rgb(242,242,242); /* row hairline (--sh-line) */
+  --grid: #ECECEC;          /* chart gridlines */
+  /* ink */
+  --ink: rgb(16,16,16);     /* names, money (--sh-ink) */
+  --ink-2: rgb(74,74,74);   /* plain cells, headers (--sh-ink-2) */
+  --ink-3: rgb(96,96,96);   /* quiet (--sh-ink-3) */
+  --ink-4: #8A8A8A;         /* faint, notes (--po-ink-tertiary) */
+  --ink-5: #B5B5B5;         /* chart scale + labels (--b-ink-4) */
+  /* data: blues only for slices and bars (owner 2026-10-17); grey = other */
+  --bar: #007AFF;           /* Home + Stock history bars */
+  --s1: #1C5CAB; --s2: #256ABF; --s3: #2B7DE9; --s4: #5598E7; --s5: #86B6EF; --s-other: #D4D4D4;
+  --d1: #BCD7FA; --d2: #75ADF2; --d3: #2B7DE9;   /* light → deep, meters */
+  --data-tint: #DCE9FB; --data-ink: #1F5FB8;
+  /* category tints (owner 2026-10-18: overrules blue-only) — the Orders pill colours. Fill a mark with
+     --tN, write its label in --tN-ink. Payments keep their own: cash 1, account 2, GCash 3, QR 4, Maya 5.
+     Any other set of categories takes them in order; --t8 is "Other". */
+  --t1: #cdf5d3; --t1-ink: #0c3b14;   /* green  · Cash */
+  --t2: #ffbf80; --t2-ink: #381600;   /* orange · Account */
+  --t3: #c8e5ff; --t3-ink: #002e5c;   /* blue   · GCash */
+  --t4: #c2f2ec; --t4-ink: #00332d;   /* teal   · QR */
+  --t5: #e5dcff; --t5-ink: #2b1066;   /* lavender · Maya */
+  --t6: #ffe7a3; --t6-ink: #3d2c00;   /* yellow */
+  --t7: #fbd3e9; --t7-ink: #4a0a2c;   /* pink */
+  --t8: #e6e6e6; --t8-ink: #4a4a4a;   /* grey · Other */
+  /* meaning: red = down/loss, green = up/good, amber = warn. Never decoration. */
+  --up: #047B5D;   --up-tint: #D3ECDD;   --up-soft: #EAF6EF;  --heat: #1FA855;
+  --down: #D72C0D; --down-tint: #F8D8D0; --down-soft: #FCEDE9;
+  --warn: #7A5B00; --warn-tint: #FCEFC7;
+  /* Shopify badges (pills) */
+  --ok: #b3f782; --ok-ink: #0f2400; --bad: #ffd0cc; --bad-ink: #360200;
+  --pay-cash: #cdf5d3; --pay-cash-ink: #0c3b14; --pay-gcash: #c8e5ff; --pay-gcash-ink: #002e5c;
+  --pay-maya: #e5dcff; --pay-maya-ink: #2b1066; --pay-qr: #c2f2ec; --pay-qr-ink: #00332d;
+  --pay-acct: #ffbf80; --pay-acct-ink: #381600;
+  /* shape */
+  --r-card: 14px;           /* calm cards (--b-r-card) */
+  --r-cell: 10px;           /* a box inside a card */
+  --r-row: 7px;             /* a row highlight inside a card */
+  --r-pill: 9999px;
+  --r-badge: 8px;
+  --card-shadow: rgba(0,0,0,.035) 0 .5px 1px 0, rgba(0,0,0,.01) 0 .5px 3px 0;
+  --pop-shadow: 0 8px 24px rgba(0,0,0,.08);
+  /* sizes */
+  --band-h: 31px; --row-h: 33px; --pad: 12px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 13px/1.45 var(--font); color: var(--ink-2); background: var(--canvas); letter-spacing: -.06px; -webkit-font-smoothing: antialiased; }
+.num, td.n { font-variant-numeric: tabular-nums; }
+
+/* ---- page frame ---- */
+.lab-top { position: sticky; top: 0; z-index: 10; background: rgba(246,246,246,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.lab-top-in { max-width: 1560px; margin: 0 auto; padding: 12px 24px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.lab-top h1 { font-size: 15px; font-weight: 650; color: var(--ink); margin: 0 12px 0 0; letter-spacing: -.01em; }
+.lab-top a { font-size: 12px; font-weight: 500; color: var(--ink); text-decoration: none; height: 28px; padding: 0 12px; display: inline-flex; align-items: center; border-radius: var(--r-pill); background: var(--pill); }
+.lab-top a:hover { background: color-mix(in srgb, var(--pill), #000 5%); }
+.sheet { max-width: 1560px; margin: 12px auto 48px; padding: 8px 24px 40px; background: var(--page); border-radius: var(--r-card); }
+.cat { padding-top: 28px; scroll-margin-top: 56px; }
+.cat > h2 { font-size: 17px; font-weight: 700; color: var(--ink); margin: 0 0 4px; letter-spacing: -.02em; }
+.cat > p.why { margin: 0 0 16px; color: var(--ink-4); font-size: 12px; max-width: 760px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; align-items: start; }
+.grid.wide { grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); }
+.grid.full { grid-template-columns: 1fr; }
+
+/* ---- one specimen: label above, the component under ---- */
+.spec { min-width: 0; }
+.spec > .tag { display: flex; gap: 8px; align-items: baseline; margin: 0 0 6px 2px; font-size: 11px; color: var(--ink-4); }
+.spec > .tag b { font-weight: 600; color: var(--ink-2); }
+
+/* ---- the card: white, hairline, soft lift, 14px. Band grey, body white (owner 2026-10-17). ---- */
+.card { background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+.band { min-height: var(--band-h); padding: 0 var(--pad); display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--band); font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.band .more { font-size: 12px; font-weight: 500; color: var(--ink); text-decoration: none; }
+.body { padding: var(--pad); }
+
+/* rows: 33px, faint hairline, no line under the band */
+.rows > .row { min-height: var(--row-h); padding: 0 var(--pad); display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--row-line); font-size: 13px; color: var(--ink-2); }
+.rows > .row:first-child { border-top-color: transparent; }
+.rows > .row:hover { background: var(--band); }
+.row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .amt, .money { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.row .cnt, .row .pct { color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.row.total { font-weight: 500; color: var(--ink); }
+
+/* table: the Orders/Items table */
+table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
+table.t th { height: var(--band-h); padding: 0 8px; background: var(--band); font-size: 12px; font-weight: 500; color: var(--ink-2); text-align: left; white-space: nowrap; }
+table.t td { height: var(--row-h); padding: 0 8px; border-top: 1px solid var(--row-line); font-size: 13px; color: var(--ink-2); }
+table.t tr:first-child td, table.t thead + tbody tr:first-child td { border-top-color: transparent; }
+table.t :is(th, td):first-child { padding-left: var(--pad); }
+table.t :is(th, td):last-child { padding-right: var(--pad); }
+table.t .r { text-align: right; font-variant-numeric: tabular-nums; }
+table.t td.nm { color: var(--ink); font-weight: 500; }
+table.t td.nm small { margin-left: 6px; font-size: 11px; font-weight: 400; color: var(--ink-4); }
+table.t tbody tr:hover td { background: var(--band); }
+
+/* numbers + chips: trend chip sits RIGHT of the number, same line (owner) */
+.kpi-label { font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.kpi-value { font-size: 22px; font-weight: 500; color: var(--ink); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.chip { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: var(--r-pill); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.chip.up { background: var(--up-tint); color: var(--up); }
+.chip.down { background: var(--down-tint); color: var(--down); }
+.chip.flat { background: var(--fill); color: var(--ink-3); }
+.cmp.up { color: var(--up); } .cmp.down { color: var(--down); }
+
+/* badges (Polaris) */
+.badge { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: var(--r-badge); font-size: 12px; line-height: 18px; letter-spacing: -.13px; background: var(--fill); color: var(--ink); }
+.badge.ok { background: var(--ok); color: var(--ok-ink); } .badge.bad { background: var(--bad); color: var(--bad-ink); } .badge.warn { background: var(--warn-tint); color: var(--warn); }
+.badge.cash { background: var(--pay-cash); color: var(--pay-cash-ink); } .badge.gcash { background: var(--pay-gcash); color: var(--pay-gcash-ink); }
+.badge.maya { background: var(--pay-maya); color: var(--pay-maya-ink); } .badge.qr { background: var(--pay-qr); color: var(--pay-qr-ink); }
+.badge.acct { background: var(--pay-acct); color: var(--pay-acct-ink); }
+
+/* picker pill (Shopify) */
+.pick { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px 0 10px; border: 0; border-radius: var(--r-pill); background: var(--pill); font: 500 12px/16px var(--font); color: var(--ink); letter-spacing: -.12px; cursor: pointer; }
+.pick::after { content: ""; width: 12px; height: 12px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.25 6.75-4.25 4.5-4.25-4.5'/%3E%3C/svg%3E") center / 12px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.25 6.75-4.25 4.5-4.25-4.5'/%3E%3C/svg%3E") center / 12px no-repeat; }
+.seg { display: inline-flex; padding: 2px; border-radius: var(--r-pill); background: var(--pill); }
+.seg button { height: 24px; padding: 0 10px; border: 0; border-radius: var(--r-pill); background: transparent; font: 500 12px var(--font); color: var(--ink-3); cursor: pointer; }
+.seg button.on { background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.06); }
+
+/* chart text */
+.ax { font-size: 11px; fill: var(--ink-5); font-variant-numeric: tabular-nums; }
+.ax.now { fill: var(--ink); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--ink-3); }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+
+/* tooltip */
+.tip { position: absolute; pointer-events: none; padding: 6px 8px; border-radius: 8px; background: var(--ink); color: #fff; font-size: 12px; white-space: nowrap; box-shadow: var(--pop-shadow); font-variant-numeric: tabular-nums; }
+
+</style>
+<script>
+// Viz lab — one shared demo data set, numbers taken from the live back office screenshots
+// (2026-10-18, Last 7 days unless named). Every component reads VIZ; none invents its own figures.
+(function () {
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  const VIZ = {
+    peso: (n, d = 0) => (n < 0 ? '−' : '') + '₱' + Math.abs(n).toLocaleString('en-PH', { minimumFractionDigits: d, maximumFractionDigits: d }),
+    pesoK: n => '₱' + (Math.abs(n) >= 1000 ? (Math.round(n / 100) / 10).toString().replace(/\.0$/, '') + 'k' : Math.round(n)),
+    pct: (n, d = 1) => n.toFixed(d) + '%',
+
+    // Home KPI strip (this 7 days vs the 7 before)
+    kpis: [
+      { id: 'net', label: 'Net sales', value: 338080, money: true, change: -13.3 },
+      { id: 'gp', label: 'Gross profit', value: 55779, money: true, change: -16.5 },
+      { id: 'orders', label: 'Orders', value: 317, change: -16.6 },
+      { id: 'margin', label: 'Margin', value: 18.5, pct: true, change: -3.7 },
+    ],
+    // Net sales per day, this week (Sun = today, not started) and last week
+    week: [
+      { d: 'Mon', net: 69800, prev: 74200, orders: 64 },
+      { d: 'Tue', net: 49900, prev: 58100, orders: 47 },
+      { d: 'Wed', net: 49300, prev: 61400, orders: 46 },
+      { d: 'Thu', net: 62100, prev: 66900, orders: 58 },
+      { d: 'Fri', net: 68700, prev: 79300, orders: 63 },
+      { d: 'Sat', net: 38280, prev: 50100, orders: 39 },
+      { d: 'Sun', net: 0, prev: 0, orders: 0, now: true },
+    ],
+    dailyTarget: 60000,
+    monthTarget: { goal: 1500000, done: 985308 },
+
+    // Payment methods (count, net) — 7 days, and the 30-day Summary set
+    payments: [
+      { m: 'Cash', key: 'cash', n: 180, amt: 163145 },
+      { m: 'Account', key: 'acct', n: 17, amt: 69684 },
+      { m: 'GCash', key: 'gcash', n: 77, amt: 67372 },
+      { m: 'QR', key: 'qr', n: 28, amt: 24115 },
+      { m: 'Maya', key: 'maya', n: 18, amt: 13763 },
+    ],
+    payments30: [
+      { m: 'Cash', amt: 462457, prev: 431200 }, { m: 'Account', amt: 221119, prev: 240300 },
+      { m: 'GCash', amt: 176515, prev: 150100 }, { m: 'QR', amt: 81902, prev: 70400 }, { m: 'Maya', amt: 43315, prev: 47900 },
+    ],
+    fulfilment: [{ m: 'Walk-in', n: 280, amt: 227332 }, { m: 'Delivery', n: 37, amt: 110748 }],
+    staff: [
+      { name: 'Aldrin S.', n: 71, amt: 101740, voids: 1, refunds: 2 },
+      { name: 'Maricel R.', n: 97, amt: 97525, voids: 3, refunds: 3 },
+      { name: 'Joy P.', n: 101, amt: 93320, voids: 2, refunds: 3 },
+      { name: 'Liza M.', n: 48, amt: 45494, voids: 4, refunds: 3 },
+    ],
+    // The ladder (Sales › Summary, 30 days) — words from sales-terms
+    ladder: { gross: 1003113.01, voids: -6232.71, voidsN: 9, refunds: -7526.27, refundsN: 9, discounts: -4046.43, net: 985307.60, vat: 105568.80, beforeVat: 879738.80, cost: 802110.40, gp: 183197.20 },
+
+    // Top items (30 days)
+    topItems: [
+      { name: 'Deformed Bar Grade 33 12mm × 6m', cat: 'Fasteners', units: 332, unit: '', amt: 87181, margin: 14.2, prev: 79100 },
+      { name: 'Deformed Bar Grade 33 16mm × 6m', cat: 'Fasteners', units: 131, unit: '', amt: 63348, margin: 13.1, prev: 66200 },
+      { name: 'Hollow Block 5"', cat: 'Cement', units: 2607, unit: '', amt: 47574, margin: 22.5, prev: 41800 },
+      { name: 'Portland Cement 40kg', cat: 'Cement', units: 109, unit: 'bag', amt: 31015, margin: 9.8, prev: 33900 },
+      { name: 'Deformed Bar Grade 33 10mm × 6m', cat: 'Fasteners', units: 157, unit: '', amt: 26835, margin: 15.0, prev: 22100 },
+      { name: 'Hollow Block 4" · Local', cat: 'Cement', units: 1781, unit: '', amt: 23153, margin: 24.1, prev: 25000 },
+      { name: 'Hollow Block 4" · Generic', cat: 'Cement', units: 1599, unit: '', amt: 22268, margin: 21.7, prev: 19300 },
+      { name: 'Gravel 3/4" (per cu.m)', cat: 'Cement', units: 14, unit: 'cu.m', amt: 20025, margin: 18.4, prev: 21900 },
+      { name: 'Holcim Excel Cement 40kg', cat: 'Cement', units: 74, unit: 'bag', amt: 19872, margin: 10.6, prev: 15800 },
+      { name: 'Washed Sand (per cu.m)', cat: 'Cement', units: 12, unit: 'cu.m', amt: 19295, margin: 19.9, prev: 18700 },
+    ],
+    allItemsNet: 985308,
+    categories: [
+      { c: 'Cement', amt: 312400, prev: 290100, items: 38 }, { c: 'Fasteners', amt: 241700, prev: 236900, items: 112 },
+      { c: 'Electrical', amt: 118300, prev: 131000, items: 164 }, { c: 'Plumbing', amt: 96200, prev: 88400, items: 141 },
+      { c: 'Paint', amt: 71800, prev: 80200, items: 96 }, { c: 'Lumber', amt: 58900, prev: 51300, items: 44 },
+      { c: 'Tools', amt: 46100, prev: 49800, items: 210 }, { c: 'Roofing', amt: 39908, prev: 33100, items: 27 },
+    ],
+    boughtTogether: [
+      { a: 'Portland Cement 40kg', b: 'Washed Sand (per cu.m)', n: 41, lift: 3.2 },
+      { a: 'Hollow Block 4" · Local', b: 'Portland Cement 40kg', n: 37, lift: 2.6 },
+      { a: 'Deformed Bar 10mm', b: 'Tie Wire #16', n: 29, lift: 4.1 },
+      { a: 'PVC Pipe 1/2"', b: 'PVC Elbow 1/2"', n: 26, lift: 5.4 },
+      { a: 'THHN Stranded #12', b: 'Electrical Tape', n: 22, lift: 2.9 },
+      { a: 'Paint Brush 3"', b: 'Boysen Latex White 4L', n: 18, lift: 3.7 },
+      { a: 'Gravel 3/4"', b: 'Washed Sand (per cu.m)', n: 16, lift: 4.8 },
+      { a: 'Wood Screw #8', b: 'Marine plywood 3/4"', n: 12, lift: 2.2 },
+    ],
+
+    // Stock history (7 days)
+    lostDemand: [
+      { name: 'Fiber cement board', n: 2, last: 'Sat' }, { name: 'Welding rod 6013', n: 2, last: 'Fri' },
+      { name: 'Paint Brush 3"', n: 2, last: 'Fri' }, { name: 'Marine plywood 3/4"', n: 2, last: 'Wed' },
+      { name: 'THHN Stranded #8', n: 1, last: 'Tue' },
+    ],
+    countMismatch: [
+      { name: 'Gate Valve Brass 3/4"', expected: 15, counted: 16, unit: '', cost: 486.00 },
+      { name: 'Gravel 3/4 (per cu.m)', expected: 9.50, counted: 8.62, unit: 'cu.m', cost: 1050.00 },
+      { name: 'Tox Plug #8', expected: 400, counted: 372, unit: '', cost: 1.37 },
+      { name: 'Hollow Block 4" · Local', expected: 620, counted: 611, unit: '', cost: 9.80 },
+    ],
+    costChanges: [
+      { name: 'Wood Screw #8 × 1 1/2"', from: 2.71, to: 2.45, supplier: 'Asia Fasteners' },
+      { name: 'Wheelbarrow Heavy Duty', from: 1272.19, to: 1150.92, supplier: 'Ace Tools PH' },
+      { name: 'Hex Bolt M10 × 100mm', from: 10.64, to: 9.63, supplier: 'Asia Fasteners' },
+      { name: 'Tox Plug #8', from: 1.51, to: 1.37, supplier: 'Asia Fasteners' },
+      { name: 'Gravel 3/4" (per cu.m)', from: 1143.63, to: 1050.00, supplier: 'Rizal Aggregates' },
+      { name: 'Portland Cement 40kg', from: 268.00, to: 279.50, supplier: 'Holcim Dealer' },
+    ],
+    // Where stock went (units by reason, value at cost) — 7 days
+    whereItWent: [
+      { r: 'Sold', value: 281400 }, { r: 'Refunded back in', value: -6100 }, { r: 'Damaged', value: 3200 },
+      { r: 'Count fix', value: 1860 },
+    ],
+    stockFlow: { opening: 1842300, received: 312600, sold: 281400, refundsIn: 6100, damaged: 3200, countFix: -1860, closing: 1874540 },
+    stockByDay: [ // value moved per day: in (received) and out (sold + losses)
+      { d: 'Mon', in: 84200, out: 58100 }, { d: 'Tue', in: 0, out: 41300 }, { d: 'Wed', in: 126400, out: 40900 },
+      { d: 'Thu', in: 0, out: 51600 }, { d: 'Fri', in: 102000, out: 57200 }, { d: 'Sat', in: 0, out: 31260 }, { d: 'Sun', in: 0, out: 0, now: true },
+    ],
+  };
+
+  // Orders by weekday × hour (7 AM – 6 PM), 7 days
+  VIZ.hours = ['7a', '8a', '9a', '10a', '11a', '12p', '1p', '2p', '3p', '4p', '5p', '6p'];
+  const shape = [2, 5, 7, 8, 6, 4, 5, 7, 6, 5, 3, 1];
+  VIZ.heat = VIZ.week.slice(0, 6).map(w => ({ d: w.d, v: shape.map(s => Math.max(0, Math.round(s * (w.orders / 60) * (0.6 + rnd() * 0.8)))) }));
+  VIZ.heat.push({ d: 'Sun', v: shape.map(() => 0) });
+  // Net sales per day for the last 26 weeks (GitHub-style calendar). Sundays closed.
+  VIZ.days = [];
+  const end = new Date(2026, 9, 18);
+  for (let i = 181; i >= 0; i--) {
+    const dt = new Date(end); dt.setDate(end.getDate() - i);
+    const dow = dt.getDay();
+    const v = i === 0 ? 0 : dow === 0 ? Math.round(rnd() * 8000) : Math.round(32000 + rnd() * 48000 + (dow === 5 ? 9000 : 0));
+    VIZ.days.push({ date: dt.toISOString().slice(0, 10), dow, net: v });
+  }
+  window.VIZ = VIZ;
+})();
+
+</script>
+</head><body>
+<header class="lab-top"><div class="lab-top-in"><h1>Back office viz lab · 104</h1><a href="#a-kpi">KPI strip</a><a href="#a-chart">Home chart</a><a href="#a-combo">Two scales + phone</a><a href="#b-pay">Payment methods</a><a href="#b-ladder">Breakdown</a><a href="#b-ful">Fulfilment</a><a href="#c-staff">Staff</a><a href="#c-orders">Orders breakdown</a><a href="#c-time">Time patterns</a><a href="#d-top">Top items</a><a href="#d-cat">Categories</a><a href="#d-pairs">Bought together</a><a href="#e-cards">Stock cards</a><a href="#e-flow">Stock flow</a></div></header>
+<main class="sheet">
+<!-- ===== part a.html ===== -->
+<style>
+/* Part A — Home's KPI strip + main bar chart. One renderer (JS below) draws every chart; specimens differ by data-cfg and strip class. */
+.pa-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pa-k { position: relative; min-width: 0; padding: 10px 14px 12px; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.pa-l { display: block; font-size: 12px; font-weight: 500; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pa-k.on .pa-l { color: var(--ink); }
+.pa-line { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; white-space: nowrap; }
+.pa-v { font-size: 19px; font-weight: 550; color: var(--ink); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.pa-line .chip { height: 18px; padding: 0 6px; font-size: 11.5px; }
+
+/* v1 segmented band: white tile on the grey, gaps not lines */
+.pa-v1 { background: var(--band); padding: 6px; gap: 4px; }
+.pa-v1 .pa-k { border-radius: var(--r-cell); padding: 7px 10px 9px; }
+.pa-v1 .pa-k:not(.on):hover { background: var(--fill); }
+.pa-v1 .pa-k.on { background: var(--raised); box-shadow: 0 0 0 1px var(--line), var(--card-shadow); }
+/* v2 four tiles, picked one ringed */
+.pa-v2 { background: var(--band); padding: 8px; gap: 8px; }
+.pa-v2 .pa-k { background: var(--raised); border-radius: var(--r-cell); box-shadow: 0 0 0 1px var(--line); padding: 7px 10px 9px; }
+.pa-v2 .pa-k.on { box-shadow: 0 0 0 1.5px var(--ink); }
+/* v3 underline only */
+.pa-v3 { background: var(--band); }
+.pa-v3 .pa-k { padding: 10px 16px 15px; }
+.pa-v3 .pa-k:not(.on) .pa-v { color: var(--ink-3); }
+.pa-v3 .pa-k.on::after { content: ""; position: absolute; left: 16px; right: 16px; bottom: 4px; height: 3px; border-radius: var(--r-pill); background: var(--ink); }
+/* v4 rounded well inside the white body */
+.pa-wellwrap { padding: 12px 12px 0; }
+.pa-v4 { background: var(--band); border-radius: var(--r-cell); padding: 4px; gap: 4px; }
+.pa-v4 .pa-k { border-radius: var(--r-row); padding: 7px 10px 9px; }
+.pa-v4 .pa-k:not(.on):hover { background: var(--fill); }
+.pa-v4 .pa-k.on { background: var(--raised); box-shadow: 0 0 0 1px var(--line), var(--card-shadow); }
+/* v5 separate small cards: grey band label, white number */
+.pa-v5 { gap: 12px; margin-bottom: 12px; }
+.pa-v5 .pa-k { padding: 0; background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+.pa-v5 .pa-l { height: var(--band-h); line-height: var(--band-h); padding: 0 var(--pad); background: var(--band); }
+.pa-v5 .pa-line { margin: 0; padding: 9px var(--pad) 11px; }
+.pa-v5 .pa-k.on { border-color: var(--ink); box-shadow: 0 0 0 .5px var(--ink); }
+/* v6 rail left of the chart */
+.pa-railwrap { display: grid; grid-template-columns: 196px minmax(0, 1fr); padding: 8px 0 0 8px; }
+.pa-v6 { grid-template-columns: 1fr; align-content: start; gap: 2px; }
+.pa-v6 .pa-k { border-radius: var(--r-row); padding: 8px 10px; }
+.pa-v6 .pa-k:not(.on):hover { background: var(--band); }
+.pa-v6 .pa-k.on { background: var(--band); }
+.pa-v6 .pa-v { font-size: 17px; }
+/* v7 pill switch + one big number */
+.pa-v7 { display: inline-flex; padding: 2px; border-radius: var(--r-pill); background: var(--pill); }
+.pa-v7 .pa-k { height: 24px; padding: 0 10px; border-radius: var(--r-pill); font-size: 12px; }
+.pa-v7 .pa-k .pa-l { color: var(--ink-3); }
+.pa-v7 .pa-k.on { background: var(--raised); box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.06); }
+.pa-v7 .pa-k.on .pa-l { color: var(--ink); }
+.pa-big { display: flex; align-items: baseline; gap: 8px; padding: 14px 16px 0; }
+.pa-big .pa-v { font-size: 24px; }
+.pa-band7 { padding-block: 4px; }
+/* v8 folder tab, rounded: the picked tab rises into the panel on curved feet */
+.pa-v8 { background: var(--band); padding: 8px var(--r-cell) 0; }
+.pa-v8 .pa-k { border-radius: var(--r-cell) var(--r-cell) 0 0; padding: 8px 12px 12px; }
+.pa-v8 .pa-k:not(.on) .pa-v { color: var(--ink-3); }
+.pa-v8 .pa-k.on { background: var(--raised); }
+.pa-v8 .pa-k.on::before, .pa-v8 .pa-k.on::after { content: ""; position: absolute; bottom: 0; width: var(--r-cell); height: var(--r-cell); }
+.pa-v8 .pa-k.on::before { left: calc(-1 * var(--r-cell)); background: radial-gradient(circle at 0 0, transparent calc(var(--r-cell) - .5px), var(--raised) var(--r-cell)); }
+.pa-v8 .pa-k.on::after { right: calc(-1 * var(--r-cell)); background: radial-gradient(circle at 100% 0, transparent calc(var(--r-cell) - .5px), var(--raised) var(--r-cell)); }
+/* v9 legend key: the picked KPI wears the bars' blue square */
+.pa-v9 { background: var(--band); padding: 4px; gap: 4px; }
+.pa-v9 .pa-k { border-radius: var(--r-cell); padding: 8px 12px 10px; }
+.pa-v9 .pa-k:not(.on):hover { background: var(--fill); }
+.pa-v9 .pa-k:not(.on) .pa-v { color: var(--ink-3); }
+.pa-v9 .pa-k.on .pa-l::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; background: var(--bar); }
+
+/* phone: 2 x 2 */
+.pa-phone { max-width: 360px; }
+.pa-phone .pa-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pa-phone .pa-v { font-size: 17px; }
+
+/* the plot */
+.pa-plot { position: relative; padding: 16px 12px 8px 14px; }
+.pa-plot svg { display: block; overflow: visible; }
+.pa-gl { stroke: var(--grid); }
+.pa-b { fill: var(--bar); } .pa-ghost { fill: var(--d1); } .pa-low { fill: var(--s5); } .pa-mute { fill: var(--d1); } .pa-soft { fill: var(--d1); } .pa-d2 { fill: var(--d2); }
+.pa-p1 { fill: var(--s1); } .pa-p2 { fill: var(--s2); } .pa-p3 { fill: var(--s3); } .pa-p4 { fill: var(--s4); } .pa-p5 { fill: var(--s5); }
+.pa-tl { stroke: var(--ink-3); stroke-dasharray: 4 3; }
+.pa-ln { fill: none; stroke: var(--bar); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.pa-ln.deep { stroke: var(--s1); }
+.pa-dot { fill: var(--raised); stroke: var(--bar); stroke-width: 2; }
+.pa-dot.deep { fill: var(--s1); stroke: var(--raised); }
+.pa-hov { fill: var(--fill); opacity: 0; rx: var(--r-row); }
+.pa-slot { cursor: pointer; } .pa-slot:hover .pa-hov { opacity: 1; }
+.pa-today { fill: var(--band); rx: var(--r-row); }
+.pa-stub { fill: var(--ink-5); }
+.pa-plot .tip b { font-weight: 600; } .pa-tq { color: var(--ink-5); }
+.pa-read { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; font-size: 12px; color: var(--ink-3); }
+.pa-read b { font-size: 15px; font-weight: 550; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pa-none { display: grid; place-items: center; color: var(--ink-4); font-size: 12px; }
+.pa-foot { padding: 2px 14px 12px; }
+</style>
+
+<section class="cat" id="a-kpi" data-nav="KPI strip">
+  <h2>Home · KPI strip</h2>
+  <p class="why">The tabs split a rounded card with straight lines; these keep tabs-pick-the-chart with gaps, tiles and rounded marks instead.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>A1</b> Segmented band · white tile on the grey, gaps not lines</div>
+      <div class="card pa-home"><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A2</b> Four tiles · each KPI its own rounded box, picked one ringed</div>
+      <div class="card pa-home"><div class="pa-strip pa-v2"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A3</b> Underline · no boxes, a rounded bar under the picked KPI</div>
+      <div class="card pa-home"><div class="pa-strip pa-v3"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A4</b> Well · the strip in a rounded grey well inside the white body</div>
+      <div class="card pa-home"><div class="band"><span class="pa-title"></span><button class="pick">Last 7 days</button></div>
+        <div class="pa-wellwrap"><div class="pa-strip pa-v4"></div></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A5</b> Separate cards · four small cards over the chart card</div>
+      <div class="pa-home"><div class="pa-strip pa-v5"></div>
+        <div class="card"><div class="band"><span class="pa-title"></span><button class="pick">Last 7 days</button></div><div class="pa-plot"></div></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A6</b> Left rail · KPIs stacked beside the chart, rounded row highlight</div>
+      <div class="card pa-home" data-cfg='{"h":236}'><div class="band"><span class="pa-title"></span><button class="pick">Last 7 days</button></div>
+        <div class="pa-railwrap"><div class="pa-strip pa-v6"></div><div class="pa-plot"></div></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A7</b> Pill switch · labels in a pill segment, one big number</div>
+      <div class="card pa-home"><div class="band pa-band7"><div class="pa-strip pa-v7"></div><button class="pick">Last 7 days</button></div>
+        <div class="pa-big"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A8</b> Folder tab, rounded · picked tab rises into the panel on curved feet</div>
+      <div class="card pa-home"><div class="pa-strip pa-v8"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A9</b> Legend key · picked KPI wears the bars' blue square, nothing else</div>
+      <div class="card pa-home"><div class="pa-strip pa-v9"></div><div class="pa-plot"></div></div></div>
+  </div>
+</section>
+
+<section class="cat" id="a-chart" data-nav="Home chart">
+  <h2>Home · main chart</h2>
+  <p class="why">What the one blue bar chart can say beyond the day total, still blues only and the ₱ scale on the right.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>A10</b> Last week ghost · light bar behind for the same weekday</div>
+      <div class="card pa-home" data-cfg='{"ghost":1}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div>
+        <div class="pa-foot legend"><span><i style="background:var(--bar)"></i>This week</span><span><i style="background:var(--d1)"></i>Last week</span></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A11</b> Target line · ₱60k dashed, days under it lighter</div>
+      <div class="card pa-home" data-cfg='{"target":1}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div>
+        <div class="pa-foot legend"><span><i style="background:var(--bar)"></i>At or over target</span><span><i style="background:var(--s5)"></i>Under</span><span id="pa-tgt"></span></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A12</b> Line · the same days as a line, a dot on each</div>
+      <div class="card pa-home" data-cfg='{"mode":"line"}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A13</b> Area · the line with a soft blue fill</div>
+      <div class="card pa-home" data-cfg='{"mode":"area"}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A14</b> Pill bars · fully round ends, not bw/10 tops</div>
+      <div class="card pa-home" data-cfg='{"mode":"pill"}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A15</b> Hover tip · point at a day: net, orders, last week</div>
+      <div class="card pa-home" data-cfg='{"tip":1,"demo":3}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A16</b> Pick a day · click a bar; the rest go pale, readout on top</div>
+      <div class="card pa-home" data-cfg='{"sel":3,"h":180}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A17</b> Today slot · Sun as a grey "Today" column, not a gap</div>
+      <div class="card pa-home" data-cfg='{"sun":1}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A18</b> By payment · same frame, one bar per method, five blues</div>
+      <div class="card pa-home" data-cfg='{"pay":1}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+  </div>
+</section>
+
+<section class="cat" id="a-combo" data-nav="Two scales + phone">
+  <h2>Home · second measure, phone</h2>
+  <p class="why">A second number on the same chart (scale on the left), and the whole card at phone width.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>A19</b> Bars + running total · the week adding up, left scale</div>
+      <div class="card pa-home" data-cfg='{"two":"cum"}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div>
+        <div class="pa-foot legend"><span><i style="background:var(--d1)"></i>Net sales a day</span><span><i style="background:var(--s1)"></i>Week so far (left)</span></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A20</b> Bars + orders dots · orders on a count scale, left</div>
+      <div class="card pa-home" data-cfg='{"two":"dots"}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div>
+        <div class="pa-foot legend"><span><i style="background:var(--d2)"></i>Net sales (right)</span><span><i style="background:var(--s1);border-radius:50%"></i>Orders (left)</span></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A21</b> Phone · 360px, 2 × 2 segmented strip, 190px chart</div>
+      <div class="card pa-home pa-phone" data-cfg='{"h":190}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, NICE = [1, 2, 3, 4, 5, 6, 8, 10], NICE2 = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+  // Three round steps over the peak (calmPlot's rule); the second scale may use finer steps so it fills the same three lines.
+  const step = (max, set = NICE) => { max = max || 1; const p = 10 ** Math.floor(Math.log10(max / 3)); return set.map(s => s * p).find(s => 3 * s >= max); };
+  const fmtK = n => (n ? V.pesoK(n) : '₱0');
+  const chip = c => `<span class="chip ${c < 0 ? 'down' : c > 0 ? 'up' : 'flat'}">${c < 0 ? '−' : '+'}${Math.abs(c).toFixed(1)}%</span>`;
+  const val = k => (k.money ? V.peso(k.value) : k.pct ? k.value.toFixed(1) + '%' : k.value.toLocaleString('en-PH'));
+  const bar = (x, y, w, h, r, cls) => { if (h <= 0) return ''; r = Math.min(r, h, w / 2);
+    return `<path class="${cls}" d="M${x},${y + h}V${y + r}A${r},${r} 0 0 1 ${x + r},${y}H${x + w - r}A${r},${r} 0 0 1 ${x + w},${y + r}V${y + h}Z"/>`; };
+  let gid = 0;
+
+  function plot(host, c, home) {
+    const cs = getComputedStyle(host), W = host.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), H = c.h || 200;
+    const k = V.kpis.find(k => k.id === c.series), money = c.series === 'net';
+    // ponytail: the data set has net + orders per day only; gross profit and margin per day would be invented.
+    if (!money && c.series !== 'orders') { host.innerHTML = `<div class="pa-none" style="height:${H}px">No per-day ${k.label.toLowerCase()} in the demo data</div>`; return; }
+    const rows = c.pay ? V.payments.map(p => ({ d: p.m, v: money ? p.amt : p.n, p: 0, pay: p }))
+      : V.week.map(w => ({ d: w.d, v: money ? w.net : w.orders, p: money ? w.prev : 0, w }));
+    const fmt = money ? fmtK : String, long = n => (money ? V.peso(n) : n + ' orders');
+    const L = c.two ? 40 : 2, R = 42, T = 6, B = 24, pw = W - L - R, ph = H - T - B;
+    const max = Math.max(...rows.map(r => r.v), ...(c.ghost ? rows.map(r => r.p) : [0]));
+    const st = step(max), y = v => T + ph * (1 - v / (3 * st));
+    const n = rows.length, slot = pw / n, bw = Math.max(Math.min(slot - 3, 24), Math.min(slot * .56, 32)), cx = i => L + slot * (i + .5);
+    let s = '', lines = '', read = '';
+    for (let i = 0; i <= 3; i++) s += `<line class="pa-gl" x1="${L}" x2="${L + pw}" y1="${y(st * i)}" y2="${y(st * i)}"/><text class="ax" x="${L + pw + 8}" y="${y(st * i) + 4}">${fmt(st * i)}</text>`;
+
+    // second measure: running total of net, or orders, on its own left scale over the same three lines
+    let v2, y2;
+    if (c.two && !c.pay) {
+      let run = 0; v2 = rows.map(r => (r.w.now ? null : c.two === 'cum' ? (run += r.w.net) : r.w.orders));
+      const st2 = step(Math.max(...v2), NICE2), f2 = c.two === 'cum' ? fmtK : String; y2 = v => T + ph * (1 - v / (3 * st2));
+      for (let i = 0; i <= 3; i++) s += `<text class="ax" text-anchor="end" x="${L - 8}" y="${y2(st2 * i) + 4}">${f2(st2 * i)}</text>`;
+    }
+
+    rows.forEach((r, i) => {
+      const x = cx(i) - bw / 2, now = r.w && r.w.now;
+      let g = (c.tip || c.sel != null) ? `<rect class="pa-hov" x="${cx(i) - slot / 2 + 2}" y="${T - 4}" width="${slot - 4}" height="${ph + 4}"/>` : '';
+      if (now && c.sun) g += `<rect class="pa-today" x="${x - 4}" y="${T}" width="${bw + 8}" height="${ph}"/><rect class="pa-stub" x="${x + 4}" y="${y(0) - 4}" width="${bw - 8}" height="2" rx="1"/>`;
+      if (c.ghost && r.p) g += bar(x, y(r.p), bw, y(0) - y(r.p), bw / 10, 'pa-ghost');
+      if (!c.mode || c.mode === 'pill') {
+        const cls = c.pay ? 'pa-p' + (i + 1) : c.sel != null ? (i === c.sel ? 'pa-b' : 'pa-mute')
+          : c.target && money && r.v < V.dailyTarget ? 'pa-low' : c.two === 'dots' ? 'pa-d2' : c.two ? 'pa-soft' : 'pa-b';
+        g += bar(x, y(r.v), bw, y(0) - y(r.v), c.mode === 'pill' ? bw / 2 : bw / 10, cls);
+      }
+      g += `<rect x="${cx(i) - slot / 2}" y="${T}" width="${slot}" height="${ph + B}" fill="transparent"/>`;
+      s += `<g class="pa-slot" data-i="${i}">${g}</g>`;
+      s += `<text class="ax${now ? ' now' : ''}" text-anchor="middle" x="${cx(i)}" y="${H - 6}">${now && c.sun ? 'Today' : r.d}</text>`;
+    });
+
+    if (c.target && money && !c.pay) lines += `<line class="pa-tl" x1="${L}" x2="${L + pw}" y1="${y(V.dailyTarget)}" y2="${y(V.dailyTarget)}"/>`;
+    if (c.mode === 'line' || c.mode === 'area') {
+      const pts = rows.filter(r => !r.w.now).map((r, i) => [cx(i), y(r.v)]), d = 'M' + pts.join('L');
+      if (c.mode === 'area') { const id = 'pa-g' + gid++;
+        lines += `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--bar);stop-opacity:.18"/><stop offset="1" style="stop-color:var(--bar);stop-opacity:0"/></linearGradient></defs>`
+          + `<path fill="url(#${id})" d="${d}L${pts.at(-1)[0]},${y(0)}L${pts[0][0]},${y(0)}Z"/>`; }
+      lines += `<path class="pa-ln" d="${d}"/>` + pts.map(p => `<circle class="pa-dot" cx="${p[0]}" cy="${p[1]}" r="3"/>`).join('');
+    }
+    if (v2) {
+      const pts = v2.map((v, i) => v == null ? null : [cx(i), y2(v)]).filter(Boolean);
+      if (c.two === 'cum') lines += `<path class="pa-ln deep" d="M${pts.join('L')}"/>`;
+      lines += pts.map(p => `<circle class="pa-dot deep" cx="${p[0]}" cy="${p[1]}" r="${c.two === 'cum' ? 3 : 4}"/>`).join('');
+    }
+    if (c.sel != null) {
+      const r = rows[c.sel];
+      read = `<div class="pa-read">${r.d}${r.w && r.w.now ? ' · no sales yet' : ` <b>${long(r.v)}</b>${r.p ? chip((r.v - r.p) / r.p * 100) + ' vs last ' + r.d : ''}`}</div>`;
+    }
+    host.innerHTML = read + `<svg width="${W}" height="${H}">${s}<g pointer-events="none">${lines}</g></svg><div class="tip" hidden></div>`;
+
+    const tip = host.lastChild, sr = host.querySelector('svg').getBoundingClientRect(), hr = host.getBoundingClientRect(), ox = sr.left - hr.left, oy = sr.top - hr.top;
+    const show = i => {
+      const r = rows[i], top = Math.min(y(r.v), y(r.p || 0));
+      tip.innerHTML = r.pay ? `<b>${r.d}</b> ${V.peso(r.pay.amt)} · ${r.pay.n} orders`
+        : r.w.now ? `<b>Sun</b> today · no sales yet`
+        : `<b>${r.d}</b> ${V.peso(r.w.net)} · ${r.w.orders} orders<br><span class="pa-tq">Last ${r.d} ${V.peso(r.w.prev)}</span>`;
+      tip.hidden = false;
+      const left = ox + cx(i) - tip.offsetWidth / 2;
+      tip.style.left = Math.max(0, Math.min(host.clientWidth - tip.offsetWidth, left)) + 'px';
+      tip.style.top = oy + top - tip.offsetHeight - 8 + 'px';
+      host.querySelectorAll('.pa-slot').forEach(g => g.querySelector('.pa-hov').style.opacity = +g.dataset.i === i ? 1 : '');
+    };
+    if (c.tip) {
+      host.onmousemove = e => { const g = e.target.closest('.pa-slot'); g ? show(+g.dataset.i) : (tip.hidden = true); };
+      host.onmouseleave = () => { tip.hidden = true; host.querySelectorAll('.pa-hov').forEach(h => h.style.opacity = ''); };
+      if (c.demo != null) show(c.demo);   // the lab shows one tip without a pointer
+    }
+    if (c.sel != null) host.onclick = e => { const g = e.target.closest('.pa-slot'); if (g) { c.sel = +g.dataset.i; render(home); } };
+  }
+
+  function render(home) {
+    const c = home._c || (home._c = Object.assign({ series: 'net' }, JSON.parse(home.dataset.cfg || '{}')));
+    const k = V.kpis.find(k => k.id === c.series), strip = home.querySelector('.pa-strip'), labelsOnly = strip.classList.contains('pa-v7');
+    strip.innerHTML = V.kpis.map(x => `<button class="pa-k${x.id === c.series ? ' on' : ''}" data-k="${x.id}"><span class="pa-l">${x.label}</span>`
+      + (labelsOnly ? '' : `<span class="pa-line"><span class="pa-v">${val(x)}</span>${chip(x.change)}</span>`) + '</button>').join('');
+    strip.onclick = e => { const b = e.target.closest('.pa-k'); if (b) { c.series = b.dataset.k; render(home); } };
+    home.querySelectorAll('.pa-title').forEach(t => t.textContent = k.label + (c.pay ? ' by payment' : ' by day'));
+    const big = home.querySelector('.pa-big'); if (big) big.innerHTML = `<span class="pa-v">${val(k)}</span>${chip(k.change)}`;
+    plot(home.querySelector('.pa-plot'), c, home);
+  }
+
+  const homes = document.querySelectorAll('.pa-home');
+  homes.forEach(render);
+  addEventListener('resize', () => homes.forEach(render));
+  const tg = document.getElementById('pa-tgt');
+  if (tg) tg.innerHTML = `<i style="width:12px;height:0;border-top:1.5px dashed var(--ink-3);border-radius:0"></i>Target ${V.pesoK(V.dailyTarget)} a day`;
+})();</script>
+
+<!-- ===== part b.html ===== -->
+<style>
+/* part b — Payment methods, Breakdown (the ladder), Fulfilment. Every selector .pb-. */
+.pb-q { color: var(--ink-4); font-weight: 400; }
+.pb-sw { flex: none; width: 8px; height: 8px; border-radius: 2px; }
+.pb-w { flex: none; width: 46px; text-align: right; }
+.pb-n { flex: none; width: 34px; text-align: right; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.pb-svg { display: block; overflow: visible; }
+.pb-svg text { font-family: var(--font); }
+.pb-c1 { font-size: 15px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.pb-c2 { font-size: 11px; fill: var(--ink-4); }
+.pb-lab { font-size: 13px; fill: var(--ink-2); }
+.pb-val { font-size: 11px; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+.pb-val.m { font-size: 13px; fill: var(--ink); font-weight: 500; }
+/* chart beside the rows */
+.pb-split { display: flex; align-items: center; padding: 6px 0 6px 12px; }
+.pb-split > svg { flex: none; }
+.pb-split > .rows { flex: 1; min-width: 0; }
+.pb-split .rows > .row { padding: 0 12px 0 14px; }
+/* one 100% bar */
+.pb-bar { display: flex; gap: 2px; height: 10px; border-radius: var(--r-pill); overflow: hidden; }
+.pb-bar > i { min-width: 2px; }
+.pb-bar.tall { height: 14px; }
+.pb-pad { padding: 12px 12px 8px; }
+/* share meter, ranked track, dumbbell track */
+.pb-meter { flex: none; width: 96px; height: 6px; border-radius: var(--r-pill); background: var(--fill); overflow: hidden; }
+.pb-meter > i { display: block; height: 100%; border-radius: inherit; background: var(--bar); }
+.pb-db { position: relative; flex: 1; min-width: 60px; height: 10px; }
+.pb-db > b { position: absolute; top: 4px; height: 2px; background: var(--d1); }
+.pb-db > i { position: absolute; top: 1px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; }
+.pb-db > i.was { background: var(--raised); box-shadow: inset 0 0 0 1.5px var(--ink-5); }
+.pb-db > i.now { background: var(--s2); }
+.pb-two { flex: 1; min-width: 60px; display: grid; gap: 3px; }
+.pb-two > i { display: block; height: 5px; border-radius: var(--r-pill); }
+.pb-two.dual > i { height: 4px; }
+.pb-nm { flex: none; width: 64px; }
+.row .chip { flex: none; min-width: 52px; justify-content: center; }
+.pb-leg { padding: 10px 12px 2px; }
+.pb-leg .o { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
+/* waffle */
+.pb-waf { flex: none; display: grid; grid-template-columns: repeat(10, 11px); gap: 2px; }
+.pb-waf > i { width: 11px; height: 11px; border-radius: 3px; }
+.pb-note { padding: 0 12px 10px; font-size: 11px; color: var(--ink-4); }
+/* big number + bar (statement cards) */
+.pb-big { display: flex; align-items: baseline; gap: 8px; padding: 12px 12px 10px; }
+.pb-big .kpi-value { font-size: 20px; }
+/* receipt-like statement */
+.pb-rc { padding: 6px 14px 12px; }
+.pb-rc .ln { padding-top: 7px; }
+.pb-rc .ln > div { display: flex; align-items: baseline; font-size: 13px; color: var(--ink-2); }
+.pb-rc .ln > div > span:last-child { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+.pb-rc .ln > div > em { flex: 1; margin: 0 6px; border-bottom: 1px dotted var(--ink-5); transform: translateY(-4px); }
+.pb-rc .ln > s { display: block; height: 2px; margin-top: 4px; border-radius: var(--r-pill); }
+.pb-rc .ln.sum { margin-top: 8px; padding-top: 9px; border-top: 1px solid var(--line); }
+.pb-rc .ln.sum > div { color: var(--ink); font-weight: 500; }
+/* step-down ladder rows: bars start past zero, so the cut edge fades */
+.pb-step { position: relative; flex: none; width: 112px; height: 8px; }
+.pb-step > i { position: absolute; top: 0; height: 8px; border-radius: 2px; }
+.pb-step > i.cut { border-radius: 0 2px 2px 0; -webkit-mask: linear-gradient(90deg, transparent, #000 8px); mask: linear-gradient(90deg, transparent, #000 8px); }
+/* fulfilment tiles: rounded inner boxes, never a split card */
+.pb-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+.pb-tile { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-cell); }
+.pb-tile .kpi-label { display: block; margin-bottom: 2px; }
+.pb-tile .money { font-size: 17px; letter-spacing: -.02em; }
+.pb-tile p { margin: 2px 0 0; font-size: 12px; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.pb-sbar { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 26px; font-size: 12px; color: var(--ink-3); }
+.pb-sbar > span { flex: none; width: 50px; }
+.pb-sbar > .pb-bar { flex: 1; height: 16px; border-radius: var(--r-pill); }
+.pb-sbar > .pb-bar > i { display: flex; align-items: center; padding: 0 7px; font-size: 11px; font-weight: 500; font-style: normal; color: #fff; font-variant-numeric: tabular-nums; }
+.pb-sbar > .pb-bar > i.lt { color: var(--ink); }
+</style>
+
+<section class="cat" id="b-pay" data-nav="Payment methods">
+  <h2>Payment methods</h2>
+  <p class="why">Home rail (5 methods + Total, 7 days) and Sales › Summary (amount + share %). Every chart keeps the numbers beside it.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>B1</b> Donut beside list · total in the hole</div><div class="card" id="pb-1"></div></div>
+    <div class="spec"><div class="tag"><b>B2</b> Half donut · gauge on top, rows under</div><div class="card" id="pb-2"></div></div>
+    <div class="spec"><div class="tag"><b>B3</b> Pie · same list, solid slices</div><div class="card" id="pb-3"></div></div>
+    <div class="spec"><div class="tag"><b>B4</b> One 100% bar · over the rows</div><div class="card" id="pb-4"></div></div>
+    <div class="spec"><div class="tag"><b>B5</b> Share meter · replaces the % column</div><div class="card" id="pb-5"></div></div>
+    <div class="spec"><div class="tag"><b>B6</b> Ranked bars · scale on the axis</div><div class="card" id="pb-6"></div></div>
+    <div class="spec"><div class="tag"><b>B7</b> Waffle · 1 square = 1%</div><div class="card" id="pb-7"></div></div>
+    <div class="spec"><div class="tag"><b>B8</b> Payments vs pesos · two shares per method</div><div class="card" id="pb-8"></div></div>
+    <div class="spec"><div class="tag"><b>B9</b> Average payment · lollipop vs the all-method line</div><div class="card" id="pb-9"></div></div>
+    <div class="spec"><div class="tag"><b>B10</b> Dumbbell · 30 days vs the 30 before</div><div class="card" id="pb-10"></div></div>
+    <div class="spec"><div class="tag"><b>B11</b> Pay tints · 100% bar + the Orders pills (colour exception)</div><div class="card" id="pb-11"></div></div>
+    <div class="spec"><div class="tag"><b>B12</b> Pay tints · donut + the Orders pills (colour exception)</div><div class="card" id="pb-12"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="b-ladder" data-nav="Breakdown">
+  <h2>Breakdown</h2>
+  <p class="why">Sales › Summary's ladder, 30 days: Gross sales · Voids · Refunds · Discounts · Net sales, then VAT included + Sales before VAT.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>B13</b> Waterfall · axis from ₱980k so the steps show</div><div class="card" id="pb-13"></div></div>
+    <div class="spec"><div class="tag"><b>B14</b> Waterfall at true scale · Net splits into VAT</div><div class="card" id="pb-14"></div></div>
+    <div class="spec"><div class="tag"><b>B15</b> Step-down ladder · each row its floating bar</div><div class="card" id="pb-15"></div></div>
+    <div class="spec"><div class="tag"><b>B16</b> Statement · a thin bar per line, share of gross</div><div class="card" id="pb-16"></div></div>
+    <div class="spec"><div class="tag"><b>B17</b> Net = Before VAT + VAT · one stacked bar</div><div class="card" id="pb-17"></div></div>
+    <div class="spec"><div class="tag"><b>B18</b> Gross profit inside net · cost vs GP</div><div class="card" id="pb-18"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="b-ful" data-nav="Fulfilment">
+  <h2>Fulfilment</h2>
+  <p class="why">Walk-in vs Delivery, 7 days. Count first, the amount always beside it.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>B19</b> Split bars · share of pesos vs share of orders</div><div class="card" id="pb-19"></div></div>
+    <div class="spec"><div class="tag"><b>B20</b> Two tiles · rounded inner boxes</div><div class="card" id="pb-20"></div></div>
+    <div class="spec"><div class="tag"><b>B21</b> Mini donut · beside the two rows</div><div class="card" id="pb-21"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('pb-' + n);
+  const sum = (a, k = 'amt') => a.reduce((s, x) => s + x[k], 0);
+  const C = [1, 2, 3, 4, 5].map(i => `var(--s${i})`);
+  const P = V.payments, PT = sum(P), PN = sum(P, 'n');
+  const share = (a, t) => V.pct(a / t * 100);
+  const k = n => (n < 0 ? '−' : '') + '₱' + (Math.abs(n) / 1000).toLocaleString('en-PH', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k';
+  const axK = n => n >= 1e6 ? '₱' + +(n / 1e6).toFixed(2) + 'M' : V.pesoK(n);
+  const chg = (a, b) => { const c = (a / b - 1) * 100; return `<span class="chip ${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%</span>`; };
+  const nice = (max, steps = 3) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 2, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="pb-q">${r}</span>`}</div>`;
+  const sw = c => `<i class="pb-sw" style="background:${c}"></i>`;
+  const row = (lead, nm, cells, cls = '') => `<div class="row ${cls}">${lead}<span class="nm">${nm}</span>${cells}</div>`;
+  const amtPct = (a, t, f = V.peso) => `<span class="amt">${f(a)}</span><span class="pct pb-w">${share(a, t)}</span>`;
+  const payRows = (lead = i => sw(C[i]), nm = p => p.m) => '<div class="rows">' + P.map((p, i) => row(lead ? lead(i, p) : '', nm(p), amtPct(p.amt, PT))).join('')
+    + row(lead === null ? '' : sw('transparent'), 'Total', `<span class="amt">${V.peso(PT)}</span><span class="pct pb-w"></span>`, 'total') + '</div>';
+  const seg = (vals, cols, t = vals.reduce((s, v) => s + v, 0), tip = () => '') => vals.map((v, i) => `<i style="width:${v / t * 100}%;background:${cols[i]}" title="${tip(i)}"></i>`).join('');
+  // arcs: angle 0 = 3 o'clock, clockwise
+  const pt = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const arc = (cx, cy, r, a0, a1) => `M${pt(cx, cy, r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a1)}`;
+  const ring = (cx, cy, r, w, vals, cols, tips, a0 = -Math.PI / 2, span = 2 * Math.PI, gap = .03) => {
+    const t = vals.reduce((s, v) => s + v, 0); let a = a0;
+    return vals.map((v, i) => { const s = v / t * span, d = arc(cx, cy, r, a + gap / 2, a + s - gap / 2); a += s;
+      return `<path d="${d}" style="fill:none;stroke:${cols[i]};stroke-width:${w}"><title>${tips[i]}</title></path>`; }).join('');
+  };
+  const payTips = P.map(p => `${p.m} · ${V.peso(p.amt)} · ${share(p.amt, PT)}`);
+  const amts = P.map(p => p.amt);
+
+  // B1 donut beside the list
+  $(1).innerHTML = band('Payment methods') + `<div class="pb-split"><svg class="pb-svg" width="124" height="124">${ring(62, 62, 52, 14, amts, C, payTips)}
+    <text class="pb-c1" x="62" y="64" text-anchor="middle">${V.pesoK(PT)}</text><text class="pb-c2" x="62" y="79" text-anchor="middle">Total</text></svg>${payRows()}</div>`;
+
+  // B2 half donut on top
+  { const el = $(2); el.innerHTML = band('Payment methods') + '<div class="pb-g"></div>' + payRows();
+    const W = el.clientWidth, cx = W / 2, cy = 112, r = 88;
+    el.querySelector('.pb-g').innerHTML = `<svg class="pb-svg" width="${W}" height="128">${ring(cx, cy, r, 18, amts, C, payTips, Math.PI, Math.PI, .025)}
+      <text class="pb-c1" x="${cx}" y="${cy - 16}" text-anchor="middle" style="font-size:20px">${V.peso(PT)}</text><text class="pb-c2" x="${cx}" y="${cy + 1}" text-anchor="middle">Total · ${PN} payments</text></svg>`; }
+
+  // B3 pie
+  { let a = -Math.PI / 2; const cx = 58, cy = 58, r = 54;
+    const wedges = P.map((p, i) => { const s = p.amt / PT * 2 * Math.PI, d = `M${cx} ${cy}L${pt(cx, cy, r, a)}A${r} ${r} 0 ${s > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a + s)}Z`; a += s;
+      return `<path d="${d}" style="fill:${C[i]};stroke:var(--raised);stroke-width:1.5;stroke-linejoin:round"><title>${payTips[i]}</title></path>`; }).join('');
+    $(3).innerHTML = band('Payment methods') + `<div class="pb-split"><svg class="pb-svg" width="116" height="116">${wedges}</svg>${payRows()}</div>`; }
+
+  // B4 one 100% bar over the rows
+  $(4).innerHTML = band('Payment methods') + `<div class="pb-pad"><div class="pb-bar">${seg(amts, C, PT, i => payTips[i])}</div></div>` + payRows();
+
+  // B5 share meter in place of the % column
+  $(5).innerHTML = band('Payment methods') + '<div class="rows">' + P.map(p => row('', p.m, `<span class="pb-meter" title="${share(p.amt, PT)}"><i style="width:${p.amt / PT * 100}%"></i></span><span class="amt pb-amt">${V.peso(p.amt)}</span>`)).join('')
+    + row('', 'Total', `<span class="amt">${V.peso(PT)}</span>`, 'total') + '</div>';
+  $(5).querySelectorAll('.pb-amt').forEach(e => { e.style.width = '76px'; e.style.textAlign = 'right'; });
+
+  // B6 ranked horizontal bars, scale on the axis
+  { const el = $(6); el.innerHTML = band('Payment methods', 'by net sales') + '<div class="pb-g"></div>';
+    const W = el.clientWidth, L = 76, R = 100, pw = W - L - R, st = nice(P[0].amt), top = st * 3, x = v => L + v / top * pw, rh = 30, y0 = 10;
+    let s = '';
+    for (let t = 0; t <= 3; t++) s += `<line x1="${x(t * st)}" x2="${x(t * st)}" y1="${y0 - 4}" y2="${y0 + P.length * rh}" style="stroke:var(--grid)"/><text class="ax" x="${x(t * st)}" y="${y0 + P.length * rh + 14}" text-anchor="middle">${t ? V.pesoK(t * st) : '0'}</text>`;
+    P.forEach((p, i) => { const y = y0 + i * rh;
+      s += `<text class="pb-lab" x="12" y="${y + 19}">${p.m}</text><rect x="${L}" y="${y + 6}" width="${(x(p.amt) - L).toFixed(1)}" height="16" rx="2" style="fill:var(--bar)"><title>${payTips[i]}</title></rect>
+        <text class="pb-val m" x="${x(p.amt) + 6}" y="${y + 18}">${V.pesoK(p.amt)}</text><text class="pb-val" x="${W - 12}" y="${y + 18}" text-anchor="end">${share(p.amt, PT)}</text>`; });
+    el.querySelector('.pb-g').innerHTML = `<svg class="pb-svg" width="${W}" height="${y0 + P.length * rh + 26}">${s}</svg>`; }
+
+  // B7 waffle, largest remainder so the squares make exactly 100
+  { const raw = amts.map(v => v / PT * 100), f = raw.map(Math.floor);
+    raw.map((r, i) => [r - f[i], i]).sort((a, b) => b[0] - a[0]).slice(0, 100 - f.reduce((s, v) => s + v, 0)).forEach(([, i]) => f[i]++);
+    const cells = f.flatMap((n, i) => Array(n).fill(`<i style="background:${C[i]}" title="${payTips[i]}"></i>`)).join('');
+    $(7).innerHTML = band('Payment methods') + `<div class="pb-split" style="padding:12px 0 12px 12px"><div class="pb-waf">${cells}</div>${payRows()}</div>`; }
+
+  // B8 share of payments vs share of pesos
+  { const tone = ['var(--d1)', 'var(--s2)'];
+    $(8).innerHTML = band('Payment methods') + `<div class="legend pb-leg"><span><i style="background:${tone[0]}"></i>Share of payments</span><span><i style="background:${tone[1]}"></i>Share of pesos</span></div>`
+      + '<div class="rows">' + P.map(p => row('', `<span class="pb-nm">${p.m}</span>`, `<span class="pb-two dual"><i style="width:${p.n / PN * 100}%;background:${tone[0]}" title="${p.n} of ${PN} payments"></i><i style="width:${p.amt / PT * 100}%;background:${tone[1]}" title="${V.peso(p.amt)}"></i></span>
+        <span class="pct pb-w">${share(p.n, PN)}</span><span class="pct pb-w" style="color:var(--ink);font-weight:500">${share(p.amt, PT)}</span>`)).join('') + '</div>';
+    $(8).querySelectorAll('.row .nm').forEach(e => { e.style.flex = 'none'; }); }
+
+  // B9 average payment per method, lollipop with the all-method average
+  { const el = $(9); el.innerHTML = band('Average payment', 'amount ÷ payments') + '<div class="pb-g"></div>';
+    const avg = P.map(p => p.amt / p.n), all = PT / PN, W = el.clientWidth, L = 76, R = 112, pw = W - L - R, st = nice(Math.max(...avg), 5), top = st * 5, x = v => L + v / top * pw, rh = 33, y0 = 22;
+    let s = `<line x1="${x(all)}" x2="${x(all)}" y1="${y0 - 6}" y2="${y0 + P.length * rh}" style="stroke:var(--ink-5);stroke-dasharray:2 2"/><text class="pb-c2" x="${x(all)}" y="${y0 - 10}" text-anchor="middle">All ${V.peso(all)}</text>`;
+    P.forEach((p, i) => { const y = y0 + i * rh + 16;
+      if (i) s += `<line x1="0" x2="${W}" y1="${y - 16}" y2="${y - 16}" style="stroke:var(--row-line)"/>`;
+      s += `<text class="pb-lab" x="12" y="${y + 4}">${p.m}</text><line x1="${L}" x2="${x(avg[i])}" y1="${y}" y2="${y}" style="stroke:var(--d1);stroke-width:2"/><circle cx="${x(avg[i])}" cy="${y}" r="4.5" style="fill:var(--s2)"><title>${p.m} · ${V.peso(avg[i])} a payment · ${p.n} payments</title></circle>
+        <text class="pb-val m" x="${W - 52}" y="${y + 4}" text-anchor="end">${V.peso(avg[i])}</text><text class="pb-val" x="${W - 12}" y="${y + 4}" text-anchor="end" style="font-size:12px;fill:var(--ink-4)">${p.n}×</text>`; });
+    for (let t = 0; t <= 5; t++) s += `<text class="ax" x="${x(t * st)}" y="${y0 + P.length * rh + 14}" text-anchor="middle">${t ? V.pesoK(t * st) : '0'}</text>`;
+    el.querySelector('.pb-g').innerHTML = `<svg class="pb-svg" width="${W}" height="${y0 + P.length * rh + 24}">${s}</svg>`; }
+
+  // B10 dumbbell, last 30 days vs the 30 before
+  { const Q = V.payments30, top = nice(Math.max(...Q.flatMap(q => [q.amt, q.prev])), 4) * 4, x = v => (v / top * 100).toFixed(2) + '%';
+    const QT = sum(Q), QP = sum(Q, 'prev');
+    $(10).innerHTML = band('Payment methods', 'Last 30 days') + `<div class="legend pb-leg"><span><i class="o" style="box-shadow:inset 0 0 0 1.5px var(--ink-5)"></i>30 days before</span><span><i class="o" style="background:var(--s2)"></i>Last 30 days</span></div>`
+      + '<div class="rows">' + Q.map(q => row('', `<span class="pb-nm">${q.m}</span>`, `<span class="pb-db" title="${V.peso(q.prev)} → ${V.peso(q.amt)}"><b style="left:${x(Math.min(q.amt, q.prev))};width:${((Math.abs(q.amt - q.prev)) / top * 100).toFixed(2)}%"></b><i class="was" style="left:${x(q.prev)}"></i><i class="now" style="left:${x(q.amt)}"></i></span>
+        <span class="amt pb-amt">${V.peso(q.amt)}</span>${chg(q.amt, q.prev)}`)).join('')
+      + row('', `<span class="pb-nm">Total</span>`, `<span style="flex:1"></span><span class="amt pb-amt">${V.peso(QT)}</span>${chg(QT, QP)}`, 'total') + '</div>';
+    $(10).querySelectorAll('.row .nm').forEach(e => { e.style.flex = 'none'; });
+    $(10).querySelectorAll('.pb-amt').forEach(e => { e.style.width = '70px'; e.style.textAlign = 'right'; }); }
+
+  // B11 + B12 the Orders table's payment pills own these tints
+  { const T = P.map(p => `var(--pay-${p.key})`), pill = p => `<span class="badge ${p.key}">${p.m}</span>`;
+    $(11).innerHTML = band('Payment methods') + `<div class="pb-pad"><div class="pb-bar tall">${seg(amts, T, PT, i => payTips[i])}</div></div>` + payRows(null, pill);
+    $(12).innerHTML = band('Payment methods') + `<div class="pb-split"><svg class="pb-svg" width="124" height="124">${ring(62, 62, 51, 18, amts, T, payTips)}
+      <text class="pb-c1" x="62" y="64" text-anchor="middle">${V.pesoK(PT)}</text><text class="pb-c2" x="62" y="79" text-anchor="middle">Total</text></svg>${payRows(null, pill)}</div>`; }
+
+  // ---- Breakdown: the ladder ----
+  const L = V.ladder, p2 = n => V.peso(n, 2);
+  const steps = [['Gross sales', L.gross], [`Voids (${L.voidsN})`, L.voids], [`Refunds (${L.refundsN})`, L.refunds], ['Discounts', L.discounts]];
+  const vatRows = `${row('', 'VAT included', `<span class="amt">${p2(L.vat)}</span>`)}${row('', 'Sales before VAT', `<span class="amt">${p2(L.beforeVat)}</span>`)}`;
+  const ladderRows = '<div class="rows">' + steps.map(([n, v]) => row('', n, `<span class="amt">${p2(v)}</span>`)).join('') + row('', 'Net sales', `<span class="amt">${p2(L.net)}</span>`, 'total') + vatRows + '</div>';
+  // a vertical waterfall: cols = [{lab, from, to, fill}] on domain lo..hi with given ticks; returns svg
+  const fall = (W, cols, lo, hi, ticks, H = 170, cut = false) => {
+    const T = 20, B = H - 22, R = 44, pw = W - 12 - R, slot = pw / cols.length, bw = Math.min(slot * .56, 32), y = v => B - (v - lo) / (hi - lo) * (B - T);
+    let s = ticks.map(t => `<line x1="12" x2="${12 + pw}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--grid)"/><text class="ax" x="${W - 12}" y="${y(t) + 4}" text-anchor="end">${axK(t)}</text>`).join('');
+    cols.forEach((c, i) => { const cx = 12 + slot * (i + .5), x0 = cx - bw / 2;
+      c.segs.forEach(([a, b, fill, tip]) => { a = Math.max(a, lo); b = Math.max(b, lo); const y1 = y(Math.max(a, b)), h = Math.max(1.5, Math.abs(y(a) - y(b)));
+        s += `<rect x="${x0}" y="${y1}" width="${bw}" height="${h}" rx="${Math.min(bw / 10, h / 2)}" style="fill:${fill}"><title>${tip}</title></rect>`; });
+      if (cut && c.total) s += `<path d="M${x0 - 1} ${B - 9}L${x0 + bw + 1} ${B - 13}V${B - 10}L${x0 - 1} ${B - 6}Z" style="fill:var(--raised)"/>`;
+      if (i < cols.length - 1) s += `<line x1="${x0 + bw}" x2="${x0 + slot}" y1="${y(c.end)}" y2="${y(c.end)}" style="stroke:var(--ink-5);stroke-dasharray:2 2"/>`;
+      s += `<text class="pb-val${c.total ? ' m' : ''}" x="${cx}" y="${y(c.top) - 6}" text-anchor="middle" style="font-size:11px">${k(c.val)}</text><text class="ax" x="${cx}" y="${H - 6}" text-anchor="middle">${c.lab}</text>`; });
+    return `<svg class="pb-svg" width="${W}" height="${H}">${s}</svg>`;
+  };
+  const fallCols = netSegs => { let run = L.gross; const cols = [{ lab: 'Gross', val: L.gross, top: L.gross, end: L.gross, total: 1, segs: [[0, L.gross, 'var(--s2)', 'Gross sales ' + p2(L.gross)]] }];
+    steps.slice(1).forEach(([n, v]) => { cols.push({ lab: n.replace(/ \(.*/, ''), val: v, top: run, end: run + v, segs: [[run, run + v, 'var(--d2)', n + ' ' + p2(v)]] }); run += v; });
+    cols.push({ lab: 'Net', val: L.net, top: L.net, end: L.net, total: 1, segs: netSegs }); return cols; };
+
+  // B13 zoomed waterfall + the VAT rows
+  { const el = $(13); el.innerHTML = band('Breakdown', 'axis from ₱980k') + '<div class="pb-g" style="padding-top:6px"></div><div class="rows">' + row('', 'Net sales', `<span class="amt">${p2(L.net)}</span>`, 'total') + vatRows + '</div>';
+    el.querySelector('.pb-g').innerHTML = fall(el.clientWidth, fallCols([[0, L.net, 'var(--s2)', 'Net sales ' + p2(L.net)]]), 980000, 1010000, [980000, 990000, 1000000, 1010000], 170, true); }
+
+  // B14 true scale: the deductions are slivers, Net splits into before VAT + VAT
+  { const el = $(14); el.innerHTML = band('Breakdown') + '<div class="pb-g" style="padding-top:6px"></div>'
+      + `<div class="legend pb-leg" style="padding:2px 12px 10px"><span><i style="background:var(--s2)"></i>Sales before VAT</span><span><i style="background:var(--d1)"></i>VAT included</span><span><i style="background:var(--d2)"></i>Taken off gross</span></div>`;
+    const st = nice(L.gross, 3);
+    el.querySelector('.pb-g').innerHTML = fall(el.clientWidth, fallCols([[0, L.beforeVat, 'var(--s2)', 'Sales before VAT ' + p2(L.beforeVat)], [L.beforeVat, L.net, 'var(--d1)', 'VAT included ' + p2(L.vat)]]), 0, st * 3, [0, st, st * 2, st * 3], 190); }
+
+  // B15 step-down ladder rows: each row its floating bar, track from ₱980k
+  { const lo = 980000, hi = 1005000, x = v => ((v - lo) / (hi - lo) * 100).toFixed(2) + '%', bar = (a, b, fill, cut) => `<span class="pb-step"><i class="${cut ? 'cut' : ''}" style="left:${x(Math.min(a, b))};width:${(Math.abs(b - a) / (hi - lo) * 100).toFixed(2)}%;background:${fill};min-width:2px"></i></span>`;
+    let run = L.gross;
+    const rows = [row('', 'Gross sales', bar(lo, L.gross, 'var(--s2)', 1) + `<span class="amt pb-amt">${p2(L.gross)}</span>`)]
+      .concat(steps.slice(1).map(([n, v]) => { const r = row('', n, bar(run + v, run, 'var(--d2)') + `<span class="amt pb-amt">${p2(v)}</span>`); run += v; return r; }))
+      .concat(row('', 'Net sales', bar(lo, L.net, 'var(--s2)', 1) + `<span class="amt pb-amt">${p2(L.net)}</span>`, 'total'));
+    $(15).innerHTML = band('Breakdown', 'bars from ₱980k') + '<div class="rows">' + rows.join('') + row('', 'VAT included', `<span class="pb-step"></span><span class="amt pb-amt">${p2(L.vat)}</span>`) + row('', 'Sales before VAT', `<span class="pb-step"></span><span class="amt pb-amt">${p2(L.beforeVat)}</span>`) + '</div>';
+    $(15).querySelectorAll('.pb-amt').forEach(e => { e.style.width = '92px'; e.style.textAlign = 'right'; }); }
+
+  // B16 receipt-like statement, a thin bar per line (share of gross, true scale)
+  { const ln = (n, v, fill, cls = '') => `<div class="ln ${cls}" title="${V.pct(Math.abs(v) / L.gross * 100)} of gross"><div><span>${n}</span><em></em><span>${p2(v)}</span></div><s style="width:max(2px, ${(Math.abs(v) / L.gross * 100).toFixed(2)}%);background:${fill}"></s></div>`;
+    $(16).innerHTML = band('Breakdown', 'Last 30 days') + '<div class="pb-rc">' + steps.map(([n, v], i) => ln(n, v, i ? 'var(--d2)' : 'var(--s2)')).join('')
+      + ln('Net sales', L.net, 'var(--s2)', 'sum') + ln('VAT included', L.vat, 'var(--d1)') + ln('Sales before VAT', L.beforeVat, 'var(--s2)') + '</div>'; }
+
+  // B17 Net = Before VAT + VAT, B18 Net = Cost + Gross profit
+  const statement = (n, title, parts, extra = '') => { $(n).innerHTML = band(title, 'Last 30 days') + `<div class="pb-big"><span class="kpi-value">${p2(L.net)}</span><span class="pb-q" style="font-size:12px">net sales</span></div>`
+      + `<div style="padding:0 12px 10px"><div class="pb-bar tall">${seg(parts.map(p => p[1]), parts.map(p => p[2]), L.net, i => parts[i][0] + ' ' + p2(parts[i][1]))}</div></div>`
+      + '<div class="rows">' + parts.map(([nm, v, c]) => row(sw(c), nm, amtPct(v, L.net, p2).replace('class="amt"', 'class="amt" style="width:96px;text-align:right"'))).join('') + extra + '</div>'; };
+  statement(17, 'Net sales', [['Sales before VAT', L.beforeVat, 'var(--s2)'], ['VAT included', L.vat, 'var(--d1)']]);
+  statement(18, 'Gross profit', [['Gross profit', L.gp, 'var(--s2)'], ['Cost of goods', L.cost, 'var(--s-other)']]);
+
+  // ---- Fulfilment ----
+  const F = V.fulfilment, FT = sum(F), FN = sum(F, 'n'), FC = ['var(--s2)', 'var(--d2)'];
+  const fulRows = '<div class="rows">' + F.map((f, i) => row(sw(FC[i]), f.m, `<span class="pb-n">${f.n}</span><span class="amt" style="width:76px;text-align:right">${V.peso(f.amt)}</span>`)).join('')
+    + row(sw('transparent'), 'Total', `<span class="pb-n" style="color:inherit">${FN}</span><span class="amt" style="width:76px;text-align:right">${V.peso(FT)}</span>`, 'total') + '</div>';
+
+  // B19 two split bars
+  { const bar = (lab, key, t) => `<div class="pb-sbar"><span>${lab}</span><div class="pb-bar">${F.map((f, i) => `<i class="${i ? 'lt' : ''}" style="width:${f[key] / t * 100}%;background:${FC[i]}" title="${f.m} ${key === 'n' ? f.n + ' orders' : V.peso(f.amt)}">${Math.round(f[key] / t * 100)}%</i>`).join('')}</div></div>`;
+    $(19).innerHTML = band('Fulfilment') + `<div style="padding:10px 0 8px">${bar('Orders', 'n', FN)}${bar('Pesos', 'amt', FT)}</div>` + fulRows; }
+
+  // B20 two tiles
+  $(20).innerHTML = band('Fulfilment') + '<div class="pb-tiles">' + F.map(f => `<div class="pb-tile"><span class="kpi-label">${f.m}</span><span class="money">${V.peso(f.amt)}</span>
+    <p>${f.n} orders · ${V.peso(f.amt / f.n)} avg</p><p>${share(f.amt, FT)} of sales</p></div>`).join('') + '</div>';
+
+  // B21 mini donut beside the rows
+  $(21).innerHTML = band('Fulfilment') + `<div class="pb-split"><svg class="pb-svg" width="84" height="84">${ring(42, 42, 35, 9, F.map(f => f.amt), FC, F.map(f => `${f.m} · ${V.peso(f.amt)} · ${share(f.amt, FT)}`))}
+    <text class="pb-c1" x="42" y="47" text-anchor="middle" style="font-size:11.5px">${V.pesoK(FT)}</text></svg>${fulRows}</div>`;
+})();</script>
+
+<!-- ===== part c.html ===== -->
+<style>
+/* Part C — Staff, Orders › Breakdown, time patterns. Every selector .pc-; values from viz.css tokens. */
+.pc-svg { display: block; overflow: visible; }
+.pc-t { font-size: 12px; fill: var(--ink-2); }
+.pc-t.ink { fill: var(--ink); font-weight: 500; }
+.pc-t.q { fill: var(--ink-4); font-size: 11px; }
+.pc-t.down { fill: var(--down); }
+/* a clickable block: rows inset 4px so the ticked one wears a 7px --fill pill */
+.pc-tick { padding: 4px; }
+.pc-tick > .row { padding: 0 8px; border-radius: var(--r-row); cursor: pointer; }
+.pc-tick > .row:hover, .pc-tick > .row:hover + .row { border-top-color: transparent; }
+.pc-tick > .row.on, .pc-tick > .row.on:hover { background: var(--fill); border-top-color: transparent; }
+.pc-tick > .row.on + .row { border-top-color: transparent; }
+.pc-tick > .row.on .nm { color: var(--ink); }
+.pc-nm { flex: none; width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-trk { flex: 1; min-width: 0; display: flex; align-items: center; }
+.pc-trk > i { display: block; height: 8px; border-radius: 2px; background: var(--bar); }
+.pc-w { flex: none; width: 72px; text-align: right; }
+.pc-w4 { flex: none; width: 36px; text-align: right; }
+.pc-w6 { flex: none; width: 52px; text-align: right; }
+.pc-r { margin-left: auto; }
+.pc-down { color: var(--down) !important; }
+.pc-note { padding: 8px var(--pad) 10px; border-top: 1px solid var(--row-line); font-size: 11px; color: var(--ink-4); }
+.pc-head { display: flex; gap: 8px; align-items: center; color: var(--ink-4); font-weight: 400; }
+/* tables: inline bar cell + ticked row */
+.pc-ib { display: inline-block; height: 8px; border-radius: 2px; background: var(--bar); vertical-align: -0px; }
+table.t.pc-tt tr.on td { background: var(--fill); }
+table.t.pc-tt tr.on td.nm { color: var(--ink); }
+table.t.pc-tt tr.pc-tot td { color: var(--ink); font-weight: 500; }
+table.t.pc-tt tr.pc-sub td { height: var(--band-h); background: var(--band); font-size: 12px; font-weight: 500; color: var(--ink-2); border-top-color: transparent; }
+table.t.pc-tt tbody tr.pc-sub:hover td { background: var(--band); }
+table.t.pc-tt td.pc-cell { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+/* share bar: one rounded pill split by 2px white gaps */
+.pc-share { display: flex; gap: 2px; height: 12px; border-radius: var(--r-pill); overflow: hidden; }
+.pc-share > i { display: block; height: 100%; }
+.pc-sw { flex: none; width: 8px; height: 8px; border-radius: 2px; }
+.pc-split { display: grid; grid-template-columns: 52px 1fr 44px; gap: 6px 10px; align-items: center; font-size: 12px; color: var(--ink-3); }
+.pc-split .pc-share { height: 10px; }
+.pc-split b { font-weight: 500; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+/* butterfly */
+.pc-fly { display: grid; grid-template-columns: 1fr 36px 96px 72px 1fr; align-items: center; column-gap: 8px; }
+.pc-fly > .row { display: contents; }
+.pc-fly .pc-l { display: flex; justify-content: flex-end; }
+.pc-fly .pc-l > i, .pc-fly .pc-rt > i { display: block; height: 8px; border-radius: 2px; }
+.pc-fly .pc-l > i { background: var(--d2); }
+.pc-fly .pc-rt > i { background: var(--s2); }
+.pc-fly .pc-c { text-align: center; color: var(--ink); font-weight: 500; }
+.pc-fly > div { height: var(--row-h); display: flex; align-items: center; border-top: 1px solid var(--row-line); font-size: 13px; }
+.pc-fly > div.pc-1 { border-top-color: transparent; }
+.pc-fly > .pc-n { justify-content: flex-end; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.pc-fly > .pc-m { justify-content: flex-start; color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+.pc-fly > .pc-c { justify-content: center; }
+/* small multiples */
+.pc-mm { display: grid; gap: 14px 16px; padding: var(--pad); }
+.pc-mm.c2 { grid-template-columns: 1fr 1fr; }
+.pc-mm.c7 { grid-template-columns: repeat(7, 1fr); gap: 16px; }
+.pc-mm h4 { margin: 0 0 4px; display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.pc-mm h4 span { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pc-mm h4 span.q { font-weight: 400; color: var(--ink-4); }
+/* the Breakdown page mock (C9) */
+.pc-page { display: grid; gap: 12px; }
+.pc-bar { display: flex; align-items: center; gap: 2px; min-height: 36px; padding: 4px; border-radius: 12px; background: var(--raised); box-shadow: rgba(0,0,0,.24) 0 0 2px 0, rgba(0,0,0,.02) 0 2px 12px 0; }
+.pc-bar .pc-q { flex: 1; height: 28px; display: flex; align-items: center; padding: 0 8px; color: var(--ink-4); font-size: 13px; }
+.pc-bar .pc-f { height: 28px; padding: 0 8px; border: 0; border-radius: var(--r-badge); background: transparent; font: 400 13px var(--font); color: var(--ink-3); }
+.pc-bar .pc-f:hover { background: var(--fill); }
+.pc-top { display: flex; align-items: center; gap: 8px; }
+.pc-top .pick { height: 28px; padding: 0 10px 0 12px; }
+.pc-line { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 var(--pad); font-size: 13px; }
+.pc-line .money { margin-left: auto; }
+.pc-three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: start; }
+.pc-donut { display: flex; align-items: center; gap: 4px; padding-left: 12px; }
+.pc-donut .rows { flex: 1; min-width: 0; }
+/* time */
+.pc-legend { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--ink-4); }
+.pc-legend i { width: 11px; height: 11px; border-radius: 3px; }
+.pc-legend span { margin: 0 4px; }
+.pc-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 var(--pad) 10px; font-size: 12px; color: var(--ink-3); }
+.pc-foot b { font-weight: 500; color: var(--ink); }
+</style>
+
+<section class="cat" id="c-staff" data-nav="Staff">
+  <h2>Staff</h2>
+  <p class="why">Who sold, how much, how big a sale, how many voids and refunds. Every row is the Orders page's Staff filter.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>C1</b> Staff card as one table · every number, inline share bar, a ticked row</div>
+      <div class="card"><table class="t pc-tt" id="pc-c1"></table></div></div>
+    <div class="spec"><div class="tag"><b>C2</b> Orders vs net, back to back · many small sales or few big ones</div>
+      <div class="card"><div class="band"><span>Orders</span><span>Staff</span><span>Net sales</span></div><div class="pc-fly" id="pc-c2" style="padding:0 var(--pad)"></div></div></div>
+  </div>
+  <div class="grid" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>C3</b> Ranked bars · net sales, orders beside</div>
+      <div class="card"><div class="band"><span>Staff</span><span class="pc-head"><span class="pc-w">Net sales</span><span class="pc-w4">Orders</span></span></div><div class="rows pc-tick" id="pc-c3"></div></div></div>
+    <div class="spec"><div class="tag"><b>C4</b> Avg ticket dot plot · net ÷ orders against the store</div>
+      <div class="card"><div class="band"><span>Average ticket</span><span class="pc-head">Last 7 days</span></div><div class="body" id="pc-c4" style="padding:4px var(--pad) 8px"></div></div></div>
+    <div class="spec"><div class="tag"><b>C5</b> Voids · refunds · small counts, red only past twice the store rate</div>
+      <div class="card"><div class="band"><span>Voids and refunds</span><span class="pc-head">of orders</span></div><div class="rows pc-tick" id="pc-c5"></div><div class="pc-note" id="pc-c5n"></div></div></div>
+    <div class="spec"><div class="tag"><b>C6</b> Share as one 100% bar · ticked staff keeps colour</div>
+      <div class="card"><div class="band"><span>Share of net sales</span><span class="pc-head" id="pc-c6t"></span></div><div class="body" style="padding-bottom:4px"><div class="pc-share" id="pc-c6b"></div></div><div class="rows pc-tick" id="pc-c6"></div></div></div>
+    <div class="spec"><div class="tag"><b>C7</b> Orders × net scatter · the store-average line splits big from small tickets</div>
+      <div class="card"><div class="band"><span>Orders and net sales</span><span class="pc-head">Last 7 days</span></div><div class="body" id="pc-c7"></div></div></div>
+    <div class="spec"><div class="tag"><b>C8</b> Staff × weekday small multiples · one shared scale</div>
+      <div class="card"><div class="band"><span>Net sales by day</span><span class="pc-head">Mon – Sun</span></div><div class="pc-mm c2" id="pc-c8"></div><div class="pc-note">Demo: the store's week × each person's share. Real per-staff days come with the data.</div></div></div>
+  </div>
+</section>
+
+<section class="cat" id="c-orders" data-nav="Orders breakdown">
+  <h2>Orders › Breakdown</h2>
+  <p class="why">The Breakdown view of the Orders page: Net sales line, then Payment, Fulfilment, Staff. A row ticks its filter; a block ignores its own filter.</p>
+  <div class="grid full">
+    <div class="spec"><div class="tag"><b>C9</b> The page, redesigned · Net sales line, then three cards in one row (donut, split bars, ranked bars)</div>
+      <div class="pc-page">
+        <div class="pc-top"><div class="seg"><button>List</button><button class="on">Breakdown</button></div><span style="flex:1"></span><button class="pick">Last 7 days</button></div>
+        <div class="pc-bar"><span class="pc-q">Search orders</span><button class="pc-f">Payment</button><button class="pc-f">Staff</button><button class="pc-f">Fulfilment</button></div>
+        <div class="card pc-line" id="pc-c9n"></div>
+        <div class="pc-three">
+          <div class="card"><div class="band"><span>Payment</span><span class="pc-head">320 payments</span></div><div class="pc-donut" id="pc-c9p"></div></div>
+          <div class="card"><div class="band"><span>Fulfilment</span><span class="pc-head">Orders · net</span></div><div class="body" id="pc-c9fs" style="padding-bottom:6px"></div><div class="rows pc-tick" id="pc-c9f"></div></div>
+          <div class="card"><div class="band"><span>Staff</span><span class="pc-head"><span class="pc-w">Net sales</span><span class="pc-w4">Orders</span></span></div><div class="rows pc-tick" id="pc-c9s"></div></div>
+        </div>
+      </div></div>
+  </div>
+  <div class="grid wide" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>C10</b> Payment breakdown table · orders, net, share, avg ticket, inline bar</div>
+      <div class="card"><table class="t pc-tt" id="pc-c10"></table><div class="pc-note">320 payments on 317 orders: a split sale counts each leg.</div></div></div>
+    <div class="spec"><div class="tag"><b>C11</b> All three blocks, one table · grey sub-bands, shared columns</div>
+      <div class="card"><table class="t pc-tt" id="pc-c11"></table></div></div>
+  </div>
+  <div class="grid" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>C12</b> Payment donut + rows · the ticked slice stays blue</div>
+      <div class="card"><div class="band"><span>Payment</span><span class="pc-head">GCash ticked</span></div><div class="pc-donut" id="pc-c12"></div></div></div>
+    <div class="spec"><div class="tag"><b>C13</b> Fulfilment, count first · orders split vs net split</div>
+      <div class="card"><div class="band"><span>Fulfilment</span><span class="pc-head">Last 7 days</span></div><div class="body" id="pc-c13s"></div><div class="rows pc-tick" id="pc-c13"></div></div></div>
+    <div class="spec"><div class="tag"><b>C14</b> Pivot payment × fulfilment · tinted cells, totals on the edges</div>
+      <div class="card"><table class="t pc-tt" id="pc-c14"></table><div class="pc-note">Demo cells: payment share × fulfilment share. The edges are real.</div></div></div>
+  </div>
+</section>
+
+<section class="cat" id="c-time" data-nav="Time patterns">
+  <h2>Time patterns</h2>
+  <p class="why">When the store sells: by day across half a year, by hour across the week.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>C15</b> Contribution calendar · 26 weeks of daily net sales</div>
+      <div class="card"><div class="band"><span>Net sales by day</span><span class="pc-head">Last 26 weeks</span></div><div class="body" id="pc-c15"></div><div class="pc-foot" id="pc-c15f"></div></div></div>
+    <div class="spec"><div class="tag"><b>C16</b> Weekday × hour heat map · orders in each cell</div>
+      <div class="card"><div class="band"><span>Orders by hour</span><span class="pc-head">Last 7 days</span></div><div class="body" id="pc-c16"></div><div class="pc-foot" id="pc-c16f"></div></div></div>
+    <div class="spec"><div class="tag"><b>C17</b> Punch card · dot size = orders</div>
+      <div class="card"><div class="band"><span>Orders by hour</span><span class="pc-head">Last 7 days</span></div><div class="body" id="pc-c17"></div></div></div>
+    <div class="spec"><div class="tag"><b>C18</b> One day per mini chart · same hours, same scale</div>
+      <div class="card"><div class="band"><span>Orders by hour, each day</span><span class="pc-head">7a – 6p</span></div><div class="pc-mm c7" id="pc-c18"></div></div></div>
+  </div>
+  <div class="grid" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>C19</b> Busiest hours · orders per hour, whole week</div>
+      <div class="card"><div class="band"><span>Busiest hours</span><span class="pc-head">Last 7 days</span></div><div class="body" id="pc-c19"></div></div></div>
+    <div class="spec"><div class="tag"><b>C20</b> Net bars + orders line · per day</div>
+      <div class="card"><div class="band"><span>Net sales and orders</span><span class="pc-head">This week</span></div><div class="body" id="pc-c20"></div><div class="pc-foot"><span class="legend"><span><i style="background:var(--d1)"></i>Net sales</span><span><i style="background:var(--s1);border-radius:9999px"></i>Orders</span></span></div></div></div>
+    <div class="spec"><div class="tag"><b>C21</b> Clock · the store's 12 hours sit on a clock face</div>
+      <div class="card"><div class="band"><span>Orders by hour</span><span class="pc-head">Last 7 days</span></div><div class="body" id="pc-c21"></div></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = id => document.getElementById(id), P = V.peso, K = V.pesoK;
+  const sum = (a, f) => a.reduce((t, x) => t + f(x), 0);
+  const S = V.staff, ST = sum(S, s => s.amt), SN = sum(S, s => s.n);
+  const PAY = V.payments, PT = sum(PAY, p => p.amt), PN = sum(PAY, p => p.n);
+  const FUL = V.fulfilment, FT = sum(FUL, f => f.amt), FN = sum(FUL, f => f.n);
+  const NET = V.kpis[0].value, ORD = V.kpis[2].value;
+  const B = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
+  const pc = (v, t, d = 1) => (v / t * 100).toFixed(d) + '%';
+  const nice = m => { if (m <= 0) return 1; const p = 10 ** Math.floor(Math.log10(m / 3)); for (const k of [1, 2, 3, 4, 5, 6, 8, 10]) if (k * p * 3 >= m) return k * p; };
+  const svg = (w, h, s) => `<svg class="pc-svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${s}</svg>`;
+  const ln = (x1, y1, x2, y2, st = 'stroke:var(--grid)') => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="${st}"/>`;
+  const tx = (x, y, t, cls = 'ax', a = 'start') => `<text class="${cls}" x="${x}" y="${y}" text-anchor="${a}">${t}</text>`;
+  const bar = (x, y, w, y0) => { const r = Math.min(w / 10, y0 - y); return `M${x},${y0}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y0}Z`; };
+  // heat ramp: --data-tint → --s1, empty = --band
+  const ramp = t => t <= 0 ? 'var(--band)' : `color-mix(in srgb, var(--s1) ${Math.round(6 + t * 94)}%, var(--data-tint))`;
+
+  // Column chart in the Home look: 0 + three round steps, scale on the right, bars bw/10 corners.
+  function cols(vals, o) {
+    const { w, h, labels = [], fmt, now = -1, fill = () => 'var(--bar)', mini } = o;
+    const step = nice(o.max || Math.max(...vals, 1)), top = step * 3;
+    const gut = fmt ? Math.max(...[0, 1, 2, 3].map(k => fmt(k * step).length)) * 6.4 + 10 : 0;
+    const pt = mini ? 2 : 8, pb = labels.length ? 22 : 1, ph = h - pt - pb, pw = w - gut;
+    const slot = pw / vals.length, bw = mini ? slot - 2 : Math.min(slot - 3, Math.max(Math.min(slot - 3, 24), Math.min(slot * .56, 32)));
+    const y = v => pt + ph * (1 - v / top), x = i => i * slot + (slot - bw) / 2;
+    let s = '';
+    if (fmt) for (let k = 0; k <= 3; k++) { const yy = Math.round(y(k * step)) + .5; s += ln(0, yy, pw, yy) + tx(w, yy + 4, fmt(k * step), 'ax', 'end'); }
+    else s += ln(0, Math.round(y(0)) + .5, pw, Math.round(y(0)) + .5);
+    vals.forEach((v, i) => {
+      if (v > 0) s += `<path d="${bar(x(i), y(v), bw, Math.round(y(0)))}" style="fill:${fill(i)}"><title>${labels[i] || ''} ${v}</title></path>`;
+      if (labels[i]) s += tx(x(i) + bw / 2, h - 6, labels[i], 'ax' + (i === now ? ' now' : ''), 'middle');
+    });
+    return { s, cx: i => x(i) + bw / 2, y, pw };
+  }
+  const row = (cls, inner) => `<div class="row${cls ? ' ' + cls : ''}">${inner}</div>`;
+
+  /* ---------- Staff ---------- */
+  const avg = s => s.amt / s.n, storeAvg = ST / SN, storeBad = sum(S, s => s.voids + s.refunds) / SN;
+  // C1 the Staff card as one table
+  $('pc-c1').innerHTML = `<thead><tr><th>Staff</th><th class="r">Orders</th><th class="r">Net sales</th><th>Share</th><th class="r">Avg ticket</th><th class="r">Voids · refunds</th></tr></thead><tbody>` +
+    S.map((s, i) => `<tr${i === 1 ? ' class="on"' : ''}><td class="nm">${s.name}</td><td class="r">${s.n}</td><td class="r money">${P(s.amt)}</td>` +
+      `<td><span class="pc-ib" style="width:${Math.round(s.amt / S[0].amt * 72)}px"></span> <span class="num" style="color:var(--ink-4);font-size:12px">${pc(s.amt, ST)}</span></td>` +
+      `<td class="r">${P(avg(s))}</td><td class="r" style="color:var(--ink-4)">${s.voids} · ${s.refunds}</td></tr>`).join('') +
+    `<tr class="pc-tot"><td>All staff</td><td class="r">${SN}</td><td class="r">${P(ST)}</td><td></td><td class="r">${P(storeAvg)}</td><td class="r">${sum(S, s => s.voids)} · ${sum(S, s => s.refunds)}</td></tr></tbody>`;
+
+  // C2 butterfly: orders left, net right
+  const mxN = Math.max(...S.map(s => s.n)), mxA = Math.max(...S.map(s => s.amt));
+  $('pc-c2').innerHTML = S.map((s, i) => { const f = i ? '' : ' pc-1';
+    return `<div class="pc-l${f}"><i style="width:${s.n / mxN * 100}%"></i></div><div class="pc-n${f}">${s.n}</div><div class="pc-c${f}">${s.name}</div><div class="pc-m${f}">${K(s.amt)}</div><div class="pc-rt${f}"><i style="width:${s.amt / mxA * 100}%"></i></div>`; }).join('');
+
+  // C3 ranked bars
+  $('pc-c3').innerHTML = S.map((s, i) => row(i === 2 ? 'on' : '', `<span class="pc-nm nm">${s.name}</span><span class="pc-trk"><i style="width:${s.amt / mxA * 100}%"></i></span><span class="amt pc-w">${P(s.amt)}</span><span class="cnt pc-w4">${s.n}</span>`)).join('');
+
+  // C4 avg ticket dot plot
+  { const host = $('pc-c4'), w = host.clientWidth - 24, L = 84, R = 64, rh = 33, lo = 800, hi = 1500;
+    const X = v => L + (w - L - R) * (v - lo) / (hi - lo), h = S.length * rh + 26;
+    let s = '';
+    for (let v = lo; v <= hi; v += 100) { const xx = Math.round(X(v)) + .5; s += ln(xx, 8, xx, S.length * rh + 4, 'stroke:var(--row-line)'); if (v % 200 === 0) s += tx(xx, h - 4, P(v), 'ax', 'middle'); }
+    S.slice().sort((a, b) => avg(b) - avg(a)).forEach((p, i) => { const yy = 8 + i * rh + rh / 2;
+      s += tx(0, yy + 4, p.name, 'pc-t') + ln(L, yy, X(avg(p)), yy, 'stroke:var(--d1);stroke-width:2') + `<circle cx="${X(avg(p))}" cy="${yy}" r="5" style="fill:var(--s2)"/>` + tx(w, yy + 4, P(avg(p)), 'pc-t ink', 'end'); });
+    const sx = Math.round(X(storeAvg)) + .5;
+    s += ln(sx, 2, sx, S.length * rh + 8, 'stroke:var(--ink-4);stroke-dasharray:3 3') ;
+    host.innerHTML = svg(w, h, s) + `<div style="margin-top:6px;font-size:12px;color:var(--ink-4)">Dashed line: store average <b style="font-weight:500;color:var(--ink)">${P(storeAvg)}</b></div>`;
+  }
+
+  // C5 voids · refunds; red only when the rate passes twice the store's
+  $('pc-c5').innerHTML = S.map(s => { const r = (s.voids + s.refunds) / s.n, bad = r > storeBad * 2;
+    return row(bad ? 'on' : '', `<span class="nm">${s.name}</span><span class="cnt">${s.voids} void${s.voids > 1 ? 's' : ''} · ${s.refunds} refund${s.refunds > 1 ? 's' : ''}</span><span class="pc-w6 ${bad ? 'amt pc-down' : 'cnt'}">${pc(r, 1)}</span>`); }).join('');
+  $('pc-c5n').textContent = `Red past twice the store rate, ${pc(storeBad, 1)} of orders.`;
+
+  // C6 share 100% bar
+  { const on = 1;
+    $('pc-c6t').textContent = S[on].name + ' ticked';
+    $('pc-c6b').innerHTML = S.map((s, i) => `<i style="flex:${s.amt};background:${i === on ? B[i] : 'var(--s-other)'}"></i>`).join('');
+    $('pc-c6').innerHTML = S.map((s, i) => row(i === on ? 'on' : '', `<i class="pc-sw" style="background:${B[i]}"></i><span class="nm">${s.name}</span><span class="cnt">${pc(s.amt, ST)}</span><span class="amt pc-w">${P(s.amt)}</span>`)).join(''); }
+
+  // C7 scatter, orders × net, with the store-average line through 0
+  { const host = $('pc-c7'), w = host.clientWidth - 24, h = 210, L = 4, R = 46, T = 10, Bm = 24;
+    const X = n => L + (w - L - R) * (n - 40) / (110 - 40), Y = a => T + (h - T - Bm) * (1 - (a - 40000) / (110000 - 40000));
+    let s = '';
+    for (let a = 40000; a <= 110000; a += 35000) { const yy = Math.round(Y(a)) + .5; s += ln(L, yy, w - R, yy) + tx(w, yy + 4, K(a), 'ax', 'end'); }
+    for (let n = 40; n <= 110; n += 35) s += tx(X(n), h - 6, n + ' orders', 'ax', n === 40 ? 'start' : n === 110 ? 'end' : 'middle');
+    const n0 = 40000 / storeAvg, n1 = 110000 / storeAvg; // the line where avg ticket = store avg
+    s += ln(X(Math.max(40, n0)), Y(Math.max(40, n0) * storeAvg), X(Math.min(110, n1)), Y(Math.min(110, n1) * storeAvg), 'stroke:var(--ink-5);stroke-dasharray:3 3');
+    let lastY = -99; // a label within 14px of the one above drops under its dot
+    S.forEach(p => { const xx = X(p.n), yy = Y(p.amt), right = xx < (w - R) * .7, ly = yy - lastY < 14 ? yy + 18 : yy + 4; lastY = ly - 4;
+      s += `<circle cx="${xx}" cy="${yy}" r="5" style="fill:var(--s2)"/>` + tx(xx + (right ? 9 : -4), ly, p.name, 'pc-t', right ? 'start' : 'end'); });
+    host.innerHTML = svg(w, h, s) + `<div style="margin-top:6px;font-size:12px;color:var(--ink-4)">Above the dashed line: bigger sales than the store average.</div>`; }
+
+  // C8 staff × weekday minis (demo split)
+  { const days = V.week, top = Math.max(...days.map(d => d.net)) * S[0].amt / ST, host = $('pc-c8'), w = (host.clientWidth - 24 - 16) / 2;
+    host.innerHTML = S.map(s => { const vals = days.map(d => d.net * s.amt / ST);
+      const c = cols(vals, { w, h: 70, max: top / 3 * 3, labels: days.map(d => d.d[0]), now: 6 });
+      return `<div><h4>${s.name}<span>${K(s.amt)}</span></h4>${svg(w, 70, c.s)}</div>`; }).join(''); }
+
+  /* ---------- Orders › Breakdown ---------- */
+  function donut(parts, size, on = -1) {
+    const r = size / 2 - 9, c = size / 2; let at = 0, s = '';
+    parts.forEach((p, i) => { const len = p.v / parts.t * 100;
+      s += `<circle cx="${c}" cy="${c}" r="${r}" pathLength="100" style="fill:none;stroke:${on < 0 || i === on ? B[i] : 'var(--s-other)'};stroke-width:14;stroke-dasharray:${Math.max(len - .8, .1)} ${100 - len + .8};stroke-dashoffset:${-at}" transform="rotate(-90 ${c} ${c})"/>`; at += len; });
+    return s;
+  }
+  const payParts = Object.assign(PAY.map(p => ({ v: p.amt })), { t: PT });
+  const payRows = on => PAY.map((p, i) => row(i === on ? 'on' : '', `<i class="pc-sw" style="background:${B[i]}"></i><span class="nm">${p.m}</span><span class="cnt">${p.n}</span><span class="amt pc-w">${P(p.amt)}</span>`)).join('');
+  const splitBars = () => `<div class="pc-split">` + [['Orders', f => f.n, FN], ['Net', f => f.amt, FT]].map(([l, f, t]) =>
+    `<span>${l}</span><div class="pc-share">${FUL.map((x, i) => `<i style="flex:${f(x)};background:${B[i * 2 + 1]}"></i>`).join('')}</div><b>${pc(f(FUL[1]), t, 0)}</b>`).join('') + `</div>`;
+  const fulRows = on => FUL.map((f, i) => row(i === on ? 'on' : '', `<i class="pc-sw" style="background:${B[i * 2 + 1]}"></i><span class="nm">${f.m}</span><span class="amt pc-w4">${f.n}</span><span class="cnt pc-w">${P(f.amt)}</span>`)).join('');
+
+  // C9 the whole page
+  $('pc-c9n').innerHTML = `<span>Net sales</span><span class="cnt" style="color:var(--ink-4)">${ORD} orders · avg ${P(NET / ORD)}</span><span class="money">${P(NET)}</span>`;
+  $('pc-c9p').innerHTML = svg(112, 112, donut(payParts, 112)) + `<div class="rows pc-tick">${payRows(-1)}</div>`;
+  $('pc-c9fs').innerHTML = splitBars() + `<div style="margin-top:8px;font-size:12px;color:var(--ink-4)">Delivery: ${pc(FUL[1].n, FN, 0)} of orders, ${pc(FUL[1].amt, FT, 0)} of net.</div>`;
+  $('pc-c9f').innerHTML = fulRows(-1);
+  $('pc-c9s').innerHTML = S.map(s => row('', `<span class="pc-nm nm">${s.name}</span><span class="pc-trk"><i style="width:${s.amt / mxA * 100}%"></i></span><span class="amt pc-w">${P(s.amt)}</span><span class="cnt pc-w4">${s.n}</span>`)).join('');
+
+  // C10 composite payment table
+  const mxP = Math.max(...PAY.map(p => p.amt));
+  $('pc-c10').innerHTML = `<thead><tr><th>Payment</th><th class="r">Orders</th><th class="r">Net sales</th><th class="r">Share</th><th class="r">Avg ticket</th><th style="width:132px"></th></tr></thead><tbody>` +
+    PAY.map((p, i) => `<tr${i === 2 ? ' class="on"' : ''}><td class="nm">${p.m}</td><td class="r">${p.n}</td><td class="r money">${P(p.amt)}</td><td class="r">${pc(p.amt, PT)}</td><td class="r">${P(p.amt / p.n)}</td><td><span class="pc-ib" style="width:${Math.round(p.amt / mxP * 120)}px"></span></td></tr>`).join('') +
+    `<tr class="pc-tot"><td>All payments</td><td class="r">${PN}</td><td class="r">${P(PT)}</td><td class="r">100%</td><td class="r">${P(PT / PN)}</td><td></td></tr></tbody>`;
+
+  // C11 the three blocks as one table
+  { const block = (name, list, f, on) => `<tr class="pc-sub"><td colspan="5">${name}</td></tr>` + list.map((x, i) =>
+      `<tr${i === on ? ' class="on"' : ''}><td class="nm">${f(x).nm}</td><td class="r">${f(x).n}</td><td class="r money">${P(f(x).amt)}</td><td class="r">${pc(f(x).amt, NET)}</td><td class="r">${P(f(x).amt / f(x).n)}</td></tr>`).join('');
+    $('pc-c11').innerHTML = `<thead><tr><th>Net sales <span style="color:var(--ink);margin-left:4px">${P(NET)}</span></th><th class="r">Orders</th><th class="r">Net sales</th><th class="r">Share</th><th class="r">Avg ticket</th></tr></thead><tbody>` +
+      block('Payment', PAY, p => ({ nm: p.m, n: p.n, amt: p.amt }), 0) + block('Fulfilment', FUL, f => ({ nm: f.m, n: f.n, amt: f.amt })) + block('Staff', S, s => ({ nm: s.name, n: s.n, amt: s.amt })) + `</tbody>`; }
+
+  // C12 donut + rows, GCash ticked
+  $('pc-c12').innerHTML = svg(124, 124, donut(payParts, 124, 2) + tx(62, 60, pc(PAY[2].amt, PT, 0), 'pc-t ink', 'middle') + tx(62, 76, 'GCash', 'pc-t q', 'middle')) + `<div class="rows pc-tick">${payRows(2)}</div>`;
+
+  // C13 fulfilment, count first
+  $('pc-c13s').innerHTML = splitBars();
+  $('pc-c13').innerHTML = fulRows(1) + row('', `<span class="nm" style="color:var(--ink-4)">Avg ticket</span><span class="cnt">Walk-in ${P(FUL[0].amt / FUL[0].n)} · Delivery ${P(FUL[1].amt / FUL[1].n)}</span>`);
+
+  // C14 pivot payment × fulfilment (cells are a demo cross of the two real splits)
+  { const cell = (p, f) => p.amt * f.amt / FT, mx = cell(PAY[0], FUL[0]); // ponytail: no per-order cross in VIZ yet; swap for the real tally
+    $('pc-c14').innerHTML = `<thead><tr><th>Payment</th>${FUL.map(f => `<th class="r">${f.m}</th>`).join('')}<th class="r">Total</th></tr></thead><tbody>` +
+      PAY.map(p => `<tr><td class="nm">${p.m}</td>${FUL.map(f => `<td class="pc-cell" style="background:color-mix(in srgb, var(--d2) ${Math.round(cell(p, f) / mx * 34)}%, var(--raised))">${K(cell(p, f))}</td>`).join('')}<td class="r money">${K(p.amt)}</td></tr>`).join('') +
+      `<tr class="pc-tot"><td>Total</td>${FUL.map(f => `<td class="r">${K(f.amt)}</td>`).join('')}<td class="r">${K(FT)}</td></tr></tbody>`; }
+
+  /* ---------- Time patterns ---------- */
+  // C15 contribution calendar
+  { const D = V.days, d0 = D[0].dow, host = $('pc-c15'), ncol = Math.ceil((D.length + d0) / 7), L = 30, Tp = 18;
+    const cs = Math.min(20, Math.floor((host.clientWidth - 24 - L) / ncol) - 3), st = cs + 3, mx = Math.max(...D.map(d => d.net));
+    const lv = v => v <= 0 ? 0 : Math.min(4, Math.ceil(v / mx * 4)), C = ['var(--band)', 'var(--data-tint)', 'var(--d2)', 'var(--s3)', 'var(--s1)'];
+    const end = new Date(2026, 9, 18), mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    let s = '', lastM = -1; const ml = [];
+    ['', 'Mon', '', 'Wed', '', 'Fri', ''].forEach((t, r) => t && (s += tx(0, Tp + r * st + cs - 2, t)));
+    D.forEach((d, i) => { const k = i + d0, c = Math.floor(k / 7), r = d.dow, dt = new Date(end); dt.setDate(end.getDate() - (D.length - 1 - i));
+      if (r === 0 && dt.getMonth() !== lastM) { lastM = dt.getMonth(); if (c < ncol - 1) ml.push([c, mon[lastM]]); }
+      const today = i === D.length - 1;
+      s += `<rect x="${L + c * st}" y="${Tp + r * st}" width="${cs}" height="${cs}" rx="3" style="fill:${C[lv(d.net)]}${today ? ';stroke:var(--ink-4);stroke-width:1' : ''}"><title>${dt.toDateString().slice(4, 10)} · ${today ? 'today' : P(d.net)}</title></rect>`; });
+    ml.forEach(([c, m], i) => { if (!ml[i + 1] || ml[i + 1][0] - c >= 3) s += tx(L + c * st, 11, m); }); // a month too close to the next one drops its label
+    host.innerHTML = svg(L + ncol * st, Tp + 7 * st, s);
+    $('pc-c15f').innerHTML = `<span><b>${P(sum(D, d => d.net))}</b> net in 26 weeks · Sundays mostly closed</span><span class="pc-legend">Less${C.map(c => `<i style="background:${c}"></i>`).join('')}<span style="margin:0 0 0 4px">More</span></span>`; }
+
+  // shared hour data
+  const HD = V.heat, HR = V.hours, HM = Math.max(...HD.flatMap(d => d.v)), HS = HR.map((_, h) => sum(HD, d => d.v[h]));
+  const peak = HS.indexOf(Math.max(...HS));
+  const legend = `<span class="pc-legend">Less${[0, .25, .5, .75, 1].map(t => `<i style="background:${ramp(t || .001)}"></i>`).join('')}<span style="margin:0 0 0 4px">More</span></span>`;
+
+  // C16 weekday × hour heat map, numbers in the cells
+  { const host = $('pc-c16'), w = host.clientWidth - 24, L = 34, Tp = 0, ch = 24, g = 3, cw = (w - L) / HR.length - g;
+    let s = '';
+    HD.forEach((d, r) => { s += tx(0, Tp + r * (ch + g) + ch / 2 + 4, d.d, 'pc-t');
+      d.v.forEach((v, c) => { const x = L + c * (cw + g), y = Tp + r * (ch + g), t = v / HM;
+        s += `<rect x="${x}" y="${y}" width="${cw}" height="${ch}" rx="4" style="fill:${ramp(t)}"><title>${d.d} ${HR[c]} · ${v} orders</title></rect>`;
+        if (v) s += `<text x="${x + cw / 2}" y="${y + ch / 2 + 4}" text-anchor="middle" style="font-size:11px;font-variant-numeric:tabular-nums;fill:${t > .55 ? '#fff' : 'var(--data-ink)'}">${v}</text>`; }); });
+    HR.forEach((h, c) => s += tx(L + c * (cw + g) + cw / 2, Tp + 7 * (ch + g) + 12, h, 'ax' + (c === peak ? ' now' : ''), 'middle'));
+    host.innerHTML = svg(w, 7 * (ch + g) + 16, s);
+    $('pc-c16f').innerHTML = `<span>Busiest: <b>${HR[peak]}</b> · Sunday is today, not started</span>${legend}`; }
+
+  // C17 punch card
+  { const host = $('pc-c17'), w = host.clientWidth - 24, L = 34, rh = 30, cw = (w - L) / HR.length, mr = Math.min(12, cw / 2 - 2);
+    let s = '';
+    HD.forEach((d, r) => { const y = r * rh + rh / 2; s += tx(0, y + 4, d.d, 'pc-t');
+      d.v.forEach((v, c) => { const x = L + c * cw + cw / 2;
+        s += v ? `<circle cx="${x}" cy="${y}" r="${Math.max(2, Math.sqrt(v / HM) * mr)}" style="fill:var(--s2)"><title>${d.d} ${HR[c]} · ${v} orders</title></circle>` : `<circle cx="${x}" cy="${y}" r="1.5" style="fill:var(--line)"/>`; }); });
+    HR.forEach((h, c) => s += tx(L + c * cw + cw / 2, 7 * rh + 12, h, 'ax', 'middle'));
+    host.innerHTML = svg(w, 7 * rh + 16, s); }
+
+  // C18 one mini per weekday, shared scale
+  { const host = $('pc-c18'), w = (host.clientWidth - 24 - 96) / 7;
+    host.innerHTML = HD.map((d, i) => { const t = sum(d.v, v => v), c = cols(d.v, { w, h: 56, max: HM, mini: true });
+      return `<div><h4>${d.d}<span class="${t ? '' : 'q'}">${t || '—'}</span></h4>${svg(w, 56, c.s)}<div style="display:flex;justify-content:space-between;margin-top:3px" class="num"><span style="font-size:10px;color:var(--ink-5)">7a</span><span style="font-size:10px;color:var(--ink-5)">6p</span></div></div>`; }).join(''); }
+
+  // C19 busiest hours
+  { const host = $('pc-c19'), w = host.clientWidth - 24, c = cols(HS, { w, h: 180, labels: HR, fmt: n => String(n), fill: i => i === peak ? 'var(--s1)' : 'var(--bar)' });
+    host.innerHTML = svg(w, 180, c.s + tx(c.cx(peak), c.y(HS[peak]) - 5, HS[peak], 'pc-t ink', 'middle')); }
+
+  // C20 net bars + orders line
+  { const host = $('pc-c20'), w = host.clientWidth - 24, h = 180, W7 = V.week;
+    const c = cols(W7.map(d => d.net), { w, h, labels: W7.map(d => d.d), fmt: K, now: 6, fill: () => 'var(--d1)' });
+    const oTop = nice(Math.max(...W7.map(d => d.orders))) * 3;
+    const pts = W7.filter(d => !d.now).map((d, i) => [c.cx(i), 8 + (h - 30) * (1 - d.orders / oTop)]);
+    let s = c.s + `<polyline points="${pts.map(p => p.join(',')).join(' ')}" style="fill:none;stroke:var(--s1);stroke-width:2;stroke-linejoin:round"/>`;
+    pts.forEach((p, i) => s += `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" style="fill:var(--raised);stroke:var(--s1);stroke-width:2"/>` + `<text class="pc-t q" x="${p[0]}" y="${p[1] - 8}" text-anchor="middle" style="paint-order:stroke;stroke:var(--raised);stroke-width:3">${W7[i].orders}</text>`);
+    host.innerHTML = svg(w, h, s); }
+
+  // C21 clock: 7a…6p are exactly the 12 positions of a clock face
+  { const host = $('pc-c21'), w = host.clientWidth - 24, h = 244, cx = w / 2, cy = h / 2, r0 = 38, rl = 62, mx = Math.max(...HS);
+    let s = `<circle cx="${cx}" cy="${cy}" r="${r0 - 6}" style="fill:none;stroke:var(--grid)"/><circle cx="${cx}" cy="${cy}" r="${r0 + rl}" style="fill:none;stroke:var(--row-line);stroke-dasharray:2 3"/>`;
+    HS.forEach((v, k) => { const a = ((7 + k) % 12) / 12 * 2 * Math.PI - Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a), r1 = r0 + rl * v / mx;
+      s += `<line x1="${cx + r0 * ca}" y1="${cy + r0 * sa}" x2="${cx + r1 * ca}" y2="${cy + r1 * sa}" style="stroke:${k === peak ? 'var(--s1)' : 'var(--bar)'};stroke-width:9;stroke-linecap:round"><title>${HR[k]} · ${v} orders</title></line>`;
+      s += tx(cx + (r0 + rl + 20) * ca, cy + (r0 + rl + 20) * sa + 4, HR[k], 'ax' + (k === peak ? ' now' : ''), 'middle'); });
+    s += tx(cx, cy - 2, HR[peak], 'pc-t ink', 'middle') + tx(cx, cy + 13, HS[peak] + ' orders', 'pc-t q', 'middle');
+    host.innerHTML = svg(w, h, s); }
+})();</script>
+
+<!-- ===== part d.html ===== -->
+<style>
+/* part d — Items: Top items, Categories, Bought together. Every selector .pd-; colours, radii from viz.css tokens. */
+.pd-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: var(--row-h); padding: 0 var(--pad); border-top: 1px solid var(--row-line); font-size: 12px; color: var(--ink-4); }
+.pd-foot a { font-weight: 500; color: var(--ink); text-decoration: none; white-space: nowrap; }
+.pd-note { font-size: 12px; font-weight: 400; color: var(--ink-4); }
+.pd-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.pd-svg .gl { stroke: var(--grid); stroke-width: 1; }
+.pd-svg .lb { font-size: 12px; fill: var(--ink-2); }
+.pd-svg .v { font-size: 12px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.pd-svg .up { fill: var(--up); } .pd-svg .down { fill: var(--down); }
+.pd-t td.pd-rk, .pd-t th.pd-rk { width: 1%; color: var(--ink-4); padding-right: 0; font-variant-numeric: tabular-nums; }
+.pd-t td.pd-c { width: 1%; padding-left: 0; }
+.pd-t td.nm { white-space: nowrap; }
+.pd-t tr.pd-oth td { color: var(--ink-4); }
+.pd-t tr.pd-oth td.money { color: var(--ink-2); font-weight: 400; }
+.pd-t tr.pd-tot td { font-weight: 500; color: var(--ink); }
+.pd-it { display: flex; align-items: center; gap: 8px; }
+.pd-ph { flex: none; display: inline-block; width: 28px; height: 28px; border-radius: var(--r-row); background: var(--fill); }
+
+/* D2 ranked bars, name over the bar */
+.pd-rb { padding: 4px 0; }
+.pd-rb-r { padding: 6px var(--pad) 7px; }
+.pd-rb-r:hover { background: var(--band); }
+.pd-rb-l { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; font-size: 13px; }
+.pd-rb-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 500; }
+.pd-rb-n small, .pd-rw small { margin-left: 6px; font-size: 11px; font-weight: 400; color: var(--ink-4); }
+.pd-rb-b { height: 6px; border-radius: var(--r-pill); background: var(--bar); }
+
+/* D6 lollipop, D8 dumbbell, D12 bars: one row grid */
+.pd-g { display: grid; align-items: center; gap: 0 12px; min-height: 30px; padding: 0 var(--pad); font-size: 13px; }
+.pd-g:hover { background: var(--band); }
+.pd-g > .pd-rw { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-weight: 500; }
+.pd-g > .pd-r { display: flex; justify-content: flex-end; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.pd-trk { position: relative; height: 30px; }
+.pd-lp { position: absolute; left: 0; top: 50%; height: 1.5px; margin-top: -.75px; background: var(--d2); }
+.pd-lp::after { content: ""; position: absolute; right: -4px; top: -3.25px; width: 8px; height: 8px; border-radius: 50%; background: var(--bar); }
+.pd-db-l { position: absolute; top: 50%; height: 2px; margin-top: -1px; border-radius: var(--r-pill); }
+.pd-db-l.up { background: var(--up); } .pd-db-l.down { background: var(--down); }
+.pd-dot { position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; }
+.pd-dot.was { background: var(--raised); box-shadow: inset 0 0 0 1.5px var(--ink-5); }
+.pd-dot.now { background: var(--bar); }
+.pd-axis { position: relative; height: 22px; }
+.pd-axis span { position: absolute; top: 2px; transform: translateX(-50%); font-size: 11px; color: var(--ink-5); font-variant-numeric: tabular-nums; }
+.pd-hb { height: 8px; border-radius: var(--r-pill); background: var(--bar); }
+.pd-hb.oth { background: var(--s-other); }
+
+/* D9 podium */
+.pd-pod { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: var(--pad); }
+.pd-pod > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 10px; border-radius: var(--r-cell); background: var(--band); }
+.pd-pod .pd-pt { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.pd-pod .pd-pn { min-height: 38px; font-size: 13px; font-weight: 500; color: var(--ink); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pd-pod .pd-pv { display: flex; align-items: center; gap: 6px; }
+.pd-pod .kpi-value { font-size: 17px; }
+
+/* D5 scatter */
+.pd-sc circle.dot { fill: var(--s3); stroke: var(--raised); stroke-width: 1.5; transition: fill .12s; }
+.pd-sc circle.dot.on { fill: var(--s1); }
+.pd-sc text.no { font-size: 10px; font-weight: 600; fill: #fff; pointer-events: none; }
+.pd-sc-t tr.on td { background: var(--band); }
+
+/* D10 treemap */
+.pd-tm { position: relative; aspect-ratio: 640 / 250; margin: var(--pad); }
+.pd-tm > div { position: absolute; overflow: hidden; padding: 8px 9px; border-radius: var(--r-cell); font-size: 12px; line-height: 1.35; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pd-tm b { display: block; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pd-tm .w, .pd-tm .w b { color: #fff; }
+.pd-tm .w .cmp { color: inherit; }
+
+/* D11 100% bar */
+.pd-stk { display: flex; gap: 2px; height: 14px; margin: 14px var(--pad) 8px; }
+.pd-stk > i { border-radius: 4px; }
+.pd-sw { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 2px; }
+
+/* D14 butterfly */
+.pd-bf { display: grid; grid-template-columns: 1fr 104px 1fr; align-items: center; min-height: 30px; padding: 0 var(--pad); font-size: 12px; font-variant-numeric: tabular-nums; }
+.pd-bf:hover:not(.pd-bf-h) { background: var(--band); }
+.pd-bf-h { min-height: 31px; background: var(--band); color: var(--ink-2); font-weight: 500; margin-bottom: 4px; }
+.pd-bf > .c { text-align: center; font-size: 13px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px; }
+.pd-bf > .l, .pd-bf > .rr { display: flex; align-items: center; gap: 6px; color: var(--ink-3); }
+.pd-bf > .l { justify-content: flex-end; }
+.pd-bf .bar { height: 10px; border-radius: var(--r-pill); }
+.pd-bf .l .bar { background: var(--bar); } .pd-bf .rr .bar { background: var(--d1); }
+.pd-bf .oth .bar, .pd-bf.oth .bar { background: var(--s-other); }
+
+/* D16 matrix */
+.pd-mx { display: grid; gap: 3px; padding: var(--pad); font-size: 12px; font-variant-numeric: tabular-nums; }
+.pd-mx > span { min-height: 30px; display: flex; align-items: center; justify-content: center; border-radius: var(--r-row); }
+.pd-mx > span.e { background: var(--band); }
+.pd-mx > span.rl { justify-content: flex-start; gap: 6px; color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; min-width: 0; }
+.pd-mx > span.rl i, .pd-mx > span.ch { font-style: normal; color: var(--ink-4); font-weight: 400; }
+.pd-mx > span.ch { min-height: 20px; }
+
+/* D18 network */
+.pd-net { position: relative; height: 280px; margin: var(--pad); }
+.pd-net svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pd-net line { stroke: var(--d2); stroke-linecap: round; }
+.pd-net .nd { position: absolute; transform: translate(-50%, -50%); max-width: 118px; padding: 5px 9px; border-radius: var(--r-cell); background: var(--band); box-shadow: 0 0 0 1px var(--line); font-size: 12px; line-height: 1.3; font-weight: 500; color: var(--ink); text-align: center; }
+.pd-net .nd.hub { background: var(--data-tint); color: var(--data-ink); box-shadow: none; }
+.pd-net .el { position: absolute; transform: translate(-50%, -50%); padding: 0 5px; border-radius: var(--r-pill); background: var(--raised); font-size: 11px; font-weight: 500; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* D20 pair boxes */
+.pd-pg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: var(--pad); }
+.pd-pg > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px; border-radius: var(--r-cell); background: var(--band); }
+.pd-pg .a { font-size: 12px; font-weight: 500; color: var(--ink); line-height: 1.35; }
+.pd-pg .a i { font-style: normal; color: var(--ink-4); font-weight: 400; }
+.pd-pg .n { margin-top: 8px; font-size: 17px; font-weight: 500; color: var(--ink); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.pd-pg .n small { font-size: 12px; font-weight: 400; color: var(--ink-4); letter-spacing: 0; margin-left: 4px; }
+.pd-pg .lf { font-size: 12px; color: var(--ink-3); }
+</style>
+
+<section class="cat" id="d-top" data-nav="Top items">
+  <h2>Top items</h2>
+  <p class="why">The Top items table, grown a chart. Fixed top 10, then Other and See all — the same at 30 items or 3,000. The Share bar is gone; each column here earns its place.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>D1</b> Pareto · how much of the store the top 10 carry</div>
+      <div class="card"><div class="band">Top items <span class="pd-note" id="pd-1h"></span></div><div class="body" style="padding-bottom:4px"><svg class="pd-svg" id="pd-1s"></svg></div><div id="pd-1t"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D5</b> Net × margin scatter over the table · hover a row</div>
+      <div class="card"><div class="band">Top items · net sales and margin <span class="pd-note">Last 30 days</span></div><div class="body" style="padding-bottom:0"><svg class="pd-svg pd-sc" id="pd-5s"></svg></div><div id="pd-5t"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D3</b> Table · Share bar swapped for change vs before</div>
+      <div class="card"><div id="pd-3"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D4</b> Units with their word, and what one sells for</div>
+      <div class="card"><div id="pd-4"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D2</b> Ranked bars · name sits over its bar</div>
+      <div class="card"><div class="band">Top items <span class="pd-note">Net sales · last 30 days</span></div><div class="pd-rb" id="pd-2"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D6</b> Lollipop · a line and a dot, less ink than bars</div>
+      <div class="card"><div class="band">Top items <span class="pd-note">Net sales · last 30 days</span></div><div style="padding:4px 0" id="pd-6"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D7</b> Slope by rank · who climbed, who slipped</div>
+      <div class="card"><div class="band">Top items · rank then and now <span class="pd-note">Green climbed, red slipped</span></div><div class="body"><svg class="pd-svg" id="pd-7"></svg></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D8</b> Dumbbell · was → now, biggest movers first</div>
+      <div class="card"><div class="band">Top items · change <span class="pd-note"><span class="pd-dot was" style="position:relative;display:inline-block;margin:0 4px 0 0;top:0"></span>Before&nbsp;&nbsp;<span class="pd-dot now" style="position:relative;display:inline-block;margin:0 4px 0 0;top:0"></span>Last 30 days</span></div><div style="padding-top:4px" id="pd-8"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D9</b> Podium · top 3 in boxes, the rest a list</div>
+      <div class="card"><div class="band">Top items <span class="pd-note">Last 30 days</span></div><div id="pd-9"></div></div></div>
+  </div>
+</section>
+
+<section class="cat" id="d-cat" data-nav="Categories">
+  <h2>Categories</h2>
+  <p class="why">Top 6 categories + Other. A store with 80 categories still gets seven shapes, and the rest live one tap away.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>D10</b> Treemap · size = net sales, tint = change vs before</div>
+      <div class="card"><div class="band">Categories <span class="seg" id="pd-10seg"><button class="on" data-m="chg">Change</button><button data-m="share">Share</button></span></div><div class="pd-tm" id="pd-10"></div><div id="pd-10f"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D14</b> Where the money is vs where the shelf is</div>
+      <div class="card"><div id="pd-14"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D11</b> One 100% bar, the table under it is the legend</div>
+      <div class="card"><div class="band">Categories <span class="pd-note">Share of net sales</span></div><div id="pd-11"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D12</b> Bars with the change beside the number</div>
+      <div class="card"><div class="band">Categories <span class="pd-note">Net sales · last 30 days</span></div><div style="padding:4px 0" id="pd-12"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D13</b> Plain table · inline change, per-item sales</div>
+      <div class="card"><div id="pd-13"></div></div></div>
+  </div>
+</section>
+
+<section class="cat" id="d-pairs" data-nav="Bought together">
+  <h2>Bought together</h2>
+  <p class="why">Top 8 pairs. "More likely" = how many times more often two items land in one order than chance would put them there.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>D15</b> Pair rows · A + B, orders, how much more likely</div>
+      <div class="card"><div id="pd-15"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D19</b> For this item, also bought · tap the pill to change item</div>
+      <div class="card"><div class="band">Also bought with <button class="pick" id="pd-19p"></button></div><div class="rows" id="pd-19"></div><div id="pd-19f"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D18</b> Links · top 8 pairs, thicker = more orders</div>
+      <div class="card"><div class="band">Bought together <span class="pd-note">Top 8 pairs · last 30 days</span></div><div class="pd-net" id="pd-18"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D17</b> Arc diagram · items in a column, pairs as arcs</div>
+      <div class="card"><div class="band">Bought together <span class="pd-note">Orders with both</span></div><div class="body"><svg class="pd-svg" id="pd-17"></svg></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D16</b> Matrix · the 6 items in the most pairs</div>
+      <div class="card"><div class="band">Bought together <span class="pd-note">Orders with both · darker = more</span></div><div class="pd-mx" id="pd-16"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>D20</b> Pair boxes · one rounded box per pair</div>
+      <div class="card"><div class="band">Bought together <span class="pd-note">Last 30 days</span></div><div class="pd-pg" id="pd-20"></div><div id="pd-20f"></div></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = window.VIZ; if (!V) return;
+  const P = V.peso, K = V.pesoK, $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const chg = (a, p) => (a - p) / p * 100;
+  const fc = c => (c > 0 ? '+' : c < 0 ? '−' : '') + Math.abs(c).toFixed(1) + '%';
+  const dir = c => c > 0 ? 'up' : c < 0 ? 'down' : 'flat';
+  const chip = c => `<span class="chip ${dir(c)}">${fc(c)}</span>`;
+  const cmp = c => `<span class="cmp ${dir(c)}">${fc(c)}</span>`;
+  const pc = (n, d = 1) => V.pct(n, d);
+  const cut = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+  const foot = (left = '', link = 'See all in Items →') => `<div class="pd-foot"><span>${left}</span><a href="#">${link}</a></div>`;
+  const band = (t, note = '') => `<div class="band">${t} <span class="pd-note">${note}</span></div>`;
+
+  // ---- data: top 10 items, top 6 categories + Other, all from VIZ ----
+  const T = V.topItems.slice().sort((a, b) => b.amt - a.amt);
+  const ALL = V.allItemsNet;
+  const topSum = T.reduce((s, i) => s + i.amt, 0);
+  const nItems = V.categories.reduce((s, c) => s + c.items, 0);
+  const othItems = `Other · ${(nItems - T.length).toLocaleString('en-PH')} items`, othAmt = ALL - topSum;
+  const unitWord = it => !it.unit ? '' : it.unit === 'bag' && it.units !== 1 ? 'bags' : it.unit;
+  const units = it => it.units.toLocaleString('en-PH') + (it.unit ? ' ' + unitWord(it) : '');
+  const nm = it => `${esc(it.name)}<small>${esc(it.cat)}</small>`;
+  T.forEach(it => it.c = chg(it.amt, it.prev));
+
+  const C = V.categories.slice().sort((a, b) => b.amt - a.amt);
+  const rest = C.slice(6);
+  const CO = C.slice(0, 6).concat([{ c: `Other · ${rest.length}`, oth: true, amt: rest.reduce((s, c) => s + c.amt, 0), prev: rest.reduce((s, c) => s + c.prev, 0), items: rest.reduce((s, c) => s + c.items, 0) }]);
+  CO.forEach(c => { c.ch = chg(c.amt, c.prev); c.sh = c.amt / ALL * 100; c.ish = c.items / nItems * 100; });
+  const RAMP = ['--s1', '--s2', '--s3', '--s4', '--s5', '--d1'];
+  const col = (c, i) => c.oth ? 'var(--s-other)' : `var(${RAMP[i]})`;
+
+  // ---- D1 Pareto: one axis (% of all net sales); bars = each item, line = running total ----
+  {
+    const W = 640, H = 150, x0 = 34, x1 = 636, y0 = 124, y1 = 8, top = 40, bw = (x1 - x0) / T.length;
+    const ys = v => y0 - v / top * (y0 - y1);
+    let s = '', run = 0; const pts = [];
+    [0, 10, 20, 30, 40].forEach(v => s += `<line class="gl" x1="${x0}" x2="${x1}" y1="${ys(v)}" y2="${ys(v)}"/><text class="ax" x="${x0 - 8}" y="${ys(v) + 4}" text-anchor="end">${v}%</text>`);
+    T.forEach((it, i) => {
+      const sh = it.amt / ALL * 100, cx = x0 + bw * (i + .5); run += sh;
+      s += `<rect x="${cx - bw * .3}" y="${ys(sh)}" width="${bw * .6}" height="${y0 - ys(sh)}" rx="2" style="fill:var(--d1)"><title>${esc(it.name)} · ${P(it.amt)} · ${pc(sh)} of net</title></rect>`;
+      s += `<text class="ax" x="${cx}" y="${y0 + 16}" text-anchor="middle">${i + 1}</text>`;
+      pts.push([cx, ys(run)]);
+    });
+    s += `<polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" style="stroke:var(--s1)" stroke-width="1.75" stroke-linejoin="round"/>`;
+    s += pts.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.75" style="fill:var(--s1)"/>`).join('');
+    const [lx, ly] = pts[pts.length - 1];
+    s += `<text class="v" x="${lx}" y="${ly - 9}" text-anchor="middle">${pc(run)}</text>`;
+    s += `<text class="ax" x="${x0 + 6}" y="${ys(top) + 14}">Running total, % of all net sales</text>`;
+    const svg = $('pd-1s'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = s;
+    $('pd-1h').textContent = `Top 10 = ${pc(topSum / ALL * 100)} of net sales`;
+    let r = 0;
+    $('pd-1t').innerHTML = `<table class="t pd-t"><thead><tr><th class="pd-rk">#</th><th>Item</th><th class="r">Net sales</th><th class="r">Running total</th></tr></thead><tbody>` +
+      T.map((it, i) => (r += it.amt, `<tr><td class="pd-rk">${i + 1}</td><td class="nm">${nm(it)}</td><td class="r money">${P(it.amt)}</td><td class="r">${pc(r / ALL * 100)}</td></tr>`)).join('') +
+      `<tr class="pd-oth"><td class="pd-rk"></td><td>${othItems}</td><td class="r money">${P(othAmt)}</td><td class="r">100%</td></tr></tbody></table>` + foot(`Net sales ${P(ALL)}`);
+  }
+
+  // ---- D5 scatter: x = net sales, y = margin; the store margin line splits it in two plain halves ----
+  {
+    const W = 640, H = 226, x0 = 36, x1 = 630, y0 = 196, y1 = 10, xa = 15000, xb = 90000, ya = 8, yb = 26;
+    const xs = v => x0 + (v - xa) / (xb - xa) * (x1 - x0), ys = v => y0 - (v - ya) / (yb - ya) * (y0 - y1);
+    const store = V.ladder.gp / V.ladder.net * 100;
+    let s = '';
+    [10, 15, 20, 25].forEach(v => s += `<line class="gl" x1="${x0}" x2="${x1}" y1="${ys(v)}" y2="${ys(v)}"/><text class="ax" x="${x0 - 8}" y="${ys(v) + 4}" text-anchor="end">${v}%</text>`);
+    [20000, 40000, 60000, 80000].forEach(v => s += `<text class="ax" x="${xs(v)}" y="${y0 + 18}" text-anchor="middle">${K(v)}</text>`);
+    s += `<line x1="${x0}" x2="${x1}" y1="${ys(store)}" y2="${ys(store)}" style="stroke:var(--ink-4)" stroke-dasharray="3 3"/>`;
+    s += `<text class="ax" x="${x1}" y="${ys(store) - 6}" text-anchor="end">Store margin ${pc(store)}</text>`;
+    s += `<text class="ax" x="${x1}" y="${ys(yb) + 4}" text-anchor="end">Earns more than the store</text><text class="ax" x="${x1}" y="${ys(ya) - 6}" text-anchor="end">Earns less</text>`;
+    T.forEach((it, i) => s += `<g data-i="${i}"><circle class="dot" cx="${xs(it.amt)}" cy="${ys(it.margin)}" r="8"><title>${esc(it.name)} · ${P(it.amt)} · ${pc(it.margin)} margin</title></circle><text class="no" x="${xs(it.amt)}" y="${ys(it.margin) + 3.5}" text-anchor="middle">${i + 1}</text></g>`);
+    const svg = $('pd-5s'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = s;
+    $('pd-5t').innerHTML = `<table class="t pd-t pd-sc-t"><thead><tr><th class="pd-rk">#</th><th>Item</th><th class="r">Net sales</th><th class="r">Margin</th></tr></thead><tbody>` +
+      T.map((it, i) => `<tr data-i="${i}"><td class="pd-rk">${i + 1}</td><td class="nm">${nm(it)}</td><td class="r money">${P(it.amt)}</td><td class="r">${pc(it.margin)}</td></tr>`).join('') + `</tbody></table>` + foot('Dots numbered as the rows');
+    const card = svg.closest('.card');
+    const hl = i => card.querySelectorAll('[data-i]').forEach(el => { const on = el.dataset.i === i; el.classList.toggle('on', on); el.querySelector('circle')?.classList.toggle('on', on); });
+    card.addEventListener('mouseover', e => { const g = e.target.closest('[data-i]'); hl(g ? g.dataset.i : null); });
+    card.addEventListener('mouseleave', () => hl(null));
+  }
+
+  // ---- D3 table: change vs before, chip right of the number ----
+  $('pd-3').innerHTML = band('Top items', 'Last 30 days vs 30 before') + `<table class="t pd-t"><thead><tr><th>Item</th><th class="r">Units sold</th><th class="r">Net sales</th><th></th></tr></thead><tbody>` +
+    T.map(it => `<tr><td class="nm"><span class="pd-it"><i class="pd-ph"></i><span>${nm(it)}</span></span></td><td class="r">${units(it)}</td><td class="r money">${P(it.amt)}</td><td class="pd-c">${chip(it.c)}</td></tr>`).join('') +
+    `<tr class="pd-oth"><td><span class="pd-it"><i class="pd-ph" style="visibility:hidden"></i>${othItems}</span></td><td class="r"></td><td class="r money">${P(othAmt)}</td><td class="pd-c"></td></tr></tbody></table>` + foot();
+
+  // ---- D4 units with their word, and net per unit ----
+  $('pd-4').innerHTML = band('Top items', 'Last 30 days') + `<table class="t pd-t"><thead><tr><th>Item</th><th class="r">Sold</th><th class="r">Per unit</th><th class="r">Net sales</th></tr></thead><tbody>` +
+    T.map(it => `<tr><td class="nm">${nm(it)}</td><td class="r">${units(it)}</td><td class="r">${P(it.amt / it.units)}<span style="color:var(--ink-4)"> ${it.unit ? '/ ' + it.unit : 'each'}</span></td><td class="r money">${P(it.amt)}</td></tr>`).join('') +
+    `<tr class="pd-oth"><td>${othItems}</td><td class="r"></td><td class="r"></td><td class="r money">${P(othAmt)}</td></tr></tbody></table>` + foot('Per unit = net sales ÷ units sold');
+
+  // ---- D2 ranked bars ----
+  {
+    const mx = T[0].amt;
+    $('pd-2').innerHTML = T.map(it => `<div class="pd-rb-r"><div class="pd-rb-l"><span class="pd-rb-n">${nm(it)}</span><span class="money">${P(it.amt)}</span></div><div class="pd-rb-b" style="width:${it.amt / mx * 100}%"></div></div>`).join('') +
+      `<div class="pd-rb-r"><div class="pd-rb-l" style="margin:0"><span class="pd-rb-n" style="color:var(--ink-4);font-weight:400">${othItems}</span><span class="cnt" style="color:var(--ink-2)">${P(othAmt)}</span></div></div>`;
+    $('pd-2').insertAdjacentHTML('afterend', foot());
+  }
+
+  // ---- D6 lollipop ----
+  {
+    const mx = T[0].amt, g = 'grid-template-columns:208px 1fr 72px';
+    $('pd-6').innerHTML = T.map(it => `<div class="pd-g" style="${g}"><span class="pd-rw" title="${esc(it.name)}">${esc(it.name)}</span><div class="pd-trk"><i class="pd-lp" style="width:${it.amt / mx * 100}%"></i></div><span class="pd-r money">${K(it.amt)}</span></div>`).join('') +
+      `<div class="pd-g" style="${g}"><span class="pd-rw" style="color:var(--ink-4);font-weight:400">${othItems}</span><span></span><span class="pd-r" style="color:var(--ink-2)">${K(othAmt)}</span></div>`;
+    $('pd-6').insertAdjacentHTML('afterend', foot());
+  }
+
+  // ---- D7 slope by rank (bump): rank before → rank now, so ten close amounts never pile up ----
+  {
+    const W = 640, rh = 27, top = 30, xl = 70, xr = 250, H = top + rh * T.length;
+    const was = T.slice().sort((p, q) => q.prev - p.prev);
+    const y = r => top + r * rh + 4;
+    let s = `<text class="ax" x="${xl}" y="12" text-anchor="middle">Before</text><text class="ax now" x="${xr}" y="12" text-anchor="middle">Last 30 days</text>`;
+    T.forEach((it, i) => {
+      const j = was.indexOf(it), moved = j - i, c = moved > 0 ? 'var(--up)' : moved < 0 ? 'var(--down)' : 'var(--ink-5)';
+      s += `<line x1="${xl}" y1="${y(j)}" x2="${xr}" y2="${y(i)}" style="stroke:${c}" stroke-width="${moved ? 1.75 : 1.25}"><title>${esc(it.name)}</title></line>`;
+      s += `<circle cx="${xl}" cy="${y(j)}" r="3.5" style="fill:${c}"/><circle cx="${xr}" cy="${y(i)}" r="3.5" style="fill:${c}"/>`;
+      s += `<text class="ax" x="${xl - 12}" y="${y(j) + 4}" text-anchor="end">${j + 1} · ${K(it.prev)}</text>`;
+      s += `<text x="${xr + 12}" y="${y(i) + 4}"><tspan class="ax">${i + 1}</tspan><tspan dx="8" class="v">${K(it.amt)}</tspan><tspan dx="6" class="ax ${dir(it.c)}" style="font-weight:500">${fc(it.c)}</tspan><tspan dx="8" class="lb">${esc(cut(it.name, 34))}</tspan></text>`;
+    });
+    const svg = $('pd-7'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = s;
+  }
+
+  // ---- D8 dumbbell, sorted by change ----
+  {
+    const a = 15000, b = 90000, x = v => (v - a) / (b - a) * 100, g = 'grid-template-columns:196px 1fr 132px';
+    const S = T.slice().sort((p, q) => q.c - p.c);
+    $('pd-8').innerHTML = S.map(it => {
+      const l = Math.min(x(it.prev), x(it.amt)), w = Math.abs(x(it.amt) - x(it.prev));
+      return `<div class="pd-g" style="${g}"><span class="pd-rw" title="${esc(it.name)}">${esc(it.name)}</span><div class="pd-trk"><i class="pd-db-l ${dir(it.c)}" style="left:${l}%;width:${w}%"></i><i class="pd-dot was" style="left:${x(it.prev)}%"></i><i class="pd-dot now" style="left:${x(it.amt)}%"></i></div><span class="pd-r"><span class="money">${K(it.amt)}</span>${chip(it.c)}</span></div>`;
+    }).join('') + `<div class="pd-g" style="${g};min-height:22px"><span></span><div class="pd-axis">${[20000, 40000, 60000, 80000].map(v => `<span style="left:${x(v)}%">${K(v)}</span>`).join('')}</div><span></span></div>`;
+    $('pd-8').insertAdjacentHTML('afterend', foot());
+  }
+
+  // ---- D9 podium ----
+  $('pd-9').innerHTML = `<div class="pd-pod">` + T.slice(0, 3).map((it, i) => `<div><div class="pd-pt"><i class="pd-ph"></i><span>#${i + 1} · ${esc(it.cat)}</span></div><div class="pd-pn">${esc(it.name)}</div><div class="pd-pv"><span class="kpi-value">${P(it.amt)}</span>${chip(it.c)}</div></div>`).join('') + `</div>` +
+    `<table class="t pd-t"><tbody>` + T.slice(3).map((it, i) => `<tr><td class="pd-rk">${i + 4}</td><td class="nm">${nm(it)}</td><td class="r money">${P(it.amt)}</td><td class="pd-c">${chip(it.c)}</td></tr>`).join('') +
+    `<tr class="pd-oth"><td class="pd-rk"></td><td>${othItems}</td><td class="r money">${P(othAmt)}</td><td class="pd-c"></td></tr></tbody></table>` + foot();
+
+  // ---- D10 treemap (squarified), Change / Share colouring ----
+  {
+    const W = 640, H = 250;
+    const squarify = (items, x, y, w, h) => {
+      const out = []; let left = items.slice();
+      while (left.length) {
+        const k = w * h / left.reduce((s, i) => s + i.amt, 0), short = Math.min(w, h);
+        let row = [], best = Infinity;
+        for (const it of left) {
+          const r = row.concat([it]), a = r.map(i => i.amt * k), sum = a.reduce((p, q) => p + q, 0);
+          const worst = Math.max(short * short * Math.max(...a) / (sum * sum), sum * sum / (short * short * Math.min(...a)));
+          if (worst > best) break; best = worst; row = r;
+        }
+        const thick = row.reduce((s, i) => s + i.amt * k, 0) / short; let off = 0;
+        row.forEach(it => { const len = it.amt * k / thick; out.push(w >= h ? { it, x, y: y + off, w: thick, h: len } : { it, x: x + off, y, w: len, h: thick }); off += len; });
+        if (w >= h) { x += thick; w -= thick; } else { y += thick; h -= thick; }
+        left = left.slice(row.length);
+      }
+      return out;
+    };
+    const cells = squarify(CO, 0, 0, W, H);
+    const tint = c => c.oth ? 'var(--band)' : c.ch >= 8 ? 'var(--up-tint)' : c.ch > 0 ? 'var(--up-soft)' : c.ch <= -8 ? 'var(--down-tint)' : 'var(--down-soft)';
+    const draw = m => $('pd-10').innerHTML = cells.map(({ it, x, y, w, h }) => {
+      const i = CO.indexOf(it), dark = m === 'share' && i < 4;
+      return `<div class="${dark ? 'w' : ''}" style="left:calc(${x / W * 100}% + 1.5px);top:calc(${y / H * 100}% + 1.5px);width:calc(${w / W * 100}% - 3px);height:calc(${h / H * 100}% - 3px);background:${m === 'share' ? col(it, i) : tint(it)}" title="${esc(it.c)} · ${P(it.amt)}"><b>${esc(it.c)}</b>${K(it.amt)}<br>${m === 'share' ? pc(it.sh) : it.oth ? fc(it.ch) : cmp(it.ch)}</div>`;
+    }).join('');
+    draw('chg');
+    $('pd-10seg').addEventListener('click', e => { const bt = e.target.closest('button'); if (!bt) return; $('pd-10seg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === bt)); draw(bt.dataset.m); });
+    $('pd-10f').innerHTML = foot('Darker tint = 8% or more change', 'See all in Categories →');
+  }
+
+  // ---- D14 butterfly: share of net sales vs share of items on the shelf, one scale ----
+  {
+    const mx = Math.max(...CO.map(c => Math.max(c.sh, c.ish)));
+    $('pd-14').innerHTML = band('Categories · sales vs shelf', `${nItems} items`) +
+      `<div class="pd-bf pd-bf-h"><span style="text-align:right">Share of net sales</span><span></span><span>Share of items</span></div>` +
+      CO.map(c => `<div class="pd-bf${c.oth ? ' oth' : ''}"><span class="l">${pc(c.sh, 0)}<i class="bar" style="width:${c.sh / mx * 82}%"></i></span><span class="c">${esc(c.c)}</span><span class="rr"><i class="bar" style="width:${c.ish / mx * 82}%"></i>${pc(c.ish, 0)}</span></div>`).join('') +
+      `<div style="height:4px"></div>` + foot('Cement: a third of sales from 5% of items', 'See all in Categories →');
+  }
+
+  // ---- D11 100% stacked bar + table legend ----
+  $('pd-11').innerHTML = `<div class="pd-stk">${CO.map((c, i) => `<i style="flex:${c.amt};background:${col(c, i)}" title="${esc(c.c)} · ${pc(c.sh)}"></i>`).join('')}</div>` +
+    `<table class="t pd-t"><tbody>` + CO.map((c, i) => `<tr class="${c.oth ? 'pd-oth' : ''}"><td class="${c.oth ? '' : 'nm'}"><span class="pd-it"><i class="pd-sw" style="background:${col(c, i)}"></i>${esc(c.c)}</span></td><td class="r money">${P(c.amt)}</td><td class="r">${pc(c.sh)}</td><td class="pd-c">${c.oth ? '' : chip(c.ch)}</td></tr>`).join('') + `</tbody></table>` + foot('', 'See all in Categories →');
+
+  // ---- D12 bars + change ----
+  {
+    const mx = CO[0].amt, g = 'grid-template-columns:96px 1fr 132px';
+    $('pd-12').innerHTML = CO.map((c, i) => `<div class="pd-g" style="${g}"><span class="pd-rw" style="${c.oth ? 'color:var(--ink-4);font-weight:400' : ''}">${esc(c.c)}</span><div><i class="pd-hb${c.oth ? ' oth' : ''}" style="display:block;width:${c.amt / mx * 100}%"></i></div><span class="pd-r"><span class="money">${K(c.amt)}</span>${c.oth ? '<span class="chip" style="visibility:hidden">+0.0%</span>' : chip(c.ch)}</span></div>`).join('');
+    $('pd-12').insertAdjacentHTML('afterend', foot('', 'See all in Categories →'));
+  }
+
+  // ---- D13 plain table ----
+  $('pd-13').innerHTML = band('Categories', 'Last 30 days vs 30 before') + `<table class="t pd-t"><thead><tr><th>Category</th><th class="r">Items</th><th class="r">Net sales</th><th class="r">vs before</th><th class="r">Per item</th></tr></thead><tbody>` +
+    CO.map(c => `<tr class="${c.oth ? 'pd-oth' : ''}"><td class="${c.oth ? '' : 'nm'}">${esc(c.c)}</td><td class="r">${c.items}</td><td class="r money">${P(c.amt)}</td><td class="r">${c.oth ? '' : cmp(c.ch)}</td><td class="r">${P(c.amt / c.items)}</td></tr>`).join('') +
+    `<tr class="pd-tot"><td>Total</td><td class="r">${nItems}</td><td class="r">${P(ALL)}</td><td class="r"></td><td class="r"></td></tr></tbody></table>` + foot('Per item = net sales ÷ items in the category', 'See all in Categories →');
+
+  // ---- Bought together ----
+  const B = V.boughtTogether.slice().sort((p, q) => q.n - p.n);
+  const lift = l => `${+l.toFixed(1)}× more likely`;
+  const ITEMS = []; B.forEach(p => [p.a, p.b].forEach(x => ITEMS.includes(x) || ITEMS.push(x)));
+  // pairs that share an item walk into one chain; neighbours then sit next to each other (D17, D18)
+  const deg = {}; B.forEach(p => { deg[p.a] = (deg[p.a] || 0) + 1; deg[p.b] = (deg[p.b] || 0) + 1; });
+  const linked = B.filter(p => deg[p.a] > 1 || deg[p.b] > 1), lone = B.filter(p => !linked.includes(p));
+  const chain = [], ends = ITEMS.filter(x => linked.some(p => p.a === x || p.b === x));
+  let cur = ends.find(x => linked.filter(p => p.a === x || p.b === x).length === 1) || ends[0];
+  while (cur && !chain.includes(cur)) { chain.push(cur); const nx = linked.find(p => (p.a === cur && !chain.includes(p.b)) || (p.b === cur && !chain.includes(p.a))); cur = nx ? (nx.a === cur ? nx.b : nx.a) : null; }
+  ends.forEach(x => chain.includes(x) || chain.push(x));   // ponytail: a branching cluster falls back to a row, fine for 8 pairs
+  const ORDER = chain.concat(lone.flatMap(p => [p.a, p.b]));
+  const plus = '<span style="color:var(--ink-4);font-weight:400;margin:0 6px">+</span>';
+
+  // D15 pair rows
+  $('pd-15').innerHTML = band('Bought together', 'Top 8 pairs · last 30 days') + `<table class="t pd-t"><thead><tr><th>Pair</th><th class="r">Orders</th><th class="r">vs chance</th></tr></thead><tbody>` +
+    B.map(p => `<tr><td class="nm">${esc(p.a)}${plus}${esc(p.b)}</td><td class="r money">${p.n}</td><td class="r">${lift(p.lift)}</td></tr>`).join('') + `</tbody></table>` + foot('Orders = orders with both items', 'See all pairs →');
+
+  // D19 for this item
+  {
+    let k = 0;
+    const show = () => {
+      const it = ITEMS[k], rows = B.filter(p => p.a === it || p.b === it);
+      $('pd-19p').textContent = it;
+      $('pd-19').innerHTML = rows.map(p => `<div class="row"><span class="pd-ph" style="width:24px;height:24px"></span><span class="nm" style="color:var(--ink);font-weight:500">${esc(p.a === it ? p.b : p.a)}</span><span class="cnt" style="color:var(--ink-2)">${p.n} orders</span><span class="pct" style="min-width:108px;text-align:right">${lift(p.lift)}</span></div>`).join('');
+      $('pd-19f').innerHTML = foot(`Item ${k + 1} of ${ITEMS.length}`, 'See all pairs →');
+    };
+    $('pd-19p').addEventListener('click', () => { k = (k + 1) % ITEMS.length; show(); });
+    show();
+  }
+
+  // D18 links: pairs that share an item sit in one row; lone pairs stand as columns under it
+  {
+    const W = 640, H = 280, pos = {};
+    chain.forEach((x, i) => pos[x] = [W * (i + .5) / chain.length, 30]);
+    lone.forEach((p, i) => { const x = W * (i + .5) / lone.length; pos[p.a] = [x, 148]; pos[p.b] = [x, 250]; });
+    const w = n => 1.5 + n / B[0].n * 4.5;
+    let lines = '', html = '';
+    B.forEach(p => {
+      const [ax, ay] = pos[p.a], [bx, by] = pos[p.b];
+      lines += `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke-width="${w(p.n)}"><title>${esc(p.a)} + ${esc(p.b)} · ${p.n} orders</title></line>`;
+      html += `<span class="el" style="left:${(ax + bx) / 2 / W * 100}%;top:${(ay + by) / 2}px">${p.n}</span>`;
+    });
+    html += Object.entries(pos).map(([x, [px, py]]) => `<span class="nd${deg[x] > 1 ? ' hub' : ''}" style="left:${px / W * 100}%;top:${py}px">${esc(x)}</span>`).join('');
+    $('pd-18').innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${lines}</svg>` + html;
+  }
+
+  // D17 arc diagram: items down the left in chain order, arcs bulge right, thicker = more orders
+  {
+    const rh = 22, top = 12, lx = 200, W = 640, H = top * 2 + rh * (ORDER.length - 1);
+    const y = x => top + ORDER.indexOf(x) * rh;
+    let s = '';
+    B.forEach(p => {
+      const ya = y(p.a), yb = y(p.b), r = Math.abs(yb - ya) / 2, w = 1.5 + p.n / B[0].n * 4.5;
+      s += `<path d="M${lx} ${Math.min(ya, yb)} A${r} ${r} 0 0 1 ${lx} ${Math.max(ya, yb)}" fill="none" style="stroke:var(--d2)" stroke-width="${w}" stroke-linecap="round"><title>${esc(p.a)} + ${esc(p.b)} · ${p.n} orders</title></path>`;
+      s += `<text class="v" x="${lx + r + w / 2 + 6}" y="${(ya + yb) / 2 + 4}">${p.n}<tspan class="ax" dx="5">${lift(p.lift)}</tspan></text>`;
+    });
+    ORDER.forEach(x => s += `<circle cx="${lx}" cy="${y(x)}" r="3" style="fill:var(--s1)"/><text class="lb" x="${lx - 10}" y="${y(x) + 4}" text-anchor="end">${esc(x)}</text>`);
+    const svg = $('pd-17'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = s;
+  }
+
+  // D16 matrix of the 6 items in the most pair orders
+  {
+    const score = {}; B.forEach(p => { score[p.a] = (score[p.a] || 0) + p.n; score[p.b] = (score[p.b] || 0) + p.n; });
+    const S = Object.keys(score).sort((p, q) => score[q] - score[p]).slice(0, 6);
+    const get = (a, b) => B.find(p => (p.a === a && p.b === b) || (p.a === b && p.b === a));
+    let h = `<span class="ch"></span>` + S.map((x, i) => `<span class="ch">${i + 1}</span>`).join('');
+    S.forEach((a, i) => {
+      h += `<span class="rl"><i>${i + 1}</i>${esc(cut(a, 24))}</span>`;
+      S.forEach((b, j) => {
+        if (j >= i) { h += `<span></span>`; return; }
+        const p = get(a, b);
+        if (!p) { h += `<span class="e"></span>`; return; }
+        const t = Math.round(20 + (p.n / B[0].n) ** 2 * 80);
+        h += `<span style="background:color-mix(in srgb, var(--bar) ${t}%, var(--raised));color:${t > 55 ? '#fff' : 'var(--ink)'};font-weight:500" title="${esc(a)} + ${esc(b)} · ${p.n} orders · ${lift(p.lift)}">${p.n}</span>`;
+      });
+    });
+    const el = $('pd-16'); el.style.gridTemplateColumns = `200px repeat(6, 1fr)`; el.innerHTML = h;
+    el.insertAdjacentHTML('afterend', foot('Grey = not one of the top 8 pairs', 'See all pairs →'));
+  }
+
+  // D20 pair boxes
+  $('pd-20').innerHTML = B.map(p => `<div><span class="a">${esc(p.a)}<br><i>+</i> ${esc(p.b)}</span><span class="n">${p.n}<small>orders</small></span><span class="lf">${lift(p.lift)}</span></div>`).join('');
+  $('pd-20f').innerHTML = foot('More likely = than chance', 'See all pairs →');
+})();</script>
+
+<!-- ===== part e.html ===== -->
+<style>
+/* part e — Stock history rail cards + stock flow. Every selector .pe-. */
+.pe-rail { height: calc(var(--row-h) * 5); }
+.pe-rail > .row.pe-slot { border-top-color: transparent; }
+.pe-rail > .row.pe-slot:hover { background: none; }
+.pe-empty { color: var(--ink-4); font-size: 12px; }
+.pe-r { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+.pe-q { color: var(--ink-4); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pe-w { width: 40px; text-align: right; flex: none; }
+.pe-name { flex: none; width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+/* E1 dots */
+.pe-dots { display: inline-flex; gap: 3px; width: 28px; justify-content: flex-end; }
+.pe-dots i { width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--bar); }
+/* E2, E15 bars on a track */
+.pe-track { flex: 1; min-width: 0; height: 6px; border-radius: var(--r-pill); background: var(--band); overflow: hidden; }
+.pe-track > i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--bar); min-width: 2px; }
+/* E3 week letters */
+.pe-week { display: inline-flex; gap: 2px; }
+.pe-week i { width: 16px; height: 16px; border-radius: var(--r-pill); font: 500 10px/16px var(--font); font-style: normal; text-align: center; color: var(--ink-5); }
+.pe-week i.on { background: var(--bar); color: var(--raised); }
+.pe-week i.now { box-shadow: inset 0 0 0 1px var(--line); }
+/* E6/E7/E12/E13 centred axis */
+.pe-axis { flex: 1; min-width: 0; height: 100%; position: relative; }
+.pe-axis::before { content: ""; position: absolute; left: 50%; top: 7px; bottom: 7px; width: 1px; background: var(--grid); }
+.pe-axis > .b { position: absolute; top: 50%; height: 8px; margin-top: -4px; border-radius: 2px; }
+.pe-axis > .ln { position: absolute; top: 50%; height: 2px; margin-top: -1px; }
+.pe-axis > .ring, .pe-axis > .dot { position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: var(--r-pill); }
+.pe-axis > .ring { background: var(--raised); box-shadow: inset 0 0 0 1.5px var(--ink-5); }
+.pe-scale { font-size: 11px; color: var(--ink-5); font-variant-numeric: tabular-nums; }
+.pe-scale .pe-axis::before { display: none; }
+.pe-scale .pe-axis span { position: absolute; top: 50%; transform: translate(-50%, -50%); white-space: nowrap; }
+.pe-down { color: var(--down); } .pe-up { color: var(--up); }
+/* E8 split */
+.pe-split { display: flex; gap: 2px; height: 10px; margin: 10px 0 12px; }
+.pe-split > i { border-radius: var(--r-pill); min-width: 3px; }
+.pe-sum { height: calc(var(--row-h) * 5); padding: 12px var(--pad) 0; display: flex; flex-direction: column; }
+.pe-sum .rows { margin: 0 calc(-1 * var(--pad)); }
+.pe-sw { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+/* E14 donut */
+.pe-donut { height: calc(var(--row-h) * 5); display: flex; align-items: center; gap: 4px; padding-left: var(--pad); }
+.pe-donut svg { flex: none; }
+.pe-donut .rows { flex: 1; min-width: 0; }
+.pe-donut .rows > .row { min-height: 27px; font-size: 12px; }
+/* E16 zoom bar */
+.pe-zoom { height: calc(var(--row-h) * 5); padding: 12px var(--pad); display: flex; flex-direction: column; gap: 4px; }
+.pe-bar100 { display: flex; height: 10px; gap: 2px; }
+.pe-bar100 > i { min-width: 3px; border-radius: 2px; }
+.pe-bar100 > i:first-child { border-radius: var(--r-pill) 2px 2px var(--r-pill); }
+.pe-bar100 > i:last-child { border-radius: 2px var(--r-pill) var(--r-pill) 2px; }
+.pe-cap { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.pe-cap b { font-weight: 500; color: var(--ink); }
+.pe-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; font-size: 12px; color: var(--ink-3); margin-top: 14px; }
+.pe-legend span { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.pe-legend b { margin-left: auto; font-weight: 500; color: var(--ink); }
+/* flow cards */
+.pe-chart { padding: 8px var(--pad) 10px; }
+.pe-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.pe-lbl { font-size: 11px; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pe-lbl.k { fill: var(--ink); font-weight: 500; }
+.pe-lbl.red { fill: var(--down); }
+.pe-head { display: flex; align-items: baseline; gap: 8px; padding: 12px var(--pad) 0; }
+.pe-sub { font-size: 12px; color: var(--ink-4); }
+.pe-ledger .row .pe-track { flex: none; width: 34%; height: 4px; }
+.pe-ledger .row .pe-track > i { min-width: 1px; }
+.pe-ledger .row .amt { width: 96px; text-align: right; }
+</style>
+
+<section class="cat" id="e-cards" data-nav="Stock cards">
+  <h2>Stock history · rail cards</h2>
+  <p class="why">What to act on: asked-for-while-out, counts off, supplier costs moved, where stock went. Every card holds five rows' height, full or empty.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>E1</b> Lost demand · a dot per ask, last day plain</div><div id="pe-e1"></div></div>
+    <div class="spec"><div class="tag"><b>E2</b> Lost demand · ranked bar</div><div id="pe-e2"></div></div>
+    <div class="spec"><div class="tag"><b>E3</b> Lost demand · the week, last ask lit</div><div id="pe-e3"></div></div>
+    <div class="spec"><div class="tag"><b>E4</b> Lost demand · empty, same height</div><div id="pe-e4"></div></div>
+    <div class="spec"><div class="tag"><b>E5</b> Counts off · system → shelf, value at cost</div><div id="pe-e5"></div></div>
+    <div class="spec"><div class="tag"><b>E6</b> Counts off · diverging ₱ around zero</div><div id="pe-e6"></div></div>
+    <div class="spec"><div class="tag"><b>E7</b> Counts off · expected ○ vs counted ●, % off</div><div id="pe-e7"></div></div>
+    <div class="spec"><div class="tag"><b>E8</b> Counts off · short vs over, one split bar</div><div id="pe-e8"></div></div>
+    <div class="spec"><div class="tag"><b>E9</b> Counts off · empty, same height</div><div id="pe-e9"></div></div>
+    <div class="spec"><div class="tag"><b>E10</b> Supplier costs · from → to, % chip</div><div id="pe-e10"></div></div>
+    <div class="spec"><div class="tag"><b>E11</b> Supplier costs · slope, last paid → now</div><div id="pe-e11"></div></div>
+    <div class="spec"><div class="tag"><b>E12</b> Supplier costs · diverging %, sorted</div><div id="pe-e12"></div></div>
+    <div class="spec"><div class="tag"><b>E13</b> Supplier costs · per supplier, range of %</div><div id="pe-e13"></div></div>
+    <div class="spec"><div class="tag"><b>E14</b> Where it went · donut, losses red</div><div id="pe-e14"></div></div>
+    <div class="spec"><div class="tag"><b>E15</b> Where it went · bars, came back apart</div><div id="pe-e15"></div></div>
+    <div class="spec"><div class="tag"><b>E16</b> Where it went · 100% bar, not-sold zoomed</div><div id="pe-e16"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="e-flow" data-nav="Stock flow">
+  <h2>Stock history · flow</h2>
+  <p class="why">Opening to closing at cost: what came in, what went out, what was lost. Same seven numbers, five ways.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>E17</b> Waterfall · opening → closing, broken base</div><div id="pe-e17"></div></div>
+    <div class="spec"><div class="tag"><b>E18</b> Sankey-lite · came in → went out + kept</div><div id="pe-e18"></div></div>
+    <div class="spec"><div class="tag"><b>E19</b> Per day · came in up, went out down, halves named</div><div id="pe-e19"></div></div>
+    <div class="spec"><div class="tag"><b>E20</b> Running net · came in − went out, by day</div><div id="pe-e20"></div></div>
+    <div class="spec"><div class="tag"><b>E21</b> Statement · one line per step, thin bar</div><div id="pe-e21"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = window.VIZ, P = V.peso, M = '−';
+  const $ = id => document.getElementById(id);
+  const sg = n => (n > 0 ? '+' : n < 0 ? M : '');
+  const sP = (n, d = 0) => sg(n) + P(Math.abs(n), d);
+  const sK = n => sg(n) + V.pesoK(Math.abs(n));
+  const qty = n => Number.isInteger(n) ? n.toLocaleString('en-PH') : n.toFixed(2);
+  const pc = n => sg(Math.round(n)) + Math.abs(Math.round(n)) + '%';
+  const card = (title, inner, more = 'View all ›') =>
+    `<div class="card"><div class="band"><span>${title}</span>${more ? `<a class="more" href="#">${more}</a>` : ''}</div>${inner}</div>`;
+  const rail = (title, rows, more) =>
+    card(title, `<div class="rows pe-rail">${rows.join('')}${'<div class="row pe-slot"></div>'.repeat(Math.max(0, 5 - rows.length))}</div>`, more);
+  const row = inner => `<div class="row">${inner}</div>`;
+
+  /* ---------- Lost demand ---------- */
+  const lost = V.lostDemand, lostMax = Math.max(...lost.map(l => l.n));
+  $('pe-e1').innerHTML = rail('Lost demand', lost.map(l => row(
+    `<span class="nm">${l.name}</span><span class="pe-dots">${'<i></i>'.repeat(l.n)}</span><span class="pe-q pe-w">${l.last}</span>`)));
+  $('pe-e2').innerHTML = rail('Lost demand', lost.map(l => row(
+    `<span class="pe-name">${l.name}</span><span class="pe-track"><i style="width:${l.n / lostMax * 100}%"></i></span><span class="amt pe-w">${l.n}×</span>`)));
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  $('pe-e3').innerHTML = rail('Lost demand', lost.map(l => row(
+    `<span class="nm">${l.name}</span><span class="pe-week">${days.map(d => `<i class="${d === l.last ? 'on' : ''}${d === 'Sun' ? ' now' : ''}" title="${d}">${d[0]}</i>`).join('')}</span><span class="amt pe-w">${l.n}×</span>`)));
+  $('pe-e4').innerHTML = rail('Lost demand', [`<div class="row pe-slot"><span class="pe-empty">Nobody asked for anything that was out.</span></div>`]);
+
+  /* ---------- Counts that didn't match ---------- */
+  const cm = V.countMismatch.map(c => {
+    const d = Math.round((c.counted - c.expected) * 100) / 100;
+    return { ...c, d, val: d * c.cost, pct: d / c.expected * 100 };
+  });
+  const u = c => c.unit ? ' ' + c.unit : '';
+  $('pe-e5').innerHTML = rail("Counts that didn't match", cm.map(c => row(
+    `<span class="nm">${c.name}</span><span class="pe-q">${qty(c.expected)} → ${qty(c.counted)}${u(c)}</span><span class="pe-w ${c.d < 0 ? 'pe-down' : ''}" style="width:64px;font-weight:500">${sP(c.val)}</span>`)));
+  // E6: value at cost around zero; short = red left, over = green right
+  const vMax = Math.max(...cm.map(c => Math.abs(c.val)));
+  const half = (v, max) => Math.abs(v) / max * 50;
+  $('pe-e6').innerHTML = rail("Counts that didn't match", [...cm.map(c => row(
+    `<span class="pe-name">${c.name}</span><span class="pe-axis"><i class="b" style="${c.val < 0 ? `right:50%` : `left:50%`};width:${half(c.val, vMax)}%;background:var(${c.val < 0 ? '--down' : '--up'})"></i></span><span class="pe-w ${c.val < 0 ? 'pe-down' : 'pe-up'}" style="width:56px;font-weight:500">${sP(c.val)}</span>`)),
+    `<div class="row pe-slot pe-scale"><span class="pe-name"></span><span class="pe-axis"><span style="left:25%">Short</span><span style="left:75%">Over</span></span><span style="width:56px"></span></div>`]);
+  // E7: dumbbell on % of expected
+  const pMax = 10;
+  const at = p => 50 + p / pMax * 50;
+  $('pe-e7').innerHTML = rail("Counts that didn't match", [...cm.map(c => {
+    const col = c.d < 0 ? '--down' : '--up', a = Math.min(50, at(c.pct)), b = Math.max(50, at(c.pct));
+    return row(`<span class="pe-name">${c.name}</span><span class="pe-axis"><i class="ln" style="left:${a}%;width:${b - a}%;background:var(${col})"></i><i class="ring" style="left:50%"></i><i class="dot" style="left:${at(c.pct)}%;background:var(${col})"></i></span><span class="pe-q" style="width:76px;text-align:right">${qty(c.expected)} → ${qty(c.counted)}</span>`);
+  }), `<div class="row pe-slot pe-scale"><span class="pe-name"></span><span class="pe-axis"><span style="left:0%">${M}10%</span><span style="left:50%">expected</span><span style="left:100%">+10%</span></span><span style="width:76px"></span></div>`]);
+  // E8: short vs over at cost
+  const short = cm.filter(c => c.val < 0), over = cm.filter(c => c.val > 0);
+  const sum = a => a.reduce((s, c) => s + c.val, 0), sS = -sum(short), sO = sum(over);
+  $('pe-e8').innerHTML = card("Counts that didn't match", `<div class="pe-sum">
+    <div><span class="kpi-value">${sP(sO - sS)}</span> <span class="pe-sub">net at cost · ${cm.length} items off</span></div>
+    <div class="pe-split"><i style="flex:${sS};background:var(--down)"></i><i style="flex:${sO};background:var(--up)"></i></div>
+    <div class="rows">
+      ${row(`<i class="pe-sw" style="background:var(--down)"></i><span class="nm">Short on the shelf</span><span class="cnt">${short.length} items</span><span class="amt pe-down pe-w" style="width:72px">${sP(-sS)}</span>`)}
+      ${row(`<i class="pe-sw" style="background:var(--up)"></i><span class="nm">Over on the shelf</span><span class="cnt">${over.length} item${over.length === 1 ? '' : 's'}</span><span class="amt pe-up pe-w" style="width:72px">${sP(sO)}</span>`)}
+    </div></div>`);
+  $('pe-e9').innerHTML = rail("Counts that didn't match", [`<div class="row pe-slot"><span class="pe-empty">Every shelf count matched.</span></div>`]);
+
+  /* ---------- Supplier costs changed ---------- */
+  const cc = V.costChanges.map(c => ({ ...c, pct: (c.to - c.from) / c.from * 100 })).sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+  const top = cc.slice(0, 5);
+  const chip = p => `<span class="chip ${p < 0 ? 'up' : 'down'}">${pc(p)}</span>`;
+  const dec = n => n < 100 ? 2 : 0;
+  $('pe-e10').innerHTML = rail('Supplier costs changed', top.map(c => row(
+    `<span class="nm">${c.name}</span><span class="pe-q">${P(c.from, 2)} → <span style="color:var(--ink)">${P(c.to, 2)}</span></span>${chip(c.pct)}`)));
+  // E11: slope, both ends on % of last paid; labels nudged apart
+  {
+    const W = 420, H = 165, x0 = 50, x1 = 190, lo = -12, hi = 6;
+    const y = p => 14 + (hi - p) / (hi - lo) * (H - 30);
+    const ends = cc.map(c => ({ c, y: y(c.pct) })).sort((a, b) => a.y - b.y);
+    ends.forEach((e, i) => e.ly = i ? Math.max(e.y, ends[i - 1].ly + 13) : e.y);
+    for (let i = ends.length - 1; i >= 0; i--) ends[i].ly = Math.min(ends[i].ly, i === ends.length - 1 ? H - 22 : ends[i + 1].ly - 13);
+    const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%" preserveAspectRatio="xMinYMid meet">
+      <line x1="${x0}" x2="${x0}" y1="8" y2="${H - 8}" stroke="var(--grid)"/><line x1="${x1}" x2="${x1}" y1="8" y2="${H - 8}" stroke="var(--grid)"/>
+      <text class="ax" x="${x0 - 6}" y="${y(0) + 4}" text-anchor="end">0%</text>
+      ${ends.map(e => { const col = e.c.pct < 0 ? 'var(--up)' : 'var(--down)'; return `
+        <line x1="${x0}" y1="${y(0)}" x2="${x1}" y2="${e.y}" stroke="${col}" stroke-width="1.5" opacity=".85"/>
+        <circle cx="${x1}" cy="${e.y}" r="2.5" fill="${col}"/>
+        <path d="M${x1 + 4} ${e.y} L${x1 + 10} ${e.ly}" stroke="var(--grid)" fill="none"/>
+        <text class="pe-lbl" x="${x1 + 14}" y="${e.ly + 4}"><tspan font-weight="500" fill="${col}">${pc(e.c.pct)}</tspan>  ${e.c.name.replace(/ \(per cu\.m\)| × .*$/, '')}</text>`; }).join('')}
+      <circle cx="${x0}" cy="${y(0)}" r="3" fill="var(--raised)" stroke="var(--ink-5)" stroke-width="1.5"/>
+      <text class="ax" x="${x0}" y="${H}" text-anchor="middle">Last paid</text><text class="ax" x="${x1}" y="${H}" text-anchor="middle">Now</text>
+    </svg>`;
+    $('pe-e11').innerHTML = card('Supplier costs changed', `<div style="height:calc(var(--row-h) * 5);padding:0 var(--pad)">${svg}</div>`);
+  }
+  // E12: diverging %; down (green) left, up (red) right
+  const cMax = 12;
+  $('pe-e12').innerHTML = rail('Supplier costs changed', [...cc.slice(0, 4).concat(cc.filter(c => c.pct > 0)).filter((c, i, a) => a.indexOf(c) === i).map(c => row(
+    `<span class="pe-name">${c.name}</span><span class="pe-axis"><i class="b" style="${c.pct < 0 ? 'right:50%' : 'left:50%'};width:${half(c.pct, cMax)}%;background:var(${c.pct < 0 ? '--up' : '--down'})"></i></span><span class="pe-w ${c.pct < 0 ? 'pe-up' : 'pe-down'}" style="font-weight:500">${pc(c.pct)}</span>`))]);
+  // E13: per supplier, min..max % on one axis
+  const sup = [...new Set(cc.map(c => c.supplier))].map(s => {
+    const ps = cc.filter(c => c.supplier === s).map(c => c.pct);
+    return { s, n: ps.length, lo: Math.min(...ps), hi: Math.max(...ps) };
+  }).sort((a, b) => a.lo - b.lo);
+  $('pe-e13').innerHTML = rail('Supplier costs changed', [...sup.map(g => {
+    const col = g.hi < 0 ? '--up' : '--down', a = at(g.lo * 10 / cMax), b = at(g.hi * 10 / cMax);
+    return row(`<span class="pe-name">${g.s} <span class="pe-q">${g.n}</span></span><span class="pe-axis"><i class="ln" style="left:${a}%;width:${Math.max(b - a, 0)}%;height:6px;margin-top:-3px;border-radius:var(--r-pill);background:var(${col})"></i>${g.n > 1 ? '' : ''}<i class="dot" style="left:${a}%;background:var(${col});width:6px;height:6px;margin:-3px 0 0 -3px"></i><i class="dot" style="left:${b}%;background:var(${col});width:6px;height:6px;margin:-3px 0 0 -3px"></i></span><span class="pe-w ${g.hi < 0 ? 'pe-up' : 'pe-down'}" style="width:92px;font-weight:500;white-space:nowrap">${Math.round(g.lo) === Math.round(g.hi) ? pc(g.lo) : pc(g.lo) + ' to ' + pc(g.hi)}</span>`);
+  }), `<div class="row pe-slot pe-scale"><span class="pe-name"></span><span class="pe-axis"><span style="left:0%">${M}12%</span><span style="left:50%">0</span><span style="left:100%">+12%</span></span><span style="width:92px"></span></div>`]);
+
+  /* ---------- Where it went ---------- */
+  const tone = { 'Sold': 'var(--s3)', 'Used in store': 'var(--s5)', 'Damaged': 'var(--down)',
+    'Count fix': 'color-mix(in srgb, var(--down) 60%, var(--raised))', 'Lost / theft': 'color-mix(in srgb, var(--down) 35%, var(--raised))' };
+  const outs = V.whereItWent.filter(w => w.value > 0).sort((a, b) => b.value - a.value);
+  const back = V.whereItWent.find(w => w.value < 0);
+  const outT = outs.reduce((s, w) => s + w.value, 0);
+  const share = v => (v / outT * 100).toFixed(v / outT < .1 ? 1 : 0) + '%';
+  {
+    const r = 46, C = 2 * Math.PI * r; let off = 0;
+    const arcs = outs.map(w => { const len = w.value / outT * C, gap = outs.length > 1 ? .8 : 0;
+      const s = `<circle r="${r}" cx="60" cy="60" fill="none" stroke="${tone[w.r]}" stroke-width="14" stroke-dasharray="${Math.max(len - gap, .8)} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 60 60)"/>`; off += len; return s; }).join('');
+    $('pe-e14').innerHTML = card('Where it went', `<div class="pe-donut"><svg viewBox="0 0 120 120" width="120" height="120">${arcs}
+      <text x="60" y="58" text-anchor="middle" class="pe-lbl k" style="font-size:14px">${V.pesoK(outT)}</text><text x="60" y="73" text-anchor="middle" class="ax">went out</text></svg>
+      <div class="rows">${outs.map(w => row(`<i class="pe-sw" style="background:${tone[w.r]}"></i><span class="nm">${w.r}</span><span class="cnt">${share(w.value)}</span>`)).join('')}
+      ${row(`<span class="nm pe-q">${back.r}</span><span class="amt">${sP(-back.value)}</span>`)}</div></div>`);
+  }
+  $('pe-e15').innerHTML = rail('Where it went', [...outs.slice(0, 4).map(w => row(
+    `<span class="pe-name" style="width:96px">${w.r}</span><span class="pe-track"><i style="width:${w.value / outs[0].value * 100}%;background:${tone[w.r]}"></i></span><span class="amt" style="width:64px;text-align:right">${P(w.value)}</span><span class="pct pe-w">${share(w.value)}</span>`)),
+    row(`<span class="pe-name" style="width:96px"></span><span class="pe-q" style="margin-left:auto">${back.r}</span><span class="amt" style="width:64px;text-align:right">${sP(-back.value)}</span><span class="pe-w"></span>`)]);
+  {
+    const sold = outs.find(w => w.r === 'Sold'), rest = outs.filter(w => w !== sold), restT = outT - sold.value;
+    $('pe-e16').innerHTML = card('Where it went', `<div class="pe-zoom">
+      <div class="pe-cap"><span>Sold <b>${P(sold.value)}</b></span><span>Not sold <b>${P(restT)}</b></span></div>
+      <div class="pe-bar100"><i style="flex:${sold.value};background:${tone.Sold}"></i><i style="flex:${restT};background:var(--ink-5)"></i></div>
+      <svg viewBox="0 0 100 14" preserveAspectRatio="none" style="width:100%;height:14px;display:block"><path d="M${100 - restT / outT * 100} 0 L0 14 M100 0 L100 14" stroke="var(--ink-5)" stroke-width="1" vector-effect="non-scaling-stroke" fill="none"/></svg>
+      <div class="pe-bar100">${rest.map(w => `<i style="flex:${w.value};background:${tone[w.r]}"></i>`).join('')}</div>
+      <div class="pe-legend">${rest.map(w => `<span><i class="pe-sw" style="background:${tone[w.r]}"></i>${w.r}<b>${P(w.value)}</b></span>`).join('')}</div>
+    </div>`);
+  }
+
+  /* ---------- Stock flow ---------- */
+  const F = V.stockFlow;
+  const steps = [
+    { k: 'Opening', v: F.opening, total: true },
+    { k: 'Received', v: F.received, tone: 'var(--bar)' },
+    { k: 'Sold', v: -F.sold, tone: 'var(--d2)' },
+    { k: 'Refunds in', v: F.refundsIn, tone: 'var(--bar)' },
+    { k: 'Damaged', v: -F.damaged, tone: 'var(--down)', loss: true },
+    { k: 'Count fix', v: F.countFix, tone: 'var(--down)', loss: true },
+    { k: 'Closing', v: F.closing, total: true },
+  ];
+  const M1 = n => '₱' + (n / 1e6).toFixed(2) + 'M';
+  // E17 waterfall: axis starts at ₱1.7M, totals drawn with a break mark
+  {
+    const W = 640, H = 230, L = 52, R = 8, T = 18, B = 26, lo = 1.7e6, hi = 2.2e6;
+    const y = v => T + (hi - v) / (hi - lo) * (H - T - B), bw = (W - L - R) / steps.length;
+    let run = 0, prevTop = null, s = '';
+    for (let t = lo; t <= hi + 1; t += 1e5) s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/><text class="ax" x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${M1(t)}</text>`;
+    steps.forEach((st, i) => {
+      const x = L + i * bw + bw * .2, w = bw * .6;
+      let a, b;
+      if (st.total) { a = lo; b = st.v; run = st.v; } else { a = run; b = run + st.v; run = b; }
+      const top = y(Math.max(a, b)), bot = y(Math.min(a, b)), h = Math.max(bot - top, 1.5);
+      const fill = st.total ? 'var(--s1)' : st.tone;
+      s += `<rect x="${x}" y="${top}" width="${w}" height="${h}" rx="2" fill="${fill}"/>`;
+      if (st.total) s += `<path d="M${x - 1} ${H - B - 9} l${w / 4 + 1} -4 l${w / 4} 4 l${w / 4} -4 l${w / 4 + 1} 4" stroke="var(--raised)" stroke-width="3" fill="none"/>`;
+      if (prevTop !== null) s += `<line x1="${x - bw * .4}" x2="${x}" y1="${y(prevTop)}" y2="${y(prevTop)}" stroke="var(--ink-5)" stroke-dasharray="2 2"/>`;
+      prevTop = run;
+      s += `<text class="pe-lbl ${st.total ? 'k' : ''} ${st.loss ? 'red' : ''}" x="${x + w / 2}" y="${top - 5}" text-anchor="middle">${st.total ? M1(st.v) : sK(st.v)}</text>`;
+      s += `<text class="ax" x="${x + w / 2}" y="${H - 8}" text-anchor="middle">${st.k}</text>`;
+    });
+    $('pe-e17').innerHTML = card('Stock value · at cost', `<div class="pe-head"><span class="kpi-value">${P(F.closing)}</span><span class="cmp up">${sP(F.closing - F.opening)}</span><span class="pe-sub">closing, from ${P(F.opening)}</span></div><div class="pe-chart"><svg viewBox="0 0 ${W} ${H}">${s}</svg></div>`, 'Last 7 days');
+  }
+  // E18 sankey-lite: what came in, split into what went out and what stayed
+  {
+    const ins = [{ k: 'Received', v: F.received, c: 'var(--bar)' }, { k: 'Refunds in', v: F.refundsIn, c: 'var(--bar)' }];
+    const outs2 = [{ k: 'Sold', v: F.sold, c: 'var(--d2)' }, { k: 'Damaged', v: F.damaged, c: 'var(--down)' },
+      { k: 'Count fix', v: -F.countFix, c: 'var(--down)' }, { k: 'Kept in stock', v: F.closing - F.opening, c: 'var(--s1)' }];
+    const tot = ins.reduce((s, n) => s + n.v, 0);
+    const W = 640, H = 200, T = 10, gap = 16, nw = 10, xL = 120, xM = 315, xR = 510;
+    const place = (nodes) => { const k = (H - T * 2 - gap * (nodes.length - 1)) / tot; let yy = T;
+      nodes.forEach(n => { n.h = Math.max(n.v * k, 2); n.y = yy; yy += n.h + gap; }); };
+    place(ins); place(outs2);
+    const mid = { y: T, h: ins.reduce((s, n) => s + n.h, 0) + 0 };
+    mid.h = (H - T * 2) * .8; mid.y = (H - mid.h) / 2;
+    const rib = (x0, a0, b0, x1, a1, b1, c) => { const m = (x0 + x1) / 2;
+      return `<path d="M${x0} ${a0} C${m} ${a0} ${m} ${a1} ${x1} ${a1} L${x1} ${b1} C${m} ${b1} ${m} ${b0} ${x0} ${b0} Z" fill="${c}" opacity=".28"/>`; };
+    let s = '', yIn = mid.y, yOut = mid.y;
+    ins.forEach(n => { const hh = n.v / tot * mid.h; s += rib(xL + nw, n.y, n.y + n.h, xM, yIn, yIn + hh, n.c); yIn += hh; });
+    outs2.forEach(n => { const hh = n.v / tot * mid.h; s += rib(xM + nw, yOut, yOut + Math.max(hh, .6), xR, n.y, n.y + n.h, n.c); yOut += hh; });
+    const node = (x, n, side) => `<rect x="${x}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" fill="${n.c}"/>
+      <text class="pe-lbl" x="${side < 0 ? x - 8 : x + nw + 8}" y="${n.y + n.h / 2 + 4}" text-anchor="${side < 0 ? 'end' : 'start'}">${n.k} <tspan class="${n.c === 'var(--down)' ? 'red' : 'k'}" font-weight="500" ${n.c === 'var(--down)' ? 'fill="var(--down)"' : ''}>${P(n.v)}</tspan></text>`;
+    s += ins.map(n => node(xL, n, -1)).join('') + outs2.map(n => node(xR, n, 1)).join('');
+    s += `<rect x="${xM}" y="${mid.y}" width="${nw}" height="${mid.h}" rx="2" fill="var(--ink-5)"/>
+      <text class="pe-lbl k" x="${xM + nw / 2}" y="${mid.y - 4}" text-anchor="middle">${P(tot)}</text>`;
+    $('pe-e18').innerHTML = card('Came in → went out', `<div class="pe-chart" style="padding-top:18px"><svg viewBox="0 0 ${W} ${H}">${s}</svg></div>`, 'Last 7 days');
+  }
+  // E19 came in (up) vs went out (down) per day
+  {
+    const d = V.stockByDay, W = 640, H = 210, L = 52, R = 8, T = 16, B = 22;
+    const mx = 130000, mn = 60000, z = T + (H - T - B) * mx / (mx + mn);
+    const y = v => z - v / (mx + mn) * (H - T - B), bw = (W - L - R) / d.length;
+    let s = '';
+    [100000, 50000].forEach(t => s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/><text class="ax" x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${V.pesoK(t)}</text>`);
+    s += `<line x1="${L}" x2="${W - R}" y1="${y(-50000)}" y2="${y(-50000)}" stroke="var(--grid)"/><text class="ax" x="${L - 8}" y="${y(-50000) + 4}" text-anchor="end">${V.pesoK(50000)}</text>`;
+    s += `<text class="pe-lbl" x="${L - 8}" y="${z - 6}" text-anchor="end">In</text><text class="pe-lbl" x="${L - 8}" y="${z + 14}" text-anchor="end">Out</text>`;
+    d.forEach((r, i) => {
+      const x = L + i * bw + bw * .26, w = bw * .48;
+      if (r.in) s += `<rect x="${x}" y="${y(r.in)}" width="${w}" height="${z - y(r.in)}" rx="2" fill="var(--bar)"/>`;
+      if (r.out) s += `<rect x="${x}" y="${z + 1}" width="${w}" height="${y(-r.out) - z - 1}" rx="2" fill="var(--d1)"/>`;
+      s += `<text class="ax ${r.now ? 'now' : ''}" x="${x + w / 2}" y="${H - 4}" text-anchor="middle">${r.d}</text>`;
+    });
+    s += `<line x1="${L}" x2="${W - R}" y1="${z}" y2="${z}" stroke="var(--ink-5)"/>`;
+    const tin = d.reduce((a, r) => a + r.in, 0), tout = d.reduce((a, r) => a + r.out, 0);
+    $('pe-e19').innerHTML = card('Stock in and out', `<div class="pe-head"><span class="legend"><span><i style="background:var(--bar)"></i>Came in ${P(tin)}</span><span><i style="background:var(--d1)"></i>Went out ${P(tout)}</span></span></div><div class="pe-chart"><svg viewBox="0 0 ${W} ${H}">${s}</svg></div>`, 'Last 7 days');
+  }
+  // E20 running total of came in − went out, from stockByDay
+  {
+    const d = V.stockByDay.filter(r => !r.now); let run = 0;
+    const pts = d.map(r => (run += r.in - r.out));
+    const W = 640, H = 170, L = 52, R = 56, T = 14, B = 22, hi = 100000, lo = -20000;
+    const x = i => L + (i + .5) * (W - L - R) / V.stockByDay.length, y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+    let s = '';
+    [0, 50000, 100000].forEach(t => s += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="${t ? 'var(--grid)' : 'var(--ink-5)'}"/><text class="ax" x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${t ? '+' + V.pesoK(t) : '₱0'}</text>`);
+    const line = pts.map((v, i) => `${i ? 'L' : 'M'}${x(i)} ${y(v)}`).join(' ');
+    s += `<path d="${line} L${x(pts.length - 1)} ${y(0)} L${x(0)} ${y(0)} Z" fill="var(--data-tint)" opacity=".6"/><path d="${line}" stroke="var(--bar)" stroke-width="2" fill="none" stroke-linejoin="round"/>`;
+    s += pts.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="2.5" fill="var(--bar)"/>`).join('');
+    s += `<text class="pe-lbl k" x="${x(pts.length - 1) + 8}" y="${y(run) + 4}">${sK(run)}</text>`;
+    s += V.stockByDay.map((r, i) => `<text class="ax ${r.now ? 'now' : ''}" x="${x(i)}" y="${H - 4}" text-anchor="middle">${r.d}</text>`).join('');
+    $('pe-e20').innerHTML = card('Net stock moved', `<div class="pe-head"><span class="kpi-value">${sP(run)}</span><span class="pe-sub">came in less went out, this week so far</span></div><div class="pe-chart"><svg viewBox="0 0 ${W} ${H}">${s}</svg></div>`, 'Last 7 days');
+  }
+  // E21 statement
+  {
+    const big = Math.max(...steps.filter(s => !s.total).map(s => Math.abs(s.v)));
+    const rows = steps.map(st => st.total
+      ? `<div class="row total"><span class="nm">${st.k}</span><span class="amt">${P(st.v)}</span></div>`
+      : row(`<span class="nm">${st.k}</span><span class="pe-track"><i style="width:${Math.abs(st.v) / big * 100}%;background:${st.tone}"></i></span><span class="amt ${st.loss ? 'pe-down' : ''}">${sP(st.v)}</span>`));
+    $('pe-e21').innerHTML = card('Stock value · at cost', `<div class="rows pe-ledger">${rows.join('')}${row(`<span class="nm" style="color:var(--ink-4)">Change</span><span class="amt">${sP(F.closing - F.opening)}</span><span class="pct" style="width:44px;text-align:right">${sg(F.closing - F.opening)}${Math.abs((F.closing - F.opening) / F.opening * 100).toFixed(1)}%</span>`)}</div>`, 'Last 7 days');
+  }
+})();</script>
+
+</main>
+</body></html>

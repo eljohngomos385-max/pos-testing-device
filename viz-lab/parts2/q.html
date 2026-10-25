@@ -1,0 +1,254 @@
+<style>
+/* part q (round 7) — the overall outlook for Home: how the store is doing, and what needs you. Every selector .vq-. */
+.vq-q { color: var(--ink-4); font-weight: 400; }
+.vq-svg { display: block; overflow: visible; }
+.vq-svg text { font-family: var(--font); }
+.vq-full { grid-column: 1 / -1; }
+/* big number, chip right of it */
+.vq-big { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; padding: 12px 12px 4px; }
+.vq-big .kpi-value { font-size: 20px; }
+.vq-big .vq-q { font-size: 12px; }
+/* rows: the rows are the legend; names never cut */
+.vq-rows > .row .nm { display: flex; align-items: center; gap: 6px; overflow: visible; }
+.vq-a { flex: none; min-width: 76px; text-align: right; }
+.vq-rows .chip { flex: none; min-width: 58px; justify-content: center; }
+.vq-n { flex: none; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+/* tiles: hairlines between cells; 2 across, 4 across when the card is wide */
+.vq-cq { container-type: inline-size; }
+.vq-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--row-line); }
+@container (min-width: 640px) { .vq-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.vq-tile { min-width: 0; padding: 10px 12px 12px; background: var(--raised); }
+.vq-kv { display: flex; align-items: center; gap: 8px; margin-top: 2px; white-space: nowrap; }
+/* ponytail: the number shrinks with the card (16–20px) so the chip always fits on its right */
+.vq-kv .kpi-value { font-size: clamp(16px, 4.6cqi, 20px); }
+.vq-sub span { white-space: nowrap; }
+.vq-sub .red { color: var(--down); }
+.vq-sub { margin-top: 2px; font-size: 12px; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vq-pickt .vq-tile { cursor: pointer; }
+.vq-pickt .vq-tile:hover { background: var(--band); }
+.vq-pickt .vq-tile.on { background: var(--fill); }
+/* month pace: one line, one bar with the even-pace tick */
+.vq-mo { padding: 10px 12px 12px; border-top: 1px solid var(--row-line); }
+.vq-ml { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 13px; }
+.vq-ml b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.vq-trk2 { position: relative; margin-top: 8px; }
+.vq-bar { display: flex; gap: 2px; height: 14px; border-radius: var(--r-pill); overflow: hidden; }
+.vq-bar > i { min-width: 2px; }
+.vq-trk2 > s { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink-2); }
+.vq-plot { padding: 8px 12px 4px; }
+/* moves: pill | change bar | change | chip — columns shrink to their widest cell */
+.vq-mv { display: grid; grid-template-columns: max-content minmax(40px, 1fr) max-content max-content; column-gap: 10px; padding: 4px 0 6px; }
+.vq-mv > .vq-r { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; min-height: 30px; padding: 0 12px; }
+.vq-mv > .vq-r:hover { background: var(--band); }
+.vq-trk > i { display: block; height: 14px; min-width: 2px; border-radius: 4px; }
+.vq-d { text-align: right; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.vq-d.up { color: var(--up); } .vq-d.down { color: var(--down); }
+.vq-mv .chip, .vq-mv2 .chip { min-width: 58px; justify-content: center; }
+.vq-gh { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; padding: 4px 12px 0; font-size: 12px; color: var(--ink-3); }
+.vq-gh b { font-weight: 500; font-variant-numeric: tabular-nums; }
+.vq-mv > .vq-gh { grid-column: 1 / -1; }
+/* long names (items): pill and numbers on one line, the bar under */
+.vq-mv2 { padding: 2px 0 6px; }
+.vq-mv2 > .vq-r { display: grid; grid-template-columns: minmax(0, 1fr) max-content max-content; column-gap: 10px; row-gap: 4px; align-items: center; padding: 6px 12px; border-top: 1px solid var(--row-line); }
+.vq-mv2 > .vq-gh + .vq-r { border-top-color: transparent; }
+.vq-mv2 > .vq-r:hover { background: var(--band); }
+.vq-mv2 .vq-trk { grid-column: 1 / -1; }
+.vq-mv2 .badge { justify-self: start; max-width: 100%; }
+.vq-mv2 .vq-trk > i { height: 12px; }
+/* needs you: kind pill | what | amount | View */
+.vq-nd > .row { gap: 10px; }
+.vq-nd > .row .nm { flex: 1 1 auto; display: flex; align-items: center; gap: 8px; min-width: 0; white-space: normal; overflow: visible; padding: 6px 0; line-height: 1.3; }
+.vq-nd .badge { flex: none; }
+.vq-w { color: var(--ink); }
+.vq-w small { font-size: 13px; color: var(--ink-4); white-space: nowrap; }
+.vq-nd .vq-a { min-width: 0; }
+.vq-nd .vq-a.red { color: var(--down); }
+.vq-view { flex: none; height: 24px; padding: 0 10px; border: 0; border-radius: var(--r-pill); background: var(--pill); font: 500 12px var(--font); color: var(--ink); cursor: pointer; }
+.vq-view:hover { background: color-mix(in srgb, var(--pill), #000 5%); }
+.vq-gr { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 12px; background: var(--band); font-size: 12px; font-weight: 500; color: var(--ink); border-top: 1px solid var(--line); }
+.vq-gr:first-child { border-top: 0; }
+.vq-gr .vq-n { font-weight: 400; }
+.vq-gr .vq-gt { margin-left: auto; font-variant-numeric: tabular-nums; }
+.vq-sec { display: flex; align-items: center; justify-content: space-between; min-height: 30px; padding: 0 12px; background: var(--band); border-top: 1px solid var(--line); font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.vq-more { display: flex; justify-content: center; min-height: 33px; align-items: center; border-top: 1px solid var(--row-line); font-size: 12px; font-weight: 500; color: var(--ink); }
+/* two labelled 100% bars */
+.vq-two { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: 10px; align-items: center; padding: 12px 12px 8px; font-size: 12px; color: var(--ink-3); }
+.vq-two b { font-weight: 500; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.vq-dt { flex: none; width: 46px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.vq-dt.red { color: var(--down); }
+</style>
+
+<section class="cat" id="vq-outlook" data-nav="Q7 · Outlook">
+  <h2>Overall outlook</h2>
+  <p class="why">For Home: how is the store doing? The week's four numbers with their chips, the month against its target, one strip for sales, stock and money owed both ways, and what grew or fell. Categories, top items and payments only have 30-day figures against the 30 before, so those cards say 30 days.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>Q7-1</b> Week · four numbers with chips, month pace</div><div class="card" id="vq-1"></div></div>
+    <div class="spec"><div class="tag"><b>Q7-2</b> Week · each day vs last week, numbers as rows</div><div class="card" id="vq-2"></div></div>
+    <div class="spec vq-full"><div class="tag"><b>Q7-3</b> Store health · sales, stock, owed to you, you owe</div><div class="card" id="vq-3"></div></div>
+    <div class="spec"><div class="tag"><b>Q7-4</b> Up vs down · categories by peso change</div><div class="card" id="vq-4"></div></div>
+    <div class="spec"><div class="tag"><b>Q7-5</b> Up vs down · top 10 items by peso change</div><div class="card" id="vq-5"></div></div>
+    <div class="spec"><div class="tag"><b>Q7-6</b> Up vs down · payments by peso change</div><div class="card" id="vq-6"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vq-attn" data-nav="Q7 · Needs you">
+  <h2>Needs you</h2>
+  <p class="why">What needs the owner, built from the data: accounts past 30 days, supplier bills late or due in the next 7 days, POs arriving in the next 7 days, lost-demand asks, counts that didn't match, and cost rises. Today is Sun Oct 18. Each line: the kind as a pill, the fact, the amount, View.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>Q7-7</b> Needs you · one list, most urgent first</div><div class="card" id="vq-7"></div></div>
+    <div class="spec"><div class="tag"><b>Q7-8</b> Needs you · grouped by what to do</div><div class="card" id="vq-8"></div></div>
+    <div class="spec"><div class="tag"><b>Q7-9</b> Needs you · pick a tile, its lines show</div><div class="card" id="vq-9"></div></div>
+    <div class="spec"><div class="tag"><b>Q7-10</b> Money owed both ways, by when it's due</div><div class="card" id="vq-10"></div></div>
+    <div class="spec"><div class="tag"><b>Q7-11</b> Coming up · bills and POs by date</div><div class="card" id="vq-11"></div></div>
+    <div class="spec"><div class="tag"><b>Q7-12</b> Home in one card · health, then top 5</div><div class="card" id="vq-12"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('vq-' + n), P = V.peso, K = V.pesoK;
+  const M = n => V.peso(n, n % 1 ? 2 : 0); // centavos only when there are some
+  const sum = (a, f = x => x) => a.reduce((s, x) => s + f(x), 0);
+  const pc = (a, t) => V.pct(Math.abs(a) / Math.abs(t) * 100);
+  const r1 = n => Math.round(n * 10) / 10;
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vq-q">${r}</span>`}</div>`;
+  const pill = (t, nm) => `<span class="badge ${t}">${esc(nm)}</span>`;
+  const row = (nm, cells, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span>${cells}</div>`;
+  const A = v => `<span class="amt vq-a">${v}</span>`;
+  const chip = c => `<span class="chip ${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%</span>`;
+  const chg = (a, b) => chip((a / b - 1) * 100);
+  const sK = d => (d >= 0 ? '+' : '−') + K(Math.abs(d));
+  const tint = t => /^t\d$|^bad$/.test(t) ? `var(--${t})` : `var(--pay-${t})`; // 'cash'/'acct'/… → --pay-*
+  const q = s => `<span class="vq-q">${s}</span>`;
+  const big = (v, rest = '') => `<div class="vq-big"><span class="kpi-value">${v}</span>${rest}</div>`;
+  const tx = (x, y, t, c = 'ax', an = 'middle') => `<text class="${c}" x="${r1(x)}" y="${r1(y)}" text-anchor="${an}">${t}</text>`;
+  const nice = (max, steps) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const tile = x => `<div class="vq-tile${x.on ? ' on' : ''}"${x.k != null ? ` data-k="${x.k}"` : ''}><span class="kpi-label">${x.label}</span><div class="vq-kv"><span class="kpi-value">${x.value}</span>${x.chip || ''}</div>${x.sub ? `<div class="vq-sub">${x.sub}</div>` : ''}</div>`;
+  const tiles = (list, cls = '') => `<div class="vq-cq"><div class="vq-tiles ${cls}">${list.map(tile).join('')}</div></div>`;
+  const kpi = id => V.kpis.find(k => k.id === id), kv = k => k.money ? P(k.value) : k.pct ? V.pct(k.value) : String(k.value);
+
+  // ponytail: VIZ's today is Sun Oct 18 (data.js `end`; Sun is week's "now"); every due date in VIZ is in October, so the day number is enough
+  const TODAY = 18, day = s => +s.split(' ')[1];
+  const WK = V.week.filter(w => !w.now), TW = sum(WK, w => w.net), PW = sum(WK, w => w.prev);
+
+  // ---------- the facts that need you ----------
+  const OD = V.accounts.overdueDays;
+  const lateAcc = V.customers.filter(c => c.balance > 0 && c.oldest > OD), okAcc = V.customers.filter(c => c.balance > 0 && c.oldest <= OD);
+  const owing = V.suppliers.filter(s => s.owed > 0);
+  const lateBill = owing.filter(s => s.overdue), soonBill = owing.filter(s => !s.overdue && day(s.due) - TODAY <= 7).sort((a, b) => day(a.due) - day(b.due)), laterBill = owing.filter(s => !s.overdue && day(s.due) - TODAY > 7);
+  const poSoon = V.incoming.filter(p => day(p.due) - TODAY <= 7);
+  const asks = sum(V.lostDemand, x => x.n);
+  const cnt = V.countMismatch.map(x => ({ ...x, d: (x.counted - x.expected) * x.cost })), cntV = sum(cnt, x => x.d);
+  const short = cnt.filter(x => x.d < 0).length, over = cnt.filter(x => x.d > 0).length;
+  const rises = V.costChanges.filter(x => x.to > x.from);
+  const OWED_IN = V.accounts.closing, OWED_OUT = sum(owing, s => s.owed);
+  // a line: kind pill · what (subject + detail) · amount · View
+  const L = (t, kind, subj, det, amt, red) => ({ t, kind, subj, det, amt, red });
+  const G = [
+    { nm: 'Collect', lines: lateAcc.map(c => L('bad', 'Overdue', c.name, `${c.oldest} days`, M(c.balance), 1)), tot: sum(lateAcc, c => c.balance) },
+    { nm: 'Pay', lines: [...lateBill.map(s => L('bad', 'Overdue', s.name, s.due, P(s.owed), 1)), ...soonBill.map(s => L('t2', 'Bill due', s.name, s.due, P(s.owed)))],
+      tot: sum([...lateBill, ...soonBill], s => s.owed) },
+    { nm: 'Arriving', lines: poSoon.map(p => L('t3', 'PO due', p.supplier, p.due, P(p.amt))), tot: sum(poSoon, p => p.amt) },
+    { nm: 'Stock', lines: [
+      L('t7', 'Lost demand', `${V.lostDemand.length} items`, 'asked for', `${asks} asks`),
+      L('t5', 'Count off', `${cnt.length} items`, `${short} short, ${over} over`, (cntV < 0 ? '−' : '+') + P(Math.abs(cntV)), cntV < 0),
+      ...rises.map(x => L('t6', 'Cost up', x.name, `+${pc(x.to - x.from, x.from)}`, `+${V.peso(x.to - x.from, 2)}`)) ] },
+  ];
+  // the flat list folds the POs into one line
+  const flat = [...G[0].lines, ...G[1].lines,
+    L('t3', 'PO due', `${poSoon.length} POs`, `${poSoon[0].due}–${day(poSoon[poSoon.length - 1].due)}`, P(G[2].tot)), ...G[3].lines];
+  const line = x => row(`${pill(x.t, x.kind)}<span class="vq-w">${esc(x.subj)} <small>· ${esc(x.det)}</small></span>`, `<span class="amt vq-a${x.red ? ' red' : ''}">${x.amt}</span><button class="vq-view">View</button>`);
+  const lines = list => `<div class="rows vq-rows vq-nd">${list.map(line).join('')}</div>`;
+
+  // the health strip: one number each, a chip or a plain status
+  const S = V.stockFlow, net = kpi('net');
+  const health = [
+    { label: 'Sales · 7 days', value: P(net.value), chip: chip(net.change), sub: `${kpi('orders').value} orders · ${V.pct(kpi('margin').value)} margin` },
+    { label: 'Stock at cost · 7 days', value: P(S.closing), chip: chg(S.closing, S.opening), sub: `${K(S.received)} in · ${K(S.sold)} sold` },
+    { label: 'Owed to you', value: M(OWED_IN), sub: lateAcc.map(c => `<span class="red">${M(c.balance)} overdue</span> · <span>${esc(c.name)}</span>`).join('<br>') },
+    { label: 'You owe suppliers', value: P(OWED_OUT), sub: lateBill.map(s => `<span class="red">${P(s.owed)} overdue</span> · <span>${esc(s.name)}</span>`).join('<br>') },
+  ];
+
+  // ================= Outlook =================
+  // Q7-1 four numbers + month pace (thru Oct 17: Sunday hasn't started, as O6-4)
+  { const Mo = V.monthTarget, thru = 17, pace = Mo.goal * thru / 31, ahead = Mo.done - pace;
+    $(1).innerHTML = band('This week', 'Last 7 days vs the 7 before')
+      + tiles(V.kpis.map(k => ({ label: k.label, value: kv(k), chip: chip(k.change) })))
+      + `<div class="vq-mo"><div class="vq-ml"><span>Month</span><b>${P(Mo.done)}</b>${q('of ' + P(Mo.goal))}<span class="chip ${ahead >= 0 ? 'up' : 'down'}">${sK(ahead)} vs pace</span></div>`
+      + `<div class="vq-trk2" title="Even pace by Oct ${thru} · ${P(pace)}"><div class="vq-bar"><i style="width:${Mo.done / Mo.goal * 100}%;background:var(--t3)" title="Done · ${P(Mo.done)} · ${pc(Mo.done, Mo.goal)}"></i><i style="flex:1;background:var(--t8)" title="Still to go · ${P(Mo.goal - Mo.done)}"></i></div><s style="left:${pace / Mo.goal * 100}%"></s></div></div>`; }
+
+  // Q7-2 each day vs the same day last week; the rows hold the four numbers
+  const draws = [];
+  { const el = $(2), draw = () => {
+      el.innerHTML = band('This week', 'Mon–Sat vs last week') + big(P(TW), chg(TW, PW) + q(`vs ${P(PW)} last week`)) + '<div class="vq-plot"></div>'
+        + '<div class="rows vq-rows">' + row(pill('t3', 'This week'), A(P(TW)) + chg(TW, PW)) + row(pill('t8', 'Last week'), A(P(PW)) + '<span class="chip" style="visibility:hidden"></span>')
+        + ['gp', 'orders', 'margin'].map(id => { const k = kpi(id); return row(k.label, A(kv(k)) + chip(k.change)); }).join('') + '</div>';
+      const host = el.querySelector('.vq-plot'), W = host.clientWidth - 24, H = 130, T = 8, B = 20, Lx = 36, ch = H - T - B;
+      const st = nice(Math.max(...WK.map(w => Math.max(w.net, w.prev))), 4), top = st * 4, Y = v => T + ch - v / top * ch, slot = (W - Lx) / V.week.length, cw = Math.min(14, slot * .28);
+      let s = '';
+      for (let k = 0; k <= 4; k++) s += `<line x1="${Lx}" x2="${r1(W)}" y1="${r1(Y(k * st))}" y2="${r1(Y(k * st))}" stroke="var(--grid)"/>` + tx(Lx - 6, Y(k * st) + 4, k ? K(k * st) : '0', 'ax', 'end');
+      V.week.forEach((w, i) => { const x = Lx + i * slot + (slot - 2 * cw - 3) / 2, cx = Lx + (i + .5) * slot;
+        if (!w.now) s += `<rect x="${r1(x)}" y="${r1(Y(w.prev))}" width="${r1(cw)}" height="${r1(Y(0) - Y(w.prev))}" rx="3" fill="var(--t8)"><title>${w.d} last week · ${P(w.prev)}</title></rect>`
+          + `<rect x="${r1(x + cw + 3)}" y="${r1(Y(w.net))}" width="${r1(cw)}" height="${r1(Y(0) - Y(w.net))}" rx="3" fill="var(--t3)"><title>${w.d} · ${P(w.net)} · ${sK(w.net - w.prev)}</title></rect>`;
+        else s += tx(cx, Y(0) - 6, 'Today');
+        s += tx(cx, H - 4, w.d, w.now ? 'ax now' : 'ax'); });
+      host.innerHTML = `<svg class="vq-svg" width="${r1(W)}" height="${H}">${s}</svg>`; };
+    draws.push(draw); draw(); }
+
+  // Q7-3 the health strip
+  $(3).innerHTML = band('Store health', 'Today') + tiles(health);
+
+  // Up vs down: ranked by peso change, grew then fell; the bar is the change in the row's tint
+  const CT = { Cement: 't1', Fasteners: 't2', Electrical: 't3', Plumbing: 't4', Paint: 't5', Lumber: 't6', Tools: 't7', Roofing: 't8' };
+  const moves = (id, title, list, two) => {
+    const xs = list.map(x => ({ ...x, d: x.v - x.prev })).sort((a, b) => b.d - a.d), mx = Math.max(...xs.map(x => Math.abs(x.d)));
+    const up = xs.filter(x => x.d >= 0), dn = xs.filter(x => x.d < 0);
+    const r = x => `<div class="vq-r" title="${esc(x.nm)} · ${P(x.v)} vs ${P(x.prev)}">${pill(x.t, x.nm)}${two ? '' : trk(x)}<span class="vq-d ${x.d >= 0 ? 'up' : 'down'}">${sK(x.d)}</span>${chg(x.v, x.prev)}${two ? trk(x) : ''}</div>`;
+    const trk = x => `<span class="vq-trk"><i style="width:${Math.abs(x.d) / mx * 100}%;background:${tint(x.t)}"></i></span>`;
+    const gh = (nm, g) => g.length ? `<div class="vq-gh"><span>${nm} · ${g.length}</span><b class="vq-d ${g === up ? 'up' : 'down'}">${sK(sum(g, x => x.d))}</b></div>` : '';
+    $(id).innerHTML = band(title, 'Last 30 days vs the 30 before') + `<div class="${two ? 'vq-mv2' : 'vq-mv'}">${gh('Grew', up)}${up.map(r).join('')}${gh('Fell', dn)}${dn.map(r).join('')}</div>`;
+  };
+  moves(4, 'Categories', V.categories.map(c => ({ nm: c.c, t: CT[c.c], v: c.amt, prev: c.prev })));
+  moves(5, 'Top 10 items', V.topItems.map(x => ({ nm: x.name, t: CT[x.cat], v: x.amt, prev: x.prev })), true);
+  { const key = Object.fromEntries(V.payments.map(p => [p.m, p.key]));
+    moves(6, 'Payment methods', V.payments30.map(p => ({ nm: p.m, t: key[p.m], v: p.amt, prev: p.prev }))); }
+
+  // ================= Needs you =================
+  // Q7-7 one list
+  $(7).innerHTML = band('Needs you', `${flat.length} things`) + lines(flat);
+
+  // Q7-8 grouped, each with its total
+  $(8).innerHTML = band('Needs you', 'Today') + G.map(g => `<div class="vq-gr"><span>${g.nm}</span><span class="vq-n">${g.lines.length}</span>${g.tot != null ? `<span class="vq-gt">${M(g.tot)}</span>` : ''}</div>` + lines(g.lines)).join('');
+
+  // Q7-9 pick a tile
+  { const el = $(9), draw = k => {
+      el.innerHTML = band('Needs you', 'Today')
+        + tiles(G.map((g, i) => ({ k: i, on: i === k, label: g.nm, value: String(g.lines.length), chip: g.tot != null ? q(M(g.tot)) : q(`${asks} asks · ${cnt.length} counts`) })), 'vq-pickt')
+        + `<div class="vq-sec"><span>${G[k].nm}</span>${q(G[k].lines.length + (G[k].lines.length === 1 ? ' line' : ' lines'))}</div>` + lines(G[k].lines);
+      el.querySelectorAll('.vq-tile').forEach(t => t.onclick = () => draw(+t.dataset.k)); };
+    draw(1); }
+
+  // Q7-10 money owed both ways, split by when it is due
+  { const inP = [{ nm: 'Overdue', t: 'bad', v: sum(lateAcc, c => c.balance), n: lateAcc.length }, { nm: `Under ${OD} days`, t: 't8', v: sum(okAcc, c => c.balance), n: okAcc.length }];
+    const outP = [{ nm: 'Overdue', t: 'bad', v: sum(lateBill, s => s.owed), n: lateBill.length }, { nm: 'Due in 7 days', t: 't6', v: sum(soonBill, s => s.owed), n: soonBill.length },
+      { nm: 'Later', t: 't8', v: sum(laterBill, s => s.owed), n: laterBill.length }];
+    const bar = (ps, t) => `<div class="vq-bar">${ps.filter(p => p.v).map(p => `<i style="width:${p.v / t * 100}%;background:var(--${p.t})" title="${p.nm} · ${M(p.v)}"></i>`).join('')}</div>`;
+    const rs = (ps, who) => ps.map(p => row(pill(p.t, p.nm), `<span class="vq-n">${p.n} ${who}${p.n === 1 ? '' : 's'}</span>` + A(M(p.v)))).join('');
+    $(10).innerHTML = band('Money owed', 'Today')
+      + `<div class="vq-two"><span>Owed to you</span>${bar(inP, OWED_IN)}<b>${M(OWED_IN)}</b><span>You owe</span>${bar(outP, OWED_OUT)}<b>${P(OWED_OUT)}</b></div>`
+      + `<div class="vq-sec"><span>Owed to you · customers</span><span>${M(OWED_IN)}</span></div><div class="rows vq-rows">${rs(inP, 'customer')}</div>`
+      + `<div class="vq-sec"><span>You owe · suppliers</span><span>${P(OWED_OUT)}</span></div><div class="rows vq-rows">${rs(outP, 'supplier')}</div>`; }
+
+  // Q7-11 coming up by date: every unpaid bill and every PO still coming
+  { const ev = [...owing.map(s => ({ d: day(s.due), due: s.due, t: s.overdue ? 'bad' : 't2', kind: s.overdue ? 'Bill late' : 'Bill', nm: s.name, v: s.owed })),
+      ...V.incoming.map(p => ({ d: day(p.due), due: p.due, t: 't3', kind: 'PO', nm: `${p.supplier} · ${p.po}`, v: p.amt }))].sort((a, b) => a.d - b.d);
+    const bills = sum(owing, s => s.owed), pos = sum(V.incoming, p => p.amt);
+    $(11).innerHTML = band('Coming up', `${ev[0].due} – ${ev[ev.length - 1].due}`) + big(P(bills), q(`in bills · ${P(pos)} in POs arriving`))
+      + '<div class="rows vq-rows vq-nd">' + ev.map(e => row(`<span class="vq-dt${e.d < TODAY ? ' red' : ''}">${e.due}</span>${pill(e.t, e.kind)}<span class="vq-w">${esc(e.nm)}</span>`, A(P(e.v)))).join('') + '</div>'; }
+
+  // Q7-12 Home in one card
+  $(12).innerHTML = band('Today', 'Sun Oct 18') + tiles(health) + `<div class="vq-sec"><span>Needs you</span>${q(flat.length + ' things')}</div>` + lines(flat.slice(0, 5))
+    + `<div class="vq-more">See all ${flat.length}</div>`;
+
+  addEventListener('resize', () => draws.forEach(d => d()));
+})();</script>

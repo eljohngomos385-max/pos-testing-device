@@ -1,0 +1,148 @@
+/* Viz lab — the shared look every component in viz-lab/ draws from. Values copied from the live
+   back office (bo-blocks.css, bo-calm.css, bo-shopify-tables.css) so a component here looks like it
+   belongs on backoffice-shopify.html. Components never type a colour these tokens already name. */
+:root {
+  --font: "Inter", system-ui, sans-serif;
+  /* surfaces */
+  --page: #FFFFFF;          /* the inset sheet the cards sit on */
+  --canvas: #F6F6F6;        /* the grey behind the sheet */
+  --raised: #FFFFFF;        /* card body */
+  --band: rgb(247,247,247); /* card header band / table head (--sh-head) */
+  --fill: rgba(0,0,0,.05);  /* hover/selected on grey, grey pill */
+  --pill: rgb(235,235,235); /* picker pill (--sh-pill) */
+  --line: #ECECEC;          /* card hairline (--b-line) */
+  --row-line: rgb(242,242,242); /* row hairline (--sh-line) */
+  --grid: #ECECEC;          /* chart gridlines */
+  /* ink */
+  --ink: rgb(16,16,16);     /* names, money (--sh-ink) */
+  --ink-2: rgb(74,74,74);   /* plain cells, headers (--sh-ink-2) */
+  --ink-3: rgb(96,96,96);   /* quiet (--sh-ink-3) */
+  --ink-4: #8A8A8A;         /* faint, notes (--po-ink-tertiary) */
+  --ink-5: #B5B5B5;         /* chart scale + labels (--b-ink-4) */
+  /* data: blues only for slices and bars (owner 2026-10-17); grey = other */
+  --bar: #007AFF;           /* Home + Stock history bars */
+  --s1: #1C5CAB; --s2: #256ABF; --s3: #2B7DE9; --s4: #5598E7; --s5: #86B6EF; --s-other: #D4D4D4;
+  --d1: #BCD7FA; --d2: #75ADF2; --d3: #2B7DE9;   /* light → deep, meters */
+  --data-tint: #DCE9FB; --data-ink: #1F5FB8;
+  /* category tints (owner 2026-10-18: overrules blue-only) — the Orders pill colours. Fill a mark with
+     --tN, write its label in --tN-ink. Payments keep their own: cash 1, account 2, GCash 3, QR 4, Maya 5.
+     Any other set of categories takes them in order; --t8 is "Other". */
+  --t1: #cdf5d3; --t1-ink: #0c3b14;   /* green  · Cash */
+  --t2: #ffbf80; --t2-ink: #381600;   /* orange · Account */
+  --t3: #c8e5ff; --t3-ink: #002e5c;   /* blue   · GCash */
+  --t4: #c2f2ec; --t4-ink: #00332d;   /* teal   · QR */
+  --t5: #e5dcff; --t5-ink: #2b1066;   /* lavender · Maya */
+  --t6: #ffe7a3; --t6-ink: #3d2c00;   /* yellow */
+  --t7: #fbd3e9; --t7-ink: #4a0a2c;   /* pink */
+  --t8: #e6e6e6; --t8-ink: #4a4a4a;   /* grey · Other */
+  /* meaning: red = down/loss, green = up/good, amber = warn. Never decoration. */
+  --up: #047B5D;   --up-tint: #D3ECDD;   --up-soft: #EAF6EF;  --heat: #1FA855;
+  --down: #D72C0D; --down-tint: #F8D8D0; --down-soft: #FCEDE9;
+  --warn: #7A5B00; --warn-tint: #FCEFC7;
+  /* Shopify badges (pills) */
+  --ok: #b3f782; --ok-ink: #0f2400; --bad: #ffd0cc; --bad-ink: #360200;
+  --pay-cash: #cdf5d3; --pay-cash-ink: #0c3b14; --pay-gcash: #c8e5ff; --pay-gcash-ink: #002e5c;
+  --pay-maya: #e5dcff; --pay-maya-ink: #2b1066; --pay-qr: #c2f2ec; --pay-qr-ink: #00332d;
+  --pay-acct: #ffbf80; --pay-acct-ink: #381600;
+  /* shape */
+  --r-card: 14px;           /* calm cards (--b-r-card) */
+  --r-cell: 10px;           /* a box inside a card */
+  --r-row: 7px;             /* a row highlight inside a card */
+  --r-pill: 9999px;
+  --r-badge: 8px;
+  --card-shadow: rgba(0,0,0,.035) 0 .5px 1px 0, rgba(0,0,0,.01) 0 .5px 3px 0;
+  --pop-shadow: 0 8px 24px rgba(0,0,0,.08);
+  /* sizes */
+  --band-h: 31px; --row-h: 33px; --pad: 12px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 13px/1.45 var(--font); color: var(--ink-2); background: var(--canvas); letter-spacing: -.06px; -webkit-font-smoothing: antialiased; }
+.num, td.n { font-variant-numeric: tabular-nums; }
+
+/* ---- page frame ---- */
+.lab-top { position: sticky; top: 0; z-index: 10; background: rgba(246,246,246,.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.lab-top-in { max-width: 1560px; margin: 0 auto; padding: 12px 24px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.lab-top h1 { font-size: 15px; font-weight: 650; color: var(--ink); margin: 0 12px 0 0; letter-spacing: -.01em; }
+.lab-top a { font-size: 12px; font-weight: 500; color: var(--ink); text-decoration: none; height: 28px; padding: 0 12px; display: inline-flex; align-items: center; border-radius: var(--r-pill); background: var(--pill); }
+.lab-top a:hover { background: color-mix(in srgb, var(--pill), #000 5%); }
+.sheet { max-width: 1560px; margin: 12px auto 48px; padding: 8px 24px 40px; background: var(--page); border-radius: var(--r-card); }
+.cat { padding-top: 28px; scroll-margin-top: 56px; }
+.cat > h2 { font-size: 17px; font-weight: 700; color: var(--ink); margin: 0 0 4px; letter-spacing: -.02em; }
+.cat > p.why { margin: 0 0 16px; color: var(--ink-4); font-size: 12px; max-width: 760px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; align-items: start; }
+.grid.wide { grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); }
+.grid.full { grid-template-columns: 1fr; }
+
+/* ---- one specimen: label above, the component under ---- */
+.spec { min-width: 0; }
+.spec > .tag { display: flex; gap: 8px; align-items: baseline; margin: 0 0 6px 2px; font-size: 11px; color: var(--ink-4); }
+.spec > .tag b { font-weight: 600; color: var(--ink-2); }
+
+/* ---- the card: white, hairline, soft lift, 14px. Band grey, body white (owner 2026-10-17). ---- */
+.card { background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+.band { min-height: var(--band-h); padding: 0 var(--pad); display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--band); font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.band .more { font-size: 12px; font-weight: 500; color: var(--ink); text-decoration: none; }
+.body { padding: var(--pad); }
+
+/* rows: 33px, faint hairline, no line under the band */
+.rows > .row { min-height: var(--row-h); padding: 0 var(--pad); display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--row-line); font-size: 13px; color: var(--ink-2); }
+.rows > .row:first-child { border-top-color: transparent; }
+.rows > .row:hover { background: var(--band); }
+.row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .amt, .money { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.row .cnt, .row .pct { color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.row.total { font-weight: 500; color: var(--ink); }
+
+/* table: the Orders/Items table */
+table.t { width: 100%; border-collapse: separate; border-spacing: 0; }
+table.t th { height: var(--band-h); padding: 0 8px; background: var(--band); font-size: 12px; font-weight: 500; color: var(--ink-2); text-align: left; white-space: nowrap; }
+table.t td { height: var(--row-h); padding: 0 8px; border-top: 1px solid var(--row-line); font-size: 13px; color: var(--ink-2); }
+table.t tr:first-child td, table.t thead + tbody tr:first-child td { border-top-color: transparent; }
+table.t :is(th, td):first-child { padding-left: var(--pad); }
+table.t :is(th, td):last-child { padding-right: var(--pad); }
+table.t .r { text-align: right; font-variant-numeric: tabular-nums; }
+table.t td.nm { color: var(--ink); font-weight: 500; }
+table.t td.nm small { margin-left: 6px; font-size: 11px; font-weight: 400; color: var(--ink-4); }
+table.t tbody tr:hover td { background: var(--band); }
+
+/* numbers + chips: trend chip sits RIGHT of the number, same line (owner) */
+.kpi-label { font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.kpi-value { font-size: 22px; font-weight: 500; color: var(--ink); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.chip { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: var(--r-pill); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.chip.up { background: var(--up-tint); color: var(--up); }
+.chip.down { background: var(--down-tint); color: var(--down); }
+.chip.flat { background: var(--fill); color: var(--ink-3); }
+.cmp.up { color: var(--up); } .cmp.down { color: var(--down); }
+
+/* badges (Polaris) */
+.badge { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: var(--r-badge); font-size: 12px; line-height: 18px; letter-spacing: -.13px; background: var(--fill); color: var(--ink); }
+.badge.ok { background: var(--ok); color: var(--ok-ink); } .badge.bad { background: var(--bad); color: var(--bad-ink); } .badge.warn { background: var(--warn-tint); color: var(--warn); }
+.badge.cash { background: var(--pay-cash); color: var(--pay-cash-ink); } .badge.gcash { background: var(--pay-gcash); color: var(--pay-gcash-ink); }
+.badge.maya { background: var(--pay-maya); color: var(--pay-maya-ink); } .badge.qr { background: var(--pay-qr); color: var(--pay-qr-ink); }
+.badge.acct { background: var(--pay-acct); color: var(--pay-acct-ink); }
+.badge.t1 { background: var(--t1); color: var(--t1-ink); } .badge.t2 { background: var(--t2); color: var(--t2-ink); }
+.badge.t3 { background: var(--t3); color: var(--t3-ink); } .badge.t4 { background: var(--t4); color: var(--t4-ink); }
+.badge.t5 { background: var(--t5); color: var(--t5-ink); } .badge.t6 { background: var(--t6); color: var(--t6-ink); }
+.badge.t7 { background: var(--t7); color: var(--t7-ink); } .badge.t8 { background: var(--t8); color: var(--t8-ink); }
+
+/* picker pill (Shopify) */
+.pick { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px 0 10px; border: 0; border-radius: var(--r-pill); background: var(--pill); font: 500 12px/16px var(--font); color: var(--ink); letter-spacing: -.12px; cursor: pointer; }
+.pick::after { content: ""; width: 12px; height: 12px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.25 6.75-4.25 4.5-4.25-4.5'/%3E%3C/svg%3E") center / 12px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.25 6.75-4.25 4.5-4.25-4.5'/%3E%3C/svg%3E") center / 12px no-repeat; }
+.seg { display: inline-flex; padding: 2px; border-radius: var(--r-pill); background: var(--pill); }
+.seg button { height: 24px; padding: 0 10px; border: 0; border-radius: var(--r-pill); background: transparent; font: 500 12px var(--font); color: var(--ink-3); cursor: pointer; }
+.seg button.on { background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.06); }
+
+/* chart text */
+.ax { font-size: 11px; fill: var(--ink-5); font-variant-numeric: tabular-nums; }
+.ax.now { fill: var(--ink); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--ink-3); }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+
+/* tooltip */
+.tip { position: absolute; pointer-events: none; padding: 6px 8px; border-radius: 8px; background: var(--ink); color: #fff; font-size: 12px; white-space: nowrap; box-shadow: var(--pop-shadow); font-variant-numeric: tabular-nums; }
+
+/* Chart beside its rows: when the card is too narrow for both, the rows drop under the chart instead of cutting their names. */
+.sheet :is(.pb-split, .va-split, .vb-split, .vc-split, .vd-split, .ve-split, .vf-split, .vg-split, .vh-split, .vi-split, .vj-split) { flex-wrap: wrap; justify-content: center; row-gap: 8px; }
+.sheet :is(.pb-split, .va-split, .vb-split, .vc-split, .vd-split, .ve-split, .vf-split, .vg-split, .vh-split, .vi-split, .vj-split) > .rows { flex: 1 1 280px; }

@@ -3553,7 +3553,8 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
   .es-body.fill { padding-bottom: 8px; grid-template-rows: minmax(410px, 1fr); overflow-y: auto; }
   .es-body.fill:has(> .es-keys) { grid-template-rows: none; }   /* keys or ID under the list: only the row they're for stays */
   .es-body.fill:has(> .es-keys) :is(.es-col, .es-list, .es-scroll) { flex: none; min-height: auto; overflow: visible; }
-  .es-body.fill:has(> .es-keys) :is(.es-scroll, .es-list) > :not(.on):not(:has(.on)) { display: none; }
+  .es-body.fill:has(> .es-keys) :is(.es-scroll, .es-list) > :not(.on):not(:has(.on)),
+  .es-body:not(.ask):has(> .es-keys:not(.es-addr)) .es-list > :not(.on) { display: none; }   /* a cart line's keys too: Quantity, Note, Modifiers would push 0 under the foot */
 }
 /* New / Edit customer: the frame, a title and the back office's fields, Save where Done is */
 #customersView { position: relative; }
@@ -7856,6 +7857,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
   .lv .e-top:has(#itemMore[hidden]) > .fm-h { padding-inline: 56px; }   /* the item: Save alone (~46) + a gap */
   .lv .editor.sub .e-top > .fm-h { padding-inline: 40px; }   /* a subpage has only Back */
   .lv .e-top > #itemFind { grid-area: 1 / 2 / 2 / 4; margin-left: 7px; }   /* beside ‹ to the edge, the Items head's 7 apart */
+  .lv .editor:not(.sub) .e-top > #itemFind { grid-area: 1 / 2; margin-right: 7px; }   /* a subpage with Save (the item's Modifiers): up to Save */
   .lv .form { padding-top: 26px; }   /* the old 12px gap + 14: the first block stays where it was */
   .lv .fphoto { margin-top: -6px; }   /* 42 under the title's middle, 28 over the first block, as rednote's */
   .lv .e-top > .acts { margin-right: 0; }
@@ -8149,6 +8151,8 @@ input.es-ta { height: 56px; }
 .cf-sheet .ph { gap: 4px; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
 .cf-sheet .cf-msg { color: var(--ink-secondary); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; overflow-y: auto; overscroll-behavior: contain; }
 .cf-sheet .pb { margin-top: 2px; }
+.cf-sheet .pb.even > * { flex: 1; }   /* the first-open ask (askBizType): equal choices, not OK / Cancel */
+.cf-sheet:focus { outline: none; }   /* its card holds the focus, not a choice */
 .cf-sheet .primary-btn.small, .cf-sheet .secondary-btn.small { height: 36px; padding: 0 14px; font-size: 13px; font-weight: 590; text-transform: none; letter-spacing: normal; }
 .cf-sheet .primary-btn.danger { background: var(--danger-bg); color: var(--danger); }
 .cf-sheet .primary-btn.danger:hover:not(:disabled) { background: var(--danger-bg); box-shadow: inset 0 0 0 1px var(--danger); }
@@ -8811,3 +8815,43 @@ body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px v
 }
 /* iPad: no pill under the list, so its bottom fades out */
 @media (min-width: 721px) { .product-grid.sl { -webkit-mask-image: linear-gradient(#000 calc(100% - 48px), transparent); mask-image: linear-gradient(#000 calc(100% - 48px), transparent); padding-bottom: 48px; } }
+
+/* Modifiers: setup (pos-items: the item's Modifiers page, a modifier's pages, the Modifiers tab's rows) */
+.lv .fc .fr > .lb > small { display: block; color: var(--ink-tertiary); font-size: 12px; }   /* a choice's price / Unavailable / Hidden on, under its name */
+.lv .fc .pick.mod-on > .tx { flex: 1; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-align: left; cursor: pointer; }
+.lv .fc .pick .grip { order: 10; flex: none; display: grid; place-items: center; width: 32px; height: 40px; margin-right: -8px; color: var(--ink-quaternary); cursor: grab; touch-action: none; }
+.lv .fc .pick .grip .ic { width: 20px; height: 20px; }
+.lv .fc .pick.mod-on.dragging { position: relative; z-index: 2; background-color: var(--rl-card); box-shadow: var(--shadow-card); cursor: grabbing; }
+.lv .fc:has(.dragging) .pick.mod-on:not(.dragging) { transition: transform .2s var(--rl-ease); }
+.lv .mline { display: flex; min-width: 0; }   /* the choices end in … , the item count stays whole */
+.lv .mline .ch { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lv .mline > span:last-child { flex: none; }
+.lv .mline .hit { color: var(--ink); font-weight: inherit; }   /* the choice a search matched */
+/* Modifiers: selling */
+/* the question screens (pos-sell.js edit sheet 'mods'): the question on the hero line; a long one is cut, never wrapped */
+.es-hero.mq { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-bottom: .08em; }
+/* Unavailable: greyed and can't be picked; set back in Items › Modifiers */
+.esheet .es-row.out { color: var(--ink-tertiary); cursor: default; }
+.esheet .es-row.out:hover { background: var(--tile); }
+/* how far through the questions: a line along the card's top, grown from the last question's mark (--was) */
+.es-prog { position: absolute; z-index: 1; inset: 0 0 auto; height: 3px; background: var(--line); pointer-events: none; }
+.es-prog i { display: block; height: 100%; background: var(--ink); transform: scaleX(var(--w)); transform-origin: left; animation: es-prog .28s var(--rl-ease) both; }
+@keyframes es-prog { from { transform: scaleX(var(--was)); } }
+/* the next question slides in from the right, Back's from the left */
+.es-body.es-fwd .es-col { animation: es-side .24s var(--rl-ease) both; }
+.es-body.es-bwd .es-col { animation: es-back .24s var(--rl-ease) both; }
+@keyframes es-back { from { opacity: 0; transform: translateX(-24px); } }
+@media (prefers-reduced-motion: reduce) { .es-prog i { animation: none; } }
+/* Up to N / Any: Next or Add as one big button under the list, the list's width; Pick one has none, so no foot */
+.esheet .es-ft:empty { display: none; }
+.es-ft:has(> .es-big) { justify-content: center; }
+.esheet .es-ink.es-big { width: min(420px, 100%); height: 56px; margin: 0; font-size: 15px; }
+@media (max-width: 720px) { .es-ft:has(> .es-big) { padding-inline: 20px; } }   /* the list's inset */
+/* the same item again (pos-sell.js openAgain): the peek's card, a ✕ in its strip, Make another under the lines */
+.pk-x { flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin: -4px -6px -4px 0; padding: 0; border: 0; border-radius: var(--es-r);
+        background: none; color: var(--ink-tertiary); cursor: pointer; }
+.pk-x svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pk-ft { flex: none; padding: 12px 14px 14px; }
+.pk-go { width: 100%; height: 48px; border: 0; border-radius: var(--es-r); background: var(--tile); color: var(--ink); font: inherit; font-size: 15px; font-weight: 590; cursor: pointer; }
+@media (hover: hover) { .pk-x:hover, .pk-go:hover { background: var(--rl-hover); color: var(--ink); } }
+@media (min-width: 768px) { .pk-ft { padding: 14px 18px 18px; } .pk-go { height: 56px; } }

@@ -1,0 +1,518 @@
+<style>
+/* part h (round 3) — new chart SHAPES on the sales data, same look: tints, pill rows as the legend, exact numbers. Every selector .vh-. */
+.vh-q { color: var(--ink-4); font-weight: 400; }
+.vh-svg { display: block; overflow: visible; }
+.vh-svg text { font-family: var(--font); }
+.vh-tl { font-size: 12px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.vh-c1 { font-size: 18px; font-weight: 500; fill: var(--ink); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.vh-c2 { font-size: 11px; fill: var(--ink-4); }
+.vh-w2 { grid-column: span 2; }
+@media (max-width: 860px) { .vh-w2 { grid-column: auto; } }
+/* rows: the rows are the legend */
+.vh-rows > .row .nm { display: flex; align-items: center; min-width: 0; }
+.vh-rows .badge { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vh-n { flex: none; min-width: 56px; text-align: right; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.row.total .vh-n { color: var(--ink); }
+.vh-a { flex: none; min-width: 76px; text-align: right; }
+.vh-a.w { min-width: 98px; }
+.vh-p { flex: none; width: 46px; text-align: right; }
+.row .vh-ch { flex: none; min-width: 64px; justify-content: center; }
+.vh-rows > .row.sub { padding-left: 24px; }
+.vh-rows > .row.vh-hd { min-height: 22px; font-size: 11px; color: var(--ink-4); }
+.vh-rows > .row.vh-hd:hover { background: none; }
+.vh-big { display: flex; align-items: center; gap: 8px; padding: 12px 12px 6px; }
+.vh-big .kpi-value { font-size: 20px; }
+.vh-big .vh-q { font-size: 12px; }
+.vh-foot { display: flex; justify-content: flex-end; align-items: center; min-height: var(--row-h); padding: 0 var(--pad); border-top: 1px solid var(--row-line); }
+.vh-foot a { font-size: 12px; font-weight: 500; color: var(--ink); text-decoration: none; white-space: nowrap; }
+.vh-fix { display: flex; flex-direction: column; }
+.vh-fix > .vh-foot { margin-top: auto; }
+.vh-key { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px; font-size: 12px; color: var(--ink-4); }
+.vh-key > i { display: inline-block; width: 14px; height: 12px; border-radius: 3px; }
+/* one 100% bar */
+.vh-bar { display: flex; gap: 2px; height: 14px; border-radius: var(--r-pill); overflow: hidden; }
+.vh-bar > i { min-width: 2px; }
+.vh-bar.vh-none { background: var(--fill); }
+.vh-plot { padding: 12px 12px 4px; }
+/* treemaps */
+.vh-tm { position: relative; margin: 10px 12px 12px; }
+.vh-tc { position: absolute; overflow: hidden; border-radius: 6px; padding: 5px 7px; font-size: 12px; line-height: 15px; font-variant-numeric: tabular-nums; }
+.vh-tc b { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vh-tc.hd { padding: 3px 7px; }
+.vh-tc.hd span { font-weight: 400; }
+.vh-split { display: flex; align-items: center; gap: 4px; padding: 8px 0 8px 12px; }
+.vh-split > .vh-side, .vh-split > svg { flex: none; }
+.vh-split > .rows { flex: 1; min-width: 0; }
+.vh-wide { align-items: flex-start; padding: 4px 0 8px; }
+.vh-wide > .vh-plot { flex: 1; min-width: 0; }
+.vh-wide > .rows { flex: none; width: 300px; padding-top: 6px; }
+/* icicle + zoom bars */
+.vh-ice { padding: 12px 12px 10px; }
+.vh-lv { display: grid; gap: 2px; height: 28px; margin-bottom: 2px; }
+.vh-lv > i { min-width: 0; border-radius: 6px; padding: 0 8px; font-style: normal; font-size: 12px; line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vh-lv > i b { font-weight: 500; }
+.vh-lv > i.o { border: 1px solid var(--line); line-height: 26px; background: var(--raised); color: var(--ink); }
+.vh-zoom { position: relative; height: 22px; }
+.vh-zoom > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.vh-zoom > span { position: relative; display: block; text-align: center; line-height: 22px; font-size: 11px; color: var(--ink-3); }
+.vh-zb { padding: 12px 12px 10px; }
+.vh-g2 { display: grid; gap: 2px; height: 16px; border-radius: var(--r-pill); overflow: hidden; }
+.vh-g2 > i { min-width: 0; }
+/* labelled bars: label | bar | value */
+.vh-lbs { padding: 10px 0 6px; }
+.vh-lb { display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px; font-size: 12px; color: var(--ink-3); }
+.vh-lb > span { flex: none; width: 56px; }
+.vh-lb > .vh-bar, .vh-lb > .vh-g2 { flex: 1; min-width: 0; }
+.vh-lb > b { flex: none; width: 40px; text-align: right; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.vh-lb > b em { font-style: normal; font-weight: 400; color: var(--ink-4); }
+/* staff: two inline-bar columns on one share scale */
+.vh-pr { display: flex; align-items: center; gap: 14px; min-height: var(--row-h); padding: 0 12px; border-top: 1px solid var(--row-line); font-size: 13px; }
+.vh-pr:first-child, .vh-pr.hd + .vh-pr { border-top-color: transparent; }
+.vh-pr.hd { min-height: 26px; font-size: 11px; color: var(--ink-4); }
+.vh-pr.total { font-weight: 500; color: var(--ink); }
+.vh-pl { flex: none; width: 84px; }
+.vh-cell { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.vh-cell > i { flex: none; height: 14px; border-radius: 4px; }
+.vh-cell > b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vh-cell > em { font-style: normal; font-size: 12px; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+/* bullets: a plain bar and a mark */
+.vh-bul { position: relative; height: 16px; margin: 6px 12px 32px; border-radius: var(--r-pill); background: var(--fill); }
+.vh-bul > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--r-pill); background: var(--t3); }
+.vh-bul > s, .vh-dt > s { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink-2); }
+.vh-bul > em, .vh-dt0 > em { position: absolute; top: 24px; transform: translateX(-50%); font-style: normal; font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.vh-dr { display: flex; align-items: center; gap: 10px; min-height: var(--row-h); padding: 0 12px; border-top: 1px solid var(--row-line); font-size: 13px; }
+.vh-dr:first-child { border-top-color: transparent; }
+.vh-dr > span:first-child { flex: none; width: 34px; color: var(--ink-3); }
+.vh-dr.total > span:first-child { color: var(--ink); font-weight: 500; }
+.vh-dt, .vh-dt0 { position: relative; flex: 1; height: 14px; border-radius: 4px; }
+.vh-dt { background: var(--fill); }
+.vh-dt > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+.vh-dt0 > em { top: -6px; }
+.vh-dr > .vh-ch { flex: none; width: 70px; justify-content: center; }
+.vh-dr > b { flex: none; min-width: 72px; text-align: right; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.vh-dr.ax { min-height: 20px; border-top-color: transparent; }
+/* ranked list, bar behind the name */
+.vh-ib { position: relative; flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; }
+.vh-ib > i { position: absolute; left: -6px; top: 4px; bottom: 4px; border-radius: 6px; }
+.vh-ib > span { position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+/* ranked tint bars: pill | bar + value at its end, light scale behind */
+.vh-rank { padding: 8px 0 2px; }
+.vh-rk { display: flex; align-items: center; min-height: 30px; padding: 0 12px; }
+.vh-rk.two { min-height: 38px; }
+.vh-rl { flex: none; width: 92px; }
+.vh-trk { position: relative; flex: 1; min-width: 0; align-self: stretch; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding-right: 64px;
+  background: linear-gradient(var(--grid), var(--grid)) right / 1px 100% no-repeat, linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 25% 100% repeat-x;
+  background-origin: content-box; background-clip: content-box; }
+.vh-bb { display: flex; align-items: center; }
+.vh-bb > i { flex: none; height: 14px; border-radius: 4px; min-width: 2px; }
+.vh-rk.two .vh-bb > i { height: 12px; }
+.vh-bb > b { flex: none; margin-left: 4px; padding: 0 2px; background: var(--raised); font-size: 12px; font-weight: 500; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vh-bb > b.q { font-weight: 400; color: var(--ink-4); font-size: 11px; }
+.vh-rk > .vh-ch { margin-left: 8px; }
+.vh-rk.ax { min-height: 20px; }
+.vh-rk.ax > .vh-trk { background: none; }
+.vh-rk.ax .ax2 { position: absolute; top: 2px; transform: translateX(-50%); font-size: 11px; color: var(--ink-5); font-variant-numeric: tabular-nums; }
+/* month view tiles */
+.vh-mon { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; padding: 4px 12px 12px; }
+.vh-mon > span { font-size: 11px; color: var(--ink-4); padding: 0 0 2px 4px; }
+.vh-mon > div { height: 54px; border-radius: 8px; padding: 4px 6px; display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+.vh-mon > div > span { font-size: 11px; color: var(--ink-4); line-height: 14px; }
+.vh-mon > div > b { font-size: 12px; font-weight: 500; color: var(--ink); line-height: 18px; }
+.vh-mon > div > em { font-style: normal; font-size: 11px; font-weight: 500; line-height: 14px; }
+.vh-mon > div.today { border: 1px dashed var(--ink-5); }
+.vh-mon > div.today > em { color: var(--ink-4); font-weight: 400; }
+.vh-upb { background: var(--up-tint); color: var(--up); }
+.vh-dnb { background: var(--down-tint); color: var(--down); }
+.vh-ringc { display: flex; justify-content: center; padding: 14px 0 8px; }
+</style>
+
+<section class="cat" id="vh-tree" data-nav="H3 · Treemaps">
+  <h2>Treemaps and partitions</h2>
+  <p class="why">Area = money. Categories keep their tints (Cement t1 … Lumber t6, Other grey); inside a box its items share the tint, "Rest of …" goes grey like D2-17. Holds 50–100 categories: the small ones fold into Other.</p>
+  <div class="grid">
+    <div class="spec vh-w2"><div class="tag"><b>H3-1</b> Treemap, two levels · Cement and Fasteners open into their top items</div><div class="card" id="vh-1"></div></div>
+    <div class="spec"><div class="tag"><b>H3-2</b> Small treemap beside the pill rows · in place of the donut</div><div class="card" id="vh-2"></div></div>
+    <div class="spec"><div class="tag"><b>H3-3</b> Icicle of the ladder · gross → net and taken off → their parts, the thin slice zoomed</div><div class="card" id="vh-3"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vh-stack" data-nav="H3 · Two-level bars">
+  <h2>Two-level and row-by-row bars</h2>
+  <p class="why">A 100% bar with a second level under it, and a 100% bar per row. Same tints, rows under are the legend.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>H3-4</b> Two-level 100% bar · categories, their top items right under them</div><div class="card" id="vh-4"></div></div>
+    <div class="spec"><div class="tag"><b>H3-5</b> Zoom bar · the picked category opens into its items (switch top right)</div><div class="card vh-fix" id="vh-5"></div></div>
+    <div class="spec"><div class="tag"><b>H3-6</b> A 100% bar per day · orders by time of day</div><div class="card" id="vh-6"></div></div>
+    <div class="spec"><div class="tag"><b>H3-7</b> Each person, orders vs net sales · both bars on one share scale</div><div class="card" id="vh-7"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vh-col" data-nav="H3 · Stacked columns">
+  <h2>Stacked columns</h2>
+  <p class="why">One column per day or week, stacked in pill tints, the total on top. Only splits the data really has: time of day (from the hour grid) and weekday (from the daily calendar).</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>H3-8</b> Stacked column per day · orders by time of day</div><div class="card" id="vh-8"></div></div>
+    <div class="spec vh-w2"><div class="tag"><b>H3-9</b> Stacked column per week · net sales by weekday, last 8 weeks</div><div class="card" id="vh-9"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vh-line" data-nav="H3 · Areas">
+  <h2>Areas and stepped lines</h2>
+  <p class="why">This period in GCash blue (t3), the one before in lavender (t5), as A2-12. Stepped = a running total that climbs once per day.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>H3-10</b> Stepped running total · this week vs last week</div><div class="card" id="vh-10"></div></div>
+    <div class="spec"><div class="tag"><b>H3-11</b> Two areas · each day, this week over last week</div><div class="card" id="vh-11"></div></div>
+    <div class="spec"><div class="tag"><b>H3-12</b> Stepped running total · October so far vs the same days of September</div><div class="card" id="vh-12"></div></div>
+    <div class="spec vh-w2"><div class="tag"><b>H3-13</b> Stacked area · 26 weeks, weekdays · Saturday · Sunday</div><div class="card" id="vh-13"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vh-cal" data-nav="H3 · Calendars">
+  <h2>Calendars in tints</h2>
+  <p class="why">The C15 calendar with other measures worked out from the same days: hit the ₱60k daily target or not, and up or down on the same day a week before (green/red, because that is up/down).</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>H3-14</b> Calendar · days at the ₱60k target in blue, under it in yellow, Sundays grey</div><div class="card" id="vh-14"></div></div>
+    <div class="spec"><div class="tag"><b>H3-15</b> Month view · each day up or down on the same day a week before</div><div class="card" id="vh-15"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vh-ring" data-nav="H3 · Rings">
+  <h2>Segmented rings</h2>
+  <p class="why">Bigger rings (168–172px, 20–24px thick), each part its own rounded segment with a gap.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>H3-16</b> Segmented ring · payments, total in the hole, pill rows beside</div><div class="card" id="vh-16"></div></div>
+    <div class="spec"><div class="tag"><b>H3-17</b> Two rings · staff, net sales outside, orders inside</div><div class="card" id="vh-17"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vh-target" data-nav="H3 · Targets">
+  <h2>Against a target</h2>
+  <p class="why">A plain bar and one mark, no gauge. Days at the target in blue, under it in yellow, as on the calendar.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>H3-18</b> Month target · one bar, a mark at even pace</div><div class="card" id="vh-18"></div></div>
+    <div class="spec"><div class="tag"><b>H3-19</b> Daily target · a bar per day, the ₱60k mark through them</div><div class="card" id="vh-19"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vh-rank" data-nav="H3 · Ranked">
+  <h2>Ranked lists</h2>
+  <p class="why">Rows first, the bar sits in or beside the row. B2-9 without the percent, as asked.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>H3-20</b> Ranked list · the bar fills the row behind the name, in the category tint</div><div class="card" id="vh-20"></div></div>
+    <div class="spec"><div class="tag"><b>H3-21</b> B2-9 without the percent · categories, value at the bar end</div><div class="card" id="vh-21"></div></div>
+    <div class="spec"><div class="tag"><b>H3-22</b> Before → after bars · the 30 days before in grey over now, chip last</div><div class="card" id="vh-22"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('vh-' + n), P = V.peso, K = V.pesoK, P2 = n => V.peso(n, 2);
+  const sum = (a, f = x => x) => a.reduce((s, x) => s + f(x), 0);
+  const pc = (a, t, d = 1) => V.pct(Math.abs(a) / Math.abs(t) * 100, d);
+  const r1 = n => Math.round(n * 10) / 10;
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vh-q">${r}</span>`}</div>`;
+  const tv = t => /^t\d$/.test(t) ? `var(--${t})` : `var(--pay-${t})`;
+  const ti = t => /^t\d$/.test(t) ? `var(--${t}-ink)` : `var(--pay-${t}-ink)`;
+  const edge = t => `color-mix(in srgb, ${tv(t)}, ${ti(t)} 30%)`; // a pastel line needs a little body
+  const pill = (t, nm) => `<span class="badge ${t}" title="${esc(nm)}">${esc(nm)}</span>`;
+  const row = (nm, cells, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span>${cells}</div>`;
+  const rows = h => `<div class="rows vh-rows">${h}</div>`;
+  const A = (v, w = '') => `<span class="amt vh-a ${w}">${v}</span>`;
+  const Pc = v => `<span class="pct vh-p">${v}</span>`;
+  const N = v => `<span class="vh-n">${v}</span>`;
+  const chip = (c, txt) => `<span class="chip vh-ch ${c >= 0 ? 'up' : 'down'}">${txt}</span>`;
+  const chg = (a, b) => { const c = (a / b - 1) * 100; return chip(c, `${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%`); };
+  const dK = d => chip(d, (d >= 0 ? '+' : '−') + K(Math.abs(d)));
+  const big = (v, rest = '') => `<div class="vh-big"><span class="kpi-value">${v}</span>${rest}</div>`;
+  const foot = t => `<div class="vh-foot"><a class="more" href="#">${t}</a></div>`;
+  const nice = (max, steps) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const svg = (w, h, s) => `<svg class="vh-svg" width="${w}" height="${h}">${s}</svg>`;
+  const tx = (x, y, t, c = 'ax', an = 'middle') => `<text class="${c}" x="${r1(x)}" y="${r1(y)}" text-anchor="${an}">${t}</text>`;
+  const hl = (x2, y) => `<line x1="0" x2="${r1(x2)}" y1="${r1(y)}" y2="${r1(y)}" style="stroke:var(--grid)"/>`;
+  const bar = list => { const t = sum(list, x => x.v); return '<div class="vh-bar">' + list.map(x => `<i style="width:${x.v / t * 100}%;background:${tv(x.t)}" title="${esc(x.tip || x.nm)}"></i>`).join('') + '</div>'; };
+  const fr = list => list.map(x => `minmax(0,${x.v}fr)`).join(' ');
+  const plotOf = el => { const h = el.querySelector('.vh-plot'); return [h, h.clientWidth - 24]; };
+
+  // ---- shared sets ----
+  const CAT_T = { Cement: 't1', Fasteners: 't2', Electrical: 't3', Plumbing: 't4', Paint: 't5', Lumber: 't6' };
+  const CS = V.categories, CT = sum(CS, c => c.amt);
+  const rest = CS.filter(c => !CAT_T[c.c]);
+  const C7 = CS.filter(c => CAT_T[c.c]).map(c => ({ nm: c.c, t: CAT_T[c.c], v: c.amt, prev: c.prev }))
+    .concat({ nm: `Other · ${rest.length}`, t: 't8', v: sum(rest, c => c.amt), prev: sum(rest, c => c.prev) });
+  C7.forEach(c => c.tip = `${c.nm} · ${P(c.v)} · ${pc(c.v, CT)}`);
+  const catBand = band('Categories', 'Net sales · last 30 days'), catFoot = foot(`See all ${CS.length} categories →`);
+  // the two categories the top 10 items come from: their items + the rest of the category
+  const NEST = ['Cement', 'Fasteners'].map(c => { const cat = C7.find(x => x.nm === c), its = V.topItems.filter(i => i.cat === c).map(i => ({ nm: i.name, t: cat.t, v: i.amt }));
+    const restV = cat.v - sum(its, i => i.v); return { cat, restV, all: its.concat({ nm: `Rest of ${c}`, t: 't8', v: restV }) }; });
+
+  const squarify = (items, x, y, w, h) => { const out = [], k = w * h / sum(items, i => i.v); let left = items.slice();
+    while (left.length) { const short = Math.min(w, h); let rw = [], best = Infinity;
+      for (const it of left) { const r = rw.concat([it]), a = r.map(i => i.v * k), s = sum(a);
+        const worst = Math.max(short * short * Math.max(...a) / (s * s), s * s / (short * short * Math.min(...a))); if (worst > best) break; best = worst; rw = r; }
+      const thick = sum(rw, i => i.v * k) / short; let off = 0;
+      rw.forEach(it => { const len = it.v * k / thick; out.push(w >= h ? { it, x, y: y + off, w: thick, h: len } : { it, x: x + off, y, w: len, h: thick }); off += len; });
+      if (w >= h) { x += thick; w -= thick; } else { y += thick; h -= thick; } left = left.slice(rw.length); }
+    return out; };
+  const box = (x, y, w, h, t, html, tip, cls = '') => `<div class="vh-tc ${cls}" style="left:${r1(x)}px;top:${r1(y)}px;width:${r1(Math.max(w, 0))}px;height:${r1(Math.max(h, 0))}px;background:${tv(t)};color:${ti(t)}" title="${esc(tip)}">${html}</div>`;
+
+  // ================= Treemaps =================
+  // H3-1 two-level treemap: every box inset 1px, so 2px white gaps everywhere
+  { const el = $(1); el.innerHTML = catBand + '<div class="vh-tm"></div>' + catFoot;
+    const host = el.querySelector('.vh-tm'), W = host.clientWidth, H = 320; host.style.height = H + 'px';
+    const lab = (nm, v, w, h) => w >= 72 && h >= 36 ? `<b>${esc(nm)}</b><span>${K(v)}</span>` : w >= 40 && h >= 20 ? `<span>${K(v)}</span>` : '';
+    let s = '';
+    squarify(C7, 0, 0, W, H).forEach(({ it, x, y, w, h }) => { const n = NEST.find(q => q.cat === it);
+      if (!n) return void (s += box(x + 1, y + 1, w - 2, h - 2, it.t, lab(it.nm, it.v, w, h) + (h > 60 ? `<span><br>${pc(it.v, CT)}</span>` : ''), it.tip));
+      s += box(x + 1, y + 1, w - 2, 22, it.t, `<b>${esc(it.nm)} <span>${P(it.v)} · ${pc(it.v, CT)}</span></b>`, it.tip, 'hd');
+      squarify(n.all.slice().sort((a, b) => b.v - a.v), x, y + 24, w, h - 24).forEach(c => s += box(c.x + 1, c.y + 1, c.w - 2, c.h - 2, c.it.t, lab(c.it.nm, c.it.v, c.w - 2, c.h - 2), `${c.it.nm} · ${P(c.it.v)} · ${pc(c.it.v, it.v)} of ${it.nm}`)); });
+    host.innerHTML = s; }
+
+  // H3-2 small treemap beside the rows
+  { const S = 168, tm = squarify(C7, 0, 0, S, S).map(({ it, x, y, w, h }) => box(x + 1.5, y + 1.5, w - 3, h - 3, it.t, '', it.tip)).join('');
+    $(2).innerHTML = catBand + `<div class="vh-split"><div class="vh-tm vh-side" style="width:${S}px;height:${S}px;margin:0">${tm}</div>`
+      + rows(C7.map(c => row(pill(c.t, c.nm), A(P(c.v)) + Pc(pc(c.v, CT)))).join('') + row('Total', A(P(CT)) + Pc(''), 'total')) + '</div>' + catFoot; }
+
+  // H3-3 icicle of the ladder (30 days), ladder tints as B2-10…14; taken off is under 2% so it is zoomed underneath
+  { const L = V.ladder, g = L.gross, el = $(3);
+    const off = [{ nm: 'Voids', t: 't7', v: -L.voids }, { nm: 'Refunds', t: 't2', v: -L.refunds }, { nm: 'Discounts', t: 't6', v: -L.discounts }], OT = sum(off, x => x.v);
+    const cost = { nm: 'Cost of goods', t: 't8', v: L.cost }, gp = { nm: 'Gross profit', t: 't4', v: L.gp }, net = { nm: 'Net sales', t: 't3', v: L.net };
+    el.innerHTML = band('Gross sales, split down', 'Last 30 days') + '<div class="vh-ice"></div>';
+    const W = el.querySelector('.vh-ice').clientWidth - 24;
+    // label as much as fits: name + amount, amount only, or nothing (the rows have it)
+    const lab = (nm, val, px) => px > 6.6 * (nm.length + val.length + 1) + 18 ? `${nm} <b>${val}</b>` : px > 6.6 * val.length + 18 ? `<b>${val}</b>` : '';
+    const seg = (x, of, val, total) => `<i style="background:${tv(x.t)};color:${ti(x.t)}" title="${esc(x.nm)} · ${val}">${lab(x.nm, val, x.v / total * W)}</i>`;
+    const lv = (list, html) => `<div class="vh-lv" style="grid-template-columns:${fr(list)}">${html}</div>`;
+    const a = L.net / g * 100;
+    el.querySelector('.vh-ice').innerHTML = lv([{ v: 1 }], `<i class="o" title="Gross sales · ${P2(g)}">Gross sales <b>${P2(g)}</b></i>`)
+      + lv([net, { v: OT }], seg(net, 0, P2(net.v), g) + `<i class="o" title="Taken off · −${P2(OT)}"></i>`)
+      + lv([cost, gp, ...off], [cost, gp].map(x => seg(x, 0, K(x.v), g)).join('') + off.map(x => `<i style="background:${tv(x.t)}" title="${x.nm} · −${P2(x.v)}"></i>`).join(''))
+      + `<div class="vh-zoom"><svg viewBox="0 0 100 22" preserveAspectRatio="none"><polygon points="${a},0 100,0 100,22 0,22" style="fill:var(--band)"/></svg><span>Taken off · −${P2(OT)}</span></div>`
+      + lv(off, off.map(x => seg(x, 0, '−' + K(x.v), OT)).join(''));
+    el.innerHTML += rows(row(pill(net.t, net.nm), A(P2(net.v), 'w') + Pc(pc(net.v, g)))
+      + [cost, gp].map(x => row(pill(x.t, x.nm), A(P2(x.v), 'w') + Pc(pc(x.v, g)), 'sub')).join('')
+      + off.map(x => row(pill(x.t, x.nm), A('−' + P2(x.v), 'w') + Pc(pc(x.v, g)))).join('')
+      + row('Gross sales', A(P2(g), 'w') + Pc(''), 'total')); }
+
+  // ================= Two-level and row bars =================
+  // H3-4 two-level 100% bar, items aligned under their category
+  { const grid = (list, inner) => `<div class="vh-g2" style="grid-template-columns:${fr(list)}">${list.map(inner).join('')}</div>`;
+    const top = grid(C7, c => `<i style="background:${tv(c.t)}" title="${esc(c.tip)}"></i>`);
+    const bot = grid(C7, c => { const n = NEST.find(q => q.cat === c);
+      return n ? `<i class="vh-g2" style="grid-template-columns:${fr(n.all)};border-radius:0">${n.all.map(x => `<i style="background:${tv(x.t)}" title="${esc(x.nm)} · ${P(x.v)}"></i>`).join('')}</i>` : '<i></i>'; });
+    const T10 = sum(V.topItems, i => i.amt);
+    $(4).innerHTML = band('Categories and their top items', 'Net sales · last 30 days')
+      + `<div class="vh-lbs"><div class="vh-lb"><span>Category</span>${top}</div><div class="vh-lb"><span>Top items</span>${bot}</div></div>`
+      + rows(row('', `<span class="vh-a">In top 10</span><span class="vh-a">Category</span>`, 'vh-hd')
+        + C7.map(c => { const n = NEST.find(q => q.cat === c); return row(pill(c.t, c.nm), (n ? A(P(c.v - n.restV)) : '<span class="vh-a vh-q">—</span>') + A(P(c.v))); }).join('')
+        + row('Total', A(P(T10)) + A(P(CT)), 'total')) + catFoot; }
+
+  // H3-5 zoom bar: picked category keeps its tint (C12 rule), opens into its items underneath
+  { const el = $(5), draw = k => { const n = NEST[k], c = n.cat, i0 = C7.indexOf(c), a0 = sum(C7.slice(0, i0), x => x.v) / CT * 100, a1 = a0 + c.v / CT * 100;
+      el.innerHTML = band('Top items by category', `<span class="seg">${NEST.map((q, j) => `<button class="${j === k ? 'on' : ''}">${q.cat.nm}</button>`).join('')}</span>`)
+        + `<div class="vh-zb"><div class="vh-g2" style="grid-template-columns:${fr(C7)}">${C7.map(x => `<i style="background:${x === c ? tv(x.t) : 'var(--t8)'}" title="${esc(x.tip)}"></i>`).join('')}</div>`
+        + `<div class="vh-zoom"><svg viewBox="0 0 100 22" preserveAspectRatio="none"><polygon points="${a0},0 ${a1},0 100,22 0,22" style="fill:${tv(c.t)};opacity:.4"/></svg></div>`
+        + `<div class="vh-g2" style="grid-template-columns:${fr(n.all)}">${n.all.map(x => `<i style="background:${tv(x.t)}" title="${esc(x.nm)} · ${P(x.v)}"></i>`).join('')}</div></div>`
+        + rows(n.all.map(x => row(pill(x.t, x.nm), A(P(x.v)) + Pc(pc(x.v, c.v)))).join('') + row(`${c.nm} · ${pc(c.v, CT)} of net sales`, A(P(c.v)) + Pc(''), 'total'))
+        + foot('See all in Items →');
+      el.querySelectorAll('.seg button').forEach((b, j) => b.onclick = () => draw(j)); };
+    draw(0); el.style.height = el.offsetHeight + 'px'; } // fixed card size: Cement's 8 rows set the height
+
+  // time of day, from the weekday × hour grid (VIZ.heat); slot "7a" = 7–8 am
+  const PARTS = [{ nm: 'Morning · 7–12', t: 't1', h: [0, 5] }, { nm: 'Midday · 12–3', t: 't2', h: [5, 8] }, { nm: 'Afternoon · 3–7', t: 't3', h: [8, 12] }];
+  const TOD = V.heat.map(d => { const parts = PARTS.map(p => ({ ...p, v: sum(d.v.slice(...p.h)) })), tot = sum(parts, p => p.v);
+    parts.forEach(p => p.tip = `${d.d} · ${p.nm} · ${p.v} orders · ${pc(p.v, tot || 1)}`); return { d: d.d, parts, tot, now: !!V.week.find(w => w.d === d.d && w.now) }; });
+  const TODT = PARTS.map((p, j) => ({ ...p, v: sum(TOD, d => d.parts[j].v) })), TN = sum(TODT, p => p.v);
+  const todRows = rows(TODT.map(p => row(pill(p.t, p.nm), N(p.v + ' orders') + Pc(pc(p.v, TN)))).join('') + row('Total', N(TN + ' orders') + Pc(''), 'total'));
+
+  // H3-6 a 100% bar per day
+  $(6).innerHTML = band('Orders by time of day', 'Last 7 days') + '<div class="vh-lbs">'
+    + TOD.map(d => `<div class="vh-lb"><span>${d.d}</span>${d.tot ? bar(d.parts) : '<div class="vh-bar vh-none"></div>'}<b>${d.tot || '<em>Today</em>'}</b></div>`).join('') + '</div>' + todRows;
+
+  // H3-7 staff: share of orders and share of net, one scale for both columns
+  { const ST = V.staff.map((s, i) => ({ nm: s.name, t: 't' + (i + 1), n: s.n, v: s.amt })), SN = sum(ST, s => s.n), SV = sum(ST, s => s.v);
+    const mx = Math.max(...ST.flatMap(s => [s.n / SN, s.v / SV]));
+    const cell = (t, f, val, tip) => `<span class="vh-cell" title="${esc(tip)}"><i style="width:calc((100% - 96px) * ${(f / mx).toFixed(4)});background:${tv(t)}"></i><b>${val}</b><em>${V.pct(f * 100)}</em></span>`;
+    $(7).innerHTML = band('Staff', 'Share of the store · last 7 days')
+      + `<div class="vh-pr hd"><span class="vh-pl"></span><span class="vh-cell">Orders</span><span class="vh-cell">Net sales</span></div>`
+      + ST.map(s => `<div class="vh-pr"><span class="vh-pl">${pill(s.t, s.nm)}</span>${cell(s.t, s.n / SN, s.n, `${s.nm} · ${s.n} orders`)}${cell(s.t, s.v / SV, K(s.v), `${s.nm} · ${P(s.v)}`)}</div>`).join('')
+      + `<div class="vh-pr total"><span class="vh-pl">Total</span><span class="vh-cell"><b>${SN}</b></span><span class="vh-cell"><b>${P(SV)}</b></span></div>`; }
+
+  // ================= Stacked columns =================
+  // groups: [{lab, tot, now, parts:[{t, v, tip}]}], stacked bottom-up, 2px white gap between parts, scale on the right
+  const cols = (host, W, groups, H, steps, fAx, fTot) => { const R = 40, T = 20, B = 22, ch = H - T - B, cw0 = W - R;
+    const st = nice(Math.max(...groups.map(g => g.tot)), steps), top = st * steps, sl = cw0 / groups.length, cw = Math.min(44, sl * .56);
+    let s = '';
+    for (let k = 0; k <= steps; k++) { const y = T + ch * (1 - k / steps); s += hl(cw0, y) + tx(W, y + 4, k ? fAx(k * st) : '0', 'ax', 'end'); }
+    groups.forEach((g, i) => { const x = i * sl + (sl - cw) / 2, cx = x + cw / 2; let yb = T + ch;
+      g.parts.forEach((p, j) => { const h = p.v / top * ch; if (h <= 0) return;
+        s += `<rect x="${r1(x)}" y="${r1(yb - h)}" width="${r1(cw)}" height="${r1(Math.max(h - (j ? 2 : 0), 1))}" rx="3" style="fill:${tv(p.t)}"><title>${esc(p.tip)}</title></rect>`; yb -= h; });
+      s += g.tot ? tx(cx, yb - 6, fTot(g.tot), 'vh-tl') : tx(cx, T + ch - 6, 'Today');
+      s += tx(cx, H - 5, g.lab, g.now ? 'ax now' : 'ax'); });
+    host.innerHTML = svg(W, H, s); };
+
+  // H3-8 orders per day by time of day
+  { const el = $(8); el.innerHTML = band('Orders by time of day', 'Last 7 days') + '<div class="vh-plot"></div>' + todRows;
+    const [h, W] = plotOf(el); cols(h, W, TOD.map(d => ({ lab: d.d, tot: d.tot, now: d.now, parts: d.parts })), 200, 4, v => v, v => v); }
+
+  // days with local dates (data.js keys by toISOString, which slips a day east of UTC); day 0 is a Monday
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const DAYS = V.days.map((d, i, a) => ({ ...d, dt: new Date(2026, 9, 18 - (a.length - 1 - i)), today: i === a.length - 1 }));
+  const md = dt => `${MON[dt.getMonth()]} ${dt.getDate()}`, wdOf = dt => WD[(dt.getDay() + 6) % 7];
+  const WEEKS = []; for (let i = 0; i < DAYS.length; i += 7) WEEKS.push(DAYS.slice(i, i + 7));
+  const WT = ['t1', 't2', 't3', 't4', 't5', 't6', 't8'];
+
+  // H3-9 weekly columns stacked by weekday
+  { const el = $(9), W8 = WEEKS.slice(-8), byWd = WD.map((w, r) => ({ nm: w, t: WT[r], v: sum(W8, wk => wk[r].net) })), tot = sum(byWd, x => x.v);
+    el.innerHTML = band('Net sales by week', 'Last 8 weeks · stacked by weekday') + '<div class="vh-split vh-wide"><div class="vh-plot"></div>'
+      + rows(byWd.map(x => row(pill(x.t, x.nm), A(P(x.v)) + Pc(pc(x.v, tot)))).join('') + row('Total', A(P(tot)) + Pc(''), 'total')) + '</div>';
+    const [h, W] = plotOf(el);
+    cols(h, W, W8.map((wk, i) => ({ lab: md(wk[0].dt), tot: sum(wk, d => d.net), now: i === 7,
+      parts: wk.map((d, r) => ({ t: WT[r], v: d.net, tip: `${WD[r]} ${md(d.dt)} · ${d.today ? 'today' : P(d.net)}` })) })), 280, 4, K, K); }
+
+  // ================= Areas and stepped lines =================
+  const cum = a => a.reduce((o, v) => (o.push((o.length ? o[o.length - 1] : 0) + v), o), []);
+  // stepped running totals: each series climbs once per slot; later series draw on top
+  const stepChart = (host, W, series, labs, H, now = -1) => { const R = 44, T = 10, B = 22, ch = H - T - B, cw0 = W - R, sl = cw0 / labs.length;
+    const st = nice(Math.max(...series.flatMap(s => s.cum)), 4), y = v => T + ch * (1 - v / (st * 4));
+    let s = '';
+    for (let k = 0; k <= 4; k++) s += hl(cw0, y(k * st)) + tx(W, y(k * st) + 4, k ? K(k * st) : '0', 'ax', 'end');
+    series.forEach(se => { let d = `M0 ${y(0)}`; se.cum.forEach((v, i) => d += `V${r1(y(v))}H${r1((i + 1) * sl)}`);
+      s += `<path d="${d}V${y(0)}Z" style="fill:${tv(se.t)}"><title>${esc(se.tip)}</title></path><path d="${d}" style="fill:none;stroke:${edge(se.t)};stroke-width:2;stroke-linejoin:round"/>`; });
+    labs.forEach((l, i) => l && (s += tx((i + .5) * sl, H - 5, l, i === now ? 'ax now' : 'ax')));
+    host.innerHTML = svg(W, H, s); };
+
+  const WK = V.week.filter(w => !w.now), TW = sum(WK, w => w.net), LWsame = sum(WK, w => w.prev);
+  // H3-10 this week vs last week, adding up
+  { const el = $(10);
+    el.innerHTML = band('Net sales, adding up', 'This week vs last week') + big(P(TW), chg(TW, LWsame) + `<span class="vh-q">vs ${P(LWsame)} by Saturday last week</span>`) + '<div class="vh-plot"></div>'
+      + rows(row(pill('t3', 'This week'), A(P(TW))) + row(pill('t5', 'Last week'), A(P(LWsame))));
+    const [h, W] = plotOf(el);
+    stepChart(h, W, [{ t: 't5', cum: cum(WK.map(w => w.prev)), tip: `Last week · ${P(LWsame)}` }, { t: 't3', cum: cum(WK.map(w => w.net)), tip: `This week · ${P(TW)}` }], WK.map(w => w.d), 170); }
+
+  // H3-11 each day as two areas, this week's amount on its points
+  { const el = $(11);
+    el.innerHTML = band('Net sales by day', 'This week vs last week') + '<div class="vh-plot"></div>'
+      + rows(row(pill('t3', 'This week · Mon–Sat'), A(P(TW)) + chg(TW, LWsame)) + row(pill('t5', 'Last week · Mon–Sat'), A(P(LWsame)) + '<span class="vh-ch"></span>'));
+    const [h, W] = plotOf(el), H = 180, R = 44, T = 12, B = 22, ch = H - T - B, cw0 = W - R, sl = cw0 / WK.length;
+    const st = nice(Math.max(...WK.flatMap(w => [w.net, w.prev])), 4), y = v => T + ch * (1 - v / (st * 4)), x = i => (i + .5) * sl;
+    let s = '';
+    for (let k = 0; k <= 4; k++) s += hl(cw0, y(k * st)) + tx(W, y(k * st) + 4, k ? K(k * st) : '0', 'ax', 'end');
+    [['prev', 't5'], ['net', 't3']].forEach(([k, t]) => { const d = WK.map((w, i) => `${i ? 'L' : 'M'}${r1(x(i))} ${r1(y(w[k]))}`).join('');
+      s += `<path d="${d}V${y(0)}H${r1(x(0))}Z" style="fill:${tv(t)}"/><path d="${d}" style="fill:none;stroke:${edge(t)};stroke-width:2;stroke-linejoin:round"/>`; });
+    WK.forEach((w, i) => s += `<circle cx="${r1(x(i))}" cy="${r1(y(w.net))}" r="3" style="fill:${edge('t3')}"><title>${w.d} · ${P(w.net)} · last week ${P(w.prev)}</title></circle>`
+      + tx(x(i), y(w.net) + 16, K(w.net), 'vh-tl') + tx(x(i), H - 5, w.d));
+    h.innerHTML = svg(W, H, s); }
+
+  // H3-12 October so far vs the same days of September
+  { const el = $(12), oct = DAYS.filter(d => d.dt.getMonth() === 9 && !d.today), sep = DAYS.filter(d => d.dt.getMonth() === 8);
+    const sep17 = sep.filter(d => d.dt.getDate() <= oct.length), O = sum(oct, d => d.net), S = sum(sep17, d => d.net), n = oct.length;
+    el.innerHTML = band('Net sales, adding up', `Oct 1–${n} vs Sep 1–${n}`) + big(P(O), chg(O, S)) + '<div class="vh-plot"></div>'
+      + rows(row(pill('t3', `Oct 1–${n}`), A(P(O))) + row(pill('t5', `Sep 1–${n}`), A(P(S))) + row('All of September', A(P(sum(sep, d => d.net)))));
+    const [h, W] = plotOf(el);
+    stepChart(h, W, [{ t: 't5', cum: cum(sep17.map(d => d.net)), tip: `Sep 1–${n} · ${P(S)}` }, { t: 't3', cum: cum(oct.map(d => d.net)), tip: `Oct 1–${n} · ${P(O)}` }],
+      oct.map((d, i) => [1, 5, 10, 15].includes(i + 1) || i === n - 1 ? String(i + 1) : ''), 170); }
+
+  // H3-13 26 weeks stacked: Mon–Fri, Saturday, Sunday
+  { const el = $(13), G = [{ nm: 'Mon–Fri', t: 't3', r: [0, 5] }, { nm: 'Saturday', t: 't6', r: [5, 6] }, { nm: 'Sunday', t: 't8', r: [6, 7] }];
+    const pts = WEEKS.map(wk => G.map(g => sum(wk.slice(...g.r), d => d.net))), tot = sum(pts, p => sum(p));
+    G.forEach((g, j) => g.v = sum(pts, p => p[j]));
+    el.innerHTML = band('Net sales by week', 'Last 26 weeks') + '<div class="vh-split vh-wide"><div class="vh-plot"></div>'
+      + rows(G.map(g => row(pill(g.t, g.nm), A(P(g.v)) + Pc(pc(g.v, tot)))).join('') + row('Total', A(P(tot)) + Pc(''), 'total')) + '</div>';
+    const [h, W] = plotOf(el), H = 220, R = 44, T = 10, B = 22, ch = H - T - B, cw0 = W - R, x = i => i * cw0 / (pts.length - 1);
+    const st = nice(Math.max(...pts.map(p => sum(p))), 4), y = v => T + ch * (1 - v / (st * 4));
+    let s = '';
+    for (let k = 0; k <= 4; k++) s += hl(cw0, y(k * st)) + tx(W, y(k * st) + 4, k ? K(k * st) : '0', 'ax', 'end');
+    G.forEach((g, j) => { const lo = pts.map(p => sum(p.slice(0, j))), up = pts.map(p => sum(p.slice(0, j + 1)));
+      const top = up.map((v, i) => `${i ? 'L' : 'M'}${r1(x(i))} ${r1(y(v))}`).join(''), bot = lo.map((v, i) => `L${r1(x(i))} ${r1(y(v))}`).reverse().join('');
+      s += `<path d="${top}${bot}Z" style="fill:${tv(g.t)}"><title>${g.nm} · ${P(g.v)}</title></path><path d="${top}" style="fill:none;stroke:${edge(g.t)};stroke-width:1.5"/>`; });
+    WEEKS.forEach((wk, i) => wk[0].dt.getDate() <= 7 && (s += tx(x(i), H - 5, MON[wk[0].dt.getMonth()], 'ax', i ? 'middle' : 'start')));
+    h.innerHTML = svg(W, H, s); }
+
+  // ================= Calendars =================
+  const TG = V.dailyTarget;
+  // H3-14 26-week calendar: at target / under / Sunday
+  { const el = $(14), kind = d => d.today ? -1 : d.dow === 0 ? 2 : d.net >= TG ? 0 : 1;
+    const KS = [{ nm: `${K(TG)} or more`, t: 't3' }, { nm: `Under ${K(TG)}`, t: 't6' }, { nm: 'Sundays', t: 't8' }];
+    KS.forEach((k, j) => { const ds = DAYS.filter(d => kind(d) === j); k.n = ds.length; k.v = sum(ds, d => d.net); });
+    el.innerHTML = band('Days at the daily target', 'Last 26 weeks') + '<div class="vh-plot"></div>'
+      + rows(KS.map(k => row(pill(k.t, k.nm), N(k.n + ' days') + A(P(k.v)))).join('') + row('Total · today not counted', N(sum(KS, k => k.n) + ' days') + A(P(sum(KS, k => k.v))), 'total'));
+    const [h, W] = plotOf(el), L = 30, Tp = 18, nc = WEEKS.length, cs = Math.min(20, Math.floor((W - L) / nc) - 3), st = cs + 3;
+    let s = '';
+    WD.forEach((t, r) => r % 2 === 0 && r < 6 && (s += tx(0, Tp + r * st + cs - 4, t, 'ax', 'start')));
+    DAYS.forEach((d, i) => { const c = Math.floor(i / 7), r = i % 7, k = kind(d);
+      if (r === 0 && d.dt.getDate() <= 7) s += tx(L + c * st, 11, MON[d.dt.getMonth()], 'ax', 'start');
+      s += `<rect x="${L + c * st}" y="${Tp + r * st}" width="${cs}" height="${cs}" rx="4" style="fill:${k < 0 ? 'var(--raised)' : tv(KS[k].t)}${k < 0 ? ';stroke:var(--ink-5);stroke-dasharray:2 2' : ''}"><title>${wdOf(d.dt)} ${md(d.dt)} · ${d.today ? 'today' : P(d.net)}</title></rect>`; });
+    h.innerHTML = svg(L + nc * st, Tp + 7 * st, s); }
+
+  // H3-15 October month view: each day vs the same weekday a week before
+  { const el = $(15), oct = DAYS.filter(d => d.dt.getMonth() === 9), lead = (oct[0].dt.getDay() + 6) % 7, up = { n: 0, v: 0 }, dn = { n: 0, v: 0 };
+    let g = WD.map(w => `<span>${w}</span>`).join('') + '<i></i>'.repeat(lead);
+    oct.forEach(d => { if (d.today) return void (g += `<div class="today"><span>${d.dt.getDate()}</span><b>&nbsp;</b><em>Today</em></div>`);
+      const p = DAYS[DAYS.indexOf(d) - 7], c = (d.net / p.net - 1) * 100, u = c >= 0, o = u ? up : dn; o.n++; o.v += d.net;
+      g += `<div style="background:var(--${u ? 'up' : 'down'}-soft)" title="${wdOf(d.dt)} ${md(d.dt)} · ${P(d.net)} · ${md(p.dt)} was ${P(p.net)}"><span>${d.dt.getDate()}</span><b>${K(d.net)}</b><em class="cmp ${u ? 'up' : 'down'}">${u ? '+' : '−'}${Math.abs(c).toFixed(0)}%</em></div>`; });
+    el.innerHTML = band('Net sales by day', 'October · vs the same day a week before') + big(P(up.v + dn.v), '<span class="vh-q">net in October so far</span>') + `<div class="vh-mon">${g}</div>`
+      + rows(row('<span class="badge vh-upb">Up on the week before</span>', N(up.n + ' days') + A(P(up.v))) + row('<span class="badge vh-dnb">Down on the week before</span>', N(dn.n + ' days') + A(P(dn.v)))); }
+
+  // ================= Rings =================
+  const pt = (cx, cy, r, a) => `${r1(cx + r * Math.cos(a))} ${r1(cy + r * Math.sin(a))}`;
+  const sector = (cx, cy, r0, r1_, a0, a1) => { const l = a1 - a0 > Math.PI ? 1 : 0;
+    return `M${pt(cx, cy, r1_, a0)}A${r1_} ${r1_} 0 ${l} 1 ${pt(cx, cy, r1_, a1)}L${pt(cx, cy, r0, a1)}A${r0} ${r0} 0 ${l} 0 ${pt(cx, cy, r0, a0)}Z`; };
+  // rounded segments: the sector is drawn 3px smaller and stroked 6px round in its own tint, so corners round off; gap ~3px
+  const segRing = (cx, cy, r0, r1_, list, gap = 3, rc = 3) => { const t = sum(list, x => x.v), rm = (r0 + r1_) / 2; let a = -Math.PI / 2;
+    return list.map(x => { const s = x.v / t * 2 * Math.PI, g = (gap / 2 + rc) / rm, a0 = a + g, a1 = a + s - g; a += s;
+      return a1 <= a0 ? '' : `<path d="${sector(cx, cy, r0 + rc, r1_ - rc, a0, a1)}" style="fill:${tv(x.t)};stroke:${tv(x.t)};stroke-width:${2 * rc};stroke-linejoin:round"><title>${esc(x.tip)}</title></path>`; }).join(''); };
+
+  // H3-16 payments, segmented ring
+  { const PM = V.payments.map(p => ({ nm: p.m, t: p.key, v: p.amt, n: p.n })), PT = sum(PM, x => x.v), PN = sum(PM, x => x.n);
+    PM.forEach(x => x.tip = `${x.nm} · ${x.n} payments · ${P(x.v)} · ${pc(x.v, PT)}`);
+    const S = 168, c = S / 2;
+    $(16).innerHTML = band('Payment methods', 'Last 7 days') + `<div class="vh-split">${svg(S, S, segRing(c, c, c - 24, c, PM) + tx(c, c + 3, P(PT), 'vh-c1') + tx(c, c + 20, PN + ' payments', 'vh-c2'))}`
+      + rows(PM.map(x => row(pill(x.t, x.nm), A(P(x.v)) + Pc(pc(x.v, PT)))).join('') + row('Total', A(P(PT)) + Pc(''), 'total')) + '</div>'; }
+
+  // H3-17 staff, two rings: net sales outside, orders inside
+  { const ST = V.staff.map((s, i) => ({ nm: s.name, t: 't' + (i + 1), v: s.amt, n: s.n })), SV = sum(ST, s => s.v), SN = sum(ST, s => s.n);
+    const S = 172, c = S / 2;
+    const outer = segRing(c, c, c - 22, c, ST.map(s => ({ ...s, tip: `${s.nm} · ${P(s.v)} · ${pc(s.v, SV)} of net` })));
+    const inner = segRing(c, c, c - 46, c - 26, ST.map(s => ({ ...s, v: s.n, tip: `${s.nm} · ${s.n} orders · ${pc(s.n, SN)} of orders` })));
+    $(17).innerHTML = band('Staff', 'Last 7 days') + `<div class="vh-ringc">${svg(S, S, outer + inner + `<text class="vh-c1" x="${c}" y="${c + 2}" text-anchor="middle" style="font-size:15px">${K(SV)}</text>` + tx(c, c + 16, SN + ' orders', 'vh-c2'))}</div>`
+      + rows(row('', '<span class="vh-n">Orders</span><span class="vh-p">inside</span><span class="vh-a">Net sales</span><span class="vh-p">outside</span>', 'vh-hd')
+        + ST.map(s => row(pill(s.t, s.nm), N(s.n) + Pc(pc(s.n, SN)) + A(P(s.v)) + Pc(pc(s.v, SV)))).join('')
+        + row('Total', N(SN) + Pc('') + A(P(SV)) + Pc(''), 'total')); }
+
+  // ================= Targets =================
+  // H3-18 month target; even pace = the goal spread evenly over October's 31 days, through yesterday (Oct 17)
+  { const M = V.monthTarget, thru = 17, pace = M.goal * thru / 31;
+    $(18).innerHTML = band('Month target', 'October') + big(P(M.done), `<span class="vh-q">of ${P(M.goal)} · ${pc(M.done, M.goal)}</span>`)
+      + `<div class="vh-bul" title="Done · ${P(M.done)}"><i style="width:${M.done / M.goal * 100}%"></i><s style="left:${thru / 31 * 100}%"></s><em style="left:${thru / 31 * 100}%">Even pace · ${K(pace)}</em></div>`
+      + rows(row(pill('t3', 'Done'), A(P(M.done)) + Pc(pc(M.done, M.goal))) + row(pill('t8', 'Still to go'), A(P(M.goal - M.done)) + Pc(pc(M.goal - M.done, M.goal)))
+        + row(`Even pace by Oct ${thru}`, A(P(pace)) + dK(M.done - pace)) + row('Goal', A(P(M.goal)) + Pc(''), 'total')); }
+
+  // H3-19 daily target: a bar per day, ₱60k mark through all of them
+  { const top = nice(Math.max(...V.week.map(w => w.net)), 4) * 4, m = TG / top * 100, hit = WK.filter(w => w.net >= TG).length;
+    $(19).innerHTML = band('Daily target', `${K(TG)} a day · this week`) + big(`${hit} of ${WK.length}`, `<span class="vh-q">days at ${K(TG)} or more</span>`)
+      + '<div style="padding-top:6px">' + `<div class="vh-dr ax"><span></span><span class="vh-dt0"><em style="left:${m}%">${K(TG)}</em></span><b></b><span class="vh-ch"></span></div>`
+      + V.week.map(w => `<div class="vh-dr"><span>${w.d}</span><span class="vh-dt" title="${w.d} · ${w.now ? 'today' : P(w.net)}"><i style="width:${w.net / top * 100}%;background:${tv(w.net >= TG ? 't3' : 't6')}"></i><s style="left:${m}%"></s></span>`
+        + (w.now ? '<b class="vh-q" style="font-weight:400">Today</b><span class="vh-ch"></span>' : `<b>${P(w.net)}</b>${dK(w.net - TG)}`) + '</div>').join('')
+      + `<div class="vh-dr total"><span>Week</span><span class="vh-q" style="flex:1">vs ${P(TG * WK.length)} for ${WK.length} days</span><b>${P(TW)}</b>${dK(TW - TG * WK.length)}</div></div>`; }
+
+  // ================= Ranked =================
+  // H3-20 top items, the bar fills the row behind the name
+  { const IT = V.topItems, mx = IT[0].amt;
+    $(20).innerHTML = band('Top items', 'Net sales · last 30 days') + `<div class="vh-key">${pill('t1', 'Cement')}${pill('t2', 'Fasteners')}</div>`
+      + rows(IT.map(i => `<div class="row" title="${esc(i.name)} · ${i.cat} · ${P(i.amt)}"><span class="vh-ib"><i style="width:calc(${(i.amt / mx * 100).toFixed(2)}% + 6px);background:${tv(CAT_T[i.cat])}"></i><span>${esc(i.name)}</span></span>${A(P(i.amt))}</div>`).join(''))
+      + foot('See all in Items →'); }
+
+  // ranked tint bars (value at the bar end) on a light 4-step scale; right = the cell after the track
+  const rank = (list, bars, right, top) => '<div class="vh-rank">' + list.map(x => `<div class="vh-rk${bars(x).length > 1 ? ' two' : ''}" title="${esc(x.tip)}"><span class="vh-rl">${pill(x.t, x.nm)}</span><span class="vh-trk">`
+      + bars(x).map(b => `<span class="vh-bb"><i style="width:${(b.v / top * 100).toFixed(2)}%;background:${b.fill}"></i><b class="${b.q ? 'q' : ''}">${K(b.v)}</b></span>`).join('') + `</span>${right(x)}</div>`).join('')
+    + `<div class="vh-rk ax"><span class="vh-rl"></span><span class="vh-trk">${[0, 1, 2, 3, 4].map(k => `<span class="ax2" style="left:calc((100% - 64px) * ${k / 4})">${k ? K(k * top / 4) : '0'}</span>`).join('')}</span>${right(null)}</div></div>`;
+
+  // H3-21 B2-9 without the percent
+  $(21).innerHTML = catBand + rank(C7, x => [{ v: x.v, fill: tv(x.t) }], () => '', nice(C7[0].v, 4) * 4) + catFoot;
+
+  // H3-22 before → after: the 30 days before (grey) over the last 30 days (tint), chip last
+  { const top = nice(Math.max(...C7.flatMap(c => [c.v, c.prev])), 4) * 4;
+    $(22).innerHTML = band('Categories', 'Last 30 days vs 30 before') + '<div class="vh-key"><i style="background:var(--t8)"></i>The 30 days before, over the last 30 days in the category tint</div>'
+      + rank(C7, x => [{ v: x.prev, fill: 'var(--t8)', q: 1 }, { v: x.v, fill: tv(x.t) }], x => x ? chg(x.v, x.prev) : '<span class="vh-ch" style="display:inline-block"></span>', top)
+      + rows(row('Total', A(P(CT)) + chg(CT, sum(C7, c => c.prev)), 'total')) + catFoot; }
+})();</script>

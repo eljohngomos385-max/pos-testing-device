@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Modifiers Blind Test</title>
+<!-- 2026-10-23: five first-time testers (screen only, no code, iPhone size) on modifiers: food t1..t3, hardware h1..h2. Pictures in img/modifiers-blind/<tester>. -->
+<style>
+  :root { --bg: #111; --surface: #1c1c1e; --line: #2c2c2e; --ink: #fff; --ink-2: #a1a1a6; --ok: #34c759; --warn: #ff9f0a; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #f2f2f7; --surface: #fff; --line: #e5e5ea; --ink: #1c1c1e; --ink-2: #6e6e73; --ok: #248a3d; --warn: #c93400; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 Inter, system-ui, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--ink-2); margin: 0 0 32px; }
+  h3 { font-size: 15px; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; margin: 32px 0 12px; }
+  section { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
+  h2 { font-size: 19px; margin: 0 0 4px; }
+  section > p { color: var(--ink-2); margin: 0 0 12px; }
+  section > p.take { font-weight: 600; margin-bottom: 16px; }
+  .take.fix { color: var(--warn); }
+  .take.leave { color: var(--ink-2); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 280px)); gap: 16px; }
+  figure { margin: 0; }
+  figcaption { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--ink-2); }
+  img { display: block; width: 100%; border-radius: 16px; border: 1px solid var(--line); cursor: zoom-in; }
+  ul, ol { margin: 0; padding-left: 20px; color: var(--ink-2); }
+  li { margin: 4px 0; }
+  .c { display: grid; grid-template-columns: 200px 1fr; gap: 16px; padding: 16px 0; border-top: 1px solid var(--line); }
+  .c p { margin: 0 0 6px; color: var(--ink-2); }
+  .c p b { color: var(--ink); font-weight: 600; }
+  .c p.take { color: var(--ok); font-weight: 600; margin-top: 8px; }
+  .bug { color: var(--warn); font-weight: 600; }
+  .q li { margin: 0 0 14px; }
+  .q b { color: var(--ink); font-weight: 600; display: block; }
+  .n { display: inline-block; min-width: 26px; padding: 1px 7px; margin-right: 8px; border-radius: 99px; background: var(--ink); color: var(--surface); font-size: 13px; font-weight: 700; text-align: center; vertical-align: 2px; }
+  .c p.take.todo { color: var(--warn); }
+  .c p.take.done { color: var(--ok); }
+  .pick { color: var(--ok); font-weight: 600; }
+  @media (max-width: 560px) { .c { grid-template-columns: 1fr; } .c figure { max-width: 240px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Blind test: modifiers</h1>
+  <p class="sub">Five first-time users, iPhone size, screen only. The three food testers finished every task; of the two hardware testers, one finished and one got stuck at the start. Below: where they got stuck, and the change that would have helped. Findings are numbered 1–35. Green = fixed or not a bug; orange = not done yet. Tap a picture to open it. Your yes or no is at the bottom.</p>
+
+  <h3>Stuck in more than one test</h3>
+  <section>
+    <h2><span class="n">1</span>2 of 3: the menu and Settings have no words</h2>
+    <p>☰ top-left and the gear in the menu are icons only. Both guessed.</p>
+    <p class="take fix">Fix: the gear reads “Settings”; ☰ and the gear get a name for screen readers.</p>
+    <div class="pair">
+      <figure><figcaption>Tester 1</figcaption><a href="img/modifiers-blind/t1/01-menu.png" target="_blank"><img src="img/modifiers-blind/t1/01-menu.png" alt="Menu, tester 1"></a></figure>
+      <figure><figcaption>Tester 2</figcaption><a href="img/modifiers-blind/t2/02-menu.png" target="_blank"><img src="img/modifiers-blind/t2/02-menu.png" alt="Menu, tester 2"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2><span class="n">2</span>2 of 3: a page with only Back felt unsaved</h2>
+    <p>Add choice has only ←. The item’s Sweetness switches look kept, but a reload drops them until the item’s Save.</p>
+    <p class="take fix">Fix: Back keeps the change on every sub-page, and the item page shows “Not saved yet” beside Save.</p>
+    <div class="pair">
+      <figure><figcaption>Tester 1: Add choice</figcaption><a href="img/modifiers-blind/t1/09-cup-add-choice.png" target="_blank"><img src="img/modifiers-blind/t1/09-cup-add-choice.png" alt="Add choice"></a></figure>
+      <figure><figcaption>Tester 2: back to “All 5 choices”</figcaption><a href="img/modifiers-blind/t2/19-bs-modifiers-recheck.png" target="_blank"><img src="img/modifiers-blind/t2/19-bs-modifiers-recheck.png" alt="Reverted after reload"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2><span class="n">3</span>2 of 3: a turned-off choice doesn’t say where or why</h2>
+    <p>Tester 2 couldn’t find which drinks hide 0% a week later. Tester 3 tapped greyed Pearls and nothing happened.</p>
+    <p class="take fix">Fix: the Sweetness row says “0% hidden on 1 item”; tapping an out choice says “Pearls is out”.</p>
+    <div class="pair">
+      <figure><figcaption>Tester 2: no hint on Sweetness</figcaption><a href="img/modifiers-blind/t2/08-modifiers.png" target="_blank"><img src="img/modifiers-blind/t2/08-modifiers.png" alt="Modifiers tab"></a></figure>
+      <figure><figcaption>Tester 3: tap does nothing</figcaption><a href="img/modifiers-blind/t3/20-tap-pearls-when-out.png" target="_blank"><img src="img/modifiers-blind/t3/20-tap-pearls-when-out.png" alt="Tap Pearls when out"></a></figure>
+    </div>
+  </section>
+
+  <h3>Tester 1 · milk tea shop, new “Cup” question</h3>
+  <section>
+    <h2>Make Cup (Regular / Tumbler +₱10), sell a Large with answers, change 25% in the cart, pay cash</h2>
+    <p>Finished all 4. Cart ₱185 = 160 + 15 + 10, right. Receipt shows Sweetness 25%.</p>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t1/03-business-type.png" target="_blank"><img src="img/modifiers-blind/t1/03-business-type.png" alt="Business type"></a></figure>
+      <div><span class="n">4</span><p><b>Expected</b> Business type near the top of Settings.</p><p><b>Happened</b> Below Appearance and Printing, off screen.</p><p class="take todo">Fix: a new store is asked “What do you sell?” on first open.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t1/25-added-to-cart.png" target="_blank"><img src="img/modifiers-blind/t1/25-added-to-cart.png" alt="Hardware items beside teas"></a></figure>
+      <div><span class="n">5</span><p><b>Expected</b> A food shop sees food only.</p><p><b>Happened</b> 30+ hardware samples (Cement, PVC Elbows) stayed next to the teas.</p><p class="take todo">Fix: picking Food hides the hardware samples.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t1/00-start.png" target="_blank"><img src="img/modifiers-blind/t1/00-start.png" alt="Highlighted tile"></a></figure>
+      <div><span class="n">6</span><p><b>Expected</b> Nothing lit up until tapped.</p><p><b>Happened</b> “Pipe Cutting &amp; Threading” lit from the start.</p><p class="take todo">Fix: no tile lit on open.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t1/17-after-save.png" target="_blank"><img src="img/modifiers-blind/t1/17-after-save.png" alt="Summary without price"></a></figure>
+      <div><span class="n">7</span><p><b>Expected</b> The price in the list.</p><p><b>Happened</b> “Regular, Tumbler”, no +₱10.</p><p class="take done">Fixed: the list reads “Regular, Tumbler +₱10.00”.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t1/21-ice-less.png" target="_blank"><img src="img/modifiers-blind/t1/21-ice-less.png" alt="Question advances on tap"></a></figure>
+      <div><span class="n">8</span><p><b>Expected</b> A clear next step on every question.</p><p><b>Happened</b> Pick one jumps on the tap; Toppings needs Next. Couldn’t tell which.</p><p class="take todo">Fix: a small “Pick 1, goes on by itself” under single-pick titles.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t1/33-cart-after-edit.png" target="_blank"><img src="img/modifiers-blind/t1/33-cart-after-edit.png" alt="Two Done labels"></a></figure>
+      <div><span class="n">9</span><p><b>Expected</b> One Done.</p><p><b>Happened</b> “Done · ₱185.00” on the question, “Done” on the line.</p><p class="take done">Fixed: the question’s button reads “Done” too.</p></div>
+    </div>
+  </section>
+
+  <h3>Tester 2 · hide 0% on one drink</h3>
+  <section>
+    <h2>Hide 0% on Brown Sugar only, check two drinks, a week later find it and bring it back</h2>
+    <p>Finished all 3. Matcha kept 0%, Brown Sugar didn’t, once the item was saved.</p>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t2/10-sweet-0pct.png" target="_blank"><img src="img/modifiers-blind/t2/10-sweet-0pct.png" alt="Choice status"></a></figure>
+      <div><span class="n">10</span><p><b>Expected</b> “Hide on one item” where Sweetness is set up.</p><p><b>Happened</b> Only Available / Unavailable, which is every item. Backed out.</p><p class="take todo">Fix: under Status, “Every item. To hide on one item, open the item.”</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t2/12-bs-modifiers.png" target="_blank"><img src="img/modifiers-blind/t2/12-bs-modifiers.png" alt="Item modifiers row"></a></figure>
+      <div><span class="n">11</span><p><b>Expected</b> The item says it can hide choices.</p><p><b>Happened</b> “Sweetness, Ice +1”, no sign of a hidden one.</p><p class="take todo">Fix: the item’s row reads “Sweetness (4 of 5), Ice +1”.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t2/23-bs-medium-after-save.png" target="_blank"><img src="img/modifiers-blind/t2/23-bs-medium-after-save.png" alt="Sell after save"></a></figure>
+      <div><span class="n">12</span><p><b>Expected</b> Sell follows the switch.</p><p><b>Happened</b> 0% still sold until the item’s Save (same cause as “felt unsaved” above).</p><p class="take todo">Fix: same as above.</p></div>
+    </div>
+  </section>
+
+  <h3>Tester 3 · out of Pearls, discount, refund, report</h3>
+  <section>
+    <h2>Pearls out from Sell, put back, two drinks with 10% off one, refund one, top topping</h2>
+    <p>Finished all 6. Answer to the last: Nata, 1 (the refund took Pearls and Pudding off).</p>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t3/15-pearls-menu.png" target="_blank"><img src="img/modifiers-blind/t3/15-pearls-menu.png" alt="Hold menu"></a></figure>
+      <div><span class="n">13</span><p><b>Expected</b> The menu names the topping.</p><p><b>Happened</b> “Unavailable” covered the Pearls row. No word on how long.</p><p class="take done">Fixed: the menu opens beside the row, so the name stays in sight. The toast wording is not done yet.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t3/17-error.png" target="_blank"><img src="img/modifiers-blind/t3/17-error.png" alt="Menu says Available"></a></figure>
+      <div><span class="n">14</span><p><b>Expected</b> The same menu every time.</p><p><b>Happened</b> It flips to “Available”; nearly undid it.</p><p class="take todo">Fix: the words name the next step: “Mark out” / “Back in stock”.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t3/45-discount-10-typed.png" target="_blank"><img src="img/modifiers-blind/t3/45-discount-10-typed.png" alt="Keypad 0 hidden"></a></figure>
+      <div><span class="n">15</span><p><b>Expected</b> Tap 1, 0, Apply.</p><p><b>Happened</b> The 0 key is under Clear discount / Apply. Had to scroll.</p><p class="take done">Fixed: the keypad sits fully above the footer on a phone.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t3/47-discount-keyboard-10.png" target="_blank"><img src="img/modifiers-blind/t3/47-discount-keyboard-10.png" alt="Keyboard ignored"></a></figure>
+      <div><span class="n">16</span><p><b>Expected</b> Typing 10 works.</p><p><b>Happened</b> Keyboard digits ignored; stayed 1%.</p><p class="take done">Fixed: keyboard digits and Enter go into the keypad.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t3/50-discount-applied.png" target="_blank"><img src="img/modifiers-blind/t3/50-discount-applied.png" alt="Apply at 0"></a></figure>
+      <div><span class="n">17</span><p><b>Expected</b> Apply keeps the discount.</p><p><b>Happened</b> At 0% it closed with Discount: None, no word.</p><p class="take done">Fixed: Apply is greyed at 0%.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t3/65-refund-matcha-ticked.png" target="_blank"><img src="img/modifiers-blind/t3/65-refund-matcha-ticked.png" alt="Refund list"></a></figure>
+      <div><span class="n">18</span><p><b>Expected</b> The drink at what was paid, ₱184.50.</p><p><b>Happened</b> The list says ₱205.00, the button ₱184.50.</p><p class="take done">Fixed: the tick list shows the paid amount, ₱184.50.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/t3/71-reports-scrolled.png" target="_blank"><img src="img/modifiers-blind/t3/71-reports-scrolled.png" alt="Reports Modifiers"></a></figure>
+      <div><span class="n">19</span><p><b>Expected</b> Every topping with a count.</p><p><b>Happened</b> Six screens down, one top choice per modifier, ties hidden, no tap-through.</p><p class="take done">Not a bug: it lists every choice; only one drink was left after the refund.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Bugs the food testers found</h2>
+    <ul>
+      <li><span class="bug">Money:</span> refunded ₱184.50, but Reports shows Refunds −₱205.00 and Discounts ₱0.00 (the sale had −₱20.50). Tester 3.</li>
+      <li>Item › Modifiers › Sweetness switches are lost on reload until the item’s Save, and Sell still offers 0% until then. Tester 2.</li>
+      <li>Discount keypad: 0 key under the footer; keyboard digits ignored; Apply at 0% clears quietly. Tester 3.</li>
+      <li>Business type Food keeps the hardware samples on Sell and Items. Tester 1.</li>
+      <li>“Pipe Cutting &amp; Threading” tile lit on open. Tester 1.</li>
+      <li>Modifiers list hides choice prices (“Regular, Tumbler”). Tester 1.</li>
+      <li>Two labels for one Done (“Done · ₱185.00” and “Done”). Tester 1.</li>
+      <li>Reports › Modifiers: one top choice per modifier, ties hidden, no tap-through. Tester 3.</li>
+      <li>The hold menu covers the choice’s name. Tester 3.</li>
+      <li>☰ and the gear have no name. Testers 1 and 2.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>Worked</h2>
+    <ul>
+      <li>Make a modifier, add choices with prices, put it on one item.</li>
+      <li>Answers in order, prices add up right (₱185), Add shows the total.</li>
+      <li>Change answers from the cart line; the receipt follows.</li>
+      <li>Hide 0% on one drink; other drinks keep it.</li>
+      <li>Pearls out from Sell, can’t be picked, back in.</li>
+      <li>Refund one drink of two, at the paid amount.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>Not the app</h2>
+    <ul>
+      <li>Tester 1’s browser failed to start once (an old profile), and a Cash tap by name timed out in its script; a tap on the spot worked.</li>
+    </ul>
+  </section>
+
+  <h3>Tester h1 · hardware store, “Cut?” on PVC pipe</h3>
+  <section>
+    <h2>Make Cut? (No cut / Cut in half / Custom cut +₱20), sell 2 custom + 1 no cut, change one to half, pay cash</h2>
+    <p>Finished all 4. Cart ₱455 = 145 + 145 + 165. Receipt: one line per pipe, each with its own cut.</p>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h1/12-asked-on-search-pvc.png" target="_blank"><img src="img/modifiers-blind/h1/12-asked-on-search-pvc.png" alt="Asked on picker"></a></figure>
+      <div><span class="n">20</span><p><b>Expected</b> Put “Cut?” on the pipe only.</p><p><b>Happened</b> Asked on lists whole items. “PVC Pipes &amp; Tees” holds both the pipe and the tee; no way to pick just the pipe. Left PVC Elbows off, unsure.</p><p class="take todo">Fix: Asked on lists each kind (Pipe 1/2 x 3m, Tee 1/2), so a question can go on one. Your call, question 1.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h1/43-tee-variant-question.png" target="_blank"><img src="img/modifiers-blind/h1/43-tee-variant-question.png" alt="Tee asks Cut"></a></figure>
+      <div><span class="n">21</span><p><b>Expected</b> A tee isn’t cut, so no question.</p><p><b>Happened</b> Tapping Tee 1/2 asks “Cut??” too.</p><p class="take todo">Fix: same as above.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h1/17-after-pipe-variant.png" target="_blank"><img src="img/modifiers-blind/h1/17-after-pipe-variant.png" alt="Cut?? title"></a></figure>
+      <div><span class="n">22</span><p><b>Expected</b> The title reads “Cut?”, as typed.</p><p><b>Happened</b> It reads “Cut??”.</p><p class="take done">Fixed: no second “?” when the name already ends in one, on Sell and the receipt.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h1/22-cart-open.png" target="_blank"><img src="img/modifiers-blind/h1/22-cart-open.png" alt="Cart kept after reload"></a></figure>
+      <div><span class="n">23</span><p><b>Expected</b> Not sure the cart would stay.</p><p><b>Happened</b> The cart stayed after a reload with no sign. Added the pipes again: 3 cut pipes, ₱495, not 2.</p><p class="take todo">Fix: on reopen, a short “Cart still open · 3 items”. Question 11.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h1/33-after-change-half.png" target="_blank"><img src="img/modifiers-blind/h1/33-after-change-half.png" alt="Line of 2 changed"></a></figure>
+      <div><span class="n">24</span><p><b>Expected</b> Change one pipe’s cut, leave the other.</p><p><b>Happened</b> “2 × ₱165 Cut?: Custom cut” → Cut in half changed both, ₱290.</p><p class="take todo">Fix: changing a line of 2 asks “Just one or both?”; Just one splits the line. Question 2.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h1/35-cart-final-three.png" target="_blank"><img src="img/modifiers-blind/h1/35-cart-final-three.png" alt="Final cart"></a></figure>
+      <div><span class="n">25</span><p><b>Expected</b> A simple “one of these is now Cut in half”.</p><p><b>Happened</b> Set the line to 1, changed it, re-added a Custom cut. Works, many taps.</p><p class="take todo">Fix: same as above.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h1/19-after-add-1.png" target="_blank"><img src="img/modifiers-blind/h1/19-after-add-1.png" alt="Lit tile"></a></figure>
+      <div><span class="n">26</span><p><b>Expected</b> A plain tile.</p><p><b>Happened</b> “Pipe Cutting &amp; Threading” lit teal all session. Selected? Stuck? Same as Tester 1.</p><p class="take todo">Fix: no tile lit on open (not done yet).</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h1/42-receipt.png" target="_blank"><img src="img/modifiers-blind/h1/42-receipt.png" alt="Receipt"></a></figure>
+      <div><span class="n">27</span><p><b>Expected</b> Each pipe’s cut is clear.</p><p><b>Happened</b> Three lines, each with its own cut, so yes. “Cut?:” reads oddly; no pipe numbers.</p><p class="take done">Fixed: the receipt reads “Cut: Custom cut”.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h1/39-receipt.png" target="_blank"><img src="img/modifiers-blind/h1/39-receipt.png" alt="Receipt after sale"></a></figure>
+      <div><span class="n">28</span><p><b>Expected</b> Show receipt stays reachable.</p><p><b>Happened</b> After a reload, Sell was back and Show receipt was gone. Didn’t try Orders.</p><p class="take done">No fix: none needed: Orders keeps every sale with its receipt.</p></div>
+    </div>
+  </section>
+
+  <h3>Tester h2 · hardware store, “Assembly” on big items</h3>
+  <section>
+    <h2>Make Assembly (No / Assemble +₱150) on 2–3 big items, hide it on one, sell, refund, count Assemble</h2>
+    <p>Stuck at step 1: couldn’t find where items or modifiers are set up, so steps 2–5 weren’t tried.</p>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h2/16b-add-tile.png" target="_blank"><img src="img/modifiers-blind/h2/16b-add-tile.png" alt="Items as My page"></a></figure>
+      <div><span class="n">29</span><p><b>Expected</b> Somewhere to set up Assembly from Items or Settings.</p><p><b>Happened</b> Items showed only “My page” with + Add tile. Settings has no Items or Modifiers.</p><p class="take todo">Fix: on a phone, Sell and Items open on All items, so Items › Modifiers is in sight (Tester h1 got there this way). Question 3.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h2/19b-item-picker.png" target="_blank"><img src="img/modifiers-blind/h2/19b-item-picker.png" alt="Item picker"></a></figure>
+      <div><span class="n">30</span><p><b>Expected</b> Pick an item, then edit it, or make a new one.</p><p><b>Happened</b> The picker only places a tile. “wheelbarrow”: No items, no way to make one.</p><p class="take todo">Fix: holding an item offers Edit item (below). Question 4.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h2/12b-grid-scrolled2.png" target="_blank"><img src="img/modifiers-blind/h2/12b-grid-scrolled2.png" alt="Sell grid"></a></figure>
+      <div><span class="n">31</span><p><b>Expected</b> A wheelbarrow, cabinet or ladder.</p><p><b>Happened</b> 18 small tiles. ladder, wheel, cab, tool, shelf: nothing. Closest: Aluminum Level 24″.</p><p class="take done">No fix: none in the app: the demo store has no big items. The next test names one.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h2/11-sell-before-switch.png" target="_blank"><img src="img/modifiers-blind/h2/11-sell-before-switch.png" alt="Switch off screen"></a></figure>
+      <div><span class="n">32</span><p><b>Expected</b> A switch between All items and My page.</p><p><b>Happened</b> Only ☰ and Search. The switch sits off screen; Sell showed an empty My page until flipped with code.</p><p class="take todo">Fix: the switch is in sight on a phone, and Sell opens on All items. Question 3.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h2/15b-hold-screwdriver.png" target="_blank"><img src="img/modifiers-blind/h2/15b-hold-screwdriver.png" alt="Hold card"></a></figure>
+      <div><span class="n">33</span><p><b>Expected</b> Edit or Modifiers on hold.</p><p><b>Happened</b> A card with name, stock, price. No edit.</p><p class="take todo">Fix: the hold card gets Edit item. Question 4.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h2/23-back-office.png" target="_blank"><img src="img/modifiers-blind/h2/23-back-office.png" alt="Back office 404"></a></figure>
+      <div><span class="n">34</span><p><b>Expected</b> Back office opens.</p><p><b>Happened</b> A new tab with 404 Not Found (/pos-lab/backoffice.html).</p><p class="take todo">Fix: the link goes to the real back office.</p></div>
+    </div>
+    <div class="c">
+      <figure><a href="img/modifiers-blind/h2/26-settings.png" target="_blank"><img src="img/modifiers-blind/h2/26-settings.png" alt="Business type Retail"></a></figure>
+      <div><span class="n">35</span><p><b>Expected</b> Hardware store.</p><p><b>Happened</b> Business type says Retail, header says EJ Hardware.</p><p class="take done">No fix: no change: Retail is the hardware store’s type (there are Retail and Food only).</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Bugs the hardware testers found</h2>
+    <ul>
+      <li>Title says “Cut??” for a question named “Cut?”. Tester h1. Fixed.</li>
+      <li>A question on an item asks on every kind of it (Tee asks Cut). Tester h1.</li>
+      <li>Changing a line of 2 changes both; no way to change one. Tester h1.</li>
+      <li>Cart kept after a reload with no sign. Tester h1.</li>
+      <li>“Pipe Cutting &amp; Threading” lit all session. Testers h1 and 1.</li>
+      <li>Menu › Back office opens a 404. Tester h2.</li>
+      <li>The All items / My page switch is off screen on a phone; Sell and Items look empty on My page. Tester h2.</li>
+      <li>A tap in Add tile › Item put Claw Hammer in the cart. Tester h2.</li>
+    </ul>
+  </section>
+
+  <h3>Fixed since the food test</h3>
+  <section>
+    <h2>7 checked, 5 changed</h2>
+    <p>“Was there before” = the bug was already in the app before modifiers.</p>
+    <ul>
+      <li>Refund in Reports: not a bug. Refunds counts the full ₱205 and gives the ₱20.50 discount back; Net ₱155 is the drink kept. A check now guards it. Was there before.</li>
+      <li>Refund tick list shows what Refund gives back (₱184.50), not the list price. Was there before.</li>
+      <li>Discount keypad: the 0 key sits above the footer, keyboard digits and Enter work, Apply is greyed at 0. The 0 under the footer came with modifiers; keyboard and Apply at 0 were there before.</li>
+      <li>The hold menu opens from the row’s right end, so the choice name stays visible. New with modifiers.</li>
+      <li>Reports › Modifiers: not a bug. It lists every choice; Tester 3 had one drink left after the refund. New with modifiers.</li>
+      <li>Modifier rows show prices: “Pearls +₱15.00, Nata +₱15.00”. New with modifiers.</li>
+      <li>Changing a cart line’s answers says “Done”, not “Done · ₱205.00”. New with modifiers.</li>
+    </ul>
+  </section>
+
+  <h3>Your yes or no</h3>
+  <section>
+    <h2>12 questions, most important first</h2>
+    <p>Green = my pick. Smaller ones left out: a “Pick 1, goes on by itself” hint, “Cut:” instead of “Cut?:” on the receipt, more items on Sell.</p>
+    <ol class="q">
+      <li><b>Should you be able to put a question on just one kind of an item, so the pipe asks “Cut?” and the tee doesn’t?</b><span class="pick">Yes. A tee can’t be cut.</span> · h1 (h2’s task needs it too)</li>
+      <li><b>When the customer changes one of 2 pipes on a line, should the POS ask “Just one or both?”</b><span class="pick">Yes. Saves the re-add workaround.</span> · h1</li>
+      <li><b>On a phone, should Sell and Items always open on All items, with the My page switch in sight?</b><span class="pick">Yes. Empty My page looked broken.</span> · h2</li>
+      <li><b>Should holding an item on Sell offer “Edit item”?</b><span class="pick">Yes. Owner looked there first.</span> · h2</li>
+      <li><b>Should an item’s choice switches save at once, instead of waiting for the item’s Save?</b><span class="pick">Yes. Two testers lost changes.</span> · t1, t2</li>
+      <li><b>Should a Food store hide the hardware demo items?</b><span class="pick">Yes. 30+ pipes beside the teas.</span> · t1</li>
+      <li><b>Should the ☰ and gear buttons show a word next to them?</b><span class="pick">Yes. 2 of 3 had to guess.</span> · t1, t2</li>
+      <li><b>Should a new store be asked “What do you sell?” the first time it opens?</b><span class="pick">Yes. Business type was hard to find.</span> · t1, h2</li>
+      <li><b>Should a turned-off choice say where it is off, like “0% hidden on 1 item”?</b><span class="pick">Yes. Couldn’t find it a week later.</span> · t2</li>
+      <li><b>When a topping is out, should tapping it say “Pearls is out”, with the menu saying “Mark out” or “Back in stock”?</b><span class="pick">Yes. Tap did nothing; nearly undid it.</span> · t3</li>
+      <li><b>When the POS reopens with items still in the cart, should it say “Cart still open”?</b><span class="pick">Yes. Pipes got added twice.</span> · h1</li>
+      <li><b>On Breakdown, should a refunded drink that had a discount count what was paid back (₱184.50) instead of its full price (₱205)?</b><span class="pick">No. The settled rule already nets right.</span> · t3</li>
+    </ol>
+  </section>
+</main>
+</body>
+</html>

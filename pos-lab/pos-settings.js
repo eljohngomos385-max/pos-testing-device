@@ -23,7 +23,7 @@ const SETTING_PICKS = {
   startCash: { opts: [['ask', 'Ask every shift'], ['float', 'Keep a float']], now: () => state.settings.startCash, set: v => setShiftPick({ startCash: v }) },
   // Business type (owner 2026-10-22: its own page, not a pop-up): retail and food for now. A food store's part is an Ingredient (partWord)
   bizType: { opts: [['retail', 'Retail'], ['food', 'Food']], now: () => (state.settings.store?.businessType === 'food' ? 'food' : 'retail'),
-    set: v => { state.settings.store = { ...state.settings.store, businessType: v }; saveSettings(); renderItems(); } },
+    set: v => { state.settings.store = { ...state.settings.store, businessType: v }; saveSettings(); if (v === 'food') seedFoodDemo(); renderItems(); renderProducts(); } },
   // ponytail: 12–6 AM only; widen it when a store runs past 6 AM
   autoClose: { opts: [0, 1, 2, 3, 4, 5, 6].map(h => [h, `${h || 12} AM`]), now: () => state.settings.autoClose, set: v => setShiftPick({ autoClose: v }) },
 };

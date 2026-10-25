@@ -152,7 +152,7 @@ function orderSeller(o) {
 // "#1-023 · Refunded" / "· Partly refunded" (SalesMath.statusOf). A plain sale says nothing.
 function orderFlag(o) {
   const s = orderStatus(o), x = orderXchg(o);   // the word takes its state's colour (styles.css span.st[data-s])
-  return s === 'sale' && !x ? '' : `<span class="st" data-s="${x ? 'xchg' : s}"> · ${escapeHtml(orderStatusLabel(o))}</span>`;
+  return s === 'sale' && !x ? '' : `<span class="st" data-s="${x ? 'xchg' : s}"><i> · </i>${escapeHtml(orderStatusLabel(o))}</span>`;   // <i>: the phone title drops the dot
 }
 const orderTitleHtml = o => o.draft
   ? `<span>${escapeHtml([orderStatusLabel(o), o.name].filter(Boolean).join(' · '))}</span>`
@@ -354,14 +354,11 @@ function refundAct(btn, o) {
 // Clear Filters (while anything is picked) puts the defaults back. No colour dots: plain words (owner 2026-10-18).
 // groups() -> [[heading, key, [[value, label]]]]; cur is the live filter object, def its defaults.
 function openFilterSheet(btn, groups, cur, def, apply) {
-  const pick = { ...cur }, veil = document.createElement('div');
-  veil.className = 'fs-veil';
-  veil.innerHTML = `<div class="fsheet" role="dialog" aria-modal="true" aria-labelledby="fsTitle" tabindex="-1"><div class="fs-top">
+  const pick = { ...cur }, { veil, m, close } = openSheet(btn, `<div class="fs-top">
     <button type="button" class="fs-x" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h2 id="fsTitle">Filters</h2>
     <button type="button" class="fs-ok" aria-label="Apply filters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></button>
-    </div><div class="fs-body"></div><button type="button" class="fs-clear">Clear Filters</button></div>`;
-  const m = veil.firstChild, body = m.querySelector('.fs-body');
+    </div><div class="fs-body"></div><button type="button" class="fs-clear">Clear Filters</button>`), body = m.querySelector('.fs-body');
   const same = (x, y) => JSON.stringify([].concat(x).sort()) === JSON.stringify([].concat(y).sort());   // a list's order never counts
   const differs = (a, b) => Object.keys(def).some(k => !same(a[k], b[k]));
   const draw = () => {
@@ -373,6 +370,42 @@ function openFilterSheet(btn, groups, cur, def, apply) {
     m.querySelector('.fs-clear').hidden = !differs(pick, def);
   };
   draw();
+  veil.addEventListener('click', e => {
+    if (e.target === veil || e.target.closest('.fs-x')) return;   // openSheet's
+    if (e.target.closest('.fs-ok')) { Object.assign(cur, pick); apply(); return close(); }
+    if (e.target.closest('.fs-clear')) Object.assign(pick, def);
+    const b = e.target.closest('[data-k]');
+    if (b && 'free' in b.parentElement.dataset) {
+      const k = b.dataset.k, was = [].concat(pick[k] || []), on = was.filter(v => v !== b.dataset.v);
+      if (on.length === was.length) on.push(b.dataset.v);
+      pick[k] = on.length ? on : '';
+    } else if (b) pick[b.dataset.k] = b.dataset.v;
+    draw();   // the redraw drops the tapped pill, and focus with it: back onto its new copy (or the sheet) so Escape still reaches us
+    (b && body.querySelector(`[data-k="${b.dataset.k}"][data-v="${CSS.escape(b.dataset.v)}"]`) || m).focus({ preventScroll: true });
+  });
+}
+
+// The phone's ⋯ (owner 2026-10-19, Claude's Select model sheet): a half sheet of rows in place of the morph menu, which
+// needs room the bar no longer has. items as openMenu's: [{label, run, red, off}], '-' starts a new card.
+function openActionSheet(btn, title, items) {
+  const cards = [[]];
+  items.forEach((it, i) => it === '-' ? cards.push([]) : cards.at(-1).push(`<button type="button" data-i="${i}" class="${it.red ? 'red' : ''}"${it.off ? ' disabled' : ''}>${escapeHtml(it.label)}</button>`));
+  const { veil, close } = openSheet(btn, `<div class="fs-top">
+    <button type="button" class="fs-x" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 id="fsTitle">${escapeHtml(title)}</h2><i></i></div><div class="fs-body">${cards.filter(c => c.length).map(c => `<div class="fs-rows">${c.join('')}</div>`).join('')}</div>`, 'half');
+  veil.addEventListener('click', e => {
+    const b = e.target.closest('[data-i]');
+    if (b) { close(); items[b.dataset.i].run(); }
+  });
+}
+
+// A sheet that slides up over the page (the filter and action sheets): ✕, a tap on the dim, Escape or pulling its head
+// down closes it. html is its inside, the head a .fs-top. Returns { veil, m, close }.
+function openSheet(btn, html, cls = '') {
+  const veil = document.createElement('div');
+  veil.className = 'fs-veil';
+  veil.innerHTML = `<div class="fsheet ${cls}" role="dialog" aria-modal="true" aria-labelledby="fsTitle" tabindex="-1">${html}</div>`;
+  const m = veil.firstChild;
   document.body.append(veil);
   btn.setAttribute('aria-expanded', 'true');
   requestAnimationFrame(() => requestAnimationFrame(() => veil.classList.add('open')));   // a frame shut first, so it slides
@@ -411,20 +444,11 @@ function openFilterSheet(btn, groups, cur, def, apply) {
   head.addEventListener('pointerup', drop);
   head.addEventListener('pointercancel', drop);
   veil.addEventListener('click', e => {
-    if (e.target === veil && performance.now() - opened < 400) return;   // a double tap on Filters: its second tap lands on the veil mid-slide
-    if (e.target === veil || e.target.closest('.fs-x')) return close();
-    if (e.target.closest('.fs-ok')) { Object.assign(cur, pick); apply(); return close(); }
-    if (e.target.closest('.fs-clear')) Object.assign(pick, def);
-    const b = e.target.closest('[data-k]');
-    if (b && 'free' in b.parentElement.dataset) {
-      const k = b.dataset.k, was = [].concat(pick[k] || []), on = was.filter(v => v !== b.dataset.v);
-      if (on.length === was.length) on.push(b.dataset.v);
-      pick[k] = on.length ? on : '';
-    } else if (b) pick[b.dataset.k] = b.dataset.v;
-    draw();   // the redraw drops the tapped pill, and focus with it: back onto its new copy (or the sheet) so Escape still reaches us
-    (b && body.querySelector(`[data-k="${b.dataset.k}"][data-v="${CSS.escape(b.dataset.v)}"]`) || m).focus({ preventScroll: true });
+    if (e.target === veil && performance.now() - opened < 400) return;   // a double tap on the trigger: its second tap lands on the veil mid-slide
+    if (e.target === veil || e.target.closest('.fs-x')) close();
   });
   veil.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  return { veil, m, close };
 }
 
 // The search card both pages share: typing shows the ×, the × clears and keeps focus.

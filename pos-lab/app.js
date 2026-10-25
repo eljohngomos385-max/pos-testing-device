@@ -134,7 +134,7 @@ function attachEvents() {
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     // Don't hijack modal context
-    if (document.querySelector('.modal-backdrop:not([hidden]), .rail-veil, .pk-dim')) return;   // a sheet, menu, confirm or peek is up
+    if (document.querySelector('.modal-backdrop:not([hidden]), .rail-veil, .pk-dim, .esheet.open')) return;   // a sheet, menu, confirm or peek is up
     if (e.key === 'Enter') return;
     search.focus({ preventScroll: true });
   });
@@ -581,7 +581,7 @@ function attachEvents() {
   $('#itemSave')?.addEventListener('click', () => (kindEdit ? saveKind() : saveItem()));
   const notYet = what => () => showToast(`${what} isn't connected yet`);
   $('#itemMore')?.addEventListener('click', (e) => openMenu(e.currentTarget, kindEdit
-    ? [kindEdit.id ? { label: kindEdit.kind === 'mods' ? 'Archive' : 'Delete', red: true, off: !!kindEdit.builtin, run: dropKind } : { label: 'Discard', red: true, run: closeItemEditor }]
+    ? [kindEdit.id ? { label: 'Delete', red: true, off: !!kindEdit.builtin, run: dropKind } : { label: 'Discard', red: true, run: closeItemEditor }]
     : [],   // ponytail: the item has no ⋯ (renderItemForm hides it); Print labels and Duplicate come back when they work
     { w: 200, right: true }));
   wireFind('#itemsFind', '#itemsSearch', '#itemsSearchX', (q) => { itemsFilter.q = q; renderItems(); });
@@ -593,11 +593,11 @@ function attachEvents() {
   wireFind('#itemFind', '#itemFindQ', '#itemFindX', filterPicks);
   itemForm?.addEventListener('scroll', () => itemForm.previousElementSibling.classList.toggle('tuck', itemForm.scrollTop > 24), { passive: true });   // Apple's: search tucks, the title shows
   // back from a subpage first (pos-items itemGo), then out of the editor
-  $('#itemBack')?.addEventListener('click', () => (kindEdit?.sub ? itemGo('') : itemEdit && itemSub ? itemGo(itemSub.startsWith('made:') && itemEdit.variants.length > 1 ? itemSub.slice(5) : '')
-    : askLeave(editorDirty(), closeItemEditor)));   // a variant's Made from goes back to the variant; out of the editor with changes asks first
+  $('#itemBack')?.addEventListener('click', () => (kindEdit?.sub ? kindBack() : itemEdit && itemSub ? itemGo(itemParent(itemSub), true)
+    : askLeave(editorDirty(), closeItemEditor)));   // a variant's Made from goes back to the variant, a modifier's choices to Modifiers; out of the editor with changes asks first
   itemForm?.addEventListener('click', (e) => { const b = e.target.closest('[data-look]'); if (b) lookClick(b); });   // Tile appearance, both editors
   // the category / modifier editor's fields (pos-items kindInput); the item editor's below
-  itemForm?.addEventListener('click', (e) => { const b = kindEdit && e.target.closest('[data-ka]'); if (b) kindClick(b); });
+  itemForm?.addEventListener('click', (e) => { const b = kindEdit && e.target.closest('[data-ka], [data-sub]'); if (b) kindClick(b); });
   itemForm?.addEventListener('input', (e) => {
     const t = e.target;
     if (t.dataset.k === 'q') return filterPicks(t.value);   // a tick list's search, both editors
@@ -627,11 +627,14 @@ function attachEvents() {
     if (t.dataset.f === 'track') { E.track = t.checked; renderItemForm(); }   // Low stock and Sell when out come and go with it
     if (t.dataset.f === 'component') { E.component = t.checked; renderItemForm(); }   // the short page or the full one
     if (t.dataset.made) itemMadeSet(t);
+    if (t.dataset.ch) return itemChoiceSet(t);   // a modifier's choice on this item
     if (k) {   // a tick on a subpage; unticking the main supplier leaves none
       E[k] = t.checked ? [...E[k], t.value] : E[k].filter(x => x !== t.value);
       if (k === 'sups' && !E.sups.includes(E.main)) { E.main = ''; itemForm.querySelector('[data-act=main] span').textContent = 'None'; }
+      if (k === 'mods') itemModTick(t);
     }
   });
+  itemForm?.addEventListener('pointerdown', modGrip);   // ≡ on the item's Modifiers page: drag to change the asking order
   itemForm?.addEventListener('click', (e) => {
     const E = itemEdit, b = !kindEdit && e.target.closest('button');
     if (!b) return;
@@ -701,6 +704,7 @@ function attachEvents() {
   $('#cartDiscountBtn')?.addEventListener('click', () => openEditSheet('rd'));
   $('#fulRow').addEventListener('click', (e) => { if (e.target.closest('#fulPick')) openEditSheet('ful'); });   // delegated: the row is rebuilt on every cart render
   $('#editSheet').addEventListener('click', editSheetClick);
+  document.addEventListener('keydown', editKey);
   $('#editSheet').addEventListener('keydown', (e) => {   // Enter in the SC/PWD ID or Name, or a line's note, is its Apply
     if (e.key !== 'Enter' || !e.target.closest('[data-scf], #esNote')) return;
     e.preventDefault();
@@ -1115,12 +1119,15 @@ function init() {
     state.folders.unshift({ id: 'all', name: 'All items', builtin: true });
   }
   state.settings = loadSettings();
+  // A brand-new store (nothing saved yet) is asked its type on first open (askBizType); a store with data keeps Retail.
+  if (!state.settings.store?.businessType && ![STORAGE_SETTINGS, STORAGE_PRODUCTS, STORAGE_ORDERS].some(k => storageGet(k) != null)) HWPOS_STORE.ui.set('askBiz', 1);
   state.products = loadProducts();
   state.groups = loadGroups();
   state.orders = loadOrders();
   document.querySelectorAll('.cur-sym').forEach(e => { e.textContent = SalesMath.currencySymbol(state.settings.store?.currency); });
   migrateCustomers();   // once: stored balances become opening rows (bo-model)
   seedLabExtras();
+  if (state.settings.store?.businessType === 'food') seedFoodDemo();   // lab only: the milk tea demo, once
   state.fulfilment = state.settings.defaultFulfilment || 'walkin';
   seedLabDays();   // lab only: a new device opens on two months of days
   restoreCart();   // the sale that was open when the POS reloaded
@@ -1164,6 +1171,7 @@ function init() {
   };
   openHashView();
   window.addEventListener('hashchange', openHashView);
+  if (HWPOS_STORE.ui.get('askBiz') === '1' && !state.settings.store?.businessType) askBizType();
   requestAnimationFrame(syncSellGridMetrics);
   let resizeFrame = 0;
   const refitSellSurface = ({ resetPage = false } = {}) => {
@@ -1342,6 +1350,32 @@ function init() {
   if (new URLSearchParams(location.search).has('price-ask')) openEditSheet('price', state.products[0].id);
 }
 
+// First open (owner 2026-10-24): "What do you sell?", the Settings › Business type choices, nothing else on the card.
+// A pick runs Settings' own setter (Food loads its demo) and the card never comes back; Settings changes it later.
+function askBizType() {
+  const pk = SETTING_PICKS.bizType, veil = document.createElement('div');
+  veil.className = 'rail-veil';
+  veil.innerHTML = `<div class="pay-sheet cf-sheet" role="dialog" aria-modal="true" aria-labelledby="bizAskTitle">
+    <div class="ph"><b id="bizAskTitle">What do you sell?</b><div class="cf-msg">You can change this later in Settings.</div></div>
+    <div class="pb even">${pk.opts.map(([v, label]) => `<button type="button" class="secondary-btn small" data-v="${v}">${escapeHtml(label)}</button>`).join('')}</div>
+  </div>`;
+  const f = veil.firstChild;
+  f.style.width = Math.min(340, innerWidth - 24) + 'px';
+  document.body.append(veil);
+  const shrink = centreSheet(f);
+  $('#app').inert = true;   // like the PIN screen's cover: no Tab or tap reaches the POS behind until they pick
+  f.tabIndex = -1;   // the card takes focus, not a choice: neither is picked for them
+  f.focus({ preventScroll: true });
+  f.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-v]');
+    if (!b) return;
+    HWPOS_STORE.ui.set('askBiz', 0);
+    $('#app').inert = false;
+    pk.set(b.dataset.v);
+    veil.style.pointerEvents = 'none';
+    shrink(() => veil.remove());
+  });
+}
 // ponytail: lab only. A new device opens on two months of a store's days (owner 2026-10-15: the link on a phone showed
 // nothing): sales through the real order builder (some to the customers), a few refunds and voids, a shift a day with
 // petty cash, counted at close; closeDays then makes the Zs. Once per device; the sales don't move stock.
@@ -1361,6 +1395,25 @@ function seedLabExtras() {
   const cs = loadList(STORAGE_CUSTOMERS), ids = new Set(cs.map(c => c.id));
   const newC = CUSTOMERS.filter(c => !ids.has(c.id));
   if (cs.length && newC.length) saveList(STORAGE_CUSTOMERS, cs.concat(newC.map(c => stampRow(normalizeCustomer(c)))));
+}
+// ponytail: lab only -- Business type Food gets a milk tea demo, once a device (plans/modifiers-build.md): five teas in
+// Medium / Large asking Sweetness, Ice and Toppings. Deleted afterwards stays deleted. Drop with the seed.
+function seedFoodDemo() {
+  if (HWPOS_STORE.ui.get('seedFood')) return;
+  HWPOS_STORE.ui.set('seedFood', 1);
+  const opts = list => list.map(([name, price = 0]) => ({ id: newId(), name, price }));
+  const mods = [['Sweetness', 'one', opts([['0%'], ['25%'], ['50%'], ['75%'], ['100%']])], ['Ice', 'one', opts([['No ice'], ['Less'], ['Normal']])],
+    ['Toppings', 'upto3', opts([['Pearls', 15], ['Nata', 15], ['Pudding', 20]])]].map(([name, picks, options]) => stampRow(normalizeModifier({ id: newId(), name, picks, options })));
+  saveModifiers(loadModifiers().concat(mods));
+  let cat = state.folders.find(f => f.name === 'Milk tea');
+  if (!cat) { cat = stampRow({ id: newId(), name: 'Milk tea', builtin: false }); state.folders.push(cat); writeJsonStorage(STORAGE_FOLDERS, state.folders); }
+  [['Brown Sugar Milk Tea', 140], ['Matcha Latte', 150], ['Okinawa Milk Tea', 140], ['Wintermelon Milk Tea', 130], ['Taro Milk Tea', 140]].forEach(([name, price]) => {
+    const g = stampRow({ id: newId(), name, folder: cat.id });
+    state.groups.push(g);
+    [['Medium', price], ['Large', price + 20]].forEach(([size, pr]) => state.products.push(stampRow(normalizeProduct({ id: newId(), name: `${name} ${size}`,
+      price: pr, cost: round2(pr * 0.35), unit: 'pc', groupId: g.id, folder: cat.id, folders: [cat.id], trackStock: false, modifierIds: mods.map(m => m.id) }))));
+  });
+  saveGroups(); saveProducts();
 }
 function seedLabDays() {
   if (HWPOS_STORE.ui.get('labSeed')) return;

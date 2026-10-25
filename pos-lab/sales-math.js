@@ -613,6 +613,40 @@
       .filter((r) => r.unitsSold > 0).sort((a, b) => b.netSales - a.netSales).slice(0, limit);
   }
 
+  // The modifier choices sold in [from, to), most times sold first (POS › Reports, owner 10-22: "what sold the most, how
+  // many times"). Read off each line's answer snapshot, so a renamed or removed choice never changes an old sale:
+  // line.modifiers = [{ modifierId, modifierName, choiceId, choiceName, price }]. A choice counts once per unit of its
+  // line; a void or refund row takes its lines' answers back off, as summarize does. money = the choice's price × units
+  // ponytail: before discounts -- a discount covers the whole line and is not split onto its choices; split it like
+  // orderLines does if the owner wants net.
+  // → [{ key, modifier, name, times, money }], keyed by choice id; the words are the newest sale's.
+  // bo-model's modifierAnswer names them modifier / choice: both spellings read the same.
+  const answersOf = (line) => ((line && line.modifiers) || []).map((a) => ({ choiceId: a.choiceId, price: a.price,
+    modifierName: String(a.modifierName ?? a.modifier ?? ''), choiceName: String(a.choiceName ?? a.choice ?? '') }));
+  // A line's answers as words, one per choice: 'Sweetness: 50%', 'Toppings: Pearls ₱15.00'. `money` formats a price
+  // (peso on screen, the printer's cash on paper), so the cart, checkout, receipt and slip all read the same.
+  const answerLines = (line, money) => answersOf(line).map((a) => `${String(a.modifierName).replace(/\?$/, '')}: ${a.choiceName}${C(a.price) ? ' ' + money(a.price) : ''}`);
+  // What a line's choices add to one unit: its price = the item's own + this (the POS's modifier screens, a saved cart at today's price).
+  const answersPrice = (line) => U(answersOf(line).reduce((s, a) => s + C(a.price), 0));
+  function topChoices(orders, { from = -Infinity, to = Infinity } = {}) {
+    const by = new Map();
+    for (const o of orders || []) {
+      const s = sign(o), ts = tsOf(o);
+      if (!s || !(ts >= from && ts < to)) continue;
+      for (const i of o.items || []) for (const a of answersOf(i)) {
+        const key = a.choiceId || `n:${a.modifierName}:${a.choiceName}`;
+        const r = by.get(key) || by.set(key, { key, modifier: '', name: '', times: 0, money: 0, at: -Infinity }).get(key);
+        if (s > 0 && ts >= r.at) Object.assign(r, { modifier: a.modifierName, name: a.choiceName, at: ts });
+        else if (!r.name) Object.assign(r, { modifier: a.modifierName, name: a.choiceName });
+        r.times += s * milli(i.qty);
+        r.money += s * div(C(a.price) * milli(i.qty), 1000);
+      }
+    }
+    return [...by.values()].filter((r) => r.times > 0)
+      .map(({ key, modifier, name, times, money }) => ({ key, modifier, name, times: times / 1000, money: U(money) }))
+      .sort((a, b) => b.times - a.times || b.money - a.money);
+  }
+
   // One unit's money on its price tag, the ladder's way: the tax comes out of the price first
   // (taxOpts(settings)), so margin = profit ÷ price before tax. Markup is on cost, on the shelf
   // price, what the owner typed in the editor. Percentages, 2 dp.
@@ -923,7 +957,7 @@
     summarize, tenders, currencyCode, formatMoney, currencySymbol,
     tsOf, TENDER_LABEL, tenderKey, tenderLabel, paymentsOf, saleTender, payWord, tenderedOf, creditPart, customerIdOf, customerOrders, sellerOf,
     itemKey, itemsSold, share, unitMargin, ratePct, receiptLines, receiptParts, isExchange, totalRows, paidOf, lastSale,
-    topItems,
+    topItems, topChoices, answerLines, answersPrice,
     storeZone, dayKey, dayStartMs, addDays, rangeWindow, daysOpen, daysOpenBy, dateParts, dateText, groupByDay, chartTime, daysAgo, agoText,
     rowAmount, newestFirst, plural, pluralWord, qtyText, pctText, change, changeText, changeTone, bestDay,
     round2, cent: C, unc: U,

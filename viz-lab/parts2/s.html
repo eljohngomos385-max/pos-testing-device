@@ -1,0 +1,226 @@
+<style>
+/* part s (round 7) — Suppliers breakdown: what we buy from whom, what we owe, what is coming, who delivers on time. Every selector .vs-. */
+.vs-q { color: var(--ink-4); font-weight: 400; }
+.vs-svg { display: block; overflow: visible; }
+.vs-svg text { font-family: var(--font); }
+.vs-c1 { font-size: 20px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.vs-c2 { font-size: 11px; fill: var(--ink-4); }
+.vs-tl { font-size: 12px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.vs-w2 { grid-column: span 2; }
+@media (max-width: 860px) { .vs-w2 { grid-column: auto; } }
+/* rows are a grid: each number column is as wide as its widest cell, the pill column takes the rest and never cuts */
+.vs-rows { display: grid; }
+.vs-rows > .row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; column-gap: 12px; }
+.vs-rows > .row .nm { display: flex; align-items: center; gap: 6px; overflow: visible; }
+.vs-rows .r { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vs-rows .chip { justify-content: center; }
+.vs-rows > .row.sub { min-height: 28px; font-size: 12px; border-top-color: transparent; }
+.vs-rows > .row.sub .nm { padding-left: 8px; }
+.vs-rk > .late { color: var(--down); }
+/* ticked rows: the picked one wears a --fill pill (C12) */
+.vs-tick { padding: 4px; }
+.vs-tick > .row { padding: 0 8px; border-radius: var(--r-row); cursor: pointer; }
+.vs-tick > .row.total { cursor: default; }
+.vs-tick > .row:hover, .vs-tick > .row:hover + .row, .vs-tick > .row.on, .vs-tick > .row.on + .row { border-top-color: transparent; }
+.vs-tick > .row.on, .vs-tick > .row.on:hover { background: var(--fill); }
+/* one 100% bar: pastel parts need body, 14px */
+.vs-bar { display: flex; gap: 2px; height: 14px; border-radius: var(--r-pill); overflow: hidden; }
+.vs-bar > i { min-width: 2px; }
+.vs-pad { padding: 0 12px 10px; }
+.vs-lbs { display: grid; grid-template-columns: max-content 1fr; gap: 10px; align-items: center; padding: 12px 12px 10px; font-size: 12px; color: var(--ink-3); }
+/* big number, chip on its right */
+.vs-big { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 12px 10px; }
+.vs-big .kpi-value { font-size: 20px; }
+.vs-big .vs-q { font-size: 12px; }
+/* ranked tint bars: pill | bar with its value at the end | right cell, light scale behind */
+.vs-rank { display: grid; column-gap: 10px; padding: 8px 12px 2px; }
+.vs-rk { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; height: 30px; }
+.vs-trk { position: relative; align-self: stretch; display: flex; align-items: center; min-width: 0; padding-right: 64px;
+  background: linear-gradient(var(--grid), var(--grid)) right / 1px 100% no-repeat, linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 33.3333% 100% repeat-x;
+  background-origin: content-box; background-clip: content-box; }
+.vs-trk > i { flex: none; height: 16px; border-radius: 4px; min-width: 2px; }
+.vs-trk > i + i { margin-left: 2px; }
+.vs-trk > b { flex: none; margin-left: 4px; padding: 0 2px; background: var(--raised); font-size: 12px; font-weight: 500; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vs-rk > .r { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vs-rk > .chip { justify-content: center; }
+.vs-rk.ax { height: 20px; }
+.vs-rk.ax > .vs-trk { background: none; }
+.vs-ax { position: absolute; top: 2px; transform: translateX(-50%); font-size: 11px; color: var(--ink-5); font-variant-numeric: tabular-nums; }
+/* columns left, rows right as tall as the plot; a narrow card drops the rows under */
+.vs-split { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 16px; padding: 12px 4px 10px 12px; }
+.vs-plot { flex: 1 1 280px; min-width: 0; }
+.vs-split > .vs-rows { flex: none; grid-auto-rows: 1fr; }
+.vs-split > .vs-rows > .row { min-height: 0; padding: 0 8px; }
+.vs-plot1 { padding: 12px 12px 4px; }
+</style>
+
+<section class="cat" id="vs-buy" data-nav="S7 · Suppliers: buying">
+  <h2>Suppliers · what we buy from whom</h2>
+  <p class="why">Six suppliers, each in its own tint (Asia Fasteners, Ace Tools PH, Rizal Aggregates, Holcim Dealer in order, then Pacific Electrical and Boysen Paints). Bought = received at cost.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>S7-1</b> Half donut · bought per supplier, total in the arc</div><div class="card" id="vs-1"></div></div>
+    <div class="spec"><div class="tag"><b>S7-2</b> Big total + chip · one 100% bar, chip beside each amount</div><div class="card" id="vs-2"></div></div>
+    <div class="spec"><div class="tag"><b>S7-3</b> Ranked tint bars · chip vs the 30 days before</div><div class="card" id="vs-3"></div></div>
+    <div class="spec"><div class="tag"><b>S7-4</b> Pick a supplier · it keeps its tint, the rest go grey (click a row)</div><div class="card" id="vs-4"></div></div>
+    <div class="spec"><div class="tag"><b>S7-5</b> Two 100% bars · items supplied vs pesos spent</div><div class="card" id="vs-5"></div></div>
+    <div class="spec"><div class="tag"><b>S7-6</b> Cost changes grouped per supplier · cheaper green, dearer red</div><div class="card" id="vs-6"></div></div>
+    <div class="spec vs-w2"><div class="tag"><b>S7-7</b> Stacked columns · received per delivery day, by supplier (same days as Stock history)</div><div class="card" id="vs-7"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vs-owe" data-nav="S7 · Suppliers: owing">
+  <h2>Suppliers · what we owe, what is coming, who is on time</h2>
+  <p class="why">Unpaid supplier bills with their due dates (the overdue one in red), purchase orders still coming, and how each supplier delivers.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>S7-8</b> Big total · overdue as a chip, one 100% bar, rows by due date</div><div class="card" id="vs-8"></div></div>
+    <div class="spec"><div class="tag"><b>S7-9</b> Half donut · what we owe, total in the arc</div><div class="card" id="vs-9"></div></div>
+    <div class="spec"><div class="tag"><b>S7-10</b> Columns by due date · a Today line, overdue left of it</div><div class="card" id="vs-10"></div></div>
+    <div class="spec"><div class="tag"><b>S7-11</b> Incoming POs · big total, one 100% bar, rows by due date</div><div class="card" id="vs-11"></div></div>
+    <div class="spec"><div class="tag"><b>S7-12</b> On time · each bar is that supplier's POs, late part in red</div><div class="card" id="vs-12"></div></div>
+    <div class="spec"><div class="tag"><b>S7-13</b> Lead time · ranked tint bars, days from order to delivery</div><div class="card" id="vs-13"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('vs-' + n), P = V.peso, K = V.pesoK;
+  const sum = (a, f) => a.reduce((s, x) => s + f(x), 0);
+  const pc = (a, t, d = 1) => V.pct(a / t * 100, d);
+  const r1 = n => Math.round(n * 10) / 10;
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const nice = (max, steps) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vs-q">${r}</span>`}</div>`;
+  const pill = x => `<span class="badge ${x.t}">${esc(x.nm)}</span>`;
+  const sgn = c => (c >= 0 ? '+' : '−') + Math.abs(c).toFixed(1) + '%';
+  const chip = (a, b) => { const c = (a / b - 1) * 100; return `<span class="chip ${c >= 0 ? 'up' : 'down'}">${sgn(c)}</span>`; };
+  const big = (v, rest = '') => `<div class="vs-big"><span class="kpi-value">${v}</span>${rest}</div>`;
+  const C = (v, cls = '') => `<span class="r ${cls}">${v}</span>`;
+  const row = (nm, cells, cls = '', k = '') => `<div class="row ${cls}"${k !== '' ? ` data-k="${k}"` : ''}><span class="nm">${nm}</span>${cells}</div>`;
+  // rows block: n = cells after the name; the name column takes the rest of the width
+  const rows = (n, list, cls = '', st = '') => `<div class="rows vs-rows ${cls}" style="grid-template-columns:minmax(max-content,1fr) repeat(${n},max-content);${st}">${list.join('')}</div>`;
+  const tip = (x, t) => `${x.nm} · ${P(x.v)} · ${pc(x.v, t)}`;
+  const bar = (list, t = sum(list, x => x.v), f = x => tip(x, t)) => '<div class="vs-bar">' + list.map(x => `<i style="width:${x.v / t * 100}%;background:var(--${x.t})" title="${esc(f(x))}"></i>`).join('') + '</div>';
+  const tx = (x, y, t, c = 'ax', an = 'middle', st = '') => `<text class="${c}" x="${r1(x)}" y="${r1(y)}" text-anchor="${an}"${st && ` style="${st}"`}>${t}</text>`;
+
+  // half donut (B2-2): angle 0 = 3 o'clock, clockwise; grey = index that keeps its tint, the rest go --t8
+  const pt = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const arc = (cx, cy, r, a0, a1) => `M${pt(cx, cy, r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a1)}`;
+  const half = (W, list, c1, c2, keep = -1) => { const cx = W / 2, cy = 112, r = 88, gap = .03, t = sum(list, x => x.v); let a = Math.PI, s = '';
+    list.forEach((x, i) => { const sp = x.v / t * Math.PI;
+      s += `<path d="${arc(cx, cy, r, a + gap / 2, a + Math.max(sp - gap / 2, gap / 2 + .01))}" style="fill:none;stroke:var(--${keep >= 0 && i !== keep ? 't8' : x.t});stroke-width:20"><title>${esc(tip(x, t))}</title></path>`; a += sp; });
+    return `<svg class="vs-svg" width="${W}" height="128">${s}${tx(cx, cy - 16, c1, 'vs-c1')}${tx(cx, cy + 1, c2, 'vs-c2')}</svg>`; };
+  const halfCard = (el, top, list, c1, c2) => { el.innerHTML = top; el.querySelector('.vs-g').innerHTML = half(el.clientWidth, list, c1, c2); };
+
+  // ranked tint bars (B2-9): parts = [{v, t}] laid end to end; scale 0, ⅓, ⅔, top
+  const rank = (list, val, right, fAx = K, st0) => { const st = st0 || nice(Math.max(...list.map(x => x.top || x.v)), 3), top = st * 3;
+    return `<div class="vs-rank" style="grid-template-columns:max-content 1fr${right ? ' max-content' : ''}">` + list.map(x => `<div class="vs-rk" title="${esc(x.title || x.nm + ' · ' + val(x))}"><span>${pill(x)}</span><span class="vs-trk">`
+        + (x.parts || [x]).map(p => `<i style="width:${p.v / top * 100}%;background:var(--${p.t})"></i>`).join('') + `<b>${val(x)}</b></span>${right ? right(x) : ''}</div>`).join('')
+      + `<div class="vs-rk ax"><span></span><span class="vs-trk">${[0, 3].map(k => `<span class="vs-ax" style="left:calc((100% - 64px) * ${k / 3})">${k ? fAx(k * st) : "0"}</span>`).join('')}</span>${right ? '<span></span>' : ''}</div></div>`; };
+
+  // stacked columns (P6-1): a 2px white gap between parts, rounded top only, total on top
+  const seg = (x, y, w, h, top, fill, t) => { const r = top ? Math.min(4, h, w / 2) : 0, b = y + h;
+    const d = r ? `M${r1(x)} ${r1(b)}V${r1(y + r)}Q${r1(x)} ${r1(y)} ${r1(x + r)} ${r1(y)}H${r1(x + w - r)}Q${r1(x + w)} ${r1(y)} ${r1(x + w)} ${r1(y + r)}V${r1(b)}Z` : `M${r1(x)} ${r1(b)}V${r1(y)}H${r1(x + w)}V${r1(b)}Z`;
+    return `<path d="${d}" style="fill:${fill}"><title>${esc(t)}</title></path>`; };
+  const cols = (host, groups, H, o = {}) => { const W = host.clientWidth, L = 40, T = 18, B = o.under ? 34 : 20, ch = H - T - B;
+    const st = nice(Math.max(...groups.map(g => g.tot)), 4), top = st * 4, sl = (W - L) / groups.length, cw = Math.min(40, sl * .62);
+    let s = '';
+    for (let k = 0; k <= 4; k++) { const y = T + ch * (1 - k / 4); s += `<line x1="${L}" x2="${W}" y1="${r1(y)}" y2="${r1(y)}" style="stroke:var(--grid)"/>` + tx(L - 6, y + 4, k ? K(k * st) : '0', 'ax', 'end'); }
+    groups.forEach((g, i) => { const x = L + i * sl + (sl - cw) / 2, cx = x + cw / 2, ps = g.parts.filter(p => p.v > 0); let yb = T + ch;
+      ps.forEach((p, j) => { const h = p.v / top * ch; s += seg(x, yb - h, cw, Math.max(h - (j ? 2 : 0), 1), j === ps.length - 1, `var(--${p.t})`, p.tip); yb -= h; });
+      if (g.tot) s += tx(cx, yb - 6, K(g.tot), 'vs-tl'); else if (g.now) s += tx(cx, T + ch - 6, 'Today');
+      s += tx(cx, T + ch + 15, g.lab, g.now ? 'ax now' : 'ax', 'middle', g.st || '');
+      if (g.under) s += tx(cx, T + ch + 30, g.under, 'ax', 'middle', g.st || ''); });
+    if (o.mark != null) { const mx = r1(L + o.mark * sl); s += `<line x1="${mx}" x2="${mx}" y1="${T - 2}" y2="${T + ch}" style="stroke:var(--ink-2);stroke-dasharray:3 3"/>` + tx(mx, T - 6, 'Today', 'ax now'); }
+    host.innerHTML = `<svg class="vs-svg" width="${W}" height="${H}">${s}</svg>`; };
+
+  // ---------- suppliers: tints in the brief's order, the two new ones next ----------
+  // ponytail: 6 suppliers fit whole; at 50+ keep the top 6 and fold the rest into a grey "Other" row + "See all"
+  const TINT = { 'Asia Fasteners': 't1', 'Ace Tools PH': 't2', 'Rizal Aggregates': 't3', 'Holcim Dealer': 't4', 'Pacific Electrical': 't5', 'Boysen Paints': 't6' };
+  const S = V.suppliers.map((s, k) => ({ ...s, k, nm: s.name, t: TINT[s.name] || 't8', v: s.amt30 })).sort((a, b) => b.v - a.v);
+  const BT = sum(S, s => s.amt30), BP = sum(S, s => s.prev30);
+  const amtPct = (x, t) => C(P(x.v), 'amt') + C(pc(x.v, t), 'pct');
+  const draws = [];
+
+  // S7-1 half donut, total in the arc
+  draws.push(() => halfCard($(1), band('Bought per supplier', 'Last 30 days') + '<div class="vs-g"></div>'
+    + rows(2, S.map(x => row(pill(x), amtPct(x, BT))).concat(row('Total', C(P(BT), 'amt') + C(''), 'total'))), S, P(BT), `Total · ${S.length} suppliers`));
+
+  // S7-2 big total + chip, one 100% bar, chip beside each amount
+  $(2).innerHTML = band('Bought per supplier', 'Last 30 days') + big(P(BT), chip(BT, BP) + '<span class="vs-q">vs the 30 days before</span>') + `<div class="vs-pad">${bar(S)}</div>`
+    + rows(2, S.map(x => row(pill(x), C(P(x.v), 'amt') + chip(x.v, x.prev30))).concat(row('Total', C(P(BT), 'amt') + chip(BT, BP), 'total')));
+
+  // S7-3 ranked tint bars, chip last
+  $(3).innerHTML = band('Bought per supplier', 'Last 30 days') + rank(S, x => K(x.v), x => chip(x.v, x.prev30));
+
+  // S7-4 pick a supplier: its slice keeps its tint, the rest go grey; click the same row again to see all
+  { const el = $(4); let on = 0;
+    const draw = () => { const x = S[on];
+      el.innerHTML = band('Bought per supplier', 'Last 30 days') + '<div class="vs-g"></div>'
+        + rows(2, S.map((s, i) => row(pill(s), amtPct(s, BT), i === on ? 'on' : '', i)).concat(row('Total', C(P(BT), 'amt') + C(''), 'total')), 'vs-tick');
+      el.querySelector('.vs-g').innerHTML = half(el.clientWidth, S, x ? P(x.v) : P(BT), x ? `${x.nm} · ${pc(x.v, BT)}` : `Total · ${S.length} suppliers`, on);
+      el.querySelectorAll('.row[data-k]').forEach(r => r.onclick = () => { on = on === +r.dataset.k ? -1 : +r.dataset.k; draw(); }); };
+    draws.push(draw); }
+
+  // S7-5 items they supply vs pesos spent there
+  { const IT = sum(S, s => s.items), N = S.map(s => ({ ...s, v: s.items }));
+    $(5).innerHTML = band('Items vs spend', 'Last 30 days') + `<div class="vs-lbs"><span>Items</span>${bar(N, IT, x => `${x.nm} · ${x.items} items · ${pc(x.items, IT)}`)}<span>Bought</span>${bar(S)}</div>`
+      + rows(3, S.map(x => row(pill(x), C(x.items, 'cnt') + C(P(x.v), 'amt') + C(pc(x.v, BT), 'pct'))).concat(row('Total', C(IT) + C(P(BT), 'amt') + C(''), 'total'))); }
+
+  // S7-6 cost changes grouped per supplier: cost down is green (good for margin), up is red, as Stock history
+  { const cc = c => `<span class="chip ${c <= 0 ? 'up' : 'down'}">${sgn(c)}</span>`;
+    const G = S.map(s => ({ ...s, ch: V.costChanges.filter(c => c.supplier === s.nm) })).filter(s => s.ch.length).sort((a, b) => b.ch.length - a.ch.length);
+    $(6).innerHTML = band('Supplier costs changed', 'Last 7 days') + rows(2, G.flatMap(s => [row(pill(s), C(`${s.ch.length} item${s.ch.length > 1 ? 's' : ''}`, 'cnt') + C(''))]
+      .concat(s.ch.map(c => `<div class="row sub" title="${esc(`${c.name} · was ${P(c.from, 2)}, now ${P(c.to, 2)}`)}"><span class="nm">${esc(c.name)}</span>${C(P(c.to, 2), 'amt')}${cc((c.to / c.from - 1) * 100)}</div>`)))); }
+
+  // S7-7 received per delivery day, stacked by supplier. Each supplier's amt7 lands on its day7; the days must add up to stockByDay.in
+  { const R = S.filter(s => s.amt7 > 0), RT = sum(R, s => s.amt7);
+    const groups = V.stockByDay.map(d => { const parts = R.filter(s => s.day7 === d.d).map(s => ({ t: s.t, v: s.amt7, tip: `${d.d} · ${s.nm} · ${P(s.amt7)}` }));
+      if (sum(parts, p => p.v) !== d.in) console.error(`S7-7: ${d.d} suppliers ${sum(parts, p => p.v)} ≠ stockByDay ${d.in}`);
+      return { lab: d.d, now: d.now, tot: d.in, parts }; });
+    if (RT !== V.stockFlow.received) console.error(`S7-7: received ${RT} ≠ stockFlow ${V.stockFlow.received}`);
+    const el = $(7);
+    draws.push(() => { const rs = R.map(x => row(pill(x), C(x.day7, 'cnt') + C(P(x.amt7), 'amt') + C(pc(x.amt7, RT), 'pct'))).concat(row('Total', C('') + C(P(RT), 'amt') + C(''), 'total')), H = Math.max(200, rs.length * 33);
+      el.innerHTML = band('Received per supplier', 'Last 7 days') + big(P(RT), `<span class="vs-q">received at cost · ${R.length} suppliers</span>`)
+        + `<div class="vs-split"><div class="vs-plot"></div>${rows(3, rs, '', `height:${H}px`)}</div>`;
+      cols(el.querySelector('.vs-plot'), groups, H); }); }
+
+  // ---------- what we owe (one open bill per supplier, as data.js has it) ----------
+  // ponytail: due dates are all in October; parse the day number. Today = Oct 18 (data.js: V.week Sun / the last of V.days)
+  const day = d => +d.split(' ')[1], TODAY = 18;
+  const OW = S.filter(s => s.owed > 0).map(s => ({ ...s, v: s.owed })).sort((a, b) => day(a.due) - day(b.due));
+  const OT = sum(OW, s => s.owed), OD = OW.filter(s => s.overdue), ODT = sum(OD, s => s.owed);
+  const due = s => s.overdue ? `<span class="badge bad">Overdue · ${s.due}</span>` : s.due;
+  const oweRows = () => rows(2, OW.map(x => row(pill(x), C(due(x), 'cnt') + C(P(x.v), 'amt'))).concat(row('Total', C('') + C(P(OT), 'amt'), 'total')));
+
+  // S7-8 big total, overdue chip on its right, one 100% bar, rows by due date
+  $(8).innerHTML = band('Money we owe suppliers', 'Unpaid today') + big(P(OT), `<span class="chip down">${P(ODT)} overdue</span><span class="vs-q">${OW.length} suppliers</span>`)
+    + `<div class="vs-pad">${bar(OW)}</div>` + oweRows();
+
+  // S7-9 half donut, total in the arc
+  draws.push(() => halfCard($(9), band('Money we owe suppliers', 'Unpaid today') + '<div class="vs-g"></div>' + oweRows(), OW, P(OT), `Owed · ${OW.length} suppliers`));
+
+  // S7-10 one column per due date, a Today line between past and coming
+  { const el = $(10), groups = OW.map(s => ({ lab: s.due, tot: s.owed, st: s.overdue ? 'fill:var(--down)' : '', under: s.overdue ? 'Overdue' : '', parts: [{ t: s.t, v: s.owed, tip: `${s.nm} · ${P(s.owed)} · due ${s.due}` }] }));
+    draws.push(() => { el.innerHTML = band('Bills by due date', 'Unpaid today') + '<div class="vs-plot1"></div>' + oweRows();
+      const host = el.querySelector('.vs-plot1'); host.style.width = el.clientWidth - 24 + 'px';
+      cols(host, groups, 190, { under: true, mark: OW.filter(s => day(s.due) < TODAY).length }); }); }
+
+  // S7-11 purchase orders still coming, by due date
+  { const I = V.incoming.map(p => ({ ...p, nm: p.supplier, t: TINT[p.supplier] || 't8', v: p.amt })).sort((a, b) => day(a.due) - day(b.due)), IT = sum(I, p => p.amt);
+    $(11).innerHTML = band('Incoming purchase orders', 'Still coming') + big(P(IT), `<span class="vs-q">${I.length} POs · ${sum(I, p => p.lines)} lines</span>`)
+      + `<div class="vs-pad">${bar(I, IT, p => `${p.po} · ${p.nm} · ${P(p.amt)}`)}</div>`
+      + rows(3, I.map(p => row(pill(p), C(p.lines + ' lines', 'cnt') + C(p.due, 'cnt') + C(P(p.amt), 'amt'))).concat(row('Total', C('') + C('') + C(P(IT), 'amt'), 'total'))); }
+
+  // S7-12 on time: each bar is that supplier's POs, on time in its tint, late in red
+  { const ON = sum(S, s => s.onTime), PO = sum(S, s => s.pos);
+    const L = S.map(s => ({ ...s, top: s.pos, title: `${s.nm} · ${s.onTime} of ${s.pos} on time`, parts: [{ v: s.onTime, t: s.t }, { v: s.pos - s.onTime, t: 'down-tint' }].filter(p => p.v > 0) }))
+      .sort((a, b) => b.onTime / b.pos - a.onTime / a.pos || b.pos - a.pos);
+    $(12).innerHTML = band('Delivered on time', 'Last 30 days') + big(pc(ON, PO), `<span class="vs-q">${ON} of ${PO} POs on time</span>`)
+      + rank(L, x => `${x.onTime} of ${x.pos}`, x => `<span class="r late">${x.onTime < x.pos ? (x.pos - x.onTime) + " late" : ""}</span>`, v => v, 3); }
+
+  // S7-13 lead days, longest first
+  { const L = S.map(s => ({ ...s, v: s.lead })).sort((a, b) => b.v - a.v);
+    $(13).innerHTML = band('Lead time', 'order → delivered') + rank(L, x => `${x.lead} day${x.lead > 1 ? 's' : ''}`, null, v => v + 'd'); }
+
+  draws.forEach(d => d());
+  addEventListener('resize', () => draws.forEach(d => d()));
+})();</script>

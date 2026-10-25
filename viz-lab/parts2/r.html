@@ -1,0 +1,212 @@
+<style>
+/* part r (round 7) — customer breakdown: who buys, and account money owed to the store. Every selector .vr-. */
+.vr-q { color: var(--ink-4); font-weight: 400; }
+.vr-svg { display: block; overflow: visible; }
+.vr-svg text { font-family: var(--font); }
+.vr-c1 { font-size: 20px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.vr-c2 { font-size: 11px; fill: var(--ink-4); }
+/* rows: the rows are the legend; the name cell keeps its full width so a pill is never cut */
+.vr-rows > .row .nm { display: flex; align-items: center; gap: 6px; flex: 1 0 auto; overflow: visible; }
+.vr-a { flex: none; min-width: 72px; text-align: right; }
+.vr-a.w { min-width: 96px; }
+.vr-p { flex: none; width: 46px; text-align: right; }
+.vr-n { flex: none; text-align: right; color: var(--ink-4); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vr-rows .chip { flex: none; min-width: 64px; justify-content: center; }
+.vr-rows > .row.vr-hd { min-height: 22px; font-size: 11px; color: var(--ink-4); }
+.vr-rows > .row.vr-hd:hover { background: none; }
+.vr-rows > .row.sub { padding-left: 24px; }
+/* one 100% bar */
+.vr-bar { display: flex; gap: 2px; height: 14px; border-radius: var(--r-pill); overflow: hidden; }
+.vr-bar > i { min-width: 2px; }
+.vr-pad { padding: 0 12px 10px; }
+.vr-lbs { padding: 10px 0 6px; }
+.vr-lb { display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px; font-size: 12px; color: var(--ink-3); }
+.vr-lb > span { flex: none; width: 48px; }
+.vr-lb > .vr-bar { flex: 1; }
+.vr-big { display: flex; align-items: center; gap: 8px; padding: 12px 12px 10px; }
+.vr-big .kpi-value { font-size: 20px; }
+.vr-big .vr-q { font-size: 12px; }
+/* a grid of lanes: label | track | right cells. Columns shrink to their widest cell, the track takes the rest */
+.vr-ln { display: grid; grid-template-columns: max-content minmax(90px, 1fr) max-content; column-gap: 12px; padding: 8px 12px 4px; }
+.vr-ln > div { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; height: 30px; }
+.vr-ln > .ax { height: 20px; }
+.vr-l { display: flex; align-items: center; gap: 6px; }
+.vr-r { display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 13px; color: var(--ink-2); }
+.vr-r .amt { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.vr-r .pct { color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vr-r > * { text-align: right; }
+.vr-r .chip { flex: none; min-width: 64px; justify-content: center; }
+/* ranked track: bar + value at its end, light scale behind (0, ⅓, ⅔, top) */
+.vr-trk { position: relative; align-self: stretch; display: flex; align-items: center; padding-right: 72px;
+  background: linear-gradient(var(--grid), var(--grid)) right / 1px 100% no-repeat, linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 33.3333% 100% repeat-x;
+  background-origin: content-box; background-clip: content-box; }
+.vr-trk > i { flex: none; height: 16px; border-radius: 4px; min-width: 2px; }
+.vr-trk > b { flex: none; margin-left: 4px; padding: 0 2px; background: var(--raised); font-size: 12px; font-weight: 500; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ax > .vr-trk { background: none; }
+.vr-ax { position: absolute; top: 2px; transform: translateX(-50%); font-size: 11px; color: var(--ink-5); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* the type of a customer: a quiet grey pill */
+.vr-ty { color: var(--ink-3); }
+/* last visit: seven day cells, the visit day in the customer's tint */
+.vr-wk { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.vr-wk > i { height: 16px; border-radius: 4px; background: var(--fill); }
+.vr-wk > em { font-style: normal; font-size: 11px; color: var(--ink-5); text-align: center; }
+.vr-wk > em.now { color: var(--ink-2); font-weight: 500; }
+/* owed against the limit: the track is the limit */
+.vr-lim { position: relative; height: 14px; border-radius: 4px; background: var(--fill); overflow: hidden; }
+.vr-lim > i { position: absolute; left: 0; top: 0; bottom: 0; }
+/* days old: bars past the 30-day line turn red */
+.vr-old { position: relative; align-self: stretch; }
+.vr-old > i { position: absolute; top: 7px; height: 16px; }
+.vr-old > i:first-child { left: 0; border-radius: 4px 0 0 4px; }
+.vr-old > i.all { border-radius: 4px; }
+.vr-old > i.ov { background: var(--bad); border-radius: 0 4px 4px 0; }
+.vr-old > b { position: absolute; top: 7px; line-height: 16px; margin-left: 6px; font-size: 12px; font-weight: 500; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vr-old > s { position: absolute; top: 0; bottom: 0; border-left: 1.5px dashed var(--down); }
+.vr-old > s.g { border-left: 1px solid var(--grid); }
+.ax > .vr-old > s { display: none; }
+.vr-ax.dn { color: var(--down); }
+</style>
+
+<section class="cat" id="vr-cust" data-nav="R7 · Customers">
+  <h2>Who buys</h2>
+  <p class="why">The five account customers against walk-in, last 30 days. Named + walk-in = net sales. Each customer keeps one tint in every card; walk-in is grey.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>R7-1</b> Half donut · the five customers and walk-in, net sales in the arc</div><div class="card" id="vr-1"></div></div>
+    <div class="spec"><div class="tag"><b>R7-2</b> Big total · named against walk-in, one two-part bar</div><div class="card" id="vr-2"></div></div>
+    <div class="spec"><div class="tag"><b>R7-3</b> Top customers · ranked tint bars, type, chip vs the 30 days before</div><div class="card" id="vr-3"></div></div>
+    <div class="spec"><div class="tag"><b>R7-4</b> Spend by customer type · big total + chip, one bar, pill rows</div><div class="card" id="vr-4"></div></div>
+    <div class="spec"><div class="tag"><b>R7-5</b> Average sale per customer · ranked, orders beside it</div><div class="card" id="vr-5"></div></div>
+    <div class="spec"><div class="tag"><b>R7-6</b> Orders against pesos · two 100% bars</div><div class="card" id="vr-6"></div></div>
+    <div class="spec"><div class="tag"><b>R7-7</b> Last visit · the day each customer last bought, this week</div><div class="card" id="vr-7"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vr-acct" data-nav="R7 · Accounts">
+  <h2>Account money</h2>
+  <p class="why">What account customers owe the store. Owed 30 days ago + charged − paid back = owed now, which is the sum of their balances. A charge older than 30 days is overdue.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>R7-8</b> Owed now · big number, one bar, the steps as rows</div><div class="card" id="vr-8"></div></div>
+    <div class="spec"><div class="tag"><b>R7-9</b> Owed against the credit limit · each bar runs to its limit</div><div class="card" id="vr-9"></div></div>
+    <div class="spec"><div class="tag"><b>R7-10</b> Over 30 days · big number, one two-part bar</div><div class="card" id="vr-10"></div></div>
+    <div class="spec"><div class="tag"><b>R7-11</b> Half donut · who owes, owed now in the arc</div><div class="card" id="vr-11"></div></div>
+    <div class="spec"><div class="tag"><b>R7-12</b> Oldest unpaid charge · days, past the 30-day line in red</div><div class="card" id="vr-12"></div></div>
+    <div class="spec"><div class="tag"><b>R7-13</b> Credit used · owed against all limits, one bar</div><div class="card" id="vr-13"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('vr-' + n), P = V.peso, K = V.pesoK, p2 = n => V.peso(n, 2);
+  const sum = (a, f = x => x.v) => a.reduce((s, x) => s + f(x), 0);
+  const pc = (a, t) => V.pct(Math.abs(a) / Math.abs(t) * 100);
+  const chg = (a, b) => { const c = (a / b - 1) * 100; return `<span class="chip ${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%</span>`; };
+  const nice = (max, steps = 3) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 2, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vr-q">${r}</span>`}</div>`;
+  const fill = t => t === 'bad' ? 'var(--bad)' : `var(--${t})`;
+  const pill = x => `<span class="badge ${x.t}">${x.nm}</span>`;
+  const ty = x => `<span class="badge vr-ty">${x.type}</span>`;
+  const row = (nm, cells, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span>${cells}</div>`;
+  const rows = (list, cells, extra = '') => '<div class="rows vr-rows">' + list.map(x => row(x.lab || pill(x), cells(x))).join('') + extra + '</div>';
+  const A = (v, w = '') => `<span class="amt vr-a ${w}">${v}</span>`, Pc = v => `<span class="pct vr-p">${v}</span>`;
+  const bar = (list, t = sum(list), f = P) => '<div class="vr-bar">' + list.map(x => `<i style="width:${x.v / t * 100}%;background:${fill(x.t)}" title="${x.nm} · ${f(x.v)} · ${pc(x.v, t)}"></i>`).join('') + '</div>';
+  const big = (v, rest = '') => `<div class="vr-big"><span class="kpi-value">${v}</span>${rest}</div>`;
+  const q = s => `<span class="vr-q">${s}</span>`;
+  // half donut, total in the arc (B2-2, bigger): angle 0 = 3 o'clock, clockwise
+  const pt = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const arc = (cx, cy, r, a0, a1) => `M${pt(cx, cy, r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a1)}`;
+  const half = (el, list, c1, c2, f = P) => { const W = el.clientWidth, cx = W / 2, cy = 124, r = 100, t = sum(list), gap = .03; let a = Math.PI;
+    const s = list.map(x => { const sp = x.v / t * Math.PI, d = arc(cx, cy, r, a + gap / 2, a + Math.max(sp - gap / 2, gap / 2 + .01)); a += sp;
+      return `<path d="${d}" style="fill:none;stroke:${fill(x.t)};stroke-width:22"><title>${x.nm} · ${f(x.v)} · ${pc(x.v, t)}</title></path>`; }).join('');
+    el.querySelector('.vr-g').innerHTML = `<svg class="vr-svg" width="${W}" height="140">${s}<text class="vr-c1" x="${cx}" y="${cy - 18}" text-anchor="middle">${c1}</text><text class="vr-c2" x="${cx}" y="${cy}" text-anchor="middle">${c2}</text></svg>`; };
+  // lanes: label | track | right cells. A last 'ax' lane carries the scale.
+  const lanes = (list, label, track, right, ax = '') => '<div class="vr-ln">' + list.map(x => `<div><span class="vr-l">${label(x)}</span>${track(x)}<span class="vr-r">${right(x)}</span></div>`).join('') + ax + '</div>';
+  // ranked tint bars (B2-9): value at the bar end, light scale at 0, ⅓, ⅔, top
+  const rank = (list, val, label, right, fAx = K) => { const st = nice(Math.max(...list.map(x => x.v))), top = st * 3;
+    return lanes([...list].sort((a, b) => b.v - a.v), label, x => `<span class="vr-trk"><i style="width:${x.v / top * 100}%;background:${fill(x.t)}" title="${x.nm} · ${val(x)}"></i><b>${val(x)}</b></span>`, right,
+      `<div class="ax"><span></span><span class="vr-trk">${[0, 1, 2, 3].map(k => `<span class="vr-ax" style="left:calc((100% - 72px) * ${k / 3})">${k ? fAx(k * st) : '0'}</span>`).join('')}</span><span></span></div>`); };
+
+  // ---------- data: customers in spend order, one tint each; walk-in grey ----------
+  const C = [...V.customers].sort((a, b) => b.amt - a.amt).map((c, i) => ({ ...c, nm: c.name, v: c.amt, t: 't' + (i + 1) }));
+  const NT = sum(C), NP = sum(C, c => c.prev), NN = sum(C, c => c.orders);
+  const W = { nm: 'Walk-in', t: 't8', v: V.walkIn }, NET = NT + W.v; // = ladder.net, to the peso
+
+  // R7-1 half donut, five customers + walk-in
+  { const el = $(1); el.innerHTML = band('Customers', 'Last 30 days') + '<div class="vr-g"></div>'
+      + rows([...C, W], x => A(P(x.v)) + Pc(pc(x.v, NET)), row('Total', A(P(NET)) + Pc(''), 'total'));
+    half(el, [...C, W], P(NET), 'Net sales'); }
+
+  // R7-2 named against walk-in
+  { const N = { nm: 'Named customers', t: 't3', v: NT };
+    $(2).innerHTML = band('Customers', 'Last 30 days') + big(P(NET), q('net sales')) + `<div class="vr-pad">${bar([N, W], NET)}</div>`
+      + rows([N, W], x => (x === N ? `<span class="vr-n">${C.length} customers</span>` : '') + A(P(x.v)) + Pc(pc(x.v, NET))); }
+
+  // R7-3 top customers: ranked tint bars, type, chip
+  $(3).innerHTML = band('Top customers', 'Last 30 days') + rank(C, x => K(x.v), x => pill(x) + ty(x), x => x ? chg(x.v, x.prev) : '');
+
+  // R7-4 spend by type; a type wears the tint of its biggest customer
+  { const T = []; C.forEach(c => { let g = T.find(t => t.nm === c.type); if (!g) T.push(g = { nm: c.type, t: c.t, v: 0, prev: 0 }); g.v += c.v; g.prev += c.prev; });
+    T.sort((a, b) => b.v - a.v);
+    $(4).innerHTML = band('Spend by customer type', 'Last 30 days') + big(P(NT), chg(NT, NP) + q('named customers')) + `<div class="vr-pad">${bar(T, NT)}</div>`
+      + rows(T, x => A(P(x.v)) + Pc(pc(x.v, NT)) + chg(x.v, x.prev)); }
+
+  // R7-5 average sale per customer, the five together as a last grey row (walk-in orders are not counted per customer)
+  { const avg = [...C.map(c => ({ ...c, v: c.amt / c.orders })), { nm: 'All five', t: 't8', v: NT / NN, orders: NN }];
+    $(5).innerHTML = band('Average sale', 'net ÷ orders · 30 days') + rank(avg, x => P(x.v), pill, x => x ? `<span class="vr-n">${x.orders} orders</span>` : '', P); }
+
+  // R7-6 orders against pesos
+  { const O = C.map(c => ({ ...c, v: c.orders }));
+    $(6).innerHTML = band('Orders and pesos', 'Last 30 days') + `<div class="vr-lbs"><div class="vr-lb"><span>Orders</span>${bar(O, NN, n => n + ' orders')}</div><div class="vr-lb"><span>Pesos</span>${bar(C, NT)}</div></div>`
+      + '<div class="rows vr-rows">' + row('', '<span class="vr-n" style="width:72px">Orders</span><span class="vr-p"></span><span class="vr-a">Pesos</span><span class="vr-p"></span>', 'vr-hd')
+      + C.map(c => row(pill(c), `<span class="vr-n" style="width:72px;color:var(--ink)">${c.orders}</span>${Pc(pc(c.orders, NN))}${A(P(c.v))}${Pc(pc(c.v, NT))}`)).join('')
+      + row('Total', `<span class="vr-n" style="width:72px;color:var(--ink)">${NN}</span>${Pc('')}${A(P(NT))}${Pc('')}`, 'total') + '</div>'; }
+
+  // R7-7 last visit, on this week's days (Sun is today)
+  { const D = V.week.map(w => w.d), now = V.week.findIndex(w => w.now);
+    const L = C.map(c => ({ ...c, d: D.indexOf(c.last) })).sort((a, b) => b.d - a.d || b.v - a.v);
+    const ago = n => n === 0 ? 'today' : n === 1 ? 'yesterday' : n + ' days ago';
+    $(7).innerHTML = band('Last visit', 'This week') + lanes(L, pill,
+      x => '<span class="vr-wk">' + D.map((d, i) => `<i${i === x.d ? ` style="background:${fill(x.t)}"` : ''} title="${d}${i === x.d ? ' · ' + x.nm : ''}"></i>`).join('') + '</span>',
+      x => x ? `<span class="vr-n" style="min-width:70px">${ago(now - x.d)}</span>` : '',
+      '<div class="ax"><span></span><span class="vr-wk">' + D.map((d, i) => `<em${i === now ? ' class="now"' : ''}>${i === now ? 'Today' : d}</em>`).join('') + '</span><span></span></div>'); }
+
+  // ---------- account money ----------
+  const AC = V.accounts, OWE = C.filter(c => c.balance > 0).sort((a, b) => b.balance - a.balance).map(c => ({ ...c, v: c.balance }));
+  const old = AC.overdueDays, LIM = sum(C, c => c.limit);
+
+  // R7-8 owed now: owed 30 days ago + charged − paid back
+  { const IN = AC.opening + AC.charged, paid = { nm: 'Paid back', t: 't1', v: AC.paid }, owed = { nm: 'Owed now', t: 't2', v: AC.closing };
+    $(8).innerHTML = band('Account money', 'Last 30 days') + big(p2(AC.closing), q('owed now')) + `<div class="vr-pad">${bar([paid, owed], IN, p2)}</div>`
+      + '<div class="rows vr-rows">' + row('Owed 30 days ago', A(p2(AC.opening), 'w') + Pc('')) + row('Charged to account', A('+' + p2(AC.charged), 'w') + Pc(''))
+      + row(pill(paid), A('−' + p2(AC.paid), 'w') + Pc(pc(AC.paid, IN))) + row(pill(owed), A(p2(AC.closing), 'w') + Pc(pc(AC.closing, IN)), 'total') + '</div>'; }
+
+  // R7-9 owed against each limit; the track is the limit
+  { const L = [...C].sort((a, b) => b.balance / b.limit - a.balance / a.limit || b.limit - a.limit);
+    $(9).innerHTML = band('Owed against the limit', 'Now') + lanes(L, pill,
+      x => `<span class="vr-lim" title="${x.nm} · ${p2(x.balance)} of ${P(x.limit)}"><i style="width:${x.balance / x.limit * 100}%;background:${fill(x.t)}"></i></span>`,
+      x => `<span class="amt" style="min-width:76px">${x.balance ? p2(x.balance) : '₱0'}</span><span class="vr-n" style="min-width:52px">of ${K(x.limit)}</span><span class="pct" style="min-width:42px">${pc(x.balance, x.limit)}</span>`); }
+
+  // R7-10 over 30 days against the rest
+  { const ov = OWE.filter(c => c.oldest > old), un = OWE.filter(c => c.oldest <= old);
+    const O = { nm: `Over ${old} days`, t: 'bad', v: sum(ov), who: ov }, U = { nm: `Under ${old} days`, t: 't2', v: sum(un), who: un };
+    $(10).innerHTML = band('Overdue', 'Now') + big(p2(O.v), q(`of ${p2(AC.closing)} owed`)) + `<div class="vr-pad">${bar([O, U], AC.closing, p2)}</div>`
+      + '<div class="rows vr-rows">' + [O, U].map(g => row(pill(g), `<span class="vr-n"></span>` + A(p2(g.v), 'w') + Pc(pc(g.v, AC.closing)))
+        + g.who.map(c => row(c.nm, `<span class="vr-n">${c.oldest} days</span>` + A(p2(c.v), 'w') + Pc(''), 'sub')).join('')).join('') + '</div>'; }
+
+  // R7-11 who owes, half donut
+  { const el = $(11); el.innerHTML = band('Who owes', 'Now') + '<div class="vr-g"></div>'
+      + rows(OWE, x => A(p2(x.v), 'w') + Pc(pc(x.v, AC.closing)), row('Owed now', A(p2(AC.closing), 'w') + Pc(''), 'total'));
+    half(el, OWE, p2(AC.closing), `Owed now · ${OWE.length} of ${C.length} customers`, p2); }
+
+  // R7-12 age of the oldest unpaid charge; past the line in red
+  { const top = Math.ceil(Math.max(...OWE.map(c => c.oldest), old) / 10) * 10, x = d => d / top * 100, TK = Array.from({ length: top / 10 + 1 }, (_, i) => i * 10);
+    const tr = c => { const a = Math.min(c.oldest, old), o = c.oldest - a;
+      return `<span class="vr-old" title="${c.nm} · ${c.oldest} days">${TK.filter(k => k && k < top && k !== old).map(k => `<s class="g" style="left:${x(k)}%"></s>`).join('')}<s style="left:${x(old)}%"></s>`
+        + `<i class="${o ? '' : 'all'}" style="width:${x(a)}%;background:${fill(c.t)}"></i>${o ? `<i class="ov" style="left:${x(a)}%;width:${x(o)}%"></i>` : ''}<b style="left:${x(c.oldest)}%">${c.oldest} days</b></span>`; };
+    $(12).innerHTML = band('Oldest unpaid charge', 'Now') + lanes(OWE, pill, tr, c => c ? `<span class="amt" style="min-width:84px">${p2(c.v)}</span>` : '',
+      '<div class="ax"><span></span><span class="vr-old">' + TK.map(k => `<span class="vr-ax${k === old ? ' dn' : ''}" style="left:${x(k)}%">${k === old ? k + ' days' : k}</span>`).join('') + '</span><span></span></div>'); }
+
+  // R7-13 credit used: balances against the sum of all limits
+  { const room = { nm: 'Credit left', t: 't8', v: LIM - AC.closing };
+    $(13).innerHTML = band('Credit used', 'Now') + big(p2(AC.closing), q(`of ${P(LIM)} credit · ${pc(AC.closing, LIM)}`)) + `<div class="vr-pad">${bar([...OWE, room], LIM, p2)}</div>`
+      + rows([...OWE, room], x => A(p2(x.v), 'w') + Pc(pc(x.v, LIM)), row(`All ${C.length} limits`, A(P(LIM), 'w') + Pc(''), 'total')); }
+
+})();</script>

@@ -91,6 +91,7 @@ function buildReceiptPreview(order, back = [], said = []) {
         <span>${i.qty} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
         <span>${peso(i.amount)}</span>
       </div>
+      ${SalesMath.answerLines(i, peso).map(t => `<div class="rp-small">${escapeHtml(t)}</div>`).join('')}
       ${i.note ? `<div class="rp-small">${escapeHtml(i.note)}</div>` : ''}
       ${back[k] > 0 && back[k] < i.qty ? `<div class="rp-small">${escapeHtml(said[k] || '')}</div>` : ''}
     </div>`).join('');
@@ -301,12 +302,13 @@ function orderLinesHtml(o) {
   orderPicks(o);
   const L = orderPick.lines, can = k => sale && left[k] > 0, open = r.items.map((_, k) => k).filter(can), said = SalesMath.isSale(o) ? backSaid(o, left) : [];
   const all = open.length && open.every(k => L[k] === left[k]);
+  // a sale's line shows what it was paid (its share of every discount, as Refund gives it back), not its list price
   const lines = r.items.map((i, k) => {
     const back = SalesMath.isSale(o) && orderState(o) !== 'voided' ? i.qty - left[k] : 0;
     return `<div class="line${can(k) || !sale ? '' : ' done'}">
       <button type="button" class="row" ${can(k) ? `role="checkbox" aria-checked="${k in L}" data-line="${k}"` : 'disabled'}>${sale ? TICK : ''}
-        <span class="nm"><span>${escapeHtml(i.name)}</span><small class="num">${SalesMath.qtyText(i.qty)} × ${peso(i.price)}${back > 0 ? ` · ${escapeHtml(said[k])}` : ''}</small></span>
-        <span class="amt num">${peso(i.amount)}</span></button>
+        <span class="nm"><span>${escapeHtml(i.name)}</span>${SalesMath.answerLines(i, peso).map(t => `<small>${escapeHtml(t)}</small>`).join('')}<small class="num">${SalesMath.qtyText(i.qty)} × ${peso(i.price)}${back > 0 ? ` · ${escapeHtml(said[k])}` : ''}</small></span>
+        <span class="amt num">${peso(sale ? SalesMath.refundPart(o, [], [{ lineNo: k, qty: i.qty }])?.total ?? i.amount : i.amount)}</span></button>
       ${k in L && left[k] > 1 ? `<div class="step"><span>Coming back</span>
         <button type="button" data-step="-1" data-line="${k}" aria-label="One less">−</button><b class="num">${SalesMath.qtyText(L[k])}</b>
         <button type="button" data-step="1" data-line="${k}" aria-label="One more">+</button><small class="num">of ${SalesMath.qtyText(left[k])}</small></div>` : ''}</div>`;
@@ -488,6 +490,7 @@ function openOrderDetailModal(orderId) {
       <div class="odm-item-info">
         <div class="odm-item-name">${escapeHtml(i.name)}</div>
         <div class="odm-item-sub">${i.qty} ${escapeHtml(i.unit || 'pc')} × ${peso(i.price)}</div>
+        ${SalesMath.answerLines(i, peso).map(t => `<div class="odm-item-sub">${escapeHtml(t)}</div>`).join('')}
         ${i.note ? `<div class="odm-item-sub">${escapeHtml(i.note)}</div>` : ''}
       </div>
       <div class="odm-item-amt">${peso(i.amount)}</div>
@@ -637,6 +640,7 @@ function buildReceiptHtml(order) {
         <span>${i.qty} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
         <span>${peso(i.amount)}</span>
       </div>
+      ${SalesMath.answerLines(i, peso).map(t => `<div class="r-item-row">${escapeHtml(t)}</div>`).join('')}
       ${i.note ? `<div class="r-item-row">${escapeHtml(i.note)}</div>` : ''}
     </div>`).join('');
 

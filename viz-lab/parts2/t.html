@@ -1,0 +1,193 @@
+<style>
+/* part t (round 8) — Home small cards (top 5 + Other, ~300px) and Staff without a colour each. Every selector .vt-. */
+.vt-small { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; align-items: start; }
+.vt-w2 { grid-column: span 2; }
+@media (max-width: 860px) { .vt-w2 { grid-column: auto; } }
+:is(#vt-home, #vt-staff) .tag b { flex: none; }
+.vt-q { color: var(--ink-4); font-weight: 400; }
+.vt-svg { display: block; overflow: visible; margin: 0 auto; }
+.vt-svg text { font-family: var(--font); }
+.vt-c1 { font-size: 17px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.vt-c2 { font-size: 11px; fill: var(--ink-4); }
+/* rows are a grid: each number column as wide as its widest cell, the name column takes the rest and never cuts */
+.vt-rows { display: grid; }
+.vt-rows > .row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; column-gap: 12px; }
+.vt-rows > .row .nm { display: flex; align-items: center; overflow: visible; }
+.vt-rows .r { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vt-rows > .row.hd { min-height: 28px; }
+.vt-rows > .row.hd:hover { background: none; }
+/* one 100% bar, 14px */
+.vt-bar { display: flex; gap: 2px; height: 14px; border-radius: var(--r-pill); overflow: hidden; }
+.vt-bar > i { min-width: 2px; }
+.vt-pad { padding: 12px 12px 8px; }
+.vt-bp { padding: 0 12px 10px; }
+/* big number */
+.vt-big { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 12px 10px; }
+.vt-big .kpi-value { font-size: 20px; }
+.vt-big .vt-q { font-size: 12px; }
+/* ranked bars: name | bar with the exact value at its end | right cells */
+.vt-rank { display: grid; column-gap: 10px; padding: 8px 12px 4px; }
+.vt-rk { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; height: 30px; font-size: 13px; color: var(--ink-2); }
+.vt-rk > span:first-child { white-space: nowrap; }
+.vt-rk > .r { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vt-trk { position: relative; align-self: stretch; display: flex; align-items: center; min-width: 0; padding-right: 72px; }
+.vt-trk > i { flex: none; height: 16px; border-radius: 4px; min-width: 2px; transition: background-color .15s; }
+.vt-trk > b { flex: none; margin-left: 4px; padding: 0 2px; background: var(--raised); font-size: 12px; font-weight: 500; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vt-rk.hd { height: 24px; font-size: 12px; color: var(--ink-4); }
+.vt-rk.total { border-top: 1px solid var(--row-line); height: 33px; color: var(--ink); font-weight: 500; }
+.vt-rk.total > .vt-trk { justify-content: flex-end; padding-right: 0; }
+.vt-rk.total > .vt-trk > b { margin: 0; padding: 0; font-size: 13px; }
+/* pick a row (C12): the picked one wears a --fill pill */
+.vt-rank.pk { padding: 8px 4px 4px; }
+.vt-rank.pk .vt-rk { padding: 0 8px; border-radius: var(--r-row); }
+.vt-rank.pk .vt-rk[data-k] { cursor: pointer; }
+.vt-rank.pk .vt-rk[data-k]:hover { background: var(--band); }
+.vt-rank.pk .vt-rk.on, .vt-rank.pk .vt-rk.on:hover { background: var(--fill); }
+.vt-rank.pk .vt-rk.on .vt-trk > b { background: transparent; }
+/* top items: the name over its bar */
+.vt-it { padding: 6px 12px 6px; }
+.vt-it > div { padding: 4px 0 2px; }
+.vt-in { font-size: 13px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vt-it .vt-trk { height: 22px; }
+.vt-it .vt-trk > i { height: 14px; }
+.vt-lg { display: flex; gap: 4px; }
+/* a little two-part bar inside a row */
+.vt-mini { display: flex; gap: 2px; height: 12px; min-width: 0; }
+.vt-mini > i { flex: none; border-radius: 3px; }
+/* foot */
+.vt-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: var(--row-h); padding: 0 var(--pad); border-top: 1px solid var(--row-line); font-size: 12px; color: var(--ink-4); }
+.vt-foot b { font-weight: 500; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+/* staff table (C2-10) */
+table.t.vt-tb td { white-space: nowrap; }
+table.t.vt-tb td.vt-nm { color: var(--ink); }
+table.t.vt-tb tr.vt-tot td { color: var(--ink); font-weight: 500; }
+table.t.vt-tb .vt-shc { width: 100%; }
+.vt-sh { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.vt-sh > i { flex: none; height: 12px; min-width: 2px; border-radius: 4px; }
+</style>
+
+<section class="cat" id="vt-home" data-nav="T8 · Home small cards">
+  <h2>Home · small cards</h2>
+  <p class="why">Home cards sit four across at about 300px. Top 5 + Other, short rows, the period in the band and nothing else on top. Payments and staff have five or fewer rows, so they show no Other.</p>
+  <div class="vt-small">
+    <div class="spec"><div class="tag"><b>T8-1</b> Payment methods · B4, one 100% bar over pill rows</div><div class="card" id="vt-1"></div></div>
+    <div class="spec"><div class="tag"><b>T8-2</b> Payment methods · B6, ranked bars, exact value at the end</div><div class="card" id="vt-2"></div></div>
+    <div class="spec"><div class="tag"><b>T8-3</b> Top items · D2-6 top 5, bar in the category tint</div><div class="card" id="vt-3"></div></div>
+    <div class="spec"><div class="tag"><b>T8-4</b> Categories · D2-10 top 5 + Other</div><div class="card" id="vt-4"></div></div>
+    <div class="spec"><div class="tag"><b>T8-5</b> Staff · one grey, plain names</div><div class="card" id="vt-5"></div></div>
+    <div class="spec"><div class="tag"><b>T8-6</b> Net sales · B17, before VAT + VAT</div><div class="card" id="vt-6"></div></div>
+    <div class="spec"><div class="tag"><b>T8-7</b> Payment methods · small donut, rows under</div><div class="card" id="vt-7"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vt-staff" data-nav="T8 · Staff in grey">
+  <h2>Staff without a colour each</h2>
+  <p class="why">People get no tint: plain names, every bar in the grey of "Other". Void and refund keep their own reason tints. T8-12 is T8-8 in one soft blue, to set grey beside blue.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>T8-8</b> Staff · grey ranked bars, orders + average sale beside</div><div class="card" id="vt-8"></div></div>
+    <div class="spec"><div class="tag"><b>T8-9</b> Staff · click a row, its bar goes dark</div><div class="card" id="vt-9"></div></div>
+    <div class="spec"><div class="tag"><b>T8-12</b> Staff · T8-8 in one soft blue</div><div class="card" id="vt-12"></div></div>
+    <div class="spec"><div class="tag"><b>T8-11</b> Voids and refunds by staff · people in plain names</div><div class="card" id="vt-11"></div></div>
+    <div class="spec vt-w2"><div class="tag"><b>T8-10</b> Staff table · C2-10 with a grey share bar</div><div class="card" id="vt-10"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = window.VIZ; if (!V) return;
+  const $ = n => document.getElementById('vt-' + n), P = V.peso;
+  const sum = (a, f) => a.reduce((s, x) => s + f(x), 0);
+  const pc = (a, t) => V.pct(a / t * 100);
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vt-q">${r}</span>`}</div>`;
+  // x.b = badge class (tinted pill); no x.b = a plain name (people)
+  const name = x => x.b ? `<span class="badge ${x.b}">${esc(x.nm)}</span>` : esc(x.nm);
+  const C = (v, cls = '') => `<span class="r ${cls}">${v}</span>`;
+  const row = (nm, cells, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span>${cells}</div>`;
+  const rows = (n, list) => `<div class="rows vt-rows" style="grid-template-columns:minmax(max-content,1fr) repeat(${n},max-content)">${list.join('')}</div>`;
+  const tip = (x, t) => `${x.nm} · ${P(x.v)} · ${pc(x.v, t)}`;
+  const bar = (list, t = sum(list, x => x.v), f = x => tip(x, t)) => '<div class="vt-bar">' + list.map(x => `<i style="width:${x.v / t * 100}%;background:var(--${x.t})" title="${esc(f(x))}"></i>`).join('') + '</div>';
+  const big = (v, rest = '') => `<div class="vt-big"><span class="kpi-value">${v}</span>${rest}</div>`;
+  const amtPct = (x, t) => C(P(x.v), 'amt') + C(pc(x.v, t), 'pct');
+
+  // ranked bars. o.n right cells from o.right(x); o.head = header words; o.total = closing row
+  const rank = (list, o = {}) => { const n = o.n || 0, mx = Math.max(...list.map(x => x.v));
+    const R = cells => cells.map(c => `<span class="r">${c}</span>`).join('');
+    const hd = o.head ? `<div class="vt-rk hd"><span></span><span>${o.head[0]}</span>${R(o.head.slice(1))}</div>` : '';
+    const body = list.map((x, i) => `<div class="vt-rk${x.on ? ' on' : ''}"${o.pick ? ` data-k="${i}"` : ''} title="${esc(tip(x, o.t || sum(list, y => y.v)))}"><span>${name(x)}</span>`
+      + `<span class="vt-trk"><i style="width:${x.v / mx * 100}%;background:${x.fill || `var(--${x.t})`}"></i><b>${P(x.v)}</b></span>${n ? R(o.right(x)) : ''}</div>`).join('');
+    const tot = o.total ? `<div class="vt-rk total"><span>${o.total[0]}</span><span class="vt-trk"><b>${o.total[1]}</b></span>${R(o.total.slice(2))}</div>` : '';
+    return `<div class="vt-rank${o.pick ? ' pk' : ''}" style="grid-template-columns:max-content 1fr${n ? ` repeat(${n},max-content)` : ''}">${hd}${body}${tot}</div>`; };
+
+  // donut ring: angle 0 = 3 o'clock, clockwise (as B12 / I3-8)
+  const pt = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const arc = (cx, cy, r, a0, a1) => `M${pt(cx, cy, r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a1)}`;
+  const donut = (list, c1, c2, S = 132, w = 18) => { const c = S / 2, r = c - w / 2 - 1, t = sum(list, x => x.v), gap = .03; let a = -Math.PI / 2, s = '';
+    list.forEach(x => { const sp = x.v / t * 2 * Math.PI; s += `<path d="${arc(c, c, r, a + gap / 2, a + sp - gap / 2)}" style="fill:none;stroke:var(--${x.t});stroke-width:${w}"><title>${esc(tip(x, t))}</title></path>`; a += sp; });
+    return `<svg class="vt-svg" width="${S}" height="${S}">${s}<text class="vt-c1" x="${c}" y="${c + 4}" text-anchor="middle">${c1}</text><text class="vt-c2" x="${c}" y="${c + 20}" text-anchor="middle">${c2}</text></svg>`; };
+
+  // ---------- data ----------
+  // payments keep their own tints (cash, account, GCash, QR, Maya); five methods, so no Other
+  const PY = V.payments.map(p => ({ nm: p.m, b: p.key, t: 'pay-' + p.key, v: p.amt, n: p.n })), PT = sum(PY, x => x.v);
+  // categories: fixed tints from the brief; top 5 by net + Other · n in grey (50–100 categories still give 6 rows)
+  const CTINT = { Cement: 't1', Fasteners: 't2', Electrical: 't3', Plumbing: 't4', Paint: 't5', Lumber: 't6' };
+  const CS = V.categories.slice().sort((a, b) => b.amt - a.amt), REST = CS.slice(5), NI = sum(CS, c => c.items);
+  const CA = CS.slice(0, 5).map(c => ({ nm: c.c, b: CTINT[c.c] || 't8', t: CTINT[c.c] || 't8', v: c.amt }))
+    .concat({ nm: `Other · ${REST.length}`, b: 't8', t: 't8', v: sum(REST, c => c.amt) }), CT = sum(CA, x => x.v);
+  // staff: plain names, sorted by net; no tint per person
+  const S = V.staff.map(s => ({ nm: s.name, v: s.amt, n: s.n, voids: s.voids, refunds: s.refunds })).sort((a, b) => b.v - a.v);
+  const ST = sum(S, x => x.v), SN = sum(S, x => x.n), avg = x => P(x.v / x.n);
+  const GREY = 't8', L = V.ladder;
+  const d7 = 'Last 7 days', d30 = 'Last 30 days';
+
+  // ---------- Home · small cards ----------
+  // T8-1 B4: one 100% bar over pill rows, Total
+  $(1).innerHTML = band('Payment methods', d7) + `<div class="vt-pad">${bar(PY)}</div>`
+    + rows(2, PY.map(x => row(name(x), amtPct(x, PT))).concat(row('Total', C(P(PT), 'amt') + C(''), 'total')));
+  // T8-2 B6: ranked bars, exact value at the end; no axis, no % (the value says it)
+  $(2).innerHTML = band('Payment methods', d7) + rank(PY, { t: PT });
+  // T8-3 D2-6: top 5 items, the name over its bar in the category tint; the band carries the tint legend
+  { const T = V.topItems.slice().sort((a, b) => b.amt - a.amt), top = T.slice(0, 5), mx = top[0].amt, cats = [...new Set(top.map(it => it.cat))];
+    const OA = V.allItemsNet - sum(top, it => it.amt), t = c => CTINT[c] || 't8';
+    $(3).innerHTML = `<div class="band"><span>Top items <span class="vt-q">· 30 days</span></span><span class="vt-lg">${cats.map(c => `<span class="badge ${t(c)}">${c}</span>`).join('')}</span></div>`
+      + '<div class="vt-it">' + top.map(it => `<div title="${esc(`${it.name} · ${it.cat} · ${P(it.amt)} · ${pc(it.amt, V.allItemsNet)} of net sales`)}"><div class="vt-in">${esc(it.name)}</div>`
+        + `<div class="vt-trk"><i style="width:${it.amt / mx * 100}%;background:var(--${t(it.cat)})"></i><b>${P(it.amt)}</b></div></div>`).join('') + '</div>'
+      + `<div class="vt-foot"><span>Other · ${(NI - top.length).toLocaleString('en-PH')} items</span><b>${P(OA)}</b></div>`; }
+  // T8-4 D2-10: categories top 5 + Other, pill labels
+  $(4).innerHTML = band('Categories', d30) + rank(CA, { t: CT });
+  // T8-5 staff: one grey, plain names
+  $(5).innerHTML = band('Staff', d7) + rank(S.map(x => ({ ...x, t: GREY })), { t: ST });
+  // T8-6 B17: net = before VAT + VAT, one bar, two pill rows. Whole pesos on Home: 879,739 + 105,569 = 985,308
+  { const parts = [{ nm: 'Sales before VAT', b: 't3', t: 't3', v: L.beforeVat }, { nm: 'VAT included', b: 't5', t: 't5', v: L.vat }];
+    $(6).innerHTML = band('Net sales', d30) + big(P(L.net)) + `<div class="vt-bp">${bar(parts, L.net)}</div>` + rows(2, parts.map(x => row(name(x), amtPct(x, L.net)))); }
+  // T8-7 small donut (I3-8 scaled down), total in the hole, rows under
+  $(7).innerHTML = band('Payment methods', d7) + `<div style="padding:14px 0 6px">${donut(PY, P(PT), 'Total')}</div>` + rows(2, PY.map(x => row(name(x), amtPct(x, PT))));
+
+  // ---------- Staff without a colour each ----------
+  const staffRank = (fill, extra = {}) => rank(S.map(x => ({ ...x, fill })), { t: ST, n: 2, right: x => [x.n, avg(x)], head: ['Net sales', 'Orders', 'Avg sale'], total: ['Total', P(ST), SN, P(ST / SN)], ...extra });
+  // T8-8 grey bars, orders + average sale beside (I3-6 layout)
+  $(8).innerHTML = band('Staff', d7) + staffRank(`var(--${GREY})`);
+  // T8-12 the same in one soft blue
+  $(12).innerHTML = band('Staff', d7) + staffRank('var(--t3)');
+  // T8-9 pick a row: that bar goes dark ink, the rest stay grey; click it again to see all
+  { const el = $(9); let on = 0;
+    const draw = () => { const x = S[on];
+      el.innerHTML = band('Staff', d7) + big(P(x ? x.v : ST), `<span class="vt-q">${x ? `${esc(x.nm)} · ${pc(x.v, ST)} of net sales` : `All staff · ${SN} orders`}</span>`)
+        + rank(S.map((s, i) => ({ ...s, on: i === on, fill: i === on ? 'var(--ink-2)' : `var(--${GREY})` })), { t: ST, n: 2, pick: 1, right: s => [s.n, avg(s)], head: ['Net sales', 'Orders', 'Avg sale'] });
+      el.querySelectorAll('.vt-rk[data-k]').forEach(r => r.onclick = () => { on = on === +r.dataset.k ? -1 : +r.dataset.k; draw(); }); };
+    draw(); }
+  // T8-10 C2-10 without tints: net, orders, avg sale, share bar in grey
+  { const mx = Math.max(...S.map(x => x.v));
+    $(10).innerHTML = band('Staff', d7) + `<table class="t vt-tb"><thead><tr><th>Staff</th><th class="r">Net sales</th><th class="r">Orders</th><th class="r">Avg sale</th><th class="vt-shc">Share</th></tr></thead><tbody>`
+      + S.map(x => `<tr><td class="vt-nm">${esc(x.nm)}</td><td class="r money">${P(x.v)}</td><td class="r">${x.n}</td><td class="r">${avg(x)}</td>`
+        + `<td class="vt-shc"><span class="vt-sh"><i style="width:calc((100% - 52px) * ${(x.v / mx).toFixed(4)});background:var(--${GREY})"></i>${pc(x.v, ST)}</span></td></tr>`).join('')
+      + `<tr class="vt-tot"><td>Total</td><td class="r">${P(ST)}</td><td class="r">${SN}</td><td class="r">${P(ST / SN)}</td><td>100%</td></tr></tbody></table>`; }
+  // T8-11 C2-8 / I3-18: big count, one void + refund bar, then each person's two-part bar on one scale. Counts only: VIZ has no void amounts per person
+  { const vd = sum(S, s => s.voids), rf = sum(S, s => s.refunds), parts = [{ nm: 'Voids', b: 't7', t: 't7', v: vd }, { nm: 'Refunds', b: 't2', t: 't2', v: rf }];
+    const u = 100 / Math.max(...S.map(s => s.voids + s.refunds));
+    const mini = s => `<span class="vt-mini" title="${esc(`${s.nm} · ${s.voids} voids · ${s.refunds} refunds`)}"><i style="width:calc(${s.voids * u}% - 1px);background:var(--t7)"></i><i style="width:calc(${s.refunds * u}% - 1px);background:var(--t2)"></i></span>`;
+    $(11).innerHTML = band('Voids and refunds', d7) + big(vd + rf, `<span class="vt-q">of ${SN} orders · ${pc(vd + rf, SN)}</span>`) + `<div class="vt-bp">${bar(parts, vd + rf, x => `${x.nm} · ${x.v}`)}</div>`
+      + `<div class="rows vt-rows" style="grid-template-columns:max-content 1fr repeat(2,max-content)">`
+      + `<div class="row hd"><span></span><span></span>${parts.map(p => C(name(p))).join('')}</div>`
+      + S.map(s => `<div class="row"><span>${esc(s.nm)}</span>${mini(s)}${C(s.voids, 'amt')}${C(s.refunds, 'amt')}</div>`).join('')
+      + `<div class="row total"><span>Total</span><span></span>${C(vd)}${C(rf)}</div></div>`; }
+})();</script>

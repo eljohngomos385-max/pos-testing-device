@@ -1,0 +1,288 @@
+<style>
+/* Part A — Home's KPI strip + main bar chart. One renderer (JS below) draws every chart; specimens differ by data-cfg and strip class. */
+.pa-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pa-k { position: relative; min-width: 0; padding: 10px 14px 12px; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.pa-l { display: block; font-size: 12px; font-weight: 500; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pa-k.on .pa-l { color: var(--ink); }
+.pa-line { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; white-space: nowrap; }
+.pa-v { font-size: 19px; font-weight: 550; color: var(--ink); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.pa-line .chip { height: 18px; padding: 0 6px; font-size: 11.5px; }
+
+/* v1 segmented band: white tile on the grey, gaps not lines */
+.pa-v1 { background: var(--band); padding: 6px; gap: 4px; }
+.pa-v1 .pa-k { border-radius: var(--r-cell); padding: 7px 10px 9px; }
+.pa-v1 .pa-k:not(.on):hover { background: var(--fill); }
+.pa-v1 .pa-k.on { background: var(--raised); box-shadow: 0 0 0 1px var(--line), var(--card-shadow); }
+/* v2 four tiles, picked one ringed */
+.pa-v2 { background: var(--band); padding: 8px; gap: 8px; }
+.pa-v2 .pa-k { background: var(--raised); border-radius: var(--r-cell); box-shadow: 0 0 0 1px var(--line); padding: 7px 10px 9px; }
+.pa-v2 .pa-k.on { box-shadow: 0 0 0 1.5px var(--ink); }
+/* v3 underline only */
+.pa-v3 { background: var(--band); }
+.pa-v3 .pa-k { padding: 10px 16px 15px; }
+.pa-v3 .pa-k:not(.on) .pa-v { color: var(--ink-3); }
+.pa-v3 .pa-k.on::after { content: ""; position: absolute; left: 16px; right: 16px; bottom: 4px; height: 3px; border-radius: var(--r-pill); background: var(--ink); }
+/* v4 rounded well inside the white body */
+.pa-wellwrap { padding: 12px 12px 0; }
+.pa-v4 { background: var(--band); border-radius: var(--r-cell); padding: 4px; gap: 4px; }
+.pa-v4 .pa-k { border-radius: var(--r-row); padding: 7px 10px 9px; }
+.pa-v4 .pa-k:not(.on):hover { background: var(--fill); }
+.pa-v4 .pa-k.on { background: var(--raised); box-shadow: 0 0 0 1px var(--line), var(--card-shadow); }
+/* v5 separate small cards: grey band label, white number */
+.pa-v5 { gap: 12px; margin-bottom: 12px; }
+.pa-v5 .pa-k { padding: 0; background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--card-shadow); overflow: hidden; }
+.pa-v5 .pa-l { height: var(--band-h); line-height: var(--band-h); padding: 0 var(--pad); background: var(--band); }
+.pa-v5 .pa-line { margin: 0; padding: 9px var(--pad) 11px; }
+.pa-v5 .pa-k.on { border-color: var(--ink); box-shadow: 0 0 0 .5px var(--ink); }
+/* v6 rail left of the chart */
+.pa-railwrap { display: grid; grid-template-columns: 196px minmax(0, 1fr); padding: 8px 0 0 8px; }
+.pa-v6 { grid-template-columns: 1fr; align-content: start; gap: 2px; }
+.pa-v6 .pa-k { border-radius: var(--r-row); padding: 8px 10px; }
+.pa-v6 .pa-k:not(.on):hover { background: var(--band); }
+.pa-v6 .pa-k.on { background: var(--band); }
+.pa-v6 .pa-v { font-size: 17px; }
+/* v7 pill switch + one big number */
+.pa-v7 { display: inline-flex; padding: 2px; border-radius: var(--r-pill); background: var(--pill); }
+.pa-v7 .pa-k { height: 24px; padding: 0 10px; border-radius: var(--r-pill); font-size: 12px; }
+.pa-v7 .pa-k .pa-l { color: var(--ink-3); }
+.pa-v7 .pa-k.on { background: var(--raised); box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.06); }
+.pa-v7 .pa-k.on .pa-l { color: var(--ink); }
+.pa-big { display: flex; align-items: baseline; gap: 8px; padding: 14px 16px 0; }
+.pa-big .pa-v { font-size: 24px; }
+.pa-band7 { padding-block: 4px; }
+/* v8 folder tab, rounded: the picked tab rises into the panel on curved feet */
+.pa-v8 { background: var(--band); padding: 8px var(--r-cell) 0; }
+.pa-v8 .pa-k { border-radius: var(--r-cell) var(--r-cell) 0 0; padding: 8px 12px 12px; }
+.pa-v8 .pa-k:not(.on) .pa-v { color: var(--ink-3); }
+.pa-v8 .pa-k.on { background: var(--raised); }
+.pa-v8 .pa-k.on::before, .pa-v8 .pa-k.on::after { content: ""; position: absolute; bottom: 0; width: var(--r-cell); height: var(--r-cell); }
+.pa-v8 .pa-k.on::before { left: calc(-1 * var(--r-cell)); background: radial-gradient(circle at 0 0, transparent calc(var(--r-cell) - .5px), var(--raised) var(--r-cell)); }
+.pa-v8 .pa-k.on::after { right: calc(-1 * var(--r-cell)); background: radial-gradient(circle at 100% 0, transparent calc(var(--r-cell) - .5px), var(--raised) var(--r-cell)); }
+/* v9 legend key: the picked KPI wears the bars' blue square */
+.pa-v9 { background: var(--band); padding: 4px; gap: 4px; }
+.pa-v9 .pa-k { border-radius: var(--r-cell); padding: 8px 12px 10px; }
+.pa-v9 .pa-k:not(.on):hover { background: var(--fill); }
+.pa-v9 .pa-k:not(.on) .pa-v { color: var(--ink-3); }
+.pa-v9 .pa-k.on .pa-l::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; background: var(--bar); }
+
+/* phone: 2 x 2 */
+.pa-phone { max-width: 360px; }
+.pa-phone .pa-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pa-phone .pa-v { font-size: 17px; }
+
+/* the plot */
+.pa-plot { position: relative; padding: 16px 12px 8px 14px; }
+.pa-plot svg { display: block; overflow: visible; }
+.pa-gl { stroke: var(--grid); }
+.pa-b { fill: var(--bar); } .pa-ghost { fill: var(--d1); } .pa-low { fill: var(--s5); } .pa-mute { fill: var(--d1); } .pa-soft { fill: var(--d1); } .pa-d2 { fill: var(--d2); }
+.pa-p1 { fill: var(--s1); } .pa-p2 { fill: var(--s2); } .pa-p3 { fill: var(--s3); } .pa-p4 { fill: var(--s4); } .pa-p5 { fill: var(--s5); }
+.pa-tl { stroke: var(--ink-3); stroke-dasharray: 4 3; }
+.pa-ln { fill: none; stroke: var(--bar); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.pa-ln.deep { stroke: var(--s1); }
+.pa-dot { fill: var(--raised); stroke: var(--bar); stroke-width: 2; }
+.pa-dot.deep { fill: var(--s1); stroke: var(--raised); }
+.pa-hov { fill: var(--fill); opacity: 0; rx: var(--r-row); }
+.pa-slot { cursor: pointer; } .pa-slot:hover .pa-hov { opacity: 1; }
+.pa-today { fill: var(--band); rx: var(--r-row); }
+.pa-stub { fill: var(--ink-5); }
+.pa-plot .tip b { font-weight: 600; } .pa-tq { color: var(--ink-5); }
+.pa-read { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; font-size: 12px; color: var(--ink-3); }
+.pa-read b { font-size: 15px; font-weight: 550; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pa-none { display: grid; place-items: center; color: var(--ink-4); font-size: 12px; }
+.pa-foot { padding: 2px 14px 12px; }
+</style>
+
+<section class="cat" id="a-kpi" data-nav="KPI strip">
+  <h2>Home · KPI strip</h2>
+  <p class="why">The tabs split a rounded card with straight lines; these keep tabs-pick-the-chart with gaps, tiles and rounded marks instead.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>A1</b> Segmented band · white tile on the grey, gaps not lines</div>
+      <div class="card pa-home"><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A2</b> Four tiles · each KPI its own rounded box, picked one ringed</div>
+      <div class="card pa-home"><div class="pa-strip pa-v2"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A3</b> Underline · no boxes, a rounded bar under the picked KPI</div>
+      <div class="card pa-home"><div class="pa-strip pa-v3"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A4</b> Well · the strip in a rounded grey well inside the white body</div>
+      <div class="card pa-home"><div class="band"><span class="pa-title"></span><button class="pick">Last 7 days</button></div>
+        <div class="pa-wellwrap"><div class="pa-strip pa-v4"></div></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A5</b> Separate cards · four small cards over the chart card</div>
+      <div class="pa-home"><div class="pa-strip pa-v5"></div>
+        <div class="card"><div class="band"><span class="pa-title"></span><button class="pick">Last 7 days</button></div><div class="pa-plot"></div></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A6</b> Left rail · KPIs stacked beside the chart, rounded row highlight</div>
+      <div class="card pa-home" data-cfg='{"h":236}'><div class="band"><span class="pa-title"></span><button class="pick">Last 7 days</button></div>
+        <div class="pa-railwrap"><div class="pa-strip pa-v6"></div><div class="pa-plot"></div></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A7</b> Pill switch · labels in a pill segment, one big number</div>
+      <div class="card pa-home"><div class="band pa-band7"><div class="pa-strip pa-v7"></div><button class="pick">Last 7 days</button></div>
+        <div class="pa-big"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A8</b> Folder tab, rounded · picked tab rises into the panel on curved feet</div>
+      <div class="card pa-home"><div class="pa-strip pa-v8"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A9</b> Legend key · picked KPI wears the bars' blue square, nothing else</div>
+      <div class="card pa-home"><div class="pa-strip pa-v9"></div><div class="pa-plot"></div></div></div>
+  </div>
+</section>
+
+<section class="cat" id="a-chart" data-nav="Home chart">
+  <h2>Home · main chart</h2>
+  <p class="why">What the one blue bar chart can say beyond the day total, still blues only and the ₱ scale on the right.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>A10</b> Last week ghost · light bar behind for the same weekday</div>
+      <div class="card pa-home" data-cfg='{"ghost":1}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div>
+        <div class="pa-foot legend"><span><i style="background:var(--bar)"></i>This week</span><span><i style="background:var(--d1)"></i>Last week</span></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A11</b> Target line · ₱60k dashed, days under it lighter</div>
+      <div class="card pa-home" data-cfg='{"target":1}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div>
+        <div class="pa-foot legend"><span><i style="background:var(--bar)"></i>At or over target</span><span><i style="background:var(--s5)"></i>Under</span><span id="pa-tgt"></span></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A12</b> Line · the same days as a line, a dot on each</div>
+      <div class="card pa-home" data-cfg='{"mode":"line"}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A13</b> Area · the line with a soft blue fill</div>
+      <div class="card pa-home" data-cfg='{"mode":"area"}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A14</b> Pill bars · fully round ends, not bw/10 tops</div>
+      <div class="card pa-home" data-cfg='{"mode":"pill"}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A15</b> Hover tip · point at a day: net, orders, last week</div>
+      <div class="card pa-home" data-cfg='{"tip":1,"demo":3}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A16</b> Pick a day · click a bar; the rest go pale, readout on top</div>
+      <div class="card pa-home" data-cfg='{"sel":3,"h":180}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A17</b> Today slot · Sun as a grey "Today" column, not a gap</div>
+      <div class="card pa-home" data-cfg='{"sun":1}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A18</b> By payment · same frame, one bar per method, five blues</div>
+      <div class="card pa-home" data-cfg='{"pay":1}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+  </div>
+</section>
+
+<section class="cat" id="a-combo" data-nav="Two scales + phone">
+  <h2>Home · second measure, phone</h2>
+  <p class="why">A second number on the same chart (scale on the left), and the whole card at phone width.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>A19</b> Bars + running total · the week adding up, left scale</div>
+      <div class="card pa-home" data-cfg='{"two":"cum"}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div>
+        <div class="pa-foot legend"><span><i style="background:var(--d1)"></i>Net sales a day</span><span><i style="background:var(--s1)"></i>Week so far (left)</span></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A20</b> Bars + orders dots · orders on a count scale, left</div>
+      <div class="card pa-home" data-cfg='{"two":"dots"}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div>
+        <div class="pa-foot legend"><span><i style="background:var(--d2)"></i>Net sales (right)</span><span><i style="background:var(--s1);border-radius:50%"></i>Orders (left)</span></div></div></div>
+
+    <div class="spec"><div class="tag"><b>A21</b> Phone · 360px, 2 × 2 segmented strip, 190px chart</div>
+      <div class="card pa-home pa-phone" data-cfg='{"h":190}'><div class="pa-strip pa-v1"></div><div class="pa-plot"></div></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, NICE = [1, 2, 3, 4, 5, 6, 8, 10], NICE2 = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+  // Three round steps over the peak (calmPlot's rule); the second scale may use finer steps so it fills the same three lines.
+  const step = (max, set = NICE) => { max = max || 1; const p = 10 ** Math.floor(Math.log10(max / 3)); return set.map(s => s * p).find(s => 3 * s >= max); };
+  const fmtK = n => (n ? V.pesoK(n) : '₱0');
+  const chip = c => `<span class="chip ${c < 0 ? 'down' : c > 0 ? 'up' : 'flat'}">${c < 0 ? '−' : '+'}${Math.abs(c).toFixed(1)}%</span>`;
+  const val = k => (k.money ? V.peso(k.value) : k.pct ? k.value.toFixed(1) + '%' : k.value.toLocaleString('en-PH'));
+  const bar = (x, y, w, h, r, cls) => { if (h <= 0) return ''; r = Math.min(r, h, w / 2);
+    return `<path class="${cls}" d="M${x},${y + h}V${y + r}A${r},${r} 0 0 1 ${x + r},${y}H${x + w - r}A${r},${r} 0 0 1 ${x + w},${y + r}V${y + h}Z"/>`; };
+  let gid = 0;
+
+  function plot(host, c, home) {
+    const cs = getComputedStyle(host), W = host.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), H = c.h || 200;
+    const k = V.kpis.find(k => k.id === c.series), money = c.series === 'net';
+    // ponytail: the data set has net + orders per day only; gross profit and margin per day would be invented.
+    if (!money && c.series !== 'orders') { host.innerHTML = `<div class="pa-none" style="height:${H}px">No per-day ${k.label.toLowerCase()} in the demo data</div>`; return; }
+    const rows = c.pay ? V.payments.map(p => ({ d: p.m, v: money ? p.amt : p.n, p: 0, pay: p }))
+      : V.week.map(w => ({ d: w.d, v: money ? w.net : w.orders, p: money ? w.prev : 0, w }));
+    const fmt = money ? fmtK : String, long = n => (money ? V.peso(n) : n + ' orders');
+    const L = c.two ? 40 : 2, R = 42, T = 6, B = 24, pw = W - L - R, ph = H - T - B;
+    const max = Math.max(...rows.map(r => r.v), ...(c.ghost ? rows.map(r => r.p) : [0]));
+    const st = step(max), y = v => T + ph * (1 - v / (3 * st));
+    const n = rows.length, slot = pw / n, bw = Math.max(Math.min(slot - 3, 24), Math.min(slot * .56, 32)), cx = i => L + slot * (i + .5);
+    let s = '', lines = '', read = '';
+    for (let i = 0; i <= 3; i++) s += `<line class="pa-gl" x1="${L}" x2="${L + pw}" y1="${y(st * i)}" y2="${y(st * i)}"/><text class="ax" x="${L + pw + 8}" y="${y(st * i) + 4}">${fmt(st * i)}</text>`;
+
+    // second measure: running total of net, or orders, on its own left scale over the same three lines
+    let v2, y2;
+    if (c.two && !c.pay) {
+      let run = 0; v2 = rows.map(r => (r.w.now ? null : c.two === 'cum' ? (run += r.w.net) : r.w.orders));
+      const st2 = step(Math.max(...v2), NICE2), f2 = c.two === 'cum' ? fmtK : String; y2 = v => T + ph * (1 - v / (3 * st2));
+      for (let i = 0; i <= 3; i++) s += `<text class="ax" text-anchor="end" x="${L - 8}" y="${y2(st2 * i) + 4}">${f2(st2 * i)}</text>`;
+    }
+
+    rows.forEach((r, i) => {
+      const x = cx(i) - bw / 2, now = r.w && r.w.now;
+      let g = (c.tip || c.sel != null) ? `<rect class="pa-hov" x="${cx(i) - slot / 2 + 2}" y="${T - 4}" width="${slot - 4}" height="${ph + 4}"/>` : '';
+      if (now && c.sun) g += `<rect class="pa-today" x="${x - 4}" y="${T}" width="${bw + 8}" height="${ph}"/><rect class="pa-stub" x="${x + 4}" y="${y(0) - 4}" width="${bw - 8}" height="2" rx="1"/>`;
+      if (c.ghost && r.p) g += bar(x, y(r.p), bw, y(0) - y(r.p), bw / 10, 'pa-ghost');
+      if (!c.mode || c.mode === 'pill') {
+        const cls = c.pay ? 'pa-p' + (i + 1) : c.sel != null ? (i === c.sel ? 'pa-b' : 'pa-mute')
+          : c.target && money && r.v < V.dailyTarget ? 'pa-low' : c.two === 'dots' ? 'pa-d2' : c.two ? 'pa-soft' : 'pa-b';
+        g += bar(x, y(r.v), bw, y(0) - y(r.v), c.mode === 'pill' ? bw / 2 : bw / 10, cls);
+      }
+      g += `<rect x="${cx(i) - slot / 2}" y="${T}" width="${slot}" height="${ph + B}" fill="transparent"/>`;
+      s += `<g class="pa-slot" data-i="${i}">${g}</g>`;
+      s += `<text class="ax${now ? ' now' : ''}" text-anchor="middle" x="${cx(i)}" y="${H - 6}">${now && c.sun ? 'Today' : r.d}</text>`;
+    });
+
+    if (c.target && money && !c.pay) lines += `<line class="pa-tl" x1="${L}" x2="${L + pw}" y1="${y(V.dailyTarget)}" y2="${y(V.dailyTarget)}"/>`;
+    if (c.mode === 'line' || c.mode === 'area') {
+      const pts = rows.filter(r => !r.w.now).map((r, i) => [cx(i), y(r.v)]), d = 'M' + pts.join('L');
+      if (c.mode === 'area') { const id = 'pa-g' + gid++;
+        lines += `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--bar);stop-opacity:.18"/><stop offset="1" style="stop-color:var(--bar);stop-opacity:0"/></linearGradient></defs>`
+          + `<path fill="url(#${id})" d="${d}L${pts.at(-1)[0]},${y(0)}L${pts[0][0]},${y(0)}Z"/>`; }
+      lines += `<path class="pa-ln" d="${d}"/>` + pts.map(p => `<circle class="pa-dot" cx="${p[0]}" cy="${p[1]}" r="3"/>`).join('');
+    }
+    if (v2) {
+      const pts = v2.map((v, i) => v == null ? null : [cx(i), y2(v)]).filter(Boolean);
+      if (c.two === 'cum') lines += `<path class="pa-ln deep" d="M${pts.join('L')}"/>`;
+      lines += pts.map(p => `<circle class="pa-dot deep" cx="${p[0]}" cy="${p[1]}" r="${c.two === 'cum' ? 3 : 4}"/>`).join('');
+    }
+    if (c.sel != null) {
+      const r = rows[c.sel];
+      read = `<div class="pa-read">${r.d}${r.w && r.w.now ? ' · no sales yet' : ` <b>${long(r.v)}</b>${r.p ? chip((r.v - r.p) / r.p * 100) + ' vs last ' + r.d : ''}`}</div>`;
+    }
+    host.innerHTML = read + `<svg width="${W}" height="${H}">${s}<g pointer-events="none">${lines}</g></svg><div class="tip" hidden></div>`;
+
+    const tip = host.lastChild, sr = host.querySelector('svg').getBoundingClientRect(), hr = host.getBoundingClientRect(), ox = sr.left - hr.left, oy = sr.top - hr.top;
+    const show = i => {
+      const r = rows[i], top = Math.min(y(r.v), y(r.p || 0));
+      tip.innerHTML = r.pay ? `<b>${r.d}</b> ${V.peso(r.pay.amt)} · ${r.pay.n} orders`
+        : r.w.now ? `<b>Sun</b> today · no sales yet`
+        : `<b>${r.d}</b> ${V.peso(r.w.net)} · ${r.w.orders} orders<br><span class="pa-tq">Last ${r.d} ${V.peso(r.w.prev)}</span>`;
+      tip.hidden = false;
+      const left = ox + cx(i) - tip.offsetWidth / 2;
+      tip.style.left = Math.max(0, Math.min(host.clientWidth - tip.offsetWidth, left)) + 'px';
+      tip.style.top = oy + top - tip.offsetHeight - 8 + 'px';
+      host.querySelectorAll('.pa-slot').forEach(g => g.querySelector('.pa-hov').style.opacity = +g.dataset.i === i ? 1 : '');
+    };
+    if (c.tip) {
+      host.onmousemove = e => { const g = e.target.closest('.pa-slot'); g ? show(+g.dataset.i) : (tip.hidden = true); };
+      host.onmouseleave = () => { tip.hidden = true; host.querySelectorAll('.pa-hov').forEach(h => h.style.opacity = ''); };
+      if (c.demo != null) show(c.demo);   // the lab shows one tip without a pointer
+    }
+    if (c.sel != null) host.onclick = e => { const g = e.target.closest('.pa-slot'); if (g) { c.sel = +g.dataset.i; render(home); } };
+  }
+
+  function render(home) {
+    const c = home._c || (home._c = Object.assign({ series: 'net' }, JSON.parse(home.dataset.cfg || '{}')));
+    const k = V.kpis.find(k => k.id === c.series), strip = home.querySelector('.pa-strip'), labelsOnly = strip.classList.contains('pa-v7');
+    strip.innerHTML = V.kpis.map(x => `<button class="pa-k${x.id === c.series ? ' on' : ''}" data-k="${x.id}"><span class="pa-l">${x.label}</span>`
+      + (labelsOnly ? '' : `<span class="pa-line"><span class="pa-v">${val(x)}</span>${chip(x.change)}</span>`) + '</button>').join('');
+    strip.onclick = e => { const b = e.target.closest('.pa-k'); if (b) { c.series = b.dataset.k; render(home); } };
+    home.querySelectorAll('.pa-title').forEach(t => t.textContent = k.label + (c.pay ? ' by payment' : ' by day'));
+    const big = home.querySelector('.pa-big'); if (big) big.innerHTML = `<span class="pa-v">${val(k)}</span>${chip(k.change)}`;
+    plot(home.querySelector('.pa-plot'), c, home);
+  }
+
+  const homes = document.querySelectorAll('.pa-home');
+  homes.forEach(render);
+  addEventListener('resize', () => homes.forEach(render));
+  const tg = document.getElementById('pa-tgt');
+  if (tg) tg.innerHTML = `<i style="width:12px;height:0;border-top:1.5px dashed var(--ink-3);border-radius:0"></i>Target ${V.pesoK(V.dailyTarget)} a day`;
+})();</script>

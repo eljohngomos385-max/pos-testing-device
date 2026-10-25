@@ -1,0 +1,294 @@
+<style>
+/* part d (round 2) — Top items, Categories, Bought together in the category tints. Every selector .vd-. */
+.vd-q { font-size: 12px; font-weight: 400; color: var(--ink-4); }
+.vd-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: var(--row-h); padding: 0 var(--pad); border-top: 1px solid var(--row-line); font-size: 12px; color: var(--ink-4); }
+.vd-foot a { font-weight: 500; color: var(--ink); text-decoration: none; white-space: nowrap; }
+.vd-svg { display: block; overflow: visible; }
+.vd-svg text { font-family: var(--font); }
+.vd-c1 { font-size: 15px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.vd-c2 { font-size: 11px; fill: var(--ink-4); }
+/* chart beside the rows (B12) */
+.vd-split { display: flex; align-items: center; padding: 6px 0 6px 12px; }
+.vd-split > svg { flex: none; }
+.vd-split > .rows { flex: 1; min-width: 0; }
+.vd-split .rows > .row { padding: 0 12px 0 14px; }
+.rows .vd-w { flex: none; width: 46px; text-align: right; }
+.rows .chip { flex: none; min-width: 54px; justify-content: center; }
+/* one 100% bar (B11) */
+.vd-pad { padding: 12px 12px 8px; }
+.vd-bar { display: flex; gap: 2px; height: 14px; border-radius: var(--r-pill); overflow: hidden; }
+.vd-bar > i { min-width: 2px; }
+.vd-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; font-size: 12px; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vd-cap b { font-weight: 500; color: var(--ink); }
+/* the Top items table (D3) */
+.vd-t td.vd-c { width: 1%; padding-left: 0; }
+.vd-t td.nm { white-space: nowrap; }
+.vd-t th.vd-c { width: 1%; }
+.vd-it { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.vd-it > .badge { flex: none; }
+.vd-nm { overflow: hidden; text-overflow: ellipsis; }
+.vd-ph { flex: none; display: inline-block; width: 28px; height: 28px; border-radius: var(--r-row); background: var(--fill); }
+.vd-uw { color: var(--ink-4); }
+.vd-t tr.vd-oth td { color: var(--ink-4); }
+.vd-t tr.vd-oth td.money { color: var(--ink-2); font-weight: 400; }
+.vd-t tr.vd-grp td { height: 36px; background: var(--band); border-top-color: var(--line); }
+.vd-t tr.vd-grp td.money { color: var(--ink); }
+.vd-t tr.vd-grp:first-child td { border-top-color: transparent; }
+.vd-t tbody tr.vd-grp:hover td { background: var(--band); }
+.vd-t td.vd-in { padding-left: 24px; }
+/* big number (B17) */
+.vd-big { display: flex; align-items: center; gap: 8px; padding: 12px 12px 10px; }
+.vd-big .kpi-value { font-size: 20px; }
+/* ranked bars (B6) as an HTML grid: label · track (bar + value at its end) · % */
+.vd-rk { padding: 6px 0 2px; }
+.vd-rr { display: grid; align-items: center; gap: 0 10px; height: 30px; padding: 0 var(--pad); font-size: 13px; }
+.vd-rr > .vd-l { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.vd-rr > .pct { text-align: right; font-size: 12px; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vd-trk { position: relative; display: flex; align-items: center; height: 100%; }
+.vd-trk > s { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid); }
+.vd-trk > i { position: relative; height: 16px; border-radius: 3px; }
+.vd-trk > b { position: relative; margin-left: 6px; font-size: 12px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vd-trk.ax { height: 22px; }
+.vd-trk.ax > span { position: absolute; top: 3px; transform: translateX(-50%); font-size: 11px; color: var(--ink-5); font-variant-numeric: tabular-nums; }
+/* ticked rows (C12) */
+.vd-tick { padding: 4px; }
+.vd-tick > .row { padding: 0 8px; border-radius: var(--r-row); cursor: pointer; }
+.vd-tick > .row:hover, .vd-tick > .row:hover + .row { border-top-color: transparent; }
+.vd-tick > .row.on, .vd-tick > .row.on:hover { background: var(--fill); border-top-color: transparent; }
+.vd-tick > .row.on + .row { border-top-color: transparent; }
+.vd-split .vd-tick > .row { padding: 0 8px; }
+/* treemap */
+.vd-tm { position: relative; height: 232px; margin: 12px; }
+.vd-tm > div { position: absolute; padding: 8px 10px; border-radius: var(--r-cell); overflow: hidden; font-size: 12px; line-height: 1.35; font-variant-numeric: tabular-nums; }
+.vd-tm b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vd-tm em { font-style: normal; opacity: .7; }
+/* flow (E18) */
+.vd-flow { padding: 14px 12px 10px; }
+.vd-flow svg { display: block; width: 100%; height: auto; overflow: visible; }
+.vd-fl { font-size: 12px; fill: var(--ink-2); }
+.vd-fl tspan.k { fill: var(--ink); font-weight: 500; }
+.vd-fl.h { font-size: 11px; fill: var(--ink-4); }
+/* bought together */
+.vd-pr { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; overflow: hidden; }
+.vd-pr > .badge { min-width: 0; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+.vd-pr > em { flex: none; font-style: normal; font-size: 12px; color: var(--ink-4); }
+.vd-n { flex: none; width: 76px; text-align: right; }
+.vd-n .amt { font-weight: 500; }
+.vd-pb { padding: 4px 0; }
+.vd-pb > div { padding: 7px var(--pad) 8px; }
+.vd-pb > div:hover { background: var(--band); }
+.vd-pb .vd-pr { margin-bottom: 6px; }
+.vd-pb .vd-trk { height: 16px; }
+</style>
+
+<section class="cat" id="vd-top" data-nav="Top items v2">
+  <h2>Top items</h2>
+  <p class="why">D3 (the pick) grown in the category tints: the item's category is its pill, the pills colour the charts. Top 10, then Other and See all — the same at 30 items or 3,000.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>D2-1</b> D3 · category as a tinted pill</div><div class="card" id="vd-1"></div></div>
+    <div class="spec"><div class="tag"><b>D2-2</b> D3 · one 100% bar over it: top 10 by category vs Other</div><div class="card" id="vd-2"></div></div>
+    <div class="spec"><div class="tag"><b>D2-3</b> D3 · units with their word</div><div class="card" id="vd-3"></div></div>
+    <div class="spec"><div class="tag"><b>D2-4</b> D3 · all three: pill, units word, the category bar</div><div class="card" id="vd-4"></div></div>
+    <div class="spec"><div class="tag"><b>D2-5</b> D3 grouped · a pill row per category, items under it</div><div class="card" id="vd-5"></div></div>
+    <div class="spec"><div class="tag"><b>D2-6</b> Ranked bars (B6) · each bar in its category tint</div><div class="card" id="vd-6"></div></div>
+  </div>
+  <div class="grid" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>D2-7</b> Big number (B17) · top 10 vs every other item</div><div class="card" id="vd-7"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vd-cat" data-nav="Categories v2">
+  <h2>Categories</h2>
+  <p class="why">Net sales by category, last 30 days. Top 6 each get a tint (t1…t6), the rest fold into Other (grey, t8) + See all — built for 50–100 categories.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>D2-8</b> Donut (B12) · total in the hole, pill rows</div><div class="card" id="vd-8"></div></div>
+    <div class="spec"><div class="tag"><b>D2-9</b> 100% bar (B11) · pill rows</div><div class="card" id="vd-9"></div></div>
+    <div class="spec"><div class="tag"><b>D2-10</b> Ranked bars (B6) · pill labels, value at the bar end</div><div class="card" id="vd-10"></div></div>
+    <div class="spec"><div class="tag"><b>D2-11</b> Donut · change chip in place of the %</div><div class="card" id="vd-11"></div></div>
+    <div class="spec"><div class="tag"><b>D2-12</b> Donut (C12) · tick a row, the rest go grey</div><div class="card" id="vd-12"></div></div>
+    <div class="spec"><div class="tag"><b>D2-13</b> Half donut (B2) · total in the arc, rows under</div><div class="card" id="vd-13"></div></div>
+  </div>
+  <div class="grid wide" style="margin-top:16px">
+    <div class="spec"><div class="tag"><b>D2-14</b> Treemap in the tints · size = net sales</div><div class="card" id="vd-14"></div></div>
+    <div class="spec"><div class="tag"><b>D2-15</b> Categories as D3 · items on the shelf, net, change</div><div class="card" id="vd-15"></div></div>
+    <div class="spec"><div class="tag"><b>D2-16</b> Flow (E18) · categories → top 10 items and the rest</div><div class="card" id="vd-16"></div></div>
+    <div class="spec"><div class="tag"><b>D2-17</b> Flow (E18) · Cement and Fasteners → their top items</div><div class="card" id="vd-17"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vd-pairs" data-nav="Bought together v2">
+  <h2>Bought together</h2>
+  <p class="why">Pairs that land in the same order, last 30 days. Each pair is two pills; top 6 + See all.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>D2-18</b> Two pills joined · the order count right</div><div class="card" id="vd-18"></div></div>
+    <div class="spec"><div class="tag"><b>D2-19</b> Ranked bars · the pair over its bar</div><div class="card" id="vd-19"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = window.VIZ; if (!V) return;
+  const P = V.peso, K = V.pesoK, $ = n => document.getElementById('vd-' + n);
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const sum = (a, k = 'amt') => a.reduce((s, x) => s + x[k], 0);
+  const pc = (a, t, d = 1) => V.pct(a / t * 100, d);
+  const chg = (a, p) => (a - p) / p * 100;
+  const chip = c => `<span class="chip ${c > 0 ? 'up' : c < 0 ? 'down' : 'flat'}">${c > 0 ? '+' : c < 0 ? '−' : ''}${Math.abs(c).toFixed(1)}%</span>`;
+  const band = (t, note = '') => `<div class="band"><span>${t}</span>${note && `<span class="vd-q">${note}</span>`}</div>`;
+  const foot = (left = '', link = 'See all in Items →') => `<div class="vd-foot"><span>${left}</span><a href="#">${link}</a></div>`;
+  const pill = (t, s) => `<span class="badge t${t}">${esc(s)}</span>`;
+  const row = (nm, cells, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span>${cells}</div>`;
+  const nice = (max, steps = 3) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 2, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const seg = (vals, cols, tips) => { const t = vals.reduce((s, v) => s + v, 0); return vals.map((v, i) => `<i style="width:${v / t * 100}%;background:${cols[i]}" title="${tips[i]}"></i>`).join(''); };
+  // arcs: angle 0 = 3 o'clock, clockwise (as B12)
+  const pt = (cx, cy, r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const arc = (cx, cy, r, a0, a1) => `M${pt(cx, cy, r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${pt(cx, cy, r, a1)}`;
+  const ring = (cx, cy, r, w, vals, cols, tips, a0 = -Math.PI / 2, span = 2 * Math.PI, gap = .03) => {
+    const t = vals.reduce((s, v) => s + v, 0); let a = a0;
+    return vals.map((v, i) => { const s = v / t * span, d = arc(cx, cy, r, a + gap / 2, a + s - gap / 2); a += s;
+      return `<path d="${d}" style="fill:none;stroke:${cols[i]};stroke-width:${w};transition:stroke .15s"><title>${tips[i]}</title></path>`; }).join('');
+  };
+
+  // ---- categories: top 6 by net + Other (t8). 50–100 categories still give 7 rows. ----
+  const CS = V.categories.slice().sort((a, b) => b.amt - a.amt), REST = CS.slice(6);
+  const CO = CS.slice(0, 6).map((c, i) => ({ ...c, t: i + 1 }))
+    .concat({ c: `Other · ${REST.length}`, t: 8, oth: true, amt: sum(REST), prev: sum(REST, 'prev'), items: sum(REST, 'items') });
+  const CT = sum(CO), CP = sum(CO, 'prev'), NI = sum(CO, 'items');
+  const tintOf = Object.fromEntries(CO.filter(c => !c.oth).map(c => [c.c, c.t])), catT = c => tintOf[c] || 8;
+  const cv = c => `var(--t${c.t})`, cTips = CO.map(c => `${c.c} · ${P(c.amt)} · ${pc(c.amt, CT)}`);
+  const catRows = (cells = c => `<span class="amt">${P(c.amt)}</span><span class="pct vd-w">${pc(c.amt, CT)}</span>`, total = `<span class="amt">${P(CT)}</span><span class="pct vd-w"></span>`) =>
+    '<div class="rows">' + CO.map(c => row(pill(c.t, c.c), cells(c))).join('') + row('Total', total, 'total') + '</div>';
+  const catFoot = foot('', `See all ${CS.length} categories →`);
+
+  // ---- top items: top 10 + Other · n items ----
+  const T = V.topItems.slice().sort((a, b) => b.amt - a.amt), ALL = V.allItemsNet;
+  const TS = sum(T), TP = sum(T, 'prev'), OA = ALL - TS, othItems = `Other · ${(NI - T.length).toLocaleString('en-PH')} items`;
+  const word = it => !it.unit ? 'pcs' : it.unit === 'bag' ? (it.units === 1 ? 'bag' : 'bags') : it.unit; // ponytail: blank unit = pcs
+  const units = (it, w) => it.units.toLocaleString('en-PH') + (w ? `<span class="vd-uw"> ${word(it)}</span>` : it.unit ? ' ' + word(it) : '');
+  const itTip = it => `${it.name} · ${P(it.amt)} · ${pc(it.amt, ALL)} of net sales`;
+  const nmCell = (it, p) => `<span class="vd-it"><i class="vd-ph"></i><span class="vd-nm">${esc(it.name)}</span>${p ? pill(catT(it.cat), it.cat) : `<small>${esc(it.cat)}</small>`}</span>`;
+  const table = ({ p = 1, w = 0 } = {}) => `<table class="t vd-t"><thead><tr><th>Item</th><th class="r">Units sold</th><th class="r">Net sales</th><th class="vd-c"></th></tr></thead><tbody>` +
+    T.map(it => `<tr><td class="nm">${nmCell(it, p)}</td><td class="r">${units(it, w)}</td><td class="r money">${P(it.amt)}</td><td class="vd-c">${chip(chg(it.amt, it.prev))}</td></tr>`).join('') +
+    `<tr class="vd-oth"><td><span class="vd-it"><i class="vd-ph" style="visibility:hidden"></i>${othItems}</span></td><td></td><td class="r money">${P(OA)}</td><td class="vd-c"></td></tr></tbody></table>` + foot();
+  const head = band('Top items', 'Last 30 days vs 30 before');
+  // top 10 by category (in tint order), then Other
+  const byCat = CO.filter(c => !c.oth).map(c => ({ c, its: T.filter(it => it.cat === c.c) })).filter(g => g.its.length);
+  const cap = `<div class="vd-cap"><span>Top 10 items <b>${P(TS)}</b> · ${pc(TS, ALL)} of net sales</span><span>Other <b>${P(OA)}</b></span></div>`;
+
+  // D2-1 pill only
+  $(1).innerHTML = head + table();
+  // D2-2 one 100% bar: top 10 split by category, Other grey
+  $(2).innerHTML = head + `<div class="vd-pad">${cap}<div class="vd-bar">${seg(byCat.map(g => sum(g.its)).concat(OA), byCat.map(g => cv(g.c)).concat('var(--t8)'),
+    byCat.map(g => `${g.c.c} in the top 10 · ${P(sum(g.its))}`).concat(`${othItems} · ${P(OA)}`))}</div></div>` + table();
+  // D2-3 units with their word
+  $(3).innerHTML = head + table({ w: 1 });
+  // D2-4 all three (a slice per item was tried: alternating tints read as noise)
+  $(4).innerHTML = $(2).innerHTML.replace(/<table[\s\S]*$/, '') + table({ w: 1 });
+
+  // D2-5 grouped by category
+  $(5).innerHTML = head + `<table class="t vd-t"><thead><tr><th>Item</th><th class="r">Units sold</th><th class="r">Net sales</th><th class="vd-c"></th></tr></thead><tbody>` +
+    byCat.map(g => `<tr class="vd-grp"><td><span class="vd-it">${pill(g.c.t, g.c.c)}<span class="vd-q">${g.its.length} of the top 10</span></span></td><td></td><td class="r money">${P(sum(g.its))}</td><td class="vd-c">${chip(chg(sum(g.its), sum(g.its, 'prev')))}</td></tr>` +
+      g.its.map(it => `<tr><td class="nm vd-in"><span class="vd-nm">${esc(it.name)}</span></td><td class="r">${units(it, 1)}</td><td class="r money">${P(it.amt)}</td><td class="vd-c">${chip(chg(it.amt, it.prev))}</td></tr>`).join('')).join('') +
+    `<tr class="vd-grp vd-oth"><td>${othItems}</td><td></td><td class="r money">${P(OA)}</td><td class="vd-c"></td></tr></tbody></table>` + foot();
+
+  // ranked bars: rows [{lab, v, fill, tip, pct}], label column width
+  const ranked = (rows, lw, fmt = K, steps = 4, top = nice(rows[0].v * 1.25, steps) * steps, showPct = true) => {
+    const x = v => (v / top * 100).toFixed(2) + '%', grid = Array.from({ length: steps + 1 }, (_, t) => `<s style="left:${x(t * top / steps)}"></s>`).join('');
+    const cols = `grid-template-columns:${lw} 1fr${showPct ? ' 42px' : ''}`;
+    return '<div class="vd-rk">' + rows.map(r => `<div class="vd-rr" style="${cols}"><span class="vd-l">${r.lab}</span><div class="vd-trk">${grid}<i style="width:${x(r.v)};background:${r.fill}" title="${esc(r.tip)}"></i><b>${fmt(r.v)}</b></div>${showPct ? `<span class="pct">${r.pct}</span>` : ''}</div>`).join('')
+      + `<div class="vd-rr" style="${cols};height:24px"><span></span><div class="vd-trk ax">${Array.from({ length: steps + 1 }, (_, t) => `<span style="left:${x(t * top / steps)}">${t ? fmt(t * top / steps) : '0'}</span>`).join('')}</div>${showPct ? '<span></span>' : ''}</div></div>`;
+  };
+  // D2-6 top items as ranked bars in their category tint; the band carries the pill legend
+  $(6).innerHTML = `<div class="band"><span>Top items</span><span style="display:flex;gap:4px">${byCat.map(g => pill(g.c.t, g.c.c)).join('')}</span></div>` +
+    ranked(T.map(it => ({ lab: esc(it.name), v: it.amt, fill: `var(--t${catT(it.cat)})`, tip: itTip(it), pct: pc(it.amt, ALL) })), '232px', K, 4, 100000) + foot(`${othItems} · ${P(OA)}`);
+
+  // D2-7 B17: big number + one two-part bar + two rows
+  $(7).innerHTML = band('Top 10 items', 'Last 30 days') + `<div class="vd-big"><span class="kpi-value">${P(TS)}</span>${chip(chg(TS, TP))}<span class="vd-q">${pc(TS, ALL)} of net sales</span></div>` +
+    `<div style="padding:0 12px 8px"><div class="vd-bar">${seg([TS, OA], ['var(--t3)', 'var(--t8)'], [`Top 10 · ${P(TS)}`, `${othItems} · ${P(OA)}`])}</div></div>` +
+    '<div class="rows">' + row(pill(3, 'Top 10 items'), `<span class="amt">${P(TS)}</span><span class="pct vd-w">${pc(TS, ALL)}</span>`) + row(pill(8, othItems), `<span class="amt">${P(OA)}</span><span class="pct vd-w">${pc(OA, ALL)}</span>`)
+    + row('Net sales', `<span class="amt">${P(ALL)}</span><span class="pct vd-w"></span>`, 'total') + '</div>';
+
+  // ---- Categories ----
+  const amts = CO.map(c => c.amt), fills = CO.map(cv);
+  const donut = (inner = `<text class="vd-c1" x="62" y="64" text-anchor="middle">${K(CT)}</text><text class="vd-c2" x="62" y="79" text-anchor="middle">Total</text>`, f = fills) =>
+    `<svg class="vd-svg" width="124" height="124">${ring(62, 62, 51, 18, amts, f, cTips)}${inner}</svg>`;
+  const catBand = band('Categories', 'Net sales · last 30 days');
+  // D2-8 donut + pill rows
+  $(8).innerHTML = catBand + `<div class="vd-split">${donut()}${catRows()}</div>` + catFoot;
+  // D2-9 100% bar + pill rows
+  $(9).innerHTML = catBand + `<div class="vd-pad"><div class="vd-bar">${seg(amts, fills, cTips)}</div></div>` + catRows() + catFoot;
+  // D2-10 ranked bars with the pill as the label
+  $(10).innerHTML = catBand + ranked(CO.map(c => ({ lab: pill(c.t, c.c), v: c.amt, fill: cv(c), tip: cTips[CO.indexOf(c)], pct: pc(c.amt, CT) })), '92px') + catFoot;
+  // D2-11 donut, chip in place of the %
+  $(11).innerHTML = band('Categories', 'Last 30 days vs 30 before') + `<div class="vd-split">${donut()}${catRows(c => `<span class="amt">${P(c.amt)}</span>${chip(chg(c.amt, c.prev))}`, `<span class="amt">${P(CT)}</span>${chip(chg(CT, CP))}`)}</div>` + catFoot;
+
+  // D2-12 C12: tick a row, its slice keeps the tint, the rest go grey
+  { const el = $(12); let on = 0;
+    const draw = () => { const c = CO[on];
+      el.innerHTML = catBand + `<div class="vd-split">${donut(`<text class="vd-c1" x="62" y="64" text-anchor="middle">${pc(c.amt, CT, 0)}</text><text class="vd-c2" x="62" y="79" text-anchor="middle">${esc(c.oth ? 'Other' : c.c)}</text>`, CO.map((x, i) => i === on ? cv(x) : 'var(--pill)'))}`
+        + '<div class="rows vd-tick">' + CO.map((x, i) => `<div class="row${i === on ? ' on' : ''}" data-i="${i}"><span class="nm">${pill(i === on ? x.t : 8, x.c)}</span><span class="amt">${P(x.amt)}</span><span class="pct vd-w">${pc(x.amt, CT)}</span></div>`).join('') + '</div></div>' + catFoot; };
+    el.addEventListener('click', e => { const r = e.target.closest('[data-i]'); if (r) { on = +r.dataset.i; draw(); } });
+    draw(); }
+
+  // D2-13 half donut, total in the arc
+  { const el = $(13); el.innerHTML = catBand + '<div></div>' + catRows() + catFoot;
+    const W = el.clientWidth, cx = W / 2, cy = 112, r = 88;
+    el.children[1].innerHTML = `<svg class="vd-svg" width="${W}" height="128">${ring(cx, cy, r, 18, amts, fills, cTips, Math.PI, Math.PI, .025)}
+      <text class="vd-c1" x="${cx}" y="${cy - 16}" text-anchor="middle" style="font-size:20px">${P(CT)}</text><text class="vd-c2" x="${cx}" y="${cy + 1}" text-anchor="middle">Total · ${CS.length} categories</text></svg>`; }
+
+  // D2-14 treemap (squarified) in the tints
+  { const W = 640, H = 232;
+    const squarify = (items, x, y, w, h) => { const out = []; let left = items.slice();
+      while (left.length) { const k = w * h / sum(left), short = Math.min(w, h); let rw = [], best = Infinity;
+        for (const it of left) { const r = rw.concat([it]), a = r.map(i => i.amt * k), s = a.reduce((p, q) => p + q, 0);
+          const worst = Math.max(short * short * Math.max(...a) / (s * s), s * s / (short * short * Math.min(...a))); if (worst > best) break; best = worst; rw = r; }
+        const thick = rw.reduce((s, i) => s + i.amt * k, 0) / short; let off = 0;
+        rw.forEach(it => { const len = it.amt * k / thick; out.push(w >= h ? { it, x, y: y + off, w: thick, h: len } : { it, x: x + off, y, w: len, h: thick }); off += len; });
+        if (w >= h) { x += thick; w -= thick; } else { y += thick; h -= thick; } left = left.slice(rw.length); }
+      return out; };
+    $(14).innerHTML = catBand + `<div class="vd-tm">` + squarify(CO, 0, 0, W, H).map(({ it, x, y, w, h }) =>
+      `<div style="left:calc(${x / W * 100}% + 2px);top:${y + 2}px;width:calc(${w / W * 100}% - 4px);height:${h - 4}px;background:${cv(it)};color:var(--t${it.t}-ink)" title="${esc(cTips[CO.indexOf(it)])}"><b>${esc(it.c)}</b>${K(it.amt)}${h > 60 ? `<br><em>${pc(it.amt, CT)}</em>` : ` <em>${pc(it.amt, CT, 0)}</em>`}</div>`).join('') + '</div>' + catFoot; }
+
+  // D2-15 categories in the D3 table, with the 100% bar over it
+  $(15).innerHTML = band('Categories', 'Last 30 days vs 30 before') + `<div class="vd-pad"><div class="vd-bar">${seg(amts, fills, cTips)}</div></div>` +
+    `<table class="t vd-t"><thead><tr><th>Category</th><th class="r">Items</th><th class="r">Share</th><th class="r">Net sales</th><th class="vd-c"></th></tr></thead><tbody>` +
+    CO.map(c => `<tr><td>${pill(c.t, c.c)}</td><td class="r">${c.items}</td><td class="r" style="color:var(--ink-4)">${pc(c.amt, CT)}</td><td class="r money">${P(c.amt)}</td><td class="vd-c">${chip(chg(c.amt, c.prev))}</td></tr>`).join('') +
+    `<tr><td class="nm">Total</td><td class="r">${NI}</td><td></td><td class="r money">${P(CT)}</td><td class="vd-c">${chip(chg(CT, CP))}</td></tr></tbody></table>` + catFoot;
+
+  // flow: left/right nodes [{k, v, fill}], links [{s, t, v}] (indexes). Same scale both sides; links stacked in node order so nothing crosses.
+  const flow = (L, R, links, W, H, xL, xR, nw = 10, gap = 8) => {
+    const tot = sum(L, 'v'), k = (H - gap * (Math.max(L.length, R.length) - 1)) / tot;
+    const place = ns => { const h = sum(ns, 'v') * k + gap * (ns.length - 1); let y = (H - h) / 2; ns.forEach(n => { n.h = Math.max(n.v * k, 1.5); n.y = y; n.o = y; y += n.v * k + gap; }); };
+    place(L); place(R);
+    links.slice().sort((a, b) => a.s - b.s || a.t - b.t).forEach(l => { l.a0 = L[l.s].o; L[l.s].o += l.v * k; });
+    links.slice().sort((a, b) => a.t - b.t || a.s - b.s).forEach(l => { l.b0 = R[l.t].o; R[l.t].o += l.v * k; });
+    const m = (xL + nw + xR) / 2;
+    let s = links.map(l => { const h = l.v * k, x0 = xL + nw;
+      return `<path d="M${x0} ${l.a0}C${m} ${l.a0} ${m} ${l.b0} ${xR} ${l.b0}L${xR} ${l.b0 + h}C${m} ${l.b0 + h} ${m} ${l.a0 + h} ${x0} ${l.a0 + h}Z" style="fill:${L[l.s].fill};opacity:.75"><title>${esc(L[l.s].k)} → ${esc(R[l.t].k)} · ${P(l.v)}</title></path>`; }).join('');
+    const lab = (n, x, anchor) => `<text class="vd-fl" x="${x}" y="${n.y + n.h / 2 + 4}" text-anchor="${anchor}">${esc(n.k)} <tspan class="k">${P(n.v)}</tspan></text>`;
+    s += L.map(n => `<rect x="${xL}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" style="fill:${n.fill}"/>` + lab(n, xL - 8, 'end')).join('');
+    s += R.map(n => `<rect x="${xR}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" style="fill:${n.fill}"/>` + lab(n, xR + nw + 8, 'start')).join('');
+    return `<svg viewBox="0 0 ${W} ${H}">${s}</svg>`;
+  };
+  // D2-16 categories → top 10 / the rest
+  { const g = byCat.map(x => ({ c: x.c, top: sum(x.its) })), oth = CT - sum(g.map(x => ({ amt: x.c.amt })));
+    const L = g.map(x => ({ k: x.c.c, v: x.c.amt, fill: cv(x.c) })).concat({ k: `Other ${CS.length - g.length} categories`, v: oth, fill: 'var(--t8)' });
+    const R = [{ k: 'Top 10 items', v: TS, fill: 'var(--ink-5)' }, { k: othItems, v: OA, fill: 'var(--ink-5)' }];
+    const links = g.flatMap((x, i) => [{ s: i, t: 0, v: x.top }, { s: i, t: 1, v: x.c.amt - x.top }]).concat({ s: g.length, t: 1, v: oth });
+    $(16).innerHTML = band('Where net sales come from', 'Last 30 days') + `<div class="vd-flow">${flow(L, R, links, 640, 210, 190, 420)}</div>` + catFoot; }
+  // D2-17 the two categories that hold the top 10 → each item + the rest of that category
+  { const L = byCat.map(x => ({ k: x.c.c, v: x.c.amt, fill: cv(x.c) })), R = [], links = [];
+    byCat.forEach((x, i) => { x.its.forEach(it => { links.push({ s: i, t: R.length, v: it.amt }); R.push({ k: it.name, v: it.amt, fill: cv(x.c) }); });
+      links.push({ s: i, t: R.length, v: x.c.amt - sum(x.its) }); R.push({ k: `Rest of ${x.c.c}`, v: x.c.amt - sum(x.its), fill: 'var(--t8)' }); });
+    $(17).innerHTML = band('Top items by category', 'Net sales · last 30 days') + `<div class="vd-flow">${flow(L, R, links, 640, 330, 110, 300, 10, 6)}</div>` + foot(); }
+
+  // ---- Bought together: top 6 pairs, each pair one tint (t1…t6) ----
+  const B = V.boughtTogether.slice().sort((a, b) => b.n - a.n), B6 = B.slice(0, 6);
+  const pair = (p, t) => `<span class="vd-pr">${pill(t, p.a)}<em>+</em>${pill(t, p.b)}</span>`;
+  const pTip = p => `${p.a} + ${p.b} · in ${p.n} orders`;
+  const pairBand = band('Bought together', 'Orders with both · last 30 days'), pairFoot = foot('', `See all ${B.length} pairs →`);
+  // D2-18 rows
+  $(18).innerHTML = pairBand + '<div class="rows">' + B6.map((p, i) => `<div class="row" title="${esc(pTip(p))}">${pair(p, i + 1)}<span class="vd-n"><span class="amt">${p.n}</span> <span class="cnt">orders</span></span></div>`).join('') + '</div>' + pairFoot;
+  // D2-19 the pair over its bar
+  { const top = nice(B6[0].n, 3) * 3;
+    $(19).innerHTML = pairBand + '<div class="vd-pb">' + B6.map((p, i) => `<div title="${esc(pTip(p))}">${pair(p, i + 1)}<div class="vd-trk"><i style="width:${(p.n / top * 100).toFixed(2)}%;background:var(--t${i + 1})"></i><b>${p.n} orders</b></div></div>`).join('') + '</div>' + pairFoot; }
+})();</script>

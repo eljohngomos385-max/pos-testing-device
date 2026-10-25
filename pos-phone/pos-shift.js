@@ -378,6 +378,22 @@ const shWhen = ts => fmtOrderTime(ts).replace(/^Today, /, '').replace(/^Yesterda
 const listRow = (tag, attr, title, sub, amt) => `<${tag} class="row"${attr}><div class="nm"><span>${title}</span><small class="num">${sub}</small></div>
   <div class="rt"><span class="amt num">${amt}</span></div></${tag}>`;
 const moveRow = m => listRow('div', '', escapeHtml(m.note), `${escapeHtml(fmtOrderTime(m.ts))} · ${escapeHtml(m.staff)}`, overShortText(m.amount));
+// The button's words change in place (owner 2026-10-17): its width glides at the Shift | Cash pill's pace while the old
+// words shrink out and the new grow in on the same spot, like ☰ <-> ‹. Only on a real change: the page redraws every 4s.
+function shiftFabSay(text) {
+  const b = $('#shiftFab'), was = b.querySelector('span:not(.out)');
+  if (was?.textContent === text) return;
+  const w0 = b.offsetWidth;   // 0 on a hidden page: nothing to glide from
+  b.querySelector('.out')?.remove();   // a tap mid-morph: the new one starts from where this one is
+  was?.classList.add('out');
+  b.appendChild(document.createElement('span')).textContent = text;
+  if (!was) return;
+  if (!w0) return was.remove();
+  const o = { duration: calmMs(280), easing: 'cubic-bezier(.2, .8, .2, 1)' };   // --rl-ease
+  b.animate({ width: [`${w0}px`, `${b.offsetWidth}px`] }, o);
+  b.lastChild.animate({ opacity: [0, 1], transform: ['scale(.7)', 'none'] }, o);
+  was.animate({ opacity: [1, 0], transform: ['none', 'scale(.7)'] }, o).onfinish = () => was.remove();
+}
 function renderShift() {
   const body = $('#shiftBody');
   if (!body) return;
@@ -405,7 +421,8 @@ function renderShift() {
     : `Since last close · ${escapeHtml(shWhen(from))}`;
   const mv = d.moves.slice().reverse();
   const [fab, act] = shTab === 'cash' ? ['Cash in / out', 'cash'] : s ? ['Close shift', 'close'] : ['Start shift', 'open'];
-  Object.assign($('#shiftFab'), { textContent: fab }).dataset.sh = act;
+  shiftFabSay(fab);
+  $('#shiftFab').dataset.sh = act;
   $('#shiftPrint').hidden = !s;
   // the cash sales and Expected only for a role that sees the day's totals: the close is a blind count
   body.innerHTML = shTab === 'cash'

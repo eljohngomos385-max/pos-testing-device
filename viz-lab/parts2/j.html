@@ -1,0 +1,257 @@
+<style>
+/* part j (round 4) — RADIAL formats: sunburst, rose (polar area), radial bars, clock-face heat, spiral. Every selector .vj-. */
+.vj-q { color: var(--ink-4); font-weight: 400; }
+.vj-svg { display: block; overflow: visible; margin: 0 auto; }
+.vj-svg text { font-family: var(--font); }
+.vj-c1 { font-size: 19px; font-weight: 500; fill: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.vj-c2 { font-size: 12px; fill: var(--ink-4); }
+.vj-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vj-cell { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; pointer-events: none; }
+/* rows: the rows are the legend */
+.vj-rows > .row .nm { display: flex; align-items: center; }
+.vj-n { flex: none; width: 34px; text-align: right; color: var(--ink-4); font-variant-numeric: tabular-nums; }
+.vj-a { flex: none; min-width: 76px; text-align: right; }
+.vj-a.w { min-width: 98px; }
+.vj-p { flex: none; width: 46px; text-align: right; }
+.row .vj-ch { flex: none; min-width: 56px; justify-content: center; }
+.vj-rows > .row.vj-sub .nm { padding-left: 14px; color: var(--ink-2); }
+.vj-rows > .row.vj-sub.rest .nm { color: var(--ink-4); }
+.vj-rows > .row.vj-foot { justify-content: flex-end; font-weight: 500; color: var(--ink); }
+.badge.vj-off { background: var(--down-tint); color: var(--down); }
+/* chart beside the rows, or on top */
+.vj-split { display: flex; align-items: center; padding: 8px 0 8px 12px; }
+.vj-split > svg { flex: none; margin: 0; }
+.vj-split > .rows { flex: 1; min-width: 0; }
+.vj-split .rows > .row { padding: 0 12px 0 16px; }
+.vj-top { padding: 14px 0 8px; }
+/* big number, chip right of it */
+.vj-big { display: flex; align-items: center; gap: 8px; padding: 12px 12px 2px; }
+.vj-big .kpi-value { font-size: 20px; }
+.vj-big .vj-q { font-size: 12px; }
+/* heat scale: less ▢▢▢▢ more */
+.vj-key { display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0 12px 10px; font-size: 11px; color: var(--ink-4); }
+.vj-key > i { width: 12px; height: 12px; border-radius: 3px; }
+.vj-key > span { margin: 0 4px; }
+.vj-rows > .row.vj-hd { min-height: 26px; font-size: 11px; }
+.vj-rows > .row.vj-hd:hover { background: none; }
+.vj-seg { display: flex; justify-content: center; padding: 12px 12px 0; }
+</style>
+
+<section class="cat" id="vj-sun" data-nav="J4 · Sunbursts">
+  <h2>Sunbursts</h2>
+  <p class="why">A ring inside a ring: the inner ring is the whole, the outer ring is what each part is made of. Rows list both levels with exact amounts; "Rest of …" in grey.</p>
+  <div class="grid wide">
+    <div class="spec"><div class="tag"><b>J4-1</b> Sunburst · Cement and Fasteners → their top items, 30 days</div><div class="card" id="vj-1"></div></div>
+    <div class="spec"><div class="tag"><b>J4-2</b> Sunburst · stock value in / out → by reason, 7 days</div><div class="card" id="vj-2"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vj-rose" data-nav="J4 · Roses">
+  <h2>Rose (polar area)</h2>
+  <p class="why">Every slice gets the same angle; its area is the amount. Weekdays and hours read like a dial. Exact numbers in the rows.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>J4-3</b> Rose · net sales per weekday, this week</div><div class="card" id="vj-3"></div></div>
+    <div class="spec"><div class="tag"><b>J4-4</b> Rose on a clock · orders per hour, morning vs afternoon</div><div class="card" id="vj-4"></div></div>
+    <div class="spec"><div class="tag"><b>J4-5</b> Rose · all 8 categories, 30 days, chip per row</div><div class="card" id="vj-5"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vj-radial" data-nav="J4 · Radial bars">
+  <h2>Radial bars</h2>
+  <p class="why">One arc per row, the longest on the outside, a light track behind each. Same order as the rows beside it.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>J4-6</b> Radial bars · payment methods, 7 days</div><div class="card" id="vj-6"></div></div>
+    <div class="spec"><div class="tag"><b>J4-7</b> Radial bars · staff by net sales</div><div class="card" id="vj-7"></div></div>
+    <div class="spec"><div class="tag"><b>J4-8</b> Radial bars · stock moves by reason (count)</div><div class="card" id="vj-8"></div></div>
+    <div class="spec"><div class="tag"><b>J4-9</b> Radial bars · top 5 categories + Other, 30 days</div><div class="card" id="vj-9"></div></div>
+    <div class="spec"><div class="tag"><b>J4-10</b> Radial bars · average ticket per payment method</div><div class="card" id="vj-10"></div></div>
+  </div>
+</section>
+
+<section class="cat" id="vj-clock" data-nav="J4 · Clock + spiral">
+  <h2>Clock face and spiral</h2>
+  <p class="why">Hours sit where they sit on a wall clock (7 AM to 7 PM fills the dial once). The spiral winds 26 weeks of days, four weeks a turn, so each weekday lines up on a spoke.</p>
+  <div class="grid">
+    <div class="spec"><div class="tag"><b>J4-11</b> Clock heat · weekday rings × hour, count in every cell</div><div class="card" id="vj-11"></div></div>
+    <div class="spec"><div class="tag"><b>J4-12</b> Clock heat · one day at a time (pick a day)</div><div class="card" id="vj-12"></div></div>
+    <div class="spec"><div class="tag"><b>J4-13</b> Spiral · 26 weeks of net sales, four weeks a turn</div><div class="card" id="vj-13"></div></div>
+  </div>
+</section>
+
+<script>(() => {
+  const V = VIZ, $ = n => document.getElementById('vj-' + n);
+  const sum = (a, k = 'v') => a.reduce((s, x) => s + x[k], 0);
+  const pc = (a, t) => V.pct(Math.abs(a) / Math.abs(t) * 100);
+  const chg = (a, b) => { const c = (a / b - 1) * 100; return `<span class="chip vj-ch ${c >= 0 ? 'up' : 'down'}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%</span>`; };
+  const nice = (max, steps = 3) => { const raw = max / steps, p = 10 ** Math.floor(Math.log10(raw)); return [1, 2, 3, 4, 5, 6, 8, 10].find(m => m * p >= raw) * p; };
+  const band = (t, r = '') => `<div class="band"><span>${t}</span>${r && `<span class="vj-q">${r}</span>`}</div>`;
+  // tint keys: 't1'…'t8' → --tN, 'bad' → --bad, 'off' → --down-tint, a pay key → --pay-*
+  const tint = t => /^t\d$/.test(t) ? `var(--${t})` : t === 'bad' ? 'var(--bad)' : t === 'off' ? 'var(--down-tint)' : `var(--pay-${t})`;
+  const pill = x => `<span class="badge ${x.t === 'off' ? 'vj-off' : x.t}">${x.nm}</span>`;
+  const row = (nm, cells, cls = '') => `<div class="row ${cls}"><span class="nm">${nm}</span>${cells}</div>`;
+  const rows = (list, cells, extra = '') => '<div class="rows vj-rows">' + list.map((x, i) => row(pill(x), cells(x, i))).join('') + extra + '</div>';
+  const totalRow = (cells, nm = 'Total') => row(nm, cells, 'total');
+  const big = (v, rest = '') => `<div class="vj-big"><span class="kpi-value">${v}</span>${rest}</div>`;
+  const amtPct = (x, t, f = V.peso) => `<span class="amt vj-a">${f(x.v)}</span><span class="pct vj-p">${pc(x.v, t)}</span>`;
+
+  // geometry: angle 0 = 12 o'clock, clockwise (clock faces read right)
+  const P = (c, r, a) => `${(c + r * Math.sin(a)).toFixed(2)} ${(c - r * Math.cos(a)).toFixed(2)}`;
+  const sector = (c, r0, r1, a0, a1) => { a1 = Math.min(a1, a0 + 2 * Math.PI - 1e-4); const L = a1 - a0 > Math.PI ? 1 : 0;
+    return `M${P(c, r1, a0)}A${r1} ${r1} 0 ${L} 1 ${P(c, r1, a1)}L${P(c, r0, a1)}` + (r0 ? `A${r0} ${r0} 0 ${L} 0 ${P(c, r0, a0)}` : '') + 'Z'; };
+  const arc = (c, r, a0, a1) => `M${P(c, r, a0)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${P(c, r, a1)}`;
+  // a filled slice, white seam between slices
+  const slice = (c, r0, r1, a0, a1, fill, title) => `<path d="${sector(c, r0, r1, a0, a1)}" style="fill:${fill};stroke:var(--raised);stroke-width:2"><title>${title}</title></path>`;
+  const txt = (c, r, a, s, cls, style = '') => `<text class="${cls}" x="${P(c, r, a).split(' ')[0]}" y="${(+P(c, r, a).split(' ')[1] + 4).toFixed(2)}" text-anchor="middle" style="${style}">${s}</text>`;
+  const svg = (w, h, inner) => `<svg class="vj-svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${inner}</svg>`;
+  // single-hue heat for counts: pale GCash blue → deep blue; 0 = band grey
+  const heat = k => k <= 0 ? 'var(--band)' : `color-mix(in srgb, var(--s3) ${Math.round(k * 62)}%, var(--t3))`;
+  const heatInk = () => 'var(--t3-ink)';
+  const key = (pre = '') => `<div class="vj-key">${pre}<span>Less</span>${[0, .25, .5, .75, 1].map(k => `<i style="background:${heat(k)}"></i>`).join('')}<span>More</span></div>`;
+
+  // ---------- Sunbursts ----------
+  // sunburst: inner ring = groups, outer ring = each group's parts. Angles share one total.
+  const sun = (S, groups, c1, c2, f) => { const c = S / 2, T = sum(groups), r = [c - 72, c - 46, c - 42, c - 4]; let a = 0, out = '';
+    groups.forEach(g => { const s = g.v / T * 2 * Math.PI;
+      out += slice(c, r[0], r[1], a, a + s, tint(g.t), `${g.nm} · ${f(g.v)} · ${pc(g.v, T)}`);
+      let b = a; g.parts.forEach(p => { const ps = p.v / T * 2 * Math.PI; out += slice(c, r[2], r[3], b, b + ps, tint(p.t), `${p.nm} · ${f(p.v)} · ${pc(p.v, T)}`); b += ps; });
+      a += s; });
+    return svg(S, S, out + `<text class="vj-c1" x="${c}" y="${c + 2}" text-anchor="middle">${c1}</text><text class="vj-c2" x="${c}" y="${c + 19}" text-anchor="middle">${c2}</text>`); };
+  // the rows under a sunburst: each group, then its parts indented
+  const sunRows = (groups, T, f, subPill, extra = '', w = 'w') => '<div class="rows vj-rows">' + groups.map(g => row(pill(g), `<span class="amt vj-a ${w}">${f(g.v)}</span><span class="pct vj-p">${pc(g.v, T)}</span>`, 'total')
+    + g.parts.map(p => row(subPill ? pill(p) : `<span class="vj-t">${p.nm}</span>`, `<span class="vj-a ${w}">${f(p.v)}</span><span class="pct vj-p">${pc(p.v, T)}</span>`, 'vj-sub' + (p.rest ? ' rest' : ''))).join('')).join('') + extra + '</div>';
+
+  // J4-1 Cement + Fasteners → their top items + Rest of (30 days)
+  { const G = V.categories.slice(0, 2).map((k, i) => { const items = V.topItems.filter(x => x.cat === k.c), t = 't' + (i + 1);
+      return { nm: k.c, t, v: k.amt, parts: [...items.map(x => ({ nm: x.name, t, v: x.amt })), { nm: 'Rest of ' + k.c, t: 't8', v: k.amt - sum(items, 'amt'), rest: true }] }; });
+    const T = sum(G);
+    $(1).innerHTML = band('Top items by category', 'Net sales · last 30 days') + `<div class="vj-split">${sun(260, G, V.peso(T), '2 categories', V.peso)}`
+      + sunRows(G, T, V.peso, false, totalRow(`<span class="amt vj-a">${V.peso(T)}</span><span class="vj-p"></span>`), '') + '</div>'
+      + '<div class="rows vj-rows">' + row('', 'See all in Items →', 'vj-foot') + '</div>'; }
+
+  // J4-2 stock value in / out → by reason (7 days)
+  { const F = V.stockFlow, G = [
+      { nm: 'In', t: 't8', v: F.received + F.refundsIn, parts: [{ nm: 'Received', t: 't3', v: F.received }, { nm: 'Refunded back in', t: 't2', v: F.refundsIn }] },
+      { nm: 'Out', t: 't8', v: F.sold + F.damaged - F.countFix, parts: [{ nm: 'Sold', t: 't1', v: F.sold }, { nm: 'Damaged', t: 'bad', v: F.damaged }, { nm: 'Count fix', t: 't5', v: -F.countFix }] }];
+    const T = sum(G), d = F.closing - F.opening;
+    $(2).innerHTML = band('Where stock went', 'Value at cost · last 7 days') + `<div class="vj-split">${sun(260, G, (d >= 0 ? '+' : '−') + V.peso(Math.abs(d)), 'Stock value change', V.peso)}`
+      + sunRows(G, T, V.peso, true, row('Opening stock', `<span class="vj-a w">${V.peso(F.opening)}</span><span class="vj-p"></span>`) + totalRow(`<span class="amt vj-a w">${V.peso(F.closing)}</span><span class="vj-p"></span>`, 'Closing stock')) + '</div>'; }
+
+  // ---------- Roses ----------
+  // rose: equal angles, area ∝ value (r² grows with v), faint rings at ⅓ ⅔ of the top, labels round the rim
+  const rose = (S, list, { top = Math.max(...list.map(x => x.v)), a0 = 0, labels = true, f = V.peso } = {}) => {
+    const c = S / 2, R = c - (labels ? 22 : 4), n = list.length, w = 2 * Math.PI / n, rad = v => R * Math.sqrt(Math.max(0, v) / top);
+    let g = [1 / 3, 2 / 3, 1].map(k => `<circle cx="${c}" cy="${c}" r="${(R * Math.sqrt(k)).toFixed(2)}" style="fill:none;stroke:var(--grid)"/>`).join('');
+    list.forEach((x, i) => { const a = a0 + i * w;
+      if (x.v > 0) g += slice(c, 0, rad(x.v), a, a + w, tint(x.t), `${x.nm} · ${f(x.v)}`);
+      if (labels) g += txt(c, R + 12, a + w / 2, x.lab || x.nm, 'ax' + (x.now ? ' now' : '')); });
+    return svg(S, S, g); };
+
+  // J4-3 net sales per weekday, this week (Sun = today, not started)
+  { const W = V.week.map((w, i) => ({ nm: w.d, t: w.now ? 't8' : 't' + (i + 1), v: w.net, n: w.orders, now: w.now })), open = W.filter(x => !x.now), T = sum(open), N = sum(open, 'n');
+    $(3).innerHTML = band('Net sales by weekday', 'This week') + big(V.peso(T), `<span class="vj-q">${N} orders</span>`)
+      + `<div class="vj-top">${rose(230, W)}</div>`
+      + rows(open, x => `<span class="vj-n">${x.n}</span>${amtPct(x, T)}`, totalRow(`<span class="vj-n" style="color:inherit">${N}</span><span class="amt vj-a">${V.peso(T)}</span><span class="vj-p"></span>`)); }
+
+  // J4-4 orders per hour on a clock: 7 AM sits at 7, 6 PM at 6; morning t6, afternoon t3
+  const hourTot = V.hours.map((_, i) => V.heat.reduce((s, h) => s + h.v[i], 0)), clockA = i => (((7 + i) % 12) / 12) * 2 * Math.PI;
+  const hLab = i => { const h = 7 + i; return `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`; };
+  { const H = hourTot.map((v, i) => ({ nm: hLab(i), v, t: i < 5 ? 't6' : 't3', lab: String((7 + i) % 12 || 12) }));
+    const am = { nm: 'Morning · 7–12', t: 't6', v: sum(H.slice(0, 5)) }, pm = { nm: 'Afternoon · 12–7', t: 't3', v: sum(H.slice(5)) }, T = am.v + pm.v;
+    const peak = H.reduce((b, x) => x.v > b.v ? x : b), low = H.reduce((b, x) => x.v < b.v ? x : b);
+    // ponytail: the dial labels sit on the hour lines, so labels go at each wedge's start (a0 shift), not its middle
+    const S = 230, c = S / 2, R = c - 22, w = Math.PI / 6;
+    let g = [1 / 3, 2 / 3, 1].map(k => `<circle cx="${c}" cy="${c}" r="${(R * Math.sqrt(k)).toFixed(2)}" style="fill:none;stroke:var(--grid)"/>`).join('');
+    H.forEach((x, i) => { const a = clockA(i); g += slice(c, 0, R * Math.sqrt(x.v / peak.v), a, a + w, tint(x.t), `${x.nm} · ${x.v} orders`); });
+    for (let h = 1; h <= 12; h++) g += txt(c, R + 12, h / 12 * 2 * Math.PI, h, 'ax');
+    $(4).innerHTML = band('Orders by hour', 'Last 7 days') + `<div class="vj-top">${svg(S, S, g)}</div>`
+      + rows([am, pm], x => `<span class="vj-n" style="color:var(--ink);font-weight:500">${x.v}</span><span class="pct vj-p">${pc(x.v, T)}</span>`)
+      + '<div class="rows vj-rows">' + row('Busiest hour', `<span class="vj-q">${peak.nm}</span><span class="vj-n" style="color:var(--ink);font-weight:500">${peak.v}</span><span class="vj-p"></span>`)
+      + row('Quietest hour', `<span class="vj-q">${low.nm}</span><span class="vj-n" style="color:var(--ink);font-weight:500">${low.v}</span><span class="vj-p"></span>`) + '</div>'; }
+
+  // J4-5 all 8 categories (Tools t7, Roofing t8), 30 days
+  { const C = V.categories.map((k, i) => ({ nm: k.c, t: 't' + (i + 1), v: k.amt, prev: k.prev, lab: k.c.slice(0, 4) })), T = sum(C), TP = sum(C, 'prev');
+    $(5).innerHTML = band('Categories', 'Net sales · last 30 days') + `<div class="vj-top">${rose(230, C, { labels: false })}</div>`
+      + rows(C, x => `<span class="amt vj-a">${V.peso(x.v)}</span>${chg(x.v, x.prev)}`, totalRow(`<span class="amt vj-a">${V.peso(T)}</span>${chg(T, TP)}`)
+        + row('', 'See all 8 categories →', 'vj-foot')); }
+
+  // ---------- Radial bars ----------
+  // one arc per row, longest outside, 270° = the top of a nice scale; light spokes + values at 0, ⅓, ⅔, top
+  const radial = (S, list, { w = 14, gap = 4, f = V.pesoK } = {}) => {
+    const c = S / 2, R = c - w / 2 - 2, st = nice(Math.max(...list.map(x => x.v))), top = st * 3, span = 1.5 * Math.PI;
+    let g = '';
+    [...list].sort((a, b) => b.v - a.v).forEach((x, i) => { const r = R - i * (w + gap);
+      g += `<path d="${arc(c, r, 0, span)}" style="fill:none;stroke:var(--band);stroke-width:${w};stroke-linecap:round"/>`
+        + `<path d="${arc(c, r, 0, Math.max(x.v / top * span, .001))}" style="fill:none;stroke:${tint(x.t)};stroke-width:${w};stroke-linecap:round"><title>${x.nm} · ${f(x.v)}</title></path>`; });
+    return svg(S, S, g); };
+  const desc = l => [...l].sort((a, b) => b.v - a.v);
+
+  // J4-6 payment methods, 7 days
+  { const Pm = V.payments.map(p => ({ nm: p.m, t: p.key, v: p.amt, n: p.n })), T = sum(Pm), N = sum(Pm, 'n');
+    $(6).innerHTML = band('Payment methods', 'Last 7 days') + big(V.peso(T), `<span class="vj-q">${N} payments</span>`)
+      + `<div class="vj-split">${radial(186, Pm)}${rows(desc(Pm), x => amtPct(x, T))}</div>`; }
+
+  // J4-7 staff by net sales
+  const ST = V.staff.map((s, i) => ({ nm: s.name, t: 't' + (i + 1), v: s.amt, n: s.n }));
+  { const T = sum(ST), N = sum(ST, 'n');
+    $(7).innerHTML = band('Staff', 'by net sales') + big(V.peso(T), `<span class="vj-q">${N} orders</span>`)
+      + `<div class="vj-split">${radial(170, ST, { w: 16, gap: 5 })}${rows(desc(ST), x => `<span class="vj-n">${x.n}</span><span class="amt vj-a">${V.peso(x.v)}</span>`)}</div>`; }
+
+  // J4-8 stock moves by reason, count (value beside)
+  { const tk = { Delivery: 't3', Refund: 't2', Void: 't7', Count: 't5', Damaged: 'bad' };
+    const M = V.movesByReason.map(m => ({ nm: m.r, t: tk[m.r], v: m.n, val: m.value })), N = sum(M), VT = sum(M, 'val');
+    $(8).innerHTML = band('Stock moves', 'All but sales · last 7 days') + big(N, `<span class="vj-q">moves · ${V.peso(VT)} at cost</span>`)
+      + `<div class="vj-split">${radial(186, M, { f: String })}${rows(desc(M), x => `<span class="vj-n" style="color:var(--ink);font-weight:500">${x.v}</span><span class="vj-a">${V.peso(x.val)}</span>`)}</div>`; }
+
+  // J4-9 top 5 categories + Other · 3 (scales to 50–100: top 5 + Other)
+  { const C = V.categories.map((k, i) => ({ nm: k.c, t: 't' + (i + 1), v: k.amt })), top = C.slice(0, 5), rest = C.slice(5);
+    const L = desc([...top, { nm: 'Other · ' + rest.length, t: 't8', v: sum(rest) }]), T = sum(C);
+    $(9).innerHTML = band('Categories', 'Net sales · last 30 days') + big(V.peso(T), `<span class="vj-q">${C.length} categories</span>`)
+      + `<div class="vj-split">${radial(196, L, { w: 13, gap: 4 })}${rows(L, x => amtPct(x, T))}</div>`
+      + '<div class="rows vj-rows">' + row('', 'See all 8 categories →', 'vj-foot') + '</div>'; }
+
+  // J4-10 average ticket per payment method (net ÷ payments)
+  { const A = V.payments.map(p => ({ nm: p.m, t: p.key, v: p.amt / p.n, n: p.n })), all = sum(V.payments, 'amt') / sum(V.payments, 'n');
+    $(10).innerHTML = band('Average ticket', 'net ÷ payments · 7 days') + big(V.peso(all), '<span class="vj-q">all payments</span>')
+      + `<div class="vj-split">${radial(186, A)}${rows(desc(A), x => `<span class="vj-n">${x.n}</span><span class="amt vj-a">${V.peso(x.v)}</span>`)}</div>`; }
+
+  // ---------- Clock face + spiral ----------
+  // ponytail: VIZ.heat is a demo shape; its day sums don't match VIZ.week orders, so these cards show hours, never day totals
+  const open = V.heat.filter(h => h.v.some(Boolean)), hmax = Math.max(...open.flatMap(h => h.v));
+  const busiest = v => v.indexOf(Math.max(...v));
+  const dial = (c, R) => { let g = ''; for (let h = 1; h <= 12; h++) g += txt(c, R + 12, h / 12 * 2 * Math.PI, h, 'ax'); return g; };
+  const nOf = v => `<span class="vj-n" style="color:var(--ink);font-weight:500">${v}</span>`;
+
+  // J4-11 weekday rings (Mon outside → Sat inside) × hour at its clock position, count in every cell
+  { const S = 320, c = S / 2, R = c - 22, w = 16; let g = '';
+    open.forEach((h, d) => { const ro = R - d * w;
+      h.v.forEach((v, i) => { const a = clockA(i);
+        g += slice(c, ro - w, ro, a, a + Math.PI / 6, heat(v / hmax), `${h.d} ${hLab(i)} · ${v} orders`) + txt(c, ro - w / 2, a + Math.PI / 12, v, 'vj-cell', `fill:${heatInk()}`); }); });
+    $(11).innerHTML = band('Orders by hour', 'Last 7 days') + `<div class="vj-top">${svg(S, S, g + dial(c, R))}</div>` + key('<span>Mon outside → Sat inside ·</span>')
+      + '<div class="rows vj-rows">' + row('<span class="vj-q">Day</span>', '<span class="vj-q" style="width:96px;text-align:right">Busiest hour</span><span class="vj-q" style="width:48px;text-align:right">Orders</span>', 'vj-hd')
+      + open.map(h => { const b = busiest(h.v); return row(h.d, `<span style="width:96px;text-align:right">${hLab(b)}</span><span class="vj-n" style="width:48px;color:var(--ink);font-weight:500">${h.v[b]}</span>`); }).join('') + '</div>'; }
+
+  // J4-12 one day at a time: one thick ring, count in every cell; pick a day
+  { const el = $(12), draw = d => { const h = open[d], S = 250, c = S / 2, R = c - 22, w = 34, b = busiest(h.v); let g = '';
+      h.v.forEach((v, i) => { const a = clockA(i);
+        g += slice(c, R - w, R, a, a + Math.PI / 6, heat(v / hmax), `${hLab(i)} · ${v} orders`) + txt(c, R - w / 2, a + Math.PI / 12, v, 'vj-cell', `fill:${heatInk()};font-size:12px`); });
+      g += `<text class="vj-c1" x="${c}" y="${c + 2}" text-anchor="middle">${hLab(b)}</text><text class="vj-c2" x="${c}" y="${c + 19}" text-anchor="middle">busiest · ${h.d}</text>`;
+      const top3 = h.v.map((v, i) => ({ v, i })).sort((a, b) => b.v - a.v).slice(0, 3);
+      el.innerHTML = band('Orders by hour', 'Last 7 days') + `<div class="vj-seg"><div class="seg">${open.map((x, i) => `<button class="${i === d ? 'on' : ''}">${x.d}</button>`).join('')}</div></div>`
+        + `<div class="vj-top">${svg(S, S, g + dial(c, R))}</div>` + key()
+        + '<div class="rows vj-rows">' + top3.map(x => row(hLab(x.i), nOf(x.v) + '<span class="vj-q" style="width:46px">orders</span>')).join('') + '</div>';
+      el.querySelectorAll('.seg button').forEach((b, i) => b.onclick = () => draw(i)); };
+    draw(0); }
+
+  // J4-13 spiral of VIZ.days: 28 days a turn (weekdays line up on spokes), oldest inside, today outside
+  { const D = V.days, r0 = 40, pitch = 17, turn = 28, w = 2 * Math.PI / turn, S = 2 * Math.ceil(r0 + D.length / turn * pitch + 4), c = S / 2, max = Math.max(...D.map(d => d.net));
+    // ponytail: each cell is a flat ring piece at its own radius; the spiral comes from the step per day
+    const g = D.map((d, i) => { const a = (i % turn) * w, ri = r0 + (i / turn) * pitch; return slice(c, ri, ri + pitch - 2, a, a + w, heat(d.net / max), `${d.date} · ${V.peso(d.net)}`); }).join('');
+    const M = {}; D.forEach(d => { const k = d.date.slice(0, 7); (M[k] = M[k] || { v: 0, from: d.date, to: d.date }).v += d.net; M[k].to = d.date; });
+    const mName = s => new Date(s + 'T00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+    const ms = Object.entries(M).map(([k, m]) => ({ nm: new Date(k + '-01T00:00').toLocaleDateString('en-PH', { month: 'long' }), part: m.from.slice(8) !== '01' || +m.to.slice(8) < 28 ? `${mName(m.from)} – ${mName(m.to)}` : '', v: m.v }));
+    const T = sum(ms), best = ms.filter(m => !m.part).reduce((b, m) => m.v > b.v ? m : b);
+    $(13).innerHTML = band('Net sales by day', 'Last 26 weeks') + big(V.peso(T), '<span class="vj-q">26 weeks</span>')
+      + `<div class="vj-top">${svg(S, S, g)}</div>` + key(`<span>${mName(D[0].date)} inside → today outside ·</span>`)
+      + '<div class="rows vj-rows">' + ms.map(m => row(m.nm + (m.part ? `<span class="vj-q" style="margin-left:6px">${m.part}</span>` : m === best ? '<span class="vj-q" style="margin-left:6px">best month</span>' : ''),
+        `<span class="amt vj-a">${V.peso(m.v)}</span>`)).join('') + totalRow(`<span class="amt vj-a">${V.peso(T)}</span>`) + '</div>'; }
+})();</script>

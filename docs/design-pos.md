@@ -69,22 +69,26 @@ build plan: `pos-vault/plans/uniform-lists.md`.
 - Left: title 14/500 `--ink` (receipt no., name, note), and under it a sub line 12/400 `--ink-tertiary` ("Walk-in · 2:15 PM · Ana").
 - Right: money **on the title's line** (never centred alone), 14px tabular via `peso()`, in Items' price weight (510); its meta (method) is under it at 12 tertiary.
 - Grouped under Orders' grey band: the plain date or group name + count on the left, the total on the right.
-- On: Orders, Customers, Customer › Recent orders, Cash in & out, Past shifts.
+- On: Orders, Customers, Customer › Recent orders, Cash in & out, Past shifts. Reports' Top items + Top categories are Items' tablet row (48, 32px picture) with this row's text and money (`.rp-li`).
 
 **Setting row = `.fr`.** A word and its value, or one thing with a switch or ›.
 - 48px tall, padding 6px 16px, 16/400, letter-spacing −0.15px; word and value centred top to bottom.
-- The word starts 16px from the left. The value ends 16px from the right (32px when a › follows). Typed values (inputs) are right-aligned too.
+- The word starts 16px from the left. The value ends 16px from the right (40px when a › follows: 6px gap + the 18px ›, ~13px of air to its ink, as rednote's; the same on item edit's › rows and after a switch, as QR and Payment types). Typed values (inputs) are right-aligned too.
 - Lives in a `.card.fc` (`--rl-r`). The block title sits outside, above it (`h3.fc-t`, 14/400 `--ink-tertiary`), with any footnote at 12 tertiary and a link (Print report, See all) at the title's right.
 - A two-line row (name + grey sub + stepper, Quick stock) is 56px; a growing text box (Description) may grow.
+- Money as a value is `.v.num.amt`: 15/400, a step under its 16px word so the word leads (owner 2026-10-17; 16/510 read too big). Text values (a name, a phone) stay 16. 510 is the 14px list row's. A total line (Expected cash, Net sales) is `<b>` on both sides; a count goes on the word as `<small>· n</small>`, and only when it is over 0.
+- A money ladder (Shift's drawer and By method, Reports' By method and Breakdown) lists every line, ₱0.00 too: a quiet day says so (owner 2026-10-17). Only a line a store may never use ("Paid on account") hides at 0.
 
 **Dark ink = what the page is about.** One side is `--ink`, the other `--ink-secondary`:
 - Facts and forms (Item edit, Customer info, Shift): what was typed or counted is the point, so the word is grey and the value dark. This is the default (`.lv .fr > .lb`).
-- Settings and choices (Settings + its sub pages, QR, QR table's switch rows): the setting is the point, so the word is dark and the value grey with ›. Use `.st-page .fr .lb`.
+- Settings and choices (Settings + its sub pages, QR, QR table's switch rows): the setting is the point, so the word is dark and the value grey with ›. Use `.st-page .fr .lb`. A Settings value before its › is `--ink-tertiary`, one step darker than the › (`--ink-quaternary`), so the two read as one pair (rednote's #999 + #CCC, owner 2026-10-17).
 - A row that is just a name (a table, an item, "Payment types ›") shows the name dark.
 
 **Kept different on purpose:** the Items list (phone: name + stock line; tablet: a column table), which the owner likes as it is, and Quick stock's 56px stepper rows. In light theme, list pages sit on a white canvas and setting pages on a grey canvas with white cards (2026-10-09).
 
-**Don't copy** `.lv .sh-move` (52px, 13px type, money centred in grey): it is the drift this rule replaces and goes when Cash in & out and Past shifts move to the list row.
+**Building one:** a list inside a card is `icard(title, rows, '', ' fc-rows')` with `.row` > `.nm` (span + small) and `.rt` (`.amt`); a group's count goes on the title as `<span class="num">· n</span>`, its total as `<span class="tot num">` (or a `.link` when it opens something). Items' own rows are `.lv .page .row:where(:not(.fc-rows > *))` so they never reach a card list on a `.page`. (`.sh-move` was the third recipe; deleted 2026-10-17.)
+
+**First card under the pill** (Reports, Shift): no title over it, 32px under the pill: the room the title took (`.rp-body > :first-child`, `#shiftBody > .card:first-child`). The page's one action is a word top right (Shift: Print), going somewhere is a › row (`.fr.nav`, Shift: Past shifts). A title inside the card was tried and turned down ("ugly", 2026-10-17); Reports' Sales line is the one exception.
 
 ## The hero line — one spot for every big amount (owner 2026-10-16)
 
@@ -97,6 +101,7 @@ ask, Start shift, Close shift (count), Cash in / out, and any new one — puts t
 - Back is `‹ Back` (checkout: `‹ Cancel`) top-left on phone *and* tablet; no ✕ on these pages.
 - Sheets get there by CSS: `.es-body` padding = `--hero-y` − `--es-y` (where the card's inside starts, set by `esLine()` in pos-sell.js on open/resize) − 24 (the name line slot). Checkout subtracts its Cancel bar (`--co-top-h`). **A new hero page uses `esFrame` + these tokens; never its own padding, cqh offset or JS centring.**
 - **Panels never move the amount** (phone, owner 2026-10-16): Pickup / Delivery / Senior / Custom open *under* the rows with checkout Cash's fade + rise (`co-in`). Walk-in keeps all its rows; Discount keeps only the tapped row, which glides into the first row's slot (view transition) while the others fade.
+- **Phone checkout: Complete sale / Done sit on Check out's spot** (owner 2026-10-17): same pill, same place on every checkout page (`.co-step > .co-btn`, `.co-keyin > .co-btn` in the phone block). The tablet and the sheets' white button stay where they are.
 - Check: scout every hero page on phone 393×852 and tablet 1180×820 — the amount's box top must be equal on all of them.
 
 ## Layout grammar (applies to every view)

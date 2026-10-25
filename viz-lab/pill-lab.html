@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pill lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Header pill try-outs for the back office copy (owner 2026-10-19: "I don't like this flat design").
+   Tokens copied from bo-shopify-tables.css; A is today's pill, the rest start from it. */
+:root {
+  --page: rgb(240,239,239); --view: #fff;
+  --b-raised: #fff; --b-line: #ECECEC; --b-ink: #303030; --b-ink-3: #8C8C8C;
+  --sh-ink: rgb(16,16,16); --sh-ink-3: rgb(96,96,96); --sh-fill: rgba(0,0,0,.05);
+  --sh-pill: rgb(235,235,235); --sh-info: #8ce1f8; --sh-info-ink: #002c38;
+  --sh-box: rgba(0,0,0,.04) 0 2px 3px -1px, rgba(0,0,0,.04) 0 3px 4px -1.5px, rgba(0,0,0,.2) 0 0 0 1px;
+  --sh-cal: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.252 2.75v-1'/%3E%3Cpath d='M10.748 2.75v-1'/%3E%3Cpath d='M3.026 6.25h9.99'/%3E%3Crect width='11.479' height='11' x='2.26' y='2.75' rx='3'/%3E%3C/svg%3E");
+  --sh-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12.25 6.75-4.25 4.5-4.25-4.5'/%3E%3C/svg%3E");
+  --sh-chev-r: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 9' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.25 1 4.75 4.5 1.25 8'/%3E%3C/svg%3E");
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--sh-ink); font: 13px/1.4 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+main { max-width: 800px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { margin: 0 0 4px; font-size: 20px; font-weight: 600; letter-spacing: -.3px; }
+.lead { margin: 0 0 24px; color: var(--sh-ink-3); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 720px), 1fr)); gap: 16px; }
+.v { background: var(--view); border-radius: 16px; overflow: hidden; box-shadow: rgba(0,0,0,.06) 0 0 0 1px; }
+.v > header { display: flex; align-items: baseline; gap: 8px; padding: 12px 16px; background: rgb(247,247,247); border-bottom: 1px solid var(--b-line); }
+.v > header b { font-size: 13px; font-weight: 600; }
+.v > header span { color: var(--sh-ink-3); font-size: 12px; }
+.stage { padding: 18px 16px 16px; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.card { margin-top: 14px; border-radius: 12px; overflow: hidden; box-shadow: rgba(0,0,0,.08) 0 0 0 1px; }
+.card .band { padding: 8px 12px; background: rgb(247,247,247); font-size: 12px; font-weight: 500; color: var(--sh-ink-3); }
+.card .body { padding: 10px 12px 12px; font-size: 20px; font-weight: 600; letter-spacing: -.4px; }
+
+/* The shape every variant shares - today's pill */
+.pk { display: inline-flex; align-items: center; gap: 2px; height: 28px; padding: 0 10px 0 12px; border: 0; border-radius: 9999px;
+  font: 500 12px/16px Inter, system-ui, sans-serif; letter-spacing: -.12px; color: var(--sh-ink); cursor: pointer; white-space: nowrap; }
+.pk::after { content: ""; width: 12px; height: 12px; margin: 0 -2px 0 4px; background: currentColor;
+  -webkit-mask: var(--sh-chev) center / 12px no-repeat; mask: var(--sh-chev) center / 12px no-repeat; }
+.pk.cal { padding-left: 6px; }
+.pk.cal::before { content: ""; flex: none; width: 20px; height: 16px; background: currentColor;
+  -webkit-mask: var(--sh-cal) center / 16px no-repeat; mask: var(--sh-cal) center / 16px no-repeat; }
+.pk .vs { margin-left: 3px; color: var(--sh-ink-3); }
+.nav { display: inline-flex; align-items: center; height: 28px; border-radius: 9999px; overflow: hidden; }
+.nav > button { height: 28px; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.nav > .ar { width: 28px; display: grid; place-items: center; padding: 0; }
+.nav > .ar::before { content: ""; width: 6px; height: 9px; background: currentColor;
+  -webkit-mask: var(--sh-chev-r) center / contain no-repeat; mask: var(--sh-chev-r) center / contain no-repeat; }
+.nav > .ar.back::before { transform: scaleX(-1); }
+.nav > .pk { background: transparent !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; border-radius: 0; padding-right: 4px; }
+.nav > .pk::after { display: none; }
+
+/* The app's button shadow (Import / Export CSV, secondary-btn) on every variant; only the fill changes (owner 2026-10-19).
+   Dark is Add item (primary-btn) exactly. */
+:root { --btn-sh: rgba(0,0,0,.08) 0 0 0 1px, rgba(0,0,0,.04) 0 2px 12px 0, rgba(0,0,0,.03) 0 6px 24px 0;
+  --btn-dk: rgba(255,255,255,.08) 0 0 3px 1px inset, rgba(0,0,0,.14) 0 1px 1px 0, rgba(0,0,0,.18) 0 3px 6px -2px;
+  --btn-dk-shine: radial-gradient(50% 60% at 50% 0%, rgba(255,255,255,.18), rgba(255,255,255,0)); }
+.v:not(.A) .pk, .v:not(.A) .nav { box-shadow: var(--btn-sh); }
+.pk:hover, .nav > button:hover { filter: brightness(.97); }
+.A .pk, .A .nav { background: var(--sh-pill); }
+.W .pk, .W .nav { background: var(--b-raised); color: var(--b-ink); }
+.L .pk, .L .nav { background: rgb(247,247,247); color: var(--b-ink); }
+.G .pk, .G .nav { background: var(--sh-pill); }
+.T .pk, .T .nav { background: color-mix(in srgb, var(--sh-info), #fff 75%); color: var(--sh-info-ink); }
+.T .pk .vs { color: color-mix(in srgb, var(--sh-info-ink), #fff 35%); }
+.K .pk, .K .nav { background: var(--b-ink) var(--btn-dk-shine); color: #fff; box-shadow: var(--btn-dk); }
+.K .pk .vs { color: rgba(255,255,255,.6); }
+.K .pk:hover, .K .nav > button:hover { filter: brightness(1.15); }
+/* the app's own buttons, for reference */
+.ref { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border: 0; border-radius: 9999px; font: 500 12px/16px Inter, system-ui, sans-serif; cursor: pointer; }
+.ref.sec { background: var(--b-raised); color: var(--b-ink); box-shadow: var(--btn-sh); }
+.ref.pri { background: var(--b-ink) var(--btn-dk-shine); color: #fff; box-shadow: var(--btn-dk); }
+.bar .gap { flex: 1; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Header pills</h1>
+  <p class="lead">Same shadow as Import / Export CSV on every pill; only the colour changes. Now is today's.</p>
+  <div class="grid" id="grid"></div>
+</main>
+<script>
+var V = [
+  ['A', 'Now', 'flat grey, no shadow'],
+  ['W', 'White', 'Export CSV exactly'],
+  ['L', 'Light grey', 'the card band\'s grey'],
+  ['G', 'Grey', 'today\'s grey with the shadow'],
+  ['T', 'Pale blue', 'tint, dark blue text'],
+  ['K', 'Dark', 'Add item exactly']
+];
+document.getElementById('grid').innerHTML = V.map(function (v) {
+  return '<section class="v ' + v[0] + '"><header><b>' + v[1] + '</b><span>' + v[2] + '</span></header>' +
+    '<div class="stage"><div class="bar">' +
+      '<button class="pk">Widgets</button>' +
+      '<button class="pk cal">Today<span class="vs">vs last Monday</span></button>' +
+      '<div class="nav"><button class="ar back" aria-label="Previous"></button><button class="pk cal">October 2026</button><button class="ar" aria-label="Next"></button></div>' +
+      '<span class="gap"></span><button class="ref sec">Export CSV</button><button class="ref pri">Add item</button>' +
+    '</div>' +
+    '<div class="card"><div class="band">Sales</div><div class="body">₱48,250</div></div></div></section>';
+}).join('');
+</script>
+</body>
+</html>
