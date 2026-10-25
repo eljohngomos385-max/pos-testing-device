@@ -8079,7 +8079,7 @@ body:not(.light-theme) #catalogSearchRow { --glass: color-mix(in srgb, var(--ink
           border-radius: 32px 32px 0 0; background: var(--canvas, var(--bg)); transform: translateY(100%); transition: transform .24s var(--rl-ease); }
 .fs-veil.open .fsheet { transform: none; }
 .fsheet button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
-.fsheet svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fsheet svg, .ag-top svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 /* the head floats: the cards scroll up under a frost behind ✕ Filters ✓ (Items' head; Maps' see-through top) */
 .fs-top { position: absolute; z-index: 1; inset: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 18px 12px 12px; touch-action: none; }   /* the finger pulls the sheet, never scrolls the page */
 .fs-top::before { content: ''; position: absolute; z-index: -1; inset: 0 0 -28px; pointer-events: none;
@@ -8088,7 +8088,7 @@ body:not(.light-theme) #catalogSearchRow { --glass: color-mix(in srgb, var(--ink
 /* the pull tab (Apple's sheet grabber): part of the head, so it rides the same layer as the sheet (owner saw it lag as .fsheet::before) */
 .fs-top::after { content: ''; position: absolute; top: 6px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 999px; background: var(--ink-quaternary); pointer-events: none; }
 .fs-top h2 { margin: 0; color: var(--ink); font-size: 17px; font-weight: 550; }
-.fsheet .fs-x, .fsheet .fs-ok { display: grid; place-items: center; }
+.fsheet .fs-x, .fsheet .fs-ok, .ag-top .fs-x { display: grid; place-items: center; }
 .fsheet .fs-ok:disabled { color: var(--ink-quaternary); cursor: default; }
 .fsheet .fs-ok:not(:disabled) { background: var(--accent); color: var(--accent-ink); }   /* lit once something changed (Maps' blue, our ink) */
 .fs-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 66px 16px calc(var(--bar-h) + 32px + var(--ph-safe, 0px)); }   /* the last card clears Clear Filters */
@@ -8436,7 +8436,7 @@ body.light-theme .view-orders .o-rail .band::before { box-shadow: 0 .5px 1px rgb
 body.hairlines .lv.view-reports .card { border-color: var(--line); box-shadow: 0 1px 4px rgb(0 0 0 / .3), inset 0 1px 0 rgb(255 255 255 / .1); }
 body.hairlines.light-theme .lv.view-reports .card { box-shadow: 0 1px 4px rgb(0 0 0 / .06), inset 0 1px 0 rgb(255 255 255 / .8); }
 /* every ‹ and everything top right sits in the ☰'s glass circle, words in a glass pill (owner 2026-10-18) */
-.lv .sq:is(.back, .ty-edit-btn), .lv .head > .sh-print, body .lv .e-top .acts .act, body .lv .o-top .act:not(.primary), .cust-sheet .es-x, .cust-sheet .es-ink, .fsheet :is(.fs-x, .fs-ok, .fs-clear) {
+.lv .sq:is(.back, .ty-edit-btn), .lv .head > .sh-print, body .lv .e-top .acts .act, body .lv .o-top .act:not(.primary), .cust-sheet .es-x, .cust-sheet .es-ink, .fsheet :is(.fs-x, .fs-ok, .fs-clear), .ag-top .fs-x {
   width: 44px; min-width: 44px; height: 44px; padding: 0; border: 0; border-radius: 999px; color: var(--ink);
   background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
 .lv .head > .sh-print, body .lv .e-top .acts .act.primary, .cust-sheet .es-ink, .fsheet .fs-clear { width: auto; padding: 0 16px; }
@@ -8834,15 +8834,57 @@ body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px v
 /* Unavailable: greyed and can't be picked; set back in Items › Modifiers */
 .esheet .es-row.out { color: var(--ink-tertiary); cursor: default; }
 .esheet .es-row.out:hover { background: var(--tile); }
-/* how far through the questions: a line along the card's top, grown from the last question's mark (--was) */
-.es-prog { position: absolute; z-index: 1; inset: 0 0 auto; height: 3px; background: var(--line); pointer-events: none; }
-.es-prog i { display: block; height: 100%; background: var(--ink); transform: scaleX(var(--w)); transform-origin: left; animation: es-prog .28s var(--rl-ease) both; }
+/* how far through the questions, centred on ‹ Back's line: a short bar for every item (owner 2026-10-25, "line for everything"),
+   grown from the last question's mark (--was) */
+.es-prog { position: absolute; z-index: 1; top: var(--es-dot-y, 27px); left: 50%; translate: -50% 0; pointer-events: none; }
+.es-prog { width: 88px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.es-prog i { display: block; height: 100%; background: var(--ink); transform: scaleX(var(--w)); transform-origin: left; animation: es-prog .35s var(--rl-ease) both; }
 @keyframes es-prog { from { transform: scaleX(var(--was)); } }
+/* picked so far: "+N" and the newest two over the item's name, in the gap: the hero never moves (as .es-off under it) */
+.es-picks { position: absolute; bottom: calc(100% + 10px); left: 50%; translate: -50% 0; width: min(420px, 100vw - 40px); display: flex; justify-content: center; gap: 6px; overflow: hidden; }
+.esheet .es-picks button { flex: none; max-width: 116px; padding: 6px 12px; border-radius: 16px; background: var(--tile); color: var(--ink-secondary);
+                           font-size: 13px; font-weight: 500; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.esheet .es-picks .more { background: none; box-shadow: inset 0 0 0 1px var(--line); }
+/* "+N" open: every pick, a tap goes back to its question; a tap outside closes */
+.es-veil { position: absolute; z-index: 2; inset: 0; background: color-mix(in srgb, var(--bg) 60%, transparent); }
+.es-pop { position: absolute; z-index: 3; left: 50%; translate: -50% 0; width: min(420px, 100% - 40px); max-height: 60%; overflow-y: auto; border-radius: var(--es-r);
+          background: var(--bg); box-shadow: 0 0 0 1px var(--line), 0 10px 30px rgb(0 0 0 / .12); }
+.esheet .es-pop button { display: flex; justify-content: space-between; gap: 12px; width: 100%; height: 46px; padding: 0 16px; align-items: center; font-size: 14px; text-align: left; }
+.esheet .es-pop button + button { border-top: 1px solid var(--line); }
+.es-pop small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-tertiary); font-size: 14px; }
+/* the same item again (pos-sell.js openAgain, line-and-again-lab.html 4 / 2b): its lines shaded, the rest faded, the items dimmed,
+   the button reads Make another. Phone: the cart rises from the bottom as a sheet; tablet: it stays, without Discount and Total */
+.ag-dim { display: none; }
+#app.again .ag-dim { display: block; position: absolute; z-index: 96; inset: 0; background: rgb(0 0 0 / .3); animation: ph-cart-fade .24s ease-out; }
+#app.again .rail-h .line.hl .row { background: var(--tile); }
+#app.again .rail-h .line.fade { opacity: .35; }
+#app.again .rail-h > .pay, .rail-h > .ag-top { display: none; }
+@media (max-width: 720px) {
+  /* the Add tile sheet's look (owner 2026-10-25): pull tab, ✕ | the item | twin, 32 corners, the grey ground; as tall as its lines.
+     backwards, not both: a finished keyframe would pin transform and the pull (pullToClose) couldn't move it */
+  /* owner 2026-10-25: only this item's lines, at most 60% of the screen (half, then +10%), the lines scroll; Make another stays where Check out is.
+     It rises from the bottom in openAgain (Web Animations): a CSS keyframe here lost to the cart page's side slide on the iPhone */
+  #app.again .rail-h { top: auto; grid-template-rows: auto minmax(0, 1fr) auto; max-height: 60%; padding: 0 12px var(--ph-b); border-radius: 32px 32px 0 0;
+                       box-shadow: 0 -10px 30px rgb(0 0 0 / .15); transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
+  #app.again .rail-h .line.fade { display: none; }
+  #app.again .rail-h .line.hl:not(.hl ~ .hl) { border-top: 0; }   /* the first shown line: the hidden ones before it gave it a divider under the box edge (a double hairline) */
+  #app.again .rail-h .line.hl .row { background: none; }   /* nothing else shows, so nothing to stand out from */
+  #app.again .rail-h > .who { display: none; }
+  #app.again .ag-top { display: flex; position: relative; padding: 18px 0 12px; }
+  #app.again .ag-top::before { content: none; }   /* nothing scrolls under it (.fsheet.half) */
+  #app.again .ag-top > i { flex: none; width: 44px; }
+  #app.again .ag-top h2 { flex: 1; min-width: 0; padding: 0 8px; overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+  /* no floating Discount / Total here: the list stops above Make another, not under it (the phone cart's 2 / -1 overlap) */
+  #app.again .rail-h .items { grid-row: 2; margin-bottom: 0; border-radius: var(--rl-r); }
+  #app.again .rail-h .go { grid-row: 3; }
+  #app.again .rail-h::after { content: none; }   /* the frost behind them */
+  #app.again .rail-h #cartList { padding-bottom: 0; }
+}
 /* the next question slides in from the right, Back's from the left */
 .es-body.es-fwd .es-col { animation: es-side .24s var(--rl-ease) both; }
 .es-body.es-bwd .es-col { animation: es-back .24s var(--rl-ease) both; }
 @keyframes es-back { from { opacity: 0; transform: translateX(-24px); } }
-@media (prefers-reduced-motion: reduce) { .es-prog i { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .es-prog i, #app.again .ag-dim { animation: none; } }
 /* Up to N / Any: Next or Add as one big button under the list, the list's width; Pick one has none, so no foot */
 .esheet .es-ft:empty { display: none; }
 .es-ft:has(> .es-big) { justify-content: center; }

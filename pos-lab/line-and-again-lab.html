@@ -72,7 +72,7 @@ figure { margin: 0; } figcaption { font-size: 14px; margin-top: 8px; } figcaptio
 /* the cut: one row only; the newest picks that fit, a +N for the older ones (fit() below drops from the oldest) */
 .cg.fit { flex-wrap: nowrap; overflow: hidden; }
 .cg.fit span { flex: none; }
-.cg.fit span:not(.more) { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.cg.fit span:not(.more) { max-width: 116px; overflow: hidden; text-overflow: ellipsis; }
 /* many dots: at most 7, a window that moves with the question; the ones at its ends are small (more that way) */
 .l-c i.sm { width: 4px; height: 4px; margin-top: 1.5px; }
 .l-d.mid { left: 0; right: 0; top: 20px; text-align: center; }
@@ -111,6 +111,7 @@ figure { margin: 0; } figcaption { font-size: 14px; margin-top: 8px; } figcaptio
 .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 18px 18px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,.14); padding-bottom: 14px; }
 .sheet .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: 8px auto 4px; }
 .sheet .sh { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 16px 8px; font-size: 17px; font-weight: 590; } .sheet .sh small { font-size: 13px; font-weight: 400; color: var(--ink-tertiary); }
+.sheet { max-height: calc(100% - 60px); overflow-y: auto; scrollbar-width: none; }
 .sheet .ft { padding: 10px 16px 0; }
 /* full screen, as a question page */
 .fs .q { inset: 160px 20px auto; } .fs .rows div { height: auto; min-height: 56px; padding: 10px 16px; justify-content: space-between; gap: 12px; }
@@ -123,6 +124,7 @@ figure { margin: 0; } figcaption { font-size: 14px; margin-top: 8px; } figcaptio
 .pad { position: relative; width: 768px; height: 1024px; display: flex; gap: 10px; padding: 10px; background: var(--bg); border-radius: 28px; box-shadow: 0 0 0 1px var(--line); overflow: hidden; }
 .pad .cat { position: relative; flex: 1.15; min-width: 0; border-radius: 16px; overflow: hidden; }
 .pad .cat .sell { padding: 0; }
+.pad .cat .cg { bottom: calc(100% - 150px); }   /* the picks sit 150px from the top, as on the phone (844 - 694) */
 .pad .cat.qs { box-shadow: 0 0 0 1px var(--line); }   /* the questions: the app's sheet card over the catalog, the cart stays */
 .pad .cat .dim { animation: fade .2s; } @keyframes fade { from { opacity: 0; } }
 .cartp { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -137,6 +139,10 @@ figure { margin: 0; } figcaption { font-size: 14px; margin-top: 8px; } figcaptio
 </style></head><body><main>
 <h1>Top line and same drink</h1>
 <p class="sub">Lab only. Phone, light mode. Every phone works: tap the choices, Back, the picks above the question, “+N”. A finished drink can start again.</p>
+
+<h2>Picked · P</h2>
+<p class="sub">Up to 7 questions: dots; more: the short bar. Above the question: “+N” and the newest two, so never more than three pills; tap “+N” for the rest. 4 is the cart from the bottom: Make another asks a long drink (12 questions) so you see the pills build up. The iPad below runs the same.</p>
+<div class="board" id="pick"></div>
 
 <h2>Newer · Cut to fit</h2>
 <p class="sub">One rule for both: never more than one row. Picks: the newest two at most, cut if they still don’t fit, “+N” for the rest. Dots: at most 7. 12 questions, starts on the 10th.</p>
@@ -154,8 +160,8 @@ figure { margin: 0; } figcaption { font-size: 14px; margin-top: 8px; } figcaptio
 <p class="sub">Two Brown Sugar Large already on the sale. ✕ or outside goes to Sell; tap Brown Sugar Milk Tea there to see it again. A line opens its questions.</p>
 <div class="board" id="again"></div>
 
-<h2>2b · Number 4 on an iPad</h2>
-<p class="sub">The cart is already on the right, so nothing rises: tap Brown Sugar Milk Tea and its lines shade, the rest fade, and the bottom turns into Make another. Outside goes back. Make another (or a shaded line) asks in the catalog’s place; the cart stays.</p>
+<h2>2b · Number 4 on an iPad, with P</h2>
+<p class="sub">The cart is already on the right, so nothing rises: tap Brown Sugar Milk Tea and its lines shade, the rest fade, and the bottom turns into Make another. Outside goes back. Make another (or a shaded line) asks in the catalog’s place, with P on top; the cart stays. Make another is the long drink (12 questions).</p>
 <div class="padwrap" id="pad"></div>
 </main>
 <script>
@@ -315,13 +321,13 @@ const AGAIN = [
      <div class="rows">${st.lines.map((l, i) => `<div data-edit="${i}"><span>${l.a}<small>${l.q} × ${peso(l.unit)}</small></span><span>${peso(l.unit * l.q)}</span></div>`).join('')}<div class="mk" data-make>Make another</div></div></div></div>`],
 ];
 document.getElementById('again').innerHTML = AGAIN.map(f => ph(f[0], f[1], f[2])).join('');
-AGAIN.forEach(([k, , , view]) => {
-  const el = document.querySelector(`#again [data-k="${k}"]`);
+const again = (el, view, top = T.C, fresh = SHORT) => {
   const st = { lines: [lineOf(SHORT, [['50%'], ['Less'], ['Pearls', 'Pudding']]), lineOf(SHORT, [['100%'], ['Regular'], []])] };
   const show = v => { if (v === 'pop') { el.innerHTML = view(st); el.onclick = tap; } else { el.innerHTML = sellHtml(st); el.onclick = tap; } };
-  // the questions, with the dots (C); a new drink starts empty, a tapped line starts with its picks
-  const run = (i) => ask(el, { qs: SHORT, at: 0, picks: i == null ? [] : st.lines[i].p, top: T.C, exit: () => show('pop'),
-    done: p => { if (i == null) st.lines.push(lineOf(SHORT, p)); else st.lines[i] = lineOf(SHORT, p, st.lines[i].q); show(i == null ? 'sell' : 'pop'); } });
+  // the questions; a new drink starts empty, a tapped line starts with its picks
+  const run = (i) => { const qs = i == null ? fresh : st.lines[i].qs;
+    ask(el, { qs, at: 0, picks: i == null ? [] : st.lines[i].p, top, exit: () => show('pop'),
+      done: p => { if (i == null) st.lines.push(lineOf(qs, p)); else st.lines[i] = lineOf(qs, p, st.lines[i].q); show(i == null ? 'sell' : 'pop'); } }); };
   const tap = e => { const t = a => e.target.closest(`[${a}]`);
     if (t('data-plus')) { st.lines[+t('data-plus').dataset.plus].q++; show('pop'); }
     else if (t('data-same')) { st.lines[st.lines.length - 1].q++; show('sell'); }
@@ -331,7 +337,16 @@ AGAIN.forEach(([k, , , view]) => {
     else if (t('data-tile')) show('pop');
   };
   show('pop');
-});
+};
+AGAIN.forEach(([k, , , view]) => again(document.querySelector(`#again [data-k="${k}"]`), view));
+
+// the pick: P (owner 2026-10-25), and 4 with P and a long drink
+board('pick', [
+  ['P', 'Long drink', '12 questions, starts on the 10th: the short bar', at(LONG, 9, { top: T.P })],
+  ['P7', '7 questions', 'starts on the 6th: dots', at(LONG.slice(0, 7), 5, { top: T.P })],
+]);
+document.getElementById('pick').insertAdjacentHTML('beforeend', ph('4', 'The cart itself, with P', 'Make another asks the 12-question drink'));
+again(document.querySelector('#pick [data-k="4"]'), AGAIN[3][3], T.P, LONG);
 
 { const el = document.getElementById('pad');
   el.innerHTML = '<div class="pad"><div class="cat"></div><div class="cartp"></div></div>';
@@ -345,9 +360,9 @@ AGAIN.forEach(([k, , , view]) => {
     if (st.view === 'q') return;
     cat.className = 'cat'; cat.onclick = null;
     cat.innerHTML = `<div class="sell"><div class="top"><i></i><b></b></div><div class="grid">${NAMES.map(n => `<div${n === TEA ? ' data-tile' : ''}>${n}</div>`).join('')}</div></div>${again ? '<div class="dim" data-x></div>' : ''}`; };
-  const run = i => { st.view = 'q'; draw(); cat.className = 'cat qs';
-    ask(cat, { qs: SHORT, at: 0, picks: i == null ? [] : st.lines[i].p, top: T.N, exit: () => { st.view = 'again'; draw(); },
-      done: p => { if (i == null) st.lines.push(lineOf(SHORT, p)); else st.lines[i] = lineOf(SHORT, p, st.lines[i].q); st.view = 'sell'; draw(); } }); };
+  const run = i => { const qs = i == null ? LONG : st.lines[i].qs; st.view = 'q'; draw(); cat.className = 'cat qs';
+    ask(cat, { qs, at: 0, picks: i == null ? [] : st.lines[i].p, top: T.P, exit: () => { st.view = 'again'; draw(); },
+      done: p => { if (i == null) st.lines.push(lineOf(qs, p)); else st.lines[i] = lineOf(qs, p, st.lines[i].q); st.view = 'sell'; draw(); } }); };
   pad.onclick = e => { const t = a => e.target.closest(`[${a}]`); if (st.view === 'q') return;
     if (t('data-make')) run(null); else if (t('data-edit')) run(+t('data-edit').dataset.edit);
     else if (t('data-tile')) { st.view = 'again'; draw(); } else if (st.view === 'again' && !t('data-plus')) { st.view = 'sell'; draw(); } };

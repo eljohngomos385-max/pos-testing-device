@@ -904,6 +904,7 @@ function attachEvents() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (peekOpen()) return closePeek();
+      if (againId && !es) return closeAgain();   // the shaded cart (openAgain)
       if (!$('#pinModal').hidden) { if (!pinAsk?.signIn) $('#pinModal').hidden = true; return; }
       // a form with changes only asks; the rest stays until Leave (owner 2026-10-22)
       if (customerEditChanged()) return leaveCustomerEdit();
@@ -928,7 +929,7 @@ function attachEvents() {
   $('#cartBack').addEventListener('click', () => phCart(false));
   // A big discount the sheet didn't ask about (items taken off since, a saved cart continued) is asked here (discountOk).
   const toPay = () => (state.exchange ? confirmExchange() : openPaymentModal());
-  $('#payBtn').addEventListener('click', () => { if (closeEditSheet() !== false && !confirmSheet && discountOk(null, toPay)) toPay(); });
+  $('#payBtn').addEventListener('click', () => { if (againId) return againMake(); if (closeEditSheet() !== false && !confirmSheet && discountOk(null, toPay)) toPay(); });
 
   // Payment-method selection
   function selectPayMethod(method, label = '') {

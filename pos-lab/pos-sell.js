@@ -1126,6 +1126,7 @@ const esFresh = () => { if (es) { const { kind, id } = es; es = null; openEditSh
 function openEditSheet(kind, id, via) {
   if (kind !== 'ful' && kind !== 'price' && kind !== 'mods' && !state.cart.length) { flashControl($('#cartDiscountBtn')); flashControl($('#side')); return; }
   const was = !!es;
+  closeAgain(true);
   closeEditSheet(true);
   closeVariantSheet();
   if (kind === 'line') {
@@ -1151,7 +1152,7 @@ function openEditSheet(kind, id, via) {
     // Only answers still on offer (freshAnswers): a removed, hidden or Unavailable one is off, so a Pick one asks again
     const had = line ? freshAnswers(p, line.modifiers, qs) : [];
     const ans = Object.fromEntries(qs.map(q => [q.id, had.filter(a => a.modifierId === q.id).map(a => a.choiceId)]));
-    es = { kind, id, via: via.via, line: line ? line.id : null, base: moneyValue(line ? line.price - SalesMath.answersPrice(line) : via.base ?? p.price), qs, ans, at: 0 };
+    es = { kind, id, via: via.via, again: via.again, line: line ? line.id : null, base: moneyValue(line ? line.price - SalesMath.answersPrice(line) : via.base ?? p.price), qs, ans, at: 0 };
   } else {
     es = { kind, day: (state.pickupTime && state.pickupTime.day) || 'Today' };
   }
@@ -1290,8 +1291,12 @@ function drawEditSheet() {
     // one question per screen, in the item's order (modifiers-lab.html's POS screens): the item and what's picked so far, the
     // question, how many; a choice greyed Unavailable can't be picked (it is set back in Items › Modifiers). The name as
     // typed, never a "?" (owner 2026-10-24: "Toppings")
-    const q = o.qs[o.at], got = o.ans[q.id], so = o.qs.slice(0, o.at).flatMap(x => x.choices.filter(c => o.ans[x.id].includes(c.id)).map(c => c.name));
-    head = `<p>${escapeHtml([state.products.find(p => p.id === o.id)?.name || 'Item', ...so].join(' · '))}</p><div class="es-hero mq">${escapeHtml(q.name.replace(/\s*\?+\s*$/, ''))}</div>
+    // Picked so far (owner 2026-10-25, line-and-again-lab.html P): "+N" and the newest two over the name, never more than three
+    // pills (esPicksPop cuts one that doesn't fit); a pill goes back to its question, "+N" lists every pick
+    const q = o.qs[o.at], got = o.ans[q.id], did = esPicked(o), keep = did.slice(-2), k = did.length - keep.length;
+    const picks = did.length ? `<div class="es-picks" data-fit><button type="button" class="more" data-more data-n="${k}">+${k}</button>${
+      keep.map(d => `<button type="button" data-go="${d.i}">${escapeHtml(d.q + ' ' + d.v)}</button>`).join('')}</div>` : '';
+    head = `${picks}<p>${escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item')}</p><div class="es-hero mq">${escapeHtml(esQName(q))}</div>
       <p class="es-off">Pick ${MODIFIER_PICKS[q.picks].toLowerCase()}</p>`;
     rows = q.choices.map(c => `<button type="button" class="es-row${got.includes(c.id) ? ' pick' : ''}${c.unavailable ? ' out' : ''}" data-ch="${escapeHtml(c.id)}"${c.unavailable ? ' aria-disabled="true"' : ''}>
       <span>${escapeHtml(c.name)}</span><small>${c.unavailable ? 'Unavailable' : c.price ? '+' + peso(c.price) : ''}</small></button>`).join('');
@@ -1324,13 +1329,15 @@ function drawEditSheet() {
     : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
     : o.f ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q" data-sclr>Clear</button>' : '';
   const top = card.querySelector('.es-scroll')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
-  // the questions' progress: a line along the card's top, filled to this question, grown from where it was (o.w)
-  const w = o.kind === 'mods' && (o.at + 1) / o.qs.length, prog = w ? `<div class="es-prog" aria-hidden="true"><i style="--w:${w};--was:${o.w ?? w}"></i></div>` : '';
+  // the questions' progress on ‹ Back's line: a short bar for every item (owner 2026-10-25: "line for everything"), grown from where it was (o.w)
+  const w = o.kind === 'mods' && (o.at + 1) / o.qs.length;
+  const prog = w ? `<div class="es-prog" aria-hidden="true"><i style="--w:${w};--was:${o.w ?? w}"></i></div>` : '';
   if (w) o.w = w;
   card.innerHTML = prog + esFrame(head, rows, side, left + (o.kind === 'mods' ? esModsFoot(o)
     : o.kind === 'price' ? `<button type="button" class="es-ink" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
     : o.f ? `<button type="button" class="es-ink" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : '<button type="button" class="es-ink" data-close>Done</button>'),   // a 0 discount waits, as the price ask's Add does
   `${o.kind === 'rd' ? ' fill' : o.kind === 'price' ? ' ask' : ''}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
+  if (o.kind === 'mods') esPicksPop(o, card);
   const list = card.querySelector('.es-scroll');
   if (list && o.opened) list.querySelector('.pick')?.scrollIntoView({ block: 'nearest' });   // just opened: the one on the sale in view
   else if (list) list.scrollTop = top;
@@ -1446,10 +1453,30 @@ function esModsApply(o) {
   closeEditSheet();
   addToCart(o.id, o.via, false, price, answers);
 }
+const esQName = (q) => q.name.replace(/\s*\?+\s*$/, '');
+// the questions before this one that have a pick: { i, q: its name, v: the picks }
+const esPicked = (o) => o.qs.slice(0, o.at).map((x, i) => ({ i, q: esQName(x), v: x.choices.filter(c => o.ans[x.id].includes(c.id)).map(c => c.name).join(', ') })).filter(d => d.v);
+// after a draw: the pill row drops its oldest pill while it overflows ("+N" counts it), and "+N" open lists every pick under the row
+function esPicksPop(o, card) {
+  const r = card.querySelector('[data-fit]');
+  if (!r) return;
+  const more = r.querySelector('.more');
+  let n = +more.dataset.n;
+  more.hidden = !n;
+  while (r.scrollWidth > r.clientWidth && r.children.length > 1) { more.hidden = false; r.children[1].remove(); more.textContent = '+' + ++n; }
+  if (!o.pop) return;
+  card.insertAdjacentHTML('beforeend', `<div class="es-veil" data-shut></div><div class="es-pop" role="dialog" aria-label="Picked">${
+    esPicked(o).map(d => `<button type="button" data-go="${d.i}"><span>${escapeHtml(d.q)}</span><small>${escapeHtml(d.v)}</small></button>`).join('')}</div>`);
+  card.querySelector('.es-pop').style.top = `${Math.round(r.getBoundingClientRect().bottom - card.getBoundingClientRect().top + 8)}px`;
+}
 function esModsClick(el) {
   const o = es, q = o.qs[o.at], row = el('[data-ch]');
+  if (el('[data-more]')) { o.pop = true; return drawEditSheet(); }
+  if (el('[data-shut]')) { o.pop = false; return drawEditSheet(); }
+  if (el('[data-go]')) { o.pop = false; o.at = +el('[data-go]').dataset.go; o.dir = 'bwd'; return drawEditSheet(); }
   if (el('[data-close]')) {
     if (o.at) { o.at--; o.dir = 'bwd'; return drawEditSheet(); }
+    if (o.again) { const p = state.products.find(x => x.id === o.id); closeEditSheet(); return p && openAgain(p, o.via); }   // Make another's first question: back to the shaded cart
     return o.line ? openEditSheet('line', o.line) : closeEditSheet();
   }
   if (el('[data-next]')) { o.at++; o.dir = 'fwd'; return drawEditSheet(); }
@@ -1468,28 +1495,44 @@ function esModsClick(el) {
   }, 220);
 }
 
-// The same item again (owner 2026-10-24, finding 24): a tap on an item that asks modifiers, with lines of it on the cart
-// already (same product = same item and variant, never by SKU), shows those first in the peek's card (openPeek): each
-// line's answers, count and amount (a tap opens that line), and Make another for a new one. Outside / ✕ / Esc closes.
+// The same item again (owner 2026-10-25, line-and-again-lab.html 4 / 2b; was the peek card of 10-24): a tap on an item that asks
+// modifiers, with lines of it on the cart already (same product = same item and variant), shows the cart with those lines shaded,
+// the rest faded, and its button reads Make another (no name: the bar never grows). Phone: the cart rises from the bottom over the items; tablet: the cart
+// stays, the items dim. A tap on the dim (or Esc) goes back; a line opens its sheet; Make another asks the questions (app.js #payBtn).
+let againId = null, againVia = null;
 function openAgain(p, via) {
-  const lines = state.cart.filter(i => (i.productId || i.id) === p.id);
-  const el = peek = document.createElement('div');
-  el.innerHTML = `<div class="pk-dim"></div>
-    <div class="pk-card" role="dialog" aria-label="${escapeHtml(p.name)}"><div class="vs-card">
-      <div class="vs-head"><span class="vs-title"><span>${escapeHtml(p.name)}</span></span><button type="button" class="pk-x" data-x aria-label="Close">${esSvg('x')}</button></div>
-      <div class="vs-list">${lines.map(i => `<button type="button" class="vs-row" data-line="${escapeHtml(i.id)}">
-        <span class="nm">${escapeHtml(SalesMath.answerLines(i, peso).join(', ') || i.name)}<small class="num">${i.qty} × ${peso(i.price)}</small></span>
-        <span class="amt num">${peso(normalizeOrderItem(i).lineGross)}</span></button>`).join('')}</div>
-      <div class="pk-ft"><button type="button" class="pk-go" data-another>Make another</button></div></div></div>`;
-  document.body.append(el);
-  void el.offsetWidth; el.classList.add('pk-on');   // the peek's fade in
-  el.addEventListener('click', (e) => {
-    const line = e.target.closest('[data-line]'), another = e.target.closest('[data-another]');
-    if (!line && !another && !e.target.closest('[data-x]') && e.target.closest('.pk-card')) return;   // a tap on the card's words does nothing
-    closePeek();
-    if (line) openEditSheet('line', line.dataset.line);
-    if (another) openEditSheet('mods', p.id, { via, base: p.price });
-  });
+  againId = p.id; againVia = via;
+  if (!$('.ag-dim')) {
+    $('.catalog-wrap').insertAdjacentHTML('beforeend', '<div class="ag-dim"></div>');
+    $('.ag-dim').onclick = $('#againX').onclick = () => closeAgain();
+    pullToClose($('#side .ag-top'), $('#side'), () => closeAgain());   // the phone's sheet pulls down as the Add tile sheet
+  }
+  $('#againTitle').textContent = p.name;
+  const s = $('#side'), rise = !$('#app').classList.contains('again') && matchMedia('(max-width: 720px)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  s.style.transition = 'none';   // the cart page's own slide (from the right) must not run
+  if (rise) s.style.transform = 'translateY(100%)';   // shut below the screen first, then it slides up as the filter sheet does (openSheet)
+  $('#app').classList.add('again');
+  renderCart();
+  void s.offsetWidth; s.style.transition = '';
+  if (rise) requestAnimationFrame(() => requestAnimationFrame(() => { if (againId) s.style.transform = ''; }));
+}
+// now: no slide (Make another's questions open over it). The phone's sheet slides down first, as the Add tile sheet
+function closeAgain(now) {
+  if (!againId) return;
+  againId = null;
+  const s = $('#side'), done = () => {
+    if (againId) return void (s.style.transform = '');   // opened again meanwhile
+    s.style.transition = 'none'; s.style.transform = '';   // the cart page's own slide (to the right) must not run from here
+    $('#app').classList.remove('again'); renderCart();
+    void s.offsetWidth; s.style.transition = '';
+  };
+  if (now || !matchMedia('(max-width: 720px)').matches) return done();
+  s.style.transform = 'translateY(100%)';
+  setTimeout(done, 240);   // ponytail: the slide's .24s, as openSheet's close
+}
+function againMake() {
+  const p = state.products.find(x => x.id === againId);
+  if (p) openEditSheet('mods', p.id, { via: againVia, base: p.price, again: true });
 }
 
 // The SC/PWD panel's Apply: the ID number and the name, both, or nothing is applied; the first empty one is
@@ -1951,13 +1994,15 @@ function renderCart() {
     list.innerHTML = back + (x ? '<div class="empty"><b>Add what they take instead</b><span>Tap an item to add it.</span></div>'
       : '<div class="empty"><b>No items yet</b><span>Tap an item to add it.</span></div>');
   } else {
+    const ag = againId && state.cart.some(i => (i.productId || i.id) === againId) && againId;
+    if (againId && !ag) { againId = null; $('#app').classList.remove('again'); }   // its lines came off meanwhile
     list.innerHTML = back + state.cart.map(item => `
-      <div class="line"><button type="button" class="row" data-id="${item.id}" title="Edit item">${linePic(item)}
+      <div class="line${!ag ? '' : (item.productId || item.id) === ag ? ' hl' : ' fade'}"><button type="button" class="row" data-id="${item.id}" title="Edit item">${linePic(item)}
         <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}${item.discount ? ` · <span class="off">${peso(-normalizeOrderItem(item).lineDiscount)}</span>` : ''}</small>${
           SalesMath.answerLines(item, peso).map(t => `<small class="note">${escapeHtml(t)}</small>`).join('')}${item.note ? `<small class="note">${escapeHtml(item.note)}</small>` : ''}</span>
         <span class="amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
       </button><button type="button" class="sw-del" data-del="${item.id}" tabindex="-1" aria-label="Delete">${esSvg('trash')}</button></div>`).join('');
-    list.scrollTop = list.scrollHeight;
+    list.scrollTop = ag ? 0 : list.scrollHeight;   // the Make another sheet starts at its first line (owner 2026-10-25)
   }
 
   const note = $('#orderNote');   // the order's note (cart ⋯ Add note), under who it's for
@@ -1990,6 +2035,7 @@ function renderCart() {
     : n ? `<span>${blurSwap(cnt, last?.n ?? cnt)} ${SalesMath.pluralWord(n, 'item')}</span><span class="num">${blurSwap(peso(t.total), last?.t ?? peso(t.total))}</span>` : '<span>No items</span>';
   $('#cartBar')._last = n && !x ? { n: cnt, t: peso(t.total) } : null;
   if (!n && !x) $('#app').classList.remove('ph-cart');
+  if (againId) { $('#payBtn').disabled = false; $('#payBtn').innerHTML = '<span>Make another</span>'; }
   if (myEditing) for (const b of [$('#cartBar'), $('#payBtn')]) { b.disabled = false; b.innerHTML = '<span>Done</span>'; }   // app.js's capture click ends editing, nothing else
   if (scanCardId) drawScanCard();
 

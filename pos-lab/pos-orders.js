@@ -419,8 +419,17 @@ function openSheet(btn, html, cls = '') {
     btn.focus({ preventScroll: true });
     setTimeout(() => veil.remove(), 300);   // ponytail: the slide's .24s plus slack, not a transitionend that reduced motion never fires
   };
-  // pull the head (pull tab, title) down to close; let go short and it springs back (the scan card's swipe; owner 2026-10-18)
-  const head = m.querySelector('.fs-top');
+  pullToClose(m.querySelector('.fs-top'), m, close);
+  veil.addEventListener('click', e => {
+    if (e.target === veil && performance.now() - opened < 400) return;   // a double tap on the trigger: its second tap lands on the veil mid-slide
+    if (e.target === veil || e.target.closest('.fs-x')) close();
+  });
+  veil.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  return { veil, m, close };
+}
+// Pull a sheet's head (pull tab, title) down to close it; let go short and it springs back (the scan card's swipe; owner 2026-10-18).
+// Its CSS transition does the rest: down and out, or back up. openSheet's sheets and the phone's Make another sheet (openAgain)
+function pullToClose(head, m, close) {
   let drag = null;
   head.addEventListener('pointerdown', e => {
     if (e.target.closest('button')) return;
@@ -445,12 +454,6 @@ function openSheet(btn, html, cls = '') {
   };
   head.addEventListener('pointerup', drop);
   head.addEventListener('pointercancel', drop);
-  veil.addEventListener('click', e => {
-    if (e.target === veil && performance.now() - opened < 400) return;   // a double tap on the trigger: its second tap lands on the veil mid-slide
-    if (e.target === veil || e.target.closest('.fs-x')) close();
-  });
-  veil.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
-  return { veil, m, close };
 }
 
 // The search card both pages share: typing shows the ×, the × clears and keeps focus.
