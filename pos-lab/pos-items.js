@@ -218,10 +218,10 @@ function itemMainPage() {
     fam ? '' : ifr('SKU', iinp('sku', v0.sku, 'placeholder="Add SKU"')),
     fam ? '' : ifr('Barcode', iinp('barcode', v0.barcode, 'inputmode="numeric" placeholder="Add barcode"')),
   ].join(''), '', ' r');
-  const by = modsById(), modName = m => { const all = liveChoices(m), n = all.filter(o => !E.hideCh.includes(o.id)).length; return n < all.length ? `${m.name} (${n} of ${all.length})` : m.name; };
+  const by = modsById();
   const more = icard('', [
     inav('Categories', ilist(E.catIds.map(folderName).filter(Boolean)), 'cats'),
-    inav('Modifiers', ilist(E.mods.filter(id => by.has(id)).map(id => modName(by.get(id)))), 'mods'),   // hidden choices read (shown of total)
+    inav('Modifiers', ilist(E.mods.filter(id => by.has(id)).map(id => by.get(id).name)), 'mods'),   // names only (owner 2026-10-25: the older row, not "4 of 5")
     inav('Suppliers', ilist([E.main, ...E.sups.filter(id => id !== E.main)].filter(Boolean).map(supName).filter(Boolean)), 'sups'),
     inav('Specs', escapeHtml([E.weight, E.size, E.length].filter(Boolean).join(' · ')) || 'None', 'specs'),
   ].join(''), '', ' r');

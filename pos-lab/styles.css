@@ -7281,7 +7281,8 @@ body.light-theme {
 .rail-h .opts > .f-row, .rail-h .opts > .d-row { display: flex; flex: 0 0 50%; min-width: 0; }
 .rail-h .opts > .f-row { height: auto; border-top: 0; }
 .rail-h .opts .pick { font-weight: 500; border-radius: calc(var(--rl-r) - 1px) 0 0 0; }
-.rail-h .opts .d-row { height: auto; margin: 0; padding: 0 14px 0 16px; border-bottom: 0; border-left: 1px solid var(--line); border-radius: 0 calc(var(--rl-r) - 1px) 0 0; }
+.rail-h .opts .d-row { height: auto; margin: 0; padding: 0 var(--row-x); border-bottom: 0; border-left: 1px solid var(--line); border-radius: 0 calc(var(--rl-r) - 1px) 0 0; }
+.rail-h .opts .pick { padding: 0 var(--row-x); }   /* Walk-in + Discount: words start where the item rows' do (owner 2026-10-25) */
 .rail-h .opts .d-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail-h .d-row.amt #cartDiscountLabel { display: none; }   /* a discount on: the amount alone, left like Walk-in (renderCart) */
 .rail-h .d-row.amt #cartDiscountAmt { flex: 1; }

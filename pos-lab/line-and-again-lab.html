@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Top line and same drink</title>
+<style>
+/* Lab only (owner 2026-10-25): ways to show "how far through the questions", and ways to show the same drink tapped again.
+   Light POS tokens copied from styles.css (body.bo-light / light theme). */
+:root {
+  --bg: #fff; --surface: #f9f9f9; --tile: #f3f3f3; --line: #e1e1e1; --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8c8c8c;
+  --es-r: 12px; --row-h: 50px; --row-pic: 38px; --row-x: 12px; --dim: rgba(0,0,0,.28); --page: #ececec;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); }
+main { max-width: 1700px; margin: 0 auto; padding: 24px 16px 60px; }
+h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 18px; margin: 36px 0 4px; }
+.sub { color: var(--ink-secondary); margin: 0 0 16px; font-size: 14px; }
+.board { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(390px, 100%), 1fr)); gap: 28px 20px; }
+figure { margin: 0; } figcaption { font-size: 14px; margin-top: 8px; } figcaption b { margin-right: 6px; } figcaption span { color: var(--ink-secondary); }
+
+/* the phone */
+.ph { position: relative; width: 100%; max-width: 390px; height: 844px; overflow: hidden; background: var(--bg); border-radius: 28px; box-shadow: 0 0 0 1px var(--line); }
+.back { position: absolute; top: 8px; left: 12px; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px 0 14px; border-radius: 22px; background: var(--bg);
+        box-shadow: 0 0 0 1px var(--line); font-size: 17px; font-weight: 500; }
+.back::before { content: ""; width: 9px; height: 9px; border: solid var(--ink-secondary); border-width: 0 0 2px 2px; transform: rotate(45deg); margin-left: 4px; }
+.q { position: absolute; inset: 160px 20px auto; text-align: center; }
+.q .ey { font-size: 12px; color: var(--ink-tertiary); }
+.q .hero { font-size: 52px; font-weight: 500; letter-spacing: -.02em; line-height: 1.15; margin: 2px 0 6px; }
+.q .how { font-size: 12px; color: var(--ink-tertiary); margin-bottom: 10px; }
+.q .rows { display: grid; gap: 8px; text-align: left; }
+.q .rows div { height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-radius: var(--es-r); background: var(--tile); font-size: 15px; cursor: pointer; }
+.q .rows div small { font-size: 13px; color: var(--ink-tertiary); }
+.q .rows div.pick { background: color-mix(in srgb, var(--ink) 10%, var(--tile)); font-weight: 550; }   /* picked: as the app's .es-row.pick */
+/* live (owner 2026-10-25): a new question fades in; the big Next / Add; what was made */
+:root { --ease: cubic-bezier(.2, .8, .2, 1); }   /* the app's --rl-ease */
+/* moving on (owner 2026-10-25: "smooth, like it's moving to the next page"): the old question slides out as the new one slides in */
+.q.in.fwd { animation: qin-f .3s var(--ease) both; } .q.in.bwd { animation: qin-b .3s var(--ease) both; }
+.q.out { pointer-events: none; } .q.out.fwd { animation: qout-f .3s var(--ease) both; } .q.out.bwd { animation: qout-b .3s var(--ease) both; }
+@keyframes qin-f { from { opacity: 0; transform: translateX(48px); } } @keyframes qin-b { from { opacity: 0; transform: translateX(-48px); } }
+@keyframes qout-f { to { opacity: 0; transform: translateX(-48px); } } @keyframes qout-b { to { opacity: 0; transform: translateX(48px); } }
+/* the line and the dots glide to the next question instead of jumping (draw() keeps the old ones and changes them) */
+.l-a i, .l-f i { transition: width .35s var(--ease); } .l-b i { transition: background .35s var(--ease); }
+.l-c i { flex: none; transition: width .35s var(--ease), height .35s var(--ease), margin .35s var(--ease), background .35s var(--ease); }
+.l-c .win { overflow: hidden; height: 7px; transition: width .35s var(--ease); }
+.l-c .strip { display: flex; align-items: flex-start; gap: 6px; transition: transform .35s var(--ease); }
+@media (prefers-reduced-motion: reduce) { .q.in, .q.out { animation: none; } .q.out { display: none; } .l-a i, .l-f i, .l-b i, .l-c i, .l-c .win, .l-c .strip { transition: none; } }
+.next { position: absolute; left: 18px; right: 18px; bottom: 14px; height: 56px; border-radius: var(--es-r); background: #222; color: #fff; display: grid; place-items: center; font-size: 16px; font-weight: 590; cursor: pointer; }
+.added { position: absolute; top: 290px; left: 12px; right: 12px; border-radius: var(--es-r); box-shadow: 0 0 0 1px var(--line); }
+.l-a, .l-b, .l-c, .l-d, .l-e, .l-f, .l-g, .cg { pointer-events: none; } .l-e span, .l-g span, .cg span { pointer-events: auto; }   /* the rows span Back's line: only their words take a tap */
+.ph .back, .ph [data-go], .ph [data-more], .ph [data-x], .ph [data-tile], .ph [data-make], .ph [data-edit], .ph [data-plus], .ph [data-same] { cursor: pointer; user-select: none; }
+
+/* line variants */
+.l-a { position: absolute; inset: 0 0 auto; height: 3px; background: var(--line); }
+.l-a i { display: block; height: 100%; width: 66.6%; background: var(--ink); }
+.l-b { position: absolute; top: 8px; left: 20px; right: 20px; display: flex; gap: 4px; }
+.l-b i { flex: 1; height: 3px; border-radius: 2px; background: var(--line); } .l-b i.on { background: var(--ink); }
+.l-c { position: absolute; top: 28px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; }
+.l-c i { width: 7px; height: 7px; border-radius: 4px; background: var(--line); } .l-c i.on { background: var(--ink); } .l-c i.now { width: 20px; background: var(--ink); }
+.l-d { position: absolute; top: 20px; right: 20px; font-size: 15px; color: var(--ink-tertiary); font-variant-numeric: tabular-nums; }
+.l-e { position: absolute; top: 22px; left: 120px; right: 16px; display: flex; justify-content: flex-end; gap: 14px; font-size: 13px; color: var(--ink-tertiary); white-space: nowrap; overflow: hidden; }
+.l-e b { color: var(--ink); font-weight: 590; }
+.l-f { position: absolute; top: 28px; left: 50%; width: 88px; margin-left: -44px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.l-f i { display: block; height: 100%; width: 66.6%; background: var(--ink); border-radius: 3px; }
+.l-g { position: absolute; top: 112px; left: 20px; right: 20px; display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; font-size: 13px; }
+.l-g span { padding: 6px 12px; border-radius: 16px; background: var(--tile); color: var(--ink-secondary); }
+/* C + G: the picks sit just above the item's name and grow upward (bottom-anchored); the dots stay on Back's row */
+.cg { position: absolute; bottom: 694px; left: 20px; right: 20px; display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; font-size: 13px; }
+.cg span { padding: 6px 12px; border-radius: 16px; background: var(--tile); color: var(--ink-secondary); white-space: nowrap; }
+.cg.one { flex-wrap: nowrap; justify-content: flex-start; left: 0; right: 0; padding: 0 20px; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+.cg.txt { display: block; text-align: center; color: var(--ink-secondary); line-height: 1.5; }
+.cg.txt b { font-weight: 400; color: var(--ink-tertiary); }
+.cg .more { background: none; box-shadow: inset 0 0 0 1px var(--line); }
+/* the cut: one row only; the newest picks that fit, a +N for the older ones (fit() below drops from the oldest) */
+.cg.fit { flex-wrap: nowrap; overflow: hidden; }
+.cg.fit span { flex: none; }
+.cg.fit span:not(.more) { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+/* many dots: at most 7, a window that moves with the question; the ones at its ends are small (more that way) */
+.l-c i.sm { width: 4px; height: 4px; margin-top: 1.5px; }
+.l-d.mid { left: 0; right: 0; top: 20px; text-align: center; }
+.l-f.mid { top: 28px; }
+/* what +N opens: the older picks, a tap goes back to that question */
+.pop { position: absolute; top: 158px; left: 20px; right: 20px; background: var(--bg); border-radius: var(--es-r); box-shadow: 0 0 0 1px var(--line), 0 10px 30px rgba(0,0,0,.12); overflow: hidden; z-index: 2; }
+.pop div { display: flex; justify-content: space-between; height: 46px; align-items: center; padding: 0 16px; font-size: 14px; }
+.pop div + div { border-top: 1px solid var(--line); } .pop div span { color: var(--ink-tertiary); }
+.veil { position: absolute; inset: 0; background: rgba(255,255,255,.6); z-index: 1; }
+
+/* the Sell grid behind the pop-ups */
+.sell { position: absolute; inset: 0; padding: 8px 10px; }
+.sell .top { display: flex; gap: 8px; margin-bottom: 14px; } .sell .top i { width: 44px; height: 44px; border-radius: 22px; background: var(--tile); }
+.sell .top b { flex: 1; height: 44px; border-radius: 22px; background: var(--tile); }
+.sell .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sell .grid div { height: 112px; border-radius: var(--es-r); background: var(--tile); padding: 10px 12px; display: flex; align-items: flex-end; font-size: 14px; }
+.sell .bar { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); height: 44px; padding: 0 64px; display: flex; align-items: center; border-radius: 22px;
+             background: #222; color: #fff; font-size: 15px; font-weight: 590; white-space: nowrap; }
+.dim { position: absolute; inset: 0; background: var(--dim); }
+.card { position: absolute; left: 25px; right: 25px; top: 50%; transform: translateY(-50%); background: var(--bg); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.18); }
+.ch { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--surface); font-size: 13px; font-weight: 500; }
+.ch .x { font-size: 18px; color: var(--ink-tertiary); line-height: 1; }
+.ft { padding: 12px 14px 14px; } .go { height: 48px; border-radius: var(--es-r); background: var(--tile); display: grid; place-items: center; font-size: 15px; font-weight: 590; }
+.go.ink { background: #222; color: #fff; }
+
+/* a cart row, as the cart draws it (pos-sell.js renderCart) */
+.row { display: flex; align-items: flex-start; gap: 12px; min-height: var(--row-h); padding: 8px var(--row-x); font-size: 13px; }
+.row .pic { flex: none; width: var(--row-pic); height: var(--row-pic); display: grid; place-items: center; border-radius: 8px; background: var(--tile); color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
+.row .nm { flex: 1; min-width: 0; display: grid; gap: 1px; } .row small { font-size: 12px; color: var(--ink-tertiary); }
+.row .amt { font-weight: 510; font-variant-numeric: tabular-nums; } .row.hl { background: var(--tile); }
+.row .plus { flex: none; width: 32px; height: 32px; margin: 2px 0 0 4px; border-radius: 16px; background: var(--tile); display: grid; place-items: center; font-size: 20px; line-height: 1; }
+.row + .row { border-top: 1px solid var(--line); }
+.today .row { font-size: 15px; }
+
+/* the cart as a sheet from the bottom */
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 18px 18px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,.14); padding-bottom: 14px; }
+.sheet .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: 8px auto 4px; }
+.sheet .sh { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 16px 8px; font-size: 17px; font-weight: 590; } .sheet .sh small { font-size: 13px; font-weight: 400; color: var(--ink-tertiary); }
+.sheet .ft { padding: 10px 16px 0; }
+/* full screen, as a question page */
+.fs .q { inset: 160px 20px auto; } .fs .rows div { height: auto; min-height: 56px; padding: 10px 16px; justify-content: space-between; gap: 12px; }
+.fs .rows div small { display: block; font-size: 12px; color: var(--ink-tertiary); margin-top: 2px; } .fs .rows .mk { justify-content: center; font-weight: 590; background: #222; color: #fff; }
+.tile2 { display: grid; gap: 8px; padding: 14px; }
+.tile2 div { padding: 14px 16px; border-radius: var(--es-r); background: var(--tile); font-size: 15px; font-weight: 590; }
+.tile2 div small { display: block; font-size: 13px; font-weight: 400; color: var(--ink-secondary); margin-top: 3px; }
+/* number 4 on an iPad: the catalog on the left, the cart already on the right (as the app's Stack B) */
+.padwrap { overflow-x: auto; }
+.pad { position: relative; width: 768px; height: 1024px; display: flex; gap: 10px; padding: 10px; background: var(--bg); border-radius: 28px; box-shadow: 0 0 0 1px var(--line); overflow: hidden; }
+.pad .cat { position: relative; flex: 1.15; min-width: 0; border-radius: 16px; overflow: hidden; }
+.pad .cat .sell { padding: 0; }
+.pad .cat.qs { box-shadow: 0 0 0 1px var(--line); }   /* the questions: the app's sheet card over the catalog, the cart stays */
+.pad .cat .dim { animation: fade .2s; } @keyframes fade { from { opacity: 0; } }
+.cartp { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.ctop { display: flex; gap: 8px; } .ctop span, .ctop i { height: 44px; border-radius: 22px; box-shadow: 0 0 0 1px var(--line); display: flex; align-items: center; }
+.ctop span { flex: 1; padding: 0 16px; font-size: 15px; font-weight: 500; } .ctop i { width: 44px; justify-content: center; font-style: normal; color: var(--ink-secondary); }
+.clist { flex: 1; border-radius: 14px; box-shadow: 0 0 0 1px var(--line); overflow: auto; }
+.clist .row { transition: opacity .2s, background .2s; } .clist .row.fade { opacity: .35; }
+.cfoot { display: grid; gap: 8px; } .cfoot .opts { display: flex; gap: 8px; }
+.cfoot .opts span { flex: 1; height: 44px; border-radius: 22px; box-shadow: 0 0 0 1px var(--line); display: flex; align-items: center; padding: 0 16px; font-size: 14px; }
+.cfoot .pay, .cfoot .go { height: 48px; border-radius: 24px; display: grid; place-items: center; font-size: 15px; font-weight: 590; }
+.cfoot .pay { background: #222; color: #fff; } .cfoot .go { cursor: pointer; animation: fade .2s; }
+</style></head><body><main>
+<h1>Top line and same drink</h1>
+<p class="sub">Lab only. Phone, light mode. Every phone works: tap the choices, Back, the picks above the question, “+N”. A finished drink can start again.</p>
+
+<h2>Newer · Cut to fit</h2>
+<p class="sub">One rule for both: never more than one row. Picks: the newest two at most, cut if they still don’t fit, “+N” for the rest. Dots: at most 7. 12 questions, starts on the 10th.</p>
+<div class="board" id="cut"></div>
+
+<h2>C + G together</h2>
+<p class="sub">Dots on Back’s row, what was picked above the question. H is a short drink (3 questions). I to M are a long one: 7 questions, starts on the 6th.</p>
+<div class="board" id="cg"></div>
+
+<h2>1 · The line at the top</h2>
+<p class="sub">Brown Sugar Milk Tea Large, 3 questions, starts on Ice.</p>
+<div class="board" id="lines"></div>
+
+<h2>2 · Tapping the same drink again</h2>
+<p class="sub">Two Brown Sugar Large already on the sale. ✕ or outside goes to Sell; tap Brown Sugar Milk Tea there to see it again. A line opens its questions.</p>
+<div class="board" id="again"></div>
+
+<h2>2b · Number 4 on an iPad</h2>
+<p class="sub">The cart is already on the right, so nothing rises: tap Brown Sugar Milk Tea and its lines shade, the rest fade, and the bottom turns into Make another. Outside goes back. Make another (or a shaded line) asks in the catalog’s place; the cart stays.</p>
+<div class="padwrap" id="pad"></div>
+</main>
+<script>
+// Every phone is live (owner 2026-10-25: "they all kind of work"). Tap a choice, Back, a pick above the question, +N.
+// Pick one goes on by itself after 220 ms (the app's esModsClick); Pick up to 3 has a big Next / Add at the bottom.
+const peso = n => '₱' + n.toFixed(2);
+const ch = c => typeof c === 'string' ? [c, 0] : c;
+const priceOf = (q, n) => ch(q.ch.find(c => ch(c)[0] === n) || n)[1];
+const TOPS = { name: 'Toppings', many: 3, ch: [['Pearls', 15], ['Pudding', 20], ['Nata', 15], ['Grass jelly', 15]] };
+const SHORT = [{ name: 'Sweetness', ch: ['0%', '25%', '50%', '75%', '100%'] }, { name: 'Ice', ch: ['No ice', 'Less', 'Regular', 'Extra'] }, TOPS];
+const LONG = [SHORT[0], SHORT[1], { name: 'Milk', ch: ['Fresh', 'Oat', 'Almond'] }, TOPS, { name: 'Cream cheese foam', ch: ['No', ['Yes', 25]] },
+  { name: 'Sugar', ch: ['White', 'Brown'] }, { name: 'Cup', ch: ['Regular', 'Large'] }, { name: 'Straw', ch: ['Plastic', 'Paper'] }, { name: 'Lid', ch: ['Flat', 'Sealed'] },
+  { name: 'Bag', ch: ['No', 'Yes'] }, { name: 'Extra shot', ch: ['No', ['Yes', 20]] }, { name: 'Spoon', ch: ['No', 'Yes'] }];
+const START = [['50%'], ['Less'], ['Oat'], ['Pearls', 'Pudding'], ['Yes'], ['Brown'], ['Large'], ['Paper'], ['Sealed'], ['No'], ['No']];
+const lineOf = (qs, p, q = 1) => { let unit = 160; const g = [];
+  qs.forEach((Q, i) => (p[i] || []).forEach(n => { const x = priceOf(Q, n); unit += x; g.push(`${Q.name}: ${n}${x ? ' ' + peso(x) : ''}`); }));
+  return { qs, p, q, unit, g, a: p.map(v => v.join(', ')).filter(Boolean).join(' · ') }; };
+
+// ---------- the tops: what sits above the question, from the state s = { qs, at, picks } ----------
+const val = (s, i) => s.picks[i]?.length ? s.picks[i].join(', ') : 'None';
+const txt = (s, i, names) => names ? `${s.qs[i].name} ${val(s, i)}` : val(s, i);
+const done = s => [...Array(s.at).keys()];   // the questions before this one
+const dots = s => `<div class="l-c">${s.qs.map((_, i) => `<i class="${i < s.at ? 'on' : i === s.at ? 'now' : ''}"></i>`).join('')}</div>`;
+// 7 dots at most: a window round the question; the end dots go small when there are more past them
+const win = s => { const n = s.qs.length, k = Math.min(7, n), a = Math.max(0, Math.min(n - k, s.at - 3));
+  const w = i => i === s.at ? 20 : i < a || i >= a + k || (i === a && a > 0) || (i === a + k - 1 && a + k < n) ? 4 : 7;
+  const sum = (from, len) => Array.from({ length: len }, (_, j) => w(from + j) + 6).reduce((x, y) => x + y, 0);
+  return `<div class="l-c"><div class="win" style="width:${sum(a, k) - 6}px"><div class="strip" style="transform:translateX(-${sum(0, a)}px)">${s.qs.map((_, i) =>
+    `<i class="${i < s.at ? 'on' : i === s.at ? 'now' : ''}${w(i) === 4 ? ' sm' : ''}"></i>`).join('')}</div></div></div>`; };
+const chip = (s, i, names) => `<span data-go="${i}">${txt(s, i, names)}</span>`;
+const chips = (s, cls = '', names = true, idx = done(s)) => idx.length ? `<div class="cg ${cls}">${idx.map(i => chip(s, i, names)).join('')}</div>` : '';
+// the newest two at most (owner 2026-10-25: "the number plus two"), and those cut further if they still don't fit
+const fitRow = (s, names = true) => { const d = done(s), keep = d.slice(-2), k = d.length - keep.length;
+  return d.length ? `<div class="cg fit" data-fit><span class="more" data-more data-n="${k}">+${k}</span>${keep.map(i => chip(s, i, names)).join('')}</div>` : ''; };
+const pct = s => (s.at + 1) / s.qs.length * 100;
+const T = {
+  A: s => `<div class="l-a"><i style="width:${pct(s)}%"></i></div>`,
+  B: s => `<div class="l-b">${s.qs.map((_, i) => `<i class="${i <= s.at ? 'on' : ''}"></i>`).join('')}</div>`,
+  C: dots,
+  D: s => `<div class="l-d">${s.at + 1} of ${s.qs.length}</div>`,
+  E: s => `<div class="l-e">${s.qs.map((q, i) => i === s.at ? `<b>${q.name}</b>` : i < s.at ? `<span data-go="${i}">${q.name}</span>` : `<span>${q.name}</span>`).join('')}</div>`,
+  F: s => `<div class="l-f"><i style="width:${pct(s)}%"></i></div>`,
+  G: s => `<div class="l-g">${done(s).map(i => chip(s, i, true)).join('')}</div>`,
+  H: s => dots(s) + chips(s),
+  J: s => dots(s) + chips(s, 'one', true, done(s).reverse()),
+  K: s => dots(s) + chips(s, '', false),
+  L: s => { const d = done(s), keep = d.slice(-2), k = d.length - keep.length;
+    return dots(s) + (d.length ? `<div class="cg">${k ? `<span class="more" data-more>+${k}</span>` : ''}${keep.map(i => chip(s, i, true)).join('')}</div>` : ''); },
+  M: s => dots(s) + (s.at ? `<div class="cg txt">${done(s).map(i => `<span data-go="${i}"><b>${s.qs[i].name}</b> ${val(s, i)}</span>`).join(' · ')}</div>` : ''),
+  N: s => win(s) + fitRow(s),
+  O: s => (s.qs.length > 7 ? `<div class="l-d mid">${s.at + 1} of ${s.qs.length}</div>` : dots(s)) + fitRow(s),
+  P: s => (s.qs.length > 7 ? `<div class="l-f mid"><i style="width:${pct(s)}%"></i></div>` : dots(s)) + fitRow(s),
+  Q: s => win(s) + fitRow(s, false),
+};
+
+// ---------- one live phone running the questions ----------
+const cartRow = (l, hl, plus, edit) => `<div class="row${hl ? ' hl' : ''}"${edit != null ? ` data-edit="${edit}"` : ''}><span class="pic">BS</span><span class="nm"><span>Brown Sugar Milk Tea Large</span><small>${l.q} × ${peso(l.unit)}</small>${l.g.map(t => `<small>${t}</small>`).join('')}</span><span class="amt">${peso(l.unit * l.q)}</span>${plus != null ? `<span class="plus" data-plus="${plus}">+</span>` : ''}</div>`;
+const shape = n => n.tagName + '(' + [...n.children].map(shape).join() + ')';
+const morph = (a, b) => { a.className = b.className; a.setAttribute('style', b.getAttribute('style') || ''); if (!b.children.length) a.textContent = b.textContent; [...a.children].forEach((c, i) => morph(c, b.children[i])); };
+function ask(el, o) {   // o: { qs, at, picks, top, ey, back, pop, done(picks), exit() }
+  const s = { qs: o.qs, at: o.at, picks: o.picks.map(p => p.slice()), pop: !!o.pop }; let shown = -1, busy = false;
+  const draw = () => {
+    const dir = shown < 0 || shown === s.at ? '' : s.at > shown ? 'fwd' : 'bwd', oldQ = dir && el.querySelector('.q:not(.out)'), lines = [...el.querySelectorAll('.l-a, .l-b, .l-c, .l-d, .l-f')];
+    const after = () => {   // the old question slides out; the old line is put back and changed, so it glides
+      if (oldQ) { oldQ.className = 'q out ' + dir; el.append(oldQ); setTimeout(() => oldQ.remove(), 320); }
+      lines.forEach(old => { const neu = el.querySelector('.' + old.classList[0]); if (!neu || shape(neu) !== shape(old)) return; neu.replaceWith(old); old.offsetWidth; morph(old, neu); });
+    };
+    if (s.at >= s.qs.length) {   // the drink is made
+      if (o.done) return o.done(s.picks);
+      el.innerHTML = `<div class="back" data-back>Back</div><div class="q in fwd"><div class="ey">Added to the sale</div><div class="hero" style="font-size:34px">Brown Sugar Large</div></div>
+        <div class="added">${cartRow(lineOf(s.qs, s.picks))}</div><div class="next" data-again>Start again</div>`;
+      shown = s.at; return after();
+    }
+    const q = s.qs[s.at], p = s.picks[s.at] || [];
+    el.innerHTML = `<div class="back" data-back${o.back ? ` style="${o.back}"` : ''}>Back</div>${o.top(s)}
+      <div class="q${dir ? ' in ' + dir : ''}">${o.ey === false ? '' : '<div class="ey">Brown Sugar Milk Tea Large</div>'}<div class="hero"${q.name.length > 9 ? ' style="font-size:38px"' : ''}>${q.name}</div><div class="how">${q.many ? `Pick up to ${q.many}` : 'Pick one'}</div>
+      <div class="rows">${q.ch.map(c => { const [n, x] = ch(c); return `<div data-c="${n}"${p.includes(n) ? ' class="pick"' : ''}><span>${n}</span><small>${x ? '+' + peso(x) : ''}</small></div>`; }).join('')}</div></div>
+      ${q.many ? `<div class="next" data-next>${s.at < s.qs.length - 1 ? 'Next' : 'Add · ' + peso(lineOf(s.qs, s.picks).unit)}</div>` : ''}`;
+    shown = s.at; after();
+    // the cut: drop the oldest pick until the row fits; +N counts them (hidden when none)
+    el.querySelectorAll('[data-fit]').forEach(r => { const more = r.querySelector('.more'); let n = +more.dataset.n;
+      more.hidden = !n; while (r.scrollWidth > r.clientWidth && r.children.length > 1) { more.hidden = false; r.children[1].remove(); more.textContent = '+' + ++n; } });
+    // +N opens the picks not shown above; a tap on one goes back to that question
+    const out = done(s).filter(i => !el.querySelector(`[data-go="${i}"]`));
+    if (s.pop && out.length) el.insertAdjacentHTML('beforeend', `<div class="veil" data-shut></div><div class="pop">${out.map(i => `<div data-go="${i}">${s.qs[i].name}<span>${val(s, i)}</span></div>`).join('')}</div>`);
+  };
+  el.onclick = e => {
+    e.stopPropagation();   // the iPad's own handler is outside
+    const t = a => e.target.closest(`[${a}]`);
+    if (busy) return;
+    if (t('data-shut')) s.pop = false;
+    else if (t('data-more')) s.pop = true;
+    else if (t('data-go')) { s.at = +t('data-go').dataset.go; s.pop = false; }
+    else if (t('data-back')) { s.pop = false; if (s.at) s.at--; else if (o.exit) return o.exit(); }
+    else if (t('data-next')) s.at++;
+    else if (t('data-again')) { s.at = o.at; s.picks = o.picks.map(p => p.slice()); shown = -1; }
+    else if (t('data-c')) {
+      const q = s.qs[s.at], n = t('data-c').dataset.c, got = s.picks[s.at] = s.picks[s.at] || [], i = got.indexOf(n);
+      if (!q.many) { s.picks[s.at] = [n]; draw(); busy = true; return setTimeout(() => { busy = false; s.at++; draw(); }, 220); }
+      if (i >= 0) got.splice(i, 1); else if (got.length < q.many) got.push(n);
+    } else return;
+    draw();
+  };
+  draw();
+}
+
+// ---------- the boards ----------
+const ph = (k, name, note) => `<figure><div class="ph" data-k="${k}"></div><figcaption><b>${k}</b>${name} <span>· ${note}</span></figcaption></figure>`;
+const board = (id, list) => { document.getElementById(id).innerHTML = list.map(f => ph(f[0], f[1], f[2])).join('');
+  list.forEach(f => ask(document.querySelector(`#${id} [data-k="${f[0]}"]`), f[3])); };
+const at = (qs, n, extra) => ({ qs, at: n, picks: START.slice(0, n), ...extra });
+const short = (top, extra) => at(SHORT, 1, { top, ...extra });
+board('cut', [
+  ['N', 'Moving dots + cut picks', 'dots slide along, the end ones small; the newest two picks, +N', at(LONG, 9, { top: T.N })],
+  ['O', 'Words when many + cut picks', 'up to 7 questions dots, more says “10 of 12”', at(LONG, 9, { top: T.O })],
+  ['P', 'Short bar when many + cut picks', 'up to 7 dots, more turns into the short bar', at(LONG, 9, { top: T.P })],
+  ['Q', 'Moving dots + cut picks, no names', 'as N, picks without the question’s name: more fit', at(LONG, 9, { top: T.Q })],
+  ['R', 'Tap +N', 'N with its +N open: tap a pick to go back to it, tap outside to close', at(LONG, 9, { top: T.N, pop: true })],
+  ['S', 'Short drink, same rule', '3 questions: nothing is cut', short(T.N)],
+]);
+board('cg', [
+  ['H', 'Short drink', 'dots + the picks so far', short(T.H)],
+  ['I', 'Long drink, every pick', 'all shown; they stack up toward Back', at(LONG.slice(0, 7), 5, { top: T.H })],
+  ['I2', 'Very long drink, every pick', '10 questions: the picks run into Back', at(LONG.slice(0, 10), 9, { top: T.H })],
+  ['J', 'Long drink, one row', 'newest first, swipe for the rest', at(LONG.slice(0, 7), 5, { top: T.J })],
+  ['K', 'Long drink, picks only', 'no question names, so fewer lines', at(LONG.slice(0, 7), 5, { top: T.K })],
+  ['L', 'Long drink, last two', 'the newest two; +N opens the rest', at(LONG.slice(0, 7), 5, { top: T.L })],
+  ['M', 'Long drink, plain words', 'no pills: one grey line, wraps to two', at(LONG.slice(0, 7), 5, { top: T.M })],
+]);
+board('lines', [
+  ['A', 'Now', 'a thin line across the very top', short(T.A)],
+  ['B', 'Bars', 'one short bar per question, above Back', short(T.B, { back: 'top:18px' })],
+  ['C', 'Dots', 'one dot per question, centred on Back’s row; now is long', short(T.C)],
+  ['D', '2 of 3', 'plain words, top right', short(T.D)],
+  ['E', 'Question names', 'the questions in a row, now in black', short(T.E)],
+  ['F', 'Short bar', 'a small bar in the middle of Back’s row', short(T.F)],
+  ['G', 'Answers so far', 'what was picked sits above; no bar', short(T.G, { ey: false })],
+]);
+
+// ---------- tapping the same drink again: Sell grid → the pop-up → questions → back to Sell ----------
+const TEA = 'Brown Sugar Milk Tea';
+const sellHtml = st => { const n = st.lines.reduce((a, l) => a + l.q, 1), sum = st.lines.reduce((a, l) => a + l.unit * l.q, 230);
+  return `<div class="sell"><div class="top"><i></i><b></b></div><div class="grid">${['PVC Elbows', 'PVC Pipes & Tees', 'THHN Wire', 'Common Wire Nails', 'Boysen Latex Paint', TEA, 'Matcha Latte', 'Taro Milk Tea', 'Wintermelon', 'Teflon Tape 1/2"', 'LED Bulb 9W', 'Duplex Outlet'].map(n => `<div${n === TEA ? ' data-tile' : ''}>${n}</div>`).join('')}</div><div class="bar">${n} items · ${peso(sum)}</div></div>`; };
+const shortRow = (l, i) => `<div class="row" data-edit="${i}"><span class="nm"><span>${l.a || 'No picks'}</span><small>${l.q} × ${peso(l.unit)}</small></span><span class="amt">${peso(l.unit * l.q)}</span><span class="plus" data-plus="${i}">+</span></div>`;
+const card = (st, body, btn = 'Make another', ink) => `${sellHtml(st)}<div class="dim" data-x></div><div class="card"><div class="ch"><span>Brown Sugar Milk Tea Large</span><span class="x" data-x>✕</span></div>${body}<div class="ft"><div class="go${ink ? ' ink' : ''}" data-make>${btn}</div></div></div>`;
+const AGAIN = [
+  ['1', 'Now', 'answers run on as one long line', st => card(st, `<div class="today">${st.lines.map((l, i) => `<div class="row" data-edit="${i}"><span class="nm"><span>${l.g.join(', ')}</span><small>${l.q} × ${peso(l.unit)}</small></span><span class="amt">${peso(l.unit * l.q)}</span></div>`).join('')}</div>`)],
+  ['2', 'Cart rows', 'each line looks exactly like the cart’s row', st => card(st, st.lines.map((l, i) => cartRow(l, false, null, i)).join(''), 'Make another', true)],
+  ['3', 'Short rows + one more', 'just the picks; + adds one more of that same drink', st => card(st, st.lines.map(shortRow).join(''), 'Make a different one', true)],
+  ['4', 'The cart itself', 'the cart rises from the bottom, these drinks shaded', st => `${sellHtml(st)}<div class="dim" data-x></div><div class="sheet"><div class="grab"></div><div class="sh">On the sale <small>${st.lines.reduce((a, l) => a + l.q, 1)} items</small></div>
+     ${st.lines.map((l, i) => cartRow(l, true, null, i)).join('')}<div class="row"><span class="pic">TT</span><span class="nm"><span>Teflon Tape 1/2"</span><small>1 × ₱230.00</small></span><span class="amt">₱230.00</span></div>
+     <div class="ft"><div class="go ink" data-make>Make another Brown Sugar</div></div></div>`],
+  ['5', 'Same again or new', 'two big choices; same again adds one more', st => { const l = st.lines[st.lines.length - 1];
+     return `${sellHtml(st)}<div class="dim" data-x></div><div class="card"><div class="ch"><span>Brown Sugar Milk Tea Large</span><span class="x" data-x>✕</span></div>
+     <div class="tile2"><div data-same>Same as last<small>${l.a} · ${peso(l.unit)}</small></div><div data-make>New one<small>Answer the questions</small></div></div></div>`; }],
+  ['6', 'Full page', 'its own page like the questions, lines as rows', st => `<div class="fs"><div class="back" data-x>Back</div><div class="q"><div class="ey">On the sale</div><div class="hero" style="font-size:34px">Brown Sugar Large</div><div class="how">Tap one to change it</div>
+     <div class="rows">${st.lines.map((l, i) => `<div data-edit="${i}"><span>${l.a}<small>${l.q} × ${peso(l.unit)}</small></span><span>${peso(l.unit * l.q)}</span></div>`).join('')}<div class="mk" data-make>Make another</div></div></div></div>`],
+];
+document.getElementById('again').innerHTML = AGAIN.map(f => ph(f[0], f[1], f[2])).join('');
+AGAIN.forEach(([k, , , view]) => {
+  const el = document.querySelector(`#again [data-k="${k}"]`);
+  const st = { lines: [lineOf(SHORT, [['50%'], ['Less'], ['Pearls', 'Pudding']]), lineOf(SHORT, [['100%'], ['Regular'], []])] };
+  const show = v => { if (v === 'pop') { el.innerHTML = view(st); el.onclick = tap; } else { el.innerHTML = sellHtml(st); el.onclick = tap; } };
+  // the questions, with the dots (C); a new drink starts empty, a tapped line starts with its picks
+  const run = (i) => ask(el, { qs: SHORT, at: 0, picks: i == null ? [] : st.lines[i].p, top: T.C, exit: () => show('pop'),
+    done: p => { if (i == null) st.lines.push(lineOf(SHORT, p)); else st.lines[i] = lineOf(SHORT, p, st.lines[i].q); show(i == null ? 'sell' : 'pop'); } });
+  const tap = e => { const t = a => e.target.closest(`[${a}]`);
+    if (t('data-plus')) { st.lines[+t('data-plus').dataset.plus].q++; show('pop'); }
+    else if (t('data-same')) { st.lines[st.lines.length - 1].q++; show('sell'); }
+    else if (t('data-make')) run(null);
+    else if (t('data-edit')) run(+t('data-edit').dataset.edit);
+    else if (t('data-x')) show('sell');
+    else if (t('data-tile')) show('pop');
+  };
+  show('pop');
+});
+
+{ const el = document.getElementById('pad');
+  el.innerHTML = '<div class="pad"><div class="cat"></div><div class="cartp"></div></div>';
+  const pad = el.firstChild, cat = pad.querySelector('.cat'), cartp = pad.querySelector('.cartp');
+  const st = { view: 'sell', lines: [lineOf(SHORT, [['50%'], ['Less'], ['Pearls', 'Pudding']]), lineOf(SHORT, [['100%'], ['Regular'], []])] };
+  const NAMES = ['PVC Elbows', 'PVC Pipes & Tees', 'THHN Wire', 'Common Wire Nails', 'Boysen Latex Paint', TEA, 'Matcha Latte', 'Taro Milk Tea', 'Wintermelon', 'Teflon Tape 1/2"', 'LED Bulb 9W', 'Duplex Outlet', 'Switch 1-Gang', 'Electrical Tape', 'Circuit Breaker 30A', 'Wood Screw #8', 'Hex Bolt M10', 'Flat Washer M10', 'Claw Hammer', 'Phillips Screwdriver', 'Tape Measure 5m'];
+  const draw = () => { const again = st.view === 'again', sum = st.lines.reduce((a, l) => a + l.unit * l.q, 230);
+    cartp.innerHTML = `<div class="ctop"><span>Walk-in customer</span><i>···</i></div>
+      <div class="clist">${st.lines.map((l, i) => cartRow(l, again, null, again ? i : null)).join('')}<div class="row${again ? ' fade' : ''}"><span class="pic">TT</span><span class="nm"><span>Teflon Tape 1/2"</span><small>1 × ₱230.00</small></span><span class="amt">₱230.00</span></div></div>
+      <div class="cfoot">${again ? '<div class="go ink" data-make>Make another Brown Sugar</div>' : `<div class="opts"><span>Walk-in</span><span>Discount</span></div><div class="pay">Check out · ${peso(sum)}</div>`}</div>`;
+    if (st.view === 'q') return;
+    cat.className = 'cat'; cat.onclick = null;
+    cat.innerHTML = `<div class="sell"><div class="top"><i></i><b></b></div><div class="grid">${NAMES.map(n => `<div${n === TEA ? ' data-tile' : ''}>${n}</div>`).join('')}</div></div>${again ? '<div class="dim" data-x></div>' : ''}`; };
+  const run = i => { st.view = 'q'; draw(); cat.className = 'cat qs';
+    ask(cat, { qs: SHORT, at: 0, picks: i == null ? [] : st.lines[i].p, top: T.N, exit: () => { st.view = 'again'; draw(); },
+      done: p => { if (i == null) st.lines.push(lineOf(SHORT, p)); else st.lines[i] = lineOf(SHORT, p, st.lines[i].q); st.view = 'sell'; draw(); } }); };
+  pad.onclick = e => { const t = a => e.target.closest(`[${a}]`); if (st.view === 'q') return;
+    if (t('data-make')) run(null); else if (t('data-edit')) run(+t('data-edit').dataset.edit);
+    else if (t('data-tile')) { st.view = 'again'; draw(); } else if (st.view === 'again' && !t('data-plus')) { st.view = 'sell'; draw(); } };
+  draw(); }
+</script>
+</body></html>
