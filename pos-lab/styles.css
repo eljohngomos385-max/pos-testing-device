@@ -7676,19 +7676,20 @@ body.light-theme .fab-veil { --fab-dim: rgba(255, 255, 255, .45); }
 .fab-veil .ic { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .fab-stack { position: absolute; right: var(--fr); bottom: calc(var(--fb) + var(--fs) + 18px); display: flex; flex-direction: column; align-items: flex-end; gap: 16px; }
 .fab-stack button { display: flex; align-items: center; gap: 16px; padding: 0; border: 0; background: none; color: var(--ink); font-size: 20px; font-weight: 650; letter-spacing: -0.3px;
-                    transform-origin: calc(100% - var(--fs) / 2) 50%; animation: fab-in .26s var(--rl-ease) var(--d) both; }   /* grow from the circle, so it only rises */
+                    animation: fab-in .26s var(--rl-ease) var(--d) both; }   /* straight up + fade: the old scale slid the labels ~15px sideways, a diagonal wiggle (owner 2026-10-27) */
 .fab-stack i { display: grid; place-items: center; width: var(--fs); height: var(--fs); border-radius: 50%; background: var(--accent); color: var(--accent-ink); transition: transform .12s; }
 .fab-stack button:active i { transform: scale(.94); }
 .fab-stack button:focus-visible { outline: none; }
 .fab-stack button:focus-visible i, .fab-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.fab-veil.tap .fab-x:focus-visible { outline: none; }   /* opened by a tap: the ✕ holds focus, not a ring */
 .fab-veil.out .fab-stack button { animation: fab-down .16s var(--rl-ease) both; }
 .fab-x { position: absolute; right: var(--fr); bottom: var(--fb); display: grid; place-items: center; width: var(--fs); height: var(--fs); border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink); }
 .fab-x .ic { transform: rotate(45deg); animation: fab-turn .26s var(--rl-ease) both; }
 @keyframes fab-veil { from { opacity: 0; } }
-@keyframes fab-in { from { opacity: 0; transform: translateY(14px) scale(.9); } }
+@keyframes fab-in { from { opacity: 0; transform: translateY(14px); } }
 @keyframes fab-turn { from { transform: rotate(0); } }
 @keyframes fab-gone { to { opacity: 0; } }
-@keyframes fab-down { to { opacity: 0; transform: translateY(14px) scale(.9); } }
+@keyframes fab-down { to { opacity: 0; transform: translateY(14px); } }
 @media (prefers-reduced-motion: reduce) { .fab-veil, .fab-veil *, .fab-veil .ic { animation: none !important; } }
 
 /* the editor: full screen, the back office's cards and fields */
@@ -8106,6 +8107,9 @@ body:not(.light-theme) #catalogSearchRow { --glass: color-mix(in srgb, var(--ink
 .fsheet .fs-rows button + button { background: linear-gradient(var(--rl-div), var(--rl-div)) 16px 0 / 100% 1px no-repeat; }
 .fsheet .fs-rows button:active:not(:disabled) { background-color: var(--rl-hover); }
 .fsheet .fs-rows button.red { color: var(--danger); }
+/* a pick-one sheet (Quick stock's mode): the current row carries Apple's bare check, as a pick list's radio */
+.fsheet .fs-rows button.cur { display: flex; align-items: center; justify-content: space-between; }
+.fsheet .fs-rows button.cur::after { content: ''; width: 20px; height: 20px; background: var(--ink); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat; }
 .fsheet .fs-rows button:disabled { color: var(--ink-quaternary); cursor: default; }
 
 

@@ -574,8 +574,8 @@ function attachEvents() {
   // Items +: the blurred stack, Change price / Quick stock (pos-stock.js) / Add item; the other kinds add straight away
   const fabIc = d => `<svg class="ic" viewBox="0 0 24 24">${d}</svg>`;
   $('#itemsAdd')?.addEventListener('click', (e) => (itemsKind === 'addons' ? showToast("Add-ons aren't connected yet") : itemsKind !== 'items' ? openKind(null) : openFabMenu(e.currentTarget, [
-    { label: 'Change price', ic: fabIc('<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/>'), run: () => qsStart('price') },
-    { label: 'Quick stock', ic: fabIc('<path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9"/>'), run: () => qsStart() },
+    { label: 'Adjust price', ic: fabIc('<path d="M3.4 13.4l7.2 7.2a2 2 0 0 0 2.8 0L21 13V3H11L3.4 10.6a2 2 0 0 0 0 2.8z"/><circle cx="16.5" cy="7.5" r="1.3"/>'), run: () => qsStart('price') },
+    { label: 'Adjust stock', ic: fabIc('<path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9"/>'), run: () => qsStart() },
     { label: 'Add item', ic: fabIc('<path d="M12 5v14M5 12h14"/>'), run: () => openItemEditor(null) },
   ])));
   $('#itemSave')?.addEventListener('click', () => (kindEdit ? saveKind() : saveItem()));

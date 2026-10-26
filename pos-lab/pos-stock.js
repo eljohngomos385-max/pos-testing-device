@@ -1,11 +1,11 @@
-// Quick stock (Items + -> Quick stock): tap items on the list, type the amounts, Save. On a tablet the page sits beside
+// Adjust stock (Items + -> Adjust stock; "Quick stock" until 2026-10-27, the code keeps qs*): tap items on the list, type the amounts, Save. On a tablet the page sits beside
 // the list (or full screen, from the title's menu); on the phone it's its own page behind Review. Ported from the
 // quick-stock lab, flow C (owner 2026-10-13). Saves real movements (makeMovement -> applyMovement -> appendMovements),
 // one batch per Save, so the back office's history shows them.
 // The page is the item editor's (owner 2026-10-13): ‹ / title / Save on top, Settings blocks under it, one block per
 // item with its name above, the device's own keyboard (no keypad of ours), − / + for small changes.
 // ponytail: it borrows .lv .editor / .card.fc / .fr from styles.css instead of new card styles.
-// Change price (Items + -> Change price, owner 2026-10-17): the same page and flow, the number is the new price. Its Save
+// Adjust price (Items + -> Adjust price, owner 2026-10-17; "Change price" until 2026-10-27): the same page and flow, the number is the new price. Its Save
 // writes the products' price (no movement); Undo puts the old prices back.
 
 const QS_KEY = 'hwpos.quickStock';
@@ -15,7 +15,7 @@ const QS_REASONS = {
   remove: ['Remove stock', -1, 'adjustment'],
   damaged: ['Damaged', -1, 'damage'],
   count: ['Count stock', 0, 'count'],
-  price: ['Change price', 0, ''],   // not a stock reason: qsPrice() branches
+  price: ['Adjust price', 0, ''],   // not a stock reason: qsPrice() branches
 };
 
 // full: on a tablet, one page over the list (the phone's way) instead of docked beside it
@@ -60,7 +60,7 @@ const QS_IC = {
 };
 function qsBuild() {
   // inside #app: the PIN lock's inert covers it (pinCover)
-  $('#app').insertAdjacentHTML('beforeend', `<section class="lv qs-pg" id="qs" aria-label="Quick stock" hidden><div class="iv editing">
+  $('#app').insertAdjacentHTML('beforeend', `<section class="lv qs-pg" id="qs" aria-label="Adjust stock" hidden><div class="iv editing">
       <section class="editor"><div class="e-top">
         <button class="sq back" id="qsBack" aria-label="Back">${QS_IC.back}</button>
         <h2 class="fm-h"><button type="button" class="qs-mode" id="qsReason" aria-haspopup="menu" aria-expanded="false"><span></span>${QS_IC.updown}</button></h2>
@@ -208,7 +208,7 @@ function qsSave() {
   live.forEach(l => {
     const p = qsProd(l.id), was = Number(p.stock) || 0, n = Number(l.n) || 0;
     const qty = QS.reason === 'count' ? n - was : sign * n;
-    const mv = makeMovement({ productId: p.id, qty, reason, refId: batch, note: 'Quick stock', unitCost: p.cost, staff: who, staffId,
+    const mv = makeMovement({ productId: p.id, qty, reason, refId: batch, note: 'Adjust stock', unitCost: p.cost, staff: who, staffId,
       ...(QS.reason === 'count' && { expected: was, counted: n }) });
     applyMovement(p, mv);
     rows.push(mv);
@@ -351,11 +351,13 @@ function qsWire() {
   $('#qsTickNext').addEventListener('click', () => { qsMode = 'page'; qsRender(); });
 
   $('#qsBack').addEventListener('click', qsBack);
-  // the title's menu: the mode, and on a tablet the page's place (beside the list or full screen)
-  $('#qsReason').addEventListener('click', e => openMenu(e.currentTarget, [
-    ...Object.keys(QS_REASONS).filter(r => (r === 'price') === qsPrice()).map(r => ({ label: QS_REASONS[r][0], cur: r === QS.reason, run: () => qsPickReason(r) })),
-    ...(innerWidth > 720 ? ['-', { label: qsMode === 'dock' ? 'Full screen' : 'Beside the list', run: qsToggleFull }] : []),
-  ], { w: 200 }));
+  // the title's menu: the mode, and on a tablet the page's place (beside the list or full screen); the phone gets
+  // the cart ⋯'s half sheet (owner 2026-10-27)
+  $('#qsReason').addEventListener('click', e => {
+    const modes = Object.keys(QS_REASONS).filter(r => (r === 'price') === qsPrice()).map(r => ({ label: QS_REASONS[r][0], cur: r === QS.reason, run: () => qsPickReason(r) }));
+    if (innerWidth <= 720) return openActionSheet(e.currentTarget, 'Adjust stock', modes);
+    openMenu(e.currentTarget, [...modes, '-', { label: qsMode === 'dock' ? 'Full screen' : 'Beside the list', run: qsToggleFull }], { w: 200 });
+  });
   $('#qsSave').addEventListener('click', () => (qsSaved ? qsDoneSaved() : qsSave()));
 
   const list = $('#qsList');

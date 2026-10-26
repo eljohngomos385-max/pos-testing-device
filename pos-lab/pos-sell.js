@@ -1599,6 +1599,7 @@ function openFabMenu(fab, items) {
   document.body.append(veil);
   fab.setAttribute('aria-expanded', 'true');
   fab.style.visibility = 'hidden';   // the ✕ stands in for it; no blurred + glowing round the ✕
+  if (!fab.matches(':focus-visible')) veil.classList.add('tap');   // a tap: no keyboard ring round the ✕ (owner 2026-10-27)
   veil.querySelector('.fab-x').focus({ preventScroll: true });   // a stray Enter (a scanner's) only closes it
   const close = () => {
     if (veil.classList.contains('out')) return false;
@@ -1618,6 +1619,7 @@ function openFabMenu(fab, items) {
     if (e.key === 'Escape') { e.stopPropagation(); close(); }
     else if (e.repeat) e.preventDefault();   // a held Enter that opened the menu must not pick from it
     else if (e.key === 'Tab') {   // focus stays in the menu
+      veil.classList.remove('tap');   // the keyboard's here: its ring comes back
       const all = [...veil.querySelectorAll('button')], i = all.indexOf(document.activeElement);
       e.preventDefault();
       all[(i + (e.shiftKey ? -1 : 1) + all.length) % all.length].focus();

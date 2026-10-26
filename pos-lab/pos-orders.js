@@ -388,10 +388,10 @@ function openFilterSheet(btn, groups, cur, def, apply) {
 }
 
 // The phone's ⋯ (owner 2026-10-19, Claude's Select model sheet): a half sheet of rows in place of the morph menu, which
-// needs room the bar no longer has. items as openMenu's: [{label, run, red, off}], '-' starts a new card.
+// needs room the bar no longer has. items as openMenu's: [{label, run, red, off, cur}], '-' starts a new card; cur gets the check.
 function openActionSheet(btn, title, items) {
   const cards = [[]];
-  items.forEach((it, i) => it === '-' ? cards.push([]) : cards.at(-1).push(`<button type="button" data-i="${i}" class="${it.red ? 'red' : ''}"${it.off ? ' disabled' : ''}>${escapeHtml(it.label)}</button>`));
+  items.forEach((it, i) => it === '-' ? cards.push([]) : cards.at(-1).push(`<button type="button" data-i="${i}" class="${it.red ? 'red' : ''}${it.cur ? ' cur' : ''}"${it.cur ? ' aria-current="true"' : ''}${it.off ? ' disabled' : ''}>${escapeHtml(it.label)}</button>`));
   const { veil, close } = openSheet(btn, `<div class="fs-top">
     <button type="button" class="fs-x" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h2 id="fsTitle">${escapeHtml(title)}</h2><i></i></div><div class="fs-body">${cards.filter(c => c.length).map(c => `<div class="fs-rows">${c.join('')}</div>`).join('')}</div>`, 'half');
