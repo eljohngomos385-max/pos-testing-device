@@ -591,6 +591,8 @@ function attachEvents() {
   ], itemsFilter, ITEMS_FILTER_DEF, renderItems));
   const itemForm = $('#itemForm');
   wireFind('#itemFind', '#itemFindQ', '#itemFindX', filterPicks);
+  $('#itemFindFilter')?.addEventListener('click', (e) => pickFilter(e.currentTarget));   // a category's Items / Asked on (pos-items)
+  $('#kindPickGo')?.addEventListener('click', saveKind);
   itemForm?.addEventListener('scroll', () => itemForm.previousElementSibling.classList.toggle('tuck', itemForm.scrollTop > 24), { passive: true });   // Apple's: search tucks, the title shows
   // back from a subpage first (pos-items itemGo), then out of the editor
   $('#itemBack')?.addEventListener('click', () => (kindEdit?.sub ? kindBack() : itemEdit && itemSub ? itemGo(itemParent(itemSub), true)

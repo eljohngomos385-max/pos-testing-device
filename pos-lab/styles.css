@@ -7172,7 +7172,7 @@ body.light-theme {
   --rl-on: #1F5FB8;
   --rl-bar: #007AFF;
   --rl-hair: #EBEBEB;
-  --rl-div: #EFEFEF;
+  --rl-div: rgba(0, 0, 0, 0.063);                       /* #EFEFEF on white, but see-through: it stays on a ticked row's wash (was solid and vanished there) */
   --rl-shadow: 0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05);
 }
 /* the one safe-area inset of the sell view's bottom edge (docs/design-pos.md) */
@@ -8542,10 +8542,10 @@ body.add-pick :is(#itemsAdd, #itemsBar, #itemsFilter, #itemsBack, .view-items .r
 body.add-pick .view-items .cols:not(.k2) { grid-template-columns: minmax(0,1fr) 170px; }
 body.add-pick .view-items .cols:not(.k2) > :nth-child(n+3) { display: none; }
 /* its bar: Check out's pill, low over the list on phone and tablet alike (owner 2026-10-21: "the same as the checkout button") */
-#addPickBar { position: fixed; z-index: 30; left: 0; right: 0; bottom: var(--ph-b, calc(16px + env(safe-area-inset-bottom, 0px))); display: flex; justify-content: center; pointer-events: none; }
+:is(#addPickBar, #kindPickBar) { position: fixed; z-index: 30; left: 0; right: 0; bottom: var(--ph-b, calc(16px + env(safe-area-inset-bottom, 0px))); display: flex; justify-content: center; pointer-events: none; }
 #addPickBar[hidden] { display: none; }
-#addPickBar .ph-bar { display: flex; margin: 0; pointer-events: auto; }
-#addPickBar::before { content: ''; position: fixed; z-index: -1; inset: auto 0 0; height: calc(var(--bar-h) + var(--ph-b, 16px) + 64px);   /* the rows fade out under it, as under the variants list's: the empty pill reads on the page, not over a row */
+:is(#addPickBar, #kindPickBar) .ph-bar { display: flex; margin: 0; pointer-events: auto; }
+:is(#addPickBar, #kindPickBar)::before { content: ''; position: fixed; z-index: -1; inset: auto 0 0; height: calc(var(--bar-h) + var(--ph-b, 16px) + 64px);   /* the rows fade out under it, as under the variants list's: the empty pill reads on the page, not over a row */
   background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   -webkit-mask-image: linear-gradient(transparent, #000 88px); mask-image: linear-gradient(transparent, #000 88px); }
 /* Item / Category: the half sheet grows into the full screen, its words fade, then it fades off the list (pos-sell.js) */
@@ -8909,3 +8909,15 @@ body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px v
 .pk-go { width: 100%; height: 48px; border: 0; border-radius: var(--es-r); background: var(--tile); color: var(--ink); font: inherit; font-size: 15px; font-weight: 590; cursor: pointer; }
 @media (hover: hover) { .pk-x:hover, .pk-go:hover { background: var(--rl-hover); color: var(--ink); } }
 @media (min-width: 768px) { .pk-ft { padding: 14px 18px 18px; } .pk-go { height: 56px; } }
+
+/* A category's Items / a modifier's Asked on (owner 2026-10-27): Adjust stock's picking page. The bar's search stays put
+   (no tuck, no title), its filter shows, and Check out's pill at the bottom saves */
+.lv .editor:not(.picking) :is(#itemFindFilter, #kindPickBar) { display: none; }
+.lv .editor.picking .e-top.tuck > #itemFind { opacity: 1; pointer-events: auto; }
+.lv .editor.picking .e-top > .fm-h { opacity: 0; }
+.lv .editor.picking .form { padding-top: 14px; padding-bottom: calc(var(--bar-h) + var(--ph-b, 16px) + 48px); }   /* the last row scrolls clear of the pill */
+/* the list is Adjust stock's (Items' own list): 14px under the search, 48px rows of 14px words, the tick left of the photo (owner 2026-10-27) */
+.lv .editor.picking .fc .pick { min-height: 48px; padding: 6px 12px; gap: 10px; font-size: 14px; }
+.lv .editor.picking .fc .pick input { order: -1; margin: 0 2px 0 0; }
+.lv .editor.picking .fc > * + * { background-position: 0 0; }   /* its lines run edge to edge, as the Items list's */
+#kindPickBar .ph-bar span + span::before { content: '\00B7'; margin-right: 8px; }   /* 5 items · Save, on the tablet too */

@@ -355,7 +355,8 @@ function refundAct(btn, o) {
 // while none (owner 2026-10-18: "Payment and Status multi-select"); a group without one (When) always keeps one pick.
 // Clear Filters (while anything is picked) puts the defaults back. No colour dots: plain words (owner 2026-10-18).
 // groups() -> [[heading, key, [[value, label]]]]; cur is the live filter object, def its defaults.
-function openFilterSheet(btn, groups, cur, def, apply) {
+// acts: [[label, run]] under the groups (Asked on's Select all / none); a tap applies the filter, closes, then runs
+function openFilterSheet(btn, groups, cur, def, apply, acts = []) {
   const pick = { ...cur }, { veil, m, close } = openSheet(btn, `<div class="fs-top">
     <button type="button" class="fs-x" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h2 id="fsTitle">Filters</h2>
@@ -367,7 +368,8 @@ function openFilterSheet(btn, groups, cur, def, apply) {
     body.innerHTML = groups().map(([h, key, opts]) => `<h6>${h}</h6><div class="fs-grp"${opts.some(([v]) => v === '') ? ' data-free' : ''}>${opts.filter(([v]) => v !== '').map(([v, l]) => {
       const on = [].concat(pick[key]).includes(v);
       return `<button type="button" class="${on ? 'cur' : ''}" aria-pressed="${on}" data-k="${key}" data-v="${escapeHtml(v)}">${escapeHtml(l)}</button>`;
-    }).join('')}</div>`).join('');
+    }).join('')}</div>`).join('')
+      + (acts.length ? `<h6>Select</h6><div class="fs-grp">${acts.map(([l], i) => `<button type="button" data-run="${i}">${escapeHtml(l)}</button>`).join('')}</div>` : '');
     m.querySelector('.fs-ok').disabled = !differs(pick, cur);
     m.querySelector('.fs-clear').hidden = !differs(pick, def);
   };
@@ -375,6 +377,8 @@ function openFilterSheet(btn, groups, cur, def, apply) {
   veil.addEventListener('click', e => {
     if (e.target === veil || e.target.closest('.fs-x')) return;   // openSheet's
     if (e.target.closest('.fs-ok')) { Object.assign(cur, pick); apply(); return close(); }
+    const run = e.target.closest('[data-run]');
+    if (run) { Object.assign(cur, pick); apply(); close(); return acts[run.dataset.run][1](); }
     if (e.target.closest('.fs-clear')) Object.assign(pick, def);
     const b = e.target.closest('[data-k]');
     if (b && 'free' in b.parentElement.dataset) {
