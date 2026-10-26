@@ -27,7 +27,7 @@ button { font: inherit; cursor: pointer; }
        box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 0 0 99px #0A0A0A; }   /* the screen's corner: the page colour painted over the app outside
    the frame's curve, not a clip. Chromium drops backdrop-filter (the glass buttons, the frost) inside an iframe under a rounded or polygon
    clip, so the app is never clipped; the curve stays Apple's and is the same open and shut (owner 2026-10-22) */
-#f { position: absolute; inset: var(--top) 0 var(--bot); display: block; width: 100%; height: calc(100% - var(--top) - var(--bot)); border: 0; }
+#f { position: absolute; inset: 0 0 var(--bot); display: block; width: 100%; height: calc(100% - var(--bot)); border: 0; }   /* under the status bar, as on the iPad */
 
 /* the status bar: iPadOS has the time and date left, wifi and battery right; Android the time left, icons right */
 .sb { position: absolute; inset: 0 0 auto; z-index: 2; display: flex; align-items: center; justify-content: space-between; height: var(--top); padding: 0 20px;
@@ -94,6 +94,7 @@ function fit() {
   for (const [k, v] of [['--top', d.top], ['--bot', d.bot], ['--r', d.r]]) dev.style.setProperty(k, v + 'px');
   dev.style.transform = `scale(${Math.min(1, (st.width - 32) / w, (st.height - 24) / h)})`;
   f.contentDocument?.documentElement.style.setProperty('--ph-safe', d.safe + 'px');
+  f.contentDocument?.documentElement.style.setProperty('--ph-top', d.top + 'px');   // always: the app runs under the status bar
 }
 const pick = (bar, attr, on) => bar.onclick = e => {
   const b = e.target.closest('button'); if (!b) return;
@@ -106,18 +107,6 @@ addEventListener('resize', fit);
 
 f.src = 'index.html?' + Date.now() + (location.hash || '#sell');   // the browser kept serving a stale index.html inside a frame
 f.addEventListener('load', fit);
-// the half drawer's page card runs up behind the status bar, as phone.html's does behind the clock: the app gets the whole
-// screen top while it is open, and --ph-top says how far down the bar reaches
-let bleedT;
-f.addEventListener('load', () => {
-  const d = f.contentDocument, app = d.getElementById('app');
-  const bleed = on => { f.style.top = on ? '0' : ''; f.style.height = on ? 'calc(100% - var(--bot))' : ''; d.documentElement.style.setProperty('--ph-top', on ? DEVS[devKey].top + 'px' : '0px'); };
-  new MutationObserver(() => {
-    clearTimeout(bleedT);
-    if (!app.classList.contains('sidebar-collapsed') && d.documentElement.classList.contains('side-half')) bleed(true);
-    else bleedT = setTimeout(() => bleed(false), 450);   // after the card has slid home
-  }).observe(app, { attributes: true, attributeFilter: ['class'] });
-});
 // the sidebar is always the half drawer (owner 2026-10-17: "remove the full page, always half screen"), the iPhone's app inside
 // phone.html too (phone.html reloads its app on a hash change), as compare.html's
 const apps = () => [f.contentDocument, $('ph').contentDocument?.getElementById('f')?.contentDocument];

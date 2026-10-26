@@ -20,7 +20,7 @@ body { display: grid; place-items: center; background: #0A0A0A; overflow: hidden
        box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 0 0 99px #0A0A0A; }   /* the screen's corner: the page colour painted over the app outside
    the frame's curve, not a clip. Chromium drops backdrop-filter (the glass buttons, the frost) inside an iframe under a rounded or polygon
    clip, so the app is never clipped; the curve stays Apple's and is the same open and shut (owner 2026-10-22) */
-iframe { position: absolute; inset: var(--top) 0 0; display: block; width: 100%; height: calc(100% - var(--top)); border: 0; }
+iframe { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 0; }   /* the app runs under the clock, as on the iPhone */
 
 /* the status bar */
 .sb { position: absolute; inset: 0 0 auto; z-index: 2; height: var(--top); color: var(--sb-ink); pointer-events: none;
@@ -61,19 +61,9 @@ const dev = document.getElementById('dev'), f = document.getElementById('f');
 f.src = 'index.html?' + Date.now() + (location.hash || '#items');   // the browser kept serving a stale index.html inside a frame
 // an iframe gets no safe-area inset: fake the iPhone's 34pt home-bar strip, as devices.html does
 f.addEventListener('load', () => f.contentDocument.documentElement.style.setProperty('--ph-safe', '34px'));
-// the half drawer's page card runs up behind the clock, as an iOS app's does (owner 2026-10-17): while it is open the app
-// gets the whole screen and --ph-top tells it how far down the clock reaches. ponytail: only while open; a full-time
-// full-screen app would need every overlay to clear the clock first
-let bleedT;
-f.addEventListener('load', () => {
-  const d = f.contentDocument, app = d.getElementById('app');
-  const bleed = on => { f.style.inset = on ? '0' : ''; f.style.height = on ? '100%' : ''; d.documentElement.style.setProperty('--ph-top', on ? '58px' : '0px'); };
-  new MutationObserver(() => {
-    clearTimeout(bleedT);
-    if (!app.classList.contains('sidebar-collapsed') && d.documentElement.classList.contains('side-half')) bleed(true);
-    else bleedT = setTimeout(() => bleed(false), 450);   // after the card has slid home
-  }).observe(app, { attributes: true, attributeFilter: ['class'] });
-});
+// the app always runs under the clock, as a home-screen app does on the iPhone (owner 2026-10-27): --ph-top says how far
+// down it reaches, so a page that forgets it shows here, not first on the phone
+f.addEventListener('load', () => f.contentDocument.documentElement.style.setProperty('--ph-top', '58px'));
 function fit() { dev.style.transform = `scale(${Math.min(1, (innerWidth - 24) / 393, (innerHeight - 24) / 852)})`; }
 fit(); addEventListener('resize', fit);
 // the strip takes the colour of the page under it, as Safari does; the ink flips to stay readable

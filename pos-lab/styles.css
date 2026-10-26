@@ -3846,8 +3846,8 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
   .co-cust, .co-list { display: none; }
   .co-done-chg { flex-direction: column-reverse; align-items: center; gap: 2px; }
   .co-done-chg > :first-child { font-size: 17px; }
-  .co-rcpt { inset: 0; padding: 64px 16px calc(16px + var(--ph-safe)); background: var(--bg); }   /* the Orders page's backdrop: grey hid the paper's edge (owner 2026-10-08) */
-  .co-rcpt-x { position: absolute; z-index: 1; top: 12px; left: 12px; display: grid; place-items: center; width: 40px; height: 40px;
+  .co-rcpt { inset: 0; padding: calc(64px + var(--ph-top, 0px)) 16px calc(16px + var(--ph-safe)); background: var(--bg); }   /* the Orders page's backdrop: grey hid the paper's edge (owner 2026-10-08) */
+  .co-rcpt-x { position: absolute; z-index: 1; top: calc(12px + var(--ph-top, 0px)); left: 12px; display: grid; place-items: center; width: 40px; height: 40px;
                border-radius: var(--r-input); color: var(--ink-secondary); }
   .co-rcpt-x:active { background: var(--surface-hover); }
   .is-done .co-rcpt-btn { display: flex; justify-self: center; min-width: 140px; max-width: calc(100% - 48px); height: var(--bar-h); margin-bottom: var(--ph-b);
@@ -7353,7 +7353,7 @@ body.light-theme {
   .product-grid[data-size] { --grid-gap: 6px; }   /* owner 2026-10-18: "slightly tighter" than 8, with the v449 lift the tiles read as one set */
   .ph-bar { display: flex; margin: 0 auto var(--ph-b); }
   .ph-bar span + span::before, .rail-h .go span + span::before { content: '·'; margin-right: 8px; }   /* 2 items · ₱157.00, centred */
-  .rail-h { position: fixed; inset: 0; z-index: 97; max-height: none; margin: 0; padding: calc(8px + env(safe-area-inset-top, 0px)) 8px var(--ph-b); background: var(--canvas, var(--bg));
+  .rail-h { position: fixed; inset: 0; z-index: 97; max-height: none; margin: 0; padding: calc(8px + var(--ph-top, 0px)) 8px var(--ph-b); background: var(--canvas, var(--bg));
             transform: translateX(100%); visibility: hidden; transition: transform .3s var(--rl-ease), visibility 0s .3s; }   /* out: the plain slide, the whole page to the right */
   .rail-h .go, .rail-h #payBtn { justify-self: center; justify-content: center; gap: 8px; width: min(100% - 48px, 260px); height: var(--bar-h); border: 0; border-radius: calc(var(--rl-r) + 2px); }   /* as the bar; both 260 wide (owner 2026-10-18: "less wide", then "a little bit wider ... 260") */
   #app.ph-cart .rail-h { transform: none; visibility: visible; transition: none; animation: ph-cart-bg .36s var(--rl-ease); }   /* in: the keyframes below, not the slide */
@@ -8696,7 +8696,10 @@ body:not(.light-theme) #app :is(.side-top > #sellSwitch, .side-link[data-view="s
 /* The half-screen drawer, chat-app style (owner 2026-10-17, ChatGPT / Claude iOS): the page stays as a rounded card
    pushed out right, a tap on it closes. Switched by html.side-half (compare.html's / devices-all.html's Sidebar dropdown); full page
    stays the default. Phone: the card peeks 76 in; tablet: a short drawer and the page moves aside by that much (owner) */
-html.side-half { --ph-top: env(safe-area-inset-top, 0px); }   /* plain in a phone browser the card runs up behind the clock too; the device frames set it inline (0 while shut) */
+html.side-half { --ph-top: env(safe-area-inset-top, 0px); }   /* the app runs up behind the clock; the device frames set it inline, always, as the phone does */
+/* Every page that covers the whole screen clears the clock here, in one list (owner 2026-10-27: "one fix for everything"): its
+   colour still runs up behind the clock, its top row starts under it. .main's pages get it from .main; a new full-screen page joins this list */
+html.side-half :is(.qs-pg) { padding-top: var(--ph-top, 0px); }
 html.side-half #app { --half-w: calc(100vw - 76px); }
 @media (min-width: 721px) { html.side-half #app { --half-w: 320px; } }
 html.side-half :where(#app:not(.bo-app)) .sidebar { --sidebar-w: var(--half-w); }
