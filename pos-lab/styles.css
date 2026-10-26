@@ -5,7 +5,7 @@
    ============================================================ */
 
 :root {
-  --qs-tick-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E");   /* the tick of a ticked dot (Quick stock, types delete) */
+  --qs-tick-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8.25l2 2 4-4.5'/%3E%3C/svg%3E");   /* the tick of a ticked dot (Quick stock, types delete) */
   --rl-ease: cubic-bezier(.2, .8, .2, 1);               /* on :root so the view-transition layers reach it */
   --bg: #121212;
   --bg-soft: #1C1C1C;
@@ -7644,7 +7644,6 @@ body.light-theme .lv .thumb { background: hsl(var(--h) 75% 86%); color: hsl(var(
 .lv .ol .band > span:first-of-type { flex: 1; }
 .lv .ol .all { display: grid; }
 .lv .ol .line + .line { border-top: 1px solid var(--line); }
-.lv .ol .line:has([aria-checked="true"]) { background: var(--rl-track); }
 .lv .ol .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px var(--rl-m); border: 0; background: none; text-align: left; transition: background-color .12s; }
 .lv .ol .row:not(:disabled):hover { background: var(--rl-hover); }
 .lv .ol .row .nm { flex: 1; display: grid; min-width: 0; font-size: 14px; line-height: 1.3; }
@@ -7652,11 +7651,7 @@ body.light-theme .lv .thumb { background: hsl(var(--h) 75% 86%); color: hsl(var(
 .lv .ol .row .amt { font-size: 14px; font-weight: 550; white-space: nowrap; }
 .lv .ol .line.done .row { color: var(--ink-tertiary); }
 .lv .ol .line.done .box { visibility: hidden; }   /* all of it already went back: no tick, the row keeps its place */
-.lv .ol .box { display: grid; place-items: center; flex: none; width: 20px; height: 20px; border: 1.5px solid var(--ink-quaternary); border-radius: 6px; transition: background-color .12s, border-color .12s; }
-.lv .ol .box svg { width: 14px; height: 14px; fill: none; stroke: var(--accent-ink); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
-.lv .ol [aria-checked="true"] .box { border-color: var(--accent); background: var(--accent); }
-.lv .ol [aria-checked="true"] .box svg { opacity: 1; }
-.lv .ol .step { display: flex; align-items: center; gap: 10px; padding: 0 var(--rl-m) 10px calc(var(--rl-m) + 32px); color: var(--ink-secondary); }
+.lv .ol .step { display: flex; align-items: center; gap: 10px; padding: 0 var(--rl-m) 10px calc(var(--rl-m) + 30px); color: var(--ink-secondary); }
 .lv .ol .step span { flex: 1; white-space: nowrap; }
 .lv .ol .step button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-input); background: var(--rl-card); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); font-size: 17px; }
 .lv .ol .step button:hover { background: var(--rl-hover); }
@@ -7828,9 +7823,9 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv .picks { max-height: 440px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .lv .pick { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 16px; font-size: 16px; cursor: pointer; }
 .lv .pick .tx { display: grid; min-width: 0; }
-/* a tick is Apple's: a blue check at the right, nothing when off */
+/* a pick sits at the right; a one-of-many (radio) is Apple's bare check, a tick box is the POS tick (below Quick stock's) */
 .lv .fc .pick input { order: 9; margin-left: auto; appearance: none; background: none; }
-.lv .fc .pick input:checked { background: var(--ink); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat; }
+.lv .fc .pick input[type=radio]:checked { background: var(--ink); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat; }
 .lv .fc .pick:has(input:focus-visible) { background-color: var(--rl-hover); }
 .lv .fc .fr:focus-visible { outline-offset: -2px; }   /* the tile clips its edges: the ring sits inside the row */
 .lv .pick:not(:has(input)) { color: var(--ink-tertiary); cursor: default; }
@@ -8026,12 +8021,12 @@ body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view
 .rail-h .o-note { border-top: 0; }
 .rail-h:not(.co-mode) .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: 44px; margin: 0; border-bottom: 0; }   /* true halves: a flex basis of 0 still added Discount's padding (owner: "not equal size") */
 .rail-h .opts .pick { border-radius: 999px; }
-.rail-h .go, .rail-h #payBtn, .ph-bar { border-radius: 999px; }
+.rail-h .go, .rail-h #payBtn, .ph-bar, .qs-tickbar .qs-next { border-radius: 999px; }
 /* the cart: a clean list in the same glass, no Item / Amount band (owner 2026-10-17: "remove the two items and amount ... the same material") */
 .rail-h .items { border-radius: var(--rl-r); }
 .rail-h .i-head { display: none; }
 /* Check out as iOS 26's filled capsule (owner's "Add item" photo): the words centred, the total after a dot, the glass rim's light edge on top */
-.rail-h .go, .rail-h #payBtn, .ph-bar { justify-content: center; gap: 8px; border: 0; background-image: linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%);
+.rail-h .go, .rail-h #payBtn, .ph-bar, .qs-tickbar .qs-next { justify-content: center; gap: 8px; border: 0; background-image: linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px rgb(255 255 255 / .12), 0 2px 8px -2px rgb(0 0 0 / .3); }   /* the shine on top, as the photo; the phone keeps its old width (owner 2026-10-17: "keep the same size button as before") */   /* Sell's items bar too (owner 2026-10-18: "the same design as the current checkout button") */
 /* the lists float a little over the grey page (owner 2026-10-17: "add a shadow so it kind of floats"): the cart, and the
    Orders / Items / Customers rows (no outer card there, each row rings itself). --float casts no shadow upward, so each row's
@@ -8141,7 +8136,6 @@ input.es-ta { height: 56px; }
 .pay-sheet .pa button:hover { background: var(--rl-hover); color: var(--ink); }
 .pay-sheet .pr { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 40px; border-top: 1px solid var(--line); cursor: pointer; }
 .pay-sheet .pr:last-child { border-bottom: 1px solid var(--line); }
-.pay-sheet .pr input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
 .pay-sheet .pr small { flex: 1; color: var(--ink-tertiary); font-size: 12px; white-space: nowrap; }
 .pay-sheet .pr input + span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pay-sheet .pb { display: flex; justify-content: flex-end; gap: 8px; }
@@ -8562,22 +8556,31 @@ body.qs-on.qs-price .view-items .cols > :nth-child(3) { display: revert; }   /* 
 body.qs-on.qs-price .view-items .cols > :nth-child(4) { display: none; }
 @container pv (max-width: 720px) { body.qs-on .view-items .cols { grid-template-columns: minmax(0,1fr) 90px; } }
 /* a dot says "in the list" */
-#itemsRows .row.qs-tick .nm { position: relative; padding-left: 34px; }
-#itemsRows .row.qs-tick .nm::before { content: ''; position: absolute; left: 0; top: 50%; width: 20px; height: 20px; margin-top: -10px; border: 1.5px solid var(--ink-quaternary); border-radius: 50%; }
-#itemsRows .row.qs-in .nm::before { border-color: var(--accent); background: var(--accent); }
-#itemsRows .row.qs-in .nm::after { content: ''; position: absolute; left: 3px; top: 50%; width: 14px; height: 14px; margin-top: -7px; background: var(--accent-ink);   /* the tick takes the theme's ink */
+#itemsRows .row.qs-tick .nm { position: relative; padding-left: 30px; }   /* owner 2026-10-27: 20 too big, 12 too small → the size they saw at "16" (18 with its ring); 12 to the photo = the row's 12 from the edge */
+#itemsRows .row.qs-tick .nm::before { content: ''; position: absolute; left: 0; top: 50%; margin-top: -9px; }
+#itemsRows .row.qs-in .nm::after { content: ''; position: absolute; left: 0; top: 50%; width: 18px; height: 18px; margin-top: -9px; }   /* the tick: the dot's exact box, so it sits centred (owner 2026-10-27: it sat small and up-right while the ring's border grew the circle) */
+/* One tick for the whole POS (owner 2026-10-27): Quick stock's, on every tick box — Items pickers, modifiers, refund / exchange lines, Record payment's receipts.
+   An 18px ring (border-box: the ring inside the 18, so the tick's box is the circle's box); on = the accent filled with the bold tick, its row washed with --accent-tint over whatever fill it has */
+.lv .pick input[type=checkbox], .pay-sheet .pr input, .lv .ol .box { appearance: none; -webkit-appearance: none; position: relative; flex: none; cursor: pointer; }
+.pay-sheet .pr input { margin: 0; }
+.lv .pick input[type=checkbox]:checked::before, .pay-sheet .pr input:checked::before, .lv .ol [aria-checked="true"] .box::before { content: ''; position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; }   /* centred, not inset by the border: Chrome rounds a 1.5px border to whole pixels */
+#itemsRows .row.qs-tick .nm::before, .lv .pick input[type=checkbox], .pay-sheet .pr input, .lv .ol .box { box-sizing: border-box; width: 18px; height: 18px; border: 1.5px solid var(--ink-quaternary); border-radius: 50%; }
+#itemsRows .row.qs-in .nm::before, .lv .pick input[type=checkbox]:checked, .pay-sheet .pr input:checked, .lv .ol [aria-checked="true"] .box { border-color: var(--accent); background: var(--accent); }
+#itemsRows .row.qs-in .nm::after, .lv .pick input[type=checkbox]:checked::before, .pay-sheet .pr input:checked::before, .lv .ol [aria-checked="true"] .box::before { background: var(--accent-ink);
   -webkit-mask: var(--qs-tick-ic) center / contain no-repeat; mask: var(--qs-tick-ic) center / contain no-repeat; }
+#itemsRows .row.qs-in { background-image: linear-gradient(var(--accent-tint), var(--accent-tint)); }
+.lv .pick:has(input[type=checkbox]:checked), .pay-sheet .pr:has(input:checked), .lv .ol .line:has([aria-checked="true"]) { background-color: var(--accent-tint); }   /* a colour, not an image: these rows draw their hairline as the image */
 
 /* the phone's bar under the list: N lines · Review */
 .qs-tickbar { position: fixed; z-index: 30; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; gap: 8px;
               width: min(100% - 32px, 440px); }
 .qs-tickbar[hidden] { display: none; }
 .qs-tickbar button { height: var(--bar-h); border: 1px solid var(--line-strong); border-radius: calc(var(--rl-r) + 2px); background: var(--bg-soft); color: var(--ink); font: inherit; font-size: 14px; font-weight: 550; cursor: pointer; }
-.qs-tickbar .qs-next { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
-.qs-tickbar .qs-next:disabled { border-color: var(--line-strong); background: var(--bg-soft); color: var(--ink-tertiary); }
+.qs-tickbar .qs-next { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; background-color: var(--accent); color: var(--accent-ink); }
+.qs-tickbar .qs-next:disabled { opacity: .3; }   /* empty = Check out's empty pill */
 .qs-tickbar .qs-next span + span::before { content: '·'; margin-right: 8px; }
 /* the Sell bar's size (.ph-bar), so the two read as one thing (owner 2026-10-13) */
-@media (max-width: 720px) { .qs-tickbar { bottom: var(--ph-b); width: min(100% - 48px, 320px); } .qs-tickbar button { font-size: 15px; } }
+@media (max-width: 720px) { .qs-tickbar { bottom: var(--ph-b); width: min(100% - 48px, 260px); } .qs-tickbar button { font-size: 15px; } }
 
 /* QR codes (pos-qr.js, from qr-lab): Fulfilment types' rows; the name opens the table, the switch stays a switch */
 #qrPage .c-body { padding-top: 32px; }   /* the list stays where it sat under its old "3 of 8" line (owner 2026-10-17) */

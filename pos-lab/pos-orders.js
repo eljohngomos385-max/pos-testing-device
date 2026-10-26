@@ -295,7 +295,7 @@ function orderPicks(o) {
 }
 // the least a line can give back: 1, or what's under 1 of a measured line (1.5 m -> 0.5)
 const pickLow = q => (Math.round(q * 1000) % 1000) / 1000 || Math.min(1, q);
-const TICK = '<span class="box"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>';
+const TICK = '<span class="box"></span>';
 function orderLinesHtml(o) {
   const r = toReceiptViewModel(o), sale = isCompletedSale(o);
   const left = SalesMath.isSale(o) ? SalesMath.qtyLeft(o, reversalsOf(o)) : [];
