@@ -114,6 +114,9 @@ function normalizeProduct(raw) {
 // Every supplier that stocks this product, primary first. Suppliers overlap on
 // purpose - one product listed under three of them is three places to buy it.
 const supplierIdsOf = (p) => [p.supplierId, ...(p.altSupplierIds || [])].filter(Boolean);
+// Every SKU a product answers to, the main one first (owner 2026-10-26): aliases are its Other SKUs -- a
+// supplier's name for it, a nickname. Search and scans match any; receipts show only the main one.
+const skusOf = (p) => [p.sku, ...(p.aliases || [])].map((s) => String(s || '').trim()).filter(Boolean);
 
 // A whole number of pieces, or a decimal length/weight — this is what the POS
 // keypad and every stock count key off, so it is a real switch, not a label.
@@ -1789,7 +1792,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     cent, unc, round2, priceFromMargin, marginFromPrice,
     normalizeProduct, PRODUCT_DEFAULTS, PRODUCT_COLUMNS, productToCsvRow, productFromCsvRow,
-    supplierIdsOf, foldersOf,
+    supplierIdsOf, skusOf, foldersOf,
     makeMovement, applyMovement, isLow, stockValue, roundQty, stepFor, newId,
     DEAD_DAYS, STOCK_LEVEL, saleClock, stockLevel,
     stockValueOf, onHandOf, stockOnHand, withStock, madeOf, withMade, openingRows, runningBalances, isLoss, movedAt, categoryOf, familyLevel, stockCounts, debtStatusOf,

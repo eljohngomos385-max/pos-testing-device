@@ -606,6 +606,7 @@ function attachEvents() {
     const E = itemEdit, f = t.dataset.f, head = $('#itemTitle');
     // a blank Price stays blank (asked at sale), not 0, and so does the Markup that follows it
     const num = () => (t.value === '' && ['price', 'marginValue'].includes(f || t.dataset.v) ? null : Number(t.value) || 0);
+    if (t.dataset.alt) { const v = altsOf(); if (t.dataset.alt === 'main') v.sku = t.value; else v.alts[t.dataset.alt] = t.value; return; }   // the SKU page (pos-items itemSkuPage)
     if (t.dataset.v) {   // the variant's page
       const v = E.variants.find(x => x.id === itemSub);
       v[t.dataset.v] = t.type === 'number' ? num() : t.value;
@@ -641,6 +642,7 @@ function attachEvents() {
     const act = b.dataset.act;
     if (b.dataset.sub) itemGo(b.dataset.sub);
     else if (act === 'add-variant') { const v = blankVariant(); E.variants.push(v); itemGo(v.id); itemForm.querySelector('[data-v=name]').focus({ preventScroll: true }); }
+    else if (act === 'add-alt') { altsOf().alts.push(''); renderItemForm(); [...itemForm.querySelectorAll('[data-alt]')].pop().focus(); }
     else if (act === 'del-variant') {
       E.variants = E.variants.filter(v => v.id !== itemSub);
       E.marginValue = itemMarkupOf(E.variants[0], E.marginMode);   // Markup is back when one is left
@@ -849,14 +851,16 @@ function attachEvents() {
   }
   $('#cartMoreBtn').addEventListener('click', (e) => {
     const empty = state.cart.length === 0;
-    openMenu(e.currentTarget, [
+    // phone: the order ⋯'s half sheet (openActionSheet) in place of the pop-up, which sat over the lines (owner 2026-10-26)
+    const show = matchMedia('(max-width: 720px)').matches ? (b, items) => openActionSheet(b, 'Sale', items) : (b, items) => openMenu(b, items, { w: 200, right: true });
+    show(e.currentTarget, [
       { label: state.orderNote ? 'Edit note' : 'Add note', run: openOrderNote, off: empty },
       // A saved cart / quote is a draft beside the orders (pos-checkout saveDraft); an exchange can't be parked.
       { label: 'Save cart', run: () => openSaveReceiptModal('saved'), off: empty || !!state.exchange },
       { label: 'Print quote', run: () => openSaveReceiptModal('quote'), off: empty || !!state.exchange },
       { label: 'Lost sale', run: () => openLostSale(), off: !!state.exchange }, '-',
       { label: 'Clear sale', run: confirmClearCart, red: true, off: empty },
-    ], { w: 200, right: true });
+    ]);
   });
 
   // ---- Customer ----

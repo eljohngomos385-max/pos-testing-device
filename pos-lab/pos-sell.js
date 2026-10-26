@@ -373,10 +373,9 @@ function openPeek(card) {
   const x = g || p || f; if (!x) return false;
   let n = 1, rows;
   if (g) {
-    const ms = groupMembers(g.id), words = ms.map(m => m.name.split(' '));   // rows drop the words every variant shares, as the variant sheet does
-    let cut = 0; while (words.length > 1 && words.every(w => w.length > cut + 1 && w[cut] === words[0][cut])) cut++;
+    const ms = groupMembers(g.id);   // rows show each variant's name as typed, as the variant sheet does
     n = ms.length;
-    rows = ms.map(m => peekRow(m, m.name.split(' ').slice(cut).join(' '))).join('');
+    rows = ms.map(m => peekRow(m, m.name)).join('');
   } else if (p) rows = peekRow(p);   // one item: the row is its stock and price
   else { const ps = catProducts(f.id); n = toCells(ps).length; rows = ps.map(m => peekRow(m, m.name)).join(''); }
   const desc = (g || p)?.description;
@@ -576,12 +575,9 @@ function renderVariantList() {
   if (vm.kind === 'cat') return renderCatSheet(vm);
   const members = groupMembers(vm.groupId);
   const q = vm.query.trim().toLowerCase();
-  const words = members.map(p => p.name.split(' '));   // rows drop the words every variant shares: "White 1L", not "Latex Paint White 1L"
-  let cut = 0;
-  while (words.length > 1 && words.every(w => w.length > cut + 1 && w[cut] === words[0][cut])) cut++;
   const out = p => stockLevel(p) === 'out';   // untracked (a drink, a cut) is never sold out and has no count
   const shown = members.filter(p => (!vm.available || !out(p))
-    && (!q || [p.name, p.sku, p.barcode].some(s => String(s || '').toLowerCase().includes(q))));
+    && (!q || [p.name, p.barcode, ...skusOf(p)].some(s => String(s || '').toLowerCase().includes(q))));
   $('#variantCount').textContent = `${shown.length} of ${members.length}`;
   const avail = $('#variantAvail');
   avail.hidden = !members.some(out);   // nothing sold out = nothing to filter
@@ -589,7 +585,7 @@ function renderVariantList() {
   avail.setAttribute('aria-pressed', String(vm.available));
   $('#variantList').innerHTML = shown.length ? shown.map(p => `
     <button type="button" class="vs-row" data-variant-id="${p.id}">
-      <span class="nm">${escapeHtml(p.name.split(' ').slice(cut).join(' '))}${out(p) ? '<small><b>Sold out</b></small>' : p.trackStock === false ? '' : `<small>${roundQty(p, p.stock)} available</small>`}</span>
+      <span class="nm">${escapeHtml(p.name)}${out(p) ? '<small><b>Sold out</b></small>' : p.trackStock === false ? '' : `<small>${roundQty(p, p.stock)} available</small>`}</span>
       <span class="amt num">${askedPrice(p) ? '—' : peso(p.price)}</span>
     </button>`).join('') : '<div class="vs-empty">No variants match</div>';
 }
@@ -696,7 +692,7 @@ function findProductByCode(rawCode) {
   if (!code) return null;
   const lower = code.toLowerCase();
   const hit = p => (p.barcode && String(p.barcode).trim() === code);
-  const sku = p => (p.sku && String(p.sku).toLowerCase() === lower);
+  const sku = p => skusOf(p).some(s => s.toLowerCase() === lower);   // the main SKU or an Other SKU
   // A removed variant keeps its barcode; the live row that took it over wins.
   return state.products.find(p => onTill(p) && hit(p)) || state.products.find(p => !p.archived && hit(p))
     || state.products.find(hit) || state.products.find(p => onTill(p) && sku(p))

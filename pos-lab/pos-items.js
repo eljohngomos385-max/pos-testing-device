@@ -39,8 +39,7 @@ function catalogItems() {
       byKey.set(key, it);
     }
     it.members.push(p);
-    const vn = g && p.name.startsWith(g.name) ? p.name.slice(g.name.length).trim() : p.name;   // 'Common Wire Nails 2"' -> '2"'
-    it.variants.push({ id: p.id, name: g ? vn : '', sku: p.sku || '', barcode: p.barcode || '', cost: p.cost || 0, price: askedPrice(p) ? null : p.price, stock: p.stock || 0,
+    it.variants.push({ id: p.id, name: g ? p.name : '', sku: p.sku || '', alts: [...p.aliases || []], barcode: p.barcode || '', cost: p.cost || 0, price: askedPrice(p) ? null : p.price, stock: p.stock || 0,
       madeFrom: (p.madeFrom || []).map(m => ({ ...m })) });
     if (p.madeFrom?.length) it.made = true;
   });
@@ -69,7 +68,7 @@ function fillItemsPane(kind, band, rows) {
     if (addPick) { if (!it.members.some(onTill)) return false; }   // Add tile: what Sell can show, no filter (its button is hidden)
     else if (itemsFilter.cat && !itemsFilter.cat.some(c => it.cats.includes(c))) return false;   // '' = any, else the picks (openFilterSheet)
     if (!addPick && itemsFilter.stock && !itemsFilter.stock.some(s => itemStk(it) === 'stk-' + s)) return false;
-    return !q || it.name.toLowerCase().includes(q) || it.variants.some(v => [v.name, v.sku, v.barcode].some(x => x.toLowerCase().includes(q)));
+    return !q || it.name.toLowerCase().includes(q) || it.variants.some(v => [v.name, v.sku, ...v.alts, v.barcode].some(x => x.toLowerCase().includes(q)));
   }).sort((a, b) => a.name.localeCompare(b.name));
   band.innerHTML = `<span>Item <span class="num">· ${list.length}</span></span><span>Category</span><span>Price</span><span>In stock</span>`;
   rows.innerHTML = list.map(it => {
@@ -93,7 +92,7 @@ function fillItemsPane(kind, band, rows) {
 // Apple Settings (owner 2026-10-08): blocks of rows, each word at the side of its field like the customer form; a long
 // list (categories, modifiers, suppliers, one variant) is a row with its value and ›, opening its own page.
 let itemEdit = null, itemIsNew = false, itemSub = '', itemMainScroll = 0;   // itemSub: '' = the item, else 'cats' | 'mods' | 'sups' | a variant's id
-const blankVariant = () => ({ id: newId(), name: '', sku: '', barcode: '', cost: 0, price: null, stock: 0, madeFrom: [], fresh: true });
+const blankVariant = () => ({ id: newId(), name: '', sku: '', alts: [], barcode: '', cost: 0, price: null, stock: 0, madeFrom: [], fresh: true });
 // Sold per: bo-products UNITS, its soldByFor. A measured unit sells in decimals; a unit typed elsewhere keeps what it was.
 const ITEM_UNITS = [['pc', 'box', 'bag', 'set', 'pair', 'roll', 'sheet', 'can'], ['m', 'ft', 'kg', 'L', 'gal']];
 const soldByFor = (unit, was) => (ITEM_UNITS[1].includes(unit) ? 'measure' : ITEM_UNITS[0].includes(unit) ? 'each' : was || 'each');
@@ -122,12 +121,13 @@ const editorDirty = () => $('#itemsView').classList.contains('editing') && edito
 function itemGo(sub, back) {
   const f = $('#itemForm'), K = kindEdit;
   if (sub && !(K ? K.sub : itemSub)) itemMainScroll = f.scrollTop;   // the page's place, not a subpage's (variant -> Made from)
+  if (!K && itemSub.startsWith('alts:')) { const v = altsOf(); v.alts = v.alts.filter(s => s.trim()); }   // a box left empty goes
   if (K) K.sub = sub; else itemSub = sub;
   (K ? renderKindForm : renderItemForm)(sub && !back ? 'push' : 'pop');
   f.scrollTop = sub ? 0 : itemMainScroll;
 }
 // Back from a subpage (app.js #itemBack): a variant's Made from to the variant, a modifier's choices to Modifiers, else the item
-const itemParent = s => (s.startsWith('made:') && itemEdit.variants.length > 1 ? s.slice(5) : s.startsWith('modch:') ? 'mods' : '');
+const itemParent = s => (/^(made|alts):/.test(s) && itemEdit.variants.length > 1 ? s.slice(5) : s.startsWith('modch:') ? 'mods' : '');
 
 // the rows: a field, a switch, a dropdown, a › to a subpage, a blue action
 const ICHEV = '<svg class="ic chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
@@ -163,6 +163,7 @@ function renderItemForm(dir) {
     : itemSub === 'specs' ? ['Specs', itemSpecsPage()]
     : itemSub === 'look' ? ['Tile appearance', lookPage(E)]
     : itemSub.startsWith('made:') ? ['Made from', itemMadePage(E.variants.find(x => 'made:' + x.id === itemSub))]
+    : itemSub.startsWith('alts:') ? ['SKU', itemSkuPage(altsOf())]
     : v ? [v.fresh ? 'Add variant' : 'Edit variant', itemVariantPage(v)] : [E.name || 'New item', itemMainPage()];   // a fixed title: typing a variant's name doesn't echo up there
   $('#itemForm').closest('.editor').classList.toggle('sub', !!itemSub && itemSub !== 'mods' && !itemSub.startsWith('modch:'));   // a subpage has only Back, as in Apple Settings; Modifiers keeps Save (owner 2026-10-24)
   $('#itemMore').hidden = true;   // the item has no ⋯ (owner 2026-10-09): Archive is the last block, Back discards a new one
@@ -215,7 +216,7 @@ function itemMainPage() {
   ].join(''), T ? '' : 'Not counted: never low, never out.', ' r');
   const codes = icard('', [   // how it's sold and scanned; a family's SKU and barcode are per variant
     ifr('Sold per', ipick('unit', escapeHtml(E.unit)), true),
-    fam ? '' : ifr('SKU', iinp('sku', v0.sku, 'placeholder="Add SKU"')),
+    fam ? '' : iskuRow(v0),
     fam ? '' : ifr('Barcode', iinp('barcode', v0.barcode, 'inputmode="numeric" placeholder="Add barcode"')),
   ].join(''), '', ' r');
   const by = modsById();
@@ -271,6 +272,14 @@ function itemMadeSet(t) {
   if (v.madeFrom.length) v.cost = madeOf(v.madeFrom, iprods()).cost;
   if (v === E.variants[0]) E.marginValue = itemMarkupOf(v, E.marginMode);
 }
+// SKU (owner 2026-10-26): one row, "PVC-ELB-12 +4", opening a page with the main SKU on top and the others under it --
+// a supplier's name for the item, a nickname. Search and scans match any; receipts show the main one. The others are
+// the product's aliases (bo-model skusOf).
+const altsOf = () => itemEdit.variants.find(x => 'alts:' + x.id === itemSub);
+const iskuRow = v => { const a = skusOf({ sku: v.sku, aliases: v.alts }); return inav('SKU', a.length ? escapeHtml(a[0]) + (a.length > 1 ? ` +${a.length - 1}` : '') : 'None', 'alts:' + v.id); };
+const itemSkuPage = v => icard('', ifr('Main', `<input class="in" data-alt="main" value="${escapeHtml(v.sku)}" placeholder="Add SKU" aria-label="Main SKU">`), 'Receipts show this one.', ' r')
+  + icard('Other SKUs', v.alts.map((s, i) => `<div class="fr wide"><input class="in" data-alt="${i}" value="${escapeHtml(s)}" placeholder="Add SKU" aria-label="Other SKU"></div>`).join('')
+  + iadd('add-alt', 'Add SKU'), "A supplier's name for it, a nickname. Search and scans find the item by these too.");
 function itemSpecsPage() {
   const E = itemEdit;
   return icard('', [
@@ -378,7 +387,7 @@ function itemVariantPage(v) {
     + (itemUsed(v.id) ? '' : icard('', imadeRow(v) + (made ? ifr('Can make', icanMake(v), true) : ''), made ? IMADE_NOTE : '', ' r'))
     + icard('', [
       !E.track || made ? '' : v.fresh ? ifr('Opening stock', iqty('data-v="stock"', v.stock)) : ifr('In stock', ionHand(v), true),
-      ifr('SKU', vin('sku', 'placeholder="Add SKU"')),
+      iskuRow(v),
       ifr('Barcode', vin('barcode', 'inputmode="numeric" placeholder="Add barcode"')),
     ].join(''), '', ' r')
     + (E.variants.length > 1 ? icard('', iadd('del-variant', 'Remove variant', ' red')) : '');
@@ -471,13 +480,22 @@ function saveItem() {
   // Item Save writes the catalog (owner's go for components, 2026-10-20): each variant is a product row, a family adds a
   // group; a dropped variant is archived, never deleted; a new one's Opening stock is an 'opening' movement.
   const name = E.name.trim(), fam = E.variants.length > 1, C = E.component && !fam;
+  // one SKU, one item (owner 2026-10-26): a scan or a receipt line has to land on exactly one
+  const mine = new Set(E.variants.map(v => v.id)), taken = new Map();
+  state.products.forEach(p => { if (!p.archived && !mine.has(p.id)) skusOf(p).forEach(s => taken.set(s.toLowerCase(), [p.id, p.name])); });
+  for (const v of E.variants) for (const s of skusOf({ sku: v.sku, aliases: v.alts })) {
+    const [id, who] = taken.get(s.toLowerCase()) || [];
+    if (id && id !== v.id) { showToast(`${who} already has the SKU ${s}`); return; }
+    taken.set(s.toLowerCase(), [v.id, fam ? v.name.trim() : name]);
+  }
   const was = new Map(state.products.map(p => [p.id, p])), old = catalogItems().find(it => it.id === E.id);
   const gid = fam ? (groupById(E.id) ? E.id : old?.members[0]?.groupId || newId()) : '';
   const who = currentStoreInfo().cashier, staffId = state.user?.id || '', moves = [];
   const rows = E.variants.map(v => {
     const base = was.get(v.id) || {}, made = C ? [] : v.madeFrom.filter(m => was.has(m.id) && Number(m.qty) > 0)   // a 0 amount drops the part
       .map(m => ({ id: m.id, qty: Math.max(stepFor(was.get(m.id)), roundQty(was.get(m.id), m.qty)) }));
-    const row = stampRow(normalizeProduct({ ...base, id: v.id, name: fam ? `${name} ${v.name.trim()}` : name, sku: v.sku.trim(), barcode: v.barcode.trim(),
+    const row = stampRow(normalizeProduct({ ...base, id: v.id, name: fam ? v.name.trim() : name, sku: v.sku.trim(), barcode: v.barcode.trim(),
+      aliases: [...new Map(skusOf({ aliases: v.alts }).filter(s => s.toLowerCase() !== v.sku.trim().toLowerCase()).map(s => [s.toLowerCase(), s])).values()],   // no repeats, not the main one again
       cost: v.cost, price: C ? null : v.price, marginMode: E.marginMode, marginValue: C || askedPrice(v) ? 0 : marginFromPrice(v.cost, v.price, E.marginMode),
       groupId: fam ? gid : base.groupId || '', folders: E.catIds, folder: E.catIds[0] || '', unit: E.unit, soldBy: E.soldBy,
       hidden: E.hidden, reorderPoint: E.reorder || 0, trackStock: C || E.track, sellOutOfStock: !C && E.sellOut,

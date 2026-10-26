@@ -428,6 +428,7 @@ function seedLooks(saved, seed, key) {
 // Every catalog write recounts the made items first (bo-model withMade): a sale, a quick stock or a new cost moves a burger with its patties.
 function saveProducts() {
   withMade(state.products);
+  rebuildFuse();   // Sell's search reads its own index: a saved name or SKU has to be findable at once
   return saveCatalog(state.products, { source: 'pos', staff: currentStoreInfo().cashier });
 }
 function loadGroups() {
