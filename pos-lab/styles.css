@@ -8514,7 +8514,8 @@ body .qs-pg .e-top .act.primary:disabled { color: var(--ink-quaternary); }
 
 /* the blocks: a family's name above, one row per variant; the name dark, what it does to the shelf grey under it */
 .qs-list { display: grid; gap: 12px; }
-.qs-pg .qs-ln { min-height: 56px; padding-right: 2px; }
+.qs-pg .qs-ln { min-height: 56px; }
+.qs-pg .qs-ln:has(.qs-amt) { padding-right: 2px; }   /* an edit row's − / + make its right gap; a Saved row keeps the row's own */
 .qs-pg .qs-ln > .lb { display: grid; min-width: 0; line-height: 1.3; }
 .qs-nm { overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
 .qs-ln small { color: var(--ink-tertiary); font-size: 12px; }

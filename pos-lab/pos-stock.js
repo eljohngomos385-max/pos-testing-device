@@ -148,9 +148,16 @@ function qsRenderSaved() {
   $('#qsReason').disabled = true;
   $('#qsSave').textContent = 'Done';
   $('#qsSave').disabled = false;
+  // the new value on the right; under the name, a price shows what it was and stock what moved, "+50 from 120"
+  // (owner 2026-10-27: old → new on the right crowded the edge, worst in big currencies)
+  const sub = d => {
+    if (d.reason === 'price') return `was ${qsMoney(d.was)}`;
+    const x = d.now - d.was;
+    return x ? `${x > 0 ? '+' : '−'}${qsQty(Math.abs(x))} from ${qsQty(d.was)}` : 'matches';
+  };
   $('#qsList').innerHTML = icard(`${QS_REASONS[done[0].reason][0]} · ${SalesMath.plural(done.length, 'item')}`, done.map(d => `<div class="fr wide qs-ln">
-      <span class="lb"><span class="qs-nm">${escapeHtml(d.name)}</span>${d.reason === 'count' ? `<small class="num">${d.delta ? (d.delta > 0 ? '+' : '−') + qsQty(Math.abs(d.delta)) : 'matches'}</small>` : ''}</span>
-      <span class="ctl end"><span class="qs-to num">${undone ? qsShow2(d.now) : `${qsShow2(d.was)} → <b>${qsShow2(d.now)}</b>`}</span></span></div>`).join(''))
+      <span class="lb"><span class="qs-nm">${escapeHtml(d.name)}</span>${undone ? '' : `<small class="num">${sub(d)}</small>`}</span>
+      <span class="ctl end"><span class="qs-to num"><b>${qsShow2(d.now)}</b></span></span></div>`).join(''))
     + (undone ? '' : icard('', '<button type="button" class="fr add" id="qsUndo">Undo</button>'));
 }
 
