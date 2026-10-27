@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grain buttons</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<!-- Lab (2026-10-28): more versions of E "Grain" from pos-lab/blue-buttons-picks.html, the website's grainy sky.
+     Blues from landing-lab.css (--blue #0071E3) and the hero sky (#3880DB / #61A3ED / #CCE3FA, navy 11 60 140);
+     N is color-trying/sky-lab.html's shader clipped into the pill. Nothing here is in the app yet. -->
+<script>
+  // The white grain: SVG turbulence, white with the noise as its alpha. f = fineness, a = the alpha line
+  // ("0 0 0 k c": alpha = k * noise + c; a big k with a minus c leaves only the bright specks).
+  const noise = (f, oct, a, op, size) => `url("data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='${f}' numOctaves='${oct}' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 ${a}'/></filter><rect width='${size}' height='${size}' filter='url(#n)' opacity='${op}'/></svg>`)}")`;
+  const R = document.documentElement.style;
+  R.setProperty('--n-e', noise(.9, 2, '0 0 0 .55 0', .5, 120));       // E as it is
+  R.setProperty('--n-fine', noise(1.8, 2, '0 0 0 .7 0', .4, 100));    // finer, denser
+  R.setProperty('--n-coarse', noise(.75, 1, '0 0 0 10 -6.9', .85, 140)); // bigger flecks
+  R.setProperty('--n-dust', noise(.95, 1, '0 0 0 9 -5.9', .8, 120));  // loose white specks
+  R.setProperty('--n-spark', noise(.85, 1, '0 0 0 16 -11.6', 1, 160));// few bright specks
+</script>
+<style>
+  :root {
+    --blue: #0071E3; --blue-rgb: 0 113 227;
+    --sky-deep: #3880DB; --sky-base: #61A3ED; --sky-top: #CCE3FA; --navy: 11 60 140;
+    --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    /* the lab page around the buttons */
+    --pg: #F2F2F2; --pg-card: #fff; --pg-ink: #303030; --pg-ink2: #616161; --pg-line: #E1E1E1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --pg: #000; --pg-card: #1C1C1C; --pg-ink: #fff; --pg-ink2: rgb(255 255 255 / .7); --pg-line: rgb(255 255 255 / .1); }
+  }
+  /* the app's two themes (pos-lab/styles.css: light block at 4760, dark :root) */
+  .lt { --canvas: #F2F2F2; --surface: #F9F9F9; --pill-bg: #FAFAFA; --line: #E1E1E1; --line-strong: #D4D4D4; --ink: #303030; --ink2: #616161; --ink3: #8C8C8C; --lift: 0 1px 2px rgb(0 0 0 / .05); }
+  .dk { --canvas: #121212; --surface: #121212; --pill-bg: #121212; --line: rgb(255 255 255 / .08); --line-strong: rgb(255 255 255 / .14); --ink: #fff; --ink2: rgb(255 255 255 / .7); --ink3: rgb(255 255 255 / .45); --lift: none; }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; padding: 20px 16px calc(40px + env(safe-area-inset-bottom, 0px)); background: var(--pg); color: var(--pg-ink);
+         font: 15px/1.4 var(--font-stack); -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+  h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+  h2 { margin: 32px 0 4px; font-size: 17px; font-weight: 600; }
+  p { margin: 0; color: var(--pg-ink2); }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+
+  /* ── Section 1: each version, light beside dark ── */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 12px; margin-top: 14px; }
+  .v { padding: 14px; border-radius: 16px; background: var(--pg-card); box-shadow: 0 0 0 1px var(--pg-line); }
+  .v h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .v p { font-size: 13px; margin-top: 1px; }
+  .v .two { display: grid; gap: 8px; margin-top: 12px; }
+  .stage { display: grid; place-items: center; height: 92px; padding: 0 16px; border-radius: 12px; background: var(--canvas); }
+  .stage.dk { box-shadow: none; }
+  .stage .pill { width: min(100%, 300px); height: 52px; }
+
+  /* ── The pill: one base, each version only changes its finish ── */
+  .pill { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 8px;
+          height: 44px; padding: 0 16px; border: 0; border-radius: 999px; color: #fff; font: 550 15px/1 var(--font-stack); white-space: nowrap;
+          text-shadow: 0 1px 1px rgb(0 40 120 / .22); cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none;
+          background: var(--blue); box-shadow: var(--press, 0 0 #0000), var(--sh, 0 0 #0000); }
+  .pill > span { position: relative; z-index: 2; }
+  .pill span + span::before { content: '·'; margin-right: 8px; }
+  .pill:active, .pill.down { --press: inset 0 0 0 100px rgb(0 20 60 / .14); }
+  .pill::before, .pill::after { content: ''; position: absolute; z-index: 1; pointer-events: none; }
+  .pill canvas { display: none; }
+  .pill:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+
+  /* E: today's pick, as it is in blue-buttons-picks.html */
+  .v-e { background: var(--n-e), linear-gradient(var(--sky-base), var(--blue) 75%); --sh: inset 0 1px 0 rgb(255 255 255 / .3), 0 4px 12px -4px rgb(var(--navy) / .4); }
+
+  /* F: finer grain, like powder, a little more of it */
+  .v-f { background: var(--n-fine), linear-gradient(var(--sky-base), var(--blue) 65%); --sh: inset 0 1px 0 rgb(255 255 255 / .35), 0 4px 12px -4px rgb(var(--navy) / .4); }
+
+  /* G: bigger flecks, like sand */
+  .v-g { background: var(--n-coarse), linear-gradient(var(--sky-base), var(--blue) 75%); --sh: inset 0 1px 0 rgb(255 255 255 / .3), 0 4px 12px -4px rgb(var(--navy) / .4); }
+
+  /* H: a few specks that twinkle, over E's grain */
+  .v-h { background: var(--n-spark), linear-gradient(var(--sky-base), var(--blue) 75%); --sh: inset 0 1px 0 rgb(255 255 255 / .3), 0 4px 12px -4px rgb(var(--navy) / .4); }
+  .v-h::before, .v-h::after { inset: 0; }
+  .v-h::before { background:
+      radial-gradient(circle at 9% 30%, #fff 0 1px, rgb(255 255 255 / .35) 1.5px, transparent 3px),
+      radial-gradient(circle at 31% 72%, #fff 0 .8px, rgb(255 255 255 / .3) 1.3px, transparent 2.5px),
+      radial-gradient(circle at 58% 22%, #fff 0 1px, rgb(255 255 255 / .35) 1.5px, transparent 3px),
+      radial-gradient(circle at 83% 64%, #fff 0 .8px, rgb(255 255 255 / .3) 1.3px, transparent 2.5px);
+    animation: twinkle 2.8s ease-in-out infinite alternate; }
+  .v-h::after { background:
+      radial-gradient(circle at 19% 66%, #fff 0 .8px, rgb(255 255 255 / .3) 1.3px, transparent 2.5px),
+      radial-gradient(circle at 45% 34%, #fff 0 1px, rgb(255 255 255 / .35) 1.5px, transparent 3px),
+      radial-gradient(circle at 71% 80%, #fff 0 .8px, rgb(255 255 255 / .3) 1.3px, transparent 2.5px),
+      radial-gradient(circle at 93% 28%, #fff 0 1px, rgb(255 255 255 / .35) 1.5px, transparent 3px);
+    animation: twinkle 3.7s 1.2s ease-in-out infinite alternate; }
+  @keyframes twinkle { from { opacity: .1; } to { opacity: 1; } }
+
+  /* I: the grain drifts slowly, two layers each its own way, like the website's sky */
+  .v-i { background: var(--n-e), linear-gradient(var(--sky-base), var(--blue) 75%); --sh: inset 0 1px 0 rgb(255 255 255 / .3), 0 4px 12px -4px rgb(var(--navy) / .4); }
+  .v-i::before, .v-i::after { inset: -120px; background: var(--n-dust); }
+  .v-i::before { animation: drift-a 16s linear infinite; }
+  .v-i::after { opacity: .45; animation: drift-b 23s linear infinite; }
+  @keyframes drift-a { to { transform: translate3d(120px, -120px, 0); } }
+  @keyframes drift-b { to { transform: translate3d(-120px, 0, 0); } }
+
+  /* J: grain only on the top, like frost catching the light */
+  .v-j { background: linear-gradient(var(--sky-base), var(--blue) 70%); --sh: inset 0 1px 0 rgb(255 255 255 / .5), 0 4px 12px -4px rgb(var(--navy) / .4); }
+  .v-j::before { inset: 0; background: var(--n-dust), var(--n-e), var(--n-e), linear-gradient(rgb(255 255 255 / .22), transparent);
+                 -webkit-mask-image: linear-gradient(#000 10%, transparent 62%); mask-image: linear-gradient(#000 10%, transparent 62%); }
+
+  /* K: E's grain with a soft white glow inside the edge */
+  .v-k { background: radial-gradient(90% 120% at 50% 0%, rgb(255 255 255 / .28), transparent 60%), var(--n-e), linear-gradient(var(--sky-base), var(--blue) 75%);
+         --sh: inset 0 0 14px rgb(255 255 255 / .4), inset 0 1px 0 rgb(255 255 255 / .5), 0 4px 14px -4px rgb(var(--navy) / .45); }
+  .dk .v-k { --sh: inset 0 0 14px rgb(255 255 255 / .4), inset 0 1px 0 rgb(255 255 255 / .5), 0 6px 22px -6px rgb(var(--blue-rgb) / .6); }
+
+  /* L: the website's navy into its blue, white grain and a few stars */
+  .v-l { background: var(--n-spark), var(--n-e), linear-gradient(100deg, rgb(var(--navy)), var(--blue) 65%, var(--sky-deep));
+         --sh: inset 0 1px 0 rgb(255 255 255 / .2), 0 4px 12px -4px rgb(var(--navy) / .5); }
+  .dk .v-l { --sh: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 0 0 .5px rgb(255 255 255 / .12); }
+
+  /* M: frosted glass, see-through blue with grain and a white rim */
+  .v-m { background: var(--n-e), linear-gradient(rgb(97 163 237 / .78), rgb(var(--blue-rgb) / .88));
+         -webkit-backdrop-filter: blur(16px) saturate(1.8); backdrop-filter: blur(16px) saturate(1.8);
+         --sh: inset 0 0 0 1px rgb(255 255 255 / .38), inset 0 1px 0 rgb(255 255 255 / .6), 0 4px 14px -4px rgb(var(--navy) / .35); }
+  .dk .v-m { background: var(--n-e), linear-gradient(rgb(97 163 237 / .72), rgb(var(--blue-rgb) / .84)); }
+
+  /* N: the website's moving sky itself (WebGL); without WebGL it falls back to E */
+  .v-n { background: var(--n-e), linear-gradient(var(--sky-base), var(--blue) 75%); --sh: inset 0 1px 0 rgb(255 255 255 / .3), 0 4px 12px -4px rgb(var(--navy) / .4); }
+  .v-n canvas { display: block; position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; transform: scaleY(-1); }
+  .v-n.nogl canvas { display: none; }
+  .dk .v-n, .dk .v-e, .dk .v-f, .dk .v-g, .dk .v-h, .dk .v-i, .dk .v-j { --sh: inset 0 1px 0 rgb(255 255 255 / .3), 0 6px 20px -8px rgb(var(--blue-rgb) / .55); }
+
+  @media (prefers-reduced-motion: reduce) { .pill::before, .pill::after { animation: none !important; } .v-h::before, .v-h::after { opacity: .8; } }
+
+  /* ── Section 2: the Sell cart on a phone ── */
+  .pick { display: flex; gap: 8px; margin-top: 14px; max-width: 393px; }
+  .pick label { flex: 1; min-width: 0; display: grid; gap: 3px; font-size: 12px; color: var(--pg-ink2); }
+  .pick select { width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--pg-line); border-radius: 10px; background: var(--pg-card); color: var(--pg-ink); font: 16px var(--font-stack); }
+  .phone { display: flex; flex-direction: column; width: min(100%, 393px); height: 852px; margin-top: 12px; overflow: hidden; background: var(--canvas); color: var(--ink);
+           border-radius: 44px; box-shadow: 0 0 0 1px var(--pg-line), 0 20px 50px rgb(0 0 0 / .14); font-size: 15px; }
+  .sb { display: flex; justify-content: space-between; align-items: center; height: 54px; padding: 6px 34px 0; font-weight: 600; font-size: 16px; flex: none; }
+  .sb i { width: 26px; height: 12px; border-radius: 4px; border: 1.5px solid currentColor; opacity: .8; }
+  .ph-top { display: flex; gap: 8px; padding: 12px 8px 8px; flex: none; }
+  .circ, .bar { height: 44px; display: flex; align-items: center; border: 1px solid var(--line-strong); background: var(--pill-bg); color: var(--ink); box-shadow: var(--lift); font: inherit; }
+  .circ { width: 44px; flex: none; justify-content: center; border-radius: 50%; padding: 0; }
+  .bar { flex: 1; min-width: 0; justify-content: space-between; gap: 8px; padding: 0 14px; border-radius: 22px; font-size: 16px; }
+  .bar.b { font-weight: 550; }
+  .bar.soft { color: var(--ink2); font-weight: 400; }
+  .ic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .bar .ic { width: 14px; height: 14px; color: var(--ink3); }
+  .cart { flex: 1; min-height: 0; margin: 0 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; }
+  .ln { display: flex; align-items: center; gap: 12px; min-height: 51px; padding: 6px 12px; border-bottom: 1px solid var(--line); }
+  .ln div { flex: 1; min-width: 0; }
+  .ln b { display: block; font-weight: 400; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ln small { display: block; color: var(--ink3); font-size: 14px; }
+  .ln em { font-style: normal; font-weight: 550; font-variant-numeric: tabular-nums; }
+  .ph-bot { display: flex; gap: 8px; padding: 8px 8px 0; flex: none; }
+  .ph-go { display: grid; padding: 8px 0 34px; flex: none; }
+  .ph-go .pill { justify-self: center; width: min(100% - 48px, 260px); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Grain buttons</h1>
+<p>More versions of E, the website's grainy sky with white specks. Tap a button to see it pressed.</p>
+
+<h2>Buttons</h2>
+<p>Each one in light and dark. E first, as it is today.</p>
+<div class="grid" id="grid"></div>
+
+<h2>Sample page</h2>
+<p>The Sell cart on a phone. Pick a button and a theme.</p>
+<div class="pick">
+  <label>Button <select id="pickV"></select></label>
+  <label>Theme <select id="pickT"><option value="lt">Light</option><option value="dk">Dark</option></select></label>
+</div>
+<div class="phone lt" id="phone">
+  <div class="sb"><span>9:41</span><i></i></div>
+  <div class="ph-top">
+    <button class="circ" type="button" aria-label="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button class="bar b" type="button"><span>Walk-in customer</span><svg class="ic" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <button class="circ" type="button" aria-label="More"><svg class="ic" viewBox="0 0 24 24"><path d="M6 12h.01M12 12h.01M18 12h.01" stroke-width="3"/></svg></button>
+  </div>
+  <div class="cart">
+    <div class="ln"><div><b>Brass Faucet 1/2"</b><small>1 × ₱185.00</small></div><em>₱185.00</em></div>
+    <div class="ln"><div><b>Claw Hammer 16oz</b><small>1 × ₱285.00</small></div><em>₱285.00</em></div>
+    <div class="ln"><div><b>Combination Pliers 8"</b><small>1 × ₱220.00</small></div><em>₱220.00</em></div>
+    <div class="ln"><div><b>PVC Pipe 1/2" × 3m</b><small>2 × ₱275.00</small></div><em>₱550.00</em></div>
+  </div>
+  <div class="ph-bot">
+    <button class="bar b" type="button"><span>Walk-in</span><svg class="ic" viewBox="0 0 24 24"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg></button>
+    <button class="bar soft" type="button"><span>Discount</span><svg class="ic" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+  <div class="ph-go"><button class="pill v-e" id="samplePill" type="button"><canvas aria-hidden="true"></canvas><span>Check out</span><span>₱1,240.00</span></button></div>
+</div>
+</div>
+
+<script>
+const V = [
+  ['e', 'Now E · Grainy sky', "Today's pick: light to the site's blue, a fine white grain."],
+  ['f', 'F · Fine powder grain', 'Smaller, denser grain, softer like powder.'],
+  ['g', 'G · Coarse sand flecks', 'Bigger white flecks you can see from arm\'s length.'],
+  ['h', 'H · Twinkling star specks', 'A few bright specks that slowly twinkle.'],
+  ['i', 'I · Slow drifting grain', 'The grain moves slowly, like the website\'s sky.'],
+  ['j', 'J · Frost on top', 'Grain only on the top half, where the light hits.'],
+  ['k', 'K · Soft inner glow', 'E with a soft white glow inside the edge.'],
+  ['l', 'L · Navy night sky', "The website's navy into its blue, grain and a few stars."],
+  ['m', 'M · Frosted blue glass', 'See-through blue with grain and a white rim.'],
+  ['n', 'N · Live website sky', "The website's moving sky itself inside the button."],
+];
+const pill = (k) => `<button class="pill v-${k}" type="button"><canvas aria-hidden="true"></canvas><span>Check out</span><span>₱1,240.00</span></button>`;
+document.getElementById('grid').innerHTML = V.map(([k, name, line]) =>
+  `<section class="v"><h3>${name}</h3><p>${line}</p><div class="two"><div class="stage lt">${pill(k)}</div><div class="stage dk">${pill(k)}</div></div></section>`).join('');
+
+const pickV = document.getElementById('pickV'), pickT = document.getElementById('pickT'), phone = document.getElementById('phone'), sample = document.getElementById('samplePill');
+pickV.innerHTML = V.map(([k, name]) => `<option value="${k}">${name}</option>`).join('');
+pickV.onchange = () => { sample.className = 'pill v-' + pickV.value + (glOk ? '' : ' nogl'); };
+pickT.onchange = () => { phone.className = 'phone ' + pickT.value; };
+// iPhone Safari only shows :active when the page listens for touches
+document.addEventListener('touchstart', () => {}, { passive: true });
+
+// ── N: sky-lab.html's shader (the website's sky + grain), one WebGL canvas painted into each pill
+const SKY = { top: [0.38, 0.64, 0.93], mid: [0.30, 0.60, 0.93], base: [0.16, 0.52, 0.91], deep: [0.0, 0.443, 0.89], accent: [0.40, 0.55, 0.97], pale: [0.62, 0.80, 0.98] };   // the site's sky, kept dark enough for white words
+const VERT = 'attribute vec2 a_position;varying vec2 v_uv;void main(){v_uv=a_position*0.5+0.5;gl_Position=vec4(a_position,0.0,1.0);}';
+const FRAG = `precision mediump float;
+uniform vec2 u_resolution;uniform float u_time,u_grain;uniform vec3 u_color_top,u_color_mid,u_color_base,u_color_deep,u_color_accent,u_color_pale;
+varying vec2 v_uv;
+float hash(vec2 p){vec3 p3=fract(vec3(p.xyx)*0.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1.0,0.0)),u.x),mix(hash(i+vec2(0.0,1.0)),hash(i+vec2(1.0,1.0)),u.x),u.y);}
+mat2 rotate2d(float a){float s=sin(a),c=cos(a);return mat2(c,-s,s,c);}
+float fbm(vec2 p){float v=0.0,a=0.5;mat2 m=mat2(0.82,-0.57,0.57,0.82);for(int i=0;i<4;i++){v+=a*noise(p);p=m*p*2.02+11.7;a*=0.5;}return v;}
+float lobe(vec2 p,vec2 c,vec2 r,float a){vec2 d=rotate2d(a)*(p-c);d/=r;return exp(-dot(d,d));}
+void main(){
+  vec2 uv=v_uv,p=(uv-0.5)*vec2(u_resolution.x/u_resolution.y,1.0);float t=u_time*0.045;
+  vec2 flow=vec2(fbm(p*1.18+vec2(t*0.42,-t*0.18)),fbm(p*1.05+vec2(-t*0.22,t*0.34)))-0.5;
+  vec2 q=p+flow*0.28;q.x+=sin(p.y*3.0+t*1.25)*0.025;q.y+=cos(p.x*2.4-t*1.05)*0.020;
+  float vertical=smoothstep(0.0,1.0,uv.y);
+  vec3 color=mix(u_color_top,u_color_base,smoothstep(0.10,0.64,vertical));
+  color=mix(color,u_color_deep,smoothstep(0.55,1.0,vertical)*0.82);
+  color=mix(color,u_color_mid,lobe(q,vec2(0.0,-0.05),vec2(1.28,0.34),0.0)*0.24);
+  color=mix(color,u_color_accent,lobe(q,vec2(-0.30,-0.36),vec2(0.70,0.32),-0.08)*0.20);
+  color=mix(color,u_color_pale,lobe(q,vec2(0.28,-0.18),vec2(0.82,0.26),0.12)*0.18);
+  float tex=fbm(q*vec2(7.0,2.3)+vec2(t*0.52,-t*0.28))*0.55+fbm(q*vec2(2.2,8.4)+vec2(-t*0.36,t*0.30))*0.45;
+  color+=(tex-0.5)*0.075;
+  color+=(hash(gl_FragCoord.xy+floor(u_time*18.0))-0.5)*0.045*u_grain;
+  color=mix(color,u_color_pale,(1.0-smoothstep(0.02,0.56,uv.y))*0.22);
+  color+=step(0.985,hash(floor(gl_FragCoord.xy*0.5)+floor(u_time*4.0)*7.1))*0.28;   // white specks that come and go
+  gl_FragColor=vec4(clamp(color,0.0,1.0),1.0);
+}`;
+function makeSky(c) {
+  let gl; try { gl = c.getContext('webgl', { antialias: false, depth: false, stencil: false, alpha: false, preserveDrawingBuffer: true, powerPreference: 'low-power' }); } catch { return null; }
+  const prog = gl?.createProgram();
+  if (!prog) return null;
+  [[gl.VERTEX_SHADER, VERT], [gl.FRAGMENT_SHADER, FRAG]].forEach(([type, src]) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); gl.attachShader(prog, s); });
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+  gl.useProgram(prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(prog, 'a_position');
+  gl.enableVertexAttribArray(pos); gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uni = (n) => gl.getUniformLocation(prog, n);
+  Object.entries(SKY).forEach(([n, v]) => gl.uniform3fv(uni('u_color_' + n), v));
+  gl.uniform1f(uni('u_grain'), 3);   // the site uses 1; three times so the specks show on a small button
+  return (w, h, time) => {
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; gl.viewport(0, 0, w, h); }
+    gl.uniform2f(uni('u_resolution'), w, h); gl.uniform1f(uni('u_time'), time);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+}
+const glCanvas = document.createElement('canvas'), paint = makeSky(glCanvas), glOk = !!paint;
+if (!glOk) document.querySelectorAll('.v-n').forEach((p) => p.classList.add('nogl'));
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches, t0 = performance.now(), drawn = new WeakMap();
+let last = 0;
+// ponytail: every N pill repaints at ~30 fps while on screen; 3 small canvases, fine on a phone
+(function tick(now) {
+  requestAnimationFrame(tick);
+  if (!glOk || now - last < 33) return;
+  last = now;
+  const k = Math.min(devicePixelRatio || 1, 2), t = still ? 12 : 12 + (now - t0) / 1000;
+  for (const c of document.querySelectorAll('.v-n canvas')) {
+    const r = c.getBoundingClientRect();
+    if (!r.width || r.bottom < 0 || r.top > innerHeight) continue;
+    const w = Math.round(r.width * k), h = Math.round(r.height * k);
+    if (still && drawn.get(c) === w) continue;
+    paint(w, h, t);
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    c.getContext('2d').drawImage(glCanvas, 0, 0);
+    drawn.set(c, w);
+  }
+})(0);
+</script>
+</body>
+</html>

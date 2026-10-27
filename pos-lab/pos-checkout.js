@@ -170,6 +170,11 @@ function updateChange() {
   const ok = d >= 0;
   if (lbl0) lbl0.textContent = 'Cash received';
   fig($('#checkoutCash'), typed(raw), raw ? '' : 'ph');
+  // Custom (owner 2026-10-28, cash-custom-picks.html F): the big number is what's typed, "Cash received" the title; no total, no change
+  const keys = !$('#checkoutKeyIn').hidden, hero = $('#checkoutTotalDue');
+  $('#checkoutApp').classList.toggle('co-typed', keys);
+  hero.innerHTML = keys ? typed(raw) : peso(total);
+  hero.classList.toggle('ph', keys && !raw);
   if (lbl) lbl.textContent = raw && d < 0 ? 'Short' : 'Change';
   fig($('#checkoutChange'), !raw ? zero : peso(Math.abs(d)), !raw ? 'ph' : !ok ? 'down' : 'up');
   if (go) go.disabled = !raw || !ok;

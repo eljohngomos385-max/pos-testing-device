@@ -1301,42 +1301,49 @@ function drawEditSheet() {
     // Before = the sale with no sale discount and no Senior / PWD, so the VAT the exemption drops counts as off too.
     const t = cartTotals(), was = cartTotals(state.cart, null, null).total, off = moneyValue(was - t.total);
     head = `<div class="es-hero">${peso(t.total)}</div>${off > 0 ? `<p class="es-off"><b>${peso(off)}</b> off ${peso(was)}</p>` : ''}`;
-    // Senior / PWD, then the saved ones, scroll under the total (any number of them); Custom stays put below.
-    rows = `<div class="es-scroll">${Object.entries(ES_SC).map(([k, name]) => `<button type="button" class="es-row${o.f === k ? ' on' : o.pick === k ? ' pick' : ''}" data-sc="${k}" style="view-transition-name:es-${k}"><span>${name}</span><small class="ad">${
-        o.pick !== k || !state.scPwd ? esShown(esScRow(k)) : t.scPwd ? escapeHtml(state.scPwd.name) : 'Promo is bigger'}</small>${cv(o.f === k)}</button>`).join('')
-      + esPresets().map((d, i) => `<button type="button" class="es-row${o.pick === d.id ? ' pick' : ''}" data-pick="${escapeHtml(d.id)}" style="view-transition-name:es-p${i}"><span>${escapeHtml(d.name)}</span><small>${esShown(d)}</small></button>`).join('')}</div>`
-      + `<div class="es-row${o.f === 'd' ? ' on' : o.pick === 'c' ? ' pick' : ''}" data-sf="d" style="view-transition-name:es-c"><span>Custom</span>${n('d', o.pick === 'c' ? esTyped(o) : '', ' v')}${cv(o.f === 'd')}</div>`;
+    // Senior / PWD, the saved ones, then Custom, scroll under the total (owner 2026-10-28). A saved one's tap is the pick and
+    // closes; Senior / PWD and Custom open their own page in the list's place, the total holding still.
     const field = (f, label) => `<input class="es-ta${o.bad === f ? ' bad' : ''}" data-scf="${f}" value="${escapeHtml(o.sc[f])}" placeholder="${label}" aria-label="${label}" autocomplete="off"${o.bad === f ? ' aria-invalid="true"' : ''}>`;
-    if (ES_SC[o.f]) side = `<div class="es-keys es-addr${kin}"><div class="es-ah">${o.f === 'pwd' ? 'PWD' : 'Senior citizen'}</div>${field('idNo', 'ID number')}${field('name', 'Name')}</div>`;
-    else if (o.f) side = `<div class="es-keys${kin}">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'))}${esKeys(true)}</div>`;
+    if (ES_SC[o.f]) rows = `<div class="es-ah">${o.f === 'pwd' ? 'PWD' : 'Senior citizen'}</div>${field('idNo', 'ID number')}${field('name', 'Name')}`;
+    else if (o.f) rows = `<div class="es-row on"><span>Custom</span>${n('d', esTyped(o), ' v')}</div>${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'))}${esKeys(true)}`;
+    else rows = Object.entries(ES_SC).map(([k, name]) => `<button type="button" class="es-row${o.pick === k ? ' pick' : ''}" data-sc="${k}"><span>${name}</span><small class="ad">${
+        o.pick !== k || !state.scPwd ? esShown(esScRow(k)) : t.scPwd ? escapeHtml(state.scPwd.name) : 'Promo is bigger'}</small>${cv()}</button>`).join('')
+      + esPresets().map(d => `<button type="button" class="es-row${o.pick === d.id ? ' pick' : ''}" data-pick="${escapeHtml(d.id)}"><span>${escapeHtml(d.name)}</span><small>${esShown(d)}</small></button>`).join('')
+      + `<button type="button" class="es-row${o.pick === 'c' ? ' pick' : ''}" data-sf="d"><span>Custom</span>${n('d', o.pick === 'c' ? esTyped(o) : '', ' v')}${cv()}</button>`;
   } else {
     const methods = fulfilMethods(state.settings), pt = state.pickupTime;
     const say = { pickup: pt ? `${pt.day}, ${pt.time}` : '', delivery: state.deliveryAddress };
     head = `<div class="es-hero">${escapeHtml((methods.find(m => m.key === state.fulfilment) || methods[0]).label)}</div>`;
-    rows = methods.map(m => `<button type="button" class="es-row${o.f && ES_PANEL[m.key] === o.f ? ' on' : state.fulfilment === m.key ? ' pick' : ''}" data-ful="${escapeHtml(m.key)}"><span>${escapeHtml(m.label)}</span>${
-      ES_PANEL[m.key] && !m.custom ? `<small class="ad">${escapeHtml(say[m.key] || '')}</small>${cv(ES_PANEL[m.key] === o.f)}` : ''}</button>`).join('');
-    if (o.f === 'a') side = `<div class="es-keys es-addr${kin}"><div class="es-ah">Deliver to<button type="button" class="es-chip" data-map>${esSvg('pin')}${state.deliveryLocation ? 'Pinned' : 'Map'}</button></div>
-      <textarea class="es-ta" id="esAddr" rows="6" placeholder="House #, street, barangay, city" aria-label="Address">${escapeHtml(state.deliveryAddress || '')}</textarea></div>`;
-    else if (o.f === 't') side = `<div class="es-keys es-addr${kin}"><div class="es-ah">Pick up${seg(...['Today', 'Tomorrow'].map(d => segBtn(d, o.day === d, `data-day="${d}"`)))}</div>
-      <div class="es-times">${ES_HOURS.map(h => `<button type="button" class="es-row${pt && pt.day === o.day && pt.time === h ? ' pick' : ''}" data-time="${h}">${h}</button>`).join('')}</div></div>`;
+    // the types scroll under the title (owner 2026-10-28); Pickup's time and Delivery's address are each a page in the list's place
+    if (o.f === 'a') rows = `<div class="es-ah">Deliver to<button type="button" class="es-chip" data-map>${esSvg('pin')}${state.deliveryLocation ? 'Pinned' : 'Map'}</button></div>
+      <textarea class="es-ta" id="esAddr" rows="6" placeholder="House #, street, barangay, city" aria-label="Address">${escapeHtml(state.deliveryAddress || '')}</textarea>`;
+    else if (o.f === 't') rows = `${seg(...['Today', 'Tomorrow'].map(d => segBtn(d, o.day === d, `data-day="${d}"`)))}
+      <div class="es-times">${ES_HOURS.map(h => `<button type="button" class="es-row${pt && pt.day === o.day && pt.time === h ? ' pick' : ''}" data-time="${h}">${h}</button>`).join('')}</div>`;
+    else rows = methods.map(m => `<button type="button" class="es-row${state.fulfilment === m.key ? ' pick' : ''}" data-ful="${escapeHtml(m.key)}"><span>${escapeHtml(m.label)}</span>${
+      ES_PANEL[m.key] && !m.custom ? `<small class="ad">${escapeHtml(say[m.key] || '')}</small>${cv()}` : ''}</button>`).join('');
   }
   // bottom left follows what's being edited: the discount's keys -> clear it; nothing open -> remove the line
-  const left = o.kind === 'ful' || o.kind === 'price' || o.kind === 'mods' ? ''
+  const list = o.kind === 'ful' || o.kind === 'rd';   // Walk-in, Discount: Check out's pill is Done, Clear sits up top across from ‹ Back
+  const clr = o.kind === 'rd' && !ES_SC[o.f] && (o.f ? +o.d : o.pick !== null) ? '<button type="button" class="es-x es-clr" data-sclr>Clear</button>' : '';
+  const left = list || o.kind === 'price' || o.kind === 'mods' ? ''
     : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
     : o.f ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q" data-sclr>Clear</button>' : '';
-  const top = card.querySelector('.es-scroll')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
+  const top = !o.dir && card.querySelector('.fill .es-list')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
   // the questions' progress on ‹ Back's line: a short bar for every item (owner 2026-10-25: "line for everything"), grown from where it was (o.w)
   const w = o.kind === 'mods' && (o.at + 1) / o.qs.length;
   const prog = w ? `<div class="es-prog" aria-hidden="true"><i style="--w:${w};--was:${o.w ?? w}"></i></div>` : '';
   if (w) o.w = w;
-  card.innerHTML = prog + esFrame(head, rows, side, left + (o.kind === 'mods' ? esModsFoot(o)
+  card.innerHTML = prog + clr + esFrame(head, rows, side, left + (list ? '<button type="button" class="ph-bar" data-done>Done</button>' : o.kind === 'mods' ? esModsFoot(o)
     : o.kind === 'price' ? `<button type="button" class="es-ink" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
     : o.f ? `<button type="button" class="es-ink" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : '<button type="button" class="es-ink" data-close>Done</button>'),   // a 0 discount waits, as the price ask's Add does
-  `${o.kind === 'rd' ? ' fill' : o.kind === 'price' ? ' ask' : ''}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
+  `${list ? ' fill' : o.kind === 'price' ? ' ask' : ''}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
   if (o.kind === 'mods') esPicksPop(o, card);
-  const list = card.querySelector('.es-scroll');
-  if (list && o.opened) list.querySelector('.pick')?.scrollIntoView({ block: 'nearest' });   // just opened: the one on the sale in view
-  else if (list) list.scrollTop = top;
+  const rl = list && !o.f && card.querySelector('.es-list');
+  const pk = rl && (o.opened || o.dir === 'bwd') && rl.querySelector('.pick');   // just opened, or back from a page: the one on the sale clear of Done
+  if (pk) {   // the list only: scrollIntoView also scrolled the page under the sheet while it slid in
+    const r = pk.getBoundingClientRect(), l = rl.getBoundingClientRect();
+    if (r.bottom > l.bottom - parseFloat(getComputedStyle(rl).paddingBottom)) rl.scrollTop += r.top - l.top;
+  } else if (rl) rl.scrollTop = top;
   o.anim = o.opened = o.dir = false;   // dir: a question's slide, 'fwd' / 'bwd' (esModsClick)
 }
 // The hero line (owner 2026-10-16): every amount's top sits --hero-y from the top of the screen, checkout's included.
@@ -1356,7 +1363,7 @@ const esKeys = (dec) => `<div class="es-kp">${[...'123456789', dec ? '.' : '', '
 // The desk keyboard on the sheet's keys, as the shift's (shiftKey) and checkout's: digits, '.', Backspace, Enter = Apply / Add
 function editKey(e) {
   if (!es || e.ctrlKey || e.metaKey || e.altKey || e.target.matches('input, textarea') || !$('#editSheet [data-sk]')) return;
-  const k = e.key === 'Backspace' ? 'del' : e.key, q = k === 'Enter' ? '[data-apply]' : /^([\d.]|del)$/.test(k) && `[data-sk="${k}"]`, b = q && $(`#editSheet ${q}`);
+  const k = e.key === 'Backspace' ? 'del' : e.key, q = k === 'Enter' ? '[data-apply], [data-done]' : /^([\d.]|del)$/.test(k) && `[data-sk="${k}"]`, b = q && $(`#editSheet ${q}`);
   if (!b) return;
   e.preventDefault();   // a focused key would press itself again
   if (!b.disabled) editSheetClick({ target: b });
@@ -1367,7 +1374,7 @@ function editSheetClick(e) {
   if (!o) return;
   if (o.kind === 'mods') return esModsClick(el);
   if (el('[data-mods]')) return openEditSheet('mods', esItem()?.productId, { line: o.id });
-  if (el('[data-close]')) return closeEditSheet();
+  if (el('[data-close]') && !(o.f && (o.kind === 'rd' || o.kind === 'ful'))) return closeEditSheet();   // on a Walk-in / Discount page, ‹ Back is the list
   if (o.kind === 'ful') return esFulClick(el);
   if (o.kind === 'price') {   // our keys type it; Add puts the line on the cart at it, ✕ adds nothing
     if (el('[data-sk]')) { o.d = esPress(o.d, el('[data-sk]').dataset.sk, true, CASH_MAX); return drawEditSheet(); }
@@ -1376,13 +1383,17 @@ function editSheetClick(e) {
     return addToCart(o.id, o.via, false, moneyValue(o.d));
   }
   if (ES_SC[o.f]) $$('#editSheet [data-scf]').forEach(i => { o.sc[i.dataset.scf] = i.value; });   // the typed ID and name survive the redraw
+  if (el('[data-done]')) {   // Discount's Done: Senior / PWD's page puts its card on first
+    if (ES_SC[o.f]) { if (!esScApply(o)) return; esWrite(); }
+    return closeEditSheet();
+  }
   if (el('[data-remove]')) {
     const gone = esItem();
     es = null;
     $('#editSheet').classList.remove('open');
     return gone ? removeLine(gone) : renderCart();
   }
-  const item = esItem(), step = item ? stepFor(productOf(item)) : 1, f0 = o.f;
+  const item = esItem(), step = item ? stepFor(productOf(item)) : 1;
   if (el('[data-sk]')) {
     const qty = o.f === 'q';
     o[o.f] = esPress(o.fresh ? '' : o[o.f], el('[data-sk]').dataset.sk, !qty || step < 1, qty ? 9999 : o.pct ? 100 : 99999);
@@ -1396,33 +1407,32 @@ function editSheetClick(e) {
     o.q = String(roundQty(productOf(item), Math.max(step, item.qty + +el('[data-sstep]').dataset.sstep * step)));
   } else if (el('[data-pick]')) {
     if (o.f) esSettle(o);
-    const i = el('[data-pick]').dataset.pick;   // the saved discount's id
-    o.pick = o.pick === i ? null : i;
+    o.pick = el('[data-pick]').dataset.pick;   // the saved discount's id: the tap is the pick (owner 2026-10-28)
+    esWrite();
+    return closeEditSheet();
   } else if (el('[data-sf]')) {
     const f = el('[data-sf]').dataset.sf;
     if (o.f === f) esSettle(o);
     else {
-      Object.assign(o, { f, fresh: true, anim: !o.f });
+      Object.assign(o, { f, fresh: true }, o.kind === 'rd' ? { dir: 'fwd' } : { anim: !o.f });   // Discount's Custom: its own page
     }
-  } else if (el('[data-sc]')) {   // Senior / PWD: its panel opens beside the list, the same row again puts it away
-    const k = el('[data-sc]').dataset.sc, was = o.f;
-    if (was === 'd') esSettle(o);
-    Object.assign(o, was === k ? { f: null, anim: 'out' } : { f: k, bad: null, anim: was ? 'swap' : true });
+  } else if (el('[data-sc]')) {   // Senior / PWD: its own page, the ID and name
+    Object.assign(o, { f: el('[data-sc]').dataset.sc, bad: null, dir: 'fwd' });
+  } else if (el('[data-close]')) {   // a page's ‹ Back: the list again, what was typed kept
+    if (o.f === 'd') esSettle(o);
+    Object.assign(o, { f: null, anim: false, dir: 'bwd' });
   } else if (el('[data-apply]')) {
     if (ES_SC[o.f] && !esScApply(o)) return;
     esSettle(o);
   } else if (el('[data-sclr]')) {
     o.d = '';
-    if (o.kind === 'rd') o.pick = null;
-    if (o.f) esSettle(o);
+    if (o.kind === 'rd') Object.assign(o, { pick: null, fresh: true });
+    else if (o.f) esSettle(o);
   } else return;
   const typing = el('[data-sk]') || el('.es-seg button');   // the keys, Percent / Amount: shown, not put on yet
   esWrite();
   const draw = () => { drawEditSheet(); if (ES_SC[o.f]) ($$('#editSheet [data-scf]').find(i => !i.value.trim()) || $('#editSheet [data-scf]')).focus(); };
-  // A phone's Discount (owner 2026-10-16): only the row tapped stays, so it glides into the first row's place and the
-  // others fade (the browser's view transition, each row named in drawEditSheet); the number never moves. A plain swap without one.
-  const glide = o.kind === 'rd' && !f0 !== !o.f && $('#editSheetCard').clientWidth <= 560 && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (glide) document.startViewTransition(draw); else draw();
+  draw();
   if (!typing && discountOk(o.ok)) o.ok = discSnap();   // anything else puts it on: past the limit, a manager is asked
   const note = $('#esNote');   // preventScroll: the panel slides in, and a plain focus scrolls the catalog under it
   if (note) { note.focus({ preventScroll: true }); note.selectionStart = note.value.length; }
@@ -1546,7 +1556,7 @@ function esScApply(o) {
   return true;
 }
 
-// Fulfilment: the types are the rows; leaving a type drops what it asked for, the same row again puts its panel away.
+// Fulfilment: the types are the rows; leaving a type drops what it asked for.
 function esFulClick(el) {
   const o = es, k = el('[data-ful]')?.dataset.ful;
   if (k) {
@@ -1556,12 +1566,13 @@ function esFulClick(el) {
       state.deliveryAddress = k === 'delivery' ? (state.customer && state.customer.address) || '' : '';
       state.deliveryLocation = null;
     }
-    const f = ES_PANEL[k] && o.f !== ES_PANEL[k] ? ES_PANEL[k] : null;
-    Object.assign(o, { f, anim: f ? (o.f ? 'swap' : true) : o.f ? 'out' : false });
-  } else if (el('[data-day]')) o.day = el('[data-day]').dataset.day;
+    if (!ES_PANEL[k]) return closeEditSheet();   // one tap is the pick (owner 2026-10-28)
+    Object.assign(o, { f: ES_PANEL[k], dir: 'fwd' });   // Pickup's time, Delivery's address: a page of its own
+  } else if (el('[data-close]')) Object.assign(o, { f: null, dir: 'bwd' });   // the page's ‹ Back: the types again
+  else if (el('[data-done]')) return closeEditSheet();
+  else if (el('[data-day]')) o.day = el('[data-day]').dataset.day;
   else if (el('[data-time]')) state.pickupTime = { day: o.day, time: el('[data-time]').dataset.time };   // shown only, not on the order yet
   else if (el('[data-map]')) return openDeliveryMap();
-  else if (el('[data-apply]')) Object.assign(o, { f: null, anim: 'out' });
   else return;
   renderCart();
   drawEditSheet();

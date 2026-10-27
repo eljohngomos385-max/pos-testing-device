@@ -712,7 +712,7 @@ function attachEvents() {
   $('#editSheet').addEventListener('keydown', (e) => {   // Enter in the SC/PWD ID or Name, or a line's note, is its Apply
     if (e.key !== 'Enter' || !e.target.closest('[data-scf], #esNote')) return;
     e.preventDefault();
-    editSheetClick({ target: $('#editSheet [data-apply]') });
+    editSheetClick({ target: $('#editSheet :is([data-apply], [data-done])') });
   });
   $('#editSheet').addEventListener('input', (e) => {   // the address, and a line's note, land on the cart as they're typed
     const line = e.target.id === 'esNote' && esItem();
