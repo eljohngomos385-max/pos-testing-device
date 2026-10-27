@@ -4821,6 +4821,10 @@ body.light-theme:has(:is(.view-sell, .view-checkout, .view-settings, .view-qr, .
 body.light-theme #catalogSearchRow { --rl-soft: var(--surface-2); }   /* ☰, search, scan: white like the cards on the grey page */
 body.light-theme .product-card,
 body.light-theme .product-card.pc-group, body.light-theme .co-tile { background: var(--surface); }   /* owner 2026-10-18: nearer the search glass (251) than pure white */
+/* Checkout's rows and buttons on the grey page are the list sheets' too, one rule (owner 2026-10-27: "better if it's shared");
+   a picked / typed-into row keeps its own look */
+body.light-theme .esheet:not(.cust-sheet):not(:has(.es-kp)) :is(.es-row:not(.on, .pick), .es-ink) { background: var(--surface); box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06); }
+body.light-theme .esheet:not(.cust-sheet):not(:has(.es-kp)) :is(.es-row:not(.on, .pick, .out), .es-ink:not(:disabled)):hover { background: var(--bg-soft); }
 body.light-theme .product-card:hover,
 body.light-theme .product-card.pc-group:hover { background: var(--surface-hover); }
 body.light-theme .product-card:active { background: var(--surface-hover); }
@@ -7397,6 +7401,9 @@ body.light-theme {
   .esheet:not(.cust-sheet) { background: var(--bg); }   /* a white page: the strip under the card (the home bar's) white too, not the tablet frame's grey */
   .es-card { border: 0; border-radius: 0; box-shadow: none; background: var(--bg); }
   body.light-theme:has(.esheet.open:not(.cust-sheet)) { background: var(--bg); }   /* the page is white; the status bar with it */
+  /* a list page (Discount, Walk-in, a cart line) is checkout's grey page (owner 2026-10-27); a keypad page stays white */
+  .esheet:not(.cust-sheet):not(:has(.es-kp)), .esheet:not(.cust-sheet):not(:has(.es-kp)) .es-card { background: var(--canvas, var(--bg)); }
+  body.light-theme:has(.esheet.open:not(.cust-sheet)):not(:has(.esheet.open .es-kp)) { background: var(--canvas); }
   .es-ft { border-top: 0; }
   .es-body { padding-inline: 20px; }   /* checkout's inset */
   /* Every phone ‹ Back / ‹ Cancel = checkout's Cancel scaled up to the ☰ (owner 2026-10-16): the box at 12,8, 44 tall,
