@@ -298,7 +298,7 @@ function qsLeave() {
 function qsAskLeave() {
   const n = qsLive().length;
   if (!n || qsSaved) return qsLeave();
-  showConfirm({ title: qsPrice() ? 'Leave change price?' : 'Leave quick stock?', message: `${SalesMath.plural(n, qsPrice() ? 'price' : 'amount')} not saved yet.`, okText: 'Leave', cancelText: 'Keep going', onConfirm: qsLeave });
+  showConfirm({ title: 'Leave without saving?', message: `${SalesMath.plural(n, qsPrice() ? 'price' : 'amount')} not saved yet.`, okText: 'Leave', cancelText: 'Keep editing', onConfirm: qsLeave });   // askLeave's words
 }
 // ‹: the page goes back to the list (the amounts stay); after a save it leaves (the dock has no ‹: the list's × closes)
 function qsBack() {

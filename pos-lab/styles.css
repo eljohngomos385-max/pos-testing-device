@@ -7998,11 +7998,11 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 @media (min-width: 721px) and (max-width: 900px) { .lv #itemsKinds button { padding: 0 9px; } }   /* iPad upright: "Search discounts" still fits */
 #itemsRows .row .chev { width: 16px; height: 16px; margin-left: 6px; vertical-align: -3px; color: var(--ink-tertiary); }
 /* the phone's glass (set here: .lv is the pv container, so its own @container block can't reach it) */
-.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
+.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card, .pay-sheet, .modal-backdrop { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
       --glass-ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
       --pill-ring: 0 1px 2px rgb(0 0 0 / .15), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .05);   /* a pill inside a glass bar: half the ring's shadow and shine (owner 2026-10-18) */
       --float: 0 4px 12px -4px rgb(0 0 0 / .45); }   /* falls only down and to the sides (blur/2 < spread + offset upward); owner 2026-10-18: 10/30 "floats too much" */   /* owner 2026-10-17: the 8/24 drop read as floating; glass sits close */
-body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card, .pay-sheet, .modal-backdrop) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
   --pill-ring: 0 1px 2px rgb(0 0 0 / .03), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .4);
   --float: 0 4px 12px -4px rgb(0 0 0 / .08); }
 /* the sale side, Apple-fied (owner 2026-10-17: "the walk-in customer a pill, like the search bar ... check out a pill, walk-in and discount
@@ -8152,9 +8152,6 @@ input.es-ta { height: 56px; }
 .cf-sheet .pb { margin-top: 2px; }
 .cf-sheet .pb.even > * { flex: 1; }   /* the first-open ask (askBizType): equal choices, not OK / Cancel */
 .cf-sheet:focus { outline: none; }   /* its card holds the focus, not a choice */
-.cf-sheet .primary-btn.small, .cf-sheet .secondary-btn.small { height: 36px; padding: 0 14px; font-size: 13px; font-weight: 590; text-transform: none; letter-spacing: normal; }
-.cf-sheet .primary-btn.danger { background: var(--danger-bg); color: var(--danger); }
-.cf-sheet .primary-btn.danger:hover:not(:disabled) { background: var(--danger-bg); box-shadow: inset 0 0 0 1px var(--danger); }
 
 /* ==== batch 2026-10-07: shift + sync mark ==== */
 /* Shift (pos-shift.js): the Customers cards, centred. Cash in / out is one line of amount, note, two buttons. */
@@ -8781,8 +8778,8 @@ body.light-theme .vs-row .pic[style] { background: hsl(var(--tc) 75% 86%); }
 /* a card's note sits under it, not in a row (owner 2026-10-23: Payment type › Must fill in) */
 .st-page .fc-note { margin: -6px 16px 0; color: var(--ink-tertiary); font-size: 12px; line-height: 1.35; }
 /* a confirm dims what's behind it, as the peek does (owner 2026-10-23: on iPad the card sat over live rows) */
-.rail-veil:has(> .cf-sheet) { background: rgb(0 0 0 / .42); animation: fadeIn .14s ease-out; }
-body.light-theme .rail-veil:has(> .cf-sheet) { background: rgb(0 0 0 / .3); }
+.rail-veil:has(> .pay-sheet) { background: rgb(0 0 0 / .42); animation: fadeIn .14s ease-out; }
+body.light-theme .rail-veil:has(> .pay-sheet) { background: rgb(0 0 0 / .3); }
 /* Categories: the 56 list row with Sell's 38 picture (owner 2026-10-23). Modifiers, Add-ons and Discounts stay as they are */
 .view-items .page .row.cols.k2:has(> .nm > .thumb) { min-height: 56px; padding-block: 8px; font-size: 13px; }
 .view-items .page .row.cols.k2:has(> .nm > .thumb) .thumb { width: 38px; height: 38px; font-size: 12px; }
@@ -8921,3 +8918,44 @@ body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px v
 .lv .editor.picking .fc .pick input { order: -1; margin: 0 2px 0 0; }
 .lv .editor.picking .fc > * + * { background-position: 0 0; }   /* its lines run edge to edge, as the Items list's */
 #kindPickBar .ph-bar span + span::before { content: '\00B7'; margin-right: 8px; }   /* 5 items · Save, on the tablet too */
+
+/* ==== 2026-10-27: every pop-up is one card (owner's pick: popups-picks.html, "D squircle card, capsule pills, glass go-back") ====
+   The card: Apple's continuous corner, painted as its background by popFace (pos-core.js) -- Safari has no corner-shape --
+   so the shadow is a drop-shadow that follows it. 17 title, 15 words, 44 fields. Buttons are equal capsules side by side
+   (stacked when they don't fit); the go-back one (Cancel, Keep editing) is the ‹ button's glass; Delete is red words on
+   grey, never a red fill. Covers showConfirm, the hand-built forms (.pay-sheet), the old .modal cards and the manager PIN. */
+body { --pop-drop: drop-shadow(0 20px 50px rgb(0 0 0 / .6)) drop-shadow(0 8px 20px rgb(0 0 0 / .3)); }   /* --shadow-modal as a filter */
+body.light-theme { --pop-drop: drop-shadow(0 20px 50px rgb(0 0 0 / .15)) drop-shadow(0 8px 20px rgb(0 0 0 / .08)); }
+.pin-pad { --face: var(--rl-card); }   /* painted in both looks; the lock screen just doesn't show it */
+.pay-sheet, .modal, #pinModal:not(.pin-lock) .pin-pad { --face: var(--rl-card); border: 0; border-radius: 34px; box-shadow: none;
+  background: var(--face-img, var(--face)) no-repeat; filter: var(--pop-drop); }
+.pay-sheet { gap: 14px; padding: 24px 24px 14px; font-size: 15px; }
+.pay-sheet .ph { gap: 4px; }
+.pay-sheet .ph b, .modal-head h2, .confirm-modal .modal-head h2, #pinModal:not(.pin-lock) .pin-title { font-size: 17px; font-weight: 590; }
+.pay-sheet .ph small, .cf-sheet .cf-msg, #pinModal:not(.pin-lock) .pin-msg { color: var(--ink-secondary); font-size: 15px; line-height: 1.4; }
+.pay-sheet .text-input, .modal .text-input { height: 44px; border-radius: 14px; }
+.pay-sheet .pa button { border-radius: 10px; }
+/* the buttons: one row of equal capsules, 14 from the card's edge */
+.pay-sheet .pb, .modal .pay-actions:not(.delivery-map-footer *), .pop-ft { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px -10px 0; }
+.modal .pay-actions:not(.delivery-map-footer *) { margin-top: 20px !important; }   /* lost sale's inline 18 */
+.pop-ft { flex: none; margin: 0; padding: 6px 14px 14px; }
+:is(.pay-sheet .pb, .modal .pay-actions, .pop-ft) > :is(.primary-btn, .secondary-btn) { flex: 1 1 0; min-width: max-content; height: 48px; padding: 0 16px;
+  border: 0; border-radius: 999px; font-size: 15px; font-weight: 590; text-transform: none; letter-spacing: normal; justify-content: center; }
+.delivery-map-footer .pay-actions > * { min-width: 0; height: 44px; }
+:is(.pay-sheet .pb, .modal .pay-actions, .pop-ft) > .secondary-btn,
+#pinModal:not(.pin-lock) .pin-cancel { background: var(--rl-card); color: var(--ink); box-shadow: var(--glass-ring); }
+:is(.pay-sheet .pb, .modal .pay-actions, .pop-ft) > .secondary-btn:hover:not(:disabled),
+#pinModal:not(.pin-lock) .pin-cancel:hover { border: 0; background: var(--rl-hover); color: var(--ink); }
+:is(.pay-sheet .pb, .modal .pay-actions, .pop-ft) > .primary-btn.danger,
+:is(.pay-sheet .pb, .modal .pay-actions, .pop-ft) > .primary-btn.danger:hover:not(:disabled) { background: var(--rl-track); color: var(--danger); }
+/* the old .modal cards: the same head and spacing; their ✕ goes once the card has a Cancel / Close (the map keeps it) */
+.modal-head { padding: 24px 24px 0; }
+.modal-body { padding: 14px 24px 24px; }
+.modal:has(.pop-ft) .modal-body { padding-bottom: 14px; }
+.modal:has([data-close-modal]:not(.close-x)) .close-x { display: none; }
+.modal, #pinModal:not(.pin-lock) .pin-pad { animation: popIn .22s var(--rl-ease); }   /* Apple's alert: settles from a touch smaller, no bounce */
+@keyframes popIn { from { opacity: 0; transform: scale(.94); } }
+.modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .42); }   /* dims as the confirm's veil does */
+body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
+#pinModal:not(.pin-lock) .pin-pad { padding: 28px 24px 14px; }
+#pinModal:not(.pin-lock) .pin-cancel { align-self: stretch; height: 48px; margin-top: 22px; border-radius: 999px; font-size: 15px; font-weight: 590; }

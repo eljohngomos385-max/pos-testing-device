@@ -341,9 +341,34 @@ function setCheckoutError(message = '') {
 function centreSheet(f) {
   f.style.left = Math.max(12, (innerWidth - f.offsetWidth) / 2) + 'px';
   f.style.top = Math.max(8, (innerHeight - f.offsetHeight) / 2) + 'px';
-  f.animate([{ opacity: 0, transform: 'scale(.96)' }, { opacity: 1, transform: 'none' }], { duration: calmMs(140), easing: 'ease-out' });
+  popFace(f);
+  f.animate([{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: calmMs(220), easing: 'cubic-bezier(.2, .8, .2, 1)' });   // --rl-ease
   return (done) => { f.animate([{ opacity: 1 }, { opacity: 0, transform: 'scale(.98)' }], { duration: calmMs(90) }).onfinish = done; };
 }
+// A pop-up card's face (owner 2026-10-27, popups-picks.html row D): Apple's continuous corner, not CSS's quarter circle.
+// Safari has no corner-shape, so the shape is drawn as the card's background (--face-img, styles.css) and repainted when
+// it resizes. figma-squircle's path, smoothing .6 (≈ iOS); r is clamped to half the short side.
+function squircle(x, y, w, h, r, s = .6) {
+  const max = Math.min(w, h) / 2; r = Math.min(r, max); s = Math.min(s, max / r - 1);
+  const p = (1 + s) * r, rad = a => a * Math.PI / 180, arcM = 90 * (1 - s), arc = Math.sin(rad(arcM / 2)) * r * Math.SQRT2;
+  const p34 = r * Math.tan(rad((90 - arcM) / 4)), c = p34 * Math.cos(rad(45 * s)), d = c * Math.tan(rad(45 * s));
+  const b = (p - arc - c - d) / 3, a = 2 * b, A = a + b + c;
+  return `M${x + w - p} ${y}c${a} 0 ${a + b} 0 ${A} ${d}a${r} ${r} 0 0 1 ${arc} ${arc}c${d} ${c} ${d} ${b + c} ${d} ${A}`
+    + `L${x + w} ${y + h - p}c0 ${a} 0 ${a + b} ${-d} ${A}a${r} ${r} 0 0 1 ${-arc} ${arc}c${-c} ${d} ${-(b + c)} ${d} ${-A} ${d}`
+    + `L${x + p} ${y + h}c${-a} 0 ${-(a + b)} 0 ${-A} ${-d}a${r} ${r} 0 0 1 ${-arc} ${-arc}c${-d} ${-c} ${-d} ${-(b + c)} ${-d} ${-A}`
+    + `L${x} ${y + p}c0 ${-a} 0 ${-(a + b)} ${d} ${-A}a${r} ${r} 0 0 1 ${arc} ${-arc}c${c} ${-d} ${b + c} ${-d} ${A} ${-d}Z`;
+}
+const popFaces = new ResizeObserver(es => es.forEach(e => paintFace(e.target)));
+function paintFace(f) {
+  if (!f.isConnected) return popFaces.unobserve(f);
+  const w = f.offsetWidth, h = f.offsetHeight, cs = getComputedStyle(f);
+  if (!w || !h) return;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><path d="${squircle(.5, .5, w - 1, h - 1, parseFloat(cs.borderTopLeftRadius))}" style="fill:${cs.getPropertyValue('--face').trim()};stroke:${cs.getPropertyValue('--line').trim()}"/></svg>`;
+  f.style.setProperty('--face-img', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
+}
+function popFace(f) { paintFace(f); popFaces.observe(f); }
+$$('.modal, #pinModal .pin-pad').forEach(popFace);   // the static cards: painted when they first show (0 → their size)
+new MutationObserver(() => $$('.modal, .pin-pad, .pay-sheet').forEach(paintFace)).observe(document.body, { attributeFilter: ['class'] });   // a theme change repaints the faces
 // Leaving a form with changes not saved asks first, in quick stock's words (owner 2026-10-22); no changes leaves at once.
 function askLeave(changed, leave) {
   if (!changed) return leave();

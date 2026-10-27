@@ -73,6 +73,7 @@ function showPin(title, msg, lock = false) {
   $('#pinDots').classList.remove('shake');   // a pad closed mid-shake never got its animationend
   pinSay('');
   $('#pinModal').hidden = false;
+  paintFace($('#pinModal .pin-pad'));   // a lock screen and a card can share a size: its face follows the class, not just a resize
   document.activeElement?.blur?.();   // a focused search box behind would take the digits
   pinTick();
 }
