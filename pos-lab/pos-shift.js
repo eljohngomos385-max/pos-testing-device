@@ -238,7 +238,7 @@ function drawShiftSheet() {
     ink = shLeave() ? 'Next' : 'Close shift';
   }
   if (o.step === 'count') left = '<button type="button" class="es-q" data-skip>Skip</button>';
-  $('#shiftSheetCard').innerHTML = esFrame(head, rows, ask ? `<div class="es-keys">${esKeys(true)}</div>` : '', `${left}<button type="button" class="es-ink" data-apply>${ink}</button>`, ask ? ' ask' : '');
+  $('#shiftSheetCard').innerHTML = esFrame(head, rows, ask ? `<div class="es-keys">${esKeys(true)}</div>` : '', `${left}<button type="button" class="es-ink cta" data-apply>${ink}</button>`, ask ? ' ask' : '');
   if (ask) $('#shiftSheet .es-ink').focus({ preventScroll: true });   // off the page's button: a key can't fire it again
 }
 // Cash management (Loyverse's): the price ask's look, the amount over its keys on the hero line, a note under the

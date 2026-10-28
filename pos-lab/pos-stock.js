@@ -64,13 +64,13 @@ function qsBuild() {
       <section class="editor"><div class="e-top">
         <button class="sq back" id="qsBack" aria-label="Back">${QS_IC.back}</button>
         <h2 class="fm-h"><button type="button" class="qs-mode" id="qsReason" aria-haspopup="menu" aria-expanded="false"><span></span>${QS_IC.updown}</button></h2>
-        <div class="acts"><button class="act primary" id="qsSave" disabled>Save</button></div>
+        <div class="acts"><button class="act primary cta" id="qsSave" disabled>Save</button></div>
       </div>
       <div class="form-scroll"><div class="form" id="qsForm">
         <div class="qs-list" id="qsList"></div>
       </div></div></section>
     </div></section>
-    <div class="qs-tickbar" id="qsTickbar" hidden><button type="button" class="qs-next" id="qsTickNext" disabled></button></div>`);
+    <div class="qs-tickbar" id="qsTickbar" hidden><button type="button" class="qs-next cta" id="qsTickNext" disabled></button></div>`);
 }
 
 function qsRender() {

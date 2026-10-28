@@ -530,7 +530,7 @@ function addPickMenu() {
 }
 function addPickBar() {   // Check out's pill (.ph-bar), as New customer's (owner 2026-10-21)
   if (!$('#addPickBar')) {
-    $('#app').insertAdjacentHTML('beforeend', '<div id="addPickBar" hidden><button type="button" class="ph-bar" id="addPickGo"></button></div>');
+    $('#app').insertAdjacentHTML('beforeend', '<div id="addPickBar" hidden><button type="button" class="ph-bar cta" id="addPickGo"></button></div>');
     $('#addPickGo').addEventListener('click', addPickAdd);
   }
   $('#addPickBar').hidden = !addPick;   // always there, as Check out is: nothing ticked reads as its empty cart (owner 2026-10-21)
@@ -1333,9 +1333,9 @@ function drawEditSheet() {
   const w = o.kind === 'mods' && (o.at + 1) / o.qs.length;
   const prog = w ? `<div class="es-prog" aria-hidden="true"><i style="--w:${w};--was:${o.w ?? w}"></i></div>` : '';
   if (w) o.w = w;
-  card.innerHTML = prog + clr + esFrame(head, rows, side, left + (list ? `<button type="button" class="${matchMedia('(max-width: 720px)').matches ? 'ph-bar' : 'fab sh-fab'}" data-done>Done</button>` : o.kind === 'mods' ? esModsFoot(o)
-    : o.kind === 'price' ? `<button type="button" class="es-ink" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
-    : o.f ? `<button type="button" class="es-ink" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : '<button type="button" class="es-ink" data-close>Done</button>'),   // a 0 discount waits, as the price ask's Add does
+  card.innerHTML = prog + clr + esFrame(head, rows, side, left + (list ? `<button type="button" class="${matchMedia('(max-width: 720px)').matches ? 'ph-bar' : 'fab sh-fab'} cta" data-done>Done</button>` : o.kind === 'mods' ? esModsFoot(o)
+    : o.kind === 'price' ? `<button type="button" class="es-ink cta" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
+    : o.f ? `<button type="button" class="es-ink cta" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : '<button type="button" class="es-ink cta" data-close>Done</button>'),   // a 0 discount waits, as the price ask's Add does
   `${list ? ' fill' : o.kind === 'price' ? ' ask' : ''}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
   if (o.kind === 'mods') esPicksPop(o, card);
   const rl = list && !o.f && card.querySelector('.es-list');
@@ -1448,8 +1448,8 @@ const esModsReady = (o) => o.qs.every(x => !x.required || o.ans[x.id].length);
 const esModsPrice = (o, answers = esAnswers(o)) => moneyValue(o.base + SalesMath.answersPrice({ modifiers: answers }));
 function esModsFoot(o) {
   if (o.qs[o.at].required) return '';   // Pick one: its tap goes on (esModsClick). One with every choice Unavailable isn't required, so it gets Next
-  return o.at < o.qs.length - 1 ? '<button type="button" class="es-ink es-big" data-next>Next</button>'
-    : `<button type="button" class="es-ink es-big" data-apply${esModsReady(o) ? '' : ' disabled'}>${o.line ? 'Done' : `Add · ${peso(esModsPrice(o))}`}</button>`;   // a line's Done is the line sheet's Done; its total says the price
+  return o.at < o.qs.length - 1 ? '<button type="button" class="es-ink es-big cta" data-next>Next</button>'
+    : `<button type="button" class="es-ink es-big cta" data-apply${esModsReady(o) ? '' : ' disabled'}>${o.line ? 'Done' : `Add · ${peso(esModsPrice(o))}`}</button>`;   // a line's Done is the line sheet's Done; its total says the price
 }
 function esModsApply(o) {
   if (!esModsReady(o)) return;

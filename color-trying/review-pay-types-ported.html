@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payment Types Ported</title>
+<!-- Review sheet (2026-10-22, round 2 built): the whole scope on one page. Real phone screenshots:
+     Now | mock-up After | the lab app as ported (2026-10-22), phone + tablet, dark + light. -->
+<style>
+  :root { --bg: #111; --surface: #1c1c1e; --line: #2c2c2e; --ink: #fff; --ink-2: #a1a1a6; --ok: #34c759; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #f2f2f7; --surface: #fff; --line: #e5e5ea; --ink: #1c1c1e; --ink-2: #6e6e73; --ok: #248a3d; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 Inter, system-ui, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--ink-2); margin: 0 0 32px; }
+  section { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
+  h2 { font-size: 19px; margin: 0 0 4px; }
+  section > p { color: var(--ink-2); margin: 0 0 16px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  figure { margin: 0; }
+  figcaption { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--ink-2); }
+  figcaption.after { color: var(--ok); }
+  img { display: block; width: 100%; max-width: 280px; border-radius: 16px; border: 1px solid var(--line); }
+  pre { margin: 0; font: 14px/1.55 ui-monospace, Consolas, monospace; overflow-x: auto; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--ink-2); font-weight: 600; }
+  td.no { color: var(--ink-2); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 12px; }
+  .row.wide { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .row.wide img { max-width: 100%; }
+  h3 { font-size: 15px; margin: 18px 0 0; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Payment types: ported</h1>
+  <p class="sub">Now is the lab app before, Mock-up is the approved After, then the lab app as it is now: phone and tablet, dark and light. Section 10 (Shift) had no change.</p>
+  <section>
+    <h2>1. Payment types page</h2>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-list.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-list.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-list.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-list.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-list.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-list.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+  </section>
+  <section>
+    <h2>2. A type's page</h2>
+    <h3>GCash</h3>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-gcash-page.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-gcash-page.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-gcash-page.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-gcash-page.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-gcash-page.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-gcash-page.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+    <h3>Visa (your own)</h3>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-gcash-page.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-visa.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-visa.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-visa.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-visa.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-visa.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+    <h3>Other</h3>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-gcash-page.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-other-page.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-other-page.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-other-page.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-other-page.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-other-page.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+    <h3>Cash</h3>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-gcash-page.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-cash-page.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-cash-page.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-cash-page.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-cash-page.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-cash-page.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+    <h3>Account</h3>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-gcash-page.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-account-page.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-account-page.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-account-page.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-account-page.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-account-page.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+  </section>
+  <section>
+    <h2>3. Deleting your own type (Visa)</h2>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-delete-tick.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-delete-confirm.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-delete-confirm.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-delete-confirm.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-delete-confirm.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-delete-confirm.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+  </section>
+  <section>
+    <h2>4. Ask for</h2>
+    <h3>Visa: Last 4 digits</h3>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-gcash-page.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-ask.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-ask.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-ask.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-ask.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-ask.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+    <h3>Other: Nothing</h3>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-gcash-page.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-ask-nothing.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-ask-nothing.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-ask-nothing.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-ask-nothing.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-ask-nothing.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+  </section>
+  <section>
+    <h2>5. Checkout: GCash with a picture</h2>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-gcash-box.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-qr.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-qr.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-qr.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-qr.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-qr.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+  </section>
+  <section>
+    <h2>6. Checkout: the box</h2>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-gcash-box.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-visa-box.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-visa-box.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-visa-box.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-visa-box.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-visa-box.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+  </section>
+  <section>
+    <h2>7. Checkout: Cash</h2>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/cash-amounts-145.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/r2-cash.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/r2-cash.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/r2-cash.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/r2-cash.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/r2-cash.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+  </section>
+  <section>
+    <h2>8. Checkout: Split</h2>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/split-before.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/r2-split.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/r2-split.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/r2-split.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/r2-split.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/r2-split.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+  </section>
+  <section>
+    <h2>9. Receipt</h2>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/receipt-before.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-receipt.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-receipt.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-receipt.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-receipt.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-receipt.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+  </section>
+  <section>
+    <h2>11. Deleting your own fulfilment type (Lalamove)</h2>
+    <h3>List</h3>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-ful-tick.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-ful-list.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-ful-list.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-ful-list.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-ful-list.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-ful-list.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+    <h3>Its page</h3>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-ful-tick.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-ful-page.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-ful-page.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-ful-page.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-ful-page.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-ful-page.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+    <h3>Delete Lalamove?</h3>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-ful-tick.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-ful-confirm.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-ful-confirm.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-ful-confirm.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-ful-confirm.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-ful-confirm.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+  </section>
+  <section>
+    <h2>12. Cash drawer</h2>
+    <div class="row"><figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-printing.jpg" alt="Now" loading="lazy"></figure><figure><figcaption class="after">Mock-up</figcaption><img src="img/pay-type-settings/after-printing-drawer.jpg" alt="Mock-up" loading="lazy"></figure><figure><figcaption class="after">Ported: phone dark</figcaption><img src="img/pay-type-settings/ported/phone-dark/after-printing-drawer.png" alt="Ported: phone dark" loading="lazy"></figure><figure><figcaption class="after">Ported: phone light</figcaption><img src="img/pay-type-settings/ported/phone-light/after-printing-drawer.png" alt="Ported: phone light" loading="lazy"></figure></div>
+    <div class="row wide"><figure><figcaption class="after">Ported: tablet dark</figcaption><img src="img/pay-type-settings/ported/tablet-dark/after-printing-drawer.png" alt="Ported: tablet dark" loading="lazy"></figure><figure><figcaption class="after">Ported: tablet light</figcaption><img src="img/pay-type-settings/ported/tablet-light/after-printing-drawer.png" alt="Ported: tablet light" loading="lazy"></figure></div>
+  </section>
+</main>
+</body>
+</html>

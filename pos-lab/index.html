@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=668" />
+  <link rel="stylesheet" href="styles.css?v=670" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
   <div id="app" class="sidebar-collapsed">
@@ -188,14 +188,14 @@
               <button type="button" class="es-x" data-cust-close aria-label="Close"><svg class="ix" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><svg class="ib" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span class="xl">Back</span></button>
               <h2 class="cs-h" id="customerEditTitle">New customer</h2>
               <div class="cs-body"><div class="cs-in"><div id="custFields"></div></div></div><!-- bo-model CUSTOMER_FIELDS, the same form as the back office -->
-              <div class="es-ft"><button type="button" class="es-ink" id="custSaveBtn">Save</button></div>
+              <div class="es-ft"><button type="button" class="es-ink cta" id="custSaveBtn">Save</button></div>
             </div></div>
           </div>
 
           <!-- Phone (≤720): the sale sidebar is its own page; this bar opens it. Not Check out -->
-          <button type="button" class="ph-bar" id="cartBar" disabled><span id="cartBarCount">No items</span></button>
+          <button type="button" class="ph-bar cta" id="cartBar" disabled><span id="cartBarCount">No items</span></button>
           <!-- Phone: the bar while the customer list is open (owner 2026-10-20: the pill becomes New customer) -->
-          <button type="button" class="ph-bar" id="custNewBar"><svg class="xi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New customer</button>
+          <button type="button" class="ph-bar cta" id="custNewBar"><svg class="xi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New customer</button>
           <!-- The sale sidebar (cart-lab-stack-h.html): three slim cards -- who, the items, the money.
                Fulfilment and Discount share the money card's first row, half and half. -->
           <aside class="rail rail-h" id="side" aria-label="Receipt">
@@ -243,7 +243,7 @@
                 </button>
               </div>
             </section>
-            <button type="button" class="go" id="payBtn" disabled>Check out</button>
+            <button type="button" class="go cta" id="payBtn" disabled>Check out</button>
           </aside>
         </div>
       </section>
@@ -321,7 +321,7 @@
                   <svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
                 </button>
               </section>
-              <button class="fab" id="itemsAdd" aria-label="New item" title="New item"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+              <button class="fab cta" id="itemsAdd" aria-label="New item" title="New item"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
             </div>
             <section class="card list">
               <div class="lines" id="itemsLines"><div class="band cols" id="itemsBand"></div><div id="itemsRows"></div></div>
@@ -336,11 +336,11 @@
                 <button class="act icon" id="itemMore" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">
                   <svg class="ic" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
                 </button>
-                <button class="act primary" id="itemSave">Save</button>
+                <button class="act primary cta" id="itemSave">Save</button>
               </div>
             </div>
             <div class="form-scroll" id="itemForm"></div>
-            <div class="pick-bar" id="kindPickBar"><button type="button" class="ph-bar" id="kindPickGo"></button></div>   <!-- a category's / modifier's Items page: Adjust stock's pill, Save (owner 2026-10-27) -->
+            <div class="pick-bar" id="kindPickBar"><button type="button" class="ph-bar cta" id="kindPickGo"></button></div>   <!-- a category's / modifier's Items page: Adjust stock's pill, Save (owner 2026-10-27) -->
           </section>
         </div>
       </section>
@@ -376,7 +376,7 @@
                   <button class="x" id="customersSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
                 </label>
               </section>
-              <button class="fab" id="newCustomerBtn" aria-label="Add customer" title="Add customer"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>   <!-- Items' + (owner 2026-10-18) -->
+              <button class="fab cta" id="newCustomerBtn" aria-label="Add customer" title="Add customer"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>   <!-- Items' + (owner 2026-10-18) -->
             </div>
             <section class="card list"><div class="lines" id="customersList"></div></section>
           </aside>
@@ -402,7 +402,7 @@
               </section>
               <div id="shiftBody"></div>
             </div></div>
-            <button type="button" class="fab sh-fab" id="shiftFab"></button>
+            <button type="button" class="fab sh-fab cta" id="shiftFab"></button>
           </section>
           <section class="page sh-page" id="shiftPastPage" aria-label="Past shifts" hidden>
             <div class="head">
@@ -434,7 +434,7 @@
                 <p class="sp-paid" id="spPaid" hidden></p>
                 <!-- Tiles are built from the back office's Payments settings on every render -->
                 <div class="co-step" data-step="method"><div class="co-tiles" id="checkoutMethods"></div>
-                  <button type="button" class="co-btn primary" id="spDone" data-complete hidden>Complete sale</button></div>
+                  <button type="button" class="co-btn primary cta" id="spDone" data-complete hidden>Complete sale</button></div>
                 <!-- Cash (and each part of a split): a tap on an amount finishes the sale; Custom swaps the row for the
                      figures (left) and our keypad (right), cash-custom-lab.html take C -->
                 <div class="co-step" data-step="cash" hidden>
@@ -446,7 +446,7 @@
                       <div><span class="co-lbl" id="checkoutChangeLbl">Change</span><b class="co-fig num" id="checkoutChange" aria-live="polite"></b></div>
                     </div>
                     <div id="checkoutKeys"></div>
-                    <button type="button" class="co-btn primary" id="checkoutCompleteBtn" data-complete disabled>Complete sale</button>
+                    <button type="button" class="co-btn primary cta" id="checkoutCompleteBtn" data-complete disabled>Complete sale</button>
                   </div>
                 </div>
                 <!-- GCash, QR, a custom name, Other or Account: nothing to count, one confirm -->
@@ -455,13 +455,13 @@
                   <input type="text" id="otherMethodInput" class="co-ref" placeholder="e.g. Maya, bank transfer" autocomplete="off" aria-label="Payment method name" />
                   <!-- Settings › Payment types › a type › Ask for reference no.: letters too, the device's own keyboard -->
                   <input type="text" id="payRefInput" class="co-ref" maxlength="40" placeholder="Reference no. (optional)" autocomplete="off" aria-label="Reference number (optional)" hidden />
-                  <button type="button" class="co-btn primary" data-complete>Complete sale</button>
+                  <button type="button" class="co-btn primary cta" data-complete>Complete sale</button>
                 </div>
                 <!-- A type with a picture (Settings › Payment types › Picture): its QR first, Done = the step above (pos-checkout.js showPayStep) -->
                 <div class="co-step" data-step="qr" id="qrStep" hidden>
                   <div class="qr-card"><img id="qrImg" alt="QR code to scan"></div>
                   <p class="co-ask" id="qrCap"></p>
-                  <button type="button" class="co-btn primary" id="qrDoneBtn">Done</button>
+                  <button type="button" class="co-btn primary cta" id="qrDoneBtn">Done</button>
                 </div>
                 <div class="co-error" id="checkoutError" hidden></div>
               </div>
@@ -471,7 +471,7 @@
                 <div class="co-done-chg" id="successChangeBlock" style="--i:2"><span>Change</span><span class="co-done-num num" id="successChange">₱0.00</span></div>
                 <div class="co-done-acts" style="--i:4">
                   <button type="button" class="co-btn" id="successPrintBtn">Print receipt</button>
-                  <button type="button" class="co-btn primary" id="successNewSaleBtn">New sale</button>
+                  <button type="button" class="co-btn primary cta" id="successNewSaleBtn">New sale</button>
                 </div>
               </div>
             </div>
@@ -694,7 +694,7 @@
             <div class="head">
               <button class="sq back" id="payTypeAddBack" aria-label="Back to payment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl">Add payment type</h1>
-              <button type="button" class="act primary st-save" id="payTypeAddSave">Save</button>
+              <button type="button" class="act primary st-save cta" id="payTypeAddSave">Save</button>
             </div>
             <div class="c-scroll">
               <form class="c-body" id="payTypeAddForm">
@@ -738,7 +738,7 @@
             <div class="head">
               <button class="sq back" id="fulTypeAddBack" aria-label="Back to fulfilment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl">Add fulfilment type</h1>
-              <button type="button" class="act primary st-save" id="fulTypeAddSave">Save</button>
+              <button type="button" class="act primary st-save cta" id="fulTypeAddSave">Save</button>
             </div>
             <div class="c-scroll">
               <form class="c-body" id="fulTypeAddForm">
@@ -845,7 +845,7 @@
           </div>
           <div class="pay-actions">
             <button class="secondary-btn" data-close-modal>Cancel</button>
-            <button class="primary-btn" id="completeSaleBtn">Complete & print</button>
+            <button class="primary-btn cta" id="completeSaleBtn">Complete & print</button>
           </div>
         </div>
       </div>
@@ -885,7 +885,7 @@
             <div class="delivery-map-coords" id="deliveryMapCoords">No pin selected</div>
             <div class="pay-actions">
               <button class="secondary-btn" id="deliveryMapClear" type="button">Clear pin</button>
-              <button class="primary-btn" id="deliveryMapSave" type="button">Use pin</button>
+              <button class="primary-btn cta" id="deliveryMapSave" type="button">Use pin</button>
             </div>
           </div>
         </div>
@@ -922,7 +922,7 @@
           <select id="lsSubSelect" class="text-input"></select>
           <div class="pay-actions" style="margin-top:18px">
             <button class="secondary-btn" data-close-modal>Cancel</button>
-            <button class="primary-btn" id="lsSaveBtn">Log lost sale</button>
+            <button class="primary-btn cta" id="lsSaveBtn">Log lost sale</button>
           </div>
         </div>
       </div>
@@ -986,16 +986,16 @@
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=53"></script>
   <script src="drawer.js?v=1"></script>
-  <script src="pos-core.js?v=63"></script>
-  <script src="pos-sell.js?v=130"></script>
-  <script src="pos-checkout.js?v=47"></script>
-  <script src="pos-orders.js?v=49"></script>
+  <script src="pos-core.js?v=64"></script>
+  <script src="pos-sell.js?v=131"></script>
+  <script src="pos-checkout.js?v=48"></script>
+  <script src="pos-orders.js?v=50"></script>
   <script src="pos-items.js?v=73"></script>
-  <script src="pos-customers.js?v=45"></script>
+  <script src="pos-customers.js?v=46"></script>
   <script src="pos-settings.js?v=44"></script>
   <script src="pos-pin.js?v=15"></script>
-  <script src="pos-shift.js?v=46"></script>
-  <script src="pos-stock.js?v=20"></script>
+  <script src="pos-shift.js?v=47"></script>
+  <script src="pos-stock.js?v=21"></script>
   <script src="pos-qr.js?v=3"></script>
   <script src="app.js?v=279"></script>
 </body>

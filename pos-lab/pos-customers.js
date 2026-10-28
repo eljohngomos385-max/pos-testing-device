@@ -97,7 +97,7 @@ function openPaySheet(btn, c) {
       <input type="checkbox" name="order" value="${escapeHtml(d.orderId)}" data-left="${d.left}"><span class="num">#${escapeHtml(number.get(d.orderId) || d.orderId)}</span>
       <small class="num">${fmtOrderDate(d.ts)}</small><span class="num">${peso(d.left)}</span></label>`).join('')}</fieldset>` : ''}
     <label class="pf"><span class="lb">Note</span><input class="text-input" name="note" type="text" autocomplete="off"></label>
-    <div class="pb"><button type="button" class="secondary-btn small" data-cancel>Cancel</button><button type="submit" class="primary-btn small">Record payment</button></div>
+    <div class="pb"><button type="button" class="secondary-btn small" data-cancel>Cancel</button><button type="submit" class="primary-btn small cta">Record payment</button></div>
   </form>`;
   const f = veil.firstChild;
   f.style.width = Math.min(380, innerWidth - 24) + 'px';

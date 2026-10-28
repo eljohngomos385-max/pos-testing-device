@@ -340,7 +340,7 @@ function refundAct(btn, o) {
   const picks = orderPicks(o), part = picks.length && SalesMath.refundPart(o, reversalsOf(o), picks), on = picking(o), dr = !!o.draft;
   btn.disabled = !isCompletedSale(o) || (on && !part);
   btn.hidden = dr;
-  btn.classList.toggle('primary', on);
+  btn.classList.toggle('primary', on); btn.classList.toggle('cta', on);
   const verb = on && orderPick.mode === 'exchange' ? 'Exchange' : 'Refund';
   btn.title = btn.querySelector('span').textContent = part ? `${verb} ${peso(part.total)}` : verb;
   const pr = $('#orderPrint'), word = dr ? 'Print' : 'Print receipt';   // a draft's slip is not a receipt

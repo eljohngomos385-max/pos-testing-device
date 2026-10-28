@@ -36,6 +36,10 @@
   --accent-pressed: #E2E2E2;
   --accent-tint: rgba(255, 255, 255, 0.10);
   --accent-ink: #121212;
+  /* .cta: Check out's material, the same in light and dark (owner 2026-10-28: Jetzt starten in Bright blue) */
+  --cta-bg: radial-gradient(75% 80% at 50% 120%, #8EC2F0, transparent 85%), linear-gradient(#6A9FF9, #4388F7 50%, #5592F7);
+  --cta-ink: #FFFFFF;
+  --cta-shadow: inset 0 0 14px rgb(255 255 255 / .25), 0 1px 2px rgb(41 85 151 / .45), 0 2px 7px 1px rgb(67 136 247 / .32);
 
   --warn: #FFB74D;
   --warn-bg: rgba(255, 183, 77, 0.12);
@@ -7279,7 +7283,7 @@ body.light-theme {
 .rail-h .xb .row:hover { background: none; }
 .rail-h .xb .row + .row { border-top: 1px solid var(--line); }
 .rail-h .xb + .empty { height: auto; }
-#app.xchg .rail-h .go, #app.xchg .ph-bar { border-color: var(--xchg); background: var(--xchg); color: var(--bg); }
+#app.xchg :is(.rail-h .go, .ph-bar) { --cta-bg: var(--xchg); --cta-ink: var(--bg); }
 #app.xchg .rail-h .opts > .f-row { display: none; }
 #app.xchg .rail-h .opts > .d-row { flex-basis: 100%; border-left: 0; border-top-left-radius: calc(var(--rl-r) - 1px); }
 .ph-bar .xi { width: 18px; height: 18px; margin-right: 6px; vertical-align: -4px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -7960,9 +7964,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv :is(#itemsAdd, #newCustomerBtn) { width: 56px; height: 56px; }
 /* Customers' + and Start shift wear it too (owner 2026-10-18: "roughly around the same treatment"), and picking's Refund ₱X (owner 2026-10-19) */
 .lv .o-top #orderRefund.primary { position: relative; border-radius: 999px; padding: 0 18px; }
-:is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab) { background: var(--accent) linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%); color: var(--accent-ink);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px rgb(255 255 255 / .12), 0 2px 8px -2px rgb(0 0 0 / .3); -webkit-backdrop-filter: none; backdrop-filter: none; }
-:is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab):active { background-color: var(--accent-pressed); }
+:is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab) { -webkit-backdrop-filter: none; backdrop-filter: none; }
 .lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn), :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) {   /* liquid glass press, app.js sets --lg-* */
   touch-action: none; transition: transform .9s var(--lg-spring), background-color .2s, opacity .18s;   /* opacity: Sell's ☰ fades with the drawer */
   /* one transform at rest and pressed, the drag's angle kept after release: the spring wobbles along the way it was pulled (owner 2026-10-18) */
@@ -8050,8 +8052,7 @@ body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view
 .rail-h .items { border-radius: var(--rl-r); }
 .rail-h .i-head { display: none; }
 /* Check out as iOS 26's filled capsule (owner's "Add item" photo): the words centred, the total after a dot, the glass rim's light edge on top */
-.rail-h .go, .rail-h #payBtn, .ph-bar, .qs-tickbar .qs-next { justify-content: center; gap: 8px; border: 0; background-image: linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px rgb(255 255 255 / .12), 0 2px 8px -2px rgb(0 0 0 / .3); }   /* the shine on top, as the photo; the phone keeps its old width (owner 2026-10-17: "keep the same size button as before") */   /* Sell's items bar too (owner 2026-10-18: "the same design as the current checkout button") */
+.rail-h .go, .rail-h #payBtn, .ph-bar, .qs-tickbar .qs-next { justify-content: center; gap: 8px; border: 0; }   /* the shine on top, as the photo; the phone keeps its old width (owner 2026-10-17: "keep the same size button as before") */   /* Sell's items bar too (owner 2026-10-18: "the same design as the current checkout button") */
 /* the lists float a little over the grey page (owner 2026-10-17: "add a shadow so it kind of floats"): the cart, and the
    Orders / Items / Customers rows (no outer card there, each row rings itself). --float casts no shadow upward, so each row's
    drop hides under the next row and a day's block lifts as one (the rows' rules below) */
@@ -8061,6 +8062,10 @@ body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view
   -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
 body:not(.light-theme) .rail-h .items, body:not(.light-theme) .rail-h.co-mode .pay { background: transparent; box-shadow: 0 0 0 .5px rgb(255 255 255 / .2); -webkit-backdrop-filter: none; backdrop-filter: none; }   /* dark --line (.08) vanishes on black; .5px as the pills', thinner (owner 2026-10-18) */
 .rail-h .go span + span::before { content: '·'; margin-right: 8px; }
+/* THE main button: put class="cta" on it and it wears Check out's material (--cta-* in :root). Only the material: each button keeps its own
+   size and shape. !important so the tag beats any older per-button colour; change the look in --cta-*, never on one button (owner 2026-10-28) */
+.cta { background: var(--cta-bg) !important; color: var(--cta-ink) !important; border-color: transparent !important; box-shadow: var(--cta-shadow) !important; transition: filter .15s; }
+.cta:active { filter: brightness(.9); }
 .rail-h .go span:only-child { flex: none; }   /* empty cart: Check out centred too */
 /* phone cart (owner 2026-10-18, option B): the list runs down under Walk-in | Discount and Check out, a frost behind them fading up into it,
    as Items' top; the pills stay one tap away. Not at the checkout: there the money card is the Total */
@@ -8843,7 +8848,7 @@ body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px v
   .catalog:has(> .product-grid.sl) > .search-row::before { content: ''; position: absolute; z-index: -1; inset: -120px calc(-1 * var(--cat-x)) -28px; pointer-events: none;
     background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
     -webkit-mask-image: linear-gradient(#000 calc(100% - 28px), transparent); mask-image: linear-gradient(#000 calc(100% - 28px), transparent); }
-  .catalog-wrap:has(.product-grid.sl) ~ #cartBar:disabled { opacity: 1; background: var(--rl-card); color: var(--ink-tertiary); box-shadow: 0 0 0 1px var(--line), var(--shadow-card); }   /* No items: solid, not a faded Check out over the rows */
+  .catalog-wrap:has(.product-grid.sl) ~ #cartBar:disabled { opacity: 1; --cta-bg: var(--rl-card); --cta-ink: var(--ink-tertiary); --cta-shadow: 0 0 0 1px var(--line), var(--shadow-card); }   /* No items: solid, not a faded Check out over the rows */
 }
 /* iPad: no pill under the list, so its bottom fades out */
 @media (min-width: 721px) { .product-grid.sl { -webkit-mask-image: linear-gradient(#000 calc(100% - 48px), transparent); mask-image: linear-gradient(#000 calc(100% - 48px), transparent); padding-bottom: 48px; } }

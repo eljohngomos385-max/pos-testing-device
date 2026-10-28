@@ -1,0 +1,24 @@
+/* Try-out (owner 2026-10-17): every Done / Complete sale sits on Check out's spot, as Check out's pill, so it never
+   moves with the content. Loaded only by try-bottom.html; the real lab (index.html) doesn't have it */
+
+/* checkout: the button leaves the content for the pane's bottom line, where Check out ends */
+.co-pay { position: relative; container-type: inline-size; }   /* the cash step's keypad query asks the pane, not the step: */
+.co-step[data-step="cash"] { container-type: normal; }        /* a container step would be the button's box */
+.co-step, .co-keyin { animation: none; }   /* an animated transform would make the step the button's box */
+.co-step > .co-btn, .co-keyin > .co-btn { position: absolute; z-index: 2; left: 50%; bottom: 16px; translate: -50% 0;
+  width: min(100% - 40px, 440px); height: var(--bar-h); margin: 0; border-radius: calc(var(--rl-r) + 2px); grid-area: auto; }
+.co-stage { padding-bottom: calc(var(--bar-h) + 40px); }
+
+/* sheets: Done / Apply / Add the same pill, white, across the foot; Remove item / Clear / Skip a quiet word over it */
+.esheet:not(.cust-sheet) .es-ft { flex-wrap: wrap; justify-content: center; gap: 4px 8px; width: min(100% - 40px, 440px);
+  margin: 0 auto; padding: 12px 0 16px; border-top: 0; }
+.esheet:not(.cust-sheet) .es-q { flex-basis: 100%; margin: 0; }
+.esheet:not(.cust-sheet) .es-ink { flex: 1; height: var(--bar-h); margin: 0; border-radius: calc(var(--rl-r) + 2px);
+  background: var(--accent); color: var(--accent-ink); font-size: 15px; font-weight: 600; }
+.esheet:not(.cust-sheet) .es-ink:hover:not(:disabled) { background: var(--accent-hover); }
+
+/* phone: exactly Check out's pill and spot */
+@media (max-width: 720px) {
+  .co-step > .co-btn, .co-keyin > .co-btn { bottom: var(--ph-b); width: min(100% - 40px, 320px); }
+  .esheet:not(.cust-sheet) .es-ft { width: min(100% - 40px, 320px); margin-bottom: calc(var(--ph-b) - var(--ph-safe)); padding-bottom: 0; }
+}
