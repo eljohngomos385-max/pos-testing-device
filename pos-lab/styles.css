@@ -3441,7 +3441,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-card { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
            border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); box-shadow: var(--rl-shadow);
            container-type: size; }   /* cqh below = the card's height */
-.esheet button:where(:not(.ph-bar)) { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+.esheet button:where(:not(.ph-bar, .fab)) { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
 .esheet svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .esheet .es-x { position: absolute; z-index: 1; top: 12px; left: 12px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--es-r); color: var(--ink-secondary); }
 .esheet .es-x:hover { background: var(--es-btn); color: var(--ink); }
@@ -3518,10 +3518,16 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
    Senior / PWD, Custom) scrolls under it to the card's bottom, fading under Check out's pill, which is Done */
 .es-body.fill { grid-template-rows: minmax(0, 1fr); align-items: stretch; overflow: hidden; padding-bottom: 0; }
 .es-body.fill .es-col { min-height: 0; }
-.es-body.fill .es-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding-bottom: calc(var(--bar-h) + 64px); }
-.es-ft:has(> .ph-bar) { position: absolute; z-index: 1; inset: auto 0 0; justify-content: center; padding: 40px 24px 24px; border: 0; pointer-events: none; }
-.es-ft:has(> .ph-bar)::before { content: ''; position: absolute; z-index: -1; inset: 0; background: color-mix(in srgb, var(--es-bg) 80%, transparent);
+.es-body.fill .es-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.es-body.fill .es-list { margin-top: -32px; }   /* the frost's 24 + the 8 gap: the first row stays put */
+.es-body.fill .es-list::before { content: ''; position: sticky; z-index: 1; top: 0; flex: none; height: 24px; background: var(--es-bg);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); -webkit-mask-image: linear-gradient(#000, transparent); mask-image: linear-gradient(#000, transparent); }   /* rows fade under the title, the bottom fade's frost upside down, solid at the edge so no line shows (owner 2026-10-28: the cut was harsh) */
+.es-body.fill .es-list::after { content: ''; flex: none; height: calc(var(--bar-h) + 56px); }   /* room to lift the last row over Done; a spacer, not padding-bottom, which iPhone Safari leaves out of a flex list's scroll (+ the 8px gap = the old 64) */
+.es-ft:has(> :is(.ph-bar, .sh-fab)) { position: absolute; z-index: 1; inset: auto 0 0; justify-content: center; padding: 40px 24px 24px; border: 0; pointer-events: none; }
+.es-ft:has(> :is(.ph-bar, .sh-fab))::before { content: ''; position: absolute; z-index: -1; inset: 0; background: color-mix(in srgb, var(--es-bg) 80%, transparent);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); -webkit-mask-image: linear-gradient(transparent, #000 56px); mask-image: linear-gradient(transparent, #000 56px); }   /* the variants list's fade */
+.es-ft:has(> .sh-fab) { height: 112px; padding: 0; }   /* the iPad's Done is Start shift's button, bottom right of the card as on Shift (owner 2026-10-28), on the same fade */
+.esheet .es-ft > .sh-fab { pointer-events: auto; }
 .esheet .es-ft > .ph-bar { display: flex; pointer-events: auto; }   /* Check out's pill itself, only the words change: no rule here restyles or places it (owner 2026-10-28: "think of the checkout as the template") */
 .esheet .es-x.es-clr { left: auto; right: 12px; width: auto; padding: 0 12px; }   /* Discount's Clear, across from ‹ Back */
 /* the number over its keys, tablet and phone alike: the asked price (owner 2026-10-13), Start / Close shift, Cash in / out (owner 2026-10-16) */
@@ -7682,9 +7688,9 @@ body.light-theme .lv .thumb { background: hsl(var(--h) 75% 86%); color: hsl(var(
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; }   /* only the sheet morphs: a faded list ghosts its rows onto their neighbours */
 .lv .rp-item.out { text-decoration: line-through; opacity: .45; }   /* refunded in full: struck, still on the slip */
 
-.lv .fab { position: absolute; right: 34px; bottom: 32px; z-index: 2; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+:is(.lv, .esheet) .fab { position: absolute; right: 34px; bottom: 32px; z-index: 2; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
            background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-raised); transition: transform .12s; }
-.lv .fab:active { transform: scale(.94); }
+:is(.lv, .esheet) .fab:active { transform: scale(.94); }
 .lv .fab .ic { width: 24px; height: 24px; stroke-width: 2; }
 /* the + stack (openFabMenu, pos-sell.js): the page blurred, label + round button over the +, the + turned ✕ */
 .fab-veil { --fab-dim: rgba(0, 0, 0, .45); position: fixed; inset: 0; z-index: 150; background: var(--fab-dim); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: fab-veil .2s var(--rl-ease) both; }
@@ -7954,24 +7960,24 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv :is(#itemsAdd, #newCustomerBtn) { width: 56px; height: 56px; }
 /* Customers' + and Start shift wear it too (owner 2026-10-18: "roughly around the same treatment"), and picking's Refund ₱X (owner 2026-10-19) */
 .lv .o-top #orderRefund.primary { position: relative; border-radius: 999px; padding: 0 18px; }
-.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary) { background: var(--accent) linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%); color: var(--accent-ink);
+:is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab) { background: var(--accent) linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%); color: var(--accent-ink);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px rgb(255 255 255 / .12), 0 2px 8px -2px rgb(0 0 0 / .3); -webkit-backdrop-filter: none; backdrop-filter: none; }
-.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary):active { background-color: var(--accent-pressed); }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn), :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) {   /* liquid glass press, app.js sets --lg-* */
+:is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab):active { background-color: var(--accent-pressed); }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn), :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) {   /* liquid glass press, app.js sets --lg-* */
   touch-action: none; transition: transform .9s var(--lg-spring), background-color .2s, opacity .18s;   /* opacity: Sell's ☰ fades with the drawer */
   /* one transform at rest and pressed, the drag's angle kept after release: the spring wobbles along the way it was pulled (owner 2026-10-18) */
   transform: translate(var(--lg-x, 0px), var(--lg-y, 0px)) rotate(var(--lg-a, 0rad)) scale(calc(1 + var(--lg-p, 0) + var(--lg-s, 0)), calc(1 + var(--lg-p, 0) - var(--lg-s, 0) / 2)) rotate(calc(-1 * var(--lg-a, 0rad)));
   --lg-spring: linear(0, .076, .268, .521, .786, 1.021, 1.199, 1.307, 1.346, 1.326, 1.263, 1.177, 1.085, 1.002, .937, .897, .881, .886, .906, .935, .967, .996, 1.019, 1.034, 1.041, 1.04, 1.034, 1.024, 1.013, 1.002, .994, .989, .986, .986, .988, .991, 1); }   /* a damped spring: lets go with a small jiggle (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack) > *, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary) > *, #catalogSearchRow > #sidebarToggle > *, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack) > *, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab) > *, #catalogSearchRow > #sidebarToggle > *, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
 :where(.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)) { position: relative; z-index: 1; }   /* swells over the search, not under it (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)::after, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"])::after {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"])::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .4s;
   background: radial-gradient(circle at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .35), rgb(255 255 255 / 0) 70%); }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on {
   transition-duration: .15s; transition-timing-function: ease-out; --lg-p: .08; }
 #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on { --lg-p: .01; }   /* the search swells 3px, as Messages' (owner 2026-10-18 photos) */
 #catalogSearchRow > .search-wrap:not(.vs-search)::after { z-index: 1; border-radius: 999px; background: radial-gradient(circle 40px at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .3), rgb(255 255 255 / 0)); }   /* a hand-sized light, not one as wide as the bar */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on::after, .lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on::after { opacity: 1; transition-duration: .1s; }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on::after { opacity: 1; transition-duration: .1s; }
 .lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* the last row clears + */
 /* the list runs up under the search, the bar and the clock, a frost on top fading down into it (owner 2026-10-18, iOS 26's scroll edge,
    the Claude app's top); at rest the first row still starts under the bar. --head-h: the head's height, set by app.js */
@@ -8301,7 +8307,7 @@ body.hairlines .lv :is(.rp-body, #shiftBody, #shiftPastBody) .card.fc { border-c
 @media (prefers-reduced-motion: reduce) { .lv .rp-body, .lv .rp-col i, .lv .rp-meter i { animation: none !important; } }
 /* Shift (owner 2026-10-15): Start / Close shift floats bottom right like Items' +; Past shifts is its own page, from the clock */
 .lv .sh-page[hidden] { display: none; }
-.lv .sh-fab { width: auto; height: 48px; padding: 0 22px; border-radius: 24px; font-size: 15px; font-weight: 550; white-space: nowrap; }
+:is(.lv, .esheet) .sh-fab { width: auto; height: 48px; padding: 0 22px; border-radius: 24px; font-size: 15px; font-weight: 550; white-space: nowrap; }
 .lv #shiftFab .out { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }   /* the old words, shrinking out over the new (shiftFabSay) */
 .lv #shiftBody { display: grid; gap: 12px; padding-bottom: calc(88px + var(--ph-safe, 0px)); }   /* the last row clears the button */
 .lv .fr.add > .chev { margin-left: auto; }

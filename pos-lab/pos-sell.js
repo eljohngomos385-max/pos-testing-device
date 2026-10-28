@@ -1333,7 +1333,7 @@ function drawEditSheet() {
   const w = o.kind === 'mods' && (o.at + 1) / o.qs.length;
   const prog = w ? `<div class="es-prog" aria-hidden="true"><i style="--w:${w};--was:${o.w ?? w}"></i></div>` : '';
   if (w) o.w = w;
-  card.innerHTML = prog + clr + esFrame(head, rows, side, left + (list ? '<button type="button" class="ph-bar" data-done>Done</button>' : o.kind === 'mods' ? esModsFoot(o)
+  card.innerHTML = prog + clr + esFrame(head, rows, side, left + (list ? `<button type="button" class="${matchMedia('(max-width: 720px)').matches ? 'ph-bar' : 'fab sh-fab'}" data-done>Done</button>` : o.kind === 'mods' ? esModsFoot(o)
     : o.kind === 'price' ? `<button type="button" class="es-ink" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
     : o.f ? `<button type="button" class="es-ink" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : '<button type="button" class="es-ink" data-close>Done</button>'),   // a 0 discount waits, as the price ask's Add does
   `${list ? ' fill' : o.kind === 'price' ? ' ask' : ''}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
