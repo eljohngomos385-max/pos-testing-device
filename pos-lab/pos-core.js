@@ -912,6 +912,7 @@ function switchView(view) {
   const fromCheckout = state.view === 'checkout';
   if (view !== 'orders' && state.ordersCustomer) ordersFor('');
   if (state.view === 'reports' && view !== 'reports') $('.view-reports .c-scroll').scrollTop = 0;   // while still shown: Safari puts a hidden scroller's place back on show, over the reset below (owner 2026-10-19)
+  if (state.view === 'checkout' && view !== 'checkout') $('.view-checkout .co-stage').scrollTop = 0;   // the same rule for the checkout's stage (owner 2026-10-29)
   state.view = view;
   if (view !== 'items') addPickOff();   // Add tile's list ends with the page
   if (view !== 'sell') closeBarcodeScanner();   // the tablet's ☰ and Check out stay in reach while it scans
@@ -933,7 +934,14 @@ function switchView(view) {
   if (view === 'customers') renderCustomers();
   if (view === 'shift') shiftPast(false);   // opens on the drawer, not Past shifts
   if (view === 'reports') { $('.view-reports .c-scroll').scrollTop = reportsView.y = 0; renderReports(); }   // opens at the top; Day | Week | Month keeps the place (reportsGo)
-  if (view === 'checkout') renderCheckout();
+  // every visit opens at the top: the stage kept the last visit's place (owner 2026-10-29). The rAF is for Safari,
+  // which can put a hidden scroller's place back on its own layout pass after this line has already run.
+  if (view === 'checkout') {
+    renderCheckout();
+    const stage = $('.view-checkout .co-stage');
+    stage.scrollTop = 0;
+    requestAnimationFrame(() => { stage.scrollTop = 0; });
+  }
 }
 
 // Checkout keeps the sale's sidebar on screen (Simplified 2, cart-lab-checkout-2.js). The pane covers only what is

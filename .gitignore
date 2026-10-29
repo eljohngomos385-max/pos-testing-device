@@ -24,3 +24,7 @@ nul
 
 # Python bytecode
 __pycache__/
+
+# pos-thin is a scratch copy of pos-lab: its img/ is a junction to pos-lab/img,
+# not a second 120 MB of photos. Serving it still reads through the junction.
+/pos-thin/img/

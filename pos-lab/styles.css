@@ -8990,3 +8990,37 @@ body.light-theme { --pop-drop: drop-shadow(0 20px 50px rgb(0 0 0 / .15)) drop-sh
 body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
 #pinModal:not(.pin-lock) .pin-pad { padding: 28px 24px 14px; }
 #pinModal:not(.pin-lock) .pin-cancel { align-self: stretch; height: 48px; margin-top: 22px; border-radius: 999px; font-size: 15px; font-weight: 590; }
+
+/* ============================================================
+   the two bar controls, final (owner 2026-10-29).
+   The Items switch (#itemsKinds, phone) and Reports' Day | Week | Month capsule
+   (.rp-units). The app's own rules above stay untouched; this block only re-points
+   their numbers. Delete it and the bars are the 40 / 36 glass ones again.
+   The owner's pick: 28 tall for both, 12.5 words, the capsule's ends level with the
+   cards. The sliders that chose these numbers live in the pos-thin copy only —
+   nothing here moves at runtime; raise --try-pill-bleed to 12 for screen to screen.
+   ============================================================ */
+:root {
+  --try-pill-h: 28px;        /* both bars: the height */
+  --try-pill-fs: 12.5px;     /* both bars: the words */
+  --try-pill-pad: 3px;       /* the ring between the glass edge and the pill inside */
+  --try-pill-side: 20px;     /* Reports only: the gap either side of each word */
+  --try-pill-bleed: 0px;     /* 0: the capsule's ends line up with the cards. Raise it (12) to run past the page to the screen's edges */
+}
+
+/* Items: the glass bar and the words inside it are one height. Phone only: the iPad keeps its 40 bar beside the search (owner 2026-10-29) */
+@media (max-width: 720px) {
+  .lv #itemsBar { height: var(--try-pill-h); }
+  .lv #itemsKinds { height: var(--try-pill-h); padding: var(--try-pill-pad); }
+  .lv #itemsKinds button { height: calc(var(--try-pill-h) - var(--try-pill-pad) * 2); font-size: var(--try-pill-fs); }
+  .lv #itemsKinds.slid::before { top: var(--try-pill-pad); bottom: var(--try-pill-pad); }
+}
+
+/* Reports: the capsule, its ends on the cards' line (styles.css 8191-8199) */
+.lv .kinds.rp-units { width: auto; max-width: none; justify-self: stretch;
+  height: var(--try-pill-h); padding: var(--try-pill-pad); }
+.lv .kinds.rp-units button { padding: 0 var(--try-pill-side); font-size: var(--try-pill-fs); }
+.lv .kinds.rp-units.slid::before { top: var(--try-pill-pad); bottom: var(--try-pill-pad); }
+@container pv (max-width: 720px) {
+  .lv .kinds.rp-units { margin-inline: calc(var(--try-pill-bleed) * -1); }
+}

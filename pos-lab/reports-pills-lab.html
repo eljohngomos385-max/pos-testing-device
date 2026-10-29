@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#F2F2F2" />
+<title>Reports capsule + Items switch — thinner</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=670" />
+<style>
+/* ============================================================================
+   Two controls only, copied out of the app, so we can edit them here:
+     1. Items switch  — pos-lab/index.html #itemsBar + #itemsKinds (phone)
+     2. Reports capsule — pos-lab/index.html #reportsUnits (.kinds.rp-units)
+   The declarations below are the phone values from styles.css: 7632-7652 (.kinds),
+   7913-7916 and 8000-8023 (#itemsKinds), 8186-8199 (.rp-units). Where this file
+   and styles.css disagree, styles.css is the app — this page is the try.
+   Left column = the app now. Right column = the copy the sliders move.
+   ============================================================================ */
+
+/* the workspace: the app's canvas, scrolling (styles.css pins body to 100dvh) */
+html, body.lab-page { height: auto; min-height: 100dvh; overflow: auto; }
+body.lab-page { background: var(--canvas, var(--bg)); }
+
+.lab { max-width: 1180px; margin: 0 auto; padding: 20px 20px 64px; }
+
+/* ---------- toolbar ---------- */
+.lab-bar { position: sticky; top: 0; z-index: 9; display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
+  margin: 0 -20px 22px; padding: 14px 20px; background: color-mix(in srgb, var(--canvas, var(--bg)) 88%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6); backdrop-filter: blur(16px) saturate(1.6); border-bottom: 1px solid var(--line); }
+.lab-bar h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.2px; }
+.lab-bar p { margin: 2px 0 0; color: var(--ink-secondary); font-size: 13px; }
+.lab-bar .grow { flex: 1; }
+
+.ctl { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; color: var(--ink-secondary); }
+.ctl > b { flex: none; font-weight: 550; color: var(--ink); }
+.radios { display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 999px; background: rgb(118 118 128 / .14); }
+body:not(.light-theme) .radios { background: rgb(118 118 128 / .26); }
+.radios button { height: 26px; padding: 0 12px; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 550; color: var(--ink-secondary); }
+.radios button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .08), 0 0 0 .5px rgb(0 0 0 / .06); }
+body:not(.light-theme) .radios button[aria-pressed="true"] { background: var(--surface-hover); box-shadow: none; }
+
+.slide { display: flex; align-items: center; gap: 10px; }
+.slide input { width: 132px; max-width: 100%; min-width: 0; accent-color: #3E7BE0; }
+.slide output { min-width: 46px; font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 550; color: var(--ink); }
+.reset { flex: none; height: 30px; padding: 0 12px; border-radius: 999px; background: var(--bg-soft); color: var(--ink); font: inherit; font-size: 12px; font-weight: 550; }
+
+/* ---------- the two columns ---------- */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+@media (max-width: 900px) { .pair { grid-template-columns: 1fr; } }
+
+.col-h { display: flex; align-items: baseline; gap: 10px; margin: 0 0 8px 2px; }
+.col-h h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.col-h span { color: var(--ink-tertiary); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* the phone screen: 390 wide, the app's page colour and its 12px page inset */
+.phone { width: 390px; max-width: 100%; padding: 12px; border-radius: 26px; background: var(--bg); border: 1px solid var(--line);
+  display: grid; gap: 10px; box-sizing: border-box; }
+.phone .cap { margin: 2px 2px 0; color: var(--ink-tertiary); font-size: 11px; font-weight: 550; text-transform: uppercase; letter-spacing: .04em; }
+.phone .pair-in { display: grid; gap: 12px; }
+
+/* the material the two controls read (styles.css 8026-8031, copied so the page stands alone) */
+.phone { --rl-ease: cubic-bezier(.2, .8, .2, 1);
+  --glass: color-mix(in srgb, var(--bg) 70%, transparent);
+  --glass-ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
+  --pill-ring: 0 1px 2px rgb(0 0 0 / .15), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .05);
+  --seg: rgb(118 118 128 / .24); --seg-on: var(--surface-hover); }
+body.light-theme .phone { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+  --pill-ring: 0 1px 2px rgb(0 0 0 / .03), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .4);
+  --seg: rgb(118 118 128 / .12); --seg-on: var(--surface-2); }
+
+/* ============ 1. the Items switch ============ */
+/* now: a 40 glass bar; the words are 32 inside it; the picked word sits in a pill
+   (#itemsBar 8001 + #itemsKinds 8003-8016) */
+.ik-bar { border-radius: 999px; overflow: hidden; background: var(--glass); box-shadow: var(--glass-ring);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+.ik { position: relative; display: flex; height: var(--i-h); padding: var(--i-pad); gap: 0;
+  overflow-x: auto; scrollbar-width: none; touch-action: pan-x;
+  --fl: 0px; --fr: 0px;   /* app.js fades an edge only when the words run out of room; five words fit at 13 */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--fl), #000 calc(100% - var(--fr)), transparent); }
+.ik::-webkit-scrollbar { display: none; }
+.ik button { flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  height: calc(var(--i-h) - var(--i-pad) * 2); padding: 0 6px; border-radius: 999px; background: none;
+  color: var(--ink-secondary); font-family: inherit; font-size: var(--i-fs); font-weight: 400; white-space: nowrap;
+  transition: color .2s; }
+.ik button.cur { color: var(--ink); font-weight: 550; background: var(--rl-track); box-shadow: var(--pill-ring); touch-action: none; }   /* before the first slide */
+.ik.slid button.cur { background: none; box-shadow: none; }
+.ik.slid::before { content: ''; position: absolute; top: var(--i-pad); bottom: var(--i-pad); left: 0; width: var(--w);
+  transform: translateX(var(--x)); border-radius: 999px; background: var(--rl-track); box-shadow: var(--pill-ring);
+  transition: transform .28s var(--rl-ease), width .28s var(--rl-ease), scale .2s var(--rl-ease); }
+.ik.press::before { scale: .95; }
+.ik.held::before { transition: none; }
+
+/* ============ 2. the Reports capsule ============ */
+/* now: 36 tall, 2 padding, the words 28 apart, glass, centred, equal columns so
+   the middle word sits dead centre (8191-8199) */
+.rup-wrap { display: grid; }
+.rup { position: relative; justify-self: center; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  width: fit-content; max-width: 100%; height: var(--r-h); margin: 0; padding: var(--r-pad);
+  border-radius: 999px; background: var(--glass); box-shadow: var(--glass-ring);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+.rup button { padding: 0 var(--r-side); border-radius: 999px; background: none; color: var(--ink-secondary);
+  font-family: inherit; font-size: var(--r-fs); font-weight: 550; white-space: nowrap; transition: color .2s; }
+.rup button.cur { color: var(--ink); background: var(--rl-track); box-shadow: var(--pill-ring); }
+.rup.slid button.cur { background: none; box-shadow: none; }
+.rup.slid::before { content: ''; position: absolute; top: var(--r-pad); bottom: var(--r-pad); left: 0; width: var(--w);
+  transform: translateX(var(--x)); border-radius: 999px; background: var(--rl-track); box-shadow: var(--pill-ring);
+  transition: transform .28s var(--rl-ease), width .28s var(--rl-ease), scale .2s var(--rl-ease); }
+.rup.press::before { scale: .95; }
+.rup.held::before { transition: none; }
+
+/* the width question: hug (the app) · full (the page's own width) · edge (screen to screen) */
+.phone[data-w="full"] .rup { justify-self: stretch; width: auto; }
+.phone[data-w="edge"] .rup { justify-self: stretch; width: auto; margin-inline: calc(var(--pg) * -1); }
+.phone { --pg: 12px; }
+
+/* the material question for the Reports capsule only: the app's glass, or Screen Time's flat track */
+.phone[data-mat="flat"] .rup { background: var(--seg); box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none; }
+.phone[data-mat="flat"] .rup button.cur { background: var(--seg-on); box-shadow: 0 1px 2px rgb(0 0 0 / .07); }
+.phone[data-mat="flat"] .rup.slid::before { background: var(--seg-on); box-shadow: 0 1px 2px rgb(0 0 0 / .07); }
+
+/* ---------- the now copy: the app's own numbers, untouched by the sliders ---------- */
+.phone.now { --i-h: 40px; --i-pad: 4px; --i-fs: 13px; --r-h: 36px; --r-pad: 2px; --r-side: 28px; --r-fs: 13px; }
+
+/* ---------- the copy we edit ---------- */
+/* EDIT HERE: the two heights are the sliders; everything else follows them */
+.phone.thin { --i-h: 34px; --i-pad: 3px; --i-fs: 13px;
+  --r-h: 30px; --r-pad: 2px; --r-side: 20px;
+  --r-fs: clamp(11px, calc(var(--r-h) * .42), 13.5px); }
+
+.note { margin: 30px 2px 0; padding-top: 18px; border-top: 1px solid var(--line); color: var(--ink-secondary); font-size: 13px; line-height: 1.6; }
+.note b { color: var(--ink); font-weight: 550; }
+.note code { padding: 1px 5px; border-radius: 5px; background: var(--bg-soft); font-size: 12px; }
+
+/* a phone opens this page too: one column, the tools in short rows, nothing off the edge
+   (last in the sheet: it has to beat the base .phone width above) */
+@media (max-width: 640px) {
+  .lab { padding: 14px 12px 48px; }
+  .lab-bar { position: static; margin: 0 -12px 16px; padding: 12px; gap: 12px; }
+  .lab-bar h1 { font-size: 16px; }
+  .ctl.slide { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; width: 100%; }
+  .ctl.slide input { width: 100%; }
+  .radios button { padding: 0 9px; }
+  .phone { width: 100%; padding: 10px; }
+}
+</style>
+</head>
+<body class="lab-page">
+<div class="lab">
+
+  <div class="lab-bar">
+    <div>
+      <h1>Reports capsule + Items switch — thinner</h1>
+      <p>Left is the app now. Right is the copy: the sliders move only the right side.</p>
+    </div>
+    <div class="grow"></div>
+
+    <div class="ctl"><b>Theme</b>
+      <div class="radios" id="theme">
+        <button type="button" data-theme="light" aria-pressed="true">Light</button>
+        <button type="button" data-theme="dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+
+    <div class="ctl"><b>Width</b>
+      <div class="radios" id="width">
+        <button type="button" data-w="hug" aria-pressed="true">Hug</button>
+        <button type="button" data-w="full" aria-pressed="false">Full</button>
+        <button type="button" data-w="edge" aria-pressed="false">Edge</button>
+      </div>
+    </div>
+
+    <div class="ctl"><b>Material</b>
+      <div class="radios" id="mat">
+        <button type="button" data-mat="glass" aria-pressed="true">Glass</button>
+        <button type="button" data-mat="flat" aria-pressed="false">Flat</button>
+      </div>
+    </div>
+
+    <div class="ctl slide"><b>Items bar</b><input id="hItems" type="range" min="28" max="44" step="1" value="34"><output id="hItemsOut">34</output></div>
+    <div class="ctl slide"><b>Reports</b><input id="hReports" type="range" min="24" max="40" step="1" value="30"><output id="hReportsOut">30</output></div>
+    <button type="button" class="reset" id="reset">Reset</button>
+  </div>
+
+  <div class="pair">
+
+    <!-- ======= now ======= -->
+    <div class="col">
+      <div class="col-h"><h2>Now</h2><span id="nowSizes">Items 40 · Reports 36</span></div>
+      <div class="phone now">
+        <div class="cap">Items · five words, the picked one in a pill</div>
+        <div class="ik-bar"><div class="ik" id="ikNow" role="tablist" aria-label="Show" data-attr="kind">
+          <button type="button" role="tab" class="cur" aria-selected="true" data-kind="items">Items</button>
+          <button type="button" role="tab" aria-selected="false" data-kind="cats">Categories</button>
+          <button type="button" role="tab" aria-selected="false" data-kind="mods">Modifiers</button>
+          <button type="button" role="tab" aria-selected="false" data-kind="addons">Add-ons</button>
+          <button type="button" role="tab" aria-selected="false" data-kind="discs">Discounts</button>
+        </div></div>
+
+        <div class="cap" style="margin-top:6px">Reports · the period</div>
+        <div class="rup-wrap"><section class="rup" id="rupNow" role="tablist" aria-label="Period" data-attr="unit">
+          <button type="button" role="tab" data-unit="day" aria-selected="false">Day</button>
+          <button type="button" role="tab" data-unit="week" aria-selected="false">Week</button>
+          <button type="button" role="tab" class="cur" aria-selected="true" data-unit="month">Month</button>
+        </section></div>
+      </div>
+    </div>
+
+    <!-- ======= the copy ======= -->
+    <div class="col">
+      <div class="col-h"><h2>Thin</h2><span id="thinSizes">Items 34 · Reports 30</span></div>
+      <div class="phone thin" id="thin" data-w="edge" data-mat="glass">
+        <div class="cap">Items</div>
+        <div class="ik-bar"><div class="ik" id="ikThin" role="tablist" aria-label="Show" data-attr="kind">
+          <button type="button" role="tab" class="cur" aria-selected="true" data-kind="items">Items</button>
+          <button type="button" role="tab" aria-selected="false" data-kind="cats">Categories</button>
+          <button type="button" role="tab" aria-selected="false" data-kind="mods">Modifiers</button>
+          <button type="button" role="tab" aria-selected="false" data-kind="addons">Add-ons</button>
+          <button type="button" role="tab" aria-selected="false" data-kind="discs">Discounts</button>
+        </div></div>
+
+        <div class="cap" style="margin-top:6px">Reports</div>
+        <div class="rup-wrap"><section class="rup" id="rupThin" role="tablist" aria-label="Period" data-attr="unit">
+          <button type="button" role="tab" data-unit="day" aria-selected="false">Day</button>
+          <button type="button" role="tab" data-unit="week" aria-selected="false">Week</button>
+          <button type="button" role="tab" class="cur" aria-selected="true" data-unit="month">Month</button>
+        </section></div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="note">
+    <b>What the thin copy changes.</b> Items: the bar thins (the app's is <code>40</code>), the words stay 13 and the pill
+    keeps working — drag it between the five words. Reports: the capsule thins (the app's is <code>36</code>) and the sides
+    come in (<code>28 → 20</code>), so the words sit closer and the whole thing reads shorter; the word size steps down with
+    the height. <b>Width</b>: <code>Hug</code> is what the app does today, <code>Full</code> takes the page's width,
+    <code>Edge</code> runs screen to screen. <b>Material</b>: <code>Glass</code> keeps the app's bar, <code>Flat</code> is
+    Screen Time's grey track (the picked word is a white capsule on it). Check against the reference with
+    <code>Edge</code> + <code>Flat</code> + <code>26</code>. The heights in the header are measured, not typed.
+    <br><br>
+    Source of truth stays <code>styles.css</code> 7632-7652, 7913-7916 + 8000-8023 (<code>#itemsKinds</code>) and
+    8186-8199 (<code>.rp-units</code>); this page carries the phone values only. Nothing in the app was touched.
+  </p>
+
+</div>
+
+<script>
+  const $ = (s, r = document) => r.querySelector(s);
+
+  // pos-items.js:543 — the pill moves from the old tab to the key's, placed by --x / --w; until the first
+  // switch (and after a resize) the tab paints its own background instead.
+  function slidePill(box, attr, key) {
+    const place = b => { box.style.setProperty('--x', `${b.offsetLeft}px`); box.style.setProperty('--w', `${b.offsetWidth}px`); };
+    const shown = box.offsetWidth > 0;
+    if (!shown) box.classList.remove('slid');
+    else if (!box.classList.contains('slid')) { place(box.querySelector('.cur')); box.classList.add('slid'); box.offsetWidth; }
+    box.querySelectorAll(`[data-${attr}]`).forEach(b => { b.classList.toggle('cur', b.dataset[attr] === key); b.setAttribute('aria-selected', b.dataset[attr] === key); });
+    if (shown) place(box.querySelector('.cur'));
+  }
+
+  // pos-items.js:555 — Apple's segmented control: press the pill, it rides the finger, let go and it settles.
+  function wireSegDrag(box, attr) {
+    let drag = null;
+    const tabs = () => [...box.querySelectorAll(`[data-${attr}]`)];
+    const mid = b => b.offsetLeft + b.offsetWidth / 2;
+    const nearest = c => tabs().reduce((a, b) => (Math.abs(mid(b) - c) < Math.abs(mid(a) - c) ? b : a));
+    box.addEventListener('pointerdown', (e) => {
+      const b = e.target.closest(`[data-${attr}]`);
+      if (e.button || !b?.classList.contains('cur')) return;
+      slidePill(box, attr, b.dataset[attr]);
+      drag = { id: e.pointerId, grab: e.clientX - mid(b), c: mid(b) };
+      box.setPointerCapture(e.pointerId);
+      box.classList.add('press');
+    });
+    box.addEventListener('pointermove', (e) => {
+      if (drag?.id !== e.pointerId) return;
+      const bs = tabs(), cs = bs.map(mid);
+      const c = drag.c = Math.min(Math.max(e.clientX - drag.grab, cs[0]), cs.at(-1));
+      const i = Math.max(0, cs.findIndex((m, j) => c <= cs[j + 1]));
+      const t = cs[i + 1] === undefined ? 0 : (c - cs[i]) / (cs[i + 1] - cs[i]);
+      const w = bs[i].offsetWidth + t * ((bs[i + 1] || bs[i]).offsetWidth - bs[i].offsetWidth);
+      box.classList.add('held');
+      box.style.setProperty('--x', `${c - w / 2}px`); box.style.setProperty('--w', `${w}px`);
+    });
+    const end = (e) => {
+      if (drag?.id !== e.pointerId) return;
+      const b = nearest(drag.c); drag = null;
+      box.classList.remove('press', 'held');
+      if (e.type === 'pointerup' && !b.classList.contains('cur')) b.click();
+      else slidePill(box, attr, box.querySelector('.cur').dataset[attr]);
+    };
+    box.addEventListener('pointerup', end);
+    box.addEventListener('pointercancel', end);
+  }
+
+  document.querySelectorAll('.ik, .rup').forEach(box => {
+    const attr = box.dataset.attr;
+    box.addEventListener('click', (e) => {
+      const b = e.target.closest(`[data-${attr}]`);
+      if (b) slidePill(box, attr, b.dataset[attr]);
+    });
+    wireSegDrag(box, attr);
+  });
+
+  // ---------- the controls ----------
+  const thin = $('#thin'), hItems = $('#hItems'), hReports = $('#hReports');
+  const DEFAULTS = { hItems: 34, hReports: 30, w: 'edge', mat: 'glass', theme: 'light' };
+  // a state can be linked: ?theme=dark&w=edge&mat=flat&items=30&reports=26
+  const q = new URLSearchParams(location.search);
+  const pick = (k, ok, d) => (ok.includes(q.get(k)) ? q.get(k) : d);
+  DEFAULTS.w = pick('w', ['hug', 'full', 'edge'], DEFAULTS.w);
+  DEFAULTS.mat = pick('mat', ['glass', 'flat'], DEFAULTS.mat);
+  DEFAULTS.theme = pick('theme', ['light', 'dark'], DEFAULTS.theme);
+  ['items', 'reports'].forEach((k, i) => {
+    const el = i ? hReports : hItems, v = parseInt(q.get(k), 10);
+    if (Number.isFinite(v)) el.value = Math.min(+el.max, Math.max(+el.min, v));
+  });
+  thin.dataset.w = DEFAULTS.w; thin.dataset.mat = DEFAULTS.mat;
+
+  const pressed = (group, key, value) => group.querySelectorAll('button')
+    .forEach(b => b.setAttribute('aria-pressed', String(b.dataset[key] === value)));
+
+  function sizes() {
+    const ik = $('#ikThin'), rup = $('#rupThin');
+    $('#nowSizes').textContent = `Items ${$('#ikNow').offsetHeight} · Reports ${$('#rupNow').offsetHeight}`;
+    $('#thinSizes').textContent = `Items ${ik.offsetHeight} · Reports ${rup.offsetHeight}`;
+  }
+
+  function apply() {
+    thin.style.setProperty('--i-h', `${hItems.value}px`);
+    thin.style.setProperty('--r-h', `${hReports.value}px`);
+    $('#hItemsOut').value = hItems.value;
+    $('#hReportsOut').value = hReports.value;
+    requestAnimationFrame(sizes);
+  }
+
+  hItems.addEventListener('input', apply);
+  hReports.addEventListener('input', apply);
+
+  $('#width').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-w]'); if (!b) return;
+    pressed($('#width'), 'w', b.dataset.w); thin.dataset.w = b.dataset.w;
+    ['#ikThin', '#rupThin'].forEach(s => { const box = $(s); box.classList.remove('slid'); box.style.removeProperty('--x'); box.style.removeProperty('--w'); });
+  });
+  $('#mat').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-mat]'); if (!b) return;
+    pressed($('#mat'), 'mat', b.dataset.mat); thin.dataset.mat = b.dataset.mat;
+  });
+  $('#theme').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-theme]'); if (!b) return;
+    pressed($('#theme'), 'theme', b.dataset.theme);
+    document.body.classList.toggle('light-theme', b.dataset.theme === 'light');
+    requestAnimationFrame(sizes);
+  });
+  $('#reset').addEventListener('click', () => {
+    hItems.value = DEFAULTS.hItems; hReports.value = DEFAULTS.hReports;
+    thin.dataset.w = DEFAULTS.w; thin.dataset.mat = DEFAULTS.mat;
+    pressed($('#width'), 'w', DEFAULTS.w); pressed($('#mat'), 'mat', DEFAULTS.mat);
+    pressed($('#theme'), 'theme', DEFAULTS.theme);
+    document.body.classList.add('light-theme');
+    apply();
+  });
+
+  document.body.classList.toggle('light-theme', DEFAULTS.theme === 'light');   // the owner's screenshot is the light theme
+  pressed($('#width'), 'w', DEFAULTS.w);
+  pressed($('#mat'), 'mat', DEFAULTS.mat);
+  pressed($('#theme'), 'theme', DEFAULTS.theme);
+  apply();
+  addEventListener('resize', () => requestAnimationFrame(sizes));
+</script>
+</body>
+</html>
