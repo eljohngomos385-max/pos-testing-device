@@ -33,14 +33,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=678" />
+  <link rel="stylesheet" href="styles.css?v=684" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
   <div id="app" class="sidebar-collapsed">
 
     <!-- ============== SIDEBAR ============== -->
     <aside class="sidebar">
-      <div class="side-top"><span class="side-ttl">EJ Hardware</span><button type="button" id="sellSwitch" aria-label="All items, tap for My page"></button><button type="button" class="side-x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button></div>   <!-- phone: the Gemini drawer's title + close (owner 2026-10-17) -->
+      <div class="side-top"><span class="side-ttl">EJ Hardware</span><button type="button" class="cta-2" id="sellSwitch" aria-label="All items, tap for My page"></button><button type="button" class="side-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button></div>   <!-- phone: the Gemini drawer's title + close (owner 2026-10-17) -->
       <nav class="side-nav">
         <div class="side-grp">
         <button class="side-link active" data-view="sell">
@@ -86,7 +86,7 @@
         </button>
         </div>
         <div class="side-grp">
-        <button class="side-link" data-view="settings">
+        <button class="side-link cta-2" data-view="settings">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M10.3 3.4a1.8 1.8 0 0 1 3.4 0l.3.8a1.8 1.8 0 0 0 2.4 1l.8-.4a1.8 1.8 0 0 1 2.4 2.4l-.4.8a1.8 1.8 0 0 0 1 2.4l.8.3a1.8 1.8 0 0 1 0 3.4l-.8.3a1.8 1.8 0 0 0-1 2.4l.4.8a1.8 1.8 0 0 1-2.4 2.4l-.8-.4a1.8 1.8 0 0 0-2.4 1l-.3.8a1.8 1.8 0 0 1-3.4 0l-.3-.8a1.8 1.8 0 0 0-2.4-1l-.8.4a1.8 1.8 0 0 1-2.4-2.4l.4-.8a1.8 1.8 0 0 0-1-2.4l-.8-.3a1.8 1.8 0 0 1 0-3.4l.8-.3a1.8 1.8 0 0 0 1-2.4l-.4-.8a1.8 1.8 0 0 1 2.4-2.4l.8.4a1.8 1.8 0 0 0 2.4-1z"/><circle class="d" cx="12" cy="12" r="3"/></svg>
           <span>Settings</span>
         </button>
@@ -120,7 +120,7 @@
           <div class="catalog-wrap">
             <div class="catalog">
               <div class="search-row" id="catalogSearchRow">
-                <button class="ghost-icon" id="sidebarToggle" aria-label="Menu" title="Menu">
+                <button class="ghost-icon cta-2" id="sidebarToggle" aria-label="Menu" title="Menu">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
                     <line x1="4" y1="6" x2="20" y2="6"/>
                     <line x1="4" y1="12" x2="20" y2="12"/>
@@ -174,8 +174,8 @@
                   <div class="scan-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
                   <div class="scan-status" id="barcodeStatus" role="status">Starting camera...</div>
                 </div>
-                <button type="button" class="scan-btn" id="scanClose" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-                <button type="button" class="scan-btn" id="scanFlip" aria-label="Flip camera" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3M4 4v4h4M20 20v-4h-4"/></svg></button>
+                <button type="button" class="scan-btn cta-2" id="scanClose" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                <button type="button" class="scan-btn cta-2" id="scanFlip" aria-label="Flip camera" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3M4 4v4h4M20 20v-4h-4"/></svg></button>
                 <div class="scan-card" id="scanCard" hidden></div>
               </div>
             </div>
@@ -185,7 +185,7 @@
             <!-- New / Edit customer: the edit sheet's frame on the tablet, a page on the phone (owner 2026-10-08). The Customers
                  page moves it into its own pane (openCustomerEditModal) -->
             <div class="esheet cust-sheet" id="customerEditModal" role="dialog" aria-labelledby="customerEditTitle"><div class="es-card">
-              <button type="button" class="es-x" data-cust-close aria-label="Close"><svg class="ix" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><svg class="ib" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span class="xl">Back</span></button>
+              <button type="button" class="es-x cta-2" data-cust-close aria-label="Close"><svg class="ix" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><svg class="ib" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span class="xl">Back</span></button>
               <h2 class="cs-h" id="customerEditTitle">New customer</h2>
               <div class="cs-body"><div class="cs-in"><div id="custFields"></div></div></div><!-- bo-model CUSTOMER_FIELDS, the same form as the back office -->
               <div class="es-ft"><button type="button" class="es-ink cta" id="custSaveBtn">Save</button></div>
@@ -199,18 +199,18 @@
           <!-- The sale sidebar (cart-lab-stack-h.html): three slim cards -- who, the items, the money.
                Fulfilment and Discount share the money card's first row, half and half. -->
           <aside class="rail rail-h" id="side" aria-label="Receipt">
-            <div class="fs-top ag-top"><button type="button" class="fs-x" id="againX" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            <div class="fs-top ag-top"><button type="button" class="fs-x cta-2" id="againX" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
               <h2 id="againTitle"></h2><i></i></div><!-- the phone's Make another sheet (pos-sell openAgain) -->
             <section class="card who">
               <div class="c-row">
-                <button type="button" class="ph-back" id="cartBack" aria-label="Back to items">
+                <button type="button" class="ph-back cta-2" id="cartBack" aria-label="Back to items">
                   <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
                 </button>
-                <button type="button" class="cust" id="customerBtn" title="Change customer">
+                <button type="button" class="cust cta-2" id="customerBtn" title="Change customer">
                   <span id="customerLabel">Walk-in customer</span>
                   <svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
                 </button>
-                <button type="button" class="more" id="cartMoreBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Add note, save cart, print quote, lost sale, clear">
+                <button type="button" class="more cta-2" id="cartMoreBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Add note, save cart, print quote, lost sale, clear">
                   <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
                 </button>
               </div>
@@ -225,7 +225,7 @@
             <section class="card pay">
               <div class="opts" id="railOpts">
                 <div class="f-row" id="fulRow" role="group" aria-label="Fulfilment"></div>
-                <button type="button" class="d-row" id="cartDiscountBtn">
+                <button type="button" class="d-row cta-2" id="cartDiscountBtn">
                   <span id="cartDiscountLabel">Discount</span><span class="num" id="cartDiscountAmt"></span>
                   <svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
                 </button>
@@ -256,14 +256,14 @@
         <div class="ov" id="ordersView">
           <section class="o-main" aria-label="Receipt">
             <div class="o-top">
-              <button class="sq back" id="ordersBack" aria-label="Back to orders"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" id="ordersBack" aria-label="Back to orders"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <div class="ttl" id="orderTtl"></div>
               <div class="acts">
-                <button class="act cancel" id="orderCancel" title="Cancel" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Cancel</span></button>
-                <button class="act" id="orderPrint" title="Print receipt"><svg class="ic" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M7 14h10v6H7z"/></svg><span>Print receipt</span></button>
-                <button class="act" id="orderRefund" title="Refund"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg><span>Refund</span></button>
-                <button class="act" id="orderContinue" title="Continue in Sell" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Continue</span></button>
-                <button class="act icon" id="orderMore" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">
+                <button class="act cancel cta-2" id="orderCancel" title="Cancel" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Cancel</span></button>
+                <button class="act cta-2" id="orderPrint" title="Print receipt"><svg class="ic" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M7 14h10v6H7z"/></svg><span>Print receipt</span></button>
+                <button class="act cta-2" id="orderRefund" title="Refund"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg><span>Refund</span></button>
+                <button class="act cta-2" id="orderContinue" title="Continue in Sell" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Continue</span></button>
+                <button class="act icon cta-2" id="orderMore" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">
                   <svg class="ic" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
                 </button>
               </div>
@@ -272,11 +272,11 @@
           </section>
           <aside class="o-rail" aria-label="Orders">
             <div class="head">
-              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+              <button class="sq cta-2" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
               <h1 class="st-ttl ph-ttl">Orders</h1>   <!-- hidden: search sits up top beside ☰, as Items (owner 2026-10-18) -->
-              <button class="sq back cust-back" id="ordersCustBack" aria-label="Back to the customer" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2 cust-back" id="ordersCustBack" aria-label="Back to the customer" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <section class="card find" id="ordersFind">
                 <label>
                   <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
@@ -298,10 +298,10 @@
         <div class="iv" id="itemsView">
           <section class="page" aria-label="Items">
             <div class="head">
-              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+              <button class="sq cta-2" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
-              <button class="sq" id="itemsBack" aria-label="All lists" title="All lists"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq cta-2" id="itemsBack" aria-label="All lists" title="All lists"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl ph-ttl"><span id="itemsTtl">Items</span></h1>   <!-- the hub's title; the lists name themselves in the search -->
               <!-- which list: a glass bar; the words slide sideways inside it when they run out of room, as Safari's tab groups (owner's photo 2026-10-18) -->
               <div class="kbar" id="itemsBar"><section class="card kinds" id="itemsKinds" role="tablist" aria-label="Show">
@@ -329,13 +329,10 @@
           </section>
           <section class="editor" aria-label="Item editor">
             <div class="e-top">
-              <button class="sq back" id="itemBack" aria-label="Back to items" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" id="itemBack" aria-label="Back to items" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h2 class="fm-h" id="itemTitle"></h2>
               <section class="card find" id="itemFind" hidden><label><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="itemFindQ" type="text" placeholder="Search" autocomplete="off"><button class="x" id="itemFindX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></label><button class="more" id="itemFindFilter" aria-haspopup="menu" aria-expanded="false" aria-label="Filter items" title="Filter"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg></button></section>   <!-- a long tick list's search, up in the bar beside ‹ (owner 2026-10-20) -->
               <div class="acts">
-                <button class="act icon" id="itemMore" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">
-                  <svg class="ic" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
-                </button>
                 <button class="act primary cta" id="itemSave">Save</button>
               </div>
             </div>
@@ -353,11 +350,11 @@
           <!-- the Orders shape: name on top, Record payment and Edit where Orders has Print and Refund -->
           <section class="o-main" id="customerDetail" aria-label="Customer">
             <div class="o-top">
-              <button class="sq back" id="customersBack" aria-label="Back to customers"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" id="customersBack" aria-label="Back to customers"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <div class="ttl" id="customerTtl"></div>
               <div class="acts">
-                <button class="act" id="customerPay" title="Record payment" aria-haspopup="dialog" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg><span>Record payment</span></button>
-                <button class="act" id="customerEdit" title="Edit"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg><span>Edit</span></button>
+                <button class="act cta-2" id="customerPay" title="Record payment" aria-haspopup="dialog" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg><span>Record payment</span></button>
+                <button class="act cta-2" id="customerEdit" title="Edit"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg><span>Edit</span></button>
               </div>
             </div>
             <div class="c-scroll" id="customerBody"></div>
@@ -365,7 +362,7 @@
           <!-- the Orders rail: menu, search with + where Orders has Filter, one card of rows -->
           <aside class="o-rail" aria-label="Customers">
             <div class="head">
-              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+              <button class="sq cta-2" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
               <h1 class="st-ttl ph-ttl">Customers</h1>
@@ -389,24 +386,24 @@
         <div class="iv" id="shiftView">
           <section class="page sh-page" id="shiftPage" aria-label="Shift">
             <div class="head">
-              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+              <button class="sq cta-2" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
               <h1 class="st-ttl">Shift</h1>
-              <button class="sq sh-print" id="shiftPrint" data-sh="report" title="Print report" hidden>Print</button>
+              <button class="sq sh-print cta-2" id="shiftPrint" data-sh="report" title="Print report" hidden>Print</button>
             </div>
             <div class="c-scroll"><div class="c-body">
               <section class="kinds rp-units" id="shiftTabs" role="tablist" aria-label="Shift or cash">
                 <button type="button" role="tab" data-shtab="shift" class="cur" aria-selected="true">Shift</button>
                 <button type="button" role="tab" data-shtab="cash" aria-selected="false">Cash in &amp; out</button>
               </section>
-              <div id="shiftBody"></div>
+              <div class="sh-body" id="shiftBody"></div>
             </div></div>
             <button type="button" class="fab sh-fab cta" id="shiftFab"></button>
           </section>
           <section class="page sh-page" id="shiftPastPage" aria-label="Past shifts" hidden>
             <div class="head">
-              <button class="sq back" data-sh="back" aria-label="Back to the shift" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" data-sh="back" aria-label="Back to the shift" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl">Past shifts</h1>
             </div>
             <div class="c-scroll" id="shiftPastBody"></div>
@@ -424,7 +421,7 @@
         <div class="co" id="checkoutApp">
           <section class="co-pay" aria-label="Payment">
             <header class="co-top">
-              <button type="button" class="co-cancel" id="checkoutCancelBtn">
+              <button type="button" class="co-cancel cta-2" id="checkoutCancelBtn">
                 <svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span id="checkoutBackText">Cancel</span>
               </button>
             </header>
@@ -470,13 +467,13 @@
                 <h2 class="co-done-h" style="--i:1">Sale complete</h2>
                 <div class="co-done-chg" id="successChangeBlock" style="--i:2"><span>Change</span><span class="co-done-num num" id="successChange">₱0.00</span></div>
                 <div class="co-done-acts" style="--i:4">
-                  <button type="button" class="co-btn" id="successPrintBtn">Print receipt</button>
+                  <button type="button" class="co-btn cta-2" id="successPrintBtn">Print receipt</button>
                   <button type="button" class="co-btn primary cta" id="successNewSaleBtn">New sale</button>
                 </div>
               </div>
             </div>
             <!-- Phone: the receipt is a sheet; this opens it, where Check out sits -->
-            <button type="button" class="co-btn co-rcpt-btn" id="checkoutRcptBtn"><span>Show receipt</span></button>
+            <button type="button" class="co-btn co-rcpt-btn cta-2" id="checkoutRcptBtn"><span>Show receipt</span></button>
           </section>
           <aside class="co-items" aria-label="Items">
             <button type="button" class="co-cust" id="checkoutCustBtn" title="Change customer">
@@ -493,7 +490,7 @@
               </div>
             </div>
             <div class="co-rcpt" id="checkoutReceipt" aria-label="Receipt"></div>
-            <button type="button" class="co-rcpt-x" id="checkoutRcptClose" aria-label="Close receipt">
+            <button type="button" class="co-rcpt-x cta-2" id="checkoutRcptClose" aria-label="Close receipt">
               <svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
             </button>
           </aside>
@@ -507,11 +504,11 @@
         <div class="iv">
           <section class="page" aria-label="Reports">
             <div class="head">
-              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+              <button class="sq cta-2" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
               <h1 class="st-ttl">Reports</h1>
-              <button type="button" class="rp-now" hidden></button>
+              <button type="button" class="rp-now cta-3" hidden></button>
               <div class="rp-pin" id="reportsPin"></div>
             </div>
             <!-- reports-step-lab.html "Apple v3" (owner 2026-10-15): the Day | Week | Month capsule, centred (the pill slides,
@@ -537,7 +534,7 @@
         <div class="iv">
           <section class="page st-page" id="qrPage" aria-label="QR codes">
             <div class="head">
-              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+              <button class="sq cta-2" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
               <h1 class="st-ttl">QR codes</h1>
@@ -550,9 +547,9 @@
           </section>
           <section class="page st-page" id="qrTablePage" aria-label="Table" hidden>
             <div class="head">
-              <button class="sq back" id="qrBack" aria-label="Back to QR codes" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" id="qrBack" aria-label="Back to QR codes" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl" id="qrTitle"></h1>
-              <button type="button" class="sq st-save ty-edit-btn" id="qrPrint" aria-label="Print QR" title="Print"><svg class="ic" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg></button>
+              <button type="button" class="sq st-save ty-edit-btn cta-2" id="qrPrint" aria-label="Print QR" title="Print"><svg class="ic" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg></button>
             </div>
             <div class="c-scroll">
               <div class="c-body">
@@ -580,7 +577,7 @@
         <div class="iv">
           <section class="page st-page" id="settingsPage" aria-label="Settings">
             <div class="head">
-              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+              <button class="sq cta-2" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
               <h1 class="st-ttl">Settings</h1>
@@ -602,19 +599,19 @@
                 <h3 class="fc-t">Printing</h3>
                 <section class="card fc">
                   <button type="button" class="fr nav" data-pick="driver"><span class="lb">Printer</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
-                  <div class="fr" id="posScanRow" hidden><span class="lb">Find printer</span><span class="v"><button type="button" class="act" id="posScanBtn">Scan</button></span></div>
+                  <div class="fr" id="posScanRow" hidden><span class="lb">Find printer</span><span class="v"><button type="button" class="act cta-3" id="posScanBtn">Scan</button></span></div>
                   <div class="st-prn" id="posPrinterListRow" hidden>
                     <div class="prn-list" id="posPrinterList"></div>
                     <div class="prn-scan-status" id="posScanStatus" hidden></div>
                   </div>
                   <label class="fr" id="posNetRow" hidden><span class="lb">Printer IP<small>On the printer's status sheet</small></span><span class="v"><input class="in st-ip" id="posPrinterIp" inputmode="decimal" autocomplete="off" placeholder="192.168.1.50"></span></label>
-                  <div class="fr" id="posBtRow" hidden><span class="lb">Bluetooth printer<small id="posBtStatus">Not paired</small></span><span class="v"><button type="button" class="act" id="posBtPairBtn">Pair</button></span></div>
+                  <div class="fr" id="posBtRow" hidden><span class="lb">Bluetooth printer<small id="posBtStatus">Not paired</small></span><span class="v"><button type="button" class="act cta-3" id="posBtPairBtn">Pair</button></span></div>
                   <button type="button" class="fr nav" data-pick="width"><span class="lb">Paper width</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <label class="fr"><span class="lb">Auto-cut paper</span><span class="v"><input type="checkbox" class="sw" id="posPrintCut"></span></label>
                   <label class="fr"><span class="lb">Print delivery map</span><span class="v"><input type="checkbox" class="sw" id="posPrintMap"></span></label>
                   <label class="fr" id="posPrintOnSaleRow" hidden><span class="lb">Print on sale</span><span class="v"><input type="checkbox" class="sw" id="posPrintOnSale"></span></label>
-                  <div class="fr"><span class="lb">Test print</span><span class="v"><button type="button" class="act" id="posTestPrintBtn">Print</button></span></div>
-                  <div class="fr"><span class="lb">Test drawer</span><span class="v"><button type="button" class="act" id="posTestDrawerBtn">Open</button></span></div>
+                  <div class="fr"><span class="lb">Test print</span><span class="v"><button type="button" class="act cta-3" id="posTestPrintBtn">Print</button></span></div>
+                  <div class="fr"><span class="lb">Test drawer</span><span class="v"><button type="button" class="act cta-3" id="posTestDrawerBtn">Open</button></span></div>
                 </section>
                 <h3 class="fc-t">Store</h3>
                 <section class="card fc">
@@ -633,7 +630,7 @@
                 <!-- The account this POS is signed in with (owner 2026-10-13): Log out opens the sign-in page. Front end only for now -->
                 <h3 class="fc-t">Account</h3>
                 <section class="card fc">
-                  <div class="fr"><span class="lb" id="posAcctEmail">Account</span><span class="v"><button type="button" class="act" id="posLogOutBtn">Log out</button></span></div>
+                  <div class="fr"><span class="lb" id="posAcctEmail">Account</span><span class="v"><button type="button" class="act cta-3" id="posLogOutBtn">Log out</button></span></div>
                 </section>
               </div>
             </div>
@@ -641,7 +638,7 @@
           <!-- Settings › Payment types (owner 2026-10-13): its own page. A switch per type says if the checkout shows it (pos-settings.js) -->
           <section class="page st-page" id="payTypesPage" aria-label="Payment types" hidden>
             <div class="head">
-              <button class="sq back" id="payTypesBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" id="payTypesBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl">Payment types</h1>
             </div>
             <div class="c-scroll">
@@ -655,7 +652,7 @@
                Ask for › + Must fill in | Opens cash drawer | Delete (your own) (pos-settings.js openPayType) -->
           <section class="page st-page" id="payTypePage" aria-label="Payment type" hidden>
             <div class="head">
-              <button class="sq back" id="payTypeBack" aria-label="Back to payment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" id="payTypeBack" aria-label="Back to payment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl" id="ptTitle"></h1>
             </div>
             <div class="c-scroll">
@@ -680,7 +677,7 @@
           <!-- Ask for: its own page, like Settings' other choices: Nothing or a preset (pos-settings.js fills it from ASKS) -->
           <section class="page st-page" id="ptAskPage" aria-label="Ask for" hidden>
             <div class="head">
-              <button class="sq back" id="ptAskBack" aria-label="Back" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" id="ptAskBack" aria-label="Back" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl" id="ptAskTitle">Ask for</h1>
             </div>
             <div class="c-scroll">
@@ -692,7 +689,7 @@
           <!-- Payment types › Add (owner 2026-10-15): a page, not a pop-up -->
           <section class="page st-page" id="payTypeAddPage" aria-label="Add payment type" hidden>
             <div class="head">
-              <button class="sq back" id="payTypeAddBack" aria-label="Back to payment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" id="payTypeAddBack" aria-label="Back to payment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl">Add payment type</h1>
               <button type="button" class="act primary st-save cta" id="payTypeAddSave">Save</button>
             </div>
@@ -707,7 +704,7 @@
           <!-- Settings › Fulfilment types (owner 2026-10-16): Payment types' twin, plus the primary a sale starts on (pos-settings.js) -->
           <section class="page st-page" id="fulTypesPage" aria-label="Fulfilment types" hidden>
             <div class="head">
-              <button class="sq back" id="fulTypesBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" id="fulTypesBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl">Fulfilment types</h1>
             </div>
             <div class="c-scroll">
@@ -724,7 +721,7 @@
           <!-- One of your own fulfilment types (owner 2026-10-22): Show on the sale and a red Delete; the Primary has neither -->
           <section class="page st-page" id="ftTypePage" aria-label="Fulfilment type" hidden>
             <div class="head">
-              <button class="sq back" id="ftTypeBack" aria-label="Back to fulfilment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" id="ftTypeBack" aria-label="Back to fulfilment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl" id="ftTitle"></h1>
             </div>
             <div class="c-scroll">
@@ -736,7 +733,7 @@
           </section>
           <section class="page st-page" id="fulTypeAddPage" aria-label="Add fulfilment type" hidden>
             <div class="head">
-              <button class="sq back" id="fulTypeAddBack" aria-label="Back to fulfilment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" id="fulTypeAddBack" aria-label="Back to fulfilment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl">Add fulfilment type</h1>
               <button type="button" class="act primary st-save cta" id="fulTypeAddSave">Save</button>
             </div>
@@ -751,7 +748,7 @@
           <!-- Settings › one choice (owner 2026-10-15, "the Facebook route"): the row's word on top, its choices as ticks (pos-settings.js openPick) -->
           <section class="page st-page" id="pickPage" hidden>
             <div class="head">
-              <button class="sq back" id="pickBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <button class="sq back cta-2" id="pickBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
               <h1 class="st-ttl" id="pickTitle"></h1>
             </div>
             <div class="c-scroll">
@@ -771,7 +768,7 @@
       <div class="modal">
         <div class="modal-head">
           <h2>Select customer</h2>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+          <button class="ghost-icon close-x cta-2" data-close-modal aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
               <line x1="6" y1="6" x2="18" y2="18"/>
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -801,7 +798,7 @@
           </button>
           <div id="customerList"></div>
         </div>
-        <div class="pop-ft"><button type="button" class="secondary-btn" data-close-modal>Cancel</button></div>
+        <div class="pop-ft"><button type="button" class="secondary-btn cta-2" data-close-modal>Cancel</button></div>
       </div>
     </div>
 
@@ -810,7 +807,7 @@
       <div class="modal payment-modal">
         <div class="modal-head">
           <h2>Payment</h2>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+          <button class="ghost-icon close-x cta-2" data-close-modal aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
               <line x1="6" y1="6" x2="18" y2="18"/>
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -844,7 +841,7 @@
             </div>
           </div>
           <div class="pay-actions">
-            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="secondary-btn cta-2" data-close-modal>Cancel</button>
             <button class="primary-btn cta" id="completeSaleBtn">Complete & print</button>
           </div>
         </div>
@@ -858,7 +855,7 @@
       <div class="modal delivery-map-modal">
         <div class="modal-head">
           <h2>Pin delivery location</h2>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+          <button class="ghost-icon close-x cta-2" data-close-modal aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
               <line x1="6" y1="6" x2="18" y2="18"/>
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -873,7 +870,7 @@
             <button class="ghost-icon" id="deliveryMapZoomIn" type="button" title="Zoom in" aria-label="Zoom in">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
-            <button class="secondary-btn" id="deliveryMapUseGps" type="button">Use device location</button>
+            <button class="secondary-btn cta-2" id="deliveryMapUseGps" type="button">Use device location</button>
             <span class="delivery-map-note">Tap or drag map to place pin</span>
           </div>
           <div class="delivery-map" id="deliveryMapStage">
@@ -884,7 +881,7 @@
           <div class="delivery-map-footer">
             <div class="delivery-map-coords" id="deliveryMapCoords">No pin selected</div>
             <div class="pay-actions">
-              <button class="secondary-btn" id="deliveryMapClear" type="button">Clear pin</button>
+              <button class="secondary-btn cta-2" id="deliveryMapClear" type="button">Clear pin</button>
               <button class="primary-btn cta" id="deliveryMapSave" type="button">Use pin</button>
             </div>
           </div>
@@ -898,7 +895,7 @@
       <div class="modal small-modal confirm-modal lost-sale-modal">
         <div class="modal-head">
           <h2>Lost sale</h2>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+          <button class="ghost-icon close-x cta-2" data-close-modal aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
               <line x1="6" y1="6" x2="18" y2="18"/>
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -921,7 +918,7 @@
           <label class="pay-label" for="lsSubSelect">Bought instead</label>
           <select id="lsSubSelect" class="text-input"></select>
           <div class="pay-actions" style="margin-top:18px">
-            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="secondary-btn cta-2" data-close-modal>Cancel</button>
             <button class="primary-btn cta" id="lsSaveBtn">Log lost sale</button>
           </div>
         </div>
@@ -936,7 +933,7 @@
             <h2 id="odmNumber">Order</h2>
             <span class="odm-status" id="odmStatus"></span>
           </div>
-          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+          <button class="ghost-icon close-x cta-2" data-close-modal aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
               <line x1="6" y1="6" x2="18" y2="18"/>
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -944,7 +941,7 @@
           </button>
         </div>
         <div class="modal-body" id="orderDetailModalBody"></div>
-        <div class="pop-ft"><button type="button" class="secondary-btn" data-close-modal>Close</button></div>
+        <div class="pop-ft"><button type="button" class="secondary-btn cta-2" data-close-modal>Close</button></div>
       </div>
     </div>
 
@@ -961,7 +958,7 @@
         <input type="hidden" id="pinInput" />
         <div class="pin-dots" id="pinDots" aria-hidden="true"></div>
         <div class="pin-keys" id="pinKeys"></div>
-        <button type="button" class="pin-cancel" data-close-modal>Cancel</button>
+        <button type="button" class="pin-cancel cta-2" data-close-modal>Cancel</button>
       </div>
     </div>
 
@@ -986,17 +983,17 @@
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=53"></script>
   <script src="drawer.js?v=1"></script>
-  <script src="pos-core.js?v=67"></script>
-  <script src="pos-sell.js?v=132"></script>
-  <script src="pos-checkout.js?v=48"></script>
-  <script src="pos-orders.js?v=50"></script>
-  <script src="pos-items.js?v=73"></script>
-  <script src="pos-customers.js?v=46"></script>
+  <script src="pos-core.js?v=68"></script>
+  <script src="pos-sell.js?v=133"></script>
+  <script src="pos-checkout.js?v=49"></script>
+  <script src="pos-orders.js?v=51"></script>
+  <script src="pos-items.js?v=74"></script>
+  <script src="pos-customers.js?v=47"></script>
   <script src="pos-settings.js?v=45"></script>
   <script src="pos-pin.js?v=15"></script>
-  <script src="pos-shift.js?v=47"></script>
-  <script src="pos-stock.js?v=21"></script>
+  <script src="pos-shift.js?v=48"></script>
+  <script src="pos-stock.js?v=22"></script>
   <script src="pos-qr.js?v=3"></script>
-  <script src="app.js?v=279"></script>
+  <script src="app.js?v=283"></script>
 </body>
 </html>

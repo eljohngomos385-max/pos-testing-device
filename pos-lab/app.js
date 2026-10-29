@@ -32,17 +32,24 @@ function attachEvents() {
     if (e.target.closest('.sidebar')) return false;
     if (e.target.closest('#sidebarToggle')) return false;
     if (e.target.closest('[data-act="open-sidebar"]')) return false;
-    app.classList.add('sidebar-collapsed');
+    if (e.pointerType === 'touch') { tapClose = e.pointerId; return true; }   // a finger shuts it as it lifts: a swipe there drives the menu (the edge swipe below), one slide, not shut-then-dragged (owner 2026-10-29: "a two-step stutter")
+    shutSidebar();
+    return true;
+  }
+  let tapClose = null;
+  function shutSidebar() {
+    $('#app').classList.add('sidebar-collapsed');
     swallowSidebarBackdropClick = true;
     clearTimeout(closeSidebarFromBackdrop._t);
     closeSidebarFromBackdrop._t = setTimeout(() => { swallowSidebarBackdropClick = false; }, 350);
-    return true;
   }
   document.addEventListener('pointerdown', (e) => {
     if (!closeSidebarFromBackdrop(e)) return;
     if (e.cancelable) e.preventDefault();
     e.stopImmediatePropagation();
   }, true);
+  document.addEventListener('pointerup', (e) => { if (tapClose === e.pointerId) { tapClose = null; shutSidebar(); } }, true);   // a swipe's pointerup stops at the edge swipe's
+  document.addEventListener('pointercancel', (e) => { if (tapClose === e.pointerId) tapClose = null; }, true);
   document.addEventListener('click', (e) => {
     if (!swallowSidebarBackdropClick) return;
     if (e.cancelable) e.preventDefault();
@@ -64,7 +71,7 @@ function attachEvents() {
   $$('.side-link').forEach(t => t.addEventListener('click', () => {
     $('#app').classList.add('sidebar-collapsed');
   }));
-  // phone: the full-page drawer's ✕, and a swipe left closes it (owner 2026-10-17). ponytail: a flick, not a finger-following drag
+  // phone: the full-page drawer's ✕, and a swipe left closes it (owner 2026-10-17), under the finger (the edge swipe below)
   $('.side-x').addEventListener('click', () => $('#app').classList.add('sidebar-collapsed'));
   // Sell's My page / All items switch (owner 2026-10-21): flips the page, says where you landed, and shows Sell
   $('#sellSwitch').addEventListener('click', () => {
@@ -77,9 +84,164 @@ function attachEvents() {
     t.getAnimations().forEach(a => a.cancel()); void t.offsetWidth;   // no rise of its own; the reflow restarts sp-name on a quick second tap
     t.style.setProperty('--mid-l', r.left - x + 'px'); t.style.setProperty('--mid-r', innerWidth - r.right + x + 'px'); t.classList.add('mid');   // the next toast resets .mid
   });
-  let sideX0 = 0;
-  $('.sidebar').addEventListener('touchstart', e => { sideX0 = e.touches[0].clientX; }, { passive: true });
-  $('.sidebar').addEventListener('touchend', e => { if (e.changedTouches[0].clientX - sideX0 < -50) $('#app').classList.add('sidebar-collapsed'); }, { passive: true });
+  // A swipe opens or shuts the menu the way a tap on the menu button does (owner 2026-10-29: "it's just open and close"): once
+  // the finger has gone 30px its way, the same one slide plays. Nothing rides the finger, so nothing stops and starts again.
+  // A swipe left on the open menu, right from the screen's left edge, from a page's first tab or from Sell's first page call it.
+  const app = $('#app'), sideEl = $('.sidebar'), mainEl = $('.main');
+  const drawer = {
+    w: () => sideEl.offsetWidth,
+    at(x) {   // x: how far out the finger has the menu, 0 to its width
+      drawer.open ??= !app.classList.contains('sidebar-collapsed');   // the way this swipe goes: from how it started
+      if (drawer.open ? x < drawer.w() - 30 : x > 30) app.classList.toggle('sidebar-collapsed', drawer.open);
+    },
+    end() { drawer.open = null; },
+  };
+  // a swipe's speed as it ends, px/ms over its last 100ms; it lands past a quarter of the way, or flicked that way
+  const noteMove = (s, dx, t) => { s.dx = dx; s.pts = [...(s.pts || []).filter(p => t - p.t < 100), { dx, t }]; };
+  const swipeGo = (s, w) => { const a = s.pts?.[0], b = s.pts?.at(-1), v = a && b.t > a.t ? (b.dx - a.dx) / (b.t - a.t) : 0; return Math.abs(s.dx) > w / 4 || (Math.abs(v) > .3 && v * s.dx > 0); };
+  // From the screen's left edge a swipe right does what the top-left button does (owner 2026-10-29): ☰ pulls the menu out
+  // under the finger; ‹ Back slides its page off and presses Back, the same path, so an editor with changes still asks.
+  // On the open menu a swipe left pushes it back. The first 4px pick it; then it owns the finger and whatever the touch
+  // started under lets go (a pointercancel). ponytail: iPhone Safari's own back swipe starts at the very edge and a page
+  // can't stop it; a home-screen app has none
+  const cornerBtn = () => [...document.querySelectorAll('button')].find(b => {   // the top-left one showing, nothing over it
+    const r = b.getBoundingClientRect();
+    return r.width && r.left < 40 && r.top < 160 && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('button') === b;
+  });
+  const isMenu = b => (b.matches('#sidebarToggle') ? !$('#variantSheet').classList.contains('open') && !state.exchange   // ☰, unless it is a sheet's back (line 13)
+    : !((QS.on || addPick) && b.closest('.view-items')));   // or the ✕ of Quick stock / the Add tile (line 22)
+  // a touch on something that moves sideways itself (tabs, the Sell grid, a cart line, a chart, a sideways scroller) is its own
+  const sideways = (t) => {
+    if (t.closest('[data-swipes], #productGrid, #cartList, .kinds, .rp-chart, #deliveryMapStage, input, textarea, select')) return true;
+    for (let el = t; el && el !== document.body; el = el.parentElement)
+      if (el.scrollWidth > el.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(el).overflowX)) return true;
+    return false;
+  };
+  let edge = null;
+  addEventListener('pointerdown', (e) => {
+    edge = null;
+    const open = !app.classList.contains('sidebar-collapsed');
+    if (e.pointerType !== 'touch' || !e.isPrimary || lifted || (open && !e.target.closest('.sidebar, .main'))) return;   // open: the menu or the page peeking beside it
+    const b = !open && cornerBtn(), menu = !!b && b.matches('#sidebarToggle, [data-act="open-sidebar"]');
+    if (!open && !b) return;
+    if (!open && e.clientX > 24 && !(menu && isMenu(b) && !sideways(e.target))) return;   // past the edge only ☰ pages swipe, anywhere on them (owner 2026-10-29)
+    let pg = !menu && b;   // the page Back leaves: the button's first full-height box
+    while (pg && pg.getBoundingClientRect().height < innerHeight * .8) pg = pg.parentElement;
+    edge = { id: e.pointerId, x: e.clientX, y: e.clientY, at: e.target, open, b, menu: menu && isMenu(b), pg: pg && !pg.contains(mainEl) ? pg : null };
+  }, true);
+  addEventListener('pointermove', (e) => {
+    const g = edge;
+    if (g?.id !== e.pointerId) return;
+    const dx = e.clientX - g.x, dy = e.clientY - g.y;
+    if (!g.on) {
+      if (Math.abs(dx) + Math.abs(dy) < 4) return;
+      if (Math.abs(dy) >= Math.abs(dx) || dx > 0 === g.open) return (edge = null);   // a scroll, or the wrong way
+      g.at.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: g.id, pointerType: 'touch', isPrimary: true }));
+      g.on = true;   // after: that cancel passes this file's own listeners too
+      if (g.pg) g.pg.style.transition = 'none';
+    }
+    e.stopPropagation();
+    noteMove(g, dx, e.timeStamp);
+    if (g.pg) g.pg.style.transform = `translate3d(${Math.max(0, dx)}px, 0, 0)`;
+    else if (g.open || g.menu) drawer.at((g.open ? drawer.w() : 0) + dx);
+  }, true);
+  addEventListener('touchmove', (e) => { if (edge?.on) { e.preventDefault(); e.stopPropagation(); } }, { capture: true, passive: false });   // the page holds still
+  const edgeEnd = (e) => {
+    const g = edge;
+    if (g?.id !== e.pointerId || !g.on) return;
+    edge = null;
+    e.stopPropagation();
+    if (g.open || g.menu) return drawer.end();
+    const go = e.type === 'pointerup' && swipeGo(g, g.pg ? g.pg.offsetWidth : drawer.w());
+    if (!go) { if (g.pg) Object.assign(g.pg.style, { transition: 'transform .28s var(--rl-ease)', transform: '' }); return; }
+    if (!g.pg) return g.b.click();
+    const pg = g.pg;   // off to the right, then Back; it asked (an editor's changes): the page comes back under the ask
+    Object.assign(pg.style, { transition: 'transform .2s var(--rl-ease)', transform: `translate3d(${innerWidth - pg.getBoundingClientRect().left + g.dx}px, 0, 0)` });
+    setTimeout(() => {
+      g.b.click();
+      Object.assign(pg.style, confirmSheet ? { transition: 'transform .28s var(--rl-ease)', transform: '' } : { transition: 'none', transform: '' });
+      setTimeout(() => { pg.style.transition = ''; }, 300);
+    }, 200);
+  };
+  addEventListener('pointerup', edgeEnd, true);
+  addEventListener('pointercancel', edgeEnd, true);
+  // A page's tabs under the finger (owner 2026-10-29), the Sell grid's way: `live` rides a sideways drag with the tab beside
+  // it peeking (a copy, drawn by o.fill(el, tab) a frame in, so the page moves at once); a quarter of the way or a flick lands
+  // on it, pressed through its tab (or o.go). Right of the first tab the ☰ menu comes out instead. A touch on a slide
+  // still going lands it at once. o.box: the .kinds switch, o.attr its data- key, o.ok(e): may this touch swipe.
+  const tabSwipe = (host, live, o) => {
+    let s = null, landing = null;
+    const area = host.closest('.c-scroll') || host;   // the whole scroller hears it, the space under a short tab too
+    area.dataset.swipes = '';   // the ☰ swipe anywhere leaves it be: its first tab opens the menu itself
+    const parts =() => [live, ...host.querySelectorAll(':scope > .tab-peek')];
+    const pill = (to, f) => {   // the switch's pill follows, f of the way from the current tab to `to`'s
+      const box = o.box, a = box.querySelector('.cur'), b = box.querySelector(`[data-${o.attr}="${to}"]`) || a;
+      box.classList.add('slid');
+      box.style.setProperty('--x', `${a.offsetLeft + (b.offsetLeft - a.offsetLeft) * f}px`);
+      box.style.setProperty('--w', `${a.offsetWidth + (b.offsetWidth - a.offsetWidth) * f}px`);
+    };
+    const at = (g, x) => parts().forEach(p => { p.style.transform = `translate3d(${x + (+p.dataset.at || 0) * g.step}px, 0, 0)`; });
+    const land = () => {
+      if (!landing) return;
+      const { to } = landing;
+      clearTimeout(landing.t); landing = null;
+      if (to) (o.go || (t => o.box.querySelector(`[data-${o.attr}="${t}"]`).click()))(to);   // the live page takes the peek's place
+      parts().forEach(p => (p === live ? Object.assign(p.style, { transition: '', transform: '' }) : p.remove()));
+      host.classList.remove('swiping');
+    };
+    area.addEventListener('pointerdown', (e) => {
+      land();
+      s = e.pointerType === 'touch' && e.isPrimary && o.ok(e) ? { id: e.pointerId, x: e.clientX, y: e.clientY } : null;
+    });
+    area.addEventListener('pointermove', (e) => {
+      if (s?.id !== e.pointerId) return;
+      const dx = e.clientX - s.x, dy = e.clientY - s.y;
+      if (!s.on) {
+        if (Math.abs(dx) + Math.abs(dy) < 4) return;
+        if (Math.abs(dy) >= Math.abs(dx)) return (s = null);   // a scroll: the page's
+        const ks = [...o.box.querySelectorAll(`[data-${o.attr}]`)].map(b => b.dataset[o.attr]), i = ks.indexOf(o.box.querySelector('.cur')?.dataset[o.attr]);
+        const b = cornerBtn(), r = live.getBoundingClientRect();
+        Object.assign(s, { on: true, prev: ks[i - 1], next: ks[i + 1], step: r.width + 2 * (r.left - mainEl.getBoundingClientRect().left),   // a page + its margins
+          menu: !ks[i - 1] && !!b?.matches('#sidebarToggle, [data-act="open-sidebar"]') && isMenu(b) });
+        try { area.setPointerCapture(e.pointerId); } catch {}   // a redraw under the finger can't drop the swipe (a made-up test touch can't be held)
+        host.classList.add('swiping'); o.box.classList.add('held');
+        const g = s;
+        requestAnimationFrame(() => setTimeout(() => {
+          if (s !== g) return;
+          [[g.prev, -1], [g.next, 1]].forEach(([t, k]) => {
+            if (!t) return;
+            const p = live.cloneNode(false);
+            p.removeAttribute('id'); p.classList.add('tab-peek'); p.dataset.at = k;
+            Object.assign(p.style, { left: live.offsetLeft + 'px', top: live.offsetTop + 'px', width: live.offsetWidth + 'px',
+              height: getComputedStyle(live).overflowY === 'visible' ? '' : live.offsetHeight + 'px' });   // a scroller keeps its height
+            host.append(p); o.fill(p, t);
+          });
+          at(g, g.x0);
+        }));
+      }
+      noteMove(s, dx, e.timeStamp);
+      const to = dx < 0 ? s.next : s.prev;
+      if (s.menu && dx > 0) drawer.at(dx);
+      at(s, s.x0 = to ? dx : s.menu && dx > 0 ? 0 : dx * .25);   // nothing that way: it gives, the grid's rubber band
+      pill(to, to ? Math.min(1, Math.abs(dx) / s.step) : 0);
+    });
+    area.addEventListener('touchmove', (e) => { if (s?.on) e.preventDefault(); }, { passive: false });   // the page holds still
+    const end = (e) => {
+      if (s?.id !== e.pointerId) return;
+      const g = s, go = e.type === 'pointerup' && swipeGo(g, g.step);
+      s = null;
+      if (!g.on) return;
+      o.box.classList.remove('held');
+      drawer.end();
+      const to = go ? (g.dx < 0 ? g.next : g.prev) : null;
+      pill(to, 1);   // the pill finishes with the page, both .28s
+      parts().forEach(p => { p.style.transition = 'transform .28s var(--rl-ease)'; });
+      at(g, to ? (g.dx < 0 ? -g.step : g.step) : 0);
+      landing = { to, t: setTimeout(land, 290) };   // ponytail: the slide's length, not transitionend (none when nothing moves)
+    };
+    area.addEventListener('pointerup', end);
+    area.addEventListener('pointercancel', end);
+  };
 
   // ---- Bottom bar: pagination ----
 
@@ -187,13 +349,15 @@ function attachEvents() {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     const track = $('#productTrack');
     if (!track) return;
+    suppressGridClick = false;   // the last swipe's own click has been and gone: a new touch is a tap again, no wait
+    const at = new DOMMatrix(getComputedStyle(track).transform).m41;   // a page still sliding stops under the finger (owner 2026-10-29)
     track.classList.add('dragging');
+    track.style.transform = `translate3d(${at}px, 0, 0)`;
     swipeStart = {
       x: e.clientX,
       y: e.clientY,
       id: e.pointerId,
-      startX: e.clientX,
-      startT: Date.now(),
+      at,
       dragging: false,
     };
   });
@@ -204,7 +368,7 @@ function attachEvents() {
     const dy = e.clientY - swipeStart.y;
 
     // Only start dragging if horizontal movement exceeds vertical
-    if (!swipeStart.dragging && Math.abs(dx) > 4 && Math.abs(dx) > Math.abs(dy)) {
+    if (!swipeStart.dragging && Math.abs(dx) >= 4 && Math.abs(dx) > Math.abs(dy)) {   // the 4px every swipe here picks its way in
       swipeStart.dragging = true;
     }
     if (!swipeStart.dragging) return;
@@ -214,11 +378,15 @@ function attachEvents() {
     const gap = parseFloat(getComputedStyle(track).gap) || 0;
     const step = productGrid.clientWidth + gap;
     const total = totalPages();
-    const baseOffset = -(state.page - 1) * step;
-    let offset = baseOffset + dx;
+    let offset = swipeStart.at + dx;
+    noteMove(swipeStart, dx, e.timeStamp);
 
+    // right of the first page is the menu, pulled out under the finger (owner 2026-10-29); editing My page it gives as before
+    swipeStart.menu = offset > 0 && !myEditing;
+    if (swipeStart.menu) drawer.at(offset);
+    if (swipeStart.menu) offset = 0;
     // Rubber-band at boundaries
-    if (offset > 0) {
+    else if (offset > 0) {
       offset = offset * 0.25;
     } else if (offset < -(total - 1) * step) {
       const overscroll = offset + (total - 1) * step;
@@ -233,27 +401,16 @@ function attachEvents() {
     const track = $('#productTrack');
     if (track) track.classList.remove('dragging');
 
+    drawer.end();
     if (swipeStart.dragging) {
-      const dx = e.clientX - swipeStart.startX;
-      const pageWidth = productGrid.clientWidth;
-      const threshold = pageWidth * 0.12;
-      // Flick: a quick short swipe still flips the page
-      const elapsed = Date.now() - swipeStart.startT;
-      const velocity = Math.abs(dx) / Math.max(elapsed, 1); // px per ms
-      const flick = elapsed < 300 && Math.abs(dx) > 30 && velocity > 0.25;
-
-      if ((dx < -threshold || (flick && dx < 0)) && state.page < totalPages()) {
-        changePage(1);
-      } else if ((dx > threshold || (flick && dx > 0)) && state.page > 1) {
-        changePage(-1);
-      } else {
-        updateProductTrackPosition();
-      }
-
+      // where it lies, in pages; past an eighth of a page (or flicked) it goes on the finger's way, else the nearest page
+      const step = productGrid.clientWidth + (parseFloat(getComputedStyle(track).gap) || 0), dx = swipeStart.dx || 0;
+      const pos = 1 - (swipeStart.at + dx) / step, go = Math.abs(dx) > step * .12 || swipeGo(swipeStart, Infinity);
+      const to = Math.min(totalPages(), Math.max(1, go ? (dx < 0 ? Math.ceil(pos) : Math.floor(pos)) : Math.round(pos)));
+      if (to !== state.page) changePage(to - state.page);
+      else updateProductTrackPosition();
       suppressGridClick = true;
-      clearTimeout(productGrid._swipeClickTimer);
-      productGrid._swipeClickTimer = setTimeout(() => { suppressGridClick = false; }, 260);
-    }
+    } else updateProductTrackPosition();   // a tap: a page caught sliding carries on
 
     swipeStart = null;
   });
@@ -261,7 +418,8 @@ function attachEvents() {
   productGrid.addEventListener('pointercancel', (e) => {
     const track = $('#productTrack');
     if (track) track.classList.remove('dragging');
-    if (swipeStart && swipeStart.dragging) updateProductTrackPosition();
+    if (swipeStart) updateProductTrackPosition();   // home, or on with a slide it caught
+    drawer.end();
     swipeStart = null;
   });
 
@@ -509,66 +667,9 @@ function attachEvents() {
     shine(e); all.forEach(t => t.classList.add('lg-on'));
     addEventListener('pointermove', move); addEventListener('pointerup', end); addEventListener('pointercancel', end);
   });
-  // swipe the list left / right for the next / previous tab: the list rides the finger with the tab beside it showing,
-  // like the Sell grid's pages (owner 2026-10-16); not in Quick stock, which hides the tabs
-  let ivX = null;
-  const ivList = $('.view-items .list');
-  const ivKinds = () => [...$('#itemsKinds').querySelectorAll('[data-kind]')].map(b => b.dataset.kind);
-  const ivPeek = (kind, at) => {   // the tab beside, drawn once per swipe, a copy with no ids, at that tab's place
-    const p = document.createElement('div');
-    p.className = 'lines peek'; p.style.setProperty('--at', at); p.innerHTML = '<div class="band cols"></div><div></div>';
-    fillItemsPane(kind, p.firstChild, p.lastChild);
-    ivList.append(p); p.scrollTop = itemsTop[kind] || 0;
-  };
-  // the capsule's pill follows the finger: f of the way from the current tab to `to`'s
-  const ivPill = (to, f) => {
-    const box = $('#itemsKinds'), a = box.querySelector('.cur'), b = box.querySelector(`[data-kind="${to}"]`) || a;
-    box.classList.add('slid');
-    box.style.setProperty('--x', `${a.offsetLeft + (b.offsetLeft - a.offsetLeft) * f}px`);
-    box.style.setProperty('--w', `${a.offsetWidth + (b.offsetWidth - a.offsetWidth) * f}px`);
-  };
-  const ivDone = () => { ivList.classList.remove('swiping', 'going'); ivList.style.removeProperty('--dx'); ivList.querySelectorAll('.peek').forEach(p => p.remove()); };
-  ivList?.addEventListener('touchstart', (e) => {
-    if (ivList.classList.contains('going')) return (ivX = null);
-    ivX = e.touches.length === 1 && !QS.on && $('#itemsKinds').offsetWidth ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, dx: 0, on: null } : null;
-  }, { passive: true });
-  ivList?.addEventListener('touchmove', (e) => {
-    if (!ivX) return;
-    const t = e.touches[0], dx = t.clientX - ivX.x, dy = t.clientY - ivX.y;
-    if (ivX.on === null) {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      ivX.on = Math.abs(dx) > Math.abs(dy);
-      if (!ivX.on) return (ivX = null);   // a scroll: leave it to the list
-      const ks = ivKinds(), i = ks.indexOf(itemsKind);
-      ivX.prev = ks[i - 1]; ivX.next = ks[i + 1];
-      if (ivX.prev) ivPeek(ivX.prev, -1);
-      if (ivX.next) ivPeek(ivX.next, 1);
-      ivList.classList.add('swiping'); $('#itemsKinds').classList.add('held');
-    }
-    e.preventDefault();
-    ivX.dx = dx;
-    const to = dx < 0 ? ivX.next : ivX.prev;   // nothing that way: it gives, the Sell grid's rubber band
-    ivList.style.setProperty('--dx', `${to ? dx : dx * 0.25}px`);
-    if (to) ivPill(to, Math.min(1, Math.abs(dx) / ivList.clientWidth));
-  }, { passive: false });
-  const ivEnd = (e) => {
-    const s = ivX; ivX = null;
-    if (!s?.on) return;
-    const lines = $('#itemsLines'), peek = ivList.querySelector('.peek');
-    const step = peek ? Math.abs(peek.getBoundingClientRect().left - lines.getBoundingClientRect().left) : 0;   // a page + the gap
-    const dx = s.dx, fast = e.timeStamp - s.t < 300 && Math.abs(dx) > 30;
-    const to = e.type === 'touchend' && (Math.abs(dx) > ivList.clientWidth * 0.25 || fast) ? (dx < 0 ? s.next : s.prev) : null;
-    $('#itemsKinds').classList.remove('held');
-    ivPill(to, 1);   // the pill finishes with the list, both .28s
-    ivList.classList.add('going');
-    ivList.style.setProperty('--dx', to ? `${dx < 0 ? -step : step}px` : '0px');
-    setTimeout(() => {   // ponytail: the .28s slide's length, not transitionend (no event when --dx doesn't change)
-      if (to) setItemsKind(to);   // the live list takes the peek's place, at the same scroll
-      ivDone();
-    }, 290);
-  };
-  ivList?.addEventListener('touchend', ivEnd);
-  ivList?.addEventListener('touchcancel', ivEnd);
+  // swipe the list left / right for the next / previous tab (owner 2026-10-16); not in Quick stock, which hides the tabs
+  tabSwipe($('.view-items .list'), $('#itemsLines'), { box: $('#itemsKinds'), attr: 'kind', ok: () => !QS.on && $('#itemsKinds').offsetWidth,
+    fill: (p, kind) => { p.innerHTML = '<div class="band cols"></div><div></div>'; fillItemsPane(kind, p.firstChild, p.lastChild); p.scrollTop = itemsTop[kind] || 0; } });
   $('#itemsRows')?.addEventListener('click', (e) => { const row = e.target.closest('.row'); if (row) row.dataset.hub ? setItemsKind(row.dataset.hub) : addPick ? addPickTap(row.dataset.id) : QS.on ? qsPickRow(row.dataset.id) : openKind(row.dataset.id); });
   $('#itemsBack')?.addEventListener('click', () => setItemsKind('hub'));
   // Items +: the blurred stack, Change price / Quick stock (pos-stock.js) / Add item; the other kinds add straight away
@@ -580,10 +681,6 @@ function attachEvents() {
   ])));
   $('#itemSave')?.addEventListener('click', () => (kindEdit ? saveKind() : saveItem()));
   const notYet = what => () => showToast(`${what} isn't connected yet`);
-  $('#itemMore')?.addEventListener('click', (e) => openMenu(e.currentTarget, kindEdit
-    ? [kindEdit.id ? { label: 'Delete', red: true, off: !!kindEdit.builtin, run: dropKind } : { label: 'Discard', red: true, run: closeItemEditor }]
-    : [],   // ponytail: the item has no ⋯ (renderItemForm hides it); Print labels and Duplicate come back when they work
-    { w: 200, right: true }));
   wireFind('#itemsFind', '#itemsSearch', '#itemsSearchX', (q) => { itemsFilter.q = q; renderItems(); });
   $('#itemsFilter')?.addEventListener('click', (e) => openFilterSheet(e.currentTarget, () => [
     ['Category', 'cat', [['', 'All'], ...itemCategories().map(c => [c, c])]],
@@ -814,6 +911,9 @@ function attachEvents() {
   $('#shiftView')?.addEventListener('click', onShiftEvent);   // pos-shift.js: both its pages
   new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#shiftTabs'));   // as Reports' pill
   wireSegDrag($('#shiftTabs'), 'shtab');
+  tabSwipe($('#shiftPage .c-body'), $('#shiftBody'), { box: $('#shiftTabs'), attr: 'shtab', ok: e => !e.target.closest('.kinds'), fill: (p, tab) => renderShift({ el: p, tab }) });
+  tabSwipe($('.view-reports .c-body'), $('#reportsBody'), { box: $('#reportsUnits'), attr: 'unit', ok: e => !e.target.closest('.kinds, .rp-chart'),
+    fill: (p, unit) => { renderReports('still', { el: p, unit }); p.classList.remove('slide-l', 'slide-r'); }, go: unit => reportsGo(unit, 0, 'still') });
   $('#shiftSheet').addEventListener('click', shiftSheetClick);
   document.addEventListener('keydown', shiftKey);
   $('#custSaveBtn')?.addEventListener('click', () => saveSavedCustomerFromModal());
@@ -1287,11 +1387,12 @@ function init() {
   // the swipe and the page holds still. A finger held still on a bar for a moment drags along the bars; a mouse always does.
   const RP_GAP = 20, RP_SNAP = 50;   // between the two charts mid-swipe; how far a drag must go to snap over
   rpBody?.addEventListener('pointerdown', (e) => {
+    if (rpSw?.end) rpSw.settle();   // a touch on a chart still sliding lands it now (owner 2026-10-29: no wait)
     rpWas = reportsView.pick;
     const b = e.target.closest('.rp-bars [data-i]'), bar = b && !b.disabled;
     if (bar) reportsPick(+b.dataset.i);
     if (e.pointerType === 'mouse') { rpScrub = bar; return; }
-    if (!e.isPrimary || !e.target.closest('.rp-chart') || rpSw?.end) return;
+    if (!e.isPrimary || !e.target.closest('.rp-chart')) return;
     rpSw = { x: e.clientX, y: e.clientY, dx: 0, pts: [{ t: e.timeStamp, dx: 0 }], hold: bar && setTimeout(() => { if (rpSw && !rpSw.on) { rpScrub = true; rpSw = null; } }, 250) };
   });
   // the first 4px of a move: the page's (steep) or the swipe's (lock); touchmove and pointermove both ask, whichever is first
@@ -1324,6 +1425,7 @@ function init() {
       if (dir) reportsGo(reportsView.unit, reportsView.back - dir, 'still');
       else { s.sl.removeAttribute('style'); s.sl.ontransitionend = null; s.sl.querySelectorAll('.rp-near').forEach(n => n.remove()); s.sl.parentNode.classList.remove('swiping'); }
     };
+    s.settle = settle;
     s.sl.ontransitionend = (e) => e.target === s.sl && settle();   // its own slide only: the bars' fade back (a tip was up) bubbles here too and cut the glide short
     setTimeout(settle, 360);   // no transitionend when it was already there
   };
@@ -1364,7 +1466,7 @@ function askBizType() {
   veil.className = 'rail-veil';
   veil.innerHTML = `<div class="pay-sheet cf-sheet" role="dialog" aria-modal="true" aria-labelledby="bizAskTitle">
     <div class="ph"><b id="bizAskTitle">What do you sell?</b><div class="cf-msg">You can change this later in Settings.</div></div>
-    <div class="pb even">${pk.opts.map(([v, label]) => `<button type="button" class="secondary-btn small" data-v="${v}">${escapeHtml(label)}</button>`).join('')}</div>
+    <div class="pb even">${pk.opts.map(([v, label]) => `<button type="button" class="secondary-btn small cta-2" data-v="${v}">${escapeHtml(label)}</button>`).join('')}</div>
   </div>`;
   const f = veil.firstChild;
   f.style.width = Math.min(340, innerWidth - 24) + 'px';

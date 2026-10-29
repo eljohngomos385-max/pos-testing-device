@@ -69,7 +69,7 @@ function renderCustomerDetail() {
     <section class="card fc r">
       ${row('Balance', peso(c.currentBalance || 0), over ? 'num amt over' : 'num amt')}
       ${row('Available credit', limitText(c) || `${peso(creditRoom(c))} <small>of ${peso(c.creditLimit)}</small>`, 'num amt')}</section>
-    <h3 class="fc-t">Recent orders${orders.length > 10 ? `<button type="button" class="link" data-customer-detail>See all ${orders.length}</button>` : ''}</h3><section class="card fc fc-rows">
+    <h3 class="fc-t">Recent orders${orders.length > 10 ? `<button type="button" class="link cta-3" data-customer-detail>See all ${orders.length}</button>` : ''}</h3><section class="card fc fc-rows">
       ${orders.length ? orders.slice(0, 10).map(orderRow).join('') : '<div class="note">No orders yet</div>'}</section>
   </div>`;
 }
@@ -97,7 +97,7 @@ function openPaySheet(btn, c) {
       <input type="checkbox" name="order" value="${escapeHtml(d.orderId)}" data-left="${d.left}"><span class="num">#${escapeHtml(number.get(d.orderId) || d.orderId)}</span>
       <small class="num">${fmtOrderDate(d.ts)}</small><span class="num">${peso(d.left)}</span></label>`).join('')}</fieldset>` : ''}
     <label class="pf"><span class="lb">Note</span><input class="text-input" name="note" type="text" autocomplete="off"></label>
-    <div class="pb"><button type="button" class="secondary-btn small" data-cancel>Cancel</button><button type="submit" class="primary-btn small cta">Record payment</button></div>
+    <div class="pb"><button type="button" class="secondary-btn small cta-2" data-cancel>Cancel</button><button type="submit" class="primary-btn small cta">Record payment</button></div>
   </form>`;
   const f = veil.firstChild;
   f.style.width = Math.min(380, innerWidth - 24) + 'px';
@@ -242,16 +242,19 @@ function reportsFigures(unit = reportsView.unit, back = reportsView.back) {
 const reportsNear = dir => { const f = reportsFigures(reportsView.unit, reportsView.back - dir); return reportsChart(f.bars, reportsView.unit, f.live); };
 
 // slide: +1 the figures come in from the right (a later period), −1 from the left; 'still' = a swipe already brought the
-// chart in, so nothing slides or grows
-function renderReports(slide) {
-  const body = $('#reportsBody');
+// chart in, so nothing slides or grows. peek: { el, unit } draws that unit's current period into el and nothing else (a
+// swipe's copy of the tab beside, app.js tabSwipe)
+function renderReports(slide, peek) {
+  const body = peek?.el || $('#reportsBody');
   if (!body) return;
-  state.orders = loadOrders();
-  reportsLive._sig = reportsSignature();
-  reportsLive._day = tillDay(Date.now());
-  const { unit, back } = reportsView, { today, p, win, live, zone, costOf, m, g, c, orders, bars } = reportsFigures();
+  if (!peek) {
+    state.orders = loadOrders();
+    reportsLive._sig = reportsSignature();
+    reportsLive._day = tillDay(Date.now());
+  }
+  const { unit, back } = peek ? { unit: peek.unit, back: 0 } : reportsView, { today, p, win, live, zone, costOf, m, g, c, orders, bars } = reportsFigures(unit, back);
   body.classList.toggle('rp-still', slide === 'still');
-  Object.assign(reportsView, { bars, pick: null });
+  if (!peek) Object.assign(reportsView, { bars, pick: null });
   const chart = reportsChart(bars, unit, live), cur = state.settings?.store?.currency, short = n => SalesMath.formatMoney(n, cur, { compact: true });
   // Target (the back office's block, owner 2026-10-15): today on Day, this month on Month; a past period or a week has none
   const tg = live && unit !== 'week' && reportsTarget(today, zone), goal = tg && (unit === 'day' ? tg.day : tg.month);
@@ -306,6 +309,7 @@ function renderReports(slide) {
     // a plain ranking: the method, its money, its share -- no bar, no colours (owner 2026-10-15)
     + icard('By method', pays.length ? pays.map(r => fr(escapeHtml(SalesMath.tenderLabel(r.k)), `${peso(r.v)} <small class="rp-tp">${SalesMath.pctText(SalesMath.share(r.v, all), all, 0)}</small>`)).join('') : none, '', ' r')
     + icard('Breakdown', ladder, '', ' r');
+  if (peek) return;
   // the header: Show Today on a past period; the ‹ date › bar that pins under it once the date scrolls away (reportsPin)
   const now = $('.view-reports .rp-now');
   now.hidden = live;
@@ -402,7 +406,7 @@ const reportsOpenDay = day => reportsGo('day', Math.round((Date.parse(tillDay(Da
 function reportsLive() {
   if (state.view !== 'reports') return;
   if (!canAccess('reports')) return applyRoleGating();   // "See the day's totals" taken away meanwhile: back to Sell
-  if ($('#reportsBody .swiping')) return;   // mid-swipe: the next tick redraws
+  if ($('.view-reports .swiping')) return;   // mid-swipe (the chart, or the page between Day / Week / Month): the next tick redraws
   if (reportsSignature() !== reportsLive._sig || tillDay(Date.now()) !== reportsLive._day) renderReports();
 }
 reportsLive._sig = '';

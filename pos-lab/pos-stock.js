@@ -62,7 +62,7 @@ function qsBuild() {
   // inside #app: the PIN lock's inert covers it (pinCover)
   $('#app').insertAdjacentHTML('beforeend', `<section class="lv qs-pg" id="qs" aria-label="Adjust stock" hidden><div class="iv editing">
       <section class="editor"><div class="e-top">
-        <button class="sq back" id="qsBack" aria-label="Back">${QS_IC.back}</button>
+        <button class="sq back cta-2" id="qsBack" aria-label="Back">${QS_IC.back}</button>
         <h2 class="fm-h"><button type="button" class="qs-mode" id="qsReason" aria-haspopup="menu" aria-expanded="false"><span></span>${QS_IC.updown}</button></h2>
         <div class="acts"><button class="act primary cta" id="qsSave" disabled>Save</button></div>
       </div>

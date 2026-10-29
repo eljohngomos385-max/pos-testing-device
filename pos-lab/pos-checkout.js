@@ -812,7 +812,7 @@ function openCartForm(title, field, ok, onSubmit) {
   veil.innerHTML = `<form class="pay-sheet" role="dialog" aria-label="${title}" novalidate>
     <div class="ph"><b>${title}</b></div>
     ${field}
-    <div class="pb"><button type="button" class="secondary-btn small" data-cancel>Cancel</button><button type="submit" class="primary-btn small cta">${ok}</button></div>
+    <div class="pb"><button type="button" class="secondary-btn small cta-2" data-cancel>Cancel</button><button type="submit" class="primary-btn small cta">${ok}</button></div>
   </form>`;
   const f = veil.firstChild;
   f.style.width = Math.min(340, innerWidth - 24) + 'px';

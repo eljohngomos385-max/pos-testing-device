@@ -384,7 +384,7 @@ function showConfirm({ title = 'Are you sure?', message = '', html = '', okText 
   veil.className = 'rail-veil';
   veil.innerHTML = `<form class="pay-sheet cf-sheet" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage" novalidate>
     <div class="ph"><b id="confirmTitle"></b><div class="cf-msg" id="confirmMessage"></div></div>
-    <div class="pb"><button type="button" class="secondary-btn small" data-cancel></button><button type="submit" class="primary-btn small${danger ? ' danger' : ' cta'}"></button></div>
+    <div class="pb"><button type="button" class="secondary-btn small cta-2" data-cancel></button><button type="submit" class="primary-btn small${danger ? ' danger' : ' cta'}"></button></div>
   </form>`;
   const f = veil.firstChild, msg = f.querySelector('#confirmMessage'), ok = f.querySelector('[type="submit"]');
   f.querySelector('#confirmTitle').textContent = title;

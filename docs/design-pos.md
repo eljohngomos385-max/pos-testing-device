@@ -106,12 +106,10 @@ ask, Start shift, Close shift (count), Cash in / out, and any new one — puts t
 
 ## Layout grammar (applies to every view)
 
-- **Hamburger is anchored in the same spot on every page: 16px from the top of the content area, 48×48px.** When switching views it must not move.
-  - Sell: `.search-row` lives in `.catalog` (`padding-top: 8px`) inside `.content-row` (`padding: 8px …`) → 8 + 8 = 16px.
-  - Orders: `.lv .head .sq` in `.o-rail` (`margin: 8px 0`) inside `.ov` (`padding: 8px 18px`) → 8 + 8 = 16px.
-  - Items: `.lv .page` (`padding-top: 16px`).
-  - Customers: `.orders-layout` (`padding-top: 16px`). Reports / Settings: `.view-head` (`padding-top: 16px`).
-  - If you change any of these paddings, re-check that the hamburger still lands at 16px on all pages.
+- **The menu header and every page's ☰ sit on one line: `--head-y`** (`:root`, 8px phone / 16px at ≥721px; pos-lab, owner 2026-10-29). The menu's title + switch (`.side-top`), every page's ☰ (Sell, Orders, QR, Items, Customers, Shift, Reports, Settings) and every inner page's ‹ Back (order, item, category, customer, Past shifts) all hang from it. When switching views nothing moves, and with the menu open the "EJ Hardware" row lines up with the ☰ beside it.
+  - **Moving one means moving both.** To raise or lower the header, change `--head-y` only — the menu and all pages follow together. Never give one page or the menu its own padding, `top:` or offset to "fix" a line; that is how they drifted apart before.
+  - Check: `hdr.cjs`-style measure, menu open, menu button centre = page ☰ centre on all 8 pages, phone 393×852 (30) and iPad 1180×820 (38).
+  - Checkout is not on this line: it is a full-screen stage without the menu, its Cancel follows the hero line (see Hero line law).
 - **Hamburger + search + barcode sit in one row, all 48px tall, edge-to-edge.** Gap between them is `7px` (`.search-row`). To widen the search bar, shrink the gap — never move the hamburger/barcode (they're pinned to the row edges; the search bar is `flex: 1`).
 - Sell hamburger/barcode use `.ghost-icon`; Orders/Items use `.lv .sq` (48px, `var(--rl-r)`, `--rl-card` fill, 1px `--line` border, row gap 7px in `.lv .head`); Customers/Reports/Settings use `.view-hamburger`. **Keep them visually identical** (48px, `var(--rl-r)` radius — the sale sidebar's customer card, which they line up with — `var(--rl-soft)` bg (the sidebar's Item / Amount band) with an inset `var(--rl-hair)` hairline ring (softer than `--line`: 3% white dark, `#EBEBEB` light) in both themes, no top shine). Product tiles wear the same fill and ring. The Customers search (`.orders-search-wrap input`) wears Sell's search fill, ring and corner too, and its row uses the same 7px gap — only its text/icon stay smaller (13px / 14px). The product grid below them is deliberately **not** flush with the sidebar's cards (tried; too cramped): `.catalog` keeps its 14px gap under the search row, and its last row ends level with the **Check out button's** bottom, not the card's (`.catalog` bottom padding 21px = rail margin 8 + card border 1 + `.pay` padding 12).
 - **Horizontal page padding is 28px** for `.view-head` / `.orders-layout`; Sell resolves to 28px too (18px row + 10px catalog). The `.lv` pages (Orders, Items) use 18px, like the sale sidebar's row.

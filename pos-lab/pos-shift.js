@@ -234,10 +234,10 @@ function drawShiftSheet() {
     head = `<p>Over / short</p><div class="es-hero">${counted !== undefined ? overShortText(shiftDiff(counted, f.expected)) : 'Not counted'}</div>`;
     rows = row('Expected', peso(f.expected)) + row('Counted', counted !== undefined ? peso(counted) : 'Not counted')
       + `<textarea class="es-ta" id="shNote" rows="2" maxlength="80" placeholder="Add a note" aria-label="Note">${escapeHtml(o.note)}</textarea>`;
-    if (o.counts.length < 2) left = '<button type="button" class="es-q" data-recount>Recount</button>';
+    if (o.counts.length < 2) left = '<button type="button" class="es-q cta-3" data-recount>Recount</button>';
     ink = shLeave() ? 'Next' : 'Close shift';
   }
-  if (o.step === 'count') left = '<button type="button" class="es-q" data-skip>Skip</button>';
+  if (o.step === 'count') left = '<button type="button" class="es-q cta-3" data-skip>Skip</button>';
   $('#shiftSheetCard').innerHTML = esFrame(head, rows, ask ? `<div class="es-keys">${esKeys(true)}</div>` : '', `${left}<button type="button" class="es-ink cta" data-apply>${ink}</button>`, ask ? ' ask' : '');
   if (ask) $('#shiftSheet .es-ink').focus({ preventScroll: true });   // off the page's button: a key can't fire it again
 }
@@ -249,7 +249,7 @@ function drawCashSheet() {
   $('#shiftSheetCard').innerHTML = esFrame(`<div class="es-hero">${typedCash(o.v)}</div>`,
     `<input class="es-ta" id="shNote" maxlength="80" placeholder="Add a note" aria-label="Note" autocomplete="off" value="${escapeHtml(o.note)}">`,
     `<div class="es-keys">${esKeys(true)}</div>`,
-    '<button type="button" class="es-ink" data-cm="out">Cash out</button><button type="button" class="es-ink" data-cm="in">Cash in</button>', ' ask');
+    '<button type="button" class="es-ink cta-2" data-cm="out">Cash out</button><button type="button" class="es-ink cta-2" data-cm="in">Cash in</button>', ' ask');
 }
 const shStep = step => { Object.assign(shSheet, { step, v: '0', born: performance.now() }); drawShiftSheet(); };
 function shiftSheetClick(e) {
@@ -372,7 +372,7 @@ function shiftDrawer(all = storeShifts(), now = Date.now()) {
 // has no title (owner 2026-10-17: "Cash drawer" sat too close under the pill); Print, the X report, is the word top right
 // while a shift is open, and Past shifts a › row under the drawer.
 let shTab = 'shift';
-const shLink = (sh, word) => `<button type="button" class="link" data-sh="${sh}">${word}</button>`;
+const shLink = (sh, word) => `<button type="button" class="link cta-3" data-sh="${sh}">${word}</button>`;
 const shWhen = ts => fmtOrderTime(ts).replace(/^Today, /, '').replace(/^Yesterday/, 'yesterday');
 // Cash in & out and Past shifts are Orders' rows (docs/design-pos.md › Rows, owner 2026-10-17): title + grey sub left,
 // the money top right; a card per group, its count and total on the grey title like Orders' band.
@@ -395,11 +395,12 @@ function shiftFabSay(text) {
   b.lastChild.animate({ opacity: [0, 1], transform: ['scale(.7)', 'none'] }, o);
   was.animate({ opacity: [1, 0], transform: ['none', 'scale(.7)'] }, o).onfinish = () => was.remove();
 }
-function renderShift() {
-  const body = $('#shiftBody');
+// peek: { el, tab } draws that tab's body into el and nothing else (a swipe's copy of the tab beside, app.js tabSwipe)
+function renderShift(peek) {
+  const body = peek?.el || $('#shiftBody'), tab = peek?.tab || shTab;
   if (!body) return;
-  closeDays();   // a POS left on overnight makes yesterday's Z when the page draws
-  shiftLive._sig = shiftSig();
+  if (!peek) closeDays();   // a POS left on overnight makes yesterday's Z when the page draws
+  if (!peek) shiftLive._sig = shiftSig();
   const all = storeShifts(), { s, from, d } = shiftDrawer(all), f = shiftFigures(d);
   const row = (lb, v) => `<div class="fr"><span class="lb">${lb}</span><span class="v num amt">${v}</span></div>`;
   // past shifts by day, newest first: the day's date · shifts on the title, its Z net at the right (opens the day's paper);
@@ -411,7 +412,7 @@ function renderShift() {
     if (p.s) days.get(k).rows.push(p); else days.get(k).z = p;
   }
   const past = [...days].map(([day, { z, rows }]) => icard(`${orderDayName(day)} <span class="num">· ${rows.length}</span>${z
-    ? `<button type="button" class="link num" data-past="${escapeHtml(z.id)}">${peso(z.d.amount)}</button>` : ''}`, rows.map(p => {
+    ? `<button type="button" class="link num cta-3" data-past="${escapeHtml(z.id)}">${peso(z.d.amount)}</button>` : ''}`, rows.map(p => {
     const diff = shiftFigures(p.s).diff;   // live: a late sale moves it
     return listRow('button', ` type="button" data-past="${escapeHtml(p.id)}"`, `${tillDate(p.s.open.ts, 'time')} – ${tillDate(p.at, 'time')}`,
       escapeHtml(p.s.open.staff), diff === null ? 'Not counted' : overShortText(diff));
@@ -421,12 +422,10 @@ function renderShift() {
     : from === cutBefore() ? `Auto-reset at ${auto} · ${shLink('settings', 'Change')}`
     : `Since last close · ${escapeHtml(shWhen(from))}`;
   const mv = d.moves.slice().reverse();
-  const [fab, act] = shTab === 'cash' ? ['Cash in / out', 'cash'] : s ? ['Close shift', 'close'] : ['Start shift', 'open'];
-  shiftFabSay(fab);
-  $('#shiftFab').dataset.sh = act;
-  $('#shiftPrint').hidden = !s;
+  const [fab, act] = tab === 'cash' ? ['Cash in / out', 'cash'] : s ? ['Close shift', 'close'] : ['Start shift', 'open'];
+  if (!peek) { shiftFabSay(fab); $('#shiftFab').dataset.sh = act; $('#shiftPrint').hidden = !s; }
   // the cash sales and Expected only for a role that sees the day's totals: the close is a blind count
-  body.innerHTML = shTab === 'cash'
+  body.innerHTML = tab === 'cash'
     ? (mv.length ? icard(`${s ? 'This shift' : 'Today'} <span class="num">· ${mv.length}</span><span class="tot num">${overShortText(mv.reduce((t, m) => t + m.amount, 0))}</span>`,
       mv.map(moveRow).join(''), '', ' fc-rows') : '<p class="sh-none">No cash in or out yet</p>')
     : `${icard('', [
@@ -440,6 +439,7 @@ function renderShift() {
     ].join(''), foot, ' r')}
     ${icard('', `<button type="button" class="fr nav" data-sh="past"><span class="lb">Past shifts</span><span class="ctl end">${ICHEV}</span></button>`)}
     ${shiftSalesCard(f.rows, row)}`;
+  if (peek) return;
   $('#shiftPastBody').innerHTML = `<div class="c-body">${past || '<p class="sh-none">No past shifts yet</p>'}</div>`;
 }
 

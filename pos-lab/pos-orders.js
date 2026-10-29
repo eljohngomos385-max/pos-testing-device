@@ -272,7 +272,7 @@ function orderBackHtml(o) {
   return rows.length ? `<section class="o-back">${rows.map(r => `<div class="fr">
     <span class="lb">${r.status === 'void' ? 'Voided' : r.reason === 'Exchange' ? 'Exchanged' : 'Refunded'} <small class="num">${tillDate(r.ts, 'dayTime')} · ${escapeHtml(SalesMath.payWord(r))} · #${escapeHtml(r.number)}${r.reason === 'Exchange' && swap ? ` · for #${escapeHtml(swap.number)}` : ''}</small></span>
     <span class="v num amt">${peso(SalesMath.rowAmount(r))}</span>
-    <button type="button" class="link" data-print-back="${escapeHtml(r.id)}">Print</button></div>`).join('')}</section>` : '';
+    <button type="button" class="link cta-3" data-print-back="${escapeHtml(r.id)}">Print</button></div>`).join('')}</section>` : '';
 }
 // What came back of each line, by how (owner 2026-10-09): "1 exchanged", "2 refunded", or both. `left` = SalesMath.qtyLeft.
 function backSaid(o, left) {
@@ -340,7 +340,7 @@ function refundAct(btn, o) {
   const picks = orderPicks(o), part = picks.length && SalesMath.refundPart(o, reversalsOf(o), picks), on = picking(o), dr = !!o.draft;
   btn.disabled = !isCompletedSale(o) || (on && !part);
   btn.hidden = dr;
-  btn.classList.toggle('primary', on); btn.classList.toggle('cta', on);
+  btn.classList.toggle('primary', on); btn.classList.toggle('cta', on); btn.classList.toggle('cta-2', !on);
   const verb = on && orderPick.mode === 'exchange' ? 'Exchange' : 'Refund';
   btn.title = btn.querySelector('span').textContent = part ? `${verb} ${peso(part.total)}` : verb;
   const pr = $('#orderPrint'), word = dr ? 'Print' : 'Print receipt';   // a draft's slip is not a receipt
@@ -358,10 +358,10 @@ function refundAct(btn, o) {
 // acts: [[label, run]] under the groups (Asked on's Select all / none); a tap applies the filter, closes, then runs
 function openFilterSheet(btn, groups, cur, def, apply, acts = []) {
   const pick = { ...cur }, { veil, m, close } = openSheet(btn, `<div class="fs-top">
-    <button type="button" class="fs-x" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h2 id="fsTitle">Filters</h2>
-    <button type="button" class="fs-ok" aria-label="Apply filters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></button>
-    </div><div class="fs-body"></div><button type="button" class="fs-clear">Clear Filters</button>`), body = m.querySelector('.fs-body');
+    <button type="button" class="fs-ok cta-2" aria-label="Apply filters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></button>
+    </div><div class="fs-body"></div><button type="button" class="fs-clear cta-2">Clear Filters</button>`), body = m.querySelector('.fs-body');
   const same = (x, y) => JSON.stringify([].concat(x).sort()) === JSON.stringify([].concat(y).sort());   // a list's order never counts
   const differs = (a, b) => Object.keys(def).some(k => !same(a[k], b[k]));
   const draw = () => {
@@ -393,12 +393,13 @@ function openFilterSheet(btn, groups, cur, def, apply, acts = []) {
 
 // The phone's ⋯ (owner 2026-10-19, Claude's Select model sheet): a half sheet of rows in place of the morph menu, which
 // needs room the bar no longer has. items as openMenu's: [{label, run, red, off, cur}], '-' starts a new card; cur gets the check.
-function openActionSheet(btn, title, items) {
+// cls '' = the Filters sheet's full height, for a list that scrolls (Sold per)
+function openActionSheet(btn, title, items, cls = 'half') {
   const cards = [[]];
   items.forEach((it, i) => it === '-' ? cards.push([]) : cards.at(-1).push(`<button type="button" data-i="${i}" class="${it.red ? 'red' : ''}${it.cur ? ' cur' : ''}"${it.cur ? ' aria-current="true"' : ''}${it.off ? ' disabled' : ''}>${escapeHtml(it.label)}</button>`));
   const { veil, close } = openSheet(btn, `<div class="fs-top">
-    <button type="button" class="fs-x" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <h2 id="fsTitle">${escapeHtml(title)}</h2><i></i></div><div class="fs-body">${cards.filter(c => c.length).map(c => `<div class="fs-rows">${c.join('')}</div>`).join('')}</div>`, 'half');
+    <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 id="fsTitle">${escapeHtml(title)}</h2><i></i></div><div class="fs-body">${cards.filter(c => c.length).map(c => `<div class="fs-rows">${c.join('')}</div>`).join('')}</div>`, cls);
   veil.addEventListener('click', e => {
     const b = e.target.closest('[data-i]');
     if (b) { close(); items[b.dataset.i].run(); }
@@ -617,7 +618,7 @@ function deliveryTripHtml(o) {
       <input type="text" class="text-input" id="odmDriverInput" placeholder="Driver name" autocomplete="off" value="${escapeHtml(driver)}" />
       <div class="odm-actions">
         ${Object.entries(DELIVERY_EVENT_META).map(([ev, m]) =>
-          `<button class="secondary-btn${ev === 'failed' ? ' danger' : ''}" type="button" data-delivery-event="${ev}" data-order-id="${o.id}">${m.label}</button>`).join('')}
+          `<button class="secondary-btn cta-2${ev === 'failed' ? ' danger' : ''}" type="button" data-delivery-event="${ev}" data-order-id="${o.id}">${m.label}</button>`).join('')}
       </div>
     </div>`;
 }

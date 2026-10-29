@@ -269,7 +269,7 @@ function renderProducts() {
         </svg>
         <div class="nr-title">No items found</div>
         <div class="nr-sub">Try a different word or scan it</div>
-        ${state.query.trim() ? `<button class="text-btn nr-lost" type="button" data-act="lost-sale">Log “${escapeHtml(state.query.trim())}” as a lost sale</button>` : ''}
+        ${state.query.trim() ? `<button class="text-btn nr-lost cta-3" type="button" data-act="lost-sale">Log “${escapeHtml(state.query.trim())}” as a lost sale</button>` : ''}
       </div>`;
     renderSellHeader();
     requestAnimationFrame(syncSellGridMetrics);
@@ -484,7 +484,7 @@ function renderCatSheet(vm) {
 let addPick = null;   // { pick: 'item' | 'cat', was: the Items tab to come back to, had: keys on My page, sel: keys ticked }
 function openAddTile(btn) {
   const { veil, close } = openSheet(btn, `<div class="fs-top">
-    <button type="button" class="fs-x" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h2 id="fsTitle">Add tile</h2><i></i></div><div class="fs-body"><div class="fs-rows"><button type="button" data-pick="item">Item</button><button type="button" data-pick="cat">Category</button></div></div>`, 'half');
   veil.addEventListener('click', e => {
     const pick = e.target.closest('[data-pick]')?.dataset.pick, m = veil.firstChild;
@@ -1322,10 +1322,10 @@ function drawEditSheet() {
   }
   // bottom left follows what's being edited: the discount's keys -> clear it; nothing open -> remove the line
   const list = o.kind === 'ful' || o.kind === 'rd';   // Walk-in, Discount: Check out's pill is Done, Clear sits up top across from ‹ Back
-  const clr = o.kind === 'rd' && !ES_SC[o.f] && (o.f ? +o.d : o.pick !== null) ? '<button type="button" class="es-x es-clr" data-sclr>Clear</button>' : '';
+  const clr = o.kind === 'rd' && !ES_SC[o.f] && (o.f ? +o.d : o.pick !== null) ? '<button type="button" class="es-x es-clr cta-2" data-sclr>Clear</button>' : '';
   const left = list || o.kind === 'price' || o.kind === 'mods' ? ''
-    : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
-    : o.f ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q" data-sclr>Clear</button>' : '';
+    : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q cta-3" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
+    : o.f ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm cta-3" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q cta-3" data-sclr>Clear</button>' : '';
   const top = !o.dir && card.querySelector('.fill .es-list')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
   // the questions' progress on ‹ Back's line: a short bar for every item (owner 2026-10-25: "line for everything"), grown from where it was (o.w)
   const w = o.kind === 'mods' && (o.at + 1) / o.qs.length;
@@ -1353,7 +1353,7 @@ function esLine(sh) {
 }
 addEventListener('resize', () => $$('.esheet.open').forEach(esLine));
 // The panel's frame: ✕ / Back, the head over its list, the side (keys or a field), the foot. The shift's panel wears it too.
-const esFrame = (head, rows, side, foot, cls = '') => `<button type="button" class="es-x" data-close aria-label="Close">${esSvg('x', 'ix')}${esSvg('back', 'ib')}<span class="xl">Back</span></button>
+const esFrame = (head, rows, side, foot, cls = '') => `<button type="button" class="es-x cta-2" data-close aria-label="Close">${esSvg('x', 'ix')}${esSvg('back', 'ib')}<span class="xl">Back</span></button>
     <div class="es-body${cls}"><div class="es-col"><div class="es-head">${head}</div><div class="es-list">${rows}</div></div>${side}</div>
     <div class="es-ft">${foot}</div>`;
 const esKeys = (dec) => `<div class="es-kp">${[...'123456789', dec ? '.' : '', '0', 'del'].map(k => !k ? '<span></span>'
@@ -1604,7 +1604,7 @@ function openFabMenu(fab, items) {
   veil.style.cssText = `--fr:${innerWidth - r.right}px;--fb:${innerHeight - r.bottom}px;--fs:${r.width}px`;
   veil.innerHTML = `<div class="fab-stack" role="menu">${items.map((it, i) => `<button type="button" role="menuitem" data-i="${i}" style="--d:${(items.length - 1 - i) * 35}ms">
       <span>${escapeHtml(it.label)}</span><i>${it.ic}</i></button>`).join('')}</div>
-    <button type="button" class="fab-x" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>`;
+    <button type="button" class="fab-x cta-2" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>`;
   document.body.append(veil);
   fab.setAttribute('aria-expanded', 'true');
   fab.style.visibility = 'hidden';   // the ✕ stands in for it; no blurred + glowing round the ✕
@@ -1951,7 +1951,7 @@ function saveSavedCustomerFromModal(by = '') {
   const dup = phoneOwner(customer.phone, was?.id), warn = $('#custDup');
   if (dup && warn.dataset.phone !== customer.phone) {
     warn.dataset.phone = customer.phone;
-    warn.innerHTML = phoneOwnerNote(dup, `<button type="button" class="link-btn" data-open-cust="${escapeHtml(dup.id)}">Open ${escapeHtml(dup.name)}</button>`);
+    warn.innerHTML = phoneOwnerNote(dup, `<button type="button" class="link-btn cta-3" data-open-cust="${escapeHtml(dup.id)}">Open ${escapeHtml(dup.name)}</button>`);
     warn.hidden = false;
     return;
   }

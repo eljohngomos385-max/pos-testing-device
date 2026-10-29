@@ -149,7 +149,7 @@ const imarginNote = v => { if (askedPrice(v)) return '—'; const m = itemMargin
 const iprofit = v => `Profit <span class="num" id="itemMarginNote">${imarginNote(v)}</span>`;   // the Price block's footnote
 const istep = () => (itemEdit.soldBy === 'measure' ? .01 : 1);
 const iqty = (attr, v) => `<input class="in num" ${attr} value="${v || ''}" type="number" step="${istep()}" min="0" inputmode="decimal" placeholder="0">`;
-const ionHand = v => `<span class="vv num${v.stock <= 0 ? ' stk-out' : ''}">${itemQty(v.stock)} ${escapeHtml(itemEdit.unit)}</span><button type="button" class="link" data-act="stock">Adjust</button>`;
+const ionHand = v => `<span class="vv num${v.stock <= 0 ? ' stk-out' : ''}">${itemQty(v.stock)} ${escapeHtml(itemEdit.unit)}</span><button type="button" class="link cta-3" data-act="stock">Adjust</button>`;
 const ilist = a => (a.length ? escapeHtml(a.length > 2 ? `${a[0]}, ${a[1]} +${a.length - 2}` : a.join(', ')) : 'None');
 const supName = id => (posSuppliers().find(s => s.id === id) || {}).name || '';
 const icurrency = () => SalesMath.currencySymbol(state.settings.store?.currency);
@@ -166,7 +166,6 @@ function renderItemForm(dir) {
     : itemSub.startsWith('alts:') ? ['SKU', itemSkuPage(altsOf())]
     : v ? [v.fresh ? 'Add variant' : 'Edit variant', itemVariantPage(v)] : [E.name || 'New item', itemMainPage()];   // a fixed title: typing a variant's name doesn't echo up there
   $('#itemForm').closest('.editor').classList.toggle('sub', !!itemSub && itemSub !== 'mods' && !itemSub.startsWith('modch:'));   // a subpage has only Back, as in Apple Settings; Modifiers keeps Save (owner 2026-10-24)
-  $('#itemMore').hidden = true;   // the item has no ⋯ (owner 2026-10-09): Archive is the last block, Back discards a new one
   $('#itemForm').innerHTML = `<div class="form${dir ? ' ' + dir : ''}">${html}</div>`;
   $('#itemTitle').textContent = title;   // small, in the top bar beside Back (rednote's Edit profile)
   // a long tick list (Made from, Categories, Modifiers): search in the bar where the title was; the title fades back in on scroll
@@ -393,7 +392,8 @@ function itemVariantPage(v) {
     + (E.variants.length > 1 ? icard('', iadd('del-variant', 'Remove variant', ' red')) : '');
 }
 
-// the dropdowns, the ⋯ menu's morph as in Settings
+// the dropdowns, the ⋯ menu's morph as in Settings. On the phone Markup is the cart ⋯'s half sheet (as app.js
+// #cartMoreBtn); Sold per is that sheet at the Filters sheet's height, so its long list scrolls (owner 2026-10-29)
 function itemPick(b) {
   const E = itemEdit, v0 = E.variants[0], act = b.dataset.act;
   const opt = (k, label, cur, run) => ({ label, cur, run });
@@ -404,7 +404,9 @@ function itemPick(b) {
       : opt(u, u, E.unit === u, () => { E.soldBy = soldByFor(u, E.soldBy); E.unit = u; renderItemForm(); })))
     : act === 'main' ? ['', ...E.sups].map(id => opt(id, id ? supName(id) : 'None', E.main === id, () => { E.main = id; b.firstChild.textContent = supName(id) || 'None'; }))
     : null;
-  if (items) openMenu(b, items, { w: 200, right: true });
+  if (act === 'unit') openActionSheet(b, E.component ? 'Unit' : 'Sold per', items, '');
+  else if (act === 'mmode' && matchMedia('(max-width: 720px)').matches) openActionSheet(b, 'Markup', items);
+  else if (items) openMenu(b, items, { w: 200, right: true });
 }
 
 // cost / margin / price: any two drive the third (the back office's three-way binding)
@@ -652,22 +654,24 @@ function renderKindForm(dir) {
   $('#itemFind').hidden = true;   // its own search stays in the form
   $('#itemTitle').textContent = K.sub ? 'Tile appearance' : K.name || `New ${KIND[K.kind][0]}`;
   if (K.sub) { $('#itemForm').innerHTML = `<div class="form ${dir || ''}">${lookPage(catLook(K))}</div>`; return; }
-  $('#itemMore').hidden = false;   // a category's or a discount's Delete
   if (K.kind === 'discs') {   // name, % or amount (a dropdown, the ⋯ menu's morph), value; Senior / PWD keep their name and stay %
     const pct = K.type === 'percent', unit = pct ? '%' : icurrency();
     $('#itemForm').innerHTML = `<div class="form">${head}${icard('', [
       ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like Summer sale"${K.builtin ? ' disabled' : ''}>`),
       K.builtin ? '' : ifr('Type', `<button type="button" class="act st-pick" data-ka="type" aria-haspopup="menu" aria-expanded="false"><span>${pct ? 'Percent' : 'Amount'}</span>${IUPDOWN}</button>`, true),
       ifr(`Value (${unit})`, `<input class="in num" data-k="value" value="${escapeHtml(K.value)}" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0">`),
-    ].join(''), K.builtin ? 'Built in. The till asks for the ID number and name, and the rate comes off the price before VAT.' : '')}</div>`;
+    ].join(''), K.builtin ? 'Built in. The till asks for the ID number and name, and the rate comes off the price before VAT.' : '')}${kindDropRow()}</div>`;
     return;
   }
   // its items on their own page, in their own card, as a modifier's Asked on: no long list here (owner 2026-10-27)
   $('#itemForm').innerHTML = `<div class="form ${dir || ''}">${head}
     ${icard('', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like Plumbing">`), '', ' r')}
     ${icard('', inav('Items', K.picked.size ? SalesMath.plural(K.picked.size, 'item') : 'None', 'items'), '', ' r')}
+    ${kindDropRow()}
   </div>`;
 }
+// Delete is the page's last block, red, as the item's Archive (owner 2026-10-29): only a saved one, never a built-in
+const kindDropRow = () => (kindEdit.id && !kindEdit.builtin ? icard('', `<button type="button" class="fr add red" data-ka="drop">Delete ${KIND[kindEdit.kind][0]}</button>`) : '');
 
 function kindInput(t) {
   const K = kindEdit;
@@ -722,7 +726,6 @@ function renderModForm(dir) {
     : o ? [o.fresh ? 'Add choice' : 'Edit choice', modChoicePage(o)]
     : [K.name || 'New modifier', modMainPage()];
   $('#itemForm').closest('.editor').classList.remove('sub');   // every subpage keeps Save too (owner 2026-10-24)
-  $('#itemMore').hidden = true;   // Delete modifier is the page's last block, as the item's Archive
   $('#itemFind').hidden = true;
   $('#itemTitle').textContent = title;
   $('#itemForm').innerHTML = `<div class="form ${dir || ''}">${html}</div>`;
@@ -739,7 +742,7 @@ function modMainPage() {
     + icard('Choices', K.options.filter(o => !o.removed).map(crow).join('') + '<button type="button" class="fr add" data-ka="choice-add">Add choice</button>', '', ' r')
     + icard('', inav('Asked on', K.picked.size ? SalesMath.plural(K.picked.size, 'item') : 'None', 'items')
       + (nHid ? inav('Hidden', String(nHid), 'hidden') : ''), '', ' r')
-    + (K.id ? icard('', '<button type="button" class="fr add red" data-ka="drop">Delete modifier</button>') : '');
+    + kindDropRow();
 }
 function modChoicePage(o) {
   return icard('', ifr('Name', `<input class="in" data-c="name" value="${escapeHtml(o.name)}" placeholder="Add name, like Large">`)
@@ -773,7 +776,6 @@ function renderPickPage(dir) {
       && (!f.cat || f.cat.some(c => it.cats.includes(c))) && (!f.on || f.on.includes(K.picked.has(it.id) ? 'sel' : 'not')))
     .sort((a, b) => (K.first.has(b.id) - K.first.has(a.id)) || a.name.localeCompare(b.name));
   $('#itemForm').closest('.editor').classList.add('sub');   // no Save up top: the pill is it
-  $('#itemMore').hidden = true;
   $('#itemTitle').textContent = mods ? 'Asked on' : 'Items';
   $('#itemFind').hidden = false;
   $('#itemFindFilter').classList.toggle('on', Object.keys(PICK_AF_DEF).some(k => f[k] !== PICK_AF_DEF[k]));
