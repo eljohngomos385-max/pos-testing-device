@@ -7488,7 +7488,7 @@ body.light-theme {
 .lv .sq[data-act="open-sidebar"] svg { width: 24px; height: 24px; }
 /* the editor's bar: Save and ⋯ are bare words and icons like Back, Save the title's size (rednote's Edit birthday) */
 body .lv .e-top .acts .act { background: none; box-shadow: none; color: var(--ink); }   /* outranks the light theme's ring */
-.lv .e-top .act.primary { min-width: 0; padding: 0 6px; font-size: 15px; font-weight: 550; }
+.lv .e-top .act.primary, body .st-page .head > .st-save { min-width: 0; padding: 0 6px; font-size: 15px; font-weight: 550; }
 .lv .e-top .act.icon .ic { width: 20px; height: 20px; }
 .lv .head { display: flex; gap: 7px; min-width: 0; }
 .lv .find { flex: 1; display: flex; height: var(--bar-h); }
@@ -8456,10 +8456,10 @@ body.light-theme .view-orders .o-rail .band::before { box-shadow: 0 .5px 1px rgb
 body.hairlines .lv.view-reports .card { border-color: var(--line); box-shadow: 0 1px 4px rgb(0 0 0 / .3), inset 0 1px 0 rgb(255 255 255 / .1); }
 body.hairlines.light-theme .lv.view-reports .card { box-shadow: 0 1px 4px rgb(0 0 0 / .06), inset 0 1px 0 rgb(255 255 255 / .8); }
 /* every ‹ and everything top right sits in the ☰'s glass circle, words in a glass pill (owner 2026-10-18) */
-.lv .sq:is(.back, .ty-edit-btn), .lv .head > .sh-print, body .lv .e-top .acts .act, body .lv .o-top .act:not(.primary), .cust-sheet .es-x, .cust-sheet .es-ink, .fsheet :is(.fs-x, .fs-ok, .fs-clear), .ag-top .fs-x {
+.lv .sq:is(.back, .ty-edit-btn), .lv .head > .sh-print, body .lv .e-top .acts .act, body .lv .o-top .act:not(.primary), .cust-sheet .es-x, .cust-sheet .es-ink, body .st-page .head > .st-save, .fsheet :is(.fs-x, .fs-ok, .fs-clear), .ag-top .fs-x {
   width: 44px; min-width: 44px; height: 44px; padding: 0; border: 0; border-radius: 999px; color: var(--ink);
   background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
-.lv .head > .sh-print, body .lv .e-top .acts .act.primary, .cust-sheet .es-ink, .fsheet .fs-clear { width: auto; padding: 0 16px; }
+.lv .head > .sh-print, body .lv .e-top .acts .act.primary, .cust-sheet .es-ink, body .st-page .head > .st-save, .fsheet .fs-clear { width: auto; padding: 0 16px; }
 .lv .sq.back { margin-left: 0; } .lv .sq.ty-edit-btn { margin-right: 0; }   /* a circle sits on the edge line, no longer overhangs it */
 body .lv .o-top .act:not(.primary, .icon) { width: auto; padding: 0 14px; }   /* iPad: the pill keeps its word */
 @container pv (max-width: 720px) { body .lv .o-top .act:not(.primary) { width: 44px; padding: 0; } }   /* phone: icons, so circles */
