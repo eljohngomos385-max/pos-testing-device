@@ -164,7 +164,7 @@ const state = {
   theme: (storageGet(STORAGE_THEME, 'dark') || 'dark'),
   tileStock: window.HWPOS_STORE?.ui.get('tileStock', '0') === '1',             // Settings › Tiles show: Stock, or both with showPrice (tileShowNow)
   sellLayout: ['list', 'rows'].includes(window.HWPOS_STORE?.ui.get('sellLayout')) ? window.HWPOS_STORE.ui.get('sellLayout') : 'grid',   // Settings › View: grid | list | rows (pos-sell.js sellAsList)
-  tilePics: window.HWPOS_STORE?.ui.get('tilePics', 'off') || 'off',              // Settings › Tile pictures: off | top | fill (tileArt)
+  tilePics: (v => v === 'top' ? 'fill' : v || 'off')(window.HWPOS_STORE?.ui.get('tilePics', 'off')),   // Settings › Tile pictures: off | fill (tileArt); 'top' was Photo top, gone (owner 2026-10-29)
   cartPics: (v => v === 'on' ? 'sm' : v || 'off')(window.HWPOS_STORE?.ui.get('cartPics', 'off')),   // Settings › Cart pictures: off | sm | md | lg (linePic); 'on' was Small
   customersQuery: '',
   selectedCustomerId: null,

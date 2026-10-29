@@ -1785,7 +1785,7 @@ select.text-input {
 .toast-undo { flex: none; align-self: stretch; margin: -6px -12px -6px 4px; padding: 0 12px; border: 0; border-radius: 0 15px 15px 0; background: none;
   color: var(--ink); font: inherit; font-weight: 650; cursor: pointer; pointer-events: auto; }
 .toast-undo:active { background: var(--accent-tint); }
-.toast .mk { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); }
+.toast .mk { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--cta-bg); color: var(--cta-ink); }   /* Check out's blue (owner 2026-10-29) */
 .toast .mk svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 /* the tick: the disc pops in just behind the chip, then the tick draws itself */
 .toast.show .mk { animation: mk-pop .26s cubic-bezier(.3, 1.6, .5, 1) backwards; }
@@ -4859,11 +4859,8 @@ body.light-theme .pc-group .pc-name { color: var(--ink); }
 .product-card.pc-tc, .product-card.pc-tc:hover { background: hsl(var(--tc) 45% 32%); }
 body.light-theme .product-card.pc-tc, body.light-theme .product-card.pc-tc:hover { background: hsl(var(--tc) 75% 86%); }
 .product-card.pc-tc:hover { filter: brightness(1.08); }
-/* Settings › Tile pictures (tileArt): top = the photo over the name, out to the tile's edges; fill = the photo is the
-   tile, its words on a shade at the bottom */
+/* Settings › Tile pictures (tileArt): fill = the photo is the tile, its words on a shade at the bottom */
 .pc-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.product-grid[data-pics="top"] .pc-img { flex: 1 1 0; min-height: 0; margin: -12px -12px 4px; overflow: hidden; }
-.product-grid[data-pics="top"] .pc-pic .pc-name { -webkit-line-clamp: 2; }
 .product-grid[data-pics="fill"] .pc-img { position: absolute; inset: 0; }
 .product-grid[data-pics="fill"] .pc-img::after { content: ''; position: absolute; inset: 40% 0 0; background: linear-gradient(transparent, rgb(0 0 0 / .72)); }
 .product-grid[data-pics="fill"] .pc-pic .pc-name { position: relative; color: #fff; }   /* on the shade in either theme */
@@ -8064,7 +8061,7 @@ body:not(.light-theme) .rail-h .items, body:not(.light-theme) .rail-h.co-mode .p
 .rail-h .go span + span::before { content: '·'; margin-right: 8px; }
 /* THE main button: put class="cta" on it and it wears Check out's material (--cta-* in :root). Only the material: each button keeps its own
    size and shape. !important so the tag beats any older per-button colour; change the look in --cta-*, never on one button (owner 2026-10-28) */
-.cta { background: var(--cta-bg) !important; color: var(--cta-ink) !important; border-color: transparent !important; box-shadow: var(--cta-shadow) !important; transition: filter .15s; }
+.cta { background: var(--cta-bg) !important; color: var(--cta-ink) !important; border-color: transparent !important; border-radius: 999px !important; box-shadow: var(--cta-shadow) !important; transition: filter .15s; }
 .cta:active { filter: brightness(.9); }
 .rail-h .go span:only-child { flex: none; }   /* empty cart: Check out centred too */
 /* phone cart (owner 2026-10-18, option B): the list runs down under Walk-in | Discount and Check out, a frost behind them fading up into it,
@@ -8649,8 +8646,7 @@ body.qs-on.qs-price .view-items .cols > :nth-child(4) { display: none; }
 .pc-pr { grid-area: pr; color: var(--ink-secondary); font-size: var(--pc-line-size); line-height: 1.3;
          font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* photo top keeps its size (the tile grows, tall in getSellGridProfile); photo fills: shade top and bottom, white words */
-.product-grid[data-pics="top"] .pc-pic .pc-img { aspect-ratio: 16 / 11; margin-bottom: 6px; }
+/* photo fills: shade top and bottom, white words */
 .product-grid[data-pics="fill"] .pc-img { grid-area: auto; z-index: 0; }   /* over the whole tile, not the img row; z 0 keeps its shades under the words */
 .product-grid[data-pics="fill"] .pc-img::after { inset: 50% 0 0; background: linear-gradient(transparent, rgb(0 0 0 / .45)); }   /* owner 2026-10-18: the heavy shades top and bottom were "ugly", "overdone" */
 .product-grid[data-pics="fill"] .pc-pic :is(.pc-name, .pc-top, .pc-pr) { text-shadow: 0 1px 2px rgb(0 0 0 / .35); }   /* bright photos (white screws) */
@@ -8842,13 +8838,13 @@ body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px v
   .catalog-wrap:has(.product-grid.sl)::after { content: ''; position: absolute; z-index: 1; inset: auto 0 calc(-1 * (var(--bar-h) + var(--ph-b))); height: calc(var(--bar-h) + var(--ph-b) + 64px); pointer-events: none;
     background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
     -webkit-mask-image: linear-gradient(transparent, #000 88px); mask-image: linear-gradient(transparent, #000 88px); }
-  .catalog-wrap:has(.product-grid.sl) ~ #cartBar { position: relative; z-index: 2; }   /* over the frost (z 1), under the sheets and the phone cart page */
+  .catalog-wrap:has(.product-grid.sl):not(:has(> .vsheet.open)) ~ #cartBar { position: relative; z-index: 2; }   /* over the frost (z 1), under the sheets and the phone cart page; not while a variant list is open, so its z 99 wins (in List the bar hid under the list, owner 2026-10-29) */
   .product-grid.sl { margin-top: calc(-1 * (var(--bar-h) + 14px)); padding-top: calc(var(--bar-h) + 14px + 1px); }   /* 14: .catalog's phone gap */
   .catalog:has(> .product-grid.sl) > .search-row { z-index: 2; }
   .catalog:has(> .product-grid.sl) > .search-row::before { content: ''; position: absolute; z-index: -1; inset: -120px calc(-1 * var(--cat-x)) -28px; pointer-events: none;
     background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
     -webkit-mask-image: linear-gradient(#000 calc(100% - 28px), transparent); mask-image: linear-gradient(#000 calc(100% - 28px), transparent); }
-  .catalog-wrap:has(.product-grid.sl) ~ #cartBar:disabled { opacity: 1; --cta-bg: var(--rl-card); --cta-ink: var(--ink-tertiary); --cta-shadow: 0 0 0 1px var(--line), var(--shadow-card); }   /* No items: solid, not a faded Check out over the rows */
+  .catalog-wrap:has(.product-grid.sl):not(:has(> .vsheet.open)) ~ #cartBar:disabled { opacity: 1; --cta-bg: var(--rl-card); --cta-ink: var(--ink-tertiary); --cta-shadow: 0 0 0 1px var(--line), var(--shadow-card); }   /* No items: solid, not a faded Check out over the rows */
 }
 /* iPad: no pill under the list, so its bottom fades out */
 @media (min-width: 721px) { .product-grid.sl { -webkit-mask-image: linear-gradient(#000 calc(100% - 48px), transparent); mask-image: linear-gradient(#000 calc(100% - 48px), transparent); padding-bottom: 48px; } }

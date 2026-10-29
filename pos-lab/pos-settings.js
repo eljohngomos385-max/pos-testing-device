@@ -11,9 +11,8 @@ const SETTING_PICKS = {
   tileShow: { opts: [['both', 'Price and stock'], ['price', 'Price'], ['stock', 'Stock'], ['name', 'Name only']], now: tileShowNow, set: setTileShow },
   sellLayout: { opts: [['grid', 'Grid'], ['list', 'List']], now: () => (state.sellLayout === 'grid' ? 'grid' : 'list'),
     set: v => setSellLayout(v === 'grid' ? 'grid' : state.sellLayout === 'grid' ? 'list' : state.sellLayout) },   // List keeps Separate rows as it was
-  // List: the rows' pictures are on or off (Photo fills is a tile's); On keeps a tile's Photo fills
-  tilePics: { get opts() { return state.sellLayout === 'grid' ? [['off', 'Off'], ['top', 'Photo top'], ['fill', 'Photo fills']] : [['off', 'Off'], ['top', 'On']]; },
-    now: () => (state.sellLayout !== 'grid' && state.tilePics === 'fill' ? 'top' : state.tilePics), set: v => setTilePics(v === 'top' && state.tilePics === 'fill' ? 'fill' : v) },
+  // Photo fills is the only photo tile (owner 2026-10-29: Photo top went); the List calls it On
+  tilePics: { get opts() { return [['off', 'Off'], ['fill', state.sellLayout === 'grid' ? 'Photo fills' : 'On']]; }, now: () => state.tilePics, set: setTilePics },
   cartPics: { opts: [['off', 'Off'], ['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large']], now: () => state.cartPics, set: setCartPics },
   theme: { opts: [['dark', 'Dark'], ['light', 'Light'], ['system', 'System']], now: () => state.theme || 'dark', set: applyTheme },
   driver: { opts: [['browser', 'Browser'], ['network', 'Wi-Fi'], ['bluetooth', 'Bluetooth']], now: () => printerConfig().driver || 'browser', set: v => savePrinting({ driver: v }) },

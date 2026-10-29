@@ -152,9 +152,7 @@ function getSellGridProfile() {
   const sq = state.tileSize === 'wide' ? 3 : columns;
   const h = catalog.clientHeight - $('#catalogSearchRow').offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - parseFloat(cs.rowGap);
   const size = (width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - gap * (sq - 1)) / sq;
-  const show = tileShowNow(), lines = show === 'name' ? 0 : show === 'both' ? 2 : 1;   // rows beside the name
-  const tall = state.tilePics === 'top' ? 1 + 0.2 * lines : 1;   // ponytail: each line needs ~20% more height so the photo keeps its size; measure if a size clips
-  return { columns, rows: Math.max(2, Math.round((h + gap) / (size * tall + gap))) };
+  return { columns, rows: Math.max(2, Math.round((h + gap) / (size + gap))) };
 }
 
 function sellPageSize(profile = getSellGridProfile()) {
@@ -222,7 +220,7 @@ function tileMeta(ps, vn) {
   return (top.length ? `<span class="pc-top">${top.join('')}</span>` : '') + pr;
 }
 const tileUnit = (n, u = 'pc') => /^(pc|bag|roll|pair|box|set|pack)$/.test(u) ? SalesMath.pluralWord(n, u, u === 'box' ? 'boxes' : u + 's') : u;
-// Settings › Tile pictures (owner 2026-10-14): Photo top / Photo fills draws the item's photo; with no photo (or pictures
+// Settings › Tile pictures (owner 2026-10-14): Photo fills draws the item's photo; with no photo (or pictures
 // off) the tile colour set in the item editor paints the tile, else it is the plain tile.
 function tileArt(row) {
   const { img, hue } = itemLook(row);
@@ -302,7 +300,7 @@ function renderProducts() {
 // a tap adds, a hold peeks, as a tile. Tile pictures and Tile text size work on it too ----------
 const sellAsList = () => !!state.query.trim() || (state.sellLayout !== 'grid' && state.sellPage !== 'mine');   // a search is always a list, Grid too (owner 2026-10-25)
 function setSellLayout(v) {
-  if (state.sellLayout === 'grid' && v !== 'grid' && state.tilePics === 'off') { state.tilePics = 'top'; HWPOS_STORE.ui.set('tilePics', 'top'); }   // List on turns the pictures on; they can go off again
+  if (state.sellLayout === 'grid' && v !== 'grid' && state.tilePics === 'off') { state.tilePics = 'fill'; HWPOS_STORE.ui.set('tilePics', 'fill'); }   // List on turns the pictures on; they can go off again
   state.sellLayout = v; HWPOS_STORE.ui.set('sellLayout', v); renderProducts();
 }
 function sellListRow(c) {
