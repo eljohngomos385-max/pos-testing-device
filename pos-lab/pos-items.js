@@ -122,12 +122,23 @@ function itemGo(sub, back) {
   const f = $('#itemForm'), K = kindEdit;
   if (sub && !(K ? K.sub : itemSub)) itemMainScroll = f.scrollTop;   // the page's place, not a subpage's (variant -> Made from)
   if (!K && itemSub.startsWith('alts:')) { const v = altsOf(); v.alts = v.alts.filter(s => s.trim()); }   // a box left empty goes
+  const nv = !K && !sub && itemEdit.variants.find(x => x.id === itemSub);   // back from Add variant with nothing typed: it goes, as a blank choice does (kindBack)
+  if (nv && itemEdit.variants.length > 1 && blankV(nv)) itemEdit.variants.splice(itemEdit.variants.indexOf(nv), 1);
   if (K) K.sub = sub; else itemSub = sub;
   (K ? renderKindForm : renderItemForm)(sub && !back ? 'push' : 'pop');
   f.scrollTop = sub ? 0 : itemMainScroll;
 }
 // Back from a subpage (app.js #itemBack): a variant's Made from to the variant, a modifier's choices to Modifiers, else the item
 const itemParent = s => (/^(made|alts):/.test(s) && itemEdit.variants.length > 1 ? s.slice(5) : s.startsWith('modch:') ? 'mods' : '');
+const blankV = v => JSON.stringify({ ...v, id: 0 }) === JSON.stringify({ ...blankVariant(), id: 0 });   // a new variant nothing was typed in
+// a variant needs a name (owner 2026-10-29): one left with something typed but no name asks before Back; a tap outside stays
+function itemBackSub() {
+  const E = itemEdit, v = E.variants.find(x => x.id === itemSub);
+  if (!v || E.variants.length < 2 || v.name.trim() || blankV(v)) return itemGo(itemParent(itemSub), true);
+  showConfirm({ title: 'Give the variant a name', message: 'Every variant needs one.', okText: 'Remove variant', cancelText: 'Add a name',
+    onConfirm: () => { E.variants.splice(E.variants.indexOf(v), 1); itemGo('', true); },
+    onCancel: () => $('#itemForm [data-v=name]')?.focus() });
+}
 
 // the rows: a field, a switch, a dropdown, a › to a subpage, a blue action
 const ICHEV = '<svg class="ic chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';

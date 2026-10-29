@@ -692,7 +692,7 @@ function attachEvents() {
   $('#kindPickGo')?.addEventListener('click', saveKind);
   itemForm?.addEventListener('scroll', () => itemForm.previousElementSibling.classList.toggle('tuck', itemForm.scrollTop > 24), { passive: true });   // Apple's: search tucks, the title shows
   // back from a subpage first (pos-items itemGo), then out of the editor
-  $('#itemBack')?.addEventListener('click', () => (kindEdit?.sub ? kindBack() : itemEdit && itemSub ? itemGo(itemParent(itemSub), true)
+  $('#itemBack')?.addEventListener('click', () => (kindEdit?.sub ? kindBack() : itemEdit && itemSub ? itemBackSub()
     : askLeave(editorDirty(), closeItemEditor)));   // a variant's Made from goes back to the variant, a modifier's choices to Modifiers; out of the editor with changes asks first
   itemForm?.addEventListener('click', (e) => { const b = e.target.closest('[data-look]'); if (b) lookClick(b); });   // Tile appearance, both editors
   // the category / modifier editor's fields (pos-items kindInput); the item editor's below
