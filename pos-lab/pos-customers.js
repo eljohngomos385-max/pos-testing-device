@@ -291,8 +291,9 @@ function renderReports(slide, peek) {
   const fr = (lb, v) => `<div class="fr"><span class="lb">${lb}</span><span class="v num amt">${v}</span></div>`;
   // Breakdown: the back office's ladder (sales-terms) -- Gross sales less voids, refunds and discounts is Net sales
   const nOf = n => (n ? ` <small>· ${n}</small>` : '');
-  const ladder = m.grossSales || m.voids || m.refunds ? fr('Gross sales', peso(m.grossSales)) + fr('Voids' + nOf(m.voidCount), peso(-m.voids))
-    + fr('Refunds' + nOf(m.refundCount), peso(-m.refunds)) + fr('Discounts', peso(-m.discounts)) + fr('<b>Net sales</b>', `<b>${peso(m.netSales)}</b>`) : none;
+  const off = n => (n ? `<span class="off">${peso(-n)}</span>` : peso(0));   // money taken off reads red (owner 2026-10-30, breakdown-lab D); ₱0.00 stays plain
+  const ladder = m.grossSales || m.voids || m.refunds ? fr('Gross sales', peso(m.grossSales)) + fr('Voids' + nOf(m.voidCount), off(m.voids))
+    + fr('Refunds' + nOf(m.refundCount), off(m.refunds)) + fr('Discounts', off(m.discounts)) + fr('<b>Net sales</b>', `<b>${peso(m.netSales)}</b>`) : none;
   const arw = (s, label, path, off) => `<button type="button" class="rp-arw" data-rp="${s}" aria-label="${label}"${off ? ' disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg></button>`;
   // ponytail: a third of a phone fits ₱999,999.99; a profit of a million or more reads ₱1.23M (the Sales number stays exact)
   const stat = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;

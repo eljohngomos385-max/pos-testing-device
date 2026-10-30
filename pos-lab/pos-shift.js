@@ -455,7 +455,7 @@ function shiftPast(open) {
 // (every line, ₱0.00 too, owner 2026-10-17 -- it was "only what did" on 10-16). Net of voids and refunds.
 function shiftSalesCard(rows, row) {
   const t = SalesMath.summarize(rows), by = SalesMath.tenders(rows);
-  const neg = n => peso(minus(n)), count = n => (n ? ` <small>· ${n}</small>` : '');
+  const neg = n => (n ? `<span class="off">${peso(-n)}</span>` : peso(0)), count = n => (n ? ` <small>· ${n}</small>` : '');
   return icard('By method', by.size || t.refunds || t.voids ? [
     ...[...by].sort(([a], [b]) => (b === 'cash') - (a === 'cash')).map(([k, n]) => row(escapeHtml(SalesMath.tenderLabel(k)), peso(n))),   // a method once it's used, Cash on top
     row(`Refunds${count(t.refundCount)}`, neg(t.refunds)),

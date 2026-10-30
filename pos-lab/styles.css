@@ -8313,6 +8313,7 @@ body.hairlines .lv :is(.rp-body, #shiftBody, .sh-body, #shiftPastBody) .card.fc 
 .lv .rp-tv { flex: none; font-weight: 510; }
 /* By method: Shift's row, the share grey after the money in a column of its own so the money lines up */
 .lv .fr .rp-tp { display: inline-block; width: 3.25em; white-space: nowrap; font-weight: 400; text-align: right; }
+.lv .fr .off { color: var(--danger); }   /* Breakdown / By method: money taken off (void, refund, discount) reads red; owner 2026-10-30, breakdown-lab D */
 /* a period step slides the figures in from the side it came from */
 .lv .rp-body.slide-l { animation: rp-sl .28s ease; }
 .lv .rp-body.slide-r { animation: rp-sr .28s ease; }
