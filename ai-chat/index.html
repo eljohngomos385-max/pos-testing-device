@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Chat Test</title>
+<style>
+  :root { --bg:#fff; --surface:#f4f4f4; --line:#e5e5e5; --ink:#0d0d0d; --ink-2:#8f8f8f; --bubble:#e8f0fe; --bubble-ink:#0d0d0d;
+          --cta:#2a62e8; --col:768px; color-scheme: light dark; }
+  :root[data-theme=light] { color-scheme: light; }
+  :root[data-theme=dark] { color-scheme: dark; --bg:#000; --surface:#262626; --line:#333; --ink:#ececec; --ink-2:#a3a3a3;
+          --bubble:#1c3f7a; --bubble-ink:#fff; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme]) { --bg:#000; --surface:#262626; --line:#333; --ink:#ececec; --ink-2:#a3a3a3;
+          --bubble:#1c3f7a; --bubble-ink:#fff; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.65 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+         height:100dvh; display:flex; flex-direction:column; }
+
+  header { position:absolute; top:0; right:0; padding:12px 16px; z-index:2; }
+  .icon { width:36px; height:36px; border:0; border-radius:10px; background:none; color:var(--ink); display:grid; place-items:center; cursor:pointer; }
+  .icon:hover { background:var(--surface); }
+  #settings { margin:56px 16px 0 auto; inset:0 0 auto auto; width:300px; padding:16px; border:1px solid var(--line); border-radius:16px;
+              background:var(--bg); color:var(--ink); box-shadow:0 8px 32px rgba(0,0,0,.35); }
+  #settings label { display:block; font-size:13px; color:var(--ink-2); margin:0 0 4px; }
+  #settings label + * { margin-bottom:12px; }
+  #settings select, #settings input { width:100%; font:inherit; font-size:14px; padding:8px 12px; border:1px solid var(--line); border-radius:10px;
+              background:var(--surface); color:var(--ink); }
+
+  #log { flex:1; overflow-y:auto; padding:72px 16px 24px; display:flex; flex-direction:column; gap:24px; }
+  .msg { width:100%; max-width:var(--col); margin:0 auto; overflow-wrap:anywhere; }
+  .user { width:auto; max-width:min(70%, 560px); margin:0 max(0px, calc((100% - var(--col)) / 2)) 0 auto;
+          background:var(--bubble); color:var(--bubble-ink); border-radius:22px; padding:10px 18px; white-space:pre-wrap; }
+  .empty { margin:auto; font-size:28px; font-weight:500; text-align:center; }
+  #keybox { display:flex; gap:8px; margin:24px auto 0; font-size:15px; font-weight:400; width:min(100%, 420px); }
+  #keybox[hidden] { display:none; }
+  #keybox input { flex:1; min-width:0; font:inherit; font-size:15px; padding:10px 16px; border:1px solid var(--line); border-radius:999px;
+                  background:var(--surface); color:var(--ink); }
+  #keybox button { font:inherit; font-size:15px; font-weight:600; border:0; border-radius:999px; padding:0 18px; background:var(--cta); color:#fff; cursor:pointer; }
+  .ai > :first-child { margin-top:0; } .ai > :last-child { margin-bottom:0; }
+  .ai h1, .ai h2, .ai h3 { line-height:1.3; margin:1.4em 0 .5em; } .ai h1 { font-size:1.5em } .ai h2 { font-size:1.25em } .ai h3 { font-size:1.1em }
+  .ai p { margin:0 0 1em; } .ai ul, .ai ol { padding-left:1.6em; }
+  .ai pre { background:var(--surface); padding:16px; border-radius:16px; overflow-x:auto; font-size:14px; line-height:1.5; }
+  .ai code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:.875em; }
+  .ai :not(pre) > code { background:var(--surface); padding:2px 6px; border-radius:6px; }
+  .ai table { border-collapse:collapse; display:block; overflow-x:auto; font-size:15px; margin:0 0 1em; }
+  .ai th, .ai td { border-bottom:1px solid var(--line); padding:8px 14px 8px 0; text-align:left; }
+  .ai blockquote { margin:0 0 1em; padding-left:16px; border-left:3px solid var(--line); }
+  .ai hr { border:0; border-top:1px solid var(--line); margin:1.5em 0; }
+  .ai a { color:var(--cta); }
+  .think { margin-bottom:-12px; color:var(--ink-2); font-size:14px; }
+  .think summary { cursor:pointer; list-style:none; }
+  .think summary::-webkit-details-marker { display:none; }
+  .think summary::after { content:' \203A'; }
+  .think[open] { margin-bottom:0; }
+  .think[open] summary::after { content:' \2304'; }
+  .think div { white-space:pre-wrap; border-left:2px solid var(--line); padding-left:14px; margin-top:8px; max-height:320px; overflow-y:auto; }
+  .ai .fade { animation: fade .6s ease-out; }
+  @keyframes fade { from { opacity:0 } }
+  .err { color:#ef4444; white-space:pre-wrap; font-size:14px; }
+  .meta { margin-top:-16px; color:var(--ink-2); font-size:12px; }
+
+  footer { padding:0 16px calc(8px + env(safe-area-inset-bottom)); }
+  .note { max-width:var(--col); margin:0 auto 8px; text-align:center; font-size:12px; color:var(--ink-2); }
+  #form { max-width:var(--col); margin:0 auto; display:flex; align-items:flex-end; gap:8px; background:var(--surface);
+         border-radius:28px; padding:8px 8px 8px 22px; }
+  textarea { flex:1; font:inherit; border:0; outline:0; background:none; color:var(--ink); resize:none; max-height:200px; padding:6px 0; }
+  textarea::placeholder { color:var(--ink-2); }
+  #send { width:36px; height:36px; flex:none; border:0; border-radius:50%; background:var(--cta); color:#fff; display:grid; place-items:center; cursor:pointer; }
+  #send:disabled { opacity:.35; cursor:default; }
+  #send .sq { width:12px; height:12px; background:#fff; border-radius:2px; }
+</style>
+</head>
+<body>
+<header>
+  <button class="icon" popovertarget="settings" aria-label="Settings">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>
+  </button>
+</header>
+<div id="settings" popover>
+  <label for="provider">Provider</label>
+  <select id="provider">
+    <option value="deepseek">DeepSeek</option>
+    <option value="anthropic">Anthropic</option>
+    <option value="demo">Demo (no key)</option>
+  </select>
+  <label for="model">Model</label>
+  <input id="model">
+  <label for="key">API key</label>
+  <input id="key" type="password" autocomplete="off">
+  <label for="thinking">Thinking (DeepSeek)</label>
+  <select id="thinking">
+    <option value="enabled">On</option>
+    <option value="disabled">Off</option>
+  </select>
+  <label for="theme">Theme</label>
+  <select id="theme">
+    <option value="">Auto</option>
+    <option value="light">Light</option>
+    <option value="dark">Dark</option>
+  </select>
+</div>
+
+<main id="log"><div class="empty">What can I help with?
+  <form id="keybox" hidden><input id="keyPaste" type="password" autocomplete="off"><button>Save</button></form>
+</div></main>
+
+<footer>
+  <div class="note">AI can make mistakes. Check important info.</div>
+  <form id="form">
+    <textarea id="input" rows="1" placeholder="Ask anything"></textarea>
+    <button id="send" aria-label="Send" disabled></button>
+  </form>
+</footer>
+
+<script type="module">
+import * as smd from './smd.js'
+
+const $ = id => document.getElementById(id)
+// deepseek-flash = DeepSeek-V4.1-Flash-1017 (api-docs.deepseek.com, 2026-10-17); it thinks first unless Thinking is Off
+const MODELS = { deepseek: 'deepseek-flash', anthropic: 'claude-sonnet-5-5', demo: 'demo' }
+const ARROW = '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 16V4M4.5 9.5 10 4l5.5 5.5"/></svg>'
+const history = []
+let busy = null   // AbortController while a reply streams
+
+// Settings stay in this browser; the API key stays on the computer running serve.py (see /api/keys).
+const load = k => { try { return localStorage.getItem('aichat.' + k) || '' } catch { return '' } }
+const save = (k, v) => { try { localStorage.setItem('aichat.' + k, v) } catch {} }
+$('provider').value = load('provider') || 'deepseek'
+const showSettings = () => {
+  const p = $('provider').value
+  $('model').value = load('model.' + p) || MODELS[p]
+  $('key').value = ''
+  $('key').disabled = !keys.local
+  $('key').placeholder = keys[p] ? 'Saved on the computer' + (keys.local ? ' · paste to replace' : '')
+    : keys.local ? 'Paste your key' : 'Paste it on the computer'
+}
+const keys = await fetch('/api/keys').then(r => r.json()).catch(() => ({}))
+showSettings()
+const setTheme = t => t ? document.documentElement.dataset.theme = t : delete document.documentElement.dataset.theme
+$('theme').value = load('theme'); setTheme($('theme').value)
+$('theme').onchange = () => { save('theme', $('theme').value); setTheme($('theme').value) }
+$('thinking').value = load('thinking') || 'enabled'
+$('thinking').onchange = () => save('thinking', $('thinking').value)
+$('provider').onchange = () => { save('provider', $('provider').value); showSettings() }
+
+// No key on the computer yet: ask for it right on the empty page. Later changes go through ⋯.
+function showKeybox() {
+  const p = $('provider').value
+  if (!$('keybox')) return
+  $('keybox').hidden = p === 'demo' || !!keys[p]
+  $('keyPaste').disabled = $('keybox').querySelector('button').disabled = !keys.local
+  $('keyPaste').placeholder = keys.local ? 'Paste your ' + $('provider').selectedOptions[0].text + ' API key' : 'Paste the key on the computer first'
+}
+showKeybox()
+$('provider').addEventListener('change', showKeybox)
+async function saveKey(k) {
+  const p = $('provider').value
+  const res = await fetch('/api/key', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: p, key: k }) })
+  if (!res.ok) return add('err', await res.text())
+  keys[p] = true
+  showSettings(); showKeybox()
+  $('input').focus()
+}
+$('keybox').onsubmit = e => {
+  e.preventDefault()
+  const k = $('keyPaste').value.trim()
+  if (k) saveKey(k)
+}
+$('model').onchange = () => save('model.' + $('provider').value, $('model').value.trim())
+$('key').onchange = () => { const k = $('key').value.trim(); if (k) saveKey(k) }
+// a key pasted before keys moved to the computer: hand it over once, then forget it here
+if (keys.local) for (const p of ['deepseek', 'anthropic']) {
+  const old = load('key.' + p)
+  if (old && !keys[p]) await fetch('/api/key', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: p, key: old }) })
+    .then(r => { if (r.ok) { keys[p] = true; showSettings(); showKeybox() } })
+  if (keys[p]) try { localStorage.removeItem('aichat.key.' + p) } catch {}
+}
+
+const setSend = () => {
+  $('send').innerHTML = busy ? '<span class="sq"></span>' : ARROW
+  $('send').setAttribute('aria-label', busy ? 'Stop' : 'Send')
+  $('send').disabled = !busy && !$('input').value.trim()
+}
+setSend()
+
+function add(cls, text) {
+  document.querySelector('.empty')?.remove()
+  const el = document.createElement('div')
+  el.className = 'msg ' + cls
+  if (text) el.textContent = text
+  $('log').append(el)
+  el.scrollIntoView({ block: 'end' })
+  return el
+}
+
+// The model's links and images land in the page, so only http(s) gets through.
+// Each streamed piece goes in its own span so it fades in, the way chat apps reveal text.
+function chatRenderer(root) {
+  const r = smd.default_renderer(root)
+  r.set_attr = (data, type, value) => {
+    if ((type === smd.HREF || type === smd.SRC) && !/^https?:\/\//i.test(value)) return
+    smd.default_set_attr(data, type, value)
+  }
+  r.add_text = (data, text) => {
+    const s = document.createElement('span')
+    s.className = 'fade'
+    s.textContent = text
+    data.nodes[data.index].appendChild(s)
+  }
+  return r
+}
+
+// Both providers stream SSE; pull the answer piece (and DeepSeek's thinking piece) out of each event.
+function piece(ev) {
+  if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') return { text: ev.delta.text }
+  if (ev.type === 'error') throw new Error(ev.error?.message || 'error')
+  const d = ev.choices?.[0]?.delta || {}
+  return { text: d.content || '', think: d.reasoning_content || '' }
+}
+
+async function ask(text) {
+  history.push({ role: 'user', content: text })
+  add('user', text)
+  // the thinking folds away like chat apps' "Thought for 4s"
+  const thinkBox = add('think')
+  thinkBox.outerHTML = '<details class="msg think" hidden><summary>Thinking…</summary><div></div></details>'
+  const think = $('log').lastElementChild
+  const out = add('ai')
+  const parser = smd.parser(chatRenderer(out))
+  const log = $('log')
+  let reply = '', t0 = performance.now(), first = 0
+  busy = new AbortController()
+  setSend()
+  try {
+    const p = $('provider').value
+    const res = await fetch('/api/chat', {
+      method: 'POST', signal: busy.signal, headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ provider: p, model: $('model').value.trim() || MODELS[p], messages: history, thinking: $('thinking').value }),
+    })
+    if (!res.ok) throw new Error(res.status + ' ' + await res.text())
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
+    let buf = ''
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buf += value
+      const lines = buf.split('\n')
+      buf = lines.pop()
+      for (const line of lines) {
+        if (!line.startsWith('data:') || line.includes('[DONE]')) continue
+        const { text: chunk, think: thought } = piece(JSON.parse(line.slice(5)))
+        if (!chunk && !thought) continue
+        if (!first) first = performance.now()
+        const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 40
+        if (thought) {
+          think.hidden = false
+          think.lastElementChild.append(thought)
+        }
+        if (chunk) {
+          if (!reply && !think.hidden) think.firstElementChild.textContent = `Thought for ${Math.max(1, Math.round((performance.now() - first) / 1000))}s`
+          reply += chunk
+          smd.parser_write(parser, chunk)
+        }
+        if (stick) log.scrollTop = log.scrollHeight
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') add('err', e.message)
+  } finally {
+    smd.parser_end(parser)
+    if (!reply) think.firstElementChild.textContent = 'Thought'   // stopped while thinking
+    if (reply) {
+      history.push({ role: 'assistant', content: reply })
+      add('meta', `first text ${Math.round(first - t0)} ms · ${reply.length} chars · ${((performance.now() - t0) / 1000).toFixed(1)} s`)
+    } else history.pop()   // nothing came back, so the question can be asked again cleanly
+    busy = null
+    setSend()
+  }
+}
+
+$('form').onsubmit = e => {
+  e.preventDefault()
+  if (busy) return busy.abort()
+  const text = $('input').value.trim()
+  if (!text) return
+  if (!keys[$('provider').value] && $('provider').value !== 'demo') {
+    if ($('keybox')) return $('keyPaste').focus()
+    $('settings').showPopover()
+    return $('key').focus()
+  }
+  $('input').value = ''; $('input').style.height = ''
+  ask(text)
+}
+$('input').oninput = e => { e.target.style.height = ''; e.target.style.height = e.target.scrollHeight + 'px'; setSend() }
+$('input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('form').requestSubmit() } }
+</script>
+</body>
+</html>

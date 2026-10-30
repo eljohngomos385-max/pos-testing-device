@@ -4,23 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sold by lab</title>
-<!-- Sold by: Piece or Weight, in place of today's 13 "Sold per" units (owner 2026-10-29, discussion, not ported).
-     Now | After pictures, a live POS to tap, and what it saves in code. -->
+<!-- Sold by as one dropdown: Piece, then the measures (owner 2026-10-30, discussion, not ported).
+     Replaces today's 13 "Sold per" units. Now | After item form, every kind of store, a live POS, the code. -->
 <style>
-:root { --bg: #FFFFFF; --canvas: #F2F2F2; --surface: #F9F9F9; --tile: #F3F3F3; --line: #E1E1E1; --ink: #303030; --ink-2: #616161; --ink-3: #8C8C8C;
-        --page: #E8E8E8; --code: #F6F6F6; --good: #1F8A4C; --bad: #C2410C; --r: 14px; --r-input: 10px;
+:root { --bg: #FFFFFF; --canvas: #F2F2F2; --tile: #F3F3F3; --line: #E1E1E1; --ink: #303030; --ink-2: #616161; --ink-3: #8C8C8C;
+        --page: #E8E8E8; --code: #F6F6F6; --good: #1F8A4C; --bad: #C2410C; --blue: #4388F7; --r: 14px;
         --cta-bg: radial-gradient(75% 80% at 50% 120%, #8EC2F0, transparent 85%), linear-gradient(#6A9FF9, #4388F7 50%, #5592F7);
         --cta-ink: #FFFFFF; --cta-shadow: inset 0 0 14px rgb(255 255 255 / .25), 0 1px 2px rgb(41 85 151 / .45), 0 2px 7px 1px rgb(67 136 247 / .32); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #121212; --canvas: #000000; --surface: #1C1C1C; --tile: #2A2A2A; --line: rgba(255,255,255,.08); --ink: #FFFFFF; --ink-2: rgba(255,255,255,.7);
+  --bg: #121212; --canvas: #000000; --tile: #2A2A2A; --line: rgba(255,255,255,.08); --ink: #FFFFFF; --ink-2: rgba(255,255,255,.7);
   --ink-3: rgba(255,255,255,.45); --page: #0A0A0A; --code: #1C1C1C; --good: #4ADE80; --bad: #FB923C; } }
 * { box-sizing: border-box; margin: 0; }
 body { font: 15px/1.45 -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; background: var(--page); color: var(--ink); padding: 28px 16px 64px; }
 main { max-width: 1080px; margin: 0 auto; }
 h1 { font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
 h2 { font-size: 19px; font-weight: 650; margin: 44px 0 6px; }
-.lead { color: var(--ink-2); margin: 6px 0 0; max-width: 640px; }
-.note { color: var(--ink-3); font-size: 13px; margin-top: 4px; }
+.lead { color: var(--ink-2); margin-top: 6px; max-width: 640px; }
+.note { color: var(--ink-3); font-size: 13px; margin-top: 6px; }
 .row { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 16px; align-items: flex-start; }
 .col { flex: 1 1 300px; min-width: 0; }
 .tag { display: inline-block; font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 8px 4px; color: var(--ink-3); }
@@ -28,26 +28,31 @@ h2 { font-size: 19px; font-weight: 650; margin: 44px 0 6px; }
 pre.tree { font: 14px/1.6 ui-monospace, "SF Mono", Consolas, monospace; background: var(--bg); border-radius: var(--r); padding: 14px 16px; white-space: pre-wrap; margin-top: 14px; }
 
 /* a phone screen */
-.ph { width: 100%; max-width: 340px; background: var(--canvas); border-radius: 28px; padding: 18px 14px; position: relative; overflow: hidden; min-height: 420px; }
-.ph .bar { text-align: center; font-weight: 600; font-size: 15px; margin-bottom: 14px; }
+.ph { width: 100%; max-width: 340px; background: var(--canvas); border-radius: 28px; padding: 18px 14px; position: relative; overflow: hidden; min-height: 440px; }
+.ph .bar { text-align: center; font-weight: 600; margin-bottom: 14px; }
 .fc-t { font-size: 13px; color: var(--ink-3); font-weight: 500; margin: 14px 0 6px 14px; }
 .card { background: var(--bg); border-radius: var(--r); }
-.fr { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line); min-height: 46px; }
+.fr { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line); min-height: 46px; width: 100%;
+      background: none; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; color: inherit; text-align: left; }
 .fr:first-child { border-top: 0; }
-.fr .lb { color: var(--ink); }
 .fr .vv { color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .pick { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-2); }
 .pick svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.fr.hi { box-shadow: inset 3px 0 0 #4388F7; }
+button.fr { cursor: pointer; }
+.fr.hi { box-shadow: inset 3px 0 0 var(--blue); }
 .fc-n { font-size: 12.5px; color: var(--ink-3); margin: 6px 14px 0; }
+.price-in { width: 90px; border: 0; background: none; text-align: right; font: inherit; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
-/* a menu sheet opened from a row */
+/* the menu a row opens */
 .menu { background: var(--bg); border-radius: var(--r); margin-top: 10px; box-shadow: 0 8px 28px rgb(0 0 0 / .14); overflow: hidden; }
-.menu .mi { padding: 9px 16px; display: flex; justify-content: space-between; border-top: 1px solid var(--line); font-size: 14px; }
+.menu .mi { padding: 9px 16px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); font-size: 14px; width: 100%;
+            background: none; border-left: 0; border-right: 0; border-bottom: 0; font-family: inherit; color: inherit; text-align: left; }
+.menu button.mi { cursor: pointer; }
 .menu .mi:first-child { border-top: 0; }
-.menu .mi.on::after { content: "✓"; color: #4388F7; font-weight: 700; }
+.menu .mi small { color: var(--ink-3); font-size: 12px; }
+.menu .mi.on { font-weight: 600; }
+.menu .mi.on small::after { content: "  ✓"; color: var(--blue); font-weight: 700; }
 .menu .sep { height: 6px; background: var(--canvas); }
-.menu .mi small { color: var(--ink-3); }
 
 /* the sell screen */
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -56,66 +61,74 @@ pre.tree { font: 14px/1.6 ui-monospace, "SF Mono", Consolas, monospace; backgrou
 .tl:active { transform: scale(.96); }
 .tl b { font-size: 13px; font-weight: 600; line-height: 1.2; }
 .tl span { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.tl.flash { outline: 2px solid #4388F7; }
+.tl.flash { outline: 2px solid var(--blue); }
 .cart { background: var(--bg); border-radius: var(--r); margin-top: 12px; }
 .ln { display: flex; justify-content: space-between; gap: 8px; padding: 9px 14px; border-top: 1px solid var(--line); font-size: 14px; }
 .ln:first-child { border-top: 0; }
 .ln small { display: block; color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
 .ln .amt { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ln.bad .amt, .ln.bad small { color: var(--bad); }
 .empty { padding: 14px; color: var(--ink-3); font-size: 14px; text-align: center; }
 .tot { display: flex; justify-content: space-between; padding: 12px 14px; font-weight: 650; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
-.cta { border: 0; border-radius: 999px; background: var(--cta-bg); color: var(--cta-ink); box-shadow: var(--cta-shadow); font: 600 16px/1 inherit; font-family: inherit;
+.cta { border: 0; border-radius: 999px; background: var(--cta-bg); color: var(--cta-ink); box-shadow: var(--cta-shadow); font-family: inherit; font-size: 16px; font-weight: 600;
        height: 48px; width: 100%; cursor: pointer; }
 .cta:disabled { opacity: .4; cursor: default; }
-.link { border: 0; background: none; color: #4388F7; font: inherit; font-size: 13px; cursor: pointer; padding: 6px 0 0 4px; }
+.link { border: 0; background: none; color: var(--blue); font: inherit; font-size: 13px; cursor: pointer; padding: 6px 0 0 4px; }
 
-/* the amount pad (today's price-ask sheet, asking the weight) */
+/* the amount pad: today's price-ask sheet, asking the amount */
 .veil { position: absolute; inset: 0; background: rgb(0 0 0 / .3); display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity .2s; }
 .veil.open { opacity: 1; pointer-events: auto; }
 .sheet { background: var(--bg); width: 100%; border-radius: 22px 22px 0 0; padding: 18px 16px 16px; transform: translateY(100%); transition: transform .25s cubic-bezier(.2,.8,.2,1); text-align: center; }
 .veil.open .sheet { transform: none; }
 .sheet p { color: var(--ink-3); font-size: 13px; }
-.sheet .q { font-size: 40px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin: 2px 0 0; }
+.sheet .q { font-size: 40px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 2px; }
 .sheet .q small { font-size: 20px; font-weight: 600; color: var(--ink-3); margin-left: 4px; }
 .sheet .m { color: var(--ink-2); font-variant-numeric: tabular-nums; margin-bottom: 12px; min-height: 22px; }
 .kp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 12px; }
-.kp button { height: 46px; border: 0; border-radius: 12px; background: var(--tile); color: var(--ink); font: 500 21px/1 inherit; font-family: inherit; cursor: pointer; }
+.kp button { height: 46px; border: 0; border-radius: 12px; background: var(--tile); color: var(--ink); font-family: inherit; font-size: 21px; font-weight: 500; cursor: pointer; }
 .kp button:active { filter: brightness(.92); }
 
-/* static pictures of the steps */
-.steps { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-.st { flex: 1 1 150px; background: var(--bg); border-radius: var(--r); padding: 12px; font-size: 13.5px; }
-.st b { display: block; font-size: 12px; color: var(--ink-3); font-weight: 600; margin-bottom: 4px; }
-.st.bad { box-shadow: inset 0 0 0 1.5px var(--bad); }
+/* the Sold by page slides in over the item, like Categories */
+#formPh { min-height: 560px; }
+#formPh .pg { position: absolute; inset: 18px 14px; transition: transform .28s cubic-bezier(.2,.8,.2,1), opacity .28s; }
+#formPh .sub { transform: translateX(105%); }
+#formPh.in .sub { transform: none; }
+#formPh.in #pgItem { transform: translateX(-30%); opacity: 0; pointer-events: none; }
+.bar { position: relative; }
+.back { position: absolute; left: 0; top: 0; border: 0; background: none; color: var(--blue); font: inherit; font-weight: 400; cursor: pointer; padding: 0; }
+.tick { color: var(--blue); font-weight: 700; }
+.fr svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pics { display: flex; flex-direction: column; gap: 12px; }
+.ph.mini { min-height: 0; }
 
-/* code */
-.code { background: var(--code); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; font: 12.5px/1.55 ui-monospace, "SF Mono", Consolas, monospace;
-        white-space: pre-wrap; word-break: break-word; overflow-x: auto; }
-.code .del { color: var(--bad); } .code .add { color: var(--good); } .code .c { color: var(--ink-3); }
+/* tables + code */
 table { width: 100%; border-collapse: collapse; background: var(--bg); border-radius: var(--r); overflow: hidden; margin-top: 14px; font-size: 14px; }
 th, td { text-align: left; padding: 10px 14px; border-top: 1px solid var(--line); vertical-align: top; }
 th { color: var(--ink-3); font-weight: 600; font-size: 12.5px; border-top: 0; }
 td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.grp { background: var(--canvas); font-weight: 650; font-size: 12.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; padding: 6px 14px; }
+.wrap { overflow-x: auto; }
+.code { background: var(--code); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; font: 12.5px/1.55 ui-monospace, "SF Mono", Consolas, monospace;
+        white-space: pre-wrap; word-break: break-word; }
+.code .del { color: var(--bad); } .code .add { color: var(--good); } .code .c { color: var(--ink-3); }
 </style>
 </head>
 <body>
 <main>
-  <h1>Sold by: Piece or Weight</h1>
-  <p class="lead">Two choices instead of 13. You either count it (Piece) or measure it (Weight). A Weight item asks "How many kg?" when you tap it, so the price is always right.</p>
+  <h1>Sold by: Piece or Measure</h1>
+  <p class="lead">Sold by opens its own page. Pick Piece and each tap adds 1. Pick Measure, choose the unit, and each tap asks "How many kg?" first.</p>
 
-  <!-- 1. The item form -->
+  <!-- 1 -->
   <h2>1 · The item form</h2>
-  <p class="note">Items › an item › the Price block</p>
+  <p class="note">Sold by is a row with ›, like Categories. It opens its own page: first Piece or Measure, then the unit if you picked Measure. The middle phone is live.</p>
   <div class="row">
     <div class="col">
-      <div class="tag now">Now</div>
+      <div class="tag now">Now · 13 units in one list</div>
       <div class="ph">
         <div class="bar">Edit item</div>
         <h3 class="fc-t">Price</h3>
         <section class="card">
-          <div class="fr"><span class="lb">Price</span><span class="vv">₱65.00</span></div>
-          <div class="fr hi"><span class="lb">Sold per</span><span class="pick">kg <svg viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></div>
+          <div class="fr"><span>Price</span><span class="vv">₱65.00</span></div>
+          <div class="fr hi"><span>Sold per</span><span class="pick">kg <svg viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></div>
         </section>
         <div class="menu">
           <div class="mi">pc</div><div class="mi">box</div><div class="mi">bag</div><div class="mi">set</div><div class="mi">pair</div>
@@ -123,79 +136,86 @@ td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
           <div class="mi">m</div><div class="mi">ft</div><div class="mi on">kg</div><div class="mi">L</div><div class="mi">gal</div>
         </div>
       </div>
-      <p class="note">13 units. Box, bag, set, roll and can all sell the same way as pc. They're only words.</p>
     </div>
     <div class="col">
-      <div class="tag after">After · Piece</div>
-      <div class="ph">
-        <div class="bar">Edit item</div>
-        <h3 class="fc-t">Price</h3>
-        <section class="card">
-          <div class="fr hi"><span class="lb">Sold by</span><span class="pick">Piece <svg viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></div>
-          <div class="fr"><span class="lb">Price</span><span class="vv">₱260.00</span></div>
-        </section>
-        <p class="fc-n">Cement 40kg bag · each tap adds 1</p>
-        <div class="menu">
-          <div class="mi on">Piece <small>count it</small></div>
-          <div class="mi">Weight <small>measure it</small></div>
+      <div class="tag after">After · live</div>
+      <div class="ph" id="formPh">
+        <div class="pg" id="pgItem">
+          <div class="bar">Apples</div>
+          <h3 class="fc-t">Price</h3>
+          <section class="card">
+            <button class="fr hi" type="button" id="soldByBtn"><span>Sold by</span><span class="pick"><span id="soldByVal"></span><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></button>
+            <div class="fr"><span>Price</span><span class="vv" id="priceVal"></span></div>
+          </section>
+          <p class="fc-n" id="formHint"></p>
+        </div>
+        <div class="pg sub" id="pgSold">
+          <div class="bar"><button class="back" type="button" id="soldBack">‹ Item</button>Sold by</div>
+          <section class="card" id="kindList"></section>
+          <div id="unitBlock">
+            <h3 class="fc-t">Unit</h3>
+            <section class="card" id="unitList"></section>
+          </div>
         </div>
       </div>
-      <p class="note">Two choices, explained in two words each.</p>
     </div>
     <div class="col">
-      <div class="tag after">After · Weight</div>
-      <div class="ph">
-        <div class="bar">Edit item</div>
-        <h3 class="fc-t">Price</h3>
-        <section class="card">
-          <div class="fr"><span class="lb">Sold by</span><span class="pick">Weight <svg viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></div>
-          <div class="fr hi"><span class="lb">Per</span><span class="pick">kg <svg viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></div>
-          <div class="fr"><span class="lb">Price</span><span class="vv">₱65.00 / kg</span></div>
-        </section>
-        <p class="fc-n">Apples · the POS asks how many kg</p>
-        <div class="menu">
-          <div class="mi on">kg</div><div class="mi">g</div><div class="mi">lb</div><div class="mi">m</div><div class="mi">L</div>
+      <div class="tag after">After · the two pages</div>
+      <div class="pics">
+        <div class="ph mini">
+          <div class="bar"><span class="back">‹ Item</span>Sold by</div>
+          <section class="card"><div class="fr"><span>Piece</span><span class="tick">✓</span></div><div class="fr"><span>Measure</span></div></section>
+          <p class="fc-n">Each tap adds 1.</p>
         </div>
-      </div>
-      <p class="note">"Per" only shows for Weight. It's kg by default, and m or L cover wire, rope and paint.</p>
-    </div>
-  </div>
-
-  <!-- 2. At the POS -->
-  <h2>2 · At the POS: selling 1.25 kg of apples</h2>
-  <div class="row">
-    <div class="col">
-      <div class="tag now">Now · 5 taps, easy to get wrong</div>
-      <div class="steps">
-        <div class="st"><b>1 · Tap Apples</b>Cart: Apples · 1 kg · ₱65.00</div>
-        <div class="st bad"><b>2 · Forget the rest?</b>The customer pays for 1 kg, but you weighed 1.25 kg. <b style="display:inline;color:var(--bad)">₱16.25 lost</b></div>
-        <div class="st"><b>3 · Or fix it</b>Tap the line › Quantity › type 1.25 › Done</div>
-      </div>
-    </div>
-    <div class="col">
-      <div class="tag after">After · 3 taps, can't skip</div>
-      <div class="steps">
-        <div class="st"><b>1 · Tap Apples</b>The pad opens: "How many kg?"</div>
-        <div class="st"><b>2 · Type 1.25 › Add</b>₱81.25 shows while you type</div>
-        <div class="st"><b>Cart</b>Apples · 1.25 kg × ₱65.00 · ₱81.25</div>
+        <div class="ph mini">
+          <div class="bar"><span class="back">‹ Item</span>Sold by</div>
+          <section class="card"><div class="fr"><span>Piece</span></div><div class="fr"><span>Measure</span><span class="tick">✓</span></div></section>
+          <h3 class="fc-t">Unit</h3>
+          <section class="card"><div class="fr"><span>kg</span><span class="tick">✓</span></div><div class="fr"><span>100 g</span></div><div class="fr"><span>L</span></div><div class="fr"><span>mL</span></div><div class="fr"><span>m</span></div><div class="fr"><span>m²</span></div></section>
+          <p class="fc-n">The POS asks "How many kg?"</p>
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- 2 -->
+  <h2>2 · Every kind of store</h2>
+  <div class="wrap">
+  <table>
+    <tr><th>Item</th><th>Sold by</th><th>At the POS</th><th>Cart line</th></tr>
+    <tr><td class="grp" colspan="4">Food</td></tr>
+    <tr><td>Burger, iced coffee</td><td class="n">Piece</td><td>Tap = 1 (sizes are variants)</td><td class="n">1 × ₱150.00</td></tr>
+    <tr><td>Lechon</td><td class="n">kg</td><td>"How many kg?" 0.5</td><td class="n">0.5 kg × ₱780.00 = ₱390.00</td></tr>
+    <tr><td>Shrimp, cold cuts</td><td class="n">100 g</td><td>"How many g?" 350</td><td class="n">350 g × ₱85.00/100 g = ₱297.50</td></tr>
+    <tr><td>Half order</td><td class="n">Piece</td><td>A variant, not a measure</td><td class="n">1 × ₱90.00</td></tr>
+    <tr><td class="grp" colspan="4">Retail</td></tr>
+    <tr><td>Apples, rice</td><td class="n">kg</td><td>"How many kg?" 1.25</td><td class="n">1.25 kg × ₱65.00 = ₱81.25</td></tr>
+    <tr><td>Wire, rope</td><td class="n">m</td><td>"How many m?" 5</td><td class="n">5 m × ₱18.00 = ₱90.00</td></tr>
+    <tr><td>Cut glass</td><td class="n">m²</td><td>"How many m²?" 1.5</td><td class="n">1.5 m² × ₱600.00 = ₱900.00</td></tr>
+    <tr><td>Cooking oil (loose)</td><td class="n">L</td><td>"How many L?" 2</td><td class="n">2 L × ₱110.00 = ₱220.00</td></tr>
+    <tr><td>Cement 40kg bag, paint can, plywood</td><td class="n">Piece</td><td>Tap = 1</td><td class="n">1 × ₱260.00</td></tr>
+    <tr><td>Laundry (laundromat)</td><td class="n">kg</td><td>"How many kg?" 6</td><td class="n">6 kg × ₱35.00 = ₱210.00</td></tr>
+  </table>
+  </div>
+  <pre class="tree">Sold two ways (a sack and by the kilo, a box and singles)
+├─ Two items: Rice 25kg sack · Piece, and Rice · kg
+└─ Made from links stock: Rice = 0.04 of a sack</pre>
+
+  <!-- 3 -->
   <h2>3 · Try it</h2>
-  <p class="note">Tap a tile. Piece items go straight into the cart, and Weight items ask for the amount first.</p>
+  <p class="note">Tap a tile. Piece items go straight in. Measured items ask the amount in their own unit.</p>
   <div class="row">
     <div class="col" style="flex:0 1 340px">
-      <div class="ph" id="pos">
+      <div class="ph" id="pos" style="min-height:560px">
         <div class="bar">POS 1</div>
         <div class="tiles" id="tiles"></div>
         <div class="cart" id="cart"></div>
         <button class="link" id="clear" type="button">Clear cart</button>
         <div class="veil" id="veil">
           <div class="sheet">
-            <p id="padName">Apples · ₱65.00 / kg</p>
-            <div class="q" id="padQ">0<small>kg</small></div>
-            <div class="m" id="padM">&nbsp;</div>
+            <p id="padName"></p>
+            <div class="q" id="padQ"></div>
+            <div class="m" id="padM"></div>
             <div class="kp" id="kp"></div>
             <button class="cta" id="padAdd" type="button" disabled>Add</button>
           </div>
@@ -203,135 +223,162 @@ td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
       </div>
     </div>
     <div class="col">
-      <pre class="tree">What you see
-├─ Hammer, Cement bag → Piece, one tap = 1
-├─ Apples, Cement loose → Weight per kg
-├─ Wire → Weight per m (works the same)
-├─ The pad shows ₱ while you type
+      <pre class="tree">What to try
+├─ Burger, Cement bag → Piece, one tap = 1
+├─ Apples → "How many kg?"
+├─ Shrimp → "How many g?" (priced per 100 g)
+├─ Wire → "How many m?"
+├─ Glass → "How many m²?"
 └─ Add stays off until there's an amount</pre>
-      <pre class="tree">Cement, both ways
-├─ Cement 40kg bag · Piece · ₱260
-└─ Cement loose · Weight · ₱7 / kg
-   └─ open a bag, sell 5 kg → ₱35</pre>
+      <pre class="tree">Kept out on purpose
+├─ The 8 piece labels (box, bag, roll…) → the name says it
+├─ Scales that print price barcodes → when a store asks
+└─ Per hour (billiards, rentals) → when a store asks</pre>
     </div>
   </div>
 
-  <!-- 4. Why it's better -->
+  <!-- 4 -->
   <h2>4 · Why it's better</h2>
+  <div class="wrap">
   <table>
     <tr><th></th><th>Now</th><th>After</th></tr>
-    <tr><td>Choices on the item</td><td class="n">13 units</td><td class="n">2 (Weight adds a Per)</td></tr>
-    <tr><td>Tap a weighed item</td><td>Adds 1 kg, and you fix it by hand</td><td>Asks how many kg first</td></tr>
-    <tr><td>Wrong price risk</td><td>High: forget to change 1 kg</td><td>None: Add needs an amount</td></tr>
+    <tr><td>Choices</td><td class="n">13 units</td><td class="n">2 (Piece / Measure), then 6 units</td></tr>
+    <tr><td>Rows on the item form</td><td class="n">1</td><td class="n">1, opens its own page</td></tr>
+    <tr><td>Tap a measured item</td><td>Adds 1 kg, and you fix it by hand</td><td>Asks the amount first</td></tr>
     <tr><td>Taps to sell 1.25 kg</td><td class="n">5 (tap, line, Quantity, type, Done)</td><td class="n">3 (tap, type, Add)</td></tr>
-    <tr><td>New owner setting it up</td><td>"Is cement a bag or a kg?"</td><td>"Do I count it or weigh it?"</td></tr>
-    <tr><td>Food stores (apples, meat, rice)</td><td>Works, but slow at the counter</td><td>Made for it</td></tr>
+    <tr><td>Wrong-price risk</td><td>Forget to change "1 kg" and you undercharge</td><td>None: Add needs an amount</td></tr>
+    <tr><td>Food (seafood, deli)</td><td>Per gram prices like ₱0.85</td><td>Per 100 g, the way menus price it</td></tr>
+    <tr><td>Setting up an item</td><td>"Is cement a bag or a kg?"</td><td>"Do I count it or measure it?"</td></tr>
   </table>
+  </div>
 
-  <!-- 5. Code -->
+  <!-- 5 -->
   <h2>5 · Code</h2>
-  <p class="note">Each item already saves <b>soldBy</b> ('each' or 'measure') and a <b>unit</b>. So there's no new data and no migration: the change only cuts the list and adds the pad.</p>
+  <p class="note">Each item already saves soldBy + unit, so there's no new data. The page sets soldBy itself, so soldByFor (guessing it from the unit) goes.</p>
   <div class="row">
     <div class="col">
       <div class="tag now">Now · pos-items.js</div>
-<div class="code"><span class="c">// 13 units, and a function to guess soldBy from the unit</span>
-<span class="del">const ITEM_UNITS = [['pc','box','bag','set','pair','roll',
+<div class="code"><span class="del">const ITEM_UNITS = [['pc','box','bag','set','pair','roll',
   'sheet','can'], ['m','ft','kg','L','gal']];
-const soldByFor = (unit, was) =>
-  ITEM_UNITS[1].includes(unit) ? 'measure'
-  : ITEM_UNITS[0].includes(unit) ? 'each' : was || 'each';</span>
+const soldByFor = (unit, was) => ITEM_UNITS[1].includes(unit)
+  ? 'measure' : ITEM_UNITS[0].includes(unit) ? 'each' : was || 'each';</span>
 
-ifr('Sold per', ipick('unit', E.unit))
-<span class="c">// picking a unit sets soldBy behind the owner's back</span>
-<span class="del">E.soldBy = soldByFor(u, E.soldBy); E.unit = u;</span></div>
+<span class="del">ifr('Sold per', ipick('unit', E.unit))</span></div>
       <div class="tag now" style="margin-top:14px">Now · pos-sell.js addToCart</div>
-<div class="code"><span class="c">// a weighed item adds 1, like a hammer</span>
+<div class="code"><span class="c">// a measured item adds 1, like a hammer</span>
 it.qty += 1;</div>
     </div>
     <div class="col">
       <div class="tag after">After · pos-items.js</div>
-<div class="code"><span class="c">// the owner picks soldBy; unit only matters for Weight</span>
-<span class="add">const PER_UNITS = ['kg', 'g', 'lb', 'm', 'L'];</span>
+<div class="code"><span class="add">const MEASURES = ['kg', '100 g', 'L', 'mL', 'm', 'm²'];</span>
 
-<span class="add">ifr('Sold by', ipick('soldBy', E.soldBy === 'measure' ? 'Weight' : 'Piece'))
-E.soldBy === 'measure' &amp;&amp; ifr('Per', ipick('unit', E.unit))</span>
-<span class="c">// Piece → unit 'pc'; Weight → unit 'kg' to start</span></div>
+<span class="c">// a row with ›, like Categories; its page reuses itemTickPage</span>
+<span class="add">inav('Sold by', E.soldBy === 'measure' ? `Measure · ${E.unit}` : 'Piece', 'soldby')</span>
+<span class="c">// page: Piece / Measure, then Unit (MEASURES) under Measure</span>
+<span class="c">// Price reads "₱65.00 / kg" when soldBy is 'measure'</span></div>
       <div class="tag after" style="margin-top:14px">After · pos-sell.js addToCart</div>
-<div class="code"><span class="c">// one line: a weighed item asks first (the price-ask pad, reused)</span>
-<span class="add">if (!line &amp;&amp; p.soldBy === 'measure') return openEditSheet('weight', p.id, via);</span>
+<div class="code"><span class="c">// one line: measured asks first (the price-ask pad, reused)</span>
+<span class="add">if (!line &amp;&amp; p.soldBy === 'measure') return openEditSheet('amount', p.id, via);</span>
 it.qty += 1;</div>
     </div>
   </div>
   <pre class="tree">What changes
-├─ pos-items.js · 13-unit list + soldByFor → 5-unit Per list
-├─ pos-items.js · Sold per row → Sold by + Per rows
-├─ pos-sell.js · addToCart +1 line, the pad asks the amount
-├─ pos-sell.js · the price-ask sheet gets a "How many kg?" mode
-├─ data · nothing new: soldBy + unit already saved
+├─ pos-items.js · the list: 13 → Piece / Measure, then 6 units
+├─ pos-items.js · "Sold per" dropdown → "Sold by ›" page (itemTickPage)
+├─ pos-items.js · Price shows "/ kg"
+├─ pos-sell.js · addToCart +1 line
+├─ pos-sell.js · the price-ask pad gets an "How many kg?" mode
+├─ 100 g · you type grams, the POS saves 3.5 (× 100 g)
+│  └─ so the money stays price × qty, and SalesMath is untouched
 └─ old items
-   ├─ box, bag, set, roll, can… → Piece (still say "pc")
-   ├─ kg, m, L → Weight, same unit
-   └─ ft, gal → Weight, kept as saved (shown on top, as today)
+   ├─ box, bag, set, roll, can… → Piece
+   ├─ kg, m, L → the same
+   └─ ft, gal → kept as saved (shown on top, as today)
 
-Already there, nothing to write
-├─ stock in decimals (12.75 kg) · bo-model stepFor
-├─ cart line Quantity in 0.01 steps
-└─ refunds of part of a kg · pos-orders</pre>
+Already there
+├─ soldBy + unit saved on every item
+├─ stock and quantities in decimals (bo-model stepFor)
+└─ refunds of part of a measured line (pos-orders)</pre>
 </main>
 
 <script>
 const peso = n => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const ITEMS = [
-  { id: 'hammer', name: 'Hammer', price: 350, by: 'piece' },
-  { id: 'bag', name: 'Cement 40kg bag', price: 260, by: 'piece' },
-  { id: 'apple', name: 'Apples', price: 65, by: 'weight', per: 'kg' },
-  { id: 'loose', name: 'Cement loose', price: 7, by: 'weight', per: 'kg' },
-  { id: 'wire', name: 'Wire', price: 18, by: 'weight', per: 'm' },
-  { id: 'nails', name: 'Nails box', price: 120, by: 'piece' },
-];
 const $ = s => document.querySelector(s);
-let cart = [], open = null, typed = '';
 
+// ---- the item form: Sold by opens its own page ----
+const MEASURES = ['kg', '100 g', 'L', 'mL', 'm', 'm²'];
+const FORM = { pc: ['₱260.00', 'Each tap adds 1.'], kg: ['₱65.00 / kg'], '100 g': ['₱85.00 / 100 g'], L: ['₱110.00 / L'], mL: ['₱4.00 / mL'], m: ['₱18.00 / m'], 'm²': ['₱600.00 / m²'] };
+let unit = 'kg', lastMeasure = 'kg';
+const askUnit = u => (u === '100 g' ? 'g' : u);
+const tickRow = (val, label, on) => `<button type="button" class="fr" data-v="${val}"><span>${label}</span>${on ? '<span class="tick">✓</span>' : ''}</button>`;
+function renderForm() {
+  const piece = unit === 'pc';
+  $('#soldByVal').textContent = piece ? 'Piece' : `Measure · ${unit}`;
+  $('#priceVal').textContent = FORM[unit][0];
+  $('#formHint').textContent = FORM[unit][1] || `The POS asks "How many ${askUnit(unit)}?"`;
+  $('#kindList').innerHTML = tickRow('pc', 'Piece', piece) + tickRow('measure', 'Measure', !piece);
+  $('#unitBlock').hidden = piece;
+  $('#unitList').innerHTML = MEASURES.map(u => tickRow(u, u, u === unit)).join('');
+}
+$('#soldByBtn').addEventListener('click', () => $('#formPh').classList.add('in'));
+$('#soldBack').addEventListener('click', () => $('#formPh').classList.remove('in'));
+$('#kindList').addEventListener('click', e => { const v = e.target.closest('[data-v]')?.dataset.v; if (v) { unit = v === 'pc' ? 'pc' : lastMeasure; renderForm(); } });
+$('#unitList').addEventListener('click', e => { const v = e.target.closest('[data-v]')?.dataset.v; if (v) { unit = lastMeasure = v; renderForm(); } });
+renderForm();
+
+// ---- the POS ----
+// per = what the price is for; ask = what you type; per100 = typed grams, priced per 100 g
+const ITEMS = [
+  { id: 'burger', name: 'Burger', price: 150 },
+  { id: 'bag', name: 'Cement 40kg bag', price: 260 },
+  { id: 'apple', name: 'Apples', price: 65, per: 'kg' },
+  { id: 'shrimp', name: 'Shrimp', price: 85, per: '100 g' },
+  { id: 'wire', name: 'Wire', price: 18, per: 'm' },
+  { id: 'glass', name: 'Cut glass', price: 600, per: 'm²' },
+];
+let cart = [], open = null, typed = '';
 $('#tiles').innerHTML = ITEMS.map(i => `<button class="tl" type="button" data-id="${i.id}"><b>${i.name}</b><span>${peso(i.price)}${i.per ? ' / ' + i.per : ''}</span></button>`).join('');
 $('#kp').innerHTML = ['1','2','3','4','5','6','7','8','9','.','0','⌫'].map(k => `<button type="button" data-k="${k}">${k}</button>`).join('');
 
+// qty is saved in the price's unit (3.5 for 350 g at 100 g), so money is always price × qty
+const toQty = (i, n) => (i.per === '100 g' ? n / 100 : n);
+const shown = (i, q) => (i.per === '100 g' ? `${Math.round(q * 100)} g` : `${q} ${i.per}`);
 const money = (i, q) => Math.round(i.price * q * 100) / 100;
 function renderCart() {
   const tot = cart.reduce((s, l) => s + money(l.item, l.qty), 0);
   $('#cart').innerHTML = cart.length
-    ? cart.map(l => `<div class="ln"><span>${l.item.name}<small>${l.item.per ? `${l.qty} ${l.item.per} × ${peso(l.item.price)}` : `${l.qty} × ${peso(l.item.price)}`}</small></span><span class="amt">${peso(money(l.item, l.qty))}</span></div>`).join('')
+    ? cart.map(l => `<div class="ln"><span>${l.item.name}<small>${l.item.per ? `${shown(l.item, l.qty)} × ${peso(l.item.price)}/${l.item.per}` : `${l.qty} × ${peso(l.item.price)}`}</small></span><span class="amt">${peso(money(l.item, l.qty))}</span></div>`).join('')
       + `<div class="tot"><span>Total</span><span>${peso(tot)}</span></div>`
     : '<div class="empty">No items</div>';
 }
 function add(item, qty) {
-  const l = item.by === 'piece' && cart.find(x => x.item === item);   // a piece stacks; each weighing is its own line
+  const l = !item.per && cart.find(x => x.item === item);   // a piece stacks; each measuring is its own line
   if (l) l.qty += qty; else cart.push({ item, qty });
   renderCart();
 }
 function renderPad() {
-  const q = parseFloat(typed) || 0;
-  $('#padQ').innerHTML = `${typed || '0'}<small>${open.per}</small>`;
-  $('#padM').textContent = q ? peso(money(open, q)) : ' ';
-  $('#padAdd').disabled = !q;
+  const n = parseFloat(typed) || 0, a = askUnit(open.per);
+  $('#padQ').innerHTML = `${typed || '0'}<small>${a}</small>`;
+  $('#padM').textContent = n ? peso(money(open, toQty(open, n))) : ' ';
+  $('#padAdd').disabled = !n;
 }
 const closePad = () => { $('#veil').classList.remove('open'); open = null; };
-
 $('#tiles').addEventListener('click', e => {
   const b = e.target.closest('.tl'); if (!b) return;
   const item = ITEMS.find(i => i.id === b.dataset.id);
-  if (item.by === 'piece') { add(item, 1); b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 180); return; }
+  if (!item.per) { add(item, 1); b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 180); return; }
   open = item; typed = '';
-  $('#padName').textContent = `${item.name} · ${peso(item.price)} / ${item.per}`;
+  $('#padName').textContent = `${item.name} · ${peso(item.price)} / ${item.per} · How many ${askUnit(item.per)}?`;
   renderPad(); $('#veil').classList.add('open');
 });
 $('#kp').addEventListener('click', e => {
   const k = e.target.closest('button')?.dataset.k; if (!k) return;
   if (k === '⌫') typed = typed.slice(0, -1);
   else if (k === '.') { if (!typed.includes('.')) typed = (typed || '0') + '.'; }
-  else if (!/\.\d{3}$/.test(typed) && typed.length < 7) typed = typed === '0' ? k : typed + k;   // up to 3 places (0.125 kg)
+  else if (!/\.\d{3}$/.test(typed) && typed.length < 7) typed = typed === '0' ? k : typed + k;
   renderPad();
 });
-$('#padAdd').addEventListener('click', () => { add(open, parseFloat(typed)); closePad(); });
+$('#padAdd').addEventListener('click', () => { add(open, toQty(open, parseFloat(typed))); closePad(); });
 $('#veil').addEventListener('click', e => { if (e.target.id === 'veil') closePad(); });
 $('#clear').addEventListener('click', () => { cart = []; renderCart(); });
 renderCart();

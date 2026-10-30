@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Added toast lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* the app's own light tokens (pos-lab/styles.css: body.light-theme and :root), copied so the lab stands alone */
+:root {
+  --rl-ease: cubic-bezier(.2, .8, .2, 1);
+  --bar-h: 44px; --rl-r: 16px;
+  --canvas: #F2F2F2; --tile: #F9F9F9; --surface: #FFFFFF;
+  --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C;
+  --accent: #303030; --accent-ink: #FFFFFF; --ok: #047B5D;
+  --line: #E1E1E1;
+  --pill-ring: 0 1px 2px rgb(0 0 0 / .03), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .4);
+  --float: 0 6px 20px -6px rgb(0 0 0 / .16), 0 0 0 .5px rgb(0 0 0 / .06);
+  --pick-bg: rgb(0 0 0 / .06);
+  --glow: rgb(0 0 0 / .14);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--canvas); color: var(--ink); font-family: Inter, -apple-system, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+button, select { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
+.page { max-width: 440px; height: 100dvh; margin: 0 auto; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+.head { padding: calc(10px + env(safe-area-inset-top)) 16px 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.head label { display: grid; gap: 4px; font-size: 12px; color: var(--ink-tertiary); padding-left: 4px; }
+.head select { appearance: none; height: 36px; padding: 0 30px 0 14px; border-radius: 999px; background: var(--surface); box-shadow: var(--pill-ring);
+  font-size: 15px; font-weight: 500; color: var(--ink); margin-left: -4px;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 16px top 16px, right 12px top 16px; background-size: 4px 4px; background-repeat: no-repeat; }
+
+.grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; padding: 6px 16px calc(var(--bar-h) + 40px + env(safe-area-inset-bottom)); }
+.tile { position: relative; height: 112px; padding: 14px; border-radius: var(--rl-r); background: var(--tile); box-shadow: var(--pill-ring); text-align: left;
+  display: flex; flex-direction: column; justify-content: space-between; transition: transform .15s var(--rl-ease); }
+.tile:active { transform: scale(.97); }
+.tile b { font-size: 15px; font-weight: 500; padding-right: 24px; }   /* room for the count badge */
+.tile small { font-size: 13px; color: var(--ink-tertiary); font-variant-numeric: tabular-nums; }
+/* tile count: how many of this item are in the cart */
+.tile .q { position: absolute; top: 10px; right: 10px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; animation: qin .24s var(--rl-ease); }
+@keyframes qin { from { opacity: 0; transform: scale(.85); } }
+.tile.soft .q { background: var(--pick-bg); color: var(--ink); }
+
+/* the checkout pill: the Sell bar's own look (.ph-bar) */
+.foot { position: absolute; left: 0; right: 0; bottom: calc(12px + env(safe-area-inset-bottom)); display: grid; justify-items: center; pointer-events: none; }
+.bar { pointer-events: auto; position: relative; overflow: hidden; width: min(100% - 48px, 260px); height: var(--bar-h); border-radius: 999px;
+  background: var(--accent); color: var(--accent-ink); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums;
+  background-image: linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px rgb(255 255 255 / .12), 0 2px 8px -2px rgb(0 0 0 / .3); }
+.bar:disabled { opacity: .3; }
+.bar > span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 20px; white-space: nowrap; }
+.bar .sum i { font-style: normal; display: inline-block; }
+.bar .sum i + i::before { content: '·'; margin-right: 8px; }
+
+/* numbers. Apple: only the digits that change move; the old one lifts away blurred, the new one rises in and settles (SwiftUI numericText) */
+.nd { display: inline-block; position: relative; }
+.nd u { display: inline-block; text-decoration: none; animation: ndin .44s cubic-bezier(.3, 1.25, .5, 1) both; animation-delay: calc(var(--k) * 30ms); }
+.nd s { position: absolute; left: 0; top: 0; text-decoration: none; opacity: 0; animation: ndout .26s ease-in both; animation-delay: calc(var(--k) * 30ms); }
+@keyframes ndin { from { transform: translateY(.5em); filter: blur(3px); opacity: 0; } }
+@keyframes ndout { from { opacity: 1; } to { transform: translateY(-.5em); filter: blur(3px); opacity: 0; } }
+/* push: the whole number slides up and the new one follows it in */
+.bar[data-num="push"] .nd u { animation: pushin .32s var(--rl-ease) both; }
+.bar[data-num="push"] .nd s { animation: pushout .32s var(--rl-ease) both; }
+@keyframes pushin { from { transform: translateY(.9em); opacity: 0; } }
+@keyframes pushout { from { opacity: 1; } to { transform: translateY(-.9em); opacity: 0; } }
+/* flip: a split-flap board, the digit tips over */
+.bar[data-num="flip"] .nd u { transform-origin: 50% 0; animation: flipin .42s cubic-bezier(.3, 1.3, .5, 1) both; animation-delay: calc(var(--k) * 40ms); }
+.bar[data-num="flip"] .nd s { transform-origin: 50% 100%; animation: flipout .2s ease-in both; animation-delay: calc(var(--k) * 40ms); }
+@keyframes flipin { from { transform: perspective(80px) rotateX(-90deg); opacity: 0; } }
+@keyframes flipout { from { opacity: 1; } to { transform: perspective(80px) rotateX(90deg); opacity: 0; } }
+/* blur: the digit melts into the new one, no movement */
+.bar[data-num="blur"] .nd u { animation: blurin .34s ease-out both; animation-delay: calc(var(--k) * 25ms); }
+.bar[data-num="blur"] .nd s { animation: blurout .34s ease-out both; animation-delay: calc(var(--k) * 25ms); }
+@keyframes blurin { from { filter: blur(5px); opacity: 0; } }
+@keyframes blurout { from { opacity: 1; } to { filter: blur(5px); opacity: 0; } }
+/* drop: the Apple roll the other way, new digits come down from above */
+.bar[data-num="drop"] .nd u { animation-name: dropin; }
+.bar[data-num="drop"] .nd s { animation-name: dropout; }
+@keyframes dropin { from { transform: translateY(-.5em); filter: blur(3px); opacity: 0; } }
+@keyframes dropout { from { opacity: 1; } to { transform: translateY(.5em); filter: blur(3px); opacity: 0; } }
+/* pop: the new digit grows in with a small spring */
+.bar[data-num="pop"] .nd u { animation: popin .4s cubic-bezier(.3, 1.5, .5, 1) both; animation-delay: calc(var(--k) * 30ms); }
+.bar[data-num="pop"] .nd s { animation: popout .16s ease-in both; }
+@keyframes popin { from { transform: scale(.4); opacity: 0; } }
+@keyframes popout { from { opacity: 1; } to { transform: scale(.4); opacity: 0; } }
+/* wave: every character hops 3px, one after another */
+.bar[data-num="wave"] .nd u { animation: hop .36s var(--rl-ease) both; animation-delay: calc(var(--k) * 28ms); }
+@keyframes hop { 40% { transform: translateY(-3px); } }
+/* odometer: each changed digit runs through the ones between, like a car's meter */
+.od { display: inline-block; height: 1.2em; line-height: 1.2em; overflow: hidden; vertical-align: bottom;
+  -webkit-mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent); mask-image: linear-gradient(transparent, #000 25%, #000 75%, transparent); }
+.od span { display: block; transform: translateY(calc(var(--n) * -1.2em)); animation: odo .55s var(--rl-ease) both; animation-delay: calc(var(--k) * 40ms); }
+@keyframes odo { from { transform: none; } }
+.bar .say { opacity: 0; }
+.bar .say em, .t em { font-style: normal; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.bar .sum, .bar .say { transition: opacity .2s ease; }
+.bar.saying .sum { opacity: 0; }
+.bar.saying .say { opacity: 1; }
+.mk { flex: none; display: grid; place-items: center; }
+.mk[hidden] { display: none; }
+.mk-tick { color: var(--accent); }   /* marks wear the checkout pill's colour */
+.mk-disc, .mk-draw { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); }
+.mk-ring { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px currentColor; color: var(--accent); }
+.mk-disc .ck, .mk-draw .ck, .mk-ring .ck { width: 12px; height: 12px; stroke-width: 3; }
+.t.show .mk-draw path, .bar.saying .mk-draw path { stroke-dasharray: 20; animation: draw .36s .08s ease-out backwards; }
+@keyframes draw { from { stroke-dashoffset: 20; } }
+.mk-qty { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--pick-bg); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mk-dot { width: 6px; height: 6px; margin: 0 2px; border-radius: 50%; background: currentColor; color: var(--accent); }
+.bar .mk, .t-ink .mk { color: inherit; }
+.bar :is(.mk-disc, .mk-draw), .t-ink :is(.mk-disc, .mk-draw) { background: var(--accent-ink); color: var(--accent); }
+.bar .mk-qty, .t-ink .mk-qty { background: rgb(255 255 255 / .18); }
+.ck { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- pill motions: all small ---- */
+.bar.swell { animation: swell .34s var(--rl-ease); }
+@keyframes swell { 40% { transform: scale(1.025); } }
+.bar.lift { animation: lift .34s var(--rl-ease); }
+@keyframes lift { 40% { transform: translateY(-2px); } }
+.bar.press { animation: press .3s var(--rl-ease); }
+@keyframes press { 35% { transform: scale(.97); } }
+.bar.jelly { animation: jelly .45s var(--rl-ease); }
+@keyframes jelly { 30% { transform: scale(1.03, .96); } 60% { transform: scale(.99, 1.01); } }
+.bar::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0;
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / .35) 50%, transparent 70%) no-repeat; background-size: 200% 100%; }
+.bar.shine::after { animation: shine .6s ease-out; }
+@keyframes shine { from { opacity: 1; background-position: 150% 0; } to { opacity: 1; background-position: -50% 0; } }
+.foot .halo { position: absolute; bottom: 0; width: min(100% - 48px, 260px); height: var(--bar-h); border-radius: 999px; pointer-events: none; }
+.halo.glow { animation: glow .6s ease-out; }
+@keyframes glow { from { box-shadow: 0 0 0 0 var(--glow); } to { box-shadow: 0 0 0 8px transparent; } }
+
+/* ---- pop-ups ---- */
+.t { position: absolute; left: 50%; display: flex; align-items: center; gap: 6px; white-space: nowrap; pointer-events: none;
+  opacity: 0; transform: translate(-50%, 3px); transition: opacity .18s ease, transform .24s var(--rl-ease); }
+.t.show { opacity: 1; transform: translate(-50%, 0); }
+.above { bottom: calc(var(--bar-h) + 22px + env(safe-area-inset-bottom)); }
+
+/* today's toast (styles.css .toast), for the compare */
+.t-old { max-width: calc(100% - 64px); white-space: normal; padding: 10px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
+  box-shadow: 0 4px 16px rgba(0,0,0,.12), 0 1px 4px rgba(0,0,0,.08); font-size: 13px; font-weight: 510; transform: translate(-50%, 20px); }
+/* capsule: white, tick, the name */
+.t-cap { max-width: min(100% - 64px, 300px); height: 38px; padding: 0 16px 0 12px; border-radius: 999px; background: var(--surface); box-shadow: var(--float); font-size: 15px; font-weight: 500; }
+/* chip: the capsule, smaller */
+.t-chip { max-width: min(100% - 80px, 260px); height: 30px; padding: 0 12px 0 9px; border-radius: 999px; background: var(--surface); box-shadow: var(--float); font-size: 13px; font-weight: 500; }
+.t-chip .mk-tick .ck { width: 14px; height: 14px; }
+/* words only: no box, grey text over the page */
+.t-words { max-width: calc(100% - 64px); font-size: 13px; font-weight: 500; color: var(--ink-secondary); bottom: calc(var(--bar-h) + 18px + env(safe-area-inset-bottom)); }
+/* top: a small capsule under the pickers, like iOS's Copied */
+.t-top { top: calc(210px + env(safe-area-inset-top)); max-width: min(100% - 64px, 300px); height: 36px; padding: 0 16px 0 12px; border-radius: 999px;
+  background: var(--surface); box-shadow: var(--float); font-size: 14px; font-weight: 500; transform: translate(-50%, -3px); }
+/* dark: the pill's own colour, so the two read as a pair */
+.t-ink { max-width: min(100% - 64px, 300px); height: 34px; padding: 0 14px 0 11px; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+  font-size: 14px; font-weight: 500; box-shadow: 0 2px 8px -2px rgb(0 0 0 / .3); }
+/* a second add while it shows: the name swaps with a small fade */
+.t.swap em, .t.swap .mk { animation: swap .22s ease; }
+@keyframes swap { from { opacity: .3; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .bar.swell, .bar.lift, .bar.press, .bar.jelly, .bar.shine::after, .halo.glow, .t.swap em, .t.swap .mk, .tile .q, .mk-draw path, .nd u, .nd s, .od span { animation: none !important; }
+  .t { transition: opacity .15s; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="head">
+    <label>Pop-up<select id="pop"></select></label>
+    <label>Mark<select id="mark"></select></label>
+    <label>Numbers<select id="num"></select></label>
+    <label>Pill motion<select id="pill"></select></label>
+    <label>Tile<select id="tile"></select></label>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="t" id="t"><span class="mk"></span><em></em></div>
+  <div class="foot">
+    <i class="halo" id="halo"></i>
+    <button class="bar" id="bar" disabled>
+      <span class="sum"><i>No items</i></span>
+      <span class="say"><span class="mk"></span><em></em></span>
+    </button>
+  </div>
+</div>
+<script>
+const ITEMS = [['Brass Faucet 1/2"', 385], ['Teflon Tape 1/2"', 25], ['LED Bulb 9W', 120], ['Duplex Outlet 2-Gang', 95], ['Portland Cement 40kg', 285],
+  ['Silicone Sealant White', 215], ['Cotton Work Gloves', 38], ['PVC Solvent Cement 200mL', 95], ['Switch 1-Gang', 48], ['Common Wire Nail 3"', 90]];
+const POPS = [['chip', 'Small chip'], ['cap', 'Capsule'], ['words', 'Words only'], ['ink', 'Dark capsule'], ['top', 'At the top'], ['inpill', 'In the pill'], ['none', 'None'], ['old', 'Today']];
+const MARKS = [['disc', 'Filled tick'], ['draw', 'Tick draws in'], ['ring', 'Ring'], ['tick', 'Plain tick'], ['qty', 'Quantity'], ['dot', 'Dot'], ['none', 'None']];
+const NUMS = [['apple', 'Apple roll'], ['drop', 'Roll down'], ['push', 'Push up'], ['flip', 'Flip board'], ['blur', 'Blur swap'], ['pop', 'Pop in'], ['wave', 'Wave'], ['odo', 'Odometer'], ['count', 'Counts up'], ['plain', 'No motion']];
+const PILLS = [['none', 'None'], ['swell', 'Soft swell'], ['press', 'Press in'], ['jelly', 'Jelly'], ['lift', 'Small lift'], ['shine', 'Shine'], ['glow', 'Glow ring']];
+const TILES = [['badge', 'Count badge'], ['soft', 'Grey badge'], ['none', 'None']];
+const $ = (s) => document.querySelector(s);
+const peso = (n) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const CK = '<svg class="ck" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+let count = 0, total = 0, qty = {}, tHide, tSay, run = 0;
+
+const fill = (id, list) => $(id).innerHTML = list.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+fill('#pop', POPS); fill('#mark', MARKS); fill('#num', NUMS); fill('#pill', PILLS); fill('#tile', TILES);
+// the owner's picks (2026-10-19): Small chip, Filled tick, Blur swap, Soft swell, no tile badge
+$('#num').value = 'blur'; $('#pill').value = 'swell'; $('#tile').value = 'none';
+$('#grid').innerHTML = ITEMS.map(([n, p], i) => `<button class="tile" data-i="${i}"><b>${n.replace(/"/g, '&quot;')}</b><small>${peso(p)}</small></button>`).join('');
+const reset = () => {
+  count = total = 0; qty = {}; run++; clearTimeout(tHide); clearTimeout(tSay);
+  $('#t').className = 't'; $('#bar').className = 'bar'; $('#bar').dataset.num = $('#num').value; $('#bar').disabled = true; $('#bar .sum').innerHTML = '<i>No items</i>';
+  document.querySelectorAll('.tile').forEach((t) => { t.className = 'tile'; t.querySelector('.q')?.remove(); });
+};
+document.querySelectorAll('.head select').forEach((s) => s.onchange = reset);
+reset();
+
+// re-running a CSS animation: drop the class, force a reflow, add it back
+const replay = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
+// lined up from the right, only the characters that differ from before animate; --k = place from the right, for the small stagger
+const diff = (now, before, cell) => [...now].map((c, k) => { const o = before[k - now.length + before.length]; return o === c ? c : cell(c, o, now.length - 1 - k); }).join('');
+const FX = {
+  apple: (now, before) => diff(now, before, (c, o, k) => `<b class="nd" style="--k:${k}"><s>${o ?? ''}</s><u>${c}</u></b>`),
+  odo: (now, before) => diff(now, before, (c, o, k) => {
+    if (!/\d/.test(c) || !/\d/.test(o ?? '')) return `<b class="nd" style="--k:${k}"><s>${o ?? ''}</s><u>${c}</u></b>`;
+    const run = []; for (let d = +o; ; d = (d + 1) % 10) { run.push(d); if (d === +c) break; }   // forward only, 8 → 9 → 0 → 1
+    return `<b class="od"><span style="--n:${run.length - 1};--k:${k}">${run.join('<br>')}</span></b>`;
+  }),
+  // push: the whole string moves as one, not digit by digit
+  push: (now, before) => now === before ? now : `<b class="nd"><s>${before}</s><u>${now}</u></b>`,
+  // wave: every character hops, changed or not
+  wave: (now) => [...now].map((c, k) => `<b class="nd" style="--k:${k}"><u>${c}</u></b>`).join(''),
+  plain: (now) => now,
+};
+FX.drop = FX.flip = FX.blur = FX.pop = FX.apple;
+const sum = (n, tot, prev, fx = FX.plain) => {
+  return `<i>${fx(String(n), String(n - 1))} item${n > 1 ? 's' : ''}</i><i>${fx(peso(tot), peso(prev))}</i>`;
+};
+const setMark = (box, i) => {
+  const m = $('#mark').value, mk = box.querySelector('.mk');
+  mk.className = `mk mk-${m}`;
+  mk.innerHTML = m === 'qty' ? qty[i] : m === 'dot' || m === 'none' ? '' : CK;
+  mk.hidden = m === 'none';
+};
+
+$('#grid').onclick = (e) => {
+  const tile = e.target.closest('.tile'); if (!tile) return;
+  const i = tile.dataset.i, [name, price] = ITEMS[i], pop = $('#pop').value, pill = $('#pill').value, num = $('#num').value, tl = $('#tile').value, bar = $('#bar');
+  const from = total;
+  count++; total += price; qty[i] = (qty[i] || 0) + 1;
+  bar.disabled = false;
+  const s = bar.querySelector('.sum');
+  if (num === 'count') {
+    // the total runs up from the old amount over 420ms (ease-out); a newer tap takes over
+    const me = ++run, t0 = performance.now(), n = count, to = total;
+    const step = (now) => { if (me !== run) return; const k = Math.min(1, (now - t0) / 420);
+      s.innerHTML = sum(n, Math.round((from + (to - from) * (1 - (1 - k) ** 3)) * 100) / 100, from); if (k < 1) requestAnimationFrame(step); };
+    matchMedia('(prefers-reduced-motion: reduce)').matches ? s.innerHTML = sum(n, to, from) : requestAnimationFrame(step);
+  } else s.innerHTML = sum(count, total, from, FX[num]);
+  if (pill === 'glow') replay($('#halo'), 'glow'); else if (pill !== 'none') replay(bar, pill);
+
+  if (tl !== 'none') {
+    tile.className = `tile ${tl === 'badge' ? '' : tl}`.trim();
+    const q = tile.querySelector('.q');
+    if (q) q.innerHTML = (FX[num] || FX.apple)(String(qty[i]), String(qty[i] - 1)); else tile.insertAdjacentHTML('beforeend', `<span class="q">${qty[i]}</span>`);
+  }
+
+  if (pop === 'inpill') {
+    clearTimeout(tSay);
+    const say = bar.querySelector('.say'); setMark(say, i); say.querySelector('em').textContent = name;
+    bar.classList.remove('saying'); void bar.offsetWidth; bar.classList.add('saying');
+    tSay = setTimeout(() => bar.classList.remove('saying'), 1200);
+  } else if (pop !== 'none') {
+    const t = $('#t'), up = t.classList.contains('show');
+    t.className = `t t-${pop}${pop === 'top' || pop === 'words' ? '' : ' above'}`;
+    t.querySelector('em').textContent = pop === 'old' ? `Added · ${name}` : name;
+    setMark(t, i); if (pop === 'old') t.querySelector('.mk').hidden = true;
+    if (!up) void t.offsetWidth;
+    t.classList.add('show'); if (up) replay(t, 'swap');
+    clearTimeout(tHide); tHide = setTimeout(() => t.classList.remove('show'), pop === 'old' ? 2000 : 1500);
+  }
+};
+</script>
+</body>
+</html>

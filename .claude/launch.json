@@ -227,6 +227,15 @@
         "pos-phone"
       ],
       "port": 8692
+    },
+    {
+      "name": "ai-chat",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "ai-chat/serve.py",
+        "8677"
+      ],
+      "port": 8677
     }
   ]
 }

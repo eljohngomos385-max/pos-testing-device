@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blue buttons picks</title>
+<!-- The blue: the website (landing-lab.css, shared by landing-lab.html + pricing-lab.html).
+     --blue #0071E3 / --blue-hover #0077ED on its buttons; the hero sky runs #3880DB → #61A3ED → #CCE3FA;
+     the hero frame's glow is navy rgb(11 60 140) with a frosted white ring.
+     This block is the only source: shots-blue-buttons.mjs (scratchpad) injects it into the real lab app
+     and sets <html data-dir="A".."E"> to shoot each direction. No data-dir = the app as it is (Now). -->
+<style id="dirs">
+  :root {
+    --brand-blue: #0071E3;          /* landing-lab.css --blue */
+    --brand-blue-rgb: 0 113 227;
+    --sky-deep: #3880DB;            /* hero sky, deep */
+    --sky-base: #61A3ED;            /* hero sky, base */
+    --sky-top: #CCE3FA;             /* hero sky, top */
+    --navy: 11 60 140;              /* hero frame glow */
+  }
+  /* Every blue button: Check out, Sell's items bar, New customer bar, Review, Complete sale / Done,
+     the + fabs and the + stack's circles. Shift's text fab (.sh-fab) is left alone. */
+  html[data-dir] :is(.rail-h .go, .rail-h #payBtn, .ph-bar, .qs-tickbar .qs-next, .co-btn.primary, .lv .fab:not(.sh-fab), .fab-stack i) {
+    color: #fff !important; border-color: transparent !important;
+  }
+  /* A: today's shine, blue underneath */
+  html[data-dir="A"] :is(.rail-h .go, .rail-h #payBtn, .ph-bar, .qs-tickbar .qs-next, .co-btn.primary, .lv .fab:not(.sh-fab), .fab-stack i) {
+    background: linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%), var(--brand-blue) !important;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px rgb(255 255 255 / .12), 0 2px 8px -2px rgb(0 0 0 / .3) !important;
+  }
+  /* B: deep: the site blue sinking into the hero's navy at the bottom, navy drop */
+  html[data-dir="B"] :is(.rail-h .go, .rail-h #payBtn, .ph-bar, .qs-tickbar .qs-next, .co-btn.primary, .lv .fab:not(.sh-fab), .fab-stack i) {
+    background: linear-gradient(var(--brand-blue) 25%, color-mix(in srgb, var(--brand-blue), rgb(var(--navy)) 55%)) !important;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 2px 8px -2px rgb(var(--navy) / .5) !important;
+  }
+  /* C: plain blue that glows */
+  html[data-dir="C"] :is(.rail-h .go, .rail-h #payBtn, .ph-bar, .qs-tickbar .qs-next, .co-btn.primary, .lv .fab:not(.sh-fab), .fab-stack i) {
+    background: linear-gradient(rgb(255 255 255 / .1), rgb(255 255 255 / 0) 50%), var(--brand-blue) !important;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), 0 1px 2px rgb(var(--navy) / .3), 0 8px 22px -6px rgb(var(--brand-blue-rgb) / .6) !important;
+  }
+  html[data-dir="C"] body:not(.light-theme) :is(.rail-h .go, .rail-h #payBtn, .ph-bar, .qs-tickbar .qs-next, .co-btn.primary, .lv .fab:not(.sh-fab), .fab-stack i) {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), 0 8px 26px -6px rgb(var(--brand-blue-rgb) / .75) !important;
+  }
+  /* D: the hero frame's ring: a soft blue halo round the edge, navy drop under it */
+  html[data-dir="D"] :is(.rail-h .go, .rail-h #payBtn, .ph-bar, .qs-tickbar .qs-next, .co-btn.primary, .lv .fab:not(.sh-fab), .fab-stack i) {
+    background: linear-gradient(rgb(255 255 255 / .12), rgb(255 255 255 / 0) 60%), var(--brand-blue) !important;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / .22), 0 0 0 4px rgb(var(--brand-blue-rgb) / .14), 0 10px 22px -10px rgb(var(--navy) / .5) !important;
+  }
+  html[data-dir="D"] body:not(.light-theme) :is(.rail-h .go, .rail-h #payBtn, .ph-bar, .qs-tickbar .qs-next, .co-btn.primary, .lv .fab:not(.sh-fab), .fab-stack i) {
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / .22), 0 0 0 4px rgb(var(--brand-blue-rgb) / .3) !important;
+  }
+  /* E: the site's grainy sky: light-to-site-blue with a fine grain */
+  html[data-dir="E"] :is(.rail-h .go, .rail-h #payBtn, .ph-bar, .qs-tickbar .qs-next, .co-btn.primary, .lv .fab:not(.sh-fab), .fab-stack i) {
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E"),
+      linear-gradient(var(--sky-base), var(--brand-blue) 75%) !important;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 4px 12px -4px rgb(var(--navy) / .4) !important;
+  }
+  /* Cash short: every direction greys out the same way (no faded blue). :not(#z) only lifts it over the id rules. */
+  html[data-dir] .co-btn.primary:disabled:not(#z) {
+    opacity: 1 !important; background: var(--line-strong) !important; color: var(--ink-tertiary) !important; box-shadow: none !important;
+  }
+</style>
+<style>
+  :root { --bg: #f2f2f2; --card: #fff; --ink: #1c1c1e; --ink2: #6e6e73; --line: #e5e5ea; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--ink); font: 15px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+  h2 { margin: 0 0 2px; font-size: 17px; font-weight: 600; }
+  p { margin: 0; color: var(--ink2); }
+  section { margin-top: 28px; padding: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 16px; margin-top: 12px; }
+  .side > span { display: block; margin-bottom: 6px; color: var(--ink2); font-size: 13px; }
+  .shots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .shots.tab { grid-template-columns: repeat(2, 1fr); }
+  figure { margin: 0; }
+  figure img { display: block; width: 100%; height: auto; border-radius: 10px; }
+  figcaption { margin-top: 4px; color: var(--ink2); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<h1>Blue buttons: pick one</h1>
+<p>Check out, Complete sale and every + in the website's blue (#0071E3, from landing-lab.css). Same capsules and circles, only the colour and finish change. Cash short greys out.</p>
+<main id="rows"></main>
+<script>
+  const DIRS = [
+    ['now', 'Now', 'Dark grey in light, white in dark, with a soft shine.'],
+    ['a', 'A · Shine', "Today's shine, blue underneath."],
+    ['b', 'B · Deep', "The site blue sinking into the website's navy at the bottom."],
+    ['c', 'C · Glow', 'Plain blue with a soft blue glow under it.'],
+    ['d', 'D · Ring', "The website's phone frame: a pale blue halo round the edge."],
+    ['e', 'E · Grain', "The website's grainy sky, lighter at the top."],
+  ];
+  const SCENES = [['cart', 'Cart'], ['ok', 'Complete sale'], ['short', 'Cash short'], ['items', 'Items +'], ['stack', '+ open']];
+  const TAB = [['a', 'A · Shine'], ['c', 'C · Glow']];   // the best two, on the tablet
+  const fig = (src, cap) => `<figure><img src="${src}" alt="${cap}" loading="lazy"><figcaption>${cap}</figcaption></figure>`;
+  const side = (label, shots, cls = '') => `<div class="side"><span>${label}</span><div class="shots ${cls}">${shots}</div></div>`;
+  let html = DIRS.map(([k, name, line]) => `<section id="dir-${k}"><h2>${name}</h2><p>${line}</p><div class="pair">${
+    ['light', 'dark'].map(t => side(t === 'light' ? 'Light' : 'Dark', SCENES.map(([s, cap]) => fig(`img/blue-buttons/${k}-${t}-${s}.jpg`, cap)).join(''))).join('')
+  }</div></section>`).join('');
+  html += `<section id="tablet"><h2>Tablet</h2><p>The best two on the iPad: Sell with the cart, and Checkout.</p>${
+    TAB.map(([k, name]) => `<div class="pair">${['light', 'dark'].map(t => side(`${name} · ${t === 'light' ? 'Light' : 'Dark'}`, ['cart', 'ok'].map(s => fig(`img/blue-buttons/tab-${k}-${t}-${s}.jpg`, s === 'cart' ? 'Cart' : 'Complete sale')).join(''), 'tab')).join('')}</div>`).join('')
+  }</section>`;
+  document.getElementById('rows').innerHTML = html;
+</script>
+</body>
+</html>

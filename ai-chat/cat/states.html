@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cat States</title>
+<style>
+  :root { --bg:#fff; --surface:#f4f4f4; --line:#e5e5e5; --ink:#0d0d0d; --ink-2:#8f8f8f; --cta:#2a62e8;
+          --cat:#0000ff; --cat-face:#fff; --cat-prop:#d9d9d9; color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif; padding:24px 16px; }
+  h1 { font-size:20px; font-weight:600; margin:0 auto 16px; max-width:960px; }
+  .grid { max-width:960px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px; }
+  .card { border:1px solid var(--line); border-radius:16px; padding:12px; text-align:center; }
+  .card b { display:block; font-weight:600; }
+  .card span { color:var(--ink-2); font-size:13px; }
+  .cat { color:var(--cat); }
+  .card > div { border-bottom:2px solid var(--line); margin-bottom:8px; }
+  .live { max-width:960px; margin:24px auto 0; border:1px solid var(--line); border-radius:16px; padding:16px; display:grid; gap:16px; }
+  #live { border-bottom:2px solid var(--line); }
+  .live .btns { display:flex; flex-wrap:wrap; gap:8px; }
+  button { font:inherit; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:999px; padding:8px 16px; cursor:pointer; }
+  button.cta { background:var(--cta); color:#fff; border-color:var(--cta); }
+</style>
+</head>
+<body>
+<h1>Cat states</h1>
+<div class="grid" id="grid"></div>
+<div class="live">
+  <div id="live"></div>
+  <div>
+    <b>Try the hand-offs</b>
+    <p style="color:var(--ink-2);margin:4px 0 12px">Each state finishes before the next one starts.</p>
+    <div class="btns" id="btns"></div>
+  </div>
+</div>
+<script type="module">
+import { makeCat } from './cat.js?v=2'
+const STATES = [
+  ['idle', 'Waiting', 'sits, grooms, peeks over the edge, strolls, stretches'],
+  ['walk', 'Sending', 'trots off with the question'],
+  ['think', 'Thinking', 'stalks, wiggles, pounces, sits and ponders'],
+  ['search', 'Searching', 'hops on a big globe and walks it'],
+  ['write', 'Writing', 'flies a paper plane, loops now and then'],
+  ['done', 'Done', 'lands, leaps, stretches, winks'],
+  ['sleep', 'Asleep', 'after a long wait it curls up'],
+]
+for (const [s, name, what] of STATES) {
+  const card = document.createElement('div')
+  card.className = 'card'
+  card.innerHTML = `<div></div><b>${name}</b><span>${what}</span>`
+  document.getElementById('grid').append(card)
+  const cat = makeCat(card.firstElementChild, s)
+  if (s === 'done') setInterval(() => cat.set('done'), 6000)
+}
+const live = makeCat(document.getElementById('live'))
+const btns = document.getElementById('btns')
+const play = document.createElement('button')
+play.className = 'cta'
+play.textContent = 'Play a chat'
+play.onclick = () => ['walk', 'think', 'search', 'write', 'done'].forEach(s => live.set(s))
+btns.append(play)
+for (const [s, name] of STATES) {
+  const b = document.createElement('button')
+  b.textContent = name
+  b.onclick = () => live.set(s)
+  btns.append(b)
+}
+</script>
+</body>
+</html>
