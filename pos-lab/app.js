@@ -578,7 +578,9 @@ function attachEvents() {
     closeVariantSheet();
   });
   $('#variantSearch').addEventListener('input', (e) => { state.variantModal.query = e.target.value; renderVariantList(); });
-  $('#variantAvail').addEventListener('click', () => { state.variantModal.available = !state.variantModal.available; renderVariantList(); });
+  $('#variantFilter').addEventListener('click', (e) => openFilterSheet(e.currentTarget, () => [   // Orders' filter sheet (owner 2026-10-30)
+    ['Show', 'show', [['all', 'All'], ['avail', 'Available']]],
+  ], state.variantModal, { show: 'all' }, renderVariantList));
 
   // ---- Orders (rail list + receipt) ----
   $('#ordersList')?.addEventListener('click', (e) => {
@@ -665,8 +667,11 @@ function attachEvents() {
   const kbRO = new ResizeObserver(() => { kb.classList.remove('slid'); kbFade(); });   // tabs moved: the pill re-places on the next switch
   [kb, ...kb.children].forEach(el => kbRO.observe(el));   // the words too: a late font or another language widens them
   wireSegDrag($('#itemsKinds'), 'kind');
-  [['#itemsView', '#itemsView .head'], ['.view-reports .iv', '.view-reports .head']].forEach(([v, h]) =>   // Items, Reports: the page starts under the head, the frost covers it
-    new ResizeObserver(([e]) => $(v).style.setProperty('--head-h', e.target.offsetHeight + 'px')).observe($(h), { box: 'border-box' }));
+  // SHARED FROST = "frost top" (styles.css, docs/design-pos.md): each page starts under its own head, the frost covers it. --head-h goes on the head's own page:
+  // a view of several pages (Shift + Past shifts, Settings' sub-pages) has a hidden one measuring 0. Add a head's selector here.
+  const FROST_HEADS = '.frost .page > .head, .frost .o-rail > .head, .frost .o-main > .o-top, .frost .editor > .e-top';
+  const frostRO = new ResizeObserver(es => es.forEach(({ target: h }) => h.parentNode.style.setProperty('--head-h', h.offsetHeight + 'px')));
+  $$(FROST_HEADS).forEach(h => frostRO.observe(h, { box: 'border-box' }));
   // Liquid glass press (owner 2026-10-18): the button swells and shines under the finger, leans and stretches toward a drag, springs back on release
   const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search), .side-top > #sellSwitch, #app .side-link[data-view="settings"]';
   document.addEventListener('pointerdown', (e) => {

@@ -421,7 +421,7 @@ function openVariantModal(groupId, back) {   // back: the category list it was o
   const g = groupById(groupId);
   if (!g) return;
   if (!groupMembers(g.id).length) { showToast('No variants in this group'); return; }
-  state.variantModal = { groupId: g.id, query: '', available: false, back };
+  state.variantModal = { groupId: g.id, query: '', show: 'all', back };
   openListSheet(g.name, 'Search variants', 'Price');
 }
 // The variant sheet is also the customer picker (openCustomerModal): same top row, same list
@@ -472,7 +472,7 @@ function cellRow(c, attrs) {
 const cellHit = (c, q) => !q || (c.kind === 'cat' ? c.folder : c.kind === 'group' ? c.group : c.product).name.toLowerCase().includes(q);
 function renderCatSheet(vm) {
   const all = toCells(catProducts(vm.id)), q = vm.query.trim().toLowerCase(), shown = all.filter(c => cellHit(c, q));
-  $('#variantAvail').hidden = true;
+  $('#variantFilter').hidden = true;
   $('#variantCount').textContent = `${shown.length} of ${all.length}`;
   $('#variantList').innerHTML = shown.map(c => cellRow(c, c.kind === 'group' ? `data-open-group="${c.group.id}"` : `data-variant-id="${c.product.id}"`)).join('')
     || '<div class="vs-empty">No items match</div>';
@@ -574,13 +574,12 @@ function renderVariantList() {
   const members = groupMembers(vm.groupId);
   const q = vm.query.trim().toLowerCase();
   const out = p => stockLevel(p) === 'out';   // untracked (a drink, a cut) is never sold out and has no count
-  const shown = members.filter(p => (!vm.available || !out(p))
+  const shown = members.filter(p => (vm.show !== 'avail' || !out(p))
     && (!q || [p.name, p.barcode, ...skusOf(p)].some(s => String(s || '').toLowerCase().includes(q))));
   $('#variantCount').textContent = `${shown.length} of ${members.length}`;
-  const avail = $('#variantAvail');
-  avail.hidden = !members.some(out);   // nothing sold out = nothing to filter
-  avail.classList.toggle('active', vm.available);
-  avail.setAttribute('aria-pressed', String(vm.available));
+  const f = $('#variantFilter');
+  f.hidden = !members.some(out);   // nothing sold out = nothing to filter
+  f.classList.toggle('on', vm.show !== 'all');   // Orders' blue + dot
   $('#variantList').innerHTML = shown.length ? shown.map(p => `
     <button type="button" class="vs-row" data-variant-id="${p.id}">
       <span class="nm">${escapeHtml(p.name)}${out(p) ? '<small><b>Sold out</b></small>' : p.trackStock === false ? '' : `<small>${roundQty(p, p.stock)} available</small>`}</span>
@@ -2100,7 +2099,7 @@ function renderCustomerSheet(vm) {
   const all = allCustomerRecords();
   const shown = all.filter(c => !q || [c.name, c.phone, c.address].some(s => String(s || '').toLowerCase().includes(q)));
   const row = (id, name, sub) => `<button type="button" class="vs-row" data-customer-id="${escapeHtml(id)}"><span class="nm">${escapeHtml(name)}${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</span></button>`;
-  $('#variantAvail').hidden = true;
+  $('#variantFilter').hidden = true;
   $('#variantCount').textContent = `${shown.length} of ${all.length}`;
   $('#variantList').innerHTML = '<button type="button" class="vs-row vs-new" data-cust-new><span class="vs-plus"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><span class="nm">New customer</span></button>'   // first, searching too: a name that isn't there is the moment to add it
     + (q ? '' : row('walk-in', 'Walk-in customer', ''))

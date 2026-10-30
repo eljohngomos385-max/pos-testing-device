@@ -3315,7 +3315,7 @@ a.secondary-btn { text-decoration: none; }
 .catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(1), #app.xchg #sidebarToggle line:nth-child(1), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(1), body.add-pick .view-items .head [data-act="open-sidebar"] line:nth-child(1) { transform: rotate(45deg) translateY(6px); }
 .catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(2), #app.xchg #sidebarToggle line:nth-child(2), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(2), body.add-pick .view-items .head [data-act="open-sidebar"] line:nth-child(2) { opacity: 0; }
 .catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3), #app.xchg #sidebarToggle line:nth-child(3), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(3), body.add-pick .view-items .head [data-act="open-sidebar"] line:nth-child(3) { transform: rotate(-45deg) translateY(-6px); }   /* an exchange's ✕ too (leaveExchange), and quick stock's */
-.vs-search, .vs-chip { display: none; }
+.vs-search { display: none; }
 /* SCANNER (owner 2026-10-08, Shopify POS): the camera in one rounded card in the edit sheet's frame, over the top row
    (Discount, Fulfilment; owner: "so it covers the hamburger"); the phone gives
    it the whole screen (phone block). Corner brackets, ✕ and flip on the camera, the last read's line at its foot.
@@ -3360,24 +3360,8 @@ a.secondary-btn { text-decoration: none; }
 .sc-q .num { min-width: 24px; text-align: center; font-weight: 550; }
 .catalog-wrap:has(> .vsheet.open) .search-wrap:not(.vs-search) { display: none; }
 .catalog-wrap:has(> .vsheet.open) .vs-search { display: flex; }
-.catalog-wrap:has(> .vsheet.open) .vs-chip:not([hidden]) { display: block; }
 #scanBtn { transition: background .12s, color .12s, width .24s var(--rl-ease), margin .24s var(--rl-ease), opacity .16s; }
 .catalog-wrap:has(> .vsheet.open) #scanBtn { width: 0; margin-left: -7px; opacity: 0; overflow: hidden; pointer-events: none; }   /* -7px: the row's gap */
-.vs-chip {
-  flex: none;
-  height: var(--bar-h);
-  padding: 0 16px;
-  border: 0;
-  border-radius: var(--rl-r);
-  background: var(--rl-soft);
-  box-shadow: inset 0 0 0 1px var(--rl-hair);
-  color: var(--ink-secondary);
-  font-size: 14px;
-  font-weight: 510;
-  transition: background-color .12s, color .12s;
-}
-.vs-chip:hover { background: var(--surface-hover); color: var(--ink); }
-.vs-chip.active { background: var(--accent); color: var(--accent-ink); }
 /* the lists in the Customers page's treatment (owner 2026-10-19): no box, a strip on top, glass rows; the glass runs to the sheet's foot as before (owner 2026-10-19: "see the version that's longer") */
 /* the rows scroll up under the strip, a frost (owner 2026-10-20: "the top part where it's a little transparent", as Items' top): strip and list share one cell */
 .vs-card { flex: 1; min-height: 0; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
@@ -4820,7 +4804,6 @@ body.light-theme .cart-discount-btn {
 body.light-theme #searchInput,
 body.light-theme #variantSearch,
 body.light-theme .search-row .ghost-icon,
-body.light-theme .vs-chip:not(.active),
 body.light-theme .orders-search-wrap input,
 body.light-theme .view-hamburger { box-shadow: 0 0 0 1px var(--rl-hair), var(--shadow-card); }   /* the tiles' softer ring */
 body.light-theme .cart,
@@ -7505,11 +7488,11 @@ body .lv .e-top .acts .act { background: none; box-shadow: none; color: var(--in
 .lv .find input::placeholder { color: var(--ink-tertiary); font-weight: 400; }
 .lv .find .x { display: none; width: 26px; height: 26px; place-items: center; border-radius: 50%; background: var(--rl-soft); color: var(--ink-secondary); }
 .lv .find.typed .x { display: grid; }
-.lv .more { position: relative; display: grid; place-items: center; flex: none; width: 52px; border-left: 1px solid var(--line);
+:is(.lv, .vs-search) .more { position: relative; display: grid; place-items: center; flex: none; width: 52px; border-left: 1px solid var(--line);
             border-radius: 0 calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px) 0; color: var(--ink-secondary); transition: background-color .12s, color .12s; }
-.lv .more:hover, .lv .more[aria-expanded="true"] { background: var(--rl-hover); color: var(--ink); }
-.lv .more.on { color: var(--rl-on); }
-.lv .more.on::after { content: ""; position: absolute; top: 12px; right: 13px; width: 6px; height: 6px; border-radius: 50%; background: var(--rl-on); }
+:is(.lv, .vs-search) .more:is(:hover, [aria-expanded="true"]) { background: var(--rl-hover); color: var(--ink); }
+:is(.lv, .vs-search) .more.on { color: var(--rl-on); }
+:is(.lv, .vs-search) .more.on::after { content: ""; position: absolute; top: 12px; right: 13px; width: 6px; height: 6px; border-radius: 50%; background: var(--rl-on); }
 
 /* the list card runs off the bottom edge: no floor line */
 .lv .list { display: grid; grid-template-rows: minmax(0,1fr); overflow: hidden; border-bottom: 0; border-radius: var(--rl-r) var(--rl-r) 0 0; }
@@ -7645,7 +7628,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .kinds { touch-action: pan-y; }   /* a sideways drag is the pill's (wireSegDrag), not the page's */
 .lv .kinds.press::before { scale: .95; }   /* held, as iOS's thumb */
 @media (prefers-reduced-motion: reduce) { .lv .kinds.slid::before { transition: none; } }
-.lv .more[hidden] { display: none; }
+:is(.lv, .vs-search) .more[hidden] { display: none; }
 .lv .cols.k2 { grid-template-columns: minmax(0,1fr) 110px; }
 /* Items' sideways swipe (app.js): the list rides the finger with the next tab's list beside it, the Sell grid's feel.
    While it moves the list stops clipping, so the rows run to the screen's edges as Sell's tiles do. */
@@ -7931,7 +7914,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv .head > .find { position: absolute; z-index: 3; left: 28px; right: 28px; bottom: var(--pill-b); height: 48px; border: 0; border-radius: 999px; background: none; box-shadow: none; }
 .lv .find::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; }   /* the glass on a layer: a blurred box blurs nothing inside it, and + sits inside */
 .lv .find input { font-size: 16px; }
-.lv .find .more { width: 44px; border: 0; border-radius: 999px; }
+:is(.lv .find, .vs-search) .more { width: 44px; border: 0; border-radius: 999px; }
 .lv :is(#itemsFind, #customersFind) { right: 87px; }   /* + beside it, 11 apart */
 .lv :is(#itemsAdd, #newCustomerBtn) { position: absolute; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: var(--ink); }
 .lv #itemsAdd { right: 28px; bottom: var(--pill-b); }
@@ -7983,18 +7966,43 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 #catalogSearchRow > .search-wrap:not(.vs-search)::after { z-index: 1; border-radius: 999px; background: radial-gradient(circle 40px at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .3), rgb(255 255 255 / 0)); }   /* a hand-sized light, not one as wide as the bar */
 .lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on::after { opacity: 1; transition-duration: .1s; }
 .lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* the last row clears + */
-/* the list runs up under the search, the bar and the clock, a frost on top fading down into it (owner 2026-10-18, iOS 26's scroll edge,
-   the Claude app's top); at rest the first row still starts under the bar. --head-h: the head's height, set by app.js */
-.main > .view-items { margin-top: calc(-1 * var(--ph-top, 0px)); }   /* up into .main's clock strip */
-.main > .view-items .editor { border-top: var(--ph-top, 0px) solid transparent; }   /* ponytail: the item / category editor fills that same box, so it steps back down below the clock; a see-through border, not padding, so the phone and wide paddings stay as they are and the page grey still fills the strip */
-#itemsView .head { grid-area: 1 / 1; z-index: 2; padding-top: calc(var(--head-y) + var(--ph-top, 0px)); }
-.main > .view-items .page { padding-top: 0; }   /* Items runs up under the clock: its head carries the 8 instead, so the list still slides under the frost */   /* a grid item: z works unpositioned, so + keeps the page as its box */
-#itemsView .list { grid-area: 1 / 1 / -1; }
+/* SHARED FROST = "frost top" (owner 2026-10-30: "like the Reports page or the Items list", no hard edge anywhere). A page whose rows scroll runs up
+   under its head and the clock; the rows slide behind a soft frost that fades down into them (iOS 26's scroll edge). At rest the
+   first row sits where it always did. To join: add class "frost" to the view (<section class="view ... frost">); each
+   .page > .head + .c-scroll (or .list) in it takes part. --head-h: the head's height, set on its page by app.js (FROST_HEADS).
+   Another shape: a rule beside this one with the same frost values. */
+.main > .frost { margin-top: calc(-1 * var(--ph-top, 0px)); }   /* up into .main's clock strip */
+@media (min-width: 721px) { .main > .frost > .esheet { top: var(--ph-top, 0px); } }   /* the view's sheet (Shift's) stays under the clock; a phone's is fixed and pads itself */
+.frost .page { position: relative; padding-top: 0; }   /* the frost's box; the head carries the 8 instead */
+.frost :is(.page > .head, .o-rail > .head, .o-main > .o-top) { grid-area: 1 / 1; z-index: 2; padding-top: calc(var(--head-y) + var(--ph-top, 0px)); }   /* a grid item: z works unpositioned */
+.frost .page > .head > .st-ttl { top: calc(var(--head-y) + var(--ph-top, 0px)); }   /* the title centres on the ☰'s row, not on the head grown under the clock */
+.frost :is(.page, .o-rail, .o-main) > :is(.list, .c-scroll, .paper-scroll) { grid-area: 1 / 1 / -1; }
+.frost .page > .c-scroll { padding-top: calc(var(--head-h, 0px) + var(--rl-gap)); }
+.frost :is(.page, .editor, .o-main, .o-rail > .list)::before { content: ''; position: absolute; z-index: 1; inset: 0 0 auto; height: calc(var(--head-h, 0px) + 28px); pointer-events: none; transition: height .2s;
+  background: color-mix(in srgb, var(--canvas, var(--bg)) 50%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);   /* Reports' soft one: the cards show through, as Screen Time's chart does (owner: "ours is too strong") */
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 40px), transparent calc(100% - 12px)); mask-image: linear-gradient(#000 calc(100% - 40px), transparent calc(100% - 12px)); }   /* solid to 12 above the head's foot, clear 16 below it: a 72 fade left rows sharp beside ‹ / Save, a 28 hazed the first row at rest (2026-10-30) */
+/* Orders + Customers (owner 2026-10-30): two panes, each its own head and frost (the phone slides one over the other). The rail's frost
+   sits on its .list: a positioned rail would carry Customers' +, which floats on .ov over the other pane's corner */
+.frost :is(.ov, .o-rail, .o-main) { padding-top: 0; }
+:where(.frost) .o-main { position: relative; }   /* iPad: the frost's box; the phone's sliding page is already absolute (and outranks this) */
+.frost .o-main > .o-top { box-sizing: content-box; }   /* the bar stays 44 under the clock padding */
+.frost .o-rail .lines { padding-top: calc(var(--head-h, 0px) + var(--rl-gap)); }
+.frost .o-main > .c-scroll { padding-top: calc(var(--head-h, 0px) + 14px); }   /* .o-main's gap */
+.frost .o-main > .paper-scroll { padding-top: calc(var(--head-h, 0px) + 15px); }   /* + the paper ring's 1 */
+.frost.view-orders :is(.o-rail > .list, .o-main:has(.ol .band))::before { -webkit-mask-image: linear-gradient(#000 calc(100% - 12px), transparent); mask-image: linear-gradient(#000 calc(100% - 12px), transparent); }   /* the date band and the refund bar stick 16 under the head: solid down to their top, the fade hides behind them (rows read sharp in that strip, 2026-10-30) */
+/* Items (owner 2026-10-18): its list pads .lines, not the scroller; its frost stays the stronger 80% + 12, solid down to the bar */
+/* the item / category / modifier / discount editor (owner 2026-10-30, their Boysen Latex Paint photo): one cell, its form running up
+   under ‹ Back, the title, Save and the clock, behind the frost; the bar keeps the ☰ line (--head-y) */
+.main > .frost .editor { grid-template-rows: minmax(0,1fr); padding-top: 0; }
+.frost .editor > .e-top { grid-area: 1 / 1 / 2 / -1; align-self: start; z-index: 2; padding-top: calc(var(--head-y) + var(--ph-top, 0px)); }   /* a grid item: z works unpositioned */
+.frost .editor > .form-scroll { grid-area: 1 / 1 / 2 / -1; padding-top: var(--head-h, 0px); }
+@container pv not (max-width: 920px) {   /* wide: the bar spans the three columns (it was display: contents); the form already starts under it */
+  .frost .editor > .e-top { display: grid; grid-template-columns: subgrid; }
+  .frost .editor > .form-scroll > .form { padding-top: 12px; }
+}
 #itemsView .lines { padding-top: calc(var(--head-h, 0px) + var(--rl-gap)); }
 #itemsView .band { top: calc(var(--head-h, 0px) + var(--rl-gap)); }
-#itemsView::before { content: ''; position: absolute; z-index: 1; inset: 0 0 auto; height: calc(var(--head-h, 0px) + 28px); pointer-events: none;
-  background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);   /* solid down to the bar, then thins out past it */
-  -webkit-mask-image: linear-gradient(#000 calc(100% - 72px), transparent); mask-image: linear-gradient(#000 calc(100% - 72px), transparent); }
+#itemsView > .page::before { background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 /* The list bar (owner 2026-10-18): one glass bar of words; the picked one sits under a glass pill that slides between them
    (slidePill / wireSegDrag). Words never cut: when they run out of room (another language, a small phone) they keep their
    spacing and slide sideways inside the bar, the edges fading, as Safari's tab groups (owner's photo). #itemsBar is the glass,
@@ -8097,6 +8105,7 @@ body:not(.light-theme) .rail-h .items, body:not(.light-theme) .rail-h.co-mode .p
 #catalogSearchRow > .search-wrap { min-width: 0; }
 #catalogSearchRow > #scanBtn { position: absolute; right: 0; z-index: 1; width: 44px; background: none; box-shadow: none; color: var(--ink-secondary); }
 #catalogSearchRow:has(#searchInput:not(:placeholder-shown)) > #scanBtn { display: none; }   /* the clear X takes the end */
+#variantFilter { position: absolute; right: 0; z-index: 1; height: 44px; }   /* the variant list's filter where scan sits, Orders' look (owner 2026-10-30) */
 /* Messages' glass (owner 2026-10-18 photo): a lighter fill and a lit rim, so it reads as glass on the plain dark page. One even .5px
    hairline (owner: "the hairline is too thick") */
 body:not(.light-theme) #catalogSearchRow { --glass: color-mix(in srgb, var(--ink) 14%, color-mix(in srgb, var(--bg) 75%, transparent));
@@ -8215,16 +8224,8 @@ input.es-ta { height: 56px; }
 .lv .rp-pin.on { opacity: 1; visibility: visible; }
 /* Reports runs up under the head and the clock as Items does, the frost fading down into it (owner 2026-10-19, Screen Time's
    photo); the ‹ date › bar sits on that frost, which grows to take it in, instead of its own solid strip */
-.main > .view-reports { margin-top: calc(-1 * var(--ph-top, 0px)); }
-.main > .view-reports .page { padding-top: 0; }
-.view-reports .head { grid-area: 1 / 1; z-index: 2; padding-top: calc(var(--head-y) + var(--ph-top, 0px)); }
-.view-reports .st-ttl { top: calc(var(--head-y) + var(--ph-top, 0px)); }   /* the title centres on the ☰'s row, not on the head grown under the clock */
-.view-reports .c-scroll { grid-area: 1 / 1 / -1; padding-top: calc(var(--head-h, 0px) + var(--rl-gap)); }
-.lv .rp-pin { border-bottom: 0; background: none; }
-.view-reports .iv::before { content: ''; position: absolute; z-index: 1; inset: 0 0 auto; height: calc(var(--head-h, 0px) + 28px); pointer-events: none; transition: height .2s;
-  background: color-mix(in srgb, var(--canvas, var(--bg)) 50%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);   /* thinner than Items' 80%: the cards show through soft, as Screen Time's chart does (owner: "ours is too strong") */
-  -webkit-mask-image: linear-gradient(#000 calc(100% - 72px), transparent); mask-image: linear-gradient(#000 calc(100% - 72px), transparent); }
-.view-reports .iv:has(.rp-pin.on)::before { height: calc(var(--head-h, 0px) + 72px);   /* + the 44 bar, solid behind it so the card under doesn't read through the date */
+.lv .rp-pin { border-bottom: 0; background: none; }   /* the SHARED FROST (above) is Reports' own */
+.view-reports .page:has(.rp-pin.on)::before { height: calc(var(--head-h, 0px) + 72px);   /* + the 44 bar, solid behind it so the card under doesn't read through the date */
   -webkit-mask-image: linear-gradient(#000 calc(100% - 28px), transparent); mask-image: linear-gradient(#000 calc(100% - 28px), transparent); }
 .lv .rp-pin .rp-pl { flex: none; min-width: 200px; color: var(--ink); font-size: 15px; font-weight: 590; text-align: center; }   /* one width, so the ‹ › stay put */
 .lv .rp-arw { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--rl-bar); color: var(--surface-2); }
@@ -8443,8 +8444,9 @@ body.light-theme:has(:is(.view-orders, .view-items).active) { background: var(--
 :is(.view-orders .o-rail, .view-items .page) .band { height: 36px; margin-top: 16px; padding: 0 16px; border: 0; background: var(--canvas, var(--bg));
                              box-shadow: 0 0 0 1px var(--canvas, var(--bg)); }   /* also hides the rows' 1px ring passing beside it */
 :is(.view-orders .o-rail, .view-items .page) .band:first-child { margin-top: 8px; }
-/* the date strip sticks where it rests, 8 under the search, so it never slides up first; a canvas strip above it hides rows passing that gap (owner 2026-10-19) */
-.view-orders .o-rail .band { top: 8px; box-shadow: 0 0 0 1px var(--canvas, var(--bg)), 0 -8px 0 4px var(--canvas, var(--bg)); }
+/* the date strip sticks where it rests, 8 under the search, so it never slides up first (owner 2026-10-19); the rows passing that gap
+   slide under the frost, no canvas strip (owner 2026-10-30). A sticky top counts from the scroller's padding, so 8 stays 8 */
+.view-orders .o-rail .band { top: 8px; }
 :is(.view-orders .o-rail, .view-items .page) .band::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: var(--rl-r) var(--rl-r) 0 0;
                                      background: var(--rl-soft); box-shadow: 0 0 0 1px var(--line); }
 body.light-theme :is(.view-orders .o-rail, .view-items .page) .band::before { background: var(--canvas); }   /* owner 2026-10-09: a shade darker than #F9F9F9 */
@@ -8525,7 +8527,7 @@ body.light-theme .view-orders .rp-paper { box-shadow: none; }
 
 /* Refund's tick list: the same white block */
 .view-orders .card.ol { border-color: transparent; box-shadow: none; }
-.view-orders .ol .band { border-bottom: 0; background: none; color: var(--ink-tertiary); }
+.view-orders .ol .band { border-bottom: 0; background: var(--rl-card); color: var(--ink-tertiary); }   /* sticks under the bar, the card's own white: the rows slide behind its words, not through them (owner 2026-10-30) */
 .view-orders .ol .line + .line { border-top: 0; background: linear-gradient(var(--rl-div), var(--rl-div)) 16px 0 / 100% 1px no-repeat; }
 
 /* ---------- Quick stock (pos-stock.js) ---------- */
