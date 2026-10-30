@@ -84,21 +84,42 @@ function attachEvents() {
     t.getAnimations().forEach(a => a.cancel()); void t.offsetWidth;   // no rise of its own; the reflow restarts sp-name on a quick second tap
     t.style.setProperty('--mid-l', r.left - x + 'px'); t.style.setProperty('--mid-r', innerWidth - r.right + x + 'px'); t.classList.add('mid');   // the next toast resets .mid
   });
-  // A swipe opens or shuts the menu the way a tap on the menu button does (owner 2026-10-29: "it's just open and close"): once
-  // the finger has gone 30px its way, the same one slide plays. Nothing rides the finger, so nothing stops and starts again.
-  // A swipe left on the open menu, right from the screen's left edge, from a page's first tab or from Sell's first page call it.
+  // The menu rides the finger, as the tabs do (owner 2026-10-30: control it, peek and put it back): the menu and the page
+  // follow it out and back; let go past a quarter of the way, or flicked, and it slides the rest, else it slides home.
+  // One piece for every swipe that moves it: left on the open menu, right from the screen's left edge, from a page's first
+  // tab or from Sell's first page. at(x) while the finger moves, end(lifted) as it lets go.
   const app = $('#app'), sideEl = $('.sidebar'), mainEl = $('.main');
   const drawer = {
     w: () => sideEl.offsetWidth,
+    live: false,
     at(x) {   // x: how far out the finger has the menu, 0 to its width
-      drawer.open ??= !app.classList.contains('sidebar-collapsed');   // the way this swipe goes: from how it started
-      if (drawer.open ? x < drawer.w() - 30 : x > 30) app.classList.toggle('sidebar-collapsed', drawer.open);
+      const w = drawer.w();
+      x = Math.min(w, Math.max(0, x));
+      if (!drawer.live) Object.assign(drawer, { live: true, open: !app.classList.contains('sidebar-collapsed'), x0: x, pts: null });
+      app.classList.add('drawer-drag');   // no slide while it rides; the page's edge shows (styles.css)
+      sideEl.style.transition = mainEl.style.transition = '';   // a finger on a slide still going takes it
+      noteMove(drawer, x - drawer.x0, performance.now());
+      drawer.x = x;
+      sideEl.style.transform = `translate3d(${x - w}px, 0, 0)`;
+      mainEl.style.transform = `translate3d(${x}px, 0, 0)`;
     },
-    end() { drawer.open = null; },
+    end(lifted) {   // the one slide from where the finger left it, at the finger's speed (no brake, then crawl); a cancel goes home
+      if (!drawer.live) return;
+      drawer.live = false;
+      if (lifted && swipeGo(drawer, drawer.w()) && drawer.dx > 0 !== drawer.open) app.classList.toggle('sidebar-collapsed', drawer.open);
+      const left = Math.abs((app.classList.contains('sidebar-collapsed') ? 0 : drawer.w()) - drawer.x);
+      const ms = Math.round(Math.min(450, Math.max(150, 2.25 * left / (Math.abs(speed(drawer)) || .01))));   // 2.25: the curve's start slope (.72 / .32)
+      void sideEl.offsetWidth;   // the finger's spot is the slide's start
+      sideEl.style.transition = mainEl.style.transition = `transform ${ms}ms cubic-bezier(.32, .72, 0, 1)`;
+      app.classList.remove('drawer-drag');
+      sideEl.style.transform = mainEl.style.transform = '';
+      clearTimeout(drawer.t); drawer.t = setTimeout(() => { if (!drawer.live) sideEl.style.transition = mainEl.style.transition = ''; }, ms + 50);
+    },
   };
-  // a swipe's speed as it ends, px/ms over its last 100ms; it lands past a quarter of the way, or flicked that way
+  // a swipe's speed as it ends, px/ms over its last 100ms; a flick goes its way (back, if flicked back), else past a quarter lands it
   const noteMove = (s, dx, t) => { s.dx = dx; s.pts = [...(s.pts || []).filter(p => t - p.t < 100), { dx, t }]; };
-  const swipeGo = (s, w) => { const a = s.pts?.[0], b = s.pts?.at(-1), v = a && b.t > a.t ? (b.dx - a.dx) / (b.t - a.t) : 0; return Math.abs(s.dx) > w / 4 || (Math.abs(v) > .3 && v * s.dx > 0); };
+  const speed = (s) => { const a = s.pts?.[0], b = s.pts?.at(-1); return a && b.t > a.t ? (b.dx - a.dx) / (b.t - a.t) : 0; };
+  const swipeGo = (s, w) => { const v = speed(s); return Math.abs(v) > .3 ? v * s.dx > 0 : Math.abs(s.dx) > w / 4; };
   // From the screen's left edge a swipe right does what the top-left button does (owner 2026-10-29): ☰ pulls the menu out
   // under the finger; ‹ Back slides its page off and presses Back, the same path, so an editor with changes still asks.
   // On the open menu a swipe left pushes it back. The first 4px pick it; then it owns the finger and whatever the touch
@@ -151,7 +172,7 @@ function attachEvents() {
     if (g?.id !== e.pointerId || !g.on) return;
     edge = null;
     e.stopPropagation();
-    if (g.open || g.menu) return drawer.end();
+    if (g.open || g.menu) return drawer.end(e.type === 'pointerup');
     const go = e.type === 'pointerup' && swipeGo(g, g.pg ? g.pg.offsetWidth : drawer.w());
     if (!go) { if (g.pg) Object.assign(g.pg.style, { transition: 'transform .28s var(--rl-ease)', transform: '' }); return; }
     if (!g.pg) return g.b.click();
@@ -221,7 +242,7 @@ function attachEvents() {
       }
       noteMove(s, dx, e.timeStamp);
       const to = dx < 0 ? s.next : s.prev;
-      if (s.menu && dx > 0) drawer.at(dx);
+      if (s.menu && (dx > 0 || drawer.live)) drawer.at(dx);
       at(s, s.x0 = to ? dx : s.menu && dx > 0 ? 0 : dx * .25);   // nothing that way: it gives, the grid's rubber band
       pill(to, to ? Math.min(1, Math.abs(dx) / s.step) : 0);
     });
@@ -232,7 +253,7 @@ function attachEvents() {
       s = null;
       if (!g.on) return;
       o.box.classList.remove('held');
-      drawer.end();
+      drawer.end(e.type === 'pointerup');
       const to = go ? (g.dx < 0 ? g.next : g.prev) : null;
       pill(to, 1);   // the pill finishes with the page, both .28s
       parts().forEach(p => { p.style.transition = 'transform .28s var(--rl-ease)'; });
@@ -383,7 +404,7 @@ function attachEvents() {
 
     // right of the first page is the menu, pulled out under the finger (owner 2026-10-29); editing My page it gives as before
     swipeStart.menu = offset > 0 && !myEditing;
-    if (swipeStart.menu) drawer.at(offset);
+    if (swipeStart.menu || drawer.live && !myEditing) drawer.at(offset);
     if (swipeStart.menu) offset = 0;
     // Rubber-band at boundaries
     else if (offset > 0) {
@@ -401,7 +422,7 @@ function attachEvents() {
     const track = $('#productTrack');
     if (track) track.classList.remove('dragging');
 
-    drawer.end();
+    drawer.end(true);
     if (swipeStart.dragging) {
       // where it lies, in pages; past an eighth of a page (or flicked) it goes on the finger's way, else the nearest page
       const step = productGrid.clientWidth + (parseFloat(getComputedStyle(track).gap) || 0), dx = swipeStart.dx || 0;
