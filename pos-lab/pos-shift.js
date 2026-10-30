@@ -374,8 +374,9 @@ function shiftDrawer(all = storeShifts(), now = Date.now()) {
 let shTab = 'shift';
 const shLink = (sh, word) => `<button type="button" class="link cta-3" data-sh="${sh}">${word}</button>`;
 const shWhen = ts => fmtOrderTime(ts).replace(/^Today, /, '').replace(/^Yesterday/, 'yesterday');
-// Cash in & out and Past shifts are Orders' rows (docs/design-pos.md › Rows, owner 2026-10-17): title + grey sub left,
-// the money top right; a card per group, its count and total on the grey title like Orders' band.
+// Cash in & out and Past shifts are Orders' list (owner 2026-10-30: "the same design as the orders page"): per group the grey
+// date band (count left, total right) with its glass rows under it, one block; title + grey sub left, the money top right.
+const dayBand = (title, n, tot) => `<div class="band"><span>${title} <span class="num">· ${n}</span></span>${tot}</div>`;
 const listRow = (tag, attr, title, sub, amt) => `<${tag} class="row"${attr}><div class="nm"><span>${title}</span><small class="num">${sub}</small></div>
   <div class="rt"><span class="amt num">${amt}</span></div></${tag}>`;
 const moveRow = m => listRow('div', '', escapeHtml(m.note), `${escapeHtml(fmtOrderTime(m.ts))} · ${escapeHtml(m.staff)}`, overShortText(m.amount));
@@ -411,12 +412,12 @@ function renderShift(peek) {
     if (!days.has(k)) days.set(k, { z: null, rows: [] });
     if (p.s) days.get(k).rows.push(p); else days.get(k).z = p;
   }
-  const past = [...days].map(([day, { z, rows }]) => icard(`${orderDayName(day)} <span class="num">· ${rows.length}</span>${z
-    ? `<button type="button" class="link num cta-3" data-past="${escapeHtml(z.id)}">${peso(z.d.amount)}</button>` : ''}`, rows.map(p => {
+  const past = [...days].map(([day, { z, rows }]) => dayBand(orderDayName(day), rows.length, z
+    ? `<button type="button" class="link num cta-3" data-past="${escapeHtml(z.id)}">${peso(z.d.amount)}</button>` : '') + (rows.map(p => {
     const diff = shiftFigures(p.s).diff;   // live: a late sale moves it
     return listRow('button', ` type="button" data-past="${escapeHtml(p.id)}"`, `${tillDate(p.s.open.ts, 'time')} – ${tillDate(p.at, 'time')}`,
       escapeHtml(p.s.open.staff), diff === null ? 'Not counted' : overShortText(diff));
-  }).join('') || '<div class="note">No shifts</div>', '', ' fc-rows')).join('');
+  }).join('') || '<div class="row none"><div class="nm"><span>No shifts</span></div></div>')).join('');
   const auto = `${(s ? s.open.cutoff ?? state.settings.autoClose : state.settings.autoClose) || 12} AM`;
   const foot = s ? `Started ${escapeHtml(shWhen(s.open.ts))} · auto-closes ${auto}`
     : from === cutBefore() ? `Auto-reset at ${auto} · ${shLink('settings', 'Change')}`
@@ -426,8 +427,8 @@ function renderShift(peek) {
   if (!peek) { shiftFabSay(fab); $('#shiftFab').dataset.sh = act; $('#shiftPrint').hidden = !s; }
   // the cash sales and Expected only for a role that sees the day's totals: the close is a blind count
   body.innerHTML = tab === 'cash'
-    ? (mv.length ? icard(`${s ? 'This shift' : 'Today'} <span class="num">· ${mv.length}</span><span class="tot num">${overShortText(mv.reduce((t, m) => t + m.amount, 0))}</span>`,
-      mv.map(moveRow).join(''), '', ' fc-rows') : '<p class="sh-none">No cash in or out yet</p>')
+    ? (mv.length ? `<div class="o-days">${dayBand(s ? 'This shift' : 'Today', mv.length, `<span class="num">${overShortText(mv.reduce((t, m) => t + m.amount, 0))}</span>`)}${
+      mv.map(moveRow).join('')}</div>` : '<p class="sh-none">No cash in or out yet</p>')
     : `${icard('', [
       s ? row('Start cash', peso(f.start)) : '',
       row('Cash sales', peso(f.sales)),
@@ -440,7 +441,7 @@ function renderShift(peek) {
     ${icard('', `<button type="button" class="fr nav" data-sh="past"><span class="lb">Past shifts</span><span class="ctl end">${ICHEV}</span></button>`)}
     ${shiftSalesCard(f.rows, row)}`;
   if (peek) return;
-  $('#shiftPastBody').innerHTML = `<div class="c-body">${past || '<p class="sh-none">No past shifts yet</p>'}</div>`;
+  $('#shiftPastBody').innerHTML = `<div class="c-body">${past ? `<div class="o-days">${past}</div>` : '<p class="sh-none">No past shifts yet</p>'}</div>`;
 }
 
 // Past shifts is its own page over the drawer (owner 2026-10-15); the view opens on the drawer.
