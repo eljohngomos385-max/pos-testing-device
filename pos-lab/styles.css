@@ -7689,7 +7689,7 @@ body.light-theme .fab-veil { --fab-dim: rgba(255, 255, 255, .45); }
 .fab-stack { position: absolute; right: var(--fr); bottom: calc(var(--fb) + var(--fs) + 18px); display: flex; flex-direction: column; align-items: flex-end; gap: 16px; }
 .fab-stack button { display: flex; align-items: center; gap: 16px; padding: 0; border: 0; background: none; color: var(--ink); font-size: 20px; font-weight: 650; letter-spacing: -0.3px;
                     animation: fab-in .26s var(--rl-ease) var(--d) both; }   /* straight up + fade: the old scale slid the labels ~15px sideways, a diagonal wiggle (owner 2026-10-27) */
-.fab-stack i { display: grid; place-items: center; width: var(--fs); height: var(--fs); border-radius: 50%; background: var(--accent); color: var(--accent-ink); transition: transform .12s; }
+.fab-stack i { display: grid; place-items: center; width: var(--fs); height: var(--fs); border-radius: 50%; transition: transform .12s; }   /* class cta: the + button's blue (owner 2026-11-01) */
 .fab-stack button:active i { transform: scale(.94); }
 .fab-stack button:focus-visible { outline: none; }
 .fab-stack button:focus-visible i, .fab-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

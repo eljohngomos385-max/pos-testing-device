@@ -1602,7 +1602,7 @@ function openFabMenu(fab, items) {
   veil.className = 'fab-veil';
   veil.style.cssText = `--fr:${innerWidth - r.right}px;--fb:${innerHeight - r.bottom}px;--fs:${r.width}px`;
   veil.innerHTML = `<div class="fab-stack" role="menu">${items.map((it, i) => `<button type="button" role="menuitem" data-i="${i}" style="--d:${(items.length - 1 - i) * 35}ms">
-      <span>${escapeHtml(it.label)}</span><i>${it.ic}</i></button>`).join('')}</div>
+      <span>${escapeHtml(it.label)}</span><i class="cta">${it.ic}</i></button>`).join('')}</div>
     <button type="button" class="fab-x cta-2" aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>`;
   document.body.append(veil);
   fab.setAttribute('aria-expanded', 'true');
