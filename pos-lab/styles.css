@@ -8879,9 +8879,8 @@ body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px v
 .lv .fc .pick .grip .ic { width: 20px; height: 20px; }
 .lv .fc .pick.mod-on.dragging { position: relative; z-index: 2; background-color: var(--rl-card); box-shadow: var(--shadow-card); cursor: grabbing; }
 .lv .fc:has(.dragging) .pick.mod-on:not(.dragging) { transition: transform .2s var(--rl-ease); }
-.lv .mline { display: flex; min-width: 0; }   /* the choices end in … , the item count stays whole */
+.lv .mline { display: flex; min-width: 0; max-width: 34em; }   /* the choices end in … and stop partway on iPad; the item count sits on the right like Categories (owner 2026-10-31) */
 .lv .mline .ch { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lv .mline > span:last-child { flex: none; }
 .lv .mline .hit { color: var(--ink); font-weight: inherit; }   /* the choice a search matched */
 /* Modifiers: selling */
 /* the question screens (pos-sell.js edit sheet 'mods'): the question on the hero line; a long one is cut, never wrapped */

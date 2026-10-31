@@ -316,7 +316,7 @@ function itemSupsPage() {
 // A choice added later shows on every item until hidden; nothing starts picked at the sale (bo-model itemModifiers).
 const modsById = () => new Map(kindList('mods').map(m => [m.id, m]));
 // a modifier's choices on one line, as modifiers-lab.html draws it: "Fresh milk, Oat +₱30.00"
-const choiceList = (m, name = escapeHtml) => liveChoices(m).map(o => [name(o.name), modPrice(o.price)].filter(Boolean).join(' ')).join(', ');
+const choiceList = m => liveChoices(m).map(o => [escapeHtml(o.name), modPrice(o.price)].filter(Boolean).join(' ')).join(', ');
 const choicesText = (m, hidden) => {
   const all = liveChoices(m), n = all.filter(o => !hidden.includes(o.id)).length;
   return n < all.length ? `${n} of ${all.length} choices` : all.length === 1 ? '1 choice' : `All ${all.length} choices`;
@@ -631,8 +631,8 @@ function renderKindRows(kind, band, rows) {
   rows.innerHTML = list.map(x => `<button type="button" class="row cols k2" data-id="${escapeHtml(x.id)}">
       <span class="nm">${cats ? itemThumb(catLook(x)) : ''}<span class="tx"><b>${escapeHtml(x.name)}</b>${
         discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? (addPickOn(x.id) ? '<small>Already a tile</small>' : '')
-        : `<small class="mline"><span class="ch">${choiceList(x, hit)}</span><span>&nbsp;· ${SalesMath.plural(itemsWith(kind, x.id, all).length, 'item')}</span></small>`}</span></span>
-      <span class="num">${discs ? esShown(x) : mods ? '' : SalesMath.plural(addPick ? toCells(catProducts(x.id)).length : itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
+        : `<small class="mline"><span class="ch">${liveChoices(x).map(o => hit(o.name)).join(', ')}</span></small>`}</span></span>
+      <span class="num">${discs ? esShown(x) : SalesMath.plural(addPick ? toCells(catProducts(x.id)).length : itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
     || `<div class="empty"><b>${q ? 'No matches' : `No ${cats ? 'categories' : kind === 'addons' ? 'add-ons' : 'modifiers'} yet`}</b><span>${q ? 'Try a different name.' : kind === 'addons' ? ''
       : cats ? 'Tap + to add one, then tick its items.' : 'A question the POS asks when you sell an item, like Gift wrap or Assembly.'}</span></div>`;
 }
