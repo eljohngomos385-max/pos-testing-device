@@ -8133,7 +8133,7 @@ body:not(.light-theme) #catalogSearchRow { --glass: color-mix(in srgb, var(--ink
 .fsheet .fs-x, .fsheet .fs-ok, .ag-top .fs-x { display: grid; place-items: center; }
 .fsheet .fs-ok:disabled { color: var(--ink-quaternary); cursor: default; }
 .fsheet .fs-ok:not(:disabled) { background: var(--accent); color: var(--accent-ink); }   /* lit once something changed (Maps' blue, our ink) */
-.fs-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 66px 16px calc(var(--bar-h) + 32px + var(--ph-safe, 0px)); }   /* the last card clears Clear Filters */
+.fs-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 66px var(--sheet-x) calc(var(--bar-h) + 32px + var(--ph-safe, 0px)); }   /* the last card clears Clear Filters */
 .fs-body h6 { margin: 0; padding: 20px 4px 8px; color: var(--ink-tertiary); font-size: 14px; font-weight: 400; }   /* Settings' group title (.fc-t) */
 .fs-grp { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px; border-radius: var(--rl-r); background: var(--rl-card); }
 .fsheet .fs-grp button { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--tile); color: var(--ink); font-size: 15px; font-weight: 500; }
@@ -8146,7 +8146,7 @@ body:not(.light-theme) #catalogSearchRow { --glass: color-mix(in srgb, var(--ink
 .fsheet.half .fs-top { position: relative; }
 .fsheet.half .fs-top::before { content: none; }   /* nothing scrolls under it */
 .fs-top > i { width: 44px; }   /* ✕'s twin, so the title sits dead centre (an action sheet, half or full) */
-.fsheet.half .fs-body { padding: 4px 24px calc(24px + var(--ph-safe, 0px) / 2); }   /* the rows stay where they sat when it floated 8px in */
+.fsheet.half .fs-body { padding: 4px var(--sheet-x) calc(24px + var(--ph-safe, 0px) / 2); }   /* the cards 16 from the screen edge, as the full sheet (owner 2026-11-01) */
 .fs-rows { display: grid; border-radius: var(--rl-r); background: var(--rl-card); overflow: hidden; }
 .fs-rows + .fs-rows { margin-top: 12px; }
 .fsheet:not(.half) .fs-rows:first-child { margin-top: 20px; }   /* the full sheet (Sold per): starts where Filters' first card does, clear of the head's frost */
@@ -8682,7 +8682,7 @@ body.qs-on.qs-price .view-items .cols > :nth-child(4) { display: none; }
    whole screen and pushes the page out right, on iOS's sheet curve; ✕, a row or a swipe left slides it back.
    Rows 44 with no cards, the open page a round grey pill inset 8, glyphs filled when open. Numbers in pt off the lab. */
 .side-top { display: none; }
-:root { --side-pill: var(--surface); --head-y: 8px; }   /* --head-y: the ☰ row's top on every page and the menu's title + switch beside it (Sell's ☰: .catalog's 8, + .content-row's 8 on the iPad) */
+:root { --side-pill: var(--surface); --head-y: 8px; --sheet-x: 16px; }   /* --head-y: the ☰ row's top on every page and the menu's title + switch beside it (Sell's ☰: .catalog's 8, + .content-row's 8 on the iPad); --sheet-x: every slide-up sheet's screen edge → card (owner 2026-11-01: all 16, Claude's sheet) */
 @media (min-width: 721px) { :root { --head-y: 16px; } }
 body.light-theme { --side-pill: var(--canvas); }   /* Gemini's #F2F0F0 on #FAF9F9 */
 #app::before { display: none; }   /* nothing left beside it to dim */
