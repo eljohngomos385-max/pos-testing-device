@@ -7989,6 +7989,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .frost .o-rail .lines { padding-top: calc(var(--head-h, 0px) + var(--rl-gap)); }
 .frost .o-main > .c-scroll { padding-top: calc(var(--head-h, 0px) + 14px); }   /* .o-main's gap */
 .frost .o-main > .paper-scroll { padding-top: calc(var(--head-h, 0px) + 15px); }   /* + the paper ring's 1 */
+.frost .o-main > .paper-scroll:has(> .receipt-preview) { padding-top: calc(var(--head-y) + var(--ph-top, 0px) + var(--bar-h) + 16px); }   /* the receipt on Orders' start line: the bar's own 44, not the phone name's extra line (owner 2026-10-31) */
 :is(.frost.view-orders :is(.o-rail > .list, .o-main:has(.ol .band)), .frost .page:has(.o-days))::before { -webkit-mask-image: linear-gradient(#000 calc(100% - 12px), transparent); mask-image: linear-gradient(#000 calc(100% - 12px), transparent); }   /* the date band and the refund bar stick 16 under the head: solid down to their top, the fade hides behind them (rows read sharp in that strip, 2026-10-30) */
 /* Items (owner 2026-10-18): its list pads .lines, not the scroller; its frost stays the stronger 80% + 12, solid down to the bar */
 /* the item / category / modifier / discount editor (owner 2026-10-30, their Boysen Latex Paint photo): one cell, its form running up
@@ -8206,7 +8207,7 @@ input.es-ta { height: 56px; }
 /* the look is the Items list bar's (owner 2026-10-18): glass bar 36, wide; the pill fills it closer (2px, 32 tall), words get room,
    and the pill's top shine and shadow are half the glass ring's (owner: "reduce the shine, keep it"; "reduce the shadow of the pill") */
 .lv .kinds.rp-units { position: relative; order: 0; flex-basis: auto; width: fit-content; max-width: 100%; justify-self: center;   /* centred ("Apple v3", owner 2026-10-15); hugs its words (owner 2026-10-18) */
-  height: 36px; margin: -3px 0 0; padding: 2px; gap: 0; justify-content: normal;   /* Reports + Shift sit 3px higher, on one line (owner 2026-10-17) */
+  height: 36px; margin: -8px 0 0; padding: 2px; gap: 0; justify-content: normal;   /* the picker's edge on Orders' start line, 126 phone / 76 iPad (owner 2026-10-31) */
   display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;   /* every option the widest word's width, so the middle one sits dead centre (owner 2026-10-18) */
   border: 0; border-radius: 999px; background: var(--glass); box-shadow: var(--glass-ring);
   -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
@@ -8408,7 +8409,8 @@ body.hairlines .lv :is(.rp-body, #shiftBody, .sh-body, #shiftPastBody) .card.fc 
 .lv .st-page .fr { min-height: 48px; }   /* a switch row as tall as a dropdown row */
 .st-page label.fr { cursor: pointer; }
 .st-page .fr .lb { display: grid; gap: 2px; color: var(--ink); }   /* rednote's settings: the word dark, its value grey */
-.lv .st-page .c-body { padding-top: 2px; }   /* the bigger titles' room taken from the top: the first title stays where it was */
+.lv .st-page .c-body { padding-top: 8px; }   /* the first card's edge on Orders' start line, 126 phone / 76 iPad (owner 2026-10-31) */
+.lv .st-page .c-body > .fc-t:first-child { margin-top: -1px; }   /* a first title's words on that line instead */
 @container pv (max-width: 720px) { .lv .st-page { padding-inline: 16px; } }   /* rednote's 16 gutter */
 .st-page .fr .lb small { font-size: 12px; }
 .st-page .fr > .v { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }   /* the › on the middle of its word, ~13pt from it, as rednote's */
@@ -8631,14 +8633,13 @@ body.qs-on.qs-price .view-items .cols > :nth-child(4) { display: none; }
 @media (max-width: 720px) { .qs-tickbar { bottom: var(--ph-b); width: min(100% - 48px, 260px); } .qs-tickbar button { font-size: 15px; } }
 
 /* QR codes (pos-qr.js, from qr-lab): Fulfilment types' rows; the name opens the table, the switch stays a switch */
-#qrPage .c-body { padding-top: 32px; }   /* the list stays where it sat under its old "3 of 8" line (owner 2026-10-17) */
 .view-qr .qr-row, #payTypesList .qr-row, #fulTypesList .qr-row { cursor: pointer; }   /* Payment types' rows and your own fulfilment types open their page too */
 .view-qr .qr-row > .lb { all: unset; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (hover: hover) { .view-qr .qr-row:hover, #payTypesList .qr-row:hover, #fulTypesList .qr-row:hover { background-color: var(--rl-hover); } }
 #payTypesList .pt-go, #fulTypesList .pt-go { display: flex; padding: 0; border: 0; background: none; color: inherit; }
 #payTypesList .fr:not(.qr-row, .add) .v::after { content: ''; width: 18px; }   /* a row with no page keeps a chevron's room: the switches line up */
 #fulTypesList:has(.qr-row) .fr:not(.qr-row, .add):has(.sw) .v::after { content: ''; width: 18px; }   /* the same once one of your own types has a ›: Lalamove's switch lines up with Walk-in's */
-.view-qr .qr-art { display: grid; place-items: center; padding: 8px 16px 20px; }   /* the white tile alone on the page, no card (owner 2026-10-16) */
+.view-qr .qr-art { display: grid; place-items: center; padding: 0 16px 20px; }   /* the white tile alone on the page, no card (owner 2026-10-16) */
 .view-qr .qr-art svg { width: 200px; height: 200px; border-radius: var(--r-input); background: #fff; }   /* a QR needs a white tile in dark mode too */
 .view-qr .fr.qr-mid { justify-content: center; }
 

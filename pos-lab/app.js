@@ -670,7 +670,10 @@ function attachEvents() {
   // SHARED FROST = "frost top" (styles.css, docs/design-pos.md): each page starts under its own head, the frost covers it. --head-h goes on the head's own page:
   // a view of several pages (Shift + Past shifts, Settings' sub-pages) has a hidden one measuring 0. Add a head's selector here.
   const FROST_HEADS = '.frost .page > .head, .frost .o-rail > .head, .frost .o-main > .o-top, .frost .editor > .e-top';
-  const frostRO = new ResizeObserver(es => es.forEach(({ target: h }) => h.parentNode.style.setProperty('--head-h', h.offsetHeight + 'px')));
+  const frostRO = new ResizeObserver(es => es.forEach(({ target: h }) => {
+    h.parentNode.style.setProperty('--head-h', h.offsetHeight + 'px');
+    if (h.closest('.view-reports')) reportsPin();   // the page just moved under its head: the ‹ date › bar checks again, or it stays on over the picker at rest
+  }));
   $$(FROST_HEADS).forEach(h => frostRO.observe(h, { box: 'border-box' }));
   // Liquid glass press (owner 2026-10-18): the button swells and shines under the finger, leans and stretches toward a drag, springs back on release
   const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search), .side-top > #sellSwitch, #app .side-link[data-view="settings"]';
