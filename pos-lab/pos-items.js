@@ -114,7 +114,7 @@ const closeItemEditor = () => $('#itemsView').classList.remove('editing');
 // What the open editor's Save would write, as text: leaving with it changed asks first (askLeave, owner 2026-10-22).
 // A saved item's photo + colour save on the spot, so they're left out; a new item's wait for Save, so they count.
 let editorFirst = '';
-const editorSnap = () => (kindEdit ? JSON.stringify({ ...kindEdit, sub: 0, first: 0, af: 0, picked: [...kindEdit.picked].sort() })
+const editorSnap = () => (kindEdit ? JSON.stringify({ ...kindEdit, sub: 0, pool: 0, af: 0, picked: [...kindEdit.picked].sort() })
   : JSON.stringify({ ...itemEdit, hue: 0, ...(itemIsNew ? {} : { img: 0, color: 0 }) }));
 const editorDirty = () => $('#itemsView').classList.contains('editing') && editorSnap() !== editorFirst;
 // a subpage slides in over the item or the category; '' slides back to where the page was scrolled
@@ -641,7 +641,7 @@ function openKindEditor(kind, id) {
   if (editorDirty()) return askLeave(true, () => { closeItemEditor(); openKindEditor(kind, id); });
   const was = kindList(kind).find(x => x.id === id);
   const picked = new Set(was && isOn[kind] ? itemsWith(kind, was.id).map(it => it.id) : []);   // a discount isn't on items
-  kindEdit = { kind, id: was ? was.id : '', sub: '', name: was ? was.name : '', picked, first: new Set(picked),
+  kindEdit = { kind, id: was ? was.id : '', sub: '', name: was ? was.name : '', picked,
     img: was?.imageUrl || '', color: was?.color || '', type: was?.type || 'percent', value: was ? String(was.value) : '', builtin: was?.builtin || '', af: { ...PICK_AF_DEF } };
   if (kind === 'mods') {   // every choice, removed ones too (they stay as tombstones); a price is text while typed, '' = no extra
     Object.assign(kindEdit, { picks: was?.picks || 'one', options: (was?.options || []).map(o => ({ ...o, price: o.price ? String(o.price) : '' })),
@@ -657,8 +657,9 @@ function openKindEditor(kind, id) {
 }
 
 function renderKindForm(dir) {
-  $('#itemForm').closest('.editor').classList.toggle('picking', kindEdit.sub === 'items');
-  if (kindEdit.sub === 'items') return renderPickPage(dir);
+  const pick = kindEdit.sub === 'items' || kindEdit.sub === 'add';
+  $('#itemForm').closest('.editor').classList.toggle('picking', pick);
+  if (pick) return renderPickPage(dir);
   if (kindEdit.kind === 'mods') return renderModForm(dir);
   const K = kindEdit, cats = K.kind === 'cats', head = cats ? lookHead(catLook(K)) : '';
   $('#itemForm').closest('.editor').classList.toggle('sub', !!K.sub);   // a subpage has only Back
@@ -677,7 +678,7 @@ function renderKindForm(dir) {
   // its items on their own page, in their own card, as a modifier's Asked on: no long list here (owner 2026-10-27)
   $('#itemForm').innerHTML = `<div class="form ${dir || ''}">${head}
     ${icard('', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like Plumbing">`), '', ' r')}
-    ${icard('', inav('Items', K.picked.size ? SalesMath.plural(K.picked.size, 'item') : 'None', 'items'), '', ' r')}
+    ${pickRows('Items')}
     ${kindDropRow()}
   </div>`;
 }
@@ -716,7 +717,7 @@ function kindClick(b) {
 }
 
 // ---------- A modifier's pages: the modifier, a choice, which items ask it, what is hidden where ----------
-// K.sub: '' | 'choice:<id>' (Add / Edit choice) | 'items' (Asked on) | 'hidden'. Save on any of them writes it all (owner 2026-10-24).
+// K.sub: '' | 'choice:<id>' (Add / Edit choice) | 'items' (Asked on) | 'add' (Add items) | 'hidden'. Save on any of them writes it all (owner 2026-10-24).
 const PICKS_NOTE = { one: 'Exactly one', upto2: 'None, one or two', upto3: 'None, or up to three', any: 'None, one, or as many as they like' };
 const modCur = () => kindEdit.options.find(o => o.id === kindEdit.sub.slice(kindEdit.sub.indexOf(':') + 1));
 // { choiceId: [item ids it's hidden on] }, from the items that ask this modifier
@@ -751,8 +752,7 @@ function modMainPage() {
   return icard('', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like Gift wrap">`), '', ' r')
     + icard('', ifr('Customer picks', modPickBtn('picks', MODIFIER_PICKS[K.picks]), true), PICKS_NOTE[K.picks], ' r')
     + icard('Choices', K.options.filter(o => !o.removed).map(crow).join('') + '<button type="button" class="fr add" data-ka="choice-add">Add choice</button>', '', ' r')
-    + icard('', inav('Asked on', K.picked.size ? SalesMath.plural(K.picked.size, 'item') : 'None', 'items')
-      + (nHid ? inav('Hidden', String(nHid), 'hidden') : ''), '', ' r')
+    + pickRows('Asked on', nHid ? inav('Hidden', String(nHid), 'hidden') : '')
     + kindDropRow();
 }
 function modChoicePage(o) {
@@ -777,26 +777,37 @@ function modHonSet(t) {
   if (!K.hide[c].length) delete K.hide[c];
   renderKindForm();
 }
-// A category's Items and a modifier's Asked on (owner 2026-10-27): Adjust stock's picking page. ‹ + search + filter
-// (category, selected or not) in the bar, the ticks, its pill at the bottom saves and lands back on the category /
-// modifier. What it's on now comes first, and the order holds while you tick.
-const PICK_AF_DEF = { cat: '', on: '' };
+// A category's Items and a modifier's Asked on: two pages (owner 2026-11-01), as Adjust stock's picking page. Items =
+// what it's on, all ticked, untick to take one off; Add items = what it isn't on, tick to put one on. ‹ + search +
+// category filter in the bar, the pill at the bottom saves and lands back on the category / modifier.
+// Each on its own card (owner 2026-11-01); none yet = only Add items.
+const pickRows = (label, more = '') => {
+  const n = kindEdit.picked.size, on = (n ? inav(label, SalesMath.plural(n, 'item'), 'items') : '') + more;
+  return (on ? icard('', on, '', ' r') : '') + icard('', '<button type="button" class="fr add" data-sub="add">Add items</button>');
+};
+const PICK_AF_DEF = { cat: '' };
 function renderPickPage(dir) {
-  const K = kindEdit, f = K.af, mods = K.kind === 'mods';
+  const K = kindEdit, f = K.af, mods = K.kind === 'mods', add = K.sub === 'add';
+  if (dir === 'push' || !K.pool) K.pool = new Set(K.picked);   // what it was on as the page opened: the rows hold while you tick
   const vis = catalogItems().filter(it => !(mods && it.component)   // a part is never sold, so never asked
-      && (!f.cat || f.cat.some(c => it.cats.includes(c))) && (!f.on || f.on.includes(K.picked.has(it.id) ? 'sel' : 'not')))
-    .sort((a, b) => (K.first.has(b.id) - K.first.has(a.id)) || a.name.localeCompare(b.name));
+      && K.pool.has(it.id) !== add && (!f.cat || f.cat.some(c => it.cats.includes(c))))
+    .sort((a, b) => a.name.localeCompare(b.name));
   $('#itemForm').closest('.editor').classList.add('sub');   // no Save up top: the pill is it
-  $('#itemTitle').textContent = mods ? 'Asked on' : 'Items';
+  $('#itemTitle').textContent = add ? 'Add items' : mods ? 'Asked on' : 'Items';
   $('#itemFind').hidden = false;
   $('#itemFindFilter').classList.toggle('on', Object.keys(PICK_AF_DEF).some(k => f[k] !== PICK_AF_DEF[k]));
   if (dir === 'push') { $('#itemFindQ').value = ''; $('#itemFind').classList.remove('typed'); }
   $('#itemForm').innerHTML = `<div class="form ${dir || ''}">${icard('', vis.map(it => `<label class="pick" data-find="${escapeHtml(it.name.toLowerCase())}"><input type="checkbox" data-pick="${escapeHtml(it.id)}"${K.picked.has(it.id) ? ' checked' : ''}>
-      ${itemThumb(it)}<span class="tx">${escapeHtml(it.name)}</span></label>`).join('') || '<div class="pick">No items match.</div>')}</div>`;
+      ${itemThumb(it)}<span class="tx">${escapeHtml(it.name)}</span></label>`).join('') || `<div class="pick">${add && !f.cat ? 'Every item is on it already.' : 'No items match.'}</div>`)}</div>`;
   filterPicks($('#itemFindQ').value);
   kindPickBar();
 }
-const kindPickBar = () => { $('#kindPickGo').innerHTML = `<span>${SalesMath.plural(kindEdit.picked.size, 'item')}</span><span>Save</span>`; };
+// Items: "4 items · Save"; Add items: "Add 2 items", the ones ticked here
+const kindPickBar = () => {
+  const K = kindEdit, n = [...K.picked].filter(id => !K.pool?.has(id)).length;
+  $('#kindPickGo').innerHTML = K.sub === 'add' ? `<span>${n ? `Add ${SalesMath.plural(n, 'item')}` : 'Add items'}</span>`
+    : `<span>${SalesMath.plural(K.picked.size, 'item')}</span><span>Save</span>`;
+};
 // the bar's filter; a modifier's sheet also ticks all the rows on screen, or none (owner 2026-10-27: not a category's)
 function pickFilter(b) {
   const K = kindEdit, all = on => () => {
@@ -805,7 +816,6 @@ function pickFilter(b) {
   };
   openFilterSheet(b, () => [
     ['Category', 'cat', [['', 'All'], ...itemCategories().map(c => [c, c])]],
-    ['Show', 'on', [['', 'All'], ['sel', 'Selected'], ['not', 'Not selected']]],
   ], K.af, PICK_AF_DEF, () => renderKindForm(), K.kind === 'mods' ? [['All shown', all(true)], ['None shown', all(false)]] : []);
 }
 // Back on a modifier's subpage: a new choice left blank goes; else the modifier

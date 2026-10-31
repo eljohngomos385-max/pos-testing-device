@@ -7646,6 +7646,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
              font-size: 11px; font-weight: 550; letter-spacing: .02em; }
 body.light-theme .lv .thumb { background: hsl(var(--h) 75% 86%); color: hsl(var(--h) 40% 34%); }   /* the Sell tile's shade (.pc-tc) */
 .lv .thumb:not([style]), body.light-theme .lv .thumb:not([style]) { background: var(--rl-soft, var(--surface)); color: var(--ink-secondary); }   /* no colour = the plain tile */
+body.light-theme .lv :not(.fph) > .thumb:not([style]) { background: var(--bg-soft); }   /* ...a step greyer on a list's white rows, where it vanished; Sell's tile and the editor's preview keep theirs (owner 2026-11-01) */
 .lv .thumb img { width: 100%; height: 100%; object-fit: cover; }
 .lv .thumb.big { width: 64px; height: 64px; border-radius: 8px; font-size: 20px; }
 
