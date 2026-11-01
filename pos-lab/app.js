@@ -755,6 +755,8 @@ function attachEvents() {
     if (t.dataset.f === 'sellOut') E.sellOut = t.checked;
     if (t.dataset.f === 'track') { E.track = t.checked; renderItemForm(); }   // Low stock and Sell when out come and go with it
     if (t.dataset.f === 'component') { E.component = t.checked; renderItemForm(); }   // the short page or the full one
+    if (t.name === 'soldBy') { Object.assign(E, t.value === 'each' ? { soldBy: 'each', unit: 'pc' } : { soldBy: 'measure', unit: 'kg' }); renderItemForm(); }   // the Sold by page (pos-items)
+    if (t.name === 'unit') E.unit = t.value;
     if (t.dataset.made) itemMadeSet(t);
     if (t.dataset.ch) return itemChoiceSet(t);   // a modifier's choice on this item
     if (k) {   // a tick on a subpage; unticking the main supplier leaves none

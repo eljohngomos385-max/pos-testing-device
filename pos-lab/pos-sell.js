@@ -619,6 +619,8 @@ function setTileText(size) {
 // each of these inputs, which sold 2 metres of the 2.5 the customer asked for; `roundQty`
 // (bo-model.js) is the one definition of what a quantity may be for a given product, so the
 // till and the back office can never disagree about it.
+// a line's amount on screen: 0.91 kg for a measured one (its qty may be 0.90909, a ₱ typed), else the count
+const lineQty = (item) => (productOf(item)?.soldBy === 'measure' ? `${SalesMath.qtyText(item.qty)} ${escapeHtml(item.unit || '')}` : item.qty);
 function productOf(item) { return state.products.find(p => p.id === (item.productId || item.id)); }
 
 function qtyFrom(product, value, fallback = 1) {
@@ -660,24 +662,26 @@ function stockOnAdd(p, want, add, { cancel } = {}) {
 // (modifierAnswer snapshots) and `price` = its own + theirs. Such a line is its own too, and only the same answers at the
 // same price add to it: two teas with different sweetness are two lines.
 const answerKey = (as) => as.map(a => a.choiceId).join(',');
-function addToCart(productId, via = 'other', fromScanCard = false, price, answers) {
+function addToCart(productId, via = 'other', fromScanCard = false, price, answers, qty) {
   const line = state.cart.find(i => i.id === productId && i.productId);
   const p = state.products.find(x => x.id === (line ? line.productId : productId));
   if (!p) return;
   const typed = price !== undefined;
   if (!line && !typed && askedPrice(p)) return openEditSheet('price', p.id, via);
+  if (!line && !typed && qty === undefined && p.soldBy === 'measure') return openEditSheet('measure', p.id, via);   // how much: by its unit or by ₱
   if (!line && !answers && itemModifiers(p).length) {   // a tile or a size with lines of it on the cart: those first (openAgain)
     if (!typed && (via === 'tile' || via === 'variant') && state.cart.some(i => (i.productId || i.id) === p.id)) return openAgain(p, via);
     return openEditSheet('mods', p.id, { via, base: typed ? price : p.price });
   }
-  stockOnAdd(p, cartWant(p) + 1, () => {
+  const add = qty ?? 1;
+  stockOnAdd(p, cartWant(p) + add, () => {
     beginCart();
     let it = line || (answers ? state.cart.find(i => i.productId === p.id && i.modifiers && answerKey(i.modifiers) === answerKey(answers) && i.price === price)
       : !typed && state.cart.find(i => i.id === p.id));
     if (!it) state.cart.push(it = { id: typed ? newId() : p.id, ...(typed && { productId: p.id }), name: p.name, sku: p.sku, brand: p.brand,
       unit: p.unit, price: typed ? price : p.price, ...(answers && { modifiers: answers }), qty: 0 });
-    it.qty += 1;
-    trackItemAdd({ ...p, price: it.price }, 1, via);
+    it.qty += add;
+    trackItemAdd({ ...p, price: it.price }, add, via);
     renderCart();
     if (scanOpen()) scanHit(it.id, fromScanCard);   // the scanner's card says it: camera, search or a USB scanner
     else showDone(p.name);
@@ -1085,6 +1089,9 @@ let es = null;
 const esItem = () => es && state.cart.find(i => i.id === es.id);
 const esDisc = (o) => (+o.d > 0 ? { type: o.pct ? 'percent' : 'amount', value: +o.d } : null);
 const esTyped = (o) => (o.pct ? `${o.d || 0}%` : SalesMath.currencySymbol(state.settings.store?.currency) + (o.d || 0));
+// A measured item's amount (the 'measure' pad): by its unit as typed, or the typed ₱ over its price, unrounded, so the line
+// comes to exactly that ₱ (₱50 of ₱55/kg rice is 0.90909 kg = ₱50.00, never 0.91 kg = ₱50.05)
+const esMeasureQty = (o, p) => (o.w ? roundQty(p, o.d) : +o.d / p.price);
 const esShown = (d) => (!d ? 'None' : d.type === 'percent' ? `${d.value}%` : peso(d.value));
 
 // Big discounts (owner 2026-10-09). The sale's line + sale discounts added up, as a % of the sale before them;
@@ -1117,7 +1124,7 @@ function discountOk(back, then) {
 const esFresh = () => { if (es) { const { kind, id } = es; es = null; openEditSheet(kind, id); } };
 
 function openEditSheet(kind, id, via) {
-  if (kind !== 'ful' && kind !== 'price' && kind !== 'mods' && !state.cart.length) { flashControl($('#cartDiscountBtn')); flashControl($('#side')); return; }
+  if (kind !== 'ful' && kind !== 'price' && kind !== 'measure' && kind !== 'mods' && !state.cart.length) { flashControl($('#cartDiscountBtn')); flashControl($('#side')); return; }
   const was = !!es;
   closeAgain(true);
   closeEditSheet(true);
@@ -1137,6 +1144,8 @@ function openEditSheet(kind, id, via) {
       beforeSc: sc, sc: { idNo: sc ? sc.idNo : '', name: sc ? sc.name : '' } };
   } else if (kind === 'price') {   // an item with no set price (addToCart): id = the product, d = the typed price
     es = { kind, id, via, d: '', pct: false };
+  } else if (kind === 'measure') {   // a measured item (addToCart): d = what's typed, w = by its unit (kg), else by ₱
+    es = { kind, id, via, d: '', w: true };
   } else if (kind === 'mods') {   // an item's modifiers (addToCart): id = the product, via = { via, base, line? } (esModsClick)
     via ||= {};
     const p = state.products.find(x => x.id === id), qs = p ? itemModifiers(p) : [], line = via.line && state.cart.find(i => i.id === via.line);
@@ -1267,7 +1276,7 @@ function drawEditSheet() {
     const sc = cartTotals().scPwd && state.scPwd;
     const m = SalesMath.lineMoney(item.price, item.qty, sc ? null : item.discount, state.settings.store?.currency);
     head = `<p>${escapeHtml(item.name)}</p><div class="es-hero">${peso(m.lineTotal)}</div>${sc && item.discount ? `<p>${ES_SC[sc.kind]} applies</p>` : ''}`;
-    rows = `<div class="es-row${o.f === 'q' ? ' on' : ''}"><span>Quantity</span>${stp(-1, item.qty <= step)}<button type="button" data-sf="q">${n('q', o.f === 'q' ? o.q || '0' : item.qty, ' q')}</button>${stp(1)}</div>
+    rows = `<div class="es-row${o.f === 'q' ? ' on' : ''}"><span>Quantity</span>${stp(-1, item.qty <= step)}<button type="button" data-sf="q">${n('q', o.f === 'q' ? o.q || '0' : lineQty(item), ' q')}</button>${stp(1)}</div>
       <div class="es-row${o.f === 'd' ? ' on' : ''}" data-sf="d"><span>Discount</span>${n('d', o.f === 'd' ? esTyped(o) : esShown(item.discount), ' v')}${cv(o.f === 'd')}</div>
       <div class="es-row${o.f === 'n' ? ' on' : ''}" data-sf="n"><span>Note</span><small class="ad">${escapeHtml(item.note || '')}</small>${cv(o.f === 'n')}</div>`
       // its answers: the item's modifier screens again, with them on (esMods)
@@ -1280,6 +1289,13 @@ function drawEditSheet() {
     head = `<p>Price for ${escapeHtml(state.products.find(p => p.id === o.id)?.name || 'item')}?</p><div class="es-hero">${esTyped(o)}</div>`;
     rows = '';
     side = `<div class="es-keys">${esKeys(true)}</div>`;
+  } else if (o.kind === 'measure') {
+    // type the weight -> what it costs; type the ₱ -> how much that is. The unit price never changes (owner 2026-11-01)
+    const p = state.products.find(x => x.id === o.id), u = escapeHtml(p.unit), q = esMeasureQty(o, p);
+    head = `<p>${escapeHtml(p.name)} · ${peso(p.price)} / ${u}</p><div class="es-hero">${o.w ? `<span class="num">${o.d || 0}</span> ${u}` : esTyped(o)}</div>`
+      + (q > 0 ? `<p class="es-off">${o.w ? peso(SalesMath.lineMoney(p.price, q).lineGross) : `${SalesMath.qtyText(q)} ${u}`}</p>` : '');
+    rows = '';
+    side = `<div class="es-keys">${seg(segBtn(u, o.w, 'data-w'), segBtn(SalesMath.currencySymbol(state.settings.store?.currency), !o.w, 'data-amt'))}${esKeys(true)}</div>`;
   } else if (o.kind === 'mods') {
     // one question per screen, in the item's order (modifiers-lab.html's POS screens): the item and what's picked so far, the
     // question, how many; a choice greyed Unavailable can't be picked (it is set back in Items › Modifiers). The name as
@@ -1322,7 +1338,8 @@ function drawEditSheet() {
   // bottom left follows what's being edited: the discount's keys -> clear it; nothing open -> remove the line
   const list = o.kind === 'ful' || o.kind === 'rd';   // Walk-in, Discount: Check out's pill is Done, Clear sits up top across from ‹ Back
   const clr = o.kind === 'rd' && !ES_SC[o.f] && (o.f ? +o.d : o.pick !== null) ? '<button type="button" class="es-x es-clr cta-2" data-sclr>Clear</button>' : '';
-  const left = list || o.kind === 'price' || o.kind === 'mods' ? ''
+  const ask = o.kind === 'price' || o.kind === 'measure';
+  const left = list || ask || o.kind === 'mods' ? ''
     : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q cta-3" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
     : o.f ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm cta-3" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q cta-3" data-sclr>Clear</button>' : '';
   const top = !o.dir && card.querySelector('.fill .es-list')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
@@ -1331,9 +1348,9 @@ function drawEditSheet() {
   const prog = w ? `<div class="es-prog" aria-hidden="true"><i style="--w:${w};--was:${o.w ?? w}"></i></div>` : '';
   if (w) o.w = w;
   card.innerHTML = prog + clr + esFrame(head, rows, side, left + (list ? `<button type="button" class="${matchMedia('(max-width: 720px)').matches ? 'ph-bar' : 'fab sh-fab'} cta" data-done>Done</button>` : o.kind === 'mods' ? esModsFoot(o)
-    : o.kind === 'price' ? `<button type="button" class="es-ink cta" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
+    : ask ? `<button type="button" class="es-ink cta" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
     : o.f ? `<button type="button" class="es-ink cta" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : '<button type="button" class="es-ink cta" data-close>Done</button>'),   // a 0 discount waits, as the price ask's Add does
-  `${list ? ' fill' : o.kind === 'price' ? ' ask' : ''}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
+  `${list ? ' fill' : ask ? ' ask' : ''}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
   if (o.kind === 'mods') esPicksPop(o, card);
   const rl = list && !o.f && card.querySelector('.es-list');
   const pk = rl && (o.opened || o.dir === 'bwd') && rl.querySelector('.pick');   // just opened, or back from a page: the one on the sale clear of Done
@@ -1378,6 +1395,13 @@ function editSheetClick(e) {
     if (!el('[data-apply]') || !(+o.d > 0)) return;
     closeEditSheet();
     return addToCart(o.id, o.via, false, moneyValue(o.d));
+  }
+  if (o.kind === 'measure') {   // [kg | ₱] swaps what the keys type; Add puts that much on the cart
+    const p = state.products.find(x => x.id === o.id);
+    if (el('[data-sk]')) o.d = esPress(o.d, el('[data-sk]').dataset.sk, true, o.w ? 9999 : CASH_MAX);
+    else if (el('.es-seg button')) Object.assign(o, { w: 'w' in el('.es-seg button').dataset, d: '' });
+    else if (el('[data-apply]') && esMeasureQty(o, p) > 0) { closeEditSheet(); return addToCart(o.id, o.via, false, undefined, undefined, esMeasureQty(o, p)); }
+    return drawEditSheet();
   }
   if (ES_SC[o.f]) $$('#editSheet [data-scf]').forEach(i => { o.sc[i.dataset.scf] = i.value; });   // the typed ID and name survive the redraw
   if (el('[data-done]')) {   // Discount's Done: Senior / PWD's page puts its card on first
@@ -2004,7 +2028,7 @@ function renderCart() {
     if (againId && !ag) { againId = null; $('#app').classList.remove('again'); }   // its lines came off meanwhile
     list.innerHTML = back + state.cart.map(item => `
       <div class="line${!ag ? '' : (item.productId || item.id) === ag ? ' hl' : ' fade'}"><button type="button" class="row" data-id="${item.id}" title="Edit item">${linePic(item)}
-        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${item.qty} × ${peso(item.price)}${item.discount ? ` · <span class="off">${peso(-normalizeOrderItem(item).lineDiscount)}</span>` : ''}</small>${
+        <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${lineQty(item)} × ${peso(item.price)}${item.discount ? ` · <span class="off">${peso(-normalizeOrderItem(item).lineDiscount)}</span>` : ''}</small>${
           SalesMath.answerLines(item, peso).map(t => `<small class="note">${escapeHtml(t)}</small>`).join('')}${item.note ? `<small class="note">${escapeHtml(item.note)}</small>` : ''}</span>
         <span class="amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
       </button><button type="button" class="sw-del" data-del="${item.id}" tabindex="-1" aria-label="Delete">${esSvg('trash')}</button></div>`).join('');

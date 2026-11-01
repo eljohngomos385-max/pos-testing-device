@@ -23,7 +23,7 @@ function renderCheckout() {
     cartList.innerHTML = (x ? `<div class="co-row"><span class="co-nm">Coming back · #${escapeHtml(x.o.number)}</span><span class="co-amt num">${peso(-x.part.total)}</span></div>` : '')
       + state.cart.map(item => `
       <div class="co-row">
-        ${linePic(item)}<span class="co-nm">${escapeHtml(item.name)}<small class="num">${item.qty} × ${peso(item.price)}</small>${
+        ${linePic(item)}<span class="co-nm">${escapeHtml(item.name)}<small class="num">${lineQty(item)} × ${peso(item.price)}</small>${
           SalesMath.answerLines(item, peso).map(a => `<small>${escapeHtml(a)}</small>`).join('')}</span>
         <span class="co-amt num">${peso(normalizeOrderItem(item).lineGross)}</span>
       </div>`).join('');

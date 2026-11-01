@@ -164,7 +164,7 @@
     // Each line at price x qty before discount, fitted to the Subtotal; the discount prints once, below.
     SM().receiptLines({ ...t, items: vm.items || [] }).forEach(({ item: i, amount }) => {
       wrap(i.name, cols).forEach(text);
-      const qty = ('  ' + i.qty + ' ' + (i.unit || '')).replace(/\s+$/, '') + ' x ' + cash(i.price);
+      const qty = ('  ' + SM().qtyText(i.qty) + ' ' + (i.unit || '')).replace(/\s+$/, '') + ' x ' + cash(i.price);
       row(qty, cash(amount));
       // its modifier answers ('Sweetness: 50%'), then its note, under it like its qty
       SM().answerLines(i, cash).forEach(a => wrap(a, cols - 2).forEach(s => text('  ' + s)));

@@ -93,9 +93,17 @@ function fillItemsPane(kind, band, rows) {
 // list (categories, modifiers, suppliers, one variant) is a row with its value and ›, opening its own page.
 let itemEdit = null, itemIsNew = false, itemSub = '', itemMainScroll = 0;   // itemSub: '' = the item, else 'cats' | 'mods' | 'sups' | a variant's id
 const blankVariant = () => ({ id: newId(), name: '', sku: '', alts: [], barcode: '', cost: 0, price: null, stock: 0, madeFrom: [], fresh: true });
-// Sold per: bo-products UNITS, its soldByFor. A measured unit sells in decimals; a unit typed elsewhere keeps what it was.
-const ITEM_UNITS = [['pc', 'box', 'bag', 'set', 'pair', 'roll', 'sheet', 'can'], ['m', 'ft', 'kg', 'L', 'gal']];
-const soldByFor = (unit, was) => (ITEM_UNITS[1].includes(unit) ? 'measure' : ITEM_UNITS[0].includes(unit) ? 'each' : was || 'each');
+// Sold by (owner 2026-11-01): Piece (box, bag, set are all a piece) or Measure in one plain unit, grouped by what it measures.
+// A measured item sells in decimals and asks how much at Sell (pos-sell 'measure'); a unit typed elsewhere shows under Other.
+// Plain units only, no "100 g"; metric and imperial both, the full name under each (owner 2026-11-01). Only a label: the maths is the same.
+const MEASURES = [
+  ['Weight', [['kg', 'kilogram'], ['g', 'gram'], ['mg', 'milligram'], ['t', 'tonne'], ['lb', 'pound'], ['oz', 'ounce']]],
+  ['Volume', [['L', 'liter'], ['mL', 'milliliter'], ['cu.m', 'cubic meter'], ['gal', 'gallon'], ['qt', 'quart'], ['pt', 'pint'], ['fl oz', 'fluid ounce']]],
+  ['Length', [['m', 'meter'], ['cm', 'centimeter'], ['mm', 'millimeter'], ['km', 'kilometer'], ['in', 'inch'], ['ft', 'foot'], ['yd', 'yard']]],
+  ['Area', [['m²', 'square meter'], ['ft²', 'square foot']]],
+  ['Time', [['hr', 'hour'], ['min', 'minute']]],
+];
+const soldByText = E => (E.soldBy === 'measure' ? `Measure · ${escapeHtml(E.unit)}` : 'Piece');
 
 function openItemEditor(id) {
   if (editorDirty()) return askLeave(true, () => { closeItemEditor(); openItemEditor(id); });   // another row on a tablet
@@ -173,6 +181,7 @@ function renderItemForm(dir) {
     : itemSub === 'sups' ? ['Suppliers', itemSupsPage()]
     : itemSub === 'specs' ? ['Specs', itemSpecsPage()]
     : itemSub === 'look' ? ['Tile appearance', lookPage(E)]
+    : itemSub === 'soldby' ? [E.component ? 'Unit' : 'Sold by', itemSoldByPage()]
     : itemSub.startsWith('made:') ? ['Made from', itemMadePage(E.variants.find(x => 'made:' + x.id === itemSub))]
     : itemSub.startsWith('alts:') ? ['SKU', itemSkuPage(altsOf())]
     : v ? [v.fresh ? 'Add variant' : 'Edit variant', itemVariantPage(v)] : [E.name || 'New item', itemMainPage()];   // a fixed title: typing a variant's name doesn't echo up there
@@ -225,7 +234,7 @@ function itemMainPage() {
     T ? isw('Sell when out of stock', 'sellOut', E.sellOut) : '',
   ].join(''), T ? '' : 'Not counted: never low, never out.', ' r');
   const codes = icard('', [   // how it's sold and scanned; a family's SKU and barcode are per variant
-    ifr('Sold per', ipick('unit', escapeHtml(E.unit)), true),
+    inav('Sold by', soldByText(E), 'soldby'),
     fam ? '' : iskuRow(v0),
     fam ? '' : ifr('Barcode', iinp('barcode', v0.barcode, 'inputmode="numeric" placeholder="Add barcode"')),
   ].join(''), '', ' r');
@@ -249,7 +258,7 @@ function itemPartPage() {
       itemIsNew ? ifr('Opening stock', iqty('data-f="stock"', v0.stock)) : ifr('In stock', ionHand(v0), true),
       ifr('Low stock at', iqty('data-f="reorder"', E.reorder)),
       itemIsNew ? ifr('In store since', `<input class="in" type="date" data-f="since" value="${E.since}">`) : '',
-      ifr('Unit', ipick('unit', escapeHtml(E.unit)), true),
+      inav('Unit', soldByText(E), 'soldby'),
     ].join(''), '', ' r')
     + (itemIsNew ? '' : icard('', iadd('archive', 'Archive item', ' red')));
 }
@@ -304,6 +313,14 @@ function itemTickPage(key, rows, empty) {
   const on = itemEdit[key];
   return icard('', rows.map(([id, name, sub]) => `<label class="pick" data-find="${escapeHtml(name.toLowerCase())}"><input type="checkbox" data-tick="${key}" value="${escapeHtml(id)}"${on.includes(id) ? ' checked' : ''}>
       <span class="tx">${escapeHtml(name)}${sub ? `<small>${sub}</small>` : ''}</span></label>`).join('') || `<div class="pick">${empty}</div>`);
+}
+// Sold by: Piece | Measure up top, no words under them; the units stay on the page, greyed out under Piece (owner 2026-11-01). One tick across the kinds (app.js change)
+function itemSoldByPage() {
+  const E = itemEdit, m = E.soldBy === 'measure', off = m ? '' : ' disabled';
+  const radio = (name, val, on, tx = val, sub) => `<label class="pick"><input type="radio" name="${name}" value="${escapeHtml(val)}"${on ? ' checked' : ''}${name === 'unit' ? off : ''}><span class="tx">${escapeHtml(tx)}${sub ? `<small>${sub}</small>` : ''}</span></label>`;
+  return icard('', radio('soldBy', 'each', !m, 'Piece') + radio('soldBy', 'measure', m, 'Measure'))
+    + (!m || MEASURES.some(([, us]) => us.some(([u]) => u === E.unit)) ? '' : icard('Other', radio('unit', E.unit, true)))
+    + MEASURES.map(([kind, us]) => icard(kind, us.map(([u, name]) => radio('unit', u, m && E.unit === u, u, name)).join(''))).join('');
 }
 function itemSupsPage() {
   const E = itemEdit, rows = posSuppliers().filter(s => !s.archived && s.name).sort((a, b) => a.name.localeCompare(b.name)).map(s => [s.id, s.name]);
@@ -404,19 +421,16 @@ function itemVariantPage(v) {
 }
 
 // the dropdowns, the ⋯ menu's morph as in Settings. On the phone Markup is the cart ⋯'s half sheet (as app.js
-// #cartMoreBtn); Sold per is that sheet at the Filters sheet's height, so its long list scrolls (owner 2026-10-29)
+// #cartMoreBtn)
 function itemPick(b) {
   const E = itemEdit, v0 = E.variants[0], act = b.dataset.act;
   const opt = (k, label, cur, run) => ({ label, cur, run });
   const items = act === 'status' ? [opt('', 'Active', !E.hidden, () => { E.hidden = false; renderItemForm(); }), opt('', 'Hidden', E.hidden, () => { E.hidden = true; renderItemForm(); })]
     : act === 'mmode' ? [['percent', 'Percent (%)'], ['flat', `Flat (${icurrency()})`]].map(([k, label]) => opt(k, label, E.marginMode === k,
       () => { E.marginMode = k; E.marginValue = itemMarkupOf(v0, k); renderItemForm(); }))
-    : act === 'unit' ? [...(ITEM_UNITS.flat().includes(E.unit) ? [] : [E.unit]), ...ITEM_UNITS[0], '-', ...ITEM_UNITS[1]].map(u => (u === '-' ? u
-      : opt(u, u, E.unit === u, () => { E.soldBy = soldByFor(u, E.soldBy); E.unit = u; renderItemForm(); })))
     : act === 'main' ? ['', ...E.sups].map(id => opt(id, id ? supName(id) : 'None', E.main === id, () => { E.main = id; b.firstChild.textContent = supName(id) || 'None'; }))
     : null;
-  if (act === 'unit') openActionSheet(b, E.component ? 'Unit' : 'Sold per', items, '');
-  else if (act === 'mmode' && matchMedia('(max-width: 720px)').matches) openActionSheet(b, 'Markup', items);
+  if (act === 'mmode' && matchMedia('(max-width: 720px)').matches) openActionSheet(b, 'Markup', items);
   else if (items) openMenu(b, items, { w: 200, right: true });
 }
 

@@ -88,7 +88,7 @@ function buildReceiptPreview(order, back = [], said = []) {
     <div class="rp-item${back[k] >= i.qty ? ' out' : ''}">
       <div class="rp-item-name">${escapeHtml(i.name)}</div>
       <div class="rp-row rp-item-line">
-        <span>${i.qty} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
+        <span>${SalesMath.qtyText(i.qty)} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
         <span>${peso(i.amount)}</span>
       </div>
       ${SalesMath.answerLines(i, peso).map(t => `<div class="rp-small">${escapeHtml(t)}</div>`).join('')}
@@ -497,7 +497,7 @@ function openOrderDetailModal(orderId) {
     <div class="odm-item">
       <div class="odm-item-info">
         <div class="odm-item-name">${escapeHtml(i.name)}</div>
-        <div class="odm-item-sub">${i.qty} ${escapeHtml(i.unit || 'pc')} × ${peso(i.price)}</div>
+        <div class="odm-item-sub">${SalesMath.qtyText(i.qty)} ${escapeHtml(i.unit || 'pc')} × ${peso(i.price)}</div>
         ${SalesMath.answerLines(i, peso).map(t => `<div class="odm-item-sub">${escapeHtml(t)}</div>`).join('')}
         ${i.note ? `<div class="odm-item-sub">${escapeHtml(i.note)}</div>` : ''}
       </div>
@@ -645,7 +645,7 @@ function buildReceiptHtml(order) {
     <div class="r-item">
       <div class="r-item-name">${escapeHtml(i.name)}</div>
       <div class="r-item-row">
-        <span>${i.qty} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
+        <span>${SalesMath.qtyText(i.qty)} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
         <span>${peso(i.amount)}</span>
       </div>
       ${SalesMath.answerLines(i, peso).map(t => `<div class="r-item-row">${escapeHtml(t)}</div>`).join('')}
