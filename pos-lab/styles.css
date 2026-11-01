@@ -8142,7 +8142,7 @@ body:not(.light-theme) #catalogSearchRow { --glass: color-mix(in srgb, var(--ink
 .fsheet .fs-clear[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .fs-veil, .fsheet { transition: none; } }
 /* the half sheet (the phone's ⋯; Claude's Select model): floats over the foot, as tall as its rows, each card white rows on grey */
-.fsheet.half { inset: auto 0 0; width: auto; border-radius: 32px 32px 0 0; transform: translateY(100%); }   /* runs off the foot: the phone's own corners round it (owner 2026-10-19) */
+.fsheet.half { inset: auto 0 0; border-radius: 32px 32px 0 0; transform: translateY(100%); }   /* runs off the foot: the phone's own corners round it (owner 2026-10-19); the full sheet's 640 on the iPad (owner 2026-11-01) */
 .fsheet.half .fs-top { position: relative; }
 .fsheet.half .fs-top::before { content: none; }   /* nothing scrolls under it */
 .fs-top > i { width: 44px; }   /* ✕'s twin, so the title sits dead centre (an action sheet, half or full) */
