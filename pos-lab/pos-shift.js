@@ -212,13 +212,14 @@ function openShift(start, extra) {
 // Start asks the start cash. Close counts blind (no Expected while counting), then Expected / Counted / Over or short,
 // a note, one Recount; in float mode (Settings › Shift › Starting cash) what stays in the drawer starts the next
 // shift. ₱0 is a count (an empty drawer); Skip on the count is Not counted. ✕ / Back / Esc / leaving the page at any step: nothing saved (owner 2026-10-10).
-let shSheet = null;   // { step: 'start' | 'count' | 'result' | 'leave' | 'cash', v: typed, counts, shiftId, note, born }
+let shSheet = null;   // { step: 'start' | 'count' | 'result' | 'leave' | 'cash', v: typed, counts, shiftId, note, born, dir + cat on 'cash' }
 function openShiftSheet(step) {
   shSheet = { step, v: '0', counts: [], shiftId: shiftOf()?.id || null, note: '', born: performance.now() };
   drawShiftSheet();
   $('#shiftSheet').classList.add('open');
   esLine($('#shiftSheet'));
 }
+const openCash = dir => { openShiftSheet('cash'); Object.assign(shSheet, { dir, cat: '' }); drawShiftSheet(); };
 function closeShiftSheet() { if (!shSheet) return; shSheet = null; $('#shiftSheet').classList.remove('open'); }
 const SH_ASK = { start: ['Starting cash?', 'Start shift'], count: ['Count the cash in the drawer', 'Next'], leave: ['Leave in drawer?', 'Close shift'] };
 const shCounted = () => shSheet.counts[shSheet.counts.length - 1];
@@ -241,15 +242,35 @@ function drawShiftSheet() {
   $('#shiftSheetCard').innerHTML = esFrame(head, rows, ask ? `<div class="es-keys">${esKeys(true)}</div>` : '', `${left}<button type="button" class="es-ink cta" data-apply>${ink}</button>`, ask ? ' ask' : '');
   if (ask) $('#shiftSheet .es-ink').focus({ preventScroll: true });   // off the page's button: a key can't fire it again
 }
-// Cash management (Loyverse's): the price ask's look, the amount over its keys on the hero line, a note under the
-// amount, Cash out | Cash in at the foot (owner 2026-10-16, over 2026-10-15's keys-on-tap; never the OS number
-// keyboard, which covers the sheet, owner 2026-10-05). With or without a shift (owner 2026-10-10 #3).
+// Cash in / out (owner 2026-11-01, over 2026-10-16's note + two buttons): the round + on Cash in & out asks Cash in | Cash out,
+// then the amount on the hero line over its keys and a Category pill under it, the pick in a chip (iOS's date row), and Save,
+// which closes back to the list. Never the OS number keyboard (owner 2026-10-05). With or without a shift (owner 2026-10-10 #3).
 function drawCashSheet() {
   const o = shSheet;
-  $('#shiftSheetCard').innerHTML = esFrame(`<div class="es-hero">${typedCash(o.v)}</div>`,
-    `<input class="es-ta" id="shNote" maxlength="80" placeholder="Add a note" aria-label="Note" autocomplete="off" value="${escapeHtml(o.note)}">`,
-    `<div class="es-keys">${esKeys(true)}</div>`,
-    '<button type="button" class="es-ink cta-2" data-cm="out">Cash out</button><button type="button" class="es-ink cta-2" data-cm="in">Cash in</button>', ' ask');
+  $('#shiftSheetCard').innerHTML = esFrame(`<p>Cash ${o.dir}</p><div class="es-hero">${typedCash(o.v)}</div>`,
+    `<button type="button" class="cm-row" data-cat><span>Category</span><span class="cm-chip"><span>${o.cat ? escapeHtml(o.cat) : 'None'}</span>${IUPDOWN}</span></button>`,
+    `<div class="es-keys">${esKeys(true)}</div>`, '<button type="button" class="es-ink cta" data-apply>Save</button>', ' ask');
+}
+// The owner's categories, one list per direction (settings.cashCats, presets to start); New category adds to it
+function pickCashCat(btn) {
+  const o = shSheet, cats = state.settings.cashCats[o.dir];
+  openActionSheet(btn, 'Category', [
+    ...cats.map(c => ({ label: c, cur: c === o.cat, run: () => { o.cat = c; drawShiftSheet(); } })),
+    ...(cats.length ? ['-'] : []),
+    { label: 'New category', run: newCashCat },
+  ]);
+}
+function newCashCat() {
+  showConfirm({ title: 'New category', okText: 'Add',
+    html: '<input class="text-input" id="cashCatName" maxlength="30" placeholder="Name" aria-label="Name" autocomplete="off">',
+    onConfirm: () => {
+      const name = $('#cashCatName').value.trim(), cats = state.settings.cashCats[shSheet?.dir];
+      if (!name || !cats) return;
+      if (!cats.includes(name)) { cats.push(name); saveSettings(); }
+      shSheet.cat = name;
+      drawShiftSheet();
+    } });
+  $('#cashCatName').focus();
 }
 const shStep = step => { Object.assign(shSheet, { step, v: '0', born: performance.now() }); drawShiftSheet(); };
 function shiftSheetClick(e) {
@@ -260,7 +281,7 @@ function shiftSheetClick(e) {
   if (el('[data-close]')) return closeShiftSheet();
   if (k) { o.v = esPress(o.v, k.dataset.sk, true, CASH_MAX); return drawShiftSheet(); }
   if (el('[data-recount]') && !shEarly()) return shStep('count');
-  if (el('[data-cm]') && !shEarly()) return shiftMove(el('[data-cm]').dataset.cm);
+  if (el('[data-cat]')) return pickCashCat(el('[data-cat]'));
   if (el('[data-skip]') && !shEarly()) return shStep('result');   // no count: Not counted
   if (el('[data-apply]') && !shEarly()) shiftApply();
 }
@@ -269,6 +290,7 @@ const shEarly = () => performance.now() - shSheet.born < 350;
 function shiftApply() {
   const o = shSheet, n = moneyValue(o.v);
   if (!canAccess('shift')) return closeShiftSheet();   // every write comes through here: the console too
+  if (o.step === 'cash') return shiftMove();
   if (o.step === 'start') {
     if (shiftOf()) showToast('A shift is already open'); else openShift(n);
     closeShiftSheet();
@@ -279,16 +301,14 @@ function shiftApply() {
   if (n > shCounted()) return showToast('More than counted');
   finishClose(n);
 }
-// A cash in / out: the typed amount and its note, then the sheet starts over for the next one
-function shiftMove(dir) {
-  const o = shSheet, amt = moneyValue(o.v), note = o.note.trim();
-  if (!canAccess('shift')) return closeShiftSheet();
+// A cash in / out: the typed amount, its category as the row's note (no category yet: the list opens), then back on the list
+function shiftMove() {
+  const o = shSheet, amt = moneyValue(o.v), note = o.cat, dir = o.dir;
   if (!(amt > 0 && amt <= CASH_MAX)) return showToast('Type an amount');
-  if (!note) return showToast('Add a note');
+  if (!note) return pickCashCat($('#shiftSheet [data-cat]'));
   const row = addShiftRow('cash_move', shiftOf()?.open.id, dir === 'in' ? amt : -amt, { note });
   kickFor([{ method: 'cash', amount: row.amount, drawer: true }]);   // Cash in / out always opens the drawer (owner 2026-10-23), whatever Cash's switch says; its Undo doesn't
-  Object.assign(o, { v: '0', note: '' });
-  drawShiftSheet();
+  closeShiftSheet();
   renderShift();
   showDone(`Cash ${dir} ${peso(amt)}`, () => {
     addShiftRow('cash_move', row.shiftId, -row.amount, { note, reverses: row.id });
@@ -423,8 +443,15 @@ function renderShift(peek) {
     : from === cutBefore() ? `Auto-reset at ${auto} · ${shLink('settings', 'Change')}`
     : `Since last close · ${escapeHtml(shWhen(from))}`;
   const mv = d.moves.slice().reverse();
-  const [fab, act] = tab === 'cash' ? ['Cash in / out', 'cash'] : s ? ['Close shift', 'close'] : ['Start shift', 'open'];
-  if (!peek) { shiftFabSay(fab); $('#shiftFab').dataset.sh = act; $('#shiftPrint').hidden = !s; }
+  const [fab, act] = tab === 'cash' ? ['', 'cash'] : s ? ['Close shift', 'close'] : ['Start shift', 'open'];
+  if (!peek) {   // on Cash in & out it is Items' round + (owner 2026-11-01), its menu Cash in | Cash out
+    const b = $('#shiftFab');
+    b.classList.toggle('round', !fab);
+    if (!fab) { b.innerHTML = '<svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>'; b.ariaLabel = 'Cash in or out'; }
+    else { b.querySelector('svg')?.remove(); b.removeAttribute('aria-label'); shiftFabSay(fab); }
+    b.dataset.sh = act;
+    $('#shiftPrint').hidden = !s;
+  }
   // the cash sales and Expected only for a role that sees the day's totals: the close is a blind count
   body.innerHTML = tab === 'cash'
     ? (mv.length ? `<div class="o-days">${dayBand(s ? 'This shift' : 'Today', mv.length, `<span class="num">${overShortText(mv.reduce((t, m) => t + m.amount, 0))}</span>`)}${
@@ -469,7 +496,10 @@ function shiftAction(act) {
   if (act === 'settings') { switchView('settings'); return openPick('autoClose'); }   // the footer's Change the time
   if (!canAccess('shift')) return;   // the page is hidden without the switch; this keeps the console out too
   const s = shiftOf();
-  if (act === 'cash') return openShiftSheet('cash');
+  if (act === 'cash') return openFabMenu($('#shiftFab'), [
+    { label: 'Cash in', ic: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>', run: () => openCash('in') },
+    { label: 'Cash out', ic: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 20h14"/></svg>', run: () => openCash('out') },
+  ]);
   if (act === 'open' && !s) return openShiftSheet('start');
   if (act === 'close' && s) return openShiftSheet('count');
   if (act === 'report' && s) return printPaper(xPaper(s));   // changes nothing

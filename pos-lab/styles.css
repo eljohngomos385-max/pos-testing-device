@@ -7991,7 +7991,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .frost .o-main > .c-scroll { padding-top: calc(var(--head-h, 0px) + 14px); }   /* .o-main's gap */
 .frost .o-main > .paper-scroll { padding-top: calc(var(--head-h, 0px) + 15px); }   /* + the paper ring's 1 */
 .frost .o-main > .paper-scroll:has(> .receipt-preview) { padding-top: calc(var(--head-y) + var(--ph-top, 0px) + var(--bar-h) + 16px); }   /* the receipt on Orders' start line: the bar's own 44, not the phone name's extra line (owner 2026-10-31) */
-:is(.frost.view-orders :is(.o-rail > .list, .o-main:has(.ol .band)), .frost .page:has(.o-days))::before { -webkit-mask-image: linear-gradient(#000 calc(100% - 12px), transparent); mask-image: linear-gradient(#000 calc(100% - 12px), transparent); }   /* the date band and the refund bar stick 16 under the head: solid down to their top, the fade hides behind them (rows read sharp in that strip, 2026-10-30) */
+:is(.frost.view-orders :is(.o-rail > .list, .o-main:has(.ol .band)), .frost .page:has(> .c-scroll > .c-body > .o-days:first-child))::before { -webkit-mask-image: linear-gradient(#000 calc(100% - 12px), transparent); mask-image: linear-gradient(#000 calc(100% - 12px), transparent); }   /* the date band and the refund bar stick 16 under the head: solid down to their top, the fade hides behind them (rows read sharp in that strip, 2026-10-30). Only where the band is the page's first thing (Past shifts): on Cash in & out the Shift | Cash pill sits there and the solid strip hazed its top (owner 2026-11-01) */
 /* Items (owner 2026-10-18): its list pads .lines, not the scroller; its frost stays the stronger 80% + 12, solid down to the bar */
 /* the item / category / modifier / discount editor (owner 2026-10-30, their Boysen Latex Paint photo): one cell, its form running up
    under ‹ Back, the title, Save and the clock, behind the frost; the bar keeps the ☰ line (--head-y) */
@@ -8325,6 +8325,11 @@ body.hairlines .lv :is(.rp-body, #shiftBody, .sh-body, #shiftPastBody) .card.fc 
 /* Shift (owner 2026-10-15): Start / Close shift floats bottom right like Items' +; Past shifts is its own page, from the clock */
 .lv .sh-page[hidden] { display: none; }
 :is(.lv, .esheet) .sh-fab { width: auto; height: 48px; padding: 0 22px; border-radius: 24px; font-size: 15px; font-weight: 550; white-space: nowrap; }
+.lv .sh-fab.round { width: 56px; height: 56px; padding: 0; border-radius: 50%; }   /* Cash in & out: Items' round + (owner 2026-11-01) */
+/* Cash in / out's Category: a pill hugging its chip, 6 round it (owner 2026-11-01, iOS's date row; 50 tall picked over 56 / 48 / 44) */
+.esheet .cm-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 50px; padding: 0 6px 0 18px; border-radius: 999px; background: var(--tile); font-size: 17px; text-align: left; }
+.esheet .cm-chip { display: inline-flex; align-items: center; gap: 6px; height: 38px; margin-left: auto; padding: 0 10px 0 14px; border-radius: 999px; background: var(--es-btn); font-size: 15px; }
+.esheet .cm-chip .ic { width: 14px; height: 14px; }
 .lv #shiftFab .out { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }   /* the old words, shrinking out over the new (shiftFabSay) */
 .lv :is(#shiftBody, .sh-body) { display: grid; gap: 12px; padding-bottom: calc(88px + var(--ph-safe, 0px)); }   /* the last row clears the button */
 .lv .fr.add > .chev { margin-left: auto; }
@@ -8985,6 +8990,8 @@ body.light-theme { --pop-drop: drop-shadow(0 20px 50px rgb(0 0 0 / .15)) drop-sh
 .pay-sheet .ph b, .modal-head h2, .confirm-modal .modal-head h2, #pinModal:not(.pin-lock) .pin-title { font-size: 17px; font-weight: 590; }
 .pay-sheet .ph small, .cf-sheet .cf-msg, #pinModal:not(.pin-lock) .pin-msg { color: var(--ink-secondary); font-size: 15px; line-height: 1.4; }
 .pay-sheet .text-input, .modal .text-input { height: 44px; border-radius: 14px; }
+.cf-msg .text-input { margin-top: 12px; }
+.cf-msg .text-input:focus-visible { outline-offset: -2px; }   /* a field in showConfirm's message: the ring inside, the message's scroll would clip it outside */
 .pay-sheet .pa button { border-radius: 10px; }
 /* the buttons: one row of equal capsules, 14 from the card's edge */
 .pay-sheet .pb, .modal .pay-actions:not(.delivery-map-footer *), .pop-ft { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px -10px 0; }

@@ -799,6 +799,8 @@
     churnThresholdDays: 30,
     startCash: 'ask',   // 'ask' every shift (Loyverse) | 'float': Close asks what stays in the drawer, and that starts the next shift (owner 2026-10-10)
     autoClose: 4,       // the hour (store clock) a shift nobody closed closes itself, and the Shift page's day starts over
+    // Cash in / out's categories, the owner's own per direction; these presets to start (owner 2026-11-01)
+    cashCats: { in: ['Change fund', 'Owner top-up', 'From the bank'], out: ['Supplier', 'Delivery', 'Meals', 'Utilities', 'Repairs'] },
   };
   function readSettings(saved = readKey(KEYS.settings, {}) || {}) {
     const base = clone(DEFAULT_SETTINGS), out = { ...base, ...saved };
