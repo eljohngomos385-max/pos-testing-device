@@ -575,7 +575,7 @@ function renderVariantList() {
   const q = vm.query.trim().toLowerCase();
   const out = p => stockLevel(p) === 'out';   // untracked (a drink, a cut) is never sold out and has no count
   const shown = members.filter(p => (vm.show !== 'avail' || !out(p))
-    && (!q || [p.name, p.barcode, ...skusOf(p)].some(s => String(s || '').toLowerCase().includes(q))));
+    && (!q || [p.name, ...barcodesOf(p), ...skusOf(p)].some(s => String(s || '').toLowerCase().includes(q))));
   $('#variantCount').textContent = `${shown.length} of ${members.length}`;
   const f = $('#variantFilter');
   f.hidden = !members.some(out);   // nothing sold out = nothing to filter
@@ -692,7 +692,7 @@ function findProductByCode(rawCode) {
   const code = String(rawCode || '').trim();
   if (!code) return null;
   const lower = code.toLowerCase();
-  const hit = p => (p.barcode && String(p.barcode).trim() === code);
+  const hit = p => barcodesOf(p).includes(code);   // any of its barcodes
   const sku = p => skusOf(p).some(s => s.toLowerCase() === lower);   // the main SKU or an Other SKU
   // A removed variant keeps its barcode; the live row that took it over wins.
   return state.products.find(p => onTill(p) && hit(p)) || state.products.find(p => !p.archived && hit(p))
@@ -703,6 +703,7 @@ function findProductByCode(rawCode) {
 function addProductByCode(rawCode, { source = 'barcode' } = {}) {
   const code = String(rawCode || '').trim();
   if (!code) return false;
+  if (qsScanning()) return qsScanRead(code);   // Adjust stock / price's scan: the read goes on its list, not the cart (pos-stock.js)
   const product = findProductByCode(code);
   track('scan', { code, found: !!product, productId: product ? product.id : '' });
   if (!product) {
@@ -1009,12 +1010,17 @@ async function scanWithCapacitorBarcodePlugin() {
   }
 }
 
+let scanHome = null;   // Sell's spot for the scanner
 async function openBarcodeScanner() {
   if (await scanWithCapacitorBarcodePlugin()) return;
   closeBarcodeScanner();   // a clean start: no camera, card or flash left over
-  $('#scanSheet').classList.add('open');
+  const sheet = $('#scanSheet'), qs = qsScanning();
+  scanHome ||= sheet.parentElement;
+  (qs ? $('#itemsView') : scanHome).append(sheet);   // Adjust stock's camera covers the Items list
+  sheet.classList.add('open');
   startBarcodeCamera();
-  flashControl($('#scanBtn'));
+  flashControl($(qs ? '#qsScan' : '#scanBtn'));
+  if (qs) qsTickbar();   // "Scan the items..."
 }
 
 function closeBarcodeScanner() {
@@ -1036,6 +1042,7 @@ function flipBarcodeCamera() {
 let scanCardId = '', scanFlashTimer = 0;
 const scanOpen = () => $('#scanSheet').classList.contains('open');
 function drawScanCard() {
+  if (qsScanning()) return qsScanCard();
   const card = $('#scanCard'), item = scanCardId && state.cart.find(i => i.id === scanCardId);
   card.hidden = !item;
   card.style.transform = card.style.opacity = '';

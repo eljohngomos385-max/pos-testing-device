@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Our Sidebar Lab</title>
+<!-- Lab: our POS sidebar (pos-lab/index.html) in the white Shopify drawer style — copy of
+     shopify-sidebar-lab.html with our pages and our icons. All sizes in pt, measured from the owner's
+     screenshot — see img/shopify-sidebar/measured.png. Reference only, not wired into the app. -->
+<style>
+:root {
+  --bg: #FFFFFF;
+  --pill: #EDEDED;          /* active row (dark: #181818 on #010101) */
+  --ink: #111111;           /* labels, chevrons */
+  --icon: #626262;          /* dark: #9D9D9D — mirrored */
+  --btn: #F2F2F2;           /* bottom buttons (dark: #0D0D0D) */
+  --btn-rim: #DBDBDB;       /* 1pt rim (dark: #242424) */
+
+  --row-h: 48px;
+  --pill-x: 8px;            /* pill left */
+  --pill-w: 320.6px;
+  --pill-r: 12px;
+  --icon-cx: 35.8px;        /* icon centre from screen edge */
+  --icon-box: 22px;          /* our icons fill 18/24 → glyph ~16.5 */
+  --text-x: 60.8px;
+  --chev-cx: 357px;
+  --label-fs: 18px;
+  --head-x: 24.6px;
+  --head-fs: 17px;
+  --btn-h: 56px;
+  --btn-pill-w: 148px;
+  --btn-gap: 8px;
+  --bar-bottom: 28.3px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #E5E5E5; }
+body {
+  font-family: -apple-system, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  display: flex; justify-content: center;
+}
+.phone {
+  position: relative; width: 393px; min-height: 852px; background: var(--bg);
+  padding-top: 60.4px;      /* Home pill top */
+  overflow: hidden;
+}
+@media (max-width: 430px) { html, body { background: var(--bg); } .phone { width: 100%; min-height: 100vh; } }
+
+.row {
+  position: relative; display: flex; align-items: center; height: var(--row-h);
+  font-size: var(--label-fs); font-weight: 500; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.row.on::before {
+  content: ""; position: absolute; inset: 0 auto 0 var(--pill-x); width: var(--pill-w);
+  background: var(--pill); border-radius: var(--pill-r);
+}
+.row > * { position: relative; }
+.row svg.ic {
+  position: absolute; left: calc(var(--icon-cx) - var(--icon-box) / 2);
+  width: var(--icon-box); height: var(--icon-box);
+  fill: none; stroke: var(--icon); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+.row.on svg.ic { stroke: var(--ink); }
+.row.on svg.ic .fill { fill: var(--ink); }
+.row span { position: absolute; left: var(--text-x); }
+.row .chev {
+  position: absolute; left: calc(var(--chev-cx) - 6.5px); width: 13px; height: 13px;
+  fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.row svg.app { stroke: var(--icon); }
+.head {
+  display: flex; align-items: center; gap: 8px; height: 22px; padding-left: var(--head-x);
+  font-size: var(--head-fs); font-weight: 600;
+}
+.head svg { width: 12px; height: 12px; fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.head.sales { margin: 23.3px 0 16.6px; }   /* Analytics → header 58.3, header → Online Store 51.6 */
+.head.apps  { margin-top: 24.1px; }        /* Agentic → Apps 59.1 */
+
+.bar {
+  position: absolute; left: 0; right: 0; bottom: var(--bar-bottom);
+  display: flex; justify-content: center; gap: var(--btn-gap);
+}
+.bar button {
+  height: var(--btn-h); min-width: var(--btn-h); border-radius: 999px;
+  background: var(--btn); border: 1px solid var(--btn-rim); color: var(--ink);
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font: inherit; font-size: var(--label-fs); font-weight: 500; cursor: pointer;
+}
+.bar button.wide { width: var(--btn-pill-w); }
+.bar svg { width: 24px; height: 24px; }
+/* One even 48pt list — Shopify only breaks rhythm with a titled section, never a bare gap. */
+.row svg.ic { stroke: #4A4A4A; stroke-width: 1.9; }   /* our sparse icons need weight to sit beside the label */
+.row.on svg.ic { stroke: var(--ink); stroke-width: 2.1; }
+.row .ext { position: relative; top: 1px; margin-left: 7px; width: 13px; height: 13px;   /* beside the label, like "Sales channels ›" */
+  fill: none; stroke: var(--icon); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.store { position: absolute; left: 0; right: 0; bottom: calc(var(--bar-bottom) + var(--btn-h) + 14px);
+  text-align: center; font-size: 13px; color: var(--icon); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <nav id="nav">
+    <div class="grp">
+      <div class="row on"><svg class="ic" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/></svg><span>Sell</span></div>
+      <div class="row"><svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg><span>Orders</span></div>
+      <div class="row"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4M20 17v3"/></svg><span>QR codes</span></div>
+    </div>
+    <div class="grp">
+      <div class="row"><svg class="ic" viewBox="0 0 24 24"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/></svg><span>Items</span></div>
+      <div class="row"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg><span>Customers</span></div>
+    </div>
+    <div class="grp">
+      <div class="row"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="2.5"/><path d="M7 4h10"/></svg><span>Shift</span></div>
+      <div class="row"><svg class="ic" viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="20"/><line x1="7" y1="20" x2="7" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="17" y1="20" x2="17" y2="15"/></svg><span>Reports</span></div>
+    </div>
+    <div class="grp">
+      <div class="row"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="9" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="14" width="8" height="7" rx="1.5"/></svg><span>Back office<svg class="ext" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M10 14L20 4"/><path d="M20 14v6H4V4h6"/></svg></span></div>
+    </div>
+  </nav>
+
+  <div class="store">EJ Hardware · POS 1</div>
+  <div class="bar">
+    <!-- Settings moves to Shopify's gear spot; the user row (log out) becomes the middle pill. -->
+    <button aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 4.37 16.94l.06-.06A1.65 1.65 0 0 0 4.76 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 7.04 4.29l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    <button class="wide" title="Log out">El John</button>
+    <button aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+</div>
+<script>
+// Tap a row → the grey pill moves to it.
+document.getElementById('nav').addEventListener('click', e => {
+  const row = e.target.closest('.row'); if (!row) return;
+  document.querySelector('.row.on')?.classList.remove('on'); row.classList.add('on');
+});
+</script>
+</body>
+</html>

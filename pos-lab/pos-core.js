@@ -821,7 +821,7 @@ function rebuildFuse() {
   const indexed = state.products.filter(onTill).map(p => ({
     ...p,
     searchBlob: withPlurals(
-      [p.name, p.sku, p.barcode, p.brand, ...(p.aliases || [])].join(' ').toLowerCase()),
+      [p.name, p.sku, ...barcodesOf(p), p.brand, ...(p.aliases || [])].join(' ').toLowerCase()),
   }));
   if (typeof Fuse !== 'function') {
     state.fuse = {
@@ -915,7 +915,7 @@ function switchView(view) {
   if (state.view === 'checkout' && view !== 'checkout') $$('.view-checkout :is(.co-stage, .co-step)').forEach(e => { e.scrollTop = 0; });   // the same rule for the checkout's scrollers: the step under the total, the stage on Sale complete (owner 2026-10-29)
   state.view = view;
   if (view !== 'items') addPickOff();   // Add tile's list ends with the page
-  if (view !== 'sell') closeBarcodeScanner();   // the tablet's ☰ and Check out stay in reach while it scans
+  if (!$(`.view[data-view="${view}"]`)?.contains($('#scanSheet'))) closeBarcodeScanner();   // it scans for the page it sits on (Sell's, or Adjust stock's on Items); the tablet's ☰ and Check out stay in reach
   $$('.side-link').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view === view));
   if (view === 'checkout') railCheckout(true);

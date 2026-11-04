@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payment Types Review</title>
+<!-- Review sheet (2026-10-22, round 2 built): the whole scope on one page. Real phone screenshots:
+     "Now" = pos-lab/index.html, "After" = try-pay-qr.html (the mock-up). -->
+<style>
+  :root { --bg: #111; --surface: #1c1c1e; --line: #2c2c2e; --ink: #fff; --ink-2: #a1a1a6; --ok: #34c759; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #f2f2f7; --surface: #fff; --line: #e5e5ea; --ink: #1c1c1e; --ink-2: #6e6e73; --ok: #248a3d; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 Inter, system-ui, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--ink-2); margin: 0 0 32px; }
+  section { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
+  h2 { font-size: 19px; margin: 0 0 4px; }
+  section > p { color: var(--ink-2); margin: 0 0 16px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  figure { margin: 0; }
+  figcaption { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--ink-2); }
+  figcaption.after { color: var(--ok); }
+  img { display: block; width: 100%; max-width: 280px; border-radius: 16px; border: 1px solid var(--line); }
+  pre { margin: 0; font: 14px/1.55 ui-monospace, Consolas, monospace; overflow-x: auto; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--ink-2); font-weight: 600; }
+  td.no { color: var(--ink-2); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Payment types: the whole scope</h1>
+  <p class="sub">Round 2 is built in the mock-up. Every picture is a real phone screenshot. "Now" is the lab app today, "After" is the mock-up.</p>
+
+  <section>
+    <h2>What this touches</h2>
+    <p>You asked for payment options. Paying is also where the checkout, the receipt and the shift read from, so those are listed too.</p>
+<pre>Payment types
+├─ Settings
+│  ├─ Payment types page: Cash, Other, Account get a ›; the bin at the top right goes
+│  ├─ A type's page: Name, Picture, Ask for, Opens cash drawer
+│  │  └─ your own types (Visa): red Delete payment type at the bottom
+│  ├─ Ask for page: pick a word (Must fill in sits under Ask for)
+│  ├─ Fulfilment types page: the bin at the top right goes; your own (Lalamove) get a ›
+│  │  └─ Lalamove's page: Show on the sale, red Delete fulfilment type
+│  └─ Printing: new Test drawer row
+├─ Checkout
+│  ├─ GCash / QR: your QR picture shows first
+│  ├─ The box asks your word, Must fill in holds the button
+│  ├─ Cash: same as today (a box only if you want one)
+│  └─ Split: each part asks like its type
+├─ After the sale: the drawer pops open when the type has Opens cash drawer on (Cash: on)
+├─ Receipt: prints your word (LAST 4 DIGITS)
+└─ Shift: no change (cheque stays out of Expected cash)
+
+Files
+├─ try-pay-qr.html: the mock-up
+├─ pos-lab/drawer.js: NEW, the drawer controller (its commands, all in one place)
+├─ pos-lab/printer.js: the receipt line, Cash ref too; sends drawer.js's command
+└─ pos-lab/index.html: version number only</pre>
+  </section>
+
+  <section>
+    <h2>Options per type</h2>
+    <p>Same rows on every type's page. Split has no page: its parts follow their own types.</p>
+    <div class="scroll"><table>
+      <tr><th></th><th>Cash</th><th>GCash</th><th>QR</th><th>Other</th><th>Account</th><th>Your own (Visa)</th></tr>
+      <tr><td>Name</td><td class="no">fixed</td><td class="no">fixed</td><td class="no">fixed</td><td class="no">fixed</td><td class="no">fixed</td><td>can rename</td></tr>
+      <tr><td>Show at checkout</td><td class="no">always on</td><td>on</td><td>on</td><td>on</td><td>on</td><td>on</td></tr>
+      <tr><td>Picture</td><td>none</td><td>none</td><td>none</td><td>none</td><td>none</td><td>none</td></tr>
+      <tr><td>Ask for</td><td>Nothing</td><td>Reference no.</td><td>Reference no.</td><td>Nothing</td><td>Nothing</td><td>Nothing</td></tr>
+      <tr><td>Must fill in</td><td>off</td><td>off</td><td>off</td><td>off</td><td>off</td><td>off</td></tr>
+      <tr><td>Opens cash drawer</td><td>on</td><td>off</td><td>off</td><td>off</td><td>off</td><td>off</td></tr>
+    </table></div>
+    <p style="margin:12px 0 0">Ask for choices: Nothing, Reference no., Last 4 digits, Approval code, Cheque no., Account no., Name, Phone no.</p>
+  </section>
+
+  <section>
+    <h2>1. Payment types page</h2>
+    <p>Every type except Split now opens its own page. The bin at the top right goes (see 3).</p>
+    <div class="pair">
+      <figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-list.jpg" alt="Payment types list, only GCash and QR have a chevron"></figure>
+      <figure><figcaption class="after">After</figcaption><img src="img/pay-type-settings/after-list.jpg" alt="Payment types list, every type but Split has a chevron"></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. A type's page</h2>
+    <p>Two rows become the same four cards on every type. Name shows on your own types only. Must fill in sits right under Ask for, and hides when Ask for is Nothing.</p>
+    <div class="pair">
+      <figure><figcaption>Now: GCash</figcaption><img src="img/pay-type-settings/before-gcash-page.jpg" alt="GCash page with Show at checkout and Ask for reference no."></figure>
+      <figure><figcaption class="after">After: GCash</figcaption><img src="img/pay-type-settings/after-gcash-page.jpg" alt="GCash page with Show at checkout, Picture, Ask for, Opens cash drawer"></figure>
+      <figure><figcaption class="after">After: Visa (your own)</figcaption><img src="img/pay-type-settings/after-visa.jpg" alt="Visa page: Name, Show at checkout, Picture, Ask for Last 4 digits with Must fill in under it, Opens cash drawer"></figure>
+      <figure><figcaption class="after">After: Other (Ask for Nothing, so no Must fill in)</figcaption><img src="img/pay-type-settings/after-other-page.jpg" alt="Other page, Ask for Nothing, no Must fill in row"></figure>
+      <figure><figcaption class="after">After: Cash</figcaption><img src="img/pay-type-settings/after-cash-page.jpg" alt="Cash page, Ask for Nothing, Opens cash drawer on"></figure>
+      <figure><figcaption class="after">After: Account</figcaption><img src="img/pay-type-settings/after-account-page.jpg" alt="Account page, Ask for Nothing"></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Deleting your own type (Visa)</h2>
+    <p>Now: on the Payment types page you tap the bin at the top right, tick Visa, then tap the red bar. After: the bin at the top right is gone. You open Visa and tap the red "Delete payment type" at the bottom. Cash, GCash, QR, Other and Account have no delete.</p>
+    <div class="pair">
+      <figure><figcaption>Now: 1. the bin, top right</figcaption><img src="img/pay-type-settings/before-list-bin.jpg" alt="Payment types page with a bin button at the top right"></figure>
+      <figure><figcaption>Now: 2. tick Visa, tap the red bar</figcaption><img src="img/pay-type-settings/before-delete-tick.jpg" alt="Visa ticked, red bar 1 selected Delete"></figure>
+      <figure><figcaption class="after">After: 1. no bin, tap Visa</figcaption><img src="img/pay-type-settings/after-list.jpg" alt="Payment types page with no bin at the top right"></figure>
+      <figure><figcaption class="after">After: 2. Delete payment type, at the bottom</figcaption><img src="img/pay-type-settings/after-visa.jpg" alt="Visa page with a red Delete payment type button at the bottom"></figure>
+      <figure><figcaption class="after">After: 3. Delete Visa?</figcaption><img src="img/pay-type-settings/after-delete-confirm.jpg" alt="Delete Visa? Past sales keep the name. Cancel, Delete"></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>4. Ask for</h2>
+    <p>Now it's one switch that always asks "Reference no.". After, you tap Ask for and pick the word.</p>
+    <div class="pair">
+      <figure><figcaption>Now: one switch</figcaption><img src="img/pay-type-settings/before-gcash-page.jpg" alt="GCash page with the Ask for reference no. switch"></figure>
+      <figure><figcaption class="after">Visa: Last 4 digits</figcaption><img src="img/pay-type-settings/after-ask.jpg" alt="Ask for list with Last 4 digits ticked"></figure>
+      <figure><figcaption class="after">Other: Nothing</figcaption><img src="img/pay-type-settings/after-ask-nothing.jpg" alt="Ask for list with Nothing ticked"></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>5. Checkout: GCash with a picture</h2>
+    <p>With a QR picture added, the customer scans first, then Done.</p>
+    <div class="pair">
+      <figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-gcash-box.jpg" alt="Paid with GCash, Reference no. optional box"></figure>
+      <figure><figcaption class="after">After</figcaption><img src="img/pay-type-settings/after-qr.jpg" alt="GCash QR picture with the amount and Done"></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>6. Checkout: the box</h2>
+    <p>It asks your word. With Must fill in on, Complete sale stays grey until it's filled.</p>
+    <div class="pair">
+      <figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-gcash-box.jpg" alt="Reference no. optional, Complete sale ready"></figure>
+      <figure><figcaption class="after">After: Visa, must fill in</figcaption><img src="img/pay-type-settings/after-visa-box.jpg" alt="Last 4 digits box, Complete sale grey"></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>7. Checkout: Cash</h2>
+    <p>Same as today: tap the amount, sale done. The last picture only shows for a store that wants a number written down for cash.</p>
+    <div class="pair">
+      <figure><figcaption>Now: tap the amount, sale done</figcaption><img src="img/pay-type-settings/cash-amounts-145.jpg" alt="Cash amounts for 145: Exact, 200, 500, 1,000, Custom"></figure>
+      <figure><figcaption class="after">After: same amount page</figcaption><img src="img/pay-type-settings/cash-amounts-145.jpg" alt="Cash amounts for 145: Exact, 200, 500, 1,000, Custom"></figure>
+      <figure><figcaption class="after">After: then a box, only if you want one</figcaption><img src="img/pay-type-settings/r2-cash.jpg" alt="Got 200, change 55, reference box, Complete sale"></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>8. Checkout: Split</h2>
+    <p>Each part asks what its type asks, and follows Must fill in.</p>
+    <div class="pair">
+      <figure><figcaption>Now</figcaption><img src="img/pay-type-settings/split-before.jpg" alt="Split part asking reference no."></figure>
+      <figure><figcaption class="after">After: Visa part</figcaption><img src="img/pay-type-settings/r2-split.jpg" alt="Split Visa part asking last 4 digits, Done grey"></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>9. Receipt</h2>
+    <p>Prints the word you picked under the payment.</p>
+    <div class="pair">
+      <figure><figcaption>Now</figcaption><img src="img/pay-type-settings/receipt-before.jpg" alt="Receipt showing REF NO."></figure>
+      <figure><figcaption class="after">After</figcaption><img src="img/pay-type-settings/after-receipt.jpg" alt="Receipt showing VISA then LAST 4 DIGITS 4242"></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>10. Shift: no change</h2>
+    <p>Expected cash stays cash only. A cheque already has its own line under "By method".</p>
+    <div class="pair">
+      <figure><figcaption>Now</figcaption><img src="img/pay-type-settings/shift-v2.jpg" alt="Shift page: Expected cash; By method lists Cash, Cheque, Visa, GCash"></figure>
+      <figure><figcaption class="after">After: same</figcaption><img src="img/pay-type-settings/shift-v2.jpg" alt="Shift page unchanged"></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>11. Deleting your own fulfilment type (Lalamove)</h2>
+    <p>The same move as 3. Now: on the Fulfilment types page you tap the bin at the top right, tick Lalamove, then tap the red bar. After: the bin is gone. Lalamove gets a ›; you open it and tap the red "Delete fulfilment type". Walk-in, Pickup, Delivery, Dine-in and Take-out have no page and no delete.</p>
+    <div class="pair">
+      <figure><figcaption>Now: 1. the bin, top right</figcaption><img src="img/pay-type-settings/before-ful-bin.jpg" alt="Fulfilment types page with a bin at the top right"></figure>
+      <figure><figcaption>Now: 2. tick Lalamove, tap the red bar</figcaption><img src="img/pay-type-settings/before-ful-tick.jpg" alt="Lalamove ticked, red bar 1 selected Delete"></figure>
+      <figure><figcaption class="after">After: 1. no bin, tap Lalamove</figcaption><img src="img/pay-type-settings/after-ful-list.jpg" alt="Fulfilment types page with no bin; Lalamove has a switch and a chevron"></figure>
+      <figure><figcaption class="after">After: 2. Delete fulfilment type</figcaption><img src="img/pay-type-settings/after-ful-page.jpg" alt="Lalamove page: Show on the sale, red Delete fulfilment type"></figure>
+      <figure><figcaption class="after">After: 3. Delete Lalamove?</figcaption><img src="img/pay-type-settings/after-ful-confirm.jpg" alt="Delete Lalamove? Past sales keep the name. Cancel, Delete"></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>12. Cash drawer</h2>
+    <p>Now: nothing opens the drawer. After: a new Test drawer row under Test print. Tap Open and the drawer pops (it opens through the Wi-Fi or Bluetooth printer it's plugged into). After a sale, it pops when the payment type has Opens cash drawer on, then the receipt prints. No printer picked: it says so.</p>
+    <div class="pair">
+      <figure><figcaption>Now</figcaption><img src="img/pay-type-settings/before-printing.jpg" alt="Printing card ending with Test print"></figure>
+      <figure><figcaption class="after">After: Test drawer, Open (no printer picked yet)</figcaption><img src="img/pay-type-settings/after-printing-drawer.jpg" alt="Printing card with Test drawer Open under Test print, and the message Pick a Wi-Fi or Bluetooth printer first"></figure>
+    </div>
+  </section>
+</main>
+</body>
+</html>

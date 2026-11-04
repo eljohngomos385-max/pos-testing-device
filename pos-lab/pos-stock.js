@@ -83,6 +83,7 @@ function qsRender() {
   pg.hidden = !QS.on || !qsMode;
   pg.classList.toggle('dock', qsMode === 'dock');
   pg.classList.toggle('price', qsPrice());
+  if (qsMode === 'page' && scanOpen()) closeBarcodeScanner();   // Review or Full screen covers the camera: it goes
   qsTickbar();
   if (!QS.on) return;
   if (qsSaved) return qsRenderSaved();
@@ -171,7 +172,44 @@ function qsTickbar() {
   if (bar.hidden) return;
   const n = QS.lines.length;
   $('#qsTickNext').disabled = !n;
-  $('#qsTickNext').innerHTML = n ? `<span>${SalesMath.plural(n, 'line')}</span><span>Review</span>` : `<span>Tap the items to ${qsPrice() ? 'price' : 'stock'}</span>`;
+  $('#qsTickNext').innerHTML = n ? `<span>${SalesMath.plural(n, 'line')}</span><span>Review</span>` : `<span>${scanOpen() ? 'Scan' : 'Tap'} the items to ${qsPrice() ? 'price' : 'stock'}</span>`;
+}
+
+// ---------- scan (owner 2026-11-04) ----------
+// The scan button beside the search opens Sell's camera (pos-sell.js); a read lands on this list instead of the cart. A stock
+// mode adds one per read; a price or a measured item joins once, its number typed on Review. A USB / Bluetooth scanner
+// comes in through the Items search (app.js). The camera's card is this line's: name, before → after, bin or − / n / +.
+const qsScanning = () => QS.on && state.view === 'items';
+function qsScanRead(code) {
+  const p = findProductByCode(code), no = w => { if (scanOpen()) scanFlash('miss', 1500, w); else showToast(w); return false; };
+  if (!p || p.archived) return no('Item not found');   // removed items aren't on the list to tap either (catalogItems)
+  if (!qsPrice() && p.madeFrom?.length) return no(`Count what ${p.name} is made from`);   // qsAddFamily's words
+  if (!qsPrice() && p.trackStock === false) return no(`${p.name} doesn't track stock`);
+  let l = qsLine(p.id);
+  if (!qsDec(p) && (QS.reason === 'remove' || QS.reason === 'damaged') && (Number(l?.n) || 0) >= qsOnHand(p)) return no(`Only ${qsQty(qsOnHand(p))} on hand`);   // a read that can't add flashes red, not green
+  if (!l) QS.lines.push(l = { id: p.id, n: '' });
+  if (!qsDec(p)) l.n = String(qsCap(p, (Number(l.n) || 0) + 1));
+  qsSaved = null;   // as qsPickRow: a new item after a save
+  qsRender(); qsMarkRows();
+  if (qsMode) qsShow(p.id);
+  if (scanOpen()) scanHit(p.id);
+  return true;
+}
+function qsScanCard() {
+  const card = $('#scanCard'), l = scanCardId && qsLine(scanCardId), p = l && qsProd(l.id), n = l && (Number(l.n) || 0), bin = n <= 1 && QS.reason !== 'count';   // a count's 0 is an answer: − stops there
+  qsTickbar();
+  card.hidden = !p;
+  card.style.transform = card.style.opacity = '';
+  card.innerHTML = p ? `<div class="sc-txt"><b>${escapeHtml(p.name)}</b><span class="num">${qsSub(l, p)}</span></div>${qsDec(p) ? '' : `
+    <div class="sc-q"><button type="button" data-sq="-1" aria-label="${bin ? 'Remove' : 'Less'}"${n ? '' : ' disabled'}>${esSvg(bin ? 'trash' : 'less')}</button><span class="num">${qsQty(n)}</span><button type="button" data-sq="1" aria-label="More">${esSvg('more')}</button></div>`}` : '';
+}
+// the card's − / +; the bin takes the line off
+function qsScanStep(d) {
+  const l = qsLine(scanCardId), p = l && qsProd(l.id), n = l && (Number(l.n) || 0) + d;
+  if (!p) return;
+  if (QS.reason === 'count') l.n = String(qsCap(p, Math.max(0, n)));
+  else if (n <= 0) { QS.lines = QS.lines.filter(x => x !== l); scanCardId = ''; } else l.n = String(qsCap(p, n));
+  qsRender(); qsMarkRows(); drawScanCard();
 }
 // the Items list rows: a dot when the item is in the list
 function qsMarkRows() {
@@ -291,6 +329,7 @@ function qsStart(reason) {
   renderItems();
 }
 function qsLeave() {
+  closeBarcodeScanner();
   QS.on = false; qsMode = ''; qsSaved = null; QS.lines = [];
   qsRender();
   if (state.view !== 'items') switchView('items'); else renderItems();
@@ -349,6 +388,7 @@ function initQuickStock() {
 }
 function qsWire() {
   $('#qsTickNext').addEventListener('click', () => { qsMode = 'page'; qsRender(); });
+  $('#qsScan').addEventListener('click', openBarcodeScanner);
 
   $('#qsBack').addEventListener('click', qsBack);
   // the title's menu: the mode, and on a tablet the page's place (beside the list or full screen); the phone gets

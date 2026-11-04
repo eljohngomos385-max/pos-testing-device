@@ -329,6 +329,7 @@ function attachEvents() {
   let cardSwipe = null;
   scanCard.addEventListener('click', (e) => {
     const b = e.target.closest('[data-sq]'), item = state.cart.find(i => i.id === scanCardId);
+    if (b && qsScanning()) return qsScanStep(+b.dataset.sq);   // Adjust stock's card (pos-stock.js)
     if (!b || !item) return;
     if (+b.dataset.sq > 0) addToCart(item.id, 'scan', true);
     else if (item.qty > 1) { item.qty = roundQty(productOf(item), item.qty - 1); renderCart(); }
@@ -676,7 +677,7 @@ function attachEvents() {
   }));
   $$(FROST_HEADS).forEach(h => frostRO.observe(h, { box: 'border-box' }));
   // Liquid glass press (owner 2026-10-18): the button swells and shines under the finger, leans and stretches toward a drag, springs back on release
-  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search), .side-top > #sellSwitch, #app .side-link[data-view="settings"]';
+  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search), .side-top > #sellSwitch, #app .side-link[data-view="settings"]';
   document.addEventListener('pointerdown', (e) => {
     const b = e.target.closest(LG);
     if (!b || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -711,6 +712,55 @@ function attachEvents() {
   $('#itemSave')?.addEventListener('click', () => (kindEdit ? saveKind() : saveItem()));
   const notYet = what => () => showToast(`${what} isn't connected yet`);
   wireFind('#itemsFind', '#itemsSearch', '#itemsSearchX', (q) => { itemsFilter.q = q; renderItems(); });
+  // A USB / Bluetooth scanner on Items (owner 2026-11-04), as Sell's: keys typed with no box in focus go to the search, which
+  // finds a barcode too; on Adjust stock / price its Enter puts the item on the list (pos-stock.js qsScanRead).
+  // ponytail: a box in focus (an amount on Review) takes the code as typing; a burst detector if that bites.
+  document.addEventListener('keydown', (e) => {
+    if (state.view !== 'items' || $('#itemsView').classList.contains('editing') || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+    if (document.activeElement?.matches('input, textarea, select') || document.querySelector('.modal-backdrop:not([hidden]), .rail-veil, .fs-veil.open')) return;
+    $('#itemsSearch').focus({ preventScroll: true });
+  });
+  $('#itemsSearch').addEventListener('keydown', (e) => {
+    const raw = e.target.value.trim();
+    if (e.key !== 'Enter' || !QS.on || !findProductByCode(raw)) return;
+    e.preventDefault();
+    qsScanRead(raw);
+    $('#itemsSearchX').click();   // the box clears for the next one
+  });
+  // A scanner types faster than a person can (owner 2026-11-04): 6+ keys under SCAN_GAP apart ending in Enter are a read.
+  // On Adjust stock / price it is always a scan: in an amount box its keys come back out and the item is picked.
+  // On Sell, checkout, the shift's amount and over any pop-up a code box (the search, a reference, an ID) takes it as typed; anywhere else it is
+  // dropped and its keys come back out, so it never presses Leave, Sell anyway, Apply or Complete sale.
+  // ponytail: SCAN_GAP is the calibration knob; a slow Bluetooth scanner may need it raised
+  const SCAN_GAP = 50, POPUP = '.modal-backdrop:not([hidden]), .rail-veil, .pk-dim, .esheet.open, .fs-veil.open';
+  let burst = { s: '', t: 0 };
+  document.addEventListener('keydown', (e) => {
+    const qs = state.view === 'items' && QS.on && !$('#itemsView').classList.contains('editing');
+    if (!qs && !shSheet && state.view !== 'sell' && state.view !== 'checkout') return;
+    const el = document.activeElement;
+    if (e.key.length === 1) {
+      if (e.timeStamp - burst.t > SCAN_GAP) burst = { s: '', el, v: el?.value, sv: $('#itemsSearch').value, tv: $('#checkoutTender').value, es: es && { ...es }, sh: shSheet?.v };   // a person's pace: a fresh start
+      burst.s += e.key; burst.t = e.timeStamp;
+      return;
+    }
+    const b = burst; burst = { s: '', t: 0 };
+    if (e.key !== 'Enter' || b.s.length < 6 || e.timeStamp - b.t > SCAN_GAP) return;
+    const pop = document.querySelector(POPUP), mine = el === b.el && el?.matches?.('input, textarea');
+    if (qs && !pop) {
+      const box = mine && el.matches('[data-qs-n]'), search = el === $('#itemsSearch');
+      if (!box && !search) return;   // another box: its own
+      e.preventDefault(); e.stopPropagation();
+      el.value = box ? b.v : b.sv;
+      el.dispatchEvent(new Event('input', { bubbles: true }));   // the read's keys come back out (qsSet / the search)
+      return qsScanRead(b.s);
+    }
+    if (el?.matches?.('input:not([inputmode="decimal"], [type="number"], [data-qs-n]), textarea')) return;   // a code box: its own
+    e.preventDefault(); e.stopPropagation();
+    if (mine) { el.value = b.v; el.dispatchEvent(new Event('input', { bubbles: true })); }
+    if (state.view === 'checkout') { $('#checkoutTender').value = b.tv; updateChange(); }   // the cash keys took it as an amount
+    if (es && b.es) { Object.assign(es, b.es); drawEditSheet(); }   // and the line sheet's keys
+    if (shSheet && b.sh !== undefined) { shSheet.v = b.sh; drawShiftSheet(); }   // and the shift's (start, count, cash in / out)
+  }, true);
   $('#itemsFilter')?.addEventListener('click', (e) => openFilterSheet(e.currentTarget, () => [
     ['Category', 'cat', [['', 'All'], ...itemCategories().map(c => [c, c])]],
     ['Stock', 'stock', [['', 'Any'], ['low', 'Low'], ['out', 'Out']]],
@@ -734,7 +784,8 @@ function attachEvents() {
     const E = itemEdit, f = t.dataset.f, head = $('#itemTitle');
     // a blank Price stays blank (asked at sale), not 0, and so does the Markup that follows it
     const num = () => (t.value === '' && ['price', 'marginValue'].includes(f || t.dataset.v) ? null : Number(t.value) || 0);
-    if (t.dataset.alt) { const v = altsOf(); if (t.dataset.alt === 'main') v.sku = t.value; else v.alts[t.dataset.alt] = t.value; return; }   // the SKU page (pos-items itemSkuPage)
+    if (t.dataset.alt) { const v = codesOf(); if (t.dataset.alt === 'main') v.sku = t.value; else v.alts[t.dataset.alt] = t.value; return; }   // the SKU page (pos-items itemSkuPage)
+    if (t.dataset.bar) { codesOf().bars[t.dataset.bar] = t.value; return; }   // the Barcodes page (itemBarPage)
     if (t.dataset.v) {   // the variant's page
       const v = E.variants.find(x => x.id === itemSub);
       v[t.dataset.v] = t.type === 'number' ? num() : t.value;
@@ -742,7 +793,7 @@ function attachEvents() {
       return;
     }
     if (!f || t.type === 'checkbox') return;
-    if (['cost', 'price', 'stock', 'sku', 'barcode'].includes(f)) E.variants[0][f] = t.type === 'number' ? num() : t.value;
+    if (['cost', 'price', 'stock', 'sku'].includes(f)) E.variants[0][f] = t.type === 'number' ? num() : t.value;
     else E[f] = f === 'marginValue' || f === 'reorder' ? num() : t.value;
     if (f === 'cost' || f === 'marginValue') itemReprice('cost');
     if (f === 'price') itemReprice('price');
@@ -772,7 +823,8 @@ function attachEvents() {
     const act = b.dataset.act;
     if (b.dataset.sub) itemGo(b.dataset.sub);
     else if (act === 'add-variant') { const v = blankVariant(); E.variants.push(v); itemGo(v.id); itemForm.querySelector('[data-v=name]').focus({ preventScroll: true }); }
-    else if (act === 'add-alt') { altsOf().alts.push(''); renderItemForm(); [...itemForm.querySelectorAll('[data-alt]')].pop().focus(); }
+    else if (act === 'add-alt') { codesOf().alts.push(''); renderItemForm(); [...itemForm.querySelectorAll('[data-alt]')].pop().focus(); }
+    else if (act === 'add-bar') { codesOf().bars.push(''); renderItemForm(); [...itemForm.querySelectorAll('[data-bar]')].pop().focus(); }
     else if (act === 'del-variant') {
       E.variants = E.variants.filter(v => v.id !== itemSub);
       E.marginValue = itemMarkupOf(E.variants[0], E.marginMode);   // Markup is back when one is left

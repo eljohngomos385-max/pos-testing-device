@@ -69,7 +69,7 @@ const PRODUCT_DEFAULTS = {
   // component: only used to make other items, never sold (a patty, a pen in a kit). madeFrom: [{ id, qty }] per 1
   // sold -- a made item has no stock of its own; withMade derives it ("can make N") and its cost from the parts.
   component: false, madeFrom: [],
-  aliases: [], archived: false, updatedAt: '',
+  aliases: [], altBarcodes: [], archived: false, updatedAt: '',
 };
 
 // Several categories per item (owner, 2026-10-01). `folder` stays the first of them, so
@@ -88,6 +88,7 @@ function normalizeProduct(raw) {
   p.sellOutOfStock = !!p.sellOutOfStock;
   p.archived = !!p.archived;
   p.aliases = Array.isArray(p.aliases) ? p.aliases : [];
+  p.altBarcodes = Array.isArray(p.altBarcodes) ? p.altBarcodes : [];
   p.folders = foldersOf(p);
   p.folder = p.folders[0] || '';
   p.hidden = !!p.hidden;
@@ -117,6 +118,9 @@ const supplierIdsOf = (p) => [p.supplierId, ...(p.altSupplierIds || [])].filter(
 // Every SKU a product answers to, the main one first (owner 2026-10-26): aliases are its Other SKUs -- a
 // supplier's name for it, a nickname. Search and scans match any; receipts show only the main one.
 const skusOf = (p) => [p.sku, ...(p.aliases || [])].map((s) => String(s || '').trim()).filter(Boolean);
+// Every barcode it answers to (owner 2026-11-04): the maker's and a store sticker, all equal. `barcode` stays the
+// first so whatever shows one reads it unchanged; the rest are altBarcodes.
+const barcodesOf = (p) => [p.barcode, ...(p.altBarcodes || [])].map((s) => String(s || '').trim()).filter(Boolean);
 
 // A whole number of pieces, or a decimal length/weight — this is what the POS
 // keypad and every stock count key off, so it is a real switch, not a label.
@@ -1307,6 +1311,7 @@ function fulfilMethods(settings) {
 const PRODUCT_COLUMNS = [
   { key: 'sku', head: 'sku' },
   { key: 'barcode', head: 'barcode' },
+  { key: 'altBarcodes', head: 'alt_barcodes', alt: ['barcodes'], list: true },
   { key: 'name', head: 'name' },
   { key: 'brand', head: 'brand' },
   { key: 'folders', head: 'category', alt: ['categories', 'folder'], list: true },   // one or several, | between

@@ -39,7 +39,7 @@ function catalogItems() {
       byKey.set(key, it);
     }
     it.members.push(p);
-    it.variants.push({ id: p.id, name: g ? p.name : '', sku: p.sku || '', alts: [...p.aliases || []], barcode: p.barcode || '', cost: p.cost || 0, price: askedPrice(p) ? null : p.price, stock: p.stock || 0,
+    it.variants.push({ id: p.id, name: g ? p.name : '', sku: p.sku || '', alts: [...p.aliases || []], bars: barcodesOf(p), cost: p.cost || 0, price: askedPrice(p) ? null : p.price, stock: p.stock || 0,
       madeFrom: (p.madeFrom || []).map(m => ({ ...m })) });
     if (p.madeFrom?.length) it.made = true;
   });
@@ -68,7 +68,7 @@ function fillItemsPane(kind, band, rows) {
     if (addPick) { if (!it.members.some(onTill)) return false; }   // Add tile: what Sell can show, no filter (its button is hidden)
     else if (itemsFilter.cat && !itemsFilter.cat.some(c => it.cats.includes(c))) return false;   // '' = any, else the picks (openFilterSheet)
     if (!addPick && itemsFilter.stock && !itemsFilter.stock.some(s => itemStk(it) === 'stk-' + s)) return false;
-    return !q || it.name.toLowerCase().includes(q) || it.variants.some(v => [v.name, v.sku, ...v.alts, v.barcode].some(x => x.toLowerCase().includes(q)));
+    return !q || it.name.toLowerCase().includes(q) || it.variants.some(v => [v.name, v.sku, ...v.alts, ...v.bars].some(x => x.toLowerCase().includes(q)));
   }).sort((a, b) => a.name.localeCompare(b.name));
   band.innerHTML = `<span>Item <span class="num">· ${list.length}</span></span><span>Category</span><span>Price</span><span>In stock</span>`;
   rows.innerHTML = list.map(it => {
@@ -92,7 +92,7 @@ function fillItemsPane(kind, band, rows) {
 // Apple Settings (owner 2026-10-08): blocks of rows, each word at the side of its field like the customer form; a long
 // list (categories, modifiers, suppliers, one variant) is a row with its value and ›, opening its own page.
 let itemEdit = null, itemIsNew = false, itemSub = '', itemMainScroll = 0;   // itemSub: '' = the item, else 'cats' | 'mods' | 'sups' | a variant's id
-const blankVariant = () => ({ id: newId(), name: '', sku: '', alts: [], barcode: '', cost: 0, price: null, stock: 0, madeFrom: [], fresh: true });
+const blankVariant = () => ({ id: newId(), name: '', sku: '', alts: [], bars: [], cost: 0, price: null, stock: 0, madeFrom: [], fresh: true });
 // Sold by (owner 2026-11-01): Piece (box, bag, set are all a piece) or Measure in one plain unit, grouped by what it measures.
 // A measured item sells in decimals and asks how much at Sell (pos-sell 'measure'); a unit typed elsewhere shows under Other.
 // Plain units only, no "100 g"; metric and imperial both, the full name under each (owner 2026-11-01). Only a label: the maths is the same.
@@ -129,7 +129,7 @@ const editorDirty = () => $('#itemsView').classList.contains('editing') && edito
 function itemGo(sub, back) {
   const f = $('#itemForm'), K = kindEdit;
   if (sub && !(K ? K.sub : itemSub)) itemMainScroll = f.scrollTop;   // the page's place, not a subpage's (variant -> Made from)
-  if (!K && itemSub.startsWith('alts:')) { const v = altsOf(); v.alts = v.alts.filter(s => s.trim()); }   // a box left empty goes
+  if (!K && /^(alts|bars):/.test(itemSub)) { const v = codesOf(); v.alts = v.alts.filter(s => s.trim()); v.bars = v.bars.filter(s => s.trim()); }   // a box left empty goes
   const nv = !K && !sub && itemEdit.variants.find(x => x.id === itemSub);   // back from Add variant with nothing typed: it goes, as a blank choice does (kindBack)
   if (nv && itemEdit.variants.length > 1 && blankV(nv)) itemEdit.variants.splice(itemEdit.variants.indexOf(nv), 1);
   if (K) K.sub = sub; else itemSub = sub;
@@ -137,7 +137,7 @@ function itemGo(sub, back) {
   f.scrollTop = sub ? 0 : itemMainScroll;
 }
 // Back from a subpage (app.js #itemBack): a variant's Made from to the variant, a modifier's choices to Modifiers, else the item
-const itemParent = s => (/^(made|alts):/.test(s) && itemEdit.variants.length > 1 ? s.slice(5) : s.startsWith('modch:') ? 'mods' : '');
+const itemParent = s => (/^(made|alts|bars):/.test(s) && itemEdit.variants.length > 1 ? s.slice(5) : s.startsWith('modch:') ? 'mods' : '');
 const blankV = v => JSON.stringify({ ...v, id: 0 }) === JSON.stringify({ ...blankVariant(), id: 0 });   // a new variant nothing was typed in
 // a variant needs a name (owner 2026-10-29): one left with something typed but no name asks before Back; a tap outside stays
 function itemBackSub() {
@@ -183,7 +183,8 @@ function renderItemForm(dir) {
     : itemSub === 'look' ? ['Tile appearance', lookPage(E)]
     : itemSub === 'soldby' ? [E.component ? 'Unit' : 'Sold by', itemSoldByPage()]
     : itemSub.startsWith('made:') ? ['Made from', itemMadePage(E.variants.find(x => 'made:' + x.id === itemSub))]
-    : itemSub.startsWith('alts:') ? ['SKU', itemSkuPage(altsOf())]
+    : itemSub.startsWith('alts:') ? ['SKU', itemSkuPage(codesOf())]
+    : itemSub.startsWith('bars:') ? ['Barcodes', itemBarPage(codesOf())]
     : v ? [v.fresh ? 'Add variant' : 'Edit variant', itemVariantPage(v)] : [E.name || 'New item', itemMainPage()];   // a fixed title: typing a variant's name doesn't echo up there
   $('#itemForm').closest('.editor').classList.toggle('sub', !!itemSub && itemSub !== 'mods' && !itemSub.startsWith('modch:'));   // a subpage has only Back, as in Apple Settings; Modifiers keeps Save (owner 2026-10-24)
   $('#itemForm').innerHTML = `<div class="form${dir ? ' ' + dir : ''}">${html}</div>`;
@@ -236,7 +237,7 @@ function itemMainPage() {
   const codes = icard('', [   // how it's sold and scanned; a family's SKU and barcode are per variant
     inav('Sold by', soldByText(E), 'soldby'),
     fam ? '' : iskuRow(v0),
-    fam ? '' : ifr('Barcode', iinp('barcode', v0.barcode, 'inputmode="numeric" placeholder="Add barcode"')),
+    fam ? '' : ibarRow(v0),
   ].join(''), '', ' r');
   const by = modsById();
   const more = icard('', [
@@ -294,8 +295,14 @@ function itemMadeSet(t) {
 // SKU (owner 2026-10-26): one row, "PVC-ELB-12 +4", opening a page with the main SKU on top and the others under it --
 // a supplier's name for the item, a nickname. Search and scans match any; receipts show the main one. The others are
 // the product's aliases (bo-model skusOf).
-const altsOf = () => itemEdit.variants.find(x => 'alts:' + x.id === itemSub);
-const iskuRow = v => { const a = skusOf({ sku: v.sku, aliases: v.alts }); return inav('SKU', a.length ? escapeHtml(a[0]) + (a.length > 1 ? ` +${a.length - 1}` : '') : 'None', 'alts:' + v.id); };
+const codesOf = () => itemEdit.variants.find(x => x.id === itemSub.slice(5));   // the variant the SKU or Barcodes page is for
+const icodes = a => (a.length ? escapeHtml(a[0]) + (a.length > 1 ? ` +${a.length - 1}` : '') : 'None');
+const iskuRow = v => inav('SKU', icodes(skusOf({ sku: v.sku, aliases: v.alts })), 'alts:' + v.id);
+// Barcodes (owner 2026-11-04): the same row, "4801234500011 +1", opening a list of equal boxes -- the maker's, a store
+// sticker. Any of them scans or searches to the item; clearing a box takes it off (itemGo).
+const ibarRow = v => inav('Barcode', icodes(barcodesOf({ altBarcodes: v.bars })), 'bars:' + v.id);
+const itemBarPage = v => icard('', v.bars.map((s, i) => `<div class="fr wide"><input class="in" data-bar="${i}" value="${escapeHtml(s)}" inputmode="numeric" placeholder="Add barcode" aria-label="Barcode"></div>`).join('')
+  + iadd('add-bar', 'Add barcode'), 'Scans and search find the item by any of these.');
 const itemSkuPage = v => icard('', ifr('Main', `<input class="in" data-alt="main" value="${escapeHtml(v.sku)}" placeholder="Add SKU" aria-label="Main SKU">`), 'Receipts show this one.', ' r')
   + icard('Other SKUs', v.alts.map((s, i) => `<div class="fr wide"><input class="in" data-alt="${i}" value="${escapeHtml(s)}" placeholder="Add SKU" aria-label="Other SKU"></div>`).join('')
   + iadd('add-alt', 'Add SKU'), "A supplier's name for it, a nickname. Search and scans find the item by these too.");
@@ -415,7 +422,7 @@ function itemVariantPage(v) {
     + icard('', [
       !E.track || made ? '' : v.fresh ? ifr('Opening stock', iqty('data-v="stock"', v.stock)) : ifr('In stock', ionHand(v), true),
       iskuRow(v),
-      ifr('Barcode', vin('barcode', 'inputmode="numeric" placeholder="Add barcode"')),
+      ibarRow(v),
     ].join(''), '', ' r')
     + (E.variants.length > 1 ? icard('', iadd('del-variant', 'Remove variant', ' red')) : '');
 }
@@ -507,21 +514,28 @@ function saveItem() {
   // Item Save writes the catalog (owner's go for components, 2026-10-20): each variant is a product row, a family adds a
   // group; a dropped variant is archived, never deleted; a new one's Opening stock is an 'opening' movement.
   const name = E.name.trim(), fam = E.variants.length > 1, C = E.component && !fam;
-  // one SKU, one item (owner 2026-10-26): a scan or a receipt line has to land on exactly one
-  const mine = new Set(E.variants.map(v => v.id)), taken = new Map();
-  state.products.forEach(p => { if (!p.archived && !mine.has(p.id)) skusOf(p).forEach(s => taken.set(s.toLowerCase(), [p.id, p.name])); });
-  for (const v of E.variants) for (const s of skusOf({ sku: v.sku, aliases: v.alts })) {
-    const [id, who] = taken.get(s.toLowerCase()) || [];
-    if (id && id !== v.id) { showToast(`${who} already has the SKU ${s}`); return; }
-    taken.set(s.toLowerCase(), [v.id, fam ? v.name.trim() : name]);
-  }
+  // one SKU, one item (owner 2026-10-26), and one barcode, one item (2026-11-04): a scan or a receipt line has to land on exactly one
+  const mine = new Set(E.variants.map(v => v.id));
+  const clash = (word, of, vOf, key) => {
+    const taken = new Map();
+    state.products.forEach(p => { if (!p.archived && !mine.has(p.id)) of(p).forEach(s => taken.set(key(s), [p.id, p.name])); });
+    for (const v of E.variants) for (const s of vOf(v)) {
+      const [id, who] = taken.get(key(s)) || [];
+      if (id && id !== v.id) return `${who} already has the ${word} ${s}`;
+      taken.set(key(s), [v.id, fam ? v.name.trim() : name]);
+    }
+  };
+  const bad = clash('SKU', skusOf, v => skusOf({ sku: v.sku, aliases: v.alts }), s => s.toLowerCase())
+    || clash('barcode', barcodesOf, v => barcodesOf({ altBarcodes: v.bars }), s => s);
+  if (bad) { showToast(bad); return; }
   const was = new Map(state.products.map(p => [p.id, p])), old = catalogItems().find(it => it.id === E.id);
   const gid = fam ? (groupById(E.id) ? E.id : old?.members[0]?.groupId || newId()) : '';
   const who = currentStoreInfo().cashier, staffId = state.user?.id || '', moves = [];
   const rows = E.variants.map(v => {
     const base = was.get(v.id) || {}, made = C ? [] : v.madeFrom.filter(m => was.has(m.id) && Number(m.qty) > 0)   // a 0 amount drops the part
       .map(m => ({ id: m.id, qty: Math.max(stepFor(was.get(m.id)), roundQty(was.get(m.id), m.qty)) }));
-    const row = stampRow(normalizeProduct({ ...base, id: v.id, name: fam ? v.name.trim() : name, sku: v.sku.trim(), barcode: v.barcode.trim(),
+    const bars = [...new Set(barcodesOf({ altBarcodes: v.bars }))];   // no repeats; the first is `barcode`
+    const row = stampRow(normalizeProduct({ ...base, id: v.id, name: fam ? v.name.trim() : name, sku: v.sku.trim(), barcode: bars[0] || '', altBarcodes: bars.slice(1),
       aliases: [...new Map(skusOf({ aliases: v.alts }).filter(s => s.toLowerCase() !== v.sku.trim().toLowerCase()).map(s => [s.toLowerCase(), s])).values()],   // no repeats, not the main one again
       cost: v.cost, price: C ? null : v.price, marginMode: E.marginMode, marginValue: C || askedPrice(v) ? 0 : marginFromPrice(v.cost, v.price, E.marginMode),
       groupId: fam ? gid : base.groupId || '', folders: E.catIds, folder: E.catIds[0] || '', unit: E.unit, soldBy: E.soldBy,

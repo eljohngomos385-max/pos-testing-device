@@ -3357,6 +3357,7 @@ a.secondary-btn { text-decoration: none; }
 .sc-txt span { color: var(--ink-secondary); font-size: 13px; }
 .sc-q { flex: none; display: flex; align-items: center; border-radius: var(--r-input); background: var(--rl-soft); }
 .sc-q button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer; touch-action: manipulation; }
+.sc-q button:disabled { opacity: .3; cursor: default; }   /* a count at 0: − has nowhere to go */
 .sc-q .num { min-width: 24px; text-align: center; font-weight: 550; }
 .catalog-wrap:has(> .vsheet.open) .search-wrap:not(.vs-search) { display: none; }
 .catalog-wrap:has(> .vsheet.open) .vs-search { display: flex; }
@@ -7902,9 +7903,9 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 /* the lists keep their boxes on phone and tablet (owner 2026-10-17: "without its container ... it just looks bad ... add it back", phone too); the boxless iOS rows are gone */
 /* iOS 26 Contacts (owner 2026-10-17, phone copy): ☰ a round glass button, the list's name centred, search a glass pill
    at the bottom with + a glass circle beside it; the kinds switch is gone, the Items title opens it as a menu */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), .lv .find::before, .lv :is(#itemsAdd, #newCustomerBtn) {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), .lv .find::before, .lv :is(#itemsAdd, #newCustomerBtn) {
   border: 0; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack) { width: 44px; height: 44px; border-radius: 50%; }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan) { width: 44px; height: 44px; border-radius: 50%; }
 .lv .page { padding-top: var(--head-y); margin-top: 0; }
 .lv .o-rail { padding-top: 8px; margin-top: 0; }   /* + .ov's own top (0 phone, 8 iPad) = --head-y */   /* the head 8 under the clock: Sell's ☰ line (.catalog's 8), every page's ☰ / ‹ in the same spot (owner 2026-10-18) */
 .lv .head:has(> .ph-ttl.st-ttl) { position: static; align-items: center; }
@@ -7951,21 +7952,21 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 /* Customers' + and Start shift wear it too (owner 2026-10-18: "roughly around the same treatment"), and picking's Refund ₱X (owner 2026-10-19) */
 .lv .o-top #orderRefund.primary { position: relative; border-radius: 999px; padding: 0 18px; }
 :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab) { -webkit-backdrop-filter: none; backdrop-filter: none; }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn), :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) {   /* liquid glass press, app.js sets --lg-* */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn), :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) {   /* liquid glass press, app.js sets --lg-* */
   touch-action: none; transition: transform .9s var(--lg-spring), background-color .2s, opacity .18s;   /* opacity: Sell's ☰ fades with the drawer */
   /* one transform at rest and pressed, the drag's angle kept after release: the spring wobbles along the way it was pulled (owner 2026-10-18) */
   transform: translate(var(--lg-x, 0px), var(--lg-y, 0px)) rotate(var(--lg-a, 0rad)) scale(calc(1 + var(--lg-p, 0) + var(--lg-s, 0)), calc(1 + var(--lg-p, 0) - var(--lg-s, 0) / 2)) rotate(calc(-1 * var(--lg-a, 0rad)));
   --lg-spring: linear(0, .076, .268, .521, .786, 1.021, 1.199, 1.307, 1.346, 1.326, 1.263, 1.177, 1.085, 1.002, .937, .897, .881, .886, .906, .935, .967, .996, 1.019, 1.034, 1.041, 1.04, 1.034, 1.024, 1.013, 1.002, .994, .989, .986, .986, .988, .991, 1); }   /* a damped spring: lets go with a small jiggle (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack) > *, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab) > *, #catalogSearchRow > #sidebarToggle > *, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
-:where(.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)) { position: relative; z-index: 1; }   /* swells over the search, not under it (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack)::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"])::after {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan) > *, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab) > *, #catalogSearchRow > #sidebarToggle > *, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
+:where(.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan)) { position: relative; z-index: 1; }   /* swells over the search, not under it (owner 2026-10-18) */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan)::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"])::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .4s;
   background: radial-gradient(circle at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .35), rgb(255 255 255 / 0) 70%); }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan).lg-on, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on {
   transition-duration: .15s; transition-timing-function: ease-out; --lg-p: .08; }
 #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on { --lg-p: .01; }   /* the search swells 3px, as Messages' (owner 2026-10-18 photos) */
 #catalogSearchRow > .search-wrap:not(.vs-search)::after { z-index: 1; border-radius: 999px; background: radial-gradient(circle 40px at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .3), rgb(255 255 255 / 0)); }   /* a hand-sized light, not one as wide as the bar */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack).lg-on::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on::after { opacity: 1; transition-duration: .1s; }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan).lg-on::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on::after { opacity: 1; transition-duration: .1s; }
 .lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* the last row clears + */
 /* SHARED FROST = "frost top" (owner 2026-10-30: "like the Reports page or the Items list", no hard edge anywhere). A page whose rows scroll runs up
    under its head and the clock; the rows slide behind a soft frost that fades down into them (iOS 26's scroll edge). At rest the
@@ -8637,6 +8638,13 @@ body.qs-on.qs-price .view-items .cols > :nth-child(4) { display: none; }
 .qs-tickbar .qs-next span + span::before { content: '·'; margin-right: 8px; }
 /* the Sell bar's size (.ph-bar), so the two read as one thing (owner 2026-10-13) */
 @media (max-width: 720px) { .qs-tickbar { bottom: var(--ph-b); width: min(100% - 48px, 260px); } .qs-tickbar button { font-size: 15px; } }
+/* its scan (owner 2026-11-04): a glass circle beside the search, only while on; the camera covers the Items list and the bar
+   rides over it, where Sell's cart bar does (pos-stock.js qsScanRead) */
+body:not(.qs-on) .lv .head > #qsScan { display: none; }
+.lv .head > #qsScan { flex: none; display: grid; place-items: center; padding: 0; color: var(--ink); }
+#qsScan .ic { width: 18px; height: 18px; }
+body:has(#itemsView > #scanSheet.open) #qsTickbar { z-index: 100; }
+@media (min-width: 721px) { body:has(#qsTickbar:not([hidden])) #itemsView > .scan-sheet .scan-card { bottom: calc(var(--bar-h) + 28px + env(safe-area-inset-bottom, 0px)); } }   /* iPad Full screen: the card sits on the bar, as on the phone */
 
 /* QR codes (pos-qr.js, from qr-lab): Fulfilment types' rows; the name opens the table, the switch stays a switch */
 .view-qr .qr-row, #payTypesList .qr-row, #fulTypesList .qr-row { cursor: pointer; }   /* Payment types' rows and your own fulfilment types open their page too */

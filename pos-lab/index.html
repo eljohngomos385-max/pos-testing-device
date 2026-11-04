@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=705" />
+  <link rel="stylesheet" href="styles.css?v=709" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
   <div id="app" class="sidebar-collapsed">
@@ -323,6 +323,8 @@
                   <svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
                 </button>
               </section>
+              <!-- Adjust stock / price only (owner 2026-11-04): the camera picks items, +1 per read (pos-sell.js openBarcodeScanner, pos-stock.js qsScanRead) -->
+              <button class="sq cta-2" id="qsScan" aria-label="Scan barcode" title="Scan barcode"><svg class="ic" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M11 8v8M15 8v8M19 8v8"/></svg></button>
               <button class="fab cta" id="itemsAdd" aria-label="New item" title="New item"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
             </div>
             <section class="card list">
@@ -981,21 +983,21 @@
   <script src="sales-math.js?v=29"></script>
   <script src="data-store.js?v=55"></script>
   <script src="data.js?v=34"></script>
-  <script src="bo-model.js?v=142"></script>
+  <script src="bo-model.js?v=143"></script>
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=54"></script>
   <script src="drawer.js?v=1"></script>
-  <script src="pos-core.js?v=69"></script>
-  <script src="pos-sell.js?v=136"></script>
+  <script src="pos-core.js?v=71"></script>
+  <script src="pos-sell.js?v=138"></script>
   <script src="pos-checkout.js?v=50"></script>
   <script src="pos-orders.js?v=52"></script>
-  <script src="pos-items.js?v=81"></script>
+  <script src="pos-items.js?v=82"></script>
   <script src="pos-customers.js?v=48"></script>
   <script src="pos-settings.js?v=45"></script>
   <script src="pos-pin.js?v=15"></script>
   <script src="pos-shift.js?v=52"></script>
-  <script src="pos-stock.js?v=22"></script>
+  <script src="pos-stock.js?v=27"></script>
   <script src="pos-qr.js?v=3"></script>
-  <script src="app.js?v=290"></script>
+  <script src="app.js?v=296"></script>
 </body>
 </html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Breakdown rows lab</title>
+<!-- Reports' Breakdown (and Shift's By method) rows: how the count, the minus and the ₱0.00 rows read (owner 2026-10-30,
+     discussion, not ported). Same day in every card. Sizes and colours are the app's computed ones (phone, styles v692). -->
+<style>
+:root { --page: #F2F2F2; --card: rgb(255 255 255 / .7); --card-shadow: 0 1px 4px rgb(0 0 0 / .06), inset 0 1px 0 rgb(255 255 255 / .8);
+        --ink: #303030; --ink-2: #616161; --ink-3: #8C8C8C; --ink-4: #B5B5B5; --line: #E1E1E1; --danger: #FF3B30; --r: 14px;
+        --good: #1F8A4C; --bad: #C2410C; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #121212; --card: rgb(18 18 18 / .7); --card-shadow: 0 1px 4px rgb(0 0 0 / .3), inset 0 1px 0 rgb(255 255 255 / .1);
+  --ink: #FFFFFF; --ink-2: rgb(255 255 255 / .7); --ink-3: rgb(255 255 255 / .45); --ink-4: rgb(255 255 255 / .28); --line: rgb(255 255 255 / .08);
+  --danger: #FF453A; --good: #4ADE80; --bad: #FB923C; } }
+* { box-sizing: border-box; margin: 0; }
+body { font: 16px/1.4 Inter, -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; letter-spacing: -.15px; background: var(--page); color: var(--ink); padding: 28px 16px 64px; }
+main { max-width: 1120px; margin: 0 auto; }
+h1 { font-size: 24px; font-weight: 700; }
+.lead { color: var(--ink-2); margin-top: 6px; max-width: 620px; font-size: 15px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 28px 22px; margin-top: 26px; }
+.tag { font-size: 13px; font-weight: 650; color: var(--ink); margin: 0 0 2px 4px; }
+.tag.now { color: var(--bad); }
+.why { font-size: 13px; color: var(--ink-3); margin: 0 0 4px 4px; min-height: 36px; }
+
+/* the app's card: title 14 grey, glass card r14, rows 48 tall, padding 16, word grey 16, money dark 15 tabular */
+.fc-t { font-size: 14px; font-weight: 400; color: var(--ink-3); margin: 12px 17px 6px 13px; }
+.card { background: var(--card); border-radius: var(--r); box-shadow: var(--card-shadow); }
+.fr { position: relative; display: flex; align-items: center; gap: 12px; height: 48px; padding: 6px 16px; }
+.fr + .fr::before { content: ''; position: absolute; top: 0; left: 16px; right: 0; border-top: 1px solid var(--line); }
+.lb { flex: 1; min-width: 0; color: var(--ink-2); white-space: nowrap; }
+.lb small { font-size: inherit; color: var(--ink-3); }
+.v { color: var(--ink); font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.net .lb, .net .v { font-weight: 700; }
+.n { width: 2em; margin-right: 10px; text-align: right; color: var(--ink-3); font-size: 15px; font-variant-numeric: tabular-nums; }   /* B: the count's own column */
+.zero :is(.lb, .v) { color: var(--ink-4); }   /* A: nothing happened, so it reads quiet */
+.red { color: var(--danger); }
+.v.col { min-width: 6.5em; text-align: right; }   /* B: the money a fixed column, so the counts line up */
+</style>
+</head>
+<body>
+<main>
+  <h1>Breakdown rows</h1>
+  <p class="lead">Same day in every card: 1 void, 2 refunds, no discount. Shift's By method card uses the same rows.</p>
+  <div class="grid" id="grid"></div>
+</main>
+<script>
+// one day: gross, the three take-offs (count, amount), net
+const D = { gross: 2409.50, voids: [1, 1941.50], refunds: [2, 120.00], discounts: [0, 0] };
+const net = D.gross - D.voids[1] - D.refunds[1] - D.discounts[1];
+const peso = n => '₱' + Math.abs(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const row = (lb, v, cls = '', n = '') => `<div class="fr ${cls}"><span class="lb">${lb}</span>${n}<span class="v${n ? ' col' : ''}">${v}</span></div>`;
+const takes = [['Voids', D.voids], ['Refunds', D.refunds], ['Discounts', D.discounts]];
+
+const V = [
+  ['Now', 'What the app shows today.', 'now', () => takes.map(([w, [c, a]]) =>
+    row(w + (c ? ` <small>· ${c}</small>` : ''), a ? '−' + peso(a) : peso(0)))],
+  ['A · Quiet zeros', 'A line where nothing happened goes light grey, so the eye lands on what did.', '', () => takes.map(([w, [c, a]]) =>
+    row(w + (c ? ` <small>· ${c}</small>` : ''), a ? '−' + peso(a) : peso(0), a ? '' : 'zero'))],
+  ['B · Count column', 'The count gets its own grey column, like By method\'s %.', '', () => takes.map(([w, [c, a]]) =>
+    row(w, a ? '−' + peso(a) : peso(0), '', `<span class="n">${c || ''}</span>`))],
+  ['C · Brackets', 'Money taken off sits in brackets, as on a printed report. No minus sign.', '', () => takes.map(([w, [c, a]]) =>
+    row(w + (c ? ` <small>· ${c}</small>` : ''), a ? `(${peso(a)})` : peso(0)))],
+  ['D · Red take-offs', 'Money taken off is red.', '', () => takes.map(([w, [c, a]]) =>
+    row(w + (c ? ` <small>· ${c}</small>` : ''), a ? `<span class="red">−${peso(a)}</span>` : peso(0)))],
+  ['E · B + A', 'Count column and quiet zeros together. My pick.', '', () => takes.map(([w, [c, a]]) =>
+    row(w, a ? '−' + peso(a) : peso(0), a ? '' : 'zero', `<span class="n">${c || ''}</span>`))],
+];
+
+document.getElementById('grid').innerHTML = V.map(([name, why, cls, body]) => `<section>
+  <p class="tag ${cls}">${name}</p><p class="why">${why}</p>
+  <h3 class="fc-t">Breakdown</h3>
+  <div class="card">${row('Gross sales', peso(D.gross))}${body().join('')}${row('Net sales', peso(net), 'net')}</div>
+</section>`).join('');
+</script>
+</body>
+</html>
