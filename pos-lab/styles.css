@@ -8410,7 +8410,7 @@ body.hairlines .lv :is(.rp-body, #shiftBody, .sh-body, #shiftPastBody) .card.fc 
    the item editor's switch (.sw). The rows a printer doesn't use are [hidden]. */
 .lv .head:has(> .st-ttl) { position: relative; align-items: center; }   /* Settings, Shift, Reports: a title, no search (owner 2026-10-10) */
 .st-ttl { position: absolute; inset: 0; display: grid; place-content: center; margin: 0; pointer-events: none; font-size: 16px; font-weight: 500; letter-spacing: -.01em; }   /* centred on the page, ☰ beside it (owner 2026-10-09) */
-.st-page .fr[hidden], .st-prn[hidden], .lv .st-page[hidden] { display: none; }   /* .st-page: Settings, Payment types (+ Add), one choice's ticks */
+.st-page .fr[hidden], .st-prn[hidden], .lv .st-page[hidden], .lv .st-page :is(.card, .fc-t)[hidden] { display: none; }   /* .st-page: Settings, Payment types (+ Add), one choice's ticks */
 .lv .st-page .fr.nav { grid-template-columns: minmax(0,1fr) auto; }
 .st-save { position: relative; margin-left: auto; }   /* Add payment type's Save: right of the centred title, above it */
 .st-save:disabled { opacity: .35; pointer-events: none; }   /* no name yet: greyed like checkout's Complete sale */

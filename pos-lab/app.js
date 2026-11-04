@@ -1228,10 +1228,11 @@ function attachEvents() {
   bindPinPad();   // the sign-in and the manager's PIN (pos-pin.js)
 
   // ---- POS Settings ----
-  $('#settingsView')?.addEventListener('click', (e) => {   // a choice row opens its page of ticks
-    const b = e.target.closest('[data-pick]');
-    if (b) openPick(b.dataset.pick);
+  $('#settingsView')?.addEventListener('click', (e) => {   // a group row opens the group, a choice row its page of ticks
+    const b = e.target.closest('[data-pick]'), s = e.target.closest('[data-sec]');
+    if (b) openPick(b.dataset.pick); else if (s) openSec(s.dataset.sec);
   });
+  $('#setSecBack')?.addEventListener('click', () => openSec(''));
   $('#posPrintOnSale')?.addEventListener('change', persistPosSettings);
   $('#posPrintCut')?.addEventListener('change', persistPosSettings);
   $('#sellRows').addEventListener('change', (e) => setSellLayout(e.target.checked ? 'rows' : 'list'));

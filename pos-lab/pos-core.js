@@ -923,7 +923,7 @@ function switchView(view) {
   if (view === 'checkout') railCheckout(true);
   else if (fromCheckout) railCheckout(false, view === 'sell');
   if (view === 'back-office') { window.open('backoffice.html', '_blank', 'noopener'); return; }
-  if (view === 'settings') { showStPage('settingsPage'); renderPosSettings(); return; }
+  if (view === 'settings') { showStPage('settingsPage'); openSec(''); renderPosSettings(); return; }
   if (view === 'orders') {
     // Always pull the latest from localStorage so a sale made in another tab
     // (or any state drift) shows up immediately.

@@ -50,6 +50,16 @@ function setShiftPick(patch) {
 }
 // Settings is a stack of pages in one view: the list, Payment types (and its Add), and one choice's ticks.
 function showStPage(id) { $$('.view-settings .st-page').forEach(p => { p.hidden = p.id !== id; }); }
+// The list opens on its groups (owner 2026-11-04, iPhone Settings): a group's row shows only that group's card under
+// its name, ‹ in place of ☰. '' = the groups. A choice's ticks and Payment types come back to the open group.
+function openSec(sec) {
+  $('#setTitle').textContent = sec ? $(`#settingsView [data-sec="${sec}"] .lb`).textContent : 'Settings';
+  $$('#settingsView [data-sec-of]').forEach(c => { c.hidden = c.dataset.secOf !== sec; });
+  $$('#settingsView .st-home').forEach(c => { c.hidden = !!sec; });
+  $('#setSecBack').hidden = !sec;
+  $('#settingsPage [data-act="open-sidebar"]').hidden = !!sec;
+  $('#settingsView').scrollTop = 0;
+}
 // One choice as its own page (owner 2026-10-15, "the Facebook route", no pop-ups): the row's word on top, a tick
 // per choice. A tick sets it and the page stays, like iPhone Settings.
 let stPick = '';
