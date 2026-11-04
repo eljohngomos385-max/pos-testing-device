@@ -358,9 +358,9 @@ function refundAct(btn, o) {
 // acts: [[label, run]] under the groups (Asked on's Select all / none); a tap applies the filter, closes, then runs
 function openFilterSheet(btn, groups, cur, def, apply, acts = []) {
   const pick = { ...cur }, { veil, m, close } = openSheet(btn, `<div class="fs-top">
-    <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button>
     <h2 id="fsTitle">Filters</h2>
-    <button type="button" class="fs-ok cta-2" aria-label="Apply filters"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg></button>
+    <button type="button" class="fs-ok cta-2" aria-label="Apply filters"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></button>
     </div><div class="fs-body"></div><button type="button" class="fs-clear cta-2">Clear Filters</button>`), body = m.querySelector('.fs-body');
   const same = (x, y) => JSON.stringify([].concat(x).sort()) === JSON.stringify([].concat(y).sort());   // a list's order never counts
   const differs = (a, b) => Object.keys(def).some(k => !same(a[k], b[k]));
@@ -398,7 +398,7 @@ function openActionSheet(btn, title, items, cls = 'half') {
   const cards = [[]];
   items.forEach((it, i) => it === '-' ? cards.push([]) : cards.at(-1).push(`<button type="button" data-i="${i}" class="${it.red ? 'red' : ''}${it.cur ? ' cur' : ''}"${it.cur ? ' aria-current="true"' : ''}${it.off ? ' disabled' : ''}>${escapeHtml(it.label)}</button>`));
   const { veil, close } = openSheet(btn, `<div class="fs-top">
-    <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button>
     <h2 id="fsTitle">${escapeHtml(title)}</h2><i></i></div><div class="fs-body">${cards.filter(c => c.length).map(c => `<div class="fs-rows">${c.join('')}</div>`).join('')}</div>`, cls);
   veil.addEventListener('click', e => {
     const b = e.target.closest('[data-i]');

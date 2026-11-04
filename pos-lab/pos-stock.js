@@ -55,7 +55,7 @@ function qsCap(p, n) {
 
 // ---------- drawing ----------
 const QS_IC = {
-  back: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
+  back: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg>',
   updown: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>',
 };
 function qsBuild() {

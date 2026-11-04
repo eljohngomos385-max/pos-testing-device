@@ -56,6 +56,7 @@
   --r-card: 4px;
   --r-card-lg: 6px;
   --r-modal: 6px;
+  --circle-ic: 24px; --circle-sw: 2;   /* every icon in a round button (owner 2026-11-04, sizes measured off Apple: ‹ 11×18, ✕ 16.5, ✓ 18×17.6, ⋯ 18 wide; line 2, not Apple's 2.4: on a 3× phone 2.4 lands between pixels and blurs); shapes are the #i-* symbols in index.html */
   --row-h: 50px; --row-pic: 38px; --row-x: 16px;   /* the item row, one size: Sell list, Items (phone), cart, checkout (owner 2026-10-23); --row-x its sides, 12 on a phone as every list's */
   --r-pic: 5px;   /* every picture square but the Sell tiles: cart, item + category lists, not the editor's photo (Apple Music, owner 2026-10-22) */
 
@@ -7372,7 +7373,7 @@ body.light-theme {
   .rail-h .ph-back { display: grid; place-items: center; flex: none; width: 39px; border: 0; border-right: 1px solid var(--line); border-radius: calc(var(--rl-r) - 1px) 0 0 calc(var(--rl-r) - 1px);
                      background: none; color: var(--ink); }
   .rail-h .ph-back:active { background: var(--rl-hover); }
-  .rail-h .ph-back .ic { width: 24px; height: 24px; stroke-width: 1.8; }   /* every ‹ the ☰'s size (.lv .sq.back) */
+  .rail-h .ph-back .ic { width: var(--circle-ic); height: var(--circle-ic); stroke-width: var(--circle-sw); }   /* every ‹ one size (--circle-*) */
   .rail-h .c-row .cust { border-radius: 0; padding-left: 14px; }
   /* Items <-> cart page (owner 2026-10-13): the live page, no snapshots. The cart's grey fades in over the items; the items and Walk-in |
      Discount cards slide 60px and fade, from the right. Going in only: keyframes, so coming
@@ -7416,22 +7417,22 @@ body.light-theme {
   .es-ft:has(> .ph-bar) { padding-bottom: 0; }   /* the pill's own margin puts it on Check out's line */
   .esheet:not(.cust-sheet):not(:has(.es-kp)) { --es-bg: var(--canvas, var(--bg)); }
   .esheet:has(.es-kp) { --es-bg: var(--bg); }
-  /* Every phone ‹ Back / ‹ Cancel = checkout's Cancel scaled up to the ☰ (owner 2026-10-16): the box at 12,8, 44 tall,
-     a 24 grey chevron at x 16 like the ☰'s icon, then the word */
+  /* Every phone ‹ Back / ‹ Cancel = the ☰'s 44 glass circle at 12,8, a 24 grey chevron and no word (owner 2026-11-04: "just a
+     circle"); the word stays for screen readers. The iPad keeps its words. The ‹ itself = --back-* */
   .co-top { padding: var(--co-y) var(--co-m) 0 12px; }
-  .esheet .es-x { top: 8px; left: 12px; width: auto; height: 44px; }
-  :is(.co-cancel, .esheet .es-x) { display: inline-flex; align-items: center; gap: 5px; min-width: 0; padding: 0 16px 0 10px;
-                                   border-radius: 999px; color: var(--ink); font-size: 17px; font-weight: 560; line-height: 20px;
-                                   background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }   /* in the ☰'s glass, a pill for the word (owner 2026-10-19) */
-  :is(.co-cancel .co-ic, .esheet .es-x .ib) { width: 24px; height: 24px; stroke-width: 2; color: var(--ink-secondary); }
+  .esheet .es-x { top: 8px; left: 12px; width: 44px; height: 44px; }
+  :is(.co-cancel, .esheet .es-x) { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 0; height: 44px; padding: 0;
+                                   border-radius: 999px; color: var(--ink);
+                                   background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+  :is(.co-cancel .co-ic, .esheet .es-x .ib) { width: var(--circle-ic); height: var(--circle-ic); stroke-width: var(--circle-sw); color: var(--ink); }
+  :is(#checkoutBackText, .esheet .es-x .xl) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .esheet .es-x .ix { display: none; }
-  .esheet .es-x :is(.ib, .xl) { display: block; }
+  .esheet .es-x .ib { display: block; }
   .cust-sheet .es-ft { top: 8px; right: 10px; }
   .cust-sheet .es-ink { height: var(--bar-h); padding: 0 6px; }   /* the phone: Save at the top, across from Back */
   .cs-body { padding: 78px 16px 24px; }
   .cust-sheet .es-x { top: 8px; left: 4px; width: 32px; min-width: 0; padding: 0; justify-content: center; }   /* the item editor's ‹ (.sq.back) */
   .cust-sheet .es-x .xl { display: none; }
-  .cust-sheet .es-x .ib { width: 24px; height: 24px; stroke-width: 1.8; color: var(--ink); }
   .cs-h { top: 8px; padding-inline: 80px; font-size: 15px; line-height: 44px; }   /* 80 = Save (~70) + its 10 from the edge */
   .toast { bottom: calc(var(--bar-h) + 8px + var(--ph-b)); }   /* just over the bar (owner 2026-10-19: 16 sat too high) */
   body:has(#app.ph-cart) .toast { bottom: calc(var(--bar-h) + 68px + var(--ph-b)); }   /* over Walk-in | Discount */
@@ -7474,7 +7475,8 @@ body.light-theme {
 .lv .sq[hidden] { display: none; }   /* the display above beat [hidden]: Shift's Print showed with no shift (audit 2026-10-19) */
 .lv .sq:hover { background: var(--rl-hover); color: var(--ink); }
 .lv .sq.back { width: 32px; margin-left: -8px; border: 0; background: none; box-shadow: none; color: var(--ink); }   /* Back is a bare chevron, no box (rednote's) */
-.lv .sq:is(.back, .ty-edit-btn) .ic { width: 24px; height: 24px; stroke-width: 1.8; }   /* the trash drawn like Back's ‹ */
+.lv .sq.ty-edit-btn .ic { width: 24px; height: 24px; stroke-width: 1.8; }
+.lv .sq.back .ic { width: var(--circle-ic); height: var(--circle-ic); stroke-width: var(--circle-sw); }   /* every ‹ one size (--circle-*) */
 /* ☰ bare like Sell's (owner 2026-10-09): rednote's size and spot, search takes the room */
 .lv .sq:is([data-act="open-sidebar"], .sh-print, .ty-edit-btn) { width: 32px; border: 0; background: none; box-shadow: none; color: var(--ink); }
 .lv .sq[data-act="open-sidebar"] svg { width: 24px; height: 24px; }
@@ -9066,3 +9068,10 @@ body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
 :is(.lv .c-body, .view-items .list).swiping { position: relative; }   /* the tab beside sits next to the page */
 .lv .c-scroll:has(> .c-body.swiping) { overflow-x: hidden; }
 .tab-peek { position: absolute; pointer-events: none; }
+
+/* every round-button icon one size and line on the phone (owner 2026-11-04): a 24 box, a --circle-sw line, so each draws 16–18 like Apple's */
+@media (max-width: 720px) {
+  :is(#sidebarToggle, .lv .sq[data-act="open-sidebar"], #scanBtn, #cartMoreBtn, #orderMore, #customerPay, #customerEdit, #itemsFilter, #ordersFilter, #variantFilter, #itemFindFilter, #itemsAdd, #newCustomerBtn, #scanClose, #scanFlip, .fs-x, .fs-ok, #againX, #qrPrint, .side-x, .esheet .es-x) svg, #qsScan .ic { width: var(--circle-ic); height: var(--circle-ic); stroke-width: var(--circle-sw); }
+  :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) svg { width: calc(var(--circle-ic) * 5 / 6); height: calc(var(--circle-ic) * 5 / 6); stroke-width: calc(var(--circle-sw) * 6 / 5); }   /* All | My page and the gear: their drawings fill the whole 24 box, so a 20 box keeps them 18 wide and the line still --circle-sw */
+  #app .side-link[data-view="settings"] svg :is(.f, .d) { stroke-width: inherit; }
+}

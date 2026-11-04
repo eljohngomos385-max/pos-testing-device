@@ -487,7 +487,7 @@ function renderCatSheet(vm) {
 let addPick = null;   // { pick: 'item' | 'cat', was: the Items tab to come back to, had: keys on My page, sel: keys ticked }
 function openAddTile(btn) {
   const { veil, close } = openSheet(btn, `<div class="fs-top">
-    <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button>
     <h2 id="fsTitle">Add tile</h2><i></i></div><div class="fs-body"><div class="fs-rows"><button type="button" data-pick="item">Item</button><button type="button" data-pick="cat">Category</button><button type="button" data-pick="custom">Custom item</button></div></div>`, 'half');
   veil.addEventListener('click', e => {
     const pick = e.target.closest('[data-pick]')?.dataset.pick, m = veil.firstChild;
@@ -1112,7 +1112,7 @@ const ES_PANEL = { pickup: 't', delivery: 'a' };          // the types that ask 
 const ES_SC = { senior: 'Senior', pwd: 'PWD' };
 const ES_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17].map(h => `${(h + 11) % 12 + 1}:00 ${h < 12 ? 'AM' : 'PM'}`);   // ponytail: fixed; the store's hours would set them
 const ES_IC = {
-  x: 'M6 6l12 12M18 6L6 18', trash: 'M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12', back: 'M15 5l-7 7 7 7', less: 'M6 12h12', more: 'M12 6v12M6 12h12', chev: 'M9 6l6 6-6 6',
+  x: 'M6 6l12 12M18 6L6 18', trash: 'M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12', less: 'M6 12h12', more: 'M12 6v12M6 12h12', chev: 'M9 6l6 6-6 6',
   del: 'M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7zM13 10l4 4M17 10l-4 4',
   pin: 'M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10zM12 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
 };
@@ -1409,7 +1409,7 @@ function esLine(sh) {
 }
 addEventListener('resize', () => $$('.esheet.open').forEach(esLine));
 // The panel's frame: ✕ / Back, the head over its list, the side (keys or a field), the foot. The shift's panel wears it too.
-const esFrame = (head, rows, side, foot, cls = '') => `<button type="button" class="es-x cta-2" data-close aria-label="Close">${esSvg('x', 'ix')}${esSvg('back', 'ib')}<span class="xl">Back</span></button>
+const esFrame = (head, rows, side, foot, cls = '') => `<button type="button" class="es-x cta-2" data-close aria-label="Close"><svg class="ix" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg><svg class="ib" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg><span class="xl">Back</span></button>
     <div class="es-body${cls}"><div class="es-col"><div class="es-head">${head}</div><div class="es-list">${rows}</div></div>${side}</div>
     <div class="es-ft">${foot}</div>`;
 const esKeys = (dec) => `<div class="es-kp">${[...'123456789', dec ? '.' : '', '0', 'del'].map(k => !k ? '<span></span>'
