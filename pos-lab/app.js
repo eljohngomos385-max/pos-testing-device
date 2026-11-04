@@ -785,7 +785,8 @@ function attachEvents() {
     if (t.dataset.mq) return itemMadeSet(t);   // a Made from amount
     const E = itemEdit, f = t.dataset.f, head = $('#itemTitle');
     // a blank Price stays blank (asked at sale), not 0, and so does the Markup that follows it
-    const num = () => (t.value === '' && ['price', 'marginValue'].includes(f || t.dataset.v) ? null : Number(t.value) || 0);
+    const num = () => (t.value === '' && ['price', 'marginValue'].includes(f || t.dataset.v) ? null
+      : ['cost', 'price'].includes(f || t.dataset.v) ? Math.max(0, Number(t.value) || 0) : Number(t.value) || 0);   // a typed minus price or cost counts as ₱0, as it saves
     if (t.dataset.alt) { const v = codesOf(); if (t.dataset.alt === 'main') v.sku = t.value; else v.alts[t.dataset.alt] = t.value; return; }   // the SKU page (pos-items itemSkuPage)
     if (t.dataset.bar) { codesOf().bars[t.dataset.bar] = t.value; return; }   // the Barcodes page (itemBarPage)
     if (t.dataset.v) {   // the variant's page

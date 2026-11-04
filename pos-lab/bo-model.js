@@ -33,9 +33,9 @@ const { cent, unc, round2 } = salesMath();
    the two are never confused — SalesMath.unitMargin prints both, the one margin. */
 
 function priceFromMargin(cost, mode, value) {
-  const c = cent(cost);
-  if (mode === 'percent') return unc(Math.round(c * (1 + Number(value || 0) / 100)));
-  return unc(c + cent(value));
+  const c = cent(cost);   // a markup below -100% stops at a free item, never a minus price (owner 2026-11-04)
+  if (mode === 'percent') return unc(Math.max(0, Math.round(c * (1 + Number(value || 0) / 100))));
+  return unc(Math.max(0, c + cent(value)));
 }
 
 // The inverse: the user typed a price, so the margin has to follow. A percent is shown to 2 places;
@@ -81,8 +81,8 @@ const foldersOf = (p) => [...new Set([p && p.folder, ...((p && Array.isArray(p.f
 
 function normalizeProduct(raw) {
   const p = { ...PRODUCT_DEFAULTS, ...(raw || {}) };
-  p.cost = round2(p.cost);
-  p.price = p.price == null || p.price === '' ? null : round2(p.price);   // blank = asked at sale (the POS's askedPrice), never 0
+  p.cost = Math.max(0, round2(p.cost));   // never below ₱0: a minus price sold as "pay −₱50" (owner 2026-11-04)
+  p.price = p.price == null || p.price === '' ? null : Math.max(0, round2(p.price));   // blank = asked at sale (the POS's askedPrice), never 0
   p.stock = Number(p.stock) || 0;
   p.reorderPoint = Number(p.reorderPoint) || 0;
   p.sellOutOfStock = !!p.sellOutOfStock;
