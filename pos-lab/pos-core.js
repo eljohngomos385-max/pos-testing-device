@@ -583,6 +583,8 @@ function normalizeOrderItem(item = {}) {
     cost: Number.isFinite(cost) ? moneyValue(cost) : null,
     // A refund's line: its place on the sale (SalesMath.refundPart), so later refunds know what is left.
     ...(item.lineNo != null ? { lineNo: Math.max(0, Math.floor(toNumber(item.lineNo, 0))) } : {}),
+    ...(item.custom ? { custom: true } : {}),   // a custom item: a typed name and price, no item behind it (addCustomLine)
+    ...(item.noVat ? { noVat: true } : {}),   // sold without VAT (the Custom item sheet's switch); SalesMath leaves it out of the tax
     ...(item.note ? { note: String(item.note) } : {}),   // the line's note (the cart line's Note), on the slip under it
     // the line's modifier answers, a snapshot taken at the sale (plans/modifiers-build.md): kept as sold, so Reports'
     // Modifiers part, the receipt and a refund read the words and prices it was rung with

@@ -43,7 +43,7 @@ function toCells(products) {
 // The marks hold at the page size they were made at (myPageSize); another size (Tile size, a turned iPad) repacks by order.
 const myTiles = () => { try { const v = JSON.parse(HWPOS_STORE.ui.get('myPage', '[]')); return Array.isArray(v) ? v.filter(x => x && typeof x === 'object') : []; } catch { return []; } };
 const saveMyTiles = t => HWPOS_STORE.ui.set('myPage', JSON.stringify(t));
-const tileKey = t => t.cat ? 'c' + t.cat : t.g ? 'g' + t.g : 'p' + t.id;
+const tileKey = t => t.custom ? 'x' : t.cat ? 'c' + t.cat : t.g ? 'g' + t.g : 'p' + t.id;
 const liveFolders = () => state.folders.filter(f => f.id !== 'all' && !f.archived);
 const catProducts = id => state.products.filter(p => onTill(p) && (foldersOf(p).includes(id) || groupById(p.groupId)?.folder === id));
 function myPageCells() {
@@ -51,7 +51,8 @@ function myPageCells() {
   let carry = false;   // a hidden tile's page mark goes to the next one on show: its page stays a page
   const cells = myTiles().map((t, at) => {
     let c = null;
-    if (t.cat) { const f = liveFolders().find(x => x.id === t.cat), n = f && toCells(catProducts(f.id)).length; if (n) c = { kind: 'cat', folder: f, n }; }
+    if (t.custom) c = { kind: 'custom' };
+    else if (t.cat) { const f = liveFolders().find(x => x.id === t.cat), n = f && toCells(catProducts(f.id)).length; if (n) c = { kind: 'cat', folder: f, n }; }
     else if (t.g) { const g = groupById(t.g), n = g ? groupMembers(g.id).length : 0; if (n) c = { kind: 'group', group: g, memberCount: n }; }
     else { const p = state.products.find(x => x.id === t.id); if (p && onTill(p)) c = { kind: 'product', product: p }; }
     const br = keep && (!!t.br || carry);
@@ -172,6 +173,7 @@ function clampPage(cells = getSellCells()) {
 function renderSellCellHtml(cell) {
   if (cell.kind === 'add') return '<button type="button" class="product-card pc-add" data-add><b aria-hidden="true">+</b>Add tile</button>';
   const at = cell.at == null ? '' : ` data-at="${cell.at}"${cell.at === myLifted ? ' data-lifted' : ''}`, x = at && '<button type="button" class="pc-x" data-remove aria-label="Remove from My page"></button>';
+  if (cell.kind === 'custom') return `<div class="product-card" data-custom${at}>${x}<div class="pc-name">Custom item</div></div>`;   // opens the Custom item sheet
   if (cell.kind === 'cat') {   // a category: its items open in the variant sheet (openCatSheet)
     const f = cell.folder, art = tileArt(f);
     return `
@@ -269,7 +271,8 @@ function renderProducts() {
         </svg>
         <div class="nr-title">No items found</div>
         <div class="nr-sub">Try a different word or scan it</div>
-        ${state.query.trim() ? `<button class="text-btn nr-lost cta-3" type="button" data-act="lost-sale">Log “${escapeHtml(state.query.trim())}” as a lost sale</button>` : ''}
+        ${state.query.trim() ? `<button class="text-btn nr-lost cta-3" type="button" data-act="custom-item">Sell “${escapeHtml(state.query.trim())}” as a custom item</button>
+        <button class="text-btn nr-lost cta-3" type="button" data-act="lost-sale">Log “${escapeHtml(state.query.trim())}” as a lost sale</button>` : ''}
       </div>`;
     renderSellHeader();
     requestAnimationFrame(syncSellGridMetrics);
@@ -485,10 +488,16 @@ let addPick = null;   // { pick: 'item' | 'cat', was: the Items tab to come back
 function openAddTile(btn) {
   const { veil, close } = openSheet(btn, `<div class="fs-top">
     <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <h2 id="fsTitle">Add tile</h2><i></i></div><div class="fs-body"><div class="fs-rows"><button type="button" data-pick="item">Item</button><button type="button" data-pick="cat">Category</button></div></div>`, 'half');
+    <h2 id="fsTitle">Add tile</h2><i></i></div><div class="fs-body"><div class="fs-rows"><button type="button" data-pick="item">Item</button><button type="button" data-pick="cat">Category</button><button type="button" data-pick="custom">Custom item</button></div></div>`, 'half');
   veil.addEventListener('click', e => {
     const pick = e.target.closest('[data-pick]')?.dataset.pick, m = veil.firstChild;
     if (!pick || m.classList.contains('grow')) return;
+    if (pick === 'custom') {   // no list to pick from: the tile goes on the end of My page, once
+      close();
+      if (myTiles().some(t => t.custom)) return showToast('Already a tile');
+      saveMyTiles([...myTiles(), { custom: 1 }]);
+      return renderProducts();
+    }
     if (QS.on) { close(); return showToast('Finish quick stock first'); }   // one pick mode at a time on the Items page
     if (editorDirty()) { close(); return askLeave(true, () => addPickStart(pick)); }   // an item / modifier left open in Items with changes asks first
     // the sheet grows up to the full screen (owner 2026-10-21: "it goes up, it becomes a page"), then fades off the list under it
@@ -686,6 +695,23 @@ function addToCart(productId, via = 'other', fromScanCard = false, price, answer
     if (scanOpen()) scanHit(it.id, fromScanCard);   // the scanner's card says it: camera, search or a USB scanner
     else showDone(p.name);
   });
+}
+
+// A custom item (owner 2026-11-04): a name and a price typed at the sale, for what isn't in Items. A line of its own with no item
+// behind it, so no stock moves; Reports count every one as "Custom item" (SalesMath.itemKey).
+function addCustomLine(name, price, noVat) {
+  beginCart();
+  const it = { id: newId(), custom: true, name: name.trim() || 'Custom item', unit: 'pc', price, qty: 1, ...(noVat ? { noVat: true } : {}) };   // noVat: the sheet's VAT switch off
+  state.cart.push(it);
+  renderCart();
+  showDone(it.name);
+  const search = $('#searchInput');
+  if (search?.value) {   // from search's "Sell … as a custom item": done searching, like a scan
+    search.value = ''; state.query = '';
+    endSearch();
+    $('#searchClear')?.classList.remove('visible');
+    renderProducts();
+  }
 }
 
 function findProductByCode(rawCode) {
@@ -1131,7 +1157,7 @@ function discountOk(back, then) {
 const esFresh = () => { if (es) { const { kind, id } = es; es = null; openEditSheet(kind, id); } };
 
 function openEditSheet(kind, id, via) {
-  if (kind !== 'ful' && kind !== 'price' && kind !== 'measure' && kind !== 'mods' && !state.cart.length) { flashControl($('#cartDiscountBtn')); flashControl($('#side')); return; }
+  if (kind !== 'ful' && kind !== 'price' && kind !== 'custom' && kind !== 'measure' && kind !== 'mods' && !state.cart.length) { flashControl($('#cartDiscountBtn')); flashControl($('#side')); return; }
   const was = !!es;
   closeAgain(true);
   closeEditSheet(true);
@@ -1151,6 +1177,8 @@ function openEditSheet(kind, id, via) {
       beforeSc: sc, sc: { idNo: sc ? sc.idNo : '', name: sc ? sc.name : '' } };
   } else if (kind === 'price') {   // an item with no set price (addToCart): id = the product, d = the typed price
     es = { kind, id, via, d: '', pct: false };
+  } else if (kind === 'custom') {   // a custom item (owner 2026-11-04): id = the name typed so far (Sell's search), d = its price
+    es = { kind, name: id || '', d: '', pct: false, vat: true };
   } else if (kind === 'measure') {   // a measured item (addToCart): d = what's typed, w = by its unit (kg), else by ₱
     es = { kind, id, via, d: '', w: true };
   } else if (kind === 'mods') {   // an item's modifiers (addToCart): id = the product, via = { via, base, line? } (esModsClick)
@@ -1296,6 +1324,11 @@ function drawEditSheet() {
     head = `<p>Price for ${escapeHtml(state.products.find(p => p.id === o.id)?.name || 'item')}?</p><div class="es-hero">${esTyped(o)}</div>`;
     rows = '';
     side = `<div class="es-keys">${esKeys(true)}</div>`;
+  } else if (o.kind === 'custom') {   // the price ask with a name box between the amount and the keys
+    head = `<p>Custom item</p><div class="es-hero">${esTyped(o)}</div>`;
+    rows = `<input class="es-ta" id="esName" value="${escapeHtml(o.name)}" placeholder="Name" aria-label="Name" maxlength="60" autocomplete="off">`
+      + (taxOpts().rate ? `<label class="es-ta es-vat">${SalesMath.taxName({ ...state.settings, taxOnTop: !taxOpts().included })}<input type="checkbox" class="sw" id="esVat"${o.vat ? ' checked' : ''}></label>` : '');   // off = sold without VAT (owner 2026-11-04)
+    side = `<div class="es-keys">${esKeys(true)}</div>`;
   } else if (o.kind === 'measure') {
     // type the weight -> what it costs; type the ₱ -> how much that is. The unit price never changes (owner 2026-11-01)
     const p = state.products.find(x => x.id === o.id), u = escapeHtml(p.unit), q = esMeasureQty(o, p);
@@ -1345,7 +1378,7 @@ function drawEditSheet() {
   // bottom left follows what's being edited: the discount's keys -> clear it; nothing open -> remove the line
   const list = o.kind === 'ful' || o.kind === 'rd';   // Walk-in, Discount: Check out's pill is Done, Clear sits up top across from ‹ Back
   const clr = o.kind === 'rd' && !ES_SC[o.f] && (o.f ? +o.d : o.pick !== null) ? '<button type="button" class="es-x es-clr cta-2" data-sclr>Clear</button>' : '';
-  const ask = o.kind === 'price' || o.kind === 'measure';
+  const ask = o.kind === 'price' || o.kind === 'custom' || o.kind === 'measure';
   const left = list || ask || o.kind === 'mods' ? ''
     : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q cta-3" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
     : o.f ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm cta-3" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q cta-3" data-sclr>Clear</button>' : '';
@@ -1397,11 +1430,11 @@ function editSheetClick(e) {
   if (el('[data-mods]')) return openEditSheet('mods', esItem()?.productId, { line: o.id });
   if (el('[data-close]') && !(o.f && (o.kind === 'rd' || o.kind === 'ful'))) return closeEditSheet();   // on a Walk-in / Discount page, ‹ Back is the list
   if (o.kind === 'ful') return esFulClick(el);
-  if (o.kind === 'price') {   // our keys type it; Add puts the line on the cart at it, ✕ adds nothing
+  if (o.kind === 'price' || o.kind === 'custom') {   // our keys type it; Add puts the line on the cart at it, ✕ adds nothing
     if (el('[data-sk]')) { o.d = esPress(o.d, el('[data-sk]').dataset.sk, true, CASH_MAX); return drawEditSheet(); }
     if (!el('[data-apply]') || !(+o.d > 0)) return;
     closeEditSheet();
-    return addToCart(o.id, o.via, false, moneyValue(o.d));
+    return o.kind === 'custom' ? addCustomLine(o.name, moneyValue(o.d), !o.vat) : addToCart(o.id, o.via, false, moneyValue(o.d));
   }
   if (o.kind === 'measure') {   // [kg | ₱] swaps what the keys type; Add puts that much on the cart
     const p = state.products.find(x => x.id === o.id);

@@ -859,6 +859,7 @@ function saveCurrentReceipt(name = '', kind = 'saved') {
 function todayLines(items) {
   const gone = [], off = [], lines = [];
   for (const i of Array.isArray(items) ? items : []) {
+    if (i?.custom) { lines.push({ ...i }); continue; }   // a custom item keeps its typed name and price: there's no item to read today's from
     const p = i && typeof i === 'object' && state.products.find(x => x.id === (i.productId || i.id));
     if (!p) { if (i?.name) gone.push(i.name); continue; }
     if (!onTill(p)) off.push(`${p.name} is ${offWhy(p)}.`);

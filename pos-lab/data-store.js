@@ -842,7 +842,7 @@
     const productTotals = new Map();
     const keyOf = (order, item) => {
       const key = SM.itemKey(item);
-      if (!productTotals.has(key)) productTotals.set(key, { id: item.productId || item.id, sku: item.sku, name: item.name });
+      if (!productTotals.has(key)) productTotals.set(key, { id: item.productId || item.id, sku: item.sku, name: item.custom ? 'Custom item' : item.name });
       return key;
     };
     const ladder = SM.summarize(snapshot.orders, { ...win, by: keyOf });

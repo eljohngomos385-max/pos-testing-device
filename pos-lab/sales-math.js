@@ -315,24 +315,26 @@
   // `scRate`: the SC/PWD rate as a fraction, the store's built-in Senior / PWD discount (bo-model scRateOf); the law's 0.2 by default.
   function orderTotals(lines, cartDiscount, { rate = 0, included = true, currency, scPwd = false, scRate = 0.2 } = {}) {
     const step = coin(currency);
-    let g = 0, ld = 0;
+    let g = 0, ld = 0, xg = 0, xn = 0;   // xg / xn: the no-VAT lines' gross / after their own discount (a custom item sold without VAT)
     for (const l of lines || []) {
       const m = lineMoney(l.price, l.qty, l.discount, currency);
       g += C(m.lineGross); ld += C(m.lineDiscount);
+      if (l.noVat) { xg += C(m.lineGross); xn += C(m.lineTotal); }
     }
     const cd = discountCents(g - ld, cartDiscount, step);
     const r = Number(rate) || 0, bp = Math.round(r * 10000);   // the rate in basis points: 12% = 1200
+    const ex = xn && cd ? xn - roundTo(cd * xn, g - ld, step) : xn;   // the no-VAT part after its share of the cart discount
     const pack = (net, tax, ld, cd, scOff, sc) => ({
       subtotal: U(g), lineDiscountOff: U(ld), cartDiscountOff: U(cd), discount: U(g - net),
-      scPwdOff: U(scOff), vatExempt: U(sc && bp > 0 ? net : 0), scPwd: sc,
+      scPwdOff: U(scOff), vatExempt: U(bp > 0 ? (sc ? net : ex) : 0), scPwd: sc,
       netSales: U(net), tax: U(tax), salesBeforeTax: U(included ? net - tax : net),
       total: U(included ? net : net + tax),   // what the customer pays
       taxRate: r, taxIncluded: !!included,
     });
     const net = g - ld - cd;
-    const plain = pack(net, bp > 0 ? roundTo(net * bp, included ? 10000 + bp : 10000, step) : 0, ld, cd, 0, false);
+    const plain = pack(net, bp > 0 ? roundTo((net - ex) * bp, included ? 10000 + bp : 10000, step) : 0, ld, cd, 0, false);
     if (!scPwd) return plain;
-    const exVat = included && bp > 0 ? roundTo(g * 10000, 10000 + bp, step) : g;
+    const exVat = included && bp > 0 ? roundTo((g - xg) * 10000, 10000 + bp, step) + xg : g;   // a no-VAT line has no VAT to take out
     const scOff = roundTo(exVat * Math.round((Number(scRate) || 0) * 10000), 10000, step);
     const sc = pack(exVat - scOff, 0, 0, 0, scOff, true);
     return sc.total < plain.total ? sc : plain;
@@ -378,8 +380,8 @@
     const lineN = items.map((i, k) => (i.lineTotal != null ? C(i.lineTotal) : lineG[k]));
     const gross = split(m.gross, lineG);
     const net = split(m.net, lineN.some((x) => x > 0) ? lineN : lineG);
-    const tax = split(m.tax, net);
-    const exempt = split(m.exempt, net);
+    const tax = split(m.tax, net.map((x, k) => (items[k].noVat ? 0 : x)));   // a no-VAT line carries none of the VAT
+    const exempt = split(m.exempt, C(o.scPwdOff) > 0 ? net : net.map((x, k) => (items[k].noVat ? x : 0)));   // SC/PWD: the whole sale
     return items.map((item, k) => {
       const qty = Number(item.qty) || 0;
       const unitCost = item.cost != null ? Number(item.cost) || 0 : (costOf ? Number(costOf(item)) || 0 : 0);
@@ -589,8 +591,8 @@
       return { key: staffId || name || '—', staffId, name };
     };
   }
-  // One item's key on a line: its product, else the line's own id/sku/name.
-  const itemKey = (line) => (line && (line.productId || line.id || line.sku || 'n:' + line.name)) || null;
+  // One item's key on a line: its product, else the line's own id/sku/name. Every custom item (a typed name and price) is one: 'custom'.
+  const itemKey = (line) => (line && (line.custom ? 'custom' : line.productId || line.id || line.sku || 'n:' + line.name)) || null;
   // "Items sold": how many different items sold at least one unit (net of voids/refunds), over
   // summarize groups keyed by itemKey. Total units is the ladder's unitsSold, a different word.
   const itemsSold = (groups) => [...(groups && groups.values ? groups.values() : groups || [])].filter((g) => g.unitsSold > 0).length;
@@ -606,7 +608,7 @@
     const t = summarize(orders, { from, to, costOf, by: (o, i) => {
       if (!(o.items || []).length) return null;
       const k = itemKey(i);
-      names.set(k, i.name);
+      names.set(k, i.custom ? 'Custom item' : i.name);
       return k;
     } });
     return [...t.groups].map(([key, g]) => ({ key, name: names.get(key), ...g, share: share(g.netSales, t.netSales) }))
@@ -703,8 +705,9 @@
       swapped: swapOf(o),   // the part that swapped goods for goods (printer payRows' EXCHANGE row)
       footer: x && back ? FOOTER.exchange : FOOTER[quote ? 'quote' : o.status] || FOOTER.sale,
       // The SC/PWD 20% is already inside Discount: 'Incl.' so the slip never reads as a second discount.
-      scPwd: Number(o.scPwdOff) > 0
-        ? [{ label: 'Incl. SC/PWD discount', amount: U(C(o.scPwdOff)) }, ...(C(o.vatExempt) > 0 ? [{ label: 'VAT-exempt sales', amount: U(C(o.vatExempt)) }] : [])] : [],
+      // VAT-exempt sales: the SC/PWD sale, or a custom item sold without VAT (owner 2026-11-04).
+      scPwd: [...(Number(o.scPwdOff) > 0 ? [{ label: 'Incl. SC/PWD discount', amount: U(C(o.scPwdOff)) }] : []),
+        ...(C(o.vatExempt) > 0 ? [{ label: 'VAT-exempt sales', amount: U(C(o.vatExempt)) }] : [])],
       // Who it was given to, printed under Customer: ['Senior citizen ID' | 'PWD ID', 'ID no. · Name'], or null.
       scPwdId: Number(o.scPwdOff) > 0 && o.scPwd && o.scPwd.idNo
         ? [`${o.scPwd.kind === 'pwd' ? 'PWD' : 'Senior citizen'} ID`, `${o.scPwd.idNo} · ${o.scPwd.name}`] : null,

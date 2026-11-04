@@ -553,6 +553,7 @@ function attachEvents() {
       openLostSale({ text: state.query.trim(), reason: 'not-carried' });
       return;
     }
+    if (e.target.closest('[data-act="custom-item"]')) return openEditSheet('custom', state.query.trim());
     if (myEditing) {   // editing My page: × takes a tile off, any other tap ends it
       const x = e.target.closest('[data-remove]');
       if (x) removeMyTile(+x.closest('[data-at]').dataset.at); else myEdit(false);
@@ -561,6 +562,7 @@ function attachEvents() {
     const card = e.target.closest('.product-card, .vs-row');
     if (!card) return;
     if (card.hasAttribute('data-add')) return openAddTile(card);
+    if (card.hasAttribute('data-custom')) return openEditSheet('custom');
     if (card.dataset.cat) return openCatSheet(card.dataset.cat);
     // Group parent tile → open the variant picker modal
     if (card.dataset.groupId) { openVariantModal(card.dataset.groupId); return; }
@@ -890,11 +892,13 @@ function attachEvents() {
   $('#editSheet').addEventListener('click', editSheetClick);
   document.addEventListener('keydown', editKey);
   $('#editSheet').addEventListener('keydown', (e) => {   // Enter in the SC/PWD ID or Name, or a line's note, is its Apply
-    if (e.key !== 'Enter' || !e.target.closest('[data-scf], #esNote')) return;
+    if (e.key !== 'Enter' || !e.target.closest('[data-scf], #esNote, #esName')) return;
     e.preventDefault();
     editSheetClick({ target: $('#editSheet :is([data-apply], [data-done])') });
   });
   $('#editSheet').addEventListener('input', (e) => {   // the address, and a line's note, land on the cart as they're typed
+    if (e.target.id === 'esName') { es.name = e.target.value; return; }   // a custom item's name, kept over the keys' redraws
+    if (e.target.id === 'esVat') { es.vat = e.target.checked; return; }   // its VAT switch
     const line = e.target.id === 'esNote' && esItem();
     if (line) {
       line.note = e.target.value.replace(/\s+/g, ' ').trim();   // one line on the slip
@@ -1039,6 +1043,7 @@ function attachEvents() {
     // phone: the order ⋯'s half sheet (openActionSheet) in place of the pop-up, which sat over the lines (owner 2026-10-26)
     const show = matchMedia('(max-width: 720px)').matches ? (b, items) => openActionSheet(b, 'Sale', items) : (b, items) => openMenu(b, items, { w: 200, right: true });
     show(e.currentTarget, [
+      { label: 'Custom item', run: () => openEditSheet('custom') },
       { label: state.orderNote ? 'Edit note' : 'Add note', run: openOrderNote, off: empty },
       // A saved cart / quote is a draft beside the orders (pos-checkout saveDraft); an exchange can't be parked.
       { label: 'Save cart', run: () => openSaveReceiptModal('saved'), off: empty || !!state.exchange },
