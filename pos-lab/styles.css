@@ -9136,7 +9136,7 @@ body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
    magnifier (ring + a third heavier handle, shape in index.html), its placeholder grey, a soft wide shadow and a white rim where the grey
    hairline was. Sizes stay ours (owner: "the same size as before, but the same design"). Phone only */
 :is(.lv, #catalogSearchRow) { --top-ring: var(--glass-ring); --top-rim: transparent; --top-ink: var(--ink); --top-ph: var(--ink-tertiary); }
-body.light-theme :is(.lv, #catalogSearchRow) { --top-ring: 0 1px 6px rgb(0 0 0 / .035);   /* soft and faint, as Shopify's: the old one floated (owner 2026-11-06) */
+body.light-theme :is(.lv, #catalogSearchRow) { --top-ring: 0 1px 6px rgb(0 0 0 / .043);   /* soft and faint, as Shopify's: the old one floated; .035 blended in, .045 a bit much (owner 2026-11-06) */
   --top-rim: rgb(255 255 255 / .55); --top-ink: #000; --top-ph: #6E6E6E; }   /* rim about half as bright as before: Apple's measured on photo 161 */
 @media (max-width: 720px) {
   #catalogSearchRow > #sidebarToggle, #app .lv .head > .sq[data-act="open-sidebar"] { color: var(--top-ink); box-shadow: var(--top-ring), inset 0 0 0 .7px var(--top-rim); }
