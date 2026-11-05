@@ -581,8 +581,13 @@ const itemsWith = (kind, id, all = catalogItems()) => all.filter(it => it.member
 
 // A .kinds switch: the pill slides from the old tab to `key`'s, a ::before placed by --x / --w. Until the first switch (and
 // after a resize, which moves the tabs) the current tab paints its own background instead. Items and Reports use it.
+// A tab's exact spot in its switch: offsetLeft / offsetWidth round to whole px, so a 182.5 tab left the pill 1 off the edge (owner 2026-11-06)
+function tabBox(box, b) {
+  const o = box.getBoundingClientRect(), r = b.getBoundingClientRect(), k = box.offsetWidth / o.width || 1;   // k undoes a scale on the way in
+  return { x: (r.left - o.left) * k - box.clientLeft + box.scrollLeft, w: r.width * k };
+}
 function slidePill(box, attr, key) {
-  const place = b => { box.style.setProperty('--x', `${b.offsetLeft}px`); box.style.setProperty('--w', `${b.offsetWidth}px`); };
+  const place = b => { const { x, w } = tabBox(box, b); box.style.setProperty('--x', `${x}px`); box.style.setProperty('--w', `${w}px`); };
   const shown = box.offsetWidth > 0;   // on a hidden page nothing can be measured: the tab paints itself
   if (!shown) box.classList.remove('slid');
   else if (!box.classList.contains('slid')) { place(box.querySelector('.cur')); box.classList.add('slid'); box.offsetWidth; }   // start where it is, then move

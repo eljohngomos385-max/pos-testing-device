@@ -196,10 +196,10 @@ function attachEvents() {
     area.dataset.swipes = '';   // the ☰ swipe anywhere leaves it be: its first tab opens the menu itself
     const parts =() => [live, ...host.querySelectorAll(':scope > .tab-peek')];
     const pill = (to, f) => {   // the switch's pill follows, f of the way from the current tab to `to`'s
-      const box = o.box, a = box.querySelector('.cur'), b = box.querySelector(`[data-${o.attr}="${to}"]`) || a;
+      const box = o.box, a = tabBox(box, box.querySelector('.cur')), b = tabBox(box, box.querySelector(`[data-${o.attr}="${to}"]`) || box.querySelector('.cur'));
       box.classList.add('slid');
-      box.style.setProperty('--x', `${a.offsetLeft + (b.offsetLeft - a.offsetLeft) * f}px`);
-      box.style.setProperty('--w', `${a.offsetWidth + (b.offsetWidth - a.offsetWidth) * f}px`);
+      box.style.setProperty('--x', `${a.x + (b.x - a.x) * f}px`);
+      box.style.setProperty('--w', `${a.w + (b.w - a.w) * f}px`);
     };
     const at = (g, x) => parts().forEach(p => { p.style.transform = `translate3d(${x + (+p.dataset.at || 0) * g.step}px, 0, 0)`; });
     const land = () => {
