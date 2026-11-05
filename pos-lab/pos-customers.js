@@ -299,7 +299,9 @@ function renderReports(slide, peek) {
   const stat = (k, v) => `<div><span>${k}</span><b>${v}</b></div>`;
   // "Sales" inside the card, the date on its right (reports-top-lab option 1, owner 2026-10-15); a tap on the date comes back
   // to now. The number keeps 32px and steps down only when its characters would run past the card (--n).
-  body.innerHTML = `<section class="card fc"><div class="rp-ov"><div class="rp-per rp-ttl"><b>Sales</b><button type="button" class="rp-pl">${p.label}</button></div>
+  // a past period: Show Today over the Sales card's top right, outside it (owner 2026-11-06: out of the header, smaller)
+  const now = live ? '' : `<button type="button" class="rp-now cta-3">Show ${{ day: 'Today', week: 'This Week', month: 'This Month' }[unit]}</button>`;
+  body.innerHTML = `${now}<section class="card fc"><div class="rp-ov"><div class="rp-per rp-ttl"><b>Sales</b><button type="button" class="rp-pl">${p.label}</button></div>
       <div class="rp-big"><b class="num" style="--n:${peso(m.netSales).length}">${peso(m.netSales)}</b></div>
       <div class="rp-chart"><div class="rp-slide">${chart}</div></div>
       <div class="rp-stats num">${stat('Profit', !c ? '—' : Math.abs(c.grossProfit) < 1e6 ? peso(c.grossProfit) : short(c.grossProfit))}${stat('Orders', SalesMath.qtyText(orders))}${stat('Margin', c ? SalesMath.pctText(c.margin, c.salesBeforeTax, 0) : '—')}</div></div></section>`
@@ -311,10 +313,7 @@ function renderReports(slide, peek) {
     + icard('By method', pays.length ? pays.map(r => fr(escapeHtml(SalesMath.tenderLabel(r.k)), `${peso(r.v)} <small class="rp-tp">${SalesMath.pctText(SalesMath.share(r.v, all), all, 0)}</small>`)).join('') : none, '', ' r')
     + icard('Breakdown', ladder, '', ' r');
   if (peek) return;
-  // the header: Show Today on a past period; the ‹ date › bar that pins under it once the date scrolls away (reportsPin)
-  const now = $('.view-reports .rp-now');
-  now.hidden = live;
-  now.textContent = `Show ${{ day: 'Today', week: 'This Week', month: 'This Month' }[unit]}`;
+  // the header: the ‹ date › bar that pins under it once the date scrolls away (reportsPin)
   $('#reportsPin').innerHTML = `${arw(-1, 'Earlier', 'M15 18l-6-6 6-6')}<button type="button" class="rp-pl">${p.label}</button>${arw(1, 'Later', 'M9 18l6-6-6-6', live)}`;
   reportsPin();
   body.classList.remove('slide-l', 'slide-r');

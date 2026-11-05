@@ -7417,6 +7417,8 @@ body.light-theme {
   /* a list page (Discount, Walk-in, a cart line) is checkout's grey page (owner 2026-10-27); a keypad page stays white */
   .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))), .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) .es-card { background: var(--canvas, var(--bg)); }
   body.light-theme:has(.esheet.open:not(.cust-sheet)):not(:has(.esheet.open :is(.es-kp:not(.lk *), .es-body.ks:not(.lk)))) { background: var(--canvas); }
+  /* on the white keypad page the glass ✕ washed out: a plain grey round, as Apple's white sheets (owner 2026-11-06) */
+  body.light-theme .esheet:not(.cust-sheet):has(.es-kp:not(.lk *), .es-body.ks:not(.lk)) .es-card { --glass: var(--bg-soft); }   /* on the card: the light glass rule's :is(#side…) outranks the sheet; the ring stays, as every glass button (owner 2026-11-06) */
   .es-ft { border-top: 0; }
   .es-body { padding-inline: 20px; }   /* checkout's inset */
   .esheet:has(.es-body.fill, .es-ft > .ph-bar) { padding-bottom: 0; }   /* Walk-in / Discount: the list runs under the home bar, Done on Check out's line; a cart line's Done too */
@@ -8253,9 +8255,9 @@ body.light-theme .es-vat .sw:not(:checked) { background: var(--line-strong); }  
 .lv .kinds.rp-units.slid::before { top: 2px; bottom: 2px; height: auto; width: var(--w); transform: translateX(var(--x)); border-radius: 999px; background: var(--rl-track); box-shadow: var(--pill-ring); }
 /* the period over the number (Screen Time's, "Apple v3" owner 2026-10-15); a tap on the date comes back to now */
 .lv .rp-per { display: flex; margin-bottom: 4px; }   /* "Sales" to the number reads 14px apart, ink to ink (owner 2026-10-16) */
-/* the header on a past period: Show Today top-right; the ‹ date › bar (the blue rounds) that pins under it once the date
-   scrolls away (reportsPin) */
-.lv .head .rp-now { margin-left: auto; height: 36px; padding: 0 4px; color: var(--rl-bar); font-size: 15px; font-weight: 510; }
+/* a past period: Show Today over the Sales card's top right, outside it (owner 2026-11-06); the ‹ date › bar (the blue
+   rounds) pins under the header once the date scrolls away (reportsPin) */
+.lv .rp-body > button.rp-now { justify-self: end; height: 32px; margin: 4px 12px -16px 0; padding: 0 4px; color: var(--rl-bar); font-size: 13px; font-weight: 510; }   /* just over the card (owner 2026-11-06: "too floaty"); 4 + 32 - 16 + the 12 gap = the card's 32 room: it never moves; its end on the date's line inside */
 .lv .rp-pin { position: absolute; z-index: 5; top: 100%; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 8px; height: 44px;
   border-bottom: 1px solid var(--line); background: var(--canvas, var(--bg)); opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s; }
 .lv .rp-pin.on { opacity: 1; visibility: visible; }

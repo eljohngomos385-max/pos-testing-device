@@ -215,13 +215,14 @@ function openShift(start, extra) {
 // The phone (owner 2026-11-05): the keys open in their sheet with a blue ✓; ✓ slides them down and the step's button shows
 // in Start shift's spot on the Shift page, a tap on the amount brings them back. kd = keys down, up = slide them in on this draw.
 let shSheet = null;   // { step: 'start' | 'count' | 'result' | 'leave' | 'cash', v: typed, counts, shiftId, note, born, kd, up, dir + cat on 'cash' }
-function openShiftSheet(step) {
-  shSheet = { step, v: '0', counts: [], shiftId: shiftOf()?.id || null, note: '', born: performance.now(), kd: false, up: true };
+// On the phone the keys ride in with the page (owner 2026-11-06: their own slide after it read as "the numpad lags").
+function openShiftSheet(step, more) {
+  shSheet = { step, v: '0', counts: [], shiftId: shiftOf()?.id || null, note: '', born: performance.now(), kd: false, up: !shPh(), ...more };
   drawShiftSheet();
   $('#shiftSheet').classList.add('open');
   esLine($('#shiftSheet'));
 }
-const openCash = dir => { openShiftSheet('cash'); Object.assign(shSheet, { dir, cat: '', up: true }); drawShiftSheet(); };
+const openCash = dir => openShiftSheet('cash', { dir, cat: '' });
 function closeShiftSheet() { if (!shSheet) return; shSheet = null; $('#shiftSheet').classList.remove('open'); }
 const SH_ASK = { start: ['Starting cash?', 'Start shift'], count: ['Count the cash in the drawer', 'Next'], leave: ['Leave in drawer?', 'Close shift'] };
 const shCounted = () => shSheet.counts[shSheet.counts.length - 1];
