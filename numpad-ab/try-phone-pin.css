@@ -1,0 +1,10 @@
+/* Try-out, the middle ground (owner 2026-10-17): only the phone's checkout pins Complete sale / Done on Check out's
+   spot, as Check out's pill; the tablet and the sheets stay as they are. Loaded only by try-phone-pin.html */
+@media (max-width: 720px) {
+  .co-pay { position: relative; container-type: inline-size; }   /* the cash step's keypad query asks the pane, not the step: */
+  .co-step[data-step="cash"] { container-type: normal; }         /* a container step would be the button's box */
+  .co-step, .co-keyin { animation: none; }                       /* so would an animated transform */
+  .co-step > .co-btn, .co-keyin > .co-btn { position: absolute; z-index: 2; left: 50%; bottom: var(--ph-b); translate: -50% 0; grid-area: auto;
+    width: min(100% - 40px, 320px); height: var(--bar-h); margin: 0; border-radius: calc(var(--rl-r) + 2px); }
+  .co-stage { padding-bottom: calc(var(--bar-h) + 40px); }
+}

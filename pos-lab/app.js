@@ -1175,6 +1175,9 @@ function attachEvents() {
     updateChange();
   };
   $('#checkoutKeys')?.addEventListener('click', (e) => { const b = e.target.closest('[data-sk]'); if (b) cashKey(b.dataset.sk); });
+  // The phone (owner 2026-11-05): ✓ slides the keys' sheet down, Complete sale / Done shows; a tap on the amount brings them back
+  $('#checkoutKeysOk').addEventListener('click', () => keysDown($('#checkoutKeys'), () => { $('#checkoutKeys').classList.remove('es-dn'); $('#checkoutApp').classList.add('co-kd'); }));
+  $('#checkoutApp').addEventListener('click', (e) => { if (e.target.closest('#checkoutTotalDue, .co-read')) $('#checkoutApp').classList.remove('co-kd'); });
   document.addEventListener('keydown', (e) => {
     if (state.view !== 'checkout' || $('#checkoutKeyIn').hidden || $('[data-step="cash"]').hidden || $('#checkoutApp').classList.contains('is-done') || e.ctrlKey || e.metaKey || e.altKey) return;
     if (!/^[\d.]$|^Backspace$|^Enter$/.test(e.key)) return;

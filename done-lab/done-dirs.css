@@ -1,0 +1,87 @@
+/* Sale complete, four directions (owner 2026-11-05). <html data-dir="A".."D">; no data-dir = the page as pos-lab has it.
+   Every direction: the change sits where checkout's total sat, at its size and in its ink (--hero-y / --hero-fs / --hero-fw);
+   one accent (Check out's blue), no green; Print receipt / Show receipt / New sale are one family of capsules. */
+
+/* ---- shared ---------------------------------------------------------------------------------------------- */
+/* the number's top on the hero line: .co-col's padding, less the head drawn above it (--dn-head, per direction) */
+html[data-dir] .is-done .co-stage { align-content: start; }
+html[data-dir] #checkoutDone { --co-top-h: calc(var(--co-y) + 44px);
+  grid-template-columns: 1fr auto auto 1fr; grid-template-rows: var(--dn-row, auto); align-items: center; column-gap: 8px; row-gap: 0;
+  padding: max(0px, calc(var(--hero-y) - var(--co-top-h) - var(--dn-top-x, 0px) - var(--dn-head))) 0 0; }
+html[data-dir] #checkoutDone .co-mark { grid-area: 1 / 2; margin: 0; }
+html[data-dir] #checkoutDone .co-done-h { grid-area: 1 / 3; }
+html[data-dir] #checkoutDone .co-done-chg { grid-area: 2 / 1 / 3 / -1; display: flex; flex-direction: column; align-items: center; gap: 0; margin: 0; }
+html[data-dir] #checkoutDone .co-done-chg > :first-child { order: 2; margin-top: 12px; color: var(--ink-tertiary); font-size: 15px; font-weight: 500; }
+/* checkout's total, exactly (.co-hero) */
+html[data-dir] #checkoutDone .co-done-num { margin: 0; color: var(--ink); font-size: var(--hero-fs); font-weight: var(--hero-fw); letter-spacing: -.04em; line-height: 1; }
+html[data-dir] #checkoutDone .co-done-num.settled { color: var(--ink); }
+html[data-dir] #checkoutDone .co-done-acts { grid-area: 3 / 1 / 4 / -1; justify-self: center; margin-top: var(--hero-gap); max-width: 360px; gap: 10px; }
+/* the second buttons: the glass capsule of ‹ Back / Walk-in (cta-2), the main one Check out's (cta) */
+html[data-dir] #checkoutDone .co-done-acts .co-btn { height: 52px; border: 0; border-radius: 999px; }
+html[data-dir] #checkoutDone .co-done-acts .cta-2 { background: var(--cta2-bg); box-shadow: var(--cta2-ring); color: var(--cta2-ink);
+  -webkit-backdrop-filter: var(--cta2-blur); backdrop-filter: var(--cta2-blur); }
+html[data-dir] #checkoutDone .co-done-acts .co-rcpt-btn { display: none; }
+
+/* phone: New sale on Check out's spot, in its capsule (as Complete sale); Print | Show receipt under the number */
+@media (max-width: 720px) {
+  html[data-dir] #checkoutDone { --dn-top-x: var(--ph-top, 0px); }
+  html[data-dir] #checkoutDone .co-done-acts { animation: none; width: min(100%, 320px); }
+  html[data-dir] #checkoutDone .co-done-acts .co-btn { height: var(--bar-h); margin: 0; font-size: 15px; animation: co-rise .45s var(--co-ease) both; animation-delay: 440ms; }
+  html[data-dir] #checkoutDone .co-done-acts .co-rcpt-btn { display: flex; min-width: 0; max-width: none; }
+  html[data-dir] #checkoutDone #successNewSaleBtn { position: absolute; z-index: 2; left: 50%; bottom: var(--ph-b); translate: -50% 0;
+    width: min(100% - 48px, 260px); height: var(--bar-h); font-size: 17px; animation-delay: 520ms; }
+}
+
+/* ---- A · Quiet: a small blue tick beside "Sale complete", Change under the number ------------------------- */
+html[data-dir="A"] #checkoutDone { --dn-row: 26px; --dn-head: calc(var(--dn-row) + 22px); }
+html[data-dir="A"] .co-mark { width: 26px; height: 26px; border-radius: 50%; background: var(--cta-bg); box-shadow: var(--cta-shadow);
+  animation: dn-spring .5s cubic-bezier(.3, 1.6, .5, 1) both; }
+html[data-dir="A"] .co-mark::before { display: none; }
+html[data-dir="A"] .co-mark .m-c { display: none; }
+html[data-dir="A"] .co-mark .m-k { stroke: var(--cta-ink); stroke-width: 6.5; animation-delay: .25s; }
+html[data-dir="A"] .co-done-h { color: var(--ink-secondary); font-size: 17px; font-weight: 500; }
+html[data-dir="A"] #checkoutDone .co-done-chg { margin-top: 22px; }
+
+/* ---- B · Glow: "Sale complete" in Check out's blue, a blue light blooms behind the change and stays faint ---- */
+html[data-dir="B"] #checkoutDone { --dn-row: 22px; --dn-head: calc(var(--dn-row) + 24px); }
+html[data-dir="B"] .co-mark { width: 22px; height: 22px; animation: dn-spring .5s cubic-bezier(.3, 1.6, .5, 1) both; }
+html[data-dir="B"] .co-mark::before, html[data-dir="B"] .co-mark .m-c { display: none; }
+html[data-dir="B"] .co-mark .m-k { stroke: #4388F7; stroke-width: 7; animation-delay: .15s; }   /* lab: the middle stop of --cta-bg; a --cta-solid token when ported */
+html[data-dir="B"] .co-done-h { background: var(--cta-bg); -webkit-background-clip: text; background-clip: text; color: transparent; font-size: 17px; font-weight: 600; }
+html[data-dir="B"] #checkoutDone .co-done-chg { position: relative; margin-top: 24px; }
+html[data-dir="B"] #checkoutDone .co-done-chg::before { content: ''; position: absolute; z-index: -1; inset: -40% -30%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(67 136 247 / .22), rgb(67 136 247 / 0)); animation: dn-bloom 1.6s .2s var(--co-ease) both; }
+html[data-dir="B"] body:not(.light-theme) #checkoutDone .co-done-chg::before { opacity: .8; }
+
+/* ---- C · Big tick: one blue circle in Check out's finish says it; no heading; Change over the number -------- */
+html[data-dir="C"] #checkoutDone { --dn-head: calc(64px + 20px + 18px + 14px); }
+html[data-dir="C"] #checkoutDone .co-mark { grid-area: 1 / 2 / 2 / 4; justify-self: center; width: 64px; height: 64px; border-radius: 50%;
+  background: var(--cta-bg); box-shadow: var(--cta-shadow); animation: dn-spring .55s cubic-bezier(.3, 1.5, .5, 1) both; }
+html[data-dir="C"] .co-mark::before { background: none; box-shadow: 0 0 0 2px rgb(67 136 247 / .5); animation: co-pulse 1s .3s ease-out both; }
+html[data-dir="C"] .co-mark .m-c { display: none; }
+html[data-dir="C"] .co-mark .m-k { stroke: var(--cta-ink); stroke-width: 5; animation-delay: .3s; }
+html[data-dir="C"] #checkoutDone .co-done-h { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }   /* said to a screen reader only */
+html[data-dir="C"] #checkoutDone .co-done-chg { margin-top: 20px; }
+html[data-dir="C"] #checkoutDone .co-done-chg > :first-child { order: 0; height: 18px; margin: 0 0 14px; line-height: 18px; }
+
+/* ---- D · Plain: ink only (the tick drawn in ink, no circle), the buttons stacked as one block ---------------- */
+html[data-dir="D"] #checkoutDone { --dn-row: 24px; --dn-head: calc(var(--dn-row) + 22px); }
+html[data-dir="D"] .co-mark { width: 24px; height: 24px; animation: none; }
+html[data-dir="D"] .co-mark::before, html[data-dir="D"] .co-mark .m-c { display: none; }
+html[data-dir="D"] .co-mark .m-k { stroke: var(--ink); stroke-width: 6; animation-delay: .1s; }
+html[data-dir="D"] .co-done-h { color: var(--ink); font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+html[data-dir="D"] #checkoutDone .co-done-chg { margin-top: 22px; }
+html[data-dir="D"] #checkoutDone .co-done-num { animation: dn-focus .6s .1s var(--co-ease) both; }
+html[data-dir="D"] #checkoutDone .co-done-acts { grid-template-columns: 1fr; width: min(100%, 300px); }
+html[data-dir="D"] #checkoutDone .co-done-acts #successNewSaleBtn { order: -1; }
+@media (max-width: 720px) {
+  /* phone: Print over New sale at the bottom, Show receipt a plain word under the number */
+  html[data-dir="D"] #checkoutDone .co-done-acts { width: auto; }
+  html[data-dir="D"] #checkoutDone #successPrintBtn { position: absolute; left: 50%; bottom: calc(var(--ph-b) + var(--bar-h) + 10px); translate: -50% 0; width: min(100% - 48px, 260px); }
+  html[data-dir="D"] #checkoutDone .co-done-acts .co-rcpt-btn { height: auto; padding: 4px 8px; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+    color: var(--ink-secondary); font-weight: 500; }
+}
+
+@keyframes dn-spring { from { opacity: 0; transform: scale(.4); } }
+@keyframes dn-bloom { 0% { opacity: 0; transform: scale(.5); } 45% { opacity: 1; transform: scale(1.15); } 100% { opacity: .55; transform: scale(1); } }
+@keyframes dn-focus { from { opacity: 0; filter: blur(10px); transform: scale(1.06); } }

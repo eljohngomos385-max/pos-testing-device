@@ -1,0 +1,1156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#F7F6F3" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />   <!-- Add to Home Screen: no Safari bars (addon/push-menu, owner 2026-10-18) -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />   <!-- the page runs under the clock (the clock stays white); a Safari tab never lets a page under it -->
+  <title>Try: Peek</title>
+  <link rel="icon" href="data:," />
+  <script>document.documentElement.classList.add('side-half');   // the sidebar is always the half drawer, also opened plain in a phone browser (owner 2026-10-18); the device frames add it too</script>
+  <script>
+    // Lab seal: this copy keeps its own data (localStorage keys under "hwpos-try-peek:"), skips
+    // IndexedDB (so no shared database and no BroadcastChannel to the real till) and ignores
+    // the real till's storage events. Reset the lab: localStorage keys starting "hwpos-lab:".
+    (function () {
+      const real = window.localStorage, P = 'hwpos-try-peek:';
+      const own = () => Object.keys(real).filter((k) => k.startsWith(P));
+      const lab = {
+        getItem: (k) => real.getItem(P + k),
+        setItem: (k, v) => real.setItem(P + k, String(v)),
+        removeItem: (k) => real.removeItem(P + k),
+        clear: () => own().forEach((k) => real.removeItem(k)),
+        key: (i) => (own()[i] || '').slice(P.length) || null,
+        get length() { return own().length; },
+      };
+      Object.defineProperty(window, 'localStorage', { value: lab, configurable: true });
+      Object.defineProperty(window, 'indexedDB', { value: undefined, configurable: true });
+      window.addEventListener('storage', (e) => e.stopImmediatePropagation(), true);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=600" />
+</head>
+<body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
+  <div id="app" class="sidebar-collapsed">
+
+    <!-- ============== SIDEBAR ============== -->
+    <aside class="sidebar">
+      <div class="side-top"><span class="side-ttl">EJ Hardware</span><button type="button" id="sellSwitch" aria-label="All items, tap for My page"></button><button type="button" class="side-x" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button></div>   <!-- phone: the Gemini drawer's title + close (owner 2026-10-17) -->
+      <nav class="side-nav">
+        <div class="side-grp">
+        <button class="side-link active" data-view="sell">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M4 10.3a2 2 0 0 1 .8-1.6l6-4.5a2 2 0 0 1 2.4 0l6 4.5a2 2 0 0 1 .8 1.6V19a2 2 0 0 1-2 2h-3.5v-4.5a2.5 2.5 0 0 0-5 0V21H6a2 2 0 0 1-2-2z"/></svg>
+          <span>Sell</span>
+        </button>
+        <button class="side-link" data-view="orders">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="f" x="4.5" y="3" width="15" height="18" rx="4"/><path class="d" d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4"/></svg>
+          <span>Orders</span>
+        </button>
+        <button class="side-link" data-view="qr">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="f" x="3.5" y="3.5" width="7" height="7" rx="2.5"/><rect class="f" x="13.5" y="3.5" width="7" height="7" rx="2.5"/><rect class="f" x="3.5" y="13.5" width="7" height="7" rx="2.5"/><circle class="dot" cx="15" cy="15" r="1.4"/><circle class="dot" cx="19" cy="19" r="1.4"/><circle class="dot" cx="19" cy="15" r="1.4"/><circle class="dot" cx="15" cy="19" r="1.4"/></svg>
+          <span>QR codes</span>
+        </button>
+        </div>
+        <div class="side-grp">
+        <button class="side-link" data-view="items">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M3.5 5.5a2 2 0 0 1 2-2h5.7a2 2 0 0 1 1.4.6l7.6 7.6a2.5 2.5 0 0 1 0 3.5l-5.3 5.3a2.5 2.5 0 0 1-3.5 0l-7.6-7.6a2 2 0 0 1-.3-1.4z"/><circle class="d" cx="8" cy="8" r="1.5"/></svg>
+          <span>Items</span>
+        </button>
+        <button class="side-link" data-view="customers">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="12" cy="8" r="4"/><path class="f" d="M4.5 19c0-3.2 3.4-5.5 7.5-5.5s7.5 2.3 7.5 5.5a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 19z"/></svg>
+          <span>Customers</span>
+        </button>
+        </div>
+        <div class="side-grp">
+        <button class="side-link" data-view="shift">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle class="f" cx="12" cy="12" r="8.5"/><path class="d" d="M12 7.5V12l3 2"/></svg>
+          <span>Shift</span>
+        </button>
+        <button class="side-link" data-view="reports">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="f" x="3.5" y="3.5" width="17" height="17" rx="5"/><path class="d" d="M8.5 16v-3M12 16V8M15.5 16v-5"/></svg>
+          <span>Reports</span>
+        </button>
+        </div>
+        <div class="side-grp">
+        <button class="side-link" data-view="back-office">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect class="f" x="3.5" y="3.5" width="7" height="7" rx="2.5"/><rect class="f" x="13.5" y="3.5" width="7" height="7" rx="2.5"/><rect class="f" x="3.5" y="13.5" width="7" height="7" rx="2.5"/><rect class="f" x="13.5" y="13.5" width="7" height="7" rx="2.5"/></svg>
+          <span>Back office</span>
+          <svg class="ext" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 16 16 8M9.5 8H16v6.5"/>
+          </svg>
+        </button>
+        </div>
+        <div class="side-grp">
+        <button class="side-link" data-view="settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M10.3 3.4a1.8 1.8 0 0 1 3.4 0l.3.8a1.8 1.8 0 0 0 2.4 1l.8-.4a1.8 1.8 0 0 1 2.4 2.4l-.4.8a1.8 1.8 0 0 0 1 2.4l.8.3a1.8 1.8 0 0 1 0 3.4l-.8.3a1.8 1.8 0 0 0-1 2.4l.4.8a1.8 1.8 0 0 1-2.4 2.4l-.8-.4a1.8 1.8 0 0 0-2.4 1l-.3.8a1.8 1.8 0 0 1-3.4 0l-.3-.8a1.8 1.8 0 0 0-2.4-1l-.8.4a1.8 1.8 0 0 1-2.4-2.4l.4-.8a1.8 1.8 0 0 0-1-2.4l-.8-.3a1.8 1.8 0 0 1 0-3.4l.8-.3a1.8 1.8 0 0 0 1-2.4l-.4-.8a1.8 1.8 0 0 1 2.4-2.4l.8.4a1.8 1.8 0 0 0 2.4-1z"/><circle class="d" cx="12" cy="12" r="3"/></svg>
+          <span>Settings</span>
+        </button>
+        </div>
+      </nav>
+
+      <div class="side-footer">
+        <button type="button" class="user-row" title="Log out">
+          <span class="user-avatar">E</span>
+          <span class="user-meta">
+            <span class="user-name">El John</span>
+            <span class="user-sub">Staff</span>
+          </span>
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        </button>
+        <div class="store-row">
+          <div class="user-store"><span>EJ Hardware</span>&nbsp;· POS 1</div>
+          <button class="sync-mark" id="syncMark" type="button"></button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============== MAIN ============== -->
+    <div class="main">
+
+      <!-- ============================================
+           SELL VIEW
+           ============================================ -->
+      <section class="view view-sell active" data-view="sell">
+        <div class="content-row">
+          <div class="catalog-wrap">
+            <div class="catalog">
+              <div class="search-row" id="catalogSearchRow">
+                <button class="ghost-icon" id="sidebarToggle" aria-label="Menu" title="Menu">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                    <line x1="4" y1="6" x2="20" y2="6"/>
+                    <line x1="4" y1="12" x2="20" y2="12"/>
+                    <line x1="4" y1="18" x2="20" y2="18"/>
+                  </svg>
+                </button>
+                <div class="search-wrap">
+                  <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7"/>
+                    <line x1="20" y1="20" x2="16.5" y2="16.5"/>
+                  </svg>
+                  <input id="searchInput" type="text" autocomplete="off"
+                    placeholder="Search" />
+                  <button class="search-clear" id="searchClear" aria-label="Clear">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="search-wrap vs-search">
+                  <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/></svg>
+                  <input id="variantSearch" type="text" autocomplete="off" placeholder="Search variants" />
+                </div>
+                <button type="button" class="vs-chip" id="variantAvail" aria-pressed="false" hidden>Available</button>
+                <button class="ghost-icon" id="scanBtn" title="Scan barcode">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+                    <path d="M7 8v8M11 8v8M15 8v8M19 8v8"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="product-grid" id="productGrid"></div>
+            </div>
+            <!-- Variant sheet (Shopify POS): a group tile slides this list up over the grid, and the row above turns into
+                 the sheet's own (menu -> X, Search variants takes the scan button's room). One card, its band naming the item -->
+            <div class="vsheet" id="variantSheet" aria-label="Variants">
+              <div class="vs-card">
+                <div class="vs-head"><span class="vs-title"><span id="variantTitle"></span><span class="vs-count num" id="variantCount"></span></span><span id="variantCol">Price</span></div>
+                <div class="vs-list" id="variantList"></div>
+              </div>
+            </div>
+            <!-- Scanner (owner 2026-10-08, Shopify POS): the phone's own page, the tablet's sheet in the variant sheet's
+                 bounds. A read adds at once and #scanCard shows that line until the next; nothing found turns the corners red.
+                 No typing box: a barcode or SKU goes in the search. Drawn by pos-sell.js (openBarcodeScanner) -->
+            <div class="scan-sheet" id="scanSheet" aria-label="Scan barcode">
+              <div class="scan-cam">
+                <video id="barcodeVideo" playsinline muted></video>
+                <div class="scan-aim">
+                  <div class="scan-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                  <div class="scan-status" id="barcodeStatus" role="status">Starting camera...</div>
+                </div>
+                <button type="button" class="scan-btn" id="scanClose" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                <button type="button" class="scan-btn" id="scanFlip" aria-label="Flip camera" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3M4 4v4h4M20 20v-4h-4"/></svg></button>
+                <div class="scan-card" id="scanCard" hidden></div>
+              </div>
+            </div>
+            <!-- Edit sheet (popups-lab.html, Sheet C): the cart line, the receipt discount and the fulfilment open over
+                 the whole left side, top row too, with their own X. Drawn by pos-sell.js (drawEditSheet) -->
+            <div class="esheet" id="editSheet" role="dialog" aria-label="Edit"><div class="es-card" id="editSheetCard"></div></div>
+            <!-- New / Edit customer: the edit sheet's frame on the tablet, a page on the phone (owner 2026-10-08). The Customers
+                 page moves it into its own pane (openCustomerEditModal) -->
+            <div class="esheet cust-sheet" id="customerEditModal" role="dialog" aria-labelledby="customerEditTitle"><div class="es-card">
+              <button type="button" class="es-x" data-cust-close aria-label="Close"><svg class="ix" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><svg class="ib" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span class="xl">Back</span></button>
+              <h2 class="cs-h" id="customerEditTitle">New customer</h2>
+              <div class="cs-body"><div class="cs-in"><div id="custFields"></div></div></div><!-- bo-model CUSTOMER_FIELDS, the same form as the back office -->
+              <div class="es-ft"><button type="button" class="es-ink" id="custSaveBtn">Save</button></div>
+            </div></div>
+          </div>
+
+          <!-- Phone (≤720): the sale sidebar is its own page; this bar opens it. Not Check out -->
+          <button type="button" class="ph-bar" id="cartBar" disabled><span id="cartBarCount">No items</span></button>
+          <!-- Phone: the bar while the customer list is open (owner 2026-10-20: the pill becomes New customer) -->
+          <button type="button" class="ph-bar" id="custNewBar"><svg class="xi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New customer</button>
+          <!-- The sale sidebar (cart-lab-stack-h.html): three slim cards -- who, the items, the money.
+               Fulfilment and Discount share the money card's first row, half and half. -->
+          <aside class="rail rail-h" id="side" aria-label="Receipt">
+            <section class="card who">
+              <div class="c-row">
+                <button type="button" class="ph-back" id="cartBack" aria-label="Back to items">
+                  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+                </button>
+                <button type="button" class="cust" id="customerBtn" title="Change customer">
+                  <span id="customerLabel">Walk-in customer</span>
+                  <svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+                </button>
+                <button type="button" class="more" id="cartMoreBtn" aria-haspopup="menu" aria-expanded="false" aria-label="Add note, save cart, print quote, lost sale, clear">
+                  <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
+                </button>
+              </div>
+              <p class="o-note" id="orderNote" hidden></p><!-- the order's note (cart ⋯ Add note), drawn by renderCart -->
+            </section>
+
+            <section class="card items">
+              <div class="i-head"><span class="num" id="cartCount">Item</span><span>Amount</span></div>
+              <div class="lines" id="cartList"></div>
+            </section>
+
+            <section class="card pay">
+              <div class="opts" id="railOpts">
+                <div class="f-row" id="fulRow" role="group" aria-label="Fulfilment"></div>
+                <button type="button" class="d-row" id="cartDiscountBtn">
+                  <span id="cartDiscountLabel">Discount</span><span class="num" id="cartDiscountAmt"></span>
+                  <svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+                </button>
+              </div>
+              <div class="tot">
+                <div class="break" id="totalsDetail"><div>
+                  <p><span>Subtotal</span><span class="num" id="subtotal">₱0.00</span></p>
+                  <p id="discountRow"><span>Discount</span><span class="num" id="discount">₱0.00</span></p>
+                  <p class="dim"><span id="vatLabel">VAT (12% incl.)</span><span class="num" id="vatAmount">₱0.00</span></p>
+                  <p id="backRow" style="display:none"><span>Returned</span><span class="num" id="backAmt"></span></p>
+                </div></div>
+                <button type="button" class="sum" id="totalRow" aria-expanded="false">
+                  <span class="l">Total<span class="rail-cnt num" id="railCount"></span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></span>
+                  <span class="v num" id="total">₱0.00</span>
+                </button>
+              </div>
+            </section>
+            <button type="button" class="go" id="payBtn" disabled>Check out</button>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ============================================
+           ORDERS VIEW — completed sales list
+           ============================================ -->
+      <!-- pos-orders-rail-lab.html: the orders in a rail under ☰, the receipt beside it -->
+      <section class="view view-orders lv" data-view="orders">
+        <div class="ov" id="ordersView">
+          <section class="o-main" aria-label="Receipt">
+            <div class="o-top">
+              <button class="sq back" id="ordersBack" aria-label="Back to orders"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <div class="ttl" id="orderTtl"></div>
+              <div class="acts">
+                <button class="act cancel" id="orderCancel" title="Cancel" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Cancel</span></button>
+                <button class="act" id="orderPrint" title="Print receipt"><svg class="ic" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M7 14h10v6H7z"/></svg><span>Print receipt</span></button>
+                <button class="act" id="orderRefund" title="Refund"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg><span>Refund</span></button>
+                <button class="act" id="orderContinue" title="Continue in Sell" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Continue</span></button>
+                <button class="act icon" id="orderMore" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">
+                  <svg class="ic" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="paper-scroll" id="orderDetail"></div>
+          </section>
+          <aside class="o-rail" aria-label="Orders">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+              </button>
+              <h1 class="st-ttl ph-ttl">Orders</h1>   <!-- hidden: search sits up top beside ☰, as Items (owner 2026-10-18) -->
+              <button class="sq back cust-back" id="ordersCustBack" aria-label="Back to the customer" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <section class="card find" id="ordersFind">
+                <label>
+                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <input id="ordersSearch" type="text" placeholder="Search" autocomplete="off">
+                  <button class="x" id="ordersSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                </label>
+                <button class="more" id="ordersFilter" aria-haspopup="menu" aria-expanded="false" aria-label="Filter orders" title="Filter">
+                  <svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+                </button>
+              </section>
+            </div>
+            <section class="card list"><div class="lines" id="ordersList"></div></section>
+          </aside>
+        </div>
+      </section>
+
+      <!-- pos-items-rail-lab.html: one full-screen item list; a row (or +) slides the editor over it -->
+      <section class="view view-items lv" data-view="items">
+        <div class="iv" id="itemsView">
+          <section class="page" aria-label="Items">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+              </button>
+              <button class="sq" id="itemsBack" aria-label="All lists" title="All lists"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl ph-ttl"><span id="itemsTtl">Items</span></h1>   <!-- the hub's title; the lists name themselves in the search -->
+              <!-- which list: a glass bar; the words slide sideways inside it when they run out of room, as Safari's tab groups (owner's photo 2026-10-18) -->
+              <div class="kbar" id="itemsBar"><section class="card kinds" id="itemsKinds" role="tablist" aria-label="Show">
+                <button type="button" role="tab" class="cur" aria-selected="true" aria-label="Items" title="Items" data-kind="items"><svg class="ic" viewBox="0 0 24 24"><path d="M3.5 5.5a2 2 0 0 1 2-2h5.7a2 2 0 0 1 1.4.6l7.6 7.6a2.5 2.5 0 0 1 0 3.5l-5.3 5.3a2.5 2.5 0 0 1-3.5 0l-7.6-7.6a2 2 0 0 1-.3-1.4z"/><circle class="d" cx="8" cy="8" r="1.5"/></svg><span>Items</span></button>
+                <button type="button" role="tab" aria-selected="false" aria-label="Categories" title="Categories" data-kind="cats"><svg class="ic" viewBox="0 0 24 24"><path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></svg><span>Categories</span></button>
+                <button type="button" role="tab" aria-selected="false" aria-label="Modifiers" title="Modifiers" data-kind="mods"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>Modifiers</span></button>
+                <button type="button" role="tab" aria-selected="false" aria-label="Add-ons" title="Add-ons" data-kind="addons"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg><span>Add-ons</span></button>
+                <button type="button" role="tab" aria-selected="false" aria-label="Discounts" title="Discounts" data-kind="discs"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6L6 18"/><circle cx="7.5" cy="7.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg><span>Discounts</span></button>
+              </section></div>
+              <section class="card find" id="itemsFind">
+                <label>
+                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <input id="itemsSearch" type="text" placeholder="Search" autocomplete="off">
+                  <button class="x" id="itemsSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                </label>
+                <button class="more" id="itemsFilter" aria-haspopup="menu" aria-expanded="false" aria-label="Filter items" title="Filter">
+                  <svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
+                </button>
+              </section>
+              <button class="fab" id="itemsAdd" aria-label="New item" title="New item"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+            </div>
+            <section class="card list">
+              <div class="lines" id="itemsLines"><div class="band cols" id="itemsBand"></div><div id="itemsRows"></div></div>
+            </section>
+          </section>
+          <section class="editor" aria-label="Item editor">
+            <div class="e-top">
+              <button class="sq back" id="itemBack" aria-label="Back to items" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h2 class="fm-h" id="itemTitle"></h2>
+              <section class="card find" id="itemFind" hidden><label><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="itemFindQ" type="text" placeholder="Search" autocomplete="off"><button class="x" id="itemFindX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></label></section>   <!-- a long tick list's search, up in the bar beside ‹ (owner 2026-10-20) -->
+              <div class="acts">
+                <button class="act icon" id="itemMore" aria-haspopup="menu" aria-expanded="false" aria-label="More actions">
+                  <svg class="ic" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="18.5" cy="12" r="1.2" fill="currentColor"/></svg>
+                </button>
+                <button class="act primary" id="itemSave">Save</button>
+              </div>
+            </div>
+            <div class="form-scroll" id="itemForm"></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============================================
+           CUSTOMERS VIEW
+           ============================================ -->
+      <section class="view view-customers lv" data-view="customers">
+        <div class="ov" id="customersView">
+          <!-- the Orders shape: name on top, Record payment and Edit where Orders has Print and Refund -->
+          <section class="o-main" id="customerDetail" aria-label="Customer">
+            <div class="o-top">
+              <button class="sq back" id="customersBack" aria-label="Back to customers"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <div class="ttl" id="customerTtl"></div>
+              <div class="acts">
+                <button class="act" id="customerPay" title="Record payment" aria-haspopup="dialog" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg><span>Record payment</span></button>
+                <button class="act" id="customerEdit" title="Edit"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg><span>Edit</span></button>
+              </div>
+            </div>
+            <div class="c-scroll" id="customerBody"></div>
+          </section>
+          <!-- the Orders rail: menu, search with + where Orders has Filter, one card of rows -->
+          <aside class="o-rail" aria-label="Customers">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+              </button>
+              <h1 class="st-ttl ph-ttl">Customers</h1>
+              <section class="card find" id="customersFind">
+                <label>
+                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <input id="customersSearch" type="text" placeholder="Search" autocomplete="off">
+                  <button class="x" id="customersSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                </label>
+              </section>
+              <button class="fab" id="newCustomerBtn" aria-label="Add customer" title="Add customer"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>   <!-- Items' + (owner 2026-10-18) -->
+            </div>
+            <section class="card list"><div class="lines" id="customersList"></div></section>
+          </aside>
+        </div>
+      </section>
+
+      <!-- Shift: the store's drawer (pos-shift.js); one column like a customer's page, Past shifts its own page (a › row under the drawer). Shift | Cash is Reports' pill;
+           the button bottom right is Start / Close shift on Shift, Cash in / out on Cash; each opens the edit sheet's frame over the page -->
+      <section class="view view-shift lv" data-view="shift">
+        <div class="iv" id="shiftView">
+          <section class="page sh-page" id="shiftPage" aria-label="Shift">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+              </button>
+              <h1 class="st-ttl">Shift</h1>
+              <button class="sq sh-print" id="shiftPrint" data-sh="report" title="Print report" hidden>Print</button>
+            </div>
+            <div class="c-scroll"><div class="c-body">
+              <section class="kinds rp-units" id="shiftTabs" role="tablist" aria-label="Shift or cash">
+                <button type="button" role="tab" data-shtab="shift" class="cur" aria-selected="true">Shift</button>
+                <button type="button" role="tab" data-shtab="cash" aria-selected="false">Cash in &amp; out</button>
+              </section>
+              <div id="shiftBody"></div>
+            </div></div>
+            <button type="button" class="fab sh-fab" id="shiftFab"></button>
+          </section>
+          <section class="page sh-page" id="shiftPastPage" aria-label="Past shifts" hidden>
+            <div class="head">
+              <button class="sq back" data-sh="back" aria-label="Back to the shift" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl">Past shifts</h1>
+            </div>
+            <div class="c-scroll" id="shiftPastBody"></div>
+          </section>
+        </div>
+        <div class="esheet" id="shiftSheet" role="dialog" aria-label="Shift"><div class="es-card" id="shiftSheetCard"></div></div>
+      </section>
+
+      <!-- ============================================
+           CHECKOUT VIEW — one page that moves forward (checkout-calm-lab.html).
+           The total never moves; under it: how they pay -> that method's one detail -> done.
+           The items column turns into the printed receipt once the sale is done.
+           ============================================ -->
+      <section class="view view-checkout" data-view="checkout">
+        <div class="co" id="checkoutApp">
+          <section class="co-pay" aria-label="Payment">
+            <header class="co-top">
+              <button type="button" class="co-cancel" id="checkoutCancelBtn">
+                <svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span id="checkoutBackText">Cancel</span>
+              </button>
+            </header>
+            <div class="co-stage">
+              <div class="co-col" id="checkoutSteps">
+                <div class="co-hero num" id="checkoutTotalDue">₱0.00</div>
+                <p class="sp-paid" id="spPaid" hidden></p>
+                <!-- Tiles are built from the back office's Payments settings on every render -->
+                <div class="co-step" data-step="method"><div class="co-tiles" id="checkoutMethods"></div>
+                  <button type="button" class="co-btn primary" id="spDone" data-complete hidden>Complete sale</button></div>
+                <!-- Cash (and each part of a split): a tap on an amount finishes the sale; Custom swaps the row for the
+                     figures (left) and our keypad (right), cash-custom-lab.html take C -->
+                <div class="co-step" data-step="cash" hidden>
+                  <div class="co-tiles" id="checkoutQuick"></div>
+                  <div class="co-keyin" id="checkoutKeyIn" hidden>
+                    <input type="hidden" id="checkoutTender" />
+                    <div class="co-read">
+                      <div data-field="amt"><span class="co-lbl" id="checkoutCashLbl">Cash received</span><b class="co-fig num" id="checkoutCash"></b></div>
+                      <div><span class="co-lbl" id="checkoutChangeLbl">Change</span><b class="co-fig num" id="checkoutChange" aria-live="polite"></b></div>
+                    </div>
+                    <div id="checkoutKeys"></div>
+                    <button type="button" class="co-btn primary" id="checkoutCompleteBtn" data-complete disabled>Complete sale</button>
+                  </div>
+                </div>
+                <!-- GCash, QR, a custom name, Other or Account: nothing to count, one confirm -->
+                <div class="co-step" data-step="paid" hidden>
+                  <h2 class="co-ask" id="checkoutAsk"></h2>
+                  <input type="text" id="otherMethodInput" class="co-ref" placeholder="e.g. Maya, bank transfer" autocomplete="off" aria-label="Payment method name" />
+                  <!-- Settings › Payment types › a type › Ask for reference no.: letters too, the device's own keyboard -->
+                  <input type="text" id="payRefInput" class="co-ref" maxlength="40" placeholder="Reference no. (optional)" autocomplete="off" aria-label="Reference number (optional)" hidden />
+                  <button type="button" class="co-btn primary" data-complete>Complete sale</button>
+                </div>
+                <div class="co-error" id="checkoutError" hidden></div>
+              </div>
+              <div class="co-done" id="checkoutDone" aria-live="polite" hidden>
+                <div class="co-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="m-c" cx="32" cy="32" r="30"/><path class="m-k" d="M20 33l8 8 16-17"/></svg></div>
+                <h2 class="co-done-h" style="--i:1">Sale complete</h2>
+                <div class="co-done-chg" id="successChangeBlock" style="--i:2"><span>Change</span><span class="co-done-num num" id="successChange">₱0.00</span></div>
+                <div class="co-done-acts" style="--i:4">
+                  <button type="button" class="co-btn" id="successPrintBtn">Print receipt</button>
+                  <button type="button" class="co-btn primary" id="successNewSaleBtn">New sale</button>
+                </div>
+              </div>
+            </div>
+            <!-- Phone: the receipt is a sheet; this opens it, where Check out sits -->
+            <button type="button" class="co-btn co-rcpt-btn" id="checkoutRcptBtn"><span>Show receipt</span></button>
+          </section>
+          <aside class="co-items" aria-label="Items">
+            <button type="button" class="co-cust" id="checkoutCustBtn" title="Change customer">
+              <svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg>
+              <span id="checkoutSub">Walk-in customer</span>
+              <svg class="co-ic co-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+            <div class="co-list">
+              <div class="co-head"><span>Item</span><span>Amount</span></div>
+              <div class="co-rows" id="checkoutCartList"></div>
+              <div class="co-sum">
+                <div class="co-disc" id="checkoutDiscountRow" hidden><span id="checkoutDiscountLabel">Discount</span><span class="num" id="checkoutDiscount"></span></div>
+                <div class="co-total"><span>Total<span class="rail-cnt num" id="checkoutCount"></span></span><span class="num" id="checkoutTotal">₱0.00</span></div>
+              </div>
+            </div>
+            <div class="co-rcpt" id="checkoutReceipt" aria-label="Receipt"></div>
+            <button type="button" class="co-rcpt-x" id="checkoutRcptClose" aria-label="Close receipt">
+              <svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ============================================
+           REPORTS VIEW
+           ============================================ -->
+      <section class="view view-reports lv" data-view="reports">
+        <div class="iv">
+          <section class="page" aria-label="Reports">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+              </button>
+              <h1 class="st-ttl">Reports</h1>
+              <button type="button" class="rp-now" hidden></button>
+              <div class="rp-pin" id="reportsPin"></div>
+            </div>
+            <!-- reports-step-lab.html "Apple v3" (owner 2026-10-15): the Day | Week | Month capsule, centred (the pill slides,
+                 slidePill); the period sits over the Sales number, Show Today and the pinned ‹ date › bar fill the header (renderReports) -->
+            <div class="c-scroll"><div class="c-body">
+              <section class="kinds rp-units" id="reportsUnits" role="tablist" aria-label="Period">
+                <button type="button" role="tab" data-unit="day" class="cur" aria-selected="true">Day</button>
+                <button type="button" role="tab" data-unit="week" aria-selected="false">Week</button>
+                <button type="button" role="tab" data-unit="month" aria-selected="false">Month</button>
+              </section>
+              <div class="rp-body" id="reportsBody"></div>
+            </div></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ============================================
+           SETTINGS VIEW — POS preferences
+           ============================================ -->
+      <!-- QR codes (owner 2026-10-16, from qr-lab): one printed QR per table, a switch says if it takes orders. Fulfilment
+           types' page: ☰ + title, one card of rows. Tap a table → its page: the QR, Print, name, New QR, Delete (pos-qr.js) -->
+      <section class="view view-qr lv" data-view="qr">
+        <div class="iv">
+          <section class="page st-page" id="qrPage" aria-label="QR codes">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+              </button>
+              <h1 class="st-ttl">QR codes</h1>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <section class="card fc" id="qrList"></section>
+              </div>
+            </div>
+          </section>
+          <section class="page st-page" id="qrTablePage" aria-label="Table" hidden>
+            <div class="head">
+              <button class="sq back" id="qrBack" aria-label="Back to QR codes" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl" id="qrTitle"></h1>
+              <button type="button" class="sq st-save ty-edit-btn" id="qrPrint" aria-label="Print QR" title="Print"><svg class="ic" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg></button>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <div class="qr-art" id="qrArt"></div>
+                <section class="card fc r">
+                  <label class="fr"><span class="lb">Name</span><span class="v"><input class="in" id="qrName" maxlength="24" autocomplete="off"></span></label>
+                  <label class="fr"><span class="lb">Taking orders</span><span class="v"><input type="checkbox" class="sw" id="qrOn"></span></label>
+                </section>
+                <section class="card fc">
+                  <button type="button" class="fr add qr-mid" id="qrNew">New QR</button>
+                </section>
+                <p class="fc-n">Old photos of this table's QR stop working. Print the new one.</p>
+                <section class="card fc">
+                  <button type="button" class="fr add red" id="qrDelete">Delete table</button>
+                </section>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- One column like Shift: ☰ + title, then calm cards of rows, label left, control right. Every choice is a
+           › row opening its own page of ticks (data-pick → openPick, pos-settings.js); the time zone stays a styled select for now. -->
+      <section class="view view-settings lv" data-view="settings" hidden>
+        <div class="iv">
+          <section class="page st-page" id="settingsPage" aria-label="Settings">
+            <div class="head">
+              <button class="sq" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+              </button>
+              <h1 class="st-ttl">Settings</h1>
+            </div>
+            <div class="c-scroll" id="settingsView">
+              <div class="c-body">
+                <h3 class="fc-t">Appearance</h3>
+                <section class="card fc">
+                  <button type="button" class="fr nav" data-pick="tileSize"><span class="lb">Tile size</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="tileText"><span class="lb">Tile text size</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="tileShow"><span class="lb">Tiles show</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="tilePics"><span class="lb">Tile pictures</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="cartPics"><span class="lb">Cart pictures</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="theme"><span class="lb">Theme</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                </section>
+                <!-- handlers: app.js attachEvents, pos-settings.js, pos-checkout.js Printing -->
+                <h3 class="fc-t">Printing</h3>
+                <section class="card fc">
+                  <button type="button" class="fr nav" data-pick="driver"><span class="lb">Printer</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <div class="fr" id="posScanRow" hidden><span class="lb">Find printer</span><span class="v"><button type="button" class="act" id="posScanBtn">Scan</button></span></div>
+                  <div class="st-prn" id="posPrinterListRow" hidden>
+                    <div class="prn-list" id="posPrinterList"></div>
+                    <div class="prn-scan-status" id="posScanStatus" hidden></div>
+                  </div>
+                  <label class="fr" id="posNetRow" hidden><span class="lb">Printer IP<small>On the printer's status sheet</small></span><span class="v"><input class="in st-ip" id="posPrinterIp" inputmode="decimal" autocomplete="off" placeholder="192.168.1.50"></span></label>
+                  <div class="fr" id="posBtRow" hidden><span class="lb">Bluetooth printer<small id="posBtStatus">Not paired</small></span><span class="v"><button type="button" class="act" id="posBtPairBtn">Pair</button></span></div>
+                  <button type="button" class="fr nav" data-pick="width"><span class="lb">Paper width</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <label class="fr"><span class="lb">Auto-cut paper</span><span class="v"><input type="checkbox" class="sw" id="posPrintCut"></span></label>
+                  <label class="fr"><span class="lb">Print delivery map</span><span class="v"><input type="checkbox" class="sw" id="posPrintMap"></span></label>
+                  <label class="fr" id="posPrintOnSaleRow" hidden><span class="lb">Print on sale</span><span class="v"><input type="checkbox" class="sw" id="posPrintOnSale"></span></label>
+                  <div class="fr"><span class="lb">Test print</span><span class="v"><button type="button" class="act" id="posTestPrintBtn">Print</button></span></div>
+                </section>
+                <h3 class="fc-t">Store</h3>
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Business type</span><span class="v"><span class="act st-pick st-sel"><select id="posBizType"><option value="retail">Retail</option><option value="food">Food</option></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
+                  <button type="button" class="fr nav" id="posPayTypesRow"><span class="lb">Payment types</span><span class="v"><span class="vv" id="posPayTypesNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" id="posFulTypesRow"><span class="lb">Fulfilment types</span><span class="v"><span class="vv" id="posFulTypesNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <label class="fr"><span class="lb">Time zone</span><span class="v"><span class="act st-pick st-sel"><select id="posTimeZone"></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
+                  <button type="button" class="fr nav" data-pick="discountLimit"><span class="lb">Ask a manager for discounts over</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="refundPin"><span class="lb">Refunds and exchanges</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                </section>
+                <h3 class="fc-t">Shift</h3>
+                <section class="card fc">
+                  <button type="button" class="fr nav" data-pick="startCash"><span class="lb">Starting cash</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" data-pick="autoClose"><span class="lb">Auto-close at</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                </section>
+                <!-- The account this POS is signed in with (owner 2026-10-13): Log out opens the sign-in page. Front end only for now -->
+                <h3 class="fc-t">Account</h3>
+                <section class="card fc">
+                  <div class="fr"><span class="lb" id="posAcctEmail">Account</span><span class="v"><button type="button" class="act" id="posLogOutBtn">Log out</button></span></div>
+                </section>
+              </div>
+            </div>
+          </section>
+          <!-- Settings › Payment types (owner 2026-10-13): its own page. A switch per type says if the checkout shows it (pos-settings.js) -->
+          <section class="page st-page" id="payTypesPage" aria-label="Payment types" hidden>
+            <div class="head">
+              <button class="sq back" id="payTypesBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl">Payment types</h1>
+              <button type="button" class="sq st-save ty-edit-btn" hidden></button>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <h3 class="fc-t">Shown at checkout</h3>
+                <section class="card fc" id="payTypesList"></section>
+              </div>
+            </div>
+            <div class="qs-tickbar ty-bar" hidden><button type="button" class="qs-next ty-go" disabled></button></div>
+          </section>
+          <!-- One payment type's page (owner 2026-10-17, like a QR table's): show it, and ask its reference no. -->
+          <section class="page st-page" id="payTypePage" aria-label="Payment type" hidden>
+            <div class="head">
+              <button class="sq back" id="payTypeBack" aria-label="Back to payment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl" id="ptTitle"></h1>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Show at checkout</span><span class="v"><input type="checkbox" class="sw" id="ptOn"></span></label>
+                  <label class="fr"><span class="lb">Ask for reference no.<small>An optional box after it's picked</small></span><span class="v"><input type="checkbox" class="sw" id="ptRef"></span></label>
+                </section>
+              </div>
+            </div>
+          </section>
+          <!-- Payment types › Add (owner 2026-10-15): a page, not a pop-up -->
+          <section class="page st-page" id="payTypeAddPage" aria-label="Add payment type" hidden>
+            <div class="head">
+              <button class="sq back" id="payTypeAddBack" aria-label="Back to payment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl">Add payment type</h1>
+              <button type="button" class="act primary st-save" id="payTypeAddSave">Save</button>
+            </div>
+            <div class="c-scroll">
+              <form class="c-body" id="payTypeAddForm">
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Name</span><span class="v"><input class="in" id="ptName" maxlength="24" placeholder="e.g. Maya or Card" autocomplete="off"></span></label>
+                </section>
+              </form>
+            </div>
+          </section>
+          <!-- Settings › Fulfilment types (owner 2026-10-16): Payment types' twin, plus the primary a sale starts on (pos-settings.js) -->
+          <section class="page st-page" id="fulTypesPage" aria-label="Fulfilment types" hidden>
+            <div class="head">
+              <button class="sq back" id="fulTypesBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl">Fulfilment types</h1>
+              <button type="button" class="sq st-save ty-edit-btn" hidden></button>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <h3 class="fc-t">Primary</h3>
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Sales start on</span><span class="v"><span class="act st-pick st-sel"><select id="fulPrimary"></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
+                </section>
+                <h3 class="fc-t">Shown on the sale</h3>
+                <section class="card fc" id="fulTypesList"></section>
+              </div>
+            </div>
+            <div class="qs-tickbar ty-bar" hidden><button type="button" class="qs-next ty-go" disabled></button></div>
+          </section>
+          <section class="page st-page" id="fulTypeAddPage" aria-label="Add fulfilment type" hidden>
+            <div class="head">
+              <button class="sq back" id="fulTypeAddBack" aria-label="Back to fulfilment types" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl">Add fulfilment type</h1>
+              <button type="button" class="act primary st-save" id="fulTypeAddSave">Save</button>
+            </div>
+            <div class="c-scroll">
+              <form class="c-body" id="fulTypeAddForm">
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Name</span><span class="v"><input class="in" id="ftName" maxlength="24" placeholder="e.g. Grab or Tricycle" autocomplete="off"></span></label>
+                </section>
+              </form>
+            </div>
+          </section>
+          <!-- Settings › one choice (owner 2026-10-15, "the Facebook route"): the row's word on top, its choices as ticks (pos-settings.js openPick) -->
+          <section class="page st-page" id="pickPage" hidden>
+            <div class="head">
+              <button class="sq back" id="pickBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+              <h1 class="st-ttl" id="pickTitle"></h1>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <section class="card fc" id="pickList" role="radiogroup" aria-labelledby="pickTitle"></section>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============== MODALS ============== -->
+
+    <!-- Customer picker -->
+    <div class="modal-backdrop" id="customerModal" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <h2>Select customer</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <button class="customer-row-btn" data-customer-id="walk-in">
+            <div class="cust-avatar">W</div>
+            <div class="cust-meta">
+              <div class="cust-name">Walk-in customer</div>
+              <div class="cust-sub">Cash / non-credit</div>
+            </div>
+          </button>
+          <div class="modal-divider"><span>Credit accounts</span></div>
+          <button class="customer-row-btn add-customer-row" id="pickerAddCustomerBtn">
+            <div class="cust-avatar add">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </div>
+            <div class="cust-meta">
+              <div class="cust-name">Add new customer</div>
+              <div class="cust-sub">Create a credit account</div>
+            </div>
+          </button>
+          <div id="customerList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment -->
+    <div class="modal-backdrop" id="paymentModal" hidden>
+      <div class="modal payment-modal">
+        <div class="modal-head">
+          <h2>Payment</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="pay-total">
+            <div class="pay-total-label">Total due</div>
+            <div class="pay-total-value" id="payTotalValue">₱0.00</div>
+            <div class="pay-customer" id="payCustomerLine">Walk-in customer</div>
+          </div>
+          <div class="seg-control">
+            <button class="seg active" data-method="cash">Cash</button>
+            <button class="seg" data-method="credit">Account</button>
+            <button class="seg" data-method="split">Split</button>
+          </div>
+          <div class="pay-fields" id="payFields">
+            <label class="pay-label">Amount tendered</label>
+            <input type="text" inputmode="decimal" id="tenderInput" placeholder="0.00" />
+            <div class="quick-cash">
+              <button data-cash="exact">Exact</button>
+              <button data-cash="100">₱100</button>
+              <button data-cash="200">₱200</button>
+              <button data-cash="500">₱500</button>
+              <button data-cash="1000">₱1000</button>
+            </div>
+            <div class="change-row">
+              <span>Change</span>
+              <span id="changeValue">₱0.00</span>
+            </div>
+          </div>
+          <div class="pay-actions">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="completeSaleBtn">Complete & print</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- The confirm pop-up is built by showConfirm (pos-core.js) -->
+
+    <!-- Delivery map pin picker -->
+    <div class="modal-backdrop" id="deliveryMapModal" hidden>
+      <div class="modal delivery-map-modal">
+        <div class="modal-head">
+          <h2>Pin delivery location</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="delivery-map-toolbar">
+            <button class="ghost-icon" id="deliveryMapZoomOut" type="button" title="Zoom out" aria-label="Zoom out">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button class="ghost-icon" id="deliveryMapZoomIn" type="button" title="Zoom in" aria-label="Zoom in">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button class="secondary-btn" id="deliveryMapUseGps" type="button">Use device location</button>
+            <span class="delivery-map-note">Tap or drag map to place pin</span>
+          </div>
+          <div class="delivery-map" id="deliveryMapStage">
+            <div class="delivery-map-tiles" id="deliveryMapTiles"></div>
+            <div class="delivery-map-pin" id="deliveryMapPin" aria-hidden="true"></div>
+            <div class="delivery-map-loading" id="deliveryMapStatus">Road map loads when online</div>
+          </div>
+          <div class="delivery-map-footer">
+            <div class="delivery-map-coords" id="deliveryMapCoords">No pin selected</div>
+            <div class="pay-actions">
+              <button class="secondary-btn" id="deliveryMapClear" type="button">Clear pin</button>
+              <button class="primary-btn" id="deliveryMapSave" type="button">Use pin</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Variant picker (for items with multiple SKUs / sizes / colors) -->
+    <!-- Lost sale: the customer asked, we couldn't sell it -->
+    <div class="modal-backdrop" id="lostSaleModal" hidden>
+      <div class="modal small-modal confirm-modal lost-sale-modal">
+        <div class="modal-head">
+          <h2>Lost sale</h2>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <label class="pay-label" for="lsItemInput">Asked for</label>
+          <input type="text" id="lsItemInput" class="text-input" placeholder="Search the catalog or type it" autocomplete="off" />
+          <div class="ls-matches" id="lsMatches"></div>
+          <label class="pay-label" for="lsQtyInput">Qty</label>
+          <input type="number" id="lsQtyInput" class="text-input" min="0" step="any" value="1" inputmode="decimal" />
+          <label class="pay-label">Why</label>
+          <div class="seg-control" id="lsReasons">
+            <button class="seg active" type="button" data-ls-reason="out-of-stock">Out of stock</button>
+            <button class="seg" type="button" data-ls-reason="not-carried">Not carried</button>
+            <button class="seg" type="button" data-ls-reason="too-expensive">Too expensive</button>
+            <button class="seg" type="button" data-ls-reason="other">Other</button>
+          </div>
+          <label class="pay-label" for="lsSubSelect">Bought instead</label>
+          <select id="lsSubSelect" class="text-input"></select>
+          <div class="pay-actions" style="margin-top:18px">
+            <button class="secondary-btn" data-close-modal>Cancel</button>
+            <button class="primary-btn" id="lsSaveBtn">Log lost sale</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order details -->
+    <div class="modal-backdrop" id="orderDetailModal" hidden>
+      <div class="modal order-detail-modal">
+        <div class="modal-head">
+          <div class="odm-title-wrap">
+            <h2 id="odmNumber">Order</h2>
+            <span class="odm-status" id="odmStatus"></span>
+          </div>
+          <button class="ghost-icon close-x" data-close-modal aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body" id="orderDetailModalBody"></div>
+      </div>
+    </div>
+
+    <!-- PIN pad (pos-pin.js): the till's sign-in, full screen on the plain page (Loyverse's lock screen),
+         and a manager's approval of a void, refund or over-limit charge, a card over the page with Cancel -->
+    <div class="modal-backdrop" id="pinModal" hidden>
+      <div class="pin-pad" role="dialog" aria-modal="true" aria-labelledby="pinTitle">
+        <h2 class="pin-title" id="pinTitle"></h2>
+        <p class="pin-msg" id="pinMessage"></p>
+        <div class="pin-ask" aria-live="polite">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          <span id="pinAskText">Enter PIN</span>
+        </div>
+        <input type="hidden" id="pinInput" />
+        <div class="pin-dots" id="pinDots" aria-hidden="true"></div>
+        <div class="pin-keys" id="pinKeys"></div>
+        <button type="button" class="pin-cancel" data-close-modal>Cancel</button>
+      </div>
+    </div>
+
+    <!-- The account's sign-in (Settings › Log out). ponytail: front end only, no accounts yet -- Sign in just goes back to the POS -->
+    <div class="si-screen" id="signInScreen" hidden>
+      <form class="si-card" id="signInForm" novalidate>
+        <h2>Sign in</h2>
+        <p>Your store’s account</p>
+        <input class="si-in" type="email" autocomplete="username" placeholder="Email" aria-label="Email">
+        <input class="si-in" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password">
+        <button type="submit" class="primary-btn">Sign in</button>
+      </form>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+  </div>
+
+  <script src="sales-math.js?v=27"></script>
+  <script src="data-store.js?v=54"></script>
+  <script src="data.js?v=31"></script>
+  <script src="bo-model.js?v=136"></script>
+  <script src="vendor/zxing-browser.min.js"></script>
+  <script src="printer.js?v=50"></script>
+  <script src="pos-core.js?v=55"></script>
+  <script src="pos-sell.js?v=103"></script>
+  <script src="pos-checkout.js?v=37"></script>
+  <script src="pos-orders.js?v=41"></script>
+  <script src="pos-items.js?v=60"></script>
+  <script src="pos-customers.js?v=41"></script>
+  <script src="pos-settings.js?v=35"></script>
+  <script src="pos-pin.js?v=14"></script>
+  <script src="pos-shift.js?v=44"></script>
+  <script src="pos-stock.js?v=14"></script>
+  <script src="pos-qr.js?v=3"></script>
+  <script src="app.js?v=254"></script>
+  <!-- ============== PEEK (try-out only, owner 2026-10-22, round 2) ==============
+       Hold a tile: it grows into a card in the middle of the screen - name, price, a short description and every variant
+       with its stock, the list scrolling inside a card of capped height. The screen behind dims (no blur).
+       My page: while the card is up the bottom button reads "Edit page"; hold then move = the card goes and the tile follows
+       the finger (editing on); hold an empty spot = editing at once. All items: the same card, nothing to edit.
+       A tap still adds to the cart. Nothing here is in pos-lab/index.html. -->
+  <style>
+    #productGrid { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    .pk-dim { position: fixed; inset: 0; z-index: 900; background: rgb(0 0 0 / .42); opacity: 0; transition: opacity .25s; }
+    body.light-theme .pk-dim { background: rgb(0 0 0 / .3); }
+    /* the variant sheet (.vs-card / .vs-head / .vs-list / .vs-row), only smaller and in the middle (owner 2026-10-22: "a miniaturized sheet") */
+    /* the variant sheet's strip on top, then the Orders list: every row its own glass, so each divider is the ring's soft shadow (owner 2026-10-22) */
+    .pk-card { position: fixed; z-index: 902; left: 50%; top: 50%; width: min(340px, 100vw - 32px); max-height: min(380px, 100dvh - 260px);
+               display: flex; flex-direction: column; translate: -50% -50%; opacity: 0; transition: transform .34s cubic-bezier(.3,1.2,.5,1), opacity .2s;
+               /* ponytail: the .lv / .vsheet glass pair (styles.css ~7998), copied since this card sits outside them; add .pk-card to that list when ported */
+               --glass: color-mix(in srgb, var(--bg) 70%, transparent); --glass-ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1); }
+    body.light-theme .pk-card { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8); }
+    .pk-card .vs-list { flex: 1; margin: 0; padding: 0; border-radius: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    /* the Orders page's own colour under the glass rows, as Orders has: the tiles no longer show through (owner 2026-10-22).
+       A plain colour under them, so the round clip costs no blur; the rows run edge to edge, the card's ring is the edge */
+    .pk-card .vs-card { display: flex; flex-direction: column; overflow: hidden; border-radius: var(--rl-r); background: var(--bg); box-shadow: var(--glass-ring); }
+    .pk-card .vs-head { flex: none; align-self: stretch; flex-wrap: wrap; row-gap: 3px; margin: 0; padding: 10px 14px; border-radius: 0; }   /* name, its count at the right, the description under: one strip */
+    .pk-card .vs-title span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pk-card .vs-row { background-color: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+    .pk-card .vs-row { min-height: 44px; padding: 6px 14px; border-top: 0; }
+    @media (min-width: 768px) {   /* the tablet has the room: wider, taller rows */
+      .pk-card { width: min(520px, 100vw - 48px); max-height: min(560px, 100dvh - 200px); }
+      .pk-card .vs-head { padding: 14px 18px; } .pk-card .vs-row { min-height: 56px; padding: 8px 18px; } }
+    .pk-on .pk-dim, .pk-on .pk-card { opacity: 1; }
+    .pk-on .pk-card { transform: none !important; }
+    .pk-desc { flex-basis: 100%; margin: 0; color: var(--ink-secondary); font-weight: 400; line-height: 1.35; }   /* the strip's own size */
+    .pk-desc.clip { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }   /* a long one: two lines, then More (owner 2026-10-22) */
+    .pk-more { margin: -3px 0 0; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 500; cursor: pointer; }
+    .pk-btn { position: fixed !important; z-index: 902; margin: 0 !important; }
+    /* the ways in from peek-anim-lab.html (B-F): played by script on Apple-style springs, so the CSS fades stand down */
+    .pk-js .pk-card, .pk-js .pk-dim { opacity: 1; transition: none; }
+    .pk-ghost { position: absolute !important; left: 0; top: 0; transform-origin: 0 0; z-index: 3; display: block !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; opacity: 0; pointer-events: none; }
+    .pk-ghost .product-card { width: 100%; height: 100%; margin: 0; }
+  </style>
+  <script>
+  addEventListener('load', () => {
+    // This copy's first run: a My page to hold (an empty one is only Add tile), tiles show names only (the clean screen)
+    if (!HWPOS_STORE.ui.get('myPage', '')) {
+      const t = [...state.groups.filter(g => groupMembers(g.id).length).slice(0, 3).map(g => ({ g: g.id })),
+                 ...state.products.filter(p => !p.groupId && onTill(p)).slice(0, 6).map(p => ({ id: p.id })),
+                 ...liveFolders().slice(0, 1).map(f => ({ cat: f.id }))];
+      HWPOS_STORE.ui.set('myPage', JSON.stringify(t));
+      setTileShow('name');
+      setSellPage('mine');
+    }
+    const demo = [[/elbow|pvc|tee/i, 'For 1/2" and 3/4" PVC pipe. Solvent cement sold separately.'], [/faucet|brass/i, 'Brass body, chrome finish. Fits a standard 1/2" pipe.'],
+                  [/bulb|led/i, '9 watts, daylight white. Lasts about 15,000 hours.'], [/wire|thhn/i, 'Copper, 600 V. Sold by the metre.'],
+                  [/paint|boysen/i, 'Water-based, low odour, for walls and ceilings inside or out. Dries to the touch in 30 minutes, recoat after 2 hours. One litre covers about 10 m² in two coats. Thin with up to 10% clean water; wash brushes with soap.'], [/./, 'Comes with a 1-year store warranty.']];   // in memory only
+    [...state.groups, ...state.products.filter(p => !p.groupId)].forEach(x => { x.description ||= demo.find(([re]) => re.test(x.name))[1]; });
+
+    if (typeof openPeek === 'function') return;   // ported into the app (2026-10-22, as a fade): from here on its own peek runs here
+    const grid = $('#productGrid');
+    let press = null, peek = null, eatClick = 0, own = null;
+    const cancelApp = (id) => grid.dispatchEvent(own = new PointerEvent('pointercancel', { pointerId: id, bubbles: true }));   // the app's own hold + swipe let go
+    const mine = () => !!grid.querySelector('[data-at]');
+    const V = () => { try { return parent.PEEK_ANIM || 'a'; } catch { return 'a'; } };   // the way in, picked in peek-anim-lab.html; on its own = A
+    const unsq = (a) => { if (!a) return; a.reverse(); a.updatePlaybackRate(-2); a.onfinish = () => a.cancel(); };   // a press let go early springs back
+
+    document.addEventListener('pointerdown', (e) => {
+      if (e.button > 0 || myEditing || peek || press || !e.target.closest('#productGrid')) return;
+      const card = e.target.closest('.product-card');
+      if (card?.matches('.pc-add, .mp-ghost') || (!card && !mine())) return;   // All items: an empty spot does nothing
+      press = { card, x: e.clientX, y: e.clientY, id: e.pointerId, t: setTimeout(card ? open : wiggle, 380) };   // before the app's 400 ms lift
+      if (card && V() === 'c') press.sq = card.animate({ scale: [1, .95] }, { duration: 380, easing: 'cubic-bezier(.3,0,.3,1)', fill: 'forwards' });   // C: the tile presses in as you hold
+    }, true);
+    document.addEventListener('pointermove', (e) => {
+      if (!press || press.id !== e.pointerId) return;
+      if (press.wait) { if (!grid.querySelector('.mp-ghost')) e.stopPropagation(); else press = null; return; }   // until the app has lifted the tile
+      if (Math.hypot(e.clientX - press.x, e.clientY - press.y) < 10) return;
+      if (!peek) { clearTimeout(press.t); unsq(press.sq); press = null; return; }   // moved before the hold: a swipe, as now
+      if (press.card.dataset.at == null) return;   // All items: nothing to move
+      // My page, held then moved: the card goes, editing starts and the app's own drag takes the tile (a hold while editing = 150 ms)
+      const { card, x, y, id } = press;
+      close(true); myEdit(true);
+      press = { id, wait: true };
+      card.dispatchEvent(new PointerEvent('pointerdown', { pointerId: id, clientX: x, clientY: y, bubbles: true, isPrimary: true }));
+    }, true);
+    const up = (e) => {
+      if (e === own || !press || press.id !== e.pointerId) return;
+      clearTimeout(press.t);
+      if (!peek && !press.wait) unsq(press.sq);
+      if (peek && !press.wait) eatClick = Date.now() + 500;   // letting go of the hold is no tap on the tile
+      press = null;
+    };
+    addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+    document.addEventListener('click', (e) => {
+      if (Date.now() < eatClick && e.target.closest('#productGrid')) { e.preventDefault(); e.stopImmediatePropagation(); eatClick = 0; }
+    }, true);
+    document.addEventListener('contextmenu', (e) => { if (e.target.closest('#productGrid')) e.preventDefault(); });
+
+    function wiggle() { cancelApp(press.id); eatClick = Date.now() + 500; press = null; myEdit(true); }
+
+    const out = p => p.trackStock !== false && !(toNumber(p.stock, 0) > 0);
+    const stockText = p => p.trackStock === false ? 'Not counted' : out(p) ? 'Out of stock' : `${SalesMath.qtyText(p.stock)} ${escapeHtml(p.unit || 'pc')} in stock`;
+    const row = (p, name) => `<button type="button" class="vs-row" data-add="${p.id}">
+      <span class="nm">${name == null ? stockText(p) : `${escapeHtml(name)}<small>${out(p) ? '<b>Out of stock</b>' : stockText(p)}</small>`}</span><span class="amt num">${askedPrice(p) ? '—' : peso(p.price)}</span></button>`;
+
+    function open() {
+      const { card, id } = press, r = card.getBoundingClientRect();
+      cancelApp(id);
+      const g = card.dataset.groupId && groupById(card.dataset.groupId), p = card.dataset.id && state.products.find(x => x.id === card.dataset.id);
+      const f = card.dataset.cat && liveFolders().find(x => x.id === card.dataset.cat);
+      const x = g || p || f; if (!x) return;
+      let n = 1, rows;
+      if (g) {
+        const ms = groupMembers(g.id), words = ms.map(m => m.name.split(' '));   // rows drop the words every variant shares, as the variant sheet does
+        let cut = 0; while (words.length > 1 && words.every(w => w.length > cut + 1 && w[cut] === words[0][cut])) cut++;
+        n = ms.length;
+        rows = ms.map(m => row(m, m.name.split(' ').slice(cut).join(' '))).join('');
+      } else if (p) rows = row(p);   // one item: the row is its stock and price
+      else { const ps = catProducts(f.id); n = ps.length; rows = ps.map(m => row(m, m.name)).join(''); }
+      const desc = (g || p)?.description;
+      peek = document.createElement('div');
+      peek.innerHTML = `<div class="pk-dim"></div>
+        <div class="pk-card" role="dialog" aria-label="${escapeHtml(x.name)}"><div class="vs-card">
+          <div class="vs-head"><span class="vs-title"><span>${escapeHtml(x.name)}</span></span>${n > 1 ? `<span class="vs-count num">${SalesMath.plural(n, f ? 'item' : 'variant')}</span>` : ''}
+            ${desc ? `<p class="pk-desc clip">${escapeHtml(desc)}</p><button type="button" class="pk-more" data-more hidden>More</button>` : ''}</div>
+          <div class="vs-list">${rows}</div></div></div>`;
+      if (card.dataset.at != null) for (const b of [$('#cartBar'), $('#payBtn')]) {   // My page: the bottom button reads Edit page
+        const br = b.getBoundingClientRect(); if (!br.width) continue;
+        const e = b.cloneNode(false); e.removeAttribute('id'); e.disabled = false; e.classList.add('pk-btn'); e.dataset.edit = '';
+        e.innerHTML = '<span>Edit page</span>';
+        b.style.transition = "none"; const cs = getComputedStyle(b);   // its settled look: the tablet's Check out takes it from its id, which a copy drops
+        for (const k of ['backgroundColor', 'backgroundImage', 'color', 'border', 'borderRadius', 'boxShadow', 'font', 'display', 'alignItems', 'justifyContent']) e.style[k] = cs[k];
+        b.style.transition = '';
+        Object.assign(e.style, { left: br.left + 'px', top: br.top + 'px', width: br.width + 'px', height: br.height + 'px' });
+        peek.append(e);
+      }
+      document.body.append(peek);
+      const d = peek.querySelector('.pk-desc'); if (d) peek.querySelector('.pk-more').hidden = d.scrollHeight <= d.clientHeight;   // short: no More
+      const c = peek.querySelector('.pk-card'), cr = c.getBoundingClientRect(), v = peek.v = V();
+      const dx = r.left + r.width / 2 - (cr.left + cr.width / 2), dy = r.top + r.height / 2 - (cr.top + cr.height / 2);
+      peek.tile = card; peek.sq = press.sq;
+      if (v === 'a') {   // A: the tile grows into the card: it starts on the tile and settles in the middle
+        c.style.transform = `translate(${dx}px, ${dy}px) scale(${Math.min(r.width / cr.width, r.height / cr.height)})`;
+        card.style.visibility = 'hidden';
+        void c.offsetWidth; peek.classList.add('pk-on');
+      } else {
+        peek.classList.add('pk-js');
+        peek.out = WAYS[v]({ c, tile: card, r, cr, dx, dy });
+        for (const el of peek.querySelectorAll('.pk-dim, .pk-btn')) play(el, { opacity: [0, 1] }, { duration: 250, easing: 'ease-out' });
+      }
+      peek.addEventListener('click', (e) => {
+        if (e.target.closest('[data-more]')) { peek.querySelector('.pk-desc').classList.remove('clip'); e.target.remove(); return; }
+        const add = e.target.closest('[data-add]'), edit = e.target.closest('[data-edit]');
+        if (!add && !edit && e.target.closest('.pk-card')) return;   // a tap on the card's words does nothing
+        close();
+        if (add) addToCart(add.dataset.add, 'variant');
+        if (edit) myEdit(true);
+      });
+    }
+    function close(now) {
+      const el = peek; peek = null; if (!el) return;
+      const done = (now) => { if (!el.isConnected) return; if (peek?.tile !== el.tile) el.tile.style.visibility = '';   /* held again already: the new peek keeps it hidden */ now === true ? el.sq?.cancel() : unsq(el.sq); el.remove(); };   // a pressed tile settles back
+      if (now) return done(true);
+      if (el.v === 'a') { el.tile.style.visibility = ''; el.classList.remove('pk-on'); return setTimeout(() => el.remove(), 250); }
+      el.style.pointerEvents = 'none';   // closing: the screen is already live again
+      for (const d of el.querySelectorAll('.pk-dim, .pk-btn')) play(d, { opacity: [1, 0] }, { duration: 220, easing: 'ease-in' });
+      el.out().then(done, done); setTimeout(done, 700);   // a stalled animation (a hidden tab) never leaves the tile hidden
+    }
+
+    // Apple's spring(duration, bounce) - SwiftUI's own maths - sampled into a CSS linear() easing
+    function spring(d, bounce) {
+      const z = 1 - bounce, w = 2 * Math.PI / d, wd = w * Math.sqrt(1 - z * z), T = d * 1.25, n = 60, pts = [];
+      for (let i = 0; i <= n; i++) {
+        const t = T * i / n, e = Math.exp(-z * w * t);
+        pts.push(i === n ? 1 : +(bounce ? 1 - e * (Math.cos(wd * t) + z * w / wd * Math.sin(wd * t)) : 1 - e * (1 + w * t)).toFixed(4));
+      }
+      return { duration: T * 1000, easing: `linear(${pts.join(', ')})` };
+    }
+    function play(el, kf, o) { return el.animate(kf, { fill: 'both', ...o }); }
+    // B-D: the tile itself turns into the card. The card starts as the tile's exact box - scaled down till one side fits the tile,
+    // the other side cut to it, the tile's corners - and opens out to full size in the middle, its top (the name) first.
+    // The tile's own look sits on it and fades as it grows. Closing runs it back into the tile.
+    function morph({ c, tile, r, cr }, go) {
+      const s = Math.max(r.width / cr.width, r.height / cr.height), R = getComputedStyle(c.firstElementChild).borderTopLeftRadius;
+      const kf = [{ transform: `translate(${r.left - cr.left}px, ${r.top - cr.top}px) scale(${s})`, clipPath: `inset(0 ${cr.width - r.width / s}px ${cr.height - r.height / s}px 0 round ${parseFloat(getComputedStyle(tile).borderTopLeftRadius) / s}px)` },
+                  { transform: 'none', clipPath: `inset(0 0 0 0 round ${R})` }];
+      const ghost = document.createElement('div');   // the tile's look, in the grid's own tile rules, sized to the tile then blown up to the card's scale
+      ghost.className = `${grid.className} pk-ghost`; Object.assign(ghost.dataset, grid.dataset);
+      Object.assign(ghost.style, { width: r.width + 'px', height: r.height + 'px', scale: 1 / s });
+      ghost.append(tile.cloneNode(true)); c.append(ghost); c.style.transformOrigin = '0 0'; tile.style.visibility = 'hidden';
+      const words = [...c.querySelectorAll('.vs-head, .vs-list')], d = go.duration;
+      play(c, kf, { ...go, fill: 'backwards' });   // backwards: once in, the card is plain again (no clip left on it)
+      play(ghost, { opacity: [1, 0] }, { duration: d * .35, delay: d * .05, easing: 'ease-out' });
+      for (const w of words) play(w, { opacity: [0, 1] }, { duration: d * .4, delay: d * .1, easing: 'ease-out', fill: 'backwards' });
+      return () => {
+        const back = { duration: 280, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' };
+        for (const w of words) play(w, { opacity: [1, 0] }, { duration: 120, easing: 'ease-in' });
+        play(ghost, { opacity: [0, 1] }, { ...back, duration: 160, delay: 90, easing: 'ease-in' });
+        return play(c, [...kf].reverse(), back).finished;
+      };
+    }
+    const WAYS = { b: o => morph(o, spring(.3, .12)), c: o => morph(o, spring(.32, .2)), d: o => morph(o, spring(.22, 0)) };
+  });
+  </script>
+</body>
+</html>

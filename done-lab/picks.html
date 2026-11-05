@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sale complete picks</title>
+<!-- Shots of done-lab/index.html with <html data-dir="A".."D"> (rules in done-dirs.css); no data-dir = pos-lab today (Now).
+     Shot by shots.mjs in the session scratchpad: ₱500 sale, ₱1,500 cash, ₱1,000 change. -->
+<style>
+  :root { --bg: #f2f2f2; --card: #fff; --ink: #1c1c1e; --ink2: #6e6e73; --line: #e5e5ea; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--ink); font: 15px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+  h2 { margin: 0 0 2px; font-size: 17px; font-weight: 600; }
+  p { margin: 0; color: var(--ink2); }
+  section { margin-top: 28px; padding: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+  .shots { display: grid; grid-template-columns: repeat(2, minmax(0, 200px)) repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; align-items: start; }
+  @media (max-width: 900px) { .shots { grid-template-columns: repeat(2, 1fr); } }
+  figure { margin: 0; }
+  figure img { display: block; width: 100%; height: auto; border-radius: 10px; }
+  figcaption { margin-top: 4px; color: var(--ink2); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<h1>Sale complete: pick one</h1>
+<p>The change sits where checkout's total sat, same size, in black/white. One blue only. Print receipt, Show receipt and New sale are one set of round buttons.</p>
+<main id="rows"></main>
+<script>
+  const DIRS = [
+    ['now', 'Now', 'Green tick, green number, a square white box beside a blue pill.'],
+    ['A', 'A · Quiet', 'Small blue tick beside "Sale complete". The tick pops and draws, the number counts up.'],
+    ['B', 'B · Glow', '"Sale complete" in Check out\'s blue; a soft blue light blooms behind the number and stays faint.'],
+    ['C', 'C · Big tick', 'One blue circle says it, no heading. It springs in with a ring; "Change" above the number.'],
+    ['D', 'D · Plain', 'Black/white only, the number comes into focus. Phone: Print over New sale at the bottom.'],
+  ];
+  const SHOTS = [['phone-light', 'Phone · Light'], ['phone-dark', 'Phone · Dark'], ['tab-light', 'Tablet · Light'], ['tab-dark', 'Tablet · Dark']];
+  const fig = (src, cap) => `<figure><img src="${src}" alt="${cap}" loading="lazy"><figcaption>${cap}</figcaption></figure>`;
+  document.getElementById('rows').innerHTML = DIRS.map(([k, name, line]) => `<section id="dir-${k}"><h2>${name}</h2><p>${line}</p><div class="shots">${
+    SHOTS.map(([s, cap]) => fig(`img/${k}-${s}.jpg`, cap)).join('')
+  }</div></section>`).join('');
+</script>
+</body>
+</html>

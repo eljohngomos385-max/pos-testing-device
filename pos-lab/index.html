@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=724" />
+  <link rel="stylesheet" href="styles.css?v=756" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-back" viewBox="0 0 24 24"><path d="M15 4l-8 8 8 8"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5.2 7.1L19.8 4.4"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r=".8" fill="currentColor"/><circle cx="12" cy="12" r=".8" fill="currentColor"/><circle cx="19" cy="12" r=".8" fill="currentColor"/></symbol></svg>   <!-- every round-button icon (‹ ✕ ✓ ⋯) is <use href="#i-…"/>: change the shape here, the size and line in --circle-ic / --circle-sw (owner 2026-11-04, measured off Apple Settings, Contacts and Safari) -->
@@ -429,6 +429,7 @@
               <button type="button" class="co-cancel cta-2" id="checkoutCancelBtn">
                 <svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg><span id="checkoutBackText">Cancel</span>
               </button>
+              <button type="button" class="co-ok cta" id="checkoutKeysOk" aria-label="Done"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></button>
             </header>
             <div class="co-stage">
               <div class="co-col" id="checkoutSteps">
@@ -993,16 +994,16 @@
   <script src="printer.js?v=54"></script>
   <script src="drawer.js?v=1"></script>
   <script src="pos-core.js?v=74"></script>
-  <script src="pos-sell.js?v=143"></script>
-  <script src="pos-checkout.js?v=51"></script>
-  <script src="pos-orders.js?v=53"></script>
+  <script src="pos-sell.js?v=157"></script>
+  <script src="pos-checkout.js?v=53"></script>
+  <script src="pos-orders.js?v=54"></script>
   <script src="pos-items.js?v=82"></script>
   <script src="pos-customers.js?v=48"></script>
   <script src="pos-settings.js?v=46"></script>
   <script src="pos-pin.js?v=15"></script>
-  <script src="pos-shift.js?v=54"></script>
+  <script src="pos-shift.js?v=57"></script>
   <script src="pos-stock.js?v=28"></script>
   <script src="pos-qr.js?v=3"></script>
-  <script src="app.js?v=300"></script>
+  <script src="app.js?v=301"></script>
 </body>
 </html>

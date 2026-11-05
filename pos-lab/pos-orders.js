@@ -360,7 +360,7 @@ function openFilterSheet(btn, groups, cur, def, apply, acts = []) {
   const pick = { ...cur }, { veil, m, close } = openSheet(btn, `<div class="fs-top">
     <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button>
     <h2 id="fsTitle">Filters</h2>
-    <button type="button" class="fs-ok cta-2" aria-label="Apply filters"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></button>
+    <button type="button" class="fs-ok cta" aria-label="Apply filters"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></button>
     </div><div class="fs-body"></div><button type="button" class="fs-clear cta-2">Clear Filters</button>`), body = m.querySelector('.fs-body');
   const same = (x, y) => JSON.stringify([].concat(x).sort()) === JSON.stringify([].concat(y).sort());   // a list's order never counts
   const differs = (a, b) => Object.keys(def).some(k => !same(a[k], b[k]));

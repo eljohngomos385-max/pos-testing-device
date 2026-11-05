@@ -163,8 +163,7 @@ function updateChange() {
   // Label above, figure under it, the figure shrinks to its row (--n = its length): ₫ millions and long words never squeeze.
   const fig = (el, html, cls) => { if (!el) return; el.innerHTML = html; el.style.setProperty('--n', el.textContent.length); el.className = 'co-fig num ' + cls; };
   const zero = SalesMath.formatMoney(0, state.settings?.store?.currency, { whole: true });
-  const caret = html => html.replace(/(\d[.,]?)(?!.*\d)/, '$1<span class="co-caret"></span>');
-  const typed = r => caret(r ? typedCash(r) : zero);
+  const typed = r => (r ? typedCash(r) : zero);   // no blinking caret: the keys are the input (owner 2026-11-05)
   const lbl = $('#checkoutChangeLbl'), lbl0 = $('#checkoutCashLbl'), go = $('#checkoutCompleteBtn');
   setCheckoutError('');
   const ok = d >= 0;
@@ -216,7 +215,7 @@ function spOff() {   // what split adds comes off (also when a sale ends or a ne
 }
 const spKeyOf = t => t.dataset.label || t.dataset.method;
 const spCan = t => !(t.dataset.method === 'split' || (t.dataset.method === 'other' && !t.dataset.label));
-function spGo(k, raw = '', fresh = false) { Object.assign(SP, { k, raw, fresh }); spRender(); }
+function spGo(k, raw = '', fresh = false) { Object.assign(SP, { k, raw, fresh }); $('#checkoutApp').classList.remove('co-kd'); spRender(); }
 const spRaw = v => v.toFixed(2).replace(/\.00$/, '');   // 21.5 -> "21.50", 750 -> "750", as it would be typed
 // a method's page opens with its amount, or with what's left, the first part too (owner 2026-10-17): grey till the first key replaces it
 function spAmt() { const v = SP.leg.amount || spLeft(SP.leg); spGo('amt', v ? spRaw(v) : '', !!v); }
@@ -272,11 +271,11 @@ function spRender() {
 
   // One figure (two for a typed Cash given: Given and the change), the keypad, Done or Complete sale
   const fig = (el, html, cls) => { el.innerHTML = html; el.style.setProperty('--n', el.textContent.length); el.className = 'co-fig num ' + cls; };
-  const caret = '<span class="co-caret"></span>', v = moneyValue(parseFloat(SP.raw) || 0), raw = SP.raw;
+  const v = moneyValue(parseFloat(SP.raw) || 0), raw = SP.raw;
   const money = r => (r ? typedCash(r) : peso(0));
   $('#checkoutChangeLbl').parentElement.hidden = k !== 'typed';
   let ok = true;
-  fig($('#checkoutCash'), money(raw) + caret, raw && !SP.fresh ? '' : 'ph');
+  fig($('#checkoutCash'), money(raw), raw && !SP.fresh ? '' : 'ph');
   if (k === 'typed') {
     ok = !!raw && v >= leg.amount;
     $('#checkoutChangeLbl').textContent = raw && v < leg.amount ? 'Short' : 'Change';
@@ -361,6 +360,7 @@ function showCashKeys(on) {
   const quick = $('#checkoutQuick'), keys = $('#checkoutKeyIn');
   if (!quick || !keys) return;
   quick.hidden = on; keys.hidden = !on;
+  $('#checkoutApp').classList.remove('co-kd');   // the phone's keys open up, sliding in (styles: co-kd)
   $('#checkoutTender').value = '';
   updateChange();
 }

@@ -1,0 +1,50 @@
+/* Pop-ups, redone (see poplab.js). ponytail: lab only -- moves into styles.css with the port, then this file goes. */
+
+/* ---- Cart line: a card on the line ---- */
+.pl-veil { position: fixed; inset: 0; z-index: 150; }
+.pl-line { position: absolute; overflow: hidden; border-radius: var(--rl-r); background: var(--rl-card);
+           box-shadow: var(--shadow-raised), 0 0 0 1px var(--line); }
+/* the line itself, as the cart draws it (.rail-h .row) */
+.pl-head { display: flex; align-items: center; gap: 12px; min-height: 45px; padding: 7px var(--rl-m); border-bottom: 1px solid var(--line); }
+.pl-head .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
+.pl-head .nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
+.pl-head .amt { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.pl-opt { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 8px 0 var(--rl-m); }
+.pl-opt > span:first-child { flex: 1; color: var(--ink-secondary); font-size: 13px; }
+.pl-b { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: var(--r-input);
+        background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); color: var(--ink); cursor: pointer; }
+.pl-b:hover { background: var(--rl-hover); }
+.pl-b svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.pl-qty { width: 48px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--ink);
+          font: inherit; font-size: 15px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; outline: 0; }
+.pl-qty:focus { background: var(--rl-soft); }
+.pl-opt .pl-field { width: 120px; height: 32px; }   /* the stepper's width, so the two line up */
+.pl-remove { width: 100%; height: 40px; padding: 0 var(--rl-m); border: 0; border-top: 1px solid var(--line); background: none;
+             color: var(--danger); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.pl-remove:hover { background: var(--danger-bg); }
+
+/* ---- An amount field: the number, then ₱ | % (or the unit) inside its right end ---- */
+.pl-field { display: flex; align-items: center; border-radius: var(--r-input); background: var(--rl-soft);
+            box-shadow: inset 0 0 0 1px var(--rl-hair); }
+.pl-field:focus-within { box-shadow: inset 0 0 0 1px var(--ink-tertiary); }
+.pl-field input { flex: 1; min-width: 0; height: 100%; padding: 0 8px 0 12px; border: 0; background: none; color: var(--ink);
+                  font: inherit; font-size: 14px; text-align: right; font-variant-numeric: tabular-nums; outline: 0; }
+.pl-field input::placeholder { color: var(--ink-tertiary); }
+.pl-seg { display: flex; gap: 2px; height: 100%; padding: 3px; }
+.pl-seg button { width: 26px; border: 0; border-radius: 7px; background: none; color: var(--ink-tertiary); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pl-seg button.active { background: var(--rl-card); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
+.pl-unit { padding: 0 14px 0 2px; color: var(--ink-tertiary); font-size: 14px; }
+
+/* ---- Pop-ups in the middle: the app's .modal, small ---- */
+.modal.pl-pop { width: min(300px, 100%); gap: 14px; padding: 18px; }
+.modal.pl-pop.pl-wide { width: min(380px, 100%); }
+.pl-pop h2 { margin: 0; color: var(--ink); font-size: 15px; font-weight: 590; letter-spacing: -0.2px; }
+.pl-pop .pl-field { height: 44px; }
+.pl-pop .pl-field input { font-size: 16px; }
+.pl-pop textarea { padding: 12px; border: 0; border-radius: var(--r-input); background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair);
+                   color: var(--ink); font: inherit; font-size: 14px; line-height: 1.45; resize: none; outline: 0; }
+.pl-pop textarea:focus { box-shadow: inset 0 0 0 1px var(--ink-tertiary); }
+.pl-pop textarea::placeholder { color: var(--ink-tertiary); }
+.pl-acts { display: flex; gap: 8px; }
+.pl-acts > button { flex: 1; justify-content: center; height: 44px; text-transform: none; letter-spacing: 0; }
+.pl-acts > [hidden] { display: none; }

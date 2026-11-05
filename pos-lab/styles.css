@@ -20,7 +20,7 @@
      or keys --hero-gap under it, at one size. Checkout's line is the reference. A new hero page uses these, never its own spot */
   --hero-y: clamp(140px, 22.8dvh, 300px);
   --hero-gap: clamp(20px, 4vh, 36px);
-  --hero-fs: clamp(54px, 5.4vw, 72px);
+  --hero-fs: clamp(59px, 5.4vw, 72px);   /* phone 59: Wallet's ¥5,000 on the same screen (owner 2026-11-04) */
   --hero-fw: 550;   /* a touch thinner than 600; 500 was one step too far (owner 2026-10-19) */
 
   --line: rgba(255, 255, 255, 0.08);
@@ -3451,10 +3451,12 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-col { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .es-head { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: calc(var(--hero-gap) - 16px); color: var(--ink-tertiary); font-size: 13px; font-weight: 500;
            font-variant-numeric: tabular-nums; text-align: center; }   /* + the column's 16 = checkout's gap to the first row */
-.es-head p { max-width: 100%; margin: 0; overflow: hidden; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }   /* one line: a long name never moves the amount */
+.es-head p { max-width: 100%; margin: 0; font-size: 16px;   /* Wallet's "New Balance" size (owner 2026-11-04) */ overflow: hidden; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }   /* one line: a long name never moves the amount */
 .es-head { position: relative; }
 .es-head .es-off { position: absolute; top: calc(100% + 4px); }   /* "₱13.00 off ₱65.00" under the cart Discount's total, in the gap: the rows never move */
 .es-head .es-off b { color: var(--rl-on); font-weight: inherit; }   /* what's taken off, in the discount blue */
+.es-head .es-off.none b { color: inherit; }   /* B's Custom before a key: "0% off", all grey */
+.es-head .es-name { margin-top: 3px; }   /* Price's name under the amount: 18 from the digits to the name (owner's design 2026-11-05) */
 .es-hero { color: var(--ink); font-size: var(--hero-fs); font-weight: var(--hero-fw); letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }   /* checkout's */
 .es-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .es-list:empty { display: none; }
@@ -3528,7 +3530,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-ft { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; border-top: 1px solid var(--line); }
 .esheet .es-q { height: 40px; margin-left: -8px; padding: 0 8px; border-radius: var(--es-r); color: var(--ink-secondary); font-size: 14px; }
 .esheet .es-q:hover { background: var(--es-btn); color: var(--ink); }
-.esheet .es-q.rm { color: var(--danger); }
+.esheet :is(.es-q, .es-x).rm { color: var(--danger); }   /* Remove item; the phone's Remove across from ‹ */
 .esheet .es-q.rm:hover { background: var(--danger-bg); }
 .esheet .es-ink { height: 40px; margin-left: auto; padding: 0 20px; border-radius: var(--es-r); background: var(--tile); font-size: 14px; font-weight: 590; }
 .esheet .es-ink:hover:not(:disabled) { background: var(--es-hover); }
@@ -4832,8 +4834,8 @@ body.light-theme .product-card,
 body.light-theme .product-card.pc-group, body.light-theme .co-tile { background: var(--surface); }   /* owner 2026-10-18: nearer the search glass (251) than pure white */
 /* Checkout's rows and buttons on the grey page are the list sheets' too, one rule (owner 2026-10-27: "better if it's shared");
    a picked / typed-into row keeps its own look */
-body.light-theme .esheet:not(.cust-sheet):not(:has(.es-kp)) :is(.es-row:not(.on, .pick), .es-ink) { background: var(--surface); box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06); }
-body.light-theme .esheet:not(.cust-sheet):not(:has(.es-kp)) :is(.es-row:not(.on, .pick, .out), .es-ink:not(:disabled)):hover { background: var(--bg-soft); }
+body.light-theme .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) :is(.es-row:not(.on, .pick), .es-ink) { background: var(--surface); box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06); }
+body.light-theme .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) :is(.es-row:not(.on, .pick, .out), .es-ink:not(:disabled)):hover { background: var(--bg-soft); }
 body.light-theme .product-card:hover,
 body.light-theme .product-card.pc-group:hover { background: var(--surface-hover); }
 body.light-theme .product-card:active { background: var(--surface-hover); }
@@ -7359,6 +7361,9 @@ body.light-theme {
   /* iPhone: the rounded bottom keeps 34px for the home bar. The bar and Check out float as a narrow pill, low over
      it, like Safari's address bar (owner 2026-10-07: a wide bar clashed with the corners, edge to edge was fat). devices.html sets --ph-safe on the Phone preset so the preview matches */
   :root { --ph-safe: env(safe-area-inset-bottom, 0px); --ph-b: max(10px, calc(var(--ph-safe) - 14px)); }   /* 20px on iPhone: lower runs into the home-bar swipe */
+  /* the hero line on a phone: a little under checkout's old spot (owner 2026-11-04: the centre between head and pad was too low, then 288, 273, 253 and 233 too; 2026-11-05 tuned by slider: 230 on every phone; then 217, the Price design with the amount on top) */
+  :root { --hero-y: 217px; }
+  .co-col { padding-top: max(0px, calc(var(--hero-y) - var(--co-top-h) - var(--ph-top, 0px))); }   /* the view starts under the clock here: take it off, or checkout sat the clock lower than the numpad (owner: "they need to be uniform") */
   .content-row { grid-template-rows: minmax(0, 1fr) auto; }
   .catalog { min-height: 0; gap: 14px; padding-bottom: 14px; }   /* the same space above and below the tiles (owner 2026-10-07: 8 below felt tighter than 14 above; tried 14/14, then 12/12) */
   .product-grid[data-size] { --grid-gap: 6px; }   /* owner 2026-10-18: "slightly tighter" than 8, with the v449 lift the tiles read as one set */
@@ -7409,14 +7414,15 @@ body.light-theme {
   .es-card { border: 0; border-radius: 0; box-shadow: none; background: var(--bg); }
   body.light-theme:has(.esheet.open:not(.cust-sheet)) { background: var(--bg); }   /* the page is white; the status bar with it */
   /* a list page (Discount, Walk-in, a cart line) is checkout's grey page (owner 2026-10-27); a keypad page stays white */
-  .esheet:not(.cust-sheet):not(:has(.es-kp)), .esheet:not(.cust-sheet):not(:has(.es-kp)) .es-card { background: var(--canvas, var(--bg)); }
-  body.light-theme:has(.esheet.open:not(.cust-sheet)):not(:has(.esheet.open .es-kp)) { background: var(--canvas); }
+  .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))), .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) .es-card { background: var(--canvas, var(--bg)); }
+  body.light-theme:has(.esheet.open:not(.cust-sheet)):not(:has(.esheet.open :is(.es-kp:not(.lk *), .es-body.ks:not(.lk)))) { background: var(--canvas); }
   .es-ft { border-top: 0; }
   .es-body { padding-inline: 20px; }   /* checkout's inset */
-  .esheet:has(.es-body.fill) { padding-bottom: 0; }   /* Walk-in / Discount: the list runs under the home bar, Done on Check out's line */
+  .esheet:has(.es-body.fill, .es-ft > .ph-bar) { padding-bottom: 0; }   /* Walk-in / Discount: the list runs under the home bar, Done on Check out's line; a cart line's Done too */
+  .es-seg.off { display: none; }   /* Quantity's keys sit as low as every other numpad; each is its own page here, nothing to jump (owner 2026-11-05) */
   .es-ft:has(> .ph-bar) { padding-bottom: 0; }   /* the pill's own margin puts it on Check out's line */
-  .esheet:not(.cust-sheet):not(:has(.es-kp)) { --es-bg: var(--canvas, var(--bg)); }
-  .esheet:has(.es-kp) { --es-bg: var(--bg); }
+  .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) { --es-bg: var(--canvas, var(--bg)); }
+  .esheet:has(.es-kp:not(.lk *), .es-body.ks:not(.lk)) { --es-bg: var(--bg); }
   /* Every phone ‹ Back / ‹ Cancel = the ☰'s 44 glass circle at 12,8, a 24 grey chevron and no word (owner 2026-11-04: "just a
      circle"); the word stays for screen readers. The iPad keeps its words. The ‹ itself = --back-* */
   .co-top { padding: var(--co-y) var(--co-m) 0 12px; }
@@ -7815,7 +7821,7 @@ body.light-theme .lv .in[type=date] { color-scheme: light; }
 .lv .note b { color: var(--ink); font-weight: 550; }
 .lv .pills { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
 .lv .pills button { height: 32px; padding: 0 12px; border-radius: 8px; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); color: var(--ink-secondary); font-size: 13px; font-weight: 500; }
-.lv .pills button.cur { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.lv .pills button.cur { background: var(--cta-bg); color: var(--cta-ink); box-shadow: var(--cta-shadow); }   /* the ✓'s blue (owner 2026-11-05) */
 :is(.lv, .cust-sheet, .esheet) .sw { appearance: none; position: relative; flex: none; width: 40px; height: 24px; margin: 0; border-radius: 12px; background: var(--surface-hover); cursor: pointer; transition: background-color .15s; }
 body.light-theme :is(.lv, .cust-sheet, .esheet) .sw:not(:checked) { background: var(--bg-soft); }   /* :not -- it outranked :checked, so an on switch stayed grey */
 body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }   /* on the grey block the usual off track vanished */
@@ -7843,7 +7849,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv .pick .tx { display: grid; min-width: 0; }
 /* a pick sits at the right; a one-of-many (radio) is Apple's bare check, a tick box is the POS tick (below Quick stock's) */
 .lv .fc .pick input { order: 9; margin-left: auto; appearance: none; background: none; }
-.lv .fc .pick input[type=radio]:checked { background: var(--ink); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat; }
+.lv .fc .pick input[type=radio]:checked { background: var(--cta-bg); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat; }
 .lv .fc .pick:has(input:focus-visible) { background-color: var(--rl-hover); }
 .lv .fc .fr:focus-visible { outline-offset: -2px; }   /* the tile clips its edges: the ring sits inside the row */
 .lv .fc:has(input:disabled):not(:has(input:enabled)) { opacity: .6; pointer-events: none; }   /* a whole card that can't be picked yet fades, white and all: Sold by's units under Piece */
@@ -8136,13 +8142,12 @@ body:not(.light-theme) #catalogSearchRow { --glass: color-mix(in srgb, var(--ink
 .fs-top::after { content: ''; position: absolute; top: 6px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 999px; background: var(--ink-quaternary); pointer-events: none; }
 .fs-top h2 { margin: 0; color: var(--ink); font-size: 17px; font-weight: 550; }
 .fsheet .fs-x, .fsheet .fs-ok, .ag-top .fs-x { display: grid; place-items: center; }
-.fsheet .fs-ok:disabled { color: var(--ink-quaternary); cursor: default; }
-.fsheet .fs-ok:not(:disabled) { background: var(--accent); color: var(--accent-ink); }   /* lit once something changed (Maps' blue, our ink) */
+.fsheet .fs-ok:disabled { opacity: .35; cursor: default; }   /* blue as every ✓ (owner 2026-11-05, .cta); lit once something changed */
 .fs-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 66px var(--sheet-x) calc(var(--bar-h) + 32px + var(--ph-safe, 0px)); }   /* the last card clears Clear Filters */
 .fs-body h6 { margin: 0; padding: 20px 4px 8px; color: var(--ink-tertiary); font-size: 14px; font-weight: 400; }   /* Settings' group title (.fc-t) */
 .fs-grp { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px; border-radius: var(--rl-r); background: var(--rl-card); }
 .fsheet .fs-grp button { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--tile); color: var(--ink); font-size: 15px; font-weight: 500; }
-.fsheet .fs-grp button.cur { background: var(--accent); color: var(--accent-ink); }
+.fsheet .fs-grp button.cur { background: var(--cta-bg); color: var(--cta-ink); box-shadow: var(--cta-shadow); }   /* the ✓'s blue (owner 2026-11-05) */
 .fsheet .fs-clear { position: absolute; bottom: calc(var(--pill-b) + 8px); left: 50%; transform: translateX(-50%); height: var(--bar-h); font-size: 15px; font-weight: 550; }
 .fsheet .fs-clear[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .fs-veil, .fsheet { transition: none; } }
@@ -8161,7 +8166,7 @@ body:not(.light-theme) #catalogSearchRow { --glass: color-mix(in srgb, var(--ink
 .fsheet .fs-rows button.red { color: var(--danger); }
 /* a pick-one sheet (Quick stock's mode): the current row carries Apple's bare check, as a pick list's radio */
 .fsheet .fs-rows button.cur { display: flex; align-items: center; justify-content: space-between; }
-.fsheet .fs-rows button.cur::after { content: ''; width: 20px; height: 20px; background: var(--ink); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat; }
+.fsheet .fs-rows button.cur::after { content: ''; width: 20px; height: 20px; background: var(--cta-bg); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat; }
 .fsheet .fs-rows button:disabled { color: var(--ink-quaternary); cursor: default; }
 
 
@@ -8627,8 +8632,8 @@ body.qs-on.qs-price .view-items .cols > :nth-child(4) { display: none; }
 .pay-sheet .pr input { margin: 0; }
 .lv .pick input[type=checkbox]:checked::before, .pay-sheet .pr input:checked::before, .lv .ol [aria-checked="true"] .box::before { content: ''; position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; }   /* centred, not inset by the border: Chrome rounds a 1.5px border to whole pixels */
 #itemsRows .row.qs-tick .nm::before, .lv .pick input[type=checkbox], .pay-sheet .pr input, .lv .ol .box { box-sizing: border-box; width: 18px; height: 18px; border: 1.5px solid var(--ink-quaternary); border-radius: 50%; }
-#itemsRows .row.qs-in .nm::before, .lv .pick input[type=checkbox]:checked, .pay-sheet .pr input:checked, .lv .ol [aria-checked="true"] .box { border-color: var(--accent); background: var(--accent); }
-#itemsRows .row.qs-in .nm::after, .lv .pick input[type=checkbox]:checked::before, .pay-sheet .pr input:checked::before, .lv .ol [aria-checked="true"] .box::before { background: var(--accent-ink);
+#itemsRows .row.qs-in .nm::before, .lv .pick input[type=checkbox]:checked, .pay-sheet .pr input:checked, .lv .ol [aria-checked="true"] .box { border-color: transparent; background: var(--cta-bg); }   /* every pick is the ✓'s blue (owner 2026-11-05) */
+#itemsRows .row.qs-in .nm::after, .lv .pick input[type=checkbox]:checked::before, .pay-sheet .pr input:checked::before, .lv .ol [aria-checked="true"] .box::before { background: var(--cta-ink);
   -webkit-mask: var(--qs-tick-ic) center / contain no-repeat; mask: var(--qs-tick-ic) center / contain no-repeat; }
 #itemsRows .row.qs-in { background-image: linear-gradient(var(--accent-tint), var(--accent-tint)); }
 .lv .pick:has(input[type=checkbox]:checked), .pay-sheet .pr:has(input:checked), .lv .ol .line:has([aria-checked="true"]) { background-color: var(--accent-tint); }   /* a colour, not an image: these rows draw their hairline as the image */
@@ -9076,3 +9081,44 @@ body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
   :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) svg { width: calc(var(--circle-ic) * 5 / 6); height: calc(var(--circle-ic) * 5 / 6); stroke-width: calc(var(--circle-sw) * 6 / 5); }   /* All | My page and the gear: their drawings fill the whole 24 box, so a 20 box keeps them 18 wide and the line still --circle-sw */
   #app .side-link[data-view="settings"] svg :is(.f, .d) { stroke-width: inherit; }
 }
+
+/* ===== NUMPAD (owner 2026-11-05 picked B, the Expense app). The price ask and a custom item stay a page with
+   ✕ | title | ✓ on the head line; only the keys are a sheet: the half sheet's look (.fsheet.half: flush to the edges,
+   32 corners on top, the grab tab, --canvas) docked at the foot, bare digits 69 a row. */
+.co-ok { display: none; }   /* the phone shows it (NUMPAD below) */
+.es-ttl { position: absolute; z-index: 1; top: 8px; inset-inline: 88px; margin: 0; overflow: hidden; color: var(--ink); font-size: 17px; font-weight: 550;
+          line-height: 44px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 720px) {
+  .esheet:has(.es-body:is(.wl, .wd, .ks)), #shiftSheet { padding-bottom: 0; }   /* the key sheet / Shift's button reach the screen's foot; Over / short's Close shift on Next's spot (owner 2026-11-05) */
+  .esheet:has(.es-body.wl) .es-x .ib { display: none; }
+  .esheet:has(.es-body.wl) .es-x .ix { display: block; width: var(--circle-ic); height: var(--circle-ic); stroke-width: var(--circle-sw); }
+  #editSheetCard:has(> .es-body:is(.wl, .wd, .ks)) > .es-ft, .esheet .es-card > .es-ok { position: absolute; z-index: 1; top: 8px; right: 12px; padding: 0; }   /* ✓ on ‹'s line */
+  /* every ✓ is blue (owner 2026-11-05): the Next button's material from .cta, only the 44 circle here */
+  .esheet .es-ink.es-ok { display: grid; place-items: center; width: 44px; height: 44px; margin: 0; padding: 0; }
+  :is(.esheet .es-ok, .co-ok) svg { width: var(--circle-ic); height: var(--circle-ic); fill: none; stroke: currentColor; stroke-width: var(--circle-sw); stroke-linecap: round; stroke-linejoin: round; }
+  .es-body.ks > .es-keys, .co:not(.co-kd) #checkoutKeys { position: absolute; z-index: 3; grid-area: auto; left: 0; right: 0; bottom: 0; padding: 22px var(--sheet-x) calc(8px + var(--ph-safe, 0px) / 2);
+                           border-top: .5px solid var(--line-strong); border-radius: 28px 28px 0 0; background: var(--bg); }   /* the page's white (owner 2026-11-04: grey was the wrong material); grid-area: an abspos grid child would sit in its slot */
+  :is(.es-body.ks > .es-keys, #checkoutKeys)::before { content: ''; position: absolute; top: 6px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 999px; background: var(--ink-quaternary); }   /* .fs-top::after */
+  /* up by itself as the page opens, never a tap on the number (owner 2026-11-05); ✓ slides it back down (keysDown) */
+  .es-body.ks > .es-keys.es-in, .co #checkoutKeys { animation: ks-up .3s var(--rl-ease) .1s both; }
+  .es-body.ks > .es-keys.es-dn, .co #checkoutKeys.es-dn { animation: ks-dn .24s var(--rl-ease) forwards; }
+  :is(.es-body.ks, #checkoutKeys) .es-kp { gap: 0; }
+  :is(.esheet .es-body.ks, .co #checkoutKeys) .es-kp button { height: 69px; border-radius: 999px; background: none; box-shadow: none; font-size: 36px; font-weight: 450; }
+  :is(.esheet .es-body.ks, .co #checkoutKeys) .es-kp button:hover { background: none; }
+  :is(.esheet .es-body.ks, .co #checkoutKeys) .es-kp button:active { transform: none; background: var(--surface-hover); }
+  :is(.esheet .es-body.ks, .co #checkoutKeys) .es-kp svg { width: 32px; height: 32px; stroke-width: 1.8; }
+  .es-body.ks:not(:has(.es-keys)) .es-hero, .co.co-kd :is(#checkoutTotalDue, .co-read) { cursor: pointer; }   /* a tap brings the keys back */
+  /* Shift's sheet: its button is the Shift page's Start shift, same size, 24 from the same corner; Skip / Recount on its line */
+  #shiftSheet .es-ft > .es-q { position: absolute; left: 24px; bottom: 24px; height: 48px; margin: 0; padding: 0 12px; font-size: 15px; pointer-events: auto; }
+  /* checkout's Cash › Custom and a split part: ✓ across from ‹ while the keys are up, Complete sale / Done once they're down.
+     The bottom button is always there, under the key sheet (z 3 over its 2), so the keys slide off it; the ✓ fades (owner 2026-11-05) */
+  .co:has([data-step="cash"]:not([hidden]) #checkoutKeyIn:not([hidden])) .co-ok { display: grid; place-items: center; width: 44px; height: 44px; margin: 0 calc(12px - var(--co-m)) 0 auto; padding: 0; }
+  .co.co-kd .co-ok { visibility: hidden; }
+  .co.co-kd #checkoutKeys { display: none; }
+  .esheet .es-card:has(.es-keys.es-in) > .es-ok, .co:not(.co-kd) .co-ok { animation: ok-in .3s var(--rl-ease) .1s both; }
+  .esheet .es-card:has(.es-keys.es-dn) > .es-ok, .co:has(#checkoutKeys.es-dn) .co-ok { animation: ok-out .2s var(--rl-ease) forwards; pointer-events: none; }
+}
+@keyframes ok-in { from { opacity: 0; transform: scale(.8); } }
+@keyframes ok-out { to { opacity: 0; transform: scale(.8); } }
+@keyframes ks-up { from { transform: translateY(100%); } }
+@keyframes ks-dn { to { transform: translateY(100%); } }

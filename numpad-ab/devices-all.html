@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POS Devices</title>
+<style>
+/* One page for every device (owner 2026-10-17): the iPhone is phone.html itself, so its measured status bar stays exactly as
+   measured; the tablets are the app in an iPad 13 / iPad 11 / Android 11" frame with their status bar and home bar. Sizes are the CSS px each browser lays out in (devices.html's). An iframe, so the app's tablet rules see the tablet's width */
+:root { --sb-ink: #000; --sb-bg: #F2F2F2; }
+html, body { margin: 0; height: 100%; }
+body { background: #0A0A0A; overflow: hidden; font: 12px/1.4 system-ui, sans-serif; }
+button { font: inherit; cursor: pointer; }
+.bar { position: fixed; top: 10px; left: 50%; z-index: 10; transform: translateX(-50%); display: flex; gap: 10px; padding: 4px; border-radius: 10px;
+       background: #1A1A1A; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }
+.bar div { display: flex; gap: 2px; }
+.bar button { height: 28px; padding: 0 10px; white-space: nowrap; border: 0; border-radius: 7px; background: none; color: rgba(255,255,255,.6); }
+.bar button.cur { background: #333; color: #fff; }
+.stage { position: fixed; inset: 50px 0 0; display: flex; align-items: center; justify-content: center; }   /* flex: a grid row grows to the unscaled frame and pushes it off the bottom */
+.dev { position: relative; flex: none; border-radius: var(--r); background: var(--sb-bg); transform-origin: center;
+       box-shadow: 0 0 0 1px rgba(255,255,255,.08);   /* no drop shadow: black on the black page barely showed, and it framed the corner cover in a square */ }
+#ph { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }   /* phone.html fits its own frame to this */
+/* iPad corners are Apple's continuous curve, as the iPhone's: phone.html matched 55pt with 88px + superellipse(1.8) (x1.6), and the
+   shape scales, so the iPad's 18pt is 18 x 1.6. Android's corner is a plain circle */
+@supports (corner-shape: superellipse(2)) { .dev:not(.android) { border-radius: calc(var(--r) * 1.6); corner-shape: superellipse(1.8); } }
+.cap { position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit; corner-shape: inherit; clip-path: inset(-1px);
+       box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 0 0 99px #0A0A0A; }   /* the screen's corner: the page colour painted over the app outside
+   the frame's curve, not a clip. Chromium drops backdrop-filter (the glass buttons, the frost) inside an iframe under a rounded or polygon
+   clip, so the app is never clipped; the curve stays Apple's and is the same open and shut (owner 2026-10-22) */
+#f { position: absolute; inset: 0 0 var(--bot); display: block; width: 100%; height: calc(100% - var(--bot)); border: 0; }   /* under the status bar, as on the iPad */
+
+/* the status bar: iPadOS has the time and date left, wifi and battery right; Android the time left, icons right */
+.sb { position: absolute; inset: 0 0 auto; z-index: 2; display: flex; align-items: center; justify-content: space-between; height: var(--top); padding: 0 20px;
+      color: var(--sb-ink); pointer-events: none; font: 600 14px/1 -apple-system, "SF Pro Text", "Segoe UI Variable Display", system-ui, sans-serif; }
+.sb span { display: flex; align-items: center; gap: 6px; }
+.sb .date { font-weight: 500; }
+.wifi { width: 16px; height: 12px; }
+.bat { position: relative; width: 25px; height: 12px; border-radius: 4px; overflow: hidden; background: #A9A9A9; color: #fff; font: 700 10px/12px system-ui, sans-serif; text-align: center; }
+.bat::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 21%; background: #E84B4B; }   /* 20%, red: low, as phone.html */
+.bat b { position: relative; }
+.android .sb { padding: 0 18px; font: 500 14px/1 Roboto, "Segoe UI", system-ui, sans-serif; }
+.android .date { display: none; }
+.home { position: absolute; left: 50%; bottom: 8px; z-index: 2; width: 200px; height: 5px; margin-left: -100px; border-radius: 3px; background: var(--sb-ink); opacity: .7; pointer-events: none; }
+.android .home { bottom: 10px; width: 108px; height: 4px; margin-left: -54px; }   /* Android's gesture pill sits in its own strip under the page */
+@media (max-width: 760px) { .bar { left: 8px; right: 8px; transform: none; overflow-x: auto; } }
+</style>
+</head>
+<body>
+<div class="bar">
+  <div id="devPick">
+    <button data-dev="phone" class="cur">iPhone</button>
+    <button data-dev="pro13">iPad 13</button>
+    <button data-dev="ipad11">iPad 11</button>
+    <button data-dev="android">Android 11"</button>
+  </div>
+  <div id="turnPick">
+    <button data-turn="land" class="cur">Landscape</button>
+    <button data-turn="port">Portrait</button>
+  </div>
+</div>
+<div class="stage">
+  <iframe id="ph" title="POS on iPhone" hidden></iframe>
+  <div class="dev" id="dev">
+    <div class="sb">
+      <span><b id="clock">9:41</b><span class="date" id="date"></span></span>
+      <span>
+        <svg class="wifi" viewBox="0 0 15.7 11.7" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M1.3 4.1a9.4 9.4 0 0 1 13.1 0M3.9 6.9a5.7 5.7 0 0 1 7.9 0"/><path d="M5.9 8.9 7.85 11 9.8 8.9a2.8 2.8 0 0 0-3.9 0Z" fill="currentColor" stroke-width="1"/></svg>
+        <i class="bat"><b>20</b></i>
+      </span>
+    </div>
+    <iframe id="f" title="POS"></iframe>
+    <i class="cap"></i>
+    <i class="home"></i>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id), dev = $('dev'), f = $('f'), stage = document.querySelector('.stage');
+// landscape CSS px; top = the status bar, bot = Android's nav strip, safe = iPad's home-bar inset, r = the screen corner
+const DEVS = {
+  pro13:   { w: 1376, h: 1032, top: 24, bot: 0,  safe: 20, r: 18 },
+  ipad11:  { w: 1180, h: 820,  top: 24, bot: 0,  safe: 20, r: 18 },
+  android: { w: 1280, h: 800,  top: 24, bot: 24, safe: 0,  r: 16 },
+};
+let devKey = 'phone', port = false;
+
+function fit() {
+  const phone = devKey === 'phone', ph = $('ph');
+  ph.hidden = !phone; dev.hidden = phone; $('turnPick').style.display = phone ? 'none' : '';   // the iPhone is portrait only
+  if (phone && !ph.src) ph.src = 'phone.html?' + Date.now() + (location.hash || '#sell');
+  if (phone) return;
+  const d = DEVS[devKey], w = port ? d.h : d.w, h = port ? d.w : d.h, st = stage.getBoundingClientRect();
+  dev.classList.toggle('android', devKey === 'android');
+  Object.assign(dev.style, { width: w + 'px', height: h + 'px' });
+  for (const [k, v] of [['--top', d.top], ['--bot', d.bot], ['--r', d.r]]) dev.style.setProperty(k, v + 'px');
+  dev.style.transform = `scale(${Math.min(1, (st.width - 32) / w, (st.height - 24) / h)})`;
+  f.contentDocument?.documentElement.style.setProperty('--ph-safe', d.safe + 'px');
+  f.contentDocument?.documentElement.style.setProperty('--ph-top', d.top + 'px');   // always: the app runs under the status bar
+}
+const pick = (bar, attr, on) => bar.onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  for (const x of bar.children) x.classList.toggle('cur', x === b);
+  on(b.dataset[attr]); fit();
+};
+pick($('devPick'), 'dev', v => devKey = v);
+pick($('turnPick'), 'turn', v => port = v === 'port');
+addEventListener('resize', fit);
+
+f.src = 'index.html?' + Date.now() + (location.hash || '#sell');   // the browser kept serving a stale index.html inside a frame
+f.addEventListener('load', fit);
+// the sidebar is always the half drawer (owner 2026-10-17: "remove the full page, always half screen"), the iPhone's app inside
+// phone.html too (phone.html reloads its app on a hash change), as compare.html's
+const apps = () => [f.contentDocument, $('ph').contentDocument?.getElementById('f')?.contentDocument];
+setInterval(() => { for (const d of apps()) d?.documentElement.classList.add('side-half'); }, 200);
+// the strips take the colour of the page under them, as Safari and Chrome do; the ink flips to stay readable
+setInterval(() => {
+  const d = f.contentDocument; let e = d && d.elementFromPoint(f.clientWidth / 2, 2), bg = '';
+  for (; e && !bg; e = e.parentElement) { const c = getComputedStyle(e).backgroundColor; if (!/rgba\(.*, 0\)$/.test(c)) bg = c; }
+  if (!bg) return;
+  const [r, g, b] = bg.match(/\d+/g).map(Number);
+  dev.style.setProperty('--sb-bg', bg); dev.style.setProperty('--sb-ink', r * .3 + g * .59 + b * .11 > 128 ? '#000' : '#fff');
+}, 300);
+const tick = () => { const n = new Date();
+  $('clock').textContent = `${n.getHours() % 12 || 12}:${String(n.getMinutes()).padStart(2, '0')}`;
+  $('date').textContent = n.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); };
+tick(); setInterval(tick, 10000);
+fit();
+</script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tester Sticking Points</title>
+<!-- Review sheet (2026-10-22, round 2 built): the whole scope on one page. Real phone screenshots:
+     "Now" = pos-lab/index.html, "After" = try-pay-qr.html (the mock-up). -->
+<style>
+  :root { --bg: #111; --surface: #1c1c1e; --line: #2c2c2e; --ink: #fff; --ink-2: #a1a1a6; --ok: #34c759; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #f2f2f7; --surface: #fff; --line: #e5e5ea; --ink: #1c1c1e; --ink-2: #6e6e73; --ok: #248a3d; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 Inter, system-ui, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--ink-2); margin: 0 0 32px; }
+  section { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
+  h2 { font-size: 19px; margin: 0 0 4px; }
+  section > p { color: var(--ink-2); margin: 0 0 16px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  figure { margin: 0; }
+  figcaption { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--ink-2); }
+  figcaption.after { color: var(--ok); }
+  img { display: block; width: 100%; max-width: 280px; border-radius: 16px; border: 1px solid var(--line); }
+  pre { margin: 0; font: 14px/1.55 ui-monospace, Consolas, monospace; overflow-x: auto; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--ink-2); font-weight: 600; }
+  td.no { color: var(--ink-2); }
+  .pair { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .pair.wide { grid-template-columns: 1fr; }
+  img { max-width: 100%; cursor: zoom-in; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Where the testers got stuck</h1>
+  <p class="sub">Before is the lab app as the testers saw it. After is the lab app now, built (2026-10-23). Tap a picture to open it full size.</p>
+  <section>
+    <h2>Settings › Payment types › Visa</h2>
+    <p>Testers: “On: the sale waits for it” is unclear. After: the note moves under the card and says “On: the sale can't finish until it's filled in.”</p>
+    <div class="pair">
+      <figure><figcaption>Before</figcaption><a href="img/pay-type-settings/confusions/phone-must-note-now.png" target="_blank"><img src="img/pay-type-settings/confusions/phone-must-note-now.png" alt="Settings › Payment types › Visa, Before"></a></figure>
+      <figure><figcaption class="after">After</figcaption><a href="img/pay-type-settings/confusions/phone-must-note-built.png" target="_blank"><img src="img/pay-type-settings/confusions/phone-must-note-built.png" alt="Settings › Payment types › Visa, After"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>Checkout › Visa</h2>
+    <p>Testers: Complete sale is grey with no reason, and the box looks like an optional one. After: the box says “(required)”, the button says what's missing (“Enter last 4 digits”), and tapping it says “Enter the last 4 digits first”.</p>
+    <div class="pair">
+      <figure><figcaption>Before</figcaption><a href="img/pay-type-settings/confusions/phone-must-box-now.png" target="_blank"><img src="img/pay-type-settings/confusions/phone-must-box-now.png" alt="Checkout › Visa, Before"></a></figure>
+      <figure><figcaption class="after">After</figcaption><a href="img/pay-type-settings/confusions/phone-must-box-built.png" target="_blank"><img src="img/pay-type-settings/confusions/phone-must-box-built.png" alt="Checkout › Visa, After"></a></figure>
+      <figure><figcaption class="after">After, button tapped</figcaption><a href="img/pay-type-settings/confusions/phone-must-tap-built.png" target="_blank"><img src="img/pay-type-settings/confusions/phone-must-tap-built.png" alt="Checkout › Visa, After, button tapped"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>Settings › Payment types › Cash</h2>
+    <p>Cash is always on the checkout, so its Show at checkout switch can't be turned off. Testers tapped it and nothing happened. After: the switch is greyed, so it reads as “always on”. The Picture row is gone too: Cash goes straight to its amounts, so a picture would never show.</p>
+    <div class="pair">
+      <figure><figcaption>Before</figcaption><a href="img/pay-type-settings/confusions/phone-cash-switch-now.png" target="_blank"><img src="img/pay-type-settings/confusions/phone-cash-switch-now.png" alt="Settings › Payment types › Cash, Before"></a></figure>
+      <figure><figcaption class="after">After</figcaption><a href="img/pay-type-settings/confusions/phone-cash-switch-built.png" target="_blank"><img src="img/pay-type-settings/confusions/phone-cash-switch-built.png" alt="Settings › Payment types › Cash, After"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>Checkout › Split › GCash</h2>
+    <p>A GCash or QR part inside a Split now shows its QR for that part's amount. Done goes to the part's box if the type asks for something, else back to the Split page.</p>
+    <div class="pair">
+      <figure><figcaption class="after">After</figcaption><a href="img/pay-type-settings/confusions/phone-split-qr-built.png" target="_blank"><img src="img/pay-type-settings/confusions/phone-split-qr-built.png" alt="Checkout › Split › GCash, After"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>Settings › Printing (left for now)</h2>
+    <p>The cash drawer is plugged into the receipt printer, and the POS opens it by sending the printer a signal. The Browser printer (printing through the browser's Print window) can't send that signal, so the drawer can't open. Testers tapped Test drawer, got an error, and didn't know why. After: the row says “Needs a Wi-Fi or Bluetooth printer” and Open is greyed.</p>
+    <div class="pair">
+      <figure><figcaption>Now</figcaption><a href="img/pay-type-settings/confusions/phone-drawer-msg-now.png" target="_blank"><img src="img/pay-type-settings/confusions/phone-drawer-msg-now.png" alt="Settings › Printing, Now"></a></figure>
+      <figure><figcaption class="after">Suggested, not built</figcaption><a href="img/pay-type-settings/confusions/phone-drawer-msg-after.png" target="_blank"><img src="img/pay-type-settings/confusions/phone-drawer-msg-after.png" alt="Settings › Printing, Suggested, not built"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>Delete Visa? (iPad, dark)</h2>
+    <p>Testers: the card sits over the rows with nothing dimmed. After: the screen behind dims.</p>
+    <div class="pair wide">
+      <figure><figcaption>Before</figcaption><a href="img/pay-type-settings/confusions/tablet-confirm-dark-now.png" target="_blank"><img src="img/pay-type-settings/confusions/tablet-confirm-dark-now.png" alt="Delete Visa? (iPad, dark), Before"></a></figure>
+      <figure><figcaption class="after">After</figcaption><a href="img/pay-type-settings/confusions/tablet-confirm-dark-built.png" target="_blank"><img src="img/pay-type-settings/confusions/tablet-confirm-dark-built.png" alt="Delete Visa? (iPad, dark), After"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>Delete Visa? (iPad, light)</h2>
+    <div class="pair wide">
+      <figure><figcaption>Before</figcaption><a href="img/pay-type-settings/confusions/tablet-confirm-light-now.png" target="_blank"><img src="img/pay-type-settings/confusions/tablet-confirm-light-now.png" alt="Delete Visa? (iPad, light), Before"></a></figure>
+      <figure><figcaption class="after">After</figcaption><a href="img/pay-type-settings/confusions/tablet-confirm-light-built.png" target="_blank"><img src="img/pay-type-settings/confusions/tablet-confirm-light-built.png" alt="Delete Visa? (iPad, light), After"></a></figure>
+    </div>
+  </section>
+</main>
+</body>
+</html>

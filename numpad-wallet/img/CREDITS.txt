@@ -1,0 +1,29 @@
+Lab seed photos from Wikimedia Commons, shrunk to 256px WebP. File  licence  author  source
+claw-hammer.webp  CC BY-SA 3.0  Shakespeare at <a  https://commons.wikimedia.org/wiki/File:Claw_hammer-1.jpg
+screwdriver.webp  CC BY 4.0  多多123</b  https://commons.wikimedia.org/wiki/File:Black_screwdriver.png
+pliers.webp  CC0  MdeVicente  https://commons.wikimedia.org/wiki/File:Alicate_boca_plana.png
+tape-measure.webp  Public domain  Evan-Amos  https://commons.wikimedia.org/wiki/File:Measuring-tape.jpg
+hacksaw.webp  CC BY 2.0  Luke Milburn  https://commons.wikimedia.org/wiki/File:Hacksaw_with_grey_handle.jpg
+level.webp  GPL  unknown  https://commons.wikimedia.org/wiki/File:Water_level_1.jpg
+paint-roller.webp  CC BY 2.0  r. nial bradshaw  https://commons.wikimedia.org/wiki/File:Paint-roller_(23956075297).jpg
+thinner.webp  CC BY-SA 4.0  <a href="//commons.wikimedia.org/w/index.php?title=User:Katodiez&amp;action=edit&amp;redlink=1" class="new" title="User:  https://commons.wikimedia.org/wiki/File:Thinner_premium,_in_bottle.jpg
+faucet.webp  CC BY 4.0  TudorTulok  https://commons.wikimedia.org/wiki/File:Victorian_Garden_Faucet_at_Youlbury_House.jpg
+teflon-tape.webp  CC0  <a href="//commons.wikimedia.org/w/index.php?title=User:Tomwsulcer&amp;action=edit&amp;redlink=1" class="new" title="Use  https://commons.wikimedia.org/wiki/File:Teflon_tape_used_for_sealing_plumbing_connections.jpg
+led-bulb.webp  CC BY 3.0  Geoffr  https://commons.wikimedia.org/wiki/File:LED_bulbs.jpg
+outlet.webp  CC BY-SA 4.0  Texas Lane  https://commons.wikimedia.org/wiki/File:Electrical_Outlet.jpg
+switch.webp  CC BY 4.0  WikiGrower1  https://commons.wikimedia.org/wiki/File:Light_switch_turned_on.jpg
+electrical-tape.webp  Public domain  Jonas Bergsten  https://commons.wikimedia.org/wiki/File:Electrical-tape_black.jpg
+breaker.webp  CC0  <a href="//commons.wikimedia.org/w/index.php?title=User:MebaMCB_China&amp;action=edit&amp;redlink=1" class="new" title="  https://commons.wikimedia.org/wiki/File:Circuit_Breaker_2.png
+wood-screw.webp  CC BY 3.0  Dmitry Makeev  https://commons.wikimedia.org/wiki/File:Wood_screws.jpg
+hex-bolt.webp  CC BY 3.0  ARFISA Representaciones, SCP as creator and <a class="external text" href="https://commons.wikimedia.org/w/index.php?tit  https://commons.wikimedia.org/wiki/File:Lag_bolt_screw_-_Din_571_(edited).png
+washer.webp  CC BY 2.0  Andy / Andrew Fogg from ne  https://commons.wikimedia.org/wiki/File:%22sealing%22_washers_(100757402).jpg
+cement.webp  CC BY-SA 4.0  Krugerr  https://commons.wikimedia.org/wiki/File:Portland_cement_CEM_I_42,5_R_(bag).jpg
+sand.webp  CC BY-SA 2.0  Bill Harrison <span class="  https://commons.wikimedia.org/wiki/File:Gravel_pile..._-_geograph.org.uk_-_5564314.jpg
+gravel.webp  CC BY-SA 2.0  Dave Thompson <span class=  https://commons.wikimedia.org/wiki/File:Gravel_Pile_-_geograph.org.uk_-_8067081.jpg
+hollow-block.webp  CC BY 2.5  katorisi  https://commons.wikimedia.org/wiki/File:Concrete-block,japan.JPG
+gloves.webp  CC0  unknown  https://commons.wikimedia.org/wiki/File:Gloves_MET_CI50.8.8ab.jpg
+goggles.webp  CC BY-SA 4.0  Jacek Halicki  https://commons.wikimedia.org/wiki/File:2023_Okulary_ochronne_(1).jpg
+n95.webp  CC0  Hanabishi  https://commons.wikimedia.org/wiki/File:N95mask.jpg
+hard-hat.webp  Public domain  Batholith (<a href="h  https://commons.wikimedia.org/wiki/File:Hard_hat_20111111.jpg
+sealant.webp  CC BY-SA 3.0  <a href="//commons.wikimedia.org/w/index.php?title=User:%D0%94%D0%B0%D1%80_%D0%92%D0%B5%D1%82%D0%B5%D1%80&amp;action=edi  https://commons.wikimedia.org/wiki/File:Siliconchik.JPG
+boysen.webp  CC0  Judgefloro  https://commons.wikimedia.org/wiki/File:824Painters_using_scaffolding,_construction_catwalks_and_Boysen_paints_in_Bulacan_42.jpg

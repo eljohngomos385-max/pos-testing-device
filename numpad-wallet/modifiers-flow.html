@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Modifiers Flow</title>
+<!-- 2026-10-23: pos-lab, phone 390x844, light, Food demo. Pictures from img/modifiers-pages (scripted run). -->
+<style>
+  :root { --bg: #111; --surface: #1c1c1e; --line: #2c2c2e; --ink: #fff; --ink-2: #a1a1a6; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #f2f2f7; --surface: #fff; --line: #e5e5ea; --ink: #1c1c1e; --ink-2: #6e6e73; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 Inter, system-ui, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--ink-2); margin: 0 0 32px; }
+  section { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
+  h2 { font-size: 19px; margin: 0 0 4px; }
+  section > p { color: var(--ink-2); margin: 0 0 12px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+  figure { margin: 0; }
+  figcaption { font-size: 14px; margin-top: 8px; color: var(--ink-2); }
+  figcaption b { color: var(--ink); margin-right: 4px; }
+  img { display: block; width: 100%; border-radius: 16px; border: 1px solid var(--line); cursor: zoom-in; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Modifiers: the whole flow</h1>
+  <p class="sub">Phone, light mode, Food store with the milk tea demo. 42 steps in order. Each caption says what to tap next. Tap a picture to open it full size.</p>
+  <section>
+    <h2>1. Setup</h2>
+    <p>Turn on Food, then look over and edit a modifier. Steps 1–10.</p>
+    <div class="pair">
+      <figure><a href="img/modifiers-pages/01-modifiers-empty.png" target="_blank"><img src="img/modifiers-pages/01-modifiers-empty.png" alt="Step 1" loading="lazy"></a><figcaption><b>1</b> Items › Modifiers before any are made. Next: Settings › Business type.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/02-settings-business-type.png" target="_blank"><img src="img/modifiers-pages/02-settings-business-type.png" alt="Step 2" loading="lazy"></a><figcaption><b>2</b> Settings › Store. Tap Business type.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/03-business-type.png" target="_blank"><img src="img/modifiers-pages/03-business-type.png" alt="Step 3" loading="lazy"></a><figcaption><b>3</b> Tap Food. The milk tea demo loads once.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/04-modifiers-tab.png" target="_blank"><img src="img/modifiers-pages/04-modifiers-tab.png" alt="Step 4" loading="lazy"></a><figcaption><b>4</b> Items › Modifiers: Sweetness, Ice, Toppings. Tap a row, or search.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/05-search-75.png" target="_blank"><img src="img/modifiers-pages/05-search-75.png" alt="Step 5" loading="lazy"></a><figcaption><b>5</b> Search “75%”: finds Sweetness by its choice.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/06-modifier-page.png" target="_blank"><img src="img/modifiers-pages/06-modifier-page.png" alt="Step 6" loading="lazy"></a><figcaption><b>6</b> Toppings: name, Customer picks, choices, Asked on. Tap Customer picks.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/07-customer-picks.png" target="_blank"><img src="img/modifiers-pages/07-customer-picks.png" alt="Step 7" loading="lazy"></a><figcaption><b>7</b> Customer picks: One, Up to N, or Any. Pick one.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/08-add-choice.png" target="_blank"><img src="img/modifiers-pages/08-add-choice.png" alt="Step 8" loading="lazy"></a><figcaption><b>8</b> Add choice: name and price. Back keeps it.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/09-asked-on.png" target="_blank"><img src="img/modifiers-pages/09-asked-on.png" alt="Step 9" loading="lazy"></a><figcaption><b>9</b> Asked on: tick the items that ask Toppings. Back.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/10-delete-ask.png" target="_blank"><img src="img/modifiers-pages/10-delete-ask.png" alt="Step 10" loading="lazy"></a><figcaption><b>10</b> Delete modifier asks first. Cancel here.</figcaption></figure>
+    </div>
+  </section>
+  <section>
+    <h2>2. Hide</h2>
+    <p>Hide one choice on one item. Steps 11–17.</p>
+    <div class="pair">
+      <figure><a href="img/modifiers-pages/11-item-page.png" target="_blank"><img src="img/modifiers-pages/11-item-page.png" alt="Step 11" loading="lazy"></a><figcaption><b>11</b> Items › Brown Sugar Milk Tea. Tap Modifiers.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/12-item-modifiers.png" target="_blank"><img src="img/modifiers-pages/12-item-modifiers.png" alt="Step 12" loading="lazy"></a><figcaption><b>12</b> Its modifiers, in the order asked. Tap Sweetness.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/13-item-choice-switches.png" target="_blank"><img src="img/modifiers-pages/13-item-choice-switches.png" alt="Step 13" loading="lazy"></a><figcaption><b>13</b> Switch 0% off for this item only. Back, then Save.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/14-item-modifiers-4of5.png" target="_blank"><img src="img/modifiers-pages/14-item-modifiers-4of5.png" alt="Step 14" loading="lazy"></a><figcaption><b>14</b> Sweetness now “4 of 5 choices”. Back, then tap Save.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/15-modifiers-hidden-row.png" target="_blank"><img src="img/modifiers-pages/15-modifiers-hidden-row.png" alt="Step 15" loading="lazy"></a><figcaption><b>15</b> Items › Modifiers now has a Hidden row. Tap it.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/16-hidden-page.png" target="_blank"><img src="img/modifiers-pages/16-hidden-page.png" alt="Step 16" loading="lazy"></a><figcaption><b>16</b> Hidden: every item that hides a choice. Switch on to bring it back.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/17-edit-choice-hidden-on.png" target="_blank"><img src="img/modifiers-pages/17-edit-choice-hidden-on.png" alt="Step 17" loading="lazy"></a><figcaption><b>17</b> Edit choice 0%: Status, and Hidden on 1 item.</figcaption></figure>
+    </div>
+  </section>
+  <section>
+    <h2>3. Sell</h2>
+    <p>Sell two drinks with their answers, a line edit and a discount. Steps 18–31.</p>
+    <div class="pair">
+      <figure><a href="img/modifiers-pages/18-sell-grid.png" target="_blank"><img src="img/modifiers-pages/18-sell-grid.png" alt="Step 18" loading="lazy"></a><figcaption><b>18</b> Sell. Tap Brown Sugar Milk Tea.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/19-size.png" target="_blank"><img src="img/modifiers-pages/19-size.png" alt="Step 19" loading="lazy"></a><figcaption><b>19</b> Pick a size: Large.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/20-q-sweetness.png" target="_blank"><img src="img/modifiers-pages/20-q-sweetness.png" alt="Step 20" loading="lazy"></a><figcaption><b>20</b> Sweetness? 0% is gone on this drink. Tap 50%.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/21-q-ice.png" target="_blank"><img src="img/modifiers-pages/21-q-ice.png" alt="Step 21" loading="lazy"></a><figcaption><b>21</b> Ice? Tap Less. One-pick questions go on by themselves.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/22-q-toppings.png" target="_blank"><img src="img/modifiers-pages/22-q-toppings.png" alt="Step 22" loading="lazy"></a><figcaption><b>22</b> Toppings? Tap Pearls, then Add · price.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/23-cart.png" target="_blank"><img src="img/modifiers-pages/23-cart.png" alt="Step 23" loading="lazy"></a><figcaption><b>23</b> The cart shows each answer and its price. Tap the line.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/24-line-sheet.png" target="_blank"><img src="img/modifiers-pages/24-line-sheet.png" alt="Step 24" loading="lazy"></a><figcaption><b>24</b> The line: Quantity, Discount, Note, Modifiers. Tap Modifiers.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/25-line-modifiers.png" target="_blank"><img src="img/modifiers-pages/25-line-modifiers.png" alt="Step 25" loading="lazy"></a><figcaption><b>25</b> Answers come back filled in. Add Pudding, then Done.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/26-discount.png" target="_blank"><img src="img/modifiers-pages/26-discount.png" alt="Step 26" loading="lazy"></a><figcaption><b>26</b> Line › Discount: type 10, Apply. 10% off the drink and its toppings.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/27-line-discounted.png" target="_blank"><img src="img/modifiers-pages/27-line-discounted.png" alt="Step 27" loading="lazy"></a><figcaption><b>27</b> The line now reads 10% off. Tap Done.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/28-cart-two.png" target="_blank"><img src="img/modifiers-pages/28-cart-two.png" alt="Step 28" loading="lazy"></a><figcaption><b>28</b> Add a Matcha the same way. Two drinks, each with its answers. Tap Check out.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/29-checkout.png" target="_blank"><img src="img/modifiers-pages/29-checkout.png" alt="Step 29" loading="lazy"></a><figcaption><b>29</b> Checkout lists the answers. Tap Cash.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/30-cash.png" target="_blank"><img src="img/modifiers-pages/30-cash.png" alt="Step 30" loading="lazy"></a><figcaption><b>30</b> Cash: tap Exact.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/31-receipt.png" target="_blank"><img src="img/modifiers-pages/31-receipt.png" alt="Step 31" loading="lazy"></a><figcaption><b>31</b> Sale complete: the receipt lists every answer.</figcaption></figure>
+    </div>
+  </section>
+  <section>
+    <h2>4. After the sale</h2>
+    <p>Refund one drink. Steps 32–37.</p>
+    <div class="pair">
+      <figure><a href="img/modifiers-pages/32-order.png" target="_blank"><img src="img/modifiers-pages/32-order.png" alt="Step 32" loading="lazy"></a><figcaption><b>32</b> Orders › the sale, with each drink’s answers. Tap ⋯.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/33-order-menu.png" target="_blank"><img src="img/modifiers-pages/33-order-menu.png" alt="Step 33" loading="lazy"></a><figcaption><b>33</b> Tap Refund.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/34-refund-ticks.png" target="_blank"><img src="img/modifiers-pages/34-refund-ticks.png" alt="Step 34" loading="lazy"></a><figcaption><b>34</b> Tick the drink that came back. Each line shows what was paid for it.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/35-refund-ticked.png" target="_blank"><img src="img/modifiers-pages/35-refund-ticked.png" alt="Step 35" loading="lazy"></a><figcaption><b>35</b> Brown Sugar ticked. Tap Refund ₱175.50 at the top.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/36-refund-confirm.png" target="_blank"><img src="img/modifiers-pages/36-refund-confirm.png" alt="Step 36" loading="lazy"></a><figcaption><b>36</b> Confirm: the amount back to the customer.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/37-refund-done.png" target="_blank"><img src="img/modifiers-pages/37-refund-done.png" alt="Step 37" loading="lazy"></a><figcaption><b>37</b> Refunded. The order shows what went back.</figcaption></figure>
+    </div>
+  </section>
+  <section>
+    <h2>5. Unavailable</h2>
+    <p>Out of a topping: turn it off for every drink. Steps 38–41.</p>
+    <div class="pair">
+      <figure><a href="img/modifiers-pages/38-hold-menu.png" target="_blank"><img src="img/modifiers-pages/38-hold-menu.png" alt="Step 38" loading="lazy"></a><figcaption><b>38</b> Out of Pearls: hold Pearls. Tap Unavailable.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/39-pearls-unavailable.png" target="_blank"><img src="img/modifiers-pages/39-pearls-unavailable.png" alt="Step 39" loading="lazy"></a><figcaption><b>39</b> Pearls is greyed on every drink until turned back on.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/40-cashier-pin.png" target="_blank"><img src="img/modifiers-pages/40-cashier-pin.png" alt="Step 40" loading="lazy"></a><figcaption><b>40</b> As a cashier the same tap asks a manager’s PIN.</figcaption></figure>
+      <figure><a href="img/modifiers-pages/41-bo-roles.png" target="_blank"><img src="img/modifiers-pages/41-bo-roles.png" alt="Step 41" loading="lazy"></a><figcaption><b>41</b> Back office › Staff &amp; access › Roles › Cashier: “Make choices unavailable” is off, so the POS asks a manager’s PIN.</figcaption></figure>
+    </div>
+  </section>
+  <section>
+    <h2>6. Report</h2>
+    <p>See what sold. Steps 42–42.</p>
+    <div class="pair">
+      <figure><a href="img/modifiers-pages/42-reports-modifiers.png" target="_blank"><img src="img/modifiers-pages/42-reports-modifiers.png" alt="Step 42" loading="lazy"></a><figcaption><b>42</b> Reports › Modifiers: every choice sold, net of refunds, most sold first. Breakdown: Refunds takes the drink’s ₱195 off and its ₱19.50 discount comes back, so Net is what was kept.</figcaption></figure>
+    </div>
+  </section>
+</main>
+</body>
+</html>

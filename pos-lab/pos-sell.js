@@ -1300,8 +1300,14 @@ function drawEditSheet() {
   const seg = (on, off, cls = '') => `<span class="es-seg${cls}">${on}${off}</span>`;
   const segBtn = (label, on, data) => `<button type="button"${on ? ' class="on"' : ''} ${data}>${label}</button>`;
   const cv = (open) => (open ? '' : esSvg('chev', 'cv'));
-  let head, rows, side = '';
-  const kin = o.anim === true || o.anim === 'swap' ? ' es-in' : '';
+  let head, rows = '', side = '';
+  // Discount › Custom (owner 2026-11-04 "hyper clean"): Discount on ‹'s line, ✓ across from it, no Clear: 0 then ✓ is no discount
+  const ph = matchMedia('(max-width: 720px)').matches;   // the phone's numpad sheet + ✓; a tablet keeps its keys and Add / Apply
+  const dk = ph && o.kind === 'rd' && o.f === 'd';
+  const ask = o.kind === 'price' || o.kind === 'custom' || o.kind === 'measure';
+  const nk = ph && (ask || o.kind === 'line' && (o.f === 'q' || o.f === 'd'));   // the rest of the phone's numpads: the same sheet and ✓
+  // the phone's key sheet slides up as its page opens (owner 2026-11-05: up by itself, never a tap on the number), not on every key
+  const kin = o.anim === true || o.anim === 'swap' || ph && (o.opened || o.dir === 'fwd') ? ' es-in' : '';
   if (o.kind === 'line') {
     const item = esItem();
     if (!item) return closeEditSheet();
@@ -1321,21 +1327,21 @@ function drawEditSheet() {
       <textarea class="es-ta" id="esNote" rows="3" maxlength="120" placeholder="Add a note" aria-label="Note">${escapeHtml(item.note || '')}</textarea></div>`;
     else if (o.f) side = `<div class="es-keys${kin}">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'), o.f === 'd' ? '' : ' off')}${esKeys(o.f === 'd' || step < 1)}</div>`;
   } else if (o.kind === 'price') {
-    head = `<p>Price for ${escapeHtml(state.products.find(p => p.id === o.id)?.name || 'item')}?</p><div class="es-hero">${esTyped(o)}</div>`;
+    head = `<div class="es-hero">${esTyped(o)}</div><p class="es-name">${escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item')}</p>`;   // the title says Price (es-ttl); amount on top, name under (owner's design 2026-11-05)
     rows = '';
-    side = `<div class="es-keys">${esKeys(true)}</div>`;
+    side = `<div class="es-keys${kin}">${esKeys(true)}</div>`;
   } else if (o.kind === 'custom') {   // the price ask with a name box between the amount and the keys
-    head = `<p>Custom item</p><div class="es-hero">${esTyped(o)}</div>`;
+    head = `<div class="es-hero">${esTyped(o)}</div>`;   // the title says Custom item (es-ttl)
     rows = `<input class="es-ta" id="esName" value="${escapeHtml(o.name)}" placeholder="Name" aria-label="Name" maxlength="60" autocomplete="off">`
       + (taxOpts().rate ? `<label class="es-ta es-vat">${SalesMath.taxName({ ...state.settings, taxOnTop: !taxOpts().included })}<input type="checkbox" class="sw" id="esVat"${o.vat ? ' checked' : ''}></label>` : '');   // off = sold without VAT (owner 2026-11-04)
-    side = `<div class="es-keys">${esKeys(true)}</div>`;
+    side = `<div class="es-keys${kin}">${esKeys(true)}</div>`;
   } else if (o.kind === 'measure') {
     // type the weight -> what it costs; type the ₱ -> how much that is. The unit price never changes (owner 2026-11-01)
     const p = state.products.find(x => x.id === o.id), u = escapeHtml(p.unit), q = esMeasureQty(o, p);
     head = `<p>${escapeHtml(p.name)} · ${peso(p.price)} / ${u}</p><div class="es-hero">${o.w ? `<span class="num">${o.d || 0}</span> ${u}` : esTyped(o)}</div>`
       + (q > 0 ? `<p class="es-off">${o.w ? peso(SalesMath.lineMoney(p.price, q).lineGross) : `${SalesMath.qtyText(q)} ${u}`}</p>` : '');
     rows = '';
-    side = `<div class="es-keys">${seg(segBtn(u, o.w, 'data-w'), segBtn(SalesMath.currencySymbol(state.settings.store?.currency), !o.w, 'data-amt'))}${esKeys(true)}</div>`;
+    side = `<div class="es-keys${kin}">${seg(segBtn(u, o.w, 'data-w'), segBtn(SalesMath.currencySymbol(state.settings.store?.currency), !o.w, 'data-amt'))}${esKeys(true)}</div>`;
   } else if (o.kind === 'mods') {
     // one question per screen, in the item's order (modifiers-lab.html's POS screens): the item and what's picked so far, the
     // question, how many; a choice greyed Unavailable can't be picked (it is set back in Items › Modifiers). The name as
@@ -1353,11 +1359,13 @@ function drawEditSheet() {
     // what they pay, and while a discount is on, how much it takes off what: "₱13.00 off ₱65.00" (owner 2026-10-16).
     // Before = the sale with no sale discount and no Senior / PWD, so the VAT the exemption drops counts as off too.
     const t = cartTotals(), was = cartTotals(state.cart, null, null).total, off = moneyValue(was - t.total);
-    head = `<div class="es-hero">${peso(t.total)}</div>${off > 0 ? `<p class="es-off"><b>${peso(off)}</b> off ${peso(was)}</p>` : ''}`;
+    head = `<div class="es-hero">${peso(t.total)}</div>${dk ? `<p class="es-off${+o.d ? '' : ' none'}"><b>${o.pct ? `${+o.d || 0}%` : peso(+o.d || 0)}</b> off ${peso(was)}</p>`   // Custom: the line is what the keys type, there from the start
+      : off > 0 ? `<p class="es-off"><b>${peso(off)}</b> off ${peso(was)}</p>` : ''}`;
     // Senior / PWD, the saved ones, then Custom, scroll under the total (owner 2026-10-28). A saved one's tap is the pick and
     // closes; Senior / PWD and Custom open their own page in the list's place, the total holding still.
     const field = (f, label) => `<input class="es-ta${o.bad === f ? ' bad' : ''}" data-scf="${f}" value="${escapeHtml(o.sc[f])}" placeholder="${label}" aria-label="${label}" autocomplete="off"${o.bad === f ? ' aria-invalid="true"' : ''}>`;
     if (ES_SC[o.f]) rows = `<div class="es-ah">${o.f === 'pwd' ? 'PWD' : 'Senior citizen'}</div>${field('idNo', 'ID number')}${field('name', 'Name')}`;
+    else if (o.f && dk) side = `<div class="es-keys${kin}">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'))}${esKeys(true)}</div>`;   // the off line is the whole read-out, the keys in the numpad's sheet
     else if (o.f) rows = `<div class="es-row on"><span>Custom</span>${n('d', esTyped(o), ' v')}</div>${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'))}${esKeys(true)}`;
     else rows = Object.entries(ES_SC).map(([k, name]) => `<button type="button" class="es-row${o.pick === k ? ' pick' : ''}" data-sc="${k}"><span>${name}</span><small class="ad">${
         o.pick !== k || !state.scPwd ? esShown(esScRow(k)) : t.scPwd ? escapeHtml(state.scPwd.name) : 'Promo is bigger'}</small>${cv()}</button>`).join('')
@@ -1377,22 +1385,28 @@ function drawEditSheet() {
   }
   // bottom left follows what's being edited: the discount's keys -> clear it; nothing open -> remove the line
   const list = o.kind === 'ful' || o.kind === 'rd';   // Walk-in, Discount: Check out's pill is Done, Clear sits up top across from ‹ Back
-  const clr = o.kind === 'rd' && !ES_SC[o.f] && (o.f ? +o.d : o.pick !== null) ? '<button type="button" class="es-x es-clr cta-2" data-sclr>Clear</button>' : '';
-  const ask = o.kind === 'price' || o.kind === 'custom' || o.kind === 'measure';
-  const left = list || ask || o.kind === 'mods' ? ''
+  const clr = o.kind === 'rd' && !dk && !ES_SC[o.f] && (o.f ? +o.d : o.pick !== null) ? '<button type="button" class="es-x es-clr cta-2" data-sclr>Clear</button>'
+    : ph && o.kind === 'line' && !o.f ? '<button type="button" class="es-x es-clr rm cta-2" data-remove>Remove</button>' : '';   // the phone's line: Remove where Clear sits, Done the big pill (owner 2026-11-05)
+  const lk = nk && o.kind === 'line' ? ' lk' : '';   // the line's keys come up over its grey page, which stays grey (owner 2026-11-05)
+  const left = list || ask || nk || o.kind === 'mods' ? ''   // the phone's line discount: 0 then ✓ is no discount, no Clear (owner 2026-11-05)
     : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q cta-3" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
-    : o.f ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm cta-3" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q cta-3" data-sclr>Clear</button>' : '';
+    : o.f || ph ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm cta-3" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q cta-3" data-sclr>Clear</button>' : '';
   const top = !o.dir && card.querySelector('.fill .es-list')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
   // the questions' progress on ‹ Back's line: a short bar for every item (owner 2026-10-25: "line for everything"), grown from where it was (o.w)
   const w = o.kind === 'mods' && (o.at + 1) / o.qs.length;
   const prog = w ? `<div class="es-prog" aria-hidden="true"><i style="--w:${w};--was:${o.w ?? w}"></i></div>` : '';
   if (w) o.w = w;
-  card.innerHTML = prog + clr + esFrame(head, rows, side, left + (list ? `<button type="button" class="${matchMedia('(max-width: 720px)').matches ? 'ph-bar' : 'fab sh-fab'} cta" data-done>Done</button>` : o.kind === 'mods' ? esModsFoot(o)
+  // Wallet's Add Money (draft 2026-11-04): the price ask and a custom item name themselves on ✕'s line, Add across from it
+  const ttl = o.kind === 'price' ? 'Price' : o.kind === 'custom' ? 'Custom item' : dk ? 'Discount' : '';
+  card.innerHTML = prog + clr + (ttl ? `<h2 class="es-ttl">${ttl}</h2>` : '') + esFrame(head, rows, side, left + (dk ? esOk('data-done')
+    : list ? `<button type="button" class="${ph ? 'ph-bar' : 'fab sh-fab'} cta" data-done>Done</button>` : o.kind === 'mods' ? esModsFoot(o)
+    : nk ? esOk('data-apply', ask && !(+o.d > 0))   // a price waits for one, as Add did
     : ask ? `<button type="button" class="es-ink cta" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
-    : o.f ? `<button type="button" class="es-ink cta" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : '<button type="button" class="es-ink cta" data-close>Done</button>'),   // a 0 discount waits, as the price ask's Add does
-  `${list ? ' fill' : ask ? ' ask' : ''}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
+    : o.f ? `<button type="button" class="es-ink cta" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : `<button type="button" class="${ph ? 'ph-bar' : 'es-ink'} cta" data-close>Done</button>`),   // a 0 discount waits, as the price ask's Add does
+  `${list ? ' fill' : ask ? ' ask' : ''}${dk ? ' wd' : ttl ? ' wl' : ''}${dk || nk ? ' ks' : ''}${lk}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
   if (o.kind === 'mods') esPicksPop(o, card);
-  const rl = list && !o.f && card.querySelector('.es-list');
+  ksCarry(card, o);
+  const rl =list && !o.f && card.querySelector('.es-list');
   const pk = rl && (o.opened || o.dir === 'bwd') && rl.querySelector('.pick');   // just opened, or back from a page: the one on the sale clear of Done
   if (pk) {   // the list only: scrollIntoView also scrolled the page under the sheet while it slid in
     const r = pk.getBoundingClientRect(), l = rl.getBoundingClientRect();
@@ -1414,6 +1428,26 @@ const esFrame = (head, rows, side, foot, cls = '') => `<button type="button" cla
     <div class="es-ft">${foot}</div>`;
 const esKeys = (dec) => `<div class="es-kp">${[...'123456789', dec ? '.' : '', '0', 'del'].map(k => !k ? '<span></span>'
   : `<button type="button" data-sk="${k}"${k === 'del' ? ' aria-label="Delete"' : ''}>${k === 'del' ? esSvg('del') : k}</button>`).join('')}</div>`;
+// The phone numpad's ✓ (owner 2026-11-05): on ‹'s line across from it, the Next button's blue (every ✓ is)
+const esOk = (data, dis) => `<button type="button" class="es-ink es-ok cta" ${data} aria-label="Done"${dis ? ' disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></button>`;
+// ...and the keys' sheet slides down under it before `then` (Start / Close shift, Cash in / out, checkout's Custom and a split part)
+function keysDown(k, then) {
+  if (!k || matchMedia('(prefers-reduced-motion: reduce)').matches) return then();
+  if (k.classList.contains('es-dn')) return;   // a second tap mid-slide
+  k.classList.add('es-dn');
+  k.addEventListener('animationend', then, { once: true });
+}
+// Every key redraws the card: a key tapped while the key sheet still slides up (ks-up: .1s wait + .3s) carries the
+// slide on from where it was, as its ✓'s fade, instead of popping them into place (owner 2026-11-05)
+function ksCarry(card, o) {
+  const k = card.querySelector('.es-body.ks > .es-keys');
+  if (!k) return;
+  if (k.classList.contains('es-in')) return void (o.ksAt = performance.now());
+  const t = performance.now() - (o.ksAt || 0);
+  if (t >= 400) return;
+  k.classList.add('es-in');
+  for (const e of [k, card.querySelector(':scope > .es-ok')]) if (e) e.style.animationDelay = `${100 - t}ms`;
+}
 // The desk keyboard on the sheet's keys, as the shift's (shiftKey) and checkout's: digits, '.', Backspace, Enter = Apply / Add
 function editKey(e) {
   if (!es || e.ctrlKey || e.metaKey || e.altKey || e.target.matches('input, textarea') || !$('#editSheet [data-sk]')) return;
@@ -1446,6 +1480,7 @@ function editSheetClick(e) {
   if (ES_SC[o.f]) $$('#editSheet [data-scf]').forEach(i => { o.sc[i.dataset.scf] = i.value; });   // the typed ID and name survive the redraw
   if (el('[data-done]')) {   // Discount's Done: Senior / PWD's page puts its card on first
     if (ES_SC[o.f]) { if (!esScApply(o)) return; esWrite(); }
+    else if (o.f) { esSettle(o); esWrite(); }   // Custom's ✓: an emptied amount is no discount
     return closeEditSheet();
   }
   if (el('[data-remove]')) {

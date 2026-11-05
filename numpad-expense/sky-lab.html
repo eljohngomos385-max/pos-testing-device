@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sky lab</title>
+<!-- Lab (owner 2026-10-20): the app keeps all of today's colours; the website's sky shows only on Ask
+     (Gemini's chat page copied: white or today's black, the sky rising from the bottom) and on the opening screen with
+     the logo. The app runs in the frame untouched. -->
+<style>
+  :root { --ink: #1d1d1f; --ink2: #6e6e73; --line: rgb(0 0 0 / .1); --bg: #f5f5f7; --card: #fff; }
+  @media (prefers-color-scheme: dark) { :root { --ink: #f5f5f7; --ink2: #a1a1a6; --line: rgb(255 255 255 / .14); --bg: #000; --card: #1c1c1e; } }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; background: var(--bg); color: var(--ink); font: 15px/1.3 -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif; }
+  .bar { display: flex; gap: 6px; padding: calc(6px + env(safe-area-inset-top, 0px)) 8px 6px; }
+  .bar label { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: 11px; color: var(--ink2); }
+  .bar select { width: 100%; height: 34px; padding: 0 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: inherit; font-size: 15px; }
+  .stage { flex: 1; min-height: 0; display: grid; place-items: center; }
+  .phone { position: relative; width: 100%; height: 100%; overflow: hidden; }
+  iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--card); }
+  @media (min-width: 600px) { .phone { width: 402px; height: min(100%, 874px); border-radius: 28px; box-shadow: 0 0 0 1px var(--line), 0 20px 50px rgb(0 0 0 / .18); } }
+
+  /* Ask's own colours are the app's today: white / #121212, the app's inks and its grey pill */
+  .phone { --p-bg: #fff; --p-ink: #303030; --p-ink2: #616161; --p-pill: #fff; --p-ring: rgb(0 0 0 / .08); }
+  .phone.dk { --p-bg: #121212; --p-ink: #fff; --p-ink2: rgb(255 255 255 / .7); --p-pill: #2A2A2A; --p-ring: rgb(255 255 255 / .1); }
+  .phone.dk .chat canvas { opacity: .6; }   /* the website's own sky, dimmed into the black */
+
+  /* Ask, copied from Gemini's chat page: white, a small orb, the sky rising from the bottom behind the composer */
+  .chat { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--p-bg); color: var(--p-ink); isolation: isolate; }
+  .chat[hidden], .splash[hidden] { display: none; }
+  .chat canvas { position: absolute; left: 0; right: 0; bottom: 0; z-index: -1; width: 100%; height: 58%; transform: scaleY(-1);   /* the sky's deep end at the bottom, as Gemini */
+                 -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent); mask-image: linear-gradient(to bottom, #000 30%, transparent); }
+  .ch-top { display: flex; align-items: center; gap: 8px; padding: 14px 16px 0; }
+  .ch-top button { width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--p-pill); color: var(--p-ink); box-shadow: 0 0 0 .5px var(--p-ring), 0 2px 10px rgb(0 0 0 / .06); }
+  .ch-top svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+  .ch-top b { flex: 1; text-align: center; margin-right: 52px; font-size: 17px; font-weight: 550; }
+  .ch-mid { flex: 1; display: grid; align-content: center; justify-items: center; gap: 8px; padding: 0 24px 12dvh; text-align: center; }
+  .ch-mid .orb { width: 40px; height: 40px; }
+  .ch-mid h1 { margin: 14px 0 0; font-size: 30px; line-height: 1.15; font-weight: 450; letter-spacing: -.02em; }
+  .ch-asks { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 18px; }
+  .ch-asks button { height: 44px; padding: 0 18px; border: 0; border-radius: 22px; background: var(--p-pill); color: var(--p-ink); font: inherit; font-size: 15px;
+                    box-shadow: 0 0 0 .5px var(--p-ring), 0 4px 18px rgb(40 80 200 / .10); }
+  .ch-bot { margin: 0; padding: 12px 16px calc(24px + env(safe-area-inset-bottom, 0px)); }
+  .ch-bot div { display: flex; align-items: center; gap: 8px; min-height: 62px; padding: 8px 8px 8px 22px; border-radius: 31px; background: var(--p-pill); color: var(--p-ink2);
+                box-shadow: 0 0 0 .5px var(--p-ring), 0 8px 30px rgb(40 80 200 / .14); }
+  .ch-bot textarea { flex: 1; min-width: 0; max-height: 120px; padding: 0; border: 0; outline: 0; resize: none; background: none; color: var(--p-ink); font: inherit; font-size: 17px; line-height: 1.35; }
+  .ch-bot textarea::placeholder { color: var(--p-ink2); }
+  .ch-bot button { flex: none; align-self: flex-end; width: 46px; height: 46px; display: grid; place-items: center; border: 0; border-radius: 50%; background: color-mix(in srgb, #007AFF 14%, var(--p-pill)); color: #007AFF; }
+  .ch-bot button:disabled { opacity: .45; }
+
+  /* the conversation: the welcome steps aside once the first question goes, the sky sinks to the composer */
+  .ch-thread { display: none; flex: 1; min-height: 0; overflow-y: auto; flex-direction: column; gap: 18px; padding: 16px 16px 8px; }
+  .chat.on .ch-thread { display: flex; }
+  .chat.on .ch-mid { display: none; }
+  .chat.on canvas { height: 24%; }
+  .msg { max-width: 100%; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
+  .msg.me { align-self: flex-end; max-width: 82%; padding: 10px 16px; border-radius: 22px; background: var(--p-pill); box-shadow: 0 0 0 .5px var(--p-ring), 0 2px 10px rgb(0 0 0 / .05); }
+  .msg.ai > :first-child { margin-top: 0; }
+  .msg.ai > :last-child { margin-bottom: 0; }
+  .msg p, .msg ul, .msg ol { margin: 0 0 10px; }
+  .msg ul, .msg ol { padding-left: 22px; }
+  .msg h3 { margin: 14px 0 6px; font-size: 16px; font-weight: 600; }
+  .msg code { font-size: 14px; }
+  .msg .err { color: var(--p-ink2); }
+  .msg .dots { display: inline-flex; gap: 5px; padding: 6px 0; }
+  .msg .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--p-ink2); animation: dot 1s infinite alternate; }
+  .msg .dots i:nth-child(2) { animation-delay: .2s; } .msg .dots i:nth-child(3) { animation-delay: .4s; }
+  @keyframes dot { from { opacity: .25; } }
+
+  /* Charts and tables in a reply wear the back office's Orders breakdown cards (bo-shopify-tables.css .rail.ob):
+     grey band with the title, 33px rows on hairlines, one pale-blue bar, the count dark, the share grey; tints are the pay pills' */
+  .phone { --c-card: #fff; --c-head: rgb(247 247 247); --c-line: rgb(242 242 242); --c-ink: rgb(16 16 16); --c-ink2: rgb(74 74 74); --c-ink3: rgb(96 96 96);
+           --k1: #cdf5d3; --k1i: #0c3b14; --k2: #c8e5ff; --k2i: #002e5c; --k3: #fff1b3; --k3i: #3d3000; --k4: #e5dcff; --k4i: #2b1066; --k5: #c2f2ec; --k5i: #00332d; --k6: #ffd9e6; --k6i: #4a0021; }
+  .phone.dk { --c-card: #1E1E1E; --c-head: #262626; --c-line: rgb(255 255 255 / .07); --c-ink: #fff; --c-ink2: rgb(255 255 255 / .78); --c-ink3: rgb(255 255 255 / .55); }
+  .cc { margin: 2px 0 12px; overflow: hidden; border-radius: 12px; background: var(--c-card); box-shadow: 0 0 0 1px var(--c-line), 0 1px 3px rgb(0 0 0 / .06); font-size: 13px; line-height: 1.45; color: var(--c-ink2); }
+  .cc .band { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 31px; padding: 0 12px; background: var(--c-head); font-size: 12px; font-weight: 500; }
+  .cc .band small { font-size: 12px; font-weight: 400; color: var(--c-ink3); }
+  .cc .row { display: flex; align-items: center; gap: 12px; min-height: 33px; padding: 0 12px; border-top: 1px solid var(--c-line); font-variant-numeric: tabular-nums; }
+  .cc .rows .row:first-child { border-top-color: transparent; }
+  .cc .nm { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+  .cc .nm > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .cc .meter { flex: 0 0 22%; height: 8px; margin-left: auto; }
+  .cc .meter i { display: block; height: 100%; min-width: 2px; border-radius: 4px; background: var(--k2); }
+  .cc .cnt { min-width: 84px; text-align: right; font-weight: 500; color: var(--c-ink); white-space: nowrap; }
+  .cc .amt { min-width: 46px; text-align: right; color: var(--c-ink3); }
+  .cc .pl { flex: none; display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 8px; font-size: 12px; }
+  .cc .donut { width: 96px; height: 96px; margin: 16px auto; border-radius: 50%;
+               -webkit-mask: radial-gradient(circle, transparent 29px, #000 30px); mask: radial-gradient(circle, transparent 29px, #000 30px); }
+  .cc .donut + .rows { border-top: 1px solid var(--c-line); }
+  .cc .cols { display: flex; align-items: flex-end; gap: 4px; padding: 18px 12px 10px; }
+  .cc .col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+  .cc .col b { margin-bottom: 4px; font-size: 11px; font-weight: 500; color: var(--c-ink); white-space: nowrap; }
+  .cc .col span { width: 100%; max-width: 32px; min-height: 1px; border-radius: 4px 4px 0 0; background: var(--k2); }
+  .cc .col small { align-self: stretch; min-height: 22px; padding-top: 5px; border-top: 1px solid var(--c-line); text-align: center; font-size: 11px; color: var(--c-ink3); white-space: nowrap; }
+  .cc table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .cc th { height: 31px; padding: 0 12px; background: var(--c-head); font-size: 12px; font-weight: 500; text-align: left; }
+  .cc td { height: 33px; padding: 0 12px; border-top: 1px solid var(--c-line); }
+  .cc tr:nth-child(2) td { border-top-color: transparent; }
+  .cc .r { text-align: right; }
+  .cc-wait { margin: 2px 0 12px; color: var(--p-ink2); font-size: 14px; }
+  .ch-bot svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* the opening screen: the website's sky, the logo, the name; it plays, holds a beat, and opens into Sell */
+  .splash { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 14px; color: #fff; isolation: isolate; transition: opacity .45s ease; }
+  .splash canvas { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; }
+  .splash svg { width: 92px; height: 92px; filter: drop-shadow(0 6px 24px rgb(10 50 140 / .25)); animation: logo-in .7s cubic-bezier(.2, .8, .2, 1) both; }
+  .splash b { font-size: 30px; font-weight: 600; letter-spacing: -.02em; animation: logo-in .7s .12s cubic-bezier(.2, .8, .2, 1) both; }
+  .splash.out { opacity: 0; pointer-events: none; }
+  @keyframes logo-in { from { opacity: 0; transform: scale(.86); } }
+
+  .orb { position: relative; display: block; width: 96px; height: 96px; overflow: hidden; border-radius: 50%; background: var(--sky-orb) 50% 50% / 190% 190%;
+         box-shadow: inset 0 0 0 1px rgb(255 255 255 / .55), inset 0 -10px 24px rgb(20 60 160 / .35), 0 6px 24px -6px rgb(30 90 220 / .55); }
+  .orb::before { content: ""; position: absolute; inset: -20%; border-radius: 50%; filter: blur(10px);
+                 background: conic-gradient(from 40deg at 60% 60%, rgb(60 130 255 / .55), rgb(140 110 255 / .45), rgb(90 160 255 / 0) 40%, rgb(70 210 255 / .5) 70%, rgb(60 130 255 / .55)); }
+  .orb::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 34% 28%, rgb(255 255 255 / .85), rgb(255 255 255 / 0) 42%); }
+  .orb { animation: orb-turn 9s ease-in-out infinite alternate; }
+  .orb::before { animation: orb-spin 7s linear infinite; }
+  @keyframes orb-turn { 0% { background-position: 0% 20%; } 50% { background-position: 60% 90%; } 100% { background-position: 100% 30%; } }
+  @keyframes orb-spin { to { transform: rotate(1turn); } }
+  @media (prefers-reduced-motion: reduce) { .orb, .orb::before, .splash svg, .splash b { animation: none; } }
+</style>
+</head>
+<body>
+<div class="bar">
+  <label>Page
+    <select id="page">
+      <option value="splash">Opening</option>
+      <option value="sell-items">Sell</option>
+      <option value="checkout">Checkout</option>
+      <option value="paid">Paid</option>
+      <option value="items">Items</option>
+      <option value="shift">Shift</option>
+      <option value="reports">Reports</option>
+      <option value="settings">Settings</option>
+      <option value="pin">Sign in</option>
+      <option value="menu">Menu</option>
+      <option value="chat">Ask</option>
+    </select>
+  </label>
+  <label>Logo
+    <select id="logo">
+      <option value="bloom">Bloom</option>
+      <option value="sun">Sun</option>
+      <option value="ring">Ring</option>
+    </select>
+  </label>
+  <label>Theme
+    <select id="theme">
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+  </label>
+</div>
+<div class="stage"><div class="phone" id="phone">
+  <iframe id="app" src="index.html#sell" title="POS"></iframe>
+  <section class="splash" id="splash" hidden><canvas aria-hidden="true"></canvas><svg viewBox="0 0 64 64" aria-hidden="true"></svg><b>Counter</b></section>
+  <section class="chat" id="chat" hidden>
+    <canvas aria-hidden="true"></canvas>
+    <header class="ch-top"><button type="button" id="chatBack" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M5 9h14M5 15h14"/></svg></button><b>Ask</b></header>
+    <div class="ch-mid">
+      <i class="orb"></i>
+      <h1>Ask about<br>your store</h1>
+      <div class="ch-asks"><button type="button">How did today go?</button><button type="button">What is running low?</button><button type="button">Best sellers this week</button></div>
+    </div>
+    <div class="ch-thread" id="thread" aria-live="polite"></div>
+    <form class="ch-bot" id="askForm"><div><textarea id="askIn" rows="1" placeholder="Ask anything" enterkeyhint="send" aria-label="Ask anything"></textarea><button type="submit" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div></form>
+  </section>
+</div></div>
+
+<script>
+// The shader is landing-lab.html's (feldar.com's footer GLSL, our blues), with the website's grain.
+// sky: the website's own colours. dark: a navy version for the dark theme.
+const SKY = {
+  sky:  { top: [0.80, 0.89, 0.98], mid: [0.56, 0.75, 0.95], base: [0.38, 0.64, 0.93], deep: [0.22, 0.50, 0.86], accent: [0.66, 0.76, 0.97], pale: [0.93, 0.97, 1.0] },
+  dark: { top: [0.16, 0.24, 0.40], mid: [0.12, 0.22, 0.40], base: [0.09, 0.18, 0.36], deep: [0.05, 0.12, 0.28], accent: [0.18, 0.22, 0.44], pale: [0.24, 0.32, 0.50] },
+};
+const VERT = 'attribute vec2 a_position;varying vec2 v_uv;void main(){v_uv=a_position*0.5+0.5;gl_Position=vec4(a_position,0.0,1.0);}';
+const FRAG = `precision mediump float;
+uniform vec2 u_resolution;uniform float u_time,u_grain;uniform vec3 u_color_top,u_color_mid,u_color_base,u_color_deep,u_color_accent,u_color_pale;
+varying vec2 v_uv;
+float hash(vec2 p){vec3 p3=fract(vec3(p.xyx)*0.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f);
+  return mix(mix(hash(i),hash(i+vec2(1.0,0.0)),u.x),mix(hash(i+vec2(0.0,1.0)),hash(i+vec2(1.0,1.0)),u.x),u.y);}
+mat2 rotate2d(float a){float s=sin(a),c=cos(a);return mat2(c,-s,s,c);}
+float fbm(vec2 p){float v=0.0,a=0.5;mat2 m=mat2(0.82,-0.57,0.57,0.82);for(int i=0;i<4;i++){v+=a*noise(p);p=m*p*2.02+11.7;a*=0.5;}return v;}
+float lobe(vec2 p,vec2 c,vec2 r,float a){vec2 d=rotate2d(a)*(p-c);d/=r;return exp(-dot(d,d));}
+void main(){
+  vec2 uv=v_uv,p=(uv-0.5)*vec2(u_resolution.x/u_resolution.y,1.0);float t=u_time*0.045;
+  vec2 flow=vec2(fbm(p*1.18+vec2(t*0.42,-t*0.18)),fbm(p*1.05+vec2(-t*0.22,t*0.34)))-0.5;
+  vec2 q=p+flow*0.28;q.x+=sin(p.y*3.0+t*1.25)*0.025;q.y+=cos(p.x*2.4-t*1.05)*0.020;
+  float vertical=smoothstep(0.0,1.0,uv.y);
+  vec3 color=mix(u_color_top,u_color_base,smoothstep(0.10,0.64,vertical));
+  color=mix(color,u_color_deep,smoothstep(0.55,1.0,vertical)*0.82);
+  color=mix(color,u_color_mid,lobe(q,vec2(0.0,-0.05),vec2(1.28,0.34),0.0)*0.24);
+  color=mix(color,u_color_accent,lobe(q,vec2(-0.30,-0.36),vec2(0.70,0.32),-0.08)*0.20);
+  color=mix(color,u_color_pale,lobe(q,vec2(0.28,-0.18),vec2(0.82,0.26),0.12)*0.18);
+  float tex=fbm(q*vec2(7.0,2.3)+vec2(t*0.52,-t*0.28))*0.55+fbm(q*vec2(2.2,8.4)+vec2(-t*0.36,t*0.30))*0.45;
+  color+=(tex-0.5)*0.075;
+  color+=(hash(gl_FragCoord.xy+floor(u_time*18.0))-0.5)*0.045*u_grain;
+  color=mix(color,u_color_pale,(1.0-smoothstep(0.02,0.56,uv.y))*0.22);
+  color=mix(color*0.86,color,smoothstep(1.28,0.25,length(p*vec2(0.72,1.10))));
+  gl_FragColor=vec4(clamp(color,0.0,1.0),1.0);
+}`;
+
+function makeSky(c) {
+  const gl = c.getContext('webgl', { antialias: false, depth: false, stencil: false, alpha: false, preserveDrawingBuffer: true, powerPreference: 'low-power' });
+  const prog = gl?.createProgram();
+  if (!prog) return null;
+  [[gl.VERTEX_SHADER, VERT], [gl.FRAGMENT_SHADER, FRAG]].forEach(([type, src]) => {
+    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); gl.attachShader(prog, s);
+  });
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+  gl.useProgram(prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(prog, 'a_position');
+  gl.enableVertexAttribArray(pos); gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uni = (n) => gl.getUniformLocation(prog, n);
+  return (w, h, pal, time) => {
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; gl.viewport(0, 0, w, h); }
+    Object.entries(pal).forEach(([n, v]) => gl.uniform3fv(uni('u_color_' + n), v));
+    gl.uniform2f(uni('u_resolution'), w, h); gl.uniform1f(uni('u_time'), time); gl.uniform1f(uni('u_grain'), 1);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+}
+
+// The logo: round, drawn by hand from circles and rounded strokes, one colour (white on the sky, blue elsewhere).
+// bloom: eight round petals around a full centre, a little cloud-flower. sun: twelve rounded rays, long and short,
+// like the marks on a counter's dial. ring: a C for Counter with the orb in its mouth.
+const LOGOS = {
+  bloom: (() => { let s = '<circle cx="32" cy="32" r="14"/>'; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; s += `<circle cx="${(32 + 16 * Math.cos(a)).toFixed(2)}" cy="${(32 + 16 * Math.sin(a)).toFixed(2)}" r="10"/>`; } return `<g fill="currentColor">${s}</g>`; })(),
+  sun: (() => { let s = ''; for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6 - Math.PI / 2, r = i % 2 ? 23 : 28, c = Math.cos(a), n = Math.sin(a); s += `<path d="M${(32 + 10 * c).toFixed(2)} ${(32 + 10 * n).toFixed(2)}L${(32 + r * c).toFixed(2)} ${(32 + r * n).toFixed(2)}"/>`; } return `<g stroke="currentColor" stroke-width="6.5" stroke-linecap="round">${s}</g>`; })(),
+  ring: '<path d="M48.09 18.5A21 21 0 1 0 48.09 45.5" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"/><circle cx="54" cy="32" r="5.5" fill="currentColor"/>',
+};
+
+const $ = (s) => document.querySelector(s);
+const frame = $('#app'), chat = $('#chat'), splash = $('#splash'), phone = $('#phone');
+const dark =() => $('#theme').value === 'dark';
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+let last = 0;   // when the live sky last drew; 0 = draw now
+const still =document.createElement('canvas'), paint = makeSky(still);
+const shot = (w, h, pal) => { paint(w, h, pal, 12); return still.toDataURL('image/jpeg', 0.9); };
+
+// The app keeps today's colours everywhere (its blue stays in the switches and the Reports charts). The one bit of
+// brand colour inside it is the orb on the Ask row, first in the menu.
+const ORB_CSS = [...document.styleSheets[0].cssRules].filter((r) => /orb/.test(r.cssText)).map((r) => r.cssText).join('\n') + `
+.sky-ask .orb { width: 18px; height: 18px; flex: none; box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .6), 0 2px 8px -2px rgb(30 90 220 / .6); }
+`;
+
+function restyle() {
+  phone.classList.toggle('dk', dark());
+  const orb = `url(${shot(320, 320, SKY.sky)})`;
+  document.documentElement.style.setProperty('--sky-orb', orb);
+  $('#splash svg').innerHTML = LOGOS[$('#logo').value];
+  const doc = frame.contentDocument;
+  if (!doc?.body) return;
+  doc.body.classList.toggle('light-theme', !dark());
+  let st = doc.getElementById('skyLab');
+  if (!st) { st = doc.createElement('style'); st.id = 'skyLab'; doc.head.append(st); }
+  st.textContent = `:root { --sky-orb: ${orb}; }` + ORB_CSS;
+}
+
+// Put the app into each moment. The frame reloads for every page, so each one starts clean.
+const tap = (doc, re) => [...doc.querySelectorAll('button')].find((b) => b.offsetParent && re.test(b.textContent.trim()))?.click();
+async function addItems(doc, n) {
+  if (!doc.getElementById('cartBar').disabled) return;   // already has some
+  const cards = [...doc.querySelectorAll('.product-grid .product-card[data-id]:not(.pc-group)')].filter((e) => e.offsetParent && !/Pipe Cutting|Threading/.test(e.textContent));
+  for (const c of cards.slice(0, n)) { c.click(); await wait(300); tap(doc, /^Sell anyway/); await wait(200); tap(doc, /^Add/); await wait(200); }
+}
+const openAsk = (e) => { e?.stopPropagation(); $('#page').value = 'chat'; chat.hidden = false; last = 0; };
+async function setup() {
+  const win = frame.contentWindow, doc = frame.contentDocument, v = $('#page').value;
+  chat.hidden = v !== 'chat';
+  restyle();
+  const ask = doc.createElement('div');   // Ask, first in the menu
+  ask.className = 'side-grp';
+  ask.innerHTML = '<button class="side-link sky-ask" type="button"><i class="orb"></i><span>Ask</span></button>';
+  ask.firstChild.addEventListener('click', openAsk);
+  doc.querySelector('.side-nav').prepend(ask);
+  if (['sell-items', 'checkout', 'paid'].includes(v)) await addItems(doc, 3);
+  if (['checkout', 'paid'].includes(v)) { doc.getElementById('cartBar').click(); await wait(500); doc.getElementById('payBtn').click(); await wait(700); }
+  if (v === 'checkout') { const t = [...doc.querySelectorAll('#checkoutMethods button')]; (t.find((b) => /GCash|QR/.test(b.textContent)) || t[1])?.click(); }
+  if (v === 'paid') {   // ponytail: the Paid screen shown as is, no sale saved
+    doc.getElementById('checkoutSteps').hidden = true; doc.getElementById('successChangeBlock').hidden = true;
+    doc.getElementById('checkoutDone').hidden = false; doc.getElementById('checkoutApp').classList.add('is-done');
+  }
+  if (['items', 'shift', 'reports', 'settings'].includes(v)) win.switchView(v);
+  if (v === 'pin') win.showPin('Sign in', '', true);
+  if (v === 'menu' || v === 'chat') doc.getElementById('app').classList.remove('sidebar-collapsed');
+}
+// The opening screen plays over Sell, holds a beat, then fades into it. Pick "Opening" again to replay.
+let splashTimer;
+function playSplash() {
+  clearTimeout(splashTimer);
+  splash.hidden = false; splash.classList.remove('out'); last = 0;
+  const svg = $('#splash svg'), b = $('#splash b');
+  [svg, b].forEach((e) => { e.style.animation = 'none'; e.offsetWidth; e.style.animation = ''; });
+  splashTimer = setTimeout(() => { splash.classList.add('out'); $('#page').value = 'sell-items'; setTimeout(() => { splash.hidden = true; }, 500); }, 2200);
+}
+let first = true;
+frame.addEventListener('load', async () => {
+  const win = frame.contentWindow;
+  for (let i = 0; i < 40 && !win.showPin; i++) await wait(100);
+  if (first) { $('#theme').value = win.document.body.classList.contains('light-theme') ? 'light' : 'dark'; first = false; }
+  await wait(500);
+  setup();
+});
+$('#page').addEventListener('change', () => {
+  const v = $('#page').value;
+  if (v === 'chat') { chat.hidden = false; return; }
+  if (v === 'splash') { chat.hidden = true; playSplash(); return; }
+  frame.contentWindow.location.reload();
+});
+$('#chatBack').addEventListener('click', () => { $('#page').value = 'menu'; chat.hidden = true; });
+['#theme', '#logo'].forEach((s) => $(s).addEventListener('change', () => { restyle(); last = 0; }));
+playSplash();
+
+// The sky on the opening screen and behind Ask moves at ~30 fps while one is open, as the website does
+const liveChat = makeSky(chat.querySelector('canvas')), liveSplash = makeSky(splash.querySelector('canvas'));
+const t0 = performance.now(), still_ = matchMedia('(prefers-reduced-motion: reduce)').matches;
+(function tick(now) {
+  requestAnimationFrame(tick);
+  if ((now - last < 33 && last) || (still_ && last)) return;
+  const k = Math.min(devicePixelRatio || 1, 1.25), t = still_ ? 12 : 12 + (now - t0) / 1000;
+  for (const [sec, live] of [[splash, liveSplash], [chat, liveChat]]) {
+    if (sec.hidden || !live) continue;
+    const c = sec.querySelector('canvas');
+    live(Math.floor(c.clientWidth * k), Math.floor(c.clientHeight * k), dark() && sec === splash ? SKY.dark : SKY.sky, t);   // Ask wears the website's sky in both themes
+  }
+  last = now;
+})(0);
+
+// ── Ask, for real: the question and a snapshot of the store go to the lab server (scripts/ask-serve.py), which holds
+// the API key and passes Claude's answer back as plain text while it is written.
+// ponytail: the chat lives in memory only (gone on reload); the snapshot is rebuilt per question, newest 400 orders.
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+function storeData() {
+  const w = frame.contentWindow, S = w.SalesMath, st = w.eval('state'), zone = S.storeZone(st.settings);
+  const m = w.eval('peso'), productOf = w.eval('typeof productOf === "function" ? productOf : null'), costOf = (i) => productOf?.(i)?.cost;   // top-level consts, not on window
+  const today = S.dayKey(Date.now(), zone), at = (k) => S.dayStartMs(k, zone), next = (k) => at(S.addDays(k, 1));
+  const when = (ts, o) => new Date(ts).toLocaleString('en-US', { timeZone: zone, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', ...o });
+  const sum = (name, win) => {
+    const s = S.summarize(st.orders, { ...win, costOf });
+    return `${name}: net sales ${m(s.netSales)}, ${s.orders} orders, average sale ${m(s.averageSale)}, gross profit ${s.grossProfit == null ? 'unknown' : m(s.grossProfit)}`
+      + `${s.margin == null ? '' : ` (margin ${Math.round(s.margin * 100)}%)`}, discounts ${m(s.discounts)}, refunds ${m(s.refunds)}, voids ${m(s.voids)}, units sold ${s.unitsSold}`;
+  };
+  const last30 = S.rangeWindow(30, Date.now(), zone), folder = new Map((st.folders || []).map((f) => [f.id, f.name]));
+  const days = Array.from({ length: 30 }, (_, i) => S.addDays(today, i - 29)).map((k) => {
+    const s = S.summarize(st.orders, { from: at(k), to: next(k) });
+    return `${when(at(k) + 43200000, { hour: undefined, minute: undefined })}: ${m(s.netSales)}, ${s.orders} orders`;
+  });
+  const tops = S.topItems(st.orders, { ...last30, costOf, limit: 25 }).map((r) => `${r.name}: ${m(r.netSales)}, ${r.unitsSold} sold`);
+  const low = st.products.filter((p) => p.trackStock && p.stock <= (p.reorderPoint ?? 0)).map((p) => `${p.name}: ${p.stock} left (reorder at ${p.reorderPoint ?? 0})`);
+  const items = st.products.map((p) => `${p.name} | ${folder.get(p.folder) || p.folder || '-'} | price ${p.price == null ? 'set at sale' : m(p.price)} | cost ${p.cost == null ? '-' : m(p.cost)} | stock ${p.trackStock ? p.stock : 'not tracked'}`);
+  const seller = S.sellerOf(st.orders);
+  const orders = st.orders.slice(0, 400).map((o) => `#${o.number} ${when(S.tsOf(o))} ${o.status || 'paid'} by ${seller(o).name || '-'} on ${o.register || '-'}`
+    + ` | ${S.paymentsOf(o).map((p) => p.label).join(' + ')} | total ${m(o.total)} | ${(o.items || []).map((i) => `${i.name} x${i.qty} ${m(i.lineTotal ?? i.price * i.qty)}`).join('; ')}`);
+  return [`STORE: ${st.settings?.store?.name || 'the store'}, currency ${st.settings?.store?.currency}, time zone ${zone}. Now: ${when(Date.now())}. ${st.orders.length} orders on record.`,
+    'SUMMARY (exact, from the app):', sum('Today', { from: at(today), to: next(today) }), sum('Yesterday', { from: at(S.addDays(today, -1)), to: at(today) }),
+    sum('Last 7 days', S.rangeWindow(7, Date.now(), zone)), sum('This month', { from: at(today.slice(0, 8) + '01'), to: next(today) }), sum('Last 30 days', last30), sum('All time', {}),
+    '', 'DAILY (last 30 days):', ...days, '', 'TOP ITEMS (last 30 days, by net sales):', ...tops, '', 'LOW STOCK:', ...(low.length ? low : ['none']),
+    '', 'ITEMS (name | category | price | cost | stock):', ...items, '', `ORDERS (newest ${orders.length}, newest first):`, ...orders].join('\n');
+}
+
+// A reply's words and charts. Everything is escaped first; only the few marks below become tags, so nothing in an answer can run.
+const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
+function chart(txt) {
+  let c; try { c = JSON.parse(txt); } catch { return ''; }
+  const w = frame.contentWindow, cur = w.eval('state').settings?.store?.currency;
+  const rows = (Array.isArray(c.rows) ? c.rows : []).filter((r) => r && Number.isFinite(+r.value)).slice(0, { donut: 6, columns: 31 }[c.type] || 10);
+  if (!rows.length) return '';
+  const v = (r) => Math.max(0, +r.value), total = rows.reduce((a, r) => a + v(r), 0) || 1, max = Math.max(...rows.map(v)) || 1;
+  const fmt = (n, compact) => c.unit === 'money' ? w.SalesMath.formatMoney(+n, cur, { compact }) : (+n).toLocaleString('en-US');
+  const pct = (r) => Math.round(v(r) / total * 100) + '%';
+  const band = `<div class="band"><span>${esc(c.title || '')}</span><small>${esc(c.note || '')}</small></div>`;
+  let body;
+  if (c.type === 'donut') {
+    let run = 0;
+    const stops = rows.map((r, i) => `var(--k${i + 1}) ${run}% ${(run += v(r) / total * 100)}%`).join(',');
+    body = `<div class="donut" style="background:conic-gradient(${stops})"></div><div class="rows">` + rows.map((r, i) =>
+      `<div class="row"><span class="nm"><span class="pl" style="background:var(--k${i + 1});color:var(--k${i + 1}i)">${esc(r.label)}</span></span><span class="cnt">${fmt(r.value)}</span><span class="amt">${pct(r)}</span></div>`).join('') + '</div>';
+  } else if (c.type === 'columns') {
+    const every = Math.ceil(rows.length / 7);   // more than 12 columns: no figures on top, every few labels
+    body = '<div class="cols">' + rows.map((r, i) => `<div class="col">${rows.length <= 12 ? `<b>${fmt(r.value, true)}</b>` : ''}<span style="height:${Math.max(1, v(r) / max * 110)}px"></span>`
+      + `<small>${rows.length <= 12 || i % every === 0 ? esc(r.label) : ''}</small></div>`).join('') + '</div>';
+  } else {
+    body = '<div class="rows">' + rows.map((r) => `<div class="row"><span class="nm"><span>${esc(r.label)}</span></span><span class="meter"><i style="width:${v(r) / max * 100}%"></i></span>`
+      + `<span class="cnt">${fmt(r.value)}</span><span class="amt">${pct(r)}</span></div>`).join('') + '</div>';
+  }
+  return `<div class="cc">${band}${body}</div>`;
+}
+function table(lines) {
+  const cells = (l) => l.trim().replace(/^\||\|$/g, '').split('|').map((s) => s.trim());
+  const num = (s) => /^[-+]?[^\sA-Za-z]?[\d.,]+%?$/.test(s);
+  const [head, , ...rest] = lines, first = cells(rest[0] || '');
+  return '<div class="cc"><table><tr>' + cells(head).map((h, i) => `<th${num(first[i] || '') ? ' class="r"' : ''}>${inline(h)}</th>`).join('') + '</tr>'
+    + rest.map((l) => '<tr>' + cells(l).map((s) => `<td${num(s) ? ' class="r"' : ''}>${inline(s)}</td>`).join('') + '</tr>').join('') + '</table></div>';
+}
+function md(src) {
+  const out = [], lines = src.split('\n');
+  let para = [], list = null;
+  const flush = () => {
+    if (para.length) out.push('<p>' + para.map(inline).join('<br>') + '</p>');
+    if (list) out.push(`<${list.tag}>` + list.items.map((x) => `<li>${inline(x)}</li>`).join('') + `</${list.tag}>`);
+    para = []; list = null;
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i], fence = l.trim().match(/^```(\w*)/);
+    let x;
+    if (fence) {
+      flush();
+      let j = i + 1;
+      while (j < lines.length && lines[j].trim() !== '```') j++;
+      if (j === lines.length) { if (fence[1] === 'chart') out.push('<div class="cc-wait">Drawing a chart…</div>'); break; }   // still being written
+      const body = lines.slice(i + 1, j).join('\n');
+      out.push(fence[1] === 'chart' ? chart(body) : `<pre><code>${esc(body)}</code></pre>`);
+      i = j;
+    } else if (/^\s*\|/.test(l) && /^\s*\|?\s*:?-{2,}/.test(lines[i + 1] || '')) {
+      flush();
+      let j = i + 2;
+      while (j < lines.length && /^\s*\|/.test(lines[j])) j++;
+      out.push(table(lines.slice(i, j)));
+      i = j - 1;
+    } else if ((x = l.match(/^#{1,6}\s+(.*)/))) { flush(); out.push(`<h3>${inline(x[1])}</h3>`); }
+    else if ((x = l.match(/^\s*(?:([-*])|\d+[.)])\s+(.*)/))) {
+      const tag = x[1] ? 'ul' : 'ol';
+      if (para.length || list?.tag !== tag) flush();
+      (list ||= { tag, items: [] }).items.push(x[2]);
+    } else if (!l.trim()) flush();
+    else { if (list) flush(); para.push(l); }
+  }
+  flush();
+  return out.join('');
+}
+
+const thread = $('#thread'), askIn = $('#askIn'), askForm = $('#askForm'), sendBtn = askForm.querySelector('button'), talk = [];
+const bubble = (cls, html) => { const d = document.createElement('div'); d.className = 'msg ' + cls; d.innerHTML = html; thread.append(d); thread.scrollTop = thread.scrollHeight; return d; };
+const grow = () => { askIn.style.height = 'auto'; askIn.style.height = askIn.scrollHeight + 'px'; };
+let busy = false;
+async function send(q) {
+  q = q.trim();
+  if (!q || busy) return;
+  busy = sendBtn.disabled = true;
+  chat.classList.add('on'); last = 0;
+  askIn.value = ''; grow();
+  bubble('me', esc(q).replace(/\n/g, '<br>'));
+  talk.push({ role: 'user', content: q });
+  const out = bubble('ai', '<span class="dots"><i></i><i></i><i></i></span>');
+  let text = '', queued = false;
+  const show = () => { out.innerHTML = md(text); thread.scrollTop = thread.scrollHeight; };
+  try {
+    const res = await fetch('/api/ask', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ messages: talk, data: storeData() }) });
+    if (!res.ok) throw new Error((await res.text()) || 'Ask could not answer (' + res.status + ').');
+    const rd = res.body.getReader(), dec = new TextDecoder();
+    for (let r; !(r = await rd.read()).done;) {
+      text += dec.decode(r.value, { stream: true });
+      if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; show(); }); }
+    }
+    if (!text.trim()) throw new Error('No answer came back.');
+    show();
+    talk.push({ role: 'assistant', content: text });
+  } catch (e) {
+    out.innerHTML = `<p class="err">${esc(e instanceof TypeError ? 'Ask could not reach the lab server.' : e.message)}</p>`;
+    talk.pop();   // the question goes again next time, with no answer stuck to it
+  } finally {
+    busy = sendBtn.disabled = false;
+  }
+}
+askForm.addEventListener('submit', (e) => { e.preventDefault(); send(askIn.value); });
+askIn.addEventListener('input', grow);
+askIn.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(askIn.value); } });
+chat.querySelectorAll('.ch-asks button').forEach((b) => b.addEventListener('click', () => send(b.textContent)));
+</script>
+</body>
+</html>

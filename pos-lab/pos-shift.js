@@ -212,14 +212,16 @@ function openShift(start, extra) {
 // Start asks the start cash. Close counts blind (no Expected while counting), then Expected / Counted / Over or short,
 // a note, one Recount; in float mode (Settings › Shift › Starting cash) what stays in the drawer starts the next
 // shift. ₱0 is a count (an empty drawer); Skip on the count is Not counted. ✕ / Back / Esc / leaving the page at any step: nothing saved (owner 2026-10-10).
-let shSheet = null;   // { step: 'start' | 'count' | 'result' | 'leave' | 'cash', v: typed, counts, shiftId, note, born, dir + cat on 'cash' }
+// The phone (owner 2026-11-05): the keys open in their sheet with a blue ✓; ✓ slides them down and the step's button shows
+// in Start shift's spot on the Shift page, a tap on the amount brings them back. kd = keys down, up = slide them in on this draw.
+let shSheet = null;   // { step: 'start' | 'count' | 'result' | 'leave' | 'cash', v: typed, counts, shiftId, note, born, kd, up, dir + cat on 'cash' }
 function openShiftSheet(step) {
-  shSheet = { step, v: '0', counts: [], shiftId: shiftOf()?.id || null, note: '', born: performance.now() };
+  shSheet = { step, v: '0', counts: [], shiftId: shiftOf()?.id || null, note: '', born: performance.now(), kd: false, up: true };
   drawShiftSheet();
   $('#shiftSheet').classList.add('open');
   esLine($('#shiftSheet'));
 }
-const openCash = dir => { openShiftSheet('cash'); Object.assign(shSheet, { dir, cat: '' }); drawShiftSheet(); };
+const openCash = dir => { openShiftSheet('cash'); Object.assign(shSheet, { dir, cat: '', up: true }); drawShiftSheet(); };
 function closeShiftSheet() { if (!shSheet) return; shSheet = null; $('#shiftSheet').classList.remove('open'); }
 const SH_ASK = { start: ['Starting cash?', 'Start shift'], count: ['Count the cash in the drawer', 'Next'], leave: ['Leave in drawer?', 'Close shift'] };
 const shCounted = () => shSheet.counts[shSheet.counts.length - 1];
@@ -235,21 +237,35 @@ function drawShiftSheet() {
     head = `<p>Over / short</p><div class="es-hero">${counted !== undefined ? overShortText(shiftDiff(counted, f.expected)) : 'Not counted'}</div>`;
     rows = row('Expected', peso(f.expected)) + row('Counted', counted !== undefined ? peso(counted) : 'Not counted')
       + `<textarea class="es-ta" id="shNote" rows="2" maxlength="80" placeholder="Add a note" aria-label="Note">${escapeHtml(o.note)}</textarea>`;
-    if (o.counts.length < 2) left = '<button type="button" class="es-q cta-3" data-recount>Recount</button>';
+    if (o.counts.length < 2 && !shPh()) left = '<button type="button" class="es-q cta-3" data-recount>Recount</button>';   // the phone's ‹ is Recount (shBack)
     ink = shLeave() ? 'Next' : 'Close shift';
   }
   if (o.step === 'count') left = '<button type="button" class="es-q cta-3" data-skip>Skip</button>';
-  $('#shiftSheetCard').innerHTML = esFrame(head, rows, ask ? `<div class="es-keys">${esKeys(true)}</div>` : '', `${left}<button type="button" class="es-ink cta" data-apply>${ink}</button>`, ask ? ' ask' : '');
-  if (ask) $('#shiftSheet .es-ink').focus({ preventScroll: true });   // off the page's button: a key can't fire it again
+  shDraw(head, rows, !!ask, left, ink, ask ? ' ask' : '');
+  if (ask) $('#shiftSheet :is(.es-ok, [data-apply])')?.focus({ preventScroll: true });   // off the page's button: a key can't fire it again
 }
+// The frame both draw: keys + ✓ on the phone till ✓, the button then (the Shift page's own: its size, its spot)
+function shDraw(head, rows, keys, left, ink, cls) {
+  const o = shSheet, ph = shPh(), up = keys && !(ph && o.kd);
+  const btn = `${left}<button type="button" class="${ph ? 'fab sh-fab' : 'es-ink'} cta" data-apply>${ink}</button>`;
+  $('#shiftSheetCard').innerHTML = (ph && up ? esOk('data-kd') : '')
+    + esFrame(head, rows, up ? `<div class="es-keys${o.up ? ' es-in' : ''}">${esKeys(true)}</div>` : '', btn, cls + (ph && keys ? ' ks' : ''));
+  ksCarry($('#shiftSheetCard'), o);
+  o.up = false;
+}
+const shPh = () => matchMedia('(max-width: 720px)').matches;
+// The phone's ‹ goes back a step (owner 2026-11-05: "the back button becomes the recount"): Over / short to the count,
+// Leave in drawer to Over / short; elsewhere it closes, nothing saved. The iPad keeps ‹ Back = close and its Recount.
+const SH_BACK = { result: 'count', leave: 'result' };
+const shBack = () => (shPh() && SH_BACK[shSheet.step] ? shStep(SH_BACK[shSheet.step]) : closeShiftSheet());
 // Cash in / out (owner 2026-11-01, over 2026-10-16's note + two buttons): the round + on Cash in & out asks Cash in | Cash out,
 // then the amount on the hero line over its keys and a Category pill under it, the pick in a chip (iOS's date row), and Save,
 // which closes back to the list. Never the OS number keyboard (owner 2026-10-05). With or without a shift (owner 2026-10-10 #3).
 function drawCashSheet() {
   const o = shSheet;
-  $('#shiftSheetCard').innerHTML = esFrame(`<p>Cash ${o.dir}</p><div class="es-hero">${typedCash(o.v)}</div>`,
+  shDraw(`<p>Cash ${o.dir}</p><div class="es-hero">${typedCash(o.v)}</div>`,
     `<button type="button" class="cm-row" data-cat><span>Category</span><span class="cm-chip"><span>${o.cat ? escapeHtml(o.cat) : 'None'}</span>${IUPDOWN}</span></button>`,
-    `<div class="es-keys">${esKeys(true)}</div>`, '<button type="button" class="es-ink cta" data-apply>Save</button>', ' ask');
+    true, '', 'Save', ' ask');
 }
 // The owner's categories, one list per direction (settings.cashCats, presets to start); New category adds to it
 function pickCashCat(btn) {
@@ -272,14 +288,16 @@ function newCashCat() {
     } });
   $('#cashCatName').focus();
 }
-const shStep = step => { Object.assign(shSheet, { step, v: '0', born: performance.now() }); drawShiftSheet(); };
+const shStep = step => { Object.assign(shSheet, { step, v: '0', born: performance.now(), kd: false, up: true }); drawShiftSheet(); };
 function shiftSheetClick(e) {
   const o = shSheet, el = q => e.target.closest(q);
   if (!o || !e.target) return;   // a desk key with no key for it on this step
   o.note = $('#shNote')?.value ?? o.note;   // the note survives a redraw
   const k = el('[data-sk]');
-  if (el('[data-close]')) return closeShiftSheet();
+  if (el('[data-close]')) return shBack();
   if (k) { o.v = esPress(o.v, k.dataset.sk, true, CASH_MAX); return drawShiftSheet(); }
+  if (el('[data-kd]')) return keysDown($('#shiftSheet .es-keys'), () => { if (shSheet === o) { o.kd = true; drawShiftSheet(); } });
+  if (el('.es-hero') && o.kd) { Object.assign(o, { kd: false, up: true }); return drawShiftSheet(); }   // the amount: its keys again
   if (el('[data-recount]') && !shEarly()) return shStep('count');
   if (el('[data-cat]')) return pickCashCat(el('[data-cat]'));
   if (el('[data-skip]') && !shEarly()) return shStep('result');   // no count: Not counted
