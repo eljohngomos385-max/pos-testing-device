@@ -8059,8 +8059,12 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
       --glass-ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
       --pill-ring: 0 1px 2px rgb(0 0 0 / .15), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .05);   /* a pill inside a glass bar: half the ring's shadow and shine (owner 2026-10-18) */
       --float: 0 4px 12px -4px rgb(0 0 0 / .45); }   /* falls only down and to the sides (blur/2 < spread + offset upward); owner 2026-10-18: 10/30 "floats too much" */   /* owner 2026-10-17: the 8/24 drop read as floating; glass sits close */
-body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card, .pay-sheet, .modal-backdrop) { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
-  --pill-ring: 0 1px 2px rgb(0 0 0 / .03), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .4);
+/* light glass = the top bar's edge (owner 2026-11-06: "make it all match"): a soft faint drop and a white rim where the grey hairline was */
+body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card, .pay-sheet, .modal-backdrop) {
+  --glass-drop: 0 1px 6px rgb(0 0 0 / .043);   /* .035 blended in, .045 a bit much (owner 2026-11-06) */
+  --glass-rim: rgb(255 255 255 / .55);   /* Apple's, measured on photo 161 */
+  --glass-ring: var(--glass-drop), inset 0 0 0 .7px var(--glass-rim);
+  --pill-ring: none;   /* the selected tab pill is flat, only the bar around it has the edge: Apple Music's picker (owner 2026-11-06, photo 180) */
   --float: 0 4px 12px -4px rgb(0 0 0 / .08); }
 /* the sale side, Apple-fied (owner 2026-10-17: "the walk-in customer a pill, like the search bar ... check out a pill, walk-in and discount
    each its own pill"): the same three pieces, the who and money cards drop their box and what is in them becomes glass, as Sell's search row.
@@ -8494,11 +8498,11 @@ body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items 
 @container pv (max-width: 720px) { :is(.view-orders .o-rail, .view-customers .o-rail) .row.cur { background-color: var(--glass); } }
 /* Orders, Customers and Items in the search bar's glass (owner 2026-10-18); hover and the open row keep their fill (their rules outrank this) */
 :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page, .o-days) .row { background-color: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
-body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page, .o-days) .row { box-shadow: var(--glass-ring); }   /* Items too (owner 2026-10-18) */
+body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page, .o-days) .row { box-shadow: var(--glass-ring), inset 0 -.5px 0 rgb(0 0 0 / .08); }   /* Items too (owner 2026-10-18); the line between rows was the old ring's hairline */
 /* the Orders date strip: glass, its lit top edge at half (owner 2026-10-18: full v457 "too glass-like", plain v458 "needs a little oomph");
    the glass's 1/4 drop made too deep a dip onto the first row (owner 2026-10-18): a 1px fall only */
 :is(.view-orders .o-rail, .o-days) .band::before { box-shadow: 0 .5px 1px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1); }
-body.light-theme :is(.view-orders .o-rail, .o-days) .band::before { box-shadow: 0 .5px 1px rgb(0 0 0 / .05), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .45); }
+body.light-theme :is(.view-orders .o-rail, .o-days) .band::before { box-shadow: var(--glass-ring); }   /* the date strip = the top bar's edge too (owner 2026-11-06) */
 /* QR codes, the customer's page and Reports in the lists' glass (owner 2026-10-18); Reports keeps its hairline, so only the drop and the lit edge */
 .lv:is(.view-qr, .view-reports) .card, #customerBody .card { border-color: transparent; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
 body.hairlines .lv.view-reports .card { border-color: var(--line); box-shadow: 0 1px 4px rgb(0 0 0 / .3), inset 0 1px 0 rgb(255 255 255 / .1); }
@@ -8756,7 +8760,7 @@ body.light-theme { --side-pill: var(--canvas); }   /* Gemini's #F2F0F0 on #FAF9F
 /* Sell's My page / All items switch (owner 2026-10-21, pos-lab/try-switch.html) beside the title, and the gear: the ☰'s twin -
    its 44 glass circle, ring and press (the liquid glass list above); .side-top is outside #catalogSearchRow, so the glass is set here */
 #app :is(.side-top > #sellSwitch, .side-link[data-view="settings"]) { color: var(--ink);
-  --glass: color-mix(in srgb, var(--bg) 70%, transparent); --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+  --glass: color-mix(in srgb, var(--bg) 70%, transparent); --glass-ring: 0 1px 6px rgb(0 0 0 / .043), inset 0 0 0 .7px rgb(255 255 255 / .55);   /* the light glass edge */
   background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
 body:not(.light-theme) #app :is(.side-top > #sellSwitch, .side-link[data-view="settings"]) { --glass: color-mix(in srgb, var(--ink) 14%, color-mix(in srgb, var(--bg) 75%, transparent)); --glass-ring: 0 1px 4px rgb(0 0 0 / .3), inset 0 0 0 .5px rgb(255 255 255 / .2); }
 .side-top > #sellSwitch { position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; }   /* level with the ☰: .side-top puts it on --head-y */
@@ -9134,21 +9138,22 @@ body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
 
 /* ===== TOP BAR (owner 2026-11-06): ☰ and search in Apple News / Messages' look (photos 159, 160, measured at 3×): black glyphs, Apple's
    magnifier (ring + a third heavier handle, shape in index.html), its placeholder grey, a soft wide shadow and a white rim where the grey
-   hairline was. Sizes stay ours (owner: "the same size as before, but the same design"). Phone only */
+   hairline was. Sizes stay ours (owner: "the same size as before, but the same design"). Phone and iPad (owner 2026-11-06) */
 :is(.lv, #catalogSearchRow) { --top-ring: var(--glass-ring); --top-rim: transparent; --top-ink: var(--ink); --top-ph: var(--ink-tertiary); }
-body.light-theme :is(.lv, #catalogSearchRow) { --top-ring: 0 1px 6px rgb(0 0 0 / .043);   /* soft and faint, as Shopify's: the old one floated; .035 blended in, .045 a bit much (owner 2026-11-06) */
-  --top-rim: rgb(255 255 255 / .55); --top-ink: #000; --top-ph: #6E6E6E; }   /* rim about half as bright as before: Apple's measured on photo 161 */
-@media (max-width: 720px) {
-  #catalogSearchRow > #sidebarToggle, #app .lv .head > .sq[data-act="open-sidebar"] { color: var(--top-ink); box-shadow: var(--top-ring), inset 0 0 0 .7px var(--top-rim); }
-  /* the search's rim fades where the round end starts, as Apple's (owner 2026-11-06: "in the corners it looks smoother"); 22px = half its height */
-  #catalogSearchRow .search-wrap::before, .lv .find::after { content: ''; position: absolute; inset: 0; z-index: 2; border-radius: 999px; pointer-events: none;
-    box-shadow: inset 0 0 0 .7px var(--top-rim);
-    -webkit-mask: linear-gradient(90deg, rgb(0 0 0 / .3), #000 22px, #000 calc(100% - 22px), rgb(0 0 0 / .3));
-    mask: linear-gradient(90deg, rgb(0 0 0 / .3), #000 22px, #000 calc(100% - 22px), rgb(0 0 0 / .3)); }
-  #catalogSearchRow :is(#searchInput, #variantSearch) { color: var(--top-ink); box-shadow: var(--top-ring); }
-  #catalogSearchRow :is(#searchInput, #variantSearch)::placeholder, .lv .find input::placeholder { color: var(--top-ph); }
-  #catalogSearchRow .search-icon, .lv .find label > svg:first-child { stroke-width: 1.9; color: var(--top-ink); }
-  #catalogSearchRow .search-icon line, .lv .find label > svg:first-child path { stroke-width: 2.5; }   /* Apple's handle is a third heavier than its ring */
-  #catalogSearchRow > #scanBtn, #variantFilter, .lv .find .more { color: var(--top-ink); }
-  .lv .find::before { box-shadow: var(--top-ring); }
-}
+body.light-theme :is(.lv, #catalogSearchRow) { --top-ring: var(--glass-drop); --top-rim: var(--glass-rim); --top-ink: #000; --top-ph: #6E6E6E; }
+#catalogSearchRow > #sidebarToggle, #app .lv .head > .sq[data-act="open-sidebar"] { color: var(--top-ink); box-shadow: var(--top-ring), inset 0 0 0 .7px var(--top-rim); }
+/* the search's rim fades where the round end starts, as Apple's (owner 2026-11-06: "in the corners it looks smoother"); 22px = half its height */
+#catalogSearchRow .search-wrap::before, .lv .find::after { content: ''; position: absolute; inset: 0; z-index: 2; border-radius: 999px; pointer-events: none;
+  box-shadow: inset 0 0 0 .7px var(--top-rim);
+  -webkit-mask: linear-gradient(90deg, rgb(0 0 0 / .3), #000 22px, #000 calc(100% - 22px), rgb(0 0 0 / .3));
+  mask: linear-gradient(90deg, rgb(0 0 0 / .3), #000 22px, #000 calc(100% - 22px), rgb(0 0 0 / .3)); }
+#catalogSearchRow :is(#searchInput, #variantSearch) { color: var(--top-ink); box-shadow: var(--top-ring); }
+#catalogSearchRow :is(#searchInput, #variantSearch)::placeholder, .lv .find input::placeholder { color: var(--top-ph); }
+#catalogSearchRow .search-icon, .lv .find label > svg:first-child { stroke-width: 1.9; color: var(--top-ink); }
+#catalogSearchRow .search-icon line, .lv .find label > svg:first-child path { stroke-width: 2.5; }   /* Apple's handle is a third heavier than its ring */
+#catalogSearchRow > #scanBtn, #variantFilter, .lv .find .more { color: var(--top-ink); }
+.lv .find::before { box-shadow: var(--top-ring); }
+/* every other glass button and pill wears the top bar's black ink too (owner 2026-11-06: "the icon, colors ... everything matching") */
+body.light-theme :is(.lv .head > .sq, .lv :is(#itemsAdd, #newCustomerBtn), .co-cancel, .esheet .es-x, .rail-h .c-row > :is(.cust, .more, .ph-back), .rail-h:not(.co-mode) .opts > :is(.f-row, .d-row),
+  .side-top > #sellSwitch, .side-link[data-view="settings"], .cta-2, .pin-cancel, .lv :is(#itemsBar, .kinds.rp-units)) { --ink: #000; color: var(--ink); }   /* #000 = --top-ink */
+body.light-theme .lv :is(#itemsKinds, .kinds.rp-units) button { color: var(--ink); }   /* every word black, picked or not, as Apple Music's (photo 180) */
