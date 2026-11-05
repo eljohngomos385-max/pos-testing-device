@@ -7405,6 +7405,7 @@ body.light-theme {
   .catalog-wrap:has(> .vsheet.open) ~ #cartBar { position: relative; z-index: 99; }   /* over the sheet, which now reaches under it */
   /* the customer list: the bar is New customer, not the cart, and the list's own row goes (owner 2026-10-20) */
   #custNewBar, .vsheet.cust .vs-new, .catalog-wrap:has(> .vsheet.open.cust) ~ #cartBar { display: none; }
+  .vsheet.cust .vs-new + .vs-row { border-top: 0; }   /* Walk-in is first now: its line under the hidden row doubled the strip's edge (owner 2026-11-06) */
   .catalog-wrap:has(> .vsheet.open.cust) ~ #custNewBar { display: flex; position: relative; z-index: 99; }
   .catalog-wrap:has(> .vsheet.open) { overflow: visible; }   /* its hidden overflow cut the list at the bar's top edge, a hard line before the fade (owner 2026-10-20: "a cutoff, not a graceful fade") */
   :is(.vs-head, .vs-row) { padding-inline: 12px; }   /* as the Customers rows */
@@ -7998,9 +7999,10 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .frost .page > .head > .st-ttl { top: calc(var(--head-y) + var(--ph-top, 0px)); }   /* the title centres on the ☰'s row, not on the head grown under the clock */
 .frost :is(.page, .o-rail, .o-main) > :is(.list, .c-scroll, .paper-scroll) { grid-area: 1 / 1 / -1; }
 .frost .page > .c-scroll { padding-top: calc(var(--head-h, 0px) + var(--rl-gap)); }
-.frost :is(.page, .editor, .o-main, .o-rail > .list)::before { content: ''; position: absolute; z-index: 1; inset: 0 0 auto; height: calc(var(--head-h, 0px) + 44px); pointer-events: none; transition: height .2s;
+.frost :is(.page, .editor, .o-main, .o-rail > .list)::before { content: ''; position: absolute; z-index: 1; inset: 0 0 auto; height: calc(var(--head-h, 0px) + 44px); pointer-events: none; transition: height .2s, opacity .2s;
   background: color-mix(in srgb, var(--canvas, var(--bg)) 50%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);   /* Reports' soft one: the cards show through, as Screen Time's chart does (owner: "ours is too strong") */
   -webkit-mask-image: linear-gradient(#000 calc(100% - 56px), transparent calc(100% - 12px)); mask-image: linear-gradient(#000 calc(100% - 56px), transparent calc(100% - 12px)); }   /* solid to 12 above the head's foot, clear 32 below it (was 16: "ends right after the button", owner 2026-11-04); a 72 fade left rows sharp beside ‹ / Save (2026-10-30) */
+.frost :is(.page, .editor, .o-main, .o-rail > .list):not(.scrolled)::before { opacity: 0; }   /* at rest nothing is under it but the first row's top, which it hazed (owner 2026-11-06); app.js sets .scrolled */
 .frost.view-reports .page::before { height: calc(var(--head-h, 0px) + 28px); -webkit-mask-image: linear-gradient(#000 calc(100% - 40px), transparent calc(100% - 12px)); mask-image: linear-gradient(#000 calc(100% - 40px), transparent calc(100% - 12px)); }   /* Reports keeps the short one, clear 16 below its head (owner 2026-11-04) */
 /* Orders + Customers (owner 2026-10-30): two panes, each its own head and frost (the phone slides one over the other). The rail's frost
    sits on its .list: a positioned rail would carry Customers' +, which floats on .ov over the other pane's corner */

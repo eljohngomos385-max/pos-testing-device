@@ -118,6 +118,7 @@ ask, Start shift, Close shift (count), Cash in / out, and any new one — puts t
 - **Frost top — the tag is class `frost` on the view** (pos-lab, owner 2026-10-30). Every page whose rows scroll: the head (☰ + search / ‹ Back, title, Save) stays put and the rows slide up behind a soft frost under it and the clock, no hard edge. When the owner says "frost top" (or "frost it", "like Reports' top"), it means this.
   - **To add a page:** put `frost` on its `<section class="view …">`. A `.page > .head` + `.c-scroll` / `.list` joins on its own; another head shape gets its selector in `FROST_HEADS` (app.js, sets `--head-h`) and its pane in the `SHARED FROST` block (styles.css).
   - **One look:** canvas 50%, blur 8, solid to 12px above the head's foot, clear 16px below it. Change it only in the `SHARED FROST` block. Items keeps 80% + blur 12 (owner 2026-10-18).
+  - **At rest the frost is off** (owner 2026-11-06): app.js toggles `.scrolled` on the frost box once its rows scroll; the frost fades in then. At rest it hazed the first row's top.
   - **A bar that sticks under the head** (Orders' date band, the Refund bar, Reports' date bar): the frost goes solid down to that bar's top, or rows read sharp in the gap above it.
   - **Not on Sell / the cart / checkout** unless the owner names them (they asked for Sell to stay as is, 2026-10-30).
   - Check: every frost view, phone 393×852 + iPad 1180×820, light + dark: no page errors, a tap on the head after scrolling lands on the head, first row at rest where it was.

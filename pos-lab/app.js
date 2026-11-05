@@ -678,6 +678,10 @@ function attachEvents() {
     if (h.closest('.view-reports')) reportsPin();   // the page just moved under its head: the ‹ date › bar checks again, or it stays on over the picker at rest
   }));
   $$(FROST_HEADS).forEach(h => frostRO.observe(h, { box: 'border-box' }));
+  // the frost shows once rows scroll under the head, as iOS 26's scroll edge: at rest it hazed the list's top (owner 2026-11-06)
+  document.addEventListener('scroll', (e) => {
+    e.target.closest?.('.frost :is(.page, .editor, .o-main, .o-rail > .list)')?.classList.toggle('scrolled', e.target.scrollTop > 0);
+  }, { capture: true, passive: true });
   // Liquid glass press (owner 2026-10-18): the button swells and shines under the finger, leans and stretches toward a drag, springs back on release
   const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search), .side-top > #sellSwitch, #app .side-link[data-view="settings"]';
   document.addEventListener('pointerdown', (e) => {
