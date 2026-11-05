@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=764" />
+  <link rel="stylesheet" href="styles.css?v=775" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-back" viewBox="0 0 24 24"><path d="M15 4l-8 8 8 8"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5.2 7.1L19.8 4.4"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r=".8" fill="currentColor"/><circle cx="12" cy="12" r=".8" fill="currentColor"/><circle cx="19" cy="12" r=".8" fill="currentColor"/></symbol></svg>   <!-- every round-button icon (‹ ✕ ✓ ⋯) is <use href="#i-…"/>: change the shape here, the size and line in --circle-ic / --circle-sw (owner 2026-11-04, measured off Apple Settings, Contacts and Safari) -->
@@ -130,8 +130,8 @@
                 </button>
                 <div class="search-wrap">
                   <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="7"/>
-                    <line x1="20" y1="20" x2="16.5" y2="16.5"/>
+                    <circle cx="10.3" cy="10.3" r="6.6"/>
+                    <line x1="19.4" y1="19.4" x2="15.4" y2="15.4"/>
                   </svg>
                   <input id="searchInput" type="text" autocomplete="off"
                     placeholder="Search" />
@@ -143,7 +143,7 @@
                   </button>
                 </div>
                 <div class="search-wrap vs-search">
-                  <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/></svg>
+                  <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.3" cy="10.3" r="6.6"/><line x1="19.4" y1="19.4" x2="15.4" y2="15.4"/></svg>
                   <input id="variantSearch" type="text" autocomplete="off" placeholder="Search variants" />
                   <button type="button" class="more" id="variantFilter" aria-haspopup="menu" aria-label="Filter variants" title="Filter" hidden>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M7 12h10M10 17h4"/></svg>
@@ -282,7 +282,7 @@
               <button class="sq back cta-2 cust-back" id="ordersCustBack" aria-label="Back to the customer" title="Back"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg></button>
               <section class="card find" id="ordersFind">
                 <label>
-                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="10.3" cy="10.3" r="6.6"/><path d="M19.4 19.4l-4-4"/></svg>
                   <input id="ordersSearch" type="text" placeholder="Search" autocomplete="off">
                   <button class="x" id="ordersSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
                 </label>
@@ -316,7 +316,7 @@
               </section></div>
               <section class="card find" id="itemsFind">
                 <label>
-                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="10.3" cy="10.3" r="6.6"/><path d="M19.4 19.4l-4-4"/></svg>
                   <input id="itemsSearch" type="text" placeholder="Search" autocomplete="off">
                   <button class="x" id="itemsSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
                 </label>
@@ -336,7 +336,7 @@
             <div class="e-top">
               <button class="sq back cta-2" id="itemBack" aria-label="Back to items" title="Back"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg></button>
               <h2 class="fm-h" id="itemTitle"></h2>
-              <section class="card find" id="itemFind" hidden><label><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="itemFindQ" type="text" placeholder="Search" autocomplete="off"><button class="x" id="itemFindX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></label><button class="more" id="itemFindFilter" aria-haspopup="menu" aria-expanded="false" aria-label="Filter items" title="Filter"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg></button></section>   <!-- a long tick list's search, up in the bar beside ‹ (owner 2026-10-20) -->
+              <section class="card find" id="itemFind" hidden><label><svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="10.3" cy="10.3" r="6.6"/><path d="M19.4 19.4l-4-4"/></svg><input id="itemFindQ" type="text" placeholder="Search" autocomplete="off"><button class="x" id="itemFindX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></label><button class="more" id="itemFindFilter" aria-haspopup="menu" aria-expanded="false" aria-label="Filter items" title="Filter"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg></button></section>   <!-- a long tick list's search, up in the bar beside ‹ (owner 2026-10-20) -->
               <div class="acts">
                 <button class="act primary cta" id="itemSave">Save</button>
               </div>
@@ -373,7 +373,7 @@
               <h1 class="st-ttl ph-ttl">Customers</h1>
               <section class="card find" id="customersFind">
                 <label>
-                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="10.3" cy="10.3" r="6.6"/><path d="M19.4 19.4l-4-4"/></svg>
                   <input id="customersSearch" type="text" placeholder="Search" autocomplete="off">
                   <button class="x" id="customersSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
                 </label>

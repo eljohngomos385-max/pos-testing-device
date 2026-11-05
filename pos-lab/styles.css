@@ -9131,3 +9131,24 @@ body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
 @keyframes ok-out { to { opacity: 0; transform: scale(.8); } }
 @keyframes ks-up { from { transform: translateY(100%); } }
 @keyframes ks-dn { to { transform: translateY(100%); } }
+
+/* ===== TOP BAR (owner 2026-11-06): ☰ and search in Apple News / Messages' look (photos 159, 160, measured at 3×): black glyphs, Apple's
+   magnifier (ring + a third heavier handle, shape in index.html), its placeholder grey, a soft wide shadow and a white rim where the grey
+   hairline was. Sizes stay ours (owner: "the same size as before, but the same design"). Phone only */
+:is(.lv, #catalogSearchRow) { --top-ring: var(--glass-ring); --top-rim: transparent; --top-ink: var(--ink); --top-ph: var(--ink-tertiary); }
+body.light-theme :is(.lv, #catalogSearchRow) { --top-ring: 0 1px 4px rgb(0 0 0 / .06);   /* our old short shadow: Apple's wide one darkened the cards around it (owner 2026-11-06) */
+  --top-rim: rgb(255 255 255 / .55); --top-ink: #000; --top-ph: #6E6E6E; }   /* rim about half as bright as before: Apple's measured on photo 161 */
+@media (max-width: 720px) {
+  #catalogSearchRow > #sidebarToggle, #app .lv .head > .sq[data-act="open-sidebar"] { color: var(--top-ink); box-shadow: var(--top-ring), inset 0 0 0 .7px var(--top-rim); }
+  /* the search's rim fades where the round end starts, as Apple's (owner 2026-11-06: "in the corners it looks smoother"); 22px = half its height */
+  #catalogSearchRow .search-wrap::before, .lv .find::after { content: ''; position: absolute; inset: 0; z-index: 2; border-radius: 999px; pointer-events: none;
+    box-shadow: inset 0 0 0 .7px var(--top-rim);
+    -webkit-mask: linear-gradient(90deg, rgb(0 0 0 / .3), #000 22px, #000 calc(100% - 22px), rgb(0 0 0 / .3));
+    mask: linear-gradient(90deg, rgb(0 0 0 / .3), #000 22px, #000 calc(100% - 22px), rgb(0 0 0 / .3)); }
+  #catalogSearchRow :is(#searchInput, #variantSearch) { color: var(--top-ink); box-shadow: var(--top-ring); }
+  #catalogSearchRow :is(#searchInput, #variantSearch)::placeholder, .lv .find input::placeholder { color: var(--top-ph); }
+  #catalogSearchRow .search-icon, .lv .find label > svg:first-child { stroke-width: 1.9; color: var(--top-ink); }
+  #catalogSearchRow .search-icon line, .lv .find label > svg:first-child path { stroke-width: 2.5; }   /* Apple's handle is a third heavier than its ring */
+  #catalogSearchRow > #scanBtn, #variantFilter, .lv .find .more { color: var(--top-ink); }
+  .lv .find::before { box-shadow: var(--top-ring); }
+}
