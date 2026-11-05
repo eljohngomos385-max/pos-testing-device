@@ -6,8 +6,7 @@
 
 :root {
   --qs-tick-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8.25l2 2 4-4.5'/%3E%3C/svg%3E");   /* the tick of a ticked dot (Quick stock, types delete) */
-  --rl-ease: cubic-bezier(.2, .8, .2, 1);               /* on :root so the view-transition layers reach it */
-  --bg: #121212;
+  --rl-ease: cubic-bezier(.2, .8, .2, 1);               /* on :root so the view-transition layers reach it */  --bg: #121212;
   --bg-soft: #1C1C1C;
   --bg-softer: #232323;
   --surface: #2A2A2A;
@@ -7644,17 +7643,23 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .kinds button { position: relative; z-index: 1; }
 .lv .kinds.slid button.cur { background: none; }
 .lv .kinds.slid::before { content: ''; position: absolute; top: 4px; bottom: 4px; left: 0; width: var(--w); transform: translateX(var(--x));
-                          border-radius: calc(var(--rl-r) - 5px); background: var(--rl-track); transition: transform .28s var(--rl-ease), width .28s var(--rl-ease), scale .2s var(--rl-ease); }
+                          border-radius: calc(var(--rl-r) - 5px); background: var(--rl-track);
+                          transition: transform .28s var(--rl-ease), width .28s var(--rl-ease), scale .25s var(--rl-ease), margin .25s var(--rl-ease), box-shadow .25s; }
 .lv .kinds { touch-action: pan-y; }   /* a sideways drag is the pill's (wireSegDrag), not the page's */
-.lv .kinds.press::before { scale: .95; }   /* held, as iOS's thumb */
-@media (prefers-reduced-motion: reduce) { .lv .kinds.slid::before { transition: none; } }
+/* pressed (only a finger on the pill; a tap or page swipe slides it plain): the pill itself grows past the bar, its own grey, a soft shadow under it, and
+   eases back in, no jiggle (owner 2026-11-06: "you move the pill itself, it grows"; the iOS glass lens read as a cheap copy).
+   margin grows it up and down, scale sideways */
+.lv :is(.kinds, #itemsKinds).slid.press::before { margin-block: -6px; scale: 1.08 1; box-shadow: var(--lift); }
+.lv #itemsBar:has(> #itemsKinds.lift:not(.fade-l, .fade-r)), .lv #itemsKinds.lift:not(.fade-l, .fade-r) { overflow: visible; -webkit-mask-image: none; mask-image: none; }   /* Items' bar clips its row: let the grown pill out while it is up (a row that scrolls keeps it in) */
+@media (prefers-reduced-motion: reduce) { .lv .kinds.slid::before { transition: none !important; } }
 :is(.lv, .vs-search) .more[hidden] { display: none; }
 .lv .cols.k2 { grid-template-columns: minmax(0,1fr) 110px; }
 /* Items' sideways swipe (app.js): the list rides the finger with the next tab's list beside it, the Sell grid's feel.
    While it moves the list stops clipping, so the rows run to the screen's edges as Sell's tiles do. */
 .view-items .list.swiping { overflow: visible; }
-.lv .kinds.held::before { transition: none; }   /* the pill rides the finger too */
-.lv .kinds.press.held::before { transition: scale .2s var(--rl-ease); }   /* dragged: 1:1 with the finger, still shrinks in */
+.lv .kinds.slid.drop::before { transition: transform .45s var(--drop-ease), width .45s var(--drop-ease), scale .45s var(--drop-ease), margin .45s var(--drop-ease), box-shadow .45s;   /* let go: it glides onto its tab and shrinks back, not snapping (owner 2026-11-06) */
+  --drop-ease: cubic-bezier(.32, .72, 0, 1); }
+.lv .kinds.slid.held::before { transition: scale .25s var(--rl-ease), margin .25s var(--rl-ease), box-shadow .25s; }   /* the pill rides the finger 1:1, still grows in */
 .lv .band.k2 { display: none; }   /* Categories, Modifiers, Discounts: no head, the rows say it (owner 2026-10-09) */
 .lv .cols.k2 > :last-child { display: block; text-align: right; }   /* the phone hides a column 2; here it is the count */
 .lv .cols.k2 .tx small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -7894,6 +7899,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 /* phone: category folds away; the editor's labels sit above their fields */
 @container pv (max-width: 720px) {
   .lv .page { padding: 8px 12px 0; }
+  .lv .page > .c-scroll { margin-inline: -12px; padding-inline: 12px; }   /* the scroller to the screen's edges: at the cards' width it cut their soft shadow off straight on both sides (owner 2026-11-06) */
   .lv .page .head { flex-wrap: wrap; }
   .lv .kinds { order: 1; flex-basis: 100%; }   /* under the search, the width of the screen */
   .lv .kinds button { flex: 1; padding: 0 8px; }
@@ -8060,14 +8066,16 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card, .pay-sheet, .modal-backdrop { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --pill-b: max(12px, calc(var(--ph-safe, 0px) - 4px));   /* 30 over the home bar, as the photo */
       --glass-ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
       --pill-ring: 0 1px 2px rgb(0 0 0 / .15), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .05);   /* a pill inside a glass bar: half the ring's shadow and shine (owner 2026-10-18) */
-      --float: 0 4px 12px -4px rgb(0 0 0 / .45); }   /* falls only down and to the sides (blur/2 < spread + offset upward); owner 2026-10-18: 10/30 "floats too much" */   /* owner 2026-10-17: the 8/24 drop read as floating; glass sits close */
+      --float: 0 4px 12px -4px rgb(0 0 0 / .45);
+      --lift: 0 2px 8px rgb(0 0 0 / .4), inset 0 .7px 0 rgb(255 255 255 / .12), inset 0 -.7px 0 rgb(255 255 255 / .06); }   /* the switch pill pressed (.kinds.press) */   /* falls only down and to the sides (blur/2 < spread + offset upward); owner 2026-10-18: 10/30 "floats too much" */   /* owner 2026-10-17: the 8/24 drop read as floating; glass sits close */
 /* light glass = the top bar's edge (owner 2026-11-06: "make it all match"): a soft faint drop and a white rim where the grey hairline was */
 body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card, .pay-sheet, .modal-backdrop) {
   --glass-drop: 0 1px 6px rgb(0 0 0 / .043);   /* .035 blended in, .045 a bit much (owner 2026-11-06) */
   --glass-rim: rgb(255 255 255 / .55);   /* Apple's, measured on photo 161 */
   --glass-ring: var(--glass-drop), inset 0 0 0 .7px var(--glass-rim);
   --pill-ring: none;   /* the selected tab pill is flat, only the bar around it has the edge: Apple Music's picker (owner 2026-11-06, photo 180) */
-  --float: 0 4px 12px -4px rgb(0 0 0 / .08); }
+  --float: 0 4px 12px -4px rgb(0 0 0 / .08);
+  --lift: 0 2px 8px rgb(0 0 0 / .1), inset 0 .7px 0 var(--glass-rim), inset 0 -.7px 0 var(--glass-rim); }   /* the switch pill pressed: a soft shadow and the search's rim, full along top and bottom, thinning to nothing round the ends (owner 2026-11-06) */
 /* the sale side, Apple-fied (owner 2026-10-17: "the walk-in customer a pill, like the search bar ... check out a pill, walk-in and discount
    each its own pill"): the same three pieces, the who and money cards drop their box and what is in them becomes glass, as Sell's search row.
    The items card keeps its box. At the checkout (co-mode) the money card is the Total again, so it keeps its box there */

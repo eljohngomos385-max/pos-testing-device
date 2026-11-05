@@ -584,7 +584,16 @@ const itemsWith = (kind, id, all = catalogItems()) => all.filter(it => it.member
 // A tab's exact spot in its switch: offsetLeft / offsetWidth round to whole px, so a 182.5 tab left the pill 1 off the edge (owner 2026-11-06)
 function tabBox(box, b) {
   const o = box.getBoundingClientRect(), r = b.getBoundingClientRect(), k = box.offsetWidth / o.width || 1;   // k undoes a scale on the way in
-  return { x: (r.left - o.left) * k - box.clientLeft + box.scrollLeft, w: r.width * k };
+  const l = Math.round(r.left - o.left), rt = Math.round(r.right - o.left);   // both ends on whole px: a 184.5 pill drew into the ring on the right, thirds left it short (owner 2026-11-06)
+  return { x: l * k - box.clientLeft + box.scrollLeft, w: (rt - l) * k };
+}
+// The pill grown past the bar (owner 2026-11-06): .press grows it, .lift lets it out of Items' clipping bar, and on letting go
+// .drop settles it slower than a tap (.45s, styles.css: "it just closes right away") until it is back in.
+// Only a finger on the pill: a tap on a tab or a page swipe slides it plain (owner 2026-11-06)
+function liftPill(box, on) {
+  clearTimeout(box.dropT);
+  if (on) { box.classList.remove('drop'); box.classList.add('lift'); }
+  else { box.classList.add('drop'); box.dropT = setTimeout(() => box.classList.remove('lift', 'drop'), 450); }
 }
 function slidePill(box, attr, key) {
   const place = b => { const { x, w } = tabBox(box, b); box.style.setProperty('--x', `${x}px`); box.style.setProperty('--w', `${w}px`); };
@@ -595,7 +604,7 @@ function slidePill(box, attr, key) {
   if (shown) place(box.querySelector('.cur'));
 }
 
-// Apple's segmented control on a .kinds switch: press the pill (it shrinks a touch) and it rides the finger 1:1, its width
+// Apple's segmented control on a .kinds switch: press the pill (it grows past the bar) and it rides the finger 1:1, its width
 // blending between the tabs it passes; let go and it settles on the nearest tab, picked through that tab's own click.
 // A tap on another tab is still a plain click.
 function wireSegDrag(box, attr) {
@@ -609,7 +618,7 @@ function wireSegDrag(box, attr) {
     slidePill(box, attr, b.dataset[attr]);   // the pill as a ::before, placed on its tab
     drag = { id: e.pointerId, grab: e.clientX - mid(b), c: mid(b) };   // finger to the pill's centre, in the box's px
     box.setPointerCapture(e.pointerId);
-    box.classList.add('press');
+    box.classList.add('press'); liftPill(box, true);
   });
   box.addEventListener('pointermove', (e) => {
     if (drag?.id !== e.pointerId) return;
@@ -624,7 +633,7 @@ function wireSegDrag(box, attr) {
   const end = (e) => {
     if (drag?.id !== e.pointerId) return;
     const b = nearest(drag.c); drag = null;
-    box.classList.remove('press', 'held');
+    box.classList.remove('press', 'held'); liftPill(box, false);
     if (e.type === 'pointerup' && !b.classList.contains('cur')) b.click();
     else slidePill(box, attr, box.querySelector('.cur').dataset[attr]);   // let go on its own tab, or cancelled: home
   };
