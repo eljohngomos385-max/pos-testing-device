@@ -37,7 +37,8 @@
   --accent-tint: rgba(255, 255, 255, 0.10);
   --accent-ink: #121212;
   /* .cta: Check out's material, the same in light and dark (owner 2026-10-28: Jetzt starten in Bright blue) */
-  --cta-bg: radial-gradient(75% 80% at 50% 120%, #8EC2F0, transparent 85%), linear-gradient(#6A9FF9, #4388F7 50%, #5592F7);
+  --cta-solid: #4388F7;   /* the material's own blue, flat: chart bars, links (owner 2026-11-05: the Reports bars must be the buttons' blue) */
+  --cta-bg: radial-gradient(75% 80% at 50% 120%, #8EC2F0, transparent 85%), linear-gradient(#6A9FF9, var(--cta-solid) 50%, #5592F7);
   --cta-ink: #DDF4FF;   /* Apple's bluish white, toned down (owner 2026-11-05: E #D9F3FF a tiny bit too blue, #E2F4FF too white, #D0F2FF too blue) */
   /* no glow; a ~1px light rim that is a touch brighter top-left and bottom-right and fades at the other corners (Apple's) */
   --cta-shadow: inset 0 0 0 .5px rgb(170 228 255 / .32), inset 1px 1px 1.5px -.5px rgb(170 228 255 / .55), inset -1px -1px 1.5px -.5px rgb(170 228 255 / .45), 0 1px 2px rgb(41 85 151 / .22);
@@ -7169,8 +7170,8 @@ body {
   --rl-soft: var(--bg-softer);                          /* the band */
   --rl-track: var(--surface-hover);                     /* the chosen fulfilment cell */
   --rl-hover: var(--surface);
-  --rl-on: #8AB4F8;                                     /* a discount is on */
-  --rl-bar: #0A84FF;                                    /* a chart's bars: iOS's system blue (Screen Time's) */
+  --rl-on: var(--cta-solid);                            /* a discount is on, links, meters: the buttons' blue, both themes (owner 2026-11-05) */
+  --rl-bar: var(--cta-solid);                           /* a chart's bars: the buttons' blue, both themes */
   --rl-shadow: none;                                    /* the border alone; an inset top highlight doubled it */
   --rl-hair: rgba(255, 255, 255, 0.03);                 /* the top bar's and product tiles' ring, softer than --line */
   --rl-div: rgba(255, 255, 255, 0.06);                  /* a row divider inside a card: there, but quiet (rednote's) */
@@ -7183,8 +7184,6 @@ body.light-theme {
   --rl-soft: var(--surface);
   --rl-track: var(--bg-soft);
   --rl-hover: var(--surface-hover);
-  --rl-on: #1F5FB8;
-  --rl-bar: #007AFF;
   --rl-hair: #EBEBEB;
   --rl-div: rgba(0, 0, 0, 0.063);                       /* #EFEFEF on white, but see-through: it stays on a ticked row's wash (was solid and vanished there) */
   --rl-shadow: 0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05);
@@ -7836,7 +7835,7 @@ body.light-theme .lv .in[type=date] { color-scheme: light; }
 body.light-theme :is(.lv, .cust-sheet, .esheet) .sw:not(:checked) { background: var(--bg-soft); }   /* :not -- it outranked :checked, so an on switch stayed grey */
 body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }   /* on the grey block the usual off track vanished */
 :is(.lv, .cust-sheet, .esheet) .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s var(--rl-ease); }
-:is(.lv, .cust-sheet, .esheet) .sw:checked { background: var(--rl-bar); }   /* the Reports blue (owner 2026-10-16) */
+:is(.lv, .cust-sheet, .esheet) .sw:checked { background: var(--cta-bg); box-shadow: var(--cta-shadow); }   /* the buttons' blue, same as Reports (owner 2026-11-05) */
 :is(.lv, .cust-sheet, .esheet) .sw:checked::after { transform: translateX(16px); }
 :is(.lv, .cust-sheet, .esheet) .sw:disabled { opacity: .4; cursor: default; }   /* always on (Cash's Show at checkout): reads as fixed, not as a switch (owner 2026-10-23) */
 /* the variants: a table of inputs, as in the back office family editor */
