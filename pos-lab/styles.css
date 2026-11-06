@@ -3405,15 +3405,15 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .es-list:empty { display: none; }
 .esheet .es-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding: 0 16px; border-radius: var(--row-r, var(--es-r)); background: var(--row-bg, var(--tile));
-                  font-size: 16px; font-weight: 400; letter-spacing: inherit; text-align: left; transition: background-color .12s; }   /* the word, value and › are Settings' row (.lv .fr.nav, owner 2026-11-06 page 1); the tile stays */
+                  font-size: 16px; font-weight: 450; letter-spacing: inherit; text-align: left; transition: background-color .12s; }   /* the word, value and › are Settings' row (.lv .fr.nav, owner 2026-11-06 page 1); the tile stays; 450 = halfway to the old 500 (owner 2026-11-06) */
 @media (hover: hover) { .esheet .es-row:hover:not(.on):not(.pick) { background: var(--es-hover); } }   /* a touch left the next page's row grey, as if picked */
 .es-row > span:first-child { flex: 1; min-width: 0; }
 .esheet .es-row.on { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--es-sel); }   /* the one the keys type into */
 .esheet .es-row.pick { background: color-mix(in srgb, var(--ink) 10%, var(--tile)); font-weight: 550; }   /* picked: a deeper shade of its own grey */
-.es-row small { color: var(--ink-tertiary); font-size: inherit; font-variant-numeric: tabular-nums; }
+.es-row small { color: var(--ink-tertiary); font-size: inherit; letter-spacing: normal; font-variant-numeric: tabular-nums; }
 .es-row.pick small, .es-row.pick .es-n.v { color: var(--ink-secondary); }
 .es-row .ad { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.esheet .es-row .cv { flex: none; width: 22px; height: 22px; margin: 0 -6px 0 -2px; stroke-width: 1.64; color: var(--ink-quaternary); }   /* Settings' ›: 6 from its value, 10 from the edge */
+.esheet .es-row .cv { flex: none; width: 22px; height: 22px; margin: 0 -6px 0 -9px; stroke-width: 1.72; color: color-mix(in srgb, var(--ink-tertiary) 50%, var(--ink-quaternary)); }   /* the ›: halfway between the old darker one and Settings' faint one, the value tucked in next to it (owner 2026-11-06) */
 .esheet .es-stp { display: grid; place-items: center; width: 32px; height: 40px; border-radius: var(--es-r); color: var(--ink-secondary); }
 .esheet .es-row > [data-sf="q"] { margin: 0 -8px; }   /* − n + tight, the number right between them (owner 2026-11-06 page 9) */
 .esheet .es-stp:hover:not(:disabled) { background: var(--es-btn); color: var(--ink); }
