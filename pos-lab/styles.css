@@ -3817,7 +3817,19 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 /* sale complete = checkout's own page (owner 2026-11-06): the change holds the hero line and counts up, its word rises in
    the gap (Discount's .es-off size), the receipt rows under it as the method rows; the check is off for now, kept for later */
 .co-done > .sp-paid { font-size: 16px; }
-.co-done > .sp-paid, .co-done .co-tiles { animation: co-rise .45s var(--co-ease) both; animation-delay: 160ms; }
+.co-done > .sp-paid, .co-done .co-tiles { animation: co-rise .45s var(--co-ease) both; animation-delay: calc(var(--pm-t) + 160ms); }
+/* the paid moment (owner 2026-11-06, done-lab's Edge low): right after paying, a clean screen draws a blue tick while its
+   bottom glows once, then fades onto Sale complete. --pm-t = when the page shows; pos-checkout.js waits it for the count-up. */
+.co { --pm-t: 1740ms; }
+.pm { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; background: var(--canvas, var(--bg));   /* takes taps: a second tap on Pay would land on New sale under it */
+      animation: pm-off .42s calc(var(--pm-t) - 180ms) forwards; }   /* no fade in: Sale complete would show through it first */
+.pm svg { width: 84px; height: 84px; overflow: visible; }
+.pm path { fill: none; stroke: var(--cta-solid); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40;
+           animation: co-draw .36s .48s var(--co-ease) forwards; }
+.pm::before { content: ''; position: absolute; inset: auto 0 0; height: 45%; opacity: 0; animation: pm-glow 1.32s .2s ease-out both;
+              background: radial-gradient(120% 100% at 50% 100%, color-mix(in srgb, var(--cta-solid) 45%, transparent), rgb(142 194 240 / .15) 45%, transparent 75%); }   /* the middle: --cta-bg's light glow stop */
+@keyframes pm-off { to { opacity: 0; visibility: hidden; } }
+@keyframes pm-glow { 25% { opacity: 1; } 100% { opacity: 0; } }
 .co-mark { position: relative; width: 72px; height: 72px; margin-bottom: 14px; animation: co-pop .42s var(--co-ease) both; }
 .co-mark::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--ok-bg); animation: co-pulse .85s .38s ease-out both; }
 .co-mark svg { position: relative; display: block; width: 100%; height: 100%; }
@@ -8451,7 +8463,7 @@ body.hairlines:not(.light-theme) .lv :is(.rp-body, #shiftBody, .sh-body, #shiftP
 .st-page .fr .lb small { font-size: 12px; }
 .st-page .fr > .v { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }   /* the › on the middle of its word, ~13pt from it, as rednote's */
 .lv .st-page .fr:has(> .v > .st-pick) { grid-template-columns: minmax(0,1fr) auto; }
-.lv .st-page .fr:has(> .v > .st-sel) { grid-template-columns: auto minmax(0,1fr); }   /* Time zone: its word on one line, the long zone name gives way */   /* a long label wraps; the pick is never cut ("Never ask" on a phone) */
+.lv .st-page .fr:has(> .v > .st-sel), .lv .st-page #posStoreRow { grid-template-columns: auto minmax(0,1fr); }   /* Time zone: its word on one line, the long zone name gives way */   /* a long label wraps; the pick is never cut ("Never ask" on a phone) */
 .lv .st-pick { justify-content: space-between; gap: 10px; min-width: 150px; max-width: 100%; padding: 0 8px 0 12px; color: var(--ink); }
 .st-pick > span { overflow: hidden; text-overflow: ellipsis; }
 .st-pick .ic { color: var(--ink-tertiary); }

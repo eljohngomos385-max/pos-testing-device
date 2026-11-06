@@ -82,6 +82,8 @@ function buildMapThumb(location, className = 'rp-map-thumb') {
 const slipRows = (fn, vm) => (globalThis.HWPOS_PRINTER ? HWPOS_PRINTER[fn](vm) : []);
 // `back`: how much of each line came back (Orders); all of it = struck through, part = a small line under it,
 // worded by `said` (backSaid).
+// The store's 1-3 phone numbers ("a / b", Settings › Store details): a line break falls between numbers, never inside one
+const telHtml = phone => phone.split(' / ').map(n => `<span style="white-space:nowrap">${escapeHtml(n)}</span>`).join(' / ');
 function buildReceiptPreview(order, back = [], said = []) {
   const receipt = toReceiptViewModel(order);
   const lines = receipt.items.map((i, k) => `
@@ -102,8 +104,8 @@ function buildReceiptPreview(order, back = [], said = []) {
     <div class="receipt-preview">
       <div class="rp-paper">
         <div class="rp-center rp-store">${escapeHtml(receipt.store.name)}</div>
-        <div class="rp-center rp-small">${escapeHtml(receipt.store.address)}</div>
-        <div class="rp-center rp-small">Tel: ${escapeHtml(receipt.store.phone)}</div>
+        ${receipt.store.address ? `<div class="rp-center rp-small">${escapeHtml(receipt.store.address)}</div>` : ''}
+        ${receipt.store.phone ? `<div class="rp-center rp-small">Tel: ${telHtml(receipt.store.phone)}</div>` : ''}
         ${receipt.store.tin ? `<div class="rp-center rp-small">TIN: ${escapeHtml(receipt.store.tin)}</div>` : ''}
         <div class="rp-rule"></div>
         ${receipt.mark ? `<div class="rp-status saved">${escapeHtml(receipt.mark)}</div>` : ''}
@@ -752,8 +754,8 @@ function buildReceiptHtml(order) {
 <body>
   <div class="r-paper">
   <div class="r-center r-store">${escapeHtml(receipt.store.name)}</div>
-  <div class="r-center r-store-sub">${escapeHtml(receipt.store.address)}</div>
-  <div class="r-center r-store-sub">Tel: ${escapeHtml(receipt.store.phone)}</div>
+  ${receipt.store.address ? `<div class="r-center r-store-sub">${escapeHtml(receipt.store.address)}</div>` : ''}
+  ${receipt.store.phone ? `<div class="r-center r-store-sub">Tel: ${telHtml(receipt.store.phone)}</div>` : ''}
   ${receipt.store.tin ? `<div class="r-center r-store-sub">TIN: ${escapeHtml(receipt.store.tin)}</div>` : ''}
 
   <div class="r-rule"></div>

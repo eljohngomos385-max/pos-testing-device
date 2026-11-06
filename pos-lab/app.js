@@ -1293,6 +1293,7 @@ function attachEvents() {
     const item = e.target.closest('.prn-item');
     if (item) connectPrinter(item.dataset.ip);
   });
+  bindStore();   // Settings › Store details (pos-settings.js)
   bindPayTypes();   // Settings › Payment types (pos-settings.js)
   bindFulTypes();   // Settings › Fulfilment types (pos-settings.js)
   bindQr();   // QR codes (pos-qr.js)

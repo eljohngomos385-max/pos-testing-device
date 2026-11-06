@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=800" />
+  <link rel="stylesheet" href="styles.css?v=805" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-back" viewBox="0 0 24 24"><path d="M15 4l-8 8 8 8"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5.2 7.1L19.8 4.4"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r=".8" fill="currentColor"/><circle cx="12" cy="12" r=".8" fill="currentColor"/><circle cx="19" cy="12" r=".8" fill="currentColor"/></symbol></svg>   <!-- every round-button icon (‹ ✕ ✓ ⋯) is <use href="#i-…"/>: change the shape here, the size and line in --circle-ic / --circle-sw (owner 2026-11-04, measured off Apple Settings, Contacts and Safari) -->
@@ -469,7 +469,9 @@
                 <div class="co-error" id="checkoutError" hidden></div>
               </div>
               <!-- Sale complete = checkout's own page (owner 2026-11-06): the change on the hero line, its word under it in the
-                   gap as Discount's "off" (no change: the word is the hero, as Walk-in), the receipt as method rows, New sale on Done's spot -->
+                   gap as Discount's "off" (no change: the word is the hero, as Walk-in), the receipt as method rows, New sale on Done's spot.
+                   The paid moment (done-lab's Edge low) plays over it first: a tick and a glow from the bottom, after paying only -->
+              <div class="pm" id="paidMoment" aria-hidden="true" hidden><svg viewBox="0 0 64 64"><path d="M19 33l9 9 17-19"/></svg></div>
               <div class="co-col co-done" id="checkoutDone" aria-live="polite" hidden>
                 <div class="co-mark" hidden><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="m-c" cx="32" cy="32" r="30"/><path class="m-k" d="M20 33l8 8 16-17"/></svg></div>
                 <div class="co-hero num" id="successChange">₱0.00</div>
@@ -630,6 +632,7 @@
                   <div class="fr"><span class="lb">Test drawer</span><span class="v"><button type="button" class="act cta-3" id="posTestDrawerBtn">Open</button></span></div>
                 </section>
                 <section class="card fc" data-sec-of="store" hidden>
+                  <button type="button" class="fr nav" id="posStoreRow"><span class="lb">Store details</span><span class="v"><span class="vv" id="posStoreNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <button type="button" class="fr nav" data-pick="bizType"><span class="lb">Business type</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <button type="button" class="fr nav" id="posPayTypesRow"><span class="lb">Payment types</span><span class="v"><span class="vv" id="posPayTypesNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <button type="button" class="fr nav" id="posFulTypesRow"><span class="lb">Fulfilment types</span><span class="v"><span class="vv" id="posFulTypesNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
@@ -710,6 +713,27 @@
               <form class="c-body" id="payTypeAddForm">
                 <section class="card fc">
                   <label class="fr"><span class="lb">Name</span><span class="v"><input class="in" id="ptName" maxlength="60" placeholder="e.g. Maya or Card" autocomplete="off"></span></label>
+                </section>
+              </form>
+            </div>
+          </section>
+          <!-- Settings › Store › Store details (owner 2026-11-06): the receipt's top lines, the record the back office edits too (pos-settings.js) -->
+          <section class="page st-page" id="storePage" aria-label="Store details" hidden>
+            <div class="head">
+              <button class="sq back cta-2" id="storeBack" aria-label="Back to store" title="Back"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg></button>
+              <h1 class="st-ttl">Store details</h1>
+              <button type="submit" form="storeForm" class="act primary st-save cta" id="storeSave">Save</button>
+            </div>
+            <div class="c-scroll">
+              <form class="c-body" id="storeForm">
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Name</span><span class="v"><input class="in" name="name" maxlength="60" autocomplete="off"></span></label>
+                  <label class="fr"><span class="lb">Address</span><span class="v"><input class="in" name="address" maxlength="120" autocomplete="off"></span></label>
+                  <label class="fr"><span class="lb">Phone</span><span class="v"><input class="in" name="phone" maxlength="30" inputmode="tel" autocomplete="off"></span></label>
+                  <button type="button" class="fr add" id="storeAddPhone">Add phone number</button>
+                </section>
+                <section class="card fc">
+                  <label class="fr"><span class="lb">TIN</span><span class="v"><input class="in" name="tin" maxlength="20" autocomplete="off"></span></label>
                 </section>
               </form>
             </div>
@@ -994,19 +1018,19 @@
   <script src="data.js?v=34"></script>
   <script src="bo-model.js?v=144"></script>
   <script src="vendor/zxing-browser.min.js"></script>
-  <script src="printer.js?v=54"></script>
+  <script src="printer.js?v=55"></script>
   <script src="drawer.js?v=1"></script>
   <script src="pos-core.js?v=74"></script>
   <script src="pos-sell.js?v=157"></script>
-  <script src="pos-checkout.js?v=54"></script>
-  <script src="pos-orders.js?v=54"></script>
+  <script src="pos-checkout.js?v=57"></script>
+  <script src="pos-orders.js?v=56"></script>
   <script src="pos-items.js?v=89"></script>
   <script src="pos-customers.js?v=50"></script>
-  <script src="pos-settings.js?v=46"></script>
+  <script src="pos-settings.js?v=48"></script>
   <script src="pos-pin.js?v=15"></script>
   <script src="pos-shift.js?v=58"></script>
   <script src="pos-stock.js?v=28"></script>
   <script src="pos-qr.js?v=3"></script>
-  <script src="app.js?v=303"></script>
+  <script src="app.js?v=304"></script>
 </body>
 </html>

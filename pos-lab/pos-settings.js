@@ -123,6 +123,8 @@ function renderPosSettings(printer = true) {
   if (btRow) btRow.hidden = p.driver !== 'bluetooth';
   const btStatus = $('#posBtStatus');
   if (btStatus) btStatus.textContent = p.btName ? 'Paired: ' + p.btName : 'Not paired';
+  const storeNow = $('#posStoreNow');
+  if (storeNow) storeNow.textContent = currentStoreInfo().name;
   const ptNow = $('#posPayTypesNow');
   if (ptNow) ptNow.textContent = `${payTypesOn()} on`;
   const ftNow = $('#posFulTypesNow');
@@ -290,6 +292,49 @@ function setPayOn(k, input) {
   const { hidden } = payTypes();
   if (input.checked && payTypesOn() >= TYPES_ON_MAX) { input.checked = false; return tooMany(); }
   savePayTypes({ hidden: input.checked ? hidden.filter(h => h !== k) : [...hidden, k] });
+}
+// Settings › Store › Store details (owner 2026-11-06): name, address, phone and TIN, the receipt's top lines. The same
+// settings.store the back office edits. ponytail: no manager PIN, as Payment types; add one if a store asks.
+// Up to 3 phone numbers (owner 2026-11-06), kept in the one phone field as "a / b" so the receipt, the printer and
+// the back office read them unchanged. ponytail: a joined string; a list when a number needs a label of its own.
+const STORE_KEYS = ['name', 'address', 'phone', 'tin'], PHONES_MAX = 3, PHONE_SEP = ' / ';
+const phoneInputs = () => [...$('#storeForm').querySelectorAll('[name=phone]')];
+const storeTyped = () => ({ ...Object.fromEntries(['name', 'address', 'tin'].map(k => [k, $('#storeForm').elements[k].value.trim()])),
+  phone: phoneInputs().map(i => i.value.trim()).filter(Boolean).join(PHONE_SEP) });
+const storeChanged = () => STORE_KEYS.some(k => storeTyped()[k] !== (currentStoreInfo()[k] || ''));
+function addPhoneRow(value = '') {
+  const rows = phoneInputs(), row = rows[0].closest('.fr').cloneNode(true), input = row.querySelector('input');
+  input.value = value;
+  rows[rows.length - 1].closest('.fr').after(row);
+  $('#storeAddPhone').hidden = rows.length + 1 >= PHONES_MAX;
+  return input;
+}
+function openStore() {
+  const f = $('#storeForm'), s = currentStoreInfo(), [first = '', ...more] = (s.phone || '').split(PHONE_SEP);
+  phoneInputs().slice(1).forEach(i => i.closest('.fr').remove());
+  ['name', 'address', 'tin'].forEach(k => { f.elements[k].value = s[k] || ''; });
+  phoneInputs()[0].value = first;
+  $('#storeAddPhone').hidden = false;
+  more.slice(0, PHONES_MAX - 1).forEach(n => addPhoneRow(n));
+  $('#storeSave').disabled = true;   // greyed until something changed, as Add payment type
+  showStPage('storePage');
+}
+function saveStore() {
+  const v = storeTyped();
+  if (!v.name) return $('#storeForm').elements.name.focus();   // a receipt needs a name; the rest may be blank
+  state.settings.store = { ...state.settings.store, ...v };
+  saveSettings();
+  renderRoleSwitcher();   // the side menu's store name
+  openPayTypes(false);
+  showToast('Saved');
+}
+function bindStore() {
+  $('#posStoreRow').addEventListener('click', openStore);
+  $('#storeBack').addEventListener('click', () => askLeave(storeChanged(), () => openPayTypes(false)));
+  $('#storeAddPhone').addEventListener('click', () => addPhoneRow().focus());
+  $('#storeForm').addEventListener('input', () => { $('#storeSave').disabled = !storeTyped().name || !storeChanged(); });
+  // Save is the form's submit button (form="storeForm"): Return on the keyboard saves, and does nothing while it is greyed
+  $('#storeForm').addEventListener('submit', (e) => { e.preventDefault(); saveStore(); });
 }
 function bindPayTypes() {
   $('#payTypeBack').addEventListener('click', () => openPayTypes(true));

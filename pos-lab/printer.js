@@ -92,7 +92,8 @@
     wrap(st.name || '', Math.floor(cols / 2)).forEach(text);
     ops.push({ op: 'big', v: false }, { op: 'bold', v: false });
     if (st.address) wrap(st.address, cols).forEach(text);
-    if (st.phone) text('Tel: ' + st.phone);
+    // Two or three numbers ("a / b", pos-settings.js) that run past one line print one number a line, never cut in half
+    if (st.phone) ('Tel: ' + st.phone).length <= cols ? text('Tel: ' + st.phone) : st.phone.split(' / ').forEach((n, i) => text((i ? '' : 'Tel: ') + n));
     if (st.tin) text('TIN: ' + st.tin);
     ops.push({ op: 'align', v: 'left' }, { op: 'text', v: '-'.repeat(cols) });
   }

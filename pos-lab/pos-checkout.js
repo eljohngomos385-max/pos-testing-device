@@ -51,6 +51,7 @@ function renderCheckout() {
   $('.co-items')?.classList.remove('open');   // phone: the receipt sheet
   const steps = $('#checkoutSteps'); if (steps) steps.hidden = false;
   const done = $('#checkoutDone'); if (done) done.hidden = true;
+  const pm = $('#paidMoment'); if (pm) pm.hidden = true;   // left mid-moment: no animationend came to hide it
   const tender = $('#checkoutTender'); if (tender) tender.value = '';
   showPayStep();
   renderCheckoutSub();
@@ -501,6 +502,14 @@ function showCheckoutSuccess(order, handBack = 0) {
   clearTimeout(showCheckoutSuccess._t);
   $('#checkoutSteps').hidden = true;
   $('#checkoutDone').hidden = false; // un-hiding replays the rise
+  // the paid moment plays on its own screen first, then hides again, else the next Check out replays it (done-lab's bug:
+  // a shown view restarts its animations);
+  // the rise and the count-up wait --pm-t for it
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const pm = $('#paidMoment');
+  const pmT = still ? 0 : parseFloat(getComputedStyle(pm).getPropertyValue('--pm-t')) || 0;
+  pm.hidden = true; void pm.offsetWidth; pm.hidden = !pmT;
+  pm.onanimationend = (e) => { if (e.animationName === 'pm-off') pm.hidden = true; };
   $('#checkoutApp').classList.add('is-done');
   hideToast();   // an "Enter the … first" from the step before is over (blind test 2026-10-23)
   const receipt = $('#checkoutReceipt');
@@ -515,7 +524,6 @@ function showCheckoutSuccess(order, handBack = 0) {
     $('#side').classList.remove('empty-cart');
   }
   if (change > 0) {   // the change counts up; no fit, as the total on this line has none
-    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
     showCheckoutSuccess._t = setTimeout(() => {
       const t0 = performance.now();
       const step = (now) => {
@@ -524,7 +532,7 @@ function showCheckoutSuccess(order, handBack = 0) {
         if (k < 1 && showCheckoutSuccess._orderId === order.id) requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
-    }, still ? 0 : 280);
+    }, still ? 0 : 280 + pmT);
   }
   showCheckoutSuccess._orderId = order.id;
 }
