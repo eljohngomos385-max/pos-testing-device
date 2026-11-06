@@ -3401,30 +3401,30 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 /* a small line sits over the big number, never under it: the gap down to the rows stays empty on every page and nothing moves
    when a line comes or goes (owner 2026-11-06). "₱13.00 off ₱65.00" over the cart Discount's total */
 .es-head .es-off b { color: var(--rl-on); font-weight: inherit; }   /* what's taken off, in the discount blue */
-.es-head .es-off.none b { color: inherit; }   /* B's Custom before a key: "0% off", all grey */
 .es-hero { color: var(--ink); font-size: var(--hero-fs); font-weight: var(--hero-fw); letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }   /* checkout's */
 .es-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .es-list:empty { display: none; }
-.esheet .es-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding: 0 12px 0 16px; border-radius: var(--row-r, var(--es-r)); background: var(--row-bg, var(--tile));
-                  font-size: 15px; font-weight: 500; text-align: left; transition: background-color .12s; }
+.esheet .es-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding: 0 16px; border-radius: var(--row-r, var(--es-r)); background: var(--row-bg, var(--tile));
+                  font-size: 16px; font-weight: 400; letter-spacing: inherit; text-align: left; transition: background-color .12s; }   /* the word, value and › are Settings' row (.lv .fr.nav, owner 2026-11-06 page 1); the tile stays */
 @media (hover: hover) { .esheet .es-row:hover:not(.on):not(.pick) { background: var(--es-hover); } }   /* a touch left the next page's row grey, as if picked */
 .es-row > span:first-child { flex: 1; min-width: 0; }
 .esheet .es-row.on { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--es-sel); }   /* the one the keys type into */
 .esheet .es-row.pick { background: color-mix(in srgb, var(--ink) 10%, var(--tile)); font-weight: 550; }   /* picked: a deeper shade of its own grey */
-.es-row small { color: var(--ink-tertiary); font-size: 14px; font-variant-numeric: tabular-nums; }
+.es-row small { color: var(--ink-tertiary); font-size: inherit; font-variant-numeric: tabular-nums; }
 .es-row.pick small, .es-row.pick .es-n.v { color: var(--ink-secondary); }
 .es-row .ad { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.es-row .cv { flex: none; color: var(--ink-tertiary); }
-.esheet .es-stp { display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--es-r); color: var(--ink-secondary); }
+.esheet .es-row .cv { flex: none; width: 22px; height: 22px; margin: 0 -6px 0 -2px; stroke-width: 1.64; color: var(--ink-quaternary); }   /* Settings' ›: 6 from its value, 10 from the edge */
+.esheet .es-stp { display: grid; place-items: center; width: 32px; height: 40px; border-radius: var(--es-r); color: var(--ink-secondary); }
+.esheet .es-row > [data-sf="q"] { margin: 0 -8px; }   /* − n + tight, the number right between them (owner 2026-11-06 page 9) */
 .esheet .es-stp:hover:not(:disabled) { background: var(--es-btn); color: var(--ink); }
 .esheet .es-stp:disabled { opacity: .35; cursor: default; }
 /* the number being typed: a fixed slot so nothing beside it moves, a caret, grey until the first key replaces it */
 .es-n { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.es-n.q { width: 56px; font-size: 16px; font-weight: 550; }
-.es-n.v { justify-content: flex-end; width: 110px; color: var(--ink-secondary); }
+.es-n.q { min-width: 24px; font-size: 16px; font-weight: 550; }
+.es-n.v { justify-content: flex-end; width: 110px; color: var(--ink-tertiary); }   /* a row's value: Settings' grey */
 .es-row.on .es-n.v { color: var(--ink); font-size: 17px; font-weight: 550; }
 .es-n.fresh span { color: var(--ink-tertiary); }
-.es-n.on::after { content: ""; width: 2px; height: .9em; margin-left: 2px; background: var(--ink); animation: es-blink 1s steps(1) infinite; }
+.es-car { display: inline-block; width: 2px; height: .9em; margin: 0 2px; background: var(--ink); vertical-align: -.08em; animation: es-blink 1s steps(1) infinite; }
 @keyframes es-blink { 50% { opacity: 0; } }
 /* the keys (or a panel) beside the list */
 /* height 0 + centre: the panel is centred on the list's column and spills evenly both ways, so it never moves the big number */
@@ -3449,8 +3449,6 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-ta { display: block; width: 100%; padding: 12px 16px; border: 0; border-radius: var(--row-r, var(--es-r)); outline: 0; background: var(--row-bg, var(--tile)); color: var(--ink);
          font: inherit; font-size: 15px; line-height: 1.45; resize: none; flex: none; }   /* flex: none -- the tablet's panel is 0 tall, and shrinking squashed the box to one line */
 .es-ta:focus { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--es-sel); }
-.es-times { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.esheet .es-times .es-row { justify-content: center; min-height: 48px; padding: 0; }
 /* Walk-in, Discount and Modifiers (owner 2026-10-28, mods 2026-11-06): the title holds still, the list (or a page: Pickup's time, Delivery's address,
    Senior / PWD, Custom) scrolls under it to the card's bottom, fading under Check out's pill, which is Done */
 .es-body.fill { grid-template-rows: minmax(0, 1fr); align-items: stretch; overflow: hidden; padding-bottom: 0; }
@@ -3663,7 +3661,6 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-tile .co-ic { width: 26px; height: 26px; stroke-width: 1.5; color: var(--ink-secondary); }
 .co-big { font-size: 20px; font-weight: 550; letter-spacing: -.02em; line-height: 1.15; }
 .co-tile small { color: var(--ink-tertiary); font-size: 12.5px; font-weight: 400; }
-.co-tile small.up { color: var(--ok); font-weight: 500; }
 
 /* cash: the quick amounts are one line; Custom swaps it for the figures + Complete (left) and our keypad (right) */
 #checkoutQuick { max-width: none; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); }
@@ -3675,8 +3672,9 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 :is(#checkoutMethods, #checkoutQuick, #checkoutDoneActs) .co-tile { flex-direction: row; justify-content: flex-start; gap: 12px; height: auto; min-height: 56px;
                                                      padding: 0 16px; border-radius: var(--row-r, calc(var(--r-input) + 2px)); font-size: 15px; font-weight: 500; text-align: left; }
 :is(#checkoutMethods, #checkoutDoneActs) .co-ic { width: 20px; height: 20px; }
-#checkoutQuick .co-big { flex: 1; min-width: 0; font-size: 15px; font-weight: 550; letter-spacing: 0; text-align: left; }
-#checkoutQuick small { flex: none; font-size: 14px; }
+/* a cash row = Settings' row (owner 2026-11-06 page 17): the amount as its word, the change as its grey value, no "Change", no green */
+#checkoutQuick .co-big { flex: 1; min-width: 0; font-size: 16px; font-weight: 400; letter-spacing: inherit; text-align: left; }
+#checkoutQuick small { flex: none; font-size: 16px; }
 .co-keyin { display: grid; grid-template: "read keys" minmax(0, 1fr) "go keys" auto / minmax(0, 1fr) 312px; gap: var(--co-gap) 32px;
             animation: co-in .3s var(--co-ease) both; }
 .co-step > .co-keyin { max-width: 720px; }
@@ -3711,6 +3709,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 /* Cash › Custom (owner 2026-10-28, cash-custom-picks.html F): "Cash received" in the header, the typed amount on the hero line,
    no total or change; the keys under it, Complete sale under them (phone: the keys sit on the pinned button) */
 .co.co-typed .co-top::after { content: 'Cash received'; }
+.co.sp.co-typed .co-top::after { content: attr(data-ttl); }   /* a split part's how much: the method's name, "Cash" (owner 2026-11-06 page 23) */
 .co-hero.ph { color: var(--ink-quaternary); }
 .co.co-typed .co-read { display: none; }
 .co.co-typed .co-keyin { grid-template: "keys" "go" / minmax(0, 312px); justify-content: center; }
@@ -3723,10 +3722,12 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co .es-kp button:hover { background: var(--surface-hover); }
 .co .es-kp button:active { transform: scale(.97); }
 .co .es-kp svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.co-ref:focus { border-color: var(--ink-tertiary); }
+/* the ref / Other-name box = Senior's box (.es-ta: no line, the row's corner and fill, owner 2026-11-06 pages 19-23) */
+.co-ref { height: 56px; padding: 0 16px; border: 0; border-radius: var(--row-r, var(--es-r)); outline: 0; background: var(--row-bg, var(--tile)); color: var(--ink); font-size: 15px; }
+.co-ref:focus { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
 .co-ref::placeholder { color: var(--ink-quaternary); }
-.co-ref { height: 50px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--r-input); outline: 0; background: var(--surface-2); font-size: 15px; }
 .co-ask { color: var(--ink-secondary); font-size: 14px; font-weight: 500; text-align: center; }
+.co-ask:empty { display: none; }   /* GCash / QR / Other: the method's word sits over the number (#spPaid), the step has no title */
 .co-error { width: 100%; max-width: 440px; justify-self: center; margin-top: 12px; padding: 9px 11px; border-radius: var(--r-input);
             background: var(--danger-bg); color: var(--danger); font-size: 13px; font-weight: 550; text-align: center; }
 
@@ -4794,7 +4795,7 @@ body.light-theme:has(:is(.view-sell, .view-checkout, .view-settings, .view-qr, .
 body.light-theme #catalogSearchRow { --rl-soft: var(--surface-2); }   /* ☰, search, scan: white like the cards on the grey page */
 body.light-theme .product-card,
 body.light-theme .product-card.pc-group { background: var(--surface); }
-body.light-theme .co-tile { background: var(--row-bg, var(--surface)); }   /* owner 2026-10-18: nearer the search glass (251) than pure white */
+body.light-theme :is(.co-tile, .co-ref:not(:focus)) { background: var(--row-bg, var(--surface)); }   /* the ref box too: on the iPad's grey page the tile grey vanished */   /* owner 2026-10-18: nearer the search glass (251) than pure white */
 /* Checkout's rows and buttons on the grey page are the list sheets' too, one rule (owner 2026-10-27: "better if it's shared");
    a picked / typed-into row keeps its own look */
 body.light-theme .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) :is(.es-row:not(.on, .pick), .es-ink) { background: var(--row-bg, var(--surface)); box-shadow: var(--row-lift, inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06)); }
@@ -7388,7 +7389,7 @@ body.light-theme {
   :is(.esheet, #checkoutApp) { --row-r: 18px; }
   body.light-theme .esheet, body.light-theme #checkoutApp { --row-bg: color-mix(in srgb, var(--surface), var(--surface-2)); --row-lift: none; }   /* halfway: the old near-white blended in, pure white "jumps too far" (owner 2026-11-05) */
   body.light-theme .esheet:has(.es-kp:not(.lk *), .es-body.ks:not(.lk), .es-body.ask) { --row-bg: var(--bg-soft); }
-  :is(.esheet .es-list > .es-row.on, .esheet .es-ta:focus) { box-shadow: none; background: var(--row-bg, var(--tile)); }
+  :is(.esheet .es-list > .es-row.on, .esheet .es-ta:focus, #checkoutApp .co-ref:focus) { box-shadow: none; background: var(--row-bg, var(--tile)); }
   .esheet .es-vat { margin-top: 0; }
   .esheet textarea.es-ta { min-height: 120px; padding: 14px 16px; }
   .es-seg.off { display: none; }   /* Quantity's keys sit as low as every other numpad; each is its own page here, nothing to jump (owner 2026-11-05) */
@@ -8185,6 +8186,8 @@ body:not(.light-theme) #catalogSearchRow { --glass: color-mix(in srgb, var(--ink
 /* the Senior / PWD panel (pos-sell esScApply): the address field's look as one-line fields, a row's height; an empty
    required one is ringed until something is typed */
 input.es-ta { height: 56px; }
+#esPick::-webkit-date-and-time-value { text-align: left; }   /* iOS centres the wheel's value; the box reads left like Senior's */
+.esheet textarea.es-ta.es-grow { min-height: 56px; max-height: 120px; padding: 17px 16px; overflow-y: auto; }   /* Note / Delivery: one line like Senior's box, grows as it's typed (esGrow) */
 .es-vat { display: flex; align-items: center; justify-content: space-between; height: 56px; margin-top: 8px; cursor: pointer; }   /* the Custom item's VAT switch, a row like the name box */
 body.light-theme .es-vat .sw:not(:checked) { background: var(--line-strong); }   /* --bg-soft vanished on the row's grey */
 .es-ta.bad:placeholder-shown { box-shadow: inset 0 0 0 1.5px var(--danger); }
@@ -8965,9 +8968,9 @@ body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px v
 .es-body.es-fwd .es-col { animation: es-side .24s var(--rl-ease) both; }
 .es-body.es-bwd .es-col { animation: es-back .24s var(--rl-ease) both; }
 @keyframes es-back { from { opacity: 0; transform: translateX(-24px); } }
-.es-body.fill:is(.es-fwd, .es-bwd) .es-col { animation: none; }   /* Walk-in / Discount: only the list slides, the title holds still */
-.es-body.fill.es-fwd .es-list { animation: es-side .24s var(--rl-ease) both; }
-.es-body.fill.es-bwd .es-list { animation: es-back .24s var(--rl-ease) both; }
+.es-body:is(.fill, .ln):is(.es-fwd, .es-bwd) .es-col { animation: none; }   /* Walk-in / Discount, a line's Note: only the list slides, the title holds still */
+.es-body:is(.fill, .ln).es-fwd .es-list { animation: es-side .24s var(--rl-ease) both; }
+.es-body:is(.fill, .ln).es-bwd .es-list { animation: es-back .24s var(--rl-ease) both; }
 @media (prefers-reduced-motion: reduce) { .es-prog i, #app.again .ag-dim { animation: none; } }
 /* Up to N / Any: Next or Add as one big button under the list, the list's width; Pick one has none, so no foot */
 .esheet .es-ft:empty { display: none; }

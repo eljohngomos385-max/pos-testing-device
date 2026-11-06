@@ -139,7 +139,7 @@ const state = {
   scPwd: null,                  // {kind:'senior'|'pwd', idNo, name}: the cart's SC/PWD discount (edit sheet); replaces cartDiscount
   fulfilment: 'walkin',         // a FULFIL_BUILTINS key (bo-model) or the owner's own type
   deliveryAddress: '',
-  pickupTime: null,   // { day, time }: the fulfilment sheet shows it; not on the order yet
+  pickupTime: null,   // "2026-11-06T14:00" (the wheel's local value): the fulfilment sheet shows it; not on the order yet
   deliveryLocation: null,
   deliveryMap: {
     centerLat: 14.2691,

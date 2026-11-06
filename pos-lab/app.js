@@ -904,12 +904,13 @@ function attachEvents() {
     editSheetClick({ target: $('#editSheet :is([data-apply], [data-done])') });
   });
   $('#editSheet').addEventListener('input', (e) => {   // the address, and a line's note, land on the cart as they're typed
+    if (e.target.matches('textarea.es-grow')) esGrow(e.target);
     if (e.target.id === 'esName') { es.name = e.target.value; return; }   // a custom item's name, kept over the keys' redraws
     if (e.target.id === 'esVat') { es.vat = e.target.checked; return; }   // its VAT switch
+    if (e.target.id === 'esPick') { state.pickupTime = e.target.value || null; return; }   // Pickup's wheel; shown only, not on the order yet
     const line = e.target.id === 'esNote' && esItem();
     if (line) {
-      line.note = e.target.value.replace(/\s+/g, ' ').trim();   // one line on the slip
-      $('#editSheet [data-sf="n"] .ad').textContent = line.note;
+      line.note = e.target.value.replace(/\s+/g, ' ').trim();   // one line on the slip (the Note page is its own: the row redraws on ‹)
       return keepCart();   // kept as typed: a reload before the sheet closes keeps it
     }
     if (e.target.id !== 'esAddr') return;
@@ -1143,7 +1144,7 @@ function attachEvents() {
     $('#checkoutTender').value = '';
     track('payment_method', { method });
     showPayStep();
-    if (method === 'other' && !label) setTimeout(() => $('#otherMethodInput')?.focus(), 60);
+    if (method === 'other' && !label) setTimeout(() => $('#otherMethodInput')?.focus({ preventScroll: true }), 60);
   }
   // Delegated: the tiles are rebuilt from settings on every checkout render.
   $('#checkoutMethods')?.addEventListener('click', (e) => {
@@ -1193,7 +1194,7 @@ function attachEvents() {
   });
   // Complete sale / Done, by tap or Enter: Must fill in with the box empty says what's missing and focuses it
   const finish = () => {
-    if (mustWait()) { showToast(`Enter the ${askLow()} first`); return $('#payRefInput').focus(); }
+    if (mustWait()) { showToast(`Enter the ${askLow()} first`); return $('#payRefInput').focus({ preventScroll: true }); }
     (SP ? spNext : completeSale)();
   };
   $('#otherMethodInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') finish(); });
@@ -1396,6 +1397,20 @@ function init() {
   window.visualViewport?.addEventListener('resize', () => refitSellSurface());
   window.visualViewport?.addEventListener('scroll', () => refitSellSurface());
   new ResizeObserver(() => refitSellSurface()).observe($('.catalog'));   // iPhone Safari: hiding the toolbar moves the safe area (the bar's gap) with no resize event; the tiles were cut off by 10pt
+  // Typing never moves the page (owner 2026-11-06, phone and iPad): a tapped box that already sits clear of the keyboard
+  // takes the cursor where it is; iOS's own focus slides the whole screen up and back. A box the keys would cover keeps iOS's scroll.
+  let tapAt = null;
+  document.addEventListener('touchstart', (e) => { tapAt = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null; }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    const f = e.target.closest?.('input:not([type=checkbox], [type=radio], [type=range], [type=file], [type=color], [type=date], [type=time], [type=datetime-local], [readonly], :disabled), textarea:not([readonly], :disabled)');
+    const t = e.changedTouches[0];
+    if (!f || f === document.activeElement || !tapAt || Math.hypot(t.clientX - tapAt[0], t.clientY - tapAt[1]) > 10) return;
+    const portrait = matchMedia('(orientation: portrait)').matches, sh = Math[portrait ? 'max' : 'min'](screen.width, screen.height);
+    if (f.getBoundingClientRect().bottom > sh * 0.48) return;   // ponytail: the keys' top guessed as about half the screen (iPhone, iPad either way); visualViewport only knows once they're up
+    e.preventDefault();
+    f.focus({ preventScroll: true });
+    try { f.setSelectionRange(f.value.length, f.value.length); } catch {}   // the cursor at the end, as a tap past the text puts it (a number box has no range)
+  }, { passive: false });
 
   // Pick up appearance changes pushed from the back-office tab.
   window.addEventListener('storage', (e) => {

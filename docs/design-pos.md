@@ -193,3 +193,32 @@ Payment methods are SalesMath's, the back office's too:
 - Money per method is `SalesMath.tenders` (a split sale is its legs; what went back is taken off); words from `SalesMath.tenderLabel`. GCash, QR and a store's own method ("Maya") keep their names from the order.
 - Colours: `PAY_KEYS` (`cash, gcash, qr, credit, other`) → `payColor(k)` = `var(--pm-*)` tokens, set for both themes (a deliberate data-viz exception to the monochrome theme); a store's own method wears Other's. The Orders Payment filter uses the same keys and colours.
 - Real-time: re-renders on the `storage` event and `visibilitychange` (cross-tab on one device), plus a 4s `reportsLive()` poll guarded by `reportsSignature()` (the stored orders string itself; the seam a future backend push/sync replaces). **True multi-device real-time needs the backend sync layer** — local storage is per-device.
+
+## Empty states (pos-lab)
+
+The look is the owner's pick **C1** (2026-11-06): a soft white shape in a blurred, grainy blue haze, in a 525px box, with one 17px line under it and no title. The reference is [b3-silhouette.html](../empty-lab/b3-silhouette.html).
+
+- **One helper.** `emptyState(pic, line, more)` in `pos-lab/pos-core.js` draws every empty page. `emptyAct(word, target)` puts a blue word inside the line (for example "Start a sale"). `noResults(q)` is the search one. A page never builds its own empty markup.
+- **The pictures are baked PNGs, not live SVG.** Each picture is two white alpha masks in `pos-lab/img/empty/`: `<pic>.png` is the haze and `<pic>-obj.png` is the soft shape. There is also one `grain.png` tile. The CSS (`.empty .sil` in `styles.css`) paints `var(--haze)` plus the grain, and then `var(--bg)`, through those masks, so both themes come from the tokens.
+- **Why baked.** Live SVG filters (blur, dilate, turbulence) are drawn on the CPU in iPhone Safari, and they are drawn again for every swipe peek. That made swipes lag. As masks, the pictures cost about the same as the sidebar icons (2026-11-06).
+- **Why prefetched.** `EMPTY_PICS` in pos-core.js fetches every picture once at start and keeps it as a `blob:` URL. Without this, the first visit to a page showed it without its picture for a moment, because `scripts/serve.py` sends `no-store`. In the Capacitor build the files ship inside the app.
+- **A speed fix never changes the look.** Prove a speed fix with a pixel diff against the old screenshots. A sharpened shape was rejected as "you removed the core design".
+- **Adding or changing a picture:**
+  - Draw it in [silhouettes.html](../empty-lab/silhouettes.html).
+  - Copy it into `ART` in [scripts/bake-empty-pics.mjs](../scripts/bake-empty-pics.mjs).
+  - Run `node scripts/bake-empty-pics.mjs`. It needs Edge and `py` with Pillow.
+  - Add its name to the prefetch list in pos-core.js.
+
+**The lab files** are all in [empty-lab/](../empty-lab/):
+
+| Option | Files |
+|---|---|
+| **B: silhouette (picked)** | [b3-silhouette](../empty-lab/b3-silhouette.html) (C1), [b2-silhouette](../empty-lab/b2-silhouette.html), [b-silhouette](../empty-lab/b-silhouette.html), [b2-copy](../empty-lab/b2-copy.html) |
+| All drawings | [silhouettes](../empty-lab/silhouettes.html) |
+| A: glass | [a2-glass](../empty-lab/a2-glass.html), [a-glass](../empty-lab/a-glass.html), [a2-copy](../empty-lab/a2-copy.html) |
+| C: gradient | [c2-gradient](../empty-lab/c2-gradient.html), [c-gradient](../empty-lab/c-gradient.html), [c2-copy](../empty-lab/c2-copy.html) |
+| D: line | [d2-line](../empty-lab/d2-line.html), [d-line](../empty-lab/d-line.html), [d2-copy](../empty-lab/d2-copy.html) |
+| E: glow | [e2-glow](../empty-lab/e2-glow.html), [e-glow](../empty-lab/e-glow.html), [e2-copy](../empty-lab/e2-copy.html) |
+| Reports | [reports-empty](../empty-lab/reports-empty.html), [reports-empty-2](../empty-lab/reports-empty-2.html) |
+
+The screenshots are in `empty-lab/img/`. `baked-before-after.png` and `baked-light-dark.png` show that the baked pictures match the live ones.
