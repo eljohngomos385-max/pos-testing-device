@@ -86,8 +86,8 @@ function fillItemsPane(kind, band, rows) {
       <span class="pr num">${itemPriceText(it)}</span>
       <span class="num ${itemStk(it)}">${itemOnHand(it) || '—'}</span></button>`;
   }).join('') || (q ? noResults(itemsFilter.q.trim()) : !catalogItems().length
-    ? emptyState('items', 'No items yet', 'Add what you sell. It shows on Sell right away.', emptyAct('Add item', '#itemsAdd'))
-    : emptyState('items', 'No items match', 'Nothing in these filters.', emptyAct('Change filters', '#itemsFilter')));
+    ? emptyState('box', 'Tap + to add what you sell.')
+    : emptyState('box', `No items match. ${emptyAct('Change filters', '#itemsFilter')}`));
 }
 
 // The editor: a working copy E of the item. Only Save (and the photo / colour) write to the catalog.
@@ -677,9 +677,8 @@ function renderKindRows(kind, band, rows) {
         discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? (addPickOn(x.id) ? '<small>Already a tile</small>' : '')
         : `<small class="mline"><span class="ch">${liveChoices(x).map(o => hit(o.name)).join(', ')}</span></small>`}</span></span>
       <span class="num">${discs ? esShown(x) : SalesMath.plural(addPick ? toCells(catProducts(x.id)).length : itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
-    || (q ? noResults(itemsFilter.q.trim()) : emptyState(kind, `No ${cats ? 'categories' : kind === 'addons' ? 'add-ons' : 'modifiers'} yet`, kind === 'addons' ? ''
-      : cats ? 'Group items so they’re quick to find on Sell.' : 'A question the POS asks when you sell an item, like Gift wrap or Assembly.',
-      kind === 'addons' ? '' : emptyAct(cats ? 'Add category' : 'Add modifier', '#itemsAdd')));
+    || (q ? noResults(itemsFilter.q.trim()) : kind === 'addons' ? emptyState('addon', 'No add-ons yet') : discs ? emptyState('tags', 'Tap + to add a discount.')
+      : cats ? emptyState('folders', 'Tap + to group items for Sell.') : emptyState('sliders', 'Tap + to add a modifier,<br>like Gift wrap.'));
 }
 
 function openKindEditor(kind, id) {

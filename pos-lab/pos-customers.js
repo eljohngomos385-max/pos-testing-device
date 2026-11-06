@@ -29,7 +29,7 @@ function renderCustomers() {
   // The Orders rail with no head (owner 2026-10-09): name + phone, the balance only when owed.
   if (list) {
     list.innerHTML = !filtered.length
-      ? (q ? noResults(state.customersQuery.trim()) : emptyState('customers', 'No customers yet', 'Save a customer to see their orders and what they owe.', emptyAct('Add customer', '#newCustomerBtn')))
+      ? (q ? noResults(state.customersQuery.trim()) : emptyState('people', 'Tap + to save a customer.'))
       : filtered.map(c => `<button type="button" class="row${c.id === state.selectedCustomerId ? ' cur' : ''}" data-customer-id="${escapeHtml(c.id)}">
         <div class="nm"><span>${escapeHtml(c.name)}</span><small class="num">${escapeHtml(c.phone || 'No phone')}</small></div>
         ${(c.currentBalance || 0) > 0 ? `<div class="rt"><span class="amt num">${peso(c.currentBalance)}</span></div>` : ''}</button>`).join('');
@@ -48,7 +48,7 @@ function renderCustomerDetail() {
   $('#customerPay').disabled = !canRecordPayment(c);
   if (!c) {
     ttl.innerHTML = '';
-    body.innerHTML = emptyState('customers', 'No customer selected', 'Pick one from the list to see their details.');
+    body.innerHTML = emptyState('people', 'No customer selected');
     return;
   }
   const status = accountStatus(c)[1], over = status === 'Over limit';

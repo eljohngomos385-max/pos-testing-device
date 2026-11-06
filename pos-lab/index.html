@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Montserrat:wght@500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=815" />
+  <link rel="stylesheet" href="styles.css?v=824" />
   <link rel="stylesheet" href="receipt.css?v=2" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
@@ -434,8 +434,8 @@
             </header>
             <div class="co-stage">
               <div class="co-col" id="checkoutSteps">
-                <div class="co-hero num" id="checkoutTotalDue">₱0.00</div>
                 <p class="sp-paid" id="spPaid" hidden></p>
+                <div class="co-hero num" id="checkoutTotalDue">₱0.00</div>
                 <!-- Tiles are built from the back office's Payments settings on every render -->
                 <div class="co-step" data-step="method"><div class="co-tiles" id="checkoutMethods"></div>
                   <button type="button" class="co-btn primary cta" id="spDone" data-complete hidden>Complete sale</button></div>
@@ -469,14 +469,14 @@
                 </div>
                 <div class="co-error" id="checkoutError" hidden></div>
               </div>
-              <!-- Sale complete = checkout's own page (owner 2026-11-06): the change on the hero line, its word under it in the
-                   gap as Discount's "off" (no change: the word is the hero, as Walk-in), the receipt as method rows, New sale on Done's spot.
+              <!-- Sale complete = checkout's own page (owner 2026-11-06): the change on the hero line, its word over it as
+                   Discount's "off" (no change: the word is the hero, as Walk-in), the receipt as method rows, New sale on Done's spot.
                    The paid moment (done-lab's Edge low) plays over it first: a tick and a glow from the bottom, after paying only -->
               <div class="pm" id="paidMoment" aria-hidden="true" hidden><svg viewBox="0 0 64 64"><path d="M19 33l9 9 17-19"/></svg></div>
               <div class="co-col co-done" id="checkoutDone" aria-live="polite" hidden>
                 <div class="co-mark" hidden><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="m-c" cx="32" cy="32" r="30"/><path class="m-k" d="M20 33l8 8 16-17"/></svg></div>
-                <div class="co-hero num" id="successChange">₱0.00</div>
                 <p class="sp-paid" id="successChangeLbl">Change</p>
+                <div class="co-hero num" id="successChange">₱0.00</div>
                 <div class="co-step">
                   <div class="co-tiles" id="checkoutDoneActs">
                     <button type="button" class="co-tile" id="successPrintBtn"><svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M7 14h10v6H7z"/></svg><span>Print receipt</span></button>
@@ -1052,15 +1052,15 @@
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=60"></script>
   <script src="drawer.js?v=1"></script>
-  <script src="pos-core.js?v=79"></script>
-  <script src="pos-sell.js?v=161"></script>
+  <script src="pos-core.js?v=83"></script>
+  <script src="pos-sell.js?v=164"></script>
   <script src="pos-checkout.js?v=57"></script>
-  <script src="pos-orders.js?v=60"></script>
-  <script src="pos-items.js?v=91"></script>
-  <script src="pos-customers.js?v=51"></script>
+  <script src="pos-orders.js?v=61"></script>
+  <script src="pos-items.js?v=93"></script>
+  <script src="pos-customers.js?v=52"></script>
   <script src="pos-settings.js?v=53"></script>
   <script src="pos-pin.js?v=15"></script>
-  <script src="pos-shift.js?v=60"></script>
+  <script src="pos-shift.js?v=61"></script>
   <script src="pos-stock.js?v=28"></script>
   <script src="pos-qr.js?v=3"></script>
   <script src="app.js?v=306"></script>

@@ -265,10 +265,10 @@ function renderProducts() {
 
   if (cells.length === 0) {
     grid.innerHTML = `
-      <div class="no-results">${state.query.trim() ? emptyState('search', `No results for “${escapeHtml(state.query.trim())}”`, 'Try a different word or scan it.',
+      <div class="no-results">${state.query.trim() ? emptyState('search', `No results for “${escapeHtml(state.query.trim())}”`,
         `<button class="e-act cta-3" type="button" data-act="custom-item">Sell it as a custom item</button>
         <button class="e-act cta-3" type="button" data-act="lost-sale">Log it as a lost sale</button>`)
-        : emptyState('items', 'No items yet', 'Add what you sell and it shows here.', emptyAct('Go to Items', '.side-link[data-view="items"]'))}</div>`;
+        : emptyState('box', `Add what you sell first. ${emptyAct('Add item', '.side-link[data-view="items"]')}`)}</div>`;
     renderSellHeader();
     requestAnimationFrame(syncSellGridMetrics);
     return;
@@ -473,7 +473,7 @@ function renderCatSheet(vm) {
   $('#variantFilter').hidden = true;
   $('#variantCount').textContent = `${shown.length} of ${all.length}`;
   $('#variantList').innerHTML = shown.map(c => cellRow(c, c.kind === 'group' ? `data-open-group="${c.group.id}"` : `data-variant-id="${c.product.id}"`)).join('')
-    || (q ? noResults(vm.query.trim()) : emptyState('items', 'No items in this category'));
+    || (q ? noResults(vm.query.trim()) : emptyState('folder', 'No items in this category'));
 }
 
 // Add tile (owner 2026-10-21): a half sheet asks Item or Category, then the Items page opens on that list as it is - its
@@ -588,7 +588,7 @@ function renderVariantList() {
     <button type="button" class="vs-row" data-variant-id="${p.id}">
       <span class="nm">${escapeHtml(p.name)}${out(p) ? '<small><b>Sold out</b></small>' : p.trackStock === false ? '' : `<small>${roundQty(p, p.stock)} available</small>`}</span>
       <span class="amt num">${askedPrice(p) ? '—' : peso(p.price)}</span>
-    </button>`).join('') : q ? noResults(vm.query.trim()) : emptyState('items', 'All sold out', 'Show all to see them.');
+    </button>`).join('') : q ? noResults(vm.query.trim()) : emptyState('tags', 'All sold out');
 }
 
 function changePage(delta) {
@@ -1311,7 +1311,7 @@ function drawEditSheet() {
     // the total: the Quantity box says it (owner 2026-10-14)
     const sc = cartTotals().scPwd && state.scPwd;
     const m = SalesMath.lineMoney(item.price, item.qty, sc ? null : item.discount, state.settings.store?.currency);
-    head = `<p>${escapeHtml(item.name)}</p><div class="es-hero">${peso(m.lineTotal)}</div>${sc && item.discount ? `<p>${ES_SC[sc.kind]} applies</p>` : ''}`;
+    head = `${sc && item.discount ? `<p>${ES_SC[sc.kind]} applies</p>` : ''}<div class="es-hero">${peso(m.lineTotal)}</div>`;   // the name is the title (es-ttl); a small line goes over the number, never under (owner 2026-11-06)
     rows = `<div class="es-row${o.f === 'q' ? ' on' : ''}"><span>Quantity</span>${stp(-1, item.qty <= step)}<button type="button" data-sf="q">${n('q', o.f === 'q' ? o.q || '0' : lineQty(item), ' q')}</button>${stp(1)}</div>
       <div class="es-row${o.f === 'd' ? ' on' : ''}" data-sf="d"><span>Discount</span>${n('d', o.f === 'd' ? esTyped(o) : esShown(item.discount), ' v')}${cv(o.f === 'd')}</div>
       <div class="es-row${o.f === 'n' ? ' on' : ''}" data-sf="n"><span>Note</span><small class="ad">${escapeHtml(item.note || '')}</small>${cv(o.f === 'n')}</div>`
@@ -1322,7 +1322,7 @@ function drawEditSheet() {
       <textarea class="es-ta" id="esNote" rows="3" maxlength="120" placeholder="Add a note" aria-label="Note">${escapeHtml(item.note || '')}</textarea></div>`;
     else if (o.f) side = `<div class="es-keys${kin}">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'), o.f === 'd' ? '' : ' off')}${esKeys(o.f === 'd' || step < 1)}</div>`;
   } else if (o.kind === 'price') {
-    head = `<div class="es-hero">${esTyped(o)}</div><p class="es-name">${escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item')}</p>`;   // the title says Price (es-ttl); amount on top, name under (owner's design 2026-11-05)
+    head = `<p>${escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item')}</p><div class="es-hero">${esTyped(o)}</div>`;   // the title says Price (es-ttl); the name over the amount (owner 2026-11-06: small lines on top)
     rows = '';
     side = `<div class="es-keys${kin}">${esKeys(true)}</div>`;
   } else if (o.kind === 'custom') {   // the price ask with a name box between the amount and the keys
@@ -1333,8 +1333,9 @@ function drawEditSheet() {
   } else if (o.kind === 'measure') {
     // type the weight -> what it costs; type the ₱ -> how much that is. The unit price never changes (owner 2026-11-01)
     const p = state.products.find(x => x.id === o.id), u = escapeHtml(p.unit), q = esMeasureQty(o, p);
-    head = `<p>${escapeHtml(p.name)} · ${peso(p.price)} / ${u}</p><div class="es-hero">${o.w ? `<span class="num">${o.d || 0}</span> ${u}` : esTyped(o)}</div>`
-      + (q > 0 ? `<p class="es-off">${o.w ? peso(SalesMath.lineMoney(p.price, q).lineGross) : `${SalesMath.qtyText(q)} ${u}`}</p>` : '');
+    // the name is the title; the line over says the price, then what's typed comes to (owner 2026-11-06: small lines on top)
+    head = `<p>${q > 0 ? (o.w ? peso(SalesMath.lineMoney(p.price, q).lineGross) : `${SalesMath.qtyText(q)} ${u}`) : `${peso(p.price)} / ${u}`}</p>`
+      + `<div class="es-hero">${o.w ? `<span class="num">${o.d || 0}</span> ${u}` : esTyped(o)}</div>`;
     rows = '';
     side = `<div class="es-keys${kin}">${seg(segBtn(u, o.w, 'data-w'), segBtn(SalesMath.currencySymbol(state.settings.store?.currency), !o.w, 'data-amt'))}${esKeys(true)}</div>`;
   } else if (o.kind === 'mods') {
@@ -1357,8 +1358,8 @@ function drawEditSheet() {
     // what they pay, and while a discount is on, how much it takes off what: "₱13.00 off ₱65.00" (owner 2026-10-16).
     // Before = the sale with no sale discount and no Senior / PWD, so the VAT the exemption drops counts as off too.
     const t = cartTotals(), was = cartTotals(state.cart, null, null).total, off = moneyValue(was - t.total);
-    head = `<div class="es-hero">${peso(t.total)}</div>${dk ? `<p class="es-off${+o.d ? '' : ' none'}"><b>${o.pct ? `${+o.d || 0}%` : peso(+o.d || 0)}</b> off ${peso(was)}</p>`   // Custom: the line is what the keys type, there from the start
-      : off > 0 ? `<p class="es-off"><b>${peso(off)}</b> off ${peso(was)}</p>` : ''}`;
+    head = `${dk ? `<p class="es-off${+o.d ? '' : ' none'}"><b>${o.pct ? `${+o.d || 0}%` : peso(+o.d || 0)}</b> off ${peso(was)}</p>`   // Custom: the line is what the keys type, there from the start
+      : off > 0 ? `<p class="es-off"><b>${peso(off)}</b> off ${peso(was)}</p>` : ''}<div class="es-hero">${peso(t.total)}</div>`;   // the off line over the total (owner 2026-11-06)
     // Senior / PWD, the saved ones, then Custom, scroll under the total (owner 2026-10-28). A saved one's tap is the pick and
     // closes; Senior / PWD and Custom open their own page in the list's place, the total holding still.
     const field = (f, label) => `<input class="es-ta${o.bad === f ? ' bad' : ''}" data-scf="${f}" value="${escapeHtml(o.sc[f])}" placeholder="${label}" aria-label="${label}" autocomplete="off"${o.bad === f ? ' aria-invalid="true"' : ''}>`;
@@ -1396,13 +1397,13 @@ function drawEditSheet() {
   if (w) o.w = w;
   // Wallet's Add Money (draft 2026-11-04): the price ask and a custom item name themselves on ✕'s line, Add across from it
   const ttl = o.kind === 'price' ? 'Price' : o.kind === 'custom' ? 'Custom item' : dk ? 'Discount' : '';
-  const mt = o.kind === 'mods' ? escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item') : '';   // a title without wl's ✕ and ✓
+  const mt = o.kind === 'line' ? escapeHtml(esItem()?.name || 'Item') : o.kind === 'measure' ? escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item') : o.kind === 'mods' ? escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item') : '';   // a title without wl's ✕ and ✓
   card.innerHTML = prog + clr + (ttl || mt ? `<h2 class="es-ttl">${ttl || mt}</h2>` : '') + esFrame(head, rows, side, left + (dk ? esOk('data-done')
     : list ? `<button type="button" class="${ph ? 'ph-bar' : 'fab sh-fab'} cta" data-done>Done</button>` : o.kind === 'mods' ? esModsFoot(o)
     : nk ? esOk('data-apply', ask && !(+o.d > 0))   // a price waits for one, as Add did
     : ask ? `<button type="button" class="es-ink cta" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
     : o.f ? `<button type="button" class="es-ink cta" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : `<button type="button" class="${ph ? 'ph-bar' : 'es-ink'} cta" data-close>Done</button>`),   // a 0 discount waits, as the price ask's Add does
-  `${list ? ' fill' : ask ? ' ask' : ''}${dk ? ' wd' : ttl ? ' wl' : ''}${dk || nk ? ' ks' : ''}${lk}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
+  `${list || o.kind === 'mods' ? ' fill' : ask ? ' ask' : ''}${dk ? ' wd' : ttl ? ' wl' : ''}${dk || nk ? ' ks' : ''}${lk}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
   ksCarry(card, o);
   const rl =list && !o.f && card.querySelector('.es-list');
   const pk = rl && (o.opened || o.dir === 'bwd') && rl.querySelector('.pick');   // just opened, or back from a page: the one on the sale clear of Done

@@ -3398,11 +3398,10 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-head { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: calc(var(--hero-gap) - 16px); color: var(--ink-tertiary); font-size: 13px; font-weight: 500;
            font-variant-numeric: tabular-nums; text-align: center; }   /* + the column's 16 = checkout's gap to the first row */
 .es-head p { max-width: 100%; margin: 0; font-size: 16px;   /* Wallet's "New Balance" size (owner 2026-11-04) */ overflow: hidden; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }   /* one line: a long name never moves the amount */
-.es-head { position: relative; }
-.es-head .es-off { position: absolute; top: calc(100% + 4px); }   /* "₱13.00 off ₱65.00" under the cart Discount's total, in the gap: the rows never move */
+/* a small line sits over the big number, never under it: the gap down to the rows stays empty on every page and nothing moves
+   when a line comes or goes (owner 2026-11-06). "₱13.00 off ₱65.00" over the cart Discount's total */
 .es-head .es-off b { color: var(--rl-on); font-weight: inherit; }   /* what's taken off, in the discount blue */
 .es-head .es-off.none b { color: inherit; }   /* B's Custom before a key: "0% off", all grey */
-.es-head .es-name { margin-top: 3px; }   /* Price's name under the amount: 18 from the digits to the name (owner's design 2026-11-05) */
 .es-hero { color: var(--ink); font-size: var(--hero-fs); font-weight: var(--hero-fw); letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }   /* checkout's */
 .es-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .es-list:empty { display: none; }
@@ -3452,7 +3451,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-ta:focus { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--es-sel); }
 .es-times { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .esheet .es-times .es-row { justify-content: center; min-height: 48px; padding: 0; }
-/* Walk-in and Discount (owner 2026-10-28): the title holds still, the list (or a page: Pickup's time, Delivery's address,
+/* Walk-in, Discount and Modifiers (owner 2026-10-28, mods 2026-11-06): the title holds still, the list (or a page: Pickup's time, Delivery's address,
    Senior / PWD, Custom) scrolls under it to the card's bottom, fading under Check out's pill, which is Done */
 .es-body.fill { grid-template-rows: minmax(0, 1fr); align-items: stretch; overflow: hidden; padding-bottom: 0; }
 .es-body.fill .es-col { min-height: 0; }
@@ -3633,6 +3632,18 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-col > .co-step { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; margin-top: -36px; }   /* the frost's 24 + the 12 gap: the first row stays put */
 .co-col > .co-step::before { content: ''; position: sticky; z-index: 1; top: 0; height: 24px; background: var(--canvas, var(--bg));
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); -webkit-mask-image: linear-gradient(#000, transparent); mask-image: linear-gradient(#000, transparent); }   /* rows fade under the total, Walk-in's frost (.es-list::before); a frost, not a mask on the step, which would hide the pinned keys and Complete sale */
+/* both frosts (here and .es-list::before) come in with the scroll: none at rest or on a list too short to scroll, full once a
+   row has slid 24px under the number (owner 2026-11-06). A browser without scroll timelines keeps the frost always on */
+@supports (animation-timeline: scroll()) {
+  .co-col > .co-step::before, .es-body.fill .es-list::before { opacity: 0; animation: frost-in linear both; animation-timeline: scroll(nearest); animation-range: 0 24px; }
+  /* off at rest, so it can be taller: the list starts on the number's bottom (never over it, --hero-gap is 4vh), rows are gone
+     12px under it and fade over 36 (owner 2026-11-06: the cut sat right under the number); the first row stays put */
+  .co-col > .co-step, .es-body.fill .es-list { margin-top: calc(0px - var(--hero-gap)); }
+  .co-col > .co-step::before, .es-body.fill .es-list::before { height: 48px; -webkit-mask-image: linear-gradient(#000 12px, transparent); mask-image: linear-gradient(#000 12px, transparent); }
+  .es-body.fill .es-list::before { margin-bottom: calc(var(--hero-gap) - 56px); }   /* 48 + this + the list's 8 gap = the gap */
+  .co-col > .co-step::before { margin-bottom: calc(var(--hero-gap) - 60px); }   /* the step's 12 gap */
+}
+@keyframes frost-in { to { opacity: 1; } }
 .co-col > .co-step::after { content: ''; height: 44px; }   /* the list runs to the screen's bottom (owner 2026-10-29: "it just continues"); room under the last row, a spacer as Walk-in's (Safari), + the 12 gap = the old 56 */
 .co .co-stage { padding-bottom: 0; }   /* Sale complete is a column too (owner 2026-11-06); the list carries the room, so its box reaches the bottom and nothing cuts it off */
 .co-hero { padding: 0 0 var(--hero-gap); position: relative; z-index: 2; text-align: center; font-size: var(--hero-fs); font-weight: var(--hero-fw);
@@ -3680,10 +3691,10 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-lbl { color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
 .co-fig { display: block; font-size: min(38px, 100cqi / (var(--n) * .6)); font-weight: 550; letter-spacing: -.03em; line-height: 1.15; white-space: nowrap; }
 .co-fig.ph { color: var(--ink-quaternary); }
-/* Split (.co.sp): "Split payment" in the header; under the countdown, the total it counts down from, in the hero's gap so
-   the tiles never move (as Discount's .es-off); a part's tile carries its amount; the how-much figure in a box, the keys under */
-.sp-paid { height: 24px; margin: calc(-1 * var(--hero-gap)) 0 calc(var(--hero-gap) - 24px); padding-top: 4px; line-height: 20px;
-           color: var(--ink-tertiary); font-size: 13px; font-weight: 500; text-align: center; font-variant-numeric: tabular-nums; }
+/* Split (.co.sp): "Split payment" in the header; over the countdown, the total it counts down from, in the room over the hero
+   (as a sheet's line over its number, owner 2026-11-06) so nothing moves; a part's tile carries its amount; the how-much figure in a box, the keys under */
+.sp-paid { height: 24px; margin: -24px 0 0; padding-bottom: 4px; line-height: 20px;
+           color: var(--ink-tertiary); font-size: 16px; font-weight: 500; text-align: center; font-variant-numeric: tabular-nums; }
 #checkoutMethods .co-tile small { margin-left: auto; color: var(--ink-secondary); font-size: 14px; font-weight: 590; }
 #checkoutMethods .co-tile.pick { background: color-mix(in srgb, var(--ink) 10%, var(--tile)); font-weight: 590; }   /* as a picked .es-row */
 .co.sp .co-read { grid-auto-rows: auto; align-content: start; gap: 8px; }
@@ -3759,9 +3770,8 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-rcpt .receipt-preview { max-height: none; overflow: visible; padding: 0; }
 .co-rcpt .rp-paper { margin: 0 auto; animation: co-print .9s var(--co-ease) backwards; }   /* not both: a kept clip-path cut the paper's edge off */
 
-/* sale complete = checkout's own page (owner 2026-11-06): the change holds the hero line and counts up, its word rises in
-   the gap (Discount's .es-off size), the receipt rows under it as the method rows; the check is off for now, kept for later */
-.co-done > .sp-paid { font-size: 16px; }
+/* sale complete = checkout's own page (owner 2026-11-06): the change holds the hero line and counts up, its word rises over
+   it (.sp-paid), the receipt rows under it as the method rows; the check is off for now, kept for later */
 .co-done > .sp-paid, .co-done .co-tiles { animation: co-rise .45s var(--co-ease) both; animation-delay: calc(var(--pm-t) + 160ms); }
 /* the paid moment (owner 2026-11-06, done-lab's Edge low): right after paying, a clean screen draws a blue tick while its
    bottom glows once, then fades onto Sale complete. --pm-t = when the page shows; pos-checkout.js waits it for the count-up. */
@@ -7469,19 +7479,32 @@ body .lv .e-top .acts .act { background: none; box-shadow: none; color: var(--in
 .lv .list { display: grid; grid-template-rows: minmax(0,1fr); overflow: hidden; border-bottom: 0; border-radius: var(--rl-r) var(--rl-r) 0 0; }
 .lv .lines { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .lv .band { position: sticky; top: 0; z-index: 1; height: 40px; background: var(--rl-soft); border-bottom: 1px solid var(--line); color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
-/* Every empty page and search (emptyState, pos-core.js, owner 2026-11-06): the page's menu icon in a soft round, a title,
-   one plain line, at most one blue action. Sell's grid (.no-results) and the sheets wear the same. */
+/* Every empty page and search (emptyState, pos-core.js; the owner's C1 from empty-lab, 2026-11-06): the silhouette, one
+   size everywhere, and one plain line whose top sits 6px under the haze (-2.5px: the drawing's box ends 3.5px past the haze,
+   less the 6px gap). An action is a blue word in the line. The halo keeps the line clear where the haze runs under it. */
 .empty { display: grid; place-content: center; justify-items: center; gap: 6px; height: 100%; padding: 32px 24px; text-align: center; }
-.empty .e-ic { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 10px; border-radius: 50%; background: var(--bg-soft); color: var(--ink-tertiary); }
-.empty .e-ic svg { width: 30px; height: 30px; }
-.empty b { max-width: 28ch; font-size: 17px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
-.empty > span:not(.e-ic) { max-width: 30ch; font-size: 14px; line-height: 1.4; color: var(--ink-tertiary); }
-.empty .e-act { margin-top: 6px; padding: 8px 12px; border: 0; background: none; color: var(--cta-solid); font: inherit; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.empty .sil { --haze: color-mix(in srgb, var(--cta-solid) 72%, #A9B4C2); position: relative; width: 525px; height: 525px; margin: -152.5px -200px -142.5px; pointer-events: none; }
+.sil::before { content: ''; position: absolute; inset: 0; background: var(--grain) 0 0 / 128px, var(--haze);   /* the haze: --haze and its grain, cut to the picture's baked shape (scripts/bake-empty-pics.mjs) */
+  -webkit-mask: var(--pic) 0 0 / 100% 100%; mask: var(--pic) 0 0 / 100% 100%; }
+.sil::after { content: ''; position: absolute; inset: 0; background: var(--bg); -webkit-mask: var(--obj) 0 0 / 100% 100%; mask: var(--obj) 0 0 / 100% 100%; }   /* the soft shape, in the page's colour */
+.empty .e-line { position: relative; max-width: 320px; margin-top: -2.5px; font-size: 17px; line-height: 1.35; color: var(--ink); text-wrap: balance; overflow-wrap: anywhere;
+                 text-shadow: 0 0 6px var(--canvas), 0 0 12px var(--canvas), 0 0 20px var(--canvas), 0 0 28px var(--canvas); }
+.empty .e-line .e-act { display: inline; margin: 0; padding: 0; border: 0; background: none; font: inherit; font-weight: 500; color: var(--cta-solid); }
+.empty > .e-act { position: relative; padding: 8px 12px; border: 0; background: none; color: var(--cta-solid); font: inherit; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
 .empty .e-act:hover { opacity: .8; }
-.empty .e-act + .e-act { margin-top: 0; }
+.empty > b { font-size: 17px; font-weight: 600; color: var(--ink); }   /* the swap list's two-line hint (pos-sell.js), no picture */
+.empty > b + span { max-width: 30ch; font-size: 14px; line-height: 1.4; color: var(--ink-tertiary); }
 #variantList .empty { height: auto; }
-#itemsRows:has(> .empty) { height: 100%; }   /* centred on the page, as Orders and Customers */
+.view-orders:has(#ordersList > .empty) #orderDetail > .empty, .view-customers:has(#customersList > .empty) #customerBody > .empty { display: none; }   /* iPad: one picture a page -- an empty list leaves the side pane blank (owner 2026-11-06) */
+/* iPad, nothing to list and nothing open: the side pane goes and the list's picture sits in the middle of the screen; the search stays in its column (owner 2026-11-06) */
+@container pv (min-width: 721px) {
+  .lv .ov:is(:has(#ordersList > .empty):has(#orderDetail > .empty), :has(#customersList > .empty):has(#customerBody > .empty)) > .o-main { display: none; }
+  .lv .ov:is(:has(#ordersList > .empty):has(#orderDetail > .empty), :has(#customersList > .empty):has(#customerBody > .empty)) > .o-rail { grid-column: 1 / -1; grid-template-columns: inherit; column-gap: 18px; }
+  .lv .ov:is(:has(#ordersList > .empty):has(#orderDetail > .empty), :has(#customersList > .empty):has(#customerBody > .empty)) > .o-rail > .list { grid-column: 1 / -1; }
+}
+#itemsLines > :has(> .empty), .view-items .tab-peek > :has(> .empty) { height: 100%; }   /* centred on the page, as Orders and Customers; the swipe's peek too, or its picture rides in high and drops (owner 2026-11-06) */
 .c-body:has(> #shiftBody > .empty) { min-height: 100%; grid-template-rows: auto 1fr; }   /* Cash in & out: the same */
+#shiftPage .c-body:has(> .tab-peek > .empty) { position: relative; min-height: 100%; } #shiftPage .tab-peek:has(> .empty) { bottom: 0; }   /* its peek fills the page down to the bottom, so the picture rides in where it lands */
 #shiftPastBody > .c-body:has(> .empty) { min-height: 100%; }   /* Past shifts: the same (it sat under the head, 2026-11-06) */
 
 /* the receipt's and the editor's actions: compact boxes, the search's fill and ring */

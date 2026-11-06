@@ -208,16 +208,24 @@ function escapeHtml(s) {
   }[c]));
 }
 
-// Every empty page and search (owner 2026-11-06): one look -- the page's own menu icon (an Items tab's own; a search: the magnifier), a
-// title, one plain line, at most one thing to do. emptyAct's tap is a selector the button clicks (app.js), so the
-// action is always a button already on the page (its +, its Filter, the menu's Sell).
-const SEARCH_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
-function emptyState(icon, title, sub = '', act = '') {
-  const ic = icon === 'search' ? SEARCH_IC : (icon && document.querySelector(`.side-link[data-view="${icon}"] svg, #itemsKinds [data-kind="${icon}"] svg`)?.outerHTML) || '';
-  return `<div class="empty">${ic && `<span class="e-ic">${ic}</span>`}<b>${title}</b>${sub && `<span>${sub}</span>`}${act}</div>`;
+// Every empty page and search (owner's C1 from empty-lab, 2026-11-06): the silhouette -- the page's thing drawn in white
+// in a blurred blue haze, one size everywhere -- and one plain line under it. An action rides in the line as a blue word
+// (emptyAct); where the page has its own +, the line says "Tap +" instead. emptyAct's tap is a selector the word clicks
+// (app.js), so it is always a button already on the page. `more`: buttons under the line (Sell search). `pic`: a
+// picture name; each is baked by scripts/bake-empty-pics.mjs (its drawings live there) into img/empty/<pic>.png, the haze, and
+// <pic>-obj.png, the soft white shape: two masks, no live filter, so swipes stay smooth on the iPhone (owner 2026-11-06).
+// They are fetched once at start and kept in memory (blob: URLs): a page shows its picture the moment it opens, never
+// after a trip to the server, which may say no-store (owner 2026-11-06: "it takes a while for it to load").
+const EMPTY_PICS = {};
+for (const f of ['grain', ...'search box folder folders tags receipt people cash clock sliders addon'.split(' ').flatMap(p => [p, p + '-obj'])])
+  fetch(`img/empty/${f}.png`).then(r => r.blob()).then(b => { EMPTY_PICS[f] = URL.createObjectURL(b); }).catch(() => {});
+const emptyPic = f => `url(${EMPTY_PICS[f] || `img/empty/${f}.png`})`;
+function emptyState(pic, line, more = '') {
+  return `<div class="empty"><div class="sil" style="--pic: ${emptyPic(pic)}; --obj: ${emptyPic(pic + '-obj')}; --grain: ${emptyPic('grain')}" aria-hidden="true"></div>`
+    + `<span class="e-line">${line}</span>${more}</div>`;
 }
-const emptyAct = (text, tap) => `<button type="button" class="e-act cta-3" data-tap='${tap}'>${text}</button>`;
-const noResults = q => emptyState('search', `No results for “${escapeHtml(q)}”`, 'Check the spelling or try a new search.');
+const emptyAct = (text, tap) => `<button type="button" class="e-act" data-tap='${tap}'>${text}</button>`;
+const noResults = q => emptyState('search', `No results for “${escapeHtml(q)}”`);
 
 // Every toast is the "Added" chip (owner's pick from toast-lab.html, 2026-10-19; all toasts 2026-10-19): a small white
 // pill that rises in like a notification. `done`: the filled tick, for something that worked (showDone); without it, a

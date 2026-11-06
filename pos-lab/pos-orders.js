@@ -249,9 +249,9 @@ function renderOrders() {
   }
   const q = (state.ordersQuery || '').trim();
   list.innerHTML = html || (q ? noResults(q) : !orderRows().length
-    ? emptyState('orders', 'No orders yet', 'Every sale you complete shows up here.', emptyAct('Start a sale', '.side-link[data-view="sell"]'))
-    : emptyState('orders', ordersFiltered() ? 'No orders match' : state.ordersFilter.range === 'today' ? 'Nothing sold today' : 'Nothing sold in the last 7 days',
-      ordersFiltered() ? 'Nothing in these filters.' : 'Older orders are one tap away.', emptyAct(ordersFiltered() ? 'Change filters' : 'Show all orders', '#ordersFilter')));
+    ? emptyState('receipt', `Your sales show up here. ${emptyAct('Start a sale', '.side-link[data-view="sell"]')}`)
+    : emptyState('receipt', `${ordersFiltered() ? 'No orders match' : state.ordersFilter.range === 'today' ? 'Nothing sold today' : 'Nothing sold in the last 7 days'}. ${
+      emptyAct(ordersFiltered() ? 'Change filters' : 'Show all orders', '#ordersFilter')}`));
   $('#ordersFilter')?.classList.toggle('on', ordersFiltered());
   renderOrderDetail();
 }
@@ -265,7 +265,7 @@ function renderOrderDetail() {
   if (!o) {
     $('#orderCancel').hidden = true; $('#orderPrint').hidden = $('#orderMore').hidden = false;
     ttl.innerHTML = '';
-    detail.innerHTML = emptyState('orders', 'No order selected', 'Pick one from the list to see its receipt.');
+    detail.innerHTML = emptyState('receipt', 'No order selected');
     return;
   }
   ttl.innerHTML = `<b class="${o.customer ? '' : 'walk'}">${escapeHtml(o.customer ? o.customer.name : 'Walk-in customer')}</b>${orderFlag(o)}`;
