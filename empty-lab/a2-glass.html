@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empty states · A2 Glass</title>
+<style>
+  /* body.light-theme in pos-lab/styles.css — white first */
+  :root {
+    --bg: #FFFFFF; --bg-soft: #EDEDED; --surface: #F9F9F9; --line: #E1E1E1;
+    --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C;
+    --cta-solid: #4388F7;
+    --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --page: #EDEDED;
+    /* glass recipe — measured on the refs, see refs/a-notes.md */
+    --solid: var(--cta-solid);
+    --fz-base: #FFFFFF;   /* frost body */
+    --fz-k: .45;          /* how much of the blurred blue shows through */
+    --fz-t: .07;          /* blue tint of the frost itself */
+    --fz-lift: .15;       /* frost gets whiter toward the bottom */
+    --glow-op: .28;
+    --on-solid: #FFFFFF;
+  }
+  /* pos-lab/styles.css :root (dark) */
+  body.dark {
+    --bg: #121212; --bg-soft: #1C1C1C; --surface: #2A2A2A; --line: rgba(255,255,255,.08);
+    --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45);
+    --page: #0A0A0A;
+    --fz-base: #343941; --fz-k: .6; --fz-t: .12; --fz-lift: .04;
+    --glow-op: .5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 28px 40px 8px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  h1 small { display: block; font-size: 13px; font-weight: 400; color: var(--ink-tertiary); margin-top: 4px; letter-spacing: 0; }
+  .toggle { display: flex; background: var(--bg-soft); border-radius: 999px; padding: 3px; }
+  .toggle button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--ink-secondary); padding: 7px 16px; border-radius: 999px; cursor: pointer; }
+  .toggle button[aria-pressed="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  body.dark .toggle button[aria-pressed="true"] { background: var(--surface); }
+  main { padding: 0 40px 48px; }
+  h2 { font-size: 15px; font-weight: 600; color: var(--ink-secondary); margin: 30px 0 14px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 22px 18px; }
+  figure { margin: 0; }
+  .card { width: 300px; height: 420px; background: var(--bg); border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 28px 20px; text-align: center; border: 1px solid var(--line); }
+  .card svg { width: 128px; height: 128px; overflow: visible; margin-bottom: 26px; }
+  .card b { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+  .card p { margin: 8px 0 0; font-size: 14px; line-height: 1.35; color: var(--ink-tertiary); }
+  figcaption { font-size: 12px; color: var(--ink-tertiary); margin-top: 8px; padding-left: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>A2 · Glass layers<small>Flat blue behind, near-white frost in front, the blue blurred through it, a soft blue glow. Recipe copied from the refs.</small></h1>
+  <div class="toggle" role="group" aria-label="Theme">
+    <button id="tLight" aria-pressed="true">Light</button>
+    <button id="tDark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<main id="main"></main>
+
+<script>
+// Each art: solid (flat blue, behind) + frost (in front) + marks (crisp blue on the frost) + white (on the solid). 140-unit box.
+const ART = {
+  search: {
+    solid: '<rect x="-12" y="0" width="24" height="70" rx="12" transform="translate(60 60) rotate(-45)"/>',
+    frost: '<circle cx="56" cy="56" r="40"/>',
+  },
+  tag: {
+    solid: '<path transform="translate(16 -18) rotate(12 72 70)" d="M58 38H108Q118 38 118 48V92Q118 102 108 102H58Q53 102 49 98L28 76Q24 70 28 64L49 42Q53 38 58 38Z"/>',
+    frost: '<path d="M58 40H110Q120 40 120 50V96Q120 106 110 106H58Q53 106 49 102L26 79Q21 73 26 67L49 44Q53 40 58 40Z"/>',
+    marks: '<circle cx="48" cy="73" r="7"/>',
+  },
+  folder: {
+    solid: '<path d="M24 34Q24 24 34 24H58Q64 24 68 29L73 36H116Q126 36 126 46V100H24Z"/>',
+    frost: '<path d="M12 60Q12 52 20 52H106Q115 52 114 61L110 108Q109 118 99 118H28Q18 118 17 108Z"/>',
+  },
+  box: {
+    solid: '<path d="M26 60L16 36Q14 29 21 29L62 34L68 60Z"/><path d="M114 60L124 36Q126 29 119 29L78 34L72 60Z"/><rect x="24" y="48" width="92" height="40" rx="8"/>',
+    frost: '<rect x="18" y="56" width="104" height="62" rx="12"/>',
+    marks: '<rect x="56" y="74" width="28" height="7" rx="3.5"/>',
+  },
+  bag: {
+    solid: '<path fill-rule="evenodd" d="M44 62V46A26 26 0 0 1 96 46V62H84V46A14 14 0 0 0 56 46V62Z"/><rect x="30" y="44" width="80" height="34" rx="10"/>',
+    frost: '<path d="M24 66Q24 56 34 56H106Q116 56 116 66L119 108Q120 120 108 120H32Q20 120 21 108Z"/>',
+  },
+  receipt: {
+    solid: '<rect x="52" y="18" width="62" height="84" rx="10" transform="rotate(12 83 60)"/>',
+    frost: '<path d="M26 32Q26 22 36 22H90Q100 22 100 32V118L92.5 111L85 118L77.5 111L70 118L62.5 111L55 118L47.5 111L40 118L32.5 111L26 118Z"/>',
+    marks: '<rect x="40" y="42" width="40" height="7" rx="3.5"/><rect x="40" y="58" width="28" height="7" rx="3.5"/>',
+  },
+  calendar: {
+    solid: '<rect x="20" y="28" width="100" height="46" rx="14"/><rect x="40" y="16" width="12" height="26" rx="6"/><rect x="88" y="16" width="12" height="26" rx="6"/>',
+    frost: '<rect x="20" y="48" width="100" height="72" rx="14"/>',
+    marks: '<rect x="78" y="86" width="22" height="20" rx="6"/>',
+  },
+  select: {   /* ref-02: a stack of list rows, a frosted pane in front */
+    solid: '<rect x="14" y="26" width="78" height="26" rx="7"/><rect x="14" y="56" width="78" height="26" rx="7"/><rect x="14" y="86" width="78" height="26" rx="7"/>',
+    white: '<circle cx="27" cy="39" r="3"/><circle cx="27" cy="69" r="3"/><circle cx="27" cy="99" r="3"/><rect x="37" y="37.6" width="34" height="2.8" rx="1.4"/>',
+    frost: '<rect x="62" y="40" width="66" height="80" rx="10"/>',
+    marks: '<rect x="74" y="54" width="30" height="6" rx="3"/><rect x="74" y="67" width="42" height="6" rx="3" opacity=".45"/>',
+  },
+  grid: {   /* ref-05 window: a solid block, a 2×2 of frosted panes over its corner */
+    solid: '<rect x="14" y="46" width="86" height="70" rx="14"/>',
+    frost: '<rect x="50" y="22" width="35" height="35" rx="9"/><rect x="89" y="22" width="35" height="35" rx="9"/><rect x="50" y="61" width="35" height="35" rx="9"/><rect x="89" y="61" width="35" height="35" rx="9"/>',
+  },
+  toggle: {   /* blue "on" track, glass knob */
+    solid: '<rect x="12" y="46" width="112" height="48" rx="24"/>',
+    frost: '<circle cx="96" cy="70" r="34"/>',
+  },
+  plus: {
+    solid: '<rect x="16" y="16" width="64" height="64" rx="18"/>',
+    frost: '<circle cx="84" cy="84" r="40"/>',
+    marks: '<rect x="80" y="66" width="8" height="36" rx="4"/><rect x="66" y="80" width="36" height="8" rx="4"/>',
+  },
+  percent: {
+    solid: '<circle cx="92" cy="46" r="32"/>',
+    frost: '<rect x="16" y="40" width="86" height="84" rx="22"/>',
+    marks: '<circle cx="45" cy="68" r="7"/><circle cx="73" cy="96" r="7"/><rect x="-4" y="-26" width="8" height="52" rx="4" transform="translate(59 82) rotate(45)"/>',
+  },
+  person: {   /* ref-04 Friend */
+    solid: '<circle cx="70" cy="47" r="27"/>',
+    frost: '<path d="M30 102A40 36 0 0 1 110 102V108Q110 116 102 116H38Q30 116 30 108Z"/>',
+  },
+  cash: {
+    solid: '<rect x="34" y="20" width="92" height="58" rx="12" transform="rotate(-10 80 49)"/>',
+    frost: '<rect x="14" y="52" width="104" height="64" rx="13"/>',
+    marks: '<circle cx="66" cy="84" r="13"/>',
+  },
+  clock: {
+    solid: '<circle cx="94" cy="46" r="32"/>',
+    frost: '<circle cx="62" cy="78" r="44"/>',
+    marks: '<rect x="58" y="52" width="8" height="30" rx="4"/><rect x="58" y="74" width="26" height="8" rx="4"/>',
+  },
+  printer: {
+    solid: '<rect x="36" y="16" width="68" height="52" rx="10"/>',
+    white: '<rect x="48" y="28" width="32" height="3" rx="1.5"/><rect x="48" y="37" width="22" height="3" rx="1.5"/>',
+    frost: '<rect x="14" y="50" width="112" height="60" rx="16"/>',
+    marks: '<rect x="36" y="90" width="68" height="7" rx="3.5"/><circle cx="106" cy="68" r="5"/>',
+  },
+  bars: {
+    solid: '<rect x="24" y="52" width="24" height="64" rx="8"/><rect x="58" y="22" width="24" height="94" rx="8"/><rect x="92" y="40" width="24" height="76" rx="8"/>',
+    frost: '<rect x="12" y="72" width="116" height="48" rx="14"/>',
+  },
+};
+
+const PAGES = [
+  ['Sell', [
+    ['search',  'No results',               'Try another word or spelling.',      'Sell · search'],
+    ['tag',     'No items yet',             'Add items to start selling.',        'Sell · catalog empty'],
+    ['folder',  'No items in this category','Move items here from Items.',        'Sell · empty category'],
+    ['box',     'All sold out',             'Every option of this item is out.',  'Sell · variants sold out'],
+    ['bag',     'Cart is empty',            'Tap an item to add it.',             'Sell · cart'],
+    ['search',  'No customer found',        'Check the name or phone number.',    'Sell · customer picker'],
+  ]],
+  ['Orders', [
+    ['receipt', 'No orders yet',            'Sales on this POS show up here.',    'Orders · no orders'],
+    ['calendar','Nothing sold today',       'Today’s sales show up here.',        'Orders · today'],
+    ['search',  'No orders match',          'Try clearing a filter.',             'Orders · filters'],
+    ['select',  'No order selected',        'Pick one from the list.',            'Orders · iPad detail pane'],
+  ]],
+  ['Items', [
+    ['tag',     'No items yet',             'Add your first item with +.',        'Items · items'],
+    ['grid',    'No categories',            'Group items, like Drinks or Snacks.','Items · categories'],
+    ['toggle',  'No modifiers yet',         'Choices like size or sugar level.',  'Items · modifiers'],
+    ['plus',    'No add-ons yet',           'Extras sold with an item.',          'Items · add-ons'],
+    ['percent', 'No discounts yet',         'Save one to use at checkout.',       'Items · discounts'],
+  ]],
+  ['Customers', [
+    ['person',  'No customers yet',         'Save a customer to see their orders.','Customers · list'],
+    ['select',  'No customer selected',     'Pick one from the list.',            'Customers · iPad detail pane'],
+  ]],
+  ['Shift', [
+    ['cash',    'No cash in or out yet',    'Drawer money moves show up here.',   'Shift · cash in / out'],
+    ['clock',   'No past shifts yet',       'Each closed shift shows up here.',   'Shift · past shifts'],
+  ]],
+  ['Reports', [
+    ['bars',    'Nothing sold today',       'Sales show up here as they happen.', 'Reports · today'],
+  ]],
+  ['Settings', [
+    ['printer', 'No printer connected',     'Tap Scan to search your Wi-Fi.',     'Settings · printers'],
+  ]],
+];
+
+// The recipe proven in a2-copy.html (σ in 140-unit space; drawn at 112 px).
+const SF = 10, SG = 13, GX = 5, GY = 12;
+let n = 0;
+function svg(a) {
+  const id = 'g' + (n++);
+  const big = 'x="-60%" y="-60%" width="220%" height="220%"';
+  const glow = `<g transform="translate(${GX} ${GY})" fill="var(--solid)" filter="url(#${id}g)">${a.frost}</g>`;
+  return `<svg viewBox="0 0 140 140" aria-hidden="true">
+  <defs>
+    <clipPath id="${id}c">${a.frost.replace(/fill-rule/g, 'clip-rule')}</clipPath>
+    <filter id="${id}g" ${big}><feGaussianBlur stdDeviation="${SG}"/></filter>
+    <filter id="${id}f" ${big}><feGaussianBlur stdDeviation="${SF}"/></filter>
+    <linearGradient id="${id}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" style="stop-opacity:var(--fz-lift)"/></linearGradient>
+  </defs>
+  <g style="opacity:var(--glow-op)">${glow}</g>
+  <g fill="var(--solid)">${a.solid}</g>
+  <g clip-path="url(#${id}c)">
+    <rect x="-20" y="-20" width="180" height="180" fill="var(--fz-base)"/>
+    <g style="opacity:var(--fz-k)"><g fill="var(--solid)" filter="url(#${id}f)">${a.solid}</g><g style="opacity:var(--glow-op)">${glow}</g></g>
+    <rect x="-20" y="-20" width="180" height="180" fill="var(--solid)" style="opacity:var(--fz-t)"/>
+    <rect x="-20" y="-20" width="180" height="180" fill="url(#${id}l)"/>
+  </g>
+  ${a.white ? `<g fill="var(--on-solid)">${a.white}</g>` : ''}
+  ${a.marks ? `<g fill="var(--solid)">${a.marks}</g>` : ''}
+</svg>`;
+}
+document.getElementById('main').innerHTML = PAGES.map(([page, states]) =>
+  `<h2>${page}</h2><div class="grid">${states.map(([art, t, line, label]) =>
+    `<figure><div class="card">${svg(ART[art])}<b>${t}</b><p>${line}</p></div><figcaption>${label}</figcaption></figure>`
+  ).join('')}</div>`).join('');
+
+const setTheme = dark => {
+  document.body.classList.toggle('dark', dark);
+  tDark.setAttribute('aria-pressed', dark);
+  tLight.setAttribute('aria-pressed', !dark);
+};
+tDark.onclick = () => setTheme(true);
+tLight.onclick = () => setTheme(false);
+if (location.hash === '#dark') setTheme(true);
+</script>
+</body>
+</html>

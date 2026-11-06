@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sale complete — B</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* Tokens copied from pos-lab/styles.css :root + body.light-theme (2026-11-06). Lab file: one page, six takes on the done screen. */
+:root {
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --hero-y: 194px;                 /* clamp(140px, 22.8dvh, 300px) on an 852 phone */
+  --hero-fw: 550;
+  --safe-t: 62px; --safe-b: 34px; --gut: 24px;
+  --cta-solid: #4388F7;
+  --cta-bg: radial-gradient(75% 80% at 50% 120%, #8EC2F0, transparent 85%), linear-gradient(#6A9FF9, var(--cta-solid) 50%, #5592F7);
+  --cta-ink: #DDF4FF;
+  --cta-shadow: inset 0 0 0 .5px rgb(170 228 255 / .32), inset 1px 1px 1.5px -.5px rgb(170 228 255 / .55), inset -1px -1px 1.5px -.5px rgb(170 228 255 / .45), 0 1px 2px rgb(41 85 151 / .22);
+}
+.light {
+  --bg: #F2F2F2;  /* --canvas: the done screen sits on it */
+  --card: #FFFFFF;
+  --line: #E1E1E1;
+  --ink: #303030; --ink-2: #616161; --ink-3: #8C8C8C; --ink-4: #B5B5B5;
+  --ok: #047B5D; --mint: #DCF0E3;
+  --ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+  color-scheme: light;
+}
+.dark {
+  --bg: #121212;
+  --card: #262626;
+  --line: rgba(255, 255, 255, .10);
+  --ink: #FFFFFF; --ink-2: rgba(255, 255, 255, .70); --ink-3: rgba(255, 255, 255, .45); --ink-4: rgba(255, 255, 255, .28);
+  --ok: #7ACB9C; --mint: #1C3326;
+  --ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .08);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: var(--font); letter-spacing: -0.15px; -webkit-font-smoothing: antialiased; background: #DCDCE0; color: #303030; }
+body.dark-page { background: #0A0A0A; color: #EEE; }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- the lab's own bar ---------- */
+.bar { position: sticky; top: 0; z-index: 5; display: flex; gap: 12px; align-items: center; padding: 16px 24px;
+  background: color-mix(in srgb, currentColor 0%, transparent); }
+.bar h1 { font-size: 15px; font-weight: 600; margin: 0 12px 0 0; }
+.seg { display: inline-flex; padding: 3px; border-radius: 999px; background: rgb(0 0 0 / .07); }
+.dark-page .seg { background: rgb(255 255 255 / .09); }
+.seg button { height: 30px; padding: 0 16px; border-radius: 999px; font-size: 13px; font-weight: 500; opacity: .6; }
+.seg button[aria-pressed="true"] { opacity: 1; background: #fff; color: #303030; box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+.dark-page .seg button[aria-pressed="true"] { background: #3A3A3A; color: #fff; }
+
+.row { display: flex; gap: 40px; padding: 12px 40px 48px; overflow-x: auto; }
+figure { margin: 0; flex: none; }
+figcaption { width: 393px; margin-top: 18px; font-size: 13px; line-height: 1.45; opacity: .62; }
+figcaption b { display: block; font-size: 15px; font-weight: 600; opacity: 1; margin-bottom: 2px; }
+.dark-page figcaption b, figcaption b { color: inherit; }
+
+/* ---------- the phone ---------- */
+.phone { position: relative; width: 393px; height: 852px; border-radius: 48px; overflow: hidden;
+  background: var(--bg); color: var(--ink); box-shadow: 0 0 0 1px rgb(0 0 0 / .08), 0 20px 50px rgb(0 0 0 / .10); }
+.phone.dark { box-shadow: 0 0 0 1px rgb(255 255 255 / .08), 0 20px 50px rgb(0 0 0 / .5); }
+.phone::after { content: ''; position: absolute; left: 50%; bottom: 8px; width: 134px; height: 5px; margin-left: -67px;
+  border-radius: 3px; background: var(--ink); opacity: .85; z-index: 9; }
+.scr { position: absolute; inset: 0; }
+
+/* shared parts: the app's .cta and its glass second button */
+.cta { display: flex; align-items: center; justify-content: center; gap: 8px; height: 56px; border-radius: 999px;
+  background: var(--cta-bg); color: var(--cta-ink); box-shadow: var(--cta-shadow); font-size: 17px; font-weight: 600; }
+.cta2 { display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; border-radius: 999px;
+  background: var(--card); box-shadow: var(--ring); font-size: 15px; font-weight: 550; color: var(--ink); }
+.ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.cur { font-size: .52em; vertical-align: .62em; margin-right: .06em; font-weight: 500; letter-spacing: 0; }
+.ok { color: var(--ok); }
+.dim { color: var(--ink-3); }
+
+/* calm entrance: things rise 10px and fade in, one after another */
+.rise { animation: rise .55s var(--ease) both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .rise, .sheet { animation: none !important; } }
+
+/* ===== 1 Ledger: the sum set like a bill; the answer is its last line ===== */
+.c1 { padding: 0 var(--gut); }
+.c1 .top { position: absolute; top: var(--safe-t); left: var(--gut); display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 550; color: var(--ink-2); }
+.c1 .top .ic { width: 18px; height: 18px; stroke-width: 2.2; color: var(--ok); }
+.c1 .sum { position: absolute; top: var(--hero-y); left: var(--gut); right: var(--gut); }
+.c1 .ln { display: flex; justify-content: space-between; align-items: baseline; font-size: 17px; color: var(--ink-2); padding: 5px 0; }
+.c1 .ln b { font-weight: 500; color: var(--ink); }
+.c1 .ln.ref { font-size: 14px; color: var(--ink-3); padding-top: 0; }
+.c1 .ln.ref b { color: var(--ink-3); font-weight: 400; }
+.c1 hr { border: 0; border-top: 1.5px solid var(--ink); margin: 14px 0 12px; opacity: .9; }
+.c1 .res { display: flex; justify-content: space-between; align-items: baseline; }
+.c1 .res span { font-size: 17px; font-weight: 600; }
+.c1 .res b { font-size: 58px; font-weight: var(--hero-fw); letter-spacing: -1.6px; line-height: 1.1; }
+.c1 .acts { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.c1 .acts .cta { grid-column: 1 / -1; }
+
+/* ===== 2 Sentence: one line of type says it; a shutter row below ===== */
+.c2 .say { position: absolute; top: calc(var(--hero-y) - 40px); left: var(--gut); right: var(--gut); }
+.c2 h2 { margin: 0; font-size: 52px; line-height: 1.04; font-weight: var(--hero-fw); letter-spacing: -1.8px; }
+.c2 p { margin: 20px 0 0; font-size: 17px; line-height: 1.45; color: var(--ink-2); max-width: 300px; }
+.c2 .shut { position: absolute; left: 0; right: 0; bottom: calc(var(--safe-b) + 18px); display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; padding: 0 20px; }
+.c2 .sb { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.c2 .sb i { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; background: var(--card); box-shadow: var(--ring); color: var(--ink); }
+.c2 .sb.go i { width: 84px; height: 84px; background: var(--cta-bg); box-shadow: var(--cta-shadow); color: var(--cta-ink); }
+.c2 .sb.go i .ic { width: 30px; height: 30px; stroke-width: 2; }
+.c2 .sb.go { color: var(--ink); font-size: 15px; font-weight: 600; margin-top: -24px; }
+
+/* ===== 3 Plate: a field of colour holds the money; New sale is a slab ===== */
+.c3 .plate { position: absolute; left: 8px; right: 8px; top: 8px; height: 520px; border-radius: 40px; background: var(--card);
+  padding: calc(var(--safe-t) - 8px) 24px 32px; display: flex; flex-direction: column; justify-content: space-between; }
+.c3 .plate.give { background: var(--mint); }
+.c3 .plate .k { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 550; color: var(--ink-2); }
+.c3 .plate .k .ic { width: 18px; height: 18px; stroke-width: 2.2; }
+.c3 .plate small { display: block; font-size: 15px; color: var(--ink-2); margin-top: 6px; }
+.c3 .lab { font-size: 19px; font-weight: 600; margin-bottom: 2px; }
+.c3 .big { font-size: 76px; line-height: 1; font-weight: var(--hero-fw); letter-spacing: -2.6px; }
+.c3 .big.words { font-size: 60px; letter-spacing: -2px; line-height: 1.02; }
+.c3 .two { position: absolute; left: var(--gut); right: var(--gut); top: 548px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.c3 .slab { position: absolute; left: 8px; right: 8px; bottom: 30px; height: 132px; border-radius: 40px; padding: 0 28px;
+  display: flex; align-items: center; justify-content: space-between; background: var(--cta-bg); color: var(--cta-ink); box-shadow: var(--cta-shadow); font-size: 22px; font-weight: 600; }
+.c3 .slab .ic { width: 30px; height: 30px; stroke-width: 2; }
+
+/* ===== 4 Poster: paperwork up top, the money and the next sale under the thumb ===== */
+.c4 .head { position: absolute; top: var(--safe-t); left: var(--gut); right: var(--gut); }
+.c4 .k { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 550; color: var(--ink-2); }
+.c4 .k .ic { width: 18px; height: 18px; stroke-width: 2.2; color: var(--ok); }
+.c4 .facts { margin-top: 14px; font-size: 15px; line-height: 1.6; color: var(--ink-3); }
+.c4 .facts b { color: var(--ink-2); font-weight: 500; }
+.c4 .two { margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.c4 .foot { position: absolute; left: var(--gut); right: var(--gut); bottom: calc(var(--safe-b) + 12px); }
+.c4 .lab { font-size: 20px; font-weight: 600; }
+.c4 .big { font-size: 92px; line-height: 1; font-weight: var(--hero-fw); letter-spacing: -4px; margin: 6px 0 32px -4px; white-space: nowrap; }
+.c4 .foot .cta { width: 100%; }
+.c4 .big.words { font-size: 72px; letter-spacing: -2.6px; }
+
+/* ===== 5 Sheet: the checkout stays; the answer rises over it ===== */
+.c5 .was { position: absolute; top: var(--hero-y); left: 0; right: 0; text-align: center; }
+.c5 .was b { display: block; color: var(--ink-3); font-size: 59px; font-weight: var(--hero-fw); letter-spacing: -1.6px; line-height: 1.1; }
+.c5 .was span { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 15px; font-weight: 550; color: var(--ink-2); }
+.c5 .was .ic { width: 16px; height: 16px; stroke-width: 2.4; color: var(--ok); }
+.c5 .sheet { position: absolute; left: 8px; right: 8px; bottom: 8px; border-radius: 40px; background: var(--card); box-shadow: var(--ring), 0 -10px 40px rgb(0 0 0 / .06);
+  padding: 28px 16px 30px; animation: up .6s var(--ease) both .08s; }
+.c5 .sheet.give { background: var(--mint); box-shadow: none; }
+@keyframes up { from { transform: translateY(105%); } }
+.c5 .say { padding: 0 8px 26px; }
+.c5 .say span { display: block; font-size: 17px; font-weight: 600; color: var(--ok); }
+.c5 .say b { display: block; font-size: 64px; font-weight: var(--hero-fw); letter-spacing: -2px; line-height: 1.05; }
+.c5 .say.none span { color: var(--ink-3); font-weight: 500; }
+.c5 .say.none b { font-size: 28px; letter-spacing: -.6px; margin-top: 4px; }
+.c5 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.c5 .give .cta2 { background: color-mix(in srgb, var(--card) 70%, transparent); }
+
+/* ===== 6 Keys: a readout window and three physical keys ===== */
+.c6 .lcd { position: absolute; top: var(--safe-t); left: 12px; right: 12px; bottom: 294px;   /* down to the keys: one window, one keypad */
+  border-radius: 32px; background: var(--card); box-shadow: var(--ring);
+  padding: 24px; display: flex; flex-direction: column; }
+.c6 .lcd.give { background: var(--mint); box-shadow: none; }
+.c6 .cap { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); }
+.c6 .give .cap span:first-child { color: var(--ok); }
+.c6 .read { margin-top: auto; text-align: right; font-size: 80px; line-height: 1; font-weight: var(--hero-fw); letter-spacing: -3px; }
+.c6 .read.zero { color: var(--ink-4); }
+.c6 .tape { display: flex; justify-content: space-between; margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line);
+  font-size: 12px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+.c6 .give .tape { border-color: color-mix(in srgb, var(--ok) 22%, transparent); }
+.c6 .tape b { display: block; margin-top: 4px; font-size: 15px; letter-spacing: 0; text-transform: none; color: var(--ink); font-weight: 550; }
+.c6 .keys { position: absolute; left: 12px; right: 12px; bottom: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.c6 .key { height: 112px; border-radius: 28px; padding: 18px 20px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;
+  background: var(--card); box-shadow: var(--ring); font-size: 16px; font-weight: 600; text-align: left; }
+.c6 .key.go { grid-column: 1 / -1; height: 132px; background: var(--cta-bg); color: var(--cta-ink); box-shadow: var(--cta-shadow); font-size: 20px; }
+.c6 .key.go .ic { width: 28px; height: 28px; stroke-width: 2; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5.2 7.1L19.8 4.4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/></symbol>
+  <symbol id="i-rcpt" viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21z"/><path d="M9 8h6M9 12h6"/></symbol>
+</svg>
+
+<div class="bar">
+  <h1>Sale complete · B</h1>
+  <div class="seg" id="segState">
+    <button data-v="change" aria-pressed="true">Change</button><button data-v="exact" aria-pressed="false">Exact cash</button><button data-v="gcash" aria-pressed="false">GCash</button>
+  </div>
+  <div class="seg" id="segTheme">
+    <button data-v="light" aria-pressed="true">Light</button><button data-v="dark" aria-pressed="false">Dark</button>
+  </div>
+</div>
+<div class="row" id="row"></div>
+
+<script>
+const ic = id => `<svg class="ic"><use href="#i-${id}"/></svg>`;
+const P = n => `<span class="cur">₱</span>${n}`;   // display money: the peso small and raised
+const STATES = {
+  change: { give: '385.00', method: 'Cash', paid: '1,000.00' },
+  exact:  { give: null,     method: 'Cash', paid: '615.00' },
+  gcash:  { give: null,     method: 'GCash', paid: '615.00', ref: '7012 345 678' },
+};
+const SALE = '615.00';
+const print = (cls = 'cta2', i = 3) => `<button class="${cls} rise" style="--i:${i}">${ic('print')}Print receipt</button>`;
+const show = (cls = 'cta2', i = 3) => `<button class="${cls} rise" style="--i:${i}">${ic('rcpt')}Show receipt</button>`;
+
+const CONCEPTS = [
+  { name: 'Ledger', line: 'The sale set as a bill: what it cost, what they gave, and under the rule, the answer in big type.',
+    draw: s => `<div class="c1">
+      <div class="top rise">${ic('check')}Sale complete</div>
+      <div class="sum">
+        <div class="ln rise" style="--i:1"><span>Sale</span><b class="num">₱${SALE}</b></div>
+        <div class="ln rise" style="--i:1"><span>${s.method}</span><b class="num">₱${s.paid}</b></div>
+        ${s.ref ? `<div class="ln ref rise" style="--i:1"><span>Ref</span><b class="num">${s.ref}</b></div>` : ''}
+        <hr class="rise" style="--i:2">
+        <div class="res rise" style="--i:2">${s.give
+          ? `<span class="ok">Give back</span><b class="num ok">₱${s.give}</b>`
+          : `<span class="dim">No change</span><b class="num" style="color:var(--ink-4)">₱0.00</b>`}</div>
+        <div class="acts"><button class="cta rise" style="--i:3">New sale</button>${print('cta2', 4)}${show('cta2', 4)}</div>
+      </div></div>` },
+
+  { name: 'Sentence', line: 'One sentence in big type says what to do; New sale is the round shutter button, receipts either side.',
+    draw: s => `<div class="c2">
+      <div class="say">
+        <h2 class="rise">${s.give ? `<span class="dim">Give back</span><br><span class="ok num">₱${s.give}</span>`
+          : s.ref ? `GCash.<br><span class="dim">No change.</span>` : `Exact cash.<br><span class="dim">No change.</span>`}</h2>
+        <p class="rise" style="--i:1">${s.give ? `₱${s.paid} cash for a ₱${SALE} sale.`
+          : s.ref ? `₱${SALE} paid by GCash.<br>Ref ${s.ref}` : `₱${SALE} paid in cash.`}</p>
+      </div>
+      <div class="shut">
+        <button class="sb rise" style="--i:3"><i>${ic('print')}</i>Print</button>
+        <button class="sb go rise" style="--i:2"><i>${ic('plus')}</i>New sale</button>
+        <button class="sb rise" style="--i:3"><i>${ic('rcpt')}</i>Receipt</button>
+      </div></div>` },
+
+  { name: 'Plate', line: 'A soft mint field means money goes back; grey means done. New sale is a big slab you can’t miss.',
+    draw: s => `<div class="c3">
+      <div class="plate ${s.give ? 'give' : ''} rise">
+        <div><div class="k ${s.give ? 'ok' : ''}">${ic('check')}Sale complete</div>
+          <small class="num">${s.ref ? `GCash ₱${s.paid} · Ref ${s.ref}` : `₱${SALE} sale · ₱${s.paid} cash`}</small></div>
+        <div class="rise" style="--i:1">${s.give
+          ? `<div class="lab ok">Give back</div><div class="big num ok">${P(s.give)}</div>`
+          : `<div class="lab dim">${s.ref ? 'Paid by GCash' : 'Exact cash'}</div><div class="big words">No change</div>`}</div>
+      </div>
+      <div class="two">${print('cta2', 2)}${show('cta2', 2)}</div>
+      <button class="slab rise" style="--i:3">New sale${ic('plus')}</button></div>` },
+
+  { name: 'Poster', line: 'Paperwork up top; the money in huge type sits right on New sale, where the thumb already is.',
+    draw: s => `<div class="c4">
+      <div class="head">
+        <div class="k rise">${ic('check')}Sale complete</div>
+        <div class="facts num rise" style="--i:1">Sale <b>₱${SALE}</b> · ${s.method} <b>₱${s.paid}</b>${s.ref ? `<br>Ref <b>${s.ref}</b>` : ''}</div>
+        <div class="two">${print('cta2', 2)}${show('cta2', 2)}</div>
+      </div>
+      <div class="foot">
+        <div class="rise" style="--i:3">${s.give
+          ? `<div class="lab ok">Give back</div><div class="big num ok">${P(s.give)}</div>`
+          : `<div class="lab dim">${s.ref ? 'Paid by GCash' : 'Exact cash'}</div><div class="big words">No change</div>`}</div>
+        <button class="cta rise" style="--i:4">New sale</button>
+      </div></div>` },
+
+  { name: 'Sheet', line: 'The checkout’s total stays on its line, marked paid; a sheet rises with the change, tall only when there is some.',
+    draw: s => `<div class="c5">
+      <div class="was"><b class="num rise">₱${SALE}</b><span class="rise" style="--i:1">${ic('check')}Paid · ${s.method}${s.ref ? ` · Ref ${s.ref}` : ''}</span></div>
+      <div class="sheet ${s.give ? 'give' : ''}">
+        ${s.give ? `<div class="say"><span>Give back</span><b class="num ok">₱${s.give}</b></div>`
+          : `<div class="say none"><span>${s.ref ? 'Paid by GCash' : 'Exact cash'}</span><b>Nothing to give back</b></div>`}
+        <div class="two">${print('cta2', 4)}${show('cta2', 4)}</div>
+        <button class="cta rise" style="--i:5;width:100%">New sale</button>
+      </div></div>` },
+
+  { name: 'Keys', line: 'A readout window and three solid keys, the way a well-made machine is laid out. The change reads like a meter.',
+    draw: s => `<div class="c6">
+      <div class="lcd ${s.give ? 'give' : ''} rise">
+        <div class="cap"><span>${s.give ? 'Give back' : 'No change'}</span><span>${s.method}</span></div>
+        <div class="read num ${s.give ? 'ok' : 'zero'}">${P(s.give || '0.00')}</div>
+        <div class="tape num"><span>Sale<b>₱${SALE}</b></span>${s.ref ? `<span style="text-align:right">Ref<b>${s.ref}</b></span>` : `<span style="text-align:right">${s.method}<b>₱${s.paid}</b></span>`}</div>
+      </div>
+      <div class="keys">
+        <button class="key rise" style="--i:2">${ic('print')}Print receipt</button>
+        <button class="key rise" style="--i:2">${ic('rcpt')}Show receipt</button>
+        <button class="key go rise" style="--i:3">${ic('plus')}New sale</button>
+      </div></div>` },
+];
+
+let state = 'change', theme = 'light';
+function render() {
+  document.body.classList.toggle('dark-page', theme === 'dark');
+  document.getElementById('row').innerHTML = CONCEPTS.map((c, n) =>
+    `<figure><div class="phone ${theme}" data-n="${n + 1}"><div class="scr">${c.draw(STATES[state])}</div></div>
+     <figcaption><b>${n + 1} · ${c.name}</b>${c.line}</figcaption></figure>`).join('');
+}
+function seg(id, set) {
+  document.getElementById(id).addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    for (const x of b.parentNode.children) x.setAttribute('aria-pressed', x === b);
+    set(b.dataset.v); render();
+  });
+}
+seg('segState', v => state = v);
+seg('segTheme', v => theme = v);
+render();
+</script>
+</body>
+</html>

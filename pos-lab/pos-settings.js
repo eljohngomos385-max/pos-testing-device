@@ -123,8 +123,6 @@ function renderPosSettings(printer = true) {
   if (btRow) btRow.hidden = p.driver !== 'bluetooth';
   const btStatus = $('#posBtStatus');
   if (btStatus) btStatus.textContent = p.btName ? 'Paired: ' + p.btName : 'Not paired';
-  const storeNow = $('#posStoreNow');
-  if (storeNow) storeNow.textContent = currentStoreInfo().name;
   const ptNow = $('#posPayTypesNow');
   if (ptNow) ptNow.textContent = `${payTypesOn()} on`;
   const ftNow = $('#posFulTypesNow');
@@ -243,7 +241,12 @@ function setPic(k, pic) {
 }
 // a photo or screenshot of the store's QR, made 600px at most so settings stay small: a photo as JPEG (~40 KB, PNG ~400 KB), a flat QR as PNG
 function addPayPic(e) {
-  const f = e.target.files[0], k = ptOpen;
+  const k = ptOpen;
+  shrinkPic(e, (pic) => { setPic(k, pic); if (ptOpen === k) qrRow(); });
+}
+// a picked file -> a small data URL (Payment types' picture, Settings › Receipt's logo and footer picture)
+function shrinkPic(e, done) {
+  const f = e.target.files[0];
   e.target.value = '';
   if (!f) return;
   const img = new Image(), url = URL.createObjectURL(f);
@@ -255,8 +258,7 @@ function addPayPic(e) {
     g.drawImage(img, 0, 0, c.width, c.height);
     URL.revokeObjectURL(url);
     const png = c.toDataURL('image/png'), jpg = c.toDataURL('image/jpeg', 0.85);
-    setPic(k, jpg.length < png.length ? jpg : png);
-    if (ptOpen === k) qrRow();
+    done(jpg.length < png.length ? jpg : png);
   };
   img.onerror = () => { URL.revokeObjectURL(url); showToast('That file is not a picture'); };
   img.src = url;
@@ -335,6 +337,53 @@ function bindStore() {
   $('#storeForm').addEventListener('input', () => { $('#storeSave').disabled = !storeTyped().name || !storeChanged(); });
   // Save is the form's submit button (form="storeForm"): Return on the keyboard saves, and does nothing while it is greyed
   $('#storeForm').addEventListener('submit', (e) => { e.preventDefault(); saveStore(); });
+}
+// Settings › Receipt (owner 2026-11-06): the style (Classic, Modern), logo, header and footer words, a footer picture (e.g. the store's QR), and
+// whether the address and phone show. Preview opens the Test print's sample in a sheet (receiptLook in pos-core.js).
+// Each change saves as it is made, as a payment type's page. ponytail: no manager PIN, as Store details.
+const LOOK_PICS = { logo: ['#rcLogoIn', '#rcLogoThumb', '#rcLogoRm', '#rcLogoAdd'], footerImg: ['#rcFootIn', '#rcFootThumb', '#rcFootRm', '#rcFootAdd'] };
+function saveLook(patch) {
+  const was = state.settings.receipt;
+  state.settings.receipt = { ...was, ...patch };
+  if (saveSettings()) return renderLook();
+  state.settings.receipt = was;
+  showToast('Picture too big to save. Try a smaller one');
+}
+function renderLook() {
+  const look = receiptLook();
+  Object.entries(LOOK_PICS).forEach(([k, [, thumb, rm, add]]) => {
+    $(thumb).hidden = $(rm).hidden = !look[k];
+    $(add).hidden = !!look[k];
+    if (look[k]) $(thumb).src = look[k];
+  });
+}
+function openLook() {
+  const look = receiptLook();
+  $('#rcStyle').value = look.style;
+  $('#rcAddress').checked = look.showAddress;
+  $('#rcPhone').checked = look.showPhone;
+  $('#rcTin').checked = look.showTin;
+  $('#rcHeader').value = look.header;
+  $('#rcFooter').value = look.footer;
+  renderLook();
+  showStPage('receiptPage');
+}
+function bindLook() {
+  $('#posReceiptRow').addEventListener('click', openLook);
+  $('#receiptBack').addEventListener('click', () => openPayTypes(false));
+  $('#rcPreviewRow').addEventListener('click', (e) => openSheet(e.currentTarget, `<div class="fs-top">
+    <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button>
+    <h2 id="fsTitle">Preview</h2><i></i></div><div class="fs-body">${buildReceiptPreview(sampleTestOrder())}</div>`, 'rc-sheet'));
+  $('#rcStyle').addEventListener('change', (e) => saveLook({ style: e.target.value }));   // Classic or Modern (receipt.css)
+  $('#rcAddress').addEventListener('change', (e) => saveLook({ showAddress: e.target.checked }));
+  $('#rcPhone').addEventListener('change', (e) => saveLook({ showPhone: e.target.checked }));
+  $('#rcTin').addEventListener('change', (e) => saveLook({ showTin: e.target.checked }));   // not every store has a TIN (owner 2026-11-06)
+  $('#rcHeader').addEventListener('input', (e) => saveLook({ header: e.target.value }));
+  $('#rcFooter').addEventListener('input', (e) => saveLook({ footer: e.target.value }));
+  Object.entries(LOOK_PICS).forEach(([k, [input, , rm]]) => {
+    $(input).addEventListener('change', (e) => shrinkPic(e, (pic) => saveLook({ [k]: pic })));
+    $(rm).addEventListener('click', (e) => { e.preventDefault(); saveLook({ [k]: '' }); });   // inside the row's label: not the file picker
+  });
 }
 function bindPayTypes() {
   $('#payTypeBack').addEventListener('click', () => openPayTypes(true));

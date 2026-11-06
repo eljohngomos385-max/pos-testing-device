@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 28px; background: #fff; font: 15px/1.3 system-ui, sans-serif; color: #222; width: 1600px; }
+  h2 { margin: 26px 0 12px; font-size: 20px; }
+  h2 small { font-weight: 400; color: #777; font-size: 15px; }
+  .row { display: flex; flex-wrap: wrap; gap: 14px; }
+  figure { margin: 0; width: 300px; }
+  .crop { width: 300px; height: auto; overflow: hidden; border-radius: 12px; border: 1px solid #ddd; background: #f2f2f2; }
+  .crop img { display: block; width: 300px; }
+  .bad .crop { border: 3px solid #e5484d; }
+  figcaption { margin-top: 6px; font-size: 14px; }
+</style>
+<h2>Line over the number <small>— nothing covers it</small></h2>
+<div class="row">
+  <figure><div class="crop"><img src="01-item-sheet.png"></div><figcaption>Item</figcaption></figure>
+  <figure><div class="crop"><img src="03-modifiers-question.png"></div><figcaption>Modifiers</figcaption></figure>
+  <figure><div class="crop"><img src="05-weigh-empty.png"></div><figcaption>Weigh</figcaption></figure>
+  <figure><div class="crop"><img src="12-start-shift.png"></div><figcaption>Start shift</figcaption></figure>
+  <figure><div class="crop"><img src="13-cash-in.png"></div><figcaption>Cash in</figcaption></figure>
+  <figure><div class="crop"><img src="14-count-cash.png"></div><figcaption>Count cash</figcaption></figure>
+  <figure><div class="crop"><img src="15-over-short.png"></div><figcaption>Over / short</figcaption></figure>
+</div>
+<h2>Line under the number, a list right under it <small>— the list's fade covers the line</small></h2>
+<div class="row">
+  <figure class="bad"><div class="crop"><img src="07-discount-on.png"></div><figcaption>Discount</figcaption></figure>
+  <figure class="bad"><div class="crop"><img src="10-split-left.png"></div><figcaption>Split payment</figcaption></figure>
+  <figure class="bad"><div class="crop"><img src="11-sale-complete-change.png"></div><figcaption>Sale complete</figcaption></figure>
+</div>
+<h2>Line under the number, no list under it <small>— clear</small></h2>
+<div class="row">
+  <figure><div class="crop"><img src="04-price.png"></div><figcaption>Price</figcaption></figure>
+  <figure><div class="crop"><img src="06-weigh-typed.png"></div><figcaption>Weigh, typed (over and under)</figcaption></figure>
+  <figure><div class="crop"><img src="08-discount-custom.png"></div><figcaption>Discount › Custom</figcaption></figure>
+</div>
+<h2>Line under the number that pushes the list down <small>— the rows move when it shows</small></h2>
+<div class="row">
+  <figure class="bad"><div class="crop"><img src="02-item-sheet-senior.png"></div><figcaption>Item, under Senior</figcaption></figure>
+</div>
+<h2>No line</h2>
+<div class="row">
+  <figure><div class="crop"><img src="09-checkout-pay.png"></div><figcaption>Checkout pay</figcaption></figure>
+</div>

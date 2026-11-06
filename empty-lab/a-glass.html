@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empty states · A Glass</title>
+<style>
+  /* pos-lab/styles.css :root (dark, the POS default) */
+  :root {
+    --bg: #121212; --bg-soft: #1C1C1C; --surface: #2A2A2A; --line: rgba(255,255,255,.08);
+    --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45);
+    --cta-solid: #4388F7;
+    --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    /* illustration */
+    --s-top: #79AEFA; --s-bot: #3E7FEF;
+    --g-top: rgba(200,222,255,.62); --g-bot: rgba(130,176,255,.42);
+    --g-hi: rgba(255,255,255,.6);
+    --g-mark: rgba(255,255,255,.92);
+    --glow: rgba(67,136,247,.42);
+    --page: #0A0A0A;
+  }
+  /* body.light-theme in pos-lab/styles.css */
+  body.light {
+    --bg: #FFFFFF; --bg-soft: #EDEDED; --surface: #F9F9F9; --line: #E1E1E1;
+    --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C;
+    --s-top: #6FA6FA; --s-bot: #4388F7;
+    --g-top: rgba(250,252,255,.82); --g-bot: rgba(178,207,253,.74);
+    --g-hi: rgba(255,255,255,.9);
+    --g-mark: #FFFFFF;
+    --glow: rgba(67,136,247,.26);
+    --page: #EDEDED;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 28px 40px 8px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  h1 small { display: block; font-size: 13px; font-weight: 400; color: var(--ink-tertiary); margin-top: 4px; letter-spacing: 0; }
+  .toggle { display: flex; background: var(--bg-soft); border-radius: 999px; padding: 3px; }
+  .toggle button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--ink-secondary); padding: 7px 16px; border-radius: 999px; cursor: pointer; }
+  .toggle button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  body.light .toggle button[aria-pressed="true"] { background: var(--bg); }
+  main { padding: 0 40px 48px; }
+  h2 { font-size: 15px; font-weight: 600; color: var(--ink-secondary); margin: 30px 0 14px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 22px 18px; }
+  figure { margin: 0; }
+  .card { width: 300px; height: 420px; background: var(--bg); border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 28px 24px; text-align: center; border: 1px solid var(--line); }
+  .card svg { width: 140px; height: 140px; overflow: visible; margin-bottom: 14px; }
+  .card b { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+  .card p { margin: 6px 0 0; font-size: 14px; line-height: 1.35; color: var(--ink-tertiary); }
+  figcaption { font-size: 12px; color: var(--ink-tertiary); margin-top: 8px; padding-left: 4px; }
+</style>
+</head>
+<body>
+<!-- shared paints: solid blue, frosted glass, top highlight, glow + blur -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="solid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" style="stop-color:var(--s-top)"/><stop offset="1" style="stop-color:var(--s-bot)"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2=".35" y2="1">
+      <stop offset="0" style="stop-color:var(--g-top)"/><stop offset="1" style="stop-color:var(--g-bot)"/>
+    </linearGradient>
+    <linearGradient id="hi" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" style="stop-color:var(--g-hi)"/><stop offset=".32" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="glowf" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="12"/></filter>
+  </defs>
+</svg>
+
+<header>
+  <h1>A · Glass layers<small>One solid blue shape, one frosted shape over it. Empty states, POS lab.</small></h1>
+  <div class="toggle" role="group" aria-label="Theme">
+    <button id="tDark" aria-pressed="true">Dark</button>
+    <button id="tLight" aria-pressed="false">Light</button>
+  </div>
+</header>
+<main id="main"></main>
+
+<script>
+// Each art = solid shape(s) behind + glass shape(s) in front + white marks on the glass.
+const ART = {
+  search: {
+    solid: '<rect x="-12" y="0" width="24" height="60" rx="12" transform="translate(62 62) rotate(-45)"/>',
+    glass: '<circle cx="56" cy="56" r="38"/>',
+  },
+  select: {
+    solid: '<rect x="16" y="34" width="50" height="76" rx="14"/>',
+    glass: '<rect x="44" y="22" width="80" height="100" rx="18"/>',
+    marks: '<rect x="58" y="42" width="36" height="8" rx="4" opacity=".75"/><rect x="58" y="58" width="50" height="8" rx="4" opacity=".45"/><rect x="58" y="74" width="28" height="8" rx="4" opacity=".45"/>',
+  },
+  tag: {
+    solid: '<path transform="translate(14 -14) rotate(10 72 70)" d="M58 38H108Q118 38 118 48V92Q118 102 108 102H58Q53 102 49 98L28 76Q24 70 28 64L49 42Q53 38 58 38Z"/>',
+    glass: '<path d="M58 38H108Q118 38 118 48V92Q118 102 108 102H58Q53 102 49 98L28 76Q24 70 28 64L49 42Q53 38 58 38Z"/>',
+    marks: '<circle cx="50" cy="70" r="7"/>',
+  },
+  folder: {
+    solid: '<path d="M22 42Q22 30 34 30H56Q63 30 67 35L73 42H106Q118 42 118 54V96Q118 108 106 108H34Q22 108 22 96Z"/>',
+    glass: '<rect x="16" y="56" width="108" height="58" rx="14"/>',
+  },
+  grid: {
+    solid: '<rect x="20" y="20" width="50" height="50" rx="15"/>',
+    glass: '<rect x="36" y="36" width="40" height="40" rx="12"/><rect x="82" y="36" width="40" height="40" rx="12"/><rect x="36" y="82" width="40" height="40" rx="12"/><rect x="82" y="82" width="40" height="40" rx="12"/>',
+  },
+  box: {
+    solid: '<path d="M28 66L18 40Q16 33 23 33L62 38L68 66Z"/><path d="M112 66L122 40Q124 33 117 33L78 38L72 66Z"/>',
+    glass: '<rect x="20" y="58" width="100" height="58" rx="14"/>',
+    marks: '<rect x="56" y="74" width="28" height="8" rx="4" opacity=".8"/>',
+  },
+  bag: {
+    solid: '<rect x="30" y="42" width="80" height="50" rx="13"/><path fill-rule="evenodd" d="M48 50V44A22 22 0 0 1 92 44V50H82V44A12 12 0 0 0 58 44V50Z"/>',
+    glass: '<path d="M26 66Q26 58 34 58H106Q114 58 114 66L118 110Q119 120 109 120H31Q21 120 22 110Z"/>',
+  },
+  receipt: {
+    solid: '<rect x="48" y="20" width="62" height="86" rx="12" transform="rotate(10 79 63)"/>',
+    glass: '<path d="M30 32Q30 22 40 22H90Q100 22 100 32V114L93 108L86 114L79 108L72 114L65 108L58 114L51 108L44 114L37 108L30 114Z"/>',
+    marks: '<rect x="42" y="40" width="40" height="8" rx="4" opacity=".8"/><rect x="42" y="56" width="46" height="8" rx="4" opacity=".45"/><rect x="42" y="72" width="30" height="8" rx="4" opacity=".45"/>',
+  },
+  calendar: {
+    solid: '<rect x="22" y="30" width="96" height="44" rx="16"/><rect x="42" y="18" width="12" height="26" rx="6"/><rect x="86" y="18" width="12" height="26" rx="6"/>',
+    glass: '<rect x="22" y="48" width="96" height="70" rx="16"/>',
+    marks: '<rect x="76" y="82" width="24" height="22" rx="7"/>',
+  },
+  bars: {
+    solid: '<rect x="54" y="22" width="32" height="96" rx="11"/>',
+    glass: '<rect x="22" y="62" width="34" height="56" rx="11"/><rect x="84" y="44" width="34" height="74" rx="11"/>',
+  },
+  person: {
+    solid: '<circle cx="70" cy="48" r="25"/>',
+    glass: '<path d="M26 110Q26 66 70 66Q114 66 114 110Q114 120 104 120H36Q26 120 26 110Z"/>',
+  },
+  toggle: {
+    solid: '<circle cx="92" cy="70" r="32"/>',
+    glass: '<rect x="14" y="46" width="112" height="48" rx="24"/>',
+  },
+  plus: {
+    solid: '<rect x="18" y="18" width="62" height="62" rx="18"/>',
+    glass: '<circle cx="86" cy="86" r="38"/>',
+    marks: '<rect x="82" y="68" width="8" height="36" rx="4"/><rect x="68" y="82" width="36" height="8" rx="4"/>',
+  },
+  percent: {
+    solid: '<rect x="22" y="22" width="60" height="60" rx="18" transform="rotate(45 52 52)"/>',
+    glass: '<circle cx="80" cy="80" r="40"/>',
+    marks: '<circle cx="66" cy="66" r="7"/><circle cx="94" cy="94" r="7"/><rect x="-4" y="-26" width="8" height="52" rx="4" transform="translate(80 80) rotate(45)"/>',
+  },
+  cash: {
+    solid: '<rect x="34" y="20" width="90" height="58" rx="13" transform="rotate(-10 79 49)"/>',
+    glass: '<rect x="16" y="52" width="102" height="62" rx="14"/>',
+    marks: '<circle cx="67" cy="83" r="13"/><circle cx="34" cy="83" r="5" opacity=".6"/><circle cx="100" cy="83" r="5" opacity=".6"/>',
+  },
+  clock: {
+    solid: '<circle cx="90" cy="50" r="32"/>',
+    glass: '<circle cx="64" cy="78" r="44"/>',
+    marks: '<rect x="60" y="52" width="8" height="30" rx="4"/><rect x="60" y="74" width="26" height="8" rx="4"/>',
+  },
+  printer: {
+    solid: '<rect x="38" y="18" width="64" height="50" rx="10"/><rect x="42" y="88" width="56" height="34" rx="8"/>',
+    glass: '<rect x="16" y="48" width="108" height="56" rx="16"/>',
+    marks: '<rect x="38" y="84" width="64" height="7" rx="3.5" opacity=".75"/><circle cx="106" cy="64" r="4.5"/>',
+  },
+};
+
+const PAGES = [
+  ['Sell', [
+    ['search',  'No results',               'Try another word or spelling.',      'Sell · search'],
+    ['tag',     'No items yet',             'Add items to start selling.',        'Sell · catalog empty'],
+    ['folder',  'No items in this category','Move items here from Items.',        'Sell · empty category'],
+    ['box',     'All sold out',             'Every option of this item is out.',  'Sell · variants sold out'],
+    ['bag',     'Cart is empty',            'Tap an item to add it.',             'Sell · cart'],
+    ['search',  'No customer found',        'Check the name or phone number.',    'Sell · customer picker'],
+  ]],
+  ['Orders', [
+    ['receipt', 'No orders yet',            'Sales on this POS show up here.',    'Orders · no orders'],
+    ['calendar','Nothing sold today',       'Today’s sales show up here.',   'Orders · today'],
+    ['search',  'No orders match',          'Try clearing a filter.',             'Orders · filters'],
+    ['select',  'No order selected',        'Pick one from the list.',            'Orders · iPad detail pane'],
+  ]],
+  ['Items', [
+    ['tag',     'No items yet',             'Add your first item with +.',        'Items · items'],
+    ['grid',    'No categories',            'Group items, like Drinks or Snacks.','Items · categories'],
+    ['toggle',  'No modifiers yet',         'Choices like size or sugar level.',  'Items · modifiers'],
+    ['plus',    'No add-ons yet',           'Extras sold with an item.',          'Items · add-ons'],
+    ['percent', 'No discounts yet',         'Save one to use at checkout.',       'Items · discounts'],
+  ]],
+  ['Customers', [
+    ['person',  'No customers yet',         'Save a customer to see their orders.','Customers · list'],
+    ['select',  'No customer selected',     'Pick one from the list.',            'Customers · iPad detail pane'],
+  ]],
+  ['Shift', [
+    ['cash',    'No cash in or out yet',    'Drawer money moves show up here.',   'Shift · cash in / out'],
+    ['clock',   'No past shifts yet',       'Each closed shift shows up here.',   'Shift · past shifts'],
+  ]],
+  ['Reports', [
+    ['bars',    'Nothing sold today',       'Sales show up here as they happen.', 'Reports · today'],
+  ]],
+  ['Settings', [
+    ['printer', 'No printer connected',     'Tap Scan to search your Wi-Fi.',     'Settings · printers'],
+  ]],
+];
+
+let n = 0;
+function svg(a) {
+  const id = 'c' + (n++);
+  return `<svg viewBox="0 0 140 140" aria-hidden="true">
+    <defs><clipPath id="${id}">${a.glass}</clipPath></defs>
+    <ellipse cx="70" cy="112" rx="46" ry="16" fill="var(--glow)" filter="url(#glowf)"/>
+    <g fill="url(#solid)">${a.solid}</g>
+    <g clip-path="url(#${id})"><g fill="#4388F7" filter="url(#blur)" opacity=".9">${a.solid}</g></g>
+    <g fill="url(#glass)">${a.glass}</g>
+    <g fill="url(#hi)">${a.glass}</g>
+    ${a.marks ? `<g fill="var(--g-mark)">${a.marks}</g>` : ''}
+  </svg>`;
+}
+document.getElementById('main').innerHTML = PAGES.map(([page, states]) =>
+  `<h2>${page}</h2><div class="grid">${states.map(([art, t, line, label]) =>
+    `<figure><div class="card">${svg(ART[art])}<b>${t}</b><p>${line}</p></div><figcaption>${label}</figcaption></figure>`
+  ).join('')}</div>`).join('');
+
+const setTheme = light => {
+  document.body.classList.toggle('light', light);
+  tDark.setAttribute('aria-pressed', !light);
+  tLight.setAttribute('aria-pressed', light);
+};
+tDark.onclick = () => setTheme(false);
+tLight.onclick = () => setTheme(true);
+</script>
+</body>
+</html>

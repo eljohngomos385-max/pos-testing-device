@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Receipt looks</title>
+<!-- Receipt look lab, round 5 (owner 2026-11-06). 80mm paper, letters at the printer's real size (48 mono characters a line),
+     no barcodes (nothing scans them), the customer and the order type on every look, preset logos made from the store's name.
+     Round 6 (owner): kept G2 (the default), Notion, Airy mono, Airy table (more dividers); new G2T = G2's look in Airy table's
+     layout; T1 = T with the sale facts as four lines; a Phone numbers picker (1-3, as Store details takes them); a Slogan under the name; five Name styles.
+     G3, Calm K1, Notion calm, Simple U dropped. Rounds 1-5 live on as shots in shots/receipt-*. Every look keeps G2's money order: Subtotal, Cash, Change,
+     then TOTAL last. All fonts SIL OFL 1.1, shipped as files. -->
+<style>
+@font-face { font-family: "Receipt Mono"; src: url("receipt-mono.ttf"); font-weight: 200 700; }
+@font-face { font-family: "Inter"; src: url("inter.ttf"); font-weight: 100 900; font-style: oblique 0deg 10deg; }
+@font-face { font-family: "Montserrat"; src: url("Montserrat-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Roboto Condensed"; src: url("Roboto-BoldCondensed.ttf"); font-weight: 700; }   /* Google 2011, Apache 2.0 */
+@font-face { font-family: "Montserrat"; src: url("Montserrat-Medium.ttf"); font-weight: 500; }
+@font-face { font-family: "Montserrat"; src: url("Montserrat-SemiBold.ttf"); font-weight: 600; }
+@font-face { font-family: "Montserrat"; src: url("Montserrat-ExtraBold.ttf"); font-weight: 800; }
+:root { --bg: #F2F2F4; --ink: #1A1A1A; --ink-2: #6E6E73; --paper-shadow: 0 0 0 1px #E1E1E1, 0 1px 2px -1px rgb(26 26 26 / .07), 0 4px 14px -4px rgb(26 26 26 / .10); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.4 "Inter", -apple-system, sans-serif; }
+.bar { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 24px 24px 0; font-size: 14px; }
+.bar select, .bar input { font: inherit; padding: 6px 10px; border: 1px solid #D0D0D0; border-radius: 8px; background: #fff; color: var(--ink); }
+.looks, .logo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 32px 24px; max-width: 1600px; margin: 0 auto; align-items: start; }
+.looks { padding: 28px 24px; }
+.look h2, .logos h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; text-align: center; }
+.look h2 small, .logos h2 small { display: block; font-size: 13px; font-weight: 400; color: var(--ink-2); }
+.logos { max-width: 1600px; margin: 0 auto; padding: 8px 24px 48px; }
+
+/* shared bits. The paper: an 80mm roll at 1.5x so it reads on screen, 4mm margins each side like the printer's 72mm head.
+   Type is the printer's own size: 14px mono = 48 characters a line, Font A on 80mm. */
+.paper { width: min(calc(80mm * 1.5), 100%); margin: 0 auto; box-sizing: border-box; background: #fff; color: #111; padding: 30px calc(4mm * 1.5); box-shadow: var(--paper-shadow); font-variant-numeric: tabular-nums; }
+.r { display: flex; justify-content: space-between; gap: 12px; }
+.c { text-align: center; }
+.t { display: grid; column-gap: 12px; align-items: baseline; }
+.t > :nth-child(n) { min-width: 0; }
+.t .n { text-align: right; white-space: nowrap; }
+.t hr { grid-column: 1 / -1; }
+.paper hr { border: 0; margin: 0; }
+.recno { text-align: center; margin: 24px 0 14px; }
+.recno span { display: block; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
+.recno b { display: inline-block; font: 700 22px "Receipt Mono", monospace; letter-spacing: 2px; border: 1.5px dashed #111; padding: 6px 18px; }
+
+/* Logo presets: drawn from the store's name in black only, so any of them prints as the receipt's logo picture */
+.lg { display: flex; flex-direction: column; align-items: center; text-align: center; color: #111; margin: 0 auto 14px; font-family: "Inter", sans-serif; text-wrap: balance; }
+.lg small { font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; }
+.lg.box span { background: #111; color: #fff; font-weight: 800; line-height: 1.05; text-transform: uppercase; letter-spacing: 0.4px; padding: 11px 18px 12px; border-radius: 6px; max-width: 320px; }
+.lg.frame { border: 2px solid #111; padding: 8px 16px 7px; width: fit-content; max-width: 340px; }
+.lg.frame span { font-weight: 700; text-transform: uppercase; letter-spacing: 2px; line-height: 1.15; }
+.lg.frame small { align-self: stretch; border-top: 1px solid #111; margin-top: 6px; padding-top: 4px; }
+.lg.seal i { display: block; width: 56px; height: 56px; box-sizing: border-box; border: 2px solid #111; border-radius: 50%; font: normal 800 22px/52px "Inter", sans-serif; letter-spacing: -0.5px; margin-bottom: 8px; }
+.lg.seal span { font-size: 13px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; max-width: 320px; }
+.lg.rule span { display: flex; align-items: center; gap: 12px; align-self: stretch; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; line-height: 1.2; }
+.lg.rule span::before, .lg.rule span::after { content: ""; flex: 1 0 24px; border-top: 1.5px solid #111; }
+.lg.rule small { margin-top: 5px; }
+.lg.stack b { font-weight: 800; letter-spacing: -1.5px; line-height: 1; }
+.lg.stack span { font-size: 12px; font-weight: 600; letter-spacing: 5px; text-transform: uppercase; margin-top: 5px; max-width: 340px; }
+.lg.pill span { border: 2px solid #111; border-radius: 999px; padding: 6px 20px 7px; font-weight: 800; font-style: oblique 10deg; letter-spacing: -0.3px; line-height: 1.1; max-width: 320px; }
+.logo-tile .lg { margin: 0 auto; }
+.logo-tile h3 { margin: 0 0 18px; font-size: 13px; font-weight: 600; color: var(--ink-2); text-align: center; }
+.logo-tile .sep { border-top: 1px dashed #DDD; margin: 20px 0; }
+
+/* G2 · the default (owner 2026-11-06): Inter words, mono amounts, rows close, TOTAL under Change with no line */
+.g2 { font: 14.5px/1.45 "Inter", sans-serif; }
+.g2 .amt { font: 14px "Receipt Mono", monospace; }
+.g2 .store { font-size: 24px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 2px; }
+.g2 .sm { font-size: 13.5px; }
+.g2 hr { border-top: 1px solid #DADADA; margin: 12px 0; }
+.g2 .it { margin: 7px 0; }
+.g2 .nm { font-weight: 500; }
+.g2 .ln, .g2 .pay { font-size: 13.5px; color: #666; }
+.g2 .ln .amt, .g2 .pay .amt { color: #111; }
+.g2 .type { margin-top: 6px; }
+.g2 .tot { margin-top: 8px; font-size: 21px; font-weight: 600; line-height: 1.3; }
+.g2 .tot .amt { font-size: 21px; font-weight: 600; }
+.g2 .thanks { font-size: 15px; font-weight: 500; }
+/* G2.1 · G2 in T1's frame (owner 2026-11-06): the thank-you and receipt box share G2T's rules below */
+.g21 .slogan { color: #555; margin-bottom: 2px; }
+.g21 hr + .type { margin-top: 0; }
+.g21.dash hr { border-top: 1px dashed #111; }
+.g21.dash .store { text-align: center; margin-bottom: 6px; }
+.g21.dash .slogan { margin-bottom: 16px; }   /* T1's grouping: the slogan hugs the name, the address sits apart */
+.g21.dash hr:first-of-type { margin-top: 16px; }   /* T1's air under the address (measured 2026-11-06) */
+/* Montserrat fights G2's Inter (owner 2026-11-06): in G2.2 Slim is Inter Medium, T1 Slim's weight */
+.paper.g21 .store.nm-slim { font-family: "Inter", sans-serif; font-weight: 500; letter-spacing: -1.2px; }
+
+/* L · Notion (after vesitia): heavy name, bold item and price, solid black rules; money quiet, the foot one plain line */
+.notion { font: 14px/1.5 "Inter", sans-serif; }
+.notion .store { font-size: 30px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; text-align: center; line-height: 1; margin-bottom: 4px; }
+.notion .sm { font-size: 12.5px; color: #555; text-align: center; }
+.notion hr { border-top: 1px solid #111; margin: 14px 0; }
+.notion .cust { margin-top: 8px; color: #444; }
+.notion .it { margin: 0 0 10px; }
+.notion .it:last-of-type { margin-bottom: 0; }
+.notion .nm { font-weight: 700; }
+.notion .ln { color: #444; }
+.notion .pay { color: #555; font-size: 13px; margin-bottom: 8px; }
+.notion .tot { font-size: 18px; font-weight: 700; }
+.notion .thanks { font-weight: 700; margin-bottom: 2px; }
+
+/* O · Airy mono (after the cookie one): all mono, normal case, wide gaps between parts, a big thank-you, the receipt number boxed */
+.airy { font: 14px/1.6 "Receipt Mono", monospace; }
+.airy .store { font: 800 44px/1 "Montserrat", sans-serif; letter-spacing: -1.5px; text-align: center; margin-bottom: 14px; }
+.airy hr { border-top: 1px dashed #111; margin: 14px 0; }
+.airy .gap { height: 28px; }
+.airy .cust { margin-top: 12px; }
+.airy .tot { font-weight: 700; font-size: 16px; }
+.airy .shout { font-size: 26px; line-height: 1.15; text-transform: uppercase; text-align: center; }
+
+/* T · Airy table: Airy mono with QTY ITEM PRICE AMOUNT heads and the same wide gaps */
+.airyt { font: 14px/1.7 "Receipt Mono", monospace; }
+.airyt .store { font: 800 44px/1 "Montserrat", sans-serif; letter-spacing: -1.5px; text-align: center; margin-bottom: 14px; }
+.airyt hr { border-top: 1px dashed #111; margin: 14px 0; }
+.airyt .gap { height: 28px; }
+.airyt .slogan { margin: -10px 0 12px; }   /* close under the name, air before the address (owner 2026-11-06) */
+/* name styles the store picks (after the references: a condensed poster head, Receiptify's clean caps, Gyokuu's spaced mono) */
+.paper .store.nm-slim { font-family: "Montserrat", sans-serif; font-weight: 500; letter-spacing: -1px; line-height: 1.05; }
+.paper .store.nm-tall { font-family: "Roboto Condensed", sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0; line-height: .95; }
+.paper .store.nm-clean { font-family: "Inter", sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; line-height: 1.1; }
+.paper .store.nm-spaced { font-family: "Receipt Mono", monospace; font-weight: 600; text-transform: uppercase; letter-spacing: 5px; line-height: 1.4; }
+.airyt .meta { display: grid; grid-template-columns: 1fr auto; }
+.airyt .meta :nth-child(even) { text-align: right; }
+.airyt .cust { margin-top: 12px; }
+.airyt hr + .cust { margin-top: 0; }
+.airyt .items { grid-template-columns: 28px 1fr auto auto; column-gap: 14px; }
+.airyt .items .h { font-weight: 700; }
+.airyt .items hr { margin: 6px 0 8px; }
+
+/* G2T · G2 in T's layout: G2's Inter words, mono amounts and grey rules; T's two-column facts, the items as a table, the big thank-you */
+.g2t { font: 14.5px/1.55 "Inter", sans-serif; }
+.g2t .amt, .g2t .items .n:not(.h) { font: 14px "Receipt Mono", monospace; }
+.g2t .store { font-size: 26px; font-weight: 600; letter-spacing: -0.4px; margin-bottom: 4px; }
+.g2t .sm { font-size: 13.5px; color: #555; }
+.g2t hr { border-top: 1px solid #DADADA; margin: 14px 0; }
+.g2t .meta { display: grid; grid-template-columns: 1fr auto; row-gap: 1px; }
+.g2t .meta :nth-child(even) { text-align: right; }
+.g2t .k { color: #777; }
+.g2t .cust { margin-top: 10px; }
+.g2t .items { grid-template-columns: 24px 1fr auto auto; column-gap: 14px; row-gap: 4px; }
+.g2t .items .h { font-size: 11.5px; font-weight: 600; letter-spacing: 0.8px; color: #777; }
+.g2t .items hr { margin: 5px 0 6px; }
+.g2t .items .g { color: #777; }
+.g2t .pay { color: #666; }
+.g2t .pay .amt { color: #111; }
+.g2t .tot { margin-top: 8px; font-size: 21px; font-weight: 600; }
+.g2t .tot .amt { font-size: 21px; font-weight: 600; }
+.g2t .ty, .g21 .ty { font-size: 22px; font-weight: 600; letter-spacing: -0.4px; text-align: center; margin-top: 22px; }
+.g2t .recno, .g21 .recno { margin: 18px 0 12px; }
+.g2t .recno span, .g21 .recno span { color: #777; }
+.g2t .recno b, .g21 .recno b { border: 1px solid #111; border-radius: 6px; }
+.airyt .tot { font-size: 17px; font-weight: 700; }
+.airyt .shout { font-size: 26px; line-height: 1.15; text-transform: uppercase; text-align: center; margin-top: 22px; }
+.airyt .recno { margin-top: 16px; }   /* even air above and under the thank-you */
+
+</style>
+</head>
+<body>
+<div class="bar"><label for="sale">Sample sale</label>
+  <select id="sale"><option value="delivery">Delivery</option><option value="pickup">Pickup</option><option value="walkin">Walk-in</option></select>
+  <label for="tels">Phone numbers</label>
+  <select id="tels"><option>1</option><option>2</option><option>3</option></select>
+  <label for="nm">Name style</label>
+  <select id="nm"><option value="bold">Bold</option><option value="slim" selected>Slim</option><option value="tall">Tall</option><option value="clean">Clean</option><option value="spaced">Spaced</option></select>
+  <label for="slogan">Slogan</label>
+  <input id="slogan" value="Matibay na gamit, tapat na presyo" placeholder="none"></div>
+<main class="looks" id="looks"></main>
+<section class="logos" id="names"></section>
+<section class="logos" id="logos"></section>
+<script>
+// the Test print sale (pos-lab sampleTestOrder, 7 items) plus 3 more (owner: show 10), under a plainer store name
+const O = {
+  store: 'Bayani Hardware', addr: '88 Rizal Ave., Biñan, Laguna', tel: '', tin: '000-000-000-000',
+  no: 'TEST-0001', date: '11/06/2026', long: 'November 6, 2026', time: '10:31 AM', cashier: 'El John', reg: '1', cash: 3500,
+  items: [['Portland Cement 40kg', 2, 'bag', 285], ['Common Wire Nail 3in', 1, 'kg', 95.5], ['PVC Pipe 1/2in x 10ft', 3, 'pc', 120],
+    ['Paint Brush 2in', 2, 'pc', 65], ['Gypsum Board 4x8 9mm', 4, 'pc', 410], ['Teflon Tape', 5, 'pc', 18], ['Electrical Tape Black', 2, 'pc', 45],
+    ['Sand Paper #120', 6, 'pc', 12], ['Hacksaw Blade 12in', 2, 'pc', 55], ['Cable Tie 8in 100s', 1, 'pack', 85]],
+};
+// Store details takes up to 3 numbers, kept in the one phone field as "a / b"
+const TELS = ['0917-555-0188', '0918-555-0199', '(049) 511-2233'];
+const WORST = 'San Isidro Construction Supply & General Merchandise';   // the longest name a logo has to survive
+// the order's fulfilment and customer, as the cart's fulfilment sheet takes them (pos-lab: customer, deliveryAddress, note;
+// pickupTime is asked but not saved on the order yet)
+const SALES = {
+  delivery: { type: 'Delivery', name: 'Maria Santos', phone: '0918-555-0142', address: '12 Mabini St., Brgy. San Antonio, Biñan, Laguna', whenK: 'Arrives', when: 'Sat, Nov 7 · 9–11 AM', note: 'Call when outside.' },
+  pickup: { type: 'Pickup', name: 'Maria Santos', phone: '0918-555-0142', whenK: 'Pickup', when: 'Today · 3:00 PM' },
+  walkin: { type: 'Walk-in' },
+};
+let S;
+
+const num = (n) => n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const peso = (n) => '₱' + num(n);
+const sub = O.items.reduce((s, [, q, , p]) => s + q * p, 0), change = O.cash - sub;
+const row = (l, r, c = '') => `<div class="r ${c}"><span>${l}</span><span>${r}</span></div>`;
+const div = (t, c = '') => `<div class="${c}">${t}</div>`;
+const each = (f) => O.items.map(([n, q, u, p]) => f(n, q, u, p, q * p)).join('');
+const amt = (n) => `<span class="amt">${peso(n)}</span>`;
+const kv = (pairs) => pairs.map(([k, v]) => `<div class="p"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+// the customer's lines; a walk-in has none, so the block is simply not there
+const custPairs = () => S.name ? [['Customer', `${S.name} · ${S.phone}`], ...(S.address ? [['Deliver to', S.address]] : []), [S.whenK, S.when], ...(S.note ? [['Note', S.note]] : [])] : [];
+const lines = (f) => custPairs().map(([k, v]) => f(k, v)).join('');
+const thanks = () => S.name ? `Thank you, ${S.name.split(' ')[0]}!` : 'Thank you!';
+const recno = () => `<div class="recno"><span>Receipt no.</span><b>${O.no}</b></div>`;
+const gap = '<div class="gap"></div>';
+// T's head: one number rides beside the address; more go under it, and if they run past the 48-character line, one number
+// a line, as printer.js prints them
+const telLine = (c = 'c') => !O.tel.includes(' / ') ? div(`${O.addr} · Tel ${O.tel}`, c) : div(O.addr, c)
+  + (('Tel ' + O.tel).length <= 48 ? div('Tel ' + O.tel, c) : O.tel.split(' / ').map((n, i) => div((i ? '' : 'Tel ') + n, c)).join(''));
+// the store's own line (Settings › Receipt › Header text) sits right under the name; empty = no line
+// size steps down for a long name (fit), so the worst case wraps to two or three lines
+const NAMES = { bold: ['Bold', 44, 26], slim: ['Slim', 40, 24], tall: ['Tall', 56, 34], clean: ['Clean', 30, 20], spaced: ['Spaced', 20, 14] };
+const nameHtml = (n, k) => `<div class="store nm-${k}" style="font-size:${fit(n, NAMES[k][1], NAMES[k][2])}px">${n}</div>`;
+const airyT = (meta, split) => () => nameHtml(O.store, O.nm) + (O.slogan ? div(O.slogan, 'c slogan') : '') + telLine() + '<hr>' + meta()
+    + (S.name ? (split ? '<hr>' : '') + `<div class="cust">${lines((k, v) => div(`${k.toUpperCase()}: ${v}`))}</div>` : '') + '<hr>'
+    + `<div class="t items">${heads([['QTY'], ['ITEM'], ['PRICE', 'n'], ['AMOUNT', 'n']])}<hr>`
+    + each((n, q, u, p, t) => `<span>${q}</span><span>${n}</span><span class="n">${num(p)}</span><span class="n">${num(t)}</span>`) + '</div>' + '<hr>'
+    + row('SUBTOTAL', peso(sub)) + row('CASH', peso(O.cash)) + row('CHANGE', peso(change)) + row('TOTAL', peso(sub), 'tot') + '<hr>'
+    + div(thanks(), 'shout') + recno() + div('Keep for returns and exchanges', 'c') + div('This serves as your official receipt.', 'c') + div(`TIN ${O.tin}`, 'c');
+
+// Logo presets, from the name alone. fit() shrinks long names a step so the worst case wraps to two lines, not five.
+const city = O.addr.split(',').slice(-2).map(s => s.trim()).join(' · ');
+const fit = (name, big, small) => Math.max(small, Math.min(big, Math.round(big * 15 / name.length)));
+const initials = (name) => name.split(/\s+/).filter(w => /^[A-Za-z]/.test(w)).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+const LOGOS = {
+  box: (n) => `<div class="lg box"><span style="font-size:${fit(n, 26, 15)}px">${n}</span></div>`,
+  frame: (n) => `<div class="lg frame"><span style="font-size:${fit(n, 20, 13)}px">${n}</span><small>${city}</small></div>`,
+  seal: (n) => `<div class="lg seal"><i>${initials(n)}</i><span>${n}</span></div>`,
+  rule: (n) => `<div class="lg rule"><span style="font-size:${fit(n, 18, 12)}px">${n}</span><small>${city}</small></div>`,
+  stack: (n) => { const w = n.split(' '), k = w[0].length < 4 ? 2 : 1, a = w.slice(0, k).join(' '), b = w.slice(k);  // 'San' alone is too short to lead
+    return `<div class="lg stack"><b style="font-size:${fit(a, 40, 26)}px">${a}</b><span>${b.join(' ')}</span></div>`; },
+  pill: (n) => `<div class="lg pill"><span style="font-size:${fit(n, 22, 13)}px">${n}</span></div>`,
+};
+
+const g2Items = () => each((n, q, u, p, t) => `<div class="it">${div(n, 'nm')}${row(`${q} ${u} × ${peso(p)}`, amt(t), 'ln')}</div>`);
+const heads = (cells) => cells.map(([t, c = '']) => `<span class="h ${c}">${t}</span>`).join('');
+
+// G2 in T1's frame: T1's head and foot round G2's middle, in G2's font
+const g21 = (named) => () => (named ? nameHtml(O.store, O.nm) : div(O.store, 'c store'))
+    + (O.slogan ? div(O.slogan, 'c sm slogan') : '') + telLine('c sm') + '<hr>'
+    + row('Receipt #', O.no) + row('Date', `${O.date} ${O.time}`) + row('Cashier', O.cashier) + row('POS', O.reg)
+    + (S.name ? '<hr>' : '') + div(`<b>${S.type.toUpperCase()}</b>`, 'sm type') + lines((k, v) => div(k === 'Customer' ? v : `${k}: ${v}`, 'sm')) + '<hr>'
+    + g2Items() + '<hr>' + row('Subtotal', amt(sub), 'pay') + row('Cash', amt(O.cash), 'pay') + row('Change', amt(change), 'pay')
+    + row('TOTAL', amt(sub), 'tot')
+    + '<hr>' + div(thanks(), 'ty') + recno() + div('Keep for returns and exchanges.', 'c sm') + div('This serves as your official receipt.', 'c sm') + div(`TIN ${O.tin}`, 'c sm');
+
+const LOOKS = [
+  ['g2', 'G2 · the default', 'the customer under the order type', () => div(O.store, 'c store')
+    + div(O.addr, 'c sm') + div('Tel: ' + O.tel, 'c sm') + div('TIN: ' + O.tin, 'c sm') + '<hr>'
+    + row('Receipt #', O.no) + row('Date', `${O.date} ${O.time}`) + row('Cashier', O.cashier) + row('POS', O.reg)
+    + div(`<b>${S.type.toUpperCase()}</b>`, 'sm type') + lines((k, v) => div(k === 'Customer' ? v : `${k}: ${v}`, 'sm')) + '<hr>'
+    + g2Items() + '<hr>' + row('Subtotal', amt(sub), 'pay') + row('Cash', amt(O.cash), 'pay') + row('Change', amt(change), 'pay')
+    + row('TOTAL', amt(sub), 'tot')
+    + '<hr>' + div('Thank you!', 'c thanks') + div('This serves as your official receipt.', 'c sm') + div('Keep for returns and exchanges.', 'c sm')],
+
+  ['g2 g21', 'G2.1 · G2 in T1’s frame', 'G2’s font and middle; T1’s head (slogan, TIN to the foot), a rule before the customer, the big thank-you', g21()],
+  ['g2 g21 dash', 'G2.2 · G2.1 with T1’s dashed lines', 'G2.1 with every line dashed black, as T1, and the name style picked above', g21(true)],
+
+  ['notion', 'L · Notion', 'after vesitia; money quiet, the foot one plain line', () => div(O.store, 'store')
+    + div(`${O.addr} · ${O.tel}`, 'sm') + div(`TIN ${O.tin}`, 'sm') + '<hr>'
+    + row(`Date: ${O.long}`, O.time) + row(`Receipt: ${O.no}`, O.cashier) + row(`Order: <b>${S.type}</b>`, `POS ${O.reg}`)
+    + (S.name ? `<div class="cust">${lines((k, v) => div(`${k}: ${v}`))}</div>` : '') + '<hr>'
+    + each((n, q, u, p, t) => `<div class="it">${row(n, peso(t), 'nm')}${div(`${q} ${u} × ${peso(p)}`, 'ln')}</div>`)
+    + '<hr>' + `<div class="pay">${row('Subtotal', peso(sub))}${row('Cash', peso(O.cash))}${row('Change', peso(change))}</div>` + row('Total', peso(sub), 'tot')
+    + '<hr>' + div(`Thank you for shopping at ${O.store}`, 'c thanks') + div('This serves as your official receipt. Keep for returns and exchanges.', 'c sm')],
+
+  ['airy', 'O · Airy mono', 'after the cookie one; the receipt number boxed where the barcode was', () => div(O.store, 'store')
+    + div(O.addr, 'c') + div(`Tel ${O.tel}`, 'c') + '<hr>'
+    + div(`RECEIPT #${O.no}`) + div(`${O.date} ${O.time}`) + div(`CASHIER ${O.cashier.toUpperCase()} · POS ${O.reg}`) + div(S.type.toUpperCase())
+    + (S.name ? `<div class="cust">${lines((k, v) => div(`${k.toUpperCase()}: ${v}`))}</div>` : '') + gap
+    + each((n, q, u, p, t) => row(`${q}x ${n}`, peso(t))) + gap + '<hr>'
+    + row('SUBTOTAL', peso(sub)) + row('CASH', peso(O.cash)) + row('CHANGE', peso(change)) + '<div style="height:10px"></div>' + row('TOTAL', peso(sub), 'tot')
+    + gap + gap + div(thanks(), 'shout') + recno() + div('Keep for returns and exchanges', 'c') + div('This serves as your official receipt.', 'c') + div(`TIN ${O.tin}`, 'c')],
+
+  ['airyt', 'T · Airy table', 'Airy mono with QTY / ITEM / PRICE / AMOUNT heads', airyT(() =>
+    `<div class="meta"><span>RECEIPT #${O.no}</span><span>${O.date} ${O.time}</span><span>CASHIER ${O.cashier.toUpperCase()}</span><span>POS ${O.reg} · ${S.type.toUpperCase()}</span></div>`)],
+
+  ['airyt', 'T1 · Airy table, one column', 'T with the sale facts as four lines, a rule before the customer', airyT(() =>
+    div(`RECEIPT #${O.no}`) + div(`${O.date} ${O.time}`) + div(`CASHIER ${O.cashier.toUpperCase()}`) + div(`POS ${O.reg} · ${S.type.toUpperCase()}`), true)],
+
+  ['g2t', 'G2T · G2 in T’s layout', 'G2’s look; T’s facts in two columns, the items as a table, the big thank-you', () => div(O.store, 'c store')
+    + div(`${O.addr} · Tel ${O.tel}`, 'c sm') + '<hr>'
+    + `<div class="meta"><span><span class="k">Receipt</span> ${O.no}</span><span>${O.date} ${O.time}</span>`
+    + `<span><span class="k">Cashier</span> ${O.cashier}</span><span>POS ${O.reg} · <b>${S.type}</b></span></div>`
+    + (S.name ? `<div class="cust">${lines((k, v) => div(`<span class="k">${k}</span> ${v}`))}</div>` : '') + '<hr>'
+    + `<div class="t items">${heads([['QTY'], ['ITEM'], ['PRICE', 'n'], ['AMOUNT', 'n']])}<hr>`
+    + each((n, q, u, p, t) => `<span>${q}</span><span>${n}</span><span class="n g">${num(p)}</span><span class="n">${num(t)}</span>`) + '</div>' + '<hr>'
+    + row('Subtotal', amt(sub), 'pay') + row('Cash', amt(O.cash), 'pay') + row('Change', amt(change), 'pay') + row('TOTAL', amt(sub), 'tot') + '<hr>'
+    + div(thanks(), 'ty') + recno() + div('Keep for returns and exchanges.', 'c sm') + div('This serves as your official receipt.', 'c sm') + div(`TIN ${O.tin}`, 'c sm')],
+];
+
+const pick = document.getElementById('sale'), telPick = document.getElementById('tels');
+function render() {
+  S = SALES[pick.value];
+  O.tel = TELS.slice(0, +telPick.value).join(' / ');
+  O.nm = document.getElementById('nm').value;
+  O.slogan = document.getElementById('slogan').value.trim().replace(/[<&]/g, (c) => c === '<' ? '&lt;' : '&amp;');
+  document.getElementById('looks').innerHTML = LOOKS.map(([cls, name, note, html]) =>
+    `<section class="look"><h2>${name}<small>${note}</small></h2><div class="paper ${cls}">${html()}</div></section>`).join('');
+}
+// #walkin-3-tall = the walk-in sale, 3 phone numbers, the Tall name
+const [hs, ht, hn] = location.hash.slice(1).split('-');
+if (NAMES[hn]) document.getElementById('nm').value = hn;
+pick.value = SALES[hs] ? hs : 'delivery';
+telPick.value = ['1', '2', '3'].includes(ht) ? ht : '1';
+pick.onchange = telPick.onchange = document.getElementById('nm').onchange = document.getElementById('slogan').oninput = render;
+render();
+document.getElementById('names').innerHTML = '<h2>Name styles<small>T’s head in each; under each, a worst-case long name</small></h2><div class="logo-grid">'
+  + Object.entries(NAMES).map(([k, [t]]) => `<div class="paper airyt logo-tile"><h3>${t}</h3>${nameHtml(O.store, k)}${div(O.slogan, 'c slogan')}<div class="sep"></div>${nameHtml(WORST, k)}</div>`).join('') + '</div>';
+document.getElementById('logos').innerHTML = '<h2>Logo presets<small>made from the store’s name in black only; under each, a worst-case long name</small></h2><div class="logo-grid">'
+  + [['box', 'Box'], ['frame', 'Frame'], ['seal', 'Seal'], ['rule', 'Rule'], ['stack', 'Stack'], ['pill', 'Pill']].map(([k, t]) =>
+    `<div class="paper logo-tile"><h3>${t}</h3>${LOGOS[k](O.store)}<div class="sep"></div>${LOGOS[k](WORST)}</div>`).join('') + '</div>';
+</script>
+</body>
+</html>

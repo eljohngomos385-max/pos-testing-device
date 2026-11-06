@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sale complete ideas</title>
+<!-- Lab (owner 2026-11-06: "you can design it however you want"): seven different Sale complete pages, nothing fixed but
+     what the page must say. One switch sets every phone to change / exact cash / GCash. Values copied from styles.css (lab only). -->
+<style>
+  :root {
+    --canvas: #F2F2F2; --bg: #FFFFFF; --surface: #F9F9F9; --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C; --line: #E1E1E1;
+    --glass: color-mix(in srgb, var(--bg) 70%, transparent);
+    --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+    --row-shadow: inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06);
+    --cta-bg: radial-gradient(75% 80% at 50% 120%, #8EC2F0, transparent 85%), linear-gradient(#6A9FF9, #4388F7 50%, #5592F7);
+    --cta-ink: #F5F9FF;
+    --cta-shadow: inset 0 0 14px rgb(255 255 255 / .25), 0 1px 2px rgb(41 85 151 / .45), 0 2px 7px 1px rgb(67 136 247 / .32);
+    --blue: #4388F7;
+    --hero-y: 217px; --hero-fs: 59px; --hero-fw: 550;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+    /* the notes' tints (pastel, as the Orders pills) */
+    --n1000: #DCE8FB; --n500: #FBF0C9; --n200: #DDF1DE; --n100: #ECE2F8; --n50: #FADCDC; --n20: #FCE6D2; --coin: #ECECEC;
+  }
+  :root.dark { --canvas: #121212; --bg: #121212; --surface: #2A2A2A; --ink: #FFFFFF; --ink-secondary: rgb(255 255 255 / .7); --ink-tertiary: rgb(255 255 255 / .45);
+    --line: rgb(255 255 255 / .08); --glass: rgb(255 255 255 / .08); --glass-ring: 0 1px 4px rgb(0 0 0 / .3), inset 0 0 0 .5px rgb(255 255 255 / .2); --row-shadow: none;
+    --n1000: #24344F; --n500: #4A4122; --n200: #23402A; --n100: #3B2F50; --n50: #4D2A2A; --n20: #4D3622; --coin: #333; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 16px 48px; background: var(--canvas); color: var(--ink); font: 15px/1.4 var(--font); }
+  header { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; margin: -20px -16px 16px; padding: 12px 16px;
+    background: color-mix(in srgb, var(--canvas) 85%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+  .seg { display: flex; padding: 3px; border-radius: 999px; background: var(--glass); box-shadow: var(--glass-ring); }
+  .seg button { height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-secondary); font: 500 14px var(--font); cursor: pointer; }
+  .seg button.on { background: var(--bg); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+  :root.dark .seg button.on { background: rgb(255 255 255 / .16); }
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, 393px); justify-content: center; gap: 36px 24px; }
+  figure { margin: 0; display: grid; justify-items: center; gap: 10px; }
+  figcaption { text-align: center; color: var(--ink-secondary); font-size: 13px; max-width: 340px; }
+  figcaption b { display: block; color: var(--ink); font-size: 15px; font-weight: 600; }
+
+  /* ---- one phone --------------------------------------------------------------------------------------------- */
+  .ph { position: relative; width: 393px; height: 852px; overflow: hidden; border-radius: 48px; background: var(--canvas);
+    box-shadow: 0 0 0 1px var(--line), 0 10px 30px rgb(0 0 0 / .08); font-family: var(--font); }
+  .ph * { margin: 0; }
+  .num { font-variant-numeric: tabular-nums; letter-spacing: -.04em; font-weight: var(--hero-fw); line-height: 1; }
+  .cta { display: grid; place-items: center; height: 52px; border: 0; border-radius: 999px; background: var(--cta-bg); box-shadow: var(--cta-shadow);
+    color: var(--cta-ink); font: 500 17px var(--font); }
+  .c2 { display: flex; align-items: center; justify-content: center; gap: 8px; height: 52px; border: 0; border-radius: 999px; background: var(--glass);
+    box-shadow: var(--glass-ring); color: var(--ink); font: 500 15px var(--font); }
+  .ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .bot { position: absolute; left: 24px; right: 24px; bottom: 34px; display: grid; gap: 10px; }
+  .rise { animation: rise .5s var(--ease) both; animation-delay: calc(var(--d, 0) * 70ms + 80ms); }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+  @keyframes up { from { transform: translateY(100%); } }
+
+  /* notes and coins: the change as the cashier counts it out */
+  .notes { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .note { display: grid; place-items: center; min-width: 74px; height: 40px; padding: 0 10px; border-radius: 8px; color: var(--ink); font-size: 14px; font-weight: 600;
+    font-variant-numeric: tabular-nums; box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .06); }
+  .note.coin { min-width: 40px; width: 40px; padding: 0; border-radius: 50%; font-size: 12px; }
+  .note small { font-weight: 500; opacity: .6; margin-left: 2px; }
+
+  /* 1 · Hand back: the top is Check out's blue, the change in white, the notes under it */
+  .d1 .top { position: absolute; inset: 0 0 auto; height: 520px; display: grid; align-content: center; justify-items: center; gap: 14px; padding: 60px 24px 0;
+    border-radius: 0 0 44px 44px; background: var(--cta-bg); box-shadow: var(--cta-shadow); color: var(--cta-ink); animation: drop .6s var(--ease) both; }
+  .d1 .top p { font-size: 17px; font-weight: 500; opacity: .85; }
+  .d1 .top .num { font-size: 72px; }
+  .d1 .top .note { background: rgb(255 255 255 / .2) !important; color: #fff; box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .35); }
+  .d1 .meta { position: absolute; top: 548px; left: 0; right: 0; text-align: center; color: var(--ink-secondary); font-size: 15px; }
+  .d1 .bot { grid-template-columns: 1fr 1fr; }
+  @keyframes drop { from { transform: translateY(-40px); opacity: 0; } }
+
+  /* 2 · Count it out: the number, then the notes and coins to hand back, drawn as notes */
+  .d2 .mid { position: absolute; top: calc(var(--hero-y) - 30px); left: 24px; right: 24px; display: grid; justify-items: center; }
+  .d2 .mid > p { height: 20px; margin-bottom: 10px; color: var(--ink-secondary); font-size: 15px; font-weight: 500; }
+  .d2 .mid .num { font-size: var(--hero-fs); }
+  .d2 .notes { margin-top: 28px; }
+  .d2 .notes .note { animation: deal .4s var(--ease) both; animation-delay: calc(var(--i) * 90ms + 300ms); }
+  .d2 .paid { margin-top: 28px; display: flex; align-items: center; gap: 10px; color: var(--ink-secondary); font-size: 15px; }
+  .d2 .tick { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--cta-bg); box-shadow: var(--cta-shadow); color: #fff; }
+  .d2 .bot { grid-template-columns: 52px 1fr; }
+  .d2 .bot .c2 { width: 52px; padding: 0; }
+  @keyframes deal { from { opacity: 0; transform: translateY(-16px) rotate(-6deg); } }
+
+  /* 3 · The receipt itself: a paper slip rises with the change printed big at its head; no Show receipt needed */
+  .d3 .slip { position: absolute; top: 96px; left: 28px; right: 28px; padding: 26px 22px 30px; background: var(--bg); color: var(--ink);
+    box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 8px 24px rgb(0 0 0 / .06); animation: up .7s var(--ease) both;
+    -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat, radial-gradient(circle 6px at 8px 100%, transparent 6px, #000 6.5px) bottom / 16px 8px repeat-x;
+            mask: linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat, radial-gradient(circle 6px at 8px 100%, transparent 6px, #000 6.5px) bottom / 16px 8px repeat-x; }
+  :root.dark .d3 .slip { background: #1E1E1E; }
+  .d3 .slip > p:first-child { color: var(--ink-tertiary); font-size: 13px; text-align: center; }
+  .d3 .big { display: grid; justify-items: center; gap: 6px; padding: 22px 0 24px; border-bottom: 1px dashed var(--line); }
+  .d3 .big span { color: var(--ink-secondary); font-size: 15px; font-weight: 500; }
+  .d3 .big .num { font-size: 52px; }
+  .d3 dl { display: grid; grid-template-columns: 1fr auto; gap: 10px 12px; padding-top: 18px; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .d3 dt { color: var(--ink-secondary); }
+  .d3 dd { text-align: right; }
+  .d3 dt.t, .d3 dd.t { color: var(--ink); font-weight: 600; }
+  .d3 .bot { grid-template-columns: 1fr 1fr; }
+
+  /* 4 · The sum: written out as on paper, left to right; the answer is the big line */
+  .d4 .h { position: absolute; top: 72px; left: 28px; display: flex; align-items: center; gap: 10px; font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+  .d4 .h i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--cta-bg); box-shadow: var(--cta-shadow); color: #fff; }
+  .d4 .sum { position: absolute; top: 190px; left: 28px; right: 28px; display: grid; gap: 14px; font-size: 20px; font-variant-numeric: tabular-nums; }
+  .d4 .sum > div { display: flex; justify-content: space-between; color: var(--ink-secondary); }
+  .d4 .sum hr { border: 0; border-top: 2px solid var(--ink); margin: 4px 0 6px; }
+  .d4 .sum .ans { display: grid; gap: 6px; color: var(--ink); }
+  .d4 .sum .ans span { font-size: 17px; font-weight: 500; color: var(--ink-secondary); }
+  .d4 .sum .ans .num { font-size: 64px; text-align: right; }
+  .d4 .sum .ans .num.none { font-size: 40px; letter-spacing: -.02em; }
+  .d4 .rows { position: absolute; left: 24px; right: 24px; bottom: 112px; display: grid; gap: 8px; }
+  .d4 .row { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 16px; border-radius: 16px; background: var(--bg); box-shadow: var(--row-shadow); font-size: 15px; font-weight: 500; }
+  :root.dark .d4 .row { background: var(--surface); }
+  .d4 .row .ic { color: var(--ink-secondary); }
+  .d4 .row b { margin-left: auto; color: var(--ink-tertiary); font-weight: 400; }
+
+  /* 5 · Call screen: two round glass keys under the number (as a phone call's Mute / Speaker), New sale a wide pill */
+  .d5 .mid { position: absolute; top: calc(var(--hero-y) - 30px); left: 0; right: 0; display: grid; justify-items: center; }
+  .d5 .mid > p { height: 20px; margin-bottom: 10px; color: var(--ink-secondary); font-size: 15px; font-weight: 500; }
+  .d5 .mid .num { font-size: var(--hero-fs); }
+  .d5 .sub { margin-top: 12px; color: var(--ink-tertiary); font-size: 15px; }
+  .d5 .keys { position: absolute; left: 0; right: 0; bottom: 170px; display: flex; justify-content: center; gap: 44px; }
+  .d5 .key { display: grid; justify-items: center; gap: 8px; color: var(--ink-secondary); font-size: 13px; font-weight: 500; }
+  .d5 .key i { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: var(--glass); box-shadow: var(--glass-ring); color: var(--ink); }
+  .d5 .key .ic { width: 26px; height: 26px; }
+
+  /* 6 · Wallet pass: one card, the store's band on top, the change, the lines, and a code the customer scans for the receipt */
+  .d6 .card { position: absolute; top: 80px; left: 20px; right: 20px; overflow: hidden; border-radius: 22px; background: var(--bg); box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 12px 30px rgb(0 0 0 / .08);
+    animation: rise .6s var(--ease) both; }
+  :root.dark .d6 .card { background: #1E1E1E; }
+  .d6 .band { display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 18px; background: var(--cta-bg); color: #fff; font-size: 15px; font-weight: 600; }
+  .d6 .band span { font-weight: 500; opacity: .85; }
+  .d6 .body { display: grid; justify-items: center; padding: 26px 20px 22px; }
+  .d6 .body > p { color: var(--ink-secondary); font-size: 15px; font-weight: 500; margin-bottom: 8px; }
+  .d6 .body .num { font-size: 52px; }
+  .d6 .lines { width: 100%; display: grid; grid-template-columns: 1fr 1fr 1fr; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); text-align: center; }
+  .d6 .lines small { display: block; color: var(--ink-tertiary); font-size: 12px; }
+  .d6 .lines b { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .d6 .qr { margin-top: 22px; width: 132px; height: 132px; border-radius: 12px; padding: 10px; background: #fff; box-shadow: inset 0 0 0 1px var(--line); }
+  .d6 .qr svg { display: block; width: 100%; height: 100%; }
+  .d6 .scan { margin-top: 10px; color: var(--ink-tertiary); font-size: 13px; }
+  .d6 .bot { grid-template-columns: 52px 1fr; }
+  .d6 .bot .c2 { width: 52px; padding: 0; }
+
+  /* 7 · Across the counter: the change as big as the screen allows, to turn and show; the rest small under it */
+  .d7 .wrap { position: absolute; top: 150px; left: 24px; right: 24px; }
+  .d7 .wrap > p { color: var(--blue); font-size: 17px; font-weight: 600; }
+  .d7 .wrap .num { margin-top: 6px; font-size: 92px; letter-spacing: -.05em; }
+  .d7 .wrap .num small { font-size: .5em; letter-spacing: -.02em; color: var(--ink-tertiary); }
+  .d7 .wrap .of { margin-top: 18px; color: var(--ink-secondary); font-size: 17px; line-height: 1.45; }
+  .d7 .wrap .of b { color: var(--ink); font-weight: 600; }
+  .d7 .bot { gap: 0; }
+  .d7 .pair { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 14px; border-radius: 16px; background: var(--bg); box-shadow: var(--row-shadow); overflow: hidden; }
+  :root.dark .d7 .pair { background: var(--surface); }
+  .d7 .pair div { display: flex; align-items: center; justify-content: center; gap: 8px; height: 56px; font-size: 15px; font-weight: 500; }
+  .d7 .pair div + div { box-shadow: inset .5px 0 0 var(--line); }
+  .d7 .pair .ic { color: var(--ink-secondary); }
+</style>
+</head>
+<body>
+<header>
+  <div class="seg" id="st"><button data-s="chg" class="on">Change</button><button data-s="exact">Exact cash</button><button data-s="gcash">GCash</button></div>
+  <div class="seg" id="th"><button data-t="light" class="on">Light</button><button data-t="dark">Dark</button></div>
+</header>
+<div id="grid"></div>
+<script>
+  const peso = n => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const short = n => '₱' + n.toLocaleString('en-PH');
+  const ic = d => `<svg class="ic" viewBox="0 0 24 24">${d}</svg>`;
+  const PRINT = ic('<path d="M6 9V3h12v6"/><rect x="2" y="9" width="20" height="9" rx="2"/><rect x="6" y="14" width="12" height="7" rx="1"/>');
+  const RCPT = ic('<path d="M5 2v20l2.5-1.5L10 22l2-1.5 2 1.5 2.5-1.5L19 22V2l-2.5 1.5L14 2l-2 1.5L10 2 7.5 3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/>');
+  const TICK = (s = 18) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+  const STATES = {
+    chg:   { total: 615, method: 'Cash', paid: 1000, change: 385 },
+    exact: { total: 615, method: 'Cash', paid: 615, change: 0 },
+    gcash: { total: 615, method: 'GCash', paid: 615, change: 0, ref: '7012 345 678' },
+  };
+  // the change as the drawer pays it out, biggest first (PH notes, then coins)
+  const DEN = [[1000, 'n1000'], [500, 'n500'], [200, 'n200'], [100, 'n100'], [50, 'n50'], [20, 'n20'], [10, 'coin'], [5, 'coin'], [1, 'coin']];
+  const notes = (n) => { let i = 0; return DEN.flatMap(([v, t]) => { const k = Math.floor(n / v); n -= k * v;
+    return k ? [`<span class="note${t === 'coin' ? ' coin' : ''}" style="background:var(--${t});--i:${i++}">${short(v)}${k > 1 ? `<small>×${k}</small>` : ''}</span>`] : []; }).join(''); };
+  // a stand-in code: 25×25 modules, the three corner squares, the rest fixed noise
+  const QR = (() => { let r = 7, d = ''; const fin = (x, y) => `<path d="M${x} ${y}h7v7h-7z M${x + 1} ${y + 1}v5h5v-5z M${x + 2} ${y + 2}h3v3h-3z" fill-rule="evenodd"/>`;
+    for (let y = 0; y < 25; y++) for (let x = 0; x < 25; x++) { r = (r * 9301 + 49297) % 233280;
+      if ((x < 8 && y < 8) || (x > 16 && y < 8) || (x < 8 && y > 16)) continue; if (r / 233280 < .5) d += `M${x} ${y}h1v1h-1z`; }
+    return `<svg viewBox="0 0 25 25" fill="#111">${fin(0, 0)}${fin(18, 0)}${fin(0, 18)}<path d="${d}"/></svg>`; })();
+  // what the page says: the word over the number, and the number
+  const say = s => s.change ? ['Change', s.change] : [`Paid · ${s.method}`, s.total];
+
+  const D = [
+    ['Hand back', "The top turns Check out's blue: the change in white, the notes to hand back under it. Exact cash and GCash say so in the same place.", s => {
+      const [w, n] = s.change ? ['Give back', s.change] : [s.method === 'Cash' ? 'Exact cash' : 'Paid with GCash', s.total];
+      return `<div class="d1"><div class="top"><p>${w}</p><b class="num">${peso(n)}</b>${s.change ? `<div class="notes">${notes(s.change)}</div>` : `<p>${TICK(28)}</p>`}</div>
+        <p class="meta rise" style="--d:3">${s.change ? `${peso(s.paid)} cash for a ${peso(s.total)} sale` : s.ref ? `Ref ${s.ref}` : 'No change'}</p>
+        <div class="bot rise" style="--d:4"><button class="c2">${PRINT}Print</button><button class="cta">New sale</button></div></div>`; }],
+    ['Count it out', 'The number on the hero line, then the notes and coins to give, drawn as notes. No change: a blue tick says paid.', s => {
+      const [w, n] = say(s);
+      return `<div class="d2"><div class="mid"><p>${w}</p><b class="num">${peso(n)}</b>
+        ${s.change ? `<div class="notes">${notes(s.change)}</div><p class="paid rise" style="--d:6">${peso(s.paid)} − ${peso(s.total)}</p>`
+                   : `<div class="paid rise" style="--d:2"><span class="tick">${TICK(28)}</span></div>`}</div>
+        <div class="bot rise" style="--d:4"><button class="c2" aria-label="Print receipt">${PRINT}</button><button class="cta">New sale</button></div></div>`; }],
+    ['The receipt', 'The receipt itself rises as a paper slip, the change printed big at its head. Nothing to tap to see it; Print sends the same slip.', s => {
+      const [w, n] = say(s);
+      return `<div class="d3"><div class="slip"><p>EJ Hardware · #1-839 · 10:42</p><div class="big"><span>${w}</span><b class="num">${peso(n)}</b></div>
+        <dl><dt>PVC Elbow 1/2" × 3</dt><dd>${peso(135)}</dd><dt>Teflon tape</dt><dd>${peso(80)}</dd><dt>Gate valve 1"</dt><dd>${peso(400)}</dd>
+        <dt class="t">Total</dt><dd class="t">${peso(s.total)}</dd><dt>${s.method}</dt><dd>${peso(s.paid)}</dd>${s.change ? `<dt>Change</dt><dd>${peso(s.change)}</dd>` : ''}${s.ref ? `<dt>Ref</dt><dd>${s.ref}</dd>` : ''}</dl></div>
+        <div class="bot rise" style="--d:5"><button class="c2">${PRINT}Print</button><button class="cta">New sale</button></div></div>`; }],
+    ['The sum', 'Done, as a big title top left. The sum written out as on paper, the answer the big line. Print and Email as rows.', s => {
+      const ans = s.change ? ['Change', peso(s.change)] : ['No change', 'Paid in full'];
+      return `<div class="d4"><p class="h rise"><i>${TICK(20)}</i>Done</p>
+        <div class="sum"><div class="rise" style="--d:1"><span>Sale</span><span>${peso(s.total)}</span></div><div class="rise" style="--d:2"><span>${s.method}${s.ref ? ` · ${s.ref}` : ''}</span><span>${peso(s.paid)}</span></div>
+        <hr class="rise" style="--d:3"><div class="ans rise" style="--d:4"><span>${ans[0]}</span><b class="num${s.change ? '' : ' none'}">${ans[1]}</b></div></div>
+        <div class="rows rise" style="--d:5"><div class="row">${PRINT}Print receipt</div><div class="row">${RCPT}Show receipt</div></div>
+        <div class="bot rise" style="--d:6"><button class="cta">New sale</button></div></div>`; }],
+    ['Call screen', 'Two round glass keys low on the screen, as a call\'s Mute and Speaker: big, thumb height, never in a corner.', s => {
+      const [w, n] = say(s);
+      return `<div class="d5"><div class="mid"><p>${w}</p><b class="num">${peso(n)}</b><p class="sub rise" style="--d:2">${s.change ? `${peso(s.paid)} cash` : s.ref ? `Ref ${s.ref}` : 'No change'}</p></div>
+        <div class="keys rise" style="--d:4"><div class="key"><i>${PRINT}</i>Print</div><div class="key"><i>${RCPT}</i>Receipt</div></div>
+        <div class="bot rise" style="--d:5"><button class="cta">New sale</button></div></div>`; }],
+    ['Wallet pass', 'One card like a Wallet pass: the store band, the change, three facts, and a code the customer scans to keep the receipt.', s => {
+      const [w, n] = say(s);
+      return `<div class="d6"><div class="card"><div class="band">EJ Hardware <span>#1-839</span></div><div class="body"><p>${w}</p><b class="num">${peso(n)}</b>
+        <div class="lines"><div><small>Total</small><b>${short(s.total)}</b></div><div><small>${s.method}</small><b>${short(s.paid)}</b></div><div><small>${s.ref ? 'Ref' : 'Change'}</small><b>${s.ref ? s.ref.slice(-3) : short(s.change)}</b></div></div>
+        <div class="qr">${QR}</div><p class="scan">Scan for the receipt</p></div></div>
+        <div class="bot rise" style="--d:4"><button class="c2" aria-label="Print receipt">${PRINT}</button><button class="cta">New sale</button></div></div>`; }],
+    ['Across the counter', "The change as big as the screen allows, to turn and show; one sentence under it says the rest. Print | Receipt as one split row.", s => {
+      const [w, n] = s.change ? ['Change', s.change] : [s.method === 'Cash' ? 'Exact cash' : 'GCash', s.total];
+      const [p, c] = peso(n).split('.');
+      return `<div class="d7"><div class="wrap"><p class="rise">${TICK(16)} ${w}</p><b class="num rise" style="--d:1">${p}<small>.${c}</small></b>
+        <p class="of rise" style="--d:2">${s.change ? `<b>${peso(s.paid)}</b> cash for a <b>${peso(s.total)}</b> sale.` : s.ref ? `Paid in full. Ref ${s.ref}.` : 'Paid in full, nothing to hand back.'}</p></div>
+        <div class="bot rise" style="--d:4"><div class="pair"><div>${PRINT}Print</div><div>${RCPT}Receipt</div></div><button class="cta">New sale</button></div></div>`; }],
+  ];
+
+  const grid = document.getElementById('grid');
+  let st = 'chg';
+  const draw = () => { grid.innerHTML = D.map(([name, line, f], i) => `<figure><div class="ph">${f(STATES[st])}</div><figcaption><b>${i + 1} · ${name}</b>${line}</figcaption></figure>`).join(''); };
+  const seg = (id, k, on) => document.getElementById(id).onclick = e => { const b = e.target.closest('button'); if (!b) return;
+    for (const x of b.parentNode.children) x.classList.toggle('on', x === b); on(b.dataset[k]); };
+  seg('st', 's', v => { st = v; draw(); });
+  seg('th', 't', v => { document.documentElement.classList.toggle('dark', v === 'dark'); draw(); });
+  draw();
+</script>
+</body>
+</html>

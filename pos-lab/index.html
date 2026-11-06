@@ -32,8 +32,9 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=805" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Montserrat:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=815" />
+  <link rel="stylesheet" href="receipt.css?v=2" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-back" viewBox="0 0 24 24"><path d="M15 4l-8 8 8 8"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5.2 7.1L19.8 4.4"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r=".8" fill="currentColor"/><circle cx="12" cy="12" r=".8" fill="currentColor"/><circle cx="19" cy="12" r=".8" fill="currentColor"/></symbol></svg>   <!-- every round-button icon (‹ ✕ ✓ ⋯) is <use href="#i-…"/>: change the shape here, the size and line in --circle-ic / --circle-sw (owner 2026-11-04, measured off Apple Settings, Contacts and Safari) -->
@@ -600,6 +601,7 @@
                 <section class="card fc st-home">
                   <button type="button" class="fr nav" data-sec="appearance"><span class="lb">Appearance</span><span class="v"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <button type="button" class="fr nav" data-sec="printing"><span class="lb">Printing</span><span class="v"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" id="posReceiptRow"><span class="lb">Receipt</span><span class="v"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <button type="button" class="fr nav" data-sec="store"><span class="lb">Store</span><span class="v"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <button type="button" class="fr nav" data-sec="shift"><span class="lb">Shift</span><span class="v"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <button type="button" class="fr nav" data-sec="account"><span class="lb">Account</span><span class="v"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
@@ -632,7 +634,7 @@
                   <div class="fr"><span class="lb">Test drawer</span><span class="v"><button type="button" class="act cta-3" id="posTestDrawerBtn">Open</button></span></div>
                 </section>
                 <section class="card fc" data-sec-of="store" hidden>
-                  <button type="button" class="fr nav" id="posStoreRow"><span class="lb">Store details</span><span class="v"><span class="vv" id="posStoreNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                  <button type="button" class="fr nav" id="posStoreRow"><span class="lb">Store details</span><span class="v"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <button type="button" class="fr nav" data-pick="bizType"><span class="lb">Business type</span><span class="v"><span class="vv"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <button type="button" class="fr nav" id="posPayTypesRow"><span class="lb">Payment types</span><span class="v"><span class="vv" id="posPayTypesNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
                   <button type="button" class="fr nav" id="posFulTypesRow"><span class="lb">Fulfilment types</span><span class="v"><span class="vv" id="posFulTypesNow"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
@@ -736,6 +738,36 @@
                   <label class="fr"><span class="lb">TIN</span><span class="v"><input class="in" name="tin" maxlength="20" autocomplete="off"></span></label>
                 </section>
               </form>
+            </div>
+          </section>
+          <!-- Settings › Receipt (owner 2026-11-06): Preview opens the receipt in a sheet (not on the page); logo, words, footer picture (pos-settings.js openLook) -->
+          <section class="page st-page" id="receiptPage" aria-label="Receipt" hidden>
+            <div class="head">
+              <button class="sq back cta-2" id="receiptBack" aria-label="Back to settings" title="Back"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg></button>
+              <h1 class="st-ttl">Receipt</h1>
+            </div>
+            <div class="c-scroll">
+              <div class="c-body">
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Style</span><span class="v"><span class="act st-pick st-sel"><select id="rcStyle"><option value="t1">Classic</option><option value="g2">Modern</option></select><svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg></span></span></label>
+                  <button type="button" class="fr nav" id="rcPreviewRow"><span class="lb">Preview</span><span class="v"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>
+                </section>
+                <section class="card fc">
+                  <label class="fr qr-pic-row" for="rcLogoIn"><span class="lb">Logo</span><span class="v"><input type="file" id="rcLogoIn" accept="image/*" hidden><img class="qr-thumb" id="rcLogoThumb" alt="" hidden><button type="button" class="qr-rm" id="rcLogoRm" hidden>Remove</button><span id="rcLogoAdd">Add picture</span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></label>
+                </section>
+                <section class="card fc">
+                  <label class="fr"><span class="lb">Show address</span><span class="v"><input type="checkbox" class="sw" id="rcAddress"></span></label>
+                  <label class="fr"><span class="lb">Show phone</span><span class="v"><input type="checkbox" class="sw" id="rcPhone"></span></label>
+                  <label class="fr"><span class="lb">Show TIN</span><span class="v"><input type="checkbox" class="sw" id="rcTin"></span></label>
+                </section>
+                <section class="card fc">
+                  <label class="fr stk"><span class="lb">Header</span><textarea class="in" id="rcHeader" rows="2" maxlength="300" placeholder="e.g. Call 0917 000 0000 for delivery"></textarea></label>
+                  <label class="fr stk"><span class="lb">Footer</span><textarea class="in" id="rcFooter" rows="2" maxlength="300" placeholder="e.g. Thank you for visiting!"></textarea></label>
+                </section>
+                <section class="card fc">
+                  <label class="fr qr-pic-row" for="rcFootIn"><span class="lb">Footer picture<small>e.g. your QR code</small></span><span class="v"><input type="file" id="rcFootIn" accept="image/*" hidden><img class="qr-thumb" id="rcFootThumb" alt="" hidden><button type="button" class="qr-rm" id="rcFootRm" hidden>Remove</button><span id="rcFootAdd">Add picture</span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></label>
+                </section>
+              </div>
             </div>
           </section>
           <!-- Settings › Fulfilment types (owner 2026-10-16): Payment types' twin, plus the primary a sale starts on (pos-settings.js) -->
@@ -1018,19 +1050,19 @@
   <script src="data.js?v=34"></script>
   <script src="bo-model.js?v=144"></script>
   <script src="vendor/zxing-browser.min.js"></script>
-  <script src="printer.js?v=55"></script>
+  <script src="printer.js?v=60"></script>
   <script src="drawer.js?v=1"></script>
-  <script src="pos-core.js?v=74"></script>
-  <script src="pos-sell.js?v=157"></script>
+  <script src="pos-core.js?v=79"></script>
+  <script src="pos-sell.js?v=161"></script>
   <script src="pos-checkout.js?v=57"></script>
-  <script src="pos-orders.js?v=56"></script>
-  <script src="pos-items.js?v=89"></script>
-  <script src="pos-customers.js?v=50"></script>
-  <script src="pos-settings.js?v=48"></script>
+  <script src="pos-orders.js?v=60"></script>
+  <script src="pos-items.js?v=91"></script>
+  <script src="pos-customers.js?v=51"></script>
+  <script src="pos-settings.js?v=53"></script>
   <script src="pos-pin.js?v=15"></script>
-  <script src="pos-shift.js?v=58"></script>
+  <script src="pos-shift.js?v=60"></script>
   <script src="pos-stock.js?v=28"></script>
   <script src="pos-qr.js?v=3"></script>
-  <script src="app.js?v=304"></script>
+  <script src="app.js?v=306"></script>
 </body>
 </html>

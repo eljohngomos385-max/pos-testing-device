@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soft silhouette</title>
+<style>
+/* page + text tokens copied from pos-lab/styles.css :root (dark) and body.light-theme */
+:root {
+  --bg: #121212; --bg-soft: #1C1C1C; --surface: #2A2A2A; --line: rgba(255,255,255,.08);
+  --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45);
+  --cta-solid: #4388F7;
+  --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  /* illustration tints, all from the cta blue + its sky highlight */
+  --haze: #4388F7; --haze-o: .62;
+  --sky: #8EC2F0;  --sky-o: .42;
+  --ice-top: #FFFFFF; --ice-bot: #D6E8FF; --ice-o: .92; --ice-fade: .72;
+  --grain-o: .55;
+  --page: #0A0A0A;
+}
+body.light {
+  --bg: #FFFFFF; --bg-soft: #EDEDED; --surface: #F9F9F9; --line: #E1E1E1;
+  --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C;
+  --haze-o: .62; --sky-o: .55;
+  --ice-bot: #D3E5FF; --ice-o: 1; --ice-fade: .96;
+  --grain-o: .45;
+  --page: #EDEDED;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 28px 40px 8px; max-width: 1400px; margin: 0 auto; }
+header h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+header h1 span { color: var(--ink-tertiary); font-weight: 400; }
+.toggle { display: flex; background: var(--bg-soft); border-radius: 999px; padding: 3px; }
+.toggle button { font: inherit; font-size: 14px; border: 0; background: none; color: var(--ink-secondary); padding: 7px 16px; border-radius: 999px; cursor: pointer; }
+.toggle button.on { background: var(--surface); color: var(--ink); }
+main { max-width: 1400px; margin: 0 auto; padding: 0 40px 60px; }
+h2 { font-size: 15px; font-weight: 600; color: var(--ink-secondary); margin: 34px 0 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 28px 24px; }
+figure { margin: 0; width: 300px; }
+.card { height: 420px; border-radius: 28px; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 8px; overflow: hidden; }
+body.light .card { box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 0 0 1px var(--line); }
+.card svg { width: 300px; height: 300px; margin: -40px 0 -30px; display: block; overflow: visible; }
+.t { font-size: 17px; font-weight: 600; letter-spacing: -.01em; margin: 0 24px 6px; text-align: center; }
+.s { font-size: 14px; color: var(--ink-tertiary); margin: 0 24px; text-align: center; line-height: 1.35; }
+figcaption { font-size: 12px; color: var(--ink-tertiary); margin-top: 10px; padding-left: 4px; }
+/* the illustration paints */
+.haze  { fill: var(--haze); opacity: var(--haze-o); }
+.sky   { fill: var(--sky);  opacity: var(--sky-o); }
+.obj   { opacity: var(--ice-o); }
+.obj * { fill: url(#ice); }
+.obj .far { opacity: .42; }
+.obj .mid { opacity: .68; }
+.grain { mix-blend-mode: soft-light; opacity: var(--grain-o); }
+@media (max-width: 700px) { header, main { padding-left: 16px; padding-right: 16px; } figure { width: 100%; } }
+</style>
+</head>
+<body>
+<!-- shared paint: one feather, one haze, one grain for every picture -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="ice" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" style="stop-color:var(--ice-top)"/>
+      <stop offset="1" style="stop-color:var(--ice-bot);stop-opacity:var(--ice-fade)"/>
+    </linearGradient>
+    <radialGradient id="grainArea">
+      <stop offset="0" stop-color="#fff" stop-opacity="1"/>
+      <stop offset=".6" stop-color="#fff" stop-opacity=".7"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <!-- feathered edge: a wide soft glow under a lightly blurred core -->
+    <filter id="feather" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="11" result="glow"/>
+      <feComponentTransfer in="glow" result="glowSoft"><feFuncA type="linear" slope=".7"/></feComponentTransfer>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="core"/>
+      <feMerge><feMergeNode in="glowSoft"/><feMergeNode in="core"/></feMerge>
+    </filter>
+    <filter id="haze" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+    <!-- film grain: grey noise, only where the cloud is -->
+    <filter id="grain" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420">
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="3.2 0 0 0 -1.1  3.2 0 0 0 -1.1  3.2 0 0 0 -1.1  0 0 0 0 1" result="g"/>
+      <feComposite in="g" in2="SourceGraphic" operator="in"/>
+    </filter>
+    <mask id="clockCut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="#fff"/>
+      <path d="M100 100V64M100 100l24 14" stroke="#000" stroke-width="9" stroke-linecap="round" fill="none"/>
+    </mask>
+    <mask id="plusCut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="#fff"/>
+      <path d="M106 90v40M86 110h40" stroke="#000" stroke-width="11" stroke-linecap="round"/>
+    </mask>
+    <mask id="pctCut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="#fff"/>
+      <circle cx="96" cy="88" r="7.5" fill="#000"/><circle cx="128" cy="114" r="7.5" fill="#000"/>
+      <path d="M130 84l-36 34" stroke="#000" stroke-width="7" stroke-linecap="round"/>
+    </mask>
+  </defs>
+</svg>
+
+<header>
+  <h1>B · Soft silhouette <span>— empty states</span></h1>
+  <div class="toggle"><button id="dk" class="on">Dark</button><button id="lt">Light</button></div>
+</header>
+<main id="m"></main>
+
+<script>
+// Each shape lives in a 200×200 box, centred on 100,100. far/mid = further back in the fog.
+const ART = {
+  search: `<path fill-rule="evenodd" d="M46 88a40 40 0 1 0 80 0a40 40 0 1 0-80 0ZM60 88a26 26 0 1 1 52 0a26 26 0 1 1-52 0Z"/>
+           <rect x="-9" y="0" width="18" height="50" rx="9" transform="translate(120 120) rotate(-45)"/>`,
+  box: `<path class="far" d="M48 72L100 46l-8-20-52 26Z"/><path class="far" d="M100 46l52 26 14-16-52-26Z"/>
+        <path d="M48 72L100 98v58L48 130Z"/><path class="mid" d="M152 72L100 98v58l52-26Z"/>`,
+  folder: `<path d="M42 64q0-9 9-9h30l11 11h57q9 0 9 9v68q0 9-9 9H51q-9 0-9-9Z"/>`,
+  folders: `<path class="far" d="M62 46q0-8 8-8h24l9 9h48q8 0 8 8v58q0 8-8 8H70q-8 0-8-8Z"/>
+            <path d="M40 72q0-9 9-9h28l10 10h52q9 0 9 9v62q0 9-9 9H49q-9 0-9-9Z"/>`,
+  tags: `<path class="far" fill-rule="evenodd" transform="rotate(-22 100 100) translate(14 -16)" d="M74 70h62q10 0 10 10v40q0 10-10 10H74l-26-30Z M62 100a6 6 0 1 0 12 0a6 6 0 1 0-12 0Z"/>
+         <path fill-rule="evenodd" d="M72 72h70q10 0 10 10v44q0 10-10 10H72l-28-32Z M58 104a7 7 0 1 0 14 0a7 7 0 1 0-14 0Z"/>`,
+  bag: `<path d="M52 78h96l9 78q1 9-8 9H51q-9 0-8-9Z"/>
+        <path fill-rule="evenodd" d="M74 82V66a26 26 0 0 1 52 0v16h-11V66a15 15 0 0 0-30 0v16Z"/>`,
+  receipt: `<path d="M60 38q0-6 6-6h68q6 0 6 6v124l-10-10-10 10-10-10-10 10-10-10-10 10-10-10-10 10Z"/>`,
+  person: `<circle cx="100" cy="74" r="25"/><path d="M50 158q0-48 50-48t50 48Z"/>`,
+  people: `<g class="far"><circle cx="134" cy="66" r="19"/><path d="M98 132q0-38 36-38t36 38Z"/></g>
+           <circle cx="88" cy="80" r="24"/><path d="M40 162q0-46 48-46t48 46Z"/>`,
+  chart: `<rect x="48" y="112" width="26" height="46" rx="7"/><rect class="mid" x="87" y="84" width="26" height="74" rx="7"/><rect x="126" y="56" width="26" height="102" rx="7"/>`,
+  cash: `<path class="far" fill-rule="evenodd" transform="rotate(-12 100 100) translate(6 -20)" d="M40 70q0-8 8-8h104q8 0 8 8v52q0 8-8 8H48q-8 0-8-8Z M86 96a14 14 0 1 0 28 0a14 14 0 1 0-28 0Z"/>
+         <path fill-rule="evenodd" d="M38 82q0-8 8-8h108q8 0 8 8v54q0 8-8 8H46q-8 0-8-8Z M85 109a15 15 0 1 0 30 0a15 15 0 1 0-30 0Z"/>`,
+  clock: `<circle cx="100" cy="100" r="56" mask="url(#clockCut)"/>`,
+  sliders: `<g class="far"><rect x="44" y="64" width="112" height="9" rx="4.5"/><rect x="44" y="96" width="112" height="9" rx="4.5"/><rect x="44" y="128" width="112" height="9" rx="4.5"/></g>
+            <circle cx="78" cy="68.5" r="14"/><circle cx="128" cy="100.5" r="14"/><circle cx="92" cy="132.5" r="14"/>`,
+  addon: `<rect class="far" x="40" y="44" width="80" height="80" rx="20"/>
+          <rect x="64" y="68" width="84" height="84" rx="22" mask="url(#plusCut)"/>`,
+  discount: `<path fill-rule="evenodd" mask="url(#pctCut)" d="M72 70h72q10 0 10 10v52q0 10-10 10H72l-30-36Z M54 106a7 7 0 1 0 14 0a7 7 0 1 0-14 0Z"/>`,
+  printer: `<rect class="mid" x="68" y="40" width="64" height="40" rx="5"/>
+            <rect x="44" y="74" width="112" height="56" rx="14"/>
+            <path class="mid" d="M70 118h60v42l-7.5-6-7.5 6-7.5-6-7.5 6-7.5-6-7.5 6-7.5-6-7.5 6Z"/>`,
+  truck: `<rect x="34" y="62" width="82" height="66" rx="8"/><path class="mid" d="M120 84h24q4 0 6.5 3.2l13 17q2.5 3.3 2.5 7.3V124q0 4-4 4h-42Z"/>
+          <circle cx="62" cy="140" r="14"/><circle cx="140" cy="140" r="14"/>`,
+  eye: `<path fill-rule="evenodd" d="M34 100q66-72 132 0q-66 72-132 0Z M76 100a24 24 0 1 0 48 0a24 24 0 1 0-48 0Z"/><circle cx="100" cy="100" r="12"/>`,
+  barcode: (() => { let x = 46, s = ''; for (const w of [9,4,11,4,6,13,4,8,5,11,4,8]) { s += `<rect x="${x}" y="56" width="${w}" height="88" rx="1.5"/>`; x += w + 5; } return s; })(),
+};
+
+const SETS = [
+  ['Sell', [
+    ['search',  'No results',            'Try another name or SKU.',          'Sell · search'],
+    ['barcode', 'Barcode not found',     'No item has this barcode or SKU.',  'Sell · scan'],
+    ['box',     'No items yet',          'Items you add show here.',          'Sell · catalog empty'],
+    ['folder',  'No items in this category', 'Add items to this category.',   'Sell · empty category'],
+    ['tags',    'All sold out',          'Every option of this item is gone.', 'Sell · variants sold out'],
+    ['bag',     'Cart is empty',         'Tap an item to add it.',            'Sell · cart'],
+    ['search',  'No customer found',     'Try another name or phone.',        'Sell · customer picker'],
+  ]],
+  ['Orders', [
+    ['receipt', 'No orders yet',         'Sales on this POS show here.',      'Orders · first day'],
+    ['receipt', 'Nothing sold today',    'Today’s orders show here.',         'Orders · today'],
+    ['search',  'No orders match',       'Try other filters.',                'Orders · filters'],
+    ['search',  'No order selected',     'Pick an order to see it.',          'Orders · iPad detail pane'],
+  ]],
+  ['Items', [
+    ['box',      'No items yet',         'Add your first item.',              'Items · items'],
+    ['folders',  'No categories',        'Group your items into categories.', 'Items · categories'],
+    ['sliders',  'No modifiers',         'Like sizes, sugar or ice.',         'Items · modifiers'],
+    ['addon',    'No add-ons',           'Extras sold with an item.',         'Items · add-ons'],
+    ['discount', 'No discounts',         'Discounts you set up show here.',   'Items · discounts'],
+    ['truck',    'No suppliers yet',     'Add them in the back office.',      'Items · suppliers'],
+    ['eye',      'Nothing is hidden',    'Every item shows on Sell.',         'Items · hidden items'],
+  ]],
+  ['Customers', [
+    ['people', 'No customers yet',       'Customers you add show here.',      'Customers · list'],
+    ['search', 'No customer selected',   'Pick a customer to see them.',      'Customers · iPad detail pane'],
+  ]],
+  ['Shift', [
+    ['cash',  'No cash in or out yet',   'Money in or out shows here.',       'Shift · cash in / out'],
+    ['clock', 'No past shifts yet',      'Closed shifts show here.',          'Shift · history'],
+  ]],
+  ['Reports', [
+    ['chart', 'Nothing sold today',      'Today’s sales show here.',          'Reports · today'],
+  ]],
+  ['Settings', [
+    ['printer', 'No printer connected',  'Tap Scan to look on your Wi-Fi.',   'Settings · printers'],
+  ]],
+];
+
+const pic = k => `<svg viewBox="-20 -20 240 240" aria-hidden="true">
+  <circle class="haze" cx="100" cy="110" r="74" filter="url(#haze)"/>
+  <ellipse class="sky" cx="80" cy="76" rx="58" ry="48" filter="url(#haze)"/>
+  <g class="obj" filter="url(#feather)">${ART[k]}</g>
+  <circle class="grain" cx="100" cy="100" r="120" fill="url(#grainArea)" filter="url(#grain)"/>
+</svg>`;
+
+document.getElementById('m').innerHTML = SETS.map(([page, rows]) =>
+  `<h2>${page}</h2><div class="row">` + rows.map(([k, t, s, label]) =>
+    `<figure><div class="card">${pic(k)}<p class="t">${t}</p><p class="s">${s}</p></div><figcaption>${label}</figcaption></figure>`
+  ).join('') + '</div>').join('');
+
+const set = light => { document.body.classList.toggle('light', light); dk.classList.toggle('on', !light); lt.classList.toggle('on', light); };
+dk.onclick = () => set(false); lt.onclick = () => set(true);
+</script>
+</body>
+</html>

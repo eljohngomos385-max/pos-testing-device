@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soft silhouette 3</title>
+<style>
+/* page + text tokens from pos-lab/styles.css body.light-theme (white) and :root (dark).
+   Recipe measured from refs 07/08 and proven in b2-copy.html — see refs/b-notes.md. */
+:root {
+  --bg: #FFFFFF; --bg-soft: #EDEDED; --surface: #F9F9F9; --line: #E1E1E1;
+  --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C;
+  --cta-solid: #4388F7;
+  --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --haze: color-mix(in srgb, var(--cta-solid) 72%, #A9B4C2);   /* the app blue toned down: 28% blue-grey takes the edge off (owner: B2 a bit too blue) */
+  --field-o: .9;              /* the all-over sky, fading to the page at the edges */
+  --page: #EDEDED;
+}
+body.dark {
+  --bg: #121212; --bg-soft: #1C1C1C; --surface: #2A2A2A; --line: rgba(255,255,255,.08);
+  --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45);
+  --field-o: .42;
+  --page: #0A0A0A;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 28px 40px 8px; max-width: 1400px; margin: 0 auto; }
+header h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+header h1 span { color: var(--ink-tertiary); font-weight: 400; }
+.toggle { display: flex; background: var(--bg-soft); border-radius: 999px; padding: 3px; }
+.toggle button { font: inherit; font-size: 14px; border: 0; background: none; color: var(--ink-secondary); padding: 7px 16px; border-radius: 999px; cursor: pointer; }
+.toggle button.on { background: var(--bg); color: var(--ink); }
+main { max-width: 1400px; margin: 0 auto; padding: 0 40px 60px; }
+h2 { font-size: 15px; font-weight: 600; color: var(--ink-secondary); margin: 34px 0 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 28px 24px; }
+figure { margin: 0; width: 300px; }
+.card { height: 420px; border-radius: 28px; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 8px; overflow: hidden; }
+body:not(.dark) .card { box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 0 0 1px var(--line); }
+.card svg { width: 400px; height: 400px; margin: -90px 0 -80px; flex: none; display: block; }  /* room for the whole haze, no clip */
+.t { font-size: 17px; font-weight: 600; letter-spacing: -.01em; margin: 0 24px 6px; text-align: center; }
+.s { font-size: 14px; color: var(--ink-tertiary); margin: 0 24px; text-align: center; line-height: 1.35; }
+figcaption { font-size: 12px; color: var(--ink-tertiary); margin-top: 10px; padding-left: 4px; }
+/* the picture: haze (field + rim, grained), then the object knocked out in the card's own colour */
+.field { fill: var(--haze); opacity: var(--field-o); }
+.rim * { fill: var(--haze); }
+.obj * { fill: var(--bg); }
+.obj .far { opacity: .5; }
+.obj .mid { opacity: .78; }
+@media (max-width: 700px) { header, main { padding-left: 16px; padding-right: 16px; } figure { width: 100%; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="field" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420"><feGaussianBlur stdDeviation="30"/></filter>
+    <!-- rim: the shape grown, then blurred, so the bluest point hugs the object (ref-08: dilate ≈15%, blur ≈12% of width) -->
+    <filter id="rim" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420">
+      <feMorphology operator="dilate" radius="16"/><feGaussianBlur stdDeviation="16"/>
+    </filter>
+    <!-- grain only where the blue is: dark + light ~1px dots, masked by the haze's own alpha -->
+    <filter id="grain" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420">
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="3" result="n1"/>
+      <feColorMatrix in="n1" type="matrix" values="0 0 0 0 .1  0 0 0 0 .3  0 0 0 0 .75  1.0 0 0 0 -.45" result="d1"/>
+      <feComposite in="d1" in2="SourceGraphic" operator="in" result="dark"/>
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="11" result="n2"/>
+      <feColorMatrix in="n2" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .7 0 0 0 -.35" result="d2"/>
+      <feComposite in="d2" in2="SourceGraphic" operator="in" result="light"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="dark"/><feMergeNode in="light"/></feMerge>
+    </filter>
+    <!-- the object's soft edge (ref-08: 90→10 ≈ 13% of width) -->
+    <filter id="soft" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420"><feGaussianBlur stdDeviation="4.5"/></filter>
+    <mask id="clockCut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="#fff"/>
+      <path d="M100 100V62M100 100l26 15" stroke="#000" stroke-width="10" stroke-linecap="round" fill="none"/>
+    </mask>
+    <mask id="plusCut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="#fff"/>
+      <path d="M106 88v44M84 110h44" stroke="#000" stroke-width="12" stroke-linecap="round"/>
+    </mask>
+    <mask id="pctCut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="#fff"/>
+      <circle cx="96" cy="88" r="8" fill="#000"/><circle cx="128" cy="114" r="8" fill="#000"/>
+      <path d="M130 84l-36 34" stroke="#000" stroke-width="8" stroke-linecap="round"/>
+    </mask>
+  </defs>
+</svg>
+
+<header>
+  <h1>B3 · Soft silhouette, toned down <span>— empty states</span></h1>
+  <div class="toggle"><button id="lt" class="on">Light</button><button id="dk">Dark</button></div>
+</header>
+<main id="m"></main>
+
+<script>
+// Each shape lives in a 200×200 box centred on 100,100. Solid shapes; far/mid = further back in the fog.
+// Cut-outs only where the thing needs one to read (tag hole, clock hands, plus, %, iris, coin).
+const ART = {
+  search: `<circle cx="88" cy="88" r="42"/>
+           <rect x="-11" y="0" width="22" height="56" rx="11" transform="translate(116 116) rotate(-45)"/>`,
+  box: `<path class="mid" d="M52 86L32 58l58-6 10 34Z"/><path class="mid" d="M148 86l20-28-58-6-10 34Z"/>
+        <rect x="50" y="84" width="100" height="74" rx="7"/>`,
+  folder: `<path d="M42 64q0-9 9-9h30l11 11h57q9 0 9 9v68q0 9-9 9H51q-9 0-9-9Z"/>`,
+  folders: `<path class="far" d="M62 46q0-8 8-8h24l9 9h48q8 0 8 8v58q0 8-8 8H70q-8 0-8-8Z"/>
+            <path d="M40 72q0-9 9-9h28l10 10h52q9 0 9 9v62q0 9-9 9H49q-9 0-9-9Z"/>`,
+  tags: `<path class="far" fill-rule="evenodd" transform="rotate(-22 100 100) translate(14 -16)" d="M74 70h62q10 0 10 10v40q0 10-10 10H74l-26-30Z M62 100a6 6 0 1 0 12 0a6 6 0 1 0-12 0Z"/>
+         <path fill-rule="evenodd" d="M72 72h70q10 0 10 10v44q0 10-10 10H72l-28-32Z M58 104a8 8 0 1 0 16 0a8 8 0 1 0-16 0Z"/>`,
+  bag: `<path d="M52 78h96l9 78q1 9-8 9H51q-9 0-8-9Z"/>
+        <path fill-rule="evenodd" d="M73 82V66a27 27 0 0 1 54 0v16h-12V66a15 15 0 0 0-30 0v16Z"/>`,
+  receipt: `<path d="M60 38q0-6 6-6h68q6 0 6 6v124l-10-10-10 10-10-10-10 10-10-10-10 10-10-10-10 10Z"/>`,
+  person: `<circle cx="100" cy="72" r="26"/><path d="M50 160q0-50 50-50t50 50Z"/>`,
+  people: `<g class="far"><circle cx="134" cy="66" r="19"/><path d="M98 132q0-38 36-38t36 38Z"/></g>
+           <circle cx="88" cy="80" r="24"/><path d="M40 162q0-46 48-46t48 46Z"/>`,
+  chart: `<rect x="48" y="112" width="26" height="46" rx="7"/><rect class="mid" x="87" y="84" width="26" height="74" rx="7"/><rect x="126" y="56" width="26" height="102" rx="7"/>`,
+  cash: `<path class="far" transform="rotate(-12 100 100) translate(6 -20)" d="M40 70q0-8 8-8h104q8 0 8 8v52q0 8-8 8H48q-8 0-8-8Z"/>
+         <path fill-rule="evenodd" d="M38 82q0-8 8-8h108q8 0 8 8v54q0 8-8 8H46q-8 0-8-8Z M85 109a15 15 0 1 0 30 0a15 15 0 1 0-30 0Z"/>`,
+  clock: `<circle cx="100" cy="100" r="56" mask="url(#clockCut)"/>`,
+  sliders: `<g class="far"><rect x="44" y="64" width="112" height="9" rx="4.5"/><rect x="44" y="96" width="112" height="9" rx="4.5"/><rect x="44" y="128" width="112" height="9" rx="4.5"/></g>
+            <circle cx="78" cy="68.5" r="15"/><circle cx="128" cy="100.5" r="15"/><circle cx="92" cy="132.5" r="15"/>`,
+  addon: `<rect class="far" x="40" y="44" width="80" height="80" rx="20"/>
+          <rect x="64" y="68" width="84" height="84" rx="22" mask="url(#plusCut)"/>`,
+  discount: `<path fill-rule="evenodd" mask="url(#pctCut)" d="M72 70h72q10 0 10 10v52q0 10-10 10H72l-30-36Z M54 106a8 8 0 1 0 16 0a8 8 0 1 0-16 0Z"/>`,
+  printer: `<rect class="mid" x="68" y="40" width="64" height="40" rx="5"/>
+            <rect x="44" y="74" width="112" height="56" rx="14"/>
+            <path class="mid" d="M70 118h60v42l-7.5-6-7.5 6-7.5-6-7.5 6-7.5-6-7.5 6-7.5-6-7.5 6Z"/>`,
+  truck: `<rect x="34" y="62" width="82" height="66" rx="8"/><path class="mid" d="M120 84h24q4 0 6.5 3.2l13 17q2.5 3.3 2.5 7.3V124q0 4-4 4h-42Z"/>
+          <circle cx="62" cy="140" r="14"/><circle cx="140" cy="140" r="14"/>`,
+  eye: `<path fill-rule="evenodd" d="M30 100q70-76 140 0q-70 76-140 0Z M76 100a24 24 0 1 0 48 0a24 24 0 1 0-48 0Z"/>`,
+  barcode: (() => { let x = 38, s = ''; for (const w of [12,6,14,6,10,16,6,12]) { s += `<rect x="${x}" y="54" width="${w}" height="92" rx="2"/>`; x += w + 8; } return s; })(),
+};
+
+// states and words from round 1 (b-silhouette.html)
+const SETS = [
+  ['Sell', [
+    ['search',  'No results',            'Try another name or SKU.',          'Sell · search'],
+    ['barcode', 'Barcode not found',     'No item has this barcode or SKU.',  'Sell · scan'],
+    ['box',     'No items yet',          'Items you add show here.',          'Sell · catalog empty'],
+    ['folder',  'No items in this category', 'Add items to this category.',   'Sell · empty category'],
+    ['tags',    'All sold out',          'Every option of this item is gone.', 'Sell · variants sold out'],
+    ['bag',     'Cart is empty',         'Tap an item to add it.',            'Sell · cart'],
+    ['search',  'No customer found',     'Try another name or phone.',        'Sell · customer picker'],
+  ]],
+  ['Orders', [
+    ['receipt', 'No orders yet',         'Sales on this POS show here.',      'Orders · first day'],
+    ['receipt', 'Nothing sold today',    'Today’s orders show here.',         'Orders · today'],
+    ['search',  'No orders match',       'Try other filters.',                'Orders · filters'],
+    ['search',  'No order selected',     'Pick an order to see it.',          'Orders · iPad detail pane'],
+  ]],
+  ['Items', [
+    ['box',      'No items yet',         'Add your first item.',              'Items · items'],
+    ['folders',  'No categories',        'Group your items into categories.', 'Items · categories'],
+    ['sliders',  'No modifiers',         'Like sizes, sugar or ice.',         'Items · modifiers'],
+    ['addon',    'No add-ons',           'Extras sold with an item.',         'Items · add-ons'],
+    ['discount', 'No discounts',         'Discounts you set up show here.',   'Items · discounts'],
+    ['truck',    'No suppliers yet',     'Add them in the back office.',      'Items · suppliers'],
+    ['eye',      'Nothing is hidden',    'Every item shows on Sell.',         'Items · hidden items'],
+  ]],
+  ['Customers', [
+    ['people', 'No customers yet',       'Customers you add show here.',      'Customers · list'],
+    ['search', 'No customer selected',   'Pick a customer to see them.',      'Customers · iPad detail pane'],
+  ]],
+  ['Shift', [
+    ['cash',  'No cash in or out yet',   'Money in or out shows here.',       'Shift · cash in / out'],
+    ['clock', 'No past shifts yet',      'Closed shifts show here.',          'Shift · history'],
+  ]],
+  ['Reports', [
+    ['chart', 'Nothing sold today',      'Today’s sales show here.',          'Reports · today'],
+  ]],
+  ['Settings', [
+    ['printer', 'No printer connected',  'Tap Scan to look on your Wi-Fi.',   'Settings · printers'],
+  ]],
+];
+
+const pic = k => `<svg viewBox="-60 -60 320 320" aria-hidden="true">
+  <g filter="url(#grain)">
+    <rect x="-60" y="-60" width="320" height="320" fill-opacity=".002"/><!-- keeps the whole box painted; Edge otherwise culls the haze's top -->
+    <ellipse class="field" cx="100" cy="102" rx="98" ry="92" filter="url(#field)"/>
+    <g class="rim" filter="url(#rim)">${ART[k]}</g>
+  </g>
+  <g class="obj" filter="url(#soft)">${ART[k]}</g>
+</svg>`;
+
+document.getElementById('m').innerHTML = SETS.map(([page, rows]) =>
+  `<h2>${page}</h2><div class="row">` + rows.map(([k, t, s, label]) =>
+    `<figure><div class="card">${pic(k)}<p class="t">${t}</p><p class="s">${s}</p></div><figcaption>${label}</figcaption></figure>`
+  ).join('') + '</div>').join('');
+
+const set = dark => { document.body.classList.toggle('dark', dark); dk.classList.toggle('on', dark); lt.classList.toggle('on', !dark); };
+lt.onclick = () => set(false); dk.onclick = () => set(true);
+if (location.hash === '#dark') set(true);
+</script>
+</body>
+</html>

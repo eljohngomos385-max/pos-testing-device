@@ -56,6 +56,8 @@ function attachEvents() {
     e.stopImmediatePropagation();
     swallowSidebarBackdropClick = false;
   }, true);
+  // An empty page's one action (emptyAct, pos-core.js) taps the page's own button for it
+  document.addEventListener('click', (e) => { const b = e.target.closest('.empty [data-tap]'); if (b) $(b.dataset.tap)?.click(); });
 
   // Tap anywhere outside the sidebar (backdrop or main content) to close it.
   // The capture handlers above prevent the same tap from reaching product tiles.
@@ -1294,6 +1296,7 @@ function attachEvents() {
     if (item) connectPrinter(item.dataset.ip);
   });
   bindStore();   // Settings › Store details (pos-settings.js)
+  bindLook();   // Settings › Receipt (pos-settings.js)
   bindPayTypes();   // Settings › Payment types (pos-settings.js)
   bindFulTypes();   // Settings › Fulfilment types (pos-settings.js)
   bindQr();   // QR codes (pos-qr.js)

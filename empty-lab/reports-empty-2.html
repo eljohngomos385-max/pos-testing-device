@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reports empty 2</title>
+<style>
+/* the lab page around the phones; each phone is an iframe that loads pos-lab's own styles.css (a copy of the live Reports page) */
+body { margin: 0; background: #E4E4E4; font: 14px "Inter", -apple-system, "Segoe UI", sans-serif; color: #303030; }
+header { padding: 28px 40px 4px; }
+h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+header p { margin: 0; color: #8C8C8C; }
+main { display: flex; flex-wrap: wrap; gap: 32px; padding: 24px 40px 60px; }
+figure { margin: 0; }
+iframe { display: block; width: 393px; height: 852px; border: 0; border-radius: 44px; background: #fff; box-shadow: 0 2px 30px rgba(0,0,0,.12); }
+figcaption { margin-top: 12px; max-width: 393px; line-height: 1.4; }
+figcaption b { display: block; font-size: 15px; }
+figcaption span { color: #616161; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Reports, nothing sold · C, centred</h1>
+  <p>C from round 1, now in the middle of the screen. As soon as the period has one sale, the full report shows.</p>
+</header>
+<main id="m"></main>
+<script>
+const VIEW = `<section class="view view-reports lv frost active" data-view="reports">
+        <div class="iv">
+          <section class="page" aria-label="Reports" style="--head-h: 52px;">
+            <div class="head">
+              <button class="sq cta-2" data-act="open-sidebar" aria-label="Menu" title="Menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
+              </button>
+              <h1 class="st-ttl">Reports</h1>
+              <div class="rp-pin" id="reportsPin"><button type="button" class="rp-arw" data-rp="-1" aria-label="Earlier"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg></button><button type="button" class="rp-pl">Today, November 6</button><button type="button" class="rp-arw" data-rp="1" aria-label="Later" disabled=""><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg></button></div>
+            </div>
+            
+            <div class="c-scroll" data-swipes=""><div class="c-body">
+              <section class="kinds rp-units" id="reportsUnits" role="tablist" aria-label="Period">
+                <button type="button" role="tab" data-unit="day" class="cur" aria-selected="true">Day</button>
+                <button type="button" role="tab" data-unit="week" aria-selected="false">Week</button>
+                <button type="button" role="tab" data-unit="month" aria-selected="false">Month</button>
+              </section>
+              <div class="rp-body" id="reportsBody">@@BODY@@</div>
+            </div></div>
+          </section>
+        </div>
+      </section>`;
+const DEFS = `<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="field" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420"><feGaussianBlur stdDeviation="30"/></filter>
+    
+    <filter id="rim" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420">
+      <feMorphology operator="dilate" radius="16"/><feGaussianBlur stdDeviation="16"/>
+    </filter>
+    
+    <filter id="grain" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420">
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="3" result="n1"/>
+      <feColorMatrix in="n1" type="matrix" values="0 0 0 0 .1  0 0 0 0 .3  0 0 0 0 .75  1.0 0 0 0 -.45" result="d1"/>
+      <feComposite in="d1" in2="SourceGraphic" operator="in" result="dark"/>
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="11" result="n2"/>
+      <feColorMatrix in="n2" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .7 0 0 0 -.35" result="d2"/>
+      <feComposite in="d2" in2="SourceGraphic" operator="in" result="light"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="dark"/><feMergeNode in="light"/></feMerge>
+    </filter>
+    
+    <filter id="soft" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420"><feGaussianBlur stdDeviation="4.5"/></filter>
+    <mask id="clockCut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="#fff"/>
+      <path d="M100 100V62M100 100l26 15" stroke="#000" stroke-width="10" stroke-linecap="round" fill="none"/>
+    </mask>
+    <mask id="plusCut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="#fff"/>
+      <path d="M106 88v44M84 110h44" stroke="#000" stroke-width="12" stroke-linecap="round"/>
+    </mask>
+    <mask id="pctCut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="#fff"/>
+      <circle cx="96" cy="88" r="8" fill="#000"/><circle cx="128" cy="114" r="8" fill="#000"/>
+      <path d="M130 84l-36 34" stroke="#000" stroke-width="8" stroke-linecap="round"/>
+    </mask>
+  </defs>
+</svg>`;
+
+// the chart silhouette, B3's recipe (empty-lab/b3-silhouette.html, refs/b-notes.md)
+const CHART = `<rect x="48" y="112" width="26" height="46" rx="7"/><rect class="mid" x="87" y="84" width="26" height="74" rx="7"/><rect x="126" y="56" width="26" height="102" rx="7"/>`;
+const pic = `<svg class="sil" viewBox="-60 -60 320 320" aria-hidden="true"><g filter="url(#grain)">
+  <ellipse class="field" cx="100" cy="102" rx="98" ry="92" filter="url(#field)"/>
+  <g class="rim" filter="url(#rim)">${CHART}</g></g><g class="obj" filter="url(#soft)">${CHART}</g></svg>`;
+
+const LAB_CSS = `
+  html, body { height: 100%; } body { display: flex; margin: 0; }
+  .view { flex: 1; }
+  :root { --haze: color-mix(in srgb, var(--cta-solid) 72%, #A9B4C2); }
+  .sil .field { fill: var(--haze); opacity: .9; } .sil .rim * { fill: var(--haze); }
+  .sil .obj * { fill: var(--bg); } .sil .obj .mid { opacity: .78; }
+  /* the page's empty look (pos-core emptyState), the round icon swapped for the silhouette */
+  .empty .sil { width: 260px; height: 260px; margin: -64px 0 -50px; }
+  .rp-empty { height: auto; padding-top: 56px; }
+  .rp-full { position: fixed; inset: 0; height: auto; pointer-events: none; } .rp-full > * { pointer-events: auto; }
+  .rp-msg .e-act { display: block; margin: 2px auto 0; padding: 6px 12px; border: 0; background: none; color: var(--cta-solid); font: inherit; font-size: 15px; font-weight: 500; }
+  .rp-cols.blank { background: none; }`;
+
+const card = (msg) => `<section class="card fc"><div class="rp-ov"><div class="rp-per rp-ttl"><b>Sales</b><button type="button" class="rp-pl">Today, November 6</button></div>
+  <div class="rp-big"><b class="num" style="--n:5">₱0.00</b></div>
+  <div class="rp-chart"><div class="rp-slide"><div class="rp-cols${msg ? '' : ' blank'}">${msg ? `<div class="rp-msg">${msg}</div>` : ''}</div></div></div>
+  <div class="rp-stats num"><div><span>Profit</span><b>—</b></div><div><span>Orders</span><b>0</b></div><div><span>Margin</span><b>—</b></div></div></div></section>`;
+const empty = (cls, t = 'No sales yet', sub = 'Sales you make today show up here.', act = '<button type="button" class="e-act cta-3">Start a sale</button>') => `<div class="empty ${cls}">${pic}<b>${t}</b><span>${sub}</span>${act}</div>`;
+
+const TRIES = [
+  ['Today, nothing sold yet', 'The picture, the words and Start a sale sit in the middle of the screen. Week and Month show the full report once they have a sale.',
+    empty('rp-full')],
+  ['A past day with no sales', 'Swiped back to a day the store sold nothing. The line says which day; Show Today (the word Reports already uses) brings you back.',
+    empty('rp-full', 'No sales', 'Sunday, November 2', '<button type="button" class="e-act cta-3">Show Today</button>')],
+];
+
+document.getElementById('m').innerHTML = TRIES.map(([t, s]) => `<figure><iframe></iframe><figcaption><b>${t}</b><span>${s}</span></figcaption></figure>`).join('');
+document.querySelectorAll('iframe').forEach((f, i) => {
+  f.srcdoc = `<!doctype html><html class="side-half"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <base href="${new URL('../pos-lab/', location.href)}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap">
+    <link rel="stylesheet" href="styles.css?v=810"><style>${LAB_CSS}</style></head>
+    <body class="hairlines light-theme">${DEFS}${VIEW.replace('@@BODY@@', TRIES[i][2])}</body></html>`;
+});
+</script>
+</body>
+</html>

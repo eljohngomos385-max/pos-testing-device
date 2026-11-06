@@ -494,12 +494,20 @@ function showCheckoutSuccess(order, handBack = 0) {
   // The only big number is the change to hand back; method, cash and total are on the receipt.
   const change = moneyValue(handBack || order.change || 0);
   const changeBlock = $('#successChangeBlock');
-  if (changeBlock) changeBlock.hidden = !(change > 0);
-  if (changeBlock) changeBlock.firstElementChild.textContent = handBack ? 'Hand back' : 'Change';
+  // lab (owner 2026-11-06): no change still shows a number, the total and how it was paid; A..D hide it (.paid)
+  const pay = (order.payments || [])[0] || {};
+  const shown = change > 0 ? change : moneyValue(order.total);
+  $('#checkoutDone').classList.toggle('paid', !(change > 0));
+  if (changeBlock) changeBlock.firstElementChild.textContent = handBack ? 'Hand back' : change > 0 ? 'Change'
+    : pay.method === 'credit' ? 'On account' : `Paid · ${pay.label || 'Cash'}`;
   $('#checkoutDone .co-done-h').textContent = SalesMath.isExchange(order) ? 'Exchange complete' : 'Sale complete';
   const changeEl = $('#successChange');
   $('#checkoutSteps').hidden = true;
   $('#checkoutDone').hidden = false; // un-hiding replays the check and the rise
+  // lab: the paid moment plays on its own screen first; the page and the count-up wait --pm-t for it
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const pmT = still ? 0 : parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pm-t')) || 0;
+  const pm = $('#paidMoment'); if (pm) { pm.hidden = true; void pm.offsetWidth; pm.hidden = !pmT; }
   $('#checkoutApp').classList.add('is-done');
   hideToast();   // an "Enter the … first" from the step before is over (blind test 2026-10-23)
   const receipt = $('#checkoutReceipt');
@@ -513,18 +521,18 @@ function showCheckoutSuccess(order, handBack = 0) {
     $('#railCount').textContent = SalesMath.plural(n, 'item');
     $('#side').classList.remove('empty-cart');
   }
-  if (changeEl && change > 0) {
+  if (changeEl) {
     changeEl.classList.remove('settled');
     // a big change shrinks to the column, sized on the final figure so the count-up doesn't jump
     // ponytail: sized once; a tablet turned mid-moment keeps it
     changeEl.style.removeProperty('--fit');
-    changeEl.textContent = peso(change);
+    changeEl.textContent = peso(shown);
     const room = $('#checkoutDone').clientWidth, w = changeBlock.scrollWidth;
     if (w > room) changeEl.style.setProperty('--fit', `${Math.floor(64 * room / w)}px`);
-    changeEl.textContent = peso(0);
-    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    changeEl.textContent = peso(change > 0 ? 0 : shown);   // only the change counts up
     clearTimeout(showCheckoutSuccess._t);
-    showCheckoutSuccess._t = setTimeout(() => {
+    if (!(change > 0)) changeEl.classList.add('settled');
+    if (change > 0) showCheckoutSuccess._t = setTimeout(() => {
       const t0 = performance.now();
       const step = (now) => {
         const k = still ? 1 : Math.min(1, (now - t0) / 700);
@@ -532,7 +540,7 @@ function showCheckoutSuccess(order, handBack = 0) {
         if (k < 1) requestAnimationFrame(step); else changeEl.classList.add('settled');
       };
       requestAnimationFrame(step);
-    }, still ? 0 : 280);
+    }, still ? 0 : 280 + pmT);
   }
   showCheckoutSuccess._orderId = order.id;
 }
@@ -1060,3 +1068,18 @@ function kickFor(payments = []) {
   return (drawerJob = drawerJob.then(() => Promise.race([HWPOS_DRAWER.open(c), cap])).catch(e => showToast('Drawer: ' + e.message)));
 }
 
+
+// lab (owner 2026-11-05): the ☰ menu's Paid moment picker, kept per device
+(() => {
+  const pick = $('#pmPick'); if (!pick) return;
+  const use = (v) => { pick.value = v; if (!pick.value) pick.value = 'swoosh'; document.documentElement.dataset.pm = pick.value; };
+  use(HWPOS_STORE.ui.get('paidMoment', 'swoosh'));
+  pick.onchange = () => { use(pick.value); HWPOS_STORE.ui.set('paidMoment', pick.value); };
+})();
+// lab (owner 2026-11-06): the ☰ menu's Sale complete picker (data-dir), kept per device
+(() => {
+  const pick = $('#dirPick'); if (!pick) return;
+  const use = (v) => { pick.value = v; if (!pick.value) pick.value = 'E'; document.documentElement.dataset.dir = pick.value; };
+  use(HWPOS_STORE.ui.get('doneDir', 'E'));
+  pick.onchange = () => { use(pick.value); HWPOS_STORE.ui.set('doneDir', pick.value); };
+})();

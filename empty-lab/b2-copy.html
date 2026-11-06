@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B2 copy test</title>
+<style>
+/* Copy test: two reference posters rebuilt from the numbers in refs/b-notes.md.
+   Each panel is the reference's own pixel size so the screenshots diff 1:1. */
+body { margin: 0; background: #fff; font-family: "Yu Gothic", "Meiryo", "Hiragino Sans", sans-serif; }
+.wrap { display: flex; gap: 24px; padding: 24px; align-items: flex-start; }
+.panel { position: relative; overflow: hidden; }
+.panel svg { display: block; }
+.jp { position: absolute; font-weight: 900; color: #111; margin: 0; line-height: 1; }
+.v { writing-mode: vertical-rl; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ref-08: MUJI penguin, 434×601. Pale hole, blue grainy rim, fades to white/pink. -->
+<div class="panel" id="p08" style="width:434px;height:601px">
+<svg width="434" height="601" viewBox="0 0 434 601">
+  <defs>
+    <radialGradient id="pinkBL" cx="0" cy="1" r=".75"><stop offset="0" stop-color="#FCE2E6"/><stop offset="1" stop-color="#FCE2E6" stop-opacity="0"/></radialGradient>
+    <radialGradient id="pinkTR" cx="1" cy="0" r=".55"><stop offset="0" stop-color="#FBE8EA"/><stop offset="1" stop-color="#FBE8EA" stop-opacity="0"/></radialGradient>
+    <radialGradient id="warmBR" cx="1" cy="1" r=".5"><stop offset="0" stop-color="#EFEDE6"/><stop offset="1" stop-color="#EFEDE6" stop-opacity="0"/></radialGradient>
+    <path id="peng" d="M206 118C240 116 270 120 282 146C292 170 296 196 304 214C320 246 342 276 362 304C380 326 396 344 402 364C404 380 392 386 372 380C352 374 340 368 334 374C334 400 346 430 352 460C356 494 356 520 350 538C330 548 290 540 240 528C190 518 140 508 104 490C96 470 108 444 120 420C126 400 124 388 108 382C88 382 66 384 58 372C56 356 72 336 92 318C112 300 128 280 140 256C152 232 162 214 166 196C166 182 150 176 138 166C128 156 132 140 150 126C166 124 186 119 206 118Z"/>
+    <!-- haze: shape grown by the rim offset, then blurred -->
+    <filter id="rim08" filterUnits="userSpaceOnUse" x="-100" y="-100" width="634" height="801">
+      <feMorphology operator="dilate" radius="38"/>
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+    <filter id="grain08b" filterUnits="userSpaceOnUse" x="-100" y="-100" width="634" height="801">
+      <feMorphology in="SourceGraphic" operator="dilate" radius="38" result="d"/>
+      <feGaussianBlur in="d" stdDeviation="30" result="b"/>
+      <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="11" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 .05  0 0 0 0 .44  0 0 0 0 .58  1.6 0 0 0 -.55" result="dots"/>
+      <feComposite in="dots" in2="b" operator="in"/>
+    </filter>
+    <filter id="fill08" filterUnits="userSpaceOnUse" x="-100" y="-100" width="634" height="801">
+      <feGaussianBlur stdDeviation="9.5"/>
+    </filter>
+    <!-- grain: grey noise kept only where the blue is -->
+    <filter id="grain08" filterUnits="userSpaceOnUse" x="-100" y="-100" width="634" height="801">
+      <feMorphology in="SourceGraphic" operator="dilate" radius="38" result="d"/>
+      <feGaussianBlur in="d" stdDeviation="30" result="b"/>
+      <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.6 0 0 0 -.55" result="dots"/>
+      <feComposite in="dots" in2="b" operator="in"/>
+    </filter>
+    <linearGradient id="fadeLowG" x1="0" y1="0" x2="0" y2="1"><stop offset=".7" stop-color="#fff"/><stop offset=".93" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <mask id="fadeLow" maskUnits="userSpaceOnUse" x="0" y="0" width="434" height="601"><rect width="434" height="601" fill="url(#fadeLowG)"/></mask>
+  </defs>
+  <rect width="434" height="601" fill="#fff"/>
+  <rect width="434" height="601" fill="url(#pinkBL)"/>
+  <rect width="434" height="601" fill="url(#pinkTR)"/>
+  <rect width="434" height="601" fill="url(#warmBR)"/>
+  <g mask="url(#fadeLow)"><use href="#peng" fill="#3DB5DF" filter="url(#rim08)" transform="translate(217 300) scale(1.07) translate(-217 -306)"/>
+  <use href="#peng" opacity=".55" filter="url(#grain08)" transform="translate(217 300) scale(1.07) translate(-217 -306)"/>
+  <use href="#peng" opacity=".6" filter="url(#grain08b)" transform="translate(217 300) scale(1.07) translate(-217 -306)"/></g>
+  <use href="#peng" fill="#DFF1FD" filter="url(#fill08)" transform="translate(217 300) scale(1.07) translate(-217 -306)"/>
+</svg>
+<p class="jp v" style="right:22px;top:72px;font-size:58px;letter-spacing:6px">一触即涼。</p>
+<p class="jp" style="left:154px;top:540px;font-size:60px;font-family:Arial Black,Arial,sans-serif;letter-spacing:-1px">MUJI</p>
+</div>
+
+<!-- ref-07 tile 2: bottle, 206×242. Whole tile is haze; the bottle is a page-white hole. -->
+<div class="panel" id="p07" style="width:206px;height:242px">
+<svg width="206" height="242" viewBox="0 0 206 242">
+  <defs>
+    <radialGradient id="tileBg" cx=".5" cy=".55" r=".75"><stop offset="0" stop-color="#80C1E3"/><stop offset=".7" stop-color="#93CEEC"/><stop offset="1" stop-color="#B9E2F3"/></radialGradient>
+    <radialGradient id="tileHi" cx="1" cy="0" r=".7"><stop offset="0" stop-color="#C8EAF8"/><stop offset="1" stop-color="#C8EAF8" stop-opacity="0"/></radialGradient>
+    <filter id="shade07" filterUnits="userSpaceOnUse" x="-60" y="-60" width="326" height="362"><feGaussianBlur stdDeviation="18"/></filter>
+    <filter id="fill07" filterUnits="userSpaceOnUse" x="-60" y="-60" width="326" height="362"><feGaussianBlur stdDeviation="7"/></filter>
+    <filter id="grain07" x="0" y="0" width="1" height="1">
+      <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="1" seed="7"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1.2 0 0 0 -.5"/>
+    </filter>
+    <g id="bottle"><rect x="88" y="33" width="30" height="34" rx="6"/><rect x="72" y="66" width="62" height="146" rx="14"/></g>
+  </defs>
+  <rect width="206" height="242" fill="url(#tileBg)"/>
+  <rect width="206" height="242" fill="url(#tileHi)"/>
+  <use href="#bottle" fill="#3594CA" opacity="1" transform="translate(18 6)" filter="url(#shade07)"/>
+  <rect width="206" height="242" fill="#0E5C86" opacity=".09" filter="url(#grain07)"/>
+  <use href="#bottle" fill="#FCFDFE" filter="url(#fill07)"/>
+</svg>
+<p class="jp v" style="left:148px;top:44px;font-size:13px;letter-spacing:1px">いい夏の素</p>
+<p class="jp" style="left:33px;top:132px;font-size:17px">さっぱり素肌。</p>
+</div>
+
+</div>
+</body>
+</html>

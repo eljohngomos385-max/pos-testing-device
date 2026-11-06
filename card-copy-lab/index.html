@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>News card copy</title>
+<style>
+  /* Measured from the iPhone screenshot (3x, so px / 3 = pt):
+     page grey 242,241,246 = #F2F1F6 (iOS grouped bg #F2F2F7 after the phone's colour profile), card pure #FFF, no border, no shadow,
+     corner 16pt, side margin 16pt, gap between cards 10pt. */
+  :root {
+    --page: #F2F1F6;
+    --card: #FFFFFF;
+    --card-r: 16px;
+    --card-x: 16px;
+    --card-gap: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--page); font: 13px -apple-system, system-ui, sans-serif; color: #8e8e93; padding: 16px 0; }
+  .pair { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+  .col { width: 393px; }
+  .col p { padding: 0 var(--card-x) 8px; }
+  .ref { width: 393px; display: block; }
+  .proof { max-width: 820px; margin: 32px auto 0; padding: 0 16px; }
+  .proof h2 { font-size: 15px; color: #1c1c1e; margin: 24px 0 8px; }
+  .proof table { border-collapse: collapse; width: 100%; background: var(--card); border-radius: var(--card-r); overflow: hidden; }
+  .proof td { padding: 8px 12px; border-top: 1px solid var(--page); color: #1c1c1e; }
+  .proof td:last-child { color: #8e8e93; }
+  .proof img { width: 100%; display: block; border-radius: 8px; }
+  /* Same crop as ref.jpg: end of the card above, one full card, start of the next. */
+  .stack { display: flex; flex-direction: column; gap: var(--card-gap); height: 224.67px; overflow: hidden; }
+  .card { background: var(--card); border-radius: var(--card-r); margin: 0 var(--card-x); height: 166px; flex: none; }
+  /* Apple uses a continuous (squircle) corner: it starts bending earlier and eases in.
+     Best fit to the screenshot = 18px superellipse(1.2). Browsers without corner-shape
+     (Safari today) keep the plain 16px, which is within ~1px of it. */
+  @supports (corner-shape: squircle) { .card { --card-r: 18px; corner-shape: superellipse(1.2); } }
+  .card.above { height: 28px; border-top-left-radius: 0; border-top-right-radius: 0; }
+</style>
+</head>
+<body>
+  <div class="pair">
+    <div class="col"><p>Original (Apple News)</p><img class="ref" src="ref.jpg" alt="Original card"></div>
+    <div class="col"><p>Copy (CSS)</p>
+      <div class="stack" id="copy"><div class="card above"></div><div class="card"></div><div class="card"></div></div>
+    </div>
+  </div>
+  <div class="proof">
+    <h2>Measured (iPhone 3x screenshot, px ÷ 3)</h2>
+    <table>
+      <tr><td>Card</td><td>#FFFFFF, flat — 255,255,255 edge to edge</td></tr>
+      <tr><td>Page grey</td><td>#F2F1F6 — 242,241,246 everywhere in the gaps</td></tr>
+      <tr><td>Shadow</td><td>None — gap under the card is flat 241.0 brightness, row 1 to row 28, all 1000 columns</td></tr>
+      <tr><td>Outline / highlight</td><td>None — the 2px tint line on every edge is JPEG colour blur: same brightness as the grey, and identical above and below each card</td></tr>
+      <tr><td>Corner</td><td>16pt, Apple continuous corner (copy: 18px superellipse(1.2), 16px round where unsupported)</td></tr>
+      <tr><td>Spacing</td><td>16pt side margin · 10pt between cards · card 361 × 166pt</td></tr>
+    </table>
+    <h2>Shadow test: levels boost (same method as the search-bar study) with a control card</h2>
+    <img src="proof-study.png" alt="">
+    <h2>Bottom edge, boosted ×50 / inverted / colour channels split</h2>
+    <img src="proof-edge.png" alt="">
+    <h2>Top-left corner, contrast ×13 / inverted / false colour</h2>
+    <img src="proof-corner.png" alt="">
+  </div>
+</body>
+</html>

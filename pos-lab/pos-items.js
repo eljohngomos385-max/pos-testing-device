@@ -85,7 +85,9 @@ function fillItemsPane(kind, band, rows) {
       <span class="cat">${escapeHtml(it.cat)}</span>
       <span class="pr num">${itemPriceText(it)}</span>
       <span class="num ${itemStk(it)}">${itemOnHand(it) || '—'}</span></button>`;
-  }).join('') || '<div class="empty"><b>No items</b><span>Nothing matches this search or filter.</span></div>';
+  }).join('') || (q ? noResults(itemsFilter.q.trim()) : !catalogItems().length
+    ? emptyState('items', 'No items yet', 'Add what you sell. It shows on Sell right away.', emptyAct('Add item', '#itemsAdd'))
+    : emptyState('items', 'No items match', 'Nothing in these filters.', emptyAct('Change filters', '#itemsFilter')));
 }
 
 // The editor: a working copy E of the item. Only Save (and the photo / colour) write to the catalog.
@@ -675,8 +677,9 @@ function renderKindRows(kind, band, rows) {
         discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? (addPickOn(x.id) ? '<small>Already a tile</small>' : '')
         : `<small class="mline"><span class="ch">${liveChoices(x).map(o => hit(o.name)).join(', ')}</span></small>`}</span></span>
       <span class="num">${discs ? esShown(x) : SalesMath.plural(addPick ? toCells(catProducts(x.id)).length : itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
-    || `<div class="empty"><b>${q ? 'No matches' : `No ${cats ? 'categories' : kind === 'addons' ? 'add-ons' : 'modifiers'} yet`}</b><span>${q ? 'Try a different name.' : kind === 'addons' ? ''
-      : cats ? 'Tap + to add one, then tick its items.' : 'A question the POS asks when you sell an item, like Gift wrap or Assembly.'}</span></div>`;
+    || (q ? noResults(itemsFilter.q.trim()) : emptyState(kind, `No ${cats ? 'categories' : kind === 'addons' ? 'add-ons' : 'modifiers'} yet`, kind === 'addons' ? ''
+      : cats ? 'Group items so they’re quick to find on Sell.' : 'A question the POS asks when you sell an item, like Gift wrap or Assembly.',
+      kind === 'addons' ? '' : emptyAct(cats ? 'Add category' : 'Add modifier', '#itemsAdd')));
 }
 
 function openKindEditor(kind, id) {

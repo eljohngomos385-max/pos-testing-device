@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E2 · Blue glow</title>
+<style>
+/* tokens copied from pos-lab/styles.css body.light-theme and :root; glow numbers from refs/e-notes.md */
+:root {
+  --bg: #FFFFFF; --bg-soft: #EDEDED; --surface: #F9F9F9; --canvas: #F2F2F2; --line: #E1E1E1;
+  --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C;
+  --cta-solid: #4388F7; --cta-ink: #DDF4FF;
+  --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  /* the glass round + its glow (ref-01: blur σ15 px, .5, down 11 px, reach 25 % of the object) */
+  --glass: rgb(255 255 255 / .6); --glass-rim: rgb(255 255 255 / .95); --ic: var(--cta-solid);
+  --glow-op: .5; --hint-op: .75;
+}
+body.dark {
+  --bg: #121212; --bg-soft: #1C1C1C; --surface: #2A2A2A; --canvas: #0A0A0A; --line: rgba(255,255,255,.08);
+  --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45);
+  --glass: rgb(255 255 255 / .07); --glass-rim: rgb(255 255 255 / .16); --ic: var(--cta-ink);
+  --glow-op: .55; --hint-op: .6;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
+header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+         padding: 18px 32px; background: color-mix(in srgb, var(--canvas) 85%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+header h1 small { display: block; margin-top: 2px; font-size: 13px; font-weight: 400; color: var(--ink-tertiary); }
+.seg { display: flex; padding: 2px; border-radius: 10px; background: var(--bg-soft); }
+.seg button { border: 0; padding: 7px 16px; border-radius: 8px; background: none; color: var(--ink-secondary); font: inherit; font-size: 13px; font-weight: 550; cursor: pointer; }
+.seg button.on { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .15); }
+main { padding: 8px 32px 64px; }
+h2 { margin: 36px 0 14px; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-tertiary); }
+.grid { display: flex; flex-wrap: wrap; gap: 28px 24px; }
+figure { margin: 0; }
+figcaption { margin-top: 8px; font-size: 12px; color: var(--ink-tertiary); text-align: center; }
+
+/* one phone-sized page */
+.card { width: 300px; height: 420px; border-radius: 22px; background: var(--bg); display: grid; place-items: center; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
+.empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 28px; margin-top: -12px; }
+
+/* the figure: glow → blue hint → frosted round → icon */
+.gl { position: relative; width: 88px; height: 88px; margin-bottom: 64px; }
+.gl::before, .gl i { content: ""; position: absolute; border-radius: 50%; background: var(--cta-solid); }
+.gl::before { inset: 0; translate: 0 9px; filter: blur(12px); opacity: var(--glow-op); }          /* the drop glow, stronger under */
+.gl i { width: 56px; height: 40px; left: 16px; bottom: 2px; filter: blur(9px); opacity: var(--hint-op); }   /* blue behind the frost */
+.gl b { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; background: var(--glass);
+        -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: inset 0 0 0 1px var(--glass-rim); }
+.gl svg { width: 42px; height: 42px; fill: none; stroke: var(--ic); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.empty > b { font-size: 18px; font-weight: 700; line-height: 1.25; }
+.empty > span { margin-top: 8px; max-width: 256px; text-wrap: balance; font-size: 15px; line-height: 19px; color: var(--ink-secondary); }
+</style>
+</head>
+<body>
+<header>
+  <h1>E2 · Blue glow<small>The page's icon on frosted glass, the blue button's light under it. Measured from the refs.</small></h1>
+  <div class="seg" role="tablist"><button class="on" data-t="light">White</button><button data-t="dark">Dark</button></div>
+</header>
+<main id="m"></main>
+<script>
+// icons: copied from e-glow.html (= pos-lab/index.html .side-link[data-view] svg, #itemsKinds [data-kind] svg; search = pos-core.js SEARCH_IC)
+const IC = {
+  search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+  orders: '<rect x="4.5" y="3" width="15" height="18" rx="4"/><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4"/>',
+  items: '<path d="M3.5 5.5a2 2 0 0 1 2-2h5.7a2 2 0 0 1 1.4.6l7.6 7.6a2.5 2.5 0 0 1 0 3.5l-5.3 5.3a2.5 2.5 0 0 1-3.5 0l-7.6-7.6a2 2 0 0 1-.3-1.4z"/><circle cx="8" cy="8" r="1.5"/>',
+  customers: '<circle cx="12" cy="8" r="4"/><path d="M4.5 19c0-3.2 3.4-5.5 7.5-5.5s7.5 2.3 7.5 5.5a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 19z"/>',
+  shift: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  reports: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M8.5 16v-3M12 16V8M15.5 16v-5"/>',
+  cats: '<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>',
+  mods: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  addons: '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/>',
+  discs: '<path d="M18 6L6 18"/><circle cx="7.5" cy="7.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/>',
+  cart: '<path d="M5.5 8.5h13l-1 10.6a2 2 0 0 1-2 1.9h-7a2 2 0 0 1-2-1.9z"/><path d="M9 11V7a3 3 0 0 1 6 0v4"/>',
+  printer: '<path d="M7 9V5a1.5 1.5 0 0 1 1.5-1.5h7A1.5 1.5 0 0 1 17 5v4"/><path d="M7 17H6a2.5 2.5 0 0 1-2.5-2.5v-3A2.5 2.5 0 0 1 6 9h12a2.5 2.5 0 0 1 2.5 2.5v3A2.5 2.5 0 0 1 18 17h-1"/><rect x="7" y="13.5" width="10" height="7" rx="1.5"/>',
+  supplier: '<path d="M14 16V7.5A1.5 1.5 0 0 0 12.5 6h-7A1.5 1.5 0 0 0 4 7.5V15a1 1 0 0 0 1 1h.5M14 9.5h3.2a2 2 0 0 1 1.6.8l1.7 2.3V15a1 1 0 0 1-1 1h-.5M9.5 16h5"/><circle cx="7.5" cy="16.5" r="2"/><circle cx="16.5" cy="16.5" r="2"/>',
+};
+const PAGES = [   // same states and words as e-glow.html
+  ['Sell', [
+    ['search', 'No results for “drill”', 'Check the spelling or try a new search.', 'Sell · search'],
+    ['items', 'No items yet', 'Add what you sell and it shows here.', 'Sell · no items at all'],
+    ['items', 'No items in this category', 'Add some to it under Items.', 'Sell · empty category'],
+    ['items', 'All sold out', 'Show all to see them.', 'Sell · every variant sold out'],
+    ['cart', 'Cart is empty', 'Tap an item to add it.', 'Sell · cart'],
+    ['search', 'No customer found', 'Check the name or phone number.', 'Sell · customer picker'],
+  ]],
+  ['Orders', [
+    ['orders', 'No orders yet', 'Every sale you complete shows up here.', 'Orders · first day'],
+    ['orders', 'Nothing sold today', 'Today’s sales will show up here.', 'Orders · today'],
+    ['orders', 'No orders match', 'Nothing in these filters.', 'Orders · filters'],
+    ['orders', 'No order selected', 'Pick one to see its receipt.', 'Orders · iPad detail pane'],
+  ]],
+  ['Items', [
+    ['items', 'No items yet', 'Add what you sell. It shows on Sell.', 'Items · Items tab'],
+    ['items', 'No items match', 'Nothing in these filters.', 'Items · filters'],
+    ['cats', 'No categories yet', 'Group items so they’re quick to find.', 'Items · Categories tab'],
+    ['mods', 'No modifiers yet', 'Questions the POS asks, like Gift wrap.', 'Items · Modifiers tab'],
+    ['addons', 'No add-ons yet', 'Extras sold with an item show here.', 'Items · Add-ons tab'],
+    ['discs', 'No discounts yet', 'Discounts you add show at checkout.', 'Items · Discounts tab'],
+    ['supplier', 'No suppliers yet', 'Add them in the back office.', 'Item editor · Suppliers'],
+  ]],
+  ['Customers', [
+    ['customers', 'No customers yet', 'Save a customer to see what they owe.', 'Customers · list'],
+    ['customers', 'No customer selected', 'Pick one to see their details.', 'Customers · iPad detail pane'],
+  ]],
+  ['Shift', [
+    ['shift', 'No cash in or out yet', 'Drawer money in and out shows here.', 'Shift · cash in / out'],
+    ['shift', 'No past shifts yet', 'Each closed shift shows up here.', 'Shift · past shifts'],
+  ]],
+  ['Reports', [
+    ['reports', 'Nothing sold today', 'Sales show here once you sell.', 'Reports · today'],
+  ]],
+  ['Settings', [
+    ['printer', 'No printer connected', 'Tap Scan to search your Wi‑Fi.', 'Settings · Printers'],
+  ]],
+];
+const card = ([ic, t, s, lab]) => `<figure><div class="card"><div class="empty"><div class="gl"><i></i><b><svg viewBox="0 0 24 24" aria-hidden="true">${IC[ic]}</svg></b></div><b>${t}</b><span>${s}</span></div></div><figcaption>${lab}</figcaption></figure>`;
+document.getElementById('m').innerHTML = PAGES.map(([p, list]) => `<h2>${p}</h2><div class="grid">${list.map(card).join('')}</div>`).join('');
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+  document.body.classList.toggle('dark', b.dataset.t === 'dark');
+  document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b));
+});
+if (location.hash === '#dark') document.querySelector('[data-t="dark"]').click();
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glass copy test</title>
+<style>
+  :root { --page: #FFFFFF; --ink-tertiary: #8C8C8C; }
+  body { margin: 0; background: var(--page); font: 12px -apple-system, "Segoe UI", sans-serif; color: var(--ink-tertiary); }
+  .row { display: flex; gap: 24px; padding: 16px; align-items: flex-start; }
+  .pair { display: flex; gap: 8px; flex-direction: column; }
+  .pair div { display: flex; gap: 8px; }
+  .pair img, .pair svg { display: block; image-rendering: auto; }
+</style>
+</head>
+<body>
+<!-- ref | copy, drawn 1:1 in the reference's own pixels. Params can be overridden with #{"msg":{...}} for fitting. -->
+<div class="row" id="row"></div>
+<script>
+// Glass recipe (measured, see refs/a-notes.md):
+// glow  = frost shape in blue, offset (dx,dy), blurred sg, opacity og — sits behind everything
+// solid = flat blue
+// frost = clip(frost shape){ white, + backdrop (solid + glow) blurred sf at opacity k, + blue tint t, + white lift L toward the bottom }
+// marks = crisp on top
+function glass(id, p, a) {
+  const big = 'x="-50%" y="-50%" width="200%" height="200%"';
+  const glow = `<g transform="translate(${p.dx} ${p.dy})" fill="${p.blue}" filter="url(#${id}g)" opacity="${p.og}">${a.frost}</g>`;
+  return `<svg width="${a.w}" height="${a.h}" viewBox="${a.vb}" aria-hidden="true">
+  <defs>
+    <clipPath id="${id}c">${a.frost}</clipPath>
+    <filter id="${id}g" ${big}><feGaussianBlur stdDeviation="${p.sg}"/></filter>
+    <filter id="${id}f" ${big}><feGaussianBlur stdDeviation="${p.sf}"/></filter>
+    <linearGradient id="${id}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="${p.L}"/></linearGradient>
+  </defs>
+  ${p.og ? glow : ''}
+  <g fill="${p.blue}">${a.solid}</g>
+  <g clip-path="url(#${id}c)">
+    <rect x="-999" y="-999" width="3000" height="3000" fill="#fff"/>
+    <g opacity="${p.k}"><g fill="${p.blue}" filter="url(#${id}f)">${a.solid}</g>${p.og ? glow : ''}</g>
+    <rect x="-999" y="-999" width="3000" height="3000" fill="${p.blue}" opacity="${p.t}"/>
+    <g fill="url(#${id}l)">${a.frost}</g>
+  </g>
+  <g fill="${p.blue}">${a.marks || ''}</g>
+  <g fill="#fff">${a.white || ''}</g>
+</svg>`;
+}
+
+const FIG = {
+  msg: { ref: 'refs/ref-04.png', crop: [50, 55, 100, 60], scale: 4,
+    solid: '<rect x="58" y="62.8" width="66.3" height="27.2" rx="13.6"/><path d="M72.6 86L71.8 97L87 86Z"/>',
+    frost: '<rect x="85" y="81" width="61" height="25" rx="12.5"/><path d="M118 102L130 111.5L135 100Z"/>' },
+  friend: { ref: 'refs/ref-04.png', crop: [228, 48, 70, 72], scale: 4,
+    solid: '<circle cx="263.2" cy="74.6" r="19.2"/>',
+    frost: '<path d="M234.5 108A28.5 25.5 0 0 1 291.5 108V110.5Q291.5 116 286 116H240Q234.5 116 234.5 110.5Z"/>' },
+  lock: { ref: 'refs/ref-02.png', crop: [160, 170, 185, 175], scale: 2,
+    solid: '<rect x="172.2" y="179.2" width="114" height="34.4" rx="8"/><rect x="172.2" y="217.5" width="114" height="34.6" rx="8"/><rect x="172.2" y="256" width="114" height="34.5" rx="8"/>',
+    white: '<circle cx="189.3" cy="196.4" r="3.6"/><circle cx="189.3" cy="234.8" r="3.6"/><circle cx="189.3" cy="273.2" r="3.6"/><rect x="205.4" y="195.1" width="62.6" height="2.8" rx="1.4"/>',
+    frost: '<rect x="229" y="247" width="80" height="56" rx="8"/><path fill-rule="evenodd" clip-rule="evenodd" d="M241 248V236.5A28.5 28.5 0 0 1 298 236.5V248ZM253.5 248V236.5A16 16 0 0 1 285.5 236.5V248Z"/>',
+    marks: '<circle cx="269.6" cy="267.5" r="7.5"/><path d="M266.1 271L264.6 285Q264.4 288 267.4 288H271.8Q274.8 288 274.6 285L273.1 271Z"/>' },
+};
+const P = {
+  msg:    { blue: '#0181FF', sf: 13, k: .4, t: .06, L: .3, og: 0, sg: 0, dx: 0, dy: 0 },
+  friend: { blue: '#0181FF', sf: 13, k: .4, t: .06, L: .3, og: 0, sg: 0, dx: 0, dy: 0 },
+  lock:   { blue: '#2290FF', sf: 6.5, k: .45, t: .02, L: .3, og: .3, sg: 12, dx: 6, dy: 14 },
+};
+try { const o = JSON.parse(decodeURIComponent(location.hash.slice(1))); for (const k in o) Object.assign(P[k], o[k]); } catch (e) {}
+
+row.innerHTML = Object.entries(FIG).map(([k, f]) => {
+  const [x, y, w, h] = f.crop, s = f.scale;
+  const a = { ...f, w: w * s, h: h * s, vb: `${x} ${y} ${w} ${h}` };
+  const one = { ...a, w, h };
+  return `<div class="pair">${k}
+    <div><svg width="${w * s}" height="${h * s}" viewBox="${a.vb}"><image href="${f.ref}" x="0" y="0"/></svg>${glass(k + 'B', P[k], a)}</div>
+    <div id="${k}" style="width:${w}px;height:${h}px">${glass(k, P[k], one)}</div>
+  </div>`;
+}).join('');
+</script>
+</body>
+</html>

@@ -208,6 +208,17 @@ function escapeHtml(s) {
   }[c]));
 }
 
+// Every empty page and search (owner 2026-11-06): one look -- the page's own menu icon (an Items tab's own; a search: the magnifier), a
+// title, one plain line, at most one thing to do. emptyAct's tap is a selector the button clicks (app.js), so the
+// action is always a button already on the page (its +, its Filter, the menu's Sell).
+const SEARCH_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
+function emptyState(icon, title, sub = '', act = '') {
+  const ic = icon === 'search' ? SEARCH_IC : (icon && document.querySelector(`.side-link[data-view="${icon}"] svg, #itemsKinds [data-kind="${icon}"] svg`)?.outerHTML) || '';
+  return `<div class="empty">${ic && `<span class="e-ic">${ic}</span>`}<b>${title}</b>${sub && `<span>${sub}</span>`}${act}</div>`;
+}
+const emptyAct = (text, tap) => `<button type="button" class="e-act cta-3" data-tap='${tap}'>${text}</button>`;
+const noResults = q => emptyState('search', `No results for “${escapeHtml(q)}”`, 'Check the spelling or try a new search.');
+
 // Every toast is the "Added" chip (owner's pick from toast-lab.html, 2026-10-19; all toasts 2026-10-19): a small white
 // pill that rises in like a notification. `done`: the filled tick, for something that worked (showDone); without it, a
 // notice. `undo`: an Undo button, which then stays up longer; it runs once. `note`: a quiet tail that never gets cut ("16 left").
@@ -760,6 +771,12 @@ function normalizeOrderRecord(raw = {}) {
   };
 }
 
+// Settings › Receipt (owner 2026-11-06): the style (Classic = the lab's T1, Modern = G2.2), the logo, the lines under the store's name and under the items, a footer picture
+// (a QR code, say), and whether the address and phone print. Defaults: Classic, 'Thank you!', address, phone and TIN on.
+// ponytail: pictures ride in settings as data URLs, like Payment types' QR pictures; R2 with Supabase.
+// ponytail: a reprint shows today's look, not the one it was printed with (as Store details); keep a copy per sale if BIR asks.
+const receiptLook = () => ({ style: 't1', logo: '', header: '', footer: 'Thank you!', footerImg: '', showAddress: true, showPhone: true, showTin: true, ...state.settings.receipt });
+const lookLines = (t) => String(t || '').split('\n').map(l => l.trim()).filter(Boolean);
 function toReceiptViewModel(order) {
   const o = normalizeOrderRecord(order);
   const fulfilmentLabel = orderFulfilLabel(o).toUpperCase()
@@ -769,8 +786,13 @@ function toReceiptViewModel(order) {
   const orders = Array.isArray(state.orders) ? state.orders : [];
   // A saved cart or quote (draftAsOrder) has no receipt number; a quote's slip is headed QUOTATION.
   const parts = SalesMath.receiptParts({ ...o, draft: order.draft }, orders.find(x => x.id === o.originalOrderId) || null, orderReversals());
+  const look = receiptLook();
+  // the plain 'Thank you!' greets a named customer by first name, as the lab's receipts (owner 2026-11-06)
+  const footer = lookLines(look.footer), first = String(o.customer?.name || '').trim().split(/\s+/)[0];
+  if (footer[0] === 'Thank you!' && first) footer[0] = `Thank you, ${first}!`;
   return {
-    store: currentStoreInfo(),
+    store: { ...currentStoreInfo(), ...(look.showAddress ? {} : { address: '' }), ...(look.showPhone ? {} : { phone: '' }), ...(look.showTin ? {} : { tin: '' }) },
+    look: { style: look.style === 'g2' ? 'g2' : 't1', logo: look.logo, footerImg: look.footerImg, header: lookLines(look.header), footer },
     number: order.draft ? '' : o.number,
     ts: o.ts,
     dateText: tillDate(o.ts, 'slip'),

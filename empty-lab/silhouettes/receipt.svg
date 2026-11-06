@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-110 -110 420 420" width="525" height="525">
+<style>.field{fill:#6094E8;opacity:.9}.rim *{fill:#6094E8}.obj *{fill:#fff}.obj .far{opacity:.5}.obj .mid{opacity:.78}</style>
+<defs>
+    <filter id="field" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420"><feGaussianBlur stdDeviation="30"/></filter>
+    <filter id="rim" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420">
+      <feMorphology operator="dilate" radius="16"/><feGaussianBlur stdDeviation="16"/>
+    </filter>
+    <filter id="grain" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420">
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="3" result="n1"/>
+      <feColorMatrix in="n1" type="matrix" values="0 0 0 0 .1  0 0 0 0 .3  0 0 0 0 .75  1.0 0 0 0 -.45" result="d1"/>
+      <feComposite in="d1" in2="SourceGraphic" operator="in" result="dark"/>
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="11" result="n2"/>
+      <feColorMatrix in="n2" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .7 0 0 0 -.35" result="d2"/>
+      <feComposite in="d2" in2="SourceGraphic" operator="in" result="light"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="dark"/><feMergeNode in="light"/></feMerge>
+    </filter>
+    <filter id="soft" filterUnits="userSpaceOnUse" x="-110" y="-110" width="420" height="420"><feGaussianBlur stdDeviation="4.5"/></filter>
+    <mask id="clockCut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="#fff"/>
+      <path d="M100 100V62M100 100l26 15" stroke="#000" stroke-width="10" stroke-linecap="round" fill="none"/>
+    </mask>
+    <mask id="plusCut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="#fff"/>
+      <path d="M106 88v44M84 110h44" stroke="#000" stroke-width="12" stroke-linecap="round"/>
+    </mask>
+    <mask id="pctCut" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200">
+      <rect width="200" height="200" fill="#fff"/>
+      <circle cx="96" cy="88" r="8" fill="#000"/><circle cx="128" cy="114" r="8" fill="#000"/>
+      <path d="M130 84l-36 34" stroke="#000" stroke-width="8" stroke-linecap="round"/>
+    </mask>
+  </defs>
+<g filter="url(#grain)">
+  <rect x="-110" y="-110" width="420" height="420" fill="#fff" fill-opacity=".002"/>
+  <ellipse class="field" cx="100" cy="102" rx="98" ry="92" filter="url(#field)"/>
+  <g class="rim" filter="url(#rim)"><path d="M60 38q0-6 6-6h68q6 0 6 6v124l-10-10-10 10-10-10-10 10-10-10-10 10-10-10-10 10Z"/></g>
+</g>
+<g class="obj" filter="url(#soft)"><path d="M60 38q0-6 6-6h68q6 0 6 6v124l-10-10-10 10-10-10-10 10-10-10-10 10-10-10-10 10Z"/></g>
+</svg>

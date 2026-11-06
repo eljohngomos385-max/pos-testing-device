@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empty states · C</title>
+<style>
+/* tokens copied from pos-lab/styles.css :root (dark) and body.light-theme */
+:root {
+  --bg: #121212; --bg-soft: #1C1C1C; --surface: #2A2A2A;
+  --line: rgba(255,255,255,.08);
+  --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45);
+  --cta-solid: #4388F7;
+  /* illustration blues, all from --cta-solid */
+  --ice: #DCEBFF; --mid: var(--cta-solid); --deep: #1F4FBF; --deeper: #163A8C; --hole: #0E2763;
+  --floor: rgba(67,136,247,.20);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+}
+body.light-theme {
+  --bg: #FFFFFF; --bg-soft: #EDEDED; --surface: #F9F9F9;
+  --line: #E1E1E1;
+  --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C;
+  --ice: #CFE2FF; --hole: #163A8C;
+  --floor: rgba(31,79,191,.16);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg-soft); color: var(--ink); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 28px 40px 8px; }
+header h1 { margin: 0; font-size: 20px; font-weight: 600; }
+header h1 span { color: var(--ink-tertiary); font-weight: 400; }
+.seg { display: flex; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.seg button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--ink-secondary); padding: 6px 16px; border-radius: 999px; cursor: pointer; }
+.seg button.on { background: var(--surface); color: var(--ink); }
+section { padding: 20px 40px 8px; }
+section h2 { margin: 0 0 14px; font-size: 13px; font-weight: 600; color: var(--ink-tertiary); text-transform: uppercase; letter-spacing: .06em; }
+.grid { display: flex; flex-wrap: wrap; gap: 28px 24px; }
+figure { margin: 0; }
+.card { width: 300px; height: 420px; background: var(--bg); border: 1px solid var(--line); border-radius: 22px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 32px 24px; text-align: center; }
+.art { width: 196px; height: 184px; margin-bottom: 14px; flex-shrink: 0; }
+.art.small { width: 120px; height: 113px; margin-bottom: 12px; }
+.card b { font-size: 17px; font-weight: 600; line-height: 1.3; }
+.card p { margin: 6px 0 0; font-size: 14px; line-height: 1.4; color: var(--ink-tertiary); }
+figcaption { margin-top: 8px; font-size: 12px; color: var(--ink-tertiary); padding-left: 4px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- front object: pale ice top to deep blue foot -->
+    <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
+      <stop offset=".04" style="stop-color:var(--ice)"/><stop offset=".5" style="stop-color:var(--mid)"/><stop offset="1" style="stop-color:var(--deep)"/>
+    </linearGradient>
+    <!-- back object: one step darker so edges stay crisp where things overlap -->
+    <linearGradient id="gB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" style="stop-color:#7FAEF8"/><stop offset=".5" style="stop-color:var(--deep)"/><stop offset="1" style="stop-color:var(--deeper)"/>
+    </linearGradient>
+    <!-- lit tops / faces -->
+    <linearGradient id="gT" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" style="stop-color:var(--ice)"/><stop offset="1" style="stop-color:#A9CBFB"/>
+    </linearGradient>
+    <!-- sideways: deep at left, ice at right -->
+    <linearGradient id="gH" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" style="stop-color:var(--deep)"/><stop offset=".6" style="stop-color:var(--mid)"/><stop offset="1" style="stop-color:var(--ice)"/>
+    </linearGradient>
+    <!-- the one soft highlight -->
+    <linearGradient id="hl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".45" stop-color="#fff" stop-opacity=".42"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency=".95" numOctaves="2" seed="7" result="n"/>
+      <feColorMatrix in="n" type="matrix" values=".8 .8 .8 0 -.7  .8 .8 .8 0 -.7  .8 .8 .8 0 -.7  0 0 0 0 1" result="g"/>
+      <feBlend in="g" in2="SourceGraphic" mode="soft-light" result="b"/>
+      <feComposite in="b" in2="SourceGraphic" operator="in"/>
+    </filter>
+    <filter id="soft" x="-20%" y="-200%" width="140%" height="500%"><feGaussianBlur stdDeviation="3.5"/></filter>
+
+    <!-- search / filters / nothing picked: one shared magnifier -->
+    <symbol id="a-find" viewBox="0 0 160 150">
+      <g filter="url(#grain)">
+        <rect x="-7" y="0" width="14" height="40" rx="7" transform="translate(92 84) rotate(-45)" fill="url(#gB)"/>
+        <path d="M40 66a32 32 0 1 0 64 0a32 32 0 1 0 -64 0ZM51 66a21 21 0 1 0 42 0a21 21 0 1 0 -42 0Z" fill-rule="evenodd" fill="url(#gA)"/>
+        <path d="M58 56a16 16 0 0 1 14 -10" stroke="#fff" stroke-opacity=".35" stroke-width="3" stroke-linecap="round" fill="none"/>
+      </g>
+    </symbol>
+
+    <!-- items: a closed box with a plain price tag leaning on it -->
+    <symbol id="a-items" viewBox="0 0 160 150">
+      <ellipse cx="84" cy="133" rx="58" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <path d="M30 72 L48 56 L120 56 L102 72Z" fill="url(#gT)"/>
+        <path d="M102 72 L120 56 V114 L102 130Z" fill="url(#gB)"/>
+        <rect x="30" y="72" width="72" height="58" fill="url(#gA)"/>
+        <path d="M58 72 L76 56 H88 L70 72Z" fill="var(--deep)" opacity=".25"/>
+        <rect x="58" y="72" width="12" height="20" fill="var(--deep)" opacity=".22"/>
+        <rect x="36" y="78" width="6" height="46" rx="3" fill="url(#hl)"/>
+        <g transform="translate(98 84) rotate(12)">
+          <path d="M13 0 L26 13 V48 Q26 52 22 52 H4 Q0 52 0 48 V13Z M13 9a4 4 0 1 0 .01 0Z" fill-rule="evenodd" fill="url(#gT)"/>
+        </g>
+      </g>
+    </symbol>
+
+    <!-- a category with no items: one empty bowl -->
+    <symbol id="a-bowl" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="46" ry="4.5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <rect x="62" y="122" width="36" height="10" rx="2" fill="url(#gB)"/>
+        <ellipse cx="80" cy="80" rx="54" ry="11" fill="url(#gT)"/>
+        <ellipse cx="80" cy="81" rx="48" ry="7.5" fill="var(--hole)"/>
+        <path d="M26 82 Q40 86 80 87 Q120 86 134 82 Q130 124 80 126 Q30 124 26 82Z" fill="url(#gA)"/>
+        <path d="M38 92 Q46 110 64 116" stroke="url(#hl)" stroke-width="5" stroke-linecap="round" fill="none"/>
+      </g>
+    </symbol>
+
+    <!-- sold out: an open box with nothing inside -->
+    <symbol id="a-open" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="50" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <path d="M52 72 L56 52 H104 L108 72Z" fill="url(#gB)"/>
+        <path d="M44 82 L52 72 H108 L116 82Z" fill="var(--hole)"/>
+        <path d="M44 82 L52 72 L34 50 L24 62Z" fill="url(#gT)"/>
+        <path d="M116 82 L108 72 L126 50 L136 62Z" fill="url(#gT)"/>
+        <rect x="44" y="82" width="72" height="48" fill="url(#gA)"/>
+        <rect x="50" y="88" width="6" height="36" rx="3" fill="url(#hl)"/>
+      </g>
+    </symbol>
+
+    <!-- cart: one empty shopping bag -->
+    <symbol id="a-bag" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="48" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <path d="M62 72 V56 a18 18 0 0 1 36 0 V72" stroke="url(#gB)" stroke-width="6" stroke-linecap="round" fill="none"/>
+        <path d="M44 66 H116 L122 130 H38Z" fill="url(#gA)"/>
+        <path d="M44 66 H116 L117 76 H43Z" fill="url(#gT)"/>
+        <circle cx="62" cy="72" r="3" fill="var(--deep)"/><circle cx="98" cy="72" r="3" fill="var(--deep)"/>
+        <rect x="50" y="82" width="6" height="42" rx="3" fill="url(#hl)"/>
+      </g>
+    </symbol>
+
+    <!-- no orders: a receipt leaning on a shopping bag -->
+    <symbol id="a-receipt" viewBox="0 0 160 150">
+      <ellipse cx="82" cy="134" rx="58" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <path d="M84 62 V50 a16 16 0 0 1 32 0 V62" stroke="url(#gB)" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+        <path d="M70 58 H130 L136 130 H64Z" fill="url(#gB)"/>
+        <g transform="translate(36 48) rotate(-9)">
+          <path d="M0 0 H50 V78 l-5 5 -5 -5 -5 5 -5 -5 -5 5 -5 -5 -5 5 -5 -5 -5 5 -5 -5Z" fill="url(#gA)"/>
+          <g fill="var(--deep)" opacity=".28">
+            <rect x="9" y="12" width="32" height="4" rx="2"/><rect x="9" y="24" width="22" height="4" rx="2"/>
+            <rect x="9" y="34" width="26" height="4" rx="2"/><rect x="9" y="56" width="32" height="5" rx="2.5"/>
+          </g>
+        </g>
+      </g>
+    </symbol>
+
+    <!-- nothing sold (orders): a coin stack beside a bundle of bills -->
+    <symbol id="a-cash" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="58" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <path d="M24 98 L36 86 H96 L84 98Z" fill="url(#gT)"/>
+        <path d="M84 98 L96 86 V118 L84 130Z" fill="url(#gB)"/>
+        <rect x="24" y="98" width="60" height="32" fill="url(#gB)"/>
+        <path d="M48 98 L60 86 H70 L58 98Z" fill="var(--ice)" opacity=".7"/>
+        <rect x="48" y="98" width="10" height="32" fill="var(--ice)" opacity=".7"/>
+        <g>
+          <path d="M92 120 v8 a20 6 0 0 0 40 0 v-8Z" fill="url(#gA)"/>
+          <path d="M92 110 v8 a20 6 0 0 0 40 0 v-8Z" fill="url(#gA)"/>
+          <path d="M92 100 v8 a20 6 0 0 0 40 0 v-8Z" fill="url(#gA)"/>
+          <g fill="var(--deep)" opacity=".35"><path d="M92 118 a20 6 0 0 0 40 0 v1.6 a20 6 0 0 1 -40 0Z"/><path d="M92 108 a20 6 0 0 0 40 0 v1.6 a20 6 0 0 1 -40 0Z"/></g>
+          <ellipse cx="112" cy="100" rx="20" ry="6" fill="url(#gT)"/>
+        </g>
+      </g>
+    </symbol>
+
+    <!-- reports, nothing sold: three low bars -->
+    <symbol id="a-bars" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="50" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <rect x="40" y="96" width="22" height="34" rx="4" fill="url(#gB)"/>
+        <rect x="69" y="70" width="22" height="60" rx="4" fill="url(#gA)"/>
+        <rect x="98" y="108" width="22" height="22" rx="4" fill="url(#gB)"/>
+        <rect x="74" y="76" width="5" height="48" rx="2.5" fill="url(#hl)"/>
+      </g>
+    </symbol>
+
+    <!-- no categories: four tiles like the Sell grid -->
+    <symbol id="a-tiles" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="46" ry="4.5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <rect x="41" y="48" width="36" height="36" rx="8" fill="url(#gA)"/>
+        <rect x="83" y="48" width="36" height="36" rx="8" fill="url(#gT)"/>
+        <rect x="41" y="90" width="36" height="36" rx="8" fill="url(#gB)"/>
+        <rect x="83" y="90" width="36" height="36" rx="8" fill="url(#gA)"/>
+      </g>
+    </symbol>
+
+    <!-- no modifiers: two switches, one on, one off -->
+    <symbol id="a-switch" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="46" ry="4.5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <rect x="38" y="56" width="84" height="32" rx="16" fill="url(#gA)"/>
+        <circle cx="106" cy="72" r="12" fill="var(--ice)"/>
+        <rect x="38" y="96" width="84" height="32" rx="16" fill="url(#gB)"/>
+        <circle cx="54" cy="112" r="12" fill="url(#gT)"/>
+      </g>
+    </symbol>
+
+    <!-- no add-ons: a gift box -->
+    <symbol id="a-gift" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="48" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <path d="M80 62 C66 40 46 46 56 58 C60 62 70 62 80 62Z M80 62 C94 40 114 46 104 58 C100 62 90 62 80 62Z" fill="url(#gB)"/>
+        <rect x="42" y="84" width="76" height="46" fill="url(#gA)"/>
+        <rect x="36" y="62" width="88" height="22" rx="3" fill="url(#gT)"/>
+        <rect x="73" y="62" width="14" height="68" fill="var(--deep)" opacity=".55"/>
+        <rect x="48" y="90" width="6" height="34" rx="3" fill="url(#hl)"/>
+      </g>
+    </symbol>
+
+    <!-- no discounts: two tags, the front one with a % cut through it -->
+    <mask id="m-pct" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="60">
+      <rect width="100" height="60" fill="#fff"/>
+      <circle cx="16" cy="25" r="4.5" fill="#000"/>
+      <circle cx="44" cy="15" r="7" fill="#000"/><circle cx="72" cy="35" r="7" fill="#000"/>
+      <path d="M71 8 L45 42" stroke="#000" stroke-width="5.5" stroke-linecap="round"/>
+    </mask>
+    <symbol id="a-pct" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="52" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <g transform="translate(24 62) rotate(-14) scale(1.16)">
+          <path d="M20 0 H90 Q96 0 96 6 V44 Q96 50 90 50 H20 L0 25Z" fill="url(#gA)" mask="url(#m-pct)"/>
+        </g>
+      </g>
+    </symbol>
+
+    <!-- no customers: two people -->
+    <symbol id="a-people" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="54" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <circle cx="58" cy="64" r="15" fill="url(#gB)"/>
+        <path d="M30 130 Q30 86 58 86 Q86 86 86 130Z" fill="url(#gB)"/>
+        <circle cx="94" cy="58" r="19" fill="url(#gA)"/>
+        <path d="M58 130 Q58 84 94 84 Q130 84 130 130Z" fill="url(#gA)"/>
+      </g>
+    </symbol>
+
+    <!-- shift, no cash in/out: an empty cash drawer, in and out arrows over it -->
+    <symbol id="a-drawer" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="60" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <path d="M58 36 L70 50 H63 V70 H53 V50 H46Z" fill="url(#gA)"/>
+        <path d="M102 70 L114 56 H107 V36 H97 V56 H90Z" fill="url(#gB)"/>
+        <path d="M32 100 L42 82 H118 L128 100Z" fill="var(--hole)"/>
+        <g fill="url(#gB)"><rect x="60" y="84" width="4" height="15" rx="2"/><rect x="78" y="84" width="4" height="15" rx="2"/><rect x="96" y="84" width="4" height="15" rx="2"/></g>
+        <rect x="28" y="100" width="104" height="30" rx="4" fill="url(#gA)"/>
+        <rect x="64" y="110" width="32" height="6" rx="3" fill="var(--deep)" opacity=".4"/>
+      </g>
+    </symbol>
+
+    <!-- no past shifts: a clock in front of a calendar page -->
+    <mask id="m-clock" maskUnits="userSpaceOnUse" x="40" y="40" width="90" height="90">
+      <rect x="40" y="40" width="90" height="90" fill="#fff"/>
+      <g stroke="#000" stroke-linecap="round" stroke-width="5" fill="none"><path d="M96 88 V68"/><path d="M96 88 L110 96"/></g>
+      <g fill="#000"><circle cx="96" cy="60" r="2.2"/><circle cx="96" cy="116" r="2.2"/><circle cx="68" cy="88" r="2.2"/><circle cx="124" cy="88" r="2.2"/></g>
+    </mask>
+    <symbol id="a-clock" viewBox="0 0 160 150">
+      <ellipse cx="82" cy="134" rx="56" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <rect x="30" y="46" width="56" height="70" rx="6" fill="url(#gB)"/>
+        <rect x="30" y="46" width="56" height="14" rx="6" fill="var(--deeper)"/>
+        <rect x="40" y="40" width="5" height="12" rx="2.5" fill="var(--ice)"/><rect x="71" y="40" width="5" height="12" rx="2.5" fill="var(--ice)"/>
+        <circle cx="96" cy="88" r="34" fill="url(#gA)" mask="url(#m-clock)"/>
+      </g>
+    </symbol>
+
+    <!-- no printer: a receipt printer with paper coming out -->
+    <symbol id="a-printer" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="52" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <path d="M58 90 V48 l5.5 -5 5.5 5 5.5 -5 5.5 5 5.5 -5 5.5 5 5.5 -5 5.5 5 V90Z" fill="url(#gT)"/>
+        <g fill="var(--deep)" opacity=".25"><rect x="66" y="56" width="28" height="4" rx="2"/><rect x="66" y="66" width="18" height="4" rx="2"/></g>
+        <rect x="36" y="80" width="88" height="50" rx="12" fill="url(#gA)"/>
+        <rect x="52" y="80" width="56" height="6" rx="3" fill="var(--hole)"/>
+        <circle cx="110" cy="114" r="4" fill="var(--ice)"/>
+      </g>
+    </symbol>
+
+    <!-- no suppliers: a delivery truck -->
+    <symbol id="a-truck" viewBox="0 0 160 150">
+      <ellipse cx="80" cy="134" rx="62" ry="5" fill="var(--floor)" filter="url(#soft)"/>
+      <g filter="url(#grain)">
+        <path d="M96 74 H120 L138 96 V122 H96Z" fill="url(#gB)"/>
+        <path d="M102 80 H118 L130 96 H102Z" fill="var(--ice)" opacity=".85"/>
+        <rect x="20" y="58" width="80" height="64" rx="4" fill="url(#gA)"/>
+        <rect x="26" y="64" width="6" height="52" rx="3" fill="url(#hl)"/>
+        <circle cx="46" cy="122" r="11" fill="var(--deeper)"/><circle cx="46" cy="122" r="4" fill="var(--ice)"/>
+        <circle cx="118" cy="122" r="11" fill="var(--deeper)"/><circle cx="118" cy="122" r="4" fill="var(--ice)"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<header>
+  <h1>C · Blue gradient objects <span>— empty states</span></h1>
+  <div class="seg"><button class="on" data-t="dark">Dark</button><button data-t="light">Light</button></div>
+</header>
+<main id="m"></main>
+
+<script>
+// [art, small?, title, line, screen]
+const PAGES = {
+  'Sell': [
+    ['find', 1, 'No results', 'Try another name or code.', 'Sell · search'],
+    ['items', 0, 'No items yet', 'Items you add show up here.', 'Sell · catalog empty'],
+    ['bowl', 0, 'No items in this category', 'Add some to it in Items.', 'Sell · empty category'],
+    ['open', 0, 'All sold out', 'Every option is out of stock.', 'Sell · variants'],
+    ['bag', 0, 'Cart is empty', 'Tap an item to add it.', 'Sell · cart'],
+    ['find', 1, 'No customer found', 'Check the name or phone number.', 'Sell · customer picker'],
+  ],
+  'Orders': [
+    ['receipt', 0, 'No orders yet', 'Every sale you complete shows here.', 'Orders · list'],
+    ['cash', 0, 'Nothing sold today', 'Today’s sales will show here.', 'Orders · today'],
+    ['find', 1, 'No orders match', 'Try different filters.', 'Orders · filters'],
+    ['find', 1, 'No order selected', 'Pick one from the list.', 'Orders · iPad detail'],
+  ],
+  'Items': [
+    ['items', 0, 'No items yet', 'Add what you sell.', 'Items · items'],
+    ['tiles', 0, 'No categories yet', 'Group your items to find them fast.', 'Items · categories'],
+    ['switch', 0, 'No modifiers yet', 'Options like size or no ice.', 'Items · modifiers'],
+    ['gift', 0, 'No add-ons yet', 'Extras like a bag or gift wrap.', 'Items · add-ons'],
+    ['pct', 0, 'No discounts yet', 'Saved discounts show up here.', 'Items · discounts'],
+    ['truck', 0, 'No suppliers yet', 'Add them in the back office.', 'Items · item suppliers'],
+  ],
+  'Customers': [
+    ['people', 0, 'No customers yet', 'Save a customer to see them here.', 'Customers · list'],
+    ['find', 1, 'No customer selected', 'Pick one from the list.', 'Customers · iPad detail'],
+  ],
+  'Shift': [
+    ['drawer', 0, 'No cash in or out yet', 'Money in or out shows here.', 'Shift · cash in / out'],
+    ['clock', 0, 'No past shifts yet', 'Each closed shift shows here.', 'Shift · past shifts'],
+  ],
+  'Reports': [
+    ['bars', 0, 'Nothing sold today', 'Sales show here as you ring them up.', 'Reports · today'],
+  ],
+  'Settings': [
+    ['printer', 0, 'No printer connected', 'Turn on the printer and tap Scan.', 'Settings · printers'],
+  ],
+};
+document.getElementById('m').innerHTML = Object.entries(PAGES).map(([page, list]) =>
+  `<section><h2>${page}</h2><div class="grid">${list.map(([a, s, t, p, where]) =>
+    `<figure><div class="card"><svg class="art${s ? ' small' : ''}" viewBox="0 0 160 150"><use href="#a-${a}"/></svg><b>${t}</b><p>${p}</p></div><figcaption>${where}</figcaption></figure>`
+  ).join('')}</div></section>`).join('');
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+  document.body.classList.toggle('light-theme', b.dataset.t === 'light');
+  document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b));
+});
+if (location.hash === '#light') document.querySelector('[data-t=light]').click();
+</script>
+</body>
+</html>

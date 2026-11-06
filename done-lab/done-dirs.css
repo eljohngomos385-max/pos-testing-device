@@ -82,6 +82,70 @@ html[data-dir="D"] #checkoutDone .co-done-acts #successNewSaleBtn { order: -1; }
     color: var(--ink-secondary); font-weight: 500; }
 }
 
+/* A..D say nothing when there is no change (as pos-lab); E..G show the total paid and how (pos-checkout.js .paid) */
+html:is([data-dir="A"], [data-dir="B"], [data-dir="C"], [data-dir="D"]) #checkoutDone.paid .co-done-chg { display: none; }
+
+/* ---- E · Rows (owner 2026-11-06: "just use what we already have"): the page is checkout's pay step again. The number on
+   the hero line, its word over it ("Change" / "Paid · GCash"); Print receipt / Show receipt are checkout's method rows
+   (#checkoutMethods .co-tile), a hero gap under the number, one over the other; New sale on Check out's spot. No heading, no
+   tick (the paid moment said it). Rounds 1-2 (corner capsules, blue words, small capsules) were turned down. */
+#checkoutDone .co-done-acts .co-ic { display: none; }
+html[data-dir="E"] #checkoutDone { --dn-row: 0px; --dn-head: 30px; }
+html[data-dir="E"] #checkoutDone .co-mark { display: none; }
+html[data-dir="E"] #checkoutDone .co-done-h { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }   /* a screen reader still hears it */
+html[data-dir="E"] #checkoutDone .co-done-chg > :first-child { order: 0; margin: 0 0 10px; height: 20px; line-height: 20px;
+  color: var(--ink-secondary); font-size: 15px; font-weight: 500; }
+html[data-dir="E"] #checkoutDone .co-done-acts { width: min(100%, 420px); max-width: none; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 20px; }   /* checkout: the total to its first row, measured 20 phone and tablet */
+html[data-dir="E"] #checkoutDone #successNewSaleBtn { justify-self: center; width: 260px; margin-top: var(--hero-gap); }   /* tablet: under the rows; the phone puts it on Check out's spot */
+/* = #checkoutMethods .co-tile (styles.css), light theme's white tile included */
+html[data-dir="E"] #checkoutDone .co-done-acts > :is(#successPrintBtn, #checkoutRcptBtn) { justify-self: stretch; justify-content: flex-start; gap: 12px; width: auto; min-width: 0; max-width: none;
+  height: auto; min-height: 56px; margin: 0; padding: 0 16px; border-radius: calc(var(--r-input) + 2px); background: var(--tile); box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none; color: var(--ink); font-size: 15px; font-weight: 500; text-align: left; transition: background-color .12s, transform .1s; }
+html[data-dir="E"] body.light-theme #checkoutDone .co-done-acts > :is(#successPrintBtn, #checkoutRcptBtn) { background: var(--surface);
+  box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06); }
+html[data-dir="E"] #checkoutDone .co-done-acts > :is(#successPrintBtn, #checkoutRcptBtn):active { transform: scale(.98); }
+html[data-dir="E"] #checkoutDone .co-done-acts .co-ic { display: block; flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5;
+  stroke-linecap: round; stroke-linejoin: round; color: var(--ink-secondary); }
+@media (max-width: 720px) {
+  html[data-dir="E"] #checkoutDone .co-done-acts > #checkoutRcptBtn { order: 1; }
+}
+
 @keyframes dn-spring { from { opacity: 0; transform: scale(.4); } }
 @keyframes dn-bloom { 0% { opacity: 0; transform: scale(.5); } 45% { opacity: 1; transform: scale(1.15); } 100% { opacity: .55; transform: scale(1); } }
 @keyframes dn-focus { from { opacity: 0; filter: blur(10px); transform: scale(1.06); } }
+
+/* ---- the paid moment (owner 2026-11-05, finalists of moments.html): its own clean screen, then the page rises ----
+   <html data-pm="…">, picked in the ☰ menu. --pm-t = when the page starts rising; every time here is round 1's x1.2 (owner 2026-11-06: slower but keep tick and glow in step); pos-checkout.js reads it for the count-up. */
+html[data-pm] { --pm-blue: #4388F7; }   /* lab: --cta-bg's middle stop; a --cta-solid token when ported */
+html[data-pm="swoosh"] { --pm-t: 1440ms; }
+html[data-pm="edge"], html[data-pm="edge-low"] { --pm-t: 1740ms; }
+html[data-pm="edge-soft"] { --pm-t: 1260ms; --pm-g: .5; }
+html[data-pm="edge-sw"] { --pm-t: 1500ms; --pm-g: .7; }
+html[data-pm] #checkoutDone .co-mark { display: none; }
+html[data-pm] #checkoutDone .co-done-h { grid-area: 1 / 2 / 2 / 4; }
+html[data-pm] #checkoutDone > :not(.co-mark) { animation-delay: calc(var(--pm-t) + var(--i, 0) * 70ms + 160ms); }
+@media (max-width: 720px) {
+  html[data-pm] #checkoutDone .co-done-acts .co-btn { animation-delay: calc(var(--pm-t) + 440ms); }
+  html[data-pm] #checkoutDone #successNewSaleBtn { animation-delay: calc(var(--pm-t) + 520ms); }
+}
+.pm { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; background: var(--canvas, var(--bg)); pointer-events: none;
+  animation: pm-in .24s both, pm-off .42s calc(var(--pm-t) - 180ms) forwards; }
+.pm svg { width: 84px; height: 84px; overflow: visible; }
+.pm path { fill: none; stroke: var(--pm-blue); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40;
+  animation: co-draw .36s .48s var(--co-ease) forwards; }
+/* edge: the screen's edge lights blue once */
+html[data-pm^="edge"] .pm::before { content: ''; position: absolute; inset: 0; opacity: 0; animation: pm-glow 1.32s .2s ease-out both;
+  box-shadow: inset 0 0 0 3px rgb(67 136 247 / .9), inset 0 0 36px 10px rgb(67 136 247 / .55), inset 0 0 90px 20px rgb(142 194 240 / .35); }
+html[data-pm="edge-soft"] .pm::before { animation-duration: .96s; }
+html[data-pm="edge-low"] .pm::before { inset: auto 0 0; height: 45%; box-shadow: none;
+  background: radial-gradient(120% 100% at 50% 100%, rgb(67 136 247 / .45), rgb(142 194 240 / .15) 45%, transparent 75%); }
+/* swoosh: one big tick in a single fast stroke */
+html[data-pm$="sw"] .pm svg, html[data-pm="swoosh"] .pm svg { width: 170px; height: 170px; }   /* no thump after: one stroke, no second step (owner 2026-11-05) */
+html[data-pm$="sw"] .pm path, html[data-pm="swoosh"] .pm path { stroke-width: 5.5; animation: co-draw .38s .28s cubic-bezier(.7, 0, .2, 1) forwards; }
+html[data-pm="edge-sw"] .pm path { animation-delay: .32s; }
+@keyframes pm-in { from { opacity: 0; } }
+@keyframes pm-off { to { opacity: 0; visibility: hidden; } }
+@keyframes pm-glow { 25% { opacity: var(--pm-g, 1); } 100% { opacity: 0; } }
+.side-nav .side-grp:has(.pm-pick) { display: flex; }   /* styles.css hides a group with no page link in it */
+.pm-pick { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; padding: 0 8px 0 12px; color: var(--ink-secondary); font-size: 15px; font-weight: 500; }
+.pm-pick select { max-width: 60%; border: 0; background: none; color: var(--ink); font: inherit; text-align: right; }

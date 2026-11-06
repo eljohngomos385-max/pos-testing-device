@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POS Lab Devices</title>
+<style>
+/* Lab chrome only: the POS lab (index.html) in a phone / tablet sized frame, the same bar as pos-items-rail-lab.html.
+   An iframe, so the POS's own screen-size rules see the device width, not the window's. */
+html, body { margin: 0; height: 100%; }
+body { background: #0A0A0A; font: 12px/1.4 Inter, system-ui, sans-serif; overflow: hidden; }
+button { font: inherit; cursor: pointer; }
+.labbar { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 10px; padding: 4px; border-radius: 10px;
+          background: #1A1A1A; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }
+.labbar div { display: flex; gap: 2px; }
+.labbar button { height: 28px; padding: 0 10px; white-space: nowrap; border: 0; border-radius: 7px; background: none; color: rgba(255,255,255,.6); }
+.labbar button.cur { background: #333; color: #fff; }
+.labbar [hidden] { display: none; }
+.labbar.two { top: 46px; align-items: center; color: rgba(255,255,255,.6); }
+.labbar label { display: flex; align-items: center; gap: 6px; padding: 0 8px; white-space: nowrap; }
+.labbar input[type=range] { width: 110px; accent-color: #fff; }
+.labbar output { min-width: 92px; color: #fff; font-variant-numeric: tabular-nums; }
+.stage { position: fixed; inset: 86px 0 0; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: unsafe center; }   /* unsafe: a frame taller than the window (scaled down) stays centred instead of hanging off the bottom */
+.dev { position: relative; flex: none; overflow: hidden; transform-origin: center; border-radius: 18px;
+       box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 30px 80px rgba(0,0,0,.5); }
+.dev.fit { border-radius: 0; }
+.dev.phone { border-radius: 47px; box-sizing: border-box; padding-top: 58px; }   /* iPhone 15/16: 393x852pt (owner: 55 corners too round); Safari's page starts 58pt down, under the status bar (measured off the owner's screenshot) */
+.sb { display: none; position: absolute; inset: 0 0 auto; height: 58px; padding: 0 34px 0 50px; align-items: center; justify-content: space-between;
+      font: 600 17px/1 system-ui, sans-serif; color: #fff; mix-blend-mode: difference; pointer-events: none; }
+.dev.phone .sb { display: flex; }
+.dev.phone::before { content: ''; position: absolute; z-index: 1; left: 50%; top: 11px; width: 126px; height: 37px; margin-left: -63px; border-radius: 19px;
+                     background: #000; pointer-events: none; }   /* the Dynamic Island (iPhone 15/16) */
+.dev.phone iframe { border-radius: 0 0 47px 47px; clip-path: inset(0 round 0 0 47px 47px); }   /* Safari doesn't clip an iframe to its parent's round corners; round the iframe itself */
+.sb i { width: 25px; height: 12px; border-radius: 4px; background: currentColor; }   /* the battery */
+.dev.phone::after { content: ''; position: absolute; left: 50%; bottom: 8px; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px;
+                    background: rgba(255,255,255,.7); mix-blend-mode: difference; pointer-events: none; }   /* the home bar */
+.stage.free { place-items: start; padding: 12px 16px; }   /* anchored top-left so the corner handle tracks the pointer */
+.dev.free { resize: both; min-width: 360px; min-height: 480px; }
+iframe { display: block; width: 100%; height: 100%; border: 0; }
+@media (max-width: 760px) { .labbar { left: 8px; right: 8px; transform: none; overflow-x: auto; } }
+</style>
+</head>
+<body>
+<div class="labbar">
+  <div id="devPick">
+    <button data-dev="land">Tablet landscape</button>
+    <button data-dev="port">Tablet portrait</button>
+    <button data-dev="pro13">iPad Pro 13</button>
+    <button data-dev="android">Android 11"</button>
+    <button data-dev="mini">iPad mini</button>
+    <button data-dev="phone">Phone</button>
+    <button data-dev="free" id="free" class="cur">Resizable</button>
+    <button data-dev="fit">Fit window</button>
+  </div>
+  <div id="themePick">
+    <button data-theme="dark">Dark</button>
+    <button data-theme="light">Light</button>
+  </div>
+  <div id="optPick" hidden></div>
+</div>
+
+<div class="labbar two" id="sizeBar">
+  <label>Panel min <input type="range" id="sidePct" min="22" max="36" step=".5" value="26.5"><output id="sideOut"></output></label>
+  <label>Tile <output id="tileOut"></output></label>
+</div>
+
+<div class="stage">
+  <div class="dev" id="dev"><div class="sb"><b>9:41</b><i></i></div><iframe id="f" title="POS lab"></iframe></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const dev = $('dev'), f = $('f'), stage = document.querySelector('.stage');
+const DEVS = { land: [1180, 820], port: [820, 1180], pro13: [1376, 1032], android: [1280, 800], mini: [1133, 744], phone: [393, 852] };   // CSS px the browser lays out in, not screen pixels
+let devKey = 'free', fresh = true, light = null;   // light: null = whatever the POS's own Settings say
+
+function fitDev() {
+  const st = stage.getBoundingClientRect();
+  dev.classList.toggle('fit', devKey === 'fit');
+  dev.classList.toggle('free', devKey === 'free');
+  dev.classList.toggle('phone', devKey === 'phone');
+  phoneSafe();
+  stage.classList.toggle('free', devKey === 'free');
+  if (devKey === 'free') {   // ponytail: native CSS resize handle, bottom-right corner; starts at tablet landscape
+    dev.style.transform = '';
+    dev.style.maxWidth = st.width - 32 + 'px'; dev.style.maxHeight = st.height - 24 + 'px';
+    if (fresh) { dev.style.width = '1180px'; dev.style.height = '820px'; fresh = false; }
+    return;
+  }
+  dev.style.maxWidth = dev.style.maxHeight = '';
+  $('free').textContent = 'Resizable';
+  let scale = 1;
+  if (devKey === 'fit') { dev.style.width = st.width + 'px'; dev.style.height = st.height + 'px'; }
+  else {
+    const [w, h] = DEVS[devKey];
+    scale = Math.min(1, (st.width - 32) / w, (st.height - 24) / h);
+    dev.style.width = w + 'px'; dev.style.height = h + 'px';
+  }
+  dev.style.transform = `scale(${scale})`;
+}
+function phoneSafe() {   // an iframe gets no safe-area inset; the Phone preset fakes the iPhone's 34px home-bar strip
+  f.contentDocument?.documentElement.style.setProperty('--ph-safe', devKey === 'phone' ? '34px' : '');
+}
+function applyTheme() {
+  if (light !== null) f.contentDocument?.body.classList.toggle('light-theme', light);
+  if (f.contentDocument?.body) dev.style.background = getComputedStyle(f.contentDocument.body).backgroundColor;   // the status-bar strip takes the page colour, as Safari does
+}
+
+$('devPick').onclick = (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  devKey = b.dataset.dev; fresh = true;
+  for (const x of $('devPick').children) x.classList.toggle('cur', x === b);
+  fitDev();
+};
+$('themePick').onclick = (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  light = b.dataset.theme === 'light';
+  for (const x of $('themePick').children) x.classList.toggle('cur', x === b);
+  applyTheme();
+};
+// Sizing (pos-sell getSellGridProfile): S 6x5 / M 5x4 / L 4x3 fixed, the rows fill the height; the panel = max(340, Panel min % of the width), more on wide screens
+function applySizing() {
+  const d = f.contentDocument?.documentElement, w = f.contentWindow;
+  if (!d || !w.renderProducts) return;
+  d.style.setProperty('--side-vw', $('sidePct').value);
+  w.renderProducts();
+  requestAnimationFrame(() => {
+    const side = f.contentDocument.getElementById('side'), card = f.contentDocument.querySelector('.product-card');
+    $('sideOut').textContent = `${$('sidePct').value}% · ${side?.offsetWidth || 0}px`;
+    $('tileOut').textContent = card ? `${card.offsetWidth}×${card.offsetHeight}` : '';
+  });
+}
+$('sidePct').oninput = applySizing;
+// a lab copy with options (window.labOpts = { names, set(i) }, e.g. reports-step-lab.html): a switch for them here, outside the app
+let optI = 0;
+function applyOpts() {
+  const lo = f.contentWindow.labOpts;
+  $('optPick').hidden = !lo;
+  if (!lo) return;
+  $('optPick').innerHTML = lo.names.map((n, i) => `<button data-i="${i}"${i === optI ? ' class="cur"' : ''}>${n}</button>`).join('');
+  lo.set(optI);
+}
+$('optPick').onclick = (e) => { const b = e.target.closest('button'); if (b) { optI = +b.dataset.i; applyOpts(); } };
+f.addEventListener('load', () => { phoneSafe(); applyTheme(); applySizing(); applyOpts();
+  new MutationObserver(() => { dev.style.background = getComputedStyle(f.contentDocument.body).backgroundColor; })
+    .observe(f.contentDocument.body, { subtree: true, attributes: true, attributeFilter: ['class'] }); f.contentWindow.addEventListener('resize', () => requestAnimationFrame(applySizing)); });
+const page = new URLSearchParams(location.search).get('page');   // devices.html?page=x.html: another lab copy in the frame
+f.src = (/^[\w-]+\.html$/.test(page || '') ? page : 'index.html') + '?' + Date.now();   // the browser kept serving a stale index.html inside the frame; the files it loads carry ?v= already
+addEventListener('resize', fitDev);
+new ResizeObserver(() => { if (devKey === 'free') $('free').textContent = `Resizable · ${dev.offsetWidth}×${dev.offsetHeight}`; }).observe(dev);
+fitDev();
+</script>
+</body>
+</html>

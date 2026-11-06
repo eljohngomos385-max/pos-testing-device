@@ -79,56 +79,68 @@ function buildMapThumb(location, className = 'rp-map-thumb') {
 // The totals block and the payment lines are listed once, in printer.js (totalRows, payRows), so paper and
 // both on-screen slips show the same rows. Every page loads printer.js before app.js; the node till
 // harness does not, and gets no rows (ponytail: nothing there reads a slip).
-const slipRows = (fn, vm) => (globalThis.HWPOS_PRINTER ? HWPOS_PRINTER[fn](vm) : []);
-// `back`: how much of each line came back (Orders); all of it = struck through, part = a small line under it,
-// worded by `said` (backSaid).
-// The store's 1-3 phone numbers ("a / b", Settings › Store details): a line break falls between numbers, never inside one
-const telHtml = phone => phone.split(' / ').map(n => `<span style="white-space:nowrap">${escapeHtml(n)}</span>`).join(' / ');
+const slipRows = (fn, vm, ...a) => (globalThis.HWPOS_PRINTER ? HWPOS_PRINTER[fn](vm, ...a) : []);
+const lookPic = (src, cls) => (src ? `<img class="${cls}" src="${escapeHtml(src)}" alt="">` : '');
+// The receipt in its style (Settings › Receipt › Style, receipt.css): Classic (.t1) or Modern (.g2), the lines printer.js
+// prints, in its order. One body for the screen (.rp-paper) and the print pop-up (.r-paper).
+// `back`: how much of each line came back (Orders); all of it = struck through, part = a line under it, worded by `said`.
+function receiptBody(r, back = [], said = [], mapCls = 'rp-map-thumb') {
+  const P = globalThis.HWPOS_PRINTER, t1 = r.look.style !== 'g2', e = escapeHtml;
+  const up = s => (t1 ? String(s).toUpperCase() : String(s));
+  const div = (t, c = '') => `<div class="${c}">${t}</div>`;
+  const row = (k, v, c = '') => `<div class="r ${c}"><span>${k}</span><span>${v}</span></div>`;
+  const amt = n => (t1 ? peso(n) : `<span class="amt">${peso(n)}</span>`);
+  const bare = n => (P ? P.money(n, state.settings?.store?.currency) : peso(n));   // the table's cells, as the paper prints them
+  const sm = t1 ? 'c' : 'c sm', pay = t1 ? '' : 'pay';
+  const fulfil = String(r.fulfilmentLabel || '').split(' · ')[0];
+  const name = String(r.store.name || ''), size = Math.max(24, Math.min(40, Math.round(40 * 15 / (name.length || 1)))) / 14;
+  // a line break falls between the store's phone numbers, never inside one
+  const nums = String(r.store.phone || '').split(' / ').filter(Boolean);
+  const tel = l => nums.reduce((h, n) => h.replace(e(n), `<span class="nw">${e(n)}</span>`), e(l));
+  const cust = P ? P.custLines(r) : [];
+  const items = r.items.map((i, k) => {
+    const out = back[k] >= i.qty ? ' out' : '', q = SalesMath.qtyText(i.qty);
+    const under = [...SalesMath.answerLines(i, peso), ...(i.note ? [i.note] : []), ...(back[k] > 0 && back[k] < i.qty ? [said[k] || ''] : [])];
+    return t1
+      ? `<span class="${out}">${q}</span><span class="${out}">${e(i.name)}${under.map(t => '<br>' + e(t)).join('')}</span>`
+        + `<span class="n${out}">${bare(i.price)}</span><span class="n${out}">${bare(i.amount)}</span>`
+      : `<div class="it${out}">${div(e(i.name), 'nm')}${row(`${q} ${e(i.unit || '')} × ${peso(i.price)}`, amt(i.amount), 'ln')}${under.map(t => div(e(t), 'ln')).join('')}</div>`;
+  }).join('');
+  const [ty, ...more] = r.look.footer;
+  return `<div class="rcpt ${t1 ? 't1' : 'g2'}">
+    ${lookPic(r.look.logo, 'pic')}
+    <div class="store" style="font-size:calc(var(--rc) * ${size.toFixed(3)})">${e(name)}</div>
+    ${r.look.header.map(l => div(e(l), `${sm} slogan`)).join('')}
+    ${(P ? P.headLines(r.store, 48) : []).map((l, i) => div(tel(l), i ? sm : `${sm} tel`)).join('')}
+    <hr>
+    ${r.mark ? div(e(r.mark), 'mark') : ''}
+    ${t1
+      ? (r.number ? div('RECEIPT #' + e(r.number)) : '') + div(e(r.dateText)) + div(e(up(`${r.whoWord} ${r.cashier || ''}`)))
+        + div(`POS ${e(r.register || '1')}${fulfil ? ' · ' + e(fulfil) : ''}`)
+      : (r.number ? row('Receipt #', e(r.number)) : '') + row('Date', e(r.dateText)) + row(e(r.whoWord), e(r.cashier || '')) + row('POS', e(r.register || '1'))}
+    ${cust.length ? '<hr>' : ''}
+    ${!t1 && fulfil ? div(`<b>${e(fulfil)}</b>`, 'sm type') : ''}
+    ${cust.map(([k, v]) => div(e(t1 ? `${k.toUpperCase()}: ${v}` : k === 'Customer' ? v : `${k}: ${v}`), t1 ? '' : 'sm')).join('')}
+    <hr>
+    ${t1 ? `<div class="items"><span class="h">QTY</span><span class="h">ITEM</span><span class="h n">PRICE</span><span class="h n">AMOUNT</span><hr>${items}</div>` : items}
+    <hr>
+    ${slipRows('totalRows', r).map(([k, v]) => row(e(up(k)), amt(v), pay)).join('')}
+    ${r.status === 'saved'
+      ? (r.mark ? '' : row(up('Status'), up('Not completed'), pay))   // a quote: QUOTATION at the top says it
+      : slipRows('payRows', r, !t1).map(([k, v]) => row(e(k), typeof v === 'string' ? e(v) : amt(v), pay)).join('')}
+    ${row('TOTAL', amt(r.totals.total), 'tot')}
+    <hr>
+    ${fulfil === 'DELIVERY' ? buildMapThumb(r.deliveryLocation, mapCls) : ''}
+    ${ty ? div(e(ty), t1 ? 'shout' : 'ty') : ''}
+    ${more.map(l => div(e(l), sm)).join('')}
+    ${lookPic(r.look.footerImg, 'pic foot')}
+    ${r.number ? `<div class="recno"><span>Receipt no.</span><b>${e(r.number)}</b></div>` : ''}
+    ${r.footer.map(l => div(l, sm)).join('')}
+    ${r.store.tin ? div('TIN ' + e(r.store.tin), sm) : ''}
+  </div>`;
+}
 function buildReceiptPreview(order, back = [], said = []) {
-  const receipt = toReceiptViewModel(order);
-  const lines = receipt.items.map((i, k) => `
-    <div class="rp-item${back[k] >= i.qty ? ' out' : ''}">
-      <div class="rp-item-name">${escapeHtml(i.name)}</div>
-      <div class="rp-row rp-item-line">
-        <span>${SalesMath.qtyText(i.qty)} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
-        <span>${peso(i.amount)}</span>
-      </div>
-      ${SalesMath.answerLines(i, peso).map(t => `<div class="rp-small">${escapeHtml(t)}</div>`).join('')}
-      ${i.note ? `<div class="rp-small">${escapeHtml(i.note)}</div>` : ''}
-      ${back[k] > 0 && back[k] < i.qty ? `<div class="rp-small">${escapeHtml(said[k] || '')}</div>` : ''}
-    </div>`).join('');
-  const payRows = receipt.status === 'saved'
-    ? (receipt.mark ? '' : `<div class="rp-status saved">NOT COMPLETED</div>`)   // a quote: QUOTATION at the top says it
-    : slipRows('payRows', receipt).map(([k, v]) => `<div class="rp-row"><span>${escapeHtml(k)}</span><span>${typeof v === 'string' ? escapeHtml(v) : peso(v)}</span></div>`).join('');
-  return `
-    <div class="receipt-preview">
-      <div class="rp-paper">
-        <div class="rp-center rp-store">${escapeHtml(receipt.store.name)}</div>
-        ${receipt.store.address ? `<div class="rp-center rp-small">${escapeHtml(receipt.store.address)}</div>` : ''}
-        ${receipt.store.phone ? `<div class="rp-center rp-small">Tel: ${telHtml(receipt.store.phone)}</div>` : ''}
-        ${receipt.store.tin ? `<div class="rp-center rp-small">TIN: ${escapeHtml(receipt.store.tin)}</div>` : ''}
-        <div class="rp-rule"></div>
-        ${receipt.mark ? `<div class="rp-status saved">${escapeHtml(receipt.mark)}</div>` : ''}
-        ${receipt.number ? `<div class="rp-row"><span>Receipt #</span><span>${escapeHtml(receipt.number)}</span></div>` : ''}
-        <div class="rp-row"><span>Date</span><span>${receipt.dateText}</span></div>
-        <div class="rp-row"><span>${receipt.whoWord}</span><span>${escapeHtml(receipt.cashier || '')}</span></div>
-        <div class="rp-row"><span>Register</span><span>${escapeHtml(receipt.register || '1')}</span></div>
-        ${receipt.customer ? `<div class="rp-small">Customer: ${escapeHtml(receipt.customer.name)}</div>` : ''}
-        ${receipt.scPwdId ? `<div class="rp-small">${escapeHtml(receipt.scPwdId.join(': '))}</div>` : ''}
-        <div class="rp-small"><strong>${escapeHtml(receipt.fulfilmentLabel)}</strong></div>
-        ${receipt.note ? `<div class="rp-small">Note: ${escapeHtml(receipt.note)}</div>` : ''}
-        ${buildMapThumb(receipt.deliveryLocation)}
-        <div class="rp-rule"></div>
-        ${lines}
-        <div class="rp-rule"></div>
-        ${slipRows('totalRows', receipt).map(([k, v, small]) => `<div class="rp-row${small ? ' rp-small' : ''}"><span>${escapeHtml(k)}</span><span>${peso(v)}</span></div>`).join('')}
-        <div class="rp-row rp-total"><span>TOTAL</span><span>${peso(receipt.totals.total)}</span></div>
-        ${payRows}
-        <div class="rp-rule"></div>
-        <div class="rp-center rp-thanks">Thank you!</div>
-        ${receipt.footer.map(l => `<div class="rp-center rp-small">${l}</div>`).join('')}
-      </div>
-    </div>`;
+  return `<div class="receipt-preview"><div class="rp-paper">${receiptBody(toReceiptViewModel(order), back, said)}</div></div>`;
 }
 
 // pos-orders-rail-lab.html: the orders in a rail under ☰, grouped under day bands; the receipt beside it.
@@ -235,9 +247,11 @@ function renderOrders() {
         <div class="rt"><span class="amt num">${amt == null ? '—' : peso(amt)}</span><small>${escapeHtml(orderPayText(o))}</small></div></button>`;
     }
   }
-  list.innerHTML = html || (state.orders.length
-    ? '<div class="empty"><b>No orders</b><span>Nothing matches these filters.</span></div>'
-    : '<div class="empty"><b>No orders yet</b><span>Completed sales and saved receipts show up here.</span></div>');
+  const q = (state.ordersQuery || '').trim();
+  list.innerHTML = html || (q ? noResults(q) : !orderRows().length
+    ? emptyState('orders', 'No orders yet', 'Every sale you complete shows up here.', emptyAct('Start a sale', '.side-link[data-view="sell"]'))
+    : emptyState('orders', ordersFiltered() ? 'No orders match' : state.ordersFilter.range === 'today' ? 'Nothing sold today' : 'Nothing sold in the last 7 days',
+      ordersFiltered() ? 'Nothing in these filters.' : 'Older orders are one tap away.', emptyAct(ordersFiltered() ? 'Change filters' : 'Show all orders', '#ordersFilter')));
   $('#ordersFilter')?.classList.toggle('on', ordersFiltered());
   renderOrderDetail();
 }
@@ -251,7 +265,7 @@ function renderOrderDetail() {
   if (!o) {
     $('#orderCancel').hidden = true; $('#orderPrint').hidden = $('#orderMore').hidden = false;
     ttl.innerHTML = '';
-    detail.innerHTML = '<div class="empty"><b>No order selected</b><span>Pick one from the list to see its receipt.</span></div>';
+    detail.innerHTML = emptyState('orders', 'No order selected', 'Pick one from the list to see its receipt.');
     return;
   }
   ttl.innerHTML = `<b class="${o.customer ? '' : 'walk'}">${escapeHtml(o.customer ? o.customer.name : 'Walk-in customer')}</b>${orderFlag(o)}`;
@@ -643,52 +657,25 @@ function recordDeliveryEvent(orderId, event) {
 function buildReceiptHtml(order) {
   const receipt = toReceiptViewModel(order);
   const paper = printerConfig().width === '58mm' ? '58mm' : '80mm';   // Settings › Printing › Paper width
-  const lines = receipt.items.map(i => `
-    <div class="r-item">
-      <div class="r-item-name">${escapeHtml(i.name)}</div>
-      <div class="r-item-row">
-        <span>${SalesMath.qtyText(i.qty)} ${escapeHtml(i.unit || '')} × ${peso(i.price)}</span>
-        <span>${peso(i.amount)}</span>
-      </div>
-      ${SalesMath.answerLines(i, peso).map(t => `<div class="r-item-row">${escapeHtml(t)}</div>`).join('')}
-      ${i.note ? `<div class="r-item-row">${escapeHtml(i.note)}</div>` : ''}
-    </div>`).join('');
-
-  const cust = receipt.customer
-    ? `<div class="r-cust">Customer: ${escapeHtml(receipt.customer.name)}</div>`
-    : '';
-  const scId = receipt.scPwdId ? `<div class="r-cust">${escapeHtml(receipt.scPwdId.join(': '))}</div>` : '';
-  const fulfilParts = receipt.fulfilmentLabel.split(' · ');
-  const fulfil = fulfilParts[0] === 'DELIVERY'
-    ? `
-      <div class="r-cust"><strong>DELIVERY</strong></div>
-      ${fulfilParts[1] ? `<div class="r-cust">${escapeHtml(fulfilParts.slice(1).join(' · '))}</div>` : ''}`
-    : `<div class="r-cust"><strong>${escapeHtml(fulfilParts[0])}</strong></div>`;
-  const deliveryMap = receipt.deliveryLocation ? buildMapThumb(receipt.deliveryLocation, 'r-map-thumb') : '';
-  const totalRows = slipRows('totalRows', receipt).map(([k, v]) => `<div class="r-row"><span>${escapeHtml(k)}</span><span>${peso(v)}</span></div>`).join('');
-  const payRows = receipt.status === 'saved'
-    ? (receipt.mark ? '' : `<div class="r-row"><span>STATUS</span><span>NOT COMPLETED</span></div>`)
-    : slipRows('payRows', receipt).map(([k, v]) => `<div class="r-row"><span>${escapeHtml(k)}</span><span>${typeof v === 'string' ? escapeHtml(v) : peso(v)}</span></div>`).join('');
 
   return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
+${[...document.querySelectorAll('link[href*="fonts.googleapis"], link[href^="receipt.css"]')].map(l => `<link rel="stylesheet" href="${l.href}" />`).join('')}
 <title>${escapeHtml(receipt.number ? `Receipt ${receipt.number}` : (receipt.mark ? 'Quotation' : 'Saved cart'))}</title>
 <style>
   @page { size: ${paper} auto; margin: 0; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #fff; color: #000; }
-  body {
-    font-family: "SF Mono", "Menlo", "Consolas", "Courier New", monospace;
-    font-size: 12px;
-    line-height: 1.35;
-  }
+  @font-face { font-family: "Receipt Mono"; src: url("${new URL('receipt-mono.ttf', document.baseURI).href}") format("truetype"); font-weight: 200 700; }
   .r-paper {
     width: ${paper};
     padding: 4mm 4mm 6mm;
     background: #fff;
+    container-type: inline-size;
   }
+  .r-paper .rcpt { --rc: calc(100cqw / 29.1); }   /* paper is the real width: no phone floor */
   /* On-screen preview: center the receipt on a neutral surface */
   @media screen {
     body {
@@ -707,22 +694,6 @@ function buildReceiptHtml(order) {
     }
     .r-actions { width: ${paper}; }
   }
-  .r-center { text-align: center; }
-  .r-store { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
-  .r-store-sub { font-size: 11px; }
-  .r-rule { border-top: 1px dashed #000; margin: 6px 0; }
-  .r-double { border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 3px 0; }
-  .r-meta { font-size: 11px; }
-  .r-meta div { display: flex; justify-content: space-between; }
-  .r-item { margin: 4px 0; }
-  .r-item-name { font-weight: 700; }
-  .r-item-row { display: flex; justify-content: space-between; font-size: 11px; }
-  .r-row { display: flex; justify-content: space-between; gap: 12px; }
-  .r-row > span:first-child { flex-shrink: 0; max-width: 60%; }   /* a long ref no. wraps in the value, never squeezes the label */
-  .r-row > span:last-child { min-width: 0; text-align: right; overflow-wrap: anywhere; }
-  .r-total { font-size: 14px; font-weight: 700; }
-  .r-foot { font-size: 11px; margin-top: 6px; }
-  .r-cust { font-size: 11px; margin: 2px 0; }
   .r-map-thumb {
     position: relative; height: 82px; overflow: hidden; margin: 5px 0 2px;
     border: 1px solid #000; background: #f3f3f3; filter: grayscale(1) contrast(1.2);
@@ -737,7 +708,6 @@ function buildReceiptHtml(order) {
     position: absolute; right: 3px; bottom: 2px; background: rgba(255,255,255,0.85);
     color: #000; font-size: 8px; padding: 0 2px;
   }
-  .r-thanks { margin-top: 8px; font-weight: 700; }
   .r-actions { margin-top: 16px; display: flex; gap: 8px; }
   .r-actions button {
     flex: 1; font-family: inherit; font-size: 13px; font-weight: 550; padding: 12px;
@@ -752,41 +722,7 @@ function buildReceiptHtml(order) {
 </style>
 </head>
 <body>
-  <div class="r-paper">
-  <div class="r-center r-store">${escapeHtml(receipt.store.name)}</div>
-  ${receipt.store.address ? `<div class="r-center r-store-sub">${escapeHtml(receipt.store.address)}</div>` : ''}
-  ${receipt.store.phone ? `<div class="r-center r-store-sub">Tel: ${telHtml(receipt.store.phone)}</div>` : ''}
-  ${receipt.store.tin ? `<div class="r-center r-store-sub">TIN: ${escapeHtml(receipt.store.tin)}</div>` : ''}
-
-  <div class="r-rule"></div>
-
-  ${receipt.mark ? `<div class="r-center"><strong>${escapeHtml(receipt.mark)}</strong></div>` : ''}
-  <div class="r-meta">
-    ${receipt.number ? `<div><span>Receipt #</span><span>${escapeHtml(receipt.number)}</span></div>` : ''}
-    <div><span>Date</span><span>${receipt.dateText}</span></div>
-    <div><span>${receipt.whoWord}</span><span>${escapeHtml(receipt.cashier || '')}</span></div>
-    <div><span>Register</span><span>${escapeHtml(receipt.register || '1')}</span></div>
-  </div>
-  ${cust}${scId}
-  ${fulfil}
-  ${receipt.note ? `<div class="r-cust">Note: ${escapeHtml(receipt.note)}</div>` : ''}
-  ${deliveryMap}
-
-  <div class="r-rule"></div>
-
-  ${lines}
-
-  <div class="r-rule"></div>
-
-  ${totalRows}
-  <div class="r-double r-row r-total"><span>TOTAL</span><span>${peso(receipt.totals.total)}</span></div>
-  ${payRows}
-
-  <div class="r-rule"></div>
-
-  <div class="r-center r-thanks">Thank you!</div>
-  ${receipt.footer.map(l => `<div class="r-center r-foot">${l}</div>`).join('')}
-  </div>
+  <div class="r-paper">${receiptBody(receipt, [], [], 'r-map-thumb')}</div>
 
   <div class="r-actions">
     <button onclick="window.close()">Close</button>
@@ -796,7 +732,8 @@ function buildReceiptHtml(order) {
   <script>
     // Auto-trigger the print dialog once rendered.
     window.addEventListener('load', function () {
-      setTimeout(function () { window.print(); }, 200);
+      // the receipt font first, or the paper comes out in the device's own (Settings › Receipt)
+      (document.fonts ? document.fonts.ready : Promise.resolve()).then(function () { setTimeout(function () { window.print(); }, 200); });
     });
   </script>
 </body>

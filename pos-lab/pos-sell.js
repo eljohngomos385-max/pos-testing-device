@@ -265,15 +265,10 @@ function renderProducts() {
 
   if (cells.length === 0) {
     grid.innerHTML = `
-      <div class="no-results">
-        <svg class="nr-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/>
-        </svg>
-        <div class="nr-title">No items found</div>
-        <div class="nr-sub">Try a different word or scan it</div>
-        ${state.query.trim() ? `<button class="text-btn nr-lost cta-3" type="button" data-act="custom-item">Sell “${escapeHtml(state.query.trim())}” as a custom item</button>
-        <button class="text-btn nr-lost cta-3" type="button" data-act="lost-sale">Log “${escapeHtml(state.query.trim())}” as a lost sale</button>` : ''}
-      </div>`;
+      <div class="no-results">${state.query.trim() ? emptyState('search', `No results for “${escapeHtml(state.query.trim())}”`, 'Try a different word or scan it.',
+        `<button class="e-act cta-3" type="button" data-act="custom-item">Sell it as a custom item</button>
+        <button class="e-act cta-3" type="button" data-act="lost-sale">Log it as a lost sale</button>`)
+        : emptyState('items', 'No items yet', 'Add what you sell and it shows here.', emptyAct('Go to Items', '.side-link[data-view="items"]'))}</div>`;
     renderSellHeader();
     requestAnimationFrame(syncSellGridMetrics);
     return;
@@ -478,7 +473,7 @@ function renderCatSheet(vm) {
   $('#variantFilter').hidden = true;
   $('#variantCount').textContent = `${shown.length} of ${all.length}`;
   $('#variantList').innerHTML = shown.map(c => cellRow(c, c.kind === 'group' ? `data-open-group="${c.group.id}"` : `data-variant-id="${c.product.id}"`)).join('')
-    || '<div class="vs-empty">No items match</div>';
+    || (q ? noResults(vm.query.trim()) : emptyState('items', 'No items in this category'));
 }
 
 // Add tile (owner 2026-10-21): a half sheet asks Item or Category, then the Items page opens on that list as it is - its
@@ -593,7 +588,7 @@ function renderVariantList() {
     <button type="button" class="vs-row" data-variant-id="${p.id}">
       <span class="nm">${escapeHtml(p.name)}${out(p) ? '<small><b>Sold out</b></small>' : p.trackStock === false ? '' : `<small>${roundQty(p, p.stock)} available</small>`}</span>
       <span class="amt num">${askedPrice(p) ? '—' : peso(p.price)}</span>
-    </button>`).join('') : '<div class="vs-empty">No variants match</div>';
+    </button>`).join('') : q ? noResults(vm.query.trim()) : emptyState('items', 'All sold out', 'Show all to see them.');
 }
 
 function changePage(delta) {
@@ -1189,7 +1184,7 @@ function openEditSheet(kind, id, via) {
     // Only answers still on offer (freshAnswers): a removed, hidden or Unavailable one is off, so a Pick one asks again
     const had = line ? freshAnswers(p, line.modifiers, qs) : [];
     const ans = Object.fromEntries(qs.map(q => [q.id, had.filter(a => a.modifierId === q.id).map(a => a.choiceId)]));
-    es = { kind, id, via: via.via, again: via.again, line: line ? line.id : null, base: moneyValue(line ? line.price - SalesMath.answersPrice(line) : via.base ?? p.price), qs, ans, at: 0 };
+    es = { kind, id, via: via.via, again: via.again, line: line ? line.id : null, base: moneyValue(line ? line.price - SalesMath.answersPrice(line) : via.base ?? p.price), qs, ans, at: 0, rev: false, seen: false };
   } else {
     es = { kind, day: (state.pickupTime && state.pickupTime.day) || 'Today' };
   }
@@ -1346,15 +1341,18 @@ function drawEditSheet() {
     // one question per screen, in the item's order (modifiers-lab.html's POS screens): the item and what's picked so far, the
     // question, how many; a choice greyed Unavailable can't be picked (it is set back in Items › Modifiers). The name as
     // typed, never a "?" (owner 2026-10-24: "Toppings")
-    // Picked so far (owner 2026-10-25, line-and-again-lab.html P): "+N" and the newest two over the name, never more than three
-    // pills (esPicksPop cuts one that doesn't fit); a pill goes back to its question, "+N" lists every pick
-    const q = o.qs[o.at], got = o.ans[q.id], did = esPicked(o), keep = did.slice(-2), k = did.length - keep.length;
-    const picks = did.length ? `<div class="es-picks" data-fit><button type="button" class="more" data-more data-n="${k}">+${k}</button>${
-      keep.map(d => `<button type="button" data-go="${d.i}">${escapeHtml(d.q + ' ' + d.v)}</button>`).join('')}</div>` : '';
-    head = `${picks}<p>${escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item')}</p><div class="es-hero mq">${escapeHtml(esQName(q))}</div>
-      <p class="es-off">Pick ${MODIFIER_PICKS[q.picks].toLowerCase()}</p>`;
-    rows = q.choices.map(c => `<button type="button" class="es-row${got.includes(c.id) ? ' pick' : ''}${c.unavailable ? ' out' : ''}" data-ch="${escapeHtml(c.id)}"${c.unavailable ? ' aria-disabled="true"' : ''}>
-      <span>${escapeHtml(c.name)}</span><small>${c.unavailable ? 'Unavailable' : c.price ? '+' + peso(c.price) : ''}</small></button>`).join('');
+    // The item's name is the page's title (es-ttl), "Pick up to 3" over the question (owner 2026-11-06, mods-lab.html D).
+    // After the last question a review: the price on the hero line, every answer a pill; a tap goes back to its question
+    if (o.rev) {
+      head = `<div class="es-hero">${peso(esModsPrice(o))}</div>`;
+      rows = `<div class="es-pills">${o.qs.map((q, i) => `<button type="button" data-go="${i}">${
+        escapeHtml(esQName(q) + ' ' + (q.choices.filter(c => o.ans[q.id].includes(c.id)).map(c => c.name).join(', ') || 'None'))}</button>`).join('')}</div>`;
+    } else {
+      const q = o.qs[o.at], got = o.ans[q.id];
+      head = `<p>Pick ${MODIFIER_PICKS[q.picks].toLowerCase()}</p><div class="es-hero mq">${escapeHtml(esQName(q))}</div>`;   // the line sheet's name line: the question on the hero line
+      rows = q.choices.map(c => `<button type="button" class="es-row${got.includes(c.id) ? ' pick' : ''}${c.unavailable ? ' out' : ''}" data-ch="${escapeHtml(c.id)}"${c.unavailable ? ' aria-disabled="true"' : ''}>
+        <span>${escapeHtml(c.name)}</span><small>${c.unavailable ? 'Unavailable' : c.price ? '+' + peso(c.price) : ''}</small></button>`).join('');
+    }
   } else if (o.kind === 'rd') {
     // what they pay, and while a discount is on, how much it takes off what: "₱13.00 off ₱65.00" (owner 2026-10-16).
     // Before = the sale with no sale discount and no Senior / PWD, so the VAT the exemption drops counts as off too.
@@ -1392,19 +1390,19 @@ function drawEditSheet() {
     : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q cta-3" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')
     : o.f || ph ? '' : o.kind === 'line' ? '<button type="button" class="es-q rm cta-3" data-remove>Remove item</button>' : o.pick !== null ? '<button type="button" class="es-q cta-3" data-sclr>Clear</button>' : '';
   const top = !o.dir && card.querySelector('.fill .es-list')?.scrollTop || 0;   // a tap redraws the sheet; the list stays where it was scrolled
-  // the questions' progress on ‹ Back's line: a short bar for every item (owner 2026-10-25: "line for everything"), grown from where it was (o.w)
-  const w = o.kind === 'mods' && (o.at + 1) / o.qs.length;
+  // the questions' progress just under the title, as a loading bar (owner 2026-11-06), grown from where it was (o.w); full on the review
+  const w = o.kind === 'mods' && (o.rev ? 1 : (o.at + 1) / o.qs.length);
   const prog = w ? `<div class="es-prog" aria-hidden="true"><i style="--w:${w};--was:${o.w ?? w}"></i></div>` : '';
   if (w) o.w = w;
   // Wallet's Add Money (draft 2026-11-04): the price ask and a custom item name themselves on ✕'s line, Add across from it
   const ttl = o.kind === 'price' ? 'Price' : o.kind === 'custom' ? 'Custom item' : dk ? 'Discount' : '';
-  card.innerHTML = prog + clr + (ttl ? `<h2 class="es-ttl">${ttl}</h2>` : '') + esFrame(head, rows, side, left + (dk ? esOk('data-done')
+  const mt = o.kind === 'mods' ? escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item') : '';   // a title without wl's ✕ and ✓
+  card.innerHTML = prog + clr + (ttl || mt ? `<h2 class="es-ttl">${ttl || mt}</h2>` : '') + esFrame(head, rows, side, left + (dk ? esOk('data-done')
     : list ? `<button type="button" class="${ph ? 'ph-bar' : 'fab sh-fab'} cta" data-done>Done</button>` : o.kind === 'mods' ? esModsFoot(o)
     : nk ? esOk('data-apply', ask && !(+o.d > 0))   // a price waits for one, as Add did
     : ask ? `<button type="button" class="es-ink cta" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
     : o.f ? `<button type="button" class="es-ink cta" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : `<button type="button" class="${ph ? 'ph-bar' : 'es-ink'} cta" data-close>Done</button>`),   // a 0 discount waits, as the price ask's Add does
   `${list ? ' fill' : ask ? ' ask' : ''}${dk ? ' wd' : ttl ? ' wl' : ''}${dk || nk ? ' ks' : ''}${lk}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
-  if (o.kind === 'mods') esPicksPop(o, card);
   ksCarry(card, o);
   const rl =list && !o.f && card.querySelector('.es-list');
   const pk = rl && (o.opened || o.dir === 'bwd') && rl.querySelector('.pick');   // just opened, or back from a page: the one on the sale clear of Done
@@ -1535,17 +1533,24 @@ function editSheetClick(e) {
 }
 
 // ---------- Modifiers at the sale (plans/modifiers-build.md) ----------
-// Nothing starts picked. A line along the top fills as the questions go (owner 2026-10-24). Pick one must be answered: a
-// tap on its choice goes on to the next question, and on the last one adds the item (or, changing a line, is its Done).
-// Up to N / Any may be skipped: a big Next at the bottom, Add · price (or Done) on the last. ‹ Back steps back a question,
-// at the first it closes (adding nothing), or goes back to the line's sheet when it was changing a line.
+// Nothing starts picked. A line under the title fills as the questions go (owner 2026-10-24). Pick one must be answered: a
+// tap on its choice goes on to the next question. Up to N / Any may be skipped: a big Next at the bottom. After the last, a
+// review with Add (or, changing a line, Done) (owner 2026-11-06). ‹ Back steps back a question, at the first it closes
+// (adding nothing), or goes back to the line's sheet when it was changing a line.
 const esAnswers = (o) => o.qs.flatMap(q => q.choices.filter(c => o.ans[q.id].includes(c.id)).map(c => modifierAnswer(q, c)));
 const esModsReady = (o) => o.qs.every(x => !x.required || o.ans[x.id].length);
 const esModsPrice = (o, answers = esAnswers(o)) => moneyValue(o.base + SalesMath.answersPrice({ modifiers: answers }));
 function esModsFoot(o) {
+  const big = matchMedia('(max-width: 720px)').matches ? 'ph-bar cta' : 'es-ink es-big cta';   // the phone: Check out's own pill
+  if (o.rev) return `<button type="button" class="${big}" data-apply${esModsReady(o) ? '' : ' disabled'}>${o.line ? 'Done' : 'Add'}</button>`;   // the review's hero says the price
   if (o.qs[o.at].required) return '';   // Pick one: its tap goes on (esModsClick). One with every choice Unavailable isn't required, so it gets Next
-  return o.at < o.qs.length - 1 ? '<button type="button" class="es-ink es-big cta" data-next>Next</button>'
-    : `<button type="button" class="es-ink es-big cta" data-apply${esModsReady(o) ? '' : ' disabled'}>${o.line ? 'Done' : `Add · ${peso(esModsPrice(o))}`}</button>`;   // a line's Done is the line sheet's Done; its total says the price
+  return `<button type="button" class="${big}" data-next>Next</button>`;
+}
+// on from a question: the next one, or the review after the last; once the review is seen, every answer goes back to it
+function esModsOn(o) {
+  const last = o.qs.length - 1;
+  if (o.seen || o.at === last) { o.rev = o.seen = true; o.at = last; } else o.at++;   // the review's ‹ is the last question
+  o.dir = 'fwd'; drawEditSheet();
 }
 function esModsApply(o) {
   if (!esModsReady(o)) return;
@@ -1556,32 +1561,16 @@ function esModsApply(o) {
   addToCart(o.id, o.via, false, price, answers);
 }
 const esQName = (q) => q.name.replace(/\s*\?+\s*$/, '');
-// the questions before this one that have a pick: { i, q: its name, v: the picks }
-const esPicked = (o) => o.qs.slice(0, o.at).map((x, i) => ({ i, q: esQName(x), v: x.choices.filter(c => o.ans[x.id].includes(c.id)).map(c => c.name).join(', ') })).filter(d => d.v);
-// after a draw: the pill row drops its oldest pill while it overflows ("+N" counts it), and "+N" open lists every pick under the row
-function esPicksPop(o, card) {
-  const r = card.querySelector('[data-fit]');
-  if (!r) return;
-  const more = r.querySelector('.more');
-  let n = +more.dataset.n;
-  more.hidden = !n;
-  while (r.scrollWidth > r.clientWidth && r.children.length > 1) { more.hidden = false; r.children[1].remove(); more.textContent = '+' + ++n; }
-  if (!o.pop) return;
-  card.insertAdjacentHTML('beforeend', `<div class="es-veil" data-shut></div><div class="es-pop" role="dialog" aria-label="Picked">${
-    esPicked(o).map(d => `<button type="button" data-go="${d.i}"><span>${escapeHtml(d.q)}</span><small>${escapeHtml(d.v)}</small></button>`).join('')}</div>`);
-  card.querySelector('.es-pop').style.top = `${Math.round(r.getBoundingClientRect().bottom - card.getBoundingClientRect().top + 8)}px`;
-}
 function esModsClick(el) {
   const o = es, q = o.qs[o.at], row = el('[data-ch]');
-  if (el('[data-more]')) { o.pop = true; return drawEditSheet(); }
-  if (el('[data-shut]')) { o.pop = false; return drawEditSheet(); }
-  if (el('[data-go]')) { o.pop = false; o.at = +el('[data-go]').dataset.go; o.dir = 'bwd'; return drawEditSheet(); }
+  if (el('[data-go]')) { o.rev = false; o.at = +el('[data-go]').dataset.go; o.dir = 'bwd'; return drawEditSheet(); }
   if (el('[data-close]')) {
+    if (o.rev) { o.rev = false; o.dir = 'bwd'; return drawEditSheet(); }   // the review's ‹: its last question
     if (o.at) { o.at--; o.dir = 'bwd'; return drawEditSheet(); }
     if (o.again) { const p = state.products.find(x => x.id === o.id); closeEditSheet(); return p && openAgain(p, o.via); }   // Make another's first question: back to the shaded cart
     return o.line ? openEditSheet('line', o.line) : closeEditSheet();
   }
-  if (el('[data-next]')) { o.at++; o.dir = 'fwd'; return drawEditSheet(); }
+  if (el('[data-next]')) return esModsOn(o);
   if (el('[data-apply]')) return esModsApply(o);
   if (!row || row.classList.contains('out')) return;   // Unavailable: greyed, no tap
   const got = o.ans[q.id], id = row.dataset.ch, i = got.indexOf(id);
@@ -1590,10 +1579,10 @@ function esModsClick(el) {
   else if (got.length >= q.max) return flashControl(row);   // Up to 2: a third waits for one to come off
   else got.push(id);
   drawEditSheet();
-  // Pick one: on once the tap has shown (modifiers-lab's 220 ms), to the next question or, on the last, the cart
+  // Pick one: on once the tap has shown (modifiers-lab's 220 ms), to the next question or the review
   if (q.required) setTimeout(() => {
-    if (es !== o || o.qs[o.at] !== q) return;   // a second fast tap, or Back meanwhile
-    if (o.at < o.qs.length - 1) { o.at++; o.dir = 'fwd'; drawEditSheet(); } else esModsApply(o);
+    if (es !== o || o.rev || o.qs[o.at] !== q) return;   // a second fast tap, or Back meanwhile
+    esModsOn(o);
   }, 220);
 }
 
@@ -2203,7 +2192,7 @@ function renderCustomerSheet(vm) {
   $('#variantList').innerHTML = '<button type="button" class="vs-row vs-new" data-cust-new><span class="vs-plus"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><span class="nm">New customer</span></button>'   // first, searching too: a name that isn't there is the moment to add it
     + (q ? '' : row('walk-in', 'Walk-in customer', ''))
     + shown.map(c => row(c.id, c.name, [c.phone, c.address].filter(Boolean).join(' · '))).join('')
-    + (q && !shown.length ? '<div class="vs-empty">No customers match</div>' : '');
+    + (q && !shown.length ? noResults(vm.query.trim()) : '');
 }
 function selectCustomer(id) {
   const prev = state.customer;

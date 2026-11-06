@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Custom cash lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<!-- Lab: the checkout's Custom cash amount. Standalone; the till's tokens and checkout sizes (styles.css .co-*) copied in.
+     Round 3: where the amount and the change sit, so millions (₫) and long words (Vietnamese, German) still fit. Keys screen only. -->
+<style>
+  :root {
+    --bg: #FFFFFF; --surface-2: #FFFFFF; --surface-hover: #EBEBEB; --tile: #F3F3F3; --line: #E1E1E1; --line-strong: #D4D4D4;
+    --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C; --ink-quaternary: #B5B5B5;
+    --accent: #303030; --accent-hover: #1A1A1A; --accent-ink: #FFFFFF; --ok: #047B5D; --danger: #D72C0D;
+    --r-input: 10px; --co-m: 20px; --co-tw: 160px; --co-gap: 14px; --co-ease: cubic-bezier(.2, .8, .2, 1);
+    --co-items-w: clamp(340px, 32vw, 420px); --key-h: 64px;
+  }
+  body.dark {
+    --bg: #121212; --surface-2: #1F1F1F; --surface-hover: #333333; --tile: #2A2A2A; --line: rgba(255,255,255,.08); --line-strong: rgba(255,255,255,.14);
+    --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.7); --ink-tertiary: rgba(255,255,255,.45); --ink-quaternary: rgba(255,255,255,.28);
+    --accent: #FFFFFF; --accent-hover: #F0F0F0; --accent-ink: #121212; --ok: #4CAF72; --danger: #EF5350;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--bg); color: var(--ink); font: 15px/1.4 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+  .num { font-variant-numeric: tabular-nums; }
+  [hidden] { display: none !important; }
+
+  /* lab chrome: not part of the design */
+  .lab { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px dashed var(--line-strong); font-size: 13px; }
+  .lab b { margin-right: 6px; }
+  .lab button { height: 30px; padding: 0 12px; border-radius: 8px; color: var(--ink-secondary); }
+  .lab button.on { background: var(--tile); color: var(--ink); font-weight: 600; }
+  .lab .note { flex-basis: 100%; color: var(--ink-tertiary); }
+  .lab .theme { margin-left: auto; }
+
+  /* the checkout page, as the till lays it out */
+  .co { display: grid; grid-template-columns: minmax(0, 1fr) var(--co-items-w); min-height: 0; }
+  .pay { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; }
+  .top { padding: 3px var(--co-m) 0 6px; }
+  .back { display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 12px 0 8px; border-radius: var(--r-input); font-weight: 560; }
+  .back:hover { background: var(--tile); }
+  .ic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .stage { display: grid; align-content: center; overflow: auto; padding: 0 var(--co-m) 56px; }
+  .col { display: grid; justify-items: center; width: 100%; max-width: 860px; margin: 0 auto; }
+  .hero { padding: 24px 0 32px; font-size: clamp(54px, 5.4vw, 72px); font-weight: 600; letter-spacing: -.04em; line-height: 1; }
+  #step { justify-self: stretch; }
+  .step { display: grid; gap: var(--co-gap); justify-items: center; width: 100%; animation: in .3s var(--co-ease) both; }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } }
+
+  .tiles { display: grid; grid-template-columns: repeat(var(--cols, 5), var(--co-tw)); gap: var(--co-gap); }
+  .tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 112px; padding: 0 8px; border-radius: 14px;
+          background: var(--tile); font-weight: 560; text-align: center; transition: background-color .12s, transform .1s, box-shadow .15s; }
+  .tile:hover { background: var(--surface-hover); }
+  .tile:active { transform: scale(.98); }
+  .big { font-size: 20px; font-weight: 600; letter-spacing: -.02em; line-height: 1.15; }
+  .tile small { color: var(--ink-tertiary); font-size: 12.5px; font-weight: 400; }
+  .up { color: var(--ok) !important; }
+  .down { color: var(--danger) !important; }
+  .tile .ic { width: 24px; height: 24px; stroke-width: 1.6; color: var(--ink-secondary); }
+
+  .kp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .key { height: var(--key-h); border-radius: 14px; background: var(--tile); font-size: 24px; font-weight: 500; font-variant-numeric: tabular-nums;
+         transition: background-color .1s, transform .1s; display: grid; place-items: center; }
+  .key:hover { background: var(--surface-hover); }
+  .key:active { transform: scale(.97); }
+  .key .ic { width: 24px; height: 24px; stroke-width: 1.6; }
+  .primary { height: 56px; border-radius: var(--r-input); background: var(--accent); color: var(--accent-ink); font-weight: 600; transition: opacity .2s, background-color .12s; }
+  .primary:hover { background: var(--accent-hover); }
+  .primary:disabled { opacity: .3; cursor: default; }
+
+  /* Now: today's till */
+  .now { width: 440px; display: grid; gap: 12px; }
+  .field { display: flex; align-items: center; gap: 6px; height: 56px; padding: 0 18px; border: 1px solid var(--line); border-radius: var(--r-input); background: var(--surface-2);
+           font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+  .field span { color: var(--ink-tertiary); font-weight: 500; }
+  .field i { font-style: normal; color: var(--ink-quaternary); }
+  .chg { min-height: 24px; margin-top: -4px; text-align: center; font-size: 17px; font-weight: 560; color: var(--ink-tertiary); }
+
+  .caret { display: inline-block; width: 2px; height: .9em; margin-left: 2px; background: var(--ink); vertical-align: -.08em; animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .ph { color: var(--ink-quaternary) !important; }
+
+  /* Every figure shrinks to fit its box (--n = its length; Inter's tabular digits are ~.6em) instead of overflowing, and
+     every label sits above its figure or wraps above it, so ₫ millions and long words never share a squeezed row. */
+  #area { display: grid; min-width: 0; }
+  .lbl { color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
+  .fit { display: block; font-size: min(var(--max), calc((100cqi - var(--pad, 0px)) / (var(--n) * .6))); font-weight: 600; letter-spacing: -.03em; line-height: 1.15; white-space: nowrap; }
+
+  /* A · Calculator: the display and the keys are one object, like a calculator. The figure reads right-aligned over the keys;
+     the change is the display's footer and wraps its label above when there's no room beside it. */
+  .calc { width: min(100%, 420px); display: grid; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface-2); }
+  .calc .disp { container-type: inline-size; display: grid; gap: 6px; padding: 14px 16px 12px; }
+  .calc .disp .fit { --max: 44px; --pad: 0px; text-align: right; }
+  .calc .foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 12px; padding-top: 10px; border-top: 1px solid var(--line);
+                font-size: 17px; font-weight: 600; }
+  .calc .foot .lbl { font-size: 14px; }
+  .calc .foot b { margin-left: auto; font-weight: 600; }
+  .calc .primary { border-radius: 14px; }
+
+  /* B · Split: the page splits in two. Left: the total, then the cash, then the change, as plain type, nothing boxed.
+     Right: the keys fill the height, Complete is their last row. */
+  .hide-hero .hero { display: none; }
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 40px; width: 100%; }
+  .split .info { container-type: inline-size; display: grid; align-content: center; gap: 26px; min-width: 0; }
+  .split .info > div { display: grid; gap: 2px; }
+  .split .gt .fit { --max: 64px; }
+  .split .cash .fit { --max: 40px; }
+  .split .chg2 .fit { --max: 40px; }
+  .split .pad { display: grid; gap: 8px; }
+  .split .key { --key-h: 76px; }
+
+  /* C · Plain side: the earlier Side with the boxes gone; the two figures line up with the key rows beside them */
+  .ps { display: grid; grid-template-columns: minmax(0, 1fr) 312px; gap: 32px; width: min(100%, 720px); }
+  .ps .info { container-type: inline-size; display: grid; grid-template-rows: 1fr 1fr; min-width: 0; }
+  .ps .info > div { display: grid; align-content: center; gap: 2px; }
+  .ps .info > div + div { border-top: 1px solid var(--line); }
+  .ps .fit { --max: 38px; }
+
+  /* sale complete (placeholder for the till's real one) */
+  .fin { display: grid; justify-items: center; gap: 10px; padding-top: 10px; animation: in .3s var(--co-ease) both; }
+  .fin .chk { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--ok); color: #fff; }
+  .fin .chk .ic { width: 28px; height: 28px; stroke-width: 2.4; }
+  .fin p { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
+  .fin .again { margin-top: 8px; height: 44px; padding: 0 18px; border-radius: var(--r-input); box-shadow: inset 0 0 0 1px var(--line-strong); font-weight: 600; }
+
+  /* the items column, as on the till */
+  .items { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 8px; padding: 16px 16px 16px 0; min-height: 0; }
+  .card { border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+  .cust { display: flex; justify-content: space-between; align-items: center; height: 44px; padding: 0 20px; font-weight: 600; font-size: 14px; }
+  .cust span { color: var(--ink-tertiary); font-weight: 500; }
+  .list { overflow: hidden; }
+  .list .band { display: flex; justify-content: space-between; height: 40px; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--line); color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
+  .list .row { display: flex; justify-content: space-between; padding: 10px 20px; font-size: 14px; }
+  .list .row small { display: block; color: var(--ink-tertiary); font-size: 12px; }
+  .tot { display: flex; justify-content: space-between; align-items: center; height: 56px; padding: 0 20px; font-weight: 600; }
+  .tot b { font-size: 22px; letter-spacing: -.02em; }
+</style>
+</head>
+<body>
+<div class="lab">
+  <b>Custom cash</b>
+  <span id="labTabs"></span>
+  <span class="theme"></span><span id="labCur"></span><span id="labLang"></span>
+  <button type="button" id="labTheme">Dark</button>
+  <div class="note" id="labNote"></div>
+</div>
+<div class="co">
+  <section class="pay">
+    <div class="top"><button type="button" class="back" id="back"><svg class="ic" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span id="backText"></span></button></div>
+    <div class="stage"><div class="col"><div class="hero num" id="hero"></div><div id="step"></div></div></div>
+  </section>
+  <aside class="items">
+    <div class="card cust">Walk-in customer <span></span></div>
+    <div class="card list"><div class="band"><span>2 items</span><span>Amount</span></div><div id="lines"></div></div>
+    <div></div>
+    <div class="card tot"><span>Total</span><b class="num" id="tot"></b></div>
+  </aside>
+</div>
+<script>
+// ponytail: standalone lab, one file; money via Intl here (the till's peso() would take the store's currency the same way)
+const CUR = { php: ['₱', 'PHP', 'en-PH', 2, [145, 100], [100, 500, 1000]], vnd: ['₫', 'VND', 'vi-VN', 0, [845000, 400000], [100000, 500000, 1000000]] };
+const T = {
+  en: { cash: 'Cash received', change: 'Change', short: 'Short', done: 'Complete sale', exact: 'Exact', nochg: 'No change', custom: 'Custom', any: 'Any amount', back: 'Back', items: 'items', amount: 'Amount', total: 'Total' },
+  vi: { cash: 'Tiền khách đưa', change: 'Tiền thối lại', short: 'Còn thiếu', done: 'Hoàn tất thanh toán', exact: 'Đủ tiền', nochg: 'Không thối', custom: 'Nhập số tiền', any: 'Số bất kỳ', back: 'Quay lại', items: 'món', amount: 'Thành tiền', total: 'Tổng' },
+  de: { cash: 'Erhaltenes Bargeld', change: 'Wechselgeld', short: 'Fehlbetrag', done: 'Verkauf abschließen', exact: 'Passend', nochg: 'Kein Wechselgeld', custom: 'Anderer Betrag', any: 'Beliebiger Betrag', back: 'Zurück', items: 'Artikel', amount: 'Betrag', total: 'Gesamt' },
+};
+const ICON = {
+  del: '<svg class="ic" viewBox="0 0 24 24"><path d="M9 6h11v12H9l-5-6 5-6z"/><path d="M13 10l4 4M17 10l-4 4"/></svg>',
+  chk: '<svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+};
+const V = {
+  now: ['Now', 'Today’s box + line. Try ₫ and a long language: the change crowds the amount.'],
+  calc: ['A · Calculator', 'Display and keys are one object. The amount reads right-aligned over the keys; the change is the display’s footer.'],
+  split: ['B · Split', 'The page splits: total, cash, change as plain type on the left; the keys fill the right, Complete is their last row.'],
+  ps: ['C · Plain side', 'Last round’s Side without the boxes: two figures lined up with the keys beside them, Complete under them.'],
+};
+let v = (location.hash.slice(1) in V) ? location.hash.slice(1) : 'calc', cur = 'php', lang = 'en', keys = true, amt = '', done = null, drawn = '';   // opens on the keys
+const $ = s => document.querySelector(s);
+const C = () => CUR[cur], t = () => T[lang], TOTAL = () => C()[4][0] + C()[4][1];
+const money = (x, d = C()[3]) => new Intl.NumberFormat(C()[2], { style: 'currency', currency: C()[1], minimumFractionDigits: d, maximumFractionDigits: d }).format(x);
+const short = x => money(x, x % 1 ? C()[3] : 0);
+const val = () => Number(amt || 0);
+const enough = () => val() >= TOTAL();
+// the typed figure in the store's format, decimals as typed; the caret goes right after the last digit (the ₫ sign comes after it)
+const typed = () => {
+  const [, d] = amt.split('.'), sep = new Intl.NumberFormat(C()[2]).formatToParts(1.5).find(x => x.type === 'decimal').value;
+  return money(val(), d ? d.length : 0).replace(/(\d)(?!.*\d)/, '$1' + (d === '' ? sep : ''));
+};
+const fig = (txt, cls = '', caret = false) => `<b class="fit num ${cls}" style="--n:${txt.length}">${caret ? txt.replace(/(\d[.,]?)(?!.*\d)/, '$1<span class="caret"></span>') : txt}</b>`;
+
+function area() {
+  const T_ = t(), c = Math.round((val() - TOTAL()) * 100) / 100, cc = c >= 0 ? 'up' : 'down';
+  if (v === 'now') return `<div class="field num"><span>${C()[0]}</span>${amt ? typed().replace(/[^\d.,]/g, '') : '<i>0</i>'}</div>`
+    + `<div class="chg num ${amt ? cc : ''}">${amt ? (c >= 0 ? `${T_.change} ${money(c)}` : `${money(-c)} ${T_.short.toLowerCase()}`) : ''}</div>`;
+  const cash = amt ? fig(typed(), '', true) : fig(money(0, 0), 'ph', true), back = amt ? fig(money(Math.abs(c)), cc) : fig(money(0, 0), 'ph');
+  const lab = amt && c < 0 ? T_.short : T_.change;
+  if (v === 'calc') return `<div class="disp"><span class="lbl">${T_.cash}</span>${cash}<div class="foot num"><span class="lbl">${lab}</span>${amt ? `<b class="${cc}">${money(Math.abs(c))}</b>` : '<b class="ph">—</b>'}</div></div>`;
+  if (v === 'split') return `<div class="info"><div class="gt"><span class="lbl">${T_.total}</span>${fig(money(TOTAL()))}</div><div class="cash"><span class="lbl">${T_.cash}</span>${cash}</div><div class="chg2"><span class="lbl">${lab}</span>${back}</div></div>`;
+  return `<div class="info"><div><span class="lbl">${T_.cash}</span>${cash}</div><div><span class="lbl">${lab}</span>${back}</div></div>`;
+}
+
+function render() {
+  const T_ = t(), seg = (id, opts, on) => $(id).innerHTML = opts.map(([k, n]) => `<button type="button" data-${id.slice(4).toLowerCase()}="${k}" class="${k === on ? 'on' : ''}">${n}</button>`).join('');
+  seg('#labTabs', Object.entries(V).map(([k, [n]]) => [k, n]), v);
+  seg('#labCur', [['php', '₱'], ['vnd', '₫ millions']], cur);
+  seg('#labLang', [['en', 'EN'], ['vi', 'VI'], ['de', 'DE']], lang);
+  $('#labNote').textContent = V[v][1];
+  $('#hero').textContent = money(TOTAL());
+  $('#tot').textContent = money(TOTAL());
+  $('#backText').textContent = T_.back;
+  $('.list .band').innerHTML = `<span>2 ${T_.items}</span><span>${T_.amount}</span>`;
+  $('.tot span').textContent = T_.total;
+  $('#lines').innerHTML = [['Paint Roller 9"', C()[4][0]], ['Paint Brush 3"', C()[4][1]]].map(([n, p]) => `<div class="row"><span>${n}<small>1 × ${money(p)}</small></span><b class="num">${money(p)}</b></div>`).join('');
+  const screen = done !== null ? 'fin' : keys ? 'keys' : 'tiles', s = $('#step');
+  if (screen === 'keys' && drawn === 'keys') {   // typing: redraw the readout only, no re-entry animation
+    if (v === 'now') $('#area').innerHTML = area(); else $('#area').outerHTML = area().replace(/^<div class="(\w+)/, '<div id="area" class="$1'); $('[data-complete]').disabled = !enough(); return;
+  }
+  drawn = screen;
+  document.body.classList.toggle('hide-hero', screen === 'keys' && v === 'split');
+  const up = m => (Math.floor(TOTAL() / m) + 1) * m, quick = [...new Set(C()[5].map(up))];
+  const kp = `<div class="kp">${[...'123456789', C()[3] ? '.' : '000', '0', 'del'].map(k => `<button type="button" class="key" data-k="${k}"${k === 'del' ? ' aria-label="Delete"' : ''}>${k === 'del' ? ICON.del : k}</button>`).join('')}</div>`;
+  const done_ = `<button type="button" class="primary" data-complete ${enough() ? '' : 'disabled'}>${T_.done}</button>`;
+  const ar = v === 'now' ? `<div id="area" style="gap:12px">${area()}</div>` : area().replace(/^<div class="(\w+)/, '<div id="area" class="$1');
+  if (screen === 'fin') s.innerHTML = `<div class="fin"><div class="chk">${ICON.chk}</div><p class="num">${done > 0 ? `${T_.change} ${money(done)}` : T_.done}</p><button type="button" class="again" data-again>Again</button></div>`;
+  else if (screen === 'tiles') s.innerHTML = `<div class="step"><div class="tiles"><button type="button" class="tile" data-pay="${TOTAL()}"><span class="big">${T_.exact}</span><small>${T_.nochg}</small></button>`
+    + quick.map(q => `<button type="button" class="tile" data-pay="${q}"><span class="big num">${short(q)}</span><small class="up num">${T_.change} ${money(q - TOTAL())}</small></button>`).join('')
+    + `<button type="button" class="tile" data-custom><span class="big">${T_.custom}</span><small>${T_.any}</small></button></div></div>`;
+  else s.innerHTML = `<div class="step">${
+    v === 'calc' ? `<div class="calc">${ar}${kp}${done_}</div>`
+    : v === 'split' ? `<div class="split">${ar}<div class="pad">${kp}${done_}</div></div>`
+    : v === 'ps' ? `<div class="ps"><div class="info-wrap" style="display:grid;grid-template-rows:minmax(0,1fr) auto;gap:var(--co-gap);min-width:0">${ar}${done_}</div>${kp}</div>`
+    : `<div class="now">${ar}${kp}${done_}</div>`}</div>`;
+}
+
+function press(k) {
+  const [i, d] = amt.split('.');
+  if (k === 'del') amt = amt.slice(0, -1);
+  else if (k === '.') { if (d === undefined) amt = (amt || '0') + '.'; }
+  else if (d !== undefined && d.length + k.length > C()[3]) return;
+  else if ((i + k).replace(/^0+/, '').length > 10) return;
+  else if (k === '000' && !amt) return;
+  else amt = (amt === '0' ? '' : amt) + k;
+  render();
+}
+const finish = (paid) => { done = Math.round((paid - TOTAL()) * 100) / 100; render(); };
+const reset = (k = true) => { keys = k; amt = ''; done = null; drawn = ''; render(); };
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.tabs) { v = b.dataset.tabs; history.replaceState(null, '', '#' + v); return reset(); }
+  if (b.dataset.cur) { cur = b.dataset.cur; return reset(); }
+  if (b.dataset.lang) { lang = b.dataset.lang; drawn = ''; return render(); }
+  if (b.id === 'labTheme') { const d = document.body.classList.toggle('dark'); b.textContent = d ? 'Light' : 'Dark'; return; }
+  if (b.id === 'back') return reset(false);
+  if (b.dataset.again !== undefined) return reset();
+  if (b.dataset.pay) return finish(Number(b.dataset.pay));
+  if (b.dataset.custom !== undefined) return reset(true);
+  if (b.dataset.complete !== undefined && enough()) return finish(val());
+  if (b.dataset.k) press(b.dataset.k);
+});
+document.addEventListener('keydown', (e) => {
+  if (done !== null || !keys) return;
+  if (/^[0-9.]$/.test(e.key)) press(e.key);
+  else if (e.key === 'Backspace') press('del');
+  else if (e.key === 'Enter' && enough()) finish(val());
+  else if (e.key === 'Escape') reset(false);
+});
+render();
+</script>
+</body>
+</html>

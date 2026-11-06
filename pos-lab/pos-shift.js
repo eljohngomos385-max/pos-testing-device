@@ -474,7 +474,7 @@ function renderShift(peek) {
   // the cash sales and Expected only for a role that sees the day's totals: the close is a blind count
   body.innerHTML = tab === 'cash'
     ? (mv.length ? `<div class="o-days">${dayBand(s ? 'This shift' : 'Today', mv.length, `<span class="num">${overShortText(mv.reduce((t, m) => t + m.amount, 0))}</span>`)}${
-      mv.map(moveRow).join('')}</div>` : '<p class="sh-none">No cash in or out yet</p>')
+      mv.map(moveRow).join('')}</div>` : emptyState('shift', 'No cash in or out yet', 'Money put in or taken out of the drawer shows up here.', emptyAct('Cash in or out', '#shiftFab')))
     : `${icard('', [
       s ? row('Start cash', peso(f.start)) : '',
       row('Cash sales', peso(f.sales)),
@@ -487,7 +487,7 @@ function renderShift(peek) {
     ${icard('', `<button type="button" class="fr nav" data-sh="past"><span class="lb">Past shifts</span><span class="ctl end">${ICHEV}</span></button>`)}
     ${shiftSalesCard(f.rows, row)}`;
   if (peek) return;
-  $('#shiftPastBody').innerHTML = `<div class="c-body">${past ? `<div class="o-days">${past}</div>` : '<p class="sh-none">No past shifts yet</p>'}</div>`;
+  $('#shiftPastBody').innerHTML = `<div class="c-body">${past ? `<div class="o-days">${past}</div>` : emptyState('shift', 'No past shifts yet', 'Each closed shift and its count shows up here.')}</div>`;
 }
 
 // Past shifts is its own page over the drawer (owner 2026-10-15); the view opens on the drawer.

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>D2 copy of ref-03</title>
+<style>
+/* a 1:1 rebuild of refs/ref-03.png (256×438) from the numbers in refs/d-notes.md */
+html, body { margin: 0; background: #fff; }
+.f { position: relative; width: 256px; height: 438px; overflow: hidden; }
+svg { position: absolute; inset: 0; }
+svg * { fill: none; stroke-linejoin: round; }
+.ln { stroke: var(--ln); stroke-width: var(--sw); stroke-linecap: round; }
+.face { fill: #fff; }
+.dash { stroke-dasharray: 8 5.2; stroke-linecap: butt; }
+.paper { fill: #F7FAFF; }
+.hd { stroke: var(--ln); stroke-opacity: .5; stroke-width: 2.6; stroke-linecap: round; }
+.x { stroke: var(--x); stroke-linecap: round; }
+.dg { stroke: var(--x); stroke-width: 1.3; stroke-linecap: butt; }
+.t { position: absolute; left: 18px; top: 305px; font: 400 26px/1.5 "Malgun Gothic", sans-serif; color: #2C343D; letter-spacing: -1.6px; }
+:root { --ln: #A3C4EA; --sw: 2.4; --x: #DCE7F1; }
+</style>
+</head>
+<body>
+<div class="f">
+<svg viewBox="0 0 256 438" width="256" height="438" aria-hidden="true">
+  <g id="deco"></g>
+  <!-- the paper: dashed, faint fill, ✕ -->
+  <rect class="ln dash paper" x="63.6" y="126.2" width="85.8" height="80" rx="4"/>
+  <path class="ln" style="stroke-width:3.4" d="M98.5 154.4 L114.5 170.4 M114.5 154.4 L98.5 170.4"/>
+  <!-- tray walls, then the two cards, then the front -->
+  <path class="ln" d="M63.6 170 L41.6 213 M149.4 170 L171.4 213"/>
+  <path class="ln face" d="M50.3 213 L57.6 198 Q60.2 193 65.8 193 H147.2 Q152.8 193 155.4 198 L162.7 213"/>
+  <path class="ln face" d="M50.3 213 L53 207.5 Q55.5 202.7 61 202.7 H152 Q157.5 202.7 160 207.5 L162.7 213"/>
+  <path class="ln face" d="M45 213.1 H75.7 Q80.7 213.1 80.7 218.1 V226.4 Q80.7 228.4 82.7 228.4 H129 Q131 228.4 131 226.4 V218.1 Q131 213.1 136 213.1 H168 Q174 213.1 174 219.1 V268 Q174 274 168 274 H45 Q39 274 39 268 V219.1 Q39 213.1 45 213.1 Z"/>
+  <path class="hd" d="M91.6 246.5 V251.1 Q91.6 255.1 95.6 255.1 H117.4 Q121.4 255.1 121.4 251.1 V246.5"/>
+</svg>
+<div class="t">결과가 없습니다</div>
+</div>
+<script>
+// crosses: [cx, cy, half, stroke, rotate°]; diagonals: x+y = c, drawn as [x0, x1] runs (45°)
+const X = [[94, 80, 4, 3, -18], [205, 141, 8, 4.6, -16], [4.5, 177.5, 4.6, 3.6, 8], [20.8, 244.5, 3.8, 3, 0], [224.8, 239, 5.4, 3.6, 0]];
+const D = [[128, [[0, 7.5], [10, 11.5], [14, 53]]], [257, [[144, 161.5], [163.5, 165.5], [166.5, 175], [177, 179], [181, 206]]], [417, [[174, 198], [199, 202], [203, 239], [240, 243], [244, 256]]]];
+deco.innerHTML = D.map(([c, runs]) => `<path class="dg" d="${runs.map(([a, b]) => `M${a} ${c - a}L${b} ${c - b}`).join('')}"/>`).join('')
+  + X.map(([x, y, h, w, r]) => `<path class="x" style="stroke-width:${w}" transform="rotate(${r} ${x} ${y})" d="M${x - h} ${y - h}L${x + h} ${y + h}M${x + h} ${y - h}L${x - h} ${y + h}"/>`).join('');
+</script>
+</body>
+</html>

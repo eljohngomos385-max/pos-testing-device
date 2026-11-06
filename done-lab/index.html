@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-dir="A" data-pm="swoosh">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
@@ -34,7 +34,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=754" />
-  <link rel="stylesheet" href="done-dirs.css?v=1" />
+  <link rel="stylesheet" href="done-dirs.css?v=15" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-back" viewBox="0 0 24 24"><path d="M15 4l-8 8 8 8"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5.2 7.1L19.8 4.4"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r=".8" fill="currentColor"/><circle cx="12" cy="12" r=".8" fill="currentColor"/><circle cx="19" cy="12" r=".8" fill="currentColor"/></symbol></svg>   <!-- every round-button icon (‹ ✕ ✓ ⋯) is <use href="#i-…"/>: change the shape here, the size and line in --circle-ic / --circle-sw (owner 2026-11-04, measured off Apple Settings, Contacts and Safari) -->
@@ -92,6 +92,13 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path class="f" d="M10.3 3.4a1.8 1.8 0 0 1 3.4 0l.3.8a1.8 1.8 0 0 0 2.4 1l.8-.4a1.8 1.8 0 0 1 2.4 2.4l-.4.8a1.8 1.8 0 0 0 1 2.4l.8.3a1.8 1.8 0 0 1 0 3.4l-.8.3a1.8 1.8 0 0 0-1 2.4l.4.8a1.8 1.8 0 0 1-2.4 2.4l-.8-.4a1.8 1.8 0 0 0-2.4 1l-.3.8a1.8 1.8 0 0 1-3.4 0l-.3-.8a1.8 1.8 0 0 0-2.4-1l-.8.4a1.8 1.8 0 0 1-2.4-2.4l.4-.8a1.8 1.8 0 0 0-1-2.4l-.8-.3a1.8 1.8 0 0 1 0-3.4l.8-.3a1.8 1.8 0 0 0 1-2.4l-.4-.8a1.8 1.8 0 0 1 2.4-2.4l.8.4a1.8 1.8 0 0 0 2.4-1z"/><circle class="d" cx="12" cy="12" r="3"/></svg>
           <span>Settings</span>
         </button>
+        </div>
+        <div class="side-grp">   <!-- lab (owner 2026-11-05): which paid moment plays before Sale complete -->
+        <label class="pm-pick"><span>Paid moment</span><select id="pmPick">
+          <option value="swoosh">Swoosh</option><option value="edge">Edge glow</option><option value="edge-soft">Edge soft</option>
+          <option value="edge-low">Edge low</option><option value="edge-sw">Edge + Swoosh</option></select></label>
+        <label class="pm-pick"><span>Sale complete</span><select id="dirPick">
+          <option value="A">Before</option><option value="E">E · Rows</option></select></label>
         </div>
       </nav>
 
@@ -469,14 +476,15 @@
                 </div>
                 <div class="co-error" id="checkoutError" hidden></div>
               </div>
+              <div class="pm" id="paidMoment" aria-hidden="true" hidden><svg viewBox="0 0 64 64"><path d="M19 33l9 9 17-19"/></svg></div>
               <div class="co-done" id="checkoutDone" aria-live="polite" hidden>
                 <div class="co-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="m-c" cx="32" cy="32" r="30"/><path class="m-k" d="M20 33l8 8 16-17"/></svg></div>
                 <h2 class="co-done-h" style="--i:1">Sale complete</h2>
                 <div class="co-done-chg" id="successChangeBlock" style="--i:2"><span>Change</span><span class="co-done-num num" id="successChange">₱0.00</span></div>
                 <div class="co-done-acts" style="--i:4">
-                  <button type="button" class="co-btn cta-2" id="successPrintBtn">Print receipt</button>
+                  <button type="button" class="co-btn cta-2" id="successPrintBtn"><svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="2" y="9" width="20" height="9" rx="2"/><rect x="6" y="14" width="12" height="7" rx="1"/></svg>Print receipt</button>
                   <button type="button" class="co-btn primary cta" id="successNewSaleBtn">New sale</button>
-                  <button type="button" class="co-btn co-rcpt-btn cta-2" id="checkoutRcptBtn"><span>Show receipt</span></button>
+                  <button type="button" class="co-btn co-rcpt-btn cta-2" id="checkoutRcptBtn"><svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2v20l2.5-1.5L10 22l2-1.5 2 1.5 2.5-1.5L19 22V2l-2.5 1.5L14 2l-2 1.5L10 2 7.5 3.5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>Show receipt</span></button>
                 </div>
               </div>
             </div>
@@ -996,7 +1004,7 @@
   <script src="drawer.js?v=1"></script>
   <script src="pos-core.js?v=74"></script>
   <script src="pos-sell.js?v=156"></script>
-  <script src="pos-checkout.js?v=53"></script>
+  <script src="pos-checkout.js?v=55"></script>
   <script src="pos-orders.js?v=54"></script>
   <script src="pos-items.js?v=82"></script>
   <script src="pos-customers.js?v=48"></script>

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empty states · D</title>
+<style>
+/* tokens copied from pos-lab/styles.css :root (dark) and body.light-theme */
+:root {
+  --bg: #121212; --bg-soft: #1C1C1C; --surface: #2A2A2A; --line: rgba(255,255,255,.08);
+  --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45);
+  --cta-solid: #4388F7;
+  --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --page: var(--bg-soft);
+  /* illustration blues, from --cta-solid; a touch brighter on dark */
+  --il-line: rgba(122, 172, 250, .88);
+  --il-pale: rgba(108, 160, 249, .42);
+  --il-face: #18212F;            /* ≈12% #4388F7 over --bg, opaque so fronts hide what sits behind */
+}
+body.light-theme {
+  --bg: #FFFFFF; --bg-soft: #EDEDED; --surface: #F9F9F9; --line: #E1E1E1;
+  --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C;
+  --page: #F2F2F2;
+  --il-line: rgba(67, 136, 247, .72);
+  --il-pale: rgba(67, 136, 247, .36);
+  --il-face: #EEF4FE;            /* ≈7% #4388F7 over white */
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 28px 40px 8px; max-width: 1400px; margin: 0 auto; }
+header h1 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+header h1 span { color: var(--ink-tertiary); font-weight: 500; }
+.seg { display: flex; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.seg button { font: inherit; font-size: 14px; border: 0; background: none; color: var(--ink-secondary); padding: 6px 16px; border-radius: 999px; cursor: pointer; }
+.seg button.on { background: var(--surface); color: var(--ink); font-weight: 600; }
+main { max-width: 1400px; margin: 0 auto; padding: 0 40px 48px; }
+h2 { font-size: 15px; font-weight: 600; color: var(--ink-secondary); margin: 32px 0 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, 300px); gap: 28px 24px; }
+.cell { margin: 0; }
+.card { width: 300px; height: 420px; background: var(--bg); border: 1px solid var(--line); border-radius: 24px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 28px 24px; text-align: center; }
+.card svg { width: 160px; height: 160px; display: block; margin-bottom: 14px; overflow: visible; }
+.card b { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.card span { font-size: 14px; color: var(--ink-tertiary); margin-top: 5px; line-height: 1.35; }
+figcaption { font-size: 12px; color: var(--ink-tertiary); margin-top: 8px; padding-left: 4px; }
+@media (max-width: 700px) { header, main { padding-left: 16px; padding-right: 16px; } .grid { grid-template-columns: 1fr; justify-items: center; } }
+
+/* the drawing kit: s = solid line on a face, d = the missing thing (dashed), p = pale */
+svg * { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.s { stroke: var(--il-line); fill: var(--il-face); }
+.l { stroke: var(--il-line); }
+.d { stroke: var(--il-line); stroke-dasharray: 5 4.5; }
+.dd { stroke: var(--il-line); stroke-dasharray: 2.2 2.6; }
+.p { stroke: var(--il-pale); }
+.x { stroke: var(--il-pale); stroke-width: 1.6; }
+.dot { fill: var(--il-pale); stroke: none; }
+.dash { stroke: var(--il-pale); stroke-width: 1.6; stroke-dasharray: 7 4 1 4; }
+</style>
+</head>
+<body>
+<header>
+  <h1>D · Line + dashes <span>— empty states</span></h1>
+  <div class="seg"><button id="tDark" class="on">Dark</button><button id="tLight">Light</button></div>
+</header>
+<main id="out"></main>
+
+<script>
+// ponytail: one tiny builder; the art is plain SVG strings.
+const X = (x, y, r = 3.5) => `<path class="x" d="M${x - r} ${y - r}l${2 * r} ${2 * r}M${x + r} ${y - r}l${-2 * r} ${2 * r}"/>`;
+// the scattered crosses + dash-dot "space" lines around every drawing
+const DECO = X(18, 44) + X(146, 30, 3) + X(140, 112) + X(26, 126, 3)
+  + `<path class="dash" d="M8 82 L30 60"/><path class="dash" d="M126 150 L152 124"/>`;
+
+const ART = {
+  // shared: search / filters / customer not found — the open drawer, a dashed paper with ✕
+  none: `<path class="p" d="M46 84 L54 68 H106 L114 84"/>
+    <rect class="d" x="58" y="30" width="44" height="56" rx="5"/>${X(80, 56, 6).replace('class="x"', 'class="l"')}
+    <rect class="s" x="38" y="84" width="84" height="44" rx="7"/><rect class="l" x="68" y="100" width="24" height="7" rx="3.5"/>`,
+  // shared: no X selected — a list on the left, the empty pane dashed
+  pick: `<rect class="s" x="26" y="42" width="42" height="80" rx="8"/>
+    <path class="p" d="M36 58h22M36 74h22M36 106h22"/><rect class="l" x="32" y="83" width="30" height="14" rx="4"/>
+    <rect class="d" x="78" y="36" width="58" height="92" rx="10"/><path class="l" d="M118 82 H94 M101 75 L94 82 L101 89"/>`,
+  // no items: open box, a dashed price tag rising out
+  box: `<path class="l" d="M50 64 H110"/>
+    <path class="s" d="M42 78 L50 64 L30 50 L20 66 Z"/><path class="s" d="M118 78 L110 64 L130 50 L140 66 Z"/>
+    <path class="d" d="M68 84 V42 L80 30 L92 42 V84"/><circle class="l" cx="80" cy="44" r="3.5"/>
+    <rect class="s" x="42" y="78" width="76" height="50" rx="5"/><path class="p" d="M70 78 v14 M90 78 v14"/>`,
+  // empty category: open folder, dashed tag inside
+  folder: `<path class="s" d="M34 124 V54 a5 5 0 0 1 5-5 h22 l8 9 h52 a5 5 0 0 1 5 5 v61 z"/>
+    <g transform="rotate(-12 80 70)"><path class="d" d="M68 100 V36 L80 24 L92 36 V100"/><circle class="l" cx="80" cy="38" r="3.5"/></g>
+    <path class="s" d="M30 80 a4 4 0 0 1 4-4 h92 a4 4 0 0 1 4 4 l-5 40 a5 5 0 0 1-5 4 h-80 a5 5 0 0 1-5-4 z"/>`,
+  // all variants sold out: two shelves, every slot dashed
+  shelf: `<path class="l" d="M32 30 V132 M128 30 V132"/>
+    <rect class="d" x="40" y="44" width="22" height="28" rx="4"/><rect class="d" x="69" y="38" width="22" height="34" rx="4"/><rect class="d" x="98" y="48" width="22" height="24" rx="4"/>
+    <rect class="s" x="26" y="72" width="108" height="8" rx="3"/>
+    <rect class="d" x="40" y="94" width="22" height="30" rx="4"/><rect class="d" x="69" y="100" width="22" height="24" rx="4"/><rect class="d" x="98" y="90" width="22" height="34" rx="4"/>
+    <rect class="s" x="26" y="124" width="108" height="8" rx="3"/>`,
+  // cart empty: a shopping bag, a dashed item dropping in
+  bag: `<g transform="rotate(14 80 24)"><rect class="d" x="68" y="12" width="24" height="24" rx="5"/></g>
+    <path class="p" d="M58 20 v8 M104 26 v8"/>
+    <path class="l" d="M64 66 V58 a16 16 0 0 1 32 0 V66"/>
+    <path class="s" d="M42 62 H118 L112 124 a6 6 0 0 1-6 5 H54 a6 6 0 0 1-6-5 Z"/>`,
+  // saved carts: the bag, a dashed bookmark on it
+  saved: `<path class="l" d="M64 54 V46 a16 16 0 0 1 32 0 V54"/>
+    <path class="s" d="M42 50 H118 L112 120 a6 6 0 0 1-6 5 H54 a6 6 0 0 1-6-5 Z"/>
+    <path class="d" d="M68 66 V104 L80 95 L92 104 V66 Z"/>`,
+  // no orders: a dashed receipt coming out of the printer
+  receipt: `<path class="d" d="M56 104 V38 l6 -6 6 6 6 -6 6 6 6 -6 6 6 6 -6 6 6 V104"/>
+    <path class="p" d="M66 52h28M66 64h20M66 76h28"/>
+    <rect class="s" x="34" y="96" width="92" height="34" rx="9"/><path class="l" d="M50 106 H110"/><circle class="dot" cx="112" cy="120" r="2.5"/>`,
+  // nothing sold today: calendar, today's square dashed
+  cal: `<rect class="s" x="34" y="40" width="92" height="84" rx="10"/><path class="l" d="M34 60 H126 M58 32 v14 M102 32 v14"/>
+    ${[0,1,2].map(r => [0,1,2,3].map(c => (r === 2 && c === 2) ? '' : `<circle class="dot" cx="${52 + c * 19}" cy="${76 + r * 16}" r="2.6"/>`).join('')).join('')}
+    <rect class="d" x="80" y="99" width="28" height="18" rx="5"/>`,
+  // reports nothing sold: chart, the bars dashed
+  chart: `<rect class="d" x="48" y="88" width="13" height="32" rx="3"/><rect class="d" x="68" y="58" width="13" height="62" rx="3"/>
+    <rect class="d" x="88" y="96" width="13" height="24" rx="3"/><rect class="d" x="108" y="72" width="13" height="48" rx="3"/>
+    <path class="l" d="M36 34 V120 H130"/>`,
+  // no categories: a grid of tiles, all dashed
+  tiles: `<rect class="d" x="38" y="38" width="38" height="38" rx="9"/><rect class="d" x="84" y="38" width="38" height="38" rx="9"/>
+    <rect class="d" x="38" y="84" width="38" height="38" rx="9"/><rect class="d" x="84" y="84" width="38" height="38" rx="9"/>`,
+  // no modifiers: an options card, every row dashed
+  options: `<rect class="s" x="36" y="32" width="88" height="96" rx="11"/>
+    <circle class="dd" cx="56" cy="58" r="6"/><path class="d" d="M70 58 H108"/>
+    <circle class="dd" cx="56" cy="80" r="6"/><path class="d" d="M70 80 H100"/>
+    <circle class="dd" cx="56" cy="102" r="6"/><path class="d" d="M70 102 H106"/>`,
+  // no add-ons: an item with a dashed "+" extra stuck on its corner
+  addon: `<rect class="s" x="34" y="50" width="70" height="70" rx="13"/>
+    <path class="p" d="M58 102 V78 L69 67 L80 78 V102 Z"/><circle class="p" cx="69" cy="80" r="3"/>
+    <circle class="d" cx="108" cy="50" r="20" style="fill:var(--bg)"/><path class="l" d="M108 42 v16 M100 50 h16"/>`,
+  // no discounts: a dashed tag with %
+  disc: `<g transform="rotate(-14 80 80)"><path class="d" d="M36 80 L56 54 a5 5 0 0 1 4-2 H120 a5 5 0 0 1 5 5 V103 a5 5 0 0 1-5 5 H60 a5 5 0 0 1-4-2 Z"/>
+    <circle class="l" cx="56" cy="80" r="4"/>
+    <circle class="l" cx="82" cy="70" r="4.5"/><circle class="l" cx="104" cy="92" r="4.5"/><path class="l" d="M106 66 L80 96"/></g>`,
+  // no customers: a contact card, the person dashed
+  person: `<rect class="s" x="30" y="44" width="100" height="72" rx="11"/>
+    <circle class="d" cx="60" cy="72" r="10"/><path class="d" d="M43 100 a17 14 0 0 1 34 0"/>
+    <path class="p" d="M90 70 H116 M90 84 H108"/>`,
+  // cash in/out: the drawer, a dashed bill going in, arrows up and down
+  cash: `<path class="p" d="M40 88 L46 76 H114 L120 88"/>
+    <rect class="d" x="52" y="40" width="56" height="34" rx="5"/><circle class="dd" cx="80" cy="57" r="7"/>
+    <path class="l" d="M36 66 V44 M30 50 L36 44 L42 50 M124 44 V66 M118 60 L124 66 L130 60"/>
+    <rect class="s" x="30" y="86" width="100" height="40" rx="8"/><rect class="l" x="68" y="102" width="24" height="7" rx="3.5"/>`,
+  // past shifts: a clock with the dashed history arrow round it
+  clock: `<path class="d" d="M36.8 95.7 A46 46 0 1 0 36.8 64.3"/><path class="l" d="M33.9 54.8 L36.8 64.3 L45.1 58.8"/>
+    <circle class="s" cx="80" cy="80" r="30"/><path class="l" d="M80 62 V80 L92 88"/>`,
+  // suppliers: a truck, the load dashed
+  truck: `<rect class="d" x="24" y="54" width="72" height="52" rx="6"/>
+    <path class="s" d="M96 70 H114 a4 4 0 0 1 3 1.5 L132 89 V106 H96 Z"/><path class="p" d="M103 77 H113 L121 89 H103 Z"/>
+    <path class="l" d="M20 106 H138"/><circle class="s" cx="48" cy="110" r="9"/><circle class="s" cx="112" cy="110" r="9"/>`,
+  // nothing hidden: the eye, dashed, struck through
+  eye: `<path class="d" d="M32 80 Q80 34 128 80 Q80 126 32 80 Z"/><circle class="dd" cx="80" cy="80" r="13"/>
+    <path class="l" d="M50 50 L110 110"/>`,
+  // printer: no paper, dashed Wi-Fi over it
+  printer: `<path class="d" d="M58.8 32.8 A30 30 0 0 1 101.2 32.8 M65.9 39.9 A20 20 0 0 1 94.1 39.9"/>
+    <path class="l" d="M72.9 46.9 A10 10 0 0 1 87.1 46.9"/><circle class="dot" cx="80" cy="54" r="2.8" style="fill:var(--il-line)"/>
+    <rect class="s" x="52" y="66" width="56" height="16" rx="4"/>
+    <rect class="s" x="34" y="78" width="92" height="40" rx="9"/><path class="l" d="M50 96 H110"/><circle class="dot" cx="112" cy="108" r="2.5"/>`,
+};
+
+const PAGES = [
+  ['Sell', [
+    ['none', 'No results', 'Try a different word or scan it.', 'Sell · search'],
+    ['box', 'No items yet', 'Add what you sell and it shows here.', 'Sell · catalog empty'],
+    ['folder', 'No items in this category', 'Add some to it in Items.', 'Sell · empty category'],
+    ['shelf', 'All sold out', 'Show all to see them.', 'Sell · variants picker'],
+    ['bag', 'Cart is empty', 'Tap an item to add it.', 'Sell · cart'],
+    ['none', 'No customer found', 'Try a name or phone number.', 'Sell · customer picker'],
+  ]],
+  ['Orders', [
+    ['receipt', 'No orders yet', 'Every sale you make shows up here.', 'Orders · first day'],
+    ['cal', 'Nothing sold today', 'Today’s sales show up here.', 'Orders · Today'],
+    ['none', 'No orders match', 'Try different filters.', 'Orders · filters'],
+    ['pick', 'No order selected', 'Pick one to see its receipt.', 'Orders · iPad detail pane'],
+    ['saved', 'No saved carts', 'Carts you save for later go here.', 'Orders · Saved carts'],
+  ]],
+  ['Items', [
+    ['box', 'No items yet', 'Add what you sell. It shows on Sell.', 'Items · items'],
+    ['none', 'No items match', 'Nothing in these filters.', 'Items · filters'],
+    ['tiles', 'No categories yet', 'Group items to find them faster.', 'Items · categories'],
+    ['options', 'No modifiers yet', 'Sizes and options go here.', 'Items · modifiers'],
+    ['addon', 'No add-ons yet', 'Extras sold with an item go here.', 'Items · add-ons'],
+    ['disc', 'No discounts yet', 'Discounts you make show up here.', 'Items · discounts'],
+    ['truck', 'No suppliers yet', 'Add them in the back office.', 'Items · suppliers'],
+    ['eye', 'Nothing is hidden', 'Items you hide show up here.', 'Items · hidden'],
+  ]],
+  ['Customers', [
+    ['person', 'No customers yet', 'Save a customer to see their orders.', 'Customers · list'],
+    ['pick', 'No customer selected', 'Pick one to see their details.', 'Customers · iPad detail pane'],
+  ]],
+  ['Shift', [
+    ['cash', 'No cash in or out yet', 'Money put in or taken out shows here.', 'Shift · cash in / out'],
+    ['clock', 'No past shifts yet', 'Each closed shift shows up here.', 'Shift · past shifts'],
+  ]],
+  ['Reports', [
+    ['chart', 'Nothing sold today', 'Sales show here as you sell.', 'Reports · Today'],
+  ]],
+  ['Settings', [
+    ['printer', 'No printer connected', 'Tap Scan to search your Wi‑Fi.', 'Settings · printers'],
+  ]],
+];
+
+document.getElementById('out').innerHTML = PAGES.map(([page, list]) => `<h2>${page}</h2><div class="grid">${
+  list.map(([art, t, s, where]) => `<figure class="cell"><div class="card">
+    <svg viewBox="0 0 160 160" aria-hidden="true">${DECO}${ART[art]}</svg><b>${t}</b><span>${s}</span></div>
+    <figcaption>${where}</figcaption></figure>`).join('')}</div>`).join('');
+
+const theme = light => {
+  document.body.classList.toggle('light-theme', light);
+  tDark.classList.toggle('on', !light); tLight.classList.toggle('on', light);
+};
+tDark.onclick = () => theme(false); tLight.onclick = () => theme(true);
+</script>
+</body>
+</html>

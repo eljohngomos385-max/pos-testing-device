@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paid moments</title>
+<!-- Lab (owner 2026-11-05): the "it worked" moment on its own clean screen, then the Sale complete page (A, no tick) rises in.
+     Each phone starts on checkout at the tap of Complete sale. Tap a phone to replay it. Values copied from styles.css (lab only). -->
+<style>
+  :root {
+    --canvas: #F2F2F2; --bg: #FFFFFF; --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C; --line: #E1E1E1;
+    --glass: color-mix(in srgb, var(--bg) 70%, transparent);
+    --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8);
+    --cta-bg: radial-gradient(75% 80% at 50% 120%, #8EC2F0, transparent 85%), linear-gradient(#6A9FF9, #4388F7 50%, #5592F7);
+    --cta-ink: #FFFFFF;
+    --cta-shadow: inset 0 0 14px rgb(255 255 255 / .25), 0 1px 2px rgb(41 85 151 / .45), 0 2px 7px 1px rgb(67 136 247 / .32);
+    --blue: #4388F7;   /* --cta-bg's middle stop, for strokes */
+    --hero-y: 217px; --hero-fs: 59px; --hero-fw: 550; --hero-gap: 34px;
+    --co-ease: cubic-bezier(.2, .8, .2, 1); --spring: cubic-bezier(.3, 1.6, .5, 1);
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  }
+  :root.dark { --canvas: #121212; --bg: #121212; --ink: #FFFFFF; --ink-secondary: rgb(255 255 255 / .7); --ink-tertiary: rgb(255 255 255 / .45); --line: rgb(255 255 255 / .08);
+    --glass: rgb(255 255 255 / .08); --glass-ring: 0 1px 4px rgb(0 0 0 / .3), inset 0 0 0 .5px rgb(255 255 255 / .2); }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 16px 48px; background: var(--canvas); color: var(--ink); font: 15px/1.4 var(--font); }
+  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-bottom: 16px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 600; flex: 1 1 auto; }
+  header p { margin: 0; flex-basis: 100%; color: var(--ink-secondary); }
+  .tb { height: 36px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--glass); box-shadow: var(--glass-ring); color: var(--ink); font: 500 15px var(--font); cursor: pointer; }
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, 393px); justify-content: center; gap: 32px 24px; }
+  #grid h2 { grid-column: 1 / -1; margin: 16px 0 0; font-size: 17px; font-weight: 600; }
+  figure { margin: 0; display: grid; justify-items: center; gap: 8px; }
+  figcaption { text-align: center; color: var(--ink-secondary); font-size: 13px; max-width: 340px; }
+  figcaption b { display: block; color: var(--ink); font-size: 15px; font-weight: 600; }
+  .fit { width: 393px; height: 852px; }
+
+  /* ---- one phone ------------------------------------------------------------------------------------------ */
+  .ph { position: relative; width: 393px; height: 852px; overflow: hidden; border-radius: 48px;
+        background: var(--canvas); box-shadow: 0 0 0 1px var(--line), 0 10px 30px rgb(0 0 0 / .08); color: var(--ink); font-family: var(--font); --t: 2s; }
+  .ph > * { position: absolute; inset: 0; }
+  .ph > .island { inset: 11px auto auto 50%; z-index: 9; width: 126px; height: 37px; translate: -50% 0; border-radius: 999px; background: #000; }
+  .big { font-size: var(--hero-fs); font-weight: var(--hero-fw); letter-spacing: -.04em; line-height: 1; }
+  .col { display: flex; flex-direction: column; align-items: center; }
+  .cta { border: 0; border-radius: 999px; background: var(--cta-bg); box-shadow: var(--cta-shadow); color: var(--cta-ink); font: 500 17px var(--font); }
+  .c2 { height: 44px; padding: 0 26px; border: 0; border-radius: 999px; background: var(--glass); box-shadow: var(--glass-ring); color: var(--ink); font: 500 15px var(--font); }
+  .bottom { position: absolute; left: 50%; bottom: 10px; width: 260px; height: 44px; translate: -50% 0; }
+
+  /* checkout, the moment before */
+  .pay { padding-top: var(--hero-y); }
+  .pay .lb { margin-top: 12px; color: var(--ink-tertiary); font-size: 15px; font-weight: 500; }
+  /* the sale page after: A without the tick (heading over the number, number on checkout's line) */
+  .sale { padding-top: calc(var(--hero-y) - 44px); }
+  .sale .h { height: 22px; color: var(--ink-secondary); font-size: 17px; font-weight: 500; line-height: 22px; margin-bottom: 22px; }
+  .sale .lb { margin-top: 12px; color: var(--ink-tertiary); font-size: 15px; font-weight: 500; }
+  .sale .acts { display: flex; gap: 10px; margin-top: var(--hero-gap); }
+  .mo { pointer-events: none; display: grid; place-items: center; }
+
+  /* idle = the sale page; play = checkout → tap → moment → sale page */
+  .ph:not(.play) .pay, .ph:not(.play) .mo { visibility: hidden; }
+  /* ready = checkout waiting for your tap (the test page's start) */
+  .ph.ready .sale { visibility: hidden; }
+  .ph.ready .pay { visibility: visible; }
+  .pay .cta, .sale > .cta { cursor: pointer; }
+  .play .pay .cta { animation: press .25s .45s ease both; }
+  .play .pay { animation: off .2s .65s forwards; }
+  .play .sale > * { animation: rise .5s var(--co-ease) both; animation-delay: calc(var(--t) + var(--i, 0) * 70ms); }
+  .play .mo { animation: off .35s calc(var(--t) - .15s) forwards; }
+  @keyframes press { 50% { transform: scale(.96); filter: brightness(.92); } }
+  @keyframes off { to { opacity: 0; visibility: hidden; } }
+  @keyframes on { from { opacity: 0; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+  @keyframes pop { from { opacity: 0; transform: scale(.4); } }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes thump { 45% { transform: scale(1.08); } }
+  svg.tk { overflow: visible; }
+  svg.tk .c { fill: none; stroke: var(--blue); stroke-width: 3; stroke-dasharray: 189; stroke-dashoffset: 189; transform: rotate(-90deg); transform-origin: center; }
+  svg.tk .k { fill: none; stroke: var(--blue); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; }
+  .dot { display: grid; place-items: center; border-radius: 50%; background: var(--cta-bg); box-shadow: var(--cta-shadow); }
+  .dot svg.tk .k { stroke: var(--cta-ink); stroke-width: 6; }
+
+  /* Ring: Apple Pay's Done. The ring draws, the tick draws, one thump, "Done" */
+  [data-m^="ring"] .mo > div { display: grid; justify-items: center; gap: 14px; }
+  [data-m^="ring"] svg { width: 88px; height: 88px; }
+  [data-m^="ring"] .mo span { font-size: 17px; font-weight: 500; color: var(--ink); }
+  .play[data-m^="ring"] svg { animation: thump .32s 1.35s var(--co-ease); }
+  .play[data-m^="ring"] .c { animation: draw .5s .7s var(--co-ease) forwards; }
+  .play[data-m^="ring"] .k { animation: draw .28s 1.1s var(--co-ease) forwards; }
+  .play[data-m^="ring"] .mo span { animation: on .3s 1.15s both; }
+  /* Ring quick: the same, in two thirds of the time (a hundred sales a day) */
+  [data-m="ring-quick"] { --t: 1.45s; }
+  .play[data-m="ring-quick"] svg { animation-delay: 1s; }
+  .play[data-m="ring-quick"] .c { animation-duration: .36s; animation-delay: .58s; }
+  .play[data-m="ring-quick"] .k { animation-duration: .22s; animation-delay: .82s; }
+  .play[data-m="ring-quick"] .mo span { animation-delay: .86s; }
+
+  /* Morph: the Complete sale button itself shrinks to a circle, rises to the middle and becomes the tick */
+  [data-m="morph"] { --t: 2s; }
+  [data-m="morph"] .bl { position: absolute; left: 50%; bottom: 10px; width: 260px; height: 44px; translate: -50% 0; border-radius: 999px;
+    display: grid; place-items: center; background: var(--cta-bg); box-shadow: var(--cta-shadow); color: var(--cta-ink); font-size: 17px; font-weight: 500; }
+  [data-m="morph"] .bl > * { grid-area: 1 / 1; }
+  [data-m="morph"] .bl svg { width: 44px; height: 44px; }
+  [data-m="morph"] .bl svg .k { stroke: var(--cta-ink); stroke-width: 5.5; }
+  .play[data-m="morph"] .bl { animation: press .25s .4s ease, morph .8s .6s cubic-bezier(.5, 0, .2, 1) both; }
+  .play[data-m="morph"] .bl span { animation: off .12s .6s forwards; }
+  .play[data-m="morph"] .bl .k { animation: draw .26s 1.35s var(--co-ease) forwards; }
+  .play[data-m="morph"] .bl svg { animation: thump .3s 1.6s var(--co-ease); }
+  @keyframes morph { 35% { width: 44px; height: 44px; bottom: 10px; } 100% { width: 92px; height: 92px; bottom: calc(50% - 46px); } }
+
+  /* Burst: the dot springs in and eight sparks fly off it */
+  [data-m="burst"] { --t: 1.8s; }
+  [data-m="burst"] .mo > * { grid-area: 1 / 1; }
+  [data-m="burst"] .dot { width: 80px; height: 80px; }
+  [data-m="burst"] .dot svg { width: 40px; height: 40px; }
+  [data-m="burst"] .sp { width: 4px; height: 14px; border-radius: 2px; background: var(--blue); opacity: 0; rotate: calc(var(--i) * 45deg); }
+  .play[data-m="burst"] .dot { animation: pop .5s .65s cubic-bezier(.3, 1.9, .5, 1) both; }
+  .play[data-m="burst"] .dot .k { animation: draw .25s .85s var(--co-ease) forwards; }
+  .play[data-m="burst"] .sp { animation: spark .55s .85s var(--co-ease); }
+  @keyframes spark { from { opacity: 1; transform: translateY(-46px) scaleY(1); } to { opacity: 0; transform: translateY(-82px) scaleY(.3); } }
+
+  /* Swoosh: one big tick, drawn in a single fast stroke (sw-* are its variations) */
+  [data-m^="sw"] { --t: 1.65s; }
+  [data-m^="sw"] svg { width: 170px; height: 170px; }
+  [data-m^="sw"] svg .k { stroke-width: 5.5; }
+  .play[data-m^="sw"] .k { animation: draw .32s .68s cubic-bezier(.7, 0, .2, 1) forwards; }
+  .play[data-m^="sw"] svg { animation: thump .3s 1s var(--co-ease); }
+  /* quick: the whole beat in 1.2s */
+  [data-m="sw-quick"] { --t: 1.2s; }
+  .play[data-m="sw-quick"] .k { animation-duration: .24s; animation-delay: .58s; }
+  .play[data-m="sw-quick"] svg { animation-delay: .8s; }
+  /* ink: the tick in the page's ink, no blue at all */
+  [data-m="sw-ink"] svg .k { stroke: var(--ink); }
+  /* thin: a lighter stroke, a touch smaller */
+  [data-m="sw-thin"] svg { width: 150px; height: 150px; }
+  [data-m="sw-thin"] svg .k { stroke-width: 3; }
+  /* done: Ring's word under the swoosh, no ring */
+  [data-m="sw-done"] .mo > div { display: grid; justify-items: center; gap: 6px; }
+  [data-m="sw-done"] svg { width: 130px; height: 130px; }
+  [data-m="sw-done"] .mo span { font-size: 17px; font-weight: 500; color: var(--ink); }
+  .play[data-m="sw-done"] .mo span { animation: on .3s .9s both; }
+  /* lands: the tick shrinks up into the spot where "Sale complete" appears (centre 426 → heading 184) */
+  [data-m="sw-land"] { --t: 1.6s; }
+  .play[data-m="sw-land"] svg { animation: thump .3s .95s var(--co-ease), land .45s 1.2s cubic-bezier(.5, 0, .2, 1) forwards; }
+  .play[data-m="sw-land"] .mo { animation: none; }
+  @keyframes land { 70% { opacity: 1; } to { opacity: 0; transform: translateY(-242px) scale(.13); } }
+
+  /* Edge glow: the screen's edge lights up blue once, a bare tick in the middle (edge-* are its variations) */
+  [data-m^="edge"] { --t: 1.9s; }
+  [data-m^="edge"] .mo::before { content: ''; position: absolute; inset: 0; border-radius: 48px; opacity: 0;
+    box-shadow: inset 0 0 0 3px rgb(67 136 247 / .9), inset 0 0 36px 10px rgb(67 136 247 / .55), inset 0 0 90px 20px rgb(142 194 240 / .35); }
+  [data-m^="edge"] svg { width: 84px; height: 84px; }
+  [data-m^="edge"] svg .k { stroke-width: 6; }
+  .play[data-m^="edge"] .mo::before { animation: glow 1.1s .62s ease-out both; }
+  .play[data-m^="edge"] .k { animation: draw .3s .85s var(--co-ease) forwards; }
+  @keyframes glow { 25% { opacity: var(--g, 1); } 100% { opacity: 0; } }
+  /* soft: half the light, gone sooner (the every-day one) */
+  [data-m="edge-soft"] { --g: .5; --t: 1.5s; }
+  .play[data-m="edge-soft"] .mo::before { animation-duration: .8s; }
+  /* low: only the bottom lights, rising from the button you tapped */
+  [data-m="edge-low"] .mo::before { inset: auto 0 0; height: 45%; border-radius: 0 0 48px 48px; box-shadow: none;
+    background: radial-gradient(120% 100% at 50% 100%, rgb(67 136 247 / .45), rgb(142 194 240 / .15) 45%, transparent 75%); }
+  /* trace: a thin blue line runs from the button up both sides and meets at the top */
+  [data-m="edge-trace"] .mo::before { display: none; }
+  [data-m="edge-trace"] .mo svg.tr { position: absolute; inset: 0; width: 100%; height: 100%; }
+  [data-m="edge-trace"] .tr path { fill: none; stroke: var(--blue); stroke-width: 4; stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .play[data-m="edge-trace"] .tr path { animation: draw .55s .6s cubic-bezier(.5, 0, .2, 1) forwards; }
+  .play[data-m="edge-trace"] .tr { animation: off .4s 1.3s forwards; }
+  /* swoosh: the edge glow with number 11's big tick */
+  [data-m="edge-sw"] { --g: .7; --t: 1.7s; }
+  [data-m="edge-sw"] svg { width: 170px; height: 170px; }
+  [data-m="edge-sw"] svg .k { stroke-width: 5.5; }
+  .play[data-m="edge-sw"] .k { animation: draw .32s .72s cubic-bezier(.7, 0, .2, 1) forwards; }
+  .play[data-m="edge-sw"] svg { animation: thump .3s 1.04s var(--co-ease); }
+
+  /* the stage: one phone at full size (for the recording) */
+  body.solo { padding: 0; background: var(--canvas); }
+  body.solo header, body.solo figure:not(.on) { display: none; }
+  body.solo #grid { display: block; }
+  body.solo figure { position: relative; }
+  body.solo figcaption { position: absolute; z-index: 20; top: 18px; left: 26px; max-width: none; color: var(--ink-tertiary); font-size: 0; }   /* the recording's label sits where the clock is */
+  body.solo figcaption b { color: inherit; font-size: 13px; font-weight: 500; }
+  body.solo .fit { width: 393px; height: 852px; }
+  body.solo .ph { transform: none; border-radius: 0; box-shadow: none; }
+  @media (prefers-reduced-motion: reduce) { .ph *, .ph *::before { animation-duration: .01s !important; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Paid moments</h1>
+  <button class="tb" id="all">Play all</button>
+  <button class="tb" id="theme">Dark</button>
+  <p>Round 2: your picks, then new takes on Swoosh, Edge glow and Ring. Each phone starts on checkout, taps Complete sale, plays its moment on its own clean screen, then fades into the Sale complete page. Tap Complete sale to pay, New sale to go back.</p>
+</header>
+<main id="grid"></main>
+<script>
+  const tk = (ring) => `<svg class="tk" viewBox="0 0 64 64" aria-hidden="true">${ring ? '<circle class="c" cx="32" cy="32" r="30"/>' : ''}<path class="k" d="M19 33l9 9 17-19"/></svg>`;
+  const dot = `<div class="dot">${tk()}</div>`;
+  // [key, name, what it does, inner]; a key of null = a group heading
+  const M = [
+    [null, 'Your picks'],
+    ['ring', 'Ring', "Apple Pay's Done: a ring draws, then the tick, one thump.", `<div>${tk(true)}<span>Done</span></div>`],
+    ['swoosh', 'Swoosh', 'One big tick, drawn in a single fast stroke. Nothing else.', tk()],
+    ['edge', 'Edge glow', "The screen's edge lights blue once, a bare tick in the middle.", tk()],
+    ['morph', 'Morph', 'The button you tapped shrinks to a circle, rises to the middle and becomes the tick.', `<div class="bl"><span>Complete sale</span>${tk()}</div>`],
+    ['burst', 'Burst', 'The dot springs in and eight sparks fly off it.', `${[...Array(8)].map((_, i) => `<div class="sp" style="--i:${i}"></div>`).join('')}${dot}`],
+    [null, 'New · Swoosh'],
+    ['sw-quick', 'Swoosh quick', 'The same tick, the whole beat in 1.2s instead of 1.65s.', tk()],
+    ['sw-thin', 'Swoosh thin', 'A lighter stroke, a touch smaller. Calmer.', tk()],
+    ['sw-ink', 'Swoosh ink', 'The tick in black/white, no blue at all.', tk()],
+    ['sw-done', 'Swoosh + Done', "Ring's word under the swoosh, no ring.", `<div>${tk()}<span>Done</span></div>`],
+    ['sw-land', 'Swoosh lands', 'The tick shrinks up into the spot where "Sale complete" appears.', tk()],
+    [null, 'New · Edge glow'],
+    ['edge-soft', 'Edge soft', 'Half the light, gone sooner. The every-day one.', tk()],
+    ['edge-low', 'Edge low', 'Only the bottom lights, rising from the button you tapped.', tk()],
+    ['edge-trace', 'Edge trace', 'A thin blue line runs from the button up both sides and meets at the top.', `<svg class="tr" viewBox="0 0 393 852" preserveAspectRatio="none"><path pathLength="1" d="M196.5 850H48A46 46 0 0 1 2 804V48A46 46 0 0 1 48 2H196.5"/><path pathLength="1" d="M196.5 850H345A46 46 0 0 0 391 804V48A46 46 0 0 0 345 2H196.5"/></svg>${tk()}`],
+    ['edge-sw', 'Edge + Swoosh', 'A softer edge glow with the big Swoosh tick.', tk()],
+    [null, 'New · Ring'],
+    ['ring-quick', 'Ring quick', 'The same Done, in two thirds of the time.', `<div>${tk(true)}<span>Done</span></div>`],
+  ];
+  const phone = (m, inner) => `<div class="ph ready" data-m="${m}">
+    <div class="sale col"><div class="h" style="--i:0">Sale complete</div><div class="big" style="--i:1">₱1,000.00</div><div class="lb" style="--i:2">Change</div>
+      <div class="acts" style="--i:3"><button class="c2">Print receipt</button><button class="c2">Show receipt</button></div>
+      <button class="cta bottom" style="--i:4">New sale</button></div>
+    <div class="pay col"><div class="big">₱500.00</div><div class="lb">Cash ₱1,500.00</div><button class="cta bottom">Complete sale</button></div>
+    <div class="mo">${inner}</div><div class="island"></div></div>`;
+  const grid = document.getElementById('grid');
+  let n = 0;
+  grid.innerHTML = M.map(([m, name, line, inner]) => m ? `<figure data-i="${n}"><div class="fit">${phone(m, inner)}</div><figcaption><b>${++n} · ${name}</b>${line}</figcaption></figure>`
+    : `<h2>${name}</h2>`).join('');
+  // ponytail: skip the scripted wait before the press, so a real tap starts it at once
+  const play = (ph, skip = 0) => { ph.classList.remove('play', 'ready'); void ph.offsetWidth; ph.classList.add('play');
+    if (skip) ph.getAnimations({ subtree: true }).forEach(a => a.currentTime = skip); };
+  const reset = (ph) => { ph.classList.remove('play'); ph.classList.add('ready'); };
+  grid.addEventListener('click', e => { const ph = e.target.closest('.ph'); if (!ph) return;
+    if (e.target.closest('.pay .cta')) play(ph, 420); else if (e.target.closest('.sale > .cta')) reset(ph); });
+  document.getElementById('all').onclick = () => grid.querySelectorAll('.ph').forEach(ph => play(ph, 420));
+  const dark = document.getElementById('theme');
+  const setTheme = (d) => { document.documentElement.classList.toggle('dark', d); dark.textContent = d ? 'Light' : 'Dark'; };
+  setTheme(matchMedia('(prefers-color-scheme: dark)').matches);
+  dark.onclick = () => setTheme(!document.documentElement.classList.contains('dark'));
+  // the recording: one phone at full size
+  window.solo = (i) => { document.body.classList.add('solo'); grid.querySelectorAll('figure').forEach(f => f.classList.toggle('on', +f.dataset.i === i)); play(grid.querySelectorAll('.ph')[i]); };
+</script>
+</body>
+</html>

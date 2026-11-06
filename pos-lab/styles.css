@@ -513,24 +513,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 .no-results {
   grid-column: 1 / -1;
-  text-align: center;
-  padding: 80px 16px;
-  color: var(--ink-tertiary);
-}
-.no-results .nr-icon {
-  width: 36px; height: 36px;
-  margin: 0 auto 10px;
-  color: var(--ink-quaternary);
-}
-.no-results .nr-title {
-  font-size: 14px;
-  font-weight: 510;
-  color: var(--ink-secondary);
-}
-.no-results .nr-sub {
-  font-size: 12px;
-  margin-top: 4px;
-  color: var(--ink-tertiary);
+  grid-row: 1 / -1;   /* the whole grid: centred on the page, as every list's empty page */
+  align-self: center;
+  height: 100%;   /* the list view's grid is a block: fill it so the page centres */
 }
 
 /* ============================================================
@@ -3088,7 +3073,6 @@ a.secondary-btn { text-decoration: none; }
 .ls-match:hover { background: var(--surface-hover); }
 .ls-match span:last-child,
 .ls-picked { color: var(--ink-tertiary); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.no-results .nr-lost { margin-top: 12px; overflow-wrap: anywhere; }   /* a long word typed in the search wraps, not widens the page */
 .od-head {
   display: flex;
   gap: 10px;
@@ -3213,6 +3197,9 @@ a.secondary-btn { text-decoration: none; }
   text-transform: uppercase;
   color: var(--ink-tertiary);
 }
+/* The receipt's own font (owner 2026-11-06: "the same on Android and Apple"): shipped with the app, so no device swaps in
+   its own monospace. Cascadia Mono, SIL OFL 1.1 (licence in the file), unchanged. The print pop-up loads the same file. */
+@font-face { font-family: "Receipt Mono"; src: url("receipt-mono.ttf") format("truetype"); font-weight: 200 700; font-display: swap; }
 /* The one receipt paper: Orders, Show receipt and the tablet rail all use it (owner 2026-10-08) */
 .rp-paper {
   position: relative;
@@ -3223,52 +3210,11 @@ a.secondary-btn { text-decoration: none; }
   color: #111;
   border-radius: 1px;
   padding: 24px 24px 28px;
-  font-family: "SF Mono", "Menlo", "Consolas", "Courier New", monospace;
-  font-size: 13px;
-  line-height: 1.42;
-  overflow-wrap: anywhere;   /* a long unbroken note stays on the paper */
+  font-family: "Receipt Mono", monospace;   /* the Shift slip's; the receipt's own type is receipt.css */
+  container-type: inline-size;   /* the receipt sizes off the paper's width (cqw), as on paper */
   box-shadow: var(--paper-shadow);
 }
-@media (max-width: 720px) { .rp-paper { padding: 20px 18px 24px; font-size: 12px; } }
-.rp-center { text-align: center; }
-.rp-store { font-size: 16px; font-weight: 800; letter-spacing: 0.4px; }
-.rp-small { font-size: 12px; }
-.rp-rule { border-top: 1px dashed #111; margin: 11px 0; }
-.rp-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-variant-numeric: tabular-nums;
-}
-.rp-row > span:first-child { flex-shrink: 0; max-width: 60%; }   /* a long ref no. wraps in the value, never squeezes the label */
-.rp-item { margin: 9px 0; }
-.rp-item-name { font-weight: 800; }
-.rp-item-line { font-size: 12px; }
-.rp-total {
-  border-top: 1px solid #111;
-  border-bottom: 1px solid #111;
-  margin: 9px 0;
-  padding: 6px 0;
-  font-size: 17px;
-  font-weight: 800;
-}
-.rp-status {
-  margin-top: 8px;
-  padding: 6px 8px;
-  text-align: center;
-  border: 1px solid #111;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.4px;
-}
-.rp-status.saved {
-  background: #111;
-  color: #fff;
-}
-.rp-thanks {
-  margin-top: 8px;
-  font-weight: 800;
-}
+@media (max-width: 720px) { .rp-paper { padding: 20px 18px 24px; } }
 .orders-empty {
   display: flex;
   flex-direction: column;
@@ -3401,7 +3347,6 @@ body.light-theme .vs-head { background: color-mix(in srgb, var(--canvas) 78%, tr
 .vs-new { color: var(--rl-on); }   /* New customer: first row, + and label in the app's blue (owner 2026-10-07: a filled circle drew too much, plain ink too little) */
 .vs-plus { display: grid; flex: none; margin-right: -2px; }
 .vs-row .amt { font-size: 14px; font-weight: 550; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.vs-empty { padding: 28px var(--rl-m); text-align: center; font-size: 13px; color: var(--ink-tertiary); }
 @media (prefers-reduced-motion: reduce) { .vsheet, .vsheet.open { transition: none; } }
 
 /* ============================================================
@@ -3431,14 +3376,14 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .esheet.open, .scan-sheet.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
 .es-card { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
            border: 1px solid var(--line); border-radius: var(--rl-r); background: var(--rl-card); box-shadow: var(--rl-shadow);
-           container-type: size; }   /* cqh below = the card's height */
+           container-type: size; --es-top: 8px; }   /* cqh below = the card's height; --es-top = the top row's line (‹, title, ✓, bar follow it) */
 .esheet button:where(:not(.ph-bar, .fab)) { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
 .esheet svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .esheet .es-x { position: absolute; z-index: 1; top: 12px; left: 12px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--es-r); color: var(--ink-secondary); }
 .esheet .es-x:hover { background: var(--es-btn); color: var(--ink); }
 .esheet .es-x :is(.ib, .xl) { display: none; }   /* the phone's ‹ Back */
 @media (min-width: 721px) {   /* the tablet's too: checkout's ‹ Cancel, word and all (owner 2026-10-16) */
-  .esheet:not(.cust-sheet) .es-x { top: 8px; left: 8px; display: inline-flex; gap: 4px; width: auto; height: 44px; padding: 0 12px 0 8px; border-radius: var(--r-input);
+  .esheet:not(.cust-sheet) .es-x { top: var(--es-top); left: 8px; display: inline-flex; gap: 4px; width: auto; height: 44px; padding: 0 12px 0 8px; border-radius: var(--r-input);
                                    color: var(--ink); font-size: 15px; font-weight: 560; }
   .esheet:not(.cust-sheet) .es-x .ib { display: block; width: 18px; height: 18px; stroke-width: 2; color: var(--ink-secondary); }
   .esheet:not(.cust-sheet) .es-x .xl { display: block; }
@@ -3463,7 +3408,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-list:empty { display: none; }
 .esheet .es-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding: 0 12px 0 16px; border-radius: var(--row-r, var(--es-r)); background: var(--row-bg, var(--tile));
                   font-size: 15px; font-weight: 500; text-align: left; transition: background-color .12s; }
-.esheet .es-row:hover:not(.on):not(.pick) { background: var(--es-hover); }
+@media (hover: hover) { .esheet .es-row:hover:not(.on):not(.pick) { background: var(--es-hover); } }   /* a touch left the next page's row grey, as if picked */
 .es-row > span:first-child { flex: 1; min-width: 0; }
 .esheet .es-row.on { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--es-sel); }   /* the one the keys type into */
 .esheet .es-row.pick { background: color-mix(in srgb, var(--ink) 10%, var(--tile)); font-weight: 550; }   /* picked: a deeper shade of its own grey */
@@ -4843,7 +4788,7 @@ body.light-theme .co-tile { background: var(--row-bg, var(--surface)); }   /* ow
 /* Checkout's rows and buttons on the grey page are the list sheets' too, one rule (owner 2026-10-27: "better if it's shared");
    a picked / typed-into row keeps its own look */
 body.light-theme .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) :is(.es-row:not(.on, .pick), .es-ink) { background: var(--row-bg, var(--surface)); box-shadow: var(--row-lift, inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06)); }
-body.light-theme .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) :is(.es-row:not(.on, .pick, .out), .es-ink:not(:disabled)):hover { background: var(--bg-soft); }
+@media (hover: hover) { body.light-theme .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) :is(.es-row:not(.on, .pick, .out), .es-ink:not(:disabled)):hover { background: var(--bg-soft); } }
 body.light-theme .product-card:hover,
 body.light-theme .product-card.pc-group:hover { background: var(--surface-hover); }
 body.light-theme .product-card:active { background: var(--surface-hover); }
@@ -7443,7 +7388,7 @@ body.light-theme {
   /* Every phone ‹ Back / ‹ Cancel = the ☰'s 44 glass circle at 12,8, a 24 grey chevron and no word (owner 2026-11-04: "just a
      circle"); the word stays for screen readers. The iPad keeps its words. The ‹ itself = --back-* */
   .co-top { padding: var(--co-y) var(--co-m) 0 12px; }
-  .esheet .es-x { top: 8px; left: 12px; width: 44px; height: 44px; }
+  .esheet .es-x { top: var(--es-top); left: 12px; width: 44px; height: 44px; }
   :is(.co-cancel, .esheet .es-x) { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 0; height: 44px; padding: 0;
                                    border-radius: 999px; color: var(--ink);
                                    background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
@@ -7524,9 +7469,20 @@ body .lv .e-top .acts .act { background: none; box-shadow: none; color: var(--in
 .lv .list { display: grid; grid-template-rows: minmax(0,1fr); overflow: hidden; border-bottom: 0; border-radius: var(--rl-r) var(--rl-r) 0 0; }
 .lv .lines { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .lv .band { position: sticky; top: 0; z-index: 1; height: 40px; background: var(--rl-soft); border-bottom: 1px solid var(--line); color: var(--ink-secondary); font-size: 12px; font-weight: 500; }
-.lv .empty { display: grid; place-content: center; justify-items: center; gap: 4px; height: 100%; padding: 24px; text-align: center; }
-.lv .empty b { font-size: 14px; font-weight: 550; }
-.lv .empty span { color: var(--ink-tertiary); }
+/* Every empty page and search (emptyState, pos-core.js, owner 2026-11-06): the page's menu icon in a soft round, a title,
+   one plain line, at most one blue action. Sell's grid (.no-results) and the sheets wear the same. */
+.empty { display: grid; place-content: center; justify-items: center; gap: 6px; height: 100%; padding: 32px 24px; text-align: center; }
+.empty .e-ic { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 10px; border-radius: 50%; background: var(--bg-soft); color: var(--ink-tertiary); }
+.empty .e-ic svg { width: 30px; height: 30px; }
+.empty b { max-width: 28ch; font-size: 17px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.empty > span:not(.e-ic) { max-width: 30ch; font-size: 14px; line-height: 1.4; color: var(--ink-tertiary); }
+.empty .e-act { margin-top: 6px; padding: 8px 12px; border: 0; background: none; color: var(--cta-solid); font: inherit; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.empty .e-act:hover { opacity: .8; }
+.empty .e-act + .e-act { margin-top: 0; }
+#variantList .empty { height: auto; }
+#itemsRows:has(> .empty) { height: 100%; }   /* centred on the page, as Orders and Customers */
+.c-body:has(> #shiftBody > .empty) { min-height: 100%; grid-template-rows: auto 1fr; }   /* Cash in & out: the same */
+#shiftPastBody > .c-body:has(> .empty) { min-height: 100%; }   /* Past shifts: the same (it sat under the head, 2026-11-06) */
 
 /* the receipt's and the editor's actions: compact boxes, the search's fill and ring */
 .lv .acts { display: flex; align-items: center; gap: 6px; }
@@ -7709,7 +7665,6 @@ body.light-theme .lv :not(.fph) > .thumb:not([style]) { background: var(--bg-sof
 #orderDetail :is(.rp-paper, .ol) { view-transition-name: order-sheet; }
 ::view-transition-group(order-sheet) { overflow: clip; animation-duration: .32s; animation-timing-function: var(--rl-ease); }
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; }   /* only the sheet morphs: a faded list ghosts its rows onto their neighbours */
-.lv .rp-item.out { text-decoration: line-through; opacity: .45; }   /* refunded in full: struck, still on the slip */
 
 :is(.lv, .esheet) .fab { position: absolute; right: 34px; bottom: 32px; z-index: 2; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
            background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-raised); transition: transform .12s; }
@@ -8382,7 +8337,6 @@ body.hairlines:not(.light-theme) .lv :is(.rp-body, #shiftBody, .sh-body, #shiftP
 .lv .o-days .row.none .nm span { color: var(--ink-tertiary); }   /* a day with a Z but no shift */
 .lv .o-days div.row { letter-spacing: normal; line-height: normal; }   /* a cash move (no tap) reads as Orders' button rows */
 .lv .o-days .band .link { font-size: inherit; letter-spacing: inherit; line-height: inherit; text-decoration: none; }   /* the day's Z total, as Orders' band total; a tap still opens the Z */
-.lv .sh-none { margin: 24px 16px; color: var(--ink-tertiary); font-size: 14px; text-align: center; }
 .lv .head > .sh-print { margin-left: auto; width: auto; font-size: 15px; font-weight: 550; }   /* the X report, a word top right (owner 2026-10-17); Past shifts is a row */
 /* The papers, in the app's confirm card (showConfirm). */
 .cf-sheet .sh-slip { width: 100%; margin: 4px 0; padding: 14px 12px; white-space: pre; overflow-x: auto; font-size: 10px; line-height: 1.4; }
@@ -8463,7 +8417,7 @@ body.hairlines:not(.light-theme) .lv :is(.rp-body, #shiftBody, .sh-body, #shiftP
 .st-page .fr .lb small { font-size: 12px; }
 .st-page .fr > .v { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }   /* the › on the middle of its word, ~13pt from it, as rednote's */
 .lv .st-page .fr:has(> .v > .st-pick) { grid-template-columns: minmax(0,1fr) auto; }
-.lv .st-page .fr:has(> .v > .st-sel), .lv .st-page #posStoreRow { grid-template-columns: auto minmax(0,1fr); }   /* Time zone: its word on one line, the long zone name gives way */   /* a long label wraps; the pick is never cut ("Never ask" on a phone) */
+.lv .st-page .fr:has(> .v > .st-sel) { grid-template-columns: auto minmax(0,1fr); }   /* Time zone: its word on one line, the long zone name gives way */   /* a long label wraps; the pick is never cut ("Never ask" on a phone) */
 .lv .st-pick { justify-content: space-between; gap: 10px; min-width: 150px; max-width: 100%; padding: 0 8px 0 12px; color: var(--ink); }
 .st-pick > span { overflow: hidden; text-overflow: ellipsis; }
 .st-pick .ic { color: var(--ink-tertiary); }
@@ -8874,6 +8828,8 @@ body.light-theme .vs-row .pic[style] { background: hsl(var(--tc) 75% 86%); }
 .qr-pic-row .v { display: flex; flex: none; align-items: center; gap: 10px; color: var(--ink-tertiary); white-space: nowrap; }
 .qr-thumb { width: 36px; height: 36px; border-radius: 6px; object-fit: contain; background: #fff; box-shadow: 0 0 0 1px var(--line); }
 .qr-rm { color: var(--ink-secondary); font-size: 14px; font-weight: 500; }
+/* Settings › Receipt › Preview: the receipt in a sheet at the paper's own width */
+.rc-sheet .fs-body .rp-paper { margin: 0 auto; }
 #ptNameRow .v { flex: 1; justify-content: flex-end; }
 #ptRename { width: 100%; text-align: right; color: var(--ink-tertiary); }   /* the value on the right, as Ask for's */
 #ptRename:focus { color: var(--ink); }
@@ -8944,24 +8900,16 @@ body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px v
 /* Unavailable: greyed and can't be picked; set back in Items › Modifiers */
 .esheet .es-row.out { color: var(--ink-tertiary); cursor: default; }
 .esheet .es-row.out:hover { background: var(--tile); }
-/* how far through the questions, centred on ‹ Back's line: a short bar for every item (owner 2026-10-25, "line for everything"),
-   grown from the last question's mark (--was) */
-.es-prog { position: absolute; z-index: 1; top: var(--es-dot-y, 27px); left: 50%; translate: -50% 0; pointer-events: none; }
-.es-prog { width: 88px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
-.es-prog i { display: block; height: 100%; background: var(--ink); transform: scaleX(var(--w)); transform-origin: left; animation: es-prog .35s var(--rl-ease) both; }
-@keyframes es-prog { from { transform: scaleX(var(--was)); } }
-/* picked so far: "+N" and the newest two over the item's name, in the gap: the hero never moves (as .es-off under it) */
-.es-picks { position: absolute; bottom: calc(100% + 10px); left: 50%; translate: -50% 0; width: min(420px, 100vw - 40px); display: flex; justify-content: center; gap: 6px; overflow: hidden; }
-.esheet .es-picks button { flex: none; max-width: 116px; padding: 6px 12px; border-radius: 16px; background: var(--tile); color: var(--ink-secondary);
-                           font-size: 13px; font-weight: 500; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.esheet .es-picks .more { background: none; box-shadow: inset 0 0 0 1px var(--line); }
-/* "+N" open: every pick, a tap goes back to its question; a tap outside closes */
-.es-veil { position: absolute; z-index: 2; inset: 0; background: color-mix(in srgb, var(--bg) 60%, transparent); }
-.es-pop { position: absolute; z-index: 3; left: 50%; translate: -50% 0; width: min(420px, 100% - 40px); max-height: 60%; overflow-y: auto; border-radius: var(--es-r);
-          background: var(--bg); box-shadow: 0 0 0 1px var(--line), 0 10px 30px rgb(0 0 0 / .12); }
-.esheet .es-pop button { display: flex; justify-content: space-between; gap: 12px; width: 100%; height: 46px; padding: 0 16px; align-items: center; font-size: 14px; text-align: left; }
-.esheet .es-pop button + button { border-top: 1px solid var(--line); }
-.es-pop small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-tertiary); font-size: 14px; }
+/* how far through the questions, just under the item's title as a loading bar (owner 2026-11-06, mods-lab.html D): the fill in
+   the blue button's own material (.cta), the track flat ("too skeuomorphic" as a groove); grown from the last question's mark (--was) */
+.es-prog { position: absolute; z-index: 1; top: calc(var(--es-top) + 40px); left: 50%; translate: -50% 0; pointer-events: none; }   /* under the title's words, on any size */
+.es-prog { width: 132px; height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.es-prog i { display: block; width: calc(var(--w) * 100%); height: 100%; border-radius: inherit; background: var(--cta-bg); box-shadow: var(--cta-shadow); animation: es-prog .35s var(--rl-ease) both; }
+@keyframes es-prog { from { width: calc(var(--was) * 100%); } }
+/* the review: every answer a pill, a tap goes back to its question */
+.es-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.esheet .es-pills button { max-width: 100%; padding: 6px 12px; border-radius: 16px; background: var(--row-bg, var(--tile)); color: var(--ink-secondary);
+  box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06); font-size: 13px; font-weight: 500; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* the same item again (pos-sell.js openAgain, line-and-again-lab.html 4 / 2b): its lines shaded, the rest faded, the items dimmed,
    the button reads Make another. Phone: the cart rises from the bottom as a sheet; tablet: it stays, without Discount and Total */
 .ag-dim { display: none; }
@@ -9117,13 +9065,13 @@ body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
    ✕ | title | ✓ on the head line; only the keys are a sheet: the half sheet's look (.fsheet.half: flush to the edges,
    32 corners on top, the grab tab, --canvas) docked at the foot, bare digits 69 a row. */
 .co-ok { display: none; }   /* the phone shows it (NUMPAD below) */
-.es-ttl { position: absolute; z-index: 1; top: 8px; inset-inline: 88px; margin: 0; overflow: hidden; color: var(--ink); font-size: 17px; font-weight: 550;
+.es-ttl { position: absolute; z-index: 1; top: var(--es-top); inset-inline: 88px; margin: 0; overflow: hidden; color: var(--ink); font-size: 17px; font-weight: 550;
           line-height: 44px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 720px) {
   .esheet:has(.es-body:is(.wl, .wd, .ks)), #shiftSheet { padding-bottom: 0; }   /* the key sheet / Shift's button reach the screen's foot; Over / short's Close shift on Next's spot (owner 2026-11-05) */
   .esheet:has(.es-body.wl) .es-x .ib { display: none; }
   .esheet:has(.es-body.wl) .es-x .ix { display: block; width: var(--circle-ic); height: var(--circle-ic); stroke-width: var(--circle-sw); }
-  #editSheetCard:has(> .es-body:is(.wl, .wd, .ks)) > .es-ft, .esheet .es-card > .es-ok { position: absolute; z-index: 1; top: 8px; right: 12px; padding: 0; }   /* ✓ on ‹'s line */
+  #editSheetCard:has(> .es-body:is(.wl, .wd, .ks)) > .es-ft, .esheet .es-card > .es-ok { position: absolute; z-index: 1; top: var(--es-top); right: 12px; padding: 0; }   /* ✓ on ‹'s line */
   /* every ✓ is blue (owner 2026-11-05): the Next button's material from .cta, only the 44 circle here */
   .esheet .es-ink.es-ok { display: grid; place-items: center; width: 44px; height: 44px; margin: 0; padding: 0; }
   :is(.esheet .es-ok, .co-ok) svg { width: var(--circle-ic); height: var(--circle-ic); fill: none; stroke: currentColor; stroke-width: var(--circle-sw); stroke-linecap: round; stroke-linejoin: round; }

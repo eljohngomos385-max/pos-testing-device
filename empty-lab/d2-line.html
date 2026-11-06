@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empty states · D2</title>
+<style>
+/* tokens copied from pos-lab/styles.css body.light-theme (white first) and :root (dark) */
+:root {
+  --bg: #FFFFFF; --line: #E1E1E1; --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C;
+  --cta-solid: #4388F7;
+  --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --page: #F2F2F2;
+  /* the ref-03 recipe (refs/d-notes.md), every colour from the app blue */
+  --il-line: color-mix(in srgb, var(--cta-solid) 40%, #DCE2E6);     /* ≈ ref #A3C4EA */
+  --il-x: color-mix(in srgb, var(--cta-solid) 12%, #F0F3F6);        /* ≈ ref #DCE7F1, crosses + diagonals */
+  --il-paper: color-mix(in srgb, var(--cta-solid) 4%, var(--bg));   /* = ref #F7FAFF, the missing thing */
+}
+body.dark {
+  --bg: #121212; --line: rgba(255,255,255,.08); --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45);
+  --page: #1C1C1C;
+  --il-line: color-mix(in srgb, var(--cta-solid) 60%, #6F7782);
+  --il-x: color-mix(in srgb, var(--cta-solid) 22%, var(--bg));
+  --il-paper: color-mix(in srgb, var(--cta-solid) 9%, var(--bg));
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
+header { display: flex; align-items: center; gap: 12px; padding: 28px 40px 8px; max-width: 1400px; margin: 0 auto; }
+header h1 { font-size: 22px; font-weight: 700; margin: 0 auto 0 0; letter-spacing: -.01em; }
+header h1 span { color: var(--ink-tertiary); font-weight: 500; }
+.seg { display: flex; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.seg button { font: inherit; font-size: 14px; border: 0; background: none; color: var(--ink-secondary); padding: 6px 16px; border-radius: 999px; cursor: pointer; }
+.seg button.on { background: var(--page); color: var(--ink); font-weight: 600; }
+main { max-width: 1400px; margin: 0 auto; padding: 0 40px 48px; }
+h2 { font-size: 15px; font-weight: 600; color: var(--ink-secondary); margin: 32px 0 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, 300px); gap: 28px 24px; }
+.cell { margin: 0; }
+.card { width: 300px; height: 420px; background: var(--bg); border: 1px solid var(--line); border-radius: 24px; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 28px 28px; text-align: center; }
+.card svg { width: 300px; height: 265px; display: block; flex: none; margin: 0 -28px 24px; }   /* ref scale: figure 53 % of the card */
+.card b { font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
+.card span { font-size: 14px; color: var(--ink-tertiary); margin-top: 5px; line-height: 1.35; }
+body.left .card { align-items: flex-start; text-align: left; }
+figcaption { font-size: 12px; color: var(--ink-tertiary); margin-top: 8px; padding-left: 4px; }
+@media (max-width: 700px) { header, main { padding-left: 16px; padding-right: 16px; } header { flex-wrap: wrap; } .grid { grid-template-columns: 1fr; justify-items: center; } }
+
+/* the recipe: s = solid on the card colour, d = the missing thing, k = its mark, p = pale detail */
+svg * { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.s, .d, .k, .l { stroke: var(--il-line); stroke-width: 2.4; }
+.s { fill: var(--bg); }
+.d { stroke-dasharray: 8 5.2; stroke-linecap: butt; fill: var(--il-paper); }
+.d.n { fill: none; }
+.k { stroke-width: 3.4; }
+.p { stroke: var(--il-line); stroke-opacity: .5; stroke-width: 2.6; }
+.dot { fill: var(--il-line); fill-opacity: .5; stroke: none; }
+.x { stroke: var(--il-x); }
+.dg { stroke: var(--il-x); stroke-width: 1.3; stroke-linecap: butt; }
+</style>
+</head>
+<body>
+<header>
+  <h1>D2 · Line + dashes <span>— empty states, ref-03 recipe</span></h1>
+  <div class="seg"><button id="aC" class="on">Centre</button><button id="aL">Left</button></div>
+  <div class="seg"><button id="tL" class="on">Light</button><button id="tD">Dark</button></div>
+</header>
+<main id="out"></main>
+
+<script>
+// Every drawing is in ref-03's own pixel frame (figure centre x 106.5, top ≈126, bottom 274),
+// shifted into the card by one transform, so the scatter keeps the ref's exact spacing.
+const X = [[94, 80, 4, 3, -18], [205, 141, 8, 4.6, -16], [4.5, 177.5, 4.6, 3.6, 8], [20.8, 244.5, 3.8, 3, 0], [224.8, 239, 5.4, 3.6, 0]];
+const D = [[128, [[-40, 7.5], [10, 11.5], [14, 53]]], [257, [[144, 161.5], [163.5, 165.5], [166.5, 175], [177, 179], [181, 206]]], [417, [[150, 198], [199, 202], [203, 239], [240, 243], [244, 256]]]];
+const DECO = D.map(([c, r]) => `<path class="dg" d="${r.map(([a, b]) => `M${a} ${c - a}L${b} ${c - b}`).join('')}"/>`).join('')
+  + X.map(([x, y, h, w, r]) => `<path class="x" style="stroke-width:${w}" transform="rotate(${r} ${x} ${y})" d="M${x - h} ${y - h}L${x + h} ${y + h}M${x + h} ${y - h}L${x - h} ${y + h}"/>`).join('');
+
+// the ref drawer's front (notch + handle), shared by "none" and "cash"
+const FRONT = `<path class="s" d="M50.3 213 L57.6 198 Q60.2 193 65.8 193 H147.2 Q152.8 193 155.4 198 L162.7 213"/>
+  <path class="s" d="M50.3 213 L53 207.5 Q55.5 202.7 61 202.7 H152 Q157.5 202.7 160 207.5 L162.7 213"/>
+  <path class="s" d="M45 213 H75.7 Q80.7 213 80.7 218 V226.4 Q80.7 228.4 82.7 228.4 H130.3 Q132.3 228.4 132.3 226.4 V218 Q132.3 213 137.3 213 H168 Q174 213 174 219 V268 Q174 274 168 274 H45 Q39 274 39 268 V219 Q39 213 45 213 Z"/>
+  <path class="p" d="M91.6 246.5 V251.1 Q91.6 255.1 95.6 255.1 H117.4 Q121.4 255.1 121.4 251.1 V246.5"/>`;
+const WALLS = `<path class="l" d="M63.6 170 L41.6 213 M149.4 170 L171.4 213"/>`;
+
+const ART = {
+  // search / filters / customer not found — ref-03 itself
+  none: `<rect class="d" x="63.6" y="126.2" width="85.8" height="80" rx="4"/>
+    <path class="k" d="M98.5 154.4 L114.5 170.4 M114.5 154.4 L98.5 170.4"/>${WALLS}${FRONT}`,
+  // cash in / out — the same drawer, a dashed bill where the paper was
+  cash: `<rect class="d" x="50" y="140" width="113" height="62" rx="6"/><circle class="k" cx="106.5" cy="168" r="11"/>
+    <path class="p" d="M64 154 h8 M141 154 h8"/>${FRONT}`,
+  // nothing selected — the list in front, the empty pane dashed behind, an arrow back to the list
+  pick: `<rect class="d" x="86" y="126" width="88" height="148" rx="8"/><path class="k" d="M158 200 H126 M136 190 L126 200 L136 210"/>
+    <rect class="s" x="39" y="150" width="68" height="124" rx="8"/><path class="p" d="M52 174 H94 M52 198 H94 M52 222 H94 M52 246 H86"/>`,
+  // no items — open box, a dashed price tag standing in it
+  box: `<path class="l" d="M56 178 H157 M39 196 L56 178 M174 196 L157 178"/>
+    <path class="d" d="M86 206 V146 L106.5 126 L127 146 V206"/><circle class="k" cx="106.5" cy="148" r="4.5"/>
+    <path class="s" d="M56 178 L28 162 L14 184 L39 196 Z"/><path class="s" d="M157 178 L185 162 L199 184 L174 196 Z"/>
+    <rect class="s" x="39" y="196" width="135" height="78" rx="6"/>`,
+  // empty category — folder, a dashed tag leaning out
+  folder: `<path class="s" d="M39 274 V146 a6 6 0 0 1 6-6 H76 l10 10 H168 a6 6 0 0 1 6 6 V274 Z"/>
+    <g transform="rotate(-12 106.5 190)"><path class="d" d="M88 236 V160 L106.5 141 L125 160 V236"/><circle class="k" cx="106.5" cy="162" r="4.5"/></g>
+    <path class="s" d="M33 210 a6 6 0 0 1 6-6 H174 a6 6 0 0 1 6 6 L174.5 268 a6 6 0 0 1 -6 6 H44.5 a6 6 0 0 1 -6-6 Z"/>`,
+  // all variants sold out — every slot on the shelf dashed
+  shelf: `<path class="l" d="M44 126 V274 M169 126 V274"/>
+    <rect class="d" x="55" y="148" width="28" height="38" rx="4"/><rect class="d" x="92.5" y="138" width="28" height="48" rx="4"/><rect class="d" x="130" y="156" width="28" height="30" rx="4"/>
+    <rect class="d" x="55" y="226" width="28" height="39" rx="4"/><rect class="d" x="92.5" y="236" width="28" height="29" rx="4"/><rect class="d" x="130" y="220" width="28" height="45" rx="4"/>
+    <rect class="s" x="34" y="186" width="145" height="9" rx="3"/><rect class="s" x="34" y="265" width="145" height="9" rx="3"/>`,
+  // cart empty — the bag, a dashed item about to drop in
+  bag: `<g transform="rotate(14 106.5 140)"><rect class="d" x="90" y="118" width="33" height="33" rx="5"/></g>
+    <path class="l" d="M86 188 V182 a20.5 20.5 0 0 1 41 0 V188"/>
+    <path class="s" d="M47 186 H166 L158 266 a9 9 0 0 1 -9 8 H64 a9 9 0 0 1 -9-8 Z"/>`,
+  // saved carts — the bag, a dashed bookmark on it
+  saved: `<path class="l" d="M86 170 V162 a20.5 20.5 0 0 1 41 0 V170"/>
+    <path class="s" d="M47 166 H166 L158 266 a9 9 0 0 1 -9 8 H64 a9 9 0 0 1 -9-8 Z"/>
+    <path class="d" d="M91 192 V244 L106.5 232 L122 244 V192 Z"/>`,
+  // no orders — a dashed receipt coming out of the printer
+  receipt: `<path class="d" d="M63.6 214 V132 l7.15 -6 7.15 6 7.15 -6 7.15 6 7.15 -6 7.15 6 7.15 -6 7.15 6 7.15 -6 7.15 6 7.15 -6 7.15 6 V214"/>
+    <path class="p" d="M80 156 H133 M80 174 H118 M80 192 H133"/>
+    <rect class="s" x="51" y="198" width="111" height="16" rx="5"/>
+    <rect class="s" x="39" y="208" width="135" height="66" rx="8"/><path class="l" d="M57 226 H156"/><circle class="dot" cx="152" cy="256" r="3.2"/>`,
+  // nothing sold today — the calendar, today's square dashed
+  cal: `<rect class="s" x="39" y="140" width="135" height="134" rx="10"/><path class="l" d="M39 170 H174 M73 128 V150 M140 128 V150"/>
+    ${[0, 1, 2].map(r => [0, 1, 2, 3].map(c => r === 2 && c === 2 ? '' : `<circle class="dot" cx="${63 + c * 29}" cy="${194 + r * 26}" r="3.4"/>`).join('')).join('')}
+    <rect class="d" x="105" y="233" width="28" height="26" rx="5"/>`,
+  // reports, nothing sold — the bars dashed on solid axes
+  chart: `<rect class="d" x="60" y="206" width="20" height="60" rx="4"/><rect class="d" x="90" y="160" width="20" height="106" rx="4"/>
+    <rect class="d" x="120" y="222" width="20" height="44" rx="4"/><rect class="d" x="150" y="182" width="20" height="84" rx="4"/>
+    <path class="l" d="M44 132 V266 H180"/>`,
+  // no categories — four dashed tiles
+  tiles: `<rect class="d" x="46" y="140" width="56" height="56" rx="10"/><rect class="d" x="111" y="140" width="56" height="56" rx="10"/>
+    <rect class="d" x="46" y="205" width="56" height="56" rx="10"/><rect class="d" x="111" y="205" width="56" height="56" rx="10"/>`,
+  // no modifiers — an options card, every row dashed
+  options: `<rect class="s" x="44" y="132" width="125" height="142" rx="12"/>
+    ${[168, 203, 238].map((y, i) => `<circle class="d n" cx="70" cy="${y}" r="8"/><path class="d" d="M90 ${y} H${[150, 138, 146][i]}"/>`).join('')}`,
+  // no add-ons — an item, a dashed + extra on its corner
+  addon: `<rect class="s" x="39" y="160" width="104" height="104" rx="16"/>
+    <path class="p" d="M74 240 V204 L91 187 L108 204 V240 Z"/><circle class="p" cx="91" cy="206" r="4"/>
+    <circle class="d" cx="143" cy="160" r="30"/><path class="k" d="M143 147 V173 M130 160 H156"/>`,
+  // no discounts — a dashed tag with %
+  disc: `<g transform="rotate(-14 106.5 200)"><path class="d" d="M42 200 L68 166 a6 6 0 0 1 5-2.5 H164 a6 6 0 0 1 6 6 V230.5 a6 6 0 0 1 -6 6 H73 a6 6 0 0 1-5-2.5 Z"/>
+    <circle class="l" cx="68" cy="200" r="5"/><circle class="k" cx="106" cy="185" r="6"/><circle class="k" cx="138" cy="215" r="6"/><path class="k" d="M140 180 L104 220"/></g>`,
+  // no customers — a contact card, the person dashed
+  person: `<rect class="s" x="34" y="150" width="145" height="104" rx="12"/>
+    <circle class="d" cx="76" cy="190" r="14"/><path class="d n" d="M51 234 a25 21 0 0 1 50 0"/>
+    <path class="p" d="M118 186 H156 M118 206 H146"/>`,
+  // past shifts — a clock, the dashed history ring around it
+  clock: `<path class="d n" d="M44.5 177.4 A66 66 0 1 1 44.5 222.6"/><path class="k" d="M54.2 228.7 L44.5 222.6 L41 233.4"/>
+    <circle class="s" cx="106.5" cy="200" r="44"/><path class="k" d="M106.5 174 V200 L124 211"/>`,
+  // no suppliers — a truck, the load dashed
+  truck: `<rect class="d" x="22" y="160" width="110" height="82" rx="6"/>
+    <path class="s" d="M132 182 H162 a5 5 0 0 1 4 2 L190 214 V242 H132 Z"/><path class="p" d="M140 190 H159 L172 208 H140 Z"/>
+    <circle class="s" cx="58" cy="246" r="13"/><circle class="s" cx="160" cy="246" r="13"/>`,
+  // nothing hidden — the hidden-eye, dashed
+  eye: `<path class="d" d="M34 200 Q106.5 128 179 200 Q106.5 272 34 200 Z"/><circle class="d n" cx="106.5" cy="200" r="19"/>
+    <path class="k" d="M64 152 L149 248"/>`,
+  // no printer — the printer dashed, solid Wi-Fi searching over it
+  printer: `<path class="k" d="M96.6 152.1 A14 14 0 0 1 116.4 152.1 M86.7 142.2 A28 28 0 0 1 126.3 142.2"/><path class="p" d="M76.8 132.3 A42 42 0 0 1 136.2 132.3"/>
+    <circle class="dot" style="fill-opacity:1" cx="106.5" cy="162" r="3.6"/>
+    <path class="d" d="M63.6 196 V182 a6 6 0 0 1 6-6 H143.4 a6 6 0 0 1 6 6 V196 H164 a10 10 0 0 1 10 10 V264 a10 10 0 0 1 -10 10 H49 a10 10 0 0 1 -10-10 V206 a10 10 0 0 1 10-10 Z"/>
+    <path class="p" d="M57 236 H156"/>`,
+};
+
+const PAGES = [
+  ['Sell', [
+    ['none', 'No results', 'Try a different word or scan it.', 'Sell · search'],
+    ['box', 'No items yet', 'Add what you sell and it shows here.', 'Sell · catalog empty'],
+    ['folder', 'No items in this category', 'Add some to it in Items.', 'Sell · empty category'],
+    ['shelf', 'All sold out', 'Show all to see them.', 'Sell · variants picker'],
+    ['bag', 'Cart is empty', 'Tap an item to add it.', 'Sell · cart'],
+    ['none', 'No customer found', 'Try a name or phone number.', 'Sell · customer picker'],
+  ]],
+  ['Orders', [
+    ['receipt', 'No orders yet', 'Every sale you make shows up here.', 'Orders · first day'],
+    ['cal', 'Nothing sold today', 'Today’s sales show up here.', 'Orders · Today'],
+    ['none', 'No orders match', 'Try different filters.', 'Orders · filters'],
+    ['pick', 'No order selected', 'Pick one to see its receipt.', 'Orders · iPad detail pane'],
+    ['saved', 'No saved carts', 'Carts you save for later go here.', 'Orders · Saved carts'],
+  ]],
+  ['Items', [
+    ['box', 'No items yet', 'Add what you sell. It shows on Sell.', 'Items · items'],
+    ['none', 'No items match', 'Nothing in these filters.', 'Items · filters'],
+    ['tiles', 'No categories yet', 'Group items to find them faster.', 'Items · categories'],
+    ['options', 'No modifiers yet', 'Sizes and options go here.', 'Items · modifiers'],
+    ['addon', 'No add-ons yet', 'Extras sold with an item go here.', 'Items · add-ons'],
+    ['disc', 'No discounts yet', 'Discounts you make show up here.', 'Items · discounts'],
+    ['truck', 'No suppliers yet', 'Add them in the back office.', 'Items · suppliers'],
+    ['eye', 'Nothing is hidden', 'Items you hide show up here.', 'Items · hidden'],
+  ]],
+  ['Customers', [
+    ['person', 'No customers yet', 'Save a customer to see their orders.', 'Customers · list'],
+    ['pick', 'No customer selected', 'Pick one to see their details.', 'Customers · iPad detail pane'],
+  ]],
+  ['Shift', [
+    ['cash', 'No cash in or out yet', 'Money put in or taken out shows here.', 'Shift · cash in / out'],
+    ['clock', 'No past shifts yet', 'Each closed shift shows up here.', 'Shift · past shifts'],
+  ]],
+  ['Reports', [
+    ['chart', 'Nothing sold today', 'Sales show here as you sell.', 'Reports · Today'],
+  ]],
+  ['Settings', [
+    ['printer', 'No printer connected', 'Tap Scan to search your Wi‑Fi.', 'Settings · printers'],
+  ]],
+];
+
+// ref frame → card: same 256-wide frame scaled to the 300 card, figure centred (x 106.5 → 128)
+document.getElementById('out').innerHTML = PAGES.map(([page, list]) => `<h2>${page}</h2><div class="grid">${
+  list.map(([art, t, s, where]) => `<figure class="cell"><div class="card">
+    <svg viewBox="0 0 256 226" aria-hidden="true"><g transform="translate(21.5 -50)">${DECO}${ART[art]}</g></svg><b>${t}</b><span>${s}</span></div>
+    <figcaption>${where}</figcaption></figure>`).join('')}</div>`).join('');
+
+const sw = (a, b, on) => { a.classList.toggle('on', !on); b.classList.toggle('on', on); };
+tL.onclick = () => { document.body.classList.remove('dark'); sw(tL, tD, false); };
+tD.onclick = () => { document.body.classList.add('dark'); sw(tL, tD, true); };
+aC.onclick = () => { document.body.classList.remove('left'); sw(aC, aL, false); };
+aL.onclick = () => { document.body.classList.add('left'); sw(aC, aL, true); };
+</script>
+</body>
+</html>

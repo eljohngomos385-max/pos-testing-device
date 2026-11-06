@@ -63,18 +63,20 @@
   // 'CASH 237.86' as if it came in. A parked cart has none.
   // An exchange (vm.swapped, SalesMath.receiptParts) prints its swap once as EXCHANGE; only the money that changed
   // hands follows it.
-  function payRows(vm) {
+  // `plain`: the words as written (Modern: 'Cash', 'GCash'), not in capitals (Classic).
+  function payRows(vm, plain) {
     if (!vm || vm.status === 'saved') return [];
+    const U = s => (plain ? String(s) : String(s).toUpperCase());
     const legs = vm.legs || [];
-    const name = (p, i) => String((legs[i] && legs[i].label) || p.label || p.method).toUpperCase();
-    const swap = Number(vm.swapped) > 0 ? [['EXCHANGE', Number(vm.swapped)]] : [];
+    const name = (p, i) => U((legs[i] && legs[i].label) || p.label || p.method);
+    const swap = Number(vm.swapped) > 0 ? [[U('Exchange'), Number(vm.swapped)]] : [];
     const money = (vm.payments || []).map((p, i) => [p, i]).filter(([p]) => !(swap.length && p.ref));
-    if (vm.paidWord === 'Given back') return swap.concat(money.map(([p, i]) => ['GIVEN BACK · ' + name(p, i), Number(p.amount) || 0]));
+    if (vm.paidWord === 'Given back') return swap.concat(money.map(([p, i]) => [U('Given back · ') + name(p, i), Number(p.amount) || 0]));
     // a sale's reference no. (Settings > Payment types) under its tender, as text; an exchange's or refund's ref is a marker, never printed
     // printed as the word it was asked as (refLabel: LAST 4 DIGITS); a cash ref comes after its change
-    const ref = p => (!swap.length && p.ref ? [[String(p.refLabel || 'Ref no.').toUpperCase(), String(p.ref)]] : []);
+    const ref = p => (!swap.length && p.ref ? [[U(p.refLabel || 'Ref no.'), String(p.ref)]] : []);
     return swap.concat(money.flatMap(([p, i]) => (p.method === 'cash'
-      ? [['CASH', SM().tenderedOf(p)], ...(p.change > 0 ? [['CHANGE', p.change]] : []), ...ref(p)]
+      ? [[U('Cash'), SM().tenderedOf(p)], ...(p.change > 0 ? [[U('Change'), p.change]] : []), ...ref(p)]
       : [[name(p, i), Number(p.amount) || 0], ...ref(p)])));
   }
 
@@ -85,7 +87,29 @@
 
   // ---------- layout: receipt view model -> op list ----------
 
-  // The top of every slip: the store's name (double width = half the columns), address, phone, TIN, a rule.
+  // The receipt's two styles (Settings › Receipt › Style, owner 2026-11-06, receipt-look-lab): Classic (T1, the default) and
+  // Modern (G2.2). Screen, pop-up and paper read these two, so all three say the same lines.
+  // The address, then 'Tel' and the store's numbers, side by side with ' · ' while they fit the line (owner 2026-11-06:
+  // full lines, never a number a line); a number never splits.
+  function headLines(st, cols) {
+    const nums = String(st.phone || '').split(' / ').filter(Boolean).map((n, i) => (i ? n : 'Tel ' + n));
+    return [st.address, ...nums].filter(Boolean).reduce((out, t) => {
+      const l = out.length && out[out.length - 1] + ' · ' + t;
+      if (l && l.length <= cols) out[out.length - 1] = l; else out.push(t);
+      return out;
+    }, []);
+  }
+  // The customer's lines as [word, value]: who, where it goes, the SC/PWD cardholder, the order's note. A walk-in has none.
+  function custLines(vm) {
+    const c = vm.customer || {}, out = [];
+    if (c.name) out.push(['Customer', c.name + (c.phone ? ' · ' + c.phone : '')]);
+    if (String(vm.fulfilmentLabel || '').startsWith('DELIVERY') && vm.deliveryAddress) out.push(['Deliver to', vm.deliveryAddress]);
+    if (vm.scPwdId) out.push(vm.scPwdId);
+    if (vm.note) out.push(['Note', vm.note]);
+    return out;
+  }
+
+  // The top of a plain slip (the shift summary): the store's name (double width = half the columns), address, phone, TIN, a rule.
   function storeHead(st, cols, ops) {
     const text = s => ops.push({ op: 'text', v: ascii(s) });
     ops.push({ op: 'align', v: 'center' }, { op: 'bold', v: true }, { op: 'big', v: true });
@@ -139,59 +163,88 @@
 
     const st = vm.store || {};
     const cash = n => money(n, st.currency);
+    const look = vm.look || {};
 
-    storeHead(st, cols, ops);
+    const t1 = look.style !== 'g2';   // Classic; paper prints both in its own font, so only the layout differs
+    const up = s => (t1 ? String(s).toUpperCase() : String(s));
+    const half = Math.floor(cols / 2);   // big = double width
+
+    if (o.logoImage) ops.push({ op: 'image', v: o.logoImage });   // already centred on the full head (picRaster)
+    align('center'); bold(true); big(true);
+    wrap(st.name || '', half).forEach(text);
+    big(false); bold(false);
+    (look.header || []).forEach(l => wrap(l, cols).forEach(text));   // the store's own line (Settings › Receipt), under the name
+    headLines(st, cols).forEach(l => wrap(l, cols).forEach(text));
+    align('left'); rule();
 
     if (vm.mark) { align('center'); bold(true); text(vm.mark); bold(false); align('left'); }
-    if (vm.number) row('Receipt #', vm.number);   // a saved cart or quote has none: it is not a receipt
-    row('Date', vm.dateText || '');
-    row(vm.whoWord || 'Cashier', vm.cashier || '');   // a void or refund names who pressed it
-    row('Register', vm.register || '1');
-
-    if (vm.customer && vm.customer.name) text('Customer: ' + vm.customer.name);
-    // SalesMath.receiptParts: the SC/PWD cardholder, the ID on one line and the name under it (never split mid-way)
-    if (vm.scPwdId) vm.scPwdId.join(': ').split(' · ').forEach(s => wrap(s, cols).forEach(text));
-
     // The word is the till's (bo-model orderFulfilLabel, upper-cased): Walk-in, Pickup, Delivery or a store's own type.
     const fulfil = String(vm.fulfilmentLabel || '').split(' · ')[0];
     const delivery = fulfil === 'DELIVERY';
-    if (fulfil) { bold(true); text(fulfil); bold(false); }
-    if (delivery && vm.deliveryAddress) wrap(vm.deliveryAddress, cols).forEach(text);
-    if (vm.note) wrap('Note: ' + vm.note, cols).forEach(text);   // the order's note (cart ⋯ Add note)
+    if (t1) {
+      if (vm.number) text('RECEIPT #' + vm.number);   // a saved cart or quote has none: it is not a receipt
+      text(vm.dateText || '');
+      text(up((vm.whoWord || 'Cashier') + ' ' + (vm.cashier || '')));   // a void or refund names who pressed it
+      text('POS ' + (vm.register || '1') + (fulfil ? ' · ' + fulfil : ''));
+    } else {
+      if (vm.number) row('Receipt #', vm.number);
+      row('Date', vm.dateText || '');
+      row(vm.whoWord || 'Cashier', vm.cashier || '');
+      row('POS', vm.register || '1');
+    }
+    const cust = custLines(vm);
+    if (cust.length) rule();
+    if (!t1 && fulfil) { bold(true); text(fulfil); bold(false); }
+    cust.forEach(([k, v]) => wrap(t1 ? k.toUpperCase() + ': ' + v : k === 'Customer' ? v : k + ': ' + v, cols).forEach(text));
 
     rule();
 
     const t = vm.totals || {};
+    // Classic's items are a QTY / ITEM / PRICE / AMOUNT table where 48 columns fit one; on 58mm, in Modern, or for a line
+    // too wide for the table: the name, then its qty x price and amount.
+    const table = t1 && cols >= 40, qw = 4, pw = 10, aw = 11, nw = cols - qw - pw - aw;
+    const cells = (q, n, p, a) => q.padEnd(qw) + n.padEnd(nw) + p.padStart(pw) + a.padStart(aw);
+    if (table) { bold(true); text(cells('QTY', 'ITEM', 'PRICE', 'AMOUNT')); bold(false); rule(); }
+    const under = s => (table ? ' '.repeat(qw) : '  ') + s;
     // Each line at price x qty before discount, fitted to the Subtotal; the discount prints once, below.
     SM().receiptLines({ ...t, items: vm.items || [] }).forEach(({ item: i, amount }) => {
-      wrap(i.name, cols).forEach(text);
-      const qty = ('  ' + SM().qtyText(i.qty) + ' ' + (i.unit || '')).replace(/\s+$/, '') + ' x ' + cash(i.price);
-      row(qty, cash(amount));
+      const q = SM().qtyText(i.qty), names = wrap(i.name, nw - 1), line = table ? cells(q, names[0], cash(i.price), cash(amount)) : '';
+      if (line && line.length <= cols) {
+        text(line);
+        names.slice(1).forEach(s => text(under(s)));
+      } else {
+        wrap(i.name, cols).forEach(text);
+        row(('  ' + q + ' ' + (i.unit || '')).replace(/\s+$/, '') + ' x ' + cash(i.price), cash(amount));
+      }
       // its modifier answers ('Sweetness: 50%'), then its note, under it like its qty
-      SM().answerLines(i, cash).forEach(a => wrap(a, cols - 2).forEach(s => text('  ' + s)));
-      if (i.note) wrap(i.note, cols - 2).forEach(s => text('  ' + s));
+      SM().answerLines(i, cash).forEach(a => wrap(a, cols - 4).forEach(s => text(under(s))));
+      if (i.note) wrap(i.note, cols - 4).forEach(s => text(under(s)));
     });
 
     rule();
 
-    totalRows(vm).forEach(([l, n]) => row(l, cash(n)));
-    rule('=');
-    bold(true); big(true);
-    row('TOTAL', cash(t.total));
-    big(false); bold(false);
-
+    totalRows(vm).forEach(([l, n]) => row(up(l), cash(n)));
     if (vm.status === 'saved') {
-      if (!vm.mark) row('STATUS', 'NOT COMPLETED');   // a quote says QUOTATION at the top instead
+      if (!vm.mark) row(up('Status'), up('Not completed'));   // a quote says QUOTATION at the top instead
     } else {
-      payRows(vm).forEach(([l, n]) => typeof n !== 'string' ? row(l, cash(n)) : ascii(n).trim() && row(l, n));   // REF NO. is text; one the paper can't spell (all CJK / emoji) stays on screen only
+      payRows(vm, !t1).forEach(([l, n]) => typeof n !== 'string' ? row(l, cash(n)) : ascii(n).trim() && row(l, n));   // REF NO. is text; one the paper can't spell (all CJK / emoji) stays on screen only
     }
+    bold(true); big(true);
+    row('TOTAL', cash(t.total));   // last, under what was paid (the lab's T1 and G2.2)
+    big(false); bold(false);
 
     rule();
     if (delivery) mapBlock(o.mapImage);
     align('center');
-    bold(true); text('Thank you!'); bold(false);
+    // Settings › Receipt's footer lines: the first is the big thank-you (it starts as 'Thank you!'), then its picture
+    const [ty, ...more] = look.footer || ['Thank you!'];
+    if (ty) { bold(true); big(t1); wrap(up(ty), t1 ? half : cols).forEach(text); big(false); bold(false); }
+    more.forEach(l => wrap(l, cols).forEach(text));
+    if (o.footImage) ops.push({ op: 'image', v: o.footImage });
+    if (vm.number) { text(''); text('RECEIPT NO.'); bold(true); big(true); wrap(vm.number, half).forEach(text); big(false); bold(false); text(''); }
     // SalesMath.receiptParts' footer: a sale is the official receipt; a void or refund slip says it is not.
     (vm.footer || SM().receiptParts(vm).footer).forEach(l => wrap(l, cols).forEach(text));
+    if (st.tin) text('TIN ' + st.tin);
     align('left');
 
     ops.push({ op: 'feed', v: 4 });
@@ -361,6 +414,29 @@
     ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(1, 1, w - 2, h - 2);
 
     return { w, h, bits: packMono(stretch(readGray(), lo, hi), w, h, mode) };
+  }
+
+  // Settings › Receipt's pictures, as a share of the head's width: the box each one fits in. The screen's .rcpt .pic uses
+  // the same box (receipt.css), so the paper and the preview match.
+  const RECEIPT_PICS = { logo: [0.6, 0.3], foot: [0.6, 0.6] };
+  // A picture (a data URL) -> { w, h, bits } for the image op, centred on the full head width with white either side,
+  // so no printer's own centring is relied on. Browser only, like mapRaster.
+  // ponytail: dithered (packMono 'shaded'); a flat QR comes out as its own black and white, a photo as dots.
+  async function picRaster(src, dots, box, name) {
+    if (typeof document === 'undefined') throw new Error('Pictures need a browser');
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('picture')); i.src = src; });
+    const k = Math.min(dots * box[0] / img.width, dots * box[1] / img.height);
+    const w = dots - (dots % 8), pw = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+    ctx.imageSmoothingEnabled = k < 1;   // a small QR blown up keeps square, sharp dots
+    ctx.drawImage(img, Math.round((w - pw) / 2), 0, pw, h);
+    const px = ctx.getImageData(0, 0, w, h).data, gray = new Float32Array(w * h);
+    for (let i = 0; i < gray.length; i++) gray[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+    const { lo, hi } = levels(gray);   // a near-black logo (#111) prints solid, not sprinkled with white dots, as the map
+    return { w, h, bits: packMono(stretch(gray, lo, hi), w, h, 'shaded'), name };
   }
 
   // ---------- encoder: ESC/POS bytes (Bluetooth) ----------
@@ -585,7 +661,11 @@
         mapImage.caption = vm.deliveryMapCaption || 'Delivery location';
       } catch (e) { mapImage = null; }
     }
-    return send(layout(vm, { width: c.width, cut: c.cut, mapImage }), c);
+    // ponytail: a picture that won't load prints the receipt without it, like the map
+    const dots = colsFor(c.width) * 12, look = vm.look || {};
+    const pic = (src, box, name) => (src ? picRaster(src, dots, box, name).catch(() => null) : null);
+    const [logoImage, footImage] = await Promise.all([pic(look.logo, RECEIPT_PICS.logo, 'logo'), pic(look.footerImg, RECEIPT_PICS.foot, 'picture')]);
+    return send(layout(vm, { width: c.width, cut: c.cut, mapImage, logoImage, footImage }), c);
   }
   // Laid-out ops to the paired printer: the one transport switch every slip goes through.
   function send(ops, c) {
@@ -608,13 +688,13 @@
   // Plain-text render of the same layout — used by the Test print preview.
   function preview(vm, cfg) {
     const c = cfg || {};
-    return layout(vm, { width: c.width, cut: c.cut, mapImage: c.mapImage })
+    return layout(vm, { width: c.width, cut: c.cut, mapImage: c.mapImage, logoImage: c.logoImage, footImage: c.footImage })
       .filter(o => o.op === 'text' || o.op === 'image')
-      .map(o => o.op === 'image' ? '[ delivery map ' + o.v.w + 'x' + o.v.h + ' ]' : o.v)
+      .map(o => o.op === 'image' ? '[ ' + (o.v.name || 'delivery map') + ' ' + o.v.w + 'x' + o.v.h + ' ]' : o.v)
       .join('\n');
   }
 
-  const API = { print, send, preview, printSlip, slipText, slipLayout, pairBluetooth, scanNetwork, probe, layout, escpos, eposXml, eposUrl, mapRaster, packMono, levels, stretch, colsFor, pad, wrap, money, ascii, payRows, totalRows };
+  const API = { print, send, preview, printSlip, slipText, slipLayout, pairBluetooth, scanNetwork, probe, layout, escpos, eposXml, eposUrl, mapRaster, picRaster, packMono, levels, stretch, colsFor, pad, wrap, money, ascii, payRows, totalRows, headLines, custLines };
   g.HWPOS_PRINTER = API;
   if (typeof module === 'object' && module.exports) module.exports = API;
 })(typeof window !== 'undefined' ? window : globalThis);

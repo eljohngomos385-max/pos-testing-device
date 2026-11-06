@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>E2 · copy of ref-01</title>
+<!-- 609 x 420 = ref-01 crop (0,300)-(609,720), same pixels; numbers from refs/e-notes.md -->
+<style>
+body { margin: 0; width: 609px; height: 420px; background: #FFFFFF; position: relative; overflow: hidden;
+       font-family: "Segoe UI", -apple-system, "SF Pro Text", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+svg { position: absolute; inset: 0; }
+.t { position: absolute; left: 0; right: 0; text-align: center; color: #1F1F1F; }
+b.t  { top: 291px; font-size: 22px; font-weight: 700; }
+p.t  { top: 346px; margin: 0; font-size: 17.5px; line-height: 22px; color: #262626; }
+</style>
+</head>
+<body>
+<svg viewBox="0 300 609 420" width="609" height="420">
+  <defs>
+    <filter id="g" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="15"/></filter>
+    <filter id="f" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+    <path id="letter" d="M272 376 L339 367 L343 406 L314 437 L272 417 Z"/>
+    <rect id="card" x="258" y="398" width="113" height="80" rx="10" transform="rotate(-6 316 438)"/>
+    <clipPath id="cardClip"><use href="#card"/></clipPath>
+  </defs>
+  <!-- glow: the blue piece + the glass, blurred, a little down -->
+  <g filter="url(#g)" opacity=".5" fill="#2391FF">
+    <use href="#letter"/><use href="#card" transform="translate(2 11)"/>
+  </g>
+  <!-- back flap -->
+  <path d="M262 405 L298 352 L352 398 Z" fill="#E9F3FF" stroke="#E9F3FF" stroke-width="10" stroke-linejoin="round"/>
+  <!-- the glass: the blue piece blurred behind it, then white frost -->
+  <g clip-path="url(#cardClip)">
+    <g filter="url(#f)" fill="#2391FF"><use href="#letter"/><rect x="276" y="400" width="66" height="50" rx="6" transform="rotate(-6 316 438)"/></g>
+    <use href="#card" fill="#FFFFFF" fill-opacity=".6"/>
+  </g>
+  <use href="#card" fill="none" stroke="#FFFFFF" stroke-opacity=".9" stroke-width="1"/>
+  <!-- the blue piece on top -->
+  <use href="#letter" fill="#2391FF" stroke="#2391FF" stroke-width="13" stroke-linejoin="round"/>
+  <path d="M280 393 L330 385 M282 407 L340 398" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"/>
+  <!-- wave + arrow -->
+  <path d="M231 497 C 250 465, 270 455, 290 478 S 330 505, 350 470 L 392 398" fill="none" stroke="#222" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M380 401 L393 395 L394 409" fill="none" stroke="#222" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+<b class="t">Контур Коннект</b>
+<p class="t">С помощью уведомлений позволяет<br>подтвердить второй фактор без ввода кода</p>
+</body>
+</html>
