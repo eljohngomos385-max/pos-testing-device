@@ -491,15 +491,16 @@ function showCheckoutSuccess(order, handBack = 0) {
   clearCart();
   const back = $('#paymentModal'); if (back) back.hidden = true;
   if (state.view !== 'checkout') switchView('checkout');
-  // The only big number is the change to hand back; method, cash and total are on the receipt.
+  // The only big number is the change to hand back, on the hero line, its word under it; none: the word is the hero
+  // (as Walk-in). Method, cash and total are on the receipt.
   const change = moneyValue(handBack || order.change || 0);
-  const changeBlock = $('#successChangeBlock');
-  if (changeBlock) changeBlock.hidden = !(change > 0);
-  if (changeBlock) changeBlock.firstElementChild.textContent = handBack ? 'Hand back' : 'Change';
-  $('#checkoutDone .co-done-h').textContent = SalesMath.isExchange(order) ? 'Exchange complete' : 'Sale complete';
   const changeEl = $('#successChange');
+  $('#successChangeLbl').hidden = !(change > 0);
+  $('#successChangeLbl').textContent = handBack ? 'Hand back' : 'Change';
+  changeEl.textContent = change > 0 ? peso(0) : 'Complete';
+  clearTimeout(showCheckoutSuccess._t);
   $('#checkoutSteps').hidden = true;
-  $('#checkoutDone').hidden = false; // un-hiding replays the check and the rise
+  $('#checkoutDone').hidden = false; // un-hiding replays the rise
   $('#checkoutApp').classList.add('is-done');
   hideToast();   // an "Enter the … first" from the step before is over (blind test 2026-10-23)
   const receipt = $('#checkoutReceipt');
@@ -513,23 +514,14 @@ function showCheckoutSuccess(order, handBack = 0) {
     $('#railCount').textContent = SalesMath.plural(n, 'item');
     $('#side').classList.remove('empty-cart');
   }
-  if (changeEl && change > 0) {
-    changeEl.classList.remove('settled');
-    // a big change shrinks to the column, sized on the final figure so the count-up doesn't jump
-    // ponytail: sized once; a tablet turned mid-moment keeps it
-    changeEl.style.removeProperty('--fit');
-    changeEl.textContent = peso(change);
-    const room = $('#checkoutDone').clientWidth, w = changeBlock.scrollWidth;
-    if (w > room) changeEl.style.setProperty('--fit', `${Math.floor(64 * room / w)}px`);
-    changeEl.textContent = peso(0);
+  if (change > 0) {   // the change counts up; no fit, as the total on this line has none
     const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    clearTimeout(showCheckoutSuccess._t);
     showCheckoutSuccess._t = setTimeout(() => {
       const t0 = performance.now();
       const step = (now) => {
         const k = still ? 1 : Math.min(1, (now - t0) / 700);
         changeEl.textContent = peso(change * (1 - (1 - k) ** 3));
-        if (k < 1) requestAnimationFrame(step); else changeEl.classList.add('settled');
+        if (k < 1 && showCheckoutSuccess._orderId === order.id) requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
     }, still ? 0 : 280);

@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=798" />
+  <link rel="stylesheet" href="styles.css?v=800" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-back" viewBox="0 0 24 24"><path d="M15 4l-8 8 8 8"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5.2 7.1L19.8 4.4"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r=".8" fill="currentColor"/><circle cx="12" cy="12" r=".8" fill="currentColor"/><circle cx="19" cy="12" r=".8" fill="currentColor"/></symbol></svg>   <!-- every round-button icon (‹ ✕ ✓ ⋯) is <use href="#i-…"/>: change the shape here, the size and line in --circle-ic / --circle-sw (owner 2026-11-04, measured off Apple Settings, Contacts and Safari) -->
@@ -468,18 +468,22 @@
                 </div>
                 <div class="co-error" id="checkoutError" hidden></div>
               </div>
-              <div class="co-done" id="checkoutDone" aria-live="polite" hidden>
-                <div class="co-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="m-c" cx="32" cy="32" r="30"/><path class="m-k" d="M20 33l8 8 16-17"/></svg></div>
-                <h2 class="co-done-h" style="--i:1">Sale complete</h2>
-                <div class="co-done-chg" id="successChangeBlock" style="--i:2"><span>Change</span><span class="co-done-num num" id="successChange">₱0.00</span></div>
-                <div class="co-done-acts" style="--i:4">
-                  <button type="button" class="co-btn cta-2" id="successPrintBtn">Print receipt</button>
+              <!-- Sale complete = checkout's own page (owner 2026-11-06): the change on the hero line, its word under it in the
+                   gap as Discount's "off" (no change: the word is the hero, as Walk-in), the receipt as method rows, New sale on Done's spot -->
+              <div class="co-col co-done" id="checkoutDone" aria-live="polite" hidden>
+                <div class="co-mark" hidden><svg viewBox="0 0 64 64" aria-hidden="true"><circle class="m-c" cx="32" cy="32" r="30"/><path class="m-k" d="M20 33l8 8 16-17"/></svg></div>
+                <div class="co-hero num" id="successChange">₱0.00</div>
+                <p class="sp-paid" id="successChangeLbl">Change</p>
+                <div class="co-step">
+                  <div class="co-tiles" id="checkoutDoneActs">
+                    <button type="button" class="co-tile" id="successPrintBtn"><svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><path d="M7 14h10v6H7z"/></svg><span>Print receipt</span></button>
+                    <!-- Phone: the receipt is a sheet; the tablet shows it in the items column -->
+                    <button type="button" class="co-tile co-rcpt-btn" id="checkoutRcptBtn"><svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><span>Show receipt</span></button>
+                  </div>
                   <button type="button" class="co-btn primary cta" id="successNewSaleBtn">New sale</button>
                 </div>
               </div>
             </div>
-            <!-- Phone: the receipt is a sheet; this opens it, where Check out sits -->
-            <button type="button" class="co-btn co-rcpt-btn cta-2" id="checkoutRcptBtn"><span>Show receipt</span></button>
           </section>
           <aside class="co-items" aria-label="Items">
             <button type="button" class="co-cust" id="checkoutCustBtn" title="Change customer">
@@ -994,7 +998,7 @@
   <script src="drawer.js?v=1"></script>
   <script src="pos-core.js?v=74"></script>
   <script src="pos-sell.js?v=157"></script>
-  <script src="pos-checkout.js?v=53"></script>
+  <script src="pos-checkout.js?v=54"></script>
   <script src="pos-orders.js?v=54"></script>
   <script src="pos-items.js?v=89"></script>
   <script src="pos-customers.js?v=50"></script>
