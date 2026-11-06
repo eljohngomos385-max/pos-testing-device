@@ -675,26 +675,35 @@
   //   paidWord 'Paid', or 'Given back' on a reversal (money went out, not in)
   //   whoWord  'Cashier', 'Voided by', 'Refunded by' -- a reversal's cashier is who pressed it
   //   legs     [{ key, label, amount }]: the tenders, by name ('GCash', never 'Refund')
-  //   footer   the closing lines: a sale is the official receipt; a reversal is not, and never
+  //   footer   the closing lines: what the slip is, then the Receipt says line; a reversal never
   //            says goods cannot come back on the slip that took them back
   //   scPwd    the SC/PWD lines when the order carries them: [{ label, amount }]
   //   scPwdId  the cardholder's [label, 'ID no. · Name'], or null
+  // 'Keep for returns and exchanges.' is the store's own footer text now (Settings › Receipt, owner 2026-11-06).
   const FOOTER = {
-    // Lines can come back now (owner 2026-10-03: line refunds, exchanges), so the slip no longer says they can't.
-    sale: ['This serves as your official receipt.', 'Keep for returns and exchanges.'],
-    void: ['This sale is cancelled.', 'This is not an official receipt.'],
-    refund: ['Money given back.', 'This is not an official receipt.'],
-    exchange: ['Goods taken back in an exchange.', 'This is not an official receipt.'],
+    sale: [],
+    void: ['This sale is cancelled.'],
+    refund: ['Money given back.'],
+    exchange: ['Goods taken back in an exchange.'],
     saved: ['Not completed. This is not a receipt.'],
     // A quote (the till's saved list, draft 'quote'): no number, no valid-until (owner 2026-10-07).
-    quote: ['This is not an official receipt.'],
+    quote: [],
+  };
+  // Settings › Receipt › Receipt says (owner 2026-11-06), the last line: [on a sale, on every other slip]. Not registered
+  // with BIR: nothing is an invoice; registered: a sale is. ponytail: the invoice wording waits on an accountant.
+  const SAYS = {
+    not: ['This is not an invoice.', 'This is not an invoice.'],
+    invoice: ['This serves as your invoice.', 'This is not an invoice.'],
+    none: ['', ''],
   };
   // An exchange's two rows (exchangeOrder): the refund of what came back (reason 'Exchange') and the new sale pointing
   // at the same sale. Legs with a ref are the swap; a leg without one is money that changed hands.
   const isExchange = (o) => !!o && !!o.originalOrderId && (isSale(o) || o.reason === 'Exchange');
   const swapOf = (o) => (isExchange(o) ? U(((o.payments) || []).filter((p) => p && p.ref).reduce((s, p) => s + C(p.amount), 0)) : 0);
-  function receiptParts(o, sale = null, rev = null) {
+  function receiptParts(o, sale = null, rev = null, says = 'not') {
     const kind = rowState(o, rev), back = isReversal(o), quote = o.draft === 'quote', x = isExchange(o);
+    const slip = x && back ? 'exchange' : quote ? 'quote' : FOOTER[o.status] ? o.status : 'sale';
+    const legal = slip === 'saved' ? '' : (SAYS[says] || SAYS.not)[slip === 'sale' ? 0 : 1];
     return {
       kind,
       mark: quote ? 'QUOTATION' : x ? `EXCHANGE ${back ? 'of' : 'for'} #${(sale && sale.number) || '—'}`
@@ -703,7 +712,7 @@
       whoWord: o.status === 'void' ? 'Voided by' : o.status === 'refund' ? (x ? 'Exchanged by' : 'Refunded by') : 'Cashier',
       legs: paymentsOf(o),
       swapped: swapOf(o),   // the part that swapped goods for goods (printer payRows' EXCHANGE row)
-      footer: x && back ? FOOTER.exchange : FOOTER[quote ? 'quote' : o.status] || FOOTER.sale,
+      footer: legal ? [...FOOTER[slip], legal] : FOOTER[slip],
       // The SC/PWD 20% is already inside Discount: 'Incl.' so the slip never reads as a second discount.
       // VAT-exempt sales: the SC/PWD sale, or a custom item sold without VAT (owner 2026-11-04).
       scPwd: [...(Number(o.scPwdOff) > 0 ? [{ label: 'Incl. SC/PWD discount', amount: U(C(o.scPwdOff)) }] : []),

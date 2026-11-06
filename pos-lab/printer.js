@@ -168,10 +168,11 @@
     const t1 = look.style !== 'g2';   // Classic; paper prints both in its own font, so only the layout differs
     const up = s => (t1 ? String(s).toUpperCase() : String(s));
     const half = Math.floor(cols / 2);   // big = double width
+    const num = look.numWord || 'Receipt';   // Settings › Receipt › Receipt says: Invoice # when the store is BIR registered
 
     if (o.logoImage) ops.push({ op: 'image', v: o.logoImage });   // already centred on the full head (picRaster)
     align('center'); bold(true); big(true);
-    wrap(st.name || '', half).forEach(text);
+    if (look.showName !== false) wrap(st.name || '', half).forEach(text);   // off when the logo already says it
     big(false); bold(false);
     (look.header || []).forEach(l => wrap(l, cols).forEach(text));   // the store's own line (Settings › Receipt), under the name
     headLines(st, cols).forEach(l => wrap(l, cols).forEach(text));
@@ -182,12 +183,12 @@
     const fulfil = String(vm.fulfilmentLabel || '').split(' · ')[0];
     const delivery = fulfil === 'DELIVERY';
     if (t1) {
-      if (vm.number) text('RECEIPT #' + vm.number);   // a saved cart or quote has none: it is not a receipt
+      if (vm.number) text(num.toUpperCase() + ' #' + vm.number);   // a saved cart or quote has none: it is not a receipt
       text(vm.dateText || '');
       text(up((vm.whoWord || 'Cashier') + ' ' + (vm.cashier || '')));   // a void or refund names who pressed it
       text('POS ' + (vm.register || '1') + (fulfil ? ' · ' + fulfil : ''));
     } else {
-      if (vm.number) row('Receipt #', vm.number);
+      if (vm.number) row(num + ' #', vm.number);
       row('Date', vm.dateText || '');
       row(vm.whoWord || 'Cashier', vm.cashier || '');
       row('POS', vm.register || '1');
@@ -241,8 +242,8 @@
     if (ty) { bold(true); big(t1); wrap(up(ty), t1 ? half : cols).forEach(text); big(false); bold(false); }
     more.forEach(l => wrap(l, cols).forEach(text));
     if (o.footImage) ops.push({ op: 'image', v: o.footImage });
-    if (vm.number) { text(''); text('RECEIPT NO.'); bold(true); big(true); wrap(vm.number, half).forEach(text); big(false); bold(false); text(''); }
-    // SalesMath.receiptParts' footer: a sale is the official receipt; a void or refund slip says it is not.
+    if (vm.number) { text(''); text(num.toUpperCase() + ' NO.'); bold(true); big(true); wrap(vm.number, half).forEach(text); big(false); bold(false); text(''); }
+    // SalesMath.receiptParts' footer: what the slip is, then Settings › Receipt › Receipt says' line.
     (vm.footer || SM().receiptParts(vm).footer).forEach(l => wrap(l, cols).forEach(text));
     if (st.tin) text('TIN ' + st.tin);
     align('left');
@@ -417,14 +418,15 @@
   }
 
   // Settings › Receipt's pictures, as a share of the head's width: the box each one fits in. The screen's .rcpt .pic uses
-  // the same box (receipt.css), so the paper and the preview match.
+  // the same box (receipt.css), so the paper and the preview match. A boxed picture (Settings › Receipt's two boxes) is [its width, 1]
+  // instead: its box, never taller than the paper is wide.
   const RECEIPT_PICS = { logo: [0.6, 0.3], foot: [0.6, 0.6] };
   // A picture (a data URL) -> { w, h, bits } for the image op, centred on the full head width with white either side,
   // so no printer's own centring is relied on. Browser only, like mapRaster.
-  // ponytail: dithered (packMono 'shaded'); a flat QR comes out as its own black and white, a photo as dots.
+  // ponytail: dithered (packMono 'shaded'); a boxed picture (Settings › Receipt) is already one ink, so it prints as it is.
   async function picRaster(src, dots, box, name) {
     if (typeof document === 'undefined') throw new Error('Pictures need a browser');
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('picture')); i.src = src; });
+    const img = typeof src !== 'string' ? src : await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('picture')); i.src = src; });
     const k = Math.min(dots * box[0] / img.width, dots * box[1] / img.height);
     const w = dots - (dots % 8), pw = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
     const cv = document.createElement('canvas');
@@ -664,7 +666,8 @@
     // ponytail: a picture that won't load prints the receipt without it, like the map
     const dots = colsFor(c.width) * 12, look = vm.look || {};
     const pic = (src, box, name) => (src ? picRaster(src, dots, box, name).catch(() => null) : null);
-    const [logoImage, footImage] = await Promise.all([pic(look.logo, RECEIPT_PICS.logo, 'logo'), pic(look.footerImg, RECEIPT_PICS.foot, 'picture')]);
+    const [logoImage, footImage] = await Promise.all([
+      pic(look.logo, look.logoW ? [look.logoW, 1] : RECEIPT_PICS.logo, 'logo'), pic(look.footerImg, look.footW ? [look.footW, 1] : RECEIPT_PICS.foot, 'picture')]);
     return send(layout(vm, { width: c.width, cut: c.cut, mapImage, logoImage, footImage }), c);
   }
   // Laid-out ops to the paired printer: the one transport switch every slip goes through.

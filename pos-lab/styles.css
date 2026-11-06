@@ -8856,6 +8856,20 @@ body.light-theme .vs-row .pic[style] { background: hsl(var(--tc) 75% 86%); }
 .qr-rm { color: var(--ink-secondary); font-size: 14px; font-weight: 500; }
 /* Settings › Receipt › Preview: the receipt in a sheet at the paper's own width */
 .rc-sheet .fs-body .rp-paper { margin: 0 auto; }
+/* Settings › Receipt › Pictures (pos-settings.js openPics): the receipt with its two boxes, where receipt.css .pic prints them */
+.pbox { position: relative; margin: 0 auto .714em; outline: 1px dashed rgb(17 17 17 / .35); }   /* the receipt's ink, faint */
+.pbox.foot { margin: .714em auto 0; }
+.pbox.has { outline-color: transparent; }
+.pbox.on { outline: 2px solid var(--cta-solid); touch-action: none; }   /* only the picked box holds the finger; over the others it scrolls */
+.pbox canvas { display: block; width: 100%; height: 100%; }
+.pbox:not(.has) canvas, .pbox.has span { display: none; }
+.pbox span { position: absolute; inset: 0; display: grid; place-items: center; color: rgb(17 17 17 / .5); font-family: var(--font-ui, inherit); font-size: 13px; }
+.pbox i { position: absolute; bottom: -8px; display: none; width: 16px; height: 16px; border: 2px solid var(--cta-solid); border-radius: 50%; background: #fff; }
+.pbox i::before { content: ''; position: absolute; inset: -14px; }   /* a finger's room */
+.pbox i.pb-l { left: -8px; } .pbox i.pb-r { right: -8px; }   /* not .l / .r: receipt.css .rcpt .r is a row */
+.pbox.on i { display: block; }
+.pic-bar { position: absolute; bottom: calc(var(--pill-b) + 8px); left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }   /* Filters' Clear spot */
+.pic-bar[hidden] { display: none; }
 #ptNameRow .v { flex: 1; justify-content: flex-end; }
 #ptRename { width: 100%; text-align: right; color: var(--ink-tertiary); }   /* the value on the right, as Ask for's */
 #ptRename:focus { color: var(--ink); }

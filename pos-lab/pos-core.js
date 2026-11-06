@@ -780,10 +780,13 @@ function normalizeOrderRecord(raw = {}) {
 }
 
 // Settings › Receipt (owner 2026-11-06): the style (Classic = the lab's T1, Modern = G2.2), the logo, the lines under the store's name and under the items, a footer picture
-// (a QR code, say), and whether the address and phone print. Defaults: Classic, 'Thank you!', address, phone and TIN on.
+// (a QR code, say), and whether the name, address and phone print. Defaults: Classic, 'Thank you!', name, address, phone and TIN on.
+// says: the last line (SalesMath SAYS): 'not' an invoice (the default, not BIR registered yet), 'invoice', or 'none'.
+// logoFit / footerImgFit: a picture's box on the receipt (pos-settings.js openPics): { src: the original, w, h: shares of the
+// paper's width, zoom, cx, cy }; logo / footerImg is that box, baked at 80mm's dots in one ink.
 // ponytail: pictures ride in settings as data URLs, like Payment types' QR pictures; R2 with Supabase.
 // ponytail: a reprint shows today's look, not the one it was printed with (as Store details); keep a copy per sale if BIR asks.
-const receiptLook = () => ({ style: 't1', logo: '', header: '', footer: 'Thank you!', footerImg: '', showAddress: true, showPhone: true, showTin: true, ...state.settings.receipt });
+const receiptLook = () => ({ style: 't1', says: 'not', logo: '', logoFit: null, header: '', footer: 'Thank you!\nKeep for returns and exchanges.', footerImg: '', footerImgFit: null, showName: true, showAddress: true, showPhone: true, showTin: true, ...state.settings.receipt });
 const lookLines = (t) => String(t || '').split('\n').map(l => l.trim()).filter(Boolean);
 function toReceiptViewModel(order) {
   const o = normalizeOrderRecord(order);
@@ -793,14 +796,18 @@ function toReceiptViewModel(order) {
   // mark, Paid / Given back, Cashier / Voided by / Refunded by, the tenders by name, the footer, SC/PWD.
   const orders = Array.isArray(state.orders) ? state.orders : [];
   // A saved cart or quote (draftAsOrder) has no receipt number; a quote's slip is headed QUOTATION.
-  const parts = SalesMath.receiptParts({ ...o, draft: order.draft }, orders.find(x => x.id === o.originalOrderId) || null, orderReversals());
+  const parts = SalesMath.receiptParts({ ...o, draft: order.draft }, orders.find(x => x.id === o.originalOrderId) || null, orderReversals(), receiptLook().says);
   const look = receiptLook();
   // the plain 'Thank you!' greets a named customer by first name, as the lab's receipts (owner 2026-11-06)
   const footer = lookLines(look.footer), first = String(o.customer?.name || '').trim().split(/\s+/)[0];
   if (footer[0] === 'Thank you!' && first) footer[0] = `Thank you, ${first}!`;
   return {
     store: { ...currentStoreInfo(), ...(look.showAddress ? {} : { address: '' }), ...(look.showPhone ? {} : { phone: '' }), ...(look.showTin ? {} : { tin: '' }) },
-    look: { style: look.style === 'g2' ? 'g2' : 't1', logo: look.logo, footerImg: look.footerImg, header: lookLines(look.header), footer },
+    look: {
+      style: look.style === 'g2' ? 'g2' : 't1', logo: look.logo, footerImg: look.footerImg, header: lookLines(look.header), footer,
+      showName: look.showName, numWord: look.says === 'invoice' ? 'Invoice' : 'Receipt',   // Receipt # or Invoice #
+      logoW: look.logo && look.logoFit?.w, footW: look.footerImg && look.footerImgFit?.w,   // a fitted picture's width; none = the old box
+    },
     number: order.draft ? '' : o.number,
     ts: o.ts,
     dateText: tillDate(o.ts, 'slip'),

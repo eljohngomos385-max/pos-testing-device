@@ -338,10 +338,10 @@ function bindStore() {
   // Save is the form's submit button (form="storeForm"): Return on the keyboard saves, and does nothing while it is greyed
   $('#storeForm').addEventListener('submit', (e) => { e.preventDefault(); saveStore(); });
 }
-// Settings › Receipt (owner 2026-11-06): the style (Classic, Modern), logo, header and footer words, a footer picture (e.g. the store's QR), and
-// whether the address and phone show. Preview opens the Test print's sample in a sheet (receiptLook in pos-core.js).
+// Settings › Receipt (owner 2026-11-06): the style (Classic, Modern), what the last line says (Receipt says), a top and a bottom
+// picture (the logo; the store's QR or art), header and footer words, and whether the name, address and phone show. Preview opens the Test print's sample in a sheet (receiptLook in pos-core.js).
 // Each change saves as it is made, as a payment type's page. ponytail: no manager PIN, as Store details.
-const LOOK_PICS = { logo: ['#rcLogoIn', '#rcLogoThumb', '#rcLogoRm', '#rcLogoAdd'], footerImg: ['#rcFootIn', '#rcFootThumb', '#rcFootRm', '#rcFootAdd'] };
+const LOOK_PICS = { logo: ['#rcLogoRow', '#rcLogoThumb', '#rcLogoRm', '#rcLogoAdd'], footerImg: ['#rcFootRow', '#rcFootThumb', '#rcFootRm', '#rcFootAdd'] };
 function saveLook(patch) {
   const was = state.settings.receipt;
   state.settings.receipt = { ...was, ...patch };
@@ -360,6 +360,8 @@ function renderLook() {
 function openLook() {
   const look = receiptLook();
   $('#rcStyle').value = look.style;
+  $('#rcSays').value = look.says;
+  $('#rcName').checked = look.showName;
   $('#rcAddress').checked = look.showAddress;
   $('#rcPhone').checked = look.showPhone;
   $('#rcTin').checked = look.showTin;
@@ -375,15 +377,161 @@ function bindLook() {
     <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button>
     <h2 id="fsTitle">Preview</h2><i></i></div><div class="fs-body">${buildReceiptPreview(sampleTestOrder())}</div>`, 'rc-sheet'));
   $('#rcStyle').addEventListener('change', (e) => saveLook({ style: e.target.value }));   // Classic or Modern (receipt.css)
+  $('#rcSays').addEventListener('change', (e) => saveLook({ says: e.target.value }));   // Invoice # and 'This serves as your invoice.' once BIR registered
+  $('#rcName').addEventListener('change', (e) => saveLook({ showName: e.target.checked }));   // off when the logo already has the name
   $('#rcAddress').addEventListener('change', (e) => saveLook({ showAddress: e.target.checked }));
   $('#rcPhone').addEventListener('change', (e) => saveLook({ showPhone: e.target.checked }));
   $('#rcTin').addEventListener('change', (e) => saveLook({ showTin: e.target.checked }));   // not every store has a TIN (owner 2026-11-06)
   $('#rcHeader').addEventListener('input', (e) => saveLook({ header: e.target.value }));
   $('#rcFooter').addEventListener('input', (e) => saveLook({ footer: e.target.value }));
-  Object.entries(LOOK_PICS).forEach(([k, [input, , rm]]) => {
-    $(input).addEventListener('change', (e) => shrinkPic(e, (pic) => saveLook({ [k]: pic })));
-    $(rm).addEventListener('click', (e) => { e.preventDefault(); saveLook({ [k]: '' }); });   // inside the row's label: not the file picker
+  Object.entries(LOOK_PICS).forEach(([k, [row, , rm]]) => {
+    $(row).addEventListener('click', (e) => { if (!e.target.closest('.qr-rm')) openPics(e.currentTarget, k); });   // the receipt, this box picked
+    $(row).addEventListener('keydown', (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click(); } });   // a div, not a label: no file input in it now
+    $(rm).addEventListener('click', () => saveLook({ [k]: '', [k + 'Fit']: null }));
   });
+}
+// Settings › Receipt › Top / Bottom picture (owner 2026-11-06, "canvas amount of control"): the receipt itself with two boxes, top and
+// bottom. Tap one to pick it, drag its bottom corners to size it inside the paper's margins, tap it again to add the picture: it goes
+// in at the box's size, keeping its own shape; then the corners crop it, a drag or a pinch moves it in its box. One ink: anything that
+// isn't white is solid black, on screen as on paper (owner: "the darkest one", no grey). Each change saves as it is made, as the page.
+// logo / footerImg is the box baked at 80mm's 576 dots (a 58mm POS prints it at 2/3, printer.js picRaster); logoFit / footerImgFit
+// keep the box (w, h: shares of the paper's width), the crop (zoom, cx, cy) and the original (src), so it can be changed again.
+const PIC_DOTS = 576, PIC_INK = 224;   // lighter than this is the paper
+const PIC_BOX = { logo: { w: 0.6, h: 0.3 }, footerImg: { w: 0.6, h: 0.6 } };   // an empty box: printer.js RECEIPT_PICS
+const BLANK_PIC = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+// the picture covers its box at zoom 1; (cx, cy) is its point at the box's centre, kept so no white edge shows
+function clampFit(img, f) {
+  const r = f.w / f.h, s = Math.max(r / img.width, 1 / img.height) * f.zoom;
+  const hw = r / 2 / (img.width * s), hh = 1 / 2 / (img.height * s);
+  f.cx = Math.min(1 - hw, Math.max(hw, f.cx));
+  f.cy = Math.min(1 - hh, Math.max(hh, f.cy));
+}
+// the box at w x h px with its crop of the picture, in the one ink
+function drawFit(cv, img, f, w, h) {
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d', { willReadFrequently: true }), s = Math.max(w / img.width, h / img.height) * f.zoom;
+  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
+  g.drawImage(img, w / 2 - f.cx * img.width * s, h / 2 - f.cy * img.height * s, img.width * s, img.height * s);
+  const px = g.getImageData(0, 0, w, h), d = px.data;
+  for (let i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2] < PIC_INK ? 17 : 255;
+  g.putImageData(px, 0, 0);
+  return cv;
+}
+function openPics(btn, pick) {
+  const look = receiptLook(), r = toReceiptViewModel(sampleTestOrder()), fits = {}, imgs = {}, boxes = {};
+  r.look.logo = r.look.footerImg = BLANK_PIC;   // a stand-in, so the receipt lays out each picture's place; its box goes there
+  const { m } = openSheet(btn, `<div class="fs-top">
+    <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button>
+    <h2 id="fsTitle">Pictures</h2><i></i></div><div class="fs-body"><div class="receipt-preview"><div class="rp-paper">${receiptBody(r)}</div></div>
+    <input type="file" accept="image/*" hidden></div>
+    <div class="pic-bar" hidden><button type="button" class="secondary-btn small cta-2" data-act="add">Replace</button><button type="button" class="secondary-btn small cta-2" data-act="rm">Remove</button></div>`, 'rc-sheet');
+  const rcpt = m.querySelector('.rcpt'), input = m.querySelector('input[type=file]'), bar = m.querySelector('.pic-bar');
+  m.querySelectorAll('.rcpt img.pic').forEach((el) => {
+    const k = el.classList.contains('foot') ? 'footerImg' : 'logo', box = document.createElement('div');
+    box.className = k === 'logo' ? 'pbox' : 'pbox foot';
+    box.innerHTML = '<canvas></canvas><span>Add picture</span><i class="pb-l"></i><i class="pb-r"></i>';
+    el.replaceWith(box);
+    boxes[k] = box;
+    fits[k] = { ...PIC_BOX[k], zoom: 1, cx: 0.5, cy: 0.5, ...look[k + 'Fit'] };
+  });
+  let sel = pick, queued = false;
+  const paint = () => {
+    queued = false;
+    Object.entries(boxes).forEach(([k, box]) => {
+      const f = fits[k], img = imgs[k];
+      box.style.width = f.w * 100 + 'cqw'; box.style.height = f.h * 100 + 'cqw';
+      box.classList.toggle('on', k === sel);
+      box.classList.toggle('has', !!img);
+      if (!img) return;
+      clampFit(img, f);
+      const dpr = devicePixelRatio || 1;
+      drawFit(box.firstChild, img, f, Math.round(box.clientWidth * dpr), Math.round(box.clientHeight * dpr));
+    });
+    bar.hidden = !imgs[sel];
+  };
+  const redraw = () => { if (!queued) { queued = true; requestAnimationFrame(paint); } };
+  const save = (k) => {
+    const f = fits[k], img = imgs[k];
+    if (!img) return saveLook({ [k + 'Fit']: { ...f } });   // an empty box keeps its size for the picture to come
+    const cv = drawFit(document.createElement('canvas'), img, f, Math.round(f.w * PIC_DOTS), Math.round(f.h * PIC_DOTS));
+    saveLook({ [k]: cv.toDataURL('image/png'), [k + 'Fit']: { ...f } });   // PNG: one ink stays one ink (JPEG would grey its edges)
+  };
+  // a picture in its box: a new one (or one fitted before the boxes) takes the box's width or height, in its own shape
+  const load = (k, src, fresh) => {
+    const img = new Image();
+    img.onerror = () => showToast('That file is not a picture');
+    img.onload = () => {
+      imgs[k] = img;
+      const f = fits[k], ir = img.width / img.height;
+      if (fresh || !look[k + 'Fit']?.h) {
+        if (ir > f.w / f.h) f.h = f.w / ir; else f.w = f.h * ir;
+        Object.assign(f, { zoom: 1, cx: 0.5, cy: 0.5 });
+      }
+      if (fresh) save(k);
+      paint();
+    };
+    img.src = src;
+  };
+  Object.keys(boxes).forEach((k) => { const src = fits[k].src || look[k]; if (src) load(k, src, false); });
+  paint();
+  requestAnimationFrame(() => boxes[pick].scrollIntoView({ block: 'center' }));
+  let adding = sel;
+  const add = () => { adding = sel; input.click(); };
+  input.addEventListener('change', (e) => shrinkPic(e, (pic) => { fits[adding].src = pic; load(adding, pic, true); }));
+  bar.addEventListener('click', (e) => {
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (act === 'add') add();
+    if (act !== 'rm') return;
+    imgs[sel] = null;
+    delete fits[sel].src;
+    saveLook({ [sel]: '', [sel + 'Fit']: { ...fits[sel] } });
+    paint();
+  });
+  // a tap picks a box (then adds to an empty one), a corner sizes it, one finger moves the picture in it, two pinch it
+  const fingers = new Map();
+  let g = null;
+  rcpt.addEventListener('pointerdown', (e) => {
+    const box = e.target.closest('.pbox'), k = Object.keys(boxes).find(n => boxes[n] === box);
+    if (!k) return;
+    box.setPointerCapture(e.pointerId);
+    fingers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (fingers.size === 1) g = { k, corner: e.target.tagName === 'I', x: e.clientX, y: e.clientY, h: fits[k].h, moved: false, pinch: 0 };
+  });
+  rcpt.addEventListener('pointermove', (e) => {
+    const at = fingers.get(e.pointerId);
+    if (!at || !g || g.k !== sel) return;   // only the picked box changes
+    fingers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 6 || fingers.size > 1) g.moved = true;
+    if (!g.moved) return;
+    const f = fits[g.k], img = imgs[g.k], { left, width } = rcpt.getBoundingClientRect();
+    if (g.corner) {   // the width both ways from the paper's middle (it prints centred), the height from its top
+      f.w = Math.min(1, Math.max(0.1, 2 * Math.abs(e.clientX - left - width / 2) / width));
+      f.h = Math.min(1, Math.max(0.05, g.h + (e.clientY - g.y) / width));   // never taller than the paper is wide
+    } else if (!img) return;
+    else if (fingers.size === 1) {
+      const s = Math.max(f.w / img.width, f.h / img.height) * width * f.zoom;
+      f.cx -= (e.clientX - at[0]) / (img.width * s);
+      f.cy -= (e.clientY - at[1]) / (img.height * s);
+    } else {
+      const [a, b] = [...fingers.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (g.pinch) f.zoom = Math.min(4, Math.max(1, f.zoom * d / g.pinch));
+      g.pinch = d;
+    }
+    redraw();
+  });
+  const lift = (e) => {
+    fingers.delete(e.pointerId);
+    if (!g) return;
+    if (fingers.size) { g.pinch = 0; return; }
+    const { k, moved } = g;
+    g = null;
+    if (moved) return k === sel && save(k);
+    if (e.type === 'pointercancel') return;
+    if (k !== sel) { sel = k; paint(); } else if (!imgs[k]) add();
+  };
+  rcpt.addEventListener('pointerup', lift);
+  rcpt.addEventListener('pointercancel', lift);
+  rcpt.addEventListener('click', (e) => { if (!e.target.closest('.pbox') && sel) { sel = null; paint(); } });   // the paper lets go
 }
 function bindPayTypes() {
   $('#payTypeBack').addEventListener('click', () => openPayTypes(true));

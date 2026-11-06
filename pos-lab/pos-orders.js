@@ -80,7 +80,8 @@ function buildMapThumb(location, className = 'rp-map-thumb') {
 // both on-screen slips show the same rows. Every page loads printer.js before app.js; the node till
 // harness does not, and gets no rows (ponytail: nothing there reads a slip).
 const slipRows = (fn, vm, ...a) => (globalThis.HWPOS_PRINTER ? HWPOS_PRINTER[fn](vm, ...a) : []);
-const lookPic = (src, cls) => (src ? `<img class="${cls}" src="${escapeHtml(src)}" alt="">` : '');
+// a boxed picture (Settings › Receipt's two boxes) is its own width of the paper, else receipt.css's box
+const lookPic = (src, cls, w) => (src ? `<img class="${cls}" src="${escapeHtml(src)}" alt=""${w ? ` style="width:${w * 100}cqw;max-width:none;max-height:none"` : ''}>` : '');
 // The receipt in its style (Settings › Receipt › Style, receipt.css): Classic (.t1) or Modern (.g2), the lines printer.js
 // prints, in its order. One body for the screen (.rp-paper) and the print pop-up (.r-paper).
 // `back`: how much of each line came back (Orders); all of it = struck through, part = a line under it, worded by `said`.
@@ -92,7 +93,7 @@ function receiptBody(r, back = [], said = [], mapCls = 'rp-map-thumb') {
   const amt = n => (t1 ? peso(n) : `<span class="amt">${peso(n)}</span>`);
   const bare = n => (P ? P.money(n, state.settings?.store?.currency) : peso(n));   // the table's cells, as the paper prints them
   const sm = t1 ? 'c' : 'c sm', pay = t1 ? '' : 'pay';
-  const fulfil = String(r.fulfilmentLabel || '').split(' · ')[0];
+  const fulfil = String(r.fulfilmentLabel || '').split(' · ')[0], num = r.look.numWord || 'Receipt';
   const name = String(r.store.name || ''), size = Math.max(24, Math.min(40, Math.round(40 * 15 / (name.length || 1)))) / 14;
   // a line break falls between the store's phone numbers, never inside one
   const nums = String(r.store.phone || '').split(' / ').filter(Boolean);
@@ -108,16 +109,16 @@ function receiptBody(r, back = [], said = [], mapCls = 'rp-map-thumb') {
   }).join('');
   const [ty, ...more] = r.look.footer;
   return `<div class="rcpt ${t1 ? 't1' : 'g2'}">
-    ${lookPic(r.look.logo, 'pic')}
-    <div class="store" style="font-size:calc(var(--rc) * ${size.toFixed(3)})">${e(name)}</div>
+    ${lookPic(r.look.logo, 'pic', r.look.logoW)}
+    ${r.look.showName !== false ? `<div class="store" style="font-size:calc(var(--rc) * ${size.toFixed(3)})">${e(name)}</div>` : ''}
     ${r.look.header.map(l => div(e(l), `${sm} slogan`)).join('')}
     ${(P ? P.headLines(r.store, 48) : []).map((l, i) => div(tel(l), i ? sm : `${sm} tel`)).join('')}
     <hr>
     ${r.mark ? div(e(r.mark), 'mark') : ''}
     ${t1
-      ? (r.number ? div('RECEIPT #' + e(r.number)) : '') + div(e(r.dateText)) + div(e(up(`${r.whoWord} ${r.cashier || ''}`)))
+      ? (r.number ? div(e(num.toUpperCase()) + ' #' + e(r.number)) : '') + div(e(r.dateText)) + div(e(up(`${r.whoWord} ${r.cashier || ''}`)))
         + div(`POS ${e(r.register || '1')}${fulfil ? ' · ' + e(fulfil) : ''}`)
-      : (r.number ? row('Receipt #', e(r.number)) : '') + row('Date', e(r.dateText)) + row(e(r.whoWord), e(r.cashier || '')) + row('POS', e(r.register || '1'))}
+      : (r.number ? row(e(num) + ' #', e(r.number)) : '') + row('Date', e(r.dateText)) + row(e(r.whoWord), e(r.cashier || '')) + row('POS', e(r.register || '1'))}
     ${cust.length ? '<hr>' : ''}
     ${!t1 && fulfil ? div(`<b>${e(fulfil)}</b>`, 'sm type') : ''}
     ${cust.map(([k, v]) => div(e(t1 ? `${k.toUpperCase()}: ${v}` : k === 'Customer' ? v : `${k}: ${v}`), t1 ? '' : 'sm')).join('')}
@@ -133,8 +134,8 @@ function receiptBody(r, back = [], said = [], mapCls = 'rp-map-thumb') {
     ${fulfil === 'DELIVERY' ? buildMapThumb(r.deliveryLocation, mapCls) : ''}
     ${ty ? div(e(ty), t1 ? 'shout' : 'ty') : ''}
     ${more.map(l => div(e(l), sm)).join('')}
-    ${lookPic(r.look.footerImg, 'pic foot')}
-    ${r.number ? `<div class="recno"><span>Receipt no.</span><b>${e(r.number)}</b></div>` : ''}
+    ${lookPic(r.look.footerImg, 'pic foot', r.look.footW)}
+    ${r.number ? `<div class="recno"><span>${e(num)} no.</span><b>${e(r.number)}</b></div>` : ''}
     ${r.footer.map(l => div(l, sm)).join('')}
     ${r.store.tin ? div('TIN ' + e(r.store.tin), sm) : ''}
   </div>`;
