@@ -7183,15 +7183,15 @@ body.light-theme {
 .rail-h .line + .line { border-top: 1px solid var(--line); }
 .rail-h .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--row-h); padding: 5px var(--row-x); border: 0; background: none; text-align: left; transition: background-color .12s; }
 .rail-h .row:hover { background: var(--rl-hover); }
-/* a line swiped left (app.js, touch only): the row slides over the card and Delete waits under it, the editor's Remove item colours */
+/* a line swiped left (app.js, touch only): the row becomes a grey tile, its right edge rounded, and a round red Delete waits beside it, as iPhone's Calls (owner 2026-11-07) */
 .rail-h .line { position: relative; overflow: hidden; }
-.rail-h .line .row { position: relative; z-index: 1; touch-action: pan-y; transition: background-color .12s, transform .2s var(--rl-ease); }
-.rail-h .line:is(.swiping, .open) .row { background: var(--rl-card); }
+.rail-h .line .row { position: relative; z-index: 1; touch-action: pan-y; transition: background-color .12s, border-radius .12s, transform .2s var(--rl-ease); }
+.rail-h .line:is(.swiping, .open) .row { background: var(--tile); border-radius: 0 16px 16px 0; }
 .rail-h .line.swiping .row { transition: none; }
-.rail-h .line.open .row { transform: translate3d(-88px, 0, 0); }
+.rail-h .line.open .row { transform: translate3d(-62px, 0, 0); }   /* app.js DEL_W */
 .rail-h .line .row:focus-visible { outline-offset: -2px; }   /* the line clips anything outside it */
-.rail-h .sw-del { position: absolute; inset: 4px 8px 4px auto; width: 72px; display: grid; place-items: center; border: 0; border-radius: var(--r-input); background: var(--danger-bg); color: var(--danger); visibility: hidden; }
-.rail-h .sw-del svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rail-h .sw-del { position: absolute; top: 50%; right: 12px; width: 38px; height: 38px; transform: translateY(-50%); display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--danger); color: #fff; visibility: hidden; }
+.rail-h .sw-del svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .rail-h .line:is(.swiping, .open) .sw-del { visibility: visible; }
 .rail-h .row .nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
 .rail-h .row .nm span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
@@ -8868,7 +8868,12 @@ body.light-theme .vs-row .pic[style] { background: hsl(var(--tc) 75% 86%); }
 .pbox i::before { content: ''; position: absolute; inset: -14px; }   /* a finger's room */
 .pbox i.pb-l { left: -8px; } .pbox i.pb-r { right: -8px; }   /* not .l / .r: receipt.css .rcpt .r is a row */
 .pbox.on i { display: block; }
-.pic-bar { position: absolute; bottom: calc(var(--pill-b) + 8px); left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }   /* Filters' Clear spot */
+.pic-bar { position: absolute; left: var(--sheet-x); right: var(--sheet-x); bottom: calc(var(--pill-b) + 8px); display: flex; justify-content: space-between; pointer-events: none; }   /* Photos' bottom: Replace and Remove in the corners, Crop in the middle */
+.pic-bar button { display: flex; align-items: center; justify-content: center; gap: 6px; width: var(--bar-h); height: var(--bar-h); padding: 0; border: 0; border-radius: 999px; color: var(--cta2-ink); font: inherit; font-size: 15px; font-weight: 550;
+                  background: var(--cta2-bg); box-shadow: var(--cta2-ring); -webkit-backdrop-filter: var(--cta2-blur); backdrop-filter: var(--cta2-blur); pointer-events: auto; }
+.pic-bar .crop { width: auto; padding: 0 18px 0 14px; }
+.pic-bar svg { width: var(--circle-ic); height: var(--circle-ic); fill: none; stroke: currentColor; stroke-width: var(--circle-sw); stroke-linecap: round; stroke-linejoin: round; }
+.crop-stage { display: block; width: 100%; margin: 36px auto 0; touch-action: none; }   /* below the head's fade, so the top corners show; sized to the picture once open */
 .pic-bar[hidden] { display: none; }
 #ptNameRow .v { flex: 1; justify-content: flex-end; }
 #ptRename { width: 100%; text-align: right; color: var(--ink-tertiary); }   /* the value on the right, as Ask for's */

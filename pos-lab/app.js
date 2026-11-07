@@ -847,7 +847,7 @@ function attachEvents() {
   // ---- The edit sheet (pos-sell.js): a cart line, Discount and the fulfilment pill open it over the items ----
   // Swipe a line left and Delete waits under it (owner 2026-10-08). Touch only: a mouse still just opens the editor.
   // A tap, or swiping another line, closes it; a tap on a line while one is open only closes, like iOS Mail.
-  const cartList = $('#cartList'), DEL_W = 88;
+  const cartList = $('#cartList'), DEL_W = 62;   // = styles' .line.open shift: the round Delete + its room
   let lineSwipe = null, swipedLine = null, suppressCartClick = false;
   const shutLine = () => { const was = swipedLine?.isConnected; swipedLine?.classList.remove('open'); swipedLine = null; return was; };
   cartList.addEventListener('pointerdown', (e) => {

@@ -345,9 +345,10 @@ const LOOK_PICS = { logo: ['#rcLogoRow', '#rcLogoThumb', '#rcLogoRm', '#rcLogoAd
 function saveLook(patch) {
   const was = state.settings.receipt;
   state.settings.receipt = { ...was, ...patch };
-  if (saveSettings()) return renderLook();
+  if (saveSettings()) { renderLook(); return true; }
   state.settings.receipt = was;
   showToast('Picture too big to save. Try a smaller one');
+  return false;
 }
 function renderLook() {
   const look = receiptLook();
@@ -392,7 +393,7 @@ function bindLook() {
 }
 // Settings › Receipt › Top / Bottom picture (owner 2026-11-06, "canvas amount of control"): the receipt itself with two boxes, top and
 // bottom. Tap one to pick it, drag its bottom corners to size it inside the paper's margins, tap it again to add the picture: it goes
-// in at the box's size, keeping its own shape; then the corners crop it, a drag or a pinch moves it in its box. One ink: anything that
+// through the crop screen into the box drawn, keeping its own shape; then the corners crop it, a drag or a pinch moves it, Crop crops it again. One ink: anything that
 // isn't white is solid black, on screen as on paper (owner: "the darkest one", no grey). Each change saves as it is made, as the page.
 // logo / footerImg is the box baked at 80mm's 576 dots (a 58mm POS prints it at 2/3, printer.js picRaster); logoFit / footerImgFit
 // keep the box (w, h: shares of the paper's width), the crop (zoom, cx, cy) and the original (src), so it can be changed again.
@@ -417,6 +418,9 @@ function drawFit(cv, img, f, w, h) {
   g.putImageData(px, 0, 0);
   return cv;
 }
+// anything in the picture prints at all (a pale one is all paper)
+const inked = (img) => drawFit(document.createElement('canvas'), img, { zoom: 1, cx: 0.5, cy: 0.5 }, img.width, img.height)
+  .getContext('2d').getImageData(0, 0, img.width, img.height).data.includes(17);
 function openPics(btn, pick) {
   const look = receiptLook(), r = toReceiptViewModel(sampleTestOrder()), fits = {}, imgs = {}, boxes = {};
   r.look.logo = r.look.footerImg = BLANK_PIC;   // a stand-in, so the receipt lays out each picture's place; its box goes there
@@ -424,7 +428,7 @@ function openPics(btn, pick) {
     <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button>
     <h2 id="fsTitle">Pictures</h2><i></i></div><div class="fs-body"><div class="receipt-preview"><div class="rp-paper">${receiptBody(r)}</div></div>
     <input type="file" accept="image/*" hidden></div>
-    <div class="pic-bar" hidden><button type="button" class="secondary-btn small cta-2" data-act="add">Replace</button><button type="button" class="secondary-btn small cta-2" data-act="rm">Remove</button></div>`, 'rc-sheet');
+    <div class="pic-bar" hidden><button type="button" class="cta-2" data-act="add" aria-label="Replace picture"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-photo"/></svg></button><button type="button" class="cta-2 crop" data-act="crop"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-crop"/></svg>Crop</button><button type="button" class="cta-2" data-act="rm" aria-label="Remove picture"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"/></svg></button></div>`, 'rc-sheet');
   const rcpt = m.querySelector('.rcpt'), input = m.querySelector('input[type=file]'), bar = m.querySelector('.pic-bar');
   m.querySelectorAll('.rcpt img.pic').forEach((el) => {
     const k = el.classList.contains('foot') ? 'footerImg' : 'logo', box = document.createElement('div');
@@ -454,38 +458,69 @@ function openPics(btn, pick) {
     const f = fits[k], img = imgs[k];
     if (!img) return saveLook({ [k + 'Fit']: { ...f } });   // an empty box keeps its size for the picture to come
     const cv = drawFit(document.createElement('canvas'), img, f, Math.round(f.w * PIC_DOTS), Math.round(f.h * PIC_DOTS));
-    saveLook({ [k]: cv.toDataURL('image/png'), [k + 'Fit']: { ...f } });   // PNG: one ink stays one ink (JPEG would grey its edges)
+    return saveLook({ [k]: cv.toDataURL('image/png'), [k + 'Fit']: { ...f } });   // PNG: one ink stays one ink (JPEG would grey its edges)
   };
-  // a picture in its box: a new one (or one fitted before the boxes) takes the box's width or height, in its own shape
-  const load = (k, src, fresh) => {
+  // not saved (the phone is full; saveLook says so): the box goes back to what is saved
+  const undo = (k, was, img) => { fits[k] = was; imgs[k] = img; paint(); };
+  const shape = (f, ar) => { if (ar > f.w / f.h) f.h = f.w / ar; else f.w = f.h * ar; };   // inside the box drawn, in the picture's shape
+  // a saved picture in its box (one fitted before the boxes takes the box in its own shape)
+  const loading = new Set();   // a tap on a box still loading its picture isn't a tap on an empty box
+  const load = (k, src) => {
     const img = new Image();
-    img.onerror = () => showToast('That file is not a picture');
+    loading.add(k);
     img.onload = () => {
+      loading.delete(k);
       imgs[k] = img;
-      const f = fits[k], ir = img.width / img.height;
-      if (fresh || !look[k + 'Fit']?.h) {
-        if (ir > f.w / f.h) f.h = f.w / ir; else f.w = f.h * ir;
-        Object.assign(f, { zoom: 1, cx: 0.5, cy: 0.5 });
-      }
-      if (fresh) save(k);
+      if (!look[k + 'Fit']?.h) shape(fits[k], img.width / img.height);
+      if (src === look[k]) Object.assign(fits[k], { zoom: 1, cx: 0.5, cy: 0.5 });   // no original kept: the baked box is the picture
       paint();
     };
+    img.onerror = () => loading.delete(k);   // a broken saved picture: the box takes a new one
     img.src = src;
   };
-  Object.keys(boxes).forEach((k) => { const src = fits[k].src || look[k]; if (src) load(k, src, false); });
+  Object.keys(boxes).forEach((k) => { const src = fits[k].src || look[k]; if (src) load(k, src); });
+  // the part kept on the crop screen (shares of the picture) into box k: a new picture takes the box drawn, a cropped-again one keeps
+  // its width; the box shows the part, zoomed in
+  const place = (k, img, c, fresh) => {
+    const f = fits[k], ar = c.w * img.width / (c.h * img.height), was = { ...f }, old = imgs[k];
+    if (fresh) shape(f, ar);
+    else { f.h = f.w / ar; if (f.h > 1) { f.h = 1; f.w = ar; } }
+    f.w = Math.max(0.1, f.w); f.h = Math.max(0.05, f.h);
+    const W = f.w / f.h, s = Math.max(W / (c.w * img.width), 1 / (c.h * img.height));
+    Object.assign(f, { src: img.src, zoom: Math.max(1, s / Math.max(W / img.width, 1 / img.height)), cx: c.x + c.w / 2, cy: c.y + c.h / 2 });
+    imgs[k] = img;
+    clampFit(img, f);
+    if (!save(k)) return undo(k, was, old);
+    paint();
+  };
+  // what box k shows now, as shares of its picture: where Crop starts
+  const shown = (k) => {
+    const f = fits[k], img = imgs[k], W = f.w / f.h, s = Math.max(W / img.width, 1 / img.height) * f.zoom, w = W / s / img.width, h = 1 / s / img.height;
+    return { x: f.cx - w / 2, y: f.cy - h / 2, w, h };
+  };
   paint();
   requestAnimationFrame(() => boxes[pick].scrollIntoView({ block: 'center' }));
   let adding = sel;
   const add = () => { adding = sel; input.click(); };
-  input.addEventListener('change', (e) => shrinkPic(e, (pic) => { fits[adding].src = pic; load(adding, pic, true); }));
+  // a new picture goes through the crop screen first; its ✕ adds nothing (a Replace keeps the old one)
+  input.addEventListener('change', (e) => shrinkPic(e, (pic) => {
+    const k = adding, img = new Image();
+    img.onerror = () => showToast('That file is not a picture');
+    img.onload = () => inked(img) ? openCrop(boxes[k], img, { x: 0, y: 0, w: 1, h: 1 }, true, (c) => place(k, img, c, true)) : showToast('Too light to print. Try a darker picture');
+    img.src = pic;
+  }));
   bar.addEventListener('click', (e) => {
-    const act = e.target.closest('[data-act]')?.dataset.act;
-    if (act === 'add') add();
-    if (act !== 'rm') return;
-    imgs[sel] = null;
-    delete fits[sel].src;
-    saveLook({ [sel]: '', [sel + 'Fit']: { ...fits[sel] } });
-    paint();
+    const b = e.target.closest('[data-act]'), k = sel;
+    if (!b || !imgs[k]) return;
+    if (b.dataset.act === 'add') add();
+    if (b.dataset.act === 'crop') openCrop(b, imgs[k], shown(k), false, (c) => place(k, imgs[k], c, false));
+    if (b.dataset.act === 'rm') showConfirm({ title: `Remove the ${k === 'logo' ? 'top' : 'bottom'} picture?`, message: 'The box stays for another one.', okText: 'Remove', onConfirm: () => {
+      const { src, ...box } = fits[k];
+      if (!saveLook({ [k]: '', [k + 'Fit']: box })) return;
+      fits[k] = box;
+      imgs[k] = null;
+      paint();
+    } });
   });
   // a tap picks a box (then adds to an empty one), a corner sizes it, one finger moves the picture in it, two pinch it
   const fingers = new Map();
@@ -495,7 +530,7 @@ function openPics(btn, pick) {
     if (!k) return;
     box.setPointerCapture(e.pointerId);
     fingers.set(e.pointerId, [e.clientX, e.clientY]);
-    if (fingers.size === 1) g = { k, corner: e.target.tagName === 'I', x: e.clientX, y: e.clientY, h: fits[k].h, moved: false, pinch: 0 };
+    if (fingers.size === 1) g = { k, corner: e.target.tagName === 'I', x: e.clientX, y: e.clientY, h: fits[k].h, was: { ...fits[k] }, moved: false, pinch: 0 };
   });
   rcpt.addEventListener('pointermove', (e) => {
     const at = fingers.get(e.pointerId);
@@ -514,7 +549,7 @@ function openPics(btn, pick) {
       f.cy -= (e.clientY - at[1]) / (img.height * s);
     } else {
       const [a, b] = [...fingers.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
-      if (g.pinch) f.zoom = Math.min(4, Math.max(1, f.zoom * d / g.pinch));
+      if (g.pinch) f.zoom = Math.min(8, Math.max(1, f.zoom * d / g.pinch));   // 8: Crop's smallest part
       g.pinch = d;
     }
     redraw();
@@ -523,15 +558,74 @@ function openPics(btn, pick) {
     fingers.delete(e.pointerId);
     if (!g) return;
     if (fingers.size) { g.pinch = 0; return; }
-    const { k, moved } = g;
+    const { k, moved, was } = g;
     g = null;
-    if (moved) return k === sel && save(k);
+    if (moved) return k === sel && !save(k) && undo(k, was, imgs[k]);
     if (e.type === 'pointercancel') return;
-    if (k !== sel) { sel = k; paint(); } else if (!imgs[k]) add();
+    if (k !== sel) { sel = k; paint(); } else if (!imgs[k] && !loading.has(k)) add();
   };
   rcpt.addEventListener('pointerup', lift);
   rcpt.addEventListener('pointercancel', lift);
   rcpt.addEventListener('click', (e) => { if (!e.target.closest('.pbox') && sel) { sel = null; paint(); } });   // the paper lets go
+}
+// The crop screen (owner 2026-11-06, Photos' crop): the whole picture in its ink, the part kept in a frame, the rest dimmed. Drag a corner
+// to size the frame, inside it to move it; ✓ keeps it (lit once something changed, unless the picture is new), ✕ changes nothing.
+function openCrop(btn, img, was, fresh, done) {
+  const c = { ...was }, start = JSON.stringify(c), MIN = 0.125, PAD = 14;   // MIN: an eighth of each side, so the box zooms 8x at most; PAD: the dots' room
+  const { m, close } = openSheet(btn, `<div class="fs-top">
+    <button type="button" class="fs-x cta-2" aria-label="Cancel"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button>
+    <h2>Crop</h2>
+    <button type="button" class="fs-ok cta" aria-label="Done"${fresh ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></button>
+    </div><div class="fs-body"><canvas class="crop-stage" aria-label="The picture: drag the frame's corners over the part to keep"></canvas></div>`, 'crop-sheet');
+  m.removeAttribute('aria-labelledby');   // the Pictures sheet under it owns #fsTitle
+  m.setAttribute('aria-label', 'Crop');
+  const cv = m.querySelector('.crop-stage'), ok = m.querySelector('.fs-ok'), ink = drawFit(document.createElement('canvas'), img, { zoom: 1, cx: 0.5, cy: 0.5 }, img.width, img.height);
+  const u = Math.min((cv.clientWidth - 2 * PAD) / img.width, Math.max(160, innerHeight - 260) / img.height), pw = img.width * u, ph = img.height * u, dpr = devicePixelRatio || 1;
+  const mw = Math.min(1, Math.max(MIN, 44 / pw)), mh = Math.min(1, Math.max(MIN, 44 / ph));   // and never under a finger's 44px, so the frame can still be grabbed
+  cv.style.width = pw + 2 * PAD + 'px'; cv.style.height = ph + 2 * PAD + 'px';
+  cv.width = Math.round((pw + 2 * PAD) * dpr); cv.height = Math.round((ph + 2 * PAD) * dpr);
+  const g = cv.getContext('2d'), cta = getComputedStyle(m).getPropertyValue('--cta-solid').trim();
+  const corner = (i, j) => [PAD + (c.x + i * c.w) * pw, PAD + (c.y + j * c.h) * ph];
+  const paint = () => {
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, pw + 2 * PAD, ph + 2 * PAD);
+    g.drawImage(ink, PAD, PAD, pw, ph);
+    const [x, y] = corner(0, 0);
+    g.fillStyle = 'rgba(0,0,0,.45)';   // what's cut off, dimmed
+    g.beginPath(); g.rect(PAD, PAD, pw, ph); g.rect(x, y, c.w * pw, c.h * ph); g.fill('evenodd');
+    g.strokeStyle = cta; g.lineWidth = 2;
+    g.strokeRect(x, y, c.w * pw, c.h * ph);
+    g.fillStyle = '#fff';   // the corner dots, as the box's
+    for (const [i, j] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { g.beginPath(); g.arc(...corner(i, j), 7, 0, 7); g.fill(); g.stroke(); }
+    ok.disabled = !fresh && JSON.stringify(c) === start;
+  };
+  paint();
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  let drag = null;
+  cv.addEventListener('pointerdown', (e) => {
+    if (drag) return;   // one finger at a time: a second one doesn't move the frame
+    const b = cv.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+    const [d, ...at] = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([i, j]) => { const [cx, cy] = corner(i, j); return [Math.hypot(cx - x, cy - y), i, j]; }).sort((p, q) => p[0] - q[0])[0];   // the nearest corner
+    const [x0, y0] = corner(0, 0), inside = x > x0 && y > y0 && x < x0 + c.w * pw && y < y0 + c.h * ph;
+    if (d >= 26 && !inside) return;
+    cv.setPointerCapture(e.pointerId);
+    drag = { id: e.pointerId, at: d < 26 && at, x: e.clientX, y: e.clientY, s: { ...c } };
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (drag?.id !== e.pointerId) return;
+    const dx = (e.clientX - drag.x) / pw, dy = (e.clientY - drag.y) / ph, s = drag.s;
+    if (!drag.at) { c.x = clamp(s.x + dx, 0, 1 - s.w); c.y = clamp(s.y + dy, 0, 1 - s.h); return paint(); }
+    const [i, j] = drag.at;   // the opposite corner stays put
+    if (i) c.w = clamp(s.w + dx, Math.min(mw, s.w), 1 - s.x);
+    else { c.x = clamp(s.x + dx, 0, s.x + s.w - Math.min(mw, s.w)); c.w = s.x + s.w - c.x; }
+    if (j) c.h = clamp(s.h + dy, Math.min(mh, s.h), 1 - s.y);
+    else { c.y = clamp(s.y + dy, 0, s.y + s.h - Math.min(mh, s.h)); c.h = s.y + s.h - c.y; }
+    paint();
+  });
+  const lift = (e) => { if (drag?.id === e.pointerId) drag = null; };
+  cv.addEventListener('pointerup', lift);
+  cv.addEventListener('pointercancel', lift);
+  ok.addEventListener('click', () => { done({ ...c }); close(); });
 }
 function bindPayTypes() {
   $('#payTypeBack').addEventListener('click', () => openPayTypes(true));
