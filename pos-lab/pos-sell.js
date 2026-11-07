@@ -1402,7 +1402,7 @@ function drawEditSheet() {
   // bottom left follows what's being edited: the discount's keys -> clear it; nothing open -> remove the line
   const list = o.kind === 'ful' || o.kind === 'rd';   // Walk-in, Discount: Check out's pill is Done, Clear sits up top across from ‹ Back
   const clr = o.kind === 'rd' && !dk && !ES_SC[o.f] && (o.f ? +o.d : o.pick !== null) ? '<button type="button" class="es-x es-clr cta-2" data-sclr>Clear</button>'
-    : ph && o.kind === 'line' && !o.f ? '<button type="button" class="es-x es-clr rm cta-2" data-remove>Remove</button>' : '';   // the phone's line: Remove where Clear sits, Done the big pill (owner 2026-11-05)
+    : ph && o.kind === 'line' && !o.f ? '<button type="button" class="es-x es-clr rm cta-2" data-remove aria-label="Remove"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"/></svg></button>' : '';   // the phone's line: a bin where Clear sits, Done the big pill (owner 2026-11-05; a bin so a long name never runs into it, 2026-11-08)
   const lk = nk && o.kind === 'line' ? ' lk' : '';   // the line's keys come up over its grey page, which stays grey (owner 2026-11-05)
   const left = list || ask || nk || o.kind === 'mods' ? ''   // the phone's line discount: 0 then ✓ is no discount, no Clear (owner 2026-11-05)
     : o.f === 'd' ? (+o.d ? `<button type="button" class="es-q cta-3" data-sclr>${o.kind === 'line' ? 'Clear discount' : 'Clear'}</button>` : '')

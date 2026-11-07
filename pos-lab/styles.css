@@ -3474,6 +3474,8 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .esheet .es-q { height: 40px; margin-left: -8px; padding: 0 8px; border-radius: var(--es-r); color: var(--ink-secondary); font-size: 14px; }
 .esheet .es-q:hover { background: var(--es-btn); color: var(--ink); }
 .esheet :is(.es-q, .es-x).rm { color: var(--danger); }   /* Remove item; the phone's Remove across from ‹ */
+.esheet .es-x.es-clr.rm { width: 44px; padding: 0; }   /* the phone's Remove: the bin in ‹ Back's round button (owner 2026-11-08) */
+.esheet .es-x.rm svg { color: var(--danger); }   /* the glass circle's ink is black; the bin stays red */
 .esheet .es-q.rm:hover { background: var(--danger-bg); }
 .esheet .es-ink { height: 40px; margin-left: auto; padding: 0 20px; border-radius: var(--es-r); background: var(--tile); font-size: 14px; font-weight: 590; }
 .esheet .es-ink:hover:not(:disabled) { background: var(--es-hover); }

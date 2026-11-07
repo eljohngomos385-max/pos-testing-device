@@ -341,7 +341,7 @@ function bindStore() {
 // Settings › Receipt (owner 2026-11-06): the style (Classic, Modern), what the last line says (Receipt says), a top and a bottom
 // picture (the logo; the store's QR or art), header and footer words, and whether the name, address and phone show. Preview opens the Test print's sample in a sheet (receiptLook in pos-core.js).
 // Each change saves as it is made, as a payment type's page. ponytail: no manager PIN, as Store details.
-const LOOK_PICS = { logo: ['#rcLogoRow', '#rcLogoThumb', '#rcLogoRm', '#rcLogoAdd'], footerImg: ['#rcFootRow', '#rcFootThumb', '#rcFootRm', '#rcFootAdd'] };
+const LOOK_PICS = { logo: '#rcLogoThumb', footerImg: '#rcFootThumb' };   // one Pictures row shows both (owner 2026-11-08); Remove is on the Pictures page
 function saveLook(patch) {
   const was = state.settings.receipt;
   state.settings.receipt = { ...was, ...patch };
@@ -352,11 +352,11 @@ function saveLook(patch) {
 }
 function renderLook() {
   const look = receiptLook();
-  Object.entries(LOOK_PICS).forEach(([k, [, thumb, rm, add]]) => {
-    $(thumb).hidden = $(rm).hidden = !look[k];
-    $(add).hidden = !!look[k];
+  Object.entries(LOOK_PICS).forEach(([k, thumb]) => {
+    $(thumb).hidden = !look[k];
     if (look[k]) $(thumb).src = look[k];
   });
+  $('#rcPicsAdd').hidden = !!(look.logo || look.footerImg);
 }
 function openLook() {
   const look = receiptLook();
@@ -385,11 +385,8 @@ function bindLook() {
   $('#rcTin').addEventListener('change', (e) => saveLook({ showTin: e.target.checked }));   // not every store has a TIN (owner 2026-11-06)
   $('#rcHeader').addEventListener('input', (e) => saveLook({ header: e.target.value }));
   $('#rcFooter').addEventListener('input', (e) => saveLook({ footer: e.target.value }));
-  Object.entries(LOOK_PICS).forEach(([k, [row, , rm]]) => {
-    $(row).addEventListener('click', (e) => { if (!e.target.closest('.qr-rm')) openPics(e.currentTarget, k); });   // the receipt, this box picked
-    $(row).addEventListener('keydown', (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click(); } });   // a div, not a label: no file input in it now
-    $(rm).addEventListener('click', () => saveLook({ [k]: '', [k + 'Fit']: null }));
-  });
+  $('#rcPicsRow').addEventListener('click', (e) => openPics(e.currentTarget, 'logo'));   // the receipt, the top box picked
+  $('#rcPicsRow').addEventListener('keydown', (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click(); } });   // a div, not a label: no file input in it
 }
 // Settings › Receipt › Top / Bottom picture (owner 2026-11-06, "canvas amount of control"): the receipt itself with two boxes, top and
 // bottom. Tap one to pick it, drag its bottom corners to size it inside the paper's margins, tap it again to add the picture: it goes
