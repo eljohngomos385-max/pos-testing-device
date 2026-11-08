@@ -364,13 +364,15 @@ function attachEvents() {
   scanCard.addEventListener('pointerup', endCardSwipe);
   scanCard.addEventListener('pointercancel', endCardSwipe);
 
-  // The phone's key sheet: a swipe down is its ✓ (owner 2026-11-08). The keys follow the finger; let go past 60 (or a flick) and
-  // the ✓ fires, its slide (keysDown) carrying on from the finger; a ✓ that can't go yet (a 0 price) springs them back.
+  // The phone's key sheet: a swipe down is its ✓ (owner 2026-11-08). The keys follow the finger, heavier the further they go
+  // (rubber band, never past half the sheet); let go with the finger half a sheet down (or a hard flick, 80 down) and the ✓ fires,
+  // its slide (keysDown) carrying on from the keys; a ✓ that can't go yet (a 0 price) closes the page instead.
+  // Was 60 / any flick, then a third / a 40 flick: both closed while typing (owner 2026-11-08).
   let keySwipe = null;
   const swallowTap = (c) => { if (c.isTrusted) { c.stopPropagation(); c.preventDefault(); } };   // the drag lifts off a key: no key press
   document.addEventListener('pointerdown', (e) => {
     const k = e.pointerType === 'touch' && e.isPrimary && matchMedia('(max-width: 720px)').matches && e.target.closest('.es-body.ks > .es-keys, .co:not(.co-kd) #checkoutKeys');
-    keySwipe = k && !k.classList.contains('es-dn') ? { k, y: e.clientY, id: e.pointerId, dy: 0, v: 0, t: e.timeStamp } : null;
+    keySwipe = k && !k.classList.contains('es-dn') ? { k, h: k.offsetHeight, y: e.clientY, id: e.pointerId, dy: 0, v: 0, t: e.timeStamp } : null;
   });
   document.addEventListener('pointermove', (e) => {
     const s = keySwipe;
@@ -379,7 +381,7 @@ function attachEvents() {
     s.v = (dy - s.dy) / Math.max(1, e.timeStamp - s.t);   // px/ms, for a flick
     s.t = e.timeStamp;
     s.dy = dy;
-    if (dy > 8) { s.k.style.transition = 'none'; s.k.style.transform = `translateY(${dy}px)`; }
+    if (dy > 8) { s.k.style.transition = 'none'; s.k.style.transform = `translateY(${s.h / 2 * dy / (dy + s.h / 2)}px)`; }   // 1:1 at first, half at half a sheet's pull, never past half
   });
   const endKeySwipe = (e) => {
     const s = keySwipe;
@@ -389,9 +391,10 @@ function attachEvents() {
     addEventListener('click', swallowTap, true);
     setTimeout(() => removeEventListener('click', swallowTap, true), 400);
     const ok = s.k.closest('.es-card, .co')?.querySelector('.es-ok, #checkoutKeysOk');
-    if (e.type === 'pointerup' && (s.dy > 60 || (s.v > .5 && e.timeStamp - s.t < 100)) && ok && !ok.disabled) {
+    const go = ok?.disabled ? s.k.closest('.es-card')?.querySelector('.es-x') : ok;   // nothing typed (✓ greyed): nothing to lose, the swipe is ✕ / ‹ (owner 2026-11-08)
+    if (e.type === 'pointerup' && (s.dy > s.h / 2 || (s.dy > 80 && s.v > 1 && e.timeStamp - s.t < 100)) && go) {
       s.k.addEventListener('animationend', () => { s.k.style.transform = s.k.style.transition = ''; }, { once: true });   // checkout's keys stay in the page
-      return ok.click();
+      return go.click();
     }
     s.k.style.transition = 'transform .24s var(--rl-ease)';
     s.k.style.transform = '';
