@@ -364,6 +364,41 @@ function attachEvents() {
   scanCard.addEventListener('pointerup', endCardSwipe);
   scanCard.addEventListener('pointercancel', endCardSwipe);
 
+  // The phone's key sheet: a swipe down is its ✓ (owner 2026-11-08). The keys follow the finger; let go past 60 (or a flick) and
+  // the ✓ fires, its slide (keysDown) carrying on from the finger; a ✓ that can't go yet (a 0 price) springs them back.
+  let keySwipe = null;
+  const swallowTap = (c) => { if (c.isTrusted) { c.stopPropagation(); c.preventDefault(); } };   // the drag lifts off a key: no key press
+  document.addEventListener('pointerdown', (e) => {
+    const k = e.pointerType === 'touch' && e.isPrimary && matchMedia('(max-width: 720px)').matches && e.target.closest('.es-body.ks > .es-keys, .co:not(.co-kd) #checkoutKeys');
+    keySwipe = k && !k.classList.contains('es-dn') ? { k, y: e.clientY, id: e.pointerId, dy: 0, v: 0, t: e.timeStamp } : null;
+  });
+  document.addEventListener('pointermove', (e) => {
+    const s = keySwipe;
+    if (!s || s.id !== e.pointerId) return;
+    const dy = Math.max(0, e.clientY - s.y);
+    s.v = (dy - s.dy) / Math.max(1, e.timeStamp - s.t);   // px/ms, for a flick
+    s.t = e.timeStamp;
+    s.dy = dy;
+    if (dy > 8) { s.k.style.transition = 'none'; s.k.style.transform = `translateY(${dy}px)`; }
+  });
+  const endKeySwipe = (e) => {
+    const s = keySwipe;
+    if (!s || s.id !== e.pointerId) return;
+    keySwipe = null;
+    if (s.dy <= 8) return;   // a tap
+    addEventListener('click', swallowTap, true);
+    setTimeout(() => removeEventListener('click', swallowTap, true), 400);
+    const ok = s.k.closest('.es-card, .co')?.querySelector('.es-ok, #checkoutKeysOk');
+    if (e.type === 'pointerup' && (s.dy > 60 || (s.v > .5 && e.timeStamp - s.t < 100)) && ok && !ok.disabled) {
+      s.k.addEventListener('animationend', () => { s.k.style.transform = s.k.style.transition = ''; }, { once: true });   // checkout's keys stay in the page
+      return ok.click();
+    }
+    s.k.style.transition = 'transform .24s var(--rl-ease)';
+    s.k.style.transform = '';
+  };
+  document.addEventListener('pointerup', endKeySwipe);
+  document.addEventListener('pointercancel', endKeySwipe);
+
   // ---- Product grid (Sell) — real swipe gestures ----
   const productGrid = $('#productGrid');
   let swipeStart = null;
