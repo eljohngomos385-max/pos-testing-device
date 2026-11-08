@@ -1256,14 +1256,11 @@ function esWrite() {
     else {
       const was = o.qAt ?? item.qty;   // the count before the keys opened
       o.qAt = null;
-      if (p && qty > was) {   // more of it: the stock question / low toast (stockOnAdd); Cancel puts the count back
-        item.qty = was;
-        stockOnAdd(p, cartWant(p) - was + qty, (later) => {
-          item.qty = qty;
-          if (later) { renderCart(); if (es === o) drawEditSheet(); }
-        }, {
-          cancel: () => { Object.assign(o, { q: String(was), fresh: true }); renderCart(); if (es === o) drawEditSheet(); } });
-      } else item.qty = qty;
+      item.qty = qty;   // the typed count stays on screen behind the stock question (owner 2026-11-08)
+      if (p && qty > was) {   // more of it: the stock question / low toast (stockOnAdd); Sell anyway keeps it, Cancel puts the count back
+        stockOnAdd(p, cartWant(p), () => {}, {
+          cancel: () => { item.qty = was; Object.assign(o, { q: String(was), fresh: true }); renderCart(); if (es === o) drawEditSheet(); } });
+      }
     }
     const d = esDisc(es);
     if (d) item.discount = d; else delete item.discount;
@@ -1546,6 +1543,8 @@ function editSheetClick(e) {
     o.d = '';
     if (o.kind === 'rd') Object.assign(o, { pick: null, fresh: true });
     else if (o.f) esSettle(o);
+  } else if (o.kind === 'line' && o.f === 'q' && !el('.es-keys') && !matchMedia('(max-width: 720px)').matches) {
+    esSettle(o);   // the iPad's Quantity: a tap beside the pop-up keys puts them away, as Apply (owner 2026-11-08)
   } else return;
   const typing = el('[data-sk]') || el('.es-seg button');   // the keys, Percent / Amount: shown, not put on yet
   esWrite();

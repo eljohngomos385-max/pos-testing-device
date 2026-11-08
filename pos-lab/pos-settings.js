@@ -169,7 +169,8 @@ const payNameTaken = (name, skip) => [...PAY_TYPES.flatMap(([k, l]) => [k, l]), 
   ...payTypes().custom.filter(n => n !== skip)].some(n => n.toLowerCase() === name.toLowerCase());
 const fitName = (n) => (n.length > 24 ? n.slice(0, 23).trimEnd() + '…' : n);
 let ptOpen = '';
-const setOpt = (patch) => savePayTypes({ opts: { ...payTypes().opts, [ptOpen]: { ...opt(ptOpen), ...patch } } });
+// saves only what you changed; opt() fills the defaults on read, so a later default change still reaches untouched types
+const setOpt = (patch) => savePayTypes({ opts: { ...payTypes().opts, [ptOpen]: { ...payTypes().opts[ptOpen], ...patch } } });
 const payTypesOn = () => { const { hidden, custom } = payTypes(); return [...PAY_TYPES.map(t => t[0]), ...custom].filter(k => k === 'cash' || !hidden.includes(k)).length; };
 function openPayTypes(open) {
   showStPage(open ? 'payTypesPage' : 'settingsPage');
@@ -410,7 +411,8 @@ function bindLook() {
   $('#rcTin').addEventListener('change', (e) => saveLook({ showTin: e.target.checked }));   // not every store has a TIN (owner 2026-11-06)
   $('#rcHeader').addEventListener('input', (e) => saveLook({ header: e.target.value }));
   $('#rcFooter').addEventListener('input', (e) => saveLook({ footer: e.target.value }));
-  $('#rcPicsRow').addEventListener('click', (e) => openPics(e.currentTarget, 'logo'));   // the receipt, the top box picked
+  $('#rcPicsRow').addEventListener('click', () => openPics('logo'));   // the receipt, the top box picked
+  $('#picsBack').addEventListener('click', () => { showStPage('receiptPage'); $('#rcPicsRow').focus({ preventScroll: true }); });   // focus back on the row it came from
   $('#rcPicsRow').addEventListener('keydown', (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click(); } });   // a div, not a label: no file input in it
 }
 // Settings › Receipt › Top / Bottom picture (owner 2026-11-06, "canvas amount of control"): the receipt itself with two boxes, top and
@@ -443,15 +445,16 @@ function drawFit(cv, img, f, w, h) {
 // anything in the picture prints at all (a pale one is all paper)
 const inked = (img) => drawFit(document.createElement('canvas'), img, { zoom: 1, cx: 0.5, cy: 0.5 }, img.width, img.height)
   .getContext('2d').getImageData(0, 0, img.width, img.height).data.includes(17);
-function openPics(btn, pick) {
+function openPics(pick) {
   const look = receiptLook(), r = toReceiptViewModel(sampleTestOrder()), fits = {}, imgs = {}, boxes = {};
   r.look.logo = r.look.footerImg = BLANK_PIC;   // a stand-in, so the receipt lays out each picture's place; its box goes there
-  const { m } = openSheet(btn, `<div class="fs-top">
-    <button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button>
-    <h2 id="fsTitle">Pictures</h2><i></i></div><div class="fs-body"><div class="receipt-preview"><div class="rp-paper">${receiptBody(r)}</div></div>
-    <input type="file" accept="image/*" hidden></div>
-    <div class="pic-bar" hidden><button type="button" class="cta-2" data-act="add" aria-label="Replace picture"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-photo"/></svg></button><button type="button" class="cta-2 crop" data-act="crop"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-crop"/></svg>Crop</button><button type="button" class="cta-2" data-act="rm" aria-label="Remove picture"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"/></svg></button></div>`, 'rc-sheet');
-  const rcpt = m.querySelector('.rcpt'), input = m.querySelector('input[type=file]'), bar = m.querySelector('.pic-bar');
+  // its own page (owner 2026-11-08: not a pop-up); the receipt scrolls on down under the bar's frost, Crop is the pop-up
+  const m = $('#picsBody'), old = $('#picsBar'), bar = old.cloneNode(true);
+  old.replaceWith(bar);   // a fresh bar: the last visit's taps go with the old one
+  m.innerHTML = `<div class="rp-paper">${receiptBody(r)}</div><input type="file" accept="image/*" hidden>`;
+  showStPage('picsPage'); $('#picsBack').focus({ preventScroll: true });   // the tapped row hides: focus moves with the page
+  m.parentNode.scrollTop = 0;
+  const rcpt = m.querySelector('.rcpt'), input = m.querySelector('input[type=file]');
   m.querySelectorAll('.rcpt img.pic').forEach((el) => {
     const k = el.classList.contains('foot') ? 'footerImg' : 'logo', box = document.createElement('div');
     box.className = k === 'logo' ? 'pbox' : 'pbox foot';
@@ -521,7 +524,6 @@ function openPics(btn, pick) {
     return { x: f.cx - w / 2, y: f.cy - h / 2, w, h };
   };
   paint();
-  requestAnimationFrame(() => boxes[pick].scrollIntoView({ block: 'center' }));
   let adding = sel;
   const add = () => { adding = sel; input.click(); };
   // a new picture goes through the crop screen first; its ✕ adds nothing (a Replace keeps the old one)
@@ -599,7 +601,7 @@ function openCrop(btn, img, was, fresh, done) {
     <h2>Crop</h2>
     <button type="button" class="fs-ok cta" aria-label="Done"${fresh ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></button>
     </div><div class="fs-body"><canvas class="crop-stage" aria-label="The picture: drag the frame's corners over the part to keep"></canvas></div>`, 'crop-sheet');
-  m.removeAttribute('aria-labelledby');   // the Pictures sheet under it owns #fsTitle
+  m.removeAttribute('aria-labelledby');   // named by aria-label, not the shared #fsTitle
   m.setAttribute('aria-label', 'Crop');
   const cv = m.querySelector('.crop-stage'), ok = m.querySelector('.fs-ok'), ink = drawFit(document.createElement('canvas'), img, { zoom: 1, cx: 0.5, cy: 0.5 }, img.width, img.height);
   const u = Math.min((cv.clientWidth - 2 * PAD) / img.width, Math.max(160, innerHeight - 260) / img.height), pw = img.width * u, ph = img.height * u, dpr = devicePixelRatio || 1;

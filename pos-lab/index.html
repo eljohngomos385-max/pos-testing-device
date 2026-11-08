@@ -33,7 +33,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Montserrat:wght@500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=845" />
+  <link rel="stylesheet" href="styles.css?v=852" />
   <link rel="stylesheet" href="receipt.css?v=2" />
 </head>
 <body class="hairlines">   <!-- hairlines: Reports, Shift and Past shifts cards get the item rows' 1px line (owner try 2026-10-16); drop the class to turn it off -->
@@ -770,6 +770,15 @@
               </div>
             </div>
           </section>
+          <!-- Settings › Receipt › Pictures (owner 2026-11-08: its own page, not a pop-up; Crop stays the pop-up): the receipt with its two boxes, Photos' bar at the foot over a frost (pos-settings.js openPics) -->
+          <section class="page st-page" id="picsPage" aria-label="Pictures" hidden>
+            <div class="head">
+              <button class="sq back cta-2" id="picsBack" aria-label="Back to receipt" title="Back"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-back"/></svg></button>
+              <h1 class="st-ttl">Pictures</h1>
+            </div>
+            <div class="c-scroll"><div class="c-body" id="picsBody"></div></div>
+            <div class="pic-bar" id="picsBar" hidden><button type="button" class="cta-2" data-act="add" aria-label="Replace picture"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-photo"/></svg></button><button type="button" class="cta-2 crop" data-act="crop"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-crop"/></svg>Crop</button><button type="button" class="cta-2" data-act="rm" aria-label="Remove picture"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"/></svg></button></div>
+          </section>
           <!-- Settings › Fulfilment types (owner 2026-10-16): Payment types' twin, plus the primary a sale starts on (pos-settings.js) -->
           <section class="page st-page" id="fulTypesPage" aria-label="Fulfilment types" hidden>
             <div class="head">
@@ -1052,13 +1061,13 @@
   <script src="vendor/zxing-browser.min.js"></script>
   <script src="printer.js?v=62"></script>
   <script src="drawer.js?v=1"></script>
-  <script src="pos-core.js?v=86"></script>
-  <script src="pos-sell.js?v=169"></script>
+  <script src="pos-core.js?v=88"></script>
+  <script src="pos-sell.js?v=171"></script>
   <script src="pos-checkout.js?v=63"></script>
   <script src="pos-orders.js?v=62"></script>
   <script src="pos-items.js?v=93"></script>
   <script src="pos-customers.js?v=52"></script>
-  <script src="pos-settings.js?v=61"></script>
+  <script src="pos-settings.js?v=64"></script>
   <script src="pos-pin.js?v=15"></script>
   <script src="pos-shift.js?v=61"></script>
   <script src="pos-stock.js?v=28"></script>

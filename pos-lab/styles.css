@@ -3539,11 +3539,20 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
   .esheet .es-body.ln:has(> .es-keys) > * { grid-area: 1 / 1; align-self: start; }
   .esheet .es-body.ln > .es-keys { margin-top: calc(24px + var(--hero-fs) + 26px); }   /* its Discount: under the number (the name line 24 over it) */
   .esheet .es-body.ln:has(.es-row.on) > .es-keys { margin-top: calc(24px + var(--hero-fs) + var(--hero-gap) + 76px); }   /* Quantity: under its row, the first (56) */
-  /* checkout's Cash › Custom and a split part: Complete sale / Done bottom right of the page, as every sheet's Done */
-  .co.co-typed .co-pay { position: relative; }
-  .co.co-typed :is(.co-step, .co-keyin) { container-type: normal; animation: none; }   /* a container or an animated transform would be the button's box */
   .co.co-typed .co-keyin { grid-template: "keys" / 352px; }
-  .co.co-typed .co-keyin > .co-btn { position: absolute; z-index: 2; right: 24px; bottom: 24px; grid-area: auto; width: auto; height: 48px; margin: 0; padding: 0 22px; }
+  /* every main button (Done, Apply, Add, Next, Start shift, Complete sale, New sale): Check out's height, a pill, bottom right,
+     no line over it, its foot --go-y over the screen's foot on every page; Skip / Back keep the left (owner 2026-11-08) */
+  body { --go-y: 28px; --go-x: 20px; }   /* 28: the old Done-under-a-line's spot, 36 read too high (owner 2026-11-08) */
+  .esheet:not(.cust-sheet) .es-ft { border-top: 0; padding: 12px var(--go-x) calc(var(--go-y) - 17px); }   /* the sheet card's inside ends 17 over the screen's foot (16 + its edge) */
+  #shiftSheet .es-ft { padding-bottom: calc(var(--go-y) - 9px); }   /* Shift's, 9 */
+  .esheet:not(.cust-sheet) .es-ft > :is(.es-ink.cta, .sh-fab) { width: auto; height: var(--bar-h); margin: 0 0 0 auto; padding: 0 20px; border-radius: 999px; font-size: 15px; font-weight: 550; }
+  .esheet .es-ft:has(> .es-big) { justify-content: flex-end; }
+  .esheet .es-ft > .es-q { height: var(--bar-h); }
+  .esheet .es-ft:has(> .sh-fab) > .sh-fab { position: absolute; right: var(--go-x); bottom: calc(var(--go-y) - 17px); }
+  .co .co-pay { position: relative; }   /* checkout is the whole screen: its foot is the screen's; Sale complete's column too, so New sale sits on Complete sale's spot */
+  .co .co-pay :is(.co-step, .co-keyin) { container-type: normal; animation: none; }   /* a container (the cash step's) or an animated transform would be the button's box */
+  .co :is(.co-step, .co-keyin) > .co-btn.primary { position: absolute; z-index: 2; inset: auto var(--go-x) var(--go-y) auto; translate: none; grid-area: auto;
+    width: auto; height: var(--bar-h); margin: 0; padding: 0 20px; border-radius: 999px; }
 }
 @keyframes pk-in { from { opacity: 0; transform: scale(.94); } }
 /* New / Edit customer: the frame, a title and the back office's fields, Save where Done is */
@@ -3856,12 +3865,6 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
   .co *, .co *::before { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
 }
 .co-rcpt-btn, .co-rcpt-x { display: none; }
-/* iPad: New sale leaves the rows for the bottom line, centred, as the phone's pinned button (owner 2026-11-06: under the rows it "looks really bad") */
-@media (min-width: 721px) {
-  .co-done { position: relative; }
-  .co-done > .co-step { animation: none; }   /* an animated transform would be the button's box */
-  .co-done .co-step > .co-btn { position: absolute; left: 50%; bottom: 16px; translate: -50% 0; width: min(100% - 48px, 260px); height: var(--bar-h); margin: 0; }
-}
 /* Phone (owner 2026-10-07): no customer row or item list under the payment (the cart page has them, and the
    tablet's can't be changed here either). Methods and cash amounts are one row each, as the Discount list, so the
    change shows; after the sale, Show receipt (where Check out sits) brings the receipt up as a sheet. */
@@ -7480,10 +7483,11 @@ body.light-theme {
 body {
   --paper-shadow: 0 8px 32px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.18);
   --pm-cash: #5CB88A; --pm-gcash: #6FA8F5; --pm-qr: #4FC1B0; --pm-credit: #E8B64C; --pm-split: #B69CF2; --pm-other: var(--ink-quaternary);
-  /* a payment type's tile (Settings › Payment types › Icon, iOS Shortcuts' colours): one set, both themes; the glyph is --pt-ink */
-  --pt-red: #FF5B63; --pt-coral: #FF7F5E; --pt-orange: #F5A14A; --pt-yellow: #FFC20A; --pt-green: #43C759;
-  --pt-teal: #00CDB0; --pt-cyan: #0ABDF5; --pt-blue: #2B87FF; --pt-indigo: #4A5FC4; --pt-purple: #8A55CF;
-  --pt-lavender: #B97CE8; --pt-pink: #F28BD8; --pt-grey: #8A939D; --pt-sage: #8FA898; --pt-brown: #A88B6E; --pt-ink: #FFFFFF;
+  /* a payment type's tile (Settings › Payment types › Icon, Sky set: iOS-bright, each hue leaned toward our Check out blue): one set, both themes; the glyph is --pt-ink */
+  --pt-red: #F45D79; --pt-coral: #FF7A66; --pt-orange: #FF9A4D; --pt-yellow: #EAAC2B; --pt-green: #2FBF8A;
+  --pt-teal: #22C3C9; --pt-cyan: #4FB3F6; --pt-blue: #4388F7; --pt-indigo: #6C7CF2; --pt-purple: #9B6BF2;
+  --pt-lavender: #C08CF0; --pt-pink: #F27BC4; --pt-grey: #8592A6; --pt-sage: #6FA088; --pt-brown: #C08A64; --pt-ink: #FFFFFF;
+  --pt-squircle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M100.0 50.0L100.0 66.8L99.8 72.1L99.6 76.0L99.3 79.1L98.9 81.8L98.4 84.0L97.9 86.1L97.2 87.9L96.4 89.5L95.6 91.0L94.6 92.3L93.5 93.5L92.3 94.6L91.0 95.6L89.5 96.4L87.9 97.2L86.1 97.9L84.0 98.4L81.8 98.9L79.1 99.3L76.0 99.6L72.1 99.8L66.8 100.0L50.0 100.0L33.2 100.0L27.9 99.8L24.0 99.6L20.9 99.3L18.2 98.9L16.0 98.4L13.9 97.9L12.1 97.2L10.5 96.4L9.0 95.6L7.7 94.6L6.5 93.5L5.4 92.3L4.4 91.0L3.6 89.5L2.8 87.9L2.1 86.1L1.6 84.0L1.1 81.8L0.7 79.1L0.4 76.0L0.2 72.1L0.0 66.8L0.0 50.0L0.0 33.2L0.2 27.9L0.4 24.0L0.7 20.9L1.1 18.2L1.6 16.0L2.1 13.9L2.8 12.1L3.6 10.5L4.4 9.0L5.4 7.7L6.5 6.5L7.7 5.4L9.0 4.4L10.5 3.6L12.1 2.8L13.9 2.1L16.0 1.6L18.2 1.1L20.9 0.7L24.0 0.4L27.9 0.2L33.2 0.0L50.0 0.0L66.8 0.0L72.1 0.2L76.0 0.4L79.1 0.7L81.8 1.1L84.0 1.6L86.1 2.1L87.9 2.8L89.5 3.6L91.0 4.4L92.3 5.4L93.5 6.5L94.6 7.7L95.6 9.0L96.4 10.5L97.2 12.1L97.9 13.9L98.4 16.0L98.9 18.2L99.3 20.9L99.6 24.0L99.8 27.9L100.0 33.2Z'/%3E%3C/svg%3E");
 }
 body.light-theme {
   --paper-shadow: 0 0 0 1px #E1E1E1, 0 1px 2px -1px rgb(26 26 26 / .07), 0 4px 14px -4px rgb(26 26 26 / .10);
@@ -8905,6 +8909,14 @@ body.light-theme .vs-row .pic[style] { background: hsl(var(--tc) 75% 86%); }
 .qr-rm { color: var(--ink-secondary); font-size: 14px; font-weight: 500; }
 /* Settings › Receipt › Preview: the receipt in a sheet at the paper's own width */
 .rc-sheet .fs-body .rp-paper { margin: 0 auto; }
+/* Settings › Receipt › Pictures, its own page (owner 2026-11-08): the paper scrolls on down under Photos' bar, the cart's frost behind the bar (.vsheet::after) */
+#picsPage .c-scroll { overflow-x: hidden; }   /* the corner dots' finger room never drags the page sideways */
+#picsPage .c-body { padding-bottom: calc(var(--bar-h) + var(--pill-b) + 32px); }   /* the receipt's foot scrolls clear of the bar; always, so the bar showing or hiding never moves the receipt under a finger */
+#picsPage .rp-paper { margin: 0 auto; }
+#picsPage > .pic-bar { z-index: 2; }
+#picsPage:has(> .pic-bar:not([hidden]))::after { content: ''; position: absolute; z-index: 1; inset: auto 0 0; height: calc(var(--bar-h) + var(--pill-b) + 64px); pointer-events: none;
+  background: color-mix(in srgb, var(--canvas, var(--bg)) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  -webkit-mask-image: linear-gradient(transparent, #000 88px); mask-image: linear-gradient(transparent, #000 88px); }
 /* Settings › Receipt › Pictures (pos-settings.js openPics): the receipt with its two boxes, where receipt.css .pic prints them */
 .pbox { position: relative; margin: 0 auto .714em; outline: 1px dashed rgb(17 17 17 / .35); }   /* the receipt's ink, faint */
 .pbox.foot { margin: .714em auto 0; }
@@ -9222,9 +9234,11 @@ body.light-theme .lv :is(#itemsKinds, .kinds.rp-units) button { color: var(--ink
    PAYMENT TYPE TILES (owner 2026-11-08, iOS Shortcuts' icon sheet): a colour square with a white symbol (payTile, pos-core.js),
    on the checkout's pay list, the type's Icon row, and the Icon sheet's picker
    ============================================================ */
-.pt-tile { --s: 28px; display: grid; place-items: center; flex: none; width: var(--s); height: var(--s); border-radius: calc(var(--s) * .27);
+.pt-tile { --s: 28px; display: grid; place-items: center; flex: none; width: var(--s); height: var(--s);
+           /* Apple's squircle (superellipse n=5): flat sides, the curve melts in, no stiff corner; a mask so iPhone Safari gets it too */
+           -webkit-mask: var(--pt-squircle) center / 100% 100% no-repeat; mask: var(--pt-squircle) center / 100% 100% no-repeat;
            background: linear-gradient(rgb(255 255 255 / .16), rgb(255 255 255 / 0)), var(--pt); color: var(--pt-ink); }
-.pt-tile svg, .fsheet .pt-tile svg { width: 64%; height: 64%; fill: currentColor; stroke: none; }
+.pt-tile svg, .fsheet .pt-tile svg { width: calc(64% * var(--g, 1)); height: calc(64% * var(--g, 1)); fill: currentColor; stroke: none; }
 .fr .v .pt-tile { --s: 26px; }
 .pl-big { display: grid; place-items: center; margin: 24px 0 28px; }
 .pl-big .pt-tile { --s: 96px; }
@@ -9235,5 +9249,5 @@ body.light-theme .lv :is(#itemsKinds, .kinds.rp-units) button { color: var(--ink
 .fsheet .pl-colors button { width: 44px; height: 44px; border-radius: 50%; background: var(--pt); }
 .fsheet .pl-colors button[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--rl-card), 0 0 0 5.5px var(--pt); }   /* iOS: a ring with a gap */
 .fsheet .pl-syms button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--ink-secondary); }
-.fsheet .pl-syms svg { width: 24px; height: 24px; fill: currentColor; stroke: none; }
+.fsheet .pl-syms svg { width: calc(24px * var(--g, 1)); height: calc(24px * var(--g, 1)); fill: currentColor; stroke: none; }
 .fsheet .pl-syms button[aria-pressed="true"] { background: var(--tile); color: var(--ink); }

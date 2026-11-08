@@ -196,28 +196,27 @@ const payCustomOn = () => { const p = state.settings.payments || {}, off = new S
 // so they sync with the type and the back office can draw its own shade (--pt-<colour> here). Built-ins start on PAY_LOOK.
 const PAY_COLORS = ['red', 'coral', 'orange', 'yellow', 'green', 'teal', 'cyan', 'blue', 'indigo', 'purple', 'lavender', 'pink', 'grey', 'sage', 'brown'];
 const PAY_LOOK = { cash: ['green', 'cash'], gcash: ['blue', 'phone'], qr: ['teal', 'qr'], other: ['grey', 'dots'], credit: ['orange', 'person'], split: ['purple', 'split'] };
-const payLine = (d) => `<path d="${d}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;   // a line glyph among the filled ones
-// [word, glyph] on a 24 grid, white on the colour; split is Split's own, not in the picker (PAY_PICKS)
+// [word, glyph, optical size] on a 24 grid, white on the colour - the size evens out how big each one looks; split is Split's own, not in the picker (PAY_PICKS)
 const PAY_SYMBOLS = {
-  cash: ['Cash', '<path fill-rule="evenodd" d="M3 6.5h18A1.5 1.5 0 0 1 22.5 8v8a1.5 1.5 0 0 1-1.5 1.5H3A1.5 1.5 0 0 1 1.5 16V8A1.5 1.5 0 0 1 3 6.5zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z"/>'],
-  coins: ['Coins', '<rect x="4" y="15" width="16" height="4.5" rx="2.25"/><rect x="4" y="9.75" width="16" height="4.5" rx="2.25"/><rect x="4" y="4.5" width="16" height="4.5" rx="2.25"/>'],
-  card: ['Card', '<path fill-rule="evenodd" d="M4 4.5h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2zM2 8.5V11h20V8.5zM5 14.5V16h5v-1.5z"/>'],
-  phone: ['Phone', '<path fill-rule="evenodd" d="M8 1.5h8A2.5 2.5 0 0 1 18.5 4v16a2.5 2.5 0 0 1-2.5 2.5H8A2.5 2.5 0 0 1 5.5 20V4A2.5 2.5 0 0 1 8 1.5zM10 3.5v1h4v-1z"/>'],
-  qr: ['QR code', '<path fill-rule="evenodd" d="M3 3h7v7H3zM4.5 4.5v4h4v-4zM5.75 5.75h1.5v1.5h-1.5zM14 3h7v7h-7zM15.5 4.5v4h4v-4zM16.75 5.75h1.5v1.5h-1.5zM3 14h7v7H3zM4.5 15.5v4h4v-4zM5.75 16.75h1.5v1.5h-1.5z"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM18.5 14H21v2.5h-2.5zM14 18.5h2.5V21H14z"/>'],
-  wallet: ['Wallet', '<path d="M5.5 3.5H17a1 1 0 0 1 1 1V6H5.5a1.25 1.25 0 0 1 0-2.5z"/><path fill-rule="evenodd" d="M3 6.5v11A2.5 2.5 0 0 0 5.5 20h13a2.5 2.5 0 0 0 2.5-2.5v-8A2.5 2.5 0 0 0 18.5 7h-13A2.5 2.5 0 0 1 3 6.5zM16.5 11.75a1.75 1.75 0 1 0 0 3.5a1.75 1.75 0 1 0 0-3.5z"/>'],
-  bank: ['Bank', '<path d="M12 2.5l9.5 5v2h-19v-2zM4.5 11H7v7H4.5zM10.75 11h2.5v7h-2.5zM17 11h2.5v7H17zM2.5 19.5h19v2h-19z"/>'],
-  transfer: ['Transfer', payLine('M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4')],
-  cheque: ['Cheque', '<path fill-rule="evenodd" d="M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM7.5 12v1.5h9V12zM7.5 16v1.5h6V16z"/>'],
-  gift: ['Gift', '<path d="M3 8h8v4H3zM13 8h8v4h-8zM4.5 13.5H11V21H6a1.5 1.5 0 0 1-1.5-1.5zM13 13.5h6.5v6A1.5 1.5 0 0 1 18 21h-5zM12 7.5C10.5 4 6.5 3.5 6.5 5.75 6.5 7 8.5 7.5 12 7.5zm0 0c1.5-3.5 5.5-4 5.5-1.75 0 1.25-2 1.75-5.5 1.75z"/>'],
-  person: ['Account', '<circle cx="12" cy="7.5" r="4"/><path d="M4 20.5c0-4.1 3.6-7 8-7s8 2.9 8 7z"/>'],
-  dots: ['Other', '<circle cx="5.5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18.5" cy="12" r="2"/>'],
-  split: ['Split', payLine('M12 2.5v19M3.5 7.5h5M3.5 12h5M15.5 9.5h5M15.5 14.5h5')],
+  cash: ['Cash', '<path fill-rule="evenodd" d="M3 6.5h18A1.5 1.5 0 0 1 22.5 8v8a1.5 1.5 0 0 1-1.5 1.5H3A1.5 1.5 0 0 1 1.5 16V8A1.5 1.5 0 0 1 3 6.5zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z"/>', .94],
+  coins: ['Coins', '<rect x="4" y="15" width="16" height="4.5" rx="2.25"/><rect x="4" y="9.75" width="16" height="4.5" rx="2.25"/><rect x="4" y="4.5" width="16" height="4.5" rx="2.25"/>', 1.06],
+  card: ['Card', '<path fill-rule="evenodd" d="M4 4.5h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2zM2 8.5V11h20V8.5zM5 14.5V16h5v-1.5z"/>', .94],
+  phone: ['Phone', '<path fill-rule="evenodd" d="M8 1.5h8A2.5 2.5 0 0 1 18.5 4v16a2.5 2.5 0 0 1-2.5 2.5H8A2.5 2.5 0 0 1 5.5 20V4A2.5 2.5 0 0 1 8 1.5zM10 3.5v1h4v-1z"/>', .94],
+  qr: ['QR code', '<path fill-rule="evenodd" d="M5.2 3h3.6a2.2 2.2 0 0 1 2.2 2.2v3.6a2.2 2.2 0 0 1-2.2 2.2h-3.6a2.2 2.2 0 0 1-2.2-2.2v-3.6a2.2 2.2 0 0 1 2.2-2.2zM5.8 5h2.4a0.8 0.8 0 0 1 0.8 0.8v2.4a0.8 0.8 0 0 1-0.8 0.8h-2.4a0.8 0.8 0 0 1-0.8-0.8v-2.4a0.8 0.8 0 0 1 0.8-0.8zM15.2 3h3.6a2.2 2.2 0 0 1 2.2 2.2v3.6a2.2 2.2 0 0 1-2.2 2.2h-3.6a2.2 2.2 0 0 1-2.2-2.2v-3.6a2.2 2.2 0 0 1 2.2-2.2zM15.8 5h2.4a0.8 0.8 0 0 1 0.8 0.8v2.4a0.8 0.8 0 0 1-0.8 0.8h-2.4a0.8 0.8 0 0 1-0.8-0.8v-2.4a0.8 0.8 0 0 1 0.8-0.8zM5.2 13h3.6a2.2 2.2 0 0 1 2.2 2.2v3.6a2.2 2.2 0 0 1-2.2 2.2h-3.6a2.2 2.2 0 0 1-2.2-2.2v-3.6a2.2 2.2 0 0 1 2.2-2.2zM5.8 15h2.4a0.8 0.8 0 0 1 0.8 0.8v2.4a0.8 0.8 0 0 1-0.8 0.8h-2.4a0.8 0.8 0 0 1-0.8-0.8v-2.4a0.8 0.8 0 0 1 0.8-0.8z"/><path d="M6.5 6h1a0.5 0.5 0 0 1 0.5 0.5v1a0.5 0.5 0 0 1-0.5 0.5h-1a0.5 0.5 0 0 1-0.5-0.5v-1a0.5 0.5 0 0 1 0.5-0.5zM16.5 6h1a0.5 0.5 0 0 1 0.5 0.5v1a0.5 0.5 0 0 1-0.5 0.5h-1a0.5 0.5 0 0 1-0.5-0.5v-1a0.5 0.5 0 0 1 0.5-0.5zM6.5 16h1a0.5 0.5 0 0 1 0.5 0.5v1a0.5 0.5 0 0 1-0.5 0.5h-1a0.5 0.5 0 0 1-0.5-0.5v-1a0.5 0.5 0 0 1 0.5-0.5zM13.7 13h2.1a0.7 0.7 0 0 1 0.7 0.7v2.1a0.7 0.7 0 0 1-0.7 0.7h-2.1a0.7 0.7 0 0 1-0.7-0.7v-2.1a0.7 0.7 0 0 1 0.7-0.7zM18.2 17.5h2.1a0.7 0.7 0 0 1 0.7 0.7v2.1a0.7 0.7 0 0 1-0.7 0.7h-2.1a0.7 0.7 0 0 1-0.7-0.7v-2.1a0.7 0.7 0 0 1 0.7-0.7zM19.2 13h1.1a0.7 0.7 0 0 1 0.7 0.7v1.1a0.7 0.7 0 0 1-0.7 0.7h-1.1a0.7 0.7 0 0 1-0.7-0.7v-1.1a0.7 0.7 0 0 1 0.7-0.7zM13.7 18.5h1.1a0.7 0.7 0 0 1 0.7 0.7v1.1a0.7 0.7 0 0 1-0.7 0.7h-1.1a0.7 0.7 0 0 1-0.7-0.7v-1.1a0.7 0.7 0 0 1 0.7-0.7z"/>', 1],
+  wallet: ['Wallet', '<path d="M5.5 3.5H17a1 1 0 0 1 1 1V6H5.5a1.25 1.25 0 0 1 0-2.5z"/><path fill-rule="evenodd" d="M3 6.5v11A2.5 2.5 0 0 0 5.5 20h13a2.5 2.5 0 0 0 2.5-2.5v-8A2.5 2.5 0 0 0 18.5 7h-13A2.5 2.5 0 0 1 3 6.5zM16.5 11.75a1.75 1.75 0 1 0 0 3.5a1.75 1.75 0 1 0 0-3.5z"/>', .95],
+  bank: ['Bank', '<path d="M12 2.5l9.5 5v2h-19v-2zM4.5 11H7v7H4.5zM10.75 11h2.5v7h-2.5zM17 11h2.5v7H17zM2.5 19.5h19v2h-19z"/>', .94],
+  transfer: ['Transfer', '<path d="M3 6.5h12v-3l6 4.5-6 4.5v-3H3zM21 14.5H9v-3l-6 4.5 6 4.5v-3h12z"/>', 1.06],
+  cheque: ['Cheque', '<path fill-rule="evenodd" d="M6 2h8l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM7.5 12v1.5h9V12zM7.5 16v1.5h6V16z"/>', .93],
+  gift: ['Gift', '<path d="M3 8h8v4H3zM13 8h8v4h-8zM4.5 13.5H11V21H6a1.5 1.5 0 0 1-1.5-1.5zM13 13.5h6.5v6A1.5 1.5 0 0 1 18 21h-5zM12 7.5C10.5 4 6.5 3.5 6.5 5.75 6.5 7 8.5 7.5 12 7.5zm0 0c1.5-3.5 5.5-4 5.5-1.75 0 1.25-2 1.75-5.5 1.75z"/>', 1],
+  person: ['Account', '<circle cx="12" cy="7.5" r="4"/><path d="M4 20.5c0-4.1 3.6-7 8-7s8 2.9 8 7z"/>', 1.08],
+  dots: ['Other', '<circle cx="5.5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18.5" cy="12" r="2"/>', 1.15],
+  split: ['Split', '<path d="M11 3a9 9 0 0 0 0 18zM13 3a9 9 0 0 1 0 18z"/>', .9],
 };
 const PAY_PICKS = Object.keys(PAY_SYMBOLS).filter(s => s !== 'split');
 // your own type with nothing picked yet: grey + Card (savePayTypeAdd gives a new one the next free colour)
 const payLook = (k) => { const o = state.settings.payments?.opts?.[k] || {}, [color, icon] = PAY_LOOK[k] || ['grey', 'card'];
   return { color: PAY_COLORS.includes(o.color) ? o.color : color, icon: PAY_SYMBOLS[o.icon] ? o.icon : icon }; };
-const paySym = (s) => `<svg viewBox="0 0 24 24" aria-hidden="true">${PAY_SYMBOLS[s][1]}</svg>`;
+const paySym = (s) => `<svg viewBox="0 0 24 24" style="--g: ${PAY_SYMBOLS[s][2]}" aria-hidden="true">${PAY_SYMBOLS[s][1]}</svg>`;
 const payTile = (k) => { const { color, icon } = payLook(k); return `<span class="pt-tile" style="--pt: var(--pt-${color})">${paySym(icon)}</span>`; };
 // The till's tax setup, for SalesMath.orderTotals ("VAT registered" off = no tax). The cart's SC/PWD: cartTotals.
 const taxOpts = () => SalesMath.taxOpts(state.settings);
