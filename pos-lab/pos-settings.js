@@ -196,12 +196,15 @@ function addPayType() {
   showStPage('payTypeAddPage');
   $('#ptName').focus();
 }
+// a new type's tile takes the first colour no type wears yet, so two never look alike (grey once all 15 are taken)
+const freeColor = () => { const { custom } = payTypes(), worn = [...PAY_TYPES.map(t => t[0]), ...custom].map(k => payLook(k).color);
+  return PAY_COLORS.find(c => !worn.includes(c)) || 'grey'; };
 function savePayTypeAdd() {
   const name = fitName(typeName($('#ptName').value)), { custom } = payTypes();
   if (!name) return $('#ptName').focus();
   if (payNameTaken(name)) return showToast(`${name} is taken. Pick another name`);
   const { hidden } = payTypes(), full = payTypesOn() >= TYPES_ON_MAX;   // with the list full, a new one starts off
-  savePayTypes({ custom: [...custom, name], hidden: full ? [...hidden, name] : hidden, ref: payTypes().ref.filter(n => n !== name), opts: without(payTypes().opts, name), qrCodes: without(payTypes().qrCodes, name) });   // a new one asks no ref, starts clean
+  savePayTypes({ custom: [...custom, name], hidden: full ? [...hidden, name] : hidden, ref: payTypes().ref.filter(n => n !== name), opts: { ...without(payTypes().opts, name), [name]: { color: freeColor(), icon: 'card' } }, qrCodes: without(payTypes().qrCodes, name) });   // a new one asks no ref, starts clean
   openPayTypes(true);
   if (full) addedOff(name);
 }
@@ -223,6 +226,28 @@ function openPayType(key) {
   mustNote();
   $('#ptDrawer').checked = opt(key).drawer;
   qrRow();
+  $('#ptLookV').innerHTML = payTile(key);
+}
+// Icon (owner 2026-11-08): iOS Shortcuts' sheet - the tile big on top, a card of colours, a card of symbols; a tap saves
+function openPayLook(btn) {
+  const k = ptOpen;
+  const { m } = openSheet(btn, `<div class="fs-top"><button type="button" class="fs-x cta-2" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button><h2 id="fsTitle">Icon</h2><i></i></div>
+    <div class="fs-body"><div class="pl-big"></div>
+    <div class="pl-card pl-colors">${PAY_COLORS.map(c => `<button type="button" data-c="${c}" style="--pt: var(--pt-${c})" aria-label="${c[0].toUpperCase() + c.slice(1)}"></button>`).join('')}</div>
+    <div class="pl-card pl-syms">${PAY_PICKS.map(s => `<button type="button" data-s="${s}" aria-label="${PAY_SYMBOLS[s][0]}">${paySym(s)}</button>`).join('')}</div></div>`);
+  const paint = () => {
+    const l = payLook(k);
+    m.querySelector('.pl-big').innerHTML = $('#ptLookV').innerHTML = payTile(k);
+    $$('[data-c]', m).forEach(b => b.setAttribute('aria-pressed', b.dataset.c === l.color));
+    $$('[data-s]', m).forEach(b => b.setAttribute('aria-pressed', b.dataset.s === l.icon));
+  };
+  paint();
+  m.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-c], [data-s]');
+    if (!b) return;
+    setOpt(b.dataset.c ? { color: b.dataset.c } : { icon: b.dataset.s });
+    paint();
+  });
 }
 // the note says what the switch does now
 const mustNote = () => { $('#ptMustNote').textContent = $('#ptMust').checked ? 'On: the sale can’t finish until it’s filled in.' : 'Off: staff can skip it.'; };
@@ -630,6 +655,7 @@ function bindPayTypes() {
   // Ask for: its own page, like Settings' other choices (#pickPage): Nothing or a preset; on/off stays in payments.ref
   $('#ptAskList').innerHTML = ['Nothing', ...ASKS].map(a => `<label class="pick"><input type="radio" name="ptAsk" value="${a}"><span class="tx">${a}</span></label>`).join('');
   $('#ptAskRow').addEventListener('click', () => { showStPage('ptAskPage'); renderAsk(); });
+  $('#ptLookRow').addEventListener('click', (e) => openPayLook(e.currentTarget));
   $('#ptAskBack').addEventListener('click', () => openPayType(ptOpen));
   $('#ptAskList').addEventListener('change', (e) => {
     const v = e.target.value, ref = payTypes().ref.filter(r => r !== ptOpen);

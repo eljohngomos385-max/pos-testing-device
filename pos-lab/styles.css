@@ -3497,6 +3497,55 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
   .es-keys.es-in { animation: co-in .3s var(--rl-ease) both; }   /* the panel comes in under the list as checkout's Cash step does (owner 2026-10-16) */
   .es-body:not(.ask):has(> .es-keys:not(.es-addr)) .es-list > :not(.on) { display: none; }   /* a cart line's keys too: Quantity, Note, Modifiers would push 0 under the foot */
 }
+/* iPad: the number keys are Apple's keypad pop-over, a bit larger (owner 2026-11-08): open under what they type, the arrow on it
+   (a cart line's Quantity: its row), see-through glass, white keys, "." and delete bare. Nothing on the page moves for it;
+   Done / Apply / Start shift stay bottom right and checkout's Complete sale joins them. The phone keeps its key sheet */
+@media (min-width: 721px) {
+  :is(.esheet .es-keys:has(> .es-kp), .co-keyin > :has(> .es-kp)) { --pk-glass: color-mix(in srgb, var(--bg-soft) 72%, transparent); --pk-key: var(--bg);
+    position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 12px; justify-self: center; width: 352px; height: auto;
+    margin-top: calc(26px - var(--hero-gap));   /* the arrow's tip 6 under the number's letters, which run 6 under its box */
+    padding: 14px; border-radius: 30px; box-shadow: var(--glass-drop, 0 1px 4px rgb(0 0 0 / .3)); animation: none; transform-origin: 50% -14px;   /* dark has no --glass-drop: its ring's drop */
+    --pk-line: rgb(0 0 0 / .06); --pk-rim: var(--glass-rim); }
+  :is(.esheet .es-keys:has(> .es-kp), .co-keyin > :has(> .es-kp)), :is(.esheet .es-keys:has(> .es-kp), .co-keyin > :has(> .es-kp))::before {
+    background: var(--pk-glass); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }   /* the app's glass */
+  /* one edge round panel and arrow (owner 2026-11-08: the line ran under the arrow, the arrow had none): the arrow draws it up and down its sides,
+     the panel's edge leaves a gap the arrow's width under it */
+  :is(.esheet .es-keys:has(> .es-kp), .co-keyin > :has(> .es-kp))::before { content: ''; position: absolute; bottom: 100%; left: 50%; width: 30px; height: 14px; margin-left: -15px;
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    background: linear-gradient(to bottom right, transparent 50%, var(--pk-line) 0 calc(50% + .5px), var(--pk-rim) 0 calc(50% + 1.2px), transparent 0) left / 50% 100% no-repeat,
+      linear-gradient(to bottom left, transparent 50%, var(--pk-line) 0 calc(50% + .5px), var(--pk-rim) 0 calc(50% + 1.2px), transparent 0) right / 50% 100% no-repeat, var(--pk-glass); }
+  :is(.esheet .es-keys:has(> .es-kp), .co-keyin > :has(> .es-kp))::after { content: ''; position: absolute; inset: -.5px; border-radius: 30.5px; pointer-events: none;
+    box-shadow: inset 0 0 0 .5px var(--pk-line), inset 0 0 0 1.2px var(--pk-rim);
+    -webkit-mask: linear-gradient(90deg, #000 calc(50% - 14px), transparent 0 calc(50% + 14px), #000 0) top / 100% 2px no-repeat, linear-gradient(#000 0 0) bottom / 100% calc(100% - 2px) no-repeat;
+    mask: linear-gradient(90deg, #000 calc(50% - 14px), transparent 0 calc(50% + 14px), #000 0) top / 100% 2px no-repeat, linear-gradient(#000 0 0) bottom / 100% calc(100% - 2px) no-repeat; }
+  .co .co-keyin > :has(> .es-kp) { --pk-glass: color-mix(in srgb, color-mix(in srgb, var(--ink) 6%, var(--bg-soft)) 80%, transparent); }   /* on checkout's grey page a step darker, or it and its arrow vanish */
+  body:not(.light-theme) :is(.esheet .es-keys:has(> .es-kp), .co-keyin > :has(> .es-kp)) { --pk-glass: color-mix(in srgb, var(--surface) 82%, transparent); --pk-key: var(--surface-hover);
+    --pk-line: rgb(255 255 255 / .12); --pk-rim: transparent; }   /* dark's glass edge: one faint light hairline */   /* dark: glass and keys a step lighter than the page, as Apple's */
+  .esheet .es-keys.es-in:has(> .es-kp), .co-keyin > :has(> .es-kp) { animation: pk-in .2s var(--rl-ease) both; }   /* opening only: every key redraws a sheet */
+  :is(.esheet .es-keys, .co-keyin > *) > .es-seg { margin: 0; }
+  :is(.esheet .es-keys, .co-keyin > *) > .es-seg.off { display: none; }
+  :is(.esheet .es-keys, .co-keyin > *) > .es-kp { width: 100%; gap: 8px; }
+  :is(.esheet .es-keys, .co .co-keyin > :has(> .es-kp)) > .es-kp > :is(button, button:hover) { height: 58px; border-radius: 14px; background: var(--pk-key); box-shadow: none; font-size: 26px; }   /* .co: over checkout's own key ring */
+  :is(.esheet .es-keys, .co .co-keyin > :has(> .es-kp)) > .es-kp > :is(button, button:hover):is([data-sk="."], [data-sk="del"]) { background: transparent; }
+  :is(.esheet .es-keys, .co .co-keyin > :has(> .es-kp)) > .es-kp > button:active { background: color-mix(in srgb, var(--pk-key), var(--ink) 10%); }
+  :is(.esheet .es-keys, .co-keyin > *) > .es-kp svg { width: 26px; height: 26px; stroke-width: 1.7; }
+  .es-body:is(.es-in, .es-out) .es-col { animation: none; }   /* nothing glides aside for the keys any more */
+  .es-list > .es-keys { flex: none; align-self: center; }   /* Discount › Custom: in its list's place */
+  /* rows between the number and the keys (Custom item's name, Cash in's category): under them, no arrow, so they stay in reach */
+  .esheet .es-body.ask:has(> .es-col > .es-list > *) > .es-keys { margin-top: 0; }
+  .esheet .es-body.ask:has(> .es-col > .es-list > *) > .es-keys::before { display: none; }
+  .esheet .es-body.ask:has(> .es-col > .es-list > *) > .es-keys::after { -webkit-mask: none; mask: none; }
+  /* a cart line: over its rows, centred; Apply puts the keys away and shows them again */
+  .esheet .es-body.ln:has(> .es-keys) > * { grid-area: 1 / 1; align-self: start; }
+  .esheet .es-body.ln > .es-keys { margin-top: calc(24px + var(--hero-fs) + 26px); }   /* its Discount: under the number (the name line 24 over it) */
+  .esheet .es-body.ln:has(.es-row.on) > .es-keys { margin-top: calc(24px + var(--hero-fs) + var(--hero-gap) + 76px); }   /* Quantity: under its row, the first (56) */
+  /* checkout's Cash › Custom and a split part: Complete sale / Done bottom right of the page, as every sheet's Done */
+  .co.co-typed .co-pay { position: relative; }
+  .co.co-typed :is(.co-step, .co-keyin) { container-type: normal; animation: none; }   /* a container or an animated transform would be the button's box */
+  .co.co-typed .co-keyin { grid-template: "keys" / 352px; }
+  .co.co-typed .co-keyin > .co-btn { position: absolute; z-index: 2; right: 24px; bottom: 24px; grid-area: auto; width: auto; height: 48px; margin: 0; padding: 0 22px; }
+}
+@keyframes pk-in { from { opacity: 0; transform: scale(.94); } }
 /* New / Edit customer: the frame, a title and the back office's fields, Save where Done is */
 #customersView { position: relative; }
 @media (min-width: 721px) { #customersView > .cust-sheet { grid-area: 1 / 2 / 2 / 3; padding: 8px 0; } }   /* every line named: an auto end is the padding edge */   /* the Customers page: over the customer pane, the list stays */
@@ -7377,27 +7426,21 @@ body.light-theme {
   .esheet { position: fixed; z-index: 98; padding: var(--ph-top, 0px) 0 var(--ph-safe); }   /* the page starts under the clock, its ‹ on Sell's ☰ line */
   .esheet:not(.cust-sheet) { background: var(--bg); }   /* a white page: the strip under the card (the home bar's) white too, not the tablet frame's grey */
   .es-card { border: 0; border-radius: 0; box-shadow: none; background: var(--bg); }
-  body.light-theme:has(.esheet.open:not(.cust-sheet)) { background: var(--bg); }   /* the page is white; the status bar with it */
-  /* a list page (Discount, Walk-in, a cart line) is checkout's grey page (owner 2026-10-27); a keypad page stays white */
-  .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))), .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) .es-card { background: var(--canvas, var(--bg)); }
-  body.light-theme:has(.esheet.open:not(.cust-sheet)):not(:has(.esheet.open :is(.es-kp:not(.lk *), .es-body.ks:not(.lk)))) { background: var(--canvas); }
-  /* on the white keypad page the glass ✕ washed out: a plain grey round, as Apple's white sheets (owner 2026-11-06) */
-  body.light-theme .esheet:not(.cust-sheet):has(.es-kp:not(.lk *), .es-body.ks:not(.lk)) .es-card { --glass: var(--bg-soft); }   /* on the card: the light glass rule's :is(#side…) outranks the sheet; the ring stays, as every glass button (owner 2026-11-06) */
+  /* every page here is checkout's grey page (owner 2026-10-27), a keypad page too: one look across the number pages (owner 2026-11-08) */
+  .esheet:not(.cust-sheet), .esheet:not(.cust-sheet) .es-card { background: var(--canvas, var(--bg)); }
+  body.light-theme:has(.esheet.open:not(.cust-sheet)) { background: var(--canvas); }   /* the status bar with it */
   .es-ft { border-top: 0; }
   .es-body { padding-inline: 20px; }   /* checkout's inset */
   .esheet:has(.es-body.fill, .es-ft > .ph-bar) { padding-bottom: 0; }   /* Walk-in / Discount: the list runs under the home bar, Done on Check out's line; a cart line's Done too */
   /* rows (owner 2026-11-05 try-out, A "less pill-like, less pale": Apple Pay's card): corner 18, flat, no ring on the row the
-     keys type into; whiter than --surface on the grey page, a clear grey on a white keypad page. Text and height stay (17 regular read thin). Tokens: --row-r / -bg / -lift */
+     keys type into; whiter than --surface on the grey page. Text and height stay (17 regular read thin). Tokens: --row-r / -bg / -lift */
   :is(.esheet, #checkoutApp) { --row-r: 18px; }
-  body.light-theme .esheet, body.light-theme #checkoutApp { --row-bg: color-mix(in srgb, var(--surface), var(--surface-2)); --row-lift: none; }   /* halfway: the old near-white blended in, pure white "jumps too far" (owner 2026-11-05) */
-  body.light-theme .esheet:has(.es-kp:not(.lk *), .es-body.ks:not(.lk), .es-body.ask) { --row-bg: var(--bg-soft); }
-  :is(.esheet .es-list > .es-row.on, .esheet .es-ta:focus, #checkoutApp .co-ref:focus) { box-shadow: none; background: var(--row-bg, var(--tile)); }
+  body.light-theme .esheet, body.light-theme #checkoutApp { --row-bg: color-mix(in srgb, var(--surface), var(--surface-2)); --row-lift: none; }   /* halfway: the old near-white blended in, pure white "jumps too far" (owner 2026-11-05) */  :is(.esheet .es-list > .es-row.on, .esheet .es-ta:focus, #checkoutApp .co-ref:focus) { box-shadow: none; background: var(--row-bg, var(--tile)); }
   .esheet .es-vat { margin-top: 0; }
   .esheet textarea.es-ta { min-height: 120px; padding: 14px 16px; }
   .es-seg.off { display: none; }   /* Quantity's keys sit as low as every other numpad; each is its own page here, nothing to jump (owner 2026-11-05) */
   .es-ft:has(> .ph-bar) { padding-bottom: 0; }   /* the pill's own margin puts it on Check out's line */
-  .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) { --es-bg: var(--canvas, var(--bg)); }
-  .esheet:has(.es-kp:not(.lk *), .es-body.ks:not(.lk)) { --es-bg: var(--bg); }
+  .esheet:not(.cust-sheet) { --es-bg: var(--canvas, var(--bg)); }
   /* Every phone ‹ Back / ‹ Cancel = the ☰'s 44 glass circle at 12,8, a 24 grey chevron and no word (owner 2026-11-04: "just a
      circle"); the word stays for screen readers. The iPad keeps its words. The ‹ itself = --back-* */
   .co-top { padding: var(--co-y) var(--co-m) 0 12px; }
@@ -7437,6 +7480,10 @@ body.light-theme {
 body {
   --paper-shadow: 0 8px 32px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.18);
   --pm-cash: #5CB88A; --pm-gcash: #6FA8F5; --pm-qr: #4FC1B0; --pm-credit: #E8B64C; --pm-split: #B69CF2; --pm-other: var(--ink-quaternary);
+  /* a payment type's tile (Settings › Payment types › Icon, iOS Shortcuts' colours): one set, both themes; the glyph is --pt-ink */
+  --pt-red: #FF5B63; --pt-coral: #FF7F5E; --pt-orange: #F5A14A; --pt-yellow: #FFC20A; --pt-green: #43C759;
+  --pt-teal: #00CDB0; --pt-cyan: #0ABDF5; --pt-blue: #2B87FF; --pt-indigo: #4A5FC4; --pt-purple: #8A55CF;
+  --pt-lavender: #B97CE8; --pt-pink: #F28BD8; --pt-grey: #8A939D; --pt-sage: #8FA898; --pt-brown: #A88B6E; --pt-ink: #FFFFFF;
 }
 body.light-theme {
   --paper-shadow: 0 0 0 1px #E1E1E1, 0 1px 2px -1px rgb(26 26 26 / .07), 0 4px 14px -4px rgb(26 26 26 / .10);
@@ -9170,3 +9217,23 @@ body.light-theme :is(.lv, #catalogSearchRow) { --top-ring: var(--glass-drop); --
 body.light-theme :is(.lv .head > .sq, .lv :is(#itemsAdd, #newCustomerBtn), .co-cancel, .esheet .es-x, .rail-h .c-row > :is(.cust, .more, .ph-back), .rail-h:not(.co-mode) .opts > :is(.f-row, .d-row),
   .side-top > #sellSwitch, .side-link[data-view="settings"], .cta-2, .pin-cancel, .lv :is(#itemsBar, .kinds.rp-units)) { --ink: #000; color: var(--ink); }   /* #000 = --top-ink */
 body.light-theme .lv :is(#itemsKinds, .kinds.rp-units) button { color: var(--ink); }   /* every word black, picked or not, as Apple Music's (photo 180) */
+
+/* ============================================================
+   PAYMENT TYPE TILES (owner 2026-11-08, iOS Shortcuts' icon sheet): a colour square with a white symbol (payTile, pos-core.js),
+   on the checkout's pay list, the type's Icon row, and the Icon sheet's picker
+   ============================================================ */
+.pt-tile { --s: 28px; display: grid; place-items: center; flex: none; width: var(--s); height: var(--s); border-radius: calc(var(--s) * .27);
+           background: linear-gradient(rgb(255 255 255 / .16), rgb(255 255 255 / 0)), var(--pt); color: var(--pt-ink); }
+.pt-tile svg, .fsheet .pt-tile svg { width: 64%; height: 64%; fill: currentColor; stroke: none; }
+.fr .v .pt-tile { --s: 26px; }
+.pl-big { display: grid; place-items: center; margin: 24px 0 28px; }
+.pl-big .pt-tile { --s: 96px; }
+.pl-card { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 14px 0; justify-items: center; padding: 16px 8px; border-radius: var(--rl-r); background: var(--rl-card); }
+.pl-card + .pl-card { margin-top: 12px; }
+.pl-colors { --cols: 5; }
+.pl-syms { --cols: 6; }
+.fsheet .pl-colors button { width: 44px; height: 44px; border-radius: 50%; background: var(--pt); }
+.fsheet .pl-colors button[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--rl-card), 0 0 0 5.5px var(--pt); }   /* iOS: a ring with a gap */
+.fsheet .pl-syms button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--ink-secondary); }
+.fsheet .pl-syms svg { width: 24px; height: 24px; fill: currentColor; stroke: none; }
+.fsheet .pl-syms button[aria-pressed="true"] { background: var(--tile); color: var(--ink); }

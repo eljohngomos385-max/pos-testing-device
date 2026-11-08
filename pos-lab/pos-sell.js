@@ -1381,7 +1381,7 @@ function drawEditSheet() {
     const field = (f, label) => `<input class="es-ta${o.bad === f ? ' bad' : ''}" data-scf="${f}" value="${escapeHtml(o.sc[f])}" placeholder="${label}" aria-label="${label}" autocomplete="off"${o.bad === f ? ' aria-invalid="true"' : ''}>`;
     if (ES_SC[o.f]) rows = `<div class="es-ah">${o.f === 'pwd' ? 'PWD' : 'Senior citizen'}</div>${field('idNo', 'ID number')}${field('name', 'Name')}`;
     else if (o.f && dk) side = `<div class="es-keys${kin}">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'))}${esKeys(true)}</div>`;   // the off line is the whole read-out, the keys in the numpad's sheet
-    else if (o.f) rows = `${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'))}${esKeys(true)}`;
+    else if (o.f) rows = `<div class="es-keys">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'))}${esKeys(true)}</div>`;   // the tablet's pop-up
     else rows = Object.entries(ES_SC).map(([k, name]) => `<button type="button" class="es-row${o.pick === k ? ' pick' : ''}" data-sc="${k}"><span>${name}</span><small class="ad">${
         o.pick !== k || !state.scPwd ? esShown(esScRow(k)) : t.scPwd ? escapeHtml(state.scPwd.name) : 'Promo is bigger'}</small>${cv()}</button>`).join('')
       + esPresets().map(d => `<button type="button" class="es-row${o.pick === d.id ? ' pick' : ''}" data-pick="${escapeHtml(d.id)}"><span>${escapeHtml(d.name)}</span><small>${esShown(d)}</small></button>`).join('')

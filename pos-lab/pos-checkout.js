@@ -60,16 +60,8 @@ function renderCheckout() {
 // Which cards the checkout shows is the back office's call (Manage -> Payments):
 // settings.payments = { hidden: [kind], custom: [name] }. Cash can't be hidden -- the drawer
 // is cash. A custom name records exactly like typing it into Other (paymentKind 'other').
-const coIcon = d => `<svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
-const PAY_TILES = [
-  ['cash', 'Cash', coIcon('<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8L2 7"/><circle cx="12" cy="14" r="3"/>')],
-  ['gcash', 'GCash', coIcon('<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01" stroke-width="2.4"/>')],
-  ['qr', 'QR', coIcon('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h2v2h-2v2h2M18 14h3M18 18h1v1h1v2M21 14v2M14 18v3h2"/>')],
-  ['other', 'Other', coIcon('<circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/>')],
-  ['credit', 'Account', coIcon('<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>')],
-  ['split', 'Split', coIcon('<path d="M12 3v18M4 7h5M4 12h5M15 9h5M15 15h5"/>')],
-];
-const CUSTOM_PAY_ICON = coIcon('<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="2.5"/>');
+// Each row leads with its type's tile: the colour + symbol from Settings › Payment types › Icon (payTile, pos-core.js)
+const PAY_TILES = [['cash', 'Cash'], ['gcash', 'GCash'], ['qr', 'QR'], ['other', 'Other'], ['credit', 'Account'], ['split', 'Split']];
 function applyPayMethods(canCharge) {
   const grid = $('#checkoutMethods');
   if (!grid) return;
@@ -78,11 +70,11 @@ function applyPayMethods(canCharge) {
   const needsAccount = m => m === 'credit' || m === 'split';
   // Split is one part per method, Account (pay later) one of them; an exchange offers neither.
   const shown = PAY_TILES.filter(([m]) => m === 'cash' || (!off.has(m) && (m === 'split' ? !state.exchange : canCharge || m !== 'credit')));
-  const custom = payCustomOn().map(name => ['other', name, CUSTOM_PAY_ICON, name]);
+  const custom = payCustomOn().map(name => ['other', name, name]);
   const at = shown.findIndex(([m]) => needsAccount(m));
   const tiles = at < 0 ? [...shown, ...custom] : [...shown.slice(0, at), ...custom, ...shown.slice(at)];
-  grid.innerHTML = tiles.map(([m, label, icon, name]) =>
-    `<button type="button" class="co-tile" data-co-method data-method="${m}"${name ? ` data-label="${escapeHtml(name)}"` : ''}>${icon}<span>${escapeHtml(label)}</span></button>`).join('');
+  grid.innerHTML = tiles.map(([m, label, name]) =>
+    `<button type="button" class="co-tile" data-co-method data-method="${m}"${name ? ` data-label="${escapeHtml(name)}"` : ''}>${payTile(name || m)}<span>${escapeHtml(label)}</span></button>`).join('');
 }
 
 // Who this sale is for, on top of the list it belongs to.
