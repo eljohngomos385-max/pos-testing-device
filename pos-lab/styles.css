@@ -9181,8 +9181,11 @@ body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
   /* every ✓ is blue (owner 2026-11-05): the Next button's material from .cta, only the 44 circle here */
   .esheet .es-ink.es-ok { display: grid; place-items: center; width: 44px; height: 44px; margin: 0; padding: 0; }
   :is(.esheet .es-ok, .co-ok) svg { width: var(--circle-ic); height: var(--circle-ic); fill: none; stroke: currentColor; stroke-width: var(--circle-sw); stroke-linecap: round; stroke-linejoin: round; }
-  .es-body.ks > .es-keys, .co:not(.co-kd) #checkoutKeys { position: absolute; z-index: 3; grid-area: auto; left: 0; right: 0; bottom: 0; padding: 22px var(--sheet-x) calc(8px + var(--ph-safe, 0px) / 2);
-                           border-top: .5px solid var(--line-strong); border-radius: 28px 28px 0 0; background: var(--bg); }   /* the page's white (owner 2026-11-04: grey was the wrong material); grid-area: an abspos grid child would sit in its slot */
+  .es-body.ks > .es-keys, .co:not(.co-kd) #checkoutKeys { position: absolute; z-index: 3; grid-area: auto; left: 0; right: 0; bottom: 0; padding: 22px var(--sheet-x) max(40px, calc(16px + var(--ph-safe, 0px)));
+                           border-top: .5px solid var(--line-strong); border-radius: 28px 28px 0 0;
+                           background: color-mix(in srgb, var(--bg) 85%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }   /* the page's white, slightly see-through, the keys lifted with room at the bottom (owner 2026-11-08, try-on H; 2026-11-04: grey was the wrong material); grid-area: an abspos grid child would sit in its slot */
+  /* the button waiting under the keys (Start shift, Complete sale) would glow through: hidden while the keys are up (owner 2026-11-08) */
+  .es-card:has(> .es-body.ks > .es-keys:not(.es-dn)) .sh-fab, .co:not(.co-kd):not(:has(#checkoutKeys.es-dn)) #checkoutCompleteBtn { visibility: hidden; }
   :is(.es-body.ks > .es-keys, #checkoutKeys)::before { content: ''; position: absolute; top: 6px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 999px; background: var(--ink-quaternary); }   /* .fs-top::after */
   /* up by itself as the page opens, never a tap on the number (owner 2026-11-05); ✓ slides it back down (keysDown) */
   .es-body.ks > .es-keys.es-in, .co #checkoutKeys { animation: ks-up .3s var(--rl-ease) .1s both; }
