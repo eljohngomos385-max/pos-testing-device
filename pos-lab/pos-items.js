@@ -155,7 +155,7 @@ const ICHEV = '<svg class="ic chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/>
 const IUPDOWN = '<svg class="ic" viewBox="0 0 24 24"><path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/></svg>';
 const ifr = (label, ctl, end) => `<div class="fr"><span class="lb">${label}</span><div class="ctl${end ? ' end' : ''}">${ctl}</div></div>`;
 const iinp = (f, v, attrs = '') => `<input class="in" data-f="${f}" value="${escapeHtml(v)}" ${attrs}>`;
-const IMONEY = 'type="number" step="0.01" min="0" inputmode="decimal"';
+const IMONEY = `type="number" step="0.01" min="0" max="${CASH_MAX}" inputmode="decimal"`;
 const isw = (label, f, on) => `<label class="fr"><span class="lb">${label}</span><span class="ctl end"><input type="checkbox" class="sw" data-f="${f}"${on ? ' checked' : ''}></span></label>`;
 const ipick = (act, text) => `<button type="button" class="act st-pick" data-act="${act}" aria-haspopup="menu" aria-expanded="false"><span>${text}</span>${IUPDOWN}</button>`;
 const inav = (label, value, sub) => `<button type="button" class="fr nav" data-sub="${escapeHtml(sub)}"><span class="lb">${label}</span><span class="ctl end"><span class="vv${value === 'None' ? ' ph' : ''}">${value}</span>${ICHEV}</span></button>`;   // nothing set reads as a hint, like rednote's "Edit birthday"
@@ -169,7 +169,7 @@ const markupText = m => (m ? round2(m) : '');
 const imarginNote = v => { if (askedPrice(v)) return '—'; const m = itemMargin(v); return `${peso(m.profit)} · ${itemPct(m.margin)} margin`; };
 const iprofit = v => `Profit <span class="num" id="itemMarginNote">${imarginNote(v)}</span>`;   // the Price block's footnote
 const istep = () => (itemEdit.soldBy === 'measure' ? .01 : 1);
-const iqty = (attr, v) => `<input class="in num" ${attr} value="${v || ''}" type="number" step="${istep()}" min="0" inputmode="decimal" placeholder="0">`;
+const iqty = (attr, v) => `<input class="in num" ${attr} value="${v || ''}" type="number" step="${istep()}" min="0" max="${QTY_MAX}" inputmode="decimal" placeholder="0">`;
 const ionHand = v => `<span class="vv num${v.stock <= 0 ? ' stk-out' : ''}">${itemQty(v.stock)} ${escapeHtml(itemEdit.unit)}</span><button type="button" class="link cta-3" data-act="stock">Adjust</button>`;
 const ilist = a => (a.length ? escapeHtml(a.length > 2 ? `${a[0]}, ${a[1]} +${a.length - 2}` : a.join(', ')) : 'None');
 const supName = id => (posSuppliers().find(s => s.id === id) || {}).name || '';
@@ -223,7 +223,7 @@ function itemMainPage() {
     : icard('', [
       ifr('Price', `<input class="in num" data-f="price" value="${v0.price ?? ''}" ${IMONEY} placeholder="Asked at sale">`),
       made ? ifr('Cost', `<span class="vv num">${peso(v0.cost)}</span>`, true) : ifr('Cost', `<input class="in num" data-f="cost" value="${v0.cost || ''}" ${IMONEY} placeholder="0.00">`),
-      ifr('Markup', `<input class="in num" data-f="marginValue" value="${markupText(E.marginValue)}" type="number" step="0.01" inputmode="decimal" placeholder="0">${ipick('mmode', E.marginMode === 'percent' ? '%' : icurrency())}`),
+      ifr('Markup', `<input class="in num" data-f="marginValue" value="${markupText(E.marginValue)}" type="number" step="0.01" max="${CASH_MAX}" inputmode="decimal" placeholder="0">${ipick('mmode', E.marginMode === 'percent' ? '%' : icurrency())}`),
     ].join(''), iprofit(v0), ' r')
     + icard('', iadd('add-variant', 'Add variant'));
   // stock out on the page, not behind a › (owner 2026-10-09); a family counts per variant, on each variant's page
@@ -277,7 +277,7 @@ function itemMadePage(v) {
   const all = state.products.filter(p => !p.archived && !own.has(p.id) && !p.madeFrom?.length).sort((a, b) => a.name.localeCompare(b.name));
   const row = p => `<label class="pick" data-find="${escapeHtml(p.name.toLowerCase())}"><input type="checkbox" data-made="${escapeHtml(p.id)}"${on.has(p.id) ? ' checked' : ''}>
       <span class="tx">${escapeHtml(p.name)}<small>${p.trackStock === false ? 'Not counted' : `${itemQty(p.stock)} ${escapeHtml(p.unit || 'pc')} in stock`}</small></span>
-      <span class="mq"${on.has(p.id) ? '' : ' hidden'}><input class="in num" data-mq="${escapeHtml(p.id)}" value="${on.get(p.id) ?? 1}" type="number" step="${stepFor(p)}" min="0" inputmode="decimal" aria-label="Amount per 1 sold">${escapeHtml(p.unit || 'pc')}</span></label>`;
+      <span class="mq"${on.has(p.id) ? '' : ' hidden'}><input class="in num" data-mq="${escapeHtml(p.id)}" value="${on.get(p.id) ?? 1}" type="number" step="${stepFor(p)}" min="0" max="${QTY_MAX}" inputmode="decimal" aria-label="Amount per 1 sold">${escapeHtml(p.unit || 'pc')}</span></label>`;
   const parts = all.filter(p => p.component), rest = all.filter(p => !p.component);
   return (parts.length ? icard(partWord() + 's', parts.map(row).join('')) : '')
     + icard(parts.length ? 'Other items' : '', rest.map(row).join('') || '<div class="pick">No other items yet.</div>', 'Amount per 1 sold. ' + IMADE_NOTE);
@@ -715,7 +715,7 @@ function renderKindForm(dir) {
     $('#itemForm').innerHTML = `<div class="form">${head}${icard('', [
       ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like Summer sale"${K.builtin ? ' disabled' : ''}>`),
       K.builtin ? '' : ifr('Type', `<button type="button" class="act st-pick" data-ka="type" aria-haspopup="menu" aria-expanded="false"><span>${pct ? 'Percent' : 'Amount'}</span>${IUPDOWN}</button>`, true),
-      ifr(`Value (${unit})`, `<input class="in num" data-k="value" value="${escapeHtml(K.value)}" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0">`),
+      ifr(`Value (${unit})`, `<input class="in num" data-k="value" value="${escapeHtml(K.value)}" type="number" step="0.01" min="0" max="${pct ? 100 : CASH_MAX}" inputmode="decimal" placeholder="0">`),
     ].join(''), K.builtin ? 'Built in. The till asks for the ID number and name, and the rate comes off the price before VAT.' : '')}${kindDropRow()}</div>`;
     return;
   }

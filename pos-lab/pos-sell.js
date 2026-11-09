@@ -624,7 +624,7 @@ function setTileText(size) {
 // (bo-model.js) is the one definition of what a quantity may be for a given product, so the
 // till and the back office can never disagree about it.
 // a line's amount on screen: 0.91 kg for a measured one (its qty may be 0.90909, a ₱ typed), else the count
-const lineQty = (item) => (productOf(item)?.soldBy === 'measure' ? `${SalesMath.qtyText(item.qty)} ${escapeHtml(item.unit || '')}` : item.qty);
+const lineQty = (item) => (productOf(item)?.soldBy === 'measure' ? `${SalesMath.qtyText(item.qty)} ${escapeHtml(item.unit || '')}` : SalesMath.qtyText(item.qty));
 function productOf(item) { return state.products.find(p => p.id === (item.productId || item.id)); }
 
 function qtyFrom(product, value, fallback = 1) {
@@ -684,7 +684,7 @@ function addToCart(productId, via = 'other', fromScanCard = false, price, answer
       : !typed && state.cart.find(i => i.id === p.id));
     if (!it) state.cart.push(it = { id: typed ? newId() : p.id, ...(typed && { productId: p.id }), name: p.name, sku: p.sku, brand: p.brand,
       unit: p.unit, price: typed ? price : p.price, ...(answers && { modifiers: answers }), qty: 0 });
-    it.qty += add;
+    it.qty = Math.min(QTY_MAX, it.qty + add);
     trackItemAdd({ ...p, price: it.price }, add, via);
     renderCart();
     if (scanOpen()) scanHit(it.id, fromScanCard);   // the scanner's card says it: camera, search or a USB scanner
@@ -1123,7 +1123,8 @@ let es = null;
 
 const esItem = () => es && state.cart.find(i => i.id === es.id);
 const esDisc = (o) => (+o.d > 0 ? { type: o.pct ? 'percent' : 'amount', value: +o.d } : null);
-const esTyped = (o) => (o.pct ? `${o.d || 0}%` : SalesMath.currencySymbol(state.settings.store?.currency) + (o.d || 0));
+const esTyped = (o) => (o.pct ? `${o.d || 0}%` : typedCash(String(o.d || 0)));
+const typedNum = (raw) => { const [i, d] = String(raw).split('.'); return SalesMath.qtyText(+i) + (d === undefined ? '' : '.' + d); };   // a quantity as it's typed, with its commas: 1,250.5
 // A measured item's amount (the 'measure' pad): by its unit as typed, or the typed ₱ over its price, unrounded, so the line
 // comes to exactly that ₱ (₱50 of ₱55/kg rice is 0.90909 kg = ₱50.00, never 0.91 kg = ₱50.05)
 const esMeasureQty = (o, p) => (o.w ? roundQty(p, o.d) : +o.d / p.price);
@@ -1282,7 +1283,7 @@ function esSettle(o) {
 }
 
 // One key into a typed number: '.' once, two decimals, nothing over max, a lone 0 gives way.
-const CASH_MAX = 9999999;   // the most any cash keypad takes (checkout, a price asked at sale, the shift, cash in / out)
+const CASH_MAX = 9999999, QTY_MAX = 99999;   // the two limits: the most any typed amount or quantity takes, on every page (owner 2026-11-09)
 function esPress(v, k, dec, max) {
   if (k === 'del') return v.slice(0, -1);
   if (k === '.') return dec && !v.includes('.') ? (v || '0') + '.' : v;
@@ -1322,7 +1323,7 @@ function drawEditSheet() {
     head = `${sc && item.discount ? `<p>${ES_SC[sc.kind]} applies</p>` : ''}<div class="es-hero">${peso(m.lineTotal)}</div>`;   // the name is the title (es-ttl); a small line goes over the number, never under (owner 2026-11-06)
     // its Discount: the big number is what the keys type, "Discount" over it; the price shows on the page it goes back to (owner 2026-11-06 page 10)
     if (o.f === 'd') head = `<p>Discount</p><div class="es-hero">${esTyped(o)}</div>`;
-    rows = o.f === 'd' ? '' : `<div class="es-row${o.f === 'q' ? ' on' : ''}"><span>Quantity</span>${stp(-1, item.qty <= step)}<button type="button" data-sf="q">${n('q', o.f === 'q' ? o.q || '0' : lineQty(item), ' q')}</button>${stp(1)}</div>
+    rows = o.f === 'd' ? '' : `<div class="es-row${o.f === 'q' ? ' on' : ''}"><span>Quantity</span>${stp(-1, item.qty <= step)}<button type="button" data-sf="q">${n('q', o.f === 'q' ? typedNum(o.q || '0') : lineQty(item), ' q')}</button>${stp(1)}</div>
       <div class="es-row${o.f === 'd' ? ' on' : ''}" data-sf="d"><span>Discount</span>${n('d', o.f === 'd' ? esTyped(o) : esShown(item.discount), ' v')}${cv(o.f === 'd')}</div>
       <div class="es-row${o.f === 'n' ? ' on' : ''}" data-sf="n"><span>Note</span><small class="ad">${escapeHtml(item.note || '')}</small>${cv(o.f === 'n')}</div>`
       // its answers: the item's modifier screens again, with them on (esMods)
@@ -1345,7 +1346,7 @@ function drawEditSheet() {
     const p = state.products.find(x => x.id === o.id), u = escapeHtml(p.unit), q = esMeasureQty(o, p);
     // the name is the title; the line over says the price, then what's typed comes to (owner 2026-11-06: small lines on top)
     head = `<p>${q > 0 ? (o.w ? peso(SalesMath.lineMoney(p.price, q).lineGross) : `${SalesMath.qtyText(q)} ${u}`) : `${peso(p.price)} / ${u}`}</p>`
-      + `<div class="es-hero">${o.w ? `<span class="num">${o.d || 0}</span> ${u}` : esTyped(o)}</div>`;
+      + `<div class="es-hero">${o.w ? `<span class="num">${typedNum(o.d || 0)}</span> ${u}` : esTyped(o)}</div>`;
     rows = '';
     // the toggle says the words, never "m" / "₱" (owner 2026-11-06 page 14): the unit's full name from Items' list (MEASURES), else as typed
     const word = MEASURES.flatMap(([, us]) => us).find(([k]) => k === p.unit)?.[1] || p.unit;
@@ -1489,7 +1490,7 @@ function editSheetClick(e) {
   }
   if (o.kind === 'measure') {   // [kg | ₱] swaps what the keys type; Add puts that much on the cart
     const p = state.products.find(x => x.id === o.id);
-    if (el('[data-sk]')) o.d = esPress(o.d, el('[data-sk]').dataset.sk, true, o.w ? 9999 : CASH_MAX);
+    if (el('[data-sk]')) o.d = esPress(o.d, el('[data-sk]').dataset.sk, true, o.w ? QTY_MAX : Math.min(CASH_MAX, QTY_MAX * p.price));
     else if (el('.es-seg button')) Object.assign(o, { w: 'w' in el('.es-seg button').dataset, d: '' });
     else if (el('[data-apply]') && esMeasureQty(o, p) > 0) { closeEditSheet(); return addToCart(o.id, o.via, false, undefined, undefined, esMeasureQty(o, p)); }
     return drawEditSheet();
@@ -1509,7 +1510,7 @@ function editSheetClick(e) {
   const item = esItem(), step = item ? stepFor(productOf(item)) : 1;
   if (el('[data-sk]')) {
     const qty = o.f === 'q';
-    o[o.f] = esPress(o.fresh ? '' : o[o.f], el('[data-sk]').dataset.sk, !qty || step < 1, qty ? 9999 : o.pct ? 100 : 99999);
+    o[o.f] = esPress(o.fresh ? '' : o[o.f], el('[data-sk]').dataset.sk, !qty || step < 1, qty ? QTY_MAX : o.pct ? 100 : CASH_MAX);
     o.fresh = false;
     if (o.kind === 'rd' && o.f === 'd') o.pick = 'c';
   } else if (el('.es-seg button')) {
@@ -1517,7 +1518,7 @@ function editSheetClick(e) {
     if (o.pct && +o.d > 100) o.d = '100';
   } else if (el('[data-sstep]')) {
     if (o.f) esSettle(o);   // − + puts the keys away, keeping what was typed
-    o.q = String(roundQty(productOf(item), Math.max(step, item.qty + +el('[data-sstep]').dataset.sstep * step)));
+    o.q = String(roundQty(productOf(item), Math.min(QTY_MAX, Math.max(step, item.qty + +el('[data-sstep]').dataset.sstep * step))));
   } else if (el('[data-pick]')) {
     if (o.f) esSettle(o);
     o.pick = el('[data-pick]').dataset.pick;   // the saved discount's id: the tap is the pick (owner 2026-10-28)
@@ -2281,10 +2282,10 @@ function renderLostSale() {
     ? state.fuse.search(q).slice(0, 4).map(r => state.products.find(p => p.id === r.item.id)).filter(Boolean)
     : [];
   $('#lsMatches').innerHTML = picked
-    ? `<div class="ls-picked">In catalog · ${picked.stock} ${escapeHtml(picked.unit || '')} on hand</div>`
+    ? `<div class="ls-picked">In catalog · ${SalesMath.qtyText(picked.stock)} ${escapeHtml(picked.unit || '')} on hand</div>`
     : matches.map(p => `
       <button type="button" class="ls-match" data-ls-product="${p.id}">
-        <span>${escapeHtml(p.name)}</span><span>${p.stock} ${escapeHtml(p.unit || '')}</span>
+        <span>${escapeHtml(p.name)}</span><span>${SalesMath.qtyText(p.stock)} ${escapeHtml(p.unit || '')}</span>
       </button>`).join('');
 }
 

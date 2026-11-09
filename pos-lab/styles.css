@@ -20,6 +20,7 @@
   --hero-y: clamp(140px, 22.8dvh, 300px);
   --hero-gap: clamp(20px, 4vh, 36px);
   --hero-fs: clamp(59px, 5.4vw, 72px);   /* phone 59: Wallet's ¥5,000 on the same screen (owner 2026-11-04) */
+  --hero-font: var(--font-stack);   /* plain Inter (owner 2026-11-08). "Hero Round", var(--font-stack) = the rounded try-out */
   --hero-fw: 550;   /* a touch thinner than 600; 500 was one step too far (owner 2026-10-19) */
 
   --line: rgba(255, 255, 255, 0.08);
@@ -3200,6 +3201,7 @@ a.secondary-btn { text-decoration: none; }
 /* The receipt's own font (owner 2026-11-06: "the same on Android and Apple"): shipped with the app, so no device swaps in
    its own monospace. Cascadia Mono, SIL OFL 1.1 (licence in the file), unchanged. The print pop-up loads the same file. */
 @font-face { font-family: "Receipt Mono"; src: url("receipt-mono.ttf") format("truetype"); font-weight: 200 700; font-display: swap; }
+@font-face { font-family: "Hero Round"; src: url("hero-soft-170.ttf") format("truetype"); font-weight: 550; font-display: swap; }
 /* The one receipt paper: Orders, Show receipt and the tablet rail all use it (owner 2026-10-08) */
 .rp-paper {
   position: relative;
@@ -3395,13 +3397,13 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
            align-content: start; align-items: center; column-gap: 40px; padding: max(0px, calc(var(--hero-y) - var(--es-y, 0px) - 24px)) 24px 24px; overflow-y: auto; }
 .es-head > .es-hero:first-child { margin-top: 24px; }   /* fulfilment has no name line: same spot for its hero */
 .es-col { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 16px; }
-.es-head { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: calc(var(--hero-gap) - 16px); color: var(--ink-tertiary); font-size: 13px; font-weight: 500;
+.es-head { display: flex; flex-direction: column; align-items: center; align-self: stretch; min-width: 0; gap: 4px; margin-bottom: calc(var(--hero-gap) - 16px); color: var(--ink-tertiary); font-size: 13px; font-weight: 500;
            font-variant-numeric: tabular-nums; text-align: center; }   /* + the column's 16 = checkout's gap to the first row */
 .es-head p { max-width: 100%; margin: 0; font-size: 16px;   /* Wallet's "New Balance" size (owner 2026-11-04) */ overflow: hidden; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }   /* one line: a long name never moves the amount */
 /* a small line sits over the big number, never under it: the gap down to the rows stays empty on every page and nothing moves
    when a line comes or goes (owner 2026-11-06). "₱13.00 off ₱65.00" over the cart Discount's total */
 .es-head .es-off b { color: var(--rl-on); font-weight: inherit; }   /* what's taken off, in the discount blue */
-.es-hero { color: var(--ink); font-size: var(--hero-fs); font-weight: var(--hero-fw); letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }   /* checkout's */
+.es-hero { color: var(--ink); font-family: var(--hero-font); font-size: var(--hero-fs); font-weight: var(--hero-fw); letter-spacing: -.04em; line-height: var(--hero-fs); font-variant-numeric: tabular-nums; min-width: 0; max-width: 100%; white-space: nowrap; }   /* checkout's; too wide = shrinks to fit (fitHeroes, app.js), its line's height stays */
 .es-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .es-list:empty { display: none; }
 .esheet .es-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding: 0 16px; border-radius: var(--row-r, var(--es-r)); background: var(--row-bg, var(--tile));
@@ -3704,8 +3706,8 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 @keyframes frost-in { to { opacity: 1; } }
 .co-col > .co-step::after { content: ''; height: 44px; }   /* the list runs to the screen's bottom (owner 2026-10-29: "it just continues"); room under the last row, a spacer as Walk-in's (Safari), + the 12 gap = the old 56 */
 .co .co-stage { padding-bottom: 0; }   /* Sale complete is a column too (owner 2026-11-06); the list carries the room, so its box reaches the bottom and nothing cuts it off */
-.co-hero { padding: 0 0 var(--hero-gap); position: relative; z-index: 2; text-align: center; font-size: var(--hero-fs); font-weight: var(--hero-fw);
-           letter-spacing: -.04em; line-height: 1; }
+.co-hero { padding: 0 0 var(--hero-gap); position: relative; z-index: 2; text-align: center; font-family: var(--hero-font); font-size: var(--hero-fs); font-weight: var(--hero-fw);
+           letter-spacing: -.04em; line-height: var(--hero-fs); min-width: 0; max-width: 100%; white-space: nowrap; }
 
 .co-step { display: grid; gap: 12px; animation: co-in .3s var(--co-ease) both; }
 .co-step > :not(.co-tiles) { width: 100%; max-width: 440px; justify-self: center; }
@@ -4786,7 +4788,7 @@ body.light-theme {
   --line-strong: #D4D4D4;    /* --btn-line */
   --tile: #F3F3F3;           /* soft grey tile, same as the checkout lab's payment tiles */
   --canvas: #F2F2F2;         /* the Sell page under white cards (Shopify POS / Apple grouped background) */
-  --ink: #303030;
+  --ink: #1A1A1A;   /* a step darker, nearer Wallet's black (owner 2026-11-08, darker-steps) */
   --ink-secondary: #616161;
   --ink-tertiary: #8C8C8C;
   --ink-quaternary: #B5B5B5;

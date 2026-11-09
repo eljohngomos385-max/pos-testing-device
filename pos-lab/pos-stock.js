@@ -48,6 +48,8 @@ function qsAddFamily(itemId) {
 }
 // Remove and Damaged can't take more than is on the shelf
 function qsCap(p, n) {
+  if (qsPrice()) return n;
+  n = Math.min(n, QTY_MAX);
   if (QS.reason !== 'remove' && QS.reason !== 'damaged') return n;
   if (n > qsOnHand(p)) { showToast(`Only ${qsQty(qsOnHand(p))} on hand`); return qsOnHand(p); }
   return n;
@@ -129,7 +131,7 @@ function qsSub(l, p) {
 function qsSet(row, s) {
   const l = qsLine(row.dataset.qs), p = l && qsProd(l.id);
   if (!p) return;
-  if (qsPrice()) s = /^\d{0,7}(\.\d{0,2})?$/.test(s = String(s).trim()) ? s : l.n;   // a price: up to 9,999,999.99; a typo keeps the last good price
+  if (qsPrice()) s = /^\d{0,7}(\.\d{0,2})?$/.test(s = String(s).trim()) && +s <= CASH_MAX ? s : l.n;   // a price: a typo keeps the last good price
   else s = String(s).replace(qsDec(p) ? /[^0-9.]/g : /[^0-9]/g, '').replace(/(\..*)\./g, '$1').slice(0, 7);
   if (s !== '' && !s.endsWith('.')) { const n = Number(s), c = qsCap(p, n); if (c !== n) s = String(c); }
   l.n = s;

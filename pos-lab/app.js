@@ -402,6 +402,23 @@ function attachEvents() {
   document.addEventListener('pointerup', endKeySwipe);
   document.addEventListener('pointercancel', endKeySwipe);
 
+  // A typed box stops at its limit (type=number's max alone doesn't); runs first so the page's own handlers read the stopped value
+  $('#lsQtyInput').max = QTY_MAX;
+  document.addEventListener('input', (e) => { const t = e.target; if (t.matches('input[type="number"][max]') && +t.value > +t.max) t.value = t.max; }, true);
+
+  // A big number too wide for its page shrinks just enough to fit; the rows under it keep their width (owner 2026-11-09)
+  const fitHeroes = () => document.querySelectorAll('.es-hero:not(.mq), .co-hero').forEach((h) => {
+    const key = h.textContent + h.clientWidth;
+    if (h._fit === key) return;
+    h._fit = key;
+    h.style.fontSize = '';
+    if (h.clientWidth && h.scrollWidth > h.clientWidth + 1) h.style.fontSize = `${parseFloat(getComputedStyle(h).fontSize) * h.clientWidth / h.scrollWidth}px`;
+  });
+  let heroFrame = 0;
+  new MutationObserver(() => { heroFrame ||= requestAnimationFrame(() => { heroFrame = 0; fitHeroes(); }); })
+    .observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'hidden'] });
+  addEventListener('resize', fitHeroes);
+
   // ---- Product grid (Sell) — real swipe gestures ----
   const productGrid = $('#productGrid');
   let swipeStart = null;

@@ -110,6 +110,7 @@ function openPaySheet(btn, c) {
     return /^(\d+\.?\d*|\.\d+)$/.test(s) ? moneyValue(s) : 0;
   };
   const sync = () => {
+    if (amount() > CASH_MAX) f.amount.value = CASH_MAX;
     const a = amount(), ok = f.querySelector('[type="submit"]');
     ok.disabled = !(a > 0);
     ok.textContent = a > 0 ? `Record ${peso(a)}` : 'Record payment';
