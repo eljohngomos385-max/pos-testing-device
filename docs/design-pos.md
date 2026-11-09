@@ -88,7 +88,7 @@ build plan: `pos-vault/plans/uniform-lists.md`.
 
 **Building one:** a list inside a card is `icard(title, rows, '', ' fc-rows')` with `.row` > `.nm` (span + small) and `.rt` (`.amt`); a group's count goes on the title as `<span class="num">· n</span>`, its total as `<span class="tot num">` (or a `.link` when it opens something). Items' own rows are `.lv .page .row:where(:not(.fc-rows > *))` so they never reach a card list on a `.page`. (`.sh-move` was the third recipe; deleted 2026-10-17.)
 
-**First card under the pill** (Reports, Shift): no title over it, 32px under the pill: the room the title took (`.rp-body > :first-child`, `#shiftBody > .card:first-child`). The page's one action is a word top right (Shift: Print), going somewhere is a › row (`.fr.nav`, Shift: Past shifts). A title inside the card was tried and turned down ("ugly", 2026-10-17); Reports' Sales line is the one exception.
+**First card under the pill** (Reports): no title over it, 32px under the pill: the room the title took (`.rp-body > :first-child`). Shift has no pill since Cash in & out became its own page (2026-11-09), so its first card sits on the start line. The page's one action is a word top right (Shift: Print), going somewhere is a › row (`.fr.nav`, Shift: Past shifts). A title inside the card was tried and turned down ("ugly", 2026-10-17); Reports' Sales line is the one exception.
 
 ## The hero line — one spot for every big amount (owner 2026-10-16)
 

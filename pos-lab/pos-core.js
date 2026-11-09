@@ -930,12 +930,12 @@ function folderName(id) {
 
 // ---------- Roles ----------
 const ROLE_ALLOWED = {
-  cashier: new Set(['sell', 'orders', 'qr', 'items', 'settings', 'checkout']),
-  manager: new Set(['sell', 'orders', 'qr', 'items', 'customers', 'back-office', 'settings', 'checkout']),
+  cashier: new Set(['sell', 'orders', 'tables', 'chat', 'qr', 'items', 'settings', 'checkout']),
+  manager: new Set(['sell', 'orders', 'tables', 'chat', 'qr', 'items', 'customers', 'back-office', 'settings', 'checkout']),
 };
 ROLE_ALLOWED.owner = ROLE_ALLOWED.manager;   // the till's pages; the back office has its own page access
 ROLE_ALLOWED.stock = ROLE_ALLOWED.cashier;
-const VIEW_SWITCH = { reports: 'dayTotals', shift: 'shift' };   // pages a Staff & access switch opens
+const VIEW_SWITCH = { reports: 'dayTotals', shift: 'shift', cash: 'shift' };   // pages a Staff & access switch opens
 function canAccess(view) {
   if (VIEW_SWITCH[view]) return roleCan(state.role, VIEW_SWITCH[view]);
   const allowed = ROLE_ALLOWED[state.role] || ROLE_ALLOWED.cashier;   // an unknown role gets the least
@@ -998,6 +998,7 @@ function switchView(view) {
   if (view === 'qr') renderQr();
   if (view === 'customers') renderCustomers();
   if (view === 'shift') shiftPast(false);   // opens on the drawer, not Past shifts
+  if (view === 'cash') renderShift();
   if (view === 'reports') { $('.view-reports .c-scroll').scrollTop = reportsView.y = 0; renderReports(); }   // opens at the top; Day | Week | Month keeps the place (reportsGo)
   // every visit opens at the top: the stage kept the last visit's place (owner 2026-10-29). The rAF is for Safari,
   // which can put a hidden scroller's place back on its own layout pass after this line has already run.

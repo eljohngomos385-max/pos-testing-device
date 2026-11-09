@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Before and after</title>
+<style>
+  :root { --bg: #f4f4f2; --card: #fff; --ink: #1a1a1a; --ink-2: #6b6b6b; --line: #ddd; --chg: #1f7a4d; --chg-bg: #e3f3ea; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 64px; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, -apple-system, Segoe UI, sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--ink-2); margin: 0 0 16px; max-width: 640px; }
+  .bar { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .bar button { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 14px; font: inherit; cursor: pointer; }
+  .bar button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  h2 { font-size: 15px; margin: 28px 0 12px; color: var(--ink-2); font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .card.same { opacity: .55; }
+  .hd { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .hd b { font-size: 13px; }
+  .tag { flex: 0 1 auto; text-align: right; padding: 2px 8px; border-radius: 999px; background: var(--bg); color: var(--ink-2); font-size: 12px; }
+  .chg .tag { background: var(--chg-bg); color: var(--chg); font-weight: 600; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pair span { display: block; margin-bottom: 4px; color: var(--ink-2); font-size: 12px; font-weight: 600; }
+  .pair img { width: 100%; display: block; border-radius: 8px; border: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<h1>Before and after</h1>
+<p class="sub">Phone only: on every checkout page, Complete sale / Done moves down to where Check out sits, so it is always in the same spot.
+  The tablet and the white Done on the sheets don't change. This is a copy (<a href="../../try-phone-pin.html">try it</a>); the real app is untouched.</p>
+<div class="bar" id="th"><button class="on" data-t="dark">Dark</button><button data-t="light">Light</button></div>
+<div id="out"></div>
+<script>
+// [shot, label, what changed ('' = nothing)]
+const groups = [
+  ['Checkout: changes', [
+    ['c1-cash-custom', 'Cash, after tapping Custom', 'Complete sale moved to the bottom'],
+    ['c2-gcash', 'GCash', 'Complete sale moved to the bottom'],
+    ['c3-split-amount', 'Split › GCash amount', 'Done moved to the bottom'],
+    ['c4-split-ref', 'Split › Reference no.', 'Done moved to the bottom'],
+    ['c5-split-page', 'Split page, paid in full', 'Complete sale moved to the bottom'],
+    ['c6-split-cash', 'Split › Cash change, after tapping Custom', 'Complete sale moved to the bottom'],
+  ]],
+  ['No change', [
+    ['r2-cart', 'Cart · Check out (where the button goes)', ''],
+    ['c7-success', 'Sale complete', ''],
+    ['s1-walkin', 'Walk-in · Done', ''], ['s2-walkin-delivery', 'Walk-in › Delivery · Apply', ''],
+    ['s3-line', 'Cart item · Done', ''], ['s4-discount', 'Discount · Done', ''],
+    ['s5-price', 'Price ask · Add', ''], ['s6-customer', 'New customer · Save', ''],
+    ['s7-shift-start', 'Start shift', ''], ['s8-cash-mgmt', 'Cash in / Cash out', ''],
+  ]],
+];
+let t = 'dark';
+function draw() {
+  document.getElementById('out').innerHTML = groups.map(([h, rows]) => `<h2>${h}</h2><div class="grid">${rows.map(([n, l, c]) =>
+    `<div class="card ${c ? 'chg' : 'same'}"><div class="hd"><b>${l}</b><span class="tag">${c || 'No change'}</span></div>
+     <div class="pair"><div><span>Before</span><img src="phone/${n}-${t}.png" alt="${l}, before"></div>
+     <div><span>After</span><img src="mid-phone/${n}-${t}.png" alt="${l}, after"></div></div></div>`).join('')}</div>`).join('');
+}
+document.getElementById('th').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#th button').forEach(x => x.classList.toggle('on', x === b)); t = b.dataset.t; draw();
+});
+draw();
+</script>
+</body>
+</html>

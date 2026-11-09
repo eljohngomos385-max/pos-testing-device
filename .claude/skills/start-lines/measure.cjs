@@ -25,7 +25,7 @@ const PAGES = [
   ['QR codes', ["switchView('qr')"]],
   ['Settings', ["switchView('settings')"]],
   ['Past shifts', ["switchView('orders'); switchView('shift')", 'shiftPast(true)']],
-  ['Cash in & out', ["shiftPast(false); switchView('shift')", "[...document.querySelectorAll('.view-shift .rp-units button')].find(b => /Cash in/.test(b.textContent)).click()"]],
+  ['Cash in & out', ["shiftPast(false); switchView('cash')"]],
   ['QR table', ["switchView('qr')", "document.querySelector('[data-qr-open] .lb').click()"]],
   ['Payment types', ["switchView('settings')", 'openPayTypes(true)']],
   ['Payment type', ["openPayType('cash')"]],

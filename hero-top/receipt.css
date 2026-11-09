@@ -1,0 +1,57 @@
+/* The receipt's two styles (Settings › Receipt › Style, owner 2026-11-06), ported from receipt-look-lab: Classic (.t1, the
+   lab's T1) and Modern (.g2, G2.2). The screen (.rp-paper) and the print pop-up (.r-paper) both load this file.
+   Sized off the paper's width, as the lab's 80mm roll: --rc is the lab's 14px, one 48th of a mono line, never under 11px on a
+   phone. Every size below is the lab's px over its parent's (14px; Modern's body 14.5px). */
+/* One ink, as the paper: a thermal printer prints black only, never grey (owner 2026-11-06). */
+.rcpt { --rc: max(11px, 100cqw / 29.1); font-size: var(--rc); color: #111; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.rcpt hr { border: 0; border-top: 1px dashed #111; margin: 1em 0; }
+.rcpt .c, .rcpt .store { text-align: center; }
+.rcpt .r { display: flex; justify-content: space-between; gap: .857em; }
+.rcpt .r > :first-child { flex-shrink: 0; max-width: 60%; }   /* a long ref no. wraps in the value, never squeezes the label */
+.rcpt .r > :last-child { min-width: 0; text-align: right; }
+.rcpt .nw { white-space: nowrap; }   /* a phone number never breaks */
+.rcpt .out { text-decoration: line-through; }   /* refunded in full: struck, still on the slip */
+/* Settings › Receipt's logo and footer picture: black and white like the paper, inside the box printer.js fits them to
+   (RECEIPT_PICS: logo 60% x 30% of the paper's width, footer picture 60% x 60%) */
+.rcpt .pic { display: block; margin: 0 auto .714em; max-width: 60cqw; max-height: 30cqw; filter: grayscale(1); }
+.rcpt .pic.foot { margin: .714em auto 0; max-height: 60cqw; }
+.rcpt .mark { font-weight: 700; text-align: center; }
+.rcpt .recno { text-align: center; }
+.rcpt .recno span { display: block; font-size: .786em; letter-spacing: .136em; text-transform: uppercase; margin-bottom: .364em; }
+.rcpt .recno b { display: inline-block; font: 700 1.571em "Receipt Mono", monospace; letter-spacing: .091em; border: 1.5px dashed #111; padding: .273em .818em; }
+
+/* Classic: all mono, the name in Montserrat Medium */
+.t1 { font-family: "Receipt Mono", monospace; line-height: 1.7; }
+.t1 .store { font-family: "Montserrat", sans-serif; font-weight: 500; letter-spacing: -.025em; line-height: 1.05; }
+.t1 .slogan { margin-top: .286em; }   /* close under the name, air before the address (owner 2026-11-06) */
+.t1 .tel { margin-top: 1em; }
+.t1 .slogan + .tel { margin-top: .857em; }
+.t1 .items { display: grid; grid-template-columns: 2em 1fr auto auto; column-gap: 1em; align-items: baseline; }
+.t1 .items > * { min-width: 0; }
+.t1 .items .n { text-align: right; white-space: nowrap; }
+.t1 .items .h { font-weight: 700; }
+.t1 .items hr { grid-column: 1 / -1; margin: .429em 0 .571em; }
+.t1 .tot { font-size: 1.214em; font-weight: 700; }
+.t1 .shout { font-size: 1.857em; line-height: 1.15; text-transform: uppercase; text-align: center; margin-top: .846em; }
+.t1 .recno { margin: 1.143em 0 1em; }   /* even air above and under the thank-you */
+
+/* Modern: Inter, the amounts in mono; the name in Inter Medium (Montserrat fought Inter, owner 2026-11-06) */
+.g2 { font: calc(var(--rc) * 1.0357)/1.45 "Inter", sans-serif; }
+.g2 hr { margin: .828em 0; }
+.g2 hr:first-of-type { margin-top: 1.103em; }   /* T1's air under the address */
+.g2 .store { font-weight: 500; letter-spacing: -.03em; line-height: 1.05; }
+.g2 .sm { font-size: .931em; }
+.g2 .slogan { margin-top: .444em; }
+.g2 .tel { margin-top: .444em; }
+.g2 .slogan + .tel { margin-top: 1.185em; }   /* the slogan hugs the name, the address sits apart */
+.g2 .amt { font-family: "Receipt Mono", monospace; font-size: 1.037em; }
+.g2 .type { margin-top: .444em; }
+.g2 hr + .type { margin-top: 0; }
+.g2 .it { margin: .483em 0; }
+.g2 .nm { font-weight: 500; }
+.g2 .ln, .g2 .pay { font-size: .931em; }
+.g2 .tot { margin-top: .381em; font-size: 1.448em; font-weight: 600; line-height: 1.3; }
+.g2 .tot .amt { font-size: 1em; }
+.g2 .ty { font-size: 1.517em; font-weight: 600; letter-spacing: -.018em; text-align: center; margin-top: 1em; }
+.g2 .recno { margin: 1.241em 0 .828em; }
+.g2 .recno b { border: 1px solid #111; border-radius: 6px; }

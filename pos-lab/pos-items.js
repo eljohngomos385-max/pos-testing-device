@@ -139,7 +139,7 @@ function itemGo(sub, back) {
   f.scrollTop = sub ? 0 : itemMainScroll;
 }
 // Back from a subpage (app.js #itemBack): a variant's Made from to the variant, a modifier's choices to Modifiers, else the item
-const itemParent = s => (/^(made|alts|bars):/.test(s) && itemEdit.variants.length > 1 ? s.slice(5) : s.startsWith('modch:') ? 'mods' : '');
+const itemParent = s => (/^(made|alts|bars):/.test(s) && itemEdit.variants.length > 1 ? s.slice(5) : /^mod(ch:|add|ord)/.test(s) ? 'mods' : '');
 const blankV = v => JSON.stringify({ ...v, id: 0 }) === JSON.stringify({ ...blankVariant(), id: 0 });   // a new variant nothing was typed in
 // a variant needs a name (owner 2026-10-29): one left with something typed but no name asks before Back; a tap outside stays
 function itemBackSub() {
@@ -180,6 +180,8 @@ function renderItemForm(dir) {
   const [title, html] = itemSub === 'cats' ? ['Categories', itemTickPage('catIds', kindCats().map(c => [c.id, c.name]), 'No categories yet. Add them under Categories.')]
     : itemSub === 'mods' ? ['Modifiers', itemModsPage()]
     : itemSub.startsWith('modch:') ? itemChoicePage(itemSub.slice(6))
+    : itemSub === 'modadd' ? ['Add modifier', itemModAddPage()]
+    : itemSub === 'modord' ? ['Change order', itemModOrderPage()]
     : itemSub === 'sups' ? ['Suppliers', itemSupsPage()]
     : itemSub === 'specs' ? ['Specs', itemSpecsPage()]
     : itemSub === 'look' ? ['Tile appearance', lookPage(E)]
@@ -188,13 +190,14 @@ function renderItemForm(dir) {
     : itemSub.startsWith('alts:') ? ['SKU', itemSkuPage(codesOf())]
     : itemSub.startsWith('bars:') ? ['Barcodes', itemBarPage(codesOf())]
     : v ? [v.fresh ? 'Add variant' : 'Edit variant', itemVariantPage(v)] : [E.name || 'New item', itemMainPage()];   // a fixed title: typing a variant's name doesn't echo up there
-  $('#itemForm').closest('.editor').classList.toggle('sub', !!itemSub && itemSub !== 'mods' && !itemSub.startsWith('modch:'));   // a subpage has only Back, as in Apple Settings; Modifiers keeps Save (owner 2026-10-24)
+  $('#itemForm').closest('.editor').classList.toggle('sub', !!itemSub);   // a subpage has only Back, as in Apple Settings; the item's Save keeps it all (owner 2026-11-08)
   $('#itemForm').innerHTML = `<div class="form${dir ? ' ' + dir : ''}">${html}</div>`;
   $('#itemTitle').textContent = title;   // small, in the top bar beside Back (rednote's Edit profile)
   // a long tick list (Made from, Categories, Modifiers): search in the bar where the title was; the title fades back in on scroll
   const find = $('#itemFind');
   find.hidden = !itemSub || $$('#itemForm .pick[data-find]').length <= 8;
   $('#itemFindQ').value = ''; find.classList.remove('typed');
+  if (itemSub === 'modadd') modAddPill();
 }
 
 // rednote's Edit profile (owner 2026-10-09): the photo centred on top, white blocks on the grey page, the word in a
@@ -354,17 +357,34 @@ const itemHidden = (E, by = modsById()) => {
 };
 const IGRIP = '<span class="grip" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></svg></span>';
 const modFind = m => escapeHtml([m.name, ...liveChoices(m).map(o => o.name)].join(' ').toLowerCase());
-// the ones it asks on top, in order (≡ drags them); a tap on the name picks which choices it offers
+// one job per page (owner 2026-11-09): a row here only opens its choices; Change order and Add modifier are their own pages
 function itemModsPage() {
   const E = itemEdit, by = modsById(), on = E.mods.filter(id => by.has(id)).map(id => by.get(id));
-  const rest = [...by.values()].filter(m => !E.mods.includes(m.id)).sort((a, b) => a.name.localeCompare(b.name));
-  const tick = (m, c) => `<input type="checkbox" data-tick="mods" value="${escapeHtml(m.id)}"${c ? ' checked' : ''} aria-label="${escapeHtml(m.name)}">`;
-  const sel = on.map(m => `<div class="pick mod-on" data-mod="${escapeHtml(m.id)}" data-find="${modFind(m)}">
-      <button type="button" class="tx" data-sub="modch:${escapeHtml(m.id)}">${escapeHtml(m.name)}<small>${choicesText(m, E.hideCh)}</small></button>${tick(m, true)}${IGRIP}</div>`).join('');
-  const off = rest.map(m => `<label class="pick" data-find="${modFind(m)}">${tick(m)}<span class="tx">${escapeHtml(m.name)}<small>${choiceList(m)}</small></span></label>`).join('');
-  if (!sel && !off) return icard('', '<div class="pick">No modifiers yet. Add them on the Modifiers tab.</div>');
-  return icard('', sel + off, sel ? 'Tap a name to choose which of its choices this item offers. Drag ≡ to change the order.' : '');
+  if (!by.size) return icard('', '<div class="pick">No modifiers yet. Add them on the Modifiers tab.</div>');
+  const add = on.length < by.size ? icard('', iadd('mod-add', '<svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add modifier'), on.length ? '' : 'Nothing is asked on this item yet.') : '';
+  if (!on.length) return add;
+  const rows = on.map(m => `<button type="button" class="pick mod-on" data-sub="modch:${escapeHtml(m.id)}" data-find="${modFind(m)}"><span class="tx">${escapeHtml(m.name)}<small>${choicesText(m, E.hideCh)}</small></span>${ICHEV}</button>`).join('');
+  return icard(`On this item <span class="num">· ${on.length}</span>`, rows, on.length > 1 ? 'Asked at the sale in this order.' : '')
+    + (on.length > 1 ? icard('', inav('Change order', '', 'modord')) : '') + add;
 }
+// ponytail: a whole row drags, so past about 13 asked rows the page scrolls only from its side margins; grip-only drag if a store ever gets there
+function itemModOrderPage() {
+  const E = itemEdit, by = modsById(), rows = E.mods.filter(id => by.has(id)).map(id => by.get(id));
+  return icard('', rows.map(m => `<div class="pick mod-ord" data-mod="${escapeHtml(m.id)}"><span class="tx">${escapeHtml(m.name)}<small>${choicesText(m, E.hideCh)}</small></span>${IGRIP}</div>`).join(''), 'Drag a row to change which is asked first.');
+}
+// The ticks wait here until the pill, so Back (or any other way out) adds nothing, and a ticked row stays where it is
+const modAdding = new Set();
+function itemModAddPage() {
+  const rest = [...modsById().values()].filter(m => !itemEdit.mods.includes(m.id)).sort((a, b) => a.name.localeCompare(b.name));
+  return icard('', rest.map(m => `<label class="pick" data-find="${modFind(m)}"><span class="tx">${escapeHtml(m.name)}<small>${choiceList(m)}</small></span><input type="checkbox" data-add-mod value="${escapeHtml(m.id)}"${modAdding.has(m.id) ? ' checked' : ''} aria-label="${escapeHtml(m.name)}"></label>`).join(''), 'Select as many as you like. They join the end of the list.');
+}
+function modAddPill() {
+  const n = modAdding.size, go = $('#kindPickGo');
+  go.disabled = !n;
+  go.innerHTML = `<span>${n ? `Add ${SalesMath.plural(n, 'modifier')}` : 'Select the ones to add'}</span>`;
+}
+function modAddTick(t) { modAdding[t.checked ? 'add' : 'delete'](t.value); modAddPill(); }
+function modAddGo() { itemEdit.mods = [...itemEdit.mods, ...modAdding]; itemGo('mods', true); }
 // one modifier on this item: a switch per choice; the last one on stays on (a question with no answer can't be asked)
 function itemChoicePage(mid) {
   const E = itemEdit, m = modsById().get(mid);
@@ -374,29 +394,27 @@ function itemChoicePage(mid) {
     const on = !E.hideCh.includes(o.id), sub = [o.price ? `+${peso(o.price)}` : '', o.unavailable ? 'Unavailable' : ''].filter(Boolean).join(' · ');
     return `<label class="fr"><span class="lb">${escapeHtml(o.name)}${sub ? `<small>${sub}</small>` : ''}</span><span class="ctl end"><input type="checkbox" class="sw" data-ch="${escapeHtml(o.id)}"${on ? ' checked' : ''}${on && left === 1 ? ' disabled' : ''}></span></label>`;
   }).join('');
-  return [m.name, icard(`On ${escapeHtml(E.name.trim() || 'this item')}`, rows, `Off = this item never offers it. Other items still do. To rename or add choices, open ${escapeHtml(m.name)} on the Modifiers tab.`)];
+  return [m.name, icard(`On ${escapeHtml(E.name.trim() || 'this item')}`, rows, `Off = this item never offers it. Other items still do. To rename or add choices, open ${escapeHtml(m.name)} on the Modifiers tab.`) + icard('', iadd('mod-remove', 'Remove from this item', ' red'))];
 }
 function itemChoiceSet(t) {
   const E = itemEdit, id = t.dataset.ch;
   E.hideCh = t.checked ? E.hideCh.filter(x => x !== id) : [...E.hideCh, id].sort();
   renderItemForm();
 }
-// a modifier ticked off takes its hidden choices with it; the list re-sorts (picked on top) unless a search is typed
-function itemModTick(t) {
-  const E = itemEdit, m = modsById().get(t.value);
-  if (!t.checked && m) { const ids = new Set(m.options.map(o => o.id)); E.hideCh = E.hideCh.filter(x => !ids.has(x)); }
-  if ($('#itemFindQ').value.trim()) return;
-  const f = $('#itemForm'), y = f.scrollTop;
-  renderItemForm(); f.scrollTop = y;
+// off the item, and its hidden choices with it
+function itemModOff(id) {
+  const E = itemEdit, m = modsById().get(id);
+  E.mods = E.mods.filter(x => x !== id);
+  if (m) { const ids = new Set(m.options.map(o => o.id)); E.hideCh = E.hideCh.filter(x => !ids.has(x)); }
 }
-// ≡ drag: the row rides the finger, the others step aside; let go and the asking order is the new one
+// drag a row: it rides the finger, the others step aside; let go and the asking order is the new one
 function modGrip(e) {
-  const g = e.target.closest('#itemForm .pick.mod-on .grip');
-  if (!g || e.button) return;
-  const row = g.closest('.pick'), rows = [...row.parentElement.querySelectorAll('.pick.mod-on:not([hidden])')], i0 = rows.indexOf(row);
+  const row = e.target.closest('#itemForm .pick.mod-ord');
+  if (!row || e.button) return;
+  const rows = [...row.parentElement.querySelectorAll('.pick.mod-ord')], i0 = rows.indexOf(row);
   const h = row.offsetHeight, y0 = e.clientY;
   let to = i0;
-  e.preventDefault(); g.setPointerCapture(e.pointerId); row.classList.add('dragging');
+  e.preventDefault(); row.setPointerCapture(e.pointerId); row.classList.add('dragging');
   const move = (ev) => {
     const dy = Math.min(Math.max(ev.clientY - y0, -i0 * h), (rows.length - 1 - i0) * h);
     to = Math.round(i0 + dy / h);
@@ -404,15 +422,15 @@ function modGrip(e) {
     rows.forEach((r, i) => { if (r !== row) r.style.transform = i > i0 && i <= to ? `translateY(${-h}px)` : i < i0 && i >= to ? `translateY(${h}px)` : ''; });
   };
   const end = (ev) => {
-    ['pointermove', 'pointerup', 'pointercancel'].forEach((k, i) => g.removeEventListener(k, i ? end : move));
+    ['pointermove', 'pointerup', 'pointercancel'].forEach((k, i) => row.removeEventListener(k, i ? end : move));
     if (ev.type === 'pointercancel') to = i0;
     const ids = rows.map(r => r.dataset.mod), was = new Set(ids), E = itemEdit;
     ids.splice(to, 0, ...ids.splice(i0, 1));
     let k = 0;
-    E.mods = E.mods.map(id => (was.has(id) ? ids[k++] : id));   // the shown rows swap places; the rest keep theirs
+    E.mods = E.mods.map(id => (was.has(id) ? ids[k++] : id));   // the shown rows swap places; a deleted modifier's id keeps its
     renderItemForm();
   };
-  g.addEventListener('pointermove', move); g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+  row.addEventListener('pointermove', move); row.addEventListener('pointerup', end); row.addEventListener('pointercancel', end);
 }
 function itemVariantPage(v) {
   const E = itemEdit, made = v.madeFrom.length > 0;
@@ -849,6 +867,7 @@ function renderPickPage(dir) {
 // Items: "4 items · Save"; Add items: "Add 2 items", the ones ticked here
 const kindPickBar = () => {
   const K = kindEdit, n = [...K.picked].filter(id => !K.pool?.has(id)).length;
+  $('#kindPickGo').disabled = false;   // the item's Add modifier page greys it
   $('#kindPickGo').innerHTML = K.sub === 'add' ? `<span>${n ? `Add ${SalesMath.plural(n, 'item')}` : 'Add items'}</span>`
     : `<span>${SalesMath.plural(K.picked.size, 'item')}</span><span>Save</span>`;
 };

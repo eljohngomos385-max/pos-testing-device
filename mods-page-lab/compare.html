@@ -1,0 +1,23 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Item Modifiers options</title>
+<style>
+  body { margin: 0; padding: 24px; background: #e4e4e4; font: 15px/1.4 Inter, system-ui, sans-serif; color: #222; }
+  .row { display: flex; gap: 20px; flex-wrap: wrap; }
+  figure { margin: 0; }
+  figcaption { margin: 0 0 8px; font-weight: 600; }
+  figcaption small { display: block; font-weight: 400; color: #666; max-width: 260px; }
+  .shot { width: 262px; height: 300px; overflow: hidden; border-radius: 18px; background: #f1f1f1; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .shot img { width: 262px; display: block; }
+  .tall .shot { height: 420px; }
+</style>
+<div class="row" id="board">
+  <figure><figcaption>Now<small>Pick, order and open in one row; nothing says it opens.</small></figcaption><div class="shot"><img src="shots/now.png"></div></figure>
+  <figure><figcaption>A · Asked + Add<small>Only what it asks. ≡ left, › right. Add modifier opens the rest.</small></figcaption><div class="shot"><img src="shots/a-1.png"></div></figure>
+  <figure><figcaption>A · Add modifier<small>Tap one: it joins the end of the list.</small></figcaption><div class="shot"><img src="shots/a-2.png"></div></figure>
+  <figure><figcaption>A / B / D · inside Ice<small>Taking it off lives here, at the bottom.</small></figcaption><div class="shot"><img src="shots/a-3.png"></div></figure>
+  <figure><figcaption>B · Two cards<small>Asked (≡, ›) on top, Not asked below with ○.</small></figcaption><div class="shot"><img src="shots/b-1.png"></div></figure>
+  <figure class="tall"><figcaption>C · Choices inline<small>No › at all: each asked one shows its choices. Grows tall.</small></figcaption><div class="shot"><img src="shots/c-1.png"></div></figure>
+  <figure><figcaption>D · Numbered circles<small>The circle = asked, its number = the order. Row opens.</small></figcaption><div class="shot"><img src="shots/d-1.png"></div></figure>
+  <figure><figcaption>D · Change order<small>≡ only shows here.</small></figcaption><div class="shot"><img src="shots/d-2.png"></div></figure>
+</div>

@@ -218,6 +218,7 @@ let shSheet = null;   // { step: 'start' | 'count' | 'result' | 'leave' | 'cash'
 // On the phone the keys ride in with the page (owner 2026-11-06: their own slide after it read as "the numpad lags").
 function openShiftSheet(step, more) {
   shSheet = { step, v: '0', counts: [], shiftId: shiftOf()?.id || null, note: '', born: performance.now(), kd: false, up: !shPh(), ...more };
+  $(`.view[data-view="${state.view}"]`).appendChild($('#shiftSheet'));   // one sheet, over whichever page asked: Shift or Cash in & out
   drawShiftSheet();
   $('#shiftSheet').classList.add('open');
   esLine($('#shiftSheet'));
@@ -390,7 +391,7 @@ function openPast(id) {
 // the auto-close turn. Not while a card is up over it. The shift's panel is its own element: a redraw under it is harmless.
 const shiftSig = () => [tillDay(Date.now()), cutBefore(), reportsSignature(), storageGet(STORAGE_SHIFTS, ''), storageGet(STORAGE_CUSTOMER_LEDGER, '')].join('|');
 function shiftLive() {
-  if (state.view !== 'shift') return;
+  if (state.view !== 'shift' && state.view !== 'cash') return;
   if (!canAccess('shift')) { closeShiftSheet(); return applyRoleGating(); }   // the switch was taken away
   if (confirmSheet) return;
   if (shiftSig() !== shiftLive._sig) renderShift();
@@ -406,11 +407,8 @@ function shiftDrawer(all = storeShifts(), now = Date.now()) {
 // The app's cards (owner 2026-10-16, after a try with titles inside: "not the design we use"): each title over its card,
 // its one action at the title's right (Customers' See all), rows split by hairlines. Under the drawer, in a few words,
 // since when it counts and that it closes / starts over by itself (owner: "Since yesterday, 9:36" never said it was
-// automatic). Shift | Cash (owner 2026-10-16), Reports' pill: Shift is the drawer and By method, Cash every cash in and out,
-// newest first. The button bottom right follows the tab: Start / Close shift, or Cash in / out (the sheet). The drawer
-// has no title (owner 2026-10-17: "Cash drawer" sat too close under the pill); Print, the X report, is the word top right
-// while a shift is open, and Past shifts a › row under the drawer.
-let shTab = 'shift';
+// automatic). The button bottom right is Start / Close shift. The drawer has no title (owner 2026-10-17); Print, the X report,
+// is the word top right while a shift is open, and Past shifts a › row under the drawer.
 const shLink = (sh, word) => `<button type="button" class="link cta-3" data-sh="${sh}">${word}</button>`;
 const shWhen = ts => fmtOrderTime(ts).replace(/^Today, /, '').replace(/^Yesterday/, 'yesterday');
 // Cash in & out and Past shifts are Orders' list (owner 2026-10-30: "the same design as the orders page"): per group the grey
@@ -418,8 +416,8 @@ const shWhen = ts => fmtOrderTime(ts).replace(/^Today, /, '').replace(/^Yesterda
 const dayBand = (title, n, tot) => `<div class="band"><span>${title} <span class="num">· ${n}</span></span>${tot}</div>`;
 const listRow = (tag, attr, title, sub, amt) => `<${tag} class="row"${attr}><div class="nm"><span>${title}</span><small class="num">${sub}</small></div>
   <div class="rt"><span class="amt num">${amt}</span></div></${tag}>`;
-const moveRow = m => listRow('div', '', escapeHtml(m.note), `${escapeHtml(fmtOrderTime(m.ts))} · ${escapeHtml(m.staff)}`, overShortText(m.amount));
-// The button's words change in place (owner 2026-10-17): its width glides at the Shift | Cash pill's pace while the old
+const moveRow = m => listRow('div', '', escapeHtml(m.note), `${tillDate(m.ts, 'time')} · ${escapeHtml(m.staff)}`, overShortText(m.amount));
+// The button's words change in place (owner 2026-10-17): its width glides while the old
 // words shrink out and the new grow in on the same spot, like ☰ <-> ‹. Only on a real change: the page redraws every 4s.
 function shiftFabSay(text) {
   const b = $('#shiftFab'), was = b.querySelector('span:not(.out)');
@@ -435,14 +433,14 @@ function shiftFabSay(text) {
   b.lastChild.animate({ opacity: [0, 1], transform: ['scale(.7)', 'none'] }, o);
   was.animate({ opacity: [1, 0], transform: ['none', 'scale(.7)'] }, o).onfinish = () => was.remove();
 }
-// peek: { el, tab } draws that tab's body into el and nothing else (a swipe's copy of the tab beside, app.js tabSwipe)
-function renderShift(peek) {
-  const body = peek?.el || $('#shiftBody'), tab = peek?.tab || shTab;
+function renderShift() {
+  const body = $('#shiftBody');
   if (!body) return;
-  if (!peek) closeDays();   // a POS left on overnight makes yesterday's Z when the page draws
-  if (!peek) shiftLive._sig = shiftSig();
+  closeDays();   // a POS left on overnight makes yesterday's Z when the page draws
+  shiftLive._sig = shiftSig();
   const all = storeShifts(), { s, from, d } = shiftDrawer(all), f = shiftFigures(d);
   const row = (lb, v) => `<div class="fr"><span class="lb">${lb}</span><span class="v num amt">${v}</span></div>`;
+  const move = (lb, v) => `<button type="button" class="fr nav" data-sh="moves"><span class="lb">${lb}</span><span class="v num amt">${v}</span></button>`;   // off at closing? the reasons are one tap away
   // past shifts by day, newest first: the day's date · shifts on the title, its Z net at the right (opens the day's paper);
   // a shift row: its hours, who started it, over / short or Not counted
   const days = new Map();
@@ -461,33 +459,35 @@ function renderShift(peek) {
   const foot = s ? `Started ${escapeHtml(shWhen(s.open.ts))} · auto-closes ${auto}`
     : from === cutBefore() ? `Auto-reset at ${auto} · ${shLink('settings', 'Change')}`
     : `Since last close · ${escapeHtml(shWhen(from))}`;
-  const mv = d.moves.slice().reverse();
-  const [fab, act] = tab === 'cash' ? ['', 'cash'] : s ? ['Close shift', 'close'] : ['Start shift', 'open'];
-  if (!peek) {   // on Cash in & out it is Items' round + (owner 2026-11-01), its menu Cash in | Cash out
-    const b = $('#shiftFab');
-    b.classList.toggle('round', !fab);
-    if (!fab) { b.innerHTML = '<svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>'; b.ariaLabel = 'Cash in or out'; }
-    else { b.querySelector('svg')?.remove(); b.removeAttribute('aria-label'); shiftFabSay(fab); }
-    b.dataset.sh = act;
-    $('#shiftPrint').hidden = !s;
-  }
+  shiftFabSay(s ? 'Close shift' : 'Start shift');
+  $('#shiftFab').dataset.sh = s ? 'close' : 'open';
+  $('#shiftPrint').hidden = !s;
   // the cash sales and Expected only for a role that sees the day's totals: the close is a blind count
-  body.innerHTML = tab === 'cash'
-    ? (mv.length ? `<div class="o-days">${dayBand(s ? 'This shift' : 'Today', mv.length, `<span class="num">${overShortText(mv.reduce((t, m) => t + m.amount, 0))}</span>`)}${
-      mv.map(moveRow).join('')}</div>` : emptyState('cash', 'No cash in or out yet'))
-    : `${icard('', [
+  body.innerHTML = `${icard('', [
       s ? row('Start cash', peso(f.start)) : '',
       row('Cash sales', peso(f.sales)),
       row('Cash refunds', peso(minus(f.back))),   // ₱0.00 too: a quiet day says so (owner 2026-10-17)
       f.onAccount ? row('Paid on account', peso(f.onAccount)) : '',
-      row('Cash in', peso(f.cashIn)),
-      row('Cash out', peso(minus(f.cashOut))),
+      move('Cash in', peso(f.cashIn)),
+      move('Cash out', peso(minus(f.cashOut))),
       row('<b>Expected cash</b>', `<b>${peso(f.expected)}</b>`),
     ].join(''), foot, ' r')}
     ${icard('', `<button type="button" class="fr nav" data-sh="past"><span class="lb">Past shifts</span><span class="ctl end">${ICHEV}</span></button>`)}
     ${shiftSalesCard(f.rows, row)}`;
-  if (peek) return;
   $('#shiftPastBody').innerHTML = `<div class="c-body">${past ? `<div class="o-days">${past}</div>` : emptyState('clock', 'Closed shifts show up here.')}</div>`;
+  renderCash();
+}
+
+// Cash in & out, its own page (owner 2026-11-09, over 2026-11-01's "stays inside Shift"): every entry on this POS by day, newest
+// first, Orders' list. Shift still adds them up by time (shiftFigures), so moving the page moved no money.
+// ponytail: no cap (owner 2026-10-16); a drawer log stays short on one POS, page it by day if a synced store's doesn't.
+let cashQ = '';
+function renderCash() {
+  const q = cashQ.trim().toLowerCase(), all = movesIn(storeRows(), 0, Infinity).sort((a, b) => b.ts - a.ts);
+  const shown = all.filter(m => `${m.note} ${m.staff}`.toLowerCase().includes(q));
+  const days = [...SalesMath.groupByDay(shown, tillZone())].map(([day, rows]) =>
+    dayBand(orderDayName(day), rows.length, `<span class="num">${overShortText(rows.reduce((t, m) => t + m.amount, 0))}</span>`) + rows.map(moveRow).join('')).join('');
+  $('#cashBody').innerHTML = `<div class="c-body">${days ? `<div class="o-days">${days}</div>` : q ? noResults(cashQ.trim()) : emptyState('cash', 'No cash in or out yet')}</div>`;
 }
 
 // Past shifts is its own page over the drawer (owner 2026-10-15); the view opens on the drawer.
@@ -515,7 +515,8 @@ function shiftAction(act) {
   if (act === 'settings') { switchView('settings'); return openPick('autoClose'); }   // the footer's Change the time
   if (!canAccess('shift')) return;   // the page is hidden without the switch; this keeps the console out too
   const s = shiftOf();
-  if (act === 'cash') return openFabMenu($('#shiftFab'), [
+  if (act === 'moves') return switchView('cash');
+  if (act === 'cash') return openFabMenu($('#cashFab'), [
     { label: 'Cash in', ic: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>', run: () => openCash('in') },
     { label: 'Cash out', ic: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 20h14"/></svg>', run: () => openCash('out') },
   ]);
@@ -526,9 +527,8 @@ function shiftAction(act) {
 }
 
 function onShiftEvent(e) {
-  const btn = e.target.closest('[data-sh]'), past = e.target.closest('[data-past]'), tab = e.target.closest('[data-shtab]');
-  if (tab && tab.dataset.shtab !== shTab) { shTab = tab.dataset.shtab; slidePill($('#shiftTabs'), 'shtab', shTab); renderShift(); }
-  else if (btn) shiftAction(btn.dataset.sh);
+  const btn = e.target.closest('[data-sh]'), past = e.target.closest('[data-past]');
+  if (btn) shiftAction(btn.dataset.sh);
   else if (past) openPast(past.dataset.past);
 }
 

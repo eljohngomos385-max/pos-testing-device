@@ -4847,7 +4847,7 @@ body.light-theme .orders-search-wrap input:focus {
    shape and type live on the base rules so both themes match */
 body.light-theme .view-sell .content-row,
 body.light-theme .view-checkout,
-body.light-theme:has(:is(.view-sell, .view-checkout, .view-settings, .view-qr, .view-shift, .view-customers, .view-reports).active) { background: var(--canvas); }   /* the body too: Safari tints the status bar with it */
+body.light-theme:has(:is(.view-sell, .view-checkout, .view-settings, .view-qr, .view-shift, .view-cash, .view-tables, .view-chat, .view-customers, .view-reports).active) { background: var(--canvas); }   /* the body too: Safari tints the status bar with it */
 body.light-theme #catalogSearchRow { --rl-soft: var(--surface-2); }   /* ☰, search, scan: white like the cards on the grey page */
 body.light-theme .product-card,
 body.light-theme .product-card.pc-group { background: var(--surface); }
@@ -7559,9 +7559,7 @@ body .lv .e-top .acts .act { background: none; box-shadow: none; color: var(--in
   .lv .ov:is(:has(#ordersList > .empty):has(#orderDetail > .empty), :has(#customersList > .empty):has(#customerBody > .empty)) > .o-rail > .list { grid-column: 1 / -1; }
 }
 #itemsLines > :has(> .empty), .view-items .tab-peek > :has(> .empty) { height: 100%; }   /* centred on the page, as Orders and Customers; the swipe's peek too, or its picture rides in high and drops (owner 2026-11-06) */
-.c-body:has(> #shiftBody > .empty) { min-height: 100%; grid-template-rows: auto 1fr; }   /* Cash in & out: the same */
-#shiftPage .c-body:has(> .tab-peek > .empty) { position: relative; min-height: 100%; } #shiftPage .tab-peek:has(> .empty) { bottom: 0; }   /* its peek fills the page down to the bottom, so the picture rides in where it lands */
-#shiftPastBody > .c-body:has(> .empty) { min-height: 100%; }   /* Past shifts: the same (it sat under the head, 2026-11-06) */
+:is(#shiftPastBody, #cashBody) > .c-body:has(> .empty) { min-height: 100%; }   /* Past shifts, Cash in & out: the same (it sat under the head, 2026-11-06) */
 
 /* the receipt's and the editor's actions: compact boxes, the search's fill and ring */
 .lv .acts { display: flex; align-items: center; gap: 6px; }
@@ -7644,7 +7642,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 
 /* ---------- Customers: the Orders shape; the facts in the item editor's cards, read-only, values right ---------- */
 .lv .c-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(21px + var(--ph-safe, 0px)); scrollbar-width: none; }
-:is(.view-settings, .view-qr, .view-shift, .view-customers, .view-reports).lv { background: var(--canvas, var(--bg)); }   /* the item editor's page: white blocks on grey (owner 2026-10-09) */
+:is(.view-settings, .view-qr, .view-shift, .view-cash, .view-tables, .view-chat, .view-customers, .view-reports).lv { background: var(--canvas, var(--bg)); }   /* the item editor's page: white blocks on grey (owner 2026-10-09) */
 .lv .c-body { display: grid; gap: 12px; }
 .lv .c-body { width: min(100%, 600px); margin-inline: auto; padding-top: 16px; }   /* a short page: centred like the receipt paper; the top bar stays full width like Orders */
 .lv .c-body .fr { grid-template-columns: auto minmax(0,1fr); gap: 16px; min-height: 48px; padding: 6px 16px; }   /* label left, value right at every width */
@@ -7933,7 +7931,6 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
   .lv .e-top > .fm-h { grid-area: 1 / 1 / 2 / 4; padding-inline: 80px; font-size: 15px; }
   .lv .editor.sub .e-top > .fm-h { padding-inline: 40px; }   /* a subpage has only Back */
   .lv .e-top > #itemFind { grid-area: 1 / 2 / 2 / 4; margin-left: 7px; }   /* beside ‹ to the edge, the Items head's 7 apart */
-  .lv .editor:not(.sub) .e-top > #itemFind { grid-area: 1 / 2; margin-right: 7px; }   /* a subpage with Save (the item's Modifiers): up to Save */
   .lv .form { padding-top: 26px; }   /* the old 12px gap + 14: the first block stays where it was */
   .lv .fphoto { margin-top: -6px; }   /* 42 under the title's middle, 28 over the first block, as rednote's */
   .lv .e-top > .acts { margin-right: 0; }
@@ -8009,7 +8006,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
    The bottom icon bar (three icons, then Options merging three kinds) lost on finding it and on "equal respect" */
 .lv .head > .find#itemsFind { position: relative; inset: auto; flex: 1; height: 44px; }   /* search up top, full width beside ‹ */
 .lv.view-items .head > .ph-ttl { display: none; }
-.lv .head > .find:is(#customersFind, #ordersFind) { position: relative; inset: auto; flex: 1; height: 44px; }   /* Orders + Customers too, as Items (owner 2026-10-18: "move it at the top") */
+.lv .head > .find:is(#customersFind, #ordersFind, #cashFind) { position: relative; inset: auto; flex: 1; height: 44px; }   /* Orders + Customers + Cash in & out too, as Items (owner 2026-10-18: "move it at the top") */
 .lv:is(.view-orders, .view-customers) .head > .ph-ttl { display: none; }
 #itemsBack, #itemsView.hub :is(#itemsFind, #itemsAdd, #itemsBar) { display: none; }   /* the hub is parked behind the pills: nothing opens it now */
 #itemsView.hub .head > .ph-ttl { display: block; }
@@ -8018,22 +8015,22 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .lv :is(#itemsAdd, #newCustomerBtn) { width: 56px; height: 56px; }
 /* Customers' + and Start shift wear it too (owner 2026-10-18: "roughly around the same treatment"), and picking's Refund ₱X (owner 2026-10-19) */
 .lv .o-top #orderRefund.primary { position: relative; border-radius: 999px; padding: 0 18px; }
-:is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab) { -webkit-backdrop-filter: none; backdrop-filter: none; }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn), :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) {   /* liquid glass press, app.js sets --lg-* */
+:is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn), :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) {   /* liquid glass press, app.js sets --lg-* */
   touch-action: none; transition: transform .9s var(--lg-spring), background-color .2s, opacity .18s;   /* opacity: Sell's ☰ fades with the drawer */
   /* one transform at rest and pressed, the drag's angle kept after release: the spring wobbles along the way it was pulled (owner 2026-10-18) */
   transform: translate(var(--lg-x, 0px), var(--lg-y, 0px)) rotate(var(--lg-a, 0rad)) scale(calc(1 + var(--lg-p, 0) + var(--lg-s, 0)), calc(1 + var(--lg-p, 0) - var(--lg-s, 0) / 2)) rotate(calc(-1 * var(--lg-a, 0rad)));
   --lg-spring: linear(0, .076, .268, .521, .786, 1.021, 1.199, 1.307, 1.346, 1.326, 1.263, 1.177, 1.085, 1.002, .937, .897, .881, .886, .906, .935, .967, .996, 1.019, 1.034, 1.041, 1.04, 1.034, 1.024, 1.013, 1.002, .994, .989, .986, .986, .988, .991, 1); }   /* a damped spring: lets go with a small jiggle (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan) > *, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab) > *, #catalogSearchRow > #sidebarToggle > *, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan) > *, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab) > *, #catalogSearchRow > #sidebarToggle > *, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
 :where(.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan)) { position: relative; z-index: 1; }   /* swells over the search, not under it (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan)::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"])::after {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan)::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"])::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .4s;
   background: radial-gradient(circle at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .35), rgb(255 255 255 / 0) 70%); }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan).lg-on, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan).lg-on, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on {
   transition-duration: .15s; transition-timing-function: ease-out; --lg-p: .08; }
 #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on { --lg-p: .01; }   /* the search swells 3px, as Messages' (owner 2026-10-18 photos) */
 #catalogSearchRow > .search-wrap:not(.vs-search)::after { z-index: 1; border-radius: 999px; background: radial-gradient(circle 40px at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .3), rgb(255 255 255 / 0)); }   /* a hand-sized light, not one as wide as the bar */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan).lg-on::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on::after { opacity: 1; transition-duration: .1s; }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan).lg-on::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on::after { opacity: 1; transition-duration: .1s; }
 .lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* the last row clears + */
 /* SHARED FROST = "frost top" (owner 2026-10-30: "like the Reports page or the Items list", no hard edge anywhere). A page whose rows scroll runs up
    under its head and the clock; the rows slide behind a soft frost that fades down into them (iOS 26's scroll edge). At rest the
@@ -8318,7 +8315,7 @@ body.hairlines:not(.light-theme) .lv :is(.rp-body, #shiftBody, .sh-body, #shiftP
 /* Sales = reports-top-lab option 1 (owner 2026-10-15): "Sales" inside the card with the date on its right, the number, the
    chart; Profit · Orders · Margin in one card split by hairlines; Target (the back office's meter) under it */
 .lv .rp-ov { padding: 16px; container-type: inline-size; }
-.lv .rp-body > :first-child, .lv :is(#shiftBody, .sh-body) > .card:first-child { margin-top: 32px; }   /* the room the "Sales" heading over the card took, kept now it sits inside (owner) */
+.lv .rp-body > :first-child { margin-top: 32px; }   /* the room the "Sales" heading over the card took, kept now it sits inside (owner) */
 .lv .rp-ttl { display: flex; align-items: baseline; gap: 8px; color: var(--ink-tertiary); font-size: 13px; }
 .lv .rp-ttl > b { flex: none; color: var(--ink-secondary); font-weight: 590; }
 .lv .rp-ttl .rp-pl { text-align: right; }
@@ -8411,10 +8408,12 @@ body.hairlines:not(.light-theme) .lv :is(.rp-body, #shiftBody, .sh-body, #shiftP
 .esheet .cm-chip .ic { width: 14px; height: 14px; }
 .lv #shiftFab .out { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }   /* the old words, shrinking out over the new (shiftFabSay) */
 .lv :is(#shiftBody, .sh-body) { display: grid; gap: 12px; padding-bottom: calc(88px + var(--ph-safe, 0px)); }   /* the last row clears the button */
+.lv #cashBody > .c-body { padding-bottom: calc(88px + var(--ph-safe, 0px)); }   /* and on Cash in & out, the + */
 .lv .fr.add > .chev { margin-left: auto; }
 /* Cash in & out and Past shifts are Orders' list (.o-days joins the Orders block's selectors): the rows' edges sit on the cards' */
 .lv .o-days { padding-inline: 1px; }   /* the rows 1 in, as Orders' (its -12 margin there would run past the page and let it slide sideways) */
-#shiftPastBody .c-body { padding-top: 0; }   /* the first date band rests where Orders' does, 8 under the head */
+:is(#shiftPastBody, #cashBody) .c-body { padding-top: 0; }   /* the first date band rests where Orders' does, 8 under the head */
+.lv .c-body:has(> #shiftBody) { padding-top: 8px; }   /* Shift's first card starts on the same line, no pill above it now */
 .lv .o-days .row.none .nm span { color: var(--ink-tertiary); }   /* a day with a Z but no shift */
 .lv .o-days div.row { letter-spacing: normal; line-height: normal; }   /* a cash move (no tap) reads as Orders' button rows */
 .lv .o-days .band .link { font-size: inherit; letter-spacing: inherit; line-height: inherit; text-decoration: none; }   /* the day's Z total, as Orders' band total; a tap still opens the Z */
@@ -8994,11 +8993,17 @@ body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px v
 
 /* Modifiers: setup (pos-items: the item's Modifiers page, a modifier's pages, the Modifiers tab's rows) */
 .lv.view-items .fc .fr > .lb > small { display: block; color: var(--ink-tertiary); font-size: 12px; }   /* a choice's price / Unavailable / Hidden on, under its name */
-.lv .fc .pick.mod-on > .tx { flex: 1; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-align: left; cursor: pointer; }
-.lv .fc .pick .grip { order: 10; flex: none; display: grid; place-items: center; width: 32px; height: 40px; margin-right: -8px; color: var(--ink-quaternary); cursor: grab; touch-action: none; }
+.lv .fc .pick.mod-on { width: 100%; gap: 4px; padding-right: 16px; border: 0; background-color: transparent; color: inherit; font: inherit; font-size: 16px; letter-spacing: inherit; text-align: left; }   /* the whole row opens */
+.lv .fc .pick:is(.mod-on, .mod-ord) > .tx { flex: 1; }
+.lv .fc .pick:is(.mod-on, .mod-ord) small { color: var(--ink-tertiary); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lv .fc .pick.mod-on .chev { flex: none; width: 22px; height: 22px; margin-right: -6px; stroke-width: 1.64; color: var(--ink-quaternary); }
+.lv .fc .pick.mod-ord { padding-right: 16px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.lv .fr.add > .ic { width: 20px; height: 20px; margin-right: 8px; color: var(--ink-tertiary); }
+.lv .fr.add:has(> .ic:first-child) { align-items: center; }
+.lv .fc .pick .grip { order: 10; flex: none; display: grid; place-items: center; width: 32px; height: 40px; margin-right: -8px; color: var(--ink-tertiary); }
 .lv .fc .pick .grip .ic { width: 20px; height: 20px; }
-.lv .fc .pick.mod-on.dragging { position: relative; z-index: 2; background-color: var(--rl-card); box-shadow: var(--shadow-card); cursor: grabbing; }
-.lv .fc:has(.dragging) .pick.mod-on:not(.dragging) { transition: transform .2s var(--rl-ease); }
+.lv .fc .pick.mod-ord.dragging { position: relative; z-index: 2; background-color: var(--rl-card); box-shadow: var(--shadow-card); cursor: grabbing; }
+.lv .fc:has(.dragging) .pick.mod-ord:not(.dragging) { transition: transform .2s var(--rl-ease); }
 .lv .mline { display: flex; min-width: 0; max-width: 34em; }   /* the choices end in … and stop partway on iPad; the item count sits on the right like Categories (owner 2026-10-31) */
 .lv .mline .ch { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lv .mline .hit { color: var(--ink); font-weight: inherit; }   /* the choice a search matched */
@@ -9070,7 +9075,8 @@ body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px v
 
 /* A category's Items / a modifier's Asked on (owner 2026-10-27): Adjust stock's picking page. The bar's search stays put
    (no tuck, no title), its filter shows, and Check out's pill at the bottom saves */
-.lv .editor:not(.picking) :is(#itemFindFilter, #kindPickBar) { display: none; }
+.lv .editor:not(.picking) #itemFindFilter, .lv .editor:not(.picking):not(:has([data-add-mod])) #kindPickBar { display: none; }   /* the item's Add modifier page wears the pill too */
+.lv .editor:has([data-add-mod]) .form { padding-bottom: calc(var(--bar-h) + var(--ph-b, 16px) + 48px); }
 .lv .editor.picking .e-top.tuck > #itemFind { opacity: 1; pointer-events: auto; }
 .lv .editor.picking .e-top > .fm-h { opacity: 0; }
 .lv .editor.picking .form { padding-top: 14px; padding-bottom: calc(var(--bar-h) + var(--ph-b, 16px) + 48px); }   /* the last row scrolls clear of the pill */

@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reports lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<!-- Reports, redesigned from scratch (owner 2026-10-15). Standalone: the lab app is untouched.
+     Layout: Apple's Screen Time (v3, the owner's pick). Look: ours (v5) -- Inter, the Settings blocks (a small grey title
+     above a white 14px card, inset hairlines), the Items page's rows, the app Reports' big number.
+     Phone frame on a computer: devices.html?page=reports-lab.html. Mock sales, seeded, on a fixed 3:40 PM clock. -->
+<style>
+:root {
+  /* the POS light theme's tokens (styles.css body.light-theme), named the same */
+  --canvas: #F2F2F2; --surface: #F9F9F9; --surface-2: #FFFFFF; --line: #E1E1E1; --rl-hair: #EBEBEB; --rl-div: #EFEFEF;
+  --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C; --ink-quaternary: #B5B5B5;
+  --ok: #047B5D; --ok-bg: #D3ECDD; --danger: #D72C0D; --danger-bg: #F8D8D0;
+  --rl-r: 14px; --bar-h: 44px;
+  /* the back office's chart colours (bo-calm) */
+  --chart-1: #2B7DE9; --data-1: #BCD7FA;
+  --pm-cash: #047B5D; --pm-gcash: #1F5FB8; --pm-qr: #0B6B5E; --pm-credit: #B7860B; --pm-other: var(--ink-quaternary);
+  --ph-safe: env(safe-area-inset-bottom, 0px);
+  --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--canvas); color: var(--ink); font: 13px/1.4 var(--font-stack); letter-spacing: -0.15px; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; letter-spacing: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+.num { font-variant-numeric: tabular-nums; }
+
+.app { position: relative; height: 100dvh; max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; padding-top: env(safe-area-inset-top); }
+.head { position: relative; flex: none; height: var(--bar-h); margin: 8px 12px 0; display: flex; align-items: center; }
+.head .sq { position: relative; z-index: 1; width: 32px; height: var(--bar-h); display: grid; place-items: center; }
+.head h1 { position: absolute; inset: 0; display: grid; place-content: center; margin: 0; pointer-events: none; font-size: 17px; font-weight: 600; letter-spacing: -.3px; }
+.scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 0 12px calc(28px + var(--ph-safe)); }
+#figs { display: grid; gap: 12px; margin-top: 4px; }
+
+/* blocks: the Settings page's -- a small grey title above, a white 14px card (no outline, no shadow), hairlines from the text */
+.card { overflow: hidden; background: var(--surface-2); border-radius: var(--rl-r); padding: 16px; }
+.card.rows { padding: 0; }
+.rows > * + * { background: linear-gradient(var(--rl-div), var(--rl-div)) 16px 0 / 100% 1px no-repeat; }
+.sh { margin: 4px 16px -6px; font-size: 12px; font-weight: 500; color: var(--ink-tertiary); }
+.none { padding: 16px; text-align: center; color: var(--ink-tertiary); }
+
+/* the period, no card: Health's Day | Week | Month, then Screen Time's date between small rounds, pinned on scroll.
+   Sizes measured from the owner's iPhone screenshots (2026-10-15). */
+.seg { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); height: 30px; margin-top: 4px; padding: 2px; border-radius: 999px; background: rgb(118 118 128 / .12); }
+.seg .thumb { position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / 3); border-radius: 999px; background: var(--surface-2);
+  box-shadow: 0 2px 6px rgb(0 0 0 / .1); transition: transform .28s cubic-bezier(.3, .7, .2, 1); }
+.seg button { position: relative; font-size: 13px; font-weight: 590; }
+.per { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 8px; margin: 2px -12px 0; padding: 10px 46px 14px;
+  background: color-mix(in srgb, var(--canvas) 80%, transparent); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); mask-image: linear-gradient(#000 70%, transparent); }
+.per .arw { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--chart-1); color: #fff; }
+.per .arw:disabled { background: var(--ink-quaternary); cursor: default; }
+.per .pl { flex: 1; min-width: 0; font-size: 17px; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* sales: the app Reports' big number, its chip beside it, the chart, then the other three, each centred in its third */
+.ov .big { display: flex; align-items: center; gap: 8px; }
+.ov .big b { font-size: 32px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+.ov .vs { font-size: 13px; color: var(--ink-tertiary); }
+.chip { flex: none; font-style: normal; padding: 1px 7px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--rl-div); color: var(--ink-secondary); }
+.chip.up { background: var(--ok-bg); color: var(--ok); }
+.chip.down { background: var(--danger-bg); color: var(--danger); }
+.chart { position: relative; margin-top: 12px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 16px -16px -16px; border-top: 1px solid var(--rl-div); text-align: center; }
+.stats div { padding: 10px 4px 12px; }
+.stats div + div { border-left: 1px solid var(--rl-div); }
+.stats span { display: block; font-size: 12px; color: var(--ink-tertiary); }
+.stats b { display: block; margin-top: 2px; font-size: 15px; font-weight: 600; }
+
+/* bars: no axis -- tap or drag for the number; the top padding is the tip's room */
+.bars { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.cols { position: relative; display: flex; height: 150px; padding-top: 32px; border-bottom: 1px solid var(--rl-hair); }
+.col { flex: 1; display: flex; align-items: flex-end; justify-content: center; }
+.col i { width: min(60%, 22px); border-radius: 5px 5px 0 0; background: var(--chart-1); transform-origin: bottom; animation: grow .45s cubic-bezier(.3, .7, .2, 1) backwards; transition: opacity .15s; }
+.col:disabled { cursor: default; }
+.picked .col i { opacity: .35; }
+.picked .col.on i { opacity: 1; }
+@keyframes grow { from { transform: scaleY(0); } }
+.xax { display: flex; margin-top: 6px; font-size: 12px; color: var(--ink-quaternary); }
+.xax span { flex: 1; text-align: center; white-space: nowrap; }
+.xax .cur { color: var(--ink); font-weight: 650; }
+.cols .msg { position: absolute; left: 0; right: 0; bottom: 40px; text-align: center; font-size: 13px; color: var(--ink-tertiary); }
+.tip { position: absolute; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 8px; background: var(--ink); color: #fff; font-size: 12px; white-space: nowrap; pointer-events: none; }
+.tip span { color: rgb(255 255 255 / .65); }
+.tip.go { pointer-events: auto; cursor: pointer; }
+
+/* month: the ledger's calendar -- grey rounds, the day's sales under its date; tap opens the day */
+.cal .cw, .cal .cg { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.cal .cw span { padding-bottom: 4px; text-align: center; font-size: 12px; color: var(--ink-quaternary); }
+.cc { height: 48px; border-radius: 10px; background: var(--canvas); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.cc b { font-size: 14px; font-weight: 400; }
+.cc span { font-size: 10px; font-weight: 510; letter-spacing: -.02em; color: var(--ok); }
+.cc.fut { background: none; cursor: default; }
+.cc.fut b { color: var(--ink-quaternary); }
+.cc.now b { color: var(--chart-1); }
+
+/* rows: the Items page's -- 48px, the square 32px picture, the name 14/500 over a grey line, the amount 14/600 */
+.ti { list-style: none; margin: 0; padding: 0; }
+.ti li { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 16px; font-size: 14px; }
+.ti li + li { background: linear-gradient(var(--rl-div), var(--rl-div)) 16px 0 / 100% 1px no-repeat; }
+.ti img { flex: none; width: 32px; height: 32px; border-radius: 5px; object-fit: cover; background: var(--canvas); }
+.ti .tm { flex: 1; min-width: 0; }
+.ti .tn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.ti .ts { font-size: 12px; color: var(--ink-tertiary); }
+.ti .tv { flex: none; font-weight: 600; }
+
+/* by method: one bar split by share (it takes any number of methods), then the rows -- four at most, the rest as Other */
+.pmb { display: flex; gap: 2px; height: 8px; margin: 16px 16px 4px; }
+.pmb + .ti { background: none; }   /* the bar heads its rows: no line between */
+.pmb i { min-width: 2px; border-radius: 4px; transform-origin: left; animation: grow-x .5s cubic-bezier(.3, .7, .2, 1) backwards; }
+@keyframes grow-x { from { transform: scaleX(0); } }
+.ti .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.ti .tp { flex: none; width: 32px; text-align: right; font-size: 12px; color: var(--ink-tertiary); }
+
+/* a period step slides the figures */
+.slide-l { animation: sl .28s ease; } .slide-r { animation: sr .28s ease; }
+@keyframes sl { from { opacity: 0; transform: translateX(28px); } }
+@keyframes sr { from { opacity: 0; transform: translateX(-28px); } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="head">
+    <button class="sq" aria-label="Menu" title="Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg></button>
+    <h1>Reports</h1>
+  </header>
+  <div class="scroll" id="scroll"><div class="body">
+    <div class="seg" id="seg" role="tablist"><span class="thumb" id="thumb"></span>
+      <button data-u="day" role="tab">Day</button><button data-u="week" role="tab">Week</button><button data-u="month" role="tab">Month</button></div>
+    <div class="per">
+      <button class="arw" id="prev" aria-label="Earlier"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <button class="pl" id="perLbl"></button>
+      <button class="arw" id="next" aria-label="Later"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+    </div>
+    <div id="figs"></div>
+  </div></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const H = 36e5;
+// ponytail: a fixed lab clock -- today at 3:40 PM, so Day always shows half a day of sales
+const NOW = (() => { const d = new Date(); d.setHours(15, 40, 0, 0); return +d; })();
+const peso = (n, dp = 0) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+const pesoK = (n) => { const [d, u] = n >= 1e6 ? [1e6, 'M'] : n >= 1e3 ? [1e3, 'k'] : [1, ''], v = +(n / d).toFixed(1); return peso(v, v % 1 ? 1 : 0) + u; };   // ₱2.5k, ₱12k
+
+// ---- mock sales: seeded, the same every load ----
+const ITEMS = [   // name, price, cost, picture, how often, most per sale
+  ['Portland Cement 40kg', 265, 228, 'cement', 9, 10], ['Hollow Block 4"', 14, 10, 'hollow-block', 6, 60], ['Sand (sack)', 85, 60, 'sand', 5, 6],
+  ['Gravel (sack)', 95, 68, 'gravel', 4, 6], ['LED Bulb 9W Daylight', 120, 78, 'led-bulb', 8, 4], ['Teflon Tape 1/2"', 25, 14, 'teflon-tape', 7, 5],
+  ['Claw Hammer 16oz', 385, 260, 'claw-hammer', 3, 1], ['Electrical Tape Black', 35, 20, 'electrical-tape', 7, 4], ['Circuit Breaker 30A', 450, 330, 'breaker', 3, 2],
+  ['Hex Bolt M10 × 100mm', 18, 11, 'hex-bolt', 5, 20], ['Paint Roller 9"', 165, 105, 'paint-roller', 3, 2], ['Brass Faucet 1/2"', 295, 190, 'faucet', 3, 1],
+  ['Tape Measure 5m', 220, 140, 'tape-measure', 3, 1], ['Paint Thinner 1L', 145, 98, 'thinner', 4, 3], ['Latex Paint White 1L', 310, 235, 'boysen', 5, 4],
+  ['Work Gloves', 75, 45, 'gloves', 4, 3], ['Safety Goggles', 130, 80, 'goggles', 2, 2], ['Wood Screw 1" (100)', 95, 60, 'wood-screw', 4, 3],
+  ['Screwdriver Set', 250, 160, 'screwdriver', 2, 1], ['Pliers 8"', 210, 135, 'pliers', 2, 1], ['Convenience Outlet', 85, 52, 'outlet', 4, 4],
+  ['Wall Switch 1-gang', 65, 38, 'switch', 4, 4], ['Silicone Sealant', 180, 120, 'sealant', 3, 2], ['Flat Washer M10 (50)', 45, 25, 'washer', 3, 3],
+];
+const METHODS = [['Cash', 'var(--pm-cash)', 55], ['GCash', 'var(--pm-gcash)', 25], ['QR Ph', 'var(--pm-qr)', 12], ['Account', 'var(--pm-credit)', 8], ['Card', 'var(--pm-other)', 5], ['Maya', 'var(--pm-other)', 3]];
+const ORDERS = [];   // { t, sales, cost, m, lines: [[item, qty]] }, oldest first
+{
+  let s = 1; const r = () => { s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const pick = (list, w) => { let x = r() * list.reduce((a, it) => a + it[w], 0); return list.findIndex(it => (x -= it[w]) < 0); };
+  const HOURS = [[7, 2], [8, 5], [9, 8], [10, 10], [11, 9], [12, 6], [13, 6], [14, 8], [15, 9], [16, 10], [17, 8], [18, 5], [19, 3], [20, 2]];
+  const DOW = [.6, 1, .95, 1, 1.05, 1.15, 1.3], today = new Date(NOW);
+  for (let i = 120; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i), day = [];
+    const n = Math.round(34 * DOW[d.getDay()] * (0.75 + r() * 0.5) * (1 + (120 - i) / 600));
+    for (let k = 0; k < n; k++) {
+      const t = +d + HOURS[pick(HOURS, 1)][0] * H + Math.floor(r() * H);
+      if (t > NOW) continue;
+      const lines = []; let sales = 0, cost = 0;
+      for (let l = 1 + Math.floor(r() * r() * 4); l > 0; l--) {
+        const it = pick(ITEMS, 4), q = 1 + Math.floor(r() * r() * ITEMS[it][5]);
+        lines.push([it, q]); sales += ITEMS[it][1] * q; cost += ITEMS[it][2] * q;
+      }
+      day.push({ t, sales, cost, m: pick(METHODS, 2), lines });
+    }
+    ORDERS.push(...day.sort((a, b) => a.t - b.t));
+  }
+}
+const inRange = (s, e) => ORDERS.filter(o => o.t >= s && o.t < e);
+function sum(s, e) {
+  let sales = 0, cost = 0, orders = 0;
+  for (const o of inRange(s, e)) { sales += o.sales; cost += o.cost; orders++; }
+  return { sales, profit: orders ? sales - cost : null, orders, margin: sales ? (sales - cost) / sales * 100 : null };
+}
+
+// ---- periods ----
+const view = { unit: 'day', anchor: NOW, pick: null };
+function period(unit, at) {
+  const a = new Date(at); a.setHours(0, 0, 0, 0);
+  if (unit === 'week') a.setDate(a.getDate() - (a.getDay() + 6) % 7);   // Monday first
+  if (unit === 'month') a.setDate(1);
+  const e = new Date(a);
+  if (unit === 'day') e.setDate(e.getDate() + 1); else if (unit === 'week') e.setDate(e.getDate() + 7); else e.setMonth(e.getMonth() + 1);
+  return { s: +a, e: +e };
+}
+const shift = (unit, at, n) => { const d = new Date(at); if (unit === 'month') { d.setDate(1); d.setMonth(d.getMonth() + n); } else d.setDate(d.getDate() + n * (unit === 'week' ? 7 : 1)); return Math.min(+d, NOW); };
+const md = (t, o = {}) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...o });
+const wd = (t) => new Date(t).toLocaleDateString('en-US', { weekday: 'short' });
+// Screen Time's words: "Today, October 15", "Yesterday, …", "This Week", "Last Week", then plain dates
+function perName(unit, P, live) {
+  const last = P.e === period(unit, NOW).s, long = (o) => new Date(P.s).toLocaleDateString('en-US', o);
+  if (unit === 'day') return `${live ? 'Today' : last ? 'Yesterday' : long({ weekday: 'long' })}, ${long({ month: 'long', day: 'numeric' })}`;
+  if (unit === 'week') return live ? 'This Week' : last ? 'Last Week' : `${md(P.s)} – ${new Date(P.e - 1).getMonth() === new Date(P.s).getMonth() ? new Date(P.e - 1).getDate() : md(P.e - 1)}`;
+  return long({ month: 'long', year: 'numeric' });
+}
+const VS = { day: 'yesterday', week: 'last week', month: 'last month' };
+
+// ---- the figures ----
+function chip(a, b) {
+  if (a == null || !b) return '';
+  const p = Math.round((a - b) / b * 100);
+  return p === 0 ? '<em class="chip">0%</em>' : `<em class="chip ${p > 0 ? 'up' : 'down'}">${p > 0 ? '↑' : '↓'} ${Math.abs(p)}%</em>`;
+}
+
+let B = [];   // the chart's buckets
+function render(slide) {
+  const { unit, anchor } = view, P = period(unit, anchor), live = P.e > NOW, end = live ? NOW : P.e;
+  const prev = period(unit, shift(unit, P.s, -1)), pend = live ? Math.min(prev.s + (end - P.s), prev.e) : prev.e;
+  const now = sum(P.s, end), was = sum(prev.s, pend);
+  $('thumb').style.transform = `translateX(${['day', 'week', 'month'].indexOf(unit) * 100}%)`;
+  $('perLbl').textContent = perName(unit, P, live);
+  $('next').disabled = live;
+
+  // chart buckets: store hours, the week's days, the month's days
+  B = [];
+  if (unit === 'day') for (let h = 7; h <= 20; h++) B.push({ s: P.s + h * H, e: P.s + (h + 1) * H, x: h % 3 === 1 ? (h % 12 || 12) + (h < 12 ? 'a' : 'p') : '', tip: `${h % 12 || 12} ${h < 12 ? 'AM' : 'PM'}` });
+  else for (let d = new Date(P.s); +d < P.e; d.setDate(d.getDate() + 1)) {
+    const n = new Date(d); n.setDate(n.getDate() + 1);
+    B.push({ s: +d, e: +n, x: unit === 'week' ? wd(d) : d.getDate(), tip: `${wd(d)}, ${md(d)}`, day: true });
+  }
+  for (const b of B) { b.fut = b.s > NOW; b.cur = b.s <= NOW && NOW < b.e; b.v = b.fut ? null : sum(b.s, b.e).sales; }
+
+  const items = topItems(P.s, end).slice(0, 5);   // the five best; the full list is the back office's job
+  $('figs').innerHTML = `
+    <h2 class="sh">Sales</h2>
+    <section class="card ov">
+      <div class="big"><b class="num">${peso(now.sales)}</b>${chip(now.sales, was.sales)}</div>
+      ${was.sales ? `<div class="vs">vs ${live ? 'this time ' + VS[unit] : 'the ' + unit + ' before'}</div>` : ''}
+      <div class="chart" id="chart">${unit === 'month' ? calendar(P) : bars(now.orders === 0, live)}</div>
+      <div class="stats num"><div><span>Profit</span><b>${now.profit == null ? '—' : peso(now.profit)}</b></div>
+        <div><span>Orders</span><b>${now.orders.toLocaleString()}</b></div>
+        <div><span>Margin</span><b>${now.margin == null ? '—' : now.margin.toFixed(1) + '%'}</b></div></div></section>
+    <h2 class="sh">Top items</h2>
+    <section class="card rows">${items.length ? `<ol class="ti">${items.map(itemRow).join('')}</ol>` : '<div class="none">No sales</div>'}</section>
+    <h2 class="sh">By method</h2>
+    <section class="card rows">${methods(P.s, end)}</section>`;
+  $('figs').className = '';
+  if (slide) { void $('figs').offsetWidth; $('figs').className = slide > 0 ? 'slide-l' : 'slide-r'; }   // restart the slide
+  view.pick = null;
+}
+
+function bars(empty, live) {
+  if (empty) return `<div class="cols"><div class="msg">${live ? 'No sales yet' : 'No sales'}</div></div>`;
+  const top = Math.max(...B.map(b => b.v || 0));
+  return `<div class="bars" id="bars">
+    <div class="cols">${B.map((b, i) => `<button class="col" data-i="${i}" ${b.fut ? 'disabled' : ''} aria-label="${b.tip}"><i style="height:${(b.v || 0) / top * 100}%;animation-delay:${i * 18}ms"></i></button>`).join('')}</div>
+    <div class="xax">${B.map(b => `<span class="${b.cur ? 'cur' : ''}">${b.x}</span>`).join('')}</div></div>`;
+}
+function calendar(P) {
+  const lead = (new Date(P.s).getDay() + 6) % 7;
+  return `<div class="cal"><div class="cw">${[...'MTWTFSS'].map(d => `<span>${d}</span>`).join('')}</div>
+    <div class="cg">${'<span></span>'.repeat(lead)}${B.map((b, i) => `<button class="cc${b.fut ? ' fut' : ''}${b.cur ? ' now' : ''}" data-i="${i}" ${b.fut ? 'disabled' : ''} aria-label="${b.tip}"><b>${b.x}</b><span class="num">${b.v ? pesoK(b.v) : '&nbsp;'}</span></button>`).join('')}</div></div>`;
+}
+
+function topItems(s, e) {
+  const by = new Map();
+  for (const o of inRange(s, e)) for (const [it, q] of o.lines) { const x = by.get(it) || { it, q: 0, amt: 0 }; x.q += q; x.amt += ITEMS[it][1] * q; by.set(it, x); }
+  return [...by.values()].sort((a, b) => b.amt - a.amt);
+}
+const itemRow = (x) => `<li><img src="img/${ITEMS[x.it][3]}.webp" alt="" loading="lazy"><div class="tm"><div class="tn">${ITEMS[x.it][0]}</div><div class="ts num">${x.q.toLocaleString()} sold</div></div><b class="tv num">${peso(x.amt)}</b></li>`;
+
+function methods(s, e) {
+  const tot = METHODS.map(() => 0); for (const o of inRange(s, e)) tot[o.m] += o.sales;
+  const all = tot.reduce((a, b) => a + b, 0);
+  if (!all) return '<div class="none">No sales</div>';
+  let rows = METHODS.map((m, i) => ({ name: m[0], color: m[1], v: tot[i] })).filter(r => r.v).sort((a, b) => b.v - a.v);
+  if (rows.length > 4) rows = [...rows.slice(0, 3), { name: 'Other', color: 'var(--pm-other)', v: rows.slice(3).reduce((a, r) => a + r.v, 0) }];   // the full split is the back office's job
+  return `<div class="pmb">${rows.map(r => `<i style="flex:${r.v};background:${r.color}"></i>`).join('')}</div>
+    <ol class="ti">${rows.map(r => `<li><i class="dot" style="background:${r.color}"></i><span class="tm tn">${r.name}</span><b class="tv num">${peso(r.v)}</b><span class="tp num">${Math.round(r.v / all * 100)}%</span></li>`).join('')}</ol>`;
+}
+
+// ---- picking a bar ----
+function pick(i) {
+  const host = $('bars'); if (!host) return;
+  view.pick = i; host.classList.toggle('picked', i != null);
+  $('chart').querySelector('.tip')?.remove();
+  host.querySelectorAll('[data-i]').forEach(el => el.classList.toggle('on', +el.dataset.i === i));
+  if (i == null) return;
+  const b = B[i], bar = host.querySelector(`[data-i="${i}"] i`), tip = document.createElement('div');
+  tip.className = 'tip' + (b.day ? ' go' : '');
+  tip.innerHTML = `<span>${b.tip}</span><b class="num">${peso(b.v)}</b>${b.day ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>' : ''}`;
+  $('chart').append(tip);
+  const pr = $('chart').getBoundingClientRect(), r = bar.getBoundingClientRect();
+  tip.style.left = Math.max(0, Math.min(pr.width - tip.offsetWidth, r.left - pr.left + r.width / 2 - tip.offsetWidth / 2)) + 'px';
+  tip.style.top = (r.top - pr.top - tip.offsetHeight - 6) + 'px';   // .cols' top padding keeps the tallest bar's tip inside
+  if (b.day) tip.onclick = () => openDay(b.s);
+}
+function openDay(t) { view.unit = 'day'; view.anchor = t; render(1); }
+
+// tap or drag along the bars
+let scrub = false;
+const atPoint = (e) => document.elementFromPoint(e.clientX, e.clientY)?.closest('#bars [data-i]');   // touch keeps e.target on the first bar
+$('figs').addEventListener('pointerdown', (e) => {
+  const c = e.target.closest('#bars [data-i]'); if (!c) return;
+  scrub = true; const i = +c.dataset.i;
+  if (i === view.pick && B[i].day) return openDay(B[i].s);   // a second tap opens that day
+  if (!c.disabled) pick(i);
+});
+addEventListener('pointermove', (e) => { if (!scrub) return; const c = atPoint(e); if (c && !c.disabled && +c.dataset.i !== view.pick) pick(+c.dataset.i); });
+addEventListener('pointerup', () => { scrub = false; });
+addEventListener('pointercancel', () => { scrub = false; });
+
+$('figs').addEventListener('click', (e) => {
+  const c = e.target.closest('.cc');
+  if (c) return openDay(B[+c.dataset.i].s);   // a calendar day opens that day
+  if (!e.target.closest('.tip, [data-i]') && view.pick != null) pick(null);
+});
+
+// ---- the period controls ----
+$('seg').onclick = (e) => { const b = e.target.closest('[data-u]'); if (b && b.dataset.u !== view.unit) { view.unit = b.dataset.u; render(); } };
+const step = (n) => { if (n > 0 && $('next').disabled) return; view.anchor = shift(view.unit, period(view.unit, view.anchor).s, n); render(n); };
+$('prev').onclick = () => step(-1);
+$('next').onclick = () => step(1);
+$('perLbl').onclick = () => { if (!$('next').disabled) { view.anchor = NOW; render(1); } };   // ponytail: tapping the date comes back to today -- no button for it, like Screen Time
+
+// swipe: 50px, twice as sideways as down; on the bars a drag picks instead
+let x0 = null, y0 = 0;
+$('scroll').addEventListener('pointerdown', (e) => { x0 = e.target.closest('#bars') ? null : e.clientX; y0 = e.clientY; });
+$('scroll').addEventListener('pointerup', (e) => {
+  if (x0 == null) return; const dx = e.clientX - x0, dy = e.clientY - y0; x0 = null;
+  if (Math.abs(dx) >= 50 && Math.abs(dx) >= 2 * Math.abs(dy)) step(dx < 0 ? 1 : -1);
+});
+
+render();
+</script>
+</body>
+</html>

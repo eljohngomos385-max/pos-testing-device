@@ -740,7 +740,7 @@ function attachEvents() {
     e.target.closest?.('.frost :is(.page, .editor, .o-main, .o-rail > .list)')?.classList.toggle('scrolled', e.target.scrollTop > 0);
   }, { capture: true, passive: true });
   // Liquid glass press (owner 2026-10-18): the button swells and shines under the finger, leans and stretches toward a drag, springs back on release
-  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search), .side-top > #sellSwitch, #app .side-link[data-view="settings"]';
+  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search), .side-top > #sellSwitch, #app .side-link[data-view="settings"]';
   document.addEventListener('pointerdown', (e) => {
     const b = e.target.closest(LG);
     if (!b || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -831,7 +831,7 @@ function attachEvents() {
   const itemForm = $('#itemForm');
   wireFind('#itemFind', '#itemFindQ', '#itemFindX', filterPicks);
   $('#itemFindFilter')?.addEventListener('click', (e) => pickFilter(e.currentTarget));   // a category's Items / Asked on (pos-items)
-  $('#kindPickGo')?.addEventListener('click', saveKind);
+  $('#kindPickGo')?.addEventListener('click', () => (kindEdit ? saveKind() : modAddGo()));
   itemForm?.addEventListener('scroll', () => itemForm.previousElementSibling.classList.toggle('tuck', itemForm.scrollTop > 24), { passive: true });   // Apple's: search tucks, the title shows
   // back from a subpage first (pos-items itemGo), then out of the editor
   $('#itemBack')?.addEventListener('click', () => (kindEdit?.sub ? kindBack() : itemEdit && itemSub ? itemBackSub()
@@ -874,18 +874,20 @@ function attachEvents() {
     if (t.name === 'unit') E.unit = t.value;
     if (t.dataset.made) itemMadeSet(t);
     if (t.dataset.ch) return itemChoiceSet(t);   // a modifier's choice on this item
+    if ('addMod' in t.dataset) return modAddTick(t);   // Add modifier's ticks wait for its pill
     if (k) {   // a tick on a subpage; unticking the main supplier leaves none
       E[k] = t.checked ? [...E[k], t.value] : E[k].filter(x => x !== t.value);
       if (k === 'sups' && !E.sups.includes(E.main)) { E.main = ''; itemForm.querySelector('[data-act=main] span').textContent = 'None'; }
-      if (k === 'mods') itemModTick(t);
     }
   });
-  itemForm?.addEventListener('pointerdown', modGrip);   // ≡ on the item's Modifiers page: drag to change the asking order
+  itemForm?.addEventListener('pointerdown', modGrip);   // the item's Change order page: drag a row
   itemForm?.addEventListener('click', (e) => {
     const E = itemEdit, b = !kindEdit && e.target.closest('button');
     if (!b) return;
     const act = b.dataset.act;
     if (b.dataset.sub) itemGo(b.dataset.sub);
+    else if (act === 'mod-add') { modAdding.clear(); itemGo('modadd'); }
+    else if (act === 'mod-remove') { itemModOff(itemSub.slice(6)); itemGo('mods', true); }
     else if (act === 'add-variant') { const v = blankVariant(); E.variants.push(v); itemGo(v.id); itemForm.querySelector('[data-v=name]').focus({ preventScroll: true }); }
     else if (act === 'add-alt') { codesOf().alts.push(''); renderItemForm(); [...itemForm.querySelectorAll('[data-alt]')].pop().focus(); }
     else if (act === 'add-bar') { codesOf().bars.push(''); renderItemForm(); [...itemForm.querySelectorAll('[data-bar]')].pop().focus(); }
@@ -1058,10 +1060,8 @@ function attachEvents() {
     if (id || e.target.closest('[data-customer-detail]')) { ordersFor(state.selectedCustomerId, id); switchView('orders'); }
   });
   wireFind('#customersFind', '#customersSearch', '#customersSearchX', (q) => { state.customersQuery = q; state.selectedCustomerId = null; renderCustomers(); });
-  $('#shiftView')?.addEventListener('click', onShiftEvent);   // pos-shift.js: both its pages
-  new ResizeObserver(([e]) => e.target.classList.remove('slid')).observe($('#shiftTabs'));   // as Reports' pill
-  wireSegDrag($('#shiftTabs'), 'shtab');
-  tabSwipe($('#shiftPage .c-body'), $('#shiftBody'), { box: $('#shiftTabs'), attr: 'shtab', ok: e => !e.target.closest('.kinds'), fill: (p, tab) => renderShift({ el: p, tab }) });
+  $$('#shiftView, #cashView').forEach(v => v.addEventListener('click', onShiftEvent));   // pos-shift.js: its pages
+  wireFind('#cashFind', '#cashSearch', '#cashSearchX', (q) => { cashQ = q; renderCash(); });
   tabSwipe($('.view-reports .c-body'), $('#reportsBody'), { box: $('#reportsUnits'), attr: 'unit', ok: e => !e.target.closest('.kinds, .rp-chart'),
     fill: (p, unit) => { renderReports('still', { el: p, unit }); p.classList.remove('slide-l', 'slide-r'); }, go: unit => reportsGo(unit, 0, 'still') });
   $('#shiftSheet').addEventListener('click', shiftSheetClick);
@@ -1430,7 +1430,7 @@ function init() {
   const openHashView = () => {
     const hash = (location.hash || '').replace('#', '').trim();
     const target = hash.split(/[/?&:]/)[0];
-    const valid = ['sell', 'orders', 'items', 'customers', 'shift', 'reports'];
+    const valid = ['sell', 'orders', 'tables', 'items', 'customers', 'shift', 'cash', 'reports', 'chat'];
     if (valid.includes(target) && canAccess(target)) switchView(target);
   };
   openHashView();
