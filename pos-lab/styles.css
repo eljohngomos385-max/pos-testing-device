@@ -4803,7 +4803,7 @@ body.light-theme {
   --danger: #FF3B30;         /* iOS system red, like --rl-bar is its blue */
   --danger-bg: #FFE0DE;
   --ok: #047B5D;             /* --trend-up */
-  --ok-bg: #D3ECDD;
+  --ok-bg: #D3ECDD;   --ks-sheet: #ECECEC;   /* the phone's key sheet: at its 85% over the light page this reads a plain #EDEDED (owner 2026-11-09: Apple Wallet's #E3E4E9 was too blue, #E4E4E4 too grey) */
   --shadow-card: 0 1px 2px -1px rgb(26 26 26 / .07);   /* --card-shadow */
   --shadow-raised: 0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
   --shadow-modal: 0 20px 50px rgba(0,0,0,0.15), 0 8px 20px rgba(0,0,0,0.08);
@@ -9185,7 +9185,7 @@ body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
   :is(.esheet .es-ok, .co-ok) svg { width: var(--circle-ic); height: var(--circle-ic); fill: none; stroke: currentColor; stroke-width: var(--circle-sw); stroke-linecap: round; stroke-linejoin: round; }
   .es-body.ks > .es-keys, .co:not(.co-kd) #checkoutKeys { position: absolute; z-index: 3; grid-area: auto; left: 0; right: 0; bottom: 0; padding: 22px var(--sheet-x) max(40px, calc(16px + var(--ph-safe, 0px)));
                            border-top: .5px solid var(--line-strong); border-radius: 28px 28px 0 0; touch-action: none;   /* a swipe down is its ✓ (app.js) */
-                           background: color-mix(in srgb, var(--bg) 85%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }   /* the page's white, slightly see-through, the keys lifted with room at the bottom (owner 2026-11-08, try-on H; 2026-11-04: grey was the wrong material); grid-area: an abspos grid child would sit in its slot */
+                           background: color-mix(in srgb, var(--ks-sheet, var(--bg)) 85%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }   /* slightly see-through, the keys lifted with room at the bottom (owner 2026-11-08, try-on H); light: a plain grey (--ks-sheet, owner 2026-11-09); grid-area: an abspos grid child would sit in its slot */
   /* the button waiting under the keys (Start shift, Complete sale) would glow through: hidden while the keys are up (owner 2026-11-08) */
   .es-card:has(> .es-body.ks > .es-keys:not(.es-dn)) .sh-fab, .co:not(.co-kd):not(:has(#checkoutKeys.es-dn)) #checkoutCompleteBtn { visibility: hidden; }
   :is(.es-body.ks > .es-keys, #checkoutKeys)::before { content: ''; position: absolute; top: 6px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 999px; background: var(--ink-quaternary); }   /* .fs-top::after */
