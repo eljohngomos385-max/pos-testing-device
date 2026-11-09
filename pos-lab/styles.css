@@ -8016,21 +8016,21 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 /* Customers' + and Start shift wear it too (owner 2026-10-18: "roughly around the same treatment"), and picking's Refund ₱X (owner 2026-10-19) */
 .lv .o-top #orderRefund.primary { position: relative; border-radius: 999px; padding: 0 18px; }
 :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab) { -webkit-backdrop-filter: none; backdrop-filter: none; }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn), :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) {   /* liquid glass press, app.js sets --lg-* */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn), :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link:is([data-view="settings"], [data-view="chat"])) {   /* liquid glass press, app.js sets --lg-* */
   touch-action: none; transition: transform .9s var(--lg-spring), background-color .2s, opacity .18s;   /* opacity: Sell's ☰ fades with the drawer */
   /* one transform at rest and pressed, the drag's angle kept after release: the spring wobbles along the way it was pulled (owner 2026-10-18) */
   transform: translate(var(--lg-x, 0px), var(--lg-y, 0px)) rotate(var(--lg-a, 0rad)) scale(calc(1 + var(--lg-p, 0) + var(--lg-s, 0)), calc(1 + var(--lg-p, 0) - var(--lg-s, 0) / 2)) rotate(calc(-1 * var(--lg-a, 0rad)));
   --lg-spring: linear(0, .076, .268, .521, .786, 1.021, 1.199, 1.307, 1.346, 1.326, 1.263, 1.177, 1.085, 1.002, .937, .897, .881, .886, .906, .935, .967, .996, 1.019, 1.034, 1.041, 1.04, 1.034, 1.024, 1.013, 1.002, .994, .989, .986, .986, .988, .991, 1); }   /* a damped spring: lets go with a small jiggle (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan) > *, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab) > *, #catalogSearchRow > #sidebarToggle > *, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan) > *, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab) > *, #catalogSearchRow > #sidebarToggle > *, :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link:is([data-view="settings"], [data-view="chat"])) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
 :where(.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan)) { position: relative; z-index: 1; }   /* swells over the search, not under it (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan)::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"])::after {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan)::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after, :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link:is([data-view="settings"], [data-view="chat"]))::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .4s;
   background: radial-gradient(circle at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .35), rgb(255 255 255 / 0) 70%); }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan).lg-on, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan).lg-on, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on, :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link:is([data-view="settings"], [data-view="chat"])).lg-on {
   transition-duration: .15s; transition-timing-function: ease-out; --lg-p: .08; }
 #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on { --lg-p: .01; }   /* the search swells 3px, as Messages' (owner 2026-10-18 photos) */
 #catalogSearchRow > .search-wrap:not(.vs-search)::after { z-index: 1; border-radius: 999px; background: radial-gradient(circle 40px at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .3), rgb(255 255 255 / 0)); }   /* a hand-sized light, not one as wide as the bar */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan).lg-on::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after, :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]).lg-on::after { opacity: 1; transition-duration: .1s; }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan).lg-on::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after, :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link:is([data-view="settings"], [data-view="chat"])).lg-on::after { opacity: 1; transition-duration: .1s; }
 .lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* the last row clears + */
 /* SHARED FROST = "frost top" (owner 2026-10-30: "like the Reports page or the Items list", no hard edge anywhere). A page whose rows scroll runs up
    under its head and the clock; the rows slide behind a soft frost that fades down into them (iOS 26's scroll edge). At rest the
@@ -8781,8 +8781,7 @@ body.light-theme { --side-pill: var(--canvas); }   /* Gemini's #F2F0F0 on #FAF9F
 #app.drawer-drag :is(.sidebar, .main) { transition: none; }   /* the finger has them (app.js drawer); its let-go slides from there */
 .side-top { display: flex; align-items: flex-start; flex: none; height: 68px; padding: var(--head-y) 16px 0 25px; }   /* title and switch on the pages' ☰ line (--head-y), the list still at 68 */
 .side-ttl { flex: 1; line-height: 44px; font-size: 20px; font-weight: 500; letter-spacing: -.2px; color: var(--ink); }
-.side-x { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: var(--ink);
-          background: var(--surface-2); box-shadow: 0 4px 24px rgb(0 0 0 / .07); }
+.side-x { position: absolute; right: 16px; bottom: calc(10px + var(--ph-safe, 0px)); z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; }   /* the foot row's right end, under the thumb */
 .side-x svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 :where(#app:not(.bo-app)) :is(.side-nav, .side-grp) { gap: 0; padding: 0; border-radius: 0; background: none; }
 :where(#app:not(.bo-app)) .side-link { width: auto; height: 44px; margin: 0 8px; padding: 0 0 0 17.3px; gap: 15px; border-radius: 999px;
@@ -8791,30 +8790,27 @@ body.light-theme { --side-pill: var(--canvas); }   /* Gemini's #F2F0F0 on #FAF9F
 :where(#app:not(.bo-app)) .side-link:hover:not(.active) { background: none; }
 :where(#app:not(.bo-app)) .side-link svg { width: 25px; height: 25px; stroke-width: 1.45; }
 :where(#app:not(.bo-app)) .side-link svg.ext { width: 14px; height: 14px; margin-left: -11px; stroke-width: 2; color: var(--ink-tertiary); }
-/* the foot is Gemini's one account row (lab --foot-cy 785.8 = 727.8 here): avatar, name over store · POS, the gear on
-   the right. The row stays the log-out button; Settings' row becomes the gear (gated as before); sync shows only when behind */
-:where(#app:not(.bo-app)) .sidebar { padding-bottom: calc(4px + var(--ph-safe, 0px)); }
-:where(#app:not(.bo-app)) .side-footer { position: relative; display: block; padding: 0; }
-:where(#app:not(.bo-app)) :is(.user-row, .store-row) { border-radius: 0; background: none; }
-:where(#app:not(.bo-app)) .user-row { height: 56px; padding: 0 0 0 16.8px; gap: 8.5px; }
-:where(#app:not(.bo-app)) :is(.user-row .ic, .user-sub) { display: none; }
-:where(#app:not(.bo-app)) .user-meta { align-self: flex-start; padding-top: 7px; }   /* name on the top line, store under it */
-:where(#app:not(.bo-app)) .store-row { position: absolute; left: 65.3px; right: 64px; top: 29px; height: 18px; padding: 0; gap: 6px; pointer-events: none;
-                                        font-size: 14px; line-height: 18px; color: var(--ink-tertiary); }
-:where(#app:not(.bo-app)) .user-store span { color: inherit; }
+/* the foot is one floating row (owner 2026-11-09): the gear, Chat as a wide pill, the ✕ (phone only). No name under the store for now;
+   the list scrolls under the row, so .side-nav is the scroller and the row stays put; sync shows only when behind, beside the switch */
+:where(#app:not(.bo-app)) .sidebar { padding-bottom: 0; overflow: hidden; }
+:where(#app:not(.bo-app)) .side-nav { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: calc(64px + var(--ph-safe, 0px)); }
+:where(#app:not(.bo-app)) .side-footer { display: block; padding: 0; }
+:where(#app:not(.bo-app)) :is(.user-row, .user-store) { display: none; }   /* renderRoleSwitcher still writes them */
+:where(#app:not(.bo-app)) .store-row { position: absolute; right: 70px; top: calc(var(--ph-top, 0px) + var(--head-y) + 13px); height: 18px; padding: 0; border-radius: 0; background: none; pointer-events: none; }
 :where(#app:not(.bo-app)) .sync-mark { width: 18px; height: 18px; pointer-events: auto; }
 :where(#app:not(.bo-app)) .sync-mark:not(.stale) { display: none; }
-:where(#app:not(.bo-app)) .side-link[data-view="settings"] { position: absolute; right: 18px; bottom: calc(10px + var(--ph-safe, 0px)); z-index: 1;
-                                                            width: 44px; height: 44px; margin: 0; padding: 0; justify-content: center; border-radius: 50%; }   /* its centre stays 40 in from the corner */
+:where(#app:not(.bo-app)) .side-link[data-view="settings"] { position: absolute; left: 16px; bottom: calc(10px + var(--ph-safe, 0px)); z-index: 1;
+                                                            width: 44px; height: 44px; margin: 0; padding: 0; justify-content: center; border-radius: 50%; }
+:where(#app:not(.bo-app)) .side-link[data-view="chat"] { position: absolute; left: 72px; right: 72px; bottom: calc(10px + var(--ph-safe, 0px)); z-index: 1; margin: 0; padding: 0; gap: 8px; justify-content: center; }   /* between the gear and the ✕ */
 :where(#app:not(.bo-app)) .side-link[data-view="settings"] span { display: none; }
 :where(#app:not(.bo-app)) .side-link[data-view="settings"] svg { width: 24px; height: 24px; stroke-width: 1.7; }
 :where(#app:not(.bo-app)) .side-link[data-view="settings"] svg :is(.f, .d) { fill: none; stroke: currentColor; stroke-width: 1.7; }
 /* Sell's My page / All items switch (owner 2026-10-21, pos-lab/try-switch.html) beside the title, and the gear: the ☰'s twin -
    its 44 glass circle, ring and press (the liquid glass list above); .side-top is outside #catalogSearchRow, so the glass is set here */
-#app :is(.side-top > #sellSwitch, .side-link[data-view="settings"]) { color: var(--ink);
+#app :is(.side-top > :is(#sellSwitch, .side-x), .side-link:is([data-view="settings"], [data-view="chat"])) { color: var(--ink);
   --glass: color-mix(in srgb, var(--bg) 70%, transparent); --glass-ring: 0 1px 6px rgb(0 0 0 / .043), inset 0 0 0 .7px rgb(255 255 255 / .55);   /* the light glass edge */
   background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
-body:not(.light-theme) #app :is(.side-top > #sellSwitch, .side-link[data-view="settings"]) { --glass: color-mix(in srgb, var(--ink) 14%, color-mix(in srgb, var(--bg) 75%, transparent)); --glass-ring: 0 1px 4px rgb(0 0 0 / .3), inset 0 0 0 .5px rgb(255 255 255 / .2); }
+body:not(.light-theme) #app :is(.side-top > :is(#sellSwitch, .side-x), .side-link:is([data-view="settings"], [data-view="chat"])) { --glass: color-mix(in srgb, var(--ink) 14%, color-mix(in srgb, var(--bg) 75%, transparent)); --glass-ring: 0 1px 4px rgb(0 0 0 / .3), inset 0 0 0 .5px rgb(255 255 255 / .2); }
 .side-top > #sellSwitch { position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; }   /* level with the ☰: .side-top puts it on --head-y */
 .side-top > #sellSwitch svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; animation: sw-pop .32s cubic-bezier(.3, 1.5, .5, 1); }
 .view-sell.sp-swap { animation: sp-swap .7s ease-in-out; }   /* even both ends: ease-out raced, then crawled (owner 2026-10-21) */
@@ -8833,20 +8829,21 @@ body:not(.light-theme) #app :is(.side-top > #sellSwitch, .side-link[data-view="s
 .side-link .dot { fill: currentColor; stroke: none; }
 /* The half-screen drawer, chat-app style (owner 2026-10-17, ChatGPT / Claude iOS): the page stays as a rounded card
    pushed out right, a tap on it closes. Switched by html.side-half (compare.html's / devices-all.html's Sidebar dropdown); full page
-   stays the default. Phone: the card peeks 76 in; tablet: a short drawer and the page moves aside by that much (owner) */
+   stays the default. Phone: the whole screen; tablet: a short drawer and the page moves aside by that much (owner) */
 html.side-half { --ph-top: env(safe-area-inset-top, 0px); }   /* the app runs up behind the clock; the device frames set it inline, always, as the phone does */
 /* Every page that covers the whole screen clears the clock here, in one list (owner 2026-10-27: "one fix for everything"): its
    colour still runs up behind the clock, its top row starts under it. .main's pages get it from .main; a new full-screen page joins this list */
 html.side-half :is(.qs-pg) { padding-top: var(--ph-top, 0px); }
-html.side-half #app { --half-w: calc(100vw - 76px); }
+html.side-half #app { --half-w: 100vw; }   /* the phone's menu is the whole screen (owner 2026-11-09), the ✕ closes it */
 @media (min-width: 721px) { html.side-half #app { --half-w: 320px; } }
 html.side-half :where(#app:not(.bo-app)) .sidebar { --sidebar-w: var(--half-w); }
 html.side-half #app { background: var(--canvas, var(--bg)); }   /* the corners of the card show the drawer's colour */   /* light too: a white drawer turned the status bar white on open (owner 2026-10-17: "why is the top changing to become whiter?") */
-html.side-half .side-x { display: none; }   /* the peeking page is the close */
+@media (min-width: 721px) { html.side-half .side-x { display: none; } }   /* the peeking page is the close */
 html.side-half .main { transition: transform .45s cubic-bezier(.32, .72, 0, 1); }
 html.side-half :where(#app:not(.bo-app)) .sidebar { padding-top: var(--ph-top, 0px); background: none; }   /* see-through: an opaque drawer hid the card's shadow, which then leaked out only at its corners; #app is the drawer's colour. --ph-top: the frame's clock strip, while the card runs up behind it */
 html.side-half .main { padding-top: var(--ph-top, 0px); background-image: linear-gradient(var(--canvas, var(--bg)) 0 0); background-size: 100% var(--ph-top, 0px); background-repeat: no-repeat; }   /* the strip behind the status bar is the page grey, not the white card: it turned the iPad top white on open (owner 2026-10-17) */
 html.side-half #app:not(.sidebar-collapsed) .main { transform: translateX(var(--half-w)); }
+@media (max-width: 720px) { html.side-half #app:not(.sidebar-collapsed) .main { transform: translateX(calc(100vw + 40px)); } }   /* the page's shadow goes off the screen with it */
 html.side-half #app:is(:not(.sidebar-collapsed), .drawer-drag) .main { box-shadow: 0 0 0 1px rgb(16 24 40 / .07), -6px 0 28px rgb(0 0 0 / .12); }   /* the back office sheet's hairline (--po-sheet-shadow) + the drawer's own shadow back: the sheet's 3px one didn't show (owner 2026-10-19). Square edge, no corner: a web page can't read a phone's own corner (owner 2026-10-19) */
 html.side-half body:not(.light-theme) #app:is(:not(.sidebar-collapsed), .drawer-drag) .main { box-shadow: 0 0 0 1px var(--line-strong); }   /* black on black: a shadow can't show, an edge does */
 
