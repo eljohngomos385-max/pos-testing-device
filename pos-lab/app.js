@@ -90,32 +90,50 @@ function attachEvents() {
   // follow it out and back; let go past a quarter of the way, or flicked, and it slides the rest, else it slides home.
   // One piece for every swipe that moves it: left on the open menu, right from the screen's left edge, from a page's first
   // tab or from Sell's first page. at(x) while the finger moves, end(lifted) as it lets go.
-  const app = $('#app'), sideEl = $('.sidebar'), mainEl = $('.main');
+  const app = $('#app'), sideEl = $('.sidebar'), mainEl = $('.main'), veilEl = $('.main-veil');
+  // the button's slide (styles.css --menu-slide) as sums, for a swipe's let-go: slideY(time) is how far along, slideT(far along) the time, both 0 to 1
+  const [slideS, ax, ay, bx, by] = getComputedStyle(document.documentElement).getPropertyValue('--menu-slide').match(/[\d.]+/g).map(Number);
+  const bez = (s, p, q) => 3 * (1 - s) ** 2 * s * p + 3 * (1 - s) * s * s * q + s ** 3;
+  const bezAt = (v, p, q) => { let lo = 0, hi = 1; for (let i = 0; i < 20; i++) { const m = (lo + hi) / 2; if (bez(m, p, q) < v) lo = m; else hi = m; } return lo; };
+  const slideY = (t) => bez(bezAt(t, ax, bx), ay, by), slideT = (y) => bez(bezAt(y, ay, by), ax, bx);
   const drawer = {
     w: () => sideEl.offsetWidth,
     live: false,
+    put(x, w) {   // the menu, the page and its veil, x out
+      sideEl.style.transform = `translate3d(${x - w}px, 0, 0)`;
+      mainEl.style.transform = `translate3d(${x}px, 0, 0)` + (innerWidth <= 720 ? ` scale(${1 - .05 * x / w})` : '');   // the phone's page shrinks as it goes (styles.css)
+      veilEl.style.opacity = .4 * x / w;   // its own element: a variable on .main would restyle the whole page every frame
+    },
     at(x) {   // x: how far out the finger has the menu, 0 to its width
       const w = drawer.w();
       x = Math.min(w, Math.max(0, x));
       if (!drawer.live) Object.assign(drawer, { live: true, open: !app.classList.contains('sidebar-collapsed'), x0: x, pts: null });
       app.classList.add('drawer-drag');   // no slide while it rides; the page's edge shows (styles.css)
-      sideEl.style.transition = mainEl.style.transition = '';   // a finger on a slide still going takes it
+      cancelAnimationFrame(drawer.raf);   // a finger on a slide still going takes it
       noteMove(drawer, x - drawer.x0, performance.now());
       drawer.x = x;
-      sideEl.style.transform = `translate3d(${x - w}px, 0, 0)`;
-      mainEl.style.transform = `translate3d(${x}px, 0, 0)` + (innerWidth <= 720 ? ` scale(${1 - .05 * x / w})` : '');   // the phone's page shrinks as it goes (styles.css)
+      drawer.put(x, w);
     },
-    end(lifted) {   // the one slide from where the finger left it, at the finger's speed (no brake, then crawl); a cancel goes home
+    end(lifted) {   // the one slide from where the finger left it, on the button's curve; a cancel goes home
       if (!drawer.live) return;
       drawer.live = false;
       if (lifted && swipeGo(drawer, drawer.w()) && drawer.dx > 0 !== drawer.open) app.classList.toggle('sidebar-collapsed', drawer.open);
-      const left = Math.abs((app.classList.contains('sidebar-collapsed') ? 0 : drawer.w()) - drawer.x);
-      const ms = Math.round(Math.min(450, Math.max(150, 2.25 * left / (Math.abs(speed(drawer)) || .01))));   // 2.25: the curve's start slope (.72 / .32)
-      void sideEl.offsetWidth;   // the finger's spot is the slide's start
-      sideEl.style.transition = mainEl.style.transition = `transform ${ms}ms cubic-bezier(.32, .72, 0, 1), border-radius ${ms}ms cubic-bezier(.32, .72, 0, 1)`;
-      app.classList.remove('drawer-drag');
-      sideEl.style.transform = mainEl.style.transform = '';
-      clearTimeout(drawer.t); drawer.t = setTimeout(() => { if (!drawer.live) sideEl.style.transition = mainEl.style.transition = ''; }, ms + 50);
+      const w = drawer.w(), to = app.classList.contains('sidebar-collapsed') ? 0 : w, far = w - to;
+      const k0 = slideT((drawer.x - far) / (to - far));   // where on the button's slide this spot is: it carries on from there at the button's speed (owner 2026-11-10)
+      let t0;   // set on the first frame, one step back: timed from the lift itself, that first step came out anywhere from 11 to 59px against 34 for the rest, by where in its frame the finger lifted
+      const step = (now) => {   // frame by frame, as the finger did: handing over to a CSS slide froze the page 2 frames and then it jumped (measured off a recording, owner 2026-11-10)
+        t0 ??= now - 16;
+        const k = Math.min(1, k0 + (now - t0) / (slideS * 1000));
+        drawer.x = far + (to - far) * slideY(k);
+        drawer.put(drawer.x, w);
+        if (k < 1) return (drawer.raf = requestAnimationFrame(step));
+        sideEl.style.transition = mainEl.style.transition = 'none';   // landed where the classes put it: no slide, no corner delay
+        app.classList.remove('drawer-drag');
+        sideEl.style.transform = mainEl.style.transform = veilEl.style.opacity = '';
+        void sideEl.offsetWidth;
+        sideEl.style.transition = mainEl.style.transition = '';
+      };
+      drawer.raf = requestAnimationFrame(step);
     },
   };
   // a swipe's speed as it ends, px/ms over its last 100ms; a flick goes its way (back, if flicked back), else past a quarter lands it
@@ -161,12 +179,13 @@ function attachEvents() {
       if (Math.abs(dy) >= Math.abs(dx) || dx > 0 === g.open) return (edge = null);   // a scroll, or the wrong way
       g.at.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: g.id, pointerType: 'touch', isPrimary: true }));
       g.on = true;   // after: that cancel passes this file's own listeners too
+      g.from = sideEl.getBoundingClientRect().right;   // where the menu really is: a finger on a slide still going takes it from there, no jump to fully open
       if (g.pg) g.pg.style.transition = 'none';
     }
     e.stopPropagation();
     noteMove(g, dx, e.timeStamp);
     if (g.pg) g.pg.style.transform = `translate3d(${Math.max(0, dx)}px, 0, 0)`;
-    else if (g.open || g.menu) drawer.at((g.open ? drawer.w() : 0) + dx);
+    else if (g.open || g.menu) drawer.at(g.from + dx);
   }, true);
   addEventListener('touchmove', (e) => { if (edge?.on) { e.preventDefault(); e.stopPropagation(); } }, { capture: true, passive: false });   // the page holds still
   const edgeEnd = (e) => {
