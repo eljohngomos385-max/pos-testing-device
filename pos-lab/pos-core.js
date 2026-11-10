@@ -937,6 +937,7 @@ ROLE_ALLOWED.owner = ROLE_ALLOWED.manager;   // the till's pages; the back offic
 ROLE_ALLOWED.stock = ROLE_ALLOWED.cashier;
 const VIEW_SWITCH = { reports: 'dayTotals', shift: 'shift', cash: 'shift' };   // pages a Staff & access switch opens
 function canAccess(view) {
+  if (view === 'tables' && state.settings.store?.businessType !== 'food') return false;   // the one page only food stores get (owner 2026-11-09)
   if (VIEW_SWITCH[view]) return roleCan(state.role, VIEW_SWITCH[view]);
   const allowed = ROLE_ALLOWED[state.role] || ROLE_ALLOWED.cashier;   // an unknown role gets the least
   return allowed.has(view);
@@ -959,7 +960,7 @@ function renderRoleSwitcher() {
   if (!sub) return;
   const store = currentStoreInfo();
   sub.textContent = STAFF_ROLES[state.role] || 'Staff';
-  $('.user-store').innerHTML = `<span>${escapeHtml(store.name)}</span>&nbsp;· POS ${escapeHtml(store.registerNo || '1')}`;
+  $('.user-store').textContent = `· POS ${store.registerNo || '1'}`;
   if (state.user) userMeta.querySelector('.user-name').textContent = state.user.name;
   $('.user-avatar').textContent = (state.user?.name || 'E')[0];
   $('.side-ttl').textContent = store.name;
