@@ -79,12 +79,12 @@ function attachEvents() {
   $('#sellSwitch').addEventListener('click', () => {
     if (state.view === 'sell') $('#app').classList.add('sidebar-collapsed'); else switchView('sell');
     // the name sits mid-grid (the iPad's cart sits right): measured from the page, which may still be sliding home
-    const r = $('#productGrid').getBoundingClientRect(), x = $('.main').getBoundingClientRect().left, t = $('#toast');
+    const r = $('#productGrid').getBoundingClientRect(), m = $('.main'), x = m.getBoundingClientRect().left, k = m.offsetWidth / m.getBoundingClientRect().width, t = $('#toast');   // k undoes the phone page's shrink
     setSellPage(state.sellPage === 'mine' ? 'all' : 'mine');
     showToast(state.sellPage === 'mine' ? 'My page' : 'All items');
     clearTimeout(showToast._t); showToast._t = setTimeout(hideToast, 700);   // the name runs on the page's blur clock (sp-swap), so they clear as one
     t.getAnimations().forEach(a => a.cancel()); void t.offsetWidth;   // no rise of its own; the reflow restarts sp-name on a quick second tap
-    t.style.setProperty('--mid-l', r.left - x + 'px'); t.style.setProperty('--mid-r', innerWidth - r.right + x + 'px'); t.classList.add('mid');   // the next toast resets .mid
+    t.style.setProperty('--mid-l', (r.left - x) * k + 'px'); t.style.setProperty('--mid-r', innerWidth - (r.right - x) * k + 'px'); t.classList.add('mid');   // the next toast resets .mid
   });
   // The menu rides the finger, as the tabs do (owner 2026-10-30: control it, peek and put it back): the menu and the page
   // follow it out and back; let go past a quarter of the way, or flicked, and it slides the rest, else it slides home.
@@ -103,7 +103,7 @@ function attachEvents() {
       noteMove(drawer, x - drawer.x0, performance.now());
       drawer.x = x;
       sideEl.style.transform = `translate3d(${x - w}px, 0, 0)`;
-      mainEl.style.transform = `translate3d(${x}px, 0, 0)`;
+      mainEl.style.transform = `translate3d(${x}px, 0, 0)` + (innerWidth <= 720 ? ` scale(${1 - .05 * x / w})` : '');   // the phone's page shrinks as it goes (styles.css)
     },
     end(lifted) {   // the one slide from where the finger left it, at the finger's speed (no brake, then crawl); a cancel goes home
       if (!drawer.live) return;
@@ -112,7 +112,7 @@ function attachEvents() {
       const left = Math.abs((app.classList.contains('sidebar-collapsed') ? 0 : drawer.w()) - drawer.x);
       const ms = Math.round(Math.min(450, Math.max(150, 2.25 * left / (Math.abs(speed(drawer)) || .01))));   // 2.25: the curve's start slope (.72 / .32)
       void sideEl.offsetWidth;   // the finger's spot is the slide's start
-      sideEl.style.transition = mainEl.style.transition = `transform ${ms}ms cubic-bezier(.32, .72, 0, 1)`;
+      sideEl.style.transition = mainEl.style.transition = `transform ${ms}ms cubic-bezier(.32, .72, 0, 1), border-radius ${ms}ms cubic-bezier(.32, .72, 0, 1)`;
       app.classList.remove('drawer-drag');
       sideEl.style.transform = mainEl.style.transform = '';
       clearTimeout(drawer.t); drawer.t = setTimeout(() => { if (!drawer.live) sideEl.style.transition = mainEl.style.transition = ''; }, ms + 50);

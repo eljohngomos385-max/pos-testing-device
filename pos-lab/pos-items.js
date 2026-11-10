@@ -361,7 +361,7 @@ let modOrdering = false;   // itemGo clears it, so it ends with the page
 function itemModsPage() {
   const E = itemEdit, by = modsById(), on = E.mods.filter(id => by.has(id)).map(id => by.get(id));
   if (!by.size) return icard('', '<div class="pick">No modifiers yet. Add them on the Modifiers tab.</div>');
-  const add = on.length < by.size ? icard('', iadd('mod-add', '<svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add modifier'), on.length ? '' : 'Nothing is asked on this item yet.') : '';
+  const add = icard('', iadd('mod-add', '<svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add modifier'), on.length ? '' : 'Nothing is asked on this item yet.');
   if (!on.length) return add;
   const rows = on.map(m => `<button type="button" class="pick mod-on" data-sub="modch:${escapeHtml(m.id)}" data-mod="${escapeHtml(m.id)}" data-find="${modFind(m)}"><span class="tx">${escapeHtml(m.name)}<small>${choicesText(m, E.hideCh)}</small></span>${ICHEV}${IGRIP}</button>`).join('');
   return icard('', rows, on.length > 1 ? 'Asked at the sale in this order.' : '', ` mod-list${modOrdering ? ' ordering' : ''}`)
@@ -378,6 +378,7 @@ function modOrderToggle(b) {
 const modAdding = new Set();
 function itemModAddPage() {
   const rest = [...modsById().values()].filter(m => !itemEdit.mods.includes(m.id)).sort((a, b) => a.name.localeCompare(b.name));
+  if (!rest.length) return icard('', '<div class="pick">No other modifiers.</div>');   // the row stays even with all of them on (owner 2026-11-10)
   return icard('', rest.map(m => `<label class="pick" data-find="${modFind(m)}"><span class="tx">${escapeHtml(m.name)}<small>${choiceList(m)}</small></span><input type="checkbox" data-add-mod value="${escapeHtml(m.id)}"${modAdding.has(m.id) ? ' checked' : ''} aria-label="${escapeHtml(m.name)}"></label>`).join(''));
 }
 function modAddPill() {

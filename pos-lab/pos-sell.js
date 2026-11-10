@@ -335,11 +335,11 @@ function syncSellGridMetrics() {
   const searchRect = search.getBoundingClientRect();
   const paddingBottom = parseFloat(styles.paddingBottom || 0);
   const rowGap = parseFloat(styles.gap || 0);
-  const measuredHeight = catalogRect.bottom - paddingBottom - searchRect.bottom - rowGap;
+  const measuredHeight = (catalogRect.bottom - searchRect.bottom) * (catalog.offsetHeight / catalogRect.height || 1) - paddingBottom - rowGap;   // the factor undoes the phone page's shrink while the menu closes
   const fallbackHeight = catalog.clientHeight - search.offsetHeight - parseFloat(styles.paddingTop || 0) - paddingBottom - rowGap;
   const rows = profile.rows;
   const columns = profile.columns;
-  const available = Math.max(120, Math.floor(measuredHeight || fallbackHeight));
+  const available = Math.max(120, Math.floor((measuredHeight || fallbackHeight) + .05));   // + .05: the undone shrink can land a hair under the whole pixel
   const tileHeight = Math.max(1, (available - gap * (rows - 1)) / rows);
   // Tiles always fill the full column width so they align to the catalog edges
   const tileWidth = Math.max(1, (grid.clientWidth - gap * (columns - 1)) / columns);
