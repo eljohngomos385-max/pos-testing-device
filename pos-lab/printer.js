@@ -421,9 +421,12 @@
   // the same box (receipt.css), so the paper and the preview match. A boxed picture (Settings › Receipt's two boxes) is [its width, 1]
   // instead: its box, never taller than the paper is wide.
   const RECEIPT_PICS = { logo: [0.6, 0.3], foot: [0.6, 0.6] };
+  // Lifts a picture's mid greys: the head's dots spread on paper and shut the small white gaps, so dark greys print as solid black
+  // (a flag's red and blue merged, Epson 80mm 2026-11-10). Under 1 = lighter. A tuning knob: judge it on real paper, per printer if one differs.
+  const PIC_TONE = 0.6;   // owner's pick on paper, of 0.6 / 0.45 / 0.33: the clearest from afar
   // A picture (a data URL) -> { w, h, bits } for the image op, centred on the full head width with white either side,
   // so no printer's own centring is relied on. Browser only, like mapRaster.
-  // ponytail: dithered (packMono 'shaded'); a boxed picture (Settings › Receipt) is already one ink, so it prints as it is.
+  // ponytail: dithered (packMono 'shaded'): a picture's greys print as fine dots, its near-black as solid.
   async function picRaster(src, dots, box, name) {
     if (typeof document === 'undefined') throw new Error('Pictures need a browser');
     const img = typeof src !== 'string' ? src : await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('picture')); i.src = src; });
@@ -438,7 +441,8 @@
     const px = ctx.getImageData(0, 0, w, h).data, gray = new Float32Array(w * h);
     for (let i = 0; i < gray.length; i++) gray[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
     const { lo, hi } = levels(gray);   // a near-black logo (#111) prints solid, not sprinkled with white dots, as the map
-    return { w, h, bits: packMono(stretch(gray, lo, hi), w, h, 'shaded'), name };
+    const toned = stretch(gray, lo, hi).map((v) => 255 * (v / 255) ** PIC_TONE);
+    return { w, h, bits: packMono(toned, w, h, 'shaded'), name };
   }
 
   // ---------- encoder: ESC/POS bytes (Bluetooth) ----------

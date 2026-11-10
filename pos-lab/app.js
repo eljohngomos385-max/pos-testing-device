@@ -880,12 +880,14 @@ function attachEvents() {
       if (k === 'sups' && !E.sups.includes(E.main)) { E.main = ''; itemForm.querySelector('[data-act=main] span').textContent = 'None'; }
     }
   });
-  itemForm?.addEventListener('pointerdown', modGrip);   // the item's Change order page: drag a row
+  itemForm?.addEventListener('pointerdown', modGrip);   // the item's Modifiers page, ordering: drag a row
   itemForm?.addEventListener('click', (e) => {
     const E = itemEdit, b = !kindEdit && e.target.closest('button');
     if (!b) return;
     const act = b.dataset.act;
+    if (b.closest('.ordering')) return;   // these rows drag; they don't open
     if (b.dataset.sub) itemGo(b.dataset.sub);
+    else if (act === 'mod-order') modOrderToggle(b);
     else if (act === 'mod-add') { modAdding.clear(); itemGo('modadd'); }
     else if (act === 'mod-remove') { itemModOff(itemSub.slice(6)); itemGo('mods', true); }
     else if (act === 'add-variant') { const v = blankVariant(); E.variants.push(v); itemGo(v.id); itemForm.querySelector('[data-v=name]').focus({ preventScroll: true }); }

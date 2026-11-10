@@ -111,7 +111,7 @@ ask, Start shift, Close shift (count), Cash in / out, and any new one — puts t
   - Check: `hdr.cjs`-style measure, menu open, menu button centre = page ☰ centre on all 8 pages, phone 393×852 (30) and iPad 1180×820 (38).
   - Checkout's ‹ Cancel is on this line too (owner 2026-10-29: it sat under the iPad clock): `.co-top` hangs from `--co-y` = `--head-y`; the iPad pane (`#app.co-side`, `top: 0`, so it skips `.main`'s clock padding) adds `--ph-top` itself. Its amount stays on the hero line (`--co-top-h` follows `--co-y`).
   - **Every page starts on one line under it: 126 on phone, 76 on iPad** (owner 2026-10-31), where Orders' first date band sits. The page's first card, picker, band, receipt or section title lands there.
-    - Exceptions: Items, Refund, A customer, and the item / category / modifier / discount editors.
+    - Exceptions: Items, Refund, A customer, and the main page of the item / category / modifier / discount editors. Their inner pages follow it: first card 16 under Back (owner 2026-11-10), `.lv .editor.sub > .form-scroll > .form`.
     - Fix it in the shared rule: `.lv .st-page .c-body`, `.rp-units`, the frost `c-scroll` / `paper-scroll` padding. Never one page's own offset.
     - Check with the `start-lines` skill (`.claude/skills/start-lines/`) after adding or changing any page.
   - **Checkout: the amount holds still, only the step under it scrolls** (owner 2026-10-29), like the cart's rows under its Total: `.co-col` fills the stage, `.co-col > .co-step` is the scroller. Never make `.co-stage` scroll again.

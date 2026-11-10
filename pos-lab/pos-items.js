@@ -134,12 +134,12 @@ function itemGo(sub, back) {
   if (!K && /^(alts|bars):/.test(itemSub)) { const v = codesOf(); v.alts = v.alts.filter(s => s.trim()); v.bars = v.bars.filter(s => s.trim()); }   // a box left empty goes
   const nv = !K && !sub && itemEdit.variants.find(x => x.id === itemSub);   // back from Add variant with nothing typed: it goes, as a blank choice does (kindBack)
   if (nv && itemEdit.variants.length > 1 && blankV(nv)) itemEdit.variants.splice(itemEdit.variants.indexOf(nv), 1);
-  if (K) K.sub = sub; else itemSub = sub;
+  if (K) K.sub = sub; else { itemSub = sub; modOrdering = false; }
   (K ? renderKindForm : renderItemForm)(sub && !back ? 'push' : 'pop');
   f.scrollTop = sub ? 0 : itemMainScroll;
 }
 // Back from a subpage (app.js #itemBack): a variant's Made from to the variant, a modifier's choices to Modifiers, else the item
-const itemParent = s => (/^(made|alts|bars):/.test(s) && itemEdit.variants.length > 1 ? s.slice(5) : /^mod(ch:|add|ord)/.test(s) ? 'mods' : '');
+const itemParent = s => (/^(made|alts|bars):/.test(s) && itemEdit.variants.length > 1 ? s.slice(5) : /^mod(ch:|add)/.test(s) ? 'mods' : '');
 const blankV = v => JSON.stringify({ ...v, id: 0 }) === JSON.stringify({ ...blankVariant(), id: 0 });   // a new variant nothing was typed in
 // a variant needs a name (owner 2026-10-29): one left with something typed but no name asks before Back; a tap outside stays
 function itemBackSub() {
@@ -181,7 +181,6 @@ function renderItemForm(dir) {
     : itemSub === 'mods' ? ['Modifiers', itemModsPage()]
     : itemSub.startsWith('modch:') ? itemChoicePage(itemSub.slice(6))
     : itemSub === 'modadd' ? ['Add modifier', itemModAddPage()]
-    : itemSub === 'modord' ? ['Change order', itemModOrderPage()]
     : itemSub === 'sups' ? ['Suppliers', itemSupsPage()]
     : itemSub === 'specs' ? ['Specs', itemSpecsPage()]
     : itemSub === 'look' ? ['Tile appearance', lookPage(E)]
@@ -357,26 +356,29 @@ const itemHidden = (E, by = modsById()) => {
 };
 const IGRIP = '<span class="grip" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></svg></span>';
 const modFind = m => escapeHtml([m.name, ...liveChoices(m).map(o => o.name)].join(' ').toLowerCase());
-// one job per page (owner 2026-11-09): a row here only opens its choices; Change order and Add modifier are their own pages
+// a row opens its choices; Change order turns this same list into a drag list and its row becomes Done (owner 2026-11-10)
+let modOrdering = false;   // itemGo clears it, so it ends with the page
 function itemModsPage() {
   const E = itemEdit, by = modsById(), on = E.mods.filter(id => by.has(id)).map(id => by.get(id));
   if (!by.size) return icard('', '<div class="pick">No modifiers yet. Add them on the Modifiers tab.</div>');
   const add = on.length < by.size ? icard('', iadd('mod-add', '<svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add modifier'), on.length ? '' : 'Nothing is asked on this item yet.') : '';
   if (!on.length) return add;
-  const rows = on.map(m => `<button type="button" class="pick mod-on" data-sub="modch:${escapeHtml(m.id)}" data-find="${modFind(m)}"><span class="tx">${escapeHtml(m.name)}<small>${choicesText(m, E.hideCh)}</small></span>${ICHEV}</button>`).join('');
-  return icard(`On this item <span class="num">· ${on.length}</span>`, rows, on.length > 1 ? 'Asked at the sale in this order.' : '')
-    + (on.length > 1 ? icard('', inav('Change order', '', 'modord')) : '') + add;
+  const rows = on.map(m => `<button type="button" class="pick mod-on" data-sub="modch:${escapeHtml(m.id)}" data-mod="${escapeHtml(m.id)}" data-find="${modFind(m)}"><span class="tx">${escapeHtml(m.name)}<small>${choicesText(m, E.hideCh)}</small></span>${ICHEV}${IGRIP}</button>`).join('');
+  return icard('', rows, on.length > 1 ? 'Asked at the sale in this order.' : '', ` mod-list${modOrdering ? ' ordering' : ''}`)
+    + (on.length > 1 ? icard('', iadd('mod-order', modOrdering ? 'Done' : 'Change order')) : '') + add;
 }
+// no re-render here: the class flipping on the same rows is what lets the › leave and the grips slide in
 // ponytail: a whole row drags, so past about 13 asked rows the page scrolls only from its side margins; grip-only drag if a store ever gets there
-function itemModOrderPage() {
-  const E = itemEdit, by = modsById(), rows = E.mods.filter(id => by.has(id)).map(id => by.get(id));
-  return icard('', rows.map(m => `<div class="pick mod-ord" data-mod="${escapeHtml(m.id)}"><span class="tx">${escapeHtml(m.name)}<small>${choicesText(m, E.hideCh)}</small></span>${IGRIP}</div>`).join(''), 'Drag a row to change which is asked first.');
+function modOrderToggle(b) {
+  modOrdering = !modOrdering;
+  $('#itemForm .mod-list').classList.toggle('ordering', modOrdering);
+  b.textContent = modOrdering ? 'Done' : 'Change order';
 }
 // The ticks wait here until the pill, so Back (or any other way out) adds nothing, and a ticked row stays where it is
 const modAdding = new Set();
 function itemModAddPage() {
   const rest = [...modsById().values()].filter(m => !itemEdit.mods.includes(m.id)).sort((a, b) => a.name.localeCompare(b.name));
-  return icard('', rest.map(m => `<label class="pick" data-find="${modFind(m)}"><span class="tx">${escapeHtml(m.name)}<small>${choiceList(m)}</small></span><input type="checkbox" data-add-mod value="${escapeHtml(m.id)}"${modAdding.has(m.id) ? ' checked' : ''} aria-label="${escapeHtml(m.name)}"></label>`).join(''), 'Select as many as you like. They join the end of the list.');
+  return icard('', rest.map(m => `<label class="pick" data-find="${modFind(m)}"><span class="tx">${escapeHtml(m.name)}<small>${choiceList(m)}</small></span><input type="checkbox" data-add-mod value="${escapeHtml(m.id)}"${modAdding.has(m.id) ? ' checked' : ''} aria-label="${escapeHtml(m.name)}"></label>`).join(''));
 }
 function modAddPill() {
   const n = modAdding.size, go = $('#kindPickGo');
@@ -409,9 +411,9 @@ function itemModOff(id) {
 }
 // drag a row: it rides the finger, the others step aside; let go and the asking order is the new one
 function modGrip(e) {
-  const row = e.target.closest('#itemForm .pick.mod-ord');
+  const row = e.target.closest('#itemForm .ordering .pick.mod-on');
   if (!row || e.button) return;
-  const rows = [...row.parentElement.querySelectorAll('.pick.mod-ord')], i0 = rows.indexOf(row);
+  const rows = [...row.parentElement.querySelectorAll('.pick.mod-on')].filter(r => r.offsetHeight), i0 = rows.indexOf(row);   // a search leaves only the shown rows to swap
   const h = row.offsetHeight, y0 = e.clientY;
   let to = i0;
   e.preventDefault(); row.setPointerCapture(e.pointerId); row.classList.add('dragging');

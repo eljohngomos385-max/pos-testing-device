@@ -417,11 +417,11 @@ function bindLook() {
 }
 // Settings › Receipt › Top / Bottom picture (owner 2026-11-06, "canvas amount of control"): the receipt itself with two boxes, top and
 // bottom. Tap one to pick it, drag its bottom corners to size it inside the paper's margins, tap it again to add the picture: it goes
-// through the crop screen into the box drawn, keeping its own shape; then the corners crop it, a drag or a pinch moves it, Crop crops it again. One ink: anything that
-// isn't white is solid black, on screen as on paper (owner: "the darkest one", no grey). Each change saves as it is made, as the page.
+// through the crop screen into the box drawn, keeping its own shape; then the corners crop it, a drag or a pinch moves it, Crop crops it again. Black and white: the
+// picture with its colour taken out (owner 2026-11-10, was one solid ink); the printer makes the greys from fine dots. Each change saves as it is made, as the page.
 // logo / footerImg is the box baked at 80mm's 576 dots (a 58mm POS prints it at 2/3, printer.js picRaster); logoFit / footerImgFit
 // keep the box (w, h: shares of the paper's width), the crop (zoom, cx, cy) and the original (src), so it can be changed again.
-const PIC_DOTS = 576, PIC_INK = 224;   // lighter than this is the paper
+const PIC_DOTS = 576, PIC_INK = 224;   // a picture lighter than this all over is too pale to print
 const PIC_BOX = { logo: { w: 0.6, h: 0.3 }, footerImg: { w: 0.6, h: 0.6 } };   // an empty box: printer.js RECEIPT_PICS
 const BLANK_PIC = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 // the picture covers its box at zoom 1; (cx, cy) is its point at the box's centre, kept so no white edge shows
@@ -431,20 +431,20 @@ function clampFit(img, f) {
   f.cx = Math.min(1 - hw, Math.max(hw, f.cx));
   f.cy = Math.min(1 - hh, Math.max(hh, f.cy));
 }
-// the box at w x h px with its crop of the picture, in the one ink
+// the box at w x h px with its crop of the picture, in black and white
 function drawFit(cv, img, f, w, h) {
   cv.width = w; cv.height = h;
   const g = cv.getContext('2d', { willReadFrequently: true }), s = Math.max(w / img.width, h / img.height) * f.zoom;
   g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
   g.drawImage(img, w / 2 - f.cx * img.width * s, h / 2 - f.cy * img.height * s, img.width * s, img.height * s);
   const px = g.getImageData(0, 0, w, h), d = px.data;
-  for (let i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2] < PIC_INK ? 17 : 255;
+  for (let i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
   g.putImageData(px, 0, 0);
   return cv;
 }
 // anything in the picture prints at all (a pale one is all paper)
 const inked = (img) => drawFit(document.createElement('canvas'), img, { zoom: 1, cx: 0.5, cy: 0.5 }, img.width, img.height)
-  .getContext('2d').getImageData(0, 0, img.width, img.height).data.includes(17);
+  .getContext('2d').getImageData(0, 0, img.width, img.height).data.some((v) => v < PIC_INK);
 function openPics(pick) {
   const look = receiptLook(), r = toReceiptViewModel(sampleTestOrder()), fits = {}, imgs = {}, boxes = {};
   r.look.logo = r.look.footerImg = BLANK_PIC;   // a stand-in, so the receipt lays out each picture's place; its box goes there
@@ -483,7 +483,7 @@ function openPics(pick) {
     const f = fits[k], img = imgs[k];
     if (!img) return saveLook({ [k + 'Fit']: { ...f } });   // an empty box keeps its size for the picture to come
     const cv = drawFit(document.createElement('canvas'), img, f, Math.round(f.w * PIC_DOTS), Math.round(f.h * PIC_DOTS));
-    return saveLook({ [k]: cv.toDataURL('image/png'), [k + 'Fit']: { ...f } });   // PNG: one ink stays one ink (JPEG would grey its edges)
+    return saveLook({ [k]: cv.toDataURL('image/png'), [k + 'Fit']: { ...f } });   // PNG: edges stay clean (JPEG would smudge them)
   };
   // not saved (the phone is full; saveLook says so): the box goes back to what is saved
   const undo = (k, was, img) => { fits[k] = was; imgs[k] = img; paint(); };

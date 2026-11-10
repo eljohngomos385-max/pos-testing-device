@@ -809,7 +809,7 @@ function normalizeOrderRecord(raw = {}) {
 // (a QR code, say), and whether the name, address and phone print. Defaults: Classic, 'Thank you!', name, address, phone and TIN on.
 // says: the last line (SalesMath SAYS): 'not' an invoice (the default, not BIR registered yet), 'invoice', or 'none'.
 // logoFit / footerImgFit: a picture's box on the receipt (pos-settings.js openPics): { src: the original, w, h: shares of the
-// paper's width, zoom, cx, cy }; logo / footerImg is that box, baked at 80mm's dots in one ink.
+// paper's width, zoom, cx, cy }; logo / footerImg is that box, baked at 80mm's dots in black and white.
 // ponytail: pictures ride in settings as data URLs, like Payment types' QR pictures; R2 with Supabase.
 // ponytail: a reprint shows today's look, not the one it was printed with (as Store details); keep a copy per sale if BIR asks.
 const receiptLook = () => ({ style: 't1', says: 'not', logo: '', logoFit: null, header: '', footer: 'Thank you!\nKeep for returns and exchanges.', footerImg: '', footerImgFit: null, showName: true, showAddress: true, showPhone: true, showTin: true, ...state.settings.receipt });
