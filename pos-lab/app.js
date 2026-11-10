@@ -831,11 +831,11 @@ function attachEvents() {
   const itemForm = $('#itemForm');
   wireFind('#itemFind', '#itemFindQ', '#itemFindX', filterPicks);
   $('#itemFindFilter')?.addEventListener('click', (e) => pickFilter(e.currentTarget));   // a category's Items / Asked on (pos-items)
-  $('#kindPickGo')?.addEventListener('click', () => (kindEdit ? saveKind() : modAddGo()));
+  $('#kindPickGo')?.addEventListener('click', () => (kindEdit ? (modFromItem ? kindBack() : saveKind()) : modAddGo()));   // a new modifier made from an item: only its page's Save leaves (owner 2026-11-10)
   itemForm?.addEventListener('scroll', () => itemForm.previousElementSibling.classList.toggle('tuck', itemForm.scrollTop > 24), { passive: true });   // Apple's: search tucks, the title shows
   // back from a subpage first (pos-items itemGo), then out of the editor
   $('#itemBack')?.addEventListener('click', () => (kindEdit?.sub ? kindBack() : itemEdit && itemSub ? itemBackSub()
-    : askLeave(editorDirty(), closeItemEditor)));   // a variant's Made from goes back to the variant, a modifier's choices to Modifiers; out of the editor with changes asks first
+    : modFromItem ? askLeave(editorSnap() !== editorFirst, () => modNewBack()) : askLeave(editorDirty(), closeItemEditor)));   // a variant's Made from goes back to the variant, a modifier's choices to Modifiers; out of the editor with changes asks first
   itemForm?.addEventListener('click', (e) => { const b = e.target.closest('[data-look]'); if (b) lookClick(b); });   // Tile appearance, both editors
   // the category / modifier editor's fields (pos-items kindInput); the item editor's below
   itemForm?.addEventListener('click', (e) => { const b = kindEdit && e.target.closest('[data-ka], [data-sub]'); if (b) kindClick(b); });
@@ -889,6 +889,7 @@ function attachEvents() {
     if (b.dataset.sub) itemGo(b.dataset.sub);
     else if (act === 'mod-order') modOrderToggle(b);
     else if (act === 'mod-add') { modAdding.clear(); itemGo('modadd'); }
+    else if (act === 'mod-new') modNewHere();
     else if (act === 'mod-remove') { itemModOff(itemSub.slice(6)); itemGo('mods', true); }
     else if (act === 'add-variant') { const v = blankVariant(); E.variants.push(v); itemGo(v.id); itemForm.querySelector('[data-v=name]').focus({ preventScroll: true }); }
     else if (act === 'add-alt') { codesOf().alts.push(''); renderItemForm(); [...itemForm.querySelectorAll('[data-alt]')].pop().focus(); }

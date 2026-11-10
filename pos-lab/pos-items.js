@@ -110,7 +110,7 @@ const soldByText = E => (E.soldBy === 'measure' ? `Measure · ${escapeHtml(E.uni
 function openItemEditor(id) {
   if (editorDirty()) return askLeave(true, () => { closeItemEditor(); openItemEditor(id); });   // another row on a tablet
   const it = id ? catalogItems().find(x => x.id === id) : null;
-  itemIsNew = !it; kindEdit = null; itemSub = '';
+  itemIsNew = !it; kindEdit = null; itemSub = ''; modFromItem = null;
   itemEdit = it || { id: newId(), name: '', desc: '', cat: '', catIds: [], unit: 'pc', soldBy: 'each', img: '', color: '', hidden: false, marginMode: 'percent',
     reorder: 0, track: true, sellOut: false, sups: [], main: '', mods: [], hideCh: [], weight: '', size: '', length: '', component: false, variants: [blankVariant()], since: tillDay(Date.now()) };
   const v0 = itemEdit.variants[0];
@@ -126,7 +126,8 @@ const closeItemEditor = () => $('#itemsView').classList.remove('editing');
 let editorFirst = '';
 const editorSnap = () => (kindEdit ? JSON.stringify({ ...kindEdit, sub: 0, pool: 0, af: 0, picked: [...kindEdit.picked].sort() })
   : JSON.stringify({ ...itemEdit, hue: 0, ...(itemIsNew ? {} : { img: 0, color: 0 }) }));
-const editorDirty = () => $('#itemsView').classList.contains('editing') && editorSnap() !== editorFirst;
+let modFromItem = null;   // an item waiting behind a new modifier's form (modNewHere); its unsaved changes count too
+const editorDirty = () => $('#itemsView').classList.contains('editing') && (editorSnap() !== editorFirst || !!modFromItem?.dirty);
 // a subpage slides in over the item or the category; '' slides back to where the page was scrolled
 function itemGo(sub, back) {
   const f = $('#itemForm'), K = kindEdit;
@@ -190,6 +191,7 @@ function renderItemForm(dir) {
     : itemSub.startsWith('bars:') ? ['Barcodes', itemBarPage(codesOf())]
     : v ? [v.fresh ? 'Add variant' : 'Edit variant', itemVariantPage(v)] : [E.name || 'New item', itemMainPage()];   // a fixed title: typing a variant's name doesn't echo up there
   $('#itemForm').closest('.editor').classList.toggle('sub', !!itemSub);   // a subpage has only Back, as in Apple Settings; the item's Save keeps it all (owner 2026-11-08)
+  $('#itemForm').closest('.editor').classList.remove('picking');   // a modifier's Asked on page can be the last thing that was open
   $('#itemForm').innerHTML = `<div class="form${dir ? ' ' + dir : ''}">${html}</div>`;
   $('#itemTitle').textContent = title;   // small, in the top bar beside Back (rednote's Edit profile)
   // a long tick list (Made from, Categories, Modifiers): search in the bar where the title was; the title fades back in on scroll
@@ -356,12 +358,12 @@ const itemHidden = (E, by = modsById()) => {
 };
 const IGRIP = '<span class="grip" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></svg></span>';
 const modFind = m => escapeHtml([m.name, ...liveChoices(m).map(o => o.name)].join(' ').toLowerCase());
+const modPlus = (act, text) => iadd(act, `<svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>${text}`);
 // a row opens its choices; Change order turns this same list into a drag list and its row becomes Done (owner 2026-11-10)
 let modOrdering = false;   // itemGo clears it, so it ends with the page
 function itemModsPage() {
   const E = itemEdit, by = modsById(), on = E.mods.filter(id => by.has(id)).map(id => by.get(id));
-  if (!by.size) return icard('', '<div class="pick">No modifiers yet. Add them on the Modifiers tab.</div>');
-  const add = icard('', iadd('mod-add', '<svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add modifier'), on.length ? '' : 'Nothing is asked on this item yet.');
+  const add = icard('', modPlus('mod-add', 'Add modifier'), on.length ? '' : 'Nothing is asked on this item yet.');
   if (!on.length) return add;
   const rows = on.map(m => `<button type="button" class="pick mod-on" data-sub="modch:${escapeHtml(m.id)}" data-mod="${escapeHtml(m.id)}" data-find="${modFind(m)}"><span class="tx">${escapeHtml(m.name)}<small>${choicesText(m, E.hideCh)}</small></span>${ICHEV}${IGRIP}</button>`).join('');
   return icard('', rows, on.length > 1 ? 'Asked at the sale in this order.' : '', ` mod-list${modOrdering ? ' ordering' : ''}`)
@@ -378,8 +380,7 @@ function modOrderToggle(b) {
 const modAdding = new Set();
 function itemModAddPage() {
   const rest = [...modsById().values()].filter(m => !itemEdit.mods.includes(m.id)).sort((a, b) => a.name.localeCompare(b.name));
-  if (!rest.length) return icard('', '<div class="pick">No other modifiers.</div>');   // the row stays even with all of them on (owner 2026-11-10)
-  return icard('', rest.map(m => `<label class="pick" data-find="${modFind(m)}"><span class="tx">${escapeHtml(m.name)}<small>${choiceList(m)}</small></span><input type="checkbox" data-add-mod value="${escapeHtml(m.id)}"${modAdding.has(m.id) ? ' checked' : ''} aria-label="${escapeHtml(m.name)}"></label>`).join(''));
+  return icard('', modPlus('mod-new', 'New modifier'), rest.length ? '' : 'No other modifiers.') + (rest.length ? icard('', rest.map(m => `<label class="pick" data-find="${modFind(m)}"><span class="tx">${escapeHtml(m.name)}<small>${choiceList(m)}</small></span><input type="checkbox" data-add-mod value="${escapeHtml(m.id)}"${modAdding.has(m.id) ? ' checked' : ''} aria-label="${escapeHtml(m.name)}"></label>`).join('')) : '');
 }
 function modAddPill() {
   const n = modAdding.size, go = $('#kindPickGo');
@@ -388,6 +389,22 @@ function modAddPill() {
 }
 function modAddTick(t) { modAdding[t.checked ? 'add' : 'delete'](t.value); modAddPill(); }
 function modAddGo() { itemEdit.mods = [...itemEdit.mods, ...modAdding]; itemGo('mods', true); }
+// New modifier without leaving the item (owner 2026-11-10): the item waits, unsaved, behind the modifier's own form, so nothing asks to leave
+function modNewHere() {
+  const wait = { item: itemEdit, isNew: itemIsNew, first: editorFirst, scroll: itemMainScroll, dirty: editorDirty() };
+  editorFirst = editorSnap();   // or openKindEditor would ask
+  openKindEditor('mods', '', 'push');
+  modFromItem = wait;
+}
+// no id = Back, to the ticks as they were; saved = onto the item, with whatever was ticked
+function modNewBack(id) {
+  const W = modFromItem;
+  modFromItem = kindEdit = null;
+  itemEdit = W.item; itemIsNew = W.isNew; editorFirst = W.first; itemMainScroll = W.scroll;
+  if (id) { modAdding.add(id); return modAddGo(); }
+  renderItemForm('pop');
+  $('#itemForm').scrollTop = 0;
+}
 // one modifier on this item: a switch per choice; the last one on stays on (a question with no answer can't be asked)
 function itemChoicePage(mid) {
   const E = itemEdit, m = modsById().get(mid);
@@ -702,8 +719,9 @@ function renderKindRows(kind, band, rows) {
       : cats ? emptyState('folders', 'Tap + to group items for Sell.') : emptyState('sliders', 'Tap + to add a modifier,<br>like Gift wrap.'));
 }
 
-function openKindEditor(kind, id) {
+function openKindEditor(kind, id, dir) {
   if (editorDirty()) return askLeave(true, () => { closeItemEditor(); openKindEditor(kind, id); });
+  modFromItem = null;
   const was = kindList(kind).find(x => x.id === id);
   const picked = new Set(was && isOn[kind] ? itemsWith(kind, was.id).map(it => it.id) : []);   // a discount isn't on items
   kindEdit = { kind, id: was ? was.id : '', sub: '', name: was ? was.name : '', picked,
@@ -714,7 +732,7 @@ function openKindEditor(kind, id) {
       hide: modHideOf(was) });
   }
   itemEdit = null;
-  renderKindForm();
+  renderKindForm(dir);
   $('#itemsView').classList.add('editing');
   $('#itemForm').scrollTop = 0;
   editorFirst = editorSnap();
@@ -782,7 +800,7 @@ function kindClick(b) {
 }
 
 // ---------- A modifier's pages: the modifier, a choice, which items ask it, what is hidden where ----------
-// K.sub: '' | 'choice:<id>' (Add / Edit choice) | 'items' (Asked on) | 'add' (Add items) | 'hidden'. Save on any of them writes it all (owner 2026-10-24).
+// K.sub: '' | 'choice:<id>' (Add / Edit choice) | 'items' (Asked on) | 'add' (Add items) | 'hidden'. Save on Hidden, or a pill, writes it all (owner 2026-10-24); a choice has only Back (owner 2026-11-10).
 const PICKS_NOTE = { one: 'Exactly one', upto2: 'None, one or two', upto3: 'None, or up to three', any: 'None, one, or as many as they like' };
 const modCur = () => kindEdit.options.find(o => o.id === kindEdit.sub.slice(kindEdit.sub.indexOf(':') + 1));
 // { choiceId: [item ids it's hidden on] }, from the items that ask this modifier
@@ -802,7 +820,7 @@ function renderModForm(dir) {
   const [title, html] = s === 'hidden' ? ['Hidden', modHiddenPage()]
     : o ? [o.fresh ? 'Add choice' : 'Edit choice', modChoicePage(o)]
     : [K.name || 'New modifier', modMainPage()];
-  $('#itemForm').closest('.editor').classList.remove('sub');   // every subpage keeps Save too (owner 2026-10-24)
+  $('#itemForm').closest('.editor').classList.toggle('sub', !!o);   // a choice has only Back, which keeps it; Save means the whole modifier, so it stays off (owner 2026-11-10)
   $('#itemFind').hidden = true;
   $('#itemTitle').textContent = title;
   $('#itemForm').innerHTML = `<div class="form ${dir || ''}">${html}</div>`;
@@ -872,7 +890,7 @@ const kindPickBar = () => {
   const K = kindEdit, n = [...K.picked].filter(id => !K.pool?.has(id)).length;
   $('#kindPickGo').disabled = false;   // the item's Add modifier page greys it
   $('#kindPickGo').innerHTML = K.sub === 'add' ? `<span>${n ? `Add ${SalesMath.plural(n, 'item')}` : 'Add items'}</span>`
-    : `<span>${SalesMath.plural(K.picked.size, 'item')}</span><span>Save</span>`;
+    : `<span>${SalesMath.plural(K.picked.size, 'item')}</span><span>${modFromItem ? 'Done' : 'Save'}</span>`;
 };
 // the bar's filter; a modifier's sheet also ticks all the rows on screen, or none (owner 2026-10-27: not a category's)
 function pickFilter(b) {
@@ -958,11 +976,12 @@ function saveKind() {
     modWriteHidden({ ...K, id }, at);   // tagItems below saves the products
   }
   tagItems(K.kind, id, K.picked, at);
+  if (modFromItem) { closeKindEditor('Saved', true); return modNewBack(id); }
   const stay = !!K.sub;
   if (stay) kindSaved(id);
   closeKindEditor('Saved', stay);
 }
-// Save on a subpage (a choice, Asked on, a category's Items) writes it all, then lands on the category / modifier, not
+// Save on a subpage (Hidden, Asked on, a category's Items) writes it all, then lands on the category / modifier, not
 // the list (owner 2026-10-27); the editor now holds what was saved
 function kindSaved(id) {
   const K = kindEdit;
