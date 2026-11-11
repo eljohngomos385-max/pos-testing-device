@@ -190,6 +190,93 @@ const barcodeScanner = {
 
 // ---------- Helpers ----------
 const peso = (n) => SalesMath.formatMoney(n, state.settings?.store?.currency);
+// A big number typed on keys (owner 2026-11-11, hero-pop-lab.html "Typing: Smooth" + "Opening: Grow"): only one marked
+// data-ht="<what's typed>", never a total. Each key redraws its sheet, so heroSnap reads the number on screen first and
+// heroPlay carries the new one on from it: the rest glide to their place, a new character grows from its foot, a gone one
+// shrinks back where it was. A new page (data-ht or owner changed) grows in, left to right. Plain transform: any phone.
+const HT = { ms: 380, ease: 'cubic-bezier(.32, .72, 0, 1)', scale: .5, blur: 4, fadeIn: 160, fadeOut: 110 };   // iOS's sheet curve; a fade on the glide's long landing lingered, so its own, short
+function heroSnap(root) {
+  const h = root.querySelector('[data-ht]');
+  const at = (e) => { const r = e.getBoundingClientRect(), cs = getComputedStyle(e.firstChild);
+    return { e, k: e.dataset.k, x: (r.left + r.right) / 2, op: +cs.opacity, sc: cs.transform === 'none' ? 1 : new DOMMatrix(cs.transform).a }; };
+  return h && { id: h.dataset.ht, owner: root._ht, chars: [...h.querySelectorAll('.ch:not(.ht-gone)')].map(at), gone: [...h.querySelectorAll('.ht-gone')].map(at) };
+}
+// each character in its own box (.ch slides) holding the letter (i grows and fades), keyed so a 5 stays the 5 as more are
+// typed: a digit by its place from the left, a comma by the digits to its right, so 5,000 -> 50,000 slides the comma over
+function heroSplit(h) {
+  const w = document.createTreeWalker(h, NodeFilter.SHOW_TEXT), ts = [], chs = [];
+  while (w.nextNode()) ts.push(w.currentNode);
+  for (const t of ts) t.replaceWith(...[...t.data].map((c) => {
+    if (/\s/.test(c)) return c;   // a space in a box of its own has no width ("1.5 kg")
+    const e = document.createElement('span'), l = document.createElement('i');
+    e.className = 'ch'; l.textContent = c; e.append(l); chs.push({ e, c });
+    return e;
+  }));
+  const isD = (c) => c >= '0' && c <= '9', dec = peso(0).match(/0(\D)0/)?.[1] || '.';
+  let first = -1, last = -1;
+  chs.forEach((x, i) => { if (isD(x.c)) { if (first < 0) first = i; last = i; } });
+  const p = chs.findIndex((x, i) => i > first && x.c === dec), end = p < 0 ? chs.length : p;
+  let di = 0, fi = 0;
+  chs.forEach((x, i) => {
+    x.k = (i === p ? 'p' : isD(x.c) ? (i < end ? 'd' + di++ : 'f' + fi++) : first < 0 || i < first ? 'a' + i
+      : i < end && i < last ? 'c' + di : 'z' + (i - Math.max(last, p))) + x.c;
+    x.e.dataset.k = x.k;
+  });
+  return chs;
+}
+function heroPlay(root, snap, owner) {
+  const h = root.querySelector('[data-ht]');
+  root._ht = owner;
+  if (!h || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const chs = heroSplit(h), T = HT, move = { duration: T.ms, easing: T.ease };
+  const slide = (e, a, b, o) => e.animate({ transform: [`translateX(${a}px)`, `translateX(${b}px)`] }, { ...move, ...o });
+  const grow = (e, a, b, o) => e.animate({ transform: [`scale(${a})`, `scale(${b})`] }, { ...move, ...o });
+  const look = (op) => ({ opacity: op, filter: `blur(${(1 - op) * T.blur}px)` });
+  const fade = (e, a, b, o) => e.animate([look(a), look(b)], { duration: b ? T.fadeIn : T.fadeOut * a, easing: 'ease-out', ...o });
+  if (!snap?.chars.length || snap.id !== h.dataset.ht || snap.owner !== owner) {   // a total written over it since (split) has none
+    return chs.forEach((c, i) => { const o = { duration: 500, delay: i * 18, fill: 'backwards' }; grow(c.e.firstChild, T.scale, 1, o); fade(c.e.firstChild, 0, 1, o); });
+  }
+  const mid = (e) => { const r = e.getBoundingClientRect(); return (r.left + r.right) / 2; };
+  const was = new Map(snap.chars.map((c) => [c.k, c]));
+  const dx = new Map(chs.filter((c) => was.has(c.k)).map((c) => [c.k, mid(c.e) - was.get(c.k).x]));
+  // a new or gone one rides halfway between the kept ones either side; a comma never travels (keyed by the digits
+  // before it): the old one fades where it was, the new one grows where it lands, as Phantom does (owner 2026-11-11)
+  const ride = (ks, i) => {
+    let a, b;
+    for (let j = i - 1; j >= 0 && a === undefined; j--) a = dx.get(ks[j]);
+    for (let j = i + 1; j < ks.length && b === undefined; j++) b = dx.get(ks[j]);
+    return a !== undefined && b !== undefined ? (a + b) / 2 : a ?? b ?? 0;
+  };
+  const ks = chs.map((c) => c.k);
+  // the old comma and the new one cross-fade on one even curve and one clock, so together they only ever brighten:
+  // a gap, or one side running faster when a key lands mid-fade, flickers (owner 2026-11-11)
+  const comma = { duration: T.ms * .7, easing: 'ease-in-out' };
+  chs.forEach((c, i) => {
+    const o = was.get(c.k), l = c.e.firstChild;
+    if (!o) {
+      if (c.k[0] !== 'c') return slide(c.e, -ride(ks, i), 0), grow(l, T.scale, 1), fade(l, 0, 1);
+      return grow(l, T.scale, 1, comma), fade(l, 0, 1, comma);
+    }
+    if (Math.abs(dx.get(c.k)) > .5) slide(c.e, -dx.get(c.k), 0);
+    const w = c.k[0] === 'c' ? comma : {};
+    if (o.sc < .99) grow(l, o.sc, 1, w);   // still growing when the key came: it carries on from there
+    if (o.op < .99) fade(l, o.op, 1, w);
+  });
+  const box = h.getBoundingClientRect(), ghost = (c, by) => {   // shrinks away where it was, gone in fadeOut
+    const g = c.e.cloneNode(true);
+    g.className = 'ch ht-gone';
+    g.setAttribute('aria-hidden', 'true');
+    h.append(g);
+    g.style.left = `${c.x - box.left - g.offsetWidth / 2}px`;
+    slide(g, 0, by, { fill: 'forwards' });
+    const o = c.k[0] === 'c' ? comma : {};
+    grow(g.firstChild, c.sc, T.scale, { fill: 'forwards', ...o });
+    fade(g.firstChild, c.op, 0, { fill: 'forwards', ...o }).onfinish = () => g.remove();
+  };
+  const keep = new Set(ks), oks = snap.chars.map((c) => c.k);
+  snap.chars.forEach((c, i) => { if (!keep.has(c.k)) ghost(c, c.k[0] === 'c' ? 0 : ride(oks, i)); });
+  snap.gone.forEach((c) => ghost(c, 0));   // one still going when the sheet redrew
+}
 // The store's own payment names that are on: Settings › Payment types switches one off by putting its name in hidden, as a built-in's kind
 const payCustomOn = () => { const p = state.settings.payments || {}, off = new Set(p.hidden || []); return (p.custom || []).filter(n => !off.has(n)); };
 // A payment type's tile (owner 2026-11-08, iOS Shortcuts' icon sheet): a colour + a symbol, kept by name in settings.payments.opts[k]

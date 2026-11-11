@@ -431,7 +431,10 @@ function attachEvents() {
     if (h._fit === key) return;
     h._fit = key;
     h.style.fontSize = '';
-    if (h.clientWidth && h.scrollWidth > h.clientWidth + 1) h.style.fontSize = `${parseFloat(getComputedStyle(h).fontSize) * h.clientWidth / h.scrollWidth}px`;
+    h.classList.add('ht-fit');   // a typed one measured at rest: its moving and fading characters aren't its width (heroPlay)
+    const w = h.scrollWidth;
+    h.classList.remove('ht-fit');
+    if (h.clientWidth && w > h.clientWidth + 1) h.style.fontSize = `${parseFloat(getComputedStyle(h).fontSize) * h.clientWidth / w}px`;
   });
   let heroFrame = 0;
   new MutationObserver(() => { heroFrame ||= requestAnimationFrame(() => { heroFrame = 0; fitHeroes(); }); })
@@ -850,10 +853,10 @@ function attachEvents() {
   const itemForm = $('#itemForm');
   wireFind('#itemFind', '#itemFindQ', '#itemFindX', filterPicks);
   $('#itemFindFilter')?.addEventListener('click', (e) => pickFilter(e.currentTarget));   // a category's Items / Asked on (pos-items)
-  $('#kindPickGo')?.addEventListener('click', () => (kindEdit ? (modFromItem ? kindBack() : saveKind()) : modAddGo()));   // a new modifier made from an item: only its page's Save leaves (owner 2026-11-10)
+  $('#kindPickGo')?.addEventListener('click', () => (kindEdit ? saveKind() : modAddGo()));
   itemForm?.addEventListener('scroll', () => itemForm.previousElementSibling.classList.toggle('tuck', itemForm.scrollTop > 24), { passive: true });   // Apple's: search tucks, the title shows
   // back from a subpage first (pos-items itemGo), then out of the editor
-  $('#itemBack')?.addEventListener('click', () => (kindEdit?.sub ? kindBack() : itemEdit && itemSub ? itemBackSub()
+  $('#itemBack')?.addEventListener('click', () => (kindEdit?.sub ? kindBack(true) : itemEdit && itemSub ? itemBackSub()
     : modFromItem ? askLeave(editorSnap() !== editorFirst, () => modNewBack()) : askLeave(editorDirty(), closeItemEditor)));   // a variant's Made from goes back to the variant, a modifier's choices to Modifiers; out of the editor with changes asks first
   itemForm?.addEventListener('click', (e) => { const b = e.target.closest('[data-look]'); if (b) lookClick(b); });   // Tile appearance, both editors
   // the category / modifier editor's fields (pos-items kindInput); the item editor's below
@@ -894,9 +897,9 @@ function attachEvents() {
     if (t.dataset.made) itemMadeSet(t);
     if (t.dataset.ch) return itemChoiceSet(t);   // a modifier's choice on this item
     if ('addMod' in t.dataset) return modAddTick(t);   // Add modifier's ticks wait for its pill
-    if (k) {   // a tick on a subpage; unticking the main supplier leaves none
+    if (k) {   // a tick on a subpage; the first supplier ticked is the main, and unticking the main hands it to the next (owner 2026-11-11)
       E[k] = t.checked ? [...E[k], t.value] : E[k].filter(x => x !== t.value);
-      if (k === 'sups' && !E.sups.includes(E.main)) { E.main = ''; itemForm.querySelector('[data-act=main] span').textContent = 'None'; }
+      if (k === 'sups' && !E.sups.includes(E.main)) { E.main = t.checked ? t.value : E.sups[0] || ''; itemForm.querySelector('[data-act=main] span').textContent = supName(E.main) || 'None'; }
     }
   });
   itemForm?.addEventListener('pointerdown', modGrip);   // the item's Modifiers page, ordering: drag a row
@@ -909,6 +912,7 @@ function attachEvents() {
     else if (act === 'mod-order') modOrderToggle(b);
     else if (act === 'mod-add') { modAdding.clear(); itemGo('modadd'); }
     else if (act === 'mod-new') modNewHere();
+    else if (act === 'sup-new') modNewHere('sups');
     else if (act === 'mod-remove') { itemModOff(itemSub.slice(6)); itemGo('mods', true); }
     else if (act === 'add-variant') { const v = blankVariant(); E.variants.push(v); itemGo(v.id); itemForm.querySelector('[data-v=name]').focus({ preventScroll: true }); }
     else if (act === 'add-alt') { codesOf().alts.push(''); renderItemForm(); [...itemForm.querySelectorAll('[data-alt]')].pop().focus(); }

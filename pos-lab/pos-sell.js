@@ -1295,6 +1295,7 @@ function esPress(v, k, dec, max) {
 function drawEditSheet() {
   const o = es, card = $('#editSheetCard');
   if (!o) return;
+  const ht = heroSnap(card);   // a typed number carries on from what's on screen (heroPlay)
   // the typing line where the next key lands (owner 2026-11-06): in front of a grey value the first key replaces (as a box's
   // hint), else after the digits, before a %
   const car = '<i class="es-car"></i>';
@@ -1322,7 +1323,7 @@ function drawEditSheet() {
     const m = SalesMath.lineMoney(item.price, item.qty, sc ? null : item.discount, state.settings.store?.currency);
     head = `${sc && item.discount ? `<p>${ES_SC[sc.kind]} applies</p>` : ''}<div class="es-hero">${peso(m.lineTotal)}</div>`;   // the name is the title (es-ttl); a small line goes over the number, never under (owner 2026-11-06)
     // its Discount: the big number is what the keys type, "Discount" over it; the price shows on the page it goes back to (owner 2026-11-06 page 10)
-    if (o.f === 'd') head = `<p>Discount</p><div class="es-hero">${esTyped(o)}</div>`;
+    if (o.f === 'd') head = `<p>Discount</p><div class="es-hero" data-ht="d">${esTyped(o)}</div>`;
     rows = o.f === 'd' ? '' : `<div class="es-row${o.f === 'q' ? ' on' : ''}"><span>Quantity</span>${stp(-1, item.qty <= step)}<button type="button" data-sf="q">${n('q', o.f === 'q' ? typedNum(o.q || '0') : lineQty(item), ' q')}</button>${stp(1)}</div>
       <div class="es-row${o.f === 'd' ? ' on' : ''}" data-sf="d"><span>Discount</span>${n('d', o.f === 'd' ? esTyped(o) : esShown(item.discount), ' v')}${cv(o.f === 'd')}</div>
       <div class="es-row${o.f === 'n' ? ' on' : ''}" data-sf="n"><span>Note</span><small class="ad">${escapeHtml(item.note || '')}</small>${cv(o.f === 'n')}</div>`
@@ -1333,11 +1334,11 @@ function drawEditSheet() {
     if (o.f === 'n') rows = `<textarea class="es-ta es-grow" id="esNote" rows="1" maxlength="120" placeholder="Add a note" aria-label="Note">${escapeHtml(item.note || '')}</textarea>`;
     else if (o.f) side = `<div class="es-keys${kin}">${seg(segBtn('Percent', o.pct, 'data-pct'), segBtn('Amount', !o.pct, 'data-amt'), o.f === 'd' ? '' : ' off')}${esKeys(o.f === 'd' || step < 1)}</div>`;
   } else if (o.kind === 'price') {
-    head = `<p>${escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item')}</p><div class="es-hero">${esTyped(o)}</div>`;   // the title says Price (es-ttl); the name over the amount (owner 2026-11-06: small lines on top)
+    head = `<p>${escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item')}</p><div class="es-hero" data-ht="price">${esTyped(o)}</div>`;   // the title says Price (es-ttl); the name over the amount (owner 2026-11-06: small lines on top)
     rows = '';
     side = `<div class="es-keys${kin}">${esKeys(true)}</div>`;
   } else if (o.kind === 'custom') {   // the price ask with a name box between the amount and the keys
-    head = `<div class="es-hero">${esTyped(o)}</div>`;   // the title says Custom item (es-ttl)
+    head = `<div class="es-hero" data-ht="custom">${esTyped(o)}</div>`;   // the title says Custom item (es-ttl)
     rows = `<input class="es-ta" id="esName" value="${escapeHtml(o.name)}" placeholder="Name" aria-label="Name" maxlength="60" autocomplete="off">`
       + (taxOpts().rate ? `<label class="es-ta es-vat">${SalesMath.taxName({ ...state.settings, taxOnTop: !taxOpts().included })}<input type="checkbox" class="sw" id="esVat"${o.vat ? ' checked' : ''}></label>` : '');   // off = sold without VAT (owner 2026-11-04)
     side = `<div class="es-keys${kin}">${esKeys(true)}</div>`;
@@ -1346,7 +1347,7 @@ function drawEditSheet() {
     const p = state.products.find(x => x.id === o.id), u = escapeHtml(p.unit), q = esMeasureQty(o, p);
     // the name is the title; the line over says the price, then what's typed comes to (owner 2026-11-06: small lines on top)
     head = `<p>${q > 0 ? (o.w ? peso(SalesMath.lineMoney(p.price, q).lineGross) : `${SalesMath.qtyText(q)} ${u}`) : `${peso(p.price)} / ${u}`}</p>`
-      + `<div class="es-hero">${o.w ? `<span class="num">${typedNum(o.d || 0)}</span> ${u}` : esTyped(o)}</div>`;
+      + `<div class="es-hero" data-ht="${o.w ? 'w' : 'm'}">${o.w ? `<span class="num">${typedNum(o.d || 0)}</span> ${u}` : esTyped(o)}</div>`;
     rows = '';
     // the toggle says the words, never "m" / "₱" (owner 2026-11-06 page 14): the unit's full name from Items' list (MEASURES), else as typed
     const word = MEASURES.flatMap(([, us]) => us).find(([k]) => k === p.unit)?.[1] || p.unit;
@@ -1372,7 +1373,7 @@ function drawEditSheet() {
     // Before = the sale with no sale discount and no Senior / PWD, so the VAT the exemption drops counts as off too.
     const t = cartTotals(), was = cartTotals(state.cart, null, null).total, off = moneyValue(was - t.total);
     // Custom: the big number is what the keys type, "Discount" over it, as a cart line's (owner 2026-11-06 page 2); the list's page shows what it comes to
-    head = o.f === 'd' ? `<p>Discount</p><div class="es-hero">${esTyped(o)}</div>`
+    head = o.f === 'd' ? `<p>Discount</p><div class="es-hero" data-ht="d">${esTyped(o)}</div>`
       : `${off > 0 ? `<p class="es-off"><b>${peso(off)}</b> off ${peso(was)}</p>` : ''}<div class="es-hero">${peso(t.total)}</div>`;   // the off line over the total (owner 2026-11-06)
     // Senior / PWD, the saved ones, then Custom, scroll under the total (owner 2026-10-28). A saved one's tap is the pick and
     // closes; Senior / PWD and Custom open their own page in the list's place, the total holding still.
@@ -1421,6 +1422,7 @@ function drawEditSheet() {
     : o.f ? `<button type="button" class="es-ink cta" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : `<button type="button" class="${ph ? 'ph-bar' : 'es-ink'} cta" data-close>Done</button>`),   // a 0 discount waits, as the price ask's Add does
   `${list || o.kind === 'mods' ? ' fill' : ask ? ' ask' : o.kind === 'line' ? ' ln' : ''}${dk ? ' wd' : ttl ? ' wl' : ''}${dk || nk ? ' ks' : ''}${lk}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
   ksCarry(card, o);
+  heroPlay(card, ht, o);
   const rl =list && !o.f && card.querySelector('.es-list');
   const pk = rl && (o.opened || o.dir === 'bwd') && rl.querySelector('.pick');   // just opened, or back from a page: the one on the sale clear of Done
   if (pk) {   // the list only: scrollIntoView also scrolled the page under the sheet while it slid in

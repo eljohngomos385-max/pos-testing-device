@@ -232,7 +232,7 @@ function drawShiftSheet() {
   if (shSheet.step === 'cash') return drawCashSheet();
   const o = shSheet, ask = SH_ASK[o.step];
   let head, rows = '', left = '', ink;
-  if (ask) [head, ink] = [`<p>${ask[0]}</p><div class="es-hero">${typedCash(o.v)}</div>`, ask[1]];
+  if (ask) [head, ink] = [`<p>${ask[0]}</p><div class="es-hero" data-ht="${o.step}">${typedCash(o.v)}</div>`, ask[1]];
   else {   // the figures as this draws (the close stores none: a sale after it moves them on the paper and the list)
     const f = shiftFigures(storeShifts().find(x => x.ids.has(o.shiftId))), counted = shCounted();
     const row = (lb, v) => `<div class="es-row"><span>${lb}</span><small class="num">${v}</small></div>`;
@@ -249,10 +249,11 @@ function drawShiftSheet() {
 // The frame both draw: keys + ✓ on the phone till ✓, the button then (the Shift page's own: its size, its spot)
 function shDraw(head, rows, keys, left, ink, cls) {
   const o = shSheet, ph = shPh(), up = keys && !(ph && o.kd);
-  const btn = `${left}<button type="button" class="${ph ? 'fab sh-fab' : 'es-ink'} cta" data-apply>${ink}</button>`;
+  const btn = `${left}<button type="button" class="${ph ? 'fab sh-fab' : 'es-ink'} cta" data-apply>${ink}</button>`, ht = heroSnap($('#shiftSheetCard'));
   $('#shiftSheetCard').innerHTML = (ph && up ? esOk('data-kd') : '')
     + esFrame(head, rows, up ? `<div class="es-keys${o.up ? ' es-in' : ''}">${esKeys(true)}</div>` : '', btn, cls + (ph && keys ? ' ks' : ''));
   ksCarry($('#shiftSheetCard'), o);
+  heroPlay($('#shiftSheetCard'), ht, o);
   o.up = false;
 }
 const shPh = () => matchMedia('(max-width: 720px)').matches;
@@ -265,7 +266,7 @@ const shBack = () => (shPh() && SH_BACK[shSheet.step] ? shStep(SH_BACK[shSheet.s
 // which closes back to the list. Never the OS number keyboard (owner 2026-10-05). With or without a shift (owner 2026-10-10 #3).
 function drawCashSheet() {
   const o = shSheet;
-  shDraw(`<p>Cash ${o.dir}</p><div class="es-hero">${typedCash(o.v)}</div>`,
+  shDraw(`<p>Cash ${o.dir}</p><div class="es-hero" data-ht="${o.dir}">${typedCash(o.v)}</div>`,
     `<button type="button" class="cm-row" data-cat><span>Category</span><span class="cm-chip"><span>${o.cat ? escapeHtml(o.cat) : 'None'}</span>${IUPDOWN}</span></button>`,
     true, '', 'Save', ' ask');
 }

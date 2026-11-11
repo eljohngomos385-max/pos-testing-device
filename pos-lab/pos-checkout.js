@@ -167,7 +167,10 @@ function updateChange() {
   // Custom (owner 2026-10-28, cash-custom-picks.html F): the big number is what's typed, "Cash received" the title; no total, no change
   const keys = !$('#checkoutKeyIn').hidden, hero = $('#checkoutTotalDue');
   $('#checkoutApp').classList.toggle('co-typed', keys);
+  const ht = heroSnap(hero.parentElement);   // Custom's typed cash moves as it's typed (heroPlay); the total never
   hero.innerHTML = keys ? typed(raw) : peso(total);
+  hero.toggleAttribute('data-ht', keys);
+  heroPlay(hero.parentElement, ht, 'cash');
   hero.classList.toggle('ph', keys && !raw);
   if (lbl) lbl.textContent = raw && d < 0 ? 'Short' : 'Change';
   fig($('#checkoutChange'), !raw ? zero : peso(Math.abs(d)), !raw ? 'ph' : !ok ? 'down' : 'up');
@@ -283,8 +286,10 @@ function spRender() {
   } else {   // amt: the method as the title, what's typed on the hero line, what's left after it over it - just "Left" while the grey
     // hero already says it (owner 2026-11-06 page 23); the keys never go past what's left (spKey)
     btn.textContent = 'Done';
-    const hero = $('#checkoutTotalDue');
+    const hero = $('#checkoutTotalDue'), ht = heroSnap(hero.parentElement);
     hero.innerHTML = money(raw);
+    hero.toggleAttribute('data-ht', true);
+    heroPlay(hero.parentElement, ht, leg);
     hero.classList.toggle('ph', !raw || SP.fresh);
     Object.assign(paid, { hidden: false, textContent: !raw || SP.fresh ? 'Left' : `${peso(moneyValue(left - v))} left` });
     $('#checkoutApp .co-top').dataset.ttl = `Split ${leg.label}`;   // a part of a split, not the whole sale; the method keeps its own name: Split Cash, Split GCash (owner 2026-11-06)

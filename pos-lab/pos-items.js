@@ -46,8 +46,6 @@ function catalogItems() {
   return [...byKey.values()];
 }
 const itemCategories = () => state.folders.filter(f => f.id !== 'all').map(f => f.name);
-// ponytail: read straight off the back office's list each time; the POS keeps no copy of its own.
-const posSuppliers = () => readJsonStorage(STORAGE_SUPPLIERS, []) || [];
 
 function renderItems() {
   const rows = $('#itemsRows');
@@ -127,6 +125,8 @@ let editorFirst = '';
 const editorSnap = () => (kindEdit ? JSON.stringify({ ...kindEdit, sub: 0, pool: 0, af: 0, picked: [...kindEdit.picked].sort() })
   : JSON.stringify({ ...itemEdit, hue: 0, ...(itemIsNew ? {} : { img: 0, color: 0 }) }));
 let modFromItem = null;   // an item waiting behind a new modifier's form (modNewHere); its unsaved changes count too
+// a supplier / modifier made inside an item waits on it, [kind, row] in E.waiting, until the item's Save stores it (owner 2026-11-11)
+const waiting = kind => ((itemEdit || modFromItem?.item)?.waiting || []).filter(w => w[0] === kind).map(w => w[1]);
 const editorDirty = () => $('#itemsView').classList.contains('editing') && (editorSnap() !== editorFirst || !!modFromItem?.dirty);
 // a subpage slides in over the item or the category; '' slides back to where the page was scrolled
 function itemGo(sub, back) {
@@ -173,7 +173,7 @@ const istep = () => (itemEdit.soldBy === 'measure' ? .01 : 1);
 const iqty = (attr, v) => `<input class="in num" ${attr} value="${v || ''}" type="number" step="${istep()}" min="0" max="${QTY_MAX}" inputmode="decimal" placeholder="0">`;
 const ionHand = v => `<span class="vv num${v.stock <= 0 ? ' stk-out' : ''}">${itemQty(v.stock)} ${escapeHtml(itemEdit.unit)}</span><button type="button" class="link cta-3" data-act="stock">Adjust</button>`;
 const ilist = a => (a.length ? escapeHtml(a.length > 2 ? `${a[0]}, ${a[1]} +${a.length - 2}` : a.join(', ')) : 'None');
-const supName = id => (posSuppliers().find(s => s.id === id) || {}).name || '';
+const supName = id => ([...loadSuppliers(), ...waiting('sups')].find(s => s.id === id) || {}).name || '';
 const icurrency = () => SalesMath.currencySymbol(state.settings.store?.currency);
 
 function renderItemForm(dir) {
@@ -190,6 +190,7 @@ function renderItemForm(dir) {
     : itemSub.startsWith('alts:') ? ['SKU', itemSkuPage(codesOf())]
     : itemSub.startsWith('bars:') ? ['Barcodes', itemBarPage(codesOf())]
     : v ? [v.fresh ? 'Add variant' : 'Edit variant', itemVariantPage(v)] : [E.name || 'New item', itemMainPage()];   // a fixed title: typing a variant's name doesn't echo up there
+  $('#itemSave').textContent = 'Save';   // a new supplier / modifier made here said Add
   $('#itemForm').closest('.editor').classList.toggle('sub', !!itemSub);   // a subpage has only Back, as in Apple Settings; the item's Save keeps it all (owner 2026-11-08)
   $('#itemForm').closest('.editor').classList.remove('picking');   // a modifier's Asked on page can be the last thing that was open
   $('#itemForm').innerHTML = `<div class="form${dir ? ' ' + dir : ''}">${html}</div>`;
@@ -336,15 +337,15 @@ function itemSoldByPage() {
     + MEASURES.map(([kind, us]) => icard(kind, us.map(([u, name]) => radio('unit', u, m && E.unit === u, u, name)).join(''))).join('');
 }
 function itemSupsPage() {
-  const E = itemEdit, rows = posSuppliers().filter(s => !s.archived && s.name).sort((a, b) => a.name.localeCompare(b.name)).map(s => [s.id, s.name]);
+  const E = itemEdit, rows = [...kindList('sups'), ...waiting('sups')].sort((a, b) => a.name.localeCompare(b.name)).map(s => [s.id, s.name]);
   return icard('', ifr('Main supplier', ipick('main', escapeHtml(supName(E.main) || 'None')), true), 'Purchase orders go to the main supplier.')
-    + itemTickPage('sups', rows, 'No suppliers yet. Add them in the back office.');
+    + icard('', modPlus('sup-new', 'New supplier')) + itemTickPage('sups', rows, 'No suppliers yet.');
 }
 
 // ---------- An item's modifiers (plans/modifiers-build.md): which it asks, in what order, which choices it offers ----------
 // The link lives on the item's products: modifierIds in asking order, hiddenChoiceIds = choices this item never offers.
 // A choice added later shows on every item until hidden; nothing starts picked at the sale (bo-model itemModifiers).
-const modsById = () => new Map(kindList('mods').map(m => [m.id, m]));
+const modsById = () => new Map([...kindList('mods'), ...waiting('mods')].map(m => [m.id, m]));
 // a modifier's choices on one line, as modifiers-lab.html draws it: "Fresh milk, Oat +₱30.00"
 const choiceList = m => liveChoices(m).map(o => [escapeHtml(o.name), modPrice(o.price)].filter(Boolean).join(' ')).join(', ');
 const choicesText = (m, hidden) => {
@@ -389,19 +390,21 @@ function modAddPill() {
 }
 function modAddTick(t) { modAdding[t.checked ? 'add' : 'delete'](t.value); modAddPill(); }
 function modAddGo() { itemEdit.mods = [...itemEdit.mods, ...modAdding]; itemGo('mods', true); }
-// New modifier without leaving the item (owner 2026-11-10): the item waits, unsaved, behind the modifier's own form, so nothing asks to leave
-function modNewHere() {
+// New modifier / supplier without leaving the item (owner 2026-11-10): the item waits, unsaved, behind the new one's form.
+// That form is for this item only (owner 2026-11-11): no Items / Asked on, and its button is Add, not Save: one Save, the item's.
+function modNewHere(kind = 'mods') {
   const wait = { item: itemEdit, isNew: itemIsNew, first: editorFirst, scroll: itemMainScroll, dirty: editorDirty() };
   editorFirst = editorSnap();   // or openKindEditor would ask
-  openKindEditor('mods', '', 'push');
-  modFromItem = wait;
+  openKindEditor(kind, '', 'push', wait);
 }
-// no id = Back, to the ticks as they were; saved = onto the item, with whatever was ticked
-function modNewBack(id) {
-  const W = modFromItem;
+// no id = Back, to the ticks as they were; Add = the new row waits on the item, ticked (a supplier: main if it has none)
+function modNewBack(id, row) {
+  const W = modFromItem, sup = kindEdit.kind === 'sups';
   modFromItem = kindEdit = null;
   itemEdit = W.item; itemIsNew = W.isNew; editorFirst = W.first; itemMainScroll = W.scroll;
-  if (id) { modAdding.add(id); return modAddGo(); }
+  if (id) itemEdit.waiting = [...(itemEdit.waiting || []), [sup ? 'sups' : 'mods', row]];
+  if (id && sup) { itemEdit.sups = [...itemEdit.sups, id]; itemEdit.main ||= id; }
+  else if (id) { modAdding.add(id); return modAddGo(); }
   renderItemForm('pop');
   $('#itemForm').scrollTop = 0;
 }
@@ -568,6 +571,9 @@ function saveItem() {
   const bad = clash('SKU', skusOf, v => skusOf({ sku: v.sku, aliases: v.alts }), s => s.toLowerCase())
     || clash('barcode', barcodesOf, v => barcodesOf({ altBarcodes: v.bars }), s => s);
   if (bad) { showToast(bad); return; }
+  // a supplier / modifier made here and still on the item is stored first, so the item never points at nothing; one left unticked goes
+  const used = { sups: [E.main, ...E.sups], mods: E.mods };
+  (E.waiting || []).filter(([k, r]) => used[k].includes(r.id)).forEach(([k, r]) => (k === 'sups' ? saveSuppliers(loadSuppliers().concat(stampRow(r))) : saveModifiers(loadModifiers().concat(stampRow(r)))));
   const was = new Map(state.products.map(p => [p.id, p])), old = catalogItems().find(it => it.id === E.id);
   const gid = fam ? (groupById(E.id) ? E.id : old?.members[0]?.groupId || newId()) : '';
   const who = currentStoreInfo().cashier, staffId = state.user?.id || '', moves = [];
@@ -609,14 +615,16 @@ function saveItem() {
 // the items' folders / modifierIds); the item editor's Save is still design only.
 let itemsKind = 'items', kindEdit = null;
 const KIND = { items: ['item', 'Search'], cats: ['category', 'Search categories'], mods: ['modifier', 'Search modifiers'],
-  discs: ['discount', 'Search discounts'], addons: ['add-on', 'Search add-ons'], hub: ['', 'Search'] };   // a list's search says which list it is
-// The hub (owner 2026-10-18, Mail's Mailboxes): the five lists as equal rows; Items opens the last one, ‹ comes back here
-const HUB = [['items', 'Items'], ['cats', 'Categories'], ['mods', 'Modifiers'], ['addons', 'Add-ons'], ['discs', 'Discounts']];
+  discs: ['discount', 'Search discounts'], addons: ['add-on', 'Search add-ons'], sups: ['supplier', 'Search suppliers'], hub: ['', 'Search'] };   // a list's search says which list it is
+// The hub (owner 2026-10-18, Mail's Mailboxes): the six lists as equal rows; Items opens the last one, ‹ comes back here
+const HUB = [['items', 'Items'], ['cats', 'Categories'], ['mods', 'Modifiers'], ['addons', 'Add-ons'], ['discs', 'Discounts'], ['sups', 'Suppliers']];
 const kindCats = () => state.folders.filter(f => f.id !== 'all');
 // Discounts (bo-model loadDiscounts): a name and a % or amount, picked in the cart's Discount sheet. Senior / PWD are built in.
+// Suppliers (owner 2026-11-11): a name and the items it stocks, A-Z; the back office's rows, archived ones gone
 const kindList = kind => (kind === 'cats' ? kindCats() : kind === 'discs' ? liveDiscounts() : kind === 'addons' ? [] :   // ponytail: Add-ons is a word only (owner try-out 2026-10-18), no data yet
+  kind === 'sups' ? loadSuppliers().filter(s => !s.archived && s.name).sort((a, b) => a.name.localeCompare(b.name)) :
    loadModifiers().filter(m => !m.archived));
-const isOn = { cats: (p, id) => foldersOf(p).includes(id), mods: (p, id) => (p.modifierIds || []).includes(id) };
+const isOn = { cats: (p, id) => foldersOf(p).includes(id), mods: (p, id) => (p.modifierIds || []).includes(id), sups: (p, id) => supplierIdsOf(p).includes(id) };
 const itemsWith = (kind, id, all = catalogItems()) => all.filter(it => it.members.some(m => isOn[kind](m, id)));
 
 // A .kinds switch: the pill slides from the old tab to `key`'s, a ::before placed by --x / --w. Until the first switch (and
@@ -713,15 +721,15 @@ function renderKindRows(kind, band, rows) {
   rows.innerHTML = list.map(x => `<button type="button" class="row cols k2" data-id="${escapeHtml(x.id)}">
       <span class="nm">${cats ? itemThumb(catLook(x)) : ''}<span class="tx"><b>${escapeHtml(x.name)}</b>${
         discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? (addPickOn(x.id) ? '<small>Already a tile</small>' : '')
-        : `<small class="mline"><span class="ch">${liveChoices(x).map(o => hit(o.name)).join(', ')}</span></small>`}</span></span>
+        : mods ? `<small class="mline"><span class="ch">${liveChoices(x).map(o => hit(o.name)).join(', ')}</span></small>` : ''}</span></span>
       <span class="num">${discs ? esShown(x) : SalesMath.plural(addPick ? toCells(catProducts(x.id)).length : itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
     || (q ? noResults(itemsFilter.q.trim()) : kind === 'addons' ? emptyState('addon', 'No add-ons yet') : discs ? emptyState('tags', 'Tap + to add a discount.')
-      : cats ? emptyState('folders', 'Tap + to group items for Sell.') : emptyState('sliders', 'Tap + to add a modifier,<br>like Gift wrap.'));
+      : cats ? emptyState('folders', 'Tap + to group items for Sell.') : kind === 'sups' ? emptyState('box', 'Tap + to add a supplier.') : emptyState('sliders', 'Tap + to add a modifier,<br>like Gift wrap.'));
 }
 
-function openKindEditor(kind, id, dir) {
+function openKindEditor(kind, id, dir, from = null) {
   if (editorDirty()) return askLeave(true, () => { closeItemEditor(); openKindEditor(kind, id); });
-  modFromItem = null;
+  modFromItem = from;
   const was = kindList(kind).find(x => x.id === id);
   const picked = new Set(was && isOn[kind] ? itemsWith(kind, was.id).map(it => it.id) : []);   // a discount isn't on items
   kindEdit = { kind, id: was ? was.id : '', sub: '', name: was ? was.name : '', picked,
@@ -740,6 +748,7 @@ function openKindEditor(kind, id, dir) {
 }
 
 function renderKindForm(dir) {
+  $('#itemSave').textContent = modFromItem ? 'Add' : 'Save';
   const pick = kindEdit.sub === 'items' || kindEdit.sub === 'add';
   $('#itemForm').closest('.editor').classList.toggle('picking', pick);
   if (pick) return renderPickPage(dir);
@@ -760,8 +769,8 @@ function renderKindForm(dir) {
   }
   // its items on their own page, in their own card, as a modifier's Asked on: no long list here (owner 2026-10-27)
   $('#itemForm').innerHTML = `<div class="form ${dir || ''}">${head}
-    ${icard('', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like Plumbing">`), '', ' r')}
-    ${pickRows('Items')}
+    ${icard('', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like ${K.kind === 'sups' ? 'Holcim' : 'Plumbing'}">`), '', ' r')}
+    ${modFromItem ? '' : pickRows('Items')}
     ${kindDropRow()}
   </div>`;
 }
@@ -835,7 +844,7 @@ function modMainPage() {
   return icard('', ifr('Name', `<input class="in" data-k="name" value="${escapeHtml(K.name)}" placeholder="Add name, like Gift wrap">`), '', ' r')
     + icard('', ifr('Customer picks', modPickBtn('picks', MODIFIER_PICKS[K.picks]), true), PICKS_NOTE[K.picks], ' r')
     + icard('Choices', K.options.filter(o => !o.removed).map(crow).join('') + '<button type="button" class="fr add" data-ka="choice-add">Add choice</button>', '', ' r')
-    + pickRows('Asked on', nHid ? inav('Hidden', String(nHid), 'hidden') : '')
+    + (modFromItem ? '' : pickRows('Asked on', nHid ? inav('Hidden', String(nHid), 'hidden') : ''))
     + kindDropRow();
 }
 function modChoicePage(o) {
@@ -890,7 +899,7 @@ const kindPickBar = () => {
   const K = kindEdit, n = [...K.picked].filter(id => !K.pool?.has(id)).length;
   $('#kindPickGo').disabled = false;   // the item's Add modifier page greys it
   $('#kindPickGo').innerHTML = K.sub === 'add' ? `<span>${n ? `Add ${SalesMath.plural(n, 'item')}` : 'Add items'}</span>`
-    : `<span>${SalesMath.plural(K.picked.size, 'item')}</span><span>${modFromItem ? 'Done' : 'Save'}</span>`;
+    : `<span>${SalesMath.plural(K.picked.size, 'item')}</span><span>Save</span>`;
 };
 // the bar's filter; a modifier's sheet also ticks all the rows on screen, or none (owner 2026-10-27: not a category's)
 function pickFilter(b) {
@@ -902,9 +911,11 @@ function pickFilter(b) {
     ['Category', 'cat', [['', 'All'], ...itemCategories().map(c => [c, c])]],
   ], K.af, PICK_AF_DEF, () => renderKindForm(), K.kind === 'mods' ? [['All shown', all(true)], ['None shown', all(false)]] : []);
 }
-// Back on a modifier's subpage: a new choice left blank goes; else the modifier
-function kindBack() {
+// Back on a modifier's subpage: a new choice left blank goes; else the modifier. The Back button on Items / Add items
+// puts the ticks back as the page opened: only the pill keeps them (owner 2026-11-11)
+function kindBack(back) {
   const K = kindEdit, o = K.kind === 'mods' && K.sub.includes(':') ? modCur() : null;
+  if (back && (K.sub === 'items' || K.sub === 'add')) K.picked = new Set(K.pool);
   if (o?.fresh) { if (String(o.name).trim()) delete o.fresh; else K.options.splice(K.options.indexOf(o), 1); }
   itemGo('', true);
 }
@@ -928,6 +939,10 @@ function tagItems(kind, id, keys, at) {
   const on = new Set(catalogItems().filter(it => keys.has(it.id)).flatMap(it => it.members.map(m => m.id))), firstOf = new Map();
   state.products = state.products.map(p => {
     if (p.archived || isOn[kind](p, id) === on.has(p.id)) return p;   // untouched rows keep their stamp
+    if (kind === 'sups') {   // the first supplier on an item is its main; the main leaving hands it to the next (owner 2026-11-11)
+      const ids = [...new Set(supplierIdsOf(p))].filter(x => x !== id).concat(on.has(p.id) ? id : []);
+      return { ...p, supplierId: ids[0] || '', altSupplierIds: ids.slice(1), updatedAt: at };
+    }
     if (kind === 'mods') { const ids = p.modifierIds || []; return { ...p, modifierIds: on.has(p.id) ? ids.concat(id) : ids.filter(x => x !== id), updatedAt: at }; }
     const folders = on.has(p.id) ? foldersOf(p).concat(id) : foldersOf(p).filter(x => x !== id);
     if (p.groupId) firstOf.set(p.groupId, folders[0] || '');
@@ -942,7 +957,7 @@ function tagItems(kind, id, keys, at) {
 function saveKind() {
   const K = kindEdit, word = KIND[K.kind][0], name = K.name.trim(), at = new Date().toISOString();
   if (!name) { if (K.sub) kindBack(); showToast(`Give the ${word} a name`); $('#itemForm [data-k=name]').focus(); return; }
-  if (kindList(K.kind).some(x => x.id !== K.id && x.name.toLowerCase() === name.toLowerCase())) { showToast(`A ${word} has that name already`); return; }
+  if ([...kindList(K.kind), ...waiting(K.kind)].some(x => x.id !== K.id && x.name.toLowerCase() === name.toLowerCase())) { showToast(`A ${word} has that name already`); return; }
   const id = K.id || newId();
   if (K.kind === 'discs') {
     const v = round2(Number(K.value)), pct = K.builtin || K.type === 'percent';   // checked as it will be stored
@@ -961,6 +976,10 @@ function saveKind() {
     const row = stampRow({ builtin: false, ...state.folders.find(f => f.id === id), id, name, imageUrl: K.img, color: K.color });
     state.folders = K.id ? state.folders.map(f => (f.id === id ? row : f)) : state.folders.concat(row);
     writeJsonStorage(STORAGE_FOLDERS, state.folders);
+  } else if (K.kind === 'sups') {
+    const list = loadSuppliers(), row = stampRow({ ...list.find(s => s.id === id), id, name });
+    if (modFromItem) return modNewBack(id, row);
+    saveSuppliers(K.id ? list.map(s => (s.id === id ? row : s)) : list.concat(row));
   } else {
     const live = K.options.filter(o => !o.removed), names = live.map(o => String(o.name).trim().toLowerCase());
     if (!live.length) { showToast('Add a choice'); return; }
@@ -972,11 +991,11 @@ function saveKind() {
     const unav = o => (!!o.unavailable !== !!K.u0[o.id] ? !!o.unavailable : !!now.get(o.id)?.unavailable);
     const row = stampRow({ ...MODIFIER_DEFAULTS, ...list.find(m => m.id === id), id, name, picks: K.picks,   // prices round2 pesos, as products'
       options: K.options.map(o => ({ id: o.id, name: String(o.name).trim(), price: round2(Number(o.price) || 0), unavailable: unav(o), removed: !!o.removed || !!now.get(o.id)?.removed })) });
+    if (modFromItem) return modNewBack(id, row);
     saveModifiers(K.id ? list.map(m => (m.id === id ? row : m)) : list.concat(row));
     modWriteHidden({ ...K, id }, at);   // tagItems below saves the products
   }
   tagItems(K.kind, id, K.picked, at);
-  if (modFromItem) { closeKindEditor('Saved', true); return modNewBack(id); }
   const stay = !!K.sub;
   if (stay) kindSaved(id);
   closeKindEditor('Saved', stay);
@@ -1006,6 +1025,10 @@ function dropKind() {
   if (K.kind === 'discs') {   // archived, not removed: old sales keep its name, and a sync never brings it back
     return showConfirm({ title: `Delete “${K.name}”?`, message: 'Sales that used it keep it on their receipt.', okText: 'Delete', danger: true,
       onConfirm: () => { saveDiscounts(loadDiscounts().map(d => (d.id === K.id ? stampRow({ ...d, archived: true }) : d))); closeKindEditor('Deleted'); } });
+  }
+  if (K.kind === 'sups') {   // archived, as in the back office: purchase orders keep its name
+    return showConfirm({ title: `Delete “${K.name}”?`, message: 'It comes off every item. Purchase orders keep its name.', okText: 'Delete', danger: true,
+      onConfirm: () => { tagItems('sups', K.id, new Set(), at); saveSuppliers(loadSuppliers().map(s => (s.id === K.id ? stampRow({ ...s, archived: true }) : s))); closeKindEditor('Deleted'); } });
   }
   // a modifier: off every item (its hidden choices too), the row archived so old sales and a sync still know it
   showConfirm({ title: `Delete “${K.name}”?`, message: 'It comes off every item. Sales that used it keep it on their receipt.', okText: 'Delete', danger: true,

@@ -3403,6 +3403,12 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
    when a line comes or goes (owner 2026-11-06). "₱13.00 off ₱65.00" over the cart Discount's total */
 .es-head .es-off b { color: var(--rl-on); font-weight: inherit; }   /* what's taken off, in the discount blue */
 .es-hero { color: var(--ink); font-family: var(--hero-font); font-size: var(--hero-fs); font-weight: var(--hero-fw); letter-spacing: -.04em; line-height: var(--hero-fs); font-variant-numeric: tabular-nums; min-width: 0; max-width: 100%; white-space: nowrap; }   /* checkout's; too wide = shrinks to fit (fitHeroes, app.js), its line's height stays */
+/* a big number typed on keys (heroPlay, pos-core.js): each character moves on its own and grows from its foot; a gone one sits over it */
+:where([data-ht]) { position: relative; }
+[data-ht] :is(.ch, .ch > i) { display: inline-block; font-style: normal; transform-origin: 50% 85%; }
+.ht-gone { position: absolute; top: 0; pointer-events: none; }
+.ht-fit .ch.ht-gone { display: none; }
+.ht-fit :is(.ch, .ch > i) { transform: none !important; }   /* fitHeroes (app.js) reads its width at rest; !important beats a running animation */
 .es-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .es-list:empty { display: none; }
 .esheet .es-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding: 0 16px; border-radius: var(--row-r, var(--es-r)); background: var(--row-bg, var(--tile));
