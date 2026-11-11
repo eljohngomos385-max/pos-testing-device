@@ -3318,14 +3318,14 @@ a.secondary-btn { text-decoration: none; }
 .vs-card > * { grid-area: 1 / 1; }
 .vs-head { position: relative; z-index: 1; align-self: start; display: flex; justify-content: space-between; gap: 12px; margin-inline: 2px; padding: 11px 16px; border-radius: var(--rl-r) var(--rl-r) 0 0;
            background: color-mix(in srgb, var(--rl-soft) 72%, transparent); -webkit-backdrop-filter: blur(6px) saturate(1.8); backdrop-filter: blur(6px) saturate(1.8);   /* 6: the rows still read through it; 20 smeared them to a solid strip */
-           box-shadow: 0 .5px 1px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
+           box-shadow: var(--glass-ring);   /* one rim, as the Orders date strip: a ring + drop of its own doubled the list's edge (owner 2026-11-11) */
            color: var(--ink-secondary); font-size: 12px; font-weight: 500; line-height: 1.4; }   /* .rail-h .i-head */
 .vs-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; color: var(--ink); font-weight: 550; }   /* not a button: band text, ink so it reads first */
 .vs-title #variantTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vs-count { flex: none; font-weight: 500; color: var(--ink-tertiary); }
 .vs-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 2px 6px; padding-top: 39px; border-radius: var(--rl-r);   /* 39: the strip (11 + 12 x 1.4 + 11) */
            background-color: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }   /* 2px/6px: room for its ring */
-body.light-theme .vs-head { background: color-mix(in srgb, var(--canvas) 78%, transparent); box-shadow: 0 .5px 1px rgb(0 0 0 / .05), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .45); }   /* the Orders date strip */
+body.light-theme .vs-head { background: color-mix(in srgb, var(--canvas) 78%, transparent); }   /* the Orders date strip */
 .vs-row {
   display: flex;
   align-items: center;
@@ -8054,6 +8054,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 /* Orders + Customers (owner 2026-10-30): two panes, each its own head and frost (the phone slides one over the other). The rail's frost
    sits on its .list: a positioned rail would carry Customers' +, which floats on .ov over the other pane's corner */
 .frost :is(.ov, .o-rail, .o-main) { padding-top: 0; }
+.frost .o-rail > .list::before { inset-inline: -12px; }   /* out to the screen's edges, as its rows' scroller (.lines' -12): stopping at the card's sides left a hard edge 12 in (owner 2026-11-11) */
 :where(.frost) .o-main { position: relative; }   /* iPad: the frost's box; the phone's sliding page is already absolute (and outranks this) */
 .frost .o-main > .o-top { box-sizing: content-box; }   /* the bar stays 44 under the clock padding */
 .frost .o-rail .lines { padding-top: calc(var(--head-h, 0px) + var(--rl-gap)); }
@@ -8061,6 +8062,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
 .frost .o-main > .paper-scroll { padding-top: calc(var(--head-h, 0px) + 15px); }   /* + the paper ring's 1 */
 .frost .o-main > .paper-scroll:has(> .receipt-preview) { padding-top: calc(var(--head-y) + var(--ph-top, 0px) + var(--bar-h) + 16px); }   /* the receipt on Orders' start line: the bar's own 44, not the phone name's extra line (owner 2026-10-31) */
 :is(.frost.view-orders :is(.o-rail > .list, .o-main:has(.ol .band)), .frost .page:has(> .c-scroll > .c-body > .o-days:first-child))::before { -webkit-mask-image: linear-gradient(#000 calc(100% - 28px), transparent calc(100% - 16px)); mask-image: linear-gradient(#000 calc(100% - 28px), transparent calc(100% - 16px)); }   /* the date band and the refund bar stick 16 under the head: solid down to their top, the fade hides behind them (rows read sharp in that strip, 2026-10-30). Only where the band is the page's first thing (Past shifts): on Cash in & out the Shift | Cash pill sits there and the solid strip hazed its top (owner 2026-11-01) */
+:is(.frost.view-orders .o-rail > .list, .frost .page:has(> .c-scroll > .c-body > .o-days:first-child))::before { -webkit-mask-image: linear-gradient(#000 calc(100% - 14px), transparent 100%); mask-image: linear-gradient(#000 calc(100% - 14px), transparent 100%); }   /* the date band: solid down past its round corners too (14), the fade behind its middle; fading at its top let the rows show sharper in the corners' gaps, a square past the round corner (owner 2026-11-11) */
 /* Items (owner 2026-10-18): its list pads .lines, not the scroller; its frost stays the stronger 80% + 12, solid down to the bar */
 /* the item / category / modifier / discount editor (owner 2026-10-30, their Boysen Latex Paint photo): one cell, its form running up
    under ‹ Back, the title, Save and the clock, behind the frost; the bar keeps the ☰ line (--head-y) */
@@ -8111,7 +8113,7 @@ body .cust-sheet .cs-grp .sw:not(:checked) { background: var(--line-strong); }  
       --lift: 0 2px 8px rgb(0 0 0 / .4), inset 0 .7px 0 rgb(255 255 255 / .12), inset 0 -.7px 0 rgb(255 255 255 / .06); }   /* the switch pill pressed (.kinds.press) */   /* falls only down and to the sides (blur/2 < spread + offset upward); owner 2026-10-18: 10/30 "floats too much" */   /* owner 2026-10-17: the 8/24 drop read as floating; glass sits close */
 /* light glass = the top bar's edge (owner 2026-11-06: "make it all match"): a soft faint drop and a white rim where the grey hairline was */
 body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card, .pay-sheet, .modal-backdrop) {
-  --glass-drop: 0 1px 6px rgb(0 0 0 / .043);   /* .035 blended in, .045 a bit much (owner 2026-11-06) */
+  --glass-drop: 0 0 6px rgb(0 0 0 / .043);   /* .035 blended in, .045 a bit much (owner 2026-11-06); no fall, so top and bottom edges match (owner 2026-11-11) */
   --glass-rim: rgb(255 255 255 / .55);   /* Apple's, measured on photo 161 */
   --glass-ring: var(--glass-drop), inset 0 0 0 .7px var(--glass-rim);
   --pill-ring: none;   /* the selected tab pill is flat, only the bar around it has the edge: Apple Music's picker (owner 2026-11-06, photo 180) */
@@ -8147,7 +8149,6 @@ body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view
    "equal ... just transparent"): one even hairline all round, no top highlight, no drop spilling under Total; dark is see-through */
 .rail-h .items, .rail-h.co-mode .pay { background: var(--glass); box-shadow: var(--glass-ring);   /* as Walk-in and the pills around it; --shadow-card's -1px spread left the sides flat (owner 2026-10-18) */
   -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
-body:not(.light-theme) .rail-h .items, body:not(.light-theme) .rail-h.co-mode .pay { background: transparent; box-shadow: 0 0 0 .5px rgb(255 255 255 / .2); -webkit-backdrop-filter: none; backdrop-filter: none; }   /* dark --line (.08) vanishes on black; .5px as the pills', thinner (owner 2026-10-18) */
 .rail-h .go span + span::before { content: '·'; margin-right: 8px; }
 /* THE main button: put class="cta" on it and it wears Check out's material (--cta-* in :root). Only the material: each button keeps its own
    size and shape. !important so the tag beats any older per-button colour; change the look in --cta-*, never on one button (owner 2026-10-28) */
@@ -8312,7 +8313,6 @@ body.light-theme .es-vat .sw:not(:checked) { background: var(--line-strong); }  
 .lv .rp-arw:disabled { background: var(--ink-quaternary); cursor: default; }
 .lv .rp-pl { flex: 1; min-width: 0; overflow: hidden; color: var(--ink-tertiary); font-size: 13px; text-align: left; white-space: nowrap; text-overflow: ellipsis; }
 .lv .rp-body { display: grid; gap: 12px; min-width: 0; }
-body.hairlines:not(.light-theme) .lv :is(.rp-body, #shiftBody, .sh-body, #shiftPastBody) .card.fc { border-color: var(--line); }   /* dark only now: light Shift and Reports are the lists' glass (owner 2026-11-06). the switch: <body class="hairlines"> in index.html (owner try 2026-10-16), the item rows' hairline, no shadow */
 .lv .rp-none { padding: 16px; color: var(--ink-tertiary); text-align: center; }
 /* Sales = reports-top-lab option 1 (owner 2026-10-15): "Sales" inside the card with the date on its right, the number, the
    chart; Profit · Orders · Margin in one card split by hairlines; Target (the back office's meter) under it */
@@ -8534,8 +8534,7 @@ body.light-theme:has(:is(.view-orders, .view-items).active) { background: var(--
 :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page, .o-days) .lines { margin: 0 -12px; padding-inline: 13px; padding-bottom: calc(16px + var(--ph-safe, 0px)); }
 .view-items .page .lines { padding-bottom: 88px; }   /* room under the last row for + */
 .view-items .band:has(+ div > .empty) { display: none; }   /* no rows: no head hanging over nothing */
-:is(.view-orders .o-rail, .view-items .page, .o-days) .band { height: 36px; margin-top: 16px; padding: 0 16px; border: 0; background: var(--canvas, var(--bg));
-                             box-shadow: 0 0 0 1px var(--canvas, var(--bg)); }   /* also hides the rows' 1px ring passing beside it */
+:is(.view-orders .o-rail, .view-items .page, .o-days) .band { height: 36px; margin-top: 16px; padding: 0 16px; border: 0; background: none; }   /* only its round ::before paints: a square canvas fill behind it stuck out past the round corners under the frost (owner 2026-11-11); the rows' rims are inset now, nothing passes beside it to hide */
 :is(.view-orders .o-rail, .view-items .page, .o-days) .band:first-child { margin-top: 8px; }
 /* the date strip sticks where it rests, 8 under the search, so it never slides up first (owner 2026-10-19); the rows passing that gap
    slide under the frost, no canvas strip (owner 2026-10-30). A sticky top counts from the scroller's padding, so 8 stays 8 */
@@ -8559,8 +8558,8 @@ body.light-theme :is(.view-orders .o-rail, .view-customers .o-rail, .view-items 
 body.light-theme :is(.view-orders .o-rail, .o-days) .band::before { box-shadow: var(--glass-ring); }   /* the date strip = the top bar's edge too (owner 2026-11-06) */
 /* QR codes, the customer's page and Reports in the lists' glass (owner 2026-10-18); Reports keeps its hairline, so only the drop and the lit edge */
 .lv:is(.view-qr, .view-reports) .card, #customerBody .card { border-color: transparent; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
-body.hairlines:not(.light-theme) .lv.view-reports .card { border-color: var(--line); box-shadow: 0 1px 4px rgb(0 0 0 / .3), inset 0 1px 0 rgb(255 255 255 / .1); }
-body.light-theme .lv.view-shift .card { border-color: transparent; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }   /* Shift and Reports = the lists' glass, no outline of their own (owner 2026-11-06) */
+.lv.view-shift .card { border-color: transparent; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }   /* Shift and Reports = the lists' glass, no outline of their own, both themes (owner 2026-11-06, 2026-11-11) */
+.lv:is(.view-qr, .view-reports, .view-shift) .card { border: 0; padding: 1px; }   /* the ring was drawn inside a 1px see-through border: a soft edge outside it read as a double line (owner 2026-11-11); the padding keeps the size */
 /* every ‹ and everything top right sits in the ☰'s glass circle, words in a glass pill (owner 2026-10-18) */
 .lv .sq:is(.back, .ty-edit-btn), .lv .head > .sh-print, body .lv .e-top .acts .act, body .lv .o-top .act:not(.primary), .cust-sheet .es-x, .cust-sheet .es-ink, .fsheet :is(.fs-x, .fs-ok, .fs-clear), .ag-top .fs-x {
   width: 44px; min-width: 44px; height: var(--cta2-h, 44px); padding: 0; border: 0; border-radius: var(--cta2-r, 999px); color: var(--cta2-ink, var(--ink));
@@ -8864,7 +8863,7 @@ html.side-half :where(#app:not(.bo-app)) .sidebar { padding-top: var(--ph-top, 0
 html.side-half .main { padding-top: var(--ph-top, 0px); background-image: linear-gradient(var(--canvas, var(--bg)) 0 0); background-size: 100% var(--ph-top, 0px); background-repeat: no-repeat; }   /* the strip behind the status bar is the page grey, not the white card: it turned the iPad top white on open (owner 2026-10-17) */
 html.side-half #app:not(.sidebar-collapsed) .main { transform: translateX(var(--half-w)); }
 html.side-half #app:is(:not(.sidebar-collapsed), .drawer-drag) .main { box-shadow: 0 0 0 1px rgb(16 24 40 / .07), -6px 0 28px rgb(0 0 0 / .12); }   /* the back office sheet's hairline (--po-sheet-shadow) + the drawer's own shadow back: the sheet's 3px one didn't show (owner 2026-10-19) */
-html.side-half body:not(.light-theme) #app:is(:not(.sidebar-collapsed), .drawer-drag) .main { box-shadow: 0 0 0 1px var(--line-strong); }   /* black on black: a shadow can't show, an edge does */
+html.side-half body:not(.light-theme) #app:is(:not(.sidebar-collapsed), .drawer-drag) .main { box-shadow: 0 0 0 1px var(--line); }   /* black on black: a shadow can't show, an edge does; --line, not --line-strong: it read too drawn (owner 2026-11-11) */
 @media (max-width: 720px) {   /* phone: the open page shrinks a little and rounds, the menu's colour showing above and below, DeepSeek's measured off a recording (owner 2026-11-10, a try). One fixed corner: a web page can't read a phone's own, and off the screen's edge it needn't match. Anchored left so the peek stays 76; app.js drawer scales it the same under the finger */
   html.side-half .main { transform-origin: 0 50%; transition: transform var(--menu-slide), border-radius 0s var(--menu-time); }   /* closing: the corners stay round to the end of the slide */
   html.side-half #app:not(.sidebar-collapsed) .main { transform: translateX(var(--half-w)) scale(.95); border-radius: 40px; transition: transform var(--menu-slide); }   /* opening: round at once, as DeepSeek's are. Never animate the corner: it redraws the page on every frame of the slide (77 style-and-paint rounds an opening against 15) */
@@ -9290,3 +9289,48 @@ body.light-theme .lv :is(#itemsKinds, .kinds.rp-units) button { color: var(--ink
 .fsheet .pl-syms button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--ink-secondary); }
 .fsheet .pl-syms svg { width: calc(24px * var(--g, 1)); height: calc(24px * var(--g, 1)); fill: currentColor; stroke: none; }
 .fsheet .pl-syms button[aria-pressed="true"] { background: var(--tile); color: var(--ink); }
+
+/* ===== DARK + LIGHT MATERIAL (owner 2026-11-11, tried in pos-lab-dark2) =====
+   The budget app's card step: page #1A1A1A, cards #202020 (6 levels up, not 10), and one faint line
+   between rows (the old dark drew three: each row's rim top + bottom plus the divider). */
+body:not(.light-theme) {
+  --bg: #1A1A1A;
+  --bg-soft: #202020;
+  --bg-softer: #262626;
+  --surface: #262626;
+  --surface-hover: #2E2E2E;
+  --surface-2: #202020;
+  --tile: #262626;
+}
+body:not(.light-theme) :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card, .pay-sheet, .modal-backdrop) {
+  --glass: rgb(35 35 35 / .7);   /* over the #1A page = #202020, the budget app's card */
+  --glass-ring: inset 0 0 0 .5px rgb(255 255 255 / .05);
+  --pill-ring: none;
+}
+/* tiles: light's recipe (faint rim + small drop), the drop darker so it reads on a dark page */
+body:not(.light-theme) .product-card { box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .01), 0 1px 3px rgb(0 0 0 / .07); }   /* owner: 80% less than .045 / .35 */
+body:not(.light-theme) :is(.view-orders .o-rail, .o-days) .band::before { box-shadow: var(--glass-ring); }
+body:not(.light-theme) :is(.view-orders .o-rail, .view-items .page, .o-days) .band::before { background: var(--rl-soft); }
+/* rows, both themes: the block keeps its outer rim (sides, first top, last bottom); inside, only one faint line under each row */
+#app { --rim: rgb(255 255 255 / .045); --sep: rgb(255 255 255 / .04); }
+body.light-theme #app { --rim: rgb(0 0 0 / .06); --sep: rgb(0 0 0 / .08); }   /* light's old .08 line between rows kept */
+#app :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page, .o-days) .row {
+  box-shadow: inset .5px 0 0 var(--rim), inset -.5px 0 0 var(--rim), inset 0 -.5px 0 var(--sep); }
+#app :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page, .o-days) .row:is(:first-child, .band + .row) {
+  box-shadow: inset .5px 0 0 var(--rim), inset -.5px 0 0 var(--rim), inset 0 .5px 0 var(--rim), inset 0 -.5px 0 var(--sep); }
+#app :is(.view-orders .o-rail, .view-customers .o-rail, .view-items .page, .o-days) .row:is(:has(+ .band), :last-child) {
+  box-shadow: inset .5px 0 0 var(--rim), inset -.5px 0 0 var(--rim), inset 0 -.5px 0 var(--rim); }
+/* the rounded first row (Customers, Items): one even ring, as the cards'. Three offset lines bent round its corners unevenly on the
+   iPhone, a "weird outline" over the top (owner 2026-11-11); the ring's foot stands in for the line under the row */
+#app :is(.view-customers .o-rail, .view-items .page) .row:is(:first-child, .band + .row) { box-shadow: inset 0 0 0 .5px var(--rim); }
+/* side menu's round buttons (stores, ✕, settings) = the ☰'s flat glass, no drop and no bright rim */
+body:not(.light-theme) #app :is(.side-top > :is(#sellSwitch, .side-x), .side-link[data-view="settings"]) {
+  --glass: rgb(35 35 35 / .7); --glass-ring: inset 0 0 0 .5px rgb(255 255 255 / .05); }
+/* light = dark's structure (owner 2026-11-11: "the structure looks much better"): one even thin line round every glass piece,
+   no soft halo, so Shift / Reports / Day-Week-Month / search / ☰ edge the same in both themes */
+body.light-theme :is(.lv, #catalogSearchRow, #side, .cust-sheet, .fs-veil, .view-checkout, .esheet, .vsheet, .pk-card, .pay-sheet, .modal-backdrop) {
+  --glass-ring: inset 0 0 0 .5px rgb(0 0 0 / .06); }
+body.light-theme :is(.lv, #catalogSearchRow) { --top-ring: var(--glass-ring); --top-rim: transparent; }   /* search + ☰ as dark's */
+/* card rows (Shift, Reports, Settings): the lists' line, .5px of --sep, not 1px of --rl-div — 3x stronger, and it ran into the
+   right edge only, so the card's edge read drawn (owner 2026-11-11: "Customers / Items / Orders look so clean") */
+#app .lv .fc > * + * { background-image: linear-gradient(var(--sep), var(--sep)); background-size: 100% .5px; }
