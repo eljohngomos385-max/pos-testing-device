@@ -696,14 +696,15 @@ function attachEvents() {
     if (state.view !== 'orders') { switchView('orders'); $('#ordersView').classList.add('reading'); }   // the details pop-up opens from Reports too
     orderPicks(o); Object.assign(orderPick, { on: true, mode: 'exchange' }); state.selectedOrderId = o.id; morph(renderOrderDetail); };
   // ⋯: the ticks are the lines refunds and exchanges use, so "Refund items" is the list itself now.
-  const orderMenu = (btn, o) => openMenu(btn, [
+  // iPad: the same half sheet as the phone, its own rows (owner 2026-11-11: "just sheets", no pop-up by the button)
+  const orderMenu = (btn, o) => openActionSheet(btn, `#${o.number}`, [
     { label: 'Order details', run: () => openOrderDetailModal(o.id) },
     { label: 'Exchange', off: !isCompletedSale(o), run: () => exchangeItems(o) },
     '-',
     o.draft ? { label: 'Delete', red: true, run: () => showConfirm({ title: `Delete “${o.name || orderStatusLabel(o)}”?`, okText: 'Delete', danger: true,
       onConfirm: () => { HWPOS_STORE.savedCarts.remove(o.id); if (state.savedId === o.id) state.savedId = ''; renderOrders(); showDone('Deleted'); } }) }
       : { label: 'Void sale', red: true, off: !canVoid(o), run: () => askVoid(o) },
-  ], { w: 200, right: true });
+  ]);
   // phone: the bar keeps ‹ and ⋯ only, so ⋯'s sheet carries Print receipt and Refund too (owner 2026-10-19).
   // A draft hides ⋯ (refundAct), so the sheet only ever sees a sale.
   $('#orderMore')?.addEventListener('click', (e) => { const o = shownOrder(); if (!o) return;
@@ -1129,9 +1130,9 @@ function attachEvents() {
   }
   $('#cartMoreBtn').addEventListener('click', (e) => {
     const empty = state.cart.length === 0;
-    // phone: the order ⋯'s half sheet (openActionSheet) in place of the pop-up, which sat over the lines (owner 2026-10-26)
-    const show = matchMedia('(max-width: 720px)').matches ? (b, items) => openActionSheet(b, 'Sale', items) : (b, items) => openMenu(b, items, { w: 200, right: true });
-    show(e.currentTarget, [
+    // the order ⋯'s half sheet (openActionSheet) in place of the pop-up, which sat over the lines (owner 2026-10-26);
+    // the iPad too (owner 2026-11-11)
+    openActionSheet(e.currentTarget, 'Sale', [
       { label: 'Custom item', run: () => openEditSheet('custom') },
       { label: state.orderNote ? 'Edit note' : 'Add note', run: openOrderNote, off: empty },
       // A saved cart / quote is a draft beside the orders (pos-checkout saveDraft); an exchange can't be parked.

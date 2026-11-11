@@ -1,0 +1,59 @@
+/* Pop-up designs to try (owner 2026-11-11). Lab copy only: pos-lab has none of this. The design is a body class
+   (pd-card, pd-list, pd-ink); with none the app is as it is. Drawn by popdesign.js.
+   Round 4 (owner: the iPhone glass "looks really weird ... the corner ... the spacing", redesign from scratch): built
+   from the app's own rules instead of a copy of the iPhone — a box this size is round 14 like the sale sidebar,
+   depth from a soft shadow (floating layers only), the app's font, and the box only as wide as its words need.
+   Still on its button, no icons, nothing behind dimmed (round 2). */
+
+/* the picker in the side menu */
+.pd-pick { display: grid; gap: 4px; padding: 0 8px 4px; font-size: 13px; color: var(--ink-tertiary); }
+.pd-pick span { padding-left: 19px; }   /* the words sit on the menu icons' line */
+.pd-pick select { width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-input); background: var(--surface); color: var(--ink); font: 15px var(--font, inherit); }
+
+/* Card: a white card with rows that press as a soft pill */
+body.pd-card { --pd-bg: var(--bg); --pd-ink: var(--ink); --pd-sub: var(--ink-tertiary); --pd-red: var(--danger);
+  --pd-press: var(--rl-hover); --pd-hr: var(--line); --pd-field: var(--surface); --pd-r: var(--rl-r);
+  --pd-pad: 6px; --pd-row: 44px; --pd-x: 14px; --pd-pill: 8px; --pd-fs: 16px;
+  --pd-shadow: 0 0 0 1px var(--line), 0 2px 6px rgb(0 0 0 / .05), 0 14px 36px rgb(0 0 0 / .14); }
+/* List: the box is one grouped list, a line between every row, a grey gap between groups */
+body.pd-list { --pd-bg: var(--bg); --pd-ink: var(--ink); --pd-sub: var(--ink-tertiary); --pd-red: var(--danger);
+  --pd-press: var(--surface); --pd-hr: var(--line); --pd-field: var(--surface); --pd-r: var(--rl-r);
+  --pd-pad: 0px; --pd-row: 48px; --pd-x: 16px; --pd-pill: 0px; --pd-fs: 16px;
+  --pd-shadow: 0 0 0 1px var(--line), 0 2px 6px rgb(0 0 0 / .05), 0 14px 36px rgb(0 0 0 / .14); }
+/* Ink: the box is the page's ink, small and tight, like a tooltip that grew rows */
+body.pd-ink { --pd-bg: var(--ink); --pd-ink: var(--bg); --pd-sub: color-mix(in srgb, var(--bg) 60%, transparent); --pd-red: #FF6B61;
+  --pd-press: color-mix(in srgb, var(--bg) 14%, transparent); --pd-hr: color-mix(in srgb, var(--bg) 16%, transparent);
+  --pd-field: color-mix(in srgb, var(--bg) 12%, transparent); --pd-r: 12px;
+  --pd-pad: 5px; --pd-row: 40px; --pd-x: 13px; --pd-pill: 7px; --pd-fs: 15px;
+  --pd-shadow: 0 2px 6px rgb(0 0 0 / .10), 0 12px 32px rgb(0 0 0 / .20); }
+@media (min-width: 721px) { body.pd-card, body.pd-list { --pd-row: 40px; --pd-fs: 15px; } body.pd-list { --pd-row: 44px; } body.pd-ink { --pd-row: 36px; --pd-fs: 14px; } }
+
+/* the layer behind only catches the tap that closes; the page stays as it is */
+.pd-veil { position: fixed; inset: 0; z-index: 150; }
+
+/* the box: only as wide as its longest row */
+.pd-box { position: fixed; z-index: 151; display: flex; flex-direction: column; width: max-content; min-width: 180px; max-width: min(300px, calc(100vw - 16px));
+  max-height: calc(100dvh - 24px); padding: var(--pd-pad) 0; overflow: hidden;
+  background: var(--pd-bg); color: var(--pd-ink); border-radius: var(--pd-r); box-shadow: var(--pd-shadow); font-size: var(--pd-fs); }
+.pd-box button { font: inherit; color: inherit; background: none; border: 0; padding: 0; }
+.pd-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.pd-box .pd-row { position: relative; display: flex; align-items: center; gap: 12px; width: calc(100% - 2 * var(--pd-pad)); min-height: var(--pd-row);
+  margin: 0 var(--pd-pad); padding: 5px var(--pd-x); padding-right: calc(var(--pd-x) + 14px); border-radius: var(--pd-pill); text-align: left; }
+.pd-row:active, .pd-row:focus-visible { background: var(--pd-press); outline: 0; }
+.pd-row > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-row > span small { display: block; font-size: .8em; color: var(--pd-sub); overflow: hidden; text-overflow: ellipsis; }
+.pd-row.cur { font-weight: 600; }
+.pd-row .ok { flex: none; width: 16px; height: 16px; margin-right: -14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }   /* the tick on the right, in the row's spare room */
+.pd-row.red { color: var(--pd-red); }
+.pd-row:disabled { opacity: .4; }
+.pd-box hr { height: 0; margin: var(--pd-pad) var(--pd-x); border: 0; border-top: 1px solid var(--pd-hr); }
+/* List: a line under every row, inset to the words; a group break is a grey band */
+body.pd-list .pd-row + .pd-row::before { content: ''; position: absolute; top: 0; left: var(--pd-x); right: 0; border-top: 1px solid var(--pd-hr); }
+body.pd-list .pd-box hr { height: 8px; margin: 0; border: 0; background: var(--surface); }
+
+/* Customer: covers the customer bar, a search on top, the list scrolls inside */
+.pd-cust { max-height: min(440px, calc(100dvh - 24px)); padding-top: 8px; }
+.pd-find { flex: none; margin: 0 8px 6px; }
+.pd-find input { width: 100%; height: 38px; padding: 0 12px; border: 0; border-radius: var(--r-input); background: var(--pd-field); color: var(--pd-ink); font: inherit; font-size: 16px; outline: 0; }   /* 16px: iOS does not zoom in */
+.pd-find input::placeholder { color: var(--pd-sub); }
+.pd-none { padding: 12px var(--pd-x); color: var(--pd-sub); }

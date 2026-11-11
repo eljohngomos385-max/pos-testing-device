@@ -470,8 +470,7 @@ function itemVariantPage(v) {
     + (E.variants.length > 1 ? icard('', iadd('del-variant', 'Remove variant', ' red')) : '');
 }
 
-// the dropdowns, the ⋯ menu's morph as in Settings. On the phone Markup is the cart ⋯'s half sheet (as app.js
-// #cartMoreBtn)
+// the dropdowns: the cart ⋯'s half sheet (as app.js #cartMoreBtn), phone and iPad (owner 2026-11-11: "just sheets")
 function itemPick(b) {
   const E = itemEdit, v0 = E.variants[0], act = b.dataset.act;
   const opt = (k, label, cur, run) => ({ label, cur, run });
@@ -480,8 +479,7 @@ function itemPick(b) {
       () => { E.marginMode = k; E.marginValue = itemMarkupOf(v0, k); renderItemForm(); }))
     : act === 'main' ? ['', ...E.sups].map(id => opt(id, id ? supName(id) : 'None', E.main === id, () => { E.main = id; b.firstChild.textContent = supName(id) || 'None'; }))
     : null;
-  if (act === 'mmode' && matchMedia('(max-width: 720px)').matches) openActionSheet(b, 'Markup', items);
-  else if (items) openMenu(b, items, { w: 200, right: true });
+  if (items) openActionSheet(b, { status: 'Status', mmode: 'Markup', main: 'Main supplier' }[act], items);
 }
 
 // cost / margin / price: any two drive the third (the back office's three-way binding)
@@ -789,7 +787,7 @@ function kindInput(t) {
   }
 }
 function kindClick(b) {
-  const K = kindEdit, ka = b.dataset.ka, menu = (opts, cur, run) => openMenu(b, opts.map(([k, label]) => ({ label, cur: cur === k, run: () => run(k) })), { w: 200, right: true });
+  const K = kindEdit, ka = b.dataset.ka, menu = (opts, cur, run) => openActionSheet(b, { type: 'Type', picks: 'Customer picks', status: 'Status' }[ka], opts.map(([k, label]) => ({ label, cur: cur === k, run: () => run(k) })));   // the half sheet, as itemPick
   if (b.dataset.sub) return itemGo(b.dataset.sub);   // a modifier's subpages
   if (ka === 'type') menu([['percent', 'Percent'], ['amount', 'Amount']], K.type, k => { K.type = k; renderKindForm(); $('#itemForm [data-k=value]').focus(); });
   if (ka === 'picks') menu(Object.entries(MODIFIER_PICKS), K.picks, k => { K.picks = k; renderKindForm(); });

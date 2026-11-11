@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sell Switch Lab</title>
+<!-- Sell › My page | All items (owner 2026-10-21): where the switch between your own page and every item lives.
+     The real lab app in a frame; each idea is a few lines of CSS + DOM dropped into it, nothing in the app changes.
+     My page is Shopify's: your tiles, then one "Add tile" that asks Item or Category. Flow only, no saving. -->
+<style>
+:root { --bg: #f2f2f7; --ink: #111; --soft: #6b6b70; --line: #d8d8dc; --card: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0b0b0c; --ink: #f2f2f2; --soft: #9a9aa0; --line: #2c2c2e; --card: #1c1c1e; } }
+:root[data-theme="dark"] { --bg: #0b0b0c; --ink: #f2f2f2; --soft: #9a9aa0; --line: #2c2c2e; --card: #1c1c1e; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; background: var(--bg); color: var(--ink); font: 14px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 16px; }
+select, header button { height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: inherit; font: inherit; }
+header button { cursor: pointer; }
+#note { flex-basis: 100%; color: var(--soft); }
+.stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+iframe { position: absolute; left: 50%; top: 50%; border: 0; background: #000; transform-origin: center; }
+iframe.phone { border-radius: 44px; }
+</style>
+</head>
+<body>
+<header>
+  <select id="idea" aria-label="Idea"></select>
+  <select id="dev" aria-label="Device"><option value="phone">iPhone</option><option value="ipad">iPad</option></select>
+  <button type="button" id="prev" aria-label="Previous idea">‹</button>
+  <button type="button" id="next" aria-label="Next idea">›</button>
+  <div id="note"></div>
+</header>
+<div class="stage"><iframe id="f" title="POS"></iframe></div>
+<script>
+// ---------- round 3 (owner 2026-10-21): 8-11 and the menu's sub-rows are gone; the iPad switch sits at the tiles' bottom-left and is
+// 56 (the Items page's +); the bottom glass is flat, the items pill's shadow. New: a circle that slides open, three menu ideas without sub-rows.
+// ---------- round 2 (owner 2026-10-21): words at the top were "too big", "disruptive". Every idea is now one small round glass
+// switch, icons only; the search, ☰ and the items pill stay (they may shrink a little). Round 1's capsule, word, tabs,
+// search = all, All items tile, chips, title and Finder icons are gone. Icons are the menu's own: Sell's house = My page, Items' tag = All items.
+const HOME = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.3a2 2 0 0 1 .8-1.6l6-4.5a2 2 0 0 1 2.4 0l6 4.5a2 2 0 0 1 .8 1.6V19a2 2 0 0 1-2 2h-3.5v-4.5a2.5 2.5 0 0 0-5 0V21H6a2 2 0 0 1-2-2z"/></svg>';
+const TAG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 5.5a2 2 0 0 1 2-2h5.7a2 2 0 0 1 1.4.6l7.6 7.6a2.5 2.5 0 0 1 0 3.5l-5.3 5.3a2.5 2.5 0 0 1-3.5 0l-7.6-7.6a2 2 0 0 1-.3-1.4z"/><circle cx="8" cy="8" r="1.5"/></svg>';
+const IDEAS = [
+  { n: 'Circle + items pill (your photo)', note: 'Phone: the switch circle, then the items pill, in the pill\'s old space (the pill is one circle shorter). iPad: the circle at the tiles\' bottom-left.',
+    put(d, ph, ui) { ui.pair(ui.one('now'), 52); } },
+  { n: 'Circle + items pill, pill untouched', note: 'Phone: the same pair, the items pill at full width, the two centred together. iPad: bottom-left.',
+    put(d, ph, ui) { ui.pair(ui.one('now'), 0); } },
+  { n: 'Inside the items pill', note: 'Phone: the pill keeps its size, its left end is the switch. iPad: bottom-left.',
+    put(d, ph, ui) { ui.pair(ui.one('now'), 0, true); } },
+  { n: 'Circle at the left edge', note: 'The items pill stays centred and untouched; the switch sits at the left edge. The icon is the page you are on: the house on My page, the tag on All items.',
+    put(d, ph, ui) { ui.bottom(ui.one('now')); } },
+  { n: 'Left edge, icon shows where it goes', note: 'Same spot; the icon is the page a tap takes you to: the tag on My page, the house on All items.',
+    put(d, ph, ui) { ui.bottom(ui.one('next')); } },
+  { n: 'Circle at the right edge', note: 'The same circle on the right.',
+    put(d, ph, ui) { ui.bottom(ui.one('now'), 'r'); } },
+  { n: 'Two-icon pill + items pill', note: 'Your photo\'s tab pill with two tabs; the grey thumb slides to the page you are on. Phone: the items pill gets shorter.',
+    put(d, ph, ui) { ui.bottom(ui.pill(), 'wide'); } },
+  { n: 'Circle that slides open', note: 'One circle, as 4. A tap switches at once, and the circle opens into the two-icon pill for a moment so you see the thumb slide to where you went, then closes again.',
+    put(d, ph, ui) {
+      const s = ui.pill(); s.classList.add('swl-morph'); let t;
+      s.querySelectorAll('button').forEach(b => { b.onclick = null; });
+      s.onclick = e => {
+        const m = e.target.closest('[data-m]')?.dataset.m;
+        if (s.classList.contains('open') && m) ui.go(m); else ui.flip();
+        s.classList.add('open'); clearTimeout(t); t = setTimeout(() => s.classList.remove('open'), 1100);
+      };
+      ui.bottom(s);
+    } },
+  { n: 'Menu: a switch at the end of Sell', note: 'No sub-rows. Sell\'s row in ☰ ends in a small circle: tap Sell to go there, tap the circle to go there on the other page.',
+    put(d, ph, ui) {
+      const b = ui.one('next', true); b.classList.add('swl-mini'); b.onclick = e => { e.stopPropagation(); ui.flip(); ui.sell.click(); };
+      ui.sell.append(b);
+    } },
+  { n: 'Menu: two icons at the end of Sell', note: 'No sub-rows. Sell\'s row ends in the small two-icon pill: the house or the tag takes you straight there.',
+    put(d, ph, ui) {
+      const p = ui.pill(); p.classList.remove('swl-glass'); p.classList.add('swl-mini');
+      p.querySelectorAll('button').forEach(b => { const m = b.dataset.m; b.onclick = e => { e.stopPropagation(); ui.go(m); ui.sell.click(); }; });
+      ui.sell.append(p);
+    } },
+  { n: 'Menu: tap Sell again', note: 'No sub-rows. Sell\'s row says which page you are on in small grey; while you are on Sell, tapping Sell again flips it.',
+    put(d, ph, ui) {
+      const l = d.createElement('small'); l.className = 'swl-lbl'; ui.sell.append(l);
+      ui.sell.addEventListener('click', () => { if (ui.sell.classList.contains('active')) ui.flip(); }, true);
+    } },
+  { n: 'Messages: pill + circle, merge on tap', note: 'As iPhone Messages: pill steps left, circle at its right. Tap the pill: they merge, then the cart opens.',
+    put(d, ph, ui) {
+      if (!ph) return ui.bottom(ui.one('now'));
+      const bar = d.getElementById('cartBar'), app = d.getElementById('app'); let go = false;
+      ui.bottom(ui.one('now'), 'msg'); d.body.classList.add('swl-msg');
+      bar.addEventListener('click', e => {   // capture on the pill itself: runs before the app's own click, which opens the cart
+        if (go) return;
+        e.stopImmediatePropagation(); d.body.classList.add('swl-merge');
+        setTimeout(() => { go = true; bar.click(); go = false; }, 380);
+      }, true);
+      new MutationObserver(() => { if (!app.classList.contains('ph-cart')) d.body.classList.remove('swl-merge'); }).observe(app, { attributes: true, attributeFilter: ['class'] });
+    } },
+  // ---------- round 4 (owner 2026-10-21): 4 is the pick; on the iPad its circle sat on the last tile's name. Four ways out
+  { n: 'Fix A: its own strip at the bottom', note: 'iPad: the tiles stop a little higher; the strip under them is the switch\'s alone, its foot on Check out\'s line. Phone: as 4.',
+    put(d, ph, ui) {
+      ui.bottom(ui.one('now')); if (ph) return;
+      const w = d.defaultView, cat = d.querySelector('.catalog'), pay = d.getElementById('payBtn'), box = d.querySelector('.swl-bot');
+      const c = cat.getBoundingClientRect(), b = pay.getBoundingClientRect();
+      cat.style.paddingBottom = (c.bottom - b.bottom + 56 + 12) + 'px';   // the grid ends 12 above the switch's top
+      box.style.bottom = (box.offsetParent.getBoundingClientRect().bottom - b.bottom) + 'px';
+      w.renderProducts();
+    } },
+  { n: 'Fix B: a saved corner', note: 'iPad: the bottom-left spot on every page stays empty and the switch sits in it. Tiles keep their size; a page holds one fewer. Phone: as 4.',
+    put(d, ph, ui) {
+      ui.bottom(ui.one('now')); if (ph) return;
+      const w = d.defaultView, size = w.sellPageSize, render = w.renderProducts, box = d.querySelector('.swl-bot');
+      w.sellPageSize = pr => size(pr) - 1;   // ponytail: lab only, the real app would count the hole in sellPageSize
+      w.renderProducts = (...a) => {
+        const r = render(...a), g = d.getElementById('productGrid');
+        const at = (+g.style.getPropertyValue('--grid-rows') - 1) * +g.style.getPropertyValue('--grid-cols');
+        g.querySelectorAll('.product-page').forEach(pg => { if (pg.children[at]) pg.insertBefore(Object.assign(d.createElement('div'), { className: 'swl-hole' }), pg.children[at]); });
+        place(); return r;
+      };
+      function place() {   // All items: the switch sits in the hole itself; My page: back at the tiles' bottom-left
+        const h = d.querySelector('#productGrid .swl-hole');
+        (h && !d.body.classList.contains('swl-mine') ? h : d.querySelector('.catalog')).append(box);
+      }
+      box.addEventListener('click', place);
+      w.renderProducts();
+    } },
+  { n: 'Fix C: beside the search', note: 'Top right, between the search and Walk-in: the search is one circle shorter, the switch takes the end. Scan stays inside the search. Phone too.',
+    put(d, ph, ui) { const b = ui.one('now', true); b.classList.add('swl-top'); d.getElementById('catalogSearchRow').append(b); } },
+  { n: 'Fix D: inside the search, by scan', note: 'The search keeps its length; scan moves left a little and the switch takes the search\'s right end. Phone too.',
+    put(d, ph, ui) { const b = ui.one('now', true); b.classList.add('swl-ins'); d.querySelector('#catalogSearchRow > .search-wrap').append(b); d.body.classList.add('swl-ins-on'); } },
+];
+
+// ---------- what every idea shares, written into the frame: the switch, My page, the Add tile card ----------
+const CSS = `
+.search-row { flex-wrap: wrap; }
+.search-wrap > #scanBtn { position: absolute; right: 0; top: 0; z-index: 1; display: grid; place-items: center; width: 44px; height: 100%; border: 0; border-radius: 50%; background: none; box-shadow: none; color: var(--ink-secondary); }
+.search-wrap:has(#searchInput:not(:placeholder-shown)) > #scanBtn { display: none; }
+.catalog { position: relative; }
+body.swl-mine #productGrid { display: none; }
+#swlMine { display: none; }
+body.swl-mine #swlMine { display: block; }
+#swlMine .product-page { grid-template-columns: repeat(var(--grid-cols, 5), minmax(0, 1fr)); }
+.swl-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: none !important; box-shadow: inset 0 0 0 1.5px var(--line) !important; color: var(--ink-secondary); font-weight: 550; cursor: pointer; }
+.swl-add b { font-size: 26px; font-weight: 400; line-height: 1; }
+.swl-cat .swl-n { position: absolute; top: 12px; left: 12px; color: var(--ink-secondary); font-size: 12px; font-weight: 550; }
+.swl-cat { background: var(--rl-soft) !important; }
+.swl-ov { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: rgb(0 0 0 / .32); animation: swl-in .16s ease-out; }
+.swl-card { width: min(320px, calc(100% - 48px)); padding: 8px; border-radius: calc(var(--rl-r) + 6px); background: var(--surface); box-shadow: 0 12px 40px -8px rgb(0 0 0 / .35); }
+.swl-card h3 { margin: 10px 12px 8px; font-size: 17px; font-weight: 650; text-align: center; }
+.swl-card button { display: block; width: 100%; height: var(--bar-h); margin-top: 6px; border: 0; border-radius: var(--rl-r); background: var(--rl-soft); color: var(--ink); font: inherit; font-size: 15px; font-weight: 550; cursor: pointer; }
+.swl-card button.x { background: none; color: var(--ink-secondary); }
+@keyframes swl-in { from { opacity: 0; } }
+/* the head's glass. The app sets --glass only inside the head and the sheets (styles.css .lv, #catalogSearchRow ...), so a circle at the
+   bottom had none and looked bare; the same values here */
+.swl-glass { --glass: color-mix(in srgb, var(--bg) 70%, transparent); --glass-ring: 0 1px 4px rgb(0 0 0 / .3), 0 0 0 .5px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1);
+  background: var(--glass) !important; box-shadow: var(--glass-ring) !important; -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+body.light-theme .swl-glass { --glass-ring: 0 1px 4px rgb(0 0 0 / .06), 0 0 0 .5px rgb(0 0 0 / .08), inset 0 1px 0 rgb(255 255 255 / .8); }
+body:not(.light-theme) .swl-glass { --glass: color-mix(in srgb, var(--ink) 14%, color-mix(in srgb, var(--bg) 75%, transparent)); --glass-ring: 0 1px 4px rgb(0 0 0 / .3), inset 0 0 0 .5px rgb(255 255 255 / .2); }
+/* down at the tiles: flat, the items pill's own shadow (styles.css .ph-bar), so the two read as one object at one height
+   (owner round 3: "too floaty") */
+body.light-theme .swl-bot .swl-glass { --glass: color-mix(in srgb, var(--surface) 78%, transparent); --glass-ring: inset 0 1px 0 rgb(255 255 255 / .8), 0 0 0 .5px rgb(0 0 0 / .08), 0 2px 8px -2px rgb(0 0 0 / .3); }
+body:not(.light-theme) .swl-bot .swl-glass { --glass-ring: inset 0 0 0 .5px rgb(255 255 255 / .2), 0 2px 8px -2px rgb(0 0 0 / .3); }
+[class*="swl-"] svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.swl-one { flex: none; width: var(--swl-s); height: var(--swl-s); display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; color: var(--ink); cursor: pointer; }
+.swl-one svg { animation: swl-pop .32s cubic-bezier(.3, 1.5, .5, 1); }
+@keyframes swl-pop { from { opacity: 0; scale: .5; rotate: -30deg; } }
+.swl-press { transition: scale .5s cubic-bezier(.3, 1.6, .5, 1); }
+.swl-press:active { scale: 1.12; transition-duration: .12s; }
+/* sizes: 44 on the phone (the items pill's height), 56 on the iPad (the Items page's + button) */
+body { --swl-s: 44px; --swl-bw: 46px; --swl-p: 3px; --swl-ic: 21px; }
+@media (min-width: 721px) { .swl-bot { --swl-s: 56px; --swl-bw: 60px; --swl-p: 4px; --swl-ic: 25px; } }
+/* the two-icon pill: a grey thumb under the page you are on */
+.swl-pill { position: relative; flex: none; display: flex; height: var(--swl-s); padding: var(--swl-p); border-radius: 999px; }
+.swl-pill::before { content: ''; position: absolute; top: var(--swl-p); bottom: var(--swl-p); left: var(--swl-p); width: var(--swl-bw); border-radius: 999px; background: rgb(118 118 128 / .16); transition: translate .34s cubic-bezier(.3, 1.3, .5, 1), opacity .2s; }
+.swl-pill.on-all::before { translate: var(--swl-bw) 0; }
+.swl-pill button { position: relative; flex: none; width: var(--swl-bw); display: grid; place-items: center; padding: 0; border: 0; background: none; color: var(--ink-secondary); cursor: pointer; transition: translate .38s cubic-bezier(.3, 1.25, .5, 1); }
+.swl-pill button.cur { color: var(--ink); }
+.swl-pill svg, .swl-one svg { width: var(--swl-ic); height: var(--swl-ic); }
+.swl-pill button.cur svg path { fill: currentColor; }
+.swl-pill button.cur svg circle { fill: var(--surface); stroke: none; }
+/* the circle that slides open: shut it is one circle on the page you are on; a tap opens it into the pill for a moment */
+.swl-pill.swl-morph { --swl-bw: var(--swl-s); width: var(--swl-s); padding: 0; overflow: clip; transition: width .38s cubic-bezier(.3, 1.25, .5, 1), scale .5s cubic-bezier(.3, 1.6, .5, 1); }
+.swl-pill.swl-morph.open { width: calc(2 * var(--swl-s)); }
+.swl-pill.swl-morph::before { top: 3px; bottom: 3px; left: 3px; width: calc(var(--swl-s) - 6px); }
+.swl-pill.swl-morph:not(.open)::before { opacity: 0; }
+.swl-pill.swl-morph.on-all:not(.open) button { translate: calc(-1 * var(--swl-s)) 0; }
+/* the bottom. Phone: beside the items pill (#cartBar, 260 wide and centred); iPad: floating on the tiles' bottom-left, as the Items page's + */
+.swl-bot { position: absolute; z-index: 20; display: flex; }
+@media (max-width: 720px) {
+  .content-row { position: relative; --swl-w: min(100% - 48px, 260px); --swl-x: calc((100% - var(--swl-w) - 52px + var(--swl-cut, 0px)) / 2); }
+  .swl-bot { left: 16px; bottom: var(--ph-b); }
+  .swl-bot.r { left: auto; right: 16px; }
+  .swl-bot.pair { left: var(--swl-x); }
+  body.swl-pair #cartBar { width: calc(var(--swl-w) - var(--swl-cut, 0px)); margin-left: calc(var(--swl-x) + 52px); }
+  .swl-bot.in { left: calc((100% - var(--swl-w)) / 2 + 4px); bottom: calc(var(--ph-b) + 4px); }
+  body.swl-in #cartBar { padding-left: 44px; }
+  body.swl-wide #cartBar { width: auto; margin-left: calc(16px + var(--swl-pw) + 10px); margin-right: 16px; }
+  /* Messages: [items pill][circle], centred together; on tap they merge and the pill takes the middle */
+  body.swl-msg #cartBar { margin-left: calc((100% - var(--swl-w) - 52px) / 2); margin-right: 0; transition: margin .38s cubic-bezier(.3, 1.2, .5, 1); }
+  body.swl-msg.swl-merge #cartBar { margin-left: calc((100% - var(--swl-w)) / 2); }
+  .swl-bot.msg { left: auto; right: calc((100% - var(--swl-w) - 52px) / 2); transition: translate .38s cubic-bezier(.3, 1.2, .5, 1), scale .38s, opacity .25s; }
+  body.swl-merge .swl-bot.msg { translate: -70px 0; scale: .5; opacity: 0; pointer-events: none; }
+  .swl-bot.in .swl-one { width: 36px; height: 36px; background: rgb(255 255 255 / .2) !important; box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .25) !important; color: var(--accent-ink); }
+}
+@media (min-width: 721px) {
+  .swl-bot { left: calc(var(--cat-x) + 12px); bottom: 33px; }
+  .swl-bot.r { left: auto; right: calc(var(--cat-x) + 12px); }
+}
+/* the ☰ menu, no sub-rows: something small at the end of Sell's row */
+.side-link > :is(.swl-mini, .swl-lbl) { margin-left: auto; }
+.swl-one.swl-mini { --swl-s: 32px; --swl-ic: 18px; background: rgb(118 118 128 / .12); color: var(--ink); }
+.swl-pill.swl-mini { --swl-s: 32px; --swl-bw: 34px; --swl-p: 2px; --swl-ic: 17px; background: rgb(118 118 128 / .12); }
+.swl-pill.swl-mini::before { background: var(--surface); box-shadow: 0 1px 3px rgb(0 0 0 / .12), 0 0 0 .5px rgb(0 0 0 / .04); }
+.swl-lbl { color: var(--ink-secondary); font-size: 13px; font-weight: 400; }
+/* round 4: the fixes for the iPad circle on a tile */
+.swl-hole { display: grid; place-items: center; }
+.swl-hole > .swl-bot { position: static; }
+#catalogSearchRow > .swl-top { --swl-s: 44px; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }   /* the ☰'s own glass */
+.catalog-wrap:has(> .vsheet.open) #catalogSearchRow > .swl-top { display: none; }
+.search-wrap > .swl-ins { --swl-s: 44px; position: absolute; right: 0; top: 0; z-index: 1; background: none; color: var(--ink-secondary); }
+body.swl-ins-on .search-wrap > #scanBtn { right: 38px; }
+body.swl-ins-on #searchInput { padding-right: 84px; }
+`;
+
+const f = document.getElementById('f'), ideaSel = document.getElementById('idea'), devSel = document.getElementById('dev');
+IDEAS.forEach((x, i) => ideaSel.add(new Option(`${i + 1}. ${x.n}`, i)));
+const SIZES = { phone: [393, 852], ipad: [1180, 820] };
+const pick = (() => { try { return JSON.parse(localStorage.getItem('swl') || '{}'); } catch { return {}; } })();
+ideaSel.value = pick.idea ?? 0; devSel.value = pick.dev || (innerWidth < 700 ? 'phone' : 'ipad');
+const keep = () => { try { localStorage.setItem('swl', JSON.stringify({ idea: ideaSel.value, dev: devSel.value })); } catch {} };
+
+function fit() {
+  const [w, h] = SIZES[devSel.value], st = f.parentElement, s = Math.min(1, st.clientWidth / w, st.clientHeight / h);
+  Object.assign(f.style, { width: w + 'px', height: h + 'px', transform: `translate(-50%, -50%) scale(${s})` });
+  f.className = devSel.value;
+}
+function load() { keep(); fit(); f.src = 'index.html?swl=' + Date.now(); }
+ideaSel.onchange = devSel.onchange = load;
+document.getElementById('prev').onclick = () => { ideaSel.value = (+ideaSel.value + IDEAS.length - 1) % IDEAS.length; load(); };
+document.getElementById('next').onclick = () => { ideaSel.value = (+ideaSel.value + 1) % IDEAS.length; load(); };
+addEventListener('resize', fit);
+
+f.onload = () => {
+  const w = f.contentWindow, d = f.contentDocument, idea = IDEAS[+ideaSel.value];
+  document.getElementById('note').textContent = idea.note;
+  if (devSel.value === 'phone') d.documentElement.style.setProperty('--ph-safe', '34px');   // the iPhone's home bar, as devices.html
+  const st = d.createElement('style'); st.textContent = CSS; d.head.append(st);
+  const S = w.eval('state'), row = d.getElementById('catalogSearchRow'), search = row.querySelector('.search-wrap:not(.vs-search)');
+  const ph = w.innerWidth <= 720;
+  search.append(d.getElementById('scanBtn'));   // ponytail: the app pins scan to the row's right end; anything added after the search would sit under it
+  let mode = 'mine';
+  // My page: a few of the real tiles, two categories, then Add tile (Shopify's). Held in memory only.
+  const cells = [...d.querySelectorAll('#productGrid .product-card')].slice(0, ph ? 5 : 9).map(c => c.dataset.groupId ? { g: c.dataset.groupId } : { id: c.dataset.id });
+  const cats = () => S.folders.filter(x => !x.archived && !/^all items$/i.test(x.name)).map(x => ({ id: x.id, name: x.name, n: S.products.filter(p => !p.archived && (p.folders || [p.folder]).includes(x.id)).length })).filter(x => x.n);
+  const mine = [...cells.slice(0, 3), ...cats().slice(0, 2).map(c => ({ cat: c })), ...cells.slice(3)];
+  const grid = d.createElement('div'); grid.id = 'swlMine'; grid.className = 'product-grid';
+  d.getElementById('productGrid').after(grid);
+  const toast = m => w.showToast(m);
+  const ui = {
+    row, search, cats, toast, sell: d.querySelector('.side-link[data-view="sell"]'),
+    btn(cls, html, label) { const b = d.createElement('button'); b.type = 'button'; b.className = cls; b.innerHTML = html; if (label) b.setAttribute('aria-label', label); return b; },
+    one(show, bare) { const b = ui.btn('swl-one swl-press' + (bare ? '' : ' swl-glass'), '', ''); b.dataset.show = show; b.onclick = ui.flip; return b; },
+    pill() {
+      const s = d.createElement('div'); s.className = 'swl-pill swl-glass swl-press'; s.setAttribute('role', 'tablist');
+      [['mine', 'My page', HOME], ['all', 'All items', TAG]].forEach(([m, t, ic]) => { const b = ui.btn('', ic, t); b.dataset.m = m; b.setAttribute('role', 'tab'); b.onclick = () => ui.go(m); s.append(b); });
+      return s;
+    },
+    bottom(el, where = '') {   // '' left edge, 'r' right edge, 'wide' left with the pill shortened
+      const box = d.createElement('div'); box.className = 'swl-bot ' + where; box.append(el);
+      if (!ph) return d.querySelector('.catalog').append(box);
+      d.getElementById('cartBar').before(box);
+      if (where === 'wide') { d.body.classList.add('swl-wide'); requestAnimationFrame(() => d.body.style.setProperty('--swl-pw', box.offsetWidth + 'px')); }
+    },
+    pair(el, cut, inside) {   // phone: the switch beside (or inside) the items pill; cut = how much shorter the pill gets
+      if (ph) {
+        const box = d.createElement('div'); box.className = 'swl-bot ' + (inside ? 'in' : 'pair'); box.append(el);
+        d.getElementById('cartBar').before(box);
+        d.body.classList.add(inside ? 'swl-in' : 'swl-pair'); d.body.style.setProperty('--swl-cut', cut + 'px');
+        return;
+      }
+      ui.bottom(el);   // iPad: the tiles' bottom-left, never at Check out (owner round 3: "not changing sides")
+    },
+    flip: () => ui.go(mode === 'mine' ? 'all' : 'mine'),
+    go(m) {
+      const src = d.getElementById('productGrid');
+      if (m === 'mine') { ['style', 'data-size', 'data-text', 'data-pics'].forEach(a => src.hasAttribute(a) && grid.setAttribute(a, src.getAttribute(a))); }
+      mode = m; d.body.classList.toggle('swl-mine', m === 'mine');
+      if (m === 'mine') draw(); else requestAnimationFrame(() => w.renderProducts());
+      d.querySelectorAll('[data-m]').forEach(b => { b.classList.toggle('cur', b.dataset.m === m); b.setAttribute('aria-selected', b.dataset.m === m); });
+      d.querySelectorAll('.swl-pill').forEach(p => p.classList.toggle('on-all', m === 'all'));
+      d.querySelectorAll('.swl-lbl').forEach(l => { l.textContent = m === 'mine' ? 'My page' : 'All items'; });
+      d.querySelectorAll('[data-show]').forEach(b => {   // "now" = the page you are on, "next" = where a tap goes
+        b.innerHTML = (m === 'mine') === (b.dataset.show === 'now') ? HOME : TAG;
+        b.setAttribute('aria-label', m === 'mine' ? 'My page, tap for All items' : 'All items, tap for My page');
+      });
+    },
+  };
+  function tileFor(c) {
+    if (c.cat) return `<div class="product-card pc-group swl-cat" data-cat="${c.cat.id}"><span class="swl-n">${c.cat.n} items</span><div class="pc-name">${c.cat.name}</div></div>`;
+    const real = d.querySelector(c.g ? `#productGrid [data-group-id="${c.g}"]` : `#productGrid [data-id="${c.id}"]`);
+    return real ? real.outerHTML : '';
+  }
+  function draw() {
+    grid.innerHTML = `<div class="product-page-track"><div class="product-page">${mine.map(tileFor).join('')}<div class="product-card swl-add" role="button" tabindex="0"><b>+</b>Add tile</div></div></div>`;
+  }
+  grid.addEventListener('click', e => {
+    const c = e.target.closest('.product-card'); if (!c) return;
+    if (c.classList.contains('swl-add')) return chooser();
+    if (c.dataset.cat) return toast(`${c.querySelector('.pc-name').textContent}: opens its items in a sheet (next round)`);
+    if (c.dataset.groupId) return w.openVariantModal(c.dataset.groupId);
+    w.addToCart(c.dataset.id, 'tile');
+  });
+  function chooser() {
+    const ov = d.createElement('div'); ov.className = 'swl-ov';
+    ov.innerHTML = '<div class="swl-card" role="dialog" aria-label="Add tile"><h3>Add tile</h3><button data-a="item">Item</button><button data-a="cat">Category</button><button class="x" data-a="x">Cancel</button></div>';
+    ov.onclick = e => {
+      const a = e.target.closest('[data-a]')?.dataset.a; if (!a && e.target !== ov) return;
+      if (a === 'item') {   // the next real item not on the page yet
+        const on = new Set(mine.map(m => m.id || m.g)), next = [...d.querySelectorAll('#productGrid .product-card')].map(c => c.dataset.groupId ? { g: c.dataset.groupId } : { id: c.dataset.id }).find(c => !on.has(c.id || c.g));
+        if (next) mine.push(next);
+      }
+      if (a === 'cat') { const on = new Set(mine.filter(m => m.cat).map(m => m.cat.id)), c = cats().find(x => !on.has(x.id)); if (c) mine.push({ cat: c }); }
+      ov.remove(); draw();
+    };
+    d.body.append(ov);
+  }
+  idea.put(d, ph, ui);
+  ui.go('mine');
+};
+load();
+</script>
+</body>
+</html>

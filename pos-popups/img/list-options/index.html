@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>List options</title>
+<style>
+/* three list-sheet versions side by side for the owner to pick (2026-10-19); swipe sideways on the phone */
+:root { --bg: #F2F2F2; --ink: #1A1A1A; --ink-2: #6B6B6B; --card: #FFFFFF; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0A0A0A; --ink: #EDEDED; --ink-2: #9A9A9A; --card: #1C1C1C; } }
+body { margin: 0; padding: 16px; background: var(--bg); color: var(--ink); font: 15px/1.4 system-ui, -apple-system, sans-serif; }
+h1 { margin: 0 0 12px; font-size: 20px; }
+.row { display: grid; grid-auto-flow: column; grid-auto-columns: min(80vw, 300px); gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; }
+figure { margin: 0; scroll-snap-align: start; }
+figcaption { padding: 8px 2px; }
+figcaption b { display: block; }
+figcaption span { color: var(--ink-2); font-size: 13px; }
+img { display: block; width: 100%; border-radius: 16px; box-shadow: 0 1px 4px rgb(0 0 0 / .15); }
+h2 { margin: 20px 0 4px; font-size: 15px; color: var(--ink-2); font-weight: 500; }
+</style>
+</head>
+<body>
+<h1>Which list?</h1>
+<h2>Variants</h2>
+<div class="row">
+  <figure><img src="a-variants.png" alt="Option A"><figcaption><b>A · Short</b><span>Ends after the last row, like the Customers page</span></figcaption></figure>
+  <figure><img src="b-variants.png" alt="Option B"><figcaption><b>B · Long card</b><span>One card down to the bar, rounded at the bottom</span></figcaption></figure>
+  <figure><img src="c-variants.png" alt="Option C"><figcaption><b>C · Under the bar</b><span>Runs under the bar with the cart's fog</span></figcaption></figure>
+</div>
+<h2>Customers</h2>
+<div class="row">
+  <figure><img src="a-customers.png" alt="Option A"><figcaption><b>A · Short</b></figcaption></figure>
+  <figure><img src="b-customers.png" alt="Option B"><figcaption><b>B · Long card</b></figcaption></figure>
+  <figure><img src="c-customers.png" alt="Option C"><figcaption><b>C · Under the bar</b></figcaption></figure>
+</div>
+<h2>C with a long list (30 rows)</h2>
+<div class="row">
+  <figure><img src="c-long-variants.png" alt="C long, top"><figcaption><b>Variants · top</b></figcaption></figure>
+  <figure><img src="c-long-variants-end.png" alt="C long, end"><figcaption><b>Variants · scrolled to the end</b><span>The last row clears the bar</span></figcaption></figure>
+  <figure><img src="c-long-customers.png" alt="C long customers"><figcaption><b>Customers</b></figcaption></figure>
+  <figure><img src="c-long-variants-dark.png" alt="C long, top, dark"><figcaption><b>Variants · dark</b></figcaption></figure>
+  <figure><img src="c-long-variants-end-dark.png" alt="C long, end, dark"><figcaption><b>Variants · end · dark</b></figcaption></figure>
+  <figure><img src="c-long-customers-dark.png" alt="C long customers dark"><figcaption><b>Customers · dark</b></figcaption></figure>
+</div>
+</body>
+</html>

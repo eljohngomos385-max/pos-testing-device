@@ -393,12 +393,11 @@ function qsWire() {
   $('#qsScan').addEventListener('click', openBarcodeScanner);
 
   $('#qsBack').addEventListener('click', qsBack);
-  // the title's menu: the mode, and on a tablet the page's place (beside the list or full screen); the phone gets
-  // the cart ⋯'s half sheet (owner 2026-10-27)
+  // the title's menu: the cart ⋯'s half sheet (phone owner 2026-10-27, iPad 2026-11-11) with the mode, and on a
+  // tablet the page's place (beside the list or full screen)
   $('#qsReason').addEventListener('click', e => {
     const modes = Object.keys(QS_REASONS).filter(r => (r === 'price') === qsPrice()).map(r => ({ label: QS_REASONS[r][0], cur: r === QS.reason, run: () => qsPickReason(r) }));
-    if (innerWidth <= 720) return openActionSheet(e.currentTarget, 'Adjust stock', modes);
-    openMenu(e.currentTarget, [...modes, '-', { label: qsMode === 'dock' ? 'Full screen' : 'Beside the list', run: qsToggleFull }], { w: 200 });
+    openActionSheet(e.currentTarget, 'Adjust stock', innerWidth <= 720 ? modes : [...modes, '-', { label: qsMode === 'dock' ? 'Full screen' : 'Beside the list', run: qsToggleFull }]);
   });
   $('#qsSave').addEventListener('click', () => (qsSaved ? qsDoneSaved() : qsSave()));
 

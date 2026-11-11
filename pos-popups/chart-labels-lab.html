@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chart Labels Lab</title>
+<link rel="stylesheet" href="styles.css?v=314">
+<style>
+  /* the lab's own frame only; every chart below is the app's reportsChart() with the app's CSS */
+  body { margin: 0; background: var(--canvas, var(--bg)); overflow: auto; height: auto; }
+  .wrap { padding: 16px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; color: var(--ink-secondary); font-size: 13px; }
+  .bar button { padding: 6px 12px; border: 0; border-radius: 999px; background: var(--surface-2); color: var(--ink); font: inherit; cursor: pointer; }
+  .bar button.on { background: var(--ink); color: var(--surface-2); }
+  .row { margin-bottom: 20px; }
+  .row h2 { margin: 0 4px 8px; color: var(--ink-tertiary); font-size: 13px; font-weight: 590; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, 361px); gap: 12px; }
+  .cap { margin: 0 4px 4px; color: var(--ink-quaternary); font-size: 11px; }
+</style>
+</head>
+<body class="light-theme">
+<div class="wrap">
+  <div class="bar">Gap:
+    <button data-mode="fit" class="on">Fitted (built)</button>
+    <button data-mode="fixed">Fixed (fits the biggest)</button>
+    &nbsp; Theme: <button data-theme="light" class="on">Light</button><button data-theme="dark">Dark</button>
+  </div>
+  <div id="out" class="lv"></div>
+</div>
+<script src="sales-math.js?v=27"></script>
+<script>var state = { settings: { store: { currency: 'PHP' } }, orders: [] };</script>
+<script src="pos-customers.js?v=33"></script>
+<script>
+  // each card is 361px wide: a 393px iPhone less the page's 16px each side
+  const CUR = ['PHP', 'USD', 'SGD', 'EUR', 'GBP', 'INR', 'JPY', 'CNY', 'KRW', 'IDR', 'VND', 'MYR', 'THB', 'AED'];
+  const TOPS = [0.8, 14, 1400, 52000, 1.4e6, 5.2e8];   // tiny, small, the ₱1.5k case, a day, big, huge
+  const SHAPE = [.5, .25, .55, 1, 0, .08, .45, .15, 0, .9, 0, .98, .3, .2];
+  const bars = top => SHAPE.map((f, i) => { const h = 7 + i, h12 = h % 12 || 12, t = `${h12} ${h < 12 ? 'AM' : 'PM'}`; return { v: f * top, x: h % 3 === 1 ? t : '', tip: t }; });
+  let mode = 'fit';
+  function draw() {
+    out.innerHTML = CUR.map(c => {
+      state.settings.store.currency = c;
+      const sym = SalesMath.currencySymbol(c), widest = rpTextW('0' + sym + '600M') - rpTextW('0') + 7;   // "fixed": room for the biggest label there is
+      return `<div class="row"><h2>${c} · ${sym}</h2><div class="grid">${TOPS.map(t => {
+        const b = bars(t), sum = b.reduce((a, x) => a + x.v, 0), money = SalesMath.formatMoney(sum, c);
+        let ch = reportsChart(b, 'day', true);
+        if (mode === 'fixed') ch = ch.replace(/--yw:[\d.]+px/, `--yw:${widest}px`);
+        return `<div><div class="cap">bars up to ${SalesMath.formatMoney(t, c)}</div><section class="card fc"><div class="rp-ov">
+          <div class="rp-ttl"><b>Sales</b><span class="rp-pl" style="text-align:right">Today, October 15</span></div>
+          <div class="rp-big"><b class="num" style="--n:${money.length}">${money}</b></div>
+          <div class="rp-chart">${ch}</div></div></section></div>`;
+      }).join('')}</div></div>`;
+    }).join('');
+  }
+  document.querySelector('.bar').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.mode) mode = b.dataset.mode;
+    if (b.dataset.theme) document.body.classList.toggle('light-theme', b.dataset.theme === 'light');
+    b.parentNode.querySelectorAll(b.dataset.mode ? '[data-mode]' : '[data-theme]').forEach(x => x.classList.toggle('on', x === b));
+    draw();
+  });
+  (document.fonts?.ready || Promise.resolve()).then(draw);
+</script>
+</body>
+</html>
