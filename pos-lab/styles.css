@@ -8686,6 +8686,13 @@ body.add-pick .view-items .cols:not(.k2) > :nth-child(n+3) { display: none; }
 .fs-veil .fsheet.half.grow { transform: none; border-radius: 0; transition: height .3s var(--rl-ease), border-radius .3s var(--rl-ease), opacity .2s; }
 .fsheet.grow > * { opacity: 0; transition: opacity .15s; }
 .fs-veil:not(.open) .fsheet.grow { opacity: 0; }
+/* the iPad: every sheet (half or full) is one fixed card floating mid-screen, Apple's form sheet (owner 2026-11-11: "same size,
+   a bit empty underneath, it still works"); a smaller tablet shrinks it to keep the gap. No pull tab: pulling the head still closes it */
+@media (min-width: 721px) {
+  .fs-veil .fsheet { inset: 0; margin: auto; width: min(640px, 100% - 48px); height: min(760px, 100% - 80px); border-radius: 32px; }
+  .fs-veil .fs-top::after { content: none; }
+  .fs-veil .fsheet.half.grow { width: 100%; transition: width .3s var(--rl-ease), height .3s var(--rl-ease), border-radius .3s var(--rl-ease), opacity .2s; }
+}
 #itemsRows .row.qs-in.ap-had .nm::before { border-color: var(--ink-quaternary); background: var(--ink-quaternary); }   /* on My page already: a grey tick, not a pick */
 .qs-pg.dock #qsBack { visibility: hidden; }   /* beside the list, the list's × closes */
 /* ...and no Price: picking is by name, and the count is what stock needs (owner 2026-10-13: less to read) */
