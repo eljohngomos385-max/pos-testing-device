@@ -1085,6 +1085,7 @@ function switchView(view) {
   if (view === 'sell') renderProducts();   // stock may have moved elsewhere (void, refund) — tile marks read it
   if (view === 'items') renderItems();
   if (view === 'qr') renderQr();
+  if (view === 'chat') renderChat();
   if (view === 'customers') renderCustomers();
   if (view === 'shift') shiftPast(false);   // opens on the drawer, not Past shifts
   if (view === 'cash') renderShift();

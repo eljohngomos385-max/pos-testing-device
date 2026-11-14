@@ -764,7 +764,7 @@ function attachEvents() {
     e.target.closest?.('.frost :is(.page, .editor, .o-main, .o-rail > .list)')?.classList.toggle('scrolled', e.target.scrollTop > 0);
   }, { capture: true, passive: true });
   // Liquid glass press (owner 2026-10-18): the button swells and shines under the finger, leans and stretches toward a drag, springs back on release
-  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search), .side-top > :is(#sellSwitch, .side-x), #app .side-link[data-view="settings"]';
+  const LG = '.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan, #chtHistX, #chtNew, #chtHist), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > .search-wrap:not(.vs-search), .side-top > :is(#sellSwitch, .side-x), #app .side-link[data-view="settings"]';
   document.addEventListener('pointerdown', (e) => {
     const b = e.target.closest(LG);
     if (!b || matchMedia('(prefers-reduced-motion: reduce)').matches) return;

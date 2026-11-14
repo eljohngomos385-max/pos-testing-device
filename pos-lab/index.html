@@ -433,16 +433,51 @@
         </div>
       </section>
 
+      <!-- Chat (owner 2026-11-15, built in pos-lab-chat): white, a blue haze from the bottom, asks in a carousel over a see-through box; pos-chat.js draws it -->
       <section class="view view-chat lv frost" data-view="chat">
+        <div class="cht-sky" aria-hidden="true"></div>
         <div class="iv">
-          <section class="page" aria-label="Chat">
+          <section class="page cht" aria-label="Chat">
             <div class="head">
               <button class="sq cta-2" data-act="open-sidebar" aria-label="Menu" title="Menu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
               </button>
               <h1 class="st-ttl">Chat</h1>
+              <button type="button" class="sq cta-2" id="chtNew" aria-label="New chat" title="New chat"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V13"/><path d="M17.6 3.9a1.9 1.9 0 0 1 2.7 2.7L12.5 14.4l-3.4.8.8-3.4z"/></svg></button>
+              <button type="button" class="sq cta-2" id="chtHist" aria-label="History" title="History"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4.5v3.5H7"/><path d="M12 7.5V12l3 2"/></svg></button>
+            </div>
+            <div class="c-scroll cht-log" id="chtLog"></div>
+            <div class="cht-foot">
+              <div class="cht-asks" id="chtAsks"></div>
+              <form class="cht-box" id="chtBox" autocomplete="off">
+                <button type="button" class="cht-ic" aria-label="Add">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+                <input id="chtIn" type="text" placeholder="Ask about your store" aria-label="Ask about your store">
+                <button type="button" class="cht-ic" aria-label="Talk">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
+                </button>
+                <button type="submit" class="cht-go" aria-label="Send">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+                </button>
+              </form>
             </div>
           </section>
+          <!-- the chats so far: ✕ + the regular search bar, as Items, then the names (owner 2026-11-15) -->
+          <aside class="o-rail cht-hist" aria-label="Chat history">
+            <div class="head">
+              <section class="card find" id="chtFind">
+                <label>
+                  <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="10.3" cy="10.3" r="6.6"/><path d="M19.4 19.4l-4-4"/></svg>
+                  <input id="chtSearch" type="text" placeholder="Search" autocomplete="off">
+                  <button class="x" id="chtSearchX" aria-label="Clear search"><svg class="ic" viewBox="0 0 24 24" style="width:14px;height:14px;stroke-width:2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                </label>
+              </section>
+              <button type="button" class="sq cta-2 cht-x" id="chtHistX" aria-label="Close" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><use href="#i-x"/></svg></button>
+              <div class="cht-sec">Recents</div>
+            </div>
+            <section class="card list"><div class="lines" id="chtList"></div></section>
+          </aside>
         </div>
       </section>
 
@@ -1151,6 +1186,7 @@
   <script src="pos-stock.js?v=30"></script>
   <script src="pos-qr.js?v=3"></script>
   <script src="pos-tables.js?v=3"></script>
-  <script src="app.js?v=341"></script>
+  <script src="pos-chat.js?v=1"></script>
+  <script src="app.js?v=342"></script>
 </body>
 </html>

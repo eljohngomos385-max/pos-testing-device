@@ -7518,7 +7518,8 @@ body.light-theme {
 .lv .sq.back .ic { width: var(--circle-ic); height: var(--circle-ic); stroke-width: var(--circle-sw); }   /* every ‹ one size (--circle-*) */
 /* ☰ bare like Sell's (owner 2026-10-09): rednote's size and spot, search takes the room */
 .lv .sq:is([data-act="open-sidebar"], .sh-print, .ty-edit-btn) { width: 32px; border: 0; background: none; box-shadow: none; color: var(--ink); }
-.lv .sq[data-act="open-sidebar"] svg { width: 24px; height: 24px; }
+.lv :is(.sq[data-act="open-sidebar"], #chtNew, #chtHist, #chtHistX) svg { width: 24px; height: 24px; }
+#app .lv :is(#chtNew, #chtHist) svg { stroke-width: calc(var(--circle-sw) - .75); }   /* new chat + history a line thinner (owner 2026-11-15: "slightly too thick") */
 /* the editor's bar: Save and ⋯ are bare words and icons like Back, Save the title's size (rednote's Edit birthday) */
 body .lv .e-top .acts .act { background: none; box-shadow: none; color: var(--ink); }   /* outranks the light theme's ring */
 .lv .e-top .act.primary { min-width: 0; padding: 0 6px; font-size: 15px; font-weight: 550; }
@@ -7977,9 +7978,9 @@ body:not(.light-theme) :is(.lv, .cust-sheet, .esheet) .sw:not(:checked):is(*) { 
 /* the lists keep their boxes on phone and tablet (owner 2026-10-17: "without its container ... it just looks bad ... add it back", phone too); the boxless iOS rows are gone */
 /* iOS 26 Contacts (owner 2026-10-17, phone copy): ☰ a round glass button, the list's name centred, search a glass pill
    at the bottom with + a glass circle beside it; the kinds switch is gone, the Items title opens it as a menu */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), .lv .find::before, .lv :is(#itemsAdd, #newCustomerBtn) {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan, #chtHistX, #chtNew, #chtHist), .lv .find::before, .lv :is(#itemsAdd, #newCustomerBtn) {
   border: 0; background: var(--glass); box-shadow: var(--glass-ring); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan) { width: 44px; height: 44px; border-radius: 50%; }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan, #chtHistX, #chtNew, #chtHist) { width: 44px; height: 44px; border-radius: 50%; }
 .lv .page { padding-top: var(--head-y); margin-top: 0; }
 .lv .o-rail { padding-top: 8px; margin-top: 0; }   /* + .ov's own top (0 phone, 8 iPad) = --head-y */   /* the head 8 under the clock: Sell's ☰ line (.catalog's 8), every page's ☰ / ‹ in the same spot (owner 2026-10-18) */
 .lv .head:has(> .ph-ttl.st-ttl) { position: static; align-items: center; }
@@ -8026,21 +8027,21 @@ body:not(.light-theme) :is(.lv, .cust-sheet, .esheet) .sw:not(:checked):is(*) { 
 /* Customers' + and Start shift wear it too (owner 2026-10-18: "roughly around the same treatment"), and picking's Refund ₱X (owner 2026-10-19) */
 .lv .o-top #orderRefund.primary { position: relative; border-radius: 999px; padding: 0 18px; }
 :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab) { -webkit-backdrop-filter: none; backdrop-filter: none; }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn), :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link[data-view="settings"]) {   /* liquid glass press, app.js sets --lg-* */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan, #chtHistX, #chtNew, #chtHist), :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab), #catalogSearchRow > #sidebarToggle, #catalogSearchRow > :is(.search-wrap:not(.vs-search), #scanBtn), :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link[data-view="settings"]) {   /* liquid glass press, app.js sets --lg-* */
   touch-action: none; transition: transform .9s var(--lg-spring), background-color .2s, opacity .18s;   /* opacity: Sell's ☰ fades with the drawer */
   /* one transform at rest and pressed, the drag's angle kept after release: the spring wobbles along the way it was pulled (owner 2026-10-18) */
   transform: translate(var(--lg-x, 0px), var(--lg-y, 0px)) rotate(var(--lg-a, 0rad)) scale(calc(1 + var(--lg-p, 0) + var(--lg-s, 0)), calc(1 + var(--lg-p, 0) - var(--lg-s, 0) / 2)) rotate(calc(-1 * var(--lg-a, 0rad)));
   --lg-spring: linear(0, .076, .268, .521, .786, 1.021, 1.199, 1.307, 1.346, 1.326, 1.263, 1.177, 1.085, 1.002, .937, .897, .881, .886, .906, .935, .967, .996, 1.019, 1.034, 1.041, 1.04, 1.034, 1.024, 1.013, 1.002, .994, .989, .986, .986, .988, .991, 1); }   /* a damped spring: lets go with a small jiggle (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan) > *, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab) > *, #catalogSearchRow > #sidebarToggle > *, :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link[data-view="settings"]) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
-:where(.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan)) { position: relative; z-index: 1; }   /* swells over the search, not under it (owner 2026-10-18) */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan)::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after, :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link[data-view="settings"])::after {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan, #chtHistX, #chtNew, #chtHist) > *, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab) > *, #catalogSearchRow > #sidebarToggle > *, :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link[data-view="settings"]) > * { position: relative; z-index: 1; }   /* the icon over the shine, so it stays sharp */
+:where(.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan, #chtHistX, #chtNew, #chtHist)) { position: relative; z-index: 1; }   /* swells over the search, not under it (owner 2026-10-18) */
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan, #chtHistX, #chtNew, #chtHist)::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab)::after, #catalogSearchRow > #sidebarToggle::after, #catalogSearchRow > .search-wrap:not(.vs-search)::after, :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link[data-view="settings"])::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .4s;
   background: radial-gradient(circle at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .35), rgb(255 255 255 / 0) 70%); }
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan).lg-on, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on, :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link[data-view="settings"]).lg-on {
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan, #chtHistX, #chtNew, #chtHist).lg-on, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab).lg-on, #catalogSearchRow > #sidebarToggle.lg-on, #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on, :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link[data-view="settings"]).lg-on {
   transition-duration: .15s; transition-timing-function: ease-out; --lg-p: .08; }
 #catalogSearchRow > :is(.search-wrap, #scanBtn).lg-on { --lg-p: .01; }   /* the search swells 3px, as Messages' (owner 2026-10-18 photos) */
 #catalogSearchRow > .search-wrap:not(.vs-search)::after { z-index: 1; border-radius: 999px; background: radial-gradient(circle 40px at var(--lg-px, 50%) var(--lg-py, 50%), rgb(255 255 255 / .3), rgb(255 255 255 / 0)); }   /* a hand-sized light, not one as wide as the bar */
-.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan).lg-on::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after, :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link[data-view="settings"]).lg-on::after { opacity: 1; transition-duration: .1s; }
+.lv .head > :is(.sq[data-act="open-sidebar"], #itemsBack, #qsScan, #chtHistX, #chtNew, #chtHist).lg-on::after, :is(.lv :is(#itemsAdd, #newCustomerBtn, #shiftFab, #cashFab, #orderRefund.primary), .esheet .sh-fab).lg-on::after, #catalogSearchRow > #sidebarToggle.lg-on::after, #catalogSearchRow > .search-wrap.lg-on::after, :is(.side-top > :is(#sellSwitch, .side-x), #app .side-link[data-view="settings"]).lg-on::after { opacity: 1; transition-duration: .1s; }
 .lv #itemsView .lines { padding-bottom: calc(var(--pill-b) + 64px); }   /* the last row clears + */
 /* SHARED FROST = "frost top" (owner 2026-10-30: "like the Reports page or the Items list", no hard edge anywhere). A page whose rows scroll runs up
    under its head and the clock; the rows slide behind a soft frost that fades down into them (iOS 26's scroll edge). At rest the
@@ -9225,7 +9226,7 @@ body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
 
 /* every round-button icon one size and line on the phone (owner 2026-11-04): a 24 box, a --circle-sw line, so each draws 16–18 like Apple's */
 @media (max-width: 720px) {
-  :is(#sidebarToggle, .lv .sq[data-act="open-sidebar"], #scanBtn, #cartMoreBtn, #orderMore, #customerPay, #customerEdit, #itemsFilter, #ordersFilter, #variantFilter, #itemFindFilter, #itemsAdd, #newCustomerBtn, #scanClose, #scanFlip, .fs-x, .fs-ok, #againX, #qrPrint, .side-x, .esheet .es-x) svg, #qsScan .ic { width: var(--circle-ic); height: var(--circle-ic); stroke-width: var(--circle-sw); }
+  :is(#sidebarToggle, .lv .sq[data-act="open-sidebar"], #scanBtn, #cartMoreBtn, #orderMore, #customerPay, #customerEdit, #itemsFilter, #ordersFilter, #variantFilter, #itemFindFilter, #itemsAdd, #newCustomerBtn, #scanClose, #scanFlip, .fs-x, .fs-ok, #againX, #qrPrint, .side-x, .esheet .es-x, #chtNew, #chtHist, #chtHistX) svg, #qsScan .ic { width: var(--circle-ic); height: var(--circle-ic); stroke-width: var(--circle-sw); }
   :is(.side-top > #sellSwitch, #app .side-link[data-view="settings"]) svg { width: calc(var(--circle-ic) * 5 / 6); height: calc(var(--circle-ic) * 5 / 6); stroke-width: calc(var(--circle-sw) * 6 / 5); }   /* All | My page and the gear: their drawings fill the whole 24 box, so a 20 box keeps them 18 wide and the line still --circle-sw */
   #app .side-link[data-view="settings"] svg :is(.f, .d) { stroke-width: inherit; }
 }
@@ -9279,7 +9280,7 @@ body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
    hairline was. Sizes stay ours (owner: "the same size as before, but the same design"). Phone and iPad (owner 2026-11-06) */
 :is(.lv, #catalogSearchRow) { --top-ring: var(--glass-ring); --top-rim: transparent; --top-ink: var(--ink); --top-ph: var(--ink-tertiary); }
 body.light-theme :is(.lv, #catalogSearchRow) { --top-ring: var(--glass-drop); --top-rim: var(--glass-rim); --top-ink: #000; --top-ph: #6E6E6E; }
-#catalogSearchRow > #sidebarToggle, #app .lv .head > .sq[data-act="open-sidebar"] { color: var(--top-ink); box-shadow: var(--top-ring), inset 0 0 0 .7px var(--top-rim); }
+#catalogSearchRow > #sidebarToggle, #app .lv .head > :is(.sq[data-act="open-sidebar"], #chtNew, #chtHist, #chtHistX) { color: var(--top-ink); box-shadow: var(--top-ring), inset 0 0 0 .7px var(--top-rim); }
 /* the search's rim fades where the round end starts, as Apple's (owner 2026-11-06: "in the corners it looks smoother"); 22px = half its height */
 #catalogSearchRow .search-wrap::before, .lv .find::after { content: ''; position: absolute; inset: 0; z-index: 2; border-radius: 999px; pointer-events: none;
   box-shadow: inset 0 0 0 .7px var(--top-rim);
@@ -9319,7 +9320,7 @@ body.light-theme .lv :is(#itemsKinds, .kinds.rp-units) button { color: var(--ink
 .fsheet .pl-syms button[aria-pressed="true"] { background: var(--tile); color: var(--ink); }
 
 /* the menu's white, a step softer than the app's #FFF so it doesn't shine (owner 2026-11-15, measured off DeepSeek's sidebar: #F8F8F8). Dark only; the menu alone */
-body:not(.light-theme) .sidebar { --ink: #F8F8F8; }
+body:not(.light-theme) :is(.sidebar, .view-chat .cht-hist) { --ink: #F8F8F8; }   /* and Chat's history list, the same (owner 2026-11-15) */
 
 /* ===== DARK + LIGHT MATERIAL (owner 2026-11-11, tried in pos-lab-dark2) =====
    The budget app's card step: page #1A1A1A, cards #202020 (6 levels up, not 10), and one faint line
@@ -9386,3 +9387,121 @@ body.light-theme :is(.lv, #catalogSearchRow) { --top-ring: var(--glass-ring); --
 .tb-c .co-col { padding-top: calc(var(--rl-gap) + 8px); transition: none; }   /* the first tile 16 under Back, as Shift's first card under its ☰, in place from the first frame */
 .tb-c .tb-ttl { display: block; position: absolute; inset: var(--co-y) 0 auto; margin: 0; line-height: 44px; text-align: center; pointer-events: none; }
 .tb-c :is(.co-hero, #spPaid) { display: none; }
+
+/* ===== CHAT (owner 2026-11-15, built in pos-lab-chat, brought in; pos-chat.js) =====
+   One plain page: "Hi El, ask anything" on white (Granola), a pale blue haze rising from the bottom (Gemini), the asks
+   as a sideways carousel of plain words (Granola) floating above a see-through box (ChatGPT's row: +, words, mic, black send) */
+.view-chat.lv { background: var(--cht-page); }   /* off-white, as Claude's page (249,250,247 measured): the white box, pills and buttons show on it once the haze is gone (owner 2026-11-15) */
+.view-chat .iv { z-index: 1; }
+.view-chat .cht.page { position: relative; }
+.view-chat .head { align-items: center; }
+/* top right: History, and New chat beside it in a chat; each its own circle, the ☰'s (owner 2026-11-15: "individual") */
+.view-chat .cht.page .head > .st-ttl { display: none; }
+.view-chat .cht.page .head > #chtNew, .view-chat:not(.cht-on) .cht.page .head > #chtHist { margin-left: auto; }   /* right, the first one showing */
+.view-chat:not(.cht-on) #chtNew { display: none; }   /* nothing to start over yet */
+/* History: its own page over the chat */
+.view-chat .iv > .cht-hist, .view-chat.cht-hist-on :is(.cht.page, .cht-sky) { display: none; }
+.view-chat.cht-hist-on .iv > .cht-hist { display: grid; margin: 0; padding: 0 12px; height: 100%; }   /* Customers' rail as the whole page (.ov's 12 sides) */
+.view-chat .head > .find#chtFind { position: relative; inset: auto; flex: 1; height: 44px; }   /* the search, then ✕ on its right (Claude's) */
+/* the names, plain: no card, no line, no box (Claude's Recents, measured: rows 48 apart, 17pt words) */
+.view-chat .o-rail .list { overflow: visible; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.view-chat .o-rail .lines { margin: 0 -12px; padding: calc(var(--head-h, 0px) + 8px) 12px calc(16px + var(--ph-safe, 0px)); }   /* first name's middle 42 under Recents' */   /* starts under the frosted head, as Customers */
+/* Claude's Recents, measured off its iPhone shot: 15 grey, its middle 22 under the search, the first name's middle 42 under it, words 25 from the edge */
+/* The foot's material (owner 2026-11-15, after rounds 10-17). Shapes: plain CSS capsules (the eased outline was "too rounded").
+   Dark: the box is DeepSeek's (a dark fill, a clear light 1px border, no shadow; owner: "the best design for the input box"),
+   the questions the quiet grey glass (owner: "the better pill design"). Light: the box near-solid white with a white edge and a
+   soft shadow ~8 below (DeepSeek's, measured), the questions see-through glass. --cht-rim / --cht-soft also dress light's round buttons */
+/* The box, fitted to Claude's light levels off the owner's own iPhone shots (greyscale, 2026-11-15). The shadow is the box's own
+   box-shadow: iPhone Safari drew no filter: drop-shadow on a holder round it (Chrome did), so light mode showed no shadow at all. */
+.view-chat { --cht-page: color-mix(in srgb, var(--bg) 80%, #000);   /* dark page ~21, Claude's (ours was 26: "a bit too light") */
+  --cht-box: color-mix(in srgb, var(--ink) 10%, color-mix(in srgb, var(--bg) 80.5%, transparent));   /* more solid than the pills (owner: "too see through", the two read as one thing) */ --cht-box-rim: inset 0 0 0 .5px rgba(255,255,255,.13);   /* the even thin hairline again: the lit top edge read as a thicker band (owner) */   /* dark liquid glass (owner: "doesn't feel liquid glass"): the Sell search bar's Messages glass, see-through with white lifted in, a lit top edge, the thin hairline */ --cht-box-shadow: 0 4px 12px rgba(0,0,0,.144), 0 1px 2px rgba(0,0,0,.090);   /* dark: a soft float (owner 2026-11-15: "both need a float") */  --cht-pill-float: 0 2px 5px rgba(0,0,0,.0478);   /* DeepSeek's dark (measured): box page+13, a thin edge, no shadow. Not `none`: inside the box-shadow list it voids the edge too */
+  --cht-pill: color-mix(in srgb, var(--ink) 5%, color-mix(in srgb, var(--bg) 52%, transparent));   /* ~.54 solid, as light's .525 (owner 2026-11-15: dark's "so transparent you can see through") */ --cht-pill-ink: var(--ink-secondary); --cht-rim: inset 0 0 0 .5px rgba(255,255,255,.13); }   /* the same glass, thinner: the app's pill-in-a-glass-bar ring (--pill-ring's shine) */
+body.light-theme .view-chat { --cht-page: var(--bg); --cht-box: rgba(251,251,251,.87);   /* DeepSeek's light: a white page, the box a touch grey (251) */
+  --cht-box-rim: inset 0 0 0 .5px rgba(255,255,255,.85);   /* one even thin line, as dark's (owner 2026-11-15: the thicker white top was too prominent) */
+  --cht-box-shadow: 0 10px 40px rgba(0,0,0,.113), 0 0 6px rgba(0,0,0,.027);   /* DeepSeek's shadow (measured): all round, deepest under the box, a long tail */   /* Claude: shadow -11 at the edge fading over 16, a crisp ring round it */
+  --cht-pill: rgba(255,255,255,.525); --cht-pill-ink: var(--ink); --cht-pill-float: 0 4px 14px rgba(0,0,0,.0604), 0 1px 3px rgba(0,0,0,.0343);   /* pale Apple float on the pills (owner) */ --cht-rim: inset 0 0 0 .5px rgba(255,255,255,.85); --cht-soft: 0 4px 12px rgba(0,0,0,.1); }   /* light round buttons: Claude's shadow under them (242 on a 249 page) */
+.view-chat .cht-box { background: var(--cht-box); box-shadow: var(--cht-box-rim), var(--cht-box-shadow); }
+.view-chat[data-asks="pills"] .cht-ask { background: var(--cht-pill); color: var(--cht-pill-ink); box-shadow: var(--cht-rim), var(--cht-pill-float); }
+body.light-theme #app .view-chat.lv .head > :is(.sq[data-act="open-sidebar"], #chtNew, #chtHist, #chtHistX) { background: rgba(255,255,255,.92); box-shadow: var(--cht-rim), var(--cht-soft); }   /* light only: dark's are fine (owner) */
+.view-chat .o-rail > .head { flex-wrap: wrap; row-gap: 12px; }
+.view-chat .cht-sec { flex-basis: 100%; height: 20px; padding: 0 13px; color: var(--ink-secondary); font-size: 15px; line-height: 20px; }   /* in the head, so it never moves: the pull-down bounce only moves the names (owner 2026-11-15). Middle 22 under the search (12 + 10) */
+.view-chat .cht-sec[hidden] { display: none; }
+/* one frosted top for search + Recents: solid to 8 under Recents, clear 32 under it */
+.frost.view-chat .o-rail > .list::before { height: calc(var(--head-h, 0px) + 40px); -webkit-mask-image: linear-gradient(#000 calc(100% - 32px), transparent calc(100% - 8px)); mask-image: linear-gradient(#000 calc(100% - 32px), transparent calc(100% - 8px)); }
+.view-chat .o-rail .row { display: flex; align-items: center; width: 100%; min-height: 48px; padding: 0 13px; border: 0; border-radius: 12px; background: none; box-shadow: none; color: var(--ink); font-size: 17px; text-align: left; }
+.view-chat.lv .o-rail .row .nm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; }   /* beats .lv .o-rail .row .nm span (13) */
+@media (hover: hover) { .view-chat .o-rail .row:hover { background: var(--rl-hover); } }
+.view-chat { --cht-blue: var(--rl-bar); }   /* the Reports blue = the buttons' --cta-solid (owner 2026-11-15: "look at the page of the reports")  */
+.view-chat { --cht-glow: color-mix(in srgb, var(--cht-blue) 46%, var(--bg)); --cht-sky-h: 42%; }   /* 46 (was 38): a deeper blue (owner 2026-11-15) */   /* 42: starts under the greeting (owner 2026-11-15: "extending too far") */
+/* the glow; while typing it runs on under the keys (--cht-kb, pos-chat.js), solid there, so the colour never stops at the keyboard */
+.cht-sky { position: absolute; inset: auto 0 0; height: calc(var(--cht-sky-h) + var(--cht-kb, 0px)); overflow: hidden; pointer-events: none; transition: opacity .4s, height .32s cubic-bezier(.32, .72, 0, 1);
+  background: linear-gradient(to top, var(--cht-glow) var(--cht-kb, 0px), color-mix(in srgb, var(--cht-glow) 62%, transparent) calc(var(--cht-kb, 0px) + (100% - var(--cht-kb, 0px)) * .3),
+    color-mix(in srgb, var(--cht-glow) 28%, transparent) calc(var(--cht-kb, 0px) + (100% - var(--cht-kb, 0px)) * .6), color-mix(in srgb, var(--cht-glow) 8%, transparent) calc(var(--cht-kb, 0px) + (100% - var(--cht-kb, 0px)) * .85), transparent); }   /* eased: a straight ramp showed a line where it began (owner: "hard cutoff") */
+.view-chat.cht-on .cht-sky { opacity: 0 !important; }   /* once there's a chat it is a plain conversation (owner 2026-11-15) */
+/* tried in pos-lab-chat-dots and brought in (owner 2026-11-15), without its grain ("turn the grain off for now").
+   The box wrapped in the glow so it reads as one thing (Gemini, measured off its iPhone shots): light, a halo darker at the
+   sides and below, gone ~25pt out; dark, the other way, a soft lighter blue ring */
+.view-chat { --cht-box-shadow: 0 4px 12px rgba(0,0,0,.144), 0 1px 2px rgba(0,0,0,.090), 0 4px 30px 4px color-mix(in srgb, var(--cht-blue) 17%, transparent); }
+body.light-theme .view-chat { --cht-box-shadow: 0 10px 40px rgba(0,0,0,.113), 0 0 6px rgba(0,0,0,.027), 0 2px 26px 3px rgba(25,65,150,.06); }
+/* the glow breathes, as Gemini's: grows from the bottom and its colour swells, 4.5s each way (the colour dips to .7, owner: .6 "dipping so low") */
+@keyframes cht-breathe { from { transform: scaleY(1); opacity: .7; } to { transform: scaleY(1.28); opacity: 1; } }
+.cht-sky { transform-origin: 50% 100%; animation: cht-breathe 4.5s cubic-bezier(.45, 0, .55, 1) infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .cht-sky { animation: none; } }
+/* keys up: the glow breathes in colour only. Stretching it from the bottom pulled the solid colour under the keys up
+   above them (a hard line in the oval, the pills drowned in solid blue) */
+.view-chat.cht-kb .cht-sky { animation-name: cht-breathe-fade; }
+/* dark: the box dark and neutral, a little see-through (owner 2026-11-15, from the pos-lab-chat-dots aura try: "love that new neutral input box"); was a grey that took on the blue */
+body:not(.light-theme) .view-chat { --cht-box: rgba(28,28,30,.86); --cht-pill: rgba(36,36,38,.66); }   /* the pills a step toward the box: neutral, more see-through than it (owner 2026-11-15: "slightly closer to it") */
+body.light-theme .view-chat { --cht-pill: rgba(251,251,251,.68); }   /* light: a touch more solid and the box's 251, so they stay neutral on the blue (were white .525; owner 2026-11-15) */
+@keyframes cht-breathe-fade { from { opacity: .7; } to { opacity: 1; } }
+body:not(.light-theme) .view-chat[data-dark="plain"] .cht-sky { opacity: .14; }
+body:not(.light-theme) .view-chat[data-dark="colour"] { --cht-glow: color-mix(in srgb, var(--cht-blue) 37%, transparent);   /* 37 (was 30): deeper (owner 2026-11-15) */ --cht-sky-h: 40%; }   /* low and dim, Gemini's (owner 2026-11-15: "too bright") */
+
+.cht-log { display: flex; flex-direction: column; padding-bottom: 162px; }   /* the floating asks + box */
+.view-chat.cht-on .cht-log { padding-bottom: 112px; }
+.cht-hi { display: grid; place-items: center; flex: 1; padding: 0 24px calc(40px + 16svh); text-align: center; }   /* +16svh: the greeting a little above the middle, ~42% down (owner 2026-11-15) */
+.cht-hi h2 { margin: 0; font-size: 30px; line-height: 1.2; font-weight: 400; letter-spacing: -.5px; text-wrap: balance; }
+
+/* the floating bottom: the asks, then the box; the page shows through both */
+.cht-foot { position: absolute; inset: auto 0 0; display: grid; justify-items: center; gap: 10px; padding: 0 18px calc(var(--ph-b, 10px) + 14px); pointer-events: none; }   /* 18 sides: Claude's box, measured */   /* +14: clear of the screen's curved corners (owner 2026-11-15: "the bottom is cut off") */
+.cht-foot > * { width: min(100%, 720px); pointer-events: auto; }
+.cht-asks { display: flex; gap: 28px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; padding: 0 34px;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); }
+.cht-asks::-webkit-scrollbar { display: none; }
+.cht-asks:empty { display: none; }
+.cht-ask { flex: none; height: 40px; padding: 0; border: 0; background: none; color: var(--ink); font-size: 16px; white-space: nowrap; }
+.view-chat[data-asks="pills"] .cht-asks { gap: 6px; padding: 14px 18px 20px; margin-block: -12px -18px; }   /* room above/below for the pills' float (a sideways scroller clips it) */   /* the first pill on the box's left edge; 8 above and below so the soft shadows aren't clipped */
+/* the row runs out to the screen's edges (owner 2026-11-15: the left side was a hard cut once scrolled): 12 of padding keeps the
+   first pill on the box's edge at rest, and both ends fade over that 12, as the right side already did */
+.cht-foot > .cht-asks { width: min(100% + 36px, 756px); margin-inline: -18px; scroll-padding-inline: 18px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 40px), transparent); }
+.view-chat[data-asks="pills"] .cht-ask { height: 32px; padding: 0 12px; border-radius: 999px; font-size: 14px;
+  -webkit-backdrop-filter: blur(16px) saturate(1.6); backdrop-filter: blur(16px) saturate(1.6); }
+.cht-box { display: flex; align-items: center; gap: 2px; height: 52px; padding: 0 8px; border-radius: 26px;
+  background: color-mix(in srgb, var(--bg) 70%, transparent); box-shadow: inset 0 0 0 1px var(--line), 0 4px 20px rgba(0,0,0,.05);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); }
+.cht-box input { flex: 1; min-width: 0; height: 100%; padding: 0 4px; border: 0; background: none; color: var(--ink); font: inherit; font-size: 17px; outline: 0; }   /* ≥16: iOS zooms smaller inputs */
+.cht-box input::placeholder { color: var(--ink-tertiary); }
+.cht-box input:focus-visible { outline: 0; }   /* the caret is the focus; .lv's blue ring boxed the words (owner 2026-11-15) */
+
+/* the keyboard up (pos-chat.js chtKb): the page stays put, the questions + box sit just above the keys, the greeting steps aside */
+.view-chat.cht-kb .iv { transform: translateY(var(--cht-pan, 0px)); }
+.cht-foot { transition: transform .32s cubic-bezier(.32, .72, 0, 1), padding-bottom .32s cubic-bezier(.32, .72, 0, 1); }   /* rides up with the keys (iOS's keyboard curve), not one jump: iOS reports the keys' full height the moment they start */
+.view-chat.cht-kb .cht-foot { padding-bottom: 8px; transform: translateY(calc(-1 * var(--cht-kb))); }
+.cht-hi h2 { transition: transform .6s cubic-bezier(.4, 0, .2, 1), opacity .55s cubic-bezier(.4, 0, .2, 1) .1s; }   /* coming back: eased in and out, the fade just behind the move */
+.view-chat.cht-typing .cht-hi h2 { opacity: 0; transform: translateY(-48px); transition: transform .45s cubic-bezier(.4, 0, .2, 1), opacity .14s ease-out; }   /* leaving: gone in ~0.14s so the box riding up never passes through it (owner's recording: it did at 0.5s); it still drifts up as it goes */   /* Gemini (owner's video, 60fps frames): the greeting slides up and fades as the keys come, ~0.2s; back down and in as they go */
+@media (prefers-reduced-motion: reduce) { .cht-hi h2 { transition: opacity .2s; } .view-chat.cht-typing .cht-hi h2 { transform: none; } }
+.view-chat.cht-kb.cht-on .cht-log { padding-bottom: calc(112px + var(--cht-kb)); }
+.cht-ic { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--ink); }
+.cht-go { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--cht-blue); color: #fff; }
+
+/* a chat: the words scroll up behind the see-through box */
+.cht-thread { display: grid; gap: 18px; width: min(100%, 720px); margin: 0 auto; padding: 12px 4px 20px; font-size: 16px; line-height: 1.5; }
+.cht-me { justify-self: end; max-width: 80%; padding: 10px 16px; border-radius: 20px; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.cht-ai p { margin: 0 0 8px; }
+.cht-ai b { font-weight: 600; }
+.cht-rows { margin-top: 4px; border-top: 1px solid var(--line); }
+.cht-rows > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 6px 2px; border-bottom: 1px solid var(--line); }
+.cht-rows span { display: grid; min-width: 0; line-height: 1.3; }
+.cht-rows small { color: var(--ink-tertiary); font-size: 13px; }
+.cht-rows b { white-space: nowrap; font-weight: 550; }
