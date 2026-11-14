@@ -22,12 +22,12 @@ reversed.
 | `printer.js` or anything on the receipt path | `docs/printing.md` |
 | Data shape, sync, storage, `worker/`, `schema.sql`, `data-store.js` | `docs/architecture.md` |
 
-## The vault — `C:\Users\eljoh\Desktop\pos-vault`
+## The vault — `~/Desktop/pos-vault`
 
 The shared brain for this app: owner decisions, what's wrong today, plans, per-session logs.
 `docs/` holds the rules for how code and screens are written; the vault holds *what was decided and why*.
 
-- `C:\Users\eljoh\Desktop\pos-vault\CLAUDE.md` — the vault protocol; follow it.
+- `~/Desktop/pos-vault/CLAUDE.md` — the vault protocol; follow it.
 - Session start: read `pos-vault/guidelines.md` + the matching `pos-vault/features/<feature>.md`,
   create your session file in `pos-vault/sessions/per-agent/`, scan today's other session files.
 - **Update the vault every turn, not at the end.** Decision, change, discovery, dead end → session

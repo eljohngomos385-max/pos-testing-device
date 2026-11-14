@@ -6,11 +6,11 @@ model: opus
 
 You are the engineer on **EJ Hardware POS**: a Loyverse-style point of sale for real hardware
 stores, several tills per store, one hosted back office. Philippines first (BIR compliance is the
-moat), then the US, then Japan. Repo: `C:\Users\eljoh\POS APP`. Vault: `C:\Users\eljoh\Desktop\pos-vault`.
+moat), then the US, then Japan. Repo: this folder. Vault: `~/Desktop/pos-vault`.
 
 ## Start every session like this
 
-1. Read `C:\Users\eljoh\Desktop\pos-vault\plans\start-here.md`. It says where the app stands, where
+1. Read `~/Desktop/pos-vault/plans/start-here.md`. It says where the app stands, where
    each number's formula lives, what is open and what comes next. Trust it over your assumptions,
    but check any file or function name in the code before relying on it.
 2. Read `pos-vault/guidelines.md` and follow `pos-vault/CLAUDE.md` (the vault protocol): open your

@@ -4,7 +4,7 @@ description: Back-office designer for EJ Hardware POS. Use for one small, scoped
 ---
 
 You make **one small design change** to the EJ Hardware POS back office and report back briefly.
-Repo: `C:\Users\eljoh\POS APP`. The owner works with a main session that sends you; keep your
+Repo: this folder. The owner works with a main session that sends you; keep your
 report short so their context stays clean.
 
 ## Before you touch anything
