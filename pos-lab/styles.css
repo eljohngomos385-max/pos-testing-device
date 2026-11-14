@@ -8789,9 +8789,9 @@ body:has(#itemsView > #scanSheet.open) #qsTickbar { z-index: 100; }
 .side-top { display: none; }
 :root { --side-pill: var(--surface); --head-y: 8px; --sheet-x: 16px; }   /* --head-y: the ☰ row's top on every page and the menu's title + switch beside it (Sell's ☰: .catalog's 8, + .content-row's 8 on the iPad); --sheet-x: every slide-up sheet's screen edge → card (owner 2026-11-01: all 16, Claude's sheet) */
 @media (min-width: 721px) { :root { --head-y: 16px; } }
-body.light-theme { --side-pill: #F2F0F1; --side-canvas: #FBF9FA; }   /* the menu only, Gemini's off an iPhone screenshot (owner 2026-11-10); the page beside it keeps --canvas */
+body.light-theme { --side-pill: #E8E6E7; --side-canvas: #FBF9FA; --side-ic: #525252; --side-ic-on: #2B2B2B; }   /* the menu only, Gemini's off an iPhone screenshot (owner 2026-11-10); the page beside it keeps --canvas. Pill and icons: owner 2026-11-15, pos-lab-icons - #F2F0F1 lifted 3.1 L* off the menu where dark's lifts 9.8, so the open page barely showed and light read bland; #E8E6E7 is 2/3 of dark's (all of it read heavy) */
 body:not(.light-theme) { --side-canvas: #161616; }   /* dark: the menu a step under the #1A page, as Claude's iPad menu sits under its page (#111 / #151515, owner 2026-11-11) */
-body.light-theme #app:not(.bo-app) .sidebar { --ink: #000; --ink-tertiary: #686667; color: var(--ink); }
+body.light-theme #app:not(.bo-app) .sidebar { --ink: #1A1A1A; --ink-tertiary: #686667; color: var(--ink); }   /* the app's light ink, a step off black as dark's menu is a step off white (#F8F8F8); pure #000 sat 35 L* off the grey icons where dark sits 22 (owner 2026-11-15) */
 body.light-theme #app:not(.bo-app) .side-link.active { background: var(--side-pill); }
 #app::before { display: none; }   /* nothing left beside it to dim */
 :root { --menu-time: .4s; --menu-slide: var(--menu-time) cubic-bezier(.47, .27, .18, 1); }   /* the menu's slide, fitted frame by frame to DeepSeek's: a soft start, then a long settle (owner 2026-11-10). A swipe's let-go carries on along this same slide (app.js drawer) */
@@ -8853,6 +8853,11 @@ body:not(.light-theme) #app :is(.side-top > :is(#sellSwitch, .side-x), .side-lin
 .side-link.active .f { fill: currentColor; }
 .side-link.active .d { stroke: var(--side-pill); stroke-width: 1.8; }   /* inner lines cut out of the filled glyph */
 .side-link .dot { fill: currentColor; stroke: none; }
+/* The menu's icons: flat glyphs, Settings › Payment types › Icon's look - one solid shape on nothing, grey, the open page's --ink (owner 2026-11-15, pos-lab-icons). Light's own two
+   (--side-ic / --side-ic-on): #525252, between #616161 (pale) and #3A3A3A (dark's spacing by the numbers, but solid dark shapes on white
+   weigh more and stood out); the open page #2B2B2B, a step off black as dark's #F8F8F8 is off white. The gear keeps its line. */
+#app:not(.bo-app) .side-link:not([data-view="settings"]) > svg:not(.ext) { color: var(--side-ic, var(--ink-secondary)); }
+#app:not(.bo-app) .side-link.active:not([data-view="settings"]) > svg:not(.ext) { color: var(--side-ic-on, var(--ink)); }
 @media (min-width: 721px) {   /* iPad: the phone's menu x 1.075, it read small on the bigger screen and x 1.1 was too big (owner 2026-11-10, a try). The 44 circles stay the ☰'s twins, the width stays; icon centres and text edge stay on the name row's */
   .side-ttl { font-size: 21.5px; }
   :where(#app:not(.bo-app)) .side-link { height: 39.8px; padding-left: 17.55px; gap: 17.2px; font-size: 16.7px; }
