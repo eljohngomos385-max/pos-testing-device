@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open sketch</title>
+<!-- Sketch only (owner 2026-11-11): the Open page for unpaid orders. Not wired to pos-lab; colours copied from its light theme. -->
+<style>
+  :root {
+    --bg: #FFFFFF; --bg-soft: #EDEDED; --surface: #F9F9F9; --canvas: #F2F2F2;
+    --line: #E1E1E1; --ink: #1A1A1A; --ink-2: #616161; --ink-3: #8C8C8C;
+    --cta-solid: #4388F7; --cta-ink: #DDF4FF;
+    --cta-bg: radial-gradient(75% 80% at 50% 120%, #8EC2F0, transparent 85%), linear-gradient(#6A9FF9, var(--cta-solid) 50%, #5592F7);
+    --ring: 0 0 0 1px var(--line), 0 1px 2px -1px rgb(26 26 26 / .07);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 40px; background: #DADADA; color: var(--ink); font: 14px/1.4 -apple-system, "SF Pro Text", system-ui, sans-serif; letter-spacing: -.15px; }
+  h2 { margin: 0 0 4px; font-size: 15px; } .cap { margin: 0 0 14px; color: var(--ink-2); font-size: 13px; }
+  .strip { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 36px; }
+  .step { width: 300px; } .step > p { margin: 8px 2px 0; font-size: 13px; color: var(--ink-2); }
+  .ph { position: relative; width: 300px; height: 650px; border-radius: 38px; background: var(--canvas); overflow: hidden; box-shadow: 0 0 0 8px #111, 0 10px 30px rgb(0 0 0 / .25); display: flex; flex-direction: column; }
+  .head { display: flex; align-items: center; gap: 10px; padding: 46px 14px 10px; }
+  .sq { width: 36px; height: 36px; border-radius: 50%; background: var(--bg); box-shadow: var(--ring); display: grid; place-items: center; font-size: 16px; flex: none; }
+  .ttl { flex: 1; text-align: center; font-weight: 600; font-size: 16px; } .head .sp { width: 36px; flex: none; }
+  .search { flex: 1; height: 36px; border-radius: 18px; background: var(--bg); box-shadow: var(--ring); color: var(--ink-3); display: flex; align-items: center; padding: 0 14px; }
+  .list { padding: 6px 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--bg); border-radius: 14px; box-shadow: var(--ring); }
+  .row .nm { flex: 1; font-weight: 600; } .row .sub { display: block; font-weight: 400; font-size: 12px; color: var(--ink-3); }
+  .row .amt { font-variant-numeric: tabular-nums; font-weight: 500; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cta-solid); flex: none; }
+  .nodot { width: 8px; flex: none; }
+  .hl { outline: 2px solid var(--cta-solid); outline-offset: 2px; }
+  .cta { margin: 0 12px 30px; height: 50px; border-radius: 25px; background: var(--cta-bg); color: var(--cta-ink); font-weight: 600; font-size: 16px; display: grid; place-items: center; }
+  .ghost { margin: 0 12px 10px; height: 46px; border-radius: 23px; background: var(--bg); box-shadow: var(--ring); font-weight: 600; display: grid; place-items: center; }
+  .grow { flex: 1; }
+  .lines { margin: 4px 12px; background: var(--bg); border-radius: 14px; box-shadow: var(--ring); padding: 4px 14px; }
+  .ln { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); } .ln:last-child { border: 0; }
+  .ln .q { color: var(--ink-3); width: 22px; } .ln .n { flex: 1; } .ln .p { font-variant-numeric: tabular-nums; }
+  .total { display: flex; justify-content: space-between; padding: 14px 24px 12px; font-size: 18px; font-weight: 700; }
+  .meta { text-align: center; color: var(--ink-3); font-size: 12px; margin-top: -4px; }
+  /* the Dine-in sheet */
+  .veil { position: absolute; inset: 0; background: rgb(0 0 0 / .3); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 26px 26px 0 0; padding: 14px 14px 30px; }
+  .sheet .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--bg-soft); margin: 0 auto 12px; }
+  .sheet h3 { margin: 0 0 4px; font-size: 16px; text-align: center; } .sheet .cap2 { text-align: center; color: var(--ink-3); font-size: 12px; margin-bottom: 12px; }
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tb { padding: 12px 6px; border-radius: 12px; background: var(--surface); box-shadow: var(--ring); text-align: center; font-weight: 600; }
+  .tb small { display: block; font-weight: 400; font-size: 11px; color: var(--ink-3); }
+  .tb.busy { background: var(--bg-soft); }
+  .tb.pick { box-shadow: 0 0 0 2px var(--cta-solid); }
+  .cart-row { display: flex; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--bg); }
+  .pill { margin: 10px 12px; padding: 10px 14px; border-radius: 12px; background: var(--bg); box-shadow: var(--ring); display: flex; justify-content: space-between; }
+  /* iPad */
+  .pad { width: 900px; max-width: 100%; height: 560px; border-radius: 26px; background: var(--canvas); box-shadow: 0 0 0 10px #111, 0 10px 30px rgb(0 0 0 / .25); display: grid; grid-template-columns: 1fr 340px; overflow: hidden; }
+  .pad .head { padding-top: 20px; }
+  .pad .side { background: var(--bg); border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+  .pad .side .head { padding-top: 20px; }
+  .pad .lines { box-shadow: none; background: var(--surface); }
+</style>
+</head>
+<body>
+
+<h2>Restaurant with tables (phone)</h2>
+<p class="cap">One rule: every order that isn't paid yet is one row on Open. Paying it moves it to Orders.</p>
+<div class="strip">
+
+  <div class="step">
+    <div class="ph">
+      <div class="head"><div class="sq">☰</div><div class="search">Search items</div></div>
+      <div class="grow"></div>
+      <div class="veil"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <h3>Which table?</h3>
+        <div class="cap2">Dine-in</div>
+        <div class="tabs">
+          <div class="tb">Table 1<small>Free</small></div>
+          <div class="tb">Table 2<small>Free</small></div>
+          <div class="tb">Table 3<small>Free</small></div>
+          <div class="tb pick busy">Table 4<small>₱850.00</small></div>
+          <div class="tb">Table 5<small>Free</small></div>
+          <div class="tb">Table 6<small>Free</small></div>
+          <div class="tb busy">Table 7<small>₱320.00</small></div>
+          <div class="tb">Table 8<small>Free</small></div>
+          <div class="tb">Table 9<small>Free</small></div>
+        </div>
+      </div>
+    </div>
+    <p><b>1.</b> Sell › Dine-in asks which table. A table that already has a bill shows its amount; tapping it adds to that bill. The cart clears.</p>
+  </div>
+
+  <div class="step">
+    <div class="ph">
+      <div class="head"><div class="sq">☰</div><div class="search">Search</div></div>
+      <div class="list">
+        <div class="row"><span class="dot"></span><span class="nm">#1046<span class="sub">QR · just now</span></span><span class="amt">₱150.00</span></div>
+        <div class="row"><span class="nodot"></span><span class="nm">Table 7<span class="sub">12 min</span></span><span class="amt">₱320.00</span></div>
+        <div class="row"><span class="nodot"></span><span class="nm">#1044<span class="sub">20 min</span></span><span class="amt">₱200.00</span></div>
+        <div class="row hl"><span class="nodot"></span><span class="nm">Table 4<span class="sub">45 min</span></span><span class="amt">₱1,020.00</span></div>
+      </div>
+    </div>
+    <p><b>2.</b> ☰ › Open. Newest on top; ordering more never moves a row. The name is the table, or the number if there is none. Blue dot = new QR order not opened yet.</p>
+  </div>
+
+  <div class="step">
+    <div class="ph">
+      <div class="head"><div class="sq">‹</div><div class="ttl">Table 4</div><div class="sq">⎙</div></div>
+      <div class="meta">#1042 · 45 min</div>
+      <div class="lines">
+        <div class="ln"><span class="q">2×</span><span class="n">Chicken adobo</span><span class="p">₱440.00</span></div>
+        <div class="ln"><span class="q">3×</span><span class="n">Coke</span><span class="p">₱180.00</span></div>
+        <div class="ln"><span class="q">1×</span><span class="n">Sinigang</span><span class="p">₱230.00</span></div>
+        <div class="ln"><span class="q">1×</span><span class="n">Halo-halo</span><span class="p">₱170.00</span></div>
+      </div>
+      <div class="grow"></div>
+      <div class="total"><span>Total</span><span>₱1,020.00</span></div>
+      <div class="ghost">Add items</div>
+      <div class="cta">Check out</div>
+    </div>
+    <p><b>3.</b> Tap a row: one list of everything ordered (3 Cokes, not 2 + 1), the total, Check out. ⎙ prints one bill. Add items goes back to Sell on this table.</p>
+  </div>
+
+  <div class="step">
+    <div class="ph">
+      <div class="head"><div class="sq">☰</div><div class="search">Search</div></div>
+      <div class="list">
+        <div class="row"><span class="dot"></span><span class="nm">#1046<span class="sub">QR · just now</span></span><span class="amt">₱150.00</span></div>
+        <div class="row"><span class="nodot"></span><span class="nm">#1044<span class="sub">20 min</span></span><span class="amt">₱200.00</span></div>
+      </div>
+    </div>
+    <p><b>Shop with no tables.</b> Same page, same tap. Rows are just numbers, and only QR orders land here; a walk-in that pays now goes straight to Orders. No tables and no QR codes = no Open in the menu.</p>
+  </div>
+</div>
+
+<h2>iPad</h2>
+<p class="cap">The same list on the left; the tapped order on the right, in the cart's place.</p>
+<div class="pad">
+  <div>
+    <div class="head"><div class="sq">☰</div><div class="search">Search</div></div>
+    <div class="list">
+      <div class="row"><span class="dot"></span><span class="nm">#1046<span class="sub">QR · just now</span></span><span class="amt">₱150.00</span></div>
+      <div class="row"><span class="nodot"></span><span class="nm">Table 7<span class="sub">12 min</span></span><span class="amt">₱320.00</span></div>
+      <div class="row"><span class="nodot"></span><span class="nm">#1044<span class="sub">20 min</span></span><span class="amt">₱200.00</span></div>
+      <div class="row hl"><span class="nodot"></span><span class="nm">Table 4<span class="sub">45 min</span></span><span class="amt">₱1,020.00</span></div>
+    </div>
+  </div>
+  <div class="side">
+    <div class="head"><div class="sp"></div><div class="ttl">Table 4</div><div class="sq">⎙</div></div>
+    <div class="meta">#1042 · 45 min</div>
+    <div class="lines">
+      <div class="ln"><span class="q">2×</span><span class="n">Chicken adobo</span><span class="p">₱440.00</span></div>
+      <div class="ln"><span class="q">3×</span><span class="n">Coke</span><span class="p">₱180.00</span></div>
+      <div class="ln"><span class="q">1×</span><span class="n">Sinigang</span><span class="p">₱230.00</span></div>
+      <div class="ln"><span class="q">1×</span><span class="n">Halo-halo</span><span class="p">₱170.00</span></div>
+    </div>
+    <div class="grow"></div>
+    <div class="total"><span>Total</span><span>₱1,020.00</span></div>
+    <div class="ghost">Add items</div>
+    <div class="cta">Check out</div>
+  </div>
+</div>
+
+</body>
+</html>

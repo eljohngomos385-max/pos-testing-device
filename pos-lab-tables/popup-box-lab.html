@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pop-up box lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* Copied from pos-lab/styles.css body.light-theme (a lab keeps its own copy so the app's global rules stay out) */
+:root {
+  --bg: #FFFFFF; --bg-soft: #EDEDED; --surface: #F9F9F9; --line: #E1E1E1; --line-strong: #D4D4D4; --tile: #F3F3F3; --canvas: #F2F2F2;
+  --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C; --ink-quaternary: #B5B5B5;
+  --danger: #FF453A; --r-input: 10px;
+  --cta-solid: #4388F7; --cta-ink: #DDF4FF;
+  --cta-bg: radial-gradient(75% 80% at 50% 120%, #8EC2F0, transparent 85%), linear-gradient(#6A9FF9, var(--cta-solid) 50%, #5592F7);
+  --cta-shadow: inset 0 0 0 .5px rgb(170 228 255 / .32), inset 1px 1px 1.5px -.5px rgb(170 228 255 / .55), inset -1px -1px 1.5px -.5px rgb(170 228 255 / .45), 0 1px 2px rgb(41 85 151 / .22);
+  --font: "Inter", -apple-system, system-ui, sans-serif;
+  /* The box, measured from the two reference pictures. Only what the reference adds is new. */
+  --bx-shadow: 0 8px 32px rgb(0 0 0 / .10), 0 1px 4px rgb(0 0 0 / .04);
+}
+.dev-phone { --W: 393; --H: 852; --bx-w: 234px; --bx-wide: 330px; --bx-row: 52px; --bx-py: 3px; --bx-r: 17px; --bx-ic: 24px; --bx-x: 16px; --bx-gap: 13px;
+  --bx-fs: 17px; --bx-t: 17px; --bx-m: 14px; --bx-near: 14px; --bx-edge: 13; --bx-key: 46px; --bx-btn: 44px; --bx-hero: 34px; --top: 58px; --cap: 6.5; }
+.dev-ipad { --W: 1180; --H: 820; --bx-w: 247px; --bx-wide: 340px; --bx-row: 39px; --bx-py: 2px; --bx-r: 13px; --bx-ic: 18px; --bx-x: 11px; --bx-gap: 9px;
+  --bx-fs: 13px; --bx-t: 13px; --bx-m: 12px; --bx-near: 8px; --bx-edge: 8; --bx-key: 40px; --bx-btn: 34px; --bx-hero: 26px; --top: 16px; --cap: 8.5; }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font: 14px/1.35 var(--font); }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; }
+.ic { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* the lab's own bar */
+.bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 8px; align-items: center; padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.bar select { min-width: 0; flex: 0 1 auto; height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r-input); background: var(--surface); color: var(--ink); font: 14px var(--font); }
+.bar #jump { flex: 1 1 0; max-width: 340px; }
+.kind { padding: 26px 16px 4px; }
+.kind h2 { margin: 0 0 3px; font-size: 18px; font-weight: 600; }
+.kind p { margin: 0; color: var(--ink-secondary); max-width: 60ch; }
+.case { padding: 18px 0 0; scroll-margin-top: 58px; }
+.case h3 { margin: 0; padding: 0 16px; font-size: 15px; font-weight: 600; }
+.case .note { margin: 2px 0 0; padding: 0 16px; color: var(--ink-secondary); }
+.strip { display: flex; gap: 12px; padding: 8px 0 0; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+.strip > figure { flex: none; margin: 0; scroll-snap-align: center; }
+figcaption { padding: 0 16px 4px; font-size: 12px; color: var(--ink-tertiary); }
+.wrap { width: calc(var(--W) * var(--s) * 1px); height: calc(var(--H) * var(--s) * 1px); overflow: hidden; background: var(--bg); }
+
+/* one device screen, true size, scaled as a whole */
+.fr { position: relative; width: calc(var(--W) * 1px); height: calc(var(--H) * 1px); transform: scale(var(--s)); transform-origin: 0 0; overflow: hidden; background: var(--bg); }
+
+/* THE BOX */
+.bx { position: absolute; z-index: 5; display: flex; flex-direction: column; width: var(--bx-w); max-height: calc(100% - 16px); padding: var(--bx-py) 0; overflow: hidden auto;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--bx-r); box-shadow: var(--bx-shadow); }
+.bx.wide { width: var(--bx-wide); }
+.bx-row { display: flex; align-items: center; gap: var(--bx-gap); flex: none; width: 100%; min-height: var(--bx-row); padding: 0 var(--bx-x); font-size: var(--bx-fs); text-align: left; }
+.bx-row .ic { width: var(--bx-ic); height: var(--bx-ic); }
+.bx-row > span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bx-row > small { flex: none; max-width: 60%; font-size: inherit; color: var(--ink-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bx-row.red { color: var(--danger); }
+.bx-row.cur > span { font-weight: 560; }
+.bx-row.off { color: var(--ink-quaternary); }
+.bx-list { flex: 0 1 auto; min-height: 0; overflow-y: auto; max-height: calc(var(--bx-row) * var(--cap)); }
+.bx-head { padding: 10px var(--bx-x) 4px; }
+.bx-head b { display: block; font-size: var(--bx-t); font-weight: 600; text-wrap: balance; }
+.bx-head p { margin: 2px 0 0; font-size: var(--bx-m); color: var(--ink-secondary); text-wrap: pretty; }
+.ud { display: inline-block; width: 1em; height: 1em; vertical-align: -.14em; }
+.bx-hero { padding: 6px var(--bx-x) 8px; font-size: var(--bx-hero); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bx-find { display: flex; align-items: center; gap: var(--bx-gap); flex: none; min-height: var(--bx-row); padding: 0 var(--bx-x); font-size: var(--bx-fs); color: var(--ink-tertiary); }
+.bx-find .ic { width: var(--bx-ic); height: var(--bx-ic); }
+.bx-btns { display: flex; justify-content: flex-end; gap: 8px; flex: none; padding: 8px var(--bx-x) 10px; }
+.bx-btns button { min-width: 72px; height: var(--bx-btn); padding: 0 16px; border-radius: 999px; font-size: var(--bx-m); font-weight: 560; background: var(--bg-soft); white-space: nowrap; }
+.bx-btns .cta { background: var(--cta-bg); color: var(--cta-ink); box-shadow: var(--cta-shadow); }
+.bx-keys { display: grid; grid-template-columns: repeat(3, 1fr); padding: 2px var(--bx-x) 0; flex: none; }
+.bx-keys span { display: grid; place-items: center; height: var(--bx-key); font-size: calc(var(--bx-fs) + 3px); font-variant-numeric: tabular-nums; }
+.bx-seg { display: flex; gap: 2px; margin: 0 var(--bx-x) 4px; padding: 2px; flex: none; background: var(--bg-soft); border-radius: 9px; font-size: var(--bx-m); }
+.bx-seg span { flex: 1; padding: 5px 0; text-align: center; border-radius: 7px; }
+.bx-seg .on { background: var(--bg); font-weight: 560; }
+.bx-sw { flex: none; width: 40px; height: 24px; border-radius: 12px; background: var(--ink-quaternary); position: relative; }
+.bx-sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--bg); }
+.bx-sw.on { background: var(--ink); } .bx-sw.on::after { left: 18px; }
+.bx-step { display: flex; align-items: center; gap: 14px; flex: none; }
+.bx-step .ic { width: calc(var(--bx-ic) - 4px); height: calc(var(--bx-ic) - 4px); }
+.bx-pin { display: flex; justify-content: center; gap: 14px; padding: 8px 0 6px; }
+.bx-pin i { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--ink-tertiary); }
+.bx-map { position: relative; margin: 2px var(--bx-x) 6px; height: 170px; border-radius: 10px; background: var(--tile); display: grid; place-items: center; color: var(--ink-tertiary); flex: none; }
+.bx-map .ic { width: 28px; height: 28px; color: var(--ink); }
+.bx-cam { margin: 4px var(--bx-x) 10px; height: 200px; border-radius: 10px; background: var(--ink); display: grid; place-items: center; color: var(--bg); font-size: var(--bx-m); flex: none; }
+.bx-paper { margin: 4px var(--bx-x) 6px; padding: 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre; overflow: hidden; flex: none; }
+.bx-tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 6px var(--bx-x); flex: none; }
+.bx-tiles i { aspect-ratio: 1; border-radius: 50%; }
+.bx-tiles span { display: grid; place-items: center; aspect-ratio: 1; }
+.bx-tiles span .ic { width: 22px; height: 22px; }
+.bx-tile { width: 54px; height: 54px; margin: 8px var(--bx-x); border-radius: 13px; background: #4388F7; color: #fff; display: grid; place-items: center; flex: none; }
+.bx-tile .ic { width: 28px; height: 28px; }
+
+/* rough stand-ins of the pages */
+.pg { position: absolute; inset: 0; padding: var(--top) 16px 0; }
+.pg-split { position: absolute; inset: 0; display: grid; grid-template-columns: 340px 1fr; }
+.pg-split .pg { position: relative; inset: auto; border-left: 1px solid var(--line); }
+.pg-side { padding: var(--top) 16px; }
+.pg-side i { display: block; height: 14px; margin: 26px 0; width: 80%; border-radius: 4px; background: var(--tile); }
+.pg-side i:nth-child(odd) { width: 60%; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; }
+.top b { font-size: 17px; font-weight: 600; }
+.rb { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--tile); flex: none; }
+.rb .ic { width: 20px; height: 20px; } .rb-no { width: 40px; flex: none; }
+.pg-hero { padding: 26px 0 18px; font-size: 40px; font-weight: 600; text-align: center; }
+.pg-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 54px; border-bottom: 1px solid var(--line); font-size: 15px; }
+.pg-row span:last-child { color: var(--ink-tertiary); }
+.pg-btn { position: absolute; left: 16px; right: 16px; bottom: 34px; height: 54px; display: grid; place-items: center; border-radius: 999px; font-weight: 560; background: var(--cta-bg); color: var(--cta-ink); box-shadow: var(--cta-shadow); }
+.pg-fab { position: absolute; right: 16px; bottom: 34px; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; background: var(--cta-bg); color: var(--cta-ink); box-shadow: var(--cta-shadow); }
+.pg-fab .ic { width: 24px; height: 24px; }
+.dev-ipad .pg-btn { left: auto; right: 24px; width: 180px; height: 48px; bottom: 24px; }
+.sell { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr; }
+.dev-ipad .sell { grid-template-columns: 1fr 400px; }
+.sell-l { position: relative; padding: var(--top) 16px 0; }
+.search { flex: 1; height: 40px; border-radius: 999px; background: var(--tile); color: var(--ink-tertiary); display: flex; align-items: center; padding: 0 16px; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+.dev-ipad .tiles { grid-template-columns: repeat(4, 1fr); }
+.tl { min-height: 104px; padding: 10px; border-radius: var(--r-input); background: var(--tile); font-size: 13px; font-weight: 500; }
+.dev-ipad .tl { min-height: 128px; }
+.ct { position: absolute; inset: 0; display: flex; flex-direction: column; padding: var(--top) 16px 34px; background: var(--bg); }
+.dev-ipad .ct { position: relative; inset: auto; border-left: 1px solid var(--line); padding-bottom: 24px; }
+.ct-c { padding: 0 14px; height: 40px; display: flex; align-items: center; border-radius: 999px; background: var(--tile); font-weight: 500; }
+.ct-l { display: flex; justify-content: space-between; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.ct-l small { display: block; font-size: 13px; color: var(--ink-tertiary); }
+.ct-f { margin-top: auto; }
+.ct-h { display: flex; justify-content: space-between; padding: 12px 2px; }
+.ct-b { height: 54px; display: grid; place-items: center; border-radius: 999px; font-weight: 560; background: var(--cta-bg); color: var(--cta-ink); box-shadow: var(--cta-shadow); }
+</style>
+</head>
+<body>
+<div class="bar">
+  <select id="dev" aria-label="Device"><option value="phone">Phone</option><option value="ipad">iPad</option></select>
+  <select id="ics" aria-label="Icons"><option value="both">With and without icons</option><option value="1">With icons</option><option value="0">Without icons</option></select>
+  <select id="jump" aria-label="Jump to"></select>
+</div>
+<main id="out"></main>
+
+<script>
+// Every pop-up of the POS redrawn as one floating menu box. A mock-up: nothing here is wired to the app.
+// The icons: ones the app already has are copied as they are (sprite in index.html, fabIc in app.js); the rest are plain line icons in the same stroke.
+const IC = {
+  back: '<path d="M15 4l-8 8 8 8"/>', x: '<path d="M5 5l14 14M19 5L5 19"/>', check: '<path d="M4 12.5l5.2 7.1L19.8 4.4"/>',
+  more: '<circle cx="5" cy="12" r=".8" fill="currentColor"/><circle cx="12" cy="12" r=".8" fill="currentColor"/><circle cx="19" cy="12" r=".8" fill="currentColor"/>',
+  photo: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 17l5-5 4 4 2.5-2.5 5 5"/><circle cx="16" cy="9.5" r="1.4"/>',
+  crop: '<path d="M7 2.5V17h14.5M2.5 7H17v14.5"/>',
+  trash: '<path d="M4 6.5h16M9.5 6.5V4.8c0-.7.6-1.3 1.3-1.3h2.4c.7 0 1.3.6 1.3 1.3v1.7M6 6.5l.9 12.6c.1 1.1.9 1.9 2 1.9h6.2c1.1 0 1.9-.8 2-1.9L18 6.5M10 10.5v6.5M14 10.5v6.5"/>',
+  tag: '<path d="M3.4 13.4l7.2 7.2a2 2 0 0 0 2.8 0L21 13V3H11L3.4 10.6a2 2 0 0 0 0 2.8z"/><circle cx="16.5" cy="7.5" r="1.3"/>',
+  box: '<path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', minus: '<path d="M5 12h14"/>',
+  cashin: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>', cashout: '<path d="M12 15V4M7 9l5-5 5 5M5 20h14"/>',
+  chev: '<path d="M9 6l6 6-6 6"/>', updown: '<path d="M8 9.5l4-4 4 4M8 14.5l4 4 4-4"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>', search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5l5 5"/>',
+  scan: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M4 16v3a1 1 0 0 0 1 1h3M16 20h3a1 1 0 0 0 1-1v-3M7.5 8v8M11 8v8M14 8v8M16.5 8v8"/>',
+  filter: '<path d="M4 7h16M7 12h10M10 17h4"/>',
+  pencil: '<path d="M4 20l1-4.2L16.2 4.6a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8L8.2 19zM14.5 6.3l3.2 3.2"/>',
+  note: '<path d="M6 3.5h9l4 4v13H6zM14.5 3.5V8H19M9 12.5h6.5M9 16h6.5"/>',
+  purse: '<path d="M4 7.5h15A1.5 1.5 0 0 1 20.5 9v9a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18V6.5a2 2 0 0 1 2-2H17M16.5 13.5h.01"/>',
+  save: '<path d="M7 3.5h10a1 1 0 0 1 1 1v16l-6-4-6 4v-16a1 1 0 0 1 1-1z"/>',
+  print: '<path d="M7 8V3.5h10V8M7 17H4.5v-7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7H17M7 14h10v6.5H7z"/>',
+  lost: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5l5 5M8.5 8.5l4 4M12.5 8.5l-4 4"/>',
+  receipt: '<path d="M6 3.5h12v17l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4zM9 8.5h6M9 12.5h6"/>',
+  refund: '<path d="M9 6l-4.5 4.5L9 15M4.5 10.5H15a4.5 4.5 0 0 1 0 9h-3"/>',
+  exchange: '<path d="M7 4L3.5 7.5 7 11M3.5 7.5H20M17 13l3.5 3.5L17 20M20.5 16.5H4"/>',
+  info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.1"/>',
+  ban: '<circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/>',
+  percent: '<path d="M18.5 5.5l-13 13"/><circle cx="7.5" cy="7.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/>',
+  coin: '<circle cx="12" cy="12" r="8.5"/><path d="M10 16.5v-9h2.7a2.7 2.7 0 0 1 0 5.4H10M8 9.5h8.5M8 11.5h8.5"/>',
+  eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
+  eyeoff: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/><path d="M4 4l16 16"/>',
+  truck: '<path d="M2.5 6.5H14V17H9.2M14 10h4l3.5 3.5V17h-1.7M14 17h1.2M4.8 17H2.5V6.5"/><circle cx="7" cy="17.5" r="2.2"/><circle cx="17.5" cy="17.5" r="2.2"/>',
+  none: '<circle cx="12" cy="12" r="8.5"/><path d="M8 12h8"/>',
+  person: '<circle cx="12" cy="8" r="3.8"/><path d="M4.5 20.5c.8-4 3.8-6 7.5-6s6.7 2 7.5 6"/>',
+  warn: '<path d="M12 3.5L2.5 20.5h19zM12 10v5M12 17.8v.1"/>',
+  list: '<path d="M4 6h2M4 12h2M4 18h2M10 6h10M10 12h10M10 18h10"/>',
+  meals: '<path d="M7 3.5v7a2 2 0 0 0 4 0v-7M9 3.5v17M16.5 3.5c-2 1-3 3.5-3 6.5s1 4 3 4zm0 10.5v6.5"/>',
+  bolt: '<path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/>',
+  wrench: '<path d="M14.5 6.5a4.5 4.5 0 0 1 5.7-1.2L17 8.5 18.5 10l3.2-3.2a4.5 4.5 0 0 1-6 5.4L7.5 20a2 2 0 0 1-3-3l7.8-8.2a4.5 4.5 0 0 1 2.2-2.3z"/>',
+  grid: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  qr: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2.5v2.5H14zM17.5 17.5H20V20h-2.5z"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/>',
+  bars: '<path d="M5 20v-9M12 20V4M19 20v-7"/>',
+  ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5.5H4.5V6H10"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
+  cal: '<rect x="4" y="5.5" width="16" height="15" rx="2.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/>',
+  card: '<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18"/>',
+  status: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/>',
+  full: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', split: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10 5v14"/>',
+  logout: '<path d="M10 4H5v16h5M14.5 8l4 4-4 4M18.5 12H9"/>',
+  pin: '<path d="M12 21s7-6.3 7-11.5a7 7 0 0 0-14 0C5 14.7 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/>',
+  locate: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>',
+  key: '<circle cx="8" cy="15.5" r="4.5"/><path d="M11.2 12.3L20 3.5M16 7.5l3 3"/>',
+  layers: '<path d="M12 3.5l9 5-9 5-9-5zM3 13l9 5 9-5"/>',
+  folder: '<path d="M3.5 7A1.5 1.5 0 0 1 5 5.5h4.5l2 2.5H19A1.5 1.5 0 0 1 20.5 9.5V18a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z"/>',
+  wallet: '<rect x="3" y="6.5" width="18" height="12" rx="2"/><circle cx="12" cy="12.5" r="2.5"/>',
+  phone: '<path d="M6 3.5h3l1.5 4-2 1.5a12 12 0 0 0 6.5 6.5l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2C10.5 19.4 4.6 13.5 4 5.7a2 2 0 0 1 2-2.2z"/>',
+  mail: '<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/>',
+  home: '<path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/>',
+  bag: '<path d="M5.5 8h13l1 12.5h-15zM9 8V6.5a3 3 0 0 1 6 0V8"/>',
+  one: '<circle cx="12" cy="12" r="3.5"/>', two: '<circle cx="7.5" cy="12" r="3"/><circle cx="16.5" cy="12" r="3"/>',
+  three: '<circle cx="12" cy="7" r="3"/><circle cx="7" cy="16" r="3"/><circle cx="17" cy="16" r="3"/>',
+};
+const svg = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC[n] || ''}</svg>`;
+
+/* Stand-in pages. data-at = what a pop-up sits next to. */
+const rb = (n, at) => n ? `<button class="rb" data-at="${at}">${svg(n)}</button>` : '<i class="rb-no"></i>';
+const TILES = ['PVC Elbows', 'PVC Pipes &amp; Tees', 'THHN Wire', 'Common Wire Nails', 'Boysen Latex Paint', 'Pipe Cutting &amp; Threading', 'Brass Faucet 1/2"', 'Teflon Tape 1/2"', 'LED Bulb 9W Daylight'];
+const cartHtml = () => `<div class="ct"><div class="top">${rb('back', 'cart-back')}<div class="ct-c" data-at="cust">Walk-in customer&nbsp;›</div>${rb('more', 'more')}</div>
+  <div class="ct-l" data-at="line" style="margin-top:10px"><div>PVC Elbow 1/2"<small>1 × ₱12.00</small></div><div>₱12.00</div></div>
+  <div class="ct-l"><div>PVC Elbow 3/4"<small>1 × ₱16.00</small></div><div>₱16.00</div></div>
+  <div class="ct-f"><div class="ct-h"><span data-at="ful">Walk-in ⌃⌄</span><span data-at="disc">Discount ›</span></div><div class="ct-b" data-at="checkout">Check out · ₱28.00</div></div></div>`;
+const sellHtml = (d, withCart) => `<div class="sell"><div class="sell-l"><div class="top">${rb('menu', 'menu')}<div class="search">Search</div>${rb('scan', 'scan')}</div>
+  <div class="tiles">${TILES.map((t, i) => `<div class="tl"${i === 0 ? ' data-at="tile"' : i === 8 ? ' data-at="tile-end"' : ''}>${t}</div>`).join('')}</div>
+  ${d === 'phone' ? '<div class="pg-btn" data-at="viewcart">View cart · ₱28.00</div>' : ''}</div>${d === 'ipad' ? cartHtml() : ''}</div>`;
+const O = o => o;   // a page spec: title, l/r = its round buttons, hero, rows [label, value], btn, fab
+const PAGES = {
+  order: O({ t: '#1-838', r: 'more', hero: '₱270.00', rows: [['PVC Elbow 1/2"', '₱12.00'], ['Boysen Latex Paint', '₱258.00'], ['Paid (QR)', '₱270.00']], btn: 'Refund' }),
+  orders: O({ t: 'Orders', l: 'menu', r: 'filter', rows: [['#1-838', '₱270.00'], ['#1-837', '₱96.00'], ['#1-836', '₱1,240.00'], ['#1-835', '₱28.00'], ['#1-834', '₱540.00']] }),
+  items: O({ t: 'Items', l: 'menu', r: 'filter', rows: [['PVC Elbow 1/2"', '₱12.00'], ['THHN Wire', '₱32.00'], ['Boysen Latex Paint', '₱258.00'], ['Teflon Tape 1/2"', '₱18.00'], ['LED Bulb 9W Daylight', '₱95.00']], fab: 1 }),
+  item: O({ t: 'Edit item', l: 'x', r: 'check', rows: [['Name', 'PVC Elbow 1/2"'], ['Status', 'Active'], ['Price', '₱12.00'], ['Cost', '₱8.00'], ['Markup', 'Percent (%)'], ['Main supplier', 'None'], ['Add variant', '']] }),
+  stock: O({ t: 'Adjust stock', l: 'x', r: 'check', rows: [['Mode', 'Add stock'], ['PVC Elbow 1/2"', '3'], ['THHN Wire', '12'], ['Teflon Tape 1/2"', '5']] }),
+  shift: O({ t: 'Shift', l: 'menu', rows: [['Started', '8:02 AM'], ['Expected cash', '₱1,500.00'], ['Shift · 3:45 PM', 'Paper'], ['Day · Oct 27, 2026', 'Paper']], btn: 'Close shift', fab: 1 }),
+  cash: O({ t: 'Cash in', l: 'x', hero: '₱0.00', rows: [['Category', 'None ⌃⌄']], btn: 'Save' }),
+  settings: O({ t: 'Settings', l: 'menu', rows: [['Payment types', ''], ['Sale types', ''], ['Receipt', ''], ['Log out', '']] }),
+  pay: O({ t: 'Maya', rows: [['Name', 'Maya'], ['Icon', ''], ['Delete payment type', '']] }),
+  receipt: O({ t: 'Receipt', rows: [['Top picture', 'Remove'], ['Preview', '']] }),
+  fuls: O({ t: 'Sale types', rows: [['Walk-in', ''], ['Pickup', ''], ['Delivery', ''], ['Grab pickup', 'Delete']] }),
+  customers: O({ t: 'Customers', l: 'menu', r: 'search', rows: [['Ana Cruz', '₱1,200.00'], ['Jun Reyes', ''], ['Mara Santos', '₱300.00']], fab: 1 }),
+  customer: O({ t: 'Ana Cruz', r: 'pencil', hero: '₱1,200.00', rows: [['Phone', '0917 555 0134'], ['Address', 'Matina, Davao City']], btn: 'Record payment' }),
+  custedit: O({ t: 'Edit customer', l: 'x', r: 'check', rows: [['Name', 'Jun Reyes'], ['Phone', ''], ['Delete customer', '']] }),
+  cats: O({ t: 'Categories', rows: [['Plumbing', '24 items'], ['Paint', '12 items'], ['Electrical', '31 items']] }),
+  discs: O({ t: 'Discounts', rows: [['Senior promo', '20%'], ['Loyalty', '5%']] }),
+  disc: O({ t: 'Edit discount', l: 'x', r: 'check', rows: [['Name', 'Senior promo'], ['Type', 'Percent'], ['Value', '20']] }),
+  mods: O({ t: 'Size', l: 'x', r: 'check', rows: [['Name', 'Size'], ['Customer picks', 'One'], ['Large', 'Available'], ['Delete modifier', '']] }),
+  qr: O({ t: 'QR codes', l: 'menu', rows: [['Table 1', 'New QR'], ['Table 2', 'New QR'], ['Table 3', 'New QR'], ['Delete table', '']] }),
+  checkout: O({ t: 'Checkout', hero: '₱1,700.00', rows: [['Cash', ''], ['GCash', ''], ['QR', ''], ['Account', '']], btn: 'Complete sale' }),
+  list: O({ t: 'PVC Elbows', r: 'filter', rows: [['1/2"', '₱12.00'], ['3/4"', '₱16.00'], ['1"', '₱22.00']] }),
+  pick: O({ t: 'Pick items', r: 'filter', rows: [['PVC Elbow 1/2"', ''], ['THHN Wire', ''], ['Teflon Tape 1/2"', '']] }),
+};
+function pageHtml(d, name) {
+  if (name === 'sell') return sellHtml(d);
+  if (name === 'cart') return d === 'phone' ? cartHtml() : sellHtml(d);
+  const p = PAGES[name];
+  const main = `<div class="pg"><div class="top">${rb(p.l === undefined ? 'back' : p.l, 'left')}<b>${p.t}</b>${rb(p.r, 'right')}</div>
+    ${p.hero ? `<div class="pg-hero">${p.hero}</div>` : ''}${p.rows.map(([a, b]) => `<div class="pg-row"><span>${a}</span><span data-at="${a}">${b}</span></div>`).join('')}
+    ${p.btn ? `<div class="pg-btn"${p.fab ? ' style="right:88px"' : ''} data-at="btn">${p.btn}</div>` : ''}${p.fab ? `<div class="pg-fab" data-at="fab">${svg('plus')}</div>` : ''}</div>`;
+  return d === 'ipad' ? `<div class="pg-split"><div class="pg-side">${'<i></i>'.repeat(9)}</div>${main}</div>` : main;
+}
+
+/* The box's pieces. ic = this frame shows icons. A row is a string: "Label=value:icon" + ! red, * the current one, ~ greyed. */
+function kit(ic) {
+  const row = s => {
+    if (typeof s !== 'string') return s.html;
+    const m = s.match(/^([^=]*?)(?:=(.*?))?(?::(\w*))?([!*~]*)$/), f = m[4];
+    return `<button class="bx-row${f.includes('!') ? ' red' : ''}${f.includes('*') ? ' cur' : ''}${f.includes('~') ? ' off' : ''}">${ic && m[3] ? svg(m[3]) : ''}<span>${m[1]}</span>${m[2] ? `<small>${m[2]}</small>` : ''}</button>`;
+  };
+  const K = {
+    row,
+    rows: list => `<div class="bx-list">${list.map(row).join('')}</div>`,
+    head: (t, m) => t || m ? `<div class="bx-head">${t ? `<b>${t}</b>` : ''}${m ? `<p>${m}</p>` : ''}</div>` : '',
+    btns: (no, ok) => `<div class="bx-btns">${no ? `<button>${no}</button>` : ''}${ok ? `<button class="cta">${ok}</button>` : ''}</div>`,
+    hero: t => `<div class="bx-hero">${t}</div>`,
+    keys: () => `<div class="bx-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0, '⌫'].map(k => `<span>${k}</span>`).join('')}</div>`,
+    seg: (a, b) => `<div class="bx-seg"><span class="on">${a}</span><span>${b}</span></div>`,
+    sw: (label, i, on) => ({ html: `<div class="bx-row">${ic && i ? svg(i) : ''}<span>${label}</span><i class="bx-sw${on ? ' on' : ''}"></i></div>` }),
+    step: (label, n, i) => ({ html: `<div class="bx-row">${ic && i ? svg(i) : ''}<span>${label}</span><div class="bx-step">${svg('minus')}<b style="font-weight:500">${n}</b>${svg('plus')}</div></div>` }),
+    find: t => `<div class="bx-find">${ic ? svg('search') : ''}${t}</div>`,
+  };
+  return K;
+}
+
+const CASES = [];
+const add = c => CASES.push(c);
+// A plain action list
+const menu = (id, name, page, at, rows, o) => add({ id, kind: 1, name, page, at, rows, ...o });
+// A question: title and explanation on top, the answers as rows, the action first and Cancel last
+const ask = (id, name, page, at, t, m, ok, no = 'Cancel:x', o) => add({ id, kind: 2, name, page, at, draw: k => k.head(t, m) + (o?.body?.(k) || '') + k.rows([ok, no]), ...o });
+// Anything with contents: a form (kind 3) or a sheet (kind 4)
+const form = (id, name, page, at, draw, o) => add({ id, kind: 3, wide: 1, name, page, at, draw, ...o });
+const sheet = (id, name, page, at, draw, o) => add({ id, kind: 4, wide: 1, name, page, at, draw, ...o });
+
+/* 1. Action lists */
+menu('menu-sale', 'Sale ⋯', 'cart', 'more', ['Custom item:pencil', 'Add note:note', 'Save cart:save', 'Print quote:print', 'Lost sale:lost', 'Clear sale:trash!']);
+menu('menu-order', 'Order ⋯', 'order', 'right', d => d === 'phone' ? ['Print receipt:print', 'Refund:refund', 'Exchange:exchange', 'Void sale:ban!'] : ['Order details:info', 'Exchange:exchange', 'Void sale:ban!']);
+menu('menu-markup', 'Markup', 'item', 'Markup', ['Percent (%):percent*', 'Flat (₱):coin']);
+menu('menu-status', 'Status', 'item', 'Status', ['Active:eye*', 'Hidden:eyeoff']);
+menu('menu-supplier', 'Main supplier', 'item', 'Main supplier', ['None:none*', 'Mindanao Pipe Supply:truck', 'Davao Steel Trading:truck', 'Kuya Ben Hardware:truck']);
+menu('long-supplier', 'Main supplier with 60 suppliers', 'item', 'Main supplier', ['None:none*', ...Array.from({ length: 60 }, (_, i) => `Supplier ${i + 1}:truck`)], { find: 'Search', note: 'A long list stops at about six rows, scrolls inside the box, and a search row stays on top.' });
+menu('menu-disc-type', 'Discount type', 'disc', 'Type', ['Percent:percent*', 'Amount:coin']);
+menu('menu-mod-picks', 'Modifier: Customer picks', 'mods', 'Customer picks', ['One:one*', 'Up to 2:two', 'Up to 3:three', 'Any:grid']);
+menu('menu-mod-status', 'Modifier choice: Status', 'mods', 'Large', ['Available:check*', 'Unavailable:ban']);
+menu('menu-qs', 'Adjust stock mode', 'stock', 'Mode', d => ['Add stock:plus*', 'Remove stock:minus', 'Damaged:warn', 'Count stock:list', ...(d === 'ipad' ? ['Full screen:full', 'Beside the list:split'] : [])]);
+menu('menu-cash-cat', 'Cash category', 'cash', 'Category', ['Supplier:truck', 'Delivery:pin', 'Meals:meals', 'Utilities:bolt', 'Repairs:wrench', 'New category:plus'], { title: 'Category' });
+menu('long-cat', 'Cash category with 60 categories', 'cash', 'Category', [...Array.from({ length: 60 }, (_, i) => `Category ${i + 1}:folder`), 'New category:plus'], { title: 'Category', find: 'Search', note: 'Same rule as the long supplier list.' });
+menu('menu-fab-items', 'Items +', 'items', 'fab', ['Adjust price:tag', 'Adjust stock:box', 'Add item:plus']);
+menu('menu-fab-shift', 'Shift +', 'shift', 'fab', ['Cash in:cashin', 'Cash out:cashout']);
+menu('menu-side', 'Side menu ☰', 'sell', 'menu', ['Sell:grid*', 'Orders:receipt', 'QR codes:qr', 'Items:box', 'Customers:person', 'Shift:clock', 'Reports:bars', 'Back office:ext', 'El John=POS 1:gear'], { title: 'EJ Hardware', cap: 99 });
+menu('filter-orders', 'Orders filter', 'orders', 'right', ['When=Today:cal', 'Staff=All:person', 'Payment=All:card', 'Status=All:status', 'Fulfilment=All:truck'], { title: 'Filters', note: 'Each row opens its list in the same box, as the next one shows.' });
+menu('filter-orders-when', 'Orders filter › When', 'orders', 'right', ['Today:cal*', 'Yesterday:cal', 'Last 7 days:cal', 'All orders:cal'], { back: 'When' });
+menu('filter-items', 'Items filter', 'items', 'right', ['Category=All:folder', 'Stock=All:box'], { title: 'Filters' });
+menu('filter-list', 'Category list filter', 'list', 'right', ['All:list*', 'Available:check', 'Clear Filters:x'], { title: 'Show' });
+menu('filter-pick', 'Pick items filter', 'pick', 'right', ['Plumbing:folder', 'Electrical:folder', 'Fasteners:folder', 'Tools:folder', 'Paint:folder', 'Cement:folder', 'Safety:folder', 'Adhesive:folder'], { title: 'Category', find: 'Search' });
+menu('sheet-add-tile', 'Add tile', 'sell', 'tile-end', ['Item:box', 'Category:folder', 'Custom item:pencil']);
+
+/* 2. Questions */
+const del = 'Delete:trash!';
+ask('ask-biz', 'What do you sell? (first open)', 'sell', '', 'What do you sell?', 'You can change this later in Settings.', 'Retail:bag', 'Food:meals', { centre: 1 });
+ask('ask-leave', 'Leave without saving?', 'item', 'left', 'Leave without saving?', 'Your changes aren’t saved yet.', 'Leave:logout', 'Keep editing:back');
+ask('ask-refund', 'Refund items', 'order', 'btn', 'Refund 2 items on #1-044?', '₱570.00 back to the customer.', 'Refund:refund');
+ask('ask-void', 'Void sale', 'order', 'right', 'Void #1-044?', 'The sale stays on record, marked voided.', 'Void sale:ban');
+ask('ask-del-saved', 'Delete saved cart', 'order', 'right', 'Delete “Tita Baby”?', '', del);
+ask('ask-clear', 'Clear the sale?', 'cart', 'more', 'Clear the sale?', 'Every item comes off the cart.', 'Clear:trash!');
+ask('ask-replace', 'Replace the cart?', 'order', 'btn', 'Replace the cart?', 'The items in the cart now are removed.', 'Replace:exchange');
+ask('ask-sell-saved', 'Sell anyway? (hidden item in a saved cart)', 'order', 'btn', 'Sell anyway?', 'Bolt M8 is hidden.', 'Sell anyway:check');
+ask('ask-over-limit', 'Over the credit limit', 'checkout', 'btn', 'Over the credit limit', 'Mara Santos would go ₱1,200.00 over their ₱500.00 credit limit.', 'Charge anyway:check');
+ask('ask-variant-name', 'Give the variant a name', 'item', 'right', 'Give the variant a name', 'Every variant needs one.', 'Remove variant:trash', 'Add a name:pencil');
+ask('ask-del-cat', 'Delete category', 'cats', 'Paint', 'Delete “Paint”?', 'Its items stay; they only leave this category.', del);
+ask('ask-del-disc', 'Delete discount', 'discs', 'Senior promo', 'Delete “Senior promo”?', 'Sales that used it keep it on their receipt.', del);
+ask('ask-del-mod', 'Delete modifier', 'mods', 'Delete modifier', 'Delete “Size”?', 'It comes off every item. Sales that used it keep it on their receipt.', del);
+ask('ask-new-qr', 'New QR for a table', 'qr', 'Table 1', 'New QR for Table 1?', 'Old photos and the sticker on the table stop working. Print the new one.', 'New QR:qr');
+ask('ask-del-table', 'Delete table', 'qr', 'Delete table', 'Delete Table 1?', 'Its QR stops working.', del);
+ask('ask-cancel-x', 'Cancel exchange?', 'cart', 'cart-back', 'Cancel exchange?', 'The new items come off the cart. Nothing is saved.', 'Cancel exchange:x', 'Keep going:back');
+ask('ask-even', 'Even swap', 'checkout', 'btn', 'Even swap on #1-044', 'No money changes hands.', 'Swap:exchange');
+ask('ask-handback', 'Hand back', 'checkout', 'btn', 'Hand back ₱120.00', '', 'Hand back ₱120.00:refund', 'Cancel:x', { body: k => k.row('Hand back with=Cash ⌃⌄:wallet') });
+ask('ask-over-x', 'Over the credit limit (exchange)', 'checkout', 'btn', 'Over the credit limit', 'Mara Santos would be ₱300.00 over their ₱500.00 credit limit.', 'Exchange anyway:check');
+ask('ask-oos', 'Out of stock', 'sell', 'tile', 'Out of stock', 'PVC Elbow 1/2"', 'Sell anyway:check');
+ask('ask-hidden-scan', 'Hidden item scanned', 'sell', 'scan', 'PVC Elbow 1/2"', 'This item is hidden. Sell anyway?', 'Sell anyway:check');
+ask('ask-del-cust', 'Delete customer', 'custedit', 'Delete customer', 'Delete “Jun Reyes”?', 'Their past sales keep the name.', del);
+ask('ask-del-pay', 'Delete payment type', 'pay', 'Delete payment type', 'Delete Maya?', 'Past sales keep the name.', del);
+ask('ask-rm-pic', 'Remove the top picture?', 'receipt', 'Top picture', 'Remove the top picture?', 'The box stays for another one.', 'Remove:trash');
+ask('ask-del-ful', 'Delete sale type', 'fuls', 'Grab pickup', 'Delete Grab pickup?', 'Past sales keep the name.', del);
+ask('ask-logout', 'Log out', 'settings', 'Log out', 'Log out of this POS?', 'Signing back in needs the account’s email and password.', 'Log out:logout');
+ask('ask-new-cat', 'New category (a box to type in)', 'cash', 'Category', 'New category', '', 'Add:plus', 'Cancel:x', { body: k => k.row('Name:folder~') });
+ask('ask-past', 'Past shift / day paper', 'shift', 'Shift · 3:45 PM', 'Shift · 3:45 PM', '', 'Print:print', 'Close:x', { wide: 1, body: () => '<div class="bx-paper">Shift report       X reading\nStarted            8:02 AM\nEnded              3:45 PM\n\nGross sales      ₱8,240.00\nRefunds            ₱120.00\nNet sales        ₱8,120.00\n\nExpected cash    ₱1,500.00\nCounted          ₱1,500.00</div>' });
+ask('ask-qs-switch', 'Switch to Count?', 'stock', 'Mode', 'Switch to Count?', 'The amounts you typed are cleared.', 'Switch:list');
+ask('ask-qs-leave', 'Leave without saving? (stock)', 'stock', 'left', 'Leave without saving?', '3 amounts not saved yet.', 'Leave:logout', 'Keep editing:back');
+ask('ask-qs-off', 'Take it off the list?', 'stock', 'THHN Wire', 'Take it off the list?', 'The amount you typed is cleared.', 'Take off:trash');
+
+/* 3. Small forms */
+form('card-save', 'Save cart', 'cart', 'more', k => k.head('Save cart') + k.row('Customer name=Optional:person') + k.btns('Cancel', 'Save cart'));
+form('card-quote', 'Print quote', 'cart', 'more', k => k.head('Print quote') + k.row('Customer name=Optional:person') + k.btns('Cancel', 'Print quote'));
+form('card-note', 'Add note', 'cart', 'more', k => k.head('Add note') + k.row('Note=For this order:note') + k.btns('Cancel', 'Save'));
+form('card-pay', 'Record payment', 'customer', 'btn', k => k.head('Record payment', 'Ana Cruz owes ₱1,200.00') + k.row('Amount=0.00:coin') + k.row('Full balance:check') + k.row('Method=Cash ⌃⌄:wallet') + k.row('Note:note') + k.rows(['#1-801=₱700.00:receipt', '#1-788=₱500.00:receipt']) + k.btns('Cancel', 'Record payment'));
+form('card-lost', 'Lost sale', 'cart', 'more', k => k.head('Lost sale', 'Asked for') + k.find('Search the catalog or type it') + k.row('Qty=1:box') + k.row('Why=Out of stock ⌃⌄:info') + k.row('Bought instead=Nothing ⌃⌄:exchange') + k.btns('Cancel', 'Log lost sale'));
+form('card-detail', 'Order details', 'order', 'right', k => k.head('Order #1-838') + k.rows(['Date=Nov 8, 2026:cal', 'Time=2:33 PM:clock', 'Staff=Maricel R.:person', 'Customer=Walk-in:person', 'Payment=QR:qr', 'Fulfilment=Walk-in:truck', 'Boysen Latex Paint=₱270.00:box', 'Total=₱270.00:receipt', 'Paid (QR)=₱270.00:qr']) + k.btns('', 'Close'), { cap: 99 });
+form('card-map', 'Delivery map', 'cart', 'ful', k => k.head('Pin delivery location') + k.row('Use device location:locate') + `<div class="bx-map">${svg('pin')}<div class="bx-step" style="position:absolute;right:10px;top:8px;color:var(--ink)">${svg('minus')}${svg('plus')}</div></div>` + k.btns('Clear pin', 'Use pin'));
+form('card-customer-old', 'Customer picker (old, off the Sell page)', 'orders', 'right', k => k.head('Select customer') + k.find('Search') + k.rows(['Walk-in:person*', 'Add new customer:plus', 'Ana Cruz=₱1,200.00:person', 'Jun Reyes:person', 'Mara Santos=₱300.00:person']));
+form('card-pin', 'Manager PIN', 'order', 'right', k => k.head('Manager PIN', 'To void a sale, a manager enters their PIN.') + `<div class="bx-pin">${'<i></i>'.repeat(4)}</div>` + k.keys() + k.btns('Cancel', ''));
+form('card-lock', 'PIN lock screen', 'sell', '', k => k.head('Enter your PIN') + `<div class="bx-pin">${'<i></i>'.repeat(4)}</div>` + k.keys(), { centre: 1, note: 'Too big for this box: it is the whole screen, and no button opens it.' });
+
+/* 4. Larger sheets */
+sheet('es-line', 'Cart line', 'cart', 'line', k => k.head('PVC Elbow 1/2"') + k.hero('₱12.00') + k.row(k.step('Quantity', 1, 'box')) + k.row('Discount=None:percent') + k.row('Note:note') + k.btns('Remove item', 'Done'));
+sheet('es-rd', 'Discount', 'cart', 'disc', k => k.head('Discount') + k.hero('₱28.00') + k.rows(['Senior=None:person', 'PWD=None:person', 'Senior promo=20%:tag', 'Loyalty=5%:tag', 'Custom:pencil']) + k.btns('', 'Done'));
+sheet('es-ful', 'Sale type', 'cart', 'ful', k => k.head('Sale type') + k.rows(['Walk-in:person*', 'Pickup:clock', 'Delivery:truck', 'Grab pickup:truck']) + k.btns('', 'Done'), { wide: 0 });
+sheet('es-custom', 'Custom item', 'cart', 'more', k => k.head('Custom item') + k.hero('₱0.00') + k.row('Name:pencil~') + k.row(k.sw('VAT', 'percent', 1)) + k.keys() + k.btns('', 'Add'), { note: 'Fits, but on a phone the keys make the box nearly as tall as the screen.' });
+sheet('es-price', 'Ask the price', 'sell', 'tile', k => k.head('Price', 'Brass Faucet 1/2"') + k.hero('₱0.00') + k.keys() + k.btns('', 'Add'));
+sheet('es-measure', 'Sold by length or weight', 'sell', 'tile', k => k.head('THHN Wire', '₱32.00 / m') + k.hero('0 m') + k.seg('Metre', 'Price') + k.keys() + k.btns('', 'Add'));
+sheet('es-mods', 'Modifier choices', 'sell', 'tile', k => k.head('Iced coffee', 'Pick one') + k.hero('Size') + k.rows(['Small:one*', 'Medium=+₱20.00:one', 'Large=+₱40.00:one', 'Extra large=Unavailable:one~']) + k.btns('', 'Next'));
+sheet('es-again', 'Make another', 'sell', 'tile', k => k.head('PVC Elbow 1/2"') + k.rows(['1 × ₱12.00=₱12.00:box', '1 × ₱12.00=₱12.00:box']) + k.btns('', 'Make another'), { note: 'Today the cart rises for this, with the other lines faded. Here only the item’s own lines show.' });
+sheet('es-cust-edit', 'New customer', 'customers', 'fab', k => k.head('New customer') + k.rows(['Name=Add name:person', 'Phone=Add phone:phone', 'Email=Add email:mail', 'Address=Add address:home', k.sw('Credit', 'card')]) + k.btns('Cancel', 'Save'), { note: 'Fits, but it is a page of typing: the keyboard would push this box off a phone screen.' });
+sheet('es-start', 'Start shift', 'shift', 'btn', k => k.head('Starting cash?') + k.hero('₱0.00') + k.keys() + k.btns('', 'Start shift'));
+sheet('es-count', 'Count the cash', 'shift', 'btn', k => k.head('Count the cash in the drawer') + k.hero('₱0.00') + k.keys() + k.btns('Skip', 'Next'));
+sheet('es-result', 'Count result', 'shift', 'btn', k => k.head('Over / short') + k.hero('₱0.00') + k.row('Expected=₱1,500.00:cal') + k.row('Counted=₱1,500.00:wallet') + k.row('Note:note') + k.btns('Recount', 'Close shift'));
+sheet('es-leave', 'Leave in drawer?', 'shift', 'btn', k => k.head('Leave in drawer?') + k.hero('₱0.00') + k.keys() + k.btns('', 'Close shift'));
+sheet('es-cash', 'Cash in / out', 'shift', 'fab', k => k.head('Cash in') + k.hero('₱0.00') + k.row('Category=None ⌃⌄:folder') + k.keys() + k.btns('', 'Save'));
+sheet('ls-customers', 'Customers list', 'cart', 'cust', k => k.head('Customers') + k.find('Search name, phone or address') + k.rows(['Walk-in:person*', 'Ana Cruz=₱1,200.00:person', 'Jun Reyes:person', 'Mara Santos=₱300.00:person', 'Rico Dela Cruz:person', 'Tita Baby:person']) + k.btns('', 'New customer'));
+sheet('ls-variants', 'Variants list', 'sell', 'tile', k => k.head('PVC Elbows', '3 variants') + k.find('Search') + k.rows(['1/2"=₱12.00:layers', '3/4"=₱16.00:layers', '1"=₱22.00:layers']));
+sheet('ls-category', 'Category list', 'sell', 'tile', k => k.head('Plumbing', '24 items') + k.find('Search') + k.rows(['PVC Elbows=₱12.00:box', 'PVC Pipes &amp; Tees=₱85.00:box', 'Brass Faucet 1/2"=₱145.00:box', 'Teflon Tape 1/2"=₱18.00:box', 'Hose Clamp=₱25.00:box', 'Gate Valve=₱320.00:box', 'P-Trap=₱110.00:box']));
+sheet('pk-hold', 'Hold a tile (peek)', 'sell', 'tile', k => k.head('PVC Elbows', '3 variants') + k.rows(['1/2"=₱12.00:layers', '3/4"=₱16.00:layers', '1"=₱22.00:layers']));
+sheet('ls-scan', 'Barcode scanner', 'sell', 'scan', k => k.head('Scan barcode') + '<div class="bx-cam">Point the camera at the barcode</div>', { note: 'Too big for this box: a camera wants the whole screen so the code can be lined up.' });
+const COL = ['#E5484D', '#F07A5A', '#F2994A', '#F2C94C', '#4CAF7A', '#2BB3A3', '#38BDF8', '#4388F7', '#5B6CF0', '#9B5DE5', '#B9A6F5', '#EC6FA9', '#9A9A9A', '#9DB39A', '#A07A5A'];
+sheet('st-icon', 'Payment type › Icon', 'pay', 'Icon', k => k.head('Icon') + `<div class="bx-tile">${svg('wallet')}</div><div class="bx-tiles">${COL.map(c => `<i style="background:${c}"></i>`).join('')}</div><div class="bx-tiles" style="grid-template-columns:repeat(6,1fr)">${['wallet', 'coin', 'card', 'phone', 'qr', 'purse', 'home', 'exchange', 'note', 'tag', 'person', 'more'].map(n => `<span>${svg(n)}</span>`).join('')}</div>`, { note: 'Not rows any more: colours and symbols are a grid, so only the frame is the box.' });
+sheet('st-receipt', 'Receipt preview', 'receipt', 'Preview', k => k.head('Receipt') + '<div class="bx-paper">      EJ Hardware\n   Matina, Davao City\n\nPVC Elbow 1/2"     ₱12.00\nPVC Elbow 3/4"     ₱16.00\n\nTotal              ₱28.00\nCash               ₱50.00\nChange             ₱22.00\n\nKeep for returns and exchanges.</div>', { note: 'Too big for this box: a receipt is long and narrow, so this shows only a short one; a real sale would scroll inside it.' });
+
+const KINDS = {
+  1: ['Action lists', 'These go straight across. This is what the box is for.'],
+  2: ['Questions', 'They work: title and explanation on top, the answers as rows. Nothing dims behind, so they feel lighter than today.'],
+  3: ['Small forms', 'The look carries over. The box is wider here, and typing brings up the keyboard, which it has to stay above.'],
+  4: ['Larger sheets', 'Lists fit. Anything with number keys comes out tall, and a few cannot really be this box; those are marked.'],
+};
+
+/* Draw */
+const BY = Object.fromEntries(CASES.map(c => [c.id, c]));
+const $ = s => document.querySelector(s), out = $('#out'), W = { phone: 393, ipad: 1180 };
+function boxHtml(c, d, ic) {
+  const k = kit(ic);
+  let inner;
+  if (c.rows) {
+    const rows = typeof c.rows === 'function' ? c.rows(d) : c.rows;
+    inner = (c.back ? `<button class="bx-row">${svg('back')}<span><b style="font-weight:600">${c.back}</b></span></button>` : k.head(c.title)) + (c.find ? k.find(c.find) : '') + k.rows(rows);
+  } else inner = c.draw(k);
+  return `<div class="bx${c.wide ? ' wide' : ''}"${c.cap ? ` style="--cap:${c.cap}"` : ''}>${inner}</div>`;
+}
+// By the button that opens it: under it when it fits, else over it; the box's side lines up with the button's nearer side
+function place(fr, c) {
+  const b = fr.querySelector('.bx'), a = c.at && fr.querySelector(`[data-at="${CSS.escape(c.at)}"]`), F = fr.getBoundingClientRect();
+  const s = F.width / fr.offsetWidth, FW = fr.offsetWidth, FH = fr.offsetHeight, cs = getComputedStyle(fr);
+  const edge = +cs.getPropertyValue('--bx-edge'), near = parseFloat(cs.getPropertyValue('--bx-near'));
+  const w = b.offsetWidth, h = b.offsetHeight;
+  if (!a || c.centre) { b.style.left = (FW - w) / 2 + 'px'; b.style.top = (FH - h) / 2 + 'px'; return; }
+  const r = a.getBoundingClientRect(), L = (r.left - F.left) / s, R = (r.right - F.left) / s, T = (r.top - F.top) / s, B = (r.bottom - F.top) / s;
+  const col = a.closest('.ct, .pg, .sell-l').getBoundingClientRect(), mid = ((col.left + col.right) / 2 - F.left) / s;
+  const left = R - L > w ? (L + R - w) / 2 : (L + R) / 2 > mid ? R - w : L;
+  b.style.left = Math.max(edge, Math.min(FW - edge - w, left)) + 'px';
+  const roomB = FH - edge - B - near, roomT = T - near - edge, under = h <= roomB || roomB >= roomT;
+  if (h > (under ? roomB : roomT)) b.style.maxHeight = Math.max(under ? roomB : roomT, 0) + 'px';
+  const hh = b.offsetHeight;
+  b.style.top = (under ? B + near : T - near - hh) + 'px';
+}
+function fill(fr) {
+  if (fr.dataset.done) return; fr.dataset.done = 1;
+  const c = BY[fr.dataset.id], d = fr.dataset.dev;
+  fr.innerHTML = (pageHtml(d, c.page) + boxHtml(c, d, fr.dataset.ic === '1')).replaceAll('⌃⌄', svg('updown').replace('class="ic"', 'class="ic ud"'));
+  place(fr, c);
+}
+window.fillAll = () => document.querySelectorAll('.fr').forEach(fill);   // for the screenshot script
+const lazy = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { fill(e.target); lazy.unobserve(e.target); } }), { rootMargin: '900px 0px' });
+function scale() { const d = $('#dev').value; out.style.setProperty('--s', Math.min(1, innerWidth / W[d])); }
+function draw() {
+  const d = $('#dev').value, v = $('#ics').value, list = v === 'both' ? ['1', '0'] : [v];
+  out.className = 'dev-' + d;
+  scale();
+  out.innerHTML = Object.entries(KINDS).map(([n, [h, p]]) => `<section class="kind"><h2>${h}</h2><p>${p}</p></section>` +
+    CASES.filter(c => c.kind == n).map(c => `<article class="case" id="${c.id}"><h3>${c.name}</h3>${c.note ? `<p class="note">${c.note}</p>` : ''}
+      <div class="strip">${list.map(i => `<figure><figcaption>${i === '1' ? 'With icons' : 'Without icons'}</figcaption><div class="wrap"><div class="fr" data-id="${c.id}" data-dev="${d}" data-ic="${i}"></div></div></figure>`).join('')}</div></article>`).join('')).join('');
+  document.querySelectorAll('.fr').forEach(f => lazy.observe(f));
+}
+$('#jump').innerHTML = '<option value="">Jump to…</option>' + Object.entries(KINDS).map(([n, [h]]) => `<optgroup label="${h}">${CASES.filter(c => c.kind == n).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</optgroup>`).join('');
+$('#jump').onchange = e => { const el = document.getElementById(e.target.value); el?.scrollIntoView(); e.target.value = ''; };
+$('#dev').value = Math.min(screen.width, screen.height) >= 600 ? 'ipad' : 'phone';
+$('#dev').onchange = $('#ics').onchange = draw;
+addEventListener('resize', scale);
+document.fonts.ready.then(draw);
+</script>
+</body>
+</html>

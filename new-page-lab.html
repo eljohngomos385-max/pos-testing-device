@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New page lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&display=swap" rel="stylesheet">
+<!-- One format for every "create something new" page in the back office: New supplier, New customer,
+     New item, New purchase order. The forms are drawn from one field list per object, so the format
+     picked here applies to all of them. Lab only; nothing in the app loads this. -->
+<style>
+:root {
+  /* back office tokens (styles.css body.bo-light) */
+  --po-bg: #F6F6F6; --po-sidebar-bg: #F6F6F6; --po-surface: #FFFFFF; --po-surface-hover: #F7F7F7;
+  --po-line: #E1E1E1; --po-line-strong: #D2D2D2;
+  --po-ink: #303030; --po-ink-hi: #1A1A1A; --po-ink-secondary: #6B6B6B; --po-ink-tertiary: #8A8A8A;
+  --po-primary: #303030; --po-primary-hover: #1A1A1A; --po-primary-ink: #FFFFFF;
+  --po-accent-link: #1F5199; --po-ring: 0 0 0 3px rgba(31, 81, 153, 0.28);
+  --po-r-card: 8px; --po-r-input: 8px; --po-r-pill: 999px; --po-r-xl: 12px;
+  --card-shadow: 0 1px 2px -1px rgb(26 26 26 / .07);
+  --po-sheet-shadow: 0 0 0 1px rgb(16 24 40 / .07), 0 0 3px rgb(16 24 40 / .05);
+  --in-h: 34px; --row-h: 46px; --gap: 10px; --pad: 16px;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--po-sidebar-bg); color: var(--po-ink); font: 500 13px/1.4 var(--font); letter-spacing: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+/* ---- shell: grey sidebar + white sheet, like the back office ---- */
+.side { position: fixed; inset: 0 auto 0 0; width: 240px; padding: 20px 10px; }
+.side .store { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; font-weight: 600; }
+.side .store i { width: 22px; height: 22px; border-radius: 6px; background: #1FA855; }
+.side a { display: flex; align-items: center; height: 30px; padding: 0 10px; border-radius: 7px; color: #262626; text-decoration: none; font-size: 14px; }
+.side a.on { background: #E5E5E5; }
+.side nav { margin-top: 16px; display: grid; gap: 2px; }
+.sheet { position: fixed; inset: 8px 8px 8px 248px; background: var(--po-surface); border-radius: var(--po-r-xl);
+  box-shadow: var(--po-sheet-shadow); overflow: auto; }
+@media (max-width: 900px) { .side { display: none; } .sheet { inset: 0 0 56px; border-radius: 0; } }   /* clear of the lab bar */
+
+/* ---- shared controls ---- */
+.in { width: 100%; height: var(--in-h); padding: 0 10px; background: var(--po-surface); border: 1px solid var(--po-line-strong);
+  border-radius: var(--po-r-input); outline: none; }
+textarea.in { height: auto; min-height: 72px; padding: 8px 10px; resize: vertical; }
+select.in { appearance: none; padding-right: 28px; cursor: pointer;
+  background: var(--po-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M3 4l2-2 2 2M3 6l2 2 2-2' fill='none' stroke='%236B6B6B' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center; }
+.in:focus, .in:focus-within { border-color: var(--po-accent-link); box-shadow: var(--po-ring); }
+.in::placeholder, .in input::placeholder { color: var(--po-ink-tertiary); }
+.money { display: flex; align-items: center; gap: 6px; }
+.money span { color: var(--po-ink-tertiary); }
+.money input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; height: 100%; padding: 0; font-variant-numeric: tabular-nums; }
+.sw { position: relative; display: inline-block; width: 36px; height: 20px; flex: none; cursor: pointer; }
+.sw input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.sw i { position: absolute; inset: 0; border-radius: var(--po-r-pill); background: var(--po-line-strong); transition: background .15s; }
+.sw i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .15s; }
+.sw input:checked + i { background: var(--po-primary); }
+.sw input:checked + i::after { transform: translateX(16px); }
+.sw input:focus-visible + i { box-shadow: var(--po-ring); }
+.btn { height: 32px; padding: 0 14px; border-radius: var(--po-r-input); border: 1px solid var(--po-line-strong); background: var(--po-surface);
+  font-weight: 600; cursor: pointer; box-shadow: 0 1px 0 rgba(0,0,0,.04); }
+.btn:hover { background: var(--po-surface-hover); }
+.btn.pri { background: var(--po-primary); color: var(--po-primary-ink); border-color: var(--po-primary); box-shadow: inset 0 -1px 0 rgba(255,255,255,.12); }
+.btn.pri:hover { background: var(--po-primary-hover); }
+.back { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--po-r-input); color: var(--po-ink-secondary);
+  text-decoration: none; font-size: 20px; line-height: 1; }
+.back:hover { background: rgba(0,0,0,.05); }
+.lbl { display: block; margin-bottom: 6px; font-size: 12.5px; color: var(--po-ink-secondary); }
+.hint { margin-top: 6px; font-size: 12px; color: var(--po-ink-tertiary); }
+.req { color: var(--po-ink-tertiary); font-weight: 400; }
+.lines { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 12px 14px;
+  border: 1px dashed var(--po-line-strong); border-radius: var(--po-r-input); color: var(--po-ink-tertiary); }
+.lines .btn { color: var(--po-ink); }
+h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--po-ink-hi); }
+h2 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -0.01em; color: var(--po-ink-hi); }
+.sub { margin: 3px 0 0; font-size: 12.5px; color: var(--po-ink-secondary); font-weight: 400; }
+.card { background: var(--po-surface); border: 1px solid var(--po-line); border-radius: var(--po-r-card); box-shadow: var(--card-shadow); }
+
+/* fields laid out label-over, two across where half */
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
+.fgrid > .f { grid-column: 1 / -1; }
+.fgrid > .f.half { grid-column: span 1; }
+.f.sw-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.f.sw-row .lbl { margin: 0; font-size: 13px; color: var(--po-ink); }
+@media (max-width: 600px) { .fgrid > .f.half { grid-column: 1 / -1; } }
+
+/* ================= A · Shopify: section titles over cards, notes rail ================= */
+.A { max-width: 1000px; margin: 0 auto; padding: 20px 24px 40px; }
+.A .head { display: flex; align-items: center; gap: 6px; min-height: 32px; margin: 0 0 20px -6px; }
+.A .cols { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; align-items: start; }
+.A .sec + .sec { margin-top: 24px; }
+.A .sec > h2 { margin-bottom: 4px; }
+.A .sec > .sub { margin-bottom: 10px; }
+.A .sec > h2:not(:has(+ .sub)) { margin-bottom: 10px; }
+.A .card { padding: var(--pad); }
+.A .rail .card + .card { margin-top: 12px; }
+.A .rail h2 { font-size: 13px; margin-bottom: 10px; }
+.A .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--po-line); }
+@media (max-width: 1100px) { .A .cols { grid-template-columns: 1fr; } }
+
+/* ================= B · Settings rows: label + hint left, control right ================= */
+.B { max-width: 760px; margin: 0 auto; padding: 20px 24px 40px; }
+.B .head { display: flex; align-items: center; gap: 6px; min-height: 32px; margin: 0 0 24px -6px; }
+.B .sec + .sec { margin-top: 32px; }
+.B .sec > h2 { margin-bottom: 10px; font-size: 15px; }
+.B .row { display: flex; align-items: center; gap: 24px; padding: 12px var(--pad); min-height: 60px; }
+.B .row + .row { border-top: 1px solid var(--po-line); }
+.B .row .t { flex: 1; min-width: 0; }
+.B .row .t b { display: block; font-weight: 600; color: var(--po-ink-hi); }
+.B .row .t small { display: block; margin-top: 2px; font-size: 12px; color: var(--po-ink-secondary); }
+.B .row .c { width: 300px; flex: none; display: flex; justify-content: flex-end; }
+.B .row.tall { flex-direction: column; align-items: stretch; gap: 8px; }
+.B .row.tall .c { width: 100%; }
+.B .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 28px; }
+@media (max-width: 640px) { .B .row { flex-direction: column; align-items: stretch; gap: 8px; } .B .row .c { width: 100%; } }
+
+/* ================= C · iPad rows: the POS item page, grouped rows, Save top-right ================= */
+.C { min-height: 100%; background: var(--po-bg); padding-bottom: 40px; }
+.C .bar { position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  height: 60px; padding: 0 16px; background: color-mix(in srgb, var(--po-bg) 85%, transparent); backdrop-filter: blur(12px); }
+.C .bar h1 { font-size: 15px; font-weight: 600; letter-spacing: 0; }
+.C .bar .btn { justify-self: end; border-radius: var(--po-r-pill); padding: 0 18px; }
+.C .bar .back { border-radius: 50%; background: var(--po-surface); box-shadow: var(--card-shadow), 0 0 0 1px var(--po-line); }
+.C .col { max-width: 560px; margin: 8px auto 0; padding: 0 16px; }
+.C .grp { margin-top: 20px; }
+.C .grp > h2 { margin: 0 0 6px 14px; font-size: 12.5px; font-weight: 500; color: var(--po-ink-secondary); }
+.C .card { border-radius: var(--po-r-xl); box-shadow: none; overflow: hidden; }
+.C .row { display: flex; align-items: center; gap: 16px; min-height: var(--row-h); padding: 0 14px; }
+.C .row + .row { border-top: 1px solid var(--po-line); margin-left: 14px; padding-left: 0; }
+.C .row > span { flex: none; min-width: 120px; color: var(--po-ink); }
+.C .row .in { flex: 1; height: var(--row-h); border: 0; border-radius: 0; padding: 0; background-color: transparent; text-align: right; box-shadow: none; }
+.C .row select.in { text-align: right; text-align-last: right; padding-right: 18px; background-position: right 0 center; }
+.C .row .money { justify-content: flex-end; }
+.C .row .money span { display: none; }   /* the POS item page shows a bare 0.00 here */
+.C .row .money input { text-align: right; }
+.C .row .sw { margin-left: auto; }
+.C .row.tall { flex-direction: column; align-items: stretch; gap: 0; padding-top: 10px; }
+.C .row.tall > span { font-size: 12px; color: var(--po-ink-secondary); }
+.C .row.tall .in { text-align: left; height: auto; min-height: 64px; padding: 6px 0 10px; resize: none; }
+.C .row .lines { border: 0; padding: 0; min-height: var(--row-h); flex: 1; }
+.C .grp > .hint { margin: 6px 14px 0; }
+
+/* ================= D · Side headings: section title left, card right ================= */
+.D { max-width: 1000px; margin: 0 auto; padding: 20px 24px 40px; }
+.D .head { display: flex; align-items: center; gap: 6px; min-height: 32px; margin: 0 0 8px -6px; }
+.D .sec { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 32px; padding: 24px 0; }
+.D .sec + .sec { border-top: 1px solid var(--po-line); }
+.D .sec .card { padding: var(--pad); }
+.D .foot { display: flex; justify-content: flex-end; gap: 8px; padding-top: 20px; border-top: 1px solid var(--po-line); }
+@media (max-width: 800px) { .D .sec { grid-template-columns: 1fr; gap: 12px; } }
+
+/* ================= E · Plain sheet: no cards, one column, bar pinned at the bottom ================= */
+.E { min-height: 100%; display: flex; flex-direction: column; }
+.E .body { flex: 1; width: 100%; max-width: 620px; margin: 0 auto; padding: 20px 24px 32px; }
+.E .head { display: flex; align-items: center; gap: 6px; min-height: 32px; margin: 0 0 12px -6px; }
+.E .sec { padding: 20px 0; }
+.E .sec + .sec { border-top: 1px solid var(--po-line); }
+.E .sec > h2 { margin-bottom: 14px; font-size: 13px; color: var(--po-ink-secondary); font-weight: 600; }
+.E .foot { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 8px; padding: 12px 24px;
+  background: color-mix(in srgb, var(--po-surface) 88%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--po-line); }
+
+/* ---- lab bar (not part of the design) ---- */
+.lab { position: fixed; left: 16px; bottom: 16px; z-index: 9; display: flex; gap: 8px; align-items: center; padding: 6px 8px 6px 12px;
+  background: #1A1A1A; color: #fff; border-radius: var(--po-r-pill); box-shadow: 0 4px 16px rgba(0,0,0,.2); font-size: 12px; }
+.lab select { height: 28px; padding: 0 8px; border: 0; border-radius: var(--po-r-pill); background: #333; color: #fff; cursor: pointer; }
+</style>
+</head>
+<body>
+<aside class="side">
+  <div class="store"><i></i>EJ Hardware</div>
+  <nav id="nav"></nav>
+</aside>
+<main class="sheet" id="sheet"></main>
+
+<div class="lab">
+  <span>Format</span>
+  <select id="pickDesign" aria-label="Format">
+    <option value="A">A · Shopify cards</option>
+    <option value="B">B · Settings rows</option>
+    <option value="C">C · iPad rows</option>
+    <option value="D">D · Side headings</option>
+    <option value="E">E · Plain sheet</option>
+  </select>
+  <select id="pickObj" aria-label="Page">
+    <option value="supplier">New supplier</option>
+    <option value="customer">New customer</option>
+    <option value="item">New item</option>
+    <option value="po">New purchase order</option>
+  </select>
+</div>
+
+<script>
+const CUR = '₱';   // lab only; the app shows money through peso()
+
+/* One list per object. The real fields: bo-suppliers.js SUP_FIELDS, bo-model.js CUSTOMER_FIELDS,
+   the item editor and the PO page. `half` sits two across where the format allows it; `rail` is
+   what Shopify puts in the right column. */
+const OBJECTS = {
+  supplier: { title: 'New supplier', list: 'Suppliers', sections: [
+    { title: 'Details', fields: [
+      { k: 'name', label: 'Name', ph: 'e.g. Wilcon Depot', req: true, half: true },
+      { k: 'contact', label: 'Contact person', ph: 'Who you talk to', half: true } ] },
+    { title: 'Contact', fields: [
+      { k: 'phone', label: 'Phone', type: 'tel', ph: '0917 000 0000', half: true },
+      { k: 'email', label: 'Email', type: 'email', ph: 'orders@supplier.ph', half: true },
+      { k: 'address', label: 'Address', ph: 'Street, city' } ] },
+    { title: 'Note', rail: true, fields: [
+      { k: 'note', label: 'Note', type: 'area', ph: 'Delivery days, terms…', hint: 'Only staff see this.' } ] },
+  ] },
+  customer: { title: 'New customer', list: 'Customers', sections: [
+    { title: 'Details', fields: [
+      { k: 'name', label: 'Name', ph: 'Full name', req: true, half: true },
+      { k: 'phone', label: 'Phone', type: 'tel', ph: '0917 000 0000', half: true },
+      { k: 'address', label: 'Address', ph: 'Street, city' } ] },
+    { title: 'Credit', sub: 'Lets them take items now and pay later.', fields: [
+      { k: 'creditOn', label: 'Credit', type: 'switch', hint: 'Buy now, pay later on account.' },
+      { k: 'creditLimit', label: 'Credit limit', type: 'money', ph: 'No limit', hint: 'Leave empty for no limit.' } ] },
+  ] },
+  item: { title: 'New item', list: 'Items', sections: [
+    { title: 'Details', fields: [
+      { k: 'name', label: 'Name', ph: 'e.g. Claw Hammer 16oz', req: true },
+      { k: 'category', label: 'Category', type: 'select', opts: ['None', 'Tools', 'Paint', 'Plumbing', 'Electrical'], half: true },
+      { k: 'unit', label: 'Sold by', type: 'select', opts: ['Piece', 'Kilo', 'Metre', 'Litre'], half: true } ] },
+    { title: 'Pricing', fields: [
+      { k: 'price', label: 'Price', type: 'money', ph: 'Asked at sale', half: true },
+      { k: 'cost', label: 'Cost', type: 'money', ph: '0.00', half: true } ] },
+    { title: 'Inventory', fields: [
+      { k: 'sku', label: 'SKU', ph: 'Optional', half: true },
+      { k: 'barcode', label: 'Barcode', ph: 'Scan or type', half: true },
+      { k: 'track', label: 'Track stock', type: 'switch', on: true, hint: 'Count it down with every sale.' } ] },
+    { title: 'Status', rail: true, fields: [
+      { k: 'status', label: 'Status', type: 'select', opts: ['Active', 'Hidden'] },
+      { k: 'supplier', label: 'Main supplier', type: 'select', opts: ['None', 'Wilcon Depot', 'Citi Hardware'] } ] },
+  ] },
+  po: { title: 'New purchase order', list: 'Purchase orders', sections: [
+    { title: 'Supplier', fields: [
+      { k: 'supplier', label: 'Supplier', type: 'select', opts: ['Choose a supplier', 'Wilcon Depot', 'Citi Hardware'], req: true, half: true },
+      { k: 'expected', label: 'Expected', type: 'date', half: true } ] },
+    { title: 'Items', fields: [ { k: 'lines', label: 'Items', type: 'lines' } ] },
+    { title: 'Note', rail: true, fields: [
+      { k: 'note', label: 'Note', type: 'area', ph: 'For the supplier or your staff' } ] },
+  ] },
+};
+
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function control(f) {
+  const id = `f-${f.k}`, ph = f.ph ? ` placeholder="${esc(f.ph)}"` : '';
+  switch (f.type) {
+    case 'area': return `<textarea class="in" id="${id}"${ph}></textarea>`;
+    case 'select': return `<select class="in" id="${id}">${f.opts.map((o) => `<option>${esc(o)}</option>`).join('')}</select>`;
+    case 'switch': return `<label class="sw"><input type="checkbox" id="${id}"${f.on ? ' checked' : ''}><i></i></label>`;
+    case 'money': return `<label class="in money"><span>${CUR}</span><input id="${id}" inputmode="decimal"${ph}></label>`;
+    case 'lines': return `<div class="lines"><span>No items yet</span><button type="button" class="btn">Add items</button></div>`;
+    default: return `<input class="in" id="${id}" type="${f.type || 'text'}" autocomplete="off"${ph}>`;
+  }
+}
+const tall = (f) => f.type === 'area' || f.type === 'lines';
+
+// label over control; the switch sits on its own line, label left
+const fieldOver = (f) => f.type === 'switch'
+  ? `<div class="f sw-row"><div><label class="lbl" for="f-${f.k}">${f.label}</label>${f.hint ? `<div class="hint">${f.hint}</div>` : ''}</div>${control(f)}</div>`
+  : `<div class="f${f.half ? ' half' : ''}">${f.type === 'lines' || !f.label ? '' : `<label class="lbl" for="f-${f.k}">${f.label}</label>`}${control(f)}${f.hint ? `<div class="hint">${f.hint}</div>` : ''}</div>`;
+// a field named like its section (Note under Note) drops its own label
+const grid = (fields, title) => `<div class="fgrid">${fields.map((f) => fieldOver(f.label === title ? { ...f, label: '' } : f)).join('')}</div>`;
+const head = (o) => `<div class="head"><a class="back" href="#" aria-label="Back to ${o.list}">‹</a><h1>${o.title}</h1></div>`;
+const foot = () => `<div class="foot"><button type="button" class="btn">Cancel</button><button type="submit" class="btn pri">Save</button></div>`;
+
+const DESIGNS = {
+  A: (o) => {
+    const main = o.sections.filter((s) => !s.rail), rail = o.sections.filter((s) => s.rail);
+    return `<form class="A">${head(o)}<div class="cols"><div>${main.map((s) => `<section class="sec"><h2>${s.title}</h2>${s.sub ? `<p class="sub">${s.sub}</p>` : ''}<div class="card">${grid(s.fields, s.title)}</div></section>`).join('')}</div>
+      <div class="rail">${rail.map((s) => `<div class="card"><h2>${s.title}</h2>${grid(s.fields, s.title)}</div>`).join('')}</div></div>${foot()}</form>`;
+  },
+  B: (o) => `<form class="B">${head(o)}${o.sections.map((s) => `<section class="sec"><h2>${s.title}</h2><div class="card">${s.fields.map((f) =>
+      `<div class="row${tall(f) ? ' tall' : ''}"><div class="t"><b>${f.label}</b>${f.hint ? `<small>${f.hint}</small>` : ''}</div><div class="c">${control(f)}</div></div>`).join('')}</div></section>`).join('')}${foot()}</form>`,
+  C: (o) => `<form class="C"><div class="bar"><a class="back" href="#" aria-label="Back to ${o.list}">‹</a><h1>${o.title}</h1><button type="submit" class="btn pri">Save</button></div>
+      <div class="col">${o.sections.map((s) => `<section class="grp"><h2>${s.title}</h2><div class="card">${s.fields.map((f) =>
+        `<div class="row${tall(f) ? ' tall' : ''}">${f.type === 'lines' ? '' : `<span>${f.label}</span>`}${control(f)}</div>`).join('')}</div>${s.fields.filter((f) => f.hint).map((f) => `<div class="hint">${f.hint}</div>`).join('')}</section>`).join('')}</div></form>`,
+  D: (o) => `<form class="D">${head(o)}${o.sections.map((s) => `<section class="sec"><div><h2>${s.title}</h2><p class="sub">${s.sub || SUBS[s.title] || ''}</p></div><div class="card">${grid(s.fields, s.title)}</div></section>`).join('')}${foot()}</form>`,
+  E: (o) => `<form class="E"><div class="body">${head(o)}${o.sections.map((s) => `<section class="sec"><h2>${s.title}</h2>${grid(s.fields, s.title)}</section>`).join('')}</div>${foot()}</form>`,
+};
+// D needs a line under each side heading
+const SUBS = { Details: 'What it is called.', Contact: 'How to reach them.', Note: 'Only staff see this.', Pricing: 'What you sell it for and pay for it.',
+  Inventory: 'How it is counted.', Status: 'Where it shows and who supplies it.', Supplier: 'Who you are ordering from.', Items: 'What you are ordering.' };
+
+const NAV = ['Home', 'Orders', 'Items', 'Purchase orders', 'Customers', 'Suppliers', 'Sales', 'Settings'];
+function paint() {
+  const d = pickDesign.value, o = OBJECTS[pickObj.value];
+  sheet.innerHTML = DESIGNS[d](o);
+  nav.innerHTML = NAV.map((n) => `<a href="#"${n === o.list ? ' class="on"' : ''}>${n}</a>`).join('');
+  sheet.scrollTop = 0;
+}
+pickDesign.onchange = pickObj.onchange = paint;
+document.addEventListener('submit', (e) => e.preventDefault());
+document.addEventListener('click', (e) => { if (e.target.closest('a[href="#"]')) e.preventDefault(); });
+paint();
+</script>
+</body>
+</html>

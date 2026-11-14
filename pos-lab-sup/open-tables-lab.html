@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Open tables lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<style>
+/* Copied from pos-lab/styles.css body.light-theme (a lab keeps its own copy so the app's global rules stay out) */
+:root {
+  --bg: #FFFFFF; --canvas: #F2F2F2; --surface: #F9F9F9; --band: #F3F3F3; --line: #E1E1E1; --hair: #EBEBEB;
+  --ink: #1A1A1A; --ink-secondary: #616161; --ink-tertiary: #8C8C8C; --ink-quaternary: #B5B5B5;
+  --pm-cash: #047B5D; --pm-gcash: #1F5FB8; --pm-credit: #B7860B;
+  --r: 14px;
+  --shadow: 0 1px 2px -1px rgb(26 26 26 / .07), 0 2px 6px -2px rgb(26 26 26 / .05);
+  --cta-solid: #4388F7; --cta-ink: #DDF4FF;
+  --cta-bg: radial-gradient(75% 80% at 50% 120%, #8EC2F0, transparent 85%), linear-gradient(#6A9FF9, var(--cta-solid) 50%, #5592F7);
+  --cta-shadow: inset 0 0 0 .5px rgb(170 228 255 / .32), inset 1px 1px 1.5px -.5px rgb(170 228 255 / .55), inset -1px -1px 1.5px -.5px rgb(170 228 255 / .45), 0 1px 2px rgb(41 85 151 / .22);
+  --font: "Inter", -apple-system, system-ui, sans-serif;
+  --top: calc(16px + env(safe-area-inset-top, 0px));
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font: 14px/1.35 var(--font); letter-spacing: -.15px; overflow: hidden; }
+button, input { font: inherit; color: inherit; letter-spacing: inherit; background: none; border: 0; padding: 0; }
+button { cursor: pointer; }
+.num { font-variant-numeric: tabular-nums; }
+.ic { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+#app { display: flex; height: 100dvh; }
+.left { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.head { display: flex; gap: 8px; padding: var(--top) 16px 0; }
+.round { height: 44px; background: var(--bg); border-radius: 22px; box-shadow: var(--shadow); display: flex; align-items: center; }
+.menu { width: 44px; justify-content: center; flex: none; }
+.find { flex: 1; min-width: 0; gap: 10px; padding: 0 16px; color: var(--ink); }
+.find input { flex: 1; min-width: 0; outline: 0; font-size: 16px; }
+.find input::placeholder { color: var(--ink-tertiary); }
+
+/* the counts are the filter: one choice of three */
+.counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 16px 0; }
+.count { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-radius: var(--r); color: var(--ink-secondary); }
+.count b { font-size: 24px; font-weight: 590; letter-spacing: -.4px; color: var(--ink); }
+.count.on { background: var(--bg); box-shadow: var(--shadow); color: var(--ink); }
+
+.scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.side-on .grid { grid-template-columns: repeat(3, 1fr); }
+
+/* A card: fixed height whatever the table holds */
+.tb { display: flex; flex-direction: column; height: 172px; text-align: left; background: var(--bg); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; outline: 2px solid transparent; outline-offset: -2px; }
+.tb.sel { outline-color: var(--cta-solid); }
+.tb .band { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 8px 0 12px; background: var(--band); font-weight: 510; }
+.tb .pic { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.tb .pic svg { height: 62px; width: auto; }
+.tb .foot { display: flex; align-items: baseline; justify-content: space-between; height: 31px; line-height: 20px; padding: 0 12px; color: var(--ink-tertiary); font-size: 12px; }
+.tb .foot b { font-size: 14px; font-weight: 510; color: var(--ink); }
+.t-top { fill: var(--line); } .t-seat { fill: var(--hair); }
+.busy .t-top { fill: color-mix(in srgb, var(--pm-gcash) 24%, white); } .busy .t-seat { fill: color-mix(in srgb, var(--pm-gcash) 13%, white); }
+.bill .t-top { fill: color-mix(in srgb, var(--pm-credit) 28%, white); } .bill .t-seat { fill: color-mix(in srgb, var(--pm-credit) 15%, white); }
+
+.pill { height: 24px; padding: 0 10px; border-radius: 12px; display: inline-flex; align-items: center; font-size: 12px; font-weight: 510; white-space: nowrap; }
+.pill.free { color: var(--pm-cash); background: color-mix(in srgb, var(--pm-cash) 13%, white); }
+.pill.busy { color: var(--pm-gcash); background: color-mix(in srgb, var(--pm-gcash) 13%, white); }
+.pill.bill { color: #8A6508; background: color-mix(in srgb, var(--pm-credit) 20%, white); }
+
+/* The order at the side: the sale sidebar's shape */
+.side { display: none; width: 340px; flex: none; flex-direction: column; gap: 8px; padding: var(--top) 16px calc(16px + env(safe-area-inset-bottom, 0px)) 0; }
+.side-on .side { display: flex; }
+.s-top, .s-row { display: flex; gap: 8px; }
+.s-top .who { flex: 1; min-width: 0; padding: 0 20px; justify-content: space-between; font-weight: 510; }
+.s-top .who span { color: var(--ink-tertiary); font-weight: 400; font-size: 13px; }
+.back, .mv { flex: none; justify-content: center; font-weight: 510; }
+.back { display: none; width: 44px; }
+.mv { padding: 0 18px; }
+.s-card { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.lines { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 0; }
+.line { display: grid; grid-template-columns: 26px 1fr auto; gap: 4px; padding: 10px 16px; }
+.line i { font-style: normal; color: var(--ink-tertiary); }
+.line.round2 { margin-top: 6px; border-top: 1px solid var(--hair); padding-top: 16px; }
+.none { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.none small { color: var(--ink-tertiary); font-size: 14px; }
+.sum { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 16px; border-top: 1px solid var(--hair); font-size: 17px; font-weight: 650; }
+.s-row button { flex: 1; font-weight: 510; justify-content: center; }
+.cta { height: 44px; width: 100%; border-radius: 22px; background: var(--cta-bg); color: var(--cta-ink); box-shadow: var(--cta-shadow); font-size: 16px; font-weight: 590; }
+
+/* Move table: pop-up cards are always centred */
+.veil { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; background: rgb(0 0 0 / .22); z-index: 20; }
+.veil.on { display: flex; }
+.pop { width: min(320px, 100%); max-height: 70dvh; overflow-y: auto; background: var(--bg); border-radius: 17px; padding: 14px 0 6px; box-shadow: 0 8px 32px rgb(0 0 0 / .10), 0 1px 4px rgb(0 0 0 / .04); }
+.pop h3 { margin: 0; padding: 0 16px 8px; font-size: 14px; font-weight: 400; color: var(--ink-tertiary); }
+.pop button { display: flex; justify-content: space-between; width: 100%; padding: 13px 16px; font-size: 16px; }
+.pop button span { color: var(--ink-tertiary); font-size: 14px; }
+
+@media (max-width: 720px) {
+  :root { --top: calc(8px + env(safe-area-inset-top, 0px)); }
+  .grid, .side-on .grid { grid-template-columns: repeat(2, 1fr); }
+  .tb { height: 156px; }
+  .tb .pic svg { height: 52px; }
+  .count { padding: 8px 12px; }
+  .side { position: fixed; inset: 0; width: auto; padding: var(--top) 16px calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--canvas); z-index: 10; }
+  .back { display: flex; }
+}
+::view-transition-group(*) { animation-duration: .28s; animation-timing-function: cubic-bezier(.32, .72, 0, 1); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="left">
+    <div class="head">
+      <button class="round menu" aria-label="Menu"><svg class="ic" width="22" height="22" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <label class="round find"><svg class="ic" width="16" height="16" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Search" autocomplete="off"></label>
+    </div>
+    <div class="counts" id="counts"></div>
+    <div class="scroll"><div class="grid" id="grid"></div></div>
+  </div>
+  <aside class="side" id="side"></aside>
+</div>
+<div class="veil" id="veil"><div class="pop" id="pop"></div></div>
+
+<script>
+const peso = n => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const SISIG = ['Pork sisig', 240], RICE = ['Plain rice', 35], TEA = ['Iced tea', 65], ADOBO = ['Chicken adobo', 220], KARE = ['Kare-kare', 385], BEER = ['San Miguel Light', 85], LUMPIA = ['Lumpiang shanghai', 180], HALO = ['Halo-halo', 120];
+// a line is [qty, [name, price]]; a line marked 2 starts a second round of orders
+const tables = [
+  { n: 1, seats: 2, min: 18, lines: [[1, SISIG], [2, RICE], [2, TEA]] },
+  { n: 2, seats: 4, lines: [] },
+  { n: 3, seats: 4, min: 42, lines: [[1, KARE], [1, ADOBO], [4, RICE], [4, TEA], [2, HALO, 2]] },
+  { n: 4, seats: 6, min: 73, bill: true, lines: [[2, KARE], [2, SISIG], [1, LUMPIA], [6, RICE], [6, BEER]] },
+  { n: 5, seats: 2, lines: [] },
+  { n: 6, seats: 4, min: 9, lines: [[1, LUMPIA], [3, TEA]] },
+  { n: 7, seats: 4, min: 31, lines: [[2, ADOBO], [2, RICE], [2, BEER]] },
+  { n: 8, seats: 6, lines: [] },
+  { n: 9, seats: 2, min: 55, bill: true, lines: [[1, SISIG], [1, RICE], [2, BEER]] },
+  { n: 10, seats: 4, lines: [] },
+  { n: 11, seats: 6, min: 26, lines: [[3, SISIG], [1, KARE], [6, RICE], [6, TEA]] },
+  { n: 12, seats: 2, lines: [] },
+];
+let filter = 'all', sel = null;
+const $ = id => document.getElementById(id);
+const isOpen = t => t.lines.length > 0;
+const total = t => t.lines.reduce((s, [q, [, p]]) => s + q * p, 0);
+const status = t => !isOpen(t) ? ['free', 'Free'] : t.bill ? ['bill', 'Bill out'] : ['busy', 'Seated'];
+const mins = m => m < 60 ? m + ' min' : Math.floor(m / 60) + ' hr ' + (m % 60) + ' min';
+
+function drawing(seats) {
+  const per = seats / 2, w = 34 + per * 26, x = (120 - w) / 2;
+  let chairs = '';
+  for (let i = 0; i < per; i++) {
+    const cx = x + (w / per) * (i + .5) - 9;
+    chairs += `<rect class="t-seat" x="${cx}" y="2" width="18" height="10" rx="4"/><rect class="t-seat" x="${cx}" y="60" width="18" height="10" rx="4"/>`;
+  }
+  return `<svg viewBox="0 0 120 72" aria-hidden="true">${chairs}<rect class="t-top" x="${x}" y="15" width="${w}" height="42" rx="9"/></svg>`;
+}
+
+function render() {
+  const open = tables.filter(isOpen);
+  $('counts').innerHTML = [['all', 'All', tables.length], ['open', 'Open', open.length], ['free', 'Free', tables.length - open.length]]
+    .map(([k, w, c]) => `<button class="count ${filter === k ? 'on' : ''}" data-f="${k}"><span>${w}</span><b class="num">${c}</b></button>`).join('');
+  const q = $('q').value.trim();
+  $('grid').innerHTML = tables.filter(t => (filter === 'all' || (filter === 'open') === isOpen(t)) && (!q || String(t.n).includes(q))).map(t => {
+    const [k, word] = status(t);
+    const foot = isOpen(t) ? `<span>${mins(t.min)}</span><b class="num">${peso(total(t))}</b>` : `<span>${t.seats} seats</span>`;
+    return `<button class="tb ${k} ${sel === t ? 'sel' : ''}" data-t="${t.n}" style="view-transition-name:tb${t.n}"><div class="band"><span>Table ${t.n}</span><span class="pill ${k}">${word}</span></div><div class="pic">${drawing(t.seats)}</div><div class="foot">${foot}</div></button>`;
+  }).join('');
+  document.body.classList.toggle('side-on', !!sel);
+  if (!sel) return;
+  const t = sel, open1 = isOpen(t);
+  $('side').innerHTML = `<div class="s-top"><button class="round back" data-close aria-label="Back"><svg class="ic" width="22" height="22" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></svg></button><div class="round who"><b style="font-weight:510">Table ${t.n}</b><span>${open1 ? mins(t.min) : t.seats + ' seats'}</span></div>${open1 ? '<button class="round mv" data-move>Move</button>' : ''}</div>
+    <div class="s-card">${open1 ? `<div class="lines">${t.lines.map(([q, [name, p], r]) => `<div class="line ${r ? 'round2' : ''} num"><i>${q}</i><span>${name}</span><span>${peso(q * p)}</span></div>`).join('')}</div><div class="sum num"><span>Total</span><span>${peso(total(t))}</span></div>` : '<div class="none"><b style="font-weight:510">Nothing ordered yet</b><small>Add items to open this table.</small></div>'}</div>
+    ${open1 ? '<div class="s-row"><button class="round">Add items</button><button class="round" data-print>Print bill</button></div><button class="cta" data-pay>Check out</button>' : '<button class="cta">Add items</button>'}`;
+}
+// the cards glide to their new spots when the order opens or closes
+const glide = f => document.startViewTransition ? document.startViewTransition(() => { f(); render(); }) : (f(), render());
+
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-t],[data-f],[data-close],[data-move],[data-print],[data-pay],[data-to],#veil');
+  if (!c) return;
+  if (c.dataset.f) { filter = c.dataset.f; return render(); }
+  if (c.dataset.t) { const t = tables.find(x => x.n == c.dataset.t); return glide(() => { sel = sel === t ? null : t; }); }
+  if ('close' in c.dataset) return glide(() => { sel = null; });
+  if ('print' in c.dataset) { sel.bill = true; return render(); }
+  if ('pay' in c.dataset) return glide(() => { Object.assign(sel, { lines: [], bill: false }); sel = null; });
+  if ('move' in c.dataset) {
+    $('pop').innerHTML = '<h3>Move to</h3>' + tables.filter(t => !isOpen(t)).map(t => `<button data-to="${t.n}">Table ${t.n}<span>${t.seats} seats</span></button>`).join('');
+    return $('veil').classList.add('on');
+  }
+  if (c.dataset.to) {
+    const to = tables.find(x => x.n == c.dataset.to);
+    $('veil').classList.remove('on');
+    return glide(() => { Object.assign(to, { lines: sel.lines, min: sel.min, bill: sel.bill }); Object.assign(sel, { lines: [], bill: false }); sel = to; });
+  }
+  if (e.target === $('veil')) $('veil').classList.remove('on');
+});
+$('q').addEventListener('input', render);
+render();
+</script>
+</body>
+</html>

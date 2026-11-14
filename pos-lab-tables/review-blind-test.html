@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blind Test Findings</title>
+<!-- 2026-10-23: three blind testers (screen only, no code) on payment types. Pictures from qa/t11 (settings), qa/t12 (checkout), qa/flag (retaken). -->
+<style>
+  :root { --bg: #111; --surface: #1c1c1e; --line: #2c2c2e; --ink: #fff; --ink-2: #a1a1a6; --ok: #34c759; --warn: #ff9f0a; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #f2f2f7; --surface: #fff; --line: #e5e5ea; --ink: #1c1c1e; --ink-2: #6e6e73; --ok: #248a3d; --warn: #c93400; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 Inter, system-ui, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--ink-2); margin: 0 0 32px; }
+  section { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
+  h2 { font-size: 19px; margin: 0 0 4px; }
+  section > p { color: var(--ink-2); margin: 0 0 12px; }
+  section > p.take { font-weight: 600; margin-bottom: 16px; }
+  .take.fix { color: var(--ok); }
+  .take.leave { color: var(--ink-2); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 280px)); gap: 16px; }
+  .pair.wide { grid-template-columns: 1fr; }
+  figure { margin: 0; }
+  figcaption { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--ink-2); }
+  img { display: block; width: 100%; border-radius: 16px; border: 1px solid var(--line); cursor: zoom-in; }
+  ul { margin: 0; padding-left: 20px; color: var(--ink-2); }
+  li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Blind test: payment types</h1>
+  <p class="sub">Three testers used the screen only, without the code: Settings, Checkout, and Split / refunds. Nothing let a sale skip a required box. Green = fixed or checked, grey = left as is. Tap a picture to open it full size.</p>
+  <section>
+    <h2>1. Checkout › Card (iPad)</h2>
+    <p>Tapped the button with the box empty, then filled it in and finished. The “Enter the last 4 digits first” message was still up on Sale complete.</p>
+    <p class="take fix">Fixed: the message goes away on Sale complete.</p>
+    <div class="pair wide">
+      <figure><figcaption>Before</figcaption><a href="img/blind-test/01-s35_4_finished.png" target="_blank"><img src="img/blind-test/01-s35_4_finished.png" alt="Before"></a></figure>
+      <figure><figcaption>After</figcaption><a href="img/blind-test/01-01-sale-complete.png" target="_blank"><img src="img/blind-test/01-01-sale-complete.png" alt="After"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>2. Settings › Payment types</h2>
+    <p>Added a 9th type. It’s added switched off, and the message saying why was cut off on the phone.</p>
+    <p class="take fix">Fixed: the message wraps onto two lines.</p>
+    <div class="pair">
+      <figure><figcaption>Before</figcaption><a href="img/blind-test/02-ninth-type.png" target="_blank"><img src="img/blind-test/02-ninth-type.png" alt="Before"></a></figure>
+      <figure><figcaption>After</figcaption><a href="img/blind-test/02-02-ninth.png" target="_blank"><img src="img/blind-test/02-02-ninth.png" alt="After"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>3. Settings › Payment types › Add payment type</h2>
+    <p>Tapped Save with the name empty (or only spaces). Nothing happened and there was no message.</p>
+    <p class="take fix">Fixed: Save is greyed until there’s a name.</p>
+    <div class="pair">
+      <figure><figcaption>Before</figcaption><a href="img/blind-test/03-s21_empty_save.png" target="_blank"><img src="img/blind-test/03-s21_empty_save.png" alt="Before"></a></figure>
+      <figure><figcaption>After</figcaption><a href="img/blind-test/03-03-save-greyed.png" target="_blank"><img src="img/blind-test/03-03-save-greyed.png" alt="After"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>4. Checkout › Split › QR (approval code required)</h2>
+    <p>Added a QR part, tapped Back on its approval code box. Complete sale asked for the Cash change first, and only after that went back to the code box.</p>
+    <p class="take fix">Fixed: Complete sale asks for the missing code first, then the Cash change.</p>
+    <div class="pair">
+      <figure><figcaption>Back from the code box</figcaption><a href="img/blind-test/04-s17-d-back-from-box.png" target="_blank"><img src="img/blind-test/04-s17-d-back-from-box.png" alt="Back from the code box"></a></figure>
+      <figure><figcaption>Before: Cash change first</figcaption><a href="img/blind-test/04-s18-after-complete.png" target="_blank"><img src="img/blind-test/04-s18-after-complete.png" alt="Before: Cash change first"></a></figure>
+      <figure><figcaption>After: the code first</figcaption><a href="img/blind-test/04-04-box-first.png" target="_blank"><img src="img/blind-test/04-04-box-first.png" alt="After: the code first"></a></figure>
+      <figure><figcaption>Then the Cash change</figcaption><a href="img/blind-test/04-04-then-cash.png" target="_blank"><img src="img/blind-test/04-04-then-cash.png" alt="Then the Cash change"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>5. Checkout › Card</h2>
+    <p>“Last 4 digits” takes anything: “12” or “abc” finishes the sale and prints on the receipt.</p>
+    <p class="take leave">Leave: you said it’s fine.</p>
+    <div class="pair">
+      <figure><figcaption>Typed 12</figcaption><a href="img/blind-test/05-s21_A_two_digits.png" target="_blank"><img src="img/blind-test/05-s21_A_two_digits.png" alt="Typed 12"></a></figure>
+      <figure><figcaption>Receipt</figcaption><a href="img/blind-test/05-two-digits-receipt.png" target="_blank"><img src="img/blind-test/05-two-digits-receipt.png" alt="Receipt"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>6. Settings › Payment types</h2>
+    <p>A long name was cut at 24 letters with no sign it was cut.</p>
+    <p class="take fix">Fixed: a long name ends in … so you can see it was cut (24 letters still fits the receipt).</p>
+    <div class="pair">
+      <figure><figcaption>Before</figcaption><a href="img/blind-test/06-s21_long.png" target="_blank"><img src="img/blind-test/06-s21_long.png" alt="Before"></a></figure>
+      <figure><figcaption>After</figcaption><a href="img/blind-test/06-06-long-name.png" target="_blank"><img src="img/blind-test/06-06-long-name.png" alt="After"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>7. Checkout › Card</h2>
+    <p>Typed 1234, tapped Back, picked Card again: the box is empty again.</p>
+    <p class="take leave">Leave: you said it’s fine.</p>
+    <div class="pair">
+      <figure><figcaption>Card picked again</figcaption><a href="img/blind-test/07-s24_1_card_again_keeps_box.png" target="_blank"><img src="img/blind-test/07-s24_1_card_again_keeps_box.png" alt="Card picked again"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>8. Checkout › Card</h2>
+    <p>Typed only spaces: the “(required)” hint disappeared, so the box looked empty but the sale couldn’t finish.</p>
+    <p class="take fix">Fixed: spaces alone don’t go in the box, so “(required)” stays.</p>
+    <div class="pair wide">
+      <figure><figcaption>Before</figcaption><a href="img/blind-test/08-s20_2_spaces_enter.png" target="_blank"><img src="img/blind-test/08-s20_2_spaces_enter.png" alt="Before"></a></figure>
+      <figure><figcaption>After</figcaption><a href="img/blind-test/08-08-spaces.png" target="_blank"><img src="img/blind-test/08-08-spaces.png" alt="After"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>9. Settings › Payment types › Maya</h2>
+    <p>In plain words: on Maya’s page you type “GCash” as the new name. It says “GCash is taken” (right, GCash exists). Then you delete the name and leave. Maya keeps its name (right), but the “GCash is taken” message is still on screen for a second.</p>
+    <p class="take fix">Fixed: clearing the name now clears the old message right away.</p>
+    <div class="pair">
+      <figure><figcaption>Before</figcaption><a href="img/blind-test/09-s30_rename_empty.png" target="_blank"><img src="img/blind-test/09-s30_rename_empty.png" alt="Before"></a></figure>
+      <figure><figcaption>After</figcaption><a href="img/blind-test/09-09-cleared.png" target="_blank"><img src="img/blind-test/09-09-cleared.png" alt="After"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>10. Checkout › Split › GCash</h2>
+    <p>GCash was ₱65. You open it again and delete the number: ₱65 comes back in grey, and Done keeps GCash at ₱65. If you want GCash out of the split: open it, type 0, tap Done. GCash disappears from the list.</p>
+    <p class="take leave">Leave: an empty box means “keep what it was”; 0 means “take it off”.</p>
+    <div class="pair">
+      <figure><figcaption>Box emptied: ₱65 in grey</figcaption><a href="img/blind-test/10-s21-a-gcash-cleared.png" target="_blank"><img src="img/blind-test/10-s21-a-gcash-cleared.png" alt="Box emptied: ₱65 in grey"></a></figure>
+      <figure><figcaption>Typed 0: GCash comes off</figcaption><a href="img/blind-test/10-s21-b-after-zero.png" target="_blank"><img src="img/blind-test/10-s21-b-after-zero.png" alt="Typed 0: GCash comes off"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>11. Checkout › Split › Cash</h2>
+    <p>The sale is ₱315. Cash is the only part, ₱200. Big number ₱315 = what Cash could cover (nothing else is paying yet). Small box ₱200 = what Cash is paying now.</p>
+    <p class="take leave">Leave: big = what this part can cover, box = this part. Say if you want the big number to be the part instead.</p>
+    <div class="pair">
+      <figure><figcaption>Cash part opened</figcaption><a href="img/blind-test/11-s20-c-edit-cash.png" target="_blank"><img src="img/blind-test/11-s20-c-edit-cash.png" alt="Cash part opened"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>12. Orders › Refund</h2>
+    <p>The refund confirm says the amount but not how it goes back (Cash or GCash) on a split sale.</p>
+    <p class="take leave">Leave: you said it’s fine.</p>
+    <div class="pair">
+      <figure><figcaption>Refund confirm</figcaption><a href="img/blind-test/12-s27-b-after-refund.png" target="_blank"><img src="img/blind-test/12-s27-b-after-refund.png" alt="Refund confirm"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>13. Checkout › Split</h2>
+    <p>You asked: can a split finish if you type 0 in every part? No. A part set to 0 comes off, and Complete sale stays greyed until the parts add up to the total. Forcing it made no order.</p>
+    <p class="take fix">Checked: can’t be done.</p>
+    <div class="pair">
+      <figure><figcaption>Every part 0</figcaption><a href="img/blind-test/13-zero-split.png" target="_blank"><img src="img/blind-test/13-zero-split.png" alt="Every part 0"></a></figure>
+    </div>
+  </section>
+  <section>
+    <h2>Also noted, no picture</h2>
+    <ul>
+      <li>Must fill in stays on while Ask for is Nothing (the row is hidden). It doesn’t block anything, because nothing is asked.</li>
+      <li>Picking an Ask for option doesn’t go back by itself; the tick shows and you tap Back.</li>
+      <li>Cash, GCash, QR, Other, Account and Split can’t be renamed. That’s by design.</li>
+      <li>A renamed type: old sales keep the name they were sold with (Past sales keep the name). By design.</li>
+      <li>The greyed Complete sale still answers a tap with “Enter the … first”. By design.</li>
+      <li>The tester’s browser crashed once and it couldn’t make it happen again. No error from the app.</li>
+      <li>Not tested: Void, Cash in / out, deleting a type that has sales.</li>
+    </ul>
+  </section>
+  <section>
+    <h2>Worked</h2>
+    <ul>
+      <li>The required box can’t be skipped: empty, spaces, Enter, 10 fast taps, Back and pick again, the picture step, iPad.</li>
+      <li>Fast taps on a good sale made one order, not several.</li>
+      <li>An optional box can be left empty. What’s typed shows on the receipt, trimmed.</li>
+      <li>Add, hide, turn all off (only Cash stays), rename, duplicate names blocked (any case), delete and add back.</li>
+      <li>Picture: add, shown first at checkout, Done → box → Complete sale, remove.</li>
+      <li>Split: amounts add up, each part prints on the receipt, each GCash part shows its own picture, Back on a picture takes the part off.</li>
+      <li>Refunds: a renamed type refunds fine, a split refund keeps its payment lines, Void is hidden on a refunded sale.</li>
+      <li>No errors in the app in any run.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

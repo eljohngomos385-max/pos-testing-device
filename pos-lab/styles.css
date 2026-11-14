@@ -8787,6 +8787,7 @@ body:has(#itemsView > #scanSheet.open) #qsTickbar { z-index: 100; }
 :root { --side-pill: var(--surface); --head-y: 8px; --sheet-x: 16px; }   /* --head-y: the ☰ row's top on every page and the menu's title + switch beside it (Sell's ☰: .catalog's 8, + .content-row's 8 on the iPad); --sheet-x: every slide-up sheet's screen edge → card (owner 2026-11-01: all 16, Claude's sheet) */
 @media (min-width: 721px) { :root { --head-y: 16px; } }
 body.light-theme { --side-pill: #F2F0F1; --side-canvas: #FBF9FA; }   /* the menu only, Gemini's off an iPhone screenshot (owner 2026-11-10); the page beside it keeps --canvas */
+body:not(.light-theme) { --side-canvas: #161616; }   /* dark: the menu a step under the #1A page, as Claude's iPad menu sits under its page (#111 / #151515, owner 2026-11-11) */
 body.light-theme #app:not(.bo-app) .sidebar { --ink: #000; --ink-tertiary: #686667; color: var(--ink); }
 body.light-theme #app:not(.bo-app) .side-link.active { background: var(--side-pill); }
 #app::before { display: none; }   /* nothing left beside it to dim */
@@ -8868,8 +8869,7 @@ html.side-half :is(.qs-pg) { padding-top: var(--ph-top, 0px); }
 html.side-half #app { --half-w: calc(100vw - 76px); }
 @media (min-width: 721px) { html.side-half #app { --half-w: 320px; } }
 html.side-half :where(#app:not(.bo-app)) .sidebar { --sidebar-w: var(--half-w); }
-html.side-half #app { background: var(--canvas, var(--bg)); }   /* the corners of the card show the drawer's colour */   /* light too: a white drawer turned the status bar white on open (owner 2026-10-17: "why is the top changing to become whiter?") */
-html.side-half body.light-theme #app { background: var(--side-canvas); }
+html.side-half #app { background: var(--side-canvas, var(--canvas, var(--bg))); }   /* the corners of the card show the drawer's colour */   /* light too: a white drawer turned the status bar white on open (owner 2026-10-17: "why is the top changing to become whiter?") */
 html.side-half .side-x { display: none; }   /* the peeking page is the close */
 html.side-half .main { will-change: transform; }   /* its GPU layer kept ready, as the menu's is: else the phone sets it up 3 frames into the opening, freezes 2 and jumps (measured off a recording, owner 2026-11-10). Safe on .main only: it fills the screen, so its fixed pages land where they did (regressions/2026-11-10-1730) */
 html.side-half :where(#app:not(.bo-app)) .sidebar { padding-top: var(--ph-top, 0px); background: none; }   /* see-through: an opaque drawer hid the card's shadow, which then leaked out only at its corners; #app is the drawer's colour. --ph-top: the frame's clock strip, while the card runs up behind it */

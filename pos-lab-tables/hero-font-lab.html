@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Big number font</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=Nunito:wght@200..1000&display=swap" rel="stylesheet">
+<style>
+  :root { --page: #F2F2F2; --row: #FBFBFB; --ink: #2B2B2B; --ink3: #8E8E93; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 60px; background: #E5E5EA; color: var(--ink); font: 15px/1.35 Inter, -apple-system, system-ui, sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 4px; } p.sub { margin: 0 0 16px; color: #6E6E73; font-size: 14px; }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .phone { background: var(--page); border-radius: 22px; padding: 18px 16px 20px; }
+  .phone b { display: block; font-size: 13px; } .phone small { display: block; color: var(--ink3); font-size: 12px; min-height: 32px; }
+  .hero { display: flex; justify-content: center; align-items: center; height: 110px; font-size: 48px; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+  .row { display: flex; justify-content: space-between; background: var(--row); border-radius: 16px; padding: 0 16px; height: 50px; align-items: center; margin-top: 8px; }
+  @font-face { font-family: R60; src: url("hero-round-60.ttf?v=4"); }
+  @font-face { font-family: R100; src: url("hero-round-100.ttf?v=4"); }
+  @font-face { font-family: R140; src: url("hero-round-140.ttf?v=4"); }
+  @font-face { font-family: R220; src: url("hero-round-220.ttf?v=4"); }
+  @font-face { font-family: R320; src: url("hero-round-320.ttf?v=4"); }
+  @font-face { font-family: S90; src: url("hero-soft-90.ttf?v=1"); }
+  @font-face { font-family: S130; src: url("hero-soft-130.ttf?v=1"); }
+  @font-face { font-family: S170; src: url("hero-soft-170.ttf?v=1"); }
+  .row span:last-child { color: var(--ink3); }
+  .zoom { margin-top: 28px; background: #fff; border-radius: 22px; padding: 16px; }
+  .zoom .z { display: grid; grid-template-columns: 110px 1fr; align-items: center; border-top: .5px solid rgb(0 0 0 / .1); }
+  .zoom .z:first-of-type { border-top: 0; }
+  .zoom .z .hero { justify-content: flex-start; height: 190px; font-size: 160px; }
+  .zoom .z b { font-size: 13px; }
+  .digits { margin-top: 12px; background: #fff; border-radius: 22px; padding: 4px 16px; }
+  .digits .d { display: grid; grid-template-columns: 110px 1fr; align-items: center; padding: 14px 0; border-top: .5px solid rgb(0 0 0 / .1); }
+  .digits .d:first-child { border-top: 0; }
+  .digits b { font-size: 13px; }
+  .digits span { display: block; letter-spacing: -.04em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .digits .all { font-size: 104px; } .digits .mix { font-size: 50px; word-spacing: .3em; white-space: nowrap; }
+  .close { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+  .close div { background: #fff; border-radius: 22px; padding: 12px 16px 0; overflow: hidden; }
+  .close span { display: block; font-size: 160px; line-height: 1.15; font-weight: 550; letter-spacing: -.04em; }
+</style>
+</head>
+<body>
+<h1>Big number: softer type</h1>
+<p class="sub">Checkout's ₱303.00 at its real phone size, then very big so you can see the corners. B is the app's Inter with only its corners rounded - same shapes, same width, a real font file (7 KB), three roundness steps.</p>
+<div class="cols" id="cols"></div>
+<div class="digits" id="digits"></div>
+<div class="close" id="close"></div>
+<div class="zoom" id="zoom"></div>
+<script>
+const AMT = '₱35,777.70';
+// [id, name, note, family, weight] -> the 4th field becomes the span's font style
+const FONTS = [
+  ['A', 'Now', 'Inter, as the app', 'Inter'],
+  ['B5', 'Inter, old round', 'the 1, 4 and 7 you did not like', 'R320'],
+  ['S1', 'Inter, fixed, soft', 'new corners, a little', 'S90'],
+  ['S2', 'Inter, fixed, medium', 'new corners', 'S130'],
+  ['S3', 'Inter, fixed, round', 'new corners, stroke ends full round', 'S170'],
+  ['C3', "Nunito, Inter's thickness", 'what is on your phone now', 'Nunito', 650],
+].map(([id, name, note, fam, w = 550]) => [id, name, note, `font-family:${fam};font-weight:${w}`]);
+const num = (f) => `<span style="${f}">${AMT}</span>`;
+const apple = (h) => `<img src="hero-apple-ref.png" alt="Apple Wallet's number" style="height:${h}px">`;
+document.getElementById('cols').innerHTML = FONTS.map(([id, name, note, f]) => `<div class="phone"><b>${id} · ${name}</b><small>${note}</small>
+  <div class="hero">${num(f)}</div>
+  <div class="row"><span>Exact</span><span>No change</span></div><div class="row"><span>₱400</span><span>₱97.00</span></div></div>`).join('')
+  + `<div class="phone"><b>Apple</b><small>your Wallet screenshot</small><div class="hero">${apple(110)}</div></div>`;
+document.getElementById('zoom').innerHTML = FONTS.map(([id, name, , f]) => `<div class="z"><b>${id} · ${name}</b><div class="hero">${num(f)}</div></div>`).join('')
+  + `<div class="z"><b>Apple</b><div class="hero">${apple(190)}</div></div>`;
+document.getElementById('close').innerHTML = FONTS.map(([id, name, , f]) => `<div><b>${id} · ${name}</b><span style="${f}">147</span></div>`).join('');
+const MIX = '₱1,234.56 ₱7,890.00 −₱45.50 ¥3,030 $12.99';
+document.getElementById('digits').innerHTML = FONTS.map(([id, name, , f]) => `<div class="d"><b>${id} · ${name}</b><div style="${f}"><span class="all">0123456789</span><span class="mix">${MIX}</span></div></div>`).join('');
+</script>
+</body>
+</html>

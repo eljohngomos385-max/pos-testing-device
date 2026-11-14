@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sky Buttons</title>
+<style>
+/* the owner's six pictures (2026-10-28), sampled: Gemini 3.5, Shelter System, UMA, Ultra, End of Heat, Muji */
+:root {
+  --cornflower: #3E7BE0;   /* Shelter's edge */
+  --gemini: #5186F5;       /* Gemini's deep corner */
+  --sky: #6DAFF5;          /* UMA's top */
+  --cerulean: #50A8DE;     /* Ultra's bars */
+  --powder: #97C7E3;       /* Muji's ground */
+  --dusk: #4C7CA3;         /* End of Heat's ink */
+  --haze: #A4B5E7;         /* Shelter's middle */
+  --lilac: #DFD9E9;        /* Shelter's house */
+  --mist: #CBE0FB;         /* Gemini's wash */
+  --frost: #E3EEFC;        /* Gemini's light */
+  --cloud: #F4F9FD;        /* the whites */
+  --ink: #1C2B44;
+  --bg: #F2F2F7; --card: #fff; --line: #E5E5EA; --sub: #6E6E73;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] { --bg: #000; --card: #1C1C1E; --line: #2C2C2E; --sub: #8E8E93; --ink: #F2F6FF; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #000; --card: #1C1C1E; --line: #2C2C2E; --sub: #8E8E93; --ink: #F2F6FF; } }
+* { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif; padding: 24px 16px 64px; }
+main { max-width: 980px; margin: 0 auto; }
+h1 { font-size: 28px; font-weight: 700; letter-spacing: -.02em; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.top p { color: var(--sub); margin-top: 4px; }
+.seg { display: flex; background: var(--line); border-radius: 10px; padding: 2px; }
+.seg button { border: 0; background: none; font: inherit; font-size: 13px; font-weight: 550; color: var(--ink); padding: 6px 14px; border-radius: 8px; cursor: pointer; }
+.seg button.on { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+.swatches { display: grid; gap: 10px; margin: 20px 0 8px; }
+.pic { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 10px; }
+.pic > b { font-size: 13px; font-weight: 650; }
+.pic > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+.sw span { padding-top: 5px; }
+h3 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin: 28px 0 10px; }
+h3 small { font-size: 13px; font-weight: 500; color: var(--sub); margin-left: 6px; }
+.sw { border-radius: 14px; overflow: hidden; background: var(--card); border: 1px solid var(--line); }
+.sw i { display: block; height: 40px; }
+.sw b { display: block; font-size: 12px; font-weight: 600; padding: 6px 8px 0; }
+.sw span { display: block; font-size: 11px; color: var(--sub); padding: 0 8px 7px; font-family: ui-monospace, monospace; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; }
+.card header { display: flex; align-items: baseline; gap: 8px; padding: 14px 16px 0; }
+.card header b { font-size: 13px; color: var(--sub); }
+.card header h2 { font-size: 17px; font-weight: 650; }
+.card header span { margin-left: auto; font-size: 12px; color: var(--sub); }
+.stage { padding: 18px 16px 18px; display: grid; gap: 12px; }
+.row { display: flex; gap: 10px; }
+.note { font-size: 13px; color: var(--sub); padding: 0 16px 14px; }
+
+/* the shared shape: Check out's pill + Done + Start shift's button */
+.b { position: relative; isolation: isolate; overflow: hidden; border: 0; cursor: pointer; font: inherit; font-weight: 600; letter-spacing: -.01em;
+  height: 48px; padding: 0 22px; border-radius: 24px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform .18s cubic-bezier(.3,.7,.4,1.4), box-shadow .2s, filter .2s; user-select: none; }
+.b.wide { width: 100%; height: 54px; border-radius: 27px; justify-content: space-between; padding: 0 24px; font-size: 17px; }
+.b:active { transform: scale(.96); }
+.b::before, .b::after { content: ''; position: absolute; pointer-events: none; }
+
+/* A · Mist — Gemini: a white pill with blue light blooming up from under it */
+.mist { color: #1A3C8C; background: var(--cloud);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.9), 0 8px 24px -8px rgba(81,134,245,.55); }
+.mist::before { inset: -40% -10% -60% 30%; z-index: -1; filter: blur(18px);
+  background: radial-gradient(60% 60% at 70% 80%, var(--gemini), transparent 70%), radial-gradient(50% 50% at 20% 90%, var(--sky), transparent 70%); opacity: .85; transition: opacity .25s, transform .3s; }
+.mist::after { inset: 0; border-radius: inherit; background: linear-gradient(rgba(255,255,255,.75), rgba(255,255,255,0) 55%); }
+.mist:active::before { opacity: 1; transform: translateY(-10%); }
+
+/* B · Shelter — cornflower fading to a lilac middle, with the print's grain */
+.shelter { color: #2A5BB8; font-weight: 700;
+  background: radial-gradient(80% 140% at 50% 50%, var(--lilac) 20%, var(--haze) 60%, var(--cornflower) 110%);
+  box-shadow: 0 6px 18px -6px rgba(62,123,224,.6); }
+.shelter::before { inset: 0; background: var(--grain); background-size: 120px; mix-blend-mode: soft-light; opacity: .9; }
+.shelter::after { inset: 0; border-radius: inherit; background: repeating-linear-gradient(0deg, rgba(255,255,255,.12) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(255,255,255,.12) 0 1px, transparent 1px 3px); }
+.shelter:active { filter: saturate(1.25) brightness(.97); }
+
+/* C · Cloud — UMA's jelly: sky on top melting to white, soft and thick */
+.cloud { color: #1B4171;
+  background: linear-gradient(170deg, #57AFF5 0%, #8DBFE9 50%, #DFF1FF 100%);
+  box-shadow: inset 0 2px 1px rgba(255,255,255,.7), inset 0 -10px 18px -6px rgba(255,255,255,.9), inset 6px 0 14px -8px rgba(81,134,245,.6), 0 14px 26px -12px rgba(109,175,245,.9); }
+.cloud::before { left: 14%; right: 14%; top: 3px; height: 40%; border-radius: 999px; background: linear-gradient(rgba(255,255,255,.75), rgba(255,255,255,0)); }
+.cloud:active { transform: scale(.95, .92); box-shadow: inset 0 2px 1px rgba(255,255,255,.7), inset 0 -6px 14px -6px rgba(255,255,255,.9), 0 6px 14px -8px rgba(109,175,245,.9); }
+
+/* D · Ultra — light through glass: vertical streaks of cerulean and white */
+.ultra { color: #fff; text-shadow: 0 1px 4px rgba(27,65,113,.7); background-size: 380px 100% !important; background-position: center !important;
+  background: linear-gradient(90deg, var(--cerulean) 0 8%, #CFE8F8 12%, #77C2EC 20%, var(--cerulean) 30%, #fff 34%, #9ED1F0 44%, var(--cerulean) 56%, #CFE8F8 64%, #77C2EC 74%, var(--cerulean) 86%, #E8F4FC 92%, var(--cerulean)); background-color: #4596D4;
+  box-shadow: 0 8px 20px -8px rgba(80,168,222,.8); }
+.ultra::before { inset: 0; background: linear-gradient(rgba(255,255,255,.55), transparent 45%, rgba(40,110,180,.25)); }
+.ultra::after { inset: 0; background: inherit; background-size: 200% 100%; opacity: 0; transition: opacity .2s, background-position .5s; mix-blend-mode: screen; }
+.ultra:active::after { opacity: .5; background-position: 100% 0; }
+
+/* E · Cyanotype — End of Heat: powder print, halftone dots, dusk ink, a thin drawn line */
+.cyan { color: var(--dusk); font-weight: 650; background: #DCEBF4;
+  box-shadow: inset 0 0 0 1.5px var(--dusk), 0 3px 0 -1px rgba(76,124,163,.35); }
+.cyan::before { inset: 0; background: radial-gradient(circle, rgba(76,124,163,.38) 0 .9px, transparent 1.3px) 0 0 / 4px 4px;
+  -webkit-mask-image: linear-gradient(100deg, #000 10%, transparent 75%); mask-image: linear-gradient(100deg, #000 10%, transparent 75%); }
+.cyan:active { transform: translateY(2px) scale(.98); box-shadow: inset 0 0 0 1.5px var(--dusk), 0 1px 0 -1px rgba(76,124,163,.35); }
+
+/* Riso — End of Heat's paper, words printed twice a hair off register */
+.riso { color: #29649D; font-weight: 750; background: #E2E2DF; text-shadow: 1.5px 1px 0 rgba(123,181,225,.9);
+  box-shadow: inset 0 0 0 2px #29649D; }
+.riso::before { inset: 0; background: var(--grain); background-size: 120px; mix-blend-mode: multiply; opacity: .25; }
+.riso:active { background: #B8E3F7; }
+
+/* F · Drift — Muji: powder blue with soft white shapes floating out of focus */
+.drift { color: #0E1A2B; font-weight: 750; background: var(--powder);
+  box-shadow: 0 6px 16px -8px rgba(76,124,163,.7); }
+.drift::before { inset: -20%; filter: blur(7px); z-index: -0;
+  background: radial-gradient(18% 40% at 12% 30%, rgba(255,255,255,.95), transparent), radial-gradient(14% 30% at 78% 75%, rgba(255,255,255,.9), transparent), radial-gradient(10% 24% at 55% 20%, rgba(255,255,255,.7), transparent);
+  transition: transform .5s cubic-bezier(.3,.7,.4,1); }
+.drift::after { inset: 0; background: var(--grain); background-size: 120px; mix-blend-mode: soft-light; opacity: .7; }
+.drift:active::before { transform: translate(6%, -8%) scale(1.08); }
+.drift > * { position: relative; }
+
+/* G · Halo — a white pill in a ring of Gemini light */
+.halo { color: var(--ink); background: var(--card); padding: 0 22px; }
+.halo::before { inset: -2px; z-index: -2; border-radius: inherit; background: conic-gradient(from 200deg, var(--gemini), var(--sky), var(--mist), var(--haze), var(--gemini)); }
+.halo::after { inset: 2px; z-index: -1; border-radius: inherit; background: linear-gradient(var(--card), var(--card)) padding-box; }
+.halo { box-shadow: 0 0 22px -4px rgba(81,134,245,.55); }
+.halo:active { box-shadow: 0 0 30px 0 rgba(81,134,245,.75); }
+
+/* H · Glass on sky — the frosted pill floating on a blue sky, the one shine line on top */
+.glass { color: #fff; background: linear-gradient(135deg, var(--gemini), var(--sky));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65), inset 0 0 0 1px rgba(255,255,255,.18), 0 10px 24px -10px rgba(62,123,224,.85); }
+.glass::before { inset: 0; background: radial-gradient(120% 90% at 20% -10%, rgba(255,255,255,.45), transparent 55%); }
+.glass::after { inset: 0; background: var(--grain); background-size: 140px; mix-blend-mode: overlay; opacity: .35; }
+.glass:active { filter: brightness(1.08); }
+
+/* P · Aurora — Gemini's star colours, barely, around a blue pill */
+.aurora { color: #fff; background: linear-gradient(120deg, #4A82EF, #5493E7 55%, #81ACF9); box-shadow: 0 10px 24px -12px rgba(74,130,239,.9); }
+.aurora::before { inset: -30%; filter: blur(14px); opacity: .55; transition: opacity .25s;
+  background: radial-gradient(30% 50% at 8% 90%, #BF646B, transparent), radial-gradient(28% 50% at 30% 110%, #E2D594, transparent), radial-gradient(30% 50% at 95% 10%, #5DAE8D, transparent), radial-gradient(30% 50% at 70% -10%, #A376B7, transparent); }
+.aurora::after { inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,.45); }
+.aurora:active::before { opacity: .85; }
+
+/* Q · Underglow — flat, its own light on the page */
+.under { color: #fff; background: #57AFF5; box-shadow: 0 12px 28px -6px rgba(87,175,245,.75), 0 2px 6px -2px rgba(87,175,245,.6); }
+.under:active { box-shadow: 0 4px 12px -4px rgba(87,175,245,.75); }
+
+/* Ultra, full colour (owner 2026-10-28: likes Ultra's colour, wants it as a whole pill) */
+.u-cer { color: #fff; background: #50A8DE; }
+.u-bright { color: #fff; background: #55B6EE; }
+.u-deep { color: #fff; background: #4596D4; }
+.u-fade { color: #fff; background: linear-gradient(#7BCBF6, #4596D4); }
+.u-shine { color: #fff; background: linear-gradient(#55B6EE, #4596D4); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 8px 20px -10px rgba(69,150,212,.9); }
+.u-shine::before { inset: 0; background: radial-gradient(120% 90% at 20% -10%, rgba(255,255,255,.4), transparent 55%); }
+.u-pale { color: #1B4171; background: #BDE7F0; }
+.u-navy { color: #fff; background: linear-gradient(#36719B, #1B4171); }
+.u-glow { color: #fff; background: #50A8DE; box-shadow: 0 12px 28px -6px rgba(80,168,222,.75); }
+:is(.u-cer, .u-bright, .u-deep, .u-fade, .u-shine, .u-pale, .u-navy, .u-glow):active { filter: brightness(.94); }
+
+/* I–O · flat, a little gradient: one colour, a touch lighter on top, no shine line */
+.fl-corn { color: #fff; background: linear-gradient(#5493E7, #3E7BE0); }
+.fl-ink { color: #fff; background: linear-gradient(#36719B, #29649D 60%, #1B4171); }
+.fl-sky { color: #0F2C52; background: linear-gradient(#8DBFE9, #72B4F0); }
+.fl-powder { color: #0E1A2B; font-weight: 700; background: linear-gradient(#A8D3EE, #95C7ED); }
+.fl-tint { color: #3A77E1; background: linear-gradient(#DCE9FC, #C2DCFD); }
+.fl-lilac { color: #3E7BE0; background: linear-gradient(#EAE4F1, #D1CEED); }
+.fl-dusk { color: #fff; background: linear-gradient(90deg, #29649D, #5081AE 45%, #7BB5E1); }
+:is(.fl-corn, .fl-ink, .fl-sky, .fl-powder, .fl-tint, .fl-lilac, .fl-dusk):active { filter: brightness(.94); }
+
+/* R · Split — the amount in its own pill */
+.split { color: #fff; background: #3E7BE0; }
+.split .amt { background: rgba(255,255,255,.22); margin-right: -16px; padding: 0 14px; height: 40px; border-radius: 20px; display: inline-flex; align-items: center; }
+.split:active { background: #3A77E1; }
+
+/* S · Duo — two blues meeting, the cut blurred */
+.duo { color: #fff; background: linear-gradient(100deg, #3E7BE0 0 48%, #78A0EB 62%); }
+.duo::before { inset: 0; background: var(--grain); background-size: 140px; mix-blend-mode: soft-light; opacity: .5; }
+
+/* T · Soft press — out of the frost, sinks on press */
+.soft { color: #3E7BE0; background: #E3EEFC; box-shadow: -4px -4px 10px rgba(255,255,255,.95), 5px 6px 12px rgba(129,172,249,.45); }
+.soft:active { transform: none; box-shadow: inset 3px 4px 8px rgba(129,172,249,.45), inset -3px -3px 8px rgba(255,255,255,.9); }
+:root[data-theme="dark"] .soft { background: #1F2A3D; color: #B3BFEF; box-shadow: -3px -3px 8px rgba(255,255,255,.05), 5px 6px 12px rgba(0,0,0,.7); }
+
+.b > * { position: relative; z-index: 1; }
+.b .amt { font-variant-numeric: tabular-nums; }
+.ic { width: 18px; height: 18px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div><h1>Sky buttons</h1><p>Every colour is from your six pictures. Press and hold any button.</p></div>
+    <div class="seg" id="seg"><button data-t="light" class="on">Light</button><button data-t="dark">Dark</button></div>
+  </div>
+
+  <div class="swatches" id="sw"></div>
+  <div id="grid"></div>
+</main>
+<script>
+// every picture's colours, most of the picture first (sampled 2026-10-28)
+const PICS = [['Gemini 3.5', ['#C2DCFD','#E3EEFC','#81ACF9','#5186F5','#4982E7','#B0B9C3','#323C47','#4A82EF','#BF646B','#C89F6B','#E2D594','#5DAE8D','#A376B7']],
+  ['Shelter', ['#EAE4F1','#DFD9E9','#D1CEED','#B3BFEF','#A4B5E7','#9CA8DC','#78A0EB','#708CD3','#5493E7','#3E7BE0','#C6BED0','#6F6974']],
+  ['UMA', ['#DFF1FF','#B5E3FD','#A9CDE7','#8DBFE9','#72C2FA','#6DAFF5','#57AFF5','#DCDBE4','#252429']],
+  ['Ultra', ['#E8F4FC','#BDE7F0','#9ED1F0','#7BCBF6','#55B6EE','#50A8DE','#4596D4','#79B1C7','#36719B','#1B4171']],
+  ['End of Heat', ['#E2E2DF','#B8E3F7','#DCEBF4','#A6C4D9','#7BB5E1','#93ACB1','#5081AE','#4C7CA3','#29649D','#C4B1BB','#94878D','#60373F']],
+  ['Muji', ['#BCE5FB','#C9E2F2','#95C7ED','#97C7E3','#6DABD1','#8298B1','#B4C0C9','#4C606F','#1A2128']]];
+sw.innerHTML = PICS.map(([n, cs]) => `<div class="pic"><b>${n}</b><div>${cs.map(h => `<div class="sw"><i style="background:${h}"></i><span>${h}</span></div>`).join('')}</div></div>`).join('');
+
+const V = [['Ultra, full colour', "O's blues as one solid pill."],
+  ['O1','Cerulean','u-cer','Ultra','The main bar colour, solid.'],
+  ['O2','Bright','u-bright','Ultra','A step lighter and livelier.'],
+  ['O3','Deep','u-deep','Ultra','A step deeper, steadier.'],
+  ['O4','Fade','u-fade','Ultra','Light on top, deep at the bottom.'],
+  ['O5','Shine','u-shine','Ultra','Solid with one soft shine on top.'],
+  ['O6','Glow','u-glow','Ultra','Solid, with its own blue light on the page.'],
+  ['O7','Pale','u-pale','Ultra','The light streak with ink words. For a second button.'],
+  ['O8','Navy','u-navy','Ultra',"The poster's darkest blue."],
+  ['Flat, a little gradient', 'No shine. One colour, a touch lighter at the top.'],
+  ['A','Cornflower','fl-corn','Shelter',"Shelter's edge blue, a step lighter at the top."],
+  ['B','Ink','fl-ink','End of Heat',"The print's deep ink. The calm, serious one."],
+  ['C','Sky','fl-sky','UMA',"UMA's top blue, light and friendly. Dark words."],
+  ['D','Powder','fl-powder','Muji',"Muji's ground with black words, like the poster."],
+  ['E','Tint','fl-tint','Gemini',"Gemini's wash with blue words. Quiet, for a second button."],
+  ['F','Lilac','fl-lilac','Shelter',"The house's lilac white with cornflower words."],
+  ['G','Dusk to sky','fl-dusk','End of Heat + UMA','A side-to-side fade from ink to sky.'],
+  ['Shine', 'A glassy light on top.'],
+  ['H','Glass on sky','glass','Gemini + UMA','A glassy sky pill with one line of shine on top. The closest to today.'],
+  ['I','Cloud','cloud','UMA','A thick, soft jelly. Pressing squishes it flat.'],
+  ['J','Mist','mist','Gemini','A white pill with blue light glowing up from under it. Pressing it lifts the glow.'],
+  ['Glow', 'The button gives off light.'],
+  ['K','Halo','halo','Gemini','Your page\'s white with a ring of blue light around it.'],
+  ['L','Underglow','under','UMA','Flat sky blue that casts its own blue light on the page.'],
+  ['M','Aurora','aurora','Gemini star',"Blue, with the star's rose, gold and green barely there at the edge."],
+  ['Texture', 'Grain, streaks and soft shapes from the posters.'],
+  ['N','Shelter','shelter','Shelter System','Blue at the edges fading to lilac, with print grain and a fine grid.'],
+  ['O','Ultra','ultra','Ultra','Streaks of light through glass. Pressing slides the light across.'],
+  ['P','Drift','drift','Muji','Soft white shapes out of focus. Pressing drifts them.'],
+  ['Print', 'Looks printed on paper.'],
+  ['Q','Cyanotype','cyan','End of Heat','A printed look: halftone dots, a drawn edge. It presses down like a key.'],
+  ['R','Riso','riso','End of Heat','Paper grey, ink words printed twice a hair off, like a riso print.'],
+  ['Two-tone', 'Two parts in one button.'],
+  ['S','Split','split','Ultra','The amount sits in its own lighter pill inside.'],
+  ['T','Duo','duo','Shelter','Two blues side by side, the cut softened.'],
+  ['U','Soft press','soft','Gemini','Raised out of the frost. Pressing sinks it in.']];
+const plus = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+let html = '', open = false;
+for (const v of V) {
+  if (v.length < 4) { if (open) html += '</div>'; html += `<h3>${v[0]}<small>${v[1]}</small></h3><div class="grid">`; open = true; continue; }
+  const [k, n, c, from, note] = v; html += `<section class="card">
+  <header><b>${k}</b><h2>${n}</h2><span>${from}</span></header>
+  <div class="stage">
+    <button class="b wide ${c}"><span>Check out</span><span class="amt">₱1,240.00</span></button>
+    <div class="row"><button class="b ${c}"><span>Done</span></button><button class="b ${c}">${plus}<span>Start shift</span></button></div>
+  </div>
+  <p class="note">${note}</p></section>`;
+}
+grid.innerHTML = html + '</div>';
+
+seg.onclick = e => { const t = e.target.dataset.t; if (!t) return;
+  document.documentElement.dataset.theme = t; seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === e.target)); };
+</script>
+</body>
+</html>

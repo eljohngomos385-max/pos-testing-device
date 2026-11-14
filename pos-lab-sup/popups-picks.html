@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Popup picks</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<!-- the app's own tokens and today's confirm card (.pay-sheet.cf-sheet); this page only adds the picks -->
+<link rel="stylesheet" href="styles.css?v=657">
+<style>
+  html, body { height: auto; overflow: auto; }
+  body { padding: 24px 24px 64px; background: var(--canvas, var(--bg)); }
+  body.light-theme { --canvas: #F2F2F2; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1700px; }
+  .top h1 { font-size: 22px; font-weight: 600; }
+  .top select { height: 36px; padding: 0 12px; border: 0; border-radius: var(--r-input); background: var(--rl-card); color: var(--ink); box-shadow: 0 0 0 1px var(--line); font: inherit; }
+  section { margin-top: 28px; }
+  section > h2 { margin: 0 0 12px; font-size: 17px; font-weight: 600; }
+  section > h2 span { color: var(--ink-tertiary); font-weight: 500; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* ---- the device and the page behind ---- */
+  .phone { position: relative; flex: none; width: 393px; height: 852px; overflow: hidden; border-radius: 48px;
+           background: var(--canvas, var(--bg)); box-shadow: 0 0 0 10px #1a1a1a, 0 0 0 11px #3a3a3a; margin: 11px; }
+  .tablet { width: 1024px; height: 768px; border-radius: 28px; zoom: .75; margin: 18px; box-shadow: 0 0 0 16px #1a1a1a, 0 0 0 17px #3a3a3a; }
+  .clock { height: 54px; display: flex; align-items: center; padding: 6px 0 0 44px; font-size: 16px; font-weight: 600; color: var(--ink); }
+  .tablet .clock { height: 28px; padding: 0 0 0 24px; font-size: 13px; }
+  .pg { padding: 0 16px; }
+  .tablet .pg { max-width: 680px; margin: 0 auto; }
+  .ph-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: var(--bar-h); margin-bottom: 16px; }
+  .ph-top b { font-size: 17px; font-weight: 600; }
+  .ph-top > .ic { justify-self: start; }
+  .ph-top .r { justify-self: end; display: flex; gap: 8px; }
+  .ic, .save { height: var(--bar-h); min-width: var(--bar-h); border-radius: 999px; background: var(--rl-card); box-shadow: 0 0 0 1px var(--rl-hair), var(--shadow-card); font-size: 20px; color: var(--ink); }
+  .save { padding: 0 18px; font-size: 15px; font-weight: 550; background: var(--accent); color: var(--accent-ink); }
+  .blk { margin-bottom: 12px; border-radius: var(--rl-r); background: var(--rl-card); box-shadow: 0 0 0 1px var(--rl-hair), var(--shadow-card); }
+  .blk div { display: flex; justify-content: space-between; align-items: center; height: var(--row-h); padding: 0 16px; font-size: 15px; }
+  .blk .v { color: var(--ink-tertiary); }
+  .veil { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / .42); cursor: pointer; }
+  body.light-theme .veil { background: rgb(0 0 0 / .3); }
+
+  /* today's card, drawn by the app's own rules; only where it sits changes */
+  .veil > .pay-sheet { position: relative; width: 340px; cursor: auto; }
+  .now-amt { display: block; margin: 8px 0; font-size: 20px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* ---- the picks: one card, six looks ---- */
+  .pop { position: relative; width: var(--w); display: flex; flex-direction: column; overflow: hidden; border-radius: var(--r);
+         background: var(--rl-card); color: var(--ink); box-shadow: var(--shadow-modal), 0 0 0 1px var(--line); cursor: auto; font-size: 15px; line-height: 1.4; }
+  .pop .t { display: block; font-weight: 600; }
+  .pop .m { margin: 0; color: var(--ink-secondary); }
+  .pop .amt { font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+  
+  .pop .fld { width: 100%; height: 44px; padding: 0 12px; border: 0; border-radius: var(--r-input); background: var(--surface);
+                    box-shadow: inset 0 0 0 1px var(--line); font: inherit; font-size: 15px; color: var(--ink); outline: none; }
+  .pop .ft { display: flex; gap: 8px; }
+  .pop .b { display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 18px; border-radius: 999px; font-size: 15px; font-weight: 550; white-space: nowrap; }
+  .pop .b.no { background: var(--rl-track); color: var(--ink); }
+  .pop .b.ok:not(.ph-bar) { background: var(--accent); color: var(--accent-ink); }
+  .pop .ph-bar { display: flex; width: 100%; margin: 0; }
+
+  /* A: iOS alert. Centred words, buttons split by hairlines, no fills */
+  .dA { --w: 270px; --r: var(--rl-r); text-align: center; }
+  .dA .t { padding: 20px 16px 0; font-size: 17px; }
+  .dA .m { padding: 2px 16px 0; font-size: 13px; line-height: 1.35; }
+  .dA .bd { display: grid; gap: 10px; padding: 12px 16px 0; }
+  .dA .amt { font-size: 24px; }
+  .dA .fld { height: 34px; border-radius: 8px; font-size: 13px; }
+  .dA .ft { gap: 0; margin-top: 20px; border-top: 1px solid var(--line); }
+  .dA .b { flex: 1; height: 44px; border-radius: 0; background: none !important; color: var(--ink) !important; font-size: 17px; font-weight: 400; }
+  .dA .b.ok { font-weight: 600; }
+  .dA .b + .b { border-left: 1px solid var(--line); }
+  .dA .b.ok.danger { color: var(--danger) !important; font-weight: 400; }
+
+  /* B: Check out's pill. Left words, the main action is Check out's own pill, the other plain words under it */
+  .dB { --w: 340px; --r: 24px; }
+  .dB .t { padding: 24px 24px 0; font-size: 19px; }
+  .dB .m { padding: 6px 24px 0; }
+  .dB .bd { display: grid; gap: 14px; padding: 18px 24px 0; }
+  .dB .amt { font-size: 28px; }
+  .dB .ft { flex-direction: column-reverse; gap: 4px; padding: 24px 20px 10px; }
+  .dB .b.no { background: none; color: var(--ink-secondary); font-weight: 500; }
+
+  /* C: back office card. Its dialog: words up top, buttons on a grey band */
+  .dC { --w: 360px; --r: var(--es-r); }
+  .dC .t { padding: 18px 20px 0; font-size: 16px; }
+  .dC .m { padding: 4px 20px 0; font-size: 14px; }
+  .dC .bd { display: grid; gap: 12px; padding: 14px 20px 0; }
+  .dC .amt { font-size: 24px; }
+  .dC .fld { height: 40px; border-radius: 8px; }
+  .dC .ft { justify-content: flex-end; margin-top: 20px; padding: 12px 16px; border-top: 1px solid var(--line); background: var(--rl-soft); }
+  .dC .b { height: 36px; padding: 0 14px; border-radius: 8px; font-size: 14px; }
+  .dC .b.no { background: var(--rl-card); box-shadow: inset 0 0 0 1px var(--line-strong); }
+  .dC .b.ok { box-shadow: var(--lt-primary-shadow, none); }
+
+  /* D: iOS 26. Round card, left words, two equal capsules; Delete is red words on grey, never a red fill */
+  .dD { --w: 340px; --r: 34px; }
+  .dD .t { padding: 24px 24px 0; font-size: 17px; }
+  .dD .m { padding: 4px 24px 0; }
+  .dD .bd { display: grid; gap: 14px; padding: 16px 24px 0; }
+  .dD .amt { font-size: 28px; }
+  .dD .fld { border-radius: 14px; }
+  .dD .ft { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; padding: 20px 14px 14px; }
+  .dD .b { height: 48px; padding: 0 12px; }
+  .dD .b.ok.danger { background: var(--rl-track); color: var(--danger); }
+
+  /* D squircle: D drawn with Apple's corner (continuous: the curve eases in, no sudden bend). CSS round corners are
+     quarter-circles and Safari has no corner-shape yet, so the card and its fields are an SVG path drawn behind them */
+  .pop.sq { isolation: isolate; overflow: visible; background: none; box-shadow: none; }
+  .pop.sq .fld { background: none; box-shadow: none; }
+  .sqbg { position: absolute; left: 0; top: 0; z-index: -1; overflow: visible; pointer-events: none;
+          filter: drop-shadow(0 20px 50px rgb(0 0 0 / .15)) drop-shadow(0 8px 20px rgb(0 0 0 / .08)); }   /* --shadow-modal, as a filter: a box-shadow would stay a rounded box */
+
+  /* + glass: the pills get the continuous corner too, and the go-back one (Cancel, Keep editing) is the app's ‹ button:
+     glass with its ring, soft shadow and the bright top edge (--glass-ring in styles.css, drawn as SVG here) */
+  body { --gl-ring: rgb(0 0 0 / .08); --gl-shade: rgb(0 0 0 / .06); --gl-hi: rgb(255 255 255 / .8); }
+  body:not(.light-theme) { --gl-ring: rgb(255 255 255 / .12); --gl-shade: rgb(0 0 0 / .3); --gl-hi: rgb(255 255 255 / .1); }
+  .pop.g .b { background: none !important; }
+
+  /* E: centred stack. Centred words, the main pill on top, a grey pill under it */
+  .dE { --w: 320px; --r: 26px; text-align: center; }
+  .dE .t { padding: 26px 22px 0; font-size: 18px; }
+  .dE .m { padding: 6px 22px 0; }
+  .dE .bd { display: grid; gap: 14px; padding: 16px 20px 0; }
+  .dE .amt { font-size: 34px; }
+  
+  .dE .ft { flex-direction: column-reverse; gap: 8px; padding: 22px 14px 14px; }
+
+  /* F: grey title band. The dashboard card's band holds the title, white under it, pills bottom-right */
+  .dF { --w: 340px; --r: var(--rl-r); }
+  .dF .t { padding: 12px 16px; border-bottom: 1px solid var(--rl-div); background: var(--rl-soft); font-size: 15px; }
+  .dF .m { padding: 14px 16px 0; }
+  .dF .bd { display: grid; gap: 12px; padding: 14px 16px 0; }
+  .dF .amt { font-size: 26px; }
+  .dF .ft { justify-content: flex-end; padding: 20px 12px 12px; }
+  .dF .b { height: 40px; }
+
+  /* the template stretched: a keypad, a list */
+  .pop .dots { display: flex; justify-content: center; gap: 14px; padding: 6px 0 4px; }
+  .pop .dots i { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--ink-tertiary); }
+  .pop .dots i.on { background: var(--ink); box-shadow: none; }
+  .pop .keys { display: grid; grid-template-columns: repeat(3, 64px); justify-content: center; gap: 12px 20px; padding-top: 8px; }
+  .pop .keys button { height: 64px; border-radius: 50%; background: var(--rl-track); color: var(--ink); font-size: 26px; font-weight: 450; }
+  .pop .keys button:empty { visibility: hidden; }
+  .pop .keys button.x { background: none; font-size: 20px; }
+  .pop .list { margin: 0 -24px; max-height: 300px; overflow-y: auto; }
+  .pop .list div { display: flex; justify-content: space-between; align-items: center; height: var(--row-h); padding: 0 24px; border-top: 1px solid var(--rl-div); }
+  .pop .list small { color: var(--ink-tertiary); font-size: 13px; }
+
+
+  @media (prefers-reduced-motion: reduce) { .pop, .veil { animation: none !important; } }
+</style>
+</head>
+<body class="light-theme">
+<div class="top">
+  <h1>Popups: pick one</h1>
+  <select id="theme" aria-label="Theme"><option value="light">Light</option><option value="dark">Dark</option></select>
+</div>
+<div id="out"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="glShade" x="-20%" y="-50%" width="140%" height="200%"><feDropShadow dx="0" dy="1" stdDeviation="2" style="flood-color:var(--gl-shade)"/></filter></svg>
+
+<script>
+const EX = [
+  { t: 'Leave without saving?', m: 'Your changes aren’t saved yet.', no: 'Keep editing', ok: 'Leave' },
+  { t: 'Delete Plumbing?', m: 'Its 3 items stay, just without this category.', no: 'Cancel', ok: 'Delete', danger: true },
+  { t: 'No internet', m: 'Sales are kept on this POS and sync later.', ok: 'OK' },
+  { t: 'Void #1042?', m: 'The sale stays on record, marked voided.', amt: '₱1,250.00', ph: 'Reason', no: 'Cancel', ok: 'Void sale' },
+];
+const MORE = [   // the template stretched: common real asks, a keypad, a list (popups-inventory.md)
+  { t: 'Out of stock', m: 'Bolt M8', no: 'Cancel', ok: 'Sell anyway' },
+  { t: 'Over the credit limit', m: 'Ana would go ₱300.00 over their ₱5,000.00 credit limit.', no: 'Cancel', ok: 'Charge anyway' },
+  { t: 'Manager PIN', m: 'A manager enters theirs to void this sale.', pin: true, no: 'Cancel' },
+  { t: 'Select customer', m: '', list: true, no: 'Cancel' },
+];const CUSTOMERS = [['Ana Reyes', '0917 555 0142'], ['Ben Cruz', '0918 555 0199'], ['Carla Santos', '0920 555 0110'],
+  ['Dan Lim', '0915 555 0187'], ['Ella Tan', '0917 555 0163'], ['Franco Dela Cruz', '0926 555 0121']];
+const DIRS = [
+  ['A', 'iOS alert'], ['B', 'Check out pill'], ['C', 'Back office card'],
+  ['D', 'iOS 26 capsules'], ['E', 'Centred stack'], ['F', 'Grey title band'],
+];
+const TABLET = ['D', 'B'];   // the strongest two, shown wide
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const page = () => `<div class="clock">9:41</div><div class="pg">
+  <div class="ph-top"><button class="ic">‹</button><b>Plumbing</b><span class="r"><button class="ic">⋯</button><button class="save">Save</button></span></div>
+  <div class="blk"><div><span>Name</span><span class="v">Plumbing</span></div></div>
+  <div class="blk"><div><span>Items</span><span class="v">3 items ›</span></div></div></div>`;
+
+function pick(d, e) {
+  const pill = d === 'B' || d === 'E' ? ' ph-bar' : '';
+  const bd = e.amt ? `<div class="bd"><div class="amt">${e.amt}</div><input class="fld" aria-label="${e.ph}" placeholder="${e.ph}"></div>`
+    : e.pin ? `<div class="bd"><div class="dots"><i class="on"></i><i class="on"></i><i></i><i></i></div><div class="keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0].map(k => `<button>${k}</button>`).join('')}<button class="x" aria-label="Delete">⌫</button></div></div>`
+    : e.list ? `<div class="bd"><input class="fld" aria-label="Search" placeholder="Search"><div class="list">${CUSTOMERS.map(([n, p]) => `<div><span>${n}</span><small>${p}</small></div>`).join('')}</div></div>` : '';
+  return `<div class="pop d${d}" role="alertdialog" aria-label="${esc(e.t)}"><b class="t">${esc(e.t)}</b>${e.m ? `<p class="m">${esc(e.m)}</p>` : ''}${bd}
+    <div class="ft">${e.no ? `<button class="b no">${e.no}</button>` : ''}${e.ok ? `<button class="b ok${pill}${e.danger ? ' danger' : ''}">${e.ok}</button>` : ''}</div></div>`;
+}
+function now(e) {   // showConfirm's own markup (pos-core.js)
+  const msg = esc(e.m) + (e.amt ? `<span class="now-amt">${e.amt}</span><input class="text-input" placeholder="${e.ph}" style="width:100%;height:40px;padding:0 12px;border-radius:var(--r-input)">` : '');
+  return `<form class="pay-sheet cf-sheet" role="alertdialog"><div class="ph"><b>${esc(e.t)}</b><div class="cf-msg">${msg}</div></div>
+    <div class="pb">${e.no ? `<button type="button" class="secondary-btn small">${e.no}</button>` : ''}<button type="button" class="primary-btn small${e.danger ? ' danger' : ''}">${e.ok}</button></div></form>`;
+}
+const frame = (card, cls = '') => `<div class="phone ${cls}">${page()}<div class="veil">${card}</div></div>`;
+const sec = (id, label, frames) => `<section id="${id}"><h2>${label}</h2><div class="row">${frames}</div></section>`;
+
+document.getElementById('out').innerHTML =
+  sec('now', 'Now', EX.map(e => frame(now(e))).join('')) +
+  DIRS.map(([d, n]) => sec('d' + d, `${d} <span>${n}</span>`, EX.map(e => frame(pick(d, e))).join(''))
+    + (d === 'D' ? sec('dDs', 'D <span>squircle: Apple’s corner</span>', EX.concat(MORE).map(e => frame(pick(d, e).replace('pop dD', 'pop dD sq'))).join(''))
+      + sec('dDg', 'D <span>squircle card, capsule pills, glass go-back</span>', EX.concat(MORE).map(e => frame(pick(d, e).replace('pop dD', 'pop dD sq g'))).join('')) : '')).join('') +
+  TABLET.map(d => sec('m' + d, `${d} <span>more real cases</span>`, MORE.map(e => frame(pick(d, e))).join(''))).join('') +
+  TABLET.map(d => sec('t' + d, `${d} <span>on a tablet</span>`, [EX[0], EX[3]].map(e => frame(pick(d, e), 'tablet')).join(''))).join('');
+
+// Apple's continuous corner (figma-squircle's path, smoothing .6 ≈ iOS): straight edge → eased curve → short arc → eased curve
+function squircle(x, y, w, h, r, s = .6) {
+  const max = Math.min(w, h) / 2; r = Math.min(r, max); s = Math.min(s, max / r - 1);
+  const p = (1 + s) * r, rad = a => a * Math.PI / 180, arcM = 90 * (1 - s), arc = Math.sin(rad(arcM / 2)) * r * Math.SQRT2;
+  const p34 = r * Math.tan(rad((90 - arcM) / 4)), c = p34 * Math.cos(rad(45 * s)), d = c * Math.tan(rad(45 * s));
+  const b = (p - arc - c - d) / 3, a = 2 * b, A = a + b + c;
+  return `M${x + w - p} ${y}c${a} 0 ${a + b} 0 ${A} ${d}a${r} ${r} 0 0 1 ${arc} ${arc}c${d} ${c} ${d} ${b + c} ${d} ${A}`
+    + `L${x + w} ${y + h - p}c0 ${a} 0 ${a + b} ${-d} ${A}a${r} ${r} 0 0 1 ${-arc} ${arc}c${-c} ${d} ${-(b + c)} ${d} ${-A} ${d}`
+    + `L${x + p} ${y + h}c${-a} 0 ${-(a + b)} 0 ${-A} ${-d}a${r} ${r} 0 0 1 ${-arc} ${-arc}c${-d} ${-c} ${-d} ${-(b + c)} ${-d} ${-A}`
+    + `L${x} ${y + p}c0 ${-a} 0 ${-(a + b)} ${d} ${-A}a${r} ${r} 0 0 1 ${arc} ${-arc}c${c} ${-d} ${b + c} ${-d} ${A} ${-d}Z`;
+}
+// a pill's continuous ends: the corner as large as the height allows with the curve still eased (Apple's continuous capsule)
+const pillR = h => h / 2;   // full capsule (owner: "more pill"); the glass go-back keeps its ring + highlight
+let gid = 0;
+const glass = (P, x, y) => { const id = 'gm' + gid++;   // ring, soft shadow, and the top edge: the shape minus itself moved down 1px
+  return `<mask id="${id}"><path d="${P}" fill="#fff"/><path d="${P}" transform="translate(0 1)" fill="#000"/></mask>
+    <path d="${P}" filter="url(#glShade)" style="fill:var(--rl-card);stroke:var(--gl-ring);stroke-width:.5"/><path d="${P}" mask="url(#${id})" style="fill:var(--gl-hi)"/>`; };
+const offs = (el, pop) => { let x = 0, y = 0; for (let n = el; n && n !== pop; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; } return [x, y]; };
+// one SVG behind each card: the card's shape, then each field's (their offsets inside the card; scale-free, so before any open())
+document.querySelectorAll('.pop.sq').forEach(pop => {
+  const r = parseFloat(getComputedStyle(pop).getPropertyValue('--r')), W = pop.offsetWidth, H = pop.offsetHeight;
+  const flds = [...pop.querySelectorAll('.fld')].map(f => {
+    let x = 0, y = 0; for (let n = f; n && n !== pop; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; }
+    return `<path d="${squircle(x + .5, y + .5, f.offsetWidth - 1, f.offsetHeight - 1, parseFloat(getComputedStyle(f).borderRadius))}" style="fill:var(--surface);stroke:var(--line)"/>`;
+  });
+  const pills = !pop.classList.contains('g') ? [] : [...pop.querySelectorAll('.ft .b')].map(b => {
+    const [x, y] = offs(b, pop), P = squircle(x, y, b.offsetWidth, b.offsetHeight, pillR(b.offsetHeight));
+    return b.classList.contains('no') ? glass(P) : `<path d="${P}" style="fill:${b.classList.contains('danger') ? 'var(--rl-track)' : 'var(--accent)'}"/>`;
+  });
+  pop.insertAdjacentHTML('afterbegin', `<svg class="sqbg" width="${W}" height="${H}" aria-hidden="true"><path d="${squircle(0, 0, W, H, r)}" style="fill:var(--rl-card);stroke:var(--line)"/>${flds.join('')}${pills.join('')}</svg>`);
+});
+
+// open: the page dims, the card settles from a touch smaller (Apple's alert: short, no bounce)
+const EASE = getComputedStyle(document.documentElement).getPropertyValue('--rl-ease').trim() || 'ease-out';
+function open(f) {
+  f.querySelector('.veil').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'linear' });
+  f.querySelector('.veil > *').animate([{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: EASE });
+}
+document.addEventListener('click', ev => {
+  const f = ev.target.closest('.phone');
+  if (f && (ev.target.closest('button') || ev.target.classList.contains('veil'))) { ev.preventDefault(); open(f); }
+});
+document.getElementById('theme').onchange = e => document.body.classList.toggle('light-theme', e.target.value === 'light');
+</script>
+</body>
+</html>

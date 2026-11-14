@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sell One Page Lab</title>
+<!-- Sell with no My page / All items switch (owner 2026-10-21): "combine it to one thing, Shopify-ish". Your own tiles quick
+     to reach, every item still there as today, nobody hand-places 1,000 tiles. The real lab app in a frame; each idea swaps
+     a few of its grid functions (getSellCells / renderProducts) on the frame's window and adds a little CSS, nothing in the
+     app changes. Your tiles start as this POS's best sellers; hold any tile (right-click with a mouse) to keep it or take
+     it off. Flow only, nothing saved. -->
+<style>
+:root { --bg: #f2f2f7; --ink: #111; --soft: #6b6b70; --line: #d8d8dc; --card: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0b0b0c; --ink: #f2f2f2; --soft: #9a9aa0; --line: #2c2c2e; --card: #1c1c1e; } }
+:root[data-theme="dark"] { --bg: #0b0b0c; --ink: #f2f2f2; --soft: #9a9aa0; --line: #2c2c2e; --card: #1c1c1e; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; background: var(--bg); color: var(--ink); font: 14px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 16px; }
+select, header button { height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: inherit; font: inherit; }
+header button { cursor: pointer; }
+#note { flex-basis: 100%; color: var(--soft); }
+.stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+iframe { position: absolute; left: 50%; top: 50%; border: 0; background: #000; transform-origin: center; }
+iframe.phone { border-radius: 44px; }
+</style>
+</head>
+<body>
+<header>
+  <select id="idea" aria-label="Idea"></select>
+  <select id="dev" aria-label="Device"><option value="phone">iPhone</option><option value="ipad">iPad</option></select>
+  <button type="button" id="prev" aria-label="Previous idea">‹</button>
+  <button type="button" id="next" aria-label="Next idea">›</button>
+  <div id="note"></div>
+</header>
+<div class="stage"><iframe id="f" title="POS"></iframe></div>
+<script>
+// Each idea: kind 'scroll' (the grid becomes one vertical scroll, build() writes it), 'paged' (today's paged grid, order()
+// reorders its cells) or 'strip'. seed = how many best sellers start as yours; auto = the top refills itself to fill.
+const IDEAS = [
+  { n: 'Yours on top, every item below', kind: 'scroll', seed: c => c + 2,
+    note: 'One scroll, no pages. Your tiles first, a hairline, then every other item as today. Hold a tile: Keep at the top / Take off the top. It starts as your best sellers, so nobody places anything.',
+    build: (cs, ui) => ui.sec(ui.mine(cs)) + ui.HR + ui.sec(ui.rest(cs)) },
+  { n: 'Top rows fill themselves', kind: 'scroll', auto: true, seed: () => 2, fill: c => 2 * c, on: 'Keep here', off: 'Not here',
+    note: 'The same scroll, but the top is always two full rows: what you kept, then this month\'s best sellers to fill. Hold: Keep here (it stops moving) or Not here. Nothing to set up, ever.',
+    build: (cs, ui) => ui.sec(ui.mine(cs)) + ui.HR + ui.sec(ui.rest(cs)) },
+  { n: 'Page 1 is yours', kind: 'paged', auto: true, seed: () => 3, fill: (c, ps) => ps, on: 'Keep on page 1', off: 'Take off page 1',
+    note: 'Today\'s grid and swipe, untouched. Page 1 fills itself with what you kept and your best sellers; swipe on and every item follows as today. Nothing new on screen.',
+    order: (cs, ui) => [...ui.mine(cs), ...ui.rest(cs)] },
+  { n: 'Categories as tiles, All items one of them', kind: 'scroll', seed: c => 2 * c, cats: true,
+    note: 'Your tiles, a hairline, then one tile per category and All items last. Tap one: its tiles fill the grid and ☰ turns into back. 100 categories just scroll.',
+    build: (cs, ui) => ui.open ? ui.sec(ui.open === 'all' ? cs : cs.filter(c => ui.catOf(c) === ui.open)) : ui.sec(ui.mine(cs)) + ui.HR + ui.sec(ui.catTiles(cs)) },
+  { n: 'A strip of yours over the grid', kind: 'strip', seed: () => 8, on: 'Keep in the strip', off: 'Take out of the strip',
+    note: 'A row of small tiles under the search that slides sideways; the grid under it is today\'s, every item, paged. Typing a search hides the strip.' },
+  { n: 'Yours first, nothing new', kind: 'paged', seed: c => 2 * c, on: 'Keep in front', off: 'Put back in its place',
+    note: 'The calmest: today\'s grid exactly, your kept tiles simply come first. No line, no title, no new button. Hold a tile to move it to the front or back to its place.',
+    order: (cs, ui) => [...ui.mine(cs), ...ui.rest(cs)] },
+  { n: 'One scroll by category, letter rail', kind: 'scroll', seed: c => 2 * c, rail: true,
+    note: 'Your tiles first (no title), then every category as a small grey title and its tiles, one scroll. A thin letter rail on the right edge jumps, as Contacts does; it stays short with 100 categories.',
+    build: (cs, ui) => ui.sec(ui.mine(cs)) + ui.byCat(ui.rest(cs)) },
+];
+
+const CSS = `
+.search-wrap > #scanBtn { position: absolute; right: 0; top: 0; z-index: 1; display: grid; place-items: center; width: 44px; height: 100%; border: 0; border-radius: 50%; background: none; box-shadow: none; color: var(--ink-secondary); }
+.search-wrap:has(#searchInput:not(:placeholder-shown)) > #scanBtn { display: none; }
+.catalog { position: relative; }
+/* one scroll: the grid keeps its box and tile size, the rows run on under it */
+#productGrid.sop-scroll { overflow: hidden auto !important; scrollbar-width: none; overscroll-behavior: contain; }
+#productGrid.sop-scroll::-webkit-scrollbar { display: none; }
+.sop-scroll .product-page { flex: none; height: auto; grid-template-columns: repeat(var(--grid-cols, 3), minmax(0, 1fr)); grid-template-rows: none; grid-auto-rows: var(--tile-h, 120px); overflow: visible; }
+.sop-hr { height: 1px; margin: 14px 2px; background: var(--line); }
+.sop-h { margin: 18px 2px 8px; color: var(--ink-secondary); font-size: 13px; font-weight: 600; }
+.sop-h:first-child { margin-top: 2px; }
+.sop-cat { position: relative; background: var(--rl-soft) !important; box-shadow: inset 0 0 0 1px var(--rl-hair); }
+.sop-n { position: absolute; top: 12px; left: 12px; color: var(--ink-secondary); font-size: 12px; font-weight: 550; }
+/* the strip */
+#catalogSearchRow { flex-wrap: wrap; }
+.sop-strip { flex: 0 0 100%; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 4px calc(-1 * var(--cat-x, 16px)) 0; padding: 0 var(--cat-x, 16px); }
+.sop-strip::-webkit-scrollbar { display: none; }
+.sop-strip:empty { display: none; }
+.sop-strip .product-card { flex: none; width: 112px; height: 64px; padding: 8px 10px; }
+.sop-strip .pc-name { font-size: 13px; line-height: 1.2; }
+.sop-strip :is(.pc-top, .pc-pr, .pc-img) { display: none; }
+/* the letter rail */
+.sop-rail { position: absolute; right: 1px; z-index: 5; display: flex; flex-direction: column; justify-content: center; }
+.sop-rail button { width: 15px; height: 17px; padding: 0; border: 0; background: none; color: var(--accent, var(--ink)); font: 600 11px/17px inherit; cursor: pointer; }
+/* hold card: centred, as every pop-up */
+.sop-ov { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: rgb(0 0 0 / .32); animation: sop-in .16s ease-out; }
+.sop-card { width: min(320px, calc(100% - 48px)); padding: 8px; border-radius: calc(var(--rl-r) + 6px); background: var(--surface); box-shadow: 0 12px 40px -8px rgb(0 0 0 / .35); }
+.sop-card h3 { margin: 10px 12px 8px; font-size: 17px; font-weight: 650; text-align: center; }
+.sop-card button { display: block; width: 100%; height: var(--bar-h); margin-top: 6px; border: 0; border-radius: var(--rl-r); background: var(--rl-soft); color: var(--ink); font: inherit; font-size: 15px; font-weight: 550; cursor: pointer; }
+.sop-card button.x { background: none; color: var(--ink-secondary); }
+@keyframes sop-in { from { opacity: 0; } }
+`;
+const BACK = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>';
+
+const f = document.getElementById('f'), ideaSel = document.getElementById('idea'), devSel = document.getElementById('dev');
+IDEAS.forEach((x, i) => ideaSel.add(new Option(`${i + 1}. ${x.n}`, i)));
+const SIZES = { phone: [393, 852], ipad: [1180, 820] };
+const pick = (() => { try { return JSON.parse(localStorage.getItem('sop') || '{}'); } catch { return {}; } })();
+ideaSel.value = pick.idea ?? 0; devSel.value = pick.dev || (innerWidth < 700 ? 'phone' : 'ipad');
+const keep = () => { try { localStorage.setItem('sop', JSON.stringify({ idea: ideaSel.value, dev: devSel.value })); } catch {} };
+function fit() {
+  const [w, h] = SIZES[devSel.value], st = f.parentElement, s = Math.min(1, st.clientWidth / w, st.clientHeight / h);
+  Object.assign(f.style, { width: w + 'px', height: h + 'px', transform: `translate(-50%, -50%) scale(${s})` });
+  f.className = devSel.value;
+}
+function load() { keep(); fit(); f.src = 'index.html?x=' + Date.now(); }
+ideaSel.onchange = devSel.onchange = load;
+document.getElementById('prev').onclick = () => { ideaSel.value = (+ideaSel.value + IDEAS.length - 1) % IDEAS.length; load(); };
+document.getElementById('next').onclick = () => { ideaSel.value = (+ideaSel.value + 1) % IDEAS.length; load(); };
+addEventListener('resize', fit);
+
+f.onload = () => {
+  const w = f.contentWindow, d = f.contentDocument, idea = IDEAS[+ideaSel.value];
+  document.getElementById('note').textContent = idea.note;
+  if (devSel.value === 'phone') d.documentElement.style.setProperty('--ph-safe', '34px');   // the iPhone's home bar, as devices.html
+  const st = d.createElement('style'); st.textContent = CSS; d.head.append(st);
+  const S = w.eval('state'), grid = d.getElementById('productGrid'), row = d.getElementById('catalogSearchRow');
+  row.querySelector('.search-wrap:not(.vs-search)').append(d.getElementById('scanBtn'));   // ponytail: as sell-switch-lab, the app pins scan to the row's right end
+  const orig = { cells: w.getSellCells, render: w.renderProducts };
+  const key = c => c.kind === 'group' ? 'g:' + c.group.id : 'p:' + c.product.id;
+  const keyOf = el => el.dataset.groupId ? 'g:' + el.dataset.groupId : 'p:' + el.dataset.id;
+  // best sellers at this POS: completed lines, qty summed, a variant counts for its group's tile
+  const byId = new Map(S.products.map(p => [p.id, p])), sold = {};
+  S.orders.forEach(o => o.status === 'completed' && (o.items || []).forEach(l => {
+    const p = byId.get(l.productId); if (!p) return;
+    const k = p.groupId ? 'g:' + p.groupId : 'p:' + p.id; sold[k] = (sold[k] || 0) + (+l.qty || 0);
+  }));
+  const best = orig.cells().map(key).filter(k => sold[k]).sort((a, b) => sold[b] - sold[a]);
+  const cols = w.getSellGridProfile().columns, ps = w.sellPageSize();
+  const folders = S.folders.filter(x => !x.archived && x.id !== 'all');
+  const ui = {
+    pins: best.slice(0, idea.seed(cols, ps)), hide: new Set(), open: null,
+    HR: '<div class="sop-hr"></div>',
+    keys() {   // what sits in "yours" now, in order
+      if (!idea.auto) return ui.pins;
+      return [...new Set([...ui.pins, ...best.filter(k => !ui.hide.has(k))])].slice(0, idea.fill(cols, ps));
+    },
+    mine(cs) { const m = new Map(cs.map(c => [key(c), c])); return ui.keys().map(k => m.get(k)).filter(Boolean); },
+    rest(cs) { const on = new Set(ui.keys()); return cs.filter(c => !on.has(key(c))); },
+    sec: x => `<div class="product-page">${typeof x === 'string' ? x : x.map(w.renderSellCellHtml).join('')}</div>`,   // cells, or ready html (category tiles)
+    catOf: c => { const p = c.kind === 'group' ? w.groupMembers(c.group.id)[0] : c.product; return p && (p.folders || [p.folder])[0]; },
+    catTiles(cs) {
+      const t = (id, nm, n) => `<div class="product-card sop-cat" data-cat="${id}"><span class="sop-n">${w.SalesMath.plural(n, 'item')}</span><div class="pc-name">${w.escapeHtml(nm)}</div></div>`;
+      const n = cs2 => cs2.reduce((s, c) => s + (c.kind === 'group' ? c.memberCount : 1), 0);   // items, so Paint reads 40 as the variant badges do
+      return folders.map(x => [x, n(cs.filter(c => ui.catOf(c) === x.id))]).filter(([, k]) => k).map(([x, k]) => t(x.id, x.name, k)).join('')
+        + t('all', 'All items', n(cs));
+    },
+    byCat: cs => [...folders].sort((a, b) => a.name.localeCompare(b.name)).map(x => [x, cs.filter(c => ui.catOf(c) === x.id)]).filter(([, l]) => l.length)
+      .map(([x, l]) => `<div class="sop-h" id="sop-c-${x.id}">${w.escapeHtml(x.name)}</div>${ui.sec(l)}`).join(''),
+  };
+
+  if (idea.kind === 'paged') w.getSellCells = () => { const cs = orig.cells(); return S.query.trim() ? cs : idea.order(cs, ui); };
+  if (idea.kind === 'scroll') w.renderProducts = () => {
+    const cs = w.getSellCells();
+    if (!cs.length) { grid.classList.remove('sop-scroll'); return orig.render(); }
+    const prof = w.getSellGridProfile();
+    Object.assign(grid.dataset, { size: S.tileSize, text: S.tileText, pics: S.tilePics });
+    grid.style.setProperty('--grid-cols', prof.columns); grid.style.setProperty('--grid-rows', prof.rows);
+    grid.classList.add('sop-scroll');
+    grid.innerHTML = S.query.trim() ? ui.sec(cs) : idea.build(cs, ui);
+    w.renderSellHeader();
+    requestAnimationFrame(() => { w.syncSellGridMetrics(); idea.rail && rail(); });
+  };
+  if (idea.kind === 'strip') {
+    const strip = d.createElement('div'); strip.className = 'sop-strip'; strip.id = 'sopStrip'; row.append(strip);
+    w.renderProducts = () => { strip.innerHTML = S.query.trim() ? '' : ui.mine(orig.cells()).map(w.renderSellCellHtml).join(''); orig.render(); };
+    strip.addEventListener('click', e => {
+      const c = e.target.closest('.product-card'); if (!c || held) return;
+      c.dataset.groupId ? w.openVariantModal(c.dataset.groupId) : w.addToCart(c.dataset.id, 'tile');
+    });
+  }
+
+  // categories: a tile opens its items in the grid, ☰ turns into back
+  const tog = d.getElementById('sidebarToggle'), ham = tog.innerHTML;
+  const openCat = id => {
+    ui.open = id; tog.innerHTML = id ? BACK : ham; tog.setAttribute('aria-label', id ? 'Back' : 'Menu');
+    grid.scrollTop = 0; w.renderProducts();
+  };
+  if (idea.cats) d.addEventListener('click', e => {
+    const t = e.target.closest('[data-cat]');
+    if (t) { e.stopPropagation(); return openCat(t.dataset.cat); }
+    if (ui.open && e.target.closest('#sidebarToggle') && !d.querySelector('#variantSheet.open')) { e.stopPropagation(); openCat(null); }
+  }, true);
+
+  // the letter rail: one letter per category initial, centred on the grid
+  let railEl;
+  function rail() {
+    railEl?.remove(); if (S.query.trim()) return;
+    const seen = new Set(), heads = [...grid.querySelectorAll('.sop-h')].filter(h => { const l = h.textContent.trim()[0].toUpperCase(); return !seen.has(l) && seen.add(l); });
+    railEl = d.createElement('nav'); railEl.className = 'sop-rail'; railEl.setAttribute('aria-label', 'Jump to category');
+    railEl.style.top = grid.offsetTop + 'px'; railEl.style.height = grid.offsetHeight + 'px';
+    heads.forEach(h => { const b = d.createElement('button'); b.type = 'button'; b.textContent = h.textContent.trim()[0].toUpperCase(); b.onclick = () => grid.scrollTo({ top: h.offsetTop - 6, behavior: 'smooth' }); railEl.append(b); });
+    d.querySelector('.catalog').append(railEl);
+  }
+
+  // hold a tile (right-click with a mouse): keep it / take it off. Centred card, as every pop-up
+  let hold = null, held = false;
+  const TILE = ':is(#productGrid, #sopStrip) .product-card:is([data-id], [data-group-id])';
+  d.addEventListener('pointerdown', e => {
+    const c = e.target.closest(TILE); if (!c) return;
+    hold = { x: e.clientX, y: e.clientY, t: setTimeout(() => { held = true; ask(c); }, 480) };
+  }, true);
+  d.addEventListener('pointermove', e => { if (hold && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 8) { clearTimeout(hold.t); hold = null; } }, true);
+  ['pointerup', 'pointercancel'].forEach(t => d.addEventListener(t, () => { if (hold) clearTimeout(hold.t); hold = null; }, true));
+  d.addEventListener('click', e => { if (held && e.target.closest(TILE)) { held = false; e.stopPropagation(); e.preventDefault(); } }, true);
+  d.addEventListener('contextmenu', e => { const c = e.target.closest(TILE); if (c) { e.preventDefault(); ask(c); } }, true);
+  function ask(c) {
+    if (d.querySelector('.sop-ov')) return;
+    const k = keyOf(c), on = idea.on || 'Keep at the top', off = idea.off || 'Take off the top', pinned = ui.pins.includes(k), auto = idea.auto && !pinned && ui.keys().includes(k);
+    const acts = pinned ? [['off', off]] : auto ? [['on', on], ['hide', 'Not here']] : [['on', on]];
+    const ov = d.createElement('div'); ov.className = 'sop-ov';
+    ov.innerHTML = `<div class="sop-card" role="dialog" aria-label="${c.querySelector('.pc-name').textContent}"><h3></h3>${acts.map(([a, t]) => `<button type="button" data-a="${a}">${t}</button>`).join('')}<button type="button" class="x" data-a="x">Cancel</button></div>`;
+    ov.querySelector('h3').textContent = c.querySelector('.pc-name').textContent;
+    ov.onclick = e => {
+      const a = e.target.closest('[data-a]')?.dataset.a; if (!a && e.target !== ov) return;
+      if (a === 'on') { ui.pins.push(k); ui.hide.delete(k); }
+      if (a === 'off') { ui.pins.splice(ui.pins.indexOf(k), 1); if (idea.auto) ui.hide.add(k); }
+      if (a === 'hide') ui.hide.add(k);
+      ov.remove(); held = false; if (a && a !== 'x') w.renderProducts();
+    };
+    d.body.append(ov);
+  }
+  w.renderProducts();
+};
+load();
+</script>
+</body>
+</html>

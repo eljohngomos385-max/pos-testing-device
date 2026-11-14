@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bottom buttons</title>
+<style>
+  :root { --bg: #f4f4f2; --ink: #1a1a1a; --ink-2: #6b6b6b; --line: #ddd; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 64px; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, -apple-system, Segoe UI, sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--ink-2); margin: 0 0 20px; }
+  .bar { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .bar button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 14px; font: inherit; cursor: pointer; }
+  .bar button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  h2 { font-size: 15px; margin: 28px 0 12px; color: var(--ink-2); font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--cw, 300px), 1fr)); gap: 20px; }
+  body.tablet .grid { --cw: 560px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .card b { display: block; margin-bottom: 8px; font-size: 13px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  body.tablet .pair { grid-template-columns: 1fr; }
+  .pair img { width: 100%; display: block; border-radius: 8px; border: 1px solid var(--line); }
+  body.only-dark .pair img.l, body.only-light .pair img.d { display: none; }
+  body:is(.only-dark, .only-light) .pair:not(:has(img:not(.d, .l))) { grid-template-columns: 1fr; }   /* Now vs middle ground keeps its two */
+</style>
+</head>
+<body>
+<h1>Bottom buttons</h1>
+<p class="sub">Every page with a big Done, Complete sale or white button, in dark and light mode. Try-out: every one on Check out's spot. Middle ground: only the phone's checkout moves, the tablet and the sheets stay as now. Tap them yourself: <a href="../../try-phone-pin.html">middle ground</a> · <a href="../../try-bottom.html">all at bottom</a></p>
+<div class="bar" id="dev"><button class="on" data-d="phone">Phone</button><button data-d="tablet">Tablet</button></div>
+<div class="bar" id="ver"><button data-v="now">Now</button><button class="on" data-v="mid">Middle ground</button><button data-v="both">Now vs middle ground</button><button data-v="try">All at bottom</button></div>
+<div class="bar" id="th"><button class="on" data-t="">Dark + light</button><button data-t="only-dark">Dark</button><button data-t="only-light">Light</button></div>
+<h2>Already at the bottom (the model)</h2>
+<div class="grid" id="ref"></div>
+<h2>Sheets (white button, bottom right)</h2>
+<div class="grid" id="sheets"></div>
+<h2>Checkout (Complete sale / Done, under the content)</h2>
+<div class="grid" id="checkout"></div>
+<script>
+const shots = [
+  ['r1-sell', 'Sell page'], ['r2-cart', 'Cart · Check out (phone)'],
+  ['s1-walkin', 'Walk-in · Done'], ['s2-walkin-delivery', 'Walk-in › Delivery · Apply'], ['s3-line', 'Cart item · Done'],
+  ['s4-discount', 'Discount · Done'], ['s5-price', 'Price ask · Add'], ['s6-customer', 'New customer · Save'],
+  ['s7-shift-start', 'Start shift'], ['s8-cash-mgmt', 'Cash in / Cash out'],
+  ['c1-cash-custom', 'Cash, after tapping the Custom tile · Complete sale'], ['c2-gcash', 'GCash · Complete sale'],
+  ['c3-split-amount', 'Split › GCash amount · Done'], ['c4-split-ref', 'Split › Reference no. · Done'],
+  ['c5-split-page', 'Split page · Complete sale'], ['c6-split-cash', 'Split › Cash change, after tapping Custom · Complete sale'],
+  ['c7-success', 'Sale complete · New sale'],
+];
+let dev = 'phone', ver = 'mid';
+const theme = () => document.body.classList.contains('only-light') ? 'light' : 'dark';
+// all at bottom: try-bottom.html's shots; middle ground: try-phone-pin.html's, the phone only (the tablet stays as now)
+const dir = () => ver === 'try' ? 'after-' + dev : ver === 'mid' && dev === 'phone' ? 'mid-phone' : dev;
+function draw() {
+  document.body.classList.toggle('tablet', dev === 'tablet');
+  for (const id of ['ref', 'sheets', 'checkout']) document.getElementById(id).innerHTML = shots
+    .filter(([n]) => n[0] === id[0] && !(dev === 'tablet' && n === 'r2-cart'))
+    .map(([n, l]) => `<div class="card"><b>${l}</b><div class="pair">${ver === 'both'
+      ? `<img src="${dev}/${n}-${theme()}.png" alt="${l}, now"><img src="${dev === 'phone' ? 'mid-phone' : dev}/${n}-${theme()}.png" alt="${l}, middle ground">`
+      : `<img class="d" src="${dir()}/${n}-dark.png" alt="${l}, dark"><img class="l" src="${dir()}/${n}-light.png" alt="${l}, light">`}</div></div>`).join('');
+}
+const pick = (bar, f) => bar.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; bar.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); f(b); });
+pick(document.getElementById('dev'), b => { dev = b.dataset.d; draw(); });
+pick(document.getElementById('ver'), b => { ver = b.dataset.v; draw(); });
+pick(document.getElementById('th'), b => { document.body.classList.remove('only-dark', 'only-light'); if (b.dataset.t) document.body.classList.add(b.dataset.t); draw(); });
+draw();
+</script>
+</body>
+</html>
