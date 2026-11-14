@@ -52,6 +52,11 @@ The shared brain for this app: owner decisions, what's wrong today, plans, per-s
   centavos. Show amounts only through `peso()` (pos-core.js, backoffice.js), never a hardcoded `₱`.
 - **Every record carries a client-generated UUID, `updated_at` and `store_id`.** Orders and ledger
   rows are append-only; a void or a refund is a new row, never an edit.
+- **Say where a feature's data comes from before building on it** (owner 2026-11-15, after Tables quietly used
+  the QR codes page's seeded Table 1–8). Any list, count or setting a screen shows: name the setting or record
+  it reads, the page where the owner changes it, and any seeded default (e.g. "8 tables, seeded on first open").
+  If it has no home, or its home is a page the owner wouldn't think to look in, ask where it should live; never
+  invent a sample list or reuse another feature's data without saying so.
 - Match surrounding code style. Keep changes minimal and consistent with the existing component.
 - When asked for a tweak that already has a convention in `docs/`, apply the convention automatically.
 

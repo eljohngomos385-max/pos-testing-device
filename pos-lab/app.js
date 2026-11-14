@@ -12,6 +12,7 @@ function attachEvents() {
   $('#sidebarToggle')?.addEventListener('click', () => {
     if ($('#variantSheet').classList.contains('open')) return backVariantSheet();   // it is the variant sheet's X while that is open (a category's variant list steps back)
     if (state.exchange) return leaveExchange();   // and the exchange's (startExchange)
+    if (state.bill) return tbLeave();   // and an open table bill's (pos-tables.js)
     $('#app').classList.toggle('sidebar-collapsed');
   });
   // Per-view hamburger buttons (one in each view's header)
@@ -149,7 +150,7 @@ function attachEvents() {
     const r = b.getBoundingClientRect();
     return r.width && r.left < 40 && r.top < 160 && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('button') === b;
   });
-  const isMenu = b => (b.matches('#sidebarToggle') ? !$('#variantSheet').classList.contains('open') && !state.exchange   // ☰, unless it is a sheet's back (line 13)
+  const isMenu = b => (b.matches('#sidebarToggle') ? !$('#variantSheet').classList.contains('open') && !state.exchange && !state.bill   // ☰, unless it is a sheet's back (line 13)
     : !((QS.on || addPick) && b.closest('.view-items')));   // or the ✕ of Quick stock / the Add tile (line 22)
   // a touch on something that moves sideways itself (tabs, the Sell grid, a cart line, a chart, a sideways scroller) is its own
   const sideways = (t) => {
@@ -1210,9 +1211,9 @@ function attachEvents() {
   // An exchange in the cart (startExchange) finishes here; anything else goes to the checkout.
   const phCart = (on) => { on ? (closeVariantSheet(), hideToast()) : closeEditSheet(); $('#app').classList.toggle('ph-cart', on); };   // phone: the cart page; the variant sheet sits over it (z 98), so it closes on the way in
   $('#cartBar').addEventListener('click', () => { closeBarcodeScanner(); phCart(true); });   // also the scanner's summary: the camera goes, the cart comes
-  $('#cartBack').addEventListener('click', () => phCart(false));
+  $('#cartBack').addEventListener('click', () => (state.bill ? tbLeave() : phCart(false)));   // an open table bill: back to Tables; Add item is the way to the items (pos-tables.js)
   // A big discount the sheet didn't ask about (items taken off since, a saved cart continued) is asked here (discountOk).
-  const toPay = () => (state.exchange ? confirmExchange() : openPaymentModal());
+  const toPay = () => (state.exchange ? confirmExchange() : tbCheckout() || openPaymentModal());   // dine-in: a table first (pos-tables.js)
   $('#payBtn').addEventListener('click', () => { if (againId) return againMake(); if (closeEditSheet() !== false && !confirmSheet && discountOk(null, toPay)) toPay(); });
 
   // Payment-method selection
@@ -1382,6 +1383,7 @@ function attachEvents() {
   bindLook();   // Settings › Receipt (pos-settings.js)
   bindPayTypes();   // Settings › Payment types (pos-settings.js)
   bindFulTypes();   // Settings › Fulfilment types (pos-settings.js)
+  bindStTables();   // Settings › Tables (pos-settings.js)
   bindQr();   // QR codes (pos-qr.js)
   bindPick();   // Settings › one choice's page
   $('#posLogOutBtn')?.addEventListener('click', logOut);
@@ -1449,6 +1451,7 @@ function init() {
   setInterval(renderSyncMark, 30000);   // "2 min ago" keeps moving while the ☰ is open
   $('#syncMark')?.addEventListener('click', (e) => { e.stopPropagation(); showToast(e.currentTarget.title); });   // not the row's lock
   attachEvents();
+  tbInit();
   track('app_open');
   // ponytail: lab only. ?pins gives the demo staff real PINs (1111 owner, 2222 manager, 3333 and 4444 cashiers)
   if (new URLSearchParams(location.search).has('pins')) saveStaff(loadStaff().map((u, i) => ({ ...u, pin: String(i + 1).repeat(4) })));

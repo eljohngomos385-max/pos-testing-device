@@ -22,7 +22,15 @@ const SETTING_PICKS = {
   startCash: { opts: [['ask', 'Ask every shift'], ['float', 'Keep a float']], now: () => state.settings.startCash, set: v => setShiftPick({ startCash: v }) },
   // Business type (owner 2026-10-22: its own page, not a pop-up): retail and food for now. A food store's part is an Ingredient (partWord)
   bizType: { opts: [['retail', 'Retail'], ['food', 'Food']], now: () => (state.settings.store?.businessType === 'food' ? 'food' : 'retail'),
-    set: v => { state.settings.store = { ...state.settings.store, businessType: v }; saveSettings(); if (v === 'food') seedFoodDemo(); renderItems(); renderProducts(); applyRoleGating(); } },
+    set: v => {
+      state.settings.store = { ...state.settings.store, businessType: v };
+      if (v === 'food') {   // picking Food, once (owner 2026-11-15): Dine-in on and what sales start on; changed after, it stays changed
+        const f = state.settings.fulfilment ||= {};
+        f.hidden = (f.hidden || []).filter(k => k !== 'dinein');
+        state.settings.defaultFulfilment = 'dinein';
+        if (!state.cart.length) state.fulfilment = 'dinein';   // the empty till starts on it now; a sale in progress keeps its own
+      }
+      saveSettings(); if (v === 'food') { seedFoodDemo(); renderCart(); } renderItems(); renderProducts(); applyRoleGating(); } },
   // ponytail: 12–6 AM only; widen it when a store runs past 6 AM
   autoClose: { opts: [0, 1, 2, 3, 4, 5, 6].map(h => [h, `${h || 12} AM`]), now: () => state.settings.autoClose, set: v => setShiftPick({ autoClose: v }) },
 };
@@ -127,6 +135,8 @@ function renderPosSettings(printer = true) {
   if (ptNow) ptNow.textContent = `${payTypesOn()} on`;
   const ftNow = $('#posFulTypesNow');
   if (ftNow) ftNow.textContent = `${fulfilMethods(state.settings).length} on`;
+  const tRow = $('#posTablesRow');
+  if (tRow) { tRow.hidden = state.settings.store?.businessType !== 'food'; $('#posTablesNow').textContent = stTables().length || 'None'; }   // food stores, as Open tickets
   const acct = $('#posAcctEmail');
   if (acct) acct.textContent = loadStaff().find(u => u.role === 'owner')?.email || 'Account';
   const churnInput = $('#posChurnDays');
@@ -774,6 +784,71 @@ function bindFulTypes() {
         saveFulTypes({ custom: f.custom.filter(n => n !== k), hidden: f.hidden.filter(n => n !== k) });
         openFulTypes(true);
         showDone(`${k} deleted`);
+      } });
+  });
+}
+
+// Settings › Tables (owner 2026-11-15): the store's tables, its own list apart from QR codes (a QR may be tied to a table
+// later). Lives in state.settings.tables [{ id, name, updatedAt }], saved like any setting; starts empty, no sample list.
+// Choice (pos-tables.js tbChoices) offers these when a dine-in bill is sent. Food stores only, as the Open tickets page.
+let stTableOpen = '';
+const stTables = () => state.settings.tables || [];
+const stBillsOn = (name) => loadSavedCarts().filter(d => d.kind === 'table' && d.name === name);
+function openStTables(open) {
+  showStPage(open ? 'stTablesPage' : 'settingsPage');
+  if (open) renderStTables(); else renderPosSettings(false);
+}
+function renderStTables() {
+  const byName = [...stTables()].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));   // Table 2 before Table 10
+  $('#stTablesList').innerHTML = byName.map(t => `<button type="button" class="fr nav" data-st-table="${t.id}"><span class="lb">${escapeHtml(t.name)}</span><span class="v"><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span></button>`).join('')
+    + '<button type="button" class="fr add" id="stTableAdd">Add table</button>';
+}
+function openStTable(id) {
+  const t = stTables().find(x => x.id === id);
+  if (!t) return openStTables(true);
+  stTableOpen = id;
+  showStPage('stTablePage');
+  $('#stTableTitle').textContent = t.name;
+  $('#stTableName').value = t.name;
+}
+function bindStTables() {
+  $('#posTablesRow').addEventListener('click', () => openStTables(true));
+  $('#stTablesBack').addEventListener('click', () => openStTables(false));
+  $('#stTableBack').addEventListener('click', () => openStTables(true));
+  $('#stTablesList').addEventListener('click', (e) => {
+    const open = e.target.closest('[data-st-table]');
+    if (open) return openStTable(open.dataset.stTable);
+    if (!e.target.closest('#stTableAdd')) return;
+    const list = stTables();
+    let n = 1;
+    while (list.some(t => t.name.toLowerCase() === `table ${n}`)) n++;   // the lowest free "Table N", as QR codes' Add table
+    state.settings.tables = [...list, { id: newId(), name: `Table ${n}`, updatedAt: new Date().toISOString() }];
+    saveSettings();
+    renderStTables();
+  });
+  // Rename: the bills open on it follow, so Open tickets and Choice keep one name for one table
+  $('#stTableName').addEventListener('change', (e) => {
+    const t = stTables().find(x => x.id === stTableOpen), name = e.target.value.trim().replace(/\s+/g, ' ');
+    if (!t || name === t.name) return;
+    if (!name || stTables().some(x => x.id !== t.id && x.name.toLowerCase() === name.toLowerCase())) {
+      e.target.value = t.name;
+      return showToast(name ? `${name} is taken. Pick another name` : 'A table needs a name');
+    }
+    for (const d of stBillsOn(t.name)) HWPOS_STORE.savedCarts.put(d.id, stampRow({ ...d, name }));
+    t.name = name; t.updatedAt = new Date().toISOString();
+    saveSettings();
+    $('#stTableTitle').textContent = name;
+  });
+  $('#stTableDel').addEventListener('click', () => {
+    const t = stTables().find(x => x.id === stTableOpen);
+    if (!t) return;
+    if (stBillsOn(t.name).length) return showToast(`${t.name} has an open ticket. Pay it or move it first`);   // its bill would lose its table
+    showConfirm({ title: `Delete ${t.name}?`, message: 'Past sales keep the name.', okText: 'Delete', danger: true,
+      onConfirm: () => {
+        state.settings.tables = stTables().filter(x => x.id !== t.id);
+        saveSettings();
+        openStTables(true);
+        showDone(`${t.name} deleted`);
       } });
   });
 }

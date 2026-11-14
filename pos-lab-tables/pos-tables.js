@@ -1,7 +1,7 @@
 // Tables try-out (owner 2026-11-13): seven ways a dine-in bill goes to a table, A–G in the side menu. E = C with each bill's details, F = A's rows apart, G = F flat.
 // A bill is a saved cart of kind 'table' (HWPOS_STORE.savedCarts) named after its table ('' = none yet); lines sent
 // to the kitchen carry `sent`. While one is open on the cart, state.bill = { table, qr } and state.savedId is its row.
-const tbTry = () => state.settings.tablesTry || 'a';
+const tbTry = () => state.settings.tablesTry || 'f';   // F is the owner's pick (2026-11-15)
 const tbPhone = () => matchMedia('(max-width: 720px)').matches;
 const tbBills = () => loadSavedCarts().filter(d => d.kind === 'table');
 const tbNum = (name) => Number(String(name).replace(/\D/g, '')) || 1e9;   // no number: last
@@ -16,7 +16,6 @@ const tbRow = (key, name, amt, cur) => `<button type="button" data-tb="${escapeH
 const tbTile = (attr, pt, inner, name, small = '', cur) =>
   `<button type="button" class="co-tile${cur ? ' pick' : ''}" ${attr}><span class="pt-tile" style="--pt: var(--pt-${pt})">${inner}</span><span>${name}</span><small class="num">${small}</small></button>`;
 const tbPayTile = (total) => `<button type="button" class="co-tile" data-tb="pay">${payTile('cash')}<span>Pay now</span><small class="num">${peso(total)}</small></button>`;
-const tbAddTile = () => tbTile('data-tb="+"', 'grey', '<b class="tb-n">+</b>', 'New table');
 const tbSub = (d, top) => [!top && d.number && `#${escapeHtml(d.number)}`, d.qr && 'QR',SalesMath.plural((d.items || []).length, 'item'), tillDate(d.ts, 'time')].filter(Boolean).join(' · ');   // A's row line; top = the number already sits beside the name
 const tbTitle = (d) => `${d.qr ? TB_DOT : ''}${d.name ? `${escapeHtml(d.name)}${d.number ? ` <span class="tb-no num">· #${escapeHtml(d.number)}</span>` : ''}` : d.number ? `<span class="num">#${escapeHtml(d.number)}</span>` : 'No table'}`;   // E, F, G: "Table 1 · #1-830"; a QR order with no table is its number (owner 2026-11-14)
 const tbBillTile = (d, more) => tbTile(`data-tb-bill="${d.id}"`, 'blue',`<b class="tb-n">${d.name ? tbNum(d.name) : 'QR'}</b>`,
@@ -39,13 +38,15 @@ function tbCheckout() {
   return true;
 }
 
-// The picker. move: the bill's table row (iPad) -- no Pay now.
+// The picker. move: opened from the bill's table row (iPad), the same Choice (owner 2026-11-15).
+// The picker's tiles: Pay now, then every table. Always titled "Choice"; no New table (owner 2026-11-15: a typed "Table 8" next to the list only confuses)
+const tbPickTiles = () => `${tbPayTile(cartTotals().total)}${tbChoices().map(c => tbTile(`data-tb="${escapeHtml(c.name)}"`, c.amt == null ? 'grey' : 'blue',
+  `<b class="tb-n">${tbNum(c.name) < 1e9 ? tbNum(c.name) : ''}</b>`, escapeHtml(c.name), c.amt == null ? '' : peso(c.amt), c.cur)).join('')}`;
 function tbPick(move = false) {
-  const t = 'efg'.includes(tbTry()) ? 'c' : tbTry(), list = tbChoices(), table = state.bill?.table, total = cartTotals().total;   // E, F, G pick as C
-  const title = move ? 'Move to' : t === 'c' && table && tbNew() ? table : 'Save or pay';
-  const tiles = `${move ? '' : tbPayTile(total)}${list.map(c => tbTile(`data-tb="${escapeHtml(c.name)}"`, c.amt == null ? 'grey' : 'blue',
-    `<b class="tb-n">${tbNum(c.name) < 1e9 ? tbNum(c.name) : ''}</b>`, escapeHtml(c.name), c.amt == null ? '' : peso(c.amt), c.cur)).join('')}${tbAddTile()}`;
-  if (t === 'a' || t === 'd' || (t === 'c' && !tbPhone())) {
+  const t = 'efg'.includes(tbTry()) ? 'c' : tbTry(), title = 'Choice', tiles = tbPickTiles();   // E, F, G pick as C
+  const list = tbChoices(), table = state.bill?.table, total = cartTotals().total;   // A's rows and B's line
+  if (t === 'c' && !tbPhone()) return openEditSheet('tb');   // the iPad: the Dine-in sheet over the items, the cart beside it (owner 2026-11-15)
+  if (t === 'a' || t === 'd') {
     const body = t === 'a'
       ? `${move ? '' : `<div class="fs-rows">${tbRow('pay', 'Pay now', total)}</div>`}<div class="fs-rows">${list.map(c => tbRow(c.name, c.name, c.amt, c.cur)).join('')}</div><div class="fs-rows">${tbRow('+', 'New table')}</div>`
       : `<div class="co-tiles tb-tiles">${tiles}</div>`;
@@ -106,13 +107,22 @@ function tbOpen(id) {
   if (tbPhone()) $('#app').classList.add('ph-cart');
 }
 
-// ✕ on an open bill: new items ask Save (send) or Discard; only the Discard button discards (a tap beside keeps the bill open)
+// ✕ / ‹ on an open bill: back to Tables, where it came from (owner 2026-11-15). New items ask Save (send) or Discard first;
+// only the Discard button discards (a tap beside keeps the bill open)
+function tbBack() {
+  // a customer picked (or cleared) on the bill stays on it; its lines, number and time as they were (owner 2026-11-15: "Table 5 · Maria")
+  const d = loadSavedCarts().find(x => x.id === state.savedId), c = state.customer;
+  const had = d && allCustomerRecords().find(x => x.id === d.customer?.id);   // an old bill's made-up "Table 5" customer counts as none
+  if (d && (had?.id || null) !== (c?.id || null))
+    HWPOS_STORE.savedCarts.put(d.id, stampRow({ ...d, customer: c ? { id: c.id, name: c.name, phone: c.phone || '', address: c.address || '' } : null }));
+  clearCart(); $('#app').classList.remove('ph-cart'); switchView('tables');
+}
 function tbLeave() {
-  if (!tbNew()) return clearCart();
+  if (!tbNew()) return tbBack();
   let discard = false;
   showConfirm({ title: state.bill.table || 'QR order', message: 'Save the new items on this bill?', okText: 'Save', cancelText: 'Discard',
-    onConfirm: () => (state.bill.table ? tbSend(state.bill.table) : tbPick()),
-    onCancel: () => { if (discard) clearCart(); } });
+    onConfirm: () => (state.bill.table ? (tbSend(state.bill.table), switchView('tables')) : tbPick()),
+    onCancel: () => { if (discard) tbBack(); } });
   $$('.cf-sheet [data-cancel]').at(-1).addEventListener('click', () => { discard = true; });
 }
 
@@ -183,6 +193,7 @@ function tbInit() {
       const k = pick.dataset.tb;
       tbSheet?.close();
       tbSheet = null;
+      if (es?.kind === 'tb') closeEditSheet();   // the iPad's picker (pos-sell.js drawEditSheet)
       if (k === 'pay') return state.view === 'checkout' ? renderCheckout() : openPaymentModal();
       if (k !== '+') return tbSend(k);
       return openCartForm('Add table', '<label class="pf"><span class="lb">Table number</span><input class="text-input" name="n" type="text" inputmode="numeric" maxlength="3" autocomplete="off"></label>',

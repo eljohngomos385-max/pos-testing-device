@@ -667,20 +667,20 @@ function stockOnAdd(p, want, add, { cancel } = {}) {
 // same price add to it: two teas with different sweetness are two lines.
 const answerKey = (as) => as.map(a => a.choiceId).join(',');
 function addToCart(productId, via = 'other', fromScanCard = false, price, answers, qty) {
-  const line = state.cart.find(i => i.id === productId && i.productId);
+  const line = state.cart.find(i => i.id === productId && i.productId && !i.sent);   // a bill's sent line is the kitchen's now (pos-tables.js)
   const p = state.products.find(x => x.id === (line ? line.productId : productId));
   if (!p) return;
   const typed = price !== undefined;
   if (!line && !typed && askedPrice(p)) return openEditSheet('price', p.id, via);
   if (!line && !typed && qty === undefined && p.soldBy === 'measure') return openEditSheet('measure', p.id, via);   // how much: by its unit or by ₱
   if (!line && !answers && itemModifiers(p).length) {   // a tile or a size with lines of it on the cart: those first (openAgain)
-    if (!typed && (via === 'tile' || via === 'variant') && state.cart.some(i => (i.productId || i.id) === p.id)) return openAgain(p, via);
+    if (!typed && (via === 'tile' || via === 'variant') && state.cart.some(i => !i.sent && (i.productId || i.id) === p.id)) return openAgain(p, via);
     return openEditSheet('mods', p.id, { via, base: typed ? price : p.price });
   }
   const add = qty ?? 1;
   stockOnAdd(p, cartWant(p) + add, () => {
     beginCart();
-    let it = line || (answers ? state.cart.find(i => i.productId === p.id && i.modifiers && answerKey(i.modifiers) === answerKey(answers) && i.price === price)
+    let it = line || (answers ? state.cart.find(i => !i.sent && i.productId === p.id && i.modifiers && answerKey(i.modifiers) === answerKey(answers) && i.price === price)
       : !typed && state.cart.find(i => i.id === p.id));
     if (!it) state.cart.push(it = { id: typed ? newId() : p.id, ...(typed && { productId: p.id }), name: p.name, sku: p.sku, brand: p.brand,
       unit: p.unit, price: typed ? price : p.price, ...(answers && { modifiers: answers }), qty: 0 });
@@ -761,6 +761,7 @@ function clearCart(keepPrice) {
   state.discountOk = null;
   state.exchange = null;   // clearing the cart calls an exchange off (startExchange)
   state.savedId = '';      // ...and lets go of the saved cart it was continuing (continueDraft); the draft stays
+  state.bill = null;       // ...or the table's bill (pos-tables.js); the bill stays
   state.cart = [];
   state.cartId = '';
   state.cartStartedAt = 0;
@@ -779,7 +780,7 @@ function clearCart(keepPrice) {
 
 // The open sale survives a reload or a crash (owner 2026-10-09): every renderCart keeps it, init puts it back.
 // Never an exchange (a reload starts it clean) nor a manager's yes (discountOk): a restored big discount asks again.
-const CART_KEPT = ['cart', 'cartDiscount', 'scPwd', 'customer', 'orderNote', 'fulfilment', 'deliveryAddress', 'deliveryLocation', 'cartId', 'cartStartedAt', 'savedId'];
+const CART_KEPT = ['cart', 'cartDiscount', 'scPwd', 'customer', 'orderNote', 'fulfilment', 'deliveryAddress', 'deliveryLocation', 'cartId', 'cartStartedAt', 'savedId', 'bill'];
 const keepCart = () => writeJsonStorage(STORAGE_CART, state.exchange ? null : Object.fromEntries(CART_KEPT.map(key => [key, state[key]])));
 // At today's prices, a deleted item skipped, as Continue on a saved cart (todayLines): it can be days old.
 function restoreCart() {
@@ -1385,6 +1386,9 @@ function drawEditSheet() {
         o.pick !== k || !state.scPwd ? esShown(esScRow(k)) : t.scPwd ? escapeHtml(state.scPwd.name) : 'Promo is bigger'}</small>${cv()}</button>`).join('')
       + esPresets().map(d => `<button type="button" class="es-row${o.pick === d.id ? ' pick' : ''}" data-pick="${escapeHtml(d.id)}"><span>${escapeHtml(d.name)}</span><small>${esShown(d)}</small></button>`).join('')
       + `<button type="button" class="es-row${o.pick === 'c' ? ' pick' : ''}" data-sf="d"><span>Custom</span>${n('d', o.pick === 'c' ? esTyped(o) : '', ' v')}${cv()}</button>`;
+  } else if (o.kind === 'tb') {   // the tables' picker (pos-tables.js): its title on ‹'s line, the tiles under it
+    head = '';
+    rows = `<div class="co-tiles tb-tiles">${tbPickTiles()}</div>`;
   } else {
     const methods = fulfilMethods(state.settings), pt = state.pickupTime;
     const say = { pickup: pt ? esWhen(pt) : '', delivery: state.deliveryAddress };
@@ -1399,7 +1403,7 @@ function drawEditSheet() {
       ES_PANEL[m.key] && !m.custom ? `<small class="ad">${escapeHtml(say[m.key] || '')}</small>${cv()}` : ''}</button>`).join('');
   }
   // bottom left follows what's being edited: the discount's keys -> clear it; nothing open -> remove the line
-  const list = o.kind === 'ful' || o.kind === 'rd';   // Walk-in, Discount: Check out's pill is Done, Clear sits up top across from ‹ Back
+  const list = o.kind === 'ful' || o.kind === 'rd' || o.kind === 'tb';   // Walk-in, Discount: Check out's pill is Done, Clear sits up top across from ‹ Back
   const clr = o.kind === 'rd' && !dk && !ES_SC[o.f] && (o.f ? +o.d : o.pick !== null) ? '<button type="button" class="es-x es-clr cta-2" data-sclr>Clear</button>'
     : ph && o.kind === 'line' && !o.f ? '<button type="button" class="es-x es-clr rm cta-2" data-remove aria-label="Remove"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"/></svg></button>' : '';   // the phone's line: a bin where Clear sits, Done the big pill (owner 2026-11-05; a bin so a long name never runs into it, 2026-11-08)
   const lk = nk && o.kind === 'line' ? ' lk' : '';   // the line's keys come up over its grey page, which stays grey (owner 2026-11-05)
@@ -1412,9 +1416,10 @@ function drawEditSheet() {
   const prog = w ? `<div class="es-prog" aria-hidden="true"><i style="--w:${w};--was:${o.w ?? w}"></i></div>` : '';
   if (w) o.w = w;
   // Wallet's Add Money (draft 2026-11-04): the price ask and a custom item name themselves on ✕'s line, Add across from it
-  const ttl = o.kind === 'price' ? 'Price' : o.kind === 'custom' ? 'Custom item' : dk ? 'Custom' : '';
+  const ttl = o.kind === 'price' ? 'Price' : o.kind === 'custom' ? 'Custom item' : o.kind === 'tb' ? 'Choice' : dk ? 'Custom' : '';
   const mt = o.kind === 'line' ? escapeHtml(esItem()?.name || 'Item') : o.kind === 'measure' ? escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item') : o.kind === 'mods' ? escapeHtml(state.products.find(p => p.id === o.id)?.name || 'Item') : '';   // a title without wl's ✕ and ✓
   card.innerHTML = prog + clr + (ttl || mt ? `<h2 class="es-ttl">${ttl || mt}</h2>` : '') + esFrame(head, rows, side, left + (dk ? esOk('data-done')
+    : o.kind === 'tb' ? ''   // a table or Pay now is the answer: no Done
     : list ? `<button type="button" class="${ph ? 'ph-bar' : 'fab sh-fab'} cta" data-done>Done</button>` : o.kind === 'mods' ? esModsFoot(o)
     : nk ? esOk('data-apply', ask && !(+o.d > 0))   // a price waits for one, as Add did
     : ask ? `<button type="button" class="es-ink cta" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
@@ -1484,6 +1489,7 @@ function editSheetClick(e) {
   if (el('[data-mods]')) return openEditSheet('mods', esItem()?.productId, { line: o.id });
   if (el('[data-close]') && !(o.f && (o.kind === 'rd' || o.kind === 'ful' || o.f === 'n'))) return closeEditSheet();   // on a Walk-in / Discount page, or a line's Note, ‹ Back is the list
   if (o.kind === 'ful') return esFulClick(el);
+  if (o.kind === 'tb') return;   // its tiles are pos-tables.js's (the document's click)
   if (o.kind === 'price' || o.kind === 'custom') {   // our keys type it; Add puts the line on the cart at it, ✕ adds nothing
     if (el('[data-sk]')) { o.d = esPress(o.d, el('[data-sk]').dataset.sk, true, CASH_MAX); return drawEditSheet(); }
     if (!el('[data-apply]') || !(+o.d > 0)) return;
@@ -1695,6 +1701,9 @@ const RAIL_UPDOWN = '<svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"
 function renderFulRow() {
   const row = $('#fulRow');
   if (!row) return;
+  // a table's bill (pos-tables.js): the phone's way back to the items, the iPad's table (tap to move it)
+  if (state.bill) return void (row.innerHTML = tbPhone() ? '<button type="button" class="pick" id="tbAdd"><span>Add item</span></button>'
+    : `<button type="button" class="pick" id="tbMove" aria-haspopup="dialog"><span>${escapeHtml(state.bill.table || 'No table')}</span>${RAIL_UPDOWN}</button>`);
   const methods = fulfilMethods(state.settings);
   // A hidden or deleted type must not stay selected on the cart in front of the cashier.
   if (!methods.some(m => m.key === state.fulfilment)) state.fulfilment = state.settings.defaultFulfilment || 'walkin';
@@ -2107,6 +2116,7 @@ function renderCart() {
   // button's), minus amounts, its sale's number; the money words say the difference.
   const x = state.exchange && exchangeNow();
   $('#app').classList.toggle('xchg', !!state.exchange);
+  $('#app').classList.toggle('bill', !!state.bill);   // ☰ turns ✕ (pos-tables.js)
   const back = x ? `<div class="xb">${x.part.items.map(i => `<div class="row"><span class="nm"><span>${escapeHtml(i.name)}</span><small class="num">${SalesMath.qtyText(i.qty)} × ${peso(i.price)} · #${escapeHtml(x.o.number)}</small></span>
       <span class="amt num">${peso(-normalizeOrderItem(i).lineTotal)}</span></div>`).join('')}</div>` : '';
   if (n === 0) {
@@ -2115,7 +2125,7 @@ function renderCart() {
   } else {
     const ag = againId && state.cart.some(i => (i.productId || i.id) === againId) && againId;
     if (againId && !ag) { againId = null; $('#app').classList.remove('again'); }   // its lines came off meanwhile
-    list.innerHTML = back + state.cart.map(item => `
+    list.innerHTML = back + tbSentHtml() + state.cart.filter(i => !i.sent).map(item => `
       <div class="line${!ag ? '' : (item.productId || item.id) === ag ? ' hl' : ' fade'}"><button type="button" class="row" data-id="${item.id}" title="Edit item">${linePic(item)}
         <span class="nm"><span>${escapeHtml(item.name)}</span><small class="num">${lineQty(item)} × ${peso(item.price)}${item.discount ? ` · <span class="off">${peso(-normalizeOrderItem(item).lineDiscount)}</span>` : ''}</small>${
           SalesMath.answerLines(item, peso).map(t => `<small class="note">${escapeHtml(t)}</small>`).join('')}${item.note ? `<small class="note">${escapeHtml(item.note)}</small>` : ''}</span>
@@ -2153,6 +2163,7 @@ function renderCart() {
   $('#cartBar').innerHTML = x ? `<span>${XCHG_ICON}Exchange</span><span class="num">${n ? (owe[2] ? `${owe[0]} ${peso(owe[2])}` : off ? `${peso(off)} off account` : 'Even swap') : `#${escapeHtml(x.o.number)}`}</span>`
     : n ? `<span>${blurSwap(cnt, last?.n ?? cnt)} ${SalesMath.pluralWord(n, 'item')}</span><span class="num">${blurSwap(peso(t.total), last?.t ?? peso(t.total))}</span>` : '<span>No items</span>';
   $('#cartBar')._last = n && !x ? { n: cnt, t: peso(t.total) } : null;
+  if (state.bill) tbCartBits(t);
   if (!n && !x) $('#app').classList.remove('ph-cart');
   if (againId) { $('#payBtn').disabled = false; $('#payBtn').innerHTML = '<span>Make another</span>'; }
   if (myEditing) for (const b of [$('#cartBar'), $('#payBtn')]) { b.disabled = false; b.innerHTML = '<span>Done</span>'; }   // app.js's capture click ends editing, nothing else
@@ -2177,13 +2188,9 @@ function renderCart() {
 function updateCustomerButton() {
   const btn = $('#customerBtn');
   const label = $('#customerLabel');
-  if (state.customer) {
-    btn.classList.add('has-customer');
-    label.textContent = state.customer.name;   // no balance on the bar (owner, 2026-10-05)
-  } else {
-    btn.classList.remove('has-customer');
-    label.textContent = 'Walk-in customer';
-  }
+  btn.classList.toggle('has-customer', !!state.customer);
+  const who = state.customer ? state.customer.name : 'Walk-in customer';   // no balance on the bar (owner, 2026-10-05)
+  label.textContent = state.bill?.table ? `${state.bill.table} · ${who}` : who;   // a table's bill: "Table 5 · Walk-in customer", still tap to pick one (owner 2026-11-15)
 }
 function renderCustomerPicker() {
   const list = $('#customerList');

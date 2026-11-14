@@ -3261,9 +3261,9 @@ a.secondary-btn { text-decoration: none; }
 .vsheet.open { transform: none; visibility: visible; transition: transform .24s var(--rl-ease); }
 /* the top row while it's open: menu -> X, catalog search -> Search variants, scan button folds away */
 :is(#sidebarToggle, .view-items .head [data-act="open-sidebar"]) line { transform-origin: 12px 12px; transition: transform .24s var(--rl-ease), opacity .16s; }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(1), #app.xchg #sidebarToggle line:nth-child(1), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(1), body.add-pick .view-items .head [data-act="open-sidebar"] line:nth-child(1) { transform: rotate(45deg) translateY(6px); }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(2), #app.xchg #sidebarToggle line:nth-child(2), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(2), body.add-pick .view-items .head [data-act="open-sidebar"] line:nth-child(2) { opacity: 0; }
-.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3), #app.xchg #sidebarToggle line:nth-child(3), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(3), body.add-pick .view-items .head [data-act="open-sidebar"] line:nth-child(3) { transform: rotate(-45deg) translateY(-6px); }   /* an exchange's ✕ too (leaveExchange), and quick stock's */
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(1), #app:is(.xchg, .bill) #sidebarToggle line:nth-child(1), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(1), body.add-pick .view-items .head [data-act="open-sidebar"] line:nth-child(1) { transform: rotate(45deg) translateY(6px); }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(2), #app:is(.xchg, .bill) #sidebarToggle line:nth-child(2), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(2), body.add-pick .view-items .head [data-act="open-sidebar"] line:nth-child(2) { opacity: 0; }
+.catalog-wrap:has(> .vsheet.open) #sidebarToggle line:nth-child(3), #app:is(.xchg, .bill) #sidebarToggle line:nth-child(3), body.qs-on .view-items .head [data-act="open-sidebar"] line:nth-child(3), body.add-pick .view-items .head [data-act="open-sidebar"] line:nth-child(3) { transform: rotate(-45deg) translateY(-6px); }   /* an exchange's ✕ too (leaveExchange), and quick stock's */
 .vs-search { display: none; }
 /* SCANNER (owner 2026-10-08, Shopify POS): the camera in one rounded card in the edit sheet's frame, over the top row
    (Discount, Fulfilment; owner: "so it covers the hamburger"); the phone gives
@@ -3735,8 +3735,8 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 #checkoutQuick { container-type: inline-size; }
 #checkoutQuick small { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* methods and cash amounts: one row each, as Walk-in and Discount, tablet and phone (owner 2026-10-07 phone, 2026-10-16 tablet) */
-#checkoutMethods, #checkoutQuick, #checkoutDoneActs { grid-template-columns: minmax(0, 1fr); max-width: 420px; gap: 8px; }
-:is(#checkoutMethods, #checkoutQuick, #checkoutDoneActs) .co-tile { flex-direction: row; justify-content: flex-start; gap: 12px; height: auto; min-height: 56px;
+#checkoutMethods, #checkoutQuick, #checkoutDoneActs, .tb-tiles { grid-template-columns: minmax(0, 1fr); max-width: 420px; gap: 8px; }
+:is(#checkoutMethods, #checkoutQuick, #checkoutDoneActs, .tb-tiles) .co-tile { flex-direction: row; justify-content: flex-start; gap: 12px; height: auto; min-height: 56px;
                                                      padding: 0 16px; border-radius: var(--row-r, calc(var(--r-input) + 2px)); font-size: 15px; font-weight: 500; text-align: left; }
 :is(#checkoutMethods, #checkoutDoneActs) .co-ic { width: 20px; height: 20px; }
 /* a cash row = Settings' row (owner 2026-11-06 page 17): the amount as its word, the change as its grey value, no "Change", no green */
@@ -3760,8 +3760,8 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
    (as a sheet's line over its number, owner 2026-11-06) so nothing moves; a part's tile carries its amount; the how-much figure in a box, the keys under */
 .sp-paid { height: 24px; margin: -24px 0 0; padding-bottom: 4px; line-height: 20px;
            color: var(--ink-tertiary); font-size: 16px; font-weight: 500; text-align: center; font-variant-numeric: tabular-nums; }
-#checkoutMethods .co-tile small { margin-left: auto; color: var(--ink-secondary); font-size: 14px; font-weight: 590; }
-#checkoutMethods .co-tile.pick { background: color-mix(in srgb, var(--ink) 10%, var(--tile)); font-weight: 590; }   /* as a picked .es-row */
+:is(#checkoutMethods, .tb-tiles) .co-tile small { margin-left: auto; color: var(--ink-secondary); font-size: 14px; font-weight: 590; }
+:is(#checkoutMethods, .tb-tiles) .co-tile.pick { background: color-mix(in srgb, var(--ink) 10%, var(--tile)); font-weight: 590; }   /* as a picked .es-row */
 .co.sp .co-read { grid-auto-rows: auto; align-content: start; gap: 8px; }
 .co.sp .co-read > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 60px; padding: 0 18px;
            border-radius: 14px; background: var(--tile); }
@@ -9347,3 +9347,24 @@ body.light-theme :is(.lv, #catalogSearchRow) { --top-ring: var(--glass-ring); --
 /* card rows (Shift, Reports, Settings): the lists' line, .5px of --sep, not 1px of --rl-div — 3x stronger, and it ran into the
    right edge only, so the card's edge read drawn (owner 2026-11-11: "Customers / Items / Orders look so clean") */
 #app .lv .fc > * + * { background-image: linear-gradient(var(--sep), var(--sep)); background-size: 100% .5px; }
+
+/* ============================================================
+   TABLES (pos-tables.js, owner 2026-11-13; F picked 2026-11-15)
+   ============================================================ */
+.rail-h .xb.sent { background: none; }   /* sent to the kitchen: plain lines, "· Sent" says it (owner 2026-11-15: the grey read as selected) */
+.tb-n { font-size: 14px; font-weight: 650; font-style: normal; }
+.tb-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--cta-bg); vertical-align: middle; }
+.view-tables .c-body { padding-top: 8px; }   /* the first card 16 under the ☰, as Shift's first card */
+.view-tables .c-body:has(> .o-days) { padding-top: 0; }   /* A, F: the band's own 8 makes the 16 */
+.tb-tiles { width: 100%; justify-self: center; }
+/* each bill its own card 8 apart (owner 2026-11-14); one even ring as Customers' rounded first row */
+#app .view-tables .o-days.tb-sep > .row { margin-top: 8px; }
+#app .view-tables .o-days.tb-sep > .row { border-radius: var(--rl-r); box-shadow: inset 0 0 0 .5px var(--rim); }
+#app .view-tables .o-days.tb-sep > .row .rt { align-self: center; }   /* price in the middle of the card, as Customers (owner 2026-11-14) */
+.view-tables .tb-no { color: var(--ink-tertiary); font-weight: 400; }   /* E, F, G: the order number beside the table name, grey (owner 2026-11-14) */
+/* the phone's picker: the checkout page with the title on Cancel's line and no total */
+.tb-ttl { display: none; }
+.tb-c .co-top { position: relative; }
+.tb-c .co-col { padding-top: calc(var(--rl-gap) + 8px); transition: none; }   /* the first tile 16 under Back, as Shift's first card under its ☰, in place from the first frame */
+.tb-c .tb-ttl { display: block; position: absolute; inset: var(--co-y) 0 auto; margin: 0; line-height: 44px; text-align: center; pointer-events: none; }
+.tb-c :is(.co-hero, #spPaid) { display: none; }

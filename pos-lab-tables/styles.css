@@ -9351,7 +9351,7 @@ body.light-theme :is(.lv, #catalogSearchRow) { --top-ring: var(--glass-ring); --
 /* ============================================================
    TABLES TRY-OUT (pos-tables.js, owner 2026-11-13): A / B / C picked in the side menu
    ============================================================ */
-.rail-h .xb.sent { background: color-mix(in srgb, var(--ink) 5%, transparent); }   /* sent to the kitchen: grey, not the exchange colour */
+.rail-h .xb.sent { background: none; }   /* sent to the kitchen: plain lines, "· Sent" says it (owner 2026-11-15: the grey read as selected) */
 .fsheet .fs-rows button:has(.v) { display: flex; align-items: center; gap: 8px; }
 .fsheet .fs-rows .v { margin-left: auto; color: var(--ink-secondary); }
 .tb-n { font-size: 14px; font-weight: 650; font-style: normal; }

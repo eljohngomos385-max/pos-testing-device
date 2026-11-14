@@ -15,6 +15,7 @@ function openPaymentModal() {
 // when the customer pays more). The account part is already settled by exchangeMoney, so Account and Split stay off.
 const dueNow = () => (state.exchange ? Math.max(0, exchangeNow()?.net || 0) : cartTotals().total);
 function renderCheckout() {
+  tbPickOff();   // the tables' picker gives the page back (pos-tables.js)
   const t = cartTotals();
   const total = dueNow(), x = state.exchange && exchangeNow();
 
@@ -399,7 +400,7 @@ function buildOrderRecord({ status = 'completed', paymentMethod = state.paymentM
   const sc = !!totals.scPwd;
   return normalizeOrderRecord({
     id: newId(),
-    number: nextOrderNumber(),
+    number: (state.bill && loadSavedCarts().find(d => d.id === state.savedId)?.number) || nextOrderNumber(),   // a table's bill: the number it was given (saveDraft)
     ts: Date.now(),
     status,
     cashier: store.cashier,
@@ -767,17 +768,18 @@ function draftAsOrder(d) {
   const money = Object.fromEntries(['subtotal', 'discount', 'total', 'vatRate', 'vatAmount', 'vatableSales', 'vatExempt', 'scPwdOff', 'taxIncluded'].map(k => [k, t[k]]));
   return { ...normalizeOrderRecord({ ...d, ...money, status: 'saved', paymentMethod: 'unpaid' }), number: '', draft: d.kind === 'quote' ? 'quote' : 'saved', name: d.name || '' };
 }
-const draftOrders = () => loadSavedCarts().map(draftAsOrder);
+const draftOrders = () => loadSavedCarts().filter(d => d.kind !== 'table').map(draftAsOrder);   // a table's bill lives on Tables
 
 // The cart as a draft. Saving again (after Continue) updates the same entry of the same kind; a continued quote
 // saved as a cart (or the reverse) is a new entry, so the quote stays as printed. Throws when it did not land.
 function saveDraft(kind, name) {
   const store = currentStoreInfo(), prev = state.savedId && loadSavedCarts().find(d => d.id === state.savedId && d.kind === kind);
   // The customer on the cart, else the typed name as one (draftReceiptCustomerFromName) so the slip names them.
-  const c = state.customer || draftReceiptCustomerFromName(name);
+  const c = state.customer || (kind !== 'table' && draftReceiptCustomerFromName(name));   // a table's name is its table, not a customer (pos-tables.js)
   const row = stampRow({
     id: prev ? prev.id : newId(),
     kind,
+    ...(kind === 'table' && { number: prev?.number || nextOrderNumber() }),   // a table's bill keeps its order number from the first send; paying it uses the same
     name: String(name || '').trim(),
     customer: c ? { id: c.id, name: c.name, phone: c.phone || '', address: c.address || '' } : null,
     items: state.cart.map(i => ({ ...i })),

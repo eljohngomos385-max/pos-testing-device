@@ -1211,7 +1211,7 @@ function attachEvents() {
   // An exchange in the cart (startExchange) finishes here; anything else goes to the checkout.
   const phCart = (on) => { on ? (closeVariantSheet(), hideToast()) : closeEditSheet(); $('#app').classList.toggle('ph-cart', on); };   // phone: the cart page; the variant sheet sits over it (z 98), so it closes on the way in
   $('#cartBar').addEventListener('click', () => { closeBarcodeScanner(); phCart(true); });   // also the scanner's summary: the camera goes, the cart comes
-  $('#cartBack').addEventListener('click', () => phCart(false));
+  $('#cartBack').addEventListener('click', () => (state.bill ? tbLeave() : phCart(false)));   // an open table bill: back to Tables; Add item is the way to the items (pos-tables.js)
   // A big discount the sheet didn't ask about (items taken off since, a saved cart continued) is asked here (discountOk).
   const toPay = () => (state.exchange ? confirmExchange() : tbCheckout() || openPaymentModal());   // dine-in: a table first (pos-tables.js)
   $('#payBtn').addEventListener('click', () => { if (againId) return againMake(); if (closeEditSheet() !== false && !confirmSheet && discountOk(null, toPay)) toPay(); });

@@ -1087,6 +1087,7 @@ function switchView(view) {
   if (view === 'customers') renderCustomers();
   if (view === 'shift') shiftPast(false);   // opens on the drawer, not Past shifts
   if (view === 'cash') renderShift();
+  if (view === 'tables') renderTables();
   if (view === 'reports') { $('.view-reports .c-scroll').scrollTop = reportsView.y = 0; renderReports(); }   // opens at the top; Day | Week | Month keeps the place (reportsGo)
   // every visit opens at the top: the stage kept the last visit's place (owner 2026-10-29). The rAF is for Safari,
   // which can put a hidden scroller's place back on its own layout pass after this line has already run.

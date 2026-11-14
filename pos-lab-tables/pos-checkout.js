@@ -775,7 +775,7 @@ const draftOrders = () => loadSavedCarts().filter(d => d.kind !== 'table').map(d
 function saveDraft(kind, name) {
   const store = currentStoreInfo(), prev = state.savedId && loadSavedCarts().find(d => d.id === state.savedId && d.kind === kind);
   // The customer on the cart, else the typed name as one (draftReceiptCustomerFromName) so the slip names them.
-  const c = state.customer || draftReceiptCustomerFromName(name);
+  const c = state.customer || (kind !== 'table' && draftReceiptCustomerFromName(name));   // a table's name is its table, not a customer (pos-tables.js)
   const row = stampRow({
     id: prev ? prev.id : newId(),
     kind,
