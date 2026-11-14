@@ -1544,7 +1544,7 @@ function init() {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { endSearch(true); track('app_hidden'); return; }
     track('app_visible');
-    const newSize = storageGet(STORAGE_TILE_SIZE, 'md') || 'md';
+    const newSize = storageGet(STORAGE_TILE_SIZE, '') || defaultTileSize();
     const newShow = storageGet(STORAGE_SHOW_PRICE, '0') === '1', newStock = HWPOS_STORE.ui.get('tileStock', '0') === '1';
     let changed = false;
     if (newSize !== state.tileSize && ITEMS_PER_PAGE[newSize]) { state.tileSize = newSize; state.page = 1; changed = true; }

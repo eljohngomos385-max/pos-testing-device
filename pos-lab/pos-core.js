@@ -22,6 +22,7 @@ const DEFAULT_SETTINGS = (globalThis.HWPOS_STORE && HWPOS_STORE.defaults)
   ? HWPOS_STORE.defaults() : { store: { registerNo: '1' }, sync: {}, printing: {}, fulfilment: { hidden: [], custom: [] } };
 
 const STORAGE_TILE_SIZE = storeKey('tileSize');
+const defaultTileSize = () => (matchMedia('(max-width: 720px)').matches ? 'wide' : 'md');   // until this POS picks one: Wide on a phone, Medium wider (owner 2026-11-15)
 const STORAGE_SHOW_PRICE = storeKey('showPrice');
 const STORAGE_TILE_TEXT = 'hwpos.tileText';   // this till's own text size; not synced, not in the shared list
 const STORAGE_CART = 'hwpos.cart';   // this till's open sale (keepCart, pos-sell); not synced either
@@ -158,7 +159,7 @@ const state = {
   fuse: null,
   page: 1,
   sellPage: window.HWPOS_STORE?.ui.get('sellPage', 'all') === 'mine' ? 'mine' : 'all',   // Sell's page: My page | All items (pos-sell.js setSellPage)
-  tileSize: (storageGet(STORAGE_TILE_SIZE, 'md') || 'md'),
+  tileSize: (storageGet(STORAGE_TILE_SIZE, '') || defaultTileSize()),
   tileText: (storageGet(STORAGE_TILE_TEXT, 'md') || 'md'),
   showPrice: storageGet(STORAGE_SHOW_PRICE, '0') === '1',
   theme: (storageGet(STORAGE_THEME, 'dark') || 'dark'),

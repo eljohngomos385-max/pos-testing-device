@@ -181,7 +181,7 @@ Reusable expand/collapse: a header row toggles `.open`; the detail panel animate
 ## Settings-driven display
 
 Sell tiles are kept **flat** (`var(--rl-soft)` + the inset `--rl-hair` ring, no gradient/shadow/lift) — the user rejected the 3D look. Both themes share one tile shape and type: `var(--r-input)` corners, names as typed in 500 weight (no capitals). Themes differ in **colour only** — a light-theme rule never changes radius, case, weight or size. Two independent Settings → Appearance controls:
-- **Tile size** (`hwpos.tileSize`, S/M/L) → items-per-page + grid density (`grid.dataset.size`).
+- **Tile size** (`hwpos.tileSize`, S/M/L, plus Wide on the phone only) → items-per-page + grid density (`grid.dataset.size`). Until a POS picks one: **Wide on a phone, Medium wider** (`defaultTileSize()` in pos-lab/pos-core.js, owner 2026-11-15).
 - **Tile text size** (`hwpos.tileText`, S/M/L/XL) → `.pc-name` font only, via `grid.dataset.text` → `--pc-name-size` (11/13/15/18px). Independent of tile size.
 
 Pattern for a new display pref: add `STORAGE_*` const + `TILE_*` list, init in `state`, a setter that persists + `renderProducts()`, a toggle in the Appearance panel, sync in `renderPosSettings()`, and a click listener.
