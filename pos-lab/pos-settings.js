@@ -9,10 +9,10 @@ const SETTING_PICKS = {
     now: () => (state.tileSize === 'wide' && innerWidth > 720 ? 'md' : state.tileSize) || 'md', set: setTileSize },
   tileText: { opts: [['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large'], ['xl', 'Extra large']], now: () => state.tileText || 'md', set: setTileText },
   tileShow: { opts: [['both', 'Price and stock'], ['price', 'Price'], ['stock', 'Stock'], ['name', 'Name only']], now: tileShowNow, set: setTileShow },
-  sellLayout: { opts: [['grid', 'Grid'], ['list', 'List']], now: () => (state.sellLayout === 'grid' ? 'grid' : 'list'),
-    set: v => setSellLayout(v === 'grid' ? 'grid' : state.sellLayout === 'grid' ? 'list' : state.sellLayout) },   // List keeps Separate rows as it was
+  sellLayout: { opts: [['grid', 'Grid'], ['gridlist', 'Grid list'], ['list', 'List']], now: () => (sellTiles() ? state.sellLayout : 'list'),   // Grid list: Grid's tiles on one page up and down (owner 2026-11-15)
+    set: v => setSellLayout(v !== 'list' ? v : sellTiles() ? 'list' : state.sellLayout) },   // List keeps Separate rows as it was
   // Photo fills is the only photo tile (owner 2026-10-29: Photo top went); the List calls it On
-  tilePics: { get opts() { return [['off', 'Off'], ['fill', state.sellLayout === 'grid' ? 'Photo fills' : 'On']]; }, now: () => state.tilePics, set: setTilePics },
+  tilePics: { get opts() { return [['off', 'Off'], ['fill', sellTiles() ? 'Photo fills' : 'On']]; }, now: () => state.tilePics, set: setTilePics },
   cartPics: { opts: [['off', 'Off'], ['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large']], now: () => state.cartPics, set: setCartPics },
   theme: { opts: [['dark', 'Dark'], ['light', 'Light'], ['system', 'System']], now: () => state.theme || 'dark', set: applyTheme },
   driver: { opts: [['browser', 'Browser'], ['network', 'Wi-Fi'], ['bluetooth', 'Bluetooth']], now: () => printerConfig().driver || 'browser', set: v => savePrinting({ driver: v }) },
@@ -103,7 +103,7 @@ function renderPosSettings(printer = true) {
     b.setAttribute('aria-label', b.querySelector('.lb').textContent + ', ' + val);   // "Tile size, Medium", not just "Medium"
   });
   renderPick();
-  $('#sellRowsRow').hidden = state.sellLayout === 'grid';   // Separate rows: List only
+  $('#sellRowsRow').hidden = sellTiles();   // Separate rows: List only
   $('#sellRows').checked = state.sellLayout === 'rows';
   const p = printerConfig();
   const saleRow = $('#posPrintOnSaleRow');   // the browser's own dialog can't print by itself (checkout's printOnSale gate)

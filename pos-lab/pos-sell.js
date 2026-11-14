@@ -297,8 +297,9 @@ function renderProducts() {
 // My page stays tiles. Settings › View: grid | list | rows (each item its own card). The row is the category sheet's (.vs-row);
 // a tap adds, a hold peeks, as a tile. Tile pictures and Tile text size work on it too ----------
 const sellAsList = () => !!state.query.trim() || (state.sellLayout !== 'grid' && state.sellPage !== 'mine');   // a search is always a list, Grid too (owner 2026-10-25)
+const sellTiles = () => state.sellLayout === 'grid' || state.sellLayout === 'gridlist';   // the layouts drawn as tiles
 function setSellLayout(v) {
-  if (state.sellLayout === 'grid' && v !== 'grid' && state.tilePics === 'off') { state.tilePics = 'fill'; HWPOS_STORE.ui.set('tilePics', 'fill'); }   // List on turns the pictures on; they can go off again
+  if (sellTiles() && (v === 'list' || v === 'rows') && state.tilePics === 'off') { state.tilePics = 'fill'; HWPOS_STORE.ui.set('tilePics', 'fill'); }   // List on turns the pictures on; they can go off again
   state.sellLayout = v; HWPOS_STORE.ui.set('sellLayout', v); renderProducts();
 }
 function sellListRow(c) {
@@ -311,13 +312,18 @@ function sellListRow(c) {
     <span class="nm">${escapeHtml(r.name)}${sub ? `<small>${sub}</small>` : ''}</span><span class="amt num">${priceRange(ps)}</span></button>`;
 }
 let slHtml = '', slCard = null;   // the list last drawn
+const slScrolled = () => { const g = $('#productGrid'); g.classList.toggle('sl-scrolled', g.scrollTop > 1); };   // the phone's top frost shows only once the list has moved (styles.css)
 function renderSellList(grid, cells) {
   const name = c => (c.group || c.product).name;
-  if (!state.query.trim()) cells = [...cells].sort((a, b) => name(a).localeCompare(name(b)));   // a search keeps its best-match order
-  const html = `<div class="sl-card">${cells.map(sellListRow).join('')}</div>`;   // one A-Z list, never by category (owner 2026-10-22)
+  const tiles = state.sellLayout === 'gridlist' && !state.query.trim();   // Grid list (owner 2026-11-15): Grid's tiles, in Grid's order, on one page up and down; a search is rows
+  if (!state.query.trim() && !tiles) cells = [...cells].sort((a, b) => name(a).localeCompare(name(b)));   // a search keeps its best-match order
+  const html = tiles ? `<div class="sl-tiles">${cells.map(renderSellCellHtml).join('')}</div>`
+    : `<div class="sl-card">${cells.map(sellListRow).join('')}</div>`;   // one A-Z list, never by category (owner 2026-10-22)
   const shown = grid.firstElementChild === slCard, keep = shown && grid.dataset.q === state.query ? grid.scrollTop : 0;   // a redraw (a sale, stock) keeps the place; a new search starts at the top
   grid.classList.add('sl'); grid.dataset.sl = state.sellLayout; grid.dataset.q = state.query;
   if (!shown || slHtml !== html) { slHtml = html; grid.innerHTML = html; slCard = grid.firstElementChild; grid.scrollTop = keep; }   // a refit with nothing new: no rebuild, a flick keeps going
+  if (!grid._slScroll) grid._slScroll = grid.addEventListener('scroll', slScrolled, { passive: true }) || 1;   // once
+  slScrolled();
   renderSellHeader();
   requestAnimationFrame(syncSellGridMetrics);
 }

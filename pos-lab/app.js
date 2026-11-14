@@ -154,7 +154,7 @@ function attachEvents() {
     : !((QS.on || addPick) && b.closest('.view-items')));   // or the ✕ of Quick stock / the Add tile (line 22)
   // a touch on something that moves sideways itself (tabs, the Sell grid, a cart line, a chart, a sideways scroller) is its own
   const sideways = (t) => {
-    if (t.closest('[data-swipes], #productGrid, #cartList, .kinds, .rp-chart, #deliveryMapStage, input, textarea, select')) return true;
+    if (t.closest('[data-swipes], #productGrid:not(.sl), #cartList, .kinds, .rp-chart, #deliveryMapStage, input, textarea, select')) return true;   // the Sell grid only while it pages sideways: List and Grid list scroll up and down, so a swipe right on them is the menu's (owner 2026-11-15)
     for (let el = t; el && el !== document.body; el = el.parentElement)
       if (el.scrollWidth > el.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(el).overflowX)) return true;
     return false;
