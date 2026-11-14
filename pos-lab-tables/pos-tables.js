@@ -17,9 +17,10 @@ const tbTile = (attr, pt, inner, name, small = '', cur) =>
   `<button type="button" class="co-tile${cur ? ' pick' : ''}" ${attr}><span class="pt-tile" style="--pt: var(--pt-${pt})">${inner}</span><span>${name}</span><small class="num">${small}</small></button>`;
 const tbPayTile = (total) => `<button type="button" class="co-tile" data-tb="pay">${payTile('cash')}<span>Pay now</span><small class="num">${peso(total)}</small></button>`;
 const tbAddTile = () => tbTile('data-tb="+"', 'grey', '<b class="tb-n">+</b>', 'New table');
-const tbSub = (d) => [d.number && `#${escapeHtml(d.number)}`, d.qr && 'QR',SalesMath.plural((d.items || []).length, 'item'), tillDate(d.ts, 'time')].filter(Boolean).join(' · ');   // A's row line
+const tbSub = (d, top) => [!top && d.number && `#${escapeHtml(d.number)}`, d.qr && 'QR',SalesMath.plural((d.items || []).length, 'item'), tillDate(d.ts, 'time')].filter(Boolean).join(' · ');   // A's row line; top = the number already sits beside the name
+const tbTitle = (d) => `${d.qr ? TB_DOT : ''}${d.name ? `${escapeHtml(d.name)}${d.number ? ` <span class="tb-no num">· #${escapeHtml(d.number)}</span>` : ''}` : d.number ? `<span class="num">#${escapeHtml(d.number)}</span>` : 'No table'}`;   // E, F, G: "Table 1 · #1-830"; a QR order with no table is its number (owner 2026-11-14)
 const tbBillTile = (d, more) => tbTile(`data-tb-bill="${d.id}"`, 'blue',`<b class="tb-n">${d.name ? tbNum(d.name) : 'QR'}</b>`,
-  `${d.qr ? TB_DOT : ''}${escapeHtml(tbName(d))}${more ? `<em class="tb-sub num">${tbSub(d)}</em>` : ''}`, peso(tbTotal(d)));
+  more ? `${tbTitle(d)}<em class="tb-sub num">${tbSub(d, true)}</em>` : `${d.qr ? TB_DOT : ''}${escapeHtml(tbName(d))}`, peso(tbTotal(d)));
 
 // Every table: the QR tables (Settings › QR tables) and any other with a bill on it, by number. Busy = a bill that isn't this one.
 function tbChoices() {
@@ -148,11 +149,11 @@ function renderTables() {
   if ('afg'.includes(t)) {   // F: A's rows, each its own card with E's number; G: F flat, no outline
     const sep = t !== 'a';
     box.innerHTML = `<div class="c-body"><div class="o-days${sep ? ' tb-sep' : ''}${t === 'g' ? ' tb-flat' : ''}">${sep ? '' : `<div class="band"><span>Open <span class="num">· ${bills.length}</span></span><span class="num">${peso(sum)}</span></div>`}${
-      bills.map(d => `<button type="button" class="row" data-tb-bill="${d.id}">${sep ? `<span class="pt-tile" style="--pt: var(--pt-blue)"><b class="tb-n">${d.name ? tbNum(d.name) : 'QR'}</b></span>` : ''}<div class="nm"><span>${d.qr ? TB_DOT : ''}${escapeHtml(tbName(d))}</span>
-        <small class="num">${tbSub(d)}</small></div>
+      bills.map(d => `<button type="button" class="row" data-tb-bill="${d.id}">${sep ? `<span class="pt-tile" style="--pt: var(--pt-blue)"><b class="tb-n">${d.name ? tbNum(d.name) : 'QR'}</b></span>` : ''}<div class="nm"><span>${sep ? tbTitle(d) : `${d.qr ? TB_DOT : ''}${escapeHtml(tbName(d))}`}</span>
+        <small class="num">${tbSub(d, sep)}</small></div>
         <div class="rt"><span class="amt num">${peso(tbTotal(d))}</span></div></button>`).join('')}</div></div>`;
   } else if (t === 'b') {
-    box.innerHTML = `<div class="tb-page"><p class="sp-paid">${bills.length} open</p><div class="co-hero num">${peso(sum)}</div><div class="co-tiles tb-tiles">${bills.map(tbBillTile).join('')}</div></div>`;
+    box.innerHTML = `<div class="tb-page"><p class="sp-paid">${bills.length} open</p><div class="co-hero num">${peso(sum)}</div><div class="co-tiles tb-tiles">${bills.map(d => tbBillTile(d)).join('')}</div></div>`;
     const page = box.firstChild;   // the total on the hero line, set before the first paint (ponytail: not again on a resize)
     box.parentNode.style.setProperty('--head-h', box.previousElementSibling.offsetHeight + 'px');   // FROST_HEADS' observer sets it only after this paint
     page.style.marginTop = tbHeroY() - page.querySelector('.co-hero').getBoundingClientRect().top + 'px';
