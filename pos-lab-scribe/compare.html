@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POS Phone compare</title>
+<style>
+/* two phones side by side (owner 2026-10-17): left the search at the bottom, right the search on top under the title */
+html, body { margin: 0; height: 100%; }
+body { box-sizing: border-box; padding-top: 34px; display: grid; grid-template-columns: 1fr 1fr; background: #0A0A0A; color: #9A9A9A; font: 500 13px system-ui, sans-serif; }
+figure { display: grid; grid-template-rows: auto minmax(0,1fr); margin: 0; min-width: 0; }
+figcaption { padding: 10px; text-align: center; }
+iframe { width: 100%; height: 100%; border: 0; }
+/* the drawer pick: full page or the chat-app half screen, both phones at once */
+.pick { position: fixed; top: 6px; left: 50%; z-index: 1; transform: translateX(-50%); }
+.pick select { font: inherit; color: #E6E6E6; background: #1C1C1C; border: 1px solid #333; border-radius: 8px; padding: 4px 8px; }
+</style>
+</head>
+<body>
+<label class="pick">Sidebar <select id="side"><option value="">Full page</option><option value="side-half">Half screen</option></select></label>
+<figure><figcaption>Search at the bottom</figcaption><iframe></iframe></figure>
+<figure><figcaption>Search on top</figcaption><iframe id="top"></iframe></figure>
+<script>
+// the right phone's app gets .search-top on every load (phone.html reloads its app on a hash change)
+// a fresh phone.html every load: the browser kept the old frame (owner 2026-10-17), as phone.html does for index.html
+for (const fr of document.querySelectorAll('iframe')) fr.src = 'phone.html?' + Date.now() + '#items';
+// both phones get the Sidebar pick the same way
+const right = document.getElementById('top'), side = document.getElementById('side');
+const app = fr => fr.contentDocument?.getElementById('f')?.contentDocument?.documentElement;
+setInterval(() => {
+  app(right)?.classList.add('search-top');
+  for (const fr of document.querySelectorAll('iframe')) app(fr)?.classList.toggle('side-half', side.value === 'side-half');
+}, 200);
+</script>
+</body>
+</html>

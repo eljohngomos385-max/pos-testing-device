@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Split pay lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<!-- Lab: paying one sale with two (or more) methods. Standalone; the POS checkout's tokens and sizes (styles.css .co-*)
+     copied in. Each flow is one file in split-lab/ calling addFlow(); the shell gives it the pay column and checks the result. -->
+<style>
+  :root {
+    --bg: #121212; --surface: #2A2A2A; --surface-2: #1F1F1F; --surface-hover: #333333; --tile: #2A2A2A;
+    --line: rgba(255,255,255,.08); --line-strong: rgba(255,255,255,.14);
+    --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.7); --ink-tertiary: rgba(255,255,255,.45); --ink-quaternary: rgba(255,255,255,.28);
+    --accent: #FFFFFF; --accent-hover: #F0F0F0; --accent-ink: #121212; --accent-tint: rgba(255,255,255,.10);
+    --ok: #3B7A4F; --ok-bg: rgba(59,122,79,.14); --danger: #EF5350; --danger-bg: rgba(239,83,80,.14); --warn: #FFB74D;
+    --r-input: 10px; --es-r: 12px; --co-m: 20px; --co-tw: 160px; --co-gap: 14px; --co-ease: cubic-bezier(.2, .8, .2, 1);
+    --co-items-w: clamp(300px, 30vw, 380px); --co-cust-h: 50px; --shadow-modal: 0 20px 50px rgba(0,0,0,.6), 0 8px 20px rgba(0,0,0,.3);
+  }
+  body.light {
+    --bg: #FFFFFF; --surface: #F9F9F9; --surface-2: #FFFFFF; --surface-hover: #EBEBEB; --tile: #F3F3F3;
+    --line: #E1E1E1; --line-strong: #D4D4D4;
+    --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C; --ink-quaternary: #B5B5B5;
+    --accent: #303030; --accent-hover: #1A1A1A; --accent-ink: #FFFFFF; --accent-tint: rgba(0,0,0,.06);
+    --ok: #047B5D; --ok-bg: #E8F4EF; --danger: #D72C0D; --danger-bg: #FDEEEC; --shadow-modal: 0 20px 50px rgba(0,0,0,.18);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { min-height: 100vh; background: #0b0b0b; color: var(--ink); font: 15px/1.4 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  body.light { background: #e9e9e9; }
+  button, input, select { font: inherit; color: inherit; }
+  button { border: 0; background: none; cursor: pointer; }
+  .num { font-variant-numeric: tabular-nums; }
+  [hidden] { display: none !important; }
+
+  /* lab chrome: not part of the design */
+  .lab { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 16px;
+         background: #1a1a1a; color: #ddd; border-bottom: 1px dashed #444; font-size: 13px; }
+  body.light .lab { background: #fafafa; color: #333; border-color: #ccc; }
+  .lab label { display: inline-flex; align-items: center; gap: 6px; }
+  .lab select { height: 30px; padding: 0 8px; border: 1px solid #555; border-radius: 8px; background: transparent; }
+  body.light .lab select { border-color: #bbb; }
+  .lab option { color: #222; }
+  .lab .idea { flex-basis: 100%; opacity: .7; }
+  .stage-wrap { display: grid; place-items: start center; padding: 20px 16px 40px; }
+
+  /* the device frame */
+  .dev { width: var(--w); height: var(--h); max-width: 100%; overflow: hidden; border-radius: 18px; background: var(--bg); box-shadow: 0 0 0 1px var(--line-strong);
+         display: grid; }
+  .dev.tablet { --w: 1180px; --h: 820px; }
+  .dev.phone { --w: 390px; --h: 844px; border-radius: 34px; }
+
+  /* the checkout page, as the POS (styles.css .co-*) */
+  .co { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--co-items-w); }
+  .phone .co { grid-template-columns: minmax(0, 1fr); }
+  .phone .co-items { display: none; }
+  .co-ic { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .co-pay { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; }
+  .co-top { display: flex; align-items: center; justify-content: space-between; padding: calc(var(--co-m) - 16.75px) var(--co-m) 0 calc(var(--co-m) - 14px); }
+  .co-cancel { display: inline-flex; align-items: center; gap: 4px; min-width: 92px; height: 44px; padding: 0 12px 0 8px; border-radius: var(--r-input);
+               font-size: 15px; font-weight: 560; }
+  .co-cancel:hover { background: var(--surface-hover); }
+  .co-cancel .co-ic { width: 18px; height: 18px; stroke-width: 2; color: var(--ink-secondary); }
+  .co-pcount { color: var(--ink-tertiary); font-size: 13px; }
+  .co-stage { overflow: auto; padding: 0 var(--co-m) 32px; display: grid; align-content: start; }
+  .co-col { width: 100%; max-width: 760px; margin: 0 auto; display: grid; }
+  .co-hero { padding: clamp(16px, 4vh, 40px) 0 clamp(20px, 4vh, 36px); text-align: center; font-size: clamp(48px, 5.4vw, 72px); font-weight: 600;
+             letter-spacing: -.04em; line-height: 1; }
+  .phone .co-hero { font-size: 48px; }
+
+  /* the shared pieces a flow can use */
+  .co-tiles { --cols: 2; display: grid; gap: var(--co-gap); justify-self: center; width: 100%;
+              max-width: calc(var(--cols) * var(--co-tw) + (var(--cols) - 1) * var(--co-gap));
+              grid-template-columns: repeat(auto-fill, minmax(max(130px, (100% - (var(--cols) - 1) * var(--co-gap)) / var(--cols)), 1fr)); }
+  .phone .co-tiles { --co-gap: 10px; }
+  .co-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 112px; padding: 0 10px;
+             border-radius: 14px; background: var(--tile); font-size: 15px; font-weight: 560; text-align: center; transition: background-color .12s, transform .1s; }
+  .phone .co-tile { height: 96px; }
+  .co-tile:hover { background: var(--surface-hover); }
+  .co-tile:active { transform: scale(.98); }
+  .co-tile .co-ic { width: 26px; height: 26px; stroke-width: 1.5; color: var(--ink-secondary); }
+  .co-tile.on, .co-tile.on .co-ic { background: var(--accent); color: var(--accent-ink); }
+  .co-tile small { color: var(--ink-tertiary); font-size: 12.5px; font-weight: 400; }
+  .co-tile:disabled { opacity: .35; pointer-events: none; }
+  .co-big { font-size: 20px; font-weight: 600; letter-spacing: -.02em; line-height: 1.15; }
+  .co-lbl { color: var(--ink-tertiary); font-size: 13px; font-weight: 500; }
+  .co-fig { display: block; font-size: 38px; font-weight: 600; letter-spacing: -.03em; line-height: 1.15; white-space: nowrap; }
+  .co-fig.ph { color: var(--ink-quaternary); }
+  .co-fig.up { color: var(--ok); }
+  .co-fig.down { color: var(--danger); }
+  .co-caret { display: inline-block; width: 2px; height: .9em; margin-left: 2px; background: var(--ink); vertical-align: -.08em; animation: co-blink 1.1s steps(1) infinite; }
+  @keyframes co-blink { 50% { opacity: 0; } }
+  .es-kp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .es-kp button { height: 64px; border-radius: 14px; background: var(--tile); font-size: 24px; font-weight: 500; font-variant-numeric: tabular-nums; transition: background-color .1s, transform .1s; }
+  .phone .es-kp button { height: 58px; }
+  .es-kp button:hover { background: var(--surface-hover); }
+  .es-kp button:active { transform: scale(.97); }
+  .es-kp svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .co-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 56px; padding: 0 22px; width: 100%;
+            border: 1px solid var(--line-strong); border-radius: var(--r-input); background: var(--surface-2); font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .co-btn:hover { background: var(--surface-hover); }
+  .co-btn.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+  .co-btn.primary:hover { background: var(--accent-hover); }
+  .co-btn:disabled { opacity: .35; pointer-events: none; }
+  .co-ask { margin: 0 0 4px; color: var(--ink-secondary); font-size: 14px; font-weight: 500; text-align: center; }
+  @keyframes co-in { from { opacity: 0; transform: translateY(6px); } }
+  .co-in { animation: co-in .3s var(--co-ease) both; }
+
+  /* items column: as the POS */
+  .co-items { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; min-height: 0; border-left: 1px solid var(--line); }
+  .co-cust { display: flex; align-items: center; height: var(--co-cust-h); padding: 0 var(--co-m); border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 560; }
+  .co-rows { overflow-y: auto; }
+  .co-row { display: flex; align-items: center; gap: 12px; min-height: 45px; padding: 7px var(--co-m); }
+  .co-row + .co-row { border-top: 1px solid var(--line); }
+  .co-nm { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; }
+  .co-nm small { display: block; color: var(--ink-tertiary); font-size: 12px; }
+  .co-amt { font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .co-sum { display: flex; justify-content: space-between; align-items: baseline; padding: 14px var(--co-m) 16px; border-top: 1px solid var(--line); }
+  .co-sum > :first-child { font-size: 14px; font-weight: 600; }
+  .co-sum > :last-child { font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+
+  /* the shell's done card (lab: shows what the flow recorded and checks it) */
+  .done { display: grid; justify-items: center; gap: 6px; padding: 40px 0 0; text-align: center; animation: co-in .3s var(--co-ease) both; }
+  .done .mark { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--ok-bg); color: var(--ok); margin-bottom: 8px; }
+  .done .mark .co-ic { width: 30px; height: 30px; stroke-width: 2.2; }
+  .done h2 { margin: 0 0 10px; font-size: 22px; }
+  .done .legs { width: 100%; max-width: 360px; display: grid; }
+  .done .leg { display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); font-weight: 560; }
+  .done .leg small { color: var(--ink-tertiary); font-weight: 400; }
+  .done .chk { margin-top: 12px; font-size: 12px; font-family: ui-monospace, monospace; }
+  .done .chk.bad { color: var(--danger); }
+  .done .chk.good { color: var(--ok); }
+  .done .co-btn { max-width: 360px; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="lab">
+  <b>Split pay lab</b>
+  <label>Flow <select id="labFlow"></select></label>
+  <label>Device <select id="labDev"><option value="tablet">Tablet 1180×820</option><option value="phone">Phone 390×844</option></select></label>
+  <label>Total <select id="labTotal"><option>42.50</option><option selected>1250</option><option>24318.75</option></select></label>
+  <label>Customer <select id="labCust"><option value="">Walk-in</option><option value="acct">Juan Dela Cruz (has account)</option></select></label>
+  <label>Theme <select id="labTheme"><option value="">Dark</option><option value="light">Light</option></select></label>
+  <span class="idea" id="labIdea"></span>
+</div>
+<div class="stage-wrap">
+  <div class="dev tablet" id="dev">
+    <div class="co">
+      <div class="co-pay">
+        <div class="co-top">
+          <button type="button" class="co-cancel" id="coBack"><svg class="co-ic" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span id="coBackText">Back</span></button>
+          <span class="co-pcount" id="coPhoneCount"></span>
+        </div>
+        <div class="co-stage"><div class="co-col" id="mount"></div></div>
+      </div>
+      <aside class="co-items">
+        <div class="co-cust" id="coCust">Walk-in customer</div>
+        <div class="co-rows" id="coRows"></div>
+        <div class="co-sum"><span>Total</span><span class="num" id="coTotal"></span></div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- the shell ----------
+const FLOWS = [];
+const addFlow = f => FLOWS.push(f);   // { id, name, idea, mount(ctx) }
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => Math.round((+n || 0) * 100) / 100;
+// whole pesos drop the .00: ₱1,250 / ₱42.50
+const peso = n => (n < 0 ? '−' : '') + '₱' + Math.abs(money(n)).toLocaleString('en-PH', { minimumFractionDigits: Number.isInteger(money(n)) ? 0 : 2, maximumFractionDigits: 2 });
+// what's typed, decimals as typed: "1250.5" -> "₱1,250.5"
+const typedPeso = raw => { const [i, d] = String(raw).split('.'); return '₱' + (+i || 0).toLocaleString('en-PH') + (d === undefined ? '' : '.' + d); };
+// the keypad's raw string: digits, one dot, two decimals, 7 digits
+function keyInto(raw, k) {
+  if (k === 'del') return raw.slice(0, -1);
+  if (k === '.') return raw.includes('.') ? raw : (raw || '0') + '.';
+  const [i, d] = raw.split('.');
+  if (d !== undefined ? d.length >= 2 : i.length >= 7) return raw;
+  return raw === '0' ? k : raw + k;
+}
+const ICON = {
+  cash: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8L2 7"/><circle cx="12" cy="14" r="3"/>',
+  gcash: '<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01" stroke-width="2.4"/>',
+  qr: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h2v2h-2v2h2M18 14h3M18 18h1v1h1v2M21 14v2M14 18v3h2"/>',
+  maya: '<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
+  credit: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
+  keypad: '<path d="M6 5h.01M12 5h.01M18 5h.01M6 11h.01M12 11h.01M18 11h.01M6 17h.01M12 17h.01M18 17h.01" stroke-width="3"/>',   // type another amount
+};
+const icon = id => `<svg class="co-ic" viewBox="0 0 24 24" aria-hidden="true">${ICON[id] || ICON.maya}</svg>`;
+const ITEMS = [['PVC Elbow 1/2"', 3, 12], ['Boysen Paint 1L White', 2, 385], ['Cement 40kg', 1, 268], ['Hacksaw Blade', 4, 45]];
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'del'];
+// the POS keypad: 1-9 . 0 ⌫ ; onKey('1'..'9' | '0' | '.' | 'del'). The hardware keyboard works too while it's on screen.
+function keypad(onKey) {
+  const el = document.createElement('div');
+  el.className = 'es-kp';
+  el.innerHTML = KEYS.map(k => `<button type="button" data-k="${k}">${k === 'del' ? '<svg viewBox="0 0 24 24"><path d="M21 5H8l-6 7 6 7h13a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M12 9l6 6M18 9l-6 6"/></svg>' : k}</button>`).join('');
+  el.addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) onKey(b.dataset.k); });
+  el._key = e => { const k = e.key === 'Backspace' ? 'del' : e.key; if (KEYS.includes(k)) { onKey(k); e.preventDefault(); } };
+  return el;
+}
+document.addEventListener('keydown', e => { if (e.target.matches('input, select, textarea')) return; const kp = [...document.querySelectorAll('#mount .es-kp')].pop(); kp?._key(e); });
+
+const lab = { flow: 0, dev: 'tablet', total: 1250, cust: '' };
+let ctx = null;
+function methods() {
+  const m = [['cash', 'Cash'], ['gcash', 'GCash'], ['qr', 'QR'], ['maya', 'Maya']];
+  if (lab.cust) m.push(['credit', 'Account']);
+  return m.map(([id, label]) => ({ id, label, icon: icon(id) }));
+}
+function start() {
+  const f = FLOWS[lab.flow], mount = $('#mount');
+  $('#labIdea').textContent = f ? `${f.name} — ${f.idea}` : 'No flows yet';
+  $('#dev').className = `dev ${lab.dev}`;
+  const cust = lab.cust ? { name: 'Juan Dela Cruz', account: true, balance: 1200, limit: 5000 } : null;
+  $('#coCust').textContent = cust ? cust.name : 'Walk-in customer';
+  // the items: scaled so they add up to the lab total
+  const raw = ITEMS.reduce((s, [, q, p]) => s + q * p, 0), k = lab.total / raw;
+  let left = lab.total;
+  $('#coRows').innerHTML = ITEMS.map(([n, q, p], i) => {
+    const amt = i === ITEMS.length - 1 ? money(left) : money(q * p * k); left = money(left - amt);
+    return `<div class="co-row"><div class="co-nm">${esc(n)}<small>${q} × ${peso(amt / q)}</small></div><div class="co-amt num">${peso(amt)}</div></div>`;
+  }).join('');
+  $('#coTotal').textContent = peso(lab.total);
+  $('#coPhoneCount').textContent = lab.dev === 'phone' ? `${ITEMS.length} items · ${peso(lab.total)}` : '';   // the phone has no items column: the total stays in view here
+  $('#coBackText').textContent = 'Back';
+  mount.innerHTML = '';
+  mount.className = 'co-col' + (f ? ` f-${f.id}` : '');
+  if (!f) return;
+  ctx = {
+    total: lab.total, methods: methods(), customer: cust, device: lab.dev, el: mount,
+    room: cust ? money(cust.limit - cust.balance) : 0,   // what the account can still take (0 = no account)
+    peso, money, typedPeso, keyInto, keypad, esc, icon,
+    hero: (text = peso(lab.total)) => `<div class="co-hero num">${text}</div>`,   // the big total, as the POS
+    setBack: text => { $('#coBackText').textContent = text; },   // 'Cancel' / 'Back'
+    onBack: null,   // a flow sets it: return true when it handled Back (went a step back); else the shell restarts the flow
+    // legs: [{ method, amount, given?, change? }] -- amount is what that method pays toward the total;
+    // a cash leg may carry given (handed over) and change (given - amount).
+    done: legs => showDone(legs),
+  };
+  f.mount(ctx);
+}
+function showDone(legs) {
+  ctx.onBack = null;   // a paid sale is closed: Back starts a new one
+  const room = ctx.room, sum = money(legs.reduce((s, l) => s + money(l.amount), 0)), errs = [];
+  if (sum !== money(lab.total)) errs.push(`legs add to ${peso(sum)}, total ${peso(lab.total)}`);
+  legs.forEach(l => {
+    if (!(money(l.amount) > 0)) errs.push(`${l.method}: amount ${l.amount}`);
+    if (l.given != null && money(l.given - l.amount) !== money(l.change || 0)) errs.push(`${l.method}: change ${l.change} ≠ given − amount`);
+    if (l.method === 'credit' && !lab.cust) errs.push('Account with no customer');
+    if (l.method === 'credit' && money(l.amount) > room) errs.push(`Account ${peso(l.amount)} is over its room ${peso(room)}`);
+  });
+  const label = id => methods().find(m => m.id === id)?.label || id;
+  $('#mount').innerHTML = `<div class="done">
+    <div class="mark">${'<svg class="co-ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'}</div>
+    <h2>Paid ${peso(lab.total)}</h2>
+    <div class="legs">${legs.map(l => `<div class="leg"><span>${esc(label(l.method))}${l.given != null && l.change ? ` <small>· given ${peso(l.given)}, change ${peso(l.change)}</small>` : ''}</span><span class="num">${peso(l.amount)}</span></div>`).join('')}</div>
+    <div class="chk ${errs.length ? 'bad' : 'good'}">${errs.length ? 'LAB CHECK FAILED: ' + esc(errs.join('; ')) : 'lab check: legs add up'}</div>
+    <button type="button" class="co-btn primary" id="labAgain">New sale</button></div>`;
+  $('#labAgain').onclick = start;
+  window.__lastLegs = { legs, errs };
+}
+$('#coBack').onclick = () => { if (!ctx?.onBack?.()) start(); };
+const bind = (id, key, conv = v => v) => { $(id).onchange = e => { lab[key] = conv(e.target.value); start(); }; };
+bind('#labFlow', 'flow', Number); bind('#labDev', 'dev'); bind('#labTotal', 'total', Number); bind('#labCust', 'cust');
+$('#labTheme').onchange = e => document.body.classList.toggle('light', e.target.value === 'light');
+// ?flow=<id>&dev=phone&total=42.5&cust=acct&theme=light -- for screenshots
+window.addEventListener('load', () => {
+  $('#labFlow').innerHTML = FLOWS.map((f, i) => `<option value="${i}">${i + 1}. ${esc(f.name)}</option>`).join('');
+  const q = new URLSearchParams(location.search);
+  const fi = FLOWS.findIndex(f => f.id === q.get('flow'));
+  if (fi >= 0) lab.flow = fi;
+  if (q.get('dev')) lab.dev = q.get('dev');
+  if (q.get('total')) lab.total = +q.get('total');
+  if (q.get('cust')) lab.cust = q.get('cust');
+  if (q.get('theme') === 'light') document.body.classList.add('light');
+  $('#labFlow').value = lab.flow; $('#labDev').value = lab.dev; $('#labCust').value = lab.cust;
+  $('#labTotal').value = [...$('#labTotal').options].find(o => +o.value === lab.total)?.value ?? '1250';
+  $('#labTheme').value = document.body.classList.contains('light') ? 'light' : '';
+  start();
+});
+</script>
+<!-- one file per designer; each calls addFlow() one or more times -->
+<script src="split-lab/set-a.js"></script>
+<script src="split-lab/set-b.js"></script>
+<script src="split-lab/set-c.js"></script>
+<script src="split-lab/set-d.js"></script>
+<script src="split-lab/set-e.js"></script>
+<script src="split-lab/set-f.js"></script>
+</body>
+</html>

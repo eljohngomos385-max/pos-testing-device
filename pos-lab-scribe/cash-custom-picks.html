@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cash Custom Picks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<!-- Mock-ups for Checkout › Cash › Custom (owner 2026-10-27: "simpler ... the big number becomes the input box").
+     Phone = the iPhone's own decimal pad; iPad keeps our keys. Tokens copied from styles.css :root / body.light-theme. -->
+<style>
+/* the app's tokens: light (body.light-theme) */
+:root {
+  --canvas: #F2F2F2; --surface: #F9F9F9; --surface-2: #FFFFFF; --tile: #F3F3F3;
+  --line: #E1E1E1; --line-strong: #D4D4D4; --rl-hair: #EBEBEB;
+  --ink: #303030; --ink-2: #616161; --ink-3: #8C8C8C; --ink-4: #B5B5B5;
+  --accent: #303030; --accent-ink: #FFFFFF; --ok: #047B5D;
+  --raise: inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06);   /* the shared co-tile / es-row rule */
+  --glass: rgb(255 255 255 / .82); --glass-ring: 0 0 0 .5px rgb(0 0 0 / .08), 0 2px 10px -3px rgb(0 0 0 / .14);
+  /* iOS decimal pad */
+  --kb-bg: #D1D3D9; --kb-key: #FFFFFF; --kb-shadow: 0 1px 0 rgb(0 0 0 / .3); --kb-ink: #000; --kb-blue: #007AFF;
+  --page: #E9E9EB; --page-ink: #303030; --page-ink-2: #6B6B6B;
+  --font: Inter, -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+/* dark (styles.css :root) */
+body.dark {
+  --canvas: #121212; --surface: #2A2A2A; --surface-2: #1F1F1F; --tile: #2A2A2A;
+  --line: rgba(255,255,255,.08); --line-strong: rgba(255,255,255,.14); --rl-hair: rgba(255,255,255,.03);
+  --ink: #FFFFFF; --ink-2: rgba(255,255,255,.7); --ink-3: rgba(255,255,255,.45); --ink-4: rgba(255,255,255,.28);
+  --accent: #FFFFFF; --accent-ink: #121212; --ok: #3B7A4F;
+  --raise: none;
+  --glass: rgb(255 255 255 / .1); --glass-ring: 0 0 0 .5px rgb(255 255 255 / .12);
+  --kb-bg: #2C2C2E; --kb-key: #6B6B6E; --kb-shadow: 0 1px 0 rgb(0 0 0 / .4); --kb-ink: #FFF; --kb-blue: #0A84FF;
+  --page: #050505; --page-ink: #F2F2F2; --page-ink-2: #9A9A9A;
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--page); color: var(--page-ink); font-family: var(--font); -webkit-font-smoothing: antialiased; padding: 28px 24px 60px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* page chrome */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1260px; margin: 0 auto 8px; }
+.top h1 { font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+.top p { margin-top: 4px; color: var(--page-ink-2); font-size: 14px; }
+.seg { display: flex; padding: 2px; border-radius: 9px; background: rgb(120 120 128 / .16); }
+.seg button { height: 30px; padding: 0 14px; border: 0; border-radius: 7px; background: none; color: var(--page-ink); font: 500 13px var(--font); cursor: pointer; }
+.seg button.on { background: var(--surface-2); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+.dir { max-width: 1260px; margin: 28px auto 0; padding: 20px 0 16px; border-top: 1px solid rgb(128 128 128 / .2); }
+.dir h2 { font-size: 17px; font-weight: 600; }
+.dir h2 b { display: inline-block; min-width: 28px; }
+.dir > p { margin: 4px 0 16px; color: var(--page-ink-2); font-size: 14px; }
+.row { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.stack { display: grid; gap: 12px; }
+.cap { margin-bottom: 6px; color: var(--page-ink-2); font-size: 12px; font-weight: 500; }
+
+/* frames: real size inside, scaled down */
+.fr { position: relative; overflow: hidden; border-radius: calc(var(--r) * var(--s)); box-shadow: 0 0 0 1px rgb(0 0 0 / .1), 0 8px 24px -10px rgb(0 0 0 / .25); }
+.fr.ph { --s: .86; --r: 54px; width: calc(393px * var(--s)); height: calc(852px * var(--s)); }
+.fr.pad { --s: .45; --r: 18px; width: calc(1180px * var(--s)); height: calc(820px * var(--s)); }
+.scr { position: absolute; left: 0; top: 0; transform: scale(var(--s)); transform-origin: 0 0; background: var(--canvas); color: var(--ink); overflow: hidden; }
+.ph .scr { width: 393px; height: 852px; }
+.pad .scr { width: 1180px; height: 820px; }
+.abs { position: absolute; }
+
+/* Back: phone = the ‹ glass pill, iPad = plain ‹ Back */
+.bk { position: absolute; display: flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 560; }
+.ph .bk { left: 12px; top: 8px; height: 44px; padding: 0 18px 0 10px; border-radius: 999px; background: var(--glass); box-shadow: var(--glass-ring); }
+.pad .bk { left: 8px; top: 3px; height: 44px; padding: 0 12px 0 8px; }
+.bk svg, .ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bk svg { color: var(--ink-2); }
+
+/* the hero line: phone top 194 / 54px, iPad top 187 / 64px, pay column centre */
+.hero { position: absolute; left: 0; text-align: center; font-weight: 550; letter-spacing: -.04em; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ph .hero { top: 194px; width: 393px; font-size: 54px; }
+.pad .hero { top: 187px; width: 826px; font-size: 64px; }
+.hero.ph0 { color: var(--ink-4); }
+.ttl { position: absolute; top: 8px; left: 0; text-align: center; font-size: 17px; font-weight: 600; line-height: 44px; }   /* F: the page's title in the head, beside Back */
+.ph .ttl { width: 393px; }
+.pad .ttl { top: 3px; width: 826px; }
+.ph .col.foot { top: auto; bottom: 84px; }   /* F, G: our keys sit on Complete sale */
+.over { position: absolute; left: 0; text-align: center; color: var(--ink-3); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }   /* the small line above the hero */
+.ph .over { top: 168px; width: 393px; }
+.pad .over { top: 160px; width: 826px; }
+.gapl { position: absolute; left: 0; text-align: center; color: var(--ink-3); font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }   /* the line in the hero gap (Discount's es-off) */
+.ph .gapl { top: 256px; width: 393px; }
+.pad .gapl { top: 259px; width: 826px; }
+.gapl b, .up { color: var(--ok); font-weight: 550; }
+.caret { display: inline-block; width: 2px; height: .9em; margin-left: 2px; background: var(--ink); vertical-align: -.08em; }
+.ph0 .caret { margin-left: 0; margin-right: 2px; }
+
+/* content column under the hero: phone 20 in, iPad centred on the pay column */
+.col { position: absolute; display: grid; gap: 12px; }
+.ph .col { left: 20px; right: 20px; top: 282px; }
+.pad .col { left: calc(413px - var(--w, 312px) / 2); width: var(--w, 312px); top: 284px; }
+
+/* Checkout's rows (co-tile in light: white, hairline + drop) */
+.tile { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 16px; border-radius: 12px; background: var(--surface); box-shadow: var(--raise); font-size: 15px; font-weight: 500; }
+.tile .big { flex: 1; min-width: 0; font-size: 15px; font-weight: 550; }
+.tile small { color: var(--ink-3); font-size: 14px; }
+.tile .lbl { flex: 1; color: var(--ink-2); }
+.tile .val { font-size: 17px; font-weight: 550; font-variant-numeric: tabular-nums; }
+.tile small.up { color: var(--ok); font-weight: 550; }
+.ph0 { color: var(--ink-4); }
+
+/* buttons: phone = Check out's capsule; iPad = the tablet's co-btn */
+.pill { position: absolute; left: calc(50% - 130px); width: 260px; height: 44px; display: grid; place-items: center; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+        font-size: 15px; font-weight: 550; background-image: linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / 0) 60%);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), inset 0 0 0 .5px rgb(255 255 255 / .12), 0 2px 8px -2px rgb(0 0 0 / .3); }
+.pill.kb { bottom: 347px; }   /* just over the keyboard's bar */
+.pill.low { bottom: 20px; }    /* Check out's spot (no keyboard) */
+.btn { display: grid; place-items: center; height: 56px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-size: 15px; font-weight: 550;
+       box-shadow: inset 0 -1px 0 rgba(0,0,0,.2), 0 1px 0 rgba(0,0,0,.1); }
+.off { opacity: .35; }
+
+/* D: one capsule, the box and the button inside it */
+.cap2 { display: flex; align-items: center; height: 56px; padding: 0 6px 0 20px; border-radius: 999px; background: var(--surface); box-shadow: var(--raise); }
+.cap2 .val { flex: 1; font-size: 20px; font-weight: 550; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.cap2 .go { height: 44px; padding: 0 18px; display: grid; place-items: center; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 15px; font-weight: 550; white-space: nowrap; }
+
+/* our keypad (es-kp in checkout) */
+.kp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.kp span { display: grid; place-items: center; height: 64px; border-radius: 14px; background: var(--surface); box-shadow: var(--raise); font-size: 24px; font-weight: 500; }
+.kp svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Now: the two stacked figures */
+.figs > div { display: grid; gap: 2px; padding: 8px 0; }
+.figs > div + div { border-top: 1px solid var(--line); }
+.figs span { color: var(--ink-3); font-size: 13px; font-weight: 500; }
+.figs b { font-size: 38px; font-weight: 550; letter-spacing: -.03em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+
+/* iPad cart column */
+.cart { position: absolute; left: 824px; top: 15px; width: 340px; bottom: 16px; display: grid; grid-template-rows: 45px 1fr 56px; gap: 8px; }
+.cart > div { border-radius: 16px; background: var(--surface); box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px rgb(26 26 26 / .07); }
+.cart .cu { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; font-weight: 560; }
+.cart .cu i { font-style: normal; color: var(--ink-3); font-weight: 500; }
+.cart .it { padding: 12px 16px; display: flex; justify-content: space-between; align-items: start; font-size: 13px; }
+.cart .it small { display: block; margin-top: 2px; color: var(--ink-3); font-size: 12px; }
+.cart .tot { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+.cart .tot span { font-size: 14px; font-weight: 550; }
+.cart .tot b { font-size: 22px; font-weight: 550; letter-spacing: -.02em; }
+
+/* the iPhone's decimal pad: Safari's 44px bar + 291px of keys */
+.kbd { position: absolute; left: 0; right: 0; bottom: 0; height: 335px; background: var(--kb-bg); color: var(--kb-ink); }
+.kbd .bar { display: flex; align-items: center; gap: 22px; height: 44px; padding: 0 16px; border-bottom: .5px solid rgb(0 0 0 / .12); }
+.kbd .bar .ic { width: 22px; height: 22px; stroke: var(--kb-ink); opacity: .3; stroke-width: 2.2; }
+.kbd .bar b { margin-left: auto; color: var(--kb-blue); font-size: 17px; font-weight: 600; }
+.kbd .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 6px 6px 0; }
+.kbd .keys span { display: grid; place-content: center; justify-items: center; height: 51px; border-radius: 6px; background: var(--kb-key); box-shadow: var(--kb-shadow); font: 400 25px/1 -apple-system, "SF Pro Display", var(--font); }
+.kbd .keys span small { margin-top: 1px; font-size: 9.5px; font-weight: 600; letter-spacing: 2px; }
+.kbd .keys span.bare { background: none; box-shadow: none; }
+.kbd .keys svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.kbd .home { position: absolute; left: calc(50% - 67px); bottom: 8px; width: 134px; height: 5px; border-radius: 3px; background: var(--kb-ink); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Checkout › Cash › Custom</h1>
+    <p>₱12.00 sale. A–E: the phone drawn with the iPhone's own keys. F, G: our keys on both, as the app is now.</p>
+  </div>
+  <div class="seg" role="group" aria-label="Theme"><button class="on" data-th="light">Light</button><button data-th="dark">Dark</button></div>
+</header>
+<main id="dirs"></main>
+
+<script>
+const DEL = '<svg viewBox="0 0 24 24"><path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7zM13 10l4 4M17 10l-4 4"/></svg>';
+const CHEV = '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
+const C = '<span class="caret"></span>';
+const back = '<div class="bk">' + CHEV + 'Back</div>';
+
+// the iPhone decimal pad (keys with their letters, as iOS draws them)
+const L = ['', 'ABC', 'DEF', 'GHI', 'JKL', 'MNO', 'PQRS', 'TUV', 'WXYZ'];
+const iosPad = `<div class="kbd"><div class="bar">
+  <svg class="ic" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg><svg class="ic" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><b>Done</b></div>
+  <div class="keys">${[1,2,3,4,5,6,7,8,9].map(n => `<span>${n}<small>${L[n-1]}&nbsp;</small></span>`).join('')}
+  <span class="bare">.</span><span>0</span><span class="bare">${DEL}</span></div><div class="home"></div></div>`;
+const ourKeys = `<div class="kp">${'123456789'.split('').map(n => `<span>${n}</span>`).join('')}<span>.</span><span>0</span><span>${DEL}</span></div>`;
+
+const cart = `<div class="cart"><div class="cu">Walk-in customer<i>Walk-in</i></div>
+  <div class="it"><div>Cable Tie 8"<small>1 × ₱12.00</small></div><span class="num">₱12.00</span></div>
+  <div class="tot"><span>Total</span><b class="num">₱12.00</b></div></div>`;
+
+const phone = (inner, kb = true) => `<div class="fr ph"><div class="scr">${back}${inner}${kb ? iosPad : ''}</div></div>`;
+const ipad = inner => `<div class="fr pad"><div class="scr">${back}${inner}${cart}</div></div>`;
+const tot = '<div class="hero">₱12.00</div>';
+
+// each direction: phone(empty, typed), ipad(empty, typed); t = typed?
+const D = [
+  { id: 'now', name: 'Now', line: 'Today: the total on top, Cash received and Change under it, then the keys and Complete sale.',
+    phone: t => phone(tot + `<div class="col" style="top:282px;gap:22px"><div class="figs">
+        <div><span>Cash received</span><b class="${t ? '' : 'ph0'}">${t ? '₱500' + C : '₱0' + C}</b></div>
+        <div><span>Change</span><b class="${t ? 'up' : 'ph0'}">${t ? '₱488.00' : '₱0'}</b></div></div>${ourKeys}</div>
+        <div class="pill low ${t ? '' : 'off'}">Complete sale</div>`, false),
+    ipad: t => ipad(tot + `<div class="abs" style="left:52px;top:284px;width:376px;display:grid;gap:14px"><div class="figs" style="height:209px;display:grid;grid-auto-rows:1fr">
+        <div style="align-content:center"><span>Cash received</span><b class="${t ? '' : 'ph0'}">${t ? '₱500' + C : '₱0' + C}</b></div>
+        <div style="align-content:center"><span>Change</span><b class="${t ? 'up' : 'ph0'}">${t ? '₱488.00' : '₱0'}</b></div></div>
+        <div class="btn ${t ? '' : 'off'}">Complete sale</div></div>
+        <div class="abs" style="left:461px;top:284px;width:312px">${ourKeys}</div>`) },
+
+  { id: 'a', name: 'A · The big number is the box', line: 'What they hand over is typed on the big number; the total moves above it, the change is one line under it.',
+    phone: t => phone(`<div class="over">Total ₱12.00</div><div class="hero ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + '₱0'}</div>
+        ${t ? '<div class="gapl">Change <b>₱488.00</b></div>' : ''}<div class="pill kb ${t ? '' : 'off'}">Complete sale</div>`),
+    ipad: t => ipad(`<div class="over">Total ₱12.00</div><div class="hero ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + '₱0'}</div>
+        ${t ? '<div class="gapl">Change <b>₱488.00</b></div>' : ''}<div class="col">${ourKeys}<div class="btn ${t ? '' : 'off'}" style="margin-top:2px">Complete sale</div></div>`) },
+
+  { id: 'b', name: 'B · The big number is the box, no change', line: 'As A, without the change: Complete sale shows it on the next page anyway. The button sits right under the number.',
+    phone: t => phone(`<div class="over">Total ₱12.00</div><div class="hero ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + '₱0'}</div>
+        <div class="pill ${t ? '' : 'off'}" style="top:290px">Complete sale</div>`),
+    ipad: t => ipad(`<div class="over">Total ₱12.00</div><div class="hero ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + '₱0'}</div>
+        <div class="col">${ourKeys}<div class="btn ${t ? '' : 'off'}" style="margin-top:2px">Complete sale</div></div>`) },
+
+  { id: 'c', name: 'C · One row under the total', line: 'The total stays big; one Cash received row takes the typing. No change shown.',
+    phone: t => phone(tot + `<div class="col"><div class="tile"><span class="lbl">Cash received</span><span class="val ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + '₱0'}</span></div></div>
+        <div class="pill kb ${t ? '' : 'off'}">Complete sale</div>`),
+    ipad: t => ipad(tot + `<div class="col"><div class="tile"><span class="lbl">Cash received</span><span class="val ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + '₱0'}</span></div>
+        ${ourKeys}<div class="btn ${t ? '' : 'off'}" style="margin-top:2px">Complete sale</div></div>`) },
+
+  { id: 'd', name: 'D · Just a box with the button in it', line: 'The total stays big; one capsule holds the amount and Complete sale together. Nothing else on the page.',
+    phone: t => phone(tot + `<div class="col"><div class="cap2"><span class="val ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + '₱0'}</span><span class="go ${t ? '' : 'off'}">Complete sale</span></div></div>`),
+    ipad: t => ipad(tot + `<div class="col" style="--w:360px"><div class="cap2"><span class="val ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + '₱0'}</span><span class="go ${t ? '' : 'off'}">Complete sale</span></div>
+        <div style="padding:0 24px">${ourKeys}</div></div>`) },
+
+  { id: 'e', name: 'E · The Custom row becomes the box', line: 'No new page: Custom glides to the top of the cash list and takes the typing, the change on its right like the rows it came from.',
+    phone: t => phone(tot + `<div class="col"><div class="tile"><span class="big ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + 'Custom'}</span><small class="${t ? 'up' : ''}">${t ? 'Change ₱488.00' : ''}</small></div></div>
+        <div class="pill kb ${t ? '' : 'off'}">Complete sale</div>`),
+    ipad: t => ipad(tot + `<div class="col"><div class="tile"><span class="big ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + 'Custom'}</span><small class="${t ? 'up' : ''}">${t ? 'Change ₱488.00' : ''}</small></div>
+        <div style="display:grid;gap:12px">${ourKeys}<div class="btn ${t ? '' : 'off'}" style="margin-top:2px">Complete sale</div></div></div>`) },
+  { id: 'f', name: 'F · B, cleaner: "Cash received" is the page title', line: 'The title says what to type; the big number is the box. No total, no change. Complete sale at the bottom.',
+    phone: t => phone(`<div class="ttl">Cash received</div><div class="hero ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + '₱0'}</div>
+        <div class="col foot">${ourKeys}</div><div class="pill low ${t ? '' : 'off'}">Complete sale</div>`, false),
+    ipad: t => ipad(`<div class="ttl">Cash received</div><div class="hero ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + '₱0'}</div>
+        <div class="col">${ourKeys}<div class="btn ${t ? '' : 'off'}" style="margin-top:2px">Complete sale</div></div>`) },
+
+  { id: 'g', name: 'G · B, cleaner: "Cash received" over the number', line: 'As F, but the words sit just over the number, where B had the total.',
+    phone: t => phone(`<div class="over">Cash received</div><div class="hero ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + '₱0'}</div>
+        <div class="col foot">${ourKeys}</div><div class="pill low ${t ? '' : 'off'}">Complete sale</div>`, false),
+    ipad: t => ipad(`<div class="over">Cash received</div><div class="hero ${t ? '' : 'ph0'}">${t ? '₱500' + C : C + '₱0'}</div>
+        <div class="col">${ourKeys}<div class="btn ${t ? '' : 'off'}" style="margin-top:2px">Complete sale</div></div>`) },
+];
+
+document.getElementById('dirs').innerHTML = D.map(d => `<section class="dir" id="${d.id}"><h2>${d.name}</h2><p>${d.line}</p>
+  <div class="row">
+    <div><div class="cap">iPhone · nothing typed</div>${d.phone(false)}</div>
+    <div><div class="cap">iPhone · ₱500 typed</div>${d.phone(true)}</div>
+    <div class="stack"><div><div class="cap">iPad · nothing typed</div>${d.ipad(false)}</div><div><div class="cap">iPad · ₱500 typed</div>${d.ipad(true)}</div></div>
+  </div></section>`).join('');
+
+document.querySelectorAll('[data-th]').forEach(b => b.onclick = () => {
+  document.body.classList.toggle('dark', b.dataset.th === 'dark');
+  document.querySelectorAll('[data-th]').forEach(x => x.classList.toggle('on', x === b));
+});
+</script>
+</body>
+</html>
