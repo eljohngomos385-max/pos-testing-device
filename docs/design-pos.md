@@ -174,6 +174,28 @@ Reusable expand/collapse: a header row toggles `.open`; the detail panel animate
 - **Lost sale** (sidebar ⋯, `#lostSaleModal`): Asked for (catalog search), Qty, Why (Out of stock / Not carried / Too expensive / Other), Bought instead, **Log lost sale**.
 - **Numbers on screen**: every quantity through `SalesMath.qtyText` (`qty-check` fails on a `parseInt` quantity), every amount through `peso()`. No hand-built `₱`, no `toFixed` for display.
 
+## Motion — three kinds only (owner 2026-11-16, picked in `pos-lab-motion/`)
+
+Apple's rule: a page **slides**, a sheet **pops up**, a pop-up **grows in**. Nothing else moves a whole screen.
+
+- **A page with ‹ slides** in from the right and back out to the right: iOS's push, `--push-dur` .4s / `--push-ease`
+  `cubic-bezier(.32,.72,0,1)` on `:root`. The page under moves a third left (`-30%`). **Flat: no shadow, no dim** (a shadow read
+  "floaty"); transform only, so it stays smooth on a slow phone (measured 60fps with the CPU slowed 4×, one skipped first frame at 6×).
+  - Pages that swap in place (Settings, QR codes, Shift) go through `bindPageSlide()` in app.js: a tap there is held one frame,
+    the page is snapshotted, the tap is replayed inside `document.startViewTransition`, and styles.css "Motion" slides the two
+    pictures, clipped to `.main` (the iPad's menu never moves). Direction: back to a page seen since the menu opened this one, or
+    any `.back`, slides back. Fields, switches, sheets and pop-ups are never held. Safari < 18 has no view transitions: instant.
+  - Pages that slide by CSS use the same tokens: an order's / customer's page on the phone (`.o-main`, the list under moves),
+    the item editor (`#itemsView > .page` moves), an item's subpages (`.form.push` / `.pop`).
+  - **A new ‹ page uses one of these two ways**, never its own timing.
+- **A full-screen page that is an overlay slides over**: the phone's edit sheet (a modifier's choices, a cart line, Adjust stock,
+  a customer) comes in from the right over Sell and **Sell stays still**; ‹ slides it back out. On the iPad it is a sheet beside
+  the cart and rises like one.
+- **Sheets pop up** with today's timing (.24s in / .16s out, `--rl-ease`): "quicker, more responsive" than iOS's slower sheet.
+- **Pop-ups grow in** with today's `centreSheet` (scale .94 → 1, .22s; out .09s).
+- **Menu pages just switch**, as Apple's iPad sidebar apps do; on the phone the menu sliding shut is the motion.
+- **Checkout's parts fade**, nothing rises into place (`co-in` / `co-rise` are opacity only; the phone's keypad and OK fade in).
+
 ## Cross-device / touch
 
 - **The till's sidebar rules are the till's alone**: the base `.sidebar` / `.side-*` / `.brand-*` / `.user-row` rules, the `#app::before` backdrop and the ≤920px icons-only `@media` block in `styles.css` are all scoped to `:where(#app:not(.bo-app))`, because the back office is `#app` with `.sidebar` / `.side-link` too. A new sidebar rule gets the same scope (`:where()` keeps specificity unchanged).

@@ -1386,6 +1386,7 @@ function attachEvents() {
   bindStTables();   // Settings › Tables (pos-settings.js)
   bindQr();   // QR codes (pos-qr.js)
   bindPick();   // Settings › one choice's page
+  bindPageSlide();   // a ‹ page slides in and back (Motion)
   $('#posLogOutBtn')?.addEventListener('click', logOut);
   $('#signInForm')?.addEventListener('submit', (e) => { e.preventDefault(); signInCover(false); if (tillPins()) lockTill(); });
   $('#posTestPrintBtn')?.addEventListener('click', () => {
@@ -1399,6 +1400,49 @@ function attachEvents() {
 
   window.addEventListener('online', () => track('online'));
   window.addEventListener('offline', () => track('offline'));
+}
+
+// ---------- A ‹ page slides (owner 2026-11-16, iOS's push; styles.css "Motion") ----------
+// Settings, QR codes and Shift swap their pages in place. A tap there is held for one frame: the page is snapshotted, the
+// tap runs (every handler, unchanged, in one go), and the old and new pictures slide. Which way comes from the pages seen
+// since the menu opened this one: back to one of them, or a ‹, slides back. No view transitions (Safari < 18): instant.
+function bindPageSlide() {
+  if (!document.startViewTransition) return;
+  const H = document.documentElement, VIEWS = ['settings', 'qr', 'shift'];
+  const key = () => {
+    const v = $('.view.active'); if (!v) return '';
+    let k = v.dataset.view + '|' + [...v.querySelectorAll('section.page, .st-page')].filter(p => !p.hidden && p.checkVisibility()).map(p => p.id).join(',');
+    if (v.dataset.view === 'settings' && !$('#setSecBack').hidden) k += ':' + $('#setTitle').textContent;
+    return k;
+  };
+  let trail = [], replay = false;
+  const dirFor = (from, to, back) => {
+    if (from === to) return 'none';
+    if (from.split('|')[0] !== to.split('|')[0]) { trail = [to]; return 'none'; }   // left the page: menu pages just switch
+    if (trail.at(-1) !== from) trail = [from];
+    const i = trail.indexOf(to);
+    if (i >= 0) { trail = trail.slice(0, i + 1); return 'back'; }
+    if (back) { trail = [to]; return 'back'; }
+    trail.push(to); return 'fwd';
+  };
+  document.addEventListener('click', (e) => {
+    if (replay || !e.isTrusted || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const t = e.target.closest('button, a, [role="button"], .fr'), view = $('.view.active')?.dataset.view;
+    if (!t || !VIEWS.includes(view) || !t.closest('.view.active') || t.matches('[data-act="open-sidebar"]')
+      || t.closest('label, input, select, textarea, [contenteditable], .fs-veil, .rail-veil, .modal-backdrop, .esheet, .vsheet, .scan-sheet')) return;   // fields, switches, sheets and pop-ups keep their own
+    e.stopImmediatePropagation(); e.preventDefault();
+    const from = key(), back = t.matches('.back');
+    let bg = '';   // the page's colour behind each picture, so one sliding over the other never shows through
+    for (let el = $('.view.active'); el && !bg; el = el.parentElement) { const c = getComputedStyle(el).backgroundColor; if (!/rgba\(.*, 0\)$|transparent/.test(c)) bg = c; }
+    H.style.setProperty('--pg-bg', bg || getComputedStyle(document.body).backgroundColor);
+    H.classList.add('pg-go');
+    document.startViewTransition(() => {
+      replay = true;
+      try { t.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY, detail: e.detail })); }
+      finally { replay = false; }
+      H.classList.add('pg-' + dirFor(from, key(), back));
+    }).finished.finally(() => H.classList.remove('pg-go', 'pg-fwd', 'pg-back', 'pg-none'));
+  }, true);
 }
 
 // ---------- Init ----------

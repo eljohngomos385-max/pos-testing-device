@@ -6,6 +6,7 @@
 
 :root {
   --qs-tick-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8.25l2 2 4-4.5'/%3E%3C/svg%3E");   /* the tick of a ticked dot (Quick stock, types delete) */
+  --push-dur: .4s; --push-ease: cubic-bezier(.32, .72, 0, 1);   /* a ‹ page's slide in and back: iOS's push (owner 2026-11-16, motion lab) */
   --rl-ease: cubic-bezier(.2, .8, .2, 1);               /* on :root so the view-transition layers reach it */  --bg: #121212;
   --bg-soft: #1C1C1C;
   --bg-softer: #232323;
@@ -3861,11 +3862,11 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-mark .m-k { fill: none; stroke: var(--ok); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 36; stroke-dashoffset: 36;
                 animation: co-draw .3s .42s var(--co-ease) forwards; }
 
-@keyframes co-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes co-in { from { opacity: 0; } }   /* a fade, no rise (owner 2026-11-16) */
 @keyframes co-draw { to { stroke-dashoffset: 0; } }
 @keyframes co-pop { from { opacity: 0; transform: scale(.6); } }
 @keyframes co-pulse { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(1.9); } }
-@keyframes co-rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes co-rise { from { opacity: 0; } }
 @keyframes co-print { from { clip-path: inset(0 0 100% 0); transform: translateY(-24px); } to { clip-path: inset(0 0 0 0); transform: none; } }
 @keyframes co-shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }   /* the wrong PIN's shake, 10% softer: a key past what's left on Split (owner 2026-10-17) */
 @media (prefers-reduced-motion: reduce) {
@@ -7641,7 +7642,9 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
   .lv .o-rail .list { border-bottom: 0; border-radius: var(--rl-r) var(--rl-r) 0 0; }
   .lv .o-rail .lines { margin-bottom: 0; padding-bottom: var(--ph-safe, 0px); }
   .lv .paper-scroll { padding: 1px 4px calc(21px + var(--ph-safe, 0px)); }   /* 16px in with .o-main's 12, as the Show receipt sheet: the edge shows */
-  .lv .o-main { position: absolute; inset: 0; z-index: 5; padding: 8px 12px 0; background: var(--canvas, var(--bg)); transform: translateX(100%); transition: transform .28s var(--rl-ease); }
+  .lv .o-main { position: absolute; inset: 0; z-index: 5; padding: 8px 12px 0; background: var(--canvas, var(--bg)); transform: translateX(100%); transition: transform var(--push-dur) var(--push-ease); }
+  .lv .ov > .o-rail { transition: transform var(--push-dur) var(--push-ease); }
+  .lv .ov.reading > .o-rail { transform: translateX(-30%); }   /* iOS's push: the list moves a third left under it, transform only (smooth on a slow phone) */
   .lv .ov.reading .o-main { transform: none; }
   .lv .o-top .back { display: inline-flex; }
 }
@@ -7779,8 +7782,10 @@ body.light-theme .fab-veil { --fab-dim: rgba(255, 255, 255, .45); }
 /* the editor: full screen, the back office's cards and fields */
 .lv .editor { position: absolute; inset: 0; z-index: 5; display: grid; grid-template-columns: minmax(128px,1fr) minmax(0,720px) minmax(128px,1fr); grid-template-rows: minmax(0,1fr);
               gap: 0 16px; padding: 16px 18px 0; background: var(--canvas, var(--bg));
-              transform: translateX(100%); visibility: hidden; transition: transform .28s var(--rl-ease), visibility 0s .28s; }
-.lv .iv.editing .editor { transform: none; visibility: visible; transition: transform .28s var(--rl-ease); }
+              transform: translateX(100%); visibility: hidden; transition: transform var(--push-dur) var(--push-ease), visibility 0s var(--push-dur); }
+.lv .iv.editing .editor { transform: none; visibility: visible; transition: transform var(--push-dur) var(--push-ease); }
+#itemsView > .page { transition: transform var(--push-dur) var(--push-ease); }
+#itemsView.editing > .page { transform: translateX(-30vw); }   /* the list a third left under the editor, as iOS's push */
 .lv .e-top { display: contents; }   /* wide: back and actions float in the margins beside the column */
 .lv .e-top > .sq { grid-area: 1 / 1; justify-self: start; align-self: start; z-index: 1; }
 .lv .e-top > .acts { grid-area: 1 / 3; justify-self: end; align-self: start; z-index: 1; margin-right: 18px; height: var(--bar-h); }
@@ -7865,10 +7870,8 @@ body .lv .fc .act.st-pick { min-width: 0; height: 36px; padding: 0; background: 
 .lv .fc .st-pick:hover, .lv .fc .st-pick[aria-expanded="true"] { background: none; color: var(--ink); }
 body .lv .fc .sw:not(:checked) { background: var(--line-strong); }   /* on the grey tile the usual off track vanished */
 /* a › opens a subpage that slides in from the right, Back slides it out (pos-items itemGo) */
-.lv .form.push { animation: fm-push .28s var(--rl-ease); }
-.lv .form.pop { animation: fm-pop .28s var(--rl-ease); }
-@keyframes fm-push { from { opacity: 0; transform: translateX(40px); } }
-@keyframes fm-pop { from { opacity: 0; transform: translateX(-40px); } }
+.lv .form.push { animation: pg-from-r var(--push-dur) var(--push-ease); }
+.lv .form.pop { animation: pg-from-l var(--push-dur) var(--push-ease); }
 @media (prefers-reduced-motion: reduce) { .lv .form.push, .lv .form.pop { animation: none; } }
 .lv .in { width: 100%; height: 38px; min-width: 0; padding: 0 12px; border: 0; border-radius: var(--r-input); outline: 0; background: var(--rl-soft); color: var(--ink);
           box-shadow: inset 0 0 0 1px var(--rl-hair); font: inherit; font-size: 14px; }
@@ -9252,7 +9255,8 @@ body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
   .es-card:has(> .es-body.ks > .es-keys:not(.es-dn)) .sh-fab, .co:not(.co-kd):not(:has(#checkoutKeys.es-dn)) #checkoutCompleteBtn { visibility: hidden; }
   :is(.es-body.ks > .es-keys, #checkoutKeys)::before { content: ''; position: absolute; top: 6px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 999px; background: var(--ink-quaternary); }   /* .fs-top::after */
   /* up by itself as the page opens, never a tap on the number (owner 2026-11-05); ✓ slides it back down (keysDown) */
-  .es-body.ks > .es-keys.es-in, .co #checkoutKeys { animation: ks-up .3s var(--rl-ease) .1s both; }
+  .es-body.ks > .es-keys.es-in { animation: ks-up .3s var(--rl-ease) .1s both; }
+  .co #checkoutKeys { animation: rail-fade .2s ease-out .1s both; }   /* checkout's keys fade in, they don't rise (owner 2026-11-16) */
   .es-body.ks > .es-keys.es-dn, .co #checkoutKeys.es-dn { animation: ks-dn .24s var(--rl-ease) forwards; }
   :is(.es-body.ks, #checkoutKeys) .es-kp { gap: 0; }
   :is(.esheet .es-body.ks, .co #checkoutKeys) .es-kp button { height: 69px; border-radius: 999px; background: none; box-shadow: none; font-size: 36px; font-weight: 450; }
@@ -9267,7 +9271,8 @@ body.light-theme .modal-backdrop:not(.pin-lock) { background: rgb(0 0 0 / .3); }
   .co:has([data-step="cash"]:not([hidden]) #checkoutKeyIn:not([hidden])) .co-ok { display: grid; place-items: center; width: 44px; height: 44px; margin: 0 calc(12px - var(--co-m)) 0 auto; padding: 0; }
   .co.co-kd .co-ok { visibility: hidden; }
   .co.co-kd #checkoutKeys { display: none; }
-  .esheet .es-card:has(.es-keys.es-in) > .es-ok, .co:not(.co-kd) .co-ok { animation: ok-in .3s var(--rl-ease) .1s both; }
+  .esheet .es-card:has(.es-keys.es-in) > .es-ok { animation: ok-in .3s var(--rl-ease) .1s both; }
+  .co:not(.co-kd) .co-ok { animation: rail-fade .2s ease-out .1s both; }
   .esheet .es-card:has(.es-keys.es-dn) > .es-ok, .co:has(#checkoutKeys.es-dn) .co-ok { animation: ok-out .2s var(--rl-ease) forwards; pointer-events: none; }
 }
 @keyframes ok-in { from { opacity: 0; transform: scale(.8); } }
@@ -9505,3 +9510,30 @@ body:not(.light-theme) .view-chat[data-dark="colour"] { --cht-glow: color-mix(in
 .cht-rows span { display: grid; min-width: 0; line-height: 1.3; }
 .cht-rows small { color: var(--ink-tertiary); font-size: 13px; }
 .cht-rows b { white-space: nowrap; font-weight: 550; }
+
+/* ---------- Motion (owner 2026-11-16, picked in pos-lab-motion; docs/design-pos.md "Motion") ----------
+   A page with ‹ slides in from the right and back out (iOS's push); a sheet pops up; a pop-up grows in; menu pages just switch.
+   Settings, QR codes and Shift change pages in place: app.js (bindPageSlide) snapshots the page, runs the tap, and the two
+   pictures slide here, clipped to .main so the iPad's menu never moves. Transform only: smooth on a slow phone. */
+html.pg-go .main { view-transition-name: pg-main; }
+html.pg-go #orderDetail :is(.rp-paper, .ol) { view-transition-name: none; }   /* else it would stay put while its page moves */
+::view-transition-group(pg-main) { overflow: clip; animation: none; }
+::view-transition-old(pg-main), ::view-transition-new(pg-main) {
+  mix-blend-mode: normal; background: var(--pg-bg, #000); animation-duration: var(--push-dur); animation-timing-function: var(--push-ease); animation-fill-mode: both; }
+html.pg-none::view-transition-old(pg-main) { display: none; }
+html.pg-none::view-transition-new(pg-main) { animation: none; }
+html.pg-fwd::view-transition-new(pg-main) { animation-name: pg-from-r; }
+html.pg-fwd::view-transition-old(pg-main) { animation-name: pg-to-l; }
+html.pg-back::view-transition-old(pg-main) { z-index: 1; animation-name: pg-to-r; }   /* back: the page leaves to the right, on top */
+html.pg-back::view-transition-new(pg-main) { animation-name: pg-from-l; }
+@keyframes pg-from-r { from { transform: translateX(100%); } }
+@keyframes pg-to-r   { to   { transform: translateX(100%); } }
+@keyframes pg-to-l   { to   { transform: translateX(-30%); } }
+@keyframes pg-from-l { from { transform: translateX(-30%); } }
+/* the phone's edit sheet fills the screen (a modifier's choices, a cart line, Adjust stock, a customer): an overlay, so it slides
+   over Sell from the right and Sell stays still; ‹ slides it back out. On the iPad it stays a sheet beside the cart and rises. */
+@media (max-width: 720px) {
+  .esheet { transform: translateX(100%); transition: transform var(--push-dur) var(--push-ease), visibility 0s var(--push-dur); }
+  .esheet.open { transform: none; transition: transform var(--push-dur) var(--push-ease); }
+}
+@media (prefers-reduced-motion: reduce) { ::view-transition-old(pg-main), ::view-transition-new(pg-main) { animation: none !important; } }
